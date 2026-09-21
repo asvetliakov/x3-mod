@@ -24,8 +24,8 @@ bool executable_verified();
 bool active(); // observation enabled; not synonymous with code ownership
 bool recovery_required(); // owned code/protection still needs quiescent restoration
 const char* status(); // static diagnostic string; initialize once, then read
-// Bounded self-process reads through engine_memory (validated direct reads;
-// X3M_ENGINE_READS=rpm for the syscall path). matrices=false skips the four
+// Bounded self-process reads through engine_memory (validated direct reads).
+// matrices=false skips the four
 // engine matrices (8 of the 12 reads): the route needs node, camera and
 // registry only; capture frames and diagnostics keep the default.
 bool current(Snapshot* out, bool matrices = true);

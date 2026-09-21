@@ -1,4 +1,2 @@
-TIMING mode=rpm baseline_us=0.040 route_us=4.439 capture_us=10.678 route_read_us=4.399 capture_read_us=10.638 route_queries_per_call=0.0000 route_syscalls_per_call=4.00 capture_syscalls_per_call=12.00
-TIMING mode=direct baseline_us=0.039 route_us=1.309 capture_us=1.621 route_read_us=1.270 capture_read_us=1.581 route_queries_per_call=0.0040 route_syscalls_per_call=0.00 capture_syscalls_per_call=0.00
-IDENTITY route_rpm=5d9c86811e5cd583 route_direct=5d9c86811e5cd583 capture_rpm=0e4093189888fb83 capture_direct=0e4093189888fb83 equal=1
-RESULT PASS checks=166 failures=0 backend_calls=120017
+TIMING mode=direct baseline_us=0.041 route_us=1.327 capture_us=1.650 route_read_us=1.286 capture_read_us=1.609 route_queries_per_call=0.0040 route_record=5d9c86811e5cd583 capture_record=0e4093189888fb83
+RESULT PASS checks=153 failures=0 backend_calls=60013

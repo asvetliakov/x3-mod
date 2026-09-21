@@ -2232,7 +2232,9 @@ Correction, same day: the B2a Capture accounting was removed from main again
 Clone upload ABI, which the production CMake graph does not list, so main failed
 to link, and the upload diagnostic is held. B2a stays in the preserved
 `investigate/lattice-capture-lifecycle` worktree; the lifetime fix does not
-depend on it. The lifecycle fixture sources remain on main for that worktree's
-seam build. Full host discovery at `ef552d24` (2,769 tests, 751.6 s) found 5
+depend on it. The lifecycle fixture sources remained on main for that worktree's
+seam build until 2026-09-22, when the whole lattice state/geometry/upload-hook
+diagnostic was removed on the user's verdict (last commit carrying it:
+main `59ad2649`); the shader-shadow restoration lifetime fix stays. Full host discovery at `ef552d24` (2,769 tests, 751.6 s) found 5
 failures and 2 errors, all test-double or text-match drift from today's merges
 plus one reproducible `test_cull_census` tempfile error; fixes are in progress.

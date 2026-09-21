@@ -144,7 +144,8 @@ No thread suspension or arbitrary concurrent instruction patching is supported.
 
 `current(Snapshot*, matrices)` performs bounded self-process reads through
 `src/proxy/engine_memory.h` (validated direct reads with a per-frame region
-cache; `X3M_ENGINE_READS=rpm` restores `ReadProcessMemory`): four reads (node
+cache; the `X3M_ENGINE_READS=rpm` `ReadProcessMemory` fallback was removed on
+2026-09-22, last commit main `59ad2649`): four reads (node
 block, `camera+0x28`, engine slot, `engine+0xc`, 344 bytes) on the route's
 per-draw path with `matrices=false`, twelve (620 bytes, plus the four matrices)
 on capture frames and for diagnostics. Individual validity bits prevent

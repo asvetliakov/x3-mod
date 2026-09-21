@@ -1,10 +1,6 @@
 #include "capture.h"
 #include "capture_state.h"
 #include "../fog/fog_density_cache.h"
-#include "lattice_state_capture.h"
-#ifdef X3M_MOTION_OUTPUT_FIXTURE
-#include "../../verification/probe/lattice_observer_guard_abi.h"
-#endif
 #include "proxy_identity.h"
 #include "telemetry.h"
 #include "game_phases.h"
@@ -89,7 +85,6 @@ unsigned capture_count = 1;
 // other 300-frame reports of that path keep it whatever this is.
 constexpr unsigned frame_end_stride_default = 300, frame_end_stride_max = 100000;
 unsigned frame_end_stride = frame_end_stride_default;
-bool lattice_state_requested = false; // X3M_LATTICE_STATE=run177_panel_position_v1, F8 only
 bool scene_depth_capture_requested = false;
 bool finite_positions_requested = false;
 bool motion_capture_requested = false;
@@ -275,9 +270,6 @@ struct Hooks {
         table[slot] = reinterpret_cast<void*>(fn);
     }
 };
-#ifdef X3M_MOTION_OUTPUT_FIXTURE
-#include "../../verification/probe/lattice_observer_guard_state_inc.h"
-#endif
 struct CompositorInvocation;
 struct Device : Hooks {
     D3DCAPS9 caps{};
@@ -321,8 +313,6 @@ struct Device : Hooks {
     bool capture = false;
     sector_background::Diagnostic sector_background_evidence;
     object_capture::Cache object_evidence; // capture-only; existing HookGuard owns it
-    std::shared_ptr<lattice_state::Capture> lattice_state; // allocated only by an explicitly requested F8 edge
-    unsigned lattice_query_depth = 0; // capture mutex; only observer COM queries, never native draw
     bool key_down = false;
     explicit Device(void* object, size_t size) : Hooks(object, size) {}
 };
@@ -850,17 +840,11 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         HookGuard lock;
         auto& ctx=*devices.at(d);
         auto fn=ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(2);
-#ifdef X3M_MOTION_OUTPUT_FIXTURE
-        if(fixture_observer_active(d)) {
-            if(fixture_observer.queries)++fixture_observer.result.query_releases;
-            if(fixture_observer.sampling)++fixture_observer.result.sample_releases;
-        }
-#endif
         // A registered invocation owns an explicit native pin. Delay final
         // retirement until its cleanup drops transient aliases and releases that
         // pin through this hook. Never count transient surface aliases as native
         // device references or manufacture a zero return for the application.
-        const bool accounting = !ctx.compositor && !ctx.bloom_busy && !ctx.lattice_query_depth
+        const bool accounting = !ctx.compositor && !ctx.bloom_busy
             && !ctx.motion_output.reference_accounting_busy() && !ctx.bloom.releasing();
         // Caster retention (shadow-caster-retention.md, "References"): a retained
         // resource the application already released pins one device reference the
@@ -879,9 +863,6 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         const unsigned held = accounting
             ? ctx.motion_output.device_references() + ctx.bloom.references() : 0;
         if (held) {
-#ifdef X3M_MOTION_OUTPUT_FIXTURE
-            if(fixture_observer_active(d)&&fixture_observer.queries)++fixture_observer.result.query_restores;
-#endif
             ctx.motion_output.restore_bindings();
             const ULONG count=ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(1)(d);
             const ULONG after=fn(d);
@@ -893,9 +874,6 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         }
         cpu.before_original();
         refs=fn(d);cpu.after_original();
-#ifdef X3M_MOTION_OUTPUT_FIXTURE
-        if(!refs&&fixture_observer_active(d))++fixture_observer.result.retired;
-#endif
         if(!refs){game_phases::invalidate_device();report_shader_population(true); // session end: flush the last count movement
         telemetry::summary(devices.at(d)->stats,"device_destroy",devices.at(d)->frame);telemetry::summary(telemetry::process(),"device_destroy",devices.at(d)->frame);log("device_destroy ptr=%p device=%llu",d,devices.at(d)->id);forget_cached_device();devices.erase(d);}
         last_device_destroyed=!refs&&devices.empty();
@@ -1315,16 +1293,6 @@ void comparison_notice_text(Device& ctx) noexcept {
 }
 HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,const RGNDATA* r) {
     CpuCallBoundary cpu;
-    // Observer getters can reenter Present while the recursive capture lock
-    // is held. Refuse before admission, renderer work or the native Present.
-    {
-        CaptureLock lock;
-        const auto owner=devices.at(d);
-        if(owner->lattice_query_depth) {
-            if(owner->lattice_state)owner->lattice_state->invalidate();
-            return D3DERR_INVALIDCALL;
-        }
-    }
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
     // Declare before the outer lock: final retirement can stop the profiler,
     // and must run after that lock is released. The holder keeps the CPU owner
@@ -1476,7 +1444,6 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
                 static_cast<DWORD>(state.vetoes),unsigned(state.first_veto),state.replay_active);
         }
     }
-    if(ctx.lattice_state && ctx.lattice_state->publish(capture_directory()))ctx.lattice_state.reset();
     if (ctx.capture && ctx.remaining) --ctx.remaining;
     ++ctx.frame; ctx.draws=0; ctx.composition_scene_owner=false;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
@@ -1485,12 +1452,6 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     ctx.events=0; ctx.stats.frame=ctx.frame;
     const bool down=(GetAsyncKeyState(VK_F8)&0x8000)!=0;
     if ((down&&!ctx.key_down) || (capture_count && ctx.frame==capture_start)) ctx.remaining=capture_count ? capture_count : 1;
-    if(lattice_state_requested && down&&!ctx.key_down && !ctx.lattice_state){
-        try {ctx.lattice_state=std::make_shared<lattice_state::Capture>();}
-        catch(const std::bad_alloc&) {ctx.lattice_state.reset();}
-        if(ctx.lattice_state)ctx.lattice_state->arm(ctx.id,ctx.frame,ctx.reset_generation,object_trace::active());
-        else log("lattice_state status=allocation_failure selector=run177_panel_position_v1");
-    }
     ctx.key_down=down; ctx.capture=ctx.remaining>0;
     point_light_admission::begin_frame(ctx.capture); // option on only: enables the per-node sample for a capture frame
     cull_census::begin_frame(ctx.capture); // X3M_CULL_CENSUS=1 only: arms the two pass stubs for a capture frame
@@ -1513,10 +1474,9 @@ HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODE
     game_phases::invalidate_device(); // includes a refused reentrant attempt
     ctx.sector_background_evidence.invalidate(); // also on refused Reset; no retained engine memory
     ctx.object_evidence.invalidate(); // diagnostic association also ends on refused Reset
-    if(ctx.lattice_state)ctx.lattice_state->invalidate();
     // A Reset reentered from injected GPU work cannot destroy that work's
     // stack-local saved state. Ordinary Reset during original is supported.
-    if(ctx.lattice_query_depth || ctx.bloom_busy || ctx.motion_output.composition_operation_active())return D3DERR_INVALIDCALL;
+    if(ctx.bloom_busy || ctx.motion_output.composition_operation_active())return D3DERR_INVALIDCALL;
     ++ctx.reset_generation; ctx.reset_active=true; ctx.scene_thread=0; ctx.composition_scene_owner=false;
     ctx.comparison_notice.hide();ctx.comparison.reset_focus();ctx.comparison_report_pending=false;ctx.comparison_emitter_notice[0]='\0';
     ctx.fps_overlay.reset();ctx.fps_notice.text("",""); // the window restarts after Reset; visibility is kept
@@ -1571,7 +1531,6 @@ HRESULT WINAPI reset_ex(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYM
     return reset_common(d,p,mode,true);
 }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-#include "../../verification/probe/lattice_observer_guard_seam_inc.h"
 void fixture_observe_wrap(Device& ctx, IDirect3DDevice9* device) {
     if (!ctx.fixture_observe_native_wrap) return;
     auto& result = ctx.fixture_wrap;
@@ -1631,29 +1590,6 @@ HRESULT WINAPI draw_primitive(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT s,UINT
 HRESULT WINAPI draw_indexed(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,INT b,UINT m,UINT n,UINT s,UINT c) {
     LightCallBoundary cpu; // draw path audited x87-free: check_no_x87.py roots here (state-call-fast-path.md, Envelope)
     ownership::ApplicationAdmissionAbi admission(ownership::process_admission_monitor());
-    // Before the lock and every Device-dependent destructor. The native pin
-    // prevents reentrant final retirement; CPU ownership survives hooked Release.
-    // Unarmed draws allocate nothing and acquire no native/shared reference.
-    struct ObserverPin {
-        IDirect3DDevice9* device=nullptr;
-        std::shared_ptr<Device> owner;
-        ~ObserverPin(){if(device)call_preserved([&]{
-#ifdef X3M_MOTION_OUTPUT_FIXTURE
-            if(fixture_observer_active(device))++fixture_observer.result.pin_releases;
-#endif
-            release_device(device);owner.reset();
-        });}
-        void acquire(IDirect3DDevice9* d) {
-            if(device)return;
-#ifdef X3M_MOTION_OUTPUT_FIXTURE
-            if(fixture_observer_old(d))return;
-            if(fixture_observer_active(d))++fixture_observer.result.pin_acquires;
-#endif
-            owner=devices.at(d);
-            owner->get<ULONG (WINAPI*)(IDirect3DDevice9*)>(1)(d);
-            device=d;
-        }
-    } observer_pin;
     PlainHookGuard lock(frame_timing::Bucket::Draw);
     auto& ctx=*devices.at(d);CallTimer timer(ctx,telemetry::enabled(telemetry::Metric::DrawBackend));
     if(ctx.motion_output.draw_submission_blocked())return ctx.motion_output.before_draw({true,false,t,c,s,b,m,n}).submission_error;
@@ -1670,58 +1606,10 @@ HRESULT WINAPI draw_indexed(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,INT b,UINT m,
         CompositionDrawScope(unsigned& d,bool e):depth(d),enabled(e){if(enabled)++depth;}
         ~CompositionDrawScope(){if(enabled)--depth;}
     } composition_scope(ctx.composition_draw_depth,ctx.motion_output.composition_requested());
-    // Compile-time null specialization preserves the observation branch with no
-    // getter/allocation/envelope when disabled; the optional pin adds a null check.
-    const auto dispatch=[&](auto* observer) {
-        constexpr bool observed=!std::is_same_v<std::remove_pointer_t<decltype(observer)>,std::nullptr_t>;
-        int slot=-1;
-        struct QueryScope {
-            unsigned& depth;bool enabled=true;
-            explicit QueryScope(unsigned& value,IDirect3DDevice9* device):depth(value){
-#ifdef X3M_MOTION_OUTPUT_FIXTURE
-                if(fixture_observer_active(device)){fixture_observer.queries=true;enabled=!fixture_observer_old(device);}
-#else
-                (void)device;
-#endif
-                if(enabled)++depth;
-            }
-            ~QueryScope(){if(enabled)--depth;
-#ifdef X3M_MOTION_OUTPUT_FIXTURE
-                fixture_observer.queries=false;
-#endif
-            }
-        };
-        const bool selected=observed && observer!=nullptr && [&]{
-#ifdef X3M_MOTION_OUTPUT_FIXTURE
-            if(fixture_observer_active(d))return true;
-#endif
-            if constexpr(observed)return observer->can_select({UINT(t),c,m,n,s,b});
-            return false;
-        }();
-        if constexpr(observed)if(selected)
-            call_preserved([&]{
-                observer_pin.acquire(d);
-                QueryScope queries(ctx.lattice_query_depth,d);
-#ifdef X3M_MOTION_OUTPUT_FIXTURE
-                if(fixture_observer_active(d)){slot=0;return;} // fixture-only selector bypass
-#endif
-                slot=observer->original(d,{UINT(t),c,m,n,s,b},ctx.draws);
-            });
     const MotionDrawCall draw_call{true,false,t,c,s,b,m,n,composition_permission};
     auto route=ctx.motion_output.before_draw(draw_call);
     if(sun_occlusion::bracket_open())ctx.motion_output.prepare_lens(draw_call,route); // X3M_SUN_OCCLUSION only, lens-scene draws only: one flag test otherwise
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-    if(fixture_observer_active(d))call_preserved([&]{fixture_guard_sample(ctx,d,0);});
-#endif
-    if constexpr(observed)if(slot>=0)call_preserved([&]{
-        QueryScope queries(ctx.lattice_query_depth,d);
-#ifdef X3M_MOTION_OUTPUT_FIXTURE
-        if(fixture_observer_active(d))fixture_guard_query_action(ctx,d);
-#endif
-        observer->effective(slot,d,ctx.caps,ctx.get<lattice_state::GetTarget>(38),route);
-    });
-#ifdef X3M_MOTION_OUTPUT_FIXTURE
-    if(fixture_observer_active(d))call_preserved([&]{fixture_guard_sample(ctx,d,1);});
     if(route.submit){++ctx.fixture_emission_source_calls;fixture_observe_wrap(ctx,d);}
 #endif
     frame_timing::draw_native_begin(); // ahead of before_original, like present_begin (cpu_state.h)
@@ -1730,18 +1618,11 @@ HRESULT WINAPI draw_indexed(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,INT b,UINT m,
     const HRESULT result=route.submit?devices.at(d)->get<HRESULT (WINAPI*)(IDirect3DDevice9*,D3DPRIMITIVETYPE,INT,UINT,UINT,UINT,UINT)>(82)(d,t,b,m,n,s,c):route.submission_error;cpu.after_original();
     frame_timing::draw_native_end();
     timer.end();telemetry::record(ctx.stats,telemetry::Metric::DrawBackend,timer.backend_ticks,FAILED(result));
-    if constexpr(observed)observer->result(slot,result,route.submit);
     ctx.motion_output.after_draw(route,result);
-#ifdef X3M_MOTION_OUTPUT_FIXTURE
-    if(fixture_observer_active(d))call_preserved([&]{fixture_guard_finish_samples();});
-#endif
     ctx.scene_depth.after_draw(result);
     record_draw_input(ctx,input,result);
     if (devices.at(d)->capture) log("draw_result device=%llu frame=%llu index=%llu result=%08lx",devices.at(d)->id,devices.at(d)->frame,devices.at(d)->draws,result);
     return result;
-    };
-    if(ctx.lattice_state){const auto observer=ctx.lattice_state;return dispatch(observer.get());}
-    return dispatch(static_cast<std::nullptr_t*>(nullptr));
 }
 HRESULT WINAPI draw_up(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT c,const void* data,UINT stride) {
     LightCallBoundary cpu; // draw path audited x87-free: check_no_x87.py roots here (state-call-fast-path.md, Envelope)
@@ -2602,7 +2483,6 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.attach(d,hooked.original,hooked.id,hooked.caps,motion_output_requested,&hooked.stats);
     // The engine-memory reader's counters at device creation (integers only;
     // telemetry::summary repeats the line with phase=summary).
-    engine_memory::configure();
     engine_memory_line("create",hooked.id,hooked.frame);
     if(sector_background_requested)hooked.set(41,begin_scene); // standalone diagnostic needs no motion route
     if(hooked.motion_output.enabled()){
@@ -2782,9 +2662,6 @@ void initialize_log(HMODULE module) {
     // and one environment scan, never on the render path.
     proxy_identity::log_identity(module);
     wchar_t setting[32]{};
-    const DWORD lattice_setting=GetEnvironmentVariableW(L"X3M_LATTICE_STATE",setting,32);
-    lattice_state_requested=lattice_setting<32 && lattice_setting>0 && wcscmp(setting,L"run177_panel_position_v1")==0;
-    if(lattice_setting)log("lattice_state_mode requested=%u selector=run177_panel_position_v1 trigger=f8 draws=2 object_trace_required=1 payload_copy_valid=not_attempted draw_input_coherence=unqualified",lattice_state_requested);
     if(GetEnvironmentVariableW(L"X3M_CAPTURE_START",setting,32)>0) capture_start=wcstoul(setting,nullptr,10);
     if(GetEnvironmentVariableW(L"X3M_CAPTURE_FRAMES",setting,32)>0) capture_count=wcstoul(setting,nullptr,10);
     // 64: a plain frame counter (ctx.remaining); above 8 serves the raw TAA
@@ -3337,17 +3214,17 @@ void initialize_log(HMODULE module) {
     sampling_profiler::initialize(); // X3M_PROFILE=1 only; outside loader lock, after the log exists
 }
 const wchar_t* capture_directory() { return directory.c_str(); }
-// engine_memory phase=create|summary: the reader's mode and counters from a
-// guarded copy of its statistics (hits = validated reads answered from the
-// region cache without a VirtualQuery; rpm_calls = ReadProcessMemory calls of
-// the A/B mode). No per-draw work: called at device creation and by the
-// telemetry summary.
+// engine_memory phase=create|summary: the reader's counters from a guarded copy
+// of its statistics (hits = validated reads answered from the region cache
+// without a VirtualQuery). Validated direct reads are the only path since
+// 2026-09-22. No per-draw work: called at device creation and by the telemetry
+// summary.
 void engine_memory_line(const char* phase,unsigned long long device,unsigned long long frame) {
     const auto s=engine_memory::stats();
     const unsigned long long reads=s.reads,queries=s.queries;
-    log("engine_memory phase=%s device=%llu path=%s reads=%llu queries=%llu hits=%llu rejected=%llu rpm_calls=%llu frame=%llu",
-        phase,static_cast<unsigned long long>(device),engine_memory::mode()==engine_memory::Mode::Direct?"direct":"rpm",
-        reads,queries,reads>=queries?reads-queries:0ull,static_cast<unsigned long long>(s.rejected),static_cast<unsigned long long>(s.syscalls),
+    log("engine_memory phase=%s device=%llu path=direct reads=%llu queries=%llu hits=%llu rejected=%llu frame=%llu",
+        phase,static_cast<unsigned long long>(device),
+        reads,queries,reads>=queries?reads-queries:0ull,static_cast<unsigned long long>(s.rejected),
         static_cast<unsigned long long>(frame?frame:s.frame));
 }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
@@ -3410,42 +3287,6 @@ void hook_direct3d(IDirect3D9* d) {
 }
 }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-extern "C" __declspec(dllexport) HRESULT x3m_lattice_observer_fixture_arm(IDirect3DDevice9* d,unsigned mode,unsigned action) {
-    x3m::CpuCallBoundary cpu;x3m::CaptureLock lock;
-    auto it=x3m::devices.find(d);if(it==x3m::devices.end()||mode>2||action>5)return D3DERR_INVALIDCALL;
-    auto& f=x3m::fixture_observer;auto& ctx=*it->second;
-    if(f.active&&f.device!=d)return D3DERR_INVALIDCALL;
-    if(!f.active){
-        // Hooks::original is borrowed backend memory. Redirect only this
-        // fixture Device's saved dispatch through an owned, full-size copy.
-        // MotionOutput retains its original native dispatch unchanged.
-        f.saved_dispatch.assign(ctx.original,ctx.original+ctx.table.size());
-        f.device=d;f.native=ctx.get<x3m::FixtureDip>(82);f.borrowed_original=ctx.original;
-        f.saved_dispatch[82]=reinterpret_cast<void*>(x3m::fixture_guard_native);
-        ctx.original=f.saved_dispatch.data();
-        f.declaration_entry=ctx.table[88];ctx.table[88]=reinterpret_cast<void*>(x3m::fixture_guard_declaration);f.active=true;
-    }
-    f.result={};f.result.mode=mode;f.result.action=action;
-    if(mode){ctx.lattice_state=std::make_shared<x3m::lattice_state::Capture>();ctx.lattice_state->arm(ctx.id,ctx.frame,ctx.reset_generation,true);}
-    else ctx.lattice_state.reset();
-    return S_OK;
-}
-extern "C" __declspec(dllexport) HRESULT x3m_lattice_observer_fixture_read(IDirect3DDevice9* d,LatticeGuardResult* out) {
-    x3m::CpuCallBoundary cpu;x3m::CaptureLock lock;
-    auto& f=x3m::fixture_observer;if(!out||out->size!=sizeof(*out)||f.device!=d)return D3DERR_INVALIDCALL;
-    *out=f.result;return S_OK;
-}
-extern "C" __declspec(dllexport) HRESULT x3m_lattice_observer_fixture_disarm(IDirect3DDevice9* d) {
-    x3m::CpuCallBoundary cpu;x3m::CaptureLock lock;auto& f=x3m::fixture_observer;
-    if(f.device!=d)return D3DERR_INVALIDCALL;
-    auto it=x3m::devices.find(d);
-    if(it!=x3m::devices.end()){
-        it->second->original=f.borrowed_original;it->second->table[88]=f.declaration_entry;it->second->lattice_state.reset();
-    }
-    // Disarm is called after the measured draw returns, hence after its native
-    // pin and CPU owner drop. A retired Device cannot retain this storage.
-    f.active=false;f.device=nullptr;f.borrowed_original=nullptr;f.saved_dispatch.clear();return S_OK;
-}
 extern "C" __declspec(dllexport) void x3m_motion_output_fixture_configure(const x3m::MotionOutputFixtureConfig* config) {
     x3m::CaptureLock lock;
     if(!config||config->size!=sizeof(x3m::MotionOutputFixtureConfig)) return;

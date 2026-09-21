@@ -105,7 +105,7 @@ defaults (`--chase-pitch-down-deg`, `--chase-offset-y`, `--chase-hud-anchor`,
 --mesh-adjacency-dump --mesh-cache --depth-copy --scene-depth-capture
 --sector-background --screen-emission-timing --fade-witness --shimmer-trace
 --motion-capture --finite-positions --volumetric-fog-everywhere
---volumetric-fog-timing --lattice-state`.
+--volumetric-fog-timing` (`--lattice-state` removed 2026-09-22, batch 7).
 Two are stale but harmless: `--shimmer-trace` is documented against the retired
 fade-region note, and `--motion-capture` / `--finite-positions` predate the
 accepted same-draw motion route.
@@ -121,13 +121,10 @@ external-view HUD element).
 ### HELD / PAUSED (keep, do not delete)
 - Collision: `--collide-box-cull`, `--collide-memo`, `--collide-sat-sse2`,
   `--collide-narrow-census` — status.md "Collision: paused by user request".
-- Lattice upload/geometry diagnostic: `--lattice-state`, `X3M_ADMISSION=1`,
-  `src/proxy/lattice_*` (671), `src/ownership/clone_upload*` +
-  `portable_managed_upload.cpp` + `surface_lease_core.h` (1,288), 6 host test
-  modules (1,104), 48 probe files (5,877) — **8,940 lines**, the single largest
-  block in the tree. status.md: "the upload-payload diagnostic is held, not
-  wired, built or flown". It is HELD, not retired; if the user closes it this
-  becomes the largest cleanup available.
+- Lattice upload/geometry diagnostic: **removed 2026-09-22**, see batch 7 below.
+  The ownership `clone_upload*` / `portable_managed_upload.cpp` /
+  `surface_lease_core.h` part is still in the tree; the inventory's attribution of
+  `X3M_ADMISSION` to this chain was wrong (see batch 7).
 
 ### SUPERSEDED / REJECTED / RETIRED / DEAD
 Items A–J of §1: `--effect-source-gain`, `--sun-shadow-receiver-depth`,
@@ -150,8 +147,8 @@ Items A–J of §1: `--effect-source-gain`, `--sun-shadow-receiver-depth`,
   bloom authored-glow weight on the HDR route
   (`docs/architecture/bloom-authored-glow.md:112`). **Question: was the bloom
   pulse ever judged?**
-- `X3M_ENGINE_READS=rpm`: documented A/B fallback for the direct engine-memory
-  read path; no ledger closing it.
+- `X3M_ENGINE_READS=rpm`: **removed 2026-09-22** (batch 7); validated direct
+  reads are the only mode.
 
 ### Source-only `X3M_*` (27)
 Fixture fault injection, keep with the fixtures: `X3M_FIXTURE_AO_FAULT`,
@@ -165,7 +162,9 @@ Tuning knobs, keep: `X3M_HDR_ADAPT_DOWN/UP`, `X3M_HDR_DT_MS`,
 `X3M_CHASE_MAX_DT`, `X3M_MOTION_JITTER_SAMPLES`, `X3M_PROFILE_REPORT_S`,
 `X3M_FOG_LOOK_AMBIENT_SUN/AWAY`. Diagnostics: `X3M_LOCKED_PREFIX_LOG`,
 `X3M_MOTION_FRAME_LOG` (FLOWN, in the run commands). A/B fallback:
-`X3M_ENGINE_READS`. Held chain: `X3M_ADMISSION`. Retired subject:
+`X3M_ENGINE_READS` (removed 2026-09-22). Ownership application-admission
+monitor: `X3M_ADMISSION` (kept; it is not part of the removed lattice chain).
+Retired subject:
 `X3M_FADE_ROUTE` — but see the shared-code note below, it also gates the flown
 screen-emission arm.
 
@@ -357,9 +356,48 @@ fixtures green on its own.
    `linear_material.cpp`) and I (`--linear-emissions` bracket). Both need a
    deliberate split of shared code first; propose separately if the user wants
    the DLL smaller.
-8. **Blocked on a user verdict** — `--point-light-root-admission` (720 lines),
-   `--taa-alpha-history`, and the held lattice upload/geometry chain
-   (8,940 lines), which is by far the largest single block available.
+8. **Verdicts received 2026-09-22** — `--point-light-root-admission` and
+   `--taa-alpha-history` are **kept**; `X3M_ENGINE_READS=rpm` and the lattice
+   state/geometry/upload-hook diagnostic are **removed** (batch 7).
+9. **Batch 7 — lattice state/geometry/upload-hook diagnostic and the
+   `X3M_ENGINE_READS=rpm` fallback** — **done 2026-09-22.**
+   36 files deleted (**4,243 lines**) plus 53 added / 524 removed inside 27 edited
+   files: `src/proxy/lattice_state_capture.{cpp,h}`, `lattice_state_policy.h`,
+   `lattice_geometry_packet.h`, `lattice_geometry_windows.h`,
+   `lattice_upload_hook.{cpp,h}`; 5 host test modules; 24 probe files
+   (`lattice_state_*`, `lattice_observer_*`, `lattice_capture_lifecycle_*`,
+   `lattice_upload_hook_*`, `lattice_geometry_packet_host.cpp`). `--lattice-state`
+   and `X3M_LATTICE_STATE` are gone from `tools/manage.py`; the F8 arm/publish, the
+   `lattice_query_depth` Present/Reset refusal, the `x3m_lattice_observer_fixture_*`
+   exports and the whole compile-time observer specialization of `draw_indexed`
+   (`ObserverPin`, the `dispatch(auto*)` lambda and its `QueryScope`) are gone from
+   `capture.cpp`, which now matches the other three draw hooks. `snapshot_x3_run.py`
+   no longer collects lattice packets. In `src/proxy/engine_memory.{h,cpp}` the
+   `ReadProcessMemory` mode, `configure()`, `mode()`, the `Mode` enum and the
+   `syscalls` counter are gone; the `engine_memory` log line drops `path=` (now the
+   literal `path=direct`) and `rpm_calls=`, and the object trace/lifetime fixtures
+   lost their A/B loops.
+   **Kept deliberately:** `X3M_ADMISSION` is the ownership *application admission
+   monitor* (`src/ownership/application_admission*`, used throughout `capture.cpp`
+   and by the flown ownership integration runners), not part of this diagnostic;
+   the inventory misattributed it. The ownership `clone_upload*`,
+   `portable_managed_upload.{cpp,h}` and `surface_lease_core.h` (≈1,290 lines) and
+   their probes stay: `prepare_readable_managed_uploads` has 47 call sites inside
+   the flown `d3d9_ownership.cpp` wrapper, so removing them is a separate batch
+   needing the ownership fixtures under Wine. The three `lattice-*` result JSONs and
+   `verification/results/run201-lattice/` stay as evidence cited by
+   `taa-lattice-crawl.md`, `motion-output.md` and `platform-portability.md`.
+   The `object_trace`/`object_lifetime` runners' read-path gates were rewritten for
+   the direct-only output (one `TIMING mode=direct` line carrying the folded records
+   instead of two lines plus an `IDENTITY … equal=1`), and both were rerun under the
+   Wine lock on bottle X3: `passed: true`, 153 checks / 0 failures (trace) and
+   657 checks / 0 failures (lifetime).
+   Build after, measured before merging main's sun-occlusion commit so the delta is
+   the cleanup alone: production `d3d9.dll` 54,873,122 B against 55,174,921 B before
+   (−301,799 B), same 15 imported DLLs, 8 imports gone (`DeleteFileW`, `MoveFileW`,
+   `MoveFileExW`, `_fdopen`, `_close`, `_open_osfhandle`, `ferror`, `ftell`),
+   `check_no_x87.py` clean over 596 reachable functions. After merging main
+   `855fc1bc` the same build is 55,279,273 B with 617 reachable functions, clean.
 
 ## 5. Caveats
 

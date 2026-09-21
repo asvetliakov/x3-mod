@@ -19,6 +19,8 @@ JOURNAL_CASES = ('no_consumer', 'retire_in_order', 'partial_drain', 'invalid_dra
                  'flush_registry_destroy', 'flush_registry_rebind', 'overflow_and_recovery', 'cost',
                  'reregistration_and_shutdown', 'flush_capacity_exhausted', 'saturated_registration')
 WINE = '/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine'
+# The fixtures' FNV fold seed: a record equal to it means nothing was folded.
+SEED_RECORD = f'{1469598103934665603:016x}'
 
 
 def run(root):
@@ -62,11 +64,17 @@ def run(root):
             last = next((line for line in reversed(lines) if line.strip()), '')
             if match:
                 data.update(checks=int(match[2]), failures=int(match[3]), backend_calls=int(match[4]))
-            # Read-path evidence: per-mode cost (TIMING) and record identity (IDENTITY).
+            # Read-path evidence: one TIMING line for the validated direct reads, the
+            # only mode since 2026-09-22 (the rpm A/B mode and its IDENTITY
+            # comparison were removed), carrying the folded lifetime record.
             def parse(line):
                 return {k: v for k, v in (kv.split('=', 1) for kv in line.split()[1:])}
-            data['read_path'] = {'timing': [parse(l) for l in lines if l.startswith('TIMING ')],
-                                 'identity': [parse(l) for l in lines if l.startswith('IDENTITY ')]}
+            data['read_path'] = {'timing': [parse(l) for l in lines if l.startswith('TIMING ')]}
+            timing = data['read_path']['timing']
+            read_path_reported = (len(timing) == 1 and timing[0].get('mode') == 'direct'
+                                  and {'snapshot_us', 'reads_per_call', 'queries_per_call'} <= set(timing[0])
+                                  and timing[0].get('record') not in (None, SEED_RECORD, '0' * 16))
+            data['read_path_reported'] = read_path_reported
             # Retirement journal: measured cycle cost without/with a consumer and the empty drain.
             data['journal'] = [parse(l) for l in lines if l.startswith('JOURNAL ')]
             cases = [parse(l) for l in lines if l.startswith('JOURNAL_CASE ')]
@@ -84,8 +92,7 @@ def run(root):
             identical = (x87_reported and len(cases) == len(JOURNAL_CASES) and data['journal_cases'] == dict.fromkeys(JOURNAL_CASES, 'PASS') and
                          len(data['journal']) == 1 and
                          {'cycle_idle_us', 'cycle_journal_us', 'retirement_delta_us', 'empty_drain_us'} <= set(data['journal'][0]) and
-                         len(data['read_path']['identity']) == 1 and data['read_path']['identity'][0].get('equal') == '1'
-                         and len(data['read_path']['timing']) == 2)
+                         read_path_reported)
             data['passed'] = bool(data['exit_code'] == 0 and match and match[0] == last and identical and
                                   match[1] == 'PASS' and data['failures'] == 0 and data['checks'] > 0 and
                                   data['sources_before'] == data['sources_after_run'] and

@@ -27,11 +27,10 @@ class ObjectLifetimeRunnerTests(unittest.TestCase):
         self.exe.parent.mkdir()
         self.exe.write_bytes(b'original synthetic executable')
 
-    # The read-path evidence (TIMING per mode, one IDENTITY line with equal=1)
-    # is part of a passing report since the engine_memory change.
-    READ_PATH = (b'TIMING mode=rpm snapshot_us=9.000 reads_per_call=0.00 queries_per_call=0.0000 syscalls_per_call=12.00\n'
-                 b'TIMING mode=direct snapshot_us=0.500 reads_per_call=12.00 queries_per_call=0.0200 syscalls_per_call=0.00\n'
-                 b'IDENTITY rpm=0123456789abcdef direct=0123456789abcdef equal=1\n'
+    # The read-path evidence (one direct-mode TIMING line carrying the folded
+    # lifetime record) is part of a passing report. The TIMING shape below is the
+    # fixture's actual output, from verification/results/bottle-X3/object-lifetime.txt.
+    READ_PATH = (b'TIMING mode=direct snapshot_us=0.744 reads_per_call=12.00 queries_per_call=0.0237 record=853bfaca11e07f83\n'
                  b'JOURNAL capacity=2048 cycle_idle_us=1.0000 cycle_journal_us=1.0100 retirement_delta_us=0.0100 empty_drain_us=0.0200 drained=40000\n'
                  b'X87 roundtrip_exact=0 save_stable=1 control_diff_slots=0xff control_exponent_diff=8'
                  b' control_reserved_diff=0 control_max_low_bits=64 control_st0=3fff8000000000000000/00000000000000000000'
@@ -81,8 +80,9 @@ class ObjectLifetimeRunnerTests(unittest.TestCase):
         with patch.object(RUNNER.subprocess, 'run', side_effect=self.fake_run()):
             result = RUNNER.run(self.root)
         self.assertTrue(result['passed'])
-        self.assertEqual(result['read_path']['identity'][0]['equal'], '1')
-        self.assertEqual([t['mode'] for t in result['read_path']['timing']], ['rpm', 'direct'])
+        self.assertTrue(result['read_path_reported'])
+        self.assertEqual([t['mode'] for t in result['read_path']['timing']], ['direct'])
+        self.assertEqual(result['read_path']['timing'][0]['record'], '853bfaca11e07f83')
         self.assertEqual(result['journal'][0]['capacity'], '2048')
         self.assertFalse(result['x87_roundtrip_exact'])
         self.assertEqual(result['x87']['control_diff_slots'], '0xff')
@@ -111,15 +111,23 @@ class ObjectLifetimeRunnerTests(unittest.TestCase):
         partial = self.READ_PATH.replace(b' empty_drain_us=0.0200', b'') + self.RESULT
         failed_case = self.READ_PATH.replace(b'name=cost result=PASS', b'name=cost result=FAIL') + self.RESULT
         absent_case = self.READ_PATH.replace(b'JOURNAL_CASE name=cost result=PASS\n', b'') + self.RESULT
-        for output in (missing, partial, failed_case, absent_case, self.READ_PATH + lines[3] + b'\n' + self.RESULT):
+        duplicate_journal = next(l for l in lines if l.startswith(b'JOURNAL '))
+        for output in (missing, partial, failed_case, absent_case,
+                       self.READ_PATH + duplicate_journal + b'\n' + self.RESULT):
             with patch.object(RUNNER.subprocess, 'run', side_effect=self.fake_run(output)):
                 self.assert_failed(RUNNER.run(self.root))
 
-    def test_read_path_identity_required(self):
-        unequal = self.READ_PATH.replace(b'equal=1', b'equal=0') + self.RESULT
-        missing = self.RESULT
-        one_mode = self.READ_PATH.split(b'\n', 1)[1] + self.RESULT
-        for output in (unequal, missing, one_mode):
+    # Direct reads are the only mode: exactly one TIMING line, mode=direct, with a
+    # folded record that is not the unfolded FNV seed.
+    def test_direct_read_path_evidence_required(self):
+        timing = next(l for l in self.READ_PATH.split(b'\n') if l.startswith(b'TIMING '))
+        missing = self.READ_PATH.replace(timing + b'\n', b'') + self.RESULT
+        duplicated = self.READ_PATH + timing + b'\n' + self.RESULT
+        unfolded = self.READ_PATH.replace(b'record=853bfaca11e07f83',
+                                          b'record=' + RUNNER.SEED_RECORD.encode()) + self.RESULT
+        wrong_mode = self.READ_PATH.replace(b'mode=direct', b'mode=rpm') + self.RESULT
+        truncated = self.READ_PATH.replace(b' queries_per_call=0.0237', b'') + self.RESULT
+        for output in (missing, duplicated, unfolded, wrong_mode, truncated):
             with patch.object(RUNNER.subprocess, 'run', side_effect=self.fake_run(output)):
                 self.assert_failed(RUNNER.run(self.root))
 

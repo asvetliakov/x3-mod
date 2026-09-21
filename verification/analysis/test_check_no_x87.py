@@ -9,10 +9,15 @@ import check_no_x87 as audit
 
 
 DRAW = '__ZN3x3m12_GLOBAL__N_1L12draw_indexedEP16IDirect3DDevice917_D3DPRIMITIVETYPEijjjj@28'
-THUNKS = [
-    '__ZZN3x3m14call_preservedIZZNS_12_GLOBAL__N_1L12draw_indexedEP16IDirect3DDevice917_D3DPRIMITIVETYPEijjjjENKUlPT_E_clINS_13lattice_state7CaptureEEEDaS6_EUlvE_EEvOS5_ENUlPvE_4_FUNESD_',
-    '__ZZN3x3m14call_preservedIZZNS_12_GLOBAL__N_1L12draw_indexedEP16IDirect3DDevice917_D3DPRIMITIVETYPEijjjjENKUlPT_E_clINS_13lattice_state7CaptureEEEDaS6_EUlvE0_EEvOS5_ENUlPvE_4_FUNESD_',
-]
+# Real enclosing spelling (DRAW, from `nm` over the linked DLL) spliced into the
+# real `call_preserved` lambda-thunk grammar that build shows, e.g.
+# __ZZN3x3m14call_preservedIZNS_3logEPKczEUlvE_EEvOT_ENUlPvE_4_FUNES6_. These two
+# names are constructed, not copied: no light hook currently encloses such a
+# lambda (the lattice observer that did was removed on 2026-09-22). The guard
+# they exercise - an enclosed lambda thunk must never be reported as the hook
+# root - still has to hold for the next hook that gains one.
+ENCLOSED = '__ZZN3x3m14call_preservedIZZN3x3m12_GLOBAL__N_1L12draw_indexedEP16IDirect3DDevice917_D3DPRIMITIVETYPEijjjjEUlvE%s_EEvOT_ENUlPvE_4_FUNES6_'
+THUNKS = [ENCLOSED % '', ENCLOSED % '0']
 
 
 def roots():

@@ -228,34 +228,28 @@ int main(){
     // Losing even one hook makes equality of a reused pointer+handle untrustworthy.
     insert(primary,node);insert(primary,camera);check(lt::fixture_install(sites),"install ownership case");check(snapshot().known,"ownership baseline known");unsigned char ours[6]{};std::memcpy(ours,sites.insert_entry,5);write_bytes(sites.insert_entry,originals[0],5);insert(primary,node);check(!snapshot().known&&!lt::active(),"bypassed birth cannot retain old token");check(lt::shutdown(),"original-restored ownership shutdown");
     check(lt::fixture_install(sites),"install foreign code case");std::memcpy(ours,sites.insert_entry,5);unsigned char foreign[5];std::memcpy(foreign,ours,5);foreign[4]^=1;write_bytes(sites.insert_entry,foreign,5);check(!snapshot().known&&!lt::active(),"foreign hook ownership disables observation");check(!lt::shutdown()&&lt::recovery_required(),"foreign replacement is not overwritten");check(!std::memcmp(sites.insert_entry,foreign,5),"foreign bytes preserved");write_bytes(sites.insert_entry,ours,5);check(lt::shutdown(),"foreign ownership repair permits retry");
-    // Read path (engine_memory): identical lifetime records and per-call cost of
-    // the ReadProcessMemory path against validated direct reads, then a bucket
-    // array on a page decommitted between frames must fail safely in both modes.
+    // Read path (engine_memory): per-call cost of the validated direct reads
+    // (the only mode since 2026-09-22), then a bucket array on a page
+    // decommitted between frames must fail safely.
     {
         LARGE_INTEGER frequency{};QueryPerformanceFrequency(&frequency);
         const unsigned iterations=20000;
-        std::uint64_t hashes[2]{};
         empty(primary);insert(primary,node);insert(primary,camera);
         check(lt::fixture_install(sites),"install read-path case");
-        for(unsigned m=0;m<2;++m){
-            SetEnvironmentVariableW(L"X3M_ENGINE_READS",m?L"direct":L"rpm");em::configure();
-            check(em::mode()==(m?em::Mode::Direct:em::Mode::ReadProcessMemory),"read mode selected");
+        {
             std::uint64_t hash=1469598103934665603ull;unsigned unknown=0;
             const auto before=em::stats();
             LARGE_INTEGER begin{},end{};QueryPerformanceCounter(&begin);
             for(unsigned i=0;i<iterations;++i){if((i&255)==0)em::next_frame();const auto s=snapshot();if(!s.known)++unknown;fold_snapshot(hash,s);}
             QueryPerformanceCounter(&end);
             const auto after=em::stats();
-            hashes[m]=hash;check(!unknown,"read-path snapshots known");
-            std::printf("TIMING mode=%s snapshot_us=%.3f reads_per_call=%.2f queries_per_call=%.4f syscalls_per_call=%.2f\n",m?"direct":"rpm",
+            check(!unknown,"read-path snapshots known");
+            std::printf("TIMING mode=direct snapshot_us=%.3f reads_per_call=%.2f queries_per_call=%.4f record=%016llx\n",
                 double(end.QuadPart-begin.QuadPart)*1e6/double(frequency.QuadPart)/iterations,double(after.reads-before.reads)/iterations,
-                double(after.queries-before.queries)/iterations,double(after.syscalls-before.syscalls)/iterations);
+                double(after.queries-before.queries)/iterations,static_cast<unsigned long long>(hash));
         }
-        check(hashes[0]==hashes[1],"identical lifetime records in both read modes");
-        std::printf("IDENTITY rpm=%016llx direct=%016llx equal=%u\n",static_cast<unsigned long long>(hashes[0]),static_cast<unsigned long long>(hashes[1]),hashes[0]==hashes[1]);
         check(lt::shutdown(),"read-path shutdown");
-        for(unsigned m=0;m<2;++m){
-            SetEnvironmentVariableW(L"X3M_ENGINE_READS",m?L"direct":L"rpm");em::configure();
+        {
             empty(primary);insert(primary,node);insert(primary,camera);
             auto* page=static_cast<unsigned char*>(VirtualAlloc(nullptr,4096,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));check(page!=nullptr,"bucket page committed");
             std::memcpy(page,primary.buckets,primary.capacity*sizeof(Link*));std::free(primary.buckets);primary.buckets=reinterpret_cast<Link**>(page);
@@ -271,7 +265,6 @@ int main(){
             primary.buckets=nullptr;primary.count=0;
             check(VirtualFree(page,0,MEM_RELEASE)!=0,"bucket page released");
         }
-        SetEnvironmentVariableW(L"X3M_ENGINE_READS",nullptr);em::configure();
         insert(primary,node);insert(primary,camera); // the retirement case below expects both present
     }
     // Retirement journal: bounded ring, written only for a registered consumer.

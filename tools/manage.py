@@ -281,7 +281,6 @@ def main():
     parser.add_argument('--depth-copy', action='store_true', help='Enable experimental original-preserving depth copy (requires --ownership)')
     parser.add_argument('--scene-depth-capture', action='store_true', help='Preserve identified scene depth in requested capture frames (requires --ownership --depth-copy)')
     parser.add_argument('--object-trace', action='store_true', help='Capture verified engine submission identity (exact executable only)')
-    parser.add_argument('--lattice-state', choices=('run177_panel_position_v1',), help='F8-only post-route state for the pinned run177 solar-panel position (requires --object-trace; other objects return no-match; no resource payloads)')
     parser.add_argument('--object-lifetime', action='store_true', help='Observe verified render-registry lifetimes (requires --object-trace --ownership)')
     parser.add_argument('--mesh-cache', action='store_true', help='Enable experimental verified native adjacency reuse (requires --telemetry)')
     parser.add_argument('--mesh-adjacency', choices=['native', 'verify', 'fast'], default='native', help='ID3DXMesh::GenerateAdjacency service (X3M_MESH_ADJACENCY; requires --telemetry): native forwards; verify runs D3DX, recomputes by exact position equality and logs any difference; fast answers from the exact-equality computation and falls through to D3DX on any qualification failure (docs/verification/mesh-adjacency-fast.md)')
@@ -445,8 +444,6 @@ def main():
         parser.error('--depth-copy requires --ownership.')
     if args.scene_depth_capture and not (args.ownership and args.depth_copy):
         parser.error('--scene-depth-capture requires --ownership and --depth-copy.')
-    if args.lattice_state and not args.object_trace:
-        parser.error('--lattice-state requires --object-trace (session-long scope observation).')
     if args.object_lifetime and not (args.object_trace and args.ownership):
         parser.error('--object-lifetime requires --object-trace and --ownership.')
     if args.mesh_cache and not args.telemetry:
@@ -1060,7 +1057,6 @@ def main():
         env['X3M_DEPTH_COPY'] = '1' if args.depth_copy else '0'
         env['X3M_SCENE_DEPTH_CAPTURE'] = '1' if args.scene_depth_capture else '0'
         env['X3M_OBJECT_TRACE'] = '1' if args.object_trace else '0'
-        env['X3M_LATTICE_STATE'] = args.lattice_state or '0'
         env['X3M_OBJECT_LIFETIME'] = '1' if args.object_lifetime else '0'
         env['X3M_MESH_CACHE'] = '1' if args.mesh_cache else '0'
         env['X3M_MESH_ADJACENCY'] = args.mesh_adjacency

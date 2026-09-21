@@ -1,5 +1,9 @@
 # Handoff: engine reads (validated direct reads, matrix gate, X3M_TELEMETRY_DRAW)
 
+**History.** The `X3M_ENGINE_READS=rpm` A/B fallback described below was removed
+on 2026-09-22 (last commit carrying it: main `59ad2649`); validated direct reads
+are the only mode.
+
 Paused 2026-09-12 17:45 on the orchestrator's request (account switch). Nothing
 is committed; the tree compiles; `build/d3d9.dll` =
 `4362249e3313ee3eaf930d98939ae62bb24791acecb373b6aef1700f7e1d1427` (not installed).

@@ -395,7 +395,6 @@ bool initialize() {
         log("chase_camera requested=1 installed=0 status=%s window_closed_by=%s", refusal, engine_patch::install_window_reason() ? engine_patch::install_window_reason() : "-");
         SetLastError(error); return false;
     }
-    engine_memory::configure();
     timing_enabled = telemetry::enabled();
     bool okay = engine_patch::claim(site, site_spec);
     if (okay) {

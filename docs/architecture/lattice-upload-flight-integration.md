@@ -1,5 +1,7 @@
 # Final-upload diagnostic flight integration — pending parent ratification
 
+**Removed 2026-09-22.** The default-off lattice state capture, geometry packet writer and upload-hook diagnostic described here is no longer in the tree; the crawl it was built to explain is fixed and accepted (`taa-lattice-crawl.md` §32.5–§32.6). The last commit that carries the code is main `59ad2649`. This note is kept as history.
+
 Design only against accepted main `157aa489` and `taa-lattice-crawl.md` §31. No source edit, build, experiment, Wine command or flight in this task. The intended next user capture is a geometry-input diagnostic, not an AA fix or quality comparison. Reuse the 421-check actual-Clone observer, 158-check manual ABI and qualified private producer interval; do not repeat their disassembly or qualification without a changed dependency.
 
 ## Recommendation and bounded file set

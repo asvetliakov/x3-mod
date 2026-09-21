@@ -9,7 +9,6 @@ import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
-from verification.analysis.test_lattice_payload_packet import payload_packet, geometry_bytes
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location('snapshot_x3_run', ROOT / 'tools/analysis/snapshot_x3_run.py')
@@ -45,110 +44,8 @@ class SnapshotX3RunTests(unittest.TestCase):
         row.update(fields)
         return 'hdr_readback ' + ' '.join(f'{key}={value}' for key, value in row.items()) + '\n'
 
-    def test_lattice_state_packet_copied_only_from_successful_bound_writer(self):
-        name = 'lattice-state-123-1-2-0.json'
-        payload = b'{"status":"unavailable"}\n'
-        (self.capture / name).write_bytes(payload)
-        row = f'lattice_state pid=123 device=1 frame=2 generation=0 file={name} bytes={len(payload)} file_ok=1 status=unavailable\n'
-        self.log.write_text(row)
-        destination, count, issues = self.save(log=self.log)
-        self.assertEqual((count, issues), (1, []))
-        self.assertEqual((destination/name).read_bytes(), payload)
-        for replacement in [row.replace('file_ok=1', 'file_ok=0'),
-                            row.replace('device=1', 'device=9'),
-                            row.replace(name, '../'+name),
-                            row.replace(f'bytes={len(payload)}', 'bytes=1048577')]:
-            wanted, issues = snapshot.references([replacement])
-            self.assertEqual(wanted, {})
-            self.assertTrue(issues)
-        wanted, issues = snapshot.references([row, row.replace('file_ok=1', 'file_ok=0')])
-        self.assertEqual(wanted, {})
-        self.assertTrue(issues)
-
-    def test_lattice_state_stale_or_size_mismatch_is_not_preserved(self):
-        name = 'lattice-state-123-1-2-0.json'
-        asset = self.capture/name
-        asset.write_bytes(b'{}')
-        self.log.write_text(f'lattice_state pid=123 device=1 frame=2 generation=0 file={name} bytes=3 file_ok=1\n')
-        destination, count, issues = self.save(log=self.log)
-        self.assertEqual(count, 0)
-        self.assertTrue(issues)
-        self.assertFalse((destination/name).exists())
-        self.log.write_text(self.log.read_text().replace('bytes=3', 'bytes=2'))
-        os.utime(asset, ns=(1, 1))
-        destination, count, issues = self.save(log=self.log)
-        self.assertEqual(count, 0)
-        self.assertTrue(issues)
-        self.assertFalse((destination/name).exists())
-
-    def write_lattice_bundle(self):
-        packet = payload_packet()
-        state_name = 'lattice-state-123-1-8-0.json'
-        payload_name = packet['geometry']['file']
-        raw = json.dumps(packet).encode()
-        (self.capture / state_name).write_bytes(raw)
-        (self.capture / payload_name).write_bytes(geometry_bytes())
-        row = (f'lattice_state pid=123 device=1 frame=8 generation=0 file={state_name} '
-               f'bytes={len(raw)} file_ok=1 status=complete matches=1,1 schema=2 '
-               f'payload_copy_valid=1 payload_file={payload_name} payload_bytes={len(geometry_bytes())} '
-               f'payload_sha256={hashlib.sha256(geometry_bytes()).hexdigest()}\n')
-        return packet, state_name, payload_name, row
-
-    def test_schema2_bundle_is_hash_checked_cross_checked_and_collected(self):
-        _, state_name, payload_name, row = self.write_lattice_bundle()
-        self.log.write_text(row)
-        destination, count, issues = self.save(log=self.log)
-        self.assertEqual((count, issues), (2, []))
-        self.assertEqual((destination / payload_name).stat().st_size, 466224)
-        self.assertTrue((destination / state_name).exists())
-
-        # A valid binary under a log hash cannot survive JSON metadata that
-        # names a different hash; the diagnostic JSON remains available.
-        packet = payload_packet()
-        packet['geometry']['sha256'] = '1' * 64
-        raw = json.dumps(packet).encode()
-        (self.capture / state_name).write_bytes(raw)
-        self.log.write_text(row.replace(row.split('bytes=', 1)[1].split(' ', 1)[0], str(len(raw)), 1))
-        destination, count, issues = self.save(log=self.log)
-        self.assertEqual(count, 1)
-        self.assertTrue(issues)
-        self.assertTrue((destination / state_name).exists())
-        self.assertFalse((destination / payload_name).exists())
-
-    def test_schema2_json_only_refusal_is_preserved_without_payload(self):
-        from verification.analysis.test_lattice_payload_packet import refusal_packet
-        packet = refusal_packet()
-        state_name = 'lattice-state-123-1-8-0.json'
-        raw = json.dumps(packet).encode()
-        (self.capture / state_name).write_bytes(raw)
-        self.log.write_text(
-            f'lattice_state pid=123 device=1 frame=8 generation=0 file={state_name} bytes={len(raw)} '
-            'file_ok=1 status=complete matches=1,1 schema=2 payload_copy_valid=0 '
-            'payload_file=- payload_bytes=0 payload_sha256=-\n')
-        destination, count, issues = self.save(log=self.log)
-        self.assertEqual((count, issues), (1, []))
-        self.assertTrue((destination / state_name).exists())
-        self.assertFalse(any(path.name.startswith('lattice-geometry-') for path in destination.iterdir()))
-
-    def test_malformed_nested_schema2_json_remains_but_binary_is_removed(self):
-        for message, mutate in (
-                ('record is not an object', lambda p: p['records'].__setitem__(0, None)),
-                ('field is not an object', lambda p: p['records'][0]['fields'].__setitem__(0, None))):
-            packet, state_name, payload_name, row = self.write_lattice_bundle()
-            mutate(packet)
-            raw = json.dumps(packet).encode()
-            (self.capture / state_name).write_bytes(raw)
-            old_size = row.split('bytes=', 1)[1].split(' ', 1)[0]
-            self.log.write_text(row.replace(f'bytes={old_size}', f'bytes={len(raw)}', 1))
-            destination, count, issues = self.save(log=self.log)
-            with self.subTest(message=message):
-                self.assertEqual(count, 1)
-                self.assertTrue(any(message in issue for issue in issues))
-                self.assertTrue((destination / state_name).exists())
-                self.assertFalse((destination / payload_name).exists())
-
     def test_bounded_copy_rejects_growth_before_writing_extra_bytes(self):
-        name = 'lattice-geometry-123-1-8-0.bin'
+        name = 'hdr_1_8.rgba16f'
         admitted = b'abcd'
         (self.capture / name).write_bytes(admitted + b'x')
         source_fd = os.open(self.capture, os.O_RDONLY | os.O_DIRECTORY)
@@ -166,29 +63,6 @@ class SnapshotX3RunTests(unittest.TestCase):
         finally:
             os.close(target_fd); os.close(source_fd)
         self.assertFalse((target / name).exists())
-
-    def test_schema2_identity_path_and_later_failure_revoke_payload(self):
-        _, state_name, payload_name, row = self.write_lattice_bundle()
-        bad_path = row.replace(f'payload_file={payload_name}', 'payload_file=../' + payload_name)
-        wanted, issues = snapshot.references([bad_path])
-        self.assertEqual(wanted, {})
-        self.assertTrue(issues)
-        bad_identity = row.replace('payload_file=lattice-geometry-123-',
-                                   'payload_file=lattice-geometry-124-')
-        wanted, issues = snapshot.references([bad_identity])
-        self.assertEqual(wanted, {})
-        self.assertTrue(issues)
-        failed = row.replace('file_ok=1', 'file_ok=0').replace('payload_copy_valid=1', 'payload_copy_valid=0')
-        wanted, issues = snapshot.references([row, failed])
-        self.assertEqual(wanted, {})
-        self.assertTrue(issues)
-        # An unlogged same-shape binary is never discovered by directory scan.
-        orphan = self.capture / 'lattice-geometry-999-1-8-0.bin'
-        orphan.write_bytes(geometry_bytes())
-        self.log.write_text(row)
-        destination, count, issues = self.save(log=self.log)
-        self.assertEqual((count, issues), (2, []))
-        self.assertFalse((destination / orphan.name).exists())
 
     def test_log_first_and_only_referenced_assets_saved_without_overwrite(self):
         record = self.write_readback()

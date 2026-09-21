@@ -1,6 +1,6 @@
 # Ownership shader shadow lifetime diagnosis
 
-Status: **diagnosis confirmed; scoped-getter proposal ratified by the orchestrator on 2026-09-21** (scoped owned restoration references from the public shader getters, acquired before the first injected mutation, held through undo, released under the existing draw/device pin; no permanent shadow pins, no device_references change). Implementation is in progress in the `investigate/lattice-capture-lifecycle` worktree; the routed fixture case remains the first acceptance witness. Original text follows. Read-only investigation; no production changes, builds, Wine or game execution. Session-limit handoff, 2026-09-21.
+Status (2026-09-22): the shader-shadow restoration lifetime fix stays; the lattice state/geometry/upload-hook diagnostic it was investigated beside was removed from the tree on the user's verdict (last commit carrying it: main `59ad2649`). Original status follows. **diagnosis confirmed; scoped-getter proposal ratified by the orchestrator on 2026-09-21** (scoped owned restoration references from the public shader getters, acquired before the first injected mutation, held through undo, released under the existing draw/device pin; no permanent shadow pins, no device_references change). Implementation is in progress in the `investigate/lattice-capture-lifecycle` worktree; the routed fixture case remains the first acceptance witness. Original text follows. Read-only investigation; no production changes, builds, Wine or game execution. Session-limit handoff, 2026-09-21.
 
 ## Confirmed outcome
 

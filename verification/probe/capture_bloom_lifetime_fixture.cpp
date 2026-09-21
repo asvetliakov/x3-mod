@@ -13,7 +13,6 @@
 #include <thread>
 #include <vector>
 #include "../../src/proxy/comparison_controls.h"
-#include "../../src/proxy/lattice_state_policy.h"
 
 #define WINAPI
 using DWORD = std::uint32_t;
@@ -53,7 +52,6 @@ struct NativeDevice {
     bool reset_observed_revoked = false;
     bool reset_observed_defaults_dropped = false;
     bool reset_observed_pin_alive = false;
-    bool reset_observed_lattice_invalidated = false;
 };
 struct IDirect3DDevice9 { NativeDevice* native = nullptr; ULONG Release(); };
 
@@ -210,14 +208,6 @@ struct MotionOutput {
 struct SceneCapture { unsigned invalidations = 0; void invalidate() { ++invalidations; } };
 struct MotionCapture { unsigned invalidations = 0; void invalidate() { ++invalidations; } };
 namespace object_capture { struct Cache { unsigned invalidations = 0; void invalidate() noexcept { ++invalidations; } }; }
-// Mock the capture object's storage only; use its real refusal policy to witness
-// that an armed diagnostic cannot survive either an attempted or native Reset.
-struct LatticeState {
-    lattice_state::Policy policy{};
-    unsigned invalidations = 0;
-    LatticeState() { policy.arm(); }
-    void invalidate() noexcept { ++invalidations; policy.refuse(lattice_state::Status::Reset); }
-};
 struct Stats {
     bool had_present = false, last_frame_capture = false;
     unsigned resets = 0;
@@ -237,8 +227,6 @@ struct Device : Hooks {
     MotionCapture motion{};
     object_capture::Cache sector_background_evidence{}; // diagnostic invalidation only; reader is qualified separately
     object_capture::Cache object_evidence{}; // diagnostic association; inert here
-    std::shared_ptr<LatticeState> lattice_state;
-    unsigned lattice_query_depth=0;
     MotionOutput motion_output{};
     renderer::BloomPass bloom{};
     ComparisonControls comparison{};
@@ -413,9 +401,6 @@ static bool native_reset_witness(IDirect3DDevice9* device, bool) {
         && ctx.motion_output.resources.empty() && ctx.bloom.resources.empty();
     device->native->reset_observed_pin_alive = call && call->native_pin
         && device->native->refs.load() != 0;
-    device->native->reset_observed_lattice_invalidated = ctx.lattice_state
-        && ctx.lattice_state->invalidations == 1
-        && ctx.lattice_state->policy.status == lattice_state::Status::Reset;
     return true;
 }
 
@@ -483,36 +468,6 @@ static void construct_invocation(Environment& env, CompositorInvocation* call, b
         call->input.boundary.depth = env.motion(0); call->input.boundary.depth->AddRef();
         call->candidate.surface = env.bloom(0); call->candidate.surface->AddRef();
     }
-}
-
-static void lattice_query_release_and_reset(AliasModel model, bool extended) {
-    ++scenarios;
-    Environment env(model);
-    env.ctx->lattice_state=std::make_shared<LatticeState>();
-    native_addref(&env.device); // observer's native pin
-    env.ctx->lattice_query_depth=1;
-    native_addref(&env.device); // actual callback model's temporary resource ref
-    const ULONG before=env.native.refs;
-    const unsigned native_calls=env.native.release_calls,adds=env.native.addref_calls;
-    const ULONG after=release_device(&env.device);
-    check(after==before-1 && env.native.release_calls==native_calls+1
-          && env.native.addref_calls==adds,"observer callback forwards native Release exactly once without accounting probes");
-    check(env.ctx->motion_output.restores==0 && env.ctx->motion_output.retention_flushes==0,
-          "observer query skips restoration and retention accounting");
-    release_device(&env.device); // reentrant last application reference
-    check(devices.count(&env.device)==1 && env.native.destroyed==0,
-          "observer native pin holds device after last application Release");
-    D3DPRESENT_PARAMETERS parameters{};D3DDISPLAYMODEEX mode{};
-    const HRESULT result=extended?reset_ex(&env.device,&parameters,&mode):reset(&env.device,&parameters);
-    check(result==D3DERR_INVALIDCALL && env.ctx->lattice_state->invalidations==1,
-          "observer Reset/ResetEx invalidates packet then refuses");
-    check(env.native.reset_calls==0 && env.native.reset_ex_calls==0 && env.ctx->reset_generation==0,
-          "observer Reset refusal leaves native dispatch/generation untouched");
-    check(env.ctx->motion_output.resets==0 && env.ctx->bloom.resets==0,
-          "observer Reset refusal preserves renderer resources");
-    env.ctx->lattice_query_depth=0;
-    check(release_device(&env.device)==0 && env.native.destroyed==1 && !devices.count(&env.device),
-          "ordinary pin drop performs final resource retirement exactly once");
 }
 
 static void nonterminal_get_device(AliasModel model) {
@@ -640,7 +595,6 @@ static void nested_busy_release(AliasModel model) {
 static void reset_case(AliasModel model, bool extended, bool success) {
     ++scenarios;
     Environment env(model);
-    env.ctx->lattice_state = std::make_shared<LatticeState>();
     alignas(CompositorInvocation) unsigned char storage[sizeof(CompositorInvocation)];
     auto* call = reinterpret_cast<CompositorInvocation*>(storage);
     construct_invocation(env, call);
@@ -654,9 +608,6 @@ static void reset_case(AliasModel model, bool extended, bool success) {
                                     : reset(&env.device, &parameters);
     check(bool(SUCCEEDED(result)) == success, "Reset/ResetEx forwards exact success or failure");
     check(env.ctx->sector_background_evidence.invalidations == 1, "sector diagnostic invalidates on successful and failed native Reset");
-    check(env.native.reset_observed_lattice_invalidated && env.ctx->lattice_state->invalidations == 1
-          && env.ctx->lattice_state->policy.finish() == lattice_state::Status::Reset,
-          "lattice packet refuses before native Reset and stays refused after success or failure");
     check(env.native.reset_observed_revoked && env.native.reset_observed_defaults_dropped,
           "invocation aliases and DEFAULT resources drop before native Reset");
     check(env.native.reset_observed_pin_alive && call->native_pin,
@@ -677,7 +628,6 @@ static void reset_case(AliasModel model, bool extended, bool success) {
 static void composition_busy_reset(AliasModel model, bool extended) {
     ++scenarios;
     Environment env(model);
-    env.ctx->lattice_state = std::make_shared<LatticeState>();
     alignas(CompositorInvocation) unsigned char storage[sizeof(CompositorInvocation)];
     auto* call = reinterpret_cast<CompositorInvocation*>(storage);
     construct_invocation(env, call);
@@ -689,9 +639,6 @@ static void composition_busy_reset(AliasModel model, bool extended) {
                                     : reset(&env.device, &parameters);
     check(result == D3DERR_INVALIDCALL, "active emission rejects reentrant Reset/ResetEx");
     check(env.ctx->sector_background_evidence.invalidations == 1, "sector diagnostic invalidates even on refused reentrant Reset");
-    check(env.ctx->lattice_state->invalidations == 1
-          && env.ctx->lattice_state->policy.finish() == lattice_state::Status::Reset,
-          "lattice packet refuses even when reentrant Reset cannot reach native dispatch");
     check(env.native.reset_calls == 0 && env.native.reset_ex_calls == 0,
           "rejected emission Reset never reaches either native slot");
     check(env.ctx->motion_output.resets == 0 && env.ctx->bloom.resets == 0,
@@ -804,7 +751,7 @@ int main() {
         for(unsigned drop_at:{0u,1u,2u})notice_pin_lifetime(model,drop_at);
         for (bool extended : {false, true}) for (bool success : {false, true})
             reset_case(model, extended, success);
-        for (bool extended : {false, true}) {composition_busy_reset(model, extended);lattice_query_release_and_reset(model,extended);}
+        for (bool extended : {false, true}) composition_busy_reset(model, extended);
     }
     for (auto mismatch : {Mismatch::None, Mismatch::Frame, Mismatch::Thread,
                           Mismatch::Generation, Mismatch::Owner, Mismatch::Glow}) post_case(mismatch);

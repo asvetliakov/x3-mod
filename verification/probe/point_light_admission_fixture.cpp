@@ -135,7 +135,6 @@ static double bench_us(std::int32_t distance, Node& node, Node& light, bool new_
 
 int main() {
     build_site();
-    x3m::engine_memory::configure();
     Node& light = pool[0]; Node& node = pool[1]; Node& root = pool[2]; Node& mid = pool[3];
     light_set(light, 1000, 0, 0, 0, k_record);
     // run-22 geometry: a clamp node of base scale 200 at 1232 units from the headlight (rejected natively), its root

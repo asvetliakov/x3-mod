@@ -1,5 +1,7 @@
 # B: upload pin retirement and one guarded pair copy
 
+**Removed 2026-09-22.** The default-off lattice state capture, geometry packet writer and upload-hook diagnostic described here is no longer in the tree; the crawl it was built to explain is fixed and accepted (`taa-lattice-crawl.md` §32.5–§32.6). The last commit that carries the code is main `59ad2649`. This note is kept as history.
+
 Design/contract only against main `157aa489`, `taa-lattice-crawl.md` §31 and
 `/tmp/x3-lattice-upload-flight-integration.md`. No source/build/Wine/game changes.
 Parent ratified process-lifetime Store storage and the after-Release paired-copy

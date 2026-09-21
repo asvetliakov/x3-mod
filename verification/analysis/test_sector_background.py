@@ -45,7 +45,7 @@ class SectorBackgroundTests(unittest.TestCase):
         present = extract_function(source, 'HRESULT WINAPI present(')
         self.assertIn('if(sector_background_requested || volumetric_fog_requested)sector_background_context(ctx);', present)
         reset = extract_function(source, 'HRESULT reset_common(')
-        self.assertLess(reset.index('ctx.sector_background_evidence.invalidate();'), reset.index('if(ctx.lattice_query_depth || ctx.bloom_busy'))
+        self.assertLess(reset.index('ctx.sector_background_evidence.invalidate();'), reset.index('if(ctx.bloom_busy || ctx.motion_output.composition_operation_active())'))
         # No draw hook or render path consumes the diagnostic.
         self.assertEqual(source.count('sector_background_context(ctx);'), 1)
         self.assertEqual(source.count('sector_background_context(ctx,true);'), 1)

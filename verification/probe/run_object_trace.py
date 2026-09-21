@@ -8,6 +8,8 @@ from pathlib import Path
 import re
 import subprocess
 import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
+# The fixtures' FNV fold seed: a record equal to it means nothing was folded.
+SEED_RECORD = f'{1469598103934665603:016x}'
 
 
 def main():
@@ -35,11 +37,18 @@ def main():
         text=report.read_text()
         match=re.search(r'RESULT (PASS|FAIL) checks=(\d+) failures=(\d+) backend_calls=(\d+)',text)
         if match:data.update(checks=int(match[2]),failures=int(match[3]),backend_calls=int(match[4]))
-        # Read-path evidence: per-mode cost (TIMING) and record identity (IDENTITY).
+        # Read-path evidence: one TIMING line for the validated direct reads, the
+        # only mode since 2026-09-22 (the rpm A/B mode and its IDENTITY comparison
+        # were removed), carrying the folded route and capture records.
         parse=lambda line:{k:v for k,v in (kv.split('=',1) for kv in line.split()[1:])}
-        data['read_path']={'timing':[parse(l) for l in text.splitlines() if l.startswith('TIMING ')],'identity':[parse(l) for l in text.splitlines() if l.startswith('IDENTITY ')]}
-        identical=len(data['read_path']['identity'])==1 and data['read_path']['identity'][0].get('equal')=='1' and len(data['read_path']['timing'])==2
-        data['passed']=bool(data['exit_code']==0 and match and match[1]=='PASS' and data['failures']==0 and identical and data['sources_before']==data['sources_after_run'] and data['executable_sha256']==data['executable_sha256_after_run'])
+        data['read_path']={'timing':[parse(l) for l in text.splitlines() if l.startswith('TIMING ')]}
+        timing=data['read_path']['timing']
+        records=[timing[0].get(key) for key in ('route_record','capture_record')] if timing else []
+        read_path_reported=(len(timing)==1 and timing[0].get('mode')=='direct'
+            and {'baseline_us','route_us','capture_us','route_read_us','capture_read_us','route_queries_per_call'}<=set(timing[0])
+            and all(value not in (None,SEED_RECORD,'0'*16) for value in records))
+        data['read_path_reported']=read_path_reported
+        data['passed']=bool(data['exit_code']==0 and match and match[1]=='PASS' and data['failures']==0 and read_path_reported and data['sources_before']==data['sources_after_run'] and data['executable_sha256']==data['executable_sha256_after_run'])
     (results/'object-trace-summary.json').write_text(json.dumps(data,indent=2)+'\n')
     print(json.dumps({k:v for k,v in data.items() if not k.startswith('sources_')},indent=2))
     return 0 if data['passed'] else 1

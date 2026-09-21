@@ -230,8 +230,10 @@ and [telemetry.md](../verification/telemetry.md#route-and-boundary-cost)).
 with telemetry on (default 60). `X3M_TELEMETRY_DRAW=1` (default off) adds the
 per-draw metrics (`route_gate`, `route_draw`, `route_set_rt`, `route_jitter`,
 `route_lazy_flush`, `draw_backend`) and their frame totals; without it the
-route takes no QPC stamp per draw. `X3M_ENGINE_READS=rpm` forces the object
-observers' `ReadProcessMemory` path (A/B only; default validated direct reads). `X3M_TAA_SENTINEL=auto|1|2` (default
+route takes no QPC stamp per draw. The object observers read only through the
+validated direct-read path; the `X3M_ENGINE_READS=rpm` `ReadProcessMemory`
+fallback was removed on 2026-09-22 (last commit carrying it: main `59ad2649`).
+`X3M_TAA_SENTINEL=auto|1|2` (default
 `auto`) selects the resolve's depth-sentinel policy: `auto` reprojects the
 unrouted (sentinel) pixels through the live engine camera at the far plane
 whenever the camera read of this frame and of the history's frame both

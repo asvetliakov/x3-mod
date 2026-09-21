@@ -51,8 +51,8 @@ iteration-9/10 tools so the numbers stay produced by the same code:
    or an unwind, with the ``motion_output_scene_hook_disagreement`` records.
 
 5. ``engine_reads`` - whether the log says anything at all about the read path.
-   ``engine_memory``'s ``Stats`` (reads, VirtualQuery queries, rejected spans,
-   rpm syscalls) is never emitted to the session log by this build, so the
+   ``engine_memory``'s ``Stats`` (reads, VirtualQuery queries, rejected spans)
+   is not emitted to the session log by the build that produced this log, so the
    report states the absence rather than leaving it to be inferred from an
    empty grep.
 
@@ -500,11 +500,12 @@ def engine_reads(kind_counts):
     return {
         'kinds_present': present,
         'status': 'present' if present else 'absent',
-        'note': 'engine_memory::Stats (reads, VirtualQuery queries, rejected spans, rpm '
-                'syscalls; src/proxy/engine_memory.h) is never written to the session log '
-                'by this build, and no line records X3M_ENGINE_READS, so the read path '
-                'used by a session cannot be established from its log - only from the '
-                'launch environment, the installed binary and the fixture suites',
+        'note': 'engine_memory::Stats (reads, VirtualQuery queries, rejected spans; '
+                'src/proxy/engine_memory.h) is not written to the session log by the '
+                'build that produced this log, so what that session read cannot be '
+                'established from the log itself - only from the installed binary and '
+                'the fixture suites. Later builds log an engine_memory line, and since '
+                '2026-09-22 validated direct reads are the only read path',
     }
 
 

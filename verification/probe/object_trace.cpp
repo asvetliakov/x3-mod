@@ -13,8 +13,9 @@ namespace ot=x3m::object_trace;
 namespace em=x3m::engine_memory;
 unsigned checks=0,failures=0,calls=0;
 void check(bool value,const char* label){++checks;if(!value){++failures;std::printf("FAIL %s\n",label);}}
-// Read-path cases (modes 7..12): FNV-1a over every snapshot field so the
-// ReadProcessMemory and direct paths can be compared record for record.
+// Read-path cases (modes 7..12): FNV-1a over every snapshot field, printed on
+// the TIMING line so the runner can see that the reads actually produced the
+// route and capture records (the rpm A/B mode was removed on 2026-09-22).
 uint64_t record_hash=0;unsigned read_failures=0;
 void fold(const void* bytes,size_t size){const auto* p=static_cast<const unsigned char*>(bytes);for(size_t i=0;i<size;++i){record_hash^=p[i];record_hash*=1099511628211ull;}}
 void fold_snapshot(const ot::Snapshot& s){
@@ -126,17 +127,15 @@ int main(){
         ot::Snapshot noStale{};check(!ot::active()&&!ot::current(&noStale),"TLS failure disables stale observation");
         check(GetLastError()==0x246,"TLS failure preserves backend LastError");check(ot::shutdown(),"quiescent TLS failure recovery");
     }
-    // Read path (engine_memory): identical records and per-call cost of the
-    // ReadProcessMemory path against validated direct reads, then decommit safety.
+    // Read path (engine_memory): per-call cost of the validated direct reads
+    // (the only mode since 2026-09-22), then decommit safety.
     check(ot::fixture_install(site,reinterpret_cast<void*>(&original),addresses),"reinstall for read-path cases");
     {
         LARGE_INTEGER frequency{};QueryPerformanceFrequency(&frequency);
         const unsigned iterations=20000;
-        uint64_t hashes[2][2]{};double micros[2][3]{};
-        for(unsigned m=0;m<2;++m){
-            SetEnvironmentVariableW(L"X3M_ENGINE_READS",m?L"direct":L"rpm");em::configure();
-            check(em::mode()==(m?em::Mode::Direct:em::Mode::ReadProcessMemory),"read mode selected");
-            double queries_per_call[3]{},syscalls_per_call[3]{};
+        double micros[3]{};
+        {
+            double queries_per_call[3]{};uint64_t records[2]{};
             for(unsigned path=0;path<3;++path){ // 0 dispatch baseline, 1 route (node, camera, registry), 2 capture (plus matrices)
                 const uint32_t mode=path==0?9u:path==1?7u:8u;
                 record_hash=1469598103934665603ull;read_failures=0;
@@ -145,24 +144,22 @@ int main(){
                 for(unsigned i=0;i<iterations;++i){if((i&255)==0)em::next_frame();invoke(0x11223344,n,c,mode,0x55667788,0x99aabbcc);}
                 QueryPerformanceCounter(&end);
                 const auto after=em::stats();
-                micros[m][path]=double(end.QuadPart-begin.QuadPart)*1e6/double(frequency.QuadPart)/iterations;
-                queries_per_call[path]=double(after.queries-before.queries)/iterations;syscalls_per_call[path]=double(after.syscalls-before.syscalls)/iterations;
-                if(path)hashes[m][path-1]=record_hash;
+                micros[path]=double(end.QuadPart-begin.QuadPart)*1e6/double(frequency.QuadPart)/iterations;
+                queries_per_call[path]=double(after.queries-before.queries)/iterations;
+                if(path)records[path-1]=record_hash;
                 check(!read_failures,"read-path snapshots available");
             }
-            std::printf("TIMING mode=%s baseline_us=%.3f route_us=%.3f capture_us=%.3f route_read_us=%.3f capture_read_us=%.3f route_queries_per_call=%.4f route_syscalls_per_call=%.2f capture_syscalls_per_call=%.2f\n",
-                m?"direct":"rpm",micros[m][0],micros[m][1],micros[m][2],micros[m][1]-micros[m][0],micros[m][2]-micros[m][0],queries_per_call[1],syscalls_per_call[1],syscalls_per_call[2]);
+            check(records[0]!=1469598103934665603ull&&records[1]!=1469598103934665603ull&&records[0]&&records[1],
+                  "route and capture records folded from actual reads");
+            std::printf("TIMING mode=direct baseline_us=%.3f route_us=%.3f capture_us=%.3f route_read_us=%.3f capture_read_us=%.3f route_queries_per_call=%.4f route_record=%016llx capture_record=%016llx\n",
+                micros[0],micros[1],micros[2],micros[1]-micros[0],micros[2]-micros[0],queries_per_call[1],
+                static_cast<unsigned long long>(records[0]),static_cast<unsigned long long>(records[1]));
         }
-        const bool equal=hashes[0][0]==hashes[1][0]&&hashes[0][1]==hashes[1][1];
-        check(equal,"identical snapshot records in both read modes");
-        std::printf("IDENTITY route_rpm=%016llx route_direct=%016llx capture_rpm=%016llx capture_direct=%016llx equal=%u\n",
-            static_cast<unsigned long long>(hashes[0][0]),static_cast<unsigned long long>(hashes[1][0]),static_cast<unsigned long long>(hashes[0][1]),static_cast<unsigned long long>(hashes[1][1]),equal);
         // A fake node on its own page: readable while committed, refused (never
         // faulting) once the page is decommitted between frames, readable again
         // after a recommit, and refused when the 0x150-byte span runs into a
-        // reserved-only page. Both read modes must agree.
-        for(unsigned m=0;m<2;++m){
-            SetEnvironmentVariableW(L"X3M_ENGINE_READS",m?L"direct":L"rpm");em::configure();
+        // reserved-only page.
+        {
             auto* reserved=static_cast<unsigned char*>(VirtualAlloc(nullptr,8192,MEM_RESERVE,PAGE_NOACCESS));
             check(reserved&&VirtualAlloc(reserved,4096,MEM_COMMIT,PAGE_READWRITE),"fixture node page committed");
             auto* fake=reinterpret_cast<uint32_t*>(reserved);fake[0x28/4]=77;
@@ -175,7 +172,6 @@ int main(){
             em::next_frame();invoke(0x11223344,f+4096-0x100,c,12,0x55667788,0x99aabbcc);
             check(VirtualFree(reserved,0,MEM_RELEASE)!=0,"fixture node page released");
         }
-        SetEnvironmentVariableW(L"X3M_ENGINE_READS",nullptr);em::configure();
     }
     check(ot::shutdown(),"read-path shutdown");
     VirtualFree(memory,0,MEM_RELEASE);std::printf("RESULT %s checks=%u failures=%u backend_calls=%u\n",failures?"FAIL":"PASS",checks,failures,calls);return failures?1:0;

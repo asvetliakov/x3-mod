@@ -316,7 +316,9 @@ check, the baseline snapshot) goes through `src/proxy/engine_memory.h`
 (2026-09-12): a span is validated against a cache of `VirtualQuery`'d
 committed readable regions, re-validated on the first touch of each frame, then
 copied with `rep movsb` in a translation unit built without SSE/MMX (the
-in-mutation probe of the fixture compares the mutation's XMM state); `X3M_ENGINE_READS=rpm` restores the `ReadProcessMemory` path.
+in-mutation probe of the fixture compares the mutation's XMM state). The
+`X3M_ENGINE_READS=rpm` `ReadProcessMemory` fallback was removed on 2026-09-22
+(last commit carrying it: main `59ad2649`); direct reads are the only mode.
 A registry page decommitted between frames yields `LookupUnavailable` and
 retires the identities instead of faulting (fixture case: bucket array on a
 `VirtualAlloc`'d page); the invalidation policy and its residual risk are in

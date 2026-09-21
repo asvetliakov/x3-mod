@@ -23,7 +23,6 @@ struct Region { std::uintptr_t begin = 0, end = 0; std::uint32_t frame = 0; DWOR
 Region regions[region_count];
 unsigned victim = 0;
 std::atomic<std::uint32_t> current_frame{1};
-std::atomic<int> configured{0}; // 0 unknown, 1 direct, 2 rpm
 std::atomic_flag cache_lock = ATOMIC_FLAG_INIT;
 Stats counters;
 DWORD last_tick = 0;
@@ -32,15 +31,11 @@ struct Guard {
     ~Guard() { cache_lock.clear(std::memory_order_release); }
 };
 // The copy itself uses string moves, not the CRT memcpy: it touches no XMM or
-// x87 register, so a read leaves the caller's SSE state exactly as the
-// ReadProcessMemory path did (its dispatcher saved and restored it), which the
-// lifetime fixture's in-mutation probe asserts and the light hooks require.
+// x87 register, so a read leaves the caller's SSE state exactly as it found it,
+// which the lifetime fixture's in-mutation probe asserts and the light hooks
+// require.
 inline void copy_bytes(void* out, const void* in, std::size_t size) {
     __asm__ __volatile__("rep movsb" : "+D"(out), "+S"(in), "+c"(size) : : "memory");
-}
-bool rpm(std::uintptr_t address, void* out, std::size_t size) {
-    SIZE_T copied = 0;
-    return ReadProcessMemory(GetCurrentProcess(), reinterpret_cast<const void*>(address), out, size, &copied) && copied == size;
 }
 // The committed, readable, non-guard region containing address.
 bool query(std::uintptr_t address, Region& out) {
@@ -80,25 +75,8 @@ bool validated(std::uintptr_t address, std::uintptr_t end, std::uint32_t frame, 
     return true;
 }
 }
-void configure() {
-    wchar_t setting[8]{};
-    const DWORD length = GetEnvironmentVariableW(L"X3M_ENGINE_READS", setting, 8);
-    configured.store(length == 3 && setting[0] == L'r' && setting[1] == L'p' && setting[2] == L'm' ? 2 : 1);
-}
-Mode mode() {
-    if (!configured.load(std::memory_order_acquire)) {
-        const DWORD error = GetLastError();
-        configure();
-        SetLastError(error);
-    }
-    return configured.load(std::memory_order_relaxed) == 2 ? Mode::ReadProcessMemory : Mode::Direct;
-}
 bool read(std::uintptr_t address, void* out, std::size_t size) {
     if (!address || !out || !size || address + size < address) return false;
-    if (mode() == Mode::ReadProcessMemory) {
-        Guard guard; ++counters.syscalls;
-        return rpm(address, out, size);
-    }
     const std::uint32_t frame = current_frame.load(std::memory_order_relaxed);
     {
         Guard guard;

@@ -1,5 +1,7 @@
 # B2: F8 geometry payload packet — pending parent ratification
 
+**Removed 2026-09-22.** The default-off lattice state capture, geometry packet writer and upload-hook diagnostic described here is no longer in the tree; the crawl it was built to explain is fixed and accepted (`taa-lattice-crawl.md` §32.5–§32.6). The last commit that carries the code is main `59ad2649`. This note is kept as history.
+
 Design only. Inputs: AGENTS.md, `/tmp/x3-lattice-upload-flight-integration.md`, ratified B1 `/tmp/x3-lattice-upload-lifecycle-contract.md`, current `src/proxy/lattice_state_capture.{h,cpp}`, `verification/probe/lattice_state_packet.py`, and collector **`tools/analysis/snapshot_x3_run.py`**. No source changes, build, Wine, game, new ABI or lifecycle proposal. B1 remains the authority for safe atomic paired copying after the final getter Release.
 
 ## Recommendation

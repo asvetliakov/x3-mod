@@ -1017,6 +1017,11 @@ flight, production capture path, RGB correction or TAA acceptance follows yet.
 
 ## 23. Opt-in post-route state observation (2026-09-20)
 
+**Removed 2026-09-22** (`--lattice-state`, `X3M_LATTICE_STATE`,
+`src/proxy/lattice_state_*`, `lattice_geometry_*` and their fixtures/tests). The
+crawl is fixed and accepted (§32.5–§32.6); the last commit carrying the code is
+main `59ad2649`. Sections 23-31 below are history.
+
 The next bounded diagnostic captures **state only**, after `before_draw` and
 before the unchanged original indexed draw. It adds no resource Lock/LockRect,
 VB/IB/texture payload, writer ledger, render target, draw or readback. Its packet
@@ -1520,6 +1525,11 @@ native Windows runtime evidence or a demonstrated crawl correction.
 
 ## 31. Close arithmetic exploration; investigate final upload observation
 
+**Removed 2026-09-22**: `src/proxy/lattice_upload_hook.{h,cpp}` and the
+`lattice_state`/geometry-packet writer are gone (last commit main `59ad2649`).
+The ownership `clone_upload` staging core and its fixtures stay; see the
+cleanup inventory note. History follows.
+
 The two retained GPU/capture W fingerprints differ by 61.3945 and 71.3789,
 far above the conditional model residual 0.1875. The old 0.02 qualifier remains
 failed, but is not a prerequisite for distinguishing these finite hypotheses.
@@ -1681,7 +1691,7 @@ snapshot, game integration or a visible moving-lattice correction.
 
 ### Game callsite adapter qualified in isolation
 
-The [adapter](../../src/proxy/lattice_upload_hook.cpp) claims the complete
+The adapter (`src/proxy/lattice_upload_hook.cpp`, removed 2026-09-22) claimed the complete
 `[0x004bcc2b,0x004bcc30)` MOV/CALL span and validates its 31-byte surrounding
 context. Its armed path saves the dynamic public COM target before observer
 callbacks and forwards that exact target with the original five arguments and
