@@ -165,16 +165,29 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
             self.assertEqual(code, 2)
             self.assertIn('--taa-thin-region requires --taa', error)
 
-    def test_thin_region_gate_is_absent_unless_given(self):
-        # --taa-thin-region-gate screen|camera (docs/architecture/taa-lattice-crawl.md section 32.1): forwarded only when given,
-        # needs the thin region on, and the camera mode excludes the line filter (the mask's line channel carries the second gate).
+    def test_thin_region_gate_defaults_to_camera_when_the_region_is_on(self):
+        # --taa-thin-region-gate screen|camera (docs/architecture/taa-lattice-crawl.md section 32.1). Run 59
+        # (run207 screen / run208 camera) accepted the camera gate, so it is the default whenever the thin
+        # region is active; the line filter (whose mask channel carries the only gate it can have) resolves
+        # to screen silently, while an explicit camera plus the line filter is still refused.
         with tempfile.TemporaryDirectory() as directory:
-            self.assertNotIn('X3M_TAA_THIN_REGION_GATE', self.env(directory, *TAA, '--taa-thin-region', '0.97', inherited={'X3M_TAA_THIN_REGION_GATE': 'camera'}))
-            env = self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-thin-region-gate', 'camera')
+            env = self.env(directory, *TAA, '--taa-thin-region', '0.97')
             self.assertEqual((env['X3M_TAA_THIN_REGION'], env['X3M_TAA_THIN_REGION_GATE']), ('0.97,1', 'camera'))
+            # A stale shell value cannot select a different gate than the resolved default.
+            self.assertEqual(self.env(directory, *TAA, '--taa-thin-region', '0.97', inherited={'X3M_TAA_THIN_REGION_GATE': 'screen'})['X3M_TAA_THIN_REGION_GATE'], 'camera')
             self.assertEqual(self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-thin-region-gate', 'screen')['X3M_TAA_THIN_REGION_GATE'], 'screen')
+            env = self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-thin-region-gate', 'camera')
+            self.assertEqual(env['X3M_TAA_THIN_REGION_GATE'], 'camera')
             env = self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-far-stabiliser', '0.985', '--taa-thin-region-gate', 'camera', '--taa-line-filter', '0')
             self.assertEqual(env['X3M_TAA_THIN_REGION_GATE'], 'camera')
+            # An active line filter silently keeps the screen gate; a zero A does not count as active.
+            self.assertEqual(self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-line-filter', '1')['X3M_TAA_THIN_REGION_GATE'], 'screen')
+            self.assertEqual(self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-line-filter', '2,2')['X3M_TAA_THIN_REGION_GATE'], 'screen')
+            self.assertEqual(self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-line-filter', '0')['X3M_TAA_THIN_REGION_GATE'], 'camera')
+            # Without the thin region (absent or W 0) no gate variable is emitted, inherited or not.
+            for args in ((), ('--taa-thin-region', '0')):
+                for inherited in (None, {'X3M_TAA_THIN_REGION_GATE': 'camera'}):
+                    self.assertNotIn('X3M_TAA_THIN_REGION_GATE', self.env(directory, *TAA, *args, inherited=inherited))
             for args in (('--taa-thin-region-gate', 'camera'), ('--taa-thin-region', '0', '--taa-thin-region-gate', 'camera'),
                          ('--taa-thin-region', '0.97', '--taa-thin-region-gate', 'camera', '--taa-line-filter', '1'),
                          ('--taa-thin-region', '0.97', '--taa-thin-region-gate', 'wide')):
@@ -202,6 +215,21 @@ class TaaImageDefaultsDll(unittest.TestCase):
         for name in ('X3M_TAA_MIP_BIAS', 'X3M_TAA_SHARPEN', 'X3M_TAA_CURRENT_FILTER', 'X3M_TAA_HISTORY_WEIGHT'):
             line = next(l for l in source.splitlines() if f'GetEnvironmentVariableW(L"{name}"' in l)
             self.assertIn("*end==L'\\0'", line)
+
+    def test_thin_region_gate_native_fallback_defaults_to_camera(self):
+        # Absent X3M_TAA_THIN_REGION_GATE mirrors the launcher: camera when the thin region is on,
+        # screen with the line filter, and untouched when the region is off or TAA is not requested.
+        source = (ROOT / 'src/proxy/capture.cpp').read_text()
+        self.assertIn('else if(taa_requested&&taa_thin_region[0]>0.f&&taa_line_filter<=0.f)taa_thin_camera_gate=true;', source)
+        # The default is resolved after both values are parsed, so it sees the final settings.
+        gate = source.index('GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION_GATE"')
+        self.assertLess(source.index('GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION"'), gate)
+        self.assertLess(source.index('GetEnvironmentVariableW(L"X3M_TAA_LINE_FILTER"'), gate)
+        # An explicit value still decides, and the route's own fallbacks to the screen gate are unchanged:
+        # the configure-time refusal and the box-allocation failure both leave the screen behaviour.
+        self.assertIn('if(wcscmp(gate_setting,L"camera")==0)taa_thin_camera_gate=true;', source)
+        self.assertIn('taa_thin_camera_gate_ = false;', (ROOT / 'src/proxy/motion_output.cpp').read_text())
+        self.assertIn('camera_requested&&(!camera_gate_available()||lined)', (ROOT / 'src/renderer/temporal_pass.cpp').read_text())
 
 
 if __name__ == '__main__':

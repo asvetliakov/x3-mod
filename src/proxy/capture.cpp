@@ -2822,12 +2822,15 @@ void initialize_log(HMODULE module) {
             ok=ok&&(count==1||count==2||count==4)&&(v[0]==0.f||(v[0]>=.5f&&v[0]<=.99f))&&v[1]>=0.f&&v[1]<=1.f&&v[2]>=0.f&&v[3]>v[2]&&v[3]<=64.f;
             if(ok){for(unsigned i=0;i<4;++i)taa_thin_region[i]=v[i];taa_thin_gate_given=count==4;}else log("taa_thin_region_setting invalid=1");}
         else if(length>=48)log("taa_thin_region_setting invalid=1 reason=too_long length=%lu",length);}
-    // X3M_TAA_THIN_REGION_GATE=screen|camera (section 32.1; unset or "screen": the screen-speed gate the thin region always
-    // had): "camera" gates the region on min(screen speed, camera-relative speed) with the 7x7 box clip where the camera term
-    // alone opens it. Anything else keeps the screen gate and is logged. Meaningful only with X3M_TAA_THIN_REGION on.
+    // X3M_TAA_THIN_REGION_GATE=screen|camera (section 32.1): "camera" gates the region on min(screen speed, camera-relative
+    // speed) with the 7x7 box clip where the camera term alone opens it; "screen" is the screen-speed gate the thin region
+    // originally had. Anything else keeps the screen gate and is logged. Meaningful only with X3M_TAA_THIN_REGION on.
+    // Absent is the Run59-accepted default: camera whenever the thin region is on, except with the line filter, whose mask
+    // channel carries the only gate it can have, where the default stays screen (the route refuses the pair as well).
     {wchar_t gate_setting[16];const DWORD length=taa_requested?GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION_GATE",gate_setting,16):0;
         if(length>0&&length<16){if(wcscmp(gate_setting,L"camera")==0)taa_thin_camera_gate=true;else if(wcscmp(gate_setting,L"screen")!=0)log("taa_thin_region_gate_setting invalid=1");}
-        else if(length>=16)log("taa_thin_region_gate_setting invalid=1 reason=too_long length=%lu",length);}
+        else if(length>=16)log("taa_thin_region_gate_setting invalid=1 reason=too_long length=%lu",length);
+        else if(taa_requested&&taa_thin_region[0]>0.f&&taa_line_filter<=0.f)taa_thin_camera_gate=true;}
     if(taa_requested&&GetEnvironmentVariableW(L"X3M_TAA_HISTORY_WEIGHT",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=.5f&&v<=.98f)taa_history_weight=v;}
     // Flicker suppression (docs/architecture/taa-flicker-suppression.md), all
     // off when unset or invalid: X3M_TAA_THIN_CLIP=<S> (0..1),

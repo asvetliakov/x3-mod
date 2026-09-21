@@ -1812,10 +1812,13 @@ clip-off. If the user's acceptance of "a little ghosting" is to be spent, it sho
 variant that also restores gradient energy, which needs the sharper history kernel section 15 used
 and this brief excluded; that is a new decision, not a sweep of this one.
 
-### 32.1 Implemented, unflown (2026-09-21): `--taa-thin-region-gate camera`
+### 32.1 Accepted in Run 59, the default with the thin region (2026-09-21): `--taa-thin-region-gate camera`
 
-Opt-in; absent or `screen` is the installed gate (`X3M_TAA_THIN_REGION_GATE`, log field `thin_gate=` on
-`motion_output_taa`). Orchestrator decisions: gate speed `min(screen speed, camera-relative speed)`, so every pixel
+Flown as run207 (`screen`) / run208 (`camera`) on DLL `b1bb05fb`; the user accepts the camera gate for pans and it is
+now the launcher and native-fallback default whenever the thin region is active, `screen` being the opt-out, with
+`--taa-line-filter` resolving silently to `screen`. The roll residual is unmeasured and open
+([ledger](../verification/temporal-resolve.md)). The gate is selected by `X3M_TAA_THIN_REGION_GATE`, log field
+`thin_gate=` on `motion_output_taa`; `screen` is the pre-Run59 installed gate. Orchestrator decisions: gate speed `min(screen speed, camera-relative speed)`, so every pixel
 the installed gate leaves open stays open; the 7x7 box only where the camera term opens what the screen gate would
 have closed; nothing else changes.
 

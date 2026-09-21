@@ -523,3 +523,34 @@ Opt-in `--taa-thin-region-gate camera` (`X3M_TAA_THIN_REGION_GATE`); default unc
 - Limits: the pan scene is uniform along the pan axis (no resampling loss); moving-lattice quality is section 32's
   replay, not this fixture. Native Windows unverified. Full runner 112 s, lock wait 0 s.
 
+
+## Run59 accepts the camera thin-region gate as the default (2026-09-21)
+
+Run 59 flew the A/B on DLL `b1bb05fb` at the lattice position: run207 with
+`--taa-thin-region-gate screen`, run208 with `camera`, otherwise the same command.
+The user accepts the camera gate ("I think it's fixed") for camera pans. Triage
+of run208 found no anomaly: **0 non-finite texels**, gate-open share **0.44 % ->
+9.3 %**, tracked rms **x 0.874** and gradient **x 0.913** measured on the same
+capture. The roll residual (crawl under camera roll) was not measured in this run
+and stays open.
+
+The gate therefore becomes the default whenever the thin region is active, in the
+launcher and in the DLL's native fallback. `--taa-thin-region-gate screen` is the
+opt-out and remains bit-identical to the pre-Run59 behaviour. With
+`--taa-line-filter` active the default resolves to `screen` silently, because the
+mask's line channel carries the only gate that mode can have; an explicit
+`camera` plus the line filter is still refused by the launcher, and the route's
+own fallbacks are unchanged (configure-time refusal, box-allocation failure ->
+screen gate bit for bit). Nothing changes without the thin region: no gate
+variable is emitted and the native default is untouched.
+
+Checks for this default-only change: `test_taa*` **25 host tests OK** (the gate
+test now pins default -> camera, explicit screen, line filter -> screen, explicit
+camera + line filter refused, and no thin region -> no variable, plus the native
+fallback site and its ordering after the thin-region and line-filter parses);
+`src/proxy/capture.cpp` cross-compiles clean under
+`i686-w64-mingw32-g++ -std=c++17 -O2 -Wall -Wextra -Werror -msse2 -mfpmath=sse
+-mstackrealign -mincoming-stack-boundary=2`. No shader, predicate, hook or
+recovery policy changed and no per-draw work was added, so the fixture and
+shader evidence of the section above carries over unchanged. No game launched, no
+Wine run, no new candidate. Native Windows runtime remains unverified.
