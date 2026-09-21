@@ -3454,3 +3454,104 @@ rotation at |t| 33 km and 81 km, orientation stepping ≥ 1 LSB every frame: dri
 (fails today with drift ≈ 0.4–1 u, never promoted); motion-output fixture case a with the same quantised rotating
 camera: blob within 1 texel of the twin for 600 unseen frames, plus a live-against-retained C0 alignment check
 (same node, seen then unseen, blob shift ≤ 1 texel) to guard fix 1's all-sites requirement.
+
+## Run 62 fix: one exact world-from-view basis per latch at every recovery site (2026-09-22)
+
+Source change, not installed. Fixes the cause of the section above.
+
+**Change.** `renderer::camera_world_basis` (`src/renderer/camera_reprojection.h`): the inverse of the latched rotation,
+adjugate over determinant in double, computed once in `camera_state_from_matrices` and carried in `CameraState`
+(`wv[9]`, `wv_valid`; a hand-built state computes on demand; a singular one yields a NaN basis that every
+consumer's finite check refuses). No `fabs`, one `divsd`. It replaces the transpose at every site that recovers
+world space from a latch, so live casters, retained rows, box centres, receivers and the TAA static rows share one
+world: `shadow_retention::world_rows` and `camera_position` (hence `classify_candidate_static` and the class ring),
+`shadow_replay_basis` (eye and forward), `shadow_replay_light_rows`, `shadow_replay_view_rows`,
+`shadow_cascade_bounds_suns` (eye and the view→sun rows), `shadow_cascade_draw_rows`, `PointSun::draw_origin` and
+`decide`, `static_previous_rows`, the `shadow_replay_caster origin=` capture line, and `camera_translation_clip`
+(which already used the inverse; its "~1e-7" comment now reads 1.2e-5). Already exact and left alone:
+`fog_world_inverse` (`fog_volume_math.h`, same arithmetic) — fog and the shadow maps now agree on world space, which
+they did not before. The sun-occlusion branch is unmerged and not covered. `eps`, the 8-sighting streak and the node
+keying are unchanged. Cost: one 3×3 inverse per latch; the per-draw sites read nine doubles instead of converting nine
+floats. Windows: CPU arithmetic only.
+
+| Fixture | Before | After |
+| --- | --- | --- |
+| Host `test_shadow_retention.py`, new case: 16.16 non-renormalised basis (Gram error 1.9e-5), yaw/pitch stepping every frame (609 of 609 latches differ), eye flying, 33 km / 81 km | recovered drift 1.228 / 3.011 u per frame, promoted 0, held 0 of 600 (8 failed checks) | drift 0.0025 / 0.0065 u (eps 0.05), promoted on sighting 9, held and issued 600 of 600 unseen frames, `reclassified`/`moving_dropped`/`box_exit` 0 |
+| Same case, live `shadow_cascade_draw_rows` against the retained rows under the same frame's cascade-0 basis (0.78 u texels) | not measurable (nothing retained); with only `world_rows` fixed and the other sites on the transpose: 1.03 / 2.54 texels | 0.0025 / 0.0054 texel; asserted ≤ 0.25 |
+| Host `test_static_previous_rows.py`, new case: quantised pair one step apart, object at view z 600, 24 steps | 0.63 / 1.53 px and the depth check fails (7.7e-5 > 2e-5) | 0.0013 / 0.0037 px (limit 0.05) |
+| Existing precision twin (orthonormal cameras, 81 km) | 0.0118 u | 0.0062 u |
+
+**Wine (bottle X3, seam DLL built by the runner from this tree).** The retention script's camera is now the engine's:
+rotation rounded to 16.16, yaw wobbling 0.002° a frame (`Fixture::camera_quantised`), 81 km out, settling frames
+included; the Python twin (`shadow_replay_depth.world_basis`) inverts exactly. `seam-ownership-shadow-retention-live`
+9,743 checks, 39 compared frames (28 with retained blobs), 78 maps, 0 coverage disagreements on clear texels, max depth
+error 5.5e-6, scene-end full-store median 48.1 µs; `-census` 9,740; `-off` 6,629; `-live-poll` 9,890 (1.5e-5). Case a
+holds both nodes through its 600 unseen frames. Neighbours: `seam-ownership-shadow-pool-static-live` 182 checks, 27
+maps, 4.4e-5; `seam-taa-unmatched-static-node` 95 checks, max 0.00066 px. Partial runs, no cross-case comparison. One
+validator relaxation, retention script only: with edges off the snapped grid the covered *count* of a ~40-texel blob may
+differ by its edge texels (44 against 46 with 12 within 1/16 px of an edge); the assertion now accepts a count
+difference up to the ambiguous-texel count when no clear texel disagrees and the depth is within tolerance. No Wine
+"before" run was made; the host cases carry the before numbers.
+
+Other checks: affected host modules 10 / 116 tests pass; full default host suite 229 modules / 2,260 tests, 0 failing;
+scratch production build (MinGW i686, RelWithDebInfo) 0 warnings; `check_no_x87.py` 549 reachable functions, 0
+violations.
+
+**New behaviour in flight, and its bounds.** Retention engages for the first time while the camera turns.
+- *Stale shadows.* A destroyed or docked object is retired through the lifetime journal at once, and an object seen
+  again elsewhere is reclassified (`reclassified_after_unseen`). The residual is an object that was static for nine
+  sightings, then leaves **while unseen and stays unseen** (a parked ship undocking behind the player): its shadow
+  stays until `age_cap` (7,200 frames: 2 min at 60 fps, 4 min at 30), `box_exit` (2 × the outermost box) or a buffer
+  change / the orphan probe. Stations, the case that matters, do not move. The cap is adequate as a default and should
+  not drop yet: lowering it re-creates the pop-out this fix removes for any station behind the player longer than the
+  cap. It stays tunable (`X3M_SHADOW_CASTER_RETENTION_AGE`, 1..10,000,000); the 300-frame `shadow_retention_resight`
+  buckets (`bN_moved` against `bN_same`) are the calibration, and they were never populated in flight before, so the
+  next flight is the first real measurement. Drop the cap only if an old bucket shows a material moved share.
+- *Issue growth.* Retained records add issues towards the cascade caps and the 640-issue budget;
+  `far_alternate_due_to_retained`, `capped_cN` and `would_cN` on the frame line show it. Storage is fixed (1,024 nodes /
+  4,096 records, 1.85 MB). Not measurable before a flight; if the far cascade alternates because of retained issues,
+  that is the next thing to tune, not the class law.
+- *Per-frame cost.* The store's scene-end walk now has unseen nodes to mask and check in flight (fixture: 48 µs median
+  with a full store; run222 frame lines give the real figure via `us=`/`walk_us=`).
+- *TAA.* `static_previous_rows` no longer shifts unmatched-static rows by 0.6–1.5 px (at z 600) per orientation step
+  far from the origin; expect less shimmer on first-frame statics, no new risk.
+
+**Proof of engagement for the next flight.** New cumulative line `shadow_retention_summary` every 300 frames and once at
+teardown (`final=1`): `frames static_frames unseen_frames retained_frames static_nodes moving_nodes unseen_nodes
+unseen_max retained_issues retained_issues_max promoted reclassified reclassified_after_unseen moving_dropped retired
+box_exit age evicted`. run222's signature was `static_frames` ≈ half of `frames` with static share 0.00 whenever the
+orientation moved; a working build shows `static_frames` ≈ `frames` near stations and `retained_frames` > 0 while
+turning. Fixture live case: frames 1,535, static_frames 1,354, retained_frames 1,279, retained_issues 15,459.
+
+### Review follow-up (2026-09-22, after merging main f6fef37d)
+
+- **Fog sun direction, one frame.** `shadow_replay_view_rows`' depth row is now the covector `axis·R⁻ᵀ`; the fog pass took
+  it as the view-space sun *direction* and `fog_world_basis` applied `R⁻¹` again (≈ 2e-5 rad off, exact before).
+  `motion_output_fog_inc.h` now forms the direction as `axis·R` (forward rotation of the basis' world axis), so
+  `fog_world_basis` returns the world axis exactly. No other consumer reads a direction out of the view rows (the apply
+  and bounds paths use them as position rows).
+- **Projection jitter does not reach `world_rows`** (from source and measured): every caller passes `shadow_.rows`, the
+  application's unjittered rows (`apply_jitter` jitters a per-draw copy; `g.rows` and `draw_rows()` copy
+  `shadow_.rows[window]`), and the latch's `m20`/`m21` are the engine's — the jitter is added at the use sites
+  (`camera_scene_.m20 + jitter_x`). run222: `p20=0 p21=0` on all 30,035 valid `camera_state` frames. No change made and
+  no jittered host case added, since the input does not exist in production.
+- **Singular basis fails closed.** `camera_world_basis` returns a NaN basis (every consumer's finite check refuses);
+  `camera_state_from_matrices` refuses a state whose basis does not invert. The transpose fallback is gone.
+- **Far-plane `Q`** and its oracle `camera_far_plane_previous_ndc` now use `R_cur⁻¹·R_prev`; identical views give the
+  identity. The z-row `1 − 2⁻¹⁶` scaling is untouched. `test_camera_reprojection`, `test_taa_camera_path` pass;
+  `run_temporal_pass.py` (bottle X3) passed.
+- **Relaxed count rule accounted.** Each case's `map` records `edges_only_maps`, `edges_only_ambiguous_texels`,
+  `edges_only_max_count_difference`, `ambiguous_texels`. Live: 1 of 78 maps took the relaxed path (12 ambiguous texels,
+  count difference 2); live-poll, census, off: 0.
+- **Sun occlusion (landed on main).** `src/proxy/sun_occlusion{.h,.cpp,_core.h}` and `src/renderer/sun_occlusion_pass.*`
+  contain no view-rotation arithmetic (`view` there is the engine's view object pointer); nothing to convert.
+- **Evidence, one seam build.** One `run_motion_output.py` invocation, seam DLL `c128887b…`, fixture `a0112941…`
+  (`verification/results/bottle-X3/motion-output-partial.json`): retention live 9,743 / census 9,740 / off 6,629 /
+  live-poll 9,890 checks, pool-static-live 182, unmatched-static-node 95 (max 0.00066 px); numbers identical to the
+  first run. Scratch production build 0 warnings, `check_no_x87.py` 567 reachable functions, 0 violations. Ten affected
+  host modules 116 tests pass. Full host suite after the merge: 230 modules, 5 failing, all from main's sun-occlusion
+  landing and none in files of this change: `test_capture_bloom_lifetime`, `test_motion_wrap_states`,
+  `test_motion_hdr_scene` (host doubles lack `sun_occlusion` / `SunOcclusionPass`), `test_lattice_state_capture` (its
+  double compiles the `draw_indexed` slice of `capture.cpp`, changed by that landing and untouched here) and
+  `test_bloom_programs` (program records pin an older `tools/shaders/generate_rigid_motion_pixel.py` hash). Before the
+  merge the suite was 229 / 229.

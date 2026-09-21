@@ -1508,6 +1508,7 @@ private:
     void note_retention_draw(const MotionRoute& route, const shadow_replay::Record& record, const shadow_replay::DepthGeometry& geometry, const shadow_replay::ExtentEntry* extent) noexcept;
     void retention_scene_end(bool sun_source_switched) noexcept;
     void publish_shadow_retention() noexcept;
+    void log_shadow_retention_summary(bool final) noexcept;
     void flush_shadow_retention(shadow_retention::Flush reason) noexcept;
     void retention_frame_begin() noexcept;
     void drain_retention_journal() noexcept;

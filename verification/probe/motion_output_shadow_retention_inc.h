@@ -1,7 +1,8 @@
 // Sun-shadow caster retention script ("shadowretention" mode;
 // docs/architecture/shadow-caster-retention.md, "Fixture and twin cases").
 // The seam DLL with two cascades narrowed to the unit-size geometry, the
-// script's own camera (a yaw and a world position 81,000 units from the origin)
+// script's own camera (a yaw and a world position 81,000 units from the origin; its rotation a 16.16 basis that
+// steps every frame, as the engine's: run222, Fixture::camera_quantised)
 // and synthetic nodes: every node is an Object with its own scope identity
 // (serial, handle, model, lod, class bits) born in the seam's synthetic
 // lifetime observer. "Culled" = the script omits the node's draws. One script
@@ -74,7 +75,7 @@ struct RetentionScript {
     // copy only behind a scene draw) while the store's levels and references stay those of the case.
     void frame(const std::vector<RetentionNode*>& listed, const std::vector<RetentionNode*>& kept, bool compare, bool oracle = true) {
         std::vector<RetentionNode*> drawn{anchor}; drawn.insert(drawn.end(), listed.begin(), listed.end());
-        f.camera_scripted = true;
+        f.camera_scripted = true; f.camera_quantised = true;
         f.frame_begin();
         if (!poll) api(f.d->SetPixelShaderConstantF(4, sun, 1), "SetPixelShaderConstantF LightDir_Dir0");
         const auto& cam = f.camera_current;
@@ -439,6 +440,6 @@ void run_shadow_retention_integration(Fixture& f) {
     s.read(); s.expect(RsNodes, 2, "two nodes are retained at the end"); s.expect_live(RsRefs, 3, 0, "their references are held into the teardown");
     std::printf("RETENTION_TEARDOWN nodes=%llu refs=%llu\n", static_cast<unsigned long long>(s.s[RsNodes]), static_cast<unsigned long long>(s.s[RsRefs]));
     s.end();
-    f.camera_scripted = false;
+    f.camera_scripted = false; f.camera_quantised = false;
 }
 } // namespace

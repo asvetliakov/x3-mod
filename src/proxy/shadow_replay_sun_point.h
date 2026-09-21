@@ -141,8 +141,10 @@ struct PointSun {
     static bool draw_origin(const renderer::CameraState& camera, const float rows[16], double out[3]) noexcept {
         if (!camera.valid || !rows || !(camera.m00 > 0.f) || !(camera.m11 > 0.f)) return false;
         const double v[3] = {double(rows[3]) / camera.m00 - double(camera.t[0]), double(rows[7]) / camera.m11 - double(camera.t[1]), double(rows[15]) - double(camera.t[2])};
+        double scratch[9];
+        const double* wv = renderer::camera_world_basis(camera, scratch);
         for (unsigned i = 0; i < 3; ++i) {
-            out[i] = v[0] * double(camera.r[i * 3]) + v[1] * double(camera.r[i * 3 + 1]) + v[2] * double(camera.r[i * 3 + 2]);
+            out[i] = v[0] * wv[i * 3] + v[1] * wv[i * 3 + 1] + v[2] * wv[i * 3 + 2];
             if (!(out[i] == out[i]) || out[i] > 1e15 || out[i] < -1e15) return false;
         }
         return true;
@@ -162,11 +164,12 @@ struct PointSun {
         else if (!fresh && !carry) reason = polled ? PointSunReason::Unchecked : PointSunReason::Unavailable;
         else {
             carried_frame = !fresh;
-            double position[3], forward[3], to_light[3], d2 = 0.;
+            double position[3], forward[3], to_light[3], d2 = 0., scratch[9];
+            const double* wv = renderer::camera_world_basis(camera, scratch);
             for (unsigned i = 0; i < 3; ++i) {
                 used[i] = fresh ? light[i] : validated_light[i];
-                position[i] = 0.; forward[i] = double(camera.r[i * 3 + 2]);
-                for (unsigned j = 0; j < 3; ++j) position[i] -= double(camera.t[j]) * double(camera.r[i * 3 + j]);
+                position[i] = 0.; forward[i] = wv[i * 3 + 2];
+                for (unsigned j = 0; j < 3; ++j) position[i] -= double(camera.t[j]) * wv[i * 3 + j];
                 to_light[i] = used[i] - position[i]; d2 += to_light[i] * to_light[i];
             }
             distance = renderer::sqrt_sd(d2);

@@ -206,15 +206,37 @@ def rows_matrix(t, p, zo, w0=1.0):
     return ((1, 0, 0, t), (0, 1, 0, 0), (0, 0, 1, zo), (p, 0, 0, w0))
 
 
+_WORLD_BASIS = {}
+
+
+def world_basis(r):
+    """renderer::camera_world_basis: wv[k*3+j] = (R^-1)[j][k], adjugate over
+    determinant. Never the transpose: the engine's rotation (and the retention
+    script's) is a 16.16 basis, orthonormal only to ~1e-5 (run222)."""
+    key = tuple(r)
+    wv = _WORLD_BASIS.get(key)
+    if wv is None:
+        a = key
+        cof = (a[4] * a[8] - a[5] * a[7], a[2] * a[7] - a[1] * a[8], a[1] * a[5] - a[2] * a[4],
+               a[5] * a[6] - a[3] * a[8], a[0] * a[8] - a[2] * a[6], a[2] * a[3] - a[0] * a[5],
+               a[3] * a[7] - a[4] * a[6], a[1] * a[6] - a[0] * a[7], a[0] * a[4] - a[1] * a[3])
+        det = a[0] * cof[0] + a[1] * cof[3] + a[2] * cof[6]
+        wv = tuple(cof[j * 3 + k] / det for k in range(3) for j in range(3))
+        if len(_WORLD_BASIS) > 4096:
+            _WORLD_BASIS.clear()
+        _WORLD_BASIS[key] = wv
+    return wv
+
+
 def project_vertex(vertex, rows, camera, basis):
     """Object position -> sun-space (ndc_x, ndc_y, depth) as the vertex
     program computes it: clip = rows . pos; p_view = (clip.x / m00,
-    clip.y / m11, clip.w); world = (p_view - t) R^T; sun-space over the
+    clip.y / m11, clip.w); world = (p_view - t) R^-1; sun-space over the
     cascade's half-extent and depth half-range."""
     pos = (vertex[0], vertex[1], vertex[2], 1.0)
     clip = [sum(r[k] * pos[k] for k in range(4)) for r in rows]
     view = (clip[0] / camera['m00'], clip[1] / camera['m11'], clip[3])
-    r, t = camera['r'], camera['t']
+    r, t = world_basis(camera['r']), camera['t']
     world = [sum((view[j] - t[j]) * r[i * 3 + j] for j in range(3)) for i in range(3)]
     d = [world[i] - basis['center'][i] for i in range(3)]
     dot = lambda axis: sum(d[i] * basis[axis][i] for i in range(3))

@@ -26,15 +26,20 @@ const char* MotionOutput::fog_frame_parameters(renderer::FogFrame& in, float wei
     unsigned slots[renderer::shadow_cascade_max]{};
     const unsigned count = renderer::shadow_cascade_apply_slots(depth_cascades_, slots), first = count > 1 ? 1u : 0u;
     float sun_rows[12]{}; bool sun_known = false;
+    renderer::ShadowReplayBasis current{};
     if (!skip && !sun_known && count) {
         // No valid map: the direction from this frame's would-be basis of the first slot (the apply's absent-cascade path).
         const unsigned i = slots[first < count ? first : 0];
-        renderer::ShadowReplayBasis current{};
         const float* sun = cascade_sun(i);
         sun_known = sun && renderer::shadow_replay_basis(camera_scene_, sun, depth_cascades_.cascades[i], current, point_sun_.grid_anchor(i)) &&
                     renderer::shadow_replay_view_rows(camera_scene_, current, depth_cascades_.cascades[i], sun_rows);
     }
-    // View-space direction toward the sun: the rows' depth axis points away from it.
+    // View-space direction toward the sun: the basis' world depth axis (pointing away from it) through the latch's FORWARD
+    // rotation, d_view = d_world . R. Not the view rows' depth row: that is the covector axis . R^-1^T (it measures depth
+    // of a view position), which equals the direction only for an orthonormal R; on the engine's 16.16 basis the two
+    // differ by ~2e-5 rad and fog_world_basis below would apply R^-1 a second time. With the direction,
+    // fog_world_basis' d_view . R^-1 returns the world axis exactly: one world for the maps and the volume.
+    if (sun_known) for (unsigned j = 0; j < 3; ++j) { double v = 0; for (unsigned i = 0; i < 3; ++i) v += current.axes[2][i] * double(camera_scene_.r[i * 3 + j]); sun_rows[8 + j] = float(v); }
     const float length = std::sqrt(sun_rows[8] * sun_rows[8] + sun_rows[9] * sun_rows[9] + sun_rows[10] * sun_rows[10]);
     if (!skip && (!sun_known || !(length > 0.f) || !std::isfinite(length))) skip = "sun";
     if (!skip) {

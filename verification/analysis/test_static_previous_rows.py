@@ -85,8 +85,10 @@ def dot(a, b):
 
 
 class Camera:
-    def __init__(self, yaw, pitch, position, m00=1.3, m11=1.73, m20=0.0, m21=0.0):
+    def __init__(self, yaw, pitch, position, m00=1.3, m11=1.73, m20=0.0, m21=0.0, quantised=False):
         self.axes = basis(yaw, pitch)
+        if quantised:  # the engine's 16.16 fixed-point basis, not renormalised (run222): orthonormal only to ~1e-5
+            self.axes = tuple(tuple(round(x * 65536.0) / 65536.0 for x in axis) for axis in self.axes)
         self.position, self.m00, self.m11, self.m20, self.m21 = position, m00, m11, m20, m21
 
     def matrices(self):
@@ -175,6 +177,22 @@ class StaticPreviousRows(unittest.TestCase):
         forward = current.axes[2]
         target = tuple(c + 6000.0 * f for c, f in zip(current.position, forward))
         self.check(current, previous, [(30, 0, 0), (0, 30, 0), (0, 0, 30)], target, 1.00001, -50.0, 0.05)
+
+    def test_quantised_basis_far_from_the_origin_does_not_shift_static_rows(self):
+        # run222: the view rotation is a 16.16 basis; its transpose is not its inverse, and (R R^T - I) t is 0.4-1 unit at
+        # 33 km, re-rolled by every orientation LSB. An unmatched-static row must land where the previous camera's own
+        # product puts the object. Before the exact inverse this read 0.63 px (33 km) and 1.53 px (81 km) at view z 600; with it 0.0013 and 0.0037.
+        for reach in (33000.0, 81000.0):
+            s = reach / math.sqrt(3.0)
+            worst = 0.0
+            for step in range(24):
+                yaw, pitch = 0.4 + 4.1e-5 * step, -0.2 + 2.3e-5 * step
+                position = (s + 0.3 * step, s, s + 0.2 * step)
+                current = Camera(yaw + 4.1e-5, pitch + 2.3e-5, (position[0] + 0.3, position[1], position[2] + 0.2), quantised=True)
+                previous = Camera(yaw, pitch, position, quantised=True)
+                self.assertNotEqual(current.axes, previous.axes)
+                target = tuple(c + 600.0 * f for c, f in zip(current.position, current.axes[2]))
+                worst = max(worst, self.check(current, previous, [(1, 0, 0), (0, 1, 0), (0, 0, 1)], target, 1.00001, -50.0, 0.05))
 
     def test_identical_cameras_return_the_rows(self):
         camera = Camera(0.4, 0.2, (5.0, 6.0, 7.0))

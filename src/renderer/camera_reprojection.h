@@ -22,6 +22,7 @@
 // but finite unrouted object the error is its parallax, documented as a limit).
 #include <cmath>
 #include <cstdint>
+#include <limits>
 
 namespace x3m::renderer {
 struct CameraState {
@@ -30,7 +31,42 @@ struct CameraState {
     float r[9]{};                              // view rotation V[0..2], V[4..6], V[8..10]
     float t[3]{};                              // view translation V[12..14]
     float m22 = 0, m32 = 0;                    // projection P[10], P[14]: depth = m22 + m32 / view z (far stabiliser gate, camera_depth_parallax)
+    // The exact world-from-view basis of r, filled once per latch by camera_state_from_matrices (camera_world_basis below).
+    // r is not to be edited afterwards; a hand-built state leaves wv_valid 0 and the accessor computes on demand.
+    std::uint32_t wv_valid = 0;                // 32-bit: no padding before the doubles (the state is memcmp'd)
+    double wv[9]{};
 };
+// World-from-view basis: world_k = sum_j wv[k*3+j] (view_j - t_j), wv[k*3+j] = (R^-1)[j][k], adjugate over determinant in
+// double. It stands where the transpose r[k*3+j] used to: the engine's rotation is a 16.16 fixed-point basis, orthonormal
+// only to max|R R^T - I| ~1.2e-5 (run222, 6,001 frames; p99 2.1e-5), so the transpose leaves (R R^T - I) t of false
+// position, 0.4-1 unit at |t| 33 km, re-rolled by every orientation LSB (directional-shadows.md, "Run 62 (run222)").
+// Every site that recovers world space from a latch uses this one basis, so casters, receivers, retained rows and the
+// TAA static rows share one world. No fabs (the mingw build emits x87 for it). False: singular / non-finite r.
+inline bool camera_world_basis_compute(const float r[9], double wv[9]) noexcept {
+    const double a[9] = {r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8]};
+    const double cof[9] = {a[4] * a[8] - a[5] * a[7], a[2] * a[7] - a[1] * a[8], a[1] * a[5] - a[2] * a[4],
+                           a[5] * a[6] - a[3] * a[8], a[0] * a[8] - a[2] * a[6], a[2] * a[3] - a[0] * a[5],
+                           a[3] * a[7] - a[4] * a[6], a[1] * a[6] - a[0] * a[7], a[0] * a[4] - a[1] * a[3]}; // the adjugate: R^-1[i][k] = cof[i*3+k] / det
+    const double det = a[0] * cof[0] + a[1] * cof[3] + a[2] * cof[6];
+    if (!(det > .5 || det < -.5)) return false;
+    const double inv = 1. / det;
+    for (unsigned k = 0; k < 3; ++k) for (unsigned j = 0; j < 3; ++j) wv[k * 3 + j] = cof[j * 3 + k] * inv;
+    return true;
+}
+// The latch's cached basis, or one computed into `scratch` for a hand-built state. A state that passed
+// camera_state_from_matrices (Gram within 1e-3) always inverts. A singular or non-finite hand-built r yields a NaN basis,
+// never the transpose: every consumer's finite check then refuses the product (fail closed).
+inline const double* camera_world_basis(const CameraState& camera, double scratch[9]) noexcept {
+    if (camera.wv_valid) return camera.wv;
+    if (!camera_world_basis_compute(camera.r, scratch)) for (unsigned i = 0; i < 9; ++i) scratch[i] = std::numeric_limits<double>::quiet_NaN();
+    return scratch;
+}
+// The eye in world space, -t R^-1.
+inline void camera_world_position(const CameraState& camera, double out[3]) noexcept {
+    double scratch[9];
+    const double* wv = camera_world_basis(camera, scratch);
+    for (unsigned i = 0; i < 3; ++i) { out[i] = 0; for (unsigned j = 0; j < 3; ++j) out[i] -= double(camera.t[j]) * wv[i * 3 + j]; }
+}
 enum class CameraFailure : std::uint32_t {
     None = 0, NullPointer = 1, NonFinite = 2, ProjectionScale = 3, ProjectionW = 4, Orthonormal = 5, ViewAffine = 6
 };
@@ -60,6 +96,8 @@ inline bool camera_state_from_matrices(const float* projection, const float* vie
     out.m22 = projection[10]; out.m32 = projection[14];
     for (unsigned i = 0; i < 3; ++i) for (unsigned j = 0; j < 3; ++j) out.r[i * 3 + j] = view[i * 4 + j];
     for (unsigned i = 0; i < 3; ++i) out.t[i] = view[12 + i];
+    if (!camera_world_basis_compute(out.r, out.wv)) return fail(CameraFailure::Orthonormal); // unreachable past the Gram check; no state is valid without its basis
+    out.wv_valid = 1u;
     out.valid = true;
     if (why) *why = CameraFailure::None;
     return true;
@@ -79,8 +117,9 @@ inline bool camera_far_plane_previous_ndc(const CameraState& current, const Came
                                           double x, double y, double& px, double& py) noexcept {
     if (!current.valid || !previous.valid) return false;
     const double view[3] = {(x - current.m20) / current.m00, (y - current.m21) / current.m11, 1.};
-    double world[3], prev[3];
-    for (unsigned i = 0; i < 3; ++i) { world[i] = 0; for (unsigned j = 0; j < 3; ++j) world[i] += view[j] * current.r[i * 3 + j]; }
+    double world[3], prev[3], scratch[9];
+    const double* wv = camera_world_basis(current, scratch);
+    for (unsigned i = 0; i < 3; ++i) { world[i] = 0; for (unsigned j = 0; j < 3; ++j) world[i] += view[j] * wv[i * 3 + j]; }
     for (unsigned j = 0; j < 3; ++j) { prev[j] = 0; for (unsigned i = 0; i < 3; ++i) prev[j] += world[i] * previous.r[i * 3 + j]; }
     if (!(prev[2] > 0.)) return false;
     px = prev[0] * previous.m00 / prev[2] + previous.m20;
@@ -97,10 +136,11 @@ inline bool camera_far_plane_reprojection(const CameraState& current, const Came
     // Row-vector chain (x, y, 1) * A * Q * B = (X, Y, W).
     const double A[3][3] = {{1. / current.m00, 0, 0}, {0, 1. / current.m11, 0},
                             {-double(current.m20) / current.m00, -double(current.m21) / current.m11, 1}};
-    double Q[3][3]; // R_current^T * R_previous
+    double Q[3][3], scratch[9]; // R_current^-1 * R_previous (camera_world_basis: identical views give the identity, which the transpose of a 16.16 basis does not)
+    const double* wv = camera_world_basis(current, scratch);
     for (unsigned i = 0; i < 3; ++i) for (unsigned j = 0; j < 3; ++j) {
         Q[i][j] = 0;
-        for (unsigned k = 0; k < 3; ++k) Q[i][j] += double(current.r[k * 3 + i]) * double(previous.r[k * 3 + j]);
+        for (unsigned k = 0; k < 3; ++k) Q[i][j] += wv[k * 3 + i] * double(previous.r[k * 3 + j]);
     }
     const double B[3][3] = {{previous.m00, 0, 0}, {0, previous.m11, 0}, {previous.m20, previous.m21, 1}};
     double AQ[3][3], N[3][3];
@@ -131,22 +171,19 @@ inline bool camera_far_plane_reprojection(const CameraState& current, const Came
 // m00 / m11 / m20 / m21, the same latched projection terms c0..c3 are built from, and no depth law.
 inline bool camera_translation_clip(const CameraState& current, const CameraState& previous, double K[3]) noexcept {
     if (!current.valid || !previous.valid) return false;
-    // The exact inverse of the float R_cur, not its transpose: R^T R - I is ~1e-7 on engine views and |t| reaches 1e6, so the
-    // transpose would leave ~0.1 unit of false translation (0.1 px at view z 600) even between two identical views. With the
-    // inverse, identical views give D = 0 to double rounding.
-    const double a[9] = {current.r[0], current.r[1], current.r[2], current.r[3], current.r[4], current.r[5], current.r[6], current.r[7], current.r[8]};
-    const double cof[9] = {a[4] * a[8] - a[5] * a[7], a[2] * a[7] - a[1] * a[8], a[1] * a[5] - a[2] * a[4],
-                           a[5] * a[6] - a[3] * a[8], a[0] * a[8] - a[2] * a[6], a[2] * a[3] - a[0] * a[5],
-                           a[3] * a[7] - a[4] * a[6], a[1] * a[6] - a[0] * a[7], a[0] * a[4] - a[1] * a[3]};
-    const double det = a[0] * cof[0] + a[1] * cof[3] + a[2] * cof[6];
-    if (!(std::fabs(det) > .5)) return false;
+    // The exact inverse of the float R_cur (camera_world_basis), not its transpose: R^T R - I is ~1.2e-5 on this engine's
+    // 16.16 fixed-point views (run222) and |t| reaches 1e6, so the transpose would leave units of false translation even
+    // between two identical views. With the inverse, identical views give D = 0 to double rounding.
+    double scratch[9];
+    const double* wv = current.wv_valid ? current.wv : camera_world_basis_compute(current.r, scratch) ? scratch : nullptr;
+    if (!wv) return false;
     double D[3];
     for (unsigned j = 0; j < 3; ++j) {
-        double moved = 0; // (t_cur * R_cur^-1 * R_prev)[j]; R^-1[i][k] = cof[i * 3 + k] / det (cof is already the adjugate)
+        double moved = 0; // (t_cur * R_cur^-1 * R_prev)[j]
         for (unsigned k = 0; k < 3; ++k) {
             double world = 0;
-            for (unsigned i = 0; i < 3; ++i) world += double(current.t[i]) * cof[i * 3 + k];
-            moved += world / det * double(previous.r[k * 3 + j]);
+            for (unsigned i = 0; i < 3; ++i) world += double(current.t[i]) * wv[k * 3 + i];
+            moved += world * double(previous.r[k * 3 + j]);
         }
         D[j] = double(previous.t[j]) - moved;
     }

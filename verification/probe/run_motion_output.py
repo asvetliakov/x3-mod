@@ -1626,7 +1626,8 @@ def validate_shadow_replay_poll(name, text, trace, mode, count, sizes, cameras, 
                 worst = max(worst, float(l['agreement_deg']))
             cam = cameras[frame]
             r, t = [float(v) for v in cam['r'].split(',')], [float(v) for v in cam['t'].split(',')]
-            position = [-sum(t[j] * r[i * 3 + j] for j in range(3)) for i in range(3)]
+            wv = depth_replay.world_basis(r)
+            position = [-sum(t[j] * wv[i * 3 + j] for j in range(3)) for i in range(3)]
             ideal = [light[i] - position[i] for i in range(3)]
             norm = math.sqrt(sum(v * v for v in ideal))
             assert abs(float(l['distance']) - norm) < 1e-3 * norm, (name, l, norm)
@@ -2261,15 +2262,26 @@ def validate_shadow_retention(name, text, trace, directory, env):
             # The unit-size casters are smaller than a texel of the 400-unit cascade (3.1 units): there the twin may
             # cover no sample at all, and then the map must not either; cascade 0 (0.0625-unit texels) carries the blobs.
             sub_texel = c > 0 and comparison['covered_cpu'] == 0 and comparison['covered_gpu'] == 0 and comparison['coverage_disagreements'] == 0 and comparison['finite']
-            assert (comparison['ok'] and comparison['covered_cpu'] >= 1) or sub_texel, (name, frame, c, frames[frame]['case'], comparison)
-            comparisons[f'{frame}/{c}'] = {k: comparison[k] for k in ('covered_cpu', 'covered_gpu', 'coverage_disagreements', 'max_depth_error')}
+            # The script's camera is the engine's 16.16 basis, stepping every frame (run222): a blob's edges no longer sit on the
+            # snapped grid, so the covered COUNT of a 40-texel blob may differ by its edge texels (those within 1/16 px of an
+            # edge, `ambiguous`). Alignment is carried by the other terms: no disagreement on any clear texel and the depth.
+            edges_only = (comparison['compared'] >= 1 and comparison['coverage_disagreements'] == 0 and comparison['finite'] and comparison['max_depth_error'] <= comparison['tolerance']
+                          and abs(comparison['covered_cpu'] - comparison['covered_gpu']) <= comparison['ambiguous'])
+            assert ((comparison['ok'] or edges_only) and comparison['covered_cpu'] >= 1) or sub_texel, (name, frame, c, frames[frame]['case'], comparison)
+            comparisons[f'{frame}/{c}'] = dict({k: comparison[k] for k in ('covered_cpu', 'covered_gpu', 'coverage_disagreements', 'max_depth_error', 'ambiguous')},
+                                               edges_only=bool(not comparison['ok'] and edges_only))
     assert len(compared) >= 30 and (retained_frames >= 20) == (mode == 2), (name, len(compared), retained_frames)
     colors = [l for l in lines if l.startswith('COLOR ')]
     assert len(colors) == len(frames), (name, len(colors))
     case.update(checks=checks + len(passed) + 3 * len(compared) + 8, compared_frames=len(compared), retained_compared_frames=retained_frames, absent_maps=absent,
                 color_sha256=hashlib.sha256('\n'.join(colors).encode()).hexdigest(),
                 map={'max_depth_error': max((v['max_depth_error'] for v in comparisons.values()), default=0.0), 'covered_texels': sum(v['covered_gpu'] for v in comparisons.values()),
-                     'coverage_disagreements': sum(v['coverage_disagreements'] for v in comparisons.values()), 'maps': len(comparisons)},
+                     'coverage_disagreements': sum(v['coverage_disagreements'] for v in comparisons.values()), 'maps': len(comparisons),
+                     # The relaxed count rule (edges_only above): how many maps needed it, their ambiguous texels and worst count difference.
+                     'edges_only_maps': sum(v['edges_only'] for v in comparisons.values()),
+                     'edges_only_ambiguous_texels': sum(v['ambiguous'] for v in comparisons.values() if v['edges_only']),
+                     'edges_only_max_count_difference': max((abs(v['covered_cpu'] - v['covered_gpu']) for v in comparisons.values() if v['edges_only']), default=0),
+                     'ambiguous_texels': sum(v['ambiguous'] for v in comparisons.values())},
                 us=depth_replay.us_summary(depth_rows))
     issue_rows = [r for r in depth_rows if r['replayed'] and sum(r['cascades']['draws']) >= 1000]
     case['us']['bulk'] = {'frames': len(issue_rows), 'issues_median': sorted(sum(r['cascades']['draws']) for r in issue_rows)[len(issue_rows) // 2] if issue_rows else 0,

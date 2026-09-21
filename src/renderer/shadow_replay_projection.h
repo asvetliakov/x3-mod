@@ -98,10 +98,12 @@ inline bool shadow_replay_basis(const CameraState& camera, const float sun[4], c
     for (double& v : right) v /= rn;
     const double up[3] = {f[1] * right[2] - f[2] * right[1], f[2] * right[0] - f[0] * right[2], f[0] * right[1] - f[1] * right[0]};
     // Camera position and forward in world space (camera_reprojection.h convention).
-    double position[3], forward[3];
+    // Both through the latch's exact world-from-view basis (camera_world_basis), as every other recovery site.
+    double position[3], forward[3], scratch[9];
+    const double* wv = camera_world_basis(camera, scratch);
     for (unsigned i = 0; i < 3; ++i) {
-        position[i] = 0; forward[i] = double(camera.r[i * 3 + 2]);
-        for (unsigned j = 0; j < 3; ++j) position[i] -= double(camera.t[j]) * double(camera.r[i * 3 + j]);
+        position[i] = 0; forward[i] = wv[i * 3 + 2];
+        for (unsigned j = 0; j < 3; ++j) position[i] -= double(camera.t[j]) * wv[i * 3 + j];
     }
     double center[3];
     for (unsigned i = 0; i < 3; ++i) center[i] = position[i] + forward[i] * double(cascade.forward_offset);
@@ -120,7 +122,7 @@ inline bool shadow_replay_basis(const CameraState& camera, const float sun[4], c
     return true;
 }
 // The per-draw light matrix: clip = rows . pos; p_view = (clip.x / m00,
-// clip.y / m11, clip.w); world = (p_view - t) R^T; sun-space NDC x, y in
+// clip.y / m11, clip.w); world = (p_view - t) R^-1 (camera_world_basis); sun-space NDC x, y in
 // [-1, 1] over the half-extent, z in [0, 1] over [-depth_toward_light, +depth_behind].
 inline bool shadow_replay_light_rows(const CameraState& camera, const float rows[16], const ShadowReplayBasis& basis,
                                      const ShadowReplayCascade& cascade, float out[16]) noexcept {
@@ -130,10 +132,11 @@ inline bool shadow_replay_light_rows(const CameraState& camera, const float rows
     double A[4][4] = {};
     for (unsigned k = 0; k < 4; ++k) { A[0][k] = double(rows[k]) / camera.m00; A[1][k] = double(rows[4 + k]) / camera.m11; A[2][k] = double(rows[12 + k]); }
     A[3][3] = 1;
-    // W: view -> world, w_i = sum_j (v_j - t_j) r[i*3+j].
-    double W[4][4] = {};
+    // W: view -> world, w_i = sum_j (v_j - t_j) wv[i*3+j].
+    double W[4][4] = {}, scratch[9];
+    const double* wv = camera_world_basis(camera, scratch);
     for (unsigned i = 0; i < 3; ++i) {
-        for (unsigned j = 0; j < 3; ++j) { W[i][j] = double(camera.r[i * 3 + j]); W[i][3] -= double(camera.t[j]) * double(camera.r[i * 3 + j]); }
+        for (unsigned j = 0; j < 3; ++j) { W[i][j] = wv[i * 3 + j]; W[i][3] -= double(camera.t[j]) * wv[i * 3 + j]; }
     }
     W[3][3] = 1;
     // S: world -> sun-space NDC.
@@ -165,9 +168,10 @@ inline bool shadow_replay_light_rows(const CameraState& camera, const float rows
 inline bool shadow_replay_view_rows(const CameraState& camera, const ShadowReplayBasis& basis, const ShadowReplayCascade& cascade,
                                     float out[12]) noexcept {
     if (!camera.valid || !basis.valid || !out) return false;
-    double W[3][4] = {};
+    double W[3][4] = {}, scratch[9];
+    const double* wv = camera_world_basis(camera, scratch);
     for (unsigned i = 0; i < 3; ++i) {
-        for (unsigned j = 0; j < 3; ++j) { W[i][j] = double(camera.r[i * 3 + j]); W[i][3] -= double(camera.t[j]) * double(camera.r[i * 3 + j]); }
+        for (unsigned j = 0; j < 3; ++j) { W[i][j] = wv[i * 3 + j]; W[i][3] -= double(camera.t[j]) * wv[i * 3 + j]; }
     }
     const double E = double(cascade.half_extent), L = double(cascade.depth_toward_light), R = cascade.depth_range();
     if (!(E > 0.) || !(L > 0.) || !(R > L)) return false;
@@ -583,8 +587,9 @@ inline bool shadow_cascade_bounds_suns(const CameraState& camera, const float* s
     out = ShadowCascadeBounds{};
     if (!suns || !set.count || set.count > shadow_cascade_max) return false;
     for (unsigned c = 1; c < set.count; ++c) for (unsigned i = 0; i < 3; ++i) if (suns[c * 4 + i] != suns[i]) out.shared = false;
-    double position[3];
-    for (unsigned i = 0; i < 3; ++i) { position[i] = 0; for (unsigned j = 0; j < 3; ++j) position[i] -= double(camera.t[j]) * double(camera.r[i * 3 + j]); }
+    double position[3], scratch[9];
+    const double* wv = camera_world_basis(camera, scratch);
+    for (unsigned i = 0; i < 3; ++i) { position[i] = 0; for (unsigned j = 0; j < 3; ++j) position[i] -= double(camera.t[j]) * wv[i * 3 + j]; }
     for (unsigned c = 0; c < set.count; ++c) {
         if (c && !shadow_cascade_active(set, c)) { // dropped by the ladder: an empty box (in world units: no extent spans it), no bit for any draw
             for (unsigned a = 0; a < 3; ++a) { out.lo[c][a] = 3.4028235e38f; out.hi[c][a] = -3.4028235e38f; }
@@ -594,9 +599,9 @@ inline bool shadow_cascade_bounds_suns(const CameraState& camera, const float* s
         if (!shadow_replay_basis(camera, suns + c * 4, set.cascades[c], basis, anchors ? anchors + c * 3 : nullptr)) return false;
         const auto& axes = basis.axes;
         for (unsigned a = 0; a < 3; ++a) {
-            if (!c || !out.shared) for (unsigned j = 0; j < 3; ++j) { // sun_rel[a] = sum_j (sum_k axes[a][k] r[k*3+j]) view_j
+            if (!c || !out.shared) for (unsigned j = 0; j < 3; ++j) { // sun_rel[a] = sum_j (sum_k axes[a][k] wv[k*3+j]) view_j
                 double m = 0;
-                for (unsigned k = 0; k < 3; ++k) m += axes[a][k] * double(camera.r[k * 3 + j]);
+                for (unsigned k = 0; k < 3; ++k) m += axes[a][k] * wv[k * 3 + j];
                 if (!c) out.rows[a * 3 + j] = float(m);
                 out.cascade_rows[c][a * 3 + j] = float(m);
             }
@@ -708,12 +713,13 @@ inline bool shadow_replay_axes_equal(const ShadowReplayBasis& a, const ShadowRep
 inline bool shadow_cascade_draw_rows(const CameraState& camera, const float rows[16], const ShadowReplayBasis& basis, double base[3][4]) noexcept {
     if (!camera.valid || !basis.valid || !rows || !base) return false;
     for (unsigned i = 0; i < 16; ++i) if (!std::isfinite(rows[i])) return false;
-    double WA[3][4];
+    double WA[3][4], scratch[9];
+    const double* wv = camera_world_basis(camera, scratch);
     for (unsigned i = 0; i < 3; ++i) for (unsigned k = 0; k < 4; ++k) {
-        // world_i = sum_j (view_j - t_j) r[i*3+j], view = (clip.x / m00, clip.y / m11, clip.w)
+        // world_i = sum_j (view_j - t_j) wv[i*3+j], view = (clip.x / m00, clip.y / m11, clip.w)
         const double vx = double(rows[k]) / camera.m00, vy = double(rows[4 + k]) / camera.m11, vz = double(rows[12 + k]);
-        double m = vx * double(camera.r[i * 3]) + vy * double(camera.r[i * 3 + 1]) + vz * double(camera.r[i * 3 + 2]);
-        if (k == 3) for (unsigned j = 0; j < 3; ++j) m -= double(camera.t[j]) * double(camera.r[i * 3 + j]);
+        double m = vx * wv[i * 3] + vy * wv[i * 3 + 1] + vz * wv[i * 3 + 2];
+        if (k == 3) for (unsigned j = 0; j < 3; ++j) m -= double(camera.t[j]) * wv[i * 3 + j];
         WA[i][k] = m;
     }
     const auto& axes = basis.axes;

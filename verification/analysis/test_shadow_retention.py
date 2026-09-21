@@ -11,7 +11,11 @@
   per-frame cascade mask against the current boxes, nearest-first under a cap,
   the deferred epoch flush, the excluded classes, abandoned sightings, the
   index map against std::map, and the precision twin: rows recovered from two
-  unrelated cameras 81,000 units from the origin agree within eps;
+  unrelated cameras 81,000 units from the origin agree within eps; the engine's
+  camera (run222): a 16.16-quantised, non-renormalised rotation stepping at least
+  one LSB every frame 33 km and 81 km out keeps the recovered placement within
+  eps, promotes on sighting 9, holds the node for 600 unseen frames, and the
+  retained rows stay within a cascade-0 texel of the live ones;
 * tools/analysis/shadow_retention.py: the frame and resight line parsers, their
   identities and the census summary;
 * verification/probe/shadow_replay_depth.py: the replayed_live / replayed_retained tail;
@@ -47,11 +51,13 @@ static int failures = 0;
 #define CHECK(x) do { if (!(x)) { std::printf("FAIL %d %s\n", __LINE__, #x); ++failures; } } while (0)
 static const float sun[4] = {0.30151134f, 0.90453403f, -0.30151134f, 0.f};
 struct Pose { double yaw, pitch, pos[3]; };
+static bool quantised = false; // the engine's basis: every rotation element rounded to 16.16, not renormalised (run222)
 static renderer::CameraState camera(const Pose& p) {
     renderer::CameraState c{}; c.valid = true; c.m00 = .8f; c.m11 = 4.f / 3.f;
     const double cy = std::cos(p.yaw), sy = std::sin(p.yaw), cp = std::cos(p.pitch), sp = std::sin(p.pitch);
     const double right[3] = {cy, 0, -sy}, forward[3] = {sy * cp, -sp, cy * cp}, up[3] = {sy * sp, cp, cy * sp};
     for (unsigned i = 0; i < 3; ++i) { c.r[i * 3] = float(right[i]); c.r[i * 3 + 1] = float(up[i]); c.r[i * 3 + 2] = float(forward[i]); }
+    if (quantised) for (float& v : c.r) v = float(std::nearbyint(double(v) * 65536.) / 65536.);
     for (unsigned j = 0; j < 3; ++j) { double t = 0; for (unsigned i = 0; i < 3; ++i) t -= double(c.r[i * 3 + j]) * p.pos[i]; c.t[j] = float(t); }
     return c;
 }
@@ -294,6 +300,59 @@ int main() {
         }
         std::printf("PRECISION worst=%.6f eps=%.6f\n", worst, sr::eps_default);
         CHECK(worst <= sr::eps_default);
+    }
+    for (const double reach : {33000., 81000.}) { // the engine's camera: a 16.16 basis turning >= 1 LSB every frame, far from the origin (run222)
+        quantised = true;
+        const double s = reach / std::sqrt(3.), texel = 2. * 250. / 640.;
+        Rig r; r.pose = {.4, -.2, {s, s, s}}; place(w, s + 20, s, s + 60);
+        const float lo[3] = {-10, -10, -10}, hi[3] = {10, 10, 10};
+        double previous[12], now[12], drift = 0, shift = 0, gram = 0; unsigned steps = 0; float last_r[9]{};
+        const auto turn = [&]() { r.pose.yaw += 4.1e-5; r.pose.pitch += 2.3e-5; r.pose.pos[0] += .3; r.pose.pos[2] += .2; };
+        const auto observe = [&](bool first) { // what world_rows recovers from this frame's latch, against the frame before
+            const auto c = camera(r.pose); float rows[16]; clip_rows(c, w, rows); CHECK(sr::world_rows(c, rows, now));
+            if (!first) { const double d = renderer::sqrt_sd(sr::drift2(previous, now, lo, hi)); if (d > drift) drift = d; }
+            bool stepped = false; for (unsigned i = 0; i < 9; ++i) { if (c.r[i] != last_r[i]) stepped = true; last_r[i] = c.r[i]; }
+            steps += stepped;
+            for (unsigned i = 0; i < 3; ++i) for (unsigned j = 0; j < 3; ++j) { double g = i == j ? -1. : 0.; for (unsigned k = 0; k < 3; ++k) g += double(c.r[i * 3 + k]) * double(c.r[j * 3 + k]); if (g < 0) g = -g; if (g > gram) gram = g; }
+            std::memcpy(previous, now, sizeof now);
+        };
+        bool early = false; unsigned promoted = 0;
+        for (unsigned i = 0; i < 9; ++i) {
+            observe(i == 0); r.draw(40, w); r.end();
+            if (i < 8 && r.store->nodes[r.store->find_node(40)].is_static) early = true;
+            promoted += unsigned(r.next().promoted); turn();
+        }
+        const std::uint16_t index = r.store->find_node(40);
+        CHECK(!early && promoted == 1 && index != sr::none && r.store->nodes[index].is_static); // static from its ninth sighting
+        // Unseen for 600 frames while the camera keeps turning and flying: held, issued to cascade 0 or 1, and its retained
+        // rows land where the live product of the same frame's latch would (the all-sites requirement: one shared world).
+        unsigned held = 0, issued = 0;
+        for (unsigned i = 0; i < 600; ++i) {
+            if (i == 0) r.pose.yaw += 2.5; // turned away
+            observe(false); r.end();
+            const std::uint16_t at = r.store->find_node(40);
+            if (at != sr::none && r.store->nodes[at].is_static) {
+                ++held; issued += r.store->admitted_count == 1;
+                const auto c = camera(r.pose); renderer::ShadowReplayBasis basis;
+                float rows[16]; clip_rows(c, w, rows); double live[3][4], kept[3][4];
+                CHECK(renderer::shadow_replay_basis(c, sun, r.set.cascades[0], basis) && renderer::shadow_cascade_draw_rows(c, rows, basis, live));
+                sr::sun_rows(r.store->draws[r.store->nodes[at].head].world, basis, kept);
+                for (unsigned corner = 0; corner < 8; ++corner) for (unsigned a = 0; a < 2; ++a) {
+                    double d = live[a][3] - kept[a][3];
+                    for (unsigned k = 0; k < 3; ++k) d += (live[a][k] - kept[a][k]) * double((corner >> k & 1) ? hi[k] : lo[k]);
+                    if (d < 0) d = -d;
+                    if (d / texel > shift) shift = d / texel;
+                }
+            }
+            const auto f = r.next(); CHECK(f.reclassified == 0 && f.moving_dropped == 0 && f.box_exit == 0);
+            turn();
+        }
+        std::printf("QUANTISED reach=%.0f steps=%u/609 gram=%.3g drift=%.6f eps=%.6f promoted=%u early=%d held=%u issued=%u shift_texels=%.6f\n", reach, steps, gram, drift, sr::eps_default, promoted, int(early), held, issued, shift);
+        CHECK(steps == 609 && gram > 2e-6);  // the fixture's premise: every frame another basis, not orthonormal
+        CHECK(drift <= sr::eps_default);
+        CHECK(held == 600 && issued == 600);
+        CHECK(shift <= .25); // a quarter texel: with only world_rows on the exact inverse (the other sites on the transpose) this reads 1.03 / 2.54
+        quantised = false;
     }
     { // the index map against std::map
         auto map = std::make_unique<sr::IndexMap<1024>>(); std::map<std::uint64_t, std::uint16_t> model; std::vector<std::uint64_t> keys(1024, 0);

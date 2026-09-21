@@ -465,6 +465,9 @@ struct Fixture {
     bool camera = false; unsigned sentinel = 0;
     x3m::renderer::CameraState camera_current, camera_history;
     bool camera_scripted = false; double camera_yaw = 0, camera_position[3] = {0, 0, 0}; // shadowretention: the script's own camera
+    // shadowretention: the engine's view (run222). The rotation is rounded to 16.16 and not renormalised, and the yaw wobbles
+    // 0.002 degree (2.3 LSB) a frame over eight frames, so no two consecutive latches share a basis, settling frames included.
+    bool camera_quantised = false;
     x3m::renderer::SentinelDecision decision;
     bool resolve_expected = true; // false on frames the route cannot resolve (environment map, strict mode without a camera)
     bool scene_rejected = false;  // the selector rejected this frame before its scene draws: the route neither routes nor jitters them
@@ -761,8 +764,9 @@ struct Fixture {
     // Written before the depth-only Clear, where the route reads it.
     void set_camera(unsigned long long f) {
         if (!camera) { camera_current = {}; return; }
-        camera_current = fake_camera_pose(camera_scripted ? camera_yaw : double(f) + (f >= 7 ? 30. : 0.));
+        camera_current = fake_camera_pose(camera_scripted ? camera_yaw + (camera_quantised ? .002 * double(f % 8) : 0.) : double(f) + (f >= 7 ? 30. : 0.));
         if (camera_scripted) {
+            if (camera_quantised) for (unsigned i = 0; i < 3; ++i) for (unsigned j = 0; j < 3; ++j) fake_view[i * 4 + j] = float(std::nearbyint(double(fake_view[i * 4 + j]) * 65536.) / 65536.);
             // The retention script places the camera itself: a yaw and a world position (the view translation is -position . basis).
             for (unsigned j = 0; j < 3; ++j) { float t = 0; for (unsigned i = 0; i < 3; ++i) t -= fake_view[i * 4 + j] * float(camera_position[i]); fake_view[12 + j] = t; }
             x3m::renderer::camera_state_from_matrices(fake_projection, fake_view, camera_current);

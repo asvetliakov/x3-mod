@@ -7676,7 +7676,9 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
             double origin[3] = {0, 0, 0};
             if (camera_scene_.valid && camera_scene_.m00 > 0.f && camera_scene_.m11 > 0.f) {
                 const double view[3] = {double(g.rows[3]) / camera_scene_.m00, double(g.rows[7]) / camera_scene_.m11, double(g.rows[15])};
-                for (unsigned k = 0; k < 3; ++k) for (unsigned j = 0; j < 3; ++j) origin[k] += (view[j] - double(camera_scene_.t[j])) * double(camera_scene_.r[k * 3 + j]);
+                double scratch[9];
+                const double* wv = renderer::camera_world_basis(camera_scene_, scratch);
+                for (unsigned k = 0; k < 3; ++k) for (unsigned j = 0; j < 3; ++j) origin[k] += (view[j] - double(camera_scene_.t[j])) * wv[k * 3 + j];
             }
             log("shadow_replay_caster device=%llu frame=%llu record=%u vb=%llu cascades=%u verdict=%s leased=%u quiet=%u sun_register=%d sun_agrees=%u sun=%.9g,%.9g,%.9g primitives=%u origin=%.9g,%.9g,%.9g%s",
                 id_, frame_, i, static_cast<unsigned long long>(r.vb), unsigned(r.cascades), shadow_replay::verdict_source_name(r.verdict), unsigned(g.leased), unsigned(quiet_records[i]),

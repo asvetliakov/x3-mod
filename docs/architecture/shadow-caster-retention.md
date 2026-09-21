@@ -144,6 +144,21 @@ of C0 at 1024² (0.49), 0.002 of the 25,000 cascade (≈ 12 units), and well bel
 `eps = 0.05` separates static from moving with margin in the model; the census replaces the
 model with the real drift histogram before `eps` is fixed.
 
+**Correction (run222, 2026-09-22).** The model above used orthonormal cameras and so missed the
+dominant term. The engine's view rotation is a 16.16 fixed-point basis, orthonormal only to
+`max|R·Rᵀ − I|` median 1.24e-5 (p99 2.1e-5). Recovering world space with the transpose leaves
+`(R·Rᵀ − I)·t`: 0.4–1.06 units at |t| 32–37 km, proportional to the eye's distance from the
+sector origin and re-rolled by every orientation LSB, i.e. 8–20 × `eps`, which classed every
+caster `moving` unless the camera was bit-frozen. The recovery therefore uses the exact inverse
+of the latched rotation (`renderer::camera_world_basis`, adjugate over determinant in double,
+once per latch), at every site that recovers world space, so live casters, retained rows, box
+centres and receivers share one world. With it the float32 model above holds again: host case
+with a quantised, stepping basis gives 0.0025 u (33 km) and 0.0065 u (81 km) per frame, and
+run222's own records collapse to ≤ 0.025 u. The TAA projection jitter does not enter: the
+recovery reads the application's unjittered clip rows (`shadow_.rows`; the DLL jitters a
+per-draw copy) and the latch's `m20`/`m21` are the engine's, never the jitter. Ledger:
+`docs/verification/directional-shadows.md`, "Run 62 (run222)" and "Run 62 fix".
+
 ## Contract
 
 **Store.** Fixed storage allocated at attach, no allocation afterwards: 1,024 nodes

@@ -1316,8 +1316,8 @@ CAMERA_FRAME label=yaw-builder frame=24 shift_px=0.029,-0.047 baseline_px=-0.032
 CAMERA_FRAME label=yaw-builder frame=32 shift_px=0.041,-0.040 baseline_px=-0.024,-0.041 drift_px=0.0641 error=0.00644 used=1 policy=2
 CAMERA_FRAME label=yaw-builder frame=40 shift_px=0.032,-0.040 baseline_px=-0.033,-0.040 drift_px=0.0649 error=0.00641 used=1 policy=2
 CAMERA label=yaw-builder frames=48 from=16 drift_px=0.0662 error=0.00881 baseline=1
-SAMPLE camera yaw: resolved background tracks the current render (drift px against the static control) actual=0.066206328 expected=0.000000000 tolerance=0.200000000 PASS
-SAMPLE camera yaw: mean absolute error against the unjittered render actual=0.008808136 expected=0.000000000 tolerance=0.030000000 PASS
+SAMPLE camera yaw: resolved background tracks the current render (drift px against the static control) actual=0.066206607 expected=0.000000000 tolerance=0.200000000 PASS
+SAMPLE camera yaw: mean absolute error against the unjittered render actual=0.008808746 expected=0.000000000 tolerance=0.030000000 PASS
 CHECK camera pose validates PASS
 CHECK camera sequence keeps a history PASS
 CHECK camera pose validates PASS
@@ -1522,7 +1522,7 @@ CAMERA_FRAME label=yaw-builder-unjittered frame=24 shift_px=0.061,0.000 baseline
 CAMERA_FRAME label=yaw-builder-unjittered frame=32 shift_px=0.064,0.000 baseline_px=0.000,0.000 drift_px=0.0636 error=0.00595 used=1 policy=2
 CAMERA_FRAME label=yaw-builder-unjittered frame=40 shift_px=0.066,0.000 baseline_px=0.000,0.000 drift_px=0.0658 error=0.00617 used=1 policy=2
 CAMERA label=yaw-builder-unjittered frames=48 from=16 drift_px=0.0664 error=0.00618 baseline=0
-SAMPLE camera yaw unjittered: drift px against the unjittered render actual=0.066356895 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE camera yaw unjittered: drift px against the unjittered render actual=0.066355822 expected=0.000000000 tolerance=0.100000000 PASS
 CHECK camera pose validates PASS
 CHECK camera sequence keeps a history PASS
 CHECK camera pose validates PASS
@@ -1620,11 +1620,11 @@ CHECK camera sequence keeps a history PASS
 CHECK camera pose validates PASS
 CHECK camera sequence keeps a history PASS
 CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=16 shift_px=-0.022,-0.000 baseline_px=0.000,0.000 drift_px=0.0218 error=0.00707 used=1 policy=2
-CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=24 shift_px=-0.027,-0.000 baseline_px=0.000,0.000 drift_px=0.0267 error=0.00784 used=1 policy=2
-CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=32 shift_px=-0.030,-0.000 baseline_px=0.000,0.000 drift_px=0.0295 error=0.00789 used=1 policy=2
-CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=40 shift_px=-0.030,-0.000 baseline_px=0.000,0.000 drift_px=0.0300 error=0.00793 used=1 policy=2
-CAMERA label=narrow-yaw-builder-unjittered frames=48 from=16 drift_px=0.0301 error=0.00885 baseline=0
-SAMPLE camera narrow yaw unjittered: drift px against the unjittered render actual=0.030126602 expected=0.000000000 tolerance=0.050000000 PASS
+CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=24 shift_px=-0.027,-0.000 baseline_px=0.000,0.000 drift_px=0.0267 error=0.00783 used=1 policy=2
+CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=32 shift_px=-0.030,-0.000 baseline_px=0.000,0.000 drift_px=0.0296 error=0.00789 used=1 policy=2
+CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=40 shift_px=-0.030,-0.000 baseline_px=0.000,0.000 drift_px=0.0301 error=0.00793 used=1 policy=2
+CAMERA label=narrow-yaw-builder-unjittered frames=48 from=16 drift_px=0.0302 error=0.00885 baseline=0
+SAMPLE camera narrow yaw unjittered: drift px against the unjittered render actual=0.030219002 expected=0.000000000 tolerance=0.050000000 PASS
 CHECK camera pose validates PASS
 CHECK camera sequence keeps a history PASS
 CHECK camera pose validates PASS
@@ -3833,8 +3833,8 @@ CAMERA_FRAME label=yaw-builder frame=24 shift_px=0.029,-0.047 baseline_px=-0.032
 CAMERA_FRAME label=yaw-builder frame=32 shift_px=0.041,-0.040 baseline_px=-0.024,-0.041 drift_px=0.0641 error=0.00644 used=1 policy=2
 CAMERA_FRAME label=yaw-builder frame=40 shift_px=0.032,-0.040 baseline_px=-0.033,-0.040 drift_px=0.0649 error=0.00641 used=1 policy=2
 CAMERA label=yaw-builder frames=48 from=16 drift_px=0.0662 error=0.00881 baseline=1
-SAMPLE camera yaw: resolved background tracks the current render (drift px against the static control) actual=0.066206328 expected=0.000000000 tolerance=0.200000000 PASS
-SAMPLE camera yaw: mean absolute error against the unjittered render actual=0.008808136 expected=0.000000000 tolerance=0.030000000 PASS
+SAMPLE camera yaw: resolved background tracks the current render (drift px against the static control) actual=0.066206607 expected=0.000000000 tolerance=0.200000000 PASS
+SAMPLE camera yaw: mean absolute error against the unjittered render actual=0.008808746 expected=0.000000000 tolerance=0.030000000 PASS
 CHECK camera pose validates PASS
 CHECK camera sequence keeps a history PASS
 CHECK camera pose validates PASS
@@ -4039,7 +4039,7 @@ CAMERA_FRAME label=yaw-builder-unjittered frame=24 shift_px=0.061,0.000 baseline
 CAMERA_FRAME label=yaw-builder-unjittered frame=32 shift_px=0.064,0.000 baseline_px=0.000,0.000 drift_px=0.0636 error=0.00595 used=1 policy=2
 CAMERA_FRAME label=yaw-builder-unjittered frame=40 shift_px=0.066,0.000 baseline_px=0.000,0.000 drift_px=0.0658 error=0.00617 used=1 policy=2
 CAMERA label=yaw-builder-unjittered frames=48 from=16 drift_px=0.0664 error=0.00618 baseline=0
-SAMPLE camera yaw unjittered: drift px against the unjittered render actual=0.066356895 expected=0.000000000 tolerance=0.100000000 PASS
+SAMPLE camera yaw unjittered: drift px against the unjittered render actual=0.066355822 expected=0.000000000 tolerance=0.100000000 PASS
 CHECK camera pose validates PASS
 CHECK camera sequence keeps a history PASS
 CHECK camera pose validates PASS
@@ -4137,11 +4137,11 @@ CHECK camera sequence keeps a history PASS
 CHECK camera pose validates PASS
 CHECK camera sequence keeps a history PASS
 CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=16 shift_px=-0.022,-0.000 baseline_px=0.000,0.000 drift_px=0.0218 error=0.00707 used=1 policy=2
-CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=24 shift_px=-0.027,-0.000 baseline_px=0.000,0.000 drift_px=0.0267 error=0.00784 used=1 policy=2
-CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=32 shift_px=-0.030,-0.000 baseline_px=0.000,0.000 drift_px=0.0295 error=0.00789 used=1 policy=2
-CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=40 shift_px=-0.030,-0.000 baseline_px=0.000,0.000 drift_px=0.0300 error=0.00793 used=1 policy=2
-CAMERA label=narrow-yaw-builder-unjittered frames=48 from=16 drift_px=0.0301 error=0.00885 baseline=0
-SAMPLE camera narrow yaw unjittered: drift px against the unjittered render actual=0.030126602 expected=0.000000000 tolerance=0.050000000 PASS
+CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=24 shift_px=-0.027,-0.000 baseline_px=0.000,0.000 drift_px=0.0267 error=0.00783 used=1 policy=2
+CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=32 shift_px=-0.030,-0.000 baseline_px=0.000,0.000 drift_px=0.0296 error=0.00789 used=1 policy=2
+CAMERA_FRAME label=narrow-yaw-builder-unjittered frame=40 shift_px=-0.030,-0.000 baseline_px=0.000,0.000 drift_px=0.0301 error=0.00793 used=1 policy=2
+CAMERA label=narrow-yaw-builder-unjittered frames=48 from=16 drift_px=0.0302 error=0.00885 baseline=0
+SAMPLE camera narrow yaw unjittered: drift px against the unjittered render actual=0.030219002 expected=0.000000000 tolerance=0.050000000 PASS
 CHECK camera pose validates PASS
 CHECK camera sequence keeps a history PASS
 CHECK camera pose validates PASS

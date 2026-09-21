@@ -70,14 +70,15 @@ inline bool static_previous_rows(const CameraState& current, const CameraState& 
     for (unsigned k = 0; k < 3; ++k)
         if (static_rows_detail::magnitude(double(rows[8 + k]) - a * double(rows[12 + k])) > 1e-4 * (static_rows_detail::magnitude(a) + 1.) * scale) return false;
     const double b = double(rows[11]) - a * double(rows[15]);
-    double result[16];
+    double result[16], scratch[9];
+    const double* wv = camera_world_basis(current, scratch); // the exact inverse: the transpose shifts a static row by (R R^T - I) t (run222)
     for (unsigned k = 0; k < 4; ++k) {
         const double vz = double(rows[12 + k]);
         double view[3] = {(double(rows[k]) - double(current.m20) * vz) / double(current.m00),
                           (double(rows[4 + k]) - double(current.m21) * vz) / double(current.m11), vz};
         if (k == 3) for (unsigned j = 0; j < 3; ++j) view[j] -= double(current.t[j]);
         double world[3], prev[3];
-        for (unsigned i = 0; i < 3; ++i) { world[i] = 0; for (unsigned j = 0; j < 3; ++j) world[i] += view[j] * double(current.r[i * 3 + j]); }
+        for (unsigned i = 0; i < 3; ++i) { world[i] = 0; for (unsigned j = 0; j < 3; ++j) world[i] += view[j] * wv[i * 3 + j]; }
         for (unsigned j = 0; j < 3; ++j) { prev[j] = k == 3 ? double(previous.t[j]) : 0.; for (unsigned i = 0; i < 3; ++i) prev[j] += world[i] * double(previous.r[i * 3 + j]); }
         result[k] = double(previous.m00) * prev[0] + double(previous.m20) * prev[2];
         result[4 + k] = double(previous.m11) * prev[1] + double(previous.m21) * prev[2];

@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "verification/probe/build/motion_output_fixture.exe": "c3f216f7548f5eac7edbbfbbe2031942b672f87e9c9dc67ba4f902f6733ea8b9",
-  "verification/probe/build/motion-output-seam/d3d9.dll": "4317ef4effcf8d11782bf9a1868e6182f08297cdb1c2b29fec06518757571c4f",
-  "build/d3d9.dll": "6eab4003b4c6a89f46d1b2bf41c91ae015714a774119215f225286a7230fd496"
+  "verification/probe/build/motion_output_fixture.exe": "a0112941b84080d03bf4fd4d9f5b28c8856061fedf01b5ff6780a4e74259b676",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "c128887b2bc651f520a653a68760e9fc78db9722a3d948fbb5b52f627bd409d3",
+  "build/d3d9.dll": "185eae6ff34b0e1a6447bb6f1766aada0141ce47c5926baeb535837e855cfc86"
  },
  "mode": "off",
  "frames": 1535,
@@ -41,27 +41,31 @@
  "absent_maps": 0,
  "color_sha256": "4b6e674803dc98b783ef13a1abac7d48aaeb979a2209e2e0b62822e487b4c237",
  "map": {
-  "max_depth_error": 1.6996652858480843e-06,
-  "covered_texels": 820,
+  "max_depth_error": 1.8642249843825454e-06,
+  "covered_texels": 832,
   "coverage_disagreements": 0,
-  "maps": 78
+  "maps": 78,
+  "edges_only_maps": 0,
+  "edges_only_ambiguous_texels": 0,
+  "edges_only_max_count_difference": 0,
+  "ambiguous_texels": 283
  },
  "us": {
   "frames": 1527,
-  "min": 19.1,
-  "median": 24.4,
-  "max": 1983.5,
+  "min": 19.3,
+  "median": 24.9,
+  "max": 1891.3,
   "bulk": {
    "frames": 5,
    "issues_median": 1450,
-   "us_median": 1681.3
+   "us_median": 1569.8
   }
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-ownership-shadow-retention-off-20260918-021508-229867",
- "trace_sha256": "49790cfcb2ce6a638d87eab11a0ce3f23391c06ee83e445d18e4478466770010",
- "dll_sha256": "4317ef4effcf8d11782bf9a1868e6182f08297cdb1c2b29fec06518757571c4f",
- "exe_sha256": "c3f216f7548f5eac7edbbfbbe2031942b672f87e9c9dc67ba4f902f6733ea8b9",
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-retention-off-20260922-031121-621852",
+ "trace_sha256": "24ad1d337e9d0f687cbd798475a68b10e50c5d4f868e14540e312ab3a78f89a6",
+ "dll_sha256": "c128887b2bc651f520a653a68760e9fc78db9722a3d948fbb5b52f627bd409d3",
+ "exe_sha256": "a0112941b84080d03bf4fd4d9f5b28c8856061fedf01b5ff6780a4e74259b676",
  "presented_identical_to": [
   "seam-ownership-shadow-retention-live",
   "seam-ownership-shadow-retention-census"

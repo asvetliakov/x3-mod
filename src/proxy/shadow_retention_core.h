@@ -211,15 +211,18 @@ struct FrameInput {
 };
 
 // Object -> world rows (W . A) of a draw: clip = rows . pos; view = (clip.x / m00,
-// clip.y / m11, clip.w); world_i = sum_j (view_j - t_j) r[i*3+j]. Double from the
-// float latch, the product shadow_cascade_draw_rows folds into the sun axes.
+// clip.y / m11, clip.w); world_i = sum_j (view_j - t_j) wv[i*3+j], wv the latch's exact
+// world-from-view basis (renderer::camera_world_basis; never the transpose: run222). Double
+// from the float latch, the product shadow_cascade_draw_rows folds into the sun axes.
 inline bool world_rows(const renderer::CameraState& camera, const float rows[16], double out[12]) noexcept {
     if (!camera.valid || !rows || !out || !(camera.m00 > 0.f) || !(camera.m11 > 0.f)) return false;
     for (unsigned i = 0; i < 16; ++i) if (!std::isfinite(rows[i])) return false;
+    double scratch[9];
+    const double* wv = renderer::camera_world_basis(camera, scratch);
     for (unsigned i = 0; i < 3; ++i) for (unsigned k = 0; k < 4; ++k) {
         const double vx = double(rows[k]) / camera.m00, vy = double(rows[4 + k]) / camera.m11, vz = double(rows[12 + k]);
-        double m = vx * double(camera.r[i * 3]) + vy * double(camera.r[i * 3 + 1]) + vz * double(camera.r[i * 3 + 2]);
-        if (k == 3) for (unsigned j = 0; j < 3; ++j) m -= double(camera.t[j]) * double(camera.r[i * 3 + j]);
+        double m = vx * wv[i * 3] + vy * wv[i * 3 + 1] + vz * wv[i * 3 + 2];
+        if (k == 3) for (unsigned j = 0; j < 3; ++j) m -= double(camera.t[j]) * wv[i * 3 + j];
         if (!std::isfinite(m)) return false;
         out[i * 4 + k] = m;
     }
@@ -232,7 +235,7 @@ inline void sun_rows(const double world[12], const renderer::ShadowReplayBasis& 
         base[a][k] = basis.axes[a][0] * world[k] + basis.axes[a][1] * world[4 + k] + basis.axes[a][2] * world[8 + k];
 }
 inline void camera_position(const renderer::CameraState& camera, double out[3]) noexcept {
-    for (unsigned i = 0; i < 3; ++i) { out[i] = 0; for (unsigned j = 0; j < 3; ++j) out[i] -= double(camera.t[j]) * double(camera.r[i * 3 + j]); }
+    renderer::camera_world_position(camera, out);
 }
 // Largest displacement of the object AABB's corners between two placements, squared.
 inline double drift2(const double a[12], const double b[12], const float lo[3], const float hi[3]) noexcept {

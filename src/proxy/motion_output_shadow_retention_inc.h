@@ -140,6 +140,7 @@ void MotionOutput::attach_shadow_retention() noexcept {
 }
 void MotionOutput::detach_shadow_retention() noexcept {
     if (!retention_) return;
+    if (!retention_->session.logged_final) { retention_->session.logged_final = true; log_shadow_retention_summary(true); }
     flush_shadow_retention(shadow_retention::Flush::Teardown);
     if (retention_->registered) retention_->lifetime.journal_unregister();
     retention_.reset();
@@ -363,6 +364,13 @@ void MotionOutput::publish_shadow_retention() noexcept {
         }
     }
     st.last_nodes_unseen = f.nodes_unseen;
+    {
+        auto& s = st.session;
+        ++s.frames; s.static_frames += f.statics != 0; s.unseen_frames += f.nodes_unseen != 0; s.retained_frames += st.retained_issues != 0;
+        s.statics += f.statics; s.moving += f.moving; s.unseen += f.nodes_unseen; s.retained_issues += st.retained_issues;
+        if (f.nodes_unseen > s.unseen_max) s.unseen_max = f.nodes_unseen;
+        if (st.retained_issues > s.retained_issues_max) s.retained_issues_max = st.retained_issues;
+    }
     f = {};
     st.draw_ticks = 0; st.draw_calls = 0; st.gate_ticks = 0; st.gate_calls = 0;
     if (frame_ && frame_ % shadow_retention::resight_period == 0) {
@@ -374,7 +382,19 @@ void MotionOutput::publish_shadow_retention() noexcept {
         put("expired_retired", t.expired_retired); put("expired_box", t.expired_box); put("expired_gone", t.expired_gone);
         if (used < 0 || used >= int(sizeof text)) text[0] = 0;
         log("shadow_retention_resight device=%llu frame=%llu%s", id_, frame_, text);
+        log_shadow_retention_summary(false);
     }
+}
+// The session so far, cumulative, on the resight period and once at teardown (final=1): the last line of a log is the
+// session's. static_frames near zero in flight is the run222 failure (every caster classed moving); retained_frames and
+// retained_issues prove that unseen statics reached the maps.
+void MotionOutput::log_shadow_retention_summary(bool final) noexcept {
+    const auto& s = retention_->session; const auto& t = retention_->store.totals;
+    const auto u = [](std::uint64_t v) { return static_cast<unsigned long long>(v); };
+    log("shadow_retention_summary device=%llu frame=%llu final=%u mode=%s frames=%llu static_frames=%llu unseen_frames=%llu retained_frames=%llu static_nodes=%llu moving_nodes=%llu unseen_nodes=%llu"
+        " unseen_max=%u retained_issues=%llu retained_issues_max=%u promoted=%llu reclassified=%llu reclassified_after_unseen=%llu moving_dropped=%llu retired=%llu box_exit=%llu age=%llu evicted=%llu",
+        id_, frame_, unsigned(final), retention_->mode == shadow_retention::Mode::Live ? "live" : "census", u(s.frames), u(s.static_frames), u(s.unseen_frames), u(s.retained_frames), u(s.statics), u(s.moving), u(s.unseen),
+        unsigned(s.unseen_max), u(s.retained_issues), unsigned(s.retained_issues_max), u(t.promoted), u(t.reclassified), u(t.reclassified_after_unseen), u(t.moving_dropped), u(t.retired), u(t.box_exit), u(t.age), u(t.evicted));
 }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 // Seam: 0 enabled, 1 mode, 2 nodes, 3 records, 4 refs_held, 5 static nodes, 6 unseen nodes, 7 retained issues of the last replay,
