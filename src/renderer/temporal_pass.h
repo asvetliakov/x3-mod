@@ -129,6 +129,11 @@ struct FrameInputs {
     // The box pair exists only while the gate runs: the first run without it
     // releases the pair (a configuration change, never per frame).
     bool thin_region_camera_gate = false;
+    // Depth and translation term of the camera gate's camera path, c8 of the
+    // camera mask program only (camera_reprojection.h camera_depth_parallax();
+    // taa-lattice-crawl.md section 32.3). All zero = the far-plane path of
+    // clip_to_previous; a non-finite value is uploaded as zero.
+    float camera_depth_parallax[4]{};
     // Speed gate of far_weight and of the thin region, px/frame: full below far_speed_lo, the base weight from far_speed_hi (0 <= lo < hi <= 64).
     float far_speed_lo = x3::temporal::kFarSpeedLo, far_speed_hi = x3::temporal::kFarSpeedHi;
     // Post-resolve sharpen of the display image (sharpen.h, rcas.hlsl;

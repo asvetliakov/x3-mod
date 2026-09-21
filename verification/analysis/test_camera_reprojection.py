@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -40,6 +41,8 @@ int main() {
         for (int i = 0; i < 16; ++i) std::printf(" %.9g", m[i]);
         std::printf(" %u %.12g %.12g %.9g %u %u %u %u", oracle, px, py, camera_rotation_degrees(c, p), d.policy, d.cut, d.transform, unsigned(d.reason));
         for (int i = 0; i < 16; ++i) std::printf(" %.9g", d.matrix[i]);
+        float k[4] = {9, 9, 9, 9}; const bool parallax = camera_depth_parallax(c, p, k);
+        std::printf(" %u %.9g %.9g %.9g %.9g", parallax, k[0], k[1], k[2], k[3]);
         std::printf("\n");
     }
 }
@@ -121,7 +124,8 @@ class CameraReprojection(unittest.TestCase):
         return dict(valid_current=int(values[0]), valid_previous=int(values[1]), failure_current=int(values[2]),
                     failure_previous=int(values[3]), built=int(values[4]), matrix=values[5:21], oracle_valid=int(values[21]),
                     oracle=(values[22], values[23]), rotation=values[24], policy=int(values[25]), cut=int(values[26]),
-                    transform=int(values[27]), reason=int(values[28]), policy_matrix=values[29:45])
+                    transform=int(values[27]), reason=int(values[28]), policy_matrix=values[29:45],
+                    parallax_built=int(values[45]), parallax=values[46:50])
 
     def check_direction(self, pc, bc, pp, bp, x, y, places=6):
         r = self.run_driver(pc, view(bc), pp, view(bp), x, y)
@@ -190,6 +194,75 @@ class CameraReprojection(unittest.TestCase):
         a = self.run_driver(pc, view(basis(0.1), (0, 0, 0)), pc, view(basis(0.05), (0, 0, 0)), 0.2, 0.1)
         b = self.run_driver(pc, view(basis(0.1), (12345, -9876, 3.5)), pc, view(basis(0.05), (-1, 2, 5e5)), 0.2, 0.1)
         self.assertEqual(a['matrix'], b['matrix'])
+
+    def test_depth_parallax_against_full_reprojection(self):
+        """camera_depth_parallax (the camera gate's c8, taa-lattice-crawl.md section 32.3): the shader's float32 form
+        far_plane + k.xyz * (d - k.w) against the double unprojection / reprojection of the same pixel, for a camera at
+        large sector coordinates flying 136 units forward while yawing and pitching, off-centre projection terms."""
+        import numpy as np
+        f32 = np.float32
+        pc, pp = projection(0.8, 4 / 3, 0.0004, -0.0007), projection(0.8, 4 / 3, -0.0003, 0.0005)
+        bc, bp = basis(0.31, -0.12, 0.05), basis(0.30, -0.115, 0.048)
+        position_p = (312345.0, -205432.0, 801234.0)
+        position_c = tuple(position_p[i] + 136.0 * bp[2][i] + 3.0 * bp[0][i] for i in range(3))
+        vc, vp = view(bc, position_c), view(bp, position_p)
+        r = self.run_driver(pc, vc, pp, vp)
+        self.assertEqual((r['built'], r['parallax_built']), (1, 1))
+        m, k = [f32(v) for v in r['matrix']], [f32(v) for v in r['parallax']]
+        m22, m32 = float(f32(pc[10])), float(f32(pc[14]))
+        self.assertEqual(float(k[3]), m22)
+        vc32, vp32 = [float(f32(v)) for v in vc], [float(f32(v)) for v in vp]  # the engine's own float views are the truth
+        inverse = np.linalg.inv(np.array([[vc32[i * 4 + j] for j in range(3)] for i in range(3)]))
+        worst = 0.0
+        for z in (200.0, 600.0, 3000.0, 26000.0, 70000.0, 1.5e6):
+            d = f32(m22 + m32 / z)
+            zd = m32 / (float(d) - m22)  # the view z the stored depth stands for
+            for x, y in ((0.0, 0.0), (0.95, -0.9), (-0.95, 0.9), (0.5, 0.25)):
+                viewpos = ((x - pc[8]) / pc[0] * zd, (y - pc[9]) / pc[5] * zd, zd)
+                rel = [viewpos[j] - vc32[12 + j] for j in range(3)]
+                world = list(np.array(rel) @ inverse)  # the exact inverse of the float rotation (R^T is off by ~1e-7 x |t|)
+                prev = [sum(world[i] * vp32[i * 4 + j] for i in range(3)) + vp32[12 + j] for j in range(3)]
+                ex, ey = prev[0] * pp[0] / prev[2] + pp[8], prev[1] * pp[5] / prev[2] + pp[9]
+                clip = [f32(x), f32(y), d, f32(1)]
+                rows = [sum((m[row * 4 + c] * clip[c] for c in range(4)), f32(0)) for row in (0, 1, 3)]
+                s = d - k[3]
+                X, Y, W = rows[0] + k[0] * s, rows[1] + k[1] * s, rows[2] + k[2] * s
+                self.assertEqual(X.dtype, np.float32)
+                worst = max(worst, math.hypot((float(X / W) - ex) * 960, (float(Y / W) - ey) * 540))
+        print(f'depth parallax worst residual {worst:.6f} px', file=sys.stderr) if os.environ.get('X3M_TEST_VERBOSE') else None
+        self.assertLess(worst, 0.01, worst)  # px at 1920 x 1080
+        # The replay's camera path (tools/analysis/taa_resolve_replay.py camera_previous_ndc, the rule measured on run209
+        # forward in section 32.2) is the same construction: near the origin, where its R^T and assumed depth law cost
+        # nothing, the two agree to float rounding.
+        from test_taa_camera_path import load as load_replay_path
+        replay = load_replay_path()
+        near_p = (3123.0, -2054.0, 8012.0)
+        near_c = tuple(near_p[i] + 136.0 * bp[2][i] + 3.0 * bp[0][i] for i in range(3))
+        pq = projection(0.8, 4 / 3)
+        vc, vp = view(bc, near_c), view(bp, near_p)
+        r = self.run_driver(pq, vc, pq, vp)
+        m, k = [f32(v) for v in r['matrix']], [f32(v) for v in r['parallax']]
+        Rc, Rp = (np.array([[v[i * 4 + j] for j in range(3)] for i in range(3)]) for v in (vc, vp))
+        agree = 0.0
+        for z in (200.0, 600.0, 3000.0, 26000.0, 70000.0):
+            d = f32(1.000003 + -6.000018 / z)  # the replay's assumed law; k.w is float32(1.000003) as well
+            for x, y in ((0.0, 0.0), (0.95, -0.9), (-0.95, 0.9), (0.5, 0.25)):
+                rx, ry, ok = replay(np.array([x]), np.array([y]), np.array([d]), Rc, Rp, (pq[0], pq[5], 0.0, 0.0), 1,
+                                    dict(tc=vc[12:15], tp=vp[12:15], Pp=None))
+                clip = [f32(x), f32(y), d, f32(1)]
+                rows = [sum((m[row * 4 + c] * clip[c] for c in range(4)), f32(0)) for row in (0, 1, 3)]
+                sd = d - k[3]
+                X, Y, W = rows[0] + k[0] * sd, rows[1] + k[1] * sd, rows[2] + k[2] * sd
+                agree = max(agree, math.hypot((float(X / W) - rx[0]) * 960, (float(Y / W) - ry[0]) * 540))
+        print(f'depth parallax against the replay path {agree:.6f} px', file=sys.stderr) if os.environ.get('X3M_TEST_VERBOSE') else None
+        self.assertLess(agree, 0.005, agree)
+        # Without translation the term vanishes exactly; without a plausible depth law it refuses and zeroes.
+        vp = view(bp, position_p)
+        still = self.run_driver(pc, vp, pp, vp)  # the same view: the difference of the translations cancels in double
+        self.assertEqual((still['parallax_built'], [abs(v) < 1e-6 for v in still['parallax'][:3]]), (1, [True] * 3))
+        bad = list(pc); bad[10] = 0.5
+        refused = self.run_driver(bad, view(bc, position_c), pp, vp)
+        self.assertEqual((refused['parallax_built'], refused['parallax']), (0, [0.0] * 4))
 
     def test_behind_the_previous_camera_is_invalid(self):
         pc = projection(1.0, 1.0)

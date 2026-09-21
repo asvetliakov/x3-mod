@@ -1961,3 +1961,68 @@ translates a little; it is not a regression but a different, more accurate measu
 section 32 table remains the record of what the *installed* rotation-only gate does. Two limits carry
 over: routed pixels with a sentinel depth have no camera path in either mode, and the replay's
 installed variant still carries the thin region without the far stabiliser.
+
+### 32.3 Production: the camera mask's depth and translation term, c8 (2026-09-21)
+
+Not installed; no flight yet. `clip_to_previous` (c0..c3, `camera_far_plane_reprojection`) and
+`resolve.hlsl`'s sentinel policy are unchanged. Only the camera mask program gained a constant.
+
+**Construction.** For a pixel with NDC (x, y) and device depth d, view z = m32 / (d - m22), and the
+previous clip position divided by that z is
+
+    far_plane(x, y) + D * (d - m22) / m32,    D = (t_prev - t_cur R_cur^-1 R_prev) * B_prev
+
+i.e. the far-plane image of the pixel's direction (what c0..c3 already gives) plus the
+camera-relative translation between the two views over the pixel's view z. `camera_depth_parallax()`
+(`src/renderer/camera_reprojection.h`) builds `(DX, DY, DW) / m32` and `m22` in double from the two
+`CameraState`s the far-plane matrix is built from; `temporal_pass.cpp` uploads them as **c8 of the
+camera mask only** (`FrameInputs::camera_depth_parallax`, fed by `motion_output.cpp` only with the
+camera gate on and a valid far-plane transform; non-finite -> zero). `line_mask_ps.hlsl`
+(`X3M_CAMERA_GATE`) adds `c8.xyz * (depth - c8.w)` to `previous` on a valid depth; the sentinel keeps
+the far-plane path, exact for it. Jitter handling, `min(screen, camera_relative)`, the 17x17 minimum,
+the box clip and the resolve are untouched. c8.xyz = 0 (no translation, no depth law, policy 1) is
+the far-plane path bit for bit.
+
+**Depth.** RT2 `.r` is ordinary device depth z/w of the routed draw (`current_depth_ps.hlsl`), so
+view z needs only the projection's m22 / m32. They come from the latched `CameraState`
+(`projection[10]` / `[14]`, the pair `far_gate` already uses; defaults 1.000003 / -6.0000184 =
+zn 6, zf 2e6 per camera-state-and-frame-routine.md), not from a fit; the term is refused unless
+m22 > 1 and m32 < 0. `d - m22` is formed in the shader from the same float m22 the rasteriser's
+projection held, an exact float subtraction for d in [0.5, 1], so the +-4 % uncertainty of `m22 - 1`
+as a number never enters. `camera_state` log lines now end with `p22= p32=` so a flight can confirm
+the latch (the pair is per-submission scratch in the engine; a latch taken under a different
+view's near plane would bias z by zn'/zn, and only a capture can rule that out).
+
+**Precision.** The matrix product is never formed from absolute coordinates in float: D is the
+difference of the two translations in double. It uses the exact inverse of the float R_cur, not the
+transpose: R^T R - I is ~1e-7 on engine views and |t| reaches 1e6, so the transpose leaves ~0.1
+unit of false translation (0.04 px at view z 200 in the host test) even between identical views.
+Host test (`verification/analysis/test_camera_reprojection.py`
+`test_depth_parallax_against_full_reprojection`): camera at (3.1e5, -2.1e5, 8.0e5) flying 136
+units/frame with yaw, pitch, roll and off-centre m20/m21, view z 200 .. 1.5e6; the float32 shader
+form against the double unprojection/reprojection through the same float views: **worst 0.00013 px**
+(1920x1080). Against the replay's `camera_previous_ndc` (section 32.2's rule) near the origin:
+**0.00018 px**, so the shader's rule is numerically the replay's construction; the expected flight
+behaviour is therefore section 32.2's (run209 forward: thin-region share 0.0001 -> 0.31, tracked
+rms x0.52). The replay itself was not rerun. What remains is the engine's own float quantum of t
+(0.06 unit at 1e6), shared by every static object drawn through the same view.
+
+**Shader.** `temporal_line_mask_camera` 897 -> 920 words, **223 -> 226 slots** (bytecode
+`cf7c1764...`). The other 60 generated headers are byte-identical (sha256 before/after);
+`temporal_line_mask` was regenerated because the shared source changed: bytecode `a44bfebd...`
+unchanged, only its manifest's `source_sha256` moved.
+
+**Fixture** (`temporal_thin_region_inc.h`, scene "forward"; X3, `THIN_REGION_CAMERA_FORWARD`): camera
+advancing 0.225 units/frame, no rotation (identity far-plane matrix, static sentinel background),
+the 32 px window an off-axis crop (m20 = -100) so the expansion field is uniform to 1 %; static
+routed shard rows at depth 0.99 (z 600, 0.600 px/frame) and 0.995 (z 1199, 0.300 px/frame), both
+past HI. CPU residual of the c8 form against the analytic path 0.0002 / 0.0001 px, of the routed
+rows 0.0058 / 0.0029 px (the crop's non-uniformity). Screen gate share 0, rotation-only camera gate
+(c8 withheld) share 0 and output bit-identical to the screen gate's; with c8 the camera gate share
+is **1.00 / 1.00** (minimum openness 1.0) at the two depths, screen channel 0; shard ripple
+**16.34 -> 1.51 codes (x0.092)**, peak-to-peak 99.4 -> 7.8. A routed 2x2 object claiming 2 px/frame
+against the static geometry at its depth closes the gate within 8 px (maximum 0) and leaves the
+window 10 px away open. Existing camera cases are unchanged to the digit (pan x0.0866, three
+at-rest bit-identities, overflow closes, stale patch 0.727 / 0.623). Pass time, 1280x768:
+camera-minus-screen delta 0.164 -> 0.156 ms (no region) and 0.592 -> 0.576 ms (fragmented pan),
+i.e. no measurable cost for the three extra instructions.

@@ -1604,6 +1604,9 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             t.camera_cut = decision.cut; t.camera_rotation_deg = decision.rotation_degrees;
             std::memcpy(in.clip_to_previous, decision.matrix, sizeof decision.matrix);
             in.sentinel_camera = decision.policy == 2;
+            // Camera gate (taa-lattice-crawl.md section 32.3): the depth / translation term beside the far-plane matrix, from the
+            // same two views and this frame's latched depth law; zero (the far-plane path) without the transform or a plausible law.
+            if (taa_thin_camera_gate_ && decision.transform) renderer::camera_depth_parallax(camera_scene_, camera_previous_, in.camera_depth_parallax);
             in.current_jitter[0] = jitter_[0]; in.current_jitter[1] = jitter_[1];
             in.previous_jitter[0] = jitter_previous_[0]; in.previous_jitter[1] = jitter_previous_[1];
             in.motion_policy = renderer::MotionPolicy::PerPixel;
@@ -6404,14 +6407,14 @@ void MotionOutput::log_camera_state() noexcept {
     log("camera_state device=%llu frame=%llu status=%s reads=%lu valid=%u read_failure=%lu failure=%lu projection=%p view=%p"
         " p00=%.7g p11=%.7g p20=%.7g p21=%.7g r00=%.7g r01=%.7g r02=%.7g r10=%.7g r11=%.7g r12=%.7g r20=%.7g r21=%.7g r22=%.7g t=%.7g,%.7g,%.7g"
         " background_valid=%u background_p00=%.7g background_p11=%.7g background_rotation_deg=%.4f"
-        " history_view_valid=%u history_view_frame=%llu rotation_deg=%.4f policy=%lu reason=%lu camera_cut=%u mode=%u cut_deg=%.2f prev_valid_at_policy=%u",
+        " history_view_valid=%u history_view_frame=%llu rotation_deg=%.4f policy=%lu reason=%lu camera_cut=%u mode=%u cut_deg=%.2f prev_valid_at_policy=%u p22=%.9g p32=%.9g",
         id_, frame_, camera_state::status(), static_cast<unsigned long>(counters_.camera_reads), c.valid,
         static_cast<unsigned long>(counters_.camera_read_failure), static_cast<unsigned long>(counters_.camera_failure),
         reinterpret_cast<void*>(camera_projection_address_), reinterpret_cast<void*>(camera_view_address_),
         c.m00, c.m11, c.m20, c.m21, c.r[0], c.r[1], c.r[2], c.r[3], c.r[4], c.r[5], c.r[6], c.r[7], c.r[8], c.t[0], c.t[1], c.t[2],
         b.valid, b.m00, b.m11, background_rotation,
         camera_previous_.valid, camera_previous_frame_, t.camera_rotation_deg, static_cast<unsigned long>(t.camera_policy),
-        static_cast<unsigned long>(t.camera_reason), t.camera_cut, unsigned(sentinel_mode_), camera_cut_degrees_, t.camera_previous_valid);
+        static_cast<unsigned long>(t.camera_reason), t.camera_cut, unsigned(sentinel_mode_), camera_cut_degrees_, t.camera_previous_valid, double(c.m22), double(c.m32));
 }
 
 // End of the frame's scene phase (consumed by the resolve at the copy): the median of the

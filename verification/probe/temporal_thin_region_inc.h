@@ -15,6 +15,25 @@
 // x / thinPanX frames of history; the metrics use x in [18, 28). Optionally a bright independent mover (value 4, depth 0.5,
 // 6 px square in rows [8, 14)) crosses the field at thinPatchV px/frame from frame thinPatchFrom, and a 6x6 patch of value 4
 // is written into the pass's history after frame thinInjectFrame (the stale-history witness of section 15 / 32).
+//
+// Scene "forward" (section 32.3; thinForward): the camera flies FORWARD by forwardDz view units per frame with no rotation, so
+// clip_to_previous (camera_far_plane_reprojection) is the identity and the sentinel background stands still, while static
+// geometry shows parallax in proportion to 1 / view z. The 32 px window is an off-axis crop of that flight (projection m20 =
+// -100: the radial expansion field is uniform across it to 1 %, along +x), so full-width shard rows at TWO depths - rows
+// above y = 16 at 0.99 (view z 600), below at 0.995 (view z 1199) - move at two uniform speeds (0.6 and 0.30 px/frame, both
+// past HI), routed, and a fixed pixel still sees the same content every frame. c8 comes from camera_depth_parallax() on the
+// two CameraStates (thinForwardParallax = false withholds it: the rotation-only path of section 32.1). thinForwardMover: a
+// routed 2x2 object at (6..7, 9..10), depth 0.99, claiming 2 px/frame more than the static geometry at its depth.
+bool thinForward=false,thinForwardParallax=true,thinForwardMover=false;
+constexpr float forwardDepth2=.995f,forwardM22=1.000003f,forwardM32=-6.0000184f,forwardM20=-100;constexpr double forwardSpeed=.6;
+x3m::renderer::CameraState forward_camera(double z){x3m::renderer::CameraState c;c.valid=true;c.m00=c.m11=1;c.m20=forwardM20;c.m22=forwardM22;c.m32=forwardM32;c.r[0]=c.r[4]=c.r[8]=1;c.t[0]=1234567;c.t[1]=-654321;c.t[2]=float(z);return c;}
+double forward_view_z(float depth){return double(forwardM32)/(double(depth)-double(forwardM22));}
+// Camera advance per frame that gives the 0.99 rows forwardSpeed px/frame at the window centre: v = -m20 (S / 2) e / (1 + e), e = dz / z.
+double forward_dz(){const double q=forwardSpeed/(-double(forwardM20)*EdgeScene::S*.5);return forward_view_z(lineDepth)*q/(1-q);}
+// Analytic previous position (double, full unprojection and reprojection) of pixel centre (x, y) at `depth`: displacement in px, +x right / +y down.
+void forward_oracle(double x,double y,float depth,double& dx,double& dy){constexpr double S=EdgeScene::S;const double nx=2*(x+.5)/S-1,ny=1-2*(y+.5)/S,z=forward_view_z(depth),zp=z+forward_dz();
+    const double vx=(nx-double(forwardM20))*z,vy=ny*z,px_=vx/zp+double(forwardM20),py_=vy/zp;dx=(px_-nx)*S*.5;dy=-(py_-ny)*S*.5;}
+double forward_velocity(float depth){double dx,dy;forward_oracle(EdgeScene::S*.5-.5,EdgeScene::S*.5-.5,depth,dx,dy);return -dx;} // content speed along +x
 constexpr unsigned thinFrames=128,thinAnalysed=32;
 double thinDrift=0;unsigned thinMoveFrom=~0u;
 double thinPanX=0,thinPatchV=0;unsigned thinPatchFrom=~0u,thinInjectFrame=~0u;constexpr float patchDepth=.5f,patchValue=4;
@@ -24,6 +43,10 @@ double thinPanX=0,thinPatchV=0;unsigned thinPatchFrom=~0u,thinInjectFrame=~0u;co
 bool thinBadTap=false;double thinBadMotion=0;float thinK=0;
 constexpr int injectRect[4]={20,9,26,15};
 std::vector<EdgeObject> thin_objects(unsigned n){std::vector<EdgeObject> o;constexpr double S=EdgeScene::S;
+    if(thinForward){const double v[2]={forward_velocity(lineDepth),forward_velocity(forwardDepth2)};
+        for(double top=2.31;top<30;top+=2.37)if(top>=2&&!(top<16&&top+.8>15.5)){const bool lower=top>=16;o.push_back({0,top,S,top+.8,1,lower?forwardDepth2:lineDepth,v[lower],0});}
+        if(thinForwardMover)o.push_back({6,9,8,11,1,lineDepth,v[0]+2,0});
+        return o;}
     if(thinPanX!=0){for(double top=2.31;top<30;top+=2.37)if(top>=2)o.push_back({0,top,S,top+.8,1,lineDepth,thinPanX,0});
         if(thinBadTap)o.push_back({23,12,24,13,65504.f,lineDepth,thinPanX,0});
         if(thinPatchFrom!=~0u&&n>=thinPatchFrom){const double l=-8+thinPatchV*(n-thinPatchFrom);if(l<S&&l+6>0)o.push_back({l,8,l+6,14,patchValue,patchDepth,thinPatchV,0});}
@@ -53,6 +76,9 @@ FarRun thin_sequence(EdgeScene& s,const DWORD* resolver,const LineConfig& c,unsi
         s.render(thin_objects(n),sentinelBackground,jx,jy);run.current.push_back(s.read(s.color.p));run.depth.push_back(s.read(s.depth32.p));
         auto in=flicker_inputs(s,f,jx,jy,true);in.thin_region_weight=c.thinW;in.thin_region_relax=c.relax;in.far_weight=c.farW;in.far_d0=farD0;in.far_inv=farInv;in.far_speed_lo=farLo;in.far_speed_hi=farHi;
         in.luminance_k=thinK;in.thin_region_camera_gate=c.camera&&!(failBoxes&&n==0);if(thinPanX!=0)in.clip_to_previous[3]=float(-2*thinPanX/S); // previous clip x = x - 2 pan / S: content moved right by pan px
+        if(thinForward){const auto now=forward_camera(-5000-forward_dz()*n),before=forward_camera(-5000-forward_dz()*(double(n)-1)); // view z of a world point falls by dz per frame: t_z = -camera z
+            require(x3m::renderer::camera_far_plane_reprojection(now,before,in.clip_to_previous),"forward flight: far-plane matrix");
+            if(thinForwardParallax)require(x3m::renderer::camera_depth_parallax(now,before,in.camera_depth_parallax),"forward flight: depth parallax term");}
         Output out;check("thin Begin resolve",s.d->BeginScene());
         if(failMasks&&n==0){MaskCreationFault fault(s.d);check(c.name,pass.run(in,&out));}
         else if(failBoxes&&n==1){BoxCreationFault fault(s.d);check(c.name,pass.run(in,&out));require(BoxCreationFault::refused>0&&pass.camera_gate_failed(),"box-target creation fault reached; camera gate fell back");}
@@ -73,7 +99,7 @@ void thin_region_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolv
     std::puts("THIN_REGION_CASES");EdgeScene s(d,compiler);constexpr UINT S=EdgeScene::S;
     struct Defer{Defer(){deferMetrics=true;deferredFailures.clear();}~Defer(){deferMetrics=false;}} defer;
     struct Hooks{Hooks(){line_velocity=thin_velocity;line_velocity_x=thin_velocity_x;farD0=.98f;farInv=200;} // far gate for the combined config: farw 1 on the shards (0.99), 0 on the square (0.98)
-        ~Hooks(){line_velocity=line_velocity_default;line_velocity_x=line_velocity_x_default;thinDrift=0;thinMoveFrom=~0u;thinBadTap=false;thinBadMotion=0;thinK=0;oracleK=0;thinPanX=cameraPanX=thinPatchV=0;thinPatchFrom=thinInjectFrame=oracleInjectFrame=~0u;farD0=farInv=0;}} hooks;
+        ~Hooks(){line_velocity=line_velocity_default;line_velocity_x=line_velocity_x_default;thinDrift=0;thinMoveFrom=~0u;thinBadTap=false;thinBadMotion=0;thinK=0;oracleK=0;thinForward=thinForwardMover=false;thinForwardParallax=true;thinPanX=cameraPanX=thinPatchV=0;thinPatchFrom=thinInjectFrame=oracleInjectFrame=~0u;farD0=farInv=0;}} hooks;
     const LineConfig base{"thin-base",false,0,0,0},on97{"thin-region-0.97",false,0,0,0,1,0,0,.97f,1},on985{"thin-region-0.985",false,0,0,0,1,0,0,.985f,1},half{"thin-region-0.97-relax-0.5",false,0,0,0,1,0,0,.97f,.5f},weightOnly{"thin-region-0.97-relax-0",false,0,0,0,1,0,0,.97f,0},withFar{"thin-region-0.97+far-weight-0.985",false,0,0,0,1,.985f,0,.97f,1},
         camera97{"thin-region-0.97-camera-gate",false,0,0,0,1,0,0,.97f,1,true};
     // ---- refusals, hostile state, failed draw, Reset ----
@@ -194,6 +220,36 @@ void thin_region_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolv
         {const auto fell=thin_sequence(s,resolver,camera97,32,false,true),screen32=thin_sequence(s,resolver,on97,32);
             ++numeric_checks;require(same_rgb(fell.output,screen32.output)&&same_rgb(fell.age,screen32.age),"box-target creation failure: the camera gate falls back to the screen gate bit for bit, history kept");}
         thinPanX=cameraPanX=0;}
+    // ---- forward flight (section 32.3): static routed shards at two depths, identity far-plane matrix, c8 from camera_depth_parallax ----
+    {thinForward=true;const double v[2]={forward_velocity(lineDepth),forward_velocity(forwardDepth2)};
+        // CPU residuals over the metric window, px: the routed (scene) correspondence against the analytic path, and the shader's
+        // float32 form far_plane + c8.xyz * (d - c8.w) (identity far plane here) against the same analytic path.
+        float c8[4];require(x3m::renderer::camera_depth_parallax(forward_camera(-5000-forward_dz()*100),forward_camera(-5000-forward_dz()*99),c8),"forward flight: c8");
+        double sceneResidual[2]={0,0},formResidual[2]={0,0};
+        for(unsigned band=0;band<2;++band){const float depth=band?forwardDepth2:lineDepth;for(UINT y=band?18:5;y<(band?27u:14u);++y)for(UINT x=18;x<28;++x){double dx,dy;forward_oracle(x,y,depth,dx,dy);
+            sceneResidual[band]=std::max(sceneResidual[band],std::hypot(dx+v[band],dy));
+            const float nx=2*(float(x)+.5f)/S-1,ny=1-2*(float(y)+.5f)/S,sd=depth-c8[3],X=nx+c8[0]*sd,Y=ny+c8[1]*sd,W=1+c8[2]*sd;
+            formResidual[band]=std::max(formResidual[band],std::hypot((double(X/W)-nx)*S*.5-dx,-(double(Y/W)-ny)*S*.5-dy));}}
+        const auto screenRun=thin_sequence(s,resolver,on97,thinFrames),cameraRun=thin_sequence(s,resolver,camera97,thinFrames);
+        thinForwardParallax=false;const auto rotationRun=thin_sequence(s,resolver,camera97,thinFrames);thinForwardParallax=true;
+        double screenRms=0,screenP2p=0,cameraRms=0,cameraP2p=0;thin_ripple(screenRun,screenRms,screenP2p,18,28);thin_ripple(cameraRun,cameraRms,cameraP2p,18,28);
+        double share[2]={0,0},minOpen[2]={1,1},screenShare=0,rotationShare=0,cameraScreenChannel=0;unsigned window[2]={0,0};
+        for(UINT y=5;y<27;++y)for(UINT x=18;x<28;++x){if(y>=14&&y<18)continue;const unsigned band=y>=18;++window[band];const double b=px(cameraRun.mask[0],x,y,2);share[band]+=b>0;minOpen[band]=std::min(minOpen[band],b);
+            screenShare+=px(screenRun.mask[0],x,y,2)>0;rotationShare+=px(rotationRun.mask[0],x,y,2)>0;cameraScreenChannel=std::max(cameraScreenChannel,double(px(cameraRun.mask[0],x,y,3)));}
+        share[0]/=window[0];share[1]/=window[1];screenShare/=window[0]+window[1];rotationShare/=window[0]+window[1];
+        // The routed mover (2 px/frame against the static geometry at its depth) closes the gate within 8 px of itself; the window 10 px away stays open.
+        thinForwardMover=true;const auto moverRun=thin_sequence(s,resolver,camera97,32);thinForwardMover=false;double nearMover=0,farOpen=1;
+        for(int y=9-8;y<11+8;++y)for(int x=0;x<8+8;++x)nearMover=std::max(nearMover,double(px(moverRun.mask[0],UINT(x),UINT(y),2)));
+        for(UINT y=5;y<27;++y)for(UINT x=18;x<28;++x)if(!(y>=14&&y<18))farOpen=std::min(farOpen,double(px(moverRun.mask[0],x,y,2)));
+        std::printf("THIN_REGION_CAMERA_FORWARD dz=%.6f speed_near=%.4f speed_far=%.4f scene_residual_near_px=%.6f scene_residual_far_px=%.6f form_residual_near_px=%.6f form_residual_far_px=%.6f screen_gate_share=%.4f rotation_only_share=%.4f camera_share_near=%.4f camera_share_far=%.4f camera_min_open_near=%.4f camera_min_open_far=%.4f camera_mask_screen_channel_max=%.4f screen_rms_codes=%.3f camera_rms_codes=%.3f camera_over_screen=%.4f screen_p2p_codes=%.1f camera_p2p_codes=%.1f mover_gate_max_within_8px=%.4f mover_window_min_open=%.4f rotation_identical_to_screen=%u\n",
+            forward_dz(),v[0],v[1],sceneResidual[0],sceneResidual[1],formResidual[0],formResidual[1],screenShare,rotationShare,share[0],share[1],minOpen[0],minOpen[1],cameraScreenChannel,255*screenRms,255*cameraRms,cameraRms/screenRms,255*screenP2p,255*cameraP2p,nearMover,farOpen,unsigned(same_rgb(rotationRun.output,screenRun.output)));
+        ++numeric_checks;require(v[0]>farHi&&v[1]>farHi&&v[0]>1.9*v[1],"forward flight: both depths move past HI, the near rows twice as fast as the far rows");
+        ++numeric_checks;require(std::max(formResidual[0],formResidual[1])<.005&&std::max(sceneResidual[0],sceneResidual[1])<.05,"forward flight: the float32 c8 form is the analytic path within 0.005 px; the static routed rows sit on it within 0.05 px");
+        ++numeric_checks;require(screenShare==0&&rotationShare==0&&same_rgb(rotationRun.output,screenRun.output),"forward flight: the screen gate and the rotation-only camera gate (no c8) are closed everywhere; their outputs agree bit for bit");
+        ++numeric_checks;require(share[0]>=.99&&share[1]>=.99&&minOpen[0]>=.9&&minOpen[1]>=.9&&cameraScreenChannel==0,"forward flight: the depth-aware camera gate is open on the static shards at both depths while the screen channel reads closed");
+        ++numeric_checks;require(cameraRms<=.6*screenRms&&cameraP2p<=.7*screenP2p,"forward flight: the camera gate cuts the shard ripple (rms <= 0.6 x, peak-to-peak <= 0.7 x the screen gate)");
+        ++numeric_checks;require(nearMover==0&&farOpen>=.9,"forward flight: a routed object moving against the static geometry closes the gate within 8 px of itself and nowhere else");
+        thinForward=false;}
     // ---- non-finite routed motion on the static arm (a routed 2x2 object at (6..7, 13..14)) ----
     // 1e30 px/frame: the speed overflows inside the mask program. The camera mask carries openness (saturate(1 - inf) = 0) and must
     // close both gates within 8 px of every covered pixel, as the plain mask closes its one; the output equals the screen gate's bit

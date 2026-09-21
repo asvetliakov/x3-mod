@@ -613,3 +613,32 @@ frame; run209-scale motion (250 units per frame at 4e4-unit coordinates) rests o
 the host oracle test (0.05 px bound), not on a fixture. Private-projection draws
 are a flight-verification item (architecture note).
 Rerun after the follow-up: the four seam cases pass again, 95 checks each, same numbers; DLL `9aef914e`, seam DLL `e974190c`, fixture exe `544022e5`; the detail lines report `projection_x/y = 1.00000` for both fixture bodies.
+
+## Camera gate made depth- and translation-aware: c8 of the camera mask (2026-09-21)
+
+Design and numbers: `docs/architecture/taa-lattice-crawl.md` section 32.3. Not committed as a
+candidate, not installed, no game launched. Bottle X3.
+
+- Shader flow: `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+  tools/shaders/generate_rigid_motion_pixel.py --shader temporal_line_mask_camera` -> PASS, 920
+  words / 226 slots (was 897 / 223), bytecode `cf7c1764095d...`; `--shader temporal_line_mask` ->
+  PASS, bytecode `a44bfebd9767...` unchanged (manifest source hash only). sha256 of all 61
+  `src/renderer/*_inc.h` before/after: only `temporal_line_mask_camera_program_inc.h` differs.
+- Fixture: `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+  verification/probe/run_temporal_pass.py` -> passed, lattice mode `RESULT PASS numerical=501
+  state_restorations=21` (495 + the 6 forward-flight checks); main mode 508 / 278 / 386 unchanged.
+  `THIN_REGION_CAMERA_FORWARD`: speeds 0.600 / 0.300 px/frame, c8-form residual 0.000213 /
+  0.000107 px, routed-row residual 0.005840 / 0.002921 px, screen share 0, rotation-only share 0
+  (output = screen gate bit for bit), camera share 1.0000 / 1.0000, rms 16.340 -> 1.508 codes
+  (x0.0923), p2p 99.4 -> 7.8, mover gate maximum within 8 px 0.0000, window minimum 1.0000.
+  Pan (x0.0866, share 1.0), at-rest identity (3/3), overflow and stale-patch rows equal the
+  previous summary. `LINE_TIMING_CAMERA` deltas 0.1556 / 0.5758 ms (before 0.1640 / 0.5915).
+  Local copies: `/tmp/x3-taa-camera-gate-depth-v1/`.
+- Host: `PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p
+  'test_taa*.py'` -> 32 OK; `-p 'test_camera_reprojection.py'` -> 10 OK (new case: worst 0.00013 px
+  against the double reprojection at 8e5 sector coordinates, 0.00018 px against the replay's
+  `camera_previous_ndc`). Scratch CMake (MinGW i686, Release, `-DPython3_EXECUTABLE=/usr/bin/python3`):
+  84 TUs compiled, `d3d9.dll` linked.
+- Open: the latched m22 / m32 are per-submission scratch in the engine; `camera_state` now logs
+  `p22` / `p32` so the next capture can confirm them. The run209 replay was not rerun. Native
+  Windows runtime unverified (documented D3D9 calls only: one more `SetPixelShaderConstantF`).

@@ -54,6 +54,12 @@
 // no line mask) and the composition writes b = the camera-gated strength and a =
 // the screen-gated strength (a <= b), so the resolve knows where the camera term
 // alone keeps the region open. r = farw * c5.z there.
+// c8 (camera program only; section 32.3) makes that camera path depth- and
+// translation-aware: c0..c3 is the rotation-only far-plane matrix (zero z
+// column), exact for the sentinel; on a valid depth the path adds c8.xyz * (d -
+// c8.w), the camera-relative translation between the two views over the pixel's
+// view z = m32 / (d - m22). c8.xyz = 0 (no translation, or no depth law) is the
+// far-plane path bit for bit.
 sampler2D source : register(s1);
 sampler2D motionOverride : register(s4);
 float4 reprojection0 : register(c0);
@@ -64,6 +70,9 @@ float4 sizeJitter : register(c4);
 float4 farGate : register(c5);
 float4 thinGate : register(c6); // unused, on, speed LO, 1 / (HI - LO)
 float4 options : register(c7);
+#ifdef X3M_CAMERA_GATE
+float4 depthParallax : register(c8); // camera_depth_parallax(): (DX, DY, DW) / m32, m22; xyz = 0 is the far-plane path
+#endif
 static const float lineMargin = 1.1;
 float4 fetch(float2 uv) { return tex2Dlod(source, float4(uv, 0, 0)); }
 bool validDepth(float v) { return v >= 0 && v <= 1; }
@@ -101,6 +110,9 @@ float2 gateOpen(float2 uv, float depth) {
         float2 unjittered = uv - 0.5 * sizeJitter.xy - sizeJitter.zw;
         float4 clip = float4(unjittered.x * 2 - 1, 1 - unjittered.y * 2, validDepth(depth) ? depth : 1, 1);
         float3 previous = float3(dot(reprojection0, clip), dot(reprojection1, clip), dot(reprojection3, clip));
+        // Section 32.3: the pixel's own depth and the camera translation. 1 / view z = (d - m22) / m32, so the previous clip
+        // position over z is the far-plane image plus c8.xyz * (d - m22); the sentinel has no geometry and stays at infinity.
+        if (validDepth(depth)) previous += depthParallax.xyz * (depth - depthParallax.w);
         cameraUV = float2(previous.x, -previous.y) / max(previous.z, 1e-6) * 0.5 + 0.5 + 0.5 * sizeJitter.xy + sizeJitter.zw;
     }
     float2 previousUV = routed ? motion.xy + sizeJitter.zw : cameraUV;

@@ -10,8 +10,8 @@
 // is the rotation R (world axis i -> view axis j at r[i*3+j]); V[12..14] is the
 // translation. P[0] = m00, P[5] = m11 are the projection scales, P[8] = m20,
 // P[9] = m21 the off-center terms (zero unless a jitter is injected there) and
-// P[11] = m23 = 1 makes w_clip = z_view. P[10]/P[14] are per-submission scratch
-// and are never read here.
+// P[11] = m23 = 1 makes w_clip = z_view. P[10]/P[14] are per-submission scratch:
+// latched as m22/m32 for the depth law only (far gate, camera_depth_parallax).
 //
 // The resolve (src/temporal/resolve.hlsl) forms currentClip = (x, y, z, 1) in
 // D3D NDC (x right, y UP) and applies clip_to_previous as four rows dotted
@@ -29,7 +29,7 @@ struct CameraState {
     float m00 = 0, m11 = 0, m20 = 0, m21 = 0; // projection P[0], P[5], P[8], P[9]
     float r[9]{};                              // view rotation V[0..2], V[4..6], V[8..10]
     float t[3]{};                              // view translation V[12..14]
-    float m22 = 0, m32 = 0;                    // projection P[10], P[14]: depth = m22 + m32 / view z (far stabiliser gate only)
+    float m22 = 0, m32 = 0;                    // projection P[10], P[14]: depth = m22 + m32 / view z (far stabiliser gate, camera_depth_parallax)
 };
 enum class CameraFailure : std::uint32_t {
     None = 0, NullPointer = 1, NonFinite = 2, ProjectionScale = 3, ProjectionW = 4, Orthonormal = 5, ViewAffine = 6
@@ -114,6 +114,50 @@ inline bool camera_far_plane_reprojection(const CameraState& current, const Came
         if (!std::isfinite(M[i][j]) || std::fabs(M[i][j]) > 1e15) return false;
         out[i * 4 + j] = float(M[i][j]);
     }
+    return true;
+}
+// Depth and translation term of the camera path, the companion of the far-plane
+// matrix above (taa-lattice-crawl.md section 32.3). A pixel at device depth d
+// has view z = m32 / (d - m22) (the current projection's depth law), and its
+// previous clip position divided by that z is
+//   far_plane(x, y) + D * (d - m22) / m32,   D = (t_prev - t_cur * R_cur^-1 R_prev) * B,
+// B the previous projection as above: the far-plane
+// image of the direction plus the camera-relative translation between the two
+// views scaled by 1 / z. out = (DX / m32, DY / m32, DW / m32, m22) in the
+// matrix's (X, Y, W) rows, built in double from the DIFFERENCE of the two
+// translations so a large sector coordinate costs only the engine's own float
+// quantum of t; the consumer forms d - m22 from the same float m22 the
+// rasteriser's projection held (an exact subtraction for d in [0.5, 1]). All
+// zero xyz = the far-plane path, bit for bit. False (out zeroed) without a
+// valid pair or a plausible depth law (m22 > 1, m32 < 0, as the AO pass).
+inline bool camera_depth_parallax(const CameraState& current, const CameraState& previous, float out[4]) noexcept {
+    if (!out) return false;
+    out[0] = out[1] = out[2] = out[3] = 0.f;
+    if (!current.valid || !previous.valid || !(current.m22 > 1.f) || !(current.m32 < 0.f)) return false;
+    // The exact inverse of the float R_cur, not its transpose: R^T R - I is ~1e-7 on engine views and |t| reaches 1e6, so the
+    // transpose would leave ~0.1 unit of false translation (0.1 px at view z 600) even between two identical views. With the
+    // inverse, identical views give D = 0 to double rounding.
+    const double a[9] = {current.r[0], current.r[1], current.r[2], current.r[3], current.r[4], current.r[5], current.r[6], current.r[7], current.r[8]};
+    const double cof[9] = {a[4] * a[8] - a[5] * a[7], a[2] * a[7] - a[1] * a[8], a[1] * a[5] - a[2] * a[4],
+                           a[5] * a[6] - a[3] * a[8], a[0] * a[8] - a[2] * a[6], a[2] * a[3] - a[0] * a[5],
+                           a[3] * a[7] - a[4] * a[6], a[1] * a[6] - a[0] * a[7], a[0] * a[4] - a[1] * a[3]};
+    const double det = a[0] * cof[0] + a[1] * cof[3] + a[2] * cof[6];
+    if (!(std::fabs(det) > .5)) return false;
+    double D[3];
+    for (unsigned j = 0; j < 3; ++j) {
+        double moved = 0; // (t_cur * R_cur^-1 * R_prev)[j]; R^-1[i][k] = cof[i * 3 + k] / det (cof is already the adjugate)
+        for (unsigned k = 0; k < 3; ++k) {
+            double world = 0;
+            for (unsigned i = 0; i < 3; ++i) world += double(current.t[i]) * cof[i * 3 + k];
+            moved += world / det * double(previous.r[k * 3 + j]);
+        }
+        D[j] = double(previous.t[j]) - moved;
+    }
+    const double inv = 1. / double(current.m32);
+    const double K[3] = {(D[0] * previous.m00 + D[2] * previous.m20) * inv, (D[1] * previous.m11 + D[2] * previous.m21) * inv, D[2] * inv};
+    for (double v : K) if (!std::isfinite(v) || std::fabs(v) > 1e15) return false;
+    for (unsigned i = 0; i < 3; ++i) out[i] = float(K[i]);
+    out[3] = current.m22;
     return true;
 }
 // X3M_TAA_SENTINEL: auto (default) reprojects sentinel pixels through the
