@@ -1119,3 +1119,20 @@ The sheets therefore replace the bulb with full-frame dense, repeating fine-fiel
 User reiterates the target: more clear space and diverse density throughout the
 sector, with varied shapes/sizes and internal density. This blanket-like trial
 is not selected.
+
+### Cloud mass and internal detail: cheap column screen
+
+A fixed alternative uses nonperiodic broad cloud mass plus smaller-scale
+modulation/erosion, rather than the old tiled family alpha as primary density.
+The [screen](../../verification/results/fog-mass-column-screen-2026-09-21/checkpoint.json)
+evaluates two green comparison poses at 16×9 rays and 256/512 midpoint stations.
+It samples 221,184 shared world positions in 0.209 s; 9 focused tests and
+independent source/evidence review pass. Mean opacity A/B is 0.230902/0.252757
+for mass alone and 0.177520/0.204308 with detail. The largest transmission
+discrepancy between station counts is 0.0000671116. These are sparse-column
+estimates, not the earlier dense reference or an image.
+
+The sampled positive lengths decrease substantially, but only A has a sampled
+fully clear ray; no broad visual-gap acceptance follows. The result justifies
+one fixed mass/detail image comparison and pixel-area witness. No density
+rescale, seed search, production integrator or runtime approval is selected.

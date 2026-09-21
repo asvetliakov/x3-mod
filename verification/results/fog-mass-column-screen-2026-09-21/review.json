@@ -1,0 +1,7 @@
+{
+  "verdict": "PASS bounded density-column evidence",
+  "reviewer": "review_fog_range_replay",
+  "focused_tests_passed": 9,
+  "checkpoint_sha256": "0af1e584584e7a33956e632b21530acc9754d24e1f3da949ce3e0e4a1b157692",
+  "appearance_or_runtime_qualified": false
+}
