@@ -8,6 +8,7 @@ reported as stale. Shader dumps are reusable only when their FNV identity and
 bounded size match the logged record. Invoke after the game exits.
 """
 import argparse
+import hashlib
 import os
 from pathlib import Path
 import re
@@ -17,6 +18,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'verification/probe'))
 from game_guard import game_running
+import lattice_state_packet
 
 CAPTURES = Path.home() / 'Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3-modern-captures'
 SESSION = re.compile(r'session-\d{8}-\d{6}-\d+\.log\Z')
@@ -77,7 +79,8 @@ def select_log(directory_fd, since_ns):
     return max(found)[2] if found else None
 
 
-def copy_file(source_fd, target_fd, name, *, size=None, window=None, shader_id=None, since_ns=None, created_before=None):
+def copy_file(source_fd, target_fd, name, *, size=None, window=None, shader_id=None,
+              expected_sha256=None, since_ns=None, created_before=None):
     """Pinned directories + no-follow leaf opens prevent path/symlink escapes."""
     read_fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=source_fd)
     with os.fdopen(read_fd, 'rb') as source:
@@ -97,18 +100,33 @@ def copy_file(source_fd, target_fd, name, *, size=None, window=None, shader_id=N
         write_fd = os.open(name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=target_fd)
         try:
             fingerprint = 14695981039346656037
+            digest = hashlib.sha256() if expected_sha256 is not None else None
             with os.fdopen(write_fd, 'wb') as target:
-                while chunk := source.read(1024 * 1024):
+                remaining = size
+                while remaining is None or remaining:
+                    chunk = source.read(1024 * 1024 if remaining is None else min(1024 * 1024, remaining))
+                    if not chunk:
+                        if remaining is not None:
+                            raise ValueError('source truncated while copying')
+                        break
                     target.write(chunk)
+                    if digest is not None:
+                        digest.update(chunk)
                     if shader_id is not None:
                         for byte in chunk:
                             fingerprint = ((fingerprint ^ byte) * 1099511628211) & 0xffffffffffffffff
+                    if remaining is not None:
+                        remaining -= len(chunk)
+                if size is not None and source.read(1):
+                    raise ValueError('source grew while copying')
             after = os.fstat(source.fileno())
             keys = ('st_dev', 'st_ino', 'st_size', 'st_mtime_ns', 'st_ctime_ns')
             if any(getattr(before, key) != getattr(after, key) for key in keys):
                 raise ValueError('source changed while copying')
             if shader_id is not None and fingerprint != shader_id:
                 raise ValueError('shader content does not match its logged identity')
+            if digest is not None and digest.hexdigest() != expected_sha256:
+                raise ValueError('content does not match its logged SHA-256')
             return before
         except BaseException:
             # Only this newly created destination is removed, never a source.
@@ -149,14 +167,47 @@ def references(log):
                         [int(shape[i]) for i in range(1, 5)] !=
                         [int(row[key]) for key in ('pid', 'device', 'frame', 'generation')]):
                     raise ValueError('unsafe or mismatched lattice state basename')
+                identity = tuple(int(row[key]) for key in ('pid', 'device', 'frame', 'generation'))
+                if identity[0] <= 0 or identity[1] <= 0:
+                    raise ValueError('invalid lattice writer identity')
+                payload_name = 'lattice-geometry-' + '-'.join(str(value) for value in identity) + '.bin'
+                # Every later record for an identity supersedes both files,
+                # including a refusal or failed retry after an earlier success.
+                wanted.pop(name, None)
+                wanted.pop(payload_name, None)
                 size = int(row['bytes'])
                 if row['file_ok'] != '1' or not 0 < size <= 1024 * 1024:
-                    wanted.pop(name, None)
                     issues.append(f'{name}: state packet export incomplete or invalid size')
                     continue
                 # Both complete and explicitly refused observations are useful;
                 # preserving the file does not qualify it for replay.
-                wanted[name] = {'size': size, 'timed': True}
+                schema = int(row.get('schema', '1'))
+                if schema == 1:
+                    wanted[name] = {'size': size, 'timed': True}
+                    continue
+                if schema != 2:
+                    raise ValueError('unsupported lattice state schema')
+                valid = row['payload_copy_valid']
+                payload_file, payload_bytes, payload_hash = (
+                    row['payload_file'], int(row['payload_bytes']), row['payload_sha256'])
+                if valid == '1':
+                    if (payload_file != payload_name or payload_bytes != lattice_state_packet.GEOMETRY_BYTES or
+                            not lattice_state_packet.SHA256.fullmatch(payload_hash)):
+                        raise ValueError('invalid schema2 payload authorization')
+                elif valid == '0':
+                    if payload_file != '-' or payload_bytes != 0 or payload_hash != '-':
+                        raise ValueError('invalid schema2 refusal authorization')
+                else:
+                    raise ValueError('invalid schema2 payload validity')
+                authorization = {'identity': identity, 'payload_copy_valid': valid == '1',
+                                 'payload_file': None if payload_file == '-' else payload_file,
+                                 'payload_bytes': payload_bytes,
+                                 'payload_sha256': None if payload_hash == '-' else payload_hash,
+                                 'status': row.get('status'), 'matches': row.get('matches')}
+                wanted[name] = {'size': size, 'timed': True, 'lattice': authorization}
+                if valid == '1':
+                    wanted[payload_name] = {'size': payload_bytes, 'timed': True,
+                                            'expected_sha256': payload_hash}
             elif tag == 'loading_intervals_file':
                 name = row['file']
                 if not re.fullmatch(r'loading-intervals-\d+-\d+\.bin', name):
@@ -225,15 +276,43 @@ def snapshot(*, capture_dir=CAPTURES, since_ns=None, log=None, destination_root=
             with os.fdopen(log_fd, 'r', errors='replace') as copied_log:
                 wanted, issues = references(copied_log)
             count = 0
+            lattice = {}
+            copied = set()
             for filename, options in wanted.items():
                 options = dict(options)
+                authorization = options.pop('lattice', None)
+                if authorization is not None:
+                    lattice[filename] = authorization
                 if options.pop('timed', False):
                     options['window'] = (created_ns(info), info.st_mtime_ns)
                 try:
                     copy_file(source_fd, target_fd, filename, **options)
                     count += 1
+                    copied.add(filename)
                 except (OSError, ValueError) as error:
                     issues.append(f'{filename}: not preserved ({error})')
+            for json_name, authorization in lattice.items():
+                payload_name = authorization['payload_file']
+                try:
+                    if json_name not in copied:
+                        raise ValueError('schema2 JSON was not preserved')
+                    packet = lattice_state_packet.load(destination / json_name)
+                    identity = tuple(packet[key] for key in ('pid', 'device', 'frame', 'generation'))
+                    geometry = packet['geometry']
+                    if (packet['schema'] != 2 or identity != authorization['identity'] or
+                            packet['status'] != authorization['status'] or
+                            ','.join(str(value) for value in packet['matches']) != authorization['matches'] or
+                            packet['payload_copy_valid'] is not authorization['payload_copy_valid'] or
+                            geometry['file'] != payload_name or
+                            geometry['bytes'] != authorization['payload_bytes'] or
+                            geometry['sha256'] != authorization['payload_sha256']):
+                        raise ValueError('schema2 JSON disagrees with its authorizing log row')
+                except (OSError, KeyError, TypeError, ValueError) as error:
+                    issues.append(f'{json_name}: schema2 bundle not qualified ({error})')
+                    if payload_name in copied:
+                        os.unlink(payload_name, dir_fd=target_fd)
+                        copied.remove(payload_name)
+                        count -= 1
             # The launcher's own log is authorized by its name and this launch's
             # boundary, not by a record inside the session log; it is absent for
             # a session started outside tools/manage.py launch.

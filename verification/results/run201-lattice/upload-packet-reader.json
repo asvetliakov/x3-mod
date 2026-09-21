@@ -1,0 +1,27 @@
+{
+  "scope": "B2 host reader and collector only; production writer not integrated",
+  "status": "PASS",
+  "reviewer": "review_lattice_payload",
+  "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_lattice_state_capture verification.analysis.test_lattice_payload_packet verification.analysis.test_snapshot_x3_run",
+  "tests": 47,
+  "reviewer_seconds": 3.165,
+  "geometry_bytes": 466224,
+  "schema1_compatible": true,
+  "sources": {
+    "verification/probe/lattice_state_packet.py": "b65ced97725fa72dba0554a81c01d120ebb8950a6792831ea4041e2fc641daf0",
+    "tools/analysis/snapshot_x3_run.py": "d505e74372c0772bc7950a8c1ce303ca5571b10cd1fc6c134dab3a2470a0629a",
+    "verification/analysis/test_snapshot_x3_run.py": "9a892ee23cb203d184c67ce15155fa1b1adaa33401c5f65608156c3cd6a02510",
+    "verification/analysis/test_lattice_payload_packet.py": "8b22d977cc0b9dfc61aa4d3ecd2739245bb1a159a20a9f28f3fecb9f897b52cd"
+  },
+  "review_fixes": [
+    "malformed nested objects raise bounded validation errors and clean unqualified binary",
+    "terminal packet invalidation matches state status on both slots",
+    "hard-bounded reads detect truncation/growth",
+    "direct schema2 load binds canonical JSON filename identity"
+  ],
+  "limitations": [
+    "production Capture writer and lifecycle integration pending",
+    "no new flight payload collected",
+    "no Wine or game execution"
+  ]
+}

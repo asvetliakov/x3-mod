@@ -1734,3 +1734,21 @@ Independent deep review passes source, emitted code and saved runtime evidence.
 This qualifies ownership APIs only. The actual Capture Release/Reset accounting,
 F8 attachment and publication still require integration. Native Windows runtime,
 inherited foreign-callback SEH and moving-lattice visual quality remain unverified.
+
+### F8 payload reader and collector prepared
+
+Schema 2 preserves the state observation and adds an optional fixed 466,224-byte
+sidecar for both selected vertex/index pairs. New allocation/revision/arm
+identities are pointer-free. The reader validates exact ranges, identity, byte
+count, SHA-256 and INDEX16 bounds; `--require-payload` is separate from existing
+state completeness. Schema 1 reading remains supported.
+
+The collector authorizes sidecars only from matching successful log records,
+checks the copied JSON/binary together, and removes unqualified copied binary
+files while preserving diagnostic JSON. Reads are bounded during I/O, and
+malformed nested objects produce validation failures with cleanup. Terminal
+packet status invalidates both attachments with its exact reason.
+
+[Independent review and 47 focused host tests pass](../../verification/results/run201-lattice/upload-packet-reader.json).
+The production writer and Capture lifecycle integration are still pending; this
+checkpoint does not create new game captures or qualify draw-input coherence.

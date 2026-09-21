@@ -86,8 +86,8 @@ completed Run56 command is archived. Future runs omit CrossOver debug tracing.
   The scoped ABI boundary passes 158 checks; the actual manual CloneMesh
   observer now passes 421 checks and independent review. The isolated game-call
   adapter passes 389 checks plus the 158-check ABI regression. Ownership pin lifecycle and paired copying pass 386 checks plus the 421-check
-  manual regression. Capture Release/Reset accounting and F8 attachment remain
-  to integrate. No repeat
+  manual regression. The F8 payload reader/collector passes 47 host tests and review. Capture
+  Release/Reset accounting and F8 attachment remain to integrate. No repeat
   flight or renderer correction is selected.
   [Owning note §31](architecture/taa-lattice-crawl.md#31-close-arithmetic-exploration-investigate-final-upload-observation).
 - **Collision:** paused by user request; no moving-collision test is queued.

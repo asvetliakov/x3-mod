@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""Validate a bounded state observation; never qualify payloads or draw coherence."""
+"""Validate bounded lattice state and optional schema-2 geometry bundles."""
 import argparse
+import hashlib
 import json
+import os
 from pathlib import Path
 import re
+import stat
+import struct
 
 SELECTOR = 'run177_panel_position_v1'
 FIELD_LIMIT, WORD_LIMIT, SHADER_WORD_LIMIT = 256, 40000, 16384
@@ -23,6 +27,24 @@ KINDS = {'source_shader', 'declaration', 'object', 'arguments', 'route', 'shader
 HEX = re.compile(r'^[0-9a-f]{8}$')
 STATUSES = {'complete', 'no_match', 'partial', 'ambiguous', 'unavailable', 'reset',
             'capacity', 'submission_failed'}
+GEOMETRY_FORMAT = 'x3_lattice_geometry_v1'
+GEOMETRY_SCOPE = 'producer_uploads_bound_at_observation'
+GEOMETRY_BYTES = 466224
+GEOMETRY_RANGES = (
+    {'vertex': (0, 387200), 'index': (387200, 22704), 'vertices': 9680},
+    {'vertex': (409904, 50680), 'index': (460584, 5640), 'vertices': 1267},
+)
+PAIR_STATUSES = {'not_attempted', 'copied', 'unarmed', 'closing', 'active_scope',
+                 'selector', 'missing', 'duplicate', 'stale_arm', 'device',
+                 'binding', 'revision', 'open_mapping', 'dispatch', 'capacity',
+                 'api_error'}
+ATTACHMENT_STATUSES = {'valid', 'not_selected', 'allocation_failure', 'copy_refused',
+                       'packet_invalid', 'submission_failed', 'sibling_refused',
+                       'export_failed'}
+INVALIDATED_BY = {'reset', 'ambiguous', 'partial', 'unavailable', 'capacity',
+                  'submission_failed', 'no_match'}
+HEX64 = re.compile(r'^[0-9a-f]{16}$')
+SHA256 = re.compile(r'^[0-9a-f]{64}$')
 
 
 def need(condition, message):
@@ -30,10 +52,12 @@ def need(condition, message):
         raise ValueError(message)
 
 
-def validate(packet, require_complete=False):
-    need(packet.get('schema') == 1 and packet.get('selector') == SELECTOR, 'unknown schema/selector')
+def _validate_state(packet, require_complete, schema):
+    need(packet.get('schema') == schema and packet.get('selector') == SELECTOR, 'unknown schema/selector')
+    evidence = packet.get('payload_copy_valid')
     need(packet.get('draw_input_coherence') == 'unqualified' and
-         packet.get('payload_copy_valid') == 'not_attempted', 'invalid evidence claim')
+         (evidence == 'not_attempted' if schema == 1 else type(evidence) is bool),
+         'invalid evidence claim')
     for key, minimum in [('device', 1), ('frame', 0), ('generation', 0), ('query_ticks', 0), ('qpc_frequency', 1)]:
         value = packet.get(key)
         need(type(value) is int and minimum <= value <= 0xffffffffffffffff, f'missing/invalid {key}')
@@ -53,15 +77,17 @@ def validate(packet, require_complete=False):
         need(packet['candidates'] <= 64, 'complete candidate bound')
     objects = []
     for slot, record in enumerate(records):
-        need(record.get('slot') == slot, 'record slot')
+        need(isinstance(record, dict), 'record is not an object')
+        need(type(record.get('slot')) is int and record['slot'] == slot, 'record slot')
         draw=record.get('draw')
         need(type(draw) is int and (1 if complete else 0) <= draw <= 0xffffffffffffffff, 'missing/invalid draw')
         fields = record.get('fields')
         need(isinstance(fields, list) and len(fields) <= FIELD_LIMIT, 'field bound')
         lookup, word_count = {}, 0
         for field in fields:
+            need(isinstance(field, dict), 'field is not an object')
             kind, index = field.get('kind'), field.get('index')
-            need(kind in KINDS and isinstance(index, int) and 0 <= index < 1024, 'field identity')
+            need(kind in KINDS and type(index) is int and 0 <= index < 1024, 'field identity')
             key = kind, index
             need(key not in lookup, 'duplicate field')
             hr, words = field.get('hr'), field.get('words')
@@ -151,11 +177,150 @@ def validate(packet, require_complete=False):
     if complete:
         need(objects[0] == objects[1], 'different within-frame objects')
         need(records[0]['draw'] != records[1]['draw'], 'duplicate draw identity')
+    return complete
+
+
+def _uint(value, name):
+    need(type(value) is int and 0 <= value <= 0xffffffffffffffff, f'missing/invalid {name}')
+
+
+def _identity(value, name):
+    need(isinstance(value, str) and HEX64.fullmatch(value) and int(value, 16) != 0,
+         f'missing/invalid upload {name}')
+
+
+def _validate_upload(upload, slot, valid, terminal_status):
+    need(isinstance(upload, dict), 'missing upload envelope')
+    common = {'pair_status', 'attachment_status', 'producer_payload_valid',
+              'binding_revision_match_at_observation'}
+    need(upload.get('pair_status') in PAIR_STATUSES, 'invalid pair status')
+    attachment = upload.get('attachment_status')
+    need(attachment in ATTACHMENT_STATUSES, 'invalid attachment status')
+    need(type(upload.get('producer_payload_valid')) is bool and
+         type(upload.get('binding_revision_match_at_observation')) is bool,
+         'invalid upload evidence flags')
+    identity = {'arm_serial', 'owner', 'generation', 'invocation', 'vertex', 'index'}
+    if valid:
+        need(set(upload) == common | identity, 'unexpected/missing valid upload member')
+        need(attachment == 'valid' and upload['pair_status'] == 'copied' and
+             upload['producer_payload_valid'] is True and
+             upload['binding_revision_match_at_observation'] is True,
+             'invalid qualified upload')
+        for key in ('arm_serial', 'owner', 'generation', 'invocation'):
+            _identity(upload.get(key), key)
+        for kind in ('vertex', 'index'):
+            item = upload.get(kind)
+            need(isinstance(item, dict) and set(item) == {'allocation', 'revision', 'offset', 'bytes'},
+                 f'invalid {kind} upload identity')
+            _identity(item.get('allocation'), f'{kind} allocation')
+            _identity(item.get('revision'), f'{kind} revision')
+            offset, size = GEOMETRY_RANGES[slot][kind]
+            need(type(item.get('offset')) is int and item['offset'] == offset and
+                 type(item.get('bytes')) is int and item['bytes'] == size,
+                 f'invalid {kind} range')
+        need(upload['vertex']['allocation'] != upload['index']['allocation'],
+             'vertex/index allocation collision')
+    else:
+        need(set(upload) == common | {'invalidated_by'}, 'unexpected/missing refused upload member')
+        need(attachment != 'valid' and upload['producer_payload_valid'] is False and
+             upload['binding_revision_match_at_observation'] is False,
+             'invalid refused upload')
+        reason = upload.get('invalidated_by')
+        need((attachment == 'packet_invalid' and terminal_status in INVALIDATED_BY and
+              reason == terminal_status) or
+             (attachment != 'packet_invalid' and reason is None), 'invalid attachment invalidation')
+
+
+def _validate_schema2(packet, complete):
+    pid = packet.get('pid')
+    need(type(pid) is int and 1 <= pid <= 0xffffffffffffffff, 'missing/invalid pid')
+    geometry = packet.get('geometry')
+    need(isinstance(geometry, dict) and set(geometry) ==
+         {'format', 'scope', 'status', 'file', 'bytes', 'sha256', 'copy_ticks'},
+         'invalid geometry envelope')
+    need(geometry.get('format') == GEOMETRY_FORMAT and geometry.get('scope') == GEOMETRY_SCOPE,
+         'invalid geometry format/scope')
+    _uint(geometry.get('copy_ticks'), 'copy_ticks')
+    status = geometry.get('status')
+    need(status in ('complete', 'unavailable'), 'invalid geometry status')
+    valid = status == 'complete'
+    need(packet.get('payload_copy_valid') is valid, 'payload validity/status mismatch')
+    expected = f"lattice-geometry-{pid}-{packet['device']}-{packet['frame']}-{packet['generation']}.bin"
+    if valid:
+        need(complete and packet.get('matches') == [1, 1], 'payload without complete state')
+        need(geometry.get('file') == expected and type(geometry.get('bytes')) is int and
+             geometry['bytes'] == GEOMETRY_BYTES and
+             isinstance(geometry.get('sha256'), str) and SHA256.fullmatch(geometry['sha256']),
+             'invalid geometry attachment')
+    else:
+        need(geometry.get('file') is None and type(geometry.get('bytes')) is int and geometry['bytes'] == 0 and
+             geometry.get('sha256') is None, 'unavailable geometry references payload')
+    uploads = []
+    for slot, record in enumerate(packet['records']):
+        _validate_upload(record.get('upload'), slot, valid, packet['status'])
+        uploads.append(record['upload'])
+    if not complete:
+        need(all(upload['attachment_status'] == 'packet_invalid' and
+                 upload['invalidated_by'] == packet['status'] for upload in uploads),
+             'terminal state did not invalidate every attachment')
+    if valid:
+        for key in ('arm_serial', 'owner', 'generation'):
+            need(uploads[0][key] == uploads[1][key], f'upload {key} mismatch')
+        need(uploads[0]['invocation'] != uploads[1]['invocation'], 'duplicate upload invocation')
+        allocations = [u[k]['allocation'] for u in uploads for k in ('vertex', 'index')]
+        need(len(set(allocations)) == len(allocations), 'duplicate upload allocation')
+
+
+def validate(packet, require_complete=False, require_payload=False):
+    need(isinstance(packet, dict), 'packet is not an object')
+    schema = packet.get('schema')
+    need(type(schema) is int and schema in (1, 2), 'unknown schema/selector')
+    complete = _validate_state(packet, require_complete, schema)
+    if schema == 1:
+        need(not require_payload, 'payload required but schema1 is state-only')
+    else:
+        _validate_schema2(packet, complete)
+        need(not require_payload or packet['payload_copy_valid'] is True,
+             'complete geometry payload required')
     return packet
 
 
-def load(path, require_complete=False):
-    raw = Path(path).read_bytes()
+def _read_geometry(path, geometry):
+    name = geometry['file']
+    need(isinstance(name, str) and name == Path(name).name, 'unsafe geometry basename')
+    directory_fd = os.open(Path(path).parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory_fd)
+        with os.fdopen(fd, 'rb') as stream:
+            before = os.fstat(stream.fileno())
+            need(stat.S_ISREG(before.st_mode), 'geometry is not a regular file')
+            need(before.st_size == GEOMETRY_BYTES, 'geometry byte size mismatch')
+            digest = hashlib.sha256()
+            data = bytearray()
+            remaining = GEOMETRY_BYTES
+            while remaining:
+                chunk = stream.read(min(1024 * 1024, remaining))
+                need(bool(chunk), 'geometry truncated while reading')
+                digest.update(chunk)
+                data.extend(chunk)
+                remaining -= len(chunk)
+            need(not stream.read(1), 'geometry grew while reading')
+            after = os.fstat(stream.fileno())
+            keys = ('st_dev', 'st_ino', 'st_size', 'st_mtime_ns', 'st_ctime_ns')
+            need(all(getattr(before, key) == getattr(after, key) for key in keys),
+                 'geometry changed while reading')
+    finally:
+        os.close(directory_fd)
+    need(digest.hexdigest() == geometry['sha256'], 'geometry SHA-256 mismatch')
+    for ranges in GEOMETRY_RANGES:
+        offset, size = ranges['index']
+        need(all(index < ranges['vertices'] for (index,) in struct.iter_unpack('<H', data[offset:offset + size])),
+             'geometry index outside vertex range')
+
+
+def load(path, require_complete=False, require_payload=False):
+    path = Path(path)
+    raw = path.read_bytes()
     need(len(raw) <= MAX_JSON_BYTES, 'JSON byte bound')
     # Reject duplicate JSON keys rather than silently replacing a validity field.
     def unique(pairs):
@@ -164,14 +329,22 @@ def load(path, require_complete=False):
             need(key not in result, 'duplicate JSON key')
             result[key] = value
         return result
-    return validate(json.loads(raw, object_pairs_hook=unique), require_complete)
+    packet = validate(json.loads(raw, object_pairs_hook=unique), require_complete, require_payload)
+    if packet['schema'] == 2:
+        expected = (f"lattice-state-{packet['pid']}-{packet['device']}-"
+                    f"{packet['frame']}-{packet['generation']}.json")
+        need(path.name == expected, 'schema2 state basename/identity mismatch')
+    if packet['schema'] == 2 and packet['payload_copy_valid']:
+        _read_geometry(path, packet['geometry'])
+    return packet
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('packet')
     parser.add_argument('--require-complete', action='store_true')
+    parser.add_argument('--require-payload', action='store_true')
     args = parser.parse_args()
-    packet = load(args.packet, args.require_complete)
+    packet = load(args.packet, args.require_complete, args.require_payload)
     print(json.dumps({k: packet[k] for k in ['selector', 'status', 'device', 'frame', 'matches',
                                             'draw_input_coherence', 'payload_copy_valid']}, indent=2))
