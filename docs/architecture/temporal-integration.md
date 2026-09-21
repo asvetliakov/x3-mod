@@ -1065,9 +1065,20 @@ projection check above.
 Native Windows: arithmetic and a log line only; no API use. Cross-compiled, not run
 natively.
 
-## Distant unrouted stations under a pan: sentinel stabiliser (2026-09-21; implemented as an opt-in, default off, not flown)
+## Distant unrouted stations under a pan: sentinel stabiliser (2026-09-21; default on at S = 0.7 since 2026-09-22)
 
-Implementation status (2026-09-21): `--taa-sentinel-stabiliser S[,E]` / `X3M_TAA_SENTINEL_STABILISER`, default absent = off.
+Implementation status: `--taa-sentinel-stabiliser S[,E]` / `X3M_TAA_SENTINEL_STABILISER`. **Default 0.7 (E = 1) whenever
+the TAA route runs with the thin-region camera gate in effect**, in the launcher and in the DLL's native fallback, after
+Run 61 (run216: lasers over sky clean, no ghost complaint) and Run 62 (run221: the distant-station pan flicker the option
+was written for reported fixed at 0.7). The stabiliser can only ride that gate, so where the gate is not in effect - no
+`--taa-thin-region` (or W = 0), an explicit `--taa-thin-region-gate screen`, an active `--taa-line-filter`, or no `--taa`
+at all - the default resolves to **off**, not to an error; an explicitly requested S > 0 in those cases is still refused.
+`off` (or `0`) is the opt-out and is the pre-Run62 behaviour bit for bit. The launcher always resolves the value, so an
+inherited shell variable can neither turn the stabiliser on without the gate nor change the default; the DLL falls back
+only when the variable is absent. The resolved S and E now appear in the startup `motion_output_mode` line
+(`sentinel_stabiliser=`, `sentinel_emitter=`) beside the resolved `unmatched_static=`, as well as in `motion_output_taa`.
+`verification/probe/run_motion_output.py` pins `X3M_TAA_SENTINEL_STABILISER=0` for its scripts, whose oracles model the
+stabiliser off (`verification/probe/run_temporal_pass.py` drives the pass directly and reads no such variable).
 Differences from the change list below: the box pass runs **separably** while the stabiliser is on
 (`src/temporal/thin_box_rows_ps.hlsl` on every pixel into one more FP16 pair, `thin_box_columns_ps.hlsl` where the mask
 opens; minimum / maximum are exactly separable and FP16 rounding is monotone, so the bytes equal the 49-tap program's), and

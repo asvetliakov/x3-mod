@@ -5155,6 +5155,11 @@ def main(argv=None):
                        # pre-run212 off behaviour, so the runner pins off; the unmatched-static cases set
                        # node/all in their own env below.
                        X3M_TAA_UNMATCHED_STATIC='0',
+                       # Likewise the DLL defaults X3M_TAA_SENTINEL_STABILISER to 0.7 with the TAA route and the
+                       # thin-region camera gate (run216/run221). No script here sets X3M_TAA_THIN_REGION, so the
+                       # gate never resolves on, but the pin keeps that independent of the DLL default and of an
+                       # inherited shell value; the oracles model the stabiliser off.
+                       X3M_TAA_SENTINEL_STABILISER='0',
                        X3M_TELEMETRY_DRAW='1',  # per-draw metrics (gate_us, route_draw_us, ...) are gated behind this switch since a8d4309; the validators require them
                        X3M_FIXTURE_CAMERA='rotate' if camera else 'none', X3M_TAA_SENTINEL=sentinel or 'auto', X3M_FIXTURE_WRAP='0',
                        X3M_MOTION_RT_MODE='lazy' if lazy else 'perdraw', X3M_MOTION_FRAME_LOG='1' if burst else '60',

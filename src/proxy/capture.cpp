@@ -2859,15 +2859,18 @@ void initialize_log(HMODULE module) {
         else if(length>=16)log("taa_thin_region_gate_setting invalid=1 reason=too_long length=%lu",length);
         else if(taa_requested&&taa_thin_region[0]>0.f&&taa_line_filter<=0.f)taa_thin_camera_gate=true;}
     // X3M_TAA_SENTINEL_STABILISER=<S>[,<E>] (docs/architecture/temporal-integration.md "Distant unrouted stations under a
-    // pan"; unset: off, bit-identical): S 0..1, the thin-region strength of unrouted depth-sentinel pixels through the camera
+    // pan"): S 0..1, the thin-region strength of unrouted depth-sentinel pixels through the camera
     // gate (always box-clipped); E >= 0, the emitter bound in scene luma (default 1; 0 = none). 1 or 2 fields; anything else
     // keeps the option off. Meaningful only with the camera gate; the route turns it off otherwise and says so.
+    // Absent is the Run61/Run62-accepted default: S = 0.7 with E = 1 whenever the TAA route runs with the thin-region
+    // camera gate resolved above (that gate is the only path the stabiliser has); off otherwise, and "0" opts out.
     {wchar_t sentinel_setting[32];const DWORD length=taa_requested?GetEnvironmentVariableW(L"X3M_TAA_SENTINEL_STABILISER",sentinel_setting,32):0;
         if(length>0&&length<32){float v[2]={0.f,1.f};unsigned count=0;wchar_t* cursor=sentinel_setting;bool ok=true;
             while(ok&&count<2){wchar_t* end=nullptr;v[count]=wcstof(cursor,&end);ok=end!=cursor;++count;if(!ok||*end==L'\0')break;ok=*end==L',';cursor=end+1;if(count==2)ok=false;}
             ok=ok&&v[0]>=0.f&&v[0]<=1.f&&v[1]>=0.f&&v[1]<=65000.f;
             if(ok){taa_sentinel[0]=v[0];taa_sentinel[1]=v[1];}else log("taa_sentinel_stabiliser_setting invalid=1");}
-        else if(length>=32)log("taa_sentinel_stabiliser_setting invalid=1 reason=too_long length=%lu",length);}
+        else if(length>=32)log("taa_sentinel_stabiliser_setting invalid=1 reason=too_long length=%lu",length);
+        else if(taa_requested&&taa_thin_camera_gate)taa_sentinel[0]=.7f;} // run216/run221: 0.7 is the default with the camera gate ("0" opts out)
     if(taa_requested&&GetEnvironmentVariableW(L"X3M_TAA_HISTORY_WEIGHT",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=.5f&&v<=.98f)taa_history_weight=v;}
     // Flicker suppression (docs/architecture/taa-flicker-suppression.md), all
     // off when unset or invalid: X3M_TAA_THIN_CLIP=<S> (0..1),
@@ -3275,9 +3278,9 @@ void initialize_log(HMODULE module) {
     else if(taa_requested)taa_unmatched_static=1; // run212: node is the default with the TAA route (an explicit "off"/"0" opts out)
     if(GetEnvironmentVariableW(L"X3M_CAMERA_CUT_DEG",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=180)camera_cut_degrees=v;}
     if(GetEnvironmentVariableW(L"X3M_CAMERA_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=1000000)camera_log_frames=unsigned(n);}
-    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s camera_cut_deg=%.2f camera_log=%u state_shadow=%s scene_hook=%u hdr=%u taa_k=%.5f mip_bias=%g taa_sharpen=%.3f taa_current_filter=%.3f taa_history_weight=%.3f",
+    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s unmatched_static=%u sentinel_stabiliser=%.3f sentinel_emitter=%.3f camera_cut_deg=%.2f camera_log=%u state_shadow=%s scene_hook=%u hdr=%u taa_k=%.5f mip_bias=%g taa_sharpen=%.3f taa_current_filter=%.3f taa_history_weight=%.3f",
         motion_output_requested,taa_requested,taa_requested,taa_debug_requested,motion_jitter_requested,motion_jitter_samples,motion_cut_median_px,motion_cut_missing,motion_rt_lazy?"lazy":"perdraw",motion_frame_log,
-        taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",camera_cut_degrees,camera_log_frames,motion_state_shadow<0?"auto":motion_state_shadow?"1":"0",scene_hook_requested,hdr_requested,taa_k_override,double(taa_mip_bias),taa_sharpen,double(taa_current_filter),double(taa_history_weight));
+        taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",taa_unmatched_static,double(taa_sentinel[0]),double(taa_sentinel[1]),camera_cut_degrees,camera_log_frames,motion_state_shadow<0?"auto":motion_state_shadow?"1":"0",scene_hook_requested,hdr_requested,taa_k_override,double(taa_mip_bias),taa_sharpen,double(taa_current_filter),double(taa_history_weight));
     log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
     telemetry::initialize([]{if(logfile)fflush(logfile);});
     game_phases::initialize(); // all 33 claims here, before the first Present
