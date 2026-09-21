@@ -81,3 +81,27 @@ Out of scope: any change to the field, prefilter, spacing, LOD range, taper or s
 - Hardware FP16 bilinear precision on the 1032×516 atlas: the checkpoint-2 parity gate; native hardware unverified.
 - Whether far-only interior during fine fill is acceptable: the flight's gate-jump and SETA observations; the plan-strict hold is the fallback.
 - Constant chroma versus today's spatial chroma: the flight.
+
+## Checkpoint 2 review carry-overs for checkpoint 3 (2026-09-21)
+
+Checkpoint 2 (shaders, fragments, detached fixture) is accepted with non-blocking
+findings. Orchestrator ruling: the in-scatter S gates are display-scaled like T
+(p99 ≤ .002, max ≤ .003) because the host's frozen candidate already exceeds the
+old .0005 gate; implementation identity rests on the texel-exact march
+(T 1.07e-6 / 2.21e-6, S max 5.2e-7 against the host). Checkpoint 3 must:
+
+1. Give the repair draw its own `c0` projection correction (`+0.5/W`, `−0.5/H`
+   at full resolution); today it reuses the half-resolution quad-centre
+   correction and shades half a pixel down-right of its depth tap.
+2. Make the fixture's repair reference independent of that offset; the current
+   check is tautological for it.
+3. Put the production RGBA16F bilinear row and the temporal row into the PASS
+   predicate, and encode the display-scaled S gates in `fog_density_shader_run.py`
+   so `summary.json` no longer lists failing gates beside PASS; the bilinear
+   parity-S figure (5.6e-5) is reported, not gated.
+4. Rename `LodWeights::far` (collides with `windef.h`'s `far` macro).
+5. Handle odd half-target sizes in the `sizes.zw - 1.0` footprint clamp.
+6. Exercise the march's `fog_visibility` shaft path and add an explicit
+   seam-crossing / lane 3→0 assertion.
+7. Treat repair's 510 of 512 slots as the whole budget; fixture timing on this
+   backend is not a GPU cost and must not be cited as performance.

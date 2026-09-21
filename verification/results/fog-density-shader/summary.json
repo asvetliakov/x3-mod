@@ -1,0 +1,268 @@
+{
+  "schema": 1,
+  "result": "PASS",
+  "gates": {
+    "fixture_passed": true,
+    "slots_below_512": true,
+    "candidate_T": true,
+    "parity_T": true,
+    "dense64_T": true,
+    "temporal": true
+  },
+  "design_section5_S_gates": {
+    "parity_S_bilinear": false,
+    "parity_S_texel_exact": true,
+    "dense64_S": false,
+    "host_candidate_dense64_S": false
+  },
+  "host_candidate_vs_dense64": {
+    "T": {
+      "count": 2370,
+      "p50": 0.0003062784671783447,
+      "p99": 0.0016892284154891967,
+      "max": 0.0023595690727233887
+    },
+    "S": {
+      "count": 7110,
+      "p50": 1.6539357602596283e-05,
+      "p99": 0.0007058501988649365,
+      "max": 0.0012508202344179153
+    }
+  },
+  "gate_values": {
+    "T_p99": 0.002,
+    "T_max": 0.003,
+    "parity_T_max": 0.001,
+    "parity_S_max": 3e-05,
+    "S_p99": 0.0005,
+    "S_max": 0.002,
+    "temporal": 0.003
+  },
+  "versus_host": {
+    "bilinear32": {
+      "cand_T": {
+        "count": 2370,
+        "p50": 1.0609626770019531e-05,
+        "p99": 6.999015808105467e-05,
+        "max": 0.00014710426330566406
+      },
+      "cand_S": {
+        "count": 7110,
+        "p50": 5.895271897315979e-07,
+        "p99": 1.9047856330871565e-05,
+        "max": 5.618482828140259e-05
+      },
+      "dense_T": {
+        "count": 2370,
+        "p50": 0.00031113624572753906,
+        "p99": 0.001707825064659118,
+        "max": 0.002341747283935547
+      },
+      "dense_S": {
+        "count": 7110,
+        "p50": 1.6623642295598984e-05,
+        "p99": 0.000701581612229347,
+        "max": 0.001255035400390625
+      }
+    },
+    "exact32": {
+      "cand_T": {
+        "count": 2370,
+        "p50": 5.364418029785156e-07,
+        "p99": 1.0728836059570312e-06,
+        "max": 2.205371856689453e-06
+      },
+      "cand_S": {
+        "count": 7110,
+        "p50": 3.166496753692627e-08,
+        "p99": 3.8743019104003906e-07,
+        "max": 5.234032869338989e-07
+      },
+      "dense_T": {
+        "count": 2370,
+        "p50": 0.00030606985092163086,
+        "p99": 0.0016889095306396483,
+        "max": 0.0023601651191711426
+      },
+      "dense_S": {
+        "count": 7110,
+        "p50": 1.6508041881024837e-05,
+        "p99": 0.000705667585134506,
+        "max": 0.0012506525963544846
+      }
+    },
+    "bilinear16": {
+      "cand_T": {
+        "count": 2370,
+        "p50": 0.0002428293228149414,
+        "p99": 0.000494118332862854,
+        "max": 0.0005523562431335449
+      },
+      "cand_S": {
+        "count": 7110,
+        "p50": 2.5909394025802612e-06,
+        "p99": 8.089572191238403e-05,
+        "max": 0.00014485418796539307
+      },
+      "dense_T": {
+        "count": 2370,
+        "p50": 0.0004138946533203125,
+        "p99": 0.0018562477827072138,
+        "max": 0.0026941895484924316
+      },
+      "dense_S": {
+        "count": 7110,
+        "p50": 1.6726786270737648e-05,
+        "p99": 0.0006964129954576489,
+        "max": 0.0012685228139162064
+      }
+    }
+  },
+  "fp16_bilinear_vs_texel_exact": {
+    "T": {
+      "count": 258048,
+      "p50": 4.827976226806641e-06,
+      "p99": 6.0558319091796875e-05,
+      "max": 0.00023639202117919922
+    },
+    "S": {
+      "count": 774144,
+      "p50": 2.507586032152176e-07,
+      "p99": 1.4625489711761475e-05,
+      "max": 0.00010300427675247192
+    }
+  },
+  "temporal_residual_vs_dense64": {
+    "count": 60,
+    "p50": 0.00019463896751403809,
+    "p99": 0.0014186578989028907,
+    "max": 0.0018333792686462402
+  },
+  "shaders": {
+    "fog-density-march": {
+      "bytecode_sha256": "4dacf7e4d3ffa909cbd8b8a75352b44d55a471d36ba3222d977662cf6afda60f",
+      "slots": 415,
+      "texture_instructions": 17,
+      "words": 1768
+    },
+    "fog-density-composite": {
+      "bytecode_sha256": "ec97163d99f8a0be6039a67970ca14444e90f4c81ba3f7ebb5e96e93a9b59447",
+      "slots": 203,
+      "texture_instructions": 10,
+      "words": 888
+    },
+    "fog-density-repair": {
+      "bytecode_sha256": "d40f9a07538f1e67e5451a71912d7b9e59974dbd1532136681768bdd8661b804",
+      "slots": 510,
+      "texture_instructions": 22,
+      "words": 2112
+    },
+    "fog-density-march-exact": {
+      "bytecode_sha256": "a718e8e9161ae256b7c3e02b054f9adcd0ece92d4e5866593ab1e009d1022425",
+      "slots": 301,
+      "texture_instructions": 17,
+      "words": 1259
+    }
+  },
+  "fixture_checks": 12,
+  "fixture_timing_not_game_fps": {
+    "march_sky_132_reads": {
+      "completed_median_ms": 0.7838,
+      "completed_p95_ms": 0.8951,
+      "submit_median_ms": 0.016,
+      "submit_p95_ms": 0.0277
+    },
+    "march_depth29300_172_reads": {
+      "completed_median_ms": 0.8954,
+      "completed_p95_ms": 1.0109,
+      "submit_median_ms": 0.0151,
+      "submit_p95_ms": 0.0177
+    },
+    "transaction_sky_march_composite_repair": {
+      "completed_median_ms": 0.9465,
+      "completed_p95_ms": 0.9781,
+      "submit_median_ms": 0.0611,
+      "submit_p95_ms": 0.0743
+    }
+  },
+  "fixture_readback_synchronised_timing_not_game_fps": {
+    "march_sky_132_reads": {
+      "readback_median_ms": 1.5962,
+      "baseline_clear_readback_median_ms": 0.3084,
+      "net_median_ms": 1.2879
+    },
+    "march_depth29300_172_reads": {
+      "readback_median_ms": 1.3044,
+      "baseline_clear_readback_median_ms": 0.2662,
+      "net_median_ms": 1.0382
+    },
+    "transaction_sky_march_composite_repair": {
+      "readback_median_ms": 1.5821,
+      "baseline_clear_readback_median_ms": 0.7557,
+      "net_median_ms": 0.8263
+    }
+  },
+  "fixture_march_slope_timing_not_game_fps": {
+    "march_sky_132_reads": {
+      "one_march_ms": 0.9289,
+      "ten_marches_ms": 1.0369,
+      "per_march_slope_ms": 0.012
+    },
+    "march_depth29300_172_reads": {
+      "one_march_ms": 1.0345,
+      "ten_marches_ms": 1.1207,
+      "per_march_slope_ms": 0.0096
+    }
+  },
+  "repair": {
+    "odd_pixels": 18432,
+    "fogged": 17899,
+    "changed": 17899,
+    "worst_vs_full_march": 0.000488249101
+  },
+  "generation": {
+    "atlases": 24,
+    "seconds": 25.742027,
+    "nodes_per_second": 1955233.0
+  },
+  "executable_sha256": "7fc0de3c8c8b501cfb6279fdc1829164ce8a1070b4b0d47cd81c65a9941ebeed",
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "run_seconds": 31.652222125,
+  "reference": {
+    "schema": 1,
+    "width": 128,
+    "height": 72,
+    "shifts": [
+      -5500.0,
+      -5000.0,
+      -4500.0,
+      0.0,
+      4500.0,
+      5000.0,
+      5500.0
+    ],
+    "depths": [
+      1000.0,
+      11999.0,
+      12001.0,
+      149999.0,
+      150001.0,
+      199999.0,
+      200001.0
+    ],
+    "screen_sha256": "da3dcbe2ff5c3eb8aa627175130cadda79d9dd8bde75960e1c811da3ea9d274b",
+    "exporter_sha256": "c41899d93ee010a4f727a816f0ff833bba5292b8a2b67752f43bef12623ee00a",
+    "cases_sha256": "f8db0b20b31ca7d6f590fee5b2dc5bb57cd51e2debae1ad10dc349ca1928f98a",
+    "reference_sha256": "3917268d12fd37703657947d0cbeffda1942f9250fb09a8c61b045fe6e49b885",
+    "manifest_sha256": "db0a8dd1db2d538872b1930f2a8dcd7ca763760a70c3d72c8b3cd4b2c1500a30",
+    "packet_sha256": "014d586109e5968dbd0358969ab7082e7fc3e670335a59d889f6e2ba649d87f8"
+  }
+}

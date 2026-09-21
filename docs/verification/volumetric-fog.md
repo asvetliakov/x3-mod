@@ -1282,3 +1282,85 @@ Initial-fill estimate for ≈0.97 M far + ≈1.69 M fine nodes on one worker:
 Wine/FEX ≈2.66 M nodes / 1.93 M nodes/s ≈ **1.4 s**; native arm64 ≈ 0.72 s. Below
 the design's "add a second worker if above ~5 s" line for the CrossOver target;
 native Windows remains an estimate.
+
+## Stored-density runtime integration, checkpoint 2: shaders and GPU numerics (2026-09-21)
+
+Static caches only; no cache manager, worker, slab upload, readiness ramp or Reset
+(checkpoint 3). The production `FogPass` still binds the old programs.
+
+Sources: `src/fog/fog_density_field_inc.h` (level sampler, single 64-bin loop, shared
+footprint law) with `fog_density_{march,composite,repair}_ps.hlsl`; fragments
+`src/renderer/fog_density_*_program_inc.h` from `tools/shaders/generate_rigid_motion_pixel.py`
+(native `d3dx9_37` flow, `--check` PASS). Registers: c0–c21 as today (c2.xyz unused, far
+readiness folds into sigma), c22/c23 = camera modulo 128·delta (centred) and 1/delta per
+level, c24 = family mean chroma and fine readiness; s1 fine atlas, s7 far atlas. The
+verification-only `verification/probe/fog_density_march_exact_ps.hlsl` fetches the eight
+texels with POINT sampling (no shafts, to stay inside 32 temporaries).
+
+| Program | Slots (Microsoft ps_3_0 table, flow control included) | Words | Texture reads per pixel |
+| --- | --- | --- | --- |
+| march | 415 | 1,768 | 1 depth + 2 per level sample: 49 near-only, 133 sky, 173 worst (L = 29,300); shaft taps unchanged |
+| composite | 203 | 888 | 10 (scene, depth, 4 half depths, 4 ST); never marches |
+| repair | 510 | 2,112 | 5 depth reads, then `clip`; repaired pixels add the scene and one march |
+| march, texel exact (verification) | 301 | 1,259 | 8 per level sample (529 sky) |
+
+`ambient_occlusion_program_slots` charges flow control one slot each and therefore reads
+lower; the table above uses `verification/probe/fog_density_shader_slots.py`. Repair needed
+three reductions to fit (sign-only footprint test, vectorised depth classes and tap
+coordinates); its two-slot headroom is the constraint on any later shader addition.
+
+Hardware bilinear cannot replace any part of the eight-point prefilter: that is a bake-time
+mean of analytic field evaluations at ±delta/4, not a filter over stored texels. At run time
+it replaces the XY half of the trilinear reconstruction, not exactly: measured below.
+
+Fixture `verification/probe/fog_density_shader_fixture.cpp` (i686 MinGW, SSE2, four-byte
+incoming stack, `-ffp-contract=off`), driven by `fog_density_shader_run.py build|run|check`,
+reference from `tools/analysis/fog_density_shader_reference.py` (imports the screen
+unchanged; screen digest `da3dcbe2…` preserved). Both atlases are filled by
+`generate_tile` through SYSTEMMEM → `UpdateTexture` for poses A/B and the six ±4500/5000/5500
+shifts each (24 atlases, 1.955 M nodes/s under FEX); 128×72 rays identical to the screen;
+2,240 sky rays, 70 geometry rays (5 witnesses × 7 depths × 2 poses), 60 shifted rays.
+Run: bottle X3, arm64, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`, exe
+`7fc0de3c8c8b501cfb6279fdc1829164ce8a1070b4b0d47cd81c65a9941ebeed`, 31.7 s, 12 fixture checks,
+output `/tmp/x3-fog-density-shader-v1/fixture4`; compact
+[summary](../../verification/results/fog-density-shader/summary.json).
+
+| Comparison (2,370 rays; p99 / max) | T | S per channel |
+| --- | --- | --- |
+| GPU texel exact, 32F target, vs host 24+40 candidate | 1.07e-6 / 2.21e-6 | 3.9e-7 / 5.2e-7 |
+| GPU bilinear, 32F target, vs host candidate (gate T .002 / .003; parity T max .001) | 7.0e-5 / 1.47e-4 | 1.9e-5 / 5.6e-5 |
+| GPU bilinear, production RGBA16F target, vs host candidate | 4.94e-4 / 5.52e-4 | 8.1e-5 / 1.45e-4 |
+| GPU bilinear vs host filtered dense64 (gate T .002 / .003) | .001708 / .002342 | .000702 / .001255 |
+| host candidate vs host dense64 (no GPU) | .001689 / .002360 | .000706 / .001251 |
+| FP16 bilinear vs texel exact, all 258,048 pixels of the fogged cases | 6.1e-5 / 2.36e-4 | 1.5e-5 / 1.03e-4 |
+| temporal residual vs dense64, 60 shift pairs (gate .003) | max .001833 | |
+
+Passed: every T gate, temporal, slots, exact identity for depth 0 / NaN / +inf and for a
+zero cache, exact scene through composite and repair on a zero cache, source alpha .37
+exact, composite keeps the scene on zero weight, repair leaves compatible pixels
+bit-identical and rewrites 17,899 of 18,432 zero-weight pixels to within 4.9e-4 (one
+RGBA16F step) of a full-resolution march. §7 assumption measured: FP16 bilinear on this
+backend costs at most 2.4e-4 in T, an eighth of the p99 gate; the dominant implementation
+error is the RGBA16F (S,T) target step near T = 1 (4.9e-4), not filtering. The texel-exact
+path (4× the fetches) is not needed for T.
+
+Not met, reported outside the result: the design's §5 S gates. Parity S max 3e-5 holds for
+texel-exact fetches (5.2e-7) and not for bilinear (5.6e-5); dense64 S p99 .0005 is already
+exceeded by the host's own frozen candidate (.000706), so no faithful implementation can
+meet it, and only the T gate was rescaled. Both need an orchestrator decision.
+
+Fixture timing at 1280×768 (march 640×384), **not game FPS and not a credible GPU cost**:
+EVENT-completed median (p95) march .78 (.90) ms sky / .90 (1.01) ms worst case, transaction
+(march + composite + repair) .95 (.98) ms, CPU submit median .016 / .061 ms; synchronised to a mapped
+`GetRenderTargetData`, net of a clear-plus-readback baseline, 1.29 / 1.04 / .83 ms; slope of
+ten marches against one in a frame .012 ms per march. The measurements do not scale with
+the work submitted (the transaction is not dearer than the march alone, ten marches cost
+.1 ms more than one), so this backend does not expose GPU execution time to any of the
+three methods. That is consistent with (not shown to be the cause of) the old pass measuring
+1.08 ms while the user saw ≈2 FPS. The design's 3.0 / 4.0 ms gate is therefore unverifiable by this kind of fixture.
+
+Not proven: native Windows (documented D3D9 only, never executed there; FP16 bilinear
+precision is unspecified by D3D9), dynamic caches, uploads, origin advance, readiness
+ramps, Reset, hostile state, shafts with the new march (disabled in this fixture),
+real GPU cost. `LodWeights::far` in `src/fog/fog_density_generator.h` collides with the
+`far` macro of `windef.h`; the fixture includes the header first, the pass will need a rename.

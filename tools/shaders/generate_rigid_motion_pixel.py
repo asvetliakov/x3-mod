@@ -158,6 +158,21 @@ SHADERS = {
     'fog_sky_reduce': dict(source=ROOT / 'src/fog/fog_sky_reduce_ps.hlsl',
                            header=ROOT / 'src/renderer/fog_sky_reduce_program_inc.h',
                            provenance=ROOT / 'verification/results/fog-sky-reduce-program.json'),
+    # Stored-density fog (docs/architecture/fog-density-runtime-integration.md, checkpoint 2): the
+    # 24+40 two-level march, the composite without in-line repair, the separate full-resolution
+    # repair draw, and the verification-only texel-exact march (FP16 bilinear parity reference).
+    'fog_density_march': dict(source=ROOT / 'src/fog/fog_density_march_ps.hlsl',
+                              header=ROOT / 'src/renderer/fog_density_march_program_inc.h',
+                              provenance=ROOT / 'verification/results/fog-density-march-program.json'),
+    'fog_density_composite': dict(source=ROOT / 'src/fog/fog_density_composite_ps.hlsl',
+                                  header=ROOT / 'src/renderer/fog_density_composite_program_inc.h',
+                                  provenance=ROOT / 'verification/results/fog-density-composite-program.json'),
+    'fog_density_repair': dict(source=ROOT / 'src/fog/fog_density_repair_ps.hlsl',
+                               header=ROOT / 'src/renderer/fog_density_repair_program_inc.h',
+                               provenance=ROOT / 'verification/results/fog-density-repair-program.json'),
+    'fog_density_march_exact': dict(source=ROOT / 'verification/probe/fog_density_march_exact_ps.hlsl',
+                                    header=ROOT / 'verification/probe/fog_density_march_exact_program_inc.h',
+                                    provenance=ROOT / 'verification/results/fog-density-march-exact-program.json'),
 }
 VERSION_TOKENS = {'ps_3_0': 0xffff0300, 'vs_3_0': 0xfffe0300}
 INCLUDE = re.compile(r'^#include "([^"]+)"\s*$')
