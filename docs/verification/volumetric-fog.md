@@ -1233,3 +1233,52 @@ gate is below display resolution; the orchestrator rescaled the runtime accuracy
 gate to half a display code (T p99 ≤ .002, max ≤ .003, temporal ≤ .003), which
 the measured run passes. The route is reopened for a production integration
 design; no shader, build or game execution yet.
+
+## Stored-density runtime integration, checkpoint 1: generator (2026-09-21)
+
+Production `src/fog/fog_density_generator.{h,cpp}` (field, eight-point prefilter,
+RNE FP16, node/window/storage/texel address law, 32×32 brick and 129² tile
+packing with the duplicate border; no D3D) against the validated
+`tools/analysis/fog_density_runtime_screen.py`, through the witness tool
+`verification/probe/fog_density_generator_host.cpp` and
+`verification/analysis/test_fog_density_generator.py` (12 tests, both a native
+arm64 clang++ build and an x86_64 `-msse2 -mfpmath=sse` build under Rosetta;
+all builds `-O2 -ffp-contract=off`, no fast-math).
+
+| Check | Result |
+| --- | --- |
+| FP16 node words, 4,128 signed random keys + Q-witness corners (both levels) | 4,128 / 4,128 identical (0 differing, 0 ULP) |
+| Full 129² tiles, fine group 0 / far group 31 (2 × 65,536 nodes) | identical words; border column/row 128 = storage 0 |
+| Field float32 at 1,004 points, R / R² constants | bitwise identical |
+| Nonzero world offset O_s (512 nodes/level) and O_s = k·delta identity | identical |
+| float32 → binary16 RNE vs NumPy (all finite halves, ±1 ulp neighbours, 60k randoms, overflow/subnormal edges) | 127,598 words identical |
+| ±5500 shift witnesses: origin, local, containment, trilinear of C++ words vs report `fine`/`far` | 22 / 22 equal (the test fails when the local report is absent unless `X3M_FOG_GOLDEN_OPTIONAL=1`) |
+| binary16 → float32 round trip of all 65,536 half words vs NumPy (review fix: subnormal exponent 112-e; 0x0001 → 0x33800000) | exact |
+| `lod_weights` at 0/20000/22500/25000/30000/100000/150000/175000/200000/250000 vs the screen's smoothstep law; `atlas_offset` (last border texel ends at 4,260,096 B); `duplicate_tile_border` in place for groups 0/9/31 (rest of atlas untouched); unknown level refused | pass |
+| Address law vs `window_origin`/`pack_address`, 2 cameras × 5 points × 3 axis shifts × 2 levels; lane 0,1,2,3,0,3 | pass |
+
+Throughput (32×32-texel bricks = 4,096 nodes each, one thread, `bench 3`):
+
+| Build | fine nodes/s | far nodes/s | 65,536-node tile |
+| --- | --- | --- | --- |
+| Native arm64 (this Mac) | 3,706,211 | 3,669,203 | 17.9 ms |
+| x86_64 SSE2 under Rosetta | 2,698,325 | 2,729,522 | 23.7 ms |
+| i686 MinGW under Wine/FEX, bottle X3 (arm64, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`) | 1,933,051 | 1,933,727 | 33.8 / 33.5 ms |
+
+Wine rows: final exe `e67a7603…` run by the orchestrator
+(`/tmp/x3-fog-generator-bench-v2/`, rc 0, lock wait 3 µs, child 9.45 s);
+`tile_group0_fnv1a` fine `db363799c20b21ea` / far `4279b0dcca4e5e02` equal the
+native build's checksums for the same source (131,072 nodes identical under
+FEX). An earlier run of the pre-performance-pass exe (`9880cd96…`,
+`/tmp/x3-fog-generator-bench-v1/`) measured 0.46 M nodes/s with the same
+checksums; the pass (`floor_i32`, int32 key conversion, shared XY weights)
+removed every x87 control-word, conversion and arithmetic instruction from the
+i686 TU (only cdecl `flds`/`fstps` float-return moves remain) and gave 4.2× under
+FEX with native rates unchanged. The review fix to `half_to_float` (subnormal
+exponent 112-e) is off the generation path; the native checksums were re-derived
+after it and are unchanged.
+
+Initial-fill estimate for ≈0.97 M far + ≈1.69 M fine nodes on one worker:
+Wine/FEX ≈2.66 M nodes / 1.93 M nodes/s ≈ **1.4 s**; native arm64 ≈ 0.72 s. Below
+the design's "add a second worker if above ~5 s" line for the CrossOver target;
+native Windows remains an estimate.
