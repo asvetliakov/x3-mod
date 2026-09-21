@@ -1524,13 +1524,19 @@ bool MotionOutput::ensure_taa() noexcept {
             taa_far_weight_ = taa_far_filter_ = taa_thin_weight_ = 0.f;
         }
     }
+    // Camera-relative gate of the thin region (section 32.1): its three programs are created by configure_far above; without
+    // them, or beside the line filter (the mask's r channel carries the second gate), the thin region keeps its screen-speed gate.
+    if (SUCCEEDED(hr) && taa_thin_camera_gate_ && (taa_thin_weight_ <= 0.f || taa_line_filter_ > 0.f || !taa_->camera_gate_available())) {
+        log("motion_output_taa_thin_region device=%llu camera_gate_unavailable=1 reason=%s thin_region=%.4f line_filter=%.3f", id_, taa_thin_weight_ <= 0.f ? "thin_region_off" : taa_line_filter_ > 0.f ? "line_filter" : "camera_program", double(taa_thin_weight_), double(taa_line_filter_));
+        taa_thin_camera_gate_ = false;
+    }
     if (SUCCEEDED(hr) && taa_line_filter_ > 0.f && taa_adaptive_weight_ > 0.f && !taa_->age_line_available()) {
         log("motion_output_taa_line_filter device=%llu unavailable=1 reason=age_program requested=%.3f", id_, double(taa_line_filter_));
         taa_line_filter_ = 0.f;
     }
     taa_failed_ = FAILED(hr);
-    log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f current_filter=%.3f history_weight=%.3f copy=%s thin_clip=%.3f adaptive_weight=%.3f adaptive_lo=%.3f adaptive_hi=%.3f alpha_history=%u age_bytes_per_pixel=%u line_filter=%.3f line_width=%u far_weight=%.4f far_filter=%.3f far_f0=%.1f far_f1=%.1f far_speed_lo=%.3f far_speed_hi=%.3f thin_region=%.4f thin_relax=%.3f", id_, hr, taa_references_, double(taa_sharpen_), double(taa_current_filter_), double(taa_history_weight_), taa_copy_draw_ ? "draw" : "stretch",
-        double(taa_thin_clip_), double(taa_adaptive_weight_), double(taa_adaptive_lo_), double(taa_adaptive_hi_), unsigned(taa_alpha_history_), taa_adaptive_weight_ > 0.f || taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f ? 8u : 0u, double(taa_line_filter_), taa_line_width_, double(taa_far_weight_), double(taa_far_filter_), double(taa_far_f0_), double(taa_far_f1_), double(taa_far_lo_), double(taa_far_hi_), double(taa_thin_weight_), double(taa_thin_relax_));
+    log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f current_filter=%.3f history_weight=%.3f copy=%s thin_clip=%.3f adaptive_weight=%.3f adaptive_lo=%.3f adaptive_hi=%.3f alpha_history=%u age_bytes_per_pixel=%u line_filter=%.3f line_width=%u far_weight=%.4f far_filter=%.3f far_f0=%.1f far_f1=%.1f far_speed_lo=%.3f far_speed_hi=%.3f thin_region=%.4f thin_relax=%.3f thin_gate=%s", id_, hr, taa_references_, double(taa_sharpen_), double(taa_current_filter_), double(taa_history_weight_), taa_copy_draw_ ? "draw" : "stretch",
+        double(taa_thin_clip_), double(taa_adaptive_weight_), double(taa_adaptive_lo_), double(taa_adaptive_hi_), unsigned(taa_alpha_history_), taa_adaptive_weight_ > 0.f || taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f ? 8u : 0u, double(taa_line_filter_), taa_line_width_, double(taa_far_weight_), double(taa_far_filter_), double(taa_far_f0_), double(taa_far_f1_), double(taa_far_lo_), double(taa_far_hi_), double(taa_thin_weight_), double(taa_thin_relax_), taa_thin_camera_gate_ ? "camera" : "screen");
     return !taa_failed_;
 }
 // The whole resolve at the bloom copy: RT1/RT2 containers as inputs, the
@@ -1575,7 +1581,7 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             // Far stabiliser: the gate follows this frame's latched projection and the target width; without a valid
             // latch far_gate leaves d0 = inv = 0 and the mask is off for the frame (the program stays bound: no history cut).
             in.far_weight = taa_far_weight_; in.far_filter = taa_far_filter_; in.far_speed_lo = taa_far_lo_; in.far_speed_hi = taa_far_hi_;
-            in.thin_region_weight = taa_thin_weight_; in.thin_region_relax = taa_thin_relax_;
+            in.thin_region_weight = taa_thin_weight_; in.thin_region_relax = taa_thin_relax_; in.thin_region_camera_gate = taa_thin_camera_gate_;
             if ((taa_far_weight_ > 0.f || taa_far_filter_ > 0.f) && camera_scene_.valid)
                 x3::temporal::far_gate(camera_scene_.m00, camera_scene_.m22, camera_scene_.m32, main_.width, taa_far_f0_, taa_far_f1_, in.far_d0, in.far_inv);
             in.current_depth = depth; in.motion = motion;

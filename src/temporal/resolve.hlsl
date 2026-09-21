@@ -90,6 +90,26 @@ float4 luminance : register(c22); // k, current-filter A, alpha history (X3M_THI
 // lerp(w, min(n / (n + 1), c24.y), g * slow) and lerp(w, min(n / (n + 1), c5.x), b). The 3x3
 // sentinel soft clip of the thin variants is not compiled here (its S shares
 // c24.x); b = a = 0 is the clamp and the far blend exactly.
+// X3M_CAMERA_GATE (resolve_far_camera.hlsl; taa-lattice-crawl.md section 32.1):
+// the camera-relative gate mode of the thin region. The mask is drawn by
+// line_mask_camera_ps.hlsl: b = the region strength under the gate on
+// min(screen speed, camera-relative speed), a = the strength the plain gate on
+// the screen speed alone would give (a <= b). Where the camera term alone keeps
+// the region open (b > a) that added strength (b - a) pulls the history toward
+// the 7x7 min / max box of the weighted current colour (s9 / s10, drawn by
+// TemporalPass just before this program from the current colour) instead of
+// toward the unclipped history: old = lerp(clip3, old, a * c24.x) + (b - a) *
+// c24.x * (box(old) - clip3). Where the plain gate was closed (a = 0) that is
+// lerp(clip3, box(old), b * c24.x), the replay's box7 numerics; where a = b
+// (rest, or a pixel the plain gate leaves open) the second term is 0 * finite
+// and the history, the weight and every other term are the far program's
+// exactly. No branch and no division; the box targets hold finite values at
+// every pixel (0 where the box pass skipped one). The weight target follows b.
+#ifdef X3M_CAMERA_GATE
+#define X3M_FAR_STABILIZE 1
+sampler2D boxLow : register(s9);
+sampler2D boxHigh : register(s10);
+#endif
 #ifdef X3M_FAR_STABILIZE
 #define X3M_AGE_WEIGHT 1
 #define X3M_LINE_FILTER 1
@@ -430,7 +450,14 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
 #else
     float soft = sawValid && sawSentinel ? flicker.x * (1 - saturate((speed - 2) * 0.5)) : 0;
 #endif
+#ifdef X3M_CAMERA_GATE
+    // The strength the camera term added (b - a) takes the history clipped to the current 7x7 box; the screen gate's own share (a) the unclipped one.
+    float3 clipped = clamp(old, low, high);
+    float3 boxed = clamp(old, fetch(boxLow, uv).rgb, fetch(boxHigh, uv).rgb);
+    old = lerp(clipped, old, stabilise.a * flicker.x) + (stabilise.b - stabilise.a) * flicker.x * (boxed - clipped);
+#else
     old = lerp(clamp(old, low, high), old, soft);
+#endif
 #else
     old = clamp(old, low, high);
 #endif

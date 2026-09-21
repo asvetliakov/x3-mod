@@ -1625,6 +1625,7 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=
                 X3M_BUDGET(temporal_resolve_program,"embedded_plain");X3M_BUDGET(temporal_resolve_filter_program,"embedded_current_filter");X3M_BUDGET(temporal_resolve_snapshot_program,"embedded_snapshot");
                 X3M_BUDGET(temporal_resolve_thin_program,"embedded_thin");X3M_BUDGET(temporal_resolve_thin_filter_program,"embedded_thin_filter");X3M_BUDGET(temporal_resolve_age_program,"embedded_age");X3M_BUDGET(temporal_resolve_age_filter_program,"embedded_age_filter");
                 X3M_BUDGET(temporal_line_mask_program,"embedded_line_mask");X3M_BUDGET(temporal_resolve_far_program,"embedded_far");X3M_BUDGET(temporal_resolve_line_program,"embedded_line");X3M_BUDGET(temporal_resolve_thin_line_program,"embedded_thin_line");X3M_BUDGET(temporal_resolve_age_line_program,"embedded_age_line");
+                X3M_BUDGET(temporal_line_mask_camera_program,"embedded_line_mask_camera");X3M_BUDGET(temporal_resolve_far_camera_program,"embedded_far_camera");X3M_BUDGET(temporal_thin_box_program,"embedded_thin_box");
                 #undef X3M_BUDGET
             }
             // The retained baseline also exceeds the advertised limit on X3.

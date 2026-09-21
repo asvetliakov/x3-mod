@@ -1,14 +1,14 @@
 {
   "passed": true,
   "sources_before_build": {
-    "src/renderer/temporal_pass.h": "9805727422fae0b87dad0d509fd83cbbe92ec8cd4bb3b07a4a0a99e4ccbe08c5",
-    "src/renderer/temporal_pass.cpp": "323b4d279f8841fb876309ec3c2e63169cc83c8c3e7d3fce67a8d44361bf1eda",
+    "src/renderer/temporal_pass.h": "674f8e66e9144453bd16b3982ff43fdc5c05a6b904b4ac46938edafba024f148",
+    "src/renderer/temporal_pass.cpp": "4db3bb272ef598ec0f9eba1101a3009db4bf9e62500a1e411395d8a0b9404d7b",
     "src/temporal/resolve.h": "758911becb4c1c7ea29cc0616511022e0bc7dd555b9837f899b5126cfcb3b660",
-    "src/temporal/resolve.hlsl": "5e7eeb49a85683cae495e99ee3de385cd3e7af9a06616872c3a997297b101df4",
+    "src/temporal/resolve.hlsl": "fae8d29f9248f733ba67bf27a599c25cc2a048ea5d196bea0a90cbb655927966",
     "src/temporal/resolve_filter.hlsl": "65aedd02762660c77ff6af3530c429edb580ea3ccb52416cd303974ce86d51f6",
     "src/temporal/resolve_snapshot.hlsl": "b7b62bb66523b6e092143fc111a623413cd8d1e9bf7c7ab0afbc83a3f40f126d",
     "src/renderer/temporal_resolve_snapshot_program_inc.h": "decb661f2c75cdfb7960bff7018c364c0f398fbe399a5e5df6a62fb5d7916d69",
-    "src/renderer/temporal_resolve_program.h": "4932113b2b1b1ded048fceff3c3e5d7058646385da452e89e248121ff14f9c3f",
+    "src/renderer/temporal_resolve_program.h": "4c4ec2ad7059017093cfc129f906dc64c7cf2414c8f0d9a10f815a0a1634ac7d",
     "src/temporal/resolve_thin.hlsl": "fcd645eff0211c5762dc973cc067c542c443291406a79b9ac2c77f43d9506fe4",
     "src/renderer/temporal_resolve_thin_program_inc.h": "28789f5141c5e128d93de18d4a03779db0e32e9fcae21ed22a2c6d9f85e3f400",
     "src/temporal/resolve_thin_filter.hlsl": "44b03ce6268fee366779f7e0310fb63d94ccdea98dd66b1a2aa99290020cd70c",
@@ -18,13 +18,19 @@
     "src/temporal/resolve_age_filter.hlsl": "5a13f4045d9128eb7c00a22b4a0c2c088a663d99936b54d71f3e68b4601abcdb",
     "src/renderer/temporal_resolve_age_filter_program_inc.h": "1e047b942856e3ec3230279c6e2047ab3c472d696e5c5f5b72f3e1b161f86c35",
     "verification/probe/temporal_flicker_inc.h": "4c52ec625f011cb22a4251aaccb80bd599d0a26850f8b3335ed14911de6a3b86",
-    "verification/probe/temporal_line_inc.h": "96c6df44410e3d3133925310ca3dcc4c4812b8f95425117bd4fa65d2efedf998",
+    "verification/probe/temporal_line_inc.h": "32555be0e4230595172e3aeab9ecec6c923065a8a1816ec2611f2741d64fb29c",
     "verification/probe/temporal_far_inc.h": "315ce3471778ea438262ea6725c1eb62ecf652cda81ef95758532c3b99b9e3da",
-    "verification/probe/temporal_thin_region_inc.h": "0201d5f68ef32dec387fbf205e22a1333ce1b000856412ad6dcec26420b91b1e",
+    "verification/probe/temporal_thin_region_inc.h": "703a3673ee46d5a24fe7d3fe38a86d766af408117ce1259c7fd04f94484da3f1",
+    "src/temporal/line_mask_camera_ps.hlsl": "c60a1986f5d304b6690d05e20ac94ce96c762dd6e618cc2d5a46ad5601a17923",
+    "src/renderer/temporal_line_mask_camera_program_inc.h": "75af6d59a74b50443ab36381b211f02b88a79daedd4341245a475c39133b27cd",
+    "src/temporal/resolve_far_camera.hlsl": "375cb64c664241e7915f976e4b0ac4ff0f773caea5abcf728c72823d611bbd9d",
+    "src/renderer/temporal_resolve_far_camera_program_inc.h": "d1af33789b924a430edf6749167a72d153c911c72e24d2664f40d96249a12112",
+    "src/temporal/thin_box_ps.hlsl": "0f12a9cb79e8945b11844c977c5ad67bd7bc958af9275949b6ddc1c947b942e9",
+    "src/renderer/temporal_thin_box_program_inc.h": "3bd06fcf9f249fb3941a681116480ade11e871d8e545c7c977a1f43e1f64a207",
     "verification/probe/temporal_resolve_far_reference_inc.h": "b0ea38f96cc810280b8b7f5348ab6b624b9b0fcb254545893e4b0035d9dcd226",
     "src/temporal/resolve_far.hlsl": "30087df4338b9a3fec4d6dbca256e5c7b8515bb3cea41fe540e7e4a5af00e7b9",
     "src/renderer/temporal_resolve_far_program_inc.h": "fbaf0e28ccab2493cf91fb0817ffaae6d4c4c694ecc1523da4d5692e3cae2a26",
-    "src/temporal/line_mask_ps.hlsl": "1c42d4e10d08b618dc733bc36484d259fecbe1349f3eb0abc080d5d864fea652",
+    "src/temporal/line_mask_ps.hlsl": "9d515bf9edafbf0212f876725207b760024ab173429b8d4d39071f27b3665058",
     "src/renderer/temporal_line_mask_program_inc.h": "7a9a37a7f4abd963394bfbdf4792e4f6d4db702b5a0abc83fb1a41bb27cecf54",
     "src/temporal/resolve_line.hlsl": "18807f732512dc66460deda4367c560e733160bb4e75263875fdd0c00bb52f31",
     "src/renderer/temporal_resolve_line_program_inc.h": "543713f79f560dd3136a055415640cc3cae61a0e7700036d88974574a7b0476a",
@@ -36,9 +42,9 @@
     "src/temporal/sharpen.h": "7929b76d44483ec76a5e939f7fd1245d981a88fe7eb6a32a73bae43fe81b771f",
     "src/temporal/rcas.hlsl": "50ce16e50069b2d6bf599575aa82828158b233e46723c1b7c277bcae7aacc152",
     "src/temporal/taa_sharpen_ps.hlsl": "af6a6734bcc506afaf990de01add0bcb2d7e57617c738ba08fa6ab2e7167d9a8",
-    "verification/probe/temporal_pass_fixture.cpp": "72b11c5ddcc6fd58e5bf29f60f8cd60324d5fc8c3bf58c1aef7e19fa19e7eac6",
+    "verification/probe/temporal_pass_fixture.cpp": "87c5d4e79241e40ecd75dedaafb5af0613583ec36a11d6afb22940efcbd30fb3",
     "verification/probe/build_temporal_pass.sh": "a59f6e17764411adad516db293587561c0f30a63ebc8a58a663e067f4e49f6e9",
-    "verification/probe/run_temporal_pass.py": "55fd0f2a6719c2a73c53bf3a43f9aefc66ff75db2176f1c54962fc68052ddfff"
+    "verification/probe/run_temporal_pass.py": "855220a266c17c865d893f49b7547ae001702ebc1a93c2644c0bcada47112184"
   },
   "game_launched": false,
   "bottle": {
@@ -51,7 +57,7 @@
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
-  "executable_sha256": "0a5b51f95dd12af3fb0db43fd9dbcd524a8dea58051c31bca51659891cb70fbd",
+  "executable_sha256": "7c5a81fb7a2d82dbd4d99afa97d450af22458273f90bc161103b5b9724e220a5",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -60,12 +66,12 @@
     "--dll",
     "d3d9=b",
     "--workdir",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a54e2a9edd6001810/verification/probe/build",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a54e2a9edd6001810/verification/probe/build/temporal_pass_fixture.exe",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a535326cd3044cc92/verification/probe/build",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a535326cd3044cc92/verification/probe/build/temporal_pass_fixture.exe",
     "C:\\X3\\d3dx9_37.dll",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a54e2a9edd6001810/src/temporal/depth_decode.hlsl",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a54e2a9edd6001810/src/temporal/resolve.hlsl",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a54e2a9edd6001810/src/temporal/taa_sharpen_ps.hlsl"
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a535326cd3044cc92/src/temporal/depth_decode.hlsl",
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a535326cd3044cc92/src/temporal/resolve.hlsl",
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a535326cd3044cc92/src/temporal/taa_sharpen_ps.hlsl"
   ],
   "exit_code": 0,
   "source_unchanged": true,
@@ -285,7 +291,7 @@
   },
   "lattice": {
     "report": "temporal-lattice.txt",
-    "report_sha256": "949aa240abb30b1b1dfe1575f6b2dfd31645f5d074f91bce0b7f8b00251e9438",
+    "report_sha256": "5c9b3a9d71aa17ef4d2b1387194158e90c8aef0889e9fadc27c50ad2e0a1728a",
     "exit_code": 0,
     "budget": {
       "current_filter": {
@@ -384,6 +390,27 @@
         "instruction_slots": 509.0,
         "device_limit": 512.0,
         "headroom": 3.0,
+        "within_guaranteed_512": 1.0
+      },
+      "embedded_line_mask_camera": {
+        "dwords": 897.0,
+        "instruction_slots": 223.0,
+        "device_limit": 512.0,
+        "headroom": 289.0,
+        "within_guaranteed_512": 1.0
+      },
+      "embedded_far_camera": {
+        "dwords": 2023.0,
+        "instruction_slots": 508.0,
+        "device_limit": 512.0,
+        "headroom": 4.0,
+        "within_guaranteed_512": 1.0
+      },
+      "embedded_thin_box": {
+        "dwords": 238.0,
+        "instruction_slots": 51.0,
+        "device_limit": 512.0,
+        "headroom": 461.0,
         "within_guaranteed_512": 1.0
       }
     },
@@ -2066,15 +2093,15 @@
         "height": "768",
         "content": "all_geometry",
         "rounds": "6",
-        "plain_ms": "0.7204",
-        "current_filter_ms": "0.6421",
-        "line_filter_ms": "0.9268",
-        "far_stabiliser_ms": "0.9014",
-        "thin_region_ms": "1.4705",
-        "taps_delta_ms": "-0.0783",
-        "line_delta_ms": "0.2064",
-        "far_delta_ms": "0.1810",
-        "thin_region_delta_ms": "0.7501",
+        "plain_ms": "0.6330",
+        "current_filter_ms": "0.6246",
+        "line_filter_ms": "0.8647",
+        "far_stabiliser_ms": "0.7869",
+        "thin_region_ms": "1.4149",
+        "taps_delta_ms": "-0.0083",
+        "line_delta_ms": "0.2317",
+        "far_delta_ms": "0.1539",
+        "thin_region_delta_ms": "0.7819",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]
@@ -2586,6 +2613,18 @@
         "square_differs": "0"
       },
       {
+        "drift": "0.00",
+        "config": "thin-region-0.97-camera-gate",
+        "oracle_error": "0.008301",
+        "age_oracle_error": "0.000000",
+        "mask_error": "0.000000",
+        "shard_rms_codes": "1.416",
+        "shard_p2p_codes": "6.6",
+        "rms_ratio": "0.0866",
+        "square_px": "29952",
+        "square_differs": "0"
+      },
+      {
         "drift": "0.12",
         "config": "thin-base",
         "oracle_error": "0.002930",
@@ -2658,6 +2697,18 @@
         "square_differs": "0"
       },
       {
+        "drift": "0.12",
+        "config": "thin-region-0.97-camera-gate",
+        "oracle_error": "0.004883",
+        "age_oracle_error": "0.000000",
+        "mask_error": "0.000000",
+        "shard_rms_codes": "14.747",
+        "shard_p2p_codes": "86.2",
+        "rms_ratio": "0.6124",
+        "square_px": "29952",
+        "square_differs": "0"
+      },
+      {
         "drift": "0.30",
         "config": "thin-base",
         "oracle_error": "0.002441",
@@ -2728,6 +2779,18 @@
         "rms_ratio": "1.0000",
         "square_px": "29952",
         "square_differs": "0"
+      },
+      {
+        "drift": "0.30",
+        "config": "thin-region-0.97-camera-gate",
+        "oracle_error": "0.002441",
+        "age_oracle_error": "0.000000",
+        "mask_error": "0.000000",
+        "shard_rms_codes": "20.933",
+        "shard_p2p_codes": "95.3",
+        "rms_ratio": "1.0000",
+        "square_px": "29952",
+        "square_differs": "0"
       }
     ],
     "motion_start": [
@@ -2736,6 +2799,120 @@
         "after_24_frames": "0.000244",
         "background_trail": "0.248535",
         "base_background_trail": "0.218994"
+      }
+    ]
+  },
+  "thin_region_camera": {
+    "static": [
+      {
+        "drift": "0.00",
+        "colour_identical": "1",
+        "age_identical": "1",
+        "gate_differs": "0"
+      },
+      {
+        "drift": "0.12",
+        "colour_identical": "1",
+        "age_identical": "1",
+        "gate_differs": "0"
+      },
+      {
+        "drift": "0.30",
+        "colour_identical": "1",
+        "age_identical": "1",
+        "gate_differs": "0"
+      }
+    ],
+    "pan_oracle": [
+      {
+        "pan": "0.50",
+        "config": "thin-region-0.97",
+        "oracle_error": "0.001953",
+        "age_oracle_error": "0.000000",
+        "mask_error": "0.000000"
+      },
+      {
+        "pan": "0.50",
+        "config": "thin-region-0.97-camera-gate",
+        "oracle_error": "0.009277",
+        "age_oracle_error": "0.000000",
+        "mask_error": "0.000000"
+      }
+    ],
+    "pan": [
+      {
+        "pan": "0.50",
+        "base_rms_codes": "16.340",
+        "screen_rms_codes": "16.340",
+        "camera_rms_codes": "1.416",
+        "camera_over_screen": "0.0866",
+        "screen_p2p_codes": "99.4",
+        "camera_p2p_codes": "6.6",
+        "screen_gate_share": "0.0000",
+        "camera_gate_share": "1.0000",
+        "camera_mask_screen_channel_max": "0.0000"
+      }
+    ],
+    "stale": [
+      {
+        "pan": "0.50",
+        "mover_px_per_frame": "2",
+        "injected_value": "4.0",
+        "screen_excess_after_mover": "0.000000",
+        "camera_excess_after_mover": "0.000000",
+        "screen_added_frame101": "0.622559",
+        "camera_added_frame101": "0.727051",
+        "camera_over_screen": "1.1678",
+        "screen_added_frame105": "0.373047",
+        "camera_added_frame105": "0.664062",
+        "unbounded_estimate": "3.6375",
+        "screen_oracle_error": "0.001953",
+        "camera_oracle_error": "0.008301"
+      }
+    ],
+    "box_domain": [
+      {
+        "pan": "0.50",
+        "k": "0.5",
+        "bad_tap_value": "65504",
+        "bad_pixel_frames": "27",
+        "bad_pixel_output_max": "0.000000",
+        "oracle_error": "0.010254",
+        "patch_output_max_frame101": "0.999512"
+      }
+    ],
+    "bad_motion": [
+      {
+        "kind": "overflow_1e30",
+        "asserted": "1",
+        "covered_px": "4",
+        "screen_gate_max_within_8px": "0.0000",
+        "camera_gate_max_within_8px": "0.0000",
+        "camera_screen_channel_max": "0.0000",
+        "identical_to_screen_gate": "1"
+      },
+      {
+        "kind": "nan",
+        "asserted": "0",
+        "covered_px": "4",
+        "screen_gate_max_within_8px": "1.0000",
+        "camera_gate_max_within_8px": "1.0000",
+        "camera_screen_channel_max": "1.0000",
+        "identical_to_screen_gate": "1"
+      }
+    ],
+    "timing": [
+      {
+        "width": "1280",
+        "height": "768",
+        "rounds": "6",
+        "no_region_thin_ms": "1.4149",
+        "no_region_camera_ms": "1.5789",
+        "no_region_camera_delta_ms": "0.1640",
+        "fragmented_pan_thin_ms": "1.3859",
+        "fragmented_pan_camera_ms": "1.9774",
+        "fragmented_pan_camera_delta_ms": "0.5915",
+        "scope": "cpu_wall_with_event_query_drain"
       }
     ]
   }

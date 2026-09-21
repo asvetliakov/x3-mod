@@ -178,6 +178,8 @@ void TemporalPass::release_history() noexcept {
     for(auto& p:ages_)drop(p);
     for(auto& p:line_mask_surfaces_)drop(p);
     for(auto& p:line_masks_)drop(p);
+    for(auto& p:box_surfaces_)drop(p);
+    for(auto& p:boxes_)drop(p);
     drop(scratch_surface_);drop(staging_surface_);
     for(auto& p:colors_)drop(p);
     for(auto& p:depths_)drop(p);
@@ -186,10 +188,10 @@ void TemporalPass::release_history() noexcept {
     reactive_policy_=ReactivePolicy::Unavailable;
     width_=height_=current_=0;
 }
-void TemporalPass::shutdown() noexcept {release_history();drop(block_);drop(decoder_);drop(resolve_);drop(snapshot_);drop(resolve_filtered_);drop(thin_);drop(thin_filtered_);drop(age_);drop(age_filtered_);drop(far_);line_masks_failed_=false;line_masks_result_=S_OK;drop(line_mask_);drop(line_);drop(thin_line_);drop(age_line_);mrt_age_=false;drop(sharpen_);drop(copy_);drop(quad_vs_);drop(quad_declaration_);device_=nullptr;vtable_=nullptr;render_targets_=streams_=0;diagnostics_.reset_pending=false;}
+void TemporalPass::shutdown() noexcept {release_history();drop(block_);drop(decoder_);drop(resolve_);drop(snapshot_);drop(resolve_filtered_);drop(thin_);drop(thin_filtered_);drop(age_);drop(age_filtered_);drop(far_);drop(far_camera_);drop(line_mask_camera_);drop(thin_box_);line_masks_failed_=false;line_masks_result_=S_OK;boxes_failed_=false;boxes_result_=S_OK;drop(line_mask_);drop(line_);drop(thin_line_);drop(age_line_);mrt_age_=false;drop(sharpen_);drop(copy_);drop(quad_vs_);drop(quad_declaration_);device_=nullptr;vtable_=nullptr;render_targets_=streams_=0;diagnostics_.reset_pending=false;}
 // Every owned texture and the state block must not exist across Reset; the
 // compiled shaders survive it. Runs are refused until after_reset succeeds.
-void TemporalPass::before_reset() noexcept {line_masks_failed_=false;line_masks_result_=S_OK;release_history();drop(block_);diagnostics_.reset_pending=device_!=nullptr;}
+void TemporalPass::before_reset() noexcept {line_masks_failed_=false;line_masks_result_=S_OK;boxes_failed_=false;boxes_result_=S_OK;release_history();drop(block_);diagnostics_.reset_pending=device_!=nullptr;}
 void TemporalPass::after_reset(HRESULT result) noexcept {invalidate();if(SUCCEEDED(result))diagnostics_.reset_pending=false;}
 HRESULT TemporalPass::initialize(IDirect3DDevice9* d,const DWORD* decoder,const DWORD* resolve,void* const* native_vtable,const DWORD* sharpen,const DWORD* copy,const DWORD* resolve_filtered) noexcept {
     shutdown();diagnostics_={};resolve_filtered_result_=S_FALSE;snapshot_result_=S_FALSE;if(!d||!resolve)return E_INVALIDARG;
@@ -239,7 +241,13 @@ HRESULT TemporalPass::configure_far(const DWORD* reference_program) noexcept {
     const bool own_mask=!line_mask_;
     HRESULT hr=line_mask_?S_OK:make(temporal_line_mask_program(),&line_mask_);
     if(SUCCEEDED(hr))hr=reference_program?call<CreatePsFn>(CreatePixelShader)(device_,reference_program,&far_):make(temporal_resolve_far_program(),&far_);
-    if(FAILED(hr)){drop(far_);if(own_mask)drop(line_mask_);}
+    if(FAILED(hr)){drop(far_);if(own_mask)drop(line_mask_);return hr;}
+    // The camera-gate programs (section 32.1) are optional on top: a refusal leaves the thin region with its screen-speed gate
+    // and a run asking for the camera gate is refused (camera_gate_available()).
+    HRESULT camera=make(temporal_line_mask_camera_program(),&line_mask_camera_);
+    if(SUCCEEDED(camera))camera=make(temporal_resolve_far_camera_program(),&far_camera_);
+    if(SUCCEEDED(camera))camera=make(temporal_thin_box_program(),&thin_box_);
+    if(FAILED(camera)){drop(line_mask_camera_);drop(far_camera_);drop(thin_box_);}
     return hr;
 }
 HRESULT TemporalPass::configure_line_filter() noexcept {
@@ -299,6 +307,16 @@ HRESULT TemporalPass::ensure_line_masks() noexcept {
     if(FAILED(hr)){for(auto& p:line_mask_surfaces_)drop(p);for(auto& p:line_masks_)drop(p);}
     return hr;
 }
+HRESULT TemporalPass::ensure_boxes() noexcept {
+    if(boxes_[1])return S_OK;
+    HRESULT hr=S_OK;
+    for(UINT i=0;i<2&&SUCCEEDED(hr);++i){
+        hr=call<CreateTextureFn>(CreateTexture)(device_,width_,height_,1,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&boxes_[i],nullptr);
+        if(SUCCEEDED(hr))hr=boxes_[i]->GetSurfaceLevel(0,&box_surfaces_[i]);
+    }
+    if(FAILED(hr)){for(auto& p:box_surfaces_)drop(p);for(auto& p:boxes_)drop(p);}
+    return hr;
+}
 HRESULT TemporalPass::ensure_block() noexcept {
     if(block_)return S_OK;
     const HRESULT hr=call<CreateBlockFn>(CreateStateBlock)(device_,D3DSBT_ALL,&block_);
@@ -318,6 +336,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     const bool draw_copy=in.color_surface&&copy_by_draw_;
     const bool thin_region=in.thin_region_weight>0;
     const bool far_requested=in.far_weight>0||in.far_filter>0||thin_region; // everything the far program carries
+    const bool camera_requested=thin_region&&in.thin_region_camera_gate; // section 32.1: the camera-relative gate programs and the box targets
     const bool adaptive=in.adaptive_weight>0,flicker=in.thin_clip>0||adaptive||in.alpha_history;
     bool lined=in.line_filter>0,far_on=far_requested,aged=adaptive||far_on;
     if(!out||!device_||!resolve_||(mask&&!snapshot_)||!quad_vs_||!quad_declaration_||diagnostics_.reset_pending||!in.width||!in.height||in.caller_stateblock_recording||!in.caller_queries_idle||(draw_copy&&!copy_)||
@@ -333,11 +352,12 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
         !x3::temporal::valid_far_weight(in.far_weight,in.weight)||!x3::temporal::valid_current_filter(in.far_filter)||!std::isfinite(in.far_d0)||!std::isfinite(in.far_inv)||in.far_inv<0||
         !x3::temporal::valid_far_weight(in.thin_region_weight,in.weight)||!x3::temporal::valid_thin_clip(in.thin_region_relax)||
         (far_requested&&(in.thin_clip>0||!x3::temporal::valid_far_speed_gate(in.far_speed_lo,in.far_speed_hi)||!far_available()||in.motion_policy!=MotionPolicy::PerPixel||adaptive||in.current_filter>0||(lined&&in.far_filter>0&&in.far_filter!=in.line_filter)||(in.line_width!=1&&in.line_width!=2)))||
+        (camera_requested&&(!camera_gate_available()||lined))||
         !x3::temporal::valid_thin_clip(in.thin_clip)||!x3::temporal::valid_adaptive_weight(in.adaptive_weight,in.adaptive_lo,in.adaptive_hi,in.weight)||
         (flicker&&!far_requested&&!flicker_available())||(adaptive&&(!(in.thin_clip>0)||!age_available()))||(in.alpha_history&&!in.color))return fail(E_INVALIDARG);
     for(UINT i=0;i<2;++i){
         if(ages_[i]&&(in.color==ages_[i]||in.depth_snapshot==ages_[i]||in.current_depth==ages_[i]||in.motion==ages_[i]||in.reactive==ages_[i]))return fail(E_INVALIDARG);
-        for(auto* owned:{colors_[i],depths_[i],reactive_[i],scratch_,staging_})
+        for(auto* owned:{colors_[i],depths_[i],reactive_[i],boxes_[i],scratch_,staging_})
             if(owned&&(in.color==owned||in.depth_snapshot==owned||in.current_depth==owned||in.motion==owned||in.reactive==owned))return fail(E_INVALIDARG);
         if(in.color_surface&&(in.color_surface==color_surfaces_[i]||in.color_surface==scratch_surface_||in.color_surface==staging_surface_))return fail(E_INVALIDARG);
     }
@@ -355,6 +375,12 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     // proceed without them. The age pair a far run allocated stays (unused), so the history survives the fallback.
     if((lined||far_on)&&!line_masks_failed_){const HRESULT masks=ensure_line_masks();if(lost(masks))return fail(masks);if(FAILED(masks)){line_masks_failed_=true;line_masks_result_=masks;}}
     if(line_masks_failed_){lined=far_on=false;aged=adaptive;}
+    // The box targets of the camera gate: same policy as the mask targets, but the fallback is the screen-speed gate, not the plain resolve.
+    bool camera=camera_requested&&far_on&&!boxes_failed_;
+    if(camera){const HRESULT boxes=ensure_boxes();if(lost(boxes))return fail(boxes);if(FAILED(boxes)){boxes_failed_=true;boxes_result_=boxes;camera=false;}}
+    // A run that does not use the camera gate returns the box pair (15.7 MiB at 1280x768). The gate mode is a session setting, so
+    // this fires once on a configuration change, never per frame; nothing is bound yet, and the histories are untouched.
+    else if(boxes_[0]){for(auto& p:box_surfaces_)drop(p);for(auto& p:boxes_)drop(p);}
     hr=ensure_block();if(FAILED(hr))return fail(hr);
     history_.begin(in.width,in.height,in.epoch);
     if(in.camera_cut||in.cut||!in.history_allowed||in.reactive_policy==ReactivePolicy::Unavailable||
@@ -377,7 +403,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     const bool filtered=in.current_filter>0;
     UINT final_mask=1; // which owned mask target the resolve reads
     const bool thin_bound=flicker&&thin_; // after a mask fallback of a far run the thin variants may not exist: plain then
-    IDirect3DPixelShader9* const program=far_on?far_:lined?(aged?age_line_:flicker?thin_line_:line_):aged?(filtered?age_filtered_:age_):thin_bound?(filtered?thin_filtered_:thin_):(filtered?resolve_filtered_:resolve_);
+    IDirect3DPixelShader9* const program=far_on?(camera?far_camera_:far_):lined?(aged?age_line_:flicker?thin_line_:line_):aged?(filtered?age_filtered_:age_):thin_bound?(filtered?thin_filtered_:thin_):(filtered?resolve_filtered_:resolve_);
     const bool used=history_.valid&&in.weight>0;
     auto stamp=[&]()->std::uint64_t{if(!timing_)return 0;LARGE_INTEGER t{};QueryPerformanceCounter(&t);return std::uint64_t(t.QuadPart);};
     std::uint64_t mark=stamp();
@@ -458,7 +484,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
             const UINT target=draws==1?1:(pass==1?1:0);IDirect3DTexture9* const source=pass==0?depths_[next]:line_masks_[pass==1?0:1];
             constants.options[2]=draws==1?2.f:pass==0?0.f:thin_on?(pass==1?1.f:3.f):4.f;constants.options[3]=lined?float(in.line_width):0.f;
             if(step(call<SetTextureFn>(SetTexture)(d,1,nullptr))&&step(call<SetRtFn>(SetRenderTarget)(d,0,line_mask_surfaces_[target]))&&
-               step(call<SetPsFn>(SetPixelShader)(d,line_mask_))&&
+               step(call<SetPsFn>(SetPixelShader)(d,camera?line_mask_camera_:line_mask_))&&
                step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,0,&constants.clip_to_previous[0][0],4))&&
                step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,4,constants.size_jitter,1))&&
                step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,5,far_constants,1))&&
@@ -472,6 +498,18 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
            step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_MIPFILTER,D3DTEXF_NONE))&&step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_ADDRESSU,D3DTADDRESS_CLAMP))&&
            step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_ADDRESSV,D3DTADDRESS_CLAMP))&&step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_SRGBTEXTURE,FALSE))&&
            step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_MAXMIPLEVEL,0)))hr=call<SetTextureFn>(SetTexture)(d,8,line_masks_[final_mask]);
+        // Camera gate: the 7x7 min / max box of the current colour (thin_box_ps.hlsl) into the two box targets (MRT, both
+        // FP16), skipping every pixel the camera term did not open (the final mask at s8 decides, the same texel the resolve
+        // reads). RT1 leaves the device again right after; the resolve binds the boxes at s9 / s10 once RT0 has moved on.
+        if(SUCCEEDED(hr)&&camera){
+            if(step(call<SetRsFn>(SetRenderState)(d,D3DRS_COLORWRITEENABLE1,15))&&step(call<SetTextureFn>(SetTexture)(d,0,nullptr))&&
+               step(call<SetRtFn>(SetRenderTarget)(d,0,box_surfaces_[0]))&&step(call<SetRtFn>(SetRenderTarget)(d,1,box_surfaces_[1]))&&
+               step(call<SetPsFn>(SetPixelShader)(d,thin_box_))&&
+               step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,0,&constants.clip_to_previous[0][0],x3::temporal::kResolveRegisterCount))&&
+               step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,x3::temporal::kLuminanceRegister,constants.luminance,1))&&
+               step(call<SetTextureFn>(SetTexture)(d,0,in.color?in.color:scratch_)))hr=quad(in.width,in.height);
+            if(!lost(hr)){const HRESULT unbind=call<SetRtFn>(SetRenderTarget)(d,1,nullptr);if(SUCCEEDED(hr))hr=unbind;}
+        }
     }
     if(SUCCEEDED(hr)&&step(call<SetTextureFn>(SetTexture)(d,0,nullptr))&&step(call<SetRtFn>(SetRenderTarget)(d,0,color_surfaces_[next]))&&
         step(call<SetPsFn>(SetPixelShader)(d,program))&&step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,0,&constants.clip_to_previous[0][0],x3::temporal::kResolveRegisterCount))&&
@@ -482,6 +520,16 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
         step(call<SetTextureFn>(SetTexture)(d,4,in.motion_policy==MotionPolicy::PerPixel?in.motion:nullptr))&&
         step(call<SetTextureFn>(SetTexture)(d,5,supplemental?reactive_[next]:in.reactive))&&
         step(call<SetTextureFn>(SetTexture)(d,6,history_.valid&&mask?reactive_[current_]:nullptr))&&
+        // Camera gate: the box targets at s9 / s10 (point, clamp, single level; the block restores the samplers).
+        (!camera||(step(call<SetSamplerFn>(SetSamplerState)(d,9,D3DSAMP_MINFILTER,D3DTEXF_POINT))&&step(call<SetSamplerFn>(SetSamplerState)(d,9,D3DSAMP_MAGFILTER,D3DTEXF_POINT))&&
+                   step(call<SetSamplerFn>(SetSamplerState)(d,9,D3DSAMP_MIPFILTER,D3DTEXF_NONE))&&step(call<SetSamplerFn>(SetSamplerState)(d,9,D3DSAMP_ADDRESSU,D3DTADDRESS_CLAMP))&&
+                   step(call<SetSamplerFn>(SetSamplerState)(d,9,D3DSAMP_ADDRESSV,D3DTADDRESS_CLAMP))&&step(call<SetSamplerFn>(SetSamplerState)(d,9,D3DSAMP_SRGBTEXTURE,FALSE))&&
+                   step(call<SetSamplerFn>(SetSamplerState)(d,9,D3DSAMP_MAXMIPLEVEL,0))&&
+                   step(call<SetSamplerFn>(SetSamplerState)(d,10,D3DSAMP_MINFILTER,D3DTEXF_POINT))&&step(call<SetSamplerFn>(SetSamplerState)(d,10,D3DSAMP_MAGFILTER,D3DTEXF_POINT))&&
+                   step(call<SetSamplerFn>(SetSamplerState)(d,10,D3DSAMP_MIPFILTER,D3DTEXF_NONE))&&step(call<SetSamplerFn>(SetSamplerState)(d,10,D3DSAMP_ADDRESSU,D3DTADDRESS_CLAMP))&&
+                   step(call<SetSamplerFn>(SetSamplerState)(d,10,D3DSAMP_ADDRESSV,D3DTADDRESS_CLAMP))&&step(call<SetSamplerFn>(SetSamplerState)(d,10,D3DSAMP_SRGBTEXTURE,FALSE))&&
+                   step(call<SetSamplerFn>(SetSamplerState)(d,10,D3DSAMP_MAXMIPLEVEL,0))&&
+                   step(call<SetTextureFn>(SetTexture)(d,9,boxes_[0]))&&step(call<SetTextureFn>(SetTexture)(d,10,boxes_[1]))))&&
         // Flicker variants only: c24, and for the age weight the previous age at
         // s7 (point, clamp, single level; the block restores the sampler) and
         // the next age as RT1, which leaves the device again right after the

@@ -112,6 +112,23 @@ struct FrameInputs {
     // has no 3x3 sentinel soft clip). Pixels outside the region are the far /
     // plain blend bit for bit.
     float thin_region_weight = 0.f, thin_region_relax = 1.f;
+    // Camera-relative gate mode of the thin region (taa-lattice-crawl.md section
+    // 32.1), off by default (the screen-speed gate above, bit for bit). On: the
+    // region's gate speed is min(screen speed, camera-relative speed), the
+    // routed correspondence measured against the camera path at the pixel's
+    // depth, so a coherent camera pan keeps the region open, and where the
+    // camera term alone keeps it open the relaxed history is clipped to the 7x7
+    // min / max box of the current colour (one extra MRT draw into two owned
+    // FP16 targets). Pixels the screen-speed gate leaves open, and every pixel
+    // at rest, are the screen-gate run's exactly. Needs camera_gate_available()
+    // (configure_far() created the three programs) and line_filter == 0 (the
+    // mask's r channel carries the second gate); anything else refuses the run.
+    // Ignored without thin_region_weight. A failed box-target allocation that is
+    // not a lost device falls back to the screen-speed gate for the session
+    // (camera_gate_failed(); re-armed by Reset), the mask fallback's policy.
+    // The box pair exists only while the gate runs: the first run without it
+    // releases the pair (a configuration change, never per frame).
+    bool thin_region_camera_gate = false;
     // Speed gate of far_weight and of the thin region, px/frame: full below far_speed_lo, the base weight from far_speed_hi (0 <= lo < hi <= 64).
     float far_speed_lo = x3::temporal::kFarSpeedLo, far_speed_hi = x3::temporal::kFarSpeedHi;
     // Post-resolve sharpen of the display image (sharpen.h, rcas.hlsl;
@@ -262,6 +279,10 @@ public:
     // reference_program: fixtures only (an earlier build of resolve_far.hlsl for an identity comparison); production passes none.
     HRESULT configure_far(const DWORD* reference_program = nullptr) noexcept;
     bool far_available() const noexcept { return mrt_age_ && line_mask_ != nullptr && far_ != nullptr; }
+    // The camera-gate programs (mask, resolve, box) configure_far creates on top; optional, a refusal leaves the screen-speed gate.
+    bool camera_gate_available() const noexcept { return far_available() && line_mask_camera_ != nullptr && far_camera_ != nullptr && thin_box_ != nullptr; }
+    bool camera_gate_failed() const noexcept { return boxes_failed_; }
+    HRESULT camera_gate_result() const noexcept { return boxes_result_; }
     // The mask targets could not be created (not a lost device): the line
     // filter and the far stabiliser are off for the rest of the session, runs
     // that ask for them proceed without (history kept), and this holds the
@@ -331,6 +352,14 @@ private:
     IDirect3DTexture9* line_masks_[2]{};
     IDirect3DSurface9* line_mask_surfaces_[2]{};
     HRESULT ensure_line_masks() noexcept;
+    // Camera-relative gate (section 32.1): its mask and resolve programs, the 7x7 box pass and its two A16B16G16R16F targets
+    // ([0] minimum, [1] maximum; default pool, released with the histories, allocated on the first camera-gate run).
+    IDirect3DPixelShader9 *line_mask_camera_ = nullptr, *far_camera_ = nullptr, *thin_box_ = nullptr;
+    IDirect3DTexture9* boxes_[2]{};
+    IDirect3DSurface9* box_surfaces_[2]{};
+    bool boxes_failed_ = false;
+    HRESULT boxes_result_ = S_OK;
+    HRESULT ensure_boxes() noexcept;
     bool mrt_age_ = false; // caps: >= 2 simultaneous RTs with independent bit depths
     IDirect3DTexture9* ages_[2]{};          // R32F per-pixel accumulated-frame count (adaptive weight only)
     IDirect3DSurface9* age_surfaces_[2]{};

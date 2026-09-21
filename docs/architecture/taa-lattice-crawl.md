@@ -1811,3 +1811,65 @@ lattice, and it perturbs the accepted slow-drift path. Section 15's ghost verdic
 clip-off. If the user's acceptance of "a little ghosting" is to be spent, it should be spent on a
 variant that also restores gradient energy, which needs the sharper history kernel section 15 used
 and this brief excluded; that is a new decision, not a sweep of this one.
+
+### 32.1 Implemented, unflown (2026-09-21): `--taa-thin-region-gate camera`
+
+Opt-in; absent or `screen` is the installed gate (`X3M_TAA_THIN_REGION_GATE`, log field `thin_gate=` on
+`motion_output_taa`). Orchestrator decisions: gate speed `min(screen speed, camera-relative speed)`, so every pixel
+the installed gate leaves open stays open; the 7x7 box only where the camera term opens what the screen gate would
+have closed; nothing else changes.
+
+**Mechanism.** Three new programs, bound only in this mode; the eleven existing programs that share the edited
+sources (ten resolve variants and the line mask) recompile to the same bytecode, headers and word counts (every
+change sits under `X3M_CAMERA_GATE`; only source and tool hashes moved in their provenance). `line_mask_camera_ps.hlsl`
+(**223 slots**; the line-filter test is compiled out) carries the gates as OPENNESS `saturate(1 - (speed - LO) * W)`
+(r = screen speed, a = the larger of it and the camera-relative one), takes the 17x17 minimum of both and publishes
+**b = camera-gated strength, a = screen-gated strength** (a <= b). Openness, not closure, so that a non-finite
+speed reads closed (`saturate(1 - inf) = 0`; a NaN reaching the UNORM target is written 0) without a comparison a
+compiler may fold.
+`thin_box_ps.hlsl` (**51 slots**) draws the weighted-domain 7x7 min / max of the current colour into two owned FP16
+targets by MRT (15.7 MiB at 1280x768, allocated on first use), skipping pixels with b <= a. `resolve_far_camera.hlsl`
+(**508 of 512 slots**; `resolve_far` stays 496) reads them at s9 / s10:
+`old = lerp(clip3, old, a * RELAX) + (b - a) * RELAX * (box7(old) - clip3)`. With a = 0 this is the replay's
+`gate_open_box7`; with a = b it is `resolve_far`'s expression plus `0 * finite`. The 48-fetch variant inside the
+resolve does not fit; a first form with a branch and a division measured 513 slots and was replaced. The line
+filter's mask channel carries the second gate, so the two exclude each other: the launcher refuses the pair; the
+route keeps the line filter and falls back to the screen gate with one log line
+(`motion_output_taa_thin_region ... camera_gate_unavailable=1 reason=line_filter`, likewise `camera_program` when the
+programs are missing); the pass API itself refuses such a run (`E_INVALIDARG`), which the route never issues. A
+box-target allocation failure that is not a lost device falls back to the screen gate for the session (re-armed
+by Reset). The box pair lives only while the camera gate runs: the first run without it (fallback, option off)
+releases it, once per configuration change, never per frame. Documented D3D9 only; native Windows is
+source-compatible and unverified.
+
+**Fixture** (lattice mode, 495 numerical / 21 state; was 459 / 19). Installed mode: the 18 `THIN_REGION` rows and the
+motion-start row equal the previous record character for character. Camera mode with a static camera at rest and at
+0.12 / 0.30 px/frame object drift: colour, alpha, age and gate bit-identical to the screen gate (3 of 3). Pan scene
+(full-width shards, camera and shards 0.5 px/frame along x, columns 18..28): gate share **0.000 -> 1.000**, shard
+ripple **16.34 -> 1.42 codes rms (x 0.087)**, p2p 99.4 -> 6.6; shader = 2-D oracle (0.0093, bound 0.02), age exact,
+both published gates = oracle to 0 codes. This scene is uniform along x, so the fractional history fetch loses
+nothing: it proves the gate and the clip, not moving-lattice quality (section 32's gradient x 0.721 stands). A
+bright independent mover (value 4, 2 px/frame) closes the gate around itself: no excess over the scene maximum after
+it left, either mode. Stale 6x6 patch of value 4 written into the pass's history under the open gate, one frame
+later: installed **0.623**, camera **0.727 (x 1.17, bound 2)**, clip-off estimate 3.64; four frames later 0.373 /
+0.664; the oracle with the same injection agrees to 0.0083. Refusals, hostile c0..c7 / c22 / c24 / s8..s10 /
+COLORWRITEENABLE1, failed box draw, Reset, box-allocation fallback (= screen gate bit for bit). Box domain: the
+same stale patch with k = 0.5 and one current pixel of 65504 (not finite for the resolve) inside it: shader = oracle
+to 0.0103 (box weighed as the resolve, bad tap skipped; the pixel itself resolves black on 27 frames). Non-finite
+speed: a routed 2x2 object at 1e30 px/frame (the speed overflows in the mask program) closes both gates within 8 px
+(0 / 0, plain mask 0) and the output equals the screen gate's bit for bit. A NaN correspondence is reported, not
+asserted: this backend runs shaders with fast-math semantics and reads the gate open in BOTH masks (plain 1.0,
+camera 1.0), so no in-shader NaN rule is verifiable here; the resolve itself rejects such a pixel's history.
+
+**Pass time** 1280x768, CPU wall with event-query drain, 6 rounds, from the record
+(`verification/results/bottle-X3/temporal-pass-summary.json`): thin region **+0.78 ms** over plain; camera gate on top
+**+0.16 ms** with no region on screen (the box pass skips every pixel) and **+0.59 ms** with every pixel fragmented
+and reopened by a 1 px/frame pan (worst case; real region share is 0.03-0.24). Spread over the seven runs of this
+session: thin region +0.47 .. +0.98, camera without a region -0.05 .. +0.26 (not distinguishable from zero), camera
+worst case +0.37 .. +0.65 ms.
+
+**Replay cross-check** (host, the shipped rule patched into `taa_lattice_gate_replay.py` without 8-bit mask
+quantisation): run177 rotation: tracked rms x 0.5667, gradient x 0.7207, gate share 0.199, stale patch 74.4 codes (installed 46.6, clip-off 236.7): identical to `gate_open_box7` to every printed digit (3 of 13,671,000 values differ). run177 stationary: **0 of 13,671,000 values** differ from installed (box7-everywhere: 209,436). run159 slow (0.03-0.11 px/frame): 54,776 of 13,671,000 values differ, max 0.0127 HDR, rms x 1.000, gate share 0.4645 -> 0.4645 (pure camera gate: 2.63 M values, x 1.011); the residue is where the camera term is slightly slower than the screen speed and opens the region further, which decision 1 intends. Record: `/tmp/x3-taa-camera-gate-v1/replay-shader-rule.json` (untracked).
+
+**Flight.** `--taa-thin-region 0.97 --taa-thin-region-gate camera` at the run177 position: slow and fast pan against
+the installed gate, judged on crawl against blur and on trails behind ships crossing the lattice.

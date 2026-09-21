@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "source": "src/temporal/resolve.hlsl",
-  "source_sha256": "fae8d29f9248f733ba67bf27a599c25cc2a048ea5d196bea0a90cbb655927966",
+  "source": "src/temporal/line_mask_camera_ps.hlsl",
+  "source_sha256": "c60a1986f5d304b6690d05e20ac94ce96c762dd6e618cc2d5a46ad5601a17923",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
   "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",
@@ -9,10 +9,12 @@
   "flags": 32768,
   "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
   "defines": null,
-  "includes": null,
-  "word_count": 1706,
-  "bytecode_sha256": "32063822d6e89be67667d628547b9658b22a2296caa4611f52501fcd40b7e8c1",
-  "header_sha256": "42e4ac89350b51f57b423064e6720e5fd4dd3864d1e6e0685885ed5021b7b0fe",
+  "includes": {
+    "src/temporal/line_mask_ps.hlsl": "9d515bf9edafbf0212f876725207b760024ab173429b8d4d39071f27b3665058"
+  },
+  "word_count": 897,
+  "bytecode_sha256": "e681518b7430b37cea95dae6c9e3526049486ecd3acb70cdd636a2cc61c1da68",
+  "header_sha256": "75af6d59a74b50443ab36381b211f02b88a79daedd4341245a475c39133b27cd",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "d1850b4e53ab5647f9b3986fadd39d12d7545039f48636aa49158d58adcf1003",
     "tools/shaders/generate_rigid_motion_pixel.py": "3e6dcdbbbd4620c5b4bed0d3a1cd4790e3c05293e7383e30f4302a556362ec74"

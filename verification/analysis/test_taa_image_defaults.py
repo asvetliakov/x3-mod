@@ -165,6 +165,23 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
             self.assertEqual(code, 2)
             self.assertIn('--taa-thin-region requires --taa', error)
 
+    def test_thin_region_gate_is_absent_unless_given(self):
+        # --taa-thin-region-gate screen|camera (docs/architecture/taa-lattice-crawl.md section 32.1): forwarded only when given,
+        # needs the thin region on, and the camera mode excludes the line filter (the mask's line channel carries the second gate).
+        with tempfile.TemporaryDirectory() as directory:
+            self.assertNotIn('X3M_TAA_THIN_REGION_GATE', self.env(directory, *TAA, '--taa-thin-region', '0.97', inherited={'X3M_TAA_THIN_REGION_GATE': 'camera'}))
+            env = self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-thin-region-gate', 'camera')
+            self.assertEqual((env['X3M_TAA_THIN_REGION'], env['X3M_TAA_THIN_REGION_GATE']), ('0.97,1', 'camera'))
+            self.assertEqual(self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-thin-region-gate', 'screen')['X3M_TAA_THIN_REGION_GATE'], 'screen')
+            env = self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-far-stabiliser', '0.985', '--taa-thin-region-gate', 'camera', '--taa-line-filter', '0')
+            self.assertEqual(env['X3M_TAA_THIN_REGION_GATE'], 'camera')
+            for args in (('--taa-thin-region-gate', 'camera'), ('--taa-thin-region', '0', '--taa-thin-region-gate', 'camera'),
+                         ('--taa-thin-region', '0.97', '--taa-thin-region-gate', 'camera', '--taa-line-filter', '1'),
+                         ('--taa-thin-region', '0.97', '--taa-thin-region-gate', 'wide')):
+                code, _, error = self.launch(directory, *TAA, *args)
+                self.assertEqual(code, 2, args)
+                self.assertIn('--taa-thin-region-gate', error)
+
     def test_taa_debug_accepts_32_capture_frames(self):
         # Run 139: the resolved-frame spectrum needs more than one jitter period.
         with tempfile.TemporaryDirectory() as directory:

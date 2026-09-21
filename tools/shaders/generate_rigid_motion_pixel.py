@@ -94,6 +94,17 @@ SHADERS = {
     'temporal_line_mask': dict(source=ROOT / 'src/temporal/line_mask_ps.hlsl',
         header=ROOT / 'src/renderer/temporal_line_mask_program_inc.h',
         provenance=ROOT / 'verification/results/temporal-line-mask-program.json'),
+    # Camera-relative thin-region gate (taa-lattice-crawl.md section 32.1): the mask with both gate strengths, the far
+    # program with the 7x7 box clip, and the box pass itself. Defines plus includes; the plain programs' bytes are untouched.
+    'temporal_line_mask_camera': dict(source=ROOT / 'src/temporal/line_mask_camera_ps.hlsl',
+        header=ROOT / 'src/renderer/temporal_line_mask_camera_program_inc.h',
+        provenance=ROOT / 'verification/results/temporal-line-mask-camera-program.json'),
+    'temporal_resolve_far_camera': dict(source=ROOT / 'src/temporal/resolve_far_camera.hlsl',
+        header=ROOT / 'src/renderer/temporal_resolve_far_camera_program_inc.h',
+        provenance=ROOT / 'verification/results/temporal-resolve-far-camera-program.json'),
+    'temporal_thin_box': dict(source=ROOT / 'src/temporal/thin_box_ps.hlsl',
+        header=ROOT / 'src/renderer/temporal_thin_box_program_inc.h',
+        provenance=ROOT / 'verification/results/temporal-thin-box-program.json'),
     'hdr_writeback': dict(source=ROOT / 'src/temporal/hdr_writeback_ps.hlsl',
                           header=ROOT / 'src/renderer/hdr_writeback_program_inc.h',
                           provenance=ROOT / 'verification/results/hdr-writeback-program.json'),

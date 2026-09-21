@@ -38,6 +38,22 @@
 //             farw * c5.w, b = a = 0, one draw into the second target.
 // farw = saturate((d - c5.x) * c5.y) on a valid depth, else 0; c5.zw are the far
 // component scales. s1 / s4 are point/clamp, single level; c4 = 1 / size, jitter UV.
+// X3M_CAMERA_GATE (line_mask_camera_ps.hlsl; taa-lattice-crawl.md section 32.1): the
+// camera-relative gate mode of the thin region, bound only in that mode and only
+// with the thin region on and the line filter off (c7.w = 0). The gates travel
+// as OPENNESS, saturate(1 - (speed - c6.z) * c6.w), not as closure: a non-finite
+// correspondence then reads 0 = closed whether saturate returns 0 for a NaN or
+// the NaN reaches the UNORM target (written as 0), with no comparison a compiler
+// or backend may fold. The tests draw (c7.z = 0) writes r = the openness of the
+// screen speed (the plain program's gate) and a = the larger of it and the
+// openness of the camera-relative speed, i.e. the gate on min(screen speed,
+// camera-relative speed); the camera-relative speed is the routed
+// correspondence measured against the camera path c0..c3 at this pixel's depth,
+// 0 where the pixel follows the camera path itself (c0..c3 are validated finite
+// by the caller). The separable draws take the 17x17 MINIMUM of both (r carries
+// no line mask) and the composition writes b = the camera-gated strength and a =
+// the screen-gated strength (a <= b), so the resolve knows where the camera term
+// alone keeps the region open. r = farw * c5.z there.
 sampler2D source : register(s1);
 sampler2D motionOverride : register(s4);
 float4 reprojection0 : register(c0);
@@ -56,6 +72,7 @@ bool sentinelDepth(float v) { return v <= -0.5 && v >= -1e30; }
 bool lineBackground(float q, float d) { return sentinelDepth(q) || (validDepth(q) && (1 - q) * lineMargin < 1 - d); }
 bool classChange(float a, float b) { return (validDepth(a) && lineBackground(b, a)) || (validDepth(b) && lineBackground(a, b)); }
 float farWeight(float depth) { return validDepth(depth) ? saturate((depth - farGate.x) * farGate.y) : 0; }
+#ifndef X3M_CAMERA_GATE
 // Screen speed of this pixel's own correspondence, px/frame (no dilation: the 13x13 maximum of the later draws covers the neighbours).
 float gateClosure(float2 uv, float depth) {
     float2 previousUV = uv;
@@ -70,6 +87,28 @@ float gateClosure(float2 uv, float depth) {
     float speed = length((previousUV - uv) / sizeJitter.xy);
     return speed == speed ? saturate((speed - thinGate.z) * thinGate.w) : 1;
 }
+
+#else
+// Openness of this pixel's own gates (no dilation: the 17x17 minimum of the later draws covers the neighbours): x = the camera
+// gate, y = the screen-speed gate. A routed pixel without a valid depth has no camera path and keeps its screen speed.
+float gateOpenness(float speed) { return saturate(1 - (speed - thinGate.z) * thinGate.w); }
+float2 gateOpen(float2 uv, float depth) {
+    float4 motion = tex2Dlod(motionOverride, float4(uv, 0, 0));
+    const bool routed = options.x > 0.5 && motion.w >= 1 && motion.w <= 1;
+    const bool cameraPath = validDepth(depth) || sentinelDepth(depth);
+    float2 cameraUV = uv;
+    if (cameraPath) {
+        float2 unjittered = uv - 0.5 * sizeJitter.xy - sizeJitter.zw;
+        float4 clip = float4(unjittered.x * 2 - 1, 1 - unjittered.y * 2, validDepth(depth) ? depth : 1, 1);
+        float3 previous = float3(dot(reprojection0, clip), dot(reprojection1, clip), dot(reprojection3, clip));
+        cameraUV = float2(previous.x, -previous.y) / max(previous.z, 1e-6) * 0.5 + 0.5 + 0.5 * sizeJitter.xy + sizeJitter.zw;
+    }
+    float2 previousUV = routed ? motion.xy + sizeJitter.zw : cameraUV;
+    float screen = gateOpenness(length((previousUV - uv) / sizeJitter.xy));
+    float relative = routed ? gateOpenness(length((previousUV - cameraUV) / sizeJitter.xy)) : 1;
+    return float2(cameraPath ? max(screen, relative) : screen, screen);
+}
+#endif
 
 float4 main(float2 uv : TEXCOORD0) : COLOR0
 {
@@ -90,20 +129,35 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0
         result = centre;
         [loop] for (int k = -8; k <= 8; ++k) {
             float4 tap = fetch(uv + k * axis);
+#ifdef X3M_CAMERA_GATE
+            result.ar = min(result.ar, tap.ar);
+            if (abs(k) <= 5) result.b = max(result.b, tap.b);
+#else
             result.a = max(result.a, tap.a);
             if (abs(k) <= 5) result.b = max(result.b, tap.b);
             if (abs(k) <= 1) result.r = max(result.r, tap.r);
+#endif
         }
         if (compose) {
             float2 far = centre.gg * farGate.zw;
+#ifdef X3M_CAMERA_GATE
+            float fragmented = result.b * thinGate.y;
+            result.b = fragmented * result.a; result.a = fragmented * result.r;
+            result.r = far.x; result.g = far.y;
+#else
             result.r = max(result.r, far.x); result.g = far.y;
             result.b *= (1 - result.a) * thinGate.y; result.a = 0;
+#endif
         }
     } else {
         float depth = fetch(uv).r;
         result.g = farWeight(depth);
         [branch] if (thinGate.y > 0.5) {
+#ifdef X3M_CAMERA_GATE
+            result.ar = gateOpen(uv, depth);
+#else
             result.a = gateClosure(uv, depth);
+#endif
             [loop] for (int k = 0; k < 4; ++k) {
                 float2 along = (k == 0 ? float2(1, 0) : (k == 1 ? float2(0, 1) : (k == 2 ? float2(1, 1) : float2(1, -1)))) * sizeJitter.xy;
                 float changes = 0, previous = fetch(uv - 3 * along).r;
@@ -111,6 +165,7 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0
                 if (changes >= 2) result.b = 1;
             }
         }
+#ifndef X3M_CAMERA_GATE
         if (validDepth(depth) && options.w > 0.5) {
             [loop] for (int k = 0; k < 4; ++k) {
                 float2 along = (k == 0 ? float2(1, 0) : (k == 1 ? float2(0, 1) : (k == 2 ? float2(1, 1) : float2(1, -1)))) * sizeJitter.xy;
@@ -122,6 +177,7 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0
                 if (before && after) result.r = 1;
             }
         }
+#endif
     }
     return result;
 }

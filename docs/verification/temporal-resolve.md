@@ -498,3 +498,28 @@ or Wine fixture is needed for this default-only change.
 Independent review: no findings; **14 focused host tests passed**. The affected
 launch dry-run with both cut variables unset confirms `1e30/1`, camera `20`,
 and TAA enabled. No game was launched. [Review record](../../verification/results/run57-heuristic-cuts/review.json).
+
+## Camera-relative thin-region gate with 7x7 box clip (2026-09-21)
+
+Opt-in `--taa-thin-region-gate camera` (`X3M_TAA_THIN_REGION_GATE`); default unchanged. Design and numbers:
+[lattice note section 32.1](../architecture/taa-lattice-crawl.md). Unflown; no candidate built or installed.
+
+- Shaders (native `d3dx9_37` through `generate_rigid_motion_pixel.py` under the Wine lock): `temporal_line_mask_camera`
+  897 words / 223 slots (bytecode `e681518b…`), `temporal_resolve_far_camera` 2023 words / 508 slots (`6f2228f4…`), `temporal_thin_box` 238 words / 51
+  slots (`e2c80743…`). The eleven existing programs sharing the edited sources (ten resolve variants, the line mask)
+  regenerate from the final sources to unchanged headers, word counts and `bytecode_sha256`; their manifests differ
+  from HEAD only in `source_sha256` / `includes` / `tool_sources`, and every recorded hash matches the tree.
+- Fixture `temporal_pass_fixture.exe lattice` (bottle X3), exit 0: `RESULT PASS numerical=495 state_restorations=21`
+  (was 459 / 19; `FAR_BASE` 382 / 17 unchanged). Installed mode: 19 of 19 thin-region metric rows identical to the
+  previous record. Camera gate with a static camera: bit-identical to the screen gate at rest and at 0.12 / 0.30
+  px/frame (colour, alpha, age, gate). Pan 0.5 px/frame: gate share 0.000 -> 1.000, shard rms 16.34 -> 1.42 codes
+  (x 0.087), oracle error 0.0093 (bound 0.02). Stale patch one frame after injection: installed 0.623, camera 0.727
+  (x 1.17; bound 2 x), clip-off estimate 3.64. Box-allocation failure: screen gate bit for bit. Box domain (k = 0.5,
+  one 65504 tap): oracle error 0.0103. Non-finite speed by overflow: both gates closed within 8 px, output = screen
+  gate. NaN correspondence: reported only; this backend reads it open in the plain and the camera mask alike.
+- Pass time 1280x768 (the record): thin region +0.78 ms over plain; camera gate +0.16 ms without a region, +0.59 ms
+  with the whole frame reopened. Session spread: +0.47 .. +0.98, -0.05 .. +0.26 and +0.37 .. +0.65 ms.
+- Host: `test_taa_image_defaults` 12 tests OK; full `run_temporal_pass.py` exit 0, `passed: true` (new `test_thin_region_gate_is_absent_unless_given`).
+- Limits: the pan scene is uniform along the pan axis (no resampling loss); moving-lattice quality is section 32's
+  replay, not this fixture. Native Windows unverified. Full runner 112 s, lock wait 0 s.
+

@@ -41,6 +41,15 @@ CHECK embedded_thin_line within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_age_line dwords=2016 instruction_slots=509 device_limit=512 headroom=3 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_age_line within the guaranteed 512 slots PASS
+RESOLVE_BUDGET variant=embedded_line_mask_camera dwords=897 instruction_slots=223 device_limit=512 headroom=289 within_guaranteed_512=1
+CHECK resolve instruction budget parsed for ps_3_0 PASS
+CHECK embedded_line_mask_camera within the guaranteed 512 slots PASS
+RESOLVE_BUDGET variant=embedded_far_camera dwords=2023 instruction_slots=508 device_limit=512 headroom=4 within_guaranteed_512=1
+CHECK resolve instruction budget parsed for ps_3_0 PASS
+CHECK embedded_far_camera within the guaranteed 512 slots PASS
+RESOLVE_BUDGET variant=embedded_thin_box dwords=238 instruction_slots=51 device_limit=512 headroom=461 within_guaranteed_512=1
+CHECK resolve instruction budget parsed for ps_3_0 PASS
+CHECK embedded_thin_box within the guaranteed 512 slots PASS
 LATTICE_CASES
 LATTICE_MARGIN 0.0600
 CHECK lattice geometry keeps jittered edges off the sample centers PASS
@@ -2133,7 +2142,11 @@ CHECK line mask never holds on the square's silhouette PASS
 CHECK square silhouette bit-identical to the unfiltered resolve (gradient energy unchanged) PASS
 CHECK line mask covers the lattice region PASS
 CHECK line filter lowers the roping at a bounded line-peak cost PASS
-LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.7204 current_filter_ms=0.6421 line_filter_ms=0.9268 far_stabiliser_ms=0.9014 thin_region_ms=1.4705 taps_delta_ms=-0.0783 line_delta_ms=0.2064 far_delta_ms=0.1810 thin_region_delta_ms=0.7501 scope=cpu_wall_with_event_query_drain
+CHECK line timing: camera-gate programs created PASS
+CHECK line timing: camera-gate programs created PASS
+CHECK line timing: camera-gate programs created PASS
+LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.6330 current_filter_ms=0.6246 line_filter_ms=0.8647 far_stabiliser_ms=0.7869 thin_region_ms=1.4149 taps_delta_ms=-0.0083 line_delta_ms=0.2317 far_delta_ms=0.1539 thin_region_delta_ms=0.7819 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.4149 no_region_camera_ms=1.5789 no_region_camera_delta_ms=0.1640 fragmented_pan_thin_ms=1.3859 fragmented_pan_camera_ms=1.9774 fragmented_pan_camera_delta_ms=0.5915 scope=cpu_wall_with_event_query_drain
 LINE_BASE numerical=255 state_restorations=15
 FAR_CASES
 FAR_GATE ok=1 d0=0.99985647 inv=17734.900 expected_d0=0.99985652 expected_inv=17749.280
@@ -2415,6 +2428,15 @@ CHECK thin-region run restores c0..c7, c22, c24, samplers 4 and 8, RT1 and COLOR
 CHECK failed second mask draw publishes nothing PASS
 CHECK after a failed run the thin-region resolve restarts without history PASS
 CHECK Reset protocol recreates the masks and restarts the history PASS
+CHECK camera-gate programs created by configure_far PASS
+CHECK camera gate beside the line filter is refused (the mask's line channel carries the second gate) PASS
+CHECK camera gate without configure_far is refused PASS
+CHECK camera gate without the thin region is ignored (plain resolve) PASS
+CHECK camera-gate run publishes the age target and the mask PASS
+CHECK camera-gate run restores c0..c7, c22, c24, samplers 8..10, RT1 and COLORWRITEENABLE1 PASS
+CHECK failed box draw (the fourth draw) publishes nothing PASS
+CHECK after a failed box draw the camera-gate resolve restarts without history PASS
+CHECK Reset protocol keeps the camera-gate programs and recreates the box targets PASS
 CHECK thin-region history follows the sequence PASS
 THIN_REGION drift=0.00 config=thin-base oracle_error=0.001953 age_oracle_error=0.000000 mask_error=0.000000 shard_rms_codes=16.340 shard_p2p_codes=99.4 rms_ratio=1.0000 square_px=29952 square_differs=0
 SAMPLE thin region thin-base: shader matches the 2-D CPU oracle within the FP16 bound actual=0.001953125 expected=0.000000000 tolerance=0.006000000 PASS
@@ -2457,6 +2479,16 @@ SAMPLE thin region thin-region-0.97+far-weight-0.985: age target matches the CPU
 SAMPLE thin region thin-region-0.97+far-weight-0.985: published gate equals the oracle's (fragmented 7x7, closed by the fastest pixel) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
 CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
 CHECK far stabiliser + thin region (the expected default pair): shard ripple <= 0.15 x the installed resolve and within 1.25 x the thin region alone PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION drift=0.00 config=thin-region-0.97-camera-gate oracle_error=0.008301 age_oracle_error=0.000000 mask_error=0.000000 shard_rms_codes=1.416 shard_p2p_codes=6.6 rms_ratio=0.0866 square_px=29952 square_differs=0
+SAMPLE thin region thin-region-0.97-camera-gate: shader matches the 2-D CPU oracle within the FP16 bound actual=0.008300781 expected=0.000000000 tolerance=0.020000019 PASS
+SAMPLE thin region thin-region-0.97-camera-gate: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE thin region thin-region-0.97-camera-gate: published gate equals the oracle's (fragmented 7x7, closed by the fastest pixel) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
+THIN_REGION_CAMERA_STATIC drift=0.00 colour_identical=1 age_identical=1 gate_differs=0
+CHECK camera gate with a static camera (rest, drift inside the gate, drift past it): bit-identical to the screen gate, every pixel, all four channels, age and gate PASS
 CHECK thin-region history follows the sequence PASS
 THIN_REGION drift=0.12 config=thin-base oracle_error=0.002930 age_oracle_error=0.000000 mask_error=0.000000 shard_rms_codes=24.081 shard_p2p_codes=131.7 rms_ratio=1.0000 square_px=29952 square_differs=0
 SAMPLE thin region thin-base: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002929688 expected=0.000000000 tolerance=0.006000000 PASS
@@ -2496,6 +2528,16 @@ SAMPLE thin region thin-region-0.97+far-weight-0.985: shader matches the 2-D CPU
 SAMPLE thin region thin-region-0.97+far-weight-0.985: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE thin region thin-region-0.97+far-weight-0.985: published gate equals the oracle's (fragmented 7x7, closed by the fastest pixel) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
 CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION drift=0.12 config=thin-region-0.97-camera-gate oracle_error=0.004883 age_oracle_error=0.000000 mask_error=0.000000 shard_rms_codes=14.747 shard_p2p_codes=86.2 rms_ratio=0.6124 square_px=29952 square_differs=0
+SAMPLE thin region thin-region-0.97-camera-gate: shader matches the 2-D CPU oracle within the FP16 bound actual=0.004882812 expected=0.000000000 tolerance=0.020000019 PASS
+SAMPLE thin region thin-region-0.97-camera-gate: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE thin region thin-region-0.97-camera-gate: published gate equals the oracle's (fragmented 7x7, closed by the fastest pixel) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
+THIN_REGION_CAMERA_STATIC drift=0.12 colour_identical=1 age_identical=1 gate_differs=0
+CHECK camera gate with a static camera (rest, drift inside the gate, drift past it): bit-identical to the screen gate, every pixel, all four channels, age and gate PASS
 CHECK thin-region history follows the sequence PASS
 THIN_REGION drift=0.30 config=thin-base oracle_error=0.002441 age_oracle_error=0.000000 mask_error=0.000000 shard_rms_codes=20.933 shard_p2p_codes=95.3 rms_ratio=1.0000 square_px=29952 square_differs=0
 SAMPLE thin region thin-base: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.006000000 PASS
@@ -2540,6 +2582,17 @@ SAMPLE thin region thin-region-0.97+far-weight-0.985: age target matches the CPU
 SAMPLE thin region thin-region-0.97+far-weight-0.985: published gate equals the oracle's (fragmented 7x7, closed by the fastest pixel) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
 CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
 CHECK past the speed gate the thin-region run is the plain resolve bit for bit, every pixel PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION drift=0.30 config=thin-region-0.97-camera-gate oracle_error=0.002441 age_oracle_error=0.000000 mask_error=0.000000 shard_rms_codes=20.933 shard_p2p_codes=95.3 rms_ratio=1.0000 square_px=29952 square_differs=0
+SAMPLE thin region thin-region-0.97-camera-gate: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.020000019 PASS
+SAMPLE thin region thin-region-0.97-camera-gate: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE thin region thin-region-0.97-camera-gate: published gate equals the oracle's (fragmented 7x7, closed by the fastest pixel) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
+CHECK past the speed gate the thin-region run is the plain resolve bit for bit, every pixel PASS
+THIN_REGION_CAMERA_STATIC drift=0.30 colour_identical=1 age_identical=1 gate_differs=0
+CHECK camera gate with a static camera (rest, drift inside the gate, drift past it): bit-identical to the screen gate, every pixel, all four channels, age and gate PASS
 CHECK thin-region history follows the sequence PASS
 CHECK thin-region program created on this device PASS
 CHECK thin-region history follows the sequence PASS
@@ -2549,5 +2602,62 @@ SAMPLE thin region: from 8 frames after motion starts, uncovered background carr
 CHECK thin-region history follows the sequence PASS
 CHECK thin-region program created on this device PASS
 CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_PAN pan=0.50 config=thin-region-0.97 oracle_error=0.001953 age_oracle_error=0.000000 mask_error=0.000000
+SAMPLE pan, screen gate: shader matches the 2-D CPU oracle within the FP16 bound actual=0.001953125 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE pan, screen gate: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE pan, screen gate: published gate equals the oracle's actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+THIN_REGION_PAN pan=0.50 config=thin-region-0.97-camera-gate oracle_error=0.009277 age_oracle_error=0.000000 mask_error=0.000000
+SAMPLE pan, camera gate: shader matches the 2-D CPU oracle (camera-relative gate, 7x7 box) within the FP16 bound actual=0.009277344 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE pan, camera gate: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE pan, camera gate: published gates (b camera, a screen) equal the oracle's actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+THIN_REGION_CAMERA pan=0.50 base_rms_codes=16.340 screen_rms_codes=16.340 camera_rms_codes=1.416 camera_over_screen=0.0866 screen_p2p_codes=99.4 camera_p2p_codes=6.6 screen_gate_share=0.0000 camera_gate_share=1.0000 camera_mask_screen_channel_max=0.0000
+CHECK pan past HI: the screen-gated thin region is the plain resolve bit for bit and its published gate is closed everywhere PASS
+CHECK pan past HI: the camera gate keeps the whole shard field open (share >= 0.99) while the mask's screen-gate channel reads closed PASS
+CHECK pan past HI: the camera gate halves the shard ripple (rms <= 0.5 x, peak-to-peak <= 0.6 x the screen gate) PASS
+CHECK thin-region program created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_STALE pan=0.50 mover_px_per_frame=2 injected_value=4.0 screen_excess_after_mover=0.000000 camera_excess_after_mover=0.000000 screen_added_frame101=0.622559 camera_added_frame101=0.727051 camera_over_screen=1.1678 screen_added_frame105=0.373047 camera_added_frame105=0.664062 unbounded_estimate=3.6375 screen_oracle_error=0.001953 camera_oracle_error=0.008301
+SAMPLE pan + bright mover, screen gate: no ghost above the scene's maximum after the mover left actual=0.000000000 expected=0.000000000 tolerance=0.007843137 PASS
+SAMPLE pan + bright mover, camera gate: no ghost above the scene's maximum after the mover left (the mover closes the gate around itself) actual=0.000000000 expected=0.000000000 tolerance=0.007843137 PASS
+SAMPLE pan + stale patch, camera gate: shader matches the oracle's 7x7 box clip of the injected history (frames 101..127) actual=0.008300781 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE pan + stale patch, screen gate: shader matches the oracle on the injected history (frames 101..127) actual=0.001953125 expected=0.000000000 tolerance=0.020000000 PASS
+CHECK stale patch (value 4) one frame after injection: the camera gate's 7x7 box bounds it to at most 2 x the screen gate's clipped value PASS
+CHECK stale patch: the box binds (well below the clip-off estimate 0.97 x (4 - 0.25)) PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_BOX_DOMAIN pan=0.50 k=0.5 bad_tap_value=65504 bad_pixel_frames=27 bad_pixel_output_max=0.000000 oracle_error=0.010254 patch_output_max_frame101=0.999512
+SAMPLE pan + stale patch, k = 0.5 and a non-finite current tap: shader matches the oracle (box weighed as the resolve, bad tap ignored) actual=0.010253906 expected=0.000000000 tolerance=0.020000000 PASS
+CHECK non-finite tap: exercised, resolved black, and the stale patch beside it stays bounded by the finite 7x7 colours PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK box-target creation fault reached; camera gate fell back PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK box-target creation failure: the camera gate falls back to the screen gate bit for bit, history kept PASS
+CHECK thin-region program created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_BAD_MOTION kind=overflow_1e30 asserted=1 covered_px=4 screen_gate_max_within_8px=0.0000 camera_gate_max_within_8px=0.0000 camera_screen_channel_max=0.0000 identical_to_screen_gate=1
+CHECK non-finite speed (overflow): the camera mask closes both gates within 8 px, as the plain mask closes its one PASS
+CHECK non-finite speed (overflow): camera-gate output and age equal the screen gate's bit for bit PASS
+CHECK thin-region program created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_BAD_MOTION kind=nan asserted=0 covered_px=4 screen_gate_max_within_8px=1.0000 camera_gate_max_within_8px=1.0000 camera_screen_channel_max=1.0000 identical_to_screen_gate=1
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK thin-region history follows the sequence PASS
 CHECK mask-target creation failure under the thin region: plain resolve, history kept PASS
-RESULT PASS numerical=459 state_restorations=19 lattice=1
+RESULT PASS numerical=495 state_restorations=21 lattice=1

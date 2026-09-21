@@ -53,6 +53,17 @@ inline constexpr std::uint32_t temporal_resolve_thin_line_words[] = {
 inline constexpr std::uint32_t temporal_resolve_age_line_words[] = {
 #include "temporal_resolve_age_line_program_inc.h"
 };
+// Camera-relative thin-region gate (docs/architecture/taa-lattice-crawl.md section 32.1): src/temporal/line_mask_camera_ps.hlsl,
+// resolve_far_camera.hlsl and thin_box_ps.hlsl (manifests verification/results/temporal-{line-mask-camera,resolve-far-camera,thin-box}-program.json).
+inline constexpr std::uint32_t temporal_line_mask_camera_words[] = {
+#include "temporal_line_mask_camera_program_inc.h"
+};
+inline constexpr std::uint32_t temporal_resolve_far_camera_words[] = {
+#include "temporal_resolve_far_camera_program_inc.h"
+};
+inline constexpr std::uint32_t temporal_thin_box_words[] = {
+#include "temporal_thin_box_program_inc.h"
+};
 }
 // Complete ps_3_0 program of src/temporal/resolve.hlsl (sampler and constant
 // contract in src/temporal/README.md), the resolve the live route runs at the
@@ -85,4 +96,8 @@ inline constexpr const auto& temporal_resolve_far_program() noexcept { return de
 inline constexpr const auto& temporal_resolve_line_program() noexcept { return detail::temporal_resolve_line_words; }
 inline constexpr const auto& temporal_resolve_thin_line_program() noexcept { return detail::temporal_resolve_thin_line_words; }
 inline constexpr const auto& temporal_resolve_age_line_program() noexcept { return detail::temporal_resolve_age_line_words; }
+// The camera-gate programs TemporalPass::configure_far creates on top (optional: a refusal leaves the screen-speed gate).
+inline constexpr const auto& temporal_line_mask_camera_program() noexcept { return detail::temporal_line_mask_camera_words; }
+inline constexpr const auto& temporal_resolve_far_camera_program() noexcept { return detail::temporal_resolve_far_camera_words; }
+inline constexpr const auto& temporal_thin_box_program() noexcept { return detail::temporal_thin_box_words; }
 } // namespace x3m::renderer
