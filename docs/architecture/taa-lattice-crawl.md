@@ -1555,3 +1555,22 @@ GPU reads. A diagnostic VS/ordinal stream can export decoded positions/UVs, but
 not raw-byte identity or directly recover IB order; indexed ordinal attributes
 are fetched through that same IB. It still requires an injected-draw ownership,
 state/query and Reset contract. No live implementation or flight is selected yet.
+
+### Prototype contract after targeted disassembly and review
+
+[Final CloneMesh interval](../reverse-engineering/mesh-buffer-rewrite.md#final-clonemesh-private-upload-interval-2026-09-21)
+establishes private fresh INDEX16 destinations before game publication. The
+prototype retains opaque raw staging from original readable mappings; it adds
+no buffer Lock/Unlock. This is safe-access evidence, not yet valid payload:
+an internal attribute allocation may fail after both Locks and before index
+stores, yet still reach destination Unlock. No interpretation, hashing, logging,
+file output or publication may expose staging until CloneMesh, both original
+Unlocks and final allocation/revision checks succeed. Failure wipes staging.
+Legacy finite-value scanning must stay disabled for this mode.
+
+A post-success READONLY-copy alternative also has private ownership, but its
+additional mapping lifetime across reentrant/concurrent Reset is unqualified.
+It is not selected. No blanket prohibition on locking lost MANAGED resources
+is asserted. Implementation now targets the original mapping protocol in a
+standalone actual-D3DX fixture, including failure, Reset, reentry and unwind
+controls. The game callsite hook and F8 attachment remain later steps.
