@@ -1743,3 +1743,81 @@ and the unmatched-static gate per frame during a panning capture to settle quest
 Blending seams (LOD/tile-border/banding): not established this run — no dedicated near/far-grid
 boundary capture exists in this dump set; the reviewed crops did not show an isolated hard edge,
 but this is inconclusive rather than a clean pass.
+
+## Run 60 session B diagnosis (run214): the smear is a shadow shaft; far stations are unrouted (2026-09-21)
+
+Diagnosis only, no production edit, no Wine. Evidence `/tmp/x3-bottleX3-run214` (local), numbers in
+`verification/results/fog-run214-diagnosis.json`. [M] measured, [I] inferred. This corrects two
+statements of the triage entry above.
+
+**Corrections to the triage.** (1) The lane depth dump is four-channel: `.r` is the class/device
+depth (`-1` sky sentinel), `.b` the view z. `march_depth` (`src/fog/fog_density_field_inc.h:96-101`)
+keeps identity only for *geometry with an invalid view z*; a sky pixel marches the full 200 000
+horizon and is composited. "depth = -1, so no fog is applied" is wrong: the streak pixels are sky
+and are fogged. (2) `hdr_1_*` is `hdr_->target()` read in `hdr_writeback`
+(`src/proxy/motion_output.cpp:6145`), after `run_volumetric_fog()` (`:1895`/`:1807`) and after the
+TAA resolve on the same target, before tonemap. No pre-fog stage was dumped; the first (only) stage
+already shows the streak. (3) The fog binds apply slots 1..3, not 0..2: slot 0 (own ship) is skipped
+(`src/proxy/motion_output_fog_inc.h:62-64`), log `shadow_maps=3` on all 62 applied frames. With
+extents 250/1500/7500/37500/150000 the march samples the 1500, 7500 and 37 500 maps; only the
+150 000 cascade is unreachable.
+
+**Symptom 1, black smear: hypothesis (e), a real shadow shaft, no ambient floor.** [M] Frame 2815: the
+station is routed geometry (20 039 px, view z 18 043-39 165, median 20 514), inside the 37 500
+cascade. A contrast-stretched 8 px box of the HDR luminance shows not one streak but a fan of
+parallel dark bands, each starting at a station part (both rings, the truss, the main body) and
+running down-left. Sun (log `shadow_replay_sun_point dir0`) = (0.6448, 0.7604, -0.0773) world;
+view-space (row-vector, `s*V`) = (0.808, 0.575, -0.129). Shadow rays `P - t*sun` from three station
+pixels, projected with p00 = 0.8, p11 = 1.3333, overlay the bands along their whole length;
+predicted screen orientation 143.9 deg, structure-tensor orientation of the band region
+(x560:800, y300:450) 141.0 deg. Band luminance 0.095 against 0.136 adjacent sky (-30 %), constant
+over 8 frames, as a static caster and sun require. [I] It reads as a black smear rather than a
+shaft because `lit += T*a*visibility` (`fog_density_field_inc.h:127`) has no ambient or
+multiple-scatter term, so a shadowed segment contributes zero inscatter while still extinguishing;
+PCF on a 73 unit/texel map with a point sun gives a hard-edged umbra tens of km long with no
+penumbra widening; and at this density most sky luminance is inscatter, so its removal is large.
+Rejected: (a) the bands follow the sun, not card quads, and `cards=1`/`result=0` on applied frames;
+(b) the station is valid geometry here and the dark pixels are sky; (c) bands are tens of px wide
+and hundreds long, not an edge-width upsample error; (d) no drift over the burst (0.0950-0.0943).
+Remedies to evaluate (not done): an ambient/shadow floor on `visibility` (for example
+`lerp(floor, 1, visibility)`), a distance fade of shaft strength, or a penumbra that widens with
+caster distance.
+
+**Symptom 2, distant stations flicker on vertical pan.** Burst 2 is not static: [M] `camera_state
+rotation_deg` 0.25-4.9 deg/frame, image shift -9,-9,-5,-3,+3,+26 px/frame vertical. [M] The two
+distant stations carry no lane depth (0 geometry px in y220:300 x560:680) and no motion: frame 24630
+has 190 draws, 6 routed (own ship); station draws are blended `zwrite=0` and refused
+`no_zwrite` (26) or `overlay_node` (62). [M] Tracked over the pan, the station crop shows single
+pixel bright/dark speckle that changes every frame (frame-to-frame normalised correlation 0.30-0.58
+against 0.74-0.93 for star fields in the same frames), while its median stays 0.0908-0.0914
+(<0.7 %). Measured shifts of both stations and both star fields agree with the scene-camera
+far-plane prediction within 1 px, so mis-reprojection is not the cause at that resolution.
+Ranking:
+1. Unrouted sentinel station, plain resolve [M+I]. `farWeight(sentinel) = 0`
+   (`src/temporal/line_mask_ps.hlsl:21`) and `classChange` needs a valid depth on one side (`:20`),
+   so these pixels get neither the far stabiliser nor the thin mask: history is clamped to the 3x3
+   box every frame (`src/temporal/resolve.hlsl:462-464`) and sub-pixel hull detail aliases. Vertical
+   pans show it most where the detail is horizontal (panel rows, trusses) [I].
+2. Far-stabiliser speed gate [I]. Even for routed far geometry the 0.985 weight fades to the base
+   weight between 0.03 and 0.25 px/frame (`resolve.hlsl:486`, defaults `src/proxy/capture.cpp:112`);
+   any pan switches it off, so detail that is calm at rest flickers exactly while panning.
+3. Camera gate closed by routed sentinel glass (taa-lattice-crawl.md section 32.5): applies to
+   nearer, routed stations only; not to the stations of this burst (unrouted).
+4. Fog on sentinel station pixels: marched as sky to 200 000 regardless of true distance (a veil
+   error, not a flicker): crop median moves <0.7 % over the pan; sky-class half-res weights are
+   plain bilinear. Low.
+5. LOD taper / `unmatched_static` (0 lines in the window) / background-view deviation
+   (`background_rotation_deg` median 0.16 deg while turning, but shifts match the scene camera): low.
+Settling capture, no new build needed: the same flags plus `--taa-debug`, one F8 burst during a
+slow (2-5 px/frame) vertical pan on a distant station, then switch fog off with the runtime fog toggle and repeat. Speckle
+already in `color_*` (pre-resolve) means source aliasing of an unstabilised sentinel object (1);
+speckle only in `taa_*` with `taa_age` pinned near 1 means clip/gate (2/3); disappearance with fog
+off would implicate (4). If a build is made anyway, add the line-mask target to the debug dumps.
+
+**Cascade gap.** `fog_cascade_max = 3` (`src/renderer/fog_pass.h:42`) loses only the 150 000 cascade:
+march samples farther than about 37.5 km (times the select margin) from the cascade-3 centre get
+`shadow_weight = 0`, visibility 1, so casters beyond that range throw no shafts and fog between
+37.5 km and the 200 km horizon is always lit. [I] Minor: that map is 293 units/texel, it is the one
+cascade replayed on alternate frames under budget (`far_replayed=0` on 16 frames here), and
+`fog_shadow_current` would drop it on those frames, so binding it would add shaft flicker for little
+visible gain. Leave at 3; the triage's "cascades 4-5" is wrong.
