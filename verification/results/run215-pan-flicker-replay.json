@@ -1,0 +1,773 @@
+{
+ "run": "run215",
+ "date": "2026-09-22",
+ "dump": "/tmp/x3-bottleX3-run215 (+ taa_age from the bottle x3-modern-captures dir)",
+ "frames": [
+  46573,
+  46604
+ ],
+ "roi": [
+  16,
+  215,
+  1264,
+  365
+ ],
+ "tools": [
+  "tools/analysis/taa_sentinel_pan_replay.py",
+  "tools/analysis/taa_sentinel_pan_variants.py",
+  "tools/analysis/taa_far_plane_reject_check.py"
+ ],
+ "replay_fidelity_codes": {
+  "open_loop_with_oracle_reject": {
+   "mean": 0.0212,
+   "p99": 0.06,
+   "max": 1.44
+  },
+  "closed_loop": {
+   "mean": 0.0496,
+   "p99": 0.192,
+   "max": 2.35
+  },
+  "without_oracle_reject_crop_560_230_900_360": {
+   "mean": 0.071,
+   "max": 91.1
+  },
+  "best_dpos_px": [
+   0,
+   0
+  ],
+  "note": "design quoted 0.0016 on run212; not reproduced to that level here"
+ },
+ "root_cause": {
+  "summary": "far-plane camera path: expectedDepth = previousClip.z / max(previousClip.w, c6.w) with bit-identical z and w rows rounds above 1 on this GPU for 8-11% of pixels where previousClip.w < 1 (the half of the screen the camera turns toward); validDepth(expectedDepth) fails -> current-only output and age reset (resolve.hlsl:302,324)",
+  "observed_current_only_share_sky": {
+   "46578": {
+    "w_gt1": 0.0,
+    "w_le1": 0.1
+   },
+   "46583": {
+    "w_gt1": 0.0,
+    "w_le1": 0.106
+   },
+   "46588": {
+    "w_gt1": 0.0,
+    "w_le1": 0.089
+   },
+   "46591": {
+    "w_gt1": 0.0,
+    "w_le1": 0.084,
+    "pan_px_per_frame": 0.5
+   },
+   "46592": {
+    "w_gt1": 0.0,
+    "w_le1": 0.085
+   },
+   "46595": {
+    "w_gt1": 0.0,
+    "w_le1": 0.095
+   },
+   "46599": {
+    "w_gt1": 0.0,
+    "w_le1": 0.096
+   },
+   "46601": {
+    "w_gt1": 0.0,
+    "w_le1": 0.093
+   }
+  },
+  "ieee_float32_simulation": "x*(1/x) never exceeds 1 (0.000) but differs from 1 on 22-27% of w<1 pixels and 0-2% of w>1 pixels: the GPU rounds differently from IEEE; boundary column (624/654) matches the observed comb edge",
+  "at_rest_run216_burst2_current_only_share": 0.0,
+  "run216_burst1_reject_share_roi": 0.084
+ },
+ "q1": {
+  "a_reprojection_residual_px": {
+   "max_abs": 0.1,
+   "rows": [
+    [
+     46574,
+     17.9,
+     -0.0,
+     -0.05
+    ],
+    [
+     46575,
+     29.3,
+     -0.0,
+     0.05
+    ],
+    [
+     46576,
+     28.5,
+     0.05,
+     -0.0
+    ],
+    [
+     46577,
+     27.9,
+     -0.0,
+     -0.05
+    ],
+    [
+     46578,
+     27.4,
+     0.0,
+     0.0
+    ],
+    [
+     46579,
+     27.0,
+     -0.0,
+     -0.05
+    ],
+    [
+     46580,
+     26.0,
+     0.05,
+     -0.05
+    ],
+    [
+     46581,
+     25.6,
+     0.0,
+     0.0
+    ],
+    [
+     46582,
+     24.0,
+     0.05,
+     -0.05
+    ],
+    [
+     46583,
+     20.3,
+     0.05,
+     0.1
+    ],
+    [
+     46584,
+     20.0,
+     0.0,
+     0.0
+    ],
+    [
+     46585,
+     14.7,
+     -0.0,
+     -0.05
+    ],
+    [
+     46586,
+     12.8,
+     -0.0,
+     0.05
+    ],
+    [
+     46587,
+     10.8,
+     -0.05,
+     -0.05
+    ],
+    [
+     46588,
+     8.8,
+     0.05,
+     -0.1
+    ],
+    [
+     46589,
+     6.6,
+     0.0,
+     0.0
+    ],
+    [
+     46590,
+     3.8,
+     -0.0,
+     -0.1
+    ],
+    [
+     46591,
+     0.5,
+     -0.05,
+     0.05
+    ],
+    [
+     46592,
+     3.0,
+     0.05,
+     0.1
+    ],
+    [
+     46593,
+     7.1,
+     -0.1,
+     -0.05
+    ],
+    [
+     46594,
+     27.7,
+     -0.0,
+     0.05
+    ],
+    [
+     46595,
+     33.3,
+     -0.05,
+     -0.0
+    ],
+    [
+     46596,
+     32.7,
+     0.05,
+     -0.05
+    ],
+    [
+     46597,
+     32.4,
+     -0.05,
+     -0.0
+    ],
+    [
+     46598,
+     32.4,
+     0.0,
+     0.0
+    ],
+    [
+     46599,
+     32.6,
+     -0.0,
+     0.05
+    ],
+    [
+     46600,
+     33.1,
+     0.0,
+     0.0
+    ],
+    [
+     46601,
+     33.8,
+     0.0,
+     0.0
+    ],
+    [
+     46602,
+     34.9,
+     -0.0,
+     0.05
+    ],
+    [
+     46603,
+     36.3,
+     0.0,
+     0.0
+    ],
+    [
+     46604,
+     15.7,
+     0.05,
+     -0.05
+    ]
+   ],
+   "note": "sub-pixel registration of dumped taa f vs f-1 through the rotation-only map; grid 0.05 px; production fetch position confirmed by replay error minimum at dpos=(0,0) (+-0.03 px scan)"
+  },
+  "b_parallax": "below the 0.1 px registration floor at every speed",
+  "c_exposure": "ev_adapted 1.15862 and taa_k 2.23243 constant over the burst; resolve input is pre-tonemap",
+  "d_box_bind": "true bind share 1.6% (<5 px/frame) to 15% (>15); unchanged by a non-negative history kernel (keys 0: 14%); removing the box changes flicker by <= 6%",
+  "e_history_blur": "history fetch is already Catmull-Rom; a sharper Keys -0.65 raises flicker 6% and gradient 35%"
+ },
+ "station_track_anchor": {
+  "frame": 46590,
+  "xy": [
+   780,
+   288
+  ],
+  "box_half": [
+   80,
+   36
+  ],
+  "pos": {
+   "46590": [
+    780.0,
+    288.0
+   ],
+   "46589": [
+    776.2324027587051,
+    288.17670929574524
+   ],
+   "46588": [
+    769.6525553023322,
+    288.46563417835193
+   ],
+   "46587": [
+    760.8767629222928,
+    288.8260558986419
+   ],
+   "46586": [
+    750.1576122562693,
+    289.2286560139826
+   ],
+   "46585": [
+    737.4164131541556,
+    289.66586850329423
+   ],
+   "46584": [
+    722.8278584986558,
+    290.101064054529
+   ],
+   "46583": [
+    702.958386278154,
+    290.58100554798796
+   ],
+   "46582": [
+    682.8262972255762,
+    290.935854995494
+   ],
+   "46581": [
+    659.0458075490417,
+    291.19112074274494
+   ],
+   "46580": [
+    633.6689162011513,
+    291.2543279581755
+   ],
+   "46579": [
+    607.8696730347888,
+    291.0932032040454
+   ],
+   "46578": [
+    581.0670383308749,
+    290.69026095992444
+   ],
+   "46577": [
+    553.947406962449,
+    290.0432622741752
+   ],
+   "46576": [
+    526.35148933612,
+    289.1464082664852
+   ],
+   "46575": [
+    498.1059579561969,
+    287.9766204214478
+   ],
+   "46574": [
+    469.0400897147108,
+    286.5254766668419
+   ],
+   "46573": [
+    451.3314434515071,
+    285.52319470607716
+   ],
+   "46591": [
+    780.5302190365303,
+    287.9770935371343
+   ],
+   "46592": [
+    777.5411327471047,
+    288.112116971394
+   ],
+   "46593": [
+    770.4987689629583,
+    288.42126111282914
+   ],
+   "46594": [
+    743.0913389016122,
+    289.4645382826475
+   ],
+   "46595": [
+    710.0555939009821,
+    290.4115279550546
+   ],
+   "46596": [
+    677.5898761312449,
+    290.99940413190495
+   ],
+   "46597": [
+    645.4203543116937,
+    291.2273645364116
+   ],
+   "46598": [
+    613.2944523308228,
+    291.1186582872599
+   ],
+   "46599": [
+    580.9733383677952,
+    290.6643715175526
+   ],
+   "46600": [
+    548.1629882996583,
+    289.85160004513136
+   ],
+   "46601": [
+    514.6137952968433,
+    288.6601216605416
+   ],
+   "46602": [
+    480.03495849906096,
+    287.0695417304838
+   ],
+   "46603": [
+    444.07096386051705,
+    285.052725021221
+   ],
+   "46604": [
+    428.5104436863238,
+    284.0643114924994
+   ]
+  }
+ },
+ "at_rest_reference_run216_burst2": {
+  "flicker_codes": 0.373,
+  "input_flicker_codes": 6.545,
+  "variant": "inst_W094"
+ },
+ "input_flicker_codes_run215": 8.405,
+ "variants": {
+  "installed": {
+   "flicker_codes": {
+    "lt5": 1.528,
+    "5_15": 1.187,
+    "gt15": 1.665,
+    "station_in_w_le1_half": 2.014,
+    "station_in_w_gt1_half_gt15": 0.987
+   },
+   "gradient": 21.72,
+   "box_bind_share": {
+    "lt5": 0.014,
+    "gt15": 0.146
+   },
+   "mean_keep": 0.925,
+   "trail_px_gt4_codes_per_frame_of_187200": 736.0
+  },
+  "inst_S1": {
+   "flicker_codes": {
+    "lt5": 1.515,
+    "5_15": 1.153,
+    "gt15": 1.611,
+    "station_in_w_le1_half": 1.99,
+    "station_in_w_gt1_half_gt15": 0.834
+   },
+   "gradient": 24.19,
+   "box_bind_share": {
+    "lt5": 0.054,
+    "gt15": 0.184
+   },
+   "mean_keep": 0.935,
+   "trail_px_gt4_codes_per_frame_of_187200": 4912.0
+  },
+  "inst_W094": {
+   "flicker_codes": {
+    "lt5": 1.542,
+    "5_15": 1.205,
+    "gt15": 1.683,
+    "station_in_w_le1_half": 2.024,
+    "station_in_w_gt1_half_gt15": 1.034
+   },
+   "gradient": 22.23,
+   "box_bind_share": {
+    "lt5": 0.014,
+    "gt15": 0.145
+   },
+   "mean_keep": 0.918,
+   "trail_px_gt4_codes_per_frame_of_187200": 663.0
+  },
+  "inst_box11": {
+   "flicker_codes": {
+    "lt5": 1.519,
+    "5_15": 1.182,
+    "gt15": 1.629,
+    "station_in_w_le1_half": 1.982,
+    "station_in_w_gt1_half_gt15": 0.949
+   },
+   "gradient": 22.11,
+   "box_bind_share": {
+    "lt5": 0.002,
+    "gt15": 0.045
+   },
+   "mean_keep": 0.925,
+   "trail_px_gt4_codes_per_frame_of_187200": 1931.0
+  },
+  "inst_boxoff": {
+   "flicker_codes": {
+    "lt5": 1.519,
+    "5_15": 1.174,
+    "gt15": 1.62,
+    "station_in_w_le1_half": 1.973,
+    "station_in_w_gt1_half_gt15": 0.943
+   },
+   "gradient": 22.39,
+   "box_bind_share": {
+    "lt5": 0.0,
+    "gt15": 0.0
+   },
+   "mean_keep": 0.925,
+   "trail_px_gt4_codes_per_frame_of_187200": 4655.0
+  },
+  "S0": {
+   "flicker_codes": {
+    "lt5": 1.697,
+    "5_15": 1.402,
+    "gt15": 1.984,
+    "station_in_w_le1_half": 2.269,
+    "station_in_w_gt1_half_gt15": 1.484
+   },
+   "gradient": 21.32,
+   "box_bind_share": {
+    "lt5": 0.005,
+    "gt15": 0.105
+   },
+   "mean_keep": 0.9,
+   "trail_px_gt4_codes_per_frame_of_187200": 0.0
+  },
+  "fix": {
+   "flicker_codes": {
+    "lt5": 0.56,
+    "5_15": 0.677,
+    "gt15": 0.838,
+    "station_in_w_le1_half": 0.79,
+    "station_in_w_gt1_half_gt15": 0.855
+   },
+   "gradient": 9.69,
+   "box_bind_share": {
+    "lt5": 0.016,
+    "gt15": 0.15
+   },
+   "mean_keep": 0.939,
+   "trail_px_gt4_codes_per_frame_of_187200": 765.0
+  },
+  "fix_S1": {
+   "flicker_codes": {
+    "lt5": 0.436,
+    "5_15": 0.588,
+    "gt15": 0.669,
+    "station_in_w_le1_half": 0.658,
+    "station_in_w_gt1_half_gt15": 0.619
+   },
+   "gradient": 9.38,
+   "box_bind_share": {
+    "lt5": 0.072,
+    "gt15": 0.197
+   },
+   "mean_keep": 0.956,
+   "trail_px_gt4_codes_per_frame_of_187200": 4931.0
+  },
+  "fix_W094": {
+   "flicker_codes": {
+    "lt5": 0.656,
+    "5_15": 0.739,
+    "gt15": 0.915,
+    "station_in_w_le1_half": 0.857,
+    "station_in_w_gt1_half_gt15": 0.957
+   },
+   "gradient": 10.94,
+   "box_bind_share": {
+    "lt5": 0.014,
+    "gt15": 0.148
+   },
+   "mean_keep": 0.926,
+   "trail_px_gt4_codes_per_frame_of_187200": 659.0
+  },
+  "fix_box11": {
+   "flicker_codes": {
+    "lt5": 0.544,
+    "5_15": 0.676,
+    "gt15": 0.799,
+    "station_in_w_le1_half": 0.759,
+    "station_in_w_gt1_half_gt15": 0.808
+   },
+   "gradient": 9.8,
+   "box_bind_share": {
+    "lt5": 0.003,
+    "gt15": 0.048
+   },
+   "mean_keep": 0.939,
+   "trail_px_gt4_codes_per_frame_of_187200": 2015.0
+  },
+  "fix_boxoff": {
+   "flicker_codes": {
+    "lt5": 0.543,
+    "5_15": 0.677,
+    "gt15": 0.79,
+    "station_in_w_le1_half": 0.751,
+    "station_in_w_gt1_half_gt15": 0.8
+   },
+   "gradient": 9.83,
+   "box_bind_share": {
+    "lt5": 0.0,
+    "gt15": 0.0
+   },
+   "mean_keep": 0.939,
+   "trail_px_gt4_codes_per_frame_of_187200": 4898.0
+  },
+  "fix_var1": {
+   "flicker_codes": {
+    "lt5": 0.552,
+    "5_15": 0.669,
+    "gt15": 0.902,
+    "station_in_w_le1_half": 0.838,
+    "station_in_w_gt1_half_gt15": 0.936
+   },
+   "gradient": 7.32,
+   "box_bind_share": {
+    "lt5": 0.084,
+    "gt15": 0.337
+   },
+   "mean_keep": 0.939,
+   "trail_px_gt4_codes_per_frame_of_187200": 173.0
+  },
+  "fix_var2": {
+   "flicker_codes": {
+    "lt5": 0.557,
+    "5_15": 0.675,
+    "gt15": 0.847,
+    "station_in_w_le1_half": 0.795,
+    "station_in_w_gt1_half_gt15": 0.869
+   },
+   "gradient": 9.18,
+   "box_bind_share": {
+    "lt5": 0.019,
+    "gt15": 0.179
+   },
+   "mean_keep": 0.939,
+   "trail_px_gt4_codes_per_frame_of_187200": 410.0
+  },
+  "fix_keys065": {
+   "flicker_codes": {
+    "lt5": 0.603,
+    "5_15": 0.748,
+    "gt15": 0.887,
+    "station_in_w_le1_half": 0.839,
+    "station_in_w_gt1_half_gt15": 0.902
+   },
+   "gradient": 13.06,
+   "box_bind_share": {
+    "lt5": 0.018,
+    "gt15": 0.155
+   },
+   "mean_keep": 0.939,
+   "trail_px_gt4_codes_per_frame_of_187200": 754.0
+  },
+  "fix_S1_box11": {
+   "flicker_codes": {
+    "lt5": 0.41,
+    "5_15": 0.577,
+    "gt15": 0.58,
+    "station_in_w_le1_half": 0.598,
+    "station_in_w_gt1_half_gt15": 0.478
+   },
+   "gradient": 10.18,
+   "box_bind_share": {
+    "lt5": 0.039,
+    "gt15": 0.092
+   },
+   "mean_keep": 0.956,
+   "trail_px_gt4_codes_per_frame_of_187200": 11900.0
+  },
+  "fix_S0": {
+   "flicker_codes": {
+    "lt5": 0.985,
+    "5_15": 0.996,
+    "gt15": 1.345,
+    "station_in_w_le1_half": 1.225,
+    "station_in_w_gt1_half_gt15": 1.471
+   },
+   "gradient": 13.11,
+   "box_bind_share": {
+    "lt5": 0.005,
+    "gt15": 0.102
+   },
+   "mean_keep": 0.9,
+   "trail_px_gt4_codes_per_frame_of_187200": 0.0
+  },
+  "fix_keys0": {
+   "flicker_codes": {
+    "lt5": 0.518,
+    "5_15": 0.601,
+    "gt15": 0.793,
+    "station_in_w_le1_half": 0.742,
+    "station_in_w_gt1_half_gt15": 0.816
+   },
+   "gradient": 5.03,
+   "box_bind_share": {
+    "lt5": 0.013,
+    "gt15": 0.141
+   },
+   "mean_keep": 0.939,
+   "trail_px_gt4_codes_per_frame_of_187200": 797.0
+  },
+  "fix_S085": {
+   "flicker_codes": {
+    "lt5": 0.489,
+    "5_15": 0.622,
+    "gt15": 0.74,
+    "station_in_w_le1_half": 0.711,
+    "station_in_w_gt1_half_gt15": 0.726
+   },
+   "gradient": 9.26,
+   "box_bind_share": {
+    "lt5": 0.029,
+    "gt15": 0.171
+   },
+   "mean_keep": 0.948,
+   "trail_px_gt4_codes_per_frame_of_187200": 2255.0
+  }
+ },
+ "emitter_run216_burst1": {
+  "frames": [
+   6721,
+   6752
+  ],
+  "roi": [
+   500,
+   360,
+   780,
+   756
+  ],
+  "near_emitter_px": 19626,
+  "note": "pixels within 8 px of raw luma > 1; excess = output codes above the current 3x3 max; ROI includes the routed ship",
+  "variants": {
+   "fix_S0": {
+    "px_gt4_codes": 154.0,
+    "mean_excess_codes": 0.4
+   },
+   "inst_W094": {
+    "px_gt4_codes": 511.0,
+    "mean_excess_codes": 0.743
+   },
+   "fix": {
+    "px_gt4_codes": 538.0,
+    "mean_excess_codes": 0.89
+   },
+   "fix_S1": {
+    "px_gt4_codes": 743.0,
+    "mean_excess_codes": 1.387
+   },
+   "fix_S085": {
+    "px_gt4_codes": 609.0,
+    "mean_excess_codes": 1.087
+   },
+   "fix_box11": {
+    "px_gt4_codes": 606.0,
+    "mean_excess_codes": 1.142
+   },
+   "fix_S1_box11": {
+    "px_gt4_codes": 919.0,
+    "mean_excess_codes": 2.072
+   },
+   "fix_var2": {
+    "px_gt4_codes": 502.0,
+    "mean_excess_codes": 0.781
+   },
+   "fix_E0": {
+    "px_gt4_codes": 620.0,
+    "mean_excess_codes": 0.931
+   },
+   "fix_boxoff": {
+    "px_gt4_codes": 678.0,
+    "mean_excess_codes": 1.182
+   }
+  }
+ }
+}

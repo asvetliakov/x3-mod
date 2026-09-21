@@ -1103,3 +1103,75 @@ Open: no controlled A/B for thin_region 0.97 vs 0.94 at matched pose; the
 box-bind reconstruction skips `weigh()`/`unweigh()` (luminance-dependent
 tonemap) and uses a rigid horizontal shift for a 3-D object, so it is an
 approximation of the actual clip test, not a bit-exact replay.
+
+## 2026-09-22 run215 pan flicker: replay diagnosis (far-plane `expectedDepth` rounding rejects history)
+
+Record: `verification/results/run215-pan-flicker-replay.json`. Tools: `tools/analysis/taa_sentinel_pan_replay.py`
+(Run61 resolve: Run60 camera gate + sentinel stabiliser + emitter bound), `taa_sentinel_pan_variants.py`,
+`taa_far_plane_reject_check.py`. Host only. [M] measured, [I] inferred. Codes = `codes()` of the replay (bounded luma, 8 bit).
+
+**Fidelity [M].** Replay vs dumped `taa_1`, crop 16 215 1264 365, frames 46574-46604: open loop mean 0.021 / p99 0.06 /
+max 1.4 codes, closed loop 0.050 / 0.19 / 2.4, *only after* marking the pixels the installed resolve handed through
+current-only (`taa == hdr` bit for bit). Without that the error is 0.07 mean, max 91: the replay accepts every pixel,
+the build does not. The design's 0.0016 (run212) was not reached; the production fetch position is confirmed
+(error minimum at offset (0, 0) in a +-0.03 px scan).
+
+**Root cause [M].** On the far-plane camera path `camera_far_plane_reprojection` uploads bit-identical z and w rows
+(`src/renderer/camera_reprojection.h:111-112`) and the resolve forms `expectedDepth = previousClip.z /
+max(previousClip.w, c6.w)` (`src/temporal/resolve.hlsl:302`), then returns current-only with age 1 on
+`!validDepth(expectedDepth)` (`:324`). On this GPU the quotient rounds above 1 for 8-11 % of the pixels where
+`previousClip.w < 1`, never where `w > 1`: sky current-only share 0.000 (w > 1) against 0.084-0.106 (w <= 1) in all 8
+frames checked, including 46591 at 0.5 px/frame; the comb starts exactly at the `w = 1` column (624 / 654, just off
+centre, on the side the camera turns toward). IEEE float32 `x * (1 / x)` never exceeds 1 but differs from 1 on 22-27 %
+of `w < 1` pixels and 0-2 % of `w > 1` pixels, the same split; the GPU's rounding is not IEEE [I]. At rest `w = 1`
+exactly: run216 burst 2 has 0.000 current-only, age 64 everywhere. So during ANY pan, in the leading half of the
+screen, each unrouted-sentinel pixel (and every other far-plane camera-path pixel) loses its history about every 10
+frames: station mean age 10-25 in run215, age <= 4 on 20-35 % of the station while it is in that half. Station flicker
+follows the half, not the speed: 2.0 codes while in the `w <= 1` half (46579-46584 at 20-26 px/frame, 46592-46599 at 3-33),
+0.99 in the `w > 1` half at 27-36 px/frame (46600-46603). The triage's speed correlation came from the station being in
+the rejecting half during the fast segments.
+
+**Q1 [M].** (a) rotation-only reprojection vs sub-pixel registration of consecutive dumped outputs: residual <= 0.1 px
+(grid 0.05) at every speed 0.5-36 px/frame; no frame lag (a one-frame camera lag would show as tens of px); background
+rotation 0.0000 deg in this burst. (b) parallax below the same 0.1 px floor. (c) `ev_adapted` 1.15862 and `taa_k`
+constant; the resolve input is pre-tonemap. (d) true 7x7 bind share 1.6 % below 5 px/frame, 15 % above 15 (the triage's
+24-42 % was its integer-tracking error); it stays 14 % with a non-negative kernel (Keys 0), so it is not Catmull-Rom
+overshoot, and removing the box changes flicker by <= 6 %: the bind is not the flicker. Why it rises with speed was not
+isolated. (e) the history is already Catmull-Rom; Keys -0.65 raises flicker 6 %.
+
+**Q2 [M], station box 161x73 tracked, frames 46579-46604; flicker = rms vs motion-compensated previous output.**
+Input 8.4; at-rest reference in the same metric (run216 burst 2) 0.37. "fix" = no `expectedDepth` rejection.
+Gradient of the installed row is inflated by current-only sparkle, not detail. Trail = px more than 4 codes above the
+current 3x3 max, per frame of 187 200 (pan streaks of stars). Emitter = run216 burst 1 (6721-6752, roi 500 360 780 756,
+19 626 px within 8 px of raw luma > 1, routed ship included): mean excess codes / px > 4 codes.
+
+| variant | flicker <5 | 5-15 | >15 px/frame | gradient | trail px | emitter excess |
+|---|---|---|---|---|---|---|
+| installed S 0.7 W 0.97 box7 | 1.53 | 1.19 | 1.67 | 21.7 | 736 | 0.74 / 511 (W 0.94) |
+| installed + S 1.0 / W 0.94 / box11 / box off | 1.52 / 1.54 / 1.52 / 1.52 | 1.15-1.21 | 1.61 / 1.68 / 1.63 / 1.62 | 22-24 | 4912 / 663 / 1931 / 4655 | |
+| S 0 (installed rejects) | 1.70 | 1.40 | 1.98 | 21.3 | 0 | |
+| **fix** | **0.56** | **0.68** | **0.84** | 9.7 | 765 | 0.89 / 538 |
+| fix + S 0.85 | 0.49 | 0.62 | 0.74 | 9.3 | 2255 | 1.09 / 609 |
+| fix + S 1.0 | 0.44 | 0.59 | 0.67 | 9.4 | 4931 | 1.39 / 743 |
+| fix + S 1.0 + box11 | 0.41 | 0.58 | 0.58 | 10.2 | 11900 | 2.07 / 919 |
+| fix + box11 / box off | 0.54 / 0.54 | 0.68 | 0.80 / 0.79 | 9.8 | 2015 / 4898 | 1.14 / 606, 1.18 / 678 |
+| fix + variance box k 2 / k 1 | 0.56 / 0.55 | 0.68 / 0.67 | 0.85 / 0.90 | 9.2 / 7.3 | 410 / 173 | 0.78 / 502 (k 2) |
+| fix + W 0.94 | 0.66 | 0.74 | 0.92 | 10.9 | 659 | |
+| fix + Keys -0.65 / Keys 0 | 0.60 / 0.52 | 0.75 / 0.60 | 0.89 / 0.79 | 13.1 / 5.0 | 754 / 797 | |
+| fix, S 0 (emitter baseline) | 0.99 | 1.00 | 1.35 | 13.1 | 0 | 0.40 / 154 |
+
+Without the fix no tuning helps (<= 4 %). With it the installed settings halve the flicker at every speed. Corrected
+reprojection: not applicable (no residual). The burst is 32 frames from a young history (mean age 10), so W variants are
+not at steady state and understate a higher W.
+
+**Q3 recommendation.** One CPU-side change, no shader slot: in `camera_far_plane_reprojection`
+(`src/renderer/camera_reprojection.h:111-112`) scale the z row (M[2]) by `1 - 0x1p-16` so `expectedDepth` is 0.999985
+whatever the GPU's division rounding; the value feeds only `validDepth` and the disocclusion threshold
+(`resolve.hlsl:324,350,360`, tolerance >= 1e-4), `line_mask_ps.hlsl` reads rows 0, 1, 3 only. Documented D3D9 float
+behaviour only; harmless where division is exact. Update whatever pins row 2 == row 3
+(`verification/analysis/test_camera_reprojection.py`, `test_taa_camera_path.py`, `verification/probe/temporal_pass_fixture.cpp`
+oracle) and add a fixture row: far-plane yaw, all-sentinel frame, zero current-only pixels in the `w < 1` half. Keep
+S 0.7, W 0.97, box7, E 1.0. Residual after the fix [I from replay]: 0.56 / 0.68 / 0.84 codes at <5 / 5-15 / >15 px/frame
+against 0.37 at rest and 1.5 / 1.2 / 1.7 today: slight shimmer growing mildly with speed, about half of today's; S 0.85
+buys another 12 % for 3x the star-streak pixels and +22 % emitter excess and is the next knob only if the user still
+sees it. Not verified on the GPU: the replay's "fix" assumes every such pixel then accepts.
