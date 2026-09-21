@@ -9,7 +9,9 @@ witness rays x 7 geometry depths, and the 5 witness rays at the seven forward sh
 
 Look presets L1-L3 (src/renderer/fog_look_math.h, FOG_LOOK in src/fog/fog_density_field_inc.h):
 `look_constants` mirrors fog_look_constants and `look_march` the shaped law on the same 24+40
-bins; look cases carry `look=N phase=K shadow=0|1` after the mode and value.
+bins; look cases carry `look=N phase=K shadow=0|1|2` after the mode and value (1: a dark map, every sample
+shadowed; 2: the striped occluder of `stripe_visibility`, which exercises the offset shaft lookup), then optionally
+`jitter=F` (JITTER_NEAR/FAR of the case) and `resolved=0` (no temporal resolve: the lookup offset is dropped).
 """
 from __future__ import annotations
 import argparse, importlib.util, json, math
@@ -26,10 +28,10 @@ COVER_WAVES = ((1., -2., 1.), (2., 1., -1.), (-1., 1., 2.))  # coverage variatio
 TUNING = dict(coverage=.35, exponent=2., sigma_scale=8., coverage_variation=.12, warp_cycles_near=13., warp_near=500.,
               warp_cycles_far=5., warp_far=1400., forward_g=.75, forward_weight=.7, back_g=-.15, albedo_white=.5,
               ambient_gain=.35, extinction_tint=.6, scatter_lift=.5, lift_floor=.5, shadow_floor=.15, sky_cap=112500., taper_start=65000.,
-              self_shadow=3., powder=.5, tap_distance=3000., tap_length=9000., jitter_near=1., jitter_far=1.)
+              self_shadow=3., powder=.5, tap_distance=3000., tap_length=9000., jitter_near=1., jitter_far=1., shadow_jitter=1.)
 
 
-def look_constants(look, chroma, radiance_over_pi=(1., 1., 1.), phase=0, tuning=None):
+def look_constants(look, chroma, radiance_over_pi=(1., 1., 1.), phase=0, tuning=None, resolved=True):
     """fog_look_constants: the eleven rows c25..c35 (float32 like the header) and the sigma factor."""
     t = {k: np.float32(v) for k, v in (tuning or TUNING).items()}; f = np.float32
     rows = np.zeros((11, 4), np.float32)
@@ -49,7 +51,7 @@ def look_constants(look, chroma, radiance_over_pi=(1., 1., 1.), phase=0, tuning=
         rows[6, :2] = (t['self_shadow'], t['powder'])
     if look >= 3:
         rows[6, 2:] = (t['jitter_near'], t['jitter_far'])
-    rows[7, :2] = (t['tap_distance'], t['tap_length'])
+    rows[7, :2] = (t['tap_distance'], t['tap_length']); rows[7, 2:] = np.maximum(rows[6, 2:], t['shadow_jitter'] if resolved else f(0))
     rows[9] = (f(int(t['warp_cycles_far'] + f(.5))) / f(65536), t['warp_far'], f(int(t['warp_cycles_near'] + f(.5))) / f(65536), t['warp_near'])
     start = t['taper_start'] if t['taper_start'] <= t['sky_cap'] - f(1000) else f(.75) * t['sky_cap']
     rows[10, :3] = (t['coverage_variation'] / f(3), start, f(1) / (t['sky_cap'] - start))
@@ -68,19 +70,22 @@ def look_noise(px, py, shift):
     return n.astype(np.float64), margin.astype(np.float64)
 
 
-def look_march(origin, directions, limits, solid, chroma, store, look, sigma, phase=0, pixels=None, shadowed=False, sun=(1., 0., 0.)):
+def look_march(origin, directions, limits, solid, chroma, store, look, sigma, phase=0, pixels=None, shadowed=False, sun=(1., 0., 0.), visibility=None, tuning=None, resolved=True):
     """(S, T) of the FOG_LOOK law. `limits` is the geometry distance (ignored for sky rays; both end at the cap), `pixels` the
-    half-resolution (x, y) of each ray for the L3 offset, `shadowed` a shaft visibility of 0 on every sample."""
-    k, scale = look_constants(look, chroma, phase=phase); k = k.astype(np.float64); sigma = float(np.float32(sigma * scale))
+    half-resolution (x, y) of each ray for the sample offsets (density under L3, the shaft lookup under every look while
+    `resolved`; a repair pixel passes the half-resolution pixel that covers it, None is the L2-3 repair law: bin centres), `shadowed` a shaft visibility of 0 on every sample, `visibility(points, rays, ds)` the
+    shaft visibility at camera-relative world `points` of ray indices `rays` in bins of length `ds` (the shaft lookup
+    position, which is not the density position when only the lookup is offset)."""
+    k, scale = look_constants(look, chroma, phase=phase, tuning=tuning, resolved=resolved); k = k.astype(np.float64); sigma = float(np.float32(sigma * scale))
     d = np.asarray(directions, np.float64); n = len(d); sun = np.asarray(sun, np.float64); origin = np.asarray(origin, np.float64)
     solid = np.broadcast_to(np.asarray(solid, bool), (n,))
     # Every ray ends at the column cap, sky and geometry alike (no silhouette rim around distant hulls).
     L = np.minimum(np.where(solid, np.asarray(limits, np.float64), m.FAR), min(m.FAR, k[0, 3]))
     taper_start = np.full(n, k[10, 1]); taper_recip = np.full(n, k[10, 2])
     near = np.minimum(L, 12000.) / 24; far = np.maximum(L - 12000., 0) / 40
-    offset = np.full((n, 2), .5)
-    if look >= 2 and pixels is not None:
-        noise, _ = look_noise(pixels[0], pixels[1], k[8, 3]); offset += (noise - .5)[:, None] * k[6, 2:][None, :]
+    offset = np.full((n, 4), .5)  # bins: near and far of the density sample, near and far of the shaft lookup
+    if pixels is not None:
+        noise, _ = look_noise(pixels[0], pixels[1], k[8, 3]); offset += (noise - .5)[:, None] * np.concatenate((k[6, 2:], k[7, 2:]))[None, :]
 
     def density(rho, cover):
         x = np.clip((rho - k[0, 0] - cover) * k[0, 1], 0, 1); return np.where(x > 0, x ** k[0, 2], 0.)
@@ -90,7 +95,7 @@ def look_march(origin, directions, limits, solid, chroma, store, look, sigma, ph
     # c22.xyz of the fixture: the camera modulo the fine window (65536 units), centred, in float32.
     local = (origin - 65536. * np.floor(origin / 65536. + .5)).astype(np.float32).astype(np.float64)
     lit = np.zeros(n); lift = np.zeros(n); T = np.ones(n)
-    visibility = 0. if shadowed else 1.
+    rays = np.arange(n)
     for i in range(64):
         ds = near if i < 24 else far
         s = near * (i + offset[:, 0]) if i < 24 else 12000. + far * (i - 24 + offset[:, 1])
@@ -110,7 +115,12 @@ def look_march(origin, directions, limits, solid, chroma, store, look, sigma, ph
             r = density(store.sample_level('far', points[fogged] + sun * k[7, 0], origin).astype(np.float64), cover[fogged]) * k[7, 1]
             tau = sigma * k[6, 0] * r
             sunward[fogged] = np.exp(-tau) * (1 - k[6, 1] * np.exp(-2 * (tau + sigma * k[6, 0] * rho[fogged] * k[7, 0])))
-        vis = np.where(fogged, visibility, 1.)
+        vis = np.ones(len(rho))
+        if shadowed:
+            vis[fogged] = 0.
+        elif visibility is not None and fogged.any():
+            shaft = (near * (i + offset[:, 2]) if i < 24 else 12000. + far * (i - 24 + offset[:, 3]))[active][fogged]
+            vis[fogged] = visibility(d[active][fogged] * shaft[:, None], rays[active][fogged], ds[active][fogged])
         lit[active] += T[active] * a * sunward * (k[1, 3] + (1 - k[1, 3]) * vis)
         lift[active] += T[active] * a2 * (k[3, 3] + (1 - k[3, 3]) * vis)
         T[active] *= 1 - a
@@ -119,6 +129,25 @@ def look_march(origin, directions, limits, solid, chroma, store, look, sigma, ph
     ambient = k[2, :3][None, :] + (k[3, :3] - k[2, :3])[None, :] * (.5 + .5 * cosine)[:, None]
     S = k[1, :3][None, :] * (((lobes[0] + lobes[1]) * lit + k[2, 3] * lift)[:, None] + ambient * (1 - T)[:, None])  # E/pi = 1
     return S.astype(m.F), T.astype(m.F)
+
+
+STRIPE_SPAN = 120000.  # view depth across the striped map of the shadow=2 fixture case
+def stripe_map(size=64):
+    """64 columns: 0 (occluder at the light) in every other pair (3750 units of view depth, 1.5 far bins) between columns 8 and 55, 1 elsewhere, so
+    the map is lit on both sides of the blend-band start (|x| = .85) and visibility is continuous along a ray."""
+    c = np.arange(size); edge = size // 8; return np.where(((c // 2) % 2 == 1) & (c >= edge) & (c < size - edge), 0., 1.)
+
+
+def stripe_visibility(forward, span=STRIPE_SPAN, size=64):
+    """fog_look_visibility of the shadow=2 case: cascade 0 maps view depth z to x = 2 z / STRIPE_SPAN - 1, y = 0, depth .5
+    (bias .001) over a 64-texel map whose rows all hold stripe_map(); the 2x2 comparison is linear in x."""
+    forward = np.asarray(forward, np.float64); columns = stripe_map(size) >= .5 - .001
+
+    def visibility(points, rays, ds):
+        x = 2. * (points @ forward) / span - 1.; texel = (x * .5 + .5) * size
+        base = np.floor(texel); f = texel - base; i = np.clip(base.astype(int), 0, size - 1); j = np.clip(i + 1, 0, size - 1)
+        return np.where(np.abs(x) <= .85, columns[i] * (1 - f) + columns[j] * f, 1.)
+    return visibility
 
 
 def basis(pose):
@@ -174,6 +203,23 @@ def run(asset_data, output):
             case(f'{name}_shift{index}', moved, pose, 'sky', '0')
             for k, v in both(moved, allr[wpix], np.full(5, m.FAR, m.F), chroma, store).items():
                 arrays[f'{name}_shift{index}_{k}'] = v
+        if name == 'A':
+            # The fixture's composite/repair split with the 1024-texel striped occluder (24000-unit span: 47-unit pairs against
+            # the 200-unit far bins of these columns; phase 5): odd full-resolution
+            # columns are geometry at view depth 20000 and are repaired. A stratified 32x18 subset; the fixture's repair ray
+            # goes through (x+1, y+1)/full (its c0 is the half-resolution one). Repair L1 offsets the shaft lookup by the
+            # noise of the covering half pixel, repair L2 keeps bin centres; `_other` is the opposite law, which the GPU
+            # result must not match.
+            fx, fy = np.meshgrid(8 * np.arange(32) + 1, 8 * np.arange(18) + 4); fx = fx.ravel(); fy = fy.ravel(); t = math.tan(math.radians(30))
+            local = np.stack(((2 * (fx + 1) / (2 * m.W) - 1) * (m.W / m.H) * t, (1 - 2 * (fy + 1) / (2 * m.H)) * t, np.ones(len(fx))), 1)
+            r, u, f = basis(pose); length = np.linalg.norm(local, axis=1); d = (local[:, :1] * r + local[:, 1:2] * u + local[:, 2:] * f) / length[:, None]
+            arrays['A_repair_pixels'] = fy * 2 * m.W + fx; stripes = stripe_visibility(pose['forward'], 24000., 1024)
+            for look in (1, 2):
+                for key, pixels in (('', (fx // 2, fy // 2) if look == 1 else None), ('_other', None if look == 1 else (fx // 2, fy // 2))):
+                    S, T = look_march(origin, d, 20000. * length, True, chroma, store, look, m.SIGMA, 5, pixels, visibility=stripes)
+                    arrays[f'A_repair{look}_shafts{key}_S'] = S; arrays[f'A_repair{look}_shafts{key}_T'] = T
+            arrays['A_repair1_shafts_noise_margin'] = look_noise(fx // 2, fy // 2, look_constants(1, chroma, phase=5)[0][8, 3])[1]
+            arrays['A_repair_extinction'] = look_constants(1, chroma)[0][8, :3]
         for index, kind in enumerate(('zero', 'nan', 'inf')):
             case(f'{name}_invalid{index}', origin, pose, 'invalid', kind)
         case(f'{name}_empty', origin, pose, 'empty', '0')
@@ -182,16 +228,24 @@ def run(asset_data, output):
         strat = sy * m.W + sx; arrays[f'{name}_look_pixels'] = strat
         looks = [(f'{name}_look{look}_sky', look, 'sky', None, False) for look in (1, 2, 3)]
         if name == 'A':
+            # shadow=2: the striped occluder, whose lookup is offset per pixel in every look (phase 5 moves it off L3's 3).
+            # L3 with JITTER .25 separates the lookup (one bin) from the sample (a quarter); `held` is TAA off: bin centres.
+            looks += [('A_look1_stripes', 1, 'sky', None, 2), ('A_look2_stripes', 2, 'sky', None, 2), ('A_look3_stripes', 3, 'sky', None, 2), ('A_look2_stripes_held', 2, 'sky', None, 2)]
             looks += [('A_look2_depth3', 2, 'depth', float(m.DEPTHS[3]), False), ('A_look1_depth90000', 1, 'depth', 90000., False), ('A_look0_shadowed', 0, 'sky', None, True), ('A_look1_shadowed', 1, 'sky', None, True)]
         for label, look, mode, depth, shadowed in looks:
-            phase = LOOK_PHASE if look == 3 else 0
-            case(label, origin, pose, mode, repr(depth) if depth else '0', f'look={look} phase={phase} shadow={int(shadowed)}')
+            phase = LOOK_PHASE if look == 3 else 5 if shadowed == 2 else 0
+            held = label.endswith('_held'); tuning = dict(TUNING, jitter_near=.25, jitter_far=.25) if shadowed == 2 and look == 3 else dict(TUNING)
+            case(label, origin, pose, mode, repr(depth) if depth else '0', f'look={look} phase={phase} shadow={int(shadowed)}' + (' jitter=0.25' if tuning['jitter_near'] != 1. else '') + (' resolved=0' if held else ''))
             if look == 0:
                 continue  # the fixture itself requires S == 0 exactly
-            S, T = look_march(origin, allr[strat], np.full(len(strat), depth or m.FAR), depth is not None, chroma, store, look, m.SIGMA, phase, (sx, sy), shadowed)
+            S, T = look_march(origin, allr[strat], np.full(len(strat), depth or m.FAR), depth is not None, chroma, store, look, m.SIGMA, phase, (sx, sy), shadowed is True,
+                              visibility=stripe_visibility(pose['forward']) if shadowed == 2 else None, tuning=tuning, resolved=not held)
             arrays[f'{label}_S'] = S; arrays[f'{label}_T'] = T
-            if look == 3:
-                arrays[f'{label}_noise_margin'] = look_noise(sx, sy, look_constants(3, chroma, phase=phase)[0][8, 3])[1]
+            if shadowed == 2:  # what the offset lookup moves: the same case marched with the lookup at bin centres
+                arrays[f'{label}_centre_delta'] = np.abs(S - look_march(origin, allr[strat], np.full(len(strat), m.FAR), False, chroma, store, look, m.SIGMA, phase, (sx, sy),
+                                                                         visibility=stripe_visibility(pose['forward']), tuning=dict(tuning, shadow_jitter=0.))[0]).max(1)
+            if look == 3 or shadowed == 2:
+                arrays[f'{label}_noise_margin'] = look_noise(sx, sy, look_constants(look, chroma, phase=phase)[0][8, 3])[1] if not held else np.ones(len(sx))
     (output / 'cases.txt').write_text('\n'.join(lines) + '\n')
     np.savez(output / 'reference.npz', **arrays)
     record = dict(schema=1, width=m.W, height=m.H, shifts=SHIFTS, depths=m.DEPTHS.tolist(),

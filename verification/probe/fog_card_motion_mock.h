@@ -68,7 +68,7 @@ struct FogFrame {
  IDirect3DTexture9* depth_share=nullptr;IDirect3DSurface9* target=nullptr;
  fog_field::Profile profile=fog_field::Profile::None;unsigned recipe_id=0;std::uint64_t field_generation=0;
  bool main_target=false,linear_depth_current=false,caller_scene_known=false,caller_stateblock_recording=false,caller_queries_idle=true;
- struct Params {FogWorldBasis world{};} params;bool density=false;double camera_world[3]{};unsigned look=0,look_phase=0;
+ struct Params {FogWorldBasis world{};} params;bool density=false;double camera_world[3]{};unsigned look=0,look_phase=0;bool look_resolved=false;
 };
 // Stored-density range: the option is off in this host witness; the types only let the unchanged methods compile.
 struct FogDensityConfig {bool enabled=false;std::uint64_t sector_key=0;double world_offset[3]{};};

@@ -28,7 +28,7 @@ float4 look_ambient1 : register(c28);   // ambient radiance toward the sun RGB, 
 float4 look_lobe0 : register(c29);      // 1+g*g, 2*g, w*(1-g*g)/4 of the forward lobe
 float4 look_lobe1 : register(c30);      // the same of the back lobe
 float4 look_self : register(c31);       // self-shadow strength, powder strength, near and far offset scale
-float4 look_taps : register(c32);       // sun-ward tap distance, the length it stands for
+float4 look_taps : register(c32);       // sun-ward tap distance, the length it stands for, near and far shaft lookup offset scale
 float4 look_extinction : register(c33); // extinction exponent RGB of T_rgb = pow(T,k), offset frame shift
 float4 look_warp : register(c34);       // domain warp: octave 1 cycles per unit and amplitude, octave 2 the same
 float4 look_edge : register(c35);       // coverage variation amplitude / 3, taper start, 1/(taper end - start)
@@ -214,14 +214,19 @@ float4 march_depth(float2 uv, float4 depth) {
     // Scalars that live across the loop share registers (ps_3_0 has 32 temporaries and the compiler gives
     // every live scalar its own): steps = near step, far step.
     float2 steps = float2(min(distance,12000.0)/24.0,max(distance-12000.0,0.0)/40.0);
-    float2 offset = 0.5;
-#if FOG_LOOK >= 2 && !defined(FOG_LOOK_NO_OFFSET) // repair pixels (depth-class edges) keep the bin centres
-    float2 cell = floor(uv*sizes.xy)*0.5 + look_extinction.w;
-    offset += (frac(52.9829189*frac(dot(cell,float2(0.06711056,0.00583715)))) - 0.5)*look_self.zw;
+    // Sample offsets in bins: xy density and lighting (L3 only, look_self.zw), zw the shaft lookup (look_taps.zw; zero
+    // without a temporal resolve, so cascade selection is then the bin centre's as well).
+    // A bin-centre shaft lookup stamps one copy of an occluder silhouette per bin (a comb, run222); offsetting that
+    // lookup alone per pixel and frame lets TAA integrate the shaft along the bin while cloud detail stays noise free.
+    float4 offset = 0.5;
+#ifndef FOG_LOOK_NO_OFFSET // repair pixels (depth-class edges) keep the bin centres
+    // The half-resolution pixel that covers this one (march: itself), so a repair pixel offsets like its neighbours.
+    float2 cell = floor(uv*sizes.xy*0.5) + look_extinction.w; // march uv: (2p+.5)/full, repair uv: (f+.5)/full
+    offset += (frac(52.9829189*frac(dot(cell,float2(0.06711056,0.00583715)))) - 0.5)*float4(look_self.zw,look_taps.zw);
 #endif
     float3 sum = float3(0,0,1); // sun-lit, multiple-scatter lift, T
     [loop] for (int i=0; i<64; ++i) {
-        float2 bin = i < 24 ? float2(steps.x,steps.x*(i+offset.x)) : float2(steps.y,12000.0+steps.y*(i-24+offset.y)); // ds, s
+        float3 bin = i < 24 ? float3(steps.x,steps.x*(i+offset.xz)) : float3(steps.y,12000.0+steps.y*(i-24+offset.yw)); // ds, s, shaft s
         [branch] if (bin.x > 0.0) {
             float t = saturate((bin.y-20000.0)/10000.0);
             float lambda = (1.0-t*t*(3.0-2.0*t))*chroma_ready.w;
@@ -242,7 +247,7 @@ float4 march_depth(float2 uv, float4 depth) {
             float2 light = 1.0; // shaft visibility, sun-ward self-shadow
             [branch] if (rho > 0.0) {
 #ifndef FOG_DENSITY_NO_SHAFTS
-                [branch] if (shadow_select.x > 0.0) light.x = fog_look_visibility(view_direction*bin.y);
+                [branch] if (shadow_select.x > 0.0) light.x = fog_look_visibility(view_direction*bin.z);
 #endif
 #if FOG_LOOK >= 2
                 // One far-level tap toward the sun (shadowing is low frequency and the far window covers it)

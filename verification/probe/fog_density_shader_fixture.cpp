@@ -57,7 +57,7 @@ constexpr DWORD look_repair2_words[]={
 };
 constexpr unsigned kRows=x3m::renderer::fog_look_first_register+x3m::renderer::fog_look_rows;
 constexpr double kTan30=0.5773502691896257;
-struct Case{std::string name;double cam[3],r[3],u[3],f[3];std::string mode,value;unsigned look=0,phase=0;bool shadow=false;};
+struct Case{std::string name;double cam[3],r[3],u[3],f[3];std::string mode,value;unsigned look=0,phase=0,shadow=0;float jitter=-1.f,span=120000.f,map=64.f;bool resolved=true;}; // span, map: view depth across and texels of the striped map // shadow 1: dark map, 2: striped occluder along view depth
 struct Window{HWND handle=nullptr;~Window(){if(handle)DestroyWindow(handle);}};
 LONGLONG ticks(){LARGE_INTEGER v{};QueryPerformanceCounter(&v);return v.QuadPart;}
 
@@ -119,8 +119,11 @@ struct Fixture{
         }
         for(int i=0;i<3;++i)k[24][i]=chroma[i];
         k[24][3]=1.f;
-        k[2][3]*=x3m::renderer::fog_look_constants(c.look,x3m::renderer::FogLookTuning{},chroma,k[8],c.phase,k+x3m::renderer::fog_look_first_register);
-        if(c.shadow){ // every view position maps to the centre of cascade 0 at depth .5; the bound map holds 0: shaft visibility 0
+        x3m::renderer::FogLookTuning tuning{};if(c.jitter>=0.f)tuning.jitter_near=tuning.jitter_far=c.jitter;
+        k[2][3]*=x3m::renderer::fog_look_constants(c.look,tuning,chroma,k[8],c.phase,k+x3m::renderer::fog_look_first_register,c.resolved);
+        if(c.shadow==2){ // tools/analysis/fog_density_shader_reference.py stripe_visibility: x = 2 z / 120000 - 1, y = 0, depth .5
+            k[9][0]=1.f;k[9][1]=.95f;k[9][2]=.85f;k[9][3]=10.f;k[10][2]=2.f/c.span;k[10][3]=-1.f;k[12][3]=.5f;k[13][0]=c.map;k[13][1]=1.f/c.map;k[13][2]=.001f;k[13][3]=1.f;
+        }else if(c.shadow){ // every view position maps to the centre of cascade 0 at depth .5; the bound map holds 0: shaft visibility 0
             k[9][0]=1.f;k[9][1]=.95f;k[9][2]=.85f;k[9][3]=10.f;k[12][3]=.5f;k[13][0]=64.f;k[13][1]=1.f/64.f;k[13][2]=.001f;k[13][3]=1.f;
         }
     }
@@ -223,7 +226,9 @@ void run(const std::string& cases_file,const std::string& out){
             unsigned value=0;
             if(std::sscanf(option.c_str(),"look=%u",&value)==1&&value<x3m::renderer::fog_look_count)c.look=value;
             else if(std::sscanf(option.c_str(),"phase=%u",&value)==1)c.phase=value;
-            else if(std::sscanf(option.c_str(),"shadow=%u",&value)==1)c.shadow=value!=0;
+            else if(std::sscanf(option.c_str(),"shadow=%u",&value)==1&&value<=2)c.shadow=value;
+            else if(std::sscanf(option.c_str(),"resolved=%u",&value)==1)c.resolved=value!=0;
+            else if(float jitter=0.f;std::sscanf(option.c_str(),"jitter=%f",&jitter)==1&&jitter>=0.f&&jitter<=1.f)c.jitter=jitter;
             else throw std::runtime_error("case option "+option);
         }
         cases.push_back(c);
@@ -247,11 +252,16 @@ void run(const std::string& cases_file,const std::string& out){
     Com<IDirect3DSurface9> st32s,st16s;check(st32->GetSurfaceLevel(0,&st32s.p),"st32 surface");check(st16->GetSurfaceLevel(0,&st16s.p),"st16 surface");
     // A 64x64 R32F map of zeros: with Case::shadow every fogged sample is fully shadowed.
     Com<IDirect3DTexture9> dark_map;{const std::vector<float> zeros(64*64,0.f);upload(device.p,64,64,D3DFMT_R32F,4,zeros.data(),&dark_map.p);}
+    // Columns 0 (occluder) in every other pair between 8 and 55, 1 elsewhere: shaft visibility varies along each
+    // ray, so the per-pixel offset of the shaft lookup (look_taps.zw) shows in the result (reference: stripe_map).
+    // The repair split uses the 1024-texel one (47-unit pairs over its 20000-unit columns, whose far bins are 200 units).
+    Com<IDirect3DTexture9> stripe_map,fine_stripe_map;
+    for(const int n:{64,1024}){std::vector<float> stripes(std::size_t(n)*n);for(std::size_t i=0;i<stripes.size();++i){const int x=int(i%n);stripes[i]=(x>=n/8&&x<n-n/8&&(x/2)%2==1)?0.f:1.f;}upload(device.p,n,n,D3DFMT_R32F,4,stripes.data(),n==64?&stripe_map.p:&fine_stripe_map.p);}
     bool identity=true,empty_identity=true,shadowed_l0_black=true,shadowed_l1_coloured=true;unsigned shadowed_fogged[2]{},look_cases=0;
     for(const Case& c:cases){
         fx.fill(c.cam,c.mode=="empty");float k[kRows][4];fx.constants(c,hw,hh,k);
         const auto depth=depth_image(c,hw,hh);Com<IDirect3DTexture9> depth_texture;upload(device.p,2*hw,2*hh,D3DFMT_A32B32G32R32F,16,depth.data(),&depth_texture.p);
-        check(device->SetTexture(0,depth_texture.p),"depth bind");check(device->SetTexture(4,c.shadow?dark_map.p:nullptr),"shadow map bind");
+        check(device->SetTexture(0,depth_texture.p),"depth bind");check(device->SetTexture(4,c.shadow==2?stripe_map.p:c.shadow?dark_map.p:nullptr),"shadow map bind");
         look_cases+=c.look!=0;
         struct Variant{const char* name;IDirect3DPixelShader9* program;IDirect3DSurface9* target;bool exact;};
         const bool plain=!c.look&&!c.shadow; // the texel-exact parity program has no look or shaft variant
@@ -265,7 +275,7 @@ void run(const std::string& cases_file,const std::string& out){
                 (c.mode=="empty"?empty_identity:identity)&=same;
             }
             // Fully shadowed fog: L0 extinguishes and adds nothing (the run214 black shaft); L1 adds coloured light.
-            if(c.shadow&&c.look<2&&!v.exact&&v.target==st32s.p)for(std::size_t i=0;i<image.size();i+=4){
+            if(c.shadow==1&&c.look<2&&!v.exact&&v.target==st32s.p)for(std::size_t i=0;i<image.size();i+=4){
                 if(!(image[i+3]<1.f))continue;
                 ++shadowed_fogged[c.look];
                 if(c.look==0)shadowed_l0_black&=image[i]==0.f&&image[i+1]==0.f&&image[i+2]==0.f;
@@ -292,8 +302,12 @@ void run(const std::string& cases_file,const std::string& out){
         check(device->CreateTexture(w,h,1,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&target.p,nullptr),"composite target");check(device->CreateTexture(w,h,1,D3DUSAGE_RENDERTARGET,D3DFMT_A32B32G32R32F,D3DPOOL_DEFAULT,&full32.p,nullptr),"full march target");
         Com<IDirect3DSurface9> target_surface,full_surface;check(target->GetSurfaceLevel(0,&target_surface.p),"surface");check(full32->GetSurfaceLevel(0,&full_surface.p),"surface");
         // Once for the current law and once for the FOG_LOOK 2 programs (L2: tinted extinction T^k, no sample offset).
-        for(unsigned look:{0u,2u}){
-        c.look=look;const std::string tag=look?"_look2":"";
+        // Then with the striped occluder bound (47-unit stripe pairs over the 20000-unit columns): repair L1 offsets the
+        // shaft lookup by the noise of the covering half-resolution pixel, repair L2 keeps bin centres.
+        struct Split{unsigned look,shadow;const char* tag;};
+        for(const Split split:{Split{0,0,""},Split{2,0,"_look2"},Split{1,2,"_look1_shafts"},Split{2,2,"_look2_shafts"}}){
+        const unsigned look=split.look;c.look=look;c.shadow=split.shadow;c.phase=split.shadow?5u:0u;c.span=24000.f;c.map=1024.f;const std::string tag=split.tag;
+        check(device->SetTexture(4,split.shadow?fine_stripe_map.p:nullptr),"shaft map");
         auto chain=[&](bool want_empty,std::vector<float>& composited,std::vector<float>& repaired){
             fx.fill(c.cam,want_empty);fx.constants(c,hw,hh,k);
             check(device->BeginScene(),"begin");fx.state(false);check(device->SetTexture(0,depth_texture.p),"depth");check(device->SetTexture(2,scene_texture.p),"scene");check(device->SetTexture(3,nullptr),"st unbind");
@@ -309,6 +323,13 @@ void run(const std::string& cases_file,const std::string& out){
         // where the ray should go; fog_density_pass_fixture.cpp checks repaired pixels of the production
         // pass against a CPU march through the raster pixel, with a half-pixel-offset control.
         float full[kRows][4];std::memcpy(full,k,sizeof full);full[1][0]=float(2*w);full[1][1]=float(2*h);full[1][2]=float(w);full[1][3]=float(h);full[0][2]=k[0][2]-.5f/float(w);full[0][3]=k[0][3]+.5f/float(h);
+        // With shafts the host checker owns parity (images repair<look>_shafts: the noise cell of repair L1 is the covering
+        // half pixel, which no full-resolution march reproduces). The march below still checks repair L2, whose bin-centre
+        // lookup is the march's unresolved constants (c32.zw = 0).
+        if(split.shadow){
+            write(repaired,out+"\\repair"+std::to_string(look)+"_shafts.full.f32");
+            Case held=c;held.resolved=false;float kh[kRows][4];fx.constants(held,hw,hh,kh);std::memcpy(full[x3m::renderer::fog_look_first_register+7],kh[x3m::renderer::fog_look_first_register+7],16);
+        }
         check(device->BeginScene(),"begin");fx.state(false);fx.draw(full_surface.p,fx.march_for(look),full);check(device->EndScene(),"end");const auto st=readback(device.p,full_surface.p);
         unsigned changed=0,fogged=0;bool even_kept=true,odd_composite_scene=true,alpha=true;double worst=0;
         for(std::size_t i=0;i<std::size_t(w)*h;++i){
@@ -319,10 +340,12 @@ void run(const std::string& cases_file,const std::string& out){
             const bool has_fog=!(s[0]==0.f&&s[1]==0.f&&s[2]==0.f&&s[3]==1.f);fogged+=has_fog;changed+=std::memcmp(a,b,16)!=0;
             for(int j=0;j<3;++j){const double T=look?std::pow(double(s[3]),double(k[x3m::renderer::fog_look_first_register+8][j])):double(s[3]);const double expect=has_fog?double(half_to_float(colour[j]))*T+s[j]:half_to_float(colour[j]);worst=std::max(worst,std::fabs(expect-b[j]));}
         }
-        std::printf("REPAIR%s odd_pixels=%u fogged=%u changed=%u worst_vs_full_march=%.9g\n",look?"_LOOK2":"",w/2*h,fogged,changed,worst);
+        if(split.shadow)std::printf("REPAIR_SHAFTS look=%u odd_pixels=%u fogged=%u changed=%u worst_vs_bin_centre_march=%.9g\n",look,w/2*h,fogged,changed,worst);
+        else std::printf("REPAIR%s odd_pixels=%u fogged=%u changed=%u worst_vs_full_march=%.9g\n",look?"_LOOK2":"",w/2*h,fogged,changed,worst);
         require(even_kept,("repair_leaves_compatible_pixels_bit_identical"+tag).c_str());require(odd_composite_scene,("composite_keeps_scene_on_zero_weight"+tag).c_str());
-        require(alpha,("source_alpha_exact"+tag).c_str());require(fogged>0&&changed<=fogged&&worst<=1e-3,("repair_program_consistent_with_march_program"+tag).c_str());
+        require(alpha,("source_alpha_exact"+tag).c_str());require(fogged>0&&changed<=fogged&&(worst<=1e-3||(split.shadow&&look==1)),("repair_program_consistent_with_march_program"+tag).c_str());
         }
+        check(device->SetTexture(4,nullptr),"shaft map unbind");
         check(device->SetTexture(0,nullptr),"unbind");check(device->SetTexture(2,nullptr),"unbind");
     }
     // Fixture timing at 1280x768 (half 640x384), first pose, static atlases.

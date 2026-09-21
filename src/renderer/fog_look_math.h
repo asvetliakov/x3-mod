@@ -31,6 +31,8 @@ struct FogLookTuning {
     float self_shadow = 3.f, powder = .5f;                            // L2+
     float tap_distance = 3000.f, tap_length = 9000.f;                 // L2+ one sun-ward tap and the path it stands for
     float jitter_near = 1.f, jitter_far = 1.f;                        // L3: offset amplitude in bins (24 near, 40 far)
+    float shadow_jitter = 1.f;                                        // L1/L2: the same offset on the shaft lookup only (bins), while TAA
+                                                                      // resolves it; 0 = bin centres. L3's lookup rides its sample offset.
 };
 struct FogLookField { const char* name; float FogLookTuning::* field; float minimum, maximum; };
 constexpr FogLookField fog_look_fields[] = {
@@ -47,6 +49,7 @@ constexpr FogLookField fog_look_fields[] = {
     {"JITTER_FAR", &FogLookTuning::jitter_far, 0.f, 1.f}, {"COVERAGE_VARIATION", &FogLookTuning::coverage_variation, 0.f, .3f},
     {"WARP_CYCLES_NEAR", &FogLookTuning::warp_cycles_near, 1.f, 64.f}, {"WARP_NEAR", &FogLookTuning::warp_near, 0.f, 500.f},
     {"WARP_CYCLES_FAR", &FogLookTuning::warp_cycles_far, 1.f, 64.f}, {"WARP_FAR", &FogLookTuning::warp_far, 0.f, 1500.f},
+    {"SHADOW_JITTER", &FogLookTuning::shadow_jitter, 0.f, 1.f},
 };
 // A value outside its range (or NaN) keeps the default; true when it was taken.
 inline bool fog_look_set(FogLookTuning& tuning, const FogLookField& field, float value) noexcept {
@@ -55,9 +58,11 @@ inline bool fog_look_set(FogLookTuning& tuning, const FogLookField& field, float
 }
 inline float fog_look_unit(float v) noexcept { return v < 0.f ? 0.f : v > 1.f ? 1.f : v; }
 // Rows c25..c33 for look 1..3 and the factor on the family sigma (c2.w). `radiance_over_pi` is c8.rgb;
-// `phase` is the TAA jitter sequence index. Look 0 binds none of this: returns 1 and zeroes the rows.
+// `phase` is the TAA jitter sequence index; `resolved` says a temporal resolve averages the phases (without one the
+// shaft lookup offset would be a static dither and would dither the hard cascade switch: it is dropped, and the
+// lookup, cascade selection included, is the bin centre's). Look 0 binds none of this: returns 1 and zeroes the rows.
 inline float fog_look_constants(unsigned look, const FogLookTuning& t, const float chroma[3], const float radiance_over_pi[3],
-                                unsigned phase, float rows[fog_look_rows][4]) noexcept {
+                                unsigned phase, float rows[fog_look_rows][4], bool resolved = true) noexcept {
     for (unsigned i = 0; i < fog_look_rows; ++i) for (unsigned j = 0; j < 4; ++j) rows[i][j] = 0.f;
     if (look == 0 || look >= fog_look_count) return 1.f;
     const float mean = (radiance_over_pi[0] + radiance_over_pi[1] + radiance_over_pi[2]) / 3.f;
@@ -79,6 +84,10 @@ inline float fog_look_constants(unsigned look, const FogLookTuning& t, const flo
     if (look >= 2) { rows[6][0] = t.self_shadow; rows[6][1] = t.powder; }
     if (look >= 3) { rows[6][2] = t.jitter_near; rows[6][3] = t.jitter_far; }
     rows[7][0] = t.tap_distance; rows[7][1] = t.tap_length;
+    // The lookup never moves less than the sample (L3: they ride together; SHADOW_JITTER matters there only above JITTER_*).
+    const float shaft = resolved ? t.shadow_jitter : 0.f;
+    rows[7][2] = rows[6][2] > shaft ? rows[6][2] : shaft;
+    rows[7][3] = rows[6][3] > shaft ? rows[6][3] : shaft;
     // Whole cycles per fine window (65536 units): the warp is world anchored under the camera modulo.
     rows[9][0] = float(int(t.warp_cycles_far + .5f)) / 65536.f; rows[9][1] = t.warp_far;
     rows[9][2] = float(int(t.warp_cycles_near + .5f)) / 65536.f; rows[9][3] = t.warp_near;

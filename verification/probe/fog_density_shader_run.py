@@ -207,6 +207,16 @@ def check(out, reference):
     timing = {m.group(1): {k: float(v) for k, v in re.findall(r'(\w+_ms)=([0-9.]+)', m.group(0))}
               for m in re.finditer(r'^FIXTURE_TIMING (\S+) .*$', text, re.M)}
     repair = re.search(r'^REPAIR odd_pixels=(\d+) fogged=(\d+) changed=(\d+) worst_vs_full_march=(\S+)', text, re.M)
+    # Repair programs with the striped occluder bound: L1 offsets the lookup like its march, L2 keeps bin centres.
+    # GPU repair output = scene x T^k + S against the host look_march of the repaired ray; `other_law` is the distance of
+    # the GPU result from the opposite lookup law (L1: bin centres, L2: offset), which must be well outside the gate.
+    repair_shafts = {}; scene = np.array([.25, .5, .75])
+    for g in re.findall(r'^REPAIR_SHAFTS look=(\d) odd_pixels=(\d+) fogged=(\d+) changed=(\d+) worst_vs_bin_centre_march=(\S+)', text, re.M):
+        look = int(g[0]); label = f'A_repair{look}_shafts'; pixels = ref['A_repair_pixels']; keep = ref[label + '_noise_margin'] > NOISE_MARGIN if look == 1 else np.ones(len(pixels), bool)
+        gpu = np.fromfile(out / 'images' / f'repair{look}_shafts.full.f32', '<f4').reshape(-1, 4)[pixels][keep, :3]
+        expect = {key: scene * ref[label + key + '_T'][keep, None].astype(np.float64) ** ref['A_repair_extinction'][None, :] + ref[label + key + '_S'][keep] for key in ('', '_other')}
+        repair_shafts[look] = dict(odd_pixels=int(g[1]), fogged=int(g[2]), changed=int(g[3]), worst_vs_bin_centre_march=float(g[4]), compared=int(keep.sum()), reference_fogged=int((ref[label + '_T'][keep] < 1).sum()),
+                                   versus_host=metric(gpu - expect['']), other_law=metric(gpu - expect['_other']))
     generation = re.search(r'^GENERATION atlases=(\d+) seconds=(\S+) nodes_per_second=(\S+)', text, re.M)
     shaders = shaders_current()
     fixture_checks = re.findall(r'^CHECK (\S+) (PASS|FAIL)', text, re.M)
@@ -224,6 +234,8 @@ def check(out, reference):
         if label.endswith('_shadowed'):
             gpu = image(out, label, 'bilinear32')[pixels]; fog = gpu[:, 3] < 1
             row['shadowed_fogged_pixels'] = int(fog.sum()); row['shadowed_min_S'] = float(gpu[fog, :3].min()) if fog.any() else 0.
+        if label + '_centre_delta' in ref.files:  # striped occluder: how far the offset shaft lookup moves S from the bin-centre lookup
+            row['shaft_offset_moves_S_max'] = float(ref[label + '_centre_delta'][keep].max()); row['shaft_offset_moves_S_pixels'] = int((ref[label + '_centre_delta'][keep] > GATE['S_max']).sum())
         looks[label] = row
     shadowed_l0 = image(out, 'A_look0_shadowed', 'bilinear32'); l0_fog = shadowed_l0[:, 3] < 1
     b = rows['bilinear32']
@@ -238,7 +250,9 @@ def check(out, reference):
         fixture_passed=execution['returncode'] == 0 and bool(re.search(r'^RESULT PASS', text, re.M)) and all(s == 'PASS' for _, s in fixture_checks),
         slots_below_512=all(s['slots'] < 512 for s in shaders.values()),
         march_loops_kept=all(shaders[name]['loops'] >= 1 and shaders[name]['texture_instructions'] <= 24 for name in shaders if 'march' in name or 'repair' in name),
-        look_cases=len(looks) >= 9 and all(r['fogged'] > 50 and within(r[v]['T'], 'T') and within(r[v]['S'], 'S') for r in looks.values() for v in ('bilinear32', 'bilinear16')),
+        look_shaft_offset_exercised=all(looks[k].get('shaft_offset_moves_S_max', 0) > 2 * GATE['S_max'] and looks[k]['shaft_offset_moves_S_pixels'] >= 5 for k in ('A_look1_stripes', 'A_look2_stripes', 'A_look3_stripes')),
+        repair_shaft_lookup=sorted(repair_shafts) == [1, 2] and all(r['reference_fogged'] > 50 and r['versus_host']['max'] <= GATE['S_max'] and r['other_law']['max'] > 2 * GATE['S_max'] for r in repair_shafts.values()),
+        look_cases=len(looks) >= 13 and all(r['fogged'] > 50 and within(r[v]['T'], 'T') and within(r[v]['S'], 'S') for r in looks.values() for v in ('bilinear32', 'bilinear16')),
         look0_shadowed_black=bool(l0_fog.sum() > 50 and not shadowed_l0[l0_fog, :3].any()),
         look1_shadowed_coloured=looks['A_look1_shadowed']['shadowed_fogged_pixels'] > 50 and looks['A_look1_shadowed']['shadowed_min_S'] > 0,
         candidate_T=b['cand_T']['p99'] <= GATE['T_p99'] and b['cand_T']['max'] <= GATE['T_max'],
@@ -250,7 +264,7 @@ def check(out, reference):
     reported = dict(parity_S_bilinear_max=b['cand_S']['max'], parity_S_texel_exact_max=e['cand_S']['max'])  # not gated
     summary = dict(schema=2, result='PASS' if all(gates.values()) else 'FAIL', gates=gates, reported_not_gated=reported, host_candidate_vs_dense64=host, gate_values=GATE, versus_host=rows,
                    fp16_bilinear_vs_texel_exact=dict(T=filtering, S=filtering_S), temporal_residual_vs_dense64=temporal, production_rgba16f_temporal_residual_vs_dense64=temporal16,
-                   pass_fixture=pass_summary, look_presets_versus_host=looks,
+                   pass_fixture=pass_summary, look_presets_versus_host=looks, repair_with_shafts=repair_shafts,
                    shaders=shaders, fixture_checks=len(fixture_checks), fixture_timing_not_game_fps=timing, fixture_readback_synchronised_timing_not_game_fps=synced, fixture_march_slope_timing_not_game_fps=slope,
                    repair=dict(zip(('odd_pixels', 'fogged', 'changed'), map(int, repair.groups()[:3])), worst_vs_full_march=float(repair.group(4))) if repair else None,
                    generation=dict(atlases=int(generation.group(1)), seconds=float(generation.group(2)), nodes_per_second=float(generation.group(3))) if generation else None,

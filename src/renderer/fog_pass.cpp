@@ -481,7 +481,7 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
     fog_phase_constants(p.anisotropy,p.decode_exponent,p.sun_radiance,constants[7],constants[8]);
     // Look preset: rows c25..c33, the sigma factor and an already created program variant. Nothing else changes.
     const unsigned look=density&&density_status_.looks&&f.look<fog_look_count?f.look:0u;
-    if(look)constants[2][3]*=fog_look_constants(look,density_config_.look,density_config_.chroma,constants[8],f.look_phase,constants+fog_look_first_register);
+    if(look)constants[2][3]*=fog_look_constants(look,density_config_.look,density_config_.chroma,constants[8],f.look_phase,constants+fog_look_first_register,f.look_resolved);
     const unsigned variant=look>=2?1u:0u,constant_rows=look?fog_look_first_register+fog_look_rows:25u;
     IDirect3DPixelShader9* const density_march=look?look_march_[variant]:density_march_;
     IDirect3DPixelShader9* const density_composite=look?look_composite_:density_composite_;

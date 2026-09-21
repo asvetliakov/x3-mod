@@ -68,7 +68,9 @@ class FogDensityShaders(unittest.TestCase):
     def test_look_variants_leave_the_current_law_untouched(self):
         # L0 is the unshaped programs: every FOG_LOOK edit of the shared include sits behind the define.
         text = (ROOT / 'src/fog/fog_density_field_inc.h').read_text()
-        self.assertEqual(text.count('#ifndef FOG_LOOK'), 1)
+        # Every preprocessor guard of the include names FOG_LOOK*: one whole-law #ifndef, the repair opt-out, the rest #ifdef/#if.
+        guards = [line.split('//')[0].strip() for line in text.splitlines() if line.startswith(('#if', '#ifdef', '#ifndef')) and 'FOG_LOOK' in line]
+        self.assertEqual(sorted(guards), sorted(['#ifdef FOG_LOOK'] * 4 + ['#ifndef FOG_LOOK', '#ifndef FOG_LOOK_NO_OFFSET', '#if FOG_LOOK >= 2']))
         for name in BASE:
             self.assertNotIn('FOG_LOOK', (ROOT / record(name)['source']).read_text(), name)
         for name in slots.LOOK_PROGRAMS:
@@ -92,10 +94,10 @@ class FogDensityShaders(unittest.TestCase):
             self.assertIs(s['gates'][gate], True, gate)
         # Look presets: every preset's GPU (S,T) against the host look_march inside the same gates, the fully
         # shadowed sample black under L0 and coloured under L1, and the production pass cycling the presets.
-        for gate in ('look_cases', 'look0_shadowed_black', 'look1_shadowed_coloured', 'march_loops_kept', 'slots_below_512'):
+        for gate in ('look_cases', 'look_shaft_offset_exercised', 'repair_shaft_lookup', 'look0_shadowed_black', 'look1_shadowed_coloured', 'march_loops_kept', 'slots_below_512'):
             self.assertIs(s['gates'][gate], True, gate)
         looks = s['look_presets_versus_host']
-        self.assertEqual(sorted(looks), ['A_look1_depth90000', 'A_look1_shadowed', 'A_look1_sky', 'A_look2_depth3', 'A_look2_sky', 'A_look3_sky', 'B_look1_sky', 'B_look2_sky', 'B_look3_sky'])
+        self.assertEqual(sorted(looks), ['A_look1_depth90000', 'A_look1_shadowed', 'A_look1_sky', 'A_look1_stripes', 'A_look2_depth3', 'A_look2_sky', 'A_look2_stripes', 'A_look2_stripes_held', 'A_look3_sky', 'A_look3_stripes', 'B_look1_sky', 'B_look2_sky', 'B_look3_sky'])
         for label, row in looks.items():
             self.assertGreater(row['fogged'], 50, label); self.assertLessEqual(row['left_out_near_noise_wrap'], 6, label)
             for variant in ('bilinear32', 'bilinear16'):

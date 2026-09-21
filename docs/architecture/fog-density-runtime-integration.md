@@ -132,11 +132,27 @@ composite/repair split are unchanged.
 | L2 | L1 + one far-level tap toward the sun at 3000 units standing for 9000 units of path: Beer `exp(-3 tau)` and powder `1 - .5 exp(-2 (3 tau + 3 sigma rho 3000))`. |
 | L3 | L2 + per-pixel per-frame sample offset: interleaved gradient noise on the half-resolution pixel, shifted by `5.588238 x TAA jitter index`, +-half a bin on all 64 bins. Repair pixels keep bin centres. |
 
+Shaft lookup offset (L1-L3, 2026-09-22). The shadow-map lookup of a sample, and only that, sits at
+`s + (noise - .5) x SHADOW_JITTER x ds` along the ray: the same interleaved-gradient value and TAA phase as the L3 offset.
+Without a running TAA resolve (`FogFrame::look_resolved` false) the amplitude is 0 for L1/L2: a static dither would not
+remove the comb, and because cascade selection uses the lookup position it would also dither the hard .85 switch across
+the hand-over band; with the resolve that dither is averaged like the rest. Density, warp, coverage, sun-ward tap and extinction stay at the bin centre, so cloud
+detail carries no noise; a ray that meets no occluder is bit-identical to the bin-centre march. It removes the per-bin
+copies of an occluder silhouette (the run222 comb) once TAA has averaged the phases. Row c32.zw holds the amplitude in
+bins (near, far) = `max(JITTER_*, SHADOW_JITTER)`: the lookup never moves less than the sample. `X3M_FOG_LOOK_SHADOW_JITTER`
+(0..1, default 1) is the A/B **for L1 and L2**: 0 restores bin centres there. Under L3 the lookup rides the sample offset
+(`JITTER_*`, default 1), so the variable only matters when `JITTER_*` is set below it. The noise cell is the
+half-resolution pixel covering the shaded pixel (`floor(uv x full size / 2)`), so the L1 repair program offsets exactly like
+the half-resolution neighbours of its pixel. The L2-3 repair program keeps bin centres: the noise costs about 15 slots, 2
+are free, and nothing useful fits in 2. Its pixels (one-pixel depth-class edges) therefore differ from their resolved
+neighbours inside a shaft by the old comb error, coherently along a hull silhouette; if that shows in flight as an
+outline inside shafts, compare with `X3M_FOG_LOOK_SHADOW_JITTER=0`. Numbers: ledger, "Shaft lookup offset".
+
 Every scalar is `FogLookTuning` (`src/renderer/fog_look_math.h`), overridable once at init by
 `X3M_FOG_LOOK_<NAME>` with NAME one of `COVERAGE`, `EXPONENT`, `SIGMA_SCALE`, `COVERAGE_VARIATION`,
 `WARP_CYCLES_NEAR`, `WARP_NEAR`, `WARP_CYCLES_FAR`, `WARP_FAR`, `FORWARD_G`, `FORWARD_WEIGHT`, `BACK_G`,
 `ALBEDO_WHITE`, `AMBIENT_GAIN`, `EXTINCTION_TINT`, `SCATTER_LIFT`, `LIFT_FLOOR`, `SHADOW_FLOOR`, `SKY_CAP`, `TAPER_START`,
-`SELF_SHADOW`, `POWDER`, `TAP_DISTANCE`, `TAP_LENGTH`, `JITTER_NEAR`, `JITTER_FAR` (floats, ranges in
+`SELF_SHADOW`, `POWDER`, `TAP_DISTANCE`, `TAP_LENGTH`, `JITTER_NEAR`, `JITTER_FAR`, `SHADOW_JITTER` (floats, ranges in
 `fog_look_fields`), plus `X3M_FOG_LOOK_AMBIENT_SUN` / `_AWAY` = `r,g,b` in 0..4; out-of-range values keep
 the default and the session log prints the resolved set (`volumetric_fog_look_mode`). The launcher
 passes the inherited variables through.
@@ -155,8 +171,8 @@ allocation or lock on the hotkey or draw path, and the D3DSBT_ALL block restores
 cannot be created the base path stays and every frame draws L0 (`volumetric_fog_look_refused`, once).
 
 ps_3_0 budget. CrossOver reports `MaxPixelShader30InstructionSlots = 512`, so every variant has to fit the
-base ceiling. Microsoft-table slots / static texture instructions: march L0 415/17, L1 349/13, L2-3 422/15;
-repair L0 510/22, L1 450/18, L2-3 510/20; composite 203/10 and 210/10. The 64-bin march stays one `rep`
+base ceiling. Microsoft-table slots / static texture instructions: march L0 415/17, L1 365/13, L2-3 425/15;
+repair L0 510/22, L1 466/18, L2-3 510/20; composite 203/10 and 210/10. The 64-bin march stays one `rep`
 loop in every program. What paid for the look terms: (1) the look programs read **two** shaft cascades (the
 two coarsest current maps, compacted into slots 0-1 by `execute`) with a hard switch at the blend-band start
 and one 2x2 comparison, instead of three with cross-fade (207 slots in L0); (2) `level_sample` interpolates Z

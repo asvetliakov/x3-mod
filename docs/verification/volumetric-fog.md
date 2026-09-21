@@ -2103,3 +2103,81 @@ distance fade of shaft strength. Blurring the half-res S target is not advised: 
    15.7 M per frame against up to 63 M shaft fetches today. One new target and program; Reset, hostile-state and
    native-parity work as for the other fog targets.
 5. More bins near occluders: not practical in one ps_3_0 `rep` loop; item 4 achieves the same with its taps.
+
+## Shaft lookup offset in L1-L3 (2026-09-22): the comb fix without the L3 grain
+
+Change: item 2 of the run222 fix set. `fog_density_field_inc.h` offsets only the `fog_look_visibility` position by the
+interleaved-gradient value of the covering half-resolution pixel and the TAA phase (`look_taps.zw`, c32.zw =
+`max(JITTER_*, SHADOW_JITTER)`, and `max(JITTER_*, 0)` when `FogFrame::look_resolved` is false, i.e. TAA off or failed);
+density and lighting samples stay at bin centres. `X3M_FOG_LOOK_SHADOW_JITTER` 0..1, default 1; 0 = the former law in L1/L2
+(L3's lookup rides its sample offset). L0 untouched (march `4dacf7e4...`, headers unchanged). [M] measured, [I] inferred.
+
+**Slots / static texture instructions** [M]: march L0 415/17, L1 365/13 (+16), L2-3 425/15 (+3); repair L0 510/22, L1 466/18
+(+16, offsets like its march), L2-3 510/20 (bin centres, `FOG_LOOK_NO_OFFSET`: the noise costs about 15 slots, 2 are free);
+composite 203/10 and 210/10; one `rep` loop in every march and repair. Fetches per sample unchanged.
+
+**Host study** [M]: `tools/analysis/fog_shaft_sampling_study.py --capture /tmp/x3-bottleX3-run222 --frame 9539 --frame 31040
+--field-origin 95576,97323,62698` -> `verification/results/fog-shaft-sampling-study.json`. It marches `look_march` (now with a
+per-sample `visibility(points, rays, ds)` callback) over the dumped maps 2 and 3, 160x96 rays, against density at bin
+centres with 16 lookups per bin; error = (S - S_ref)/S_lit, green. The normalisation differs from the diagnosis (S_lit
+here carries ambient, lift and self-shadow), so absolute values are about 2.8x smaller; the ratio agrees (4.5x against 4.4x).
+
+| 9539, rms / p99 / max | uniform density | analytic family field (1885 shaft rays) |
+| --- | --- | --- |
+| bin centres (L2 before) | .0036 / .0144 / .0372 | .0041 / .0188 / .0590 |
+| lookup offset, one phase | .0037 / .0147 / .0414 | .0049 / .0219 / .0847 |
+| lookup offset, 8-phase mean | **.0008 / .0032 / .0073** | **.0010 / .0043 / .0176** |
+| L3, 8-phase mean | .0012 / .0037 / .0071 | not comparable (density re-sampled) |
+| two lookups per bin, no offset | .0021 / .0087 / .0209 | .0021 / .0090 / .0295 |
+| two lookups + offset, 8-phase mean | .0004 / .0017 / .0042 | .0004 / .0017 / .0062 |
+
+31040 gives the same picture (.0040 -> .0008 uniform, .0051 -> .0010 field). So the lookup offset alone reaches the L3 figure.
+
+**Grain and the leak test** [M], temporal std/mean over the 8 phases, raw and after an exponential history of weight .9 at a
+held camera (an ideal resolve: the flight's clamped TAA leaves more, .69 % measured for L3, so read these as ratios).
+"Clear" rays are those the 16-lookup reference finds unshadowed. On them the lookup offset gives median 0 and p99 0 in three
+studies (p99 .004 % raw at 31040 field), but not 0 everywhere: max raw 3.3e-5 (9539 uniform, 1 ray), 4.7e-6 (9539 field, 4
+rays), 0 (31040 uniform), 3.6e-3 (31040 field, 84 rays; .030 % after history). Cause: the reference steps 157 units in a
+far bin and misses thinner occluders (the spar fan of 31040) that an offset lookup, or the bin-centre one, lands on;
+every differing clear ray is such a ray (`clear_rays_differing_without_meeting_an_occluder` = 0 in all four). Not a leak:
+on the 2397 / 2755 / 3320 / 3988 rays where no lookup of any phase met an occluder, all 8 phases equal the unshadowed
+march bit for bit, and cascade selection sits inside the lookup, so it cannot touch an unshadowed ray either. L3 on the
+clear rays: raw median .17 % / p99 .64 % (9539 field), after history .010 % / .038 %. Inside shafts, after history: lookup
+offset median .034 % / p99 .23 %, L3 .13 % / .53 %. So fog that meets no occluder is exactly L2's, and shaft interiors and
+thin-occluder rays get at most L3's grain.
+
+**Repair / march mismatch** [M]: an L2-3 repair pixel keeps the bin-centre lookup beside offset half-resolution
+neighbours. Its step inside shafts, relative to local in-scatter (uniform 9539 / field 9539 / uniform 31040 / field 31040):
+against the resolved neighbours rms .43 / .87 / .48 / 1.8 %, p99 1.7 / 3.5 / 1.8 / 6.8 %, max 4.2 / 7.9 / 4.8 / **9.3 %**; against
+one unresolved phase rms .61 / 1.3 / .69 / 2.7 %, max 6.9 / 14.6 / 8.3 / **17.4 %**. Outside shafts 0. This is the old comb error,
+now carried by the repair pixels alone, and it is spatially coherent: repair pixels form one-pixel chains along hull
+silhouettes, and the comb varies slowly along such a chain, so inside a strong shaft it can read as a faint outline
+segment rather than noise. [I] Expected below visibility against a hull edge, not shown. No mitigation fits the 2 free
+slots of repair L2 (the noise alone is about 15); repair L1 offsets like its neighbours. Flight A/B:
+`X3M_FOG_LOOK_SHADOW_JITTER=0` removes the mismatch and brings the comb back.
+
+**TAA off** [M by constants test]: `look_resolved` false zeroes the L1/L2 amplitude, so lookup position and cascade
+selection are the bin centre's; with TAA on, the offset also dithers the hard .85 cascade switch across the hand-over
+band, which the resolve averages.
+
+**Two lookups per bin** [M]: compiled for march L2 as an inner `rep` of 2 at +-1/4 bin: 434 slots, 15 static fetches, so it
+fits the march (not repair L2). It halves the one-frame error and the in-shaft grain (table). Not adopted: it doubles the
+shaft fetches of the march (up to 8 per non-empty sample) and the fixture's slope timing cannot price that (it reads
+.005-.025 ms per 640x384 march, below its own noise). Needs a flight timing or a working GPU timer first.
+
+**Penumbra / floor**: a distance-widening penumbra is not free (repair L2 has 2 slots), so none was added, and
+`X3M_FOG_LOOK_SHADOW_FLOOR` stays .15: raising it costs no slots but flattens the L2 look the user likes and can be tried
+in flight without a build (.3).
+
+**Fixture** (bottle X3, arm64, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`). March cases `shadow=2`: a 64-texel map with dark
+column pairs addressed by view depth (3750 units per pair), host twin `stripe_visibility`: `A_look1_stripes`,
+`A_look2_stripes` (phase 5), `A_look3_stripes` (phase 3, `jitter=0.25` so the one-bin lookup separates from the
+quarter-bin sample) and `A_look2_stripes_held` (`resolved=0`: bin centres). GPU against host: S max 2.8e-4 (fp32) / 3.7e-4
+(fp16), 572-576 of 576 pixels compared; the other lookup law would miss by .0139 (L1), .0076 (L2), .0070 (L3), above the
+.003 gate (`look_shaft_offset_exercised`). Repair with a shaft map bound (new; 1024-texel stripes, 47-unit pairs over the
+20000-unit geometry columns): repair L1 and L2 outputs against the host march of the repaired ray (L1 with the covering
+half pixel's noise, L2 bin centres), 573 / 576 stratified odd pixels: max 4.9e-4 each, while the opposite law is .0147 /
+.0105 away (gate `repair_shaft_lookup`); repair L2 also equals the GPU bin-centre march to 4.9e-4. `fog_density_shader_run.py
+build/run/check` PASS, 29 + 58 checks, 13 look cases, all gates true; generator `--check` PASS for the nine fog programs.
+Host modules `test_fog_look_reference test_fog_density_shaders test_volumetric_fog test_shader_compiler_provenance`: 26 tests
+pass. Scratch production build RelWithDebInfo links; `check_no_x87.py` reports no violations. No flight yet.

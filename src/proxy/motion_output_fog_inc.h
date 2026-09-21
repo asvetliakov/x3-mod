@@ -424,7 +424,7 @@ void MotionOutput::run_volumetric_fog() noexcept {
             // Not resident yet (sector entry, jump, Reset): no fog and no card suppression, never the legacy field.
             if (!fog_density_prepared_ || !fog_->density_ready(in.width, in.height)) skip = "density_unprepared";
             else if (!fog_->density_drawable(in.camera_world)) skip = "density_filling";
-            else { in.density = true; in.look = fog_look_; in.look_phase = jitter_active_ && taa_enabled_ && !taa_failed_ ? counters_.jitter_index : 0u; } // no resolve to average it: hold the L3 offset
+            else { in.density = true; in.look = fog_look_; in.look_resolved = jitter_active_ && taa_enabled_ && !taa_failed_; in.look_phase = in.look_resolved ? counters_.jitter_index : 0u; } // no resolve to average it: hold the L3 offset
         }
     }
     if (!skip) {

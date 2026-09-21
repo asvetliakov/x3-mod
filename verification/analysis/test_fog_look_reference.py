@@ -26,6 +26,13 @@ int main() {
         for (auto& row : rows) for (float v : row) std::printf(" %.9g", double(v));
         std::printf("\n");
     }
+    { // No temporal resolve: the shaft lookup offset is dropped under L2 and rides the sample offset under L3.
+        float rows[fog_look_rows][4];
+        for (unsigned look : {2u, 3u}) { fog_look_constants(look, FogLookTuning{}, chroma, radiance, 0, rows, false); std::printf("%.9g %.9g ", double(rows[7][2]), double(rows[7][3])); }
+        FogLookTuning quarter; quarter.jitter_near = quarter.jitter_far = .25f;
+        for (bool resolved : {true, false}) { fog_look_constants(3, quarter, chroma, radiance, 0, rows, resolved); std::printf("%.9g %.9g ", double(rows[7][2]), double(rows[6][3])); }
+        std::printf("\n");
+    }
     // Fade start fallback: cap - 1000 is taken as given, anything later becomes the last quarter of the cap.
     for (float start : {69000.f, 69001.f, 199000.f}) {
         FogLookTuning f; f.sky_cap = 70000.f; f.taper_start = start; float rows[fog_look_rows][4];
@@ -66,10 +73,13 @@ class FogLookReference(unittest.TestCase):
         rows, _ = ref.look_constants(1, CHROMA, tuning=dict(ref.TUNING, sky_cap=70000., taper_start=70000.))
         np.testing.assert_allclose(rows[10, 1:3], (52500., 1. / 17500.), rtol=1e-6)
         # Every field takes its minimum and refuses out-of-range and NaN; the hotkey wraps 3 -> 0.
-        np.testing.assert_allclose(np.array(lines[4].split(), np.float64), (69000., 1e-3, 52500., 1 / 17500., 52500., 1 / 17500.), rtol=1e-6)
+        np.testing.assert_allclose(np.array(lines[5].split(), np.float64), (69000., 1e-3, 52500., 1 / 17500., 52500., 1 / 17500.), rtol=1e-6)
         for start, expect in ((69000., 69000.), (69001., 52500.)):
             self.assertEqual(ref.look_constants(1, CHROMA, tuning=dict(ref.TUNING, sky_cap=70000., taper_start=start))[0][10, 1], expect)
-        taken, fields, wrap, step = map(int, lines[5].split())
+        self.assertEqual(lines[4].split(), ['0', '0', '1', '1', '1', '0.25', '0.25', '0.25'])
+        for look, resolved, expect in ((2, False, 0.), (3, False, 1.), (2, True, 1.)):
+            self.assertEqual(ref.look_constants(look, CHROMA, resolved=resolved)[0][7, 2], expect)
+        taken, fields, wrap, step = map(int, lines[6].split())
         self.assertEqual((taken, wrap, step), (fields, 0, 1)); self.assertEqual(fields, len(ref.TUNING))
 
     def march(self, look, store=None, **options):
@@ -95,6 +105,24 @@ class FogLookReference(unittest.TestCase):
         Ssky, Tsky = self.march(1)
         Sgeo, Tgeo = ref.look_march(np.zeros(3), np.array([[1., 0., 0.]]), np.array([150000.]), True, CHROMA, Slab(), 1, 3.75e-6)
         self.assertEqual(Tsky[0], Tgeo[0]); np.testing.assert_array_equal(Ssky[0], Sgeo[0])
+
+    def test_shaft_lookup_offset_moves_only_the_shaft(self):
+        # A penumbra along the first ray: visibility falls from 1 to 0 across the slab. Only the lookup position moves with the
+        # pixel and phase; density, extinction and unshadowed rays are those of the bin-centre march.
+        def edge(points, rays, ds): return np.clip((46000. - np.linalg.norm(points, axis=1)) / 12000., 0., 1.)
+        centre = dict(ref.TUNING, shadow_jitter=0.)
+        for look in (1, 2):
+            S0, T0 = self.march(look, visibility=edge, tuning=centre); Sa, Ta = self.march(look, visibility=edge, phase=1); Sb, _ = self.march(look, visibility=edge, phase=2)
+            Slit, _ = self.march(look)
+            self.assertEqual(Ta[0], T0[0]); self.assertFalse(np.array_equal(Sa[0], S0[0])); self.assertFalse(np.array_equal(Sa[0], Sb[0]))
+            self.assertTrue((Sa[0] < Slit[0]).all()); np.testing.assert_array_equal(Sa[1:], S0[1:])
+            # Without an occluder the offset changes nothing at all.
+            np.testing.assert_array_equal(self.march(look, visibility=lambda p, r, ds: np.ones(len(p)), phase=1)[0], Slit)
+        # Default amplitude one bin in L1 and L2 with the density offset still zero; L3 keeps lookup and sample together.
+        rows, _ = ref.look_constants(2, CHROMA); np.testing.assert_array_equal(rows[7, 2:], (1., 1.)); np.testing.assert_array_equal(rows[6, 2:], (0., 0.))
+        np.testing.assert_array_equal(ref.look_constants(2, CHROMA, tuning=centre)[0][7, 2:], (0., 0.))
+        np.testing.assert_array_equal(ref.look_constants(3, CHROMA, tuning=centre)[0][7, 2:], (1., 1.))
+        self.assertTrue(ref.stripe_map().min() == 0 and ref.stripe_map()[[0, 7, 56, 63]].all())
 
     def test_remap_is_soft_and_empties_thin_density(self):
         thin = Slab(); thin.value = lambda points: np.full(len(points), .2, np.float32)  # below coverage - variation

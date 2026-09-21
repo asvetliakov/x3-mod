@@ -10,14 +10,14 @@
   "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
   "defines": null,
   "includes": {
-    "src/fog/fog_density_field_inc.h": "80574338883d7d757f9a3243c1fd0549bb87d1a851b35e7a50d8f44feb06ec0d"
+    "src/fog/fog_density_field_inc.h": "c1ddaeee0d27121a17644d56e9f53078ea13bb96846005a6cc3d703250f7b26b"
   },
   "word_count": 1259,
   "bytecode_sha256": "a718e8e9161ae256b7c3e02b054f9adcd0ece92d4e5866593ab1e009d1022425",
   "header_sha256": "7a2b44e0622a9f261a674aa62413d50cf05c4e781273b4e0b311d687824665a5",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "d1850b4e53ab5647f9b3986fadd39d12d7545039f48636aa49158d58adcf1003",
-    "tools/shaders/generate_rigid_motion_pixel.py": "d297f0b390b1141f06380b71ca451c37fc971b72d261dcaef7729ff31cb75bbf"
+    "tools/shaders/generate_rigid_motion_pixel.py": "1f122b89295e62ea7b83ecd07e5c6a55f7e26bedb8226523531d812bee677886"
   },
   "copyright_scope": "Original authored project shader; no game shader bytes",
   "creates_d3d_device": false

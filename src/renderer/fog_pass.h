@@ -77,7 +77,7 @@ struct FogFrame {
     bool density=false; double camera_world[3]{};
     // Stored-density look preset 0..3 and the TAA jitter sequence index (L3 sample offset). Constants and a
     // prebuilt program only; a look whose programs are unavailable draws L0 (FogResult::look).
-    unsigned look=0,look_phase=0;
+    unsigned look=0,look_phase=0;bool look_resolved=false; // look_resolved: TAA averages look_phase (shaft lookup offset on)
 };
 enum class FogStage : unsigned {
     None,Validate,Targets,Block,Capture,Normalize,Scene,March,Copy,SkyLevel,SkyReduce,Composite,EndScene,Restore,
