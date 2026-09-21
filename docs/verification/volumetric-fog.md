@@ -1100,3 +1100,8 @@ The frozen six-view, reference-only preview passed its numerical 128/64 transpor
 This establishes reference convergence only. The broad near views and speckled oval distant views require parent/user appearance review; no selection is recorded. It does not approve aesthetics, a production integrator, GPU cost, flight appearance or native runtime behavior. No parameter iteration followed the result.
 
 [Checkpoint](../../verification/results/fog-connected-preview-2026-09-21/checkpoint.json) and [review](../../verification/results/fog-connected-preview-2026-09-21/review.json).
+
+User appearance verdict: interior close to the target; the distant single-bulb
+shape is rejected. The requested distribution is irregular cloud patches
+covering a sector or substantial parts of it. Numerical results remain valid;
+the paired-lobe layout is not selected for production.

@@ -969,3 +969,9 @@ still read as speckled ovals; appearance remains unselected. The largest
 analytic cost is 1,558 atlas reads per ray at 128-unit spacing before lighting,
 shadows or repair. There is no selected runtime integrator, GPU timing or new
 flight build. See the [verification ledger](../verification/volumetric-fog.md#fixed-paired-lobe-connected-cloud-reference-preview).
+
+User clarification after this preview: the interior is close to the desired
+appearance, but the isolated distant bulb is rejected. The target is irregular
+cloud patches extending through a sector or substantial parts of it, with
+clearer gaps, rather than separately bounded cloud objects. Preserve the
+interior as a visual reference; the paired-lobe distribution is not selected.

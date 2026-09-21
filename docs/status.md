@@ -62,9 +62,10 @@ completed Run56 command is archived. Future runs omit CrossOver debug tracing.
   The fixed coarse depth-prefix reconstruction also fails all four endpoint
   comparisons and is closed. The finite-bank preview is reviewed but not selected: the user prefers broader,
   connected clouds. Its fixed 500-unit sampler also fails accuracy gates.
-  A six-view broader connected-region reference now converges, but distant
-  clouds still look like speckled ovals; appearance feedback is pending. No
-  production integrator or new fog build is selected.
+  The broader reference converges. The user likes its interior but rejects
+  the distant single-bulb shape: fog should form irregular patches across
+  substantial parts of a sector. Distribution redesign continues; no production
+  integrator or new fog build is selected.
 - **Station flash accepted:** Run205 confirms both global TAA heuristics disabled;
   the user reports no flash or save-load/sector-travel ghosting. Launcher defaults
   now apply this to the unchanged installed DLL; native fallback defaults match
