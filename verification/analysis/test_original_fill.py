@@ -24,6 +24,7 @@ import sys
 import tempfile
 import unittest
 from unittest import mock
+from verification.analysis.test_capture_bloom_lifetime import extract_function
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/analysis'))
@@ -300,9 +301,14 @@ class LauncherGateTests(unittest.TestCase):
         # the one bind pair of the routed draw; undone with the route.
         self.assertIn('renderer::linear_material_original_fill_pixel_variant(', motion)
         self.assertIn('original_fill_variant device=%llu original=%016llx transform=%u create=%08lx words=%u depth=%u fill=%g fill_applied=%u', motion)
-        bind = motion[motion.index('HRESULT MotionOutput::bind_variant_pair'):][:5400]  # the lane's original-share and fail-closed branches precede the fill selection
-        self.assertIn('shadow_.original_fill_pair && !material && !shadow_.xt_default_ready && hdr_state_ == HdrState::Active', bind)
-        self.assertIn('route.original_fill = true', bind)
+        # The whole bind method: the fill variant is selected in the one bind
+        # pair and recorded on the route only once the bind succeeded.
+        bind = extract_function(motion, 'HRESULT MotionOutput::bind_variant_pair(')
+        select = bind.index('shadow_.original_fill_pair && !material && !shadow_.xt_default_ready && hdr_state_ == HdrState::Active')
+        self.assertIn('ps = shadow_.ps_original_fill_variant; fill = true;', bind)
+        record = bind.index('route.original_fill = true')
+        self.assertLess(select, record)
+        self.assertIn('if (fill && SUCCEEDED(hr)) route.original_fill = true', bind)
         self.assertNotIn('GetRenderState', bind)
         header = (ROOT / 'src/proxy/motion_output.h').read_text()
         self.assertIn('IDirect3DPixelShader9* original_fill_variant = nullptr;', header)

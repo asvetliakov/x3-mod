@@ -247,8 +247,15 @@ class LauncherGateTests(unittest.TestCase):
         self.assertIn('route.source_gain_screen = false;', rollback)
         self.assertIn('if (screen) ++source_gain_counts_.admitted_screen;', admission)
         finish = extract_function(motion, 'void MotionOutput::finish_source_gain(')
-        self.assertLess(finish.index('native<SetPsFn>(SetPixelShader)(device_, shadow_.ps);'),
-                        finish.index('direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, shadow_.composition_blend[1]);'))
+        # The program goes back from the route's owned restoration reference
+        # (docs/architecture/ownership-shadow-lifetime-diagnosis.md), before
+        # the blend state.
+        self.assertLess(finish.index('SetPixelShader)(device_, route.restore_ps)'),
+                        finish.index('D3DRS_DESTBLEND, shadow_.composition_blend[1]'))
+        # No path writes a borrowed shadow shader pointer back to the device.
+        for name in ('motion_output.cpp', 'sun_share_lane_inc.h'):
+            text = (ROOT / 'src/proxy' / name).read_text()
+            self.assertNotRegex(text, r'Set(Vertex|Pixel)Shader\)\(device_,\s*shadow_\.(vs|ps)\)')
         self.assertIn('if (route.source_gain_screen) {', finish)
         self.assertIn('invalidate_render_states();', finish)
         self.assertIn('what=source_gain', finish)

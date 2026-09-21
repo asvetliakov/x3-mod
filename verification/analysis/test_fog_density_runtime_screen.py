@@ -1,5 +1,6 @@
 import importlib.util,tempfile,unittest
 from pathlib import Path
+from unittest import mock
 import numpy as np
 ROOT=Path(__file__).resolve().parents[2]; s=importlib.util.spec_from_file_location('density_runtime',ROOT/'tools/analysis/fog_density_runtime_screen.py'); m=importlib.util.module_from_spec(s); s.loader.exec_module(m)
 class DensityRuntime(unittest.TestCase):
@@ -42,10 +43,15 @@ class DensityRuntime(unittest.TestCase):
    with self.assertRaises(ValueError) as e: m.run(root/'missing-assets',out,root/'no-such-plan.md')
    self.assertIn('plan file not found',str(e.exception)); self.assertFalse(out.exists())
  def test_existing_output_directory_is_refused(self):
-  if not m.DEFAULT_PLAN.is_file(): self.skipTest('ratified plan not present')
-  self.assertEqual(m.digest(m.DEFAULT_PLAN),m.EXPECTED_PLAN)
+  # Independent of the living ratified plan, whose status header changes after
+  # a run: a temporary plan passes the startup digest check (patched expected
+  # digest), so the refusal under test is the output directory's alone. The
+  # pinned digest of the historical run stays as it is in the tool.
   with tempfile.TemporaryDirectory() as tmp:
-   out=Path(tmp)/'out'; out.mkdir()
-   with self.assertRaises(ValueError) as e: m.run(Path(tmp)/'missing-assets',out,m.DEFAULT_PLAN)
-   self.assertIn('already exists',str(e.exception))
+   root=Path(tmp); plan=root/'plan.md'; plan.write_text('# stand-in plan\n'); out=root/'out'; out.mkdir()
+   with mock.patch.object(m,'EXPECTED_PLAN',m.digest(plan)):
+    with self.assertRaises(ValueError) as e: m.run(root/'missing-assets',out,plan)
+   self.assertIn('already exists',str(e.exception)); self.assertNotIn('digest mismatch',str(e.exception))
+ def test_default_plan_points_at_the_ratified_document(self):
+  self.assertEqual(m.DEFAULT_PLAN.name,'fog-density-runtime-plan.md'); self.assertEqual(len(m.EXPECTED_PLAN),64)
 if __name__=='__main__': unittest.main()

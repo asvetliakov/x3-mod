@@ -26,6 +26,8 @@ class MotionWrapStatesTests(unittest.TestCase):
             'HRESULT MotionOutput::restore_wrap_states(',
             'void MotionOutput::recover_motion_state(',
             'HRESULT MotionOutput::undo(',
+            'HRESULT MotionOutput::acquire_restore(',
+            'void MotionOutput::release_restore(',
             'HRESULT MotionOutput::bind_variant_pair(',
             'void MotionOutput::after_reset(',
             'void MotionOutput::begin_stateblock(',

@@ -28,6 +28,16 @@ struct LinearMaterialPairContract{
  std::array<LinearMaterialScalarTransport,2> scalar_transport{};std::uint8_t scalar_transport_count=0;
 };
 }
+// Reference-counted shader double: the restoration contract
+// (docs/architecture/ownership-shadow-lifetime-diagnosis.md) is about owned
+// references, so the double counts them and every test balances them.
+struct Shader {
+ unsigned refs=1,add_refs=0,releases=0;
+ unsigned long AddRef(){++refs;++add_refs;return refs;}
+ unsigned long Release(){++releases;return --refs;}
+};
+using IDirect3DVertexShader9=Shader;using IDirect3DPixelShader9=Shader;
+template<class T> void release(T*& object) noexcept { if (T* held=object){object=nullptr;held->Release();} }
 struct MotionRoute {
  HRESULT preparation_error=S_OK;
  bool depth=false,linear_material=false,write2_set=false,rt2_set=false,write_set=false,rt_set=false,ps_set=false,vs_set=false,vs_constants_set=false,ps_constants_set=false;
@@ -35,6 +45,8 @@ struct MotionRoute {
  bool fade_arm=false,sun_receiver=false; // fade-band arm and sun-share lane flags read by the bind path
  bool original_fill=false; // X3M_ORIGINAL_FILL: the bind path records the fill variant it selected
  bool hull_lightmap=false; // hull light-map gain PS selected in the routed pair
+ // Scoped owned restoration references taken once per routed draw.
+ Shader*restore_vs=nullptr,*restore_ps=nullptr;bool restore_held=false;
 };
 static unsigned failures=0,checks=0,allocations=0;
 void* operator new(std::size_t n){++allocations;if(void*p=std::malloc(n))return p;throw std::bad_alloc();}
@@ -44,22 +56,31 @@ struct Device {
  std::array<DWORD,256> states{};unsigned gets=0,sets=0,vs_sets=0,ps_sets=0;
  std::array<unsigned,16> fail_get{},fail_set{};
  std::array<HRESULT,64> set_result{};
- bool mutation_before_failure=false;void*fail_shader=nullptr,*bound_vs=nullptr,*bound_ps=nullptr;
+ bool mutation_before_failure=false;Shader*fail_shader=nullptr,*bound_vs=nullptr,*bound_ps=nullptr;
+ unsigned shader_gets=0;std::array<unsigned,4> fail_shader_get{}; // nth GetVertexShader/GetPixelShader call fails
  std::array<std::pair<unsigned,DWORD>,64> writes{};
 };
 using GetRenderStateFn=HRESULT(*)(Device*,D3DRENDERSTATETYPE,DWORD*);
 using SetRenderStateFn=HRESULT(*)(Device*,D3DRENDERSTATETYPE,DWORD);
-using SetPsFn=HRESULT(*)(Device*,void*);using SetVsFn=SetPsFn;
+using SetPsFn=HRESULT(*)(Device*,Shader*);using SetVsFn=SetPsFn;
+using GetVsFn=HRESULT(*)(Device*,Shader**);using GetPsFn=GetVsFn;
 using SetConstantsFFn=HRESULT(*)(Device*,unsigned,const float*,unsigned);
-enum{GetRenderState,SetRenderState,SetPixelShader,SetVertexShader,SetVertexShaderConstantF,SetPixelShaderConstantF};
+enum{GetRenderState,SetRenderState,SetPixelShader,SetVertexShader,GetVertexShader,GetPixelShader,SetVertexShaderConstantF,SetPixelShaderConstantF};
 HRESULT get_state(Device*d,unsigned s,DWORD*v){++d->gets;for(auto n:d->fail_get)if(n==d->gets)return E_FAIL;*v=d->states[s];return S_OK;}
 HRESULT set_state(Device*d,unsigned s,DWORD v){
  ++d->sets;d->writes[(d->sets-1)%d->writes.size()]={s,v};HRESULT result=d->set_result[d->sets];
  if(SUCCEEDED(result))for(auto n:d->fail_set)if(n==d->sets){result=E_FAIL;break;}
  if(SUCCEEDED(result)||d->mutation_before_failure)d->states[s]=v;return result;
 }
-HRESULT set_vs(Device*d,void*p){++d->vs_sets;if(p==d->fail_shader)return E_FAIL;d->bound_vs=p;return S_OK;}
-HRESULT set_ps(Device*d,void*p){++d->ps_sets;if(p==d->fail_shader)return E_FAIL;d->bound_ps=p;return S_OK;}
+HRESULT set_vs(Device*d,Shader*p){++d->vs_sets;if(p&&p==d->fail_shader)return E_FAIL;d->bound_vs=p;return S_OK;}
+HRESULT set_ps(Device*d,Shader*p){++d->ps_sets;if(p&&p==d->fail_shader)return E_FAIL;d->bound_ps=p;return S_OK;}
+// Documented D3D9 getter semantics: the returned interface is AddRef'd, and a
+// null binding is reported as a null pointer with S_OK. A failing getter
+// writes nothing.
+HRESULT get_vs(Device*d,Shader**p){++d->shader_gets;for(auto n:d->fail_shader_get)if(n==d->shader_gets)return E_FAIL;
+ *p=d->bound_vs;if(d->bound_vs)d->bound_vs->AddRef();return S_OK;}
+HRESULT get_ps(Device*d,Shader**p){++d->shader_gets;for(auto n:d->fail_shader_get)if(n==d->shader_gets)return E_FAIL;
+ *p=d->bound_ps;if(d->bound_ps)d->bound_ps->AddRef();return S_OK;}
 HRESULT set_constants(Device*,unsigned,const float*,unsigned){return S_OK;}
 template<class...A>void log(const char*,A...){ }
 struct Pass {void after_reset(HRESULT){};};
@@ -77,21 +98,22 @@ public:
  Pass*sun_apply_=nullptr; // scene-end sun-shadow apply: after_reset forwards to the pass when one is attached
  Pass*fog_=nullptr;std::uint64_t fog_frame_=~std::uint64_t(0);unsigned fog_failures_=0;bool fog_attach_failed_=false; // volumetric fog: the same forwarding and per-frame marker
  std::uint64_t sun_apply_frame_=~std::uint64_t(0),depth_replayed_frame_=~std::uint64_t(0); // per-frame markers cleared by after_reset
- struct{unsigned rs_queries=0,rs_hits=0,rs_gets=0,rs_resyncs=0,restore_failures=0,draws=0,sb_resyncs=0,material_bind_failures=0;}counters_;
+ struct{unsigned rs_queries=0,rs_hits=0,rs_gets=0,rs_resyncs=0,restore_failures=0,draws=0,sb_resyncs=0,material_bind_failures=0,restore_getters=0,restore_declines=0;}counters_;
  struct{DWORD states[motion_shadow_state_count]{};bool states_known[motion_shadow_state_count]{};bool recording=false;
   /* sized for the production composition_blend_states table (asserted below) */ DWORD composition_blend[8]{};bool composition_blend_known[8]{};DWORD fill_mode=0;bool fill_mode_known=false;
-  bool vs_reserved_written=false,ps_reserved_written=false;void*vs=nullptr,*ps=nullptr,*vs_variant=nullptr,*ps_variant=nullptr,*vs_material_variant=nullptr,*ps_material_variant=nullptr;
-  bool original_fill_pair=false;void*ps_original_fill_variant=nullptr;
-    bool xt_default_pair=false,xt_default_ready=false;void*vs_xt_default_linear=nullptr,*vs_xt_default_ordinary=nullptr,*ps_xt_default_ordinary=nullptr;
-  void*ps_sun_motion=nullptr,*ps_sun_material=nullptr,*ps_sun_xt=nullptr;bool ps_sun_extraction=false;
-  void*ps_sun_original=nullptr;bool original_share_pair=false,original_share_refused=false; // original share variant (legacy-sun-application.md 4.1)
-  void*ps_sun_original_lightmap=nullptr,*ps_hull_lightmap_variant=nullptr;bool hull_lightmap_pair=false; // hull light-map gain variants; inert here
+  bool vs_reserved_written=false,ps_reserved_written=false;Shader*vs=nullptr,*ps=nullptr,*vs_variant=nullptr,*ps_variant=nullptr,*vs_material_variant=nullptr,*ps_material_variant=nullptr;
+  bool original_fill_pair=false;Shader*ps_original_fill_variant=nullptr;
+    bool xt_default_pair=false,xt_default_ready=false;Shader*vs_xt_default_linear=nullptr,*vs_xt_default_ordinary=nullptr,*ps_xt_default_ordinary=nullptr;
+  Shader*ps_sun_motion=nullptr,*ps_sun_material=nullptr,*ps_sun_xt=nullptr;bool ps_sun_extraction=false;
+  Shader*ps_sun_original=nullptr;bool original_share_pair=false,original_share_refused=false; // original share variant (legacy-sun-application.md 4.1)
+  Shader*ps_sun_original_lightmap=nullptr,*ps_hull_lightmap_variant=nullptr;bool hull_lightmap_pair=false; // hull light-map gain variants; inert here
   float vs_reserved[16]{},ps_reserved[8]{};renderer::LinearMaterialPairContract material_contract{};
  }shadow_;
  explicit MotionOutput(Device&d):device_(&d){}
  template<class F,class...A> HRESULT direct_call(unsigned n,A...a){return native<F>(n)(device_,a...);} // the route's value-only entry
  template<class F> F native(unsigned n){switch(n){case GetRenderState:return reinterpret_cast<F>(reinterpret_cast<void*>(get_state));case SetRenderState:return reinterpret_cast<F>(reinterpret_cast<void*>(set_state));
- case SetPixelShader:return reinterpret_cast<F>(reinterpret_cast<void*>(set_ps));case SetVertexShader:return reinterpret_cast<F>(reinterpret_cast<void*>(set_vs));default:return reinterpret_cast<F>(reinterpret_cast<void*>(set_constants));}}
+ case SetPixelShader:return reinterpret_cast<F>(reinterpret_cast<void*>(set_ps));case SetVertexShader:return reinterpret_cast<F>(reinterpret_cast<void*>(set_vs));
+ case GetVertexShader:return reinterpret_cast<F>(reinterpret_cast<void*>(get_vs));case GetPixelShader:return reinterpret_cast<F>(reinterpret_cast<void*>(get_ps));default:return reinterpret_cast<F>(reinterpret_cast<void*>(set_constants));}}
  HRESULT bind_target(unsigned,void*){return S_OK;}
  // Mirrors motion_output.h; the bind path reads it for the original-fill gate.
  enum class HdrState{Off,Active,Suspended};HdrState hdr_state_=HdrState::Active;
@@ -117,6 +139,8 @@ public:
  HRESULT restore_wrap_states(MotionRoute&) noexcept;
  void recover_motion_state() noexcept;
  HRESULT undo(MotionRoute&) noexcept;
+ HRESULT acquire_restore(MotionRoute&) noexcept;
+ void release_restore(MotionRoute&) noexcept;
  HRESULT bind_variant_pair(MotionRoute&,bool) noexcept;
  void after_reset(HRESULT) noexcept;
  void begin_stateblock() noexcept;void end_stateblock() noexcept;void stateblock_applied() noexcept;
@@ -193,15 +217,23 @@ void fallback_and_alias_cases(){
  const renderer::MotionOutputProfile p{4,5};const auto boron=material(2,{6,0,1,3},{6,1,2,3});
  // Failed combined VS/PS binding retries the actual ordinary variants. The
  // real bind method clears linear_material, so only temporal WRAP is changed.
- for(bool fail_vs:{true,false}){Device d;MotionOutput m(d);int vs=1,ps=2,mvs=3,mps=4;
+ for(bool fail_vs:{true,false}){Device d;MotionOutput m(d);Shader vs,ps,mvs,mps,app_vs,app_ps;
   m.shadow_.vs=&vs;m.shadow_.ps=&ps;m.shadow_.vs_variant=&vs;m.shadow_.ps_variant=&ps;
   m.shadow_.vs_material_variant=&mvs;m.shadow_.ps_material_variant=&mps;m.shadow_.material_contract=boron;
-  d.fail_shader=fail_vs?static_cast<void*>(&mvs):static_cast<void*>(&mps);
+  d.bound_vs=&app_vs;d.bound_ps=&app_ps; // the application's programs, owned across the routed draw
+  d.fail_shader=fail_vs?&mvs:&mps;
   app_state(d,m,4,15);app_state(d,m,1,7);app_state(d,m,2,8);app_state(d,m,6,3);const auto before=d.states;
   MotionRoute r;CHECK(m.bind_variant_pair(r,true)==S_OK&&!r.linear_material&&m.counters_.material_bind_failures==1);
+  // The failed material attempt was undone from the owned references, not from
+  // the shadow: the application's programs were rebound before the retry.
+  CHECK(r.restore_vs==&app_vs&&r.restore_ps==&app_ps&&r.restore_held);
   CHECK(d.bound_vs==&vs&&d.bound_ps==&ps);CHECK(m.apply_wrap_states(r,p)==S_OK&&r.wrap_count==1&&d.states[wrap(4)]==0);
   CHECK(d.states[wrap(1)]==before[wrap(1)]&&d.states[wrap(2)]==before[wrap(2)]&&d.states[wrap(6)]==before[wrap(6)]);
   CHECK(m.undo(r)==S_OK&&d.states==before);
+  CHECK(d.bound_vs==&app_vs&&d.bound_ps==&app_ps);
+  m.release_restore(r);
+  CHECK(!r.restore_held&&!r.restore_vs&&!r.restore_ps);
+  CHECK(app_vs.refs==1&&app_ps.refs==1&&app_vs.add_refs==app_vs.releases&&app_ps.add_refs==app_ps.releases);
  }
  // A source may alias another mapping's destination. Both mappings use the
  // original snapshot, rather than the first mapping's new value.
@@ -221,6 +253,58 @@ void fallback_and_alias_cases(){
  {Device d;MotionOutput m(d);m.state_shadow_=false;m.shadow_.material_contract=boron;
   d.states[wrap(4)]=d.states[wrap(5)]=0;d.states[wrap(6)]=3;d.states[wrap(1)]=d.states[wrap(2)]=0;
   MotionRoute r;r.depth=true;r.linear_material=true;CHECK(m.apply_wrap_states(r,p)==S_OK&&r.wrap_count==5&&d.gets==5);CHECK(m.undo(r)==S_OK);
+ }
+}
+
+// Scoped owned restoration (docs/architecture/ownership-shadow-lifetime-diagnosis.md):
+// every injected bind owns the device's actual bindings through the public
+// getters, restores from those references and releases them once.
+void restoration_ownership(){
+ auto arm=[](MotionOutput&m,Shader&vs,Shader&ps){m.shadow_.vs_variant=&vs;m.shadow_.ps_variant=&ps;};
+ // A bound application pair is owned once, restored from the owned pointers,
+ // and released exactly once: AddRef and Release balance.
+ {Device d;MotionOutput m(d);Shader vs,ps,app_vs,app_ps;arm(m,vs,ps);
+  d.bound_vs=&app_vs;d.bound_ps=&app_ps;MotionRoute r;
+  CHECK(m.bind_variant_pair(r,false)==S_OK);
+  CHECK(m.counters_.restore_getters==2&&m.counters_.restore_declines==0&&d.shader_gets==2);
+  CHECK(r.restore_held&&r.restore_vs==&app_vs&&r.restore_ps==&app_ps);
+  CHECK(app_vs.refs==2&&app_ps.refs==2); // the route holds one reference each
+  CHECK(d.bound_vs==&vs&&d.bound_ps==&ps);
+  CHECK(m.undo(r)==S_OK&&d.bound_vs==&app_vs&&d.bound_ps==&app_ps);
+  m.release_restore(r);
+  CHECK(!r.restore_held&&!r.restore_vs&&!r.restore_ps);
+  CHECK(app_vs.refs==1&&app_ps.refs==1);
+  CHECK(app_vs.add_refs==1&&app_vs.releases==1&&app_ps.add_refs==1&&app_ps.releases==1);
+  m.release_restore(r);CHECK(app_vs.releases==1&&app_ps.releases==1); // idempotent
+ }
+ // One acquisition per route: a second injected bind reuses the references and
+ // makes no further getter call.
+ {Device d;MotionOutput m(d);Shader vs,ps,app_vs,app_ps;arm(m,vs,ps);
+  d.bound_vs=&app_vs;d.bound_ps=&app_ps;MotionRoute r;
+  CHECK(m.bind_variant_pair(r,false)==S_OK&&m.bind_variant_pair(r,false)==S_OK);
+  CHECK(d.shader_gets==2&&m.counters_.restore_getters==2&&app_vs.add_refs==1&&app_ps.add_refs==1);
+  m.release_restore(r);CHECK(app_vs.refs==1&&app_ps.refs==1);
+ }
+ // A null binding is an owned null: it is restored as null, not skipped, and
+ // releases nothing.
+ {Device d;MotionOutput m(d);Shader vs,ps;arm(m,vs,ps);
+  MotionRoute r;CHECK(d.bound_vs==nullptr&&d.bound_ps==nullptr);
+  CHECK(m.bind_variant_pair(r,false)==S_OK);
+  CHECK(r.restore_held&&r.restore_vs==nullptr&&r.restore_ps==nullptr);
+  CHECK(d.bound_vs==&vs&&d.bound_ps==&ps);
+  CHECK(m.undo(r)==S_OK&&d.bound_vs==nullptr&&d.bound_ps==nullptr);
+  m.release_restore(r);CHECK(vs.releases==0&&ps.releases==0);
+ }
+ // A failing getter declines the injection before any native change: nothing
+ // is bound, the route holds nothing, and the already-owned VS is released.
+ for(unsigned n:{1u,2u}){Device d;MotionOutput m(d);Shader vs,ps,app_vs,app_ps;arm(m,vs,ps);
+  d.bound_vs=&app_vs;d.bound_ps=&app_ps;d.fail_shader_get[0]=n;MotionRoute r;
+  CHECK(FAILED(m.bind_variant_pair(r,false))&&FAILED(r.preparation_error));
+  CHECK(!r.restore_held&&!r.vs_set&&!r.ps_set);
+  CHECK(d.vs_sets==0&&d.ps_sets==0&&d.bound_vs==&app_vs&&d.bound_ps==&app_ps);
+  CHECK(m.counters_.restore_declines==1);
+  CHECK(app_vs.refs==1&&app_ps.refs==1); // the first getter reference was released
+  CHECK(m.undo(r)==S_OK&&d.vs_sets==0&&d.ps_sets==0);
  }
 }
 
@@ -307,6 +391,6 @@ void shadow_reset_and_performance(){
 }
 
 int main(){
- roundtrips();actual_material_contracts();fallback_and_alias_cases();failure_cases();malformed_contracts();shadow_reset_and_performance();
+ roundtrips();actual_material_contracts();fallback_and_alias_cases();restoration_ownership();failure_cases();malformed_contracts();shadow_reset_and_performance();
  std::printf("motion_wrap_states checks=%u failures=%u\n",checks,failures);return failures?1:0;
 }

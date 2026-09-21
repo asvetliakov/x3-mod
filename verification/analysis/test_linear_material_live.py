@@ -112,6 +112,8 @@ class LinearMaterialLiveTests(unittest.TestCase):
             'HRESULT MotionOutput::bind_variant_pair(',
             'HRESULT MotionOutput::bind_targets(',
             'HRESULT MotionOutput::undo(',
+            'HRESULT MotionOutput::acquire_restore(',
+            'void MotionOutput::release_restore(',
             'void MotionOutput::rollback_route(',
         ]
         with tempfile.TemporaryDirectory(prefix='x3-linear-material-live-') as directory:
@@ -155,6 +157,7 @@ class LinearMaterialLiveTests(unittest.TestCase):
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
             self.assertIn('failures=0', run.stdout)
             self.assertIn('linear_emission_cache checks=', run.stdout)
+            self.assertIn('linear_material_restore_ownership checks=', run.stdout)
             self.assertIn('linear_material_xt_cache checks=', run.stdout)
             self.assertIn('linear_material_xt_deferred_notice checks=', run.stdout)
             self.assertIn('linear_emission_route checks=', run.stdout)

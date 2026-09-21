@@ -276,15 +276,18 @@ struct MotionRoute {
  Region prefix_region{};bool prefix_evaluated=false;unsigned prefix_region_permille=0;
  bool sun_color_writer=false,sun_receiver=false;std::uint8_t sun_z_state=0,sun_refusal=0;std::uint16_t sun_draw_state=0;bool native_mip_bias=false;
  bool original_fill=false; // the fill variant the bind path selected for this route
+ // Scoped owned restoration references (ownership-shadow-lifetime-diagnosis.md):
+ // the device's actual bindings, owned before the first injected bind.
+ IDirect3DVertexShader9* restore_vs=nullptr;IDirect3DPixelShader9* restore_ps=nullptr;bool restore_held=false;
 };
-struct Counters{bool hook_scene_end=false,bloom_copy_seen=false;unsigned material_routed=0,material_bump_routed=0;unsigned set_rt=0,set_rt_ticks=0,lazy_flushes=0,lazy_mask_writes=0;unsigned gates[8]{},fill_ticks=0,lazy_flush_ticks=0,gate_ticks=0,mip_bias_restores=0,mip_bias_failures=0;unsigned draws=0,restore_failures=0,material_bind_failures=0,mip_bias_game_writes=0,rs_resyncs=0,sb_resyncs=0;};
+struct Counters{bool hook_scene_end=false,bloom_copy_seen=false;unsigned material_routed=0,material_bump_routed=0;unsigned set_rt=0,set_rt_ticks=0,lazy_flushes=0,lazy_mask_writes=0;unsigned gates[8]{},fill_ticks=0,lazy_flush_ticks=0,gate_ticks=0,mip_bias_restores=0,mip_bias_failures=0;unsigned draws=0,restore_failures=0,material_bind_failures=0,mip_bias_game_writes=0,rs_resyncs=0,sb_resyncs=0;unsigned restore_getters=0,restore_declines=0;};
 struct D3DDISPLAYMODE{D3DFORMAT Format=D3DFMT_UNKNOWN;};
 struct Device {
  unsigned display_mode_reads=0;HRESULT display_mode_result=S_OK;D3DFORMAT display_mode_format=1;
  unsigned stage_reads=0;DWORD stage_flags=0;HRESULT stage_result=S_OK;
  HRESULT target_result=S_OK;std::vector<int> calls; std::vector<unsigned> failed_calls; unsigned ordinal=0;
  IDirect3DVertexShader9* bound_vs=nullptr;IDirect3DPixelShader9* bound_ps=nullptr;
- std::array<DWORD,6> srgb{};unsigned sampler_reads=0;int fail_sampler=-1;bool fail_combined_create=false,fail_motion_create=false,fail_get_vs=false,fail_get_ps=false;
+ std::array<DWORD,6> srgb{};unsigned sampler_reads=0;int fail_sampler=-1;bool fail_combined_create=false,fail_motion_create=false,fail_get_vs=false,fail_get_ps=false;unsigned shader_gets=0;
  std::map<DWORD,IDirect3DBaseTexture9*>textures;std::map<DWORD,HRESULT>texture_failures;unsigned texture_reads=0;
  unsigned emission_creates=0,vs_creates=0;bool fail_emission_create=false,partial_emission_create=false,null_emission_create=false;
  bool mutation_faults=false;unsigned state_ordinal=0;std::vector<unsigned>state_failures;
@@ -329,8 +332,8 @@ HRESULT set_target(D d,DWORD index,IDirect3DSurface9*p){d->targets[index]=p;cons
 HRESULT set_state(D d,DWORD index,DWORD value){d->write_masks[index==D3DRS_COLORWRITEENABLE1?1:2]=value;return d->state_result();}
 HRESULT set_sampler(D d,DWORD,D3DSAMPLERSTATETYPE,DWORD){return d->fails()?E_FAIL:S_OK;}
 HRESULT set_constants(D d,UINT start,const float*p,UINT count){if(start==252)std::memcpy(d->vs_constants.data(),p,count*4*sizeof(float));else std::memcpy(d->ps_constants.data(),p,count*4*sizeof(float));return d->state_result();}
-HRESULT get_vs(D d,IDirect3DVertexShader9**p){if(d->fail_get_vs)return E_FAIL;*p=d->bound_vs;if(*p)(*p)->AddRef();return S_OK;}
-HRESULT get_ps(D d,IDirect3DPixelShader9**p){if(d->fail_get_ps)return E_FAIL;*p=d->bound_ps;if(*p)(*p)->AddRef();return S_OK;}
+HRESULT get_vs(D d,IDirect3DVertexShader9**p){++d->shader_gets;if(d->fail_get_vs)return E_FAIL;*p=d->bound_vs;if(*p)(*p)->AddRef();return S_OK;}
+HRESULT get_ps(D d,IDirect3DPixelShader9**p){++d->shader_gets;if(d->fail_get_ps)return E_FAIL;*p=d->bound_ps;if(*p)(*p)->AddRef();return S_OK;}
 HRESULT get_f(D,UINT,float*,UINT){return S_OK;}HRESULT get_i(D,UINT,int*,UINT){return S_OK;}
 HRESULT get_frequency(D,UINT,UINT*out){*out=1;return S_OK;}
 HRESULT get_stream(D,UINT,IDirect3DVertexBuffer9**p,UINT*,UINT*){*p=nullptr;return S_OK;}
@@ -541,7 +544,7 @@ public:
  void set_vertex_shader(IDirect3DVertexShader9*)noexcept;void set_pixel_shader(IDirect3DPixelShader9*)noexcept;
  void set_render_state(D3DRENDERSTATETYPE,DWORD)noexcept;
  void set_sampler_state(DWORD,D3DSAMPLERSTATETYPE,DWORD)noexcept;void resync_samplers()noexcept;
- void refresh_linear_material_contract()noexcept;unsigned linear_material_refusal()noexcept;HRESULT bind_variant_pair(MotionRoute&,bool)noexcept;HRESULT undo(MotionRoute&)noexcept;void rollback_route(MotionRoute&)noexcept;
+ void refresh_linear_material_contract()noexcept;unsigned linear_material_refusal()noexcept;HRESULT bind_variant_pair(MotionRoute&,bool)noexcept;HRESULT undo(MotionRoute&)noexcept;HRESULT acquire_restore(MotionRoute&)noexcept;void release_restore(MotionRoute&)noexcept;void rollback_route(MotionRoute&)noexcept;
  void count_material_route(const MotionRoute&)noexcept;
 };
 // Win32 environment semantics needed by capture's unmodified parsing block.
@@ -1318,6 +1321,75 @@ void fog_card_shadow_reset_cases(){
  m.release_resources();
  std::printf("fog_card_shadow_reset checks=%u\n",checks-before);
 }
+// Scoped owned shader restoration
+// (docs/architecture/ownership-shadow-lifetime-diagnosis.md): an injected bind
+// owns the device's actual VS/PS through the public getters, restores from
+// those owned references (never from the borrowed shadow pointers) and
+// releases them once.
+void restoration_ownership_cases(){
+ const unsigned begin=checks;
+ IDirect3DVertexShader9 stale_vs;IDirect3DPixelShader9 stale_ps; // decoys the old weak-shadow restore would have bound
+ auto arm=[&](MotionOutput&m,Device&d,IDirect3DVertexShader9*app_vs,IDirect3DPixelShader9*app_ps,
+               IDirect3DVertexShader9&reg_vs,IDirect3DPixelShader9&reg_ps,DWORD&v,DWORD&p){
+  m.configure_linear_materials(true,{});m.device_=&d;
+  d.bound_vs=&reg_vs;d.bound_ps=&reg_ps;m.set_vertex_shader(&reg_vs);m.set_pixel_shader(&reg_ps);
+  m.register_vertex_shader(&reg_vs,&v,4,v);m.register_pixel_shader(&reg_ps,&p,4,p);
+  CHECK(m.shadow_.vs_variant&&m.shadow_.ps_variant);
+  // The shadow's borrowed application pointers are deliberately stale: only
+  // the getter results may reach the device again.
+  m.shadow_.vs=&stale_vs;m.shadow_.ps=&stale_ps;
+  d.bound_vs=app_vs;d.bound_ps=app_ps;d.shader_gets=0;
+ };
+ // Owned, restored from the getter results, released exactly once.
+ {Device d;MotionOutput m;IDirect3DVertexShader9 reg_vs,app_vs;IDirect3DPixelShader9 reg_ps,app_ps;DWORD v=10,p=20;
+  arm(m,d,&app_vs,&app_ps,reg_vs,reg_ps,v,p);
+  const unsigned vs_refs=app_vs.refs,ps_refs=app_ps.refs,freed=releases;
+  MotionRoute r;CHECK(m.bind_variant_pair(r,false)==S_OK);
+  CHECK(d.shader_gets==2&&m.counters_.restore_getters==2&&m.counters_.restore_declines==0);
+  CHECK(r.restore_held&&r.restore_vs==&app_vs&&r.restore_ps==&app_ps);
+  CHECK(app_vs.refs==vs_refs+1&&app_ps.refs==ps_refs+1); // one owned reference each
+  CHECK(d.bound_vs==m.shadow_.vs_variant&&d.bound_ps==m.shadow_.ps_variant);
+  CHECK(m.undo(r)==S_OK&&d.bound_vs==&app_vs&&d.bound_ps==&app_ps);
+  CHECK(d.bound_vs!=&stale_vs&&d.bound_ps!=&stale_ps); // never the borrowed shadow
+  m.release_restore(r);
+  CHECK(!r.restore_held&&!r.restore_vs&&!r.restore_ps);
+  CHECK(app_vs.refs==vs_refs&&app_ps.refs==ps_refs&&releases==freed+2); // balanced
+  m.release_restore(r);CHECK(releases==freed+2&&app_vs.refs==vs_refs); // idempotent
+  m.release_resources();
+ }
+ // One acquisition per routed draw: a second injected bind makes no getter call.
+ {Device d;MotionOutput m;IDirect3DVertexShader9 reg_vs,app_vs;IDirect3DPixelShader9 reg_ps,app_ps;DWORD v=10,p=20;
+  arm(m,d,&app_vs,&app_ps,reg_vs,reg_ps,v,p);
+  const unsigned vs_refs=app_vs.refs;MotionRoute r;
+  CHECK(m.bind_variant_pair(r,false)==S_OK&&m.bind_variant_pair(r,false)==S_OK);
+  CHECK(d.shader_gets==2&&m.counters_.restore_getters==2&&app_vs.refs==vs_refs+1);
+  m.release_restore(r);CHECK(app_vs.refs==vs_refs);m.release_resources();
+ }
+ // A null binding is an owned null: restored as null, releasing nothing.
+ {Device d;MotionOutput m;IDirect3DVertexShader9 reg_vs;IDirect3DPixelShader9 reg_ps;DWORD v=10,p=20;
+  arm(m,d,nullptr,nullptr,reg_vs,reg_ps,v,p);
+  const unsigned freed=releases;MotionRoute r;CHECK(m.bind_variant_pair(r,false)==S_OK);
+  CHECK(r.restore_held&&!r.restore_vs&&!r.restore_ps&&d.shader_gets==2);
+  CHECK(d.bound_vs==m.shadow_.vs_variant&&d.bound_ps==m.shadow_.ps_variant);
+  CHECK(m.undo(r)==S_OK&&!d.bound_vs&&!d.bound_ps);
+  m.release_restore(r);CHECK(releases==freed&&!r.restore_held);m.release_resources();
+ }
+ // A failing getter declines the injection before any native change and
+ // releases whatever it had already acquired.
+ for(unsigned stage:{0u,1u}){Device d;MotionOutput m;IDirect3DVertexShader9 reg_vs,app_vs;IDirect3DPixelShader9 reg_ps,app_ps;DWORD v=10,p=20;
+  arm(m,d,&app_vs,&app_ps,reg_vs,reg_ps,v,p);
+  const unsigned vs_refs=app_vs.refs,ps_refs=app_ps.refs;
+  if(stage==0)d.fail_get_vs=true;else d.fail_get_ps=true;
+  d.calls.clear();MotionRoute r;CHECK(m.bind_variant_pair(r,false)==E_FAIL);
+  CHECK(!r.restore_held&&!r.restore_vs&&!r.restore_ps&&!r.vs_set&&!r.ps_set);
+  CHECK(d.calls.empty()&&d.bound_vs==&app_vs&&d.bound_ps==&app_ps);
+  CHECK(m.counters_.restore_declines==1&&r.preparation_error==E_FAIL);
+  CHECK(app_vs.refs==vs_refs&&app_ps.refs==ps_refs);
+  CHECK(m.undo(r)==S_OK&&d.calls.empty());m.release_resources();
+ }
+ std::printf("linear_material_restore_ownership checks=%u\n",checks-begin);
+}
+
 int main(){
  xt_deferred_notice_cases();
  environment[L"X3M_HDR_TONEMAP"]=L"agx";environment[L"X3M_LINEAR_MATERIALS"]=L"1";configure_environment();CHECK(linear_material_requested&&linear_material_config.direct_gain==1);
@@ -1338,6 +1410,9 @@ int main(){
 
  Device device;MotionOutput m;m.configure_linear_materials(true,{});m.device_=&device;
  IDirect3DVertexShader9 original_vs;IDirect3DPixelShader9 original_ps;DWORD vs=10,ps=20;
+ // The device's actual bindings are the application's pair; the injected
+ // binds own and restore those, not the shadow's borrowed pointers.
+ device.bound_vs=&original_vs;device.bound_ps=&original_ps;
  m.set_vertex_shader(&original_vs);m.set_pixel_shader(&original_ps);
  m.register_vertex_shader(&original_vs,&vs,4,10);m.register_pixel_shader(&original_ps,&ps,4,20);
  CHECK(renderer::motion_transforms==2&&renderer::material_transforms==2);
@@ -1396,5 +1471,6 @@ int main(){
  distance_fade_cache_cases();
  distance_fade_route_cases();
  distance_fade_environment_cases();
+ restoration_ownership_cases();
  std::printf("linear_material_live checks=%u failures=%u\n",checks,failures);return failures?1:0;
 }
