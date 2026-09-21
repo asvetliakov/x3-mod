@@ -2239,3 +2239,7 @@ with and without glass and in the plain mask too (fast-math shader compilation, 
 `run_temporal_pass.py` on bottle X3: numerical 538 (was 522), 15 flight rows. The
 host replays (`taa_lattice_gate_replay.py` `camera_check`) still count the sentinel vote; section 32.5's `sentfix` variant
 is the model of this change.
+
+#### 32.6 Run 61 verdict (2026-09-22)
+
+run215/run216 on the Run61 DLL: the user reports the solar-plant crawl as fixed or nearly so in forward flight and pans. The thin-region weight stays at **0.97**: the user could not reliably separate 0.97 from `0.94,1` (0.94 perhaps slightly less blur in motion, slightly more crawl). A speed-eased weight is the fallback if motion blur becomes a complaint. Lasers over sky showed no trails with `--taa-sentinel-stabiliser 0.7`. Open: distant unrouted stations still flicker under fast pans (temporal-resolve ledger, run215 entries).
