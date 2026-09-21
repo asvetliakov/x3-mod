@@ -1,0 +1,9 @@
+{
+  "result": "PASS_no_blockers",
+  "reviewer": "review_fog_range_replay",
+  "focused_tests": 9,
+  "image_hashes_verified": 32,
+  "full_report_sha256": "7b14860dc1dcd3d039213d760a3a00e4fa254ea98efb071875d908d6d18227ab",
+  "full_report_local": "/tmp/x3-fog-bank-preview/report.json",
+  "scope": "Offline fixed recipe and sampling experiment; user prefers broader connected clouds"
+}

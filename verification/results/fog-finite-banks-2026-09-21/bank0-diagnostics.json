@@ -1,0 +1,1554 @@
+{
+  "analysis_sha256": "80c0acad6ea668db6e84b7ee643e2b6cfc9103b6ad06e473d64f0386239986e0",
+  "host_seconds": 3.643472542,
+  "images": {
+    "bluewell-canonical-10km-bank0-only-cloud-only.png": "43683d1076fd1e8e916abd625884dfe558b1334d8187719ca42dfa53cdd06702",
+    "bluewell-canonical-30km-bank0-only-cloud-only.png": "b59ff2231d5579d6fb15013eed38206f1b06cba3504c5fa8b23bb24df8d8d50e",
+    "bluewell-canonical-38km-bank0-only-cloud-only.png": "f3126583300fb8c3feec961778460f17b08875143a76f3ce41d042274daa30b2",
+    "foggreenoutlands-canonical-10km-bank0-only-cloud-only.png": "0d1fe31fa3780702e795e733ffd7d55a2c3207d8ec965950c725a345755dc8ea",
+    "foggreenoutlands-canonical-30km-bank0-only-cloud-only.png": "ffac80680cc60040287a1d561b205036fc53ab658f5ce7a5d2ae389111af416c",
+    "foggreenoutlands-canonical-38km-bank0-only-cloud-only.png": "fc949489614a21c547e508b4b4896801f64a19fdeb36a54c29a33143fee34114"
+  },
+  "purpose": "same-camera bank0-only diagnostic; original all-bank previews remain authoritative for layout",
+  "rows": [
+    {
+      "all_bank_intersections_near_to_far": [
+        {
+          "camera_to_center_km": 10.0,
+          "camera_to_center_render_units": 50000.0,
+          "cell": [
+            0,
+            0,
+            0
+          ],
+          "median_entry_distance_km": 7.462930314703815,
+          "median_entry_distance_render_units": 37314.65157351908,
+          "minimum_entry_distance_km": 6.723530227456168,
+          "minimum_entry_distance_render_units": 33617.65113728084,
+          "rays": 5884
+        },
+        {
+          "camera_to_center_km": 29.42820314957235,
+          "camera_to_center_render_units": 147141.01574786176,
+          "cell": [
+            0,
+            0,
+            -1
+          ],
+          "median_entry_distance_km": 27.01877561308419,
+          "median_entry_distance_render_units": 135093.87806542095,
+          "minimum_entry_distance_km": 26.1533578473171,
+          "minimum_entry_distance_render_units": 130766.7892365855,
+          "rays": 618
+        },
+        {
+          "camera_to_center_km": 34.43987847009626,
+          "camera_to_center_render_units": 172199.3923504813,
+          "cell": [
+            1,
+            0,
+            -1
+          ],
+          "median_entry_distance_km": 32.05702988841189,
+          "median_entry_distance_render_units": 160285.14944205945,
+          "minimum_entry_distance_km": 31.164191618633673,
+          "minimum_entry_distance_render_units": 155820.95809316836,
+          "rays": 739
+        },
+        {
+          "camera_to_center_km": 35.99798250930182,
+          "camera_to_center_render_units": 179989.91254650912,
+          "cell": [
+            0,
+            1,
+            -1
+          ],
+          "median_entry_distance_km": 34.174239413408486,
+          "median_entry_distance_render_units": 170871.19706704243,
+          "minimum_entry_distance_km": 33.35203490652688,
+          "minimum_entry_distance_render_units": 166760.1745326344,
+          "rays": 94
+        },
+        {
+          "camera_to_center_km": 36.973675834402776,
+          "camera_to_center_render_units": 184868.3791720139,
+          "cell": [
+            -1,
+            0,
+            -1
+          ],
+          "median_entry_distance_km": 34.60455776356945,
+          "median_entry_distance_render_units": 173022.78881784726,
+          "minimum_entry_distance_km": 33.69872275263729,
+          "minimum_entry_distance_render_units": 168493.61376318644,
+          "rays": 650
+        },
+        {
+          "camera_to_center_km": 37.09842225792762,
+          "camera_to_center_render_units": 185492.11128963812,
+          "cell": [
+            0,
+            -1,
+            -1
+          ],
+          "median_entry_distance_km": 35.36801042614895,
+          "median_entry_distance_render_units": 176840.05213074473,
+          "minimum_entry_distance_km": 34.5618584943294,
+          "minimum_entry_distance_render_units": 172809.292471647,
+          "rays": 76
+        },
+        {
+          "camera_to_center_km": 38.883449400098236,
+          "camera_to_center_render_units": 194417.2470004912,
+          "cell": [
+            1,
+            1,
+            -1
+          ],
+          "median_entry_distance_km": 36.732691856492885,
+          "median_entry_distance_render_units": 183663.4592824644,
+          "minimum_entry_distance_km": 35.82065950090524,
+          "minimum_entry_distance_render_units": 179103.2975045262,
+          "rays": 215
+        },
+        {
+          "camera_to_center_km": 39.6995901515998,
+          "camera_to_center_render_units": 198497.950757999,
+          "cell": [
+            1,
+            -1,
+            -1
+          ],
+          "median_entry_distance_km": 38.641956371373674,
+          "median_entry_distance_render_units": 193209.78185686836,
+          "minimum_entry_distance_km": 38.46422101609339,
+          "minimum_entry_distance_render_units": 192321.10508046695,
+          "rays": 11
+        },
+        {
+          "camera_to_center_km": 39.71355344621028,
+          "camera_to_center_render_units": 198567.76723105137,
+          "cell": [
+            -1,
+            1,
+            -1
+          ],
+          "median_entry_distance_km": 38.455246861579504,
+          "median_entry_distance_render_units": 192276.2343078975,
+          "minimum_entry_distance_km": 37.969785407925656,
+          "minimum_entry_distance_render_units": 189848.9270396283,
+          "rays": 32
+        }
+      ],
+      "bank0_candidate500_error": {
+        "S_normalized_unit_radiance": [
+          {
+            "count": 36864,
+            "max": 1.557322684675455e-05,
+            "p50": 0.0,
+            "p95": 1.5262266970239497e-07,
+            "p99": 1.3288890477269921e-06
+          },
+          {
+            "count": 36864,
+            "max": 6.720097735524178e-05,
+            "p50": 0.0,
+            "p95": 7.145848940126586e-07,
+            "p99": 5.568375345319526e-06
+          },
+          {
+            "count": 36864,
+            "max": 0.00027687870897352695,
+            "p50": 0.0,
+            "p95": 2.607040369184677e-06,
+            "p99": 2.041856569121597e-05
+          }
+        ],
+        "T": {
+          "count": 36864,
+          "max": 0.0011736750602722168,
+          "p50": 0.0,
+          "p95": 1.2636184692382812e-05,
+          "p99": 0.00010214686393737824
+        },
+        "count": 36864
+      },
+      "bank0_candidate_cost": {
+        "atlas_fetches": {
+          "count": 36864,
+          "max": 132.0,
+          "p50": 0.0,
+          "p95": 108.0,
+          "p99": 128.0
+        },
+        "bank_projected_pixel_counts": [
+          5884
+        ],
+        "chord_render_units": {
+          "count": 36864,
+          "max": 32763.087890625,
+          "p50": 0.0,
+          "p95": 26683.26249999987,
+          "p99": 31613.115234375
+        },
+        "enumerated_banks": 1,
+        "projected_occupancy_fraction": 0.1596137152777778,
+        "rays": 36864,
+        "rays_hitting_any_bank": 5884,
+        "samples": {
+          "count": 36864,
+          "max": 66.0,
+          "p50": 0.0,
+          "p95": 54.0,
+          "p99": 64.0
+        },
+        "sphere_hits": {
+          "count": 36864,
+          "max": 1.0,
+          "p50": 0.0,
+          "p95": 1.0,
+          "p99": 1.0
+        },
+        "visible_banks_on_raster": 1
+      },
+      "bank0_center": [
+        55980.0,
+        56853.5,
+        49541.0
+      ],
+      "bank0_reference_128_vs_64": {
+        "S_normalized_unit_radiance": [
+          {
+            "count": 36864,
+            "max": 5.170004442334175e-07,
+            "p50": 0.0,
+            "p95": 1.0767899993879835e-08,
+            "p99": 1.214710937347278e-07
+          },
+          {
+            "count": 36864,
+            "max": 2.2471649572253227e-06,
+            "p50": 0.0,
+            "p95": 5.895562935620538e-08,
+            "p99": 5.588366184383634e-07
+          },
+          {
+            "count": 36864,
+            "max": 7.31833279132843e-06,
+            "p50": 0.0,
+            "p95": 2.2099375200923512e-07,
+            "p99": 2.0336674060672555e-06
+          }
+        ],
+        "T": {
+          "count": 36864,
+          "max": 4.208087921142578e-05,
+          "p50": 0.0,
+          "p95": 1.0728836059570312e-06,
+          "p99": 1.0095238685608066e-05
+        },
+        "count": 36864
+      },
+      "bank0_reference_nonidentity_rays": 3948,
+      "camera_origin": [
+        55980.0,
+        56853.5,
+        99541.0
+      ],
+      "family": "bluewell",
+      "image": "bluewell-canonical-10km-bank0-only-cloud-only.png",
+      "nearer_intersected_banks_than_bank0": [],
+      "nominal_bank0_center_distance_km": 10.0,
+      "nominal_bank0_center_distance_render_units": 50000.0,
+      "pose": "10km"
+    },
+    {
+      "all_bank_intersections_near_to_far": [
+        {
+          "camera_to_center_km": 11.349667679936712,
+          "camera_to_center_render_units": 56748.33839968356,
+          "cell": [
+            0,
+            0,
+            1
+          ],
+          "median_entry_distance_km": 8.833196161984036,
+          "median_entry_distance_render_units": 44165.980809920184,
+          "minimum_entry_distance_km": 8.072906860051846,
+          "minimum_entry_distance_render_units": 40364.534300259234,
+          "rays": 4516
+        },
+        {
+          "camera_to_center_km": 30.0,
+          "camera_to_center_render_units": 150000.0,
+          "cell": [
+            0,
+            0,
+            0
+          ],
+          "median_entry_distance_km": 27.58393227030045,
+          "median_entry_distance_render_units": 137919.66135150226,
+          "minimum_entry_distance_km": 26.727140296253463,
+          "minimum_entry_distance_render_units": 133635.70148126732,
+          "rays": 592
+        },
+        {
+          "camera_to_center_km": 34.27741506837994,
+          "camera_to_center_render_units": 171387.07534189968,
+          "cell": [
+            1,
+            0,
+            0
+          ],
+          "median_entry_distance_km": 31.895712647392436,
+          "median_entry_distance_render_units": 159478.5632369622,
+          "minimum_entry_distance_km": 31.001264289759757,
+          "minimum_entry_distance_render_units": 155006.3214487988,
+          "rays": 775
+        },
+        {
+          "camera_to_center_km": 35.86493992609635,
+          "camera_to_center_render_units": 179324.69963048174,
+          "cell": [
+            0,
+            1,
+            0
+          ],
+          "median_entry_distance_km": 33.32788261017376,
+          "median_entry_distance_render_units": 166639.4130508688,
+          "minimum_entry_distance_km": 32.58904793345384,
+          "minimum_entry_distance_render_units": 162945.2396672692,
+          "rays": 415
+        },
+        {
+          "camera_to_center_km": 38.201459234988654,
+          "camera_to_center_render_units": 191007.29617494327,
+          "cell": [
+            -1,
+            0,
+            0
+          ],
+          "median_entry_distance_km": 35.839644558460954,
+          "median_entry_distance_render_units": 179198.22279230476,
+          "minimum_entry_distance_km": 34.92616975946407,
+          "minimum_entry_distance_render_units": 174630.84879732033,
+          "rays": 642
+        },
+        {
+          "camera_to_center_km": 40.078531407756195,
+          "camera_to_center_render_units": 200392.65703878098,
+          "cell": [
+            1,
+            1,
+            0
+          ],
+          "median_entry_distance_km": 38.098976311433255,
+          "median_entry_distance_render_units": 190494.88155716629,
+          "minimum_entry_distance_km": 37.174677869432024,
+          "minimum_entry_distance_render_units": 185873.38934716012,
+          "rays": 158
+        },
+        {
+          "camera_to_center_km": 40.553471160617065,
+          "camera_to_center_render_units": 202767.35580308532,
+          "cell": [
+            1,
+            -1,
+            0
+          ],
+          "median_entry_distance_km": 38.69975180360487,
+          "median_entry_distance_render_units": 193498.75901802434,
+          "minimum_entry_distance_km": 37.899464184350975,
+          "minimum_entry_distance_render_units": 189497.32092175487,
+          "rays": 102
+        },
+        {
+          "camera_to_center_km": 41.61210517869169,
+          "camera_to_center_render_units": 208060.52589345846,
+          "cell": [
+            -1,
+            -1,
+            0
+          ],
+          "median_entry_distance_km": 39.84830957797708,
+          "median_entry_distance_render_units": 199241.54788988543,
+          "minimum_entry_distance_km": 39.793964147533124,
+          "minimum_entry_distance_render_units": 198969.82073766564,
+          "rays": 8
+        },
+        {
+          "camera_to_center_km": 41.84800663896669,
+          "camera_to_center_render_units": 209240.03319483344,
+          "cell": [
+            -1,
+            1,
+            0
+          ],
+          "median_entry_distance_km": 39.538301366865795,
+          "median_entry_distance_render_units": 197691.506834329,
+          "minimum_entry_distance_km": 39.13975105658075,
+          "minimum_entry_distance_render_units": 195698.75528290373,
+          "rays": 57
+        }
+      ],
+      "bank0_candidate500_error": {
+        "S_normalized_unit_radiance": [
+          {
+            "count": 36864,
+            "max": 1.74121669260785e-05,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 3.911615209520203e-10
+          },
+          {
+            "count": 36864,
+            "max": 7.063441444188356e-05,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 1.0712903382171548e-08
+          },
+          {
+            "count": 36864,
+            "max": 0.00021836860105395317,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 4.234610660348068e-08
+          }
+        ],
+        "T": {
+          "count": 36864,
+          "max": 0.0010529160499572754,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 2.384185791015625e-07
+        },
+        "count": 36864
+      },
+      "bank0_candidate_cost": {
+        "atlas_fetches": {
+          "count": 36864,
+          "max": 132.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 82.0
+        },
+        "bank_projected_pixel_counts": [
+          592
+        ],
+        "chord_render_units": {
+          "count": 36864,
+          "max": 32723.76953125,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 20113.84765625
+        },
+        "enumerated_banks": 1,
+        "projected_occupancy_fraction": 0.016059027777777776,
+        "rays": 36864,
+        "rays_hitting_any_bank": 592,
+        "samples": {
+          "count": 36864,
+          "max": 66.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 41.0
+        },
+        "sphere_hits": {
+          "count": 36864,
+          "max": 1.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 1.0
+        },
+        "visible_banks_on_raster": 1
+      },
+      "bank0_center": [
+        55980.0,
+        56853.5,
+        49541.0
+      ],
+      "bank0_reference_128_vs_64": {
+        "S_normalized_unit_radiance": [
+          {
+            "count": 36864,
+            "max": 1.0395888239145279e-07,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 5.737469110923102e-12
+          },
+          {
+            "count": 36864,
+            "max": 4.1280873119831085e-07,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 1.0134083794355918e-10
+          },
+          {
+            "count": 36864,
+            "max": 1.3387762010097504e-06,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 4.164292022324932e-10
+          }
+        ],
+        "T": {
+          "count": 36864,
+          "max": 6.556510925292969e-06,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "count": 36864
+      },
+      "bank0_reference_nonidentity_rays": 397,
+      "camera_origin": [
+        55980.0,
+        56853.5,
+        199541.0
+      ],
+      "family": "bluewell",
+      "image": "bluewell-canonical-30km-bank0-only-cloud-only.png",
+      "nearer_intersected_banks_than_bank0": [
+        {
+          "camera_to_center_km": 11.349667679936712,
+          "camera_to_center_render_units": 56748.33839968356,
+          "cell": [
+            0,
+            0,
+            1
+          ],
+          "median_entry_distance_km": 8.833196161984036,
+          "median_entry_distance_render_units": 44165.980809920184,
+          "minimum_entry_distance_km": 8.072906860051846,
+          "minimum_entry_distance_render_units": 40364.534300259234,
+          "rays": 4516
+        }
+      ],
+      "nominal_bank0_center_distance_km": 30.0,
+      "nominal_bank0_center_distance_render_units": 150000.0,
+      "pose": "30km"
+    },
+    {
+      "all_bank_intersections_near_to_far": [
+        {
+          "camera_to_center_km": 19.32690757583841,
+          "camera_to_center_render_units": 96634.53787919204,
+          "cell": [
+            0,
+            0,
+            1
+          ],
+          "median_entry_distance_km": 16.887382363815213,
+          "median_entry_distance_render_units": 84436.91181907606,
+          "minimum_entry_distance_km": 16.050372837940817,
+          "minimum_entry_distance_render_units": 80251.86418970408,
+          "rays": 1454
+        },
+        {
+          "camera_to_center_km": 27.63488543553239,
+          "camera_to_center_render_units": 138174.42717766194,
+          "cell": [
+            -1,
+            0,
+            1
+          ],
+          "median_entry_distance_km": 25.780009540370614,
+          "median_entry_distance_render_units": 128900.04770185307,
+          "minimum_entry_distance_km": 24.93131594419488,
+          "minimum_entry_distance_render_units": 124656.57972097439,
+          "rays": 295
+        },
+        {
+          "camera_to_center_km": 27.822400668301434,
+          "camera_to_center_render_units": 139112.00334150717,
+          "cell": [
+            1,
+            0,
+            1
+          ],
+          "median_entry_distance_km": 25.279144939424555,
+          "median_entry_distance_render_units": 126395.72469712277,
+          "minimum_entry_distance_km": 24.546254477754765,
+          "minimum_entry_distance_render_units": 122731.27238877382,
+          "rays": 1061
+        },
+        {
+          "camera_to_center_km": 38.0,
+          "camera_to_center_render_units": 190000.0,
+          "cell": [
+            0,
+            0,
+            0
+          ],
+          "median_entry_distance_km": 35.63983150301082,
+          "median_entry_distance_render_units": 178199.1575150541,
+          "minimum_entry_distance_km": 34.729687966058755,
+          "minimum_entry_distance_render_units": 173648.43983029376,
+          "rays": 376
+        },
+        {
+          "camera_to_center_km": 41.19781042446309,
+          "camera_to_center_render_units": 205989.05212231548,
+          "cell": [
+            1,
+            0,
+            0
+          ],
+          "median_entry_distance_km": 38.678315845204715,
+          "median_entry_distance_render_units": 193391.57922602358,
+          "minimum_entry_distance_km": 37.922481714800696,
+          "minimum_entry_distance_render_units": 189612.4085740035,
+          "rays": 393
+        },
+        {
+          "camera_to_center_km": 43.06855367785759,
+          "camera_to_center_render_units": 215342.76838928793,
+          "cell": [
+            0,
+            1,
+            0
+          ],
+          "median_entry_distance_km": 39.89588436252508,
+          "median_entry_distance_render_units": 199479.4218126254,
+          "minimum_entry_distance_km": 39.792163589721746,
+          "minimum_entry_distance_render_units": 198960.81794860872,
+          "rays": 48
+        }
+      ],
+      "bank0_candidate500_error": {
+        "S_normalized_unit_radiance": [
+          {
+            "count": 36864,
+            "max": 1.4055840438231826e-06,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0
+          },
+          {
+            "count": 36864,
+            "max": 6.4476917032152414e-06,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0
+          },
+          {
+            "count": 36864,
+            "max": 2.826312993420288e-05,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0
+          }
+        ],
+        "T": {
+          "count": 36864,
+          "max": 0.0001353621482849121,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "count": 36864
+      },
+      "bank0_candidate_cost": {
+        "atlas_fetches": {
+          "count": 36864,
+          "max": 106.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 2.0
+        },
+        "bank_projected_pixel_counts": [
+          376
+        ],
+        "chord_render_units": {
+          "count": 36864,
+          "max": 26351.560546875,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 296.2005615234375
+        },
+        "enumerated_banks": 1,
+        "projected_occupancy_fraction": 0.010199652777777778,
+        "rays": 36864,
+        "rays_hitting_any_bank": 376,
+        "samples": {
+          "count": 36864,
+          "max": 53.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 1.0
+        },
+        "sphere_hits": {
+          "count": 36864,
+          "max": 1.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 1.0
+        },
+        "visible_banks_on_raster": 1
+      },
+      "bank0_center": [
+        55980.0,
+        56853.5,
+        49541.0
+      ],
+      "bank0_reference_128_vs_64": {
+        "S_normalized_unit_radiance": [
+          {
+            "count": 36864,
+            "max": 1.2394593795761466e-08,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0
+          },
+          {
+            "count": 36864,
+            "max": 5.451147444546223e-08,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0
+          },
+          {
+            "count": 36864,
+            "max": 2.0675361156463623e-07,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0
+          }
+        ],
+        "T": {
+          "count": 36864,
+          "max": 9.5367431640625e-07,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "count": 36864
+      },
+      "bank0_reference_nonidentity_rays": 237,
+      "camera_origin": [
+        55980.0,
+        56853.5,
+        239541.0
+      ],
+      "family": "bluewell",
+      "image": "bluewell-canonical-38km-bank0-only-cloud-only.png",
+      "nearer_intersected_banks_than_bank0": [
+        {
+          "camera_to_center_km": 19.32690757583841,
+          "camera_to_center_render_units": 96634.53787919204,
+          "cell": [
+            0,
+            0,
+            1
+          ],
+          "median_entry_distance_km": 16.887382363815213,
+          "median_entry_distance_render_units": 84436.91181907606,
+          "minimum_entry_distance_km": 16.050372837940817,
+          "minimum_entry_distance_render_units": 80251.86418970408,
+          "rays": 1454
+        },
+        {
+          "camera_to_center_km": 27.63488543553239,
+          "camera_to_center_render_units": 138174.42717766194,
+          "cell": [
+            -1,
+            0,
+            1
+          ],
+          "median_entry_distance_km": 25.780009540370614,
+          "median_entry_distance_render_units": 128900.04770185307,
+          "minimum_entry_distance_km": 24.93131594419488,
+          "minimum_entry_distance_render_units": 124656.57972097439,
+          "rays": 295
+        },
+        {
+          "camera_to_center_km": 27.822400668301434,
+          "camera_to_center_render_units": 139112.00334150717,
+          "cell": [
+            1,
+            0,
+            1
+          ],
+          "median_entry_distance_km": 25.279144939424555,
+          "median_entry_distance_render_units": 126395.72469712277,
+          "minimum_entry_distance_km": 24.546254477754765,
+          "minimum_entry_distance_render_units": 122731.27238877382,
+          "rays": 1061
+        }
+      ],
+      "nominal_bank0_center_distance_km": 38.0,
+      "nominal_bank0_center_distance_render_units": 190000.0,
+      "pose": "38km"
+    },
+    {
+      "all_bank_intersections_near_to_far": [
+        {
+          "camera_to_center_km": 10.0,
+          "camera_to_center_render_units": 50000.0,
+          "cell": [
+            0,
+            0,
+            0
+          ],
+          "median_entry_distance_km": 7.462930314703815,
+          "median_entry_distance_render_units": 37314.65157351908,
+          "minimum_entry_distance_km": 6.723530227456168,
+          "minimum_entry_distance_render_units": 33617.65113728084,
+          "rays": 5884
+        },
+        {
+          "camera_to_center_km": 29.42820314957235,
+          "camera_to_center_render_units": 147141.01574786176,
+          "cell": [
+            0,
+            0,
+            -1
+          ],
+          "median_entry_distance_km": 27.01877561308419,
+          "median_entry_distance_render_units": 135093.87806542095,
+          "minimum_entry_distance_km": 26.1533578473171,
+          "minimum_entry_distance_render_units": 130766.7892365855,
+          "rays": 618
+        },
+        {
+          "camera_to_center_km": 34.43987847009626,
+          "camera_to_center_render_units": 172199.3923504813,
+          "cell": [
+            1,
+            0,
+            -1
+          ],
+          "median_entry_distance_km": 32.05702988841189,
+          "median_entry_distance_render_units": 160285.14944205945,
+          "minimum_entry_distance_km": 31.164191618633673,
+          "minimum_entry_distance_render_units": 155820.95809316836,
+          "rays": 739
+        },
+        {
+          "camera_to_center_km": 35.99798250930182,
+          "camera_to_center_render_units": 179989.91254650912,
+          "cell": [
+            0,
+            1,
+            -1
+          ],
+          "median_entry_distance_km": 34.174239413408486,
+          "median_entry_distance_render_units": 170871.19706704243,
+          "minimum_entry_distance_km": 33.35203490652688,
+          "minimum_entry_distance_render_units": 166760.1745326344,
+          "rays": 94
+        },
+        {
+          "camera_to_center_km": 36.973675834402776,
+          "camera_to_center_render_units": 184868.3791720139,
+          "cell": [
+            -1,
+            0,
+            -1
+          ],
+          "median_entry_distance_km": 34.60455776356945,
+          "median_entry_distance_render_units": 173022.78881784726,
+          "minimum_entry_distance_km": 33.69872275263729,
+          "minimum_entry_distance_render_units": 168493.61376318644,
+          "rays": 650
+        },
+        {
+          "camera_to_center_km": 37.09842225792762,
+          "camera_to_center_render_units": 185492.11128963812,
+          "cell": [
+            0,
+            -1,
+            -1
+          ],
+          "median_entry_distance_km": 35.36801042614895,
+          "median_entry_distance_render_units": 176840.05213074473,
+          "minimum_entry_distance_km": 34.5618584943294,
+          "minimum_entry_distance_render_units": 172809.292471647,
+          "rays": 76
+        },
+        {
+          "camera_to_center_km": 38.883449400098236,
+          "camera_to_center_render_units": 194417.2470004912,
+          "cell": [
+            1,
+            1,
+            -1
+          ],
+          "median_entry_distance_km": 36.732691856492885,
+          "median_entry_distance_render_units": 183663.4592824644,
+          "minimum_entry_distance_km": 35.82065950090524,
+          "minimum_entry_distance_render_units": 179103.2975045262,
+          "rays": 215
+        },
+        {
+          "camera_to_center_km": 39.6995901515998,
+          "camera_to_center_render_units": 198497.950757999,
+          "cell": [
+            1,
+            -1,
+            -1
+          ],
+          "median_entry_distance_km": 38.641956371373674,
+          "median_entry_distance_render_units": 193209.78185686836,
+          "minimum_entry_distance_km": 38.46422101609339,
+          "minimum_entry_distance_render_units": 192321.10508046695,
+          "rays": 11
+        },
+        {
+          "camera_to_center_km": 39.71355344621028,
+          "camera_to_center_render_units": 198567.76723105137,
+          "cell": [
+            -1,
+            1,
+            -1
+          ],
+          "median_entry_distance_km": 38.455246861579504,
+          "median_entry_distance_render_units": 192276.2343078975,
+          "minimum_entry_distance_km": 37.969785407925656,
+          "minimum_entry_distance_render_units": 189848.9270396283,
+          "rays": 32
+        }
+      ],
+      "bank0_candidate500_error": {
+        "S_normalized_unit_radiance": [
+          {
+            "count": 36864,
+            "max": 0.00019117770716547966,
+            "p50": 0.0,
+            "p95": 2.788717392832035e-06,
+            "p99": 1.7036800272762806e-05
+          },
+          {
+            "count": 36864,
+            "max": 0.0006988197565078735,
+            "p50": 0.0,
+            "p95": 1.2678513303399077e-05,
+            "p99": 7.015888579189831e-05
+          },
+          {
+            "count": 36864,
+            "max": 0.00014586281031370163,
+            "p50": 0.0,
+            "p95": 1.5828554751351455e-06,
+            "p99": 1.1754164006561087e-05
+          }
+        ],
+        "T": {
+          "count": 36864,
+          "max": 0.0029622912406921387,
+          "p50": 0.0,
+          "p95": 6.275475025176993e-05,
+          "p99": 0.0003639894723892257
+        },
+        "count": 36864
+      },
+      "bank0_candidate_cost": {
+        "atlas_fetches": {
+          "count": 36864,
+          "max": 132.0,
+          "p50": 0.0,
+          "p95": 108.0,
+          "p99": 128.0
+        },
+        "bank_projected_pixel_counts": [
+          5884
+        ],
+        "chord_render_units": {
+          "count": 36864,
+          "max": 32763.087890625,
+          "p50": 0.0,
+          "p95": 26683.26249999987,
+          "p99": 31613.115234375
+        },
+        "enumerated_banks": 1,
+        "projected_occupancy_fraction": 0.1596137152777778,
+        "rays": 36864,
+        "rays_hitting_any_bank": 5884,
+        "samples": {
+          "count": 36864,
+          "max": 66.0,
+          "p50": 0.0,
+          "p95": 54.0,
+          "p99": 64.0
+        },
+        "sphere_hits": {
+          "count": 36864,
+          "max": 1.0,
+          "p50": 0.0,
+          "p95": 1.0,
+          "p99": 1.0
+        },
+        "visible_banks_on_raster": 1
+      },
+      "bank0_center": [
+        55980.0,
+        56853.5,
+        49541.0
+      ],
+      "bank0_reference_128_vs_64": {
+        "S_normalized_unit_radiance": [
+          {
+            "count": 36864,
+            "max": 5.377456545829773e-06,
+            "p50": 0.0,
+            "p95": 2.5389963411726055e-07,
+            "p99": 1.4095567166805267e-06
+          },
+          {
+            "count": 36864,
+            "max": 2.454034984111786e-05,
+            "p50": 0.0,
+            "p95": 1.320446608588099e-06,
+            "p99": 5.4974202066660244e-06
+          },
+          {
+            "count": 36864,
+            "max": 4.171626642346382e-06,
+            "p50": 0.0,
+            "p95": 1.4026009012013598e-07,
+            "p99": 1.1162669397890623e-06
+          }
+        ],
+        "T": {
+          "count": 36864,
+          "max": 0.000141143798828125,
+          "p50": 0.0,
+          "p95": 6.4373016357421875e-06,
+          "p99": 2.7440190315246738e-05
+        },
+        "count": 36864
+      },
+      "bank0_reference_nonidentity_rays": 5089,
+      "camera_origin": [
+        55980.0,
+        56853.5,
+        99541.0
+      ],
+      "family": "foggreenoutlands",
+      "image": "foggreenoutlands-canonical-10km-bank0-only-cloud-only.png",
+      "nearer_intersected_banks_than_bank0": [],
+      "nominal_bank0_center_distance_km": 10.0,
+      "nominal_bank0_center_distance_render_units": 50000.0,
+      "pose": "10km"
+    },
+    {
+      "all_bank_intersections_near_to_far": [
+        {
+          "camera_to_center_km": 11.349667679936712,
+          "camera_to_center_render_units": 56748.33839968356,
+          "cell": [
+            0,
+            0,
+            1
+          ],
+          "median_entry_distance_km": 8.833196161984036,
+          "median_entry_distance_render_units": 44165.980809920184,
+          "minimum_entry_distance_km": 8.072906860051846,
+          "minimum_entry_distance_render_units": 40364.534300259234,
+          "rays": 4516
+        },
+        {
+          "camera_to_center_km": 30.0,
+          "camera_to_center_render_units": 150000.0,
+          "cell": [
+            0,
+            0,
+            0
+          ],
+          "median_entry_distance_km": 27.58393227030045,
+          "median_entry_distance_render_units": 137919.66135150226,
+          "minimum_entry_distance_km": 26.727140296253463,
+          "minimum_entry_distance_render_units": 133635.70148126732,
+          "rays": 592
+        },
+        {
+          "camera_to_center_km": 34.27741506837994,
+          "camera_to_center_render_units": 171387.07534189968,
+          "cell": [
+            1,
+            0,
+            0
+          ],
+          "median_entry_distance_km": 31.895712647392436,
+          "median_entry_distance_render_units": 159478.5632369622,
+          "minimum_entry_distance_km": 31.001264289759757,
+          "minimum_entry_distance_render_units": 155006.3214487988,
+          "rays": 775
+        },
+        {
+          "camera_to_center_km": 35.86493992609635,
+          "camera_to_center_render_units": 179324.69963048174,
+          "cell": [
+            0,
+            1,
+            0
+          ],
+          "median_entry_distance_km": 33.32788261017376,
+          "median_entry_distance_render_units": 166639.4130508688,
+          "minimum_entry_distance_km": 32.58904793345384,
+          "minimum_entry_distance_render_units": 162945.2396672692,
+          "rays": 415
+        },
+        {
+          "camera_to_center_km": 38.201459234988654,
+          "camera_to_center_render_units": 191007.29617494327,
+          "cell": [
+            -1,
+            0,
+            0
+          ],
+          "median_entry_distance_km": 35.839644558460954,
+          "median_entry_distance_render_units": 179198.22279230476,
+          "minimum_entry_distance_km": 34.92616975946407,
+          "minimum_entry_distance_render_units": 174630.84879732033,
+          "rays": 642
+        },
+        {
+          "camera_to_center_km": 40.078531407756195,
+          "camera_to_center_render_units": 200392.65703878098,
+          "cell": [
+            1,
+            1,
+            0
+          ],
+          "median_entry_distance_km": 38.098976311433255,
+          "median_entry_distance_render_units": 190494.88155716629,
+          "minimum_entry_distance_km": 37.174677869432024,
+          "minimum_entry_distance_render_units": 185873.38934716012,
+          "rays": 158
+        },
+        {
+          "camera_to_center_km": 40.553471160617065,
+          "camera_to_center_render_units": 202767.35580308532,
+          "cell": [
+            1,
+            -1,
+            0
+          ],
+          "median_entry_distance_km": 38.69975180360487,
+          "median_entry_distance_render_units": 193498.75901802434,
+          "minimum_entry_distance_km": 37.899464184350975,
+          "minimum_entry_distance_render_units": 189497.32092175487,
+          "rays": 102
+        },
+        {
+          "camera_to_center_km": 41.61210517869169,
+          "camera_to_center_render_units": 208060.52589345846,
+          "cell": [
+            -1,
+            -1,
+            0
+          ],
+          "median_entry_distance_km": 39.84830957797708,
+          "median_entry_distance_render_units": 199241.54788988543,
+          "minimum_entry_distance_km": 39.793964147533124,
+          "minimum_entry_distance_render_units": 198969.82073766564,
+          "rays": 8
+        },
+        {
+          "camera_to_center_km": 41.84800663896669,
+          "camera_to_center_render_units": 209240.03319483344,
+          "cell": [
+            -1,
+            1,
+            0
+          ],
+          "median_entry_distance_km": 39.538301366865795,
+          "median_entry_distance_render_units": 197691.506834329,
+          "minimum_entry_distance_km": 39.13975105658075,
+          "minimum_entry_distance_render_units": 195698.75528290373,
+          "rays": 57
+        }
+      ],
+      "bank0_candidate500_error": {
+        "S_normalized_unit_radiance": [
+          {
+            "count": 36864,
+            "max": 0.00021167099475860596,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 2.0709602750912555e-07
+          },
+          {
+            "count": 36864,
+            "max": 0.0005080169066786766,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 1.3443623902276434e-06
+          },
+          {
+            "count": 36864,
+            "max": 0.00016132410382851958,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 1.127171162806974e-07
+          }
+        ],
+        "T": {
+          "count": 36864,
+          "max": 0.0024494528770446777,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 6.518959999084629e-06
+        },
+        "count": 36864
+      },
+      "bank0_candidate_cost": {
+        "atlas_fetches": {
+          "count": 36864,
+          "max": 132.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 82.0
+        },
+        "bank_projected_pixel_counts": [
+          592
+        ],
+        "chord_render_units": {
+          "count": 36864,
+          "max": 32723.76953125,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 20113.84765625
+        },
+        "enumerated_banks": 1,
+        "projected_occupancy_fraction": 0.016059027777777776,
+        "rays": 36864,
+        "rays_hitting_any_bank": 592,
+        "samples": {
+          "count": 36864,
+          "max": 66.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 41.0
+        },
+        "sphere_hits": {
+          "count": 36864,
+          "max": 1.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 1.0
+        },
+        "visible_banks_on_raster": 1
+      },
+      "bank0_center": [
+        55980.0,
+        56853.5,
+        49541.0
+      ],
+      "bank0_reference_128_vs_64": {
+        "S_normalized_unit_radiance": [
+          {
+            "count": 36864,
+            "max": 1.3043172657489777e-06,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 5.0403468776494646e-09
+          },
+          {
+            "count": 36864,
+            "max": 4.191882908344269e-06,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 2.8577633202077178e-08
+          },
+          {
+            "count": 36864,
+            "max": 9.98377799987793e-07,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 2.2694825929652643e-09
+          }
+        ],
+        "T": {
+          "count": 36864,
+          "max": 1.9550323486328125e-05,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 1.1920928955078125e-07
+        },
+        "count": 36864
+      },
+      "bank0_reference_nonidentity_rays": 513,
+      "camera_origin": [
+        55980.0,
+        56853.5,
+        199541.0
+      ],
+      "family": "foggreenoutlands",
+      "image": "foggreenoutlands-canonical-30km-bank0-only-cloud-only.png",
+      "nearer_intersected_banks_than_bank0": [
+        {
+          "camera_to_center_km": 11.349667679936712,
+          "camera_to_center_render_units": 56748.33839968356,
+          "cell": [
+            0,
+            0,
+            1
+          ],
+          "median_entry_distance_km": 8.833196161984036,
+          "median_entry_distance_render_units": 44165.980809920184,
+          "minimum_entry_distance_km": 8.072906860051846,
+          "minimum_entry_distance_render_units": 40364.534300259234,
+          "rays": 4516
+        }
+      ],
+      "nominal_bank0_center_distance_km": 30.0,
+      "nominal_bank0_center_distance_render_units": 150000.0,
+      "pose": "30km"
+    },
+    {
+      "all_bank_intersections_near_to_far": [
+        {
+          "camera_to_center_km": 19.32690757583841,
+          "camera_to_center_render_units": 96634.53787919204,
+          "cell": [
+            0,
+            0,
+            1
+          ],
+          "median_entry_distance_km": 16.887382363815213,
+          "median_entry_distance_render_units": 84436.91181907606,
+          "minimum_entry_distance_km": 16.050372837940817,
+          "minimum_entry_distance_render_units": 80251.86418970408,
+          "rays": 1454
+        },
+        {
+          "camera_to_center_km": 27.63488543553239,
+          "camera_to_center_render_units": 138174.42717766194,
+          "cell": [
+            -1,
+            0,
+            1
+          ],
+          "median_entry_distance_km": 25.780009540370614,
+          "median_entry_distance_render_units": 128900.04770185307,
+          "minimum_entry_distance_km": 24.93131594419488,
+          "minimum_entry_distance_render_units": 124656.57972097439,
+          "rays": 295
+        },
+        {
+          "camera_to_center_km": 27.822400668301434,
+          "camera_to_center_render_units": 139112.00334150717,
+          "cell": [
+            1,
+            0,
+            1
+          ],
+          "median_entry_distance_km": 25.279144939424555,
+          "median_entry_distance_render_units": 126395.72469712277,
+          "minimum_entry_distance_km": 24.546254477754765,
+          "minimum_entry_distance_render_units": 122731.27238877382,
+          "rays": 1061
+        },
+        {
+          "camera_to_center_km": 38.0,
+          "camera_to_center_render_units": 190000.0,
+          "cell": [
+            0,
+            0,
+            0
+          ],
+          "median_entry_distance_km": 35.63983150301082,
+          "median_entry_distance_render_units": 178199.1575150541,
+          "minimum_entry_distance_km": 34.729687966058755,
+          "minimum_entry_distance_render_units": 173648.43983029376,
+          "rays": 376
+        },
+        {
+          "camera_to_center_km": 41.19781042446309,
+          "camera_to_center_render_units": 205989.05212231548,
+          "cell": [
+            1,
+            0,
+            0
+          ],
+          "median_entry_distance_km": 38.678315845204715,
+          "median_entry_distance_render_units": 193391.57922602358,
+          "minimum_entry_distance_km": 37.922481714800696,
+          "minimum_entry_distance_render_units": 189612.4085740035,
+          "rays": 393
+        },
+        {
+          "camera_to_center_km": 43.06855367785759,
+          "camera_to_center_render_units": 215342.76838928793,
+          "cell": [
+            0,
+            1,
+            0
+          ],
+          "median_entry_distance_km": 39.89588436252508,
+          "median_entry_distance_render_units": 199479.4218126254,
+          "minimum_entry_distance_km": 39.792163589721746,
+          "minimum_entry_distance_render_units": 198960.81794860872,
+          "rays": 48
+        }
+      ],
+      "bank0_candidate500_error": {
+        "S_normalized_unit_radiance": [
+          {
+            "count": 36864,
+            "max": 1.9028200767934322e-05,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0
+          },
+          {
+            "count": 36864,
+            "max": 9.673048043623567e-05,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0
+          },
+          {
+            "count": 36864,
+            "max": 1.4569377526640892e-05,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0
+          }
+        ],
+        "T": {
+          "count": 36864,
+          "max": 0.00046324729919433594,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "count": 36864
+      },
+      "bank0_candidate_cost": {
+        "atlas_fetches": {
+          "count": 36864,
+          "max": 106.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 2.0
+        },
+        "bank_projected_pixel_counts": [
+          376
+        ],
+        "chord_render_units": {
+          "count": 36864,
+          "max": 26351.560546875,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 296.2005615234375
+        },
+        "enumerated_banks": 1,
+        "projected_occupancy_fraction": 0.010199652777777778,
+        "rays": 36864,
+        "rays_hitting_any_bank": 376,
+        "samples": {
+          "count": 36864,
+          "max": 53.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 1.0
+        },
+        "sphere_hits": {
+          "count": 36864,
+          "max": 1.0,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 1.0
+        },
+        "visible_banks_on_raster": 1
+      },
+      "bank0_center": [
+        55980.0,
+        56853.5,
+        49541.0
+      ],
+      "bank0_reference_128_vs_64": {
+        "S_normalized_unit_radiance": [
+          {
+            "count": 36864,
+            "max": 1.0902294889092445e-07,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0
+          },
+          {
+            "count": 36864,
+            "max": 5.925539880990982e-07,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0
+          },
+          {
+            "count": 36864,
+            "max": 8.35862010717392e-08,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0
+          }
+        ],
+        "T": {
+          "count": 36864,
+          "max": 2.86102294921875e-06,
+          "p50": 0.0,
+          "p95": 0.0,
+          "p99": 0.0
+        },
+        "count": 36864
+      },
+      "bank0_reference_nonidentity_rays": 311,
+      "camera_origin": [
+        55980.0,
+        56853.5,
+        239541.0
+      ],
+      "family": "foggreenoutlands",
+      "image": "foggreenoutlands-canonical-38km-bank0-only-cloud-only.png",
+      "nearer_intersected_banks_than_bank0": [
+        {
+          "camera_to_center_km": 19.32690757583841,
+          "camera_to_center_render_units": 96634.53787919204,
+          "cell": [
+            0,
+            0,
+            1
+          ],
+          "median_entry_distance_km": 16.887382363815213,
+          "median_entry_distance_render_units": 84436.91181907606,
+          "minimum_entry_distance_km": 16.050372837940817,
+          "minimum_entry_distance_render_units": 80251.86418970408,
+          "rays": 1454
+        },
+        {
+          "camera_to_center_km": 27.63488543553239,
+          "camera_to_center_render_units": 138174.42717766194,
+          "cell": [
+            -1,
+            0,
+            1
+          ],
+          "median_entry_distance_km": 25.780009540370614,
+          "median_entry_distance_render_units": 128900.04770185307,
+          "minimum_entry_distance_km": 24.93131594419488,
+          "minimum_entry_distance_render_units": 124656.57972097439,
+          "rays": 295
+        },
+        {
+          "camera_to_center_km": 27.822400668301434,
+          "camera_to_center_render_units": 139112.00334150717,
+          "cell": [
+            1,
+            0,
+            1
+          ],
+          "median_entry_distance_km": 25.279144939424555,
+          "median_entry_distance_render_units": 126395.72469712277,
+          "minimum_entry_distance_km": 24.546254477754765,
+          "minimum_entry_distance_render_units": 122731.27238877382,
+          "rays": 1061
+        }
+      ],
+      "nominal_bank0_center_distance_km": 38.0,
+      "nominal_bank0_center_distance_render_units": 190000.0,
+      "pose": "38km"
+    }
+  ],
+  "schema": 1
+}

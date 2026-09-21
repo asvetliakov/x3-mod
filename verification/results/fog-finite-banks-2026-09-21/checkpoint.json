@@ -1,0 +1,119 @@
+{
+  "authored_medium_selection": {
+    "decision_source": "user visual preference after fixed preview",
+    "reason": "prefer broader, connected clouds",
+    "scope": "rejects this fixed finite-bank reference appearance; no replacement recipe is selected here",
+    "selected": false
+  },
+  "bank0_interposition": {
+    "10km": "no nearer intersected bank",
+    "30km": "cell(0,0,1) intersects before bank0",
+    "38km": "cells(0,0,1),(-1,0,1),(1,0,1) intersect before bank0"
+  },
+  "counts": {
+    "boundary_path_poses": 258,
+    "canonical_views": 12,
+    "captured_endpoints": 4,
+    "images": 32
+  },
+  "final_full_report_sha256": "7b14860dc1dcd3d039213d760a3a00e4fa254ea98efb071875d908d6d18227ab",
+  "gates": {
+    "candidate500_passed": false,
+    "laws_passed": true,
+    "reference_converged": true
+  },
+  "images": {
+    "bluewell-canonical-10km-bank0-only-cloud-only.png": "43683d1076fd1e8e916abd625884dfe558b1334d8187719ca42dfa53cdd06702",
+    "bluewell-canonical-10km-cloud-only.png": "5a9daa41af9451add43f1083abba8587e780004cc3bc8ec322c8b76d481e05c1",
+    "bluewell-canonical-30km-bank0-only-cloud-only.png": "b59ff2231d5579d6fb15013eed38206f1b06cba3504c5fa8b23bb24df8d8d50e",
+    "bluewell-canonical-30km-cloud-only.png": "1b43b416fd198f3c8bb049541472bda0605fc7439f2aa20a8be3261a100f014b",
+    "bluewell-canonical-38km-bank0-only-cloud-only.png": "f3126583300fb8c3feec961778460f17b08875143a76f3ce41d042274daa30b2",
+    "bluewell-canonical-38km-cloud-only.png": "3d8558d074825546ab1f65dea14083762a4dbdbda7dc1de96ccd664c1b7f3169",
+    "bluewell-canonical-center-cloud-only.png": "ece2fb1b2fcf44a42b5d955b4433539d5118a74e61ecac9fdf5ef54e25de2820",
+    "bluewell-canonical-core-edge-cloud-only.png": "cf98b6114fc964b85683f4c34e5122b7132e375c5c2f611ffa5dc5cc611323c6",
+    "bluewell-canonical-outside-1.05R-cloud-only.png": "f49e6a134a715ac36936fd3e21ef28372bc202badb44e11f212dceb3c302e0c3",
+    "bluewell-captured-16450-cloud-only.png": "5fbee7c1934d242cd417ff817a0cd47aa6e605acf0e9d85bf8ec2900fe0d39dd",
+    "bluewell-captured-16481-cloud-only.png": "aab0165fcfb187f40237e69967a88e8082195f1a34b6b4637506934499171f6d",
+    "bluewell-path-000-cloud-only.png": "fc16a2ce0d371aca8644f24c0251dd4e82a43d5dd77db22fd4df073d25364eef",
+    "bluewell-path-032-cloud-only.png": "4297ecd4f4cc7b05099a97c79227c7dd90a97660f4af0415784c8e980364cb5d",
+    "bluewell-path-064-cloud-only.png": "58dc49e74ec9fc961e78b4757cb2a88a71c752639dcf53888717435d16c6ebd9",
+    "bluewell-path-096-cloud-only.png": "43f89a3c96de431b52f7f5e522d7e668e9106c472828bd663d5da26fcc048062",
+    "bluewell-path-128-cloud-only.png": "47a65414887bbf2284e3668224f10f764fcdda5898d02f975a7cb095e9f38a20",
+    "foggreenoutlands-canonical-10km-bank0-only-cloud-only.png": "0d1fe31fa3780702e795e733ffd7d55a2c3207d8ec965950c725a345755dc8ea",
+    "foggreenoutlands-canonical-10km-cloud-only.png": "bbc6b401d2420be058b4609167da388022f94534d41272984b1dc511ecdb05e3",
+    "foggreenoutlands-canonical-30km-bank0-only-cloud-only.png": "ffac80680cc60040287a1d561b205036fc53ab658f5ce7a5d2ae389111af416c",
+    "foggreenoutlands-canonical-30km-cloud-only.png": "2ad23dd140f4b4d9dca885039e6b9e9b1e7274375486833057bd9756b0a34f27",
+    "foggreenoutlands-canonical-38km-bank0-only-cloud-only.png": "fc949489614a21c547e508b4b4896801f64a19fdeb36a54c29a33143fee34114",
+    "foggreenoutlands-canonical-38km-cloud-only.png": "7749121ee94788fa8c90808f35ec8c2eaef2bcaa932208adb6907f9738da5af3",
+    "foggreenoutlands-canonical-center-cloud-only.png": "6a010fd2c214d9cf15f6c7f389f3d1863c3a46ad3c8a32034c0ea94e22adc502",
+    "foggreenoutlands-canonical-core-edge-cloud-only.png": "4e8c70772dbb5620ec4be5d29c78c9c21d95c0889f5e0b1fc52cbf90b1681d68",
+    "foggreenoutlands-canonical-outside-1.05R-cloud-only.png": "2fdb8980519b9e1b8026fd56cd37eb55112e43ad94f277d02be1e64e58c40b3a",
+    "foggreenoutlands-captured-43051-cloud-only.png": "698ef0dcf92b69a028795cacef3702642a468d09093d2b36ceae91cd94cecba7",
+    "foggreenoutlands-captured-43082-cloud-only.png": "2f67258fcba37160a018632accf7a5dd210131c7e764f8847fcea4a22b2e821b",
+    "foggreenoutlands-path-000-cloud-only.png": "19243671420aca9c975112e2934b73966eb59ccbbedefe70164cfb286a1b88c6",
+    "foggreenoutlands-path-032-cloud-only.png": "502f1da5ca48355aa3bda19edbfe58d3d9b23bc5be4d2e0ac0237c2a23e5f465",
+    "foggreenoutlands-path-064-cloud-only.png": "c50a7af4c07858a28553541cda7abc6e4c275ddd4d5346ec2b5c4db3903730ce",
+    "foggreenoutlands-path-096-cloud-only.png": "d283ec399784a7f337d035d0c42f6988d9a7859f4b85aaff6c2b6ee163732df8",
+    "foggreenoutlands-path-128-cloud-only.png": "a7b6c92b60bf3e100fb25c0114b5bcd771c9a35e09a4c7552e656823f701facb"
+  },
+  "limitations": [
+    "This is one fixed authored-medium preview; no radius, spacing, hash, anchor, strength, density, or sampling search was performed.",
+    "A 500-unit numerical failure does not by itself reject the converged authored-medium reference images.",
+    "Captured endpoint absence is expected outside banks and is not a pose-matching gate.",
+    "Cloud-only normalized-light previews are not game composites or production-scaled lighting.",
+    "CPU timings and read counts are not GPU FPS; production state, Reset, recovery, native Windows, TAA, and flight appearance remain open."
+  ],
+  "metrics": {
+    "canonical_candidate_T_worst_max": 0.0033454298973083496,
+    "canonical_candidate_T_worst_p99": 0.001370599865913392,
+    "canonical_projected_occupancy_fraction": [
+      0.08818901909722222,
+      1.0
+    ],
+    "canonical_reference_T_worst_max": 0.00022011995315551758,
+    "full_resolution_support_edge_pixels": [
+      3574,
+      6422
+    ],
+    "full_resolution_visible_banks": [
+      5,
+      10
+    ],
+    "observed_max_samples": 137.0,
+    "observed_max_sphere_hits": 3.0
+  },
+  "original_full_report_sha256": "f1532856a8fa0be20411b2def1c815c8283ca08cce016d05b92d9a79990e9b20",
+  "result": "failed-500-unit-sampling",
+  "sources": {
+    "architecture_sha256": "f924d82d20c571d099fd672f2cfd018461ce60368831873db27c0a4e78fce639",
+    "bank0_diagnostics_sha256": "1caa1fc690ef45ff6df71c8205a4f29eb578ade629be11ebfdddf356132d5689",
+    "capture_log": "/tmp/x3-bottleX3-run200/session-20260921-014107-212.log",
+    "capture_log_bytes": 481995947,
+    "depth_files": {
+      "aggregate_sha256": "bb087cddf5297a9282b7d0ae0f82d76ace146d6acc1ac0f529e604651a73f934",
+      "count": 64,
+      "endpoint_sha256": {
+        "depth_1_16450.rgba32f": "010c07a6bb779b4a47401667d3212a0a0b2474981790ee3884183a18b12ae0eb",
+        "depth_1_16481.rgba32f": "1150cf6839d40984136f65dcd72b853a80dc02f346ce97ed3ab64182a8d9db1e",
+        "depth_1_43051.rgba32f": "dc7416d3bfa9147b095c48fe4114e1578e4915d0c9634ab8a089f362a98f2cba",
+        "depth_1_43082.rgba32f": "a262319174b3208ba953d91dda3d64c2b0511edad886c75f82efcf07eb90a6ac"
+      }
+    },
+    "distance_replay_sha256": "4e5ac23b07f37d3f567378569e00d2b4687c2d6635fe745b90009ed2a1918b29",
+    "final_report_analysis_sha256": "80c0acad6ea668db6e84b7ee643e2b6cfc9103b6ad06e473d64f0386239986e0",
+    "manifest_sha256": "db0a8dd1db2d538872b1930f2a8dcd7ca763760a70c3d72c8b3cd4b2c1500a30",
+    "numeric_execution_analysis_sha256": "d6996717d83a38509c495ce8b433f5221231ec8821159406cae7daf43583a86e",
+    "numeric_report_sha256": "f1532856a8fa0be20411b2def1c815c8283ca08cce016d05b92d9a79990e9b20",
+    "packets": {
+      "bluewell": {
+        "decoded_sha256": "4529497a5e1feda3276b334d6aaef3ba741460e4e4b539aaaf7df74cbfa7261d",
+        "sha256": "fea1a4bf3842b417007af27c6cc25092c3ac8e815660b02bc3ac410953f1f372"
+      },
+      "foggreenoutlands": {
+        "decoded_sha256": "d0342a05fe0e0421c980bb46bec72a765617f9bd043d84d134928a65d3dc0b0c",
+        "sha256": "014d586109e5968dbd0358969ab7082e7fc3e670335a59d889f6e2ba649d87f8"
+      }
+    },
+    "selected_capture_metadata_sha256": "99319f340925630006e4ebc11109013d0d72e781b0603041c71e4553a050556d"
+  }
+}

@@ -1067,3 +1067,28 @@ images were changed by finalization. Cloud-only images also show that the
 accurate unchanged long-range field accumulates broad attenuation. Numerical
 accuracy alone would not establish the requested clear gaps or visual acceptance.
 No production code, Wine execution, game, build or installation changed.
+
+### Finite-bank preview: reference appearance not selected
+
+The [reviewed fixed-bank preview](../../verification/results/fog-finite-banks-2026-09-21/report.md)
+produces separated clouds with clear space, but the user explicitly prefers
+**broader, connected clouds** (2026-09-21). Do not carry this isolated-bank
+layout into a production build. This visual decision is separate from the
+500-unit integration failure: reference convergence passes (worst T maximum
+0.000220120), while candidate sampling fails 3/12 canonical views and the green
+entry/exit temporal check; worst canonical T p99/max is 0.001370600/0.003345430.
+No radius/spacing/seed or sample-count tuning followed.
+
+Nearer banks obscure the nominal target in the all-bank 30/38 km views, so six
+same-camera bank0-only diagnostics were added. The target remains visible at
+those distances. Its nearest support is 26.727 km at the 30 km pose and
+34.730 km at the 38 km pose. The scene is synthetic cloud-only transport, not
+final game lighting or composited flight evidence.
+
+Nine focused tests and all 32 image bindings pass independent review. Original
+transport and 26 images remain cached; full-resolution analytic edge coverage
+was recomputed and six isolated-bank images were newly evaluated, with separate
+provenance. Corrected cost witnesses see 5–10 full-resolution visible banks and
+3,574–6,422 per-bank-union support-edge pixels potentially requiring repair.
+These are operation/coverage counts, not GPU timing. Production, native Windows,
+state/Reset, radiance/shafts and flight acceptance remain open.

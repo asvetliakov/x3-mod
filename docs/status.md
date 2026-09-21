@@ -60,9 +60,9 @@ completed Run56 command is archived. Future runs omit CrossOver debug tracing.
   object fading is separate. Filtered-far integration failed the offline comparison; the accurate reference
   converges, but the tested macro mask removes all nearby fog in the four views.
   The fixed coarse depth-prefix reconstruction also fails all four endpoint
-  comparisons and is closed. A fixed finite cloud-bank preview is in implementation, keeping original
-  local detail inside separated world-space regions. No production recipe or
-  larger distance has been selected.
+  comparisons and is closed. The finite-bank preview is reviewed but not selected: the user prefers broader,
+  connected clouds. Its fixed 500-unit sampler also fails accuracy gates.
+  Connected-region design is next; no new production fog is selected.
 - **Station flash accepted:** Run205 confirms both global TAA heuristics disabled;
   the user reports no flash or save-load/sector-travel ghosting. Launcher defaults
   now apply this to the unchanged installed DLL; native fallback defaults match

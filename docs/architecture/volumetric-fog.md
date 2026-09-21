@@ -944,3 +944,10 @@ qualification. Grouped bank passes or a documented format-blending capability
 may reduce copy cost later, but are not selected implementations. Source
 portability is not native Windows runtime verification. No game hook, candidate
 build, installation or user flight is authorized by this offline preview alone.
+
+The fixed preview was subsequently **not selected by the user**, who prefers
+broader, connected clouds. Its converged reference is preserved as a comparison,
+not the next production layout. The separate fixed 500-unit marcher also failed
+its numerical gates. Further design must address organic connected regions and
+clear pockets without turning support connectivity into an artificial street or
+tube network, and without reintroducing a uniform sector-wide haze.
