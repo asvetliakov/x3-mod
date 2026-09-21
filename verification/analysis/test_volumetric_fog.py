@@ -238,12 +238,15 @@ class FogLauncherTests(unittest.TestCase):
     def test_defaults_values_and_inherited_environment(self):
         status, output, error = self.launch(*self.BASE, '--volumetric-fog')
         self.assertEqual(status, 0, error)
-        for line in ('"X3M_VOLUMETRIC_FOG": "1"', '"X3M_VOLUMETRIC_FOG_STRENGTH": "0.02"', '"X3M_VOLUMETRIC_FOG_ANISOTROPY": "0.3"',
+        for line in ('"X3M_VOLUMETRIC_FOG": "1"', '"X3M_VOLUMETRIC_FOG_STRENGTH": "0.02"',
                      '"X3M_VOLUMETRIC_FOG_EVERYWHERE": "0"', '"X3M_VOLUMETRIC_FOG_TIMING": "0"'):
             self.assertIn(line, output)
-        status, output, error = self.launch(*self.BASE, '--volumetric-fog', '0.05', '--volumetric-fog-anisotropy', '0.6', '--volumetric-fog-everywhere', '--volumetric-fog-timing')
+        # The superseded --volumetric-fog-anisotropy was removed (looks 1-3 carry
+        # their own two-lobe phase); the DLL keeps its own g = 0.3 default.
+        self.assertNotIn('X3M_VOLUMETRIC_FOG_ANISOTROPY', output)
+        status, output, error = self.launch(*self.BASE, '--volumetric-fog', '0.05', '--volumetric-fog-everywhere', '--volumetric-fog-timing')
         self.assertEqual(status, 0, error)
-        for line in ('"X3M_VOLUMETRIC_FOG_STRENGTH": "0.05"', '"X3M_VOLUMETRIC_FOG_ANISOTROPY": "0.6"', '"X3M_VOLUMETRIC_FOG_EVERYWHERE": "1"', '"X3M_VOLUMETRIC_FOG_TIMING": "1"'):
+        for line in ('"X3M_VOLUMETRIC_FOG_STRENGTH": "0.05"', '"X3M_VOLUMETRIC_FOG_EVERYWHERE": "1"', '"X3M_VOLUMETRIC_FOG_TIMING": "1"'):
             self.assertIn(line, output)
         status, output, error = self.launch(*self.BASE, environment={'X3M_VOLUMETRIC_FOG': '1', 'X3M_VOLUMETRIC_FOG_EVERYWHERE': '1'})
         self.assertEqual(status, 0, error)
@@ -305,10 +308,14 @@ class FogLauncherTests(unittest.TestCase):
             with self.subTest(missing=missing):
                 status, _, _ = self.launch(*(a for a in self.BASE if a != missing), '--volumetric-fog')
                 self.assertEqual(status, 2)
-        for dependent in (('--volumetric-fog-cards', 'replace'), ('--volumetric-fog-anisotropy', '0.5'), ('--volumetric-fog-everywhere',), ('--volumetric-fog-timing',)):
+        for dependent in (('--volumetric-fog-cards', 'replace'), ('--volumetric-fog-everywhere',), ('--volumetric-fog-timing',)):
             with self.subTest(dependent=dependent):
                 self.assertEqual(self.launch(*self.BASE, *dependent)[0], 2)
-        for bad in (('--volumetric-fog', '0.11'), ('--volumetric-fog', '-0.01'), ('--volumetric-fog', 'nan'), ('--volumetric-fog', '0.02', '--volumetric-fog-anisotropy', '0.95')):
+        # Removed option: argparse refuses it as unrecognized, it does not pass silently.
+        status, _, error = self.launch(*self.BASE, '--volumetric-fog', '0.02', '--volumetric-fog-anisotropy', '0.6')
+        self.assertEqual(status, 2)
+        self.assertIn('unrecognized arguments', error)
+        for bad in (('--volumetric-fog', '0.11'), ('--volumetric-fog', '-0.01'), ('--volumetric-fog', 'nan')):
             with self.subTest(bad=bad):
                 self.assertEqual(self.launch(*self.BASE, *bad)[0], 2)
 

@@ -30,23 +30,23 @@ compiled into the DLL whether or not its option is ever passed.
 
 | # | Item | Class | Evidence | Removable lines | Risk |
 |---|---|---|---|---|---|
-| A1 | `--effect-source-gain` | DEAD | `tools/manage.py:399` `argparse.SUPPRESS`, comment "removed 2026-09-16" | ~10 (launcher) | low |
-| A2 | `--sun-shadow-receiver-depth` | DEAD | `tools/manage.py:371` "Deprecated no-op"; goals #8 (linear is the only encoding) | ~12 (launcher) | low |
-| B | `--d3dx`, `--fex-tso`, `--wined3d` | REJECTED (closed experiments) | goals.md #14: run 36 closed D3DX (builtin +32 %), run 37 closed FEX TSO and wined3d CSMT | ~70 (launcher only) | low |
+| A1 | `--effect-source-gain` | DEAD, removed 2026-09-22 | `tools/manage.py:399` `argparse.SUPPRESS`, comment "removed 2026-09-16" | ~10 (launcher) | low |
+| A2 | `--sun-shadow-receiver-depth` | DEAD, removed 2026-09-22 | `tools/manage.py:371` "Deprecated no-op"; goals #8 (linear is the only encoding) | ~12 (launcher) | low |
+| B | `--d3dx`, `--fex-tso`, `--wined3d` | REJECTED (closed experiments), removed 2026-09-22 | goals.md #14: run 36 closed D3DX (builtin +32 %), run 37 closed FEX TSO and wined3d CSMT | ~70 (launcher only) | low |
 | C | GTAO/SSAO chain: `--ambient-occlusion`, `--ao-radius`, `--ao-strength`, `--ao-debug`, `--ao-timing`, hotkey Ctrl+Shift+F11 | REJECTED | goals.md #7 "Closed … the user closed it on 2026-09-15"; user-runs rows 19/21 (invisible at radius 100) | src 1,212 + tests 385 + probe 1,313 + 5 result manifests ≈ **2,910** | medium |
 | D | `--lod-scale` | REJECTED (closed) | goals.md cross-cutting: "`--lod-scale` is closed default-off"; `docs/architecture/lod-scale.md` | src 248 + probe 111 + tests 193 = **552** | low‑medium |
 | E1 | `--taa-current-filter` | REJECTED | `taa-flicker-suppression.md:184` "the global form was flown and rejected"; `taa-lattice-crawl.md:138` "filter A = 1 everywhere (rejected by the user)" | see E‑total | medium |
 | E2 | `--taa-line-filter` | SUPERSEDED by `--taa-thin-region` + camera gate | user-runs row 46 B (run157–159) "filter engaged, beads ×0.32, but the user sees no change"; `taa-lattice-crawl.md:357` "keep … as an option, not a default"; `:1819` the camera gate silently forces `screen` when the line filter is on | see E‑total | medium |
 | E3 | `--taa-adaptive-weight` | REJECTED | user-runs row 45 B (run153/154) "adaptive weight does not fix the lattice crawl … **rejected**, stays default-off" | see E‑total | medium |
 | E4 | `--taa-thin-clip` | SUPERSEDED by `--taa-thin-region` / `--taa-far-stabiliser` | `taa-lattice-crawl.md:603` "refused beside the far stabiliser or the thin region, deliberately"; both successors are flown in Run 62 | E‑total src **2,679** (12 `*_inc.h` + 6 HLSL) + 7 result manifests | medium |
-| F1 | Owned media playback probe/fixture residue | RETIRED | `docs/verification/media-cues.md:1842` "ID2 video omission and owned playback retirement"; 31 production files already removed | probe **9,744** (34 unreferenced files) + `verification/historical/owned_media` 601 | low |
-| F2 | `test_media_connected.py`, `test_media_worker_clock_fixture.py`, `test_media_shared_transport_evidence.py` | RETIRED but still in default discovery | same ledger; they test the removed owned runtime's evidence parsers | **895** | low |
-| F3 | `tools/media_transcode.py`, `tools/prepare_media_package.py` (+ `test_media_transcode.py` 248) | RETIRED | same ledger ("Launch no longer requires old LAV payloads"); H.264 cue transcoding belonged to replacement playback | 618 + 248 = **866** | low |
+| F1 | Owned media playback probe/fixture residue | RETIRED, removed 2026-09-22 | `docs/verification/media-cues.md:1842` "ID2 video omission and owned playback retirement"; 31 production files already removed | probe **9,744** (34 unreferenced files) + `verification/historical/owned_media` 601 | low |
+| F2 | `test_media_connected.py`, `test_media_worker_clock_fixture.py`, `test_media_shared_transport_evidence.py` | RETIRED, removed 2026-09-22 | same ledger; they test the removed owned runtime's evidence parsers | **895** | low |
+| F3 | `tools/media_transcode.py`, `tools/prepare_media_package.py` (+ `test_media_transcode.py` 248) | RETIRED, removed 2026-09-22 | same ledger ("Launch no longer requires old LAV payloads"); H.264 cue transcoding belonged to replacement playback | 618 + 248 = **866** | low |
 | G1 | 23 retired host test modules (`retired_tests.py`) | RETIRED | `docs/verification/host-suite.md` retired table; `--linear-materials` and the `--linear-emissions` bracket | **8,131** | low (already hidden) |
 | G2 | Retired-only linear-material/exposure probe assets (11 files) | RETIRED | referenced only by G1 modules | **~4,100** of 7,640 (see §3 G2) | medium |
 | H | `--linear-materials` and dependents (`--material-fill`, `--material-direct-gain`, `--material-emissive-gain`, `--lightmap-emissive-gain`, `--linear-distance-fade`/`--no-linear-distance-fade`) production code | RETIRED subject, **entangled** | host-suite retired table; goals #3/#6 "the user plays original hulls" | ~900–1,000 inside `linear_material.cpp` only | **high** — see §3 H |
 | I | `--linear-emissions` full-surface bracket production code | REJECTED | goals.md cross-cutting: "`--linear-emissions` in its full-surface bracket shape rejected 2026-09-15" | ~0 cleanly; `linear_emission_pass.cpp` (1,211) + `linear_emission.cpp` (509) are load-bearing for the flown SM1/source-gain path | **high** |
-| J | `--volumetric-fog-anisotropy` | SUPERSEDED (inert) | its own help: "no effect under `--volumetric-fog-look 1-3`"; look default is 2 and Run 61 B accepted the looks with **L2 preferred** | ~15 (launcher + one constant path) | low |
+| J | `--volumetric-fog-anisotropy` | SUPERSEDED (inert), removed 2026-09-22 | its own help: "no effect under `--volumetric-fog-look 1-3`"; look default is 2 and Run 61 B accepted the looks with **L2 preferred** | ~15 (launcher + one constant path) | low |
 
 Clean, low-risk total (A+B+C+D+F+G1): **≈ 15,300 lines**, of which only
 ≈ 1,460 are production `src/` lines (AO chain + lod\_scale). Adding E (dead TAA
@@ -313,14 +313,28 @@ Each batch is independent and should leave the host suite
 (`/usr/bin/python3 verification/probe/run_host_suite.py`) and the affected
 fixtures green on its own.
 
-1. **Batch 1 — dead launcher surface** (A1, A2, B, J): `tools/manage.py` only,
-   plus the matching `X3M_*` forwards. Check: `manage.py --dry-run` on one
-   affected launch and `test_launcher_*` / `test_*_defaults` modules. ~110 lines.
-2. **Batch 2 — media residue** (F1, F2, F3): delete probe files, the historical
-   directory, the two tools and the four test modules. No production code.
-   Check: full host discovery (module count drops by 4) and
-   `test_loader_factory.py` (keep `media_startup_loader_fixture.cpp`).
-   ~11,900 lines.
+1. **Batch 1 — dead launcher surface** (A1, A2, B, J) — **done 2026-09-22.**
+   Six options gone from `tools/manage.py` (`--effect-source-gain`,
+   `--sun-shadow-receiver-depth`, `--d3dx`, `--fex-tso`, `--wined3d`,
+   `--volumetric-fog-anisotropy`) with their refusals, the `FEX_TSOENABLED` /
+   `WINE_D3D_CONFIG` experiment block, the `d3dx9_37=b` override arm, the
+   `d3dx=/fex_tso=/wined3d=` header and dry-run JSON fields, and the
+   `X3M_VOLUMETRIC_FOG_ANISOTROPY` forward (the DLL keeps its own g = 0.3
+   default, so a modded launch is unchanged). Removed with them:
+   `test_d3dx_override_launch.py` and `test_env_experiment_launch.py`, whose
+   three `launch_teed` header tests moved into `test_launcher_stderr_tee.py`.
+   **361 lines deleted, 70 re-added (net 291)**; each removed option now fails
+   with argparse's `unrecognized arguments`.
+2. **Batch 2 — media residue** (F1, F2, F3) — **done 2026-09-22.**
+   49 files, **9,256 lines**: 33 probe files, `verification/historical/owned_media`
+   (12 files), `tools/media_transcode.py`, `tools/prepare_media_package.py` and
+   the four test modules. **Kept against the inventory's list:**
+   `verification/probe/media_lav_evidence.py` and `run_media_playback_fixture.py`
+   are imported by `run_lav_packet_fixture.py`, which stays. Two tests in the
+   kept `test_media_package.py` used the deleted legacy tool: the legacy-refusal
+   test went with it and the native `tasklist` guard test was rewritten without
+   it. Host suite after both batches: **229 modules / 2,259 tests green**,
+   `--include-retired` 252 / 2,635 green.
 3. **Batch 3 — retired host tests** (G1, then G2): remove the 23 modules and
    `retired_tests.py` itself, then the 11 retired-only probe assets. Check: full
    host discovery; confirm `test_linear_emission_hull_gain`,

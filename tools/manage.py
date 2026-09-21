@@ -255,23 +255,6 @@ def main():
                         help='Consecutive capture frames (X3M_CAPTURE_FRAMES). Above 8 is meant for the raw --taa-debug dumps (32 frames separate the 8-frame jitter ripple from slower crawl): about 40 MB per frame at 1280x768 on the HDR route (hdr + taa rgba16f 7.9 MB each, motion rgba32f 15.7 MB, depth 3.9 MB or 15.7 MB on the sun lane, present bgra8 3.9 MB), so 1.3-1.7 GB for 32 frames')
     parser.add_argument('--direct', action='store_true', help='Skip launcher and intro using X3 command-line switches')
     parser.add_argument('--vanilla', action='store_true', help='Launch with builtin D3D9, ignoring the installed proxy')
-    parser.add_argument('--d3dx', choices=['native', 'builtin'], default='native', help="Which d3dx9_37.dll serves the game child, for the busy-frame experiment in "
-                             "docs/architecture/effect-pass-replay.md: native (default) leaves the command as it is, so the "
-                             "bottle decides (usually the native redistributable in the game directory); builtin appends "
-                             "d3dx9_37=b to this child's --dll override, forcing Wine's builtin D3DX. The installed DLL's "
-                             "loaded_module line reports which one actually loaded.")
-    parser.add_argument('--fex-tso', choices=['on', 'off'], default=None, help="FEX-Emu memory-ordering experiment for the busy frame (docs/architecture/effect-pass-replay.md, "
-                             "\"Environment experiments\"): off sets FEX_TSOENABLED=0 in this child's environment, on sets it to 1 "
-                             "explicitly, unset (default) leaves the bottle's FEX configuration alone. off trades the x86 "
-                             "total-store-order guarantees FEX emulates for speed and can expose latent multithreading races in the "
-                             "game and in Wine, so it is an experiment, never a default; a session that misbehaves must be rerun "
-                             "without it before its result counts.")
-    parser.add_argument('--wined3d', default=None, metavar='CONFIG', help="Wine Direct3D settings for this child only (WINE_D3D_CONFIG=CONFIG), the documented environment "
-                             "override of the HKCU\\Software\\Wine\\Direct3D registry keys; several settings are separated by ';', "
-                             "e.g. 'csmt=0x0;renderer=vulkan'. The experiment in docs/architecture/effect-pass-replay.md uses csmt "
-                             "(the command-stream thread, 0x0 runs the draw path on the calling thread) and renderer (gl or vulkan). "
-                             "The proxy's loaded_module line for d3d9.dll does not reflect either key, so there is no log evidence "
-                             "beyond behaviour and frame time; compare --pass-phases medians and frame dt.")
     parser.add_argument('--telemetry', action='store_true', help='Enable bounded loading, presentation and cursor diagnostics')
     parser.add_argument('--frame-timing', action='store_true', help='Per-300-frame frame-time window: one frame_timing line with dt/draws/present percentiles, the proxy draw/scene/state buckets with the state call mix, the pre-draw/between-draws/post-draw split of the game time between hooked calls, and up to four frame_timing_slow witnesses (X3M_FRAME_TIMING=1; requires --telemetry; docs/verification/sampling-profiler.md, "Frame timing diagnostic")')
     parser.add_argument('--frame-end-stride', type=int, default=300, metavar='N',
@@ -368,7 +351,6 @@ def main():
     parser.add_argument('--shadow-caster-retention-age', type=int, default=None, metavar='FRAMES', help='Frames an unseen static caster is kept, 1..10000000, default 7200 (X3M_SHADOW_CASTER_RETENTION_AGE; requires --shadow-retention-census or --shadow-caster-retention)')
     parser.add_argument('--shadow-caster-retention-eps', type=float, default=None, metavar='UNITS', help='Largest AABB-corner displacement between two sightings of a static caster in world units, 0.0001..100, default 0.05 (X3M_SHADOW_CASTER_RETENTION_EPS; requires --shadow-retention-census or --shadow-caster-retention)')
     parser.add_argument('--shadow-retention-timing', action='store_true', help='Per-draw cost of the caster retention record hook on the shadow_retention_frame line (X3M_SHADOW_RETENTION_TIMING=1; default off; requires --shadow-retention-census or --shadow-caster-retention): two counter reads per recorded draw, draw_us / draw_calls')
-    parser.add_argument('--sun-shadow-receiver-depth', choices=('device', 'linear'), default=None, help='Deprecated no-op: the sun-shadow apply quad always reads the receiver depth from the lane\'s A32B32G32R32F RT2 (.b = linear view depth; docs/architecture/shadow-receiver-depth.md, flipped 2026-09-18 after run 41 A2). `linear` is accepted for run-41 command lines and forwards nothing; `device` (the old G32R32F z/w law) no longer exists and is refused')
     parser.add_argument('--sun-shadow-bias-units', type=float, default=None, metavar='B', help='Constant sun-shadow compare bias in world units, 0..1000, default 0.53571875 (X3M_SUN_SHADOW_BIAS_UNITS; requires --sun-shadow-apply): the quad subtracts B plus one world texel of the map, divided by 2 D, from every compare; with --sun-shadow-bias-clamp-texels the defaults resolve to the former 0.001 / 0.01 at the default 250 / 512 / 1024 cascade; capture frames print the resolved values in sun_shadow_apply_params')
     parser.add_argument('--sun-shadow-bias-clamp-texels', type=float, default=None, metavar='T', help='Receiver-plane bias clamp and non-planar fallback of the sun-shadow quad in world texels of the map (2 E / N), 1..64, default 20.97152 (X3M_SUN_SHADOW_BIAS_CLAMP_TEXELS; requires --sun-shadow-apply): the default is the former 0.01 at the default cascade; the detached fixture was tuned at 4 texels and the wide fixture shows the default lighting a few silhouette pixels of a receiver\'s own faces (docs/verification/directional-shadows.md)')
     parser.add_argument('--sun-shadow-bias-slope-texels', type=float, default=None, metavar='S', help='Slope-scaled margin of the cascade sun-shadow compare in texels of the receiver plane\'s depth slope, 0..8, default 0.2 (X3M_SUN_SHADOW_BIAS_SLOPE_TEXELS; requires --sun-shadow-apply; 0 keeps the constant + plane law)')
@@ -381,8 +363,7 @@ def main():
     parser.add_argument('--volumetric-fog', nargs='?', type=float, const=0.02, default=None, metavar='STRENGTH', help='Spatial family fog at scene end (default off; requires --motion-output --taa --hdr --shadow-replay-depth --shadow-cascades). Validated bluewell and foggreenoutlands engine families only; clear, unsupported and unavailable sectors retain native cards. STRENGTH is density tuning in 0..0.1: 0.02=1x qualified family density, 0=off, other values are user tuning. Occupancy and horizon stay fixed. Ctrl+Alt+F9 toggles; Ctrl+Alt+F10 steps 0.005/0.01/0.02/0.03/0.05 (.25/.5/1/1.5/2.5x); --fps-overlay shows the multiplier. Unshadowed first spatial version; use --volumetric-fog-cards replace for replacement, keep for an explicit stacked diagnostic comparison.')
     parser.add_argument('--volumetric-fog-cards', choices=('keep', 'replace'), default=None, help='Keep vanilla fog cards (default), or replace validated card color with the medium after a successful warm-up (X3M_VOLUMETRIC_FOG_CARDS; requires --volumetric-fog)')
     parser.add_argument('--volumetric-fog-range', choices=('legacy', 'stored'), default=None, help='Fog field behind --volumetric-fog: legacy (default) is the family atlas; stored is the experimental stored-density field, generated on one background thread, with clouds out to 30-40 km. A capability refusal logs one line and keeps legacy (X3M_VOLUMETRIC_FOG_RANGE; requires --volumetric-fog).')
-    parser.add_argument('--volumetric-fog-look', type=int, choices=(0, 1, 2, 3), default=None, help='Starting look preset of the stored fog range (default 2): 0 unshaped law, 1 shaped (density remap, thicker cores, two-lobe phase, coloured ambient, tinted extinction), 2 adds Beer-powder and sun-ward self-shadow, 3 adds the per-frame sample offset. Ctrl+Alt+F11 cycles in flight; --fps-overlay shows L0..L3. Looks 1-3 use their own two-lobe phase: --volumetric-fog-anisotropy has no effect under them. Tuning: X3M_FOG_LOOK_<NAME> environment variables, read once (X3M_VOLUMETRIC_FOG_LOOK; requires --volumetric-fog-range stored).')
-    parser.add_argument('--volumetric-fog-anisotropy', type=float, default=None, metavar='G', help='Henyey-Greenstein anisotropy g of the fog phase function, 0..0.9, default 0.3; no effect under --volumetric-fog-look 1-3 (X3M_VOLUMETRIC_FOG_ANISOTROPY; requires --volumetric-fog)')
+    parser.add_argument('--volumetric-fog-look', type=int, choices=(0, 1, 2, 3), default=None, help='Starting look preset of the stored fog range (default 2): 0 unshaped law, 1 shaped (density remap, thicker cores, two-lobe phase, coloured ambient, tinted extinction), 2 adds Beer-powder and sun-ward self-shadow, 3 adds the per-frame sample offset. Ctrl+Alt+F11 cycles in flight; --fps-overlay shows L0..L3. Tuning: X3M_FOG_LOOK_<NAME> environment variables, read once (X3M_VOLUMETRIC_FOG_LOOK; requires --volumetric-fog-range stored).')
     parser.add_argument('--volumetric-fog-everywhere', action='store_true', help='Debug only: force bluewell when no known family is available, still requiring a valid view (X3M_VOLUMETRIC_FOG_EVERYWHERE=1; requires --volumetric-fog)')
     parser.add_argument('--volumetric-fog-timing', action='store_true', help='One volumetric_fog_frame log line per frame with the CPU wall time and device-call count of the pass (X3M_VOLUMETRIC_FOG_TIMING=1; requires --volumetric-fog)')
     parser.add_argument('--shimmer-trace', action='store_true', help='Diagnostic distant-shimmer trace (X3M_SHIMMER_TRACE=1; requires --motion-output --taa; default off): every frame logs one shimmer_frame line with the TAA state (history, skip, cut, jitter index) and the projection p00/p11 as integers scaled by 1e4, plus up to 32 shimmer_draw lines identifying that frame\'s Asteroid-class scene draws (node/model/lod, vertex, index and primitive counts, the distance-fade f in per mille when the draw was fade-admitted and its derived screen rectangle) with a truncated count beyond 32 (docs/architecture/linear-distance-fade-region.md, "Shimmer trace (diagnostic)")')
@@ -396,7 +377,6 @@ def main():
     parser.add_argument('--emission-source-gain', type=float, default=None, metavar='G', help='Source-only encoded gain of the twenty engine/effects emission pairs (ship engine glow, jump gate, weapon impact flashes, muzzle glows, explosion sprites), finite 1..8, default 1 = off (X3M_EMISSION_SOURCE_GAIN; requires --hdr; excludes --linear-emissions, whose bracket carries its own --emission-gain; needs neither --linear-materials nor --taa): the pixel program of each pair multiplies its native colour output by G before the game\'s own blend into the FP16 scene, so bloom and exposure pick the brighter emitters up. An ADD/ONE/ONE draw keeps its blend (G*S + D); a screen ADD/ONE/INVSRCCOLOR draw (most engine materials) draws with DESTBLEND ONE substituted for that draw only (G*S + D: identical to native over black for S <= 1, brighter by D*S over a lit background); alpha, draw order and every other state stay native, and a pair drawn through any other blend stays native. Gain 1 creates no variant and is byte-identical to a build without the option (docs/architecture/linear-emission-cost.md, "Implemented" and "Screen substitution"). Ctrl+Shift+F6 switches all twenty pairs and the --hull-emitters guide lights, which follow this gain, between G and native during play (no shader is recreated; one emission_source_gain_toggle and one hull_emission_gain_toggle line per press)')
     parser.add_argument('--hull-emission-gain', type=float, default=None, metavar='G', help='Own gain of the --hull-emitters population, finite 1..8 (X3M_HULL_EMISSION_GAIN=G; requires --hull-emitters and --hdr; bracket 2 / 4 / 8). Independent of --emission-source-gain, which may be absent, so the guide lights can be judged alone; without this option they take the value of --emission-source-gain, which above 1 also implies --hull-emitters')
     parser.add_argument('--hull-emitters', action='store_true', help='Source gain G over the hull-program emitters (X3M_HULL_EMISSION_GAIN=G, default off = 1.0; requires --hdr and a gain: --hull-emission-gain G, else the value of --emission-source-gain G): position lights, deco flares, warning signs and warp tunnels are drawn by twelve standard_lighting / XT_standard_lighting material programs with ADD ONE/ONE materials, which the twenty effects pairs cannot reach (docs/architecture/emitter-plan.md phase 3). Their art is diffuse-authored with the lightmap slot black, so each covered program gets one variant that multiplies the whole colour output of the draw by G (the final colour instruction redirected to a temporary, one MUL into oC0.xyz); the native alpha and every other state stay native. Admission is per draw and keyed on blend state: only an ADD ONE/ONE draw of a covered program takes the variant, opaque and screen-blended draws of the same program stay native (hull_emission_frame telemetry per frame; on an F8 capture frame one hull_emission_draw line per admitted draw with the node, model and LOD, joined per model by tools/analysis/summarize_hull_emitters.py). G=1 creates no variant. Implied by an --emission-source-gain above 1, whose value it then takes, because the guide lights belong to the effects group: Ctrl+Shift+F6 switches them together with the twenty effects pairs between G and native during play (one hull_emission_gain_toggle line per press, key=ctrl_shift_f6); Ctrl+Shift+F4 is the hull light-map gain only')
-    parser.add_argument('--effect-source-gain', type=float, default=None, metavar='G', help=argparse.SUPPRESS)  # removed 2026-09-16: refused below, naming the replacement
     parser.add_argument('--linear-materials', action='store_true', help='Evaluate the reviewed hull-material pairs in linear space, preserving motion and compatibility-encoding into FP16 (requires --motion-output --hdr --hdr-tonemap and gamma2.2 decode; default off)')
     parser.add_argument('--material-direct-gain', type=float, default=None, help='Linear direct-light gain, finite 0..16, default 1 (requires --linear-materials)')
     parser.add_argument('--material-emissive-gain', type=float, default=None, help='Linear scaled material-emissive gain, finite 0..16, default 1 (requires --linear-materials)')
@@ -457,13 +437,6 @@ def main():
         parser.error('--dry-run applies to launch only.')
     if args.voice_decoder is not None and args.action != 'launch':
         parser.error('--voice-decoder applies to launch only.')
-    if args.fex_tso is not None and args.action != 'launch':
-        parser.error('--fex-tso applies to launch only.')
-    if args.wined3d is not None:
-        if args.action != 'launch':
-            parser.error('--wined3d applies to launch only.')
-        if not re.fullmatch(r'[A-Za-z0-9_]+=[A-Za-z0-9_x]+(;[A-Za-z0-9_]+=[A-Za-z0-9_x]+)*', args.wined3d):
-            parser.error("--wined3d: expected key=value settings separated by ';', e.g. 'csmt=0x0;renderer=vulkan'.")
     if args.depth_copy and not args.ownership:
         parser.error('--depth-copy requires --ownership.')
     if args.scene_depth_capture and not (args.ownership and args.depth_copy):
@@ -707,8 +680,6 @@ def main():
         parser.error('--sun-shadow-lane requires --motion-output --taa --hdr.')
     if args.sun_shadow_apply and not (args.sun_shadow_lane and args.shadow_replay_depth):
         parser.error('--sun-shadow-apply requires --sun-shadow-lane --shadow-replay-depth.')
-    if args.sun_shadow_receiver_depth == 'device':
-        parser.error('--sun-shadow-receiver-depth device is gone: the lane\'s RT2 is always A32B32G32R32F with the linear receiver depth (docs/architecture/shadow-receiver-depth.md). Drop the option (linear is the only encoding).')
     if args.shadow_replay_candidates and not (args.motion_output and args.ownership):
         parser.error('--shadow-replay-candidates requires --motion-output --ownership.')
     if args.shadow_replay_depth and not (args.motion_output and args.ownership):
@@ -842,16 +813,14 @@ def main():
         parser.error('--ao-strength must be within [0, 1].')
     if args.volumetric_fog is not None and not (args.motion_output and args.taa and args.hdr and args.shadow_replay_depth and args.shadow_cascades is not None):
         parser.error('--volumetric-fog requires --motion-output --taa --hdr --shadow-replay-depth --shadow-cascades.')
-    if args.volumetric_fog is None and (args.volumetric_fog_cards is not None or args.volumetric_fog_range is not None or args.volumetric_fog_anisotropy is not None or args.volumetric_fog_everywhere or args.volumetric_fog_timing):
-        parser.error('--volumetric-fog-cards, --volumetric-fog-range, --volumetric-fog-anisotropy, --volumetric-fog-everywhere and --volumetric-fog-timing require --volumetric-fog.')
+    if args.volumetric_fog is None and (args.volumetric_fog_cards is not None or args.volumetric_fog_range is not None or args.volumetric_fog_everywhere or args.volumetric_fog_timing):
+        parser.error('--volumetric-fog-cards, --volumetric-fog-range, --volumetric-fog-everywhere and --volumetric-fog-timing require --volumetric-fog.')
     if args.volumetric_fog_look is not None and args.volumetric_fog_range != 'stored':
         parser.error('--volumetric-fog-look requires --volumetric-fog-range stored.')
     if args.volumetric_fog_range == 'stored' and args.volumetric_fog == 0.0:
         parser.error('--volumetric-fog-range stored requires a positive --volumetric-fog strength (0 detaches the pass).')
     if args.volumetric_fog is not None and not (math.isfinite(args.volumetric_fog) and 0.0 <= args.volumetric_fog <= 0.1):
         parser.error('--volumetric-fog must be within [0, 0.1].')
-    if args.volumetric_fog_anisotropy is not None and not (math.isfinite(args.volumetric_fog_anisotropy) and 0.0 <= args.volumetric_fog_anisotropy <= 0.9):
-        parser.error('--volumetric-fog-anisotropy must be within [0, 0.9].')
     if args.fade_witness is not None and not 1 <= args.fade_witness <= 100000:
         parser.error('--fade-witness must be within [1,100000].')
     # The packed screen bracket composes on the FP16 scene the AgX/gamma2.2 HDR
@@ -895,8 +864,6 @@ def main():
         parser.error('--hull-emitters requires a gain: --hull-emission-gain G, or --emission-source-gain G whose value it then takes.')
     if args.hull_emitters and not args.hdr:
         parser.error('--hull-emitters requires --hdr.')
-    if args.effect_source_gain is not None:
-        parser.error('--effect-source-gain was removed: the single --emission-source-gain G now covers all twenty emission pairs (engines, gate and effect sprites).')
     if args.linear_materials and (not args.motion_output or not args.hdr or not args.hdr_tonemap or args.hdr_decode not in ('gamma2.2', 'pow22')):
         parser.error('--linear-materials requires --motion-output --hdr --hdr-tonemap and gamma2.2 decode.')
     material_gains = {'X3M_MATERIAL_DIRECT_GAIN': args.material_direct_gain, 'X3M_MATERIAL_EMISSIVE_GAIN': args.material_emissive_gain,
@@ -1197,7 +1164,6 @@ def main():
         env['X3M_VOLUMETRIC_FOG_RANGE'] = args.volumetric_fog_range or 'legacy'
         # Stored range starts on look 2 (user verdict, Run 61 session B); --volumetric-fog-look 0 keeps the unshaped law.
         env['X3M_VOLUMETRIC_FOG_LOOK'] = str(args.volumetric_fog_look if args.volumetric_fog_look is not None else 2 if args.volumetric_fog_range == 'stored' else 0)
-        env['X3M_VOLUMETRIC_FOG_ANISOTROPY'] = repr(args.volumetric_fog_anisotropy if args.volumetric_fog_anisotropy is not None else 0.3)
         env['X3M_VOLUMETRIC_FOG_EVERYWHERE'] = '1' if args.volumetric_fog_everywhere else '0'
         env['X3M_VOLUMETRIC_FOG_TIMING'] = '1' if args.volumetric_fog_timing else '0'
         env['X3M_EMISSION_GAIN'] = repr(args.emission_gain if args.emission_gain is not None else 1.0)
@@ -1365,29 +1331,10 @@ def main():
             voice_env = {'GST_PLUGIN_PATH_1_0': str(plugins), 'GST_REGISTRY_1_0': str(registry / 'x3-arm64.bin'),
                          'X3M_VOICE_DMO_FALLBACK': '1'}  # the DMO wrapper fallback hook travels with the decoder
             env.update(voice_env)
-        # Busy-frame environment experiments, set only when requested so an unset
-        # option leaves the bottle's FEX and Wine Direct3D configuration exactly
-        # as it is (docs/architecture/effect-pass-replay.md, "Environment
-        # experiments"). CrossOver's wine script passes its own environment on to
-        # the child, adding the bottle's [EnvironmentVariables] on top, so these
-        # two variables (which the bottle does not set) reach the game.
-        experiment_env = {}
-        if args.fex_tso is not None:
-            experiment_env['FEX_TSOENABLED'] = '1' if args.fex_tso == 'on' else '0'
-        if args.wined3d is not None:
-            experiment_env['WINE_D3D_CONFIG'] = args.wined3d
-        for name in ('FEX_TSOENABLED', 'WINE_D3D_CONFIG'):
-            if name in experiment_env:
-                env[name] = experiment_env[name]
-            else:
-                env.pop(name, None)  # a stale shell value must not enter the experiment
         # --dll applies to this child only, preserving the user's other overrides;
         # ';' separates entries exactly as in WINEDLLOVERRIDES, which is what
-        # CrossOver's wine --dll feeds (docs/architecture/effect-pass-replay.md,
-        # "bottle experiments": builtin vs native D3DX).
+        # CrossOver's wine --dll feeds.
         overrides = 'd3d9=b' if args.vanilla else 'd3d9=n,b'
-        if args.d3dx == 'builtin':
-            overrides += ';d3dx9_37=b'
         command = [str(WINE), '--bottle', args.bottle, '--no-update',
                    '--dll', overrides,
                    '--workdir', str(game), str(game / 'X3AP.exe')]
@@ -1413,15 +1360,14 @@ def main():
                     # only for managed rollback/removal, never for launch.
                 if args.dry_run:
                     print(json.dumps({'command': command, 'cwd': str(game), 'launcher_stderr': str(launcher_log),
-                                      'overrides': overrides, 'd3dx': args.d3dx,
-                                      'env': {**{k: env[k] for k in sorted(env) if k.startswith('X3M_')}, **voice_env,
-                                              **experiment_env}}, indent=2))
+                                      'overrides': overrides,
+                                      'env': {**{k: env[k] for k in sorted(env) if k.startswith('X3M_')},
+                                              **voice_env}}, indent=2))
                     return
                 print(f'Launching X3AP through CrossOver Preview; terminal output is also teed to {launcher_log}.', flush=True)
                 # What was actually launched, first in the preserved log: the exact
-                # argv, the --dll string this child got and the resolved --d3dx choice.
-                header = (f'launcher command={json.dumps(command)} overrides={overrides} d3dx={args.d3dx}'
-                          f' fex_tso={args.fex_tso or "unset"} wined3d={args.wined3d or "unset"}')
+                # argv and the --dll string this child got.
+                header = f'launcher command={json.dumps(command)} overrides={overrides}'
                 raise SystemExit(launch_teed(command, env, game, launcher_log, header=header))
         except (OSError, ValueError, KeyError, TypeError) as error:
             parser.error(str(error))

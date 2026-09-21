@@ -59,8 +59,6 @@ SERIAL_GROUP = frozenset({
     'test_comparison_hotkeys',
     'test_cull_census',
     'test_cull_small_parts',
-    'test_d3dx_override_launch',
-    'test_env_experiment_launch',
     'test_fps_overlay',
     'test_launcher_stderr_tee',
     'test_linear_emission_hull_gain',

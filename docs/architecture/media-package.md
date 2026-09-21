@@ -71,10 +71,10 @@ check. The launcher holds the lock from its final journal/selection validation
 through the complete `launch_teed` child lifetime, including process creation.
 Dry-run takes the same lock for validation and reporting, creates no child and
 does not require the game to be closed; it can create the coordination lock file.
-Legacy `media_transcode.py install/restore` uses that same lock and refuses a
-source selected by managed media. Its H.264 original-file swapping route is
-superseded for owned playback. If such a transcode is already present, new
-preflight rejects its original hash; restoration remains an explicit operation.
+The legacy `tools/media_transcode.py` original-file swapping route (H.264 into
+`mov/*.dat`) was retired with owned playback and its tool removed in the
+2026-09-22 cleanup (batch 2). If such a transcode is already present, preflight
+still rejects its original hash through `media_package.guard_legacy`.
 No EXE, original MOV, CAT/DAT or bottle configuration write is performed.
 
 `x3-modern-transaction.json` records a verified old snapshot, new snapshot and

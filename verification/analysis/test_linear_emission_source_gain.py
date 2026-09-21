@@ -4,8 +4,8 @@ Transformer: gain 1 is byte-identical to the original; gain G adds exactly one
 `def c31 = (G, 0, 0, 0)` and one `mul r0.xyz, r0, c31.x` immediately before
 the untouched native `mov oC0, r0`; every original instruction, the native
 output and raw alpha are retained (docs/architecture/linear-emission-cost.md,
-"Implemented"). Launcher gate: requires --hdr only; the 2026-09-16
-`--effect-source-gain` is refused naming the replacement. Blend law
+"Implemented"). Launcher gate: requires --hdr only; the retired
+`--effect-source-gain` is gone from the parser (unrecognized). Blend law
 (`linear_emission_source_gain_blend`, shared with the GPU fixture): ONE/ONE/ADD
 admits whatever the separate alpha states are (run 26 refused every engine
 draw on sepalpha=1), ONE/INVSRCCOLOR admits as `Screen` (the proxy substitutes
@@ -175,7 +175,7 @@ class LauncherGateTests(unittest.TestCase):
             for boundary in ('1', '8'):
                 code, output, error = launch(directory, *PREREQUISITES, '--emission-source-gain', boundary); self.assertEqual(code, 0, error)
 
-    def test_effect_gain_is_removed_and_names_the_replacement(self):
+    def test_effect_gain_option_is_gone(self):
         with tempfile.TemporaryDirectory() as directory:
             code, output, error = launch(directory, *PREREQUISITES, '--emission-source-gain', '5'); self.assertEqual(code, 0, error)
             env = json.loads(output)['env']
@@ -184,7 +184,7 @@ class LauncherGateTests(unittest.TestCase):
             for bad in ((*PREREQUISITES, '--effect-source-gain', '2'), (*PREREQUISITES, '--emission-source-gain', '2', '--effect-source-gain', '1'),
                         ('--motion-output', '--effect-source-gain', '2')):
                 code, _, error = launch(directory, *bad); self.assertEqual(code, 2, bad)
-                self.assertIn('--effect-source-gain was removed', error); self.assertIn('--emission-source-gain', error)
+                self.assertIn('unrecognized arguments', error); self.assertIn('--effect-source-gain', error)
         self.assertNotIn('--effect-source-gain', launch_help())
 
     def test_dll_gate_reads_the_variable_and_needs_hdr_only(self):

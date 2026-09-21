@@ -344,20 +344,13 @@ class PackageTests(unittest.TestCase):
             self.assertEqual(self.run_launcher(child, '--dry-run'), 0)
         child.assert_not_called(); guard.assert_not_called()
 
-    def test_native_legacy_guard_uses_tasklist_without_posix_probe(self):
-        from tools import media_transcode as legacy
+    def test_native_guard_uses_tasklist(self):
         self.closed.stop()
-        real_guard = mp.assert_game_closed
-        def native_guard():
+        try:
             with mock.patch.object(mp.os, 'name', 'nt'), \
                  mock.patch.object(mp.subprocess, 'run', return_value=mock.Mock(stdout='INFO: No tasks match.')) as run:
-                real_guard()
+                mp.assert_game_closed()
                 self.assertEqual(run.call_args.args[0][0], 'tasklist')
-        try:
-            with mock.patch.object(mp, 'assert_game_closed', side_effect=native_guard), \
-                 mock.patch.object(legacy, 'x3_running', side_effect=AssertionError('POSIX probe called')):
-                args = mock.Mock(game_dir=str(self.game), id=2)
-                self.assertEqual(legacy.cmd_restore(args), 0)
         finally:
             self.closed.start()
 
@@ -421,14 +414,6 @@ class PackageTests(unittest.TestCase):
         self.assertEqual((self.game / mp.INSTALL).read_bytes(), before)
         self.assertEqual((directory / 'LAVVideo.ax').read_bytes(), b'changed')
         with self.assertRaises(mp.PackageError): mp.current(self.game)
-
-    def test_legacy_commands_cannot_change_managed_source(self):
-        from tools import media_transcode as legacy
-        self.install()
-        args = mock.Mock(game_dir=str(self.game), id=2)
-        for operation in (legacy.cmd_install, legacy.cmd_restore):
-            with self.assertRaises(legacy.ToolError): operation(args)
-        self.assert_originals()
 
     def test_recovery_refuses_changed_current_pair(self):
         self.install()

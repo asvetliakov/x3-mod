@@ -1,8 +1,10 @@
 """Host tests of the launcher's stderr/stdout tee in tools/manage.py: the UTC
 line prefix, the terminal bytes kept unchanged, a fresh file per launch, the
-refusal that costs the copy and not the launch, and the --dry-run path.
+refusal that costs the copy and not the launch, the --dry-run path, and the
+command header a real launch records first in the preserved log.
 A fake child process; no game, no Wine."""
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -137,6 +139,64 @@ class LauncherTee(unittest.TestCase):
             self.assertEqual(json.loads(output.getvalue())['launcher_stderr'], str(expected))
             self.assertFalse(expected.exists())
             self.assertFalse(expected.parent.exists())
+
+
+class LaunchRecordsTheCommand(unittest.TestCase):
+    """A preserved session must say what was launched, not only what the log
+    lines imply; the header is the first line after the tee's own line."""
+
+    def test_launch_passes_the_command_header(self):
+        module = load_manage()
+        with tempfile.TemporaryDirectory() as directory:
+            game = Path(directory) / 'game'
+            game.mkdir()
+            (game / 'X3AP.exe').touch()
+            dll = game / 'd3d9.dll'
+            dll.write_bytes(b'proxy')
+            (game / 'x3-modern-install.json').write_text(json.dumps({'sha256': hashlib.sha256(b'proxy').hexdigest()}))
+            wine = Path(directory) / 'wine'
+            wine.touch()
+            seen = {}
+
+            def fake_launch(command, env, cwd, log_path, **kwargs):
+                seen['command'] = command
+                seen['header'] = kwargs.get('header')
+                return 0
+
+            argv = ['manage.py', 'launch', '--game-dir', str(game)]
+            with mock.patch.object(sys, 'argv', argv), mock.patch.object(module, 'WINE', wine), \
+                    mock.patch.object(module, 'launch_teed', fake_launch), \
+                    mock.patch.object(module.subprocess, 'call', side_effect=AssertionError('must never launch')), \
+                    contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit):
+                    module.main()
+        header = seen['header']
+        self.assertTrue(header.startswith('launcher command='), header)
+        self.assertTrue(header.endswith(' overrides=d3d9=n,b'), header)
+        encoded = header[len('launcher command='):header.index(' overrides=')]
+        self.assertEqual(json.loads(encoded), seen['command'])
+        self.assertEqual(len(header.splitlines()), 1)
+
+    def test_launch_teed_writes_the_header_before_the_child_output(self):
+        module = load_manage()
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / 'captures/launcher-stderr.log'
+            code = module.launch_teed([sys.executable, '-c', 'print("child line")'], None, directory, log,
+                                      stdout=io.BytesIO(), stderr=io.BytesIO(),
+                                      header='launcher command=["wine"] overrides=d3d9=n,b')
+            self.assertEqual(code, 0)
+            lines = log.read_text(encoding='utf-8').splitlines()
+        self.assertIn('launcher_tee pid=', lines[0])
+        self.assertTrue(lines[1].endswith('launcher command=["wine"] overrides=d3d9=n,b'), lines[1])
+        self.assertIn('child line', lines[2])
+
+    def test_header_is_optional(self):
+        module = load_manage()
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / 'launcher-stderr.log'
+            module.launch_teed([sys.executable, '-c', 'pass'], None, directory, log,
+                               stdout=io.BytesIO(), stderr=io.BytesIO())
+            self.assertEqual(len(log.read_text(encoding='utf-8').splitlines()), 1)
 
 
 if __name__ == '__main__':

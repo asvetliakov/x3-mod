@@ -430,7 +430,8 @@ DTV-DVD decoder but has no stock MP4 source filter. **H.264 in AVI is the one
 combination plausibly decodable on both targets with no custom codec
 runtime**; MP4 is built as the CrossOver-only control.
 
-**Tool.** `tools/media_transcode.py` (host-side, no Wine):
+**Tool.** `tools/media_transcode.py` (host-side, no Wine; removed in the
+2026-09-22 cleanup, batch 2 -- the description below is the historical record):
 
 * `probe [--game-dir DIR]` — ffprobe table of every `mov/*.dat`;
 * `build --id N [--container avi|mp4] --out DIR` — libx264, `-pix_fmt
@@ -1301,7 +1302,8 @@ valid proxy hashes and media selections. Legacy DLL-only launch compatibility
 is retained.
 
 Affected command:
-`PYTHONPATH=verification/probe python3 -u -m unittest verification.analysis.test_media_package verification.analysis.test_media_transcode.InstallRestore verification.analysis.test_env_experiment_launch verification.analysis.test_launcher_stderr_tee`.
+`PYTHONPATH=verification/probe python3 -u -m unittest verification.analysis.test_media_package verification.analysis.test_media_transcode.InstallRestore verification.analysis.test_env_experiment_launch verification.analysis.test_launcher_stderr_tee`
+(as run then; `test_media_transcode` and `test_env_experiment_launch` were deleted in the 2026-09-22 cleanup).
 The complete stdout/stderr and unittest summary are retained in
 `/tmp/x3-media-package-tests.log`.
 45 tests passed in 2.745 seconds; four-tool `py_compile` and `git diff --check`
