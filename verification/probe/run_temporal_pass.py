@@ -31,12 +31,15 @@ try:
     match=re.search(r'RESULT PASS numerical=(\d+) state_restorations=(\d+) generations=(\d+)',text)
     report['state_restorations']=int(match[2]) if match else 0
     report['generations']=int(match[3]) if match else 0
+    report['camera_pan']=[dict(f.split('=') for f in l.split()[1:]) for l in text.splitlines() if l.startswith('CAMERA_PAN ')]
     report['camera']={m.group(1):dict(drift_px=float(m.group(2)),error=float(m.group(3))) for m in re.finditer(r'CAMERA label=(\S+) frames=\d+ from=\d+ drift_px=([0-9.]+) error=([0-9.]+)',text)}
     # 508 / 278: the quad vertex program and copy mode twins (pre-review 28,
     # D1/D2 of the native-Windows audit) added 20 numerical and 25 state
     # checks per generation to the sharpen cases' 468 / 228 (review 23: 416 /
-    # 164; stage 3: 448 / 204); the 386 samples are unchanged.
-    assert run.returncode==0 and match and tuple(map(int,match.groups()))==(508,278,2) and report['samples']==386 and 'RESET PASS' in text and 'FAIL' not in text,text[-1500:]
+    # 164; stage 3: 448 / 204). 510 / 388: the camera pan case (run215, one
+    # numerical check and sample per generation) on top of 508 / 386.
+    assert run.returncode==0 and match and tuple(map(int,match.groups()))==(510,278,2) and report['samples']==388 and 'RESET PASS' in text and 'FAIL' not in text,text[-1500:]
+    assert len(report['camera_pan'])==2 and all(r['w_below_current_only']=='0' and r['w_above_current_only']=='0' and int(r['w_below_px'])>4000 for r in report['camera_pan']),report['camera_pan']
     # The quad twins and the copy modes: byte-identical on this backend.
     report['quad_twins']=[dict(re.findall(r'(\w+)=(\S+)',line)) for line in text.splitlines() if line.startswith('QUAD_TWIN ')]
     report['copy_modes']=[dict(re.findall(r'(\w+)=(\S+)',line)) for line in text.splitlines() if line.startswith('COPY_MODE ')]

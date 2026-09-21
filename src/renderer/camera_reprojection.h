@@ -89,8 +89,8 @@ inline bool camera_far_plane_previous_ndc(const CameraState& current, const Came
 }
 // The 4x4 clip_to_previous (row-major storage, column-vector multiplication)
 // mapping a current NDC direction at infinity to the previous clip position:
-// previous = (X, Y, W, W) so x/w, y/w are the previous NDC and z/w = 1 (the far
-// plane); the current z column is zero (the map depends on the direction only)
+// previous = (X, Y, W (1 - 2^-16), W) so x/w, y/w are the previous NDC and z/w is just
+// under 1 (the far plane; see the z row below); the current z column is zero (the map depends on the direction only)
 // and w > 0 exactly when the direction is in front of the previous camera.
 inline bool camera_far_plane_reprojection(const CameraState& current, const CameraState& previous, float out[16]) noexcept {
     if (!current.valid || !previous.valid || !out) return false;
@@ -108,8 +108,14 @@ inline bool camera_far_plane_reprojection(const CameraState& current, const Came
     for (unsigned i = 0; i < 3; ++i) for (unsigned j = 0; j < 3; ++j) { N[i][j] = 0; for (unsigned k = 0; k < 3; ++k) N[i][j] += AQ[i][k] * B[k][j]; }
     // Transpose into column-vector rows; the constant term (row 2 of N, the
     // "1" of the direction) rides on the homogeneous 1 of currentClip.
+    // The z row is the w row times (1 - 2^-16), not the w row itself: the resolve forms expectedDepth = z / w on the GPU, whose
+    // division need not be IEEE (D3D9 allows a reciprocal multiply), and with bit-identical rows the quotient rounded ABOVE 1 on
+    // 8-11 % of the pixels with w < 1, failing validDepth and dropping their history on every pan (run215). The error of such a
+    // quotient is a few float ulps (~1e-7 relative, as are the row's own rounding and the two dots going separate ways); 2^-16 =
+    // 1.5e-5 is 100x that and 1300x below the 0.02 disocclusion tolerance expectedDepth feeds, on its permissive side.
+    constexpr double kFarDepth = 1. - 0x1p-16;
     const double M[4][4] = {{N[0][0], N[1][0], 0, N[2][0]}, {N[0][1], N[1][1], 0, N[2][1]},
-                            {N[0][2], N[1][2], 0, N[2][2]}, {N[0][2], N[1][2], 0, N[2][2]}};
+                            {N[0][2] * kFarDepth, N[1][2] * kFarDepth, 0, N[2][2] * kFarDepth}, {N[0][2], N[1][2], 0, N[2][2]}};
     for (unsigned i = 0; i < 4; ++i) for (unsigned j = 0; j < 4; ++j) {
         if (!std::isfinite(M[i][j]) || std::fabs(M[i][j]) > 1e15) return false;
         out[i * 4 + j] = float(M[i][j]);

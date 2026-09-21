@@ -1175,3 +1175,38 @@ S 0.7, W 0.97, box7, E 1.0. Residual after the fix [I from replay]: 0.56 / 0.68 
 against 0.37 at rest and 1.5 / 1.2 / 1.7 today: slight shimmer growing mildly with speed, about half of today's; S 0.85
 buys another 12 % for 3x the star-streak pixels and +22 % emitter excess and is the next knob only if the user still
 sees it. Not verified on the GPU: the replay's "fix" assumes every such pixel then accepts.
+
+## 2026-09-22 run215 pan flicker: fix (far-plane z row = w row x (1 - 2^-16)) and fixture row
+
+**Change.** `camera_far_plane_reprojection` (`src/renderer/camera_reprojection.h`) scales the z row by `1 - 0x1p-16` in double
+before the float conversion. No shader, constant layout or program changed (resolve bytecode identical; `resolve_far` stays 508 / 512).
+
+**Consumers checked [M, source].** Row 2 is read only by `resolve.hlsl` (`expectedDepth`, and through the includes every resolve
+variant: thin, age, line, far, far_camera). `line_mask_ps.hlsl` (camera gate, c8 / c9 parallax) dots rows 0, 1, 3 only; the thin
+box programs read no matrix row; `motion_output.cpp` memcpys the matrix. `expectedDepth` feeds `validDepth` (bound `<= 1`,
+`resolve.hlsl:162,324`) and the disocclusion threshold `previous >= expectedDepth - max(1e-4, 0.02 |expectedDepth|)` (`:350,359`).
+The far-plane matrix has a zero z column, so a valid-depth camera-path pixel gets the same `expectedDepth` as a sentinel: the
+threshold moves from 0.98 to 0.979985, the permissive side, 1/1300 of the tolerance. Nothing assumes z row == w row or
+`expectedDepth == 1`. The identity fallback matrix (policy 1 / failed transform) divides by w = 1 exactly and is untouched.
+**Margin [I].** The quotient error of a reciprocal-multiply division, the float rounding of the scaled row and the two dots now
+rounding separately are each a few float ulps (~1e-7 relative) for any on-frame pixel (w >= ~0.5; cancellation only near w -> 0,
+which is off-frame). 2^-16 = 1.5e-5 is ~100x that.
+
+**Fixture [M], bottle X3.** New case (g) in `camera_cases` (`verification/probe/temporal_pass_fixture.cpp`): all-sentinel sky, 2
+deg/frame yaw, 48 frames, jittered, the installed age programs (thin clip 0.7, WMAX 0.97); current-only = age target == 1, frames
+8-47, excluding pixels whose oracle history position is within 1.5 px of the border or outside, and |w - 1| < 1e-4. Row
+`CAMERA_PAN`, one per generation; the runner asserts 510 numerical / 388 samples (was 508 / 386) and zero in the `w < 1` half.
+
+| build | w < 1: current-only / px | w > 1: current-only / px | frames hit |
+|---|---|---|---|
+| unfixed (scale 1.0) | 1708 / 15680 (10.9 %) | 0 / 19200 | 33 of 40 |
+| fixed | 0 / 15680 | 0 / 19200 | 0 |
+
+The backend reproduces run215's split exactly (8-11 % there). A first detector (output == render bit for bit) was discarded: the
+neighbourhood clip makes 0.4-0.6 % of accepted pixels equal the render in both halves.
+**Other rows.** Against the committed summary, all non-timing values are identical except the `camera` rows, which call the same
+builder and were losing the same history: jittered drift / error improve (yaw 0.124 -> 0.066 px / 0.0152 -> 0.0088, pitch 0.176 ->
+0.057 / 0.0161 -> 0.0110, cut-resumed 0.100 -> 0.062); unjittered and single-step rows move by <= 0.005 px (more accumulated
+resampling), all inside their unchanged tolerances. Host: `test_camera_reprojection` + `test_taa_camera_path` 17 tests OK (pins
+updated: z / w = 1 - 2^-16, identity matrix m[11] = 0.999984741). Production scratch build OK, `check_no_x87.py`: no violations.
+Not verified in flight; the replay's "fix" row above is the expected effect.

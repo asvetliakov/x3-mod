@@ -46,9 +46,9 @@
     "src/temporal/sharpen.h": "7929b76d44483ec76a5e939f7fd1245d981a88fe7eb6a32a73bae43fe81b771f",
     "src/temporal/rcas.hlsl": "50ce16e50069b2d6bf599575aa82828158b233e46723c1b7c277bcae7aacc152",
     "src/temporal/taa_sharpen_ps.hlsl": "af6a6734bcc506afaf990de01add0bcb2d7e57617c738ba08fa6ab2e7167d9a8",
-    "verification/probe/temporal_pass_fixture.cpp": "641b65806ea8d1e3088163e1dea1da98639f909020d5dff598947127c4d8a2b1",
+    "verification/probe/temporal_pass_fixture.cpp": "8ac50926a05125156b8cc98cee013b1355883c2896fa3eabf65930f538154b3c",
     "verification/probe/build_temporal_pass.sh": "a59f6e17764411adad516db293587561c0f30a63ebc8a58a663e067f4e49f6e9",
-    "verification/probe/run_temporal_pass.py": "e40e04a77d359fccc44c8a81c58c781e28b74b7d9f82d8183c32224b092329e3"
+    "verification/probe/run_temporal_pass.py": "7a66f765e0c3977077b4749bb58902293925f6b6ceb56b619ca4e18af8d7c0ca"
   },
   "game_launched": false,
   "bottle": {
@@ -61,7 +61,7 @@
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
-  "executable_sha256": "c24354266bbaf662e562afc25cd206118cfe545f8d2cfa0ec1cfa2be8d871f95",
+  "executable_sha256": "7781df81eacc1e6440496098c2c77a817ae5911dedff73eefdc94ce30ac91b82",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -81,50 +81,70 @@
   "source_unchanged": true,
   "binary_unchanged": true,
   "compiler_unchanged": true,
-  "report_sha256": "9b6db45ebfcbbff611c8760c3f527ba61d08de9e70fbe96d6707ca255877e81d",
-  "samples": 386,
+  "report_sha256": "a19e720c796eb45b6a970972823f8f855a1fe5b02b853412309b018e365fe741",
+  "samples": 388,
   "state_restorations": 278,
   "generations": 2,
+  "camera_pan": [
+    {
+      "yaw_degrees": "2",
+      "frames": "40",
+      "w_below_px": "15680",
+      "w_below_current_only": "0",
+      "w_above_px": "19200",
+      "w_above_current_only": "0",
+      "frames_hit": "0"
+    },
+    {
+      "yaw_degrees": "2",
+      "frames": "40",
+      "w_below_px": "15680",
+      "w_below_current_only": "0",
+      "w_above_px": "19200",
+      "w_above_current_only": "0",
+      "frames_hit": "0"
+    }
+  ],
   "camera": {
     "static-builder": {
       "drift_px": 0.0686,
       "error": 0.00753
     },
     "yaw-builder": {
-      "drift_px": 0.1243,
-      "error": 0.01518
+      "drift_px": 0.0662,
+      "error": 0.00881
     },
     "pitch-builder": {
-      "drift_px": 0.1764,
-      "error": 0.01611
+      "drift_px": 0.0574,
+      "error": 0.01103
     },
     "yaw-builder-unjittered": {
-      "drift_px": 0.0619,
-      "error": 0.00578
+      "drift_px": 0.0664,
+      "error": 0.00618
     },
     "narrow-yaw-builder-unjittered": {
-      "drift_px": 0.0263,
-      "error": 0.00807
+      "drift_px": 0.0301,
+      "error": 0.00885
     },
     "yaw-single-step": {
-      "drift_px": 0.0334,
-      "error": 0.00367
+      "drift_px": 0.0369,
+      "error": 0.0039
     },
     "pitch-single-step": {
-      "drift_px": 0.0292,
-      "error": 0.00314
+      "drift_px": 0.0335,
+      "error": 0.00336
     },
     "yaw-identity": {
       "drift_px": 0.8621,
       "error": 0.07596
     },
     "yaw-swapped": {
-      "drift_px": 1.0506,
-      "error": 0.08649
+      "drift_px": 1.0539,
+      "error": 0.09244
     },
     "yaw-cut-resumed": {
-      "drift_px": 0.1004,
-      "error": 0.01353
+      "drift_px": 0.0624,
+      "error": 0.00878
     }
   },
   "quad_twins": [
@@ -295,7 +315,7 @@
   },
   "lattice": {
     "report": "temporal-lattice.txt",
-    "report_sha256": "e36136bcdfb509793f5795060315ca5e34d76e1a2e11141f8ead0b7b81a64b15",
+    "report_sha256": "2c8a22772dbdf2f54bc598be333add2df86187b588ff0bed42f633a99f84d273",
     "exit_code": 0,
     "budget": {
       "current_filter": {
@@ -2111,15 +2131,15 @@
         "height": "768",
         "content": "all_geometry",
         "rounds": "6",
-        "plain_ms": "0.8549",
-        "current_filter_ms": "0.8677",
-        "line_filter_ms": "1.3290",
-        "far_stabiliser_ms": "1.3278",
-        "thin_region_ms": "2.1043",
-        "taps_delta_ms": "0.0128",
-        "line_delta_ms": "0.4741",
-        "far_delta_ms": "0.4729",
-        "thin_region_delta_ms": "1.2494",
+        "plain_ms": "0.5847",
+        "current_filter_ms": "0.5833",
+        "line_filter_ms": "0.8398",
+        "far_stabiliser_ms": "0.7257",
+        "thin_region_ms": "1.3221",
+        "taps_delta_ms": "-0.0014",
+        "line_delta_ms": "0.2551",
+        "far_delta_ms": "0.1410",
+        "thin_region_delta_ms": "0.7374",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]
@@ -3349,12 +3369,12 @@
         "width": "1280",
         "height": "768",
         "rounds": "6",
-        "no_region_thin_ms": "2.1043",
-        "no_region_camera_ms": "2.1870",
-        "no_region_camera_delta_ms": "0.0827",
-        "fragmented_pan_thin_ms": "1.2792",
-        "fragmented_pan_camera_ms": "1.8350",
-        "fragmented_pan_camera_delta_ms": "0.5558",
+        "no_region_thin_ms": "1.3221",
+        "no_region_camera_ms": "1.5388",
+        "no_region_camera_delta_ms": "0.2166",
+        "fragmented_pan_thin_ms": "0.9465",
+        "fragmented_pan_camera_ms": "1.3442",
+        "fragmented_pan_camera_delta_ms": "0.3977",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ],
@@ -3363,11 +3383,11 @@
         "width": "1280",
         "height": "768",
         "rounds": "6",
-        "r32f_camera_ms": "1.8350",
-        "lane_input_law_ms": "1.5238",
-        "lane_input_lane_ms": "1.5397",
-        "lane_fetch_delta_ms": "0.0159",
-        "lane_input_over_r32f_ms": "-0.3112",
+        "r32f_camera_ms": "1.3442",
+        "lane_input_law_ms": "1.3225",
+        "lane_input_lane_ms": "1.4073",
+        "lane_fetch_delta_ms": "0.0848",
+        "lane_input_over_r32f_ms": "-0.0217",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]
@@ -3579,9 +3599,9 @@
         "height": "768",
         "rounds": "6",
         "content": "all_unrouted_sentinel_pan",
-        "strength_off_ms": "1.2663",
-        "strength_on_separable_ms": "1.4320",
-        "sentinel_delta_ms": "0.1658",
+        "strength_off_ms": "1.1050",
+        "strength_on_separable_ms": "1.3388",
+        "sentinel_delta_ms": "0.2337",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]

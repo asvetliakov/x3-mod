@@ -1032,9 +1032,11 @@ x3m::renderer::CameraState camera_pose(double yaw,double pitch,float m00=1,float
     x3m::renderer::CameraState c;require(x3m::renderer::camera_state_from_matrices(projection,view,c),"camera pose validates");return c;
 }
 enum class CameraControl { Builder, Identity, Swapped };
-struct CameraRun { std::vector<std::vector<float>> current,reference,output; std::vector<x3m::renderer::SentinelDecision> decisions; std::vector<bool> used; };
-template<class Pose> CameraRun camera_sequence(EdgeScene& s,CameraSky& sky,const DWORD* decoder,const DWORD* resolver,Pose pose,unsigned frames,CameraControl control,float cutDegrees,const char* label,bool jitter=true,float weight=.9f){
+struct CameraRun { std::vector<std::vector<float>> current,reference,output,age; std::vector<x3m::renderer::SentinelDecision> decisions; std::vector<bool> used; };
+template<class Pose> CameraRun camera_sequence(EdgeScene& s,CameraSky& sky,const DWORD* decoder,const DWORD* resolver,Pose pose,unsigned frames,CameraControl control,float cutDegrees,const char* label,bool jitter=true,float weight=.9f,float adaptive=0){
     constexpr UINT S=EdgeScene::S,P=EdgeScene::P;TemporalPass pass;check("camera initialize",pass.initialize(s.d,decoder,resolver));CameraRun run;
+    // adaptive > 0: the age-weight programs (thin clip 0.7, WMAX = adaptive), whose age target marks a current-only pixel with exactly 1.
+    if(adaptive>0){check("camera configure flicker",pass.configure_flicker());require(pass.age_available(),"camera age programs available");}
     x3m::renderer::CameraState previous;
     for(unsigned n=0;n<frames;++n){
         const unsigned index=n%P+1;const double jx=jitter?halton(index,2)-.5:0,jy=jitter?halton(index,3)-.5:0;
@@ -1052,9 +1054,11 @@ template<class Pose> CameraRun camera_sequence(EdgeScene& s,CameraSky& sky,const
         std::copy(d.matrix,d.matrix+16,in.clip_to_previous);
         in.current_jitter[0]=float(jx);in.current_jitter[1]=float(jy);in.weight=weight;in.motion_policy=MotionPolicy::PerPixel;
         in.reactive_policy=ReactivePolicy::DerivedFromDepthSentinel;in.sentinel_camera=d.policy==2;in.cut=d.cut;in.history_allowed=true;in.caller_queries_idle=true;in.caller_scene_open=true;
+        if(adaptive>0){in.thin_clip=.7f;in.adaptive_weight=adaptive;}
         Output out;check("camera Begin resolve",s.d->BeginScene());check(label,pass.run(in,&out));check("camera End resolve",s.d->EndScene());
         require(out.color&&pass.diagnostics().history_valid,"camera sequence keeps a history");
         run.used.push_back(out.used_history);run.output.push_back(s.read(out.color));
+        if(adaptive>0){require(out.age!=nullptr,"camera age target written");run.age.push_back(s.read(out.age));}
         // The unjittered render of the same camera: what the accumulated output represents.
         sky.render(c,0,0);run.reference.push_back(s.read(s.color.p));
         previous=c; // The history now holds this frame (the route does the same after a successful resolve).
@@ -1168,6 +1172,31 @@ void camera_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,con
     // (f) Rotation angle reported by the decision matches the pose step.
     metric("camera yaw: reported rotation per frame (degrees)",run.decisions[5].rotation_degrees,.5,1e-3);
     metric("camera cut: reported rotation of the jump (degrees)",run.decisions[16].rotation_degrees,25.5,1e-2);
+    // (g) Pan (run215): an all-sentinel frame under a 2-degree yaw. clip_to_previous gives w < 1 over the half of the frame the
+    // camera turns toward; expectedDepth = z / w of the far-plane rows must stay a valid depth there whatever the GPU's division
+    // rounding, or the pixel drops its history (age target == 1; the installed thin clip 0.7 / WMAX 0.97 programs). Pixels whose history is off-frame (oracle previous
+    // position within 1.5 px of the border or outside) are excluded. The w > 1 half is reported as the control.
+    {
+        constexpr UINT S=EdgeScene::S;const double pan=2*3.14159265358979/180;
+        const auto panYaw=[&](unsigned n){return camera_pose(n*pan,0);};
+        run=camera_sequence(s,sky,decoder,resolver,panYaw,48,CameraControl::Builder,20,"camera pan",true,.9f,.97f);
+        unsigned below=0,belowReset=0,above=0,aboveReset=0,framesHit=0;
+        for(unsigned n=8;n<run.output.size();++n){
+            const float* m=run.decisions[n].matrix;const auto now=panYaw(n),before=panYaw(n-1);unsigned hit=0;
+            for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x){
+                const double nx=(x+.5)/S*2-1,ny=1-(y+.5)/S*2;double px=0,py=0;
+                if(!x3m::renderer::camera_far_plane_previous_ndc(now,before,nx,ny,px,py))continue;
+                const double u=(px*.5+.5)*S,v=(.5-py*.5)*S;if(u<1.5||u>S-1.5||v<1.5||v>S-1.5)continue;
+                const double w=double(m[12])*nx+double(m[13])*ny+double(m[15]);if(std::fabs(w-1)<1e-4)continue;
+                const bool reset=run.age[n][(y*S+x)*4]==1.f;
+                if(w<1){++below;if(reset){++belowReset;++hit;}}else{++above;aboveReset+=reset;}
+            }
+            framesHit+=hit!=0;
+        }
+        std::printf("CAMERA_PAN yaw_degrees=2 frames=40 w_below_px=%u w_below_current_only=%u w_above_px=%u w_above_current_only=%u frames_hit=%u\n",below,belowReset,above,aboveReset,framesHit);
+        require(below>4000&&above>4000,"pan: both halves of the frame are measured");
+        metric("camera pan: current-only pixels where previousClip.w < 1 (history on frame)",belowReset,0,0);
+    }
     if(!deferredFailures.empty())throw std::runtime_error(deferredFailures.front());
 }
 void reset_continuity(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS& pp,Compiler compiler,const DWORD* decoder,const DWORD* resolver){

@@ -142,7 +142,9 @@ class CameraReprojection(unittest.TestCase):
         self.assertGreater(clip[3], 0.0)
         self.assertAlmostEqual(clip[0] / clip[3], expected[0], places=places)
         self.assertAlmostEqual(clip[1] / clip[3], expected[1], places=places)
-        self.assertAlmostEqual(clip[2] / clip[3], 1.0, places=9)  # far plane
+        # Far plane, held 2^-16 under 1 so a non-IEEE GPU quotient cannot round above validDepth's bound (run215 pan flicker).
+        self.assertAlmostEqual(clip[2] / clip[3], 1.0 - 2.0 ** -16, places=6)
+        self.assertLess(clip[2] / clip[3], 1.0 - 2.0 ** -17)
         self.assertEqual(r['oracle_valid'], 1)
         self.assertAlmostEqual(r['oracle'][0], expected[0], places=places)
         self.assertAlmostEqual(r['oracle'][1], expected[1], places=places)
@@ -152,7 +154,7 @@ class CameraReprojection(unittest.TestCase):
     def test_identity_to_identity(self):
         p = projection(0.8, 4 / 3)
         r = self.run_driver(p, IDENTITY, p, IDENTITY, 0.3, -0.2)
-        expected = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1]
+        expected = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0.999984741, 0, 0, 0, 1]  # z row = w row * (1 - 2^-16), %.9g of the float
         self.assertEqual(r['matrix'], expected)
         self.assertEqual((r['policy'], r['cut'], r['transform'], r['reason']), (2, 0, 1, 0))
         self.assertEqual(r['policy_matrix'], expected)
