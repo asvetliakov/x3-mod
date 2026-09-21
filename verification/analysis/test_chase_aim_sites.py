@@ -1,5 +1,7 @@
 """Host tests for the instruction-aware chase aim hook-site verifier."""
+import contextlib
 import dataclasses
+import os
 import struct
 import sys
 import tempfile
@@ -51,6 +53,24 @@ def synthetic_image(site_overrides=(), extra=(), text_size=0x80000):
                      text_size, text_va - probe.IMAGE_BASE, text_size,
                      header_size, 0, 0, 0, 0, 0x60000020)
     return bytes(header) + bytes(text)
+
+
+@contextlib.contextmanager
+def synthetic_image_path(data, prefix='x3-synthetic-image-'):
+    """Yield a path to a synthetic PE on disk for objdump, cleaned up by its directory.
+
+    The host malware scan (macOS XProtect) blocks the read of, and then deletes,
+    a file whose exact contents it has flagged; some of these synthetic images
+    hit that, so objdump failed with "Operation not permitted" and the file was
+    gone by teardown. Sixteen inert bytes past the end of the PE image keep
+    every file unique without changing any byte objdump decodes or a site
+    report reads, and the temporary directory owns the cleanup so a removed
+    file cannot fail a test.
+    """
+    with tempfile.TemporaryDirectory(prefix=prefix) as directory:
+        path = Path(directory) / 'image.exe'
+        path.write_bytes(data + os.urandom(16))
+        yield path
 
 
 def verify_synthetic(data):

@@ -13,8 +13,9 @@ F=np.float32; SUN=np.array([1.,0.,0.],F); SIGMA=screen.SIGMA; W,H=128,72; FAR=fo
 LEVELS={'fine':512.,'far':4096.}; SEGMENTS=(('near',0.,NEAR),('middle',NEAR,WINDOW),('shell',WINDOW,FAR)); OFFSETS=np.array(list(product((-.25,.25),repeat=3)),np.float64)
 EXPECTED_REFINEMENT='0fdfc2c872de2ebe51b241c6eea241bec683a0de2cb217e9b36592decc3a9ad4'; EXPECTED_PLAN='ca7674296bb28ad26c7c043a7ca812dc4f0f68c592e1fd54f383fa2ccf8aea38'; DEFAULT_PLAN=Path('/Users/asvetl/x3-mod/docs/architecture/fog-density-runtime-plan.md'); DEPTHS=np.array([1000.,11999.,12001.,149999.,150001.,199999.,200001.]); WITNESS=((0,0),(31,0),(0,17),(31,17),(16,9))
 def digest(p):
- h=hashlib.sha256(); f=Path(p).open('rb')
- for b in iter(lambda:f.read(1<<20),b''): h.update(b)
+ h=hashlib.sha256()
+ with Path(p).open('rb') as f:
+  for b in iter(lambda:f.read(1<<20),b''): h.update(b)
  return h.hexdigest()
 def metric(x):
  a=np.asarray(x,np.float64).ravel(); return {k:float(v) for k,v in [('mean',a.mean()),('p50',np.percentile(a,50)),('p99',np.percentile(a,99)),('max',a.max(initial=0))]}|{'count':int(a.size)}

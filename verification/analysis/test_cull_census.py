@@ -12,7 +12,6 @@ import contextlib
 import importlib.util
 import io
 import json
-import os
 import shutil
 import struct
 import subprocess
@@ -25,7 +24,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'verification/probe'))
 import verify_cull_census_sites as probe  # noqa: E402
-from verification.analysis.test_chase_aim_sites import synthetic_image  # noqa: E402
+from verification.analysis.test_chase_aim_sites import synthetic_image, synthetic_image_path  # noqa: E402
 
 HARNESS = r'''
 #include "cull_census_core.h"
@@ -115,15 +114,7 @@ def image(*changes):
 
 
 def inspect_image(data):
-    # objdump needs a path on disk. The host malware scan (macOS XProtect)
-    # blocks the read of, and then removes, a file whose exact contents it has
-    # flagged; some of these synthetic images hit that. Sixteen inert bytes
-    # past the end of the PE image keep each file unique without changing any
-    # byte objdump decodes or inspect() reads, and the directory owns the
-    # cleanup so a removed file cannot fail the test teardown.
-    with tempfile.TemporaryDirectory(prefix='x3-cull-census-') as directory:
-        path = Path(directory) / 'image.exe'
-        path.write_bytes(data + os.urandom(16))
+    with synthetic_image_path(data, prefix='x3-cull-census-') as path:
         return probe.inspect(data, probe.decode(path), probe.CORE.read_text())
 
 
