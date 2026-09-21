@@ -1,49 +1,45 @@
 # Project status
 
-Updated 2026-09-21: Run56 (run200) is accepted for media stability: the user
+Updated 2026-09-21 (evening): the Run59 candidate is installed and Run 59 is queued. Run56 (run200) is accepted for media stability: the user
 reports no crash and no media-related stutter. The accepted production baseline
 is merged to main. Run57 accepts the station-flash default correction. Fog-range and moving-lattice
 work remain open. The agent never launches the game. See the [run queue](verification/user-runs.md).
 
 ## Installed build
 
-Bottle **X3**, **CrossOver Preview.app**. Run56 DLL SHA-256:
-`a51d1e75fa80d7d07bab7ab66004291f7248bc5693e6585171e564a90fa96e56`
-(54,386,310 bytes), built once from clean reviewed source
-`85da89a8955a72b20d92f2309e4b9a4cb4dd325e` on **`fix/id2-video-omission`**,
-checkout `/tmp/x3-run56-integration`. Retained DLL:
-`/tmp/x3-run56-candidate/build/d3d9.dll`. This accepted production baseline is now on main; the installed bytes remain
-the previously qualified build, with no rebuild or reinstall for the merge.
+Bottle **X3**, **CrossOver Preview.app**. Run59 DLL SHA-256:
+`b1bb05fb71d8da17028e2a10740bb7380cf26298f1ccbbfb2b18128befe93a81`
+(54,415,673 bytes), built once from clean reviewed main
+`526851e4336339d5e0b33dee7bfedafab9c242cc`, checkout `/tmp/x3-run59-integration`.
+Retained DLL: `/tmp/x3-run59-candidate/build/d3d9.dll`. Installed 2026-09-21.
 
-The user accepts missing ID2 animated textures. The candidate skips their silent
-video construction through the existing allocator gate and removes the owned
-playback runtime, startup/consumer/destination hooks, LAV SDK dependency and
-media-package launch prerequisite. Speech, music and unrelated media keep their
-existing paths. The first-person fog correction, fourteen spatial profiles/shafts
-and protected lattice observer remain. **Run200 is accepted by the user for no crash and no media-related stutter.**
+Changes against the accepted Run56 baseline: (1) the shader-shadow restoration
+lifetime fix (scoped owned getter references per injected draw; two getters and
+two Releases per routed draw, nothing on unrouted draws); (2) the opt-in
+`--taa-thin-region-gate camera` mode with its 7×7 box clip. Default behaviour and
+the 11 existing resolve programs are byte-identical. The stored-density fog
+sources on main are not in the build graph. The Run56 media omission, fog
+first-person correction, fourteen spatial profiles/shafts and Run57 launcher
+defaults are retained.
 
-[Qualification](../verification/results/run56-candidate-qualification.json): full
-host discovery completed **2,627 tests in 735.394 s**, two skips, one stale
-CreateDevice fixture failure. That sole failure was corrected and independently
-reviewed; its focused rerun passes **19 scenarios / 202 checks**. The initial
-full run was not an all-pass run. The focused x86 omission fixture passes
-**3,904 checks**, including 96,000 foreign-thread calls. Linked audit passes
-**95 roots / 542 reachable functions / zero violations**. Two selected checks
-on the actual DLL pass: ownership/HDR **43 checks / 39 restorations**, TAA/HDR
-**83 / 51**; this is not a full renderer-suite pass or native Windows execution.
+[Qualification](../verification/results/run59-candidate-qualification.json): full
+host discovery **2,776 tests in 889.2 s**, no failures, one environmental error
+(Microsoft Defender quarantined a test's synthetic PE image), closed by a
+tooling-only fix and a focused rerun of **293 tests**; the initial full run was
+not an all-pass run. Linked audit **95 roots / 544 reachable functions / zero
+violations**. Four selected actual-DLL cases pass (ownership/HDR **43 checks / 39
+restorations**, TAA/HDR **83 / 51**, ownership **43 / 39**, ownership/TAA
+**83 / 51**); this is not a full renderer-suite pass or native Windows execution.
+The camera gate has no actual-DLL GPU case: its coverage is the detached
+temporal fixture (**495 numerical checks**) on the same sources.
 
 Installation used `python3 tools/manage.py install --bottle X3 --dll-source
-/tmp/x3-run56-candidate/build/d3d9.dll` from the new checkout. The
-[install record](../verification/results/run56-candidate-install.json) verifies
-installed bytes and unchanged X3AP.exe, cxbottle.conf and original `mov/00002.dat`.
-Active media selection is removed; the exact Run55 DLL/manifest and its provider
-files remain valid for rollback under
-`drive_c/X3/x3-modern-media/rollback/fb0fda8949bf4d6c8cb91f6a055361f8`.
-The affected launch dry-run passed; no game was launched by the agent. The
-completed Run56 command is archived. Future runs omit CrossOver debug tracing.
-
-All task agents and executions are stopped at the session boundary.
-Session-limit continuation and pending worktrees: [handoff 2026-09-21](handoff-2026-09-21.md).
+/tmp/x3-run59-candidate/build/d3d9.dll` from main. The
+[install record](../verification/results/run59-candidate-install.json) verifies
+installed bytes and unchanged X3AP.exe `fdbf3418…` and cxbottle.conf `cc5d6c00…`.
+Rollback: the exact Run56 DLL `a51d1e75…` at `/tmp/x3-run56-candidate/build/d3d9.dll`
+with its committed records. Both Run 59 launch dry-runs passed; no game was
+launched by the agent.
 
 ## Current work and pending acceptance
 

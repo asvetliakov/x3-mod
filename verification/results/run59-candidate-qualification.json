@@ -1,0 +1,298 @@
+{
+  "schema": 1,
+  "candidate": {
+    "commit": "526851e4336339d5e0b33dee7bfedafab9c242cc",
+    "branch": "detached (main)",
+    "checkout": "/tmp/x3-run59-integration",
+    "dll": "/tmp/x3-run59-candidate/build/d3d9.dll",
+    "sha256": "b1bb05fb71d8da17028e2a10740bb7380cf26298f1ccbbfb2b18128befe93a81",
+    "bytes": 54415673,
+    "configuration": "RelWithDebInfo",
+    "toolchain": "cmake/mingw-i686.cmake",
+    "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "source_clean": true,
+    "python3": "/usr/bin/python3 (3.9.6, NumPy 2.0.2 for the fog asset step)"
+  },
+  "scope": "Versus installed Run56 DLL a51d1e75 (commit 85da89a8): (1) shader-shadow restoration lifetime fix (src/proxy/motion_output.{h,cpp}, sun_share_lane_inc.h: scoped owned GetVertexShader/GetPixelShader references per routed draw); (2) opt-in --taa-thin-region-gate camera (programs line_mask_camera, thin_box, resolve_far_camera; temporal_pass, capture.cpp, motion_output plumbing, tools/manage.py option); (3) Run57 launcher defaults already on main. Fog stored-density sources (src/fog/fog_density_*) are not in the build graph.",
+  "linked_audit": {
+    "command": "python3 verification/probe/check_no_x87.py /tmp/x3-run59-candidate/build/d3d9.dll",
+    "cwd": "/tmp/x3-run59-integration",
+    "result": "PASS",
+    "roots": {
+      "set_vs": "__ZN3x3m12_GLOBAL__N_1L6set_vsEP16IDirect3DDevice9P22IDirect3DVertexShader9@8",
+      "set_ps": "__ZN3x3m12_GLOBAL__N_1L6set_psEP16IDirect3DDevice9P21IDirect3DPixelShader9@8",
+      "set_vs_constant_f": "__ZN3x3m12_GLOBAL__N_1L17set_vs_constant_fEP16IDirect3DDevice9jPKfj@16",
+      "set_vs_constant_i": "__ZN3x3m12_GLOBAL__N_1L17set_vs_constant_iEP16IDirect3DDevice9jPKij@16",
+      "set_ps_constant_f": "__ZN3x3m12_GLOBAL__N_1L17set_ps_constant_fEP16IDirect3DDevice9jPKfj@16",
+      "set_viewport": "__ZN3x3m12_GLOBAL__N_1L12set_viewportEP16IDirect3DDevice9PK13_D3DVIEWPORT9@8",
+      "set_render_state": "__ZN3x3m12_GLOBAL__N_1L16set_render_stateEP16IDirect3DDevice919_D3DRENDERSTATETYPEm@12",
+      "set_texture": "__ZN3x3m12_GLOBAL__N_1L11set_textureEP16IDirect3DDevice9mP21IDirect3DBaseTexture9@12",
+      "set_sampler_state": "__ZN3x3m12_GLOBAL__N_1L17set_sampler_stateEP16IDirect3DDevice9m20_D3DSAMPLERSTATETYPEm@16",
+      "set_stream_source": "__ZN3x3m12_GLOBAL__N_1L17set_stream_sourceEP16IDirect3DDevice9jP22IDirect3DVertexBuffer9jj@20",
+      "set_indices": "__ZN3x3m12_GLOBAL__N_1L11set_indicesEP16IDirect3DDevice9P21IDirect3DIndexBuffer9@8",
+      "set_declaration": "__ZN3x3m12_GLOBAL__N_1L15set_declarationEP16IDirect3DDevice9P27IDirect3DVertexDeclaration9@8",
+      "set_fvf": "__ZN3x3m12_GLOBAL__N_1L7set_fvfEP16IDirect3DDevice9m@8",
+      "draw_primitive": "__ZN3x3m12_GLOBAL__N_1L14draw_primitiveEP16IDirect3DDevice917_D3DPRIMITIVETYPEjj@16",
+      "draw_indexed": "__ZN3x3m12_GLOBAL__N_1L12draw_indexedEP16IDirect3DDevice917_D3DPRIMITIVETYPEijjjj@28",
+      "draw_up": "__ZN3x3m12_GLOBAL__N_1L7draw_upEP16IDirect3DDevice917_D3DPRIMITIVETYPEjPKvj@20",
+      "draw_indexed_up": "__ZN3x3m12_GLOBAL__N_1L15draw_indexed_upEP16IDirect3DDevice917_D3DPRIMITIVETYPEjjjPKv10_D3DFORMATS5_j@36",
+      "gz_read": "__ZN3x3m13loading_trace12_GLOBAL__N_1L7gz_readEPvS2_j",
+      "gz_getc": "__ZN3x3m13loading_trace12_GLOBAL__N_1L7gz_getcEPv",
+      "gz_tell": "__ZN3x3m13loading_trace12_GLOBAL__N_1L7gz_tellEPv",
+      "gz_seek": "__ZN3x3m13loading_trace12_GLOBAL__N_1L7gz_seekEPvli",
+      "crypt_acquire": "__ZN3x3m13loading_trace12_GLOBAL__N_1L13crypt_acquireEPmPKcS4_mm@20",
+      "crypt_release": "__ZN3x3m13loading_trace12_GLOBAL__N_1L13crypt_releaseEmm@8",
+      "crypt_import": "__ZN3x3m13loading_trace12_GLOBAL__N_1L12crypt_importEmPKhmmmPm@24",
+      "crypt_key_destroy": "__ZN3x3m13loading_trace12_GLOBAL__N_1L17crypt_key_destroyEm@4",
+      "light::file_open": "__ZN3x3m13loading_trace5light9file_openEPKcmmP20_SECURITY_ATTRIBUTESmmPv@28",
+      "light::file_read": "__ZN3x3m13loading_trace5light9file_readEPvS2_mPmP11_OVERLAPPED@20",
+      "light::file_seek": "__ZN3x3m13loading_trace5light9file_seekEPvlPlm@16",
+      "light::cursor_set": "__ZN3x3m13loading_trace5light10cursor_setEP7HICON__@4",
+      "light::cursor_position": "__ZN3x3m13loading_trace5light15cursor_positionEii@8",
+      "light::find_first": "__ZN3x3m13loading_trace5light10find_firstEPKcP17_WIN32_FIND_DATAA@8",
+      "light::find_next": "__ZN3x3m13loading_trace5light9find_nextEPvP17_WIN32_FIND_DATAA@8",
+      "light::find_close": "__ZN3x3m13loading_trace5light10find_closeEPv@4",
+      "light::gz_open_traced": "__ZN3x3m13loading_trace5light14gz_open_tracedEPKcS3_",
+      "light::gz_read_traced": "__ZN3x3m13loading_trace5light14gz_read_tracedEPvS2_j",
+      "light::gz_seek_traced": "__ZN3x3m13loading_trace5light14gz_seek_tracedEPvli",
+      "light::gz_getc_traced": "__ZN3x3m13loading_trace5light14gz_getc_tracedEPv",
+      "light::gz_tell_traced": "__ZN3x3m13loading_trace5light14gz_tell_tracedEPv",
+      "light::gz_close_traced": "__ZN3x3m13loading_trace5light15gz_close_tracedEPv",
+      "light::gz_write": "__ZN3x3m13loading_trace5light8gz_writeEPvPKvj",
+      "light::inflate_stream": "__ZN3x3m13loading_trace5light14inflate_streamEPvi",
+      "light::xml_read": "__ZN3x3m13loading_trace5light8xml_readEPKciS3_S3_i",
+      "light::inflate_init2": "__ZN3x3m13loading_trace5light13inflate_init2EPviPKci",
+      "light::inflate_end": "__ZN3x3m13loading_trace5light11inflate_endEPv",
+      "light::crypt_acquire_context": "__ZN3x3m13loading_trace5light21crypt_acquire_contextEPmPKcS4_mm@20",
+      "light::crypt_release_context": "__ZN3x3m13loading_trace5light21crypt_release_contextEmm@8",
+      "light::crypt_import_key": "__ZN3x3m13loading_trace5light16crypt_import_keyEmPKhmmmPm@24",
+      "light::crypt_create_hash": "__ZN3x3m13loading_trace5light17crypt_create_hashEmjmmPm@20",
+      "light::crypt_hash_data": "__ZN3x3m13loading_trace5light15crypt_hash_dataEmPKhmm@16",
+      "light::crypt_verify_signature": "__ZN3x3m13loading_trace5light22crypt_verify_signatureEmPKhmmPKcm@24",
+      "light::crypt_get_hash_param": "__ZN3x3m13loading_trace5light20crypt_get_hash_paramEmmPhPmm@20",
+      "light::crypt_destroy_hash": "__ZN3x3m13loading_trace5light18crypt_destroy_hashEm@4",
+      "light::crypt_destroy_key": "__ZN3x3m13loading_trace5light17crypt_destroy_keyEm@4",
+      "light::create_directory": "__ZN3x3m13loading_trace5light16create_directoryEPKcP20_SECURITY_ATTRIBUTES@8",
+      "light::delete_file": "__ZN3x3m13loading_trace5light11delete_fileEPKc@4",
+      "light::move_file": "__ZN3x3m13loading_trace5light9move_fileEPKcS3_@8",
+      "light::move_file_ex": "__ZN3x3m13loading_trace5light12move_file_exEPKcS3_m@12",
+      "light::write_file": "__ZN3x3m13loading_trace5light10write_fileEPvPKvmPmP11_OVERLAPPED@20",
+      "light::get_file_type": "__ZN3x3m13loading_trace5light13get_file_typeEPv@4",
+      "light::close_handle": "__ZN3x3m13loading_trace5light12close_handleEPv@4",
+      "crypt_cache::acquire": "__ZN3x3m11crypt_cache7acquireEPmPKcS3_mm@20",
+      "crypt_cache::release": "__ZN3x3m11crypt_cache7releaseEmm@8",
+      "crypt_cache::import_key": "__ZN3x3m11crypt_cache10import_keyEmPKhmmmPm@24",
+      "crypt_cache::destroy_key": "__ZN3x3m11crypt_cache11destroy_keyEm@4",
+      "crypt_cache::shutdown": "__ZN3x3m11crypt_cache8shutdownEv",
+      "crypt_cache::statistics": "__ZN3x3m11crypt_cache10statisticsEv",
+      "_x3m_probe_enter": "_x3m_probe_enter",
+      "_x3m_probe_exit": "_x3m_probe_exit",
+      "_x3m_resource_read_entry": "_x3m_resource_read_entry",
+      "_x3m_pool_fopen": "_x3m_pool_fopen",
+      "_x3m_pool_fclose": "_x3m_pool_fclose",
+      "_x3m_point_light_root_admits": "_x3m_point_light_root_admits",
+      "_x3m_pass_phase_enter": "_x3m_pass_phase_enter",
+      "_x3m_loop_phase_enter": "_x3m_loop_phase_enter",
+      "_x3m_residual_phase_enter": "_x3m_residual_phase_enter",
+      "_x3m_light_phase_enter": "_x3m_light_phase_enter",
+      "_x3m_submit_phase_enter": "_x3m_submit_phase_enter",
+      "_x3m_media_cue_enter": "_x3m_media_cue_enter",
+      "_x3m_media_cue_return": "_x3m_media_cue_return",
+      "_x3m_cull_census_measure": "_x3m_cull_census_measure",
+      "_x3m_cull_census_exit": "_x3m_cull_census_exit",
+      "_x3m_collide_narrow_pre": "_x3m_collide_narrow_pre",
+      "_x3m_collide_narrow_post": "_x3m_collide_narrow_post",
+      "_x3m_collide_sat_thunk": "_x3m_collide_sat_thunk",
+      "_x3m_collide_sat_sse2": "_x3m_collide_sat_sse2",
+      "_x3m_collide_memo_thunk": "_x3m_collide_memo_thunk",
+      "_x3m_collide_memo_lookup": "_x3m_collide_memo_lookup",
+      "_x3m_collide_memo_store": "_x3m_collide_memo_store",
+      "_x3m_collide_query_memo_thunk": "_x3m_collide_query_memo_thunk",
+      "_x3m_collide_query_descent_thunk": "_x3m_collide_query_descent_thunk",
+      "_x3m_collide_query_lookup": "_x3m_collide_query_lookup",
+      "_x3m_collide_query_store": "_x3m_collide_query_store",
+      "_x3m_collide_query_enter": "_x3m_collide_query_enter",
+      "_x3m_collide_query_leave": "_x3m_collide_query_leave",
+      "ownership::get_buffer_lock_view_light": "__ZN3x3m9ownership26get_buffer_lock_view_lightEP18IDirect3DResource9PNS0_14BufferLockViewE"
+    },
+    "reachable_functions": 544,
+    "violations": {},
+    "record": {
+      "path": "/tmp/x3-run59-candidate/linked-audit.json",
+      "sha256": "3cee1fbde2c01642f6eb96c33b4172b6c4a9335b0f6262d70730e030c4f8b913",
+      "bytes": 7794
+    }
+  },
+  "selected_render_smoke": {
+    "status": "PARTIAL",
+    "scope": "Four selected actual-DLL production cases (two Run56 cases plus two ownership-routed variant cases exercising the restoration lifetime fix); no full renderer suite, no cross-case comparison",
+    "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py --dll /tmp/x3-run59-candidate/build/d3d9.dll --seam /tmp/x3-run59-integration/verification/probe/build/motion-output-seam/d3d9.dll --fixture /tmp/x3-run59-integration/verification/probe/build/motion_output_fixture.exe production-ownership-hdr-on production-taa-hdr-on production-ownership-on production-ownership-taa-on",
+    "consume_only": true,
+    "rebuilt_candidate": false,
+    "cases": {
+      "production-ownership-hdr-on": {
+        "exit": 0,
+        "checks": 43,
+        "restorations": 39,
+        "frames": 12,
+        "directory": "verification/probe/build/motion-output-production-ownership-hdr-on-20260921-170700-172067"
+      },
+      "production-ownership-on": {
+        "exit": 0,
+        "checks": 43,
+        "restorations": 39,
+        "frames": 12,
+        "directory": "verification/probe/build/motion-output-production-ownership-on-20260921-170653-911191"
+      },
+      "production-ownership-taa-on": {
+        "exit": 0,
+        "checks": 83,
+        "restorations": 51,
+        "frames": 12,
+        "directory": "verification/probe/build/motion-output-production-ownership-taa-on-20260921-170658-220058"
+      },
+      "production-taa-hdr-on": {
+        "exit": 0,
+        "checks": 83,
+        "restorations": 51,
+        "frames": 12,
+        "directory": "verification/probe/build/motion-output-production-taa-hdr-on-20260921-170701-771957"
+      }
+    },
+    "binaries": {
+      "/private/tmp/x3-run59-integration/verification/probe/build/motion_output_fixture.exe": "ac42bb5b701e697669f09e4982af0b3d77743519f3b8ba0c5d8e707e0cc9cbbf",
+      "/private/tmp/x3-run59-integration/verification/probe/build/motion-output-seam/d3d9.dll": "ee1bcc5477fa8d072abc07e101b6326389c5e3af68d225b428d96056ead0e896",
+      "/private/tmp/x3-run59-candidate/build/d3d9.dll": "b1bb05fb71d8da17028e2a10740bb7380cf26298f1ccbbfb2b18128befe93a81"
+    },
+    "thin_region_camera_gate": "no production-DLL case exists: the camera-gate GPU coverage lives in the detached run_temporal_pass.py fixture (THIN_REGION_CAMERA rows), which has no retained-DLL mode; not run for this candidate",
+    "report": {
+      "path": "/tmp/x3-run59-candidate/render-smoke.json",
+      "sha256": "42017d9df32fba4a7af97020b4fecba3742975f28f4efe8d1d4369fae2ff20b7",
+      "bytes": 3039
+    },
+    "full_record": {
+      "path": "/tmp/x3-run59-candidate/motion-output-partial.json",
+      "sha256": "86c199779e4fb422603839307b3c54e560388740e324008648e2fb3bc2c99dba",
+      "bytes": 132525,
+      "note": "runner wrote verification/results/bottle-X3/motion-output-partial.json in the detached checkout; copied here and the tracked file restored"
+    },
+    "lock": {
+      "timings_json": null,
+      "wall_seconds": 10.608,
+      "note": "wine_lock --timings-json not requested for this run; wall time from shell time, lock acquired without contention"
+    }
+  },
+  "build": {
+    "configure": {
+      "path": "/tmp/x3-run59-configure.log",
+      "sha256": "67112e6cb49a10587bca6d36d4871f5d8bd0051a228f215b0d3fe6b4a9018822",
+      "bytes": 550
+    },
+    "log": {
+      "path": "/tmp/x3-run59-build.log",
+      "sha256": "123858b7029653f18a7fb03570659293e57d03bfbc823b831809cbde88742578",
+      "bytes": 7302
+    },
+    "seam_fixture_log": {
+      "path": "/tmp/x3-run59-seam-build.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "commands": [
+      "cmake -S /tmp/x3-run59-integration -B /tmp/x3-run59-candidate/build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPython3_EXECUTABLE=/usr/bin/python3",
+      "cmake --build /tmp/x3-run59-candidate/build -j8",
+      "X3M_CANDIDATE_BUILD=/tmp/x3-run59-candidate/build sh verification/probe/build_motion_output.sh (seam + fixture only; candidate DLL never rebuilt)"
+    ],
+    "errors": 0,
+    "warnings": 0,
+    "seconds": 33.4
+  },
+  "dry_run": {
+    "command": [
+      "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+      "--bottle",
+      "X3",
+      "--no-update",
+      "--dll",
+      "d3d9=n,b",
+      "--workdir",
+      "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3",
+      "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe",
+      "-noabout",
+      "-skipintro",
+      "-runinbg"
+    ],
+    "cwd": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3",
+    "overrides": "d3d9=n,b",
+    "exit_code": 0,
+    "game_launched": false,
+    "gate_and_cuts": {
+      "X3M_MOTION_CUT_MEDIAN_PX": "1e30",
+      "X3M_MOTION_CUT_MISSING": "1",
+      "X3M_MOTION_OUTPUT": "1",
+      "X3M_TAA": "1",
+      "X3M_TAA_FAR_STABILISER": "0.985,0,80,130,0.03,0.25",
+      "X3M_TAA_THIN_REGION": "0.97,1",
+      "X3M_TAA_THIN_REGION_GATE": "camera"
+    },
+    "result": {
+      "path": "/tmp/x3-run59-candidate/dry-run.json",
+      "sha256": "2bfe86033c9484624863f60ab44b6b147d1b584cd1cd56ec5b7c7254708a3807",
+      "bytes": 5749
+    },
+    "lock": {
+      "lock_wait_seconds": 3.124999999999656e-06,
+      "child_elapsed_seconds": 0.130593083,
+      "exit_code": 0
+    }
+  },
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "host": {
+    "command": "PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_*.py'",
+    "cwd": "/Users/asvetl/x3-mod",
+    "commit": "526851e4336339d5e0b33dee7bfedafab9c242cc",
+    "full_discovery": {
+      "tests": 2776,
+      "seconds": 889.207,
+      "exit": 1,
+      "failures": 0,
+      "errors": 1,
+      "skips": 0,
+      "log": {
+        "path": "/tmp/x3-run59-host.log",
+        "bytes": 28169,
+        "sha256": "b8619dd0bbb638510cc6827e50c01b7cbc3c11d6fa04a0c9ebc826b3ff00306e"
+      }
+    },
+    "closure": {
+      "test": "test_point_light_admission.PointLightSite.test_changed_bytes_and_interior_branch_refused",
+      "cause": "Microsoft Defender quarantined the synthetic PE temp image (Trojan:Win32/Wacatac.C!ml false positive, user-confirmed) before objdump read it",
+      "fix_commit": "e0e85021 (test and probe tooling only; no production source)",
+      "rerun": {
+        "patterns": [
+          "test_c*.py",
+          "test_lod_scale_patch.py",
+          "test_point_light_admission.py"
+        ],
+        "tests": [
+          277,
+          6,
+          10
+        ],
+        "result": "OK",
+        "commit": "e0e85021"
+      }
+    },
+    "acceptance": "full discovery completed with one environmental error, closed by a focused rerun after a tooling-only fix; the initial full run was not an all-pass run"
+  },
+  "native_windows": "unverified",
+  "game_acceptance": "pending Run59"
+}
