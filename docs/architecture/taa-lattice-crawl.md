@@ -1816,8 +1816,9 @@ and this brief excluded; that is a new decision, not a sweep of this one.
 
 Flown as run207 (`screen`) / run208 (`camera`) on DLL `b1bb05fb`; the user accepts the camera gate for pans and it is
 now the launcher and native-fallback default whenever the thin region is active, `screen` being the opt-out, with
-`--taa-line-filter` resolving silently to `screen`. The roll residual is unmeasured and open
-([ledger](../verification/temporal-resolve.md)). The gate is selected by `X3M_TAA_THIN_REGION_GATE`, log field
+`--taa-line-filter` resolving silently to `screen`. The roll residual is measured in section 32.2 below
+(rotation-only path p50/p90/p99 0.030 / 0.069 / 0.092 px: the roll alone keeps the gate open;
+[ledger](../verification/temporal-resolve.md)). The gate is selected by `X3M_TAA_THIN_REGION_GATE`, log field
 `thin_gate=` on `motion_output_taa`; `screen` is the pre-Run59 installed gate. Orchestrator decisions: gate speed `min(screen speed, camera-relative speed)`, so every pixel
 the installed gate leaves open stays open; the 7x7 box only where the camera term opens what the screen gate would
 have closed; nothing else changes.
@@ -1876,3 +1877,87 @@ quantisation): run177 rotation: tracked rms x 0.5667, gradient x 0.7207, gate sh
 
 **Flight.** `--taa-thin-region 0.97 --taa-thin-region-gate camera` at the run177 position: slow and fast pan against
 the installed gate, judged on crawl against blur and on trails behind ships crossing the lattice.
+
+### 32.2 Camera path made depth- and translation-aware; the forward-flight answer (2026-09-21)
+
+Host only (no Wine, no build, no production edit). Tool `tools/analysis/taa_resolve_replay.py`
+(`camera_previous_ndc`, the camera path of the replay and of the gate experiment), new mode
+`tools/analysis/taa_lattice_gate_replay.py --camera-check`, test
+`verification/analysis/test_taa_camera_path.py` (7 cases), numbers
+`verification/results/lattice-gate-replay-run209-forward.json`.
+
+**Tool correction.** The replay's camera path built a rotation-only far-plane ray from the logged
+`camera_state` R and P and ignored the logged translation `t`, so on a forward burst it reported a
+camera-relative residual equal to the raw screen speed. The path now unprojects each pixel at its own
+depth (`z_view = m32 / (d - m22)`, assumed m22 = 1.000003 / m32 = -6.000018; `camera_state` does not
+log them), takes it through the current view inverse and the previous view and projection, and is the
+default; `CAMPATH=rotation` (or `opt['campath']`) keeps the old path. The unit test flies a static
+point cloud with a camera translating 136 units/frame AND yawing: the new path lands on the
+analytically projected previous position to **< 0.01 px** (max over 4096 points, also with non-zero
+m20/m21), the rotation-only path is off by the parallax (median 6.5 px, at least 8.7 px inside 400 units)
+and the two agree at the far plane to < 0.05 px.
+
+**The installed shader has the same gap, and that is the real finding.** The `clip_to_previous`
+`temporal_pass.cpp` uploads is `camera_far_plane_reprojection` (`src/renderer/camera_reprojection.h`):
+its z column is zero and the translation is dropped by construction, so although
+`line_mask_camera_ps.hlsl` does fetch the pixel's depth into `clip.z`, the installed camera-relative
+speed IS the full parallax whenever the ship translates. The old replay number was faithful to the
+installed shader, not to the physics; run209-forward under `CAMPATH=rotation` reproduces it exactly
+(region camera-relative speed p50/p90 **1.050 / 2.721** px against screen 1.041 / 2.708, gate share
+0.0001 = the installed screen gate, rms and gradient ratios 1.000).
+
+**Routed truth** (static routed geometry: motion RG with alpha 1 *is* the previous position), ROI
+(860,10,1260,290), residual p50/p90/p99 px:
+
+| burst | camera translation | rotation-only path | corrected path |
+|---|---|---|---|
+| run209 roll 7799-7830 | 0.5-7.0 units/frame | 0.0295 / 0.0686 / 0.0923 | 0.0189 / 0.0375 / 0.0577 |
+| run209 forward 4421-4452 | 109-136 units/frame | 1.3949 / 2.8327 / 3.3125 | 0.0325 / 0.0531 / 0.0606 |
+
+The roll row reproduces the previously reported 0.031 / 0.070 / 0.095 within noise (511,298 routed
+pixel-frames), so the rewrite did not disturb the case where the old path was already right. On the
+forward burst the rotation-only residual equals the screen speed (1.385 / 2.819 / 3.299) to 1 %,
+while the corrected residual is 0.03-0.06 px: **the camera path, not the gate rule, was the problem.**
+
+**Answer to the open question (forward burst 4421-4452, thin ROI, 624,066 routed pixel-frames).** With
+a correct camera path the camera-relative gate is wide open during forward flight. Corrected residual
+by radial bin (5 quintiles of radius from the frame centre, px): 0.023 / 0.028 / 0.034 / 0.043 / 0.053
+p50 (rotation-only: 0.80 / 1.17 / 1.48 / 2.16 / 2.83 - the radial expansion the gate was closing on).
+By view-z quartile (26-33 k / 33-39 k / 39-56 k / 56-70 k units): 0.052 / 0.040 / 0.026 / 0.024 p50
+(rotation-only 2.74 / 1.92 / 1.05 / 0.92: the parallax falls with distance, as expected). Gate under
+LO 0.03 / HI 0.25 with the 17x17 fastest-neighbour minimum, `min(screen, camera-relative)`: crop-wide
+open share **0.641 -> 0.741**, mean openness 0.641 -> 0.734; thin-region-weighted share (the tool's
+`trg`, the number the section 32 table carries) **0.0001 -> 0.3108**. The 26 % of the crop that stays
+closed is not the truss: only **0.72 %** of crop pixels exceed HI and every one of them is a routed
+pixel with a *sentinel* depth (a lattice cell the cutout route keys), for which no camera path exists
+at all - the 17x17 window spreads those 0.72 % over 26 %. Material tracking (support 11,658 px, routed
+homography fit 0.0066 / 0.1103 px): tracked rms **7.7709 -> 4.0359 (x0.5194)**, gradient
+**850.3 -> 586.4 (x0.6896)** for `gate_open`, x0.5195 / x0.6895 for `gate_open_box7`; background trail
+against the plain resolve p99 0.187 codes. So the gain on a forward burst matches the pan bursts of
+section 32 in both directions: most of the crawl rms goes, about 31 % of the gradient energy goes with
+it.
+
+**SETA x N.** Per-frame camera translation multiplies by N. Measured floor: one R32F step of the
+captured depth, reprojected with the translation scaled x1 / x2 / x6 / x10, moves the prediction by
+0.0006 / 0.0012 / 0.0036 / 0.0059 px (p50) - depth quantisation is not what limits the gate. The
+corrected residual's translation-proportional part is a *tool* calibration error, not physics: fitting
+one multiplicative view-z scale per frame drives the forward-burst residual from 0.0318 to **0.0097 px
+at scale 0.979** (2.1 % z, inside the +-4 % that camera-state-and-frame-routine.md gives for zf
+recovered from m22), while the roll burst is insensitive to it (0.0257 -> 0.0252 at the grid edge).
+A shader holding the engine's live m22/m32 carries no such term, so its residual under SETA x N stays
+at the 0.01-0.02 px floor plus the 0.006 px depth term - the gate stays open (*inference* from the two
+measured bursts and the depth-step measurement; SETA itself was not flown). Even taking the tool's
+2 % error at face value and scaling it linearly, the residual reaches 0.046 / 0.10 / 0.155 px at
+x2 / x6 / x10, still under HI = 0.25, i.e. partially open at worst. For comparison, the SETA-scaled
+*installed* rotation-only residual (same world points, previous camera moved back N x) is
+2.76 / 8.18 / 13.46 px p50 at x2 / x6 / x10: the installed gate closes harder the faster the ship
+flies.
+
+**Baseline.** Section 32's run177 numbers are reproduced by the flagged old path to every printed
+digit: `gate_open_box7` rms **x0.566680**, gradient **x0.720736**, gate share 0.1988, stale patch
+46.6 / 236.7 / 74.4 / 115.0 codes. Under the corrected path as default the same burst moves to rms
+**x0.5214**, gradient **x0.6852**, share 0.2136 (rms 6.7132 -> 3.5001), because that burst also
+translates a little; it is not a regression but a different, more accurate measurement, and the
+section 32 table remains the record of what the *installed* rotation-only gate does. Two limits carry
+over: routed pixels with a sentinel depth have no camera path in either mode, and the replay's
+installed variant still carries the thin region without the far stabiliser.

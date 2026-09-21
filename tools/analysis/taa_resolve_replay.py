@@ -21,6 +21,8 @@ for l in lines:
         meta[f].update(j=(float(kv['jitter_x']), float(kv['jitter_y'])), k=float(kv['taa_k']), hist=int(kv['taa_history']), policy=int(kv['camera_policy']), w=float(kv['taa_weight']), filt=float(kv['taa_filter']))
     else:
         meta[f].update(P=(float(kv['p00']), float(kv['p11']), float(kv['p20']), float(kv['p21'])), R=np.array([[float(kv['r%d%d' % (i, j)]) for j in range(3)] for i in range(3)]))
+        tt = re.search(r' t=([-\d.eE+]+),([-\d.eE+]+),([-\d.eE+]+)', l)  # the view translation V[12..14]; the kv regex stops at the comma
+        if tt: meta[f]['T'] = np.array([float(tt.group(i)) for i in (1, 2, 3)])
 
 def load(kind, f, ext, dt, ch):
     data = np.fromfile(D + '%s_1_%d.%s' % (kind, f, ext), dtype=dt)
@@ -32,6 +34,37 @@ FAR_P22, FAR_P32 = 1.000003, -6.000018  # the game's projection rows (taa-distan
 M = 8  # margin around the crop for taps
 cy0, cy1, cx0, cx1 = Y0 - M, Y1 + M, X0 - M, X1 + M
 ys, xs = np.mgrid[Y0:Y1, X0:X1]
+
+def camera_previous_ndc(nx, ny, depth, Rc, Rp, P, conv=1, cam=None, mode='full'):
+    """Previous-frame NDC of a current pixel on the camera path, as line_mask_ps.hlsl computes it.
+
+    mode 'rotation' is the matrix the installed build actually uploads: camera_far_plane_reprojection
+    (src/renderer/camera_reprojection.h) is a rotation-only far-plane map whose z column is zero, so
+    neither the pixel's depth nor the camera translation enters it (no parallax at infinity).
+    mode 'full' (the default, and what a depth-aware clip_to_previous would be) unprojects the pixel
+    at its own depth, current inverse view-projection x previous view-projection:
+    z_view = m32 / (d - m22) (camera-state-and-frame-routine.md; FAR_P22/FAR_P32 here), world =
+    (view - t_current) R_current^T, previous view = world R_previous + t_previous, then the previous
+    projection. ``depth`` is the R32F capture value; a sentinel or out-of-range depth is taken at the
+    far plane (d = 1), exactly as the shader's clip.z. cam = dict(tc, tp, Pp); without it, or with
+    mode 'rotation', the old rotation-only path runs unchanged.
+    """
+    p00, p11, p20, p21 = P
+    dv = np.stack([(nx - p20) / p00, (ny - p21) / p11, np.ones_like(nx)], -1)
+    q00, q11, q20, q21 = P
+    if cam is None or mode == 'rotation':
+        world = dv @ Rc if conv == 0 else dv @ Rc.T
+        pv = world @ Rp.T if conv == 0 else world @ Rp
+    else:
+        z = FAR_P32 / (np.where(valid(depth), depth, 1.) - FAR_P22)
+        dv = dv * z[..., None] - np.asarray(cam['tc'], float)
+        world = dv @ Rc if conv == 0 else dv @ Rc.T
+        pv = (world @ Rp.T if conv == 0 else world @ Rp) + np.asarray(cam['tp'], float)
+        if cam.get('Pp') is not None: q00, q11, q20, q21 = cam['Pp']
+    ok = pv[..., 2] > 1e-6
+    w = np.where(ok, pv[..., 2], 1.)
+    return pv[..., 0] / w * q00 + q20, pv[..., 1] / w * q11 + q21, ok
+
 
 def valid(d): return (d >= 0) & (d <= 1)
 def weigh(c, k): return c / (1 + k * np.maximum(c @ LUMA, 0))[..., None]
@@ -72,14 +105,11 @@ def resolve(cur, dep, mot, hist, pdep, age, j, k, w, Rc, Rp, P, conv, opt):
     line1x, line2x, line1dx = grow(line1), grow(line2), grow(line1 | dual); line1, line2, dual = line1[1:-1, 1:-1], line2[1:-1, 1:-1], dual[1:-1, 1:-1]
     masks = dict(thin=thin, lattice=lattice, line1=line1, line2=line2, line1d=line1 | dual, line2d=line2 | dual, linehvx=linehvx, line1x=line1x, line2x=line2x, line1dx=line1dx, union=lattice | line1x)
     dx, dy = xs + dil[..., 0], ys + dil[..., 1]
-    # camera path (far plane, rotation only)
+    # camera path at the dilated sample: 'full' (opt['cam'] supplied) reprojects the pixel at its own
+    # depth through the camera translation, 'rotation' (opt['campath']) is the installed far-plane matrix.
     p00, p11, p20, p21 = P
     nx, ny = 2 * (dx - jx) / W - 1, 1 - 2 * (dy - jy) / H
-    dv = np.stack([(nx - p20) / p00, (ny - p21) / p11, np.ones_like(nx)], -1)
-    world = dv @ Rc if conv == 0 else dv @ Rc.T
-    pv = world @ Rp.T if conv == 0 else world @ Rp
-    okcam = pv[..., 2] > 1e-6
-    pnx, pny = pv[..., 0] / pv[..., 2] * p00 + p20, pv[..., 1] / pv[..., 2] * p11 + p21
+    pnx, pny, okcam = camera_previous_ndc(nx, ny, nearest, Rc, Rp, P, conv, opt.get('cam'), opt.get('campath', 'full'))
     posx, posy = (pnx * .5 + .5) * W + jx, (.5 - pny * .5) * H + jy
     exp = np.ones_like(posx); ok = okcam.copy()
     m = mot[dy, dx]
@@ -216,7 +246,9 @@ def run(opt, conv, nframes=None, seed_each=False):
     for f in frames[1:nframes]:
         cur = load('hdr', f, 'rgba16f', np.float16, 4).astype(np.float32); dep = load('depth', f, 'rgba32f', np.float32, 4)[..., 0].copy(); mot = load('motion', f, 'rgba32f', np.float32, 4)
         m = meta[f]; mp = meta[f - 1]
-        res, age, dg = resolve(cur, dep, mot, hist, pdep, age, m['j'], m['k'], m['w'], m['R'], mp['R'], m['P'], conv, opt)
+        o = dict(opt); o.setdefault('campath', os.environ.get('CAMPATH', 'full'))
+        if 'T' in m and 'T' in mp: o.setdefault('cam', dict(tc=m['T'], tp=mp['T'], Pp=mp['P']))
+        res, age, dg = resolve(cur, dep, mot, hist, pdep, age, m['j'], m['k'], m['w'], m['R'], mp['R'], m['P'], conv, o)
         outs.append(res); diags.append(dg)
         hist = load('taa', f, 'rgba16f', np.float16, 4).astype(np.float32)   # outside the crop: the dumped resolve
         if not seed_each: hist[Y0:Y1, X0:X1] = res.astype(np.float32)

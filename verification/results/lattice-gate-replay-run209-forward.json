@@ -1,0 +1,971 @@
+{
+ "generated": "2026-09-21",
+ "units": "display luma codes after AgX+RCAS, no bloom",
+ "history_cut_heuristics": "not modelled (both off, Run57 launcher defaults)",
+ "thin_region": {
+  "W": 0.97,
+  "lo": 0.03,
+  "hi": 0.25
+ },
+ "history_kernel": "Catmull-Rom (Keys -0.5)",
+ "acceptance": {
+  "tracked_rms_ratio_max": 0.8,
+  "tracked_gradient_ratio_min": 0.9,
+  "stale_patch_codes_max": 94.0
+ },
+ "sequences": {
+  "run209-forward": {
+   "dump": "/tmp/x3-bottleX3-run209",
+   "frames": [
+    4421,
+    4452
+   ],
+   "role": "forward",
+   "replay_roi": [
+    860,
+    10,
+    1260,
+    290
+   ],
+   "track_roi": [
+    940,
+    60,
+    1180,
+    200
+   ],
+   "support_pixels": 11658,
+   "background_pixels": 2116229,
+   "scored_frames": 16,
+   "routed_fit_residual_p50_p99_px": [
+    0.006600521585960199,
+    0.11028935498142703
+   ],
+   "variants": {
+    "installed": {
+     "tracked_rms": 7.770933490147202,
+     "tracked_gradient": 850.328515242413,
+     "gate_share": 9.245391705069123e-05,
+     "region_pixel_frames": 1126210,
+     "region_screen_speed_p50_p90": [
+      1.0405512726553032,
+      2.707765255500242
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.026176114291619382,
+      0.0508569158295549
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.0,
+      0.056324779890365995
+     ],
+     "screen_speed_p50_p99": [
+      0.023636473525624528,
+      3.1130301733787693
+     ],
+     "background_trail_p99_vs_plain": 0.0,
+     "background_trail_max_vs_plain": 0.0,
+     "elapsed_seconds": 6.658756583000001,
+     "tracked_rms_ratio": 1.0,
+     "tracked_gradient_ratio": 1.0
+    },
+    "gate_open": {
+     "tracked_rms": 4.035852323030985,
+     "tracked_gradient": 586.4199138740676,
+     "gate_share": 0.310822800537657,
+     "region_pixel_frames": 1126210,
+     "region_screen_speed_p50_p90": [
+      1.0405512726553032,
+      2.707765255500242
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.026176114291619382,
+      0.0508569158295549
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.0,
+      0.056324779890365995
+     ],
+     "screen_speed_p50_p99": [
+      0.023636473525624528,
+      3.1130301733787693
+     ],
+     "background_trail_p99_vs_plain": 0.18714761557254966,
+     "background_trail_max_vs_plain": 108.97699293698403,
+     "elapsed_seconds": 6.709610167000001,
+     "identical_to_installed": false,
+     "max_abs_delta_vs_installed_hdr": 0.9638671875,
+     "differing_values_vs_installed": 3435382,
+     "total_values": 13888000,
+     "tracked_rms_ratio": 0.5193523182443986,
+     "tracked_gradient_ratio": 0.6896392433774728
+    },
+    "gate_open_box7": {
+     "tracked_rms": 4.03674535256891,
+     "tracked_gradient": 586.2796945040905,
+     "gate_share": 0.310822800537657,
+     "region_pixel_frames": 1126210,
+     "region_screen_speed_p50_p90": [
+      1.0405512726553032,
+      2.707765255500242
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.026176114291619382,
+      0.0508569158295549
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.0,
+      0.056324779890365995
+     ],
+     "screen_speed_p50_p99": [
+      0.023636473525624528,
+      3.1130301733787693
+     ],
+     "background_trail_p99_vs_plain": 0.1803568787512951,
+     "background_trail_max_vs_plain": 62.34180649062713,
+     "elapsed_seconds": 6.803718709000002,
+     "identical_to_installed": false,
+     "max_abs_delta_vs_installed_hdr": 0.9638671875,
+     "differing_values_vs_installed": 3409096,
+     "total_values": 13888000,
+     "tracked_rms_ratio": 0.5194672374544339,
+     "tracked_gradient_ratio": 0.6894743431448408
+    },
+    "gate_open_box11": {
+     "tracked_rms": 4.035218373016751,
+     "tracked_gradient": 586.1805011007814,
+     "gate_share": 0.310822800537657,
+     "region_pixel_frames": 1126210,
+     "region_screen_speed_p50_p90": [
+      1.0405512726553032,
+      2.707765255500242
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.026176114291619382,
+      0.0508569158295549
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.0,
+      0.056324779890365995
+     ],
+     "screen_speed_p50_p99": [
+      0.023636473525624528,
+      3.1130301733787693
+     ],
+     "background_trail_p99_vs_plain": 0.1856917874521882,
+     "background_trail_max_vs_plain": 108.97699293698403,
+     "elapsed_seconds": 7.007490375,
+     "identical_to_installed": false,
+     "max_abs_delta_vs_installed_hdr": 0.9638671875,
+     "differing_values_vs_installed": 3417948,
+     "total_values": 13888000,
+     "tracked_rms_ratio": 0.5192707385969808,
+     "tracked_gradient_ratio": 0.6893576901083602
+    }
+   },
+   "plain_elapsed_seconds": 5.506767125
+  }
+ },
+ "verdicts": {
+  "installed": {
+   "pass": true
+  },
+  "gate_open": {
+   "pass": true
+  },
+  "gate_open_box7": {
+   "pass": true
+  },
+  "gate_open_box11": {
+   "pass": true
+  }
+ },
+ "camera_path": {
+  "default": "full: depth- and translation-aware, current inverse view-projection x previous view-projection",
+  "flag": "CAMPATH=rotation (or opt['campath']) = the rotation-only far-plane matrix the installed build uploads (src/renderer/camera_reprojection.h camera_far_plane_reprojection: zero z column, translation dropped), which is what this tool measured before 2026-09-21",
+  "production_finding": "the installed clip_to_previous IS that rotation-only matrix, so the installed camera gate sees the full parallax as camera-relative speed during forward flight; the old replay number was faithful to the shader, not to the physics",
+  "linearisation": "z_view = FAR_P32 / (d - FAR_P22) with the assumed m22 = 1.000003, m32 = -6.000018 (camera_state does not log them)"
+ },
+ "camera_check": {
+  "run209-roll": {
+   "dump": "/tmp/x3-bottleX3-run209",
+   "frames": [
+    7799,
+    7830
+   ],
+   "roi": [
+    860,
+    10,
+    1260,
+    290
+   ],
+   "routed_pixel_frames": 511298,
+   "camera_translation_world_units_per_frame": [
+    0.4644655326116368,
+    6.97412573220232
+   ],
+   "residual_p50_p90_p99_px": {
+    "corrected": [
+     0.01894182146665617,
+     0.037513708811972496,
+     0.05771748119870858
+    ],
+    "installed_rotation_only": [
+     0.029546290617290548,
+     0.0685901430258762,
+     0.09230797111595065
+    ],
+    "screen": [
+     4.189742417839513,
+     10.776878589189213,
+     15.013019803187706
+    ]
+   },
+   "corrected_residual_by_radial_bin": [
+    {
+     "range": [
+      239.63513932643517,
+      362.3360317205651
+     ],
+     "pixels": 102260,
+     "p50_p90_p99": [
+      0.015164010217120279,
+      0.02978577959912712,
+      0.0352309667193652
+     ]
+    },
+    {
+     "range": [
+      362.3360317205651,
+      426.0575078554537
+     ],
+     "pixels": 102243,
+     "p50_p90_p99": [
+      0.015917975126788806,
+      0.03128413009059693,
+      0.03959185477076772
+     ]
+    },
+    {
+     "range": [
+      426.0575078554537,
+      502.7733087585299
+     ],
+     "pixels": 102272,
+     "p50_p90_p99": [
+      0.016998137328673606,
+      0.03266468475966837,
+      0.04369042129284867
+     ]
+    },
+    {
+     "range": [
+      502.7733087585299,
+      575.0147824186784
+     ],
+     "pixels": 102262,
+     "p50_p90_p99": [
+      0.02368485087624855,
+      0.04104754666332148,
+      0.0524457547848785
+     ]
+    },
+    {
+     "range": [
+      575.0147824186784,
+      723.21297001644
+     ],
+     "pixels": 102261,
+     "p50_p90_p99": [
+      0.03053491278265769,
+      0.05126259301005864,
+      0.06499852134020301
+     ]
+    }
+   ],
+   "corrected_residual_by_depth_bin_view_z": [
+    {
+     "range": [
+      25096.8828125,
+      32630.015625
+     ],
+     "pixels": 127681,
+     "p50_p90_p99": [
+      0.029833939737380192,
+      0.049831959793769434,
+      0.06428272564902884
+     ]
+    },
+    {
+     "range": [
+      32630.015625,
+      37213.8984375
+     ],
+     "pixels": 127685,
+     "p50_p90_p99": [
+      0.02279894348653605,
+      0.03876309554943859,
+      0.049919870342645264
+     ]
+    },
+    {
+     "range": [
+      37213.8984375,
+      46049.22265625
+     ],
+     "pixels": 128099,
+     "p50_p90_p99": [
+      0.016613340845735167,
+      0.03171434065097149,
+      0.03797312157683064
+     ]
+    },
+    {
+     "range": [
+      46049.22265625,
+      65965.6640625
+     ],
+     "pixels": 127833,
+     "p50_p90_p99": [
+      0.013990936336552616,
+      0.024563300206155256,
+      0.032639658996068716
+     ]
+    }
+   ],
+   "installed_residual_by_radial_bin": [
+    {
+     "range": [
+      239.63513932643517,
+      362.3360317205651
+     ],
+     "pixels": 102260,
+     "p50_p90_p99": [
+      0.02616072911049741,
+      0.05622562967398299,
+      0.06947186504187292
+     ]
+    },
+    {
+     "range": [
+      362.3360317205651,
+      426.0575078554537
+     ],
+     "pixels": 102243,
+     "p50_p90_p99": [
+      0.026923306022326576,
+      0.057808342147087334,
+      0.07440315027119614
+     ]
+    },
+    {
+     "range": [
+      426.0575078554537,
+      502.7733087585299
+     ],
+     "pixels": 102272,
+     "p50_p90_p99": [
+      0.027004177683541145,
+      0.05859500272346009,
+      0.07758479441570564
+     ]
+    },
+    {
+     "range": [
+      502.7733087585299,
+      575.0147824186784
+     ],
+     "pixels": 102262,
+     "p50_p90_p99": [
+      0.03248597299541864,
+      0.06939540531184771,
+      0.08676972528198143
+     ]
+    },
+    {
+     "range": [
+      575.0147824186784,
+      723.21297001644
+     ],
+     "pixels": 102261,
+     "p50_p90_p99": [
+      0.04743179518251069,
+      0.08563409740815917,
+      0.09909058468913799
+     ]
+    }
+   ],
+   "installed_residual_by_depth_bin_view_z": [
+    {
+     "range": [
+      25096.8828125,
+      32630.015625
+     ],
+     "pixels": 127681,
+     "p50_p90_p99": [
+      0.04650054929282923,
+      0.08452294765503388,
+      0.09842544050379547
+     ]
+    },
+    {
+     "range": [
+      32630.015625,
+      37213.8984375
+     ],
+     "pixels": 127685,
+     "p50_p90_p99": [
+      0.03293515246561581,
+      0.06909585880916655,
+      0.08190761159828945
+     ]
+    },
+    {
+     "range": [
+      37213.8984375,
+      46049.22265625
+     ],
+     "pixels": 128099,
+     "p50_p90_p99": [
+      0.028137290724272495,
+      0.05930056071779453,
+      0.07094607810344135
+     ]
+    },
+    {
+     "range": [
+      46049.22265625,
+      65965.6640625
+     ],
+     "pixels": 127833,
+     "p50_p90_p99": [
+      0.02076819090069648,
+      0.04118930088209284,
+      0.05159964933907931
+     ]
+    }
+   ],
+   "seta_scaled_installed_residual_p50_p90_p99_px": {
+    "2": [
+     0.07160007254431533,
+     0.15601771555303817,
+     0.2506548358033492
+    ],
+    "6": [
+     0.2148051298471103,
+     0.4680427181133604,
+     0.7522131946587767
+    ],
+    "10": [
+     0.35803891726997233,
+     0.7800799416377052,
+     1.254104801757382
+    ]
+   },
+   "seta_scaled_corrected_depth_step_residual_p50_p90_p99_px": {
+    "1": [
+     1.3594843037527251e-05,
+     2.9492470307298695e-05,
+     3.9433738342470287e-05
+    ],
+    "2": [
+     2.718877687378748e-05,
+     5.898538430590098e-05,
+     7.887998227777781e-05
+    ],
+    "6": [
+     8.15622510049447e-05,
+     0.00017695989531053784,
+     0.0002367931912565008
+    ],
+    "10": [
+     0.00013593096287748503,
+     0.00029494000701058145,
+     0.0003949170166433563
+    ]
+   },
+   "best_fit_view_z_scale_and_residual_p50_px": [
+    1.03,
+    0.025211577610009295,
+    0.025741577526045355
+   ],
+   "gate_open_share_and_mean_openness": {
+    "min_screen_corrected": [
+     1.0,
+     0.9876590528961405
+    ],
+    "min_screen_rotation": [
+     1.0,
+     0.9825922440276069
+    ],
+    "screen": [
+     0.7387701612903226,
+     0.7287159262480648
+    ]
+   }
+  },
+  "run209-forward": {
+   "dump": "/tmp/x3-bottleX3-run209",
+   "frames": [
+    4421,
+    4452
+   ],
+   "roi": [
+    860,
+    10,
+    1260,
+    290
+   ],
+   "routed_pixel_frames": 624066,
+   "camera_translation_world_units_per_frame": [
+    109.10330889270857,
+    136.00418801255148
+   ],
+   "residual_p50_p90_p99_px": {
+    "corrected": [
+     0.03245962682535471,
+     0.053054099973400666,
+     0.060619495237006334
+    ],
+    "installed_rotation_only": [
+     1.3948574800881364,
+     2.8327019168300613,
+     3.31249624862824
+    ],
+    "screen": [
+     1.3850057996241718,
+     2.8193543003459913,
+     3.2985915230468947
+    ]
+   },
+   "corrected_residual_by_radial_bin": [
+    {
+     "range": [
+      248.70866490735702,
+      354.0353089735542
+     ],
+     "pixels": 124790,
+     "p50_p90_p99": [
+      0.02254234639709781,
+      0.026806731370276823,
+      0.03613662186271748
+     ]
+    },
+    {
+     "range": [
+      354.0353089735542,
+      437.12355232817185
+     ],
+     "pixels": 124829,
+     "p50_p90_p99": [
+      0.02832168160947545,
+      0.03302836298149022,
+      0.037250583569441796
+     ]
+    },
+    {
+     "range": [
+      437.12355232817185,
+      528.4108250215925
+     ],
+     "pixels": 124800,
+     "p50_p90_p99": [
+      0.03362566972899348,
+      0.040184631718107,
+      0.04400469617307737
+     ]
+    },
+    {
+     "range": [
+      528.4108250215925,
+      615.5103573458371
+     ],
+     "pixels": 124804,
+     "p50_p90_p99": [
+      0.04331280318103703,
+      0.048512651401706026,
+      0.05293722816384763
+     ]
+    },
+    {
+     "range": [
+      615.5103573458371,
+      723.21297001644
+     ],
+     "pixels": 124843,
+     "p50_p90_p99": [
+      0.05280468734380307,
+      0.05847191373023974,
+      0.07314837968404603
+     ]
+    }
+   ],
+   "corrected_residual_by_depth_bin_view_z": [
+    {
+     "range": [
+      26044.916015625,
+      33365.4609375
+     ],
+     "pixels": 155949,
+     "p50_p90_p99": [
+      0.05151460725595806,
+      0.057936711444912234,
+      0.0638149362742589
+     ]
+    },
+    {
+     "range": [
+      33365.4609375,
+      39260.375
+     ],
+     "pixels": 155957,
+     "p50_p90_p99": [
+      0.03955131000209785,
+      0.04614602864242312,
+      0.05081268810678597
+     ]
+    },
+    {
+     "range": [
+      39260.375,
+      55553.86328125
+     ],
+     "pixels": 156072,
+     "p50_p90_p99": [
+      0.026496370909594766,
+      0.031850793838872724,
+      0.038847166358723074
+     ]
+    },
+    {
+     "range": [
+      55553.86328125,
+      70295.8125
+     ],
+     "pixels": 156088,
+     "p50_p90_p99": [
+      0.024077136368655338,
+      0.02953312415562137,
+      0.04409315232262506
+     ]
+    }
+   ],
+   "installed_residual_by_radial_bin": [
+    {
+     "range": [
+      248.70866490735702,
+      354.0353089735542
+     ],
+     "pixels": 124790,
+     "p50_p90_p99": [
+      0.8039235689082405,
+      1.044916907849393,
+      1.1730084108109242
+     ]
+    },
+    {
+     "range": [
+      354.0353089735542,
+      437.12355232817185
+     ],
+     "pixels": 124829,
+     "p50_p90_p99": [
+      1.1666240253292812,
+      1.4456237530447495,
+      1.5986216512858342
+     ]
+    },
+    {
+     "range": [
+      437.12355232817185,
+      528.4108250215925
+     ],
+     "pixels": 124800,
+     "p50_p90_p99": [
+      1.4779822386498438,
+      1.9603716305797059,
+      2.1413675244646404
+     ]
+    },
+    {
+     "range": [
+      528.4108250215925,
+      615.5103573458371
+     ],
+     "pixels": 124804,
+     "p50_p90_p99": [
+      2.156549241334927,
+      2.5158406219457747,
+      2.7390994017033785
+     ]
+    },
+    {
+     "range": [
+      615.5103573458371,
+      723.21297001644
+     ],
+     "pixels": 124843,
+     "p50_p90_p99": [
+      2.832018464474435,
+      3.2307629219966287,
+      3.4358094261141656
+     ]
+    }
+   ],
+   "installed_residual_by_depth_bin_view_z": [
+    {
+     "range": [
+      26044.916015625,
+      33365.4609375
+     ],
+     "pixels": 155949,
+     "p50_p90_p99": [
+      2.7362686427161425,
+      3.1978054430285288,
+      3.4232488872357454
+     ]
+    },
+    {
+     "range": [
+      33365.4609375,
+      39260.375
+     ],
+     "pixels": 155957,
+     "p50_p90_p99": [
+      1.9234372101209078,
+      2.4044702692055275,
+      2.703493337922641
+     ]
+    },
+    {
+     "range": [
+      39260.375,
+      55553.86328125
+     ],
+     "pixels": 156072,
+     "p50_p90_p99": [
+      1.0445661371870973,
+      1.3855570289007733,
+      1.5845959187744696
+     ]
+    },
+    {
+     "range": [
+      55553.86328125,
+      70295.8125
+     ],
+     "pixels": 156088,
+     "p50_p90_p99": [
+      0.9192707049077595,
+      1.2212081548533629,
+      1.3645384303645074
+     ]
+    }
+   ],
+   "seta_scaled_installed_residual_p50_p90_p99_px": {
+    "2": [
+     2.7603533613997966,
+     5.612792405062974,
+     6.5642895220828565
+    ],
+    "6": [
+     8.176903243540135,
+     16.5549597638394,
+     19.32910101930783
+    ],
+    "10": [
+     13.45866671383022,
+     27.135421697497204,
+     31.629480126620514
+    ]
+   },
+   "seta_scaled_corrected_depth_step_residual_p50_p90_p99_px": {
+    "1": [
+     0.000621948320161417,
+     0.0008669376107199511,
+     0.0009436974639557882
+    ],
+    "2": [
+     0.0012367505834596896,
+     0.0017190290780424635,
+     0.0018702725533937862
+    ],
+    "6": [
+     0.003626374311994766,
+     0.004985082129307207,
+     0.0054136606614876995
+    ],
+    "10": [
+     0.005908638456462617,
+     0.0080357924479698,
+     0.008712847354836769
+    ]
+   },
+   "best_fit_view_z_scale_and_residual_p50_px": [
+    0.979,
+    0.009748324836903554,
+    0.03184571893422908
+   ],
+   "gate_open_share_and_mean_openness": {
+    "min_screen_corrected": [
+     0.740958237327189,
+     0.7340867015848244
+    ],
+    "min_screen_rotation": [
+     0.6407188940092164,
+     0.6407188940092164
+    ],
+    "screen": [
+     0.6407188940092164,
+     0.6407188940092164
+    ]
+   }
+  }
+ },
+ "run209_forward_rotation_path_reference": {
+  "installed": {
+   "tracked_rms": 7.7711,
+   "tracked_rms_ratio": 1.0,
+   "tracked_gradient": 850.32,
+   "tracked_gradient_ratio": 1.0,
+   "gate_share": 0.0001,
+   "region_camera_relative_speed_p50_p90": [
+    1.05,
+    2.721
+   ]
+  },
+  "gate_open": {
+   "tracked_rms": 7.7711,
+   "tracked_rms_ratio": 1.0,
+   "tracked_gradient": 850.32,
+   "tracked_gradient_ratio": 1.0,
+   "gate_share": 0.0001,
+   "region_camera_relative_speed_p50_p90": [
+    1.05,
+    2.721
+   ]
+  },
+  "gate_open_box7": {
+   "tracked_rms": 7.7711,
+   "tracked_rms_ratio": 1.0,
+   "tracked_gradient": 850.32,
+   "tracked_gradient_ratio": 1.0,
+   "gate_share": 0.0001,
+   "region_camera_relative_speed_p50_p90": [
+    1.05,
+    2.721
+   ]
+  },
+  "gate_open_box11": {
+   "tracked_rms": 7.7711,
+   "tracked_rms_ratio": 1.0,
+   "tracked_gradient": 850.32,
+   "tracked_gradient_ratio": 1.0,
+   "gate_share": 0.0001,
+   "region_camera_relative_speed_p50_p90": [
+    1.05,
+    2.721
+   ]
+  }
+ },
+ "run177_rotation_baseline": {
+  "corrected_path": {
+   "installed": {
+    "tracked_rms": 6.7132,
+    "tracked_rms_ratio": 1.0,
+    "tracked_gradient": 643.94,
+    "tracked_gradient_ratio": 1.0,
+    "gate_share": 0.0002,
+    "region_camera_relative_speed_p50_p90": [
+     0.0106,
+     0.0341
+    ]
+   },
+   "gate_open": {
+    "tracked_rms": 3.5001,
+    "tracked_rms_ratio": 0.5214,
+    "tracked_gradient": 441.54,
+    "tracked_gradient_ratio": 0.6857,
+    "gate_share": 0.2136,
+    "region_camera_relative_speed_p50_p90": [
+     0.0106,
+     0.0341
+    ]
+   },
+   "gate_open_box7": {
+    "tracked_rms": 3.5004,
+    "tracked_rms_ratio": 0.5214,
+    "tracked_gradient": 441.21,
+    "tracked_gradient_ratio": 0.6852,
+    "gate_share": 0.2136,
+    "region_camera_relative_speed_p50_p90": [
+     0.0106,
+     0.0341
+    ]
+   },
+   "gate_open_box11": {
+    "tracked_rms": 3.5004,
+    "tracked_rms_ratio": 0.5214,
+    "tracked_gradient": 441.29,
+    "tracked_gradient_ratio": 0.6853,
+    "gate_share": 0.2136,
+    "region_camera_relative_speed_p50_p90": [
+     0.0106,
+     0.0341
+    ]
+   }
+  },
+  "rotation_path": {
+   "installed": {
+    "tracked_rms": 6.7132,
+    "tracked_rms_ratio": 1.0,
+    "tracked_gradient": 643.94,
+    "tracked_gradient_ratio": 1.0,
+    "gate_share": 0.0002,
+    "region_camera_relative_speed_p50_p90": [
+     0.0348,
+     0.0842
+    ]
+   },
+   "gate_open": {
+    "tracked_rms": 3.8037,
+    "tracked_rms_ratio": 0.5666,
+    "tracked_gradient": 464.28,
+    "tracked_gradient_ratio": 0.721,
+    "gate_share": 0.1988,
+    "region_camera_relative_speed_p50_p90": [
+     0.0348,
+     0.0842
+    ]
+   },
+   "gate_open_box7": {
+    "tracked_rms": 3.8042,
+    "tracked_rms_ratio": 0.5667,
+    "tracked_gradient": 464.11,
+    "tracked_gradient_ratio": 0.7207,
+    "gate_share": 0.1988,
+    "region_camera_relative_speed_p50_p90": [
+     0.0348,
+     0.0842
+    ]
+   },
+   "gate_open_box11": {
+    "tracked_rms": 3.8042,
+    "tracked_rms_ratio": 0.5667,
+    "tracked_gradient": 464.17,
+    "tracked_gradient_ratio": 0.7208,
+    "gate_share": 0.1988,
+    "region_camera_relative_speed_p50_p90": [
+     0.0348,
+     0.0842
+    ]
+   }
+  },
+  "published_section_32": {
+   "gate_open_box7": {
+    "tracked_rms_ratio": 0.5667,
+    "tracked_gradient_ratio": 0.7207,
+    "gate_share": 0.199
+   }
+  }
+ }
+}

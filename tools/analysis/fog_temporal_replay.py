@@ -80,11 +80,12 @@ def load_existing_resolve(path: Path, width: int, height: int, crop: tuple[int, 
     """Compile the reviewed resolve function verbatim from taa_resolve_replay.py."""
     source = path.read_text()
     required = ("LINE_MARGIN = .1", "FAR_P22, FAR_P32 = 1.000003, -6.000018",
-                "def resolve(cur, dep, mot, hist, pdep, age, j, k, w, Rc, Rp, P, conv, opt):")
+                "def resolve(cur, dep, mot, hist, pdep, age, j, k, w, Rc, Rp, P, conv, opt):",
+                "def camera_previous_ndc(")
     if any(fragment not in source for fragment in required):
         raise ValueError("unsupported taa_resolve_replay.py contract")
     tree = ast.parse(source, filename=str(path))
-    wanted = {"valid", "weigh", "unweigh", "resolve"}
+    wanted = {"valid", "weigh", "unweigh", "camera_previous_ndc", "resolve"}
     functions = [node for node in tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
                  and node.name in wanted]
     if {node.name for node in functions} != wanted:

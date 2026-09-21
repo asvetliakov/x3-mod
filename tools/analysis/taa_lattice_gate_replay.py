@@ -75,6 +75,13 @@ SEQUENCES = {
                         roi=(524, 199, 874, 514), track=(604, 299, 794, 414), role='control'),
     'run161-trail': dict(dump='/tmp/x3-bottleX3-run161', frames='5151-5182',
                          roi=(459, 344, 809, 659), track=(539, 444, 729, 559), role='trail'),
+    # run209 (2026-09-21): the two bursts flown under the camera gate. 4421 is forward flight
+    # (camera translation 136 -> 109 world units/frame, radial expansion 0.64-0.80 %/frame), 7799 a
+    # roll. The forward ROI is the thin region the user reported crawling in.
+    'run209-forward': dict(dump='/tmp/x3-bottleX3-run209', frames='4421-4452',
+                           roi=(860, 10, 1260, 290), track=(940, 60, 1180, 200), role='forward'),
+    'run209-roll': dict(dump='/tmp/x3-bottleX3-run209', frames='7799-7830',
+                        roi=(860, 10, 1260, 290), track=(940, 60, 1180, 200), role='roll'),
 }
 
 # Section 15's stale-history witness: a 6x6 bright patch injected at the previous coordinate of the
@@ -375,6 +382,166 @@ def stale_witness(m, present, png_dir):
     return res
 
 
+# --- camera-path check on real data -----------------------------------------------------------------
+# Truth for static routed geometry: the captured motion RG (previous UV, alpha 1) IS the previous
+# position, so |camera prediction - routed| measures the camera path directly. The rotation-only path
+# is what the installed build uploads (camera_far_plane_reprojection: no translation, no depth), so its
+# residual is the camera-relative speed the installed mask program actually sees.
+LO, HI = THIN['lo'], THIN['hi']
+FAR_P22, FAR_P32 = 1.000003, -6.000018  # the replay's assumed projection rows (m22, m32)
+GATE_RADIUS = 8  # the mask program's 17x17 fastest-neighbour window (R 3 + grow 5 in the replay)
+
+
+def camera_centre(R, t):
+    """World position of a camera whose view is world * R + t (row-vector engine convention)."""
+    return -np.asarray(t, float) @ R.T
+
+
+def gate_open_share(speed):
+    """Share and mean of the gate openness after the 17x17 fastest-neighbour minimum, one frame."""
+    open_ = np.clip(1 - (speed - LO) / (HI - LO), 0, 1)
+    pad = np.pad(open_, GATE_RADIUS, mode='edge')
+    h, w = open_.shape
+    worst = np.min([pad[GATE_RADIUS + oy:GATE_RADIUS + oy + h, GATE_RADIUS + ox:GATE_RADIUS + ox + w]
+                    for oy in range(-GATE_RADIUS, GATE_RADIUS + 1)
+                    for ox in range(-GATE_RADIUS, GATE_RADIUS + 1)], 0)
+    return float((worst > 0).mean()), float(worst.mean())
+
+
+def percentiles(values, qs=(50, 90, 99)):
+    if values.size == 0:
+        return [None] * len(qs)
+    return [float(v) for v in np.percentile(values, qs)]
+
+
+def binned(values, key, edges):
+    out = []
+    for i, (lo, hi) in enumerate(zip(edges[:-1], edges[1:])):
+        sel = (key >= lo) & ((key <= hi) if i == len(edges) - 2 else (key < hi))
+        out.append({'range': [float(lo), float(hi)], 'pixels': int(sel.sum()),
+                    'p50_p90_p99': percentiles(values[sel])})
+    return out
+
+
+def depth_scale_fit(path, nx, ny, d, mm, mp, px, py, sel, jx, jy, W, H,
+                    grid=np.linspace(0.95, 1.03, 81)):
+    """Best multiplicative view-z scale of one frame, and the residual it leaves.
+
+    FAR_P22 / FAR_P32 are assumed constants (camera_state logs p00/p11/p20/p21 only) and
+    camera-state-and-frame-routine.md warns that zf recovered from m22 carries about +-4 %, so the
+    linearisation z = m32 / (d - m22) can carry a systematic scale. A scale shows up as a residual
+    proportional to the camera translation; this separates it from the irreducible floor.
+    """
+    best, unity = (1.0, float('inf')), float('nan')
+    for a in list(grid) + [1.0]:
+        dd = FAR_P22 + (d.astype(np.float64) - FAR_P22) / a
+        qx, qy, _ = path(nx, ny, dd, mm['R'], mp['R'], mm['P'], 1,
+                         dict(tc=mm['T'], tp=mp['T'], Pp=mp['P']), 'full')
+        r = float(np.median(np.hypot(px - ((qx * .5 + .5) * W + jx),
+                                    py - ((.5 - qy * .5) * H + jy))[sel]))
+        if a == 1.0:
+            unity = r
+        if r < best[1]:
+            best = (float(a), r)
+    return best + (unity,)
+
+
+def camera_check(spec, scales=(2.0, 6.0, 10.0)):
+    """Routed-truth residual of both camera paths over a burst, with radial and depth bins.
+
+    SETA x N is synthesised by moving the previous camera N times further back along the same
+    per-frame translation and reprojecting the SAME world points (recovered from the capture's depth):
+    the corrected path stays exact by construction, so what grows is the residual the installed
+    rotation-only path sees, which is what the gate closes on.
+    """
+    m = load_replay(spec['dump'], spec['frames'], spec['roi'])
+    load, meta, frames = m['load'], m['meta'], m['frames']
+    ys, xs, path = m['ys'], m['xs'], m['camera_previous_ndc']
+    W, H = m['W'], m['H']
+    fields = {'corrected': [], 'installed_rotation_only': [], 'screen': []}
+    scaled = {n: [] for n in scales}
+    ulp = {n: [] for n in (1.0,) + tuple(scales)}
+    radius, depths, translations, fits = [], [], [], []
+    shares = {'min_screen_corrected': [], 'min_screen_rotation': [], 'screen': []}
+    for f in frames[1:]:
+        mm, mp = meta[f], meta[f - 1]
+        if 'T' not in mm or 'T' not in mp:
+            continue
+        d = load('depth', f, 'rgba32f', np.float32, 4)[ys, xs, 0]
+        mv = load('motion', f, 'rgba32f', np.float32, 4)[ys, xs]
+        jx, jy = mm['j']
+        nx = 2 * (xs - jx) / W - 1
+        ny = 1 - 2 * (ys - jy) / H
+        cam = dict(tc=mm['T'], tp=mp['T'], Pp=mp['P'])
+        Cc, Cp = camera_centre(mm['R'], mm['T']), camera_centre(mp['R'], mp['T'])
+        translations.append(float(np.linalg.norm(Cc - Cp)))
+        routed = mv[..., 3] == 1
+
+        def screen(mode, c=cam, dd=d):
+            qx, qy, _ = path(nx, ny, dd, mm['R'], mp['R'], mm['P'], 1, c, mode)
+            return (qx * .5 + .5) * W + jx, (.5 - qy * .5) * H + jy
+        nextd = np.nextafter(d, np.float32(1))  # one R32F step of the captured depth
+        fx, fy = screen('full')
+        rx, ry = screen('rotation')
+        sel = routed & (d >= 0) & (d <= 1)
+        px = np.where(routed, mv[..., 0] * W + jx - .5, xs.astype(float))
+        py = np.where(routed, mv[..., 1] * H + jy - .5, ys.astype(float))
+        sp = np.hypot(px - xs, py - ys)
+        if sel.any():
+            fields['corrected'].append(np.hypot(px - fx, py - fy)[sel])
+            fields['installed_rotation_only'].append(np.hypot(px - rx, py - ry)[sel])
+            fields['screen'].append(sp[sel])
+            for n in (1.0,) + tuple(scales):
+                back = dict(cam, tp=-(Cc + (Cp - Cc) * n) @ mp['R'])
+                sx, sy = screen('full', back)
+                if n in scaled:
+                    scaled[n].append(np.hypot(sx - rx, sy - ry)[sel])
+                ux, uy = screen('full', back, nextd)
+                ulp[n].append(np.hypot(ux - sx, uy - sy)[sel])
+            radius.append(np.hypot(xs - W / 2, ys - H / 2)[sel])
+            depths.append(d[sel])
+            if len(fits) < 5:  # the fit is stable frame to frame; five samples are enough
+                fits.append(depth_scale_fit(path, nx, ny, d, mm, mp, px, py, sel, jx, jy, W, H))
+        # Gate shares run on the whole crop: the 17x17 window reaches past the routed pixels.
+        for label, (cx, cy) in (('min_screen_corrected', (fx, fy)), ('min_screen_rotation', (rx, ry))):
+            rel = np.where(routed, np.hypot(px - cx, py - cy), 0.)
+            shares[label].append(gate_open_share(np.minimum(sp, rel)))
+        shares['screen'].append(gate_open_share(sp))
+    cat = {k: np.concatenate(v) if v else np.array([]) for k, v in fields.items()}
+    rad = np.concatenate(radius) if radius else np.array([])
+    dep = np.concatenate(depths) if depths else np.array([])
+    zv = np.array([]) if dep.size == 0 else FAR_P32 / (dep - FAR_P22)
+    redges = np.percentile(rad, [0, 20, 40, 60, 80, 100]) if rad.size else [0] * 6
+    dedges = np.percentile(zv, [0, 25, 50, 75, 100]) if zv.size else [0] * 5
+    return {
+        'dump': spec['dump'], 'frames': [frames[0], frames[-1]], 'roi': list(spec['roi']),
+        'routed_pixel_frames': int(cat['corrected'].size),
+        'camera_translation_world_units_per_frame': ([float(np.min(translations)),
+                                                      float(np.max(translations))]
+                                                     if translations else None),
+        'residual_p50_p90_p99_px': {k: percentiles(v) for k, v in cat.items()},
+        'corrected_residual_by_radial_bin': binned(cat['corrected'], rad, redges),
+        'corrected_residual_by_depth_bin_view_z': binned(cat['corrected'], zv, dedges),
+        'installed_residual_by_radial_bin': binned(cat['installed_rotation_only'], rad, redges),
+        'installed_residual_by_depth_bin_view_z': binned(cat['installed_rotation_only'], zv, dedges),
+        'seta_scaled_installed_residual_p50_p90_p99_px': {
+            str(int(n)): percentiles(np.concatenate(v)) for n, v in scaled.items() if v},
+        # What the CORRECTED path cannot beat under SETA x N: one R32F step of the captured depth,
+        # reprojected with the scaled translation. It is the only term of the corrected residual that
+        # grows with the camera translation.
+        'seta_scaled_corrected_depth_step_residual_p50_p90_p99_px': {
+            str(int(n)): percentiles(np.concatenate(v)) for n, v in ulp.items() if v},
+        # [best scale, its per-frame median residual, the residual at scale 1]. A burst without
+        # camera translation is insensitive to the scale and the fit then means nothing.
+        'best_fit_view_z_scale_and_residual_p50_px': ([float(np.median([f[0] for f in fits])),
+                                                       float(np.median([f[1] for f in fits])),
+                                                       float(np.median([f[2] for f in fits]))]
+                                                      if fits else None),
+        'gate_open_share_and_mean_openness': {
+            k: [float(np.mean([a for a, _ in v])), float(np.mean([b for _, b in v]))]
+            for k, v in shares.items() if v},
+    }
+
 def verdicts(summary):
     """Apply section 6's acceptance to the measured numbers.
 
@@ -427,6 +594,8 @@ def main(argv=None):
                     default=ROOT / 'verification/results/lattice-gate-replay-2026-09-21.json')
     ap.add_argument('--png-dir', type=Path, default=Path('/tmp/x3-lattice-gate-replay'))
     ap.add_argument('--sequences', default=','.join(SEQUENCES))
+    ap.add_argument('--camera-check', action='store_true',
+                    help='routed-truth camera-path residual, bins and SETA scaling only (no resolve)')
     args = ap.parse_args(argv)
     args.png_dir.mkdir(parents=True, exist_ok=True)
     summary = {'generated': '2026-09-21', 'units': 'display luma codes after AgX+RCAS, no bloom',
@@ -435,6 +604,16 @@ def main(argv=None):
                'acceptance': {'tracked_rms_ratio_max': 0.80, 'tracked_gradient_ratio_min': 0.90,
                               'stale_patch_codes_max': 2 * CLIPPED_RESOLVE_CODES},
                'sequences': {}}
+    if args.camera_check:
+        summary['camera_path'] = ('rotation-only = the matrix the installed build uploads'
+                                  ' (camera_far_plane_reprojection); corrected = depth- and'
+                                  ' translation-aware, validated against the routed motion RG')
+        for name in args.sequences.split(','):
+            start = time.monotonic()
+            summary['sequences'][name] = camera_check(SEQUENCES[name])
+            print(name, 'camera check in %.1f s' % (time.monotonic() - start), flush=True)
+            args.output.write_text(json.dumps(summary, indent=1) + '\n')
+        return summary
     for name in args.sequences.split(','):
         start = time.monotonic()
         summary['sequences'][name] = run_sequence(name, SEQUENCES[name], args.png_dir)
