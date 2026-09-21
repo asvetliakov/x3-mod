@@ -60,8 +60,9 @@ completed Run56 command is archived. Future runs omit CrossOver debug tracing.
   object fading is separate. Filtered-far integration failed the offline comparison; the accurate reference
   converges, but the tested macro mask removes all nearby fog in the four views.
   The fixed coarse depth-prefix reconstruction also fails all four endpoint
-  comparisons and is closed. Sparse cloud-region design is being reassessed;
-  no production recipe or larger distance has been selected.
+  comparisons and is closed. A fixed finite cloud-bank preview is in implementation, keeping original
+  local detail inside separated world-space regions. No production recipe or
+  larger distance has been selected.
 - **Station flash accepted:** Run205 confirms both global TAA heuristics disabled;
   the user reports no flash or save-load/sector-travel ghosting. Launcher defaults
   now apply this to the unchanged installed DLL; native fallback defaults match
@@ -71,8 +72,9 @@ completed Run56 command is archived. Future runs omit CrossOver debug tracing.
   and fixture comparison pass within their sampled scope. The frozen-subset CPU
   qualifier remains UNKNOWN; the calibrated standalone GPU point probe passes its measurement checks but
   measured vertex Z/W still does not qualify the CPU interpolation model. Further
-  arithmetic exploration is closed. Targeted disassembly is checking a safe
-  producer-owned final-mesh upload mirror for actual geometry evidence. No repeat
+  arithmetic exploration is closed. Targeted disassembly and deep review support private raw staging from original
+  upload mappings, with valid payload only after successful construction. A
+  standalone core/fixture prototype is in implementation. No repeat
   flight or renderer correction is selected.
   [Owning note §31](architecture/taa-lattice-crawl.md#31-close-arithmetic-exploration-investigate-final-upload-observation).
 - **Collision:** paused by user request; no moving-collision test is queued.

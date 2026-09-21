@@ -909,3 +909,38 @@ writes, resource lifetime, Reset/recovery or rollback behavior. The change is
 one comparison constant: operation count, per-draw work, allocations and locks
 are unchanged. Captured-camera and refusal evidence is in the
 [verification ledger](../verification/volumetric-fog.md#run197-first-person-camera-precision-correction-2026-09-21).
+
+### Finite cloud banks: offline prototype, not production
+
+The next fixed preview changes spatial distribution rather than extending the
+ubiquitous periodic field. Equal, disjoint world-space banks have radius P/2
+(3.2768 km), a full-density core at 0.75R, and a cubic smooth feather to zero.
+Centres occupy fixed 3P cells (19.6608 km) with deterministic, camera-independent
+jitter bounded by P/4 per axis. The original family atlas is sampled in its
+original global phase and scale inside each bank. The envelope multiplies both
+density and premultiplied colour; no homogeneous layer or density compensation
+fills the empty space. This preserves local appearance inside banks, not fog at
+every historical camera position. All dimensions are design choices, not values
+recovered from native fog cards.
+
+Ray–sphere intersections bound integration to occupied intervals, clipped by
+actual geometry depth and the smooth 30–40 km range window. Range culling uses
+nearest support, not centre distance. The fixed candidate uses at most 500 render
+units per midpoint step, compared against independent 128/64-unit references.
+Equal-radius bank ordering must agree with explicit per-ray order. Empty space,
+invalid depth and source alpha retain their identity laws.
+
+Preview both tested families at fixed inside, boundary and outside poses, plus
+10/30/38 km, then the original captured views without relocating banks to make
+those views foggy. Reference appearance and candidate integration accuracy are
+separate decisions. Show cloud-only fixed-scale images, not invented game
+composites; include inside-cloud stress and smooth entry/exit. No seed, scale,
+strength or sample-count search is bundled into this one experiment.
+
+A possible portable runtime uses bounded interval marches and ordered S/T
+composition into FP16 ping-pong targets. Per-bank fullscreen copies, visible
+bank counts, depth repair, shader slots and Reset/state ownership need measured
+qualification. Grouped bank passes or a documented format-blending capability
+may reduce copy cost later, but are not selected implementations. Source
+portability is not native Windows runtime verification. No game hook, candidate
+build, installation or user flight is authorized by this offline preview alone.
