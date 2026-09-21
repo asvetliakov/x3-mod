@@ -1,0 +1,854 @@
+{
+ "note": "docs/architecture/taa-lattice-crawl.md section 32.5",
+ "tool": "tools/analysis/taa_run60_crawl_replay.py",
+ "dll_commit": "39c98242",
+ "host_only": true,
+ "triage_roi_finding": "ROI (860,10,1260,290) holds no solar-panel lattice in either run212 burst; its gate_open_share is crop-wide with non-routed pixels counted open, so 0.893 = share of the crop farther than 8 px from any routed pixel",
+ "mechanism": "routed pixels with sentinel depth (blended panel glass) take the far-plane camera path in line_mask_ps.hlsl gateOpen(); under camera translation their camera-relative speed is the full parallax (> HI 0.25) and the 17x17 minimum closes the gate over the struts",
+ "bursts": {
+  "run212-forward": {
+   "frames": [
+    11995,
+    12026
+   ],
+   "roi": [
+    760,
+    385,
+    945,
+    565
+   ],
+   "track": [
+    790,
+    410,
+    920,
+    545
+   ],
+   "support_pixels": 8102,
+   "routed_fit_residual_p50_p99_px": [
+    0.0026,
+    0.0338
+   ],
+   "dumped": {
+    "jittered_input": {
+     "tracked_rms": 26.4374,
+     "gradient": 1874.8942,
+     "step_rms": 42.3207
+    },
+    "taa_output": {
+     "tracked_rms": 4.1957,
+     "gradient": 456.6507,
+     "step_rms": 5.002
+    },
+    "present": {
+     "tracked_rms": 4.3383,
+     "gradient": 468.901,
+     "step_rms": 5.2223
+    }
+   },
+   "dumped_pairwise": {
+    "taa_output": {
+     "all": 11.1838,
+     "fast_gt20": null,
+     "mid_5_20": null,
+     "slow_le5": 11.1838,
+     "frames": [
+      0,
+      0,
+      30
+     ]
+    },
+    "present": {
+     "all": 11.4359,
+     "fast_gt20": null,
+     "mid_5_20": null,
+     "slow_le5": 11.4359,
+     "frames": [
+      0,
+      0,
+      30
+     ]
+    },
+    "jittered_input": {
+     "all": 50.1528,
+     "fast_gt20": null,
+     "mid_5_20": null,
+     "slow_le5": 50.1528,
+     "frames": [
+      0,
+      0,
+      30
+     ]
+    }
+   },
+   "plain_w090_replay": {
+    "tracked_rms": 4.2392,
+    "gradient": 464.4073,
+    "step_rms": 5.0444
+   },
+   "variants": {
+    "run60": {
+     "tracked_rms": 4.1977,
+     "gradient": 457.293,
+     "step_rms": 5.005,
+     "bg_trail_p99_vs_plain_codes": 0.1039,
+     "bg_trail_max": 31.0532,
+     "bg_px": 191625,
+     "region_share_of_crop": 0.6295,
+     "strut_pixel_frames": 128585,
+     "gate_b_mean_on_struts": 0.0812,
+     "gate_b_open_share_on_struts": 0.0812,
+     "gate_a_mean_on_struts": 0.0,
+     "keep_p10_p50_mean_on_struts": [
+      0.9,
+      0.9,
+      0.9057
+     ],
+     "accept_share_on_struts": 1.0,
+     "boxhit_share_where_camera_opens": 0.0007,
+     "seeded_vs_dump_codes_strut_p50_p90_p99_max": [
+      0.0277,
+      0.0726,
+      0.1049,
+      0.1615
+     ],
+     "seeded_vs_dump_hdr_strut_p50_p99": [
+      0.0002,
+      0.0005
+     ],
+     "seeded_vs_dump_codes_region_p50_p99": [
+      0.0221,
+      0.1104
+     ],
+     "freerun_vs_dump_codes_strut_p50_p99": [
+      0.2395,
+      0.5842
+     ],
+     "mask_tm_on_support_mean_and_flicker": [
+      0.9849,
+      0.0027
+     ],
+     "gate_b_on_support_mean_and_flicker": [
+      0.0493,
+      0.0063
+     ],
+     "sentinel_routed_share_of_crop": 0.2573,
+     "sentinel_routed_rel_speed_p50_p90": [
+      0.8585,
+      1.1524
+     ],
+     "valid_routed_rel_speed_p50_p99": [
+      0.0011,
+      0.0154
+     ],
+     "screen_speed_struts_p50_p90": [
+      0.8861,
+      1.2791
+     ],
+     "pairwise": {
+      "all": 11.1913,
+      "fast_gt20": null,
+      "mid_5_20": null,
+      "slow_le5": 11.1913,
+      "frames": [
+       0,
+       0,
+       30
+      ]
+     }
+    },
+    "screen_gate_only": {
+     "tracked_rms": 4.2392,
+     "gradient": 464.4073,
+     "step_rms": 5.0444,
+     "bg_trail_p99_vs_plain_codes": 0.0,
+     "bg_trail_max": 0.0,
+     "bg_px": 191625,
+     "region_share_of_crop": 0.6295,
+     "strut_pixel_frames": 128585,
+     "gate_b_mean_on_struts": 0.0,
+     "gate_b_open_share_on_struts": 0.0,
+     "gate_a_mean_on_struts": 0.0,
+     "keep_p10_p50_mean_on_struts": [
+      0.9,
+      0.9,
+      0.9
+     ],
+     "accept_share_on_struts": 1.0,
+     "boxhit_share_where_camera_opens": null
+    },
+    "run60_W094": {
+     "tracked_rms": 4.2124,
+     "gradient": 460.4158,
+     "step_rms": 5.0193,
+     "bg_trail_p99_vs_plain_codes": 0.0761,
+     "bg_trail_max": 24.5914,
+     "bg_px": 191625,
+     "region_share_of_crop": 0.6295,
+     "strut_pixel_frames": 128585,
+     "gate_b_mean_on_struts": 0.0812,
+     "gate_b_open_share_on_struts": 0.0812,
+     "gate_a_mean_on_struts": 0.0,
+     "keep_p10_p50_mean_on_struts": [
+      0.9,
+      0.9,
+      0.9032
+     ],
+     "accept_share_on_struts": 1.0,
+     "boxhit_share_where_camera_opens": 0.0003
+    },
+    "sentfix_box7": {
+     "tracked_rms": 2.1357,
+     "gradient": 313.7919,
+     "step_rms": 2.3277,
+     "bg_trail_p99_vs_plain_codes": 2.6571,
+     "bg_trail_max": 31.0532,
+     "bg_px": 191625,
+     "region_share_of_crop": 0.6295,
+     "strut_pixel_frames": 128585,
+     "gate_b_mean_on_struts": 0.9999,
+     "gate_b_open_share_on_struts": 1.0,
+     "gate_a_mean_on_struts": 0.0,
+     "keep_p10_p50_mean_on_struts": [
+      0.97,
+      0.97,
+      0.97
+     ],
+     "accept_share_on_struts": 1.0,
+     "boxhit_share_where_camera_opens": 0.0002,
+     "seeded_vs_dump_codes_strut_p50_p90_p99_max": [
+      2.539,
+      6.9899,
+      11.153,
+      51.7063
+     ],
+     "pairwise": {
+      "all": 8.9236,
+      "fast_gt20": null,
+      "mid_5_20": null,
+      "slow_le5": 8.9236,
+      "frames": [
+       0,
+       0,
+       30
+      ]
+     }
+    },
+    "sentfix_boxoff": {
+     "tracked_rms": 2.147,
+     "gradient": 314.8338,
+     "step_rms": 2.3346,
+     "bg_trail_p99_vs_plain_codes": 3.287,
+     "bg_trail_max": 39.1933,
+     "bg_px": 191625,
+     "region_share_of_crop": 0.6295,
+     "strut_pixel_frames": 128585,
+     "gate_b_mean_on_struts": 0.9999,
+     "gate_b_open_share_on_struts": 1.0,
+     "gate_a_mean_on_struts": 0.0,
+     "keep_p10_p50_mean_on_struts": [
+      0.97,
+      0.97,
+      0.97
+     ],
+     "accept_share_on_struts": 1.0,
+     "boxhit_share_where_camera_opens": 0.0,
+     "pairwise": {
+      "all": 8.9387,
+      "fast_gt20": null,
+      "mid_5_20": null,
+      "slow_le5": 8.9387,
+      "frames": [
+       0,
+       0,
+       30
+      ]
+     }
+    },
+    "sentfix_box5": {
+     "tracked_rms": 2.1282,
+     "gradient": 313.29,
+     "step_rms": 2.3253,
+     "bg_trail_p99_vs_plain_codes": 2.2049,
+     "bg_trail_max": 29.6953,
+     "bg_px": 191625,
+     "region_share_of_crop": 0.6295,
+     "strut_pixel_frames": 128585,
+     "gate_b_mean_on_struts": 0.9999,
+     "gate_b_open_share_on_struts": 1.0,
+     "gate_a_mean_on_struts": 0.0,
+     "keep_p10_p50_mean_on_struts": [
+      0.97,
+      0.97,
+      0.97
+     ],
+     "accept_share_on_struts": 1.0,
+     "boxhit_share_where_camera_opens": 0.0002
+    },
+    "sentfix_box11": {
+     "tracked_rms": 2.1433,
+     "gradient": 314.5602,
+     "step_rms": 2.3318,
+     "bg_trail_p99_vs_plain_codes": 2.8438,
+     "bg_trail_max": 39.5661,
+     "bg_px": 191625,
+     "region_share_of_crop": 0.6295,
+     "strut_pixel_frames": 128585,
+     "gate_b_mean_on_struts": 0.9999,
+     "gate_b_open_share_on_struts": 1.0,
+     "gate_a_mean_on_struts": 0.0,
+     "keep_p10_p50_mean_on_struts": [
+      0.97,
+      0.97,
+      0.97
+     ],
+     "accept_share_on_struts": 1.0,
+     "boxhit_share_where_camera_opens": 0.0001
+    },
+    "sentfix_W094": {
+     "tracked_rms": 2.9815,
+     "gradient": 383.9201,
+     "step_rms": 3.4732,
+     "bg_trail_p99_vs_plain_codes": 1.5219,
+     "bg_trail_max": 26.1629,
+     "bg_px": 191625,
+     "region_share_of_crop": 0.6295,
+     "strut_pixel_frames": 128585,
+     "gate_b_mean_on_struts": 0.9999,
+     "gate_b_open_share_on_struts": 1.0,
+     "gate_a_mean_on_struts": 0.0,
+     "keep_p10_p50_mean_on_struts": [
+      0.94,
+      0.94,
+      0.94
+     ],
+     "accept_share_on_struts": 1.0,
+     "boxhit_share_where_camera_opens": 0.0001,
+     "pairwise": {
+      "all": 9.9112,
+      "fast_gt20": null,
+      "mid_5_20": null,
+      "slow_le5": 9.9112,
+      "frames": [
+       0,
+       0,
+       30
+      ]
+     }
+    },
+    "sentfix_W094_keys065": {
+     "tracked_rms": 3.3096,
+     "gradient": 565.1167,
+     "step_rms": 3.9158,
+     "bg_trail_p99_vs_plain_codes": 1.5845,
+     "bg_trail_max": 26.4035,
+     "bg_px": 191625,
+     "region_share_of_crop": 0.6295,
+     "strut_pixel_frames": 128585,
+     "gate_b_mean_on_struts": 0.9999,
+     "gate_b_open_share_on_struts": 1.0,
+     "gate_a_mean_on_struts": 0.0,
+     "keep_p10_p50_mean_on_struts": [
+      0.94,
+      0.94,
+      0.94
+     ],
+     "accept_share_on_struts": 1.0,
+     "boxhit_share_where_camera_opens": 0.0071,
+     "pairwise": {
+      "all": 11.9829,
+      "fast_gt20": null,
+      "mid_5_20": null,
+      "slow_le5": 11.9829,
+      "frames": [
+       0,
+       0,
+       30
+      ]
+     }
+    },
+    "sentfix_keys065": {
+     "tracked_rms": 2.7585,
+     "gradient": 532.278,
+     "step_rms": 3.0125,
+     "bg_trail_p99_vs_plain_codes": 2.0922,
+     "bg_trail_max": 34.1535,
+     "bg_px": 191625,
+     "region_share_of_crop": 0.6295,
+     "strut_pixel_frames": 128585,
+     "gate_b_mean_on_struts": 0.9999,
+     "gate_b_open_share_on_struts": 1.0,
+     "gate_a_mean_on_struts": 0.0,
+     "keep_p10_p50_mean_on_struts": [
+      0.97,
+      0.97,
+      0.97
+     ],
+     "accept_share_on_struts": 1.0,
+     "boxhit_share_where_camera_opens": 0.0081,
+     "pairwise": {
+      "all": 11.4042,
+      "fast_gt20": null,
+      "mid_5_20": null,
+      "slow_le5": 11.4042,
+      "frames": [
+       0,
+       0,
+       30
+      ]
+     }
+    },
+    "forceopen_box7": {
+     "tracked_rms": 2.1356,
+     "gradient": 313.7875,
+     "step_rms": 2.3275,
+     "bg_trail_p99_vs_plain_codes": 2.6571,
+     "bg_trail_max": 31.0532,
+     "bg_px": 191625,
+     "region_share_of_crop": 0.6295,
+     "strut_pixel_frames": 128585,
+     "gate_b_mean_on_struts": 1.0,
+     "gate_b_open_share_on_struts": 1.0,
+     "gate_a_mean_on_struts": 0.0,
+     "keep_p10_p50_mean_on_struts": [
+      0.97,
+      0.97,
+      0.97
+     ],
+     "accept_share_on_struts": 1.0,
+     "boxhit_share_where_camera_opens": 0.0002
+    },
+    "forceopen_boxoff": {
+     "tracked_rms": 2.1469,
+     "gradient": 314.8287,
+     "step_rms": 2.3345,
+     "bg_trail_p99_vs_plain_codes": 3.287,
+     "bg_trail_max": 39.1933,
+     "bg_px": 191625,
+     "region_share_of_crop": 0.6295,
+     "strut_pixel_frames": 128585,
+     "gate_b_mean_on_struts": 1.0,
+     "gate_b_open_share_on_struts": 1.0,
+     "gate_a_mean_on_struts": 0.0,
+     "keep_p10_p50_mean_on_struts": [
+      0.97,
+      0.97,
+      0.97
+     ],
+     "accept_share_on_struts": 1.0,
+     "boxhit_share_where_camera_opens": 0.0
+    }
+   }
+  },
+  "run212-pan": {
+   "frames": [
+    16113,
+    16144
+   ],
+   "roi": [
+    810,
+    10,
+    1270,
+    758
+   ],
+   "track": [
+    815,
+    565,
+    1150,
+    760
+   ],
+   "support_pixels": 8461,
+   "routed_fit_residual_p50_p99_px": [
+    0.5709,
+    2.8733
+   ],
+   "dumped": {
+    "jittered_input": {
+     "tracked_rms": 25.556,
+     "gradient": 1413.6337,
+     "step_rms": 37.4468
+    },
+    "taa_output": {
+     "tracked_rms": 9.8594,
+     "gradient": 358.5344,
+     "step_rms": 7.998
+    },
+    "present": {
+     "tracked_rms": 9.9622,
+     "gradient": 364.9016,
+     "step_rms": 8.134
+    }
+   },
+   "dumped_pairwise": {
+    "taa_output": {
+     "all": 14.15,
+     "fast_gt20": 14.4475,
+     "mid_5_20": 13.8933,
+     "slow_le5": 10.5251,
+     "frames": [
+      22,
+      6,
+      2
+     ]
+    },
+    "present": {
+     "all": 14.3812,
+     "fast_gt20": 14.6808,
+     "mid_5_20": 14.1277,
+     "slow_le5": 10.7176,
+     "frames": [
+      22,
+      6,
+      2
+     ]
+    },
+    "jittered_input": {
+     "all": 46.479,
+     "fast_gt20": 46.8168,
+     "mid_5_20": 44.7195,
+     "slow_le5": 47.3588,
+     "frames": [
+      22,
+      6,
+      2
+     ]
+    }
+   },
+   "plain_w090_replay": {
+    "tracked_rms": 10.0871,
+    "gradient": 386.5346,
+    "step_rms": 8.3384
+   },
+   "variants": {
+    "run60": {
+     "tracked_rms": 9.9148,
+     "gradient": 354.7151,
+     "step_rms": 7.9355,
+     "bg_trail_p99_vs_plain_codes": 0.0726,
+     "region_share_of_crop": 0.3487,
+     "strut_pixel_frames": 695151,
+     "gate_b_mean_on_struts": 0.2333,
+     "gate_b_open_share_on_struts": 0.2359,
+     "gate_a_mean_on_struts": 0.0,
+     "keep_p10_p50_mean_on_struts": [
+      0.9,
+      0.9,
+      0.9103
+     ],
+     "accept_share_on_struts": 0.9856,
+     "boxhit_share_where_camera_opens": 0.0024,
+     "seeded_vs_dump_codes_strut_p50_p90_p99_max": [
+      0.0251,
+      0.0772,
+      0.2146,
+      19.3738
+     ],
+     "seeded_vs_dump_hdr_strut_p50_p99": [
+      0.0002,
+      0.001
+     ],
+     "seeded_vs_dump_codes_region_p50_p99": [
+      0.0203,
+      0.3476
+     ],
+     "freerun_vs_dump_codes_strut_p50_p99": [
+      0.1916,
+      0.801
+     ],
+     "mask_tm_on_support_mean_and_flicker": [
+      0.9844,
+      0.0087
+     ],
+     "gate_b_on_support_mean_and_flicker": [
+      0.2199,
+      0.1111
+     ],
+     "sentinel_routed_share_of_crop": 0.1429,
+     "sentinel_routed_rel_speed_p50_p90": [
+      0.9986,
+      1.521
+     ],
+     "valid_routed_rel_speed_p50_p99": [
+      0.0013,
+      0.008
+     ],
+     "screen_speed_struts_p50_p90": [
+      30.542,
+      41.5279
+     ],
+     "pairwise": {
+      "all": 14.1478,
+      "fast_gt20": 14.4457,
+      "mid_5_20": 13.8915,
+      "slow_le5": 10.5133,
+      "frames": [
+       22,
+       6,
+       2
+      ]
+     },
+     "bg_excludes_routed_glass": true
+    },
+    "screen_gate_only": {
+     "tracked_rms": 10.0871,
+     "gradient": 386.5346,
+     "step_rms": 8.3384,
+     "bg_trail_p99_vs_plain_codes": 0.0,
+     "region_share_of_crop": 0.3487,
+     "strut_pixel_frames": 695151,
+     "gate_b_mean_on_struts": 0.0,
+     "gate_b_open_share_on_struts": 0.0,
+     "gate_a_mean_on_struts": 0.0,
+     "keep_p10_p50_mean_on_struts": [
+      0.9,
+      0.9,
+      0.9
+     ],
+     "accept_share_on_struts": 0.9856,
+     "boxhit_share_where_camera_opens": null,
+     "bg_excludes_routed_glass": false
+    },
+    "run60_W094": {
+     "tracked_rms": 9.9616,
+     "gradient": 367.3722,
+     "step_rms": 8.0774,
+     "bg_trail_p99_vs_plain_codes": 0.0672,
+     "region_share_of_crop": 0.3487,
+     "strut_pixel_frames": 695151,
+     "gate_b_mean_on_struts": 0.2333,
+     "gate_b_open_share_on_struts": 0.2359,
+     "gate_a_mean_on_struts": 0.0,
+     "keep_p10_p50_mean_on_struts": [
+      0.9,
+      0.9,
+      0.9077
+     ],
+     "accept_share_on_struts": 0.9856,
+     "boxhit_share_where_camera_opens": 0.0024,
+     "bg_excludes_routed_glass": false
+    },
+    "sentfix_box7": {
+     "tracked_rms": 9.7126,
+     "gradient": 269.4085,
+     "step_rms": 6.5281,
+     "bg_trail_p99_vs_plain_codes": 1.0554,
+     "region_share_of_crop": 0.3487,
+     "strut_pixel_frames": 695151,
+     "gate_b_mean_on_struts": 0.9993,
+     "gate_b_open_share_on_struts": 1.0,
+     "gate_a_mean_on_struts": 0.0,
+     "keep_p10_p50_mean_on_struts": [
+      0.9,
+      0.95,
+      0.9432
+     ],
+     "accept_share_on_struts": 0.9856,
+     "boxhit_share_where_camera_opens": 0.0035,
+     "seeded_vs_dump_codes_strut_p50_p90_p99_max": [
+      0.3675,
+      4.6535,
+      10.2429,
+      142.8897
+     ],
+     "pairwise": {
+      "all": 13.3815,
+      "fast_gt20": 13.6353,
+      "mid_5_20": 13.2963,
+      "slow_le5": 9.8018,
+      "frames": [
+       22,
+       6,
+       2
+      ]
+     },
+     "bg_excludes_routed_glass": true
+    },
+    "sentfix_boxoff": {
+     "tracked_rms": 10.9686,
+     "gradient": 270.4006,
+     "step_rms": 6.7166,
+     "bg_trail_p99_vs_plain_codes": 1.3489,
+     "region_share_of_crop": 0.3487,
+     "strut_pixel_frames": 695151,
+     "gate_b_mean_on_struts": 0.9993,
+     "gate_b_open_share_on_struts": 1.0,
+     "gate_a_mean_on_struts": 0.0,
+     "keep_p10_p50_mean_on_struts": [
+      0.9,
+      0.95,
+      0.9432
+     ],
+     "accept_share_on_struts": 0.9856,
+     "boxhit_share_where_camera_opens": 0.0,
+     "pairwise": {
+      "all": 13.4621,
+      "fast_gt20": 13.7253,
+      "mid_5_20": 13.3499,
+      "slow_le5": 9.8263,
+      "frames": [
+       22,
+       6,
+       2
+      ]
+     },
+     "bg_excludes_routed_glass": true
+    },
+    "sentfix_box5": {
+     "tracked_rms": 9.4067,
+     "gradient": 270.5357,
+     "step_rms": 6.4904,
+     "bg_trail_p99_vs_plain_codes": 0.9546,
+     "region_share_of_crop": 0.3487,
+     "strut_pixel_frames": 695151,
+     "gate_b_mean_on_struts": 0.9993,
+     "gate_b_open_share_on_struts": 1.0,
+     "gate_a_mean_on_struts": 0.0,
+     "keep_p10_p50_mean_on_struts": [
+      0.9,
+      0.95,
+      0.9432
+     ],
+     "accept_share_on_struts": 0.9856,
+     "boxhit_share_where_camera_opens": 0.0062,
+     "bg_excludes_routed_glass": false
+    },
+    "sentfix_box11": {
+     "tracked_rms": 10.4773,
+     "gradient": 270.141,
+     "step_rms": 6.6175,
+     "bg_trail_p99_vs_plain_codes": 1.3898,
+     "region_share_of_crop": 0.3487,
+     "strut_pixel_frames": 695151,
+     "gate_b_mean_on_struts": 0.9993,
+     "gate_b_open_share_on_struts": 1.0,
+     "gate_a_mean_on_struts": 0.0,
+     "keep_p10_p50_mean_on_struts": [
+      0.9,
+      0.95,
+      0.9432
+     ],
+     "accept_share_on_struts": 0.9856,
+     "boxhit_share_where_camera_opens": 0.0018,
+     "bg_excludes_routed_glass": false
+    },
+    "sentfix_W094": {
+     "tracked_rms": 9.7057,
+     "gradient": 321.2618,
+     "step_rms": 7.1589,
+     "bg_trail_p99_vs_plain_codes": 0.884,
+     "region_share_of_crop": 0.3487,
+     "strut_pixel_frames": 695151,
+     "gate_b_mean_on_struts": 0.9993,
+     "gate_b_open_share_on_struts": 1.0,
+     "gate_a_mean_on_struts": 0.0,
+     "keep_p10_p50_mean_on_struts": [
+      0.9,
+      0.94,
+      0.9314
+     ],
+     "accept_share_on_struts": 0.9856,
+     "boxhit_share_where_camera_opens": 0.0035,
+     "pairwise": {
+      "all": 13.6887,
+      "fast_gt20": 13.9561,
+      "mid_5_20": 13.5345,
+      "slow_le5": 10.1629,
+      "frames": [
+       22,
+       6,
+       2
+      ]
+     },
+     "bg_excludes_routed_glass": true
+    },
+    "sentfix_W094_keys065": {
+     "tracked_rms": 11.0812,
+     "gradient": 447.1436,
+     "step_rms": 8.1289,
+     "bg_trail_p99_vs_plain_codes": 3.6294,
+     "region_share_of_crop": 0.3487,
+     "strut_pixel_frames": 695151,
+     "gate_b_mean_on_struts": 0.9993,
+     "gate_b_open_share_on_struts": 1.0,
+     "gate_a_mean_on_struts": 0.0,
+     "keep_p10_p50_mean_on_struts": [
+      0.9,
+      0.94,
+      0.9314
+     ],
+     "accept_share_on_struts": 0.9856,
+     "boxhit_share_where_camera_opens": 0.007,
+     "bg_excludes_routed_glass": false
+    },
+    "sentfix_keys065": {
+     "tracked_rms": 11.3254,
+     "gradient": 419.9469,
+     "step_rms": 7.7028,
+     "bg_trail_p99_vs_plain_codes": 3.7932,
+     "region_share_of_crop": 0.3487,
+     "strut_pixel_frames": 695151,
+     "gate_b_mean_on_struts": 0.9993,
+     "gate_b_open_share_on_struts": 1.0,
+     "gate_a_mean_on_struts": 0.0,
+     "keep_p10_p50_mean_on_struts": [
+      0.9,
+      0.95,
+      0.9432
+     ],
+     "accept_share_on_struts": 0.9856,
+     "boxhit_share_where_camera_opens": 0.0073,
+     "pairwise": {
+      "all": 15.0971,
+      "fast_gt20": 15.2928,
+      "mid_5_20": 15.2062,
+      "slow_le5": 11.8144,
+      "frames": [
+       22,
+       6,
+       2
+      ]
+     },
+     "bg_excludes_routed_glass": true
+    },
+    "forceopen_box7": {
+     "tracked_rms": 9.7126,
+     "gradient": 269.4085,
+     "step_rms": 6.5281,
+     "bg_trail_p99_vs_plain_codes": 1.1641,
+     "region_share_of_crop": 0.3487,
+     "strut_pixel_frames": 695151,
+     "gate_b_mean_on_struts": 1.0,
+     "gate_b_open_share_on_struts": 1.0,
+     "gate_a_mean_on_struts": 0.0,
+     "keep_p10_p50_mean_on_struts": [
+      0.9,
+      0.95,
+      0.9433
+     ],
+     "accept_share_on_struts": 0.9856,
+     "boxhit_share_where_camera_opens": 0.0035,
+     "bg_excludes_routed_glass": false
+    },
+    "forceopen_boxoff": {
+     "tracked_rms": 10.9686,
+     "gradient": 270.4006,
+     "step_rms": 6.7166,
+     "bg_trail_p99_vs_plain_codes": 1.4302,
+     "region_share_of_crop": 0.3487,
+     "strut_pixel_frames": 695151,
+     "gate_b_mean_on_struts": 1.0,
+     "gate_b_open_share_on_struts": 1.0,
+     "gate_a_mean_on_struts": 0.0,
+     "keep_p10_p50_mean_on_struts": [
+      0.9,
+      0.95,
+      0.9433
+     ],
+     "accept_share_on_struts": 0.9856,
+     "boxhit_share_where_camera_opens": 0.0,
+     "bg_excludes_routed_glass": false
+    }
+   },
+   "tracked_metrics_caveat": "homography fit p50 0.57 px per frame: tracked_rms is registration-limited; use step_rms and pairwise"
+  }
+ }
+}

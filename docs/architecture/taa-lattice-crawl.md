@@ -2105,3 +2105,109 @@ as 32.2: run209 forward **0.0325 / 0.0531 / 0.0606 -> 0.0012 / 0.0023 / 0.0104**
 moves from 0.979 to **1.000**: the "2 % z ambiguity" of 32.2 was the transpose acting on
 |t| ~ 1.2e5, not the depth law, so the default m22 / m32 were right in that capture. Numbers:
 `verification/results/lattice-gate-replay-run209-forward.json` key `camera_check_exact_inverse`.
+
+### 32.5 Run 60 flight (run212): the gate is closed on the panels by their own glass (2026-09-21) [M]
+
+Host only; no production edit. Tool `tools/analysis/taa_run60_crawl_replay.py` (the section 32.2 exact-inverse,
+depth-aware camera path plus the installed Run60 rule: per-pixel `gateOpen()` as `line_mask_ps.hlsl` forms it,
+17x17 minimum, a / b, 7x7 box on `b - a`, far stabiliser 0.985 with its own screen-speed gate, `keep = max`),
+numbers `verification/results/lattice-crawl-run212-resolve-replay.json`. DLL 39c98242, `/tmp/x3-bottleX3-run212`,
+forward burst 11995-12026 (136 units/frame, strut screen speed p50 / p90 0.89 / 1.28 px) and pan burst 16113-16144
+(strut screen speed 2-40 px/frame, turnaround at 16133, camera also translating 3-49 units/frame).
+
+**The triage ROI and its share.** ROI (860,10,1260,290) was inherited from run209 and holds no solar-panel lattice
+in either run212 burst (forward: only the tip of one far arm, 4.4 % routed pixels; the panels sit at x 640-940,
+y 380-560). `camera_check`'s gate-open share is crop-wide and counts every non-routed pixel as open, so 0.893 for
+the rotation-only path is simply the share of that crop farther than 8 px from a routed pixel; it says nothing
+about the truss. Replay crops used here: forward (760,385,945,565), track (790,410,920,545), support 8102 px,
+routed fit 0.0026 / 0.034 px; pan (810,10,1270,758), track (815,565,1150,760), support 8461 px, routed fit
+**0.57 / 2.87 px** (parallax across panels: the pan's tracked rms is registration-limited, so the pan is judged on
+the frame-to-frame step of tracked points and on a pairwise measure through each strut pixel's own routed motion
+vector, which carries one bilinear fetch and therefore favours blur slightly).
+
+**1. Model fidelity (measured).** Replay seeded each frame from the dumped history, against the dumped TAA output,
+display codes on strut pixels (thin region and valid depth), p50 / p90 / p99 / max: forward **0.028 / 0.073 /
+0.105 / 0.16**, pan 0.025 / 0.077 / 0.215 / 19.4 (HDR p99 0.0005 / 0.0010). Free-running over 31 frames p99 0.58 /
+0.80 codes. The same comparison with the gate opened (`sentfix_box7` below) misses the dump by 2.5 / 7.0 / 11.2
+codes (forward): the dump is the closed-gate resolve, not the open one.
+
+**2. Suppression (measured, codes).** Tracked rms / frame-step rms / gradient, scored tail of 16 frames:
+
+| burst | jittered input | dumped TAA | present dump | plain w 0.90 replay |
+|---|---|---|---|---|
+| forward | 26.44 / 42.32 / 1875 | 4.20 / 5.00 / 457 | 4.34 / 5.22 / 469 | 4.24 / 5.04 / 464 |
+| pan | 25.56 / 37.45 / 1414 | 9.86* / 8.00 / 359 | 9.96* / 8.13 / 365 | 10.09* / 8.34 / 387 |
+
+(* registration-limited.) The resolve removes 84 % of the forward tracked rms, but **the installed thin region adds
+nothing to the plain 0.90 resolve: x0.990 forward, x0.952 step in the pan.** Sections 32 / 32.2 had x0.52-0.57 for an
+open gate (run177, run209 forward). Present against TAA output is +3 % / +2 %: nothing after the resolve (bloom,
+tonemap, RCAS) creates the crawl, candidate (f) is out.
+
+**3. Mechanism (measured).** Over strut pixels of the scored frames, installed model:
+
+| | forward | pan |
+|---|---|---|
+| camera gate b mean (share > 0.5) | **0.081** | **0.233** |
+| screen gate a | 0.000 | 0.000 |
+| history weight p10 / p50 / mean | 0.900 / 0.900 / 0.906 | 0.900 / 0.900 / 0.910 |
+| routed valid-depth camera-relative speed p50 / p99 | 0.0011 / 0.015 px | 0.0013 / 0.008 px |
+| routed SENTINEL-depth pixels, share of crop | **25.7 %** | 14.3 % |
+| their camera-relative speed p50 / p90 | **0.86 / 1.15 px** | **1.00 / 1.52 px** |
+| thin mask on tracked support, mean / frame-to-frame change | 0.985 / 0.003 | 0.984 / 0.009 |
+| 7x7 box binds where b > a | 0.07 % | 0.24 % |
+| history accepted | 1.000 | 0.986 |
+
+The panel interiors are routed blended glass: motion alpha 1, RT2 depth sentinel (section 2's "two layers"; the
+lane `.b` is -1 there too, checked on the dump). `gateOpen()` gives a sentinel pixel the far-plane camera path with
+no parallax term ("the sentinel has no geometry and stays at infinity") but still forms `relative` from its routed
+motion against that path. The glass is at the panels' 16-100 k units, not at infinity, so under any camera translation its
+relative speed is the whole parallax, 0.9-1.5 px > HI 0.25, and the 17x17 minimum spreads the closure over every
+strut, all of which lie within 8 px of glass. Section 32.2 met the same pixels in run209 ("0.72 % of crop pixels
+exceed HI, every one a routed pixel with a sentinel depth ... spreads over 26 %") and scored the rest; on the solar
+plant panels they are a quarter of the crop. So: not (a) strut-edge selectivity (the whole region is closed), not
+(b) (the box binds on < 0.3 %), not (d) (mask coverage 0.98, stable), not (e) (far stabiliser and thin region
+combine by max; the far gate is closed by the 0.9 px screen speed, as designed), not (f). (c) is real but
+secondary, see the pan below.
+
+**4. Variants (measured; ratios against the installed model).** `sentfix` = a routed pixel with a sentinel depth
+does not vote in the camera gate (`relative = 1`); it equals the forced-open gate to every printed digit forward and to three digits in the pan (b 0.999), so nothing else closes it. Background trail = p99 |variant - plain| on background 3 px clear of geometry
+and glass, codes.
+
+| variant | forward rms | forward gradient | forward trail | pan step | pan pairwise | pan gradient | pan trail |
+|---|---|---|---|---|---|---|---|
+| installed (Run60) | 4.198 | 457 | 0.10 | 7.94 | 14.15 | 355 | 0.07 |
+| installed, W 0.94 | x1.003 | x1.007 | 0.08 | x1.018 | - | x1.036 | 0.07 |
+| **sentfix, box7, W 0.97** | **x0.509** | x0.686 | 2.66 | **x0.823** | x0.945 | x0.760 | 1.06 |
+| sentfix, clip off | x0.511 | x0.688 | 3.29 | x0.846 | x0.951 | x0.762 | 1.35 |
+| sentfix, box5 / box11 | x0.507 / x0.510 | x0.685 / x0.688 | 2.21 / 2.84 | x0.818 / x0.834 | - | x0.763 / x0.762 | 0.95 / 1.39 |
+| **sentfix, box7, W 0.94** | x0.710 | x0.840 | 1.52 | x0.902 | x0.967 | x0.906 | 0.88 |
+| sentfix, box7, W 0.97, Keys -0.65 | x0.657 | **x1.164** | 2.09 | x0.971 | x1.067 | x1.184 | 3.79 |
+| sentfix, box7, W 0.94, Keys -0.65 | x0.788 | x1.236 | 1.59 | x1.024 | - | x1.261 | 3.63 |
+
+Ranking: (1) the sentinel vote, W 0.97, box7: half the forward crawl, the blur and trail section 32 already priced
+(gradient x0.69, trail 2.7 codes p99 next to the struts); box size is immaterial for crawl, 7x7 or 5x5 is the better
+ghost bound. (2) the same with W 0.94, the user's tentative preference: x0.71 crawl for x0.84 gradient and 1.5 codes
+of trail - the middle of the trade, and only meaningful once the gate actually opens: **on the installed build W
+0.94 against 0.97 changes nothing (x1.003), because the weight never applies.** Keys -0.65 restores the gradient
+above the installed level in forward flight at x0.66 crawl, but in the pan it rings (trail 3.8 codes, step back to
+x0.97): not recommended as a global kernel. Mask dilation / temporal hold was not run: the mask is already at 0.98
+coverage with 0.3-0.9 % frame-to-frame change.
+
+**Pan.** The same defect closes the gate (b 0.23; it opens only at the turnaround where the screen speed itself
+falls). Opening it helps less: step x0.82, pairwise x0.95. With the gate open the weight is age-limited, not
+W-limited (keep p10 / p50 / mean 0.90 / 0.95 / 0.943; 26-80 % of strut pixels younger than 19 frames per frame):
+up to 15 % of the strut pixels per frame enter from outside the frame during the 35 px/frame legs (`oob`), and the
+Catmull-Rom fetch at a new fractional offset every frame takes x0.76 of the gradient. That part is inherent to a
+30-40 px/frame pan (*inference*: the age limit is measured, its attribution to off-screen entry rests on the
+per-frame `oob` share and was not isolated further).
+
+**Production change implied (not made).** `src/temporal/line_mask_ps.hlsl` `gateOpen()`, the line
+`float relative = routed ? gateOpenness(...) : 1;` -> `routed && validDepth(depth) ? ... : 1`, which also makes the
+function's own header comment true ("A routed pixel without a valid depth has no camera path and keeps its screen
+speed" - today it keeps the far-plane path). Camera mask program only; one comparison, no new constant, fetch or
+target; regenerate `temporal_line_mask_camera`. Fixture: a `THIN_REGION_CAMERA_FORWARD` row with routed
+sentinel-depth cells between the shard rows (share today 0, expected 1). Risk to check there: a routed sentinel
+pixel that really moves independently (glass on a passing ship) no longer closes the gate by itself; its
+valid-depth hull within 8 px still does, and the box7 bound applies (*inference*, not replayed: no such mover in
+run212). The alternative, giving routed glass a depth in RT2, touches the cutout route and the resolve's sentinel
+policy and is not the cheap fix. W 0.94 is a launcher value (`--taa-thin-region 0.94`), no code.
