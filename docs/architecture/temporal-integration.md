@@ -1061,7 +1061,17 @@ projection check above.
 Native Windows: arithmetic and a log line only; no API use. Cross-compiled, not run
 natively.
 
-## Distant unrouted stations under a pan: sentinel stabiliser (2026-09-21, design, not implemented)
+## Distant unrouted stations under a pan: sentinel stabiliser (2026-09-21; implemented as an opt-in, default off, not flown)
+
+Implementation status (2026-09-21): `--taa-sentinel-stabiliser S[,E]` / `X3M_TAA_SENTINEL_STABILISER`, default absent = off.
+Differences from the change list below: the box pass runs **separably** while the stabiliser is on
+(`src/temporal/thin_box_rows_ps.hlsl` on every pixel into one more FP16 pair, `thin_box_columns_ps.hlsl` where the mask
+opens; minimum / maximum are exactly separable and FP16 rounding is monotone, so the bytes equal the 49-tap program's), and
+the emitter bound lives in the columns program, so `thin_box_ps.hlsl` and its bytecode are untouched and remain the only
+box program of a run with S = 0. E is inert when S = 0. The 3x3 of the bound is read from the current colour directly.
+Fixture finding on the emitter row: without the bound (E = 0) the 7x7 box also leaves a DARK ghost inside a bright feature,
+up to 3 px from each edge (old background kept where the box still holds it); with E = 1 every changed pixel is within 1 px
+of an edge. Numbers and the fixture rows: `docs/verification/temporal-resolve.md`, "Sentinel stabiliser".
 
 Decision note for the run214 symptom "distant stations flicker on a vertical pan"
 (`docs/verification/volumetric-fog.md`, "Run 60 session B diagnosis"; numbers in

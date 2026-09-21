@@ -105,6 +105,13 @@ SHADERS = {
     'temporal_thin_box': dict(source=ROOT / 'src/temporal/thin_box_ps.hlsl',
         header=ROOT / 'src/renderer/temporal_thin_box_program_inc.h',
         provenance=ROOT / 'verification/results/temporal-thin-box-program.json'),
+    # Sentinel stabiliser (temporal-integration.md "Distant unrouted stations under a pan"): the separable box, bound only while it is on.
+    'temporal_thin_box_rows': dict(source=ROOT / 'src/temporal/thin_box_rows_ps.hlsl',
+        header=ROOT / 'src/renderer/temporal_thin_box_rows_program_inc.h',
+        provenance=ROOT / 'verification/results/temporal-thin-box-rows-program.json'),
+    'temporal_thin_box_columns': dict(source=ROOT / 'src/temporal/thin_box_columns_ps.hlsl',
+        header=ROOT / 'src/renderer/temporal_thin_box_columns_program_inc.h',
+        provenance=ROOT / 'verification/results/temporal-thin-box-columns-program.json'),
     'hdr_writeback': dict(source=ROOT / 'src/temporal/hdr_writeback_ps.hlsl',
                           header=ROOT / 'src/renderer/hdr_writeback_program_inc.h',
                           provenance=ROOT / 'verification/results/hdr-writeback-program.json'),

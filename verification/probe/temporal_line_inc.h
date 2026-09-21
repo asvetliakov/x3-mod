@@ -16,7 +16,7 @@ constexpr float lineDepth=.99f,squareDepth=.98f;
 std::vector<EdgeObject> line_objects(unsigned n){std::vector<EdgeObject> o;const double phase=std::fmod(lineStart+lineDrift*n,linePitch);
     for(double top=phase-linePitch;top<32;top+=linePitch)for(unsigned x=2;x<18;++x){const double t=top+lineSlope*(x-2);if(t>=2&&t+lineThick<=30)o.push_back({double(x),t,double(x+1),t+lineThick,1,lineDepth,0,lineDrift});}
     o.push_back({21,12,29,20,1,squareDepth,0,0});return o;}
-struct LineConfig { const char* name; bool configure; float A,thin,wmax; unsigned width=1; float farW=0,farA=0,thinW=0,relax=1; bool camera=false; };
+struct LineConfig { const char* name; bool configure; float A,thin,wmax; unsigned width=1; float farW=0,farA=0,thinW=0,relax=1; bool camera=false; float sentS=0,sentE=1; }; // sentS / sentE: the sentinel stabiliser (temporal-integration.md), camera gate only
 // Far stabiliser gate of the far cases (temporal_far_inc.h) and the scene hooks the shared oracle uses.
 float farD0=0,farInv=0,farLo=x3::temporal::kFarSpeedLo,farHi=x3::temporal::kFarSpeedHi;
 double line_velocity_default(double nearest){return nearest==double(lineDepth)?lineDrift:0;}
@@ -24,6 +24,15 @@ double line_velocity_default(double nearest){return nearest==double(lineDepth)?l
 // (cameraPanX, 0) px per frame (clip_to_previous, followed by the sentinel background under policy 2) and, by default, so does
 // every routed object (line_velocity_x); an independent mover overrides the x velocity of its depth. 0 = the static camera.
 double cameraPanX=0;
+// cameraPanAlternates (sentinel-stabiliser scene only): the pan keeps its speed and reverses every frame (+ on odd frames), so
+// no history leaves the 32 px frame; the oracle then sets cameraPanX per frame.
+// cameraPanVertical: that pan runs along y (cameraPanY; the facets of the sentinel scene vary along y, so it moves content).
+bool cameraPanAlternates=false,cameraPanVertical=false;double cameraPanSpeed=0,cameraPanY=0;
+// Pixels line_model left to the shader because the history footprint leaves the frame (fast pans): counted per call, and a
+// call that skips more than oracleSkipCeiling throws, so no case loses oracle coverage silently. Every case but the
+// sentinel-stabiliser pans keeps the ceiling at 0.
+unsigned oracleSkipped=0,oracleSkipCeiling=0;
+double camera_pan_at(unsigned n){return cameraPanAlternates?(n%2?cameraPanSpeed:-cameraPanSpeed):cameraPanX;}
 double line_velocity_x_default(double){return cameraPanX;}
 double (*line_velocity_x)(double)=line_velocity_x_default;
 // Stale-history injection of the oracle (the fixture draws the same patch into the pass's history after frame oracleInjectFrame).
@@ -45,11 +54,14 @@ bool fragmented(const std::vector<float>& depth,int x,int y){const int dirs[4][2
     for(auto& k:dirs){unsigned changes=0;for(int t=-3;t<3;++t)changes+=depth_class_change(depth_clamped(depth,x+t*k[0],y+t*k[1]),depth_clamped(depth,x+(t+1)*k[0],y+(t+1)*k[1]));if(changes>=2)return true;}return false;}
 double line_velocity_default(double nearest);
 double (*line_velocity)(double)=line_velocity_default;
-float thin_region_strength(const std::vector<float>& depth,int x,int y,bool camera=false){bool any=false;float closure=0;
+// motion + sentS > 0 (camera): the sentinel stabiliser, max(strength, sentS * (1 - closure)) on an unrouted sentinel pixel (motion alpha -1).
+float thin_region_strength(const std::vector<float>& depth,int x,int y,bool camera=false,const std::vector<float>* motion=nullptr,float sentS=0){bool any=false;float closure=0;
     for(int dy=-8;dy<=8;++dy)for(int dx=-8;dx<=8;++dx){if(std::abs(dx)<=5&&std::abs(dy)<=5)any=any||fragmented(depth,x+dx,y+dy);const float d=depth_clamped(depth,x+dx,y+dy);const bool geometry=d>=0&&d<=1;
         const double vx=geometry?line_velocity_x(d):cameraPanX,vy=geometry?line_velocity(d):0,screen=std::hypot(vx,vy),relative=std::hypot(vx-cameraPanX,vy),speed=camera?std::min(screen,relative):screen;
         closure=std::max(closure,quantise8((speed-double(farLo))/(double(farHi)-double(farLo))));}
-    return any?1-closure:0;}
+    float strength=any?1-closure:0;
+    if(camera&&motion&&sentS>0&&depth_clamped(depth,x,y)<=-.5f&&px(*motion,UINT(x),UINT(y),3)==-1.f)strength=std::max(strength,sentS*(1-closure));
+    return strength;}
 float far_gate_weight_raw(float depth){if(!(depth>=0&&depth<=1))return 0;return std::min(std::max((depth-farD0)*farInv,0.f),1.f);}
 float far_gate_weight(float depth){if(!(depth>=0&&depth<=1))return 0;const float w=std::min(std::max((depth-farD0)*farInv,0.f),1.f);return float(std::lround(w*255.f))/255.f;} // as the A8R8G8B8 mask stores it
 
@@ -80,7 +92,8 @@ bool line_mask(const std::vector<float>& depth,UINT x,UINT y,unsigned width){for
 // and the exp(-A d^2) current sample where line_mask holds. FP16 rounding per frame.
 FlickerModel line_model(const FlickerRun& run,const LineConfig& c){constexpr UINT S=EdgeScene::S;const unsigned N=unsigned(run.current.size());FlickerModel m;m.color.resize(N);m.age.resize(N);
     auto valid=[](float d){return d>=0&&d<=1;};auto sentinel=[](float d){return d<=-.5f;};const double w=.9;
-    for(unsigned n=0;n<N;++n){m.color[n].assign(S*S,0);m.age[n].assign(S*S,1);const unsigned index=n%latticePhases+1;const double jx=halton(index,2)-.5,jy=halton(index,3)-.5;
+    oracleSkipped=0;
+    for(unsigned n=0;n<N;++n){if(cameraPanAlternates)(cameraPanVertical?cameraPanY:cameraPanX)=camera_pan_at(n);m.color[n].assign(S*S,0);m.age[n].assign(S*S,1);const unsigned index=n%latticePhases+1;const double jx=halton(index,2)-.5,jy=halton(index,3)-.5;
         for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x){m.color[n][y*S+x]=px(run.output[n],x,y);if(!run.age.empty())m.age[n][y*S+x]=px(run.age[n],x,y);}
         if(n&&n-1==oracleInjectFrame)for(int y=oracleInjectRect[1];y<oracleInjectRect[3];++y)for(int x=oracleInjectRect[0];x<oracleInjectRect[2];++x)m.color[n-1][UINT(y)*S+UINT(x)]=oracleInjectValue; // after frame n-1 was modelled
         if(!n)continue;
@@ -95,6 +108,7 @@ FlickerModel line_model(const FlickerRun& run,const LineConfig& c){constexpr UIN
             const double vx=line_velocity_x(nearest),vy=line_velocity(nearest),speed=std::hypot(vx,vy);
             auto snap=[](double position,double& base,double& f){base=std::floor(position);f=position-base;if(f>1-1e-4){base+=1;f=0;}else if(f<1e-4)f=0;};
             double bx,fx,by,fy;snap(x-vx,bx,fx);snap(y-vy,by,fy);
+            if(bx<1||by<1||bx+2>=S||by+2>=S){++oracleSkipped;continue;} // history footprint outside the frame (fast pans only): the shader's output stands
             const double tolerance=std::max(.0001,.02*nearest);bool proven=true;
             for(int ty=0;ty<2;++ty)for(int tx=0;tx<2;++tx){const double weight=(tx?fx:1-fx)*(ty?fy:1-fy);if(weight>.01){const float p=px(run.depth[n-1],UINT(bx+tx),UINT(by+ty));if(!((valid(p)&&p>=nearest-tolerance)||sentinel(p)))proven=false;}}
             if(!proven){m.color[n][i]=float(cur);m.age[n][i]=1;continue;}
@@ -103,11 +117,13 @@ FlickerModel line_model(const FlickerRun& run,const LineConfig& c){constexpr UIN
             double old=0,weights=0;for(int t=0;t<4;++t)for(int u=0;u<4;++u){const double cr=crx[u]*cry[t];if(cr!=0){const double tap=m.color[n-1][UINT(by+t-1)*S+UINT(bx+u-1)];if(oracle_finite(tap)){old+=cr*oracle_weigh(tap);weights+=cr;}}}
             old/=weights;
             const bool farOn=c.farW>0||c.farA>0||c.thinW>0; // the far program has no 3x3 sentinel soft clip
-            const double gate=c.thinW>0?quantise8(thin_region_strength(run.depth[n],int(x),int(y),c.camera)):0,screenGate=c.camera?quantise8(thin_region_strength(run.depth[n],int(x),int(y),false)):gate;
+            const double gate=c.thinW>0?quantise8(thin_region_strength(run.depth[n],int(x),int(y),c.camera,run.motion.empty()?nullptr:&run.motion[n],c.sentS)):0,screenGate=c.camera?quantise8(thin_region_strength(run.depth[n],int(x),int(y),false)):gate;
             const double clamped=std::min(std::max(old,lo),hi),soft=farOn?screenGate*c.relax:sawValid&&sawSentinel?c.thin*(1-std::min(std::max((speed-2)*.5,0.),1.)):0;
             double boxTerm=0;
             if(c.camera&&gate>screenGate){ // the strength the camera term added takes the history clipped to the 7x7 box of the current colour (clamped addressing)
-                double boxLo=wcur,boxHi=wcur;for(int dy=-3;dy<=3;++dy)for(int dx=-3;dx<=3;++dx){const double raw=px(run.current[n],UINT(std::min(std::max(int(x)+dx,0),int(S)-1)),UINT(std::min(std::max(int(y)+dy,0),int(S)-1)));if(!oracle_finite(raw))continue;const double q=oracle_weigh(raw);boxLo=std::min(boxLo,q);boxHi=std::max(boxHi,q);}
+                double boxLo=wcur,boxHi=wcur,innerLo=wcur,innerHi=wcur,rawMax=0;for(int dy=-3;dy<=3;++dy)for(int dx=-3;dx<=3;++dx){const double raw=px(run.current[n],UINT(std::min(std::max(int(x)+dx,0),int(S)-1)),UINT(std::min(std::max(int(y)+dy,0),int(S)-1)));if(!oracle_finite(raw))continue;const double q=oracle_weigh(raw);boxLo=std::min(boxLo,q);boxHi=std::max(boxHi,q);rawMax=std::max(rawMax,std::max(raw,0.));
+                    if(std::abs(dx)<=1&&std::abs(dy)<=1){innerLo=std::min(innerLo,q);innerHi=std::max(innerHi,q);}}
+                if(c.sentS>0&&c.sentE>0&&rawMax>double(c.sentE)&&sentinel(centre)){boxLo=innerLo;boxHi=innerHi;} // the emitter bound: the inner 3x3
                 boxTerm=(gate-screenGate)*c.relax*(std::min(std::max(old,boxLo),boxHi)-clamped);}
             old=clamped+soft*(old-clamped)+boxTerm;
             double keep=w;const double farw=farOn?far_gate_weight(centre):0;const UINT ageIndex=UINT(by+(fy>=.5?1:0))*S+UINT(bx+(fx>=.5?1:0));
@@ -120,6 +136,7 @@ FlickerModel line_model(const FlickerRun& run,const LineConfig& c){constexpr UIN
             const double filterWeight=std::max(c.A>0&&line_mask(run.depth[n],x,y,c.width)?1.:0.,c.farA>0?farw:0.);
             const double blend=farOn?wcur+filterWeight*(sum/total-wcur):filterWeight>0?sum/total:wcur;
             m.color[n][i]=halfFloat(toHalf(float(oracle_unweigh(blend+keep*(old-blend)))));}}
+    if(oracleSkipped>oracleSkipCeiling)throw std::runtime_error("line_model: oracle skipped "+std::to_string(oracleSkipped)+" border pixels, ceiling "+std::to_string(oracleSkipCeiling));
     return m;}
 // Roping: per analysed frame and line, the peak of the output over the rows around the line's centre in each column;
 // bead amplitude = std / mean of those peaks along the line (0 for a phase-independent reconstruction), and their mean.
@@ -230,7 +247,19 @@ void line_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
             laneIns[1].camera_lane_parallax[0]=1e-4f;laneIns[1].camera_lane_parallax[3]=1;
             for(unsigned warm=0;warm<3;++warm)for(unsigned which=0;which<2;++which){check("lane timing warm",lanePasses[which].run(laneIns[which],&out));drain();}
             for(unsigned round=0;round<6;++round)for(unsigned step=0;step<2;++step){const unsigned which=(round+step)%2;drain();const auto start=stamp();check("lane timing run",lanePasses[which].run(laneIns[which],&out));drain();laneMs[which]+=1000.*double(stamp()-start)/double(frequency.QuadPart)/6;}
-            std::printf("LINE_TIMING_CAMERA_LANE width=%u height=%u rounds=6 r32f_camera_ms=%.4f lane_input_law_ms=%.4f lane_input_lane_ms=%.4f lane_fetch_delta_ms=%.4f lane_input_over_r32f_ms=%.4f scope=cpu_wall_with_event_query_drain\n",W,H,ms[5],laneMs[0],laneMs[1],laneMs[1]-laneMs[0],laneMs[0]-ms[5]);}
+            std::printf("LINE_TIMING_CAMERA_LANE width=%u height=%u rounds=6 r32f_camera_ms=%.4f lane_input_law_ms=%.4f lane_input_lane_ms=%.4f lane_fetch_delta_ms=%.4f lane_input_over_r32f_ms=%.4f scope=cpu_wall_with_event_query_drain\n",W,H,ms[5],laneMs[0],laneMs[1],laneMs[1]-laneMs[0],laneMs[0]-ms[5]);
+            // Sentinel stabiliser (temporal-integration.md "Distant unrouted stations under a pan"): an all-sentinel, unrouted frame
+            // (depth -1, motion alpha -1) under the same 1 px/frame pan. S = 0: no region, the box pass skips every pixel. S = 0.7: the
+            // separable box (rows draw on every pixel, columns draw and the resolve's box clip on every pixel), the worst case; the
+            // 49-tap program over a whole frame is fragmented_pan_camera_delta_ms of LINE_TIMING_CAMERA.
+            for(auto* surface:{depthSurface.p,motionSurface.p}){s.target(surface);check("sentinel timing viewport",d->SetViewport(&full));check("sentinel timing Begin",d->BeginScene());check("sentinel timing flat",d->SetPixelShader(s.flat.p));s.constant(surface==depthSurface.p?-1.f:0.f,0,0,-1);
+                const V v[]={{-.5f,-.5f,.5f,1,0,0},{W-.5f,-.5f,.5f,1,1,0},{-.5f,H-.5f,.5f,1,0,1},{W-.5f,H-.5f,.5f,1,1,1}};check("sentinel timing fill",d->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP,2,v,sizeof(V)));check("sentinel timing End",d->EndScene());}
+            check("sentinel timing restore",d->SetRenderTarget(0,saved.p));check("sentinel timing restore viewport",d->SetViewport(&vp));
+            TemporalPass sentinelPasses[2];FrameInputs sentinelIns[2]={ins[5],ins[5]};double sentinelMs[2]{};sentinelIns[1].sentinel_strength=.7f;
+            for(unsigned i=0;i<2;++i){check("sentinel timing initialize",sentinelPasses[i].initialize(d,nullptr,resolver));check("sentinel timing configure far",sentinelPasses[i].configure_far());if(i)check("sentinel timing configure sentinel",sentinelPasses[i].configure_sentinel());require(i==0||sentinelPasses[i].sentinel_available(),"sentinel timing: separable box programs created");}
+            for(unsigned warm=0;warm<3;++warm)for(unsigned which=0;which<2;++which){check("sentinel timing warm",sentinelPasses[which].run(sentinelIns[which],&out));drain();}
+            for(unsigned round=0;round<6;++round)for(unsigned step=0;step<2;++step){const unsigned which=(round+step)%2;drain();const auto start=stamp();check("sentinel timing run",sentinelPasses[which].run(sentinelIns[which],&out));drain();sentinelMs[which]+=1000.*double(stamp()-start)/double(frequency.QuadPart)/6;}
+            std::printf("LINE_TIMING_SENTINEL width=%u height=%u rounds=6 content=all_unrouted_sentinel_pan strength_off_ms=%.4f strength_on_separable_ms=%.4f sentinel_delta_ms=%.4f scope=cpu_wall_with_event_query_drain\n",W,H,sentinelMs[0],sentinelMs[1],sentinelMs[1]-sentinelMs[0]);}
         check("line timing restore target",d->SetRenderTarget(0,saved.p));check("line timing restore vp",d->SetViewport(&vp));}
     if(!deferredFailures.empty())throw std::runtime_error(deferredFailures.front());
 }

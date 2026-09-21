@@ -684,3 +684,304 @@ pan and at-rest rows as before. `LINE_TIMING_CAMERA_LANE`: law 1.9344 ms, lane 2
 +0.1148 ms, lane input over R32F -0.0525 ms. "Latch-free" is scoped to the depth law in the header
 and in section 32.4 (m00 / m11 / m20 / m21 remain latched); section 32.2 points at 32.4 for the z
 scale.
+
+## Sentinel stabiliser for unrouted depth-sentinel pixels, opt-in (2026-09-21)
+
+Design and status: `docs/architecture/temporal-integration.md`, "Distant unrouted stations under a pan". Not installed,
+not flown; WIP on a worktree branch over `298487fc`. `--taa-sentinel-stabiliser S[,E]` -> `X3M_TAA_SENTINEL_STABILISER`
+(default absent = off; S 0..1, suggested 0.7; E >= 0, default 1, 0 = no emitter bound; the launcher requires the camera
+gate, the route turns the option off with `motion_output_taa_sentinel unavailable=1` otherwise; the `motion_output_taa` line
+ends with `sentinel_stabiliser=... sentinel_emitter=...`). `--taa-debug` capture frames now also dump the final mask as
+`taa_mask` (bgra8: r filter weight, g far gate, b camera-gated strength, a screen-gated strength).
+
+Programs (X3 bottle, `d3dx9_37.dll` `c2ccb84c...`; slots from `RESOLVE_BUDGET`): `temporal_line_mask_camera` 983 -> 1101
+words, 245 -> **281 slots** (one `[branch]`, two fetches, skipped at S = 0); new `temporal_thin_box_rows` 204 words /
+**35 slots** (7 fetches) and `temporal_thin_box_columns` 420 words / **94 slots** (1 mask + 14 row fetches, plus 1 depth +
+9 colour fetches only under the emitter bound; includes the empty-box fail-safe); `temporal_line_mask` (305), `temporal_resolve_far_camera` (508 of 512) and
+`temporal_thin_box` (51) byte-identical. All manifests were regenerated because the generator's hash is part of each; every
+other header is unchanged. `generate_rigid_motion_pixel.py --check` passes for all fragments.
+
+`X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_temporal_pass.py`: passed,
+lattice mode `numerical=576 state_restorations=23` (538 / 21 before; 38 / 2 are the new cases). Against the previous
+summary 2664 leaves were compared and every non-timing value of the existing rows is identical (only the changed mask
+program's budget and the checkout paths differ). Rows `SENTINEL_STABILISER` (32 px scene, colour-only facets 0.8 px / pitch
+2.37 / value 0.75 over the unrouted sentinel, W_thin 0.97, S 0.7):
+
+| row | result |
+|---|---|
+| off (S = 0, E = 0 against S = 0, E = 1), arm scene at rest and pan 0.5 | colour, age and mask bit-identical |
+| facets at rest | oracle 0.0029 (bound 0.02), age 0, mask 0; flicker 13.16 -> 5.18 codes, ratio **0.394**; detail 19.8 -> 30.9 |
+| facets, VERTICAL pan (content crosses the facets), steady 0.3 px/frame | oracle 0.0022; flicker 24.20 -> 11.61, ratio **0.480**; detail 17.8 -> **9.3** |
+| vertical pan reversing every frame, 0.3 / 2 / 4 px/frame (history stays in the 32 px frame) | oracle 0.0024 / 0.0029 / 0.0029; ratio **0.378 / 0.386 / 0.389**; detail 15.5 -> 9.4, 20.6 -> 32.0, 25.6 -> 34.9; oracle skipped 0 / 1638 / 8242 border pixels (ceilings 0 / 9984 / 16640) |
+| vertical pan steady 2 / 4 px/frame, rows [20, 28): at most 14 / 7 frames of history (reported, not asserted) | ratio 0.657 / 0.666; detail 20.4 -> 47.5, 29.7 -> 59.5 |
+| silhouette: 8x8 geometry square, camera at rest, 64 frames | square pixels differing from S = 0: 0; unrouted pixels differing: 32 986 |
+| routed sentinel (glass, motion alpha 1), 64 frames | colour / age differing: 0; mask b / a differing: 0 |
+| routed 2x2 object claiming 2 px/frame against the camera path | 284 sentinel pixels within 8 px: 0 differ, strength 0; beyond: strength >= 0.698, 37 456 pixel-frames differ |
+| emitter: colour-only bar, luma 4, 8 px wide, 6 px/frame, camera at rest | trail 1 px (E = 1) / 3 px (E = 0), also relative to S = 0; changed pixels at most 1 / 3 px from an edge of the bar; E = 0 also darkens up to 3 px INSIDE each edge (6 of the bar's 8 columns, up to 2.46 below S = 0), E = 1 changes one column; trail peak above the background: S = 0 **3.11**, E = 1 **3.44**, E = 0 2.46 (asserted: at most 0.4 above S = 0 and below the emitter's value); zero pixels differ from the background once the bar has left |
+| non-finite 3x3 block (65504) 3 px from a luma-4 bar | block pixels equal S = 0 and are 0 on all 32 frames; every output finite, within [0, 4] |
+| camera cut on frame 40 | output = current exactly (previous frame differed by 0.46) |
+
+Also covered: S outside [0, 1] or E negative / non-finite refused with the camera gate and ignored without it; hostile
+c0..c7 / c22..c24 and s1..s3, s6, s9, s10 restored; a failed columns draw (the fifth) publishes nothing and the next run
+restarts without history; Reset recreates the row targets; a row-target creation failure that is not a lost device turns the
+stabiliser off for the session and the run equals the camera-gate run bit for bit.
+
+Reading of the pan rows. Flicker is the rms of the output against the motion-compensated earlier output of the same
+content at the same pixel phase (lag 1 at rest, 10 frames / 3 px for steady 0.3, 2 frames for the reversing pans). The
+stabiliser works under a pan that moves content: 0.38-0.48 x the S = 0 flicker wherever the history is old enough, 0.66 x
+with only 5-14 frames of history (the fixture's frame is 32 px; in the game a sky pixel under a 4 px/frame pan has far more).
+Cost in sharpness under a slow FRACTIONAL pan: at 0.3 px/frame the vertical detail falls to 0.52-0.60 x the S = 0 run
+(9.3 against 17.8 codes), the long history being resampled every frame; integer pans and rest do not show it (detail rises).
+This is the far stabiliser's "blurry when the camera moves" mechanism, bounded here by the box instead of a speed gate; it
+is the thing to look at in the flight.
+
+Emitter peak. The E = 1 trail pixel is brighter (3.44) than the unbound one (2.46) because of what the pixel held a frame
+earlier, not because the bound adds light: that pixel was inside the bar, within 3 px of its leading edge, where the unbound
+7x7 box had kept the old background (its dark ghost), so its history is dim. The installed resolve itself leaves 3.11 there
+(the 3x3 variance clip reaches 3.71 of the bar's 4); E = 1 adds 0.33.
+
+Review fixes (2026-09-21): the separable programs are created by `TemporalPass::configure_sentinel()`, which the route calls
+only with S > 0 and the camera gate (`configure_far` no longer creates them; asserted); the emitter bound is validated only
+while S > 0; `--taa-sentinel-stabiliser` requires `--taa`; the shared oracle counts the border pixels it leaves to the
+shader and throws above a per-case ceiling, 0 for every case but the fast sentinel pans; an empty box is written as (0, 0).
+That last case is unreachable by a reader (a pixel with no finite inner tap is itself non-finite, hence current-only), so
+the fixture can only assert the output, not the box bytes.
+
+Cost (`LINE_TIMING_SENTINEL`, 1280x768, all-unrouted-sentinel frame under a 1 px/frame pan, CPU wall with query drain). The
+tracked results hold one run: separable box and the resolve's box clip on every pixel **+0.305 ms**, against **+0.513 ms**
+for the 49-tap program over a whole frame (`fragmented_pan_camera_delta_ms`) in the same run. Earlier runs of this session,
+overwritten in the results, gave +0.20..0.23 against +0.36..0.62, so the run-to-run spread is about 0.1-0.25 ms and only
+the ordering is established; by pixel count roughly 0.6 against 1.1 ms at 1920x1080 [I]. Memory: one more A16B16G16R16F
+pair while S > 0 (15.7 MiB at 1280x768, 33 MiB at 1920x1080), released by the first run without it. No per-draw or
+per-frame CPU work beyond one constant and one texture bind.
+
+Host: `test_taa_image_defaults` 12 tests OK; full `run_temporal_pass.py` exit 0, `passed: true` (new `test_thin_region_gate_is_absent_unless_given`).
+- Limits: the pan scene is uniform along the pan axis (no resampling loss); moving-lattice quality is section 32's
+  replay, not this fixture. Native Windows unverified. Full runner 112 s, lock wait 0 s.
+
+
+## Run59 accepts the camera thin-region gate as the default (2026-09-21)
+
+Run 59 flew the A/B on DLL `b1bb05fb` at the lattice position: run207 with
+`--taa-thin-region-gate screen`, run208 with `camera`, otherwise the same command.
+The user accepts the camera gate ("I think it's fixed") for camera pans. Triage
+of run208 found no anomaly: **0 non-finite texels**, gate-open share **0.44 % ->
+9.3 %**, tracked rms **x 0.874** and gradient **x 0.913** measured on the same
+capture. The roll residual (crawl under camera roll) was not measured in this run
+and stays open.
+
+The gate therefore becomes the default whenever the thin region is active, in the
+launcher and in the DLL's native fallback. `--taa-thin-region-gate screen` is the
+opt-out and remains bit-identical to the pre-Run59 behaviour. With
+`--taa-line-filter` active the default resolves to `screen` silently, because the
+mask's line channel carries the only gate that mode can have; an explicit
+`camera` plus the line filter is still refused by the launcher, and the route's
+own fallbacks are unchanged (configure-time refusal, box-allocation failure ->
+screen gate bit for bit). Nothing changes without the thin region: no gate
+variable is emitted and the native default is untouched.
+
+Checks for this default-only change: `test_taa*` **25 host tests OK** (the gate
+test now pins default -> camera, explicit screen, line filter -> screen, explicit
+camera + line filter refused, and no thin region -> no variable, plus the native
+fallback site and its ordering after the thin-region and line-filter parses);
+`src/proxy/capture.cpp` cross-compiles clean under
+`i686-w64-mingw32-g++ -std=c++17 -O2 -Wall -Wextra -Werror -msse2 -mfpmath=sse
+-mstackrealign -mincoming-stack-boundary=2`. No shader, predicate, hook or
+recovery policy changed and no per-draw work was added, so the fixture and
+shader evidence of the section above carries over unchanged. No game launched, no
+Wine run, no new candidate. Native Windows runtime remains unverified.
+
+Note 2026-09-21, user tuning on the installed Run59 DLL (no capture, by eye): with
+the camera gate on, panels and arms blur while the camera moves (the expected
+resampling cost of W 0.97 with the clip off). Of `0.97,0.5`, `0.94,0.5` and
+`0.94,1` the user tentatively prefers **`--taa-thin-region 0.94,1`**, with no
+crawl at rest. They will retest after the depth-aware camera path lands; the
+0.97 default is unchanged until then.
+
+## Static-world previous rows for unmatched draws (2026-09-21)
+
+`--taa-unmatched-static node|all` (default off), design and run209 diagnosis in
+`docs/architecture/temporal-integration.md`, "Unmatched draws: static-world
+previous rows". Worktree of main `184843cd`, uncommitted; fresh CMake build
+(`-DPython3_EXECUTABLE=/usr/bin/python3`), DLL `5f4a1010`, seam DLL `8970a9e9` (after the review follow-up below: see its hashes),
+fixture exe `17355a8a`. Bottle X3, arm64, `FEX_X87REDUCEDPRECISION=1`,
+`WINEMSYNC=1`.
+
+Host: `test_static_previous_rows` **6 OK** (the header against a basis-vector
+oracle: rotation + translation + per-draw depth law, off-centre projection terms,
+run209-scale coordinates 0.05 px bound at 1280x720, identity, three refusals;
+`classify_miss` over absent/present-object/new-object/reused-pointer/poisoned/
+consumed/invalid keys) and `test_taa_image_defaults` **14 OK** (launcher forwards
+only when given, drops an inherited value, requires `--taa`; native default off).
+
+Fixture: new `unmatchedstatic` script of `motion_output_fixture` (world-placed
+bodies under a translating, yawing camera; oracle composed from the script's own
+matrices) through `run_motion_output.py` in consume-only mode, cases
+`seam-taa-unmatched-static-{unset,off,node,all}`, **95 checks each, all pass**,
+lock wait 0 s, 12.6 s for the four. Frame 3 changes body S's key by the LOD word
+alone (same node and serial); frame 6 introduces a new node N.
+
+| case | S at frame 3 | N at frame 6 | motion/depth hashes |
+| --- | --- | --- | --- |
+| unset | sentinel, 0 of 221 px changed by the resolve | sentinel, 0 of 82 | reference |
+| off (`0`) | same | same | identical to unset on all 9 frames, presented frames identical |
+| node | camera-path motion, max 0.00066 px / 1.7e-7 depth, 100 of 221 px changed by the history blend | sentinel, 0 of 82 | differs from off in frame 3 only |
+| all | as node | camera-path motion, max 0.0011 px, 82 of 82 | differs from node in frame 6 only |
+
+In every case the DLL's frame lines keep `matched`/`gate6` as a miss (frame 3:
+routed 2, matched 1, gate6 1) and the resolved image equals the reference resolve
+byte for byte on all 9 frames. Compact records:
+`verification/results/bottle-X3/seam-taa-unmatched-static-*-fixture.json`; copies
+and timings in `/tmp/x3-taa-unmatched-static-v1/`.
+
+Not run: the existing `seam-taa-camera-on` regression case (the Wine lock was held
+by the user's game session afterwards). The option-off path is covered by the
+unset/off twin only. No flight yet; native Windows runtime unverified.
+
+Review follow-up (same day): `classify_miss` mirrors the lookup's collecting and
+overflow guards and uses one search; verdict and rows share one latch snapshot; the
+per-frame line is limited to applied frames (cap 256) and the detail line carries
+the projection check. Limits on record: a camera translation jump without a
+rotation cut is not gated; for static geometry the reprojection stays exact, but
+disocclusion under such a jump is untested and matters mainly for `all`. The
+fixture proves the arithmetic through the DLL at about 0.5-1 px of reprojection per
+frame; run209-scale motion (250 units per frame at 4e4-unit coordinates) rests on
+the host oracle test (0.05 px bound), not on a fixture. Private-projection draws
+are a flight-verification item (architecture note).
+Rerun after the follow-up: the four seam cases pass again, 95 checks each, same numbers; DLL `9aef914e`, seam DLL `e974190c`, fixture exe `544022e5`; the detail lines report `projection_x/y = 1.00000` for both fixture bodies.
+
+## Camera gate made depth- and translation-aware: c8 of the camera mask (2026-09-21)
+
+Design and numbers: `docs/architecture/taa-lattice-crawl.md` section 32.3. Not committed as a
+candidate, not installed, no game launched. Bottle X3.
+
+- Shader flow: `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+  tools/shaders/generate_rigid_motion_pixel.py --shader temporal_line_mask_camera` -> PASS, 920
+  words / 226 slots (was 897 / 223), bytecode `cf7c1764095d...`; `--shader temporal_line_mask` ->
+  PASS, bytecode `a44bfebd9767...` unchanged (manifest source hash only). sha256 of all 61
+  `src/renderer/*_inc.h` before/after: only `temporal_line_mask_camera_program_inc.h` differs.
+- Fixture: `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+  verification/probe/run_temporal_pass.py` -> passed, lattice mode `RESULT PASS numerical=501
+  state_restorations=21` (495 + the 6 forward-flight checks); main mode 508 / 278 / 386 unchanged.
+  `THIN_REGION_CAMERA_FORWARD`: speeds 0.600 / 0.300 px/frame, c8-form residual 0.000213 /
+  0.000107 px, routed-row residual 0.005840 / 0.002921 px, screen share 0, rotation-only share 0
+  (output = screen gate bit for bit), camera share 1.0000 / 1.0000, rms 16.340 -> 1.508 codes
+  (x0.0923), p2p 99.4 -> 7.8, mover gate maximum within 8 px 0.0000, window minimum 1.0000.
+  Pan (x0.0866, share 1.0), at-rest identity (3/3), overflow and stale-patch rows equal the
+  previous summary. `LINE_TIMING_CAMERA` deltas 0.1556 / 0.5758 ms (before 0.1640 / 0.5915).
+  Local copies: `/tmp/x3-taa-camera-gate-depth-v1/`.
+- Host: `PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p
+  'test_taa*.py'` -> 32 OK; `-p 'test_camera_reprojection.py'` -> 10 OK (new case: worst 0.00013 px
+  against the double reprojection at 8e5 sector coordinates, 0.00018 px against the replay's
+  `camera_previous_ndc`). Scratch CMake (MinGW i686, Release, `-DPython3_EXECUTABLE=/usr/bin/python3`):
+  84 TUs compiled, `d3d9.dll` linked.
+- Open: the latched m22 / m32 are per-submission scratch in the engine; `camera_state` now logs
+  `p22` / `p32` so the next capture can confirm them. The run209 replay was not rerun. Native
+  Windows runtime unverified (documented D3D9 calls only: one more `SetPixelShaderConstantF`).
+
+x87 audit fix (2026-09-21): the draw-path arithmetic of the option is SSE2-only (bit-mask magnitude instead of `std::fabs`, the rotation bound compared as a cosine from a Taylor half-angle series instead of `acos`, `sqrtss` for the diagnostic ratios). `check_no_x87.py` on a scratch production build: roots 95, reachable 547, 0 violations. `test_static_previous_rows` 7 OK (game-scale bound 0.05 px unchanged, series within 1e-9 of cos), `test_taa*` 33 OK; the four seam cases rerun with the same numbers (95 checks each, node differs from off in frame 3 only, max 0.00066 px).
+
+Runner cut bounds (2026-09-21): `seam-taa-camera-on` failed at frame 5 (4 px, x=4..7 y=3) on the Run60 candidate and identically on the Run59 build `b1bb05fb` (source 526851e4), so it is not a Run60 regression. Cause: 73080396 turned the DLL default cut bounds off (1e30 / 1) while the seam scripts (`expected_cut` 0.25, `SEAM_CUTS`, `bound_px 2.4`) model the diagnostic detector; at frame 5 (duplicate key, 1 of 3 keyed draws missing) the reference resolve cut and the DLL did not. Production is as intended. `run_motion_output.py` now requests `X3M_MOTION_CUT_MEDIAN_PX=48` / `X3M_MOTION_CUT_MISSING=0.25` for every case (the unmatched-static cases keep the production bounds in their own env). Evidence on a build of main-equivalent source (DLL `9132951a`): default env FAIL (same 4 px), env-forced 48/0.25 PASS 177 checks, fixed runner: `seam-taa-camera-on` 177, `seam-taa-on` 164, `production-taa-on` 83, the four unmatched-static cases 95 each, all pass.
+## Camera gate: latch-free lane term (c9 / s5), general-flight cases (2026-09-21)
+
+Design and numbers: `docs/architecture/taa-lattice-crawl.md` section 32.4. Not installed, no game
+launched. Bottle X3; local copies `/tmp/x3-taa-camera-gate-depth-v2/`.
+
+- Shader flow under the Wine lock: `--shader temporal_line_mask_camera` PASS, 983 words / 245 slots
+  (was 920 / 226), bytecode `e280346e7ce1...`; `--shader temporal_line_mask` PASS, bytecode
+  `a44bfebd9767...` unchanged. sha256 of all `src/renderer/*_inc.h` before/after: one file differs.
+- `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+  verification/probe/run_temporal_pass.py` -> passed; lattice mode `RESULT PASS numerical=519
+  state_restorations=21`. `THIN_REGION_CAMERA_FLIGHT` x10: oracle error 0.000000 on every modelled
+  row; yaw+forward share 1/1 (law), 1/1 (lane), 0 withheld; wrong latch 0 (law), 1/1 (lane); near
+  window mean 0.1173 law = lane, 0 withheld; behind 0 / 0. Forward, pan, at-rest, overflow and stale
+  rows equal the previous summary. `LINE_TIMING_CAMERA` deltas 0.1848 / 0.5209 ms (R32F scene; the
+  lane's one extra fetch in the tests draw is not in this timing).
+- Host: `test_taa*.py` OK; `test_camera_reprojection.py` 10 OK under discover and as
+  `python3 -m unittest verification.analysis.test_camera_reprojection` (lane form worst 0.00013 px).
+  Scratch CMake incremental build: 11 TUs, `d3d9.dll` linked.
+- Replay: `taa_lattice_gate_replay.py --camera-check` run209 forward 0.0325/0.0531/0.0606 ->
+  0.0012/0.0023/0.0104 px with the exact inverse; best-fit z scale 0.979 -> 1.000.
+- Review items not changed, with reason: `src/temporal/line_mask_camera_ps.hlsl` exists and is tracked
+  (three lines: the `#define X3M_CAMERA_GATE 1` and the include), so the header's source line and the
+  manifest's `defines: null` plus `includes` are accurate. `fog_distance_replay.py`'s digest covers the
+  selected rows of one capture and is never compared across captures; new captures simply digest the
+  two extra fields (accepted). `run_motion_output.py` parses `camera_state` with a key=value regex, so
+  the trailing `p22=` / `p32=` cannot disturb `prev_valid_at_policy`; its assertions need the Wine
+  fixture and are left to the candidate's seam run.
+
+Review closure of the lane follow-up (2026-09-21), `/tmp/x3-taa-camera-gate-depth-v3/`: with the lane
+bound the c8 law is no longer consulted (valid depth without a positive `.b` stays on the far plane);
+`temporal_line_mask_camera` 974 words / **243 slots**, bytecode `011116196d78...`, all other headers
+byte-identical, `temporal_line_mask` `a44bfebd9767...`. `run_temporal_pass.py` on X3 passed, lattice
+mode `numerical=522 state_restorations=21`; new row `wrong-latch-lane-mixed` (hole x < 6): window
+share 1/1, maximum within 8 px of the hole 0, oracle error 0; the other ten flight rows, forward,
+pan and at-rest rows as before. `LINE_TIMING_CAMERA_LANE`: law 1.9344 ms, lane 2.0492 ms, fetch
++0.1148 ms, lane input over R32F -0.0525 ms. "Latch-free" is scoped to the depth law in the header
+and in section 32.4 (m00 / m11 / m20 / m21 remain latched); section 32.2 points at 32.4 for the z
+scale.
+
+## Sentinel stabiliser for unrouted depth-sentinel pixels, opt-in (2026-09-21)
+
+Design and status: `docs/architecture/temporal-integration.md`, "Distant unrouted stations under a pan". Not installed,
+not flown; WIP on a worktree branch over `298487fc`. `--taa-sentinel-stabiliser S[,E]` -> `X3M_TAA_SENTINEL_STABILISER`
+(default absent = off; S 0..1, suggested 0.7; E >= 0, default 1, 0 = no emitter bound; the launcher requires the camera
+gate, the route turns the option off with `motion_output_taa_sentinel unavailable=1` otherwise; the `motion_output_taa` line
+ends with `sentinel_stabiliser=... sentinel_emitter=...`). `--taa-debug` capture frames now also dump the final mask as
+`taa_mask` (bgra8: r filter weight, g far gate, b camera-gated strength, a screen-gated strength).
+
+Programs (X3 bottle, `d3dx9_37.dll` `c2ccb84c...`; slots from `RESOLVE_BUDGET`): `temporal_line_mask_camera` 983 -> 1101
+words, 245 -> **281 slots** (one `[branch]`, two fetches, skipped at S = 0); new `temporal_thin_box_rows` 204 words /
+**35 slots** (7 fetches) and `temporal_thin_box_columns` 420 words / **94 slots** (1 mask + 14 row fetches, plus 1 depth +
+9 colour fetches only under the emitter bound; includes the empty-box fail-safe); `temporal_line_mask` (305), `temporal_resolve_far_camera` (508 of 512) and
+`temporal_thin_box` (51) byte-identical. All manifests were regenerated because the generator's hash is part of each; every
+other header is unchanged. `generate_rigid_motion_pixel.py --check` passes for all fragments.
+
+`X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_temporal_pass.py`: passed,
+lattice mode `numerical=576 state_restorations=23` (538 / 21 before; 38 / 2 are the new cases). Against the previous
+summary 2664 leaves were compared and every non-timing value of the existing rows is identical (only the changed mask
+program's budget and the checkout paths differ). Rows `SENTINEL_STABILISER` (32 px scene, colour-only facets 0.8 px / pitch
+2.37 / value 0.75 over the unrouted sentinel, W_thin 0.97, S 0.7):
+
+| row | result |
+|---|---|
+| off (S = 0, E = 0 against S = 0, E = 1), arm scene at rest and pan 0.5 | colour, age and mask bit-identical |
+| facets at rest | oracle 0.0029 (bound 0.02), age 0, mask 0; flicker 13.16 -> 5.18 codes, ratio **0.394**; detail 19.8 -> 30.9 |
+| facets, VERTICAL pan (content crosses the facets), steady 0.3 px/frame | oracle 0.0022; flicker 24.20 -> 11.61, ratio **0.480**; detail 17.8 -> **9.3** |
+| vertical pan reversing every frame, 0.3 / 2 / 4 px/frame (history stays in the 32 px frame) | oracle 0.0024 / 0.0029 / 0.0029; ratio **0.378 / 0.386 / 0.389**; detail 15.5 -> 9.4, 20.6 -> 32.0, 25.6 -> 34.9; oracle skipped 0 / 1638 / 8242 border pixels (ceilings 0 / 9984 / 16640) |
+| vertical pan steady 2 / 4 px/frame, rows [20, 28): at most 14 / 7 frames of history (reported, not asserted) | ratio 0.657 / 0.666; detail 20.4 -> 47.5, 29.7 -> 59.5 |
+| silhouette: 8x8 geometry square, camera at rest, 64 frames | square pixels differing from S = 0: 0; unrouted pixels differing: 32 986 |
+| routed sentinel (glass, motion alpha 1), 64 frames | colour / age differing: 0; mask b / a differing: 0 |
+| routed 2x2 object claiming 2 px/frame against the camera path | 284 sentinel pixels within 8 px: 0 differ, strength 0; beyond: strength >= 0.698, 37 456 pixel-frames differ |
+| emitter: colour-only bar, luma 4, 8 px wide, 6 px/frame, camera at rest | trail 1 px (E = 1) / 3 px (E = 0), also relative to S = 0; changed pixels at most 1 / 3 px from an edge of the bar; E = 0 also darkens up to 3 px INSIDE each edge (6 of the bar's 8 columns, up to 2.46 below S = 0), E = 1 changes one column; trail peak above the background: S = 0 **3.11**, E = 1 **3.44**, E = 0 2.46 (asserted: at most 0.4 above S = 0 and below the emitter's value); zero pixels differ from the background once the bar has left |
+| non-finite 3x3 block (65504) 3 px from a luma-4 bar | block pixels equal S = 0 and are 0 on all 32 frames; every output finite, within [0, 4] |
+| camera cut on frame 40 | output = current exactly (previous frame differed by 0.46) |
+
+Also covered: S outside [0, 1] or E negative / non-finite refused with the camera gate and ignored without it; hostile
+c0..c7 / c22..c24 and s1..s3, s6, s9, s10 restored; a failed columns draw (the fifth) publishes nothing and the next run
+restarts without history; Reset recreates the row targets; a row-target creation failure that is not a lost device turns the
+stabiliser off for the session and the run equals the camera-gate run bit for bit.
+
+Cost (`LINE_TIMING_SENTINEL`, 1280x768, all-unrouted-sentinel frame under a 1 px/frame pan, CPU wall with query drain, four
+runs): **+0.20 to +0.23 ms** for the separable box and the resolve's box clip on every pixel, against **+0.61 /
++0.62 ms** for the 49-tap program over a whole frame (`fragmented_pan_camera_delta_ms`); by pixel count about 0.45 ms
+against 1.3 ms at 1920x1080 [I]. Memory: one more A16B16G16R16F pair while S > 0 (15.7 MiB at 1280x768, 33 MiB at
+1920x1080), released by the first run without it. No per-draw or per-frame CPU work beyond one constant and one texture bind.
+
+Host: `test_taa_image_defaults` 15 tests OK (new: the option is opt-in, forwarded only when given, refused without the
+camera gate, malformed values refused), `test_shader_compiler_provenance` OK. Scratch RelWithDebInfo build links;
+`build_motion_output.sh` (fixture and seam DLL) compiles and links against it. `check_no_x87.py` on this branch's own scratch DLL (GCC 16.2.0, RelWithDebInfo): **PASS**, roots 95, reachable 547,
+violations {}. Correction of an earlier reading: a first audit reported 2 violations because the shared scratch directory
+already held another worktree's build tree (`CMAKE_HOME_DIRECTORY` of a different agent), so that DLL was not this source;
+the build was redone in a directory of its own. Hardening kept from that detour: `static_previous_rows.h` compiled ALONE
+with the production flags emitted two x87 `fld / fabs / fstp` for its integer bit-mask `magnitude()` (GCC recognises the
+sign-bit clear of a double in memory), i.e. the 0-violation result depended on inlining context. `magnitude()` now uses the
+SSE2 intrinsic (`_mm_andnot_pd(_mm_set_sd(-0.), _mm_set_sd(x))`, `andnpd`; same bits) under `__SSE2__`, the bit mask on
+other hosts; the isolated compile has 0 x87 instructions, `test_static_previous_rows` 7 OK.
+
+`taa_mask` dump consumers (static check, no capture run): the file is `taa_mask_<device>_<frame>.bgra8`; the directory
+readers match `taa_1_*` / `taa_*.rgba16f` (`taa_resolve_replay.py`, `evaluate_space_exposure.py`, `run_motion_output.py`), as
+with the existing `taa_age_*`, and the log parsers dispatch on exact tags, so `motion_output_taa_mask_readback` is ignored.
+
+Not verified: any flight; real emitter luma against E = 1; GPU time in the game; native Windows (ps_3_0, `tex2Dlod`,
+two-target MRT and FP16 targets only, all already required by the camera gate; cross-compiled, not run).

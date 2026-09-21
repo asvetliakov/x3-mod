@@ -214,6 +214,31 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
                 self.assertEqual(code, 2, args)
                 self.assertIn('--taa-thin-region-gate', error)
 
+    def test_sentinel_stabiliser_is_opt_in_and_rides_the_camera_gate(self):
+        # --taa-sentinel-stabiliser S[,E] (docs/architecture/temporal-integration.md, "Distant unrouted
+        # stations under a pan"): default off, forwarded only when given, camera gate required.
+        with tempfile.TemporaryDirectory() as directory:
+            for inherited in (None, {'X3M_TAA_SENTINEL_STABILISER': '0.7'}):
+                self.assertNotIn('X3M_TAA_SENTINEL_STABILISER', self.env(directory, *TAA, '--taa-thin-region', '0.97', inherited=inherited))
+            self.assertEqual(self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-sentinel-stabiliser', '0.7')['X3M_TAA_SENTINEL_STABILISER'], '0.7')
+            self.assertEqual(self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-sentinel-stabiliser', '0.7,0')['X3M_TAA_SENTINEL_STABILISER'], '0.7,0')
+            self.assertEqual(self.env(directory, *TAA, '--taa-sentinel-stabiliser', '0')['X3M_TAA_SENTINEL_STABILISER'], '0')
+            for value in ('0', '0.7'):
+                code, _, error = self.launch(directory, '--motion-output', '--taa-sentinel-stabiliser', value)
+                self.assertEqual(code, 2, value)
+                self.assertIn('--taa-sentinel-stabiliser requires --taa', error)
+            for args in (('--taa-sentinel-stabiliser', '0.7'), ('--taa-thin-region', '0.97', '--taa-thin-region-gate', 'screen', '--taa-sentinel-stabiliser', '0.7'),
+                         ('--taa-thin-region', '0.97', '--taa-line-filter', '1', '--taa-sentinel-stabiliser', '0.7'),
+                         ('--taa-thin-region', '0.97', '--taa-sentinel-stabiliser', '1.5'), ('--taa-thin-region', '0.97', '--taa-sentinel-stabiliser', '0.7,-1'),
+                         ('--taa-thin-region', '0.97', '--taa-sentinel-stabiliser', '0.7,1,2'), ('--taa-thin-region', '0.97', '--taa-sentinel-stabiliser', 'nan')):
+                code, _, error = self.launch(directory, *TAA, *args)
+                self.assertEqual(code, 2, args)
+                self.assertIn('--taa-sentinel-stabiliser', error)
+        source = (ROOT / 'src/proxy/capture.cpp').read_text()
+        self.assertIn('float taa_sentinel[2] = {0.f, 1.f};', source)
+        self.assertIn('taa_requested?GetEnvironmentVariableW(L"X3M_TAA_SENTINEL_STABILISER"', source)
+        self.assertIn('sentinel_stabiliser=%.3f sentinel_emitter=%.3f', (ROOT / 'src/proxy/motion_output.cpp').read_text())
+
     def test_taa_debug_accepts_32_capture_frames(self):
         # Run 139: the resolved-frame spectrum needs more than one jitter period.
         with tempfile.TemporaryDirectory() as directory:

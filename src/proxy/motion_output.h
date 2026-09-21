@@ -891,6 +891,12 @@ public:
     // camera_gate: X3M_TAA_THIN_REGION_GATE=camera (section 32.1), the
     // camera-relative gate with the 7x7 box clip; off = the screen-speed gate.
     void configure_taa_thin_region(float weight, float relax, float lo, float hi, bool gate_given, bool camera_gate = false) noexcept { taa_thin_weight_ = weight; taa_thin_relax_ = relax; taa_thin_camera_gate_ = camera_gate; if (gate_given) { taa_far_lo_ = lo; taa_far_hi_ = hi; } }
+    // X3M_TAA_SENTINEL_STABILISER=S[,E] (docs/architecture/temporal-integration.md
+    // "Distant unrouted stations under a pan"), off by default: thin-region
+    // strength S of unrouted depth-sentinel pixels through the camera gate, box
+    // clipped; emitter bound E (0 none). Turned off at initialisation without
+    // the camera gate or the separable box programs.
+    void configure_taa_sentinel(float strength, float emitter) noexcept { taa_sentinel_strength_ = strength; taa_sentinel_emitter_ = emitter; }
     void configure_taa_flicker(float thin_clip, float adaptive_weight, float adaptive_lo, float adaptive_hi, bool alpha_history) noexcept {
         taa_thin_clip_ = thin_clip; taa_adaptive_weight_ = adaptive_weight; taa_adaptive_lo_ = adaptive_lo; taa_adaptive_hi_ = adaptive_hi; taa_alpha_history_ = alpha_history;
     }
@@ -2067,6 +2073,7 @@ private:
     float taa_far_weight_ = 0.f, taa_far_filter_ = 0.f, taa_far_f0_ = 80.f, taa_far_f1_ = 130.f, taa_far_lo_ = .03f, taa_far_hi_ = .25f; // X3M_TAA_FAR_STABILISER
     float taa_thin_weight_ = 0.f, taa_thin_relax_ = 1.f; // X3M_TAA_THIN_REGION
     bool taa_thin_camera_gate_ = false; // X3M_TAA_THIN_REGION_GATE=camera
+    float taa_sentinel_strength_ = 0.f, taa_sentinel_emitter_ = 1.f; // X3M_TAA_SENTINEL_STABILISER=S[,E]
     bool taa_masks_logged_ = false;           // the one line for TemporalPass::line_masks_failed()
     float taa_thin_clip_ = 0.f;               // X3M_TAA_THIN_CLIP (0: off)
     float taa_adaptive_weight_ = 0.f, taa_adaptive_lo_ = .1f, taa_adaptive_hi_ = .5f; // X3M_TAA_ADAPTIVE_WEIGHT (0: off)

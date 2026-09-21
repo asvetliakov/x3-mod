@@ -14,7 +14,7 @@
 // periods [2,4], (4,8], (8,32] and the spatial contrast against the analytic
 // box-filtered lattice. CPU oracle: flicker_model below.
 struct FlickerConfig { const char* name; float thin,wmax,lo,hi; bool filtered,alpha; float weight; };
-struct FlickerRun : EdgeRun { std::vector<std::vector<float>> age; };
+struct FlickerRun : EdgeRun { std::vector<std::vector<float>> age,motion; }; // motion: the sentinel-stabiliser runs only (the oracle reads its alpha)
 struct DriftSpec { double v,pitch,width; };
 constexpr double driftStart=.31;
 float driftDepth=.99f; // set to .5f for the near-depth (rejection path) rows only

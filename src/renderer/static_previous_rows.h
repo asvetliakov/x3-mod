@@ -19,16 +19,27 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#if defined(__SSE2__)
+#include <emmintrin.h>
+#endif
 
 namespace x3m::renderer {
 namespace static_rows_detail {
 // SSE2-only helpers: this header runs on the draw path, where check_no_x87.py
 // refuses the MinGW <math.h> x87 fabs inline and any libm call returning in st(0).
+// An integer bit mask is not enough: GCC 16 recognises clearing the sign bit of a double held in memory and, depending
+// on the surrounding inlining, emits fld / fabs / fstp for it even under -mfpmath=sse. The SSE2 intrinsic keeps the
+// value in an xmm register (andnpd); the result is the same bits.
+// Hosts without SSE2 (the arm64 host test) take the bit mask, which has no x87 to fall into.
 inline double magnitude(double x) noexcept {
+#if defined(__SSE2__)
+    return _mm_cvtsd_f64(_mm_andnot_pd(_mm_set_sd(-0.), _mm_set_sd(x)));
+#else
     std::uint64_t bits; std::memcpy(&bits, &x, sizeof bits);
     bits &= ~(std::uint64_t(1) << 63);
     std::memcpy(&x, &bits, sizeof x);
     return x;
+#endif
 }
 } // namespace static_rows_detail
 // cos of an angle in [0, 180] degrees by half-angle Taylor series (error below

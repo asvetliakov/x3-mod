@@ -688,7 +688,7 @@ void stationary_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder
 // unjittered texture-center UV of the content at the jittered sample
 // (p + 0.5 - j - v)/S, the expected depth and alpha 1 (the background's fill
 // alpha is a parameter: -1 unknown as the route fills today, 0 camera path).
-struct EdgeObject { double l,t,r,b; float value,depth; double vx=0,vy=0; bool scroll=false; double u0=0; };
+struct EdgeObject { double l,t,r,b; float value,depth; double vx=0,vy=0; bool scroll=false; double u0=0; bool colourOnly=false; }; // colourOnly: blended without depth and unrouted (no motion, no depth write)
 struct EdgeBackground { float value,depth,alpha; };
 struct EdgeScene {
     static constexpr UINT S=32,P=16;
@@ -733,11 +733,11 @@ struct EdgeScene {
         check("edge End",d->EndScene());
         target(motionSurface.p);check("edge motion Begin",d->BeginScene());check("edge motion bind",d->SetPixelShader(motionPS.p));
         constant(float(jx),float(jy),0,0);constant(bg.depth,1.f/S,bg.alpha,0,1);quad(0,0,S,S,0,0);
-        for(auto& o:objects){constant(float(jx),float(jy),float(o.vx),float(o.vy));constant(o.depth,1.f/S,1,0,1);quad(o.l,o.t,o.r,o.b,jx,jy);}
+        for(auto& o:objects){if(o.colourOnly)continue;constant(float(jx),float(jy),float(o.vx),float(o.vy));constant(o.depth,1.f/S,1,0,1);quad(o.l,o.t,o.r,o.b,jx,jy);}
         check("edge motion End",d->EndScene());
         target(depthSurface.p);check("edge depth Begin",d->BeginScene());check("edge depth bind",d->SetPixelShader(flat.p));
         constant(bg.depth,0,0,0);quad(0,0,S,S,0,0);
-        for(auto& o:objects){constant(o.depth,0,0,0);quad(o.l,o.t,o.r,o.b,jx,jy);}
+        for(auto& o:objects){if(o.colourOnly)continue;constant(o.depth,0,0,0);quad(o.l,o.t,o.r,o.b,jx,jy);}
         check("edge depth End",d->EndScene());
     }
     std::vector<float> read(IDirect3DTexture9* texture){D3DSURFACE_DESC desc{};check("edge level desc",texture->GetLevelDesc(0,&desc));Com<IDirect3DSurface9> level,sys;check("edge level",texture->GetSurfaceLevel(0,&level.p));check("edge readback surface",d->CreateOffscreenPlainSurface(S,S,desc.Format,D3DPOOL_SYSTEMMEM,&sys.p,nullptr));check("edge validation-only readback",d->GetRenderTargetData(level.p,sys.p));D3DLOCKED_RECT lock{};check("edge lock",sys->LockRect(&lock,nullptr,D3DLOCK_READONLY));std::vector<float> out(S*S*4);
@@ -1625,7 +1625,7 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=
                 X3M_BUDGET(temporal_resolve_program,"embedded_plain");X3M_BUDGET(temporal_resolve_filter_program,"embedded_current_filter");X3M_BUDGET(temporal_resolve_snapshot_program,"embedded_snapshot");
                 X3M_BUDGET(temporal_resolve_thin_program,"embedded_thin");X3M_BUDGET(temporal_resolve_thin_filter_program,"embedded_thin_filter");X3M_BUDGET(temporal_resolve_age_program,"embedded_age");X3M_BUDGET(temporal_resolve_age_filter_program,"embedded_age_filter");
                 X3M_BUDGET(temporal_line_mask_program,"embedded_line_mask");X3M_BUDGET(temporal_resolve_far_program,"embedded_far");X3M_BUDGET(temporal_resolve_line_program,"embedded_line");X3M_BUDGET(temporal_resolve_thin_line_program,"embedded_thin_line");X3M_BUDGET(temporal_resolve_age_line_program,"embedded_age_line");
-                X3M_BUDGET(temporal_line_mask_camera_program,"embedded_line_mask_camera");X3M_BUDGET(temporal_resolve_far_camera_program,"embedded_far_camera");X3M_BUDGET(temporal_thin_box_program,"embedded_thin_box");
+                X3M_BUDGET(temporal_line_mask_camera_program,"embedded_line_mask_camera");X3M_BUDGET(temporal_resolve_far_camera_program,"embedded_far_camera");X3M_BUDGET(temporal_thin_box_program,"embedded_thin_box");X3M_BUDGET(temporal_thin_box_rows_program,"embedded_thin_box_rows");X3M_BUDGET(temporal_thin_box_columns_program,"embedded_thin_box_columns");
                 #undef X3M_BUDGET
             }
             // The retained baseline also exceeds the advertised limit on X3.

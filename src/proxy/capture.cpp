@@ -113,6 +113,7 @@ float taa_far[6] = {0.f, 0.f, 80.f, 130.f, .03f, .25f}; // X3M_TAA_FAR_STABILISE
 float taa_thin_region[4] = {0.f, 1.f, .03f, .25f}; // X3M_TAA_THIN_REGION=W[,RELAX[,LO,HI]]
 bool taa_thin_gate_given = false;
 bool taa_thin_camera_gate = false; // X3M_TAA_THIN_REGION_GATE=camera (taa-lattice-crawl.md section 32.1)
+float taa_sentinel[2] = {0.f, 1.f}; // X3M_TAA_SENTINEL_STABILISER=S[,E] (temporal-integration.md "sentinel stabiliser"): strength (0 off), emitter bound (0 none)
 unsigned taa_line_width = 1;     // W: line mask width 1 (default) or 2 px
 float taa_thin_clip = 0.f;       // X3M_TAA_THIN_CLIP (0..1; 0 off)
 float taa_adaptive_weight = 0.f, taa_adaptive_lo = .1f, taa_adaptive_hi = .5f; // X3M_TAA_ADAPTIVE_WEIGHT=WMAX[,LO,HI] (0 off)
@@ -2371,6 +2372,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_taa_line_filter(taa_line_filter,taa_line_width);
     hooked.motion_output.configure_taa_far(taa_far[0],taa_far[1],taa_far[2],taa_far[3],taa_far[4],taa_far[5]);
     hooked.motion_output.configure_taa_thin_region(taa_thin_region[0],taa_thin_region[1],taa_thin_region[2],taa_thin_region[3],taa_thin_gate_given,taa_thin_camera_gate);
+    hooked.motion_output.configure_taa_sentinel(taa_sentinel[0],taa_sentinel[1]);
     hooked.motion_output.configure_taa_flicker(taa_thin_clip,taa_adaptive_weight,taa_adaptive_lo,taa_adaptive_hi,taa_alpha_history);
     hooked.motion_output.configure_rt_mode(motion_rt_lazy);
     hooked.motion_output.configure_frame_log(motion_frame_log);
@@ -2843,6 +2845,16 @@ void initialize_log(HMODULE module) {
         if(length>0&&length<16){if(wcscmp(gate_setting,L"camera")==0)taa_thin_camera_gate=true;else if(wcscmp(gate_setting,L"screen")!=0)log("taa_thin_region_gate_setting invalid=1");}
         else if(length>=16)log("taa_thin_region_gate_setting invalid=1 reason=too_long length=%lu",length);
         else if(taa_requested&&taa_thin_region[0]>0.f&&taa_line_filter<=0.f)taa_thin_camera_gate=true;}
+    // X3M_TAA_SENTINEL_STABILISER=<S>[,<E>] (docs/architecture/temporal-integration.md "Distant unrouted stations under a
+    // pan"; unset: off, bit-identical): S 0..1, the thin-region strength of unrouted depth-sentinel pixels through the camera
+    // gate (always box-clipped); E >= 0, the emitter bound in scene luma (default 1; 0 = none). 1 or 2 fields; anything else
+    // keeps the option off. Meaningful only with the camera gate; the route turns it off otherwise and says so.
+    {wchar_t sentinel_setting[32];const DWORD length=taa_requested?GetEnvironmentVariableW(L"X3M_TAA_SENTINEL_STABILISER",sentinel_setting,32):0;
+        if(length>0&&length<32){float v[2]={0.f,1.f};unsigned count=0;wchar_t* cursor=sentinel_setting;bool ok=true;
+            while(ok&&count<2){wchar_t* end=nullptr;v[count]=wcstof(cursor,&end);ok=end!=cursor;++count;if(!ok||*end==L'\0')break;ok=*end==L',';cursor=end+1;if(count==2)ok=false;}
+            ok=ok&&v[0]>=0.f&&v[0]<=1.f&&v[1]>=0.f&&v[1]<=65000.f;
+            if(ok){taa_sentinel[0]=v[0];taa_sentinel[1]=v[1];}else log("taa_sentinel_stabiliser_setting invalid=1");}
+        else if(length>=32)log("taa_sentinel_stabiliser_setting invalid=1 reason=too_long length=%lu",length);}
     if(taa_requested&&GetEnvironmentVariableW(L"X3M_TAA_HISTORY_WEIGHT",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=.5f&&v<=.98f)taa_history_weight=v;}
     // Flicker suppression (docs/architecture/taa-flicker-suppression.md), all
     // off when unset or invalid: X3M_TAA_THIN_CLIP=<S> (0..1),

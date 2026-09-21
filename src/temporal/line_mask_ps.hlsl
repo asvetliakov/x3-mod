@@ -67,6 +67,11 @@
 // depth whose .b is not positive (the producer writes both in one draw, so none
 // is expected) stays on the far-plane path, so a wrong m22 / m32 latch cannot
 // close, through the 17x17 minimum, a window the lane opens. c9.w = 0: c8 alone.
+// c6.x = S > 0 (camera program only; docs/architecture/temporal-integration.md, "sentinel stabiliser"): the composition
+// reads this pixel's own depth at s6 and its motion at s4, and an UNROUTED SENTINEL pixel (depth sentinel, motion alpha
+// exactly -1, per-pixel motion on) gets b = max(b, S * the 17x17 minimum of the camera openness); a keeps the screen
+// strength, so the whole added strength takes the box-clipped history. Not dilated; a routed sentinel pixel (alpha 1,
+// section 32.5 glass) is outside the class. S = 0 skips the two fetches and is the previous composition bit for bit.
 sampler2D source : register(s1);
 sampler2D motionOverride : register(s4);
 float4 reprojection0 : register(c0);
@@ -75,12 +80,13 @@ float4 reprojection2 : register(c2);
 float4 reprojection3 : register(c3);
 float4 sizeJitter : register(c4);
 float4 farGate : register(c5);
-float4 thinGate : register(c6); // unused, on, speed LO, 1 / (HI - LO)
+float4 thinGate : register(c6); // sentinel-stabiliser S (camera program; else unused), on, speed LO, 1 / (HI - LO)
 float4 options : register(c7);
 #ifdef X3M_CAMERA_GATE
 float4 depthParallax : register(c8); // camera_depth_parallax(): (DX, DY, DW) / m32, m22; xyz = 0 is the far-plane path
 float4 laneParallax : register(c9);  // camera_lane_parallax(): (DX, DY, DW), 1 where s5 carries the view z; w = 0: c8 alone
 sampler2D laneDepth : register(s5);  // the caller's four-channel current depth (.b = clip w = view z), point / clamp
+sampler2D ownDepth : register(s6);   // composition with c6.x > 0 only: the current depth (.r), point / clamp
 #endif
 static const float lineMargin = 1.1;
 float4 fetch(float2 uv) { return tex2Dlod(source, float4(uv, 0, 0)); }
@@ -175,8 +181,13 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0
         if (compose) {
             float2 far = centre.gg * farGate.zw;
 #ifdef X3M_CAMERA_GATE
-            float fragmented = result.b * thinGate.y;
+            float fragmented = result.b * thinGate.y, cameraOpen = result.a;
             result.b = fragmented * result.a; result.a = fragmented * result.r;
+            [branch] if (thinGate.x > 0) {
+                float alpha = tex2Dlod(motionOverride, float4(uv, 0, 0)).w;
+                if (sentinelDepth(tex2Dlod(ownDepth, float4(uv, 0, 0)).r) && options.x > 0.5 && alpha >= -1 && alpha <= -1)
+                    result.b = max(result.b, thinGate.x * cameraOpen);
+            }
             result.r = far.x; result.g = far.y;
 #else
             result.r = max(result.r, far.x); result.g = far.y;

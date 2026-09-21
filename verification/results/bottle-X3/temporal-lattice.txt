@@ -41,7 +41,7 @@ CHECK embedded_thin_line within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_age_line dwords=2016 instruction_slots=509 device_limit=512 headroom=3 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_age_line within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_line_mask_camera dwords=983 instruction_slots=245 device_limit=512 headroom=267 within_guaranteed_512=1
+RESOLVE_BUDGET variant=embedded_line_mask_camera dwords=1101 instruction_slots=281 device_limit=512 headroom=231 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_line_mask_camera within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_far_camera dwords=2023 instruction_slots=508 device_limit=512 headroom=4 within_guaranteed_512=1
@@ -50,6 +50,12 @@ CHECK embedded_far_camera within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_thin_box dwords=238 instruction_slots=51 device_limit=512 headroom=461 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_thin_box within the guaranteed 512 slots PASS
+RESOLVE_BUDGET variant=embedded_thin_box_rows dwords=204 instruction_slots=35 device_limit=512 headroom=477 within_guaranteed_512=1
+CHECK resolve instruction budget parsed for ps_3_0 PASS
+CHECK embedded_thin_box_rows within the guaranteed 512 slots PASS
+RESOLVE_BUDGET variant=embedded_thin_box_columns dwords=420 instruction_slots=94 device_limit=512 headroom=418 within_guaranteed_512=1
+CHECK resolve instruction budget parsed for ps_3_0 PASS
+CHECK embedded_thin_box_columns within the guaranteed 512 slots PASS
 LATTICE_CASES
 LATTICE_MARGIN 0.0600
 CHECK lattice geometry keeps jittered edges off the sample centers PASS
@@ -2145,9 +2151,12 @@ CHECK line filter lowers the roping at a bounded line-peak cost PASS
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
-LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.7525 current_filter_ms=0.7336 line_filter_ms=0.9154 far_stabiliser_ms=1.1218 thin_region_ms=1.8416 taps_delta_ms=-0.0189 line_delta_ms=0.1629 far_delta_ms=0.3693 thin_region_delta_ms=1.0891 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.8416 no_region_camera_ms=1.8291 no_region_camera_delta_ms=-0.0125 fragmented_pan_thin_ms=1.3100 fragmented_pan_camera_ms=1.9154 fragmented_pan_camera_delta_ms=0.6054 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.9154 lane_input_law_ms=1.6580 lane_input_lane_ms=1.6400 lane_fetch_delta_ms=-0.0180 lane_input_over_r32f_ms=-0.2574 scope=cpu_wall_with_event_query_drain
+LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.6457 current_filter_ms=0.6423 line_filter_ms=0.8639 far_stabiliser_ms=0.8161 thin_region_ms=1.4196 taps_delta_ms=-0.0034 line_delta_ms=0.2182 far_delta_ms=0.1704 thin_region_delta_ms=0.7739 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.4196 no_region_camera_ms=1.5909 no_region_camera_delta_ms=0.1713 fragmented_pan_thin_ms=1.2339 fragmented_pan_camera_ms=1.7464 fragmented_pan_camera_delta_ms=0.5125 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.7464 lane_input_law_ms=1.4217 lane_input_lane_ms=1.4777 lane_fetch_delta_ms=0.0560 lane_input_over_r32f_ms=-0.3247 scope=cpu_wall_with_event_query_drain
+CHECK sentinel timing: separable box programs created PASS
+CHECK sentinel timing: separable box programs created PASS
+LINE_TIMING_SENTINEL width=1280 height=768 rounds=6 content=all_unrouted_sentinel_pan strength_off_ms=1.0698 strength_on_separable_ms=1.3747 sentinel_delta_ms=0.3049 scope=cpu_wall_with_event_query_drain
 LINE_BASE numerical=255 state_restorations=15
 FAR_CASES
 FAR_GATE ok=1 d0=0.99985647 inv=17734.900 expected_d0=0.99985652 expected_inv=17749.280
@@ -5032,8 +5041,182 @@ CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
 CHECK thin-region history follows the sequence PASS
 THIN_REGION_BAD_MOTION kind=nan glass=1 asserted=0 covered_px=4 screen_gate_max_within_8px=1.0000 camera_gate_max_within_8px=1.0000 camera_screen_channel_max=1.0000 identical_to_screen_gate=1
+CHECK sentinel strength outside [0, 1] is refused PASS
+CHECK sentinel strength outside [0, 1] is refused PASS
+CHECK sentinel strength outside [0, 1] is refused PASS
+CHECK sentinel strength without configure_sentinel is refused PASS
+CHECK separable box programs created by configure_sentinel PASS
+CHECK negative or non-finite emitter bound is refused while S > 0 PASS
+CHECK the emitter bound is not validated at S = 0 PASS
+CHECK negative or non-finite emitter bound is refused while S > 0 PASS
+CHECK the emitter bound is not validated at S = 0 PASS
+CHECK sentinel fields are ignored without the camera gate PASS
+CHECK sentinel run publishes the mask PASS
+CHECK sentinel run restores c0..c7, c22..c24, samplers 1..3, 6, 8..10, RT1 and COLORWRITEENABLE1 PASS
+CHECK failed columns draw of the separable box (the fifth draw) publishes nothing PASS
+CHECK after a failed box draw the sentinel run restarts without history PASS
+CHECK Reset protocol keeps the separable box programs and recreates the row targets PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+SENTINEL_STABILISER row=off pan=0.00 colour_identical=1 age_identical=1 mask_identical=1
+CHECK sentinel stabiliser off (S = 0, E = 0): colour, age and mask bit-identical to the camera-gate run PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+SENTINEL_STABILISER row=off pan=0.50 colour_identical=1 age_identical=1 mask_identical=1
+CHECK sentinel stabiliser off (S = 0, E = 0): colour, age and mask bit-identical to the camera-gate run PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+SENTINEL_STABILISER row=facets pan_axis=none pan=0.00 pan_mode=rest ratio_asserted=1 strength=0.70 oracle_error=0.002930 age_oracle_error=0.000000 mask_error=0.000000 oracle_skipped_px=0 oracle_skip_ceiling=0 base_flicker_codes=13.156 flicker_codes=5.184 flicker_ratio=0.3940 base_detail_codes=19.765 detail_codes=30.925
+SAMPLE sentinel stabiliser: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002929688 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE sentinel stabiliser: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE sentinel stabiliser: published strength equals the oracle's (b = S on the open sky, a = 0) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK sentinel facets: flicker below 0.6 x the S = 0 run under this pan PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+SENTINEL_STABILISER row=facets pan_axis=y pan=0.30 pan_mode=steady ratio_asserted=1 strength=0.70 oracle_error=0.002197 age_oracle_error=0.000000 mask_error=0.000000 oracle_skipped_px=0 oracle_skip_ceiling=0 base_flicker_codes=24.200 flicker_codes=11.611 flicker_ratio=0.4798 base_detail_codes=17.814 detail_codes=9.324
+SAMPLE sentinel stabiliser: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002197266 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE sentinel stabiliser: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE sentinel stabiliser: published strength equals the oracle's (b = S on the open sky, a = 0) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK sentinel facets: flicker below 0.6 x the S = 0 run under this pan PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+SENTINEL_STABILISER row=facets pan_axis=y pan=0.30 pan_mode=reversing ratio_asserted=1 strength=0.70 oracle_error=0.002441 age_oracle_error=0.000000 mask_error=0.000000 oracle_skipped_px=0 oracle_skip_ceiling=0 base_flicker_codes=15.954 flicker_codes=6.025 flicker_ratio=0.3776 base_detail_codes=15.493 detail_codes=9.374
+SAMPLE sentinel stabiliser: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE sentinel stabiliser: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE sentinel stabiliser: published strength equals the oracle's (b = S on the open sky, a = 0) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK sentinel facets: flicker below 0.6 x the S = 0 run under this pan PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+SENTINEL_STABILISER row=facets pan_axis=y pan=2.00 pan_mode=reversing ratio_asserted=1 strength=0.70 oracle_error=0.002930 age_oracle_error=0.000000 mask_error=0.000000 oracle_skipped_px=1638 oracle_skip_ceiling=9984 base_flicker_codes=15.762 flicker_codes=6.081 flicker_ratio=0.3858 base_detail_codes=20.624 detail_codes=31.995
+SAMPLE sentinel stabiliser: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002929688 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE sentinel stabiliser: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE sentinel stabiliser: published strength equals the oracle's (b = S on the open sky, a = 0) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK sentinel facets: flicker below 0.6 x the S = 0 run under this pan PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+SENTINEL_STABILISER row=facets pan_axis=y pan=4.00 pan_mode=reversing ratio_asserted=1 strength=0.70 oracle_error=0.002930 age_oracle_error=0.000000 mask_error=0.000000 oracle_skipped_px=8242 oracle_skip_ceiling=16640 base_flicker_codes=15.876 flicker_codes=6.178 flicker_ratio=0.3892 base_detail_codes=25.617 detail_codes=34.874
+SAMPLE sentinel stabiliser: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002929688 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE sentinel stabiliser: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE sentinel stabiliser: published strength equals the oracle's (b = S on the open sky, a = 0) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK sentinel facets: flicker below 0.6 x the S = 0 run under this pan PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+SENTINEL_STABILISER row=facets pan_axis=y pan=2.00 pan_mode=steady ratio_asserted=0 strength=0.70 oracle_error=0.001953 age_oracle_error=0.000000 mask_error=0.000000 oracle_skipped_px=0 oracle_skip_ceiling=9984 base_flicker_codes=12.142 flicker_codes=7.973 flicker_ratio=0.6567 base_detail_codes=20.398 detail_codes=47.508
+SAMPLE sentinel stabiliser: shader matches the 2-D CPU oracle within the FP16 bound actual=0.001953125 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE sentinel stabiliser: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE sentinel stabiliser: published strength equals the oracle's (b = S on the open sky, a = 0) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+SENTINEL_STABILISER row=facets pan_axis=y pan=4.00 pan_mode=steady ratio_asserted=0 strength=0.70 oracle_error=0.001465 age_oracle_error=0.000000 mask_error=0.000000 oracle_skipped_px=6604 oracle_skip_ceiling=16640 base_flicker_codes=15.189 flicker_codes=10.108 flicker_ratio=0.6655 base_detail_codes=29.710 detail_codes=59.516
+SAMPLE sentinel stabiliser: shader matches the 2-D CPU oracle within the FP16 bound actual=0.001464844 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE sentinel stabiliser: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE sentinel stabiliser: published strength equals the oracle's (b = S on the open sky, a = 0) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+SENTINEL_STABILISER row=silhouette frames=64 square_px=64 square_differs=0 unrouted_differs=38990
+SENTINEL_STABILISER row=routed_sentinel frames=64 glass_px=64 glass_differs=0 glass_mask_differs=0
+CHECK sentinel props: the square holds geometry and the glass is routed on the depth sentinel on every frame PASS
+CHECK geometry silhouette against the sentinel: geometry pixels bit-identical to S = 0 while the unrouted sky changes PASS
+CHECK routed sentinel pixels (motion alpha 1): colour, age and strength bit-identical to S = 0 PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+SENTINEL_STABILISER row=mover claimed_px_per_frame=2 frames=64 sentinel_px_within_8=284 differs_within_8=0 strength_max_within_8=0.0000 strength_min_beyond=0.6980 differs_beyond=45648
+CHECK routed object moving against the camera path: sentinel pixels within 8 px bit-identical to S = 0, strength 0 PASS
+CHECK beyond 8 px of the mover the stabiliser stays on PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+SENTINEL_STABILISER row=emitter bar_value=4.0 px_per_frame=6 trail_px_bound_1=1 trail_px_unbound=3 trail_excess_s0=3.1133 trail_excess_bound_1=3.4395 trail_excess_unbound=2.4590 added_trail_px_bound_1=1 added_trail_px_unbound=3 added_inside_px_bound_1=1 added_inside_px_unbound=6 added_reach_px_bound_1=1 added_reach_px_unbound=3 added_max_bound_1=0.3262 added_max_unbound=2.4600 nonzero_px_after_exit_bound_1=0 nonzero_px_after_exit_unbound=0
+CHECK emitter trail peak: at most 0.4 above the installed resolve's and below the emitter's own value PASS
+CHECK emitter crossing the sentinel: trail <= 1 px with E = 1, <= 3 px with E = 0, and every pixel the stabiliser changes lies within that distance of an edge of the bar PASS
+CHECK emitter trail is zero once the bar has left PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+SENTINEL_STABILISER row=nonfinite_block frames=32 block_px=9 block_differs_or_nonzero=0 output_min=0.000000 output_max=4.000000 all_finite=1
+CHECK non-finite block beside an emitter: block current-only as at S = 0, every output finite and within [0, emitter] PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+SENTINEL_STABILISER row=cut frame=40 output_minus_current_max=0.000000 previous_frame_output_minus_current_max=0.459961
+CHECK history-invalid frame under the sentinel stabiliser: the output is the current frame PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK row-target creation fault reached; the sentinel stabiliser is off for the session, the camera gate carries on PASS
+CHECK thin-region history follows the sequence PASS
+CHECK row-target creation failure: the camera-gate run bit for bit, history kept PASS
 CHECK thin-region history follows the sequence PASS
 CHECK thin-region program created on this device PASS
 CHECK thin-region history follows the sequence PASS
 CHECK mask-target creation failure under the thin region: plain resolve, history kept PASS
-RESULT PASS numerical=538 state_restorations=21 lattice=1
+RESULT PASS numerical=576 state_restorations=23 lattice=1

@@ -129,6 +129,24 @@ struct FrameInputs {
     // The box pair exists only while the gate runs: the first run without it
     // releases the pair (a configuration change, never per frame).
     bool thin_region_camera_gate = false;
+    // Sentinel stabiliser (docs/architecture/temporal-integration.md "Distant
+    // unrouted stations under a pan"), off by default (0: every target bit for
+    // bit the camera-gate run's). S in (0, 1]: an UNROUTED pixel on the depth
+    // sentinel (motion alpha exactly -1; distant stations the engine draws
+    // blended without depth, sky) gets thin-region strength S * the 17x17
+    // minimum of the camera openness through the camera mask, always with the
+    // 7x7 box clip, never the unclipped history; the resolve program is
+    // untouched. The box pass then covers most of the sky and runs in its
+    // separable form (two draws, one more FP16 pair, same bytes as the 49-tap
+    // program). sentinel_emitter = E: where the raw luma maximum of the 7x7
+    // exceeds E and the pixel's own depth is the sentinel, the box is the
+    // inner 3x3 (lasers, trails, suns stay within one pixel of the tight clip);
+    // 0 = no bound. Both ignored unless the camera gate is requested, and the
+    // emitter bound is neither read nor validated at S = 0. Needs
+    // configure_sentinel() (sentinel_available()); a failed row-target allocation that is not a lost
+    // device turns the stabiliser off for the session (sentinel_failed();
+    // re-armed by Reset) and the camera gate carries on as without it.
+    float sentinel_strength = 0.f, sentinel_emitter = 1.f;
     // Depth and translation term of the camera gate's camera path, c8 of the
     // camera mask program only (camera_reprojection.h camera_depth_parallax();
     // taa-lattice-crawl.md section 32.3). All zero = the far-plane path of
@@ -295,6 +313,12 @@ public:
     // The camera-gate programs (mask, resolve, box) configure_far creates on top; optional, a refusal leaves the screen-speed gate.
     bool camera_gate_available() const noexcept { return far_available() && line_mask_camera_ != nullptr && far_camera_ != nullptr && thin_box_ != nullptr; }
     bool camera_gate_failed() const noexcept { return boxes_failed_; }
+    // The two separable box programs of the sentinel stabiliser, created only on request (a session that never turns
+    // the stabiliser on never owns them); needs camera_gate_available(). A failure leaves the pass usable without it.
+    HRESULT configure_sentinel() noexcept;
+    bool sentinel_available() const noexcept { return camera_gate_available() && thin_box_rows_ != nullptr && thin_box_columns_ != nullptr; }
+    bool sentinel_failed() const noexcept { return box_rows_failed_; }
+    HRESULT sentinel_result() const noexcept { return box_rows_result_; }
     HRESULT camera_gate_result() const noexcept { return boxes_result_; }
     // The mask targets could not be created (not a lost device): the line
     // filter and the far stabiliser are off for the rest of the session, runs
@@ -373,6 +397,14 @@ private:
     bool boxes_failed_ = false;
     HRESULT boxes_result_ = S_OK;
     HRESULT ensure_boxes() noexcept;
+    // Sentinel stabiliser: the separable box programs and the row targets ([0] row minimum + raw luma maximum, [1] row
+    // maximum; A16B16G16R16F, default pool, released with the histories and by the first run without the stabiliser).
+    IDirect3DPixelShader9 *thin_box_rows_ = nullptr, *thin_box_columns_ = nullptr;
+    IDirect3DTexture9* box_rows_[2]{};
+    IDirect3DSurface9* box_row_surfaces_[2]{};
+    bool box_rows_failed_ = false;
+    HRESULT box_rows_result_ = S_OK;
+    HRESULT ensure_box_rows() noexcept;
     bool mrt_age_ = false; // caps: >= 2 simultaneous RTs with independent bit depths
     IDirect3DTexture9* ages_[2]{};          // R32F per-pixel accumulated-frame count (adaptive weight only)
     IDirect3DSurface9* age_surfaces_[2]{};
