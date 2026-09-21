@@ -1,4 +1,5 @@
 #include "motion_output.h"
+#include "../fog/fog_density_cache.h"
 #include "../renderer/shader_constant_register.h"
 #include "sse_scalar.h"
 #include "capture.h"
@@ -404,6 +405,7 @@ void MotionOutput::release_resources() noexcept {
     // Joins the stored-density worker and frees its caches, staging and DEFAULT atlases with the
     // other passes. This is the device release path, not DllMain (FogPass::abandon_density_worker).
     if (fog_) { taa_call([&] { fog_->detach(); }); fog_.reset(); fog_frame_ = ~std::uint64_t(0); }
+    fog_density_refused_ = fog_density_prepared_ = fog_density_camera_valid_ = fog_density_config_logged_ = false; // a new pass may be refused for another reason
     release_depth_leases(); release_candidate_extents();
     detach_shadow_retention(); // every held reference goes before the device does (flush=teardown)
     if (depth_replay_) { taa_call([&] { depth_replay_->detach(); }); depth_replay_.reset(); }
@@ -3000,6 +3002,7 @@ void MotionOutput::before_reset() noexcept {
     if (fog_) taa_call([&] { fog_->before_reset(); });
     fog_sector_ = {}; fog_cards_ = {}; fog_card_ready_checked_ = fog_card_ready_ = false; fog_card_fault_reason_ = "none";
     fog_failures_ = 0; fog_attach_failed_ = false; // a transient failure or attach refusal is retried after Reset
+    fog_density_prepared_ = false; // the worker, both CPU caches and the staging survive; only the DEFAULT atlases went
     sun_apply_attach_failed_ = false; // a transient attach failure is retried after Reset
     ao_attach_failed_ = false; ao_target_format_ = D3DFMT_UNKNOWN; // a transient attach failure is retried after Reset
     // The re-attach hysteresis counts format alternation within one device
@@ -6106,7 +6109,10 @@ void MotionOutput::begin_redirect() noexcept {
     hdr_target_ = describe_surface(hdr_->target());
     hdr_state_ = HdrState::Active; hdr_dirty_ = true; hdr_latch_pending_ = true;
     h.redirected = true;
-    if (fog_requested_) prepare_volumetric_fog_targets(pending_.rt.width, pending_.rt.height);
+    if (fog_requested_) {
+        prepare_volumetric_fog_targets(pending_.rt.width, pending_.rt.height);
+        if (fog_density_requested_) prepare_volumetric_fog_density(pending_.rt.width, pending_.rt.height);
+    }
     probe_cutout_caps(); // a transient verdict retries at this boundary, never a draw
     // Stage 2: consume the previous frame's meter and adapt the EV this
     // frame's tonemap consumes (a no-op with the identity write-back).

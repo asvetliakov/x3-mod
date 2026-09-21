@@ -260,6 +260,27 @@ class FogLauncherTests(unittest.TestCase):
         self.assertIn('"X3M_VOLUMETRIC_FOG_CARDS": "keep"', output)
         self.assertEqual(self.launch(*self.BASE, '--volumetric-fog', '--volumetric-fog-cards', 'all')[0], 2)
 
+    def test_range_option(self):
+        status, output, error = self.launch(*self.BASE, '--volumetric-fog')
+        self.assertEqual(status, 0, error)
+        self.assertIn('"X3M_VOLUMETRIC_FOG_RANGE": "legacy"', output)
+        for mode in ('legacy', 'stored'):
+            status, output, error = self.launch(*self.BASE, '--volumetric-fog', '--volumetric-fog-range', mode)
+            self.assertEqual(status, 0, error)
+            self.assertIn('"X3M_VOLUMETRIC_FOG_RANGE": "' + mode + '"', output)
+        # An inherited variable never selects the experimental field, with or without the fog.
+        for fog in ((), ('--volumetric-fog',)):
+            status, output, error = self.launch(*self.BASE, *fog, environment={'X3M_VOLUMETRIC_FOG_RANGE': 'stored'})
+            self.assertEqual(status, 0, error)
+            self.assertIn('"X3M_VOLUMETRIC_FOG_RANGE": "legacy"', output)
+        self.assertEqual(self.launch(*self.BASE, '--volumetric-fog-range', 'stored')[0], 2)
+        self.assertEqual(self.launch(*self.BASE, '--volumetric-fog', '--volumetric-fog-range', 'far')[0], 2)
+        self.assertEqual(self.launch(*self.BASE, '--volumetric-fog', '0', '--volumetric-fog-range', 'stored')[0], 2)
+        self.assertEqual(self.launch(*self.BASE, '--volumetric-fog', '0', '--volumetric-fog-range', 'legacy')[0], 0)
+        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        self.assertIn('fog_env(L"X3M_VOLUMETRIC_FOG_RANGE")==6 && !wcscmp(setting,L"stored")', capture)
+        self.assertIn('volumetric_fog_range_stored=volumetric_fog_requested &&', capture)
+
     def test_dependencies_and_ranges(self):
         for missing in ('--taa', '--hdr', '--shadow-replay-depth'):
             with self.subTest(missing=missing):

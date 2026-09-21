@@ -1531,3 +1531,170 @@ output `/tmp/x3-fog-density-pass-v2`, summary PASS 12 / 12 gates, shader fixture
 Budgets unchanged: first fog 581 ms, 1.95 M nodes/s, upload frames median 18.5 µs / p95 33 /
 max 380 µs, steady 0.48 µs, per-frame maxima 1,065,024 B and 64 calls. The tracked summary is
 the v2 run.
+
+## Stored-density runtime integration, checkpoint 4: proxy wiring, launcher option, lifetime (2026-09-21)
+
+Source integration and fixture evidence; **no candidate was built and nothing was flown**. The
+mechanism is described in the [architecture note](../architecture/volumetric-fog.md#stored-density-range-option-2026-09-21).
+`--volumetric-fog-range {legacy,stored}` → `X3M_VOLUMETRIC_FOG_RANGE` (default `legacy`; the DLL
+accepts only the exact string `stored`). `MotionOutput` posts the previous scene end's double
+camera at the owner latch, keys the cache by `fog_sector_placement` (whole far nodes, ±2048),
+invalidates on a sample gap, and marks a frame `density` only when the far level is drawable for
+that frame's own camera; otherwise the frame is native (`density_unprepared` / `density_filling`).
+
+### Checkpoint-3 review findings closed here
+
+1. **Hang on normal quit (HIGH), reproduced and fixed.** `DllMain` `DLL_PROCESS_DETACH` now calls
+   `x3m::abandon_fog_density_workers()` first: it walks `devices` without the capture mutex and
+   without logging. `DensityCache::abandon()` no longer joins, detaches, notifies or locks (item 4);
+   mutex, condition variable and thread live in raw storage whose destructors never run for an
+   abandoned cache. The exit fixture proves both the defect and the CRT order on this backend:
+   with the worker parked, the control child (no abandon) reaches `static_destructor_begin` and
+   never returns (terminated by the 40 s watchdog); with the abandon the same child exits 2 ms
+   after `ready`, marks in the order `dllmain_detach_process_exit`, `dllmain_detach_end`,
+   `static_destructor_begin`, `static_destructor_end`. Mid-fill: 2 ms as well (its control did not
+   hang in this run: the 250 ms give-up or a worker killed outside the wait; not relied on).
+2. **Free of an abandoned cache.** `FogPass` releases the cache through `DensityCache::retire`:
+   `stop()`, then `delete` only if the cache was not abandoned. Host witness under
+   AddressSanitizer: a helper thread holds the mutex with a live worker, `retire` returns after
+   ≥ 250 ms, the object is read afterwards (a free would be a reported use-after-free), the worker
+   then takes the mutex, sees the stop flag and leaves.
+3. **Module pin.** `DensityCache::start` pins its module with
+   `GetModuleHandleExW(PIN | FROM_ADDRESS)` before the first worker exists; a failed pin refuses
+   the worker (`density_worker`, legacy fallback).
+5. `DisableThreadLibraryCalls` and winpthreads' TLS callback: recorded in
+   [platform portability](../architecture/platform-portability.md), not verified.
+
+### Evidence
+
+Host (native clang, no Wine):
+`PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_fog_density_cache verification.analysis.test_fog_route_bridge verification.analysis.test_volumetric_fog verification.analysis.test_fog_sector_policy verification.analysis.test_fog_cards`
+— cache 4 tests (the new one builds the harness with `-fsanitize=address -DX3M_FOG_DENSITY_TEST_HOOKS`:
+`thread_creation_failure_is_refused`, `start_succeeds_after_a_refused_start`,
+`held_lock_abandons_after_250ms_without_free`, `abandon_then_retire_is_prompt_and_leaks`,
+`abandoned_cache_does_not_restart`, plus source assertions that `abandon()` and the detach walk
+contain no join/detach/notify/lock/log and that `DllMain` calls the walk first); launcher
+`test_range_option` (default `legacy`, both values in the dry-run environment, an inherited
+`stored` is overwritten, refused without `--volumetric-fog`, with an unknown value and with
+strength 0); placement (64 sectors: distinct keys and offsets, whole far nodes, independent of
+strength / frame / generation / family); the fragment's host mock (option off: a sample gap never
+reaches the density path; on: exactly one invalidation).
+
+Wine, one locked run (bottle X3, arm64, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`), output
+`/tmp/x3-fog-density-route-v2`, lock wait 0.000004 s, child 58.7 s (a first run, `-v1`, passed with
+the same witnesses before a comment-only edit of `fog_pass.h`; `-v2` binds the final sources):
+`X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/fog_route_bridge_run.py run --output /tmp/x3-fog-density-route-v2 --cases /tmp/x3-fog-family-gpu-inputs-final/cases.txt`,
+then `fog_route_bridge_run.py check` → compact
+[summary](../../verification/results/fog-density-route/summary.json), PASS.
+
+| Step | Executable SHA-256 | Result |
+| --- | --- | --- |
+| Baseline bridge: today's fixture (`--baseline`) against the production tree of `184843cd` | `c332a225ab9884e4…` | 515 checks, 2.6 s |
+| Route bridge: unchanged fragment, real `FogPass`, real worker | `f160a65392025b44…` | 26,009 checks (one state-restoration, once-only and RT1/RT2 check per frame), 12.7 s |
+| Exit fixture (DLL `daef5fbc97b333bf…`, exe `cf2babbd516ce39d…`) | | 4 checks, 43.2 s (40 s is the hanging control) |
+
+| Route witness | Result |
+| --- | --- |
+| Legacy bit-identical to before | five legacy image hashes (warm, replaced, 33 captured cameras, new family, after Reset) equal between the `184843cd` build and this build; the legacy route never creates a cache |
+| Capability refusal (`MaxPixelShader30InstructionSlots` 511) | exactly one `event=refused reason=density_ps30_slots fallback=legacy` line, no worker, warm and replaced frames bit-identical to legacy |
+| Stored renders through the route | 302 filling frames native-exact with no fog transaction, then march + composite + repair once per frame (3 quads, 1 copy), image ≠ legacy ≠ scene; steady frame bit-identical; state snapshot restored every frame |
+| Ramps | far and fine monotone, ≤ 1/90 per frame, no fault |
+| Sector change | new key, offset a whole number of far nodes, readiness 0 and native card in the same frame, one TAA invalidation request, refill + ramps, different image; back to the first sector: bit-identical to its first image |
+| Ctrl+Alt+F9 off / on | off: native-exact, no `prepare_density` work, worker completes its window and parks (11,063,232 nodes, stable 400 ms); on: bit-identical image, same pass references and allocations, same device refcount, 0 nodes regenerated |
+| Reset (pass edges + owner reset state) | 8,520,192 B re-uploaded, 0 nodes regenerated, native while refilling, bit-identical afterwards |
+| Load (3 frames without a sample) | invalidated in the same frame, refill, ramps, bit-identical afterwards |
+| Camera | 300-unit cut: stays resident, no ramp; 2.6e6-unit jump: native in the same frame (the card is refused before the cache has heard of the camera), no fault, refill |
+| Device release with a live, generating worker | production release statements: joined in 2.6 ms, device refcount 13 → 13; whole run leaves the device refcount unchanged |
+| Abandon, then `~FogPass` | 0.86 ms, device refcount balanced, no join |
+| Logging | 23 `volumetric_fog_cache` lines for the whole run, no per-frame line without the timing option |
+
+Measured under this harness (render-thread CPU, FEX; **not game FPS, not GPU cost**): time to
+first fog 782–836 ms after the key, fine ready 1,726–1,781 ms (each includes its 90-frame ramp at
+≈ 2.2 ms frames); `prepare_volumetric_fog_density` steady median 1.90 µs / p99 47 µs (163 frames),
+upload frames median 20.4 µs / p99 70 µs (3,952 frames); one 5.6 ms maximum, attributed (not isolated) to the first call
+(three programs, four textures, two caches, thread, chroma scan of the decoded family packet).
+Bluewell mean chroma .0516 / .2695 / 1.0, sigma 2.5e-6. With `legacy` the added cost is two
+untaken branches per frame.
+
+Scratch production build (not a candidate):
+`cmake -S . -B <scratch> -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPython3_EXECUTABLE=/usr/bin/python3`,
+`cmake --build <scratch> --target d3d9` links;
+`python3 verification/probe/check_no_x87.py <scratch>/d3d9.dll` (DLL `aa313250e8506c56…`): PASS, roots 95, reachable 544,
+violations 0. The audit walks the light hooks; the worker is its own thread (x87 state is per
+thread and it calls nothing of the game), and checkpoint 3 already showed its TU free of x87.
+
+### Not proven / unsupported
+
+- Native Windows: documented D3D9, Win32 and C++ threads only, cross-compiled, never executed there.
+- The checkpoint-3 pass fixture was not rerun after the cache lifetime change (raw sync storage,
+  `retire`, pin); the route bridge and the host harness exercise the changed code.
+- Native device Reset stays with the pass fixture; the bridge uses the pass Reset edges.
+- GPU cost and game FPS; worker rate inside the game; appearance (constant family chroma, card
+  hand-over to a ramping medium, far-only interior while fine fills): the flight.
+- Placement hashes engine heap tokens: clouds move between sessions and may move on a reload.
+- `TerminateThread` of the render thread inside a cache lock; a second device using the pass
+  while `DLL_PROCESS_DETACH` walks the map on a dynamic `FreeLibrary` (the pin makes the unload a
+  no-op once a worker existed; before that no worker exists).
+- An abandoned cache leaks ≈ 8.5 MiB CPU memory and one thread handle (process exit, or the
+  250 ms give-up on device release).
+
+### Checkpoint 4 review fixes (2026-09-21)
+
+Independent review: accepted with findings. Main `85c7c821` was merged first (clean; its motion-route
+option is unrelated). The entry above is superseded where this one differs.
+
+1. **Abandon walk only at process exit.** `DllMain`: `if (reserved != nullptr) x3m::abandon_fog_density_workers();`
+   A `FreeLibrary` detach no longer iterates `devices` while live threads mutate it; the pin makes a
+   `FreeLibrary` with a worker unreachable.
+2. **Session-stable placement (design amendment).** `fog_sector_placement` hashes the background record
+   `index`, the family profile and the recipe; sector, table and record heap tokens never enter the key
+   (they still drive the card / TAA rewarm through `same_key`). Host test: same index + profile + recipe
+   with different tokens → same key and translation; 63 other indices, another profile and another recipe
+   → different. Bridge: `heap_token_change_keeps_key_cache_and_image` (cards re-warm; no re-key, no new
+   first fill, no ramp, image bit-identical). Sectors sharing one background record share a placement.
+3. **Cards stay until the far ramp is complete.** `volumetric_fog_begin_frame` keeps the card policy in
+   warm-up while `ready_far < 1` (the ramping medium stacks on the native cards), and the card
+   predicate needs `ready_far == 1`. Bridge: `stored_ramp_stacks_medium_on_native_cards` (≥ 80 ramp
+   frames, each native-source-exact with march + composite + repair) and
+   `cards_never_masked_below_full_far_ramp` over the whole run; the fragment's host double asserts the
+   same at ready 0 / .25 / .99 / 1 / back to .5.
+4. **Load detection.** A sample gap invalidates only when it also spans more than 500 ms of wall clock
+   (`fog_density_gap_ms`); no existing load signal reaches this route (the latch's `cut` is diagnostic).
+   Bridge: `one_frame_gap_keeps_cache`, `one_frame_gap_resumes_bit_identical` (no new first fill, no
+   ramp), and the long gap (3 frames + 600 ms) still invalidates in the same frame and ramps. Host
+   double: a missed sample without time and a slow frame without a missed sample keep the cache.
+5. / 6. **Family chroma is a tracked table, not a runtime scan.** `src/renderer/fog_family_chroma_inc.h`
+   (14 rows, generated by `tools/build/fog_family_chroma.py` from the hash-pinned packets with the
+   stored-density screen's definition) replaces the 2 M-texel scan, so nothing of it runs on any
+   thread. `test_tracked_family_chroma_matches_the_packets` recomputes all 14 from a fresh bake with
+   its own run decoder and atlas-interior sum: float32-identical; bluewell .0516 / .2695 / 1.0 as logged
+   by the bridge. A profile without a row logs one `event=refused reason=family_constants
+   fallback=legacy` line instead of staying silently inert.
+   Prepare cost, now split: resource-creating first call **3.4 ms** (three programs, four textures, two
+   caches, thread); steady median 1.5 µs / p99 24 µs (181 frames); upload frames median 24.6 µs / p99
+   115 µs, maximum **2.8 ms**, the only one of 4,037 above 1 ms, 24 rectangles at frame 2,581, the first
+   upload after the pass Reset. The earlier 5.6 ms maximum was never isolated; the split
+   does not show whether the scan was its cause.
+7. **Accepted costs (reviewer-confirmed).** Each 250 ms give-up leaks ≈ 8.5 MiB CPU, the thread and
+   the module pin. In stored mode the legacy family atlas stays decoded (4.26 MB CPU per the review)
+   and resident (≈ 17.8 MB VRAM) although never sampled. Proposed, not implemented: release it in
+   stored mode and re-create it on a refusal or a switch back.
+
+Evidence. Host: the five modules above plus `verification.analysis.test_fog_field_assets`, 35 tests OK.
+Wine (bottle X3, arm64, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`), same command, output
+`/tmp/x3-fog-density-route-v4`, lock wait 0.000003 s, child 76.4 s, `check` PASS, tracked summary
+rewritten: baseline bridge built from main `85c7c821` (`e3923231da60be01…`) 515 checks; route bridge
+(`47839d34bacddb77…`) **26,692 checks**, five legacy image hashes equal to the baseline, 22
+`volumetric_fog_cache` lines; exit fixture (DLL `a0a18c92132f874b…`, exe `ab7e4fc93185de64…`) 4 checks,
+idle and mid-fill exit 2 ms after `ready` with the DllMain marks before the static destructor, idle
+control hangs. First fog 866–902 ms, fine 1,923–1,949 ms (ramps included); Reset 8,520,192 B re-uploaded,
+0 nodes regenerated; release with a generating worker joined in 8.9 ms, refcount 13 → 13; abandon +
+`~FogPass` 1.03 ms. `/tmp/x3-fog-density-route-v3` passed the same witnesses (25,774 checks) before the
+cost split was added to the fixture; `/tmp/x3-fog-density-route-v3-fixture-bug` is a fixture-side
+failure (the witness compared node totals while the worker was still growing its window; it now
+compares `first_fills`).
+
+Scratch `d3d9` links after the merge (DLL `cc92c8cc0b9ea486…`). `check_no_x87.py`: **FAIL, roots 95,
+reachable 548, 2 violating functions, both from main's merged option and outside this change**:
+`MotionOutput::unmatched_static_rows` (`fstpl`) and `renderer::static_previous_rows` (`fabs` on the x87
+stack). Before the merge the same audit passed (95 / 544 / 0). Not fixed here.

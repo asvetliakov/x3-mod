@@ -1,6 +1,7 @@
 #pragma once
 #include "sector_background.h"
 #include "../renderer/fog_field_assets.h"
+#include "../fog/fog_density_generator.h"
 #include <cstring>
 #include <cmath>
 namespace x3m {
@@ -22,6 +23,27 @@ struct FogSectorFrame {
     }
     bool current(std::uint64_t f) const noexcept { return frame == f && enabled && profile != 0; }
 };
+// Stored-density field placement (fog-density-runtime-integration.md §1, amended): a per-sector
+// translation of the stationary field by whole far nodes, so node keys stay integers and the
+// accuracy statistics carry over. Keyed by session-stable identity only: the sector's background
+// record index, the family profile and the recipe. The heap tokens (sector, table, record) still
+// detect a change for the card/TAA rewarm through same_key, but never enter this key: a sector's
+// clouds are the same on every visit, reload and session, and a reallocation neither re-keys nor
+// refills. Sectors that share one background record share a placement.
+struct FogSectorPlacement { std::uint64_t key = 0; double offset[3]{}; };
+inline std::uint64_t fog_sector_mix(std::uint64_t x) noexcept { // splitmix64 finalizer
+    x += 0x9e3779b97f4a7c15ull; x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9ull; x = (x ^ (x >> 27)) * 0x94d049bb133111ebull; return x ^ (x >> 31);
+}
+inline FogSectorPlacement fog_sector_placement(const FogSectorFrame& f) noexcept {
+    FogSectorPlacement out;
+    out.key = fog_sector_mix(fog_sector_mix(fog_sector_mix(std::uint64_t(std::uint32_t(f.index))) ^ f.profile) ^ f.recipe);
+    std::uint64_t h = out.key;
+    for (unsigned axis = 0; axis < 3; ++axis) {
+        h = fog_sector_mix(h + axis);
+        out.offset[axis] = fog::kFarDelta * double(int(h % 4096u) - 2048);
+    }
+    return out;
+}
 inline FogSectorFrame fog_sector_frame(const sector_background::Sample& s, std::uint64_t frame,
                                      std::uint64_t generation, float strength, bool enabled, bool everywhere) noexcept {
     FogSectorFrame out;

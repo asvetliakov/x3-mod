@@ -1,8 +1,11 @@
 // Host witness for src/fog/fog_density_cache.{h,cpp}: window / recentre / readiness
 // logic on the deterministic stepped worker, then the real worker thread handoff.
 // A plain heap atlas stands in for the SYSTEMMEM staging texture and the GPU copy.
-// Usage: fog_density_cache_host [logic|threaded|all]
+// Usage: fog_density_cache_host [logic|threaded|lifetime|all]
+// `lifetime` needs -DX3M_FOG_DENSITY_TEST_HOOKS and is meant for an AddressSanitizer build: the
+// abandoned caches are read after retire(), so a free would be reported, not guessed.
 #include "../../src/fog/fog_density_cache.h"
+#include <atomic>
 #include <chrono>
 #include <cstdio>
 #include <cstring>
@@ -311,11 +314,54 @@ void threaded() {
         require("invalidate_under_live_worker_equals_static", equal_static(gpu, cache, id.offset, "live_invalidate"));
     }
 }
+
+#ifdef X3M_FOG_DENSITY_TEST_HOOKS
+void lifetime() {
+    const double camera[3] = {95576., 97323., 82698.};
+    {   // std::thread construction failure: refused, nothing running, the object stays destructible and restartable.
+        DensityCache cache;
+        DensityCache::test_fail_thread(true);
+        const bool refused = !cache.start() && !cache.running() && !cache.abandoned();
+        DensityCache::test_fail_thread(false);
+        require("thread_creation_failure_is_refused", refused);
+        require("start_succeeds_after_a_refused_start", cache.start() && cache.running());
+    }
+    {   // stop() cannot take the mutex for 250 ms while the worker is alive (starved, not dead):
+        // the cache is abandoned and retire() must leak it whole. Reads below are use-after-free if it was freed.
+        DensityCache* cache = new DensityCache; Gpu gpu; std::uint64_t frame = 0;
+        bool ok = cache->start(); cache->gpu_reset();
+        for (int i = 0; i < 20; ++i) { cache->step(camera, ++frame); gpu.frame(*cache); std::this_thread::sleep_for(std::chrono::milliseconds(1)); }
+        const std::uint64_t before = cache->stats().nodes_generated;
+        std::atomic<int> phase{0};
+        std::thread holder([&] { std::unique_lock<std::mutex> held(cache->test_mutex()); phase.store(1); while (phase.load() != 2) std::this_thread::sleep_for(std::chrono::milliseconds(1)); });
+        while (phase.load() != 1) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        const double t0 = now_us(); DensityCache::retire(cache); const double waited = now_us() - t0;
+        ok = ok && cache->abandoned() && !cache->running();
+        phase.store(2); holder.join();
+        std::this_thread::sleep_for(std::chrono::milliseconds(200)); // the live worker takes the freed-or-not mutex, sees the stop flag and leaves
+        const std::uint64_t after = cache->stats().nodes_generated;
+        std::printf("GIVE_UP waited_ms=%.1f nodes_before=%llu nodes_after=%llu\n", waited / 1e3, (unsigned long long)before, (unsigned long long)after);
+        require("held_lock_abandons_after_250ms_without_free", ok && waited >= 250e3 && waited < 5e6 && after >= before && cache->cache_bytes(0) != nullptr);
+    }
+    {   // Process-exit form: abandon, then the owner's release. No join, no notify, no free; prompt.
+        DensityCache* cache = new DensityCache; std::uint64_t frame = 0;
+        bool ok = cache->start(); cache->step(camera, ++frame);
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        const double t0 = now_us(); cache->abandon(); DensityCache::retire(cache); const double took = now_us() - t0;
+        std::printf("ABANDON retire_ms=%.3f\n", took / 1e3);
+        require("abandon_then_retire_is_prompt_and_leaks", ok && cache->abandoned() && took < 50e3 && cache->cache_bytes(1) != nullptr);
+        require("abandoned_cache_does_not_restart", !cache->start());
+    }
+}
+#endif
 }  // namespace
 int main(int argc, char** argv) {
     const std::string mode = argc > 1 ? argv[1] : "all";
     if (mode == "logic" || mode == "all") logic();
     if (mode == "threaded" || mode == "all") threaded();
+#ifdef X3M_FOG_DENSITY_TEST_HOOKS
+    if (mode == "lifetime" || mode == "all") lifetime();
+#endif
     std::printf("RESULT %s checks=%u failures=%u\n", failures ? "FAIL" : "PASS", checks, failures);
     return failures ? 1 : 0;
 }

@@ -5,6 +5,7 @@
 #include "fog_card_mask.h"
 #include "fog_card_match.h"
 #include "fog_pass_math.h"
+#include "fog_volume_math.h"
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
@@ -12,7 +13,8 @@
 #include <cstring>
 #include <type_traits>
 struct LARGE_INTEGER { long long QuadPart=0; };
-inline void QueryPerformanceCounter(LARGE_INTEGER* v){v->QuadPart=1;}
+inline long long mock_qpc=1; // host tests advance it; frequency 1 => one unit is one second
+inline void QueryPerformanceCounter(LARGE_INTEGER* v){v->QuadPart=mock_qpc;}
 inline void QueryPerformanceFrequency(LARGE_INTEGER* v){v->QuadPart=1;}
 using HMODULE=void*;using LPCWSTR=const wchar_t*;
 constexpr unsigned GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS=1,GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT=2;
@@ -66,7 +68,11 @@ struct FogFrame {
  IDirect3DTexture9* depth_share=nullptr;IDirect3DSurface9* target=nullptr;
  fog_field::Profile profile=fog_field::Profile::None;unsigned recipe_id=0;std::uint64_t field_generation=0;
  bool main_target=false,linear_depth_current=false,caller_scene_known=false,caller_stateblock_recording=false,caller_queries_idle=true;
+ struct Params {FogWorldBasis world{};} params;bool density=false;double camera_world[3]{};
 };
+// Stored-density range: the option is off in this host witness; the types only let the unchanged methods compile.
+struct FogDensityConfig {bool enabled=false;std::uint64_t sector_key=0;double world_offset[3]{};};
+struct FogDensityStatus {float ready_far=0,ready_fine=0;unsigned upload_bytes=0,upload_rects=0;std::uint64_t nodes_generated=0,worker_busy_us=0,missed_locks=0;};
 struct FogResult {
  bool applied=false;HRESULT restore=0;bool caller_state_restored=true,route_poisoned=false,scene_known=true,scene_open=true;
  HRESULT operation=0;FogStage failed=FogStage::None;unsigned cascades_bound=0,device_calls=0;
@@ -87,6 +93,9 @@ struct MockFog { struct Caps {bool enabled=true;}cap; const Caps& caps()const{re
   ++executes;out->applied=execute_applied&&execute_result==S_OK;out->operation=execute_result;
   out->scene_open=in.caller_scene_open;return execute_result;
  }
+ unsigned density_calls=0;renderer::FogDensityStatus density{};
+ void invalidate_density(){++density_calls;}bool density_drawable(const double*)const{return density.ready_far>0;}bool density_ready(unsigned,unsigned)const{return density.ready_far>0;}
+ const renderer::FogDensityStatus& density_status()const{return density;}
  bool ready=true; bool resources_ready(unsigned w,unsigned h,renderer::fog_field::Profile p,unsigned,std::uint64_t generation)const{return ready&&w&&h&&p!=renderer::fog_field::Profile::None&&generation==1;} };
 struct MockHdr { IDirect3DSurface9* surface=nullptr;IDirect3DSurface9* target()const{return surface;} };
 struct MotionOutput {
@@ -98,6 +107,11 @@ struct MotionOutput {
  } shadow_;
  struct Counters { unsigned rs_queries=0,rs_hits=0,rs_gets=0;bool filled=true,cut=false; struct Taa {bool attempted=false;}taa;}counters_;
  renderer::FogSectorLatch fog_latch_{};
+ struct Camera {bool valid=false;float r[9]{},t[3]{};} camera_scene_;
+ bool fog_density_requested_=false,fog_density_refused_=false,fog_density_prepared_=false,fog_density_camera_valid_=false;
+ std::uint64_t fog_density_sample_frame_=~std::uint64_t(0);long long fog_density_sample_qpc_=0;static constexpr unsigned fog_density_gap_ms=500;double fog_density_camera_[3]{};renderer::FogDensityConfig fog_density_config_{};
+ bool fog_density_active()const noexcept{return fog_density_requested_&&!fog_density_refused_;}
+ void fog_density_epoch(const char*)noexcept{}
  FogCardPolicy fog_cards_{}; FogSectorFrame fog_sector_{};
  bool fog_everywhere_=false;std::uint64_t generation_=0,fog_transition_frame_=~std::uint64_t(0);
  struct SunFrame {bool failed=false,published=true;}sun_frame_;bool sun_lane_failed_=false;

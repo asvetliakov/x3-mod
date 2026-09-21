@@ -475,6 +475,8 @@ public:
  std::unique_ptr<Pass>sun_apply_;unsigned candidate_extent_releases_=0;
  // Other features stay inert; card routing itself is qualified by test_fog_cards.
  bool fog_cards_replace_=false,fog_card_ready_checked_=false,fog_card_ready_=false;
+ // Stored-density fog stays inert in this double; the route bridge qualifies it (test_fog_route_bridge).
+ bool fog_density_requested_=false,fog_density_refused_=false,fog_density_prepared_=false,fog_density_camera_valid_=false,fog_density_config_logged_=false,fog_density_ready_logged_[2]{};
  x3m::FogSectorFrame fog_sector_{};
  x3m::FogCardPolicy fog_cards_{};const char*fog_card_fault_reason_="none";
  void prepare_fog_card(const MotionDrawCall&,MotionRoute&)noexcept{CHECK(false);}

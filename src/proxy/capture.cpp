@@ -1,5 +1,6 @@
 #include "capture.h"
 #include "capture_state.h"
+#include "../fog/fog_density_cache.h"
 #include "lattice_state_capture.h"
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 #include "../../verification/probe/lattice_observer_guard_abi.h"
@@ -176,6 +177,9 @@ float ambient_occlusion_radius = 2.f, ambient_occlusion_strength = .5f;
 bool sector_background_requested = false; // read-only, independent of the fog pass
 bool volumetric_fog_cards_replace = false;
 bool volumetric_fog_requested = false, volumetric_fog_everywhere = false, volumetric_fog_timing = false;
+// X3M_VOLUMETRIC_FOG_RANGE=legacy|stored (default legacy; fog-density-runtime-integration.md):
+// stored selects the two-level stored-density field with its 30-40 km horizon. Anything else is legacy.
+bool volumetric_fog_range_stored = false;
 float volumetric_fog_strength = x3m::renderer::fog_strength_default, volumetric_fog_anisotropy = x3m::renderer::fog_anisotropy_default;
 float emission_gain = 1.f;
 bool linear_material_requested = false;
@@ -2563,6 +2567,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         hooked.motion_output.configure_sun_shadow_apply(apply_enabled,bias_units,clamp_texels,slope_texels); } }
     hooked.motion_output.configure_ambient_occlusion(ambient_occlusion_requested,ambient_occlusion_radius,ambient_occlusion_strength,ambient_occlusion_debug,ambient_occlusion_timing);
     hooked.motion_output.configure_volumetric_fog(volumetric_fog_requested,volumetric_fog_strength,volumetric_fog_anisotropy,volumetric_fog_everywhere,volumetric_fog_timing,volumetric_fog_cards_replace);
+    hooked.motion_output.configure_volumetric_fog_range(volumetric_fog_range_stored);
     { LARGE_INTEGER frequency{};QueryPerformanceFrequency(&frequency); // the frame_end clock; one read per device
       hooked.fps_overlay.configure(fps_overlay_requested,frequency.QuadPart>0?uint64_t(frequency.QuadPart):1); }
     hooked.motion_output.configure_screen_emission_timing(screen_emission_timing_requested);
@@ -3191,6 +3196,10 @@ void initialize_log(HMODULE module) {
      volumetric_fog_everywhere=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_EVERYWHERE")==1 && setting[0]==L'1';
      volumetric_fog_timing=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_TIMING")==1 && setting[0]==L'1';
      volumetric_fog_cards_replace=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_CARDS")==7 && !wcscmp(setting,L"replace");
+     volumetric_fog_range_stored=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_RANGE")==6 && !wcscmp(setting,L"stored");
+     if(asked)log("volumetric_fog_range mode=%s atlas_bytes=%u levels=2 cpu_bytes=%u upload_budget_bytes=%u upload_rects=%u ramp_frames=%u worker_threads=%u",volumetric_fog_range_stored?"stored":"legacy",
+        volumetric_fog_range_stored?unsigned(fog::kAtlasBytes):0u,volumetric_fog_range_stored?unsigned(4*fog::kAtlasBytes):0u,volumetric_fog_range_stored?unsigned(fog::kDefaultUploadBudget):0u,
+        volumetric_fog_range_stored?fog::kDefaultUploadRects:0u,volumetric_fog_range_stored?fog::kReadinessRampFrames:0u,unsigned(volumetric_fog_range_stored));
      if(asked)log("volumetric_fog_mode requested=1 enabled=%u motion_output=%u taa=%u hdr=%u shadow_replay_depth=%u shadow_cascades=%u strength=%g density_scale=%g anisotropy=%g everywhere=%u timing=%u cards=%s rule=current_engine_family keys=ctrl_alt_f9,ctrl_alt_f10",volumetric_fog_requested,motion_output_requested,taa_requested,hdr_requested,unsigned(fog_replay),unsigned(fog_cascade_list),double(volumetric_fog_strength),double(volumetric_fog_strength / .02f),double(volumetric_fog_anisotropy),volumetric_fog_everywhere,volumetric_fog_timing,volumetric_fog_cards_replace?"replace":"keep");}
     hdr_config.sharpen=taa_sharpen; // the HDR write-back sharpens the resolved image with the same setting
     motion_rt_lazy=GetEnvironmentVariableW(L"X3M_MOTION_RT_MODE",setting,32)>0 && !wcscmp(setting,L"lazy");
@@ -3277,6 +3286,12 @@ const X3mCompositorBinding* compositor_binding() noexcept {
     static const X3mCompositorBinding callbacks{nullptr,&compositor_pre,&compositor_post,&compositor_cleanup,nullptr};
     return bloom_requested && motion_output_requested && hdr_requested
         && hdr_config.tonemap==renderer::HdrTonemap::Agx && scene_hook::wanted() ? &callbacks : nullptr;
+}
+// DllMain DLL_PROCESS_DETACH, before the CRT destroys `devices` (whose ~MotionOutput would
+// otherwise join a worker the OS already killed, under the loader lock). Deliberately without
+// the capture mutex (a killed thread may hold it) and without logging.
+void abandon_fog_density_workers() noexcept {
+    for(auto& entry:devices)if(entry.second)entry.second->motion_output.abandon_volumetric_fog_worker();
 }
 void scene_end_signal() {
     CaptureLock lock;

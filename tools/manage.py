@@ -379,6 +379,7 @@ def main():
     parser.add_argument('--sector-background', action='store_true', help='Read-only active-sector background diagnostic (X3M_SECTOR_BACKGROUND=1; default off; exact executable only): one bounded sample per frame, logged once per second and on sector/row/status changes, including menus/loading when frames are submitted. Does not affect fog rendering; no other option required. docs/reverse-engineering/sector-fog.md section 11')
     parser.add_argument('--volumetric-fog', nargs='?', type=float, const=0.02, default=None, metavar='STRENGTH', help='Spatial family fog at scene end (default off; requires --motion-output --taa --hdr --shadow-replay-depth --shadow-cascades). Validated bluewell and foggreenoutlands engine families only; clear, unsupported and unavailable sectors retain native cards. STRENGTH is density tuning in 0..0.1: 0.02=1x qualified family density, 0=off, other values are user tuning. Occupancy and horizon stay fixed. Ctrl+Alt+F9 toggles; Ctrl+Alt+F10 steps 0.005/0.01/0.02/0.03/0.05 (.25/.5/1/1.5/2.5x); --fps-overlay shows the multiplier. Unshadowed first spatial version; use --volumetric-fog-cards replace for replacement, keep for an explicit stacked diagnostic comparison.')
     parser.add_argument('--volumetric-fog-cards', choices=('keep', 'replace'), default=None, help='Keep vanilla fog cards (default), or replace validated card color with the medium after a successful warm-up (X3M_VOLUMETRIC_FOG_CARDS; requires --volumetric-fog)')
+    parser.add_argument('--volumetric-fog-range', choices=('legacy', 'stored'), default=None, help='Fog field behind --volumetric-fog: legacy (default) is the family atlas; stored is the experimental stored-density field, generated on one background thread, with clouds out to 30-40 km. A capability refusal logs one line and keeps legacy (X3M_VOLUMETRIC_FOG_RANGE; requires --volumetric-fog).')
     parser.add_argument('--volumetric-fog-anisotropy', type=float, default=None, metavar='G', help='Henyey-Greenstein anisotropy g of the fog phase function, 0..0.9, default 0.3 (X3M_VOLUMETRIC_FOG_ANISOTROPY; requires --volumetric-fog)')
     parser.add_argument('--volumetric-fog-everywhere', action='store_true', help='Debug only: force bluewell when no known family is available, still requiring a valid view (X3M_VOLUMETRIC_FOG_EVERYWHERE=1; requires --volumetric-fog)')
     parser.add_argument('--volumetric-fog-timing', action='store_true', help='One volumetric_fog_frame log line per frame with the CPU wall time and device-call count of the pass (X3M_VOLUMETRIC_FOG_TIMING=1; requires --volumetric-fog)')
@@ -814,8 +815,10 @@ def main():
         parser.error('--ao-strength must be within [0, 1].')
     if args.volumetric_fog is not None and not (args.motion_output and args.taa and args.hdr and args.shadow_replay_depth and args.shadow_cascades is not None):
         parser.error('--volumetric-fog requires --motion-output --taa --hdr --shadow-replay-depth --shadow-cascades.')
-    if args.volumetric_fog is None and (args.volumetric_fog_cards is not None or args.volumetric_fog_anisotropy is not None or args.volumetric_fog_everywhere or args.volumetric_fog_timing):
-        parser.error('--volumetric-fog-cards, --volumetric-fog-anisotropy, --volumetric-fog-everywhere and --volumetric-fog-timing require --volumetric-fog.')
+    if args.volumetric_fog is None and (args.volumetric_fog_cards is not None or args.volumetric_fog_range is not None or args.volumetric_fog_anisotropy is not None or args.volumetric_fog_everywhere or args.volumetric_fog_timing):
+        parser.error('--volumetric-fog-cards, --volumetric-fog-range, --volumetric-fog-anisotropy, --volumetric-fog-everywhere and --volumetric-fog-timing require --volumetric-fog.')
+    if args.volumetric_fog_range == 'stored' and args.volumetric_fog == 0.0:
+        parser.error('--volumetric-fog-range stored requires a positive --volumetric-fog strength (0 detaches the pass).')
     if args.volumetric_fog is not None and not (math.isfinite(args.volumetric_fog) and 0.0 <= args.volumetric_fog <= 0.1):
         parser.error('--volumetric-fog must be within [0, 0.1].')
     if args.volumetric_fog_anisotropy is not None and not (math.isfinite(args.volumetric_fog_anisotropy) and 0.0 <= args.volumetric_fog_anisotropy <= 0.9):
@@ -1158,6 +1161,7 @@ def main():
         env['X3M_VOLUMETRIC_FOG'] = '1' if args.volumetric_fog is not None else '0'
         env['X3M_VOLUMETRIC_FOG_STRENGTH'] = repr(args.volumetric_fog if args.volumetric_fog is not None else 0.02)
         env['X3M_VOLUMETRIC_FOG_CARDS'] = args.volumetric_fog_cards or 'keep'
+        env['X3M_VOLUMETRIC_FOG_RANGE'] = args.volumetric_fog_range or 'legacy'
         env['X3M_VOLUMETRIC_FOG_ANISOTROPY'] = repr(args.volumetric_fog_anisotropy if args.volumetric_fog_anisotropy is not None else 0.3)
         env['X3M_VOLUMETRIC_FOG_EVERYWHERE'] = '1' if args.volumetric_fog_everywhere else '0'
         env['X3M_VOLUMETRIC_FOG_TIMING'] = '1' if args.volumetric_fog_timing else '0'

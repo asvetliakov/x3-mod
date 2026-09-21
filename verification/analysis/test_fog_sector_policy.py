@@ -59,6 +59,20 @@ int main() {
     key=blue;++key.record;assert(!key.same_key(blue));key=blue;++key.index;assert(!key.same_key(blue));
     key=blue;++key.field_generation;assert(!key.same_key(blue));
     key=blue;++key.generation;assert(!key.same_key(blue));key=blue;++key.recipe;assert(!key.same_key(blue));
+    // Stored-density placement: session-stable. Same record index + profile + recipe with different heap
+    // tokens -> the same translation; a different index, profile or recipe -> a different one. Whole far nodes, +-2048.
+    const auto place=fog_sector_placement(blue);auto again=blue;again.frame=99;again.generation=5;again.density_scale=2.f;
+    again.sector=0xdead0000;again.table=0xbeef0000;again.record=0xbeef0044;again.field_generation=9;
+    assert(!again.same_key(blue)&&fog_sector_placement(again).key==place.key);
+    for(unsigned a=0;a<3;++a)assert(fog_sector_placement(again).offset[a]==place.offset[a]);
+    unsigned distinct=0;
+    for(int i=0;i<64;++i){
+        auto other=blue;other.index=i;const auto p=fog_sector_placement(other);
+        for(unsigned a=0;a<3;++a){const double n=p.offset[a]/4096.;assert(n==double((long long)n)&&n>=-2048&&n<2048);}
+        if(i!=blue.index){assert(p.key!=place.key);distinct+=p.offset[0]!=place.offset[0]||p.offset[1]!=place.offset[1]||p.offset[2]!=place.offset[2];}
+    }
+    assert(distinct==63);
+    auto other=blue;other.profile=2;assert(fog_sector_placement(other).key!=place.key);other=blue;++other.recipe;assert(fog_sector_placement(other).key!=place.key);
 }
 '''
 class FogSectorPolicyTests(unittest.TestCase):

@@ -552,3 +552,20 @@ export, layout or hash is a prerequisite, and a refusal leaves the legacy path b
 Windows x86 cross-compilation and the X3/FEX fixture (48 checks) pass; native Windows
 execution, FP16 bilinear precision there and driver cost of 64 small `UpdateSurface` calls per
 frame remain unverified ([fog ledger](../verification/volumetric-fog.md#stored-density-runtime-integration-checkpoint-3-cache-manager-worker-uploads-ramps-reset-2026-09-21)).
+
+## 2026-09-21: stored-density fog in the proxy (threads, process exit)
+
+`--volumetric-fog-range stored` (default `legacy`) adds the first `std::thread` to `d3d9.dll`:
+MinGW's winpthreads, statically linked, plus `SetThreadPriority`, `GetModuleHandleExW`
+(`PIN | FROM_ADDRESS`, when the first worker starts) and QPC. Nothing else is new on the D3D side
+(see the entry above). Process exit is handled with documented loader rules only: `DllMain`
+`DLL_PROCESS_DETACH` abandons the workers before the CRT's static destructors, without joining,
+notifying, locking or logging, because the OS has already ended every other thread. The order
+(user `DllMain`, then the module's static destructors) is the mingw-w64 CRT's; the exit fixture
+shows it, and shows the unfixed teardown hanging in the static destructor, on X3/FEX. An MSVC
+build would need the same order confirmed (its CRT also calls `DllMain` before `_CRT_INIT`
+detach). Open: `DisableThreadLibraryCalls` in `DllMain` may keep winpthreads' TLS callback from
+seeing the worker's exit (at worst a small per-thread leak; not verified); `std::mutex` /
+`std::condition_variable` behaviour of winpthreads on native Windows is unexecuted; native
+execution of the whole path remains unverified
+([fog ledger](../verification/volumetric-fog.md#stored-density-runtime-integration-checkpoint-4-proxy-wiring-launcher-option-lifetime-2026-09-21)).

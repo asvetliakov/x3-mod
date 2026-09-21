@@ -160,12 +160,28 @@ void FogPass::release_density_default() noexcept {
 }
 void FogPass::abandon_density_worker() noexcept { if(density_){density_->abandon();density_=nullptr;} }
 void FogPass::invalidate_density() noexcept { PreserveCpuState guard;if(density_)density_->invalidate();density_status_.ready_fine=density_status_.ready_far=0; }
+bool FogPass::density_drawable(const double camera[3]) const noexcept {
+    return density_&&camera&&density_status_.available&&density_status_.ready_far>0&&density_->covers(1,camera);
+}
+bool FogPass::field_family(float chroma[3],float* sigma) const noexcept {
+    // Offline constants (fog_family_chroma_inc.h, pinned packets): no scan of the decoded atlas here.
+    struct Row{std::uint32_t profile;float chroma[3];};
+    static constexpr Row rows[]={
+#include "fog_family_chroma_inc.h"
+    };
+    if(cached_profile_==fog_field::Profile::None||!chroma||!sigma||!(base_sigma_>0))return false;
+    for(const auto& row:rows)if(row.profile==static_cast<std::uint32_t>(cached_profile_)){
+        for(unsigned c=0;c<3;++c)chroma[c]=row.chroma[c];
+        *sigma=base_sigma_;return true;
+    }
+    return false;
+}
 void FogPass::detach() noexcept {
     PreserveCpuState guard;release_targets();drop(atlas_);
     release_density_default();
     for(unsigned i=0;i<2;++i){drop(density_staging_surface_[i]);drop(density_staging_[i]);}
     drop(density_march_);drop(density_composite_);drop(density_repair_);
-    delete density_;density_=nullptr; // joins the worker
+    fog::DensityCache::retire(density_);density_=nullptr; // joins the worker; a cache it had to abandon is leaked, not freed
     density_config_={};density_status_={};density_refused_=false;ps30_slots_=0;drop(march_);drop(composite_);drop(quad_vs_);drop(quad_declaration_);
     device_=nullptr;vtable_=nullptr;caps_={};reset_pending_=false;disarm_field();cached_profile_=fog_field::Profile::None;
     field_recipe_=0;base_sigma_=0;std::vector<std::uint16_t>().swap(atlas_bytes_);
@@ -266,7 +282,7 @@ HRESULT FogPass::density_resources() noexcept {
     }
     if(!density_){
         density_=new(std::nothrow) fog::DensityCache;
-        if(!density_||!density_->start()){delete density_;density_=nullptr;return refuse("density_worker",E_OUTOFMEMORY);}
+        if(!density_||!density_->start()){fog::DensityCache::retire(density_);density_=nullptr;return refuse("density_worker",E_OUTOFMEMORY);}
     }
     for(unsigned i=0;i<2;++i){
         if(!density_staging_[i]){

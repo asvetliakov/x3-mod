@@ -35,4 +35,7 @@ const X3mCompositorBinding* compositor_binding() noexcept;
 // frame_end elapsed_ms field, which exists in every mode so a plain --direct
 // run's load times can be read from the log without telemetry.
 extern unsigned long long dll_load_qpc;
+// DllMain DLL_PROCESS_DETACH only: abandons every live stored-density fog worker (no join, no
+// lock, no log) so the static teardown that follows cannot wait on a thread the OS already ended.
+void abandon_fog_density_workers() noexcept;
 }

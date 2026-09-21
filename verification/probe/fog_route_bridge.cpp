@@ -7,10 +7,11 @@
 namespace {
 constexpr DWORD card_program[]{0xffff0300u,0x02000001u,0x800f0800u,0xa0e40000u,0x0000ffffu};
 #include "fog_route_camera_basis_inc.h"
+std::uint64_t fnv(const std::vector<std::uint16_t>& words){std::uint64_t h=1469598103934665603ull;for(auto w:words)for(unsigned k=0;k<2;++k){h^=(w>>(8*k))&255u;h*=1099511628211ull;}return h;}
 struct Bridge {
     IDirect3DDevice9* d;fog_spatial_state::Hooks& hooks;fog_spatial_state::Scene& scene;
     x3m::MotionOutput motion;Com<IDirect3DPixelShader9> card;Com<IDirect3DVertexDeclaration9> declaration;
-    unsigned submitted=0;
+    unsigned submitted=0;std::vector<double> prepare_us,prepare_upload_us;double first_prepare_us=0,worst_upload_us=0;std::uint64_t worst_upload_frame=0;unsigned worst_upload_rects=0;int index=1; // background record index of the copied sample
     explicit Bridge(IDirect3DDevice9* device,fog_spatial_state::Hooks& h,fog_spatial_state::Scene& s,const D3DCAPS9& caps):d(device),hooks(h),scene(s){
         motion.device_=d;motion.native_=h.methods;motion.caps_=caps;motion.owner_.surface=scene.s0.p;motion.depth_surface_=scene.s2.p;
         motion.target_width_=scene.input.w;motion.target_height_=scene.input.h;
@@ -38,8 +39,22 @@ struct Bridge {
     }
     void begin(const char* family="bluewell",unsigned sector=0x1000,int dust=8,bool sample=true){
         ++motion.frame_;motion.counters_.taa.attempted=false;motion.sun_frame_.published=true;motion.volumetric_fog_begin_frame();
-        if(sample){x3m::sector_background::Sample s;s.status=x3m::sector_background::Status::Ready;s.row_valid=s.name_valid=true;s.dust=dust;s.sector=sector;s.table=0x2000;s.record=0x2044;s.index=1;std::strcpy(s.family,family);motion.volumetric_fog_sector_sample(motion.frame_,s);}
-        motion.prepare_volumetric_fog_targets(scene.input.w,scene.input.h);scene.refill();cards_state();hooks.clear();
+        if(sample){x3m::sector_background::Sample s;s.status=x3m::sector_background::Status::Ready;s.row_valid=s.name_valid=true;s.dust=dust;s.sector=sector;s.table=0x2000;s.record=0x2044;s.index=index;std::strcpy(s.family,family);motion.volumetric_fog_sector_sample(motion.frame_,s);}
+        motion.prepare_volumetric_fog_targets(scene.input.w,scene.input.h);
+#ifndef X3M_ROUTE_BRIDGE_BASELINE
+        if(motion.fog_density_requested_){ // the production owner-latch statement, timed
+            const bool first=!motion.fog_density_config_logged_;
+            LARGE_INTEGER t0{},t1{},f{};QueryPerformanceCounter(&t0);motion.prepare_volumetric_fog_density(scene.input.w,scene.input.h);QueryPerformanceCounter(&t1);QueryPerformanceFrequency(&f);
+            const double us=double(t1.QuadPart-t0.QuadPart)*1e6/double(f.QuadPart);
+            // The resource-creating first call (programs, four textures, caches, thread) is reported apart from steady and upload frames.
+            if(first&&motion.fog_density_config_logged_)first_prepare_us=us;
+            else if(motion.fog_density_prepared_){
+                const unsigned rects=motion.fog_->density_status().upload_rects;(rects?prepare_upload_us:prepare_us).push_back(us);
+                if(rects&&us>worst_upload_us){worst_upload_us=us;worst_upload_frame=motion.frame_;worst_upload_rects=rects;}
+            }
+        }
+#endif
+        scene.refill();cards_state();hooks.clear();
         check(d->BeginScene(),"card begin");motion.scene_open_=true;
     }
     HRESULT draw(){
@@ -65,7 +80,7 @@ struct Bridge {
         motion.run_volumetric_fog();const auto after= fog_spatial_state::Snapshot(d,motion.caps_);
         require(before==after,"route_pass_state_restored");const auto first_copies=hooks.calls[34],first_quads=hooks.calls[83];
         motion.run_volumetric_fog();require(hooks.calls[34]==first_copies&&hooks.calls[83]==first_quads,"once_only_hook_fallback_guard");
-        require(first_copies-copies<=1&&first_quads-quads<=2,"one_fog_transaction_maximum");
+        require(first_copies-copies<=1&&first_quads-quads<=(motion.fog_density_requested_?3u:2u),"one_fog_transaction_maximum");
         check(d->EndScene(),"frame end");motion.scene_open_=false;
         require(fog_spatial_state::surface_bytes(d,scene.s1.p,8)==rt1_before&&fog_spatial_state::surface_bytes(d,scene.s2.p,16)==rt2_before,"route_RT1_RT2_bytes");
     }
@@ -76,8 +91,8 @@ void qualify_bridge(IDirect3D9* api,IDirect3DDevice9* d,const D3DCAPS9& caps,con
     fog_spatial_state::Inputs inputs(input);fog_spatial_state::Hooks hooks(d,api);
     fog_spatial_state::Scene scene(d,inputs,caps,std::vector<DWORD>(std::begin(card_program),std::end(card_program)));
     Bridge b(d,hooks,scene,caps);b.record_aux();auto& m=b.motion;
-    b.begin();check(b.draw(),"warm native card");const auto vanilla=b.source();require(vanilla!=inputs.scene&&m.fog_cards_.warmup&&m.fog_cards_.suppressed==0,"warmup_native_source");b.end();require(m.fog_cards_.armed&&m.fog_applied_frames_==1,"matching_warmup_arms");
-    b.begin();m.history_valid=true;const auto inv=m.invalidations;check(b.draw(),"replacement native card");require(b.source()==inputs.scene&&m.fog_cards_.suppressed==1,"replacement_source_clean");require(m.invalidations==inv+1&&!m.history_valid,"replacement_transition_requests_history_clear");check(b.draw(),"second replacement card");require(m.invalidations==inv+1,"transition_once_per_frame");b.end();require(!m.fog_cards_.fault&&m.fog_applied_frames_==2,"replacement_pass_applied");
+    b.begin();check(b.draw(),"warm native card");const auto vanilla=b.source();require(vanilla!=inputs.scene&&m.fog_cards_.warmup&&m.fog_cards_.suppressed==0,"warmup_native_source");b.end();require(m.fog_cards_.armed&&m.fog_applied_frames_==1,"matching_warmup_arms");std::printf("IMAGE legacy_warm %016llx\n",fnv(readback_words(d,scene.s0.p)));
+    b.begin();m.history_valid=true;const auto inv=m.invalidations;check(b.draw(),"replacement native card");require(b.source()==inputs.scene&&m.fog_cards_.suppressed==1,"replacement_source_clean");require(m.invalidations==inv+1&&!m.history_valid,"replacement_transition_requests_history_clear");check(b.draw(),"second replacement card");require(m.invalidations==inv+1,"transition_once_per_frame");b.end();require(!m.fog_cards_.fault&&m.fog_applied_frames_==2,"replacement_pass_applied");std::printf("IMAGE legacy_replaced %016llx\n",fnv(readback_words(d,scene.s0.p)));
     require(b.submitted==3,"native_draw_count_exact");
     // Initial warmup and mode-2 transition above are complete. Replay actual
     // engine precision through the whole production parameter/admission path,
@@ -85,6 +100,7 @@ void qualify_bridge(IDirect3D9* api,IDirect3DDevice9* d,const D3DCAPS9& caps,con
     const auto camera=m.camera_scene_;
     const auto camera_invalidations=m.invalidations,camera_submitted=b.submitted;
     const auto camera_applied=m.fog_applied_frames_;
+    std::uint64_t camera_images=0;
     for(const auto& fixed:captured_camera_basis){
         for(unsigned i=0;i<9;++i)m.camera_scene_.r[i]=float(fixed[i])/65536.f;
         for(unsigned j=0;j<3;++j){
@@ -96,6 +112,7 @@ void qualify_bridge(IDirect3D9* api,IDirect3DDevice9* d,const D3DCAPS9& caps,con
         const auto applied_before=m.fog_applied_frames_;b.end();
         require(m.fog_applied_frames_==applied_before+1&&!m.fog_cards_.fault&&hooks.calls[34]==1&&hooks.calls[83]==2,"captured_camera_actual_pass");
         require(m.invalidations==camera_invalidations,"captured_camera_no_transition");
+        camera_images=camera_images*1099511628211ull^fnv(readback_words(d,scene.s0.p));
     }
     require(b.submitted==camera_submitted+33&&m.fog_applied_frames_==camera_applied+33,"captured_camera_sequence_33");
     // Reflection, excessive shear, nonfinite input, and a row-Gram boundary
@@ -116,10 +133,11 @@ void qualify_bridge(IDirect3D9* api,IDirect3DDevice9* d,const D3DCAPS9& caps,con
         m.camera_scene_=camera;b.begin();check(b.draw(),"camera refusal recover");b.end();
         require(m.fog_applied_frames_==applied_before+1&&m.fog_cards_.suppressed==1&&!m.fog_cards_.fault,"malformed_camera_recovery");
     }
+    std::printf("IMAGE legacy_captured_cameras_33 %016llx\n",camera_images);
     std::puts("CAMERA_BRIDGE captured=33 first_person=32 worst=1 malformed=4 inverse_boundary=1 PASS");
     b.begin("bluewell",0x3000);check(b.draw(),"new sector card");require(m.fog_cards_.warmup&&!m.fog_cards_.suppressed&&b.source()==vanilla,"same_family_sector_rewarm");b.end();
     const auto previous_generation=m.fog_sector_.field_generation;
-    b.begin("foggreenoutlands",0x4000);check(b.draw(),"new family card");require(m.fog_cards_.warmup&&!m.fog_cards_.suppressed&&m.fog_sector_.profile==2&&m.fog_sector_.field_generation!=previous_generation,"new_family_generation_rewarm");b.end();
+    b.begin("foggreenoutlands",0x4000);check(b.draw(),"new family card");require(m.fog_cards_.warmup&&!m.fog_cards_.suppressed&&m.fog_sector_.profile==2&&m.fog_sector_.field_generation!=previous_generation,"new_family_generation_rewarm");b.end();std::printf("IMAGE legacy_new_family_warm %016llx\n",fnv(readback_words(d,scene.s0.p)));
     for(unsigned scenario=0;scenario<5;++scenario){
         if(scenario==2)m.volumetric_fog_toggle();if(scenario==3){if(!m.fog_enabled_)m.volumetric_fog_toggle();m.fog_strength_=0;}if(scenario==4)m.fog_strength_=.02f;
         b.begin(scenario==0?"unsupported":"bluewell",0x1000,scenario==1?0:8,scenario!=4);const auto applied=m.fog_applied_frames_;
@@ -155,8 +173,15 @@ void qualify_bridge(IDirect3D9* api,IDirect3DDevice9* d,const D3DCAPS9& caps,con
     // method; actual native Reset/lifetime is the separate state fixture scope.
     m.fog_->before_reset();m.fog_sector_={};m.fog_cards_={};m.fog_attach_failed_=false;m.motion_state_lost_=false;m.motion_state_error_=S_OK;m.scene_open_=false;++m.generation_;m.fog_->after_reset(S_OK);
     b.begin();check(b.draw(),"poison Reset warmup");require(m.fog_cards_.warmup&&!m.fog_cards_.suppressed&&!m.motion_state_lost_,"execution_poison_reset_rewarm");b.end();require(m.fog_applied_frames_==applied+1&&m.fog_cards_.armed,"execution_poison_reset_applies");
+    std::printf("IMAGE legacy_after_reset %016llx\n",fnv(readback_words(d,scene.s0.p)));
+#ifndef X3M_ROUTE_BRIDGE_BASELINE
+    require(!m.fog_->fixture_density_cache()&&!m.fog_->density_status().available&&m.fog_->density_status().nodes_generated==0,"legacy_route_never_starts_density");
+#endif
     std::printf("BRIDGE_SCOPE methods=production_fog_fragment native_d3d=1 synthetic_owner=1 cached_shader_identity=synthetic selector_hook=not_exercised taa_history=request_endpoint_only native_reset=reused_state_fixture\n");
 }
+#ifndef X3M_ROUTE_BRIDGE_BASELINE
+#include "fog_route_density_inc.h"
+#endif
 }
 int main(int argc,char** argv){
     if(argc!=2){std::fprintf(stderr,"usage: fog_route_bridge.exe case-list\n");return 2;}
@@ -164,6 +189,10 @@ int main(int argc,char** argv){
         WNDCLASSA cls{};cls.lpfnWndProc=DefWindowProcA;cls.hInstance=GetModuleHandleA(nullptr);cls.lpszClassName="X3FogRouteBridge";RegisterClassA(&cls);Window window;window.handle=CreateWindowA(cls.lpszClassName,"Fog route bridge",WS_OVERLAPPEDWINDOW,0,0,128,128,nullptr,nullptr,cls.hInstance,nullptr);if(!window.handle)throw std::runtime_error("window");
         HMODULE dll=LoadLibraryA("d3d9.dll");if(!dll)throw std::runtime_error("d3d9");auto address=GetProcAddress(dll,"Direct3DCreate9");IDirect3D9*(WINAPI* create)(UINT)=nullptr;std::memcpy(&create,&address,sizeof create);if(!create)throw std::runtime_error("Create9");
         Com<IDirect3D9> api;api.p=create(D3D_SDK_VERSION);if(!api.p)throw std::runtime_error("factory");D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window.handle;pp.BackBufferWidth=128;pp.BackBufferHeight=128;pp.BackBufferFormat=D3DFMT_A8R8G8B8;
-        Com<IDirect3DDevice9> device;check(api->CreateDevice(0,D3DDEVTYPE_HAL,window.handle,D3DCREATE_HARDWARE_VERTEXPROCESSING,&pp,&device.p),"device");D3DCAPS9 caps{};check(device->GetDeviceCaps(&caps),"caps");qualify_bridge(api.p,device.p,caps,argv[1]);std::printf("RESULT fog_route_bridge checks=%u PASS\n",checks);return 0;
+        Com<IDirect3DDevice9> device;check(api->CreateDevice(0,D3DDEVTYPE_HAL,window.handle,D3DCREATE_HARDWARE_VERTEXPROCESSING,&pp,&device.p),"device");D3DCAPS9 caps{};check(device->GetDeviceCaps(&caps),"caps");qualify_bridge(api.p,device.p,caps,argv[1]);
+#ifndef X3M_ROUTE_BRIDGE_BASELINE
+        {fog_spatial_state::Inputs inputs(argv[1]);DensityRun{api.p,device.p,caps,inputs}.run();std::puts("DENSITY_SCOPE range=stored worker=real_thread cache=dynamic owner=synthetic native_reset=pass_edges_only process_exit=separate_exit_fixture");}
+#endif
+std::printf("RESULT fog_route_bridge checks=%u PASS\n",checks);return 0;
     }catch(const std::exception& e){std::printf("RESULT FAIL error=%s\n",e.what());return 1;}
 }

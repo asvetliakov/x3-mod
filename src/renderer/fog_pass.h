@@ -68,7 +68,9 @@ struct FogFrame {
     bool main_target=false,linear_depth_current=false,caller_scene_known=false;
     bool caller_scene_open=true,caller_stateblock_recording=false,caller_queries_idle=false;
     // Stored-density transaction (march, composite, repair). Requires a successful
-    // prepare_density in this frame; camera_world is the same double camera given to it.
+    // prepare_density in this frame. camera_world is this frame's double camera; the proxy
+    // posts the previous frame's camera to prepare_density (the camera is read after the owner
+    // latch), which is safe because execute re-checks residency for camera_world itself.
     bool density=false; double camera_world[3]{};
 };
 enum class FogStage : unsigned {
@@ -103,14 +105,24 @@ public:
     // Never waits for the worker. S_FALSE when disabled, D3DERR_NOTAVAILABLE when refused.
     HRESULT prepare_density(const FogDensityConfig&,const double camera_world[3],std::uint64_t frame) noexcept;
     void invalidate_density() noexcept; // load or sector change without a key change
+    // This frame's prepare_density succeeded and a ray from `camera` may be drawn: far ramp
+    // above zero and the far need box resident. Pure CPU, no lock, no device call.
+    bool density_drawable(const double camera[3]) const noexcept;
+    // Extinction and mean chroma of the prepared family: tracked offline constants
+    // (fog_family_chroma_inc.h, sum rgb / sum density of the pinned packet). False without a
+    // decoded field or for a profile the table does not know.
+    bool field_family(float chroma[3],float* sigma) const noexcept;
     const FogDensityStatus& density_status() const noexcept { return density_status_; }
-    // Caller contract for the worker's lifetime (checkpoint 4 wires both):
+    // Caller contract for the worker's lifetime:
     //  - MotionOutput::release_resources (the device release path, never under the loader lock)
-    //    calls detach(), which joins the worker and releases every density resource;
+    //    calls detach(), which joins the worker and releases every density resource. If the join
+    //    has to give up (mutex unavailable for 250 ms) the cache is leaked whole, never freed;
     //  - the proxy's DllMain DLL_PROCESS_DETACH, and nothing else, calls abandon_density_worker()
-    //    before any FogPass destructor can run: under the loader lock a join cannot complete, so
-    //    this never joins, takes no lock and leaks the cache. Unloading the DLL while a device
-    //    with a live worker exists (dynamic FreeLibrary) is unsupported: the worker's code would go.
+    //    (x3m::abandon_fog_density_workers) before the CRT destroys the static device map: the OS
+    //    has already ended the worker, possibly inside its condition variable, so this never
+    //    joins, detaches, notifies or locks, and leaks the cache with its thread handle;
+    //  - the first worker start pins the module (DensityCache::start), so a dynamic FreeLibrary
+    //    cannot unmap the worker's code.
     void abandon_density_worker() noexcept;
     HRESULT execute(const FogFrame&,FogResult*) noexcept;
     // detach joins the worker: call it from the device's release path, not under the loader lock.

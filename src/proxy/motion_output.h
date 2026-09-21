@@ -913,6 +913,13 @@ public:
     void configure_volumetric_fog(bool requested, float strength, float anisotropy, bool everywhere, bool timing, bool replace_cards = false) noexcept {
         fog_requested_ = requested; fog_strength_ = strength; fog_anisotropy_ = anisotropy; fog_everywhere_ = everywhere; fog_timing_ = timing; fog_cards_replace_ = requested && replace_cards;
     }
+    // X3M_VOLUMETRIC_FOG_RANGE=stored (fog-density-runtime-integration.md): the two-level
+    // stored-density field out to 30-40 km instead of the family atlas. Off (legacy): one
+    // branch at the owner latch and one at the scene end, nothing else exists. A capability
+    // refusal logs one volumetric_fog_cache line and keeps the legacy path.
+    void configure_volumetric_fog_range(bool stored) noexcept { fog_density_requested_ = fog_requested_ && stored; }
+    // DllMain DLL_PROCESS_DETACH only (FogPass::abandon_density_worker): no join, no lock, no log.
+    void abandon_volumetric_fog_worker() noexcept { if (fog_) fog_->abandon_density_worker(); }
     // Ctrl+Alt+F9 toggles the pass, Ctrl+Alt+F10 steps the strength through
     // renderer::fog_strength_steps (comparison-hotkeys.md). One
     // volumetric_fog_toggle / volumetric_fog_strength line per press. -1: option off.
@@ -2091,6 +2098,18 @@ private:
     unsigned fog_card_mode_ = 0, fog_card_logs_ = 0;
     std::uint64_t fog_card_logged_frame_ = 0, fog_transition_frame_ = ~std::uint64_t(0), fog_card_last_report_ = ~std::uint64_t(0), fog_card_observed_total_ = 0, fog_card_suppressed_total_ = 0, fog_card_refused_total_ = 0;
     const char* fog_card_fault_reason_ = "none";
+    // Stored-density range. The camera is the previous scene end's (read after the owner latch).
+    bool fog_density_requested_ = false, fog_density_refused_ = false, fog_density_prepared_ = false, fog_density_camera_valid_ = false;
+    bool fog_density_config_logged_ = false, fog_density_ready_logged_[2]{};
+    unsigned fog_density_logs_ = 0;
+    std::uint64_t fog_density_sample_frame_ = ~std::uint64_t(0), fog_density_key_ = 0;
+    long long fog_density_epoch_qpc_ = 0, fog_density_sample_qpc_ = 0;
+    static constexpr unsigned fog_density_gap_ms = 500; // a longer gap in scene samples is a load
+    double fog_density_camera_[3]{};
+    renderer::FogDensityConfig fog_density_config_{};
+    void prepare_volumetric_fog_density(UINT width, UINT height) noexcept;
+    void fog_density_epoch(const char* reason) noexcept;
+    bool fog_density_active() const noexcept { return fog_density_requested_ && !fog_density_refused_; }
     void fog_transition_invalidate() noexcept;
     void fog_card_transition(unsigned mode) noexcept;
     void fault_fog_cards(const char* reason) noexcept;

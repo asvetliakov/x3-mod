@@ -51,3 +51,21 @@ python3 verification/probe/fog_route_bridge_check.py \
 
 A passing cross-compile is not a GPU result. CrossOver runtime success does not
 establish native Windows runtime parity.
+
+## Stored-density range (2026-09-21)
+
+The bridge also runs the fragment with `fog_density_requested_` set: real worker thread, dynamic
+cache, uploads and ramps behind the same synthetic owner (`fog_route_density_inc.h`). Legacy
+frames print `IMAGE <name> <fnv64>`; `fog_route_bridge_build.py --baseline` builds today's
+fixture against an older production tree (density witnesses compiled out) so
+`fog_route_bridge_check.py --baseline-log` can require the legacy images to be bit-identical.
+`fog_density_exit_dll.cpp` / `fog_density_exit_fixture.cpp` are the process-exit witness: child
+processes with a watchdog, because a hang under the loader lock is the failure mode.
+
+```sh
+python3 verification/probe/fog_route_bridge_build.py --production-root . --spatial-root . --asset-data <build>/generated/fog_field --output OUT/build
+python3 verification/probe/fog_route_bridge_build.py --baseline --production-root <old tree> --spatial-root <old tree> --asset-data <build>/generated/fog_field --output OUT/baseline-build
+python3 verification/probe/fog_route_bridge_run.py build-exit --output OUT
+X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/fog_route_bridge_run.py run --output OUT --cases <spatial cases.txt>
+python3 verification/probe/fog_route_bridge_run.py check --output OUT
+```

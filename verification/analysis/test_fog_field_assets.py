@@ -110,6 +110,34 @@ class FogFieldAssetsTests(unittest.TestCase):
         self.assertIn('x3m_add_fog_field_assets', module)
         self.assertNotIn('verification/', (ROOT/'tools/build/bake_fog_fields.py').read_text())
 
+    def test_tracked_family_chroma_matches_the_packets(self):
+        # Independent of tools/build/fog_family_chroma.py and of fog_distance_replay: raw run decode, atlas interior.
+        import re, struct
+        import numpy as np
+        tracked = {int(i): tuple(np.float32(v) for v in (r, g, b)) for i, r, g, b in
+                   re.findall(r'^\{(\d+)u, \{([0-9.e-]+)f, ([0-9.e-]+)f, ([0-9.e-]+)f\}\}', (ROOT/'src/renderer/fog_family_chroma_inc.h').read_text(), re.M)}
+        self.assertEqual(len(tracked), len(self.manifest['profiles']))
+        for row in self.manifest['profiles']:
+            data = (self.a/(row['name']+'.fogbin')).read_bytes()
+            header = struct.unpack_from('<8sIIIIIIIIIQI', data)
+            width, height, runs = header[5], header[6], header[9]
+            out = bytearray(); at = header[2]
+            for _ in range(runs):
+                word, = struct.unpack_from('<I', data, at); at += 4; count = word & 0x7fffffff
+                if word & 0x80000000: out += data[at:at+8*count]; at += 8*count
+                else: out += bytes(8*count)
+            atlas = np.frombuffer(bytes(out), np.float16).reshape(height, width, 4)
+            total = np.zeros(4, np.float64)
+            for z in range(128):
+                y, x = (z//12)*130+1, (z % 12)*130+1
+                total += atlas[y:y+128, x:x+128].astype(np.float64).sum((0, 1))
+            chroma = (total[:3]/total[3]).astype(np.float32)
+            self.assertEqual(tuple(chroma), tracked[row['profile_id']], row['name'])
+        self.assertEqual(tuple(round(float(v), 4) for v in tracked[1]), (0.0516, 0.2695, 1.0))  # the bridge's bluewell line
+        production = (ROOT/'src/renderer/fog_pass.cpp').read_text()
+        self.assertIn('#include "fog_family_chroma_inc.h"', production)
+        self.assertNotIn('half_to_float', production)  # no runtime scan of the decoded atlas
+
     def test_cmake_checks_the_selected_python_dependency(self):
         cmake = shutil.which('cmake')
         compiler = shutil.which('i686-w64-mingw32-g++')

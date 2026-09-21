@@ -5,6 +5,9 @@
 #include <cstring>
 #include <limits>
 #include <new>
+#ifdef X3M_FOG_DENSITY_TEST_HOOKS
+#include <system_error>
+#endif
 #ifdef _WIN32
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -149,6 +152,7 @@ bool next_slab(const NodeBox& have, const NodeBox& want, const NodeBox& need, No
 // --- Lifetime ------------------------------------------------------------
 
 DensityCache::DensityCache() noexcept {
+    new (sync_storage_) Sync;
     for (int l = 0; l < kLevelCount; ++l) {
         dirty_tiles_[l].store(0);
         worker_[l].box = shared_[l].box = gpu_box_[l] = candidate_box_[l] = posted_need_[l] = empty_box();
@@ -157,8 +161,11 @@ DensityCache::DensityCache() noexcept {
     }
 }
 DensityCache::~DensityCache() {
+    // An abandoned cache is leaked whole (retire). If one is destroyed anyway, its mutex,
+    // condition variable, thread and buffers are still never touched.
+    if (!abandoned_) stop();
     if (abandoned_) return;
-    stop();
+    sync().~Sync();
     for (int l = 0; l < kLevelCount; ++l) delete[] cache_[l];
     delete[] jobs_;
     delete[] scratch_;
@@ -173,16 +180,38 @@ bool DensityCache::allocate() noexcept {
     if (!scratch_) scratch_ = new (std::nothrow) std::uint16_t[kJobNodes];
     return cache_[0] && cache_[1] && jobs_ && scratch_;
 }
+void DensityCache::retire(DensityCache* cache) noexcept {
+    if (!cache) return;
+    cache->stop();
+    if (!cache->abandoned_) delete cache; // abandoned: the worker may still use every byte of it
+}
+#ifdef X3M_FOG_DENSITY_TEST_HOOKS
+std::atomic<bool> DensityCache::test_fail_thread_{false};
+#endif
 bool DensityCache::start() noexcept {
     if (running_ || stepped_ || abandoned_) return running_;
     if (!allocate()) return false;
+#ifdef _WIN32
+    // The worker runs this module's code: a dynamic FreeLibrary must not unmap it. Pinned once,
+    // when the first worker starts; a module that cannot be pinned gets no worker.
+    static std::atomic<bool> pinned{false};
+    if (!pinned.load(std::memory_order_relaxed)) {
+        static const char anchor = 0;
+        HMODULE module = nullptr;
+        if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_PIN | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, reinterpret_cast<LPCWSTR>(&anchor), &module)) return false;
+        pinned.store(true, std::memory_order_relaxed);
+    }
+#endif
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(sync().mutex);
         request_.stop = false;
     }
     stop_flag_.store(false);
     try {
-        thread_ = std::thread([this] { run(); });
+#ifdef X3M_FOG_DENSITY_TEST_HOOKS
+        if (test_fail_thread_.load()) throw std::system_error(std::make_error_code(std::errc::resource_unavailable_try_again));
+#endif
+        sync().thread = std::thread([this] { run(); });
     } catch (...) {
         return false;
     }
@@ -197,7 +226,7 @@ bool DensityCache::start_stepped() noexcept {
 void DensityCache::stop() noexcept {
     if (!running_) return;
     stop_flag_.store(true);
-    std::unique_lock<std::mutex> lock(mutex_, std::defer_lock);
+    std::unique_lock<std::mutex> lock(sync().mutex, std::defer_lock);
     for (int attempt = 0; attempt < 250 && !lock.try_lock(); ++attempt) std::this_thread::sleep_for(std::chrono::milliseconds(1));
     if (!lock.owns_lock()) { // held for far longer than any commit: the holder is gone
         abandon();
@@ -206,13 +235,15 @@ void DensityCache::stop() noexcept {
     request_.stop = true;
     ++request_.serial;
     lock.unlock();
-    wake_.notify_all();
-    if (thread_.joinable()) thread_.join();
+    sync().wake.notify_all();
+    if (sync().thread.joinable()) sync().thread.join();
     running_ = false;
 }
 void DensityCache::abandon() noexcept {
+    // No join, detach, notify or lock: under the loader lock at process exit the worker was
+    // already killed by the OS, possibly inside the condition variable, and any of those can
+    // wait forever. The thread handle, the primitives and the buffers are leaked with the cache.
     stop_flag_.store(true);
-    if (thread_.joinable()) thread_.detach();
     running_ = false;
     abandoned_ = true;
 }
@@ -228,8 +259,8 @@ void DensityCache::run() noexcept {
         bool idle = false;
         if (!work_once(idle)) return;
         if (idle) {
-            std::unique_lock<std::mutex> lock(mutex_);
-            wake_.wait(lock, [this] { return request_.stop || request_.serial != worker_serial_; });
+            std::unique_lock<std::mutex> lock(sync().mutex);
+            sync().wake.wait(lock, [this] { return request_.stop || request_.serial != worker_serial_; });
             if (request_.stop) return;
         }
     }
@@ -318,7 +349,7 @@ bool DensityCache::fill_slab(int level, const NodeBox& slab, std::uint64_t epoch
                 for (key.x = box.lo[0]; key.x <= box.hi[0]; ++key.x) *word++ = node_word(delta, key, offset);
         busy_us_.fetch_add(std::uint64_t(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - begin).count()), std::memory_order_relaxed);
         {
-            std::lock_guard<std::mutex> lock(mutex_);
+            std::lock_guard<std::mutex> lock(sync().mutex);
             if (request_.stop || request_.epoch != epoch) return false;
             commit_locked(level, box, scratch_);
         }
@@ -332,7 +363,7 @@ bool DensityCache::fill_slab(int level, const NodeBox& slab, std::uint64_t epoch
 bool DensityCache::work_once(bool& idle) noexcept {
     Request request;
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(sync().mutex);
         request = request_;
         worker_serial_ = request_.serial;
     }
@@ -360,7 +391,7 @@ bool DensityCache::work_once(bool& idle) noexcept {
         const NodeKey origin = window_origin(kLevelDelta[level], request.camera[0], request.camera[1], request.camera[2]);
         const NodeBox window = window_box(origin);
         {
-            std::lock_guard<std::mutex> lock(mutex_);
+            std::lock_guard<std::mutex> lock(sync().mutex);
             if (request_.epoch != worker_epoch_) return true;
             // Published before any slot of the new window is overwritten.
             shared_[level].shrink = intersect(shared_[level].shrink, window);
@@ -389,7 +420,7 @@ bool DensityCache::work_once(bool& idle) noexcept {
     if (slab.empty() || slab.nodes() > std::uint64_t(kWindowNodes) * kWindowNodes * kWindowNodes) { idle = true; return true; } // unreachable by construction
     if (!fill_slab(level, slab, worker_epoch_, request.offset, request.camera)) return !stop_flag_.load(std::memory_order_relaxed);
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::mutex> lock(sync().mutex);
         if (request_.stop) return false;
         if (request_.epoch != worker_epoch_) return true;
         shared_[level].box = grown;
@@ -441,11 +472,11 @@ void DensityCache::invalidate() noexcept {
         ready_[l] = 0;
     }
     pending_invalidate_ = true;
-    std::unique_lock<std::mutex> lock(mutex_, std::try_to_lock);
+    std::unique_lock<std::mutex> lock(sync().mutex, std::try_to_lock);
     if (!lock.owns_lock()) { ++missed_locks_; return; }
     post_locked();
     lock.unlock();
-    wake_.notify_one();
+    sync().wake.notify_one();
 }
 bool DensityCache::covers(int level, const double camera[3]) const noexcept {
     return admitted(camera) && resident_[level] && gpu_box_[level].contains(need_box(level, camera));
@@ -465,11 +496,11 @@ FrameState DensityCache::step(const double camera[3], std::uint64_t frame) noexc
         pending_camera_ = true;
     }
     if (pending_camera_ || pending_invalidate_) {
-        std::unique_lock<std::mutex> lock(mutex_, std::try_to_lock);
+        std::unique_lock<std::mutex> lock(sync().mutex, std::try_to_lock);
         if (lock.owns_lock()) {
             post_locked();
             lock.unlock();
-            wake_.notify_one();
+            sync().wake.notify_one();
             for (int l = 0; l < kLevelCount; ++l) posted_need_[l] = need_box(l, camera_);
         } else {
             ++missed_locks_;
@@ -510,7 +541,7 @@ void DensityCache::gpu_reset() noexcept {
     }
 }
 unsigned DensityCache::take_uploads(const StagingView views[kLevelCount], std::size_t byte_budget, TileRect* out, unsigned capacity) noexcept {
-    std::unique_lock<std::mutex> lock(mutex_, std::try_to_lock);
+    std::unique_lock<std::mutex> lock(sync().mutex, std::try_to_lock);
     if (!lock.owns_lock()) { ++missed_locks_; return 0; }
     const bool wake = pending_invalidate_ || pending_camera_;
     post_locked();
@@ -580,7 +611,7 @@ unsigned DensityCache::take_uploads(const StagingView views[kLevelCount], std::s
     }
     publication_pending_.store(unpublished, std::memory_order_relaxed);
     lock.unlock();
-    if (wake) wake_.notify_one();
+    if (wake) sync().wake.notify_one();
     upload_bytes_ += bytes;
     upload_rects_ += count;
     return count;

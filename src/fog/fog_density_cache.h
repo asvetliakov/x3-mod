@@ -132,9 +132,18 @@ public:
     // mutex cannot be taken within 250 ms (a worker killed while holding it), the worker is
     // abandoned instead of joined, so teardown cannot deadlock.
     void stop() noexcept;
-    // Process termination only: the worker may already be gone and may have died
-    // holding the mutex. Releases nothing and takes no lock.
+    // Process termination, or stop()'s 250 ms give-up: the worker may already be gone and may
+    // have died holding the mutex or inside the condition variable. Releases nothing, takes no
+    // lock, does not notify, join or detach. An abandoned cache must be leaked whole, never
+    // destroyed: a merely starved worker still uses it. Owners release a heap cache with retire().
     void abandon() noexcept;
+    bool abandoned() const noexcept { return abandoned_; }
+    // stop(), then delete unless the cache ended up abandoned (then it is leaked).
+    static void retire(DensityCache* cache) noexcept;
+#ifdef X3M_FOG_DENSITY_TEST_HOOKS
+    static void test_fail_thread(bool fail) noexcept { test_fail_thread_.store(fail); }
+    std::mutex& test_mutex() noexcept { return sync().mutex; }
+#endif
 
     // Render thread. A changed identity is an invalidation.
     void configure(const CacheIdentity& identity) noexcept;
@@ -194,9 +203,15 @@ private:
     void apply_invalidate_locked() noexcept;
     void sync_locked() noexcept;
 
-    // Shared, guarded by mutex_.
-    mutable std::mutex mutex_;
-    std::condition_variable wake_;
+    // Mutex, condition variable and thread live in raw storage so that an abandoned cache never
+    // runs their destructors (~condition_variable waits for a waiter the OS already killed).
+    struct Sync { std::mutex mutex; std::condition_variable wake; std::thread thread; };
+    alignas(Sync) mutable unsigned char sync_storage_[sizeof(Sync)];
+    Sync& sync() const noexcept { return *reinterpret_cast<Sync*>(sync_storage_); }
+#ifdef X3M_FOG_DENSITY_TEST_HOOKS
+    static std::atomic<bool> test_fail_thread_;
+#endif
+    // Shared, guarded by sync().mutex.
     struct Request { std::uint64_t epoch = 0, serial = 0; WorldOffset offset = kNoOffset; double camera[3]{}; bool camera_valid = false, stop = false; } request_;
     SharedLevel shared_[kLevelCount];
     std::uint8_t* cache_[kLevelCount]{};
@@ -207,7 +222,6 @@ private:
     Job* jobs_ = nullptr;
     std::uint64_t worker_serial_ = 0;
     std::uint16_t* scratch_ = nullptr;
-    std::thread thread_;
 
     // Render-thread-owned.
     CacheIdentity identity_{};

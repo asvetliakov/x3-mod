@@ -6,6 +6,9 @@
 #include "shadow_replay_projection.h"
 #include "sun_shadow_apply_pass.h"
 #include <cstdarg>
+#ifndef X3M_ROUTE_BRIDGE_BASELINE
+#include "fog_density_cache.h"
+#endif
 namespace x3 { namespace temporal { enum class AgxDecode {none,gamma22}; } }
 namespace x3m {
 namespace sun_light_poll { enum class Status {Ok};struct Sample {Status status=Status::Ok;std::int32_t colour[3]{256,256,256};};inline const char* status_name(Status){return "synthetic";} }
@@ -57,6 +60,23 @@ struct MotionOutput {
     std::uint64_t id_=1,frame_=0,generation_=0,fog_frame_=~std::uint64_t(0),fog_applied_frames_=0;
     std::uint64_t fog_card_logged_frame_=0,fog_transition_frame_=~std::uint64_t(0),fog_card_last_report_=~std::uint64_t(0),fog_card_observed_total_=0,fog_card_suppressed_total_=0,fog_card_refused_total_=0;
     const char* fog_last_reason_="";const char* fog_card_fault_reason_="none";
+#ifndef X3M_ROUTE_BRIDGE_BASELINE
+    // Stored-density range: the production members, verbatim defaults.
+    bool fog_density_requested_=false,fog_density_refused_=false,fog_density_prepared_=false,fog_density_camera_valid_=false;
+    bool fog_density_config_logged_=false,fog_density_ready_logged_[2]{};
+    unsigned fog_density_logs_=0;
+    std::uint64_t fog_density_sample_frame_=~std::uint64_t(0),fog_density_key_=0;
+    long long fog_density_epoch_qpc_=0,fog_density_sample_qpc_=0;double fog_density_camera_[3]{};
+    static constexpr unsigned fog_density_gap_ms=500;
+    renderer::FogDensityConfig fog_density_config_{};
+    void prepare_volumetric_fog_density(UINT,UINT)noexcept;void fog_density_epoch(const char*)noexcept;
+    bool fog_density_active()const noexcept{return fog_density_requested_&&!fog_density_refused_;}
+    // MotionOutput::release_resources' fog statements (the device release path).
+    void release_fog(){if(fog_){taa_call([&]{fog_->detach();});fog_.reset();fog_frame_=~std::uint64_t(0);}
+        fog_density_refused_=fog_density_prepared_=fog_density_camera_valid_=fog_density_config_logged_=false;}
+#else
+    static constexpr bool fog_density_requested_=false;
+#endif
     unsigned invalidations=0;bool history_valid=false; // endpoint request witness, not a TemporalPass GPU history claim
     void invalidate_taa(TaaInvalidateSite){++invalidations;history_valid=false;}
     void invalidate_render_states(){}bool scene_bound()const{return true;}

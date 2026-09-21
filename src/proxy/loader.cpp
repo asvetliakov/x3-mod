@@ -352,6 +352,11 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
         DisableThreadLibraryCalls(module);
         LARGE_INTEGER stamp{}; QueryPerformanceCounter(&stamp); x3m::dll_load_qpc = static_cast<unsigned long long>(stamp.QuadPart);
     } else if (reason == DLL_PROCESS_DETACH) {
+        // First: the CRT runs this before the module's static destructors (crtdll.c calls DllMain,
+        // then _CRT_INIT(DLL_PROCESS_DETACH)); proven by the fog exit fixture and its hanging control.
+        // Process exit only: on a dynamic FreeLibrary live threads still mutate the device map under the
+        // capture lock, and the module pin makes a FreeLibrary with a worker unreachable anyway.
+        if (reserved != nullptr) x3m::abandon_fog_density_workers();
         x3m::voice_dmo_fallback::shutdown(); // one RemoveVectoredExceptionHandler; safe under the loader lock, idempotent
         x3m::ownership::set_surface_lock_observer(nullptr); // one relaxed store, idempotent: a late surface call forwards natively
         // Dynamic unload only (reserved == NULL, FreeLibrary): the six original

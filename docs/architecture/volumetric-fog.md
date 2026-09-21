@@ -5,6 +5,9 @@ supersedes the homogeneous algorithm and count-based scaling proposals below.
 Source integration is in progress; production runtime and flight appearance are
 not yet qualified. The earlier design and rejected experiments remain as history.
 
+The experimental 30–40 km field is selected by `--volumetric-fog-range stored`:
+[stored-density range option](#stored-density-range-option-2026-09-21).
+
 Original design note, 2026-09-19. Stage 1 was implemented default off; run 48 B
 was flown and the user prefers strength 0.02. Card replacement is now ratified
 (section "Card replacement design"); it supersedes the original stacking choice. Stage 0 (offline mock-up on real dumps) is done,
@@ -1027,3 +1030,58 @@ references. Caching exact noise corners also predicts 359 mean density reads
 per ray, far above the current 48. No corner-cache shader was built. The next
 design question is a filtered final-density representation with cheap sampling,
 measuring its appearance approximation separately from integration error.
+
+## Stored-density range option (2026-09-21)
+
+`--volumetric-fog-range {legacy,stored}` (`X3M_VOLUMETRIC_FOG_RANGE`, default `legacy`, requires
+`--volumetric-fog` with a positive strength) selects the field behind the unchanged fog route.
+`legacy` is the family atlas of the spatial production contract above, bit-identical to the
+build before the option existed. `stored` is the experimental two-level stored-density field of
+the [runtime integration note](fog-density-runtime-integration.md): clouds to 30–40 km, generated
+on one background thread, march → composite → repair. The launcher always writes the variable;
+the DLL treats anything but the exact string `stored` as `legacy`. Source integration and fixture
+evidence only: no flight yet, so neither appearance nor game FPS is established.
+
+- **Where it runs.** `prepare_volumetric_fog_density` follows `prepare_volumetric_fog_targets`
+  at the HDR owner latch, never in a draw bracket. The camera is read after that latch, so the
+  latch posts the previous scene end's camera (`fog_world_camera`, double, kept current on
+  refused frames too) and `execute` re-checks residency for the frame's own camera. With
+  `legacy` the cost is one branch at the latch and one at the scene end; no thread, allocation,
+  program or device call exists.
+- **Family inputs.** The family atlas is still prepared (it selects the family, supplies
+  `base_sigma` and is the immediate fallback; releasing it in stored mode is proposed, not done).
+  Mean chroma is `sum(rgb) / sum(density)` over the 128³ volume, the stored-density screen's
+  definition, as 14 tracked constants (`fog_family_chroma_inc.h`, `tools/build/fog_family_chroma.py`,
+  re-derived from a fresh bake by the asset host test). Nothing is scanned at runtime.
+- **Per-sector placement.** `fog_sector_placement` hashes the session-stable identity, the
+  background record `index`, the family profile and the recipe (splitmix64), into the cache key
+  and a translation of whole far nodes, `4096 * (h mod 4096 − 2048)` units per axis. The shader
+  stays camera-relative; only the generator sees the offset. Heap tokens never enter the key: a
+  sector looks the same on every visit, reload and session, and a reallocation neither re-keys
+  nor refills. Sectors sharing one background record share a placement.
+- **Readiness.** A sector change re-keys the cache (readiness 0 in the same frame, refill, two
+  90-frame ramps). A gap in scene samples that also spans more than 500 ms of wall clock (a load
+  or transit, not a stutter) calls `invalidate_density`. A Reset keeps
+  the CPU caches and re-uploads. Camera cuts, first-person/chase switches and jumps need no
+  signal: the field is world-anchored, and a camera whose need box is not resident reads 0 at
+  once, otherwise nothing changes. While the far level is not drawable the frame is
+  `density_unprepared` / `density_filling`: no fog, no card suppression, never the legacy field.
+  With `--volumetric-fog-cards replace` the native cards stay, with the ramping medium stacked
+  on them, until the far ramp is complete; only then are they masked, so the hand-over never
+  shows less fog than either medium alone. Ctrl+Alt+F9 on resumes at full readiness.
+- **Refusal.** `MaxPixelShader30InstructionSlots < 512` or a program, staging, atlas, pin or
+  worker failure, or a profile without tracked family constants, logs one
+  `volumetric_fog_cache event=refused reason=… fallback=legacy` line and
+  the legacy path runs unchanged until the device is released.
+- **Lifetime.** `MotionOutput::release_resources` (device release, outside the loader lock)
+  detaches the pass and joins the worker. `DllMain` `DLL_PROCESS_DETACH` at process exit (`reserved != nullptr`) first calls
+  `abandon_fog_density_workers()`: no capture mutex, no log, no join, notify, detach or free,
+  because the CRT then destroys the static device map under the loader lock and the OS has
+  already ended the worker. An abandoned cache is leaked whole (`DensityCache::retire`), also
+  when `stop()` gives up after 250 ms. The first worker start pins the module. Unsupported:
+  `TerminateThread` on the render thread. A dynamic `FreeLibrary` never walks the device map,
+  and the pin makes an unload with a worker a no-op.
+- **Logging.** `volumetric_fog_range` at start (mode, atlas bytes, budgets); per device one
+  `volumetric_fog_cache event=config`, then `event=epoch`, `far_ready`, `fine_ready` (ms since
+  the epoch) at most 64 lines a session; `volumetric_fog_cache_frame` (uploads, nodes/s, ramps,
+  density active) only with `--volumetric-fog-timing`.

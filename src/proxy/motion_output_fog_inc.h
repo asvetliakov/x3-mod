@@ -141,9 +141,87 @@ void MotionOutput::prepare_volumetric_fog_targets(UINT width, UINT height) noexc
         }
     } else if (prepared != D3DERR_DEVICELOST && prepared != D3DERR_DEVICENOTRESET) fault_fog_cards("prepare");
 }
+// Stored-density range: a new readiness epoch (enable, sector re-key, load gap, residency loss).
+// Bounded: at most 64 lines a session outside timing mode.
+void MotionOutput::fog_density_epoch(const char* reason) noexcept {
+    LARGE_INTEGER now{}; QueryPerformanceCounter(&now);
+    fog_density_epoch_qpc_ = now.QuadPart; fog_density_ready_logged_[0] = fog_density_ready_logged_[1] = false;
+    if (fog_timing_ || fog_density_logs_ < 64u) {
+        if (!fog_timing_) ++fog_density_logs_;
+        log("volumetric_fog_cache device=%llu frame=%llu event=epoch reason=%s sector_key=%016llx offset=%.0f,%.0f,%.0f", id_, frame_, reason,
+            fog_density_config_.sector_key, fog_density_config_.world_offset[0], fog_density_config_.world_offset[1], fog_density_config_.world_offset[2]);
+    }
+}
+// Owner latch, after the family field and targets: posts the previous scene end's camera,
+// uploads under the budget and advances the ramps. Never in a draw bracket; never waits.
+// Toggled off, refused, faulted or without a current fogged sector it does nothing, and the
+// worker parks by itself once its window is complete.
+void MotionOutput::prepare_volumetric_fog_density(UINT width, UINT height) noexcept {
+    fog_density_prepared_ = false;
+    if (fog_density_refused_ || !fog_ || !fog_enabled_ || fog_disabled_ || fog_attach_failed_ || fog_cards_.fault || !fog_density_camera_valid_ ||
+        !fog_sector_.current(frame_) || !(fog_strength_ > 0.f)) return;
+    const auto profile = static_cast<renderer::fog_field::Profile>(fog_sector_.profile);
+    if (!fog_->resources_ready(width, height, profile, fog_sector_.recipe, fog_sector_.field_generation)) return;
+    HRESULT hr = E_FAIL; bool family = false;
+    const FogSectorPlacement placement = fog_sector_placement(fog_sector_);
+    const bool rekeyed = !fog_density_config_.enabled || placement.key != fog_density_key_;
+    taa_call([&] {
+        auto& c = fog_density_config_;
+        family = fog_->field_family(c.chroma, &c.sigma);
+        if (!family) return;
+        c.enabled = true; c.sector_key = placement.key; c.recipe = fog_sector_.recipe;
+        for (unsigned i = 0; i < 3; ++i) c.world_offset[i] = placement.offset[i];
+        hr = fog_->prepare_density(c, fog_density_camera_, frame_);
+    });
+    if (!family) {
+        // No tracked family constants for this profile: say so once and keep the legacy path.
+        fog_density_refused_ = true;
+        log("volumetric_fog_cache device=%llu frame=%llu event=refused reason=family_constants profile=%u fallback=legacy result=%08lx", id_, frame_, fog_sector_.profile, static_cast<unsigned long>(E_FAIL));
+        return;
+    }
+    const auto& status = fog_->density_status();
+    if (hr == D3DERR_NOTAVAILABLE) {
+        // Capability refusal: the legacy family path stays exactly as without the option, until release.
+        fog_density_refused_ = true;
+        log("volumetric_fog_cache device=%llu frame=%llu event=refused reason=%s fallback=legacy result=%08lx", id_, frame_, status.reason, hr);
+        return;
+    }
+    if (!fog_density_config_logged_) {
+        fog_density_config_logged_ = true;
+        log("volumetric_fog_cache device=%llu frame=%llu event=config mode=stored result=%08lx profile=%u sigma=%.4g chroma=%.4f,%.4f,%.4f atlas_bytes=%u upload_budget_bytes=%u upload_rects=%u ramp_frames=%u",
+            id_, frame_, hr, fog_sector_.profile, double(fog_density_config_.sigma), double(fog_density_config_.chroma[0]), double(fog_density_config_.chroma[1]), double(fog_density_config_.chroma[2]),
+            unsigned(fog::kAtlasBytes), unsigned(fog::kDefaultUploadBudget), fog::kDefaultUploadRects, fog::kReadinessRampFrames);
+    }
+    if (FAILED(hr)) return; // device loss or a transient failure: no fog this frame, retried at the next latch
+    fog_density_prepared_ = true;
+    if (rekeyed) { fog_density_key_ = placement.key; fog_density_epoch("sector_key"); }
+    const float ready[2] = {status.ready_far, status.ready_fine};
+    for (unsigned i = 0; i < 2; ++i) {
+        if (ready[i] >= 1.f && !fog_density_ready_logged_[i]) {
+            fog_density_ready_logged_[i] = true;
+            if (fog_timing_ || fog_density_logs_ < 64u) {
+                if (!fog_timing_) ++fog_density_logs_;
+                LARGE_INTEGER now{}, f{}; QueryPerformanceCounter(&now); QueryPerformanceFrequency(&f);
+                log("volumetric_fog_cache device=%llu frame=%llu event=%s ms=%.1f nodes=%llu worker_busy_ms=%.1f upload_bytes_total=%llu missed_locks=%llu", id_, frame_, i ? "fine_ready" : "far_ready",
+                    f.QuadPart ? double(now.QuadPart - fog_density_epoch_qpc_) * 1e3 / double(f.QuadPart) : 0., status.nodes_generated, double(status.worker_busy_us) * 1e-3, status.upload_bytes_total, status.missed_locks);
+            }
+        } else if (i == 0 && ready[0] == 0.f && fog_density_ready_logged_[0]) fog_density_epoch("residency"); // cut, jump or Reset: far refills and ramps again
+    }
+}
 void MotionOutput::volumetric_fog_sector_sample(std::uint64_t frame, const sector_background::Sample& sample) noexcept {
     if (!fog_requested_ || frame != frame_ || fog_sector_.frame == frame) return;
     auto next = fog_sector_frame(sample, frame, generation_, fog_strength_, fog_enabled_ && !fog_disabled_, fog_everywhere_);
+    if (fog_density_requested_) {
+        // A gap in scene samples longer than fog_density_gap_ms of wall clock is a load or a sector
+        // transit: refill and ramp instead of popping in. A shorter gap (a stutter, a skipped sample)
+        // keeps the cache. A sector change re-keys the cache by itself; cuts and first-person/chase
+        // switches are residency questions the cache answers per frame (world-anchored field).
+        LARGE_INTEGER now{}, f{}; QueryPerformanceCounter(&now); QueryPerformanceFrequency(&f);
+        const bool gap = fog_density_sample_frame_ != ~std::uint64_t(0) && fog_density_sample_frame_ + 1 < frame && f.QuadPart > 0 &&
+            (now.QuadPart - fog_density_sample_qpc_) * 1000 > static_cast<long long>(fog_density_gap_ms) * f.QuadPart;
+        fog_density_sample_frame_ = frame; fog_density_sample_qpc_ = now.QuadPart;
+        if (gap && fog_ && fog_density_config_.enabled && !fog_density_refused_) { fog_->invalidate_density(); fog_density_epoch("sample_gap"); }
+    }
     // Atlas generation remains usable across same-family sectors, but their
     // replacement warm-up/history key must still change.
     if (next.profile == fog_sector_.profile && next.generation == fog_sector_.generation) next.field_generation = fog_sector_.field_generation;
@@ -181,6 +259,9 @@ void MotionOutput::volumetric_fog_begin_frame() noexcept {
     if (!fog_requested_) return;
     fog_card_ready_checked_ = fog_card_ready_ = false;
     if (fog_sector_.frame + 1 < frame_) fog_cards_.armed = false;
+    // Stored range: while the far ramp is incomplete the cards stay and the ramping medium stacks
+    // on them (warm-up), so the hand-over never shows less fog than either medium alone.
+    if (fog_density_requested_ && !fog_density_refused_ && !(fog_ && fog_density_prepared_ && fog_->density_status().ready_far >= 1.f)) fog_cards_.armed = false;
     fog_cards_.begin(fog_enabled_ && !fog_disabled_ && !fog_attach_failed_ && fog_strength_ > 0.f);
     if (!fog_cards_.active) fog_card_transition(fog_cards_.fault ? 3u : 0u);
 }
@@ -221,7 +302,7 @@ void MotionOutput::prepare_fog_card(const MotionDrawCall& call, MotionRoute& rou
             renderer::FogFrame in{}; bool sun = false;
             in.width = target_width_; in.height = target_height_;
             fog_card_ready_ = !fog_frame_prerequisite() && fog_ && fog_->resources_ready(in.width, in.height, static_cast<renderer::fog_field::Profile>(fog_sector_.profile), fog_sector_.recipe, fog_sector_.field_generation) &&
-                !fog_frame_parameters(in, 1.f, sun);
+                !fog_frame_parameters(in, 1.f, sun) && (!fog_density_active() || (fog_density_prepared_ && fog_->density_status().ready_far >= 1.f && fog_->density_drawable(in.params.world.origin)));
         });
     }
     if (!fog_card_ready_) { fog_cards_.reject(); return; }
@@ -282,6 +363,17 @@ void MotionOutput::run_volumetric_fog() noexcept {
     // and successful spatial replacement readiness remain independent of it.
     if (cut_finished_ && counters_.cut) fog_latch_.cut(frame_);
     fog_latch_.update(frame_, fog_everywhere_); // source observation only
+    if (fog_density_requested_ && camera_scene_.valid) {
+        // The next owner latch posts this camera. Independent of every refusal below: a refused
+        // or filling frame must still move the cache's window, or it could never become ready.
+        double rotation[9], translation[3], camera[3];
+        for (unsigned i = 0; i < 9; ++i) rotation[i] = camera_scene_.r[i];
+        for (unsigned i = 0; i < 3; ++i) translation[i] = camera_scene_.t[i];
+        if (renderer::fog_world_camera(rotation, translation, camera)) {
+            for (unsigned i = 0; i < 3; ++i) fog_density_camera_[i] = camera[i];
+            fog_density_camera_valid_ = true;
+        }
+    }
     const float weight = 1.f;
     const char* skip = nullptr;
     HRESULT hr = S_FALSE;
@@ -314,6 +406,15 @@ void MotionOutput::run_volumetric_fog() noexcept {
     }
     if (!skip && (!fog_ || !fog_->resources_ready(in.width, in.height,
         static_cast<renderer::fog_field::Profile>(fog_sector_.profile), fog_sector_.recipe, fog_sector_.field_generation))) skip = "unprepared";
+    if (fog_density_requested_ && !skip) {
+        for (unsigned i = 0; i < 3; ++i) in.camera_world[i] = in.params.world.origin[i]; // execute re-checks residency for it
+        if (fog_density_active()) {
+            // Not resident yet (sector entry, jump, Reset): no fog and no card suppression, never the legacy field.
+            if (!fog_density_prepared_ || !fog_->density_ready(in.width, in.height)) skip = "density_unprepared";
+            else if (!fog_->density_drawable(in.camera_world)) skip = "density_filling";
+            else in.density = true;
+        }
+    }
     if (!skip) {
         in.profile = static_cast<renderer::fog_field::Profile>(fog_sector_.profile);
         in.recipe_id = fog_sector_.recipe; in.field_generation = fog_sector_.field_generation;
@@ -351,6 +452,12 @@ void MotionOutput::run_volumetric_fog() noexcept {
         log("volumetric_fog_frame device=%llu frame=%llu applied=%u reason=%s strength=%.4f density_scale=%.3f cards=%u profile=%u field_generation=%llu sun=%s shadow_maps=%u cpu_us=%.1f calls=%u result=%08lx restore=%08lx stage=%u",
             id_, frame_, unsigned(!skip && out.applied), reason, double(fog_strength_), double(fog_sector_.density_scale), unsigned(fog_latch_.cards_recent(frame_)), fog_sector_.profile, fog_sector_.field_generation,
             skip ? "none" : sun_tracked ? "tracked" : "fallback", out.cascades_bound, us, out.device_calls, out.operation, out.restore, unsigned(out.failed));
+    }
+    if (fog_timing_ && fog_density_requested_ && fog_) {
+        const auto& d = fog_->density_status();
+        log("volumetric_fog_cache_frame device=%llu frame=%llu density=%u refused=%u prepared=%u ready_far=%.4f ready_fine=%.4f upload_bytes=%u upload_rects=%u nodes=%llu worker_nodes_per_s=%.0f missed_locks=%llu",
+            id_, frame_, unsigned(in.density && !skip), unsigned(fog_density_refused_), unsigned(fog_density_prepared_), double(d.ready_far), double(d.ready_fine), d.upload_bytes, d.upload_rects,
+            d.nodes_generated, d.worker_busy_us ? double(d.nodes_generated) * 1e6 / double(d.worker_busy_us) : 0., d.missed_locks);
     }
     const std::uint64_t card_report = std::uint64_t(fog_cards_.observed) | std::uint64_t(fog_cards_.suppressed) << 24 |
         std::uint64_t(fog_cards_.refused) << 48 | std::uint64_t(fog_card_ready_) << 49 | std::uint64_t(fog_cards_.warmup) << 50 |

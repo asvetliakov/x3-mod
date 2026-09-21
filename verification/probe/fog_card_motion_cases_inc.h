@@ -183,5 +183,22 @@ int main() {
    }
  }
  std::puts("cut_recovery scenarios=8 PASS");
+ { // Stored-density range off: a gap never reaches the density path. On: a frame gap without 500 ms of wall clock
+   // (a stutter) keeps the cache; a long one is a load and invalidates exactly once.
+   MotionOutput m;m.warm();m.frame_+=5;mock_qpc+=10;m.sample();assert(m.fog_storage.density_calls==0);
+   m.fog_density_requested_=true;m.fog_density_config_.enabled=true;++m.frame_;m.sample();++m.frame_;m.sample();assert(m.fog_storage.density_calls==0);
+   m.frame_+=2;m.sample();assert(m.fog_storage.density_calls==0);           // one missed sample, no time passed
+   ++m.frame_;mock_qpc+=10;m.sample();assert(m.fog_storage.density_calls==0); // slow frame, no missed sample
+   m.frame_+=5;mock_qpc+=1;m.sample();assert(m.fog_storage.density_calls==1);++m.frame_;m.sample();assert(m.fog_storage.density_calls==1);
+ }
+ { // Stored range with card replacement: cards are never masked while the far ramp is below 1; the medium stacks meanwhile.
+   MotionOutput m;m.warm();m.fog_density_requested_=true;m.fog_density_prepared_=true;
+   for(float ready:{0.f,.25f,.99f}){
+     m.fog_storage.density.ready_far=ready;m.next();assert(m.fog_cards_.warmup&&!m.fog_cards_.may_replace());
+     m.draw();assert(!m.fog_cards_.suppressed&&!m.fog_cards_.refused);m.run_volumetric_fog();assert(!m.fog_cards_.fault);
+   }
+   m.fog_storage.density.ready_far=1.f;m.next();assert(!m.fog_cards_.warmup);m.draw();assert(m.fog_cards_.suppressed==1);m.run_volumetric_fog();assert(!m.fog_cards_.fault);
+   m.fog_storage.density.ready_far=.5f;m.next();assert(m.fog_cards_.warmup);m.draw();assert(!m.fog_cards_.suppressed);m.run_volumetric_fog();assert(!m.fog_cards_.fault);
+ }
  std::puts("actual MotionOutput card methods PASS");
 }

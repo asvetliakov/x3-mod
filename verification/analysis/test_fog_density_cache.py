@@ -23,6 +23,9 @@ class FogDensityCache(unittest.TestCase):
         cls.temporary = tempfile.TemporaryDirectory(prefix='x3-fog-cache-')
         cls.tool = Path(cls.temporary.name) / 'cache-host'
         subprocess.run([compiler] + FLAGS + [str(s) for s in SOURCES] + ['-o', str(cls.tool)], check=True, capture_output=True)
+        # Lifetime witnesses read abandoned caches after retire(): AddressSanitizer turns a free into a failure.
+        cls.lifetime_tool = Path(cls.temporary.name) / 'cache-host-asan'
+        subprocess.run([compiler] + FLAGS + ['-g', '-fsanitize=address', '-DX3M_FOG_DENSITY_TEST_HOOKS'] + [str(s) for s in SOURCES] + ['-o', str(cls.lifetime_tool)], check=True, capture_output=True)
 
     @classmethod
     def tearDownClass(cls):
@@ -58,6 +61,29 @@ class FogDensityCache(unittest.TestCase):
         self.assertLessEqual(t['max_upload_bytes'], 8 * 129 * 129 * 8)
         self.assertLess(fields(text, 'SHUTDOWN')['worst_stop_ms'], 500)
         self.assertNotRegex(text, r'differing_bytes=[1-9]')
+
+    def test_abandon_give_up_and_thread_failure_never_free_or_wait(self):
+        done = subprocess.run([str(self.lifetime_tool), 'lifetime'], capture_output=True, timeout=120)  # a hang is a timeout
+        text = done.stdout.decode()
+        self.assertEqual(done.returncode, 0, text[-2000:] + done.stderr.decode()[-2000:])
+        for name in ('thread_creation_failure_is_refused', 'start_succeeds_after_a_refused_start', 'held_lock_abandons_after_250ms_without_free',
+                     'abandon_then_retire_is_prompt_and_leaks', 'abandoned_cache_does_not_restart'):
+            self.assertIn('CHECK %s PASS' % name, text)
+        self.assertGreaterEqual(fields(text, 'GIVE_UP')['waited_ms'], 250)
+        source = (ROOT / 'src/fog/fog_density_cache.cpp').read_text()
+        body = source[source.index('void DensityCache::abandon() noexcept {'):]
+        body = body[:body.index('\n}\n')]
+        for forbidden in ('detach(', 'join(', 'notify', 'lock'):  # comments included on purpose: keep the words out of the body
+            self.assertNotIn(forbidden, body.split('stop_flag_')[1])
+        loader = (ROOT / 'src/proxy/loader.cpp').read_text()
+        detach = loader[loader.index('reason == DLL_PROCESS_DETACH'):]
+        self.assertLess(detach.index('abandon_fog_density_workers()'), detach.index('voice_dmo_fallback::shutdown()'))
+        self.assertIn('if (reserved != nullptr) x3m::abandon_fog_density_workers();', detach)  # never on a FreeLibrary detach
+        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        body = capture[capture.index('void abandon_fog_density_workers() noexcept {'):]
+        body = body[:body.index('\n}\n')]
+        self.assertNotIn('mutex', body)
+        self.assertNotIn('log(', body)
 
     def test_device_release_path_detaches_the_fog_pass(self):
         # The worker, both caches and the DEFAULT atlases must go with the other passes, not with ~MotionOutput.
