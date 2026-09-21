@@ -1210,3 +1210,12 @@ builder and were losing the same history: jittered drift / error improve (yaw 0.
 resampling), all inside their unchanged tolerances. Host: `test_camera_reprojection` + `test_taa_camera_path` 17 tests OK (pins
 updated: z / w = 1 - 2^-16, identity matrix m[11] = 0.999984741). Production scratch build OK, `check_no_x87.py`: no violations.
 Not verified in flight; the replay's "fix" row above is the expected effect.
+
+## Run 62 session A verdict (2026-09-22, run221)
+
+Run62 DLL `924be5c0…` (far-plane `expectedDepth` fix, `--taa-sentinel-stabiliser 0.7`,
+thin region 0.97): the user reports the distant-station shimmer/flicker under pans as
+**fixed**. One F8 burst during a pan is preserved in `/tmp/x3-bottleX3-run221` (not
+triaged; no open symptom). Lasers over sky were clean on Run 61 (run216). Follow-up:
+make the sentinel stabiliser 0.7 the default with TAA and the camera gate (`off` opts
+out), following the Run57/Run59/Run61 default pattern.
