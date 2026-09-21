@@ -214,7 +214,23 @@ void line_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
             for(unsigned i=4;i<6;++i){ins[i].clip_to_previous[3]=-2.f/W;ins[i].sentinel_camera=true;ms[i]=0;}
             for(unsigned warm=0;warm<3;++warm)for(unsigned which=4;which<6;++which){check("camera timing warm",passes[which].run(ins[which],&out));drain();}
             for(unsigned round=0;round<6;++round)for(unsigned step=0;step<2;++step){const unsigned which=4+(round+step)%2;drain();const auto start=stamp();check("camera timing run",passes[which].run(ins[which],&out));drain();ms[which]+=1000.*double(stamp()-start)/double(frequency.QuadPart)/6;}
-            std::printf("LINE_TIMING_CAMERA width=%u height=%u rounds=6 no_region_thin_ms=%.4f no_region_camera_ms=%.4f no_region_camera_delta_ms=%.4f fragmented_pan_thin_ms=%.4f fragmented_pan_camera_ms=%.4f fragmented_pan_camera_delta_ms=%.4f scope=cpu_wall_with_event_query_drain\n",W,H,camNoRegion[0],camNoRegion[1],camNoRegion[1]-camNoRegion[0],ms[4],ms[5],ms[5]-ms[4]);}
+            std::printf("LINE_TIMING_CAMERA width=%u height=%u rounds=6 no_region_thin_ms=%.4f no_region_camera_ms=%.4f no_region_camera_delta_ms=%.4f fragmented_pan_thin_ms=%.4f fragmented_pan_camera_ms=%.4f fragmented_pan_camera_delta_ms=%.4f scope=cpu_wall_with_event_query_drain\n",W,H,camNoRegion[0],camNoRegion[1],camNoRegion[1]-camNoRegion[0],ms[4],ms[5],ms[5]-ms[4]);
+            // The four-channel lane as the depth input (section 32.4): the same fragmented pan frame copied into an A32B32G32R32F
+            // target (.b = 1 on geometry: every valid pixel takes the lane fetch). Two camera-gate passes on that input, one
+            // with the lane term (s5 bound, c9.w = 1), one without (c9 = 0, the c8 law): their difference is the extra fetch;
+            // the R32F camera row above against the second one is the cost of the lane's .r copy draw itself.
+            Com<IDirect3DTexture9> lane;Com<IDirect3DSurface9> laneSurface;check("lane timing texture",d->CreateTexture(W,H,1,D3DUSAGE_RENDERTARGET,D3DFMT_A32B32G32R32F,D3DPOOL_DEFAULT,&lane.p,nullptr));check("lane timing surface",lane->GetSurfaceLevel(0,&laneSurface.p));
+            s.target(laneSurface.p);check("lane timing viewport",d->SetViewport(&full));check("lane timing Begin",d->BeginScene());check("lane timing PS",d->SetPixelShader(s.textured.p));check("lane timing source",d->SetTexture(0,depth.p));
+            check("lane timing min",d->SetSamplerState(0,D3DSAMP_MINFILTER,D3DTEXF_POINT));check("lane timing mag",d->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_POINT));
+            {const V v[]={{-.5f,-.5f,.5f,1,0,0},{W-.5f,-.5f,.5f,1,1,0},{-.5f,H-.5f,.5f,1,0,1},{W-.5f,H-.5f,.5f,1,1,1}};check("lane timing copy",d->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP,2,v,sizeof(V)));}
+            check("lane timing End",d->EndScene());check("lane timing unbind",d->SetTexture(0,nullptr));check("lane timing restore",d->SetRenderTarget(0,saved.p));check("lane timing restore viewport",d->SetViewport(&vp));
+            TemporalPass lanePasses[2];FrameInputs laneIns[2]={ins[5],ins[5]};double laneMs[2]{};
+            for(unsigned i=0;i<2;++i){check("lane timing initialize",lanePasses[i].initialize(d,nullptr,resolver,nullptr,nullptr,reinterpret_cast<const DWORD*>(r::hdr_writeback_program())));check("lane timing configure far",lanePasses[i].configure_far());laneIns[i].current_depth=lane.p;
+                laneIns[i].camera_depth_parallax[0]=1e-4f;laneIns[i].camera_depth_parallax[3]=1.000003f;}
+            laneIns[1].camera_lane_parallax[0]=1e-4f;laneIns[1].camera_lane_parallax[3]=1;
+            for(unsigned warm=0;warm<3;++warm)for(unsigned which=0;which<2;++which){check("lane timing warm",lanePasses[which].run(laneIns[which],&out));drain();}
+            for(unsigned round=0;round<6;++round)for(unsigned step=0;step<2;++step){const unsigned which=(round+step)%2;drain();const auto start=stamp();check("lane timing run",lanePasses[which].run(laneIns[which],&out));drain();laneMs[which]+=1000.*double(stamp()-start)/double(frequency.QuadPart)/6;}
+            std::printf("LINE_TIMING_CAMERA_LANE width=%u height=%u rounds=6 r32f_camera_ms=%.4f lane_input_law_ms=%.4f lane_input_lane_ms=%.4f lane_fetch_delta_ms=%.4f lane_input_over_r32f_ms=%.4f scope=cpu_wall_with_event_query_drain\n",W,H,ms[5],laneMs[0],laneMs[1],laneMs[1]-laneMs[0],laneMs[0]-ms[5]);}
         check("line timing restore target",d->SetRenderTarget(0,saved.p));check("line timing restore vp",d->SetViewport(&vp));}
     if(!deferredFailures.empty())throw std::runtime_error(deferredFailures.front());
 }

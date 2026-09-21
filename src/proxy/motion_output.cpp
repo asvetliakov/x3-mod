@@ -1608,7 +1608,10 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             in.sentinel_camera = decision.policy == 2;
             // Camera gate (taa-lattice-crawl.md section 32.3): the depth / translation term beside the far-plane matrix, from the
             // same two views and this frame's latched depth law; zero (the far-plane path) without the transform or a plausible law.
-            if (taa_thin_camera_gate_ && decision.transform) renderer::camera_depth_parallax(camera_scene_, camera_previous_, in.camera_depth_parallax);
+            if (taa_thin_camera_gate_ && decision.transform) {
+                renderer::camera_depth_parallax(camera_scene_, camera_previous_, in.camera_depth_parallax);
+                renderer::camera_lane_parallax(camera_scene_, camera_previous_, in.camera_lane_parallax); // preferred wherever RT2 is the four-channel lane (.b = view z)
+            }
             in.current_jitter[0] = jitter_[0]; in.current_jitter[1] = jitter_[1];
             in.previous_jitter[0] = jitter_previous_[0]; in.previous_jitter[1] = jitter_previous_[1];
             in.motion_policy = renderer::MotionPolicy::PerPixel;

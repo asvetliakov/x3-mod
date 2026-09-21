@@ -116,24 +116,15 @@ inline bool camera_far_plane_reprojection(const CameraState& current, const Came
     }
     return true;
 }
-// Depth and translation term of the camera path, the companion of the far-plane
-// matrix above (taa-lattice-crawl.md section 32.3). A pixel at device depth d
-// has view z = m32 / (d - m22) (the current projection's depth law), and its
-// previous clip position divided by that z is
-//   far_plane(x, y) + D * (d - m22) / m32,   D = (t_prev - t_cur * R_cur^-1 R_prev) * B,
-// B the previous projection as above: the far-plane
-// image of the direction plus the camera-relative translation between the two
-// views scaled by 1 / z. out = (DX / m32, DY / m32, DW / m32, m22) in the
-// matrix's (X, Y, W) rows, built in double from the DIFFERENCE of the two
-// translations so a large sector coordinate costs only the engine's own float
-// quantum of t; the consumer forms d - m22 from the same float m22 the
-// rasteriser's projection held (an exact subtraction for d in [0.5, 1]). All
-// zero xyz = the far-plane path, bit for bit. False (out zeroed) without a
-// valid pair or a plausible depth law (m22 > 1, m32 < 0, as the AO pass).
-inline bool camera_depth_parallax(const CameraState& current, const CameraState& previous, float out[4]) noexcept {
-    if (!out) return false;
-    out[0] = out[1] = out[2] = out[3] = 0.f;
-    if (!current.valid || !previous.valid || !(current.m22 > 1.f) || !(current.m32 < 0.f)) return false;
+// Depth and translation of the camera path, the companions of the far-plane matrix above (taa-lattice-crawl.md
+// sections 32.3 and 32.4). For a pixel at view z the previous clip position divided by that z is
+//   far_plane(x, y) + D / z,   D = (t_prev - t_cur * R_cur^-1 * R_prev) * B_prev,
+// the far-plane image of the pixel's direction plus the camera-relative translation between the two views in the
+// previous clip rows (X, Y, W). camera_translation_clip() is D, in double, from the DIFFERENCE of the two translations
+// so a large sector coordinate costs only the engine's own float quantum of t. It reads the previous view's
+// m00 / m11 / m20 / m21, the same latched projection terms c0..c3 are built from, and no depth law.
+inline bool camera_translation_clip(const CameraState& current, const CameraState& previous, double K[3]) noexcept {
+    if (!current.valid || !previous.valid) return false;
     // The exact inverse of the float R_cur, not its transpose: R^T R - I is ~1e-7 on engine views and |t| reaches 1e6, so the
     // transpose would leave ~0.1 unit of false translation (0.1 px at view z 600) even between two identical views. With the
     // inverse, identical views give D = 0 to double rounding.
@@ -153,11 +144,38 @@ inline bool camera_depth_parallax(const CameraState& current, const CameraState&
         }
         D[j] = double(previous.t[j]) - moved;
     }
+    K[0] = D[0] * previous.m00 + D[2] * previous.m20; K[1] = D[1] * previous.m11 + D[2] * previous.m21; K[2] = D[2];
+    return true;
+}
+// 1 / z from the device depth d and the current projection's depth law, z = m32 / (d - m22): out = (DX, DY, DW) / m32
+// and m22, so the consumer adds out.xyz * (d - out.w), forming d - m22 from the same float m22 the rasteriser's
+// projection held (an exact subtraction for d in [0.5, 1]). xyz = 0 is the far-plane path bit for bit. False (out
+// zeroed) without a valid pair or a plausible law (m22 > 1, m32 < 0, as the AO pass). m22 / m32 are per-submission
+// scratch in the engine: a latch from a view with another near plane passes this check and mis-scales the term.
+inline bool camera_depth_parallax(const CameraState& current, const CameraState& previous, float out[4]) noexcept {
+    if (!out) return false;
+    out[0] = out[1] = out[2] = out[3] = 0.f;
+    double K[3];
+    if (!(current.m22 > 1.f) || !(current.m32 < 0.f) || !camera_translation_clip(current, previous, K)) return false;
     const double inv = 1. / double(current.m32);
-    const double K[3] = {(D[0] * previous.m00 + D[2] * previous.m20) * inv, (D[1] * previous.m11 + D[2] * previous.m21) * inv, D[2] * inv};
-    for (double v : K) if (!std::isfinite(v) || std::fabs(v) > 1e15) return false;
+    for (double& v : K) { v *= inv; if (!std::isfinite(v) || std::fabs(v) > 1e15) return false; }
     for (unsigned i = 0; i < 3; ++i) out[i] = float(K[i]);
     out[3] = current.m22;
+    return true;
+}
+// The DEPTH-latch-free form for a depth input that carries the linear view z (clip w) per pixel (RT2 .b of the
+// four-channel sun-shadow lane, current_depth_ps.hlsl): the consumer adds out.xyz / w, so neither m22 nor m32 enters.
+// It is not free of the projection latch: D and c0..c3 still use the latched m00 / m11 / m20 / m21, so a latch from a
+// view with a different FOV is not covered by this form either. out = (DX, DY, DW, 1); all zero and false without a
+// valid pair.
+inline bool camera_lane_parallax(const CameraState& current, const CameraState& previous, float out[4]) noexcept {
+    if (!out) return false;
+    out[0] = out[1] = out[2] = out[3] = 0.f;
+    double K[3];
+    if (!camera_translation_clip(current, previous, K)) return false;
+    for (double v : K) if (!std::isfinite(v) || std::fabs(v) > 1e15) return false;
+    for (unsigned i = 0; i < 3; ++i) out[i] = float(K[i]);
+    out[3] = 1.f;
     return true;
 }
 // X3M_TAA_SENTINEL: auto (default) reprojects sentinel pixels through the

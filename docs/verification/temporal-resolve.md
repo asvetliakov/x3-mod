@@ -646,3 +646,41 @@ candidate, not installed, no game launched. Bottle X3.
 x87 audit fix (2026-09-21): the draw-path arithmetic of the option is SSE2-only (bit-mask magnitude instead of `std::fabs`, the rotation bound compared as a cosine from a Taylor half-angle series instead of `acos`, `sqrtss` for the diagnostic ratios). `check_no_x87.py` on a scratch production build: roots 95, reachable 547, 0 violations. `test_static_previous_rows` 7 OK (game-scale bound 0.05 px unchanged, series within 1e-9 of cos), `test_taa*` 33 OK; the four seam cases rerun with the same numbers (95 checks each, node differs from off in frame 3 only, max 0.00066 px).
 
 Runner cut bounds (2026-09-21): `seam-taa-camera-on` failed at frame 5 (4 px, x=4..7 y=3) on the Run60 candidate and identically on the Run59 build `b1bb05fb` (source 526851e4), so it is not a Run60 regression. Cause: 73080396 turned the DLL default cut bounds off (1e30 / 1) while the seam scripts (`expected_cut` 0.25, `SEAM_CUTS`, `bound_px 2.4`) model the diagnostic detector; at frame 5 (duplicate key, 1 of 3 keyed draws missing) the reference resolve cut and the DLL did not. Production is as intended. `run_motion_output.py` now requests `X3M_MOTION_CUT_MEDIAN_PX=48` / `X3M_MOTION_CUT_MISSING=0.25` for every case (the unmatched-static cases keep the production bounds in their own env). Evidence on a build of main-equivalent source (DLL `9132951a`): default env FAIL (same 4 px), env-forced 48/0.25 PASS 177 checks, fixed runner: `seam-taa-camera-on` 177, `seam-taa-on` 164, `production-taa-on` 83, the four unmatched-static cases 95 each, all pass.
+## Camera gate: latch-free lane term (c9 / s5), general-flight cases (2026-09-21)
+
+Design and numbers: `docs/architecture/taa-lattice-crawl.md` section 32.4. Not installed, no game
+launched. Bottle X3; local copies `/tmp/x3-taa-camera-gate-depth-v2/`.
+
+- Shader flow under the Wine lock: `--shader temporal_line_mask_camera` PASS, 983 words / 245 slots
+  (was 920 / 226), bytecode `e280346e7ce1...`; `--shader temporal_line_mask` PASS, bytecode
+  `a44bfebd9767...` unchanged. sha256 of all `src/renderer/*_inc.h` before/after: one file differs.
+- `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+  verification/probe/run_temporal_pass.py` -> passed; lattice mode `RESULT PASS numerical=519
+  state_restorations=21`. `THIN_REGION_CAMERA_FLIGHT` x10: oracle error 0.000000 on every modelled
+  row; yaw+forward share 1/1 (law), 1/1 (lane), 0 withheld; wrong latch 0 (law), 1/1 (lane); near
+  window mean 0.1173 law = lane, 0 withheld; behind 0 / 0. Forward, pan, at-rest, overflow and stale
+  rows equal the previous summary. `LINE_TIMING_CAMERA` deltas 0.1848 / 0.5209 ms (R32F scene; the
+  lane's one extra fetch in the tests draw is not in this timing).
+- Host: `test_taa*.py` OK; `test_camera_reprojection.py` 10 OK under discover and as
+  `python3 -m unittest verification.analysis.test_camera_reprojection` (lane form worst 0.00013 px).
+  Scratch CMake incremental build: 11 TUs, `d3d9.dll` linked.
+- Replay: `taa_lattice_gate_replay.py --camera-check` run209 forward 0.0325/0.0531/0.0606 ->
+  0.0012/0.0023/0.0104 px with the exact inverse; best-fit z scale 0.979 -> 1.000.
+- Review items not changed, with reason: `src/temporal/line_mask_camera_ps.hlsl` exists and is tracked
+  (three lines: the `#define X3M_CAMERA_GATE 1` and the include), so the header's source line and the
+  manifest's `defines: null` plus `includes` are accurate. `fog_distance_replay.py`'s digest covers the
+  selected rows of one capture and is never compared across captures; new captures simply digest the
+  two extra fields (accepted). `run_motion_output.py` parses `camera_state` with a key=value regex, so
+  the trailing `p22=` / `p32=` cannot disturb `prev_valid_at_policy`; its assertions need the Wine
+  fixture and are left to the candidate's seam run.
+
+Review closure of the lane follow-up (2026-09-21), `/tmp/x3-taa-camera-gate-depth-v3/`: with the lane
+bound the c8 law is no longer consulted (valid depth without a positive `.b` stays on the far plane);
+`temporal_line_mask_camera` 974 words / **243 slots**, bytecode `011116196d78...`, all other headers
+byte-identical, `temporal_line_mask` `a44bfebd9767...`. `run_temporal_pass.py` on X3 passed, lattice
+mode `numerical=522 state_restorations=21`; new row `wrong-latch-lane-mixed` (hole x < 6): window
+share 1/1, maximum within 8 px of the hole 0, oracle error 0; the other ten flight rows, forward,
+pan and at-rest rows as before. `LINE_TIMING_CAMERA_LANE`: law 1.9344 ms, lane 2.0492 ms, fetch
++0.1148 ms, lane input over R32F -0.0525 ms. "Latch-free" is scoped to the depth law in the header
+and in section 32.4 (m00 / m11 / m20 / m21 remain latched); section 32.2 points at 32.4 for the z
+scale.

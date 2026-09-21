@@ -34,6 +34,46 @@ double forward_dz(){const double q=forwardSpeed/(-double(forwardM20)*EdgeScene::
 void forward_oracle(double x,double y,float depth,double& dx,double& dy){constexpr double S=EdgeScene::S;const double nx=2*(x+.5)/S-1,ny=1-2*(y+.5)/S,z=forward_view_z(depth),zp=z+forward_dz();
     const double vx=(nx-double(forwardM20))*z,vy=ny*z,px_=vx/zp+double(forwardM20),py_=vy/zp;dx=(px_-nx)*S*.5;dy=-(py_-ny)*S*.5;}
 double forward_velocity(float depth){double dx,dy;forward_oracle(EdgeScene::S*.5-.5,EdgeScene::S*.5-.5,depth,dx,dy);return -dx;} // content speed along +x
+//
+// Scene "flight" (section 32.4; thinFlight): the general form of "forward" for the mask-only cases. The camera yaws by
+// flight.yaw rad/frame about world Y while advancing (dz) and sliding (dx) in world units per frame; projection m00 = m11 = 1,
+// m20 = flight.m20. The two row bands carry flight.rowDepth and the routed velocities flight.rowV (the analytic camera path at
+// the window centre unless a case claims otherwise). The TRUE depth law of the scene is forwardM22 / forwardM32; the
+// CameraStates handed to the production helpers carry flight.latchM22 / latchM32 (a wrong latch = another view's near plane).
+// flight.lane: the pass receives an A32B32G32R32F current depth (r = g = device depth, b = a = view z from the true law, -1
+// on the sentinel), as the four-channel sun-shadow lane supplies it; flight.laneHole: columns x < laneHole carry b = -1 on
+// valid depth as well (a MIXED frame: the mask must keep those pixels on the far plane, never on the c8 law). flight.withhold: neither c8 nor c9 (rotation-only path).
+// flight_mask() is the CPU oracle of the published gates (b camera, a screen) from the last frame's depth and motion targets:
+// full double unprojection / reprojection with the exact inverse rotation, the shader's max(w, 1e-6) clamp, 8-bit openness,
+// 17x17 minimum, 11x11 FRAGMENTED maximum, clamped addressing.
+struct Flight{double yaw=0,dz=0,dx=0;float m20=0;double pos[3]={1234,-654,5000};float latchM22=forwardM22,latchM32=forwardM32;bool lane=false,withhold=false;int laneHole=0;float rowDepth[2]={lineDepth,forwardDepth2};double rowV[2][2]={{0,0},{0,0}};};
+bool thinFlight=false;Flight flight;
+struct FlightLane{Com<IDirect3DTexture9> texture;Com<IDirect3DSurface9> surface;Com<IDirect3DPixelShader9> convert;};FlightLane* flightLane=nullptr;
+x3m::renderer::CameraState flight_camera(double n){x3m::renderer::CameraState c;c.valid=true;c.m00=c.m11=1;c.m20=flight.m20;c.m22=flight.latchM22;c.m32=flight.latchM32;const double a=flight.yaw*n,co=std::cos(a),si=std::sin(a);
+    const double R[9]={co,0,si,0,1,0,-si,0,co},p[3]={flight.pos[0]+flight.dx*n,flight.pos[1],flight.pos[2]+flight.dz*n};for(unsigned i=0;i<9;++i)c.r[i]=float(R[i]);
+    for(unsigned j=0;j<3;++j){double t=0;for(unsigned i=0;i<3;++i)t-=p[i]*R[i*3+j];c.t[j]=float(t);}return c;}
+// Previous clip (X, Y, W) over the current view z of NDC (nx, ny): at view z > 0, or at infinity (z <= 0: the sentinel).
+void flight_previous(const x3m::renderer::CameraState& now,const x3m::renderer::CameraState& before,double nx,double ny,double z,double out[3]){
+    const double m[9]={now.r[0],now.r[1],now.r[2],now.r[3],now.r[4],now.r[5],now.r[6],now.r[7],now.r[8]},det=m[0]*(m[4]*m[8]-m[5]*m[7])-m[1]*(m[3]*m[8]-m[5]*m[6])+m[2]*(m[3]*m[7]-m[4]*m[6]);
+    const double inv[9]={(m[4]*m[8]-m[5]*m[7])/det,(m[2]*m[7]-m[1]*m[8])/det,(m[1]*m[5]-m[2]*m[4])/det,(m[5]*m[6]-m[3]*m[8])/det,(m[0]*m[8]-m[2]*m[6])/det,(m[2]*m[3]-m[0]*m[5])/det,(m[3]*m[7]-m[4]*m[6])/det,(m[1]*m[6]-m[0]*m[7])/det,(m[0]*m[4]-m[1]*m[3])/det};
+    const bool finite=z>0;const double scale=finite?z:1,dir[3]={(nx-double(now.m20))/double(now.m00)*scale,(ny-double(now.m21))/double(now.m11)*scale,scale};double world[3],P[3];
+    for(unsigned k=0;k<3;++k){world[k]=0;for(unsigned i=0;i<3;++i)world[k]+=(dir[i]-(finite?double(now.t[i]):0.))*inv[i*3+k];}
+    for(unsigned j=0;j<3;++j){P[j]=finite?double(before.t[j]):0.;for(unsigned k=0;k<3;++k)P[j]+=world[k]*double(before.r[k*3+j]);}
+    out[0]=(P[0]*double(before.m00)+P[2]*double(before.m20))/scale;out[1]=(P[1]*double(before.m11)+P[2]*double(before.m21))/scale;out[2]=P[2]/scale;}
+// Content velocity (px/frame, +x right / +y down) of static geometry at `depth` at the window centre, frames 30 -> 31.
+void flight_velocity(float depth,double v[2]){constexpr double S=EdgeScene::S;double c[3];flight_previous(flight_camera(31),flight_camera(30),0,0,forward_view_z(depth),c);v[0]=-(c[0]/c[2])*S*.5;v[1]=(c[1]/c[2])*S*.5;}
+struct FlightMask{std::vector<float> camera,screen;double residual=0;}; // residual: the largest |routed - camera path| over routed valid-depth pixels, px
+FlightMask flight_mask(const std::vector<float>& depth,const std::vector<float>& motion,unsigned n){constexpr int S=int(EdgeScene::S);const unsigned index=n%latticePhases+1;const double jx=halton(index,2)-.5,jy=halton(index,3)-.5;
+    const auto now=flight_camera(n),before=flight_camera(double(n)-1);std::vector<float> cam(S*S),scr(S*S);FlightMask out;out.camera.resize(S*S);out.screen.resize(S*S);
+    auto open=[&](double speed){const double o=1-(speed-double(farLo))/(double(farHi)-double(farLo));return o==o?quantise8(o):0.f;};
+    for(int y=0;y<S;++y)for(int x=0;x<S;++x){const float d=px(depth,UINT(x),UINT(y));const bool valid=d>=0&&d<=1,path=valid||d<=-.5f,routed=px(motion,UINT(x),UINT(y),3)==1;const double u=(x+.5)/S,v=(y+.5)/S;double cu=u,cv=v;
+        if(path){double c[3];flight_previous(now,before,2*(x-jx)/S-1,1-2*(y-jy)/S,valid&&!(flight.lane&&x<flight.laneHole)?forward_view_z(d):0,c);const double w=std::max(c[2],1e-6);cu=c[0]/w*.5+.5+(.5+jx)/S;cv=-c[1]/w*.5+.5+(.5+jy)/S;}
+        const double pu=routed?double(px(motion,UINT(x),UINT(y),0))+jx/S:cu,pv=routed?double(px(motion,UINT(x),UINT(y),1))+jy/S:cv,relative=std::hypot((pu-cu)*S,(pv-cv)*S);
+        scr[y*S+x]=open(std::hypot((pu-u)*S,(pv-v)*S));cam[y*S+x]=path?std::max(scr[y*S+x],routed?open(relative):1.f):scr[y*S+x];if(routed&&valid&&!(flight.lane&&x<flight.laneHole))out.residual=std::max(out.residual,relative);}
+    for(int y=0;y<S;++y)for(int x=0;x<S;++x){bool any=false;float c=1,q=1;for(int dy=-8;dy<=8;++dy)for(int dx=-8;dx<=8;++dx){const int tx=std::min(std::max(x+dx,0),S-1),ty=std::min(std::max(y+dy,0),S-1);
+            any=any||(std::abs(dx)<=5&&std::abs(dy)<=5&&fragmented(depth,tx,ty));c=std::min(c,cam[ty*S+tx]);q=std::min(q,scr[ty*S+tx]);}
+        out.camera[y*S+x]=any?quantise8(c):0;out.screen[y*S+x]=any?quantise8(q):0;}
+    return out;}
 constexpr unsigned thinFrames=128,thinAnalysed=32;
 double thinDrift=0;unsigned thinMoveFrom=~0u;
 double thinPanX=0,thinPatchV=0;unsigned thinPatchFrom=~0u,thinInjectFrame=~0u;constexpr float patchDepth=.5f,patchValue=4;
@@ -43,6 +83,7 @@ double thinPanX=0,thinPatchV=0;unsigned thinPatchFrom=~0u,thinInjectFrame=~0u;co
 bool thinBadTap=false;double thinBadMotion=0;float thinK=0;
 constexpr int injectRect[4]={20,9,26,15};
 std::vector<EdgeObject> thin_objects(unsigned n){std::vector<EdgeObject> o;constexpr double S=EdgeScene::S;
+    if(thinFlight){for(double top=2.31;top<30;top+=2.37)if(top>=2&&!(top<16&&top+.8>15.5)){const bool lower=top>=16;o.push_back({0,top,S,top+.8,1,flight.rowDepth[lower],flight.rowV[lower][0],flight.rowV[lower][1]});}return o;}
     if(thinForward){const double v[2]={forward_velocity(lineDepth),forward_velocity(forwardDepth2)};
         for(double top=2.31;top<30;top+=2.37)if(top>=2&&!(top<16&&top+.8>15.5)){const bool lower=top>=16;o.push_back({0,top,S,top+.8,1,lower?forwardDepth2:lineDepth,v[lower],0});}
         if(thinForwardMover)o.push_back({6,9,8,11,1,lineDepth,v[0]+2,0});
@@ -69,7 +110,7 @@ struct BoxCreationFault {
 // failBoxes: the first camera-gate run (frame 1; frame 0 runs the screen gate so the histories exist) meets a box-target
 // creation failure; the pass falls back to the screen gate for the session.
 FarRun thin_sequence(EdgeScene& s,const DWORD* resolver,const LineConfig& c,unsigned frames,bool failMasks=false,bool failBoxes=false){
-    TemporalPass pass;check("thin initialize",pass.initialize(s.d,nullptr,resolver));const bool on=c.thinW>0||c.farW>0;constexpr UINT S=EdgeScene::S;
+    TemporalPass pass;check("thin initialize",thinFlight&&flight.lane?pass.initialize(s.d,nullptr,resolver,nullptr,nullptr,reinterpret_cast<const DWORD*>(x3m::renderer::hdr_writeback_program())):pass.initialize(s.d,nullptr,resolver));const bool on=c.thinW>0||c.farW>0;constexpr UINT S=EdgeScene::S;
     if(on){check("thin configure",pass.configure_far());require(pass.far_available(),"thin-region program created on this device");if(c.camera)require(pass.camera_gate_available(),"camera-gate programs created on this device");}
     const FlickerConfig f{c.name,0,0,.1f,.5f,false,false,.9f};FarRun run;bool sequence=true;
     for(unsigned n=0;n<frames;++n){const unsigned index=n%latticePhases+1;const double jx=halton(index,2)-.5,jy=halton(index,3)-.5;
@@ -79,6 +120,11 @@ FarRun thin_sequence(EdgeScene& s,const DWORD* resolver,const LineConfig& c,unsi
         if(thinForward){const auto now=forward_camera(-5000-forward_dz()*n),before=forward_camera(-5000-forward_dz()*(double(n)-1)); // view z of a world point falls by dz per frame: t_z = -camera z
             require(x3m::renderer::camera_far_plane_reprojection(now,before,in.clip_to_previous),"forward flight: far-plane matrix");
             if(thinForwardParallax)require(x3m::renderer::camera_depth_parallax(now,before,in.camera_depth_parallax),"forward flight: depth parallax term");}
+        if(thinFlight){const auto now=flight_camera(n),before=flight_camera(double(n)-1);require(x3m::renderer::camera_far_plane_reprojection(now,before,in.clip_to_previous),"flight: far-plane matrix");
+            if(!flight.withhold){require(x3m::renderer::camera_depth_parallax(now,before,in.camera_depth_parallax),"flight: depth parallax term");require(x3m::renderer::camera_lane_parallax(now,before,in.camera_lane_parallax),"flight: lane parallax term");}
+            if(flight.lane){require(flightLane!=nullptr,"flight: lane target");s.target(flightLane->surface.p);check("flight lane Begin",s.d->BeginScene());check("flight lane PS",s.d->SetPixelShader(flightLane->convert.p));s.constant(forwardM22,forwardM32,float(flight.laneHole)/S,0);
+                check("flight lane source",s.d->SetTexture(0,s.depth32.p));check("flight lane min",s.d->SetSamplerState(0,D3DSAMP_MINFILTER,D3DTEXF_POINT));check("flight lane mag",s.d->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_POINT));
+                s.quad(0,0,S,S,0,0);check("flight lane End",s.d->EndScene());check("flight lane unbind",s.d->SetTexture(0,nullptr));s.target(s.colorSurface.p);in.current_depth=flightLane->texture.p;}}
         Output out;check("thin Begin resolve",s.d->BeginScene());
         if(failMasks&&n==0){MaskCreationFault fault(s.d);check(c.name,pass.run(in,&out));}
         else if(failBoxes&&n==1){BoxCreationFault fault(s.d);check(c.name,pass.run(in,&out));require(BoxCreationFault::refused>0&&pass.camera_gate_failed(),"box-target creation fault reached; camera gate fell back");}
@@ -99,7 +145,7 @@ void thin_region_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolv
     std::puts("THIN_REGION_CASES");EdgeScene s(d,compiler);constexpr UINT S=EdgeScene::S;
     struct Defer{Defer(){deferMetrics=true;deferredFailures.clear();}~Defer(){deferMetrics=false;}} defer;
     struct Hooks{Hooks(){line_velocity=thin_velocity;line_velocity_x=thin_velocity_x;farD0=.98f;farInv=200;} // far gate for the combined config: farw 1 on the shards (0.99), 0 on the square (0.98)
-        ~Hooks(){line_velocity=line_velocity_default;line_velocity_x=line_velocity_x_default;thinDrift=0;thinMoveFrom=~0u;thinBadTap=false;thinBadMotion=0;thinK=0;oracleK=0;thinForward=thinForwardMover=false;thinForwardParallax=true;thinPanX=cameraPanX=thinPatchV=0;thinPatchFrom=thinInjectFrame=oracleInjectFrame=~0u;farD0=farInv=0;}} hooks;
+        ~Hooks(){line_velocity=line_velocity_default;line_velocity_x=line_velocity_x_default;thinDrift=0;thinMoveFrom=~0u;thinBadTap=false;thinBadMotion=0;thinK=0;oracleK=0;thinFlight=false;flight=Flight{};flightLane=nullptr;thinForward=thinForwardMover=false;thinForwardParallax=true;thinPanX=cameraPanX=thinPatchV=0;thinPatchFrom=thinInjectFrame=oracleInjectFrame=~0u;farD0=farInv=0;}} hooks;
     const LineConfig base{"thin-base",false,0,0,0},on97{"thin-region-0.97",false,0,0,0,1,0,0,.97f,1},on985{"thin-region-0.985",false,0,0,0,1,0,0,.985f,1},half{"thin-region-0.97-relax-0.5",false,0,0,0,1,0,0,.97f,.5f},weightOnly{"thin-region-0.97-relax-0",false,0,0,0,1,0,0,.97f,0},withFar{"thin-region-0.97+far-weight-0.985",false,0,0,0,1,.985f,0,.97f,1},
         camera97{"thin-region-0.97-camera-gate",false,0,0,0,1,0,0,.97f,1,true};
     // ---- refusals, hostile state, failed draw, Reset ----
@@ -250,6 +296,34 @@ void thin_region_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolv
         ++numeric_checks;require(cameraRms<=.6*screenRms&&cameraP2p<=.7*screenP2p,"forward flight: the camera gate cuts the shard ripple (rms <= 0.6 x, peak-to-peak <= 0.7 x the screen gate)");
         ++numeric_checks;require(nearMover==0&&farOpen>=.9,"forward flight: a routed object moving against the static geometry closes the gate within 8 px of itself and nowhere else");
         thinForward=false;}
+    // ---- general flight (section 32.4): rotation with translation, a wrong m22 / m32 latch, near geometry and the w clamp; R32F law and four-channel lane ----
+    {thinFlight=true;FlightLane lane;flightLane=&lane;check("flight lane texture",d->CreateTexture(S,S,1,D3DUSAGE_RENDERTARGET,D3DFMT_A32B32G32R32F,D3DPOOL_DEFAULT,&lane.texture.p,nullptr));check("flight lane surface",lane.texture->GetSurfaceLevel(0,&lane.surface.p));
+        {Com<ID3DXBuffer> code;compile(compiler,"sampler2D source:register(s0);float4 law:register(c0);float4 main(float2 uv:TEXCOORD0):COLOR0{float d=tex2D(source,uv).r;float w=-1;if(d>=0&&d<=1&&uv.x>=law.z)w=law.y/(d-law.x);return float4(d,d,w,w);}","ps_3_0",&code.p);check("flight lane convert",d->CreatePixelShader(static_cast<DWORD*>(code->GetBufferPointer()),&lane.convert.p));}
+        const float savedLo=farLo,savedHi=farHi;constexpr double wrongNear=106;const float wrongM22=float(2e6/(2e6-wrongNear)),wrongM32=float(-2e6/(2e6-wrongNear)*wrongNear); // another view's near plane: zn = 106 (the engine's FOV arm), zf = 2e6
+        struct Case{const char* name;Flight f;float lo,hi;bool claim;double claimed[2];int expect;}; // expect: 1 open on both bands, 0 closed everywhere, -1 graded (near)
+        std::vector<Case> cases;
+        {Flight f;f.yaw=-2.5e-6;f.dz=forward_dz();f.m20=forwardM20;cases.push_back({"yaw+forward",f,savedLo,savedHi,false,{0,0},1});f.lane=true;cases.push_back({"yaw+forward-lane",f,savedLo,savedHi,false,{0,0},1});f.lane=false;f.withhold=true;cases.push_back({"yaw+forward-withheld",f,savedLo,savedHi,false,{0,0},0});}
+        {Flight f;f.dz=forward_dz();f.m20=forwardM20;f.latchM22=wrongM22;f.latchM32=wrongM32;cases.push_back({"wrong-latch",f,savedLo,savedHi,false,{0,0},0});f.lane=true;cases.push_back({"wrong-latch-lane",f,savedLo,savedHi,false,{0,0},1});f.laneHole=6;cases.push_back({"wrong-latch-lane-mixed",f,savedLo,savedHi,false,{0,0},1});}
+        {Flight f;f.dz=12;f.dx=20;f.rowDepth[0]=f.rowDepth[1]=.5f;cases.push_back({"near",f,2,10,false,{0,0},-1});f.lane=true;cases.push_back({"near-lane",f,2,10,false,{0,0},-1});f.lane=false;f.withhold=true;cases.push_back({"near-withheld",f,2,10,false,{0,0},-1});}
+        {Flight f;f.dz=-12.5;f.rowDepth[0]=f.rowDepth[1]=.5f;cases.push_back({"behind",f,2,10,true,{12,0},0});f.lane=true;cases.push_back({"behind-lane",f,2,10,true,{12,0},0});}
+        double nearMean[3]={0,0,0};unsigned nearIndex=0;
+        for(const auto& c:cases){flight=c.f;farLo=c.lo;farHi=c.hi;for(unsigned band=0;band<2;++band){if(c.claim){flight.rowV[band][0]=c.claimed[0];flight.rowV[band][1]=c.claimed[1];}else flight_velocity(flight.rowDepth[band],flight.rowV[band]);}
+            const auto run=thin_sequence(s,resolver,camera97,32);const auto motion=s.read(s.motion.p);const auto model=flight_mask(run.depth.back(),motion,31);
+            const bool modelled=!flight.withhold&&(flight.lane||flight.latchM32==forwardM32); // the oracle is the true camera path: not what a withheld term or a wrong latch on the R32F law computes
+            double error=0,screenError=0,share[2]={0,0},lo=1,hi=0,mean=0,holeMax=0;unsigned window[2]={0,0};
+            for(UINT y=5;y<27;++y)for(int x=0;x<flight.laneHole+8;++x)holeMax=std::max(holeMax,double(px(run.mask[0],UINT(x),y,2)));
+            for(UINT y=3;y+3<S;++y)for(UINT x=3;x+3<S;++x){const double b=px(run.mask[0],x,y,2),a=px(run.mask[0],x,y,3);if(modelled)error=std::max(error,std::fabs(b-double(model.camera[y*S+x])));screenError=std::max(screenError,std::fabs(a-double(model.screen[y*S+x])));
+                if(x>=18&&x<28&&y>=5&&y<27&&!(y>=14&&y<18)){const unsigned band=y>=18;++window[band];share[band]+=b>0;lo=std::min(lo,b);hi=std::max(hi,b);mean+=b;}}
+            share[0]/=window[0];share[1]/=window[1];mean/=window[0]+window[1];
+            std::printf("THIN_REGION_CAMERA_FLIGHT case=%s lane=%u withheld=%u lo=%.2f hi=%.2f speed_near=%.4f,%.4f speed_far=%.4f,%.4f routed_residual_px=%.6f camera_share_near=%.4f camera_share_far=%.4f window_min=%.4f window_max=%.4f window_mean=%.4f modelled=%u oracle_error=%.6f screen_oracle_error=%.6f lane_hole_columns=%d hole_reach_max=%.4f\n",
+                c.name,unsigned(flight.lane),unsigned(flight.withhold),double(c.lo),double(c.hi),flight.rowV[0][0],flight.rowV[0][1],flight.rowV[1][0],flight.rowV[1][1],model.residual,share[0],share[1],lo,hi,mean,unsigned(modelled),error,screenError,flight.laneHole,holeMax);
+            if(flight.laneHole>0){++numeric_checks;require(holeMax==0,"mixed frame: valid depth without a lane z stays on the far plane (closed within 8 px of the hole), whatever the latch");}
+            ++numeric_checks;require(error<=2./255&&screenError<=2./255,"flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes");
+            if(c.expect==1){++numeric_checks;require(share[0]>=.99&&share[1]>=.99&&lo>=.9&&model.residual<.05,"flight: the camera gate is open on the static rows of both bands (residual < 0.05 px)");}
+            if(c.expect==0){++numeric_checks;require(hi==0,"flight: the camera gate is closed on the window");}
+            if(c.expect==-1&&nearIndex<3)nearMean[nearIndex++]=mean;}
+        ++numeric_checks;require(nearMean[0]>.05&&nearMean[0]<.95&&std::fabs(nearMean[0]-nearMean[1])<=2./255&&nearMean[2]<nearMean[0]-.05,"near geometry (c8 term O(1)): a graded gate, the same through the law and the lane, and lower without the term");
+        farLo=savedLo;farHi=savedHi;flight=Flight{};flightLane=nullptr;thinFlight=false;}
     // ---- non-finite routed motion on the static arm (a routed 2x2 object at (6..7, 13..14)) ----
     // 1e30 px/frame: the speed overflows inside the mask program. The camera mask carries openness (saturate(1 - inf) = 0) and must
     // close both gates within 8 px of every covered pixel, as the plain mask closes its one; the output equals the screen gate's bit

@@ -480,6 +480,9 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
         float parallax_constants[4]={in.camera_depth_parallax[0],in.camera_depth_parallax[1],in.camera_depth_parallax[2],in.camera_depth_parallax[3]};
         if(!std::isfinite(parallax_constants[0])||!std::isfinite(parallax_constants[1])||!std::isfinite(parallax_constants[2])||!std::isfinite(parallax_constants[3]))
             parallax_constants[0]=parallax_constants[1]=parallax_constants[2]=parallax_constants[3]=0.f;
+        float lane_constants[4]={in.camera_lane_parallax[0],in.camera_lane_parallax[1],in.camera_lane_parallax[2],1.f};
+        const bool lane=camera&&in.current_depth&&depth_format==D3DFMT_A32B32G32R32F&&in.camera_lane_parallax[3]==1.f&&std::isfinite(lane_constants[0])&&std::isfinite(lane_constants[1])&&std::isfinite(lane_constants[2]);
+        if(!lane)lane_constants[0]=lane_constants[1]=lane_constants[2]=lane_constants[3]=0.f;
         // Line filter / thin region: the per-pixel tests, then the dilations; far stabiliser alone: one draw (mode 2) into the second target.
         // Thin region: tests -> [0], maxima along x -> [1], along y and composition -> [0]. Line filter without it: tests -> [0],
         // 3x3 maximum and composition -> [1] (two draws, as before the thin region existed). Far stabiliser alone: mode 2 -> [1].
@@ -494,7 +497,8 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
                step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,5,far_constants,1))&&
                step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,6,thin_constants,1))&&
                step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,7,constants.options,1))&&
-               (!camera||step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,8,parallax_constants,1)))&&
+               (!camera||(step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,8,parallax_constants,1))&&step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,9,lane_constants,1))&&
+                          step(call<SetTextureFn>(SetTexture)(d,5,lane&&pass==0?in.current_depth:nullptr))))&& // s0..s6 are point / clamp already; the resolve rebinds s5
                step(call<SetTextureFn>(SetTexture)(d,4,in.motion_policy==MotionPolicy::PerPixel?in.motion:nullptr))&&
                step(call<SetTextureFn>(SetTexture)(d,1,source)))hr=quad(in.width,in.height);
         }

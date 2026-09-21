@@ -41,7 +41,7 @@ CHECK embedded_thin_line within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_age_line dwords=2016 instruction_slots=509 device_limit=512 headroom=3 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_age_line within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_line_mask_camera dwords=920 instruction_slots=226 device_limit=512 headroom=286 within_guaranteed_512=1
+RESOLVE_BUDGET variant=embedded_line_mask_camera dwords=974 instruction_slots=243 device_limit=512 headroom=269 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_line_mask_camera within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_far_camera dwords=2023 instruction_slots=508 device_limit=512 headroom=4 within_guaranteed_512=1
@@ -2145,8 +2145,9 @@ CHECK line filter lowers the roping at a bounded line-peak cost PASS
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
-LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.6240 current_filter_ms=0.6157 line_filter_ms=0.8759 far_stabiliser_ms=0.7927 thin_region_ms=1.4150 taps_delta_ms=-0.0082 line_delta_ms=0.2519 far_delta_ms=0.1688 thin_region_delta_ms=0.7911 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.4150 no_region_camera_ms=1.5706 no_region_camera_delta_ms=0.1556 fragmented_pan_thin_ms=1.3799 fragmented_pan_camera_ms=1.9558 fragmented_pan_camera_delta_ms=0.5758 scope=cpu_wall_with_event_query_drain
+LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.6406 current_filter_ms=0.6138 line_filter_ms=0.9060 far_stabiliser_ms=0.8327 thin_region_ms=1.4567 taps_delta_ms=-0.0268 line_delta_ms=0.2653 far_delta_ms=0.1920 thin_region_delta_ms=0.8161 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.4567 no_region_camera_ms=1.5953 no_region_camera_delta_ms=0.1386 fragmented_pan_thin_ms=1.3938 fragmented_pan_camera_ms=1.9869 fragmented_pan_camera_delta_ms=0.5930 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.9869 lane_input_law_ms=1.9344 lane_input_lane_ms=2.0492 lane_fetch_delta_ms=0.1148 lane_input_over_r32f_ms=-0.0525 scope=cpu_wall_with_event_query_drain
 LINE_BASE numerical=255 state_restorations=15
 FAR_CASES
 FAR_GATE ok=1 d0=0.99985647 inv=17734.900 expected_d0=0.99985652 expected_inv=17749.280
@@ -3366,6 +3367,1159 @@ CHECK forward flight: the depth-aware camera gate is open on the static shards a
 CHECK forward flight: the camera gate cuts the shard ripple (rms <= 0.6 x, peak-to-peak <= 0.7 x the screen gate) PASS
 CHECK forward flight: a routed object moving against the static geometry closes the gate within 8 px of itself and nowhere else PASS
 CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_CAMERA_FLIGHT case=yaw+forward lane=0 withheld=0 lo=0.03 hi=0.25 speed_near=0.9990,0.0000 speed_far=0.6996,0.0000 routed_residual_px=0.015302 camera_share_near=1.0000 camera_share_far=1.0000 window_min=1.0000 window_max=1.0000 window_mean=1.0000 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=1.0000
+CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
+CHECK flight: the camera gate is open on the static rows of both bands (residual < 0.05 px) PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_CAMERA_FLIGHT case=yaw+forward-lane lane=1 withheld=0 lo=0.03 hi=0.25 speed_near=0.9990,0.0000 speed_far=0.6996,0.0000 routed_residual_px=0.015302 camera_share_near=1.0000 camera_share_far=1.0000 window_min=1.0000 window_max=1.0000 window_mean=1.0000 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=1.0000
+CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
+CHECK flight: the camera gate is open on the static rows of both bands (residual < 0.05 px) PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_CAMERA_FLIGHT case=yaw+forward-withheld lane=0 withheld=1 lo=0.03 hi=0.25 speed_near=0.9990,0.0000 speed_far=0.6996,0.0000 routed_residual_px=0.015302 camera_share_near=0.0000 camera_share_far=0.0000 window_min=0.0000 window_max=0.0000 window_mean=0.0000 modelled=0 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.0000
+CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
+CHECK flight: the camera gate is closed on the window PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_CAMERA_FLIGHT case=wrong-latch lane=0 withheld=0 lo=0.03 hi=0.25 speed_near=0.6002,0.0000 speed_far=0.3003,0.0000 routed_residual_px=0.007234 camera_share_near=0.0000 camera_share_far=0.0000 window_min=0.0000 window_max=0.0000 window_mean=0.0000 modelled=0 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.0000
+CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
+CHECK flight: the camera gate is closed on the window PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_CAMERA_FLIGHT case=wrong-latch-lane lane=1 withheld=0 lo=0.03 hi=0.25 speed_near=0.6002,0.0000 speed_far=0.3003,0.0000 routed_residual_px=0.007234 camera_share_near=1.0000 camera_share_far=1.0000 window_min=1.0000 window_max=1.0000 window_mean=1.0000 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=1.0000
+CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
+CHECK flight: the camera gate is open on the static rows of both bands (residual < 0.05 px) PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_CAMERA_FLIGHT case=wrong-latch-lane-mixed lane=1 withheld=0 lo=0.03 hi=0.25 speed_near=0.6002,0.0000 speed_far=0.3003,0.0000 routed_residual_px=0.007196 camera_share_near=1.0000 camera_share_far=1.0000 window_min=1.0000 window_max=1.0000 window_mean=1.0000 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=6 hole_reach_max=0.0000
+CHECK mixed frame: valid depth without a lane z stays on the far plane (closed within 8 px of the hole), whatever the latch PASS
+CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
+CHECK flight: the camera gate is open on the static rows of both bands (residual < 0.05 px) PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_CAMERA_FLIGHT case=near lane=0 withheld=0 lo=2.00 hi=10.00 speed_near=-13.3334,0.0000 speed_far=-13.3334,0.0000 routed_residual_px=10.015397 camera_share_near=1.0000 camera_share_far=1.0000 window_min=0.0039 window_max=0.3647 window_mean=0.1173 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.1686
+CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_CAMERA_FLIGHT case=near-lane lane=1 withheld=0 lo=2.00 hi=10.00 speed_near=-13.3334,0.0000 speed_far=-13.3334,0.0000 routed_residual_px=10.015397 camera_share_near=1.0000 camera_share_far=1.0000 window_min=0.0039 window_max=0.3647 window_mean=0.1173 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.1686
+CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_CAMERA_FLIGHT case=near-withheld lane=0 withheld=1 lo=2.00 hi=10.00 speed_near=-13.3334,0.0000 speed_far=-13.3334,0.0000 routed_residual_px=10.015397 camera_share_near=0.0000 camera_share_far=0.0000 window_min=0.0000 window_max=0.0000 window_mean=0.0000 modelled=0 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.0000
+CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_CAMERA_FLIGHT case=behind lane=0 withheld=0 lo=2.00 hi=10.00 speed_near=12.0000,0.0000 speed_far=12.0000,0.0000 routed_residual_px=20030735.227262 camera_share_near=0.0000 camera_share_far=0.0000 window_min=0.0000 window_max=0.0000 window_mean=0.0000 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.0000
+CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
+CHECK flight: the camera gate is closed on the window PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_CAMERA_FLIGHT case=behind-lane lane=1 withheld=0 lo=2.00 hi=10.00 speed_near=12.0000,0.0000 speed_far=12.0000,0.0000 routed_residual_px=20030735.227262 camera_share_near=0.0000 camera_share_far=0.0000 window_min=0.0000 window_max=0.0000 window_mean=0.0000 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.0000
+CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
+CHECK flight: the camera gate is closed on the window PASS
+CHECK near geometry (c8 term O(1)): a graded gate, the same through the law and the lane, and lower without the term PASS
+CHECK thin-region program created on this device PASS
 CHECK thin-region history follows the sequence PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
@@ -3383,4 +4537,4 @@ CHECK thin-region history follows the sequence PASS
 CHECK thin-region program created on this device PASS
 CHECK thin-region history follows the sequence PASS
 CHECK mask-target creation failure under the thin region: plain resolve, history kept PASS
-RESULT PASS numerical=501 state_restorations=21 lattice=1
+RESULT PASS numerical=522 state_restorations=21 lattice=1

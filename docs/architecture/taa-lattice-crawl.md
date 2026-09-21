@@ -1943,7 +1943,8 @@ captured depth, reprojected with the translation scaled x1 / x2 / x6 / x10, move
 corrected residual's translation-proportional part is a *tool* calibration error, not physics: fitting
 one multiplicative view-z scale per frame drives the forward-burst residual from 0.0318 to **0.0097 px
 at scale 0.979** (2.1 % z, inside the +-4 % that camera-state-and-frame-routine.md gives for zf
-recovered from m22), while the roll burst is insensitive to it (0.0257 -> 0.0252 at the grid edge).
+recovered from m22), while the roll burst is insensitive to it (0.0257 -> 0.0252 at the grid edge). *Superseded by section 32.4:* the scale was the replay's transpose acting on |t| ~ 1.2e5;
+with the exact inverse of the float rotation the best fit is 1.000 and the forward residual 0.0012 px.
 A shader holding the engine's live m22/m32 carries no such term, so its residual under SETA x N stays
 at the 0.01-0.02 px floor plus the 0.006 px depth term - the gate stays open (*inference* from the two
 measured bursts and the depth-step measurement; SETA itself was not flown). Even taking the tool's
@@ -2026,3 +2027,81 @@ window 10 px away open. Existing camera cases are unchanged to the digit (pan x0
 at-rest bit-identities, overflow closes, stale patch 0.727 / 0.623). Pass time, 1280x768:
 camera-minus-screen delta 0.164 -> 0.156 ms (no region) and 0.592 -> 0.576 ms (fragmented pan),
 i.e. no measurable cost for the three extra instructions.
+
+### 32.4 Depth-latch-free view z from the four-channel lane, general-flight fixture, replay inverse (2026-09-21)
+
+Follow-up to the review of 32.3. Not installed.
+
+**Depth-latch-free term.** c8 needs m22 / m32, which the engine keeps as per-submission scratch: a latch
+taken under another view's near plane mis-scales the term by zn'/zn and `m22 > 1 && m32 < 0` cannot
+see it (benign: the relative residual grows and `min(screen, relative)` is the screen gate again, but
+the feature is silently off). RT2 of the four-channel lane already carries the linear view z (clip w)
+in `.b` / `.a` (`current_depth_ps.hlsl`), and previous / z = far_plane + D / w needs no depth law.
+`camera_lane_parallax()` returns `(DX, DY, DW, 1)`; `TemporalPass` uploads it as **c9** and binds
+`FrameInputs::current_depth` at **s5** of the tests draw only when that texture is A32B32G32R32F
+(c9 = 0 and s5 unbound otherwise). With `c9.w > 0.5` a valid-depth pixel takes `c9.xyz / .b` when
+`.b > 0` and stays on the far plane otherwise; the c8 law of 32.3 is consulted only with c9.w = 0;
+the sentinel is the far plane in every mode. The form is free of the DEPTH latch only: D and c0..c3
+still use the latched m00 / m11 / m20 / m21, so a latch taken from a view with a different FOV is
+not covered by it (nor by 32.3, nor by the far-plane matrix of 32.1). **Availability in the route:**
+RT2 is A32B32G32R32F exactly when `sun_lane_active_` (`ensure_target`): `--sun-shadow-lane` requested,
+the lane qualified on the device, the main depth format qualified and the lane not failed. HDR and
+the motion RT mode do not enter. The Run 59 command line carries `--sun-shadow-lane`, so the user's
+configuration takes the lane path; without the flag, on a device that does not qualify, or after a
+lane failure RT2 is R32F and the c8 law with the latched m22 / m32 is the fallback, per frame, with
+no history cut (the term only feeds the gate). G32R32F inputs carry no w and use c8.
+
+**Mixed frames (policy).** The composition takes the 17x17 minimum of openness, so one valid-depth
+pixel served by a wrong law would close a window the lane opens. With the lane bound the law is
+therefore never used: a valid depth whose `.b` is not positive (none is expected: the producer
+writes `.r` and `.b` in one draw and the fill is -1 in both) stays on the far-plane path. That closes
+the gate within 8 px of such a pixel while the camera translates, deterministically and whatever the
+latch, instead of depending on it.
+
+**Unverified, low confidence.** A routed draw whose clip w is not a view z (a near-unit w, as a
+pre-transformed or screen-space draw would produce) would write `.b` ~ 1 and the lane would read it
+as geometry one unit from the camera: D / 1 is a huge parallax, the relative residual explodes and
+the gate closes around it (the safe direction; never a false open). It is believed unreachable
+because pre-transformed HUD and overlay draws are not routed (no transformed material program, no
+RT2 write), and every routed projection is validated to P[11] = 1 (w = view z). The first flight's
+log cannot show it: nothing logs per-pixel `.b`; only an F8 depth read-back (rgba32f) compared
+against m32 / (r - m22) would.
+
+**Shader.** `temporal_line_mask_camera` 920 -> 974 words, **226 -> 243 slots** (bytecode
+`01111619...`; the first lane form with the per-pixel law fallback was 983 / 245); every other generated header byte-identical, `temporal_line_mask` bytecode
+`a44bfebd...` unchanged (manifest source hash only).
+
+**Fixture** (`THIN_REGION_CAMERA_FLIGHT`, 10 rows, 32 frames each). The published gates (b camera, a
+screen) are compared with a CPU oracle built from the last frame's depth and motion read-backs: double
+unprojection / reprojection with the exact inverse rotation, the shader's `max(w, 1e-6)`, 8-bit
+openness, 17x17 minimum. Oracle error **0 codes** in all seven modelled rows and 0 on the screen
+channel in all ten.
+- *yaw + forward* (2.5e-6 rad/frame against 0.225 units/frame, off-axis crop; static rows 0.999 /
+  0.700 px/frame, routed residual 0.015 px): share 1.00 / 1.00 through the law and through the lane;
+  with the term withheld 0.00.
+- *wrong latch* (CameraState m22 / m32 of zn = 106 while the scene is zn = 6; m00 / m11 / m20 / m21
+  correct: the claim is scoped to the depth law): R32F law **share 0.00** (the reviewer's failure,
+  reproduced), lane **share 1.00 / 1.00**.
+- *wrong latch, mixed frame* (lane bound, columns x < 6 carry `.b` = -1 on valid depth): window
+  share 1.00 / 1.00, gate maximum within 8 px of the hole 0, oracle error 0.
+- *near geometry* (depth 0.5 = view z 12, camera +12 forward and 20 sideways per frame, so
+  c8 * (d - m22) = DW / z = 1 and the previous w is twice the current; gate LO 2 / HI 10 so the radial
+  0.5 px/px field grades the gate): window 0.004 .. 0.365, mean 0.117, identical through law and lane,
+  0 with the term withheld.
+- *behind* (camera 12.5 backward: the pixel was behind the previous camera, w < 0, the clamp decides;
+  routed claim 12 px/frame): closed everywhere in both forms, no NaN-open pixel.
+Existing rows unchanged (forward x0.0923, pan x0.0866, at-rest 3/3). Lattice mode 522 numerical
+checks (501 + 21), 11 flight rows.
+
+**Pass time** (`LINE_TIMING_CAMERA_LANE`, 1280x768, fragmented pan frame, every valid pixel on the
+lane): A32B32G32R32F input with the law 1.934 ms, with the lane term 2.049 ms: **+0.115 ms** for the
+extra fetch; the lane input itself against the R32F input -0.05 ms (noise). CPU wall time with an
+event-query drain, not game FPS.
+
+**Replay inverse.** `camera_previous_ndc` now inverts the logged float rotation exactly
+(`INVERSE=transpose` keeps the old form). Routed-truth residual p50 / p90 / p99 px, same ROI and frames
+as 32.2: run209 forward **0.0325 / 0.0531 / 0.0606 -> 0.0012 / 0.0023 / 0.0104**, run209 roll
+0.0189 / 0.0375 / 0.0577 -> 0.0011 / 0.0019 / 0.0027. The best-fit view-z scale on the forward burst
+moves from 0.979 to **1.000**: the "2 % z ambiguity" of 32.2 was the transpose acting on
+|t| ~ 1.2e5, not the depth law, so the default m22 / m32 were right in that capture. Numbers:
+`verification/results/lattice-gate-replay-run209-forward.json` key `camera_check_exact_inverse`.

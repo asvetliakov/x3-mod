@@ -58,7 +58,10 @@ def camera_previous_ndc(nx, ny, depth, Rc, Rp, P, conv=1, cam=None, mode='full')
     else:
         z = FAR_P32 / (np.where(valid(depth), depth, 1.) - FAR_P22)
         dv = dv * z[..., None] - np.asarray(cam['tc'], float)
-        world = dv @ Rc if conv == 0 else dv @ Rc.T
+        # The exact inverse of the logged (float) rotation, not its transpose: R^T R - I ~ 1e-7 times |t| ~ 1e6 is ~0.1 unit of
+        # false translation (camera_reprojection.h camera_translation_clip); INVERSE=transpose keeps the old form.
+        Rv = Rc.T if conv == 0 else Rc  # view = world @ Rv
+        world = dv @ (Rv.T if __import__('os').environ.get('INVERSE') == 'transpose' else np.linalg.inv(Rv))
         pv = (world @ Rp.T if conv == 0 else world @ Rp) + np.asarray(cam['tp'], float)
         if cam.get('Pp') is not None: q00, q11, q20, q21 = cam['Pp']
     ok = pv[..., 2] > 1e-6

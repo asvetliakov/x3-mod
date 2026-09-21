@@ -134,6 +134,14 @@ struct FrameInputs {
     // taa-lattice-crawl.md section 32.3). All zero = the far-plane path of
     // clip_to_previous; a non-finite value is uploaded as zero.
     float camera_depth_parallax[4]{};
+    // The latch-free form (camera_lane_parallax(): (DX, DY, DW, 1)), c9 of the
+    // same program: used where current_depth is A32B32G32R32F, per pixel from its
+    // .b (clip w = view z); the pass binds that texture at s5 of the tests draw
+    // and camera_depth_parallax is then not consulted (a valid depth without a
+    // positive .b stays on the far-plane path). Ignored (c9 = 0, s5 unbound) for
+    // any other depth input, w != 1 or a non-finite value: camera_depth_parallax
+    // is the fallback for the frame.
+    float camera_lane_parallax[4]{};
     // Speed gate of far_weight and of the thin region, px/frame: full below far_speed_lo, the base weight from far_speed_hi (0 <= lo < hi <= 64).
     float far_speed_lo = x3::temporal::kFarSpeedLo, far_speed_hi = x3::temporal::kFarSpeedHi;
     // Post-resolve sharpen of the display image (sharpen.h, rcas.hlsl;

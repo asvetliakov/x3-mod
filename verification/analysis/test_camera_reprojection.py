@@ -43,6 +43,8 @@ int main() {
         for (int i = 0; i < 16; ++i) std::printf(" %.9g", d.matrix[i]);
         float k[4] = {9, 9, 9, 9}; const bool parallax = camera_depth_parallax(c, p, k);
         std::printf(" %u %.9g %.9g %.9g %.9g", parallax, k[0], k[1], k[2], k[3]);
+        float lane[4] = {9, 9, 9, 9}; const bool laned = camera_lane_parallax(c, p, lane);
+        std::printf(" %u %.9g %.9g %.9g %.9g", laned, lane[0], lane[1], lane[2], lane[3]);
         std::printf("\n");
     }
 }
@@ -125,7 +127,8 @@ class CameraReprojection(unittest.TestCase):
                     failure_previous=int(values[3]), built=int(values[4]), matrix=values[5:21], oracle_valid=int(values[21]),
                     oracle=(values[22], values[23]), rotation=values[24], policy=int(values[25]), cut=int(values[26]),
                     transform=int(values[27]), reason=int(values[28]), policy_matrix=values[29:45],
-                    parallax_built=int(values[45]), parallax=values[46:50])
+                    parallax_built=int(values[45]), parallax=values[46:50],
+                    lane_built=int(values[50]), lane=values[51:55])
 
     def check_direction(self, pc, bc, pp, bp, x, y, places=6):
         r = self.run_driver(pc, view(bc), pp, view(bp), x, y)
@@ -208,12 +211,15 @@ class CameraReprojection(unittest.TestCase):
         vc, vp = view(bc, position_c), view(bp, position_p)
         r = self.run_driver(pc, vc, pp, vp)
         self.assertEqual((r['built'], r['parallax_built']), (1, 1))
+        r_far = r
         m, k = [f32(v) for v in r['matrix']], [f32(v) for v in r['parallax']]
         m22, m32 = float(f32(pc[10])), float(f32(pc[14]))
         self.assertEqual(float(k[3]), m22)
         vc32, vp32 = [float(f32(v)) for v in vc], [float(f32(v)) for v in vp]  # the engine's own float views are the truth
         inverse = np.linalg.inv(np.array([[vc32[i * 4 + j] for j in range(3)] for i in range(3)]))
-        worst = 0.0
+        lane = [f32(v) for v in r['lane']]
+        self.assertEqual((r['lane_built'], float(lane[3])), (1, 1.0))
+        worst = worst_lane = 0.0
         for z in (200.0, 600.0, 3000.0, 26000.0, 70000.0, 1.5e6):
             d = f32(m22 + m32 / z)
             zd = m32 / (float(d) - m22)  # the view z the stored depth stands for
@@ -229,13 +235,21 @@ class CameraReprojection(unittest.TestCase):
                 X, Y, W = rows[0] + k[0] * s, rows[1] + k[1] * s, rows[2] + k[2] * s
                 self.assertEqual(X.dtype, np.float32)
                 worst = max(worst, math.hypot((float(X / W) - ex) * 960, (float(Y / W) - ey) * 540))
+                w = f32(zd)  # the lane's .b: the view z itself, no depth law
+                X, Y, W = rows[0] + lane[0] / w, rows[1] + lane[1] / w, rows[2] + lane[2] / w
+                worst_lane = max(worst_lane, math.hypot((float(X / W) - ex) * 960, (float(Y / W) - ey) * 540))
+        self.assertLess(worst_lane, 0.01, worst_lane)
+        print(f'lane parallax worst residual {worst_lane:.6f} px', file=sys.stderr) if os.environ.get('X3M_TEST_VERBOSE') else None
         print(f'depth parallax worst residual {worst:.6f} px', file=sys.stderr) if os.environ.get('X3M_TEST_VERBOSE') else None
         self.assertLess(worst, 0.01, worst)  # px at 1920 x 1080
         # The replay's camera path (tools/analysis/taa_resolve_replay.py camera_previous_ndc, the rule measured on run209
         # forward in section 32.2) is the same construction: near the origin, where its R^T and assumed depth law cost
         # nothing, the two agree to float rounding.
-        from test_taa_camera_path import load as load_replay_path
-        replay = load_replay_path()
+        import importlib.util  # by path: works under discover and under dotted invocation alike
+        spec = importlib.util.spec_from_file_location('x3m_test_taa_camera_path', Path(__file__).with_name('test_taa_camera_path.py'))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        replay = module.load()
         near_p = (3123.0, -2054.0, 8012.0)
         near_c = tuple(near_p[i] + 136.0 * bp[2][i] + 3.0 * bp[0][i] for i in range(3))
         pq = projection(0.8, 4 / 3)
@@ -263,6 +277,8 @@ class CameraReprojection(unittest.TestCase):
         bad = list(pc); bad[10] = 0.5
         refused = self.run_driver(bad, view(bc, position_c), pp, vp)
         self.assertEqual((refused['parallax_built'], refused['parallax']), (0, [0.0] * 4))
+        self.assertEqual(refused['lane_built'], 1)  # the lane form needs no depth law
+        self.assertEqual(refused['lane'][:3], r_far['lane'][:3])
 
     def test_behind_the_previous_camera_is_invalid(self):
         pc = projection(1.0, 1.0)

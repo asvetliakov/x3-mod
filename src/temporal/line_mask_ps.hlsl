@@ -59,7 +59,13 @@
 // column), exact for the sentinel; on a valid depth the path adds c8.xyz * (d -
 // c8.w), the camera-relative translation between the two views over the pixel's
 // view z = m32 / (d - m22). c8.xyz = 0 (no translation, or no depth law) is the
-// far-plane path bit for bit.
+// far-plane path bit for bit. With c9.w = 1 the caller has bound its four-channel
+// current depth at s5 and a pixel whose .b (clip w = view z, current_depth_ps.hlsl)
+// is positive takes c9.xyz / .b instead: no m22 / m32, which the engine keeps as
+// per-submission scratch. With c9.w = 1 the c8 law is not used at all: a valid
+// depth whose .b is not positive (the producer writes both in one draw, so none
+// is expected) stays on the far-plane path, so a wrong m22 / m32 latch cannot
+// close, through the 17x17 minimum, a window the lane opens. c9.w = 0: c8 alone.
 sampler2D source : register(s1);
 sampler2D motionOverride : register(s4);
 float4 reprojection0 : register(c0);
@@ -72,6 +78,8 @@ float4 thinGate : register(c6); // unused, on, speed LO, 1 / (HI - LO)
 float4 options : register(c7);
 #ifdef X3M_CAMERA_GATE
 float4 depthParallax : register(c8); // camera_depth_parallax(): (DX, DY, DW) / m32, m22; xyz = 0 is the far-plane path
+float4 laneParallax : register(c9);  // camera_lane_parallax(): (DX, DY, DW), 1 where s5 carries the view z; w = 0: c8 alone
+sampler2D laneDepth : register(s5);  // the caller's four-channel current depth (.b = clip w = view z), point / clamp
 #endif
 static const float lineMargin = 1.1;
 float4 fetch(float2 uv) { return tex2Dlod(source, float4(uv, 0, 0)); }
@@ -112,7 +120,12 @@ float2 gateOpen(float2 uv, float depth) {
         float3 previous = float3(dot(reprojection0, clip), dot(reprojection1, clip), dot(reprojection3, clip));
         // Section 32.3: the pixel's own depth and the camera translation. 1 / view z = (d - m22) / m32, so the previous clip
         // position over z is the far-plane image plus c8.xyz * (d - m22); the sentinel has no geometry and stays at infinity.
-        if (validDepth(depth)) previous += depthParallax.xyz * (depth - depthParallax.w);
+        // Preferred where the lane is bound (c9.w = 1): 1 / view z read directly from .b, no depth law at all.
+        if (validDepth(depth)) {
+            float viewZ = tex2Dlod(laneDepth, float4(uv, 0, 0)).b;
+            // With the lane bound the law is never consulted: a valid depth whose .b is not positive stays on the far plane.
+            previous += laneParallax.w > 0.5 ? laneParallax.xyz * (viewZ > 0 ? 1 / viewZ : 0) : depthParallax.xyz * (depth - depthParallax.w);
+        }
         cameraUV = float2(previous.x, -previous.y) / max(previous.z, 1e-6) * 0.5 + 0.5 + 0.5 * sizeJitter.xy + sizeJitter.zw;
     }
     float2 previousUV = routed ? motion.xy + sizeJitter.zw : cameraUV;

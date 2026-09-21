@@ -967,5 +967,56 @@
     "gate_share": 0.199
    }
   }
+ },
+ "camera_check_exact_inverse": {
+  "note": "2026-09-21: camera_previous_ndc inverts the logged float rotation exactly instead of transposing it (INVERSE=transpose keeps the old form); camera_check above is the transpose record",
+  "run209-forward": {
+   "residual_p50_p90_p99_px": {
+    "corrected": [
+     0.0012076776835401155,
+     0.002251229861948603,
+     0.010432096337529687
+    ],
+    "installed_rotation_only": [
+     1.3948574800881364,
+     2.8327019168300613,
+     3.31249624862824
+    ],
+    "screen": [
+     1.3850057996241718,
+     2.8193543003459913,
+     3.2985915230468947
+    ]
+   },
+   "best_fit_view_z_scale_and_residual_p50_px": [
+    1.0,
+    0.001223497968115315,
+    0.001223497968115315
+   ]
+  },
+  "run209-roll": {
+   "residual_p50_p90_p99_px": {
+    "corrected": [
+     0.0010995939284525911,
+     0.0019072147288251664,
+     0.0026977384027159004
+    ],
+    "installed_rotation_only": [
+     0.029546290617290548,
+     0.0685901430258762,
+     0.09230797111595065
+    ],
+    "screen": [
+     4.189742417839513,
+     10.776878589189213,
+     15.013019803187706
+    ]
+   },
+   "best_fit_view_z_scale_and_residual_p50_px": [
+    1.026,
+    0.0010382419813313238,
+    0.001040580436360314
+   ]
+  }
  }
 }
