@@ -1,0 +1,38 @@
+{
+  "run": "run214",
+  "session_log": "/tmp/x3-bottleX3-run214/session-20260921-201359-212.log",
+  "bytes": 292593715,
+  "config_line17_18": {
+    "volumetric_fog_range": "mode=stored atlas_bytes=4260096 levels=2 cpu_bytes=17040384 upload_budget_bytes=1065024 upload_rects=64 ramp_frames=90 worker_threads=1",
+    "volumetric_fog_mode": "requested=1 enabled=1 motion_output=1 taa=1 hdr=1 shadow_replay_depth=1 shadow_cascades=1 strength=0.03 density_scale=1.5 anisotropy=0.3 everywhere=0 timing=0 cards=replace"
+  },
+  "f8_bursts": [
+    {"frames": "2815-2822", "elapsed_ms": "62264-65696", "sector_context": "profile=1 reason=bluewell sector=1149a3d8 index=2 (from frame 728, no sector event inside burst)"},
+    {"frames": "24630-24637", "elapsed_ms": "323983-327035", "sector_context": "profile=2 reason=foggreenoutlands sector=5ba09358 index=14 (from frame 20413)"}
+  ],
+  "hdr_dump_stage": "readback of hdr_->target() at motion_output.cpp:6146, taken just before hdr_->write_back (post fog-composite/pre-tonemap linear HDR, no separate pre-fog or TAA dump captured this run)",
+  "shafts": {
+    "fog_cascade_max": 3,
+    "configured_shadow_cascades": 5,
+    "note": "fog_pass.cpp binds only the first 3 (nearest) cascades to shadow_maps[]; cascades 4-5 (37500-150000) are never bound to the fog march. No per-frame cascades_bound log line exists, so runtime binding for these frames is not directly verifiable from this log."
+  },
+  "black_smear": {
+    "screenshot": "screenshots/fog-smear.png (1280x768, mtime 2026-09-21T20:15, aligned with burst 1 elapsed ~62s)",
+    "hdr_full_frame_stats": "no negative, NaN or Inf channel values in any of the 16 dumped hdr_1_*.rgba16f frames; black_frac (all-channel <0.001) = 0 in every frame",
+    "streak_region_frame2815": {"crop_full_res": "y330:420 x900:1050", "mean_lum": 0.0950, "min_lum": 0.0836},
+    "adjacent_clear_sky": {"crop_full_res": "y330:420 x1150:1280", "mean_lum": 0.1359, "min_lum": 0.1117},
+    "depth_channel_b_both_regions": -1.0,
+    "temporal_stability_across_burst": [0.0950,0.0949,0.0948,0.0947,0.0946,0.0944,0.0944,0.0943],
+    "conclusion": "streak already present, at essentially constant intensity (<2% drift, no growth/decay), in the post-fog-composite pre-tonemap HDR buffer at frame 2815; depth.b=-1 (invalid/sky sentinel) in both the dark streak and the adjacent clear-fog pixels, so per the documented march rule ('invalid depth keeps identity') no fog is applied to either region -- the luminance difference is inherited from the pre-fog scene render of the station's own far-LOD structure, not introduced by the fog composite, fog history or TAA (TAA was not dumped this run)."
+  },
+  "flicker_burst2": {
+    "station_crop_full_res": "y220:300 x560:680",
+    "per_frame_mean_lum": [0.09497,0.09487,0.09459,0.09450,0.09447,0.09525,0.09575,0.09140],
+    "depth_channel_b": -1.0,
+    "motion_unmatched_static_last_occurrence_line": 944367,
+    "motion_unmatched_static_in_burst_window": 0,
+    "far_stabiliser_log_lines_found": 0,
+    "conclusion": "within this static 8-frame burst, station-crop luminance varies <5% (max delta frame 24637), well inside normal dither/jitter noise; no motion_unmatched_static events occur in or near this window; X3M_TAA_FAR_STABILISER activity is not logged at all (no far_stabiliser text emitted anywhere in the 292MB log), so its per-frame behaviour cannot be checked from this evidence. Depth.b=-1 confirms the station is rendered at the invalid/background sentinel, consistent with a far-LOD billboard rather than depth-tested geometry."
+  },
+  "blending_seams": "not established this run: no LOD-transition or 128^2 tile-border artifact was visually or numerically isolated in the reviewed crops; would need a dedicated near/far-grid boundary capture to test."
+}

@@ -1698,3 +1698,48 @@ Scratch `d3d9` links after the merge (DLL `cc92c8cc0b9ea486…`). `check_no_x87.
 reachable 548, 2 violating functions, both from main's merged option and outside this change**:
 `MotionOutput::unmatched_static_rows` (`fstpl`) and `renderer::static_previous_rows` (`fabs` on the x87
 stack). Before the merge the same audit passed (95 / 544 / 0). Not fixed here.
+
+### Run214 (Run60 install, session B) read-only triage (2026-09-21)
+
+Read-only triage of `/tmp/x3-bottleX3-run214` (session log
+`session-20260921-201359-212.log`, 292 MB, no full read: queried with grep/python).
+Config confirmed by log line 17-18: `volumetric_fog_range mode=stored atlas_bytes=4260096
+levels=2 ... ramp_frames=90 worker_threads=1` and `volumetric_fog_mode ... strength=0.03
+density_scale=1.5 ... cards=replace`. No `D3DERR_*`, no unhandled-exception/crash text, one
+benign `error=203` (telemetry span code); log ends on a normal `frame_end`/`mip_bias_summary`
+pair at frame 29712 — clean quit.
+
+Two F8 bursts dumped: frames 2815-2822 (elapsed ~62.3-65.7 s, `bluewell` profile) and
+24630-24637 (elapsed ~324.0-327.0 s, `foggreenoutlands`, sector index 14 — per the existing
+note above this is a fog-family tag, not a confirmed "The Hole" sector name). Shaft term: the
+march inlines `fog_visibility` once (per the runtime-integration architecture note) but
+`fog_pass.cpp` only declares `fog_cascade_max=3` and binds `shadow_maps[0..2]`, while this run's
+`X3M_SHADOW_CASCADES` configures 5 cascades — cascades 4-5 (37.5 km-150 km) are never reachable
+by the fog march. No per-frame `cascades_bound` log line exists in this build, so whether any
+cascade was actually bound for these frames is not verifiable from this log; that is a real
+diagnostic gap.
+
+Black smear (`screenshots/fog-smear.png`, mtime aligned with burst 1): the diagonal dark streak
+below the station is already present, at constant intensity (0.0950 -> 0.0943 mean luminance,
+<2% drift, no growth) across all 8 frames of burst 1, in `hdr_1_2815..2822.rgba32f`-paired
+`hdr_1_*.rgba16f` (the post-fog-composite, pre-tonemap linear HDR readback at
+`motion_output.cpp:6146`). No RGBA16F NaN/Inf/negative values in any of the 16 dumped HDR frames.
+Depth channel B is the `-1` invalid/sky sentinel in both the streak crop (y330:420,x900:1050,
+mean lum 0.0950) and the adjacent clear-fog crop (y330:420,x1150:1280, mean lum 0.1359) — per the
+documented march rule ("invalid depth keeps identity") neither pixel group receives fog, so the
+luminance gap is inherited from the pre-fog station render, not from the fog composite, fog
+history/reprojection, or TAA (no TAA dump was captured this run to rule TAA in or out directly).
+
+Distant-station flicker (burst 2, frames 24630-24637): station crop (y220:300,x560:680)
+mean luminance ranges 0.09140-0.09575 across the 8 static frames (<5% spread), consistent with
+normal jitter noise rather than a strong per-frame alternation; depth.b=-1 there too (far-LOD
+billboard, not depth-tested geometry). Zero `motion_unmatched_static` lines occur in or near this
+window (last occurrence at log line 944367, well before frame 24630's line 1165863). No
+`far_stabiliser` text appears anywhere in the 292 MB log — `X3M_TAA_FAR_STABILISER` activity is
+configured but not instrumented, so its per-frame gating for these frames cannot be checked from
+existing evidence; a targeted diagnostic build would need to log the far-stabiliser blend weight
+and the unmatched-static gate per frame during a panning capture to settle question C.
+
+Blending seams (LOD/tile-border/banding): not established this run — no dedicated near/far-grid
+boundary capture exists in this dump set; the reviewed crops did not show an isolated hard edge,
+but this is inconclusive rather than a clean pass.
