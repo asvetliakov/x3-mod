@@ -71,6 +71,11 @@ struct Options {
     // Opt-in finite XYZ evidence from verified existing MANAGED write mappings.
     // Requires track_buffer_writes. No extra Lock or GPU readback is performed.
     bool capture_finite_positions = false;
+    // Prepare actual readable MANAGED backing and immutable requested Usage
+    // metadata, WITHOUT allocating a finite atlas or reading mapped payload.
+    // Manual CloneMesh snapshot prototype prerequisite; no CLI/game hook.
+    // Requires track_buffer_writes; mutually exclusive with typed scanners.
+    bool prepare_readable_managed_uploads = false;
     std::uint32_t finite_payload_budget = 32u * 1024u * 1024u;
     std::uint32_t finite_sidecar_limit = 4096;
     // Locked-prefix bounds (docs/architecture/screen-emission-region.md, step

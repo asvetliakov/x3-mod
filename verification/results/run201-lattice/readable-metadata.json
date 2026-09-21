@@ -1,0 +1,47 @@
+{
+  "command": [
+    "python3",
+    "/Users/asvetl/x3-mod/verification/probe/wine_lock.py",
+    "--timings-json",
+    "/tmp/x3-lattice-readable-run-v1/lock.json",
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "X3",
+    "--no-update",
+    "--dll",
+    "d3d9=b",
+    "/private/tmp/x3-lattice-readable-build-v1/lattice_upload_readable_fixture.exe"
+  ],
+  "returncode": 0,
+  "seconds": 8.03597775,
+  "bottle": "X3",
+  "WineArch": "arm64",
+  "FEX_X87REDUCEDPRECISION": "1",
+  "WINEMSYNC": "1",
+  "exe_sha256": "7a8418241f3001ae2bb8c2455b093397f2dac844c4bc534e2b868cbcdeb8c0b6",
+  "game_launched": false,
+  "status": "PASS",
+  "checks": 157,
+  "scope": "Ordinary-return readable creation/metadata only; no CloneMesh scope, capture or SEH qualification",
+  "build_seconds": 7.236040083,
+  "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+  "sources": {
+    "src/ownership/d3d9_ownership.cpp": "c77199806d6b6c03fcd43e06f25c831f574b16e93dc7c4cbc1c675bde8a67abb",
+    "src/ownership/d3d9_ownership.h": "6124ec56f6b297057aebb512597cf42bbd63d36f3ebe0eea22b54f5dd140f2ae",
+    "verification/probe/lattice_upload_readable_build.py": "c907e9f4d3b41376b3a5400096637ea38b19362a071dd632dad5d328c1ad5fd3",
+    "verification/probe/lattice_upload_readable_check.py": "9e4687060c100d6b49eab9626b2e84867fb9d8d861c4f0ee996b09b9dcfe35b5",
+    "verification/probe/lattice_upload_readable_fixture.cpp": "9f9cd4e3938d58499241c4713d0bf78fac6bc4ec789d74a9c046844671f14bf2"
+  },
+  "build_record": "/tmp/x3-lattice-readable-build-v1/build.json",
+  "lock_timings": {
+    "lock_wait_seconds": 3.7499999999968114e-06,
+    "child_elapsed_seconds": 7.890421540999999,
+    "exit_code": 0
+  },
+  "log_sha256": "06febcbd651d0f632da3ca19e193cf0dd0310bba6378983dde8ea33a63cd5762",
+  "review": {
+    "agent": "review_lattice_point_probe",
+    "result": "source and runtime clear; no blocking findings"
+  },
+  "native_windows_runtime": false
+}

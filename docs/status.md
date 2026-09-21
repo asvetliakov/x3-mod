@@ -75,7 +75,8 @@ completed Run56 command is archived. Future runs omit CrossOver debug tracing.
   arithmetic exploration is closed. Targeted disassembly and deep review support private raw staging from original
   upload mappings, with valid payload only after successful construction. The portable
   staging core passes 39 host cases / 596 assertions and deep review; ownership
-  integration and the native exception-safe adapter remain to implement. No repeat
+  readable-metadata prerequisite also passes 157 standalone D3D checks.
+  CloneMesh observer integration and the scoped ABI adapter remain to implement. No repeat
   flight or renderer correction is selected.
   [Owning note §31](architecture/taa-lattice-crawl.md#31-close-arithmetic-exploration-investigate-final-upload-observation).
 - **Collision:** paused by user request; no moving-collision test is queued.

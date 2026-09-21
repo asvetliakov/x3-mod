@@ -1592,3 +1592,26 @@ It has no ownership-wrapper integration, CloneMesh/SEH adapter, EXE hook or F8
 connection. Real COM/Reset, x86 state preservation and foreign unwind remain
 mandatory next checks. No game snapshot, moving-crawl fix or native Windows
 runtime acceptance follows from this host checkpoint.
+
+### Readable-creation prerequisite qualified in the standalone fixture
+
+The internal, default-off `prepare_readable_managed_uploads` option separates
+readable MANAGED backing/immutable metadata from legacy finite-payload scanning.
+It neither reserves the finite atlas nor runs its typed scanner, and rejects
+conflicting finite/locked-prefix options. No CLI, game scope or live snapshot
+is enabled by this prerequisite.
+
+[Focused runtime evidence](../../verification/results/run201-lattice/readable-metadata.json):
+157 checks pass on X3/arm64 under the shared Wine lock, in 8.036 s total
+(7.890 s child, 0.00000375 s lock wait). Independent source/runtime review
+verifies all 23 build dependencies, PAGE_NOACCESS forwarding without scanning,
+exact native Lock/Unlock counts, application/native descriptor separation,
+preserved payload bytes, four rollback CPU-state controls, option refusals,
+Reset S_OK and clean reference release. No game was launched or DLL installed.
+
+This closes the readable-metadata prerequisite on CrossOver only. Actual
+CloneMesh event authentication, callback/reentry lifetimes and new-scope ABI
+cleanup remain to implement. Existing wrappers promise ordinary COM returns;
+foreign SEH escaping their admission TLS or callback-bearing registry sections
+is not made safe by an outer snapshot cleanup handler. No global exception
+retrofit or native Windows runtime qualification is claimed.

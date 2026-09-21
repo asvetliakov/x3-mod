@@ -361,7 +361,8 @@ struct FiniteOwner {
     FiniteSidecar* buckets[finite_bucket_count]{};
     bool healthy=true,permanent=false;
     explicit FiniteOwner(const Options& o):budget(o.finite_payload_budget),limit(o.finite_sidecar_limit) {
-        ++finite_owners_used; stats.requested=true;stats.active=true;stats.status=S_OK;stats.generation=1;
+        ++finite_owners_used; stats.requested=o.capture_finite_positions;
+        stats.active=o.capture_finite_positions;stats.status=S_OK;stats.generation=1;
         stats.metadata_bytes=sizeof(buckets);
     }
     ~FiniteOwner() { std::lock_guard<std::recursive_mutex> lock(registry_mutex); --finite_owners_used; }
@@ -512,7 +513,8 @@ void retire_finite(Device* device,bool permanent=false,FiniteEvidenceReason reas
     for(auto* side=owner->head;side;side=side->next){invalidate_finite(side,reason);side->drop_payload();}
 }
 void initialize_finite(Device* device) {
-    PreserveExecution preserve;if(!device->options.capture_finite_positions)return;
+    PreserveExecution preserve;
+    if(!device->options.capture_finite_positions&&!device->options.prepare_readable_managed_uploads)return;
     std::lock_guard<std::recursive_mutex> lock(registry_mutex);
     drain_finite_retired();
     if(finite_owners_used>=finite_global_owners){device->finite_status=E_OUTOFMEMORY;return;}
@@ -557,7 +559,9 @@ bool attach_finite(Device* device,IDirect3DResource9* resource,DWORD requested_u
         contract.format==D3DFMT_INDEX16?EvidenceBufferKind::Index16:EvidenceBufferKind::Index32;
     link_finite_sidecar(side,identity);
     bool attached=false;
-    if(reserve_finite(side)){
+    // Metadata-only preparation must not reserve the legacy typed atlas. Raw
+    // staging is owned by its separate bounded store and is not classified.
+    if(!device->options.capture_finite_positions||reserve_finite(side)){
         const HRESULT hr=resource->SetPrivateData(finite_sidecar_guid,static_cast<IUnknown*>(side),sizeof(IUnknown*),D3DSPD_IUNKNOWN);
         attached=SUCCEEDED(hr);
         if(FAILED(hr)){finite_reason(*owner,FiniteEvidenceReason::MetadataTampered);}
@@ -867,6 +871,7 @@ HRESULT adopt(Node* parent, Kind kind, IUnknown* owned, REFIID iid, void** out,
                  static_cast<Factory*>(existing)->options.track_buffer_lock_attempts != options->track_buffer_lock_attempts ||
                  static_cast<Factory*>(existing)->options.track_execution_state != options->track_execution_state ||
                  static_cast<Factory*>(existing)->options.capture_finite_positions != options->capture_finite_positions ||
+                 static_cast<Factory*>(existing)->options.prepare_readable_managed_uploads != options->prepare_readable_managed_uploads ||
                  static_cast<Factory*>(existing)->options.finite_payload_budget != options->finite_payload_budget ||
                  static_cast<Factory*>(existing)->options.finite_sidecar_limit != options->finite_sidecar_limit))
                 return E_INVALIDARG; // Never silently reconfigure a live factory.
@@ -955,7 +960,8 @@ HRESULT create_buffer(Device* device,UINT length,DWORD usage,D3DPOOL pool,
     portable_upload::CreationPlan plan;
     {
         std::lock_guard<std::recursive_mutex> lock(registry_mutex);
-        plan=portable_upload::plan_creation(device->options.capture_finite_positions&&
+        plan=portable_upload::plan_creation((device->options.capture_finite_positions||
+            device->options.prepare_readable_managed_uploads)&&
             device->finite_owner&&device->finite_owner->healthy&&device->options.track_buffer_writes,
             length,usage,pool,shared);
     }
@@ -993,7 +999,8 @@ template<class Desc> HRESULT buffer_desc_impl(Node* node,Desc* desc){
         else return static_cast<IDirect3DIndexBuffer9*>(node->backend)->GetDesc(desc);
     };
     auto* device=device_of(node);
-    if(!device->options.capture_finite_positions)return observe_result(device,native_call());
+    if(!device->options.capture_finite_positions&&!device->options.prepare_readable_managed_uploads)
+        return observe_result(device,native_call());
     const HRESULT hr=native_call();
     ExecutionState outgoing;
     if(SUCCEEDED(hr)&&desc){
@@ -1044,7 +1051,7 @@ HRESULT buffer_lock(Node* node, UINT offset, UINT size, void** data, DWORD flags
     auto* device=device_of(node);
     if(device->options.track_buffer_lock_attempts)begin_buffer_call(node,false,offset,size,flags);
     // Invalidate any prior write transaction before a nested/unsupported attempt.
-    { std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+    if(device->options.capture_finite_positions){ std::lock_guard<std::recursive_mutex> lock(registry_mutex);
       SideReference hold{acquire_finite(device,static_cast<IDirect3DResource9*>(node->backend))};
       if(hold.value&&hold.value->writing)invalidate_finite(hold.value,FiniteEvidenceReason::Pending); }
     incoming.restore();
@@ -1074,7 +1081,7 @@ HRESULT buffer_lock(Node* node, UINT offset, UINT size, void** data, DWORD flags
         auto* resource=static_cast<IDirect3DResource9*>(node->backend);
         record_buffer_event(device,resource,BufferEvent::Lock,flags,node->lock_sidecar);
         std::lock_guard<std::recursive_mutex> lock(registry_mutex);
-        SideReference hold{acquire_finite(device,resource)};auto* side=hold.value;
+        SideReference hold{device->options.capture_finite_positions?acquire_finite(device,resource):nullptr};auto* side=hold.value;
         if(side){
             BufferMetadata metadata{};
             if(FAILED(read_buffer_metadata(device,resource,metadata)))invalidate_finite(side,FiniteEvidenceReason::TrackingUnavailable);
@@ -1103,7 +1110,7 @@ HRESULT buffer_unlock(Node* node) {
     if(device->options.track_buffer_lock_attempts)begin_buffer_call(node,true);
     SideReference hold;bool staged=false;
     { std::lock_guard<std::recursive_mutex> lock(registry_mutex);
-      hold.value=acquire_finite(device,resource);auto* side=hold.value;
+      hold.value=device->options.capture_finite_positions?acquire_finite(device,resource):nullptr;auto* side=hold.value;
       if(side&&side->writing){
         BufferMetadata metadata{};portable_upload::Window window{};
         FiniteEvidenceReason failure=FiniteEvidenceReason::None;
@@ -1216,7 +1223,8 @@ HRESULT buffer_private_result(Node* node, REFGUID guid, HRESULT hr) {
     if(SUCCEEDED(hr)&&(guid==buffer_content_guid||guid==finite_sidecar_guid||guid==lock_sidecar_guid)){
         std::lock_guard<std::recursive_mutex> lock(registry_mutex);
         if(device->options.track_buffer_writes&&(guid==buffer_content_guid||guid==lock_sidecar_guid))fail_buffer_tracking(device,E_FAIL);
-        if(device->options.capture_finite_positions)retire_finite(device,true,FiniteEvidenceReason::MetadataTampered);
+        if(device->options.capture_finite_positions||device->options.prepare_readable_managed_uploads)
+            retire_finite(device,true,FiniteEvidenceReason::MetadataTampered);
     }
     return observe_result(device,hr);
 }
@@ -1402,7 +1410,7 @@ HRESULT reset_device(Device* node, D3DPRESENT_PARAMETERS* pp) {
         }
         if (SUCCEEDED(hr)) {
             node->recording_state_block = false;
-            if(node->finite_owner&&!node->finite_owner->permanent){node->finite_owner->healthy=true;node->finite_owner->stats.active=true;node->finite_owner->stats.status=S_OK;}
+            if(node->finite_owner&&!node->finite_owner->permanent){node->finite_owner->healthy=true;node->finite_owner->stats.active=node->options.capture_finite_positions;node->finite_owner->stats.status=S_OK;}
             initialize_copy_depth(node, requested);
         } else node->copy_depth.view.status = hr;
         notify_reset(node,ResetPhase::end,hr);
@@ -1669,7 +1677,8 @@ HRESULT wrap_factory(IDirect3D9* owned_native, IDirect3D9** out, const Options& 
     *out = nullptr;
     {std::lock_guard<std::recursive_mutex> lock(registry_mutex);drain_finite_retired();}
     if (!owned_native) return E_INVALIDARG;
-    if (((options.capture_finite_positions||options.track_buffer_lock_attempts)&&!options.track_buffer_writes)||options.finite_payload_budget>finite_global_budget||options.finite_sidecar_limit>finite_global_sidecars) return E_INVALIDARG;
+    if (((options.capture_finite_positions||options.track_buffer_lock_attempts||options.prepare_readable_managed_uploads)&&!options.track_buffer_writes)||options.finite_payload_budget>finite_global_budget||options.finite_sidecar_limit>finite_global_sidecars) return E_INVALIDARG;
+    if(options.prepare_readable_managed_uploads&&(options.capture_finite_positions||options.locked_prefix_bounds))return E_INVALIDARG;
     { std::lock_guard<std::recursive_mutex> lock(registry_mutex);
       if (application_nodes.count(owned_native)) return E_INVALIDARG; }
     if (has_ex(owned_native, IID_IDirect3D9Ex)) return E_NOINTERFACE;
