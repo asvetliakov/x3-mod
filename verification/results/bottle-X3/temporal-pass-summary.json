@@ -61,7 +61,7 @@
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
-  "executable_sha256": "7781df81eacc1e6440496098c2c77a817ae5911dedff73eefdc94ce30ac91b82",
+  "executable_sha256": "2f310ddfb4d5121f4aed50b00c10f81b56b0f796ac11d7bc0fbfebf493682626",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -315,7 +315,7 @@
   },
   "lattice": {
     "report": "temporal-lattice.txt",
-    "report_sha256": "2c8a22772dbdf2f54bc598be333add2df86187b588ff0bed42f633a99f84d273",
+    "report_sha256": "f0137881c6f39fffe72db0275a1d3eded8588bd94cb290d9039cdb931a3de396",
     "exit_code": 0,
     "budget": {
       "current_filter": {
@@ -2131,15 +2131,15 @@
         "height": "768",
         "content": "all_geometry",
         "rounds": "6",
-        "plain_ms": "0.5847",
-        "current_filter_ms": "0.5833",
-        "line_filter_ms": "0.8398",
-        "far_stabiliser_ms": "0.7257",
-        "thin_region_ms": "1.3221",
-        "taps_delta_ms": "-0.0014",
-        "line_delta_ms": "0.2551",
-        "far_delta_ms": "0.1410",
-        "thin_region_delta_ms": "0.7374",
+        "plain_ms": "0.6056",
+        "current_filter_ms": "0.5980",
+        "line_filter_ms": "0.8362",
+        "far_stabiliser_ms": "0.7953",
+        "thin_region_ms": "1.3996",
+        "taps_delta_ms": "-0.0076",
+        "line_delta_ms": "0.2306",
+        "far_delta_ms": "0.1897",
+        "thin_region_delta_ms": "0.7940",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]
@@ -3369,12 +3369,12 @@
         "width": "1280",
         "height": "768",
         "rounds": "6",
-        "no_region_thin_ms": "1.3221",
-        "no_region_camera_ms": "1.5388",
-        "no_region_camera_delta_ms": "0.2166",
-        "fragmented_pan_thin_ms": "0.9465",
-        "fragmented_pan_camera_ms": "1.3442",
-        "fragmented_pan_camera_delta_ms": "0.3977",
+        "no_region_thin_ms": "1.3996",
+        "no_region_camera_ms": "1.5740",
+        "no_region_camera_delta_ms": "0.1744",
+        "fragmented_pan_thin_ms": "1.3959",
+        "fragmented_pan_camera_ms": "1.9268",
+        "fragmented_pan_camera_delta_ms": "0.5310",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ],
@@ -3383,11 +3383,11 @@
         "width": "1280",
         "height": "768",
         "rounds": "6",
-        "r32f_camera_ms": "1.3442",
-        "lane_input_law_ms": "1.3225",
-        "lane_input_lane_ms": "1.4073",
-        "lane_fetch_delta_ms": "0.0848",
-        "lane_input_over_r32f_ms": "-0.0217",
+        "r32f_camera_ms": "1.9268",
+        "lane_input_law_ms": "1.7935",
+        "lane_input_lane_ms": "1.8443",
+        "lane_fetch_delta_ms": "0.0508",
+        "lane_input_over_r32f_ms": "-0.1333",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]
@@ -3599,9 +3599,9 @@
         "height": "768",
         "rounds": "6",
         "content": "all_unrouted_sentinel_pan",
-        "strength_off_ms": "1.1050",
-        "strength_on_separable_ms": "1.3388",
-        "sentinel_delta_ms": "0.2337",
+        "strength_off_ms": "1.2865",
+        "strength_on_separable_ms": "1.5542",
+        "sentinel_delta_ms": "0.2677",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]

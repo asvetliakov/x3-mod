@@ -7,29 +7,29 @@ work remain open. The agent never launches the game. See the [run queue](verific
 
 ## Installed build
 
-Bottle **X3**, **CrossOver Preview.app**. Run61 DLL SHA-256:
-`0bc8ff3600942e59009a365acaa7edf19ddff149cbe2309dcbfff2be16c0028d`
-(55,161,477 bytes), built once from clean reviewed main `ed105485`.
-Retained DLL: `/tmp/x3-run61-candidate/build/d3d9.dll`. Installed 2026-09-21.
+Bottle **X3**, **CrossOver Preview.app**. Run62 DLL SHA-256:
+`924be5c0699207db19b8b6e361d7c213ac6678a0b85a02e48b8c9608e9077156`
+(55,163,013 bytes), built once from clean reviewed main `35f5a9cf`.
+Retained DLL: `/tmp/x3-run62-candidate/build/d3d9.dll`. Installed 2026-09-22.
 
-Changes against Run60 (`aaa8abb2…`): (1) routed sentinel-depth pixels (panel
-glass) no longer vote in the camera thin-region gate
-([§32.5](architecture/taa-lattice-crawl.md)); (2) camera-gate depth from the RT2
-lane where bound (`a659e2a8`); (3) `--taa-unmatched-static node` is the default
-with TAA (`off` opts out); (4) default-off `--taa-sentinel-stabiliser S[,E]` for
-distant unrouted stations ([design](architecture/temporal-integration.md));
-(5) stored-fog look presets L0–L3, Ctrl+Alt+F11 / `--volumetric-fog-look`
-(L0 bytecode unchanged; [direction review](architecture/fog-visual-direction-review-2026-09-21.md)).
+Changes against Run61 (`0bc8ff36…`; user-accepted panel-crawl fix, `node` default,
+opt-in sentinel stabiliser, fog looks): (1) far-plane reprojection keeps
+`expectedDepth` below 1, so sentinel pixels (sky, stars, unrouted stations) keep
+their history during pans ([ledger](verification/temporal-resolve.md)); (2) fog
+looks: oblique 5.35 km coverage waves instead of the axis-aligned ribs, full
+density to 13 km with a fade to 22.5 km, look 2 the default for the stored range
+([ledger](verification/volumetric-fog.md)). Thin-region weight stays 0.97 by user
+decision.
 
-[Qualification](../verification/results/run61-candidate-qualification.json): full
-host discovery 2,717 + 109 tests pass; linked audit 95 roots / 547 reachable /
-zero violations; imports identical to Run60; the ten actual-DLL cases equal the
-Run60 numbers; temporal-pass and fog shader fixtures (16 gates) pass. Not a full
-renderer-suite pass or native Windows execution. The
-[install record](../verification/results/run61-candidate-install.json) verifies
+[Qualification](../verification/results/run62-candidate-qualification.json): host
+suite 2,433 tests pass (`run_host_suite.py`); linked audit 95 / 547 / zero
+violations; imports identical to Run61; the ten actual-DLL cases have zero
+non-timing differences from Run61; temporal-pass and fog shader fixtures pass.
+Not a full renderer-suite pass or native Windows execution. The
+[install record](../verification/results/run62-candidate-install.json) verifies
 installed bytes and unchanged X3AP.exe `fdbf3418…` and cxbottle.conf `cc5d6c00…`.
-Rollback: Run60 `/tmp/x3-run60b-candidate/build/d3d9.dll`, then Run59 and Run56.
-Both Run 61 dry-runs passed; no game was launched by the agent.
+Rollback: Run61 `/tmp/x3-run61-candidate/build/d3d9.dll`, then Run60, Run59, Run56.
+Both Run 62 dry-runs passed; no game was launched by the agent.
 
 ## Current work and pending acceptance
 

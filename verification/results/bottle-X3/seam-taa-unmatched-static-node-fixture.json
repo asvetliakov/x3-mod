@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "/private/tmp/x3-run61-candidate/binaries/motion_output_fixture.exe": "7c928dda14237dc2a922c423a66cfb4dc0ad1649d4dfdb016360fab7860b6747",
-  "/private/tmp/x3-run61-candidate/binaries/motion-output-seam/d3d9.dll": "68d9cea21850420be6d05b288d2eeae2ced64fa0280a4df6f77ad64f2694d56a",
-  "/private/tmp/x3-run61-candidate/build/d3d9.dll": "0bc8ff3600942e59009a365acaa7edf19ddff149cbe2309dcbfff2be16c0028d"
+  "/private/tmp/x3-run62-candidate/binaries/motion_output_fixture.exe": "bdd5eb6bd1dd56a851ba766a9b45449074a292d7597f358783c0e1445fbacfdd",
+  "/private/tmp/x3-run62-candidate/binaries/motion-output-seam/d3d9.dll": "4a27431b9e9c2847a5738b0cd783f1c67d58f5c03d8796343478b510e9043470",
+  "/private/tmp/x3-run62-candidate/build/d3d9.dll": "924be5c0699207db19b8b6e361d7c213ac6678a0b85a02e48b8c9608e9077156"
  },
  "checks": 95,
  "setting": "node",
@@ -215,10 +215,10 @@
   }
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-taa-unmatched-static-node-20260921-232710-924931",
- "trace_sha256": "63275b602ffbf517311d3a1b6efc1f56eb80dfbf78cb252992cde1867e23451b",
- "dll_sha256": "68d9cea21850420be6d05b288d2eeae2ced64fa0280a4df6f77ad64f2694d56a",
- "exe_sha256": "7c928dda14237dc2a922c423a66cfb4dc0ad1649d4dfdb016360fab7860b6747",
+ "directory": "verification/probe/build/motion-output-seam-taa-unmatched-static-node-20260922-014059-790612",
+ "trace_sha256": "05bde1fbcceb2e4478177d8640a4378a306af75e69f84004f64e0568bf7e77f8",
+ "dll_sha256": "4a27431b9e9c2847a5738b0cd783f1c67d58f5c03d8796343478b510e9043470",
+ "exe_sha256": "bdd5eb6bd1dd56a851ba766a9b45449074a292d7597f358783c0e1445fbacfdd",
  "motion_frames_differing_from_seam-taa-unmatched-static-off": [
   3
  ]

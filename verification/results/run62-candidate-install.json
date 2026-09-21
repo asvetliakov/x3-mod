@@ -1,0 +1,41 @@
+{
+  "candidate": {
+    "commit": "35f5a9cf",
+    "dll": "/tmp/x3-run62-candidate/build/d3d9.dll",
+    "sha256": "924be5c0699207db19b8b6e361d7c213ac6678a0b85a02e48b8c9608e9077156",
+    "bytes": 55163013
+  },
+  "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run62-candidate/build/d3d9.dll",
+  "cwd": "/Users/asvetl/x3-mod",
+  "exit": 0,
+  "installed": {
+    "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+    "sha256": "924be5c0699207db19b8b6e361d7c213ac6678a0b85a02e48b8c9608e9077156"
+  },
+  "rollback": {
+    "dll": "/tmp/x3-run61-candidate/build/d3d9.dll",
+    "sha256": "0bc8ff3600942e59009a365acaa7edf19ddff149cbe2309dcbfff2be16c0028d",
+    "records": [
+      "verification/results/run61-candidate-qualification.json",
+      "verification/results/run61-candidate-install.json"
+    ],
+    "older": "/tmp/x3-run60b-candidate/build/d3d9.dll (aaa8abb2), Run59, Run56 baseline"
+  },
+  "protected": {
+    "X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+    "cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c",
+    "unchanged": true
+  },
+  "dry_runs": {
+    "session_A": "exit 0: sentinel stabiliser 0.7, unmatched-static node, fog off",
+    "session_B": "exit 0: fog stored, look 2 by default, strength 0.02 (1.0x)",
+    "game_launched": false
+  },
+  "bottle": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+    "FEX_X87REDUCEDPRECISION": "1",
+    "WINEMSYNC": "1"
+  },
+  "native_windows": "unverified"
+}
