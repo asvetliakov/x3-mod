@@ -1,0 +1,8 @@
+{
+  "verdict": "PASS evidence integrity; negative fixed visual trial",
+  "reviewer": "review_fog_range_replay",
+  "tests_passed": 12,
+  "images_verified": 8,
+  "checkpoint_sha256": "9578912e5cb2dd54a5fbf699d96261c93ed7840bf1b0b0ea707f86b913937c08",
+  "production_selected": false
+}

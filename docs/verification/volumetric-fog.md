@@ -1105,3 +1105,17 @@ User appearance verdict: interior close to the target; the distant single-bulb
 shape is rejected. The requested distribution is irregular cloud patches
 covering a sector or substantial parts of it. Numerical results remain valid;
 the paired-lobe layout is not selected for production.
+
+### Fixed sector-wide irregular-patches reference preview
+
+The frozen six-view analytic reference passed its 128/64 numerical check: worst T p99/max was 0.000131214/0.000238419 against 0.00025/0.00075. The host run took 164.84 s; 12 focused tests passed and all 6 comparison sheets plus 2 sectorXY slices are hash-bound. At 128-unit spacing, each full ray evaluates 37,512 macro corner hashes and the maximum is 3,126 fine-atlas reads before lighting, shadows, repair, state traffic or GPU timing.
+
+The fixed field removes the rejected finite bulb silhouette but does not produce material clear pockets in the saved canonical views. For every A/C ray the macro-zero sample fraction is exactly zero and macro support length is 200,000 render units. At B, macro-zero fraction mean/p99/max is 0.000521/0.020825/0.078055 and mean support length is 199,896.64 render units. Complete-column clear fractions below .002 are 0.00130/0.00293/0.00336 for bluewell A/B/C and 0/0/0.000326 for foggreenoutlands. The fixed sectorXY slice alone is 14.2517% exact-zero, 46.9971% transition and 38.7512% full macro weight.
+
+The sheets therefore replace the bulb with full-frame dense, repeating fine-field structure; visible diagonal/repeated detail remains. Root has not selected this trial for production, while appearance acceptance remains for parent/user review. No parameter iteration or new preview followed. This note is additive to frozen report SHA-256 `3e3c995709a9651e154db37a5598b847a2007bf773256abbd36642d2cbfe7444`; source and numeric report are unchanged.
+
+[Checkpoint](../../verification/results/fog-sector-patches-2026-09-21/checkpoint.json), [review](../../verification/results/fog-sector-patches-2026-09-21/review.json).
+
+User reiterates the target: more clear space and diverse density throughout the
+sector, with varied shapes/sizes and internal density. This blanket-like trial
+is not selected.

@@ -1,0 +1,400 @@
+{
+  "appearance_decision": "production not selected by root; parent/user appearance acceptance remains pending",
+  "bindings": {
+    "additive_owning_note_sha256": "13578cfa1ef491e506c60fce3bd270c13c5707a5a9574c7b089af5f4c3f3f712",
+    "analysis_sha256": "9610bcfd857e652885c83982377056159a7e016e848ec651e04f8d6ce1139306",
+    "design_sha256": "ce20526a2cc3712c379bf04127efbf214cc01c08fa7c4580c067bd09270d8ca2",
+    "images": {
+      "bluewell-poseA-cloud-only.png": "64b3db1a663b12cee3270f0d7d9b73f2c4bb8594aa91a5b472f791289318f803",
+      "bluewell-poseB-cloud-only.png": "59b5b942e9f98b29c31cd9940f51ce145541cb26cae9145fa9d334ffa2ba66d8",
+      "bluewell-poseC-cloud-only.png": "e992dcc2a33cc154d99f96376c2d9c91c5d8291c9962938247a894b379582127",
+      "bluewell-sectorXY-support-detail.png": "e7eaa29ade478c8fdc60370cbee723b1fd018799b949227e1aef856b800f4edf",
+      "foggreenoutlands-poseA-cloud-only.png": "1d0473c48e30cb2eb99054f4bdf3b5eaf54ddff13855cfd53ce21900a9c3759f",
+      "foggreenoutlands-poseB-cloud-only.png": "4e6f04056a5cda33a45283ad6546e16b8b42f447beabc564366a51dff9c9f721",
+      "foggreenoutlands-poseC-cloud-only.png": "77d0e81f006691faf311f50a58e0e7f0d0d036164e0c3382a1f31b76fc09f8c8",
+      "foggreenoutlands-sectorXY-support-detail.png": "f177ad151c8ee778e6f4f01651b18650842632791e0c8da5bf38c4062e8f5c2a"
+    },
+    "numeric_report_sha256": "3e3c995709a9651e154db37a5598b847a2007bf773256abbd36642d2cbfe7444",
+    "numeric_source_sha256": "9610bcfd857e652885c83982377056159a7e016e848ec651e04f8d6ce1139306",
+    "report_json_sha256": "3e3c995709a9651e154db37a5598b847a2007bf773256abbd36642d2cbfe7444",
+    "report_md_sha256": "aa62a6d4dcdd5f8a0e384c3b64d61b786fb021aea9e91faa95dfe27b86cb2a10",
+    "test_sha256": "eeb26bd6d8ed77a8b377eadd1b1032a1bb4fba3889d66e498394bdb977732486"
+  },
+  "canonical_result_note": {
+    "A_and_C_macro_support_length_all_rays": 200000.0,
+    "A_and_C_macro_zero_fraction_all_rays": 0.0,
+    "B_macro_support_length_mean": 199896.63888888888,
+    "B_macro_zero_fraction": {
+      "max": 0.0780550223928343,
+      "mean": 0.0005210832533589252,
+      "p99": 0.020825335892515093
+    },
+    "complete_clear_fraction_below_0.002": {
+      "bluewell_A_B_C": [
+        0.0013020833333333333,
+        0.0029296875,
+        0.003363715277777778
+      ],
+      "foggreenoutlands_A_B_C": [
+        0.0,
+        0.0,
+        0.0003255208333333333
+      ]
+    },
+    "macro_corner_hashes_per_full_ray": 37512,
+    "visual_finding": "bulb removed; full-frame dense/repeating with visible diagonal/repeated fine-field detail and no material canonical clear pockets"
+  },
+  "execution": {
+    "focused_test_command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_fog_sector_patches_preview",
+    "focused_tests_passed": 12,
+    "host_seconds": 164.83914433400003
+  },
+  "limitations": [
+    "No appearance or production architecture approval.",
+    "Counts exclude lighting, shadows, repair, tile/state traffic and GPU timing.",
+    "No tuning, parameter search, game, Wine, build, install or production edit."
+  ],
+  "numerical": {
+    "T_gates": {
+      "max": 0.00075,
+      "p99": 0.00025
+    },
+    "maximum_fine_atlas_reads_per_ray_at_128": 3126.0,
+    "views": 6,
+    "worst_T_max": 0.0002384185791015625,
+    "worst_T_p99": 0.000131213665008545
+  },
+  "per_view": {
+    "bluewell": [
+      {
+        "clear_fraction_below_0.002": 0.0013020833333333333,
+        "complete_opacity": {
+          "count": 9216,
+          "max": 0.23189622163772583,
+          "mean": 0.07065350557160047,
+          "p50": 0.06668072938919067,
+          "p90": 0.1211751401424408,
+          "p99": 0.1723426818847659
+        },
+        "macro_one_fraction": {
+          "count": 9216,
+          "max": 1.0,
+          "mean": 0.7579469014359849,
+          "p50": 0.780550223928343,
+          "p90": 1.0,
+          "p99": 1.0
+        },
+        "macro_transition_fraction": {
+          "count": 9216,
+          "max": 0.7927063339731286,
+          "mean": 0.24205309856401508,
+          "p50": 0.21944977607165708,
+          "p90": 0.6148432501599488,
+          "p99": 0.783109404990403
+        },
+        "macro_zero_fraction": {
+          "count": 9216,
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p90": 0.0,
+          "p99": 0.0
+        },
+        "near_opacity": {
+          "count": 9216,
+          "max": 0.028037846088409424,
+          "mean": 0.0027819513796000844,
+          "p50": 0.0007388591766357422,
+          "p90": 0.009347379207611084,
+          "p99": 0.024160790443420413
+        },
+        "pose": "A",
+        "shell_opacity": {
+          "count": 9216,
+          "max": 0.08868992328643799,
+          "mean": 0.010919008766197495,
+          "p50": 0.005828261375427246,
+          "p90": 0.029818058013916016,
+          "p99": 0.05722016692161563
+        }
+      },
+      {
+        "clear_fraction_below_0.002": 0.0029296875,
+        "complete_opacity": {
+          "count": 9216,
+          "max": 0.31217777729034424,
+          "mean": 0.07631609246083018,
+          "p50": 0.07235604524612427,
+          "p90": 0.12915799021720886,
+          "p99": 0.18221772611141215
+        },
+        "macro_one_fraction": {
+          "count": 9216,
+          "max": 1.0,
+          "mean": 0.6666804122680743,
+          "p50": 0.6621880998080614,
+          "p90": 1.0,
+          "p99": 1.0
+        },
+        "macro_transition_fraction": {
+          "count": 9216,
+          "max": 0.6928982725527831,
+          "mean": 0.33279850447856685,
+          "p50": 0.3378119001919386,
+          "p90": 0.6058861164427384,
+          "p99": 0.6601727447216893
+        },
+        "macro_zero_fraction": {
+          "count": 9216,
+          "max": 0.0780550223928343,
+          "mean": 0.0005210832533589252,
+          "p50": 0.0,
+          "p90": 0.0,
+          "p99": 0.020825335892515093
+        },
+        "near_opacity": {
+          "count": 9216,
+          "max": 0.04048562049865723,
+          "mean": 0.004746283307516326,
+          "p50": 5.960464477539062e-07,
+          "p90": 0.017303168773651123,
+          "p99": 0.03475676476955414
+        },
+        "pose": "B",
+        "shell_opacity": {
+          "count": 9216,
+          "max": 0.1088065505027771,
+          "mean": 0.01023488843606578,
+          "p50": 0.0051035284996032715,
+          "p90": 0.02804902195930481,
+          "p99": 0.056390357017517094
+        }
+      },
+      {
+        "clear_fraction_below_0.002": 0.003363715277777778,
+        "complete_opacity": {
+          "count": 9216,
+          "max": 0.24299204349517822,
+          "mean": 0.07140575933994518,
+          "p50": 0.06816142797470093,
+          "p90": 0.12155929207801819,
+          "p99": 0.172054934501648
+        },
+        "macro_one_fraction": {
+          "count": 9216,
+          "max": 1.0,
+          "mean": 0.7718757081067391,
+          "p50": 0.746001279590531,
+          "p90": 1.0,
+          "p99": 1.0
+        },
+        "macro_transition_fraction": {
+          "count": 9216,
+          "max": 0.6142034548944337,
+          "mean": 0.22812429189326083,
+          "p50": 0.25399872040946897,
+          "p90": 0.43889955214331416,
+          "p99": 0.5617402431222009
+        },
+        "macro_zero_fraction": {
+          "count": 9216,
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p90": 0.0,
+          "p99": 0.0
+        },
+        "near_opacity": {
+          "count": 9216,
+          "max": 0.031531572341918945,
+          "mean": 0.0018220155098889437,
+          "p50": 0.0,
+          "p90": 0.008814334869384766,
+          "p99": 0.018131083250045792
+        },
+        "pose": "C",
+        "shell_opacity": {
+          "count": 9216,
+          "max": 0.10001534223556519,
+          "mean": 0.010511125677213486,
+          "p50": 0.00533294677734375,
+          "p90": 0.028857767581939697,
+          "p99": 0.05792753696441652
+        }
+      }
+    ],
+    "foggreenoutlands": [
+      {
+        "clear_fraction_below_0.002": 0.0,
+        "complete_opacity": {
+          "count": 9216,
+          "max": 0.6559745073318481,
+          "mean": 0.31159676211730886,
+          "p50": 0.30943670868873596,
+          "p90": 0.44252917170524597,
+          "p99": 0.5526090919971467
+        },
+        "macro_one_fraction": {
+          "count": 9216,
+          "max": 1.0,
+          "mean": 0.7579469014359849,
+          "p50": 0.780550223928343,
+          "p90": 1.0,
+          "p99": 1.0
+        },
+        "macro_transition_fraction": {
+          "count": 9216,
+          "max": 0.7927063339731286,
+          "mean": 0.24205309856401508,
+          "p50": 0.21944977607165708,
+          "p90": 0.6148432501599488,
+          "p99": 0.783109404990403
+        },
+        "macro_zero_fraction": {
+          "count": 9216,
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p90": 0.0,
+          "p99": 0.0
+        },
+        "near_opacity": {
+          "count": 9216,
+          "max": 0.09659218788146973,
+          "mean": 0.026584754394005157,
+          "p50": 0.019003689289093018,
+          "p90": 0.055923640727996826,
+          "p99": 0.08752103447914125
+        },
+        "pose": "A",
+        "shell_opacity": {
+          "count": 9216,
+          "max": 0.2759409546852112,
+          "mean": 0.05280788727880766,
+          "p50": 0.040970176458358765,
+          "p90": 0.11942881345748901,
+          "p99": 0.1966358721256257
+        }
+      },
+      {
+        "clear_fraction_below_0.002": 0.0,
+        "complete_opacity": {
+          "count": 9216,
+          "max": 0.7487926483154297,
+          "mean": 0.31815054169985363,
+          "p50": 0.3163042962551117,
+          "p90": 0.45342084765434265,
+          "p99": 0.5599756836891182
+        },
+        "macro_one_fraction": {
+          "count": 9216,
+          "max": 1.0,
+          "mean": 0.6666804122680743,
+          "p50": 0.6621880998080614,
+          "p90": 1.0,
+          "p99": 1.0
+        },
+        "macro_transition_fraction": {
+          "count": 9216,
+          "max": 0.6928982725527831,
+          "mean": 0.33279850447856685,
+          "p50": 0.3378119001919386,
+          "p90": 0.6058861164427384,
+          "p99": 0.6601727447216893
+        },
+        "macro_zero_fraction": {
+          "count": 9216,
+          "max": 0.0780550223928343,
+          "mean": 0.0005210832533589252,
+          "p50": 0.0,
+          "p90": 0.0,
+          "p99": 0.020825335892515093
+        },
+        "near_opacity": {
+          "count": 9216,
+          "max": 0.11426323652267456,
+          "mean": 0.02231963331319599,
+          "p50": 0.004197448492050171,
+          "p90": 0.07139453291893005,
+          "p99": 0.10270908474922183
+        },
+        "pose": "B",
+        "shell_opacity": {
+          "count": 9216,
+          "max": 0.30792713165283203,
+          "mean": 0.04943235378272624,
+          "p50": 0.03630495071411133,
+          "p90": 0.11303359270095825,
+          "p99": 0.19671004116535187
+        }
+      },
+      {
+        "clear_fraction_below_0.002": 0.0003255208333333333,
+        "complete_opacity": {
+          "count": 9216,
+          "max": 0.6530016660690308,
+          "mean": 0.30512888164957985,
+          "p50": 0.3051201403141022,
+          "p90": 0.43819355964660645,
+          "p99": 0.5445291697978978
+        },
+        "macro_one_fraction": {
+          "count": 9216,
+          "max": 1.0,
+          "mean": 0.7718757081067391,
+          "p50": 0.746001279590531,
+          "p90": 1.0,
+          "p99": 1.0
+        },
+        "macro_transition_fraction": {
+          "count": 9216,
+          "max": 0.6142034548944337,
+          "mean": 0.22812429189326083,
+          "p50": 0.25399872040946897,
+          "p90": 0.43889955214331416,
+          "p99": 0.5617402431222009
+        },
+        "macro_zero_fraction": {
+          "count": 9216,
+          "max": 0.0,
+          "mean": 0.0,
+          "p50": 0.0,
+          "p90": 0.0,
+          "p99": 0.0
+        },
+        "near_opacity": {
+          "count": 9216,
+          "max": 0.0950472354888916,
+          "mean": 0.008566803887434717,
+          "p50": 6.458163261413574e-05,
+          "p90": 0.03473275899887085,
+          "p99": 0.061554723978042625
+        },
+        "pose": "C",
+        "shell_opacity": {
+          "count": 9216,
+          "max": 0.3079766631126404,
+          "mean": 0.0508530002941067,
+          "p50": 0.03799843788146973,
+          "p90": 0.11569902300834656,
+          "p99": 0.20101424753665942
+        }
+      }
+    ]
+  },
+  "result": "passed-sector-patches-reference-preview",
+  "schema": 1,
+  "scope": "one fixed analytic reference preview; numerical convergence and appearance diagnosis only",
+  "slice_macro_fractions": {
+    "bluewell": {
+      "M_one_fraction": 0.38751220703125,
+      "M_transition_fraction": 0.469970703125,
+      "M_zero_fraction": 0.14251708984375
+    },
+    "foggreenoutlands": {
+      "M_one_fraction": 0.38751220703125,
+      "M_transition_fraction": 0.469970703125,
+      "M_zero_fraction": 0.14251708984375
+    }
+  }
+}

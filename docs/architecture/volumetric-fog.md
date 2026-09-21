@@ -975,3 +975,22 @@ appearance, but the isolated distant bulb is rejected. The target is irregular
 cloud patches extending through a sector or substantial parts of it, with
 clearer gaps, rather than separately bounded cloud objects. Preserve the
 interior as a visual reference; the paired-lobe distribution is not selected.
+
+### Sector-wide macro modulation: negative fixed preview
+
+A [fixed reference](../../tools/analysis/fog_sector_patches_preview.py) multiplies
+the original family field by three-octave signed value noise at 8P/4P/2P, with
+4:2:1 weights, fixed octave rotations and a smooth zero-to-one threshold. This
+removes explicit lobe objects and varies density continuously; it is not selected.
+The six comparison views converge numerically, but their long sightlines remain
+cloudy almost everywhere. All A/C rays have positive macro support over the
+complete 40 km; B averages 39.979 km. A 14.25% clear area in the separate sector
+slice does not establish clear sightlines in those views. Original periodic fine
+texture also remains visibly repeated. The user wants more clear space and
+varied cloud density, size and shape, including internal variation.
+
+Next design must distinguish broad cloud mass, internal detail and accumulated
+opacity. Preserving the exact periodic atlas density is not an appearance
+requirement; family colour/style and the liked nearby structure are the useful
+references. The preview does not qualify angular antialiasing, a runtime marcher,
+GPU cost or native behavior. No threshold/seed search followed this result.
