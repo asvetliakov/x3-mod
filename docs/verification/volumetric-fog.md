@@ -2028,3 +2028,78 @@ all 16 gates, pass fixture 58 checks, none failed, run 43.8 s + 27.5 s. GPU vers
 (576 rays each, 221-295 fogged; the taper-depth case is now 90000 units): T max .00036 (FP32) / .00074 (RGBA16F), S max
 .00037 / .00060, gates .003. Generator `--check` PASS for the nine fog programs. Summary:
 `verification/results/fog-density-shader/summary.json`.
+
+## Run 62 fog flight diagnosis (run222): the L2 smear is one off-screen station's shaft, stamped per bin (2026-09-22)
+
+Diagnosis only: no production edit, no Wine, no build. Evidence `/tmp/x3-bottleX3-run222` (local), `screenshots/fog4.png`,
+numbers in `verification/results/fog-run222-diagnosis.json`. [M] measured, [I] inferred. Method: a CPU re-march of the look
+bin law (24+40 bins, cap 112500, taper 65000, shaft floor .15, two-cascade hard switch at .85, the shader's 2x2 comparison)
+over the dumped `shadow_map2/3` with the logged `camera_state` and `shadow_replay_map_basis`, 320x192 rays, **uniform density**
+(the stored field was not reconstructed, so modelled contrast is a proxy; geometry and sampling are exact). Scratch scripts
+were not committed.
+
+**Bursts and dumps.** [M] Five bursts: 6756, 7910, 9152, 9539 are L2 (the first `volumetric_fog_look` switch is frame 21487),
+31040 is L3. Each has `hdr_1` (post fog + TAA, pre tonemap), `depth_1`, `motion_1` and `shadow_map0..4`; no fog T/S target
+and no pre-fog colour. All burst heads: `applied=1 reason=ok shadow_maps=2 sun=tracked`, sun (.6433, .7612, -.0819). The maps
+are **2048^2**, so the fog reads 7.3 units/texel (7500) and 36.6 (37 500), not 73.
+
+**1. What the smear is.** [M] 9539 is the fog4.png pose; 9152 shows no smear. In 9539 maps 2 and 3 hold one long station
+(28 caster records, 97 855 primitives, cascade mask 31; a spine with 3+3 towers, about 22 500 x 7200 units in light space,
+30 264 occluder texels in map 3) at 16 069 units, view (15796, 2794, 942): **3.2 km to the right of the camera and off
+screen**. Its shadow slab sweeps across the view in front of the camera. The visible far station (48 560 units) is in cascade
+4 only, which the fog does not bind: it throws no shaft and is not the caster. The re-march reproduces the picture: a dark
+core line at -10.4 deg (fog4.png about -9.9 deg) converging on the anti-solar point at the left, and above it the comb.
+**The comb is the station's tower silhouette stamped once per 2512-unit far bin**: with bin centres each bin contributes one
+point sample of the shadow, so every bin projects its own copy of the silhouette. Along lines 40-48 px above the core the
+detrended HDR profile correlates .65-.68 with the bin-centre model and .02-.14 with the dense (16 sub-samples per bin)
+model; tooth amplitude 2.2-2.4 % rms in the HDR against 2.7-3.2 % modelled. Bin centres against dense: rms .0102, p99 .040,
+max .097 of lit in-scatter; the mean of 8 L3 phases: rms .0023, p99 .009, max .024, which is the user's "much reduced".
+HDR core/side luminance in 9539: median .854, min .785, 16 px FWHM.
+
+**Why it appears and disappears.** [M] Not the sampling: 9152 was taken 41 units from the 9539 camera position with another
+heading, and there the station has **no caster record at all** (map 3: 41 occluder texels, a ship; map 2: 1048). The engine
+did not submit the station, so it left every shadow map. Shadow-caster retention was on (`mode=live`) but held nothing:
+`static=0` at both bursts (15 nodes `moving` at 9539), and over the session `static=0` on 15 577 of 30 035 frames. So the
+shaft pops with engine submission, which depends on heading and position. [M] Secondary: moving the camera half a far bin
+(1256 units) decorrelates the comb completely (synthetic box, error-pattern correlation -.04 while the dense images
+correlate .94), so under way the teeth also crawl. Rejected [M]: cascade boundary or alternate-frame update
+(`far_replayed=1`, cascade 4 unbound, the caster sits inside both bound maps); repair/half-res disagreement and sentinel
+depth (the smear pixels are plain sky, tens of px wide); history (static over the 8 frames). [M] Coverage: 70 % of the
+in-scatter weight of a sky ray (min 49 %) lies inside the two bound cascades; beyond .85 x 37 500 lateral units fog is
+always lit, so shafts end there with a hard edge.
+
+**2. Host reproduction.** [M] Synthetic box (spine 22 000 x 600 plus three 600 x 3000 towers, 13 300 units sun-ward, the 9539
+camera and sun, analytic visibility): bin centres give the same comb (three towers become a dozen teeth; rms .0058, max
+.075 against dense), the 8-phase mean removes it (rms .0013, max .016), and both dense and L3 keep **one crisp dark core
+line**, the spine seen edge-on from inside its own shadow plane (min .18 of lit with the .15 floor). `look_march` in
+`tools/analysis/fog_density_shader_reference.py` takes only a scalar `shadowed`; the mirror above reuses its `look_noise`.
+A per-sample visibility callback there is the natural host twin for the fix below (not done).
+
+**3. The L3 "black lines".** [I] Correct geometry, not an artefact: the dense reference of 31040 shows a fan of thin shafts
+from the station's spars converging on the anti-solar point, and the L3 mean matches it (rms .0022). No stair-steps, acne
+or seam in the model at 36.6 units/texel. They read as lines rather than shafts because the sun is a point (no penumbra),
+the comparison is one 2x2 tap (about one screen pixel at 20 000 units) and the umbra keeps full contrast over tens of km.
+[M] In the 31040 HDR they are weak: core/side median .996, min .909; the 9539 pose is the strong case (.785). What would
+soften them, in order: penumbra that widens with receiver-to-occluder distance (the four fetched depths already give the
+blocker distance); a higher floor (`X3M_FOG_LOOK_SHADOW_FLOOR`, now .15: .3 can be tried in flight with no build); a
+distance fade of shaft strength. Blurring the half-res S target is not advised: it holds the cloud detail as well.
+
+**4. Fix set, ranked by payoff over cost** (slot and fetch figures are estimates [I], not compiled).
+1. **Retention of the station caster** (shadow-caster-retention.md rule 3): this is the appear/disappear defect and is not a
+   fog change. Find why every node is `moving` for half the session. No slots, no GPU cost. Owner: shadow lane.
+2. **Offset the shaft lookup only, in L2** (`fog_density_field_inc.h:245`: `view_direction*(bin.y+(offset-.5)*bin.x)` with
+   the `:218-220` offset computed for L2 too and applied to density only under L3; `fog_look_math.h:80` gates the amplitude
+   rows). About 4-6 slots in march L2 (422 of 512); repair keeps centres and stays at 510. No GPU cost. Removes the comb at
+   the 8-phase rate above and leaves cloud edges un-dithered, so the L3 noise does not come with it. Needs TAA; with TAA
+   off the phase is held (`motion_output_fog_inc.h:422`) and the comb becomes a static dither.
+3. **Or default to L3** (constants only, zero slots). [M] cost seen in the 31040 burst at rest, after TAA: temporal
+   std/mean median .69 %, p99 3.0 % (L2 static 9152: .04 %, .28 %), single-frame spatial high-pass median .51 % against
+   .08 %. Visible as faint grain, not boiling; the documented caveats stand (repair outline while history is short, static
+   dither with TAA off).
+4. **Shaft visibility pass** (the planned move of the lookup out of march/repair): a quarter-res, 64-slice visibility
+   atlas filled with four stratified taps per bin (rms .0026, max .024 against dense without any temporal help), then one
+   filtered read per march sample. Frees the `fog_look_visibility` body (`:83-100`, roughly 90 slots) in march and repair,
+   which pays for cascade cross-fade, the finest cascade, cascade 4 and the penumbra of section 3. Fetches 160x96x64x16 =
+   15.7 M per frame against up to 63 M shaft fetches today. One new target and program; Reset, hostile-state and
+   native-parity work as for the other fog targets.
+5. More bins near occluders: not practical in one ps_3_0 `rep` loop; item 4 achieves the same with its taps.

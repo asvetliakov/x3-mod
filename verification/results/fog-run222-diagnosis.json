@@ -1,0 +1,64 @@
+{
+  "schema": "fog-run222-diagnosis/1",
+  "date": "2026-09-22",
+  "evidence": "/tmp/x3-bottleX3-run222 (local, untracked); session-20260922-015557-212.log; screenshots/fog4.png",
+  "build": {"dll": "924be5c0 (Run62)", "commit": "35f5a9cf", "bottle": "X3"},
+  "method": "read-only; CPU re-march of the look bin law (24+40 bins, cap 112500, taper 65000, shaft floor 0.15, two-cascade hard switch at 0.85, 2x2 comparison) over the dumped shadow_map2/3 with the logged camera_state and shadow_replay_map_basis; uniform density sigma 1.2e-5 (proxy: real density not reconstructed); 320x192 rays; scratch scripts not committed",
+  "bursts": {
+    "6756": "L2", "7910": "L2", "9152": "L2 (no smear)", "9539": "L2 (smear, same pose family as fog4.png)", "31040": "L3",
+    "first_look_switch_frame": 21487,
+    "dumps_present": ["hdr_1 (post fog + TAA, pre tonemap)", "depth_1", "motion_1", "shadow_map0..4 (R32F 2048^2)"],
+    "dumps_absent": ["fog half-res T/S targets", "pre-fog colour"]
+  },
+  "log_facts": {
+    "volumetric_fog_frame": "applied=1 reason=ok shadow_maps=2 sun=tracked calls=324 cpu_us 405-543 on all five burst heads",
+    "sun_world": [0.643295, 0.7612, -0.081909],
+    "cascade_sizes": 2048,
+    "texel_units": {"c2_7500": 7.32, "c3_37500": 36.6, "c4_150000": 146.5},
+    "brief_correction": "73 units/texel assumed 1024^2 maps; the maps are 2048^2"
+  },
+  "caster": {
+    "identity": "one station: 28 caster records, 97855 primitives, cascade mask 31, long spine about 22500 x 7200 units in light space, 13300 units sun-ward of the camera",
+    "frame_9539": {"distance_units": 16069, "view_xyz": [15796, 2794, 942], "on_screen": false, "c3_occluder_texels": 30264, "c2_occluder_texels": 288866},
+    "frame_9152": {"camera_offset_from_9539_units": 41, "station_records": 0, "c3_occluder_texels": 41, "c2_occluder_texels": 1048},
+    "frame_31040": {"distance_units": 10388, "view_xyz": [9817, 3353, -548], "on_screen": false, "c3_occluder_texels": 33061},
+    "visible_far_station_9539": {"distance_units": 48560, "cascade_mask": 16, "note": "cascade 4 only, not bound to fog: throws no shaft, is not the smear's caster"},
+    "retention": {"mode": "live", "static_nodes_at_9152_and_9539": 0, "moving_at_9539": 15, "session_frames": 30035, "frames_static_zero": 15577, "frames_nodes_unseen_gt0": 12146}
+  },
+  "smear_9539": {
+    "band_orientation_deg": {"model_core_line": -10.4, "fog4_png_by_eye": -9.9},
+    "bin_centres_vs_dense": {"rms": 0.0102, "p99": 0.0401, "max": 0.0965},
+    "l3_mean8_vs_dense": {"rms": 0.0023, "p99": 0.0091, "max": 0.0236},
+    "l3_single_phase_vs_dense": {"rms": 0.0107, "p99": 0.0409, "max": 0.1025},
+    "teeth_hdr_correlation_40_48px_above_core": {"with_bin_centre_model": [0.654, 0.677], "with_dense_model": [0.024, 0.139], "hdr_detrended_rms": [0.0225, 0.0244], "model_detrended_rms": [0.0315, 0.0274]},
+    "hdr_core_over_side": {"median": 0.854, "p10": 0.807, "min": 0.785, "core_fwhm_px": 16},
+    "inscatter_weight_inside_bound_cascades": {"mean": 0.699, "min": 0.488}
+  },
+  "l3_31040": {
+    "bin_centres_vs_dense_same_pose": {"rms": 0.0102, "max": 0.0898},
+    "l3_mean8_vs_dense": {"rms": 0.0022, "p99": 0.0081, "max": 0.0198},
+    "hdr_core_over_side": {"median": 0.996, "p10": 0.982, "min": 0.909},
+    "noise_at_rest_post_taa": {"temporal_std_over_mean_median": 0.00687, "p95": 0.02229, "p99": 0.02976, "spatial_hf_median": 0.00513,
+      "l2_static_reference_9152": {"temporal_median": 0.0004, "p99": 0.00277, "spatial_hf_median": 0.00076}}
+  },
+  "synthetic_box": {
+    "scene": "spine 22000 x 600 plus three 600 x 3000 towers, 13300 units sun-ward, 9539 camera and sun, analytic visibility",
+    "bin_centres_vs_dense": {"rms": 0.0058, "p99": 0.0237, "max": 0.075},
+    "l3_mean8_vs_dense": {"rms": 0.0013, "p99": 0.0055, "max": 0.0157},
+    "error_pattern_corr_camera_moved_1256_units": -0.038,
+    "dense_image_corr_same_move": 0.9435,
+    "residual": "dense and L3 mean keep one crisp dark core line (spine seen edge-on in its own shadow plane), min 0.18 of lit with floor 0.15"
+  },
+  "variants_9539_160x96_vs_dense_rms_p99_max": {
+    "bin_centres": [0.0102, 0.0395, 0.0908],
+    "two_shadow_taps_per_bin": [0.006, 0.0251, 0.0519],
+    "four_shadow_taps_per_bin": [0.0026, 0.0104, 0.0243],
+    "jitter_mean_2": [0.0063, 0.0251, 0.0442], "jitter_mean_4": [0.0035, 0.0134, 0.0238],
+    "jitter_mean_8": [0.0023, 0.0092, 0.0185], "jitter_mean_16": [0.0015, 0.0061, 0.0135]
+  },
+  "conclusions": {
+    "smear": "measured: real shadow volume of an off-screen station 3.2 km to the right; the comb is the station silhouette stamped once per 2512-unit far bin (bin-centre sampling)",
+    "appear_disappear": "measured: caster set follows engine submission; station absent from every map at 9152, 41 units from the 9539 camera; retention held no static node. Not a cascade boundary, not alternate-frame far update (far_replayed=1, c4 unbound), not repair, not sentinel depth, not history",
+    "l3_lines": "inferred correct geometry (fan converging on the anti-solar point, reproduced by the dense reference); crisp because point sun, 2x2 comparison of a 36.6-unit texel, no penumbra"
+  }
+}
