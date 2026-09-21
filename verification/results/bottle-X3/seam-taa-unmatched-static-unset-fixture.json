@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a8d69106a2e5b4a35/verification/probe/build/motion_output_fixture.exe": "544022e571a8953fa614df6e12c99accd274019e23188c74879d28346bc31913",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a8d69106a2e5b4a35/verification/probe/build/motion-output-seam/d3d9.dll": "e974190cddc4f98c87c15316615e5284c17178dc33a9e77bbf2abcbe0a005559",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a8d69106a2e5b4a35/build/d3d9.dll": "9aef914e23a57ef81d1c951f809d011e649aad4c76dd1fcc06df5ff7bbc71369"
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a8d69106a2e5b4a35/verification/probe/build/motion_output_fixture.exe": "a1f52734b5f1e675e6cdf14788a96e4b85ce063e3057e0bc616e75ab31c519a2",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a8d69106a2e5b4a35/verification/probe/build/motion-output-seam/d3d9.dll": "efd406db19c1be09ae95fbce3f37e28228025bee97f1e8ecb22b34ebbb08e9d3",
+  "/private/tmp/claude-501/-Users-asvetl-x3-mod/e4819d6e-52de-4adf-9383-1583146b5cc2/scratchpad/x87build/d3d9.dll": "9132951a325e244736e988db49e219dbd8df81b77d36eed8e27089c0e1674c73"
  },
  "checks": 95,
  "setting": null,
@@ -215,8 +215,8 @@
   }
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-taa-unmatched-static-unset-20260921-184614-766748",
- "trace_sha256": "c10849b1b9d7e90d1c36432c6386692abdf31af852dc48a48e7b6d5d603b8658",
- "dll_sha256": "e974190cddc4f98c87c15316615e5284c17178dc33a9e77bbf2abcbe0a005559",
- "exe_sha256": "544022e571a8953fa614df6e12c99accd274019e23188c74879d28346bc31913"
+ "directory": "verification/probe/build/motion-output-seam-taa-unmatched-static-unset-20260921-191247-757541",
+ "trace_sha256": "bc22d4922aec1d56d9faafaff96e7d430b8d9ad70f1f6602c79ec202ba6c516a",
+ "dll_sha256": "efd406db19c1be09ae95fbce3f37e28228025bee97f1e8ecb22b34ebbb08e9d3",
+ "exe_sha256": "a1f52734b5f1e675e6cdf14788a96e4b85ce063e3057e0bc616e75ab31c519a2"
 }

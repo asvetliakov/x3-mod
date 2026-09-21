@@ -642,3 +642,5 @@ candidate, not installed, no game launched. Bottle X3.
 - Open: the latched m22 / m32 are per-submission scratch in the engine; `camera_state` now logs
   `p22` / `p32` so the next capture can confirm them. The run209 replay was not rerun. Native
   Windows runtime unverified (documented D3D9 calls only: one more `SetPixelShaderConstantF`).
+
+x87 audit fix (2026-09-21): the draw-path arithmetic of the option is SSE2-only (bit-mask magnitude instead of `std::fabs`, the rotation bound compared as a cosine from a Taylor half-angle series instead of `acos`, `sqrtss` for the diagnostic ratios). `check_no_x87.py` on a scratch production build: roots 95, reachable 547, 0 violations. `test_static_previous_rows` 7 OK (game-scale bound 0.05 px unchanged, series within 1e-9 of cos), `test_taa*` 33 OK; the four seam cases rerun with the same numbers (95 checks each, node differs from off in frame 3 only, max 0.00066 px).

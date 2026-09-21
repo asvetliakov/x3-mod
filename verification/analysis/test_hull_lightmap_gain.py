@@ -284,7 +284,7 @@ class LauncherAndProxyGateTests(unittest.TestCase):
         motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         draw = extract_function(motion, 'void MotionOutput::evaluate_draw(')
         # The gain rides the motion ABI's own two-vector upload: no additional constant write, no Get*.
-        self.assertIn('matched ? 1.f : 0.f, 0.f, 0.f, lightmap_fade_gain_};', draw)
+        self.assertIn('previous_rows ? 1.f : 0.f, 0.f, 0.f, lightmap_fade_gain_};', draw)
         self.assertEqual(draw.count('SetPixelShaderConstantF'), 1)
         self.assertIn('lightmap_far_fade_ && (shadow_.hull_lightmap_pair || shadow_.ps_sun_original_lightmap)', draw)
         # Every program that reads c217.w gets it: the two gained selections of the one bind site are covered by the

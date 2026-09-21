@@ -26,7 +26,12 @@ static RigidDrawKey key(std::uint64_t serial, std::uint64_t node, std::uint32_t 
     RigidDrawKey k; k.object_lifetime = serial; k.camera_lifetime = 7; k.draw_domain = 1; k.node = node; k.camera = 9; k.lod = lod;
     k.vertex_buffer = vb; k.declaration = 3; k.position_program = 4; k.stride = 24; k.primitives = 1; k.pass = PassMainScene; return k;
 }
-int main(int argc, char**) {
+int main(int argc, char** argv) {
+    if (argc > 1 && !std::strcmp(argv[1], "cos")) {
+        for (int d = 0; d <= 180; d += 5) std::printf("%.12g ", cosine_of_degrees(double(d)));
+        std::printf("%.12g\n", cosine_of_degrees(20.));
+        return 0;
+    }
     if (argc > 1) {
         MotionRowHistory h(16); SubmittedMatrix rows{}, previous{}; rows[15] = 1;
         const MotionRowFrame frame{1, 64, 64};
@@ -189,6 +194,11 @@ class StaticPreviousRows(unittest.TestCase):
         self.assertFalse(self.run_rows(current, previous, skew)[0])
         nan = list(good); nan[3] = float('nan')
         self.assertFalse(self.run_rows(current, previous, nan)[0])
+
+    def test_cosine_bound_needs_no_libm(self):
+        out = [float(x) for x in subprocess.run([str(self.binary), 'cos'], capture_output=True, text=True, check=True).stdout.split()]
+        for degrees, value in zip(list(range(0, 181, 5)) + [20], out):
+            self.assertAlmostEqual(value, math.cos(math.radians(degrees)), delta=1e-9)
 
     def test_classify_miss(self):
         out = subprocess.run([str(self.binary), 'classify'], capture_output=True, text=True, check=True).stdout.split()

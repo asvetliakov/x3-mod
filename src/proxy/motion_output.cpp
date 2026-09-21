@@ -3926,7 +3926,8 @@ bool MotionOutput::unmatched_static_rows(const MotionRoute& route, const rendere
         unmatched_static_current_ = camera_scene_; unmatched_static_previous_ = camera_previous_;
         unmatched_static_camera_ = taa_enabled_ && camera_scene_.valid && camera_previous_.valid && camera_previous_frame_ + 1 == frame_
             && std::isfinite(camera_cut_degrees_) && camera_cut_degrees_ > 0
-            && renderer::camera_rotation_degrees(unmatched_static_current_, unmatched_static_previous_) <= camera_cut_degrees_;
+            // The cut bound as a cosine: no acos on the draw path (check_no_x87.py); a bound of 180 or more never cuts.
+            && (camera_cut_degrees_ >= 180.f || renderer::camera_rotation_within(unmatched_static_current_, unmatched_static_previous_, renderer::cosine_of_degrees(double(camera_cut_degrees_))));
     }
     const unsigned kind = history_.classify_miss(route.key);
     if (!kind) return false;
@@ -3941,9 +3942,10 @@ bool MotionOutput::unmatched_static_rows(const MotionRoute& route, const rendere
         // |x row| / (m00 |w row|) and |y row| / (m11 |w row|) are 1 for a uniformly scaled object drawn
         // through the scene latch; a consistent other value marks a draw with its own projection.
         const float* r = rows.data();
-        const double wn = std::sqrt(double(r[12]) * r[12] + double(r[13]) * r[13] + double(r[14]) * r[14]);
-        const double sx = wn > 0 ? std::sqrt(double(r[0]) * r[0] + double(r[1]) * r[1] + double(r[2]) * r[2]) / (double(unmatched_static_current_.m00) * wn) : 0.;
-        const double sy = wn > 0 ? std::sqrt(double(r[4]) * r[4] + double(r[5]) * r[5] + double(r[6]) * r[6]) / (double(unmatched_static_current_.m11) * wn) : 0.;
+        // scalar::sqrt (sqrtss): diagnostics precision, no libm call on the draw path.
+        const double wn = double(scalar::sqrt(r[12] * r[12] + r[13] * r[13] + r[14] * r[14]));
+        const double sx = wn > 0 ? double(scalar::sqrt(r[0] * r[0] + r[1] * r[1] + r[2] * r[2])) / (double(unmatched_static_current_.m00) * wn) : 0.;
+        const double sy = wn > 0 ? double(scalar::sqrt(r[4] * r[4] + r[5] * r[5] + r[6] * r[6])) / (double(unmatched_static_current_.m11) * wn) : 0.;
         log("motion_unmatched_static device=%llu frame=%llu index=%lu object_known=%u node_serial=%llu model=%08lx lod=%08lx vb=%llu ib=%llu first=%u primitives=%u vertex_count=%u vs=%016llx camera_handle=%lu projection_x=%.5f projection_y=%.5f w=%.6g",
             id_, frame_, static_cast<unsigned long>(counters_.draws), kind == 2, k.object_lifetime, static_cast<unsigned long>(k.model), static_cast<unsigned long>(k.lod),
             k.vertex_buffer, k.index_buffer, k.first, k.primitives, k.vertex_count, k.position_program, static_cast<unsigned long>(k.camera_handle), sx, sy, double(r[15]));

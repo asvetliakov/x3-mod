@@ -17,8 +17,35 @@
 // is refused (the caller keeps the missing-history sentinel).
 #include "camera_reprojection.h"
 #include <cmath>
+#include <cstdint>
+#include <cstring>
 
 namespace x3m::renderer {
+namespace static_rows_detail {
+// SSE2-only helpers: this header runs on the draw path, where check_no_x87.py
+// refuses the MinGW <math.h> x87 fabs inline and any libm call returning in st(0).
+inline double magnitude(double x) noexcept {
+    std::uint64_t bits; std::memcpy(&bits, &x, sizeof bits);
+    bits &= ~(std::uint64_t(1) << 63);
+    std::memcpy(&x, &bits, sizeof x);
+    return x;
+}
+} // namespace static_rows_detail
+// cos of an angle in [0, 180] degrees by half-angle Taylor series (error below
+// 1e-9), so a rotation bound can be compared as a cosine without acos/cos calls.
+inline double cosine_of_degrees(double degrees) noexcept {
+    const double h = degrees * (3.14159265358979323846 / 360.), h2 = h * h; // half angle, at most pi/2
+    double term = h, sine = h;
+    for (unsigned n = 1; n <= 9; ++n) { term *= -h2 / double((2 * n) * (2 * n + 1)); sine += term; }
+    return 1. - 2. * sine * sine;
+}
+// True when the rotation between two views is at most the bound whose cosine is
+// given: the rotation angle's cosine is (trace(Ra^T Rb) - 1) / 2.
+inline bool camera_rotation_within(const CameraState& a, const CameraState& b, double cosine_bound) noexcept {
+    double trace = 0;
+    for (unsigned i = 0; i < 9; ++i) trace += double(a.r[i]) * double(b.r[i]);
+    return (trace - 1.) * .5 >= cosine_bound;
+}
 inline bool static_previous_rows(const CameraState& current, const CameraState& previous,
                                  const float rows[16], float out[16]) noexcept {
     if (!current.valid || !previous.valid || !rows || !out) return false;
@@ -26,11 +53,11 @@ inline bool static_previous_rows(const CameraState& current, const CameraState& 
     for (unsigned i = 0; i < 16; ++i) if (!std::isfinite(rows[i])) return false;
     // Depth law from the rows: the 3-vector parts of the z and w rows are parallel.
     unsigned pivot = 0; double scale = 0;
-    for (unsigned k = 0; k < 3; ++k) { const double m = std::fabs(double(rows[12 + k])); if (m > scale) { scale = m; pivot = k; } }
+    for (unsigned k = 0; k < 3; ++k) { const double m = static_rows_detail::magnitude(double(rows[12 + k])); if (m > scale) { scale = m; pivot = k; } }
     if (!(scale > 1e-12)) return false;
     const double a = double(rows[8 + pivot]) / double(rows[12 + pivot]);
     for (unsigned k = 0; k < 3; ++k)
-        if (std::fabs(double(rows[8 + k]) - a * double(rows[12 + k])) > 1e-4 * (std::fabs(a) + 1.) * scale) return false;
+        if (static_rows_detail::magnitude(double(rows[8 + k]) - a * double(rows[12 + k])) > 1e-4 * (static_rows_detail::magnitude(a) + 1.) * scale) return false;
     const double b = double(rows[11]) - a * double(rows[15]);
     double result[16];
     for (unsigned k = 0; k < 4; ++k) {
@@ -47,7 +74,7 @@ inline bool static_previous_rows(const CameraState& current, const CameraState& 
         result[12 + k] = prev[2];
     }
     for (unsigned i = 0; i < 16; ++i) {
-        if (!std::isfinite(result[i]) || std::fabs(result[i]) > 1e15) return false;
+        if (!std::isfinite(result[i]) || static_rows_detail::magnitude(result[i]) > 1e15) return false;
         out[i] = float(result[i]);
     }
     return true;
