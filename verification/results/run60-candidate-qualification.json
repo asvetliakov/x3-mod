@@ -1,0 +1,262 @@
+{
+  "schema": 1,
+  "candidate": {
+    "commit": "39c98242e4a3629496783d5fb9f365711e665ffa",
+    "branch": "detached (main)",
+    "checkout": "/tmp/x3-run60b-integration",
+    "dll": "/tmp/x3-run60b-candidate/build/d3d9.dll",
+    "sha256": "aaa8abb25e48f45ebed19348b871f715793762e10bbcb55f768d75de4bed600b",
+    "bytes": 55033332,
+    "configuration": "RelWithDebInfo",
+    "toolchain": "cmake/mingw-i686.cmake",
+    "source_clean": true,
+    "python3": "/usr/bin/python3 (3.9.6, NumPy for the fog asset step)",
+    "supersedes": {
+      "candidate": "/tmp/x3-run60-candidate (commit f646f84f, DLL b481072e)",
+      "reason": "linked audit FAIL: 2 functions with 13 x87 instructions"
+    }
+  },
+  "scope": "Versus installed Run59 DLL b1bb05fb (526851e4): (1) depth- and translation-aware camera-relative thin-region gate (new c8 for the camera mask program, 223->226 slots); (2) native fallback default gate = camera when the thin region is on; (3) default-off --taa-unmatched-static node|all (static-in-world previous rows on the first frame of a re-keyed draw), x87-free after the f646f84f fix; (4) stored-density fog checkpoints 1-4: --volumetric-fog-range {legacy,stored} (default legacy) reaches the stored-density fog and its background worker; legacy path unchanged.",
+  "linked_audit": {
+    "command": "python3 verification/probe/check_no_x87.py /tmp/x3-run60b-candidate/build/d3d9.dll",
+    "cwd": "/tmp/x3-run60b-integration",
+    "result": "PASS",
+    "roots_count": 95,
+    "reachable_functions": 547,
+    "violations": {},
+    "comparison": {
+      "run59": "95 roots / 544 reachable / 0",
+      "run60_halted_f646f84f": "95 / 548 / 2 functions, 13 x87 instructions"
+    },
+    "import_delta": {
+      "command": "i686-w64-mingw32-objdump -p",
+      "baseline_dll": "/tmp/x3-run59-candidate/build/d3d9.dll",
+      "imported_dlls_run59": [
+        "advapi32.dll",
+        "api-ms-win-crt-convert-l1-1-0.dll",
+        "api-ms-win-crt-environment-l1-1-0.dll",
+        "api-ms-win-crt-filesystem-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-private-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "api-ms-win-crt-utility-l1-1-0.dll",
+        "kernel32.dll",
+        "msvcrt.dll",
+        "user32.dll"
+      ],
+      "imported_dlls_run60b": [
+        "advapi32.dll",
+        "api-ms-win-crt-convert-l1-1-0.dll",
+        "api-ms-win-crt-environment-l1-1-0.dll",
+        "api-ms-win-crt-filesystem-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-private-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "api-ms-win-crt-utility-l1-1-0.dll",
+        "kernel32.dll",
+        "msvcrt.dll",
+        "user32.dll"
+      ],
+      "new_imported_dlls": [],
+      "removed_imported_dlls": [],
+      "total_imported_functions": {
+        "run59": 217,
+        "run60b": 217
+      },
+      "per_dll_function_delta": {},
+      "note": "threading imports (_beginthreadex/_endthreadex/CreateSemaphoreA/DuplicateHandle/GetProcessAffinityMask/GetThreadContext/rand_s) were already present in the Run59 DLL"
+    }
+  },
+  "selected_render_smoke": {
+    "status": "PARTIAL",
+    "scope": "Selected actual-DLL cases by changed dependency: four production cases, the camera-gate seam regression case and its no-camera twin, and the four unmatched-static option cases. No full renderer suite (partial runs skip cross-case comparisons), no benchmark.",
+    "consume_only": true,
+    "rebuilt_candidate": false,
+    "commands": [
+      "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run60b-candidate/lock-timings-prod.json python3 verification/probe/run_motion_output.py --dll /tmp/x3-run60b-candidate/build/d3d9.dll --seam .../motion-output-seam/d3d9.dll --fixture .../motion_output_fixture.exe production-ownership-hdr-on production-taa-hdr-on production-ownership-on production-ownership-taa-on seam-taa-camera-on seam-taa-on",
+      "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run60b-candidate/lock-timings-static.json python3 verification/probe/run_motion_output.py --dll ... seam-taa-unmatched-static-unset seam-taa-unmatched-static-off seam-taa-unmatched-static-node seam-taa-unmatched-static-all"
+    ],
+    "binaries": {
+      "/tmp/x3-run60b-integration/verification/probe/build/motion-output-seam/d3d9.dll": "7c08c265abe98dcba2c30a4afdeecce224689d8c8bc841e437747ccf3dfda12d",
+      "/tmp/x3-run60b-integration/verification/probe/build/motion_output_fixture.exe": "8279f49b54e6c3e61a7085a4621d1f58b769c5f2d74e392f68647d6577c090db",
+      "/tmp/x3-run60b-candidate/build/d3d9.dll": "aaa8abb25e48f45ebed19348b871f715793762e10bbcb55f768d75de4bed600b"
+    },
+    "cases": {
+      "production-ownership-hdr-on": {
+        "exit": 0,
+        "checks": 43,
+        "restorations": 39,
+        "frames": 12
+      },
+      "production-taa-hdr-on": {
+        "exit": 0,
+        "checks": 83,
+        "restorations": 51,
+        "frames": 12
+      },
+      "production-ownership-on": {
+        "exit": 0,
+        "checks": 43,
+        "restorations": 39,
+        "frames": 12
+      },
+      "production-ownership-taa-on": {
+        "exit": 0,
+        "checks": 83,
+        "restorations": 51,
+        "frames": 12
+      },
+      "seam-taa-camera-on": {
+        "exit": 0,
+        "checks": 177,
+        "restorations": 51,
+        "frames": 12,
+        "motion_pixels": 44279
+      },
+      "seam-taa-on": {
+        "exit": 0,
+        "checks": 164,
+        "restorations": 51,
+        "frames": 12,
+        "motion_pixels": 44279
+      },
+      "seam-taa-unmatched-static-unset": {
+        "exit": 0,
+        "checks": 95
+      },
+      "seam-taa-unmatched-static-off": {
+        "exit": 0,
+        "checks": 95,
+        "motion_frames_differing_from_seam-taa-unmatched-static-unset": []
+      },
+      "seam-taa-unmatched-static-node": {
+        "exit": 0,
+        "checks": 95,
+        "motion_frames_differing_from_seam-taa-unmatched-static-off": [
+          3
+        ]
+      },
+      "seam-taa-unmatched-static-all": {
+        "exit": 0,
+        "checks": 95,
+        "motion_frames_differing_from_seam-taa-unmatched-static-node": [
+          6
+        ]
+      }
+    },
+    "partial_records": {
+      "production_and_seam_taa": "/tmp/x3-run60b-candidate/motion-output-partial-prod.json",
+      "unmatched_static": "/tmp/x3-run60b-candidate/runner-written/motion-output-partial.json"
+    },
+    "lock": {
+      "production_and_seam_taa": {
+        "lock_wait_seconds": 3.9999999999970615e-06,
+        "child_elapsed_seconds": 14.439058000000001,
+        "exit_code": 0
+      },
+      "unmatched_static": {
+        "lock_wait_seconds": 3.875000000000406e-06,
+        "child_elapsed_seconds": 9.6748715,
+        "exit_code": 0
+      }
+    }
+  },
+  "fog_stored_density": {
+    "note": "route bridge and exit fixtures were run by the fog implementer on these same sources; not rerun for this candidate",
+    "results": "/tmp/x3-fog-density-route-v4",
+    "launcher_gate": "--volumetric-fog-range stored (default legacy) verified in dry-runs iv and v"
+  },
+  "build_logs": {
+    "/tmp/x3-run60b-configure.log": "dfedbfea341294a781b433ca07b5de73dda200e8e1e2f0244c4bbcb33035de65",
+    "/tmp/x3-run60b-build.log": "627a5d295c103725cdc7b86dbba673cf143b6833cd3532cf5bd379009ff6c82d"
+  },
+  "dry_run": {
+    "result": "/tmp/x3-run60b-candidate/dry-run.json",
+    "sha256": "466d0be06972a14fed09c7157d458da687ad6c5171e91dffc4cbc632c8f8f838",
+    "bytes": 4062,
+    "base": "Run 59 session A command line (docs/verification/user-runs.md), --dry-run, through wine_lock",
+    "game_launched": false,
+    "exit_codes": {
+      "i": 0,
+      "ii": 0,
+      "iii": 0,
+      "iv": 0,
+      "v": 0
+    },
+    "observed": {
+      "i": {
+        "X3M_TAA_THIN_REGION_GATE": "camera",
+        "X3M_TAA_THIN_REGION": "0.97,1",
+        "X3M_MOTION_CUT_MEDIAN_PX": "1e30",
+        "X3M_MOTION_CUT_MISSING": "1",
+        "X3M_VOLUMETRIC_FOG": "0",
+        "X3M_VOLUMETRIC_FOG_RANGE": "legacy"
+      },
+      "ii": {
+        "X3M_TAA_UNMATCHED_STATIC": "node"
+      },
+      "iii": {
+        "X3M_TAA_THIN_REGION": "0.94,1"
+      },
+      "iv": {
+        "X3M_VOLUMETRIC_FOG": "1",
+        "X3M_VOLUMETRIC_FOG_RANGE": "stored"
+      },
+      "v": {
+        "X3M_VOLUMETRIC_FOG": "1",
+        "X3M_VOLUMETRIC_FOG_RANGE": "legacy"
+      }
+    },
+    "lock": {
+      "lock_wait_seconds": 3.29200000000196e-06,
+      "child_elapsed_seconds": 0.40761225,
+      "exit_code": 0
+    }
+  },
+  "bottle": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+    "FEX_X87REDUCEDPRECISION": "1",
+    "WINEMSYNC": "1",
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "native_windows": "unverified",
+  "game_acceptance": "pending Run60",
+  "host": {
+    "command": "PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_*.py'",
+    "cwd": "/Users/asvetl/x3-mod",
+    "commit": "39c98242e4a3629496783d5fb9f365711e665ffa",
+    "full_discovery": {
+      "tests": 2802,
+      "seconds": 763.065,
+      "exit": 0,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "log": {
+        "path": "/tmp/x3-run60b-host.log",
+        "bytes": 34447,
+        "sha256": "b7c1a589e8c271c94fcd9dc7be6425754a9a0b36a6442902d5dbda0906256ad2"
+      }
+    },
+    "acceptance": "all-pass full discovery at the candidate commit"
+  },
+  "superseded_candidate": {
+    "commit": "f646f84f",
+    "dll_sha256": "b481072ee64fbefc97115e90ed72e4ad93438dcdc0141def725912591128e75a",
+    "reason": "linked x87 audit failed (2 functions, 13 instructions) in the unmatched-static path; never installed"
+  },
+  "referenced_fog_evidence": {
+    "route_bridge": "/tmp/x3-fog-density-route-v4 (26,692 checks; five legacy hashes equal baseline; exit fixture 4 checks)",
+    "summary": "verification/results/fog-density-route/summary.json",
+    "note": "run by the fog implementer on the same sources; not rerun on the candidate DLL"
+  }
+}

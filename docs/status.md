@@ -1,45 +1,46 @@
 # Project status
 
-Updated 2026-09-21 (evening): the Run59 candidate is installed and Run 59 is queued. Run56 (run200) is accepted for media stability: the user
+Updated 2026-09-21 (night): the Run60 candidate is installed and Run 60 is queued; Run 59 accepted the camera-relative gate for pans. Run56 (run200) is accepted for media stability: the user
 reports no crash and no media-related stutter. The accepted production baseline
 is merged to main. Run57 accepts the station-flash default correction. Fog-range and moving-lattice
 work remain open. The agent never launches the game. See the [run queue](verification/user-runs.md).
 
 ## Installed build
 
-Bottle **X3**, **CrossOver Preview.app**. Run59 DLL SHA-256:
-`b1bb05fb71d8da17028e2a10740bb7380cf26298f1ccbbfb2b18128befe93a81`
-(54,415,673 bytes), built once from clean reviewed main
-`526851e4336339d5e0b33dee7bfedafab9c242cc`, checkout `/tmp/x3-run59-integration`.
-Retained DLL: `/tmp/x3-run59-candidate/build/d3d9.dll`. Installed 2026-09-21.
+Bottle **X3**, **CrossOver Preview.app**. Run60 DLL SHA-256:
+`aaa8abb25e48f45ebed19348b871f715793762e10bbcb55f768d75de4bed600b`
+(55,033,332 bytes), built once from clean reviewed main
+`39c98242e4a3629496783d5fb9f365711e665ffa`, checkout `/tmp/x3-run60b-integration`.
+Retained DLL: `/tmp/x3-run60b-candidate/build/d3d9.dll`. Installed 2026-09-21.
 
-Changes against the accepted Run56 baseline: (1) the shader-shadow restoration
-lifetime fix (scoped owned getter references per injected draw; two getters and
-two Releases per routed draw, nothing on unrouted draws); (2) the opt-in
-`--taa-thin-region-gate camera` mode with its 7×7 box clip. Default behaviour and
-the 11 existing resolve programs are byte-identical. The stored-density fog
-sources on main are not in the build graph. The Run56 media omission, fog
-first-person correction, fourteen spatial profiles/shafts and Run57 launcher
-defaults are retained.
+Changes against Run59 (`b1bb05fb…`, user-accepted camera gate for pans):
+(1) the camera-relative thin-region gate is depth- and translation-aware, so it
+stays open in forward flight (camera mask only, 226 slots; resolve and the other
+programs byte-identical), and it is the built-in default when the thin region is
+on; (2) default-off `--taa-unmatched-static node|all`, a static-in-world fallback
+for first-frame history misses (the suspected LOD flash on approach); (3) the
+stored-density long-range fog behind `--volumetric-fog-range stored` (default
+`legacy`, bit-identical and zero-cost), with a background generation worker,
+session-stable placement per sector record, readiness ramps and a quit-safe
+worker lifetime. Earlier accepted behaviour is retained.
 
-[Qualification](../verification/results/run59-candidate-qualification.json): full
-host discovery **2,776 tests in 889.2 s**, no failures, one environmental error
-(Microsoft Defender quarantined a test's synthetic PE image), closed by a
-tooling-only fix and a focused rerun of **293 tests**; the initial full run was
-not an all-pass run. Linked audit **95 roots / 544 reachable functions / zero
-violations**. Four selected actual-DLL cases pass (ownership/HDR **43 checks / 39
-restorations**, TAA/HDR **83 / 51**, ownership **43 / 39**, ownership/TAA
-**83 / 51**); this is not a full renderer-suite pass or native Windows execution.
-The camera gate has no actual-DLL GPU case: its coverage is the detached
-temporal fixture (**495 numerical checks**) on the same sources.
+[Qualification](../verification/results/run60-candidate-qualification.json): full
+host discovery **2,802 tests in 763.1 s, all pass**. Linked audit **95 roots / 547
+reachable functions / zero violations**; import table identical to Run59. Ten
+selected actual-DLL cases pass: the four production cases (**43/39, 83/51, 43/39,
+83/51** checks/restorations), `seam-taa-camera-on` **177**, `seam-taa-on` **164**,
+four unmatched-static cases **95** each. This is not a full renderer-suite pass
+or native Windows execution. The stored fog was qualified by its route bridge
+(**26,692 checks**) and quit fixture on the same sources, not through this DLL;
+the first candidate from `f646f84f` failed the x87 audit and was never installed.
 
 Installation used `python3 tools/manage.py install --bottle X3 --dll-source
-/tmp/x3-run59-candidate/build/d3d9.dll` from main. The
-[install record](../verification/results/run59-candidate-install.json) verifies
+/tmp/x3-run60b-candidate/build/d3d9.dll` from main. The
+[install record](../verification/results/run60-candidate-install.json) verifies
 installed bytes and unchanged X3AP.exe `fdbf3418…` and cxbottle.conf `cc5d6c00…`.
-Rollback: the exact Run56 DLL `a51d1e75…` at `/tmp/x3-run56-candidate/build/d3d9.dll`
-with its committed records. Both Run 59 launch dry-runs passed; no game was
-launched by the agent.
+Rollback: the exact Run59 DLL at `/tmp/x3-run59-candidate/build/d3d9.dll`, and the
+Run56 baseline `a51d1e75…` behind it. Both Run 60 launch dry-runs passed; no game
+was launched by the agent.
 
 ## Current work and pending acceptance
 
