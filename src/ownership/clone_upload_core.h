@@ -284,6 +284,22 @@ public:
            capacity<r.bytes[index(kind)])return false;
         std::memcpy(output,arena_.data()+offset(slot,kind),r.bytes[index(kind)]);return true;
     }
+    bool duplicate(unsigned slot) const noexcept { return slot<pair_count&&duplicate_[slot]; }
+    // The caller holds one registry guard and validates disjoint output spans.
+    // Both capacities and all identity facts are checked before either write.
+    bool copy_pair(unsigned slot,const FinalGuard& g,void* vertex,std::size_t vertex_capacity,
+                   void* indices,std::size_t index_capacity,Record& result) const noexcept {
+        if(slot>=pair_count||!vertex||!indices)return false;
+        const auto& r=pairs_[slot].record;
+        if(!r.producer_payload_valid||!g.authenticated||!g.quiet||!g.own_dispatch||
+           !g.device.tracking||g.device.resetting||g.device.lost||g.device.retiring||
+           g.device.owner!=r.owner||g.device.generation!=r.generation||
+           !(g.buffers[0]==r.buffers[0])||!(g.buffers[1]==r.buffers[1])||
+           vertex_capacity<r.bytes[0]||index_capacity<r.bytes[1])return false;
+        std::memcpy(vertex,arena_.data()+offset(slot,Buffer::Vertex),r.bytes[0]);
+        std::memcpy(indices,arena_.data()+offset(slot,Buffer::Index),r.bytes[1]);
+        result=r;return true;
+    }
     Statistics statistics() const noexcept { return stats_; }
     Refusal refusal() const noexcept { return reason_; }
     std::uint64_t active() const noexcept { return active_; }

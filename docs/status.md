@@ -68,6 +68,7 @@ completed Run56 command is archived. Future runs omit CrossOver debug tracing.
   density with more clear space throughout the sector. The mass/detail reference
   is now close to the user’s target; one modest increase in patchiness/internal
   contrast now has a reviewed two-view preview, with modestly clearer weak edges.
+  A fixed 64-step transport screen is next, before investing in a GPU field cache.
   No production integrator or new fog build is selected.
 - **Station flash accepted:** Run205 confirms both global TAA heuristics disabled;
   the user reports no flash or save-load/sector-travel ghosting. Launcher defaults
@@ -84,8 +85,9 @@ completed Run56 command is archived. Future runs omit CrossOver debug tracing.
   readable-metadata prerequisite also passes 157 standalone D3D checks.
   The scoped ABI boundary passes 158 checks; the actual manual CloneMesh
   observer now passes 421 checks and independent review. The isolated game-call
-  adapter passes 389 checks plus the 158-check ABI regression. Device-pin lifecycle
-  and F8 attachment remain to integrate. No repeat
+  adapter passes 389 checks plus the 158-check ABI regression. Ownership pin lifecycle and paired copying pass 386 checks plus the 421-check
+  manual regression. Capture Release/Reset accounting and F8 attachment remain
+  to integrate. No repeat
   flight or renderer correction is selected.
   [Owning note §31](architecture/taa-lattice-crawl.md#31-close-arithmetic-exploration-investigate-final-upload-observation).
 - **Collision:** paused by user request; no moving-collision test is queued.

@@ -1,0 +1,58 @@
+{
+  "scope": "B1 ownership pin lifecycle and atomic producer-payload pair; Capture lifecycle not integrated",
+  "verdict": "PASS",
+  "reviewer": "review_lattice_point_probe",
+  "sources": {
+    "src/ownership/clone_upload_core.h": "4a4e4d0d3e133d3aa500d593c7c32ff4002626d4acef44a557d2f57f94a55ed3",
+    "src/ownership/clone_upload_observer.h": "c67a62007a774d49f151f9379aeae7e86a8bd09b60edc62d4f683f40174bd24e",
+    "src/ownership/clone_upload_observer_inc.h": "d90dc5d1d5d0e6acc528af8be46a12537d9bf5a4606f156350d290ac2e95bcb7",
+    "verification/probe/lattice_upload_lifecycle_fixture.cpp": "fc5857a7d484c9d9ad768821508388722ff13d3b203bf142abf0f6fff2db5422",
+    "verification/probe/lattice_upload_lifecycle_check.py": "81c52f6c1d14695e8cf91ef7e9168eb0e957784881b5ef86c58063bc7a29b45b"
+  },
+  "bottle": "X3",
+  "WineArch": "arm64",
+  "FEX_X87REDUCEDPRECISION": "1",
+  "WINEMSYNC": "1",
+  "checks": 386,
+  "clean_sessions": 12,
+  "pin_drains": 5,
+  "deferred_closes": 3,
+  "exact_pair_cases": 2,
+  "scope_cpp_aborts": 1,
+  "scope_native_aborts": 1,
+  "pair_reset_hresult": "00000000",
+  "host_core": {
+    "cases": 39,
+    "assertions": 596
+  },
+  "checker_negative_variants": 11,
+  "build": "/tmp/x3-lattice-lifecycle-build-v2/build.json",
+  "run": "/tmp/x3-lattice-lifecycle-run-v2/run.json",
+  "log_sha256": "cad3b9eee3608bd8966baf0214a887ae680c1dbe325d45a3cd878f9532e1917c",
+  "production_compile": "/tmp/x3-lattice-lifecycle-production-v3/compile.json",
+  "manual_regression": {
+    "checks": 421,
+    "build": "/tmp/x3-lattice-lifecycle-regression-build-v1/build.json",
+    "run": "/tmp/x3-lattice-lifecycle-regression-run-v1/run.json"
+  },
+  "limitations": [
+    "Capture Release/Reset integration pending",
+    "native Windows runtime unverified",
+    "inherited foreign callback SEH not qualified",
+    "no game or installed DLL change"
+  ],
+  "lifecycle_execution": {
+    "seconds": 8.758814416,
+    "exe_sha256": "c114067e1bf5b10450bcc26bb5c610283e22af92d40cf109bf15fcf39f29398d",
+    "lock_wait_seconds": 3.1670000000053045e-06,
+    "child_elapsed_seconds": 8.577141124999999,
+    "exit_code": 0
+  },
+  "manual_regression_execution": {
+    "seconds": 5.948714292,
+    "exe_sha256": "10f1bb79519a057d7c6022f2098e5e3a83c4d3c76069a7f6be995887de40ecc8",
+    "lock_wait_seconds": 3.5840000000009198e-06,
+    "child_elapsed_seconds": 5.82373475,
+    "exit_code": 0
+  }
+}

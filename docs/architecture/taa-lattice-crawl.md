@@ -1708,3 +1708,29 @@ an active Clone scope without waiting, and attach one fully validated CPU pair
 to F8 after guarded getter releases. Duplicate-shape refusal remains intact.
 Native Windows runtime, inherited callback-SEH recovery and moving-crawl quality
 remain outside this checkpoint.
+
+### Ownership pin lifecycle and atomic pair qualified separately
+
+The observer now exposes a CPU-only pin query, a unique arm token, deferred
+close, and one guarded vertex/index pair copy. Close refuses new observations
+and wipes storage immediately; an active Clone finishes releasing its completed
+temporary references before detaching the pin under registry and releasing it
+outside registry. Zero/exhausted device identities refuse before pin acquisition.
+A stale arm cannot close a later arm. Reset invalidates retained payloads.
+
+Pair copying rechecks both weak resource keys, allocation/revision identities,
+generation, dispatch and capacities before either copy. Metadata becomes valid
+only after both copies finish under the same registry guard. It adds no native
+Lock/Unlock, COM call or allocation. Duplicate selected shapes still refuse.
+
+[Combined evidence](../../verification/results/run201-lattice/upload-lifecycle.json):
+386 actual-wrapper checks pass, including 12 clean device sessions, five detached
+pin drains, three deferred closes, two exact paired-copy cases, C++/native
+boundary aborts and creation-thread Reset exclusion. The affected manual Clone
+regression passes 421 checks. The final production object has no fixture symbols;
+the three API shells preserve CPU/LastError without outer exception registration.
+Independent deep review passes source, emitted code and saved runtime evidence.
+
+This qualifies ownership APIs only. The actual Capture Release/Reset accounting,
+F8 attachment and publication still require integration. Native Windows runtime,
+inherited foreign-callback SEH and moving-lattice visual quality remain unverified.

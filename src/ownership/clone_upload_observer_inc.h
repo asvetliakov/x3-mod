@@ -9,6 +9,7 @@ struct UploadFrame {
     DWORD thread=0;
     std::uint64_t invocation=0;
     std::uint64_t boundary=0;
+    CloneUploadArmToken arm;
     cu::Identity sources[2]{},destinations[2]{};
     IUnknown* destination_keys[2]{}; // weak registry keys, never directly called
     const void* mappings[2]{};
@@ -25,14 +26,16 @@ struct UploadControl {
     UploadFrame* frame=nullptr;
     D3DVERTEXELEMENT9 declaration[MAXD3DDECLLENGTH+1]{};
     unsigned declaration_count=0;
+    CloneUploadArmToken arm;
+    bool closing=false;
 } upload_control;
-std::uint64_t upload_last_boundary=0;
+std::uint64_t upload_last_boundary=0,upload_last_arm=0;
 #ifdef X3M_LATTICE_UPLOAD_FIXTURE
 CloneUploadFixtureHook upload_fixture_hook=nullptr;
 void upload_hook(CloneUploadFixtureEvent event,IUnknown* value=nullptr){if(upload_fixture_hook)upload_fixture_hook(event,value);}
 #else
 enum class CloneUploadFixtureEvent { Created,BeforeStage,AfterStageQualifiers,BeforeFinal,AfterFinal,BeforeOriginal,
-    StageRegistryAcquired,StageCopyCompleted,ResetEntry };
+    StageRegistryAcquired,StageCopyCompleted,ResetEntry,PairRegistryAcquired,PairCopyCompleted };
 void upload_hook(CloneUploadFixtureEvent,IUnknown* =nullptr){}
 #endif
 unsigned upload_kind(Node* n){return n->kind==Kind::VertexBuffer?0u:1u;}
@@ -228,6 +231,17 @@ bool upload_declaration(const D3DVERTEXELEMENT9* declaration,unsigned& count){
     }
     return false;
 }
+bool upload_same_arm(CloneUploadArmToken a,CloneUploadArmToken b){
+    return a.serial&&a.owner&&a.serial==b.serial&&a.owner==b.owner;
+}
+// Caller holds registry. Detach before callback-capable public Release. The
+// transferred pin is the later Release caller, never an additional held pin.
+IUnknown* upload_detach_closing(CloneUploadArmToken expected){
+    if(!upload_control.store||!upload_control.closing||upload_control.frame||
+       !upload_same_arm(expected,upload_control.arm))return nullptr;
+    IUnknown* pin=upload_control.device->application;
+    upload_control.store->reset();upload_control=UploadControl{};return pin;
+}
 void upload_abort(UploadFrame* f){
     {std::lock_guard<std::recursive_mutex> lock(registry_mutex);
         if(f->bound&&upload_control.frame==f){f->refused=true;f->producer=false;upload_control.store->abort(f->invocation);}}
@@ -236,9 +250,11 @@ void upload_abort(UploadFrame* f){
     upload_clear_authentication(f);
     if(f->temporary_vertex){auto* p=f->temporary_vertex;f->temporary_vertex=nullptr;p->Release();}
     if(f->temporary_index){auto* p=f->temporary_index;f->temporary_index=nullptr;p->Release();}
-    std::lock_guard<std::recursive_mutex> lock(registry_mutex);
-    if(upload_control.frame==f)upload_control.frame=nullptr;
-    f->bound=false;
+    IUnknown* pin=nullptr;
+    {std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+        if(upload_control.frame==f)upload_control.frame=nullptr;
+        f->bound=false;pin=upload_detach_closing(f->arm);}
+    if(pin)pin->Release(); // no old control/device access after this callback
 }
 struct UploadReferences {
     IDirect3DVertexBuffer9*& vertex;IDirect3DIndexBuffer9*& index;
@@ -257,10 +273,10 @@ bool upload_get_references(ID3DXMesh* mesh,UploadReferences& refs){
 void upload_prepare(UploadFrame* f,ID3DXMesh* mesh,DWORD options,const D3DVERTEXELEMENT9* declaration,IDirect3DDevice9* application,ID3DXMesh** out) noexcept {
     try {
         {std::lock_guard<std::recursive_mutex> lock(registry_mutex);
-            if(!upload_control.store||!mesh||!out||!declaration||!upload_control.device||upload_control.device->application!=application)return;
+            if(!upload_control.store||upload_control.closing||!mesh||!out||!declaration||!upload_control.device||upload_control.device->application!=application)return;
             if(upload_control.frame){upload_refuse(cu::Refusal::Busy);return;}
             if(upload_last_boundary==UINT64_MAX)return;
-            f->boundary=++upload_last_boundary;f->bound=true;f->thread=GetCurrentThreadId();upload_control.frame=f;
+            f->boundary=++upload_last_boundary;f->arm=upload_control.arm;f->bound=true;f->thread=GetCurrentThreadId();upload_control.frame=f;
         }
         unsigned count=0;
         const bool layout=upload_declaration(declaration,count)&&count==upload_control.declaration_count&&
@@ -312,7 +328,8 @@ void upload_finish(UploadFrame* f,HRESULT hr,ID3DXMesh* mesh) noexcept {
         }
         refs.clear();
         upload_hook(CloneUploadFixtureEvent::AfterFinal,mesh);
-        std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+        IUnknown* pin=nullptr;
+        {std::lock_guard<std::recursive_mutex> lock(registry_mutex);
         if(upload_control.frame!=f)return;
         guard.device=upload_device();guard.authenticated=qualified&&!f->refused;guard.quiet=f->depth==0;guard.own_dispatch=true;
         for(unsigned k=0;k<2;++k){const auto found=application_nodes.find(f->destination_keys[k]);
@@ -321,7 +338,8 @@ void upload_finish(UploadFrame* f,HRESULT hr,ID3DXMesh* mesh) noexcept {
             guard.quiet=guard.quiet&&found->second->lock_sidecar->observation.quiet();guard.own_dispatch=guard.own_dispatch&&own_buffer_slots(found->second);
         }
         if(f->invocation)upload_control.store->finish(f->invocation,SUCCEEDED(hr),guard);
-        upload_control.frame=nullptr;f->bound=false;
+        upload_control.frame=nullptr;f->bound=false;pin=upload_detach_closing(f->arm);}
+        if(pin)pin->Release(); // closing is detached; no callback under registry
     }catch(...){upload_abort(f);}
 }
 HRESULT upload_arm_core(cu::Store* store,IDirect3DDevice9* application,const D3DVERTEXELEMENT9* declaration) noexcept {
@@ -330,9 +348,10 @@ HRESULT upload_arm_core(cu::Store* store,IDirect3DDevice9* application,const D3D
         std::lock_guard<std::recursive_mutex> lock(registry_mutex);
         const auto found=application_nodes.find(application);if(found==application_nodes.end()||found->second->kind!=Kind::Device)return E_INVALIDARG;
         auto* d=static_cast<Device*>(found->second);
-        if(upload_control.store||store->active()||!d->options.prepare_readable_managed_uploads||!d->options.track_buffer_lock_attempts||
+        if(!d->lease_serial||upload_last_arm==UINT64_MAX||upload_control.store||store->active()||!d->options.prepare_readable_managed_uploads||!d->options.track_buffer_lock_attempts||
            d->resetting||d->lost||d->retiring||!d->finite_owner||!d->finite_owner->healthy)return S_FALSE;
         ++d->refs;store->reset();upload_control.store=store;upload_control.device=d;
+        upload_control.arm={++upload_last_arm,d->lease_serial};
         upload_control.declaration_count=count;std::memcpy(upload_control.declaration,declaration,count*sizeof(*declaration));return S_OK;
     }catch(...){return E_FAIL;}
 }
@@ -343,9 +362,90 @@ HRESULT upload_disarm_core(cu::Store* store) noexcept {
         release->Release();return S_OK;
     }catch(...){return E_FAIL;}
 }
+__attribute__((noinline)) HRESULT upload_pin_core(IDirect3DDevice9* application,CloneUploadPinView* out) noexcept {
+    if(!out)return E_POINTER;
+    *out={};
+    try{std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+        if(!upload_control.store||!upload_control.device||upload_control.device->application!=application)return S_FALSE;
+        out->arm=upload_control.arm;out->generation=upload_control.device->buffer_lock_generation;
+        out->references=1;out->closing=upload_control.closing;out->scope_active=upload_control.frame!=nullptr;
+        return S_OK;
+    }catch(...){*out={};return E_FAIL;}
+}
+__attribute__((noinline)) HRESULT upload_close_core(IDirect3DDevice9* application,CloneUploadArmToken expected,CloneUploadClose* out) noexcept {
+    if(!out)return E_POINTER;
+    *out=CloneUploadClose::None;
+    try{IUnknown* pin=nullptr;
+        {std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+            if(!upload_control.store||!upload_control.device||upload_control.device->application!=application||
+               !upload_same_arm(expected,upload_control.arm))return S_FALSE;
+            upload_control.closing=true;upload_refuse(cu::Refusal::Device);upload_control.store->reset();
+            if(upload_control.frame){*out=CloneUploadClose::Deferred;return S_OK;}
+            pin=upload_detach_closing(expected);*out=CloneUploadClose::Released;
+        }
+        if(pin)pin->Release();
+        return S_OK;
+    }catch(...){*out=CloneUploadClose::None;return E_FAIL;}
+}
+struct UploadSpan {std::uintptr_t begin=0,end=0;};
+bool upload_span(const void* pointer,std::size_t bytes,UploadSpan& span){
+    const auto begin=reinterpret_cast<std::uintptr_t>(pointer);
+    if(bytes>UINTPTR_MAX-begin)return false;
+    span={begin,begin+bytes};return true;
+}
+bool upload_overlap(UploadSpan a,UploadSpan b){return a.begin<a.end&&b.begin<b.end&&a.begin<b.end&&b.begin<a.end;}
+__attribute__((noinline)) HRESULT upload_pair_core(IDirect3DDevice9* application,const CloneUploadPairRequest& request,
+    void* vertex,std::size_t vertex_capacity,void* index,std::size_t index_capacity,CloneUploadPairResult* out) noexcept {
+    if(!out)return E_POINTER;
+    // Do not overwrite an aliased request or the Store even on argument failure.
+    UploadSpan spans[5];
+    if(!upload_span(vertex,vertex_capacity,spans[0])||!upload_span(index,index_capacity,spans[1])||
+       !upload_span(out,sizeof(*out),spans[2])||!upload_span(&request,sizeof(request),spans[3]))return E_INVALIDARG;
+    for(unsigned a=0;a<3;++a)for(unsigned b=a+1;b<4;++b)if(upload_overlap(spans[a],spans[b]))return E_INVALIDARG;
+    bool output_safe=false;
+    try{std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+        upload_hook(CloneUploadFixtureEvent::PairRegistryAcquired,application);
+        if(upload_control.store){
+            if(!upload_span(upload_control.store,sizeof(*upload_control.store),spans[4]))return E_INVALIDARG;
+            for(unsigned a=0;a<3;++a)if(upload_overlap(spans[a],spans[4]))return E_INVALIDARG;
+        }
+        output_safe=true;*out={};
+        if(!vertex||!index)return E_POINTER;
+        using Status=CloneUploadPairStatus;
+        const auto refuse=[&](Status status){out->status=status;return S_FALSE;};
+        if(!upload_control.store||!upload_control.device)return refuse(Status::Unarmed);
+        if(upload_control.device->application!=application)return refuse(Status::Device);
+        if(!upload_same_arm(request.arm,upload_control.arm))return refuse(Status::StaleArm);
+        if(upload_control.closing)return refuse(Status::Closing);
+        if(upload_control.frame||upload_control.store->active())return refuse(Status::ActiveScope);
+        if(request.slot>=cu::pair_count)return refuse(Status::Selector);
+        cu::FinalGuard guard{};guard.device=upload_device();guard.authenticated=true;guard.quiet=true;guard.own_dispatch=true;
+        if(!guard.device.tracking||guard.device.resetting||guard.device.lost||guard.device.retiring||
+           request.generation!=guard.device.generation)return refuse(Status::Device);
+        IUnknown* keys[]={request.vertex_key,request.index_key};const cu::Identity expected[]={request.vertex,request.index};
+        for(unsigned k=0;k<2;++k){const auto found=application_nodes.find(keys[k]);
+            if(found==application_nodes.end()||device_of(found->second)!=upload_control.device||
+               found->second->kind!=(k?Kind::IndexBuffer:Kind::VertexBuffer)||!found->second->lock_sidecar)return refuse(Status::Binding);
+            const auto actual=upload_identity(found->second);
+            if(!expected[k].allocation||actual.allocation!=expected[k].allocation)return refuse(Status::Binding);
+            if(actual.revision!=expected[k].revision)return refuse(Status::Revision);
+            if(!found->second->lock_sidecar->observation.quiet())return refuse(Status::OpenMapping);
+            if(!own_buffer_slots(found->second))return refuse(Status::Dispatch);
+            guard.buffers[k]=actual;
+        }
+        if(upload_control.store->duplicate(request.slot))return refuse(Status::Duplicate);
+        const auto record=upload_control.store->record(request.slot);
+        if(!record.producer_payload_valid)return refuse(Status::Missing);
+        if(!(record.buffers[0]==request.vertex)||!(record.buffers[1]==request.index))return refuse(Status::Binding);
+        if(vertex_capacity<record.bytes[0]||index_capacity<record.bytes[1])return refuse(Status::Capacity);
+        if(!upload_control.store->copy_pair(request.slot,guard,vertex,vertex_capacity,index,index_capacity,out->record))return refuse(Status::Device);
+        upload_hook(CloneUploadFixtureEvent::PairCopyCompleted,application);
+        out->status=Status::Copied;out->binding_revision_match_at_observation=true;return S_OK;
+    }catch(...){if(output_safe)*out={};return E_FAIL;}
+}
 __attribute__((noinline)) bool upload_copy_core(unsigned slot,clone_upload::Buffer kind,IDirect3DVertexBuffer9* vertex,IDirect3DIndexBuffer9* index,void* bytes,std::size_t capacity) noexcept {
     try {
-        std::lock_guard<std::recursive_mutex> lock(registry_mutex);if(!upload_control.store||upload_control.frame)return false;
+        std::lock_guard<std::recursive_mutex> lock(registry_mutex);if(!upload_control.store||upload_control.closing||upload_control.frame)return false;
         cu::FinalGuard guard{};guard.device=upload_device();guard.authenticated=true;guard.quiet=true;guard.own_dispatch=true;
         IUnknown* keys[]={vertex,index};
         for(unsigned k=0;k<2;++k){auto found=application_nodes.find(keys[k]);
@@ -370,11 +470,29 @@ __attribute__((noinline)) bool copy_clone_upload(unsigned slot,clone_upload::Buf
     CounterAbiState saved;const bool result=upload_copy_core(slot,kind,vertex,index,bytes,capacity);saved.restore();return result;
 }
 
+__attribute__((noinline)) HRESULT query_clone_upload_pin(IDirect3DDevice9* device,CloneUploadPinView* out) noexcept {
+    CounterAbiState saved;const auto hr=upload_pin_core(device,out);saved.restore();return hr;
+}
+__attribute__((noinline)) HRESULT close_clone_upload(IDirect3DDevice9* device,CloneUploadArmToken arm,CloneUploadClose* out) noexcept {
+    CounterAbiState saved;const auto hr=upload_close_core(device,arm,out);saved.restore();return hr;
+}
+__attribute__((noinline)) HRESULT copy_clone_upload_pair(IDirect3DDevice9* device,const CloneUploadPairRequest& request,
+    void* vertex,std::size_t vertex_capacity,void* index,std::size_t index_capacity,CloneUploadPairResult* out) noexcept {
+    CounterAbiState saved;const auto hr=upload_pair_core(device,request,vertex,vertex_capacity,index,index_capacity,out);saved.restore();return hr;
+}
+
 #pragma GCC pop_options
 
 #ifdef X3M_LATTICE_UPLOAD_FIXTURE
 void clone_upload_fixture_hook(CloneUploadFixtureHook hook) noexcept {upload_fixture_hook=hook;}
 bool clone_upload_fixture_scope_active() noexcept {std::lock_guard<std::recursive_mutex> lock(registry_mutex);return upload_control.frame!=nullptr;}
+bool clone_upload_fixture_owner_serial(IDirect3DDevice9* application,std::uint64_t value,std::uint64_t* previous) noexcept {
+    std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+    if(!previous||upload_control.store)return false;
+    const auto found=application_nodes.find(application);
+    if(found==application_nodes.end()||found->second->kind!=Kind::Device||found->second->refs!=1)return false;
+    auto* device=static_cast<Device*>(found->second);*previous=device->lease_serial;device->lease_serial=value;return true;
+}
 namespace {void upload_fixture_reset_entry(Device* device){upload_hook(CloneUploadFixtureEvent::ResetEntry,device->application);}}
 #endif
 
