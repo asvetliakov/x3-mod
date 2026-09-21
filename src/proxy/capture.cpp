@@ -1,11 +1,6 @@
 #include "capture.h"
 #include "capture_state.h"
 #include "lattice_state_capture.h"
-#include "lattice_upload_hook.h"
-#include "../ownership/clone_upload_observer.h"
-#ifdef X3M_LATTICE_CAPTURE_LIFECYCLE_FIXTURE
-#include "../../verification/probe/lattice_capture_lifecycle_abi.h"
-#endif
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 #include "../../verification/probe/lattice_observer_guard_abi.h"
 #endif
@@ -309,8 +304,6 @@ struct Device : Hooks {
     object_capture::Cache object_evidence; // capture-only; existing HookGuard owns it
     std::shared_ptr<lattice_state::Capture> lattice_state; // allocated only by an explicitly requested F8 edge
     unsigned lattice_query_depth = 0; // capture mutex; only observer COM queries, never native draw
-    ownership::CloneUploadArmToken lattice_upload_arm{}; // weak identity; observer owns its one COM pin
-    unsigned lattice_upload_retiring = 0; // stack-only recursion guard, never persistent Closing
     bool key_down = false;
     explicit Device(void* object, size_t size) : Hooks(object, size) {}
 };
@@ -829,54 +822,6 @@ void final_admission_metric(ownership::AdmissionMonitor* monitor,const char* pha
         phase,state.active_roots,state.waiting_roots,state.admitted_roots,state.promotions,
         unsigned(state.vetoes),unsigned(state.first_veto),monitor!=nullptr);
 }
-// Storage has process lifetime: a Deferred close can outlive the requesting
-// capture stack. Allocate only at an explicit arm edge, never on Release/draw.
-ownership::clone_upload::Store* lattice_upload_store = nullptr;
-#ifdef X3M_LATTICE_CAPTURE_LIFECYCLE_FIXTURE
-IDirect3DDevice9* lattice_lifecycle_watch=nullptr;
-LatticeCaptureLifecycleView lattice_lifecycle_counts{};
-LatticeCaptureCallback lattice_lifecycle_callback=nullptr;
-void lattice_lifecycle_event(ownership::CloneUploadFixtureEvent event,IUnknown* object){
-    if(lattice_lifecycle_callback)lattice_lifecycle_callback(unsigned(event),object);
-}
-#endif
-bool lattice_upload_same(ownership::CloneUploadArmToken a,ownership::CloneUploadArmToken b) {
-    return a.serial && a.owner && a.serial==b.serial && a.owner==b.owner;
-}
-ownership::CloneUploadPinView lattice_upload_pin(Device& ctx,IDirect3DDevice9* d) {
-    ownership::CloneUploadPinView view{};
-    if(!ctx.lattice_upload_arm.serial)return view; // default off: no registry query
-#ifdef X3M_LATTICE_CAPTURE_LIFECYCLE_FIXTURE
-    if(lattice_lifecycle_watch==d)++lattice_lifecycle_counts.pin_queries;
-#endif
-    if(ownership::query_clone_upload_pin(d,&view)!=S_OK || !lattice_upload_same(view.arm,ctx.lattice_upload_arm))return {};
-    return view;
-}
-struct LatticeUploadRetirement {
-    Device& ctx;
-    explicit LatticeUploadRetirement(Device& value):ctx(value){++ctx.lattice_upload_retiring;}
-    ~LatticeUploadRetirement(){--ctx.lattice_upload_retiring;}
-};
-HRESULT lattice_upload_close(Device& ctx,IDirect3DDevice9* d,
-        ownership::CloneUploadArmToken token,ownership::CloneUploadClose& result) {
-    result=ownership::CloneUploadClose::None;
-    const auto view=lattice_upload_pin(ctx,d);
-    if(!view.references || !lattice_upload_same(view.arm,token))return S_FALSE;
-    // No callback between this token check and disabling the matching route.
-    // A stale Device/token must never disable a newly armed owner's hook.
-    lattice_upload_hook::set_armed(false);
-    if(ctx.lattice_state)ctx.lattice_state->invalidate();
-    LatticeUploadRetirement retiring(ctx);
-    const HRESULT hr=ownership::close_clone_upload(d,token,&result);
-#ifdef X3M_LATTICE_CAPTURE_LIFECYCLE_FIXTURE
-    if(lattice_lifecycle_watch==d && hr==S_OK){
-        if(result==ownership::CloneUploadClose::Released)++lattice_lifecycle_counts.immediate;
-        if(result==ownership::CloneUploadClose::Deferred)++lattice_lifecycle_counts.deferred;
-    }
-#endif
-    if(hr==S_OK && result==ownership::CloneUploadClose::Released)ctx.lattice_upload_arm={};
-    return hr;
-}
 ULONG WINAPI release_device(IDirect3DDevice9* d) {
     CpuCallBoundary cpu;
     auto* monitor=ownership::process_admission_monitor();
@@ -884,12 +829,8 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
     ULONG refs;bool last_device_destroyed=false;
     {
         HookGuard lock;
-        const auto owner=devices.at(d); // CPU lifetime spans recursive pin Release
-        auto& ctx=*owner;
+        auto& ctx=*devices.at(d);
         auto fn=ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(2);
-#ifdef X3M_LATTICE_CAPTURE_LIFECYCLE_FIXTURE
-        if(lattice_lifecycle_watch==d)++lattice_lifecycle_counts.releases;
-#endif
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
         if(fixture_observer_active(d)) {
             if(fixture_observer.queries)++fixture_observer.result.query_releases;
@@ -900,7 +841,7 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         // retirement until its cleanup drops transient aliases and releases that
         // pin through this hook. Never count transient surface aliases as native
         // device references or manufacture a zero return for the application.
-        const bool accounting = !ctx.compositor && !ctx.bloom_busy && !ctx.lattice_query_depth && !ctx.lattice_upload_retiring
+        const bool accounting = !ctx.compositor && !ctx.bloom_busy && !ctx.lattice_query_depth
             && !ctx.motion_output.reference_accounting_busy() && !ctx.bloom.releasing();
         // Caster retention (shadow-caster-retention.md, "References"): a retained
         // resource the application already released pins one device reference the
@@ -911,15 +852,13 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         if (accounting) {
             const unsigned retained = ctx.motion_output.retention_references();
             if (retained) {
-                const auto upload=lattice_upload_pin(ctx,d);
                 ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(1)(d);
                 const ULONG now = fn(d);
-                if (now <= ctx.motion_output.device_references() + ctx.bloom.references() + upload.references + 1 + retained) ctx.motion_output.retention_before_final_release();
+                if (now <= ctx.motion_output.device_references() + ctx.bloom.references() + 1 + retained) ctx.motion_output.retention_before_final_release();
             }
         }
-        const auto upload=accounting?lattice_upload_pin(ctx,d):ownership::CloneUploadPinView{};
         const unsigned held = accounting
-            ? ctx.motion_output.device_references() + ctx.bloom.references() + upload.references : 0;
+            ? ctx.motion_output.device_references() + ctx.bloom.references() : 0;
         if (held) {
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
             if(fixture_observer_active(d)&&fixture_observer.queries)++fixture_observer.result.query_restores;
@@ -928,24 +867,15 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
             const ULONG count=ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(1)(d);
             const ULONG after=fn(d);
             if(after==held+1){
-                ownership::CloneUploadClose closed=ownership::CloneUploadClose::None;
-                if(upload.references)lattice_upload_close(ctx,d,upload.arm,closed);
-                // Active Clone owns cleanup: its terminal pin Release re-enters
-                // this accounting after unbinding. Never fake a zero or spin.
-                if(closed!=ownership::CloneUploadClose::Deferred){
                 BloomOperation internal(ctx);
                 ctx.bloom.shutdown(); ctx.motion_output.release_resources();
                 log("motion_output_release device=%llu held=%u count=%lu released=1",ctx.id,held,count);
-                }
             }
         }
         cpu.before_original();
         refs=fn(d);cpu.after_original();
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
         if(!refs&&fixture_observer_active(d))++fixture_observer.result.retired;
-#endif
-#ifdef X3M_LATTICE_CAPTURE_LIFECYCLE_FIXTURE
-        if(!refs && lattice_lifecycle_watch==d)++lattice_lifecycle_counts.retired;
 #endif
         if(!refs){game_phases::invalidate_device();report_shader_population(true); // session end: flush the last count movement
         telemetry::summary(devices.at(d)->stats,"device_destroy",devices.at(d)->frame);telemetry::summary(telemetry::process(),"device_destroy",devices.at(d)->frame);log("device_destroy ptr=%p device=%llu",d,devices.at(d)->id);forget_cached_device();devices.erase(d);}
@@ -3344,38 +3274,6 @@ void log(const char* format,...) {
     va_end(args);
 }
 HANDLE log_handle() noexcept { return log_os_handle; }
-__attribute__((noinline)) HRESULT arm_lattice_upload_capture_core(IDirect3DDevice9* d,const D3DVERTEXELEMENT9* declaration) noexcept {
-    try {
-    CaptureLock lock;
-    const auto it=devices.find(d);
-    if(it==devices.end() || !declaration || !lattice_upload_hook::installed())return S_FALSE;
-    const auto owner=it->second;auto& ctx=*owner;
-    if(ctx.lattice_upload_retiring || lattice_upload_pin(ctx,d).references)return S_FALSE;
-    if(!lattice_upload_store){
-        try {lattice_upload_store=new ownership::clone_upload::Store;}
-        catch(const std::bad_alloc&){return E_OUTOFMEMORY;}
-    }
-    const HRESULT hr=ownership::arm_clone_upload(lattice_upload_store,d,declaration);
-    if(hr!=S_OK)return hr;
-    ownership::CloneUploadPinView view{};
-    if(ownership::query_clone_upload_pin(d,&view)!=S_OK || view.references!=1){
-        // Exact-S_OK arm establishes this Store's ownership even if its
-        // subsequent CPU query refuses; ordinary disarm remains a safe fallback.
-        ownership::disarm_clone_upload(lattice_upload_store);return E_FAIL;
-    }
-    ctx.lattice_upload_arm=view.arm;
-    if(!lattice_upload_hook::set_armed(true)){
-        ownership::CloneUploadClose closed{};lattice_upload_close(ctx,d,view.arm,closed);return E_FAIL;
-    }
-    return S_OK;
-    }catch(...){return E_FAIL;}
-}
-#pragma GCC push_options
-#pragma GCC optimize("no-exceptions")
-HRESULT arm_lattice_upload_capture(IDirect3DDevice9* d,const D3DVERTEXELEMENT9* declaration) {
-    PreserveCpuState saved;return arm_lattice_upload_capture_core(d,declaration);
-}
-#pragma GCC pop_options
 void hook_direct3d(IDirect3D9* d) {
     CaptureLock lock;
     if(factories.count(d)) return;
@@ -3621,65 +3519,5 @@ extern "C" __declspec(dllexport) int x3m_hull_emission_fixture_toggle(IDirect3DD
     const auto it=x3m::devices.find(device);
     if(it==x3m::devices.end()) return -2;
     return it->second->motion_output.hull_emission_gain_toggle(lightmap!=0);
-}
-#endif
-
-#ifdef X3M_LATTICE_CAPTURE_LIFECYCLE_FIXTURE
-// The seam consumes the same native factory reference as wrap_factory and uses
-// production hook_direct3d/CreateDevice/Release/Reset, with one actual registry.
-extern "C" __declspec(dllexport) HRESULT x3m_lattice_capture_factory(IDirect3D9* native,IDirect3D9** out) {
-    x3m::CpuCallBoundary cpu;
-    x3m::ownership::Options options{};
-    options.track_buffer_writes=true;options.track_buffer_lock_attempts=true;
-    options.track_execution_state=true;options.prepare_readable_managed_uploads=true;
-    const HRESULT hr=x3m::ownership::wrap_factory(native,out,options);
-    if(hr==S_OK)x3m::hook_direct3d(*out);
-    return hr;
-}
-extern "C" __declspec(dllexport) HRESULT x3m_lattice_capture_watch(IDirect3DDevice9* d) {
-    x3m::CpuCallBoundary cpu;x3m::CaptureLock lock;
-    if(x3m::devices.find(d)==x3m::devices.end())return S_FALSE;
-    x3m::lattice_lifecycle_watch=d;x3m::lattice_lifecycle_counts={};return S_OK;
-}
-extern "C" __declspec(dllexport) HRESULT x3m_lattice_capture_view(IDirect3DDevice9* d,LatticeCaptureLifecycleView* out) {
-    x3m::CpuCallBoundary cpu;x3m::CaptureLock lock;
-    if(!out || out->size!=sizeof(*out) || d!=x3m::lattice_lifecycle_watch)return E_INVALIDARG;
-    *out=x3m::lattice_lifecycle_counts;
-    out->gate=!std::strcmp(x3m::lattice_upload_hook::status(),"armed");
-    const auto it=x3m::devices.find(d);if(it==x3m::devices.end())return S_OK;
-    auto& ctx=*it->second;out->live=1;out->capture_id=ctx.id;out->reset_generation=ctx.reset_generation;
-    out->query_depth=ctx.lattice_query_depth;out->retiring=ctx.lattice_upload_retiring;
-    out->motion_refs=ctx.motion_output.device_references();out->bloom_refs=ctx.bloom.references();
-    x3m::ownership::CloneUploadPinView pin{};
-    if(x3m::ownership::query_clone_upload_pin(d,&pin)==S_OK){
-        out->pin=pin.references;out->arm=pin.arm;out->closing=pin.closing;out->scope=pin.scope_active;out->ownership_generation=pin.generation;
-    }
-    return S_OK;
-}
-extern "C" __declspec(dllexport) HRESULT x3m_lattice_capture_arm(IDirect3DDevice9* d,const D3DVERTEXELEMENT9* declaration) {
-    return x3m::arm_lattice_upload_capture(d,declaration);
-}
-extern "C" __declspec(dllexport) HRESULT x3m_lattice_capture_close(IDirect3DDevice9* d,
-        x3m::ownership::CloneUploadArmToken arm,x3m::ownership::CloneUploadClose* result) {
-    x3m::CpuCallBoundary cpu;x3m::CaptureLock lock;
-    if(!result)return E_POINTER;
-    *result=x3m::ownership::CloneUploadClose::None;
-    const auto it=x3m::devices.find(d);if(it==x3m::devices.end())return S_FALSE;
-    const auto owner=it->second;
-    return x3m::lattice_upload_close(*owner,d,arm,*result);
-}
-extern "C" __declspec(dllexport) bool x3m_lattice_capture_hook(void* site) {
-    x3m::CpuCallBoundary cpu;return x3m::lattice_upload_hook::fixture_install(site);
-}
-extern "C" __declspec(dllexport) void x3m_lattice_capture_callback(LatticeCaptureCallback callback) {
-    x3m::lattice_lifecycle_callback=callback;
-    x3m::ownership::clone_upload_fixture_hook(callback?x3m::lattice_lifecycle_event:nullptr);
-}
-extern "C" __declspec(dllexport) HRESULT x3m_lattice_capture_clone(ID3DXMesh* source,DWORD options,
-        const D3DVERTEXELEMENT9* declaration,IDirect3DDevice9* device,ID3DXMesh** out) {
-    return x3m::ownership::clone_mesh_upload(source,options,declaration,device,out);
-}
-extern "C" __declspec(dllexport) IDirect3DDevice9* x3m_lattice_capture_native(IDirect3DDevice9* d) {
-    return x3m::ownership::borrowed_native_device(d);
 }
 #endif

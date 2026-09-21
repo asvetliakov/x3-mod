@@ -19,10 +19,6 @@ void log(const char* format, ...);
 // log mutex nor stdio may be touched. Set once when the log opens.
 HANDLE log_handle() noexcept;
 void hook_direct3d(IDirect3D9* object);
-// Explicit startup coordinator edge after hooking the device; no environment
-// policy here. Owns process-lifetime CPU Store storage, observer owns its pin.
-// Requires installed Clone hook and compatible readable ownership preparation.
-HRESULT arm_lattice_upload_capture(IDirect3DDevice9*,const D3DVERTEXELEMENT9*);
 // Capture output directory (wide path, no trailing separator). Valid after initialize_log.
 const wchar_t* capture_directory();
 // The engine_memory summary line (phase create|summary); telemetry.cpp calls

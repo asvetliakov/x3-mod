@@ -2226,3 +2226,13 @@ state-block/Reset with a route in flight, inherited callback SEH. The B2a
 Capture accounting and its fixture merge with the fix, default-off and unwired;
 the upload diagnostic itself is held.
 [Record](../../verification/results/run201-lattice/shader-restore-lifetime.json).
+
+Correction, same day: the B2a Capture accounting was removed from main again
+(`capture.cpp/h` back to `e85ecc41`). It references `lattice_upload_hook` and the
+Clone upload ABI, which the production CMake graph does not list, so main failed
+to link, and the upload diagnostic is held. B2a stays in the preserved
+`investigate/lattice-capture-lifecycle` worktree; the lifetime fix does not
+depend on it. The lifecycle fixture sources remain on main for that worktree's
+seam build. Full host discovery at `ef552d24` (2,769 tests, 751.6 s) found 5
+failures and 2 errors, all test-double or text-match drift from today's merges
+plus one reproducible `test_cull_census` tempfile error; fixes are in progress.
