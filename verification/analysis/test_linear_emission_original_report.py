@@ -1,4 +1,5 @@
 """Bounded actual-original GPU oracle/report checks; no bundled shader bytes."""
+from verification.analysis.retired_tests import load_tests  # retired feature: hidden from default discovery
 import copy
 import hashlib
 import re

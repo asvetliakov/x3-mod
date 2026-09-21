@@ -67,10 +67,20 @@ settings.
 - Canonical full host suite, only when that scope is justified:
 
   ```sh
+  /usr/bin/python3 verification/probe/run_host_suite.py
+  ```
+
+  It runs the discovered modules in parallel worker processes and is the default
+  way to run the suite. The reference command it reproduces, module for module,
+  stays
+
+  ```sh
   PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_*.py'
   ```
 
-  Focused checks use the same `PYTHONPATH` with selected modules.
+  Both skip the retired feature modules; `--include-retired` runs them
+  ([host suite](docs/verification/host-suite.md)). Focused checks use the same
+  `PYTHONPATH` with selected modules.
 
 ## Code rules
 

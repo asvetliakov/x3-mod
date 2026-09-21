@@ -1,3 +1,4 @@
+from verification.analysis.retired_tests import load_tests  # retired feature: hidden from default discovery
 import tempfile
 import struct
 import re

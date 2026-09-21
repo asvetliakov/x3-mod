@@ -1,4 +1,5 @@
 """Independent glass equations and fixture coverage, without original shader bytes."""
+from verification.analysis.retired_tests import load_tests  # retired feature: hidden from default discovery
 from dataclasses import replace
 import math
 from pathlib import Path

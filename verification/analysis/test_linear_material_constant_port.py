@@ -3,6 +3,7 @@
 The retained 8722072 transformer is the byte-level baseline. Local shader bytes
 and generated variants remain in a TemporaryDirectory; no Wine or device runs.
 """
+from verification.analysis.retired_tests import load_tests  # retired feature: hidden from default discovery
 import hashlib
 import json
 import math

@@ -1,4 +1,5 @@
 """Three-output coverage producer proof/report; no game shader assets."""
+from verification.analysis.retired_tests import load_tests  # retired feature: hidden from default discovery
 import copy
 import struct
 import unittest

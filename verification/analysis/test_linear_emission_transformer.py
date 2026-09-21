@@ -3,6 +3,7 @@
 The tiny arithmetic evaluator covers only the newly authored emission tail.
 It does not emulate original partial precision, interpolation or GPU execution.
 """
+from verification.analysis.retired_tests import load_tests  # retired feature: hidden from default discovery
 import hashlib
 import json
 import math

@@ -1,4 +1,5 @@
 """Host feasibility of the detached six-pair producer; no device/render claims."""
+from verification.analysis.retired_tests import load_tests  # retired feature: hidden from default discovery
 import os
 import hashlib
 from pathlib import Path

@@ -1,4 +1,5 @@
 """Analytical checks for independently authored DEFAULT and BUMPMAP color equations."""
+from verification.analysis.retired_tests import load_tests  # retired feature: hidden from default discovery
 import math
 import json
 from pathlib import Path

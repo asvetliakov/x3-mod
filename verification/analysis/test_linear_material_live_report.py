@@ -1,4 +1,5 @@
 """Negative witnesses for the consume-only live GPU evidence checker."""
+from verification.analysis.retired_tests import load_tests  # retired feature: hidden from default discovery
 import copy
 import json
 from pathlib import Path

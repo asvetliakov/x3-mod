@@ -5,6 +5,7 @@ Compiles the real transformer through the three local structural drivers
 bytes are bundled; variants stay in a TemporaryDirectory. Design and law:
 docs/architecture/fill-light.md.
 """
+from verification.analysis.retired_tests import load_tests  # retired feature: hidden from default discovery
 import hashlib
 import json
 import os

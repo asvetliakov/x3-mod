@@ -3,6 +3,7 @@
 Local archive checks skip when the extracted corpus is unavailable. Set
 X3M_SHADER_PROGRAM_DIRECTORY to select another local extraction directory.
 """
+from verification.analysis.retired_tests import load_tests  # retired feature: hidden from default discovery
 from copy import deepcopy
 import json
 import hashlib

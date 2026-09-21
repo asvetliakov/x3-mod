@@ -1,4 +1,5 @@
 """Reject missing/duplicate/nonfinite GPU evidence and independently serialize cases."""
+from verification.analysis.retired_tests import load_tests  # retired feature: hidden from default discovery
 from dataclasses import replace
 from pathlib import Path
 import hashlib

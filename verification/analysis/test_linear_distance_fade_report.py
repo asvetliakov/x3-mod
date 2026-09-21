@@ -1,4 +1,5 @@
 """Host checks of focused evidence gates; these do not stand in for GPU execution."""
+from verification.analysis.retired_tests import load_tests  # retired feature: hidden from default discovery
 import copy
 import math
 from pathlib import Path

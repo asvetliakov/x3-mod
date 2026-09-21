@@ -26,6 +26,7 @@ site table (src/proxy/submit_phase_sites.h) is checked when present. No Wine
 or game launch.
 """
 import argparse
+import functools
 import hashlib
 import json
 import re
@@ -130,6 +131,14 @@ _SPEC_RE = re.compile(r'\{\s*"([^"]+)"\s*,\s*(0x[0-9a-fA-F]+)\s*,\s*\{([^}]*)\}\
 
 
 def decode(exe=DEFAULT_EXE):
+    """Memoised on the file's identity (path, size, mtime): the site tests decode
+    the same installed EXE in setUpClass and again inside verify()."""
+    stat = Path(exe).stat()
+    return dict(_decode(str(exe), stat.st_size, stat.st_mtime_ns))  # a fresh mapping over the shared lists
+
+
+@functools.lru_cache(maxsize=2)
+def _decode(exe, size, mtime_ns):
     decoded = {}
     for bounds in REGIONS:
         run = subprocess.run([common.OBJDUMP, '-d', '-Mintel', '--insn-width=16',
@@ -186,7 +195,8 @@ def other_claims(proxy=PROXY, own=SOURCE):
     return spans, anchors_ok
 
 
-def raw_scan(data):
+@functools.lru_cache(maxsize=2)
+def _raw_scan(data):
     """Raw-encoding scan of .text: branches into span interiors, and E8/E9 edges onto the bracketed routines."""
     interior = {a for s in SITES for a in range(s.va + 1, s.end)}
     hits, callers = [], {target: set() for target in CALLERS}
@@ -208,7 +218,17 @@ def raw_scan(data):
     return hits, callers
 
 
-def data_reference_hits(data):
+def raw_scan(data):
+    """Both scans below are pure functions of the image bytes and are repeated
+    once per inspect() call (the site tests call inspect ~70 times on the same
+    55 MB image). Memoise on the bytes and hand out a private copy, so a caller
+    that edits the report cannot reach the cached value."""
+    hits, callers = _raw_scan(bytes(data))
+    return [dict(h) for h in hits], {t: set(c) for t, c in callers.items()}
+
+
+@functools.lru_cache(maxsize=2)
+def _data_reference_hits(data):
     hits = []
     for spec in SITES:
         for va in range(spec.va, spec.end):
@@ -220,6 +240,10 @@ def data_reference_hits(data):
                              'aligned': index % 4 == 0})
                 index = data.find(word, index + 1)
     return hits
+
+
+def data_reference_hits(data):
+    return [dict(h) for h in _data_reference_hits(bytes(data))]
 
 
 def inspect(image, decoded, source, data, claims, claims_anchored=True):

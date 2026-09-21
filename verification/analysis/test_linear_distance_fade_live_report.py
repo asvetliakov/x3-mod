@@ -1,4 +1,5 @@
 """Focused positive/negative evidence checks; never execute Wine or rebuild DLLs."""
+from verification.analysis.retired_tests import load_tests  # retired feature: hidden from default discovery
 import copy
 import json
 from pathlib import Path

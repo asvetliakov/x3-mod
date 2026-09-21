@@ -1,4 +1,5 @@
 """Focused selected-mode report/contract witnesses; no Wine or source builds."""
+from verification.analysis.retired_tests import load_tests  # retired feature: hidden from default discovery
 import copy
 import math
 import struct

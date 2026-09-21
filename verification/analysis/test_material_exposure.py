@@ -3,6 +3,7 @@
 Uses local game programs only. Float64 execution is an algebra/source oracle,
 not partial-precision, FP16 blending, native D3D or GPU qualification.
 """
+from verification.analysis.retired_tests import load_tests  # retired feature: hidden from default discovery
 import copy
 import json
 import math

@@ -1,4 +1,5 @@
 """Focused independent oracle/parser tests, no Wine or production dependencies."""
+from verification.analysis.retired_tests import load_tests  # retired feature: hidden from default discovery
 import copy
 import math
 import struct

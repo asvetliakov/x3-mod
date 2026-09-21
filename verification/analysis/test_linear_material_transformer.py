@@ -3,6 +3,7 @@
 No game bytes are bundled. Generated variants stay in TemporaryDirectory.
 These tests qualify instruction/ABI invariants, not GPU primitive behavior.
 """
+from verification.analysis.retired_tests import load_tests  # retired feature: hidden from default discovery
 import hashlib
 import json
 import math

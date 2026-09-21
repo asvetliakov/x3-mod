@@ -1,4 +1,5 @@
 """Failure witnesses for the bounded live glass report and its input scope."""
+from verification.analysis.retired_tests import load_tests  # retired feature: hidden from default discovery
 import copy
 from pathlib import Path
 import unittest

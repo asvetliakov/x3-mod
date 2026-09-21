@@ -1,4 +1,5 @@
 """Authored PS2 MRT composition oracle and strict compact-report parser."""
+from verification.analysis.retired_tests import load_tests  # retired feature: hidden from default discovery
 import copy
 import math
 import struct

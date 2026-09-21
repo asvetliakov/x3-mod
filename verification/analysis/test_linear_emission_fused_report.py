@@ -1,4 +1,5 @@
 """Fused-copy evidence gates; Wine execution is replaced only in runner tests."""
+from verification.analysis.retired_tests import load_tests  # retired feature: hidden from default discovery
 from pathlib import Path
 import contextlib
 import io

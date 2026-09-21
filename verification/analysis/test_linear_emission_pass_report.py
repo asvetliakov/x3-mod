@@ -1,4 +1,5 @@
 """Component report gates, reusing the qualified actual-source numeric oracle."""
+from verification.analysis.retired_tests import load_tests  # retired feature: hidden from default discovery
 import struct
 import copy
 import re

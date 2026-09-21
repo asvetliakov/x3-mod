@@ -3,6 +3,7 @@
 This checks registry/fallback/shadow lifetime, not shader math, Windows ABI or GPU
 behavior. Functions are extracted unchanged; external APIs are explicit doubles.
 """
+from verification.analysis.retired_tests import load_tests  # retired feature: hidden from default discovery
 from pathlib import Path
 import contextlib
 import importlib.util
