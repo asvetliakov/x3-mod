@@ -818,6 +818,7 @@ CASES += [case(name, 'lightmapfade', 'ownership' if 'ownership' in name else 'pl
           for name, floor in LIGHTMAP_FADE_CASES.items()]
 # X3M_TAA_UNMATCHED_STATIC (temporal-integration.md, "Unmatched draws: static-world previous rows"): the
 # "unmatchedstatic" script under the production cut bounds, with the option unset, off, node and all.
+# "unset" now means the runner's pinned off (the DLL default became node with the TAA route in run212).
 UNMATCHED_STATIC_CASES = {'seam-taa-unmatched-static-unset': None, 'seam-taa-unmatched-static-off': '0',
                           'seam-taa-unmatched-static-node': 'node', 'seam-taa-unmatched-static-all': 'all'}
 CASES += [case(name, 'unmatchedstatic', jitter=True, taa=True, camera=True,
@@ -5149,6 +5150,11 @@ def main(argv=None):
                        # requests the detector explicitly; an inherited value must not replace it. Cases that prove the
                        # production bounds set them in their own env (the unmatched-static cases).
                        X3M_MOTION_CUT_MEDIAN_PX='48', X3M_MOTION_CUT_MISSING='0.25',
+                       # The DLL defaults X3M_TAA_UNMATCHED_STATIC to node with the TAA route (run212). Every
+                       # script's oracle here (and the unmatchedstatic fixture's own env read) models the
+                       # pre-run212 off behaviour, so the runner pins off; the unmatched-static cases set
+                       # node/all in their own env below.
+                       X3M_TAA_UNMATCHED_STATIC='0',
                        X3M_TELEMETRY_DRAW='1',  # per-draw metrics (gate_us, route_draw_us, ...) are gated behind this switch since a8d4309; the validators require them
                        X3M_FIXTURE_CAMERA='rotate' if camera else 'none', X3M_TAA_SENTINEL=sentinel or 'auto', X3M_FIXTURE_WRAP='0',
                        X3M_MOTION_RT_MODE='lazy' if lazy else 'perdraw', X3M_MOTION_FRAME_LOG='1' if burst else '60',
@@ -5175,8 +5181,7 @@ def main(argv=None):
                        # Caster retention off unless a case sets it.
                        X3M_SHADOW_RETENTION_CENSUS='0', X3M_SHADOW_CASTER_RETENTION='0', X3M_SHADOW_RETENTION_TIMING='0')
             for inherited in ('X3M_SHADOW_CASCADE_SIZES', 'X3M_SHADOW_CASCADE_CAPS', 'X3M_SHADOW_CASCADE_BUDGET', 'X3M_FIXTURE_SHADOW_CASCADES',
-                              'X3M_SHADOW_CASTER_RETENTION_AGE', 'X3M_SHADOW_CASTER_RETENTION_EPS',
-                              'X3M_TAA_UNMATCHED_STATIC'):
+                              'X3M_SHADOW_CASTER_RETENTION_AGE', 'X3M_SHADOW_CASTER_RETENTION_EPS'):
                 env.pop(inherited, None)
             env.update(VARIANTS[variant])
             env.pop('X3M_SUN_SHADOW_RECEIVER_DEPTH', None)  # the former option: the DLL and the fixtures read no such variable

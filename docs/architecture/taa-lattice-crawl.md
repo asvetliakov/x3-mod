@@ -2108,6 +2108,11 @@ moves from 0.979 to **1.000**: the "2 % z ambiguity" of 32.2 was the transpose a
 
 ### 32.5 Run 60 flight (run212): the gate is closed on the panels by their own glass (2026-09-21) [M]
 
+Same flight, separate decision: run212 showed no approach flash with `--taa-unmatched-static node`
+(22-draw unmatched groups filled on 36 approach frames), so node is now the default whenever TAA with
+motion output is on, launcher and native fallback alike; `--taa-unmatched-static off` is the A/B opt-out
+(see [temporal-integration.md](temporal-integration.md), "Unmatched draws: static-world previous rows").
+
 Host only; no production edit. Tool `tools/analysis/taa_run60_crawl_replay.py` (the section 32.2 exact-inverse,
 depth-aware camera path plus the installed Run60 rule: per-pixel `gateOpen()` as `line_mask_ps.hlsl` forms it,
 17x17 minimum, a / b, 7x7 box on `b - a`, far stabiliser 0.985 with its own screen-speed gate, `keep = max`),

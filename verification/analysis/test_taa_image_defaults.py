@@ -139,24 +139,36 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
             self.assertEqual(code, 2)
             self.assertIn('--taa-far-stabiliser requires --taa', error)
 
-    def test_unmatched_static_is_off_unless_given(self):
-        # --taa-unmatched-static node|all (docs/architecture/temporal-integration.md): default off, an inherited value is dropped.
+    def test_unmatched_static_defaults_to_node_with_taa(self):
+        # --taa-unmatched-static off|node|all (docs/architecture/temporal-integration.md,
+        # docs/architecture/taa-lattice-crawl.md): run212 (no approach flash, 22-draw unmatched groups filled
+        # on 36 approach frames) made node the default whenever the TAA route is on; "off" is the A/B opt-out.
         with tempfile.TemporaryDirectory() as directory:
-            self.assertNotIn('X3M_TAA_UNMATCHED_STATIC', self.env(directory, *TAA, inherited={'X3M_TAA_UNMATCHED_STATIC': 'all'}))
-            for value in ('node', 'all'):
+            self.assertEqual(self.env(directory, *TAA)['X3M_TAA_UNMATCHED_STATIC'], 'node')
+            # A stale shell value can neither change the resolved default nor survive a launch without --taa.
+            self.assertEqual(self.env(directory, *TAA, inherited={'X3M_TAA_UNMATCHED_STATIC': 'all'})['X3M_TAA_UNMATCHED_STATIC'], 'node')
+            self.assertNotIn('X3M_TAA_UNMATCHED_STATIC', self.env(directory, '--motion-output', inherited={'X3M_TAA_UNMATCHED_STATIC': 'all'}))
+            for value in ('off', 'node', 'all'):
                 self.assertEqual(self.env(directory, *TAA, '--taa-unmatched-static', value)['X3M_TAA_UNMATCHED_STATIC'], value)
             code, _, error = self.launch(directory, *TAA, '--taa-unmatched-static', '1')
             self.assertEqual(code, 2)
             code, _, error = self.launch(directory, '--motion-output', '--taa-unmatched-static', 'node')
             self.assertEqual(code, 2)
             self.assertIn('--taa-unmatched-static requires --taa', error)
-        # Native default off: the DLL enables it only for the two named modes and the route only on the miss path.
+        # Native fallback: absent means node with the TAA route (which implies the motion route), "off"/"0" is
+        # the explicit opt-out, and the route applies it only on the miss path.
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
         self.assertIn('unsigned taa_unmatched_static = 0;', capture)
         self.assertIn('if(!wcscmp(setting,L"node"))taa_unmatched_static=1;', capture)
+        self.assertIn('else if(wcscmp(setting,L"0")!=0&&wcscmp(setting,L"off")!=0)log("taa_unmatched_static_setting invalid=1");', capture)
+        self.assertIn('else if(taa_requested)taa_unmatched_static=1;', capture)
+        # The default is resolved after X3M_TAA is parsed, so it sees the final route state.
+        self.assertLess(capture.index('taa_requested=motion_output_requested &&'), capture.index('GetEnvironmentVariableW(L"X3M_TAA_UNMATCHED_STATIC"'))
         self.assertIn('hooked.motion_output.configure_unmatched_static(taa_unmatched_static);', capture)
         self.assertIn('unsigned unmatched_static_ = 0;', (ROOT / 'src/proxy/motion_output.h').read_text())
         self.assertIn('if (unmatched_static_) route.static_assumed = unmatched_static_rows(route, rows, previous);', (ROOT / 'src/proxy/motion_output.cpp').read_text())
+        # The motion-output fixture runner pins the pre-run212 off value: its scripts' oracles model it.
+        self.assertIn("X3M_TAA_UNMATCHED_STATIC='0',", (ROOT / 'verification/probe/run_motion_output.py').read_text())
 
     def test_thin_region_is_absent_unless_given(self):
         # --taa-thin-region W[,RELAX[,LO,HI]] (docs/architecture/taa-lattice-crawl.md section 13).

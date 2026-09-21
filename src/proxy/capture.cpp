@@ -221,11 +221,12 @@ int motion_state_shadow = -1;
 // declared (default 20); X3M_CAMERA_LOG is the camera_state line cadence (300).
 x3m::renderer::SentinelMode taa_sentinel_mode = x3m::renderer::SentinelMode::Auto;
 float camera_cut_degrees = 20.f;
-// X3M_TAA_UNMATCHED_STATIC=node|all (default off; requires X3M_TAA=1): a routed
-// draw whose history key is new this frame gets previous rows from the
-// static-world assumption (its current placement through the previous camera)
-// instead of the missing-history sentinel. node: only when the same object was
-// drawn last frame under another key; all: any new key.
+// X3M_TAA_UNMATCHED_STATIC=node|all|off (requires X3M_TAA=1): a routed draw
+// whose history key is new this frame gets previous rows from the static-world
+// assumption (its current placement through the previous camera) instead of the
+// missing-history sentinel. node: only when the same object was drawn last
+// frame under another key; all: any new key. Absent is the run212-accepted
+// default: node whenever the TAA route is on ("off" or "0" is the opt-out).
 unsigned taa_unmatched_static = 0;
 unsigned camera_log_frames = 300;
 unsigned motion_jitter_samples = 8;
@@ -3268,8 +3269,9 @@ void initialize_log(HMODULE module) {
     if(GetEnvironmentVariableW(L"X3M_TAA_UNMATCHED_STATIC",setting,32)>0){
         if(!wcscmp(setting,L"node"))taa_unmatched_static=1;
         else if(!wcscmp(setting,L"all"))taa_unmatched_static=2;
-        else if(wcscmp(setting,L"0")!=0)log("taa_unmatched_static_setting invalid=1");
+        else if(wcscmp(setting,L"0")!=0&&wcscmp(setting,L"off")!=0)log("taa_unmatched_static_setting invalid=1");
     }
+    else if(taa_requested)taa_unmatched_static=1; // run212: node is the default with the TAA route (an explicit "off"/"0" opts out)
     if(GetEnvironmentVariableW(L"X3M_CAMERA_CUT_DEG",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=180)camera_cut_degrees=v;}
     if(GetEnvironmentVariableW(L"X3M_CAMERA_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=1000000)camera_log_frames=unsigned(n);}
     log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s camera_cut_deg=%.2f camera_log=%u state_shadow=%s scene_hook=%u hdr=%u taa_k=%.5f mip_bias=%g taa_sharpen=%.3f taa_current_filter=%.3f taa_history_weight=%.3f",

@@ -966,9 +966,13 @@ min/max clamp already cannot overshoot; the wider support would only cost).
 
 ## Unmatched draws: static-world previous rows (2026-09-21)
 
-Default off: `--taa-unmatched-static node|all` (`X3M_TAA_UNMATCHED_STATIC`; requires
-`--taa`; the DLL's native default is off and an inherited value is dropped by the
-launcher).
+`--taa-unmatched-static off|node|all` (`X3M_TAA_UNMATCHED_STATIC`; requires `--taa`).
+Default **node** whenever the TAA route is on, in the launcher and in the DLL's native
+fallback, after run212 (no approach flash; the 22-draw unmatched groups were filled on
+36 approach frames). `off` is the A/B opt-out and is the pre-run212 behaviour bit for
+bit; an inherited value never selects the mode (the launcher always resolves it, the
+DLL only falls back when the variable is absent). `verification/probe/run_motion_output.py`
+pins `X3M_TAA_UNMATCHED_STATIC=0` for its scripts, whose oracles model the old default.
 
 ### The one-frame history loss (run209)
 
