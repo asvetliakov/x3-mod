@@ -994,3 +994,20 @@ opacity. Preserving the exact periodic atlas density is not an appearance
 requirement; family colour/style and the liked nearby structure are the useful
 references. The preview does not qualify angular antialiasing, a runtime marcher,
 GPU cost or native behavior. No threshold/seed search followed this result.
+
+### Mass/detail reference: selected visual direction, not production
+
+The [fixed reference](../../tools/analysis/fog_mass_detail_preview.py) separates
+world-stable cloud mass from smaller-scale internal modulation and erosion.
+It replaces the old repeating alpha field as primary density, preserving a
+density-weighted family mean colour for this comparison only. The resulting
+A/B views remove the isolated bulb and diagonal fine-pattern carpet. They show
+broad connected forms and visually dark/open-looking regions; internal mottling
+is still subtle. The user finds this close and requests a little more patchiness
+and density variation. Keep the mass layout and make one modest detail refinement.
+
+Four base views and two B pixel-area witnesses pass reference checks. Along-ray
+128/64 transmission error stays below 0.000003577; the area witness is one
+comparison, not proof of angular convergence. Spatial family chroma, a bounded
+runtime representation, GPU cost/state/Reset behavior and flight appearance
+remain unresolved. No shader/baker or new production fog is selected.

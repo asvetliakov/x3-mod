@@ -1136,3 +1136,17 @@ The sampled positive lengths decrease substantially, but only A has a sampled
 fully clear ray; no broad visual-gap acceptance follows. The result justifies
 one fixed mass/detail image comparison and pixel-area witness. No density
 rescale, seed search, production integrator or runtime approval is selected.
+
+### Fixed green mass/detail reference packet
+
+The frozen green A/B packet passed its fixed 128/64 along-ray reference check; worst near/full/shell T max was 0.0000035763. The host run took 88.05 s, 9 focused tests passed, and all four base sheets plus two B area-witness sheets are hash-bound. The density arms use the exact frozen F/B/D recipe. Both use constant family chroma `sum(original_J)/sum(original_rho)` = (0.2007273, 1.0, 0.1207049), so this controls density and preserves average colour rather than spatial chroma variation.
+
+The sheets remove the finite bulb and repeated diagonal carpet. They show broader connected irregular regions and visually dark/open gaps; the erosion arm adds relatively subtle mottled interior variation, while the interiors remain fairly smooth. Parent/user appearance selection is pending. B's 256x144 linear S/T area average remains close in mean to the 128x72 point view; full T p99/max differences are 0.000699/0.001447 for mass-only and 0.001051/0.002879 for mass-plus-erosion. This is one angular witness, not an angular convergence proof.
+
+The analysis evaluated 201,738,240 unique world stations and is host reference work, not a production cost or GPU timing result. No recipe, camera, gain, seed, family, path, bake or shader was changed or added after seeing the output.
+
+[Checkpoint](../../verification/results/fog-mass-detail-preview-2026-09-21/checkpoint.json), [review](../../verification/results/fog-mass-detail-preview-2026-09-21/review.json).
+
+The user finds the distribution close and requests a little more patchiness and
+varying density. The overall mass layout is the selected visual direction;
+one modest internal-detail refinement is next. This is not production approval.

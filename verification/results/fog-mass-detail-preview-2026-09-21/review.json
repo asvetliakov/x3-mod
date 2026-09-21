@@ -1,0 +1,7 @@
+{
+  "reviewer": "review_fog_range_replay",
+  "verdict": "PASS fixed reference evidence",
+  "focused_tests_passed": 9,
+  "images_verified": 6,
+  "checkpoint_sha256": "b69d95fa6f58b87ca97f335213dc25c5c9c94779e229970032473b6b1b4077c7"
+}

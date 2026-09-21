@@ -65,8 +65,9 @@ completed Run56 command is archived. Future runs omit CrossOver debug tracing.
   The user likes the broader interior but rejects the distant bulb. A subsequent
   sector-wide modulation also converges but leaves almost no clear sightlines,
   so it is not selected. The target is varied cloud shapes, sizes and internal
-  density with more clear space throughout the sector. Mass/detail distribution
-  redesign continues; no production integrator or new fog build is selected.
+  density with more clear space throughout the sector. The mass/detail reference
+  is now close to the user’s target; one modest increase in patchiness/internal
+  contrast is being previewed. No production integrator or new fog build is selected.
 - **Station flash accepted:** Run205 confirms both global TAA heuristics disabled;
   the user reports no flash or save-load/sector-travel ghosting. Launcher defaults
   now apply this to the unchanged installed DLL; native fallback defaults match
