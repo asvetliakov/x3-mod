@@ -1192,3 +1192,37 @@ future rotation evaluation should avoid that warning path.
 
 [Checkpoint](../../verification/results/fog-analytic64-screen-2026-09-21/checkpoint.json),
 [review](../../verification/results/fog-analytic64-screen-2026-09-21/review.json).
+
+## Stored-density runtime screen closed (2026-09-21)
+
+One run of `tools/analysis/fog_density_runtime_screen.py` against the ratified
+[plan](../architecture/fog-density-runtime-plan.md) (plan SHA-256 `ca767429…`),
+after an independent pre-run review (vacuous alpha law removed, dense read scan
+and aggregate cost reporting added, startup plan-digest check, existing-output
+refusal, two pre-existing crash fixes; 13 focused tests pass) and a combined
+post-run review. Host time 74.6 s; no parameter changed.
+
+| Metric | Result | Gate |
+| --- | --- | --- |
+| Candidate vs dense64 T p99 (far/shell, four populations) | .00197 / .00170 / .00144 / .00117 | .001 (fail) |
+| Candidate vs dense64 T max | ≤ .00236 | .003 (pass) |
+| Near segments T p99 / max | ≤ 2.5e-5 / 2.9e-5 | pass |
+| Temporal quadrature max | .00184 | .003 (pass) |
+| Representation vs exact field T p99 / max | .0067–.0147 / .0222 | not gated |
+| Reference convergence (analytic/filtered, 3 segments, 2 poses) | all converged | pass |
+| Mean reads per ray (candidate / sky / worst case) | 132.0 / 132 / 172 at L=29300 | intent, not GPU |
+| Lazy nodes fine / far; full bake | 192,467 / 109,837; 4,194,304 nodes = 8 MiB | intent |
+
+Verdict: the failed gate is quadrature in the far interval, and closing it would
+require changing the frozen 24+40 sample counts; overall accuracy is dominated by
+the representation/prefilter error, which the four fixed images show as a loss
+of the liked mass/detail refinement (notches and lobe edges blurred, small dark
+holes filled), with no banding, blockiness, LOD seam or taper edge. Against the
+closed global64 screen this route is strictly better (T p99 .00197 vs .002622,
+max .00236 vs .003182, temporal .00184 vs .004867, 132 vs ~359 reads) and still
+insufficient. The route is closed; no stored-density production integrator is
+selected. Open plan gap: the plan's source-alpha 0/.37/1 law has no substitute in
+this screen. Compact results:
+[summary](../../verification/results/fog-density-runtime-screen/summary.json),
+[report](../../verification/results/fog-density-runtime-screen/report.md);
+full report and images stay local under `/tmp/x3-fog-density-runtime-screen`.

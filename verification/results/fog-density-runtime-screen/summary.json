@@ -1,0 +1,9 @@
+{
+  "analysis_sha256": "da3dcbe2ff5c3eb8aa627175130cadda79d9dd8bde75960e1c811da3ea9d274b",
+  "decision": "close fixed candidate; no tuning or prototype",
+  "host_seconds": 74.64121945800001,
+  "images": 4,
+  "plan_sha256": "ca7674296bb28ad26c7c043a7ca812dc4f0f68c592e1fd54f383fa2ccf8aea38",
+  "report_sha256": "9c859193e374dfe5481c81756af261d46f491b19f373b3a0625e66c057f0ae2f",
+  "result": "failed-stored-density-runtime-screen"
+}

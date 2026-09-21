@@ -72,8 +72,9 @@ Session-limit continuation and pending worktrees: [handoff 2026-09-21](handoff-2
   is now close to the user’s target; one modest increase in patchiness/internal
   contrast now has a reviewed two-view preview, with modestly clearer weak edges.
   The fixed global 64-step transport screen fails accuracy/temporal gates; its
-  expensive corner-cache route is closed. The cheaper stored-density experiment is written,
-  with independent source review and numerical execution still pending.
+  expensive corner-cache route is closed. The cheaper stored-density experiment ran once after review and is closed:
+  strictly better than global64 (T p99 .00197, temporal .00184, 132 reads) but
+  still fails the .001 quadrature gate and visibly blurs the liked detail.
   No production integrator or new fog build is selected.
 - **Station flash accepted:** Run205 confirms both global TAA heuristics disabled;
   the user reports no flash or save-load/sector-travel ghosting. Launcher defaults

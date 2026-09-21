@@ -1,6 +1,6 @@
 # Stored final density: one fixed two-level runtime comparison
 
-**Ratified by the parent on 2026-09-21 for the single bounded host experiment below. No production integration, full cache, shader, Wine or game execution is authorized by this experiment. At ratification no numerical experiment had been performed.**
+**Closed 2026-09-21: the single authorized run failed the far-interval quadrature gate (candidate-vs-dense64 T p99 .00117–.00197 against .001; max, temporal and convergence gates pass) and the stored representation is 6–10× further from the exact field (p99 .0067–.0147) and visibly blurs the liked detail. See the [verification ledger](../verification/volumetric-fog.md#stored-density-runtime-screen-closed-2026-09-21). Original ratification text follows.** Ratified by the parent on 2026-09-21 for the single bounded host experiment below. No production integration, full cache, shader, Wine or game execution is authorized by this experiment. At ratification no numerical experiment had been performed.**
 
 ## Selected next experiment
 
