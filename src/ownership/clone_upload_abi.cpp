@@ -29,15 +29,18 @@ struct alignas(16) Frame {
     abi::Arguments arguments;
     HRESULT result;
     abi::Context context;
+    abi::CloneTarget target;
+    unsigned saved_target;
 };
 static_assert(sizeof(void*) == 4 && sizeof(Cpu) == 116);
 static_assert(offsetof(Frame, sjlj) == 8 && offsetof(Frame, prepared) == 12);
 static_assert(offsetof(Frame, incoming) == 16 && offsetof(Frame, outgoing) == 132);
 static_assert(offsetof(Frame, arguments) == 248 && offsetof(Frame, result) == 268);
-static_assert(offsetof(Frame, context) == 272 && sizeof(Frame) == 784);
+static_assert(offsetof(Frame, context) == 272 && offsetof(Frame, target) == 784 && offsetof(Frame, saved_target) == 788 && sizeof(Frame) == 800);
 static_assert(std::is_trivially_destructible_v<Frame>);
 }
 extern "C" void x3m_clone_original(Frame*);
+extern "C" void x3m_clone_saved_original(Frame*);
 extern "C" void x3m_clone_abort_cpp(Frame*) noexcept;
 extern "C" void x3m_clone_body(Frame*);
 
@@ -56,7 +59,8 @@ extern "C" __attribute__((noinline)) void x3m_clone_body(Frame* frame) {
     abi::observer.prepare(frame->context, frame->arguments);
     abi::observer.before_original(frame->context);
     try {
-        x3m_clone_original(frame);
+        if (frame->saved_target) x3m_clone_saved_original(frame);
+        else x3m_clone_original(frame);
     } catch (...) {
         // SJLJ has already selected this catch. Remove our native FS frame
         // BEFORE rethrow escapes the handwritten caller nonlocally.
@@ -135,35 +139,56 @@ extern "C" __attribute__((noinline)) void x3m_clone_original(Frame* frame) {
 #endif
     capture(frame->outgoing);
 }
+extern "C" __attribute__((noinline)) void x3m_clone_saved_original(Frame* frame) {
+    const auto& args = frame->arguments;
+    const auto target = frame->target;
+    restore(frame->incoming);
+    frame->result = target(args.source, args.options, args.declaration,
+                           args.device, args.output);
+    capture(frame->outgoing);
+}
+// Both naked entrypoints capture before GetLastError/native registration/EH.
+// The target is stored separately from the immutable five original arguments.
+#define X3M_CLONE_ENTRY_PREFIX \
+        "pushl %ebp\n\tmovl %esp,%ebp\n\tpushl %ebx\n\t" \
+        "subl $816,%esp\n\tandl $-16,%esp\n\tmovl %esp,%ebx\n\t" \
+        "fnsave 16(%ebx)\n\tstmxcsr 124(%ebx)\n\t" \
+        "call _GetLastError@0\n\tmovl %eax,128(%ebx)\n\t" \
+        "movl %fs:0,%eax\n\tmovl %eax,0(%ebx)\n\t" \
+        "movl $_x3m_clone_unwind,4(%ebx)\n\tmovl $0,8(%ebx)\n\t" \
+        "movl $0,12(%ebx)\n\tmovl %ebx,%fs:0\n\t"
+#define X3M_CLONE_ENTRY_SUFFIX \
+        "leal 272(%ebx),%eax\n\tpushl $512\n\tpushl $0\n\tpushl %eax\n\t" \
+        "call _memset\n\taddl $12,%esp\n\t" \
+        "pushl %ebx\n\tcall _x3m_clone_body\n\taddl $4,%esp\n\t" \
+        "movl 0(%ebx),%eax\n\tmovl %eax,%fs:0\n\t" \
+        "pushl 244(%ebx)\n\tcall _SetLastError@4\n\t" \
+        "frstor 132(%ebx)\n\tldmxcsr 240(%ebx)\n\tmovl 268(%ebx),%eax\n\t" \
+        "movl -4(%ebp),%ebx\n\tleave\n\tret"
 namespace x3m::ownership {
 __attribute__((naked)) HRESULT clone_mesh_upload(ID3DXMesh*, DWORD,
     const D3DVERTEXELEMENT9*, IDirect3DDevice9*, ID3DXMesh**) {
-    asm volatile(
-        "pushl %ebp\n\tmovl %esp,%ebp\n\tpushl %ebx\n\t"
-        "subl $800,%esp\n\tandl $-16,%esp\n\tmovl %esp,%ebx\n\t"
-        // Capture before even GetLastError, native frame setup, or C++ EH.
-        "fnsave 16(%ebx)\n\tstmxcsr 124(%ebx)\n\t"
-        "call _GetLastError@0\n\tmovl %eax,128(%ebx)\n\t"
-        "movl %fs:0,%eax\n\tmovl %eax,0(%ebx)\n\t"
-        "movl $_x3m_clone_unwind,4(%ebx)\n\tmovl $0,8(%ebx)\n\t"
-        "movl $0,12(%ebx)\n\tmovl %ebx,%fs:0\n\t"
+    asm volatile(X3M_CLONE_ENTRY_PREFIX
+        "movl $0,784(%ebx)\n\tmovl $0,788(%ebx)\n\t"
         "movl 8(%ebp),%eax\n\tmovl %eax,248(%ebx)\n\t"
         "movl 12(%ebp),%eax\n\tmovl %eax,252(%ebx)\n\t"
         "movl 16(%ebp),%eax\n\tmovl %eax,256(%ebx)\n\t"
         "movl 20(%ebp),%eax\n\tmovl %eax,260(%ebx)\n\t"
         "movl 24(%ebp),%eax\n\tmovl %eax,264(%ebx)\n\t"
-        // Explicitly initialize the opaque observer storage. No owned object
-        // exists before prepare; abort must inspect only its byte-level ready tag
-        // until construction has completed, never an unconstructed object.
-        "leal 272(%ebx),%eax\n\tpushl $512\n\tpushl $0\n\tpushl %eax\n\t"
-        "call _memset\n\taddl $12,%esp\n\t"
-        "pushl %ebx\n\tcall _x3m_clone_body\n\taddl $4,%esp\n\t"
-        // Compiler SJLJ unregister has now completed. Restore native chain and
-        // original outgoing state after ALL observer/exception bookkeeping.
-        "movl 0(%ebx),%eax\n\tmovl %eax,%fs:0\n\t"
-        "pushl 244(%ebx)\n\tcall _SetLastError@4\n\t"
-        "frstor 132(%ebx)\n\tldmxcsr 240(%ebx)\n\tmovl 268(%ebx),%eax\n\t"
-        "movl -4(%ebp),%ebx\n\tleave\n\tret");
+        X3M_CLONE_ENTRY_SUFFIX);
+}
+__attribute__((naked)) HRESULT clone_mesh_upload_target(abi::CloneTarget,
+    ID3DXMesh*, DWORD, const D3DVERTEXELEMENT9*, IDirect3DDevice9*, ID3DXMesh**) {
+    asm volatile(X3M_CLONE_ENTRY_PREFIX
+        "movl 8(%ebp),%eax\n\tmovl %eax,784(%ebx)\n\tmovl $1,788(%ebx)\n\t"
+        "movl 12(%ebp),%eax\n\tmovl %eax,248(%ebx)\n\t"
+        "movl 16(%ebp),%eax\n\tmovl %eax,252(%ebx)\n\t"
+        "movl 20(%ebp),%eax\n\tmovl %eax,256(%ebx)\n\t"
+        "movl 24(%ebp),%eax\n\tmovl %eax,260(%ebx)\n\t"
+        "movl 28(%ebp),%eax\n\tmovl %eax,264(%ebx)\n\t"
+        X3M_CLONE_ENTRY_SUFFIX);
 }
 }
+#undef X3M_CLONE_ENTRY_PREFIX
+#undef X3M_CLONE_ENTRY_SUFFIX
 #endif

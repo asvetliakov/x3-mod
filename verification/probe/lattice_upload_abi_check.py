@@ -37,6 +37,10 @@ def main():
     require('asm(".set __Unwind_SjLj_Register, _x3m_clone_sjlj_register")' in source,
             'EH-only compiler registration alias')
     require('_Unwind_SjLj_Unregister(frame->sjlj)' in source, 'native unregister opaque compiler frame')
+    require('if (frame->saved_target) x3m_clone_saved_original(frame)' in source,
+            'explicit target mode does not silently replace a captured null slot')
+    require('offsetof(Frame, target) == 784 && offsetof(Frame, saved_target) == 788 && sizeof(Frame) == 800' in source,
+            'saved-target frame fields retain established CPU/context offsets')
     require('RtlUnwind(frame, nullptr, nullptr, nullptr)' in fixture, 'fixture performs actual native unwind')
     require(fixture.count('cpp_escape();') == 2, 'C++ propagation tested before and after native unwind')
     for name in ('lattice_upload_abi_build.py', 'lattice_upload_abi_check.py'):
@@ -45,13 +49,19 @@ def main():
     if args.build:
         shell = functions((args.build/'production-shell.asm').read_text())
         eh = functions((args.build/'eh.asm').read_text())['_x3m_clone_body']
-        entry = next(body for name, body in shell.items() if 'clone_mesh_upload' in name)
+        entries = [body for name, body in shell.items() if 'clone_mesh_upload' in name]
+        require(len(entries) == 2, 'manual and explicit target naked entries')
         original = shell['_x3m_clone_original']
         abort = shell['_x3m_clone_abort_cpp']
         unwind = shell['_x3m_clone_unwind']
-        require(entry.index('fnsave') < entry.index('GetLastError') < entry.index('_x3m_clone_body'),
-                'incoming save before EH work')
-        require(entry.index('_x3m_clone_body') < entry.index('frstor'), 'outgoing restore after helper return')
+        for entry in entries:
+            require(entry.index('fnsave') < entry.index('GetLastError') < entry.index('_x3m_clone_body'),
+                    'incoming save before EH work')
+            require(entry.index('_x3m_clone_body') < entry.index('frstor'), 'outgoing restore after helper return')
+        saved = shell['_x3m_clone_saved_original']
+        require('0x310(' in saved and 'call   *' in saved and 'call   *0x30(' not in saved,
+                'saved-target original dispatch uses explicit Frame target')
+        require(saved.index('frstor') < saved.index('fnsave'), 'saved target state bookends')
         require(len(re.findall(r'DISP32\s+_x3m_clone_sjlj_register\b', eh)) == 1,
                 'exactly one recorded EH registration')
         require('__Unwind_SjLj_Register' not in eh, 'no unrecorded EH registration')

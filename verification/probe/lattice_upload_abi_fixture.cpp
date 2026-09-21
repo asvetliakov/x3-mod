@@ -49,6 +49,9 @@ void prepare(abi::Context& context, const abi::Arguments& args) noexcept {
           args.output == expected.output, "prepare gets all exact arguments");
     active = true;
     context.bytes[0] = 1;
+#ifdef X3M_LATTICE_UPLOAD_ABI_PREPARE_CONTROL
+    X3M_LATTICE_UPLOAD_ABI_PREPARE_CONTROL();
+#endif
     if (lattice_mode == 4) RaiseException(0xe3450131, 0, 0, nullptr);
     try {
         if (lattice_mode == 1) throw std::runtime_error("observer only");

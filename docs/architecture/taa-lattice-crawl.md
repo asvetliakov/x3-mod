@@ -1678,3 +1678,33 @@ Windows execution, injected native bypass/slot faults, actual private allocator
 OOM and inherited callback-SEH recovery remain unqualified. This manual
 diagnostic establishes upload capture only, not a simultaneous draw-input
 snapshot, game integration or a visible moving-lattice correction.
+
+### Game callsite adapter qualified in isolation
+
+The [adapter](../../src/proxy/lattice_upload_hook.cpp) claims the complete
+`[0x004bcc2b,0x004bcc30)` MOV/CALL span and validates its 31-byte surrounding
+context. Its armed path saves the dynamic public COM target before observer
+callbacks and forwards that exact target with the original five arguments and
+stdcall20 stack contract. The separate manual API retains normal public virtual
+dispatch. The disabled path restores incoming flags and runs the displaced tail
+once without observer calls or allocations. Patch writes use the existing
+install window, atomic claim and rollback ownership rules. Quiescent rollback
+is tested; live concurrent unpatching is not supported.
+
+[Combined evidence](../../verification/results/run201-lattice/upload-hook.json):
+389 hook checks pass, with 23 original calls, zero wrong targets, four aborts
+and two native unwinds. The affected manual ABI regression passes 158 checks.
+Actual 34-byte stub and 10-byte tail readbacks agree on the continuation. Four
+stack alignments, CPU/LastError/nonvolatiles, target mutation during preparation,
+disabling an active scope and patch/rollback failure paths are covered. Armed
+outgoing EFLAGS are not preserved; the validated continuation overwrites them
+before use. Saved-evidence checkers pass 21 and 31 checks. X3/arm64 execution
+takes 4.360 s and 0.285 s, respectively; these are fixture times, not game FPS.
+
+Independent deep review passes source, emitted code and runtime evidence. This
+checkpoint does not install the patch or wire it into the DLL build/launcher.
+The remaining integration must balance the observer device pin, defer closing
+an active Clone scope without waiting, and attach one fully validated CPU pair
+to F8 after guarded getter releases. Duplicate-shape refusal remains intact.
+Native Windows runtime, inherited callback-SEH recovery and moving-crawl quality
+remain outside this checkpoint.
