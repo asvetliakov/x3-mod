@@ -1752,3 +1752,62 @@ packet status invalidates both attachments with its exact reason.
 [Independent review and 47 focused host tests pass](../../verification/results/run201-lattice/upload-packet-reader.json).
 The production writer and Capture lifecycle integration are still pending; this
 checkpoint does not create new game captures or qualify draw-input coherence.
+
+## 32. Camera-relative gate and wide-box clip: host replay (2026-09-21) [M]
+
+Step 1 of the pivot in [the approach review](lattice-approach-review-2026-09-21.md) section 6, host
+only: no Wine, no game, no build, no shader or production edit. Tool
+`tools/analysis/taa_lattice_gate_replay.py` (patches section 15's resolve oracle with the two
+candidate terms), test `verification/analysis/test_taa_lattice_gate_replay.py`, numbers
+`verification/results/lattice-gate-replay-2026-09-21.json`, witness crops (untracked)
+`/tmp/x3-lattice-gate-replay/`. Four variants, all plain Catmull-Rom and W 0.97: **installed**
+(own speed, gate 0.03-0.25, clip off), **gate_open** (gate closed by camera-relative speed, clip
+off), **gate_open_box7** / **gate_open_box11** (same gate, retained history clipped to a 7x7 / 11x11
+current min/max box). The global history-cut heuristics are CPU-side whole-frame discards that this
+replay does not model at all, so every variant runs with both off as the Run57 defaults have them;
+`taa_history=1` on every replayed frame of all eight bursts, so the seeded history carries no cut
+either. The baseline reproduces section 15 exactly: run177 rotation tracked rms **6.7132**, gradient
+**643.9**, support 2154 px, routed fit 0.00105 / 0.00242 px.
+
+| burst | region screen / camera-relative speed p50-p90 | gate share installed -> open | tracked rms ratio | gradient ratio |
+|---|---|---|---|---|
+| run177 rotation 6392-6423 | 5.58-8.67 / 0.03-0.08 | 0.000 -> 0.199 | **0.567** | **0.721** |
+| run206 slow pan 5730-5761 | 3.88-5.01 / 0.09-0.19 | 0.014 -> 0.428 | 0.943 | 0.797 |
+| run206 fast pan 6936-6967 | 5.47-71.8 / 0.03-2.02 | 0.160 -> 0.230 | n/a (see below) | n/a |
+| run201 10442-10473 | 6.55-33.6 / 0.29-2.14 | 0.000 -> 0.177 | 0.996 | 0.979 |
+| run201 12010-12041 | 5.18-14.5 / 3.43-6.09 | 0.000 -> 0.000 | 1.000 | 1.000 |
+
+The three box variants differ from clip-off by under 0.02 % in rms and gradient on every burst: on a
+lattice the wide box almost never binds on real history, exactly as H2 (section 11) predicted for the
+3x3. It does bind on injected stale history. Section 15's 6x6 patch at previous coordinate (950,115),
+read at background (947,123), frame 6401: installed **46.6** codes, gate_open **236.7**, box7
+**74.4**, box11 **115.0**. So a 7x7 box answers section 7's open question affirmatively - it bounds
+the ghost to 1.58 x the clipped resolve - and the 11x11 box is worse, because a wider neighbourhood
+of a lattice contains brighter extremes.
+
+Against the section 6 acceptance: tracked rms passes (0.567 <= 0.80) but **gradient energy fails in
+every gate-open variant (0.721 < 0.90)**. Section 15's 1.023 x gradient came with Keys -0.65; with
+the plain Catmull-Rom required here, retained history under a 5-9 px/frame pan loses detail. The
+controls also fail: run177 stationary is bit-identical for gate_open (0 of 13,671,000 values) but not
+for the box variants (209,436 and 127,322 values, max 0.64 HDR), and run159 slow is identical for
+none (2.58-2.63 M values, max 0.0625 for clip-off) because at 0.03-0.11 px/frame the camera-relative
+residual is slightly larger than the screen speed, closing the gate a little more (share 0.464 ->
+0.454, rms x1.011). run161's background trail does not regress (p99 0.076 codes against plain for
+every variant). run206's slow pan adds a small trail the installed region does not have (p99 0.083 ->
+1.558 codes).
+
+Two limits on the evidence. The camera-relative gate is inactive exactly where the ship translates:
+in run201 12010-12041 the camera-relative speed is 3.4-6.1 px/frame and the gate never opens, and in
+run201 10442-10473 it opens on 17.7 % of the crop for no measurable gain. run206's fast pan cannot be
+scored by material tracking at all (no material point stays inside a 350x315 crop over the 16 scored
+frames at 5-72 px/frame); only its gate shares and trails are reported. The replay's installed
+variant carries the thin region but not the far stabiliser, matching section 15's baseline rather
+than the full installed set.
+
+**Verdict:** option A as specified does not clear the bar. The mechanism is confirmed (opening the
+gate recovers 43 % of the tracked rms on the one burst where registration is exact), and a 7x7 box
+is the right ghost bound, but the quality it returns is blurrier history rather than a restored
+lattice, and it perturbs the accepted slow-drift path. Section 15's ghost verdict stands for
+clip-off. If the user's acceptance of "a little ghosting" is to be spent, it should be spent on a
+variant that also restores gradient energy, which needs the sharper history kernel section 15 used
+and this brief excluded; that is a new decision, not a sweep of this one.

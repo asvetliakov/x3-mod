@@ -1,0 +1,1369 @@
+{
+ "generated": "2026-09-21",
+ "units": "display luma codes after AgX+RCAS, no bloom",
+ "history_cut_heuristics": "not modelled (both off, Run57 launcher defaults)",
+ "thin_region": {
+  "W": 0.97,
+  "lo": 0.03,
+  "hi": 0.25
+ },
+ "history_kernel": "Catmull-Rom (Keys -0.5)",
+ "acceptance": {
+  "tracked_rms_ratio_max": 0.8,
+  "tracked_gradient_ratio_min": 0.9,
+  "stale_patch_codes_max": 94.0
+ },
+ "sequences": {
+  "run177-rotation": {
+   "dump": "/tmp/x3-bottleX3-run177",
+   "frames": [
+    6392,
+    6423
+   ],
+   "role": "rotation",
+   "replay_roi": [
+    790,
+    20,
+    1140,
+    335
+   ],
+   "track_roi": [
+    905,
+    55,
+    1095,
+    165
+   ],
+   "support_pixels": 2154,
+   "background_pixels": 2398170,
+   "scored_frames": 16,
+   "routed_fit_residual_p50_p99_px": [
+    0.0010477888378388205,
+    0.002423592865544694
+   ],
+   "variants": {
+    "installed": {
+     "tracked_rms": 6.713212004569212,
+     "tracked_gradient": 643.9382629125539,
+     "gate_share": 0.0002022403313288026,
+     "region_pixel_frames": 774717,
+     "region_screen_speed_p50_p90": [
+      5.576687179949289,
+      8.66535152942004
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.03480216628289201,
+      0.08416277174670242
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.0,
+      0.10371670227475636
+     ],
+     "screen_speed_p50_p99": [
+      5.4063017807273,
+      10.256793692713947
+     ],
+     "background_trail_p99_vs_plain": 0.0,
+     "background_trail_max_vs_plain": 0.3031406651800381,
+     "elapsed_seconds": 6.074573832999999,
+     "tracked_rms_ratio": 1.0,
+     "tracked_gradient_ratio": 1.0
+    },
+    "gate_open": {
+     "tracked_rms": 3.803742791017321,
+     "tracked_gradient": 464.2811797247782,
+     "gate_share": 0.19881733342809962,
+     "region_pixel_frames": 774717,
+     "region_screen_speed_p50_p90": [
+      5.576687179949289,
+      8.66535152942004
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.03480216628289201,
+      0.08416277174670242
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.0,
+      0.10371670227475636
+     ],
+     "screen_speed_p50_p99": [
+      5.4063017807273,
+      10.256793692713947
+     ],
+     "background_trail_p99_vs_plain": 0.15066933263872864,
+     "background_trail_max_vs_plain": 36.07024019970395,
+     "elapsed_seconds": 6.0713733749999985,
+     "identical_to_installed": false,
+     "max_abs_delta_vs_installed_hdr": 0.6796875,
+     "differing_values_vs_installed": 2494161,
+     "total_values": 13671000,
+     "tracked_rms_ratio": 0.5666054920399327,
+     "tracked_gradient_ratio": 0.7210026278370526
+    },
+    "gate_open_box7": {
+     "tracked_rms": 3.804241085637198,
+     "tracked_gradient": 464.10939949194875,
+     "gate_share": 0.19881733342809962,
+     "region_pixel_frames": 774717,
+     "region_screen_speed_p50_p90": [
+      5.576687179949289,
+      8.66535152942004
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.03480216628289201,
+      0.08416277174670242
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.0,
+      0.10371670227475636
+     ],
+     "screen_speed_p50_p99": [
+      5.4063017807273,
+      10.256793692713947
+     ],
+     "background_trail_p99_vs_plain": 0.150626772017823,
+     "background_trail_max_vs_plain": 36.0800878968869,
+     "elapsed_seconds": 6.198588874999999,
+     "identical_to_installed": false,
+     "max_abs_delta_vs_installed_hdr": 0.6796875,
+     "differing_values_vs_installed": 2479523,
+     "total_values": 13671000,
+     "tracked_rms_ratio": 0.5666797180020411,
+     "tracked_gradient_ratio": 0.7207358627716369
+    },
+    "gate_open_box11": {
+     "tracked_rms": 3.804242170781016,
+     "tracked_gradient": 464.1729974852306,
+     "gate_share": 0.19881733342809962,
+     "region_pixel_frames": 774717,
+     "region_screen_speed_p50_p90": [
+      5.576687179949289,
+      8.66535152942004
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.03480216628289201,
+      0.08416277174670242
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.0,
+      0.10371670227475636
+     ],
+     "screen_speed_p50_p99": [
+      5.4063017807273,
+      10.256793692713947
+     ],
+     "background_trail_p99_vs_plain": 0.15098580690816626,
+     "background_trail_max_vs_plain": 36.0725390244749,
+     "elapsed_seconds": 6.339262958999996,
+     "identical_to_installed": false,
+     "max_abs_delta_vs_installed_hdr": 0.6796875,
+     "differing_values_vs_installed": 2485012,
+     "total_values": 13671000,
+     "tracked_rms_ratio": 0.5666798796450545,
+     "tracked_gradient_ratio": 0.7208346268876163
+    }
+   },
+   "plain_elapsed_seconds": 4.640508667000001,
+   "stale_patch": {
+    "site": [
+     947,
+     123
+    ],
+    "previous_patch_origin": [
+     948,
+     113
+    ],
+    "patch": 6,
+    "clipped_resolve_codes": 47.0,
+    "by_variant": {
+     "installed": {
+      "added_codes_at_site": 46.649146612796315,
+      "max_added_near_site": 81.80534827689445,
+      "per_previous_depth": {
+       "-1.0": [
+        46.649146612796315,
+        81.80534827689445
+       ],
+       "0.9995": [
+        46.649146612796315,
+        81.80534827689445
+       ],
+       "0.99995": [
+        46.649146612796315,
+        81.80534827689445
+       ],
+       "1.0": [
+        46.649146612796315,
+        81.80534827689445
+       ]
+      }
+     },
+     "gate_open": {
+      "added_codes_at_site": 236.66725710606232,
+      "max_added_near_site": 253.28568728407558,
+      "per_previous_depth": {
+       "-1.0": [
+        236.66725710606232,
+        253.28568728407558
+       ],
+       "0.9995": [
+        236.66725710606232,
+        253.28568728407558
+       ],
+       "0.99995": [
+        236.66725710606232,
+        253.28568728407558
+       ],
+       "1.0": [
+        236.66725710606232,
+        253.28568728407558
+       ]
+      }
+     },
+     "gate_open_box7": {
+      "added_codes_at_site": 74.37050028351166,
+      "max_added_near_site": 126.29173023596249,
+      "per_previous_depth": {
+       "-1.0": [
+        74.37050028351166,
+        126.29173023596249
+       ],
+       "0.9995": [
+        74.37050028351166,
+        126.29173023596249
+       ],
+       "0.99995": [
+        74.37050028351166,
+        126.29173023596249
+       ],
+       "1.0": [
+        74.37050028351166,
+        126.29173023596249
+       ]
+      }
+     },
+     "gate_open_box11": {
+      "added_codes_at_site": 115.04064653603277,
+      "max_added_near_site": 147.01385563004598,
+      "per_previous_depth": {
+       "-1.0": [
+        115.04064653603277,
+        147.01385563004598
+       ],
+       "0.9995": [
+        115.04064653603277,
+        147.01385563004598
+       ],
+       "0.99995": [
+        115.04064653603277,
+        147.01385563004598
+       ],
+       "1.0": [
+        115.04064653603277,
+        147.01385563004598
+       ]
+      }
+     }
+    }
+   }
+  },
+  "run201-a": {
+   "dump": "/tmp/x3-bottleX3-run201",
+   "frames": [
+    10442,
+    10473
+   ],
+   "role": "rotation",
+   "replay_roi": [
+    779,
+    364,
+    1129,
+    679
+   ],
+   "track_roi": [
+    859,
+    464,
+    1049,
+    579
+   ],
+   "support_pixels": 5484,
+   "background_pixels": 578315,
+   "scored_frames": 16,
+   "routed_fit_residual_p50_p99_px": [
+    0.2897606986291759,
+    1.743302679601041
+   ],
+   "variants": {
+    "installed": {
+     "tracked_rms": 27.71991296353578,
+     "tracked_gradient": 292.3515508223591,
+     "gate_share": 6.905007640973257e-06,
+     "region_pixel_frames": 2906602,
+     "region_screen_speed_p50_p90": [
+      6.553854598413519,
+      33.640980756283085
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.29179530494414263,
+      2.137262754602119
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.25492694719976017,
+      2.9512413059906026
+     ],
+     "screen_speed_p50_p99": [
+      6.675669475136066,
+      40.84487724397032
+     ],
+     "background_trail_p99_vs_plain": 0.0,
+     "background_trail_max_vs_plain": 0.0,
+     "elapsed_seconds": 6.278318167000002,
+     "tracked_rms_ratio": 1.0,
+     "tracked_gradient_ratio": 1.0
+    },
+    "gate_open": {
+     "tracked_rms": 27.610372836943846,
+     "tracked_gradient": 286.2383570954002,
+     "gate_share": 0.17723955518278492,
+     "region_pixel_frames": 2906602,
+     "region_screen_speed_p50_p90": [
+      6.553854598413519,
+      33.640980756283085
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.29179530494414263,
+      2.137262754602119
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.25492694719976017,
+      2.9512413059906026
+     ],
+     "screen_speed_p50_p99": [
+      6.675669475136066,
+      40.84487724397032
+     ],
+     "background_trail_p99_vs_plain": 0.6444271538228106,
+     "background_trail_max_vs_plain": 18.938967764490002,
+     "elapsed_seconds": 6.258942124999997,
+     "identical_to_installed": false,
+     "max_abs_delta_vs_installed_hdr": 0.4921875,
+     "differing_values_vs_installed": 5789571,
+     "total_values": 13671000,
+     "tracked_rms_ratio": 0.9960483235738861,
+     "tracked_gradient_ratio": 0.9790895799602806
+    },
+    "gate_open_box7": {
+     "tracked_rms": 27.610048726332547,
+     "tracked_gradient": 286.23617234263406,
+     "gate_share": 0.17723955518278492,
+     "region_pixel_frames": 2906602,
+     "region_screen_speed_p50_p90": [
+      6.553854598413519,
+      33.640980756283085
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.29179530494414263,
+      2.137262754602119
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.25492694719976017,
+      2.9512413059906026
+     ],
+     "screen_speed_p50_p99": [
+      6.675669475136066,
+      40.84487724397032
+     ],
+     "background_trail_p99_vs_plain": 0.6430977439802864,
+     "background_trail_max_vs_plain": 18.938967764490002,
+     "elapsed_seconds": 6.411833291000001,
+     "identical_to_installed": false,
+     "max_abs_delta_vs_installed_hdr": 0.4921875,
+     "differing_values_vs_installed": 5788254,
+     "total_values": 13671000,
+     "tracked_rms_ratio": 0.996036631235179,
+     "tracked_gradient_ratio": 0.9790821069273515
+    },
+    "gate_open_box11": {
+     "tracked_rms": 27.610138255925566,
+     "tracked_gradient": 286.2362696773279,
+     "gate_share": 0.17723955518278492,
+     "region_pixel_frames": 2906602,
+     "region_screen_speed_p50_p90": [
+      6.553854598413519,
+      33.640980756283085
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.29179530494414263,
+      2.137262754602119
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.25492694719976017,
+      2.9512413059906026
+     ],
+     "screen_speed_p50_p99": [
+      6.675669475136066,
+      40.84487724397032
+     ],
+     "background_trail_p99_vs_plain": 0.6444703129741732,
+     "background_trail_max_vs_plain": 18.938967764490002,
+     "elapsed_seconds": 6.543781832999997,
+     "identical_to_installed": false,
+     "max_abs_delta_vs_installed_hdr": 0.4921875,
+     "differing_values_vs_installed": 5788695,
+     "total_values": 13671000,
+     "tracked_rms_ratio": 0.9960398610286181,
+     "tracked_gradient_ratio": 0.9790824398645075
+    }
+   },
+   "plain_elapsed_seconds": 4.740255375000004
+  },
+  "run201-b": {
+   "dump": "/tmp/x3-bottleX3-run201",
+   "frames": [
+    12010,
+    12041
+   ],
+   "role": "rotation",
+   "replay_roi": [
+    749,
+    429,
+    1099,
+    744
+   ],
+   "track_roi": [
+    829,
+    529,
+    1019,
+    644
+   ],
+   "support_pixels": 16803,
+   "background_pixels": 985499,
+   "scored_frames": 16,
+   "routed_fit_residual_p50_p99_px": [
+    0.8004474321876842,
+    4.823738935540725
+   ],
+   "variants": {
+    "installed": {
+     "tracked_rms": 44.70719927524564,
+     "tracked_gradient": 324.56033428913685,
+     "gate_share": 0.00032776522371709123,
+     "region_pixel_frames": 2170848,
+     "region_screen_speed_p50_p90": [
+      5.178615623861615,
+      14.482005471785236
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      3.430597281913543,
+      6.089537979512038
+     ],
+     "camera_relative_speed_p50_p99": [
+      2.622219219237927,
+      18.769105374474602
+     ],
+     "screen_speed_p50_p99": [
+      5.223084066682384,
+      32.70555160588559
+     ],
+     "background_trail_p99_vs_plain": 0.0,
+     "background_trail_max_vs_plain": 0.13867496073896746,
+     "elapsed_seconds": 6.311336417000007,
+     "tracked_rms_ratio": 1.0,
+     "tracked_gradient_ratio": 1.0
+    },
+    "gate_open": {
+     "tracked_rms": 44.707512941775725,
+     "tracked_gradient": 324.5669561361115,
+     "gate_share": 0.00017233560090702943,
+     "region_pixel_frames": 2170848,
+     "region_screen_speed_p50_p90": [
+      5.178615623861615,
+      14.482005471785236
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      3.430597281913543,
+      6.089537979512038
+     ],
+     "camera_relative_speed_p50_p99": [
+      2.622219219237927,
+      18.769105374474602
+     ],
+     "screen_speed_p50_p99": [
+      5.223084066682384,
+      32.70555160588559
+     ],
+     "background_trail_p99_vs_plain": 0.0,
+     "background_trail_max_vs_plain": 2.080481652537628,
+     "elapsed_seconds": 6.23739641600001,
+     "identical_to_installed": false,
+     "max_abs_delta_vs_installed_hdr": 0.044921875,
+     "differing_values_vs_installed": 185528,
+     "total_values": 13671000,
+     "tracked_rms_ratio": 1.0000070160183407,
+     "tracked_gradient_ratio": 1.0000204025146486
+    },
+    "gate_open_box7": {
+     "tracked_rms": 44.707512941775725,
+     "tracked_gradient": 324.5669561361115,
+     "gate_share": 0.00017233560090702943,
+     "region_pixel_frames": 2170848,
+     "region_screen_speed_p50_p90": [
+      5.178615623861615,
+      14.482005471785236
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      3.430597281913543,
+      6.089537979512038
+     ],
+     "camera_relative_speed_p50_p99": [
+      2.622219219237927,
+      18.769105374474602
+     ],
+     "screen_speed_p50_p99": [
+      5.223084066682384,
+      32.70555160588559
+     ],
+     "background_trail_p99_vs_plain": 0.0,
+     "background_trail_max_vs_plain": 2.080481652537628,
+     "elapsed_seconds": 6.382544625000008,
+     "identical_to_installed": false,
+     "max_abs_delta_vs_installed_hdr": 0.044921875,
+     "differing_values_vs_installed": 185512,
+     "total_values": 13671000,
+     "tracked_rms_ratio": 1.0000070160183407,
+     "tracked_gradient_ratio": 1.0000204025146486
+    },
+    "gate_open_box11": {
+     "tracked_rms": 44.707512941775725,
+     "tracked_gradient": 324.5669561361115,
+     "gate_share": 0.00017233560090702943,
+     "region_pixel_frames": 2170848,
+     "region_screen_speed_p50_p90": [
+      5.178615623861615,
+      14.482005471785236
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      3.430597281913543,
+      6.089537979512038
+     ],
+     "camera_relative_speed_p50_p99": [
+      2.622219219237927,
+      18.769105374474602
+     ],
+     "screen_speed_p50_p99": [
+      5.223084066682384,
+      32.70555160588559
+     ],
+     "background_trail_p99_vs_plain": 0.0,
+     "background_trail_max_vs_plain": 2.080481652537628,
+     "elapsed_seconds": 6.413112166999994,
+     "identical_to_installed": false,
+     "max_abs_delta_vs_installed_hdr": 0.044921875,
+     "differing_values_vs_installed": 185514,
+     "total_values": 13671000,
+     "tracked_rms_ratio": 1.0000070160183407,
+     "tracked_gradient_ratio": 1.0000204025146486
+    }
+   },
+   "plain_elapsed_seconds": 4.806901582999998
+  },
+  "run206-slow": {
+   "dump": "/tmp/x3-bottleX3-run206",
+   "frames": [
+    5730,
+    5761
+   ],
+   "role": "rotation",
+   "replay_roi": [
+    629,
+    269,
+    979,
+    584
+   ],
+   "track_roi": [
+    709,
+    369,
+    899,
+    484
+   ],
+   "support_pixels": 16415,
+   "background_pixels": 686462,
+   "scored_frames": 16,
+   "routed_fit_residual_p50_p99_px": [
+    0.5460283900287074,
+    2.358319165225928
+   ],
+   "variants": {
+    "installed": {
+     "tracked_rms": 29.95987795917995,
+     "tracked_gradient": 441.15735882207395,
+     "gate_share": 0.014159280019129198,
+     "region_pixel_frames": 2300584,
+     "region_screen_speed_p50_p90": [
+      3.882701471606434,
+      5.005329332111415
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.08696987877624081,
+      0.18564100662140626
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.06383808185780085,
+      5.125822656048042
+     ],
+     "screen_speed_p50_p99": [
+      3.8152762664247306,
+      5.626303372915602
+     ],
+     "background_trail_p99_vs_plain": 0.0825630295129618,
+     "background_trail_max_vs_plain": 2.631909297942258,
+     "elapsed_seconds": 6.252871124999999,
+     "tracked_rms_ratio": 1.0,
+     "tracked_gradient_ratio": 1.0
+    },
+    "gate_open": {
+     "tracked_rms": 28.260325642781723,
+     "tracked_gradient": 351.4581800496291,
+     "gate_share": 0.42785254298025854,
+     "region_pixel_frames": 2300584,
+     "region_screen_speed_p50_p90": [
+      3.882701471606434,
+      5.005329332111415
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.08696987877624081,
+      0.18564100662140626
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.06383808185780085,
+      5.125822656048042
+     ],
+     "screen_speed_p50_p99": [
+      3.8152762664247306,
+      5.626303372915602
+     ],
+     "background_trail_p99_vs_plain": 1.5582457046676856,
+     "background_trail_max_vs_plain": 28.801968661311683,
+     "elapsed_seconds": 6.167643333000001,
+     "identical_to_installed": false,
+     "max_abs_delta_vs_installed_hdr": 0.904296875,
+     "differing_values_vs_installed": 6800783,
+     "total_values": 13671000,
+     "tracked_rms_ratio": 0.9432723885352988,
+     "tracked_gradient_ratio": 0.7966730533251243
+    },
+    "gate_open_box7": {
+     "tracked_rms": 28.254114708445787,
+     "tracked_gradient": 351.38642093881714,
+     "gate_share": 0.42785254298025854,
+     "region_pixel_frames": 2300584,
+     "region_screen_speed_p50_p90": [
+      3.882701471606434,
+      5.005329332111415
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.08696987877624081,
+      0.18564100662140626
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.06383808185780085,
+      5.125822656048042
+     ],
+     "screen_speed_p50_p99": [
+      3.8152762664247306,
+      5.626303372915602
+     ],
+     "background_trail_p99_vs_plain": 1.555672019329249,
+     "background_trail_max_vs_plain": 28.801968661311683,
+     "elapsed_seconds": 6.327602624999997,
+     "identical_to_installed": false,
+     "max_abs_delta_vs_installed_hdr": 0.904296875,
+     "differing_values_vs_installed": 6799616,
+     "total_values": 13671000,
+     "tracked_rms_ratio": 0.9430650801362326,
+     "tracked_gradient_ratio": 0.7965103922941408
+    },
+    "gate_open_box11": {
+     "tracked_rms": 28.258288728949214,
+     "tracked_gradient": 351.44161600496636,
+     "gate_share": 0.42785254298025854,
+     "region_pixel_frames": 2300584,
+     "region_screen_speed_p50_p90": [
+      3.882701471606434,
+      5.005329332111415
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.08696987877624081,
+      0.18564100662140626
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.06383808185780085,
+      5.125822656048042
+     ],
+     "screen_speed_p50_p99": [
+      3.8152762664247306,
+      5.626303372915602
+     ],
+     "background_trail_p99_vs_plain": 1.5574045775756549,
+     "background_trail_max_vs_plain": 28.801968661311683,
+     "elapsed_seconds": 6.3643166249999865,
+     "identical_to_installed": false,
+     "max_abs_delta_vs_installed_hdr": 0.904296875,
+     "differing_values_vs_installed": 6800331,
+     "total_values": 13671000,
+     "tracked_rms_ratio": 0.9432044004802311,
+     "tracked_gradient_ratio": 0.7966355065306948
+    }
+   },
+   "plain_elapsed_seconds": 4.703694458000001
+  },
+  "run206-fast": {
+   "dump": "/tmp/x3-bottleX3-run206",
+   "frames": [
+    6936,
+    6967
+   ],
+   "role": "rotation",
+   "replay_roi": [
+    904,
+    344,
+    1254,
+    659
+   ],
+   "track_roi": [
+    984,
+    444,
+    1174,
+    559
+   ],
+   "support_pixels": 0,
+   "background_pixels": 1577337,
+   "scored_frames": 16,
+   "routed_fit_residual_p50_p99_px": [
+    0.0025530186628505117,
+    0.01541191569122706
+   ],
+   "variants": {
+    "installed": {
+     "tracked_rms": null,
+     "tracked_gradient": null,
+     "gate_share": 0.1596151134479973,
+     "region_pixel_frames": 1523638,
+     "region_screen_speed_p50_p90": [
+      5.467148310917976,
+      71.81655646172845
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.029995032002349663,
+      2.0236207126856844
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.0,
+      2.650610395770833
+     ],
+     "screen_speed_p50_p99": [
+      11.275480581270624,
+      99.64250677016292
+     ],
+     "background_trail_p99_vs_plain": 0.3946468928170656,
+     "background_trail_max_vs_plain": 16.734165851685972,
+     "elapsed_seconds": 6.199486499999978,
+     "tracked_rms_ratio": null,
+     "tracked_gradient_ratio": null
+    },
+    "gate_open": {
+     "tracked_rms": null,
+     "tracked_gradient": null,
+     "gate_share": 0.23021270744095,
+     "region_pixel_frames": 1523638,
+     "region_screen_speed_p50_p90": [
+      5.467148310917976,
+      71.81655646172845
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.029995032002349663,
+      2.0236207126856844
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.0,
+      2.650610395770833
+     ],
+     "screen_speed_p50_p99": [
+      11.275480581270624,
+      99.64250677016292
+     ],
+     "background_trail_p99_vs_plain": 0.5077230640178537,
+     "background_trail_max_vs_plain": 16.734165851685972,
+     "elapsed_seconds": 6.157764374999999,
+     "identical_to_installed": false,
+     "max_abs_delta_vs_installed_hdr": 0.56298828125,
+     "differing_values_vs_installed": 1481811,
+     "total_values": 13671000,
+     "tracked_rms_ratio": null,
+     "tracked_gradient_ratio": null
+    },
+    "gate_open_box7": {
+     "tracked_rms": null,
+     "tracked_gradient": null,
+     "gate_share": 0.23021270744095,
+     "region_pixel_frames": 1523638,
+     "region_screen_speed_p50_p90": [
+      5.467148310917976,
+      71.81655646172845
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.029995032002349663,
+      2.0236207126856844
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.0,
+      2.650610395770833
+     ],
+     "screen_speed_p50_p99": [
+      11.275480581270624,
+      99.64250677016292
+     ],
+     "background_trail_p99_vs_plain": 0.4894420815023099,
+     "background_trail_max_vs_plain": 16.734165851685972,
+     "elapsed_seconds": 6.271670999999998,
+     "identical_to_installed": false,
+     "max_abs_delta_vs_installed_hdr": 0.490234375,
+     "differing_values_vs_installed": 1517175,
+     "total_values": 13671000,
+     "tracked_rms_ratio": null,
+     "tracked_gradient_ratio": null
+    },
+    "gate_open_box11": {
+     "tracked_rms": null,
+     "tracked_gradient": null,
+     "gate_share": 0.23021270744095,
+     "region_pixel_frames": 1523638,
+     "region_screen_speed_p50_p90": [
+      5.467148310917976,
+      71.81655646172845
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.029995032002349663,
+      2.0236207126856844
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.0,
+      2.650610395770833
+     ],
+     "screen_speed_p50_p99": [
+      11.275480581270624,
+      99.64250677016292
+     ],
+     "background_trail_p99_vs_plain": 0.5031013118500158,
+     "background_trail_max_vs_plain": 16.734165851685972,
+     "elapsed_seconds": 6.375353292,
+     "identical_to_installed": false,
+     "max_abs_delta_vs_installed_hdr": 0.50341796875,
+     "differing_values_vs_installed": 1494303,
+     "total_values": 13671000,
+     "tracked_rms_ratio": null,
+     "tracked_gradient_ratio": null
+    }
+   },
+   "plain_elapsed_seconds": 4.740874167000015,
+   "tracked_metrics": "unavailable: no material point stays inside the replay crop over the scored frames"
+  },
+  "run177-stationary": {
+   "dump": "/tmp/x3-bottleX3-run177",
+   "frames": [
+    5674,
+    5705
+   ],
+   "role": "control",
+   "replay_roi": [
+    790,
+    20,
+    1140,
+    335
+   ],
+   "track_roi": [
+    905,
+    55,
+    1095,
+    165
+   ],
+   "support_pixels": 7567,
+   "background_pixels": 2298999,
+   "scored_frames": 16,
+   "routed_fit_residual_p50_p99_px": [
+    0.0009847544483751474,
+    0.002100709208335647
+   ],
+   "variants": {
+    "installed": {
+     "tracked_rms": 1.6036000676285025,
+     "tracked_gradient": 3493.0007854428845,
+     "gate_share": 0.2881018213737109,
+     "region_pixel_frames": 984660,
+     "region_screen_speed_p50_p90": [
+      0.0013715945467678364,
+      0.006535975280934166
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.005513742091280352,
+      0.007425402192799908
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.0,
+      0.0081837199284895
+     ],
+     "screen_speed_p50_p99": [
+      0.005977523374959475,
+      0.007752000103385445
+     ],
+     "background_trail_p99_vs_plain": 0.1790195540271049,
+     "background_trail_max_vs_plain": 43.82873822799911,
+     "elapsed_seconds": 6.238974041000006,
+     "tracked_rms_ratio": 1.0,
+     "tracked_gradient_ratio": 1.0
+    },
+    "gate_open": {
+     "tracked_rms": 1.6036000676285025,
+     "tracked_gradient": 3493.0007854428845,
+     "gate_share": 0.2881018213737109,
+     "region_pixel_frames": 984660,
+     "region_screen_speed_p50_p90": [
+      0.0013715945467678364,
+      0.006535975280934166
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.005513742091280352,
+      0.007425402192799908
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.0,
+      0.0081837199284895
+     ],
+     "screen_speed_p50_p99": [
+      0.005977523374959475,
+      0.007752000103385445
+     ],
+     "background_trail_p99_vs_plain": 0.1790195540271049,
+     "background_trail_max_vs_plain": 43.82873822799911,
+     "elapsed_seconds": 6.298175750000013,
+     "identical_to_installed": true,
+     "max_abs_delta_vs_installed_hdr": 0.0,
+     "differing_values_vs_installed": 0,
+     "total_values": 13671000,
+     "tracked_rms_ratio": 1.0,
+     "tracked_gradient_ratio": 1.0
+    },
+    "gate_open_box7": {
+     "tracked_rms": 1.604737872280162,
+     "tracked_gradient": 3488.25618265614,
+     "gate_share": 0.2881018213737109,
+     "region_pixel_frames": 984660,
+     "region_screen_speed_p50_p90": [
+      0.0013715945467678364,
+      0.006535975280934166
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.005513742091280352,
+      0.007425402192799908
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.0,
+      0.0081837199284895
+     ],
+     "screen_speed_p50_p99": [
+      0.005977523374959475,
+      0.007752000103385445
+     ],
+     "background_trail_p99_vs_plain": 0.17669883772529743,
+     "background_trail_max_vs_plain": 43.82873822799911,
+     "elapsed_seconds": 6.421071250000011,
+     "identical_to_installed": false,
+     "max_abs_delta_vs_installed_hdr": 0.6357421875,
+     "differing_values_vs_installed": 209436,
+     "total_values": 13671000,
+     "tracked_rms_ratio": 1.0007095314315757,
+     "tracked_gradient_ratio": 0.9986416828743591
+    },
+    "gate_open_box11": {
+     "tracked_rms": 1.6040759111766345,
+     "tracked_gradient": 3491.7671835654164,
+     "gate_share": 0.2881018213737109,
+     "region_pixel_frames": 984660,
+     "region_screen_speed_p50_p90": [
+      0.0013715945467678364,
+      0.006535975280934166
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.005513742091280352,
+      0.007425402192799908
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.0,
+      0.0081837199284895
+     ],
+     "screen_speed_p50_p99": [
+      0.005977523374959475,
+      0.007752000103385445
+     ],
+     "background_trail_p99_vs_plain": 0.1776902187292108,
+     "background_trail_max_vs_plain": 43.82873822799911,
+     "elapsed_seconds": 6.462896582999974,
+     "identical_to_installed": false,
+     "max_abs_delta_vs_installed_hdr": 0.39794921875,
+     "differing_values_vs_installed": 127322,
+     "total_values": 13671000,
+     "tracked_rms_ratio": 1.0002967345522975,
+     "tracked_gradient_ratio": 0.9996468360721219
+    }
+   },
+   "plain_elapsed_seconds": 4.639375541999982
+  },
+  "run159-slow": {
+   "dump": "/tmp/x3-bottleX3-run159",
+   "frames": [
+    4789,
+    4820
+   ],
+   "role": "control",
+   "replay_roi": [
+    524,
+    199,
+    874,
+    514
+   ],
+   "track_roi": [
+    604,
+    299,
+    794,
+    414
+   ],
+   "support_pixels": 13925,
+   "background_pixels": 1243894,
+   "scored_frames": 16,
+   "routed_fit_residual_p50_p99_px": [
+    0.0035089377135346066,
+    0.04747382866134312
+   ],
+   "variants": {
+    "installed": {
+     "tracked_rms": 2.751152870635376,
+     "tracked_gradient": 1028.3305789500535,
+     "gate_share": 0.4644667815749263,
+     "region_pixel_frames": 1817063,
+     "region_screen_speed_p50_p90": [
+      0.025200424858515737,
+      0.10029296893572041
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.026956623684930837,
+      0.10806880149606163
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.0,
+      0.14253704900330566
+     ],
+     "screen_speed_p50_p99": [
+      0.009429320773730019,
+      0.133703260544053
+     ],
+     "background_trail_p99_vs_plain": 0.289477895341237,
+     "background_trail_max_vs_plain": 21.113913268469076,
+     "elapsed_seconds": 6.289455000000004,
+     "tracked_rms_ratio": 1.0,
+     "tracked_gradient_ratio": 1.0
+    },
+    "gate_open": {
+     "tracked_rms": 2.77985196571843,
+     "tracked_gradient": 1029.7861690512273,
+     "gate_share": 0.45423472718288743,
+     "region_pixel_frames": 1817063,
+     "region_screen_speed_p50_p90": [
+      0.025200424858515737,
+      0.10029296893572041
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.026956623684930837,
+      0.10806880149606163
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.0,
+      0.14253704900330566
+     ],
+     "screen_speed_p50_p99": [
+      0.009429320773730019,
+      0.133703260544053
+     ],
+     "background_trail_p99_vs_plain": 0.2773624891892348,
+     "background_trail_max_vs_plain": 21.113913268469076,
+     "elapsed_seconds": 6.2759772080000005,
+     "identical_to_installed": false,
+     "max_abs_delta_vs_installed_hdr": 0.0625,
+     "differing_values_vs_installed": 2578770,
+     "total_values": 13671000,
+     "tracked_rms_ratio": 1.0104316613552724,
+     "tracked_gradient_ratio": 1.0014154884926791
+    },
+    "gate_open_box7": {
+     "tracked_rms": 2.781085519524975,
+     "tracked_gradient": 1028.9744747313732,
+     "gate_share": 0.45423472718288743,
+     "region_pixel_frames": 1817063,
+     "region_screen_speed_p50_p90": [
+      0.025200424858515737,
+      0.10029296893572041
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.026956623684930837,
+      0.10806880149606163
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.0,
+      0.14253704900330566
+     ],
+     "screen_speed_p50_p99": [
+      0.009429320773730019,
+      0.133703260544053
+     ],
+     "background_trail_p99_vs_plain": 0.2760353610319639,
+     "background_trail_max_vs_plain": 21.113913268469076,
+     "elapsed_seconds": 6.442499624999982,
+     "identical_to_installed": false,
+     "max_abs_delta_vs_installed_hdr": 0.6904296875,
+     "differing_values_vs_installed": 2628237,
+     "total_values": 13671000,
+     "tracked_rms_ratio": 1.0108800384046583,
+     "tracked_gradient_ratio": 1.0006261564077743
+    },
+    "gate_open_box11": {
+     "tracked_rms": 2.7802013018722787,
+     "tracked_gradient": 1029.4393515131123,
+     "gate_share": 0.45423472718288743,
+     "region_pixel_frames": 1817063,
+     "region_screen_speed_p50_p90": [
+      0.025200424858515737,
+      0.10029296893572041
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.026956623684930837,
+      0.10806880149606163
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.0,
+      0.14253704900330566
+     ],
+     "screen_speed_p50_p99": [
+      0.009429320773730019,
+      0.133703260544053
+     ],
+     "background_trail_p99_vs_plain": 0.2772192195750393,
+     "background_trail_max_vs_plain": 21.113913268469076,
+     "elapsed_seconds": 6.497546583999991,
+     "identical_to_installed": false,
+     "max_abs_delta_vs_installed_hdr": 0.3994140625,
+     "differing_values_vs_installed": 2603011,
+     "total_values": 13671000,
+     "tracked_rms_ratio": 1.0105586394514652,
+     "tracked_gradient_ratio": 1.0010782258018536
+    }
+   },
+   "plain_elapsed_seconds": 4.745926166000004
+  },
+  "run161-trail": {
+   "dump": "/tmp/x3-bottleX3-run161",
+   "frames": [
+    5151,
+    5182
+   ],
+   "role": "trail",
+   "replay_roi": [
+    459,
+    344,
+    809,
+    659
+   ],
+   "track_roi": [
+    539,
+    444,
+    729,
+    559
+   ],
+   "support_pixels": 1272,
+   "background_pixels": 2083843,
+   "scored_frames": 16,
+   "routed_fit_residual_p50_p99_px": [
+    0.03323432280466789,
+    0.27183378778106343
+   ],
+   "variants": {
+    "installed": {
+     "tracked_rms": 7.236930825596921,
+     "tracked_gradient": 970.2353338570806,
+     "gate_share": 0.13677956816907885,
+     "region_pixel_frames": 667601,
+     "region_screen_speed_p50_p90": [
+      0.003601782830565179,
+      0.12068239067899152
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.0036117635637906956,
+      0.12014794843106587
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.0,
+      0.3285800451022378
+     ],
+     "screen_speed_p50_p99": [
+      0.003209351867077635,
+      0.32674547686324734
+     ],
+     "background_trail_p99_vs_plain": 0.07584273413390424,
+     "background_trail_max_vs_plain": 20.039862966302664,
+     "elapsed_seconds": 6.310784291999994,
+     "tracked_rms_ratio": 1.0,
+     "tracked_gradient_ratio": 1.0
+    },
+    "gate_open": {
+     "tracked_rms": 7.234670019172128,
+     "tracked_gradient": 970.3042600368304,
+     "gate_share": 0.13662478599098088,
+     "region_pixel_frames": 667601,
+     "region_screen_speed_p50_p90": [
+      0.003601782830565179,
+      0.12068239067899152
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.0036117635637906956,
+      0.12014794843106587
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.0,
+      0.3285800451022378
+     ],
+     "screen_speed_p50_p99": [
+      0.003209351867077635,
+      0.32674547686324734
+     ],
+     "background_trail_p99_vs_plain": 0.07557761598283363,
+     "background_trail_max_vs_plain": 20.179198095114458,
+     "elapsed_seconds": 6.369989750000002,
+     "identical_to_installed": false,
+     "max_abs_delta_vs_installed_hdr": 0.0078125,
+     "differing_values_vs_installed": 674390,
+     "total_values": 13671000,
+     "tracked_rms_ratio": 0.9996876014875262,
+     "tracked_gradient_ratio": 1.00007104068193
+    },
+    "gate_open_box7": {
+     "tracked_rms": 7.231386014399559,
+     "tracked_gradient": 970.2277591325823,
+     "gate_share": 0.13662478599098088,
+     "region_pixel_frames": 667601,
+     "region_screen_speed_p50_p90": [
+      0.003601782830565179,
+      0.12068239067899152
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.0036117635637906956,
+      0.12014794843106587
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.0,
+      0.3285800451022378
+     ],
+     "screen_speed_p50_p99": [
+      0.003209351867077635,
+      0.32674547686324734
+     ],
+     "background_trail_p99_vs_plain": 0.07519313833074606,
+     "background_trail_max_vs_plain": 20.179198095114458,
+     "elapsed_seconds": 6.356266875000017,
+     "identical_to_installed": false,
+     "max_abs_delta_vs_installed_hdr": 0.130615234375,
+     "differing_values_vs_installed": 704496,
+     "total_values": 13671000,
+     "tracked_rms_ratio": 0.9992338173003189,
+     "tracked_gradient_ratio": 0.9999921928997698
+    },
+    "gate_open_box11": {
+     "tracked_rms": 7.234613799824284,
+     "tracked_gradient": 970.2726262520758,
+     "gate_share": 0.13662478599098088,
+     "region_pixel_frames": 667601,
+     "region_screen_speed_p50_p90": [
+      0.003601782830565179,
+      0.12068239067899152
+     ],
+     "region_camera_relative_speed_p50_p90": [
+      0.0036117635637906956,
+      0.12014794843106587
+     ],
+     "camera_relative_speed_p50_p99": [
+      0.0,
+      0.3285800451022378
+     ],
+     "screen_speed_p50_p99": [
+      0.003209351867077635,
+      0.32674547686324734
+     ],
+     "background_trail_p99_vs_plain": 0.0755501994528093,
+     "background_trail_max_vs_plain": 20.179198095114458,
+     "elapsed_seconds": 6.391855334000013,
+     "identical_to_installed": false,
+     "max_abs_delta_vs_installed_hdr": 0.0439453125,
+     "differing_values_vs_installed": 687442,
+     "total_values": 13671000,
+     "tracked_rms_ratio": 0.999679833091061,
+     "tracked_gradient_ratio": 1.0000384364428854
+    }
+   },
+   "plain_elapsed_seconds": 4.784617000000026
+  }
+ },
+ "verdicts": {
+  "installed": {
+   "tracked_rms": false,
+   "tracked_gradient": true,
+   "tracked_rms_ratio": 1.0,
+   "stale_patch_codes": 46.649146612796315,
+   "stale_patch_within_2x_clipped": true,
+   "run161_trail": true,
+   "controls_bit_identical": true,
+   "pass": false
+  },
+  "gate_open": {
+   "tracked_rms": true,
+   "tracked_gradient": false,
+   "tracked_rms_ratio": 0.5666054920399327,
+   "stale_patch_codes": 236.66725710606232,
+   "stale_patch_within_2x_clipped": false,
+   "run161_trail": true,
+   "controls_bit_identical": false,
+   "pass": false
+  },
+  "gate_open_box7": {
+   "tracked_rms": true,
+   "tracked_gradient": false,
+   "tracked_rms_ratio": 0.5666797180020411,
+   "stale_patch_codes": 74.37050028351166,
+   "stale_patch_within_2x_clipped": true,
+   "run161_trail": true,
+   "controls_bit_identical": false,
+   "pass": false
+  },
+  "gate_open_box11": {
+   "tracked_rms": true,
+   "tracked_gradient": false,
+   "tracked_rms_ratio": 0.5666798796450545,
+   "stale_patch_codes": 115.04064653603277,
+   "stale_patch_within_2x_clipped": false,
+   "run161_trail": true,
+   "controls_bit_identical": false,
+   "pass": false
+  },
+  "_ranking_by_tracked_rms_gain": [
+   "gate_open",
+   "gate_open_box7",
+   "gate_open_box11",
+   "installed"
+  ]
+ }
+}
