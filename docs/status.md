@@ -72,8 +72,10 @@ was launched by the agent.
   expensive corner-cache route is closed. The cheaper stored-density experiment ran once after review: strictly better
   than global64 (T p99 .00197, temporal .00184, 132 reads per ray). The user
   accepts its appearance from the fixed images; the sub-display .001 gate is
-  rescaled to half a code (.002) and the route is reopened for a production
-  integration design.
+  rescaled to half a code (.002) and the route was reopened and is now
+  implemented in four reviewed checkpoints behind `--volumetric-fog-range stored`
+  (default legacy, bit-identical); it is in the Run60 DLL awaiting its first
+  flight. GPU cost in game is unmeasured.
   No production integrator or new fog build is selected.
 - **Station flash accepted:** Run205 confirms both global TAA heuristics disabled;
   the user reports no flash or save-load/sector-travel ghosting. Launcher defaults
@@ -100,9 +102,12 @@ was launched by the agent.
   2026-09-21 (user agreed):** the upload-payload diagnostic is held, not wired,
   built or flown; an independent design review found the geometry capture is
   not on the path to rotation crawl and the thin-region gate closes under
-  rotation. A host replay of a camera-relative open gate with a wide-box clip
-  is running; Run 58 (slow/fast pan captures on the installed build) is queued
-  for ground truth under the Run57 defaults.
+  rotation. The camera-relative gate with a 7×7 box clip was accepted for pans
+  in Run 59 and is the default; Run60 makes it depth- and translation-aware for
+  forward flight and adds the default-off `--taa-unmatched-static` fallback for
+  the one-frame approach flash. Roll residual is physical (gate fully open).
+  The user tentatively prefers thin-region weight `0.94,1`; the 0.97 default
+  stands until they confirm on Run60. Run 60 is queued.
   [Design review](architecture/lattice-approach-review-2026-09-21.md).
   [Owning note §31](architecture/taa-lattice-crawl.md#31-close-arithmetic-exploration-investigate-final-upload-observation).
 - **Collision:** paused by user request; no moving-collision test is queued.
