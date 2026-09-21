@@ -1,0 +1,65 @@
+{
+  "phase": "capture_state_writer_b2b",
+  "date": "2026-09-21",
+  "source_branch": "investigate/lattice-payload-writer",
+  "source_base": "75f04dde5cf1aeb5f507bf4cecb500513013b878",
+  "integrated_files": {
+    "src/proxy/lattice_state_capture.cpp": "cd1f4a7f3b0ee3d39d3e19f3fcf42d0647d5a07f3ec08a8f9b9e9012cb0c00e2",
+    "src/proxy/lattice_state_capture.h": "2a57beda13ddc2691fe221204a81cf3456b1f250b49f3a11df523342bbf95469",
+    "src/proxy/lattice_geometry_packet.h": "36b2ac9d2dbe2e907a0ed3ac5b6cf6084496e302f9151accd6ab8939fd72571d",
+    "src/proxy/lattice_geometry_windows.h": "102209a8aa761f611f60e9668f6ccdceb747a9741be84b439b994fbed745f8e1",
+    "verification/analysis/test_lattice_geometry_packet.py": "6f254bc8a3828a16106c036b6c876126906853fc5b9210dda5d9c7aaa50c5a2f",
+    "verification/probe/lattice_geometry_packet_host.cpp": "c9a13c430857703243e3f53e45c60c04d7c1b35243e5bde56ee0abf9583a958e",
+    "verification/probe/lattice_state_fixture_build.py": "7fe1f9711b31e6f7c3906fb3aef7d09ad42cb408bef4c0f99a609a52e0c70b1d",
+    "verification/probe/lattice_observer_release_build.py": "2989d8f48865b0875018828803b5b09d4eb6310182ee693f951a3f2a2d1f6126",
+    "verification/probe/lattice_state_only_ownership_stubs.cpp": "589336a7bfa30a272fa93c234e90107ff232e0fcae3556b633b1d7c09b8ec724"
+  },
+  "host_tests": {
+    "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_lattice_geometry_packet verification.analysis.test_lattice_payload_packet verification.analysis.test_lattice_state_capture",
+    "tests": 25,
+    "result": "OK",
+    "packet_subtest_scenarios": 43
+  },
+  "production_compile": {
+    "tu": "src/proxy/lattice_state_capture.cpp",
+    "flags": "-std=c++17 -O2 -Wall -Wextra -Werror -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2",
+    "result": "OK"
+  },
+  "cross_builds": {
+    "state_fixture": {
+      "output": "/tmp/x3-lattice-state-fixture-build-v1",
+      "exe_sha256": "47f0bd5ebe9f4e9d5ce928917f6eda9906859540c82005eccf875fd428d74378",
+      "exe_bytes": 2721419,
+      "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+      "native_execution": false,
+      "ownership_upload_stubbed": true,
+      "seconds": 3.58
+    },
+    "observer_release": {
+      "output": "/tmp/x3-lattice-observer-release-build-v2",
+      "inputs": "/tmp/x3-lattice-gpu-inputs-v5",
+      "exe_sha256": "9c3c90243110afa8159027f02bd88fec0299a869fb71553f36502df21db95847",
+      "exe_bytes": 2453084,
+      "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+      "executed": false,
+      "ownership_upload_stubbed": true,
+      "seconds": 2.45
+    }
+  },
+  "stub_gate": {
+    "define": "X3M_LATTICE_STATE_ONLY_FIXTURE",
+    "fail_if_called_symbols": [
+      "x3m::ownership::query_clone_upload_pin",
+      "x3m::ownership::get_buffer_lock_view",
+      "x3m::ownership::copy_clone_upload_pair"
+    ],
+    "production_symbol_unlinked": "x3m::ownership::get_buffer_content_view"
+  },
+  "not_established": [
+    "CryptoAPI/native file execution",
+    "actual late-COM callback to paired-copy path",
+    "geometry payload under Wine or native Windows",
+    "startup/CLI/CMake wiring of upload request"
+  ],
+  "game_launched": false
+}

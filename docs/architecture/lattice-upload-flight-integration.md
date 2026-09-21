@@ -69,3 +69,17 @@ Only then provide one concrete diagnostic user run: start with the startup uploa
 Default off: no Store, no byte retention, no creation-policy changes, no installed clone hook. On: one startup allocation, two bounded upload copies plus failure wipes per attempted selected revision, loading-time getter/metadata work for clone filtering, and at most466224 admitted bytes copied at a complete F8 observation. Readable creation affects all eligible MANAGED VB/IB on that factory and can change placement/performance; measure loading and report fallback counts. Global shader/history/AA settings are unchanged by the diagnostic itself; conflicting feature settings must be surfaced before launch.
 
 The mechanism uses exact validated game instructions plus public COM/D3D9 identity/creation/mapping semantics; no Wine-private layout/export or D3DX DLL hash becomes a runtime prerequisite. Native Windows runtime, arbitrary native bypass and inherited callback-SEH recovery remain limited exactly as in §31. Fail closed for unobserved producer patterns. Remaining implementation risks are saved-target ABI extension, distinguishing/releasing the observer pin without recursive final-release errors, guarded packet reference cleanup, and insufficient two-slot coverage. These are the checkpoint acceptance targets, not reasons to expand the instrumentation framework before the first scoped capture.
+
+## B2b writer integrated on main (2026-09-21)
+
+The Capture state writer (`lattice_state_capture.cpp/h`, `lattice_geometry_packet.h`,
+`lattice_geometry_windows.h`) is merged from `investigate/lattice-payload-writer`
+after its clean deep source review. `Capture::arm(..., upload_requested=false)` keeps
+existing callers state-only. Host closure on main: 25 tests across the packet,
+payload-packet and state-capture modules (43 packet sub-scenarios); the production
+translation unit compiles under the SSE2/stack-realign flags. Both standalone
+state-only cross-builds link the three fail-if-called upload stubs behind
+`X3M_LATTICE_STATE_ONLY_FIXTURE` and leave the production upload symbol unlinked
+([record](../../verification/results/run201-lattice/upload-packet-writer.json)).
+Not established: native file/CryptoAPI execution, the actual late-COM-release →
+paired-copy path, and startup/CLI/CMake wiring; those follow the B2a lifetime fix.
