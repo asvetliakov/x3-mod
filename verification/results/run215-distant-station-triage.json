@@ -1,0 +1,151 @@
+{
+  "run": "run215",
+  "session_log": "session-20260921-234823-216.log (device 1, session id 216)",
+  "capture_note": "taa_age_1_* and taa_mask_1_* for this burst are NOT in /tmp/x3-bottleX3-run215 (only color/depth/hdr/motion/present/shadow/taa_1 there); they exist in the bottle's live captures dir under x3-modern-captures/, confirmed by the readback log lines (result=00000000) and by presence of exactly 32 taa_mask_1_* files there matching frames 46573-46604.",
+  "q1_config": {
+    "dll_hash_sha256": "0bc8ff3600942e59009a365acaa7edf19ddff149cbe2309dcbfff2be16c0028d",
+    "source_commit": "ed1054852ebe9e686b11c5552e10197240a46683",
+    "motion_output_taa_line": "sharpen=0.750 history_weight=0.900 thin_region=0.9700 thin_gate=camera far_weight=0.9850 far_speed_lo=0.030 far_speed_hi=0.250 sentinel_stabiliser=0.700 sentinel_emitter=1.000",
+    "unmatched_static_mode": "motion_output_mode line shows taa=1 (default-with-TAA node active per ed105485)",
+    "errors_in_window": "none: color_errors/motion_errors/depth_errors all 0 in device summary; no box_rows_failed/sentinel_failed/sentinel_available strings anywhere in the log (no explicit failure, and no explicit success confirmation line either)",
+    "history_cuts_in_burst": "0 of 32 frames have camera_cut=1 or cut=1 in frames 46573-46604 (all cut=0)"
+  },
+  "q2_burst_and_station": {
+    "burst_frame_range": "46573-46604 (32 frames, F8 burst)",
+    "station_screen_track_px": "template-matched crop track: (660,294)@46581 -> (780,290)@46590/91 (peak) -> (644,294)@46597; not resolvable outside frame window 46581-46597 (station leaves/exits template match confidence)",
+    "pan_rate_deg_per_frame": "computed from camera_state view-matrix forward vector (r20,r21,r22), yaw via atan2: peaks near 3.0-3.7 deg/frame around frames 46575-46579 and 46594-46603 (two opposite-direction sweeps in this burst), near 0 around frame 46591",
+    "pan_rate_px_per_frame_screen_center": "~27-33 px/frame at peak (from yaw * horizontal FOV scale, p00=0.8, width=1280)",
+    "station_own_screen_speed_px_per_frame": "measured by template tracking: ~4-40 px/frame, up to ~40 px/frame near frames 46593-46597"
+  },
+  "q3_classification": {
+    "depth_status": "100% sentinel (-1) in the tracked station crop (50x25 half-box) in every sampled frame 46581-46597",
+    "motion_status": "100% unrouted (motion alpha == -1) in the same crop, every sampled frame",
+    "motion_route_refusals_in_window_for_stations_vs_hash_4944d81dfe531b37": {
+      "no_zwrite": 512,
+      "overlay_node": 576,
+      "matched_none_refusal": 126,
+      "history": 2,
+      "total_draws_with_this_vs": 1216
+    },
+    "motion_route_refusals_all_objects_in_window": {
+      "overlay_node": 914,
+      "no_zwrite": 600
+    },
+    "taa_mask_channel_meaning_from_line_mask_ps_hlsl": "camera-gate mode (X3M_CAMERA_GATE, thin_gate=camera): b = camera-gated strength (thin/fragmented term OR sentinel-stabiliser term, whichever is larger), a = screen-gated strength (a<=b), r/g = far-stabiliser weight*farGate.zw",
+    "taa_mask_measured": {
+      "station_crop_mean_b": 0.698,
+      "station_crop_mean_a": 0.0,
+      "sky_crop_mean_b": 0.698,
+      "sky_crop_mean_a": 0.0,
+      "note": "b is uniform ~0.698 (~0.7 = configured sentinel_stabiliser strength) across BOTH the station crop and a plain-sky reference crop in every sampled frame; a is 0 everywhere sampled (raw screen speed vastly exceeds far_speed_hi=0.25, so the screen-gate path is fully closed)"
+    },
+    "interpretation": "Station is UNROUTED with sentinel depth throughout the burst, so it is exactly the sentinel-stabiliser's target case (per temporal_pass.cpp/line_mask_ps.hlsl comments), not the far-stabiliser/thin-region-line case; the far stabiliser and the raw screen-gate are both closed by the pan (measured a=0). The sentinel stabiliser IS engaging on the station's pixels (b~0.7), but identically to plain sky, i.e. its mask does not distinguish the lattice/strut structure from background at all."
+  },
+  "q4_flicker": {
+    "measurement": "motion-compensated (template-tracked shift), 80x50 px crop, color_1 vs taa_1, frame-to-frame RMS across the 16 consecutive pairs 46581-46597",
+    "color_1_rms_mean": 22.13,
+    "taa_1_rms_mean_scaled_0_1": 0.021,
+    "note_units": "color_1 is bgra8 (0-255 scale); taa_1 is rgba16f pre-tonemap linear, crop mean value ~0.16 there vs ~67 in bgra8, so relative comparison: color relative rms ~33% of crop mean, taa relative rms ~13% of its crop mean",
+    "implied_ratio_output_over_input": "~0.38 relative (13%/33%)",
+    "implied_effective_history_weight": "~0.75 (solving RMS_ratio = sqrt((1-keep)/(1+keep)) for keep), well below the far/thin ceilings (0.985/0.97) and not clearly higher than the plain 0.9 base history_weight",
+    "caveat_inference": "the tracking shift used for alignment is coarse (stride-4 template match, single global integer dx per frame), so this RMS mixes true flicker with residual misalignment/perspective-foreshortening signal; treat the absolute ratio as an order-of-magnitude estimate, not a clean flicker isolation"
+  },
+  "q5_mechanism": {
+    "primary_candidate": "sentinel-stabiliser's camera-relative gate assumes every unrouted sentinel-depth pixel sits at the far plane (pure-rotation, zero-parallax) for its correspondence: line_mask_ps.hlsl gateOpen() only adds camera translation parallax `if (validDepth(depth))` (src/temporal/line_mask_ps.hlsl:135-139); a sentinel pixel always takes depth=1 with NO translation term (line_mask_ps.hlsl:130 uses clip.z=1, no c8/c9 contribution), so its computed 'speed' is near zero under a pure-yaw pan even though the solar plant is a finite-distance object with real camera-translation parallax (t changes by several thousand units per frame in the camera_state log). This makes the camera gate open to full strength (b~0.7, confirmed) identically for the lattice struts and for genuinely infinite background, rather than closing where the far-plane assumption is wrong.",
+    "supporting_evidence": "station pixels are 100% sentinel/unrouted (q3); refused specifically as no_zwrite (512) and overlay_node (576) for this object's shader across the window (q3); mask b is indistinguishable between station and sky (q3); no thin/fragmented gating is applied to the sentinel branch (line_mask_ps.hlsl:184-190 composes b = max(fragmented*a, S*cameraOpen) with no fragmentation requirement on the sentinel term)",
+    "file_line_candidates": [
+      "src/temporal/line_mask_ps.hlsl:70-74 (sentinel-stabiliser comment: any unrouted sentinel pixel gets the boost, not just lattice pixels)",
+      "src/temporal/line_mask_ps.hlsl:126-140 (gateOpen: camera translation only applied on valid depth, never on sentinel depth)",
+      "src/temporal/line_mask_ps.hlsl:184-190 (composition: sentinel term is a plain max(), unconditioned on 'fragmented')",
+      "src/temporal/resolve.hlsl:453-457 (old = lerp(clipped, old, a) + (b-a)*(boxed-clipped): with a=0, b=0.7, the resolve trusts the 7x7 box bound at full configured strength wherever the sentinel bit fired)",
+      "src/renderer/temporal_pass.cpp:409,430 (thin_constants: thinGate.z/w reuse far_speed_lo/hi as the camera-gate speed thresholds; not separately tuned for the sentinel case)"
+    ],
+    "confidence": "inference: the code-path reasoning is direct from the shader source and matches the measured uniform b~0.7 and 100% sentinel/unrouted classification; the causal link from 'wrong zero-parallax assumption' to the specific residual visible flicker is not independently proven by a controlled A/B capture (sentinel-stabiliser off vs on) in this triage, which would be the clean next diagnostic."
+  },
+  "open_issues": [
+    "No A/B (sentinel-stabiliser 0 vs 0.7) capture exists to isolate whether the stabiliser reduces or is neutral/harmful for this specific object; one clean diagnostic: rerun the same horizontal-pan F8 burst with --taa-sentinel-stabiliser 0 and identical camera path, dump taa_1 for the same crop.",
+    "RMS flicker measurement is coarse (template-tracked, stride 4, single global shift); a proper measurement would use sub-pixel optical flow on the crop before differencing.",
+    "No log confirmation (positive or negative) that the thin_box_rows/columns pixel-shader programs were created successfully this run; absence of a failure line is not proof of success, only proof of no explicit failure logged."
+  ],
+  "run216_followup": {
+    "config": {
+      "dll_hash_sha256": "0bc8ff3600942e59009a365acaa7edf19ddff149cbe2309dcbfff2be16c0028d (same build)",
+      "source_commit": "ed1054852ebe9e686b11c5552e10197240a46683",
+      "flags": "--taa-thin-region 0.94,1 (motion_output_taa: thin_region=0.9400 thin_relax=1.000); sentinel_stabiliser=0.700 unchanged",
+      "burst1_frames": "6721-6752 (32 frames, firing lasers over sky)",
+      "burst2_frames": "29737-29768 (32 frames, same distant station, camera stationary; drift <0.3 world units/frame, 0/32 camera_cut)"
+    },
+    "burst1_laser_trails": {
+      "method": "argmax |color_1[f]-color_1[f-1]| tracked per frame to find the transient muzzle/particle pixel each frame; taa_1 at that pixel scaled to color_1's 0-255 range using a sky-patch ratio (scale=141.8, from color_1 mean 3.62 vs taa_1 mean 0.0256 on a 100x100 empty-sky patch)",
+      "finding": "no isolated far-traveling bolt crossing plain empty sky was found in this capture window; the bright transient stays adjacent to the ship's muzzle/exhaust glow every frame (color_1 rarely returns to near-black there for more than 1 frame). Where a sampled pixel DOES return to near-black in color_1 the frame after being saturated, taa_1 (scaled) shows a residual excess of roughly 1-16 of 255 code-equivalents for exactly one frame (e.g. pixel (614,465): color_1 f6729=[0,0,0], taa_scaled=[12.6,16.4,11.6]; pixel (618,459): color_1 f6726=[0,0,0], taa_scaled=[0.9,1.5,1.4]), and is gone (back to sky-level, <2 code-equivalents) by the following frame",
+      "interpretation": "measured trail is small (<=16/255, ~6%) and lasts one frame, consistent with the user's 'no issues' report; not a controlled measurement of a clean single bolt against pure sentinel sky, because this capture's beam activity overlaps the ship's own glow every frame in the sampled ROI"
+    },
+    "burst2_station_at_rest_baseline": {
+      "pixel_class": "100% sentinel depth (-1), 100% unrouted (motion alpha -1) in the tracked crop (680,270)-(820,390), every one of the 32 frames -- same classification as the run215 pan case",
+      "taa_mask": {
+        "b_camera_gated": 0.698,
+        "a_screen_gated": 0.0,
+        "note": "identical to run215's pan values; a=0 because the FRAGMENTED/line test never fires (depth is uniformly sentinel, so classChange() never sees a valid-vs-background pair); b=thinGate.x*cameraOpen=0.7*~1.0 as at rest cameraOpen (17x17-min combined openness) is fully open"
+      },
+      "taa_age": "saturated at the 64-frame cap across the entire crop in every sampled frame (mean=min=max=64.0)",
+      "flicker_rms_no_compensation": {
+        "color_1_rms_mean": 10.38,
+        "taa_1_rms_mean": 0.0014,
+        "ratio": 0.00013
+      },
+      "conclusion_per_coordinator": "user confirms the station does NOT flicker at rest; this burst is the AT-REST BASELINE, not a symptom. Even though raw color_1 already fluctuates (rms 10.38 of a ~67-scale crop, from the 8-sample jitter pattern aliasing the strut edges every frame with no camera motion), the resolve suppresses it almost completely (ratio 1.3e-4) once age is fully ramped (64) and the sentinel/camera-gate mask is open (b=0.7) -- this is the fully-working case."
+    },
+    "run215_pan_deep_dive": {
+      "subpixel_track_note": "sub-pixel station centroid tracked by parabolic peak fit around the coarse template match (frames 46581-46597)",
+      "speed_vs_flicker_correlation": {
+        "taa_rms_vs_|dx|_speed": 0.691,
+        "taa_rms_vs_fractional_bilinear_phase": 0.243,
+        "fractional_phase_vs_speed": -0.023,
+        "note": "raw pan speed correlates with output residual flicker much more strongly than the sub-pixel (bilinear) phase alone; the two predictors are uncorrelated with each other in this sample, so this is not simply confounded"
+      },
+      "clip_box_bind_frequency": {
+        "method": "reconstructed the resolve's 7x7 same-size min/max box from hdr_1 (current frame) and bilinear-shifted the PREVIOUS frame's taa_1 by the tracked sub-pixel dx to approximate the reprojected 'old' history sample (horizontal shift only, in raw hdr/taa linear units -- resolve.hlsl's weigh()/unweigh() tonemap curve is not reproduced, so this is a same-space approximation, not an exact replica of the shader's clip test)",
+        "per_pair_bind_fraction_vs_dx_px": "0.32@dx=24.1, 0.24@18.8, 0.24@19.2, 0.20@14.8, 0.18@12.6, 0.17@11.1, 0.14@8.6, 0.13@6.9, 0.07@3.2, 0.03@0.2, 0.01@-2.5, 0.01@-7.5, 0.24@-27.0, 0.42@-32.9, 0.39@-30.5, 0.38@-34.5",
+        "correlation_bind_frac_vs_|dx|": 0.956,
+        "mean_bind_fraction_over_window": 0.198,
+        "interpretation": "the fraction of the station crop where the reprojected history falls outside the local 7x7 current-frame min/max (i.e. where the box-clip would actively override 'old') tracks the pan speed almost linearly (r=0.956): near 0 speed it is ~1-3%, at 30-40 px/frame it is ~24-42% of the crop. This is a direct, code-grounded explanation of why suppression degrades specifically during the pan and not at rest."
+      },
+      "age_reset_under_pan": {
+        "reset_le2_fraction_by_frame": {
+          "46581": 0.107,
+          "46582": 0.065,
+          "46583": 0.026,
+          "46584": 0.0,
+          "46585": 0.0,
+          "46586": 0.0,
+          "46587": 0.0,
+          "46588": 0.0,
+          "46589": 0.0,
+          "46590": 0.0,
+          "46591": 0.0,
+          "46592": 0.112,
+          "46593": 0.184,
+          "46594": 0.153,
+          "46595": 0.148,
+          "46596": 0.159,
+          "46597": 0.093
+        },
+        "note": "age resets (age<=2) cluster right where the pan reverses direction (frames 46592-46597, after the yaw sign flip near 46591) and are ~0 while the pan is monotonic and settling toward the peak (46584-46591); mean age in the crop stays moderate (12-21, capped at 64 for many pixels) throughout -- resets are concentrated at the high-contrast strut edges, not spread uniformly, which is consistent with edge-localized flicker perception even though the crop-wide mean age looks only moderately reduced"
+      },
+      "sharpness_vs_run216": {
+        "method": "gradient energy (mean squared finite difference, taa_1 rgba16f, linear pre-tonemap) on the station crop; poses are NOT matched (different camera heading/distance/apparent size in each run, so this is a rough, uncontrolled comparison)",
+        "run215_thin_region_0.97_frame_46591_near_zero_relative_speed": {
+          "taa_grad_energy": 0.0001787,
+          "input_hdr_grad_energy": 0.0057865,
+          "output_input_ratio": 0.0309
+        },
+        "run216_thin_region_0.94_frame_29750_at_rest": {
+          "taa_grad_energy": 0.0002763,
+          "input_hdr_grad_energy": 0.0028625,
+          "output_input_ratio": 0.0965
+        },
+        "interpretation_caveat": "run215's absolute output gradient energy is lower, but its input was also much more contrasty (2x); by the output/input ratio, run215 (thin_region=0.97) retains only ~3% of input sharpness vs run216 (thin_region=0.94, at rest) retaining ~10%; not a controlled A/B (different pose, different pan state), so this is suggestive, not conclusive, that the higher thin_region threshold and/or the pan state further softens the station"
+      }
+    }
+  }
+}

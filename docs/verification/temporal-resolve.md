@@ -985,3 +985,121 @@ with the existing `taa_age_*`, and the log parsers dispatch on exact tags, so `m
 
 Not verified: any flight; real emitter luma against E = 1; GPU time in the game; native Windows (ps_3_0, `tex2Dlod`,
 two-target MRT and FP16 targets only, all already required by the camera gate; cross-compiled, not run).
+
+## 2026-09-22 triage: run215, distant solar-plant flicker during horizontal pan
+
+Read-only log/capture triage (no Wine, no game) of `/tmp/x3-bottleX3-run215`
+(session `session-20260921-234823-216.log`, 32-frame F8 burst, frames
+46573-46604) against the user report of persistent flicker on a distant
+non-Terran solar plant while panning horizontally. Full data in
+`verification/results/run215-distant-station-triage.json`.
+
+Config confirmed from the log: DLL `0bc8ff36...` / commit `ed105485`;
+`motion_output_taa`: `thin_region=0.9700 thin_gate=camera far_weight=0.9850
+far_speed_lo=0.030 far_speed_hi=0.250 sentinel_stabiliser=0.700
+sentinel_emitter=1.000`; no `box_rows_failed`/`sentinel_failed` strings
+anywhere in the log (no explicit program-creation failure, but also no
+explicit success line); 0 of 32 burst frames have `camera_cut=1`.
+
+The station (template-matched, screen track ~(660,294)@f46581 to
+(780,290)@f46590/91 back to (644,294)@f46597) is **100% sentinel depth (-1)
+and 100% unrouted (motion alpha -1)** in its crop across every sampled
+frame; its shader (`vs=4944d81dfe531b37`, matching `motion_unmatched_static`
+model `000054b3`) is refused from the motion route as `no_zwrite` (512) and
+`overlay_node` (576) out of 1216 draws in the window — this is exactly the
+sentinel-stabiliser's target case, not the far-stabiliser/thin-line case
+(far stabiliser is closed: station's own screen speed reaches ~40 px/frame,
+far above `far_speed_hi=0.25`; measured mask `a` = 0 there).
+
+`taa_mask.b` (camera-gated strength) reads **~0.698 (~0.7 = configured S)
+uniformly on both the station crop and a plain-sky reference crop**, every
+sampled frame: the sentinel stabiliser is engaging at full configured
+strength, but does not distinguish the lattice/strut structure from plain
+background at all. Motion-compensated frame-to-frame RMS (crude, stride-4
+template alignment) on `color_1` vs `taa_1` in the crop: color RMS 22.1 (of
+mean 67, bgra8), taa RMS 0.021 (of mean 0.16, rgba16f linear) — roughly 33%
+vs 13% relative, implying an effective history weight near 0.75, below the
+0.9-0.985 ceilings the flags advertise.
+
+First mechanism (inference from source, not from a controlled A/B capture):
+`line_mask_ps.hlsl`'s camera-relative gate (`gateOpen`, lines ~126-140) adds
+camera-translation parallax only `if (validDepth(depth))`; a sentinel pixel
+always takes `depth=1` with zero translation term, so its computed "speed"
+is near 0 under a pure yaw regardless of the object's true, finite distance.
+The composition (lines ~184-190) then ORs the sentinel term in with a plain
+`max()`, unconditioned on the line mask's own fragmentation test, so a
+finite-distance, unrouted, no-zwrite/overlay object (this solar plant) gets
+the same full-strength box/history relaxation as genuine infinite
+background. This matches the existing fixture line above ("routed 2x2
+object claiming 2 px/frame against the camera path ... beyond: strength >=
+0.698, 37 456 pixel-frames differ"): an object whose real motion disagrees
+with the far-plane assumption produces exactly this kind of mismatch.
+File:line candidates: `src/temporal/line_mask_ps.hlsl:70-74,126-140,184-190`,
+`src/temporal/resolve.hlsl:453-457`, `src/renderer/temporal_pass.cpp:409,430`.
+
+Open: no A/B capture (`--taa-sentinel-stabiliser 0` vs `0.7`, same camera
+path) exists to confirm the stabiliser is net-harmful here rather than
+merely insufficient; RMS measurement is coarse (single global per-frame
+pixel shift, no sub-pixel optical flow); no confirmation the thin-box
+programs actually built successfully this run (silence, not a positive
+line).
+
+## 2026-09-22 follow-up: run216 (laser trails + at-rest station baseline) and run215 pan deep dive
+
+Same DLL/commit as above. `/tmp/x3-bottleX3-run216`, `--taa-thin-region 0.94,1`
+(`thin_region=0.9400 thin_relax=1.000`), `sentinel_stabiliser=0.700` unchanged.
+Two F8 bursts: 6721-6752 (firing lasers over sky) and 29737-29768 (same
+distant solar plant, camera stationary: drift < 0.3 world units/frame,
+0/32 `camera_cut`). Full numbers in
+`verification/results/run215-distant-station-triage.json` (`run216_followup`).
+
+**Laser trails (burst 1):** no isolated far-traveling bolt crossing plain
+sky was found in this capture (the sampled ROI's transient brightness stays
+adjacent to the ship's own muzzle/exhaust glow every frame). Where a sampled
+pixel does return to near-black in `color_1` the frame after saturation,
+`taa_1` (scaled to `color_1`'s 0-255 range via a sky-patch ratio) shows a
+residual excess of at most ~16 of 255 code-equivalents for exactly one
+frame, gone the next. Small and short-lived, consistent with the user's "no
+issues" report; not a clean single-bolt-over-pure-sky measurement.
+
+**Station at rest (burst 2, corrected per user: this is the working
+baseline, not a symptom):** same pixel class as the run215 pan case (100%
+sentinel depth, 100% unrouted, every frame); `taa_mask` b=0.698, a=0.0 (a=0
+because the FRAGMENTED/line test never fires on a uniformly-sentinel depth
+neighbourhood, not because the gate is closed); `taa_age` saturated at the
+64-frame cap everywhere in the crop. Frame-to-frame RMS, no motion
+compensation needed: `color_1` 10.38, `taa_1` 0.0014, ratio **1.3e-4** — the
+resolve suppresses the raw per-frame jitter/alias noise (which is already
+present in `color_1` even at rest, from the 8-sample jitter pattern) almost
+completely once age is fully ramped and the camera gate is open. This is the
+mechanism working as intended.
+
+**What limits suppression under the run215 pan (deep dive):** (a) raw pan
+speed correlates with residual output flicker far more than sub-pixel
+bilinear phase alone (r=0.691 for |dx| vs output RMS, r=0.243 for
+fractional-pixel phase vs output RMS, with phase and speed themselves
+uncorrelated at r=-0.023 in this sample — not confounded). (b)
+Reconstructing the resolve's 7x7 same-size min/max box from `hdr_1` and the
+previous frame's `taa_1` bilinear-shifted by the tracked sub-pixel dx (same
+linear space, `weigh()`/`unweigh()` tonemap not reproduced — approximation,
+not exact): the fraction of the station crop where this reprojected history
+falls outside the local box (i.e. the clip actively overrides history)
+tracks pan speed almost linearly, **r=0.956**, from ~1-3% near zero speed to
+~24-42% at 30-40 px/frame. (c) `taa_age` resets (age<=2) are ~0 while the
+pan is monotonic (frames 46584-46591) and jump to 9-18% right where the pan
+reverses direction (46592-46597); crop-mean age stays moderate (12-21,
+many pixels still capped at 64) throughout, meaning resets are concentrated
+at the high-contrast strut edges rather than spread uniformly — consistent
+with edge-localized flicker despite a moderate-looking mean age.
+
+**Sharpness, run215 (0.97) vs run216 (0.94), uncontrolled (different pose):**
+`taa_1` gradient energy / `hdr_1` gradient energy on the station crop:
+run215 (near-zero relative-speed frame 46591) 0.0309, run216 (at rest) 0.0965
+— run215 retains proportionally less input sharpness, but poses/apparent
+size differ (input gradient energy differs 2x between the two crops), so
+this is suggestive only, not a controlled A/B.
+
+Open: no controlled A/B for thin_region 0.97 vs 0.94 at matched pose; the
+box-bind reconstruction skips `weigh()`/`unweigh()` (luminance-dependent
+tonemap) and uses a rigid horizontal shift for a 3-D object, so it is an
+approximation of the actual clip test, not a bit-exact replay.
