@@ -1,0 +1,8 @@
+{
+  "reviewer": "review_fog_range_replay",
+  "verdict": "PASS review of valid NEGATIVE experiment",
+  "focused_tests_passed": 8,
+  "checkpoint_sha256": "d14ea766fe35850f3b93ec4a05d11e99c50a5e49c1d0284c1e8ef52521499c11",
+  "result": "fixed global64 transport/temporal method rejected",
+  "warning_scope": "Six NumPy2/Accelerate matmul warnings; finite 4096-point repeat witness, finite serialized report. Future tools should avoid this backend path."
+}

@@ -68,7 +68,9 @@ completed Run56 command is archived. Future runs omit CrossOver debug tracing.
   density with more clear space throughout the sector. The mass/detail reference
   is now close to the user’s target; one modest increase in patchiness/internal
   contrast now has a reviewed two-view preview, with modestly clearer weak edges.
-  A fixed 64-step transport screen is next, before investing in a GPU field cache.
+  The fixed global 64-step transport screen fails accuracy/temporal gates; its
+  expensive corner-cache route is closed. A cheaper stored-density representation
+  is being designed.
   No production integrator or new fog build is selected.
 - **Station flash accepted:** Run205 confirms both global TAA heuristics disabled;
   the user reports no flash or save-load/sector-travel ghosting. Launcher defaults

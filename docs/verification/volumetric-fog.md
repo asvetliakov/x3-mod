@@ -1168,3 +1168,27 @@ remain open; no production fog or installed build changed.
 
 [Checkpoint](../../verification/results/fog-mass-detail-refinement-2026-09-21/checkpoint.json),
 [review](../../verification/results/fog-mass-detail-refinement-2026-09-21/review.json).
+
+### Fixed global 64-sample transport: negative preflight
+
+The fixed analytic field screen evaluates 32×18 rays from each existing A/B
+view, explicit depth cases and small camera movements. Exactly 64 global
+midpoints share contributions across near/middle/shell intervals. Nine gates
+fail, including full-distance transmission and temporal stability. A-sky full
+transmission p99/max error is 0.002622/0.003182; worst motion residual is
+0.004867. Dense 64/128-unit references, composition, empty/invalid-depth laws
+and eight focused tests pass. Independent review accepts the negative result.
+
+The proposed corner-cache representation would need mean/max 358.92/452
+density texture reads per sky ray, versus 48 currently; these are operation
+counts, not GPU timings. This method stops before cache/shader implementation
+and without a step-count search. A stored, filtered final-density representation
+is a separate design question; the user-liked mass/detail appearance is retained.
+
+The 2.864-second host run emitted six NumPy/Accelerate matrix warnings. A finite
+4,096-point diagnostic repeated identically, and the finite JSON/reference laws
+show no observed corruption. This remains a tooling portability limitation;
+future rotation evaluation should avoid that warning path.
+
+[Checkpoint](../../verification/results/fog-analytic64-screen-2026-09-21/checkpoint.json),
+[review](../../verification/results/fog-analytic64-screen-2026-09-21/review.json).

@@ -1020,3 +1020,10 @@ no peak boost, global gain or floor. The reviewed two-view comparison shows
 stronger internal variation and weaker edges while retaining the broad layout.
 It is an offline visual reference; runtime representation and flight acceptance
 remain unresolved.
+
+The first runtime preflight rejects 64 uniformly spaced samples over the whole
+40 km path: nine transport/temporal gates fail despite converged dense
+references. Caching exact noise corners also predicts 359 mean density reads
+per ray, far above the current 48. No corner-cache shader was built. The next
+design question is a filtered final-density representation with cheap sampling,
+measuring its appearance approximation separately from integration error.

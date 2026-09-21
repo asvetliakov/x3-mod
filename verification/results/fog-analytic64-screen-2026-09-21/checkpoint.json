@@ -1,0 +1,72 @@
+{
+  "bindings": {
+    "analysis_source_sha256": "8cc93f73e02d245c92aa42ae837f1abf809d4b8f71c8a684fcdd0481b6c0a48b",
+    "focused_test_sha256": "331bfc4c07225f3a7e5a0b4ebff2a7dea00ed4a6d47da28c51fc3fba098f5e88",
+    "numeric_report_sha256": "29198ec548f3b11c9e3e3544196be23896c5a3d423a2f28592ccbe4fe91bb6a1",
+    "numeric_source_sha256": "8cc93f73e02d245c92aa42ae837f1abf809d4b8f71c8a684fcdd0481b6c0a48b",
+    "report_md_sha256": "9082f1260c55354b531b5bc2f93588bbba57ae3909ac25a4b2c8eb43d938f07d",
+    "report_sha256": "29198ec548f3b11c9e3e3544196be23896c5a3d423a2f28592ccbe4fe91bb6a1",
+    "runtime_plan_sha256": "351758d9cca8c6d9631856cb49b604582a9819d6be397e31a600773e10a8f917",
+    "summary_sha256": "2ad823252f7e262a4f02a0679e13a70f4e3b1d027bd194716c3c1fc4523d17eb"
+  },
+  "cost_A_B_sky_subset_only": {
+    "B_positive_fraction_mean": 0.4020317925347222,
+    "density_reads_per_ray_max": 452.0,
+    "density_reads_per_ray_mean": 358.9201388888889,
+    "mixed_2x2_step_group_fraction": 0.1017795138888889,
+    "no_GPU_or_FPS_claim": true,
+    "old_density_reads_per_ray": 48,
+    "scope": "A/B sky subset only: 32x18 rays per pose, fixed64 stations"
+  },
+  "decision": "hard stop before cache/shader/step search",
+  "failure": {
+    "dense_references_composition_laws_and_invalid_depth_passed": true,
+    "failed_gates": [
+      "A/sky/near/candidate",
+      "A/sky/shell/candidate",
+      "A/sky/full/candidate",
+      "B/sky/near/candidate",
+      "B/sky/shell/candidate",
+      "B/sky/full/candidate",
+      "B/geometry/shell/candidate",
+      "B/geometry/full/candidate",
+      "temporal_movement"
+    ],
+    "headline": {
+      "A_sky_full_T_max": 0.0031816959381103516,
+      "A_sky_full_T_p99": 0.0026219338178634644,
+      "A_sky_full_normalized_S_max": 0.001993924379348755,
+      "temporal_T_residual_max": 0.0048673152923583984
+    }
+  },
+  "host_seconds": 2.8637453330000002,
+  "result": "failed-analytic64-transport-screen",
+  "runtime_warning_diagnostic": {
+    "assessment": "spurious Accelerate/NumPy matmul diagnostics; finite repeated values and allow_nan=False report exclude contaminated nonfinite evidence",
+    "environment": "Python 3.9.6; NumPy 2.0.2; macOS arm64; BLAS Accelerate",
+    "finite_field_rows": 4096,
+    "finite_input_scalars": 12288,
+    "finite_rotated_scalars": 12288,
+    "frozen_run_warning_count": 6,
+    "limitation": "future tooling should avoid or explicitly handle this backend warning",
+    "repeat_rotation_array_equal": true,
+    "scope": "exact first A-pose candidate chunk: 64 subset rays x64 stations =4096 points",
+    "warning_as_error_behavior": "aborts at first line24 RuntimeWarning before completing the diagnostic",
+    "warnings": [
+      "fog_mass_column_screen.py:24 divide by zero encountered in matmul",
+      "fog_mass_column_screen.py:24 overflow encountered in matmul",
+      "fog_mass_column_screen.py:24 invalid value encountered in matmul",
+      "fog_mass_column_screen.py:25 divide by zero encountered in matmul",
+      "fog_mass_column_screen.py:25 overflow encountered in matmul",
+      "fog_mass_column_screen.py:25 invalid value encountered in matmul"
+    ]
+  },
+  "schema": 1,
+  "scope": "fixed no-image analytic64 transport screen only; no cache, shader, GPU, Wine, game, production edit, tuning, build, install or commit",
+  "verification": {
+    "command": "PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_fog_analytic64_screen",
+    "report_equals_numeric_report": true,
+    "source_equals_numeric_source": true,
+    "tests_passed": 8
+  }
+}
