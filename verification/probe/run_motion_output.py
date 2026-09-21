@@ -5144,6 +5144,11 @@ def main(argv=None):
                        X3M_TAA='1' if taa else '0', X3M_TAA_DEBUG='1' if taa and not bench else '0',
                        X3M_CAPTURE_START='1000' if bench else str(BURST_CAPTURE[0]) if burst else '1',
                        X3M_CAPTURE_FRAMES='1' if bench else str(len(BURST_CAPTURE)) if burst else str(len(ENVMAP_CAPTURE)) if envmap else '8', X3M_TELEMETRY='1',
+                       # The scripts' cut expectations (the fixture's expected_cut, SEAM_CUTS, bound_px 2.4 / bound_missing 0.250)
+                       # model the diagnostic detector. 73080396 turned the DLL's defaults off (1e30 / 1), so the runner
+                       # requests the detector explicitly; an inherited value must not replace it. Cases that prove the
+                       # production bounds set them in their own env (the unmatched-static cases).
+                       X3M_MOTION_CUT_MEDIAN_PX='48', X3M_MOTION_CUT_MISSING='0.25',
                        X3M_TELEMETRY_DRAW='1',  # per-draw metrics (gate_us, route_draw_us, ...) are gated behind this switch since a8d4309; the validators require them
                        X3M_FIXTURE_CAMERA='rotate' if camera else 'none', X3M_TAA_SENTINEL=sentinel or 'auto', X3M_FIXTURE_WRAP='0',
                        X3M_MOTION_RT_MODE='lazy' if lazy else 'perdraw', X3M_MOTION_FRAME_LOG='1' if burst else '60',

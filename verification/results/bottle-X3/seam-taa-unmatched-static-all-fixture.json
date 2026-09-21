@@ -215,8 +215,8 @@
   }
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-taa-unmatched-static-all-20260921-191253-185081",
- "trace_sha256": "c76aa5efda398902321c0a23472f60b3aaac50393977835bdc01dc2c7112aa13",
+ "directory": "verification/probe/build/motion-output-seam-taa-unmatched-static-all-20260921-192053-223164",
+ "trace_sha256": "b52b1c1a064e892fe78d69784b41e77896a03270b3c34615a307a092bac52baf",
  "dll_sha256": "efd406db19c1be09ae95fbce3f37e28228025bee97f1e8ecb22b34ebbb08e9d3",
  "exe_sha256": "a1f52734b5f1e675e6cdf14788a96e4b85ce063e3057e0bc616e75ab31c519a2",
  "motion_frames_differing_from_seam-taa-unmatched-static-node": [
