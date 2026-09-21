@@ -1641,3 +1641,40 @@ observer's readiness tag and explicit ownership of temporary references. Outer
 cleanup does not repair foreign SEH escaping inherited wrapper admission or
 registry sections. No native Windows execution, game hook or F8 capture is
 qualified by this checkpoint; the new sources are not wired into the DLL build.
+
+### Actual manual CloneMesh upload observation qualified
+
+The ownership event observer now stages raw bytes from the original readable
+destination mappings, with no additional Lock/Unlock or draw. It publishes only
+after successful native CloneMesh, both original destination Unlocks, closed
+source mappings, final allocation/revision linkage and completed qualifier
+releases. Failures wipe the preallocated arena. Later writes, trusted native
+mutation, retirement and Reset invalidate retained records. Qualifier callbacks
+run outside the registry; the final guard/copy runs under the same registry
+that excludes native Reset start. The mode remains default-off and manually
+armed; no game hook or F8 connection is installed.
+
+[Actual fixture evidence](../../verification/results/run201-lattice/manual-upload.json):
+421 checks pass across 13 sessions with exact-S_OK arm/disarm. Four exact-byte
+cases cover both selected mesh sizes with unchanged and FLOAT4-to-FLOAT16_4
+declarations. Source Lock failures, an ignored original destination Unlock
+failure, WRITEONLY fallback, Reset/reentry/nesting/refusal, final Release
+invalidation and copy CPU-state preservation are covered. A MULTITHREADED
+device tests Reset on its creation thread: native Reset waits for the guarded
+copy, then invalidates the old scope before publication. Both original Clone
+and Reset return S_OK. Production compilation without fixture hooks also passes.
+
+The final X3/arm64 run takes 6.039 s (5.903 s child, 3.25 µs lock wait). The
+selected app-local native D3DX module matches the disassembly provenance. Earlier
+default-loader runs safely refused a different lock pattern with zero staged
+bytes; their implementation identity was not logged, so they are not a proven
+builtin-versus-native comparison. Explicit native selection fixes fixture scope
+without relaxing production checks or adding a DLL-hash prerequisite.
+
+Independent review covers source, emitted production code and saved execution.
+Cost is bounded to a preallocated 2 MiB store, metadata validation, one copy per
+destination and failure wipes; no per-draw payload work is added. Native
+Windows execution, injected native bypass/slot faults, actual private allocator
+OOM and inherited callback-SEH recovery remain unqualified. This manual
+diagnostic establishes upload capture only, not a simultaneous draw-input
+snapshot, game integration or a visible moving-lattice correction.

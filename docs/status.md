@@ -80,8 +80,9 @@ completed Run56 command is archived. Future runs omit CrossOver debug tracing.
   upload mappings, with valid payload only after successful construction. The portable
   staging core passes 39 host cases / 596 assertions and deep review; ownership
   readable-metadata prerequisite also passes 157 standalone D3D checks.
-  The scoped ABI boundary also passes 158 synthetic runtime checks and review;
-  actual CloneMesh observer integration/qualification remains in progress. No repeat
+  The scoped ABI boundary passes 158 checks; the actual manual CloneMesh
+  observer now passes 421 checks and independent review. Game callsite/F8
+  integration remains the next step. No repeat
   flight or renderer correction is selected.
   [Owning note §31](architecture/taa-lattice-crawl.md#31-close-arithmetic-exploration-investigate-final-upload-observation).
 - **Collision:** paused by user request; no moving-collision test is queued.

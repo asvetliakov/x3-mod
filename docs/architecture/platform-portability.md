@@ -535,3 +535,8 @@ public CloneMesh and Windows exception interfaces, with a GCC x86 SJLJ-specific
 two-object shell/helper contract. It reads no Wine-private layout. Cross-compiled
 synthetic exception/state checks pass on X3/FEX; actual CloneMesh capture and
 native Windows execution remain unqualified. It is not yet wired into the DLL.
+
+The subsequent [actual manual upload fixture](taa-lattice-crawl.md#actual-manual-clonemesh-upload-observation-qualified)
+passes 421 checks with the app-local native D3DX implementation on X3/FEX,
+including Reset and exact uploaded bytes. Public module selection/hash is test
+provenance only. Native Windows execution and game integration remain open.

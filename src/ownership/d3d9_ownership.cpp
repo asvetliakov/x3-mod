@@ -5,6 +5,9 @@
 #include <atomic>
 #include <cstring>
 #include "portable_managed_upload.h"
+#include "clone_upload_observer.h"
+#include "clone_upload_abi.h"
+#include <d3dx9mesh.h>
 #include "../proxy/locked_prefix_core.h"
 #include <limits>
 #include <type_traits>
@@ -100,6 +103,17 @@ HRESULT buffer_private_result(Node* node, REFGUID guid, HRESULT hr);
 HRESULT process_vertices(Device* node, UINT first, UINT destination, UINT count,
     IDirect3DVertexBuffer9* buffer, IDirect3DVertexDeclaration9* declaration, DWORD flags);
 Device* device_of(Node* node);
+struct UploadTicket { void* frame=nullptr;std::uint64_t boundary=0; };
+UploadTicket upload_enter(Device*,Node*,bool create=false,DWORD flags=0) noexcept;
+void upload_created(UploadTicket,Device*,IUnknown*,HRESULT) noexcept;
+void upload_locked(UploadTicket,Node*,UINT,UINT,void*,DWORD,HRESULT) noexcept;
+void upload_before_unlock(UploadTicket,Node*) noexcept;
+void upload_unlocked(UploadTicket,Node*,HRESULT) noexcept;
+void upload_reset(Device*);
+void upload_mutation(Node*);
+#ifdef X3M_LATTICE_UPLOAD_FIXTURE
+void upload_fixture_reset_entry(Device*);
+#endif
 template<class T> T* unwrap(Device* owner, T* value);
 template<class T> HRESULT output(Device* owner, HRESULT hr, T* owned, T** out);
 
@@ -957,6 +971,7 @@ template<class Buffer,class Create>
 HRESULT create_buffer(Device* device,UINT length,DWORD usage,D3DPOOL pool,
                       Buffer** out,HANDLE* shared,Create create){
     ExecutionState incoming;
+    const auto upload=device->options.prepare_readable_managed_uploads?upload_enter(device,nullptr,true):UploadTicket{};
     portable_upload::CreationPlan plan;
     {
         std::lock_guard<std::recursive_mutex> lock(registry_mutex);
@@ -979,6 +994,7 @@ HRESULT create_buffer(Device* device,UINT length,DWORD usage,D3DPOOL pool,
         if(SUCCEEDED(hr)&&owned&&owned!=untouched_output<Buffer>())initialize_buffer(device,owned,usage);
     }
     const HRESULT result=output(device,hr,owned,out);
+    if(upload.frame)upload_created(upload,device,SUCCEEDED(result)&&out?*out:nullptr,result);
     outgoing.restore();return result;
 }
 HRESULT create_vertex_buffer(Device* device,UINT length,DWORD usage,DWORD fvf,D3DPOOL pool,
@@ -1049,6 +1065,7 @@ void record_buffer_event(Device* device, IDirect3DResource9* native, BufferEvent
 HRESULT buffer_lock(Node* node, UINT offset, UINT size, void** data, DWORD flags) {
     ExecutionState incoming;
     auto* device=device_of(node);
+    const auto upload=device->options.prepare_readable_managed_uploads?upload_enter(device,node,false,flags):UploadTicket{};
     if(device->options.track_buffer_lock_attempts)begin_buffer_call(node,false,offset,size,flags);
     // Invalidate any prior write transaction before a nested/unsupported attempt.
     if(device->options.capture_finite_positions){ std::lock_guard<std::recursive_mutex> lock(registry_mutex);
@@ -1102,11 +1119,13 @@ HRESULT buffer_lock(Node* node, UINT offset, UINT size, void** data, DWORD flags
         }
     }
     if(device->options.track_buffer_lock_attempts)complete_buffer_call(node,false,hr);
+    if(upload.frame)upload_locked(upload,node,offset,size,SUCCEEDED(hr)&&data?*data:nullptr,flags,hr);
     outgoing.restore();return hr;
 }
 HRESULT buffer_unlock(Node* node) {
     ExecutionState incoming;
     Device* device=device_of(node);auto* resource=static_cast<IDirect3DResource9*>(node->backend);
+    const auto upload=device->options.prepare_readable_managed_uploads?upload_enter(device,node,false,D3DLOCK_READONLY):UploadTicket{};
     if(device->options.track_buffer_lock_attempts)begin_buffer_call(node,true);
     SideReference hold;bool staged=false;
     { std::lock_guard<std::recursive_mutex> lock(registry_mutex);
@@ -1142,6 +1161,7 @@ HRESULT buffer_unlock(Node* node) {
             prefix_stats.scan_ticks+=static_cast<std::uint64_t>(end.QuadPart-begin.QuadPart);}
       }
     }
+    if(upload.frame)upload_before_unlock(upload,node);
     incoming.restore();
     const HRESULT hr = node->kind == Kind::VertexBuffer
         ? static_cast<IDirect3DVertexBuffer9*>(node->backend)->Unlock()
@@ -1170,6 +1190,7 @@ HRESULT buffer_unlock(Node* node) {
     }
     if(hold.value){hold.value->Release();hold.value=nullptr;}
     if(device->options.track_buffer_lock_attempts)complete_buffer_call(node,true,hr);
+    if(upload.frame)upload_unlocked(upload,node,hr);
     outgoing.restore();return hr;
 }
 // Surface lock witness (surface_lock_observation.h). The observer pointer is
@@ -1222,6 +1243,7 @@ HRESULT buffer_private_result(Node* node, REFGUID guid, HRESULT hr) {
     PreserveExecution preserve;Device* device=device_of(node);
     if(SUCCEEDED(hr)&&(guid==buffer_content_guid||guid==finite_sidecar_guid||guid==lock_sidecar_guid)){
         std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+        upload_mutation(node);
         if(device->options.track_buffer_writes&&(guid==buffer_content_guid||guid==lock_sidecar_guid))fail_buffer_tracking(device,E_FAIL);
         if(device->options.capture_finite_positions||device->options.prepare_readable_managed_uploads)
             retire_finite(device,true,FiniteEvidenceReason::MetadataTampered);
@@ -1231,6 +1253,7 @@ HRESULT buffer_private_result(Node* node, REFGUID guid, HRESULT hr) {
 HRESULT process_vertices(Device* node, UINT first, UINT destination, UINT count,
     IDirect3DVertexBuffer9* buffer, IDirect3DVertexDeclaration9* declaration, DWORD flags) {
     ExecutionState incoming;auto native=unwrap(node,buffer);auto native_declaration=unwrap(node,declaration);
+    if(node->options.prepare_readable_managed_uploads){std::lock_guard<std::recursive_mutex> lock(registry_mutex);const auto f=application_nodes.find(buffer);if(f!=application_nodes.end())upload_mutation(f->second);}
     { std::lock_guard<std::recursive_mutex> lock(registry_mutex);
       SideReference side{native?acquire_finite(node,native):nullptr};
       if(side.value)invalidate_finite(side.value,FiniteEvidenceReason::ProcessVertices);
@@ -1384,11 +1407,15 @@ __attribute__((noinline)) void notify_reset(Device* node,ResetPhase phase,HRESUL
 #pragma GCC pop_options
 
 HRESULT reset_device(Device* node, D3DPRESENT_PARAMETERS* pp) {
+#ifdef X3M_LATTICE_UPLOAD_FIXTURE
+    upload_fixture_reset_entry(node);
+#endif
     const D3DPRESENT_PARAMETERS requested = pp ? *pp : D3DPRESENT_PARAMETERS{};
     return execution_call(node, [&] {
         node->execution.before_reset();
         {
             std::lock_guard<std::recursive_mutex> lock(registry_mutex);node->resetting=true;
+            upload_reset(node);
             detail::advance_surface_generation(node->lease_generation);
             if(node->options.track_buffer_lock_attempts){
                 if(node->buffer_lock_generation!=UINT64_MAX)++node->buffer_lock_generation;
@@ -1405,12 +1432,18 @@ HRESULT reset_device(Device* node, D3DPRESENT_PARAMETERS* pp) {
         node->execution.after_reset(hr);
         {
             std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+            // Publish CPU metadata with the Reset flags. Clone stage/arm readers
+            // use this same mutex; no COM work belongs in this section.
+            if(SUCCEEDED(hr)&&node->finite_owner&&!node->finite_owner->permanent){
+                node->finite_owner->healthy=true;
+                node->finite_owner->stats.active=node->options.capture_finite_positions;
+                node->finite_owner->stats.status=S_OK;
+            }
             node->resetting = false;
             node->lost = FAILED(hr);
         }
         if (SUCCEEDED(hr)) {
             node->recording_state_block = false;
-            if(node->finite_owner&&!node->finite_owner->permanent){node->finite_owner->healthy=true;node->finite_owner->stats.active=node->options.capture_finite_positions;node->finite_owner->stats.status=S_OK;}
             initialize_copy_depth(node, requested);
         } else node->copy_depth.view.status = hr;
         notify_reset(node,ResetPhase::end,hr);
@@ -1421,7 +1454,7 @@ HRESULT observe_result(Device* node, HRESULT hr) {
     if (hr == D3DERR_DEVICELOST || hr == D3DERR_DEVICENOTRESET) {
         PreserveExecution preserve;
         node->execution.observe_result(hr);
-        { std::lock_guard<std::recursive_mutex> lock(registry_mutex); node->lost = true; }
+        { std::lock_guard<std::recursive_mutex> lock(registry_mutex); node->lost = true; upload_reset(node); }
         retire_geometry(node);
         retire_finite(node);
         retire_copy_depth(node, hr);
@@ -1800,6 +1833,7 @@ HRESULT invalidate_native_buffer_evidence(IUnknown* application) noexcept {
     // Advance storage revision even when finite capture is disabled, so every
     // existing content/history/lease request becomes stale. The caller excludes
     // all queries throughout the following native mutation interval.
+    upload_mutation(node);
     record_buffer_event(device,resource,BufferEvent::ProcessVertices,0,node->lock_sidecar);
     SideReference side{acquire_finite(device,resource)};
     if(side.value)invalidate_finite(side.value,FiniteEvidenceReason::NativeContract);
@@ -2244,4 +2278,5 @@ void finite_fixture_with_registry(void(*callback)(void*),void* data){
     std::lock_guard<std::recursive_mutex> lock(registry_mutex);callback(data);drain_finite_retired();
 }
 #endif
+#include "clone_upload_observer_inc.h"
 } // namespace x3m::ownership

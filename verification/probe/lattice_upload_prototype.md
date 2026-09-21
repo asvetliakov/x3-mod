@@ -1,9 +1,11 @@
 # Final CloneMesh raw staging prototype
 
-First checkpoint: portable CPU core only. There is no ownership-wrapper
-integration, CloneMesh adapter, EXE hook, F8 integration or native fixture yet.
-This checkpoint cannot produce a game snapshot. Native COM and SEH acceptance
-are explicitly pending.
+The portable CPU core, readable-creation prerequisite and isolated x86 ABI
+boundary are accepted separate checkpoints. A manually armed actual public
+CloneMesh observer and focused fixture now pass the parent-owned full build,
+X3 runtime and independent combined review. No EXE hook, F8 route or CLI is present,
+and these sources are not installed in the game. Native Windows execution is
+unverified.
 
 The parent ratified opaque staging from the producer's original pre-Unlock
 mapping. Authenticated readable access is separate from initialized geometry:
@@ -24,7 +26,7 @@ The core performs no allocation, COM operation, file I/O, logging or payload
 interpretation. Construct it once outside mapping callbacks. All operations
 require the ownership registry mutex, including reads of its metadata.
 
-The future adapter must supply facts, not optimistic booleans:
+The core requires these authenticated inputs from the adapter:
 
 1. Public source counts/declaration/options select a tuple and refuse SHAREVB
    and INDEX32. Authenticate the passed ownership device, generation, and
@@ -103,19 +105,162 @@ was staged first. That gap is internal zeroed CPU storage, not an extra native
 mapping read. No per-draw payload operation is implemented. Host duration is
 diagnostic runtime, not game FPS or loading impact.
 
-## Pending adapter acceptance
+## Manual checkpoint boundary
 
-Before live use, real public D3DXCloneMesh through the ownership wrapper must
-establish exact bytes/linkage, original call counts/arguments/HRESULTs,
-readable creation fallback, observed source and ignored destination failures,
-qualifier reentry, Reset exclusion, invalidation and lifetime cleanup. A tested
-x86 boundary must preserve incoming/outgoing x87 payload/environment, MXCSR
-and LastError on ordinary return and correctly discard/propagate native SEH
-and C++ unwind. A MinGW catch-all alone is not that proof. Parent owns emitted
-code inspection, cross-compilation and the single Wine queue. No game hook or
-production acceptance precedes those gates.
+The actual public D3DXCloneMesh fixture establishes exact bytes/linkage,
+original Lock/Unlock counts, readable fallback, observed source and ignored
+destination failures, qualifier reentry, Reset exclusion, invalidation and
+lifetime cleanup for the selected route. The separately accepted x86 boundary
+preserves computational state and propagates supported native/C++ unwind;
+its synthetic tests do not certify arbitrary inherited-wrapper SEH recovery.
+Parent owns emitted-code inspection, cross-compilation and the single Wine
+queue. Game-callsite patching and F8 association remain later acceptance gates.
 
 The considered post-success extra READONLY mapping route remains unselected
 because its complete Reset/reentrant mapping-cleanup lifetime contract was not
 established. This does not assert that resource Unlock is universally illegal
 after failed Reset; public Lost Devices locking guarantees qualify that claim.
+
+## Readable-creation prerequisite (accepted separate checkpoint)
+
+`Options::prepare_readable_managed_uploads` is off by default and has no CLI
+binding. It requires write tracking and rejects simultaneous finite-position
+or locked-prefix scanning. It reuses allocation-owned immutable requested Usage
+metadata and the existing transactional creation policy: successful conversion
+clears actual native WRITEONLY only for supported MANAGED resources, while an
+application descriptor retains requested Usage. Failed readable creation or
+metadata admission retries the exact original creation path. Metadata-only
+attachment skips `reserve_finite`; ordinary Lock/Unlock skip the legacy finite
+qualifiers and typed scanner. Reset preserves the original-Usage metadata but
+does not report the finite mode as active. This does not yet authenticate a
+CloneMesh scope or add a raw snapshot read.
+
+Focused source fixture `lattice_upload_readable_fixture.cpp` includes the
+unchanged `finite_upload_fixture.cpp` CPU/fault helpers with its main renamed;
+it does not run that older suite. It exercises actual readable VB/INDEX16 IB
+creation, requested/actual descriptor separation, zero atlas bytes/scans even
+with a nonzero atlas budget, exact fixture-owned bytes, Reset metadata,
+creation/attachment failures, and rejected option combinations. A test-only
+native dispatch returns a PAGE_NOACCESS mapping; forwarding Lock/Unlock without
+reading it must complete with exactly one native call each. This artificial
+negative control is not a D3D mapping-access proof. Ordinary successful bytes
+are separately checked with explicitly counted fixture-only READONLY reads.
+
+Parent-owned build (the implementation agent does not execute x86 builds):
+
+```
+python3 -B verification/probe/lattice_upload_readable_build.py --output /tmp/x3-lattice-readable-build-v1
+```
+
+The builder requires a new output directory, uses SSE2 and four-byte incoming
+stack flags, and compiles only the existing admission ABI shell without
+exceptions. It records compiler/commands, generated dependency hashes (including
+the unchanged included fixture) and executable hash. Parent owns any Wine run
+under `wine_lock.py` with `X3M_FIXTURE_BOTTLE=X3`. The saved-log checker is:
+
+```
+python3 -B verification/probe/lattice_upload_readable_check.py --build /tmp/x3-lattice-readable-build-v1/build.json --log /tmp/x3-lattice-readable-run-v1.log
+```
+
+Host checker acceptance is `python3 -B
+verification/probe/lattice_upload_readable_check.py --self-test`; it exercises
+one valid log and six corrupt/incomplete/overclaimed logs. It tests the checker,
+not D3D9. Neither building nor passing the readable prerequisite establishes
+the pending CloneMesh observer, its qualifier reentry barrier or SEH safety.
+
+## Manual actual-CloneMesh observer checkpoint
+
+`clone_upload_observer.h` exposes explicit arm/disarm and retained-copy APIs.
+`clone_upload_observer_inc.h`, included by `d3d9_ownership.cpp`, observes original
+Create/Lock/Unlock completions only while readable mode is enabled and a manual
+scope is bound. The accepted `clone_upload_abi.{h,cpp}` boundary invokes the
+actual public `ID3DXMesh::CloneMesh`; its separate synthetic fixture original
+must never be enabled in this build. The parent compiles the no-EH shell and EH
+helper as two objects from the same ABI source. Arm, disarm and retained-copy
+queries have no-EH CPU/LastError shells around exception-enabled bookkeeping.
+
+A scope owns temporary references acquired by completed successful public
+getters, plus an explicit CPU sidecar reference during authentication. Releases
+finish before the final registry guard. A ready tag makes zeroed ABI Context
+abort-safe before prepare completes. The separately monotonic boundary nonce
+prevents a stale event ticket from matching a later scope at a reused stack
+address. Observer C++ failures refuse and preserve ordinary original forwarding.
+
+The supported exception scope is normal documented D3DX/COM HRESULT behavior,
+cleanup of the new observer scope, and native/C++ propagation through the tested
+manual ABI boundary. Arbitrary native SEH escaping inherited admission or
+registry-held foreign callbacks remains unsupported. A third-party getter that
+writes an owned output and raises before returning its HRESULT is also outside
+this contract: completed successful outputs are cleaned up, but unauthenticated
+failure outputs are not released speculatively. The isolated synthetic boundary
+unwind tests do not prove inherited wrapper recovery, and this actual fixture
+explicitly reports `inherited_callback_seh_tested=0`.
+
+`lattice_upload_clone_fixture.cpp` uses actual D3DXCreateMesh and CloneMesh with
+both selected sizes, authored shuffled INDEX16 indices and distinct per-vertex
+attributes. Four success cases cover identical half-position declarations and
+FLOAT4-to-half conversion. Each compares retained bytes, canaries, final public
+identities, actual clone bytes and original source/destination lock counts.
+Later fixture-only READONLY verification is separately counted. Retained-copy
+success and short-capacity refusal check full x87 state, MXCSR and LastError.
+
+Implemented negative controls are source VB/IB Lock failure, original destination
+Unlock failure ignored by actual D3DX, Reset/reentrant Lock/nested Clone/observer
+C++ failure after public qualifiers, readable-conversion fallback to WRITEONLY,
+mutation during final temporary Release, and unsupported INDEX32 forwarding.
+The concurrent Reset control creates a MULTITHREADED device on the Reset thread,
+parks the worker producer before its final CPU guard while it owns registry,
+and verifies native Reset cannot start until the raw copy completes. Its two
+actual HRESULTs are retained; a successful Reset is not required to establish
+that ordering. The fixture-only pause occurs before the live guard, never
+between the guard and memcpy. Every session checks device/factory zero references
+and no typed atlas work at cleanup.
+
+The private allocator OOM case remains the accepted host-core model, not an
+injected D3DX allocation failure. Native source bypass and forwarding-slot faults
+are refused in source but do not have separate actual-Clone fixture injections.
+This checkpoint does not test game hook installation, F8 association, historical
+frame identity, draw-input coherence, texture identity or crawl correction.
+
+The parent retains local build commands, transitive source hashes (including
+unchanged included fixtures and both ABI source roles), emitted-code review and
+parent-owned X3 executions, including the final acceptance run. Validate saved evidence with:
+
+```
+python3 -B verification/probe/lattice_upload_clone_check.py --self-test
+python3 -B verification/probe/lattice_upload_clone_check.py --build BUILD_JSON --log SAVED_STDOUT
+```
+
+The checker requires four exact byte cases, all negative-control multiplicities,
+cleanup counts, actual Reset/Clone HRESULTs, unchanged source/EXE hashes, SSE2
+and four-byte stack flags, two real ABI roles and no synthetic-original macro.
+Its host test accepts a complete synthetic log and rejects ten corrupt logs;
+that test validates the parser only. No extra per-draw work or allocation is
+added. Armed mapped operations add bounded public metadata qualifiers, brief
+registry sections and one memcpy per accepted destination; invalidation wipes
+touched CPU storage. Runtime duration is diagnostic cost, not FPS or loading
+performance.
+
+The actual fixture requires an explicit D3DX DLL path argument and records the
+resolved module filename, D3DXCreateMesh export RVA and bounded Wine PE marker
+check. Parent provenance separately binds the selected native DLL hash to the
+reviewed RE input. These are fixture selection/provenance controls only; the
+production observer has no DLL path, marker or hash prerequisite. Runs v3/v4
+used default DLL search and refused at source Lock flags `0x10` (destinations
+used `0`), before any staging. They do not qualify the native route and do not
+justify widening its strict `0x810`/`0x800` contract.
+
+Final manual checkpoint: `/tmp/x3-lattice-clone-build-v6/build.json` and
+`/tmp/x3-lattice-clone-run-v6/{run.json,lock.json,stdout.log}`. The final X3 run
+passes 421 checks across 13 exact-S_OK arm/disarm sessions; the saved-log checker
+and independent combined review pass. Runtime was 6.03905 s, with 5.90308 s
+inside the lock and 0.00000325 s lock wait. Both concurrent Reset and Clone
+returned S_OK. Bottle X3 uses WineArch arm64, `FEX_X87REDUCEDPRECISION=1` and
+`WINEMSYNC=1`. Native D3DX SHA-256 is
+`c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8`;
+fixture EXE SHA-256 is
+`be89541832bdcc37f84c5e82cbfde0b688fdfdc4d44635d26d7ba17c4b3c451e`.
+The parent also compiled the ordinary production object without fixture macros;
+review found no fixture symbols and verified all three query/control state
+shells have no SJLJ registration outside their guard. Failed v3/v4 route probes
+and the v5 predecessor remain local provenance. No game was launched or changed.

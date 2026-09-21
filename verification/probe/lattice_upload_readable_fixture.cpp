@@ -134,6 +134,9 @@ void incompatible(Create create) {
     }
 }
 }
+#ifdef X3M_LATTICE_UPLOAD_READABLE_EMBEDDED
+#define main unused_readable_fixture_main
+#endif
 int main() {
     try {
         HMODULE module=LoadLibraryA("C:\\windows\\system32\\d3d9.dll");check(module!=nullptr,"load D3D9");
@@ -146,3 +149,7 @@ int main() {
         std::printf("RESULT PASS phase=readable_metadata checks=%u clone_adapter_tested=0 seh_tested=0\n",checks);return 0;
     }catch(const std::exception& e){std::printf("RESULT FAIL %s checks=%u\n",e.what(),checks);return 1;}
 }
+
+#ifdef X3M_LATTICE_UPLOAD_READABLE_EMBEDDED
+#undef main
+#endif
