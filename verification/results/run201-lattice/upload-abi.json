@@ -1,0 +1,68 @@
+{
+  "scope": "standalone synthetic manual CloneMesh ABI boundary; no observer or game integration",
+  "review": {
+    "reviewer": "review_lattice_point_probe",
+    "verdict": "PASS",
+    "source_emitted_runtime": true
+  },
+  "sources": {
+    "src/ownership/clone_upload_abi.cpp": "4cc876d55bf3a71e977d2801a37ce680107ed23e54c7def68958e5db1c768e39",
+    "src/ownership/clone_upload_abi.h": "78e80ccb5df49429b4505f43a62a7fb6fc01b0622e1e49f81488de05e39f37ab",
+    "verification/probe/lattice_upload_abi_build.py": "3feead8fa494ac6d4886822bbcaf41f280b38d13f22a3c810b8e159f3aca59ee",
+    "verification/probe/lattice_upload_abi_check.py": "169521b1edba0de8e710d9e0cb997439c1657b60d75be082b09194567e0809e2",
+    "verification/probe/lattice_upload_abi_fixture.cpp": "7fcc624bc2acf1fa7a27fed238f817fc8739c0db840c64a0a882b6b2e2e7acb0"
+  },
+  "build": {
+    "record": "/tmp/x3-lattice-upload-abi-build-v2/build.json",
+    "compiler": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+    "seconds": 1.4361747500000002,
+    "exe": "/private/tmp/x3-lattice-upload-abi-build-v2/lattice_upload_abi_fixture.exe",
+    "exe_sha256": "2ea70410e337a8fa5fbad9e15e3386c0b5b30022b3d3842b104b8fb8680c58d3"
+  },
+  "execution": {
+    "command": [
+      "python3",
+      "/Users/asvetl/x3-mod/verification/probe/wine_lock.py",
+      "--timings-json",
+      "/tmp/x3-lattice-abi-run-v2/lock.json",
+      "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+      "--bottle",
+      "X3",
+      "--no-update",
+      "/private/tmp/x3-lattice-upload-abi-build-v2/lattice_upload_abi_fixture.exe"
+    ],
+    "returncode": 0,
+    "seconds": 4.319148292,
+    "bottle": "X3",
+    "WineArch": "arm64",
+    "FEX_X87REDUCEDPRECISION": "1",
+    "WINEMSYNC": "1",
+    "exe_sha256": "2ea70410e337a8fa5fbad9e15e3386c0b5b30022b3d3842b104b8fb8680c58d3",
+    "game_launched": false
+  },
+  "lock": {
+    "lock_wait_seconds": 4.083000000001946e-06,
+    "child_elapsed_seconds": 4.1611291249999995,
+    "exit_code": 0
+  },
+  "checks": {
+    "checks": 158,
+    "failures": 0,
+    "original_calls": 12,
+    "prepares": 13,
+    "finishes": 9,
+    "aborts": 4,
+    "native_unwinds": 2,
+    "inherited_wrapper_unwind_tested": false,
+    "native_windows_verified": false
+  },
+  "saved_evidence_checks": 24,
+  "stdout_sha256": "31415ef371e2d81c63fe4e15b761e94291e5309cb97e7656cb58f8f80e9106bb",
+  "limitations": [
+    "Production public CloneMesh dispatch qualified by emitted code only; actual Clone observer fixture pending.",
+    "Observer abort must support initialized readiness tag before prepare callbacks.",
+    "Inherited wrapper admission/registry foreign SEH recovery not qualified.",
+    "Native Windows execution unverified.",
+    "No EXE hook, F8 route, build integration, DLL install or user flight."
+  ]
+}

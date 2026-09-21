@@ -1615,3 +1615,29 @@ cleanup remain to implement. Existing wrappers promise ordinary COM returns;
 foreign SEH escaping their admission TLS or callback-bearing registry sections
 is not made safe by an outer snapshot cleanup handler. No global exception
 retrofit or native Windows runtime qualification is claimed.
+
+### Manual call-boundary checkpoint
+
+The [x86 boundary](../../src/ownership/clone_upload_abi.cpp) is implemented and
+independently reviewed with emitted code and a synthetic original-call fixture.
+It captures incoming computational x87 state, MXCSR and LastError before observer
+or exception bookkeeping, restores them before the original, and preserves its
+outgoing state/HRESULT afterward. A no-EH shell and one separately compiled SJLJ
+helper manage native registration and C++ propagation. The helper records the
+compiler-owned opaque registration through an object-local alias and uses its
+declared unregister API; no Wine-private structure or runtime layout is read.
+This is a qualified GCC x86 SJLJ toolchain contract, not a general compiler ABI.
+
+[Evidence](../../verification/results/run201-lattice/upload-abi.json): 158 runtime
+checks pass, including 12 original calls, 13 preparations, 9 finishes, 4 aborts
+and 2 native unwinds. The standalone X3/arm64 run took 4.319 s (4.161 s child,
+4.083 µs lock wait); the saved source/emission/runtime checker passes 24 checks.
+The boundary uses fixed stack storage with no allocation or per-draw work.
+
+The production public CloneMesh dispatch is inspected in emitted code; the
+runtime fixture uses a synthetic original. Actual CloneMesh observer integration
+is still pending. Abort eligibility starts before preparation and relies on the
+observer's readiness tag and explicit ownership of temporary references. Outer
+cleanup does not repair foreign SEH escaping inherited wrapper admission or
+registry sections. No native Windows execution, game hook or F8 capture is
+qualified by this checkpoint; the new sources are not wired into the DLL build.

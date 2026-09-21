@@ -527,3 +527,11 @@ actual game selection remain unverified. This reproduces a concrete observer
 interference mechanism; it does not prove historical Run193 resource ownership
 or its first destructive callback. Scoped evidence and remaining limits are in
 the [compact record](../../verification/results/lattice-observer-guard-2026-09-20.json).
+
+## 2026-09-21: standalone CloneMesh capture boundary
+
+The [manual boundary](taa-lattice-crawl.md#manual-call-boundary-checkpoint) uses
+public CloneMesh and Windows exception interfaces, with a GCC x86 SJLJ-specific
+two-object shell/helper contract. It reads no Wine-private layout. Cross-compiled
+synthetic exception/state checks pass on X3/FEX; actual CloneMesh capture and
+native Windows execution remain unqualified. It is not yet wired into the DLL.
