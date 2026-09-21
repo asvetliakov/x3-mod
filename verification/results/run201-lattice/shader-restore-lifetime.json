@@ -1,0 +1,61 @@
+{
+  "phase": "capture_lifecycle_b2a_shader_restore",
+  "date": "2026-09-21",
+  "fix": "scoped owned restoration references from public GetVertexShader/GetPixelShader per routed draw (ratified design)",
+  "source_branch": "investigate/lattice-capture-lifecycle",
+  "source_base": "e85ecc41382beae5e226002bf97ecbba36c5c694",
+  "integrated_files": {
+    "src/proxy/motion_output.cpp": "dae402726e58fe05034d7d10119268a0dad0b444d8c1c00be5cb560503d6d318",
+    "src/proxy/motion_output.h": "c73433e8d4054dfd3d73cebb4ad36a37dab8a2699ba46270656c38ebdd75ac85",
+    "src/proxy/sun_share_lane_inc.h": "ca63348f11b29d2f1069563f7030558c6d8a647d67fa81c04adf756bcb0a88fb",
+    "src/proxy/capture.cpp": "7e17eae94e362d38cd9dc2713bf0506d084f91636d0d0921a1ae514e20d4a598",
+    "src/proxy/capture.h": "cbdef1c1f0dd697d3a22519e909a262088a41c5c5a9f92474b20bb695ad6ab7d",
+    "verification/probe/lattice_capture_lifecycle_abi.h": "6ef07d42e02e1cb50f4feb5691a4c3b27561dc0bd181229ec5ee326f1e7690cd",
+    "verification/probe/lattice_capture_lifecycle_check.py": "a1660a8f35d2d806edabb85a7d13404cb76f82ffb010457894e0f761adb2b4bf",
+    "verification/probe/lattice_capture_lifecycle_fixture.cpp": "209994cfdae73fcbaef96497e79a5d225798a21cc3e7070a89c22cd1a111493b"
+  },
+  "failure_witness_v1": {
+    "path": "/tmp/x3-lattice-capture-run-v1",
+    "compact": "/tmp/x3-lattice-capture-failure-v1.json",
+    "checks_before_crash": 151,
+    "fault": "Device::SetPixelShader <- MotionOutput::undo <- after_draw <- Capture guarded draw"
+  },
+  "fixture_run_v2": {
+    "path": "/tmp/x3-lattice-capture-run-v2",
+    "returncode": 0,
+    "seconds": 5.4148204159999995,
+    "bottle": "X3",
+    "WineArch": "arm64",
+    "FEX_X87REDUCEDPRECISION": "1",
+    "WINEMSYNC": "1",
+    "exe_sha256": "599bba47908b6c5a07fc78dee829c7427b84215592fab07e87332546696466de",
+    "dll_sha256": "5207ff80650262f63e8552e5fbd5afd34565a053c624d931c91026eb6a02aacc",
+    "checks": 159,
+    "routed_row": "CAPTURE_QUERY routed=1 renderer_before=8 live=0 retired=1 query_retired=1",
+    "seam_support_build": "/tmp/x3-lattice-capture-support-build (fixture support build, not a candidate)"
+  },
+  "cost": {
+    "restore_getters_per_routed_draw": 2,
+    "releases_per_routed_draw": 2,
+    "unrouted_draws": 0,
+    "trace": "/tmp/x3-motion-output-shader-restore-v1/attempt1-patched/trace.log",
+    "restore_declines": 0,
+    "restore_failures": 0
+  },
+  "review": {
+    "result": "ACCEPT, non-blocking findings",
+    "fixed_after_review": [
+      "getter counter counts actual calls",
+      "diagnosis note pin-scope sentence corrected"
+    ],
+    "unwitnessed": [
+      "failed-getter decline",
+      "VS-only/PS-only",
+      "state-block Apply/resync with route in flight",
+      "Reset with route in flight",
+      "inherited callback SEH"
+    ]
+  },
+  "seam_motion_output_cases": "standard run_motion_output.py cases fail identically with and without the patch against the lattice seam DLL (cut-detector bound 5e28); not evidence for or against this change; candidate qualification uses the CMake build",
+  "game_launched": false
+}

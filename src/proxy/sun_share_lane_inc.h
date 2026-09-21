@@ -228,7 +228,7 @@ void MotionOutput::arm_sun_stamp(const MotionDrawCall& call, MotionRoute& route)
 // only; the independent write masks are a lane prerequisite (qualify_sun_lane).
 // Everything is read before the first write; every attempted write is put back
 // in reverse order, and a failed restoration quarantines like undo().
-bool MotionOutput::sun_stamp_draw(const MotionRoute&) noexcept {
+bool MotionOutput::sun_stamp_draw(MotionRoute& route) noexcept {
     using DrawFn = HRESULT(WINAPI*)(D, D3DPRIMITIVETYPE, UINT, UINT);
     using DrawIndexedFn = HRESULT(WINAPI*)(D, D3DPRIMITIVETYPE, INT, UINT, UINT, UINT, UINT);
     // The stamp PS takes the shader-model family of the bound programs (D3D9
@@ -265,6 +265,7 @@ bool MotionOutput::sun_stamp_draw(const MotionRoute&) noexcept {
     DWORD saved[item_count]{}, stencil = TRUE;
     if (FAILED(render_state(D3DRS_STENCILENABLE, &stencil)) || stencil) return false;
     for (unsigned i = 0; i < item_count; ++i) if (FAILED(render_state(items[i].key, &saved[i]))) return false;
+    if (FAILED(acquire_restore(route))) return false; // the stamp binds a program: own the restoration bindings first, before any state write
     HRESULT hr = S_OK;
     unsigned written = 0; // bit i: items[i] was attempted (a failed setter may still have mutated)
     bool target = false, shader = false;
@@ -290,7 +291,7 @@ bool MotionOutput::sun_stamp_draw(const MotionRoute&) noexcept {
     }
     HRESULT restore = S_OK;
     auto step = [&](HRESULT value) { if (SUCCEEDED(restore) && FAILED(value)) restore = value; };
-    if (shader) step(native<SetPsFn>(SetPixelShader)(device_, shadow_.ps));
+    if (shader) step(native<SetPsFn>(SetPixelShader)(device_, route.restore_ps));
     if (target) step(bind_target(2, nullptr));
     for (unsigned i = item_count; i-- > 0;)
         if (written & (1u << i)) step(direct_call<SetRenderStateFn>(SetRenderState, items[i].key, saved[i]));

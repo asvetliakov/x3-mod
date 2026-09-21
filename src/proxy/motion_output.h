@@ -128,6 +128,14 @@ struct MotionRoute {
     bool hull_lightmap = false;   // Hull light-map gain PS (fill K composed) selected in the routed pair (undone with the route).
     bool vs_set = false, ps_set = false, rt_set = false, write_set = false;
     bool vs_constants_set = false, ps_constants_set = false;
+    // Scoped shader restoration (docs/architecture/ownership-shadow-lifetime-diagnosis.md):
+    // the device's actual VS/PS bindings, owned through the public getters before
+    // this draw's first injected shader bind (acquire_restore) and released after
+    // its last restore (after_draw). A null is an owned null binding. Every
+    // restore of an injected bind uses these, never the borrowed shadow pointers.
+    IDirect3DVertexShader9* restore_vs = nullptr;
+    IDirect3DPixelShader9* restore_ps = nullptr;
+    bool restore_held = false;
     bool sun_receiver = false, sun_color_writer = false;
     bool sun_stamp = false; // gate-3 refused scene draw the lane may stamp invalid after the native draw (sun_stamp_call_ holds its arguments)
     // Sun-lane refusal diagnostics (sun_share_frame.h): the gate reason
@@ -402,6 +410,10 @@ struct MotionFrameCounters {
     // not a resync (no re-read follows), so it is counted apart: a resync
     // must still show at least one shadow miss at the next query.
     std::uint32_t rs_invalidations = 0;
+    // Scoped shader restoration: public GetVertexShader/GetPixelShader calls
+    // made for injected draws (two per acquiring draw, none on an unmodified
+    // draw) and injections declined because a getter failed.
+    std::uint32_t restore_getters = 0, restore_declines = 0;
     // Engine scene-end hook (X3M_SCENE_HOOK): signals this frame, signals that
     // arrived outside the selector's Scene phase (with the selector state of
     // the last one), draws evaluated after a Scene-phase signal (compositing
@@ -1296,7 +1308,7 @@ private:
     unsigned sun_stamp_prims_=0; // primitives re-issued by this frame's successful stamps (flight sanity figure)
     unsigned sun_stamps_=0, sun_stamp_refused_=0; // per frame; refused: a candidate whose stamp did not run or failed (vetoes as before)
     void arm_sun_stamp(const MotionDrawCall& call, MotionRoute& route) noexcept;
-    bool sun_stamp_draw(const MotionRoute& route) noexcept;
+    bool sun_stamp_draw(MotionRoute& route) noexcept;
     // Caster-candidate counter storage: fixed, cleared at begin_frame and after
     // publication; the witness count is per device (attach clears it).
     bool candidates_requested_=false;
@@ -1635,6 +1647,8 @@ private:
     bool sample_scope(MotionRoute& route) noexcept;
     void observe(renderer::Event& event, HRESULT result) noexcept;
     HRESULT undo(MotionRoute& route) noexcept;
+    HRESULT acquire_restore(MotionRoute& route) noexcept;
+    void release_restore(MotionRoute& route) noexcept;
     void rollback_route(MotionRoute& route) noexcept;
     HRESULT apply_wrap_states(MotionRoute& route, const renderer::MotionOutputProfile& row) noexcept;
     HRESULT restore_wrap_states(MotionRoute& route) noexcept;

@@ -3900,6 +3900,43 @@ bool MotionOutput::sample_scope(MotionRoute& route) noexcept {
 
 // ---- per-draw route --------------------------------------------------------
 
+// Scoped shader restoration contract (ownership-shadow-lifetime-diagnosis.md).
+// The shadow's VS/PS are borrowed application pointers: the application may
+// have released its last reference (the native binding keeps the backing
+// alive, the proxy's wrapper is gone), so they are never written back to the
+// device. Every path that binds an injected program on a draw first owns the
+// device's actual bindings through the public getters, restores from them, and
+// after_draw releases them once the last restore has run and while the draw
+// hook's device pin is still held (a last Release of a resurrected wrapper
+// re-enters the device Release hook). One acquisition per route; an
+// unmodified draw makes no getter call. A failed getter declines the
+// injection before any native state changes.
+HRESULT MotionOutput::acquire_restore(MotionRoute& route) noexcept {
+    if (route.restore_held) return S_OK;
+    IDirect3DVertexShader9* vs = nullptr; IDirect3DPixelShader9* ps = nullptr;
+    ++counters_.restore_getters;
+    HRESULT hr = native<GetVsFn>(GetVertexShader)(device_, &vs);
+    if (SUCCEEDED(hr)) { ++counters_.restore_getters; hr = native<GetPsFn>(GetPixelShader)(device_, &ps); }
+    if (FAILED(hr)) {
+        release(vs); release(ps);
+        ++counters_.restore_declines;
+        if (logged_failures_ < failure_log_limit) {
+            ++logged_failures_;
+            log("motion_output_restore_declined device=%llu frame=%llu index=%lu result=%08lx", id_, frame_, counters_.draws, hr);
+        }
+        return hr;
+    }
+    route.restore_vs = vs; route.restore_ps = ps; route.restore_held = true;
+    return S_OK;
+}
+void MotionOutput::release_restore(MotionRoute& route) noexcept {
+    if (!route.restore_held) return;
+    route.restore_held = false;
+    IDirect3DVertexShader9* vs = route.restore_vs; IDirect3DPixelShader9* ps = route.restore_ps;
+    route.restore_vs = nullptr; route.restore_ps = nullptr;
+    release(ps); release(vs);
+}
+
 // Undo whatever before_draw already applied, in reverse order.
 HRESULT MotionOutput::undo(MotionRoute& route) noexcept {
     HRESULT first = restore_wrap_states(route);
@@ -3908,8 +3945,8 @@ HRESULT MotionOutput::undo(MotionRoute& route) noexcept {
     if (route.rt2_set) step(bind_target(2, nullptr));
     if (route.write_set) step(direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE1, route.saved_write1));
     if (route.rt_set) step(bind_target(1, nullptr));
-    if (route.ps_set) step(native<SetPsFn>(SetPixelShader)(device_, shadow_.ps));
-    if (route.vs_set) step(native<SetVsFn>(SetVertexShader)(device_, shadow_.vs));
+    if (route.ps_set) step(native<SetPsFn>(SetPixelShader)(device_, route.restore_ps));
+    if (route.vs_set) step(native<SetVsFn>(SetVertexShader)(device_, route.restore_vs));
     // Reserved ranges go back only if this draw changed them and the shadow
     // has seen the application write them; otherwise the application never
     // depends on their contents and the values are left as set.
@@ -4406,6 +4443,8 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
         if (!(caps_.PrimitiveMiscCaps & D3DPMISCCAPS_SEPARATEALPHABLEND)) { refuse(9); return; }
         if (screen_additive_alpha_constant_ && !(caps_.SrcBlendCaps & D3DPBLENDCAPS_BLENDFACTOR)) { refuse(9); return; }
     }
+    // The gained draw binds a program: own the restoration bindings first.
+    if (gained && FAILED(acquire_restore(route))) { ++screen_additive_failures_; return; } // nothing applied: the draw stays native
     HRESULT hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, D3DBLEND_ONE);
     if (FAILED(hr)) { ++screen_additive_failures_; return; } // nothing applied: the draw stays native
     route.screen_additive = true;
@@ -4432,7 +4471,7 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
             // then the program and DESTBLEND, exactly like the PS rollback.
             ++screen_additive_failures_;
             const HRESULT alpha_back = restore_screen_additive_alpha();
-            HRESULT back = route.screen_additive_ps ? native<SetPsFn>(SetPixelShader)(device_, shadow_.ps) : S_OK;
+            HRESULT back = route.screen_additive_ps ? native<SetPsFn>(SetPixelShader)(device_, route.restore_ps) : S_OK;
             const HRESULT destination = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR);
             if (SUCCEEDED(back)) back = destination;
             if (FAILED(alpha_back) && SUCCEEDED(back)) back = alpha_back;
@@ -4497,7 +4536,7 @@ HRESULT MotionOutput::restore_screen_additive_alpha() noexcept {
 void MotionOutput::finish_screen_additive(MotionRoute& route) noexcept {
     HRESULT first = S_OK;
     if (route.screen_additive_alpha) { const HRESULT hr = restore_screen_additive_alpha(); if (FAILED(hr)) first = hr; route.screen_additive_alpha = false; }
-    if (route.screen_additive_ps) { const HRESULT hr = native<SetPsFn>(SetPixelShader)(device_, shadow_.ps); if (FAILED(hr)) first = hr; }
+    if (route.screen_additive_ps) { const HRESULT hr = native<SetPsFn>(SetPixelShader)(device_, route.restore_ps); if (FAILED(hr)) first = hr; }
     const HRESULT hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR); // the admitted value
     if (SUCCEEDED(first) && FAILED(hr)) first = hr;
     route.screen_additive = route.screen_additive_ps = false;
@@ -4692,6 +4731,10 @@ unsigned MotionOutput::linear_material_refusal() noexcept {
 // mode and RT1/RT2 setup live outside this function and are retained.
 HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexcept {
     if (shadow_.xt_default_pair && !shadow_.xt_default_ready) return E_FAIL;
+    // Own the actual bindings before the first injected bind; a failed getter
+    // declines with nothing bound (vs_set/ps_set stay false), so the caller's
+    // rollback restores no shader and the native draw goes out unchanged.
+    { const HRESULT held = acquire_restore(route); if (FAILED(held)) { if (SUCCEEDED(route.preparation_error)) route.preparation_error = held; return held; } }
     // Attempted setters may mutate before reporting failure. Every attempted
     // stage must therefore be restored, including the setter that failed.
     const auto vs = shadow_.xt_default_ready
@@ -4822,6 +4865,7 @@ void MotionOutput::prepare_source_gain(const MotionDrawCall& call, MotionRoute& 
         return;
     }
     const bool screen = verdict == renderer::SourceGainBlend::Screen;
+    { const HRESULT held = acquire_restore(route); if (FAILED(held)) { ++source_gain_counts_.bind_failures; return; } } // nothing applied: the draw stays native
     if (screen) {
         // Screen substitution: DESTBLEND ONE for this draw. The shadow holds
         // the application's INVSRCCOLOR (known: the law just read it), which
@@ -4848,7 +4892,7 @@ void MotionOutput::prepare_source_gain(const MotionDrawCall& call, MotionRoute& 
         // goes out; a failed restore is the same lost-state condition as a
         // failed route restore.
         ++source_gain_counts_.bind_failures;
-        HRESULT restored = native<SetPsFn>(SetPixelShader)(device_, shadow_.ps);
+        HRESULT restored = native<SetPsFn>(SetPixelShader)(device_, route.restore_ps);
         if (route.source_gain_screen) {
             const HRESULT back = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, shadow_.composition_blend[1]);
             route.source_gain_screen = false;
@@ -4885,7 +4929,7 @@ void MotionOutput::prepare_source_gain(const MotionDrawCall& call, MotionRoute& 
 // both sit under the hook mutex of one draw). Mirrors finish_screen_additive.
 void MotionOutput::finish_source_gain(MotionRoute& route) noexcept {
     route.source_gain = false;
-    HRESULT first = native<SetPsFn>(SetPixelShader)(device_, shadow_.ps);
+    HRESULT first = native<SetPsFn>(SetPixelShader)(device_, route.restore_ps);
     if (route.source_gain_screen) {
         route.source_gain_screen = false;
         const HRESULT back = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, shadow_.composition_blend[1]);
@@ -4962,13 +5006,14 @@ void MotionOutput::prepare_hull_gain(const MotionDrawCall& call, MotionRoute& ro
         return;
     }
     if (!shadow_.ps_hull_gain_variant) { ++hull_gain_counts_.refused_variant; return; } // creation failed for this program (logged at registration)
+    if (FAILED(acquire_restore(route))) { ++hull_gain_counts_.bind_failures; return; } // nothing applied: the draw stays native
     const HRESULT hr = native<SetPsFn>(SetPixelShader)(device_, shadow_.ps_hull_gain_variant);
     if (FAILED(hr)) {
         // A failed setter may have mutated the binding: put the application's
         // program back before the native draw goes out; a failed restore is
         // the same lost-state condition as a failed route restore.
         ++hull_gain_counts_.bind_failures;
-        const HRESULT restored = native<SetPsFn>(SetPixelShader)(device_, shadow_.ps);
+        const HRESULT restored = native<SetPsFn>(SetPixelShader)(device_, route.restore_ps);
         if (FAILED(restored)) {
             if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = restored; }
             route.submit = false; route.submission_error = motion_state_error_;
@@ -5030,7 +5075,7 @@ void MotionOutput::log_hull_emission_draw(const MotionDrawCall& call, unsigned p
 // both sit under the hook mutex of one draw). Mirrors finish_source_gain.
 void MotionOutput::finish_hull_gain(MotionRoute& route) noexcept {
     route.hull_gain = false;
-    const HRESULT first = native<SetPsFn>(SetPixelShader)(device_, shadow_.ps);
+    const HRESULT first = native<SetPsFn>(SetPixelShader)(device_, route.restore_ps);
     if (FAILED(first)) {
         if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = first; }
         ++counters_.restore_failures; invalidate_taa(TaaInvalidateSite::RestoreFailed);
@@ -5808,6 +5853,10 @@ void MotionOutput::note_cutout_opaque(const MotionRoute& route, HRESULT result) 
 }
 
 void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
+    // The route's owned restoration references outlive every restore below
+    // (undo, the finish_* paths, the sun stamp) and are released on every
+    // return, inside the draw hook while its device pin is held.
+    struct RestoreScope { MotionOutput& self; MotionRoute& route; ~RestoreScope() { self.release_restore(route); } } restore_scope{*this, route};
     if (route.fog_card_mask.masked) finish_fog_card(route, result);
     if (!enabled_ || !route.evaluated) return;
     const bool jittered = route.jittered;
@@ -6691,7 +6740,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             " camera_valid=%u camera_background_valid=%u camera_reads=%lu camera_policy=%lu camera_reason=%lu camera_cut=%u camera_rotation_deg=%.4f"
             " rt_mode=%s timing=%s set_rt=%lu lazy_flushes=%lu lazy_mask_writes=%lu jitter_writes=%lu readbacks=%lu gate_us=%.1f route_draw_us=%.1f set_rt_us=%.1f lazy_flush_us=%.1f jitter_us=%.1f fill_us=%.1f taa_run_us=%.1f taa_capture_us=%.1f taa_copy_color_us=%.1f taa_copy_depth_us=%.1f taa_draw_us=%.1f taa_apply_us=%.1f taa_copy_back_us=%.1f readback_us=%.1f"
             " state_shadow=%u rs_mode=%s rs_queries=%lu rs_hits=%lu rs_gets=%lu rs_resyncs=%lu rs_invalidations=%lu sb_resyncs=%lu scene_hook=%u scene_end_source=%s scene_end_check=%lu hook_signals=%lu hook_outside_scene=%lu hook_state=%lu draws_after_hook=%lu bloom_copy_seen=%u"
-            " mip_bias=%g mip_bias_sets=%lu mip_bias_restores=%lu mip_bias_draws=%lu mip_bias_stages=%04lx mip_bias_reads=%lu mip_bias_game_writes=%lu mip_bias_game_writes_total=%lu mip_bias_failures=%lu mip_bias_biased_now=%04lx",
+            " mip_bias=%g mip_bias_sets=%lu mip_bias_restores=%lu mip_bias_draws=%lu mip_bias_stages=%04lx mip_bias_reads=%lu mip_bias_game_writes=%lu mip_bias_game_writes_total=%lu mip_bias_failures=%lu mip_bias_biased_now=%04lx restore_getters=%lu restore_declines=%lu",
             id_, frame_, counters_.latched, static_cast<unsigned long>(main_msaa_ ? main_msaa_samples_ : 0u), counters_.filled, counters_.fill_result, counters_.fill_restore,
             static_cast<unsigned long>(counters_.draws), static_cast<unsigned long>(counters_.routed), static_cast<unsigned long>(counters_.matched),
             static_cast<unsigned long>(counters_.gates[1]), static_cast<unsigned long>(counters_.gates[2]), static_cast<unsigned long>(counters_.gates[3]),
@@ -6720,7 +6769,8 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             double(mip_bias_), static_cast<unsigned long>(c.mip_bias_sets), static_cast<unsigned long>(c.mip_bias_restores),
             static_cast<unsigned long>(c.mip_bias_draws), static_cast<unsigned long>(c.mip_bias_stages), static_cast<unsigned long>(c.mip_bias_reads),
             static_cast<unsigned long>(c.mip_bias_game_writes), static_cast<unsigned long>(mip_bias_total_game_writes_),
-            static_cast<unsigned long>(c.mip_bias_failures), static_cast<unsigned long>(sampler_biased_mask_));
+            static_cast<unsigned long>(c.mip_bias_failures), static_cast<unsigned long>(sampler_biased_mask_),
+            static_cast<unsigned long>(c.restore_getters), static_cast<unsigned long>(c.restore_declines));
     }
     if (taa_enabled_ && (capture_ || frame_ % camera_log_interval_ == 0)) log_camera_state();
     if (telemetry_ && frame_ % frame_log_interval_ == 0)

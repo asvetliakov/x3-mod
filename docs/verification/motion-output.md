@@ -2207,3 +2207,22 @@ evidence. Run57 compares process-local bounds 0.25 and 1 while logging every
 frame, without F8 readback, preserving median-motion and camera protections.
 Logging cost is unmeasured; this is a visual/reason-code comparison, not an FPS
 benchmark. [Local report/reproducers](/tmp/x3-lightmap-video/diagnosis.md).
+
+## Shader-shadow restoration lifetime fix (2026-09-21)
+
+The first ownership-on Capture lifecycle fixture crashed restoring a pixel shader
+on the routed final-application-release case: MotionOutput restored weak
+application wrapper pointers that the application had already released, and the
+unknown-pointer unwrap forwarded the dead wrapper natively
+([diagnosis](../architecture/ownership-shadow-lifetime-diagnosis.md)). The
+ratified fix owns scoped restoration references from the public shader getters
+per routed draw and releases them from a scope guard at the top of `after_draw`.
+Rerun of the unchanged fixture: **PASS, 159 checks**, routed row
+`renderer_before=8 live=0 retired=1`, 5.4 s under the X3 lock; measured cost
+exactly two getters and two Releases per injected draw, zero on unrouted draws,
+zero declines. Independent review accepted with non-blocking findings (two
+fixed before merge). Not witnessed: failed-getter decline, VS-only/PS-only,
+state-block/Reset with a route in flight, inherited callback SEH. The B2a
+Capture accounting and its fixture merge with the fix, default-off and unwired;
+the upload diagnostic itself is held.
+[Record](../../verification/results/run201-lattice/shader-restore-lifetime.json).
