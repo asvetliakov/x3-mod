@@ -1821,3 +1821,63 @@ march samples farther than about 37.5 km (times the select margin) from the casc
 cascade replayed on alternate frames under budget (`far_replayed=0` on 16 frames here), and
 `fog_shadow_current` would drop it on those frames, so binding it would add shaft flicker for little
 visible gain. Leave at 3; the triage's "cascades 4-5" is wrong.
+
+## Stored-density look presets L0-L3: shaders, pass, launcher, hotkey (2026-09-21)
+
+Design and constants: `docs/architecture/fog-density-runtime-integration.md`, "Look presets". Not installed, not
+flown; appearance is unjudged. [M] measured in bottle X3 unless marked.
+
+- **L0 unchanged.** The shared include changed only behind `FOG_LOOK`; regenerating the four base programs left
+  their headers byte-identical (no working-tree change; march bytecode `4dacf7e4...` pinned in
+  `test_fog_density_shaders.py`). Base gates of `fog_density_shader_run.py` unchanged: candidate T max 1.5e-4,
+  S max 5.6e-5 against the host.
+- **Slots / fetches** (Microsoft table, `fog_density_shader_slots.py`): march L1 344/13, L2-3 418/15; repair L1
+  445/18, L2-3 506/20; composite 210/10; every march and repair keeps exactly one `rep` loop. The device
+  reports `max_ps30_instruction_slots=512` (fixture CAPS line): a first version at 641 slots could not have
+  been created here, which forced the two-cascade shaft read and the tent `level_sample`.
+- **GPU versus host** (`look_march` in `tools/analysis/fog_density_shader_reference.py`, 576 stratified rays per
+  case, gates p99 .002 / max .003): eight look cases (A/B sky for L1-L3, A depth 149999 for L2, A fully shadowed
+  L1): worst |dT| 3.3e-4 (FP32 target) / 6.2e-4 (RGBA16F), worst |dS| 1.8e-4 / 3.6e-4; L3 leaves out 2 of 576
+  pixels whose noise argument is within 2e-3 of a `frac` wrap. Reference min T .32-.48 at strength .03 (L0 mean T
+  .82 on the same poses), 45-69 % of sky rays exactly empty.
+- **Black shaft** (run214): fully shadowed sky under L0 is S = 0 exactly on 9216 fogged pixels
+  (`look0_fully_shadowed_fog_is_black`); under L1 every fogged pixel has S > 0 in all channels
+  (`look1_fully_shadowed_fog_is_coloured`, min 1.4e-7 FP32), and the host test shows a greener hue than the lit
+  sample. The production pass repeats it on its RGBA16F target for T < .98 (970 pixels); nearer 1 the in-scatter
+  is below the smallest normal half and this backend flushes it to zero.
+- **Production pass** (`fog_density_pass_fixture`, 58 checks, 1155 hostile-state restorations): look programs
+  created with the base programs; L0 after cycling byte-identical to before; L1/L2/L3 differ, only L3 depends on
+  the frame phase; switching creates and allocates nothing (references and allocations equal); L2 after a
+  mid-fill Reset byte-identical to before; composite/repair consistency repeated with the FOG_LOOK 2 programs
+  and `T^k` (worst 4.9e-4).
+- **Legacy path** (`fog_spatial_build.py` / `fog_spatial_run.py`, this `fog_pass.cpp`): numeric 40/40 variant
+  checks pass, state report `passed`.
+- **Host**: `test_fog_look_reference.py` (header constants equal the Python mirror for all four presets; law
+  properties; every tunable's range), `test_fog_density_shaders.py`, `test_volumetric_fog.py` (launcher
+  `--volumetric-fog-look`), `test_comparison_hotkeys.py` (Ctrl+Alt+F11 disjoint from Ctrl+Shift+F11),
+  `test_fog_cards.py` (MotionOutput double). Scratch RelWithDebInfo DLL: `check_no_x87.py` PASS, 547 reachable
+  functions, no violations.
+- **Not measured**: GPU time. The fixture's slope timing reads 0.006-0.012 ms per 640x384 march for every
+  preset, i.e. the backend defers the work past the readback; use `--volumetric-fog-timing` in flight.
+  Native Windows: cross-compiled only.
+- **Open**: look programs switch cascades hard (no cross-fade) and ignore the finest map; one sun-ward tap
+  instead of two; L3 offsets all 64 bins (the review suggested starting with the near 24:
+  `X3M_FOG_LOOK_JITTER_FAR=0`); shimmer under TAA untested; edge erosion and a generator-side recipe for
+  sub-400 m structure not done (reasons in the architecture note).
+
+### Look presets, review fixes on merged main e8e97da0 (2026-09-21)
+
+- The column cap (70000) now ends every ray, sky and geometry, so a distant hull and the sky beside it agree
+  (host test: equal S and T). Slots after the change: march L1 341/13, L2-3 415/15; repair L1 442/18, L2-3 503/20.
+- Two-cascade cross-fade (.85 to .95) compiled and measured: repair L2 546 slots, does not fit 512; the hard
+  switch stays (open).
+- TAA off or failed holds the L3 offset phase at 0. C++ creation gate is `slots < 512`, as the test.
+  Launcher help states `--volumetric-fog-anisotropy` has no effect under looks 1-3.
+- All shader manifests regenerated and `generate_rigid_motion_pixel.py --check` PASS under the lock; only the
+  four look march/repair headers changed. Fog shader + pass fixtures rerun: PASS, nine look cases (added L1
+  geometry at 45000 units, 315 fogged rays), worst |dT| 6.2e-4 and |dS| 3.6e-4 on RGBA16F; pass fixture 58 checks,
+  1173 state restorations. Host: 113 tests OK (fog, TAA, shader provenance, hotkeys, launcher). Scratch DLL
+  rebuilt: `check_no_x87.py` PASS, 547 functions, no violations.
+- One fixture run hung in the shader fixture while a parallel `cmake -j` build loaded the machine (process ended
+  by hand, rerun on an idle machine passed in 54 s); not reproduced, cause unknown.
+

@@ -9,6 +9,7 @@
 #include <windows.h>
 #include <d3d9.h>
 #include "../../src/renderer/quad_vertex_program.h"
+#include "../../src/renderer/fog_look_math.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -38,15 +39,32 @@ constexpr DWORD repair_words[]={
 constexpr DWORD exact_words[]={
 #include "fog_density_march_exact_program_inc.h"
 };
+// Look presets: FOG_LOOK 1 (L1) and FOG_LOOK 2 (L2, L3) variants; one composite for all.
+constexpr DWORD look_march1_words[]={
+#include "../../src/renderer/fog_density_march_look1_program_inc.h"
+};
+constexpr DWORD look_march2_words[]={
+#include "../../src/renderer/fog_density_march_look2_program_inc.h"
+};
+constexpr DWORD look_composite_words[]={
+#include "../../src/renderer/fog_density_composite_look_program_inc.h"
+};
+constexpr DWORD look_repair1_words[]={
+#include "../../src/renderer/fog_density_repair_look1_program_inc.h"
+};
+constexpr DWORD look_repair2_words[]={
+#include "../../src/renderer/fog_density_repair_look2_program_inc.h"
+};
+constexpr unsigned kRows=x3m::renderer::fog_look_first_register+x3m::renderer::fog_look_rows;
 constexpr double kTan30=0.5773502691896257;
-struct Case{std::string name;double cam[3],r[3],u[3],f[3];std::string mode,value;};
+struct Case{std::string name;double cam[3],r[3],u[3],f[3];std::string mode,value;unsigned look=0,phase=0;bool shadow=false;};
 struct Window{HWND handle=nullptr;~Window(){if(handle)DestroyWindow(handle);}};
 LONGLONG ticks(){LARGE_INTEGER v{};QueryPerformanceCounter(&v);return v.QuadPart;}
 
 struct Fixture{
     IDirect3DDevice9* d=nullptr;
     Com<IDirect3DVertexShader9> vs;Com<IDirect3DVertexDeclaration9> declaration;
-    Com<IDirect3DPixelShader9> march,exact,composite,repair;
+    Com<IDirect3DPixelShader9> march,exact,composite,repair,look_march[2],look_repair[2],look_composite;
     Com<IDirect3DTexture9> atlas_sys[2],atlas_gpu[2];
     NodeKey origin[2]{};bool resident[2]{};bool empty=false;
     float sigma=0;float chroma[3]{};
@@ -57,6 +75,9 @@ struct Fixture{
         check(d->CreateVertexDeclaration(x3m::renderer::quad_declaration,&declaration.p),"declaration");
         check(d->CreatePixelShader(march_words,&march.p),"march program");check(d->CreatePixelShader(exact_words,&exact.p),"exact program");
         check(d->CreatePixelShader(composite_words,&composite.p),"composite program");check(d->CreatePixelShader(repair_words,&repair.p),"repair program");
+        check(d->CreatePixelShader(look_march1_words,&look_march[0].p),"look march 1");check(d->CreatePixelShader(look_march2_words,&look_march[1].p),"look march 2");
+        check(d->CreatePixelShader(look_repair1_words,&look_repair[0].p),"look repair 1");check(d->CreatePixelShader(look_repair2_words,&look_repair[1].p),"look repair 2");
+        check(d->CreatePixelShader(look_composite_words,&look_composite.p),"look composite");
         for(int level=0;level<2;++level){
             check(d->CreateTexture(kAtlasWidth,kAtlasHeight,1,0,D3DFMT_A16B16G16R16F,D3DPOOL_SYSTEMMEM,&atlas_sys[level].p,nullptr),"atlas staging");
             check(d->CreateTexture(kAtlasWidth,kAtlasHeight,1,0,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&atlas_gpu[level].p,nullptr),"atlas default");
@@ -79,9 +100,13 @@ struct Fixture{
         }
         empty=want_empty;
     }
-    // c0..c24 for a pose; rays equal the host screen's (x+.5)/half pixel law.
-    void constants(const Case& c,UINT half_w,UINT half_h,float k[25][4])const{
-        std::memset(k,0,sizeof(float)*100);
+    IDirect3DPixelShader9* march_for(unsigned look)const{return look?look_march[look>=2].p:march.p;}
+    IDirect3DPixelShader9* repair_for(unsigned look)const{return look?look_repair[look>=2].p:repair.p;}
+    IDirect3DPixelShader9* composite_for(unsigned look)const{return look?look_composite.p:composite.p;}
+    // c0..c24 for a pose, c25..c33 from the production look constants (default tuning); rays equal the
+    // host screen's (x+.5)/half pixel law.
+    void constants(const Case& c,UINT half_w,UINT half_h,float k[kRows][4])const{
+        std::memset(k,0,sizeof(float)*4*kRows);
         k[0][0]=float(double(half_h)/(double(half_w)*kTan30));k[0][1]=float(1.0/kTan30);k[0][2]=float(-0.5/half_w);k[0][3]=float(0.5/half_h);
         k[1][0]=float(2*half_w);k[1][1]=float(2*half_h);k[1][2]=float(half_w);k[1][3]=float(half_h);
         k[2][3]=sigma;k[3][0]=1.f;k[3][3]=float(kTaperEnd);
@@ -94,12 +119,16 @@ struct Fixture{
         }
         for(int i=0;i<3;++i)k[24][i]=chroma[i];
         k[24][3]=1.f;
+        k[2][3]*=x3m::renderer::fog_look_constants(c.look,x3m::renderer::FogLookTuning{},chroma,k[8],c.phase,k+x3m::renderer::fog_look_first_register);
+        if(c.shadow){ // every view position maps to the centre of cascade 0 at depth .5; the bound map holds 0: shaft visibility 0
+            k[9][0]=1.f;k[9][1]=.95f;k[9][2]=.85f;k[9][3]=10.f;k[12][3]=.5f;k[13][0]=64.f;k[13][1]=1.f/64.f;k[13][2]=.001f;k[13][3]=1.f;
+        }
     }
     void state(bool exact_texels){
         const DWORD off[]={D3DRS_ZENABLE,D3DRS_ZWRITEENABLE,D3DRS_ALPHABLENDENABLE,D3DRS_ALPHATESTENABLE,D3DRS_STENCILENABLE,D3DRS_SCISSORTESTENABLE,D3DRS_SRGBWRITEENABLE,D3DRS_FOGENABLE};
         for(DWORD s:off)check(d->SetRenderState(static_cast<D3DRENDERSTATETYPE>(s),FALSE),"render state");
         check(d->SetRenderState(D3DRS_CULLMODE,D3DCULL_NONE),"cull");check(d->SetRenderState(D3DRS_COLORWRITEENABLE,0xf),"write mask");
-        for(DWORD i:{0u,1u,2u,3u,7u}){
+        for(DWORD i:{0u,1u,2u,3u,4u,7u}){
             const DWORD filter=((i==1||i==7)&&!exact_texels)?D3DTEXF_LINEAR:D3DTEXF_POINT;
             check(d->SetSamplerState(i,D3DSAMP_ADDRESSU,D3DTADDRESS_CLAMP),"address");check(d->SetSamplerState(i,D3DSAMP_ADDRESSV,D3DTADDRESS_CLAMP),"address");
             check(d->SetSamplerState(i,D3DSAMP_MINFILTER,filter),"filter");check(d->SetSamplerState(i,D3DSAMP_MAGFILTER,filter),"filter");check(d->SetSamplerState(i,D3DSAMP_MIPFILTER,D3DTEXF_NONE),"filter");
@@ -108,9 +137,9 @@ struct Fixture{
         check(d->SetTexture(1,atlas_gpu[0].p),"fine");check(d->SetTexture(7,atlas_gpu[1].p),"far");
         check(d->SetVertexShader(vs.p),"vs bind");check(d->SetVertexDeclaration(declaration.p),"declaration bind");
     }
-    void draw(IDirect3DSurface9* target,IDirect3DPixelShader9* program,const float k[25][4]){
+    void draw(IDirect3DSurface9* target,IDirect3DPixelShader9* program,const float k[kRows][4]){
         D3DSURFACE_DESC desc{};check(target->GetDesc(&desc),"target desc");
-        check(d->SetRenderTarget(0,target),"target");check(d->SetPixelShader(program),"program");check(d->SetPixelShaderConstantF(0,&k[0][0],25),"constants");
+        check(d->SetRenderTarget(0,target),"target");check(d->SetPixelShader(program),"program");check(d->SetPixelShaderConstantF(0,&k[0][0],kRows),"constants");
         QuadVertex q[4];x3m::renderer::quad_vertices(desc.Width,desc.Height,q);check(d->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP,2,q,sizeof q[0]),"draw");
     }
 };
@@ -189,7 +218,15 @@ void run(const std::string& cases_file,const std::string& out){
         if(head=="sigma"){row>>fx.sigma;continue;}
         if(head=="chroma"){row>>fx.chroma[0]>>fx.chroma[1]>>fx.chroma[2];continue;}
         Case c;c.name=head;for(double* v:{c.cam,c.r,c.u,c.f})for(int i=0;i<3;++i)row>>v[i];
-        row>>c.mode>>c.value;if(!row)throw std::runtime_error("case row "+head);cases.push_back(c);
+        row>>c.mode>>c.value;if(!row)throw std::runtime_error("case row "+head);
+        for(std::string option;row>>option;){
+            unsigned value=0;
+            if(std::sscanf(option.c_str(),"look=%u",&value)==1&&value<x3m::renderer::fog_look_count)c.look=value;
+            else if(std::sscanf(option.c_str(),"phase=%u",&value)==1)c.phase=value;
+            else if(std::sscanf(option.c_str(),"shadow=%u",&value)==1)c.shadow=value!=0;
+            else throw std::runtime_error("case option "+option);
+        }
+        cases.push_back(c);
     }
     if(cases.empty()||!(fx.sigma>0))throw std::runtime_error("no cases");
     WNDCLASSA cls{};cls.lpfnWndProc=DefWindowProcA;cls.hInstance=GetModuleHandleA(nullptr);cls.lpszClassName="x3m-fog-density-shader";RegisterClassA(&cls);
@@ -208,52 +245,71 @@ void run(const std::string& cases_file,const std::string& out){
     const UINT hw=128,hh=72;
     Com<IDirect3DTexture9> st32,st16;check(device->CreateTexture(hw,hh,1,D3DUSAGE_RENDERTARGET,D3DFMT_A32B32G32R32F,D3DPOOL_DEFAULT,&st32.p,nullptr),"st32");check(device->CreateTexture(hw,hh,1,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&st16.p,nullptr),"st16");
     Com<IDirect3DSurface9> st32s,st16s;check(st32->GetSurfaceLevel(0,&st32s.p),"st32 surface");check(st16->GetSurfaceLevel(0,&st16s.p),"st16 surface");
-    bool identity=true,empty_identity=true;
+    // A 64x64 R32F map of zeros: with Case::shadow every fogged sample is fully shadowed.
+    Com<IDirect3DTexture9> dark_map;{const std::vector<float> zeros(64*64,0.f);upload(device.p,64,64,D3DFMT_R32F,4,zeros.data(),&dark_map.p);}
+    bool identity=true,empty_identity=true,shadowed_l0_black=true,shadowed_l1_coloured=true;unsigned shadowed_fogged[2]{},look_cases=0;
     for(const Case& c:cases){
-        fx.fill(c.cam,c.mode=="empty");float k[25][4];fx.constants(c,hw,hh,k);
+        fx.fill(c.cam,c.mode=="empty");float k[kRows][4];fx.constants(c,hw,hh,k);
         const auto depth=depth_image(c,hw,hh);Com<IDirect3DTexture9> depth_texture;upload(device.p,2*hw,2*hh,D3DFMT_A32B32G32R32F,16,depth.data(),&depth_texture.p);
-        check(device->SetTexture(0,depth_texture.p),"depth bind");
+        check(device->SetTexture(0,depth_texture.p),"depth bind");check(device->SetTexture(4,c.shadow?dark_map.p:nullptr),"shadow map bind");
+        look_cases+=c.look!=0;
         struct Variant{const char* name;IDirect3DPixelShader9* program;IDirect3DSurface9* target;bool exact;};
-        const Variant variants[]={{"bilinear32",fx.march.p,st32s.p,false},{"exact32",fx.exact.p,st32s.p,true},{"bilinear16",fx.march.p,st16s.p,false}};
+        const bool plain=!c.look&&!c.shadow; // the texel-exact parity program has no look or shaft variant
+        const Variant variants[]={{"bilinear32",fx.march_for(c.look),st32s.p,false},{"exact32",fx.exact.p,st32s.p,true},{"bilinear16",fx.march_for(c.look),st16s.p,false}};
         for(const Variant& v:variants){
+            if(v.exact&&!plain)continue;
             check(device->BeginScene(),"begin");fx.state(v.exact);fx.draw(v.target,v.program,k);check(device->EndScene(),"end");
             const auto image=readback(device.p,v.target);write(image,out+"\\"+c.name+"."+v.name+".f32");
             if(c.mode=="invalid"||c.mode=="empty")for(std::size_t i=0;i<image.size();i+=4){
                 const bool same=image[i]==0.f&&image[i+1]==0.f&&image[i+2]==0.f&&image[i+3]==1.f;
                 (c.mode=="empty"?empty_identity:identity)&=same;
             }
+            // Fully shadowed fog: L0 extinguishes and adds nothing (the run214 black shaft); L1 adds coloured light.
+            if(c.shadow&&c.look<2&&!v.exact&&v.target==st32s.p)for(std::size_t i=0;i<image.size();i+=4){
+                if(!(image[i+3]<1.f))continue;
+                ++shadowed_fogged[c.look];
+                if(c.look==0)shadowed_l0_black&=image[i]==0.f&&image[i+1]==0.f&&image[i+2]==0.f;
+                else shadowed_l1_coloured&=image[i]>0.f&&image[i+1]>0.f&&image[i+2]>0.f;
+            }
         }
-        check(device->SetTexture(0,nullptr),"depth unbind");std::printf("CASE %s mode=%s\n",c.name.c_str(),c.mode.c_str());
+        check(device->SetTexture(0,nullptr),"depth unbind");check(device->SetTexture(4,nullptr),"shadow map unbind");
+        std::printf("CASE %s mode=%s look=%u shadow=%u\n",c.name.c_str(),c.mode.c_str(),c.look,unsigned(c.shadow));
     }
     require(identity,"invalid_depth_zero_nan_inf_exact_identity");require(empty_identity,"zero_cache_exact_identity");
+    std::printf("SHADOWED look0_fogged_pixels=%u look1_fogged_pixels=%u look_cases=%u\n",shadowed_fogged[0],shadowed_fogged[1],look_cases);
+    require(shadowed_fogged[0]>0&&shadowed_l0_black,"look0_fully_shadowed_fog_is_black");
+    require(shadowed_fogged[1]>0&&shadowed_l1_coloured,"look1_fully_shadowed_fog_is_coloured");
     std::printf("GENERATION atlases=%u seconds=%.6f nodes_per_second=%.0f\n",fx.generated_atlases,fx.generate_seconds,fx.generated_atlases?fx.generated_atlases*double(kWindowNodes)*kWindowNodes*kWindowNodes/fx.generate_seconds:0.);
 
     // Composite and repair split on the first pose: odd full-resolution columns are geometry,
     // even columns (all half samples) sky, so every odd column has composite weight 0.
     {
-        const Case& c=cases.front();const UINT w=2*hw,h=2*hh;float k[25][4];
+        Case c=cases.front();const UINT w=2*hw,h=2*hh;float k[kRows][4];
         std::vector<float> depth(std::size_t(w)*h*4,0.f);std::vector<std::uint16_t> scene(std::size_t(w)*h*4);
         const std::uint16_t colour[4]={float_to_half_rne(.25f),float_to_half_rne(.5f),float_to_half_rne(.75f),float_to_half_rne(.37f)};
         for(std::size_t i=0;i<std::size_t(w)*h;++i){depth[4*i]=(i%w)%2?.5f:2.f;depth[4*i+2]=20000.f;std::memcpy(&scene[4*i],colour,8);}
         Com<IDirect3DTexture9> depth_texture,scene_texture,target,full32;upload(device.p,w,h,D3DFMT_A32B32G32R32F,16,depth.data(),&depth_texture.p);upload(device.p,w,h,D3DFMT_A16B16G16R16F,8,scene.data(),&scene_texture.p);
         check(device->CreateTexture(w,h,1,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&target.p,nullptr),"composite target");check(device->CreateTexture(w,h,1,D3DUSAGE_RENDERTARGET,D3DFMT_A32B32G32R32F,D3DPOOL_DEFAULT,&full32.p,nullptr),"full march target");
         Com<IDirect3DSurface9> target_surface,full_surface;check(target->GetSurfaceLevel(0,&target_surface.p),"surface");check(full32->GetSurfaceLevel(0,&full_surface.p),"surface");
+        // Once for the current law and once for the FOG_LOOK 2 programs (L2: tinted extinction T^k, no sample offset).
+        for(unsigned look:{0u,2u}){
+        c.look=look;const std::string tag=look?"_look2":"";
         auto chain=[&](bool want_empty,std::vector<float>& composited,std::vector<float>& repaired){
             fx.fill(c.cam,want_empty);fx.constants(c,hw,hh,k);
             check(device->BeginScene(),"begin");fx.state(false);check(device->SetTexture(0,depth_texture.p),"depth");check(device->SetTexture(2,scene_texture.p),"scene");check(device->SetTexture(3,nullptr),"st unbind");
-            fx.draw(st16s.p,fx.march.p,k);check(device->SetTexture(3,st16.p),"st");fx.draw(target_surface.p,fx.composite.p,k);check(device->EndScene(),"end");composited=readback(device.p,target_surface.p);
-            check(device->BeginScene(),"begin");fx.draw(target_surface.p,fx.repair.p,k);check(device->EndScene(),"end");repaired=readback(device.p,target_surface.p);check(device->SetTexture(3,nullptr),"st unbind");
+            fx.draw(st16s.p,fx.march_for(look),k);check(device->SetTexture(3,st16.p),"st");fx.draw(target_surface.p,fx.composite_for(look),k);check(device->EndScene(),"end");composited=readback(device.p,target_surface.p);
+            check(device->BeginScene(),"begin");fx.draw(target_surface.p,fx.repair_for(look),k);check(device->EndScene(),"end");repaired=readback(device.p,target_surface.p);check(device->SetTexture(3,nullptr),"st unbind");
         };
         std::vector<float> composited,repaired;chain(true,composited,repaired);bool untouched=true;
         for(std::size_t i=0;i<composited.size();i+=4)for(int j=0;j<4;++j){const float expect=half_to_float(colour[j]);untouched&=composited[i+j]==expect&&repaired[i+j]==expect;}
-        require(untouched,"empty_cache_composite_and_repair_exact_scene");
+        require(untouched,("empty_cache_composite_and_repair_exact_scene"+tag).c_str());
         chain(false,composited,repaired);
         // Program consistency only: the march program driven at full resolution with the same ray law
         // (sizes doubled, c0 shifted a quarter pixel) must equal what repair wrote. This says nothing about
         // where the ray should go; fog_density_pass_fixture.cpp checks repaired pixels of the production
         // pass against a CPU march through the raster pixel, with a half-pixel-offset control.
-        float full[25][4];std::memcpy(full,k,sizeof full);full[1][0]=float(2*w);full[1][1]=float(2*h);full[1][2]=float(w);full[1][3]=float(h);full[0][2]=k[0][2]-.5f/float(w);full[0][3]=k[0][3]+.5f/float(h);
-        check(device->BeginScene(),"begin");fx.state(false);fx.draw(full_surface.p,fx.march.p,full);check(device->EndScene(),"end");const auto st=readback(device.p,full_surface.p);
+        float full[kRows][4];std::memcpy(full,k,sizeof full);full[1][0]=float(2*w);full[1][1]=float(2*h);full[1][2]=float(w);full[1][3]=float(h);full[0][2]=k[0][2]-.5f/float(w);full[0][3]=k[0][3]+.5f/float(h);
+        check(device->BeginScene(),"begin");fx.state(false);fx.draw(full_surface.p,fx.march_for(look),full);check(device->EndScene(),"end");const auto st=readback(device.p,full_surface.p);
         unsigned changed=0,fogged=0;bool even_kept=true,odd_composite_scene=true,alpha=true;double worst=0;
         for(std::size_t i=0;i<std::size_t(w)*h;++i){
             const bool odd=(i%w)%2;const float* a=&composited[4*i];const float* b=&repaired[4*i];const float* s=&st[4*i];
@@ -261,16 +317,17 @@ void run(const std::string& cases_file,const std::string& out){
             if(!odd){even_kept&=!std::memcmp(a,b,16);continue;}
             for(int j=0;j<3;++j)odd_composite_scene&=a[j]==half_to_float(colour[j]);
             const bool has_fog=!(s[0]==0.f&&s[1]==0.f&&s[2]==0.f&&s[3]==1.f);fogged+=has_fog;changed+=std::memcmp(a,b,16)!=0;
-            for(int j=0;j<3;++j){const double expect=has_fog?double(half_to_float(colour[j]))*s[3]+s[j]:half_to_float(colour[j]);worst=std::max(worst,std::fabs(expect-b[j]));}
+            for(int j=0;j<3;++j){const double T=look?std::pow(double(s[3]),double(k[x3m::renderer::fog_look_first_register+8][j])):double(s[3]);const double expect=has_fog?double(half_to_float(colour[j]))*T+s[j]:half_to_float(colour[j]);worst=std::max(worst,std::fabs(expect-b[j]));}
         }
-        std::printf("REPAIR odd_pixels=%u fogged=%u changed=%u worst_vs_full_march=%.9g\n",w/2*h,fogged,changed,worst);
-        require(even_kept,"repair_leaves_compatible_pixels_bit_identical");require(odd_composite_scene,"composite_keeps_scene_on_zero_weight");
-        require(alpha,"source_alpha_exact");require(fogged>0&&changed<=fogged&&worst<=1e-3,"repair_program_consistent_with_march_program");
+        std::printf("REPAIR%s odd_pixels=%u fogged=%u changed=%u worst_vs_full_march=%.9g\n",look?"_LOOK2":"",w/2*h,fogged,changed,worst);
+        require(even_kept,("repair_leaves_compatible_pixels_bit_identical"+tag).c_str());require(odd_composite_scene,("composite_keeps_scene_on_zero_weight"+tag).c_str());
+        require(alpha,("source_alpha_exact"+tag).c_str());require(fogged>0&&changed<=fogged&&worst<=1e-3,("repair_program_consistent_with_march_program"+tag).c_str());
+        }
         check(device->SetTexture(0,nullptr),"unbind");check(device->SetTexture(2,nullptr),"unbind");
     }
     // Fixture timing at 1280x768 (half 640x384), first pose, static atlases.
     {
-        const Case& c=cases.front();const UINT w=1280,h=768;float k[25][4];fx.fill(c.cam,false);fx.constants(c,w/2,h/2,k);
+        const Case& c=cases.front();const UINT w=1280,h=768;float k[kRows][4];fx.fill(c.cam,false);fx.constants(c,w/2,h/2,k);
         Case sky=c;sky.mode="sky";Case worst=c;worst.mode="depth";worst.value="29300";
         Com<IDirect3DTexture9> depth_sky,depth_near,scene_texture,st,target;
         {const auto image=depth_image(sky,w/2,h/2);upload(device.p,w,h,D3DFMT_A32B32G32R32F,16,image.data(),&depth_sky.p);}
@@ -296,6 +353,13 @@ void run(const std::string& cases_file,const std::string& out){
             check(device->SetTexture(0,depth),"depth");check(device->SetTexture(3,nullptr),"st unbind");double ms[2];int n=0;
             for(int repeat:{1,10})ms[n++]=synced_median(device.p,st_surface.p,[&]{for(int i=0;i<repeat;++i)fx.draw(st_surface.p,fx.march.p,k);});
             std::printf("FIXTURE_SLOPE_TIMING %s width=%u height=%u one_march_ms=%.4f ten_marches_ms=%.4f per_march_slope_ms=%.4f not_game_fps=1\n",depth==depth_sky.p?"march_sky_132_reads":"march_depth29300_172_reads",w,h,ms[0],ms[1],(ms[1]-ms[0])/9.0);
+        }
+        // Look presets, same slope method (sky depth: the capped 70000 column; depth 29300 keeps both levels busy).
+        for(unsigned look:{1u,2u,3u})for(IDirect3DTexture9* depth:{depth_sky.p,depth_near.p}){
+            Case lc=c;lc.look=look;lc.phase=3;float lk[kRows][4];fx.constants(lc,w/2,h/2,lk);
+            check(device->SetTexture(0,depth),"depth");check(device->SetTexture(3,nullptr),"st unbind");double ms[2];int n=0;
+            for(int repeat:{1,10})ms[n++]=synced_median(device.p,st_surface.p,[&]{for(int i=0;i<repeat;++i)fx.draw(st_surface.p,fx.march_for(look),lk);});
+            std::printf("FIXTURE_SLOPE_TIMING march_%s_look%u width=%u height=%u one_march_ms=%.4f ten_marches_ms=%.4f per_march_slope_ms=%.4f not_game_fps=1\n",depth==depth_sky.p?"sky":"depth29300",look,w,h,ms[0],ms[1],(ms[1]-ms[0])/9.0);
         }
         report("march_sky_132_reads",depth_sky.p,false);report("march_depth29300_172_reads",depth_near.p,false);report("transaction_sky_march_composite_repair",depth_sky.p,true);
         for(DWORD i:{0u,2u,3u})check(device->SetTexture(i,nullptr),"unbind");

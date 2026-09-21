@@ -6,6 +6,7 @@
 #include <vector>
 #include <d3d9.h>
 #include "fog_pass_math.h"
+#include "fog_look_math.h"
 #include "fog_volume_math.h"
 #include "fog_field_assets.h"
 namespace x3m::fog { class DensityCache; }
@@ -26,9 +27,11 @@ struct FogDensityConfig {
     float sigma=0;              // family extinction before strength and readiness
     float chroma[3]{1,1,1};     // family mean chroma
     unsigned upload_budget_bytes=0; // per prepare_density; 0 selects 8 tiles (1,065,024 B)
+    FogLookTuning look{};       // look presets L1-L3; read once at init by the caller
 };
 struct FogDensityStatus {
     bool available=false; const char* reason="off";
+    bool looks=false; const char* look_reason="off"; // L1-L3 programs exist; otherwise every frame draws L0
     float ready_fine=0,ready_far=0;          // 90-frame ramps: lambda weight, density weight
     unsigned upload_bytes=0,upload_rects=0;  // last prepare_density
     std::uint64_t upload_bytes_total=0,upload_rects_total=0,nodes_generated=0,worker_busy_us=0,missed_locks=0;
@@ -72,6 +75,9 @@ struct FogFrame {
     // posts the previous frame's camera to prepare_density (the camera is read after the owner
     // latch), which is safe because execute re-checks residency for camera_world itself.
     bool density=false; double camera_world[3]{};
+    // Stored-density look preset 0..3 and the TAA jitter sequence index (L3 sample offset). Constants and a
+    // prebuilt program only; a look whose programs are unavailable draws L0 (FogResult::look).
+    unsigned look=0,look_phase=0;
 };
 enum class FogStage : unsigned {
     None,Validate,Targets,Block,Capture,Normalize,Scene,March,Copy,SkyLevel,SkyReduce,Composite,EndScene,Restore,
@@ -84,6 +90,7 @@ struct FogResult {
     bool scene_known=false,scene_open=false,scene_write_started=false;
     bool caller_state_restored=false,route_poisoned=false;
     bool sky_updated=false; unsigned cascades_bound=0; // actual current maps admitted
+    unsigned look=0; // preset actually drawn
     unsigned device_calls=0; // native methods + block Capture/Apply; excludes Releases/resource validation
     IDirect3DTexture9* lit=nullptr; // borrowed FP16 (S.rgb,T), invalidated by resize/Reset/detach
     UINT half_width=0,half_height=0;
@@ -182,6 +189,8 @@ private:
     // Stored-density path; everything below stays null/zero until an enabled prepare_density.
     fog::DensityCache* density_=nullptr;
     IDirect3DPixelShader9 *density_march_=nullptr,*density_composite_=nullptr,*density_repair_=nullptr;
+    // Look variants, created with the base programs and never on the draw path: [0] FOG_LOOK 1 (L1), [1] FOG_LOOK 2 (L2, L3).
+    IDirect3DPixelShader9 *look_march_[2]{},*look_repair_[2]{},*look_composite_=nullptr;
     IDirect3DTexture9 *density_staging_[2]{},*density_atlas_[2]{};
     IDirect3DSurface9 *density_staging_surface_[2]{},*density_atlas_surface_[2]{};
     FogDensityConfig density_config_{}; FogDensityStatus density_status_{};

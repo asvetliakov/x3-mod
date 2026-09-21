@@ -18,6 +18,10 @@ PROGRAMS = {
     'fog_density_repair': ROOT / 'src/renderer/fog_density_repair_program_inc.h',
     'fog_density_march_exact': ROOT / 'verification/probe/fog_density_march_exact_program_inc.h',
 }
+# Look presets L1-L3 (FOG_LOOK variants): the same 512-slot ceiling as the base programs (CrossOver reports exactly 512).
+LOOK_PROGRAMS = {name: ROOT / ('src/renderer/%s_program_inc.h' % name) for name in (
+    'fog_density_march_look1', 'fog_density_march_look2', 'fog_density_composite_look', 'fog_density_repair_look1', 'fog_density_repair_look2')}
+PROGRAMS.update(LOOK_PROGRAMS)
 ZERO = {31, 48, 81, 47, 30}                    # dcl, defi, def, defb, label
 COST = {37: 8, 66: 6,                          # sincos, texldb
         # loop rep if ifc breakc callnz nrm pow texldd breakp
@@ -35,7 +39,7 @@ def words_of(path):
 def count(words):
     if len(words) < 2 or words[0] != 0xffff0300 or words[-1] != 0xffff:
         raise ValueError('expected a complete ps_3_0 program')
-    slots = fetches = 0
+    slots = fetches = loops = 0
     i = 1
     while i < len(words) - 1:
         token = words[i]
@@ -45,10 +49,11 @@ def count(words):
         op, operands = token & 0xffff, (token >> 24) & 15
         slots += 0 if op in ZERO else COST.get(op, 1)
         fetches += op in TEXTURE
+        loops += op in (27, 38)  # loop, rep: the 64-bin march must stay a loop
         i += 1 + operands
     if i != len(words) - 1:
         raise ValueError('instruction framing')
-    return dict(slots=slots, texture_instructions=fetches, words=len(words))
+    return dict(slots=slots, texture_instructions=fetches, words=len(words), loops=loops)
 
 
 def main():

@@ -367,6 +367,30 @@ void run(const std::string& cases_file){
             std::printf("SHAFTS split_map worst_S_vs_cpu=%.6f\n",worst);require(worst<=.003&&differs,"shafts_split_map_matches_cpu_visibility");
         }
 
+        // --- Look presets through the production pass: prebuilt programs and constants only ---
+        std::vector<std::uint8_t> look2_before;
+        {
+            require(hx.settle(A.cam),"look pose settles");require(pass.density_status().looks,"look_programs_created_with_the_base_programs");
+            const UINT N=64;const std::vector<float> dark_map(N*N,0.f);Com<IDirect3DTexture9> dark_texture;upload(d,N,N,D3DFMT_R32F,4,dark_map.data(),0,&dark_texture.p);
+            const unsigned references=pass.references(),allocations=pass.allocations();
+            auto shade=[&](unsigned look,unsigned phase,bool dark){
+                check(hx.prepare(A.cam),"look prepare");FogFrame f=make_frame(A,scene,hx.frame,true);f.look=look;f.look_phase=phase;
+                if(dark){f.count=1;auto& k=f.cascades[0];k.map=dark_texture.p;k.valid=true;k.frame=hx.frame;k.bias=0;k.rows[0]=1e-9f;k.rows[5]=1e-9f;k.rows[10]=1e-9f;k.rows[11]=.5f;}
+                FogResult r;if(hx.execute(A,scene,r,false,&f)!=S_OK||!r.applied||r.look!=look)throw std::runtime_error("look transaction");return surface_bytes(d,pass.fixture_st());
+            };
+            const auto l0=shade(0,0,false),l1=shade(1,0,false),l2=shade(2,0,false),l3=shade(3,3,false),l3_next=shade(3,4,false),l2_again=shade(2,5,false),l0_again=shade(0,0,false);
+            require(l0_again==l0,"look_0_after_cycling_is_byte_identical_to_before");
+            require(l1!=l0&&l2!=l1&&l3!=l2&&l3_next!=l3&&l2_again==l2,"looks_differ_and_only_look_3_depends_on_the_frame_phase");
+            require(pass.references()==references&&pass.allocations()==allocations,"look_switch_creates_and_allocates_nothing");
+            const auto dark0=half_image(shade(0,0,true)),dark1=half_image(shade(1,0,true));unsigned fogged=0;bool black=true,coloured=true;
+            for(std::size_t i=0;i<dark0.size();i+=4){if(!(dark0[i+3]<1))continue;black=black&&dark0[i]==0&&dark0[i+1]==0&&dark0[i+2]==0;}
+            for(std::size_t i=0;i<dark1.size();i+=4){if(!(dark1[i+3]<.98f))continue;++fogged; // FP16 target: in-scatter below the smallest normal half (6.1e-5) may flush to zero
+            coloured=coloured&&dark1[i]>0&&dark1[i+1]>0&&dark1[i+2]>0;}
+            std::printf("LOOKS shadowed_look1_fogged_pixels=%u look0_black=%u look1_coloured=%u\n",fogged,unsigned(black),unsigned(coloured));
+            require(fogged>0&&black&&coloured,"fully_shadowed_fog_is_black_under_look_0_and_coloured_under_look_1");
+            look2_before=l2;
+        }
+
         // --- Reset in the middle of a fill, then Reset of a complete cache ---
         {
             pass.invalidate_density();for(int i=0;i<6;++i){check(hx.prepare(A.cam),"mid-fill prepare");Sleep(2);}
@@ -376,6 +400,8 @@ void run(const std::string& cases_file){
             check(pass.prepare_targets(scene.w,scene.h),"targets after Reset");require(hx.settle(A.cam)&&hx.atlases_equal_static(scene,"reset_mid_fill"),"reset_mid_fill_recovers_bit_for_bit");
             require(pass.density_status().nodes_generated-nodes_before<=2ull*2097152,"reset_mid_fill_generates_nothing_twice");
             FogResult r;require(hx.execute(A,scene,r)==S_OK&&r.applied&&surface_bytes(d,pass.fixture_st())==image_before,"after_reset_image_byte_identical_to_before");
+            {check(hx.prepare(A.cam),"look prepare after Reset");FogFrame f=make_frame(A,scene,hx.frame,true);f.look=2;FogResult lr;
+             require(hx.execute(A,scene,lr,false,&f)==S_OK&&lr.look==2&&surface_bytes(d,pass.fixture_st())==look2_before,"look_2_after_reset_byte_identical_to_before");}
             const std::uint64_t nodes=pass.density_status().nodes_generated,bytes=pass.density_status().upload_bytes_total;const std::uint64_t frame_before=hx.frame;
             scene.release();pass.before_reset();const HRESULT again=d->Reset(&pp);pass.after_reset(again);check(again,"second Reset");scene.create();check(pass.prepare_targets(scene.w,scene.h),"targets after second Reset");
             check(hx.prepare(A.cam),"prepare after Reset");require(pass.density_status().ready_far==0,"reset_drops_readiness_until_reuploaded");

@@ -15,6 +15,7 @@ struct ComparisonKeys {
     bool hull_gain = false; // F4
     bool sun_shadow = false; // F12
     bool fog_toggle = false, fog_step = false; // F9, F10 raw (with --volumetric-fog): fire on Ctrl+Alt with Shift up, disjoint from Ctrl+Shift+F9/F10
+    bool fog_look = false; // F11 raw (stored fog range): Ctrl+Alt with Shift up, disjoint from the Ctrl+Shift+F11 ambient occlusion toggle
     bool alt = false; // polled with --fps-overlay only
     bool fps_overlay = false; // F7 (with --fps-overlay): fires on Ctrl+Alt with Shift up, disjoint from the Ctrl+Shift+F7 telemetry marker
 };
@@ -23,7 +24,7 @@ struct ComparisonActions {
     bool screen_additive = false, source_gain = false;
     bool hull_gain = false;
     bool sun_shadow = false;
-    bool fog_toggle = false, fog_step = false;
+    bool fog_toggle = false, fog_step = false, fog_look = false;
     bool fps_overlay = false;
 };
 class ComparisonControls {
@@ -53,6 +54,7 @@ public:
         // The volumetric fog chords (Ctrl+Alt+F9 on/off, Ctrl+Alt+F10 strength step) under the same rule on their own raw latches.
         result.fog_toggle = keys.control && keys.alt && !keys.shift && keys.fog_toggle && !fog_toggle_down_;
         result.fog_step = keys.control && keys.alt && !keys.shift && keys.fog_step && !fog_step_down_;
+        result.fog_look = keys.control && keys.alt && !keys.shift && keys.fog_look && !fog_look_down_;
         latch(keys);
         return result;
     }
@@ -62,11 +64,11 @@ private:
     void latch(const ComparisonKeys& keys) noexcept {
         exposure_down_ = keys.exposure; bloom_down_ = keys.bloom; ambient_occlusion_down_ = keys.ambient_occlusion;
         screen_additive_down_ = keys.screen_additive; source_gain_down_ = keys.source_gain; hull_gain_down_ = keys.hull_gain;
-        sun_shadow_down_ = keys.sun_shadow; fps_overlay_down_ = keys.fps_overlay; fog_toggle_down_ = keys.fog_toggle; fog_step_down_ = keys.fog_step;
+        sun_shadow_down_ = keys.sun_shadow; fps_overlay_down_ = keys.fps_overlay; fog_toggle_down_ = keys.fog_toggle; fog_step_down_ = keys.fog_step; fog_look_down_ = keys.fog_look;
         modifiers_down_ = keys.control && keys.shift;
     }
     bool focused_ = false, exposure_down_ = false, bloom_down_ = false, ambient_occlusion_down_ = false, modifiers_down_ = false;
     bool screen_additive_down_ = false, source_gain_down_ = false, hull_gain_down_ = false, sun_shadow_down_ = false;
-    bool fps_overlay_down_ = false, fog_toggle_down_ = false, fog_step_down_ = false;
+    bool fps_overlay_down_ = false, fog_toggle_down_ = false, fog_step_down_ = false, fog_look_down_ = false;
 };
 } // namespace x3m

@@ -114,3 +114,58 @@ confirms it to 4.9e-4 and rejects a half-pixel shift at .0193, so no +0.5/W term
 As built, uploads use `UpdateSurface` rectangles (budget 1,065,024 B and 64 rectangles per
 frame) rather than `AddDirtyRect` + `UpdateTexture`, and retargets trigger at 2 fine / 9 far
 nodes off the window centre.
+
+## Look presets L0-L3 (2026-09-21)
+
+Spec: `fog-visual-direction-review-2026-09-21.md` sections 3-4, plus the later "visible bulbs" feedback
+(rounded value-noise silhouettes where patches fade into void). One build, A/B in flight:
+`--volumetric-fog-look {0,1,2,3}` (`X3M_VOLUMETRIC_FOG_LOOK`, default 0) sets the starting preset,
+**Ctrl+Alt+F11** cycles it, the FPS overlay shows `FOG 1.50x L2`. Atlas format, cache, uploads and the
+composite/repair split are unchanged.
+
+| Preset | Law |
+| --- | --- |
+| L0 | Current law: the three base programs, byte-identical bytecode (march `4dacf7e4...`), rows c0-c24 only. |
+| L1 "shaped" | Density remap `rho' = saturate((rho-c-dc)/(1-c))^p` (c .35, p 2: exact zero below the coverage, zero-slope toe) with sigma x8; coverage moved by `dc = .12 x wave` so an edge is not one iso-surface of the stored noise; fetch-free domain warp of the lookup position (two octaves of a parabolic sine, 5 and 13 whole cycles per 65536 units so it is world anchored under the camera modulo, 1400 + 500 units, each axis driven by the two others); two-lobe phase `.7 HG(.75) + .3 HG(-.15)` per pixel; two-colour ambient `S += albedo x ambient x (1-T)`, ambient = lerp(away, sun-side, .5+.5 cos) with sun-side = family chroma and away = `.3 (chroma + chroma.brg)`, both x `.35 x mean(E/pi)`; albedo `lerp(chroma, 1, .5)`; tinted extinction `T_rgb = T^k`, `k = 1 + .6 (1-chroma)` in composite and repair (no new target); multiple-scatter lift `.5 x 1/4 x sum T (1-exp(-.5 sigma rho ds))` with shaft floor .5; shaft visibility floor .15 on the sun term (softer umbra); every ray, sky or geometry, ends at the 70000-unit column cap with the 3:1 taper shape, so a distant hull and the sky beside it agree. `--volumetric-fog-anisotropy` has no effect. |
+| L2 | L1 + one far-level tap toward the sun at 3000 units standing for 9000 units of path: Beer `exp(-3 tau)` and powder `1 - .5 exp(-2 (3 tau + 3 sigma rho 3000))`. |
+| L3 | L2 + per-pixel per-frame sample offset: interleaved gradient noise on the half-resolution pixel, shifted by `5.588238 x TAA jitter index`, +-half a bin on all 64 bins. Repair pixels keep bin centres. |
+
+Every scalar is `FogLookTuning` (`src/renderer/fog_look_math.h`), overridable once at init by
+`X3M_FOG_LOOK_<NAME>` with NAME one of `COVERAGE`, `EXPONENT`, `SIGMA_SCALE`, `COVERAGE_VARIATION`,
+`WARP_CYCLES_NEAR`, `WARP_NEAR`, `WARP_CYCLES_FAR`, `WARP_FAR`, `FORWARD_G`, `FORWARD_WEIGHT`, `BACK_G`,
+`ALBEDO_WHITE`, `AMBIENT_GAIN`, `EXTINCTION_TINT`, `SCATTER_LIFT`, `LIFT_FLOOR`, `SHADOW_FLOOR`, `SKY_CAP`,
+`SELF_SHADOW`, `POWDER`, `TAP_DISTANCE`, `TAP_LENGTH`, `JITTER_NEAR`, `JITTER_FAR` (floats, ranges in
+`fog_look_fields`), plus `X3M_FOG_LOOK_AMBIENT_SUN` / `_AWAY` = `r,g,b` in 0..4; out-of-range values keep
+the default and the session log prints the resolved set (`volumetric_fog_look_mode`). The launcher
+passes the inherited variables through.
+
+Implementation. `FOG_LOOK` 1 and 2 variants of march and repair plus one composite variant (five programs,
+`src/fog/fog_density_*_look*_ps.hlsl`), created in `FogPass::density_resources` with the base programs and
+released with them; pixel shaders survive Reset. A frame carries `FogFrame::look` and `look_phase`;
+`execute` fills rows c25-c35 with `fog_look_constants`, multiplies c2.w and picks the variant: no creation,
+allocation or lock on the hotkey or draw path, and the D3DSBT_ALL block restores the rows. If the variants
+cannot be created the base path stays and every frame draws L0 (`volumetric_fog_look_refused`, once).
+
+ps_3_0 budget. CrossOver reports `MaxPixelShader30InstructionSlots = 512`, so every variant has to fit the
+base ceiling. Microsoft-table slots / static texture instructions: march L0 415/17, L1 341/13, L2-3 415/15;
+repair L0 510/22, L1 442/18, L2-3 503/20; composite 203/10 and 210/10. The 64-bin march stays one `rep`
+loop in every program. What paid for the look terms: (1) the look programs read **two** shaft cascades (the
+two coarsest current maps, compacted into slots 0-1 by `execute`) with a hard switch at the blend-band start
+and one 2x2 comparison, instead of three with cross-fade (207 slots in L0); (2) `level_sample` interpolates Z
+with a tent over the four lanes of one texel plus lane 0 of the next group: same texels and weights, smaller
+body. Fetches per non-empty sample: L0 4 atlas + up to 12 shaft; L1 4 + 4; L2/L3 6 + 4. More exactly-empty
+samples (45-69 % of the fixture's sky rays end exactly empty) skip the shaft and tap reads entirely. This D3DX compiler emits a
+truncated program without an output write when the second lane fetch is made conditional, so it stays
+unconditional; a second sun-ward tap needs an inner loop that puts repair L2 past 512.
+
+L3 caveats. Repair pixels (depth-class edges with no compatible half sample) march bin centres while their
+neighbours are offset per frame: after the TAA resolve they hold the mean the neighbours converge to, but a
+one-pixel outline can show while history is short (cuts, fast pans). With TAA off the offset phase is held
+at 0, so L3 is a static dither rather than an animated one. A two-cascade cross-fade (.85 to .95 like the base
+law) was compiled and measured at 546 slots for repair L2 against 503 with the hard switch: it does not fit.
+
+Not done, by decision or cost: edge erosion from the fine grid at another scale (a scaled lookup of a
+toroidal *window* is not a periodic field: it shows the window seam and pops as nodes are replaced) and a
+generator-side recipe with warped or gradient-noise octaves (the right fix for sub-400 m structure; needs a
+new recipe id, host twin and fixtures). Cascade cross-fade inside the look programs. Dust motes.
+

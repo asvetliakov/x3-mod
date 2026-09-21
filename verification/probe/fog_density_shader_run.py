@@ -25,10 +25,12 @@ import fog_density_shader_slots as slots
 
 ROOT = Path(__file__).resolve().parents[2]
 PROGRAMS = ('fog-density-march', 'fog-density-composite', 'fog-density-repair', 'fog-density-march-exact')
+LOOK_PROGRAMS = tuple(name.replace('_', '-') for name in slots.LOOK_PROGRAMS)
+NOISE_MARGIN = 2e-3  # L3: pixels whose interleaved-gradient frac() argument is this close to a wrap are not compared
 SOURCES = [ROOT / 'verification/probe/fog_density_shader_fixture.cpp', ROOT / 'src/fog/fog_density_generator.cpp']
 PASS_SOURCES = [ROOT / 'verification/probe/fog_density_pass_fixture.cpp', ROOT / 'src/renderer/fog_pass.cpp', ROOT / 'src/fog/fog_density_cache.cpp',
                 ROOT / 'src/fog/fog_density_generator.cpp', ROOT / 'src/renderer/fog_field_assets.cpp']
-PASS_INPUTS = ['src/renderer/fog_pass.h', 'src/fog/fog_density_cache.h', 'src/fog/fog_density_generator.h', 'src/proxy/cpu_state.h', 'verification/probe/fog_density_cpu_march.h',
+PASS_INPUTS = ['src/renderer/fog_pass.h', 'src/renderer/fog_look_math.h', 'src/fog/fog_density_cache.h', 'src/fog/fog_density_generator.h', 'src/proxy/cpu_state.h', 'verification/probe/fog_density_cpu_march.h',
                'src/renderer/fog_march_program_inc.h', 'src/renderer/fog_composite_program_inc.h', 'src/renderer/quad_vertex_program.h']
 FLAGS = ['-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-ffp-contract=off', '-msse2', '-mfpmath=sse',
          '-mstackrealign', '-mincoming-stack-boundary=2', '-static']
@@ -46,7 +48,7 @@ def digest(path):
 def shaders_current():
     """The provenance record of each fragment must match the sources, includes and header on disk."""
     records = {}
-    for name in PROGRAMS:
+    for name in PROGRAMS + LOOK_PROGRAMS:
         record = json.loads((ROOT / f'verification/results/{name}-program.json').read_text())
         header = slots.PROGRAMS[name.replace('-', '_')]
         if record['source_sha256'] != digest(ROOT / record['source']) or record['header_sha256'] != digest(header):
@@ -66,7 +68,7 @@ def build(out, assets=None):
     command = ['i686-w64-mingw32-g++', *FLAGS, *map(str, SOURCES), '-o', str(exe), '-ld3d9', '-luser32']
     subprocess.run(command, check=True)
     inputs = SOURCES + [ROOT / 'src/fog/fog_density_generator.h', ROOT / 'src/renderer/quad_vertex_program.h',
-                        ROOT / 'src/renderer/quad_vertex_program_inc.h', *slots.PROGRAMS.values()]
+                        ROOT / 'src/renderer/quad_vertex_program_inc.h', ROOT / 'src/renderer/fog_look_math.h', *slots.PROGRAMS.values()]
     data = assets or out / 'fog_field'
     if not assets:
         subprocess.run([sys.executable, str(ROOT / 'tools/build/bake_fog_fields.py'), '--output-dir', str(data)], check=True, stdout=subprocess.DEVNULL)
@@ -208,6 +210,22 @@ def check(out, reference):
     generation = re.search(r'^GENERATION atlases=(\d+) seconds=(\S+) nodes_per_second=(\S+)', text, re.M)
     shaders = shaders_current()
     fixture_checks = re.findall(r'^CHECK (\S+) (PASS|FAIL)', text, re.M)
+    # Look presets: GPU (S,T) of each look case against look_march of the host reference, same display-scaled gates.
+    looks = {}
+    for label in sorted(k[:-2] for k in ref.files if '_look' in k and k.endswith('_S')):
+        pixels = ref[label[0] + '_look_pixels']; keep = np.ones(len(pixels), bool)
+        if label + '_noise_margin' in ref.files:
+            keep = ref[label + '_noise_margin'] > NOISE_MARGIN
+        row = dict(compared=int(keep.sum()), left_out_near_noise_wrap=int((~keep).sum()), fogged=int((ref[label + '_T'][keep] < 1).sum()),
+                   reference_min_T=float(ref[label + '_T'].min()), reference_max_S=float(ref[label + '_S'].max()))
+        for variant in ('bilinear32', 'bilinear16'):
+            gpu = image(out, label, variant)[pixels][keep]
+            row[variant] = dict(T=metric(gpu[:, 3] - ref[label + '_T'][keep]), S=metric(gpu[:, :3] - ref[label + '_S'][keep]))
+        if label.endswith('_shadowed'):
+            gpu = image(out, label, 'bilinear32')[pixels]; fog = gpu[:, 3] < 1
+            row['shadowed_fogged_pixels'] = int(fog.sum()); row['shadowed_min_S'] = float(gpu[fog, :3].min()) if fog.any() else 0.
+        looks[label] = row
+    shadowed_l0 = image(out, 'A_look0_shadowed', 'bilinear32'); l0_fog = shadowed_l0[:, 3] < 1
     b = rows['bilinear32']
     e = rows['exact32']
     p16 = rows['bilinear16']  # the production RGBA16F (S,T) target
@@ -219,6 +237,10 @@ def check(out, reference):
         pass_fixture_passed=pass_passed,
         fixture_passed=execution['returncode'] == 0 and bool(re.search(r'^RESULT PASS', text, re.M)) and all(s == 'PASS' for _, s in fixture_checks),
         slots_below_512=all(s['slots'] < 512 for s in shaders.values()),
+        march_loops_kept=all(shaders[name]['loops'] >= 1 and shaders[name]['texture_instructions'] <= 24 for name in shaders if 'march' in name or 'repair' in name),
+        look_cases=len(looks) >= 9 and all(r['fogged'] > 50 and within(r[v]['T'], 'T') and within(r[v]['S'], 'S') for r in looks.values() for v in ('bilinear32', 'bilinear16')),
+        look0_shadowed_black=bool(l0_fog.sum() > 50 and not shadowed_l0[l0_fog, :3].any()),
+        look1_shadowed_coloured=looks['A_look1_shadowed']['shadowed_fogged_pixels'] > 50 and looks['A_look1_shadowed']['shadowed_min_S'] > 0,
         candidate_T=b['cand_T']['p99'] <= GATE['T_p99'] and b['cand_T']['max'] <= GATE['T_max'],
         parity_T=b['cand_T']['max'] <= GATE['parity_T_max'],
         dense64_T=within(b['dense_T'], 'T'), dense64_S=within(b['dense_S'], 'S'), candidate_S=within(b['cand_S'], 'S'),
@@ -228,7 +250,7 @@ def check(out, reference):
     reported = dict(parity_S_bilinear_max=b['cand_S']['max'], parity_S_texel_exact_max=e['cand_S']['max'])  # not gated
     summary = dict(schema=2, result='PASS' if all(gates.values()) else 'FAIL', gates=gates, reported_not_gated=reported, host_candidate_vs_dense64=host, gate_values=GATE, versus_host=rows,
                    fp16_bilinear_vs_texel_exact=dict(T=filtering, S=filtering_S), temporal_residual_vs_dense64=temporal, production_rgba16f_temporal_residual_vs_dense64=temporal16,
-                   pass_fixture=pass_summary,
+                   pass_fixture=pass_summary, look_presets_versus_host=looks,
                    shaders=shaders, fixture_checks=len(fixture_checks), fixture_timing_not_game_fps=timing, fixture_readback_synchronised_timing_not_game_fps=synced, fixture_march_slope_timing_not_game_fps=slope,
                    repair=dict(zip(('odd_pixels', 'fogged', 'changed'), map(int, repair.groups()[:3])), worst_vs_full_march=float(repair.group(4))) if repair else None,
                    generation=dict(atlases=int(generation.group(1)), seconds=float(generation.group(2)), nodes_per_second=float(generation.group(3))) if generation else None,

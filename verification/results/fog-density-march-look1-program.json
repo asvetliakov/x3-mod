@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "source": "src/fog/fog_density_march_look1_ps.hlsl",
+  "source_sha256": "fbcd22a82bd9a4ca63b75bc0fa607c5add898370892220d77c4595132cf09534",
+  "compiler": "native d3dx9_37.dll D3DXCompileShader",
+  "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+  "entry": "main",
+  "target": "ps_3_0",
+  "flags": 32768,
+  "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
+  "defines": null,
+  "includes": {
+    "src/fog/fog_density_march_ps.hlsl": "a6c27430a3c9f19e3456e7290dd4e96de2e1ce66cbb1ef9f48c2c16954674600",
+    "src/fog/fog_density_field_inc.h": "6915513c7b2fc7df1324ad4afa033d00066e779830f270bdbce72cb947f6b79f"
+  },
+  "word_count": 1500,
+  "bytecode_sha256": "cf30c2d09e37daee908ce30612b59cf1daa18e07e659f2698cd79a56a924356a",
+  "header_sha256": "a8c272fb78bcdf0a11204f620dc3c0820798af439c046dac8d661ddb07285b46",
+  "tool_sources": {
+    "tools/shaders/compile_rigid_motion_pixel.cpp": "d1850b4e53ab5647f9b3986fadd39d12d7545039f48636aa49158d58adcf1003",
+    "tools/shaders/generate_rigid_motion_pixel.py": "d297f0b390b1141f06380b71ca451c37fc971b72d261dcaef7729ff31cb75bbf"
+  },
+  "copyright_scope": "Original authored project shader; no game shader bytes",
+  "creates_d3d_device": false
+}

@@ -924,6 +924,13 @@ public:
     // branch at the owner latch and one at the scene end, nothing else exists. A capability
     // refusal logs one volumetric_fog_cache line and keeps the legacy path.
     void configure_volumetric_fog_range(bool stored) noexcept { fog_density_requested_ = fog_requested_ && stored; }
+    // Stored-density look preset (fog_look_math.h): the starting preset and the tuning read once at init.
+    // Ctrl+Alt+F11 cycles L0..L3: constants and a prebuilt program only. -1: stored range off.
+    void configure_volumetric_fog_look(unsigned look, const renderer::FogLookTuning& tuning) noexcept {
+        fog_look_ = look < renderer::fog_look_count ? look : 0u; fog_density_config_.look = tuning;
+    }
+    int volumetric_fog_look_step() noexcept;
+    int volumetric_fog_look() const noexcept { return fog_density_requested_ ? int(fog_look_) : -1; }
     // DllMain DLL_PROCESS_DETACH only (FogPass::abandon_density_worker): no join, no lock, no log.
     void abandon_volumetric_fog_worker() noexcept { if (fog_) fog_->abandon_density_worker(); }
     // Ctrl+Alt+F9 toggles the pass, Ctrl+Alt+F10 steps the strength through
@@ -935,7 +942,7 @@ public:
     int volumetric_fog_step() noexcept;
     // FPS overlay second line: -1 option off, else (enabled, strength in 1/1000, current active family).
     int volumetric_fog_overlay_state() const noexcept {
-        return !fog_requested_ ? -1 : int(fog_enabled_) | int(fog_sector_.current(frame_) && !fog_cards_.fault) << 1 | int(fog_strength_ * 1000.f + .5f) << 2;
+        return !fog_requested_ ? -1 : int(fog_enabled_) | int(fog_sector_.current(frame_) && !fog_cards_.fault) << 1 | int(fog_strength_ * 1000.f + .5f) << 2 | int(fog_look_) << 12;
     }
     float volumetric_fog_strength() const noexcept { return fog_strength_; }
     // Ctrl+Shift+F11 (comparison-hotkeys.md): flips the per-frame enable of
@@ -2107,6 +2114,7 @@ private:
     const char* fog_card_fault_reason_ = "none";
     // Stored-density range. The camera is the previous scene end's (read after the owner latch).
     bool fog_density_requested_ = false, fog_density_refused_ = false, fog_density_prepared_ = false, fog_density_camera_valid_ = false;
+    unsigned fog_look_ = 0; bool fog_look_refusal_logged_ = false;
     bool fog_density_config_logged_ = false, fog_density_ready_logged_[2]{};
     unsigned fog_density_logs_ = 0;
     std::uint64_t fog_density_sample_frame_ = ~std::uint64_t(0), fog_density_key_ = 0;

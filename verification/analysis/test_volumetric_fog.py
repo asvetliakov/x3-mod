@@ -281,6 +281,21 @@ class FogLauncherTests(unittest.TestCase):
         self.assertIn('fog_env(L"X3M_VOLUMETRIC_FOG_RANGE")==6 && !wcscmp(setting,L"stored")', capture)
         self.assertIn('volumetric_fog_range_stored=volumetric_fog_requested &&', capture)
 
+    def test_look_option(self):
+        stored = ('--volumetric-fog', '0.03', '--volumetric-fog-cards', 'replace', '--volumetric-fog-range', 'stored')
+        status, output, error = self.launch(*self.BASE, *stored)
+        self.assertEqual(status, 0, error)
+        self.assertIn('"X3M_VOLUMETRIC_FOG_LOOK": "0"', output)
+        for look in '0123':
+            status, output, error = self.launch(*self.BASE, *stored, '--volumetric-fog-look', look)
+            self.assertEqual(status, 0, error)
+            self.assertIn('"X3M_VOLUMETRIC_FOG_LOOK": "%s"' % look, output)
+        # An inherited preset never survives; the look needs the stored range; 4 is no preset.
+        status, output, error = self.launch(*self.BASE, *stored, environment={'X3M_VOLUMETRIC_FOG_LOOK': '2'})
+        self.assertIn('"X3M_VOLUMETRIC_FOG_LOOK": "0"', output)
+        self.assertEqual(self.launch(*self.BASE, '--volumetric-fog', '--volumetric-fog-look', '1')[0], 2)
+        self.assertEqual(self.launch(*self.BASE, *stored, '--volumetric-fog-look', '4')[0], 2)
+
     def test_dependencies_and_ranges(self):
         for missing in ('--taa', '--hdr', '--shadow-replay-depth'):
             with self.subTest(missing=missing):
