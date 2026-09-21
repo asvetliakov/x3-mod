@@ -110,6 +110,7 @@ struct MotionRoute {
     MotionGate gate = MotionGate::Feature;
     UnmatchedReason unmatched = UnmatchedReason::None;
     bool routed = false, matched = false, scene = false;
+    bool static_assumed = false; // X3M_TAA_UNMATCHED_STATIC: a new key's previous rows came from the static-world assumption (matched stays false)
     bool composition = false, submit = true, evaluated = false;
     HRESULT submission_error = D3DERR_INVALIDCALL;
     HRESULT preparation_error = S_OK; // First internal failure; never replaces the native draw result.
@@ -623,6 +624,9 @@ public:
     // the cadence of the camera_state line (X3M_CAMERA_LOG frames; capture
     // frames always log). Effective immediately.
     void configure_sentinel(renderer::SentinelMode mode, float cut_degrees, unsigned log_frames) noexcept;
+    // X3M_TAA_UNMATCHED_STATIC (default off): 0 off, 1 "node" (a new key whose
+    // object was drawn last frame under another key), 2 "all" (any new key).
+    void configure_unmatched_static(unsigned mode) noexcept { unmatched_static_ = mode <= 2 ? mode : 0; }
     // RT1/RT2 binding policy (X3M_MOTION_RT_MODE). perdraw (default): each
     // routed draw binds RT1/RT2 and COLORWRITEENABLE1/2 and after_draw puts
     // the application's values back. lazy (experiment): the bindings stay
@@ -1969,6 +1973,16 @@ private:
     chase_camera::SnapCursor chase_snap_cursor_{}; // independent cut observation for this device's history
     std::uintptr_t camera_projection_address_ = 0, camera_view_address_ = 0;
     renderer::SentinelMode sentinel_mode_ = renderer::SentinelMode::Auto;
+    // Static-world previous rows for new keys (temporal-integration.md). The
+    // camera verdict is evaluated once per frame, on the frame's first miss.
+    unsigned unmatched_static_ = 0;
+    std::uint64_t unmatched_static_frame_ = ~std::uint64_t{0};
+    bool unmatched_static_camera_ = false;
+    renderer::CameraState unmatched_static_current_{}, unmatched_static_previous_{}; // the latches the verdict was taken on; the rows use the same pair
+    unsigned unmatched_static_frames_logged_ = 0;
+    std::uint32_t unmatched_static_applied_ = 0, unmatched_static_object_unknown_ = 0, unmatched_static_camera_refused_ = 0, unmatched_static_rows_refused_ = 0;
+    unsigned unmatched_static_logged_ = 0;
+    bool unmatched_static_rows(const MotionRoute& route, const renderer::SubmittedMatrix& rows, renderer::SubmittedMatrix& previous) noexcept;
     float camera_cut_degrees_ = 20.f;
     unsigned camera_log_interval_ = 300;
     // Temporal resolve: requested switch, capability verdict at attach, lazy

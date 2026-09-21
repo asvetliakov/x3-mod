@@ -561,3 +561,55 @@ resampling cost of W 0.97 with the clip off). Of `0.97,0.5`, `0.94,0.5` and
 `0.94,1` the user tentatively prefers **`--taa-thin-region 0.94,1`**, with no
 crawl at rest. They will retest after the depth-aware camera path lands; the
 0.97 default is unchanged until then.
+
+## Static-world previous rows for unmatched draws (2026-09-21)
+
+`--taa-unmatched-static node|all` (default off), design and run209 diagnosis in
+`docs/architecture/temporal-integration.md`, "Unmatched draws: static-world
+previous rows". Worktree of main `184843cd`, uncommitted; fresh CMake build
+(`-DPython3_EXECUTABLE=/usr/bin/python3`), DLL `5f4a1010`, seam DLL `8970a9e9` (after the review follow-up below: see its hashes),
+fixture exe `17355a8a`. Bottle X3, arm64, `FEX_X87REDUCEDPRECISION=1`,
+`WINEMSYNC=1`.
+
+Host: `test_static_previous_rows` **6 OK** (the header against a basis-vector
+oracle: rotation + translation + per-draw depth law, off-centre projection terms,
+run209-scale coordinates 0.05 px bound at 1280x720, identity, three refusals;
+`classify_miss` over absent/present-object/new-object/reused-pointer/poisoned/
+consumed/invalid keys) and `test_taa_image_defaults` **14 OK** (launcher forwards
+only when given, drops an inherited value, requires `--taa`; native default off).
+
+Fixture: new `unmatchedstatic` script of `motion_output_fixture` (world-placed
+bodies under a translating, yawing camera; oracle composed from the script's own
+matrices) through `run_motion_output.py` in consume-only mode, cases
+`seam-taa-unmatched-static-{unset,off,node,all}`, **95 checks each, all pass**,
+lock wait 0 s, 12.6 s for the four. Frame 3 changes body S's key by the LOD word
+alone (same node and serial); frame 6 introduces a new node N.
+
+| case | S at frame 3 | N at frame 6 | motion/depth hashes |
+| --- | --- | --- | --- |
+| unset | sentinel, 0 of 221 px changed by the resolve | sentinel, 0 of 82 | reference |
+| off (`0`) | same | same | identical to unset on all 9 frames, presented frames identical |
+| node | camera-path motion, max 0.00066 px / 1.7e-7 depth, 100 of 221 px changed by the history blend | sentinel, 0 of 82 | differs from off in frame 3 only |
+| all | as node | camera-path motion, max 0.0011 px, 82 of 82 | differs from node in frame 6 only |
+
+In every case the DLL's frame lines keep `matched`/`gate6` as a miss (frame 3:
+routed 2, matched 1, gate6 1) and the resolved image equals the reference resolve
+byte for byte on all 9 frames. Compact records:
+`verification/results/bottle-X3/seam-taa-unmatched-static-*-fixture.json`; copies
+and timings in `/tmp/x3-taa-unmatched-static-v1/`.
+
+Not run: the existing `seam-taa-camera-on` regression case (the Wine lock was held
+by the user's game session afterwards). The option-off path is covered by the
+unset/off twin only. No flight yet; native Windows runtime unverified.
+
+Review follow-up (same day): `classify_miss` mirrors the lookup's collecting and
+overflow guards and uses one search; verdict and rows share one latch snapshot; the
+per-frame line is limited to applied frames (cap 256) and the detail line carries
+the projection check. Limits on record: a camera translation jump without a
+rotation cut is not gated; for static geometry the reprojection stays exact, but
+disocclusion under such a jump is untested and matters mainly for `all`. The
+fixture proves the arithmetic through the DLL at about 0.5-1 px of reprojection per
+frame; run209-scale motion (250 units per frame at 4e4-unit coordinates) rests on
+the host oracle test (0.05 px bound), not on a fixture. Private-projection draws
+are a flight-verification item (architecture note).
+Rerun after the follow-up: the four seam cases pass again, 95 checks each, same numbers; DLL `9aef914e`, seam DLL `e974190c`, fixture exe `544022e5`; the detail lines report `projection_x/y = 1.00000` for both fixture bodies.

@@ -42,6 +42,14 @@ public:
     // recording and poisons the whole frame at commit (fail closed).
     bool lookup_and_record(const RigidDrawKey& key, const SubmittedMatrix& current,
                            SubmittedMatrix& previous) noexcept;
+    // Miss classification for the static-world option (called only after a
+    // failed lookup_and_record; never on the matched path). 0: `key` has an
+    // entry in the previous frame (poisoned, consumed or non-finite: a repeated
+    // miss, not a new key) or there is no valid previous frame; 1: the key is
+    // new and no previous entry carries its object identity (lifetime serials,
+    // draw domain, node); 2: the key is new and its object was drawn last frame
+    // under another key. One binary search, no allocation.
+    unsigned classify_miss(const RigidDrawKey& key) const noexcept;
     // Seals the collecting frame as the new previous table: duplicate keys are
     // poisoned, entries sorted. A failed frame or overflow drops both tables.
     bool commit(bool frame_succeeded) noexcept;

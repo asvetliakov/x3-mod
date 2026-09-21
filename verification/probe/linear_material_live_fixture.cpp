@@ -269,7 +269,7 @@ struct MotionRoute {
  renderer::LinearCompositionPolicy composition_policy=renderer::LinearCompositionPolicy::AdditiveEmission;
  MotionGate gate=MotionGate::Feature;bool routed=false,composition=false,scene=true,submit=true,evaluated=false;HRESULT submission_error=D3DERR_INVALIDCALL,preparation_error=S_OK;std::uint64_t ticks=0;
  bool depth=false,linear_material=false,fade_arm=false,vs_set=false,ps_set=false,write2_set=false,rt2_set=false,write_set=false,rt_set=false;
- bool vs_constants_set=false,ps_constants_set=false,jittered=true,hull_lightmap=false;
+ bool vs_constants_set=false,ps_constants_set=false,jittered=true,hull_lightmap=false,static_assumed=false; // static_assumed: X3M_TAA_UNMATCHED_STATIC (the constants block reads matched || static_assumed)
  DWORD saved_write1=15,saved_write2=15;
  struct Region {RECT rect{};unsigned reason=0;bool bound=false;};
  Region fade_region{};bool fade_region_evaluated=false;unsigned fade_region_permille=0;

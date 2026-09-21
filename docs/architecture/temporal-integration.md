@@ -963,3 +963,100 @@ but it sharpens radiance the sigmoid then compresses unevenly), a separate
 full-screen pass on the 8-bit route (an extra target and copy where the
 copy-back could simply become a draw), and a 3×3 kernel (the cross with the
 min/max clamp already cannot overshoot; the wider support would only cost).
+
+## Unmatched draws: static-world previous rows (2026-09-21)
+
+Default off: `--taa-unmatched-static node|all` (`X3M_TAA_UNMATCHED_STATIC`; requires
+`--taa`; the DLL's native default is off and an inherited value is dropped by the
+launcher).
+
+### The one-frame history loss (run209)
+
+A routed draw finds its previous rows by exact key equality in the previous
+frame's table (`src/renderer/motion_row_history.cpp:8` `fields`, `:67`
+`lookup_and_record`). The key (`RigidDrawKey`, `src/renderer/motion_history.h:21`)
+is the node's lifetime serial, camera serial and load/registry domain, the node and
+camera pointers and handles, the node's `model` (`+0x140`) and `lod` (`+0x14c`)
+words and the mesh part (`src/proxy/object_trace.cpp:195`,
+`motion_output.cpp:3879` `sample_scope`), plus the geometry identity of the draw:
+vertex/index buffer allocation ids, declaration, stream offset and stride, position
+program, topology, first/primitive/vertex ranges (`motion_output.cpp:5306`). On a
+miss (`motion_output.cpp:5332`, gate 6) the draw still routes, uploads zero
+previous rows and mode 0, and the motion fragment writes alpha -1 over its pixels.
+The resolve treats a non-background pixel with alpha -1 as invalid
+(`src/temporal/resolve.hlsl:311`-`324`) and emits the current colour only. One
+frame of current-only output on jittered thin geometry is the visible flash.
+
+The engine's visitor at `0x0047d9c0` selects the geometry/LOD record through node
+`+0x14c` (`docs/reverse-engineering/object-identity.md`; the selection metric
+`s = r*640/D` and its thresholds are in `lod-selection.md`), so a LOD step keeps
+the node and its lifetime serial and changes `lod`, the mesh part, the buffers and
+the draw ranges of every draw group of that node at once: all of them miss for
+exactly one frame and match again from the next (`motion-history-key.md` section 4
+states the same by construction). run209 shows (orchestrator count) 47 such frames after frame 1100,
+43 of them with exactly 22 misses (`gate6=22`) while `draws` and `routed` stay
+constant across the event (for example 466/440 in frames 1107-1125, 425/403 at
+1385); frames where whole nodes leave (`routed` 437 -> 403 over frames 1265-1305)
+have no miss. What run209 cannot confirm: `motion_route` lines exist only inside
+the two capture bursts (4421-4452, 7799-7830) and no event falls inside them, so
+the node, the changed key field (LOD word, mesh part or buffer) and the identity
+of the 22-draw object as the solar-plant panel are not observed. The unchanged
+routed count says the 22 draws were replaced one for one; it does not say by what.
+The option's `motion_unmatched_static` lines (below) record exactly these fields
+on the next flight.
+
+### The option
+
+On the miss path only, the route asks the history table to classify the miss
+(`MotionRowHistory::classify_miss`: one binary search over the sorted previous
+table plus a neighbour test, no allocation; it mirrors the lookup's collecting and
+overflow conditions): the key must be absent from the previous frame (a poisoned
+duplicate, a consumed or a non-finite entry is a repeated miss and keeps the
+sentinel, so the assumption can only apply on the first frame of a key), and in
+`node` mode another entry with the same lifetime serial, camera serial, domain and
+node pointer must exist there (the object was drawn last frame under another
+key). `all` drops that second condition. The camera verdict is evaluated once per
+frame on its first miss, on a snapshot of the two latches that the rows also use
+(retaken if the scene latch is re-read within the frame): TAA on, both scene latches valid, the previous latch
+recorded by the immediately preceding frame's resolve, rotation inside
+`X3M_CAMERA_CUT_DEG`. Then `src/renderer/static_previous_rows.h` rebuilds the
+previous rows from the draw's own rows: view rows from the clip rows and the
+current projection terms, the world placement through the current view, the
+previous view and projection applied to it, and the draw's own depth law
+`z = a w + b` (recovered from its z and w rows because `P[10]`/`P[14]` are
+per-submission scratch) reapplied. Rows whose depth row is not of that form or
+whose view-z row is degenerate are refused. The draw then uploads those rows with
+mode 1, exactly as a matched draw does. Gates, `matched`, `gate6`, the cut
+detector's missing fraction and the cut-displacement samples stay those of a miss.
+Draws the route refuses (gates 1-5) never reach this path, and with the option off
+the only added work is one branch on the miss path; a matched draw adds one boolean OR and no other
+code.
+
+Failure mode: an object that is moving when its key changes gets, for that one
+frame, motion that lacks its own world velocity, an error of one frame of its
+screen velocity, corrected on the next frame when the key matches. `node` limits
+that to objects already on screen (a LOD step of a moving ship); a newly appearing
+object (undocking ship, missile) keeps the sentinel. In `all` a new object also
+reprojects, and where it appears over background the resolve accepts the
+background history behind it and blends it under the neighbourhood clip for one
+frame (fixture frame 6: 153 presented pixels differ from `node`, mean 16 codes); `node` is therefore the
+recommended setting and `all` exists to test the case where the engine re-creates
+the node (a new lifetime serial), which run209 cannot exclude.
+
+Scene-projection assumption (flight-verification item): the inversion assumes the
+draw's rows were built with the scene latch's view and projection. The route has no
+classification of Scene-phase draws with a private projection (cockpit, sub-view),
+so such a draw, if it is routed and its key is new, would get wrong previous rows
+for one frame. The detail line carries `camera_handle`, the origin `w` and
+`projection_x`/`projection_y` (|x row|/(m00 |w row|), |y row|/(m11 |w row|): 1 for a
+uniformly scaled object under the scene projection); a consistent other value in
+the first flight identifies such draws and they then need an explicit exclusion.
+
+Diagnostics with the option on: `motion_unmatched_static_frame` (only frames where
+the assumption applied, at most 256 per session: `applied`, `object_unknown`,
+`camera_refused`, `rows_refused`) and up to 64 `motion_unmatched_static` lines per
+session with the new key's node serial, model, lod, buffers, ranges and the
+projection check above.
+
+Native Windows: arithmetic and a log line only; no API use. Cross-compiled, not run
+natively.

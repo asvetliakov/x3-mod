@@ -816,6 +816,14 @@ LIGHTMAP_FADE_CASES = {'seam-lightmap-far-fade-off': None, 'seam-lightmap-far-fa
 CASES += [case(name, 'lightmapfade', 'ownership' if 'ownership' in name else 'plain', camera=True, hdr=True,
                hdr_env=dict(LIGHTMAP_FADE_ENV, **({} if floor is None else {'X3M_LIGHT_MAP_FAR_FADE': '%g,%g,%g' % (*LIGHTMAP_FADE_P, floor)})))
           for name, floor in LIGHTMAP_FADE_CASES.items()]
+# X3M_TAA_UNMATCHED_STATIC (temporal-integration.md, "Unmatched draws: static-world previous rows"): the
+# "unmatchedstatic" script under the production cut bounds, with the option unset, off, node and all.
+UNMATCHED_STATIC_CASES = {'seam-taa-unmatched-static-unset': None, 'seam-taa-unmatched-static-off': '0',
+                          'seam-taa-unmatched-static-node': 'node', 'seam-taa-unmatched-static-all': 'all'}
+CASES += [case(name, 'unmatchedstatic', jitter=True, taa=True, camera=True,
+               hdr_env=dict({'X3M_MOTION_FRAME_LOG': '1', 'X3M_MOTION_CUT_MEDIAN_PX': '1e30', 'X3M_MOTION_CUT_MISSING': '1'},
+                            **({} if setting is None else {'X3M_TAA_UNMATCHED_STATIC': setting})))
+          for name, setting in UNMATCHED_STATIC_CASES.items()]
 # The overlay script (the hull cutout pair and its fade-band/overlay arm, original shading, TAA) under the
 # light-map gain, without and with the far fade at a near footprint: the arm never binds a gained variant and
 # the routed hull parent gets the full gain, so every FADE_ROUTE line of the twins is identical.
@@ -4931,6 +4939,48 @@ def validate_fade_route(name, script, lazy, text, trace, directory):
                 shifts={f: {k: (list(v) if isinstance(v, tuple) else v) for k, v in row.items()} for f, row in shifts.items()})
 
 
+def validate_unmatched_static(name, setting, text, trace):
+    """The script's own oracle passed (RESULT PASS); here: the per-body expectation follows the option, the
+    sentinel bodies resolve current-only (no changed pixel) while the static ones keep history, and the DLL's
+    counters stay the miss's (matched excludes the static draw, gate6 counts it)."""
+    lines = text.splitlines()
+    assert any(l.startswith('RESULT PASS') for l in lines), (name, 'fixture did not pass')
+    bodies = {(int(f['frame']), f['body']): f for f in (fields(l) for l in lines if l.startswith('UNMATCHED_STATIC '))}
+    hashes = {int(f['frame']): (f['motion'], f['depth']) for f in (fields(l) for l in lines if l.startswith('MOTION_HASH '))}
+    colors = {int(f['frame']): f['hash'] for f in (fields(l) for l in lines if l.startswith('COLOR '))}
+    assert sorted(hashes) == list(range(9)) and sorted(colors) == list(range(9)), (name, sorted(hashes))
+    static = {(3, 'S')} if setting in ('node', 'all') else set()
+    if setting == 'all':
+        static.add((6, 'N'))
+    sentinel = ({(0, 'S'), (0, 'M'), (3, 'S'), (6, 'N')}) - static
+    assert set(bodies) == {(frame, body) for frame in range(9) for body in ('S', 'M', 'N') if body != 'N' or frame >= 6}, (name, sorted(bodies))
+    for key, row in bodies.items():
+        expected = 'static' if key in static else 'sentinel' if key in sentinel else 'matched'
+        assert row['expect'] == expected, (name, key, row)
+        if expected == 'sentinel':
+            assert row['changed'] == '0', (name, key, 'a sentinel body resolves current-only', row)
+        if expected == 'static':
+            assert int(row['changed']) > 0 and float(row['max_uv_pixels']) <= 0.01, (name, key, 'a static body keeps history on the camera path', row)
+    assert bodies[(3, 'S')]['lod'] == '1' and bodies[(2, 'S')]['lod'] == '0', (name, 'the key change is the LOD field alone')
+    tl = trace.splitlines()
+    ordered = [fields(l) for l in tl if l.startswith('motion_output_frame ')]
+    ordered.sort(key=lambda f: int(f['frame']))
+    assert len(ordered) >= 9, (name, len(ordered))
+    base = int(ordered[0]['frame'])
+    for index, (routed, matched, missed) in enumerate([(2, 0, 2), (2, 2, 0), (2, 2, 0), (2, 1, 1), (2, 2, 0), (2, 2, 0), (3, 2, 1), (3, 3, 0), (3, 3, 0)]):
+        f = ordered[index]
+        assert (f['routed'], f['matched'], f['gate6'], f['cut']) == (str(routed), str(matched), str(missed), '0'), (name, index, f['routed'], f['matched'], f['gate6'], f['cut'])
+    applied = {int(f['frame']) - base: f for f in (fields(l) for l in tl if l.startswith('motion_unmatched_static_frame '))}
+    expected_lines = {} if setting in (None, '0') else {3: ('1', '0')} if setting == 'node' else {3: ('1', '0'), 6: ('1', '0')}
+    assert {k: (v['applied'], v['object_unknown']) for k, v in applied.items()} == expected_lines, (name, applied)
+    assert all(v['camera_refused'] == '0' and v['rows_refused'] == '0' for v in applied.values()), (name, applied)
+    detail = [fields(l) for l in tl if l.startswith('motion_unmatched_static ')]
+    assert [(int(d['frame']) - base, d['object_known']) for d in detail] == [(k, '1' if k == 3 else '0') for k, v in sorted(expected_lines.items()) if v[0] == '1'], (name, detail)
+    return dict(checks=int(fields(next(l for l in lines if l.startswith('RESULT PASS')))['checks']), setting=setting, motion_hashes=hashes, color_hashes=colors,
+                bodies={f'{frame}{body}': dict(expect=row['expect'], pixels=int(row['pixels']), changed=int(row['changed']), max_uv_pixels=float(row['max_uv_pixels']),
+                                               max_depth_error=float(row['max_depth_error'])) for (frame, body), row in sorted(bodies.items())})
+
+
 def validate_hook(name, installed, text, trace, directory, hdr=False):
     """Hook script: the patch discipline (refusals, bytes, restore), the trampoline
     contract (one signal per call, before the compositor, registers preserved)
@@ -5089,7 +5139,7 @@ def main(argv=None):
             directory = BUILD / ('motion-output-' + name + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
             directory.mkdir(parents=True)
             shutil.copy(candidate_exe, directory)
-            shutil.copy(candidate_seam if mode in ('seam', 'msaa', 'cutout', 'zonly', 'faderoute', 'lightmapfade', 'shadowreplay', 'shadowretention', 'shadowpool') + HDR_MODES and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
+            shutil.copy(candidate_seam if mode in ('seam', 'msaa', 'cutout', 'zonly', 'faderoute', 'lightmapfade', 'shadowreplay', 'shadowretention', 'shadowpool', 'unmatchedstatic') + HDR_MODES and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
             env = dict(os.environ, X3M_CAMERA='vanilla', X3M_CHASE_SCENE_FIX='0', X3M_CHASE_COMBAT_TIGHTNESS='0', X3M_MOTION_OUTPUT=enabled, X3M_MOTION_JITTER='1' if jitter else '0', X3M_MOTION_JITTER_SAMPLES=str(JITTER_SAMPLES),
                        X3M_TAA='1' if taa else '0', X3M_TAA_DEBUG='1' if taa and not bench else '0',
                        X3M_CAPTURE_START='1000' if bench else str(BURST_CAPTURE[0]) if burst else '1',
@@ -5120,7 +5170,8 @@ def main(argv=None):
                        # Caster retention off unless a case sets it.
                        X3M_SHADOW_RETENTION_CENSUS='0', X3M_SHADOW_CASTER_RETENTION='0', X3M_SHADOW_RETENTION_TIMING='0')
             for inherited in ('X3M_SHADOW_CASCADE_SIZES', 'X3M_SHADOW_CASCADE_CAPS', 'X3M_SHADOW_CASCADE_BUDGET', 'X3M_FIXTURE_SHADOW_CASCADES',
-                              'X3M_SHADOW_CASTER_RETENTION_AGE', 'X3M_SHADOW_CASTER_RETENTION_EPS'):
+                              'X3M_SHADOW_CASTER_RETENTION_AGE', 'X3M_SHADOW_CASTER_RETENTION_EPS',
+                              'X3M_TAA_UNMATCHED_STATIC'):
                 env.pop(inherited, None)
             env.update(VARIANTS[variant])
             env.pop('X3M_SUN_SHADOW_RECEIVER_DEPTH', None)  # the former option: the DLL and the fixtures read no such variable
@@ -5284,6 +5335,27 @@ def main(argv=None):
                     case['near_matches_off'] = True
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} gains={ {k: v["gain"] for k, v in case["steps"].items()} } near_matches_off={case.get("near_matches_off")}', flush=True)
+                continue
+            if mode == 'unmatchedstatic':
+                case = validate_unmatched_static(name, UNMATCHED_STATIC_CASES[name], text, trace)
+                case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
+                shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
+                result['cases'][name] = case
+                # Twins: off is bit-identical to unset on every frame (motion, depth and presented colour); node differs
+                # from off in frame 3 alone, all from node in frame 6 alone (motion; the colour follows from that frame on).
+                twin, frames = {'off': ('seam-taa-unmatched-static-unset', []), 'node': ('seam-taa-unmatched-static-off', [3]),
+                                'all': ('seam-taa-unmatched-static-node', [6])}.get(name.rsplit('-', 1)[1], (None, []))
+                other = result['cases'].get(twin) if twin else None
+                if other:
+                    differing = [k for k in range(9) if case['motion_hashes'][k] != tuple(other['motion_hashes'][k])]
+                    assert differing == frames, (name, twin, differing)
+                    if not frames:
+                        assert case['color_hashes'] == other['color_hashes'], (name, twin, 'presented frames differ with the option off')
+                    case['motion_frames_differing_from_' + twin] = differing
+                (RESULTS / f'{name}-fixture.json').write_text(json.dumps({'case': name, 'bottle': result['bottle'], 'binaries': result['binaries'], **case}, indent=1) + '\n')
+                save()
+                print(f'{name}: exit={completed.returncode} checks={case["checks"]} S3={case["bodies"]["3S"]} N6={case["bodies"]["6N"]}', flush=True)
                 continue
             if mode == 'faderoute':
                 case = validate_fade_route(name, hdr_env['X3M_FIXTURE_FADE_SCRIPT'], lazy, text, trace, directory)

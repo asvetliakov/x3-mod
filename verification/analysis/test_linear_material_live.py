@@ -131,6 +131,7 @@ class LinearMaterialLiveTests(unittest.TestCase):
             end = evaluate.index('    if (SUCCEEDED(hr)) hr = bind_targets(route);', begin)
             constants = ('HRESULT MotionOutput::prepare_constants(MotionRoute& route) noexcept {\n'
                          'HRESULT hr=S_OK; bool matched=true; std::array<float,16> previous{};\n'
+                         'const bool previous_rows = matched || route.static_assumed; // the production local (history match or static-world rows)\n'
                          'const float zeros[16]{}, pixel[8]{}; previous.fill(99.f);\n' +
                          evaluate[begin:end] + 'return hr;\n}\n')
             # The compile-time shadow/blend index tables the setter reads

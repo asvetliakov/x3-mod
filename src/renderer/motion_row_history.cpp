@@ -1,6 +1,7 @@
 #include "motion_row_history.h"
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 #include <tuple>
 
 namespace x3m::renderer {
@@ -76,6 +77,21 @@ bool MotionRowHistory::lookup_and_record(const RigidDrawKey& key, const Submitte
     old->consumed = true;
     previous = old->rows;
     return true;
+}
+
+unsigned MotionRowHistory::classify_miss(const RigidDrawKey& key) const noexcept {
+    // Mirrors lookup_and_record: a lookup that failed because nothing is collecting
+    // or the frame overflowed is not a new key.
+    if (!ready_ || !collecting_ || overflow_ || !previous_valid_ || !key_valid(key)) return 0;
+    auto it = std::lower_bound(previous_.begin(), previous_.end(), key,
+        [](const Entry& entry, const RigidDrawKey& candidate) { return less(entry.key, candidate); });
+    if (it != previous_.end() && equal(it->key, key)) return 0;
+    // The sort order leads with the object identity, so an object's entries are
+    // contiguous around the key's insertion point: a neighbour decides, no second search.
+    const auto prefix = [](const RigidDrawKey& k) { return std::tie(k.object_lifetime, k.camera_lifetime, k.draw_domain, k.node); };
+    const bool after = it != previous_.end() && prefix(it->key) == prefix(key);
+    const bool before = it != previous_.begin() && prefix(std::prev(it)->key) == prefix(key);
+    return after || before ? 2u : 1u;
 }
 
 bool MotionRowHistory::commit(bool frame_succeeded) noexcept {

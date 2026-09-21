@@ -8,6 +8,7 @@
 #include "telemetry.h"
 #include "object_trace.h"
 #include "object_lifetime.h"
+#include "../renderer/static_previous_rows.h"
 #include "engine_memory.h"
 #include "object_capture.h"
 #include "camera_state.h"
@@ -3907,6 +3908,46 @@ bool MotionOutput::sample_scope(MotionRoute& route) noexcept {
     return true;
 }
 
+// Static-world previous rows for a routed draw whose key the previous frame
+// lacked (X3M_TAA_UNMATCHED_STATIC; temporal-integration.md). Reached only
+// from the history miss. The camera verdict (both latches valid, the previous
+// one from the immediately preceding frame's resolve, rotation inside the cut
+// bound) is evaluated once per frame; the key must be new (a poisoned,
+// consumed or non-finite entry is a repeated miss and keeps the sentinel) and,
+// in mode 1, its object must have been drawn last frame under another key.
+bool MotionOutput::unmatched_static_rows(const MotionRoute& route, const renderer::SubmittedMatrix& rows, renderer::SubmittedMatrix& previous) noexcept {
+    // Verdict and rows share one snapshot of the two latches; a scene latch re-read
+    // within the frame (the draw's rows then belong to the new view) retakes both.
+    if (unmatched_static_frame_ != frame_ || std::memcmp(&unmatched_static_current_, &camera_scene_, sizeof camera_scene_) != 0) {
+        unmatched_static_frame_ = frame_;
+        unmatched_static_current_ = camera_scene_; unmatched_static_previous_ = camera_previous_;
+        unmatched_static_camera_ = taa_enabled_ && camera_scene_.valid && camera_previous_.valid && camera_previous_frame_ + 1 == frame_
+            && std::isfinite(camera_cut_degrees_) && camera_cut_degrees_ > 0
+            && renderer::camera_rotation_degrees(unmatched_static_current_, unmatched_static_previous_) <= camera_cut_degrees_;
+    }
+    const unsigned kind = history_.classify_miss(route.key);
+    if (!kind) return false;
+    if (!unmatched_static_camera_) { ++unmatched_static_camera_refused_; return false; }
+    if (kind == 1 && unmatched_static_ != 2) { ++unmatched_static_object_unknown_; return false; }
+    if (!renderer::static_previous_rows(unmatched_static_current_, unmatched_static_previous_, rows.data(), previous.data())) { ++unmatched_static_rows_refused_; return false; }
+    ++unmatched_static_applied_;
+    if (unmatched_static_logged_ < 64) {
+        ++unmatched_static_logged_;
+        const auto& k = route.key;
+        // Flight check of the scene-projection assumption (the route cannot tell a private projection):
+        // |x row| / (m00 |w row|) and |y row| / (m11 |w row|) are 1 for a uniformly scaled object drawn
+        // through the scene latch; a consistent other value marks a draw with its own projection.
+        const float* r = rows.data();
+        const double wn = std::sqrt(double(r[12]) * r[12] + double(r[13]) * r[13] + double(r[14]) * r[14]);
+        const double sx = wn > 0 ? std::sqrt(double(r[0]) * r[0] + double(r[1]) * r[1] + double(r[2]) * r[2]) / (double(unmatched_static_current_.m00) * wn) : 0.;
+        const double sy = wn > 0 ? std::sqrt(double(r[4]) * r[4] + double(r[5]) * r[5] + double(r[6]) * r[6]) / (double(unmatched_static_current_.m11) * wn) : 0.;
+        log("motion_unmatched_static device=%llu frame=%llu index=%lu object_known=%u node_serial=%llu model=%08lx lod=%08lx vb=%llu ib=%llu first=%u primitives=%u vertex_count=%u vs=%016llx camera_handle=%lu projection_x=%.5f projection_y=%.5f w=%.6g",
+            id_, frame_, static_cast<unsigned long>(counters_.draws), kind == 2, k.object_lifetime, static_cast<unsigned long>(k.model), static_cast<unsigned long>(k.lod),
+            k.vertex_buffer, k.index_buffer, k.first, k.primitives, k.vertex_count, k.position_program, static_cast<unsigned long>(k.camera_handle), sx, sy, double(r[15]));
+    }
+    return true;
+}
+
 // ---- per-draw route --------------------------------------------------------
 
 // Scoped shader restoration contract (ownership-shadow-lifetime-diagnosis.md).
@@ -5298,8 +5339,14 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
         return;
     }
     if (!route.overlay && !sample_scope(route)) { route.gate = MotionGate::Scope; ++counters_.gates[5]; route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::Scope); route.unmatched = UnmatchedReason::Scope; }
-    else if (!history_.lookup_and_record(key, rows, previous)) { route.gate = MotionGate::History; ++counters_.gates[6]; ++counters_.keyed; ++counters_.missing; route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::History); route.unmatched = UnmatchedReason::History; }
+    else if (!history_.lookup_and_record(key, rows, previous)) {
+        route.gate = MotionGate::History; ++counters_.gates[6]; ++counters_.keyed; ++counters_.missing; route.sun_refusal = std::uint8_t(renderer::SunUntrackedReason::History); route.unmatched = UnmatchedReason::History;
+        // X3M_TAA_UNMATCHED_STATIC: the miss path only; gates, counters and the
+        // cut detector's missing fraction stay the miss's.
+        if (unmatched_static_) route.static_assumed = unmatched_static_rows(route, rows, previous);
+    }
     else { matched = true; route.gate = MotionGate::None; ++counters_.gates[0]; ++counters_.keyed; }
+    const bool previous_rows = matched || route.static_assumed;
     if (matched) {
         // Cut detector sample: screen displacement of the projected object
         // origin (translation column over w) between the previous and the
@@ -5331,7 +5378,7 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
                                         hull_lightmap_gain_, lightmap_fade_floor_, lightmap_fade_p0_, lightmap_fade_inv_)
         : 0.f;
     const float pixel[8] = {1.f / float(target_width_), 1.f / float(target_height_), 0.f, 0.f,
-                            matched ? 1.f : 0.f, 0.f, 0.f, lightmap_fade_gain_};
+                            previous_rows ? 1.f : 0.f, 0.f, 0.f, lightmap_fade_gain_};
     const std::uint64_t apply_begin = draw_stamp();
     bool material = false;
     if (linear_material_requested_) {
@@ -5361,7 +5408,7 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     if (SUCCEEDED(hr)) {
         route.vs_constants_set = true;
         hr = direct_call<SetConstantsFFn>(SetVertexShaderConstantF,
-            renderer::MaterialMotionAbi::previous_vertex_constant, matched ? previous.data() : zeros, 4);
+            renderer::MaterialMotionAbi::previous_vertex_constant, previous_rows ? previous.data() : zeros, 4);
     }
     if (SUCCEEDED(hr)) {
         route.ps_constants_set = true;
@@ -6374,6 +6421,14 @@ void MotionOutput::log_camera_state() noexcept {
 // frame that never left it (the synthetic fixtures, or a rejected frame).
 void MotionOutput::finish_cut_detector() noexcept {
     cut_finished_ = true;
+    if (unmatched_static_ && (unmatched_static_applied_ | unmatched_static_object_unknown_ | unmatched_static_camera_refused_ | unmatched_static_rows_refused_)) {
+        // Only frames where the assumption applied, capped like the detail line (new keys occur on most flight frames).
+        if (unmatched_static_applied_ && unmatched_static_frames_logged_ < 256 && ++unmatched_static_frames_logged_)
+          log("motion_unmatched_static_frame device=%llu frame=%llu mode=%u applied=%lu object_unknown=%lu camera_refused=%lu rows_refused=%lu",
+            id_, frame_, unmatched_static_, static_cast<unsigned long>(unmatched_static_applied_), static_cast<unsigned long>(unmatched_static_object_unknown_),
+            static_cast<unsigned long>(unmatched_static_camera_refused_), static_cast<unsigned long>(unmatched_static_rows_refused_));
+        unmatched_static_applied_ = unmatched_static_object_unknown_ = unmatched_static_camera_refused_ = unmatched_static_rows_refused_ = 0;
+    }
     auto& c = counters_;
     c.displacement_samples = std::uint32_t(displacements_.size());
     c.cut_median_px = 0.f;

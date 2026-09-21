@@ -1,0 +1,225 @@
+{
+ "case": "seam-taa-unmatched-static-all",
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "binaries": {
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a8d69106a2e5b4a35/verification/probe/build/motion_output_fixture.exe": "544022e571a8953fa614df6e12c99accd274019e23188c74879d28346bc31913",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a8d69106a2e5b4a35/verification/probe/build/motion-output-seam/d3d9.dll": "e974190cddc4f98c87c15316615e5284c17178dc33a9e77bbf2abcbe0a005559",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-a8d69106a2e5b4a35/build/d3d9.dll": "9aef914e23a57ef81d1c951f809d011e649aad4c76dd1fcc06df5ff7bbc71369"
+ },
+ "checks": 95,
+ "setting": "all",
+ "motion_hashes": {
+  "0": [
+   "39e6e57a44fc2325",
+   "560f2a759a90d965"
+  ],
+  "1": [
+   "6ff6d482991b0e4e",
+   "cb41eee05e64bd69"
+  ],
+  "2": [
+   "75313d5f181617c6",
+   "f89d68583ab90d1d"
+  ],
+  "3": [
+   "9236ef4b4d9af656",
+   "a4548f8876a411ba"
+  ],
+  "4": [
+   "a0aadaae596d3d8e",
+   "35dc19c9ebff7ecf"
+  ],
+  "5": [
+   "33c6c8988b1a1bed",
+   "e5a75bc27a7ce34b"
+  ],
+  "6": [
+   "135629ad4d1695a9",
+   "fc9fd479249e3673"
+  ],
+  "7": [
+   "3869c14b9ac7af1d",
+   "6dbf7ae8379ad259"
+  ],
+  "8": [
+   "e258dca567b83345",
+   "c1ad6c00daee4881"
+  ]
+ },
+ "color_hashes": {
+  "0": "cc9129a36f23978f",
+  "1": "26ecb29f63c9b05b",
+  "2": "88a5f52e50321180",
+  "3": "25e4c90105c945f7",
+  "4": "a30cf30f653ceaac",
+  "5": "65fa86258bbd9ac8",
+  "6": "842b15a2b960dd41",
+  "7": "ef172c0734c9c6de",
+  "8": "d24a48355fc219df"
+ },
+ "bodies": {
+  "0M": {
+   "expect": "sentinel",
+   "pixels": 60,
+   "changed": 0,
+   "max_uv_pixels": 0.0,
+   "max_depth_error": 0.0
+  },
+  "0S": {
+   "expect": "sentinel",
+   "pixels": 185,
+   "changed": 0,
+   "max_uv_pixels": 0.0,
+   "max_depth_error": 0.0
+  },
+  "1M": {
+   "expect": "matched",
+   "pixels": 60,
+   "changed": 44,
+   "max_uv_pixels": 0.000773695755,
+   "max_depth_error": 4.20738666e-09
+  },
+  "1S": {
+   "expect": "matched",
+   "pixels": 191,
+   "changed": 96,
+   "max_uv_pixels": 0.00138354112,
+   "max_depth_error": 1.08372081e-08
+  },
+  "2M": {
+   "expect": "matched",
+   "pixels": 65,
+   "changed": 42,
+   "max_uv_pixels": 0.00178662171,
+   "max_depth_error": 9.15106971e-08
+  },
+  "2S": {
+   "expect": "matched",
+   "pixels": 216,
+   "changed": 121,
+   "max_uv_pixels": 0.00173355089,
+   "max_depth_error": 1.94547514e-07
+  },
+  "3M": {
+   "expect": "matched",
+   "pixels": 67,
+   "changed": 49,
+   "max_uv_pixels": 0.00156567846,
+   "max_depth_error": 2.13433172e-07
+  },
+  "3S": {
+   "expect": "static",
+   "pixels": 221,
+   "changed": 100,
+   "max_uv_pixels": 0.000664647885,
+   "max_depth_error": 1.71420271e-07
+  },
+  "4M": {
+   "expect": "matched",
+   "pixels": 64,
+   "changed": 50,
+   "max_uv_pixels": 0.00161040216,
+   "max_depth_error": 3.443932e-07
+  },
+  "4S": {
+   "expect": "matched",
+   "pixels": 251,
+   "changed": 126,
+   "max_uv_pixels": 0.000850629425,
+   "max_depth_error": 2.72631064e-07
+  },
+  "5M": {
+   "expect": "matched",
+   "pixels": 74,
+   "changed": 51,
+   "max_uv_pixels": 0.00114881747,
+   "max_depth_error": 3.01365482e-07
+  },
+  "5S": {
+   "expect": "matched",
+   "pixels": 252,
+   "changed": 102,
+   "max_uv_pixels": 0.000790627242,
+   "max_depth_error": 2.17538747e-07
+  },
+  "6M": {
+   "expect": "matched",
+   "pixels": 90,
+   "changed": 67,
+   "max_uv_pixels": 0.00139371137,
+   "max_depth_error": 3.29063581e-07
+  },
+  "6N": {
+   "expect": "static",
+   "pixels": 82,
+   "changed": 82,
+   "max_uv_pixels": 0.00111576861,
+   "max_depth_error": 4.73852455e-07
+  },
+  "6S": {
+   "expect": "matched",
+   "pixels": 288,
+   "changed": 155,
+   "max_uv_pixels": 0.00110777184,
+   "max_depth_error": 2.67986167e-07
+  },
+  "7M": {
+   "expect": "matched",
+   "pixels": 90,
+   "changed": 66,
+   "max_uv_pixels": 0.00103274413,
+   "max_depth_error": 4.57420844e-07
+  },
+  "7N": {
+   "expect": "matched",
+   "pixels": 85,
+   "changed": 65,
+   "max_uv_pixels": 0.00155656649,
+   "max_depth_error": 5.20688618e-07
+  },
+  "7S": {
+   "expect": "matched",
+   "pixels": 313,
+   "changed": 174,
+   "max_uv_pixels": 0.00117415656,
+   "max_depth_error": 3.85485073e-07
+  },
+  "8M": {
+   "expect": "matched",
+   "pixels": 80,
+   "changed": 55,
+   "max_uv_pixels": 0.00127599104,
+   "max_depth_error": 5.71525559e-07
+  },
+  "8N": {
+   "expect": "matched",
+   "pixels": 91,
+   "changed": 69,
+   "max_uv_pixels": 0.00129881708,
+   "max_depth_error": 5.88986292e-07
+  },
+  "8S": {
+   "expect": "matched",
+   "pixels": 340,
+   "changed": 146,
+   "max_uv_pixels": 0.00148705009,
+   "max_depth_error": 1.18574616e-07
+  }
+ },
+ "exit": 0,
+ "directory": "verification/probe/build/motion-output-seam-taa-unmatched-static-all-20260921-184621-055515",
+ "trace_sha256": "50942288c0eabdf25ba60020e782e762bdbacae2d4e19ac29df8c4381010f058",
+ "dll_sha256": "e974190cddc4f98c87c15316615e5284c17178dc33a9e77bbf2abcbe0a005559",
+ "exe_sha256": "544022e571a8953fa614df6e12c99accd274019e23188c74879d28346bc31913",
+ "motion_frames_differing_from_seam-taa-unmatched-static-node": [
+  6
+ ]
+}

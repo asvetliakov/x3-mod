@@ -212,6 +212,12 @@ int motion_state_shadow = -1;
 // declared (default 20); X3M_CAMERA_LOG is the camera_state line cadence (300).
 x3m::renderer::SentinelMode taa_sentinel_mode = x3m::renderer::SentinelMode::Auto;
 float camera_cut_degrees = 20.f;
+// X3M_TAA_UNMATCHED_STATIC=node|all (default off; requires X3M_TAA=1): a routed
+// draw whose history key is new this frame gets previous rows from the
+// static-world assumption (its current placement through the previous camera)
+// instead of the missing-history sentinel. node: only when the same object was
+// drawn last frame under another key; all: any new key.
+unsigned taa_unmatched_static = 0;
 unsigned camera_log_frames = 300;
 unsigned motion_jitter_samples = 8;
 // The finite huge displacement bound is a practical off switch. A missing
@@ -2365,6 +2371,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_rt_mode(motion_rt_lazy);
     hooked.motion_output.configure_frame_log(motion_frame_log);
     hooked.motion_output.configure_sentinel(taa_sentinel_mode,camera_cut_degrees,camera_log_frames);
+    hooked.motion_output.configure_unmatched_static(taa_unmatched_static);
     // Render-state configuration (hybrid unhook): the reasons that keep the
     // SetRenderState/SetSamplerState hooks installed, then the capability
     // check of the documented reads the unhooked route depends on (the proxy
@@ -3198,6 +3205,11 @@ void initialize_log(HMODULE module) {
         if(!wcscmp(setting,L"1"))taa_sentinel_mode=x3m::renderer::SentinelMode::CurrentOnly;
         else if(!wcscmp(setting,L"2"))taa_sentinel_mode=x3m::renderer::SentinelMode::Camera;
         else taa_sentinel_mode=x3m::renderer::SentinelMode::Auto;
+    }
+    if(GetEnvironmentVariableW(L"X3M_TAA_UNMATCHED_STATIC",setting,32)>0){
+        if(!wcscmp(setting,L"node"))taa_unmatched_static=1;
+        else if(!wcscmp(setting,L"all"))taa_unmatched_static=2;
+        else if(wcscmp(setting,L"0")!=0)log("taa_unmatched_static_setting invalid=1");
     }
     if(GetEnvironmentVariableW(L"X3M_CAMERA_CUT_DEG",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=180)camera_cut_degrees=v;}
     if(GetEnvironmentVariableW(L"X3M_CAMERA_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=1000000)camera_log_frames=unsigned(n);}
