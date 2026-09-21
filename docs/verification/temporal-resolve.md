@@ -554,3 +554,10 @@ fallback site and its ordering after the thin-region and line-filter parses);
 recovery policy changed and no per-draw work was added, so the fixture and
 shader evidence of the section above carries over unchanged. No game launched, no
 Wine run, no new candidate. Native Windows runtime remains unverified.
+
+Note 2026-09-21, user tuning on the installed Run59 DLL (no capture, by eye): with
+the camera gate on, panels and arms blur while the camera moves (the expected
+resampling cost of W 0.97 with the clip off). Of `0.97,0.5`, `0.94,0.5` and
+`0.94,1` the user tentatively prefers **`--taa-thin-region 0.94,1`**, with no
+crawl at rest. They will retest after the depth-aware camera path lands; the
+0.97 default is unchanged until then.
