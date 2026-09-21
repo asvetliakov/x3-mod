@@ -1364,3 +1364,170 @@ precision is unspecified by D3D9), dynamic caches, uploads, origin advance, read
 ramps, Reset, hostile state, shafts with the new march (disabled in this fixture),
 real GPU cost. `LodWeights::far` in `src/fog/fog_density_generator.h` collides with the
 `far` macro of `windef.h`; the fixture includes the header first, the pass will need a rename.
+
+## Stored-density runtime integration, checkpoint 3: cache manager, worker, uploads, ramps, Reset (2026-09-21)
+
+Production: `src/fog/fog_density_cache.{h,cpp}` (D3D-free manager and worker) and the density
+path of `src/renderer/fog_pass.{h,cpp}` (`FogDensityConfig`, `prepare_density`,
+`FogFrame::density`, march → composite → repair in the existing state capture). Both new
+sources are in the `d3d9` target (`-ffp-contract=off`); a scratch production build links
+(`cmake --build … --target d3d9`, not a candidate). The path is unreachable until
+`FogDensityConfig::enabled`: before that no thread, allocation, program or device call exists
+(fixture check `off_no_worker_no_resources_no_device_calls`). Proxy wiring, sector offset,
+launcher option and logging are checkpoint 4. No shader changed: the fragments and their
+510 / 512 repair budget are those of checkpoint 2.
+
+Mechanism, as built:
+
+- **Worker.** One `std::thread`, below-normal priority, parked on a condition variable when
+  idle. It generates 32×32×4-node jobs with `node_word` into a scratch buffer and commits
+  each under a mutex held for one scatter copy. Residency is one node box per level, grown one
+  slab at a time (first fill = need box + 2 nodes, nearest job first, far level before fine;
+  then the six sides out to the 128³ window). A retarget (camera node ≥ 2 fine / 9 far nodes
+  off the window centre, the plan's .25 km / 4 km triggers) intersects the box with the new
+  window before any slot is overwritten, so a recentre generates only the entering slabs.
+- **Render thread never waits.** Every shared access is a try-lock; a miss retries next frame.
+  Steady state is three atomic loads: no lock, no allocation, no device call.
+- **Uploads.** SYSTEMMEM staging (`LockRect` + `D3DLOCK_NO_DIRTY_UPDATE`) → DEFAULT RGBA16F by
+  `UpdateSurface` with explicit rectangles. Budget per `prepare_density`: **1,065,024 B
+  (8 tiles) and 64 rectangles**. Dirty tracking keeps four body rectangles plus the duplicate
+  column and row per tile, so an x slab and a y slab through one tile stay two strips (a
+  2-node diagonal recentre uploads 265–373 KB instead of the whole 4.26 MB level). A box
+  reaches the render side only after every region committed for it was uploaded and confirmed.
+- **Readiness.** 1/90 per frame. Far multiplies sigma and gates drawing (zero device calls at
+  0); fine multiplies `lambda` (far-only interior while fine fills). A level drops to 0 at once
+  when the camera's need box leaves its resident box (cut, sector change, load, Reset), ramps
+  down when only a one-node guard is violated, ramps up otherwise. `execute` re-checks the
+  need box for its own camera, so a stale ramp can never sample non-resident nodes.
+- **Reset / loss.** `before_reset` drops the two DEFAULT atlases only; worker, CPU caches and
+  staging survive, and every committed tile is uploaded again under the normal budget. A failed
+  upload poisons the pass until Reset (`D3DERR_DEVICENOTRESET`, no device calls) and re-queues
+  everything. `detach` joins the worker (never under the loader lock);
+  `abandon_density_worker` is the process-exit form (no join, no lock, leaks).
+- **Refusal.** `MaxPixelShader30InstructionSlots < 512`, program, staging, atlas or worker
+  creation failure refuses the density path once (`density_status().reason`) and leaves the
+  legacy family path untouched.
+- The cache TU contains no x87 instruction (objdump of the i686 object: SSE2 truncate-and-correct
+  floor, ordered compares instead of `fabs`).
+
+Host: `verification/analysis/test_fog_density_cache.py` builds
+`verification/probe/fog_density_cache_host.cpp` natively: 63 checks (exact-cover job plans,
+box growth, first fill = every node once, five +2-node recentres from storage 126 across the
+tile seam and lane 3→0 each generating exactly 128³−126³ = 96,776 nodes and equalling a
+from-scratch `generate_tile` atlas, negative 9-far-node recentre, guard / need violations,
+Reset mid-recentre with an injected upload failure, identity change, 2.6e6-unit cut, NaN
+camera; then the live worker: fill, 40 moving-camera steps, 24 start / invalidate / Reset /
+stop storms, invalidate under load). Native arm64: far resident 305 ms, fine 806 ms,
+3.75 M nodes/s, `step` 12 ns per frame, worst `stop` 1.05 ms.
+
+Wine: `fog_density_shader_run.py build|run|check` now builds and runs two executables in one
+locked run (bottle X3, arm64, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`), output
+`/tmp/x3-fog-density-pass-v1`, summary `PASS`, 12 / 12 gates:
+shader fixture `e814bb18c886aee9451b6a259c791ac6be8844953de14852755852f0aa8a8e78` (38.1 s, 12 checks),
+pass fixture `a91837c390243e33d4130255c7bc2a9a57ab773f5941babd957fcc7c0634b984` (26.9 s,
+48 checks, **1,006 state restorations**, 14 atlas comparisons with 0 differing bytes);
+compact [summary](../../verification/results/fog-density-shader/summary.json) (schema 2).
+
+| Pass fixture check (production `FogPass`, 128×72 unless noted) | Result |
+| --- | --- |
+| Dynamic fill vs from-scratch `generate_tile` atlases, both DEFAULT atlases read back | bit-identical; 4,194,304 nodes generated once |
+| March through the pass vs CPU double march of `node_word` (35 sky rays) | T 4.9e-4, S 1.1e-4 |
+| Recentre +2 nodes on all axes while rendering the old pose | 96,776 nodes, 338,768 B; image byte-identical |
+| 2.6e6-unit camera cut | both ramps 0 in the same frame, zero-device-call frame, refill |
+| Three +2-node recentres from storage 126 (seam, border copies, group 31 lane 3 → group 0 lane 0) | 96,776 nodes each, 265–373 KB each, atlases bit-identical to from-scratch |
+| Seam-crossing rays on both levels vs CPU; control with a broken wrap | 4.8e-4; control .0346 (fine 16 / 7, far 128 / 96 seam / lane samples) |
+| Shafts: fully lit map, fully shadowed map, split map vs CPU PCF twin | bit-identical to no map; S = 0 with identical T; 1.0e-4 |
+| Ramps over 611 drawn frames (382 no-fog frames before) | monotone, ≤ 1/90 per frame; worst per-frame ΔT .00586 ≤ bound .00912 (τmax .488) |
+| Reset mid-fill; Reset of a complete cache | bit-identical atlases and image; 8,520,192 B re-uploaded, 0 nodes regenerated |
+| Injected `D3DERR_DEVICELOST` in `UpdateSurface` | poisoned until Reset without device calls, then bit-identical |
+| 31×17 target (half 16×9): repair vs CPU march through the raster pixel; half-pixel control; composite at the clamped edge | 4.9e-4; control .0193; 4.8e-4; source alpha exact |
+| Hostile state (16 samplers, c0–c31, MRT, streams, scissor, viewport) around every `execute` (scene open and closed), the resource-creating first `prepare_density` and both legacy transactions | 1,006 byte-identical snapshots |
+| Refusal (`MaxPixelShader30InstructionSlots` = 511): legacy Bluewell transaction with and without the refused request | `density_ps30_slots`; no worker; legacy output bit-identical and fogged |
+| `detach` in the middle of a fill | joined in 7.3 ms, 0 references |
+
+Measured budgets (render-thread CPU under this harness; **not game FPS, not GPU cost**):
+time to first fog 589 ms, fine 1,552 ms after the first `prepare_density`, worker
+1.95 M nodes/s under FEX while the fixture renders; first `prepare_density` 3.3 ms (programs,
+four textures, caches, thread); steady `prepare_density` 0.48 µs per frame; upload frames
+(5,955) median 18.7 µs, p95 34.8, p99 67, max 294 µs, 5.9 µs per `UpdateSurface`; per-frame
+maxima reached 1,065,024 B and 64 calls, never exceeded. Memory only after enable: CPU
+2 × 4.06 MiB caches + 2 × 4.06 MiB staging, GPU 8.1 MiB. Frames here are ≈ 2 ms; at 60 FPS
+each 90-frame ramp is 1.5 s.
+
+Checkpoint-2 numeric gates, same run (2,370 rays, p99 / max): bilinear 32F vs candidate T
+7.0e-5 / 1.47e-4, S 1.9e-5 / 5.6e-5; vs dense64 T .001708 / .002342, S .000702 / .001255;
+production RGBA16F vs candidate T 4.94e-4 / 5.52e-4, S 8.1e-5 / 1.45e-4; vs dense64 T
+.001856 / .002694, S .000696 / .001269; temporal .001833 (32F), .001862 (RGBA16F).
+
+Checkpoint-2 carry-overs:
+
+1. **Repair `c0`.** The repair draw now uploads its own `c0` (`density_repair_projection`).
+   Its value equals the march's, and that is the finding: `FogParams::m20/m21` carry the
+   *full-resolution* quad term (+1/W, −1/H), the march re-derives the uv of the full texel it
+   taps, and the repair shades its own texel, so both look through the raster pixel of their
+   depth tap. The review's half-pixel offset exists only under the checkpoint-2 fixture's
+   host-screen convention (ray through the half-pixel centre, `c0.z = −1/W`), not under the
+   pass contract; adding +0.5/W would create the offset. Proven rather than argued: repaired
+   pixels match a CPU march through raster pixel P to 4.9e-4, and the same reference moved
+   half a pixel misses by .0193.
+2. The repair reference is that CPU march (no `c0`, uv or program shared with the GPU path);
+   the old fixture check is kept under the honest name
+   `repair_program_consistent_with_march_program`.
+3. `fog_density_shader_run.py`: S gated at p99 ≤ .002 / max ≤ .003; production RGBA16F and
+   temporal rows (32F and RGBA16F) inside the PASS predicate; bilinear parity S (5.6e-5) and
+   texel-exact parity S (5.2e-7) under `reported_not_gated`; no failing gate beside PASS.
+4. `LodWeights::far` / `fine` → `far_level` / `fine_level`.
+5. Odd sizes: no shader defect found (`(w+1)/2` half targets put the last half sample on the
+   last full pixel); the 31×17 run exercises the `sizes.zw − 1` clamp at half 15 / 8.
+6. Shafts and the explicit seam / lane 3→0 assertion run through the production march (table).
+7. No shader was touched; timing above is CPU only and is not cited as GPU performance.
+
+Not proven: native Windows (documented D3D9 and C++ threads only, never executed there);
+GPU cost and game FPS (the design's 3.0 / 4.0 ms gate stays unverifiable on this backend,
+checkpoint 2); behaviour under the proxy's real locks and DLL unload (checkpoint 4 must call
+`detach` on the device release path and `abandon_density_worker` from process detach);
+worker rate inside the game under FEX with contended cores. Turning the option off after it
+was on parks the worker and keeps its memory until `detach`. This is the first `std::thread`
+in `d3d9.dll` (winpthreads, statically linked; the sampler uses `CreateThread`).
+
+### Checkpoint 3 review fixes (2026-09-21)
+
+Correction to the entry above: its threaded host result was **not reproducible**. The reviewer
+measured `fog_density_cache_host threaded` at 5 FAIL / 7 PASS. Cause, harness only: the
+quiescence test was `ready == 1 && !has_work()`, and `has_work()` is false while the worker is
+generating its next slab, so a partially grown far window was compared with a full static
+atlas. Production readiness does not have the hole: a level's `ready` depends on the need box
+being inside the resident box, which advances only after the slab's commits were handed out
+and confirmed uploaded; the stepped test now proves it (`has_work_false_mid_fill_is_not_idle`,
+`mid_fill_resident_box_is_exactly_the_uploaded_slab`, `committed_but_not_uploaded_is_not_resident`).
+`ready == 1` with an incomplete 128³ window is intended (need box + 2 nodes first).
+
+- `DensityCache::idle()` (worker saw the last posted request and found nothing to generate,
+  everything uploaded and confirmed) replaces `has_work()` as the harness's quiescence test;
+  the harness no longer reads `worker_origin()` against a live worker (atlas origin from the
+  render-owned `gpu_box`, worker state only after `stop()`).
+- Job-distance midpoint no longer adds `lo + hi` in int32; `kCameraLimit` (1e12) is public and
+  a stepped fill at (1e12, −1e12, 5.6e11) equals the static atlases; `nextafter(1e12)` is refused.
+- The byte budget now includes the first rectangle (a budget under one tile is raised to one
+  tile, 133,128 B); a one-tile-budget drain never exceeds 133,128 B per frame.
+- A failed `prepare_density` clears `density_status().available`.
+- `MotionOutput::release_resources` detaches and resets `fog_` with the other passes (it
+  previously relied on `~FogPass`). `DensityCache::stop()` abandons instead of joining if the
+  mutex cannot be taken within 250 ms. `fog_pass.h` states who calls
+  `abandon_density_worker()` (the proxy's `DLL_PROCESS_DETACH` only, checkpoint 4). **Until
+  checkpoint 4 wires it, a dynamic `FreeLibrary` of the DLL with a live device, and process
+  exit through DllMain with a live worker, are unsupported.**
+
+Repeat counts after the fix: `fog_density_cache_host threaded` **50 / 50 PASS**, 0 differing
+bytes in any run; `python3 -m unittest verification.analysis.test_fog_density_cache`
+**10 / 10 OK** (3 tests; the host tool's `all` mode reports 71 checks). Scratch `d3d9` target rebuilds with the
+`motion_output.cpp` change. Production pass behaviour changed, so the Wine run was repeated:
+output `/tmp/x3-fog-density-pass-v2`, summary PASS 12 / 12 gates, shader fixture
+`45d36180f755473725567c1bcd25bb15cd24a662322172957a9c8f9fe127284b` (38.5 s), pass fixture
+`5e13472eda67fa72868e47b6b141f92c6bc6117d82a014993adf6b0cce441d4a` (26.8 s, 51 checks,
+1,157 state restorations, 0 differing atlas bytes; new checks
+`failed_upload_clears_availability`, `device_release_path_leaves_device_refcount_balanced`
+(device references 1 → 1 after a mid-fill detach, join 3.3 ms), `detached_pass_starts_no_worker`).
+Budgets unchanged: first fog 581 ms, 1.95 M nodes/s, upload frames median 18.5 µs / p95 33 /
+max 380 µs, steady 0.48 µs, per-frame maxima 1,065,024 B and 64 calls. The tracked summary is
+the v2 run.

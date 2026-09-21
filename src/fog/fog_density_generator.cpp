@@ -368,8 +368,8 @@ LodWeights lod_weights(double distance) {
     LodWeights w;
     w.lambda = 1.0 - smoothstep(kLodStart, kLodEnd, distance);
     w.taper = 1.0 - smoothstep(kTaperStart, kTaperEnd, distance);
-    w.fine = w.lambda > 0.0;
-    w.far = w.lambda < 1.0;
+    w.fine_level = w.lambda > 0.0;
+    w.far_level = w.lambda < 1.0;
     return w;
 }
 

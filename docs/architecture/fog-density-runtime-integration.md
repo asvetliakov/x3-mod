@@ -105,3 +105,12 @@ old .0005 gate; implementation identity rests on the texel-exact march
    seam-crossing / lane 3→0 assertion.
 7. Treat repair's 510 of 512 slots as the whole budget; fixture timing on this
    backend is not a GPU cost and must not be cited as performance.
+
+**Checkpoint 3 outcome (2026-09-21).** All seven items are closed in the
+[ledger entry](../verification/volumetric-fog.md#stored-density-runtime-integration-checkpoint-3-cache-manager-worker-uploads-ramps-reset-2026-09-21).
+Item 1 closed differently from its wording: under the pass contract (`m20/m21` carry the
+full-resolution quad term) the repair ray already passes through its depth tap, a CPU march
+confirms it to 4.9e-4 and rejects a half-pixel shift at .0193, so no +0.5/W term was added.
+As built, uploads use `UpdateSurface` rectangles (budget 1,065,024 B and 64 rectangles per
+frame) rather than `AddDirtyRect` + `UpdateTexture`, and retargets trigger at 2 fine / 9 far
+nodes off the window centre.

@@ -16,7 +16,7 @@ def main():
     (out/'fog-fields.rc').write_text(text);subprocess.run(['i686-w64-mingw32-windres','-I',str(data),str(out/'fog-fields.rc'),'-O','coff','-o',str(out/'fog-fields.o')],check=True)
     for name in ('fog_pass.h','fog_volume_math.h','fog_pass_math.h'):
         if sha(base/'src/renderer'/name)!=sha(prod/'src/renderer'/name):raise ValueError('reused spatial header differs from production: '+name)
-    sources=[ROOT/'verification/probe/fog_route_bridge.cpp',prod/'src/renderer/fog_pass.cpp',prod/'src/renderer/fog_field_assets.cpp']
+    sources=[ROOT/'verification/probe/fog_route_bridge.cpp',prod/'src/renderer/fog_pass.cpp',prod/'src/fog/fog_density_cache.cpp',prod/'src/fog/fog_density_generator.cpp',prod/'src/renderer/fog_field_assets.cpp']
     flags=['-std=c++17','-O2','-Wall','-Wextra','-Werror','-Wno-misleading-indentation','-msse2','-mfpmath=sse','-mstackrealign','-mincoming-stack-boundary=2','-static','-DX3M_FOG_PASS_FIXTURE']
     command=['i686-w64-mingw32-g++',*flags,'-I'+str(out),'-I'+str(prod/'src/proxy'),'-I'+str(prod/'src/renderer'),'-I'+str(data),'-DX3M_FOG_SPATIAL_BASE="'+str(base/'verification/probe/fog_spatial_fixture.cpp')+'"',*map(str,sources),str(out/'fog-fields.o'),'-o',str(exe),'-luser32','-ldxguid']
     inputs=[*sources,ROOT/'verification/probe/fog_route_owner_inc.h',fragment,base/'verification/probe/fog_spatial_fixture.cpp',base/'verification/probe/fog_spatial_state_inc.h',prod/'src/proxy/fog_sector_policy.h',prod/'src/renderer/fog_pass.h',prod/'src/renderer/fog_field_assets.h',*asset_inputs(data)]

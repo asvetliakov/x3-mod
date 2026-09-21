@@ -540,3 +540,15 @@ The subsequent [actual manual upload fixture](taa-lattice-crawl.md#actual-manual
 passes 421 checks with the app-local native D3DX implementation on X3/FEX,
 including Reset and exact uploaded bytes. Public module selection/hash is test
 provenance only. Native Windows execution and game integration remain open.
+
+## 2026-09-21: stored-density fog cache, worker and slab uploads
+
+The stored-density path of `FogPass` (checkpoint 3, not yet wired into the proxy) uses
+`CreateTexture` (SYSTEMMEM and DEFAULT `A16B16G16R16F`), `LockRect` with
+`D3DLOCK_NO_DIRTY_UPDATE`, `UpdateSurface` with explicit rectangles, `CreatePixelShader`
+and the capabilities `attach` already queries, plus `MaxPixelShader30InstructionSlots >= 512`;
+the worker is a C++ `std::thread` with `SetThreadPriority` and no D3D call. No Wine-private
+export, layout or hash is a prerequisite, and a refusal leaves the legacy path bit-identical.
+Windows x86 cross-compilation and the X3/FEX fixture (48 checks) pass; native Windows
+execution, FP16 bilinear precision there and driver cost of 64 small `UpdateSurface` calls per
+frame remain unverified ([fog ledger](../verification/volumetric-fog.md#stored-density-runtime-integration-checkpoint-3-cache-manager-worker-uploads-ramps-reset-2026-09-21)).

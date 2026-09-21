@@ -119,8 +119,8 @@ std::size_t atlas_offset(const AtlasTexel& texel, std::size_t pitch = kAtlasPitc
 struct LodWeights {
     double lambda; // fine weight 1-smoothstep(20000,30000,s)
     double taper;  // horizon window 1-smoothstep(150000,200000,s)
-    bool fine;     // lambda > 0: fine level sampled
-    bool far;      // lambda < 1: far level sampled
+    bool fine_level; // lambda > 0: fine level sampled
+    bool far_level;  // lambda < 1: far level sampled (not `far`: windef.h defines that as a macro)
 };
 LodWeights lod_weights(double distance);
 

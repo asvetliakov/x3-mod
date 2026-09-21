@@ -67,6 +67,21 @@ class FogDensityShaders(unittest.TestCase):
         self.assertLessEqual(t['p99'], .002); self.assertLessEqual(t['max'], .003)
         for name in NAMES:
             self.assertEqual(s['shaders'][name.replace('_', '-')]['bytecode_sha256'], record(name)['bytecode_sha256'])
+        # Checkpoint 3: display-scaled S gates, production RGBA16F and temporal rows inside the predicate,
+        # no failing gate listed beside PASS, and the production FogPass fixture in the same run.
+        self.assertEqual((s['gate_values']['S_p99'], s['gate_values']['S_max']), (.002, .003))
+        self.assertNotIn('design_section5_S_gates', s)
+        for gate in ('dense64_S', 'candidate_S', 'production_rgba16f_candidate', 'production_rgba16f_dense64', 'production_rgba16f_temporal', 'pass_fixture_passed'):
+            self.assertIs(s['gates'][gate], True, gate)
+        p = s['pass_fixture']
+        self.assertGreaterEqual(p['checks'], 40); self.assertEqual(p['failed'], [])
+        self.assertGreaterEqual(p['state_restorations'], 100)
+        self.assertGreaterEqual(p['atlas_comparisons'], 10); self.assertEqual(p['atlas_differing_bytes'], 0)
+        self.assertLessEqual(p['prepare_cpu']['max_upload_bytes'], 8 * 129 * 129 * 8)
+        self.assertLessEqual(p['prepare_cpu']['max_update_surface_calls'], 64)
+        self.assertEqual(p['fill']['nodes'], 2 * 128 ** 3)
+        self.assertEqual(p['reset_reupload']['regenerated_nodes'], 0)
+        self.assertGreater(p['repair']['half_pixel_shift_control'], 3 * p['repair']['worst_vs_cpu'])
 
 
 if __name__ == '__main__':

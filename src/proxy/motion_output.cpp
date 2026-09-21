@@ -400,6 +400,9 @@ void MotionOutput::release_resources() noexcept {
     if (hdr_) { hdr_->shutdown(); hdr_.reset(); hdr_enabled_ = false; }
     if (taa_) { taa_call([&] { taa_->shutdown(); }); taa_.reset(); }
     if (ao_ || ao_timing_created_) { taa_call([&] { ao_timing_release(); if (ao_) ao_->detach(); }); ao_.reset(); }
+    // Joins the stored-density worker and frees its caches, staging and DEFAULT atlases with the
+    // other passes. This is the device release path, not DllMain (FogPass::abandon_density_worker).
+    if (fog_) { taa_call([&] { fog_->detach(); }); fog_.reset(); fog_frame_ = ~std::uint64_t(0); }
     release_depth_leases(); release_candidate_extents();
     detach_shadow_retention(); // every held reference goes before the device does (flush=teardown)
     if (depth_replay_) { taa_call([&] { depth_replay_->detach(); }); depth_replay_.reset(); }

@@ -119,7 +119,7 @@ int mode_lod() {
     while (std::scanf("%lf", &s) == 1) {
         const LodWeights w = lod_weights(s);
         std::printf("%016llx %016llx %d %d\n", (unsigned long long)double_bits(w.lambda), (unsigned long long)double_bits(w.taper),
-                    w.fine ? 1 : 0, w.far ? 1 : 0);
+                    w.fine_level ? 1 : 0, w.far_level ? 1 : 0);
     }
     return 0;
 }

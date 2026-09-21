@@ -4,8 +4,6 @@
 // texel-exact program, dumps float (S,T) images for the host checker, checks the
 // composite/repair split structurally and times the transaction at 1280x768.
 // Fixture timing is GPU transaction time under this harness, not game FPS.
-// The generator header precedes <windows.h>: windef.h defines `far`/`near` as empty
-// macros, which would erase the LodWeights::far member name.
 #include "../../src/fog/fog_density_generator.h"
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -250,7 +248,10 @@ void run(const std::string& cases_file,const std::string& out){
         for(std::size_t i=0;i<composited.size();i+=4)for(int j=0;j<4;++j){const float expect=half_to_float(colour[j]);untouched&=composited[i+j]==expect&&repaired[i+j]==expect;}
         require(untouched,"empty_cache_composite_and_repair_exact_scene");
         chain(false,composited,repaired);
-        // Full-resolution march of the same pixel centres: sizes doubled, c0 shifted a quarter pixel.
+        // Program consistency only: the march program driven at full resolution with the same ray law
+        // (sizes doubled, c0 shifted a quarter pixel) must equal what repair wrote. This says nothing about
+        // where the ray should go; fog_density_pass_fixture.cpp checks repaired pixels of the production
+        // pass against a CPU march through the raster pixel, with a half-pixel-offset control.
         float full[25][4];std::memcpy(full,k,sizeof full);full[1][0]=float(2*w);full[1][1]=float(2*h);full[1][2]=float(w);full[1][3]=float(h);full[0][2]=k[0][2]-.5f/float(w);full[0][3]=k[0][3]+.5f/float(h);
         check(device->BeginScene(),"begin");fx.state(false);fx.draw(full_surface.p,fx.march.p,full);check(device->EndScene(),"end");const auto st=readback(device.p,full_surface.p);
         unsigned changed=0,fogged=0;bool even_kept=true,odd_composite_scene=true,alpha=true;double worst=0;
@@ -264,7 +265,7 @@ void run(const std::string& cases_file,const std::string& out){
         }
         std::printf("REPAIR odd_pixels=%u fogged=%u changed=%u worst_vs_full_march=%.9g\n",w/2*h,fogged,changed,worst);
         require(even_kept,"repair_leaves_compatible_pixels_bit_identical");require(odd_composite_scene,"composite_keeps_scene_on_zero_weight");
-        require(alpha,"source_alpha_exact");require(fogged>0&&changed<=fogged&&worst<=1e-3,"repair_matches_full_resolution_march");
+        require(alpha,"source_alpha_exact");require(fogged>0&&changed<=fogged&&worst<=1e-3,"repair_program_consistent_with_march_program");
         check(device->SetTexture(0,nullptr),"unbind");check(device->SetTexture(2,nullptr),"unbind");
     }
     // Fixture timing at 1280x768 (half 640x384), first pose, static atlases.

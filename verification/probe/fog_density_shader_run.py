@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
-"""Stored-density fog shader fixture: host build, Wine run, host check.
+"""Stored-density fog fixtures: host build, Wine run, host check.
 
-  build  --output DIR                     i686 MinGW build; refuses stale shader fragments
-  run    --output DIR --reference REFDIR  only under X3M_FIXTURE_BOTTLE=X3 wine_lock.py
+Two executables share one run: the shader numerics fixture (checkpoint 2) and the production
+FogPass fixture (checkpoint 3: cache manager, worker, slab uploads, ramps, Reset, state).
+
+  build  --output DIR [--asset-data DIR]  i686 MinGW builds; refuses stale shader fragments. The pass fixture
+                                          links the legacy family packets; without --asset-data they are baked
+                                          into DIR/fog_field by tools/build/bake_fog_fields.py
+  run    --output DIR --reference REFDIR  only under X3M_FIXTURE_BOTTLE=X3 wine_lock.py (both executables, in turn)
   check  --output DIR --reference REFDIR  GPU readbacks versus tools/analysis/fog_density_shader_reference.py
 """
 import argparse
@@ -21,10 +26,17 @@ import fog_density_shader_slots as slots
 ROOT = Path(__file__).resolve().parents[2]
 PROGRAMS = ('fog-density-march', 'fog-density-composite', 'fog-density-repair', 'fog-density-march-exact')
 SOURCES = [ROOT / 'verification/probe/fog_density_shader_fixture.cpp', ROOT / 'src/fog/fog_density_generator.cpp']
+PASS_SOURCES = [ROOT / 'verification/probe/fog_density_pass_fixture.cpp', ROOT / 'src/renderer/fog_pass.cpp', ROOT / 'src/fog/fog_density_cache.cpp',
+                ROOT / 'src/fog/fog_density_generator.cpp', ROOT / 'src/renderer/fog_field_assets.cpp']
+PASS_INPUTS = ['src/renderer/fog_pass.h', 'src/fog/fog_density_cache.h', 'src/fog/fog_density_generator.h', 'src/proxy/cpu_state.h', 'verification/probe/fog_density_cpu_march.h',
+               'src/renderer/fog_march_program_inc.h', 'src/renderer/fog_composite_program_inc.h', 'src/renderer/quad_vertex_program.h']
 FLAGS = ['-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-ffp-contract=off', '-msse2', '-mfpmath=sse',
          '-mstackrealign', '-mincoming-stack-boundary=2', '-static']
 W, H = 128, 72
-GATE = dict(T_p99=.002, T_max=.003, parity_T_max=.001, parity_S_max=3e-5, S_p99=.0005, S_max=.002, temporal=.003)
+# Display-scaled gates (orchestrator ruling 2026-09-21): in-scatter S is gated like T. Implementation identity
+# rests on the texel-exact march; the bilinear parity-S figure is reported, not gated.
+GATE = dict(T_p99=.002, T_max=.003, parity_T_max=.001, S_p99=.002, S_max=.003, temporal=.003)
+PASS_CHECKS_MINIMUM = 40
 
 
 def digest(path):
@@ -45,7 +57,7 @@ def shaders_current():
     return records
 
 
-def build(out):
+def build(out, assets=None):
     out.mkdir(parents=True, exist_ok=True)
     exe = out / 'fog_density_shader_fixture.exe'
     if exe.exists():
@@ -55,8 +67,22 @@ def build(out):
     subprocess.run(command, check=True)
     inputs = SOURCES + [ROOT / 'src/fog/fog_density_generator.h', ROOT / 'src/renderer/quad_vertex_program.h',
                         ROOT / 'src/renderer/quad_vertex_program_inc.h', *slots.PROGRAMS.values()]
-    record = dict(executable_sha256=digest(exe), command=command, shaders=shaders,
-                  inputs={str(p.relative_to(ROOT)): digest(p) for p in inputs})
+    data = assets or out / 'fog_field'
+    if not assets:
+        subprocess.run([sys.executable, str(ROOT / 'tools/build/bake_fog_fields.py'), '--output-dir', str(data)], check=True, stdout=subprocess.DEVNULL)
+    text = (ROOT / 'cmake/fog_field_assets.rc.in').read_text()
+    for name in ('bluewell', 'foggreenoutlands'):
+        text = text.replace('@X3M_FOG_%s_BIN@' % name.upper(), (data / (name + '.fogbin')).resolve().as_posix())
+    (out / 'fog-fields.rc').write_text(text)
+    subprocess.run(['i686-w64-mingw32-windres', '-I', str(data), str(out / 'fog-fields.rc'), '-O', 'coff', '-o', str(out / 'fog-fields.o')], check=True)
+    pass_exe = out / 'fog_density_pass_fixture.exe'
+    pass_command = ['i686-w64-mingw32-g++', *FLAGS, '-Wno-cast-function-type', '-Wno-misleading-indentation', '-DX3M_FOG_PASS_FIXTURE', '-I' + str(data), *map(str, PASS_SOURCES),
+                    str(out / 'fog-fields.o'), '-o', str(pass_exe), '-ld3d9', '-luser32']
+    subprocess.run(pass_command, check=True)
+    inputs += PASS_SOURCES + [ROOT / p for p in PASS_INPUTS]
+    record = dict(executable_sha256=digest(exe), pass_executable_sha256=digest(pass_exe), command=command, pass_command=pass_command, shaders=shaders,
+                  legacy_packets={name: digest(data / (name + '.fogbin')) for name in ('bluewell', 'foggreenoutlands')},
+                  inputs={str(p.relative_to(ROOT)): digest(p) for p in dict.fromkeys(inputs)})
     (out / 'build.json').write_text(json.dumps(record, indent=2) + '\n')
     return record
 
@@ -77,8 +103,17 @@ def run(out, reference):
     start = time.monotonic()
     done = subprocess.run(command, capture_output=True, timeout=540, env=dict(os.environ, WINEDLLOVERRIDES='d3d9=b'))
     (out / 'stdout.txt').write_bytes(done.stdout); (out / 'stderr.txt').write_bytes(done.stderr)
-    record = dict(command=command, returncode=done.returncode, seconds=time.monotonic() - start, bottle=bottle.describe(),
-                  executable_sha256=built['executable_sha256'], cases_sha256=digest(reference / 'cases.txt'))
+    seconds = time.monotonic() - start
+    pass_exe = out / 'fog_density_pass_fixture.exe'
+    if digest(pass_exe) != built['pass_executable_sha256']:
+        raise ValueError('pass executable changed since build')
+    pass_command = [bottle.WINE, *bottle.wine_args(), str(pass_exe), windows(reference / 'cases.txt')]
+    start = time.monotonic()
+    passed = subprocess.run(pass_command, capture_output=True, timeout=1500, env=dict(os.environ, WINEDLLOVERRIDES='d3d9=b'))
+    (out / 'pass_stdout.txt').write_bytes(passed.stdout); (out / 'pass_stderr.txt').write_bytes(passed.stderr)
+    record = dict(command=command, returncode=done.returncode or passed.returncode, shader_returncode=done.returncode, pass_returncode=passed.returncode,
+                  seconds=seconds, pass_seconds=time.monotonic() - start, pass_command=pass_command, bottle=bottle.describe(),
+                  executable_sha256=built['executable_sha256'], pass_executable_sha256=built['pass_executable_sha256'], cases_sha256=digest(reference / 'cases.txt'))
     (out / 'execution.json').write_text(json.dumps(record, indent=2) + '\n')
     return record
 
@@ -93,6 +128,34 @@ def image(out, case, variant):
     if data.size != W * H * 4 or not np.isfinite(data).all():
         raise ValueError(f'{case}.{variant}: readback extent or non-finite value')
     return data.reshape(H * W, 4)
+
+
+def numbers(line):
+    out = {}
+    for key, value in re.findall(r'(\w+)=(\S+)', line):
+        try:
+            out[key] = float(value) if re.search(r'[.e]', value) else int(value)
+        except ValueError:
+            out[key] = value
+    return out
+
+
+def pass_report(out, execution):
+    """The FogPass fixture's checks and measured budgets (render-thread CPU under the harness, not game FPS)."""
+    text = (out / 'pass_stdout.txt').read_text(errors='replace')
+    fixture_checks = re.findall(r'^CHECK (.+?) (PASS|FAIL)\s*$', text, re.M)  # a few labels contain spaces
+    result = re.search(r'^RESULT PASS checks=(\d+) failures=0 state_restorations=(\d+)', text, re.M)
+    rows = {}
+    for tag in ('FILL', 'PASS_VS_CPU', 'STEADY', 'RECENTRE', 'SEAM', 'SHAFTS', 'RESET_REUPLOAD', 'REPAIR', 'DETACH', 'DEVICE_REFERENCES', 'PREPARE_CPU', 'STATIC_GENERATION', 'REFUSAL'):
+        found = re.search(r'^%s (.*)$' % tag, text, re.M)
+        rows[tag.lower()] = numbers(found.group(1)) if found else None
+    rows['seam_recentres'] = [numbers(m) for m in re.findall(r'^SEAM_RECENTRE (.*)$', text, re.M)]
+    differing = [int(v) for v in re.findall(r'^ATLAS \S+ level=\d differing_bytes=(\d+)', text, re.M)]
+    passed = bool(result) and execution.get('pass_returncode') == 0 and all(s == 'PASS' for _, s in fixture_checks) and len(fixture_checks) >= PASS_CHECKS_MINIMUM \
+        and int(result.group(1)) == len(fixture_checks) and int(result.group(2)) >= 100 and differing and not any(differing) and 'STATE_DIFF' not in text
+    return passed, dict(checks=len(fixture_checks), failed=[n for n, s in fixture_checks if s != 'PASS'], state_restorations=int(result.group(2)) if result else 0,
+                        atlas_comparisons=len(differing), atlas_differing_bytes=sum(differing), executable_sha256=execution.get('pass_executable_sha256'),
+                        seconds=execution.get('pass_seconds'), **rows)
 
 
 def check(out, reference):
@@ -120,7 +183,7 @@ def check(out, reference):
     # Hardware FP16 bilinear versus texel-exact fetches, every pixel of every fogged case.
     filtering = metric(np.concatenate([(image(out, c, 'bilinear32') - image(out, c, 'exact32'))[:, 3] for c in groups]))
     filtering_S = metric(np.concatenate([(image(out, c, 'bilinear32') - image(out, c, 'exact32'))[:, :3].ravel() for c in groups]))
-    temporal = []
+    temporal = {'bilinear32': [], 'bilinear16': []}
     for pose in 'AB':
         names = [f'{pose}_sky' if i == 3 else f'{pose}_shift{i}' for i in range(7)]
         pixels = ref[f'{pose}_witness_pixels']
@@ -128,8 +191,10 @@ def check(out, reference):
             t = ref[f'{name}_dense64_T']
             return t[np.searchsorted(ref[f'{pose}_sky_pixels'], pixels)] if name.endswith('_sky') else t
         for a, b in zip(names, names[1:]):
-            temporal.append((image(out, b, 'bilinear32')[pixels, 3] - image(out, a, 'bilinear32')[pixels, 3]) - (dense(b) - dense(a)))
-    temporal = metric(np.concatenate(temporal))
+            for variant, rows_ in temporal.items():
+                rows_.append((image(out, b, variant)[pixels, 3] - image(out, a, variant)[pixels, 3]) - (dense(b) - dense(a)))
+    temporal16 = metric(np.concatenate(temporal['bilinear16']))
+    temporal = metric(np.concatenate(temporal['bilinear32']))
     synced = {m.group(1): {k: float(v) for k, v in re.findall(r'(\w+_ms)=([0-9.]+)', m.group(0))}
               for m in re.finditer(r'^FIXTURE_SYNC_TIMING (\S+) .*$', text, re.M)}
     slope = {m.group(1): {k: float(v) for k, v in re.findall(r'(\w+_ms)=([0-9.]+)', m.group(0))}
@@ -145,21 +210,25 @@ def check(out, reference):
     fixture_checks = re.findall(r'^CHECK (\S+) (PASS|FAIL)', text, re.M)
     b = rows['bilinear32']
     e = rows['exact32']
-    # Acceptance (brief): the T gates, slots and the fixture's own checks.
+    p16 = rows['bilinear16']  # the production RGBA16F (S,T) target
+    pass_passed, pass_summary = pass_report(out, execution)
+
+    def within(row, channel):
+        return row['p99'] <= GATE[channel + '_p99'] and row['max'] <= GATE[channel + '_max']
     gates = dict(
+        pass_fixture_passed=pass_passed,
         fixture_passed=execution['returncode'] == 0 and bool(re.search(r'^RESULT PASS', text, re.M)) and all(s == 'PASS' for _, s in fixture_checks),
         slots_below_512=all(s['slots'] < 512 for s in shaders.values()),
         candidate_T=b['cand_T']['p99'] <= GATE['T_p99'] and b['cand_T']['max'] <= GATE['T_max'],
         parity_T=b['cand_T']['max'] <= GATE['parity_T_max'],
-        dense64_T=b['dense_T']['p99'] <= GATE['T_p99'] and b['dense_T']['max'] <= GATE['T_max'],
-        temporal=temporal['max'] <= GATE['temporal'])
-    # Design section 5 S gates, reported and not folded into the result: the dense64 S gate is
-    # already exceeded by the host's own frozen candidate (host_candidate_vs_dense64).
-    design_S = dict(parity_S_bilinear=b['cand_S']['max'] <= GATE['parity_S_max'], parity_S_texel_exact=e['cand_S']['max'] <= GATE['parity_S_max'],
-                    dense64_S=b['dense_S']['p99'] <= GATE['S_p99'] and b['dense_S']['max'] <= GATE['S_max'],
-                    host_candidate_dense64_S=host['S']['p99'] <= GATE['S_p99'] and host['S']['max'] <= GATE['S_max'])
-    summary = dict(schema=1, result='PASS' if all(gates.values()) else 'FAIL', gates=gates, design_section5_S_gates=design_S, host_candidate_vs_dense64=host, gate_values=GATE, versus_host=rows,
-                   fp16_bilinear_vs_texel_exact=dict(T=filtering, S=filtering_S), temporal_residual_vs_dense64=temporal,
+        dense64_T=within(b['dense_T'], 'T'), dense64_S=within(b['dense_S'], 'S'), candidate_S=within(b['cand_S'], 'S'),
+        production_rgba16f_candidate=within(p16['cand_T'], 'T') and within(p16['cand_S'], 'S'),
+        production_rgba16f_dense64=within(p16['dense_T'], 'T') and within(p16['dense_S'], 'S'),
+        temporal=temporal['max'] <= GATE['temporal'], production_rgba16f_temporal=temporal16['max'] <= GATE['temporal'])
+    reported = dict(parity_S_bilinear_max=b['cand_S']['max'], parity_S_texel_exact_max=e['cand_S']['max'])  # not gated
+    summary = dict(schema=2, result='PASS' if all(gates.values()) else 'FAIL', gates=gates, reported_not_gated=reported, host_candidate_vs_dense64=host, gate_values=GATE, versus_host=rows,
+                   fp16_bilinear_vs_texel_exact=dict(T=filtering, S=filtering_S), temporal_residual_vs_dense64=temporal, production_rgba16f_temporal_residual_vs_dense64=temporal16,
+                   pass_fixture=pass_summary,
                    shaders=shaders, fixture_checks=len(fixture_checks), fixture_timing_not_game_fps=timing, fixture_readback_synchronised_timing_not_game_fps=synced, fixture_march_slope_timing_not_game_fps=slope,
                    repair=dict(zip(('odd_pixels', 'fogged', 'changed'), map(int, repair.groups()[:3])), worst_vs_full_march=float(repair.group(4))) if repair else None,
                    generation=dict(atlases=int(generation.group(1)), seconds=float(generation.group(2)), nodes_per_second=float(generation.group(3))) if generation else None,
@@ -172,11 +241,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('step', choices=('build', 'run', 'check'))
     parser.add_argument('--output', type=Path, required=True); parser.add_argument('--reference', type=Path)
+    parser.add_argument('--asset-data', type=Path, help='baked legacy fog packets (CMake generated/fog_field); baked on demand when absent')
     a = parser.parse_args()
     if a.step != 'build' and not a.reference:
         parser.error('--reference is required')
-    result = build(a.output) if a.step == 'build' else run(a.output, a.reference) if a.step == 'run' else check(a.output, a.reference)
-    print(json.dumps({k: result[k] for k in ('executable_sha256', 'returncode', 'seconds', 'result', 'gates') if k in result}))
+    result = build(a.output, a.asset_data) if a.step == 'build' else run(a.output, a.reference) if a.step == 'run' else check(a.output, a.reference)
+    print(json.dumps({k: result[k] for k in ('executable_sha256', 'pass_executable_sha256', 'returncode', 'seconds', 'pass_seconds', 'result', 'gates') if k in result}))
     return 0 if result.get('returncode', 0) == 0 and result.get('result', 'PASS') == 'PASS' else 1
 
 

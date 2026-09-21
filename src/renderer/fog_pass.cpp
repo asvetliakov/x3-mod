@@ -1,4 +1,5 @@
 #include "fog_pass.h"
+#include "../fog/fog_density_cache.h"
 #include "ambient_occlusion_caps.h"
 #include "quad_vertex_program.h"
 #include "../proxy/cpu_state.h"
@@ -6,6 +7,7 @@
 #include <cmath>
 #include <cstring>
 #include <iterator>
+#include <new>
 #include <utility>
 namespace x3m::renderer {
 namespace {
@@ -13,7 +15,7 @@ template<class T> void drop(T*& value) noexcept { if (value) { value->Release();
 bool lost(HRESULT hr) noexcept { return hr == D3DERR_DEVICELOST || hr == D3DERR_DEVICENOTRESET; }
 // IDirect3DDevice9 vtable slots (verification/probe/abi_check.cpp), as in AmbientOcclusionPass.
 enum Slot : unsigned {
-    GetDirect3D = 6, GetCreationParameters = 9, CreateTexture = 23, UpdateTexture = 31, StretchRect = 34, SetRenderTarget = 37, GetRenderTarget = 38,
+    GetDirect3D = 6, GetCreationParameters = 9, CreateTexture = 23, UpdateSurface = 30, UpdateTexture = 31, StretchRect = 34, SetRenderTarget = 37, GetRenderTarget = 38,
     SetDepthStencilSurface = 39, GetDepthStencilSurface = 40, BeginScene = 41, EndScene = 42,
     SetViewport = 47, GetViewport = 48, SetRenderState = 57, CreateStateBlock = 59, SetTexture = 65,
     SetTextureStageState = 67, SetSamplerState = 69, SetScissorRect = 75, GetScissorRect = 76, DrawPrimitiveUP = 83,
@@ -24,6 +26,7 @@ using D = IDirect3DDevice9*;
 using GetD3DFn = HRESULT(WINAPI*)(D, IDirect3D9**);
 using GetCreationFn = HRESULT(WINAPI*)(D, D3DDEVICE_CREATION_PARAMETERS*);
 using CreateTextureFn = HRESULT(WINAPI*)(D, UINT, UINT, UINT, DWORD, D3DFORMAT, D3DPOOL, IDirect3DTexture9**, HANDLE*);
+using UpdateSurfaceFn = HRESULT(WINAPI*)(D, IDirect3DSurface9*, const RECT*, IDirect3DSurface9*, const POINT*);
 using UpdateTextureFn = HRESULT(WINAPI*)(D, IDirect3DBaseTexture9*, IDirect3DBaseTexture9*);
 using StretchRectFn = HRESULT(WINAPI*)(D, IDirect3DSurface9*, const RECT*, IDirect3DSurface9*, const RECT*, D3DTEXTUREFILTERTYPE);
 using SetRtFn = HRESULT(WINAPI*)(D, DWORD, IDirect3DSurface9*);
@@ -60,6 +63,27 @@ constexpr DWORD march_words[] = {
 constexpr DWORD composite_words[] = {
 #include "fog_composite_program_inc.h"
 };
+// Stored-density programs (src/fog/fog_density_*_ps.hlsl). Repair is 510 of 512 ps_3_0 slots
+// on the Microsoft table: nothing may be added to it (fog_density_shader_slots.py).
+constexpr DWORD density_march_words[] = {
+#include "fog_density_march_program_inc.h"
+};
+constexpr DWORD density_composite_words[] = {
+#include "fog_density_composite_program_inc.h"
+};
+constexpr DWORD density_repair_words[] = {
+#include "fog_density_repair_program_inc.h"
+};
+constexpr unsigned density_required_slots=512;
+// c0.zw of the full-resolution repair draw. FogParams::m20/m21 carry the raster offset plus
+// the full-resolution quad pixel-centre term (+1/W, -1/H): a program that forms
+// ndc = 2 uv - 1 from the centre uv of full texel P then looks through raster pixel P, the
+// point RT2 texel P was rasterised at. The repair draw shades texel P at uv (P+.5)/W, and the
+// half-resolution march re-derives uv (2p+.5)/W of the texel it taps, so both draws take this
+// same full-resolution term; a half-resolution quad term (+1/hw) would put the repair ray
+// half a pixel beside its depth tap. The fixture checks repaired pixels against a CPU march
+// through raster pixel P (fog_density_pass_fixture.cpp, repair_matches_cpu_reference).
+inline void density_repair_projection(const FogParams& p,float c0[4]) noexcept { c0[0]=p.m00;c0[1]=p.m11;c0[2]=p.m20;c0[3]=p.m21; }
 template<class Resource> HRESULT same_device(IDirect3DDevice9* device,Resource* resource) noexcept {
     IDirect3DDevice9* owner=nullptr; HRESULT hr=resource->GetDevice(&owner);
     const bool same=owner==device; drop(owner);
@@ -129,16 +153,32 @@ void FogPass::release_targets() noexcept {
     drop(lit_surface_);drop(scratch_surface_);drop(lit_);drop(scratch_);drop(block_);
     width_=height_=half_width_=half_height_=0;
 }
+void FogPass::release_density_default() noexcept {
+    for(unsigned i=0;i<2;++i){drop(density_atlas_surface_[i]);drop(density_atlas_[i]);}
+    if(density_)density_->gpu_reset();
+    density_status_.ready_fine=density_status_.ready_far=0;
+}
+void FogPass::abandon_density_worker() noexcept { if(density_){density_->abandon();density_=nullptr;} }
+void FogPass::invalidate_density() noexcept { PreserveCpuState guard;if(density_)density_->invalidate();density_status_.ready_fine=density_status_.ready_far=0; }
 void FogPass::detach() noexcept {
-    PreserveCpuState guard;release_targets();drop(atlas_);drop(march_);drop(composite_);drop(quad_vs_);drop(quad_declaration_);
+    PreserveCpuState guard;release_targets();drop(atlas_);
+    release_density_default();
+    for(unsigned i=0;i<2;++i){drop(density_staging_surface_[i]);drop(density_staging_[i]);}
+    drop(density_march_);drop(density_composite_);drop(density_repair_);
+    delete density_;density_=nullptr; // joins the worker
+    density_config_={};density_status_={};density_refused_=false;ps30_slots_=0;drop(march_);drop(composite_);drop(quad_vs_);drop(quad_declaration_);
     device_=nullptr;vtable_=nullptr;caps_={};reset_pending_=false;disarm_field();cached_profile_=fog_field::Profile::None;
     field_recipe_=0;base_sigma_=0;std::vector<std::uint16_t>().swap(atlas_bytes_);
     render_targets_=streams_=max_width_=max_height_=0;
 }
-void FogPass::before_reset() noexcept {PreserveCpuState guard;release_targets();drop(atlas_);disarm_field();reset_pending_=device_!=nullptr;}
+// Reset keeps the worker, both CPU caches and the SYSTEMMEM staging textures; only the DEFAULT
+// atlases go, and the cache re-uploads every committed tile under the normal budget afterwards.
+void FogPass::before_reset() noexcept {PreserveCpuState guard;release_targets();drop(atlas_);release_density_default();disarm_field();reset_pending_=device_!=nullptr;}
 void FogPass::after_reset(HRESULT hr) noexcept {PreserveCpuState guard;if(SUCCEEDED(hr))reset_pending_=false;}
 unsigned FogPass::references() const noexcept {
     unsigned n=0;
+    for(unsigned i=0;i<2;++i)n+=(density_staging_[i]!=nullptr)+(density_atlas_[i]!=nullptr)+(density_staging_surface_[i]!=nullptr)+(density_atlas_surface_[i]!=nullptr);
+    n+=(density_march_!=nullptr)+(density_composite_!=nullptr)+(density_repair_!=nullptr);
     for(const void* p:{static_cast<void*>(atlas_),static_cast<void*>(lit_),static_cast<void*>(scratch_),static_cast<void*>(lit_surface_),static_cast<void*>(scratch_surface_),static_cast<void*>(march_),static_cast<void*>(composite_),static_cast<void*>(quad_vs_),static_cast<void*>(quad_declaration_),static_cast<void*>(block_)})n+=p!=nullptr;
     return n;
 }
@@ -170,6 +210,7 @@ HRESULT FogPass::attach(D d,void* const* native,const D3DCAPS9& caps,D3DFORMAT f
         }
     }
     drop(api);caps_.formats=hr;if(FAILED(hr))return refuse(reason,hr);
+    ps30_slots_=caps.MaxPixelShader30InstructionSlots;
     render_targets_=caps.NumSimultaneousRTs;streams_=caps.MaxStreams;max_width_=caps.MaxTextureWidth;max_height_=caps.MaxTextureHeight;
     hr=call<CreateVsFn>(CreateVertexShader)(d,reinterpret_cast<const DWORD*>(quad_vertex_program()),&quad_vs_);
     if(SUCCEEDED(hr))hr=call<CreateDeclarationFn>(CreateVertexDeclaration)(d,quad_declaration,&quad_declaration_);
@@ -211,6 +252,88 @@ HRESULT FogPass::prepare_field(void* module,fog_field::Profile profile) noexcept
     }
     active_profile_=profile;++field_generation_;return S_OK;
 }
+HRESULT FogPass::density_resources() noexcept {
+    auto refuse=[&](const char* reason,HRESULT hr){density_refused_=true;density_status_.available=false;density_status_.reason=reason;return hr;};
+    if(!density_march_){
+        // attach already proved ps_3_0, unrestricted NPOT >= 1560x1430, FP16 linear filtering and FP16 targets.
+        if(ps30_slots_<density_required_slots)return refuse("density_ps30_slots",D3DERR_NOTAVAILABLE);
+        for(auto p:{std::pair{density_march_words,std::size(density_march_words)},std::pair{density_composite_words,std::size(density_composite_words)},std::pair{density_repair_words,std::size(density_repair_words)}})
+            if(!ambient_occlusion_program_slots(reinterpret_cast<const std::uint32_t*>(p.first),p.second))return refuse("density_compiled_slots",D3DERR_NOTAVAILABLE);
+        HRESULT hr=call<CreatePsFn>(CreatePixelShader)(device_,density_march_words,&density_march_);
+        if(SUCCEEDED(hr))hr=call<CreatePsFn>(CreatePixelShader)(device_,density_composite_words,&density_composite_);
+        if(SUCCEEDED(hr))hr=call<CreatePsFn>(CreatePixelShader)(device_,density_repair_words,&density_repair_);
+        if(FAILED(hr)){drop(density_march_);drop(density_composite_);drop(density_repair_);if(lost(hr)){reset_pending_=true;return hr;}return refuse("density_program_create",hr);}
+    }
+    if(!density_){
+        density_=new(std::nothrow) fog::DensityCache;
+        if(!density_||!density_->start()){delete density_;density_=nullptr;return refuse("density_worker",E_OUTOFMEMORY);}
+    }
+    for(unsigned i=0;i<2;++i){
+        if(!density_staging_[i]){
+            HRESULT hr=call<CreateTextureFn>(CreateTexture)(device_,fog::kAtlasWidth,fog::kAtlasHeight,1,0,D3DFMT_A16B16G16R16F,D3DPOOL_SYSTEMMEM,&density_staging_[i],nullptr);
+            if(SUCCEEDED(hr))hr=density_staging_[i]->GetSurfaceLevel(0,&density_staging_surface_[i]);
+            if(FAILED(hr)){drop(density_staging_surface_[i]);drop(density_staging_[i]);if(lost(hr)){reset_pending_=true;return hr;}return refuse("density_staging",hr);}
+            ++allocations_;
+        }
+        if(!density_atlas_[i]){
+            HRESULT hr=call<CreateTextureFn>(CreateTexture)(device_,fog::kAtlasWidth,fog::kAtlasHeight,1,0,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&density_atlas_[i],nullptr);
+            if(SUCCEEDED(hr))hr=density_atlas_[i]->GetSurfaceLevel(0,&density_atlas_surface_[i]);
+            if(FAILED(hr)){drop(density_atlas_surface_[i]);drop(density_atlas_[i]);if(lost(hr)){reset_pending_=true;return hr;}return refuse("density_atlas",hr);}
+            // A new DEFAULT atlas holds nothing: every committed tile is uploaded again.
+            density_->gpu_reset();++allocations_;
+        }
+    }
+    return S_OK;
+}
+HRESULT FogPass::density_uploads(unsigned budget) noexcept {
+    density_status_.upload_bytes=density_status_.upload_rects=0;
+    if(!density_->has_work())return S_OK; // steady state: three atomic loads, no lock, no device call
+    fog::StagingView views[fog::kLevelCount]{};HRESULT hr=S_OK;
+    for(int i=0;i<fog::kLevelCount&&SUCCEEDED(hr);++i){
+        if(!density_->level_dirty(i))continue;
+        // UpdateSurface takes an explicit source rectangle, so the texture's dirty region is not used.
+        D3DLOCKED_RECT lock{};hr=density_staging_[i]->LockRect(0,&lock,nullptr,D3DLOCK_NO_DIRTY_UPDATE);
+        if(SUCCEEDED(hr)&&(!lock.pBits||lock.Pitch<INT(fog::kAtlasPitch))){density_staging_[i]->UnlockRect(0);hr=E_FAIL;}
+        if(SUCCEEDED(hr))views[i]={static_cast<std::uint8_t*>(lock.pBits),std::size_t(lock.Pitch)};
+    }
+    fog::TileRect rects[fog::kDefaultUploadRects];unsigned count=0; // bounds the UpdateSurface calls of one frame
+    if(SUCCEEDED(hr))count=density_->take_uploads(views,budget,rects,unsigned(std::size(rects)));
+    for(int i=0;i<fog::kLevelCount;++i)if(views[i].bits){const HRESULT unlock=density_staging_[i]->UnlockRect(0);if(SUCCEEDED(hr))hr=unlock;}
+    for(unsigned i=0;i<count&&SUCCEEDED(hr);++i){
+        const fog::TileRect& t=rects[i];const RECT source{t.x,t.y,t.x+t.width,t.y+t.height};const POINT at{t.x,t.y};
+        hr=call<UpdateSurfaceFn>(UpdateSurface)(device_,density_staging_surface_[t.level],&source,density_atlas_surface_[t.level],&at);
+        if(SUCCEEDED(hr)){density_status_.upload_bytes+=unsigned(t.bytes());++density_status_.upload_rects;}
+    }
+    // A failure re-queues every committed tile; nothing handed out above counts as resident.
+    density_->confirm_uploads(SUCCEEDED(hr));
+    density_status_.upload_bytes_total+=density_status_.upload_bytes;density_status_.upload_rects_total+=density_status_.upload_rects;
+    return hr;
+}
+HRESULT FogPass::prepare_density(const FogDensityConfig& config,const double camera[3],std::uint64_t frame) noexcept {
+    if(!config.enabled){ // off: no CPU-state capture, no allocation, no device call
+        if(density_status_.available||density_status_.ready_far!=0){density_status_.available=false;density_status_.reason="off";density_status_.ready_fine=density_status_.ready_far=0;}
+        return S_FALSE;
+    }
+    PreserveCpuState guard;
+    // Every failure below leaves the path unavailable for this frame: execute refuses a density frame.
+    density_status_.available=false;density_status_.ready_fine=density_status_.ready_far=0;
+    if(!device_||!caps_.enabled||!camera)return E_INVALIDARG;
+    if(density_refused_)return D3DERR_NOTAVAILABLE;
+    if(reset_pending_)return D3DERR_DEVICENOTRESET;
+    for(unsigned i=0;i<3;++i)if(!std::isfinite(camera[i])||!std::isfinite(config.world_offset[i])||!std::isfinite(config.chroma[i])||config.chroma[i]<0||config.chroma[i]>16.f)return E_INVALIDARG;
+    if(!std::isfinite(config.sigma)||config.sigma<=0||config.sigma>1.f)return E_INVALIDARG;
+    HRESULT hr=density_resources();if(FAILED(hr))return hr;
+    density_config_=config;
+    fog::CacheIdentity identity;identity.sector_key=config.sector_key;identity.recipe=config.recipe;identity.offset={config.world_offset[0],config.world_offset[1],config.world_offset[2]};
+    density_->configure(identity);
+    const fog::FrameState state=density_->step(camera,frame);
+    hr=density_uploads(config.upload_budget_bytes?config.upload_budget_bytes:unsigned(fog::kDefaultUploadBudget));
+    if(FAILED(hr)){if(lost(hr))reset_pending_=true;return hr;}
+    density_status_.available=true;density_status_.reason="";density_status_.ready_fine=state.ready[0];density_status_.ready_far=state.ready[1];
+    const fog::CacheStats stats=density_->stats();
+    density_status_.nodes_generated=stats.nodes_generated;density_status_.worker_busy_us=stats.worker_busy_us;density_status_.missed_locks=stats.missed_locks;
+    return S_OK;
+}
 HRESULT FogPass::prepare_targets(UINT w,UINT h) noexcept {
     PreserveCpuState guard;
     if(!device_||!caps_.enabled)return E_INVALIDARG;
@@ -229,7 +352,7 @@ HRESULT FogPass::prepare_targets(UINT w,UINT h) noexcept {
     if(FAILED(hr)){release_targets();if(lost(hr))reset_pending_=true;return hr;}
     width_=w;height_=h;half_width_=(w+1)/2;half_height_=(h+1)/2;++allocations_;return S_OK;
 }
-HRESULT FogPass::normalize() noexcept{
+HRESULT FogPass::normalize(bool density) noexcept{
 #define STEP(expr) do{HRESULT hr=(expr);if(FAILED(hr))return hr;}while(false)
     for(UINT i=0;i<16;++i)STEP(call<SetTextureFn>(SetTexture)(device_,i,nullptr));
     for(UINT i=0;i<4;++i)STEP(call<SetTextureFn>(SetTexture)(device_,D3DVERTEXTEXTURESAMPLER0+i,nullptr));
@@ -240,17 +363,18 @@ HRESULT FogPass::normalize() noexcept{
     for(auto s:{D3DRS_ZENABLE,D3DRS_ZWRITEENABLE,D3DRS_STENCILENABLE,D3DRS_ALPHATESTENABLE,D3DRS_ALPHABLENDENABLE,D3DRS_SEPARATEALPHABLENDENABLE,D3DRS_FOGENABLE,D3DRS_SRGBWRITEENABLE,D3DRS_SCISSORTESTENABLE,D3DRS_CLIPPLANEENABLE,D3DRS_CLIPPING,D3DRS_LIGHTING,D3DRS_INDEXEDVERTEXBLENDENABLE,D3DRS_POINTSPRITEENABLE,D3DRS_DITHERENABLE,D3DRS_ANTIALIASEDLINEENABLE})STEP(call<SetRsFn>(SetRenderState)(device_,s,FALSE));
     STEP(call<SetRsFn>(SetRenderState)(device_,D3DRS_VERTEXBLEND,D3DVBF_DISABLE));STEP(call<SetRsFn>(SetRenderState)(device_,D3DRS_FILLMODE,D3DFILL_SOLID));STEP(call<SetRsFn>(SetRenderState)(device_,D3DRS_CULLMODE,D3DCULL_NONE));STEP(call<SetRsFn>(SetRenderState)(device_,D3DRS_COLORWRITEENABLE,15));STEP(call<SetRsFn>(SetRenderState)(device_,D3DRS_MULTISAMPLEMASK,0xffffffff));
     for(UINT i=0;i<8;++i)STEP(call<SetRsFn>(SetRenderState)(device_,D3DRENDERSTATETYPE(D3DRS_WRAP0+i),0));
-    for(UINT i=0;i<7;++i){
+    for(UINT i=0;i<(density?8u:7u);++i){
+        const bool linear=i==1||i==7; // s1 atlas (fine), s7 far atlas
         STEP(call<SetSamplerFn>(SetSamplerState)(device_,i,D3DSAMP_ADDRESSU,D3DTADDRESS_CLAMP));STEP(call<SetSamplerFn>(SetSamplerState)(device_,i,D3DSAMP_ADDRESSV,D3DTADDRESS_CLAMP));STEP(call<SetSamplerFn>(SetSamplerState)(device_,i,D3DSAMP_ADDRESSW,D3DTADDRESS_CLAMP));
-        STEP(call<SetSamplerFn>(SetSamplerState)(device_,i,D3DSAMP_MINFILTER,i==1?D3DTEXF_LINEAR:D3DTEXF_POINT));STEP(call<SetSamplerFn>(SetSamplerState)(device_,i,D3DSAMP_MAGFILTER,i==1?D3DTEXF_LINEAR:D3DTEXF_POINT));STEP(call<SetSamplerFn>(SetSamplerState)(device_,i,D3DSAMP_MIPFILTER,D3DTEXF_NONE));
+        STEP(call<SetSamplerFn>(SetSamplerState)(device_,i,D3DSAMP_MINFILTER,linear?D3DTEXF_LINEAR:D3DTEXF_POINT));STEP(call<SetSamplerFn>(SetSamplerState)(device_,i,D3DSAMP_MAGFILTER,linear?D3DTEXF_LINEAR:D3DTEXF_POINT));STEP(call<SetSamplerFn>(SetSamplerState)(device_,i,D3DSAMP_MIPFILTER,D3DTEXF_NONE));
         STEP(call<SetSamplerFn>(SetSamplerState)(device_,i,D3DSAMP_MIPMAPLODBIAS,0));STEP(call<SetSamplerFn>(SetSamplerState)(device_,i,D3DSAMP_MAXMIPLEVEL,0));STEP(call<SetSamplerFn>(SetSamplerState)(device_,i,D3DSAMP_MAXANISOTROPY,1));STEP(call<SetSamplerFn>(SetSamplerState)(device_,i,D3DSAMP_SRGBTEXTURE,FALSE));
     }
 #undef STEP
     return S_OK;
 }
-HRESULT FogPass::bind_target(IDirect3DSurface9* s,UINT w,UINT h,IDirect3DPixelShader9* ps) noexcept{
+HRESULT FogPass::bind_target(IDirect3DSurface9* s,UINT w,UINT h,IDirect3DPixelShader9* ps,UINT samplers) noexcept{
     HRESULT hr=S_OK;
-    for(UINT i=0;i<7&&SUCCEEDED(hr);++i){hr=call<SetTextureFn>(SetTexture)(device_,i,nullptr);}
+    for(UINT i=0;i<samplers&&SUCCEEDED(hr);++i){hr=call<SetTextureFn>(SetTexture)(device_,i,nullptr);}
     if(SUCCEEDED(hr)){hr=call<SetRtFn>(SetRenderTarget)(device_,0,s);}
     D3DVIEWPORT9 vp{0,0,w,h,0,1};
     if(SUCCEEDED(hr)){hr=call<SetViewportFn>(SetViewport)(device_,&vp);}
@@ -267,7 +391,17 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
     if(reset_pending_)return refuse(D3DERR_DEVICENOTRESET);
     // Off is a strict zero-device-call path, including no resource validation.
     if(f.params.density_scale==0){r.operation=S_FALSE;return finish(S_FALSE);}
-    if(!resources_ready(f.width,f.height,f.profile,f.recipe_id,f.field_generation))return refuse(E_INVALIDARG);
+    const bool density=f.density;float ready_fine=0,ready_far=0;
+    if(density){
+        if(!density_ready(f.width,f.height)||!density_status_.available)return refuse(E_INVALIDARG);
+        for(double v:f.camera_world)if(!std::isfinite(v))return refuse(E_INVALIDARG);
+        // The ramps come from this frame's prepare_density; a camera whose rays leave the resident
+        // nodes reads nothing of that level (fine: far-only interior; far: no fog this frame).
+        ready_far=density_->covers(1,f.camera_world)?density_status_.ready_far:0.f;
+        ready_fine=density_->covers(0,f.camera_world)?density_status_.ready_fine:0.f;
+        if(!(ready_far>0)){r.operation=S_FALSE;return finish(S_FALSE);} // same zero-device-call path as off
+        if(f.depth_share==density_atlas_[0]||f.depth_share==density_atlas_[1]||f.depth_share==density_staging_[0]||f.depth_share==density_staging_[1])return refuse(E_INVALIDARG);
+    } else if(!resources_ready(f.width,f.height,f.profile,f.recipe_id,f.field_generation))return refuse(E_INVALIDARG);
     if(f.depth_share==atlas_||f.depth_share==lit_||f.depth_share==scratch_||f.target==lit_surface_||f.target==scratch_surface_)return refuse(E_INVALIDARG);
     D3DSURFACE_DESC ds{},ss{};HRESULT hr=f.depth_share->GetLevelDesc(0,&ds);if(FAILED(hr))return refuse(hr);
     hr=f.target->GetDesc(&ss);if(FAILED(hr))return refuse(hr);
@@ -278,19 +412,25 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
     // All map references are borrowed for this serialized transaction. Validation
     // failure disables only that map; device loss still aborts before any write.
     IDirect3DTexture9* shadow_maps[fog_cascade_max]{};
-    float constants[22][4]{};
+    float constants[25][4]{};
     const auto& p=f.params;
     constants[0][0]=p.m00;constants[0][1]=p.m11;constants[0][2]=p.m20;constants[0][3]=p.m21;
     constants[1][0]=static_cast<float>(width_);constants[1][1]=static_cast<float>(height_);constants[1][2]=static_cast<float>(half_width_);constants[1][3]=static_cast<float>(half_height_);
     for(unsigned i=0;i<3;++i){constants[2][i]=p.world.origin_mod[i];constants[3][i]=p.world.sun_world[i];}
     constants[2][3]=base_sigma_*p.density_scale;constants[3][3]=fog_volume_horizon;
+    if(density){
+        constants[2][3]=density_config_.sigma*p.density_scale*ready_far;constants[3][3]=float(fog::kTaperEnd);
+        for(int level=0;level<fog::kLevelCount;++level){fog::camera_local(level,f.camera_world,constants[22+level]);constants[22+level][3]=float(1.0/fog::kLevelDelta[level]);}
+        for(unsigned i=0;i<3;++i)constants[24][i]=density_config_.chroma[i];
+        constants[24][3]=ready_fine;
+    }
     for(unsigned i=0;i<3;++i)for(unsigned j=0;j<3;++j)constants[4+i][j]=p.world.inverse_columns[3*i+j];
     fog_phase_constants(p.anisotropy,p.decode_exponent,p.sun_radiance,constants[7],constants[8]);
     constants[9][1]=.95f;constants[9][2]=.85f;constants[9][3]=10.f;
     for(unsigned i=0;i<std::min(f.count,fog_cascade_max);++i) {
         const auto& k=f.cascades[i];
         if(!k.valid||!k.map||!fog_shadow_current(f.frame,k.frame)||!fog_shadow_rows(k.rows,k.bias)||
-           k.map==f.depth_share||k.map==atlas_||k.map==lit_||k.map==scratch_)continue;
+           k.map==f.depth_share||k.map==atlas_||k.map==lit_||k.map==scratch_||(density&&(k.map==density_atlas_[0]||k.map==density_atlas_[1])))continue;
         D3DSURFACE_DESC desc{};
         hr=k.map->GetLevelDesc(0,&desc);if(lost(hr))return refuse(hr);if(FAILED(hr))continue;
         if(desc.Format!=D3DFMT_R32F||desc.Width<64||desc.Width!=desc.Height||
@@ -317,7 +457,7 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
         else {r.scene_known=false;r.route_poisoned=true;}
     }
     if(SUCCEEDED(r.operation)){
-        changed=true;record(FogStage::Normalize,normalize());
+        changed=true;record(FogStage::Normalize,normalize(density));
     }
     if(SUCCEEDED(r.operation))record(FogStage::Copy,call<StretchRectFn>(StretchRect)(device_,f.target,nullptr,scratch_surface_,nullptr,D3DTEXF_NONE));
     // A borrowed scene must be reopened even if normalization/copy failed. Once
@@ -336,15 +476,30 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
             if(!r.scene_known)r.route_poisoned=true;
         }
     }
-    if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,bind_target(lit_surface_,half_width_,half_height_,march_));
-    if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetPsConstantsFn>(SetPixelShaderConstantF)(device_,0,&constants[0][0],22));
+    const UINT samplers=density?8u:7u;
+    if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,bind_target(lit_surface_,half_width_,half_height_,density?density_march_:march_,samplers));
+    if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetPsConstantsFn>(SetPixelShaderConstantF)(device_,0,&constants[0][0],density?25:22));
     if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetTextureFn>(SetTexture)(device_,0,f.depth_share));
-    if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetTextureFn>(SetTexture)(device_,1,atlas_));
+    if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetTextureFn>(SetTexture)(device_,1,density?density_atlas_[0]:atlas_));
+    if(density&&may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetTextureFn>(SetTexture)(device_,7,density_atlas_[1]));
     for(unsigned i=0;i<fog_cascade_max&&may_draw&&SUCCEEDED(r.operation);++i)
         record(FogStage::March,call<SetTextureFn>(SetTexture)(device_,4+i,shadow_maps[i]));
     if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,quad(half_width_,half_height_));
-    if(may_draw&&SUCCEEDED(r.operation))record(FogStage::Composite,bind_target(f.target,width_,height_,composite_));
-    if(may_draw&&SUCCEEDED(r.operation)){
+    if(density&&may_draw&&SUCCEEDED(r.operation)){
+        // Composite never marches (no atlas, no maps); repair marches only the pixels no half sample serves.
+        record(FogStage::Composite,bind_target(f.target,width_,height_,density_composite_,samplers));
+        IDirect3DTexture9* composite_inputs[]={f.depth_share,nullptr,scratch_,lit_};
+        for(UINT i=0;i<4&&SUCCEEDED(r.operation);++i)if(composite_inputs[i])record(FogStage::Composite,call<SetTextureFn>(SetTexture)(device_,i,composite_inputs[i]));
+        if(SUCCEEDED(r.operation)){r.scene_write_started=true;record(FogStage::Composite,quad(width_,height_));}
+        if(SUCCEEDED(r.operation))record(FogStage::Repair,bind_target(f.target,width_,height_,density_repair_,samplers));
+        float repair_c0[4];density_repair_projection(p,repair_c0);
+        if(SUCCEEDED(r.operation))record(FogStage::Repair,call<SetPsConstantsFn>(SetPixelShaderConstantF)(device_,0,repair_c0,1));
+        IDirect3DTexture9* repair_inputs[]={f.depth_share,density_atlas_[0],scratch_,nullptr,shadow_maps[0],shadow_maps[1],shadow_maps[2],density_atlas_[1]};
+        for(UINT i=0;i<8&&SUCCEEDED(r.operation);++i)if(repair_inputs[i])record(FogStage::Repair,call<SetTextureFn>(SetTexture)(device_,i,repair_inputs[i]));
+        if(SUCCEEDED(r.operation))r.applied=record(FogStage::Repair,quad(width_,height_));
+    }
+    if(!density&&may_draw&&SUCCEEDED(r.operation))record(FogStage::Composite,bind_target(f.target,width_,height_,composite_));
+    if(!density&&may_draw&&SUCCEEDED(r.operation)){
         IDirect3DTexture9* textures[]={f.depth_share,atlas_,scratch_,lit_,shadow_maps[0],shadow_maps[1],shadow_maps[2]};
         for(UINT i=0;i<7&&SUCCEEDED(r.operation);++i)record(FogStage::Composite,call<SetTextureFn>(SetTexture)(device_,i,textures[i]));
         if(SUCCEEDED(r.operation)){r.scene_write_started=true;r.applied=record(FogStage::Composite,quad(width_,height_));}

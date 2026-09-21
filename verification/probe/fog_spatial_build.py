@@ -33,7 +33,7 @@ def main():
     rc=out/'fog-fields.rc';rc.write_text(text)
     subprocess.run(['i686-w64-mingw32-windres','-I',str(data),str(rc),'-O','coff','-o',str(out/'fog-fields.o')],check=True)
     flags=['-std=c++17','-O2','-Wall','-Wextra','-Werror','-msse2','-mfpmath=sse','-mstackrealign','-mincoming-stack-boundary=2','-static','-DX3M_FOG_PASS_FIXTURE']
-    sources=[ROOT/'verification/probe/fog_spatial_fixture.cpp',ROOT/'src/renderer/fog_pass.cpp',asset/'src/renderer/fog_field_assets.cpp']
+    sources=[ROOT/'verification/probe/fog_spatial_fixture.cpp',ROOT/'src/renderer/fog_pass.cpp',ROOT/'src/fog/fog_density_cache.cpp',ROOT/'src/fog/fog_density_generator.cpp',asset/'src/renderer/fog_field_assets.cpp']
     command=['i686-w64-mingw32-g++',*flags,'-I'+str(asset/'src/renderer'),'-I'+str(data),*map(str,sources),str(out/'fog-fields.o'),'-o',str(out/'fog_spatial_fixture.exe'),'-luser32']
     subprocess.run(command,check=True)
     inputs=[*sources,ROOT/'verification/probe/fog_family_gpu_cases_inc.h',ROOT/'verification/probe/fog_spatial_state_inc.h',ROOT/'src/renderer/fog_pass.h',ROOT/'src/renderer/fog_volume_math.h',asset/'src/renderer/fog_field_assets.h',*asset_inputs(data)]
