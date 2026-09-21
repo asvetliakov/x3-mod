@@ -1,0 +1,30 @@
+{
+  "run": "run220",
+  "flight_dir": "/tmp/x3-bottleX3-run220",
+  "date": "2026-09-22",
+  "f8_bursts": [
+    {"frames": [3685,3692], "elapsed_ms_start": 68810, "sun_visible": "no disc/glow in HDR crop; hazy sky, distant station"},
+    {"frames": [4477,4484], "elapsed_ms_start": 81628, "sun_visible": "no disc/glow in HDR crop; distant station"},
+    {"frames": [13583,13590], "elapsed_ms_start": 207095, "sun_visible": "diffuse fog glow behind near station only; no disc/corona/flare pixels above threshold; glow patch mean~0.39, max 0.61->0.65 monotonic rise, no step"}
+  ],
+  "note_only_3_bursts_found": true,
+  "brightest_pixel_finding": "global brightest HDR pixel (max~4.7-4.9, fixed at y=617-624,x=627-659) is a static screen-space HUD/reticle cluster present identically in all 24 frames across all 3 widely separated bursts, not the sun",
+  "burst3_glow_patch": {"region_px": "y150:260,x650:760", "per_frame_mean": [0.3926,0.3924,0.3928,0.3927,0.3916,0.3920,0.3904,0.3895], "per_frame_max": [0.6093,0.6212,0.6294,0.6381,0.6419,0.6440,0.6482,0.6498]},
+  "log_findings": {
+    "occlusion_query_or_readback_mentions": 0,
+    "flare_corona_disc_halo_keyword_hits_in_session_log": 0,
+    "shadow_replay_map_basis_sun_dir_frame_3685": "0.643295288,0.761199951,-0.0819091797"
+  },
+  "reverse_engineering_reference": {
+    "doc": "docs/reverse-engineering/lens-flare-visibility.md",
+    "mechanism": "vanilla CPU mesh-collision probe at 0x00488720 (single caller 0x00471630/0x004715d0), not a D3D occlusion query, not depth test",
+    "record_field": "record+0x30 (0/1 visibility), record+0x10 accumulator +-100 clamped 0..200 -> two-frame full/half/gone size ramp, not per-pixel fade",
+    "scope": "whole lens/sun record (all bodies in the chain) switches together; no per-sprite, no coverage-fraction based fade",
+    "mod_involvement": "none identified; no route refusal/suppression log lines reference this path; behavior is vanilla, unrelated to depth handling, sun shadow lane, bloom source clamp or fog replace cards"
+  },
+  "limitations": [
+    "Could not visually confirm the sun disc itself mid-transition (in/out) because none of the 3 captured F8 bursts show a bright sun disc above background sky luminance; burst 3 shows only a static/slowly-brightening fog glow near a station, consistent with the flare chain being hidden for the whole 8-frame window (probe returns hit every frame), not a partial-then-full transition captured on camera",
+    "User referenced a '4th F8 capture'; only 3 bursts (24 frames) exist in this session log/capture directory",
+    "No per-draw shader-hash/blend-state diff was produced for a visible-vs-hidden sun frame because no captured frame in this run shows the flare chain actually drawn (HDR luminance never exceeds ~0.65 in the glow region, well below the disc's expected emissive level); a new diagnostic is needed (see below)"
+  ]
+}

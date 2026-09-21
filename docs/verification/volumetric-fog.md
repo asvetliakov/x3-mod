@@ -1934,3 +1934,34 @@ Change that argument to `0.02` (or drop the value).
 edges are again one iso-surface of the warped noise (the warp stays and did not rib in the reference). If edge variation is
 wanted back, it must not be a product of single-axis waves: drive it from a stored sample (for L2 the sun-ward far tap is already
 fetched) rather than from `look_wave`; that needs a slot count before it is promised.
+
+## 2026-09-22 — Run220 sun-hidden-behind-station triage (read-only)
+
+User report: sun disappears fully once a station covers roughly half its disc, wants it to stay
+visible (and light shafts) until fully covered. Triaged `/tmp/x3-bottleX3-run220` (Run61
+0bc8ff36 install, HDR+TAA+sun shadow lane+stored fog, 3 F8 bursts of 8 frames:
+3685-3692, 4477-4484, 13583-13590 — only 3 exist, not the "4th" the user recalled).
+
+HDR readback (`hdr_1_<frame>.rgba16f`, 1280x768): bursts 1-2 show hazy sky, no sun disc/glow above
+background. Burst 3 (13583-13590) shows a diffuse fog glow centred behind a near station but no
+distinct disc/corona pixels; glow-patch mean luminance is flat (~0.39) and max rises only
+0.609→0.650 monotonically over the 8 frames — no full/half/gone step is visible in this capture,
+i.e. the flare chain appears to stay hidden for the whole window. The session log has zero hits for
+`occlusion`/`CreateQuery`/`IDirect3DQuery9`, and zero for flare/corona/disc/halo keywords: the proxy
+does not instrument this path at all, so no shader hash, blend state or draw count is attributable to
+the sun draws from this log.
+
+Root cause is documented, not new: `docs/reverse-engineering/lens-flare-visibility.md` — vanilla CPU
+mesh-collision probe `0x00488720` (single caller `0x004715d0`/`0x00471630`) sets `record+0x30` to 0/1
+per sun/lens record as **one boolean for the whole chain** (disc+corona+flares together); any single
+hit of the swept probe volume against a candidate occluder hides the whole record, then
+`0x00471660` ramps `record+0x10` ±100 (clamped 0..200) into a two-frame full→half→gone size step —
+not a per-pixel or coverage-fraction fade. No mod code (depth handling, sun shadow lane, HDR/bloom
+clamp, fog replace cards) is in this path; no route refusal/suppression lines reference it.
+
+Open: need a dedicated diagnostic to catch the actual transition — one F8 burst timed to straddle the
+probe's boolean flip, logging `record+0x30`, `record+0x10/+0x34` and the lens-scene draw count per
+frame (or a debug print at `0x00488720`'s return and `0x00471660`), since none of Run220's 3 bursts
+caught the disc mid-visible or mid-ramp.
+
+Evidence: `/Users/asvetl/x3-mod/verification/results/run220-sun-occlusion-triage.json`.
