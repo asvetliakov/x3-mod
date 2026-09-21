@@ -166,10 +166,7 @@ class MemoSite(unittest.TestCase):
             image = bytearray(data)
             offset = va - 0x401000 + 0x400
             image[offset:offset + len(raw)] = raw
-            with tempfile.NamedTemporaryFile(suffix='.exe') as f:
-                f.write(image)
-                f.flush()
-                changed = probe.verify(f.name)
+            changed = probe.verify(bytes(image))
             self.assertEqual(changed['result'], 'FAIL', hex(va))
             self.assertTrue(changed['checks'].get(failing) is False or changed['checks'].get('decode') is False, (hex(va), failing))
         # The census's entry claims and the SAT module's rel32 sit in the hashed bodies' holes.

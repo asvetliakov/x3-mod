@@ -123,13 +123,11 @@ def patched_checks(data, changes, claims=None, sat=None):
     for va, raw in changes:
         offset = va - 0x401000 + 0x400
         image[offset:offset + len(raw)] = raw
-    with tempfile.NamedTemporaryFile(suffix='.exe') as f:
-        f.write(image)
-        f.flush()
-        narrow = probe.narrow_inputs(f.name)
-        if claims is not None:
-            narrow['claims'] = claims
-        return probe.inspect(bytes(image), probe.decode(f.name), probe.CORE.read_text(), probe.other_claims(), narrow, sat)
+    narrow = probe.narrow_inputs(bytes(image))
+    if claims is not None:
+        narrow['claims'] = claims
+    return probe.inspect(bytes(image), probe.decode(bytes(image)), probe.CORE.read_text(),
+                         probe.other_claims(), narrow, sat)
 
 
 class NarrowSites(unittest.TestCase):

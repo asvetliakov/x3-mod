@@ -23,8 +23,7 @@ SITES=(
 def decode(exe):
     result={}
     for start,end in sorted({(s.function_start,s.function_end) for s in SITES}):
-        run=subprocess.run([common.OBJDUMP,'-d','-Mintel','--insn-width=16',f'--start-address={start}',f'--stop-address={end}',str(exe)],check=True,capture_output=True,text=True,timeout=30)
-        result[(start,end)]=common.parse_objdump(run.stdout,start,end)
+        result[(start,end)]=common.parse_objdump(common.objdump_window(exe,start,end,timeout=30),start,end)
     return result
 
 def spec_table(text,name='specs'):
@@ -32,7 +31,7 @@ def spec_table(text,name='specs'):
     start=text.index('constexpr engine_patch::SiteSpec '+name+'[]');return text[start:text.index('};',start)]
 
 def verify(exe=common.DEFAULT_EXE,source=SOURCE):
-    return common.verify(Path(exe).read_bytes(),decode(exe),spec_table(Path(source).read_text()),specs=SITES)
+    return common.verify(common.image_bytes(exe),decode(exe),spec_table(Path(source).read_text()),specs=SITES)
 
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--exe',type=Path,default=common.DEFAULT_EXE);p.add_argument('--json',action='store_true');a=p.parse_args()

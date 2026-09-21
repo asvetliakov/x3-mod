@@ -33,8 +33,7 @@ STORE_SEAM=0x4a3ffd
 def decode(exe):
     result={}
     for start,end in sorted({(s.function_start,s.function_end) for s in SITES}):
-        run=subprocess.run([common.OBJDUMP,'-d','-Mintel','--insn-width=16',f'--start-address={start}',f'--stop-address={end}',str(exe)],check=True,capture_output=True,text=True,timeout=30)
-        result[(start,end)]=common.parse_objdump(run.stdout,start,end)
+        result[(start,end)]=common.parse_objdump(common.objdump_window(exe,start,end,timeout=30),start,end)
     return result
 _BRANCH=re.compile(r'^\s*([0-9a-f]+):\s+(?:[0-9a-f]{2} )+\s*(j[a-z]+|call|loop[a-z]*)\s+(?:short\s+)?0x([0-9a-f]+)',re.M)
 def text_branches(exe):
@@ -42,7 +41,7 @@ def text_branches(exe):
     run=subprocess.run([common.OBJDUMP,'-d','-Mintel','-j','.text',str(exe)],check=True,capture_output=True,text=True,timeout=300)
     return [(int(m.group(1),16),m.group(2),int(m.group(3),16)) for m in _BRANCH.finditer(run.stdout)]
 def verify(exe=common.DEFAULT_EXE,source=SOURCE,whole_text=True):
-    data=Path(exe).read_bytes();decoded=decode(exe)
+    data=common.image_bytes(exe);decoded=decode(exe)
     report=common.verify(data,decoded,spec_table(Path(source).read_text(),'restore_specs'),specs=SITES)
     checks=report['checks']
     seam=decoded[(0x4a3ff0,0x4a4033)];by={i.va:i for i in seam}

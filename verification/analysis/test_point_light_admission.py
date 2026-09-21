@@ -135,10 +135,7 @@ def image(*changes):
 
 
 def inspect_image(data):
-    with tempfile.NamedTemporaryFile(suffix='.exe') as f:
-        f.write(data)
-        f.flush()
-        return probe.inspect(data, probe.decode(f.name), probe.CORE.read_text())
+    return probe.inspect(data, probe.decode(data), probe.CORE.read_text())
 
 
 class PointLightSite(unittest.TestCase):

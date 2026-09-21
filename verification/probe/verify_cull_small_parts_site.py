@@ -27,7 +27,6 @@ import argparse
 import hashlib
 import json
 import re
-import shutil
 import struct
 import subprocess
 from pathlib import Path
@@ -153,12 +152,7 @@ EXPECTED_CONSTANTS = {'function_va': FUNCTION[0], 'function_end_va': FUNCTION[1]
 
 
 def decode(exe):
-    tool = shutil.which(common.OBJDUMP)
-    if not tool:
-        raise RuntimeError(f'{common.OBJDUMP} not found')
-    run = subprocess.run([tool, '-d', '-Mintel', '--insn-width=16', f'--start-address={FUNCTION[0]:#x}',
-                          f'--stop-address={FUNCTION[1]:#x}', str(exe)], check=True, capture_output=True, text=True, timeout=60)
-    return common.parse_objdump(run.stdout, *FUNCTION)
+    return common.parse_objdump(common.objdump_window(exe, *FUNCTION, timeout=60), *FUNCTION)
 
 
 def inspect(data, instructions, core_text):
@@ -207,7 +201,7 @@ def inspect(data, instructions, core_text):
 
 
 def verify(exe=DEFAULT_EXE, core=CORE):
-    data = Path(exe).read_bytes()
+    data = common.image_bytes(exe)
     try:
         return inspect(data, decode(exe), Path(core).read_text())
     except (ValueError, OSError, subprocess.SubprocessError, RuntimeError) as error:

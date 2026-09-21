@@ -1,12 +1,12 @@
 """Host tests for the instruction-aware chase aim hook-site verifier."""
-import contextlib
 import dataclasses
 import os
 import struct
+import subprocess
 import sys
-import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -55,29 +55,12 @@ def synthetic_image(site_overrides=(), extra=(), text_size=0x80000):
     return bytes(header) + bytes(text)
 
 
-@contextlib.contextmanager
-def synthetic_image_path(data, prefix='x3-synthetic-image-'):
-    """Yield a path to a synthetic PE on disk for objdump, cleaned up by its directory.
-
-    The host malware scan (macOS XProtect) blocks the read of, and then deletes,
-    a file whose exact contents it has flagged; some of these synthetic images
-    hit that, so objdump failed with "Operation not permitted" and the file was
-    gone by teardown. Sixteen inert bytes past the end of the PE image keep
-    every file unique without changing any byte objdump decodes or a site
-    report reads, and the temporary directory owns the cleanup so a removed
-    file cannot fail a test.
-    """
-    with tempfile.TemporaryDirectory(prefix=prefix) as directory:
-        path = Path(directory) / 'image.exe'
-        path.write_bytes(data + os.urandom(16))
-        yield path
-
-
 def verify_synthetic(data):
-    with tempfile.NamedTemporaryFile(suffix='.exe') as exe:
-        exe.write(data)
-        exe.flush()
-        return probe.verify_path(exe.name, sha256=probe.EXPECTED_SHA256)
+    # The image stays in memory: probe.verify_path maps VA -> offset itself and
+    # hands objdump only a headerless code window, because Microsoft Defender
+    # for Endpoint classifies these synthetic PE images as
+    # Trojan:Win32/Wacatac.C!ml and quarantines them mid-run.
+    return probe.verify_path(data, sha256=probe.EXPECTED_SHA256)
 
 
 class SourceParity(unittest.TestCase):
@@ -140,10 +123,7 @@ class StructuralVerification(unittest.TestCase):
 
     def test_truncated_declared_span_is_not_a_whole_instruction(self):
         data = synthetic_image()
-        with tempfile.NamedTemporaryFile(suffix='.exe') as exe:
-            exe.write(data)
-            exe.flush()
-            decoded = probe.disassemble_functions(exe.name)
+        decoded = probe.disassemble_functions(data)
         image = probe.Image(data)
         original = probe.SITES[0]
         truncated = dataclasses.replace(original, expected=original.expected[:2])
@@ -179,6 +159,48 @@ class StructuralVerification(unittest.TestCase):
         text = '  1000:\t90\tnop\n  1002:\t90\tnop\n'
         with self.assertRaisesRegex(ValueError, 'coverage gap'):
             probe.parse_objdump(text, 0x1000, 0x1003)
+
+
+class NothingExecutableReachesDisk(unittest.TestCase):
+    """Microsoft Defender for Endpoint classifies the synthetic PE images these
+    site checks build as Trojan:Win32/Wacatac.C!ml and quarantines them while a
+    test is running (content-based and racy; neither the file name nor inert
+    trailing padding avoids it). Every synthetic check therefore keeps the image
+    in memory and hands objdump only a headerless code window."""
+
+    def test_objdump_only_ever_receives_a_headerless_code_window(self):
+        recorded = []
+        real = subprocess.run
+
+        def record(command, *args, **kwargs):
+            path = Path(command[-1])
+            recorded.append((list(command), path.read_bytes()[:2] if path.is_file() else b''))
+            return real(command, *args, **kwargs)
+
+        with mock.patch.object(probe.subprocess, 'run', record):
+            report = verify_synthetic(synthetic_image())
+        # The checks still ran and still hold on the decoded instructions.
+        self.assertTrue(report['checks']['function_disassembly']['ok'], report)
+        self.assertTrue(report['checks']['sites']['ok'], report)
+        self.assertTrue(recorded)
+        for command, head in recorded:
+            self.assertEqual(command[1:6], ['-D', '-b', 'binary', '-m', 'i386'], command)
+            self.assertNotEqual(head, b'MZ', command)
+            self.assertFalse(Path(command[-1]).name.endswith(('.exe', '.dll')), command)
+
+    def test_code_window_matches_the_container_decode(self):
+        # The seam is only a delivery change: the same bytes at the same virtual
+        # addresses decode to the same instructions either way. Checked on the
+        # installed executable, the one PE container legitimately on disk, so
+        # this comparison writes no image of its own.
+        if not probe.DEFAULT_EXE.is_file():
+            self.skipTest('installed X3AP.exe not found')
+        data = probe.DEFAULT_EXE.read_bytes()
+        for start, end in sorted({(site.function_start, site.function_end) for site in probe.SITES}):
+            by_path = probe.parse_objdump(probe.objdump_window(probe.DEFAULT_EXE, start, end), start, end)
+            by_bytes = probe.parse_objdump(probe.objdump_window(data, start, end), start, end)
+            self.assertEqual(by_bytes, by_path, hex(start))
+            self.assertGreater(len(by_bytes), 100, hex(start))
 
 
 class InstalledExecutable(unittest.TestCase):

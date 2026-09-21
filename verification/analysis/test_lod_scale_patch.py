@@ -106,9 +106,7 @@ class LodScalePatch(unittest.TestCase):
         from test_chase_aim_sites import synthetic_image
         for change, expect in (((), True), (((probe.SITE_VA + 2, b'\x64'),), False), (((probe.WINDOW_VA + 1, b'\x0b'),), False)):
             data = synthetic_image(extra=((probe.WINDOW_VA, probe.WINDOW), (probe.NEXT_VA, b'\xe8' + struct.pack('<i', probe.FTOL_VA - (probe.NEXT_VA + 5))), *change))
-            with tempfile.NamedTemporaryFile(suffix='.exe') as f:
-                f.write(data); f.flush()
-                report = probe.verify(f.name)
+            report = probe.verify(data)
             checks = {k: v for k, v in report['checks'].items() if k != 'exe_identity'}
             self.assertEqual(all(checks.values()), expect, report)
             # The wrong-hash gate rejects a synthetic image even with the bytes in place.

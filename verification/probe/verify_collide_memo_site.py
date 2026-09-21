@@ -13,7 +13,6 @@ import argparse
 import hashlib
 import json
 import re
-import shutil
 import subprocess
 from pathlib import Path
 
@@ -131,14 +130,9 @@ def x87_depth(instructions):
 
 
 def decode(exe):
-    tool = shutil.which(common.OBJDUMP)
-    if not tool:
-        raise RuntimeError(f'{common.OBJDUMP} not found')
     decoded = {}
     for bounds in (CALLER, TARGET_FN, COLLIDER, FTOL, *HELPERS):
-        run = subprocess.run([tool, '-d', '-Mintel', '--insn-width=16', f'--start-address={bounds[0]:#x}', f'--stop-address={bounds[1]:#x}', str(exe)],
-                             check=True, capture_output=True, text=True, timeout=60)
-        decoded[bounds] = [i for i in common.parse_objdump(run.stdout, *bounds)]
+        decoded[bounds] = [i for i in common.parse_objdump(common.objdump_window(exe, *bounds), *bounds)]
     return decoded
 
 
@@ -261,7 +255,7 @@ def inspect(data, decoded, core_text, claims):
 
 
 def verify(exe=sites.DEFAULT_EXE, core=CORE):
-    data = Path(exe).read_bytes()
+    data = common.image_bytes(exe)
     try:
         return inspect(data, decode(exe), Path(core).read_text(), other_claims())
     except (ValueError, OSError, KeyError, IndexError, subprocess.SubprocessError, RuntimeError) as error:

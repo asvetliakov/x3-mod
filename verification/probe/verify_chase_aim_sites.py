@@ -19,6 +19,7 @@ import shutil
 import struct
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 from verify_chase_camera_site import (  # Reuse installed-image provenance and PE mapping.
@@ -115,24 +116,68 @@ def parse_objdump(text, start, end):
     return instructions
 
 
-def disassemble_functions(exe, objdump=OBJDUMP):
-    """Decode each unique containing function from its known entry boundary."""
+# Enough trailing bytes for an instruction that straddles the window's end to
+# decode exactly as it does inside the whole image (the longest x86 instruction
+# is 15 bytes).
+CODE_WINDOW_SLACK = 16
+
+
+def image_bytes(source):
+    """The image bytes of a path, or the bytes themselves when already in memory."""
+    if isinstance(source, (bytes, bytearray)):
+        return bytes(source)
+    return Path(source).read_bytes()
+
+
+def objdump_window(source, start, end, objdump=OBJDUMP, timeout=60):
+    """objdump's decode text for the virtual range [start, end) of an image.
+
+    `source` is either a path to a container objdump recognises, which is the
+    installed-executable verification path and is passed through unchanged, or
+    the image bytes. Bytes are mapped VA -> file offset with Image and only
+    that code window is handed to objdump, as a headerless binary placed at its
+    own virtual address: no MZ/PE header is ever written out.
+
+    That matters because Microsoft Defender for Endpoint classifies the
+    synthetic PE images these checks build as Trojan:Win32/Wacatac.C!ml and
+    quarantines them while a test is running. The detection is content-based
+    and racy: neither the file name nor inert trailing padding avoids it, and a
+    quarantined file makes objdump fail with "Operation not permitted" and then
+    vanishes. A raw code blob is not a portable executable, so there is nothing
+    to classify. Both branches reach the same parse_objdump contract, and the
+    decoded instructions are identical.
+    """
     tool = shutil.which(objdump)
     if not tool:
         raise RuntimeError(f'{objdump} not found')
+    window = ['-Mintel', '--insn-width=16', f'--start-address={start:#x}', f'--stop-address={end:#x}']
+    if not isinstance(source, (bytes, bytearray)):
+        run = subprocess.run([tool, '-d', *window, str(source)],
+                             check=True, capture_output=True, text=True, timeout=timeout)
+        return run.stdout
+    mapped = Image(bytes(source))
+    code = mapped.read(start, end - start + CODE_WINDOW_SLACK) or mapped.read(start, end - start)
+    if code is None:
+        raise ValueError(f'no mapped image bytes for {start:#010x}..{end:#010x}')
+    with tempfile.TemporaryDirectory(prefix='x3-code-window-') as directory:
+        blob = Path(directory) / f'{start:08x}.code'
+        blob.write_bytes(code)
+        run = subprocess.run([tool, '-D', '-b', 'binary', '-m', 'i386',
+                              f'--adjust-vma={start:#x}', *window, str(blob)],
+                             check=True, capture_output=True, text=True, timeout=timeout)
+        return run.stdout
+
+
+def disassemble_functions(exe, objdump=OBJDUMP):
+    """Decode each unique containing function from its known entry boundary."""
     decoded = {}
     for start, end in sorted({(site.function_start, site.function_end) for site in SITES}):
-        command = [
-            tool, '-d', '-Mintel', '--insn-width=16',
-            f'--start-address={start:#x}', f'--stop-address={end:#x}', str(exe),
-        ]
         try:
-            run = subprocess.run(
-                command, check=True, capture_output=True, text=True, timeout=30)
+            text = objdump_window(exe, start, end, objdump=objdump, timeout=30)
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
             detail = getattr(error, 'stderr', '') or str(error)
             raise RuntimeError(f'objdump failed for {start:#010x}..{end:#010x}: {detail.strip()}') from error
-        decoded[(start, end)] = parse_objdump(run.stdout, start, end)
+        decoded[(start, end)] = parse_objdump(text, start, end)
     return decoded
 
 
@@ -267,7 +312,7 @@ def verify(data, decoded, source_text, sha256=None, specs=SITES):
 
 
 def verify_path(exe, source=DEFAULT_SOURCE, sha256=None, objdump=OBJDUMP):
-    data = Path(exe).read_bytes()
+    data = image_bytes(exe)
     source_text = Path(source).read_text(encoding='utf-8')
     try:
         decoded = disassemble_functions(exe, objdump=objdump)

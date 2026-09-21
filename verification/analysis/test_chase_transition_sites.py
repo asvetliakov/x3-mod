@@ -1,7 +1,6 @@
 """Structural acceptance and refusal tests for the nine transition sites."""
 import dataclasses
 import struct
-import tempfile
 import unittest
 from pathlib import Path
 import verify_chase_transition_sites as probe
@@ -9,14 +8,11 @@ from verification.analysis.test_chase_aim_sites import synthetic_image
 class TransitionSites(unittest.TestCase):
  @classmethod
  def setUpClass(cls):
-  cls.tmp=tempfile.TemporaryDirectory(prefix='x3-transition-sites-')
-  cls.exe=Path(cls.tmp.name)/'test.exe'
+  # The image stays in memory (verify_chase_aim_sites.objdump_window): a
+  # synthetic PE on disk is quarantined by Microsoft Defender for Endpoint.
   cls.data=synthetic_image(extra=tuple((s.va,s.expected) for s in probe.SITES))
-  cls.exe.write_bytes(cls.data)
-  cls.decoded=probe.decode(cls.exe)
+  cls.decoded=probe.decode(cls.data)
   cls.image=probe.common.Image(cls.data)
- @classmethod
- def tearDownClass(cls):cls.tmp.cleanup()
  def test_production_specs(self):
   self.assertTrue(probe.common.check_source_specs(probe.spec_table(probe.SOURCE.read_text()),probe.SITES)['ok'])
  def test_all_spans_are_whole_and_plain(self):

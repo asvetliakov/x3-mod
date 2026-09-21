@@ -95,13 +95,13 @@ def patched_report(data, changes, sat_claims=None):
     for va, raw in changes:
         offset = va - 0x401000 + 0x400
         image[offset:offset + len(raw)] = raw
-    with tempfile.NamedTemporaryFile(suffix='.exe') as f:
-        f.write(image)
-        f.flush()
-        sat = probe.sat_inputs()
-        if sat_claims is not None:
-            sat['claims'] = sat_claims
-        return probe.inspect(bytes(image), probe.decode(f.name), probe.CORE.read_text(), probe.other_claims(), probe.narrow_inputs(f.name), sat)
+    sat = probe.sat_inputs()
+    if sat_claims is not None:
+        sat['claims'] = sat_claims
+    # In-memory image bytes: nothing resembling an executable is written out
+    # (verify_chase_aim_sites.objdump_window).
+    return probe.inspect(bytes(image), probe.decode(bytes(image)), probe.CORE.read_text(),
+                         probe.other_claims(), probe.narrow_inputs(bytes(image)), sat)
 
 
 class SatSite(unittest.TestCase):

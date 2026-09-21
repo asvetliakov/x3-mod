@@ -3,14 +3,14 @@
 import json
 from pathlib import Path
 from verify_chase_aim_sites import (HookSpec, FIRE_FUNCTION, Image, DEFAULT_EXE,
-    disassemble_functions, inspect_site, parse_source_specs, _is_direct_control)
+    disassemble_functions, image_bytes, inspect_site, parse_source_specs, _is_direct_control)
 ROOT=Path(__file__).resolve().parents[2]
 SOURCE=ROOT/'src/proxy/chase_fire.cpp'
 SPEC=HookSpec('chase_cursor_admission',0x445a41,bytes.fromhex('0f8464020000'),*FIRE_FUNCTION)
 CMP=bytes.fromhex('833de87c600000')
 
 def verify(exe=DEFAULT_EXE, source=None):
-    image=Image(Path(exe).read_bytes())
+    image=Image(image_bytes(exe))
     instructions=disassemble_functions(exe)[FIRE_FUNCTION]
     row=inspect_site(image,SPEC,instructions)
     span=[i for i in instructions if SPEC.va<=i.va<SPEC.end]

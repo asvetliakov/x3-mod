@@ -1,7 +1,6 @@
 """Focused refusal cases for the relocated cursor-admission branch."""
 import struct
 import sys
-import tempfile
 import unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
@@ -12,8 +11,7 @@ from test_chase_aim_sites import synthetic_image
 class Site(unittest.TestCase):
     def verify(self,changes=(),source=None):
         data=synthetic_image(extra=((probe.SPEC.va-len(probe.CMP),probe.CMP),(probe.SPEC.va,probe.SPEC.expected),*changes))
-        with tempfile.NamedTemporaryFile(suffix='.exe') as f:
-            f.write(data);f.flush();return probe.verify(f.name,source)
+        return probe.verify(data,source)  # in-memory image bytes, no PE written out
     def test_valid_relative_branch(self):
         self.assertTrue(self.verify()['passed'])
     def test_compare_corruption(self):

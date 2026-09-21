@@ -47,7 +47,6 @@ import argparse
 import hashlib
 import json
 import re
-import shutil
 import struct
 import subprocess
 from pathlib import Path
@@ -503,14 +502,9 @@ def _writes_register(i, registers):
 
 
 def decode_narrow(exe):
-    tool = shutil.which(common.OBJDUMP)
-    if not tool:
-        raise RuntimeError(f'{common.OBJDUMP} not found')
     decoded = {}
     for bounds in (N5_CALLEE, N6_FUNCTION, N6_CALLEE_HEAD, N7_FUNCTION, N8_FUNCTION, SAT_CALLEE):
-        run = subprocess.run([tool, '-d', '-Mintel', '--insn-width=16', f'--start-address={bounds[0]:#x}', f'--stop-address={bounds[1]:#x}', str(exe)],
-                             check=True, capture_output=True, text=True, timeout=60)
-        decoded[bounds] = common.parse_objdump(run.stdout, *bounds)
+        decoded[bounds] = common.parse_objdump(common.objdump_window(exe, *bounds), *bounds)
     return decoded
 
 
@@ -730,14 +724,9 @@ def inspect_sat(image, decoded, core_text, claims):
 
 
 def decode(exe):
-    tool = shutil.which(common.OBJDUMP)
-    if not tool:
-        raise RuntimeError(f'{common.OBJDUMP} not found')
     decoded = {}
     for bounds in (P1_FUNCTION, P2_FUNCTION):
-        run = subprocess.run([tool, '-d', '-Mintel', '--insn-width=16', f'--start-address={bounds[0]:#x}', f'--stop-address={bounds[1]:#x}', str(exe)],
-                             check=True, capture_output=True, text=True, timeout=60)
-        decoded[bounds] = common.parse_objdump(run.stdout, *bounds)
+        decoded[bounds] = common.parse_objdump(common.objdump_window(exe, *bounds), *bounds)
     return decoded
 
 
@@ -827,7 +816,7 @@ def sat_inputs(core=None):
 
 
 def verify(exe=DEFAULT_EXE, core=CORE, narrow_core=NARROW_CORE, sat_core=None):
-    data = Path(exe).read_bytes()
+    data = common.image_bytes(exe)
     try:
         return inspect(data, decode(exe), Path(core).read_text(), other_claims(), narrow_inputs(exe, narrow_core), sat_inputs(sat_core))
     except (ValueError, OSError, KeyError, subprocess.SubprocessError, RuntimeError) as error:

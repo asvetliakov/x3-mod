@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'verification/probe'))
 import verify_cull_small_parts_site as probe  # noqa: E402
 import verify_cull_census_sites as census_probe  # noqa: E402
-from verification.analysis.test_chase_aim_sites import synthetic_image, synthetic_image_path  # noqa: E402
+from verification.analysis.test_chase_aim_sites import synthetic_image  # noqa: E402
 
 HARNESS = r'''
 #include "cull_small_parts_core.h"
@@ -94,8 +94,7 @@ def image(*changes):
 
 
 def inspect_image(data):
-    with synthetic_image_path(data, prefix='x3-cull-small-parts-') as path:
-        return probe.inspect(data, probe.decode(path), probe.CORE.read_text())
+    return probe.inspect(data, probe.decode(data), probe.CORE.read_text())
 
 
 class CullSmallPartsSite(unittest.TestCase):
