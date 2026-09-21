@@ -365,6 +365,7 @@ namespace point_light_admission { unsigned frame_retires = 0; static void next_f
 namespace cull_census { static void begin_frame(bool) noexcept {} } // X3M_CULL_CENSUS disarm on Reset (src/proxy/cull_census.h); no-op on the host
 namespace cull_small_parts { static void after_reset(unsigned) noexcept {} } // X3M_CULL_SMALL_PARTS_PX disarm on Reset (src/proxy/cull_small_parts.h); no-op on the host
 namespace collide_memo { static void device_reset() noexcept {} } // memo table drop on Reset (src/proxy/collide_memo.h); no-op on the host
+namespace sun_occlusion { static void device_reset() noexcept {} } // X3M_SUN_OCCLUSION visibility-target drop on Reset (src/proxy/sun_occlusion.h); no-op on the host
 namespace lod_scale { static void refresh() noexcept {} } // X3M_LOD_SCALE mirror refresh called from the Reset/Present paths (src/proxy/lod_scale.h); no-op on the host
 namespace resource_reader { static void report() noexcept {} }
 namespace loading_trace { static void crypt_cache_report(const char*) noexcept {} }

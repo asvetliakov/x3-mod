@@ -473,6 +473,11 @@ public:
  void detach_shadow_retention()noexcept{++retention_detaches_;}
  void flush_shadow_retention(shadow_retention::Flush reason)noexcept{retention_reset_flushes_+=reason==shadow_retention::Flush::Reset;}
  std::unique_ptr<Pass>sun_apply_;unsigned candidate_extent_releases_=0;
+ // Partial sun occlusion (855fc1bc) stays inert in this double; test_sun_occlusion qualifies the pass and the
+ // lens bracket. release_resources/before_reset/after_reset only drop the pass and clear the bracket's storage.
+ std::unique_ptr<Pass>sun_occlusion_pass_;bool sun_occlusion_attach_failed_=false;
+ bool lens_frame_active_=false,lens_suppress_=false;std::uintptr_t lens_record_=0;std::uint64_t lens_pass_qpc_=0;
+ struct{unsigned frames=0;bool exhausted=false;}lens_hold_{}; // mirrors sun_occlusion::core::Hold's reset-to-{} use
  // Other features stay inert; card routing itself is qualified by test_fog_cards.
  bool fog_cards_replace_=false,fog_card_ready_checked_=false,fog_card_ready_=false;
  // Stored-density fog stays inert in this double; the route bridge qualifies it (test_fog_route_bridge).
