@@ -1,0 +1,31 @@
+{
+  "scope": "Portable CPU raw-staging core only; not connected to ownership/CloneMesh/F8",
+  "result": "PASS",
+  "host_cases": 39,
+  "host_assertions": 596,
+  "arena_bytes": 2097152,
+  "store_bytes": 2097584,
+  "host_run_seconds": 0.0441,
+  "asan_ubsan_seconds": 0.1005,
+  "asan_ubsan": "same 39 cases / 596 assertions PASS",
+  "command": "python3 -B verification/probe/lattice_upload_host_test.py",
+  "sources": {
+    "src/ownership/clone_upload_core.h": "1c20a21246df825a15a449229e479b3b0ab3e90355c2ee8cf345b691c009794a",
+    "verification/probe/lattice_upload_core_test.cpp": "5b7c820a86a1bf2d5d179471165da2253b8bfe9de1f685ecab150e51b6b8e1d2",
+    "verification/probe/lattice_upload_host_test.py": "37d609c210456bfcb3f326d19dc2777c71554fdcde0e0a7c2f5fa52ac76aa378",
+    "verification/probe/lattice_upload_prototype.md": "d7ad069a9539f4d3c75448a88f69a578f015121b1116d571c4e74c14b3b8cde5"
+  },
+  "review": {
+    "agent": "review_lattice_point_probe",
+    "result": "no blocking findings; source and host evidence"
+  },
+  "game_launched": false,
+  "wine_executed": false,
+  "pending": [
+    "Fresh COM allocation/mapping authentication",
+    "Ownership registry integration and legacy scanner exclusion",
+    "Real COM/Reset and reference lifetime qualification",
+    "x86 FP/MXCSR/LastError and SJLJ/foreign-SEH adapter",
+    "Game hook and F8 snapshot connection; not implemented"
+  ]
+}

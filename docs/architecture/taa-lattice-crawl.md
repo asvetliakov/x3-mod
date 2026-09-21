@@ -1574,3 +1574,21 @@ It is not selected. No blanket prohibition on locking lost MANAGED resources
 is asserted. Implementation now targets the original mapping protocol in a
 standalone actual-D3DX fixture, including failure, Reset, reentry and unwind
 controls. The game callsite hook and F8 attachment remain later steps.
+
+### Portable staging core checkpoint
+
+The [CPU core](../../src/ownership/clone_upload_core.h) and its host fixture are
+implemented and independently reviewed. [Results](../../verification/results/run201-lattice/upload-core.json):
+39 cases / 596 assertions pass normally and under ASan/UBSan. Storage is a
+preallocated 2 MiB arena plus 432 bytes of metadata. Exact-byte success, no
+pre-publication exposure, private incomplete staging followed by failure wipe,
+source/destination failures, stale identity/revision guards, duplicate/nested
+scope refusal and a modeled CPU Reset barrier are covered. Failure wipe uses
+non-elidable volatile stores.
+
+The core requires authenticated facts and an externally held ownership registry
+mutex; its guards do not prove those facts came from the game or public APIs.
+It has no ownership-wrapper integration, CloneMesh/SEH adapter, EXE hook or F8
+connection. Real COM/Reset, x86 state preservation and foreign unwind remain
+mandatory next checks. No game snapshot, moving-crawl fix or native Windows
+runtime acceptance follows from this host checkpoint.
