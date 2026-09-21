@@ -91,13 +91,19 @@ Session-limit continuation and pending worktrees: [handoff 2026-09-21](handoff-2
   The scoped ABI boundary passes 158 checks; the actual manual CloneMesh
   observer now passes 421 checks and independent review. The isolated game-call
   adapter passes 389 checks plus the 158-check ABI regression. Ownership pin lifecycle and paired copying pass 386 checks plus the 421-check
-  manual regression. The F8 payload reader/collector passes 47 host tests and review. Capture
-  Release/Reset accounting and F8 attachment remain to integrate. The first
-  ownership-on Capture fixture passes direct/deferred retirement but crashes
-  restoring a shader in the routed case; the wrapper/shadow lifetime contract
-  has been diagnosed; its fix is not implemented. This is a standalone fixture,
-  not a game run. No repeat
-  flight or renderer correction is selected.
+  manual regression. The F8 payload reader/collector passes 47 host tests and review. The B2b
+  geometry packet writer is merged default-off and unwired (25 host tests, both
+  state-only cross-builds). The ownership-on Capture fixture exposed a real
+  production shader-shadow lifetime bug; the ratified scoped-getter fix passes
+  the previously crashing routed case (159 checks, 2 getters + 2 Releases per
+  injected draw) and is under independent review for merge. **Decision
+  2026-09-21 (user agreed):** the upload-payload diagnostic is held, not wired,
+  built or flown; an independent design review found the geometry capture is
+  not on the path to rotation crawl and the thin-region gate closes under
+  rotation. A host replay of a camera-relative open gate with a wide-box clip
+  is running; Run 58 (slow/fast pan captures on the installed build) is queued
+  for ground truth under the Run57 defaults.
+  [Design review](architecture/lattice-approach-review-2026-09-21.md).
   [Owning note §31](architecture/taa-lattice-crawl.md#31-close-arithmetic-exploration-investigate-final-upload-observation).
 - **Collision:** paused by user request; no moving-collision test is queued.
 - **Engine/proxy timing:** lazy RT remains accepted. Corrected attribution
