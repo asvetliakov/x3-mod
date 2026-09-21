@@ -1,0 +1,238 @@
+{
+ "passed": true,
+ "game_launched": false,
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "sources": {
+  "src/proxy/engine_memory.cpp": "d64e2d606f9e96afd949b66bda960c6f8311e3a4a22faf2e6851b91600ef6631",
+  "src/proxy/sun_occlusion.cpp": "12f09c9cff854aefd386e5bed27e93ba7454b799a31512fc318bb4510970702b",
+  "src/proxy/sun_occlusion.h": "400d9ef9d6d2a86866be68c159ac711052e5601be9e6bb5d3512073e17705c96",
+  "src/proxy/sun_occlusion_core.h": "71367aed1acf0014d76617956ec034b1d031251788d9aa8e29e98f1f04e7f088",
+  "src/proxy/engine_patch.cpp": "9eb31fbf19e4f88432655ccccfe6e054739d9b8ba5f5be4054dfccf513330a2b",
+  "src/proxy/cpu_state.h": "73784e6190929661764c85d54778e97a4935a3841b7fca6f12e408751c1f4d6a",
+  "src/renderer/sun_occlusion_pass.cpp": "b592e85bbbdd2fb8e2a084bd8694167399084ca7b8563613e06b50562dfe4298",
+  "src/renderer/sun_occlusion_pass.h": "80ea1d0dbcb0ff757b43843f9a4c7375cd20e3653f3c413c057683d0ff0269d5",
+  "src/renderer/lens_visibility_variant.cpp": "3fb7aca56a95234313172c821e1a85e751c351c51cd0660e9cd314a874c48612",
+  "src/renderer/lens_visibility_variant.h": "2fee27dbf305d6f008283381ef73e139023829198b9364fd06aeec346d563d3d",
+  "src/renderer/sun_visibility_program_inc.h": "0692f3ecf7e446e75baeca7496e070c2bd87bca77c8852d01bb320f22fb80daf",
+  "src/renderer/sun_visibility_taps_inc.h": "d893b7d2592d8e240ce18a99ccec7c1f06d78885e51f7bf9961570aca16dbcbf",
+  "src/temporal/sun_visibility_ps.hlsl": "1d39cd0af0488ae7e0035e9c032828dc5cefb956d955e04662f5367ce863f959",
+  "verification/probe/sun_occlusion_hook_fixture.cpp": "440e3629f628b0d3317487d09808402b5e21c9149d605e7b9088de73cc1db023",
+  "verification/probe/sun_occlusion_fixture.cpp": "5261b67a0615bf5bcec095ae5c2fe6b290cb36239a85bd398002425594a05c25",
+  "verification/probe/build_sun_occlusion.py": "494a9d758101bf1b18bd3be423a0ca1fbd4a13cac6c8eaa96a14e45ebd29d8aa",
+  "verification/probe/run_sun_occlusion.py": "93a27d2025702104d83cde4e43e8abbab1b63e252ed2894d688c661d248ec91f"
+ },
+ "module_audit": {
+  "probe_thunk": [
+   "pushf",
+   "cld",
+   "push",
+   "push",
+   "call",
+   "add",
+   "cmp",
+   "je",
+   "popf",
+   "ret",
+   "popf",
+   "jmp"
+  ],
+  "lens_thunk": [
+   "pushf",
+   "cld",
+   "call",
+   "popf",
+   "push",
+   "call",
+   "add",
+   "pushf",
+   "cld",
+   "call",
+   "popf",
+   "ret"
+  ],
+  "probe_handler_float_free": true,
+  "module_float_free_outside_boundary": true,
+  "no_exception_runtime_symbols": true,
+  "functions": 20
+ },
+ "hook": {
+  "checks": 64,
+  "failures": 0,
+  "counters": {
+   "probes": 45,
+   "own": 34,
+   "visible": 19,
+   "hidden": 2,
+   "original": 24,
+   "brackets": 10,
+   "multi": 1,
+   "blocked": 1
+  },
+  "failure_lines": [],
+  "exit_status": 0,
+  "elapsed_s": 4.6,
+  "executable_sha256": "c1320ca77574b2ec7805091233a4aec648193360360fed18bf2ca43e7bd390ea"
+ },
+ "gpu": {
+  "checks": 89,
+  "failed_checks": [],
+  "result": {
+   "checks": 89,
+   "failures": 0,
+   "verdict": "PASS"
+  },
+  "attach": {
+   "slots": 469,
+   "ps30_slots": 512
+  },
+  "scenes": {
+   "open": {
+    "column": 320,
+    "twin_open": 32,
+    "twin_valid": 32,
+    "raw": 1.0,
+    "smoothed": 1.0,
+    "used": 1.0,
+    "valid": 1.0
+   },
+   "covered": {
+    "column": 0,
+    "twin_open": 0,
+    "twin_valid": 32,
+    "raw": 0.0,
+    "smoothed": 0.0,
+    "used": 0.0,
+    "valid": 1.0
+   },
+   "half": {
+    "column": 160,
+    "twin_open": 16,
+    "twin_valid": 32,
+    "raw": 0.5,
+    "smoothed": 0.5,
+    "used": 0.5,
+    "valid": 1.0
+   },
+   "three_quarter": {
+    "column": 176,
+    "twin_open": 25,
+    "twin_valid": 32,
+    "raw": 0.78125,
+    "smoothed": 0.78125,
+    "used": 0.79883,
+    "valid": 1.0
+   },
+   "quarter": {
+    "column": 144,
+    "twin_open": 7,
+    "twin_valid": 32,
+    "raw": 0.21875,
+    "smoothed": 0.21875,
+    "used": 0.20068,
+    "valid": 1.0
+   },
+   "screen_edge_open": {
+    "column": 320,
+    "twin_open": 16,
+    "twin_valid": 16,
+    "raw": 1.0,
+    "smoothed": 1.0,
+    "used": 1.0,
+    "valid": 0.5
+   },
+   "screen_edge_covered": {
+    "column": 0,
+    "twin_open": 0,
+    "twin_valid": 16,
+    "raw": 0.0,
+    "smoothed": 0.0,
+    "used": 0.0,
+    "valid": 0.5
+   }
+  },
+  "steps": [
+   {
+    "n": 1,
+    "smoothed": 0.75,
+    "expected": 0.75,
+    "used": 0.76562
+   },
+   {
+    "n": 2,
+    "smoothed": 0.5625,
+    "expected": 0.5625,
+    "used": 0.56641
+   },
+   {
+    "n": 3,
+    "smoothed": 0.42188,
+    "expected": 0.42188,
+    "used": 0.41675
+   },
+   {
+    "n": 4,
+    "smoothed": 0.31641,
+    "expected": 0.31641,
+    "used": 0.30469
+   },
+   {
+    "n": 5,
+    "smoothed": 0.2373,
+    "expected": 0.2373,
+    "used": 0.22046
+   },
+   {
+    "n": 6,
+    "smoothed": 0.17798,
+    "expected": 0.17798,
+    "used": 0.15735
+   },
+   {
+    "n": 7,
+    "smoothed": 0.13342,
+    "expected": 0.13348,
+    "used": 0.11005
+   },
+   {
+    "n": 8,
+    "smoothed": 0.10004,
+    "expected": 0.10011,
+    "used": 0.07452
+   }
+  ],
+  "rise": {
+   "frames": 12,
+   "smoothed": 0.97607,
+   "used": 1.0
+  },
+  "lens_fraction": 0.5,
+  "lens_draws": [
+   "ps20_srcalpha_invsrcalpha",
+   "ps20_srcalpha_one",
+   "ps20_one_one",
+   "ps20_one_invsrccolor",
+   "ps20_one_invsrcalpha",
+   "ps30_srcalpha_invsrcalpha",
+   "ps30_srcalpha_one",
+   "ps30_one_one",
+   "ps30_one_invsrccolor",
+   "ps30_one_invsrcalpha"
+  ],
+  "skipped": [],
+  "device_calls": {
+   "execute": 33,
+   "lens_draw": 5
+  },
+  "exit_status": 0,
+  "elapsed_s": 3.5,
+  "executable_sha256": "5266c28a76341492115e3173edb3221acd668ca0eddcb9cdf3819a937215ef70"
+ }
+}

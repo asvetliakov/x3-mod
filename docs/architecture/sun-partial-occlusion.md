@@ -1,6 +1,8 @@
 # Sun and lens chain under partial occlusion
 
-2026-09-22. Design note, nothing implemented. Owning RE note:
+2026-09-22. Ratified design; **step 1 is implemented behind `--sun-occlusion` (default off), not installed and not
+flown** (section "Step 1 as built", which also carries two corrections to the text below; ledger:
+[verification/sun-occlusion.md](../verification/sun-occlusion.md)). Owning RE note:
 [lens-flare-visibility.md](../reverse-engineering/lens-flare-visibility.md) (mechanism),
 [sun-material-identity.md](../reverse-engineering/sun-material-identity.md) (resources, late ordering).
 Trigger: Run 61 user report, triaged in
@@ -14,8 +16,9 @@ fraction `f` in a 1x1 texture, measured from the proxy's own scene depth (RT2 `.
 footprint and multiplied into every draw of the `Lensflare Scene` in the pixel shader. No readback, no
 query, no added latency.** Three pieces, one launcher switch (`--sun-occlusion`, default off until flown):
 
-1. **Probe override** at the sole call `0x00471630` (`call 0x00488720`). Replacement keeps the two cheap
-   vanilla gates (flare video option, view flag) and otherwise answers "not occluded", so the chain stays
+1. **Probe override** at the sole call `0x00471630` (`call 0x00488720`). Replacement keeps the cheap
+   vanilla gates (**corrected: three, in vanilla order**: flare video option, the rect test, view flag;
+   see "Step 1 as built") and otherwise answers "not occluded", so the chain stays
    instantiated while the sun is inside the engine's screen gate. Whenever the GPU side is not healthy it
    calls the original: vanilla behaviour, per frame.
 2. **Visibility pass**, once per frame at the start of the lens bracket: 32 taps of RT2 over the disc
@@ -32,7 +35,8 @@ classification that only a capture can give (section "Diagnostic").
 ## What the user's wish consists of
 
 - **Sprite chain (this note).** Every installed TSuns row has model -1, so what the player sees as "the
-  Sun" in an ordinary sector is the lens chain itself: glow, corona, streaks, ghosts. It is one record,
+  Sun" in an ordinary sector is the lens chain (glow, corona, streaks, ghosts) **plus, corrected, the
+  in-scene card of fallback body 31** (`/Sonne`, RE note section 15), which is not in the lens scene. It is one record,
   one boolean (`record+0x30`), and the swept body-195 probe hides it on the first mesh hit, which for a
   probe aimed at the disc centre is "about half covered". This is the whole reported defect.
 - **Fog shafts: already independent.** Inscatter and shafts come from the shadow cascades and the phase
@@ -194,3 +198,92 @@ station edge is objectionable (that decides whether step 2 is needed).
   for draws classified as core via Q6 and the fingerprint) removes it.
 - Cost figures above are counts, not timings; measure the pass and the bracket with the existing
   per-pass timing before the candidate is frozen.
+
+## Step 1 as built (2026-09-22)
+
+Evidence and commands: [verification/sun-occlusion.md](../verification/sun-occlusion.md). Static answers to
+Q2-Q6: RE note sections 11-16.
+
+**Corrections to the design above.**
+
+1. **Three gates, not two.** `0x00488720` tests, in this order, the flare video option (-> 1), the record's
+   position against the probing view's rect (-> 0 when outside) and `view+0x270 & 0x8000000` (-> 1). The
+   override replicates all three in that order (`sun_occlusion_core.h`, `decide`): with two gates it would
+   have answered "hidden" for a record outside the rect while `0x8000000` is set, where vanilla answers 0.
+   The whole 148-byte prologue is compared (FNV-1a) before patching, because the override restates it.
+2. **Body 31 is part of the visible sun and is not in the lens scene.** The `/Sonne` card is ordinary
+   in-scene geometry of the main view; step 1 does not touch it. For step 2: it draws before the scene
+   end, so it is in the FP16 target (bloom source, exposure, TAA) and is already depth-tested per pixel;
+   what remains open is whether it writes RT2 (if it does, the visibility pass sees the sun occluding
+   itself; the `f_raw` of the diagnostic answers that in the first burst with a clear sun) and whether its
+   hard depth clip next to a faded chain is objectionable.
+
+**What differs from the text above, and why.**
+
+- *Main view only.* The override acts when `record+0x8 == view` and `view == *(cockpit+0x58)` of the
+  active cockpit with `+0x270 & 0x10000` (the registry walk of `sector_background.h`, resolved once per
+  frame through `engine_memory`). Every other probe, including the re-probe of the main view's record by
+  later views (RE note section 14), runs the original. **Consequence, open:** a later full-screen view whose
+  rect contains the sun can still clear `record+0x30` through the vanilla probe; the `sun_probe` lines show
+  whether that happens (`own=0`, `vanilla=1`).
+- *Readiness* (`core::Ready`): exactly one record of the main view in this frame, the same one as in the
+  previous frame, and the visibility pass ran for it in the previous frame; not blocked; not after a Reset.
+  A second sun is detected at its own probe call, so the first record of that one frame was already
+  answered; from the next frame both are vanilla.
+- *Open test:* RT2 `.r < -0.5` (the route's -1 sentinel; every RT2 format has `.r`), not `.b`.
+- *Radius:* derived from `record+0x34`, the accumulator, `view+0x298` and `view+0x300` (RE note section
+  11; `core::footprint`), scaled by `--sun-occlusion-radius` (default 1), floor 1.5 px, cap 0.25 u. With
+  accumulator 0 (a record's first frames) the last radius derived from the same record, else 0.012 u.
+- *Smoothing:* `1 - exp(-dt / 80 ms)` from QPC between passes; a seed (no smoothing) on a new record,
+  after Reset, after a failed or skipped pass and after a gap over 0.5 s. The 1x1 holds `.r` smoothed,
+  `.g` used = `pow(saturate((r - 0.03) / 0.94), curve)`, `.b` raw, `.a` valid / 32; the wraps read `.g`.
+- *Lens draws:* a structural wrap of ps_2_0 / ps_2_x / ps_3_0 (`lens_visibility_variant.h`), built once
+  per program and blend class, the fraction's texture on the highest sampler the program does not
+  declare, no application constant touched (the wrap's constant is a `def`). Scale by blend law:
+  SRCALPHA with ONE or INVSRCALPHA -> alpha; ONE with ONE or INVSRCCOLOR -> rgb; ONE / INVSRCALPHA ->
+  both; alpha test admitted only for GREATER / GREATEREQUAL with ref <= 8 when alpha is scaled (error
+  bounded by ref / 255); **`D3DRS_FOGENABLE` refused** (fixed-function fog is applied after the pixel
+  shader, so `f = 0` would still show fog colour); everything else refused. The draw's blend, alpha-test
+  and fog state and the bound program come from the route's shadow state, not from device getters; per
+  wrapped draw the pass issues five calls (capture of a recorded block holding the application's shader,
+  the wrap sampler's texture and six states; apply of ours; texture; shader; apply of the capture).
+- *A draw that cannot carry the fraction* (fixed function, ps_1_x, an unknown hash, a refused blend law,
+  fog, a refused wrap, a draw the route itself rebinds) *is dropped together with the rest of that
+  bracket* (review 2026-09-22): `f` exists on the GPU only, so the frame cannot know that it is 1, and an
+  unscaled element must never show through geometry. The refusal then **blocks the override for the
+  process** (a Reset does not lift it: the refusal belongs to the program or the material, and lifting it
+  would replay the dropped frame once per Reset); from the next frame the engine's probe decides (one
+  `sun_occlusion_blocked` line). A transient refusal (shadow state unknown, a device error) costs that
+  frame and the next, without the block. The chain therefore either fades as a whole or is vanilla.
+- *Failure direction:* a pass that is skipped untouched (a query open, a block recording, the scene end
+  late) keeps the last smoothed fraction of the same record in use for at most four consecutive frames
+  (`core::Hold`) and the override keeps answering, so a periodic skip cannot make the flare flicker under
+  open sky. After that, after a failed pass, or without a fraction, the lens draws of the frame are
+  dropped (`D3D_OK`, not submitted) and the next frame is vanilla.
+- *Bracket transport:* not `compositor_bridge` (it transports calls without stack arguments and has one
+  global binding, which the scene hook owns). A cdecl thunk calls begin, the original with a copy of
+  the view argument, and end; begin and end run under `PreserveCpuState`. Both thunks save EFLAGS and
+  clear DF around the C handlers; the probe handler runs inside a `GetLastError` / `SetLastError`
+  envelope (the frame's first probe reaches `engine_memory`'s `VirtualQuery`). The owner thread is fixed
+  for the process; a probe from another thread runs the original and is logged once.
+  `present()` closes a bracket an unwind left open.
+- *Conflict:* `X3M_SUBMIT_PHASES`' `sort_return_b` stamp claims `0x00472490..0x00472495`. The feature is
+  refused by name when that variable is set, and the launcher refuses the combination; either order of
+  installation would also fail closed on bytes. No other claim under `src/proxy` touches either call
+  (`verify_sun_occlusion_sites.py`; the scene hook is `0x004721b1`).
+- *Not touched:* the size ramp (`record+0x10`, `0x00471660`), the 2D overlay call at `0x004724a7`
+  (outside the bracket), body 31.
+
+**Diagnostic (`--sun-occlusion-log`, with or without the feature).** `sun_probe` per probe call (frame,
+view, record, owner, main view, `+0x10/+0x20/+0x24/+0x30/+0x34/+0x38`, view flags and layer, records so
+far, ready, the vanilla result, the answer; the original always runs, once); `sun_visibility` per frame
+(latch, footprint, radius and whether it was derived, weight, seed, skip reason, a synchronous 1x1
+readback: smoothed, used, raw, valid taps); `sun_lens_draw` per draw inside the bracket (VS / PS hashes,
+PS model, verdict, topology and counts, blend / z / alpha-test / colour-write state, stage 0 and 1
+texture identity, size and format, RT0); `sun_lens_bracket` per frame (draws, wrapped, refused, dropped).
+
+**For the flight** the three bursts of "Diagnostic and the flight" stand; add `--sun-occlusion-log` to
+all of them. Read first: `sun_occlusion ... patched=1 reason=ok`; with a clear sun `f_raw` near 1 (else
+RT2 is written where the sun shows, see correction 2); `sun_lens_draw verdict=` all `applied` (else the
+refusal names what step 1 cannot wrap and the override is blocked); `radius_u` against the disc in the
+screenshot.

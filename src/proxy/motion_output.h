@@ -34,6 +34,7 @@
 #include "../renderer/camera_reprojection.h"
 #include "../renderer/ambient_occlusion_pass.h"
 #include "../renderer/fog_pass.h"
+#include "../renderer/sun_occlusion_pass.h"
 #include "fog_card_policy.h"
 #include "fog_sector_policy.h"
 #include "fog_card_mask.h"
@@ -137,6 +138,7 @@ struct MotionRoute {
     IDirect3DVertexShader9* restore_vs = nullptr;
     IDirect3DPixelShader9* restore_ps = nullptr;
     bool restore_held = false;
+    renderer::LensDraw lens{};    // Partial sun occlusion: what the lens wrap bound for this draw; put back by after_draw.
     bool sun_receiver = false, sun_color_writer = false;
     bool sun_stamp = false; // gate-3 refused scene draw the lane may stamp invalid after the native draw (sun_stamp_call_ holds its arguments)
     // Sun-lane refusal diagnostics (sun_share_frame.h): the gate reason
@@ -866,6 +868,16 @@ public:
     // route the write-back's sharpened program draws it (configure_hdr's
     // HdrConfig::sharpen carries the same value to the pass).
     void configure_taa_sharpen(float sharpness) noexcept { taa_sharpen_ = sharpness; }
+    // Partial sun occlusion, step 1 (X3M_SUN_OCCLUSION / _LOG / _RADIUS / _CURVE;
+    // docs/architecture/sun-partial-occlusion.md). begin / end are the lens bracket's
+    // listener (src/proxy/sun_occlusion.h, the engine's call 0x00472491): begin runs the
+    // 1x1 visibility pass against this frame's RT2, prepare_lens wraps one lens-scene
+    // draw (the draw hooks call it only while sun_occlusion::bracket_open()).
+    struct SunOcclusionConfig { bool requested = false, log = false; float radius_scale = 1.f, curve = 1.f, default_radius = .012f; };
+    void configure_sun_occlusion(const SunOcclusionConfig& config) noexcept { sun_occlusion_ = config; }
+    void sun_occlusion_begin() noexcept;
+    void sun_occlusion_end() noexcept;
+    void prepare_lens(const MotionDrawCall& call, MotionRoute& route) noexcept;
     // X3M_TAA_CURRENT_FILTER (A of the resolve's filtered current sample, 0
     // off) and X3M_TAA_HISTORY_WEIGHT (c5.z, default 0.9); both validated by
     // the caller and read at the pass's initialisation / every resolve.
@@ -1305,6 +1317,18 @@ private:
     unsigned sun_apply_sampled_=0;
     void run_sun_shadow_apply() noexcept;
     bool ensure_sun_shadow_apply() noexcept;
+    // Partial sun occlusion (motion_output_sun_occlusion_inc.h). Storage only outside the lens bracket.
+    SunOcclusionConfig sun_occlusion_{};
+    std::unique_ptr<renderer::SunOcclusionPass> sun_occlusion_pass_;
+    bool sun_occlusion_attach_failed_ = false;
+    bool lens_frame_active_ = false, lens_suppress_ = false; // this bracket: draws are wrapped / dropped (the override answered but no fraction exists)
+    std::uintptr_t lens_record_ = 0;                          // the record the fraction belongs to (another one seeds)
+    float lens_radius_u_ = 0.f;                               // last radius derived from that record
+    std::uint64_t lens_pass_qpc_ = 0;
+    sun_occlusion::core::Hold lens_hold_{};                   // a skipped pass keeps the last fraction for at most four frames
+    unsigned lens_draws_ = 0, lens_wrapped_ = 0, lens_refused_ = 0, lens_dropped_ = 0;
+    bool ensure_sun_occlusion() noexcept;
+    void finish_lens(MotionRoute& route) noexcept;
     D3DFORMAT sun_lane_depth_formats_[3]{};
     unsigned sun_lane_depth_count_=0;
     bool sun_lane_depth_qualified(D3DFORMAT format) const noexcept {

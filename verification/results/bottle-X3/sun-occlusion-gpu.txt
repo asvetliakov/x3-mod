@@ -1,0 +1,121 @@
+CHECK twin_ps_2_0_refused PASS
+CHECK twin_ps_slots_refused PASS
+CHECK attach PASS
+ATTACH slots=469 ps30_slots=512
+SCENE open column=320 twin_open=32 twin_valid=32 raw=1.00000 smoothed=1.00000 used=1.00000 valid=1.00000
+CHECK open_ran_restored PASS
+CHECK open_twin PASS
+CHECK open_geometric PASS
+CHECK open_seed_and_band PASS
+CHECK open_exact_one PASS
+SCENE covered column=0 twin_open=0 twin_valid=32 raw=0.00000 smoothed=0.00000 used=0.00000 valid=1.00000
+CHECK covered_ran_restored PASS
+CHECK covered_twin PASS
+CHECK covered_geometric PASS
+CHECK covered_seed_and_band PASS
+CHECK covered_exact_zero PASS
+SCENE half column=160 twin_open=16 twin_valid=32 raw=0.50000 smoothed=0.50000 used=0.50000 valid=1.00000
+CHECK half_ran_restored PASS
+CHECK half_twin PASS
+CHECK half_geometric PASS
+CHECK half_seed_and_band PASS
+SCENE three_quarter column=176 twin_open=25 twin_valid=32 raw=0.78125 smoothed=0.78125 used=0.79883 valid=1.00000
+CHECK three_quarter_ran_restored PASS
+CHECK three_quarter_twin PASS
+CHECK three_quarter_geometric PASS
+CHECK three_quarter_seed_and_band PASS
+SCENE quarter column=144 twin_open=7 twin_valid=32 raw=0.21875 smoothed=0.21875 used=0.20068 valid=1.00000
+CHECK quarter_ran_restored PASS
+CHECK quarter_twin PASS
+CHECK quarter_geometric PASS
+CHECK quarter_seed_and_band PASS
+SCENE screen_edge_open column=320 twin_open=16 twin_valid=16 raw=1.00000 smoothed=1.00000 used=1.00000 valid=0.50000
+CHECK screen_edge_open_ran_restored PASS
+CHECK screen_edge_open_twin PASS
+CHECK screen_edge_open_geometric PASS
+CHECK screen_edge_open_seed_and_band PASS
+CHECK screen_edge_valid_about_half PASS
+SCENE screen_edge_covered column=0 twin_open=0 twin_valid=16 raw=0.00000 smoothed=0.00000 used=0.00000 valid=0.50000
+CHECK screen_edge_covered_ran_restored PASS
+CHECK screen_edge_covered_twin PASS
+CHECK screen_edge_covered_geometric PASS
+CHECK screen_edge_covered_seed_and_band PASS
+CHECK screen_edge_covered_zero PASS
+CHECK offscreen_seed_one PASS
+CHECK offscreen_keeps_history PASS
+CHECK radius_zero_skipped PASS
+CHECK radius_fallback_runs PASS
+STEP n=1 smoothed=0.75000 expected=0.75000 used=0.76562
+STEP n=2 smoothed=0.56250 expected=0.56250 used=0.56641
+STEP n=3 smoothed=0.42188 expected=0.42188 used=0.41675
+STEP n=4 smoothed=0.31641 expected=0.31641 used=0.30469
+STEP n=5 smoothed=0.23730 expected=0.23730 used=0.22046
+STEP n=6 smoothed=0.17798 expected=0.17798 used=0.15735
+STEP n=7 smoothed=0.13342 expected=0.13348 used=0.11005
+STEP n=8 smoothed=0.10004 expected=0.10011 used=0.07452
+CHECK step_response_down PASS
+CHECK fade_reaches_exact_zero PASS
+RISE frames=12 smoothed=0.97607 used=1.00000
+CHECK fade_reaches_exact_one PASS
+CHECK curve_exponent PASS
+CHECK format_a32b32g32r32f PASS
+CHECK format_g32r32f PASS
+CHECK format_refused PASS
+CHECK recording_refused PASS
+CHECK nan_refused PASS
+CHECK draw_fault_restored PASS
+CHECK draw_fault_recovery_seeds PASS
+LENS fraction=0.50000
+CHECK lens_fraction_mid PASS
+LENS_DRAW ps20_srcalpha_invsrcalpha plain=0.5020,0.5020,0.5020 wrapped=0.3490,0.4510,0.5490 expected=0.3500,0.4500,0.5500 sampler=15
+CHECK ps20_srcalpha_invsrcalpha_wrapped PASS
+CHECK ps20_srcalpha_invsrcalpha_state_restored PASS
+LENS_DRAW ps20_srcalpha_one plain=0.6000,0.7020,0.8000 wrapped=0.4000,0.5490,0.7020 expected=0.4000,0.5500,0.7000 sampler=15
+CHECK ps20_srcalpha_one_wrapped PASS
+CHECK ps20_srcalpha_one_state_restored PASS
+LENS_DRAW ps20_one_one plain=1.0000,1.0000,1.0000 wrapped=0.6000,0.7020,0.8000 expected=0.6000,0.7000,0.8000 sampler=15
+CHECK ps20_one_one_wrapped PASS
+CHECK ps20_one_one_state_restored PASS
+LENS_DRAW ps20_one_invsrccolor plain=0.8392,0.7608,0.7608 wrapped=0.5216,0.5804,0.6784 expected=0.5200,0.5800,0.6800 sampler=15
+CHECK ps20_one_invsrccolor_wrapped PASS
+CHECK ps20_one_invsrccolor_state_restored PASS
+LENS_DRAW ps20_one_invsrcalpha plain=0.9020,0.8000,0.7020 wrapped=0.5490,0.6000,0.6510 expected=0.5500,0.6000,0.6500 sampler=15
+CHECK ps20_one_invsrcalpha_wrapped PASS
+CHECK ps20_one_invsrcalpha_state_restored PASS
+LENS_DRAW ps30_srcalpha_invsrcalpha plain=0.5020,0.5020,0.5020 wrapped=0.3490,0.4510,0.5490 expected=0.3500,0.4500,0.5500 sampler=15
+CHECK ps30_srcalpha_invsrcalpha_wrapped PASS
+CHECK ps30_srcalpha_invsrcalpha_state_restored PASS
+LENS_DRAW ps30_srcalpha_one plain=0.6000,0.7020,0.8000 wrapped=0.4000,0.5490,0.7020 expected=0.4000,0.5500,0.7000 sampler=15
+CHECK ps30_srcalpha_one_wrapped PASS
+CHECK ps30_srcalpha_one_state_restored PASS
+LENS_DRAW ps30_one_one plain=1.0000,1.0000,1.0000 wrapped=0.6000,0.7020,0.8000 expected=0.6000,0.7000,0.8000 sampler=15
+CHECK ps30_one_one_wrapped PASS
+CHECK ps30_one_one_state_restored PASS
+LENS_DRAW ps30_one_invsrccolor plain=0.8392,0.7608,0.7608 wrapped=0.5216,0.5804,0.6784 expected=0.5200,0.5800,0.6800 sampler=15
+CHECK ps30_one_invsrccolor_wrapped PASS
+CHECK ps30_one_invsrccolor_state_restored PASS
+LENS_DRAW ps30_one_invsrcalpha plain=0.9020,0.8000,0.7020 wrapped=0.5490,0.6000,0.6510 expected=0.5500,0.6000,0.6500 sampler=15
+CHECK ps30_one_invsrcalpha_wrapped PASS
+CHECK ps30_one_invsrcalpha_state_restored PASS
+CHECK lens_no_per_draw_creation PASS
+LENS_VARIANTS programs=2 shaders_created=6
+CALLS execute=33 lens_draw=5
+CHECK device_calls_bounded PASS
+CHECK refuse_blend_off PASS
+CHECK refuse_blend_law PASS
+CHECK refuse_srgb_write PASS
+CHECK refuse_alpha_test PASS
+CHECK refuse_fixed_function PASS
+CHECK refuse_unhashed PASS
+CHECK refuse_ps_1_1 PASS
+CHECK refuse_fog PASS
+CHECK refuse_state_unknown PASS
+CHECK refuse_ps_1_1_reason PASS
+CHECK lens_bind_fault_restored PASS
+CHECK before_reset_releases_targets PASS
+RESET held_before=18 held_after=9
+CHECK reset_pending_refused PASS
+CHECK native_reset PASS
+CHECK after_reset_seeds_and_matches PASS
+CHECK detach_releases_everything PASS
+RESULT PASS checks=89 failures=0

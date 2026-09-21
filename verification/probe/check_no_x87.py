@@ -82,7 +82,10 @@ EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry
                 '_x3m_collide_memo_thunk', '_x3m_collide_memo_lookup', '_x3m_collide_memo_store',
                 # Opt-in query clocks under assembly FNSAVE/FRSTOR, MXCSR and XMM transport.
                 '_x3m_collide_query_memo_thunk', '_x3m_collide_query_descent_thunk',
-                '_x3m_collide_query_lookup', '_x3m_collide_query_store', '_x3m_collide_query_enter', '_x3m_collide_query_leave']
+                '_x3m_collide_query_lookup', '_x3m_collide_query_store', '_x3m_collide_query_enter', '_x3m_collide_query_leave',
+                # partial sun occlusion (src/proxy/sun_occlusion.cpp, X3M_SUN_OCCLUSION=1): the flare-probe thunk and its integer-only
+                # handler run inside the engine's record loop with no boundary; the lens thunk's begin / end carry PreserveCpuState
+                '_x3m_sun_probe_thunk', '_x3m_sun_probe_decide', '_x3m_sun_lens_thunk', '_x3m_sun_lens_begin', '_x3m_sun_lens_end']
 # The lock view without the FNSAVE/FRSTOR shell (src/ownership/d3d9_ownership.cpp,
 # route-per-draw-cost.md lever 2a): called only from the draw hooks' route, it
 # preserves nothing itself, so it and its core are a required root, and its own

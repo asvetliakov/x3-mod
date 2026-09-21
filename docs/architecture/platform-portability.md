@@ -569,3 +569,27 @@ seeing the worker's exit (at worst a small per-thread leak; not verified); `std:
 `std::condition_variable` behaviour of winpthreads on native Windows is unexecuted; native
 execution of the whole path remains unverified
 ([fog ledger](../verification/volumetric-fog.md#stored-density-runtime-integration-checkpoint-4-proxy-wiring-launcher-option-lifetime-2026-09-21)).
+
+## 2026-09-22: partial sun occlusion, step 1 (`--sun-occlusion`, default off)
+
+D3D side, documented calls only: `CheckDeviceFormat` and `CreateTexture` for two 1x1
+`A16B16G16R16F` render-target textures (ping-pong: no blending on FP16), `ColorFill` on them,
+state blocks recorded with `BeginStateBlock` / `EndStateBlock` and re-used through `Capture` / `Apply`
+(the quad's state set twice, and two per wrap sampler; no `D3DSBT_ALL`), a ps_3_0 program of 469 instruction slots (gated against
+`MaxPixelShader30InstructionSlots`, so a device at the 512 minimum still attaches), and per lens
+draw `GetFunction` / `CreatePixelShader` (once per program and blend class), `SetTexture`,
+`SetPixelShader` and the two blocks. The pass issues no state getter per draw (the draw's state is
+the route's shadow; a shadow miss is one `GetRenderState`, legal on the non-pure device the route
+creates); per frame it reads the bound render targets, depth surface, declaration and FVF. No query, no readback (the 1x1
+`GetRenderTargetData` exists only under `X3M_SUN_OCCLUSION_LOG=1`), no Wine export, layout or
+hash. The two EXE redirects are byte-validated game-internal hooks, in scope on both platforms;
+Win32 use is `GetCurrentThreadId`, `GetModuleHandleExW` (pin) and QPC.
+Windows x86 cross-compilation, `check_no_x87.py` and the X3/FEX fixtures pass
+([ledger](../verification/sun-occlusion.md)). Unverified natively: execution of the whole path;
+whether the wrapped ps_2_0 programs stay inside native ps_2_0 validation (the wrap adds one
+`texld` on a temporary loaded from a constant, three arithmetic instructions, one sampler and one
+constant: a program already at 32 texture or 64 arithmetic instructions, or at the dependent-read
+limit, is rejected by `CreatePixelShader`, which the pass treats as a refusal and the feature
+answers by returning the decision to the engine's probe; the fixture's two originals are far below
+the limits, so that refusal is not exercised); point sampling of a 1x1 FP16 texture from SM2 programs on
+drivers without FP16 filtering (the pass forces POINT / NONE for that reason).

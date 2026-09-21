@@ -15,6 +15,7 @@
 #include "collide_narrow_census.h"
 #include "collide_sat_sse2.h"
 #include "collide_memo.h"
+#include "sun_occlusion.h"
 #include "cull_small_parts.h"
 #include "frame_timing.h"
 #include "frame_phases.h"
@@ -145,6 +146,7 @@ float hull_emission_gain = 1.f;         // X3M_HULL_EMISSION_GAIN: the same gain
 float original_fill = 0.f;             // X3M_ORIGINAL_FILL: linear-light fill inside the original hull pixel programs, finite 0..0.5, 0 = off (requires X3M_HDR=1, excludes X3M_LINEAR_MATERIALS=1)
 bool lightmap_far_fade_requested = false; // X3M_LIGHT_MAP_FAR_FADE=P0,P1[,G]: the hull light-map gain fades to G (default 1) as the draw's footprint grows from P0 to P1 units/px; needs the gain
 float lightmap_far_fade[3] = {0.f, 0.f, 1.f};
+float sun_occlusion_radius = 1.f, sun_occlusion_curve = 1.f; // X3M_SUN_OCCLUSION_RADIUS (0.1..8, scale on the record-derived disc radius), X3M_SUN_OCCLUSION_CURVE (0.25..4, exponent on the used fraction)
 float hull_lightmap_gain = 1.f;        // X3M_HULL_LIGHTMAP_GAIN: gain on the light-map (self-illumination) term inside the original hull pixel programs, finite 1..8, 1 = off (requires X3M_HDR=1, excludes X3M_LINEAR_MATERIALS=1; Ctrl+Shift+F4 switches it alone)
 bool screen_emission_additive_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE=G: in-place ADD/ONE/ONE bullets with a colour gain (screen-emission-region.md, "Additive option")
 float screen_emission_additive_gain = 1.f;       // G, finite 1..8; anything else refuses the option
@@ -1395,6 +1397,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     cull_census::present(ctx.id,ctx.frame,ctx.capture); // X3M_CULL_CENSUS=1 only: the cull_census_frame row and the entry rows of a captured frame, then the ring is cleared
     collide_box_cull::present(ctx.id,ctx.frame,ctx.capture); // X3M_COLLIDE_BOX_CULL=1 only: reads and zeroes the four pair counters; one collide_census line per 300 frames, one collide_census_frame line per capture frame
     collide_narrow_census::present(ctx.id,ctx.frame,ctx.capture); // X3M_COLLIDE_NARROW_CENSUS=1 only: swaps the accepted-pair ring; one collide_narrow line per 300 frames, collide_narrow_pair rows on a capture frame
+    sun_occlusion::present(ctx.frame+1); // X3M_SUN_OCCLUSION / _LOG only: the probe override's frame boundary
     collide_memo::present(ctx.id,ctx.frame,ctx.capture); // X3M_COLLIDE_MEMO=1 only: advances the memo's frame (entries expire after one frame untouched); one collide_memo line per 300 frames
     cull_small_parts::present(ctx.id,ctx.frame,ctx.capture); // X3M_CULL_SMALL_PARTS_PX only: the frame's threshold and culled count on a captured frame
     telemetry::present(ctx.stats,ctx.frame,ctx.capture,begin,end,hr);
@@ -1552,6 +1555,7 @@ HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODE
     lod_scale::refresh(); // the multiplier may be rewritten if the device bring-up path re-runs
     point_light_admission::next_frame(); // a Reset also retires the frame's root verdicts
     cull_census::begin_frame(false); // a Reset disarms the census stubs and drops the partial frame
+    sun_occlusion::device_reset(); // the 1x1 visibility targets went with the Reset: vanilla until a pass has run again
     collide_memo::device_reset(); // X3M_COLLIDE_MEMO=1 only: a Reset (device loss, mode change, the pause around it) drops the whole memo
     cull_small_parts::after_reset(p ? p->BackBufferWidth : 0u); // a Reset disarms the small-parts stub until the next frame's projection read; new back-buffer width
     ownership_depth_info(d,ctx.id,ctx.frame,"reset_after");
@@ -1606,7 +1610,9 @@ HRESULT WINAPI draw_primitive(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT s,UINT
         CompositionDrawScope(unsigned& d,bool e):depth(d),enabled(e){if(enabled)++depth;}
         ~CompositionDrawScope(){if(enabled)--depth;}
     } composition_scope(ctx.composition_draw_depth,ctx.motion_output.composition_requested());
-    auto route=ctx.motion_output.before_draw({false,false,t,c,s,0,0,0,composition_permission});
+    const MotionDrawCall draw_call{false,false,t,c,s,0,0,0,composition_permission};
+    auto route=ctx.motion_output.before_draw(draw_call);
+    if(sun_occlusion::bracket_open())ctx.motion_output.prepare_lens(draw_call,route); // X3M_SUN_OCCLUSION only, lens-scene draws only: one flag test otherwise
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     if(route.submit)++ctx.fixture_primitive_source_calls;
 #endif
@@ -1701,7 +1707,9 @@ HRESULT WINAPI draw_indexed(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,INT b,UINT m,
 #endif
                 slot=observer->original(d,{UINT(t),c,m,n,s,b},ctx.draws);
             });
-    auto route=ctx.motion_output.before_draw({true,false,t,c,s,b,m,n,composition_permission});
+    const MotionDrawCall draw_call{true,false,t,c,s,b,m,n,composition_permission};
+    auto route=ctx.motion_output.before_draw(draw_call);
+    if(sun_occlusion::bracket_open())ctx.motion_output.prepare_lens(draw_call,route); // X3M_SUN_OCCLUSION only, lens-scene draws only: one flag test otherwise
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     if(fixture_observer_active(d))call_preserved([&]{fixture_guard_sample(ctx,d,0);});
 #endif
@@ -1746,7 +1754,9 @@ HRESULT WINAPI draw_up(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT c,const void*
     ctx.scene_depth.before_draw(d,t,c);
     snapshot(d,"up",t,c,true);
     if (devices.at(d)->capture) log("draw_args vertex_ptr=%p stride=%u",data,stride);
-    auto route=ctx.motion_output.before_draw({false,true,t,c,0,0,0,0});
+    const MotionDrawCall draw_call{false,true,t,c,0,0,0,0};
+    auto route=ctx.motion_output.before_draw(draw_call);
+    if(sun_occlusion::bracket_open())ctx.motion_output.prepare_lens(draw_call,route); // X3M_SUN_OCCLUSION only, lens-scene draws only: one flag test otherwise
     frame_timing::draw_native_begin(); // ahead of before_original, like present_begin (cpu_state.h)
     timer.begin();
     cpu.before_original();
@@ -1770,7 +1780,9 @@ HRESULT WINAPI draw_indexed_up(IDirect3DDevice9* d,D3DPRIMITIVETYPE t,UINT m,UIN
     ctx.scene_depth.before_draw(d,t,c);
     snapshot(d,"indexed_up",t,c,true);
     if (devices.at(d)->capture) log("draw_args min_vertex=%u num_vertices=%u vertex_ptr=%p stride=%u index_ptr=%p index_format=%u",m,n,data,stride,indices,f);
-    auto route=ctx.motion_output.before_draw({true,true,t,c,0,0,m,n});
+    const MotionDrawCall draw_call{true,true,t,c,0,0,m,n};
+    auto route=ctx.motion_output.before_draw(draw_call);
+    if(sun_occlusion::bracket_open())ctx.motion_output.prepare_lens(draw_call,route); // X3M_SUN_OCCLUSION only, lens-scene draws only: one flag test otherwise
     frame_timing::draw_native_begin(); // ahead of before_original, like present_begin (cpu_state.h)
     timer.begin();
     cpu.before_original();
@@ -2380,6 +2392,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_taa_k(taa_k_override);
     hooked.motion_output.configure_mip_bias(taa_mip_bias);
     hooked.motion_output.configure_taa_sharpen(taa_sharpen);
+    hooked.motion_output.configure_sun_occlusion({sun_occlusion::override_enabled(),sun_occlusion::logging(),sun_occlusion_radius,sun_occlusion_curve,.012f});
     hooked.motion_output.configure_taa_resolve(taa_current_filter,taa_history_weight);
     hooked.motion_output.configure_taa_line_filter(taa_line_filter,taa_line_width);
     hooked.motion_output.configure_taa_far(taa_far[0],taa_far[1],taa_far[2],taa_far[3],taa_far[4],taa_far[5]);
@@ -2684,6 +2697,10 @@ HRESULT WINAPI create_device(IDirect3D9* d,UINT adapter,D3DDEVTYPE type,HWND win
 }
 }
 bool screen_emission_route_enabled() noexcept { return screen_emission_requested; } // the one gate the loader's scan enable shares
+// The lens bracket's listener (src/proxy/sun_occlusion.h): the engine's render thread, inside its
+// `call 0x0047e6e0` for the lens scene, under the thunk's full CPU-state boundary.
+void sun_lens_begin() { CaptureLock lock; for(auto& entry:devices) entry.second->motion_output.sun_occlusion_begin(); }
+void sun_lens_end() { CaptureLock lock; for(auto& entry:devices) entry.second->motion_output.sun_occlusion_end(); }
 void initialize_log(HMODULE module) {
     CaptureLock lock;
     wchar_t path[32768]{}; GetModuleFileNameW(module,path,32768);
@@ -3303,6 +3320,16 @@ void initialize_log(HMODULE module) {
     collide_narrow_census::initialize(); // X3M_COLLIDE_NARROW_CENSUS=1 only; narrow-phase census: two call redirects (0x0045d665, 0x0048a9a5) and one entry trampoline (0x004e2530), same window, disjoint from the box-cull claims
     collide_sat_sse2::initialize(); // X3M_COLLIDE_SAT_SSE2=1 only; the sole call of the OBB separating-axis test 0x004e3280 (at 0x004e25a3) redirected to an SSE2 reimplementation, same window, disjoint from every other claim
     collide_memo::initialize(); // X3M_COLLIDE_MEMO=1 only; the sole call of 0x004e29f0 (at 0x0047f329, inside the mesh-pair query) redirected to the no-contact memo's thunk, same window, after the census and the SAT so the bytes it hashes are settled
+    // X3M_SUN_OCCLUSION=1 / X3M_SUN_OCCLUSION_LOG=1 only (docs/architecture/sun-partial-occlusion.md): the flare probe's call
+    // 0x00471630 and the lens traversal's call 0x00472491, same window, disjoint from every other claim except
+    // X3M_SUBMIT_PHASES' stamp at 0x00472490 (refused by name). The override needs the route's RT2 (X3M_MOTION_OUTPUT=1).
+    {
+        wchar_t value[32]{};
+        if(GetEnvironmentVariableW(L"X3M_SUN_OCCLUSION_RADIUS",value,32)>0){wchar_t* end=nullptr;const float v=wcstof(value,&end);if(end!=value&&*end==L'\0'&&v>=.1f&&v<=8.f)sun_occlusion_radius=v;}
+        if(GetEnvironmentVariableW(L"X3M_SUN_OCCLUSION_CURVE",value,32)>0){wchar_t* end=nullptr;const float v=wcstof(value,&end);if(end!=value&&*end==L'\0'&&v>=.25f&&v<=4.f)sun_occlusion_curve=v;}
+        sun_occlusion::set_listener(&sun_lens_begin,&sun_lens_end);
+        if(sun_occlusion::initialize())log("sun_occlusion_config override=%u log=%u route=%u radius_scale=%.3f curve=%.3f",sun_occlusion::override_enabled()?1u:0u,sun_occlusion::logging()?1u:0u,motion_output_requested?1u:0u,double(sun_occlusion_radius),double(sun_occlusion_curve));
+    }
     cull_census::initialize(); // X3M_CULL_CENSUS=1 only; two read-only trampolines on the cull/LOD pass (0x0047d258, 0x0047d528), same window
     cull_small_parts::initialize(); // X3M_CULL_SMALL_PARTS_PX only; one trampoline on the cull/LOD pass (0x0047d2a2), same window, disjoint from the census claims
     if(telemetry::enabled()||gz_buffer::requested()||crypt_cache::requested())loading_trace::initialize(); // X3M_GZ_BUFFER=1 / X3M_CRYPT_CACHE=1 patch their rows alone

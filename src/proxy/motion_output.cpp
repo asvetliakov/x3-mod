@@ -15,6 +15,7 @@
 #include "camera_state.h"
 #include "sun_light_poll.h"
 #include "chase_camera.h"
+#include "sun_occlusion.h"
 #include "../renderer/material_motion.h"
 #include "../renderer/temporal_pass.h"
 #include "../renderer/temporal_resolve_program.h"
@@ -410,6 +411,8 @@ void MotionOutput::release_resources() noexcept {
     detach_shadow_retention(); // every held reference goes before the device does (flush=teardown)
     if (depth_replay_) { taa_call([&] { depth_replay_->detach(); }); depth_replay_.reset(); }
     if (sun_apply_) { taa_call([&] { sun_apply_->detach(); }); sun_apply_.reset(); }
+    if (sun_occlusion_pass_) { taa_call([&] { sun_occlusion_pass_->detach(); }); sun_occlusion_pass_.reset(); }
+    lens_frame_active_ = lens_suppress_ = false; lens_record_ = 0; sun_occlusion_attach_failed_ = false;
     release(sentinel_ps_);
     release(sentinel_mrt_ps_); release(sun_sentinel_ps_);
     for (auto& stamp : sun_stamp_ps_) release(stamp);
@@ -3018,6 +3021,9 @@ void MotionOutput::before_reset() noexcept {
     depth_replayed_ = 0; depth_cascade_frame_ok_ = false; sun_apply_applied_ = sun_apply_attempted_ = false;
     candidate_ps_written_ = 0; // Reset clears the device's shader constants; the validated sun itself is world-fixed and stays
     if (sun_apply_) taa_call([&] { sun_apply_->before_reset(); });
+    // The two 1x1 DEFAULT-pool targets go; the override is vanilla until a pass has run again (sun_occlusion::device_reset).
+    if (sun_occlusion_pass_) taa_call([&] { sun_occlusion_pass_->before_reset(); });
+    lens_frame_active_ = lens_suppress_ = false; lens_record_ = 0; lens_pass_qpc_ = 0; lens_hold_ = {}; sun_occlusion_attach_failed_ = false;
     if (fog_) taa_call([&] { fog_->before_reset(); });
     fog_sector_ = {}; fog_cards_ = {}; fog_card_ready_checked_ = fog_card_ready_ = false; fog_card_fault_reason_ = "none";
     fog_failures_ = 0; fog_attach_failed_ = false; // a transient failure or attach refusal is retried after Reset
@@ -3043,6 +3049,7 @@ void MotionOutput::after_reset(HRESULT result) noexcept {
     if (ao_) ao_->after_reset(result);
     if (depth_replay_) depth_replay_->after_reset(result);
     if (sun_apply_) sun_apply_->after_reset(result);
+    if (sun_occlusion_pass_) sun_occlusion_pass_->after_reset(result);
     if (fog_) { fog_->after_reset(result); fog_frame_ = ~std::uint64_t(0); }
     sun_apply_frame_ = ~std::uint64_t(0); depth_replayed_frame_ = ~std::uint64_t(0); // a successful Reset continues the frame counter: the replay and the quad may run again
     scene_open_ = false; // Reset ends any application scene; BeginScene follows.
@@ -5940,6 +5947,7 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
     // (undo, the finish_* paths, the sun stamp) and are released on every
     // return, inside the draw hook while its device pin is held.
     struct RestoreScope { MotionOutput& self; MotionRoute& route; ~RestoreScope() { self.release_restore(route); } } restore_scope{*this, route};
+    if (route.lens.applied) finish_lens(route); // before every other restore: the wrap sits on top of the application's own bindings
     if (route.fog_card_mask.masked) finish_fog_card(route, result);
     if (!enabled_ || !route.evaluated) return;
     const bool jittered = route.jittered;
@@ -7977,4 +7985,5 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
 #include "motion_output_shadow_adaptive_inc.h"
 #include "motion_output_shadow_retention_inc.h"
 #include "motion_output_fog_inc.h"
+#include "motion_output_sun_occlusion_inc.h"
 } // namespace x3m
