@@ -439,3 +439,18 @@ the run's `single=1 answered=1` samples, the still half-covered case
 jitter (counts 97-143 per index, same value) - the shimmer fix holds; matches
 the user's "shimmer reduced or gone" report. Not independently re-derived
 beyond this count; no new edge-walk measurement was taken this run.
+
+## 2026-09-22: core dimming is the default (run235 acceptance)
+
+Run 65 session A, run235: with the core-`f` A/B flown, the user accepted the product form, so
+`rO *= f * open_px` for the sun's clipped core bodies is now the default whenever `--sun-occlusion` is on.
+`--sun-occlusion-core-f` became an explicit opt-out (`on` / `off`, default `on`); `off` restores the Run64
+clip-only form. The launcher sets `X3M_SUN_OCCLUSION_CORE_F` to `1` or `0` only when the override is requested
+and pops any inherited value otherwise (nothing is patched without `--sun-occlusion`); the DLL reads the variable
+as default-on, only an explicit `"0"` turning it off, and the `sun_occlusion_config ... core_f=` field keeps its
+meaning (1 = product, 0 = clip only). No GPU or shader change: both wraps already existed and both fixture cases
+already passed, so no Wine run was needed.
+
+| Check | Result |
+| --- | --- |
+| `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_sun_occlusion` | 24 tests, 0 failing (new: core-f default on / explicit off / inherited value ignored, the DLL's default-on read; the invalid-choice refusal) |

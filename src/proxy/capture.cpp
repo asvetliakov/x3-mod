@@ -148,7 +148,7 @@ float hull_emission_gain = 1.f;         // X3M_HULL_EMISSION_GAIN: the same gain
 float original_fill = 0.f;             // X3M_ORIGINAL_FILL: linear-light fill inside the original hull pixel programs, finite 0..0.5, 0 = off (requires X3M_HDR=1, excludes X3M_LINEAR_MATERIALS=1)
 bool lightmap_far_fade_requested = false; // X3M_LIGHT_MAP_FAR_FADE=P0,P1[,G]: the hull light-map gain fades to G (default 1) as the draw's footprint grows from P0 to P1 units/px; needs the gain
 float lightmap_far_fade[3] = {0.f, 0.f, 1.f};
-bool sun_occlusion_core_f = false; // X3M_SUN_OCCLUSION_CORE_F=1: the clipped core bodies are also scaled by f (flight comparison)
+bool sun_occlusion_core_f = true; // X3M_SUN_OCCLUSION_CORE_F: the clipped core bodies are also scaled by f (default on with the override; =0 restores clip-only)
 float sun_occlusion_radius = sun_occlusion::core::radius_default_u, sun_occlusion_curve = 1.f; // X3M_SUN_OCCLUSION_RADIUS (0.005..0.25, the disc's half-width as a fraction of the back-buffer width), X3M_SUN_OCCLUSION_CURVE (0.25..4, exponent on the used fraction)
 bool hull_emissive_widening_requested = false; // X3M_HULL_EMISSIVE_WIDENING=K[,B] (hull-emissive-widening.md 8.3): the light-map fetch of the gained hull variants widens to k x k px, k = clamp(K . texels per pixel, 1, K) per pixel, thin emitters boosted by B; needs the gain
 float hull_emissive_widening[2] = {1.f, 1.f};
@@ -3282,7 +3282,7 @@ void initialize_log(HMODULE module) {
         wchar_t value[32]{};
         if(GetEnvironmentVariableW(L"X3M_SUN_OCCLUSION_RADIUS",value,32)>0){wchar_t* end=nullptr;const float v=wcstof(value,&end);if(end!=value&&*end==L'\0'&&v>=sun_occlusion::core::radius_option_min_u&&v<=sun_occlusion::core::radius_option_max_u)sun_occlusion_radius=v;}
         if(GetEnvironmentVariableW(L"X3M_SUN_OCCLUSION_CURVE",value,32)>0){wchar_t* end=nullptr;const float v=wcstof(value,&end);if(end!=value&&*end==L'\0'&&v>=.25f&&v<=4.f)sun_occlusion_curve=v;}
-        sun_occlusion_core_f=GetEnvironmentVariableW(L"X3M_SUN_OCCLUSION_CORE_F",value,32)==1&&value[0]==L'1';
+        sun_occlusion_core_f=!(GetEnvironmentVariableW(L"X3M_SUN_OCCLUSION_CORE_F",value,32)==1&&value[0]==L'0'); // default on; only an explicit "0" restores clip-only
         sun_occlusion::set_listener(&sun_lens_begin,&sun_lens_end);
         if(sun_occlusion::initialize())log("sun_occlusion_config override=%u log=%u route=%u radius_u=%.4f curve=%.3f core_f=%u",sun_occlusion::override_enabled()?1u:0u,sun_occlusion::logging()?1u:0u,motion_output_requested?1u:0u,double(sun_occlusion_radius),double(sun_occlusion_curve),sun_occlusion_core_f?1u:0u);
     }

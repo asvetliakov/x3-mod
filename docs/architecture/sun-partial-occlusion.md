@@ -345,10 +345,13 @@ draw is classified on the CPU and wrapped accordingly:
   sentinel: no routed surface in front of the far plane), then **`rO *= open_px`**: a core body is clipped, not
   scaled. Rationale: `f` is the disc's open fraction, which the per-pixel clip already realises exactly for the
   core (the glow's pixels behind geometry are removed, the open ones are what the eye sees at full strength);
-  multiplying by `f` as well would dim the visible half of a half-covered sun to half its strength, a double
-  attenuation the physical picture does not have. The ghosts and streaks, which have no geometry of their own to
-  clip against, carry `f` (their brightness follows the amount of unoccluded disc). `X3M_SUN_OCCLUSION_CORE_F=1`
-  (`--sun-occlusion-core-f`) restores the product for the flight comparison. The soft edge spans five columns
+  multiplying by `f` as well is a double attenuation the physical picture does not have. The ghosts and streaks,
+  which have no geometry of their own to clip against, carry `f` (their brightness follows the amount of
+  unoccluded disc). Flight (run235, Run 65 session A) preferred the product anyway - the clipped disc dimming with
+  the covered fraction reads better in the game than the clip alone - so `rO *= f * open_px` is the **default**
+  whenever the override is on (`X3M_SUN_OCCLUSION_CORE_F` unset or `1`, `--sun-occlusion-core-f on`), and
+  `X3M_SUN_OCCLUSION_CORE_F=0` / `--sun-occlusion-core-f off` restores the clip-only form described above. The GPU
+  path is unchanged; only which of the two wraps is built changed. The soft edge spans five columns
   (1, 7/9, 5/9, 4/9, 2/9, 0 across a vertical edge, fixture-measured: the knight-move kernel of "Jitter contract").
   The wrapped program stays **ps_2_0**: 40 arithmetic and 11 texture
   instructions, 9 temporaries, dependent-read depth 1 (limits 64 / 32 / 12 / 4), so no promotion; a vs_3_0 /

@@ -95,7 +95,7 @@ public:
     // lens_begin. `first` is true the one time this pair was scanned (once-per-pair logging).
     struct Prepared { unsigned matrix_register = ~0u; bool origin_known = false, first = false; };
     LensVerdict lens_prepare(const LensState& state, Prepared* out) noexcept;
-    // X3M_SUN_OCCLUSION_CORE_F: a clipped core body is also multiplied by the fraction (default: clipped only).
+    // X3M_SUN_OCCLUSION_CORE_F: a clipped core body is also multiplied by the fraction (default on with the override; =0 = clipped only).
     void set_core_fraction(bool on) noexcept { core_f_ = on; }
     // Captures the application's shaders, the wrap samplers' textures and states into a recorded block
     // (which holds the references), applies ours, binds the fraction and the wrap. Body::Ghost: the

@@ -906,7 +906,7 @@ public:
     // draw (the draw hooks call it only while sun_occlusion::bracket_open()).
     // radius_u: the disc's half-width as a fraction of the back-buffer width (X3M_SUN_OCCLUSION_RADIUS; the
     // engine's record size saturates for the sun, so the radius is configured, not derived).
-    // core_fraction (X3M_SUN_OCCLUSION_CORE_F=1): a clipped core body is also multiplied by f (default: clipped only; ghosts carry f).
+    // core_fraction (X3M_SUN_OCCLUSION_CORE_F, default on; =0 = clipped only): a clipped core body is also multiplied by f, like the ghosts.
     struct SunOcclusionConfig { bool requested = false, log = false; float radius_u = sun_occlusion::core::radius_default_u, curve = 1.f; bool core_fraction = false; };
     void configure_sun_occlusion(const SunOcclusionConfig& config) noexcept { sun_occlusion_ = config; }
     void sun_occlusion_begin() noexcept;
