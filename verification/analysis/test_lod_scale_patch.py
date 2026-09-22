@@ -29,13 +29,16 @@ int main() {
     check(std::memcmp(code, want, 6) == 0, "encoding");
     check(sizeof expected_window == 17 && sizeof expected_site == 6 && std::memcmp(expected_window + 11, expected_site, 6) == 0, "window_tail_is_site");
     check(site_va - window_va == 11 && next_va - site_va == site_length, "boundaries");
-    check(valid_factor(1.0) && valid_factor(4.0) && valid_factor(2.5), "factor_band");
-    check(!valid_factor(0.999) && !valid_factor(4.001) && !valid_factor(0.0) && !valid_factor(-2.0), "factor_out_of_band");
+    check(valid_factor(1.0) && valid_factor(4.0) && valid_factor(2.5) && valid_factor(0.25) && valid_factor(0.5), "factor_band");
+    check(!valid_factor(0.2) && !valid_factor(0.249) && !valid_factor(4.001) && !valid_factor(0.0) && !valid_factor(-2.0), "factor_out_of_band");
     check(!valid_factor(__builtin_nan("")) && !valid_factor(__builtin_inf()), "factor_not_finite");
     std::uint32_t out = 0;
     check(mirror_bits(float_to_bits(1.0f), 2.0, &out) && bits_to_float(out) == 0.5f, "scale_1_0");
     check(mirror_bits(float_to_bits(1.4f), 4.0, &out) && bits_to_float(out) == 0.35f, "scale_1_4_at_cap");
     check(mirror_bits(float_to_bits(1.15f), 1.0, &out) && out == float_to_bits(1.15f), "factor_one_identity");
+    // Below 1 the mirror grows (switch distances pulled in); still finite and positive at the floor.
+    check(mirror_bits(float_to_bits(1.0f), 0.5, &out) && bits_to_float(out) == 2.0f, "scale_half");
+    check(mirror_bits(float_to_bits(1.4f), 0.25, &out) && bits_to_float(out) == 5.6f, "scale_1_4_at_floor");
     const std::uint32_t zero = 0, big = float_to_bits(1.5f), small = float_to_bits(0.5f), nanbits = 0x7fc00000u, infbits = 0x7f800000u, neg = float_to_bits(-1.0f);
     const std::uint32_t cases[] = {zero, big, small, nanbits, infbits, neg};
     for (std::uint32_t bits : cases) {

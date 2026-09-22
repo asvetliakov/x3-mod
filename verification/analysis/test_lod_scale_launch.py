@@ -56,10 +56,12 @@ class LodScaleLaunchOption(unittest.TestCase):
             self.assertEqual({k: v for k, v in delivered['env'].items() if k not in baseline['env']}, {'X3M_LOD_SCALE': '2.0'})
             self.assertEqual(json.loads(self.launch(directory, '--lod-scale', '1')[1])['env']['X3M_LOD_SCALE'], '1.0')
             self.assertEqual(json.loads(self.launch(directory, '--lod-scale', '4')[1])['env']['X3M_LOD_SCALE'], '4.0')
+            self.assertEqual(json.loads(self.launch(directory, '--lod-scale', '0.5')[1])['env']['X3M_LOD_SCALE'], '0.5')
+            self.assertEqual(json.loads(self.launch(directory, '--lod-scale', '0.25')[1])['env']['X3M_LOD_SCALE'], '0.25')
 
     def test_out_of_range_is_refused(self):
         with tempfile.TemporaryDirectory() as directory:
-            for value in ('0.5', '4.5', '0', '-2', 'nan', 'inf'):
+            for value in ('0.2', '0.24', '4.5', '0', '-2', 'nan', 'inf'):
                 code, _, error = self.launch(directory, '--lod-scale', value)
                 self.assertEqual(code, 2, value)
                 self.assertIn('--lod-scale out of range', error)

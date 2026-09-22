@@ -22,10 +22,15 @@ constexpr unsigned window_length = 17, site_length = 6;
 constexpr unsigned char expected_window[window_length] = {
     0x8b,0x03, 0xdb,0x40,0x34, 0x8b,0x0d,0x34,0x6f,0x60,0x00, 0xd8,0x89,0x60,0x07,0x00,0x00};
 constexpr unsigned char expected_site[site_length] = {0xd8,0x89,0x60,0x07,0x00,0x00};
-// Factor band (X3M_LOD_SCALE): 1 = vanilla ladder, 4 = the cap. T_i = (int)(LODrec[+0x34] * f)
-// is integer-truncated and the record values are unread, so larger factors
-// could collapse small thresholds to 0 (lod-selection.md, "Unknown").
-constexpr double factor_min = 1.0, factor_max = 4.0;
+// Factor band (X3M_LOD_SCALE): 1 = vanilla ladder, 4 = the cap, 0.25 the floor.
+// The factor multiplies the switch distances, so f > 1 pushes them out and
+// f < 1 pulls them in (mirror = game / factor grows, thresholds T_i grow).
+// T_i = (int)(LODrec[+0x34] * f) is integer-truncated and the record values are
+// unread, so larger factors could collapse small thresholds to 0
+// (lod-selection.md, "Unknown"); factors below 1 only enlarge T_i, which the
+// truncation cannot collapse, and the largest mirror in band (1.4 / 0.25 = 5.6)
+// stays far from any int32 limit of the ftol that follows.
+constexpr double factor_min = 0.25, factor_max = 4.0;
 // The engine writes one of {1.0, 1.15, 1.2, 1.3, 1.4} (shader-quality mapping).
 constexpr float game_value_min = 1.0f, game_value_max = 1.4f;
 
