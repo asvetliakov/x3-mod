@@ -131,46 +131,67 @@ class Bob1Format(unittest.TestCase):
             self.assertEqual(bob1.body_stem(name).lower(), 'objects/stations/test/body')
 
 
+def ladder_tree(ladder):
+    """ladder: [(value, groups in the one part)]; LOD 0's value is the scale."""
+    return {'sections': [('BODY', [lod(t, 0, 4, [(0x30000001, [(0, 1)] * n)]) for t, n in ladder])]}
+
+
 class Audit(unittest.TestCase):
-    @staticmethod
-    def tree(ladder):
-        """ladder: [(threshold, groups in the one part)]; LOD 0's value is the scale."""
-        return {'sections': [('BODY', [lod(t, 0, 4, [(0x30000001, [(0, 1)] * n)]) for t, n in ladder])]}
+    def row(self, ladder, view='very-high', f=1.0):
+        return bob1.audit_row(bob1.parse(bob1.serialise(ladder_tree(ladder))), view, f)
+
+    def test_drawable_sets(self):
+        # sel = highest i with s < trunc(T_i f) (s >= 1), then -1 at Very High, clamped
+        self.assertEqual(bob1.reachable([250, 150, 80, 30]), [0, 1, 2, 3, 4])
+        self.assertEqual(bob1.drawable([250, 150, 80, 30], 'very-high'), [0, 1, 2, 3])
+        self.assertEqual(bob1.drawable([250, 150, 80, 30], 'high'), [0, 1, 2, 3, 4])
+        self.assertEqual(bob1.drawable([30, 10, 3, 30], 'very-high'), [0, 3])
+        self.assertEqual(bob1.drawable([30, 10, 3, 30], 'low'), [0, 4])
+        self.assertEqual(bob1.drawable([30], 'very-high'), [0])
+        self.assertEqual(bob1.reachable([100, 1]), [0, 1])          # trunc(T f) < 2 never hit
+        self.assertEqual(bob1.reachable([100, 2], f=0.5), [0, 1])   # f truncation: trunc(1.0) = 1
+        self.assertEqual(bob1.reachable([15, 15], f=2.0), [0, 2])   # equal thresholds: the later wins
 
     def test_classes(self):
+        keys = ('drawable', 'single_lod', 'last_never_drawn', 'lod0_only', 'dead_any_setting',
+                'never_drawn_any_setting', 'coarse_multi_group')
         cases = {
-            'single': ([(9000, 3)], dict(single_lod=True, non_monotonic=False, coarse_multi_group=True, shadowed=[])),
-            'clean': ([(9000, 4), (250, 2), (30, 1)],
-                      dict(single_lod=False, non_monotonic=False, coarse_multi_group=False, shadowed=[])),
+            'single': ([(9000, 3)], ([0], True, False, False, False, [], True)),
+            'clean': ([(9000, 4), (250, 2), (30, 1)], ([0, 1], False, True, False, False, [], True)),
+            'two records': ([(9000, 4), (30, 1)], ([0], False, True, True, False, [], True)),
             'dock-like': ([(9000, 18), (30, 12), (10, 5), (3, 1), (30, 1)],
-                          dict(single_lod=False, non_monotonic=True, coarse_multi_group=False, shadowed=[1, 2, 3])),
-            'equal middle': ([(9000, 5), (100, 3), (50, 3), (50, 2)],
-                             dict(single_lod=False, non_monotonic=True, coarse_multi_group=True, shadowed=[2])),
+                          ([0, 3], False, True, False, True, [1, 2], False)),
+            'tiny threshold': ([(9000, 5), (100, 3), (1, 2)], ([0], False, True, True, True, [2], True)),
         }
         for name, (ladder, expect) in cases.items():
             with self.subTest(name):
-                row = bob1.audit_row(bob1.parse(bob1.serialise(self.tree(ladder))))
-                self.assertEqual({k: row[k] for k in expect}, expect)
+                row = self.row(ladder)
+                self.assertEqual(tuple(row[k] for k in keys), expect)
                 self.assertEqual(row['groups'], [n for _, n in ladder])
+        row = self.row([(9000, 4), (250, 2), (30, 1)], view='high')
+        self.assertEqual((row['drawable'], row['last_never_drawn'], row['coarse_multi_group']), ([0, 1, 2], False, False))
 
     def test_audit_over_archive(self):
         bodies = {'a': [(9000, 3)], 'b': [(9000, 18), (30, 12), (3, 1), (30, 1)], 'c': [(9000, 4), (20, 2)]}
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
-            members = [(f'objects/t/{k}.pbb', gzip.compress(bob1.serialise(self.tree(v)), mtime=0))
+            members = [(f'objects/t/{k}.pbb', gzip.compress(bob1.serialise(ladder_tree(v)), mtime=0))
                        for k, v in bodies.items()]
             members.append(('objects/t/scene.pbb', gzip.compress(b'CUT1' + b'\0' * 8, mtime=0)))
             write_catalogue(root / '01.cat', members)
             rows, summary = bob1.audit(Assets(root))
         self.assertEqual(len(rows), 3)
-        self.assertEqual({k: summary[k] for k in ('cut1', 'bob1', 'single_lod', 'non_monotonic',
-                                                   'coarse_multi_group', 'shadowed_records', 'clean_multi_lod')},
-                         dict(cut1=1, bob1=3, single_lod=1, non_monotonic=1, coarse_multi_group=2,
-                              shadowed_records=2, clean_multi_lod=0))
+        self.assertEqual({k: summary[k] for k in ('cut1', 'bob1', 'multi_lod', 'single_lod', 'last_never_drawn',
+                                                   'lod0_only', 'dead_any_setting', 'coarse_multi_group',
+                                                   'coarse_multi_group_multi_lod', 'never_drawn_records',
+                                                   'dead_any_setting_records')},
+                         dict(cut1=1, bob1=3, multi_lod=2, single_lod=1, last_never_drawn=2, lod0_only=1,
+                              dead_any_setting=1, coarse_multi_group=2, coarse_multi_group_multi_lod=1,
+                              never_drawn_records=3, dead_any_setting_records=1))
 
 
 class Overlay(unittest.TestCase):
-    def test_collapse_and_threshold(self):
+    def test_collapse(self):
         tree = bob1.parse(body_bytes())
         coarse = bob1.lods(tree)[-1]
         new = lod_overlay.coarse_record(coarse, 125)
@@ -181,10 +202,72 @@ class Overlay(unittest.TestCase):
         self.assertEqual(len(new['parts'][0]['groups'][0]['extra']), 3 + 4)
         self.assertEqual(new['parts'][0]['bounds'], coarse['parts'][0]['bounds'])
         self.assertNotIn('extra', new['parts'][1]['groups'][0])
-        self.assertEqual(lod_overlay.default_threshold(bob1.lods(tree)), 125)
-        self.assertIsNone(lod_overlay.default_threshold(bob1.lods(tree)[:1]))
 
-    def test_slot_hidden_and_errors(self):
+    def placed(self, ladder, placement, threshold=None):
+        tree = ladder_tree(ladder)
+        ls = bob1.lods(tree)
+        coarse = lod_overlay.coarse_record(ls[-1], None)
+        idx = lod_overlay.place(ls, coarse, placement, threshold)
+        out = bob1.lods(bob1.parse(bob1.serialise(tree)))       # the written body parses back
+        return idx, out
+
+    @staticmethod
+    def final(thresholds, s, view='very-high', f=1.0):
+        """Main-view index for metric s: first hit from the top, then the Very High -1."""
+        sel = next((i for i in range(len(thresholds), 0, -1) if s < int(thresholds[i - 1] * f)), 0)
+        return max(sel - 1, 0) if view == 'very-high' else sel
+
+    def test_before_last(self):
+        self.assertEqual(lod_overlay.default_placement(bob1.lods(ladder_tree([(9000, 4), (30, 2)]))), 'before-last')
+        (i, pad), ls = self.placed([(9000, 4), (100, 3), (30, 2)], 'before-last')
+        self.assertEqual((i, pad), (2, None))
+        self.assertEqual([l['value'] for l in ls], [9000, 100, 30, 30])      # default T_new = T_last
+        self.assertEqual([len(p['groups']) for p in ls[2]['parts']], [1])
+        self.assertEqual(len(ls[3]['parts'][0]['groups']), 2)               # old last kept as is
+        old, new = [100, 30], [l['value'] for l in ls[1:]]
+        for s in range(1, 150):
+            with self.subTest(s=s):
+                # Very High: the new record takes exactly the band the old n-2 record drew
+                self.assertEqual(self.final(new, s) == 2, self.final(old, s) == 1)
+                # High and below: the new record is never drawn; the old ladder is unchanged
+                self.assertNotEqual(self.final(new, s, 'high'), 2)
+                self.assertEqual({0: 0, 1: 1, 3: 2}[self.final(new, s, 'high')], self.final(old, s, 'high'))
+        self.assertIn(2, bob1.drawable(new, 'very-high'))
+        self.assertNotIn(2, bob1.drawable(new, 'high'))
+        self.assertEqual(self.placed([(9000, 4), (100, 3), (30, 2)], 'before-last', 29)[1][2]['value'], 29)
+        for t in (31, 100, 0):
+            with self.subTest(t=t), self.assertRaises(SystemExit):
+                self.placed([(9000, 4), (100, 3), (30, 2)], 'before-last', t)
+        # any ladder shape is accepted, including x/y/z/30
+        dock = [(9000, 18), (30, 12), (10, 5), (3, 1), (30, 1)]
+        self.assertEqual([l['value'] for l in self.placed(dock, 'before-last')[1]], [9000, 30, 10, 3, 30, 30])
+        self.assertEqual(bob1.drawable([30, 10, 3, 30, 30], 'very-high'), [0, 4])
+        with self.assertRaises(SystemExit):
+            self.placed([(9000, 4)], 'before-last')
+
+    def test_append_pad(self):
+        self.assertEqual(lod_overlay.default_placement(bob1.lods(ladder_tree([(9000, 4)]))), 'append-pad')
+        for ladder in ([(9000, 4)], [(9000, 4), (30, 2)]):                   # --threshold always required
+            with self.subTest(ladder=ladder), self.assertRaises(SystemExit):
+                self.placed(ladder, 'append-pad')
+        with self.assertRaises(SystemExit):                                  # pad would be < 2
+            self.placed([(9000, 4)], 'append-pad', 2)
+        (i, pad), ls = self.placed([(9000, 4)], 'append-pad', 10)
+        self.assertEqual((i, pad), (1, 2))
+        self.assertEqual([l['value'] for l in ls], [9000, 10, 9])
+        self.assertEqual(ls[1]['parts'], ls[2]['parts'])                     # pad is a copy of the coarse record
+        self.assertEqual(ls[1]['points'], ls[2]['points'])
+        self.assertEqual([len(p['groups']) for p in ls[1]['parts']], [1])
+        # Very High: coarse below (T-1)*f, LOD 0 in [T-1, T); Low..High: coarse mesh (record or pad) below T*f
+        self.assertEqual([self.final([10, 9], s) for s in (1, 8, 9, 10)], [1, 1, 0, 0])
+        self.assertEqual([self.final([10, 9], s, 'high') for s in (1, 8, 9, 10)], [2, 2, 1, 0])
+        (i, pad), ls = self.placed([(9000, 4), (30, 2)], 'append-pad', 15)
+        self.assertEqual([l['value'] for l in ls], [9000, 30, 15, 14])
+        self.assertEqual([self.final([30, 15, 14], s) for s in (13, 14, 20)], [2, 1, 0])   # old last in [14, 15)
+        with self.assertRaises(SystemExit):
+            self.placed([(9000, 4), (30, 2)], 'append-pad', 30)
+
+    def test_slot_placement_and_errors(self):
         body = body_bytes()
         with tempfile.TemporaryDirectory() as folder:
             game = game_dir(Path(folder) / 'game', body)
@@ -196,10 +279,12 @@ class Overlay(unittest.TestCase):
             self.assertIn('target addon/04.cat', run(base + ['--slot', '4', '--force-slot', 'stations/test/body']))
             with self.assertRaises(SystemExit):
                 run(base + ['--slot', '2', '--force-slot', 'stations/test/body'])
-            text = run(base + ['--keep-coarsest-hidden', 'stations/test/body'])
-            self.assertIn('new LOD2: threshold=250', text)
+            with self.assertRaises(SystemExit):                    # append-pad needs --threshold
+                run(base + ['--placement', 'append-pad', 'stations/test/body'])
+            text = run(base + ['--placement', 'append-pad', '--threshold', '125', 'stations/test/body'])
+            self.assertIn('append-pad: new LOD2 threshold=125 + pad copy LOD3 threshold=124', text)
             with self.assertRaises(SystemExit):
-                run(base + ['--keep-coarsest-hidden', '--threshold', '5', 'stations/test/body'])
+                run(base + ['--keep-coarsest-hidden', 'stations/test/body'])   # option removed
             write_catalogue(game / 'addon/03.cat', [('objects/stations/test/cut.pbb', gzip.compress(body[:-8]))])
             err = io.StringIO()
             for module, argv in ((lod_overlay, base + ['stations/test/missing']),
@@ -214,38 +299,37 @@ class Overlay(unittest.TestCase):
 
     def test_overlay_files(self):
         body = body_bytes()
+        source = bob1.lods(bob1.parse(body))
         with tempfile.TemporaryDirectory() as folder:
             game = game_dir(Path(folder) / 'game', body)
             out = Path(folder) / 'out'
             originals = lod_overlay.original_archives(game)
             before = lod_overlay.hash_files(originals)
             text = run(['--game', str(game), '--dry-run', 'stations\\test\\body'])
-            self.assertIn('new LOD2: threshold=125', text)
+            self.assertIn('before-last: new LOD1 threshold=250', text)
             self.assertIn('target addon/03.cat', text)
             self.assertFalse(out.exists())
             with self.assertRaises(SystemExit):
                 run(['--game', str(game), '--out', str(game / 'sub'), 'stations/test/body'])
-            with self.assertRaises(SystemExit):          # threshold must stay below the coarsest
-                run(['--game', str(game), '--out', str(out), '--threshold', '250', 'stations/test/body'])
-            run(['--game', str(game), '--out', str(out), '--threshold', '100', 'stations/test/body'])
+            with self.assertRaises(SystemExit):          # before-last needs T <= T_last
+                run(['--game', str(game), '--out', str(out), '--threshold', '251', 'stations/test/body'])
+            run(['--game', str(game), '--out', str(out), 'stations/test/body'])
             self.assertEqual(sorted(p.name for p in out.rglob('*') if p.is_file()),
                              ['03.cat', '03.dat', '03.x3m-lod.json'])
             (entry,) = read_catalogue(out / 'addon/03.cat')
             self.assertEqual(entry['path'], 'objects/stations/test/Body.pbb')
             stored = bytes(v ^ 0x33 for v in (out / 'addon/03.dat').read_bytes())
-            tree = bob1.parse(unpack(stored))
-            ladder = bob1.lods(tree)
-            self.assertEqual(len(ladder), 3)
-            self.assertEqual(ladder[-1]['value'], 100)
-            self.assertEqual([len(p['groups']) for p in ladder[-1]['parts']], [1, 1])
-            self.assertEqual(ladder[:2], bob1.lods(bob1.parse(body)))
+            ladder = bob1.lods(bob1.parse(unpack(stored)))
+            self.assertEqual([l['value'] for l in ladder], [12345, 250, 250])
+            self.assertEqual([len(p['groups']) for p in ladder[1]['parts']], [1, 1])
+            self.assertEqual([ladder[0], ladder[2]], source)
             self.assertEqual(lod_overlay.hash_files(originals), before)
 
-            # --install targets the game directory; the new slot wins under the Assets precedence
-            run(['--game', str(game), '--install', '--threshold', '100', 'stations/test/body'])
+            # --install targets the game directory; the new slot wins under the resolver's precedence
+            run(['--game', str(game), '--install', 'stations/test/body'])
             self.assertEqual(lod_overlay.hash_files(originals), before)
-            data, source = Assets(game).get('objects/stations/test/body.pbb')
-            self.assertEqual(source['source'], 'addon/03.cat')
+            data, src = Assets(game).get('objects/stations/test/body.pbb')
+            self.assertEqual(src['source'], 'addon/03.cat')
             self.assertEqual(len(bob1.lods(bob1.parse(data))), 3)
             with self.assertRaises(SystemExit):          # installed marker: refuse to stack
                 run(['--game', str(game), '--out', str(Path(folder) / 'out2'), 'stations/test/body'])
@@ -273,16 +357,21 @@ class Installed(unittest.TestCase):
         before = lod_overlay.hash_files(originals)
         with tempfile.TemporaryDirectory() as folder:
             out = Path(folder)
-            run(['--out', str(out), '--threshold', '2', 'stations/docks/argon_dock_center'])
+            # the dock's 30/10/3/30 ladder takes before-last at T = 30 (default) and append-pad
+            text = run(['--dry-run', 'stations/docks/argon_dock_center'])
+            self.assertIn('before-last: new LOD4 threshold=30', text)
+            run(['--out', str(out), '--placement', 'append-pad', '--threshold', '20',
+                 'stations/docks/argon_dock_center'])
             cats = sorted(out.rglob('*.cat'))
             self.assertEqual(len(cats), 1)
             (entry,) = read_catalogue(cats[0])
             stored = bytes(v ^ 0x33 for v in cats[0].with_suffix('.dat').read_bytes())
             ladder = bob1.lods(bob1.parse(unpack(stored)))
             source = bob1.lods(bob1.parse(Assets(bob1.DEFAULT_GAME).get(entry['path'])[0]))
-            self.assertEqual(len(ladder), len(source) + 1)
-            self.assertEqual(ladder[-1]['value'], 2)
-            self.assertTrue(all(len(p['groups']) == 1 for p in ladder[-1]['parts']))
+            self.assertEqual(ladder[:len(source)], source)
+            self.assertEqual([l['value'] for l in ladder[len(source):]], [20, 19])
+            self.assertTrue(all(len(p['groups']) == 1 for p in ladder[-2]['parts']))
+            self.assertIn(len(source), bob1.drawable([l['value'] for l in ladder[1:]], 'very-high'))
         self.assertEqual(lod_overlay.hash_files(originals), before)
 
 

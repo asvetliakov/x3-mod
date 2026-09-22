@@ -288,10 +288,8 @@ body explicitly (`verification/results/bob1-format/bob1_module_roundtrip.py`).
 `tools/analysis/lod_overlay.py` builds the pilot overlay: for each named body it
 copies the coarsest LOD (points, part flags, per-group 7-int records and the 10
 part ints copied, nothing recomputed), collapses each part's groups into one
-group with the part's dominant material by face count, and appends it as a new
-LOD with threshold `T` (default: coarsest threshold // 2; single-LOD bodies need
-`--threshold`, and `T` must stay below the current coarsest threshold). The
-output is `addon/NN.cat`/`.dat` with `NN` one past the highest installed addon
+group with the part's dominant material by face count, and places it as a new
+record (placement below). The output is `addon/NN.cat`/`.dat` with `NN` one past the highest installed addon
 slot (`addon/05` today; `--slot` must equal it unless `--force-slot`). The
 engine's resolver is now traced ([body-format-bob1.md
 §7](../reverse-engineering/body-format-bob1.md#7-which-file-wins-extension-and-archive-precedence)):
@@ -302,54 +300,71 @@ member keeps the winning member's exact archive path, and a body whose winning
 resource is loose is refused. `addon/mods/` is not used because a mod package is
 searched only when selected in the launcher.
 
-**Placement correction (2026-09-23).** At View Distance Very High (this bottle)
-the main view never draws the record at index `count-1`, so an appended record is
-never shown there: appending only lets the old coarsest record draw below
-`T_new·f`, and the "index one past the shipped ladder" acceptance below cannot be
-met. The new record must sit at index `<= count-2`: inserted before the last
-record, or appended together with a pad copy after it
-([lod-selection.md](../reverse-engineering/lod-selection.md) §4 of the 2026-09-23
-section gives both layouts' effects). The paragraph below holds only at View
-Distance Low..High; at Very High the hide never fires in the main view.
+**Placement (2026-09-23).** The engine draws `final = clamp(sel - 1, 0, n-1)` at
+View Distance Very High (this bottle), where `sel` is the highest record with
+`s < trunc(T·f)` ([lod-selection.md](../reverse-engineering/lod-selection.md),
+"What the selection really does, end to end"). So the record at index `n-1` is
+never drawn in the main view, a two-record body always draws LOD 0, and an
+appended record would never be seen. `lod_overlay.py` therefore places the
+coarse record at index `n-2` of the new ladder (`--placement` forces either
+layout):
 
-Hide-at-coarsest (§1, `0047d4d7`): a node with `node+0x12c & 0x8000` is not
-rendered at its body's coarsest LOD. The appended record becomes the coarsest, so
-flagged nodes hide only below the new threshold and the old coarsest record now
-draws them in the band between the new and old thresholds, where they used to be
-hidden. `--keep-coarsest-hidden` instead gives the new record the old coarsest
-threshold: it covers exactly the old coarsest range (the old record is never
-selected), so hidden ranges are unchanged. Either way the pilot flight must check
-flagged nodes. Every installed CAT/DAT is hashed before and
+- **before-last** (default for multi-LOD bodies): inserted before the last
+  record with `T_new = T_last` (`--threshold` overrides with any `T <= T_last`).
+  With `T_new <= T_last` the walk hits the old last record first whenever
+  `s < T_last·f`, so at Very High the `-1` lands on the new record exactly in the
+  band the old `n-2` record used to cover, and at High and below the new record
+  is never drawn (the old last record still wins that band). The engine does not
+  require descending thresholds, only the first hit from the top, so every ladder
+  shape is accepted, including the x/y/z/30 bodies such as `argon_dock_center`.
+- **append-pad** (default for single-LOD bodies; `--threshold T` always
+  required, `T >= 3`, and `T < T_last` on a multi-LOD body): the coarse record
+  with `T`, then a pad copy of it with `T - 1`. At Very High the coarse record
+  draws below `(T-1)·f`, and the band `(T-1)·f <= s < T·f` draws LOD 0
+  (single-LOD) or the old last record (multi-LOD). At Low..High the pad draws
+  below `(T-1)·f` and the record itself in that band, so the coarse mesh draws
+  below `T·f`.
+
+What the pilot flight must look at besides draws: before-last shows the old last
+record's geometry, collapsed, at Very High, where that geometry was never shown
+before. Hide-at-coarsest (§1, `0047d4d7`) fires only when the *final* index is
+`n-1`, which the main view never reaches at Very High; at Low..High it fires at
+the new ladder's last record. With append-pad on a single-LOD body it therefore
+becomes reachable at Low..High for the first time (`0x8000`-flagged nodes hide
+below `(T-1)·f`). The earlier `--keep-coarsest-hidden` option was removed
+because it assumed the last record is drawn, which does not hold at Very High.
+Every installed CAT/DAT is hashed before and
 after a real run (outputs are removed if any changed), and an
 `addon/NN.x3m-lod.json` manifest records the source and overlay hashes; the
 tool refuses to run while such a manifest is installed.
 
-`python3 tools/analysis/bob1.py audit [--summary] [--json OUT]` classifies every
-installed body's ladder (`verification/results/bob1-format/bob1_audit_out.txt`,
-measured over 1634 parsed `BOB1` bodies; classes overlap): **684 single-LOD**,
-**15 non-monotonic** (a later record's threshold ≥ an earlier one's, so under the
-`0047d429` walk 37 records are never *selected*; 10 of the 15 are stations, e.g.
-`argon_dock_center` 30/10/3/30 never selects LOD 1–3 and pops from LOD 0 to a
-1-group record wherever LOD 1 would apply: record 4 at View Distance Low..High,
-record 3 at Very High. Correction 2026-09-23: "shadowed" must be taken per
-setting after the `+1`/`-1` tail; 11 of the 15 lose records 1–2 in every
-main-view setting, the other 4 are drawable at Very High, and at Very High the
-last record of all 950 multi-LOD bodies is never drawn in the main view —
-`verification/results/bob1-format/lod_drawn_sets_out.txt`), and **777 whose coarsest LOD draws more than one group** (551
-of them multi-LOD). 392 multi-LOD bodies fall in none of the three classes.
+`python3 tools/analysis/bob1.py audit [--summary] [--json OUT] [--view-distance
+{low,medium,high,very-high}] [--factor F]` reports each body's main-view drawable
+records at the chosen setting (default very-high) and classes
+(`verification/results/bob1-format/bob1_audit_out.txt`, measured over 1634
+parsed `BOB1` bodies, 950 multi-LOD; classes overlap). At Very High with f = 2:
+**684 single-LOD**; **950 whose last record is never drawn**; **75 that can
+only draw LOD 0**; **12 with a record drawable at no main-view setting** (23
+records; 13 bodies and 24 records at f = 1), e.g. `argon_dock_center` 30/10/3/30
+with records 1–2 dead; and 807 bodies (581 multi-LOD) whose coarsest *drawable*
+record draws more than one group. These agree with
+`verification/results/bob1-format/lod_drawn_sets_out.txt`.
 
 ```sh
 python3 tools/analysis/bob1.py info objects/stations/station_scenes/others/argon_L_solarpowerplant
-python3 tools/analysis/lod_overlay.py --dry-run <body> [--threshold T]
-python3 tools/analysis/lod_overlay.py --out <scratch dir> <body> [--threshold T]
-python3 tools/analysis/lod_overlay.py --install <body> [--threshold T]   # game dir; never overwrites
+python3 tools/analysis/bob1.py audit --summary [--view-distance very-high] [--factor 2]
+python3 tools/analysis/lod_overlay.py --dry-run <body> [--placement P] [--threshold T]
+python3 tools/analysis/lod_overlay.py --out <scratch dir> <body> [--placement P] [--threshold T]
+python3 tools/analysis/lod_overlay.py --install <body> [--placement P] [--threshold T]   # game dir; never overwrites
 PYTHONPATH=verification/probe /usr/bin/python3 -m unittest verification.analysis.test_bob1
 ```
 
 Removing `addon/NN.cat`, `.dat` and `.x3m-lod.json` reverts the install. The
 pilot flight must show, at the run240 stand with `--cull-census`, the overlaid
-body's nodes reporting the new `lod` index (one past the shipped ladder) and
-their per-node draw count dropping to the part count of that record, with
+body's nodes reporting the new record's `lod` index (`n-2` of the new ladder:
+the old last record's index for before-last, the old record count for
+append-pad) where they used to report the old `n-2`, and their per-node draw
+count dropping to the part count of that record, with
 `draws_p50` compared at the same stand. A file that loads without a `lod` or
 draw change is not acceptance. Not yet possible: the heavy stand bodies are
 unnamed until the census logs model id to body name, and both worked examples

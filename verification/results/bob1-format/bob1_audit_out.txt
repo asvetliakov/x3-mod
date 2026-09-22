@@ -1,20 +1,20 @@
-# /usr/bin/python3 tools/analysis/bob1.py audit --json <scratch>/audit.json   (2026-09-23, bottle X3, read-only; about 3 min)
-# summary = `tail -2` of that output; rows = `grep non_monotonic <output> | grep -v '^summary' | grep -v '^classes'`
-# summary lines, then the 15 non_monotonic rows of the per-body output
-summary pbb_resources=1688 cut1=53 bob1=1635 rejected=1 single_lod=684 non_monotonic=15 coarse_multi_group=777 shadowed_records=37 clean_multi_lod=392
-classes: single_lod = one LOD record; non_monotonic = some record i >= 1 is never selected because a later record has threshold >= T_i; coarse_multi_group = coarsest LOD draws > 1 (classes overlap)
-01.cat:objects/effects/others/argon_gate.pbb lods=5 thresholds=[30, 20, 10, 30] groups=[16, 16, 16, 14, 12] non_monotonic,coarse_multi_group shadowed=[1, 2, 3]
-01.cat:objects/environments/asteroids/asteroid_B_ClassMine.pbb lods=5 thresholds=[20, 5, 2, 30] groups=[1, 1, 1, 1, 1] non_monotonic shadowed=[1, 2, 3]
-01.cat:objects/others/argon_gate.pbb lods=5 thresholds=[30, 20, 10, 30] groups=[16, 16, 16, 14, 12] non_monotonic,coarse_multi_group shadowed=[1, 2, 3]
-02.cat:objects/ships/boron/boron_M2_wreck.pbb lods=3 thresholds=[15, 15] groups=[1, 1, 1] non_monotonic shadowed=[1]
-02.cat:objects/ships/paranid/paranid_TL_var1_wreck.pbb lods=3 thresholds=[15, 15] groups=[1, 1, 1] non_monotonic shadowed=[1]
-02.cat:objects/stations/docks/argon_dock_center.pbb lods=5 thresholds=[30, 10, 3, 30] groups=[18, 12, 5, 1, 1] non_monotonic shadowed=[1, 2, 3]
-02.cat:objects/stations/living_sections/argon_livingsection.pbb lods=5 thresholds=[30, 15, 5, 30] groups=[17, 11, 5, 1, 1] non_monotonic shadowed=[1, 2, 3]
-02.cat:objects/stations/others/argon_goner_temple.pbb lods=5 thresholds=[30, 20, 10, 30] groups=[35, 35, 33, 33, 31] non_monotonic,coarse_multi_group shadowed=[1, 2, 3]
-02.cat:objects/stations/trading_stations/argon_trading_station_partA.pbb lods=5 thresholds=[30, 15, 5, 5] groups=[32, 21, 11, 1, 1] non_monotonic shadowed=[3]
-02.cat:objects/stations/trading_stations/argon_trading_station_partB.pbb lods=5 thresholds=[30, 20, 10, 30] groups=[36, 34, 32, 29, 29] non_monotonic,coarse_multi_group shadowed=[1, 2, 3]
-02.cat:objects/stations/trading_stations/boron_trading_station.pbb lods=5 thresholds=[30, 20, 10, 30] groups=[11, 11, 11, 9, 9] non_monotonic,coarse_multi_group shadowed=[1, 2, 3]
-02.cat:objects/stations/trading_stations/split_trading_station.pbb lods=5 thresholds=[30, 20, 10, 30] groups=[11, 11, 11, 9, 8] non_monotonic,coarse_multi_group shadowed=[1, 2, 3]
-02.cat:objects/stations/trading_stations/split_trading_station_wreck.pbb lods=3 thresholds=[15, 150] groups=[1, 1, 1] non_monotonic shadowed=[1]
-02.cat:objects/stations/trading_stations/teladi_trading_station_partA.pbb lods=5 thresholds=[30, 20, 10, 30] groups=[15, 15, 14, 14, 14] non_monotonic,coarse_multi_group shadowed=[1, 2, 3]
-02.cat:objects/stations/trading_stations/teladi_trading_station_partB.pbb lods=5 thresholds=[30, 20, 10, 30] groups=[16, 16, 15, 15, 15] non_monotonic,coarse_multi_group shadowed=[1, 2, 3]
+# /usr/bin/python3 tools/analysis/bob1.py audit --factor 2 --json <scratch>/audit_f2.json > <scratch>/audit_f2.txt
+# /usr/bin/python3 tools/analysis/bob1.py audit --summary --factor 1
+# (2026-09-23, bottle X3 archives, read-only; --view-distance very-high = the bottle setting; about 3 min each)
+# kept here: the f=2 summary and legend (`grep ^summary` / `grep ^classes`), the f=1 summary, and the
+# f=2 rows of bodies with a record drawable at no main-view setting (`grep ' dead_any_setting=\['`)
+summary view_distance=very-high factor=2.0 pbb_resources=1688 cut1=53 bob1=1635 rejected=1 multi_lod=950 single_lod=684 last_never_drawn=950 lod0_only=75 dead_any_setting=12 coarse_multi_group=807 coarse_multi_group_multi_lod=581 never_drawn_records=974 dead_any_setting_records=23
+classes (overlap): single_lod = one record; last_never_drawn = the last record is not in the main-view drawable set at this setting; lod0_only = multi-LOD body that can only draw LOD 0 at this setting; dead_any_setting = some record drawable at no main-view setting (Low..High or Very High); coarse_multi_group = the coarsest drawable record draws > 1 group
+summary view_distance=very-high factor=1.0 pbb_resources=1688 cut1=53 bob1=1635 rejected=1 multi_lod=950 single_lod=684 last_never_drawn=950 lod0_only=75 dead_any_setting=13 coarse_multi_group=807 coarse_multi_group_multi_lod=581 never_drawn_records=975 dead_any_setting_records=24
+01.cat:objects/effects/others/argon_gate.pbb lods=5 thresholds=[30, 20, 10, 30] groups=[16, 16, 16, 14, 12] drawable=[0, 3] last_never_drawn,dead_any_setting,coarse_multi_group dead_any_setting=[1, 2]
+01.cat:objects/environments/asteroids/asteroid_B_ClassMine.pbb lods=5 thresholds=[20, 5, 2, 30] groups=[1, 1, 1, 1, 1] drawable=[0, 3] last_never_drawn,dead_any_setting dead_any_setting=[1, 2]
+01.cat:objects/others/argon_gate.pbb lods=5 thresholds=[30, 20, 10, 30] groups=[16, 16, 16, 14, 12] drawable=[0, 3] last_never_drawn,dead_any_setting,coarse_multi_group dead_any_setting=[1, 2]
+addon/01.cat:objects/ships/x3ap/boron/XTC_boron_m7drone_shield.pbb lods=3 thresholds=[33, 0] groups=[1, 1, 1] drawable=[0] last_never_drawn,lod0_only,dead_any_setting dead_any_setting=[2]
+02.cat:objects/stations/docks/argon_dock_center.pbb lods=5 thresholds=[30, 10, 3, 30] groups=[18, 12, 5, 1, 1] drawable=[0, 3] last_never_drawn,dead_any_setting dead_any_setting=[1, 2]
+02.cat:objects/stations/living_sections/argon_livingsection.pbb lods=5 thresholds=[30, 15, 5, 30] groups=[17, 11, 5, 1, 1] drawable=[0, 3] last_never_drawn,dead_any_setting dead_any_setting=[1, 2]
+02.cat:objects/stations/others/argon_goner_temple.pbb lods=5 thresholds=[30, 20, 10, 30] groups=[35, 35, 33, 33, 31] drawable=[0, 3] last_never_drawn,dead_any_setting,coarse_multi_group dead_any_setting=[1, 2]
+02.cat:objects/stations/trading_stations/argon_trading_station_partB.pbb lods=5 thresholds=[30, 20, 10, 30] groups=[36, 34, 32, 29, 29] drawable=[0, 3] last_never_drawn,dead_any_setting,coarse_multi_group dead_any_setting=[1, 2]
+02.cat:objects/stations/trading_stations/boron_trading_station.pbb lods=5 thresholds=[30, 20, 10, 30] groups=[11, 11, 11, 9, 9] drawable=[0, 3] last_never_drawn,dead_any_setting,coarse_multi_group dead_any_setting=[1, 2]
+02.cat:objects/stations/trading_stations/split_trading_station.pbb lods=5 thresholds=[30, 20, 10, 30] groups=[11, 11, 11, 9, 8] drawable=[0, 3] last_never_drawn,dead_any_setting,coarse_multi_group dead_any_setting=[1, 2]
+02.cat:objects/stations/trading_stations/teladi_trading_station_partA.pbb lods=5 thresholds=[30, 20, 10, 30] groups=[15, 15, 14, 14, 14] drawable=[0, 3] last_never_drawn,dead_any_setting,coarse_multi_group dead_any_setting=[1, 2]
+02.cat:objects/stations/trading_stations/teladi_trading_station_partB.pbb lods=5 thresholds=[30, 20, 10, 30] groups=[16, 16, 15, 15, 15] drawable=[0, 3] last_never_drawn,dead_any_setting,coarse_multi_group dead_any_setting=[1, 2]

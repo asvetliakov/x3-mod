@@ -1,12 +1,41 @@
 #!/usr/bin/env python3
-"""Build a numbered addon CAT/DAT overlay that appends one coarser LOD record to bodies.
+"""Build a numbered addon CAT/DAT overlay that adds one coarser LOD record to bodies.
 
 Merged-LOD pilot mechanism (docs/architecture/merged-lod-feasibility.md section 6,
 docs/reverse-engineering/body-format-bob1.md): for each named body, copy its
 coarsest existing LOD (points, part flags, per-group 7-int records and the 10
 part ints are copied, nothing is recomputed), collapse every part's groups into
-one group carrying the part's dominant material by face count, and append it as
-a new LOD record with threshold T. No decimation.
+one group carrying the part's dominant material by face count, and add it as a
+new LOD record. No decimation.
+
+Record placement (lod-selection.md, "What the selection really does, end to
+end"): the loop picks sel = highest i with s < trunc(T_i*f), else 0; at View
+Distance Very High (the X3 bottle) the tail draws clamp(sel - 1, 0, n-1), so the
+last record is never drawn in the main view and a two-record body always draws
+LOD 0. A plain append would never be seen there. Hence:
+  before-last (default for multi-LOD bodies): insert the coarse record before the
+    last one with T_new = T_last (--threshold overrides with any T <= T_last).
+    With T_new <= T_last the walk hits the old last record first whenever
+    s < T_last*f, so at Very High the -1 lands on the new record exactly in the
+    band the old n-2 record used to cover, and at High and below the new record
+    is never drawn (the old last still wins that band). The engine does not
+    require descending thresholds, only the first hit from the top, so every
+    ladder shape (including x/y/z/30) is accepted. At Very High this shows the
+    old last record's geometry, collapsed, where it was never shown before.
+  append-pad (default for single-LOD bodies; --threshold T always required,
+    T >= 3, and T < T_last for a multi-LOD body): append the coarse record with
+    T, then a pad copy of it with T - 1, so the coarse record sits at index n-2
+    of the new ladder. At Very High it draws below (T-1)*f and the band
+    (T-1)*f <= s < T*f draws LOD 0 (single-LOD) or the old last record
+    (multi-LOD). At Low..High the pad draws below (T-1)*f and the record itself
+    in that band, i.e. the coarse mesh below T*f.
+Hide-at-coarsest (0047d4d7): a node with node+0x12c & 0x8000 hides when its
+final index is n-1. At Very High the final index never reaches n-1 in the main
+view, so the hide does not fire there at all; at Low..High it fires at the
+(new) last record. With append-pad on a single-LOD body it becomes reachable at
+Low..High for the first time (flagged nodes hide below (T-1)*f). The old --keep-coarsest-hidden option was removed: its
+premise (the last record is drawn) does not hold at Very High. The pilot flight
+must still check flagged nodes.
 
 Placement: addon/NN.cat/.dat with NN the next contiguous free addon slot. The
 engine resolver (body-format-bob1.md section 7, 0x004e7590) takes a loose file
@@ -15,23 +44,13 @@ extension, with no mod selection needed; extension order applies only within
 that layer. The overlay member keeps the winning member's exact archive path.
 A body whose winning resource is loose is refused.
 
-Hide-at-coarsest (0047d4d7, merged-lod-feasibility.md section 1): a node with
-node+0x12c & 0x8000 is not rendered when its selected LOD is the body's
-coarsest (count-1). The appended record becomes the coarsest, so such nodes now
-hide only at the new record (s < T*f) and the old coarsest record draws them in
-the band T..T_old where they used to be hidden. The pilot flight must check
-flagged nodes. --keep-coarsest-hidden gives the new record the old coarsest
-threshold instead: it then covers exactly the old coarsest range (the old
-record is never selected), so hidden ranges are unchanged and unflagged nodes
-get the collapsed record there.
-
 Safety: the game's archives are only read. Every installed CAT/DAT is hashed
 before and after a real run; any change fails the run and removes the outputs.
 Outputs go to --out DIR (mirroring the game layout); the game directory is a
 target only with --install, which refuses to overwrite anything.
 
   python3 tools/analysis/lod_overlay.py --dry-run stations/docks/argon_dock_center
-  python3 tools/analysis/lod_overlay.py --out /tmp/x3m-lod stations/docks/argon_dock_center --threshold 20
+  python3 tools/analysis/lod_overlay.py --out /tmp/x3m-lod stations/station_scenes/others/argon_L_solarpowerplant
 """
 import argparse
 import gzip
@@ -104,13 +123,45 @@ def coarse_record(coarsest, threshold):
     return lod
 
 
-def default_threshold(ladder):
-    if len(ladder) < 2:
-        return None                        # LOD 0's value is the object scale, not a threshold
-    return max(1, ladder[-1]['value'] // 2)
+PLACEMENTS = ('before-last', 'append-pad')
 
 
-def plan_body(assets, name, threshold, keep_coarsest_hidden=False):
+def default_placement(ladder):
+    return 'before-last' if len(ladder) >= 2 else 'append-pad'
+
+
+def place(ladder, coarse, placement, threshold, name='body'):
+    """Insert the coarse record (value set here); returns (new index, pad index or None).
+
+    before-last: new record at index n-1 (old last moves to n), 1 <= T_new <= T_last,
+      default T_last (any ladder shape, since only the first hit from the top matters).
+    append-pad: new record at index n with T, then a pad copy at n+1 with T - 1;
+      T is always required, 3 <= T, and T < T_last for a multi-LOD body."""
+    n = len(ladder)
+    if placement == 'before-last':
+        if n < 2:
+            raise SystemExit(f'{name}: before-last needs at least two LOD records; use append-pad')
+        t_last = ladder[-1]['value']
+        t = t_last if threshold is None else threshold
+        if not 1 <= t <= t_last:
+            raise SystemExit(f'{name}: before-last threshold {t} must satisfy 1 <= T <= T_last = {t_last}')
+        coarse['value'] = t
+        ladder.insert(n - 1, coarse)
+        return n - 1, None
+    if threshold is None:
+        raise SystemExit(f'{name}: append-pad needs --threshold')
+    t = threshold
+    if t < 3:
+        raise SystemExit(f'{name}: append-pad threshold {t} must be >= 3 (the pad gets T - 1 >= 2)')
+    if n >= 2 and t >= ladder[-1]['value']:
+        raise SystemExit(f'{name}: append-pad threshold {t} must be below the last threshold {ladder[-1]["value"]}')
+    coarse['value'] = t
+    pad = dict(coarse, value=t - 1)
+    ladder.extend([coarse, pad])
+    return n, n + 1
+
+
+def plan_body(assets, name, threshold, placement=None):
     entry = bob1.resolve_body(assets, name)
     if 'loose' in entry:
         raise SystemExit(f'{name}: winning resource is loose file {entry["path"]}; a catalogue cannot override it')
@@ -121,47 +172,47 @@ def plan_body(assets, name, threshold, keep_coarsest_hidden=False):
     if bob1.serialise(tree) != data:
         raise SystemExit(f'{name}: writer does not reproduce this body byte for byte; refusing')
     ladder = bob1.lods(tree)
-    if keep_coarsest_hidden:
-        if len(ladder) < 2:
-            raise SystemExit(f'{name}: --keep-coarsest-hidden needs a body with at least two LOD records')
-        t = ladder[-1]['value']            # new record takes over the old coarsest's range exactly
-    else:
-        t = threshold if threshold is not None else default_threshold(ladder)
-    if t is None:
-        raise SystemExit(f'{name}: single-LOD body; pass --threshold')
-    if t <= 0:
-        raise SystemExit(f'{name}: threshold must be positive')
-    if len(ladder) > 1 and t >= ladder[-1]['value'] and not keep_coarsest_hidden:
-        raise SystemExit(f'{name}: threshold {t} must be below the coarsest threshold {ladder[-1]["value"]}')
-    new = coarse_record(ladder[-1], t)
-    ladder.append(new)
+    before = list(ladder)
+    placement = placement or default_placement(ladder)
+    new = coarse_record(ladder[-1], None)
+    new_index, pad_index = place(ladder, new, placement, threshold, name)
     out = bob1.serialise(tree)
     check = bob1.lods(bob1.parse(out))
-    if len(check) != len(ladder) or check[-1]['value'] != t:
+    if [l['value'] for l in check] != [l['value'] for l in ladder]:
         raise SystemExit(f'{name}: re-parse of the written body failed')
     with entry['cat'].with_suffix('.dat').open('rb') as f:
         f.seek(entry['offset'])
         head = bytes(v ^ 0x33 for v in f.read(2))
     stored = gzip.compress(out, mtime=0) if head == b'\x1f\x8b' or entry['path'].lower().endswith('.pbb') else out
-    return dict(name=name, source=entry['source'], member=entry['path'], ladder=ladder, new=new,
+    return dict(name=name, source=entry['source'], member=entry['path'], before=before, ladder=ladder,
+                new=new, new_index=new_index, pad_index=pad_index, placement=placement,
                 source_decoded_sha256=hashlib.sha256(data).hexdigest(),
                 overlay_decoded_sha256=hashlib.sha256(out).hexdigest(),
                 decoded_bytes=(len(data), len(out)), stored=stored)
 
 
+def ladder_text(ladder):
+    return (f'thresholds {["-"] + [l["value"] for l in ladder[1:]]}'
+            f' draws {[bob1.lod_summary(l)["draws"] for l in ladder]}')
+
+
 def describe(plan, out=None):
     out = out or sys.stdout
-    ladder = plan['ladder']
-    src = ladder[-2]
-    s_old, s_new = bob1.lod_summary(src), bob1.lod_summary(plan['new'])
+    s_old, s_new = bob1.lod_summary(plan['before'][-1]), bob1.lod_summary(plan['new'])
     print(f'{plan["name"]}: {plan["source"]}:{plan["member"]}', file=out)
-    print(f'  ladder before: thresholds {["-"] + [l["value"] for l in ladder[1:-1]]}'
-          f' draws {[bob1.lod_summary(l)["draws"] for l in ladder[:-1]]}', file=out)
+    print(f'  ladder before: {ladder_text(plan["before"])}', file=out)
+    print(f'  ladder after:  {ladder_text(plan["ladder"])}', file=out)
     mats = [g['material'] for p in plan['new']['parts'] for g in p['groups']]
-    print(f'  new LOD{len(ladder) - 1}: threshold={plan["new"]["value"]} flags={plan["new"]["flags"]:#x}'
-          f' points={s_new["points"]} parts={s_new["parts"]} groups/part {s_old["groups_per_part"]}'
-          f' -> {s_new["groups_per_part"]} draws {s_old["draws"]} -> {s_new["draws"]} faces={s_new["faces"]}'
-          f' dominant materials={mats} part_flags={[hex(f) for f in s_new["part_flags"]]}', file=out)
+    pad = f' + pad copy LOD{plan["pad_index"]} threshold={plan["new"]["value"] - 1}' if plan['pad_index'] else ''
+    th = [l['value'] for l in plan['before'][1:]]
+    vh = bob1.drawable([l['value'] for l in plan['ladder'][1:]], 'very-high')
+    print(f'  {plan["placement"]}: new LOD{plan["new_index"]} threshold={plan["new"]["value"]}{pad}'
+          f' flags={plan["new"]["flags"]:#x} points={s_new["points"]} parts={s_new["parts"]}'
+          f' groups/part {s_old["groups_per_part"]} -> {s_new["groups_per_part"]} draws {s_old["draws"]} ->'
+          f' {s_new["draws"]} faces={s_new["faces"]} dominant materials={mats}'
+          f' part_flags={[hex(f) for f in s_new["part_flags"]]}', file=out)
+    print(f'  main-view drawable at Very High (f=1): before {bob1.drawable(th, "very-high")} after {vh}'
+          f' (new record drawable: {plan["new_index"] in vh})', file=out)
     print(f'  decoded bytes {plan["decoded_bytes"][0]} -> {plan["decoded_bytes"][1]},'
           f' stored {len(plan["stored"])} (gzip), overlay sha256 {plan["overlay_decoded_sha256"][:16]}', file=out)
 
@@ -169,20 +220,19 @@ def describe(plan, out=None):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('bodies', nargs='+', help='body name as the scene references it, or member path')
-    ap.add_argument('--threshold', type=int, help='new LOD threshold T (default: coarsest threshold // 2)')
+    ap.add_argument('--threshold', type=int,
+                    help='new record threshold (before-last: T <= T_last, default T_last;'
+                         ' append-pad: required, 3 <= T, below T_last for multi-LOD bodies)')
+    ap.add_argument('--placement', choices=PLACEMENTS,
+                    help='force a placement (default: before-last for multi-LOD, append-pad for single-LOD)')
     ap.add_argument('--game', type=Path, default=bob1.DEFAULT_GAME)
     ap.add_argument('--out', type=Path, help='output root (receives addon/NN.cat/.dat)')
     ap.add_argument('--install', action='store_true', help='write into the game directory (never overwrites)')
-    ap.add_argument('--keep-coarsest-hidden', action='store_true',
-                    help='give the new record the old coarsest threshold, so it replaces the old coarsest'
-                         ' range exactly and hide-at-coarsest nodes stay hidden where they were')
     ap.add_argument('--slot', type=int, help='addon catalogue number 1..99 (default and required: the next'
                                               ' contiguous free slot)')
     ap.add_argument('--force-slot', action='store_true', help='allow a --slot other than the next contiguous one')
     ap.add_argument('--dry-run', action='store_true', help='print the planned records; write nothing')
     a = ap.parse_args(argv)
-    if a.keep_coarsest_hidden and a.threshold is not None:
-        ap.error('--keep-coarsest-hidden sets the threshold; do not pass --threshold')
     if a.force_slot and a.slot is None:
         ap.error('--force-slot needs --slot')
     game = a.game.resolve()
@@ -211,7 +261,7 @@ def main(argv=None):
 
     before = None if a.dry_run else hash_files(original_archives(game))
     assets = Assets(game)
-    plans = [plan_body(assets, name, a.threshold, a.keep_coarsest_hidden) for name in a.bodies]
+    plans = [plan_body(assets, name, a.threshold, a.placement) for name in a.bodies]
     members = [p['member'] for p in plans]
     if len({m.lower() for m in members}) != len(members):
         raise SystemExit('the same body was named twice')
@@ -229,7 +279,7 @@ def main(argv=None):
         raise SystemExit(f'refusing to overwrite existing {cat_rel} outputs under {root}')
     write_catalogue(cat, [(p['member'], p['stored']) for p in plans])
     manifest = dict(tool='tools/analysis/lod_overlay.py', slot=slot, bodies=[
-        dict(name=p['name'], source=p['source'], member=p['member'], new_lod=len(p['ladder']) - 1,
+        dict(name=p['name'], source=p['source'], member=p['member'], placement=p['placement'], new_lod=p['new_index'], pad_lod=p['pad_index'],
              threshold=p['new']['value'], source_decoded_sha256=p['source_decoded_sha256'],
              overlay_decoded_sha256=p['overlay_decoded_sha256']) for p in plans],
         originals=len(before), originals_sha256=hashlib.sha256(

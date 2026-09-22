@@ -426,24 +426,29 @@ gives the pad no meaning.
 
 **Overlay placement.** The engine has no "far record" semantic, but at Very High
 the *position* matters: the record at index `n-1` is never drawn in the main
-view. Appending a coarse record after the last one (what `lod_overlay.py` does
-today) therefore never shows the new record at Very High; it only lets the old
-coarsest record draw in the new band `s < T_new·f`, where `n-2` drew before, and
-the pilot acceptance "the node reports the new index one past the shipped
-ladder" cannot be met in this bottle. A new record must sit at an index
-`<= count-2` of the new ladder. Two layouts do that, with different effects:
+view. Appending a coarse record after the last one would never show it at Very
+High; it would only let the old coarsest record draw in the new band
+`s < T_new·f`, where `n-2` drew before. A new record must sit at an index
+`<= count-2` of the new ladder. `tools/analysis/lod_overlay.py` no longer appends
+alone; it uses one of two layouts (decision 2026-09-23,
+[merged-lod-feasibility.md](../architecture/merged-lod-feasibility.md) "Overlay
+tooling"):
 
-- insert it **before** the last record with a threshold `<= T_last`: at Very High
-  it replaces record `n-2` over the whole of the old `sel = n-1` range; at Low..High
-  it is unreachable and nothing changes;
-- append it **and** a pad copy after it, both with threshold `T_new`: the new mesh
-  draws at `s < T_new·f` in every setting (as index `n` at Very High, as the pad at
-  Low..High); above that the old ladder is unchanged at Very High, while at
-  Low..High `0x8000`-flagged nodes now hide only below `T_new·f`.
+- **before-last** (default for multi-LOD bodies): the record is inserted before
+  the last one with `T <= T_last`, default `T = T_last`. The walk hits the old
+  last record first whenever `s < T_last·f`, so at Very High the `-1` lands on
+  the new record over the whole of the old `sel = n-1` range (where record `n-2`
+  drew); at Low..High it is never drawn and nothing changes. Any ladder shape is
+  accepted.
+- **append-pad** (default for single-LOD bodies; `T` required): the record with
+  `T`, then a pad copy with `T - 1`. At Very High the new mesh draws below
+  `(T-1)·f` and the band `[(T-1)·f, T·f)` draws LOD 0 (single-LOD) or the old
+  last record; at Low..High the pad draws below `(T-1)·f` and the record in that
+  band, and `0x8000`-flagged nodes now hide below `(T-1)·f`.
 
-Which one the pilot uses is a design decision; `--keep-coarsest-hidden` as
-described in [merged-lod-feasibility.md](../architecture/merged-lod-feasibility.md)
-does not hold at Very High, where the hide never fires in the main view.
+The former `--keep-coarsest-hidden` option was removed: it assumed the last
+record is drawn, which does not hold at Very High, where the hide never fires
+in the main view.
 
 Open: the `0x1000000` view is identified only by the census note's env-map
 reading; the other writers of an `+0x14c` field found by a program-wide scan

@@ -20,7 +20,7 @@ Tree:
 
 CLI (prints derived numbers only; never writes body bytes):
   python3 tools/analysis/bob1.py info <file | archive member or stem>
-  python3 tools/analysis/bob1.py audit [--summary] [--json OUT]
+  python3 tools/analysis/bob1.py audit [--summary] [--json OUT] [--view-distance V] [--factor F]
 """
 import argparse
 import os
@@ -386,33 +386,59 @@ def load(target, game=DEFAULT_GAME):
     return assets.read_entry(entry), f'{entry["source"]}:{entry["path"]}'
 
 
-def shadowed_records(ladder):
-    """LOD indices >= 1 that are never selected under the ladder walk of 0047d429.
-
-    The walk tries i = nLOD-1 .. 1 and takes the first i with s < T_i*f, so record j
-    is unreachable when some later record i > j has T_i >= T_j."""
-    th = [l['value'] for l in ladder]
-    return [j for j in range(1, len(th)) if any(th[i] >= th[j] for i in range(j + 1, len(th)))]
+VIEW_DISTANCE = {'low': 0, 'medium': 1, 'high': 2, 'very-high': 3}   # cfg+0x768 (VideoViewDistance)
 
 
-def audit_row(tree):
+def reachable(thresholds, f=1.0):
+    """Loop-reachable indices of 0047d429..0047d46e (lod-selection.md, 2026-09-23 section).
+
+    thresholds = file values of records 1..n-1. The loop takes the highest i with
+    s < trunc(T_i*f), s >= 1, so i >= 1 is reachable iff trunc(T_i*f) >= 2 and it
+    exceeds trunc(T_j*f) of every later record j. Record 0 is the no-hit result."""
+    t = [int(x * f) for x in thresholds]           # ftol truncation (0x0052b5d0)
+    return [0] + [i + 1 for i in range(len(t)) if t[i] >= 2 and all(t[i] > u for u in t[i + 1:])]
+
+
+def drawable(thresholds, view='very-high', f=1.0):
+    """Records drawable in the main view (no 0x1000000 flag) at a View Distance setting:
+    final = clamp(sel - 1, 0, n-1) at Very High, sel at Low..High. Low's adaptive
+    rescale of small metrics (only ever coarser) is not modelled."""
+    n = len(thresholds) + 1
+    r = reachable(thresholds, f)
+    if VIEW_DISTANCE[view] >= 3:
+        r = [min(max(i - 1, 0), n - 1) for i in r]
+    return sorted(set(r))
+
+
+def audit_row(tree, view='very-high', f=1.0):
     ladder = lods(tree)
     draws = [lod_summary(l)['draws'] for l in ladder]
-    shadowed = shadowed_records(ladder)
-    return dict(lods=len(ladder), thresholds=[l['value'] for l in ladder[1:]], groups=draws,
-                single_lod=len(ladder) == 1, non_monotonic=bool(shadowed), shadowed=shadowed,
-                coarse_multi_group=draws[-1] > 1)
+    th = [l['value'] for l in ladder[1:]]
+    n = len(ladder)
+    drawn = drawable(th, view, f)
+    anywhere = set(drawable(th, 'high', f)) | set(drawable(th, 'very-high', f))
+    return dict(lods=n, thresholds=th, groups=draws, drawable=drawn,
+                never_drawn=[i for i in range(n) if i not in drawn],
+                never_drawn_any_setting=[i for i in range(n) if i not in anywhere],
+                single_lod=n == 1, last_never_drawn=n > 1 and (n - 1) not in drawn,
+                lod0_only=n > 1 and drawn == [0], dead_any_setting=n > 1 and len(anywhere) < n,
+                coarse_multi_group=draws[max(drawn)] > 1)
 
 
-AUDIT_CLASSES = ('single_lod', 'non_monotonic', 'coarse_multi_group')
+AUDIT_CLASSES = ('single_lod', 'last_never_drawn', 'lod0_only', 'dead_any_setting', 'coarse_multi_group')
+AUDIT_LEGEND = ('classes (overlap): single_lod = one record; last_never_drawn = the last record is not in'
+                ' the main-view drawable set at this setting; lod0_only = multi-LOD body that can only draw'
+                ' LOD 0 at this setting; dead_any_setting = some record drawable at no main-view setting'
+                ' (Low..High or Very High); coarse_multi_group = the coarsest drawable record draws > 1 group')
 
 
-def audit(assets, emit=None):
+def audit(assets, emit=None, view='very-high', f=1.0):
     """Audit every winning .pbb resource; returns (rows, summary dict)."""
     keys = sorted(k for k, v in assets.entries.items() if v[-1]['path'].lower().endswith('.pbb'))
     rows = []
-    summary = dict(pbb_resources=len(keys), cut1=0, bob1=0, rejected=0,
-                   **{c: 0 for c in AUDIT_CLASSES}, shadowed_records=0, clean_multi_lod=0)
+    summary = dict(view_distance=view, factor=f, pbb_resources=len(keys), cut1=0, bob1=0, rejected=0,
+                   multi_lod=0, **{c: 0 for c in AUDIT_CLASSES}, coarse_multi_group_multi_lod=0,
+                   never_drawn_records=0, dead_any_setting_records=0)
     for key in keys:
         entry = assets.entries[key][-1]
         data = assets.read_entry(entry)
@@ -424,16 +450,17 @@ def audit(assets, emit=None):
             continue
         summary['bob1'] += k == 'BOB1'
         try:
-            row = dict(member=member, **audit_row(parse(data)))
+            row = dict(member=member, **audit_row(parse(data), view, f))
         except FormatError as exc:
             summary['rejected'] += 1
             row = dict(member=member, error=str(exc))
         else:
             for c in AUDIT_CLASSES:
                 summary[c] += row[c]
-            summary['shadowed_records'] += len(row['shadowed'])
-            summary['clean_multi_lod'] += (row['lods'] > 1 and not row['non_monotonic']
-                                           and not row['coarse_multi_group'])
+            summary['multi_lod'] += row['lods'] > 1
+            summary['coarse_multi_group_multi_lod'] += row['lods'] > 1 and row['coarse_multi_group']
+            summary['never_drawn_records'] += len(row['never_drawn'])
+            summary['dead_any_setting_records'] += len(row['never_drawn_any_setting'])
         rows.append(row)
         if emit:
             emit(row)
@@ -444,9 +471,9 @@ def format_audit_row(row):
     if 'error' in row:
         return f'{row["member"]} REJECTED {row["error"]}'
     flags = [c for c in AUDIT_CLASSES if row[c]]
-    shadow = f' shadowed={row["shadowed"]}' if row['shadowed'] else ''
+    dead = f' dead_any_setting={row["never_drawn_any_setting"]}' if row['never_drawn_any_setting'] else ''
     return (f'{row["member"]} lods={row["lods"]} thresholds={row["thresholds"]} groups={row["groups"]}'
-            f' {",".join(flags) or "ok"}{shadow}')
+            f' drawable={row["drawable"]} {",".join(flags) or "ok"}{dead}')
 
 
 def main(argv=None):
@@ -459,17 +486,19 @@ def main(argv=None):
     au.add_argument('--game', type=Path, default=DEFAULT_GAME)
     au.add_argument('--json', type=Path, help='write the full per-body table as JSON')
     au.add_argument('--summary', action='store_true', help='print only the summary lines')
+    au.add_argument('--view-distance', choices=list(VIEW_DISTANCE), default='very-high',
+                    help='VideoViewDistance setting for the drawable sets (default: very-high, the X3 bottle)')
+    au.add_argument('--factor', type=float, default=1.0,
+                    help='threshold multiplier f = cfg+0x760 (engine default 1.0; --lod-scale changes it)')
     a = ap.parse_args(argv)
     if a.cmd == 'audit':
         game = a.game.resolve()
         if a.json and a.json.resolve().is_relative_to(game):
             raise SystemExit('--json must be outside the game directory')
         emit = None if a.summary else (lambda row: print(format_audit_row(row)))
-        rows, summary = audit(_archive_modules().Assets(game), emit)
+        rows, summary = audit(_archive_modules().Assets(game), emit, a.view_distance, a.factor)
         print('summary ' + ' '.join(f'{k}={v}' for k, v in summary.items()))
-        print('classes: single_lod = one LOD record; non_monotonic = some record i >= 1 is never'
-              ' selected because a later record has threshold >= T_i; coarse_multi_group ='
-              ' coarsest LOD draws > 1 (classes overlap)')
+        print(AUDIT_LEGEND)
         if a.json:
             import json
             a.json.write_text(json.dumps(dict(summary=summary, bodies=rows), indent=1) + '\n')
