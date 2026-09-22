@@ -2057,6 +2057,9 @@ Run 62 returned **run221** (A: distant-station pan flicker fixed) and **run222**
 Run 61 returned **run215/run216** (A: panel crawl accepted, weight stays 0.97, lasers clean, distant-station pan flicker traced to far-plane history rejection) and **run220** (B: looks accepted, L2 preferred, ribs from axis-aligned coverage waves, sun/flare pop at ~50% occlusion is vanilla).
 
 Run 60 returned **run212** (A) and **run214** (B): forward-flight crawl traced to sentinel-depth panel glass closing the camera gate; approach flash gone with `node`; stored fog accepted in principle but thin and flat, black smear = unlit station shadow shaft, far-station shimmer = unrouted blended draws ([instructions](../archive/user-runs-completed.md)). Run57 C returned **run205**: no flash or transition ghosting reported; both global heuristic cuts are now disabled by default. [Completed instructions](../archive/run57c-completed-2026-09-21.md), [acceptance evidence](temporal-resolve.md#run57-global-heuristic-cuts-disabled-by-default-2026-09-21).
+Moved from `user-runs.md` on 2026-09-22:
+
+Run 65 returned **run235** (A: sun accepted, core dimming liked; SETA smear captured under the delayed burst: cause is the far-plane history tolerance, fixed behind `--taa-sky-history strict`), **run236/run237** (B: widening 3 and 4 accepted, 4 chosen as default with the emissive vote), **run238/run239/run240/run242/run243** (C: fog fine; the ~50 fps stand is 448 engine draws from 58 nodes, 400 at LOD 0; `--cull-small-parts 4` removed ~50 draws; run243's `--lod-scale 0.5` was refused by the Run65 DLL).
 
 ## Run 66 (completed 2026-09-22: run244 (SETA/pan, strict), run245-run248 (lod-scale A/B at the stand))
 
