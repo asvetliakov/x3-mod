@@ -336,3 +336,68 @@ same scene at `--hull-emissive-widening` off).
 Not measured here: the post-resolve (TAA) behaviour (R3 is the TAA-side change), the flight cost above, non-square light
 maps (the per-axis lanes are exercised with W = H = 64 only), MAXANISOTROPY below 2 (the raise would be inert; run231
 holds 16 throughout). Native Windows: cross-compiled only.
+
+## 2026-09-22: Run 236/237 triage (K=3 vs K=4, Run65 DLL 2d11aac4, thin-region emissive vote on)
+
+Inputs: `/tmp/x3-bottleX3-run236` (`--hull-emissive-widening 3`, `--taa-thin-region-emissive 1`), `/tmp/x3-bottleX3-run237`
+(`--hull-emissive-widening 4`, `--taa-thin-region-emissive 1`), both TAA on, fog off, `X3M_CAPTURE_FRAMES=32`, two F8
+bursts each. Compared against run231 (Run64, K=3/Q0=2/Q1=8, no vote) and run232 (no widening, 8 frames, no
+`color_1`/`taa_1`). Method: same as the Run 231 triage — `hdr_1` luma > 0.8 AND `depth_1` channel 2 (view_z) in
+3000-9000, densest 40x40px cell, still burst = first burst (constant `camera_rotation_deg`), yaw = second burst.
+resolution confirmed 1280x768 from `color_1`/`hdr_1`/`depth_1` file sizes. Frame ranges: run236 still 12400-12431, yaw
+13086-13117 (rotation 0.062 -> 0.0-0.64 deg, i.e. a much smaller pan than run231's); run237 still 7354-7385, yaw
+8223-8254 (rotation 0.0 -> 0.0-3.02 deg). All three runs route the same station shader (`ps=f1b0e820c7b488c3`,
+`model=00005428`).
+
+**1. Engagement.** Startup confirms `hull_emissive_widening_mode ... k=3 b=3` (run236) and `k=4 b=4` (run237);
+`thin_emissive=1.000` active in both. `hull_lightmap_widen_frame` is byte-identical every frame of both still bursts
+(run236 `admitted=289 widened=183`; run237 `admitted=282 widened=175`). During yaw it varies modestly: run236
+183->184->181 widened (+-2%) over the much smaller rotation range; run237 175->161->175 (+-8%). **Important log
+regression versus run231's build: this Run65 build's `hull_lightmap_widen_frame` line no longer carries per-draw
+`k_min`/`k_max`** (run231: `k_min=... k_max=...`; run236/237: constant `k=3 b=3` / `k=4 b=4`, the configured value, not
+a measured range). This blocks item 7 below.
+
+**2. Strip brightness/continuity** (`hdr_1`, unclamped, still-burst frame 1, ROI centred on the located cluster —
+run231 y190-330/x790-890, run236 y220-360/x380-480, run237 y190-330/x270-370; boxes differ in screen position/size
+per run, a comparability caveat as in the prior triage, not a control):
+
+| run | K,B | peak | mean | peak/mean |
+|---|---|---:|---:|---:|
+| run231 | 3,2/8 (no vote) | 3.46 | 0.626 | 5.5 |
+| run236 | 3,3 (vote) | 8.25 | 0.234 | 35.3 |
+| run237 | 4,4 (vote) | 9.30 | 0.272 | 34.2 |
+
+The half-peak continuity fraction computed the same way as run231 (0.579) came out at 0.043 for both 236 and 237 —
+**not trusted**: the much higher peak/mean ratio in 236/237 indicates the ROI's peak pixel is a small hot spot (glint)
+rather than an extended strip the way run231's was, so a half-of-that-peak threshold is too strict. This metric needs
+a strip-axis-aware ROI, not measured reliably here.
+
+**3. Rest flicker, pre-TAA vs `taa_`** (`color_1`/`taa_1` frame-to-frame |delta| mean over the still burst, same ROI):
+`taa_1` mean delta run231 0.00083, run236 0.00019, run237 0.00012. **The emissive vote cuts the `taa_1` leak 4.4x
+(run236) and 6.9x (run237) versus run231's no-vote baseline — meeting and exceeding the "~3x" design target.**
+pre-TAA/`taa_` ratio: run231 30.7x, run236 145x, run237 189x (consistent, since pre-TAA delta is comparable across
+runs at 0.023-0.028 but `taa_` delta keeps dropping).
+
+**4. Yaw stability** (`hdr_1` strip peak, frame-to-frame max % change over the yaw burst): run231 187% (rotation
+sweeping 0.2-15 deg, the largest test), run236 47% (rotation only 0-0.64 deg total), run237 84% (rotation 0-3.02 deg
+total). **Not a like-for-like comparison**: run236/237's yaw bursts have a far smaller rotation range than run231's,
+so neither confirms nor refutes "peak stays within +-15%" under a real pan — the recorded pans in 236/237 are too
+small to be a fair stress test, and even at this small rotation range neither stays inside +-15%.
+
+**5. Corners.** No log field locates a diagonally-drawn panel or a corner pixel count in either run; not checked here
+(would need per-image visual/pixel search with no location hint) — **not measured**.
+
+**6. Frame time.** No `fps=`/`frame_time`/`present_interval` field appears anywhere in run231/236/237 session logs —
+**not measurable from this evidence**.
+
+**7. Per-draw k saturation at K.** **Not measurable**: the Run65 build's `hull_lightmap_widen_frame` line dropped the
+per-draw `k_min`/`k_max` range that run231's build logged, replacing it with the constant configured `k=K`. No other
+line carries a per-draw footprint or `k_draw` value (same gap follow-up 2 already found in run231). Whether any
+tracked strip in these captures is still limited by K=3/K=4 (so K=5/6 would matter) or already below K (so a larger K
+is a no-op) **cannot be read from these logs**; would need the per-draw `k_draw` diagnostic follow-up 2 already asked
+for, reinstated in the log line that Run65 removed.
+
+**What would settle open items 4/5/7**: one capture with (a) a full-magnitude yaw sweep matching run231's ~15 deg
+range so 4 is comparable, (b) the per-draw `k_min`/`k_max` (or `k_draw`) field restored to `hull_lightmap_widen_frame`,
+and (c) a logged screen-space bounding box or node id for a diagonally-drawn lit panel so corner pixels can be located
+without a manual scan.
