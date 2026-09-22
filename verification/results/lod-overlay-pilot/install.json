@@ -1,0 +1,82 @@
+{
+ "installed": "2026-09-23T02:46 local",
+ "command": "tools/analysis/lod_overlay.py 'ships/argon/argon_TL=50' 'ships/argon/argon_M2=50' 'ships/argon/argon_M1=50' 'Stations/others/military_outpost_middleb=100' --install",
+ "main_commit": "a2bb37ac",
+ "files": {
+  "addon/05.cat": {
+   "bytes": 191,
+   "sha256": "c5737a0a307f7d2590a788b736225139f39334908b35fa677935b15f56881c0f"
+  },
+  "addon/05.dat": {
+   "bytes": 12471545,
+   "sha256": "66f4f7a64b4b2304df12c09e82b4a0665b9bf751dd7bbd5dfd628688322f0686"
+  },
+  "addon/05.x3m-lod.json": {
+   "bytes": 1942
+  }
+ },
+ "originals": "34 archive files unchanged (tool hash guard)",
+ "bodies": {
+  "ships/argon/argon_TL": {
+   "T_pad": 50,
+   "ladder_after": [
+    null,
+    30,
+    15,
+    5,
+    5,
+    50
+   ],
+   "C_groups": [
+    "opaque:mat17:541f",
+    "alpha:mat38:12f"
+   ]
+  },
+  "ships/argon/argon_M2": {
+   "T_pad": 50,
+   "ladder_after": [
+    null,
+    30,
+    15,
+    5,
+    5,
+    50
+   ],
+   "C_groups": [
+    "opaque:mat17:722f",
+    "alpha:mat31:34f"
+   ]
+  },
+  "ships/argon/argon_M1": {
+   "T_pad": 50,
+   "ladder_after": [
+    null,
+    30,
+    15,
+    5,
+    5,
+    50
+   ],
+   "C_groups": [
+    "opaque:mat11:638f",
+    "alpha:mat27:20f"
+   ]
+  },
+  "Stations/others/military_outpost_middleb": {
+   "T_pad": 100,
+   "ladder_after": [
+    null,
+    30,
+    15,
+    15,
+    100
+   ],
+   "C_groups": [
+    "opaque:mat17:9201f",
+    "alpha:mat9:252f"
+   ]
+  }
+ },
+ "removal": "delete the three addon/05.* files",
+ "dll": "Run68 39c8c70d unchanged"
+}

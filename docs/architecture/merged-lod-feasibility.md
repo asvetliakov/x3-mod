@@ -494,3 +494,8 @@ Instruction windows were decoded with capstone against the installed EXE using
 the PE section table (base `0x00400000`): `0x0047d2d1`, `0x0047d400`,
 `0x0047d4d7`, `0x0047dfd0`, `0x004c0150`, `0x004c0200`, `0x004c4fc0`,
 `0x004c51c0`.
+
+**Pilot installed 2026-09-23:** `addon/05.cat` (`c5737a0a…`) / `05.dat` (`66f4f7a6…`) with
+argon_TL, argon_M2, argon_M1 at T_pad 50 and military_outpost_middleb at T_pad 100, two
+groups per coarse record; [install record](../../verification/results/lod-overlay-pilot/install.json);
+flight queued as Run 69 A ([user-runs.md](../verification/user-runs.md)).

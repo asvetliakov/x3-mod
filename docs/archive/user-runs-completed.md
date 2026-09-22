@@ -2045,6 +2045,7 @@ env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3
 | 49 | Consolidated attribution and fog-card replacement | 0 | Completed: A run183/184, B run185. Phase-off busy plateau about 51 FPS; R7 too small for a patch, moving collision remains descent-dominated. Sector reader validated in observed families; uniform fog appearance rejected. [Instructions archive](../archive/run49-50-completed-2026-09-20.md#49-consolidated-attribution-and-fog-card-replacement--ready-for-flight). |
 | 50 | Argon Prime media-retry attribution | 0 | Completed: run186. Two failed media-ID-2 constructions account for almost all of their 359/408 ms frames; later retries follow the 30-second cadence. Other first-view stalls remain separately scoped. [Instructions archive](../archive/run49-50-completed-2026-09-20.md#50-argon-prime-first-view-stutters--existing-media-trace), [findings](../verification/media-cues.md#run50-periodic-retries-directly-explain-argon-freezes-2026-09-20). |
 | 51 | Longer media retry counter | 0 | Not flown; superseded by Run54 replacement-media verification. [Archived instructions](../archive/run53-completed-2026-09-20.md#51-media-retry-counter--same-view-longer-diagnostic-interval). |
+| 52 | Busy-station attribution and lazy-RT counter | 0 | Completed: A run187, B run188, C run189. Matched 478-draw separate-session B/C medians were 19.70 / 18.90 ms; lazy accepted as launcher default, no new engine patch justified. [Instructions archive](../archive/run52-completed-2026-09-20.md), [results](../verification/motion-output.md#run52-lazy-render-target-binding-accepted-as-launcher-default-2026-09-20). |
 
 ## Run history paragraphs
 
@@ -2066,6 +2067,9 @@ Run 65 returned **run235** (A: sun accepted, core dimming liked; SETA smear capt
 Moved from `user-runs.md` on 2026-09-22:
 
 Run 66 returned **run244** (A: strict removes 42 % of the SETA dark sky, the near band 63 %; residual band fixed by the band term; blur is pre-existing history reprojection) and **run245-run248** (B: lod-scale 0.25/0.5 both ~275 draws vs 394 vanilla; the heavy station body reaches LOD 3 at 0.5; user: 0.5 helps with a few pops, default pending; run248 accounting: 367 draws, 19 % tiny, no second pass).
+Moved from `user-runs.md` on 2026-09-23:
+
+Run 67 returned **run249** (A: SETA still smears a little, normal speed and pan clean; the residual is a hull share carried outward in the 3-12 px band, a design question), **run250** (B: draw accounting at the stand, no cull justified; the alpha-tested draws need one flight with the extended bounds log), **run251** (C: fog shadow pass "softer?", no A/B yet; footprint 8 without a missing shadow) and **run253** (C, second sector: no shadow popping; footprint 8 accepted as the launcher default).
 
 ## Run 66 (completed 2026-09-22: run244 (SETA/pan, strict), run245-run248 (lod-scale A/B at the stand))
 
