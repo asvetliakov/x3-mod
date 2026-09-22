@@ -2202,3 +2202,7 @@ matching the user's own toggle test. The cost is in `frame_phases`
 `receiver_draws` and retention's `live_c4` cascade caster count (both ~6x).
 Full split: `docs/architecture/engine-frame-time.md` "Run 239: frame time
 with the split".
+
+## 2026-09-22: GPU timer built, not merged (bottle X3 has no timestamp queries)
+
+A `--gpu-timing` pass timer (IDirect3DQuery9 TIMESTAMP / TIMESTAMPFREQ / TIMESTAMPDISJOINT ring around the fog, TAA, bloom and Present work) was implemented and fixture-qualified on branch `worktree-agent-a2b067e4005541a7a` (commit 423bd098). On bottle X3 the D3D9 device refuses all three query types (`CreateQuery(nullptr)` = 0x8876086a; adapter reported as "NVIDIA GeForce 8800 GTX"/nvd3dum.dll), so the timer can only soft-fail here; it is kept on the branch for native Windows and not merged. GPU cost on this Mac is measured by frame-time A/B with the pass on and off (fps overlay / `--frame-timing`), which run239 already did for fog: flat within a millisecond.
