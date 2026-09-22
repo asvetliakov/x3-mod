@@ -2433,3 +2433,36 @@ rounding arithmetic and is superseded by the corrected run. The corrected
 fixture emits its benchmark variant before RX protection and preserves output
 flags through `LEA` caller cleanup. Runtime native Windows behavior and actual
 R7 flight costs remain unverified; no game was launched for qualification.
+
+## Redundant-state rows of the state-hook benchmark (2026-09-22, no game)
+
+Question from the run 240 stand (0.31-0.32 µs per hooked state call, ~64 calls
+per draw, 94-99 % redundant): does a native SetRenderState from x86 code in
+bottle X3 pay a per-call FEX-to-arm64 boundary? `state_hook_benchmark.cpp`
+gained same-value rows for SetRenderState (ZENABLE), SetSamplerState,
+SetTextureStageState and SetTexture, one alternating-value SetRenderState row
+and a no-op vtable call (GetNumberOfSwapChains), 1,000,000 calls each, three
+repetitions; the existing five configurations ran unchanged. Command:
+`X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+verification/probe/run_state_hook_benchmark.py --out
+verification/results/bottle-X3/state-hook-benchmark-elision.json` (installed
+DLL `2d11aac4`; X3, WineArch arm64, `FEX_X87REDUCEDPRECISION=1`,
+`WINEMSYNC=1`; exit 0; every PRESERVE row x87/MXCSR unchanged; SLOT lines
+show the light pair backend-owned in production and proxy-owned in the shadow
+and timing cases).
+
+ns per call, medians: native same-value SetRenderState 10.1, alternating 10.6,
+rotating 14.7; SetSamplerState same 10.9; SetTextureStageState same 10.5;
+SetTexture same pointer 15.9; no-op vtable call 9.5; GetRenderState 8.8.
+Through the proxy: production (hooks off) 10.1 / 10.5 / 10.4 / 117.2; hooked,
+timing off 69.0 / 69.5 / 10.6 / 118.2; hooked, `X3M_FRAME_TIMING=1` 154.2 /
+152.9 / 10.6 / 202.5. Unchanged rows within noise of run 32 (SetStreamSource
+133.7, draw pair 838.1 hooked timing off, SetVertexShaderConstantF(4) 75.4).
+
+Outcome: the redundant native call is 0.6 ns above an empty virtual call; no
+boundary cost exists (wined3d is an i386 PE under FEX, the arm64 side is
+entered only at draw/flush/Present). Elision at the stand would save 0.24 ms
+per frame in the hooked configuration and lose ~1.1 ms in production, where
+the hooks it needs are not installed; `--state-elide` was not implemented.
+Analysis and the reading of the 0.32 µs figure: state-call-fast-path.md
+"Elision revisited under FEX".

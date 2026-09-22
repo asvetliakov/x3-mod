@@ -530,6 +530,78 @@ coverage verdicts as the lazy hooked twin. 104 runner cases still set
 `X3M_STATE_SHADOW=1`: the seam-DLL cases, whose fixture seams (setter
 failures, the lazy hole) need the hooks, and the hooked references.
 
+## Elision revisited under FEX (2026-09-22)
+
+Question: is the native per-call cost of SetRenderState/SetSamplerState/
+SetTextureStageState from x86 code in bottle X3 a few hundred ns (an
+x86-under-FEX to arm64 boundary per call), which would make eliding the ~90 %
+redundant calls worth several ms per frame at the run 240 stand, or the ~13.5
+ns (d) assumed? Measured, not assumed: `state_hook_benchmark.cpp` gained
+same-value rows per setter kind (`SetRenderState_same` ZENABLE=TRUE,
+`SetRenderState_alternating` ZENABLE TRUE/FALSE, `SetSamplerState_same`,
+`SetTextureStageState_same`, `SetTexture_same` same pointer) and a no-op
+vtable call (`GetNumberOfSwapChains`), 1,000,000 calls per row, three
+repetitions, in the same x86 fixture process, against the installed DLL
+`2d11aac4` (record `verification/results/bottle-X3/state-hook-benchmark-elision.json`,
+X3, WineArch arm64, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`).
+
+ns per call (medians; native / production, hooks off / hooks on, timing off /
+hooks on, `X3M_FRAME_TIMING=1`):
+
+| row | native | production | hooked | hooked + timing |
+| --- | --- | --- | --- | --- |
+| no-op vtable call (GetNumberOfSwapChains) | 9.5 | 9.7 | 9.5 | 9.5 |
+| GetRenderState | 8.8 | 9.0 | 8.9 | 8.9 |
+| SetRenderState, same value | 10.1 | 10.1 | 69.0 | 154.2 |
+| SetRenderState, alternating value | 10.6 | 10.4 | 69.3 | 151.0 |
+| SetRenderState, rotating states/values | 14.7 | 11.2 | 79.3 | 155.2 |
+| SetSamplerState, same value | 10.9 | 10.5 | 69.5 | 152.9 |
+| SetSamplerState, rotating values | 11.0 | 10.8 | 70.0 | 152.5 |
+| SetTextureStageState, same value | 10.5 | 10.4 | 10.6 | 10.6 |
+| SetTextureStageState, rotating | 11.6 | 11.3 | 11.4 | 11.5 |
+| SetTexture, same pointer | 15.9 | 117.2 | 118.2 | 202.5 |
+| SetTexture, alternating pointers | 16.2 | 130.0 | 130.1 | 221.7 |
+
+Findings. (1) There is no per-call emulation boundary: a redundant native
+SetRenderState costs 10.1 ns, 0.6 ns above an empty virtual call into the
+same backend, and the value-changing path 10.6-14.7 ns. This is structural,
+not a benchmark artefact: CrossOver Preview's `d3d9.dll` and `wined3d.dll`
+are i386 PE images (`lib/wine/i386-windows/`, checked with `file`), executed
+under FEX exactly like the game and the proxy; the arm64 side is entered only
+in the unix libraries (`aarch64-unix/winevulkan.so`) that wined3d's command
+stream reaches at draw, flush and Present, never per state write. (2) The
+hook's own self-cost on the same rows is 58.9 ns (same-value: 69.0 − 10.1)
+to 64.6 ns (rotating) with timing off and ~144 ns with `X3M_FRAME_TIMING=1`;
+SetTexture's hooked cost is 117-130 ns, of which ~101 ns is the hook. (3)
+The 0.31-0.32 µs per hooked call of run 240 (`state_p50_us / state_calls_p50`,
+`--frame-timing-state-stamps 8`) is the interval between the `Scope` stamps of
+`PlainHookGuard`: begin after the mutex is taken and the per-entry counter
+incremented, end in the guard's destructor before the unlock, so it covers
+`hooked_device`, `before_original`, the native call, `after_original`, the
+shadow store with its `state_write` counter probe and the end QPC itself
+(~66 ns); every eighth call per entry is stamped and scaled by eight. On this
+benchmark the same interval is at most ~65-75 ns (155 total minus the begin
+QPC, lock, envelope and admission outside the stamps), so the in-game figure
+is not explained by "native + hook" as measured in a hot loop, and it is not
+a native boundary cost either (the native rows bound every setter kind at
+≤ 16 ns from the same x86 process). The ~250 ns excess is unattributed:
+the candidates are cold instruction/data caches and FEX code-cache state
+between game calls (the benchmark loop is hot; the game interleaves ~64 calls
+with D3DX apply code per draw) and the wider state/stage spread; splitting it
+needs a native-call stamp inside the hook, which no current instrument has.
+
+Projection at the run 240 stand (448 draws; 32.9 SetSamplerState and 18.8
+SetRenderState per draw; 98.8 % and 94.3 % redundant): 22,500 redundant
+native calls per frame at 10.1-10.9 ns = 0.24 ms if elided for free. In the
+production configuration those two hooks are not installed, so elision would
+first pay a hook on all 23,160 calls at ≥ 59 ns each (1.36 ms) to save 0.24
+ms: a net loss of ~1.1 ms per frame. In the hooked configuration
+(`--frame-timing`, `X3M_STATE_SHADOW=1`, lazy RT mode) the saving is ≤ 0.24
+ms of a ~9.3 ms state bucket (448 × 20.68 µs). Decision: (d) stands and is
+now measured rather than assumed; `--state-elide` is not implemented. The
+lever at the stand remains the count of engine state calls and draws
+(engine-frame-time.md, engine-state-filter.md), not their per-call cost.
+
 ## Native Windows
 
 Every step uses documented D3D9 and Win32 only. The FNSAVE cost and the 68 ns

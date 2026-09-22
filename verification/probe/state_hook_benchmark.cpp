@@ -113,6 +113,18 @@ struct Workload {
     void set_vs_constant(unsigned i) { constants[0] = float(i); status_or |= device->SetVertexShaderConstantF(8, constants, 4); }
     void set_stream_source(unsigned i) { status_or |= device->SetStreamSource(0, buffers[i & 1], 0, 32); }
 
+    // Redundant writes (elision question, state-call-fast-path.md "Elision
+    // revisited under FEX"): the value already on the device, per setter kind,
+    // against one state alternating between two values and a no-op vtable
+    // call (GetNumberOfSwapChains: one virtual call into the backend that
+    // touches no state) as the floor of a call into the backend's table.
+    void set_render_state_same(unsigned) { status_or |= device->SetRenderState(D3DRS_ZENABLE, D3DZB_TRUE); }
+    void set_render_state_alternating(unsigned i) { status_or |= device->SetRenderState(D3DRS_ZENABLE, i & 1 ? D3DZB_TRUE : D3DZB_FALSE); }
+    void set_sampler_state_same(unsigned) { status_or |= device->SetSamplerState(0, D3DSAMP_MAXANISOTROPY, 1); }
+    void set_stage_state_same(unsigned) { status_or |= device->SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, 0); }
+    void set_texture_same(unsigned) { status_or |= device->SetTexture(0, textures[0]); }
+    void noop_vtable_call(unsigned) { status_or |= device->GetNumberOfSwapChains() == 1 ? S_OK : E_FAIL; }
+
     // Application getters, measured with the same rotation discipline. GetTexture
     // returns an AddRef'd reference, so the Release is part of the timed pair.
     void get_render_state(unsigned i) { DWORD v = 0; status_or |= device->GetRenderState(render_states[i & 3], &v); }
@@ -174,6 +186,13 @@ void device_benchmark(Workload& w) {
         begin = ticks(); for (unsigned i = 0; i < per_setter_calls; ++i) w.set_stage_state(i); report("SetTextureStageState", rep, per_setter_calls, ticks() - begin);
         begin = ticks(); for (unsigned i = 0; i < per_setter_calls; ++i) w.set_vs_constant(i); report("SetVertexShaderConstantF4", rep, per_setter_calls, ticks() - begin);
         begin = ticks(); for (unsigned i = 0; i < per_setter_calls; ++i) w.set_stream_source(i); report("SetStreamSource", rep, per_setter_calls, ticks() - begin);
+
+        begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.set_render_state_same(i); report("SetRenderState_same", rep, getter_calls, ticks() - begin);
+        begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.set_render_state_alternating(i); report("SetRenderState_alternating", rep, getter_calls, ticks() - begin);
+        begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.set_sampler_state_same(i); report("SetSamplerState_same", rep, getter_calls, ticks() - begin);
+        begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.set_stage_state_same(i); report("SetTextureStageState_same", rep, getter_calls, ticks() - begin);
+        begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.set_texture_same(i); report("SetTexture_same", rep, getter_calls, ticks() - begin);
+        begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.noop_vtable_call(i); report("noop_vtable_GetNumberOfSwapChains", rep, getter_calls, ticks() - begin);
 
         begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.get_render_state(i); report("GetRenderState", rep, getter_calls, ticks() - begin);
         begin = ticks(); for (unsigned i = 0; i < getter_calls; ++i) w.get_sampler_state(i); report("GetSamplerState", rep, getter_calls, ticks() - begin);

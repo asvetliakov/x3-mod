@@ -228,9 +228,12 @@ patch of the game EXE; a byte patch into a Microsoft DLL is excluded.
 
 ## Unknowns
 
-- The wined3d cost of a redundant state write (early-out vs. command-stream
-  emit): bounds A's saving between 0.3 and 1.0 ms; a redundant-value row in
-  `state_hook_benchmark.cpp` would fix it in one Wine run.
+- The wined3d cost of a redundant state write: **measured 2026-09-22**, 10.1 ns
+  for SetRenderState, 10.9 SetSamplerState, 10.5 SetTextureStageState, 15.9
+  SetTexture same pointer, against a 9.5 ns no-op vtable call
+  (`state-hook-benchmark-elision.json`; state-call-fast-path.md "Elision
+  revisited under FEX"). A's saving sits at the low end of the 0.3-1.0 ms range;
+  there is no per-call emulation boundary (wined3d is i386 PE under FEX).
 - Which `d3dx9_37` loads: one log line, above.
 - The split of the 23 ms between D3DX and engine code: the four stamps, above.
 - SetTextureStageState traffic: uncounted because unhooked; the pass stamps
