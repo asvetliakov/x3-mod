@@ -409,12 +409,31 @@ class HullEmissiveWideningTransformerTests(unittest.TestCase):
 class LauncherAndProxyTests(unittest.TestCase):
     def test_launcher_option(self):
         with tempfile.TemporaryDirectory() as directory:
-            code, output, error = launch(directory, *PREREQUISITES); self.assertEqual(code, 0, error)
+            code, output, error = launch(directory, *PREREQUISITES, '--hull-emissive-widening', 'off')
+            self.assertEqual(code, 0, error)
             baseline = json.loads(output)['env']
-            self.assertNotIn('X3M_HULL_EMISSIVE_WIDENING', baseline)  # default off (first flight)
+            self.assertNotIn('X3M_HULL_EMISSIVE_WIDENING', baseline)  # "off" is the opt-out: the variable stays unset
+            # Omitted with the light-map gain active: the user-accepted run236/run237 default, K = B = 4.
+            code, output, error = launch(directory, *PREREQUISITES); self.assertEqual(code, 0, error)
+            env = json.loads(output)['env']
+            self.assertEqual(env.pop('X3M_HULL_EMISSIVE_WIDENING'), '4,4')
+            self.assertEqual(env, baseline)
+            for spelling in ('off', 'OFF', ' off '):
+                code, output, error = launch(directory, *PREREQUISITES, '--hull-emissive-widening', spelling)
+                self.assertEqual(code, 0, error)
+                self.assertNotIn('X3M_HULL_EMISSIVE_WIDENING', json.loads(output)['env'], spelling)
+            # A stale shell value can neither survive the opt-out nor change the resolved default.
             with mock.patch.dict(os.environ, {'X3M_HULL_EMISSIVE_WIDENING': '3,3'}):
-                code, output, error = launch(directory, *PREREQUISITES); self.assertEqual(code, 0, error)
+                code, output, error = launch(directory, *PREREQUISITES, '--hull-emissive-widening', 'off')
+                self.assertEqual(code, 0, error)
                 self.assertEqual(json.loads(output)['env'], baseline)  # an inherited value is dropped
+                code, output, error = launch(directory, *PREREQUISITES); self.assertEqual(code, 0, error)
+                self.assertEqual(json.loads(output)['env']['X3M_HULL_EMISSIVE_WIDENING'], '4,4')
+            # The default never enables the route itself: without an active gain it resolves to off, not to an error.
+            for extra in ([], ['--hull-lightmap-gain', '1'], ['--linear-materials', '--hdr-tonemap']):
+                args = (PREREQUISITES + extra) if extra else ['--motion-output']
+                code, output, error = launch(directory, *args); self.assertEqual(code, 0, error)
+                self.assertNotIn('X3M_HULL_EMISSIVE_WIDENING', json.loads(output)['env'], extra)
             # K[,B]: B defaults to K; B in [1, K].
             for value, expected in (('3', '3,3'), ('3,3', '3,3'), ('3,1', '3,1'), ('2,1.5', '2,1.5'), ('8,8', '8,8'), ('1.5', '1.5,1.5'), ('4,2.25', '4,2.25')):
                 code, output, error = launch(directory, *PREREQUISITES, '--hull-emissive-widening', value); self.assertEqual(code, 0, error)

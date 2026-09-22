@@ -226,10 +226,31 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
                 self.assertEqual(code, 2, args)
                 self.assertIn('--taa-thin-region-gate', error)
 
+    def test_thin_region_emissive_vote_defaults_to_one_on_the_hdr_route(self):
+        # User-accepted run236/run237 default, 2026-09-22 (docs/architecture/taa-lattice-crawl.md section
+        # 32.7): E = 1 whenever --taa runs with the thin region (W > 0) and --hdr. Without --hdr the scene
+        # the resolve reads is display-referred and the vote cannot fire, so the launcher leaves it absent
+        # there rather than exporting an inert value; an explicit 0 is the opt-out.
+        with tempfile.TemporaryDirectory() as directory:
+            env = self.env(directory, *TAA, '--hdr', '--taa-thin-region', '0.97')
+            self.assertEqual(env['X3M_TAA_THIN_REGION_EMISSIVE'], '1')
+            # A stale shell value can neither change the resolved default nor survive the opt-out.
+            self.assertEqual(self.env(directory, *TAA, '--hdr', '--taa-thin-region', '0.97',
+                                      inherited={'X3M_TAA_THIN_REGION_EMISSIVE': '3.7'})['X3M_TAA_THIN_REGION_EMISSIVE'], '1')
+            self.assertEqual(self.env(directory, *TAA, '--hdr', '--taa-thin-region', '0.97', '--taa-thin-region-emissive', '0',
+                                      inherited={'X3M_TAA_THIN_REGION_EMISSIVE': '3.7'})['X3M_TAA_THIN_REGION_EMISSIVE'], '0')
+            # An explicit value is kept as given.
+            self.assertEqual(self.env(directory, *TAA, '--hdr', '--taa-thin-region', '0.97',
+                                      '--taa-thin-region-emissive', '2.5')['X3M_TAA_THIN_REGION_EMISSIVE'], '2.5')
+            # Missing prerequisite: no --hdr, or no thin region (absent or W 0). Never an error, just absent.
+            for args in (('--taa-thin-region', '0.97'), ('--hdr',), ('--hdr', '--taa-thin-region', '0')):
+                self.assertNotIn('X3M_TAA_THIN_REGION_EMISSIVE', self.env(directory, *TAA, *args), args)
+
     def test_thin_region_emissive_vote_is_absent_unless_given(self):
         # --taa-thin-region-emissive E (docs/architecture/thin-glow-lines.md 8.3 R3): the emissive vote in
-        # the thin-region mask. Off unless given (E = 0 leaves the mask bit for bit), and it has nowhere to
-        # land without the region, so it requires --taa-thin-region with W > 0.
+        # the thin-region mask. Off unless given on the 8-bit route (E = 0 leaves the mask bit for bit; with
+        # --hdr it resolves to 1, see above), and it has nowhere to land without the region, so it requires
+        # --taa-thin-region with W > 0.
         with tempfile.TemporaryDirectory() as directory:
             for inherited in (None, {'X3M_TAA_THIN_REGION_EMISSIVE': '1'}):
                 self.assertNotIn('X3M_TAA_THIN_REGION_EMISSIVE', self.env(directory, *TAA, inherited=inherited))

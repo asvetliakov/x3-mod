@@ -401,3 +401,12 @@ for, reinstated in the log line that Run65 removed.
 range so 4 is comparable, (b) the per-draw `k_min`/`k_max` (or `k_draw`) field restored to `hull_lightmap_widen_frame`,
 and (c) a logged screen-space bounding box or node id for a diagonally-drawn lit panel so corner pixels can be located
 without a manual scan.
+
+## 2026-09-22: launcher default 4
+
+User verdict in Run 65 session B (run236/run237): "4 works, leave 4 as default". `tools/manage.py` now resolves an omitted
+`--hull-emissive-widening` to `4` (`X3M_HULL_EMISSIVE_WIDENING=4,4`) wherever the light-map gain is already active -- exactly
+the condition an explicit `4` had to satisfy -- and to off where it is not, never enabling the gain itself;
+`--hull-emissive-widening off` leaves the variable unset. Covered by `verification/analysis/test_hull_emissive_widening.py`
+(default applied, opt-out, not applied without the gain, explicit value kept) and a `launch --dry-run` of the Run 65
+session B command.

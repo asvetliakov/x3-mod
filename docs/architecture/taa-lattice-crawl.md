@@ -2259,7 +2259,7 @@ run215/run216 on the Run61 DLL: the user reports the solar-plant crawl as fixed 
 R3 of [thin-glow-lines.md](thin-glow-lines.md) 8.3. The thin region admits a pixel only where the DEPTH is fragmented, so a thin
 emissive strip painted on a continuous hull -- the distant station glow lines of run231 -- never joins it and keeps the base
 history weight, leaking a fixed fraction of the jitter cycle at rest (8.1 of that note). `--taa-thin-region-emissive E`
-(`X3M_TAA_THIN_REGION_EMISSIVE`, default absent = off) adds a second, luminance-based admission in the mask's tests draw
+(`X3M_TAA_THIN_REGION_EMISSIVE`; launcher default `1` since 2026-09-22, user-accepted in run236/run237, whenever `--taa`, `--taa-thin-region` with `W > 0` and `--hdr` are in effect -- without `--hdr` the resolve's scene is display-referred and the vote is inert, so the launcher leaves it absent there; `--taa-thin-region-emissive 0` is the opt-out) adds a second, luminance-based admission in the mask's tests draw
 (`line_mask_ps.hlsl`, `c7.z = 0`), reading this frame's HDR scene through the previously unbound `s0` and `E` from the previously
 unused `c10.x`:
 

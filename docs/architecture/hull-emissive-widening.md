@@ -2,7 +2,7 @@
 
 Status: ratified 2026-09-22 and built the same day behind `--hull-emissive-widening K,Q0,Q1`; revised the same
 evening to the per-pixel footprint law and the guarded thin-emitter boost of
-[thin-glow-lines.md](thin-glow-lines.md) §8.3 (R1, R2), option `--hull-emissive-widening K[,B]` (default off; see
+[thin-glow-lines.md](thin-glow-lines.md) §8.3 (R1, R2), option `--hull-emissive-widening K[,B]` (launcher default `4` since 2026-09-22 wherever the light-map gain is active, `off` opts out; see
 "As built (R1 + R2)" at the end and the ledger [hull-emissive-widening.md](../verification/hull-emissive-widening.md)).
 §0-§7 below describe the first build (per-draw `k` from the origin's view z); where they conflict with the R1/R2
 section, the R1/R2 section is current. Tags:
@@ -412,6 +412,10 @@ brightness floor, minification gate, flow-control and subroutine refusal, identi
   `suppress_lightmap_widen` binds the gained texld variant for same-process baselines.
 - **Option**: `X3M_HULL_EMISSIVE_WIDENING=K[,B]`, `--hull-emissive-widening K[,B]`; **B defaults to K** (the design's
   "B = k restores I w" reading, chosen so a single number gives the bright look; `K,1` is the energy-conserving law).
+  **Launcher default since 2026-09-22** (user-accepted in run236/run237, "4 works, leave 4 as default"): omitted,
+  `tools/manage.py` resolves the option to `4` (`X3M_HULL_EMISSIVE_WIDENING=4,4`) exactly where an explicit `4` would
+  have been accepted, that is wherever the light-map gain is already active, never turning that gain on itself, and to
+  off where it is not; `--hull-emissive-widening off` is the opt-out and leaves the variable unset.
 - **Cost**: +35 slots per widened variant (largest **299 of 512**: `xt_standard_lighting` f1b0e820c7b488c3 share; the
   damage share 295; plain 220), three light-map fetches and about 22 ALU instructions per pixel of **every** gain hull
   draw (the widened variant binds near too, at k = 1), +3 temporaries (share variants reach r26), three DEFs; the

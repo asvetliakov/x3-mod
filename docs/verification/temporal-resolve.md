@@ -1351,3 +1351,11 @@ per-pixel history-acceptance path; that requires a diagnostic dump of the
 resolve's per-pixel accept/reject decision and the motion source (game vs.
 unmatched-static-substituted) for the dark-sky pixel set, which this capture
 does not carry.
+
+## 2026-09-22: `--taa-thin-region-emissive` default 1
+
+Run 65 session B (run236/run237) accepted the emissive vote in flight; the triage of the same runs put the cut of the
+resolved rest-flicker leak at 4.4-6.9x. `tools/manage.py` now resolves an omitted `--taa-thin-region-emissive` to `1`
+whenever `--taa`, `--taa-thin-region` with `W > 0` and `--hdr` are in effect, and leaves it absent without `--hdr`, where
+the display-referred scene makes the vote inert; an explicit `0` is the opt-out. Covered by
+`verification/analysis/test_taa_image_defaults.py` and a `launch --dry-run` of the Run 65 session B command.
