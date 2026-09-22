@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-22T15:40:39.128861+00:00",
+  "started_utc": "2026-09-22T18:11:23.749424+00:00",
   "game_launched": false,
   "bottle": {
     "name": "X3",
@@ -31,7 +31,7 @@
     "verification/probe/run_object_trace.py": "eb79ed9bf53c87f82d7bb517f4be19377a87e8e7070b54f1e1bbea184f0db1f3"
   },
   "passed": true,
-  "executable_sha256": "effebbea2a02acb925e01ecbd6a92328b769c44f37ab775f03ec36d6369dca2f",
+  "executable_sha256": "5a54b9ce51496d216f7d233c3438837f24a5257220a5f98fb6c4afc682f1dba6",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -42,7 +42,7 @@
     "/Users/asvetl/x3-mod/verification/probe/build/object_trace.exe"
   ],
   "exit_code": 0,
-  "executable_sha256_after_run": "effebbea2a02acb925e01ecbd6a92328b769c44f37ab775f03ec36d6369dca2f",
+  "executable_sha256_after_run": "5a54b9ce51496d216f7d233c3438837f24a5257220a5f98fb6c4afc682f1dba6",
   "sources_after_run": {
     "src/proxy/object_trace.cpp": "e1a30a19038be21ea7a3061e41f14926d348479363c13679dd3c7edbe5eea79c",
     "src/proxy/object_trace.h": "5c45c84cc2f7aa5b15c287122be9b74b9ad0fb6ce36c533e967768216370bdfa",
@@ -52,7 +52,7 @@
     "verification/probe/build_object_trace.sh": "9649143e84b2d7d0fad03157583681304dc21327543d96f0309470976269c7a0",
     "verification/probe/run_object_trace.py": "eb79ed9bf53c87f82d7bb517f4be19377a87e8e7070b54f1e1bbea184f0db1f3"
   },
-  "report_sha256": "be53afb273f2719b7e701f1a2650e01057e212279faf1eb35da66991e920d9e4",
+  "report_sha256": "c3798f39a3a691d5599d745dbec3dc5bebac363ead4e14317642a1a8eb2e46dc",
   "checks": 153,
   "failures": 0,
   "backend_calls": 60013,
@@ -60,11 +60,11 @@
     "timing": [
       {
         "mode": "direct",
-        "baseline_us": "0.044",
-        "route_us": "1.325",
-        "capture_us": "1.659",
-        "route_read_us": "1.282",
-        "capture_read_us": "1.616",
+        "baseline_us": "0.042",
+        "route_us": "1.326",
+        "capture_us": "1.621",
+        "route_read_us": "1.283",
+        "capture_read_us": "1.579",
         "route_queries_per_call": "0.0040",
         "route_record": "5d9c86811e5cd583",
         "capture_record": "0e4093189888fb83"

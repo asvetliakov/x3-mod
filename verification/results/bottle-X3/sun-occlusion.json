@@ -78,8 +78,8 @@
   },
   "failure_lines": [],
   "exit_status": 0,
-  "elapsed_s": 6.1,
-  "executable_sha256": "5c338dcd5f522ecd91a294096f9868c339b06b9d1bc72b78edd64b61976e4994"
+  "elapsed_s": 5.6,
+  "executable_sha256": "364ebf1b42872ff5e2c9aa2d4528cee37c6449d2b63b4664155d08e122b836fc"
  },
  "gpu": {
   "checks": 128,
@@ -599,7 +599,7 @@
    }
   ],
   "exit_status": 0,
-  "elapsed_s": 10.3,
-  "executable_sha256": "4d66c0e811f2267515fe23cabdeee3535017afa2f546848494d66c90b8dc1c68"
+  "elapsed_s": 7.9,
+  "executable_sha256": "36f23d497275e4085d4f7cbcad82dcfc9a8b13033f0c588bbe1de72532e50888"
  }
 }

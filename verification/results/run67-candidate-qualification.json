@@ -1,0 +1,737 @@
+{
+ "schema": 1,
+ "candidate": {
+  "commit": "1b4d745c",
+  "commit_full": "1b4d745cbb83f0a94136aaa5ef8ea8637b779917",
+  "branch": "main",
+  "checkout": "/Users/asvetl/x3-mod",
+  "source_clean": true,
+  "source_clean_note": "git status --short: only a concurrent docs-only edit (docs/handoff-2026-09-22.md renamed into docs/archive/, new docs/handoff-2026-09-22-evening.md, modified docs/status.md); src/, tools/, CMakeLists.txt and verification/ clean at 1b4d745c",
+  "dll": "/tmp/x3-run67-candidate/build/d3d9.dll",
+  "sha256": "621cad639d477fd4f9b8f9819068b04d28c2565a7655fb817aff2b4c9260313f",
+  "bytes": 55505991,
+  "embedded_marker": "X3M_SOURCE_COMMIT=1b4d745cbb83f0a94136aaa5ef8ea8637b779917",
+  "configuration": "RelWithDebInfo",
+  "toolchain": "cmake/mingw-i686.cmake",
+  "python3": "/usr/bin/python3 (NumPy for the fog asset step)",
+  "build_commands": [
+   "rm -rf /tmp/x3-run67-candidate",
+   "cmake -S . -B /tmp/x3-run67-candidate/build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPython3_EXECUTABLE=/usr/bin/python3",
+   "cmake --build /tmp/x3-run67-candidate/build -j"
+  ],
+  "build_warnings": 0,
+  "supersedes": "Run66 candidate 1f9a85f5 (387d5cd9)"
+ },
+ "scope": "Versus the Run66 DLL 1f9a85f5 (387d5cd9), four landings: --shadow-cascade-min-footprint P, a per-part light-space minimum footprint per cascade, default off (5f761954); the stored-fog sun-visibility grid pass --fog-shadow-pass on, default off with the off path bit-identical (3d059de9); the --object-bounds-log diagnostic with tools/analysis/draw_accounting.py (afe59961); the TAA strict sky-history band term with --taa-sky-history-band-px, DLL default 3, loose bit-identical (1b4d745c). Also tools/analysis/archive_user_runs.py (b98f352f, tooling) and three restored fixture result records (3e1ea0a2). Everything else in the range is measurement and documentation (7774da17, 487dd66c, fbae47d0). Fixture outcome: every case with a Run66 twin reproduces it exactly except the deliberate strict sky-history band row; the new cases (cascade footprint, fog visibility grid) reproduce their ledgers.",
+ "linked_audit": {
+  "command": "python3 verification/probe/check_no_x87.py /tmp/x3-run67-candidate/build/d3d9.dll",
+  "cwd": "/Users/asvetl/x3-mod",
+  "result": "PASS",
+  "roots_count": 100,
+  "reachable_functions": 639,
+  "violations": 0,
+  "comparison": {
+   "run66": "100 roots / 637 reachable / 0 violations; +2 reachable functions from the fog visibility-grid pass and the footprint gate, no violation"
+  },
+  "import_delta": {
+   "command": "i686-w64-mingw32-objdump -p",
+   "baseline_dll": "/tmp/x3-run66-candidate/build/d3d9.dll",
+   "imported_dlls": 15,
+   "new_imported_dlls": [],
+   "removed_imported_dlls": [],
+   "total_imported_functions": {
+    "run66": 209,
+    "run67": 210
+   },
+   "per_function_delta": {
+    "new": [
+     "api-ms-win-crt-math-l1-1-0.dll!truncf"
+    ],
+    "removed": []
+   },
+   "attribution": "truncf is emitted by src/renderer/fog_pass.cpp only in this candidate (i686-w64-mingw32-nm -u on fog_pass.cpp.obj: present at Run67, absent at Run66), i.e. the 3d059de9 grid slice arithmetic. It is a documented UCRT/C99 math import, available on native Windows; no new DLL dependency."
+  }
+ },
+ "selected_render_smoke": {
+  "status": "PARTIAL",
+  "consume_only": true,
+  "rebuilt_candidate": false,
+  "scope": "The six standard actual-DLL cases, the four unmatched-static options, the five shadow retention/pool cases, the five new cascade min-footprint cases, the three shadow replay cascade cases. No lightmap widening set (unchanged since Run66, no dependency in the range), no full renderer suite, no benchmark.",
+  "commands": [
+   "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run67-candidate/lock-timings-prod.json python3 verification/probe/run_motion_output.py --dll /tmp/x3-run67-candidate/build/d3d9.dll --seam /tmp/x3-run67-candidate/binaries/motion-output-seam/d3d9.dll --fixture /tmp/x3-run67-candidate/binaries/motion_output_fixture.exe production-ownership-hdr-on production-taa-hdr-on production-ownership-on production-ownership-taa-on seam-taa-camera-on seam-taa-on",
+   "... --timings-json .../lock-timings-static.json ... seam-taa-unmatched-static-unset seam-taa-unmatched-static-off seam-taa-unmatched-static-node seam-taa-unmatched-static-all",
+   "... --timings-json .../lock-timings-retention.json ... seam-ownership-shadow-retention-live seam-ownership-shadow-retention-census seam-ownership-shadow-retention-off seam-ownership-shadow-retention-live-poll seam-ownership-shadow-pool-static-live",
+   "... --timings-json .../lock-timings-footprint.json ... seam-ownership-shadow-pool-footprint-off seam-ownership-shadow-pool-footprint-px8 seam-ownership-shadow-pool-footprint-px24 seam-ownership-shadow-pool-footprint-retained-off seam-ownership-shadow-pool-footprint-retained-px8",
+   "... --timings-json .../lock-timings-cascades.json ... seam-ownership-shadow-replay-cascades seam-ownership-shadow-replay-cascades-casters-20 seam-ownership-shadow-replay-cascades-toggle"
+  ],
+  "serialisation": "Five wine_lock invocations strictly one after the other; cases compared against a twin share one invocation.",
+  "binaries": {
+   "/tmp/x3-run67-candidate/binaries/motion_output_fixture.exe": "b4166e5b08fe0545d6d299cf999b968fd466b85502efcba9712d3db43f0b1f36",
+   "/tmp/x3-run67-candidate/binaries/motion-output-seam/d3d9.dll": "132031a0dd8e7ef0de66e3b184a4afdb92f518f42afa8498a931efa14d7422f8",
+   "/tmp/x3-run67-candidate/build/d3d9.dll": "621cad639d477fd4f9b8f9819068b04d28c2565a7655fb817aff2b4c9260313f"
+  },
+  "seam_build": {
+   "command": "X3M_CANDIDATE_BUILD=/tmp/x3-run67-candidate/build sh verification/probe/build_motion_output.sh",
+   "note": "seam DLL and fixture rebuilt from HEAD against the frozen candidate objects, then frozen under /tmp/x3-run67-candidate/binaries; candidate d3d9.dll never rebuilt",
+   "warnings": 0
+  },
+  "cases": {
+   "production-ownership-on": {
+    "exit": 0,
+    "checks": 43,
+    "motion_pixels": 0,
+    "mode": "production"
+   },
+   "production-ownership-taa-on": {
+    "exit": 0,
+    "checks": 83,
+    "motion_pixels": 0,
+    "mode": "production"
+   },
+   "production-ownership-hdr-on": {
+    "exit": 0,
+    "checks": 43,
+    "motion_pixels": 0,
+    "mode": "production"
+   },
+   "production-taa-hdr-on": {
+    "exit": 0,
+    "checks": 83,
+    "motion_pixels": 0,
+    "mode": "production"
+   },
+   "seam-taa-camera-on": {
+    "exit": 0,
+    "checks": 177,
+    "motion_pixels": 44279,
+    "mode": "seam"
+   },
+   "seam-taa-on": {
+    "exit": 0,
+    "checks": 164,
+    "motion_pixels": 44279,
+    "mode": "seam"
+   },
+   "seam-taa-unmatched-static-unset": {
+    "exit": 0,
+    "checks": 95
+   },
+   "seam-taa-unmatched-static-off": {
+    "exit": 0,
+    "checks": 95
+   },
+   "seam-taa-unmatched-static-node": {
+    "exit": 0,
+    "checks": 95
+   },
+   "seam-taa-unmatched-static-all": {
+    "exit": 0,
+    "checks": 95
+   },
+   "seam-ownership-shadow-retention-live": {
+    "exit": 0,
+    "checks": 9743,
+    "frames": 1535,
+    "mode": "live",
+    "compared": 39,
+    "retained_compared": 28,
+    "max_depth_error": 5.541019532318003e-06
+   },
+   "seam-ownership-shadow-retention-census": {
+    "exit": 0,
+    "checks": 9740,
+    "frames": 1535,
+    "mode": "census",
+    "compared": 39,
+    "retained_compared": 0,
+    "max_depth_error": 1.8642249843825454e-06
+   },
+   "seam-ownership-shadow-retention-off": {
+    "exit": 0,
+    "checks": 6629,
+    "frames": 1535,
+    "mode": "off",
+    "compared": 39,
+    "retained_compared": 0,
+    "max_depth_error": 1.8642249843825454e-06
+   },
+   "seam-ownership-shadow-retention-live-poll": {
+    "exit": 0,
+    "checks": 9890,
+    "frames": 1547,
+    "mode": "live",
+    "compared": 40,
+    "retained_compared": 29,
+    "max_depth_error": 1.4687070698182758e-05
+   },
+   "seam-ownership-shadow-pool-static-live": {
+    "exit": 0,
+    "checks": 182,
+    "frames": 14,
+    "script": "static",
+    "store": 2,
+    "maps": 27,
+    "max_depth_error": 4.412964153133192e-05
+   },
+   "seam-ownership-shadow-pool-footprint-off": {
+    "exit": 0,
+    "checks": 78,
+    "frames": 6,
+    "script": "footprint",
+    "store": 0,
+    "maps": 12,
+    "max_depth_error": 4.111684320023956e-05,
+    "color_sha256": "33d7f02fc3403da905ec7435ee489617d79961e35f5b3fcc63b6cdd3899e9fc5",
+    "footprint": "field absent (option off)"
+   },
+   "seam-ownership-shadow-pool-footprint-px8": {
+    "exit": 0,
+    "checks": 78,
+    "frames": 6,
+    "script": "footprint",
+    "store": 0,
+    "maps": 12,
+    "max_depth_error": 4.111684320023956e-05,
+    "color_sha256": "33d7f02fc3403da905ec7435ee489617d79961e35f5b3fcc63b6cdd3899e9fc5",
+    "footprint": {
+     "px": 8.0,
+     "min": [
+      0.1875,
+      2.375
+     ],
+     "refused_total": [
+      0,
+      15
+     ],
+     "aged_total": [
+      0,
+      0
+     ],
+     "draws_total": [
+      28,
+      15
+     ]
+    }
+   },
+   "seam-ownership-shadow-pool-footprint-px24": {
+    "exit": 0,
+    "checks": 78,
+    "frames": 6,
+    "script": "footprint",
+    "store": 0,
+    "maps": 12,
+    "max_depth_error": 4.111684320023956e-05,
+    "color_sha256": "33d7f02fc3403da905ec7435ee489617d79961e35f5b3fcc63b6cdd3899e9fc5",
+    "footprint": {
+     "px": 24.0,
+     "min": [
+      0.1875,
+      7.125
+     ],
+     "refused_total": [
+      0,
+      20
+     ],
+     "aged_total": [
+      0,
+      0
+     ],
+     "draws_total": [
+      28,
+      10
+     ]
+    }
+   },
+   "seam-ownership-shadow-pool-footprint-retained-off": {
+    "exit": 0,
+    "checks": 166,
+    "frames": 14,
+    "script": "footprint",
+    "store": 2,
+    "maps": 20,
+    "max_depth_error": 4.111684320023956e-05,
+    "color_sha256": "c836190e273e67896637a7baeed1fc7034dabec62af96006ebd6371ac31460ee",
+    "footprint": "field absent (option off)"
+   },
+   "seam-ownership-shadow-pool-footprint-retained-px8": {
+    "exit": 0,
+    "checks": 166,
+    "frames": 14,
+    "script": "footprint",
+    "store": 2,
+    "maps": 20,
+    "max_depth_error": 4.111684320023956e-05,
+    "color_sha256": "c836190e273e67896637a7baeed1fc7034dabec62af96006ebd6371ac31460ee",
+    "footprint": {
+     "px": 8.0,
+     "retained_script": true,
+     "min": [
+      0.1875,
+      2.375
+     ],
+     "refused_total": [
+      0,
+      35
+     ],
+     "aged_total": [
+      0,
+      4
+     ],
+     "draws_total": [
+      68,
+      31
+     ]
+    }
+   },
+   "seam-ownership-shadow-replay-cascades": {
+    "exit": 0,
+    "checks": 278,
+    "casters": 2,
+    "max_depth_error": 4.193166540655824e-06
+   },
+   "seam-ownership-shadow-replay-cascades-casters-20": {
+    "exit": 0,
+    "checks": 278,
+    "casters": 20,
+    "max_depth_error": 3.348890236343216e-06
+   },
+   "seam-ownership-shadow-replay-cascades-toggle": {
+    "exit": 0,
+    "checks": 283,
+    "casters": 2,
+    "max_depth_error": 5.714230874975801e-06
+   }
+  },
+  "comparison_to_run66": {
+   "standard_six": "identical: checks 43/83/43/83/177/164, seam motion_pixels 44279",
+   "unmatched_static_four": "identical at 95 checks each; off bit-identical to unset, node differs at frame 3 alone (max_uv 0.000664647885, depth 1.71420271e-07), all differs from node at frame 6 alone (0.00111576861, 4.60263405e-07)",
+   "shadow_five": "identical: 9743/9740/6629/9890/182 checks, 1535/1535/1535/1547/14 frames, 39(28)/39(0)/39(0)/40(29)/14 compared, 27 maps on the pool case, and the same five maximum depth errors",
+   "cascade_three": "identical: 278/278/283 checks and the same maximum map errors 4.193166540655824e-06 / 3.348890236343216e-06 / 5.714230874975801e-06 (the first two also equal docs/verification/directional-shadows.md)",
+   "footprint_five": "new in this qualification (Run66 predates 5f761954) and equal to the directional-shadows.md ledger: thresholds 0.1875 / 2.375 u at P=8 and 0.1875 / 7.125 u at P=24, c1 draws 30 (off) / 15 / 10, footprint_refused c1 15 / 20, retained-px8 footprint_aged1 4 with refused 35 over the run, presented frames byte-identical within each group (color_sha256 33d7f02f... and c836190e...), max map error 4.1117e-05 in every case",
+   "lightmap_widen": "not rerun: no lightmap or material change in 387d5cd9..1b4d745c; the Run66 rows stand"
+  },
+  "partial_records": {
+   "production_and_seam_taa": "/tmp/x3-run67-candidate/motion-output-partial-prod.json",
+   "unmatched_static": "/tmp/x3-run67-candidate/motion-output-partial-static.json",
+   "shadow_retention_and_pool": "/tmp/x3-run67-candidate/motion-output-partial-retention.json",
+   "cascade_min_footprint": "/tmp/x3-run67-candidate/motion-output-partial-footprint.json",
+   "shadow_replay_cascades": "/tmp/x3-run67-candidate/motion-output-partial-cascades.json"
+  },
+  "lock": {
+   "production_and_seam_taa": {
+    "lock_wait_seconds": 2.7910000000019863e-06,
+    "child_elapsed_seconds": 18.692647125,
+    "exit_code": 0
+   },
+   "unmatched_static": {
+    "lock_wait_seconds": 3.4169999999986156e-06,
+    "child_elapsed_seconds": 10.121384416,
+    "exit_code": 0
+   },
+   "shadow_retention_and_pool": {
+    "lock_wait_seconds": 2.9999999999960614e-06,
+    "child_elapsed_seconds": 26.048177542,
+    "exit_code": 0
+   },
+   "cascade_min_footprint": {
+    "lock_wait_seconds": 3.5000000000035003e-06,
+    "child_elapsed_seconds": 11.888436333,
+    "exit_code": 0
+   },
+   "shadow_replay_cascades": {
+    "lock_wait_seconds": 3.4590000000007948e-06,
+    "child_elapsed_seconds": 9.053430042,
+    "exit_code": 0
+   }
+  },
+  "unmatched_static_default_note": "run_motion_output.py pins X3M_TAA_UNMATCHED_STATIC=0 and the sentinel stabiliser off for every case, so \"unset\" is the runner-pinned off; the node default is covered by the dry-runs below."
+ },
+ "temporal_pass": {
+  "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run67-candidate/lock-timings-temporal.json python3 verification/probe/run_temporal_pass.py",
+  "reason": "1b4d745c adds the band term to the strict sky-history path; the resolve programs were regenerated",
+  "passed": true,
+  "exit_code": 0,
+  "base": {
+   "numerical": 570,
+   "state_restorations": 278,
+   "generations": 2,
+   "samples": 416
+  },
+  "source_unchanged": true,
+  "binary_unchanged": true,
+  "compiler_unchanged": true,
+  "summary": "verification/results/bottle-X3/temporal-pass-summary.json",
+  "sky_history": {
+   "seta_sweep_loose": {
+    "uncovered_px": 128,
+    "trail_max": 0.237305,
+    "adjacent_max": 0.738525,
+    "motion_error_px": 1e-06,
+    "far_difference": 0.0
+   },
+   "seta_sweep_strict": {
+    "uncovered_px": 128,
+    "trail_max": 0.0,
+    "adjacent_max": 0.0,
+    "motion_error_px": 1e-06,
+    "far_difference": 0.0
+   },
+   "seta_fade": {
+    "routed_px": 256,
+    "strict_vs_loose_on_routed": 0.0,
+    "routed_px_with_history": 18,
+    "strict_vs_loose_on_sky": 0.297363
+   },
+   "seta_pan": {
+    "velocity_px": 3.0,
+    "adjacent_loose": 0.815308,
+    "adjacent_strict": 0.815308,
+    "strict_vs_loose": 0.0,
+    "sky_px_with_history": 3570
+   },
+   "seta_ring_static": {
+    "strict_vs_loose": 0.0,
+    "sky_variance_both": 3.744e-05
+   },
+   "seta_slow_sweep_0_5px": {
+    "strict_vs_loose": 0.0
+   },
+   "seta_huge_camera": {
+    "band_px": 252,
+    "band_deviation_loose": 0.815308,
+    "band_deviation_strict": 0.0,
+    "nonfinite_outputs": 0
+   },
+   "reading": "the band term is the only changed row: SETA_SWEEP strict adjacent_max 0.738525 -> 0.000000 (the 1-px dilated band beside the 5 px/frame silhouette now refuses hull history), trail_max still 0.0 under strict and 0.237305 under loose. Pan (3 px/frame), the projective/fade-band routed pixels, the static ring over two periods and the 0.5 px/frame slow sweep are strict == loose to 0.000000, and the 1e15 camera path is current-only under strict with no nonfinite output."
+  },
+  "resolve_slot_budget": {
+   "age_line": 507,
+   "far_camera": 507,
+   "age_filter": 506,
+   "far": 495,
+   "age": 494,
+   "thin": 465,
+   "thin_filter": 477,
+   "thin_line": 483,
+   "line": 447,
+   "plain": 432,
+   "current_filter": 443,
+   "device_limit": 512,
+   "min_headroom": 5
+  },
+  "lattice": {
+   "result": "PASS",
+   "numerical": 583,
+   "state_restorations": 23
+  },
+  "camera_drift_px_error": {
+   "yaw-builder-unjittered": [
+    0.0664,
+    0.00618
+   ],
+   "narrow-yaw-builder-unjittered": [
+    0.0302,
+    0.00885
+   ],
+   "yaw-single-step": [
+    0.0369,
+    0.0039
+   ],
+   "pitch-single-step": [
+    0.0335,
+    0.00336
+   ],
+   "yaw-identity": [
+    0.8621,
+    0.07596
+   ],
+   "yaw-swapped": [
+    1.0539,
+    0.09244
+   ],
+   "yaw-cut-resumed": [
+    0.0624,
+    0.00878
+   ]
+  },
+  "shift_versus_run66": "Changed on purpose by 1b4d745c: base numerical 532 -> 570 and samples 402 -> 416 for the new band sequences (static ring, slow sweep, pan, fade-band-beside-occluder, huge camera path), and the strict sweep's adjacent_max 0.738525 -> 0.000000. Slot budgets moved with the rewritten resolve variants and all stay within 512 (age_line 511 -> 507, far_camera 509 -> 507, age_filter 508 -> 506, far 497 -> 495, age 496 -> 494), matching docs/verification/temporal-resolve.md. Unchanged: state_restorations 278, generations 2, lattice 583 / 23, and every camera drift/error row.",
+  "lock": {
+   "lock_wait_seconds": 3.333000000001196e-06,
+   "child_elapsed_seconds": 143.163917042,
+   "exit_code": 0
+  }
+ },
+ "sun_occlusion": {
+  "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run67-candidate/lock-timings-sun.json python3 verification/probe/run_sun_occlusion.py",
+  "reason": "the sun hooks read engine state and the fog grid pass shares the sun cascade data",
+  "passed": true,
+  "hook": {
+   "checks": 74,
+   "failures": 0,
+   "counters": {
+    "probes": 53,
+    "own": 37,
+    "visible": 21,
+    "hidden": 2,
+    "original": 30,
+    "brackets": 10,
+    "multi": 1,
+    "blocked": 1
+   }
+  },
+  "gpu": {
+   "checks": 128,
+   "failed_checks": 0,
+   "scenes": [
+    "covered",
+    "half",
+    "open",
+    "quarter",
+    "screen_edge_covered",
+    "screen_edge_open",
+    "three_quarter"
+   ],
+   "lens_fraction": 0.5,
+   "clip_jitter": {
+    "max_delta_measured": 0.2255,
+    "max_delta_kernel": 0.2222,
+    "max_delta_cross": 0.5556,
+    "columns_moving": 5
+   }
+  },
+  "comparison_to_run66": "Identical: GPU 128 checks / 0 failed, hook 74 checks / 0 failures with the same eight counters and seven scenes, lens_fraction 0.5, clip jitter measured 0.2255 against the kernel model 0.2222 (cross 0.5556) with 5 columns moving. No refusal, no failed check.",
+  "lock": {
+   "lock_wait_seconds": 2.708000000000571e-06,
+   "child_elapsed_seconds": 17.986362791,
+   "exit_code": 0
+  }
+ },
+ "engine_read_and_draw_hook": {
+  "reason": "--object-bounds-log rides the routed-draw path and reads the route's own object box",
+  "commands": [
+   "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run67-candidate/lock-timings-object-trace.json python3 verification/probe/run_object_trace.py",
+   "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run67-candidate/lock-timings-object-lifetime.json python3 verification/probe/run_object_lifetime.py"
+  ],
+  "object_trace": {
+   "passed": true,
+   "checks": 153,
+   "failures": 0,
+   "read_path_reported": true,
+   "lock": {
+    "lock_wait_seconds": 6.040999999998298e-06,
+    "child_elapsed_seconds": 4.2682344169999995,
+    "exit_code": 0
+   }
+  },
+  "object_lifetime": {
+   "passed": true,
+   "checks": 657,
+   "failures": 0,
+   "lock": {
+    "lock_wait_seconds": 3.4579999999978517e-06,
+    "child_elapsed_seconds": 3.040657083,
+    "exit_code": 0
+   }
+  },
+  "comparison_to_run66": "Identical: object trace 153 checks with the read path reported, object lifetime 657 checks."
+ },
+ "fog": {
+  "reason": "3d059de9 adds the sun-visibility grid pass behind --fog-shadow-pass and claims the off path bit-identical; the fog fixture is the acceptance for that claim",
+  "commands": [
+   "python3 verification/probe/fog_density_shader_run.py build --output /tmp/x3-run67-fog",
+   "/usr/bin/python3 tools/analysis/fog_density_shader_reference.py --asset-data /tmp/x3-run67-fog/fog_field --output /tmp/x3-run67-fog-ref",
+   "X3M_FIXTURE_BOTTLE=X3 PYTHONPATH=verification/probe python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run67-candidate/lock-timings-fog.json python3 <scratch copy of fog_density_shader_run.py, timeout 540 -> 2400> run --output /tmp/x3-run67-fog2 --reference /tmp/x3-run67-fog-ref",
+   "/usr/bin/python3 verification/probe/fog_density_shader_run.py check --output /tmp/x3-run67-fog2 --reference /tmp/x3-run67-fog-ref"
+  ],
+  "result": "PASS",
+  "gates": {
+   "count": 28,
+   "all_true": true
+  },
+  "shader_fixture_checks": 30,
+  "pass_fixture": {
+   "checks": 73,
+   "failed": 0,
+   "state_restorations": 1105,
+   "atlas_comparisons": 14,
+   "atlas_differing_bytes": 0,
+   "grid_extra_device_calls": 19,
+   "grid_fogged_pixels": 1174,
+   "grid_in_scatter_differs": 770,
+   "grid_worst_S_vs_in_march": 0.032837
+  },
+  "run_seconds": {
+   "shader": 50.837686209,
+   "pass": 31.7500765
+  },
+  "programs": {
+   "fog-density-march": {
+    "sha256_prefix": "4dacf7e4",
+    "slots": 415
+   },
+   "fog-density-composite": {
+    "sha256_prefix": "ec97163d",
+    "slots": 203
+   },
+   "fog-density-repair": {
+    "sha256_prefix": "d40f9a07",
+    "slots": 510
+   },
+   "fog-density-march-exact": {
+    "sha256_prefix": "a718e8e9",
+    "slots": 301
+   },
+   "fog-density-march-look": {
+    "sha256_prefix": "6a347ac2",
+    "slots": 425
+   },
+   "fog-density-composite-look": {
+    "sha256_prefix": "6c6a78b9",
+    "slots": 210
+   },
+   "fog-density-repair-look": {
+    "sha256_prefix": "155a82e2",
+    "slots": 510
+   },
+   "fog-density-visibility-grid": {
+    "sha256_prefix": "a9639c74",
+    "slots": 319,
+    "texture_instructions": 12,
+    "loops": 2
+   },
+   "fog-density-march-grid": {
+    "sha256_prefix": "75e87bb7",
+    "slots": 352,
+    "texture_instructions": 8,
+    "loops": 1
+   },
+   "fog-density-repair-grid": {
+    "sha256_prefix": "2a2f3b77",
+    "slots": 453,
+    "texture_instructions": 13,
+    "loops": 1
+   }
+  },
+  "comparison_to_ledger": "Matches docs/verification/volumetric-fog.md \"Acceptance [M]\" (2026-09-22) on every gated number: PASS with 28 gates all true (including pass_off_bit_identical, grid_no_cascade_identical, grid_atlas_twin, grid_seam_cross_fade, grid_penumbra_widens, grid_refused_falls_back_to_in_march), shader fixture 30 checks, pass fixture 73 checks / 0 failures / 0 differing atlas bytes over 14 comparisons, 19 extra device calls with the grid, in-scatter moved on 770 of 1174 fogged pixels (max .033), and all ten programs at the ledger's bytecode prefixes and slot counts (new a9639c74 319/12/2, 75e87bb7 352/8/1, 2a2f3b77 453/13/1, all under 512). The pass-off hashes are gated identical to the look-collapse table. One ungated host-side count differs: pass fixture state_restorations 1105 here against the ledger's 1099 (Run66 also recorded 1105 with the then 57-check fixture).",
+  "reference": "/tmp/x3-run67-fog-ref (reference_sha256 902a8b1240a5915f040f2cfd593467c754f353b096625b85b51d70e0cf0ab4bf, cases_sha256 9a19dcb63d8074e9d2d3582f3f78e21c2c0b5d0782318f482081807eed296226); regenerated for this candidate",
+  "environmental_note": "The first `run` attempt into /tmp/x3-run67-fog stalled: the fixture wrote all 52 images by 21:58:29 and then sat at 0 % CPU until the runner's hardcoded 540 s timeout fired; the orphaned wine process was killed. The retry into a fresh output directory finished the same work in 50.8 s + 31.8 s, so the stall was environmental, not fixture cost. Because run() refuses a directory that already holds a run, the retry used a scratch copy of the runner (outside the repository) with the shader-step timeout raised to 2400 s; no other line differs and the repository runner is unmodified. /tmp/x3-run67-fog holds the abandoned first attempt.",
+  "lock": {
+   "lock_wait_seconds": 4.707999999999102e-06,
+   "child_elapsed_seconds": 83.313960208,
+   "exit_code": 0,
+   "first_attempt": {
+    "lock_wait_seconds": 4.041999999999241e-06,
+    "child_elapsed_seconds": 540.1458256669999,
+    "exit_code": 1
+   }
+  }
+ },
+ "dry_run": {
+  "command_script": "/tmp/x3-run67-dryrun.sh",
+  "cwd": "/Users/asvetl/x3-mod",
+  "wrapped": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run67-candidate/lock-timings-dryrun.json sh /tmp/x3-run67-dryrun.sh",
+  "base": "Run 67 session A = the Run 66 session A command unchanged (strict sky history, band at the DLL default); session B = the Run 66 session B line with --lod-scale 0.5 and --object-bounds-log; session C = the same line without --lod-scale and with --fog-shadow-pass on --shadow-cascade-min-footprint 8. tools/manage.py launch --dry-run --bottle X3 invoked directly because x3run takes the wine lock itself",
+  "game_launched": false,
+  "output": "/tmp/x3-run67-dryrun.txt",
+  "environment_json": "/tmp/x3-run67-dryrun-env.json",
+  "cases": {
+   "A": {
+    "variant": "sun + strict sky history with the band term at its default (fog off)",
+    "exit": 0,
+    "observed": {
+     "X3M_TAA_SKY_HISTORY": "strict",
+     "X3M_TAA_SKY_HISTORY_BAND_PX": "ABSENT",
+     "X3M_OBJECT_BOUNDS_LOG": "ABSENT",
+     "X3M_FOG_SHADOW_PASS": "0",
+     "X3M_SHADOW_CASCADE_MIN_FOOTPRINT": "ABSENT",
+     "X3M_LOD_SCALE": "ABSENT",
+     "X3M_HULL_EMISSIVE_WIDENING": "4,4",
+     "X3M_SUN_OCCLUSION": "1",
+     "X3M_SUN_OCCLUSION_CORE_F": "1",
+     "X3M_VOLUMETRIC_FOG": "0",
+     "X3M_TAA_UNMATCHED_STATIC": "node",
+     "X3M_CULL_SMALL_PARTS_PX": "2.0000",
+     "X3M_CAPTURE_DELAY": "300",
+     "X3M_SHADOW_REPLAY_CANDIDATES": "1",
+     "X3M_SHADOW_REPLAY_DEPTH": "1"
+    }
+   },
+   "B": {
+    "variant": "stored fog + LOD 0.5 + per-draw object bounds log + cull 4 px + frame timing/phases",
+    "exit": 0,
+    "observed": {
+     "X3M_LOD_SCALE": "0.5",
+     "X3M_OBJECT_BOUNDS_LOG": "1",
+     "X3M_TAA_SKY_HISTORY": "ABSENT",
+     "X3M_FOG_SHADOW_PASS": "0",
+     "X3M_SHADOW_CASCADE_MIN_FOOTPRINT": "ABSENT",
+     "X3M_VOLUMETRIC_FOG": "1",
+     "X3M_VOLUMETRIC_FOG_RANGE": "stored",
+     "X3M_VOLUMETRIC_FOG_CARDS": "replace",
+     "X3M_HULL_EMISSIVE_WIDENING": "ABSENT",
+     "X3M_CULL_SMALL_PARTS_PX": "4.0000",
+     "X3M_FRAME_TIMING": "1",
+     "X3M_FRAME_PHASES": "1",
+     "X3M_CAPTURE_DELAY": "300",
+     "X3M_SHADOW_REPLAY_CANDIDATES": "1",
+     "X3M_SHADOW_REPLAY_DEPTH": "1"
+    }
+   },
+   "C": {
+    "variant": "stored fog + sun-visibility grid pass + cascade minimum footprint 8, vanilla LOD ladder",
+    "exit": 0,
+    "observed": {
+     "X3M_FOG_SHADOW_PASS": "1",
+     "X3M_SHADOW_CASCADE_MIN_FOOTPRINT": "8.0",
+     "X3M_LOD_SCALE": "ABSENT",
+     "X3M_OBJECT_BOUNDS_LOG": "ABSENT",
+     "X3M_TAA_SKY_HISTORY": "ABSENT",
+     "X3M_VOLUMETRIC_FOG": "1",
+     "X3M_VOLUMETRIC_FOG_RANGE": "stored",
+     "X3M_VOLUMETRIC_FOG_CARDS": "replace",
+     "X3M_CULL_SMALL_PARTS_PX": "4.0000",
+     "X3M_FRAME_TIMING": "1",
+     "X3M_FRAME_PHASES": "1",
+     "X3M_CAPTURE_DELAY": "300",
+     "X3M_SHADOW_REPLAY_CANDIDATES": "1",
+     "X3M_SHADOW_REPLAY_DEPTH": "1"
+    }
+   }
+  },
+  "confirmations": [
+   "X3M_TAA_SKY_HISTORY=strict in A and absent in B and C (loose default emits nothing)",
+   "X3M_TAA_SKY_HISTORY_BAND_PX is absent on all three lines: the launcher forwards it only when --taa-sky-history-band-px is given and drops an inherited value (tools/manage.py:336, test_taa_sky_history), so absence is the default spelling and the DLL's own default of 3 applies (src/proxy/capture.cpp:3296, logged as sky_history_band_px)",
+   "X3M_OBJECT_BOUNDS_LOG=1 in B only, on a line that already carries --shadow-replay-candidates and --shadow-replay-depth (the launcher's prerequisites); no refusal",
+   "X3M_FOG_SHADOW_PASS=1 in C and 0 on the other two lines (the option is default off and the off value is emitted explicitly)",
+   "X3M_SHADOW_CASCADE_MIN_FOOTPRINT=8.0 in C, absent in A and B",
+   "X3M_LOD_SCALE=0.5 in B, absent in C (vanilla ladder)",
+   "X3M_CULL_SMALL_PARTS_PX=4.0000 in B and C from --cull-small-parts 4, and 2.0000 in A from the launcher default of d23b3c1b, which predates the Run66 candidate (the Run66 record's \"absent\" for A is inaccurate; no change in this range)"
+  ]
+ },
+ "host": {
+  "command": "/usr/bin/python3 verification/probe/run_host_suite.py",
+  "modules": 233,
+  "tests": 2311,
+  "failing_modules": 0,
+  "wall_seconds": 77.1,
+  "jobs": 12,
+  "report": "/tmp/x3-run67-hostsuite.txt",
+  "launcher_lock": "no module failed with \"another installer or launcher is active\"; the game was not running",
+  "comparison_to_run66": "Run66 recorded 228 modules / 2264 tests; +5 modules and +47 tests from the four landings' host coverage (cascade footprint, fog shadow pass, object bounds log, sky-history band) and the archive tool."
+ },
+ "build_logs": {
+  "/tmp/x3-run67-cmake.log": "c0e3a45171b126d3bb74f108b431401c7fa972653d07e7a886e483df6e4441e5",
+  "/tmp/x3-run67-build.log": "09882eecacb3956f013cb6821c8ae6c05a9b7dd4191fbf83450f60322a112016",
+  "/tmp/x3-run67-seam-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+ },
+ "bottle": "X3",
+ "wine_arch": "arm64",
+ "environment": {
+  "FEX_X87REDUCEDPRECISION": "1",
+  "WINEMSYNC": "1",
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "native_windows": "unverified",
+ "game_acceptance": "pending Run67",
+ "installed": false
+}
