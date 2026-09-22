@@ -424,31 +424,64 @@ padding the ladder so the finest-to-coarsest range survives the Very High `-1`,
 with the pad's threshold copied from `T_1`; this is an inference, the engine
 gives the pad no meaning.
 
-**Overlay placement.** The engine has no "far record" semantic, but at Very High
-the *position* matters: the record at index `n-1` is never drawn in the main
-view. Appending a coarse record after the last one would never show it at Very
-High; it would only let the old coarsest record draw in the new band
-`s < T_new·f`, where `n-2` drew before. A new record must sit at an index
-`<= count-2` of the new ladder. `tools/analysis/lod_overlay.py` no longer appends
-alone; it uses one of two layouts (decision 2026-09-23,
-[merged-lod-feasibility.md](../architecture/merged-lod-feasibility.md) "Overlay
-tooling"):
+**Overlay placement (corrected 2026-09-23 after Run 68 B).** The engine has no
+"far record" semantic, but at Very High the *position* matters: record `k` is
+drawn exactly when record `k+1` is the loop's first hit, so the record at index
+`n-1` is never drawn in the main view. The earlier **before-last** default
+(coarse record inserted before the last one with `T = T_last`) is therefore wrong
+at Very High: it is drawn only for `s < T_last·f` (5 px for the `30/15/5` ship
+ladders, 15 for `military_outpost_middleb`), never at the run240 stand where the
+heavy bodies sit at `s` 21–95 (`verification/results/run255-census/`, measured).
+The same census confirms the rule on every multi-LOD row with a finite `s`
+(`verification/results/lod-overlay-pilot/pilot_check.py`).
 
-- **before-last** (default for multi-LOD bodies): the record is inserted before
-  the last one with `T <= T_last`, default `T = T_last`. The walk hits the old
-  last record first whenever `s < T_last·f`, so at Very High the `-1` lands on
-  the new record over the whole of the old `sel = n-1` range (where record `n-2`
-  drew); at Low..High it is never drawn and nothing changes. Any ladder shape is
-  accepted.
-- **append-pad** (default for single-LOD bodies; `T` required): the record with
-  `T`, then a pad copy with `T - 1`. At Very High the new mesh draws below
-  `(T-1)·f` and the band `[(T-1)·f, T·f)` draws LOD 0 (single-LOD) or the old
-  last record; at Low..High the pad draws below `(T-1)·f` and the record in that
-  band, and `0x8000`-flagged nodes now hide below `(T-1)·f`.
+`tools/analysis/lod_overlay.py` now uses the **pad** placement by default: append
+the collapsed coarse record `C` with `T_last`, then a pad copy of `C` with
+`T_pad`, giving `[T_0 … T_last, C:T_last, pad:T_pad]` with the original records
+untouched. Walking from the end, `s < T_pad·f` hits the pad first and the Very
+High `-1` draws `C`; `s >= T_pad·f` falls through every original threshold (all
+below `T_pad`) and `C`'s own to no hit, i.e. record 0. At Low..High the pad, the
+same mesh, is drawn below `T_pad·f`. `T_pad` must exceed every original
+threshold of records 1..n-1 (the tool refuses otherwise unless
+`--force-threshold`) and be `>= 2`. A single-LOD body gets `[T_0, C:T_pad,
+pad:T_pad]`.
 
-The former `--keep-coarsest-hidden` option was removed: it assumed the last
-record is drawn, which does not hold at Very High, where the hide never fires
-in the main view.
+Consequence, intended: LOD 1..n-1 of the original ladder become unreachable in
+the main view at every setting. None of their thresholds exceeds `T_pad`, so none
+is ever the first hit from the top; the body jumps from LOD 0 straight to `C` at
+`T_pad`. (The `0x1000000` env-map view's `+1` and the distance branch can still
+pick them.) For the pilot ships those records carry 23–32 draws each and for the
+outpost 30–33 (measured, `bob1.py info`), which is what the collapsed `C`
+replaces. Hide-at-coarsest (`0x8000`, final index `n-1`) still never fires at
+Very High; at Low..High it now fires below `T_pad·f` for flagged nodes.
+
+`C` is at most **2 draws** per part (`--collapse two`, the default): faces
+whose source material has an alpha texture (`t_AlphaTexture` set, not `NULL` and
+not a `NONE_*` placeholder) form a second group with the dominant alpha material
+by face count, the rest one group with the dominant opaque material. Faces of
+other materials are drawn with the dominant material's textures over their own
+UVs, a look limit of the pilot. `--collapse one` (one group, alpha faces turn
+solid) stays selectable. The pilot bodies' coarsest records carry 12 / 34 / 20
+alpha faces (argon_TL / M2 / M1) and 252 (outpost), lattice grids and antenna
+cards (measured, `verification/results/lod-overlay-pilot/alpha_faces_out.txt`).
+MAT3 bodies are refused unless `--force-mat3`: the loader gives the coarsest
+record of such a body with more than 3 LODs material `0x485`, which would be the
+pad.
+
+Two node-set side effects change at Very High (objdump of `0047cfe0..`,
+`/tmp/x3-lod/f47cfe0.s`). A child node flagged `node+0x12c & 0x40000` is hidden
+when its parent (`node+0x18`) is not renderable or has `+0x14c > 0`
+(`0047d055..0047d076`); with the pad placement the parent's final index is `> 0`
+below `T_pad` (before: below 15 px for these ladders), so attached children of
+the pilot bodies disappear at the stand and their draws count in the saving.
+And a final index `>= 3` sets `node+0x130 |= 0x100000` (`0047d519`,
+detail-reduction flag, effect unknown): `C` sits at index 4 (ships) or 3
+(outpost), so the flag is now set at Very High where these bodies never reached
+index 3 before.
+
+The earlier layouts remain selectable for the record (`--placement before-last`,
+`--placement append-pad`, the latter `C:T`, `pad:T-1`, with `T < T_last` on a
+multi-LOD body). The former `--keep-coarsest-hidden` option stays removed.
 
 Open: the `0x1000000` view is identified only by the census note's env-map
 reading; the other writers of an `+0x14c` field found by a program-wide scan

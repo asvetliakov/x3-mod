@@ -1,0 +1,7 @@
+A census rule (very-high, f=1): multi-LOD rows 34, match 34, mismatch 0
+B objects/ships/argon/argon_TL.pbb: stored 1582984 decoded 3901787 roundtrip_equal=True originals_identical=True lods 4->6 thresholds [30, 15, 5, 5, 50] C/pad groups [2, 2] pad_is_copy=True C_equals_source_last=True C_groups [('opaque', 17, 541), ('alpha', 38, 12)] very-high s<50:LOD4 s>=50:LOD0
+B objects/ships/argon/argon_M2.pbb: stored 2165082 decoded 5223919 roundtrip_equal=True originals_identical=True lods 4->6 thresholds [30, 15, 5, 5, 50] C/pad groups [2, 2] pad_is_copy=True C_equals_source_last=True C_groups [('opaque', 17, 722), ('alpha', 31, 34)] very-high s<50:LOD4 s>=50:LOD0
+B objects/ships/argon/argon_M1.pbb: stored 1741694 decoded 4495449 roundtrip_equal=True originals_identical=True lods 4->6 thresholds [30, 15, 5, 5, 50] C/pad groups [2, 2] pad_is_copy=True C_equals_source_last=True C_groups [('opaque', 11, 638), ('alpha', 27, 20)] very-high s<50:LOD4 s>=50:LOD0
+B objects/stations/others/military_outpost_middleb.pbb: stored 6981785 decoded 18238359 roundtrip_equal=True originals_identical=True lods 3->5 thresholds [30, 15, 15, 100] C/pad groups [2, 2] pad_is_copy=True C_equals_source_last=True C_groups [('opaque', 17, 9201), ('alpha', 9, 252)] very-high s<100:LOD3 s>=100:LOD0
+B file 05.cat bytes 191 sha256 c5737a0a307f7d2590a788b736225139f39334908b35fa677935b15f56881c0f
+B file 05.dat bytes 12471545 sha256 66f4f7a64b4b2304df12c09e82b4a0665b9bf751dd7bbd5dfd628688322f0686

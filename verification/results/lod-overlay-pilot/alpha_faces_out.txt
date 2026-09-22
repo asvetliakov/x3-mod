@@ -1,0 +1,16 @@
+02.cat:objects/ships/argon/argon_TL.pbb: coarsest LOD3 faces 553 groups 23 alpha faces 12 in 2 materials; NONE_* placeholder faces (opaque) 0
+  mat38 faces 9 alpha metal_argon_lattice_grid_alpha.tga alphatest 0 alphablend 0
+  mat37 faces 3 alpha metal_argon_lattice_grid_alpha.tga alphatest 0 alphablend 0
+02.cat:objects/ships/argon/argon_M2.pbb: coarsest LOD3 faces 756 groups 25 alpha faces 34 in 4 materials; NONE_* placeholder faces (opaque) 0
+  mat31 faces 14 alpha metal_argon_antennas-B_03_alpha.tga alphatest 0 alphablend 0
+  mat30 faces 11 alpha metal_argon_antennas-B_03_alpha.tga alphatest 0 alphablend 0
+  mat38 faces 6 alpha metal_argon_lattice_grid_alpha.tga alphatest 0 alphablend 0
+  mat37 faces 3 alpha metal_argon_lattice_grid_alpha.tga alphatest 0 alphablend 0
+02.cat:objects/ships/argon/argon_M1.pbb: coarsest LOD3 faces 658 groups 24 alpha faces 20 in 3 materials; NONE_* placeholder faces (opaque) 0
+  mat27 faces 9 alpha metal_argon_lattice_grid_alpha.tga alphatest 0 alphablend 0
+  mat23 faces 8 alpha metal_argon_antennas-B_03_alpha.tga alphatest 0 alphablend 0
+  mat26 faces 3 alpha metal_argon_lattice_grid_alpha.tga alphatest 0 alphablend 0
+02.cat:objects/stations/others/military_outpost_middleb.pbb: coarsest LOD2 faces 9453 groups 30 alpha faces 252 in 3 materials; NONE_* placeholder faces (opaque) 9201
+  mat9 faces 124 alpha metal_argon_lattice_support_beams_01_alpha.tga alphatest 1 alphablend 1
+  mat36 faces 83 alpha metal_argon_lattice_grid_alpha.tga alphatest 1 alphablend 1
+  mat11 faces 45 alpha metal_argon_lattice_support_beams_03_alpha.tga alphatest 1 alphablend 1

@@ -410,6 +410,33 @@ def drawable(thresholds, view='very-high', f=1.0):
     return sorted(set(r))
 
 
+def final_index(thresholds, s, view='very-high', f=1.0):
+    """Main-view record drawn for metric s >= 1: sel = highest i with s < trunc(T_i*f)
+    walking from the last record (record 0 never compared), then -1 at Very High, clamped."""
+    t = [int(x * f) for x in thresholds]
+    sel = next((i for i in range(len(t), 0, -1) if s < t[i - 1]), 0)
+    return min(max(sel - 1, 0), len(t)) if VIEW_DISTANCE[view] >= 3 else sel
+
+
+def selection_bands(thresholds, view='very-high', f=1.0):
+    """[(lo, hi, record)]: s in [lo, hi) draws record in the main view (hi None = unbounded).
+    Exact: the drawn index only changes where s crosses some trunc(T_i*f)."""
+    cuts = sorted({1} | {int(x * f) for x in thresholds if int(x * f) > 1})
+    bands = []
+    for lo, hi in zip(cuts, cuts[1:] + [None]):
+        k = final_index(thresholds, lo, view, f)
+        if bands and bands[-1][2] == k:
+            bands[-1] = (bands[-1][0], hi, k)
+        else:
+            bands.append((lo, hi, k))
+    return bands
+
+
+def format_bands(bands):
+    return ' '.join(f's<{hi}:LOD{k}' if lo == 1 and hi is not None else
+                    (f's>={lo}:LOD{k}' if hi is None else f'{lo}<=s<{hi}:LOD{k}') for lo, hi, k in bands)
+
+
 def audit_row(tree, view='very-high', f=1.0):
     ladder = lods(tree)
     draws = [lod_summary(l)['draws'] for l in ladder]

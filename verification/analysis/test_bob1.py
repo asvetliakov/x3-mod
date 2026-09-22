@@ -152,6 +152,22 @@ class Audit(unittest.TestCase):
         self.assertEqual(bob1.reachable([100, 2], f=0.5), [0, 1])   # f truncation: trunc(1.0) = 1
         self.assertEqual(bob1.reachable([15, 15], f=2.0), [0, 2])   # equal thresholds: the later wins
 
+    def test_selection_bands(self):
+        for th in ([250, 150, 80, 30], [30, 10, 3, 30], [30, 15, 5, 5, 50], [30], [100, 1], [25, 5]):
+            for view in bob1.VIEW_DISTANCE:
+                for f in (1.0, 0.5, 2.0):
+                    with self.subTest(th=th, view=view, f=f):
+                        bands = bob1.selection_bands(th, view, f)
+                        self.assertEqual(bands[0][0], 1)
+                        self.assertIsNone(bands[-1][1])
+                        self.assertEqual(sorted({k for _, _, k in bands}), bob1.drawable(th, view, f))
+                        for lo, hi, k in bands:
+                            for s in range(lo, (hi or lo + 600)):
+                                self.assertEqual(bob1.final_index(th, s, view, f), k)
+        # run255 stand: argon_TL 30/15/5 draws LOD 0 at s >= 15 at Very High; LOD 1 for 5 <= s < 15
+        self.assertEqual(bob1.format_bands(bob1.selection_bands([30, 15, 5])), 's<5:LOD2 5<=s<15:LOD1 s>=15:LOD0')
+        self.assertEqual(bob1.format_bands(bob1.selection_bands([30, 15, 5, 5, 50])), 's<50:LOD4 s>=50:LOD0')
+
     def test_classes(self):
         keys = ('drawable', 'single_lod', 'last_never_drawn', 'lod0_only', 'dead_any_setting',
                 'never_drawn_any_setting', 'coarse_multi_group')
@@ -203,6 +219,28 @@ class Overlay(unittest.TestCase):
         self.assertEqual(new['parts'][0]['bounds'], coarse['parts'][0]['bounds'])
         self.assertNotIn('extra', new['parts'][1]['groups'][0])
 
+    def test_collapse_two(self):
+        def mat(alpha):
+            return {'index': 99, 'flags': 0x02000000, 'technique': 1, 'effect': b'argon.fx',
+                    'params': [(b'g_AlphaValue', 2, [65536]), (b't_AlphaTexture', 8, alpha)]}
+        mats = [mat(b'NULL'), mat(b'metals\\argon\\grid_alpha.tga'), mat(b'C:\\Maps\\NONE_WHITE.dds'),
+                {'index': 3, 'flags': 0x10, 'texture': b'plain.tga'}, mat(b'')]
+        self.assertEqual(lod_overlay.alpha_materials(mats), {1})   # positions; NULL/NONE_*/empty/classic opaque
+        coarse = bob1.lods(bob1.parse(body_bytes()))[-1]
+        # part 0: materials 1 (2 faces), 0 (3 faces); part 1: 0 (1), 1 (1), 0 (2)
+        new = lod_overlay.coarse_record(coarse, 7, {1})
+        self.assertEqual([[(g['material'], len(g['faces'])) for g in p['groups']] for p in new['parts']],
+                         [[(0, 3), (1, 2)], [(0, 3), (1, 1)]])
+        self.assertEqual([len(g['extra']) for g in new['parts'][0]['groups']], [4, 3])
+        self.assertEqual(sorted(f for g in new['parts'][0]['groups'] for f in g['faces']),
+                         sorted(f for g in coarse['parts'][0]['groups'] for f in g['faces']))
+        one = lod_overlay.coarse_record(coarse, 7, {1}, 'one')
+        self.assertEqual([len(p['groups']) for p in one['parts']], [1, 1])
+        self.assertEqual(lod_overlay.coarse_record(coarse, 7, {0, 1}),       # all alpha: one group per part
+                         lod_overlay.coarse_record(coarse, 7, set(), 'one'))
+        with self.assertRaises(ValueError):
+            lod_overlay.coarse_record(coarse, 7, set(), 'three')
+
     def placed(self, ladder, placement, threshold=None):
         tree = ladder_tree(ladder)
         ls = bob1.lods(tree)
@@ -217,8 +255,43 @@ class Overlay(unittest.TestCase):
         sel = next((i for i in range(len(thresholds), 0, -1) if s < int(thresholds[i - 1] * f)), 0)
         return max(sel - 1, 0) if view == 'very-high' else sel
 
+    def test_pad(self):
+        for ladder in ([(9000, 4)], [(9000, 4), (30, 2)]):
+            self.assertEqual(lod_overlay.default_placement(bob1.lods(ladder_tree(ladder))), 'pad')
+        ship = [(9000, 37), (30, 31), (15, 28), (5, 23)]
+        (i, pad), ls = self.placed(ship, 'pad', 50)
+        self.assertEqual((i, pad), (4, 5))
+        self.assertEqual([l['value'] for l in ls], [9000, 30, 15, 5, 5, 50])   # C:T_last, pad:T_pad
+        self.assertEqual(ls[:4], bob1.lods(ladder_tree(ship)))                # originals untouched
+        self.assertEqual((ls[4]['parts'], ls[4]['points']), (ls[5]['parts'], ls[5]['points']))
+        self.assertEqual([len(p['groups']) for p in ls[4]['parts']], [1])
+        th = [l['value'] for l in ls[1:]]
+        for s in range(1, 120):
+            with self.subTest(s=s):
+                # Very High: C below T_pad, record 0 at and above it; Low..High: the pad (same mesh)
+                self.assertEqual(self.final(th, s), 4 if s < 50 else 0)
+                self.assertEqual(self.final(th, s, 'high'), 5 if s < 50 else 0)
+                self.assertEqual(bob1.final_index(th, s), self.final(th, s))
+        self.assertEqual(bob1.drawable(th, 'very-high'), [0, 4])
+        self.assertEqual(bob1.drawable(th, 'low'), [0, 5])
+        (i, pad), ls = self.placed([(9000, 4)], 'pad', 40)                   # single-LOD: C gets T_pad
+        self.assertEqual(((i, pad), [l['value'] for l in ls]), ((1, 2), [9000, 40, 40]))
+        self.assertEqual([self.final([40, 40], s) for s in (1, 39, 40)], [1, 1, 0])
+        # a two-record x/y/z/30-like body: T_pad above every threshold of records 1..n-1
+        self.assertEqual([l['value'] for l in self.placed([(9000, 5), (30, 3), (10, 2), (30, 1)], 'pad', 31)[1]],
+                         [9000, 30, 10, 30, 30, 31])
+        for t in (None, 1, 0, 5, 15, 30):                                    # required; >= 2; above all
+            with self.subTest(t=t), self.assertRaises(SystemExit):
+                self.placed(ship, 'pad', t)
+        tree = ladder_tree(ship)
+        ls = bob1.lods(tree)
+        self.assertEqual(lod_overlay.place(ls, lod_overlay.coarse_record(ls[-1], None), 'pad', 20,
+                                           force_threshold=True), (4, 5))
+        self.assertEqual([l['value'] for l in ls], [9000, 30, 15, 5, 5, 20])
+        with self.assertRaises(SystemExit):                                  # force never admits T < 2
+            lod_overlay.place(ls, lod_overlay.coarse_record(ls[-1], None), 'pad', 1, force_threshold=True)
+
     def test_before_last(self):
-        self.assertEqual(lod_overlay.default_placement(bob1.lods(ladder_tree([(9000, 4), (30, 2)]))), 'before-last')
         (i, pad), ls = self.placed([(9000, 4), (100, 3), (30, 2)], 'before-last')
         self.assertEqual((i, pad), (2, None))
         self.assertEqual([l['value'] for l in ls], [9000, 100, 30, 30])      # default T_new = T_last
@@ -246,7 +319,6 @@ class Overlay(unittest.TestCase):
             self.placed([(9000, 4)], 'before-last')
 
     def test_append_pad(self):
-        self.assertEqual(lod_overlay.default_placement(bob1.lods(ladder_tree([(9000, 4)]))), 'append-pad')
         for ladder in ([(9000, 4)], [(9000, 4), (30, 2)]):                   # --threshold always required
             with self.subTest(ladder=ladder), self.assertRaises(SystemExit):
                 self.placed(ladder, 'append-pad')
@@ -275,17 +347,36 @@ class Overlay(unittest.TestCase):
             for slot in ('0', '-1', '100', '2', '4'):          # range, existing, non-contiguous
                 with self.subTest(slot=slot), self.assertRaises(SystemExit):
                     run(base + ['--slot', slot, 'stations/test/body'])
-            self.assertIn('target addon/03.cat', run(base + ['--slot', '3', 'stations/test/body']))
-            self.assertIn('target addon/04.cat', run(base + ['--slot', '4', '--force-slot', 'stations/test/body']))
+            self.assertIn('target addon/03.cat', run(base + ['--slot', '3', 'stations/test/body=300']))
+            self.assertIn('target addon/04.cat', run(base + ['--slot', '4', '--force-slot', 'stations/test/body=300']))
             with self.assertRaises(SystemExit):
-                run(base + ['--slot', '2', '--force-slot', 'stations/test/body'])
+                run(base + ['--slot', '2', '--force-slot', 'stations/test/body=300'])
+            for argv in (['stations/test/body'], ['stations/test/body=250'], ['--threshold', '200', 'stations/test/body'],
+                         ['stations/test/body=x']):                       # pad: T_pad required and > 250
+                with self.subTest(argv=argv), self.assertRaises(SystemExit):
+                    run(base + argv)
+            text = run(base + ['--threshold', '200', '--force-threshold', 'stations/test/body'])
+            self.assertIn('pad: new LOD2 threshold=250 + pad copy LOD3 threshold=200', text)
+            text = run(base + ['--threshold', '999', 'stations/test/body=300'])  # NAME=T wins
+            self.assertIn("collapse=two groups=['opaque:mat0:5f', 'opaque:mat0:4f']", text)
+            self.assertIn('collapse=one', run(base + ['--collapse', 'one', 'stations/test/body=300']))
+            self.assertIn('pad: new LOD2 threshold=250 + pad copy LOD3 threshold=300', text)
+            self.assertIn('very-high drawable [0, 2] by s: before s>=1:LOD0 | after s<300:LOD2 s>=300:LOD0', text)
+            self.assertIn('high drawable [0, 3] by s: before s<250:LOD1 s>=250:LOD0 | after s<300:LOD3 s>=300:LOD0',
+                          text)
             with self.assertRaises(SystemExit):                    # append-pad needs --threshold
                 run(base + ['--placement', 'append-pad', 'stations/test/body'])
             text = run(base + ['--placement', 'append-pad', '--threshold', '125', 'stations/test/body'])
             self.assertIn('append-pad: new LOD2 threshold=125 + pad copy LOD3 threshold=124', text)
             with self.assertRaises(SystemExit):
                 run(base + ['--keep-coarsest-hidden', 'stations/test/body'])   # option removed
-            write_catalogue(game / 'addon/03.cat', [('objects/stations/test/cut.pbb', gzip.compress(body[:-8]))])
+            nomat = bob1.serialise({'sections': [('INFO', b'm'), ('BODY', bob1.lods(bob1.parse(body)))]})
+            write_catalogue(game / 'addon/03.cat', [('objects/stations/test/cut.pbb', gzip.compress(body[:-8])),
+                                                    ('objects/stations/test/nomat.pbb', gzip.compress(nomat))])
+            with self.assertRaises(SystemExit):                    # MAT3 / no per-body materials refused
+                run(['--game', str(game), '--dry-run', '--force-slot', '--slot', '5', 'stations/test/nomat=300'])
+            self.assertIn('stations/test/nomat', run(['--game', str(game), '--dry-run', '--force-slot', '--slot', '5',
+                                                      '--force-mat3', 'stations/test/nomat=300']))
             err = io.StringIO()
             for module, argv in ((lod_overlay, base + ['stations/test/missing']),
                                  (lod_overlay, base + ['stations/test/cut']),
@@ -305,34 +396,41 @@ class Overlay(unittest.TestCase):
             out = Path(folder) / 'out'
             originals = lod_overlay.original_archives(game)
             before = lod_overlay.hash_files(originals)
-            text = run(['--game', str(game), '--dry-run', 'stations\\test\\body'])
+            text = run(['--game', str(game), '--dry-run', '--placement', 'before-last', 'stations\\test\\body'])
             self.assertIn('before-last: new LOD1 threshold=250', text)
             self.assertIn('target addon/03.cat', text)
             self.assertFalse(out.exists())
             with self.assertRaises(SystemExit):
-                run(['--game', str(game), '--out', str(game / 'sub'), 'stations/test/body'])
+                run(['--game', str(game), '--out', str(game / 'sub'), 'stations/test/body=300'])
             with self.assertRaises(SystemExit):          # before-last needs T <= T_last
-                run(['--game', str(game), '--out', str(out), '--threshold', '251', 'stations/test/body'])
-            run(['--game', str(game), '--out', str(out), 'stations/test/body'])
+                run(['--game', str(game), '--out', str(out), '--placement', 'before-last', '--threshold', '251',
+                     'stations/test/body'])
+            self.assertFalse(out.exists())
+            run(['--game', str(game), '--out', str(out), 'stations/test/body=300'])
             self.assertEqual(sorted(p.name for p in out.rglob('*') if p.is_file()),
                              ['03.cat', '03.dat', '03.x3m-lod.json'])
             (entry,) = read_catalogue(out / 'addon/03.cat')
             self.assertEqual(entry['path'], 'objects/stations/test/Body.pbb')
             stored = bytes(v ^ 0x33 for v in (out / 'addon/03.dat').read_bytes())
             ladder = bob1.lods(bob1.parse(unpack(stored)))
-            self.assertEqual([l['value'] for l in ladder], [12345, 250, 250])
-            self.assertEqual([len(p['groups']) for p in ladder[1]['parts']], [1, 1])
-            self.assertEqual([ladder[0], ladder[2]], source)
+            self.assertEqual([l['value'] for l in ladder], [12345, 250, 250, 300])
+            self.assertEqual([len(p['groups']) for p in ladder[2]['parts']], [1, 1])
+            self.assertEqual(ladder[2]['parts'], ladder[3]['parts'])
+            self.assertEqual(ladder[:2], source)
+            import json
+            (body_rec,) = json.loads((out / 'addon/03.x3m-lod.json').read_text())['bodies']
+            self.assertEqual((body_rec['placement'], body_rec['new_lod'], body_rec['pad_lod'],
+                              body_rec['threshold'], body_rec['pad_threshold']), ('pad', 2, 3, 250, 300))
             self.assertEqual(lod_overlay.hash_files(originals), before)
 
             # --install targets the game directory; the new slot wins under the resolver's precedence
-            run(['--game', str(game), '--install', 'stations/test/body'])
+            run(['--game', str(game), '--install', 'stations/test/body=300'])
             self.assertEqual(lod_overlay.hash_files(originals), before)
             data, src = Assets(game).get('objects/stations/test/body.pbb')
             self.assertEqual(src['source'], 'addon/03.cat')
-            self.assertEqual(len(bob1.lods(bob1.parse(data))), 3)
+            self.assertEqual(len(bob1.lods(bob1.parse(data))), 4)
             with self.assertRaises(SystemExit):          # installed marker: refuse to stack
-                run(['--game', str(game), '--out', str(Path(folder) / 'out2'), 'stations/test/body'])
+                run(['--game', str(game), '--out', str(Path(folder) / 'out2'), 'stations/test/body=300'])
 
 
 @unittest.skipUnless(bob1.DEFAULT_GAME.joinpath('X3AP.exe').is_file(), 'X3 bottle not present')
@@ -358,8 +456,11 @@ class Installed(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             out = Path(folder)
             # the dock's 30/10/3/30 ladder takes before-last at T = 30 (default) and append-pad
-            text = run(['--dry-run', 'stations/docks/argon_dock_center'])
+            text = run(['--dry-run', '--placement', 'before-last', 'stations/docks/argon_dock_center'])
             self.assertIn('before-last: new LOD4 threshold=30', text)
+            text = run(['--dry-run', 'stations/docks/argon_dock_center=40'])      # pad (default)
+            self.assertIn('very-high drawable [0, 5] by s: before s<30:LOD3 s>=30:LOD0 | after s<40:LOD5 s>=40:LOD0',
+                          text)
             run(['--out', str(out), '--placement', 'append-pad', '--threshold', '20',
                  'stations/docks/argon_dock_center'])
             cats = sorted(out.rglob('*.cat'))
