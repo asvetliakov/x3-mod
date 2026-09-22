@@ -112,10 +112,49 @@ CHECK refuse_fog PASS
 CHECK refuse_state_unknown PASS
 CHECK refuse_ps_1_1_reason PASS
 CHECK lens_bind_fault_restored PASS
+CHECK clip_prepare_scans_without_creating PASS
+CHECK clip_prepare_second_time_not_first PASS
+CHECK clip_prepare_needs_vertex_shader PASS
+CHECK clip_prepare_needs_vertex_hash PASS
+CHECK clip_prepare_origin_unknown PASS
+CHECK clip_core_origin_unknown_refused PASS
+CLIP one_one f=0.5000 verdict=applied clipped=1 samplers=15/14 calls=7 open=1.0000,1.0000,1.0000 edge=0.8235,0.3765,0.2902 covered=0.2000,0.4000,0.6000 model=1.00,0.89,0.78,0.22,0.11,0.00
+CHECK clip_core_one_one_applied PASS
+CHECK clip_core_one_one_open_half_unscaled PASS
+CHECK clip_core_one_one_covered_half_background PASS
+CHECK clip_core_one_one_soft_edge PASS
+CHECK clip_core_one_one_state_restored PASS
+CLIP srcalpha_invsrcalpha f=0.5000 verdict=applied clipped=1 samplers=15/14 calls=7 open=0.5020,0.5020,0.5020 edge=0.4353,0.2667,0.2353 covered=0.2000,0.4000,0.6000 model=1.00,0.89,0.78,0.22,0.11,0.00
+CHECK clip_core_srcalpha_invsrcalpha_applied PASS
+CHECK clip_core_srcalpha_invsrcalpha_open_half_unscaled PASS
+CHECK clip_core_srcalpha_invsrcalpha_covered_half_background PASS
+CHECK clip_core_srcalpha_invsrcalpha_soft_edge PASS
+CHECK clip_core_srcalpha_invsrcalpha_state_restored PASS
+CLIP one_invsrcalpha f=0.5000 verdict=applied clipped=1 samplers=15/14 calls=7 open=0.9020,0.8000,0.7020 edge=0.7451,0.3569,0.2784 covered=0.2000,0.4000,0.6000 model=1.00,0.89,0.78,0.22,0.11,0.00
+CHECK clip_core_one_invsrcalpha_applied PASS
+CHECK clip_core_one_invsrcalpha_open_half_unscaled PASS
+CHECK clip_core_one_invsrcalpha_covered_half_background PASS
+CHECK clip_core_one_invsrcalpha_soft_edge PASS
+CHECK clip_core_one_invsrcalpha_state_restored PASS
+CLIP one_one_core_f f=0.5000 verdict=applied clipped=1 samplers=15/14 calls=7 open=0.6000,0.7020,0.8000 edge=0.5098,0.2902,0.2431 covered=0.2000,0.4000,0.6000 model=1.00,0.89,0.78,0.22,0.11,0.00
+CHECK clip_core_one_one_core_f_applied PASS
+CHECK clip_core_one_one_core_f_open_half_at_f PASS
+CHECK clip_core_one_one_core_f_covered_half_background PASS
+CHECK clip_core_one_one_core_f_soft_edge PASS
+CHECK clip_core_one_one_core_f_state_restored PASS
+CHECK clip_calls_seven PASS
+CHECK clip_ghost_uniform_f PASS
+CHECK clip_other_untouched PASS
+CHECK clip_unknown_refused PASS
+CHECK clip_core_without_depth_refused PASS
+CHECK clip_no_per_draw_creation PASS
+CLIP_PAIRS pairs=2 vertex_shaders_created=1
 CHECK before_reset_releases_targets PASS
-RESET held_before=18 held_after=9
+RESET held_before=22 held_after=11
 CHECK reset_pending_refused PASS
 CHECK native_reset PASS
 CHECK after_reset_seeds_and_matches PASS
+CLIP_RESET verdict=applied clipped=1 f=0.5000 open=1.0000,1.0000,1.0000 covered=0.2000,0.4000,0.6000 ps_created=0 vs_created=0 pairs=2
+CHECK clip_after_reset PASS
 CHECK detach_releases_everything PASS
-RESULT PASS checks=89 failures=0
+RESULT PASS checks=122 failures=0

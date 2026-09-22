@@ -23,8 +23,8 @@ SOURCES = ('src/proxy/engine_memory.cpp', 'src/proxy/sun_occlusion.cpp', 'src/pr
            'src/renderer/sun_visibility_program_inc.h', 'src/renderer/sun_visibility_taps_inc.h', 'src/temporal/sun_visibility_ps.hlsl',
            'verification/probe/sun_occlusion_hook_fixture.cpp', 'verification/probe/sun_occlusion_fixture.cpp', 'verification/probe/build_sun_occlusion.py',
            'verification/probe/run_sun_occlusion.py')
-EXPECTED_HOOK_CHECKS = 64   # a run that skips a section is not a pass
-EXPECTED_GPU_CHECKS = 89  # with both optional RT2 formats available; each SKIPPED format line takes one off
+EXPECTED_HOOK_CHECKS = 74   # a run that skips a section is not a pass
+EXPECTED_GPU_CHECKS = 122  # with both optional RT2 formats available; each SKIPPED format line takes one off
 SCENES = ('open', 'covered', 'half', 'three_quarter', 'quarter', 'screen_edge_open', 'screen_edge_covered')
 
 
@@ -60,7 +60,9 @@ def parse_gpu(text):
             'steps': [fields(l) for l in lines if l.startswith('STEP ')], 'rise': next((fields(l) for l in lines if l.startswith('RISE ')), None),
             'lens_fraction': next((fields(l).get('fraction') for l in lines if l.startswith('LENS fraction=')), None),
             'lens_draws': [l.split()[1] for l in lines if l.startswith('LENS_DRAW ')], 'skipped': [l for l in lines if l.startswith('SKIPPED ')],
-            'device_calls': next((fields(l) for l in lines if l.startswith('CALLS ')), None)}
+            'device_calls': next((fields(l) for l in lines if l.startswith('CALLS ')), None),
+            'clip': {l.split()[1]: fields(l) for l in lines if l.startswith('CLIP ')},
+            'clip_reset': next((fields(l) for l in lines if l.startswith('CLIP_RESET ')), None)}
 
 
 def accept_hook(record):
@@ -71,7 +73,9 @@ def accept_gpu(record):
     skipped_formats = len(record['skipped'])
     return (record['exit_status'] == 0 and record['result'].get('verdict') == 'PASS' and not record['failed_checks'] and record['checks'] == EXPECTED_GPU_CHECKS - skipped_formats
             and record['result'].get('checks') == record['checks'] and set(record['scenes']) == set(SCENES) and len(record['steps']) == 8 and len(record['lens_draws']) == 10
-            and record['attach'] and 0 < record['attach']['slots'] <= 512)
+            and record['attach'] and 0 < record['attach']['slots'] <= 512
+            and set(record['clip']) == {'one_one', 'srcalpha_invsrcalpha', 'one_invsrcalpha', 'one_one_core_f'} and all(c.get('calls') == 7 and c.get('clipped') == 1 for c in record['clip'].values())
+            and record['clip_reset'] and record['clip_reset'].get('clipped') == 1)
 
 
 def main():
@@ -110,7 +114,8 @@ def main():
         summary['gpu'] = {'checks': gpu['checks'], 'failed_checks': gpu['failed_checks'], 'exit_status': gpu['exit_status'], 'slots': gpu['attach'] and gpu['attach']['slots'],
                           'scenes': {k: (v.get('twin_open'), v.get('twin_valid'), v.get('raw'), v.get('used')) for k, v in gpu['scenes'].items()},
                           'steps': [(s['n'], s['smoothed'], s['expected']) for s in gpu['steps']], 'rise': gpu['rise'], 'lens_fraction': gpu['lens_fraction'],
-                          'lens_draws': len(gpu['lens_draws']), 'skipped': gpu['skipped'], 'device_calls': gpu['device_calls']}
+                          'lens_draws': len(gpu['lens_draws']), 'skipped': gpu['skipped'], 'device_calls': gpu['device_calls'],
+                          'clip': {k: (v.get('calls'), v.get('open'), v.get('edge'), v.get('covered')) for k, v in gpu['clip'].items()}, 'clip_reset': gpu['clip_reset']}
     print(json.dumps(summary, indent=1))
     sys.exit(0 if record['passed'] else 1)
 

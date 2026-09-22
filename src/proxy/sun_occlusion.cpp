@@ -95,7 +95,16 @@ int decide_probe(const std::uint32_t* record, const std::uint32_t* view) {
     in.view_flags = word(view, core::view_flags);
     in.top = std::int32_t(word(view, core::view_rect_top)); in.bottom = std::int32_t(word(view, core::view_rect_bottom));
     in.left = std::int32_t(word(view, core::view_rect_left)); in.right = std::int32_t(word(view, core::view_rect_right));
-    const bool own = main_view_ != 0 && in.view == main_view_ && in.record_owner == in.view;
+    // The owner's flags decide eligibility (core::eligible): read through engine_memory (validated, cached per
+    // region and frame) only where the cheap tests already hold, so main-view-owned records and other views'
+    // probes cost no read. The layer is for the log only.
+    std::uint32_t owner_flags = 0; std::int32_t owner_layer = -1;
+    if (main_view_ != 0 && in.view == main_view_ && in.record_owner != 0 && in.record_owner != in.view && !(in.record_owner & 3)) {
+        if (!x3m::engine_memory::read(in.record_owner + core::view_flags, &owner_flags, 4)) owner_flags = 0;
+        if (log_ && !x3m::engine_memory::read(in.record_owner + 0x29c, &owner_layer, 4)) owner_layer = -1;
+    }
+    in.owner_flags = owner_flags;
+    const bool own = core::eligible(in.record_owner, in.view, main_view_, owner_flags);
     if (own) {
         ++counters_.own;
         in.ready = ready_.probe(reinterpret_cast<std::uintptr_t>(record), override_);
@@ -104,6 +113,7 @@ int decide_probe(const std::uint32_t* record, const std::uint32_t* view) {
             latch_.size = std::int32_t(word(record, core::record_size)); latch_.accumulator = std::int32_t(word(record, core::record_accumulator));
             latch_.top = in.top; latch_.bottom = in.bottom; latch_.left = in.left; latch_.right = in.right;
             latch_.fov = word(view, core::view_fov);
+            latch_.owner = in.record_owner; latch_.owner_flags = owner_flags; latch_.owner_layer = owner_layer;
             std::int32_t scale = std::int32_t(word(view, core::view_scale_x));
             if (scale <= 0) { // the engine's fallback pair: *0x00606f38 + 0x28
                 std::uint32_t mode = 0, value = 0;
@@ -111,7 +121,7 @@ int decide_probe(const std::uint32_t* record, const std::uint32_t* view) {
             }
             latch_.scale_x = scale; latch_.valid = true;
         } else {
-            latch_.valid = false; // more than one sun in the main view: step 1 stays vanilla
+            latch_.valid = false; // more than one background-owned sun probed by the main view: vanilla
             if (!multi_counted_) { multi_counted_ = true; ++counters_.multi_record_frames; }
         }
         if (in.ready) { // gate 1's word, read as the probe itself reads it
@@ -128,9 +138,9 @@ int decide_probe(const std::uint32_t* record, const std::uint32_t* view) {
         // The diagnostic always runs the original (its side effects are its own: RE note section 13) and
         // returns its answer itself where the decision was "original", so it never runs twice.
         const int vanilla = reinterpret_cast<int(__cdecl*)(const std::uint32_t*, const std::uint32_t*)>(x3m_sun_probe_target)(record, view);
-        x3m::log("sun_probe frame=%llu view=%08lx record=%08lx owner=%08lx main=%08lx own=%u acc=%ld x=%ld y=%ld visible=%lu size=%ld group=%lu flags270=%08lx layer=%ld records=%u ready=%u vanilla=%d answer=%d",
+        x3m::log("sun_probe frame=%llu view=%08lx record=%08lx owner=%08lx owner_flags270=%08lx owner_layer=%ld main=%08lx eligible=%u acc=%ld x=%ld y=%ld visible=%lu size=%ld group=%lu flags270=%08lx layer=%ld records=%u ready=%u vanilla=%d answer=%d",
                  static_cast<unsigned long long>(device_frame_), static_cast<unsigned long>(in.view), static_cast<unsigned long>(reinterpret_cast<std::uintptr_t>(record)),
-                 static_cast<unsigned long>(in.record_owner), static_cast<unsigned long>(main_view_), own ? 1u : 0u,
+                 static_cast<unsigned long>(in.record_owner), static_cast<unsigned long>(owner_flags), static_cast<long>(owner_layer), static_cast<unsigned long>(main_view_), own ? 1u : 0u,
                  static_cast<long>(std::int32_t(word(record, core::record_accumulator))), static_cast<long>(in.x), static_cast<long>(in.y),
                  static_cast<unsigned long>(word(record, core::record_visible)), static_cast<long>(std::int32_t(word(record, core::record_size))),
                  static_cast<unsigned long>(word(record, core::record_group)), static_cast<unsigned long>(in.view_flags), static_cast<long>(std::int32_t(word(view, 0x29c))),

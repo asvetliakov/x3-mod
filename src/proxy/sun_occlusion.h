@@ -10,7 +10,10 @@
 //   0x00471630  call 0x00488720   the flare probe, __cdecl (record, view), caller cleans 8, EAX = 1
 //                                 "hide". x3m_sun_probe_thunk asks x3m_sun_probe_decide: 0 / 1 are
 //                                 returned as the probe's answer without running it, 2 jumps to the
-//                                 original with the caller's frame untouched.
+//                                 original with the caller's frame untouched. Eligible (core::eligible,
+//                                 run223): the main view's re-probe of a record owned by a background-regime
+//                                 view (owner+0x270 & 0x400000), one validated engine_memory read of the
+//                                 owner's flags; every other probe is the original's and is not counted.
 //   0x00472491  call 0x0047e6e0   the lens-scene traversal, __cdecl (view), caller cleans 4, EAX dead.
 //                                 x3m_sun_lens_thunk calls begin, the original with a copy of the
 //                                 argument, then end; the caller's argument stays where it is.

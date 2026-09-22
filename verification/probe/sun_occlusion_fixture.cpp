@@ -3,13 +3,15 @@
 // scenes (open, covered, half-plane edges, off-screen, no valid tap, first-frame radius), the
 // temporal step response and the dead band, the three depth formats, a failed draw with recovery,
 // the wrapped lens draw under every admitted blend law for ps_2_0 and ps_3_0 originals, every
-// refusal, exact state restoration around each transaction under hostile state, native Reset and
-// teardown. Validation-only readback lives here, never in production (the pass's own readback()
+// refusal, the step-2 clip pair (a core body over a depth edge: the covered half at the background,
+// the open half at f, a soft edge of fifths; a ghost at f; another record's body untouched), exact
+// state restoration around each transaction under hostile state, native Reset and teardown. Validation-only readback lives here, never in production (the pass's own readback()
 // is its diagnostic one). Built by build_sun_occlusion.py; run by run_sun_occlusion.py.
 #include <windows.h>
 #include <d3d9.h>
 #include "../../src/renderer/sun_occlusion_pass.h"
 #include "../../src/renderer/quad_vertex_program.h"
+#include <array>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -37,10 +39,12 @@ const float taps[32][2] = {
 };
 // ---- fault injection through the table the pass is given ----
 void* original[119]; void* hooked[119];
-struct Faults { unsigned draw_fail_at = 0, draw_calls = 0, set_ps_fail_at = 0, set_ps_calls = 0, create_ps_calls = 0; } faults;
+struct Faults { unsigned draw_fail_at = 0, draw_calls = 0, set_ps_fail_at = 0, set_ps_calls = 0, create_ps_calls = 0, create_vs_calls = 0; } faults;
 using DrawUpFn = HRESULT(WINAPI*)(IDirect3DDevice9*, D3DPRIMITIVETYPE, UINT, const void*, UINT);
 using CreatePsFn = HRESULT(WINAPI*)(IDirect3DDevice9*, const DWORD*, IDirect3DPixelShader9**);
 using SetPsFn = HRESULT(WINAPI*)(IDirect3DDevice9*, IDirect3DPixelShader9*);
+using CreateVsFn = HRESULT(WINAPI*)(IDirect3DDevice9*, const DWORD*, IDirect3DVertexShader9**);
+HRESULT WINAPI hook_create_vs(IDirect3DDevice9* d, const DWORD* w, IDirect3DVertexShader9** out) { ++faults.create_vs_calls; return reinterpret_cast<CreateVsFn>(original[91])(d, w, out); }
 HRESULT WINAPI hook_draw(IDirect3DDevice9* d, D3DPRIMITIVETYPE t, UINT c, const void* v, UINT s) {
     if (++faults.draw_calls == faults.draw_fail_at) return E_FAIL;
     return reinterpret_cast<DrawUpFn>(original[83])(d, t, c, v, s);
@@ -106,7 +110,7 @@ struct Bindings {
             check("hostile rs", d->SetRenderState(s, v));
         RECT sc{3, 3, 5, 5}; check("hostile scissor", d->SetScissorRect(&sc));
         D3DVIEWPORT9 vp{2, 2, 7, 7, .2f, .7f}; check("hostile viewport", d->SetViewport(&vp));
-        for (UINT i : {0u, 1u, 15u}) {
+        for (UINT i : {0u, 1u, 14u, 15u}) {
             check("hostile texture", d->SetTexture(i, junk.p));
             check("hostile sampler", d->SetSamplerState(i, D3DSAMP_MINFILTER, D3DTEXF_LINEAR)); check("hostile sampler", d->SetSamplerState(i, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR));
             check("hostile sampler", d->SetSamplerState(i, D3DSAMP_MIPFILTER, D3DTEXF_LINEAR));
@@ -173,6 +177,31 @@ const DWORD ps20_words[] = {0xffff0200, 0x05000051, 0xa00f0000, 0x3f4ccccd, 0x3f
 const DWORD ps30_words[] = {0xffff0300, 0x05000051, 0xa00f0000, 0x3f4ccccd, 0x3f19999a, 0x3ecccccd, 0x3f000000, 0x02000001, 0x800f0800, 0xa0e40000, 0x0000ffff};
 const DWORD ps11_words[] = {0xffff0101, 0x00000051, 0xa00f0000, 0x3f4ccccd, 0x3f19999a, 0x3ecccccd, 0x3f000000, 0x00000001, 0x800f0000, 0xa0e40000, 0x0000ffff};
 const double source[4] = {.8, .6, .4, .5}, background[4] = {.2, .4, .6, 1.};
+// vs_2_0 with the lens scene's shape (run223 fingerprint d5e1c753...): dcl_position v0 / mov r0, v0 / dp4 oPos.{w,x,y,z}, r0, c{3,0,1,2}.
+const DWORD vs20_words[] = {0xfffe0200, 0x0200001f, 0x80000000, 0x900f0000, 0x02000001, 0x800f0000, 0x90e40000,
+                            0x03000009, 0xc0080000, 0x80e40000, 0xa0e40003, 0x03000009, 0xc0010000, 0x80e40000, 0xa0e40000,
+                            0x03000009, 0xc0020000, 0x80e40000, 0xa0e40001, 0x03000009, 0xc0040000, 0x80e40000, 0xa0e40002, 0x0000ffff};
+// The same with `mul r0, r0, c4` after the mov: the origin is no longer (v.xyz, 1) (c4 is left at the device default 0, the draw is never issued).
+const DWORD vs20_scaled_words[] = {0xfffe0200, 0x0200001f, 0x80000000, 0x900f0000, 0x02000001, 0x800f0000, 0x90e40000, 0x03000005, 0x800f0000, 0x80e40000, 0xa0e40004,
+                                   0x03000009, 0xc0080000, 0x80e40000, 0xa0e40003, 0x03000009, 0xc0010000, 0x80e40000, 0xa0e40000,
+                                   0x03000009, 0xc0020000, 0x80e40000, 0xa0e40001, 0x03000009, 0xc0040000, 0x80e40000, 0xa0e40002, 0x0000ffff};
+const D3DVERTEXELEMENT9 clip_declaration[] = {{0, 0, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0}, D3DDECL_END()};
+// A render target of any size with a row reader (the clip test runs at RT2's size so the soft edge is in pixels).
+struct Sheet {
+    unsigned w, h; Com<IDirect3DTexture9> texture; Com<IDirect3DSurface9> surface, sink;
+    Sheet(IDirect3DDevice9* d, unsigned width, unsigned height) : w(width), h(height) {
+        check("sheet", d->CreateTexture(w, h, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &texture.p, nullptr)); check("sheet surface", texture->GetSurfaceLevel(0, &surface.p));
+        check("sheet sink", d->CreateOffscreenPlainSurface(w, h, D3DFMT_A8R8G8B8, D3DPOOL_SYSTEMMEM, &sink.p, nullptr));
+    }
+    std::vector<std::array<double, 3>> row(IDirect3DDevice9* d, unsigned y) {
+        check("sheet read", d->GetRenderTargetData(surface.p, sink.p));
+        D3DLOCKED_RECT lr{}; check("sheet lock", sink->LockRect(&lr, nullptr, D3DLOCK_READONLY));
+        std::vector<std::array<double, 3>> out(w);
+        for (unsigned x = 0; x < w; ++x) { const DWORD c = static_cast<const DWORD*>(lr.pBits)[x + y * (lr.Pitch / 4)]; out[x] = {((c >> 16) & 255) / 255., ((c >> 8) & 255) / 255., (c & 255) / 255.}; }
+        check("sheet unlock", sink->UnlockRect());
+        return out;
+    }
+};
 struct Canvas {
     Com<IDirect3DTexture9> texture; Com<IDirect3DSurface9> surface, sink;
     explicit Canvas(IDirect3DDevice9* d) {
@@ -201,7 +230,7 @@ void expected_pixel(const Law& law, double f, double out[3]) {
     for (unsigned i = 0; i < 3; ++i) { const double v = s[i] * factor(law.src, s, i) + background[i] * factor(law.dst, s, i); out[i] = v > 1 ? 1 : v; }
 }
 LensState lens_state(IDirect3DDevice9* d, std::uint64_t hash) {
-    LensState state; state.known = true; state.hash = hash;
+    LensState state; state.known = true; state.hash = hash; state.body = core::Body::Ghost; // a ghost: the step-1 wrap
     const std::pair<D3DRENDERSTATETYPE, std::uint32_t*> reads[] = {
         {D3DRS_ALPHABLENDENABLE, &state.blend.enable}, {D3DRS_SRCBLEND, &state.blend.src}, {D3DRS_DESTBLEND, &state.blend.dst}, {D3DRS_BLENDOP, &state.blend.op},
         {D3DRS_SRGBWRITEENABLE, &state.blend.srgb_write}, {D3DRS_ALPHATESTENABLE, &state.blend.alpha_test}, {D3DRS_ALPHAREF, &state.blend.alpha_ref},
@@ -210,6 +239,47 @@ LensState lens_state(IDirect3DDevice9* d, std::uint64_t hash) {
     check("lens shader", d->GetPixelShader(&state.shader)); if (state.shader) state.shader->Release(); // the binding keeps it alive
     return state;
 }
+// What a blended sprite draw sets itself.
+void sprite_states(IDirect3DDevice9* d, const Law& law) {
+    for (auto [s, v] : {std::pair{D3DRS_ALPHABLENDENABLE, DWORD(TRUE)}, std::pair{D3DRS_SRCBLEND, DWORD(law.src)}, std::pair{D3DRS_DESTBLEND, DWORD(law.dst)}, std::pair{D3DRS_BLENDOP, DWORD(D3DBLENDOP_ADD)},
+                        std::pair{D3DRS_SCISSORTESTENABLE, DWORD(FALSE)}, std::pair{D3DRS_ZENABLE, DWORD(FALSE)}, std::pair{D3DRS_COLORWRITEENABLE, DWORD(15)}, std::pair{D3DRS_CULLMODE, DWORD(D3DCULL_NONE)},
+                        std::pair{D3DRS_FILLMODE, DWORD(D3DFILL_SOLID)}, std::pair{D3DRS_SRGBWRITEENABLE, DWORD(FALSE)}, std::pair{D3DRS_FOGENABLE, DWORD(FALSE)}, std::pair{D3DRS_ALPHATESTENABLE, DWORD(FALSE)},
+                        std::pair{D3DRS_STENCILENABLE, DWORD(FALSE)}, std::pair{D3DRS_MULTISAMPLEMASK, DWORD(0xffffffff)}, std::pair{D3DRS_CLIPPING, DWORD(FALSE)}})
+        check("lens rs", d->SetRenderState(s, v));
+}
+// The step-2 clip pair over a depth edge: the vs_2_0 above with identity clip rows, a clip-space quad over a sheet of RT2's size.
+struct ClipRig {
+    IDirect3DDevice9* d; SunOcclusionPass& pass; Bindings& bindings; Sheet& sheet; Depth& depth;
+    IDirect3DVertexShader9* vs; IDirect3DVertexDeclaration9* declaration; IDirect3DPixelShader9* ps;
+    void prepare(const Law& law) {
+        bindings.hostile(d);
+        for (UINT i = 1; i < 4; ++i) check("clip rt off", d->SetRenderTarget(i, nullptr));
+        check("clip rt", d->SetRenderTarget(0, sheet.surface.p)); check("clip depth", d->SetDepthStencilSurface(nullptr));
+        check("clip clear", d->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_COLORVALUE(float(background[0]), float(background[1]), float(background[2]), float(background[3])), 1.f, 0));
+        sprite_states(d, law);
+        check("clip decl", d->SetVertexDeclaration(declaration)); check("clip vs", d->SetVertexShader(vs)); check("clip ps", d->SetPixelShader(ps));
+        const float rows[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+        check("clip rows", d->SetVertexShaderConstantF(0, rows, 4));
+    }
+    LensState state(core::Body body, bool with_depth = true) {
+        LensState s = lens_state(d, 20); s.vertex_shader = vs; s.vertex_hash = 200; s.body = body;
+        s.depth = with_depth ? depth.texture.p : nullptr; s.depth_width = depth.w; s.depth_height = depth.h;
+        return s;
+    }
+    void draw() {
+        check("clip begin scene", d->BeginScene());
+        const float v[4][4] = {{-1, -1, .5f, 1}, {1, -1, .5f, 1}, {-1, 1, .5f, 1}, {1, 1, .5f, 1}};
+        check("clip draw", d->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, v, 16));
+        check("clip end scene", d->EndScene());
+    }
+    // Nine taps at the fragment and +-1, +-2 px along x and y: the fraction of taps left of the covered column `edge`
+    // for pixel column x (the four y taps share the fragment's column).
+    static double open_fraction(int x, int edge) {
+        unsigned open = 0;
+        for (int t : {x, x + 1, x - 1, x + 2, x - 2, x, x, x, x}) open += t < edge;
+        return open / 9.;
+    }
+};
 struct LensRig {
     IDirect3DDevice9* d; SunOcclusionPass& pass; Bindings& bindings; Canvas& canvas;
     Com<IDirect3DPixelShader9> ps20, ps30, ps11; Com<IDirect3DVertexShader9> quad_vs; Com<IDirect3DVertexDeclaration9> quad_decl;
@@ -219,11 +289,7 @@ struct LensRig {
         for (UINT i = 1; i < 4; ++i) check("lens rt off", d->SetRenderTarget(i, nullptr));
         check("lens rt", d->SetRenderTarget(0, canvas.surface.p)); check("lens depth", d->SetDepthStencilSurface(nullptr));
         check("lens clear", d->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_COLORVALUE(float(background[0]), float(background[1]), float(background[2]), float(background[3])), 1.f, 0));
-        for (auto [s, v] : {std::pair{D3DRS_ALPHABLENDENABLE, DWORD(TRUE)}, std::pair{D3DRS_SRCBLEND, DWORD(law.src)}, std::pair{D3DRS_DESTBLEND, DWORD(law.dst)}, std::pair{D3DRS_BLENDOP, DWORD(D3DBLENDOP_ADD)},
-                            std::pair{D3DRS_SCISSORTESTENABLE, DWORD(FALSE)}, std::pair{D3DRS_ZENABLE, DWORD(FALSE)}, std::pair{D3DRS_COLORWRITEENABLE, DWORD(15)}, std::pair{D3DRS_CULLMODE, DWORD(D3DCULL_NONE)},
-                            std::pair{D3DRS_FILLMODE, DWORD(D3DFILL_SOLID)}, std::pair{D3DRS_SRGBWRITEENABLE, DWORD(FALSE)}, std::pair{D3DRS_FOGENABLE, DWORD(FALSE)}, std::pair{D3DRS_ALPHATESTENABLE, DWORD(FALSE)},
-                            std::pair{D3DRS_STENCILENABLE, DWORD(FALSE)}, std::pair{D3DRS_MULTISAMPLEMASK, DWORD(0xffffffff)}, std::pair{D3DRS_CLIPPING, DWORD(FALSE)}})
-            check("lens rs", d->SetRenderState(s, v));
+        sprite_states(d, law);
         if (sm3) { check("lens decl", d->SetVertexDeclaration(quad_decl.p)); check("lens vs", d->SetVertexShader(quad_vs.p)); check("lens ps", d->SetPixelShader(ps30.p)); }
         else { check("lens fvf", d->SetFVF(quad_fvf)); check("lens vs", d->SetVertexShader(nullptr)); check("lens ps", d->SetPixelShader(ps20.p)); }
     }
@@ -254,7 +320,9 @@ int main() {
         D3DCAPS9 caps{}; check("caps", d->GetDeviceCaps(&caps));
         D3DDISPLAYMODE mode{}; check("display mode", api->GetAdapterDisplayMode(0, &mode));
         std::memcpy(original, *reinterpret_cast<void***>(d), sizeof original); std::memcpy(hooked, original, sizeof hooked);
-        hooked[83] = reinterpret_cast<void*>(&hook_draw); hooked[106] = reinterpret_cast<void*>(&hook_create_ps); hooked[107] = reinterpret_cast<void*>(&hook_set_ps);
+        hooked[83] = reinterpret_cast<void*>(&hook_draw); hooked[106] = reinterpret_cast<void*>(&hook_create_ps); hooked[107] = reinterpret_cast<void*>(&hook_set_ps); hooked[91] = reinterpret_cast<void*>(&hook_create_vs);
+        Com<IDirect3DVertexShader9> vs20; Com<IDirect3DVertexDeclaration9> clip_decl;
+        check("vs20", d->CreateVertexShader(vs20_words, &vs20.p)); check("clip declaration", d->CreateVertexDeclaration(clip_declaration, &clip_decl.p));
         { SunOcclusionPass twin_pass; D3DCAPS9 c = caps; c.PixelShaderVersion = D3DPS_VERSION(2, 0);
           require("twin_ps_2_0_refused", FAILED(twin_pass.attach(d, hooked, c, mode.Format)) && std::string(twin_pass.caps().reason) == "shader_model" && twin_pass.references() == 0);
           c = caps; c.MaxPixelShader30InstructionSlots = 8;
@@ -395,10 +463,83 @@ int main() {
             { lens.prepare(false, laws[0]); faults.set_ps_calls = 0; faults.set_ps_fail_at = 1;
               const Snapshot before(d); LensDraw draw; const LensVerdict verdict = pass.lens_begin(lens_state(d, 20), draw); const Snapshot after(d); faults = {};
               require("lens_bind_fault_restored", verdict == LensVerdict::Device && !draw.applied && before == after); }
+            // ---- step 2: the clip pair over the depth edge at W / 2 (f is the mid fraction above) ----
+            Sheet sheet(d, W, H);
+            ClipRig clip{d, pass, bindings, sheet, depth, vs20.p, clip_decl.p, lens.ps20.p};
+            const int edge = int(W / 2);
+            unsigned clip_calls = 0;
+            { SunOcclusionPass::Prepared prepared; const unsigned ps_created = faults.create_ps_calls, vs_created = faults.create_vs_calls;
+              const LensVerdict scanned = pass.lens_prepare(clip.state(core::Body::Core), &prepared);
+              require("clip_prepare_scans_without_creating", scanned == LensVerdict::Applied && prepared.matrix_register == 0 && prepared.origin_known && prepared.first && pass.pairs() == 1 &&
+                                                            faults.create_ps_calls == ps_created && faults.create_vs_calls == vs_created);
+              require("clip_prepare_second_time_not_first", pass.lens_prepare(clip.state(core::Body::Core), &prepared) == LensVerdict::Applied && !prepared.first && prepared.origin_known);
+              LensState no_vs = clip.state(core::Body::Core); no_vs.vertex_shader = nullptr;
+              require("clip_prepare_needs_vertex_shader", pass.lens_prepare(no_vs, &prepared) == LensVerdict::NoShader && prepared.matrix_register == ~0u);
+              LensState no_vs_hash = clip.state(core::Body::Core); no_vs_hash.vertex_hash = 0;
+              require("clip_prepare_needs_vertex_hash", pass.lens_prepare(no_vs_hash, &prepared) == LensVerdict::Unhashed);
+              // A vertex program whose origin is not the rows' .w column: scanned (origin_known = 0), and a core draw through it is refused, nothing created.
+              Com<IDirect3DVertexShader9> scaled; check("scaled vs", d->CreateVertexShader(vs20_scaled_words, &scaled.p));
+              LensState other = clip.state(core::Body::Core); other.vertex_shader = scaled.p; other.vertex_hash = 201;
+              require("clip_prepare_origin_unknown", pass.lens_prepare(other, &prepared) == LensVerdict::Applied && prepared.first && !prepared.origin_known && prepared.matrix_register == 0 && pass.pairs() == 2);
+              clip.prepare(laws[2]); const Snapshot before(d); LensDraw draw; const LensVerdict verdict = pass.lens_begin(other, draw); const Snapshot after(d);
+              require("clip_core_origin_unknown_refused", verdict == LensVerdict::Variant && !draw.applied && before == after && faults.create_vs_calls == vs_created); }
+            // Default: a core body is clipped only (out *= open_px); with core_f it is clipped and scaled (out *= open_px * f).
+            for (unsigned pass_core_f = 0; pass_core_f < 2; ++pass_core_f) for (const Law* law : (pass_core_f ? std::vector<const Law*>{&laws[2]} : std::vector<const Law*>{&laws[2], &laws[0], &laws[4]})) { // rgb, alpha and both scales
+                pass.set_core_fraction(pass_core_f != 0); const double body_f = pass_core_f ? f : 1.;
+                clip.prepare(*law);
+                const Snapshot before(d);
+                LensDraw draw; const LensVerdict verdict = pass.lens_begin(clip.state(core::Body::Core), draw);
+                IDirect3DVertexShader9* bound_vs = nullptr; d->GetVertexShader(&bound_vs); const bool vs_substituted = bound_vs && bound_vs != vs20.p; if (bound_vs) bound_vs->Release();
+                IDirect3DPixelShader9* bound_ps = nullptr; d->GetPixelShader(&bound_ps); const bool ps_substituted = bound_ps && bound_ps != lens.ps20.p; if (bound_ps) bound_ps->Release();
+                IDirect3DBaseTexture9* on_depth = nullptr; d->GetTexture(draw.depth_sampler, &on_depth); const bool depth_bound = on_depth == depth.texture.p; if (on_depth) on_depth->Release();
+                const bool clipped = draw.clipped;
+                clip.draw();
+                const HRESULT ended = pass.lens_end(draw); clip_calls = pass.last_device_calls();
+                const Snapshot after(d);
+                const auto row = sheet.row(d, H / 2);
+                bool far_open = true, far_covered = true, soft = true; unsigned soft_count = 0;
+                auto matches = [&](int x, double open) { double want[3]; expected_pixel(*law, body_f * open, want); for (unsigned c = 0; c < 3; ++c) if (!close_to(row[x][c], want[c], 2.5 / 255)) return false; return true; };
+                for (int x = 0; x < edge - 2; ++x) far_open = matches(x, 1.) && far_open;
+                for (int x = edge + 2; x < int(W); ++x) far_covered = matches(x, 0.) && far_covered;
+                // The soft edge: every tap sits on a texel centre, so columns edge-2 .. edge+1 are exact ninths (8, 7, 2, 1).
+                for (int x = edge - 2; x <= edge + 1; ++x) { soft = matches(x, ClipRig::open_fraction(x, edge)) && soft; soft_count += !matches(x, 1.) && !matches(x, 0.); }
+                std::printf("CLIP %s%s f=%.4f verdict=%s clipped=%u samplers=%u/%u calls=%u open=%.4f,%.4f,%.4f edge=%.4f,%.4f,%.4f covered=%.4f,%.4f,%.4f model=%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", law->name, pass_core_f ? "_core_f" : "", f, lens_verdict_name(verdict), clipped ? 1u : 0u,
+                            unsigned(draw.sampler), unsigned(draw.depth_sampler), clip_calls, row[edge - 3][0], row[edge - 3][1], row[edge - 3][2], row[edge - 1][0], row[edge][0], row[edge + 1][0],
+                            row[edge + 3][0], row[edge + 3][1], row[edge + 3][2], ClipRig::open_fraction(edge - 3, edge), ClipRig::open_fraction(edge - 2, edge), ClipRig::open_fraction(edge - 1, edge),
+                            ClipRig::open_fraction(edge, edge), ClipRig::open_fraction(edge + 1, edge), ClipRig::open_fraction(edge + 2, edge));
+                const std::string name = std::string("clip_core_") + law->name + (pass_core_f ? "_core_f" : "");
+                require((name + "_applied").c_str(), verdict == LensVerdict::Applied && clipped && SUCCEEDED(ended) && vs_substituted && ps_substituted && depth_bound && draw.sampler != draw.depth_sampler);
+                require((name + (pass_core_f ? "_open_half_at_f" : "_open_half_unscaled")).c_str(), far_open);
+                require((name + "_covered_half_background").c_str(), far_covered);
+                require((name + "_soft_edge").c_str(), soft && soft_count == 4);
+                require((name + "_state_restored").c_str(), before == after);
+            }
+            pass.set_core_fraction(false);
+            require("clip_calls_seven", clip_calls == 7);
+            // A ghost: the step-1 wrap, uniform f over the whole row, five calls; RT2 untouched on its sampler.
+            { clip.prepare(laws[2]);
+              const Snapshot before(d); LensDraw draw; const LensVerdict verdict = pass.lens_begin(clip.state(core::Body::Ghost), draw); const bool clipped = draw.clipped;
+              clip.draw(); const HRESULT ended = pass.lens_end(draw); const unsigned calls = pass.last_device_calls(); const Snapshot after(d);
+              const auto row = sheet.row(d, H / 2); double want[3]; expected_pixel(laws[2], f, want); bool uniform = true;
+              for (unsigned x = 0; x < W; x += 7) for (unsigned c = 0; c < 3; ++c) uniform = uniform && close_to(row[x][c], want[c], 2.5 / 255);
+              require("clip_ghost_uniform_f", verdict == LensVerdict::Applied && !clipped && SUCCEEDED(ended) && uniform && calls == 5 && before == after); }
+            // Another record's body, an unclassified body: nothing touched; a core body without RT2: refused.
+            for (auto [body, label] : {std::pair{core::Body::Other, "clip_other_untouched"}, std::pair{core::Body::Unknown, "clip_unknown_refused"}}) {
+                clip.prepare(laws[2]); const Snapshot before(d); LensDraw draw; const LensVerdict verdict = pass.lens_begin(clip.state(body), draw); const Snapshot after(d);
+                require(label, verdict == LensVerdict::Body && !draw.applied && before == after);
+            }
+            { clip.prepare(laws[2]); const Snapshot before(d); LensDraw draw; const LensVerdict verdict = pass.lens_begin(clip.state(core::Body::Core, false), draw); const Snapshot after(d);
+              require("clip_core_without_depth_refused", verdict == LensVerdict::NoShader && !draw.applied && before == after); }
+            // Built once per pair: no program creation over repeated core draws.
+            { { clip.prepare(laws[2]); LensDraw draw; pass.lens_begin(clip.state(core::Body::Core), draw); clip.draw(); pass.lens_end(draw); } // the switch back from core_f rebuilt the pixel wrap once
+              const unsigned ps_created = faults.create_ps_calls, vs_created = faults.create_vs_calls;
+              for (unsigned i = 0; i < 3; ++i) { clip.prepare(laws[2]); LensDraw draw; pass.lens_begin(clip.state(core::Body::Core), draw); clip.draw(); pass.lens_end(draw); }
+              require("clip_no_per_draw_creation", faults.create_ps_calls == ps_created && faults.create_vs_calls == vs_created && pass.pairs() == 2);
+              std::printf("CLIP_PAIRS pairs=%u vertex_shaders_created=%u\n", pass.pairs(), faults.create_vs_calls); }
             // ---- Reset: the DEFAULT-pool targets go, programs and wraps stay ----
             const unsigned held = pass.references();
             pass.before_reset();
-            require("before_reset_releases_targets", pass.reset_pending() && pass.references() == held - 9 && !pass.valid()); // two textures, two surfaces, the quad's two blocks, sampler 15's two lens blocks, the diagnostic readback surface
+            require("before_reset_releases_targets", pass.reset_pending() && pass.references() == held - 11 && !pass.valid()); // two textures, two surfaces, the quad's two blocks, sampler 15's two lens blocks, the clip pair's two blocks, the diagnostic readback surface
             std::printf("RESET held_before=%u held_after=%u\n", held, pass.references());
             { SunVisibilityResult refused; require("reset_pending_refused", pass.execute(frame_of(depth, u, v, ru, rv, true), &refused) == S_FALSE && std::string(refused.skipped_reason) == "reset_pending"); }
             for (UINT i = 0; i < 16; ++i) d->SetTexture(i, nullptr);
@@ -415,6 +556,18 @@ int main() {
             SunVisibilityResult out; HRESULT hr = S_OK;
             const bool restored = rig.run(frame_of(depth, u, v, ru, rv, false, .25f), out, hr); const Read r = rig.read();
             require("after_reset_seeds_and_matches", hr == S_OK && out.ran && out.seeded && restored && close_to(r.f[2], twin(W, int(W / 2), u, v, ru, rv).raw(), 1. / 32 + 2e-3));
+            // The clip pair survives the Reset (programs kept, blocks re-recorded): a core draw clips again without creating a program.
+            { Com<IDirect3DPixelShader9> ps20; check("ps20 after reset", d->CreatePixelShader(ps20_words, &ps20.p));
+              Sheet sheet(d, W, H); ClipRig clip{d, pass, bindings, sheet, depth, vs20.p, clip_decl.p, ps20.p};
+              const unsigned ps_created = faults.create_ps_calls, vs_created = faults.create_vs_calls; const int edge = int(W / 2);
+              clip.prepare(laws[2]); const Snapshot before(d); LensDraw draw; const LensVerdict verdict = pass.lens_begin(clip.state(core::Body::Core), draw); const bool clipped = draw.clipped;
+              clip.draw(); const HRESULT ended = pass.lens_end(draw); const Snapshot after(d);
+              const auto row = sheet.row(d, H / 2); double open[3], covered[3]; expected_pixel(laws[2], 1., open); expected_pixel(laws[2], 0., covered); bool ok = true;
+              for (unsigned c = 0; c < 3; ++c) ok = ok && close_to(row[edge - 4][c], open[c], 2.5 / 255) && close_to(row[edge + 3][c], covered[c], 2.5 / 255);
+              std::printf("CLIP_RESET verdict=%s clipped=%u f=%.4f open=%.4f,%.4f,%.4f covered=%.4f,%.4f,%.4f ps_created=%u vs_created=%u pairs=%u\n", lens_verdict_name(verdict), clipped ? 1u : 0u, r.f[1],
+                          row[edge - 4][0], row[edge - 4][1], row[edge - 4][2], row[edge + 3][0], row[edge + 3][1], row[edge + 3][2], faults.create_ps_calls - ps_created, faults.create_vs_calls - vs_created, pass.pairs());
+              require("clip_after_reset", verdict == LensVerdict::Applied && clipped && SUCCEEDED(ended) && ok && before == after && faults.create_ps_calls == ps_created && faults.create_vs_calls == vs_created && pass.pairs() == 2);
+              d->SetVertexShader(nullptr); d->SetPixelShader(nullptr); d->SetVertexDeclaration(nullptr); }
             for (UINT i = 0; i < 16; ++i) d->SetTexture(i, nullptr);
             for (UINT i = 1; i < 4; ++i) d->SetRenderTarget(i, nullptr);
         }

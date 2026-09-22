@@ -412,6 +412,7 @@ void MotionOutput::release_resources() noexcept {
     if (depth_replay_) { taa_call([&] { depth_replay_->detach(); }); depth_replay_.reset(); }
     if (sun_apply_) { taa_call([&] { sun_apply_->detach(); }); sun_apply_.reset(); }
     if (sun_occlusion_pass_) { taa_call([&] { sun_occlusion_pass_->detach(); }); sun_occlusion_pass_.reset(); }
+    release_lens_depth();
     lens_frame_active_ = lens_suppress_ = false; lens_record_ = 0; sun_occlusion_attach_failed_ = false;
     release(sentinel_ps_);
     release(sentinel_mrt_ps_); release(sun_sentinel_ps_);
@@ -3023,6 +3024,7 @@ void MotionOutput::before_reset() noexcept {
     if (sun_apply_) taa_call([&] { sun_apply_->before_reset(); });
     // The two 1x1 DEFAULT-pool targets go; the override is vanilla until a pass has run again (sun_occlusion::device_reset).
     if (sun_occlusion_pass_) taa_call([&] { sun_occlusion_pass_->before_reset(); });
+    release_lens_depth();
     lens_frame_active_ = lens_suppress_ = false; lens_record_ = 0; lens_pass_qpc_ = 0; lens_hold_ = {}; sun_occlusion_attach_failed_ = false;
     if (fog_) taa_call([&] { fog_->before_reset(); });
     fog_sector_ = {}; fog_cards_ = {}; fog_card_ready_checked_ = fog_card_ready_ = false; fog_card_fault_reason_ = "none";
@@ -3754,6 +3756,7 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     packed_sample_.valid = false; packed_sample_.sampled = 0; // an unmatched pre never pairs with a later frame's post
     engine_memory::next_frame(); // the object observers' direct-read regions are re-validated once per frame
     counters_ = {}; sun_frame_={}; sun_stamps_=sun_stamp_refused_=sun_stamp_prims_=0; sun_coverage_current_=sun_composition_completed_=false;
+    lens_chain_drawn_ = false;
     sun_apply_applied_=sun_apply_attempted_=false; // fixture keys 70/71 describe this frame
     sun_original_refused_draws_=0;
     if (retention_) retention_frame_begin(); // retirements are consumed here too; sightings of a frame without a scene end leave
@@ -6529,6 +6532,7 @@ void MotionOutput::before_present() noexcept {
     } else t.skip = unsigned(TaaSkip::Disabled);
     witness_readback();
     if (capture_) readback();
+    sun_lens_present_readback(); // --sun-occlusion-log, capture frames: the back buffer with the lens chain (drawn after every other dump)
 }
 // Fade-region witness (X3M_FADE_WITNESS=k): on every k-th frame the M
 // coverage target (A16B16G16R16F, cleared once per frame by begin_frame and

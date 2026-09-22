@@ -132,7 +132,10 @@ _fx_lens_site:
 namespace {
 unsigned checks = 0, failures = 0;
 bool check(const char* label, bool ok) { ++checks; if (!ok) { ++failures; std::printf("FAIL %s\n", label); } return ok; }
-std::uint32_t view_block[0x308 / 4], other_view[0x308 / 4], record_block[0x70 / 4], second_record[0x70 / 4], foreign_record[0x70 / 4], config_block[0x100 / 4];
+// view_block: the main view (sector-camera marker). background_view: the layer-15 background-regime view (+0x270 & 0x400000)
+// that owns the sun's record (run223). other_view: a view with neither (a monitor). late_view: a later full-screen view.
+std::uint32_t view_block[0x308 / 4], background_view[0x308 / 4], other_view[0x308 / 4], late_view[0x308 / 4];
+std::uint32_t record_block[0x70 / 4], second_record[0x70 / 4], foreign_record[0x70 / 4], main_owned_record[0x70 / 4], config_block[0x100 / 4];
 std::uint32_t config_pointer; std::uintptr_t main_view_value;
 unsigned begins = 0, ends = 0, listener_df = 0; bool dirty_listener = false;
 unsigned direction_flag() { unsigned flags = 0; asm volatile("pushfl\n\tpopl %0" : "=r"(flags) :: "memory"); return flags & 0x400u; }
@@ -145,8 +148,8 @@ void set_record(std::uint32_t* r, const std::uint32_t* owner, std::int32_t x, st
     std::memset(r, 0, 0x70); r[core::record_view / 4] = std::uint32_t(reinterpret_cast<std::uintptr_t>(owner)); r[core::record_accumulator / 4] = 200;
     r[core::record_x / 4] = std::uint32_t(x); r[core::record_y / 4] = std::uint32_t(y); r[core::record_visible / 4] = 1; r[core::record_size / 4] = 655; r[core::record_group / 4] = 3;
 }
-void set_view(std::uint32_t* v, std::uint32_t flags) {
-    std::memset(v, 0, 0x308); v[core::view_flags / 4] = flags; v[core::view_rect_bottom / 4] = 0x10000; v[core::view_rect_right / 4] = 0x10000;
+void set_view(std::uint32_t* v, std::uint32_t flags, std::uint32_t layer = 16) {
+    std::memset(v, 0, 0x308); v[core::view_flags / 4] = flags; v[0x29c / 4] = layer; v[core::view_rect_bottom / 4] = 0x10000; v[core::view_rect_right / 4] = 0x10000;
     v[core::view_fov / 4] = 0x2aaa; v[core::view_scale_x / 4] = 0x10000; v[core::view_scale_y / 4] = 0x9000;
 }
 // One probe through the synthetic site under a hostile CPU state; true when everything the site relies on came back.
@@ -201,8 +204,9 @@ int main() {
     std::setvbuf(stdout, nullptr, _IONBF, 0);
     unsigned char probe_before[5], lens_before[5];
     std::memcpy(probe_before, fx_probe_site, 5); std::memcpy(lens_before, fx_lens_site, 5);
-    set_view(view_block, 0x10001); set_view(other_view, 1);
-    set_record(record_block, view_block, 0x2000, -0x1000); set_record(second_record, view_block, 0, 0); set_record(foreign_record, other_view, 0, 0);
+    set_view(view_block, 0x10001, 16); set_view(background_view, 0x400001, 15); set_view(other_view, 1, 20); set_view(late_view, 1, 100);
+    set_record(record_block, background_view, 0x2000, -0x1000); set_record(second_record, background_view, 0, 0); set_record(foreign_record, other_view, 0, 0);
+    set_record(main_owned_record, view_block, 0x1000, 0x1000);
     std::memset(config_block, 0, sizeof config_block); config_block[core::config_video_flags / 4] = core::video_flag_flares;
     config_pointer = std::uint32_t(reinterpret_cast<std::uintptr_t>(config_block)); main_view_value = reinterpret_cast<std::uintptr_t>(view_block);
     so::set_listener(&listener_begin, &listener_end);
@@ -235,11 +239,27 @@ int main() {
     view_block[core::view_flags / 4] |= core::view_flag_probe_hidden; frame(record_block, 1, 0, "gate3_hidden");
     record_block[core::record_x / 4] = 0x9000; frame(record_block, 0, 0, "gate2_before_gate3_outside_rect_visible");
     record_block[core::record_x / 4] = 0x2000; view_block[core::view_flags / 4] &= ~core::view_flag_probe_hidden;
-    // Other views and other views' records are the original's, and do not disturb readiness.
+    // The owner's own probe (layer 15), a later view's re-probe, a foreign record whose owner is not a background view and
+    // a record the main view owns itself are the original's, and do not disturb readiness or count as suns (run223: the
+    // main view's group-25 records must not turn the sun's frame into a dropped bracket).
     fx_probe_answer = 0;
-    so::present(); check("foreign_view", probe(record_block, other_view, 0, 1)); check("foreign_record", probe(foreign_record, view_block, 0, 1));
-    check("own_after_foreign", probe(record_block, view_block, 0, 0)); so::report_pass(true);
-    // A second sun in the main view: the second record is the original's, and so is everything in the next frame.
+    so::present();
+    check("owner_own_probe", probe(record_block, background_view, 0, 1));
+    check("main_owned_record_before", probe(main_owned_record, view_block, 0, 1));
+    check("eligible_after_main_owned", probe(record_block, view_block, 0, 0));
+    check("foreign_record", probe(foreign_record, view_block, 0, 1));
+    check("main_owned_record_after", probe(main_owned_record, view_block, 0, 1));
+    check("late_view_reprobe", probe(record_block, late_view, 0, 1));
+    check("foreign_view_own_record", probe(foreign_record, other_view, 0, 1));
+    check("still_single", so::frame_inputs().single && so::frame_inputs().latch.record == reinterpret_cast<std::uintptr_t>(record_block) &&
+                          so::frame_inputs().latch.owner == reinterpret_cast<std::uintptr_t>(background_view) && so::frame_inputs().latch.owner_flags == 0x400001 &&
+                          so::frame_inputs().latch.fov == 0x2aaa);
+    so::report_pass(true);
+    frame(record_block, 0, 0, "eligible_next_frame"); fx_probe_answer = 1;
+    // The owner loses the background flag: the record is nobody's to answer; back with it.
+    background_view[core::view_flags / 4] = 1; frame(record_block, 1, 1, "owner_without_background_flag_original"); background_view[core::view_flags / 4] = 0x400001;
+    frame(record_block, 1, 1, "eligible_again_warm"); frame(record_block, 0, 0, "eligible_again");
+    // A second background-owned sun probed by the main view: the second record is the original's, and so is everything in the next frame.
     fx_probe_answer = 1;
     so::present(); check("multi_first", probe(record_block, view_block, 0, 0)); check("multi_second", probe(second_record, view_block, 1, 1));
     check("multi_not_single", !so::frame_inputs().single); so::report_pass(true);
@@ -287,7 +307,11 @@ int main() {
     check("install_log", so::install_at(addresses(), true, true) && so::logging());
     fx_probe_answer = 1; probe_lines = 0;
     frame(record_block, 1, 1, "log_frame1_original_once");
-    check("log_line_original", probe_lines == 1 && last_probe_line.find(" vanilla=1 answer=1") != std::string::npos && last_probe_line.find(" own=1 acc=200 x=8192 y=-4096 visible=1 size=655 group=3 ") != std::string::npos);
+    check("log_line_original", probe_lines == 1 && last_probe_line.find(" vanilla=1 answer=1") != std::string::npos && last_probe_line.find(" eligible=1 acc=200 x=8192 y=-4096 visible=1 size=655 group=3 ") != std::string::npos &&
+                               last_probe_line.find(" owner_flags270=00400001 owner_layer=15 ") != std::string::npos && last_probe_line.find(" layer=16 ") != std::string::npos);
+    probe(main_owned_record, view_block, 1, 1);
+    check("log_line_main_owned", probe_lines == 2 && last_probe_line.find(" eligible=0 ") != std::string::npos && last_probe_line.find(" owner_flags270=00000000 owner_layer=-1 ") != std::string::npos && last_probe_line.find(" records=1 ") != std::string::npos);
+    probe_lines = 1;
     frame(record_block, 0, 1, "log_frame2_override_and_original_once");
     check("log_line_override", probe_lines == 2 && last_probe_line.find(" ready=1 vanilla=1 answer=0") != std::string::npos);
     check("shutdown_log", so::shutdown());

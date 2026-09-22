@@ -141,7 +141,8 @@ float hull_emission_gain = 1.f;         // X3M_HULL_EMISSION_GAIN: the same gain
 float original_fill = 0.f;             // X3M_ORIGINAL_FILL: linear-light fill inside the original hull pixel programs, finite 0..0.5, 0 = off (requires X3M_HDR=1, excludes X3M_LINEAR_MATERIALS=1)
 bool lightmap_far_fade_requested = false; // X3M_LIGHT_MAP_FAR_FADE=P0,P1[,G]: the hull light-map gain fades to G (default 1) as the draw's footprint grows from P0 to P1 units/px; needs the gain
 float lightmap_far_fade[3] = {0.f, 0.f, 1.f};
-float sun_occlusion_radius = 1.f, sun_occlusion_curve = 1.f; // X3M_SUN_OCCLUSION_RADIUS (0.1..8, scale on the record-derived disc radius), X3M_SUN_OCCLUSION_CURVE (0.25..4, exponent on the used fraction)
+bool sun_occlusion_core_f = false; // X3M_SUN_OCCLUSION_CORE_F=1: the clipped core bodies are also scaled by f (flight comparison)
+float sun_occlusion_radius = sun_occlusion::core::radius_default_u, sun_occlusion_curve = 1.f; // X3M_SUN_OCCLUSION_RADIUS (0.005..0.25, the disc's half-width as a fraction of the back-buffer width), X3M_SUN_OCCLUSION_CURVE (0.25..4, exponent on the used fraction)
 float hull_lightmap_gain = 1.f;        // X3M_HULL_LIGHTMAP_GAIN: gain on the light-map (self-illumination) term inside the original hull pixel programs, finite 1..8, 1 = off (requires X3M_HDR=1, excludes X3M_LINEAR_MATERIALS=1; Ctrl+Shift+F4 switches it alone)
 bool screen_emission_additive_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE=G: in-place ADD/ONE/ONE bullets with a colour gain (screen-emission-region.md, "Additive option")
 float screen_emission_additive_gain = 1.f;       // G, finite 1..8; anything else refuses the option
@@ -2273,7 +2274,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_taa_k(taa_k_override);
     hooked.motion_output.configure_mip_bias(taa_mip_bias);
     hooked.motion_output.configure_taa_sharpen(taa_sharpen);
-    hooked.motion_output.configure_sun_occlusion({sun_occlusion::override_enabled(),sun_occlusion::logging(),sun_occlusion_radius,sun_occlusion_curve,.012f});
+    hooked.motion_output.configure_sun_occlusion({sun_occlusion::override_enabled(),sun_occlusion::logging(),sun_occlusion_radius,sun_occlusion_curve,sun_occlusion_core_f});
     hooked.motion_output.configure_taa_resolve(taa_current_filter,taa_history_weight);
     hooked.motion_output.configure_taa_line_filter(taa_line_filter,taa_line_width);
     hooked.motion_output.configure_taa_far(taa_far[0],taa_far[1],taa_far[2],taa_far[3],taa_far[4],taa_far[5]);
@@ -3202,10 +3203,11 @@ void initialize_log(HMODULE module) {
     // X3M_SUBMIT_PHASES' stamp at 0x00472490 (refused by name). The override needs the route's RT2 (X3M_MOTION_OUTPUT=1).
     {
         wchar_t value[32]{};
-        if(GetEnvironmentVariableW(L"X3M_SUN_OCCLUSION_RADIUS",value,32)>0){wchar_t* end=nullptr;const float v=wcstof(value,&end);if(end!=value&&*end==L'\0'&&v>=.1f&&v<=8.f)sun_occlusion_radius=v;}
+        if(GetEnvironmentVariableW(L"X3M_SUN_OCCLUSION_RADIUS",value,32)>0){wchar_t* end=nullptr;const float v=wcstof(value,&end);if(end!=value&&*end==L'\0'&&v>=sun_occlusion::core::radius_option_min_u&&v<=sun_occlusion::core::radius_option_max_u)sun_occlusion_radius=v;}
         if(GetEnvironmentVariableW(L"X3M_SUN_OCCLUSION_CURVE",value,32)>0){wchar_t* end=nullptr;const float v=wcstof(value,&end);if(end!=value&&*end==L'\0'&&v>=.25f&&v<=4.f)sun_occlusion_curve=v;}
+        sun_occlusion_core_f=GetEnvironmentVariableW(L"X3M_SUN_OCCLUSION_CORE_F",value,32)==1&&value[0]==L'1';
         sun_occlusion::set_listener(&sun_lens_begin,&sun_lens_end);
-        if(sun_occlusion::initialize())log("sun_occlusion_config override=%u log=%u route=%u radius_scale=%.3f curve=%.3f",sun_occlusion::override_enabled()?1u:0u,sun_occlusion::logging()?1u:0u,motion_output_requested?1u:0u,double(sun_occlusion_radius),double(sun_occlusion_curve));
+        if(sun_occlusion::initialize())log("sun_occlusion_config override=%u log=%u route=%u radius_u=%.4f curve=%.3f core_f=%u",sun_occlusion::override_enabled()?1u:0u,sun_occlusion::logging()?1u:0u,motion_output_requested?1u:0u,double(sun_occlusion_radius),double(sun_occlusion_curve),sun_occlusion_core_f?1u:0u);
     }
     cull_census::initialize(); // X3M_CULL_CENSUS=1 only; two read-only trampolines on the cull/LOD pass (0x0047d258, 0x0047d528), same window
     cull_small_parts::initialize(); // X3M_CULL_SMALL_PARTS_PX only; one trampoline on the cull/LOD pass (0x0047d2a2), same window, disjoint from the census claims

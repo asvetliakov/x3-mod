@@ -1,7 +1,8 @@
 # Sun and lens chain under partial occlusion
 
-2026-09-22. Ratified design; **step 1 is implemented behind `--sun-occlusion` (default off), not installed and not
-flown** (section "Step 1 as built", which also carries two corrections to the text below; ledger:
+2026-09-22. Ratified design; **steps 1 and 2 are implemented behind `--sun-occlusion` (default off)**; step 1 flew
+once (Run 223) without ever engaging for the sun, which the section "After Run 223" corrects; step 2 is not flown
+(sections "Step 1 as built" and "After Run 223" carry the corrections to the text below; ledger:
 [verification/sun-occlusion.md](../verification/sun-occlusion.md)). Owning RE note:
 [lens-flare-visibility.md](../reverse-engineering/lens-flare-visibility.md) (mechanism),
 [sun-material-identity.md](../reverse-engineering/sun-material-identity.md) (resources, late ordering).
@@ -220,20 +221,23 @@ Q2-Q6: RE note sections 11-16.
 
 **What differs from the text above, and why.**
 
-- *Main view only.* The override acts when `record+0x8 == view` and `view == *(cockpit+0x58)` of the
-  active cockpit with `+0x270 & 0x10000` (the registry walk of `sector_background.h`, resolved once per
-  frame through `engine_memory`). Every other probe, including the re-probe of the main view's record by
-  later views (RE note section 14), runs the original. **Consequence, open:** a later full-screen view whose
-  rect contains the sun can still clear `record+0x30` through the vanilla probe; the `sun_probe` lines show
-  whether that happens (`own=0`, `vanilla=1`).
+- *Eligible probe* (**superseded by "After Run 223"**, kept for the record: as first built, the override acted
+  when `record+0x8 == view` and `view == *(cockpit+0x58)` of the active cockpit with `+0x270 & 0x10000`, which
+  the sun's record never satisfies because the background view owns it). Now: the override acts on the **main
+  view's re-probe of a record owned by a background-regime view** (`view == main_view`, `record+0x8 != view`,
+  `owner+0x270 & 0x400000`; `core::eligible`). The main view is `*(cockpit+0x58)` of the active cockpit with
+  `+0x270 & 0x10000` (the registry walk of `sector_background.h`, resolved once per frame through
+  `engine_memory`); the owner's flags are one validated read per eligible-shaped probe. The owner's own probe
+  (layer 15), later views' re-probes and every record the main view owns itself run the original and are not
+  counted in `Ready::records`.
 - *Readiness* (`core::Ready`): exactly one record of the main view in this frame, the same one as in the
   previous frame, and the visibility pass ran for it in the previous frame; not blocked; not after a Reset.
   A second sun is detected at its own probe call, so the first record of that one frame was already
   answered; from the next frame both are vanilla.
 - *Open test:* RT2 `.r < -0.5` (the route's -1 sentinel; every RT2 format has `.r`), not `.b`.
-- *Radius:* derived from `record+0x34`, the accumulator, `view+0x298` and `view+0x300` (RE note section
-  11; `core::footprint`), scaled by `--sun-occlusion-radius` (default 1), floor 1.5 px, cap 0.25 u. With
-  accumulator 0 (a record's first frames) the last radius derived from the same record, else 0.012 u.
+- *Radius* (**superseded by "After Run 223"**): the sun's `record+0x34` saturates, so the radius is the
+  configured absolute `--sun-occlusion-radius` (default 0.04 u); the derived value (`core::footprint`, RE note
+  section 11) is logged where the size is not saturated.
 - *Smoothing:* `1 - exp(-dt / 80 ms)` from QPC between passes; a seed (no smoothing) on a new record,
   after Reset, after a failed or skipped pass and after a gap over 0.5 s. The 1x1 holds `.r` smoothed,
   `.g` used = `pow(saturate((r - 0.03) / 0.94), curve)`, `.b` raw, `.a` valid / 32; the wraps read `.g`.
@@ -287,3 +291,93 @@ all of them. Read first: `sun_occlusion ... patched=1 reason=ok`; with a clear s
 RT2 is written where the sun shows, see correction 2); `sun_lens_draw verdict=` all `applied` (else the
 refusal names what step 1 cannot wrap and the override is blocked); `radius_u` against the disc in the
 screenshot.
+
+## After Run 223 (2026-09-22): eligibility, radius, step 2
+
+Measured in the first flight (ledger, "Run 223 triage"): the sun's lens record is owned by the layer-15
+background-regime view (`+0x270 = 0x00400135`), the only probe that ever hid it was the main view's cross-view
+re-probe, `record+0x34` is saturated (`0xffff x acc / 200`) in every frame of both suns, and the main view's own
+records (ship flares, group 25) engaged the override and produced 24 dropped-bracket frames. Three corrections and
+step 2, all behind the same switch, fixture-verified, not flown:
+
+1. **Eligibility.** `core::eligible(record_owner, view, main_view, owner_flags)`: `view == main_view`,
+   `record_owner != view`, `owner+0x270 & 0x400000`. Only such probes register in `Ready` (one sun = one
+   background-owned record per frame; a second one is the multi-sun case). Main-view-owned records are the
+   original's and no longer count, which removes the dropped brackets. The owner's flags are read through
+   `engine_memory` (validated, cached per region and frame) only when the cheap pointer tests already hold. The
+   `sun_probe` line carries `owner_flags270`, `owner_layer` and `eligible=` (formerly `own=`).
+2. **Radius.** `core::footprint` reports `saturated` (`size >= 0xffff x acc / 200`) and derives nothing then. The
+   pass always samples the configured absolute radius `X3M_SUN_OCCLUSION_RADIUS` (half-width as a fraction of the
+   back-buffer width, the record's half-NDC unit; 0.005..0.25, default **0.04 = 51 px at 1280**), floor 1.5 px;
+   `sun_visibility` logs `radius_u`, `radius_px`, `radius_derived_u` (0 when saturated or unknown) and
+   `saturated=`. **Calibration** from the next flight's clear-sky burst: open `lens_<device>_<frame>.bgra8`
+   (the Present-time back-buffer readback, below), measure the glow disc's half-width in pixels around
+   (`u x width`, `v x height`) of the `sun_visibility` line and set `--sun-occlusion-radius` to that over the
+   width; `f_raw` must read 1.0 in the clear burst and fall only once the station edge enters that disc.
+3. **Log.** `sun_visibility` also carries the owner (`owner`, `owner_layer`, `owner_flags270`) and the sun
+   lane's direction (the frame's validated `LightDir_Dir0`) projected with the scene camera as `lane_u` /
+   `lane_v` beside the record's `u` / `v` (`lane=0` when no latch or camera, or the sun is behind the camera):
+   the two must agree to a few pixels, which checks the record -> uv mapping against an independent source.
+
+**Step 2 as built (per-pixel clip of the core bodies).** Fingerprint from Run 223: every lens draw of the sun is
+`vs d5e1c75351ed3f04 / ps 8360f422de08b5bd`, vs_2_0 / ps_2_0, ONE/ONE additive, z off. Inside the bracket each
+draw is classified on the CPU and wrapped accordingly:
+
+- *Classification* (`core::classify_body`). The pair's vertex wrap identifies the clip rows `c[K..K+3]` (the
+  program's four `dp4 oPos.{x,y,z,w}, r, c[K+lane]`; K = 0 for the fingerprinted program). The body's local
+  origin lands at clip `(cK.w, cK+1.w, cK+2.w, cK+3.w)`, read from the route's clip-row shadow of that window
+  (the same shadow the TAA jitter uses; `rows_known` required), and compared with the sun's uv: within
+  `body_tolerance_u` = 0.005 (6.4 px at 1280) -> **Core** (position factor 1: glow, rays, streaks, cards);
+  collinear with the sun and the screen centre within the same distance -> **Ghost**; anything else ->
+  **Other** (another record's body: untouched, so the sun's `f` no longer scales ship flares). Assumption bound
+  to the fingerprint: the program's position source is the homogeneous local position `(v0, 1)`, so the origin
+  transform is the rows' `.w` column (true for `d5e1c753...`: `mad r0, v0.xyzx, c14.xxxy, c14.yyyx`). The
+  classification is done on the CPU rather than in the pixel shader (the design's earlier sketch) because it needs
+  no per-frame pixel constant and makes the class and the centre visible per draw in `sun_lens_draw`
+  (`body=`, `centre_u/v`, `centre_dist_u`, `matrix_register`, `rows_known`).
+- *Ghost*: the step-1 pixel wrap (`x f`), five device calls, as before.
+- *Core*: the clip pair (`lens_visibility_variant.h`, part 2): the vertex program with every `oPos` write
+  redirected to a free temporary and `oPos` / a free `oTn` written from it (n free in both programs, 7 for the
+  fingerprinted pair), and the pixel program with the step-1 wrap plus `dcl tn`, uv = `(tn.xy / tn.w) x (0.5,
+  -0.5) + (0.5 + dx/2, 0.5 + dy/2)` (under D3D9's pixel-centre rule a fragment's clip-derived uv is a texel
+  edge; the half texel puts the taps on texel centres on any implementation), nine point taps of RT2 (the
+  fragment and one and two whole pixels along +-x / +-y) and `open_px` = the ninths whose `.r < 0` (the route's
+  sentinel: no routed surface in front of the far plane), then **`rO *= open_px`**: a core body is clipped, not
+  scaled. Rationale: `f` is the disc's open fraction, which the per-pixel clip already realises exactly for the
+  core (the glow's pixels behind geometry are removed, the open ones are what the eye sees at full strength);
+  multiplying by `f` as well would dim the visible half of a half-covered sun to half its strength, a double
+  attenuation the physical picture does not have. The ghosts and streaks, which have no geometry of their own to
+  clip against, carry `f` (their brightness follows the amount of unoccluded disc). `X3M_SUN_OCCLUSION_CORE_F=1`
+  (`--sun-occlusion-core-f`) restores the product for the flight comparison. The soft edge is four pixels wide
+  (8/9, 7/9, 2/9, 1/9 across a vertical edge, fixture-measured). The wrapped program stays **ps_2_0**: 40 arithmetic and 11 texture
+  instructions, 9 temporaries, dependent-read depth 1 (limits 64 / 32 / 12 / 4), so no promotion; a vs_3_0 /
+  ps_3_0 pair is refused for the clip (`unsupported_version`), as is a vertex program whose `oPos` is not the
+  four-dp4 shape (the refusal blocks the override for the process, like every program-bound refusal). Seven
+  device calls per core draw: capture of a recorded block (both shaders, both samplers' textures and six states
+  each), apply of ours, `SetTexture` x 2 (the 1x1 fraction and RT2), `SetPixelShader`, `SetVertexShader`,
+  and one apply of the capture after the draw. RT2 is referenced for the bracket (begin .. end, also in a held
+  frame, whose RT2 is complete) and released at the bracket's end, before a Reset and at teardown. The pixel
+  wraps bake one pixel of RT2 in uv and are rebuilt once when RT2's size changes; programs survive Reset,
+  the blocks are re-recorded.
+- *Classification before any build, fail closed towards "not ours".* `lens_prepare` only scans the vertex program
+  (once per pair, no device object): a vertex program that is not the four-dp4 shape, whose position source is not
+  `(position.xyz, 1)` (`origin_known`: `mov rS, vP` of the `dcl_position0` input, or the fingerprinted
+  `mad rS, vP.xyzx, cA.xxxy, cA.yyyx` with `cA` a `def` evaluating to mul (1,1,1,0) / add (0,0,0,1); any other last
+  write, or a write between the dp4s, fails it), or whose clip rows are in no shadowed window cannot be the
+  fingerprinted sun program: its body is **Other** (untouched, no wrap built, never blocking), logged once per pair
+  (`sun_lens_body_unclassifiable`). Other records' bodies and the log-only mode therefore never create a shader.
+  A core body's vertex wrap is created on its first core draw. Only a transient state is a refusal, and a
+  transient one: the rows not yet set in this device generation (`rows_unknown`), a centre behind the camera
+  (`body_unknown`), a missing RT2. `block()` is reached only through a Core / Ghost body of the eligible record
+  (its blend law, fog, a refused wrap).
+
+**Diagnostic added for the next flight.** With `--sun-occlusion-log`, on F8 capture frames whose lens bracket
+drew, `MotionOutput::before_present` reads the presented back buffer back as `lens_<device>_<frame>.bgra8`
+(`sun_lens_readback` line; 32-bit non-multisampled back buffers only). Every other dump of the frame precedes the
+lens block, so this is the only file that contains the chain. Read first in the next flight: `sun_probe ...
+eligible=1 ready=1 answer=0` for the sun's record at `layer=16`; `sun_visibility ... lane=1` with `lane_u/v`
+within a few pixels of `u/v` and `f_raw` = 1 under clear sky; `sun_lens_draw body=core clipped=1` for the glow
+and `body=other` for ship flares; the `lens_*.bgra8` picture against `radius_px`. **Eligibility risk:** a second
+view with `+0x270 & 0x400000` owning a lens record (a second sun's background view, or a nebula regime that keeps
+its own record) makes two eligible records per frame and step 1 stays vanilla for that sector: watch
+`multi_record_frames` (the `sun_occlusion` counters) and `sun_visibility single=0`.

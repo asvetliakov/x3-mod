@@ -1,10 +1,11 @@
 """Host checks of the partial-sun-occlusion pure parts (docs/architecture/sun-partial-occlusion.md).
 
 The probe override's decision table against a Python restatement of the vanilla prologue of
-0x00488720 (three tests, in order, RE note section 16), the main-view guard and the readiness
-fallback; the readiness state machine; record -> footprint; the blend classification; the
-main-view registry walk over a fake image; the structural pixel wrap over hand-assembled
-ps_2_0 / ps_3_0 programs. The C++ driver (verification/probe/sun_occlusion_host.cpp) uses the
+0x00488720 (three tests, in order, RE note section 16), the eligibility guard (the main view's
+re-probe of a background-view-owned record, run223) and the readiness fallback; the readiness state
+machine; record -> footprint with the sun's saturated size; the body classification from the clip
+rows; the blend classification; the main-view registry walk over a fake image; the structural
+pixel wrap over hand-assembled ps_2_0 / ps_3_0 programs and the step-2 vertex / clip wraps. The C++ driver (verification/probe/sun_occlusion_host.cpp) uses the
 production headers. No device, no Wine.
 """
 import contextlib
@@ -17,6 +18,7 @@ import math
 from pathlib import Path
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
@@ -67,18 +69,25 @@ class SunOcclusionHost(unittest.TestCase):
     def run_driver(self, *args):
         return fields(subprocess.check_output([str(self.driver)] + [str(a) for a in args], text=True).strip())
 
-    def decide(self, ready=1, owner=0x100, view=0x100, main=0x100, video=0x8000, view_flags=0, x=0, y=0, rect=FULL):
-        return int(self.run_driver('decide', ready, owner, view, main, video, view_flags, x, y, *rect)['decision'])
+    # Defaults: the main view (0x100) re-probes a record owned by the background view (0x200, +0x270 & 0x400000).
+    def decide(self, ready=1, owner=0x200, view=0x100, main=0x100, owner_flags=0x400135, video=0x8000, view_flags=0, x=0, y=0, rect=FULL):
+        return int(self.run_driver('decide', ready, owner, view, main, owner_flags, video, view_flags, x, y, *rect)['decision'])
 
-    def test_guard_and_readiness_fall_back_to_the_original(self):
+    def test_eligibility_and_readiness_fall_back_to_the_original(self):
         self.assertEqual(self.decide(), VISIBLE)
         self.assertEqual(self.decide(ready=0), ORIGINAL)
-        self.assertEqual(self.decide(owner=0x200), ORIGINAL)          # a record of another view probed by the main view
-        self.assertEqual(self.decide(view=0x200, owner=0x200), ORIGINAL)  # a monitor's own record
-        self.assertEqual(self.decide(view=0x200), ORIGINAL)           # the main view's record re-probed by a later view
-        self.assertEqual(self.decide(main=0), ORIGINAL)               # main view unknown
+        self.assertEqual(self.decide(owner=0x100), ORIGINAL)            # a record the main view owns (ship flares, group 25): run223
+        self.assertEqual(self.decide(view=0x200), ORIGINAL)             # the owner's own probe (layer 15)
+        self.assertEqual(self.decide(view=0x300), ORIGINAL)             # a later view's re-probe
+        self.assertEqual(self.decide(owner_flags=0x135), ORIGINAL)      # a foreign record whose owner is not a background-regime view (a monitor)
+        self.assertEqual(self.decide(owner_flags=0), ORIGINAL)          # owner flags unreadable
+        self.assertEqual(self.decide(owner=0), ORIGINAL)
+        self.assertEqual(self.decide(main=0), ORIGINAL)                 # main view unknown
         # The guard precedes the gates: a foreign view is the original's even with the flare option off.
-        self.assertEqual(self.decide(view=0x200, video=0), ORIGINAL)
+        self.assertEqual(self.decide(view=0x300, video=0), ORIGINAL)
+        self.assertEqual(self.decide(owner=0x100, video=0), ORIGINAL)
+        # run223's measured case: owner 334fe888 layer 15 flags 0x00400135, main 334fe0f0 flags 0x0085492d.
+        self.assertEqual(self.decide(owner=0x334fe888, view=0x334fe0f0, main=0x334fe0f0, owner_flags=0x00400135, view_flags=0x0085492d, x=-2802, y=9663), VISIBLE)
 
     def test_gate_order_matches_the_vanilla_prologue(self):
         cases = itertools.product((0, 0x8000, 0xffff7fff), (0, 0x8000000, 0x8000001), (-0x9000, -0x8000, 0, 0x8000, 0x8001, 0x7fffffff),
@@ -119,7 +128,7 @@ class SunOcclusionHost(unittest.TestCase):
 
     def test_footprint(self):
         f = self.run_driver('footprint', 16384, -8192, 655, 200, 0x2aaa, 0x10000, 1920, 1080, 1)
-        self.assertEqual((f['valid'], f['known']), ('1', '1'))
+        self.assertEqual((f['valid'], f['known'], f['saturated']), ('1', '1', '0'))
         self.assertAlmostEqual(float(f['u']), .75, places=6)
         self.assertAlmostEqual(float(f['v']), .625, places=6)       # y up in the record, v down on screen
         expected = 655 / 65536 / math.tan(math.radians(30)) / 2
@@ -221,6 +230,179 @@ class SunOcclusionHost(unittest.TestCase):
         self.assertEqual(self.variant(2, inside)[0], 'unsupported_shader')
         self.assertEqual(self.variant(2, head + ['0000002b', '02000001', '800f0800', '90e40000', '0000ffff'])[0], 'invalid_input')  # endif without if
 
+    def body(self, rows, sun=(.4649, .3529), known=1, aspect=1280 / 768):
+        out = self.run_driver('body', known, sun[0], sun[1], aspect, *rows)
+        return int(out['body']), float(out['u']), float(out['v']), float(out['distance'])
+
+    @staticmethod
+    def rows_for(u, v, w=1.0):
+        # dp4 oPos.x = r . c0 ... with the origin (0, 0, 0, 1): clip = (c0.w, c1.w, c2.w, c3.w).
+        return [1, 0, 0, (u - .5) * 2 * w, 0, 1, 0, -(v - .5) * 2 * w, 0, 0, 1, .5 * w, 0, 0, 0, w]
+
+    def test_body_classification(self):
+        UNKNOWN, CORE, GHOST, OTHER = 0, 1, 2, 3
+        sun = (.4649, .3529)
+        self.assertEqual(self.body(self.rows_for(*sun))[0], CORE)
+        self.assertEqual(self.body(self.rows_for(*sun, w=7.5))[0], CORE)                       # any w: the centre is a ratio
+        body, u, v, d = self.body(self.rows_for(sun[0] + 3 / 1280, sun[1]))
+        self.assertEqual(body, CORE); self.assertAlmostEqual(u, sun[0] + 3 / 1280, places=5); self.assertAlmostEqual(d, 3 / 1280, places=5)
+        self.assertEqual(self.body(self.rows_for(sun[0] + 8 / 1280, sun[1]))[0], OTHER)        # past the tolerance (6.4 px), off the sun-centre line
+        # Ghosts lie on the line through the sun and the screen centre: factor 0.3, -0.25, 1.6.
+        for factor in (.3, -.25, 1.6):
+            g = (.5 + (sun[0] - .5) * factor, .5 + (sun[1] - .5) * factor)
+            self.assertEqual(self.body(self.rows_for(*g))[0], GHOST, factor)
+        # A ship flare 20 px off the line: another record.
+        self.assertEqual(self.body(self.rows_for(.5 + (sun[0] - .5) * .3 + 20 / 1280, .5 + (sun[1] - .5) * .3))[0], OTHER)
+        self.assertEqual(self.body(self.rows_for(.9, .8))[0], OTHER)
+        # Unknown: rows not known, the centre behind the camera, or not finite.
+        self.assertEqual(self.body(self.rows_for(*sun), known=0)[0], UNKNOWN)
+        self.assertEqual(self.body(self.rows_for(*sun, w=-1.0))[0], UNKNOWN)
+        self.assertEqual(self.body(self.rows_for(*sun, w=0.0))[0], UNKNOWN)
+        self.assertEqual(self.body(['nan'] + self.rows_for(*sun)[1:])[0], CORE)                # an unused element does not matter
+        self.assertEqual(self.body(self.rows_for(*sun)[:3] + ['nan'] + self.rows_for(*sun)[4:])[0], UNKNOWN)
+        # The sun on the screen centre: the core is classed by distance, nothing is a ghost.
+        self.assertEqual(self.body(self.rows_for(.5, .5), sun=(.5, .5))[0], CORE)
+        self.assertEqual(self.body(self.rows_for(.6, .6), sun=(.5, .5))[0], OTHER)
+
+    # The lens scene's vertex program shape (vs_2_0, run223 fingerprint d5e1c753...): the origin (v0, 1), four dp4 of
+    # r0 with c0..c3 in the order w, x, y, z, an oT0 and an oD0 output.
+    VS20 = ['fffe0200', '0200001f', '80000000', '900f0000', '0200001f', '80000005', '900f0001',
+            '02000001', '800f0000', '90e40000',                          # mov r0, v0
+            '03000009', 'c0080000', '80e40000', 'a0e40003',              # dp4 oPos.w, r0, c3
+            '03000009', 'c0010000', '80e40000', 'a0e40000',              # dp4 oPos.x, r0, c0
+            '03000009', 'c0020000', '80e40000', 'a0e40001',              # dp4 oPos.y, r0, c1
+            '03000009', 'c0040000', '80e40000', 'a0e40002',              # dp4 oPos.z, r0, c2
+            '02000001', 'e0030000', '90e40001',                          # mov oT0.xy, v1
+            '02000001', 'd00f0000', '90e40001',                          # mov oD0, v1
+            '0000ffff']
+
+    def test_free_texcoord_and_vertex_wrap(self):
+        self.assertEqual(self.run_driver('texcoord', *self.VS20, '--', *self.PS20)['texcoord'], '7')
+        ps_t7 = self.PS20[:7] + ['0200001f', '80000000', 'b00f0007'] + self.PS20[7:]                # the pixel side declares t7
+        self.assertEqual(self.run_driver('texcoord', *self.VS20, '--', *ps_t7)['texcoord'], '6')
+        vs_t7 = self.VS20[:-4] + ['02000001', 'e00f0007', '90e40001'] + self.VS20[-4:]              # the vertex side writes oT7
+        self.assertEqual(self.run_driver('texcoord', *vs_t7, '--', *self.PS20)['texcoord'], '6')
+        self.assertEqual(self.run_driver('texcoord', *(['fffe0300'] + self.VS20[1:]), '--', *self.PS20)['texcoord'], '8')  # vs_3_0: not this pair
+        out = self.run_driver('vsvariant', 7, *self.VS20)
+        words = out['words'].split(',')
+        self.assertEqual((out['result'], out['matrix'], out['origin']), ('applied', '0', '1'))
+        self.assertEqual(words[:10], self.VS20[:10])
+        self.assertEqual(words[10:26], ['03000009', '8008000b', '80e40000', 'a0e40003', '03000009', '8001000b', '80e40000', 'a0e40000',
+                                        '03000009', '8002000b', '80e40000', 'a0e40001', '03000009', '8004000b', '80e40000', 'a0e40002'])  # oPos -> r11
+        self.assertEqual(words[26:32], self.VS20[26:32])
+        self.assertEqual(words[-7:], ['02000001', 'c00f0000', '80e4000b', '02000001', 'e00f0007', '80e4000b', '0000ffff'])
+        shifted = list(self.VS20)
+        for i in (13, 17, 21, 25): shifted[i] = 'a0e4%04x' % (int(shifted[i][-4:], 16) + 24)      # c24..c27
+        self.assertEqual(self.run_driver('vsvariant', 7, *shifted)['matrix'], '24')
+
+    # The fingerprinted program's position source: def c14, 1, 0, 0, 0 / mad r0, v0.xyzx, c14.xxxy, c14.yyyx = (v0.xyz, 1).
+    VS20_MAD = ['fffe0200', '05000051', 'a00f000e', '3f800000', '00000000', '00000000', '00000000',
+                '0200001f', '80000000', '900f0000', '0200001f', '80000005', '900f0001',
+                '04000004', '800f0000', '90240000', 'a040000e', 'a015000e',
+                '03000009', 'c0080000', '80e40000', 'a0e40003', '03000009', 'c0010000', '80e40000', 'a0e40000',
+                '04000004', '80070001', '90c40001', 'a0d0000e', 'a0c5000e',                                 # mad r1.xyz (another temporary) between the dp4s
+                '03000009', 'c0020000', '80e40000', 'a0e40001', '03000009', 'c0040000', '80e40000', 'a0e40002',
+                '02000001', 'e0030000', '90e40001', '0000ffff']
+
+    def test_vertex_origin_validation(self):
+        origin = lambda words: (self.run_driver('vsvariant', 7, *words)['result'], self.run_driver('vsvariant', 7, *words)['origin'])
+        self.assertEqual(origin(self.VS20_MAD), ('applied', '1'))
+        self.assertEqual(origin(self.VS20), ('applied', '1'))                                             # mov r0, v0 (a position stream carries w = 1)
+        # The origin is not (v0.xyz, 1): the wrap still applies (the body is classified "other"), origin = 0.
+        c14 = list(self.VS20_MAD); c14[3] = '40000000'                                                    # c14.x = 2: mul = (2, 2, 2, 0)
+        self.assertEqual(origin(c14), ('applied', '0'))
+        swz = list(self.VS20_MAD); swz[15] = '90e40000'                                                   # mad r0, v0.xyzw, ...: the w lane is still 0 * v0.w + 1
+        self.assertEqual(origin(swz), ('applied', '1'))
+        swapped = list(self.VS20_MAD); swapped[15] = '90210000'                                           # v0.yxzx: x and y exchanged
+        self.assertEqual(origin(swapped), ('applied', '0'))
+        other_input = list(self.VS20); other_input[9] = '90e40001'                                        # mov r0, v1 (not the position)
+        self.assertEqual(origin(other_input), ('applied', '0'))
+        scaled = self.VS20[:10] + ['03000005', '800f0000', '80e40000', 'a0e40004'] + self.VS20[10:]        # mul r0, r0, c4 after the mov: the last write is not the shape
+        self.assertEqual(origin(scaled), ('applied', '0'))
+        between = self.VS20[:14] + ['02000001', '80010000', 'a0000004'] + self.VS20[14:]                  # r0.x rewritten between the dp4s
+        self.assertEqual(origin(between), ('applied', '0'))
+        after = self.VS20[:26] + ['02000001', '800f0000', 'a0e40004'] + self.VS20[26:]                    # r0 rewritten after the last dp4: fine
+        self.assertEqual(origin(after), ('applied', '1'))
+        partial = self.VS20[:7] + ['02000001', '80070000', '90e40000'] + self.VS20[10:]                   # mov r0.xyz, v0 (w unset)
+        self.assertEqual(origin(partial), ('applied', '0'))
+        no_dcl = self.VS20[:1] + self.VS20[4:]                                                            # no dcl_position: the input is unknown
+        self.assertEqual(origin(no_dcl), ('applied', '0'))
+
+    def test_vertex_wrap_refusals(self):
+        def refused(words, texcoord=7):
+            out = self.run_driver('vsvariant', texcoord, *words)
+            self.assertEqual(out['words'], 'deadbeef', out['result'])
+            return out['result']
+        self.assertEqual(refused(['fffe0300'] + self.VS20[1:]), 'unsupported_version')
+        self.assertEqual(refused(self.VS20[:10] + self.VS20[14:]), 'no_output')                                       # three lanes only
+        mixed = list(self.VS20); mixed[13] = 'a0e40004'                                                                # c3 -> c4: not K + lane
+        self.assertEqual(refused(mixed), 'unsupported_shader')
+        other = list(self.VS20); other[12] = '80e40001'                                                                # a different source temporary
+        self.assertEqual(refused(other), 'unsupported_shader')
+        mad = list(self.VS20); mad[10:14] = ['04000004', 'c0080000', '80e40000', 'a0e40003', 'a0e40004']              # oPos.w by mad
+        self.assertEqual(refused(mad), 'unsupported_shader')
+        inside = self.VS20[:10] + ['01000028', 'e0e40800'] + self.VS20[10:14] + ['0000002b'] + self.VS20[14:]          # if b0 around a dp4
+        self.assertEqual(refused(inside), 'unsupported_shader')
+        vs_t7 = self.VS20[:-4] + ['02000001', 'e00f0007', '90e40001'] + self.VS20[-4:]
+        self.assertEqual(refused(vs_t7), 'resource_limit')
+        self.assertEqual(refused(self.VS20, 8), 'invalid_input')
+        temporaries = sum((['02000001', '800f00%02x' % i, '90e40000'] for i in range(1, 12)), [])
+        self.assertEqual(refused(self.VS20[:10] + temporaries + self.VS20[10:]), 'resource_limit')
+
+    def test_clip_wrap_of_a_ps_2_0_program(self):
+        out = self.run_driver('clipvariant', 1, 7, 1.5 / 1280, 1.5 / 768, 0, *self.PS20)
+        words = out['words'].split(',')
+        self.assertEqual(out['result'], 'applied')
+        self.assertEqual((out['sampler'], out['depth_sampler'], out['constant'], out['output'], out['fetch']), ('15', '14', '31', '11', '10'))
+        self.assertEqual(words[:4], self.PS20[:4])
+        head = words[4:31]
+        self.assertEqual(head[:9], ['05000051', 'a00f001f', '3f000000', '3f000000', '00000000', '3f800000', '0200001f', '90000000', 'a00f080f'])
+        self.assertEqual(head[9:13], ['05000051', 'a00f001e', '3f000000', 'bf000000'])
+        self.assertEqual([struct.unpack('<f', bytes.fromhex(w))[0] for w in (head[13][6:8] + head[13][4:6] + head[13][2:4] + head[13][0:2], head[14][6:8] + head[14][4:6] + head[14][2:4] + head[14][0:2])],
+                         [struct.unpack('<f', struct.pack('<f', .5 + .75 / 1280))[0], struct.unpack('<f', struct.pack('<f', .5 + .75 / 768))[0]])  # + half a texel: taps on texel centres
+        self.assertEqual(head[15:17], ['05000051', 'a00f001d']); self.assertEqual(head[19:21], ['3de38e39', '00000000'])   # dx, dy, 1/9, 0
+        self.assertEqual(head[21:27], ['0200001f', '90000000', 'a00f080e', '0200001f', '80000000', 'b00f0007'])
+        body = self.PS20[4:-1]; body[-2] = '800f000b'
+        self.assertEqual(words[31:31 + len(body)], body)
+        tail = words[31 + len(body):]
+        self.assertEqual(tail[:7], ['02000001', '800f000a', 'a0e4001f', '03000042', '800f000a', '80e4000a', 'a0e4080f'])          # f
+        self.assertEqual(tail[7:19], ['02000006', '80080009', 'b0ff0007', '03000005', '800f0009', 'b0e40007', '80ff0009',
+                                      '04000004', '800f0009', '80e40009', 'a0a4001e', 'a0ae001e'])                                 # uv = t.xy / t.w * cC.xyzz + cC.zwzz
+        self.assertEqual(tail[19:28], ['03000042', '800f0007', '80e40009', 'a0e4080e', '04000058', '800f0008', '80000007', 'a0aa001f', 'a0aa001d'])  # centre tap
+        offsets = ['a0fc001d', 'a1fc001d', 'a0f7001d', 'a1f7001d']                                  # +x, -x, +y, -y in one-pixel steps
+        tap = lambda source: ['03000042', '800f0007', source, 'a0e4080e', '04000058', '800f0007', '80000007', 'a0aa001f', 'a0aa001d', '03000002', '800f0008', '80e40008', '80e40007']
+        for i, offset in enumerate(offsets):
+            step = tail[28 + i * 34:28 + (i + 1) * 34]
+            self.assertEqual(step, ['03000002', '800f0006', '80e40009', offset] + tap('80e40006') + ['03000002', '800f0006', '80e40006', offset] + tap('80e40006'), offset)
+        self.assertEqual(tail[28 + 136:], ['02000001', '8002000a', '80000008', '03000005', '8007000b', '80e4000b', '8055000a', '02000001', '800f0800', '80e4000b', '0000ffff'])  # rT.y = open_px
+        with_f = self.run_driver('clipvariant', 1, 7, 1.5 / 1280, 1.5 / 768, 1, *self.PS20)['words'].split(',')
+        self.assertEqual(with_f[-12:-8], ['03000005', '8002000a', '8055000a', '80000008'])                                          # core_f: rT.y = f * open_px
+        # ps_2_0 budget of the wrapped lens program: at most 64 arithmetic and 32 texture instructions, 12 temporaries.
+        arithmetic = sum(1 for w in words[4:] if w[:2] in ('02', '03', '04') and w[-2:] not in ('42', '51', '1f') and w != '0000ffff')
+        texture = sum(1 for w in words[4:] if w == '03000042')
+        self.assertLessEqual(arithmetic, 64); self.assertEqual(texture, 11)
+        self.assertEqual(self.run_driver('clipvariant', 2, 7, 1.5 / 1280, 1.5 / 768, 0, *self.PS20)['words'].split(',')[-7], '8008000b')
+        self.assertEqual(self.run_driver('clipvariant', 3, 7, 1.5 / 1280, 1.5 / 768, 0, *self.PS20)['words'].split(',')[-7], '800f000b')
+
+    def test_clip_wrap_refusals(self):
+        def refused(words, texcoord=7, dx=1.5 / 1280, dy=1.5 / 768, scale=1):
+            out = self.run_driver('clipvariant', scale, texcoord, dx, dy, 0, *words)
+            self.assertEqual(out['words'], 'deadbeef', out['result'])
+            return out['result']
+        ps30 = ['ffff0300', '0200001f', '80000005', '900f0000', '02000001', '800f0800', '90e40000', '0000ffff']
+        self.assertEqual(refused(ps30), 'unsupported_version')                                       # the clip pair is ps_2_x
+        self.assertEqual(refused(self.PS20, texcoord=8), 'resource_limit')
+        ps_t7 = self.PS20[:7] + ['0200001f', '80000000', 'b00f0007'] + self.PS20[7:]
+        self.assertEqual(refused(ps_t7), 'resource_limit')                                           # t7 is the program's
+        self.assertEqual(refused(self.PS20, dx=0), 'invalid_input')
+        self.assertEqual(refused(self.PS20, dy=.5), 'invalid_input')
+        samplers = sum((['0200001f', '90000000', 'a00f08%02x' % i] for i in range(1, 15)), [])
+        self.assertEqual(refused(self.PS20[:10] + samplers + self.PS20[10:]), 'resource_limit')     # one free sampler, two needed
+        temporaries = sum((['02000001', '800f00%02x' % i, '80e40000'] for i in range(1, 7)), [])
+        self.assertEqual(refused(self.PS20[:14] + temporaries + self.PS20[14:]), 'resource_limit')  # r0..r6 named: five free, six needed
+        self.assertEqual(self.run_driver('clipvariant', 1, 7, 1.5 / 1280, 1.5 / 768, 0, *(self.PS20[:14] + temporaries[:-3] + self.PS20[14:]))['result'], 'applied')  # r0..r5: exactly six
+        self.assertEqual(refused(['ffff0101', '0000ffff']), 'unsupported_version')
+
     def test_site_constants(self):
         sites = self.run_driver('sites')
         self.assertEqual((sites['probe_site'], sites['probe_target'], sites['lens_site'], sites['lens_target']), ('0x471630', '0x488720', '0x472491', '0x47e6e0'))
@@ -247,7 +429,7 @@ class SunOcclusionSites(unittest.TestCase):
 
 class SunOcclusionLaunchOption(unittest.TestCase):
     ROUTE = ('--ownership', '--object-trace', '--object-lifetime', '--motion-output', '--taa', '--hdr')
-    NAMES = ('X3M_SUN_OCCLUSION', 'X3M_SUN_OCCLUSION_LOG', 'X3M_SUN_OCCLUSION_RADIUS', 'X3M_SUN_OCCLUSION_CURVE')
+    NAMES = ('X3M_SUN_OCCLUSION', 'X3M_SUN_OCCLUSION_LOG', 'X3M_SUN_OCCLUSION_RADIUS', 'X3M_SUN_OCCLUSION_CURVE', 'X3M_SUN_OCCLUSION_CORE_F')
 
     def launch(self, directory, *args, inherited=None):
         module = load('sun_occlusion_manage', 'tools/manage.py')
@@ -279,19 +461,19 @@ class SunOcclusionLaunchOption(unittest.TestCase):
     def test_dry_run_carries_the_options(self):
         with tempfile.TemporaryDirectory() as directory:
             baseline = json.loads(self.launch(directory, *self.ROUTE)[1])
-            code, output, error = self.launch(directory, *self.ROUTE, '--sun-occlusion', '--sun-occlusion-log', '--sun-occlusion-radius', '1.5', '--sun-occlusion-curve', '2')
+            code, output, error = self.launch(directory, *self.ROUTE, '--sun-occlusion', '--sun-occlusion-log', '--sun-occlusion-radius', '0.05', '--sun-occlusion-curve', '2', '--sun-occlusion-core-f')
             self.assertEqual(code, 0, error)
             delivered = json.loads(output)
             self.assertEqual({k: v for k, v in delivered['env'].items() if k not in baseline['env']},
-                             {'X3M_SUN_OCCLUSION': '1', 'X3M_SUN_OCCLUSION_LOG': '1', 'X3M_SUN_OCCLUSION_RADIUS': '1.5000', 'X3M_SUN_OCCLUSION_CURVE': '2.0000'})
+                             {'X3M_SUN_OCCLUSION': '1', 'X3M_SUN_OCCLUSION_LOG': '1', 'X3M_SUN_OCCLUSION_RADIUS': '0.0500', 'X3M_SUN_OCCLUSION_CURVE': '2.0000', 'X3M_SUN_OCCLUSION_CORE_F': '1'})
             code, output, error = self.launch(directory, '--vanilla', '--sun-occlusion-log')   # observe-only needs no route
             self.assertEqual(code, 0, error)
             self.assertEqual({k for k in json.loads(output)['env'] if k in self.NAMES}, {'X3M_SUN_OCCLUSION_LOG'})
 
     def test_refusals(self):
         with tempfile.TemporaryDirectory() as directory:
-            for args, needle in ((('--sun-occlusion',), '--motion-output'), ((*self.ROUTE, '--sun-occlusion-radius', '2'), 'require --sun-occlusion'),
-                                 ((*self.ROUTE, '--sun-occlusion', '--sun-occlusion-radius', '9'), 'out of range'), ((*self.ROUTE, '--sun-occlusion', '--sun-occlusion-curve', '0.1'), 'out of range'),
+            for args, needle in ((('--sun-occlusion',), '--motion-output'), ((*self.ROUTE, '--sun-occlusion-radius', '0.02'), 'require --sun-occlusion'), ((*self.ROUTE, '--sun-occlusion-core-f'), 'require --sun-occlusion'),
+                                 ((*self.ROUTE, '--sun-occlusion', '--sun-occlusion-radius', '1.5'), 'out of range'), ((*self.ROUTE, '--sun-occlusion', '--sun-occlusion-radius', '0.001'), 'out of range'), ((*self.ROUTE, '--sun-occlusion', '--sun-occlusion-curve', '0.1'), 'out of range'),
                                  ((*self.ROUTE, '--telemetry', '--frame-phases', '--submit-phases', '--sun-occlusion'), '--submit-phases')):
                 code, _, error = self.launch(directory, *args)
                 self.assertNotEqual(code, 0, args)

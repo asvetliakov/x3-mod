@@ -62,6 +62,9 @@ bool depth_format(D3DFORMAT f) noexcept { return f == D3DFMT_R32F || f == D3DFMT
 // returns its one texel under every other state; FP16 filtering is not assumed.
 constexpr D3DSAMPLERSTATETYPE lens_states[6] = {D3DSAMP_ADDRESSU, D3DSAMP_ADDRESSV, D3DSAMP_MAGFILTER, D3DSAMP_MINFILTER, D3DSAMP_MIPFILTER, D3DSAMP_SRGBTEXTURE};
 constexpr DWORD lens_values[6] = {D3DTADDRESS_CLAMP, D3DTADDRESS_CLAMP, D3DTEXF_POINT, D3DTEXF_POINT, D3DTEXF_NONE, FALSE};
+// Step 2: the core clip's tap step in RT2 pixels (taps at one and two steps along +-x / +-y, every one on a
+// texel centre: a soft edge four pixels wide in ninths).
+constexpr float soft_edge_pixels = 1.f;
 template<class Resource> HRESULT same_device(IDirect3DDevice9* device, Resource* resource) noexcept {
     IDirect3DDevice9* owner = nullptr;
     HRESULT hr = resource->GetDevice(&owner);
@@ -75,7 +78,7 @@ const char* lens_verdict_name(LensVerdict v) noexcept {
     switch (v) {
     case LensVerdict::Applied: return "applied"; case LensVerdict::NotReady: return "not_ready"; case LensVerdict::NoShader: return "no_shader";
     case LensVerdict::Unhashed: return "unhashed"; case LensVerdict::Blend: return "blend"; case LensVerdict::Variant: return "variant";
-    case LensVerdict::CacheFull: return "cache_full"; case LensVerdict::Device: return "device";
+    case LensVerdict::CacheFull: return "cache_full"; case LensVerdict::Device: return "device"; case LensVerdict::Body: return "body";
     }
     return "invalid";
 }
@@ -132,13 +135,16 @@ unsigned SunOcclusionPass::references() const noexcept {
                           static_cast<const void*>(surfaces_[0]), static_cast<const void*>(surfaces_[1]), static_cast<const void*>(readback_)})
         n += p != nullptr;
     for (unsigned i = 0; i < variant_count_; ++i) for (auto* s : variant_[i].shader) n += s != nullptr;
+    for (unsigned i = 0; i < pair_count_; ++i) { n += pair_[i].vertex != nullptr; for (auto* s : pair_[i].pixel) n += s != nullptr; }
     for (unsigned i = 0; i < 16; ++i) n += (lens_saved_[i] != nullptr) + (lens_ours_[i] != nullptr);
+    for (const auto& b : clip_blocks_) n += (b.saved != nullptr) + (b.ours != nullptr);
     return n;
 }
 void SunOcclusionPass::before_reset() noexcept {
     drop(normal_); drop(saved_); drop(readback_); // every state block is a DEFAULT-pool citizen: gone before Reset
     for (auto& b : lens_saved_) drop(b);
     for (auto& b : lens_ours_) drop(b);
+    for (auto& b : clip_blocks_) { drop(b.saved); drop(b.ours); b = ClipBlocks{}; }
     for (auto& s : surfaces_) drop(s);
     for (auto& t : textures_) drop(t);
     valid_ = false; reset_pending_ = device_ != nullptr;
@@ -147,7 +153,8 @@ void SunOcclusionPass::after_reset(HRESULT result) noexcept { if (SUCCEEDED(resu
 void SunOcclusionPass::detach() noexcept {
     before_reset();
     for (unsigned i = 0; i < variant_count_; ++i) { for (auto*& s : variant_[i].shader) drop(s); variant_[i] = Variant{}; }
-    variant_count_ = 0; variant_refusal_ = "";
+    for (unsigned i = 0; i < pair_count_; ++i) { drop(pair_[i].vertex); for (auto*& s : pair_[i].pixel) drop(s); pair_[i] = Pair{}; }
+    variant_count_ = 0; pair_count_ = 0; variant_refusal_ = "";
     drop(program_); drop(quad_vs_); drop(quad_declaration_);
     device_ = nullptr; vtable_ = nullptr; render_targets_ = streams_ = 0; reset_pending_ = false; current_ = 0;
     caps_ = {};
@@ -173,7 +180,7 @@ HRESULT SunOcclusionPass::attach(IDirect3DDevice9* d, void* const* native, const
     if (FAILED(hr)) return refuse("format_query", hr);
     if (gate) { caps_.formats = D3DERR_NOTAVAILABLE; return refuse(gate, D3DERR_NOTAVAILABLE); }
     render_targets_ = caps.NumSimultaneousRTs ? caps.NumSimultaneousRTs : 1; streams_ = caps.MaxStreams;
-    try { words_.reserve(4096); wrapped_.reserve(4096 + 32); } catch (const std::bad_alloc&) { return refuse("memory", E_OUTOFMEMORY); }
+    try { words_.reserve(4096); wrapped_.reserve(4096 + 96); vertex_words_.reserve(4096); } catch (const std::bad_alloc&) { return refuse("memory", E_OUTOFMEMORY); }
     hr = call<CreateVsFn>(CreateVertexShader)(d, reinterpret_cast<const DWORD*>(quad_vertex_program()), &quad_vs_);
     if (SUCCEEDED(hr)) hr = call<CreateDeclarationFn>(CreateVertexDeclaration)(d, quad_declaration, &quad_declaration_);
     if (SUCCEEDED(hr)) hr = call<CreatePsFn>(CreatePixelShader)(d, visibility_words, &program_);
@@ -325,19 +332,76 @@ SunOcclusionPass::Variant* SunOcclusionPass::find(std::uint64_t hash) noexcept {
     fresh = Variant{}; fresh.hash = hash;
     return &fresh;
 }
+// A program's bytecode into `out` (one of vs / ps). False names the refusal.
+bool SunOcclusionPass::read_function(IDirect3DVertexShader9* vs, IDirect3DPixelShader9* ps, std::vector<std::uint32_t>& out) noexcept {
+    UINT bytes = 0;
+    const HRESULT size = vs ? vs->GetFunction(nullptr, &bytes) : ps->GetFunction(nullptr, &bytes);
+    if (FAILED(size) || bytes < 8 || (bytes & 3u) || bytes > (1u << 18)) { variant_refusal_ = "function_size"; return false; }
+    try { out.resize(bytes / 4); } catch (const std::bad_alloc&) { variant_refusal_ = "memory"; return false; }
+    const HRESULT read = vs ? vs->GetFunction(out.data(), &bytes) : ps->GetFunction(out.data(), &bytes);
+    if (FAILED(read)) { variant_refusal_ = "function_read"; return false; }
+    return true;
+}
 // Once per program and scale mode. Any refusal is final for this device generation of the pass.
 bool SunOcclusionPass::build(Variant& v, unsigned mode, IDirect3DPixelShader9* original) noexcept {
     v.state[mode] = 2;
-    UINT bytes = 0;
-    if (FAILED(original->GetFunction(nullptr, &bytes)) || bytes < 8 || (bytes & 3u) || bytes > (1u << 18)) { variant_refusal_ = "function_size"; return false; }
-    try { words_.resize(bytes / 4); } catch (const std::bad_alloc&) { variant_refusal_ = "memory"; return false; }
-    if (FAILED(original->GetFunction(words_.data(), &bytes))) { variant_refusal_ = "function_read"; return false; }
+    if (!read_function(nullptr, original, words_)) return false;
     LensVisibilityLayout layout{};
     const LensVisibilityResult result = lens_visibility_pixel_variant(words_.data(), words_.size(), LensVisibilityScale(mode + 1), wrapped_, &layout);
     if (result != LensVisibilityResult::Applied) { variant_refusal_ = lens_visibility_result_name(result); return false; }
     IDirect3DPixelShader9* created = nullptr;
     if (FAILED(call<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(wrapped_.data()), &created)) || !created) { drop(created); variant_refusal_ = "create"; return false; }
     v.shader[mode] = created; v.sampler[mode] = std::uint8_t(layout.sampler); v.state[mode] = 1;
+    return true;
+}
+SunOcclusionPass::Pair* SunOcclusionPass::find_pair(std::uint64_t vertex_hash, std::uint64_t pixel_hash) noexcept {
+    for (unsigned i = 0; i < pair_count_; ++i) if (pair_[i].vertex_hash == vertex_hash && pair_[i].pixel_hash == pixel_hash) return &pair_[i];
+    if (pair_count_ == pair_capacity) return nullptr;
+    Pair& fresh = pair_[pair_count_++];
+    fresh = Pair{}; fresh.vertex_hash = vertex_hash; fresh.pixel_hash = pixel_hash;
+    return &fresh;
+}
+// Once per pair, no device object: the texcoord free in both programs, the vertex program's matrix register and
+// whether its local origin is the rows' .w column (the wrap itself is discarded here and rebuilt on first use).
+bool SunOcclusionPass::scan_pair(Pair& p, const LensState& state) noexcept {
+    p.state = 2;
+    if (!read_function(state.vertex_shader, nullptr, vertex_words_) || !read_function(nullptr, state.shader, words_)) return false;
+    const unsigned texcoord = lens_visibility_free_texcoord(vertex_words_.data(), vertex_words_.size(), words_.data(), words_.size());
+    if (texcoord >= 8) { variant_refusal_ = "no_free_texcoord"; return false; }
+    unsigned matrix = 0; bool origin = false;
+    const LensVisibilityResult result = lens_visibility_vertex_variant(vertex_words_.data(), vertex_words_.size(), texcoord, wrapped_, &matrix, &origin);
+    if (result != LensVisibilityResult::Applied) { variant_refusal_ = lens_visibility_result_name(result); return false; }
+    p.texcoord = std::uint8_t(texcoord); p.matrix_register = matrix; p.origin_known = origin; p.state = 1;
+    return true;
+}
+// The vertex wrap, created on the first core draw of the pair.
+bool SunOcclusionPass::build_pair_vertex(Pair& p, const LensState& state) noexcept {
+    p.vertex_state = 2;
+    if (!read_function(state.vertex_shader, nullptr, vertex_words_)) return false;
+    unsigned matrix = 0; bool origin = false;
+    const LensVisibilityResult result = lens_visibility_vertex_variant(vertex_words_.data(), vertex_words_.size(), p.texcoord, wrapped_, &matrix, &origin);
+    if (result != LensVisibilityResult::Applied || matrix != p.matrix_register) { variant_refusal_ = result != LensVisibilityResult::Applied ? lens_visibility_result_name(result) : "vertex_changed"; return false; }
+    IDirect3DVertexShader9* created = nullptr;
+    if (FAILED(call<CreateVsFn>(CreateVertexShader)(device_, reinterpret_cast<const DWORD*>(wrapped_.data()), &created)) || !created) { drop(created); variant_refusal_ = "create_vertex"; return false; }
+    p.vertex = created; p.vertex_state = 1;
+    return true;
+}
+// Once per pair and scale mode, for the RT2 size of the frame (the soft-edge offsets are baked).
+bool SunOcclusionPass::build_pair_pixel(Pair& p, unsigned mode, const LensState& state) noexcept {
+    if (p.width != state.depth_width || p.height != state.depth_height || p.core_f != core_f_) { // another RT2 size or product mode: the pixel wraps are rebuilt
+        for (unsigned m = 0; m < 3; ++m) { drop(p.pixel[m]); p.pixel_state[m] = 0; }
+        p.width = state.depth_width; p.height = state.depth_height; p.core_f = core_f_;
+    }
+    p.pixel_state[mode] = 2;
+    if (!p.width || !p.height) { variant_refusal_ = "depth_size"; return false; }
+    if (!read_function(nullptr, state.shader, words_)) return false;
+    LensVisibilityLayout layout{};
+    const LensVisibilityResult result = lens_visibility_pixel_clip_variant(words_.data(), words_.size(), LensVisibilityScale(mode + 1), p.texcoord,
+                                                                           soft_edge_pixels / float(p.width), soft_edge_pixels / float(p.height), core_f_, wrapped_, &layout);
+    if (result != LensVisibilityResult::Applied) { variant_refusal_ = lens_visibility_result_name(result); return false; }
+    IDirect3DPixelShader9* created = nullptr;
+    if (FAILED(call<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(wrapped_.data()), &created)) || !created) { drop(created); variant_refusal_ = "create_clip"; return false; }
+    p.pixel[mode] = created; p.sampler[mode] = std::uint8_t(layout.sampler); p.depth_sampler[mode] = std::uint8_t(layout.depth_sampler); p.pixel_state[mode] = 1;
     return true;
 }
 // Per wrap sampler, recorded once: `lens_saved_` (re-captured per draw: the application's pixel
@@ -361,6 +425,45 @@ HRESULT SunOcclusionPass::ensure_lens_blocks(unsigned sampler) noexcept {
     if (FAILED(hr)) { drop(lens_saved_[sampler]); drop(lens_ours_[sampler]); }
     return hr;
 }
+// The clip pair's blocks, per (fraction sampler, depth sampler): as above plus the vertex shader and the
+// second sampler's texture and states.
+HRESULT SunOcclusionPass::ensure_clip_blocks(unsigned sampler, unsigned depth_sampler, ClipBlocks** out) noexcept {
+    ClipBlocks* slot = nullptr;
+    for (auto& b : clip_blocks_) { if (b.saved && b.ours && b.sampler == sampler && b.depth_sampler == depth_sampler) { *out = &b; return S_OK; } if (!slot && !b.saved && !b.ours) slot = &b; }
+    if (!slot) return E_OUTOFMEMORY;
+    D d = device_;
+    auto states = [&]() -> HRESULT {
+        for (unsigned s : {sampler, depth_sampler}) for (unsigned i = 0; i < 6; ++i) { const HRESULT hr = call<SetSamplerFn>(SetSamplerState)(d, s, lens_states[i], lens_values[i]); if (FAILED(hr)) return hr; }
+        return S_OK;
+    };
+    HRESULT hr = record(&slot->ours, states);
+    if (SUCCEEDED(hr)) hr = record(&slot->saved, [&]() -> HRESULT {
+        HRESULT inner = call<SetPsFn>(SetPixelShader)(d, nullptr);
+        if (SUCCEEDED(inner)) inner = call<SetVsFn>(SetVertexShader)(d, nullptr);
+        if (SUCCEEDED(inner)) inner = call<SetTextureFn>(SetTexture)(d, sampler, nullptr);
+        if (SUCCEEDED(inner)) inner = call<SetTextureFn>(SetTexture)(d, depth_sampler, nullptr);
+        return SUCCEEDED(inner) ? states() : inner;
+    });
+    if (FAILED(hr)) { drop(slot->saved); drop(slot->ours); *slot = ClipBlocks{}; return hr; }
+    slot->sampler = std::uint8_t(sampler); slot->depth_sampler = std::uint8_t(depth_sampler);
+    *out = slot;
+    return S_OK;
+}
+LensVerdict SunOcclusionPass::lens_prepare(const LensState& state, Prepared* out) noexcept {
+    if (out) *out = Prepared{};
+    if (!device_ || !caps_.enabled) return LensVerdict::NotReady;
+    if (!state.known) return LensVerdict::Unhashed;
+    if (!state.shader || !state.vertex_shader) return LensVerdict::NoShader;
+    if (!state.hash || !state.vertex_hash) return LensVerdict::Unhashed;
+    Pair* const p = find_pair(state.vertex_hash, state.hash);
+    if (!p) return LensVerdict::CacheFull;
+    const bool first = p->state == 0;
+    if (first) scan_pair(*p, state);
+    if (out) out->first = first;
+    if (p->state != 1) return LensVerdict::Variant;
+    if (out) { out->matrix_register = p->matrix_register; out->origin_known = p->origin_known; }
+    return LensVerdict::Applied;
+}
 LensVerdict SunOcclusionPass::lens_begin(const LensState& state, LensDraw& out) noexcept {
     out = LensDraw{};
     if (!device_ || !caps_.enabled || reset_pending_ || !valid_ || !textures_[current_]) return LensVerdict::NotReady;
@@ -370,30 +473,60 @@ LensVerdict SunOcclusionPass::lens_begin(const LensState& state, LensDraw& out) 
     if (scale == core::Scale::Refuse) return LensVerdict::Blend;
     if (!state.shader) return LensVerdict::NoShader;
     if (!state.hash) return LensVerdict::Unhashed;
-    Variant* const v = find(state.hash);
-    if (!v) return LensVerdict::CacheFull;
+    if (state.body != core::Body::Core && state.body != core::Body::Ghost) return LensVerdict::Body;
     const unsigned mode = unsigned(scale) - 1u;
-    if (v->state[mode] == 0) build(*v, mode, state.shader);
-    if (v->state[mode] != 1) return LensVerdict::Variant;
-    const unsigned sampler = v->sampler[mode];
-    if (FAILED(ensure_lens_blocks(sampler))) return LensVerdict::Device;
     D d = device_;
+    if (state.body == core::Body::Ghost) {
+        Variant* const v = find(state.hash);
+        if (!v) return LensVerdict::CacheFull;
+        if (v->state[mode] == 0) build(*v, mode, state.shader);
+        if (v->state[mode] != 1) return LensVerdict::Variant;
+        const unsigned sampler = v->sampler[mode];
+        if (FAILED(ensure_lens_blocks(sampler))) return LensVerdict::Device;
+        device_calls_ = 1;
+        if (FAILED(lens_saved_[sampler]->Capture())) return LensVerdict::Device; // nothing changed yet
+        out.sampler = std::uint8_t(sampler); out.applied = true;
+        ++device_calls_;
+        HRESULT hr = lens_ours_[sampler]->Apply();
+        if (SUCCEEDED(hr)) hr = call<SetTextureFn>(SetTexture)(d, sampler, textures_[current_]);
+        if (SUCCEEDED(hr)) hr = call<SetPsFn>(SetPixelShader)(d, v->shader[mode]);
+        if (FAILED(hr)) { lens_end(out); return LensVerdict::Device; } // everything back; the draw goes out unwrapped
+        return LensVerdict::Applied;
+    }
+    // Core: the clip pair.
+    if (!state.vertex_shader || !state.vertex_hash || !state.depth) return LensVerdict::NoShader;
+    Pair* const p = find_pair(state.vertex_hash, state.hash);
+    if (!p) return LensVerdict::CacheFull;
+    if (p->state == 0) scan_pair(*p, state);
+    if (p->state != 1 || !p->origin_known) return LensVerdict::Variant; // a core body needs a classifiable origin: the caller never sends one otherwise
+    if (p->vertex_state == 0) build_pair_vertex(*p, state);
+    if (p->vertex_state != 1) return LensVerdict::Variant;
+    if (p->pixel_state[mode] == 0 || p->width != state.depth_width || p->height != state.depth_height || p->core_f != core_f_) build_pair_pixel(*p, mode, state);
+    if (p->pixel_state[mode] != 1) return LensVerdict::Variant;
+    const unsigned sampler = p->sampler[mode], depth_sampler = p->depth_sampler[mode];
+    ClipBlocks* blocks = nullptr;
+    if (FAILED(ensure_clip_blocks(sampler, depth_sampler, &blocks))) return LensVerdict::Device;
     device_calls_ = 1;
-    if (FAILED(lens_saved_[sampler]->Capture())) return LensVerdict::Device; // nothing changed yet
-    out.sampler = std::uint8_t(sampler); out.applied = true;
+    if (FAILED(blocks->saved->Capture())) return LensVerdict::Device; // nothing changed yet
+    out.sampler = std::uint8_t(sampler); out.depth_sampler = std::uint8_t(depth_sampler); out.clipped = true; out.applied = true;
     ++device_calls_;
-    HRESULT hr = lens_ours_[sampler]->Apply();
+    HRESULT hr = blocks->ours->Apply();
     if (SUCCEEDED(hr)) hr = call<SetTextureFn>(SetTexture)(d, sampler, textures_[current_]);
-    if (SUCCEEDED(hr)) hr = call<SetPsFn>(SetPixelShader)(d, v->shader[mode]);
-    if (FAILED(hr)) { lens_end(out); return LensVerdict::Device; } // everything back; the draw goes out unwrapped
+    if (SUCCEEDED(hr)) hr = call<SetTextureFn>(SetTexture)(d, depth_sampler, state.depth);
+    if (SUCCEEDED(hr)) hr = call<SetPsFn>(SetPixelShader)(d, p->pixel[mode]);
+    if (SUCCEEDED(hr)) hr = call<SetVsFn>(SetVertexShader)(d, p->vertex);
+    if (FAILED(hr)) { lens_end(out); return LensVerdict::Device; }
     return LensVerdict::Applied;
 }
 HRESULT SunOcclusionPass::lens_end(LensDraw& draw) noexcept {
     if (!draw.applied) return S_OK;
-    draw.applied = false;
-    if (!device_ || draw.sampler >= 16 || !lens_saved_[draw.sampler]) return E_FAIL;
+    const bool clipped = draw.clipped;
+    draw.applied = false; draw.clipped = false;
+    if (!device_ || draw.sampler >= 16 || draw.depth_sampler >= 16) return E_FAIL;
     ++device_calls_;
-    return lens_saved_[draw.sampler]->Apply(); // the application's shader, texture and sampler states, as captured for this draw
+    if (!clipped) return lens_saved_[draw.sampler] ? lens_saved_[draw.sampler]->Apply() : E_FAIL; // the application's shader, texture and sampler states, as captured for this draw
+    for (auto& b : clip_blocks_) if (b.saved && b.sampler == draw.sampler && b.depth_sampler == draw.depth_sampler) return b.saved->Apply();
+    return E_FAIL;
 }
 HRESULT SunOcclusionPass::readback(float out[4]) noexcept {
     if (!out || !device_ || reset_pending_ || !valid_ || !surfaces_[current_]) return E_FAIL;

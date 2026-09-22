@@ -873,7 +873,10 @@ public:
     // listener (src/proxy/sun_occlusion.h, the engine's call 0x00472491): begin runs the
     // 1x1 visibility pass against this frame's RT2, prepare_lens wraps one lens-scene
     // draw (the draw hooks call it only while sun_occlusion::bracket_open()).
-    struct SunOcclusionConfig { bool requested = false, log = false; float radius_scale = 1.f, curve = 1.f, default_radius = .012f; };
+    // radius_u: the disc's half-width as a fraction of the back-buffer width (X3M_SUN_OCCLUSION_RADIUS; the
+    // engine's record size saturates for the sun, so the radius is configured, not derived).
+    // core_fraction (X3M_SUN_OCCLUSION_CORE_F=1): a clipped core body is also multiplied by f (default: clipped only; ghosts carry f).
+    struct SunOcclusionConfig { bool requested = false, log = false; float radius_u = sun_occlusion::core::radius_default_u, curve = 1.f; bool core_fraction = false; };
     void configure_sun_occlusion(const SunOcclusionConfig& config) noexcept { sun_occlusion_ = config; }
     void sun_occlusion_begin() noexcept;
     void sun_occlusion_end() noexcept;
@@ -1323,12 +1326,18 @@ private:
     bool sun_occlusion_attach_failed_ = false;
     bool lens_frame_active_ = false, lens_suppress_ = false; // this bracket: draws are wrapped / dropped (the override answered but no fraction exists)
     std::uintptr_t lens_record_ = 0;                          // the record the fraction belongs to (another one seeds)
-    float lens_radius_u_ = 0.f;                               // last radius derived from that record
     std::uint64_t lens_pass_qpc_ = 0;
     sun_occlusion::core::Hold lens_hold_{};                   // a skipped pass keeps the last fraction for at most four frames
-    unsigned lens_draws_ = 0, lens_wrapped_ = 0, lens_refused_ = 0, lens_dropped_ = 0;
+    unsigned lens_draws_ = 0, lens_wrapped_ = 0, lens_clipped_ = 0, lens_refused_ = 0, lens_dropped_ = 0, lens_other_ = 0;
+    // Step 2: this bracket's RT2 (one reference, begin .. end), its size and the sun's uv for the body classification.
+    IDirect3DTexture9* lens_depth_ = nullptr;
+    unsigned lens_depth_width_ = 0, lens_depth_height_ = 0;
+    float lens_sun_u_ = .5f, lens_sun_v_ = .5f;
+    bool lens_chain_drawn_ = false;                           // a bracket with draws ran this frame (the Present-time back-buffer readback under the log)
     bool ensure_sun_occlusion() noexcept;
     void finish_lens(MotionRoute& route) noexcept;
+    void release_lens_depth() noexcept;
+    void sun_lens_present_readback() noexcept;
     D3DFORMAT sun_lane_depth_formats_[3]{};
     unsigned sun_lane_depth_count_=0;
     bool sun_lane_depth_qualified(D3DFORMAT format) const noexcept {

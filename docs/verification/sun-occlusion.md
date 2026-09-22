@@ -194,3 +194,71 @@ readback is needed before any look can be judged from files.
 
 Not verified here: the record -> uv mapping against a picture of the chain, any look of the fade (never engaged
 for the sun), cost of the lens bracket in the game.
+
+## 2026-09-22: Run 223 fixes (eligibility, radius, log) and step 2 (per-pixel clip), fixture-verified, not installed, not flown
+
+Worktree on `ab7ecaca`; design: [sun-partial-occlusion.md](../architecture/sun-partial-occlusion.md), "After Run 223". Bottle X3,
+CrossOver Preview. No game launch.
+
+What changed: `core::eligible` (the main view's re-probe of a background-view-owned record, `owner+0x270 & 0x400000`; the
+main view's own records no longer count in `Ready::records`); `core::footprint` reports a saturated `record+0x34` and the pass
+always samples the configured absolute radius (`X3M_SUN_OCCLUSION_RADIUS`, 0.005..0.25, default 0.04 u); `sun_probe` gains
+`owner_flags270`, `owner_layer`, `eligible=`; `sun_visibility` gains the owner, `saturated`, `radius_px`, `radius_derived_u` and
+the sun lane's projected `lane_u/v`; step 2: `core::classify_body` from the clip rows (CPU), the vertex wrap and the nine-tap
+clip pixel wrap (`lens_visibility_variant.cpp`, part 2), the pair cache and the seven-call clipped transaction
+(`sun_occlusion_pass.cpp`), RT2 held for the bracket, per-draw `body=` / `centre_u/v` in `sun_lens_draw`, `clipped=` / `other=`
+/ `pairs=` in `sun_lens_bracket`; the Present-time back-buffer readback `lens_<device>_<frame>.bgra8` on F8 frames under the log.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Host: eligibility (incl. run223's measured pointers and flags), the 648-combination gate restatement, readiness, hold, footprint with the saturated size, body classification, blend, main-view walk, pixel wrap, vertex wrap and its refusals, clip wrap and its refusals, free texcoord, sites, launcher | `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_sun_occlusion` | 20 tests, 0 failing |
+| Full host suite | `/usr/bin/python3 verification/probe/run_host_suite.py` | 225 modules, 2236 tests, 0 failing (85 s wall) |
+| Hook fixture and GPU fixture | `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_sun_occlusion.py` | passed: hook **74 checks / 0 failures**, GPU **114 checks / 0 failures**; `CALLS execute=33 lens_draw=5`, clipped core draw **7 calls**; record `verification/results/bottle-X3/sun-occlusion.json` |
+| Production scratch build | `cmake -S . -B <scratch> -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPython3_EXECUTABLE=/usr/bin/python3 && cmake --build <scratch> -j` | exit 0, 0 warnings |
+| x87 audit of that DLL | `python3 verification/probe/check_no_x87.py <scratch>/d3d9.dll` | PASS, 634 reachable functions, 0 violations (the first build failed on `sqrtf` reached from `prepare_lens`: the body classification now uses the SSE square root, `core::sqrt_no_x87`) |
+
+Hook fixture, new among the 74 checks: the owner's own probe (layer 15), a later view's re-probe (layer 100), a foreign record
+whose owner has no background flag, and a record the main view owns all reach the original in the same frame as the eligible
+probe without disturbing readiness (`still_single`: the latch holds the sun's record, owner and owner flags); the owner losing
+the background flag makes the record the original's; the log line carries `eligible=1 owner_flags270=00400001 owner_layer=15`
+for the sun and `eligible=0 owner_flags270=00000000 owner_layer=-1 records=1` for the main-view-owned record; the multi-sun
+case is now two background-owned records.
+
+GPU fixture, step 2 (320 x 180 sheet at RT2's size, depth edge at column 160, f = 0.5 from the visibility pass, the vs_2_0 with
+the lens scene's dp4 shape and identity clip rows, ps_2_0 under ONE/ONE, SRCALPHA/INVSRCALPHA and ONE/INVSRCALPHA):
+`lens_prepare` names matrix register 0 and refuses without a vertex program / hash; a core draw is clipped with seven device
+calls, the vertex and pixel programs substituted, RT2 on sampler 14 and the fraction on 15: every column left of the edge minus
+two equals `f x source` under the law (0.6000, 0.7020, 0.8000 for ONE/ONE), every column from edge plus two equals the
+background (0.2, 0.4, 0.6), and the four columns across the edge are the exact ninths 8/9, 7/9, 2/9, 1/9 (measured 0.5098 /
+0.2902 / 0.2431 in red for ONE/ONE against 0.6 / 0.2); a ghost draw is the five-call step-1 wrap with uniform `f` over the row;
+`Body::Other` and `Body::Unknown` touch nothing (`LensVerdict::Body`); a core draw without RT2 is refused; three repeated core
+draws create no program (`pairs=1`, one vertex shader created in the run); `before_reset` releases 11 objects (the clip pair's two
+blocks among them); after the native Reset a core draw clips again with no program created. Every transaction is bracketed by
+the byte comparison of the device state (now with hostile state on sampler 14 too).
+
+Not verified: anything in flight (whether the eligible probe is taken for the sun, the uv mapping against the picture, the
+radius default against the visible glow, the body classification against the real bodies, the look of the clip edge), native
+Windows execution, cost in the game (the counts are: one validated engine_memory read per eligible-shaped probe, per core lens
+draw seven device calls and nine RT2 taps per fragment).
+
+### Review fixes (same day, merged main `6019d936`)
+
+Deep review of `e0d7abb6`: no blocking defect; five fixes. (1) The clip's uv gains half a texel (`cC.zw = 0.5 + dx/2,
+0.5 + dy/2`): a fragment's clip-derived uv is a texel edge under D3D9's pixel-centre rule, so the taps now sit on texel
+centres on any implementation. (2) A core body is clipped only (`out *= open_px`); ghosts and streaks carry `f`;
+`X3M_SUN_OCCLUSION_CORE_F=1` / `--sun-occlusion-core-f` restores the product for the flight comparison (design note,
+"Step 2 as built", for the argument). (3) Classification precedes any build: `lens_prepare` scans without creating a
+shader, the vertex wrap is created on the first core draw, other records' bodies and log-only mode never build one, and
+an unclassifiable body (non-conforming vertex program, unknown origin, rows in no shadowed window) is `Other`
+(untouched, logged once per pair as `sun_lens_body_unclassifiable`) instead of a process-wide block. (4) The vertex scan
+validates the position source is `(position.xyz, 1)` (`origin_known`); any other shape classifies as `Other`. (5) The
+flight checklist names the second-`0x400000`-view risk (`multi_record_frames`, `sun_visibility single=0`).
+
+| Check | Result |
+| --- | --- |
+| merge of main (`6019d936`, includes `3eccbaf6`) | clean |
+| `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_sun_occlusion` | 21 tests, 0 failing (new: origin validation over ten vertex shapes, the half-texel constant, `core_f` on / off, the `--sun-occlusion-core-f` option) |
+| `/usr/bin/python3 verification/probe/run_host_suite.py` | 225 modules, 2237 tests, 0 failing (87 s wall) |
+| `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_sun_occlusion.py` | passed: hook 74 / 0, GPU **122 / 0**; core clipped only: open half = source (1.0000 / 1.0000 / 1.0000 for ONE/ONE at f = 0.5), covered half = background, edge ninths 8/9, 7/9, 2/9, 1/9 with the half-texel offset; `core_f`: open half 0.6000 / 0.7020 / 0.8000 (= f x source + bg); `lens_prepare` scans without creating a shader (0 programs created, `first` once); a vertex program with `mul r0, r0, c4` after the mov scans with `origin_known = 0` and a core draw through it is refused with nothing created; 7 calls per clipped draw; Reset then clip again with no program created |
+| scratch build + `check_no_x87.py` | exit 0, 0 warnings; PASS, 636 reachable functions, 0 violations |
+

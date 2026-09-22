@@ -16,14 +16,15 @@ using namespace x3m::sun_occlusion::core;
 using namespace x3m::renderer;
 namespace {
 long number(const char* text) { return std::strtol(text, nullptr, 0); }
-// decide <ready> <owner> <view> <main> <video> <viewflags> <x> <y> <top> <bottom> <left> <right>
+// decide <ready> <owner> <view> <main> <owner_flags> <video> <viewflags> <x> <y> <top> <bottom> <left> <right>
 int decide_command(char** a) {
     ProbeInputs in;
     in.ready = number(a[0]) != 0; in.record_owner = std::uintptr_t(number(a[1])); in.view = std::uintptr_t(number(a[2])); in.main_view = std::uintptr_t(number(a[3]));
-    in.video_flags = std::uint32_t(std::strtoul(a[4], nullptr, 0)); in.view_flags = std::uint32_t(std::strtoul(a[5], nullptr, 0));
-    in.x = std::int32_t(number(a[6])); in.y = std::int32_t(number(a[7]));
-    in.top = std::int32_t(number(a[8])); in.bottom = std::int32_t(number(a[9])); in.left = std::int32_t(number(a[10])); in.right = std::int32_t(number(a[11]));
-    std::printf("decision=%d\n", int(decide(in)));
+    in.owner_flags = std::uint32_t(std::strtoul(a[4], nullptr, 0));
+    in.video_flags = std::uint32_t(std::strtoul(a[5], nullptr, 0)); in.view_flags = std::uint32_t(std::strtoul(a[6], nullptr, 0));
+    in.x = std::int32_t(number(a[7])); in.y = std::int32_t(number(a[8]));
+    in.top = std::int32_t(number(a[9])); in.bottom = std::int32_t(number(a[10])); in.left = std::int32_t(number(a[11])); in.right = std::int32_t(number(a[12]));
+    std::printf("decision=%d eligible=%d\n", int(decide(in)), int(eligible(in.record_owner, in.view, in.main_view, in.owner_flags)));
     return 0;
 }
 // ready <script>: b = begin_frame, p<record> = probe (prints the answer), k = pass ok, x = block, r = reset
@@ -43,7 +44,7 @@ int footprint_command(char** a) {
     Latch l; l.valid = true; l.x = std::int32_t(number(a[0])); l.y = std::int32_t(number(a[1])); l.size = std::int32_t(number(a[2])); l.accumulator = std::int32_t(number(a[3]));
     l.fov = std::uint32_t(number(a[4])); l.scale_x = std::int32_t(number(a[5])); l.top = l.left = 0; l.bottom = l.right = 0x10000;
     const Footprint f = footprint(l, unsigned(number(a[6])), unsigned(number(a[7])), float(std::atof(a[8])));
-    std::printf("valid=%d known=%d u=%.7f v=%.7f ru=%.7f rv=%.7f\n", int(f.valid), int(f.radius_known), f.u, f.v, f.radius_u, f.radius_v);
+    std::printf("valid=%d known=%d saturated=%d u=%.7f v=%.7f ru=%.7f rv=%.7f\n", int(f.valid), int(f.radius_known), int(f.saturated), f.u, f.v, f.radius_u, f.radius_v);
     return 0;
 }
 // blend <enable> <src> <dst> <op> <srgb> <alphatest> <ref> <func> <fog>
@@ -93,16 +94,58 @@ int variant_command(int count, char** a) {
     std::printf("\n");
     return 0;
 }
+// clipvariant <scale> <texcoord> <dx> <dy> <core_f> <hex words...>
+int clip_variant_command(int count, char** a) {
+    std::vector<std::uint32_t> words, out{0xdeadbeefu};
+    for (int i = 5; i < count; ++i) words.push_back(std::uint32_t(std::strtoul(a[i], nullptr, 16)));
+    LensVisibilityLayout layout{};
+    const auto result = lens_visibility_pixel_clip_variant(words.data(), words.size(), LensVisibilityScale(number(a[0])), unsigned(number(a[1])), float(std::atof(a[2])), float(std::atof(a[3])), number(a[4]) != 0, out, &layout);
+    std::printf("result=%s sampler=%u depth_sampler=%u constant=%u output=%u fetch=%u words=", lens_visibility_result_name(result), layout.sampler, layout.depth_sampler, layout.constant, layout.output_temporary, layout.fetch_temporary);
+    for (std::size_t i = 0; i < out.size(); ++i) std::printf("%s%08x", i ? "," : "", out[i]);
+    std::printf("\n");
+    return 0;
+}
+// vsvariant <texcoord> <hex words...>
+int vertex_variant_command(int count, char** a) {
+    std::vector<std::uint32_t> words, out{0xdeadbeefu};
+    for (int i = 1; i < count; ++i) words.push_back(std::uint32_t(std::strtoul(a[i], nullptr, 16)));
+    unsigned matrix = 999; bool origin = false;
+    const auto result = lens_visibility_vertex_variant(words.data(), words.size(), unsigned(number(a[0])), out, &matrix, &origin);
+    std::printf("result=%s matrix=%u origin=%d words=", lens_visibility_result_name(result), matrix, int(origin));
+    for (std::size_t i = 0; i < out.size(); ++i) std::printf("%s%08x", i ? "," : "", out[i]);
+    std::printf("\n");
+    return 0;
+}
+// texcoord <vs hex words...> -- <ps hex words...>
+int texcoord_command(int count, char** a) {
+    std::vector<std::uint32_t> vs, ps; bool second = false;
+    for (int i = 0; i < count; ++i) { if (!std::strcmp(a[i], "--")) { second = true; continue; } (second ? ps : vs).push_back(std::uint32_t(std::strtoul(a[i], nullptr, 16))); }
+    std::printf("texcoord=%u\n", lens_visibility_free_texcoord(vs.data(), vs.size(), ps.data(), ps.size()));
+    return 0;
+}
+// body <known> <sun_u> <sun_v> <aspect> <16 row floats>
+int body_command(char** a) {
+    float rows[16];
+    for (unsigned i = 0; i < 16; ++i) rows[i] = float(std::atof(a[4 + i]));
+    const BodyCentre c = classify_body(rows, number(a[0]) != 0, float(std::atof(a[1])), float(std::atof(a[2])), float(std::atof(a[3])));
+    std::printf("body=%u u=%.6f v=%.6f distance=%.6f\n", unsigned(c.body), c.u, c.v, c.distance_u);
+    return 0;
+}
 } // namespace
 int main(int argc, char** argv) {
     if (argc < 2) return 2;
     const std::string command = argv[1];
-    if (command == "decide" && argc == 14) return decide_command(argv + 2);
+    if (command == "decide" && argc == 15) return decide_command(argv + 2);
     if (command == "ready") return ready_command(argc - 2, argv + 2);
     if (command == "footprint" && argc == 11) return footprint_command(argv + 2);
     if (command == "blend" && argc == 11) return blend_command(argv + 2);
     if (command == "view" && argc == 3) return view_command(argv[2]);
     if (command == "variant" && argc >= 4) return variant_command(argc - 2, argv + 2);
+    if (command == "clipvariant" && argc >= 8) return clip_variant_command(argc - 2, argv + 2);
+    if (command == "vsvariant" && argc >= 4) return vertex_variant_command(argc - 2, argv + 2);
+    if (command == "texcoord" && argc >= 4) return texcoord_command(argc - 2, argv + 2);
+    if (command == "body" && argc == 22) return body_command(argv + 2);
+    if (command == "saturated" && argc == 4) { std::printf("saturated=%d\n", int(size_saturated(std::int32_t(number(argv[2])), std::int32_t(number(argv[3]))))); return 0; }
     if (command == "hold") { // r = ran, s = skipped and holdable, f = not holdable
         Hold hold; std::string out;
         for (int i = 2; i < argc; ++i) out += hold.step(argv[i][0] == 'r', argv[i][0] == 's') ? '1' : '0';
