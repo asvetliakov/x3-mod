@@ -319,6 +319,12 @@ component with an FXLC evaluator. Unmeasured: the proxy's share inside
 share a material (M run91). A perfect instancer removes 47 of 930 draws =
 1.1 ms and needs the vertex shaders to read a per-instance transform (rewrite
 of the 22 effects); a material sort would break the engine's depth/layer order.
+Stays closed; the *reason* is now measured, not just the bound:
+[merged-lod-feasibility.md](merged-lod-feasibility.md) §4 (7 texture stages per
+draw and one D3DX-created VB per subset, so at the run240 stand 74.7 % of
+consecutive pairs share VS+PS but every draw inside a node has its own buffer
+and its own texture set) and §3 (400 of the stand's 448 draws are at LOD 0 on
+nodes 2–32 px wide, which is where the remaining asset-side lever is).
 
 ### 2.8 Wine-side per-draw cost — no lever left beyond 2.2
 

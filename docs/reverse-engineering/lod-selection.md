@@ -289,13 +289,17 @@ anything else.
 
 ## Unknown
 
-- The actual values of `LODrec_i[+0x34]` were not read. The loader that writes
-  that field was not located (the `BOB1`/`BODY` tags are not compared as
-  immediates anywhere in the image, so the parser uses a byte compare this study
-  did not chase), and `node+0xa0` is not in any capture, so `T_i` cannot be
-  converted to absolute units and the truncation headroom of option 1/2 is
-  unbounded from below. This is the one measurement that would decide between
-  option 1 and option 3.
+- ~~The actual values of `LODrec_i[+0x34]` were not read.~~ **Answered
+  2026-09-22 from the assets** ([merged-lod-feasibility.md](../architecture/merged-lod-feasibility.md)
+  §2): a `.pbb` body is `BOB1 / MAT6 / BODY <u16 LOD count> … POIN/PART per LOD`
+  with the switch value as a big-endian `u32` between consecutive LOD blocks.
+  `objects/stations/station_scenes/others/argon_L_solarpowerplant.pbb`: 5 LODs,
+  thresholds 250 / 150 / 80 / 30.
+  `objects/stations/x3ap/others/xtc_teladi_eqd_ring1b.pbb`: 4 LODs, 50 / 24 / 13.
+  Values that small do exist, so option 1/2's truncation headroom is real:
+  `f = 0.333` turns 13 into 4 and 2 into 0. `node+0xa0` is in the cull census
+  (`radius=`) since run131, so `T_i` can now be converted to absolute units for
+  a censused node. The loader that writes the field was still not located.
 - Whether `004dac90` (and hence the `+0x760` write) re-runs on a resolution change
   or a device `Reset`, as opposed to only at startup.
 - Which menu entry opens the "Graphics Settings" dialog, and whether the
