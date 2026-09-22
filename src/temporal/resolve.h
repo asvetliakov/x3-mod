@@ -35,6 +35,24 @@ constexpr unsigned kLuminanceRegister = 22;     // ResolveConstants::luminance
 // c23 is the sharpen's): thin-clip S, age wmax, speed LO, 1 / (HI - LO). The
 // alpha-history flag is c22.z. The plain programs read neither.
 constexpr unsigned kFlickerRegister = 24;
+// c25 of the age variants (resolve_age*.hlsl, resolve_far*.hlsl), uploaded with c24 as one
+// two-register block: x = the exit floor squared (px^2) of the strict sky history's exit
+// reset (docs/architecture/seta-sky-hull-share-decay.md), kSkyHistoryExitOff when the
+// option is off or the strict term is not in effect; yzw 0. The thin (non-age) programs
+// read c24 only. The option is 0 (off) or within [kSkyHistoryExitMin, band threshold]: at
+// the band threshold the mark and the band refusal coincide, so nothing is left to reset.
+constexpr unsigned kExitRegister = 25;
+static_assert(kExitRegister == kFlickerRegister + 1);
+constexpr float kSkyHistoryExitMin = .125f, kSkyHistoryExitOff = 1e30f;
+inline bool valid_sky_history_exit(float px, float band_px) noexcept {
+    return std::isfinite(px) && (px == 0 || (px >= kSkyHistoryExitMin && px <= band_px));
+}
+// The lane the age variants read. With the floor off or the strict term absent every
+// pixel's mark is 0 (a band pixel below the band threshold never reaches 1e30 px^2 of
+// parallax), so the age target holds the same positive counts as before the option.
+inline void prepare_exit(float out[4], float px, bool strict_sky_term) noexcept {
+    out[0] = strict_sky_term && px > 0 ? px * px : kSkyHistoryExitOff; out[1] = out[2] = out[3] = 0.f;
+}
 constexpr float kAdaptiveWeightMax = .99f;      // upper bound of WMAX
 constexpr float kAdaptiveLoDefault = .1f, kAdaptiveHiDefault = .5f; // px/frame
 constexpr float kAgeLimit = 64.f;               // the age target saturates here

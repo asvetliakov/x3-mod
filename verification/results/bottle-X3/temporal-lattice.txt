@@ -20,16 +20,16 @@ CHECK embedded_thin within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_thin_filter dwords=1861 instruction_slots=477 device_limit=512 headroom=35 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_thin_filter within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_age dwords=1936 instruction_slots=494 device_limit=512 headroom=18 within_guaranteed_512=1
+RESOLVE_BUDGET variant=embedded_age dwords=1946 instruction_slots=495 device_limit=512 headroom=17 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_age within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_age_filter dwords=1979 instruction_slots=506 device_limit=512 headroom=6 within_guaranteed_512=1
+RESOLVE_BUDGET variant=embedded_age_filter dwords=1989 instruction_slots=507 device_limit=512 headroom=5 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_age_filter within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_line_mask dwords=1401 instruction_slots=368 device_limit=512 headroom=144 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_line_mask within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_far dwords=1940 instruction_slots=495 device_limit=512 headroom=17 within_guaranteed_512=1
+RESOLVE_BUDGET variant=embedded_far dwords=1958 instruction_slots=498 device_limit=512 headroom=14 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_far within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_line dwords=1748 instruction_slots=447 device_limit=512 headroom=65 within_guaranteed_512=1
@@ -38,13 +38,13 @@ CHECK embedded_line within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_thin_line dwords=1888 instruction_slots=483 device_limit=512 headroom=29 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_thin_line within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_age_line dwords=1991 instruction_slots=507 device_limit=512 headroom=5 within_guaranteed_512=1
+RESOLVE_BUDGET variant=embedded_age_line dwords=1998 instruction_slots=507 device_limit=512 headroom=5 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_age_line within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_line_mask_camera dwords=1307 instruction_slots=344 device_limit=512 headroom=168 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_line_mask_camera within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_far_camera dwords=1998 instruction_slots=507 device_limit=512 headroom=5 within_guaranteed_512=1
+RESOLVE_BUDGET variant=embedded_far_camera dwords=2016 instruction_slots=510 device_limit=512 headroom=2 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_far_camera within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_thin_box dwords=238 instruction_slots=51 device_limit=512 headroom=461 within_guaranteed_512=1
@@ -2151,12 +2151,12 @@ CHECK line filter lowers the roping at a bounded line-peak cost PASS
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
-LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=1.5675 current_filter_ms=1.6092 line_filter_ms=2.0280 far_stabiliser_ms=2.0642 thin_region_ms=3.8166 taps_delta_ms=0.0417 line_delta_ms=0.4605 far_delta_ms=0.4967 thin_region_delta_ms=2.2492 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=3.8166 no_region_camera_ms=3.8434 no_region_camera_delta_ms=0.0267 fragmented_pan_thin_ms=1.9232 fragmented_pan_camera_ms=2.4900 fragmented_pan_camera_delta_ms=0.5668 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=2.4900 lane_input_law_ms=2.4152 lane_input_lane_ms=2.4161 lane_fetch_delta_ms=0.0008 lane_input_over_r32f_ms=-0.0748 scope=cpu_wall_with_event_query_drain
+LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.6151 current_filter_ms=0.6036 line_filter_ms=0.8933 far_stabiliser_ms=0.8283 thin_region_ms=1.4712 taps_delta_ms=-0.0115 line_delta_ms=0.2782 far_delta_ms=0.2132 thin_region_delta_ms=0.8561 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.4712 no_region_camera_ms=1.6113 no_region_camera_delta_ms=0.1401 fragmented_pan_thin_ms=1.3329 fragmented_pan_camera_ms=1.8870 fragmented_pan_camera_delta_ms=0.5541 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.8870 lane_input_law_ms=1.7666 lane_input_lane_ms=1.7883 lane_fetch_delta_ms=0.0217 lane_input_over_r32f_ms=-0.1204 scope=cpu_wall_with_event_query_drain
 CHECK sentinel timing: separable box programs created PASS
 CHECK sentinel timing: separable box programs created PASS
-LINE_TIMING_SENTINEL width=1280 height=768 rounds=6 content=all_unrouted_sentinel_pan strength_off_ms=2.6014 strength_on_separable_ms=3.2034 sentinel_delta_ms=0.6020 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_SENTINEL width=1280 height=768 rounds=6 content=all_unrouted_sentinel_pan strength_off_ms=1.2322 strength_on_separable_ms=1.5039 sentinel_delta_ms=0.2718 scope=cpu_wall_with_event_query_drain
 LINE_BASE numerical=255 state_restorations=15
 FAR_CASES
 FAR_GATE ok=1 d0=0.99985647 inv=17734.900 expected_d0=0.99985652 expected_inv=17749.280

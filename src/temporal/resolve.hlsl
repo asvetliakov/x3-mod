@@ -153,6 +153,22 @@ sampler2D previousAge : register(s7);
 #ifdef X3M_THIN_CLIP
 float4 flicker : register(c24); // thin-clip S, age wmax, speed LO, 1 / (HI - LO)
 #endif
+// Exit reset of the strict sky history (docs/architecture/seta-sky-hull-share-decay.md;
+// X3M_AGE_WEIGHT variants only, uploaded with c24 as one block): a band pixel that
+// accepts history while its correspondence moves at least EXIT_PX px/frame against the
+// camera path (below the band threshold, else it is refused) writes its age negated;
+// the next frame a strict-sky pixel (nearest == 1) whose nearest reprojected age texel
+// is negative keeps no history that one frame (keep 0, count restarted), so the hull
+// share it took in the band leaves in one frame instead of decaying at the history
+// weight. c25.x = EXIT_PX^2, or 1e30 when the option is off or the strict term is not in
+// effect (the pass decides): under strict no band pixel below the band threshold
+// reaches it, and under loose only a band pixel whose correspondence lies 1e15 px or
+// more from the camera path would (a camera path at prepare's 1e15 bound; the mark is
+// then written but read by nothing: the reset below is gated by the strict term's own
+// tolerance and the count is read through abs). yzw 0.
+#ifdef X3M_AGE_WEIGHT
+float4 skyExit : register(c25);
+#endif
 static const float3 lumaWeights = float3(0.2126, 0.7152, 0.0722);
 static const float unweighFloor = 1.0 / 65504.0;
 float lumaFloored(float3 c) { return max(dot(c, lumaWeights), 0); }
@@ -228,7 +244,9 @@ float loopWeight(float4 weights, int index) {
 }
 #ifdef X3M_AGE_WEIGHT
 struct ResolveOutput { float4 color : COLOR0; float4 age : COLOR1; };
-ResolveOutput emit(float4 color, float age) { ResolveOutput o; o.color = color; o.age = float4(age, 0, 0, 1); return o; }
+// The age target is R32F: only .x is stored, so the count is written to every lane (one
+// instruction fewer than a float4 with constant lanes; the stored bytes are the same).
+ResolveOutput emit(float4 color, float age) { ResolveOutput o; o.color = color; o.age = age; return o; }
 ResolveOutput main(float2 uv : TEXCOORD0) {
 #else
 #define emit(color, age) (color)
@@ -382,6 +400,12 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // the select and keep the geometry path (the file's cmp convention).
     float2 relative = (previousUV - cameraUV) / sizeJitter.xy;
     float refused = dot(relative, relative) >= history.y ? band : 0;
+#ifdef X3M_AGE_WEIGHT
+    // Exit mark: the band pixel's parallax reaches c25.x (EXIT_PX^2) but not the band
+    // threshold (a refused pixel never reaches the blend below). 0 or 1, a select on
+    // band (never a product with the unbounded parallax).
+    float exiting = dot(relative, relative) >= skyExit.x ? band : 0;
+#endif
     // The dilated pixel's velocity, applied to this pixel.
     previousUV -= dilate * sizeJitter.xy;
     // The lookup is usable when the correspondence is valid (validity 4), its
@@ -574,16 +598,40 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
 #endif
     float keep = history.z;
 #ifdef X3M_AGE_WEIGHT
-    // Nearest reprojected texel of the previous age target; anything outside
-    // [1, 64] (never written by this program) restarts the count.
-    float age = fetch(previousAge, tap + float2(f.x >= 0.5 ? 1 : 0, f.y >= 0.5 ? 1 : 0) * sizeJitter.xy).r;
-    age = age >= 1 && age <= 64 ? age : 1;
+    // Nearest reprojected texel of the previous age target: its sign is the exit mark,
+    // its magnitude the count. Above 64, or a NaN (the <= fails), restarts the count;
+    // the lower bound of the old [1, 64] test is not needed: this program writes counts
+    // of 1..64 only, 0 never, and s7 is bound only behind a valid history every pixel
+    // of which this program wrote, so no |age| below 1 can be read (slot budget).
+    float ageRaw = fetch(previousAge, tap + float2(f.x >= 0.5 ? 1 : 0, f.y >= 0.5 ? 1 : 0) * sizeJitter.xy).r;
+    float age = abs(ageRaw);
+    age = age <= 64 ? age : 1;
+    // Exit reset (seta-sky-hull-share-decay.md section 4): a strict-sky pixel under
+    // strict whose texel was marked keeps nothing this frame, its count restarted (age
+    // 0 here: the adaptive weight min(0 / 1, ..) is 0, the write min(0 + 1, 64) is 1;
+    // the far variants zero keep below), so the blend is the current sample,
+    // x + 0 * (old - x), the alpha its current alpha, and its history is the sky from
+    // the next frame on. The predicate is one max: tolerance is below 0 exactly where
+    // the far-plane term above took c7.z = 3 off it (a strict-sky pixel under strict)
+    // and >= 0 everywhere else (loose included), and the texel is below 0 exactly when
+    // marked, so max(tolerance, ageRaw) >= 0 is "not both", i.e. "keep the history"
+    // (a NaN is unreachable in either operand: every tolerance operand is finite, and
+    // only this program writes the age target, counts of 1..64, behind a valid
+    // history). A pixel still in the band, a routed pixel and every geometry pixel
+    // read the mark as "keep" and continue the count through the sign (abs above).
+    // The read stays here, after the depth proof and the history taps, so the
+    // Catmull-Rom weight arithmetic of these variants keeps the plain program's
+    // instruction order and rounding (a read before the verdict made the compiler
+    // regroup it).
+    float keeping = max(tolerance, ageRaw);
+    age = keeping >= 0 ? age : 0;
 #ifdef X3M_FAR_STABILIZE
     // Two gated targets, each exact: the far weight c24.y through g and this pixel's own speed gate, the thin-region weight c5.x
     // (the resolve never read c5.xy) through b. b = 0 is the far blend exactly, young pixels below the base weight included.
     float ramp = age / (age + 1);
     float farKeep = keep + stabilise.g * (1 - saturate((speed - flicker.z) * flicker.w)) * (min(ramp, flicker.y) - keep);
     keep = stabilise.b > 0 ? max(farKeep, keep + stabilise.b * (min(ramp, history.x) - keep)) : farKeep;
+    keep = keeping >= 0 ? keep : 0; // the exit reset (the adaptive form above is 0 through the age)
 #else
     keep = min(age / (age + 1), lerp(flicker.y, history.z, saturate((speed - flicker.z) * flicker.w)));
 #endif
@@ -595,5 +643,12 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     float blendedAlpha = lerp(alpha, clamp(accumulated.a / total, lowAlpha, highAlpha), keep * luminance.z);
     if (blendedAlpha >= lowAlpha && blendedAlpha <= highAlpha) alpha = blendedAlpha;
 #endif
+#ifdef X3M_AGE_WEIGHT
+    // The count continues (1 after a reset); a marked band pixel writes it negated (the
+    // exit mark: -exiting >= 0 is "not exiting", one cmp with a negate modifier).
+    float aged = min(age + 1, 64);
+    return emit(float4(unweigh(lerp(weighted, old, keep)), alpha), -exiting >= 0 ? aged : -aged);
+#else
     return emit(float4(unweigh(lerp(weighted, old, keep)), alpha), min(age + 1, 64));
+#endif
 }

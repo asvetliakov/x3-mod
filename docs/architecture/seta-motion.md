@@ -248,3 +248,24 @@ anti-aliased edge, (1 - w) times the hull/nebula contrast per phase) and the str
 not changed for it. The 6-8 % current-only fraction at distance 2-6 in run244 (1.1-1.5 % in
 run235, 2.4-6.3 % on far sky in both) is not attributable to the strict term either (it sits
 on pixels with no geometry within 1 px last frame); it is listed as an open observation.
+
+## 5. What the band term leaves: the exit reset
+
+Run 249 (`docs/verification/temporal-resolve.md`, "Run 249") showed the residual 3-12 px trail
+enters the sky's history *below* the band threshold (97-98 % of it at 0.25-3 px/frame of parallax,
+`verification/results/run249-band/band_parallax_fine_out.txt`) or while covered, and then survives
+by ordinary accumulation outside the band. The band threshold is not the lever. The fix is the
+**exit reset** of `docs/architecture/seta-sky-hull-share-decay.md`: on the age variants a band
+pixel that accepts history at or above `--taa-sky-history-exit-px` (default off; 0.25 is the flown
+candidate) writes its age negated into the existing R32F age target; the next frame a strict-sky
+pixel whose nearest reprojected age texel is negative keeps no history once (`keep` 0 at the
+blend, its count restarted: the output is the current sample, the note's `considered` form moved
+to the blend because an age read before the depth verdict made the compiler regroup the
+Catmull-Rom weights of the age variants), so the hull share leaves in one frame instead of
+decaying at 0.9. The band, pans, static edges, routed pixels and loose are untouched by
+construction: the mark is a select on `band` against a floor the pass uploads as 1e30 px^2
+whenever the option is off or the strict term is not in effect, and the reset is gated by the
+strict term's own `tolerance` (below 0 only on a strict-sky pixel under strict). Requires `--taa-sky-history strict`
+and an age program (`--taa-far-stabiliser`, `--taa-thin-region` or `--taa-adaptive-weight`);
+the fixture rows (case (l), straight, yaw +-0.3 px/frame, sub-floor and loose variants) are in
+the ledger entry "2026-09-22 exit reset".

@@ -32,6 +32,7 @@
 #include "../renderer/sun_share_frame.h"
 #include "../renderer/motion_row_history.h"
 #include "../renderer/camera_reprojection.h"
+#include "../temporal/resolve.h"
 #include "../renderer/fog_pass.h"
 #include "../renderer/sun_occlusion_pass.h"
 #include "fog_card_policy.h"
@@ -630,7 +631,13 @@ public:
     // camera path is in effect. A sky pixel whose 3x3 holds no routed geometry
     // accepts sentinel history taps only (docs/architecture/seta-motion.md).
     // band_px: X3M_TAA_SKY_HISTORY_BAND_PX (1..16, default 3), the band term's threshold in px/frame (seta-motion.md section 4).
-    void configure_sky_history(bool strict, float band_px = 3.f) noexcept { sky_history_strict_ = strict; sky_history_band_px_ = band_px >= 1.f && band_px <= 16.f ? band_px : 3.f; }
+    // exit_px: X3M_TAA_SKY_HISTORY_EXIT_PX (0 off, else 0.125..band_px; default 0), the exit reset's parallax floor
+    // (docs/architecture/seta-sky-hull-share-decay.md); needs strict (the caller refuses it otherwise) and an age program
+    // (the far stabiliser, the thin region or the adaptive weight: taa_initialize logs it unavailable and drops it otherwise).
+    void configure_sky_history(bool strict, float band_px = 3.f, float exit_px = 0.f) noexcept {
+        sky_history_strict_ = strict; sky_history_band_px_ = band_px >= 1.f && band_px <= 16.f ? band_px : 3.f;
+        sky_history_exit_px_ = strict && x3::temporal::valid_sky_history_exit(exit_px, sky_history_band_px_) ? exit_px : 0.f;
+    }
     // RT1/RT2 binding policy (X3M_MOTION_RT_MODE). perdraw (default): each
     // routed draw binds RT1/RT2 and COLORWRITEENABLE1/2 and after_draw puts
     // the application's values back. lazy (experiment): the bindings stay
@@ -2096,6 +2103,7 @@ private:
     renderer::SentinelMode sentinel_mode_ = renderer::SentinelMode::Auto;
     bool sky_history_strict_ = false; // X3M_TAA_SKY_HISTORY=strict: FrameInputs::sentinel_strict_sky with the camera path
     float sky_history_band_px_ = 3.f; // X3M_TAA_SKY_HISTORY_BAND_PX: FrameInputs::sky_history_band_px
+    float sky_history_exit_px_ = 0.f; // X3M_TAA_SKY_HISTORY_EXIT_PX: FrameInputs::sky_history_exit_px (0 without an age program)
     // Static-world previous rows for new keys (temporal-integration.md). The
     // camera verdict is evaluated once per frame, on the frame's first miss.
     unsigned unmatched_static_ = 0;

@@ -1,0 +1,49 @@
+== temporal-pass.txt: baseline 5576 lines, now 5576 lines
+before: RESULT PASS numerical=570 state_restorations=278 generations=2
+after: RESULT PASS numerical=570 state_restorations=278 generations=2
+temporal-pass.txt: stable lines removed=0 added=0; baseline SAMPLE lines 416, of them missing now 0; SAMPLE lines now 202
+== temporal-lattice.txt: baseline 5242 lines, now 5242 lines
+before: RESOLVE_BUDGET variant=current_filter dwords=1727 instruction_slots=443 device_limit=512 headroom=69 within_guaranteed_512=1
+before: RESOLVE_BUDGET variant=plain dwords=1681 instruction_slots=432 device_limit=512 headroom=80 within_guaranteed_512=1
+before: RESOLVE_BUDGET variant=embedded_plain dwords=1681 instruction_slots=432 device_limit=512 headroom=80 within_guaranteed_512=1
+before: RESOLVE_BUDGET variant=embedded_current_filter dwords=1727 instruction_slots=443 device_limit=512 headroom=69 within_guaranteed_512=1
+before: RESOLVE_BUDGET variant=embedded_snapshot dwords=187 instruction_slots=46 device_limit=512 headroom=466 within_guaranteed_512=1
+before: RESOLVE_BUDGET variant=embedded_thin dwords=1818 instruction_slots=465 device_limit=512 headroom=47 within_guaranteed_512=1
+before: RESOLVE_BUDGET variant=embedded_thin_filter dwords=1861 instruction_slots=477 device_limit=512 headroom=35 within_guaranteed_512=1
+before: RESOLVE_BUDGET variant=embedded_age dwords=1936 instruction_slots=494 device_limit=512 headroom=18 within_guaranteed_512=1
+before: RESOLVE_BUDGET variant=embedded_age_filter dwords=1979 instruction_slots=506 device_limit=512 headroom=6 within_guaranteed_512=1
+before: RESOLVE_BUDGET variant=embedded_line_mask dwords=1401 instruction_slots=368 device_limit=512 headroom=144 within_guaranteed_512=1
+before: RESOLVE_BUDGET variant=embedded_far dwords=1940 instruction_slots=495 device_limit=512 headroom=17 within_guaranteed_512=1
+before: RESOLVE_BUDGET variant=embedded_line dwords=1748 instruction_slots=447 device_limit=512 headroom=65 within_guaranteed_512=1
+before: RESOLVE_BUDGET variant=embedded_thin_line dwords=1888 instruction_slots=483 device_limit=512 headroom=29 within_guaranteed_512=1
+before: RESOLVE_BUDGET variant=embedded_age_line dwords=1991 instruction_slots=507 device_limit=512 headroom=5 within_guaranteed_512=1
+before: RESOLVE_BUDGET variant=embedded_line_mask_camera dwords=1307 instruction_slots=344 device_limit=512 headroom=168 within_guaranteed_512=1
+before: RESOLVE_BUDGET variant=embedded_far_camera dwords=1998 instruction_slots=507 device_limit=512 headroom=5 within_guaranteed_512=1
+before: RESOLVE_BUDGET variant=embedded_thin_box dwords=238 instruction_slots=51 device_limit=512 headroom=461 within_guaranteed_512=1
+before: RESOLVE_BUDGET variant=embedded_thin_box_rows dwords=204 instruction_slots=35 device_limit=512 headroom=477 within_guaranteed_512=1
+before: RESOLVE_BUDGET variant=embedded_thin_box_columns dwords=420 instruction_slots=94 device_limit=512 headroom=418 within_guaranteed_512=1
+after: RESOLVE_BUDGET variant=current_filter dwords=1727 instruction_slots=443 device_limit=512 headroom=69 within_guaranteed_512=1
+after: RESOLVE_BUDGET variant=plain dwords=1681 instruction_slots=432 device_limit=512 headroom=80 within_guaranteed_512=1
+after: RESOLVE_BUDGET variant=embedded_plain dwords=1681 instruction_slots=432 device_limit=512 headroom=80 within_guaranteed_512=1
+after: RESOLVE_BUDGET variant=embedded_current_filter dwords=1727 instruction_slots=443 device_limit=512 headroom=69 within_guaranteed_512=1
+after: RESOLVE_BUDGET variant=embedded_snapshot dwords=187 instruction_slots=46 device_limit=512 headroom=466 within_guaranteed_512=1
+after: RESOLVE_BUDGET variant=embedded_thin dwords=1818 instruction_slots=465 device_limit=512 headroom=47 within_guaranteed_512=1
+after: RESOLVE_BUDGET variant=embedded_thin_filter dwords=1861 instruction_slots=477 device_limit=512 headroom=35 within_guaranteed_512=1
+after: RESOLVE_BUDGET variant=embedded_age dwords=1915 instruction_slots=489 device_limit=512 headroom=23 within_guaranteed_512=1
+after: RESOLVE_BUDGET variant=embedded_age_filter dwords=1958 instruction_slots=501 device_limit=512 headroom=11 within_guaranteed_512=1
+after: RESOLVE_BUDGET variant=embedded_line_mask dwords=1401 instruction_slots=368 device_limit=512 headroom=144 within_guaranteed_512=1
+after: RESOLVE_BUDGET variant=embedded_far dwords=1919 instruction_slots=490 device_limit=512 headroom=22 within_guaranteed_512=1
+after: RESOLVE_BUDGET variant=embedded_line dwords=1748 instruction_slots=447 device_limit=512 headroom=65 within_guaranteed_512=1
+after: RESOLVE_BUDGET variant=embedded_thin_line dwords=1888 instruction_slots=483 device_limit=512 headroom=29 within_guaranteed_512=1
+after: RESOLVE_BUDGET variant=embedded_age_line dwords=1970 instruction_slots=502 device_limit=512 headroom=10 within_guaranteed_512=1
+after: RESOLVE_BUDGET variant=embedded_line_mask_camera dwords=1307 instruction_slots=344 device_limit=512 headroom=168 within_guaranteed_512=1
+after: RESOLVE_BUDGET variant=embedded_far_camera dwords=1977 instruction_slots=502 device_limit=512 headroom=10 within_guaranteed_512=1
+after: RESOLVE_BUDGET variant=embedded_thin_box dwords=238 instruction_slots=51 device_limit=512 headroom=461 within_guaranteed_512=1
+after: RESOLVE_BUDGET variant=embedded_thin_box_rows dwords=204 instruction_slots=35 device_limit=512 headroom=477 within_guaranteed_512=1
+after: RESOLVE_BUDGET variant=embedded_thin_box_columns dwords=420 instruction_slots=94 device_limit=512 headroom=418 within_guaranteed_512=1
+before: LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.4375 no_region_camera_ms=1.6160 no_region_camera_delta_ms=0.1785 fragmented_pan_thin_ms=1.2554 fragmented_pan_camera_ms=1.7464 fragmented_pan_camera_delta_ms=0.4910 scope=cpu_wall_with_event_query_drain
+after: LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.0863 no_region_camera_ms=1.2426 no_region_camera_delta_ms=0.1563 fragmented_pan_thin_ms=0.9657 fragmented_pan_camera_ms=1.3590 fragmented_pan_camera_delta_ms=0.3933 scope=cpu_wall_with_event_query_drain
+before: RESULT PASS numerical=583 state_restorations=23 lattice=1
+after: RESULT PASS numerical=583 state_restorations=23 lattice=1
+temporal-lattice.txt: stable lines removed=0 added=0; baseline SAMPLE lines 375, of them missing now 0; SAMPLE lines now 216
+slots (before -> after): current_filter 443 -> 443, plain 432 -> 432, embedded_plain 432 -> 432, embedded_current_filter 443 -> 443, embedded_snapshot 46 -> 46, embedded_thin 465 -> 465, embedded_thin_filter 477 -> 477, embedded_age 494 -> 489, embedded_age_filter 506 -> 501, embedded_line_mask 368 -> 368, embedded_far 495 -> 490, embedded_line 447 -> 447, embedded_thin_line 483 -> 483, embedded_age_line 507 -> 502, embedded_line_mask_camera 344 -> 344, embedded_far_camera 507 -> 502, embedded_thin_box 51 -> 51, embedded_thin_box_rows 35 -> 35, embedded_thin_box_columns 94 -> 94

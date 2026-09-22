@@ -1581,6 +1581,12 @@ bool MotionOutput::ensure_taa() noexcept {
         log("motion_output_taa_line_filter device=%llu unavailable=1 reason=age_program requested=%.3f", id_, double(taa_line_filter_));
         taa_line_filter_ = 0.f;
     }
+    // Exit reset of the strict sky history (seta-sky-hull-share-decay.md): carried in the age target, so it needs one of the
+    // age programs to be in effect on this device (the far stabiliser's rule: one log line, option off otherwise).
+    if (SUCCEEDED(hr) && sky_history_exit_px_ > 0.f && !(taa_adaptive_weight_ > 0.f || taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f)) {
+        log("motion_output_taa_sky_history_exit device=%llu unavailable=1 reason=no_age_program requested=%.3f", id_, double(sky_history_exit_px_));
+        sky_history_exit_px_ = 0.f;
+    }
     taa_failed_ = FAILED(hr);
     log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f current_filter=%.3f history_weight=%.3f copy=%s thin_clip=%.3f adaptive_weight=%.3f adaptive_lo=%.3f adaptive_hi=%.3f alpha_history=%u age_bytes_per_pixel=%u line_filter=%.3f line_width=%u far_weight=%.4f far_filter=%.3f far_f0=%.1f far_f1=%.1f far_speed_lo=%.3f far_speed_hi=%.3f thin_region=%.4f thin_relax=%.3f thin_gate=%s thin_emissive=%.3f sentinel_stabiliser=%.3f sentinel_emitter=%.3f", id_, hr, taa_references_, double(taa_sharpen_), double(taa_current_filter_), double(taa_history_weight_), taa_copy_draw_ ? "draw" : "stretch",
         double(taa_thin_clip_), double(taa_adaptive_weight_), double(taa_adaptive_lo_), double(taa_adaptive_hi_), unsigned(taa_alpha_history_), taa_adaptive_weight_ > 0.f || taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f ? 8u : 0u, double(taa_line_filter_), taa_line_width_, double(taa_far_weight_), double(taa_far_filter_), double(taa_far_f0_), double(taa_far_f1_), double(taa_far_lo_), double(taa_far_hi_), double(taa_thin_weight_), double(taa_thin_relax_), taa_thin_camera_gate_ ? "camera" : "screen", double(taa_thin_emissive_), double(taa_sentinel_strength_), double(taa_sentinel_emitter_));
@@ -1650,6 +1656,7 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             in.sentinel_camera = decision.policy == 2;
             in.sentinel_strict_sky = sky_history_strict_ && decision.policy == 2; // the resolve's c7.z term: seta-motion.md
             in.sky_history_band_px = sky_history_band_px_; // the band term's threshold, c5.y squared: seta-motion.md section 4
+            in.sky_history_exit_px = sky_history_exit_px_; // the exit reset's floor, c25.x squared under strict with an age program: seta-sky-hull-share-decay.md
             // Camera gate (taa-lattice-crawl.md section 32.3): the depth / translation term beside the far-plane matrix, from the
             // same two views and this frame's latched depth law; zero (the far-plane path) without the transform or a plausible law.
             if (taa_thin_camera_gate_ && decision.transform) {

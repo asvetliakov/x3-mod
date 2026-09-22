@@ -103,6 +103,17 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
                 self.assertEqual(code, 2, option)
                 self.assertIn(f'{option} requires --taa', error)
 
+    def test_sky_history_exit_is_absent_unless_given(self):
+        # --taa-sky-history-exit-px (docs/architecture/seta-sky-hull-share-decay.md): default off in the launcher and the
+        # DLL (X3M_TAA_SKY_HISTORY_EXIT_PX absent; capture.cpp starts at 0), so no strict flight resets sky history unasked.
+        with tempfile.TemporaryDirectory() as directory:
+            strict = ('--taa-sky-history', 'strict', '--taa-far-stabiliser', '0.985')
+            self.assertNotIn('X3M_TAA_SKY_HISTORY_EXIT_PX', self.env(directory, *TAA, *strict, inherited={'X3M_TAA_SKY_HISTORY_EXIT_PX': '0.25'}))
+            self.assertEqual(self.env(directory, *TAA, *strict, '--taa-sky-history-exit-px', '0.25')['X3M_TAA_SKY_HISTORY_EXIT_PX'], '0.25')
+        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        self.assertIn('float taa_sky_history_exit_px = 0.f;', capture)
+        self.assertIn('L"X3M_TAA_SKY_HISTORY_EXIT_PX"', capture)
+
     def test_line_filter_is_absent_unless_given(self):
         # --taa-line-filter A[,W] (docs/architecture/taa-lattice-crawl.md section 9).
         with tempfile.TemporaryDirectory() as directory:

@@ -688,13 +688,13 @@ void stationary_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder
 // unjittered texture-center UV of the content at the jittered sample
 // (p + 0.5 - j - v)/S, the expected depth and alpha 1 (the background's fill
 // alpha is a parameter: -1 unknown as the route fills today, 0 camera path).
-struct EdgeObject { double l,t,r,b; float value,depth; double vx=0,vy=0; bool scroll=false; double u0=0; bool colourOnly=false; bool noDepth=false; }; // colourOnly: blended without depth and unrouted (no motion, no depth write); noDepth: the route's fade-band draw (RT1 written with alpha 1 and its depth target, RT2 masked: the depth stays the sentinel)
+struct EdgeObject { double l,t,r,b; float value,depth; double vx=0,vy=0; bool scroll=false; double u0=0; bool colourOnly=false; bool noDepth=false; bool pattern=false; float phase=0; float valueB=-1.f; }; // pattern: the colour is 1 where (x + y + phase) % 3 == 0, else 0 (the exit-reset sky); valueB >= 0: the blue channel (the other two stay value) // colourOnly: blended without depth and unrouted (no motion, no depth write); noDepth: the route's fade-band draw (RT1 written with alpha 1 and its depth target, RT2 masked: the depth stays the sentinel)
 struct EdgeBackground { float value,depth,alpha; };
 struct EdgeScene {
     static constexpr UINT S=32,P=16;
     IDirect3DDevice9* d;
     Com<IDirect3DTexture9> color,depth32,motion,wave;Com<IDirect3DSurface9> colorSurface,depthSurface,motionSurface;
-    Com<IDirect3DPixelShader9> flat,motionPS,textured;
+    Com<IDirect3DPixelShader9> flat,motionPS,textured,patternPS;
     bool alphaFollows=false; // colour draws write alpha = value instead of 1 (alpha-history cases)
     EdgeScene(IDirect3DDevice9* device,Compiler compiler):d(device){
         check("edge color",d->CreateTexture(S,S,1,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&color.p,nullptr));check("edge color surface",color->GetSurfaceLevel(0,&colorSurface.p));
@@ -704,7 +704,8 @@ struct EdgeScene {
         Com<ID3DXBuffer> a,b,c;compile(compiler,"float4 color:register(c0);float4 main():COLOR0{return color;}","ps_3_0",&a.p);
         compile(compiler,"float4 j:register(c0);float4 k:register(c1);float4 main(float2 vpos:VPOS):COLOR0{return float4((vpos+0.5-j.xy-j.zw)*k.y,k.x,k.z);}","ps_3_0",&b.p);
         compile(compiler,"sampler2D source:register(s0);float4 main(float2 uv:TEXCOORD0):COLOR0{return tex2D(source,uv);}","ps_3_0",&c.p);
-        check("edge flat PS",d->CreatePixelShader(static_cast<DWORD*>(a->GetBufferPointer()),&flat.p));check("edge motion PS",d->CreatePixelShader(static_cast<DWORD*>(b->GetBufferPointer()),&motionPS.p));check("edge textured PS",d->CreatePixelShader(static_cast<DWORD*>(c->GetBufferPointer()),&textured.p));
+        Com<ID3DXBuffer> e;compile(compiler,"float4 c:register(c0);float4 main(float2 vpos:VPOS):COLOR0{float v=fmod(floor(vpos.x)+floor(vpos.y)+c.x,3)<0.5?c.y:c.z;return float4(v,v,v,1);}","ps_3_0",&e.p);
+        check("edge flat PS",d->CreatePixelShader(static_cast<DWORD*>(a->GetBufferPointer()),&flat.p));check("edge motion PS",d->CreatePixelShader(static_cast<DWORD*>(b->GetBufferPointer()),&motionPS.p));check("edge textured PS",d->CreatePixelShader(static_cast<DWORD*>(c->GetBufferPointer()),&textured.p));check("edge pattern PS",d->CreatePixelShader(static_cast<DWORD*>(e->GetBufferPointer()),&patternPS.p));
         // Horizontal sinusoid of period 8 texels, 0.25..1, one texel per pixel, constant down the columns.
         {D3DLOCKED_RECT lock{};check("lock wave",wave->LockRect(0,&lock,nullptr,0));for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x){const unsigned char v=static_cast<unsigned char>(std::lround(255*(.625+.375*std::sin(2*3.14159265358979*x/8.))));const unsigned char px[4]={v,v,v,255};std::memcpy(static_cast<char*>(lock.pBits)+y*lock.Pitch+x*4,px,4);}check("unlock wave",wave->UnlockRect(0));}
     }
@@ -729,7 +730,8 @@ struct EdgeScene {
         target(colorSurface.p);check("edge Begin",d->BeginScene());
         check("edge flat bind",d->SetPixelShader(flat.p));constant(bg.value,bg.value,bg.value,alphaFollows?bg.value:1);quad(0,0,S,S,0,0);
         for(auto& o:objects){if(o.scroll){check("edge wave bind",d->SetTexture(0,wave.p));check("edge textured bind",d->SetPixelShader(textured.p));quad(o.l,o.t,o.r,o.b,jx,jy,o.u0,o.u0+(o.r-o.l)/S);check("edge wave unbind",d->SetTexture(0,nullptr));check("edge flat rebind",d->SetPixelShader(flat.p));}
-            else{constant(o.value,o.value,o.value,alphaFollows?o.value:1);quad(o.l,o.t,o.r,o.b,jx,jy);}}
+            else if(o.pattern){check("edge pattern bind",d->SetPixelShader(patternPS.p));constant(o.phase,1,0,0);quad(o.l,o.t,o.r,o.b,jx,jy);check("edge flat rebind",d->SetPixelShader(flat.p));}
+            else{constant(o.value,o.value,o.valueB>=0?o.valueB:o.value,alphaFollows?o.value:1);quad(o.l,o.t,o.r,o.b,jx,jy);}}
         check("edge End",d->EndScene());
         target(motionSurface.p);check("edge motion Begin",d->BeginScene());check("edge motion bind",d->SetPixelShader(motionPS.p));
         constant(float(jx),float(jy),0,0);constant(bg.depth,1.f/S,bg.alpha,0,1);quad(0,0,S,S,0,0);
@@ -746,11 +748,16 @@ struct EdgeScene {
             out[(y*S+x)*4+c]=v;}
         check("edge unlock",sys->UnlockRect());return out;}
 };
-struct EdgeRun { std::vector<std::vector<float>> current,output,depth,motion; std::vector<double> jx,jy; };
+struct EdgeRun { std::vector<std::vector<float>> current,output,depth,motion,age; std::vector<double> jx,jy; };
 // strictSky: FrameInputs::sentinel_strict_sky (the resolve's strict sky term c7.z with the camera path; the sweep case below).
 // clipToPrevious: the camera path (row-major clip_to_previous), identity when null (the pan case below passes an NDC translation).
-template<class Objects> EdgeRun edge_sequence(EdgeScene& s,const DWORD* decoder,const DWORD* resolver,Objects objects,const EdgeBackground& bg,unsigned frames,bool sentinelCamera,bool perPixel,const char* label,bool strictSky=false,const float* clipToPrevious=nullptr){
+// adaptive > 0: the age programs (thin clip 0.7, WMAX = adaptive; the age target is read into run.age); exitPx: FrameInputs::sky_history_exit_px.
+// farProgram 1: the far stabiliser program (W_FAR 0.985 under the far cases' gate d0 0.9995 .. 0.9999, the default speed gate); 2: the
+// far-camera program on top (thin region 0.97, camera gate): the flown configuration. Both write the age target too.
+template<class Objects> EdgeRun edge_sequence(EdgeScene& s,const DWORD* decoder,const DWORD* resolver,Objects objects,const EdgeBackground& bg,unsigned frames,bool sentinelCamera,bool perPixel,const char* label,bool strictSky=false,const float* clipToPrevious=nullptr,float adaptive=0,float exitPx=0,unsigned farProgram=0){
     constexpr UINT S=EdgeScene::S,P=EdgeScene::P;TemporalPass pass;check("edge initialize",pass.initialize(s.d,decoder,resolver));EdgeRun run;
+    if(adaptive>0){check("edge configure flicker",pass.configure_flicker());require(pass.age_available(),"edge age programs available");}
+    if(farProgram){check("edge configure far",pass.configure_far());require(pass.far_available()&&(farProgram<2||pass.camera_gate_available()),"edge far programs available");}
     for(unsigned n=0;n<frames;++n){
         const unsigned index=n%P+1;const double jx=halton(index,2)-.5,jy=halton(index,3)-.5;const auto scene=objects(n);
         s.render(scene,bg,jx,jy);run.current.push_back(s.read(s.color.p));run.depth.push_back(s.read(s.depth32.p));run.motion.push_back(s.read(s.motion.p));run.jx.push_back(jx);run.jy.push_back(jy);
@@ -761,9 +768,12 @@ template<class Objects> EdgeRun edge_sequence(EdgeScene& s,const DWORD* decoder,
         FrameInputs in;in.color=s.color.p;in.current_depth=s.depth32.p;in.motion=perPixel?s.motion.p:nullptr;in.width=S;in.height=S;in.epoch=1;const float* camera=clipToPrevious?clipToPrevious:identity;std::copy(camera,camera+16,in.clip_to_previous);
         in.current_jitter[0]=float(jx);in.current_jitter[1]=float(jy);in.weight=.9f;in.motion_policy=perPixel?MotionPolicy::PerPixel:MotionPolicy::KnownCameraOnly;
         in.reactive_policy=ReactivePolicy::DerivedFromDepthSentinel;in.sentinel_camera=sentinelCamera;in.sentinel_strict_sky=strictSky;in.history_allowed=true;in.caller_queries_idle=true;in.caller_scene_open=true;
+        if(adaptive>0){in.thin_clip=.7f;in.adaptive_weight=adaptive;}in.sky_history_exit_px=exitPx;
+        if(farProgram){in.far_weight=.985f;in.far_d0=.9995f;in.far_inv=1.f/(.9999f-.9995f);in.far_speed_lo=x3::temporal::kFarSpeedLo;in.far_speed_hi=x3::temporal::kFarSpeedHi;
+            if(farProgram>1){in.thin_region_weight=.97f;in.thin_region_relax=1;in.thin_region_camera_gate=true;}}
         Output out;check("edge Begin resolve",s.d->BeginScene());check(label,pass.run(in,&out));check("edge End resolve",s.d->EndScene());
         require(out.color&&pass.diagnostics().history_valid&&out.used_history==(n>0),"edge history follows the sequence");
-        run.output.push_back(s.read(out.color));
+        run.output.push_back(s.read(out.color));if(out.age)run.age.push_back(s.read(out.age));
     }
     return run;
 }
@@ -1028,7 +1038,94 @@ void edge_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,const
           if(beside&&px(huges[0].depth[n],x,y)==-1.f){++bandPx;bandStrict=std::max(bandStrict,double(std::fabs(px(huges[1].output[n],x,y)-px(huges[1].current[n],x,y))));bandLoose=std::max(bandLoose,double(std::fabs(px(huges[0].output[n],x,y)-px(huges[0].current[n],x,y))));}}
       std::printf("SETA_HUGE_CAMERA band_px=%u band_deviation_loose=%.6f band_deviation_strict=%.6f nonfinite_outputs=%u\n",bandPx,bandLoose,bandStrict,nonfinite);
       require(bandPx>=20&&bandLoose>.05,"huge camera path: the band accumulates under loose (the routed path is unaffected)");
-      metric("seta huge camera path (rows at 1e15): the band is current-only under strict (fail closed) and no output is nonfinite",bandStrict+nonfinite,0,0);}}
+      metric("seta huge camera path (rows at 1e15): the band is current-only under strict (fail closed) and no output is nonfinite",bandStrict+nonfinite,0,0);}
+     // (l) Exit reset (docs/architecture/seta-sky-hull-share-decay.md section 6), the age program (thin clip 0.7, WMAX 0.9: the
+     // mark lives in the age target) under strict + band 3 with the exit floor 0.25 px/frame against strict alone. An 8x8 square
+     // of colour (0, 0, 0.5) at depth 0.9997, routed, static for 16 frames, then +0.5 px/frame for 20 (motion = the displacement;
+     // camera static: the band's parallax is 0.5) over a sky whose texel (x, y) on frame n is 1 when (x + y + n) % 3 == 0 and 0
+     // otherwise, colour only (the sentinel fill under it). Every 3x3 holds all three residues, so the clip box is [0, 1] on every
+     // sky pixel and never pulls a dark history (the run249 mechanism), and a sky-only history keeps B == R exactly (identical
+     // channels through identical arithmetic): any hull share shows as B - R > 0 (the "cast"). Trail: a strict-sky pixel (sky, no
+     // square in its 3x3) that was in the band (sky beside the square) on the previous moving frame, followed while it stays
+     // strict sky. Yaw variants: the camera path an NDC x translation of -2 yaw / S (the sky content moves yaw px/frame on screen,
+     // the world-static square yaw + 0.5 through its motion vector, so the band's parallax stays 0.5), which makes the strict
+     // sky's history footprint the fractional Catmull-Rom one (f = 0.7 for +0.3, 0.3 for -0.3): the re-import question of the note
+     // (its section 7, item 3), reported as trail_cast_max. The slow variant (0.125 px/frame, below the floor) must write no mark;
+     // loose with the floor uploaded must be bit-identical to loose without it (the pass uploads the off value).
+     {const unsigned exitFrames=36,exitMove=16;
+      struct ExitRun{EdgeRun run;double yaw,v;bool strict;float exit;const char* name;unsigned program=0;};
+      auto exitScene=[&](double sl,double v,double yaw){return [=](unsigned n){const double l=sl+v*(n>=exitMove?n-exitMove+1:0)+yaw*n;
+          EdgeObject sky{0,0,S,S,0,-1.f,0,0,false,0,true};sky.pattern=true;sky.phase=float(n);
+          EdgeObject square{l,st2,l+8,st2+8,0,squareDepth,(n>=exitMove?v:0.)+yaw,0};square.valueB=.5f;
+          return std::vector<EdgeObject>{sky,square};};};
+      auto exitSequence=[&](double sl,double v,double yaw,bool strict,float exit,const char* name,unsigned program=0){
+          const float path[16]={1,0,0,float(-2*yaw/S),0,1,0,0,0,0,1,0,0,0,0,1};
+          return ExitRun{edge_sequence(s,decoder,resolver,exitScene(sl,v,yaw),sentinelFill,exitFrames,true,true,"exit reset",strict,yaw!=0?path:nullptr,program?0.f:.9f,exit,program),yaw,v,strict,exit,name,program};};
+      struct ExitNumbers{unsigned fresh=0,freshCurrent=0,negTotal=0,negStatic=0,negNotBand=0,bandPositive=0,hullReads=0,hullOwn=0,hullUnexplained=0;double trailCast=0,controlCast=0,controlDiff=0,diff=0,ageDiff=0;};
+      auto exitNumbers=[&](const ExitRun& r,const ExitRun* other){const EdgeRun& run=r.run;ExitNumbers m;require(run.age.size()==exitFrames,"exit reset: the age target is read every frame");
+          auto sky=[&](unsigned n,UINT x,UINT y){return px(run.depth[n],x,y)==-1.f;};
+          auto beside=[&](unsigned n,UINT x,UINT y){bool b=false;for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx)b|=px(run.depth[n],x+dx,y+dy)==squareDepth;return b;};
+          std::vector<unsigned char> footprint(S*S,0),trail(S*S,0);for(unsigned n=0;n<exitFrames;++n)for(UINT i=0;i<S*S;++i)if(run.depth[n][i*4]==squareDepth)footprint[i]=1;
+          auto control=[&](UINT x,UINT y){for(int dy=-7;dy<=7;++dy)for(int dx=-7;dx<=7;++dx){const int nx=int(x)+dx,ny=int(y)+dy;if(nx>=0&&ny>=0&&nx<int(S)&&ny<int(S)&&footprint[ny*S+nx])return false;}return true;};
+          for(unsigned n=1;n<exitFrames;++n){std::vector<unsigned char> next(S*S,0);
+              for(UINT y=1;y+1<S;++y)for(UINT x=1;x+1<S;++x){const std::size_t i=y*S+x;const float age=run.age[n][i*4];const bool isSky=sky(n,x,y),isBeside=isSky&&beside(n,x,y),strictSky=isSky&&!isBeside;
+                  const double cast=std::fabs(px(run.output[n],x,y,2)-px(run.output[n],x,y,0));
+                  if(age<0){++m.negTotal;if(n<exitMove)++m.negStatic;if(!isBeside)++m.negNotBand;}
+                  if(isBeside&&n>=exitMove&&age>=2)++m.bandPositive;
+                  if(n>exitMove&&strictSky){const bool wasBeside=sky(n-1,x,y)&&beside(n-1,x,y);
+                      if(wasBeside){++m.fresh;next[i]=1;if(run.output[n][i*4]==run.current[n][i*4]&&run.output[n][i*4+1]==run.current[n][i*4+1]&&run.output[n][i*4+2]==run.current[n][i*4+2])++m.freshCurrent;}
+                      else if(trail[i])next[i]=1;
+                      if(next[i])m.trailCast=std::max(m.trailCast,cast);}
+                  if(isSky&&control(x,y)){m.controlCast=std::max(m.controlCast,cast);if(other)m.controlDiff=std::max(m.controlDiff,double(std::fabs(px(run.output[n],x,y)-px(other->run.output[n],x,y))));}
+                  if(other)for(UINT c=0;c<3;++c)m.diff=std::max(m.diff,double(std::fabs(run.output[n][i*4+c]-other->run.output[n][i*4+c])));
+                  if(other)m.ageDiff=std::max(m.ageDiff,double(std::fabs(age-other->run.age[n][i*4])));
+                  // A hull pixel whose own age texel was marked last frame continues the count through the sign (abs): the value
+                  // written is |own| + 1 (or the x-1 texel's when the half-pixel footprint rounds that way), never a restart.
+                  if(px(run.depth[n],x,y)==squareDepth&&run.age[n-1][i*4]<0){++m.hullReads;const float own=std::fabs(run.age[n-1][i*4]),left=std::fabs(run.age[n-1][i*4-4]);
+                      if(age==own+1)++m.hullOwn;else if(age!=1&&age!=left+1)++m.hullUnexplained;}}
+              trail.swap(next);}
+          std::printf("SETA_EXIT mode=%s program=%s strict=%u exit_px=%.3f yaw_px=%.2f velocity_px=%.3f fresh_px=%u fresh_current_only=%u trail_cast_max=%.6f control_cast_max=%.6f control_diff=%.6f negative_px=%u negative_static=%u negative_not_band=%u band_blend_positive=%u hull_mark_reads=%u hull_mark_own=%u hull_mark_unexplained=%u output_diff=%.6f age_diff=%.6f\n",r.name,r.program==2?"far_camera":r.program?"far":"age",unsigned(r.strict),double(r.exit),r.yaw,r.v,m.fresh,m.freshCurrent,m.trailCast,m.controlCast,m.controlDiff,m.negTotal,m.negStatic,m.negNotBand,m.bandPositive,m.hullReads,m.hullOwn,m.hullUnexplained,m.diff,m.ageDiff);
+          return m;};
+      const ExitRun off=exitSequence(1.37,.5,0,true,0,"straight_off"),on=exitSequence(1.37,.5,0,true,.25f,"straight_on");
+      const ExitNumbers mOff=exitNumbers(off,nullptr),mOn=exitNumbers(on,&off);
+      // Exit off (today's strict): the trail carries the hull share (cast > 0.05 somewhere), no age is ever negative.
+      require(mOff.fresh>=20&&mOff.trailCast>.05&&mOff.negTotal==0,"exit reset control: strict alone leaves the hull share in the trail and writes no negative age");
+      metric("exit reset: every trail pixel is current-only on its first strict-sky frame after a band frame (fresh_current_only - fresh_px)",double(mOn.freshCurrent)-double(mOn.fresh),0,0);
+      metric("exit reset: the trail carries no hull share afterwards (max B - R over trail pixels and frames, sky-only history is B == R)",mOn.trailCast,0,0);
+      metric("exit reset: negative ages only on band pixels of moving frames (negative_static + negative_not_band)",double(mOn.negStatic)+double(mOn.negNotBand),0,0);
+      metric("exit reset: every band pixel on the blend path of a moving frame is marked (band_blend_positive)",double(mOn.bandPositive),0,0);
+      metric("exit reset: control sky (8+ px from the square) identical to strict without the floor",mOn.controlDiff,0,0);
+      metric("exit reset: a hull pixel reading a marked texel continues the count through the sign (hull_mark_unexplained)",double(mOn.hullUnexplained),0,0);
+      require(mOn.negTotal>=20&&mOn.hullReads>=1&&mOn.hullOwn>=1,"exit reset: marks are written and at least one hull pixel read its own marked texel and continued the count");
+      // Below the floor (parallax 0.125 < 0.25): no mark, whatever the band does.
+      const ExitNumbers mSlow=exitNumbers(exitSequence(1.37,.125,0,true,.25f,"slow_on"),nullptr);
+      metric("exit reset: below the floor (0.125 px/frame against 0.25) no negative age is written",double(mSlow.negTotal),0,0);
+      // Yaw variants (note section 7, item 3): the reset itself is unchanged (the nearest age texel is the pixel's own under
+      // 0.3 px/frame); the re-import through the fractional Catmull-Rom footprint is trail_cast_max, reported for both signs.
+      for(const double yaw:{.3,-.3}){const double sl=yaw>0?1.37:12.37;
+          const ExitRun yawOff=exitSequence(sl,.5,yaw,true,0,yaw>0?"yaw_plus_off":"yaw_minus_off"),yawOn=exitSequence(sl,.5,yaw,true,.25f,yaw>0?"yaw_plus_on":"yaw_minus_on");
+          const ExitNumbers yOff=exitNumbers(yawOff,nullptr),yOn=exitNumbers(yawOn,&yawOff);
+          require(yOff.fresh>=20&&yOff.trailCast>.05&&yOff.negTotal==0,"exit reset yaw control: strict alone leaves the hull share in the trail");
+          const std::string prefix=std::string("exit reset, camera yaw ")+(yaw>0?"+":"-")+"0.3 px/frame: ";
+          metric((prefix+"every trail pixel is current-only on its first strict-sky frame (fresh_current_only - fresh_px)").c_str(),double(yOn.freshCurrent)-double(yOn.fresh),0,0);
+          metric((prefix+"negative ages only on band pixels of moving frames").c_str(),double(yOn.negStatic)+double(yOn.negNotBand),0,0);
+          metric((prefix+"a hull pixel reading a marked texel continues the count (hull_mark_unexplained)").c_str(),double(yOn.hullUnexplained),0,0);}
+      // The far and far-camera programs (the flown configuration carries the term in far_camera): the same rows with the exit on,
+      // straight and both yaw signs; the off-side is the adaptive rows' (the term is one shared source).
+      for(unsigned program:{1u,2u}){const char* pn=program==2?"far_camera":"far";
+          for(const double yaw:{0.,.3,-.3}){const double sl=yaw<0?12.37:1.37;const std::string name=std::string(pn)+(yaw>0?"_yaw_plus_on":yaw<0?"_yaw_minus_on":"_straight_on");
+              const ExitNumbers f=exitNumbers(exitSequence(sl,.5,yaw,true,.25f,name.c_str(),program),nullptr);
+              const std::string prefix=std::string("exit reset, ")+pn+" program"+(yaw>0?", camera yaw +0.3 px/frame":yaw<0?", camera yaw -0.3 px/frame":"")+": ";
+              metric((prefix+"every trail pixel is current-only on its first strict-sky frame (fresh_current_only - fresh_px)").c_str(),double(f.freshCurrent)-double(f.fresh),0,0);
+              if(yaw==0){metric((prefix+"the trail carries no hull share afterwards (max B - R over trail pixels and frames)").c_str(),f.trailCast,0,0);
+                  metric((prefix+"every band pixel on the blend path of a moving frame is marked (band_blend_positive)").c_str(),double(f.bandPositive),0,0);
+                  require(f.negTotal>=20&&f.hullReads>=1&&f.hullOwn>=1,"exit reset on the far programs: marks are written and a hull pixel continued its count through its own marked texel");}
+              metric((prefix+"negative ages only on band pixels of moving frames").c_str(),double(f.negStatic)+double(f.negNotBand),0,0);
+              metric((prefix+"a hull pixel reading a marked texel continues the count (hull_mark_unexplained)").c_str(),double(f.hullUnexplained),0,0);}}
+      // Loose with the floor uploaded: the pass forces the off value; both targets bit-identical to loose without it.
+      const ExitRun looseOff=exitSequence(1.37,.5,0,false,0,"loose_off"),looseOn=exitSequence(1.37,.5,0,false,.25f,"loose_on");
+      const ExitNumbers mLoose=exitNumbers(looseOn,&looseOff);
+      metric("exit reset: loose with the floor uploaded is bit-identical to loose without it on both targets, no negative age",mLoose.diff+mLoose.ageDiff+double(mLoose.negTotal),0,0);}}
     if(!deferredFailures.empty())throw std::runtime_error(deferredFailures.front());
 }
 // ---- run 139: 1-px jittered lattice, filtered current sample and history weight ----

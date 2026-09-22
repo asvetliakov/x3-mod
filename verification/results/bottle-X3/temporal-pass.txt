@@ -1389,6 +1389,661 @@ CHECK edge history follows the sequence PASS
 SETA_HUGE_CAMERA band_px=252 band_deviation_loose=0.815308 band_deviation_strict=0.000000 nonfinite_outputs=0
 CHECK huge camera path: the band accumulates under loose (the routed path is unaffected) PASS
 SAMPLE seta huge camera path (rows at 1e15): the band is current-only under strict (fail closed) and no output is nonfinite actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge age programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge age programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=straight_off program=age strict=1 exit_px=0.000 yaw_px=0.00 velocity_px=0.500 fresh_px=204 fresh_current_only=0 trail_cast_max=0.118408 control_cast_max=0.000000 control_diff=0.000000 negative_px=0 negative_static=0 negative_not_band=0 band_blend_positive=720 hull_mark_reads=0 hull_mark_own=0 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=straight_on program=age strict=1 exit_px=0.250 yaw_px=0.00 velocity_px=0.500 fresh_px=204 fresh_current_only=204 trail_cast_max=0.000000 control_cast_max=0.000000 control_diff=0.000000 negative_px=720 negative_static=0 negative_not_band=0 band_blend_positive=0 hull_mark_reads=162 hull_mark_own=162 hull_mark_unexplained=0 output_diff=0.758667 age_diff=72.000000
+CHECK exit reset control: strict alone leaves the hull share in the trail and writes no negative age PASS
+SAMPLE exit reset: every trail pixel is current-only on its first strict-sky frame after a band frame (fresh_current_only - fresh_px) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset: the trail carries no hull share afterwards (max B - R over trail pixels and frames, sky-only history is B == R) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset: negative ages only on band pixels of moving frames (negative_static + negative_not_band) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset: every band pixel on the blend path of a moving frame is marked (band_blend_positive) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset: control sky (8+ px from the square) identical to strict without the floor actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset: a hull pixel reading a marked texel continues the count through the sign (hull_mark_unexplained) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK exit reset: marks are written and at least one hull pixel read its own marked texel and continued the count PASS
+CHECK edge age programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=slow_on program=age strict=1 exit_px=0.250 yaw_px=0.00 velocity_px=0.125 fresh_px=212 fresh_current_only=0 trail_cast_max=0.121948 control_cast_max=0.000000 control_diff=0.000000 negative_px=0 negative_static=0 negative_not_band=0 band_blend_positive=690 hull_mark_reads=0 hull_mark_own=0 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
+SAMPLE exit reset: below the floor (0.125 px/frame against 0.25) no negative age is written actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge age programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge age programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=yaw_plus_off program=age strict=1 exit_px=0.000 yaw_px=0.30 velocity_px=0.500 fresh_px=242 fresh_current_only=0 trail_cast_max=0.112305 control_cast_max=0.000000 control_diff=0.000000 negative_px=0 negative_static=0 negative_not_band=0 band_blend_positive=720 hull_mark_reads=0 hull_mark_own=0 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=yaw_plus_on program=age strict=1 exit_px=0.250 yaw_px=0.30 velocity_px=0.500 fresh_px=242 fresh_current_only=242 trail_cast_max=0.006714 control_cast_max=0.000000 control_diff=0.000000 negative_px=720 negative_static=0 negative_not_band=0 band_blend_positive=0 hull_mark_reads=190 hull_mark_own=117 hull_mark_unexplained=0 output_diff=0.666992 age_diff=72.000000
+CHECK exit reset yaw control: strict alone leaves the hull share in the trail PASS
+SAMPLE exit reset, camera yaw +0.3 px/frame: every trail pixel is current-only on its first strict-sky frame (fresh_current_only - fresh_px) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, camera yaw +0.3 px/frame: negative ages only on band pixels of moving frames actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, camera yaw +0.3 px/frame: a hull pixel reading a marked texel continues the count (hull_mark_unexplained) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge age programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge age programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=yaw_minus_off program=age strict=1 exit_px=0.000 yaw_px=-0.30 velocity_px=0.500 fresh_px=205 fresh_current_only=48 trail_cast_max=0.063965 control_cast_max=0.000000 control_diff=0.000000 negative_px=0 negative_static=0 negative_not_band=0 band_blend_positive=720 hull_mark_reads=0 hull_mark_own=0 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=yaw_minus_on program=age strict=1 exit_px=0.250 yaw_px=-0.30 velocity_px=0.500 fresh_px=205 fresh_current_only=205 trail_cast_max=0.051392 control_cast_max=0.000000 control_diff=0.000000 negative_px=720 negative_static=0 negative_not_band=0 band_blend_positive=0 hull_mark_reads=163 hull_mark_own=163 hull_mark_unexplained=0 output_diff=0.658691 age_diff=72.000000
+CHECK exit reset yaw control: strict alone leaves the hull share in the trail PASS
+SAMPLE exit reset, camera yaw -0.3 px/frame: every trail pixel is current-only on its first strict-sky frame (fresh_current_only - fresh_px) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, camera yaw -0.3 px/frame: negative ages only on band pixels of moving frames actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, camera yaw -0.3 px/frame: a hull pixel reading a marked texel continues the count (hull_mark_unexplained) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge far programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=far_straight_on program=far strict=1 exit_px=0.250 yaw_px=0.00 velocity_px=0.500 fresh_px=204 fresh_current_only=204 trail_cast_max=0.000000 control_cast_max=0.000000 control_diff=0.000000 negative_px=720 negative_static=0 negative_not_band=0 band_blend_positive=0 hull_mark_reads=162 hull_mark_own=162 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
+SAMPLE exit reset, far program: every trail pixel is current-only on its first strict-sky frame (fresh_current_only - fresh_px) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far program: the trail carries no hull share afterwards (max B - R over trail pixels and frames) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far program: every band pixel on the blend path of a moving frame is marked (band_blend_positive) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK exit reset on the far programs: marks are written and a hull pixel continued its count through its own marked texel PASS
+SAMPLE exit reset, far program: negative ages only on band pixels of moving frames actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far program: a hull pixel reading a marked texel continues the count (hull_mark_unexplained) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge far programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=far_yaw_plus_on program=far strict=1 exit_px=0.250 yaw_px=0.30 velocity_px=0.500 fresh_px=242 fresh_current_only=242 trail_cast_max=0.018555 control_cast_max=0.000000 control_diff=0.000000 negative_px=720 negative_static=0 negative_not_band=0 band_blend_positive=0 hull_mark_reads=190 hull_mark_own=117 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
+SAMPLE exit reset, far program, camera yaw +0.3 px/frame: every trail pixel is current-only on its first strict-sky frame (fresh_current_only - fresh_px) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far program, camera yaw +0.3 px/frame: negative ages only on band pixels of moving frames actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far program, camera yaw +0.3 px/frame: a hull pixel reading a marked texel continues the count (hull_mark_unexplained) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge far programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=far_yaw_minus_on program=far strict=1 exit_px=0.250 yaw_px=-0.30 velocity_px=0.500 fresh_px=205 fresh_current_only=205 trail_cast_max=0.087769 control_cast_max=0.000000 control_diff=0.000000 negative_px=720 negative_static=0 negative_not_band=0 band_blend_positive=0 hull_mark_reads=163 hull_mark_own=163 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
+SAMPLE exit reset, far program, camera yaw -0.3 px/frame: every trail pixel is current-only on its first strict-sky frame (fresh_current_only - fresh_px) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far program, camera yaw -0.3 px/frame: negative ages only on band pixels of moving frames actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far program, camera yaw -0.3 px/frame: a hull pixel reading a marked texel continues the count (hull_mark_unexplained) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge far programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=far_camera_straight_on program=far_camera strict=1 exit_px=0.250 yaw_px=0.00 velocity_px=0.500 fresh_px=204 fresh_current_only=204 trail_cast_max=0.000000 control_cast_max=0.000000 control_diff=0.000000 negative_px=720 negative_static=0 negative_not_band=0 band_blend_positive=0 hull_mark_reads=162 hull_mark_own=162 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
+SAMPLE exit reset, far_camera program: every trail pixel is current-only on its first strict-sky frame (fresh_current_only - fresh_px) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far_camera program: the trail carries no hull share afterwards (max B - R over trail pixels and frames) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far_camera program: every band pixel on the blend path of a moving frame is marked (band_blend_positive) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK exit reset on the far programs: marks are written and a hull pixel continued its count through its own marked texel PASS
+SAMPLE exit reset, far_camera program: negative ages only on band pixels of moving frames actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far_camera program: a hull pixel reading a marked texel continues the count (hull_mark_unexplained) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge far programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=far_camera_yaw_plus_on program=far_camera strict=1 exit_px=0.250 yaw_px=0.30 velocity_px=0.500 fresh_px=242 fresh_current_only=242 trail_cast_max=0.018188 control_cast_max=0.000000 control_diff=0.000000 negative_px=720 negative_static=0 negative_not_band=0 band_blend_positive=0 hull_mark_reads=190 hull_mark_own=117 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
+SAMPLE exit reset, far_camera program, camera yaw +0.3 px/frame: every trail pixel is current-only on its first strict-sky frame (fresh_current_only - fresh_px) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far_camera program, camera yaw +0.3 px/frame: negative ages only on band pixels of moving frames actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far_camera program, camera yaw +0.3 px/frame: a hull pixel reading a marked texel continues the count (hull_mark_unexplained) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge far programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=far_camera_yaw_minus_on program=far_camera strict=1 exit_px=0.250 yaw_px=-0.30 velocity_px=0.500 fresh_px=205 fresh_current_only=205 trail_cast_max=0.086670 control_cast_max=0.000000 control_diff=0.000000 negative_px=720 negative_static=0 negative_not_band=0 band_blend_positive=0 hull_mark_reads=163 hull_mark_own=163 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
+SAMPLE exit reset, far_camera program, camera yaw -0.3 px/frame: every trail pixel is current-only on its first strict-sky frame (fresh_current_only - fresh_px) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far_camera program, camera yaw -0.3 px/frame: negative ages only on band pixels of moving frames actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far_camera program, camera yaw -0.3 px/frame: a hull pixel reading a marked texel continues the count (hull_mark_unexplained) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge age programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge age programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=loose_on program=age strict=0 exit_px=0.250 yaw_px=0.00 velocity_px=0.500 fresh_px=204 fresh_current_only=0 trail_cast_max=0.118408 control_cast_max=0.000000 control_diff=0.000000 negative_px=0 negative_static=0 negative_not_band=0 band_blend_positive=720 hull_mark_reads=0 hull_mark_own=0 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
+SAMPLE exit reset: loose with the floor uploaded is bit-identical to loose without it on both targets, no negative age actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CAMERA_CASES
 CHECK camera pose validates PASS
 CHECK camera sequence keeps a history PASS
@@ -4186,6 +4841,661 @@ CHECK edge history follows the sequence PASS
 SETA_HUGE_CAMERA band_px=252 band_deviation_loose=0.815308 band_deviation_strict=0.000000 nonfinite_outputs=0
 CHECK huge camera path: the band accumulates under loose (the routed path is unaffected) PASS
 SAMPLE seta huge camera path (rows at 1e15): the band is current-only under strict (fail closed) and no output is nonfinite actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge age programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge age programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=straight_off program=age strict=1 exit_px=0.000 yaw_px=0.00 velocity_px=0.500 fresh_px=204 fresh_current_only=0 trail_cast_max=0.118408 control_cast_max=0.000000 control_diff=0.000000 negative_px=0 negative_static=0 negative_not_band=0 band_blend_positive=720 hull_mark_reads=0 hull_mark_own=0 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=straight_on program=age strict=1 exit_px=0.250 yaw_px=0.00 velocity_px=0.500 fresh_px=204 fresh_current_only=204 trail_cast_max=0.000000 control_cast_max=0.000000 control_diff=0.000000 negative_px=720 negative_static=0 negative_not_band=0 band_blend_positive=0 hull_mark_reads=162 hull_mark_own=162 hull_mark_unexplained=0 output_diff=0.758667 age_diff=72.000000
+CHECK exit reset control: strict alone leaves the hull share in the trail and writes no negative age PASS
+SAMPLE exit reset: every trail pixel is current-only on its first strict-sky frame after a band frame (fresh_current_only - fresh_px) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset: the trail carries no hull share afterwards (max B - R over trail pixels and frames, sky-only history is B == R) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset: negative ages only on band pixels of moving frames (negative_static + negative_not_band) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset: every band pixel on the blend path of a moving frame is marked (band_blend_positive) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset: control sky (8+ px from the square) identical to strict without the floor actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset: a hull pixel reading a marked texel continues the count through the sign (hull_mark_unexplained) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK exit reset: marks are written and at least one hull pixel read its own marked texel and continued the count PASS
+CHECK edge age programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=slow_on program=age strict=1 exit_px=0.250 yaw_px=0.00 velocity_px=0.125 fresh_px=212 fresh_current_only=0 trail_cast_max=0.121948 control_cast_max=0.000000 control_diff=0.000000 negative_px=0 negative_static=0 negative_not_band=0 band_blend_positive=690 hull_mark_reads=0 hull_mark_own=0 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
+SAMPLE exit reset: below the floor (0.125 px/frame against 0.25) no negative age is written actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge age programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge age programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=yaw_plus_off program=age strict=1 exit_px=0.000 yaw_px=0.30 velocity_px=0.500 fresh_px=242 fresh_current_only=0 trail_cast_max=0.112305 control_cast_max=0.000000 control_diff=0.000000 negative_px=0 negative_static=0 negative_not_band=0 band_blend_positive=720 hull_mark_reads=0 hull_mark_own=0 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=yaw_plus_on program=age strict=1 exit_px=0.250 yaw_px=0.30 velocity_px=0.500 fresh_px=242 fresh_current_only=242 trail_cast_max=0.006714 control_cast_max=0.000000 control_diff=0.000000 negative_px=720 negative_static=0 negative_not_band=0 band_blend_positive=0 hull_mark_reads=190 hull_mark_own=117 hull_mark_unexplained=0 output_diff=0.666992 age_diff=72.000000
+CHECK exit reset yaw control: strict alone leaves the hull share in the trail PASS
+SAMPLE exit reset, camera yaw +0.3 px/frame: every trail pixel is current-only on its first strict-sky frame (fresh_current_only - fresh_px) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, camera yaw +0.3 px/frame: negative ages only on band pixels of moving frames actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, camera yaw +0.3 px/frame: a hull pixel reading a marked texel continues the count (hull_mark_unexplained) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge age programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge age programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=yaw_minus_off program=age strict=1 exit_px=0.000 yaw_px=-0.30 velocity_px=0.500 fresh_px=205 fresh_current_only=48 trail_cast_max=0.063965 control_cast_max=0.000000 control_diff=0.000000 negative_px=0 negative_static=0 negative_not_band=0 band_blend_positive=720 hull_mark_reads=0 hull_mark_own=0 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=yaw_minus_on program=age strict=1 exit_px=0.250 yaw_px=-0.30 velocity_px=0.500 fresh_px=205 fresh_current_only=205 trail_cast_max=0.051392 control_cast_max=0.000000 control_diff=0.000000 negative_px=720 negative_static=0 negative_not_band=0 band_blend_positive=0 hull_mark_reads=163 hull_mark_own=163 hull_mark_unexplained=0 output_diff=0.658691 age_diff=72.000000
+CHECK exit reset yaw control: strict alone leaves the hull share in the trail PASS
+SAMPLE exit reset, camera yaw -0.3 px/frame: every trail pixel is current-only on its first strict-sky frame (fresh_current_only - fresh_px) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, camera yaw -0.3 px/frame: negative ages only on band pixels of moving frames actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, camera yaw -0.3 px/frame: a hull pixel reading a marked texel continues the count (hull_mark_unexplained) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge far programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=far_straight_on program=far strict=1 exit_px=0.250 yaw_px=0.00 velocity_px=0.500 fresh_px=204 fresh_current_only=204 trail_cast_max=0.000000 control_cast_max=0.000000 control_diff=0.000000 negative_px=720 negative_static=0 negative_not_band=0 band_blend_positive=0 hull_mark_reads=162 hull_mark_own=162 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
+SAMPLE exit reset, far program: every trail pixel is current-only on its first strict-sky frame (fresh_current_only - fresh_px) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far program: the trail carries no hull share afterwards (max B - R over trail pixels and frames) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far program: every band pixel on the blend path of a moving frame is marked (band_blend_positive) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK exit reset on the far programs: marks are written and a hull pixel continued its count through its own marked texel PASS
+SAMPLE exit reset, far program: negative ages only on band pixels of moving frames actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far program: a hull pixel reading a marked texel continues the count (hull_mark_unexplained) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge far programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=far_yaw_plus_on program=far strict=1 exit_px=0.250 yaw_px=0.30 velocity_px=0.500 fresh_px=242 fresh_current_only=242 trail_cast_max=0.018555 control_cast_max=0.000000 control_diff=0.000000 negative_px=720 negative_static=0 negative_not_band=0 band_blend_positive=0 hull_mark_reads=190 hull_mark_own=117 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
+SAMPLE exit reset, far program, camera yaw +0.3 px/frame: every trail pixel is current-only on its first strict-sky frame (fresh_current_only - fresh_px) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far program, camera yaw +0.3 px/frame: negative ages only on band pixels of moving frames actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far program, camera yaw +0.3 px/frame: a hull pixel reading a marked texel continues the count (hull_mark_unexplained) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge far programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=far_yaw_minus_on program=far strict=1 exit_px=0.250 yaw_px=-0.30 velocity_px=0.500 fresh_px=205 fresh_current_only=205 trail_cast_max=0.087769 control_cast_max=0.000000 control_diff=0.000000 negative_px=720 negative_static=0 negative_not_band=0 band_blend_positive=0 hull_mark_reads=163 hull_mark_own=163 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
+SAMPLE exit reset, far program, camera yaw -0.3 px/frame: every trail pixel is current-only on its first strict-sky frame (fresh_current_only - fresh_px) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far program, camera yaw -0.3 px/frame: negative ages only on band pixels of moving frames actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far program, camera yaw -0.3 px/frame: a hull pixel reading a marked texel continues the count (hull_mark_unexplained) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge far programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=far_camera_straight_on program=far_camera strict=1 exit_px=0.250 yaw_px=0.00 velocity_px=0.500 fresh_px=204 fresh_current_only=204 trail_cast_max=0.000000 control_cast_max=0.000000 control_diff=0.000000 negative_px=720 negative_static=0 negative_not_band=0 band_blend_positive=0 hull_mark_reads=162 hull_mark_own=162 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
+SAMPLE exit reset, far_camera program: every trail pixel is current-only on its first strict-sky frame (fresh_current_only - fresh_px) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far_camera program: the trail carries no hull share afterwards (max B - R over trail pixels and frames) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far_camera program: every band pixel on the blend path of a moving frame is marked (band_blend_positive) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK exit reset on the far programs: marks are written and a hull pixel continued its count through its own marked texel PASS
+SAMPLE exit reset, far_camera program: negative ages only on band pixels of moving frames actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far_camera program: a hull pixel reading a marked texel continues the count (hull_mark_unexplained) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge far programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=far_camera_yaw_plus_on program=far_camera strict=1 exit_px=0.250 yaw_px=0.30 velocity_px=0.500 fresh_px=242 fresh_current_only=242 trail_cast_max=0.018188 control_cast_max=0.000000 control_diff=0.000000 negative_px=720 negative_static=0 negative_not_band=0 band_blend_positive=0 hull_mark_reads=190 hull_mark_own=117 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
+SAMPLE exit reset, far_camera program, camera yaw +0.3 px/frame: every trail pixel is current-only on its first strict-sky frame (fresh_current_only - fresh_px) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far_camera program, camera yaw +0.3 px/frame: negative ages only on band pixels of moving frames actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far_camera program, camera yaw +0.3 px/frame: a hull pixel reading a marked texel continues the count (hull_mark_unexplained) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge far programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=far_camera_yaw_minus_on program=far_camera strict=1 exit_px=0.250 yaw_px=-0.30 velocity_px=0.500 fresh_px=205 fresh_current_only=205 trail_cast_max=0.086670 control_cast_max=0.000000 control_diff=0.000000 negative_px=720 negative_static=0 negative_not_band=0 band_blend_positive=0 hull_mark_reads=163 hull_mark_own=163 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
+SAMPLE exit reset, far_camera program, camera yaw -0.3 px/frame: every trail pixel is current-only on its first strict-sky frame (fresh_current_only - fresh_px) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far_camera program, camera yaw -0.3 px/frame: negative ages only on band pixels of moving frames actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE exit reset, far_camera program, camera yaw -0.3 px/frame: a hull pixel reading a marked texel continues the count (hull_mark_unexplained) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge age programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge age programs available PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK exit reset: the age target is read every frame PASS
+SETA_EXIT mode=loose_on program=age strict=0 exit_px=0.250 yaw_px=0.00 velocity_px=0.500 fresh_px=204 fresh_current_only=0 trail_cast_max=0.118408 control_cast_max=0.000000 control_diff=0.000000 negative_px=0 negative_static=0 negative_not_band=0 band_blend_positive=720 hull_mark_reads=0 hull_mark_own=0 hull_mark_unexplained=0 output_diff=0.000000 age_diff=0.000000
+SAMPLE exit reset: loose with the floor uploaded is bit-identical to loose without it on both targets, no negative age actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CAMERA_CASES
 CHECK camera pose validates PASS
 CHECK camera sequence keeps a history PASS
@@ -5573,4 +6883,4 @@ CHECK the refused run left the main target untouched PASS
 CHECK draw copy mode with an FP16 input PASS
 CHECK route atomic outputs valid PASS
 CHECK an FP16 input takes no copy in draw mode PASS
-RESULT PASS numerical=570 state_restorations=278 generations=2
+RESULT PASS numerical=672 state_restorations=278 generations=2

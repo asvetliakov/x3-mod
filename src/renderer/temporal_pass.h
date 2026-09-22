@@ -235,6 +235,14 @@ struct FrameInputs {
     // whose routed correspondence moves at least this much against the rotation-only
     // camera path is current-only under strict. 1..16; read with sentinel_strict_sky only.
     float sky_history_band_px = 3.f;
+    // Exit reset of the strict sky history (resolve c25.x, uploaded squared with c24 by
+    // the age variants; docs/architecture/seta-sky-hull-share-decay.md): a band pixel
+    // that accepts history while its parallax is at least this (px/frame) writes its
+    // age negated, and the strict-sky pixel that reads the mark next frame is
+    // current-only once. 0 off, else 0.125..sky_history_band_px (run() refuses the rest);
+    // read with sentinel_strict_sky and an age program only (the pass uploads the off
+    // value otherwise, so the age target's bytes are those of the option off).
+    float sky_history_exit_px = 0.f;
     bool caller_scene_open = true;
     bool caller_stateblock_recording = false;
     bool caller_queries_idle = false; // positive knowledge: no active occlusion/statistics query

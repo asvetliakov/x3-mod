@@ -380,7 +380,15 @@ fixtures green on its own.
    `test_temporal_*`, and a byte-comparison that the flown
    `--taa-far-stabiliser 0.985 --taa-thin-region 0.97` resolve program hashes
    are unchanged. ~2,700 lines. Do this one last of the code batches: it is the
-   only batch that edits the flown resolve.
+   only batch that edits the flown resolve. **Exit reset dependency (2026-09-22,
+   `seta-sky-hull-share-decay.md`):** the fixture's `SETA_EXIT` rows run on the
+   `age` program (thin clip 0.7, WMAX 0.9; the off / slow / loose rows and the
+   adaptive on rows) as well as on `far` and `far_camera`, so batch 6 must
+   either keep one age variant (`resolve_age.hlsl` and its include) or move the
+   age-program rows to far / far_camera first (the runner's counts 672 / 488
+   change); and its "flown hashes unchanged" gate must be rebased onto the
+   hashes that change records (`temporal-resolve-far{,-camera}-program.json`:
+   the term is compiled into every age-writing variant), not the pre-exit ones.
 7. **Not scheduled** — H (retired converted-material law inside
    `linear_material.cpp`) and I (`--linear-emissions` bracket). Both need a
    deliberate split of shared code first; propose separately if the user wants

@@ -1667,3 +1667,92 @@ enters below it or while covered and survives by ordinary accumulation outside t
 question (`docs/architecture/seta-sky-hull-share-decay.md`, pending). Flight acceptance for that fix: the
 refined 3-12 px share (`dark_vs_own_mean.py`) falls to the far-tail level of 16-18 %. User verdict: SETA
 still smears a little; normal speed and the pan looked clean.
+
+## 2026-09-22 exit reset: the strict sky history's hull share leaves in one frame (fixture)
+
+Implements `docs/architecture/seta-sky-hull-share-decay.md` (Fable, scratch build `build-exit`, not a candidate;
+`docs/architecture/seta-motion.md` section 5 points here). Option `--taa-sky-history-exit-px P`
+(`X3M_TAA_SKY_HISTORY_EXIT_PX`; requires `--taa`, `--taa-sky-history strict` and an age program:
+`--taa-far-stabiliser`, `--taa-thin-region` or `--taa-adaptive-weight`; 0 off, else 0.125..the band threshold;
+**default off**, 0.25 the flown candidate). The DLL logs it as `sky_history_exit_px` in `motion_output_mode`,
+refuses a value without strict (`taa_sky_history_exit_px_setting refused=1 reason=requires_strict`) or out of range
+(`invalid=1`), and drops it per device without an age program (`motion_output_taa_sky_history_exit ... unavailable=1
+reason=no_age_program`). The pass uploads c25.x = P^2 with c24 as one two-register block on the age programs, and
+1e30 whenever the option is off or the strict term is not in effect (loose, policy 1), so the age target's bytes
+are those of the option off there.
+
+**Two deviations from the note, both inside `resolve.hlsl`'s age variants only.** (1) The note's reserve
+(`step(0.5, f)` for the age tap's rounding) saves nothing with this compiler (every `step` compiles to add + cmp);
+the reserve applied instead is two exact rewrites, proven on the existing rows before the term: the age write
+splats the count to every lane (R32F stores .x only, same bytes, one instruction fewer) and the [1, 64] range test
+becomes `age <= 64 ? age : 1` on `abs(age)` (this program writes 1..64 only and s7 is bound only behind a valid
+history every pixel of which it wrote, so no |age| below 1 is readable; a NaN still restarts). (2) The reset is
+applied at the blend (`keep` 0 through age 0 on the adaptive variants and an explicit select on the far variants,
+count restarted), not by starting `considered` at 3: with the age tap read before the depth verdict the D3DX
+optimiser regrouped the Catmull-Rom weight polynomials of the age variants (a different mul/mad order), and the
+lattice check "past the speed gate the thin-region run is the plain resolve bit for bit" failed on the drifting
+shards (fractional footprint; the static square stayed identical). The reset predicate is one `max(tolerance,
+ageRaw) >= 0` ("keep"): `tolerance` is below 0 exactly on a strict-sky pixel under strict (the far-plane term took
+3 off it), the texel below 0 exactly when marked. The output of a reset pixel is the current sample exactly at
+k = 0 (`x + 0 * (old - x)`), within rounding on the HDR route (`unweigh(weigh(x))`); the history taps are still
+fetched that frame (no early return). The band term's `band` is not folded with c7.z (that fold cost 5 slots on
+age_line): the loose guarantee is the 1e30 upload, and a band pixel under loose would need a correspondence 1e15
+px or more from the camera path (a camera path at `prepare`'s 1e15 bound) to be marked at all, a mark nothing
+reads there (the reset is gated by `tolerance`, the count read through `abs`).
+
+Reserve-only run (committed fixture and runner, HEAD shader plus the two rewrites; `compare_reserve_out.txt`):
+`passed: true`, 416 samples. "0 removed / 0 added" below means: `compare.py` sets aside the lines that change by
+construction (`RESOLVE_BUDGET`, `LOOP_TIMING`, `LINE_TIMING`, `CHECK`, `RESULT PASS`, the `*_BASE` counters and the
+new `SETA_EXIT` rows) and compares every other line, the SAMPLE, metric and per-case rows, as a set against the
+committed report. Raw counts: temporal-pass.txt 5576 lines both, temporal-lattice.txt 5242 lines both, **0 stable
+lines removed / 0 added** in each, all 416 + 375 baseline SAMPLE lines present; slots age 494 -> 489, age_filter
+506 -> 501, age_line 507 -> 502, far 495 -> 490, far_camera 507 -> 502 (the reserve alone).
+
+Fixture (`X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_temporal_pass.py`,
+worktree `agent-ac09e913c46fd2dd7`, results untracked there; `verification/results/exit-reset/compare.py` and
+`compare_out.txt` hold the comparison): `passed: true`; `RESULT PASS numerical=672 state_restorations=278
+generations=2`, **488** samples (570 / 416 before: nine age-program edge sequences and fourteen metrics per
+generation, then six far / far_camera sequences and eleven metrics); lattice `RESULT PASS numerical=583
+state_restorations=23`. Off-path bit-identity (same set comparison
+of the stable lines, the volatile prefixes above set aside): temporal-lattice.txt 5242 lines both, **0 stable lines
+removed / 0 added** (every FLICKER, LINE_FILTER, FAR_STABILISER, THIN_REGION, SENTINEL_STABILISER and SAMPLE row
+identical, the far-camera static-camera `age_identical=1` rows included); temporal-pass.txt 5576 -> 6886 lines, 0
+stable lines removed / 72 added (the new metrics; the other added lines are CHECK and SETA_EXIT rows), all 416
+baseline SAMPLE lines unchanged (`adjacent_max` 0.000000 band row, (f)-(k) `strict - loose == 0` rows, pans, static
+ring).
+
+Case (l), `SETA_EXIT` rows (age program: thin clip 0.7, WMAX 0.9; strict + band 3; 8x8 square of colour (0, 0, 0.5)
+at depth 0.9997, static 16 frames then +0.5 px/frame for 20 over a 1 / 0 sky whose texel flickers with period 3;
+"cast" = max B - R over trail pixels, 0 for a sky-only history; "fresh" = a strict-sky pixel that was in the band on
+the previous moving frame):
+
+| mode | fresh px / current-only | trail cast max | negative ages (static / off-band / band-blend positive) | hull reads own marked texel / continued / unexplained | vs the other run |
+| --- | --- | --- | --- | --- | --- |
+| straight, exit off (today's strict) | 204 / **0** | **0.118408** | 0 (0 / 0 / 720 band pixels on the blend path unmarked) | 0 | control sky identical to exit on |
+| straight, exit 0.25 | 204 / **204** | **0.000000** | **720** = every band blend pixel (0 / 0 / 0) | 162 / **162** / **0** | output diff 0.759 on the trail, age diff 72 |
+| 0.125 px/frame, exit 0.25 (below the floor) | 212 / 0 | 0.121948 | **0** | 0 | |
+| yaw +0.3 px/frame (f = 0.7), exit off / on | 242 / 0 -> 242 / **242** | 0.112305 -> **0.006714** | 0 -> 720 (0 / 0 / 0) | 190 / 117 / **0** | |
+| yaw -0.3 px/frame (f = 0.3), exit off / on | 205 / 48 -> 205 / **205** | 0.063965 -> **0.051392** | 0 -> 720 (0 / 0 / 0) | 163 / 163 / **0** | |
+| loose, exit 0.25 uploaded (pass forces 1e30) | 204 / 0 | 0.118408 | 0 | 0 | **output diff 0 / age diff 0** against loose without it |
+| **far** program (0.985, far gate d0 0.9995 .. 0.9999), exit 0.25: straight / yaw +0.3 / yaw -0.3 | 204 / **204**, 242 / **242**, 205 / **205** | **0.000000** / 0.018555 / 0.087769 | 720 each (0 / 0 / 0) | 162 / 162 / **0**, 190 / 117 / **0**, 163 / 163 / **0** | |
+| **far_camera** program (thin region 0.97, camera gate: the flown configuration), exit 0.25: straight / yaw +0.3 / yaw -0.3 | 204 / **204**, 242 / **242**, 205 / **205** | **0.000000** / 0.018188 / 0.086670 | 720 each (0 / 0 / 0) | 162 / 162 / **0**, 190 / 117 / **0**, 163 / 163 / **0** | |
+
+Asserted (each generation, the age, far and far_camera on rows alike): fresh_current_only == fresh_px, trail cast 0
+(straight), negative_static + negative_not_band 0, band_blend_positive 0, hull_mark_unexplained 0, control identical
+to exit off, no mark below the floor, loose bit-identical on both targets. The far programs' yaw casts are larger
+than the age program's (0.019 / 0.088 against 0.007 / 0.051): their history weight on the sky is the base 0.9
+without the adaptive ramp, so the neighbour's re-imported share decays more slowly; the reset itself is identical. The yaw rows answer the note's open item 3: the reset itself is
+unchanged under rotation (the nearest age texel is the pixel's own at 0.3 px/frame), but the fractional
+Catmull-Rom footprint re-imports the band's share: 6 % of the exit-off cast when the footprint's negative lobe
+(-0.07) reaches the band (yaw +0.3), **80 %** when its 0.29 lobe does (yaw -0.3, content moving toward the trail).
+The note's fallback (`keep` 0.5) does not address this (the share enters through neighbours, not the pixel's own
+history); a per-tap mark read would cost 16 taps. The SETA leg itself has rotation 0 (run249 `mid_band_chain`), so
+the straight row is the flown case; a turning leg keeps a residual.
+
+| check | result |
+| --- | --- |
+| `RESOLVE_BUDGET` (fixture, D3DXDisassembleShader) age / age_filter / age_line / far / far_camera | 494 -> **495**, 506 -> **507**, 507 -> **507**, 495 -> **498**, 507 -> **510** of 512; plain 432, current_filter 443, thin 465, thin_filter 477, line 447, thin_line 483, snapshot 46, masks 368 / 344, boxes 51 / 35 / 94 unchanged (bytes unchanged: the non-age headers did not regenerate) |
+| `LINE_TIMING_CAMERA` (1280x768, 6 rounds; the far-camera program carries the term) no_region thin / camera / delta, fragmented pan thin / camera / delta | 1.4375 / 1.6160 / 0.1785, 1.2554 / 1.7464 / 0.4910 ms before; **1.4712 / 1.6113 / 0.1401, 1.3329 / 1.8870 / 0.5541** ms after, from the retained `verification/results/bottle-X3/temporal-lattice.txt` (run-to-run noise of this CPU-wall measurement; `LOOP_TIMING_SUMMARY` belongs to the loop-qualify mode, which times the unchanged plain program) |
+| scratch DLL `build-exit` (`cmake/mingw-i686.cmake`, RelWithDebInfo), no warnings; `check_no_x87.py` | built; PASS, 638 reachable functions, 0 violations; sha256 `8b19f6ce2a0c780d6cdf655df48c75e0d36dd85d5155ae8186f3cc5934fed2f9` (after the review fixes: a non-numeric `X3M_TAA_SKY_HISTORY_EXIT_PX` logs `invalid=1`) |
+| `PYTHONPATH=verification/probe /usr/bin/python3 -m unittest verification.analysis.test_taa_image_defaults verification.analysis.test_taa_sky_history verification.analysis.test_shader_compiler_provenance` | 28 tests, OK (four new: exit forwarded as the float given with each age program; 0 accepted as the explicit off with `--taa` alone; omitted / inherited dropped; range 0.125..band and the `--taa`, strict and age-program requirements refused; DLL default 0) |
+| `--taa-debug` age readback consumers | `tools/analysis/taa_sentinel_pan_replay.py` and `taa_sentinel_pan_variants.py` seed the replay with `abs()` of the `taa_age` dump (a negative count is the mark); no host test covers them |

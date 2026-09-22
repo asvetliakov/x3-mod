@@ -43,8 +43,19 @@ try:
     # 532 / 402: the fade-band sweep (two more sequences, two metrics). 546 / 408: the band term
     # (seta-motion.md section 4): one more SETA-sweep metric, the slow sweep and the static ring
     # (two sequences and one metric each). 552 / 410: the pan case (two sequences, one metric). 570 / 416: the
-    # fade-band-beside-occluder, projective-pan and huge-camera-path cases (two sequences and one metric each).
-    assert run.returncode==0 and match and tuple(map(int,match.groups()))==(570,278,2) and report['samples']==416 and 'RESET PASS' in text and 'FAIL' not in text,text[-1500:]
+    # fade-band-beside-occluder, projective-pan and huge-camera-path cases (two sequences and one metric each). 616 / 444: the
+    # exit reset (seta-sky-hull-share-decay.md section 6: nine age-program sequences and fourteen metrics per generation). 672 / 488: the
+    # same rows on the far and far-camera programs (six sequences and eleven metrics per generation).
+    assert run.returncode==0 and match and tuple(map(int,match.groups()))==(672,278,2) and report['samples']==488 and 'RESET PASS' in text and 'FAIL' not in text,text[-1500:]
+    # Exit reset rows (docs/architecture/seta-sky-hull-share-decay.md): strict alone leaves the hull share in the trail and no
+    # negative age; with the floor every fresh trail pixel is current-only once and the trail is sky-only (B == R) afterwards.
+    report['seta_exit']=[dict(re.findall(r'(\w+)=(\S+)',line)) for line in text.splitlines() if line.startswith('SETA_EXIT ')]
+    exit_rows={row['mode']:row for row in report['seta_exit'][:14]} # fourteen rows per generation (loose_on's row carries its diff against loose without the floor)
+    on_modes=['straight_on','yaw_plus_on','yaw_minus_on','far_straight_on','far_yaw_plus_on','far_yaw_minus_on','far_camera_straight_on','far_camera_yaw_plus_on','far_camera_yaw_minus_on']
+    assert len(report['seta_exit'])==28 and sorted(exit_rows)==sorted(on_modes+['loose_on','slow_on','straight_off','yaw_minus_off','yaw_plus_off']),report['seta_exit']
+    assert exit_rows['straight_off']['negative_px']=='0' and float(exit_rows['straight_off']['trail_cast_max'])>.05 and exit_rows['slow_on']['negative_px']=='0' and exit_rows['loose_on']['negative_px']=='0',exit_rows
+    assert all(exit_rows[m]['trail_cast_max']=='0.000000' for m in ('straight_on','far_straight_on','far_camera_straight_on')),exit_rows
+    assert all(r['fresh_current_only']==r['fresh_px'] and int(r['fresh_px'])>=20 and r['negative_not_band']=='0' and r['negative_static']=='0' and r['band_blend_positive']=='0' and r['hull_mark_unexplained']=='0' for r in (exit_rows[m] for m in on_modes)),exit_rows
     assert len(report['camera_pan'])==2 and all(r['w_below_current_only']=='0' and r['w_above_current_only']=='0' and int(r['w_below_px'])>4000 for r in report['camera_pan']),report['camera_pan']
     # The quad twins and the copy modes: byte-identical on this backend.
     report['quad_twins']=[dict(re.findall(r'(\w+)=(\S+)',line)) for line in text.splitlines() if line.startswith('QUAD_TWIN ')]

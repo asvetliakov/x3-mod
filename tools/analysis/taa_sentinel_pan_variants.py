@@ -13,7 +13,7 @@ VARS={'installed':V(), 'inst_S1':V(S=1.), 'inst_W094':V(W_=.94), 'inst_box11':V(
  'fix_boxoff':V(box=0,oracle_reject=False), 'fix_keys0':V(keys=0.,oracle_reject=False), 'fix_S085':V(S=.85,oracle_reject=False), 'fix_var1':V(varbox=1.,oracle_reject=False), 'fix_var2':V(varbox=2.,oracle_reject=False),
  'fix_keys065':V(keys=-.65,oracle_reject=False), 'fix_S1_box11':V(S=1.,box=5,oracle_reject=False), 'fix_E0':V(E=0.,oracle_reject=False), 'inst_E0':V(E=0.), 'S0':V(S=0.), 'fix_S0':V(S=0.,oracle_reject=False)}
 m=T.build(D,frames,roi); fr=m['frames']; meta=m['meta']; X0,Y0,X1,Y1=roi; W,H=1280,768; h,w=Y1-Y0,X1-X0
-age0=np.fromfile('%s/taa_age_1_%d.r32f'%(L,fr[0]),np.float32).reshape(768,1280)[Y0:Y1,X0:X1].astype(float)
+age0=np.abs(np.fromfile('%s/taa_age_1_%d.r32f'%(L,fr[0]),np.float32).reshape(768,1280)[Y0:Y1,X0:X1].astype(float))  # abs: a negative count is the exit reset's mark (seta-sky-hull-share-decay.md)
 def bil(a,x,y):
     x=np.clip(x,0,a.shape[1]-1.001); y=np.clip(y,0,a.shape[0]-1.001); xx=np.floor(x).astype(int); yy=np.floor(y).astype(int); fx=x-xx; fy=y-yy
     return a[yy,xx]*(1-fx)*(1-fy)+a[yy,xx+1]*fx*(1-fy)+a[yy+1,xx]*(1-fx)*fy+a[yy+1,xx+1]*fx*fy

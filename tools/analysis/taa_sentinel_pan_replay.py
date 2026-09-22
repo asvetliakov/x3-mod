@@ -101,7 +101,8 @@ if __name__ == '__main__':
     dump, frames, roi = sys.argv[1], sys.argv[2], tuple(map(int, sys.argv[3].split(',')))
     agedir = sys.argv[5] if len(sys.argv) > 5 else dump
     m = build(dump, frames, roi); fr = m['frames']; X0, Y0, X1, Y1 = roi
-    age0 = np.fromfile('%s/taa_age_1_%d.r32f' % (agedir, fr[0]), np.float32).reshape(768, 1280)[Y0:Y1, X0:X1].astype(float)
+    # abs: a negative count is the exit reset's mark on a band pixel (seta-sky-hull-share-decay.md); the count is its magnitude.
+    age0 = np.abs(np.fromfile('%s/taa_age_1_%d.r32f' % (agedir, fr[0]), np.float32).reshape(768, 1280)[Y0:Y1, X0:X1].astype(float))
     outs, diags = run(m, dict(variant(), open_loop=True), age0)
     for o, d, f in zip(outs, diags, fr[1:]):
         ref = m['load']('taa', f, 'rgba16f', np.float16, 4)[Y0:Y1, X0:X1]; k = m['meta'][f]['k']
