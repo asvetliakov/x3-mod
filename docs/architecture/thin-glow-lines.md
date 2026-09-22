@@ -191,3 +191,152 @@ z-band ROI here is a proxy for the note's spar box, not the same region; a repea
 let lit-pixel/energy counts be compared directly instead of only their phase-stability. (iii) Distinguishing "aniso
 already integrates" from "mip already >= 1 px" still needs the note's oblique-quad fixture (§3, option b' row);
 nothing here settles it.
+
+## 8. After run231, 2026-09-22: what gives bright, continuous, stable strips
+
+Status: design note for ratification; nothing here is implemented. Tags: **[M]** measured (this session's source
+reading or the ledger's numbers), **[C]** cited from the ledger / widening note, **[I]** inferred, **[A]** assumed.
+Inputs: [hull-emissive-widening.md](hull-emissive-widening.md) (§1.3-1.5, "As built"), its ledger
+[hull-emissive-widening.md](../verification/hull-emissive-widening.md) (run231 triage, follow-ups 1-2),
+`fade_route_core.h::lightmap_widen_scale` (per-draw `k` from the origin's view z), `linear_material.cpp`
+`lightmap_widen_fetch` (the 16-DWORD `dsx`/`dsy`/`mul`/`texldd` block, temp `rG`, constant `c217.z`),
+`line_mask_ps.hlsl` (the 7-tap line test reads only depth `s1` and motion `s4`, no colour **[M]**; `s0`, `s2`,
+`s3` unbound **[M]**), `temporal_pass.h` lines 90-150 (thin-region weight `min(n/(n+1), W)`, camera gate, sentinel).
+
+### 8.1 Three distinct failures, three distinct levers
+
+The Run64 flights separate what §2-3 lumped together as "tearing and flicker":
+
+| symptom (user, run) | measured cause | which lever moves it |
+|---|---|---|
+| torn / gapped strips under pitch and yaw (run225/227/232) | a sub-pixel strip's history is a Catmull-Rom-resampled band whose peak follows the fractional camera step (§2 mechanism ii); W 0.9 -> 0.95 changed nothing **[C]** | only a wider **source** band: a 3 px band survives fractional resampling; that is the widening (`k`) and nothing on the TAA side |
+| flicker at true rest, with and without widening (run231 0.229, run232 0.392 of peak pre-TAA **[C]**) | the 8-phase jitter samples the strip at 8 sub-texel positions; the resolve at W 0.9 leaks a fixed fraction of a period-8 input | only the **history weight** at rest: the widening's floor is already 0.83 at k = 3 and 0.875 at k = 4 (§1.4 of the widening note) — no source-side change buys another x3 |
+| strips "almost disappeared" facing them; "appear / grow" under yaw (run231) | energy conservation: peak `I * w / k` (x 0.25 at k = 3 for w = 0.76 px) against the old x4-gained, 1-px, torn dot at up to `I` **[C]**; and `k_draw` is a function of the object origin's view z, which rises to its maximum for a centred (frontal) object and falls off-axis, with the frame's `k_min` swinging 1.7-3.0 under yaw **[C]** | a **brightness law** that is not energy-conserving for thin content (a choice of look, see 8.2), and a **per-pixel** `k` that does not depend on where the object origin sits in the frame |
+
+Leak of a period-8 input through the resolve's IIR, `|H(w)| = (1 - W) / |1 - W e^{-iw}|` at the jitter fundamental
+`w = 2 pi / 8`: W 0.9 -> **0.136**, W 0.97 -> **0.040** (x 3.4 lower; the 2nd and 4th harmonics 0.074 -> 0.022 and
+0.053 -> 0.015) **[M, arithmetic]**. run231 measured a post/pre bright-pixel delta ratio of 0.20 at W 0.9 **[C]**;
+at W 0.97 the same source would show about 0.06, i.e. a displayed swing near 1.4 % of peak for the k = 3 source
+(0.229 x 0.06) instead of 4.6 %.
+
+### 8.2 The brightness question is a look decision, not an estimation problem
+
+Peak preservation for a strip narrower than a pixel means displaying `I` (or `I * w`, the coverage-exact value a
+converged TAA shows) where the widened fetch returns `I * w / k`. Restoring it needs `w`, the
+strip's screen width. **No phase-stable estimate of `w` exists below one pixel** **[I, from the law]**: any fetch at a
+footprint <= 1 px carries the very phase ripple the widening removes (floor 0.29 at the installed -0.5 bias), so a
+ratio `fine / coarse` re-imports it exactly (`coarse * (fine / coarse) = fine`); and two coarse fetches (footprints
+`k`, `2k`) only tell *whether* the feature is narrower than `k` (ratio 2 for a line, 4 for a dot, 1 for a panel
+interior, at most 1.33 at a panel edge `k / 2` px inside), not how much narrower. The general form "use the finest
+footprint the ripple allows" collapses to choosing a smaller `k` (k = 2: peak `I * w / 2`, floor 0.75), which the
+flights have effectively already bracketed (k = 3 too dim; k = 1 torn).
+
+So the bright option is an explicit **thin-emitter boost** `B` applied where the coarse ratio says "thinner than
+about `1.3 k` px", and `B` is the user's dial: `B = 1` is the energy-conserving law as built, `B = k` displays a
+sub-pixel strip at `I * w` (the same peak a converged, un-widened TAA would show, in a `k` px band instead of 1 px).
+Its known cost: a feature between 1 and `1.3 k` px wide (2-4 px dashes at k = 3) is over-brightened by up to `B`
+(peak `I * min(w, k)` for `w <= k`), a 1-px dot by `B` short of its own area law. This matches the user's recorded
+preference for cheap > 1.0 emitters over an exact law and reads as bloom-like (wider emitter, brighter core); it is
+still a x3 in the base image and the fixture measures it. Panel interiors and edges are protected by the ratio gate
+(8.3), and near hulls by `k = 1`.
+
+### 8.3 Recommendation: three changes, two builds
+
+**R1. Per-pixel `k` from the light map's own texel footprint (option b).** In the existing block, after `dsx`/`dsy`:
+`rho_max^2 = max(dp2(rG.xy, rG.xy), dp2(rG.zw, rG.zw)) * (size * c)^2`; `k = clamp(sqrt(.), 1, K)` (`dp2` x2, `max`,
+`mul`, `rsq`, `rcp`, `min`, `max`: **+8 slots**, no fetch), then the existing `mul rG, rG, k`. `(size * c)^2` is one
+per-draw lane (`c217.y` is uploaded and unread **[M]**; `c216.zw` too: `pixel[2]`, `[3]`, `[5]` are 0 in
+`motion_output.cpp:5505`); `size` = level-0 width of the bound light map, read once per texture with
+`GetLevelDesc(0)` where the mip-bias shadow already reads the level count (`SetTexture` hook), `c` = the ramp
+constant (`k = K` from `rho >= 1/c`; first value `c = K`, so a 1-texel strip is widened by `K` from the distance
+where it is 1 px wide and not at all where it is `K` px wide). Effects: `k` is continuous per pixel and per
+frame, the yaw pop and the frontal maximum of `k_draw` disappear (both come from `rows[15]`, not from the strip),
+`Q0`/`Q1` and the per-draw seam go away, and the near band softens by `k * rho = c * rho^2` instead of a per-draw step.
+The widened variant is then bound for every gain draw (no `k_draw = 1` fast path); near hulls read level 0 with
+`k = 1`, which the fixture measured bit-identical to `texld` on 11 programs on this backend **[C]** (native: the
+documented LOD law says the same; unverified). Cost at dock (hull fills the frame): +15 slots on programs of
+34-71 original slots, no extra fetch.
+
+**R2. Thin-emitter boost (option a, guarded).** After the widened fetch: a second `texldd` at gradients `2 * rG`
+(`add rG2, rG, rG`; the block already holds `rG`), luma of both (`dp3` x2), `r = L_k / max(L_2k, eps)` (`max`,
+`rcp`, `mul`), `t = saturate((r - 1.35) / 0.15)` (`mad_sat`), `g = 1 + (B - 1) * t` (`mad`), `rL.xyz *= g` (`mul`):
+**+12 slots, +1 fetch**, one more temp, `B` and the thresholds in one `def` on a free constant (`constant_free`
+check as for `c223`) or `B` per draw in `c216.z`. The gate band 1.35-1.5 sits between the panel-edge maximum (1.33)
+and the strip minimum under the k = 3 ripple (2 x 0.83 / 1.0 = 1.66) **[M, arithmetic]**, so `t` is saturated on
+strips (no ripple amplification) and 0 on panel interiors, smooth gradients and edges; DXT1 quantisation of the two
+levels is the margin's enemy and the DXT1 fixture copy measures it. `B` is a launcher parameter
+(`--hull-emissive-widening K,B`, `B` in `[1, K]`; the far fade `c217.w` composes multiplicatively as today). Luma
+rather than per-channel keeps the boost hue-neutral on quantised mips. With R1 and R2 in one block: **+27 slots,
++1 fetch** per hull pixel of a widened draw; largest variant 271 + 20 = 291 of 512 **[C, from the as-built table]**.
+
+**R3. Emissive vote in the stabiliser mask (option c).** In `line_mask_ps.hlsl` tests draw (`c7.z = 0`), `b` also
+becomes 1 where the pixel is routed with valid depth (motion alpha 1, the routing the resolve already reads), its HDR
+luma exceeds `E` (hull 0.16, strips 1.6-3.7 **[C]**: `E = 1.0`) and its 3x3 luma minimum is below `L / 3` (a local
+peak, not a lit panel): 9 taps of the HDR scene through the unbound `s0`, `+~15 slots` on `line_mask_camera`'s 245
+**[C]**; the resolve programs are untouched (the strength lands in `b` and follows the existing 11x11 grow, 17x17 speed
+gate, camera gate and 7x7 box clip). Result: strips carry `min(n/(n+1), 0.97)` at rest and under camera pans, the
+leak drops x 3.4 (8.1). Not for unrouted sentinel pixels (lasers, engine glows keep the sentinel law) and off at
+`E = 0` (bit-identical mask). Specular glints on routed hulls qualify and gain 0.97 under pans; the 7x7 box clip
+bounds their ghost, which the user has accepted for the lattice.
+
+**Why all three.** Each addresses a failure the other two cannot: without R1 the yaw pop stays whatever `B` and `W`
+are; without R2 the strips stay at `I * w / k` (the "disappeared" complaint); without R3 the rest flicker stays at
+its k = 3 floor. R1 + R2 are one transform revision (they share `rG`, the constant lanes and the oracle) and R3 is an
+independent file set (mask HLSL, `temporal_pass` option, launcher), so two implementers can run in parallel.
+
+**Native Windows.** R1/R2: documented ps_3_0 opcodes (`dsx`, `dsy`, `texldd`, `dp2`/`dp3`, `rsq`, `rcp`, `mad_sat`),
+one more fetch from the same declared sampler, constants the route already uploads; `GetLevelDesc` is a documented
+texture method. R3: an owned FP16 target read by an owned program. Unverified natively, as before: the derivative
+quad convention and anisotropy with explicit gradients (already on `platform-portability.md`'s list).
+
+### 8.4 The alternatives and why they lose
+
+- **(d) positive bias on the light-map stage only**: run227's global +0.5 narrowed horizontal 1-px runs 15-22 % and
+  vertical not at all **[C]**, the anisotropy signature of a bias (minor axis only); a stage-only bias is a strict
+  subset. Zero cost, no effect on the complaint. Rejected.
+- **(e) 2-4 fine taps instead of a coarser mip**: four taps at +-0.25 px of the 0.71-px tent give an effective
+  footprint of about 1.2-1.4 px (floor about 0.6-0.65, i.e. k about 1.4) for 4 fetches, where one `texldd` at k = 3
+  gives 0.83; taps at the coarse level add nothing the mip chain has not already averaged. Superseded, as in §3.
+- **Peak preservation from a fine fetch** (`g = clamp(F / C_k, 1, k)`): `min(F, I w)`, the torn strip with its peaks
+  capped (8.2). Rejected on the law; the fixture's per-phase ripple would show it.
+- **Uniform `x k_draw` on the gain (`c217.w`), CPU only, 1 h**: brightens panels by `k` in the ramp band and adds the
+  brightness to the yaw pop. Kept only as the cheapest in-flight check that "disappeared" is the k dimming, if the
+  ratification wants that answered before R2 is built.
+- **(c) alone, no widening**: at rest it is exactly temporal supersampling (continuous, `I * w`, x 3.4 less leak),
+  but under pans the 1-px history band's fractional resampling is untouched by W **[C]**; the tearing under motion stays.
+
+### 8.5 Fixture before a flight, and the hours
+
+Fixture: the existing `lightmapwiden` mode of `run_motion_output.py` (`seam-lightmap-widen-*`, synthetic 1024x1024
+strip map, A8R8G8B8 and DXT1, 1/2/4-texel strips, 64-texel panel, rho sweep, 60/75 deg tilt, 6 px/frame drift over
+8 phases) extended with: (i) R1: frames at `rho <= 1/c` hash-identical to the un-widened gained variant; `k` per rho
+follows `clamp(c rho, 1, K)` read back through the strip width; the tilted case widens the major-axis strip;
+(ii) R2: 1-texel strip peak at `rho >= 1` = `B x` the unboosted peak within 2 %, per-phase peak ratio unchanged from
+k = 3 (0.867 **[C]**); panel interior within 1 FP16 code of the un-widened image and the edge rim <= 1.02 x interior
+(the 1.35 gate against the 1.33 edge maximum); the 4-texel strip at rho 1.5 reports its over-brightening (expected
+<= B); DXT1 copy: the gate's `t` distribution on the panel (any `t > 0` is a finding); `CreatePixelShader` accepts
+all 100 programs with +27 slots. (iii) R3: `run_temporal_pass.py`'s thin-region case (`temporal_thin_region_inc.h`)
+with a routed 0.5-px emissive strip at rest across 8 phases and under the camera path: post-resolve frame-to-frame
+delta ratio 0.136 -> 0.040 within 0.02 of the IIR prediction at the fundamental, the mask's `b` = 1 on the strip and
+0 on a 64-px lit panel and on the hull, and bit-identical masks at `E = 0`. Host: the transformer oracle
+(`test_hull_lightmap_gain.py`) extended for the new block and slot totals, the coverage test's 100-row table, the
+launcher tests for `K,B` and the vote option.
+
+Hours, assuming the transform, its oracle and both fixture skeletons exist as built: R1 5 h (hook cache 1.5, block
+1.5, oracle 1, fixture 1); R2 7 h (block 3, oracle and slot proof 2, fixture metrics 2); R3 5 h (HLSL 1.5, option and
+launcher 1.5, fixture case 2). **17 h total, about 10 h on the transform path and 5-7 h on the TAA path in parallel**,
+Wine queue time excluded. First flight, run225 station: `K = 3, B = 3` with the vote at `E = 1`, still and yawing,
+`--taa-debug` bursts; A/B `B = 1` (energy-conserving, the run231 look with the yaw pop removed) and `E = 0`.
+
+### 8.6 Unknown, and what settles it
+
+- Whether the rest "flicker" the user reports is the ~4.6 % residual of 8.1 or its amplification by RCAS 0.75 and
+  bloom: run231 carries `present_1` beside `taa_1` **[C]**; one triage of the bright-pixel delta on both settles it
+  before R3 is built (if RCAS triples it, an RCAS exclusion on the emissive mask is the cheaper fix).
+- The light-map UV density on real hulls (where `rho = 1` falls in metres, hence `c`, and whether every lit feature
+  at 1-9 km is thinner than `1.3 k` px so that R2's over-brightening band is empty there): decode texture identity
+  2353 and the UVs of frame 6516 draw 206 locally (numbers only), or fly `c` at two values.
+- Whether the game's DDS light-map chains are normalised averages (R2's ratio gate assumes `C_2k >= C_k / 4` and
+  panel `r = 1`): the same decode, per-level means (open since the widening note §6).
+- Whether "almost disappeared" is entirely the `k` dimming or partly the frontal `k_draw` maximum: R1 + `B = 1`
+  versus `B = 3` in the first flight separates them; the CPU-only `x k_draw` check answers it earlier if wanted.

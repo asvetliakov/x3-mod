@@ -262,3 +262,123 @@ flight checklist names the second-`0x400000`-view risk (`multi_record_frames`, `
 | `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_sun_occlusion.py` | passed: hook 74 / 0, GPU **122 / 0**; core clipped only: open half = source (1.0000 / 1.0000 / 1.0000 for ONE/ONE at f = 0.5), covered half = background, edge ninths 8/9, 7/9, 2/9, 1/9 with the half-texel offset; `core_f`: open half 0.6000 / 0.7020 / 0.8000 (= f x source + bg); `lens_prepare` scans without creating a shader (0 programs created, `first` once); a vertex program with `mul r0, r0, c4` after the mov scans with `origin_known = 0` and a core draw through it is refused with nothing created; 7 calls per clipped draw; Reset then clip again with no program created |
 | scratch build + `check_no_x87.py` | exit 0, 0 warnings; PASS, 636 reachable functions, 0 violations |
 
+
+## 2026-09-22: Run 228/229 triage (Run64 e839dc7c): shimmer is a 1/32-tap quantization step, lens dumps are a copy-step gap, CORE_F never engaged
+
+Flights `/tmp/x3-bottleX3-run228` (`--sun-occlusion --sun-occlusion-log`, `X3M_VOLUMETRIC_FOG=0`) and `/tmp/x3-bottleX3-run229`
+(same plus intended `X3M_SUN_OCCLUSION_CORE_F=1`). Diagnosis only; nothing changed.
+
+**A. Five F8 bursts (`present_1_*` frame ranges), `sun_visibility` over each (all `single=1 answered=1 ran=1 saturated=1
+radius_px=51.2` except burst 5):**
+
+| Burst | Frames | f_used | Matches user's order |
+| --- | --- | --- | --- |
+| 1 | 3440-3471 | 1.0 constant | sun fully visible |
+| 2 | 5511-5542 | 0.4666-0.4985 (mean 0.475) | partially occluded by station |
+| 3 | 6635-6666 | 0.0 constant | fully occluded by station |
+| 4 | 10520-10551 | 0.0678 constant (f_raw 0.0938) | fully occluded by a stationary ship (small residual leak, not exactly 0) |
+| 5 | 14646-14677 | `single=0 answered=0` (no eligible record this burst) | flying toward the station, SETA cancelled |
+
+**B. Shimmer (burst 2).** `f_used` std = 0.0136 over 32 frames; `f_raw` alternates between exactly 0.4688 and 0.5000 (delta
+0.03125 = 1/32) with no `held`/hold path engaged (`skip=none ran=1` every frame): this is a single 32-tap disc sample
+flipping open/closed frame to frame, not the 4-frame hold. Record position (`x=-4812 y=13209`) is constant; the flip
+correlates with the sub-pixel camera jitter each frame (`X3M_MOTION_JITTER=1`, TAA on), which moves the projected disc
+by a fraction of an RT2 texel across the station edge. Not measured further: a frame-by-frame back-buffer disc-edge
+pixel walk (no `lens_*.bgra8` exists for this burst's frames, see C) and the exact jitter offset per frame (present but
+not cross-referenced here for time).
+
+**C. Missing `lens_*.bgra8` files: not a source defect.** `sun_lens_readback` logged 128 lines in run228, all
+`result=00000000` with the expected byte count (1280x768x4 = 3932160). The files exist, on disk, at
+`~/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/x3-modern-captures/lens_1_<frame>.bgra8` (128 files,
+frame numbers matching all 5 bursts) — the same directory that also holds every `color_/present_/depth_/...` file of
+this and many other sessions (34,526 files total, accumulated since 2026-09-10). `/tmp/x3-bottleX3-run228` is a subset
+of that directory; whatever produced it copied every other prefix family for these frame ranges but not `lens_`. Source:
+`MotionOutput::sun_lens_present_readback` (`src/proxy/motion_output_sun_occlusion_inc.h:140-149`), called from
+`before_present()` unconditionally after `readback()` — code and gating (`capture_`, `lens_chain_drawn_`) are sound and
+did run.
+
+**D. Fifth burst (fast approach).** `X3M_VOLUMETRIC_FOG=0` in this run (from the `proxy_options` line): fog is ruled out
+as a cause. `X3M_TAA_SENTINEL=auto`, `X3M_TAA_SENTINEL_STABILISER=0.7`, `X3M_TAA_UNMATCHED_STATIC=node` were active.
+One sample frame (14660): 88,747 pixels with `color_` luminance > 120, of which 1,409 are more than 40 luminance units
+darker in `present_` than in `color_`, spread over most of the frame (bbox nearly the full 1280x768) — this crude
+global count cannot localize a smear trailing the station without first identifying the station's screen region, which
+was not done here. Candidate sources, not decided: TAA history reprojection of station pixels, the sentinel stabiliser,
+the sun pass (inactive this burst, `single=0`). **Open**: needs a targeted ROI comparison of `color_`/`taa_`/`present_`
+around the station silhouette across consecutive frames of burst 5, plus the TAA sentinel/unmatched-static log lines for
+those specific frames (not extracted here).
+
+**E. CORE_F never engaged in run229.** `sun_occlusion_config override=1 log=1 route=1 radius_u=0.0400 curve=1.000
+core_f=0` is the only `core_f=` line in the 70 MB log — the config banner is emitted once at startup and shows
+`X3M_SUN_OCCLUSION_CORE_F=1` did not take effect for this run. 19,745 `sun_lens_draw body=core clipped=1` lines exist
+and 1,513 frames have `f_raw` strictly between 0.05 and 0.95 (partial occlusion did occur), so the run was capable of
+showing a CORE_F difference — it simply never ran with the option on. "No visible difference" is explained by this, not
+by an absence of partial-occlusion frames.
+
+Not verified: the shimmer's exact jitter-frame correlation (offsets not pulled); the smear's spatial correlation with
+the station and its motion vector; whether `/tmp/x3-bottleX3-run228`'s omission of `lens_*.bgra8` is a fixed pattern of
+the copy tool or a one-off (the copy tool that produced the run directories was not located in this repository).
+
+### Follow-up (same day): burst-2 edge walk and burst-5 dark-pixel geometry, `lens_*.bgra8` now present
+
+`lens_1_<frame>.bgra8` files are now in `/tmp/x3-bottleX3-run228` (snapshot tool fixed by another agent to copy
+`sun_lens_readback`). Re-did the two open items with them.
+
+**1. Burst 2 (5511-5542) edge walk.** Sun disc centre from `sun_visibility` (`u=0.42657 v=0.29845`, constant all 32
+frames) -> pixel (546, 229). Scanning `lens_1_<frame>.bgra8` (the back buffer **after** the lens draws) along y=229,
+the disc's saturated (luma=255) plateau ends at a **binary** edge position: x=535 in 26 of 32 frames and **x=537 in
+exactly 6 frames** (5515, 5517, 5523, 5525, 5531/5533, 5539/5541 — every occurrence of `jitter_index` 4 or 6, no
+others; 32/32 match). `jitter_x`/`jitter_y` per index (from `motion_output_frame`): idx4 `x=+0.125 y=+0.2778`, idx6
+`x=+0.375 y=+0.0556`; the other six indices (0,1,2,3,5,7), including one with a *larger* positive `jitter_y`
+(idx7, `y=+0.3889`), all give edge=535 — so the flip is not a simple linear function of `jitter_x` or `jitter_y`
+alone, but it is a **deterministic function of `jitter_index`** (perfectly reproduced across all four 8-frame
+sub-cycles of the burst). `depth_1_<frame>.rgba32f` (`.r`, the raw per-frame device depth, sentinel -1) at the same
+row shows the silhouette edge itself also at x≈536-538 and also varies by jitter_index (536.5 at idx0/1, 537.5 at
+idx4/6 in the frames sampled) — i.e. **both** the raw depth and the lens clip move with jitter, but `present_1_`
+(captured *before* the lens draws, per `before_present()`'s call order) has no saturated disc pixel in this row at
+all (it precedes compositing), so it cannot serve as an "unjittered reference" as hoped; there is no dump of the
+resolved/TAA output before the sun draws distinct from one after. **What is shown numerically:** the visible clip
+edge takes only two discrete positions synchronized 1:1 with `jitter_index` (not a smooth per-frame drift), which is
+consistent with the disc edge sampling a jittered RT2 at a texel granularity coarser than one screen pixel (RT2 is
+320x180, a 4x/4.27x downsample) — a small sub-pixel jitter occasionally flips which RT2 texel is nearest the query
+point, producing a 2-screen-pixel pop rather than continuous sub-pixel motion. **Not settled:** whether the
+*resolved* station silhouette (independent of the sun draws) is itself stable across the same 8 phases, because no
+capture in this flight isolates that (would need a readback between TAA resolve and the lens bracket).
+
+**2. Burst 5 (14646-14677) dark-pixel geometry.** Station bbox via 4-connected flood fill of `depth_1_ .r > -0.5`
+from the frame centre: grows from (651-707, 296-379; area 1892 px) at frame 14646 to (651-715, 287-376; area 2386 px)
+at frame 14677 (bbox centre drifts from (679,338) to (683,332), a small up-right creep while mostly growing in
+place — consistent with slowly closing in, not a fast lateral pan). Dilating by 24 px and comparing `color_1_`
+(pre-TAA) vs `present_1_` inside that window: pixels more than 40 luma darker in `present_` than `color_` grow from
+333 to 536 across the burst (ratio to silhouette area rises from 0.176 to 0.223, i.e. slightly faster than the
+silhouette itself). Their centroid sits at a **consistent offset from the bbox centre**: `offx` mean +1.27 px
+(std 1.37, 25/32 frames positive), `offy` mean **-3.47 px** (std 1.66, **32/32 frames negative**) — i.e. the dark
+pixels sit persistently just *above* the growing silhouette's centre, not trailing behind its direction of growth
+(which is itself nearly symmetric, not a strong lateral sweep) — this does not match a classic motion-trail ghost
+smeared opposite the direction of travel; it looks more like a fixed-direction rim/shadow band that scales with the
+silhouette. `camera_cut=0` and `camera_rotation_deg=0.2166` (constant, small, steady) for all 32 frames — no cut, no
+big rotation. No `motion_unmatched_static` or `taa_invalidate` line fired in this frame range (grepped, zero hits):
+the TAA sentinel/unmatched-static machinery did not flag anything here, which rules out a *logged* invalidation
+event as the cause and leaves ordinary TAA history reprojection of the growing silhouette's edge, or the sentinel
+stabiliser's un-logged per-frame blend, as the remaining candidates; `single=0` throughout (from part A), so the sun
+pass itself is inactive and not a candidate for this burst.
+
+Not verified: whether the dark band is specifically the silhouette's *own* previous-frame position (an explicit
+per-pixel earlier-position overlay was not constructed, only the centroid-offset statistic above); the sentinel
+stabiliser's internal per-pixel decision (not logged per frame at that granularity).
+
+### Follow-up 2 (same day): burst-5 dark pixels vs sentinel-stabiliser-radius hypothesis
+
+Chebyshev distance of every dark pixel (`present_1_` >40 luma darker than `color_1_`, dilate-30 ROI) to the nearest
+`depth_1_ .r > -0.5` (station) pixel, summed over all 32 frames (13,766 dark pixels): dist0=6458, dist1=6902,
+dist2=377, dist3=27, dist4-6=0, dist7+=2. **99.4 % sit at distance 0-1**, i.e. on the silhouette itself or its
+immediate 1-px ring, not spread out to a 3-px (7x7) radius — inconsistent with a radius-3 box pulling dark history
+3 px into the sky. 53.1 % of dark pixels are themselves sky (sentinel-depth) pixels, essentially all at distance 1
+(the ring immediately outside the silhouette). Mean luma deficit falls with distance: 77.6 at dist0, 64.2 at dist1,
+47.9 at dist2, 43.0 at dist3 (n=2 at dist7+, not meaningful). Dark-pixel count / silhouette perimeter per frame:
+0.644-0.912 (mean 0.777) — roughly three-quarters of a perimeter's worth of dark pixels per frame, consistent with a
+thin (~1 px) band, not a thick 7x7 smear. **Control (>40 brighter in present than color):** 6,750 pixels, **100 % at
+distance 0** (on the silhouette itself) and **0 % sky pixels** — the brightening is confined to the silhouette's own
+pixels, never the surrounding sky, so this is not a symmetric resolve difference: darkening leaks outward by about
+1 px into the sky half the time, brightening never does. Net: the evidence fits a 1-pixel-wide reprojection/AA edge
+effect (or a 2x2-tap resolve filter) better than the described 7x7/radius-3 sentinel box; a radius-3 box is not
+supported by this distance histogram.

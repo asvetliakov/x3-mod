@@ -178,7 +178,16 @@ class SnapshotX3RunTests(unittest.TestCase):
         self.log.write_text(''.join(rows))
         _, count, issues = self.save(log=self.log)
         self.assertEqual((count, issues), (expected, []))
-        self.assertEqual(expected, 9)  # Seven writers; the depth tag has three formats (r32f, rg32f, rgba32f).
+        self.assertEqual(expected, 10)  # Eight writers; the depth tag has three formats (r32f, rg32f, rgba32f).
+
+    def test_sun_lens_back_buffer_record_is_preserved(self):
+        # The real --sun-occlusion-log line (run228 frame 3440): the Present-time back buffer.
+        (self.capture / 'lens_1_3440.bgra8').write_bytes(b'abcd')
+        self.log.write_text('sun_lens_readback device=1 frame=3440 file=lens_1_3440.bgra8 width=1280 height=768 '
+                            'format=bgra8_row_major result=00000000 bytes=4\n')
+        destination, count, issues = self.save(log=self.log)
+        self.assertEqual((count, issues), (1, []))
+        self.assertEqual((destination / 'lens_1_3440.bgra8').read_bytes(), b'abcd')
 
     def test_sun_lane_depth_and_shadow_map_records_are_preserved(self):
         # Sun lane active: RT2 is G32R32F (.r depth, .g share) and the replayed
@@ -240,6 +249,7 @@ class SnapshotX3RunTests(unittest.TestCase):
         for tag, name in (('motion_output_depth_readback', 'depth_1_2.rgb32f'),
                           ('shadow_replay_map_readback', 'shadow_map_1_2.rg32f'),
                           ('hdr_readback', 'hdr_1_2.rg32f'),
+                          ('sun_lens_readback', 'lens_1_2.rgba16f'),
                           ('motion_output_depth_readback', 'depth_1_2.r32f.rg32f'),
                           ('shadow_replay_map_readback', 'shadow_map_1_3.r32f')):
             with self.subTest(name=name):

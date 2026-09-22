@@ -37,6 +37,7 @@ READBACKS = {
     'motion_output_depth_readback': ('depth', ('r32f', 'rg32f', 'rgba32f')),  # rgba32f: the receiver-depth option's wide RT2
     'hdr_readback': ('hdr', ('rgba16f',)),
     'shadow_replay_map_readback': ('shadow_map', ('r32f',)),
+    'sun_lens_readback': ('lens', ('bgra8',)),  # --sun-occlusion-log: Present-time back buffer on F8 frames
 }
 # The sun lane dumps one map per cascade as shadow_map<k>_<device>_<frame>.r32f
 # (k is the cascade index, glued to the prefix); the single-map name without an
