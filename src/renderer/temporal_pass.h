@@ -230,6 +230,11 @@ struct FrameInputs {
     // hull of an object that moved away this frame never becomes the sky's history
     // (docs/architecture/seta-motion.md). Ignored without sentinel_camera.
     bool sentinel_strict_sky = false;
+    // Band threshold of the strict sky history in px/frame (resolve c5.y, uploaded
+    // squared; seta-motion.md section 4): an unrouted sky pixel in the dilated band
+    // whose routed correspondence moves at least this much against the rotation-only
+    // camera path is current-only under strict. 1..16; read with sentinel_strict_sky only.
+    float sky_history_band_px = 3.f;
     bool caller_scene_open = true;
     bool caller_stateblock_recording = false;
     bool caller_queries_idle = false; // positive knowledge: no active occlusion/statistics query

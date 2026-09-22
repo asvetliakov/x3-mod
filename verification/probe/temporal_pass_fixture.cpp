@@ -748,7 +748,8 @@ struct EdgeScene {
 };
 struct EdgeRun { std::vector<std::vector<float>> current,output,depth,motion; std::vector<double> jx,jy; };
 // strictSky: FrameInputs::sentinel_strict_sky (the resolve's strict sky term c7.z with the camera path; the sweep case below).
-template<class Objects> EdgeRun edge_sequence(EdgeScene& s,const DWORD* decoder,const DWORD* resolver,Objects objects,const EdgeBackground& bg,unsigned frames,bool sentinelCamera,bool perPixel,const char* label,bool strictSky=false){
+// clipToPrevious: the camera path (row-major clip_to_previous), identity when null (the pan case below passes an NDC translation).
+template<class Objects> EdgeRun edge_sequence(EdgeScene& s,const DWORD* decoder,const DWORD* resolver,Objects objects,const EdgeBackground& bg,unsigned frames,bool sentinelCamera,bool perPixel,const char* label,bool strictSky=false,const float* clipToPrevious=nullptr){
     constexpr UINT S=EdgeScene::S,P=EdgeScene::P;TemporalPass pass;check("edge initialize",pass.initialize(s.d,decoder,resolver));EdgeRun run;
     for(unsigned n=0;n<frames;++n){
         const unsigned index=n%P+1;const double jx=halton(index,2)-.5,jy=halton(index,3)-.5;const auto scene=objects(n);
@@ -757,7 +758,7 @@ template<class Objects> EdgeRun edge_sequence(EdgeScene& s,const DWORD* decoder,
             const auto& m=run.motion[0];double worst=0;unsigned covered=0;const EdgeObject* first=nullptr;for(auto& o:scene)if(!o.colourOnly){first=&o;break;}require(first!=nullptr,"edge scene has a routed object");
             for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x)if(run.depth[0][(y*S+x)*4]==first->depth){++covered;for(double e:{std::fabs(m[(y*S+x)*4]-(x+.5-jx-first->vx)/S),std::fabs(m[(y*S+x)*4+1]-(y+.5-jy-first->vy)/S),double(std::fabs(m[(y*S+x)*4+2]-first->depth)),double(std::fabs(m[(y*S+x)*4+3]-1))})worst=std::max(worst,e);}
             ++numeric_checks;require(covered>0&&worst<=1e-6,"edge scene motion target equals the producer contract at every covered pixel");}
-        FrameInputs in;in.color=s.color.p;in.current_depth=s.depth32.p;in.motion=perPixel?s.motion.p:nullptr;in.width=S;in.height=S;in.epoch=1;std::copy(identity,identity+16,in.clip_to_previous);
+        FrameInputs in;in.color=s.color.p;in.current_depth=s.depth32.p;in.motion=perPixel?s.motion.p:nullptr;in.width=S;in.height=S;in.epoch=1;const float* camera=clipToPrevious?clipToPrevious:identity;std::copy(camera,camera+16,in.clip_to_previous);
         in.current_jitter[0]=float(jx);in.current_jitter[1]=float(jy);in.weight=.9f;in.motion_policy=perPixel?MotionPolicy::PerPixel:MotionPolicy::KnownCameraOnly;
         in.reactive_policy=ReactivePolicy::DerivedFromDepthSentinel;in.sentinel_camera=sentinelCamera;in.sentinel_strict_sky=strictSky;in.history_allowed=true;in.caller_queries_idle=true;in.caller_scene_open=true;
         Output out;check("edge Begin resolve",s.d->BeginScene());check(label,pass.run(in,&out));check("edge End resolve",s.d->EndScene());
@@ -908,7 +909,9 @@ void edge_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,const
         metric((prefix+"motion target equals the 5 px displacement at every covered pixel (px)").c_str(),motionError,0,.1);
         if(m)metric((prefix+"uncovered sky beyond the dilation band is current-only (no square history)").c_str(),trail,0,1./255);
         else metric((prefix+"uncovered sky carries the square's history under policy 2 (the smear reproduced)").c_str(),std::min(trail,1.),1,.95);
-        if(m)metric((prefix+"identical to loose eight pixels and more from the square").c_str(),farDiff,0,0);}
+        if(m)metric((prefix+"identical to loose eight pixels and more from the square").c_str(),farDiff,0,0);
+        // Band term (seta-motion.md section 4): the dilated 1-px band beside the 5 px/frame silhouette takes no hull history under strict.
+        if(m)metric((prefix+"dilated band beside the 5 px/frame silhouette carries no hull history (band term)").c_str(),adjacent,0,.1);}
      // (e) Fade-band object (review finding 1): a routed 8x8 square of value 0.6 at depth 0.9997, static and depth-writing for 8
      // frames, then a fade-band draw (RT1 alpha 1 with its depth target, RT2 masked: current depth sentinel) moving +5 px/frame
      // over the textured sky. Its history taps at frame 8 land on its own depth of frame 7; strict must accept them like loose
@@ -924,7 +927,108 @@ void edge_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,const
       std::printf("SETA_FADE routed_px=%u strict_vs_loose_on_routed=%.6f routed_px_with_history=%u strict_vs_loose_on_sky=%.6f\n",routed,routedDiff,accumulated,skyDiff);
       require(routed>=200&&skyDiff>.05,"fade-band sweep routes its object and reproduces the sky smear beside it under loose");
       metric("seta fade-band strict: identical to loose on every pixel the fade-band draw routes (its history accepted)",routedDiff,0,0);
-      metric("seta fade-band strict: the fade-band draw's pixels keep using history (pixels whose output differs from the current sample)",std::min(double(accumulated),1.),1,0);}}
+      metric("seta fade-band strict: the fade-band draw's pixels keep using history (pixels whose output differs from the current sample)",std::min(double(accumulated),1.),1,0);}
+     // (f) Slow sweep (band term, seta-motion.md section 4): the (d) square moving +0.5 px/frame for 8 frames after 8 static
+     // ones. Below bandSpeed the band keeps the geometry path and every uncovered pixel lies inside the band, so strict is
+     // bit-identical to loose on every pixel and frame; the band's deviation from the current sample (the anti-aliased edge) is reported.
+     {const double vs=.5;const unsigned slowFrames=16;
+      auto slow=[&](unsigned n){const double l=sl2+vs*(n>=moveFrom?n-moveFrom+1:0);return std::vector<EdgeObject>{{0,0,S,S,0,-1.f,0,0,true,0,true},{l,st2,l+8,st2+8,0,squareDepth,n>=moveFrom?vs:0.,0}};};
+      EdgeRun slows[2];for(unsigned m=0;m<2;++m)slows[m]=edge_sequence(s,decoder,resolver,slow,sentinelFill,slowFrames,true,true,"slow sweep",m==1);
+      double diff=0,adjacent[2]={0,0};
+      for(unsigned n=moveFrom;n<slowFrames;++n)for(UINT y=1;y+1<S;++y)for(UINT x=1;x+1<S;++x){diff=std::max(diff,double(std::fabs(px(slows[0].output[n],x,y)-px(slows[1].output[n],x,y))));
+          bool beside=false;for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx)beside|=px(slows[0].depth[n],x+dx,y+dy)==squareDepth;
+          if(beside&&px(slows[0].depth[n],x,y)==-1.f)for(unsigned m=0;m<2;++m)adjacent[m]=std::max(adjacent[m],double(std::fabs(px(slows[m].output[n],x,y)-px(slows[m].current[n],x,y))));}
+      std::printf("SETA_SLOW velocity_px=%.2f adjacent_loose=%.6f adjacent_strict=%.6f strict_vs_loose=%.6f\n",vs,adjacent[0],adjacent[1],diff);
+      metric("seta slow sweep (0.5 px/frame): strict identical to loose on every pixel (the band keeps the geometry path below bandSpeed)",diff,0,0);}
+     // (g) Static ring (the strict term under the jitter, review question): the square static and routed for two periods over the
+     // textured sky, loose and strict. Per-pixel temporal variance of the output over the last period by Chebyshev distance from
+     // the union of the square's jittered footprints (1: the dilated band, geometry path; 2 and 3: own path). Under a static
+     // camera an own-path tap is the pixel's own previous texel (sentinel depth), so strict is bit-identical to loose.
+     {constexpr UINT P=EdgeScene::P;const unsigned ringFrames=2*P;const double rl=sl2+8;auto still=[&](unsigned){return std::vector<EdgeObject>{{0,0,S,S,0,-1.f,0,0,true,0,true},{rl,st2,rl+8,st2+8,0,squareDepth,0,0}};};
+      EdgeRun stills[2];for(unsigned m=0;m<2;++m)stills[m]=edge_sequence(s,decoder,resolver,still,sentinelFill,ringFrames,true,true,"static ring",m==1);
+      std::vector<unsigned char> footprint(S*S,0);for(unsigned n=0;n<ringFrames;++n)for(UINT i=0;i<S*S;++i)if(stills[0].depth[n][i*4]==squareDepth)footprint[i]=1;
+      auto distance=[&](UINT x,UINT y){for(int r=1;r<=3;++r)for(int dy=-r;dy<=r;++dy)for(int dx=-r;dx<=r;++dx){const int nx=int(x)+dx,ny=int(y)+dy;if(nx>=0&&ny>=0&&nx<int(S)&&ny<int(S)&&footprint[ny*S+nx])return r;}return 4;};
+      double variance[2][5]={},count[5]={},diff=0;
+      for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x){if(footprint[y*S+x])continue;const int r=distance(x,y);count[r]+=1;
+          for(unsigned m=0;m<2;++m){double mean=0,sq=0;for(unsigned n=ringFrames-P;n<ringFrames;++n){const double v=px(stills[m].output[n],x,y);mean+=v/P;sq+=v*v/P;}variance[m][r]+=std::max(sq-mean*mean,0.);}
+          for(unsigned n=0;n<ringFrames;++n)diff=std::max(diff,double(std::fabs(px(stills[0].output[n],x,y)-px(stills[1].output[n],x,y))));}
+      for(unsigned m=0;m<2;++m)std::printf("SETA_RING mode=%s d1_variance=%.8f d2_variance=%.8f d3_variance=%.8f sky_variance=%.8f d1_px=%.0f d2_px=%.0f d3_px=%.0f\n",names[m],variance[m][1]/count[1],variance[m][2]/count[2],variance[m][3]/count[3],variance[m][4]/count[4],count[1],count[2],count[3]);
+      metric("seta static ring: strict identical to loose on every sky pixel over two periods (no ring flicker from the strict term under a static camera)",diff,0,0);}
+     // (h) Pan (the band term's camera-relative gate): the camera yaws 3 px/frame past the world-static square over the textured
+     // sky from frame 0. On screen the square and the sky both move +3 px/frame: the sky through the camera path (clip_to_previous
+     // = an NDC x translation of -6/S: the content at p was at p - 3 px), the square through its routed motion (vx = 3). The
+     // routed correspondence of the square equals the camera path of a static point at its depth (relative displacement 0), so
+     // under strict the 1-px border beside it keeps the geometry path and accumulates exactly as under loose; nothing in the
+     // frame differs. adjacent_* is the border's deviation from the current sample (its accumulated coverage, > 0 in both modes).
+     {const double vp=3;const unsigned panFrames=8;const float pan[16]={1,0,0,float(-2*vp/S),0,1,0,0,0,0,1,0,0,0,0,1};
+      auto panned=[&](unsigned n){const double l=1.37+vp*n;return std::vector<EdgeObject>{{0,0,S,S,0,-1.f,0,0,true,-double(n)*vp/S,true},{l,st2,l+8,st2+8,0,squareDepth,vp,0}};};
+      EdgeRun pans[2];for(unsigned m=0;m<2;++m)pans[m]=edge_sequence(s,decoder,resolver,panned,sentinelFill,panFrames,true,true,"pan",m==1,pan);
+      double diff=0,adjacent[2]={0,0},skyDiff=0;unsigned skyHistory=0;
+      for(unsigned n=1;n<panFrames;++n)for(UINT y=1;y+1<S;++y)for(UINT x=1;x+1<S;++x){diff=std::max(diff,double(std::fabs(px(pans[0].output[n],x,y)-px(pans[1].output[n],x,y))));
+          bool beside=false;for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx)beside|=px(pans[0].depth[n],x+dx,y+dy)==squareDepth;
+          const bool sky=px(pans[0].depth[n],x,y)==-1.f;
+          if(beside&&sky)for(unsigned m=0;m<2;++m)adjacent[m]=std::max(adjacent[m],double(std::fabs(px(pans[m].output[n],x,y)-px(pans[m].current[n],x,y))));
+          if(!beside&&sky&&x>=4&&x+4<S){skyDiff=std::max(skyDiff,double(std::fabs(px(pans[1].output[n],x,y)-px(pans[1].current[n],x,y))));if(pans[1].output[n][(y*S+x)*4]!=pans[1].current[n][(y*S+x)*4])++skyHistory;}}
+      std::printf("SETA_PAN velocity_px=%.2f adjacent_loose=%.6f adjacent_strict=%.6f strict_vs_loose=%.6f sky_max_deviation=%.6f sky_px_with_history=%u\n",vp,adjacent[0],adjacent[1],diff,skyDiff,skyHistory);
+      require(adjacent[1]>.05,"pan: the border beside the panned square accumulates under strict (its output differs from the current sample)");
+      metric("seta pan (camera 3 px/frame past a static square): strict identical to loose on every pixel (the band's camera-relative displacement is 0)",diff,0,0);}
+     // (i) Fade-band draw beside a fast occluder (review finding: the alpha gate): a depth-writing square at depth 0.5 sweeping
+     // +5 px/frame along the top edge of a static fade-band strip (RT1 alpha 1 with depth target 0.9997, RT2 masked) over the sky.
+     // The strip's pixels next to the occluder dilate to it (band candidates with 5 px/frame of parallax) but are routed (their
+     // own alpha is 1): the band term must leave them on the geometry path they take today, strict identical to loose there.
+     {const unsigned fadeFrames=8;
+      auto occluded=[&](unsigned n){const double l=1.37+5.*n;return std::vector<EdgeObject>{{0,0,S,S,0,-1.f,0,0,true,0,true},{l,4.37,l+6,10.37,0,.5f,5,0},[&]{EdgeObject o{2.37,10.37,26.37,18.37,.6f,squareDepth,0,0};o.noDepth=true;return o;}()};};
+      EdgeRun fades2[2];for(unsigned m=0;m<2;++m)fades2[m]=edge_sequence(s,decoder,resolver,occluded,sentinelFill,fadeFrames,true,true,"fade-band beside occluder",m==1);
+      // The oracle is the refusal itself, not bit-identity: the strip pixels beside the occluder take its 5 px/frame motion, so their
+      // taps land on sky pixels the band term refused a frame earlier (their history differs between the modes by design); without
+      // the alpha gate every one of them would be current-only under strict. Neither mode may leave one current-only.
+      double routedDiff=0;unsigned routed=0,besideCount=0,currentOnly[2]={0,0};
+      for(unsigned n=1;n<fadeFrames;++n)for(UINT y=1;y+1<S;++y)for(UINT x=1;x+1<S;++x){const std::size_t i=y*S+x;
+          const bool own=fades2[1].motion[n][i*4+3]==1&&fades2[1].depth[n][i*4]==-1.f;if(!own)continue;++routed;
+          bool beside=false;for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx)beside|=px(fades2[1].depth[n],x+dx,y+dy)==.5f;
+          routedDiff=std::max(routedDiff,double(std::fabs(px(fades2[0].output[n],x,y)-px(fades2[1].output[n],x,y))));
+          if(!beside)continue;
+          ++besideCount;
+          for(unsigned m=0;m<2;++m)currentOnly[m]+=fades2[m].output[n][i*4]==fades2[m].current[n][i*4]&&fades2[m].output[n][i*4+1]==fades2[m].current[n][i*4+1]&&fades2[m].output[n][i*4+2]==fades2[m].current[n][i*4+2];}
+      std::printf("SETA_FADE_OCCLUDER routed_fade_px=%u beside_occluder_px=%u beside_current_only_loose=%u beside_current_only_strict=%u strict_vs_loose_on_routed=%.6f\n",routed,besideCount,currentOnly[0],currentOnly[1],routedDiff);
+      // Loose leaves some of them current-only through the existing rules (their 5 px/frame taps beside the occluder); the gate's
+      // oracle is that strict adds none, over at least ten pixels a missing gate would have refused.
+      require(besideCount>=20&&besideCount-currentOnly[0]>=10,"fade-band strip has pixels beside the sweeping occluder every frame and loose keeps history on ten or more");
+      metric("seta fade-band beside a 5 px/frame occluder: strict leaves no routed fade-band pixel beside it current-only that loose accumulates (alpha gate of the band term)",double(currentOnly[1])-double(currentOnly[0]),0,0);}
+     // (j) Projective pan (review finding: the affine pan of (h) is depth-independent by construction): the route's far-plane
+     // matrix for a yaw, P R P^-1 with the z row = w row x (1 - 2^-16), through the projective divide at the band's depth. The
+     // yaw moves the screen centre 3 px/frame; the square (static in the world) follows the exact inverse mapping of its centre
+     // each frame and its motion vector carries that displacement, the sky texture the centre's 3 px. Strict identical to loose.
+     // Focal f = 16 (a narrow view: the game's 1280-px frame at f ~ 1.7 has the same order of projective non-uniformity per pixel of
+     // pan): x' = (c x + f s) / (c - s x / f), y' = y / (c - s x / f); the yaw that moves the centre 3 px is 0.67 degrees and the
+     // displacement varies by < 0.02 px across the 8-px square, so its uniform motion vector is the projective path to that error.
+     {const unsigned panFrames=8;const double f=16,theta=std::atan(2.*3/(S*f)),c=std::cos(theta),sn=-std::sin(theta),k=1.-std::ldexp(1.,-16);
+      const float proj[16]={float(c),0,0,float(f*sn),0,1,0,0,float(-sn/f*k),0,0,float(c*k),float(-sn/f),0,0,float(c)};
+      std::vector<double> centres(panFrames);centres[0]=1.37+4;for(unsigned n=1;n<panFrames;++n){const double xp=(centres[n-1]+.5)*2/S-1;const double xn=(xp*c-f*sn)/(c+xp*sn/f);centres[n]=(xn+1)*S/2-.5;}
+      auto projected=[&](unsigned n){const double l=centres[n]-4,v=n?centres[n]-centres[n-1]:0;return std::vector<EdgeObject>{{0,0,S,S,0,-1.f,0,0,true,-double(n)*3/S,true},{l,st2,l+8,st2+8,0,squareDepth,v,0}};};
+      EdgeRun projs[2];for(unsigned m=0;m<2;++m)projs[m]=edge_sequence(s,decoder,resolver,projected,sentinelFill,panFrames,true,true,"projective pan",m==1,proj);
+      double diff=0,adjacent[2]={0,0};
+      for(unsigned n=1;n<panFrames;++n)for(UINT y=1;y+1<S;++y)for(UINT x=1;x+1<S;++x){diff=std::max(diff,double(std::fabs(px(projs[0].output[n],x,y)-px(projs[1].output[n],x,y))));
+          bool beside=false;for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx)beside|=px(projs[0].depth[n],x+dx,y+dy)==squareDepth;
+          if(beside&&px(projs[0].depth[n],x,y)==-1.f)for(unsigned m=0;m<2;++m)adjacent[m]=std::max(adjacent[m],double(std::fabs(px(projs[m].output[n],x,y)-px(projs[m].current[n],x,y))));}
+      std::printf("SETA_PAN_PROJECTIVE focal=16 yaw_deg=%.4f centre_step_px=%.4f adjacent_loose=%.6f adjacent_strict=%.6f strict_vs_loose=%.6f\n",theta*180/3.14159265358979,centres[1]-centres[0],adjacent[0],adjacent[1],diff);
+      require(adjacent[1]>.05,"projective pan: the border beside the panned square accumulates under strict");
+      metric("seta projective pan (yaw 3 px/frame at the centre, focal 16, far-plane matrix form): strict identical to loose on every pixel",diff,0,0);}
+     // (k) Camera path off the scale (review finding: the select's failure mode): the (h) pan with the x row scaled to 1e15, the
+     // largest magnitude prepare accepts. Every own-path sky pixel lands outside the texture (current-only in both modes); the
+     // band's camera reference is ~1e16 px away, finite, so the relative displacement is far above the threshold: under strict
+     // the band refuses (fail closed: equal to the current sample), no output is NaN or infinite. A NaN camera path is unreachable
+     // (prepare bounds the rows and every operand is finite).
+     {const unsigned panFrames=8;const double vp=3;const float huge[16]={1e15f,0,0,float(-2*vp/S),0,1,0,0,0,0,1,0,0,0,0,1};
+      auto panned2=[&](unsigned n){const double l=1.37+vp*n;return std::vector<EdgeObject>{{0,0,S,S,0,-1.f,0,0,true,-double(n)*vp/S,true},{l,st2,l+8,st2+8,0,squareDepth,vp,0}};};
+      EdgeRun huges[2];for(unsigned m=0;m<2;++m)huges[m]=edge_sequence(s,decoder,resolver,panned2,sentinelFill,panFrames,true,true,"huge camera path",m==1,huge);
+      double bandStrict=0,bandLoose=0;unsigned nonfinite=0,bandPx=0;
+      for(unsigned n=1;n<panFrames;++n)for(UINT y=1;y+1<S;++y)for(UINT x=1;x+1<S;++x){for(unsigned m=0;m<2;++m)for(UINT ch=0;ch<4;++ch)nonfinite+=!std::isfinite(huges[m].output[n][(y*S+x)*4+ch]);
+          bool beside=false;for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx)beside|=px(huges[0].depth[n],x+dx,y+dy)==squareDepth;
+          if(beside&&px(huges[0].depth[n],x,y)==-1.f){++bandPx;bandStrict=std::max(bandStrict,double(std::fabs(px(huges[1].output[n],x,y)-px(huges[1].current[n],x,y))));bandLoose=std::max(bandLoose,double(std::fabs(px(huges[0].output[n],x,y)-px(huges[0].current[n],x,y))));}}
+      std::printf("SETA_HUGE_CAMERA band_px=%u band_deviation_loose=%.6f band_deviation_strict=%.6f nonfinite_outputs=%u\n",bandPx,bandLoose,bandStrict,nonfinite);
+      require(bandPx>=20&&bandLoose>.05,"huge camera path: the band accumulates under loose (the routed path is unaffected)");
+      metric("seta huge camera path (rows at 1e15): the band is current-only under strict (fail closed) and no output is nonfinite",bandStrict+nonfinite,0,0);}}
     if(!deferredFailures.empty())throw std::runtime_error(deferredFailures.front());
 }
 // ---- run 139: 1-px jittered lattice, filtered current sample and history weight ----

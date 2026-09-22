@@ -40,7 +40,10 @@ float4 rejection : register(c6); // absolute device-depth tolerance, relative to
 // it the relative tolerance (c6.y, 0.02 of depth 1) proves any geometry beyond
 // device depth 0.98 "at or behind" the far plane, so the hull of a station that
 // moved away this frame (depth 0.9997 under SETA, 5-30 px/frame) is accepted as
-// the sky's history. The mask and snapshot programs upload their own c7.z.
+// the sky's history. The same term makes the dilated 1-px band beside a
+// silhouette that moves bandSpeed px/frame or faster across this pixel
+// relative to a world-static point at its depth current-only (the band term
+// below). The mask and snapshot programs upload their own c7.z.
 float4 options : register(c7); // motion enabled, reactive enabled, strict sky term (the resolve) / mode (mask and snapshot programs), depth-sentinel policy
 // c22.x is k of the reversible luminance weighting (c8..c21 are the AgX
 // block of the HDR write-back, left clear). Every colour that enters the
@@ -163,6 +166,12 @@ static const float clipGamma = 1.25;
 // Sub-texel offsets below this (float rounding of the jitter round trip, about
 // 1e-6 texel) snap to the texel grid so a static scene reads exactly one texel.
 static const float snapEpsilon = 1e-4;
+// Strict sky history, band term (docs/architecture/seta-motion.md section 4): an
+// unrouted far-plane pixel in the dilated band whose routed correspondence
+// differs from the rotation-only camera path by at least c5.y^(1/2) px/frame
+// (the band threshold, X3M_TAA_SKY_HISTORY_BAND_PX, default 3, uploaded squared
+// in c5.y by the pass) is current-only under strict. Below it (a static or slow
+// object, or any object under a pan) the band keeps the geometry path.
 
 // Every input is a single-level texture with point sampling; an explicit LOD
 // keeps the fetches free of gradients so they may sit under real branches.
@@ -247,10 +256,12 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // (<= -0.5 rather than < 0: a NaN depth must fail this test and reach
     // validDepth below, never become a far-plane pixel under policy 2.)
     bool farPlane = false;
+    float farPlaneTerm = 0; // farPlane as the band term's select operand (one cmp)
     if (options.w > 0.5 && depth <= -0.5) {
         if (options.w < 1.5) return emit(float4(color, alpha), 1);
         depth = 1;
         farPlane = true;
+        farPlaneTerm = 1;
     }
     if (history.w < 0.5 || history.z <= 0 || !finiteColor(raw) || !validDepth(depth))
         return emit(float4(color, alpha), 1);
@@ -290,6 +301,11 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
         }
     }
     float2 dilatedUV = uv + dilate * sizeJitter.xy;
+    // The dilated band of the sky: a far-plane pixel a valid neighbour below 1
+    // won the dilation for (nearest < 1 here, before the alpha scaling below;
+    // its own path, the fade-band draw included, keeps nearest == 1). Read by
+    // the strict band term at the disocclusion test.
+    float band = nearest < 1 ? farPlaneTerm : 0;
 
     // Texture centers use (pixel + .5)/size, but the raw D3D9 viewport maps
     // unadjusted projection NDC zero to raster pixel size/2. Remove the texture
@@ -304,15 +320,33 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
                                  dot(reprojection2, currentClip), dot(reprojection3, currentClip));
     float2 previousUV;
     float expectedDepth;
-    bool valid = all(previousClip == previousClip) && all(abs(previousClip) <= 1e20)
-                 && previousClip.w > rejection.w;
+    // The correspondence is valid when its four clip components are finite and
+    // within 1e20 and w exceeds the minimum W: as a count, 4 exactly when all
+    // hold (each step is a >= compare a NaN fails; a NaN w fails the magnitude
+    // step whatever the w step does). Summed into the usability test below.
+    float validity = dot(step(abs(previousClip), 1e20), 1) - step(previousClip.w, rejection.w);
     previousUV = float2(previousClip.x, -previousClip.y) / max(previousClip.w, rejection.w) * 0.5 + 0.5;
     // Previous unjittered texture-center UV of the content plus the CURRENT
     // jitter (never the previous one): history lives on the unjittered grid.
     previousUV += 0.5 * sizeJitter.xy + sizeJitter.zw;
     expectedDepth = previousClip.z / max(previousClip.w, rejection.w);
+    // The band term's reference: the camera path at the dilated position. The
+    // route uploads the far-plane reprojection (camera_far_plane_reprojection:
+    // zero z column, no translation), so whatever nearest is this is the
+    // rotation-only path of a direction at infinity, and the routed
+    // correspondence's displacement against it is the translation parallax
+    // (an approaching station under SETA: 3-38 px/frame, a pan: 0). Feeding
+    // translation-aware rows (the camera gate's c8 terms of the line mask)
+    // here would follow a static silhouette under translation and silently
+    // disable the band term.
+    float2 cameraUV = previousUV;
     if (options.x > 0.5) {
         float4 motion = fetch(motionOverride, dilatedUV);
+        // Band term, alpha gate: only an unrouted pixel (its own alpha not 1)
+        // is the dilated band; a routed sentinel-depth draw beside closer
+        // geometry (a fade-band square, an engine glow) keeps the geometry
+        // path it takes today. (A NaN alpha clears the band: fail-open.)
+        band *= step(fetch(motionOverride, uv).w, 0.5);
         // A routed correspondence (alpha 1) is never the strict sky path: nearest
         // drops to 0 for it and stays for alpha 0 / -1 (sge + mul; a NaN alpha
         // gives 0 and rejects below anyway). nearest's only readers after this
@@ -323,7 +357,7 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
             // content at this jittered sample; add the current jitter only.
             previousUV = motion.xy + sizeJitter.zw;
             expectedDepth = motion.z;
-            valid = all(motion == motion) && all(abs(motion) <= 1e20);
+            validity = dot(step(abs(motion), 1e20), 1); // 4 when finite and within 1e20
         } else if (motion.w != 0) {
             // The route fills every unrouted pixel of RT1 with alpha -1 and
             // RT2 with the depth sentinel in one draw, so a far-plane pixel
@@ -334,12 +368,29 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
             // alpha rejects as before. (>= -1 && <= -1: exactly -1, NaN-safe.)
             // nearest >= 1 is all(dilate == 0) here: a far-plane pixel starts at
             // 1, only a neighbour below 1 lowers it, and alpha -1 left it alone.
-            if (!(farPlane && nearest >= 1 && motion.w >= -1 && motion.w <= -1)) valid = false;
+            if (!(farPlane && nearest >= 1 && motion.w >= -1 && motion.w <= -1)) validity = 0;
         }
     }
+    // Camera-relative displacement of the correspondence in px/frame: the routed
+    // previous position against the rotation-only camera path (both
+    // texture-centre UVs with the current jitter; 0 on the camera path itself,
+    // so a pan past a static object never refuses). Squared against the band
+    // threshold c5.y (px^2, X3M_TAA_SKY_HISTORY_BAND_PX squared by the pass):
+    // no square root. The camera path cannot be NaN here (prepare bounds the
+    // rows at 1e15 and every operand is finite); a wildly large one refuses
+    // (fail closed: the pixel is current-only, never NaN), a NaN would clear
+    // the select and keep the geometry path (the file's cmp convention).
+    float2 relative = (previousUV - cameraUV) / sizeJitter.xy;
+    float refused = dot(relative, relative) >= history.y ? band : 0;
     // The dilated pixel's velocity, applied to this pixel.
     previousUV -= dilate * sizeJitter.xy;
-    if (!valid || !validDepth(expectedDepth) || any(previousUV < 0) || any(previousUV > 1))
+    // The lookup is usable when the correspondence is valid (validity 4), its
+    // expected depth lies in [0, 1] and the tap position inside the texture
+    // (two float3 steps whose dot is 3): 7 exactly when all hold, the same
+    // decision as the seven range tests (every step is a >= or <= compare, so a
+    // NaN fails it and the lookup is refused as before).
+    float3 lookup = float3(previousUV, expectedDepth);
+    if (dot(step(0, lookup), step(lookup, 1)) + validity < 6.5)
         return emit(float4(color, alpha), 1);
 
     float2 position = previousUV / sizeJitter.xy - 0.5;
@@ -376,9 +427,27 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // (nearest < 1), a routed pixel (alpha 1: a fade-band draw over sky keeps
     // its own history, its depth target being motion.z) and every geometry
     // pixel keep the test as is; a routed pixel rasterised at exactly 1.0 is
-    // therefore never strict. Slot budget: see docs/architecture/seta-motion.md.
+    // therefore never strict. Band term (section 4 there): the dilated band
+    // (band == 1) whose correspondence moves bandSpeed px/frame or more
+    // relative to the camera path (refused, above) refuses the lookup under
+    // strict. Its taps land beside last frame's silhouette a whole pixel or
+    // more away, whose colour history holds that edge's accumulated hull share
+    // whatever its depth (a sentinel tap beside the previous edge is as dark
+    // as a hull tap), so a depth proof cannot separate the trail from the sky:
+    // the pixel is current-only that frame. Below the relative speed (a static
+    // or slow object, any object under a pan) nothing changes. Slot budget:
+    // see the note.
     tolerance -= step(1, nearest) * options.z;
-    float considered = 0, proven = 0;
+    // A tap proves when it is a valid depth at or behind the threshold or the
+    // sentinel. validDepth's lower bound is folded into the threshold (max with
+    // 0: identical for every finite tap; a NaN fails every step), the two
+    // exclusive range tests are one float2 step pair and the proof, 0 or 1
+    // exactly, scales the weight (weight * 1 and proven + 0 are exact).
+    // considered starts at refused * c7.z: 0 normally; under strict (c7.z = 3)
+    // a refused band pixel starts at 3, which the proof (at most the footprint's
+    // weight, 1) can never reach, so the test below refuses it.
+    float threshold = max(expectedDepth - tolerance, 0);
+    float considered = refused * options.z, proven = 0;
     [loop] for (int ty = 0; ty < 2; ++ty) {
         [loop] for (int tx = 0; tx < 2; ++tx) {
             float weight = (tx ? f.x : 1 - f.x) * (ty ? f.y : 1 - f.y);
@@ -386,8 +455,9 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
             if (weight > 0.01) {
                 considered += weight;
                 float previous = fetch(previousDepth, tap + float2(tx, ty) * sizeJitter.xy).r;
-                if (validDepth(previous) && previous >= expectedDepth - tolerance) proven += weight;
-                if (previous <= -0.5 && previous >= -1e30) proven += weight;
+                float2 atLeast = step(float2(threshold, -1e30), previous);
+                float2 atMost = step(previous, float2(1, -0.5));
+                proven += weight * dot(atLeast, atMost);
             }
         }
     }

@@ -63,6 +63,30 @@ class SkyHistoryLaunch(unittest.TestCase):
             self.assertNotEqual(code, 0)
             self.assertIn('--taa-sky-history requires --taa', error)
 
+    # --taa-sky-history-band-px (X3M_TAA_SKY_HISTORY_BAND_PX; seta-motion.md section 4): the band term's
+    # threshold in px/frame, forwarded only when given, within 1..16, in TAA mode only.
+    def test_band_px_omitted_is_not_forwarded_and_drops_an_inherited_value(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self.assertNotIn('X3M_TAA_SKY_HISTORY_BAND_PX', self.env(directory, *TAA, '--taa-sky-history', 'strict'))
+            self.assertNotIn('X3M_TAA_SKY_HISTORY_BAND_PX', self.env(directory, *TAA, inherited={'X3M_TAA_SKY_HISTORY_BAND_PX': '5'}))
+
+    def test_band_px_is_forwarded_as_the_float_given(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env = self.env(directory, *TAA, '--taa-sky-history', 'strict', '--taa-sky-history-band-px', '2.5')
+            self.assertEqual(float(env['X3M_TAA_SKY_HISTORY_BAND_PX']), 2.5)
+            self.assertEqual(float(self.env(directory, *TAA, '--taa-sky-history-band-px', '16')['X3M_TAA_SKY_HISTORY_BAND_PX']), 16.0)
+            self.assertEqual(float(self.env(directory, *TAA, '--taa-sky-history-band-px', '1')['X3M_TAA_SKY_HISTORY_BAND_PX']), 1.0)
+
+    def test_band_px_bounds_and_taa_requirement(self):
+        with tempfile.TemporaryDirectory() as directory:
+            for value in ('0.5', '16.5', '-3', 'nan'):
+                code, _, error = self.launch(directory, *TAA, '--taa-sky-history-band-px', value)
+                self.assertNotEqual(code, 0, value)
+                self.assertIn('--taa-sky-history-band-px must be within 1..16', error)
+            code, _, error = self.launch(directory, '--motion-output', '--taa-sky-history-band-px', '3')
+            self.assertNotEqual(code, 0)
+            self.assertIn('--taa-sky-history-band-px requires --taa', error)
+
 
 if __name__ == '__main__':
     unittest.main()

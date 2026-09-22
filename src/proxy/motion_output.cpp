@@ -1650,6 +1650,7 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             std::memcpy(in.clip_to_previous, decision.matrix, sizeof decision.matrix);
             in.sentinel_camera = decision.policy == 2;
             in.sentinel_strict_sky = sky_history_strict_ && decision.policy == 2; // the resolve's c7.z term: seta-motion.md
+            in.sky_history_band_px = sky_history_band_px_; // the band term's threshold, c5.y squared: seta-motion.md section 4
             // Camera gate (taa-lattice-crawl.md section 32.3): the depth / translation term beside the far-plane matrix, from the
             // same two views and this frame's latched depth law; zero (the far-plane path) without the transform or a plausible law.
             if (taa_thin_camera_gate_ && decision.transform) {

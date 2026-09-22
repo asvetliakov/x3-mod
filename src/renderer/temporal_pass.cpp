@@ -419,6 +419,9 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
         in.previous_jitter[0],in.previous_jitter[1],in.weight,in.motion_policy==MotionPolicy::PerPixel,
         mask,sentinel,sentinel&&in.sentinel_camera,in.luminance_k,in.current_filter,in.sentinel_strict_sky))return fail(E_INVALIDARG);
     const float strict_sky_term=constants.options[2]; // the resolve's c7.z; the snapshot and mask draws below set their own mode and put it back
+    // c5.y (the previous jitter's lane, unread by every resolve program) = the band threshold squared (px^2): seta-motion.md section 4.
+    if(!(std::isfinite(in.sky_history_band_px)&&in.sky_history_band_px>=1.f&&in.sky_history_band_px<=16.f))return fail(E_INVALIDARG);
+    constants.history[1]=in.sky_history_band_px*in.sky_history_band_px;
     constants.luminance[2]=in.alpha_history?1.f:0.f; // read by the flicker variants only
     constants.luminance[3]=lined?in.line_filter:far_on?in.far_filter:0.f; // A of the masked filter: line-filter / far variants only
     float flicker_constants[4]{};x3::temporal::prepare_flicker(flicker_constants,in.thin_clip,in.adaptive_weight,in.adaptive_lo,in.adaptive_hi);

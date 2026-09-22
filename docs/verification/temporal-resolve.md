@@ -1482,3 +1482,81 @@ consistent with the untouched far-scattered tail (67% of what remains,
 hull-acceptance case strict fixes. "A little blurry" is consistent with the ~2x
 gradient-energy loss on the moving station from bilinear history reprojection at
 3.5-30 px/frame — present in all three bursts, not new to strict or to SETA.
+
+## 2026-09-22 band term: the dilated band beside a fast silhouette under strict (follow-up on Run 244)
+
+Design and the flight ring numbers: docs/architecture/seta-motion.md section 4. Run 244's
+residual near band (dist 1-2 dark-sky pixels 6,648 over 31 frames, "a little smearing") is the
+fixture's `adjacent_max 0.738`: the dilated band takes the neighbour's correspondence, so the
+strict term (`nearest == 1`) never reached it. `resolve.hlsl`: an **unrouted** far-plane pixel
+in the dilated band (`band`, read before the alpha scaling, cleared when the pixel's own motion
+alpha is 1: a fade-band or glow draw beside closer geometry keeps its path) whose routed
+correspondence differs from the **rotation-only camera path** (`cameraUV`: the resolve's own
+reprojection before the motion override, which the route feeds with
+`camera_far_plane_reprojection`, zero z column, no translation, so it is the direction-at-
+infinity path whatever `nearest` is) by at least the band threshold is refused under strict
+(`considered` starts at `refused * c7.z`). That difference is the translation parallax: the SETA
+approach (3-38 px/frame, rotation 0) refuses, a pan (rotation) gives 0 and keeps accumulating.
+The threshold is a constant lane, c5.y = px^2 (`X3M_TAA_SKY_HISTORY_BAND_PX`, 1..16, default
+**3**; `--taa-sky-history-band-px`, requires `--taa`; the DLL logs it as `sky_history_band_px`
+in `motion_output_mode`, invalid values fall back to 3 with `taa_sky_history_band_px_setting
+invalid=1`), so it can be A/B'd in flight. Against the captures (routed displacement of the
+station bucket = the parallax, rotation 0): run244 f3740 / 3750 / 3760 median 3.93 / 3.54 /
+3.95 px/frame, run235 f6970 / 6978 / 6986 / 6990 median 3.14 / 4.31 / 7.55 / 8.75; hull share
+below 3 px/frame 0.40-0.43 (run244) and 0.34-0.49 (run235), below 2 px/frame 0.31-0.43 and
+0.32-0.35; 2 px is ~2 sigma of the route's block-match error (0.3 +- 0.9 px/frame), which a
+world-static border could cross sporadically, hence 3. Consequence to watch in the next strict
+flight: a camera translation whose parallax at a nearby world-static silhouette exceeds 3
+px/frame (close flyby, docking approach) puts that 1-px sky border on the current-only path:
+intended for uncovered sky, less anti-aliased than loose. Forms measured and rejected on the
+way: lowering the tolerance so only sentinel taps prove (`adjacent_max` 0.738 -> 0.569: the
+sentinel-depth texel beside the previous edge carries that edge's accumulated hull share), a
+screen-speed gate (current-only on the border of every static silhouette during a pan), and a
+2 px threshold as a shader constant.
+
+| `run_temporal_pass.py`, 2026-09-22 | loose | strict |
+| --- | --- | --- |
+| (d) SETA sweep, 5 px/frame: `adjacent_max` (dilated band, max deviation from the current sample) | 0.738525 | **0.000000** (asserted <= 0.10; was 0.738525) |
+| (d) `trail_max` / `far_difference` / `motion_error_px` | 0.237305 / - / 0.000001 | 0.000000 / 0.000000 / 0.000001 (unchanged) |
+| (e) fade-band sweep: strict vs loose on the 256 routed pixels / routed pixels with history | | 0.000000 / 18 (unchanged) |
+| (f) slow sweep, 0.5 px/frame, 8 moving frames: max strict - loose over every pixel and frame (asserted 0); the band's deviation from the current sample (the anti-aliased edge, both modes) | | **0.000000**; 0.805786 |
+| (g) static ring, two 16-phase periods: per-pixel temporal variance of the last period, distance 1 / 2 / 3 / sky (40 / 48 / 56 px) | 1.843e-5 / 2.188e-5 / 1.586e-5 / 3.744e-5 | identical; max strict - loose over 32 frames **0.000000** (asserted 0) |
+| (h) pan, camera 3 px/frame past the world-static square, 8 frames: border deviation from the current sample (accumulated, required > 0.05) / max strict - loose over every pixel (asserted 0) / sky pixels using history under strict | 0.815308 | 0.815308 / **0.000000** / 3570 |
+| (i) fade-band strip beside a 5 px/frame depth-writing occluder, 7 frames: routed strip pixels / of them beside the occluder / current-only among those, loose / strict (asserted strict - loose = 0; without the alpha gate strict would refuse all 31) | 1344 / 31 / 15 | 15 (**+0**) |
+| (j) projective pan (focal 16, yaw 0.6714 deg = 3.0033 px/frame at the centre, far-plane matrix form, z row = w row x (1 - 2^-16)): border accumulated / max strict - loose (asserted 0) | 0.815308 | 0.815308 / **0.000000** |
+| (k) camera path off the scale (x row 1e15): band pixels / band deviation from the current sample loose / strict (asserted 0: fail closed) / nonfinite outputs in both modes (asserted 0) | 252 / 0.815308 | **0.000000** / **0** |
+
+Flight (seta-motion.md section 4, table): ring luma flicker under strict (run244 burst 2) is the
+same order as under loose (run235 burst 2), 0.72 / 1.08 / 0.93 against 1.27 / 0.82 / 0.79 at
+distance 1 / 2 / 3 with far-sky controls 0.35 and 0.08, and the only pixels the strict term can
+refuse (geometry within 1 px last frame, none in the 3x3 now) are current-only at 0.0-0.1 %:
+the ring is pre-existing and not changed. The triage's 2.96 was measured on a 1-3 px ring that
+included the freshly uncovered band and the cockpit's border; this measurement excludes both.
+
+| command | result |
+| --- | --- |
+| `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py /usr/bin/python3 verification/probe/run_temporal_pass.py` (band term, parallax gate, alpha gate, c5.y threshold) | `passed: true`; `RESULT PASS numerical=570 state_restorations=278 generations=2`, **416** samples (532 / 402 before: one SETA-sweep metric, then the slow sweep, the static ring, the pan, the fade-band-beside-occluder, the projective pan and the huge camera path, two sequences and one metric each, per generation); lattice `RESULT PASS numerical=583 state_restorations=23` |
+| the same, unchanged source, same session (baseline for the bit-identity check) | `passed: true`, 532 / 278 / 2, 402 samples |
+| bit-identity of the three shared-code rewrites (tap proof as a step/dot product with `threshold = max(expected - tolerance, 0)`; usability test as two float3 range steps; `valid` as a count) against the same-session baseline, whole-line diff with nothing filtered | temporal-lattice.txt: 5242 lines both, 18 removed / 18 added, of which 14 are the `RESOLVE_BUDGET` lines and 4 timing lines; every other line identical, all 375 SAMPLE lines unchanged. temporal-pass.txt: 5172 -> 5576 lines, **3 removed** (the two strict `SETA_SWEEP` rows, adjacent_max 0.738525 -> 0.000000, and the `RESULT PASS numerical=532` line, now 570) / 407 added (376 CHECK lines and the new SETA rows and SAMPLE metrics of the new sequences); all **402** baseline SAMPLE lines present unchanged |
+| `RESOLVE_BUDGET` (temporal-lattice.txt) | age_line 511 -> **507**, far_camera 509 -> **507**, age_filter 508 -> **506**, far 497 -> 495, age 496 -> 494, thin 470 -> 465, thin_filter 482 -> 477, thin_line 485 -> 483, line 447 -> 447, plain 434 -> 432, current_filter 445 -> 443, snapshot / line masks / thin boxes unchanged; all within 512 |
+| slot accounting (scratch D3DXDisassembleShader listings of resolve_age_line.hlsl) | screen-speed form 509; parallax form 514 before the usability rewrite, 510 after; with the alpha-gate fetch and the c5.y lane 513 before the `valid`-as-count rewrite, **507** after; tap proof 15 -> 9 arithmetic slots; usability test 19 -> 7; a vectorised Catmull-Rom weight chain compiled to 17 against 11 and was reverted |
+| resolve headers | `generate_rigid_motion_pixel.py` for the eleven resolve programs that include resolve.hlsl, under the Wine lock, PASS |
+| `PYTHONPATH=verification/probe /usr/bin/python3 -m unittest verification/analysis/test_taa_sky_history.py verification/analysis/test_taa_image_defaults.py` | 23 tests, OK (three new: `--taa-sky-history-band-px` forwarded as given, omitted / inherited not forwarded, bounds 1..16 and the `--taa` requirement rejected) |
+| `/usr/bin/python3 verification/probe/run_host_suite.py` | 230 modules, 2284 tests, 0 failing |
+| scratch DLL (not a candidate) `build-band`, `-DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPython3_EXECUTABLE=/usr/bin/python3` (final shader, headers and plumbing; the later fixture-only edits do not enter the DLL) | built; `check_no_x87.py` 638 reachable functions, 0 violations; sha256 25c6fff3... |
+
+Blur (report only, no change): the history fetch is already the 16-tap Catmull-Rom (fixture
+case (c): amplitude retained at 0.25 px/frame 0.930 against 0.712 for the bilinear model), so
+the triage's "bilinear history reprojection" premise does not hold. The 5- and 9-tap
+Catmull-Rom forms rely on hardware bilinear filtering of the history sampler, which the
+point-sampled contract of s2 excludes; adopting one would *save* 7 (9-tap) or 11 (5-tap)
+texture slots plus weight arithmetic, at the price of a sampler-state contract change and
+FP16 filtering precision, and would not sharpen anything. The station's present/colour
+gradient-energy ratio of 0.3-0.5 at 4-30 px/frame is consistent with the vector error of
+section 1 (0.3 +- 0.9 px per frame, block match) integrated at weight 0.9, and with the 3x3
+clip, not with the filter kernel; the post-resolve RCAS (`--taa-sharpen 0.75`) acts on the
+presented image only and cannot recover misregistered history.
+
+Open: unrelated observation from the same measurement: run244's sky
+is current-only at 6-8 % out to 6 px from the station (1.1-1.5 % in run235, 2.4-6.3 % on far
+sky in both), on pixels the strict term cannot refuse; not investigated.

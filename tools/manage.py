@@ -333,6 +333,7 @@ def main():
     parser.add_argument('--taa-sentinel', choices=['auto', '1', '2'], default='auto', help='Depth-sentinel policy of the resolve (requires --taa): auto reprojects unrouted (background) pixels through the live camera at the far plane whenever the engine camera read yields a transform, 1 keeps them current-only, 2 is strict (skips the resolve on frames without a transform)')
     parser.add_argument('--taa-unmatched-static', choices=['off', 'node', 'all'], default=None, help='A routed draw whose motion-history key is new this frame (e.g. a LOD or mesh swap) reprojects through the camera as a static object for that one frame instead of resolving current-only (X3M_TAA_UNMATCHED_STATIC; requires --taa). node: only when the same engine node was drawn last frame under another key; all: any new key. Default when omitted with --taa = node, accepted after run212 (no approach flash, 22-draw unmatched groups filled on 36 approach frames); "off" is the opt-out and is the pre-run212 behaviour bit for bit')
     parser.add_argument('--taa-sky-history', choices=['loose', 'strict'], default=None, help='Sky history rule of the TAA resolve under the camera path (X3M_TAA_SKY_HISTORY; requires --taa). strict: a sky pixel (depth sentinel) whose 3x3 holds no routed geometry accepts sentinel history only, so the hull of a station that moved away this frame is never blended into the sky (the SETA approach smear of run235, docs/architecture/seta-motion.md). loose, the default when omitted, is the pre-existing behaviour bit for bit: the 2%% relative depth tolerance proves any geometry beyond device depth 0.98 as the sky\'s history')
+    parser.add_argument('--taa-sky-history-band-px', type=float, default=None, help='Band threshold of the strict sky history in px/frame (X3M_TAA_SKY_HISTORY_BAND_PX; requires --taa; 1..16, DLL default 3): the translation parallax at which the 1-px sky band beside a silhouette stops taking its history under --taa-sky-history strict (docs/architecture/seta-motion.md section 4)')
     parser.add_argument('--camera-cut-deg', type=float, default=20.0, help='Camera rotation per frame (degrees) above which the resolve declares a cut (requires --taa; default 20)')
     parser.add_argument('--camera-log', type=int, default=300, help='Cadence in frames of the camera_state log line (requires --taa; capture frames always log; default 300)')
     parser.add_argument('--scene-hook', nargs='?', const='on', default=None, choices=['on', 'off'], help='Engine scene-end hook (X3M_SCENE_HOOK): patch the frame routine\'s compositing callsite (0x004721b1, exact executable and bytes only, otherwise it fails closed to the bloom-copy/selector boundary) so the route learns the scene end from the engine and, with --taa, resolves there before the glow pass. Default on with --motion-output since review 26 (iteration 10: 214/214 agreement); "--scene-hook" alone means on; "--scene-hook off" keeps the copy/selector boundary')
@@ -693,6 +694,11 @@ def main():
         args.taa_unmatched_static = 'node'
     if not args.taa and args.taa_sky_history is not None:
         parser.error('--taa-sky-history requires --taa.')
+    if args.taa_sky_history_band_px is not None:
+        if not args.taa:
+            parser.error('--taa-sky-history-band-px requires --taa.')
+        if not (1.0 <= args.taa_sky_history_band_px <= 16.0):
+            parser.error('--taa-sky-history-band-px must be within 1..16 px/frame.')
     if not args.taa and (args.taa_sentinel != 'auto' or args.camera_cut_deg != 20.0 or args.camera_log != 300):
         parser.error('--taa-sentinel, --camera-cut-deg and --camera-log require --taa.')
     if not 0 < args.camera_cut_deg <= 180 or not 1 <= args.camera_log <= 1000000:
@@ -1173,7 +1179,7 @@ def main():
         # and the sentinel stabiliser) are already set or cleared above, so an
         # inherited value cannot survive either.
         for name, value in (('X3M_TAA_CURRENT_FILTER', args.taa_current_filter), ('X3M_TAA_HISTORY_WEIGHT', args.taa_history_weight), ('X3M_TAA_LINE_FILTER', args.taa_line_filter), ('X3M_TAA_FAR_STABILISER', args.taa_far_stabiliser), ('X3M_TAA_THIN_REGION', args.taa_thin_region), ('X3M_TAA_THIN_REGION_GATE', args.taa_thin_region_gate), ('X3M_TAA_THIN_REGION_EMISSIVE', args.taa_thin_region_emissive), ('X3M_TAA_SENTINEL_STABILISER', args.taa_sentinel_stabiliser),
-                            ('X3M_TAA_THIN_CLIP', args.taa_thin_clip), ('X3M_TAA_ADAPTIVE_WEIGHT', args.taa_adaptive_weight), ('X3M_TAA_SKY_HISTORY', args.taa_sky_history),
+                            ('X3M_TAA_THIN_CLIP', args.taa_thin_clip), ('X3M_TAA_ADAPTIVE_WEIGHT', args.taa_adaptive_weight), ('X3M_TAA_SKY_HISTORY', args.taa_sky_history), ('X3M_TAA_SKY_HISTORY_BAND_PX', args.taa_sky_history_band_px),
                             ('X3M_TAA_ALPHA_HISTORY', '1' if args.taa_alpha_history else None)):
             if value is not None:
                 env[name] = value if isinstance(value, str) else ('%.5g' % value if name == 'X3M_TAA_THIN_CLIP' else repr(value))

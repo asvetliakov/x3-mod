@@ -40,8 +40,11 @@ try:
     # numerical check and sample per generation) on top of 508 / 386. 524 / 398:
     # the SETA sweep (seta-motion.md; two edge sequences with their motion
     # contract check and five metrics per generation) on top of 510 / 388;
-    # 532 / 402: the fade-band sweep (two more sequences, two metrics).
-    assert run.returncode==0 and match and tuple(map(int,match.groups()))==(532,278,2) and report['samples']==402 and 'RESET PASS' in text and 'FAIL' not in text,text[-1500:]
+    # 532 / 402: the fade-band sweep (two more sequences, two metrics). 546 / 408: the band term
+    # (seta-motion.md section 4): one more SETA-sweep metric, the slow sweep and the static ring
+    # (two sequences and one metric each). 552 / 410: the pan case (two sequences, one metric). 570 / 416: the
+    # fade-band-beside-occluder, projective-pan and huge-camera-path cases (two sequences and one metric each).
+    assert run.returncode==0 and match and tuple(map(int,match.groups()))==(570,278,2) and report['samples']==416 and 'RESET PASS' in text and 'FAIL' not in text,text[-1500:]
     assert len(report['camera_pan'])==2 and all(r['w_below_current_only']=='0' and r['w_above_current_only']=='0' and int(r['w_below_px'])>4000 for r in report['camera_pan']),report['camera_pan']
     # The quad twins and the copy modes: byte-identical on this backend.
     report['quad_twins']=[dict(re.findall(r'(\w+)=(\S+)',line)) for line in text.splitlines() if line.startswith('QUAD_TWIN ')]

@@ -1,22 +1,22 @@
 {
   "passed": true,
   "sources_before_build": {
-    "src/renderer/temporal_pass.h": "d6e2596e3d2af4938562b1301e9838a324a9df9ad2504d39baf6257467153676",
-    "src/renderer/temporal_pass.cpp": "ed43138916af40508aaa3b82d2e599b20e64c4be525cefc1ecf92d5103e6787f",
+    "src/renderer/temporal_pass.h": "2b7c74da6bc68ddf34e9f152d333da3cecc76f341c0954c035f4d1e28eac38f3",
+    "src/renderer/temporal_pass.cpp": "e64d801d41aa590e24b15f09522ed4d02e67c8b9e182229d5c9b8db9f6c027aa",
     "src/temporal/resolve.h": "98b4b3132eba3867c8ac7e39e1fa12336f5b8f4add73eb2c3847e9c1a5602a4c",
-    "src/temporal/resolve.hlsl": "189240ba35d7e4c412dd3e6c2ca62e90ff4dda51ee1722efe87444afa75cb1ef",
+    "src/temporal/resolve.hlsl": "b2331c776f5fa8907c2f06dd073673eac0943a38abf32214beefd0c026aa6a1c",
     "src/temporal/resolve_filter.hlsl": "65aedd02762660c77ff6af3530c429edb580ea3ccb52416cd303974ce86d51f6",
     "src/temporal/resolve_snapshot.hlsl": "b7b62bb66523b6e092143fc111a623413cd8d1e9bf7c7ab0afbc83a3f40f126d",
     "src/renderer/temporal_resolve_snapshot_program_inc.h": "decb661f2c75cdfb7960bff7018c364c0f398fbe399a5e5df6a62fb5d7916d69",
     "src/renderer/temporal_resolve_program.h": "9bd72e7dbce78fa48031cc165d7830107533a96c9b09e38e67c6848a3d51e61d",
     "src/temporal/resolve_thin.hlsl": "fcd645eff0211c5762dc973cc067c542c443291406a79b9ac2c77f43d9506fe4",
-    "src/renderer/temporal_resolve_thin_program_inc.h": "07fbac4547252e5f8099b84511bf14bbe4b3be891f7cc61cf184c65bffa99ffd",
+    "src/renderer/temporal_resolve_thin_program_inc.h": "46ee3172877c5f14d77629e1fe5a052c63779840beeab39b1021d4d9197f15f1",
     "src/temporal/resolve_thin_filter.hlsl": "44b03ce6268fee366779f7e0310fb63d94ccdea98dd66b1a2aa99290020cd70c",
-    "src/renderer/temporal_resolve_thin_filter_program_inc.h": "cb7995228f2540eb712e8459d13c4e75889ebe17c004ae3979c7241f8494c042",
+    "src/renderer/temporal_resolve_thin_filter_program_inc.h": "8ee733fd79afafa736d42ccea6352c8793a688be73d40dc32259e57b604c1cdb",
     "src/temporal/resolve_age.hlsl": "8bd897574e9427d21c3b8c79221e3c019f7aa37e5dfbf1d5386149c4f19c942b",
-    "src/renderer/temporal_resolve_age_program_inc.h": "d42278196d3e08a9db52d5b86c9b9ffbb7374fe30aba1a27affa538b261622b4",
+    "src/renderer/temporal_resolve_age_program_inc.h": "c18f1c2cf194c68a6eca676d30a68902e194f53689dbd10cbc48b3084991dfb2",
     "src/temporal/resolve_age_filter.hlsl": "5a13f4045d9128eb7c00a22b4a0c2c088a663d99936b54d71f3e68b4601abcdb",
-    "src/renderer/temporal_resolve_age_filter_program_inc.h": "82af2a0ef6a32e33bd9cbdcdb924eb848a25bb4706882f77fd936efc96a2b89e",
+    "src/renderer/temporal_resolve_age_filter_program_inc.h": "c1b3130ba66448404cb435360526ba82a6f0e324f3e90084c1904d9dda18bfe1",
     "verification/probe/temporal_flicker_inc.h": "30de4676b093fb9eb0c09fe66a4d1e49051ed6528df15dd17f86d6b5fb9896ec",
     "verification/probe/temporal_line_inc.h": "15224ee136ad9a12c8383ed6541ab9d40c5e047d672285931cc21a9479f398a4",
     "verification/probe/temporal_far_inc.h": "315ce3471778ea438262ea6725c1eb62ecf652cda81ef95758532c3b99b9e3da",
@@ -24,7 +24,7 @@
     "src/temporal/line_mask_camera_ps.hlsl": "c60a1986f5d304b6690d05e20ac94ce96c762dd6e618cc2d5a46ad5601a17923",
     "src/renderer/temporal_line_mask_camera_program_inc.h": "0a92892c56674f29b1fa15e435883a4de12f0f6dbcd7db67d1a8fb0a5993ccec",
     "src/temporal/resolve_far_camera.hlsl": "375cb64c664241e7915f976e4b0ac4ff0f773caea5abcf728c72823d611bbd9d",
-    "src/renderer/temporal_resolve_far_camera_program_inc.h": "daea827933223fea51e5522cc352c7463eb93b32a82118acea848b9817b5d68e",
+    "src/renderer/temporal_resolve_far_camera_program_inc.h": "9f39f849f8254b1e9b6582eb85ab0306bdfe8a548e6bdd218f7c5481d0f4a242",
     "src/temporal/thin_box_ps.hlsl": "0f12a9cb79e8945b11844c977c5ad67bd7bc958af9275949b6ddc1c947b942e9",
     "src/renderer/temporal_thin_box_program_inc.h": "3bd06fcf9f249fb3941a681116480ade11e871d8e545c7c977a1f43e1f64a207",
     "src/temporal/thin_box_rows_ps.hlsl": "3ef2e63568d11015cbf6ba1feb13271bc57d7aa8a7de89018466a2c04aa8b906",
@@ -33,22 +33,22 @@
     "src/renderer/temporal_thin_box_columns_program_inc.h": "546f511353466a12ddcf54f8d2dfe53e2da7f6916ca119ab4a75e9e48a36fda9",
     "verification/probe/temporal_resolve_far_reference_inc.h": "b0ea38f96cc810280b8b7f5348ab6b624b9b0fcb254545893e4b0035d9dcd226",
     "src/temporal/resolve_far.hlsl": "30087df4338b9a3fec4d6dbca256e5c7b8515bb3cea41fe540e7e4a5af00e7b9",
-    "src/renderer/temporal_resolve_far_program_inc.h": "0fbf43c3f215744f1fdaa58c0884cdb4a624d9a0062e0a5eb50e1ecd9fe01904",
+    "src/renderer/temporal_resolve_far_program_inc.h": "99b56dec0d0bedc3e2d1cb11f0f666a90f72d2608300cc668fed3760bbf4a44a",
     "src/temporal/line_mask_ps.hlsl": "2961611353f8b80b1991c3e5d6aafc5fb9d7b4cb31b7b1a51b232203a5f9a23e",
     "src/renderer/temporal_line_mask_program_inc.h": "e48d63180cdb08c5f53b0b704ac5467c580bf911f2c9b39b76a84e0c1c857297",
     "src/temporal/resolve_line.hlsl": "18807f732512dc66460deda4367c560e733160bb4e75263875fdd0c00bb52f31",
-    "src/renderer/temporal_resolve_line_program_inc.h": "34cc4b0a437b8a41d24487fab8815b9e5ffe355b6efafaad69df165d20123fda",
+    "src/renderer/temporal_resolve_line_program_inc.h": "53ac8aa48409eeb0c99f8f60a2be12708037aa12005273e0298e31eeeed81a6b",
     "src/temporal/resolve_thin_line.hlsl": "ccb52ae55590b7c196966667583f227a3552722080c17c893f2d352f33ba2c9f",
-    "src/renderer/temporal_resolve_thin_line_program_inc.h": "31e9d9c0435f8cac136e0cefa1026a63af2cb55ac43650a477b99cdc9588b217",
+    "src/renderer/temporal_resolve_thin_line_program_inc.h": "348075c36b0e4c65efe1e9025cc1479a051359f63c32a5788e8e928fd98b20e8",
     "src/temporal/resolve_age_line.hlsl": "c47b64620cc28aca7a21488fdc6430e762b20f406504613af3b0bf889874b9e3",
-    "src/renderer/temporal_resolve_age_line_program_inc.h": "e87e26347f47e42376f1c8d4946563ceeb8bfee15bcd6c1060a0410a7ca05ff7",
+    "src/renderer/temporal_resolve_age_line_program_inc.h": "befe2e0294fd60e83e1d2f79609138ba2b34d27267243b56af730f36f227ecd7",
     "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5",
     "src/temporal/sharpen.h": "7929b76d44483ec76a5e939f7fd1245d981a88fe7eb6a32a73bae43fe81b771f",
     "src/temporal/rcas.hlsl": "50ce16e50069b2d6bf599575aa82828158b233e46723c1b7c277bcae7aacc152",
     "src/temporal/taa_sharpen_ps.hlsl": "af6a6734bcc506afaf990de01add0bcb2d7e57617c738ba08fa6ab2e7167d9a8",
-    "verification/probe/temporal_pass_fixture.cpp": "e68f535b4a5827c0dc6bb3593f34e13304867ef30ea1f1ea5a9fb450ccf7a0d4",
+    "verification/probe/temporal_pass_fixture.cpp": "a0963a85577f937288758ea5057d36e52cbd3eaae5922cd4443315ad9a7fee04",
     "verification/probe/build_temporal_pass.sh": "a59f6e17764411adad516db293587561c0f30a63ebc8a58a663e067f4e49f6e9",
-    "verification/probe/run_temporal_pass.py": "64868021b6821da13246047604b3c4f3d6db38442508157484665e20eb4150ca"
+    "verification/probe/run_temporal_pass.py": "50a8bc3aa9675829d0e6ce9893228b9379f48c0fe16f6eb1e9b438bd13623110"
   },
   "game_launched": false,
   "bottle": {
@@ -61,7 +61,7 @@
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
-  "executable_sha256": "9e3fa9b74c93d56379b40cd8d6ab4299698eac1c21d7942558c1e850385e7899",
+  "executable_sha256": "5ec90d893d233b65e5f4ffc6f4f657fde1497dd5e3fb99a9c2be2e0765f4e34f",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -70,19 +70,19 @@
     "--dll",
     "d3d9=b",
     "--workdir",
-    "/Users/asvetl/x3-mod/verification/probe/build",
-    "/Users/asvetl/x3-mod/verification/probe/build/temporal_pass_fixture.exe",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a5254e72bfbbfbdb1/verification/probe/build",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a5254e72bfbbfbdb1/verification/probe/build/temporal_pass_fixture.exe",
     "C:\\X3\\d3dx9_37.dll",
-    "Z:/Users/asvetl/x3-mod/src/temporal/depth_decode.hlsl",
-    "Z:/Users/asvetl/x3-mod/src/temporal/resolve.hlsl",
-    "Z:/Users/asvetl/x3-mod/src/temporal/taa_sharpen_ps.hlsl"
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a5254e72bfbbfbdb1/src/temporal/depth_decode.hlsl",
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a5254e72bfbbfbdb1/src/temporal/resolve.hlsl",
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a5254e72bfbbfbdb1/src/temporal/taa_sharpen_ps.hlsl"
   ],
   "exit_code": 0,
   "source_unchanged": true,
   "binary_unchanged": true,
   "compiler_unchanged": true,
-  "report_sha256": "f49ea439e9eee735a8306cf5cab17c6e5afd7c0c7947f643f343b52620c1adba",
-  "samples": 402,
+  "report_sha256": "36cd17b4c0a386327590e2c4b678c71478d5c2ef78ee7ce03ed75457abe96241",
+  "samples": 416,
   "state_restorations": 278,
   "generations": 2,
   "camera_pan": [
@@ -242,10 +242,10 @@
       "motion_line": "previousUV = motion.xy + history.xy;",
       "camera_line": "previousUV += 0.5 * sizeJitter.xy + history.xy;",
       "exit_code": 1,
-      "oracle_error": 0.422852,
-      "drift_px": 0.489981,
+      "oracle_error": 0.675049,
+      "drift_px": 0.0,
       "report": "temporal-stationary-negative-previous-jitter.txt",
-      "report_sha256": "40123c95b23c424999c5d7dfc678551a6ee1b73039f918a39f4b2bf2ebd94bd7"
+      "report_sha256": "acf9197cac5cc79af42f41752f651d1ad22f001e51018e01eefdc2189903c003"
     },
     "flipped-sign": {
       "motion_line": "previousUV = motion.xy - sizeJitter.zw;",
@@ -315,35 +315,35 @@
   },
   "lattice": {
     "report": "temporal-lattice.txt",
-    "report_sha256": "da9029fed7a82f219852ea019d863f9b57659e13bb808fcae86f6138bd4ae81e",
+    "report_sha256": "18afa95f989140271f0184813c82eb083371ee2abef4b79a8527282d719ca555",
     "exit_code": 0,
     "budget": {
       "current_filter": {
-        "dwords": 1751.0,
-        "instruction_slots": 445.0,
+        "dwords": 1727.0,
+        "instruction_slots": 443.0,
         "device_limit": 512.0,
-        "headroom": 67.0,
+        "headroom": 69.0,
         "within_guaranteed_512": 1.0
       },
       "plain": {
-        "dwords": 1712.0,
-        "instruction_slots": 434.0,
+        "dwords": 1681.0,
+        "instruction_slots": 432.0,
         "device_limit": 512.0,
-        "headroom": 78.0,
+        "headroom": 80.0,
         "within_guaranteed_512": 1.0
       },
       "embedded_plain": {
-        "dwords": 1712.0,
-        "instruction_slots": 434.0,
+        "dwords": 1681.0,
+        "instruction_slots": 432.0,
         "device_limit": 512.0,
-        "headroom": 78.0,
+        "headroom": 80.0,
         "within_guaranteed_512": 1.0
       },
       "embedded_current_filter": {
-        "dwords": 1751.0,
-        "instruction_slots": 445.0,
+        "dwords": 1727.0,
+        "instruction_slots": 443.0,
         "device_limit": 512.0,
-        "headroom": 67.0,
+        "headroom": 69.0,
         "within_guaranteed_512": 1.0
       },
       "embedded_snapshot": {
@@ -354,31 +354,31 @@
         "within_guaranteed_512": 1.0
       },
       "embedded_thin": {
-        "dwords": 1852.0,
-        "instruction_slots": 470.0,
+        "dwords": 1818.0,
+        "instruction_slots": 465.0,
         "device_limit": 512.0,
-        "headroom": 42.0,
+        "headroom": 47.0,
         "within_guaranteed_512": 1.0
       },
       "embedded_thin_filter": {
-        "dwords": 1901.0,
-        "instruction_slots": 482.0,
+        "dwords": 1861.0,
+        "instruction_slots": 477.0,
         "device_limit": 512.0,
-        "headroom": 30.0,
+        "headroom": 35.0,
         "within_guaranteed_512": 1.0
       },
       "embedded_age": {
-        "dwords": 1967.0,
-        "instruction_slots": 496.0,
+        "dwords": 1936.0,
+        "instruction_slots": 494.0,
         "device_limit": 512.0,
-        "headroom": 16.0,
+        "headroom": 18.0,
         "within_guaranteed_512": 1.0
       },
       "embedded_age_filter": {
-        "dwords": 2010.0,
-        "instruction_slots": 508.0,
+        "dwords": 1979.0,
+        "instruction_slots": 506.0,
         "device_limit": 512.0,
-        "headroom": 4.0,
+        "headroom": 6.0,
         "within_guaranteed_512": 1.0
       },
       "embedded_line_mask": {
@@ -389,31 +389,31 @@
         "within_guaranteed_512": 1.0
       },
       "embedded_far": {
-        "dwords": 1971.0,
-        "instruction_slots": 497.0,
+        "dwords": 1940.0,
+        "instruction_slots": 495.0,
         "device_limit": 512.0,
-        "headroom": 15.0,
+        "headroom": 17.0,
         "within_guaranteed_512": 1.0
       },
       "embedded_line": {
-        "dwords": 1766.0,
+        "dwords": 1748.0,
         "instruction_slots": 447.0,
         "device_limit": 512.0,
         "headroom": 65.0,
         "within_guaranteed_512": 1.0
       },
       "embedded_thin_line": {
-        "dwords": 1919.0,
-        "instruction_slots": 485.0,
+        "dwords": 1888.0,
+        "instruction_slots": 483.0,
         "device_limit": 512.0,
-        "headroom": 27.0,
+        "headroom": 29.0,
         "within_guaranteed_512": 1.0
       },
       "embedded_age_line": {
-        "dwords": 2028.0,
-        "instruction_slots": 511.0,
+        "dwords": 1991.0,
+        "instruction_slots": 507.0,
         "device_limit": 512.0,
-        "headroom": 1.0,
+        "headroom": 5.0,
         "within_guaranteed_512": 1.0
       },
       "embedded_line_mask_camera": {
@@ -424,10 +424,10 @@
         "within_guaranteed_512": 1.0
       },
       "embedded_far_camera": {
-        "dwords": 2029.0,
-        "instruction_slots": 509.0,
+        "dwords": 1998.0,
+        "instruction_slots": 507.0,
         "device_limit": 512.0,
-        "headroom": 3.0,
+        "headroom": 5.0,
         "within_guaranteed_512": 1.0
       },
       "embedded_thin_box": {
@@ -2131,15 +2131,15 @@
         "height": "768",
         "content": "all_geometry",
         "rounds": "6",
-        "plain_ms": "0.6615",
-        "current_filter_ms": "0.6517",
-        "line_filter_ms": "0.8543",
-        "far_stabiliser_ms": "0.8721",
-        "thin_region_ms": "1.5908",
-        "taps_delta_ms": "-0.0098",
-        "line_delta_ms": "0.1927",
-        "far_delta_ms": "0.2106",
-        "thin_region_delta_ms": "0.9293",
+        "plain_ms": "0.5899",
+        "current_filter_ms": "0.5205",
+        "line_filter_ms": "0.7538",
+        "far_stabiliser_ms": "0.7398",
+        "thin_region_ms": "1.3224",
+        "taps_delta_ms": "-0.0694",
+        "line_delta_ms": "0.1639",
+        "far_delta_ms": "0.1498",
+        "thin_region_delta_ms": "0.7324",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]
@@ -3397,12 +3397,12 @@
         "width": "1280",
         "height": "768",
         "rounds": "6",
-        "no_region_thin_ms": "1.5908",
-        "no_region_camera_ms": "1.6816",
-        "no_region_camera_delta_ms": "0.0907",
-        "fragmented_pan_thin_ms": "1.4752",
-        "fragmented_pan_camera_ms": "1.8725",
-        "fragmented_pan_camera_delta_ms": "0.3974",
+        "no_region_thin_ms": "1.3224",
+        "no_region_camera_ms": "1.4187",
+        "no_region_camera_delta_ms": "0.0963",
+        "fragmented_pan_thin_ms": "0.9964",
+        "fragmented_pan_camera_ms": "1.3339",
+        "fragmented_pan_camera_delta_ms": "0.3375",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ],
@@ -3411,11 +3411,11 @@
         "width": "1280",
         "height": "768",
         "rounds": "6",
-        "r32f_camera_ms": "1.8725",
-        "lane_input_law_ms": "1.8903",
-        "lane_input_lane_ms": "1.7662",
-        "lane_fetch_delta_ms": "-0.1241",
-        "lane_input_over_r32f_ms": "0.0178",
+        "r32f_camera_ms": "1.3339",
+        "lane_input_law_ms": "1.4254",
+        "lane_input_lane_ms": "1.4497",
+        "lane_fetch_delta_ms": "0.0243",
+        "lane_input_over_r32f_ms": "0.0915",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]
@@ -3627,9 +3627,9 @@
         "height": "768",
         "rounds": "6",
         "content": "all_unrouted_sentinel_pan",
-        "strength_off_ms": "1.2595",
-        "strength_on_separable_ms": "1.6997",
-        "sentinel_delta_ms": "0.4402",
+        "strength_off_ms": "1.2753",
+        "strength_on_separable_ms": "1.3927",
+        "sentinel_delta_ms": "0.1174",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]

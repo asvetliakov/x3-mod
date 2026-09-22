@@ -1150,11 +1150,12 @@ SETA_SWEEP mode=loose uncovered_px=128 trail_max=0.237305 adjacent_max=0.738525 
 CHECK seta sweep uncovers a trailing band every moving frame PASS
 SAMPLE seta sweep loose: motion target equals the 5 px displacement at every covered pixel (px) actual=0.000000777 expected=0.000000000 tolerance=0.100000000 PASS
 SAMPLE seta sweep loose: uncovered sky carries the square's history under policy 2 (the smear reproduced) actual=0.237304688 expected=1.000000000 tolerance=0.950000000 PASS
-SETA_SWEEP mode=strict uncovered_px=128 trail_max=0.000000 adjacent_max=0.738525 motion_error_px=0.000001 far_difference=0.000000
+SETA_SWEEP mode=strict uncovered_px=128 trail_max=0.000000 adjacent_max=0.000000 motion_error_px=0.000001 far_difference=0.000000
 CHECK seta sweep uncovers a trailing band every moving frame PASS
 SAMPLE seta sweep strict: motion target equals the 5 px displacement at every covered pixel (px) actual=0.000000777 expected=0.000000000 tolerance=0.100000000 PASS
 SAMPLE seta sweep strict: uncovered sky beyond the dilation band is current-only (no square history) actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
 SAMPLE seta sweep strict: identical to loose eight pixels and more from the square actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE seta sweep strict: dilated band beside the 5 px/frame silhouette carries no hull history (band term) actual=0.000000000 expected=0.000000000 tolerance=0.100000000 PASS
 CHECK edge scene has a routed object PASS
 CHECK edge scene motion target equals the producer contract at every covered pixel PASS
 CHECK edge history follows the sequence PASS
@@ -1187,6 +1188,207 @@ SETA_FADE routed_px=256 strict_vs_loose_on_routed=0.000000 routed_px_with_histor
 CHECK fade-band sweep routes its object and reproduces the sky smear beside it under loose PASS
 SAMPLE seta fade-band strict: identical to loose on every pixel the fade-band draw routes (its history accepted) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE seta fade-band strict: the fade-band draw's pixels keep using history (pixels whose output differs from the current sample) actual=1.000000000 expected=1.000000000 tolerance=0.000000000 PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+SETA_SLOW velocity_px=0.50 adjacent_loose=0.805786 adjacent_strict=0.805786 strict_vs_loose=0.000000
+SAMPLE seta slow sweep (0.5 px/frame): strict identical to loose on every pixel (the band keeps the geometry path below bandSpeed) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+SETA_RING mode=loose d1_variance=0.00001843 d2_variance=0.00002188 d3_variance=0.00001586 sky_variance=0.00003744 d1_px=40 d2_px=48 d3_px=56
+SETA_RING mode=strict d1_variance=0.00001843 d2_variance=0.00002188 d3_variance=0.00001586 sky_variance=0.00003744 d1_px=40 d2_px=48 d3_px=56
+SAMPLE seta static ring: strict identical to loose on every sky pixel over two periods (no ring flicker from the strict term under a static camera) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+SETA_PAN velocity_px=3.00 adjacent_loose=0.815308 adjacent_strict=0.815308 strict_vs_loose=0.000000 sky_max_deviation=0.193359 sky_px_with_history=3570
+CHECK pan: the border beside the panned square accumulates under strict (its output differs from the current sample) PASS
+SAMPLE seta pan (camera 3 px/frame past a static square): strict identical to loose on every pixel (the band's camera-relative displacement is 0) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+SETA_FADE_OCCLUDER routed_fade_px=1344 beside_occluder_px=31 beside_current_only_loose=15 beside_current_only_strict=15 strict_vs_loose_on_routed=0.322754
+CHECK fade-band strip has pixels beside the sweeping occluder every frame and loose keeps history on ten or more PASS
+SAMPLE seta fade-band beside a 5 px/frame occluder: strict leaves no routed fade-band pixel beside it current-only that loose accumulates (alpha gate of the band term) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+SETA_PAN_PROJECTIVE focal=16 yaw_deg=0.6714 centre_step_px=3.0033 adjacent_loose=0.815308 adjacent_strict=0.815308 strict_vs_loose=0.000000
+CHECK projective pan: the border beside the panned square accumulates under strict PASS
+SAMPLE seta projective pan (yaw 3 px/frame at the centre, focal 16, far-plane matrix form): strict identical to loose on every pixel actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+SETA_HUGE_CAMERA band_px=252 band_deviation_loose=0.815308 band_deviation_strict=0.000000 nonfinite_outputs=0
+CHECK huge camera path: the band accumulates under loose (the routed path is unaffected) PASS
+SAMPLE seta huge camera path (rows at 1e15): the band is current-only under strict (fail closed) and no output is nonfinite actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CAMERA_CASES
 CHECK camera pose validates PASS
 CHECK camera sequence keeps a history PASS
@@ -3745,11 +3947,12 @@ SETA_SWEEP mode=loose uncovered_px=128 trail_max=0.237305 adjacent_max=0.738525 
 CHECK seta sweep uncovers a trailing band every moving frame PASS
 SAMPLE seta sweep loose: motion target equals the 5 px displacement at every covered pixel (px) actual=0.000000777 expected=0.000000000 tolerance=0.100000000 PASS
 SAMPLE seta sweep loose: uncovered sky carries the square's history under policy 2 (the smear reproduced) actual=0.237304688 expected=1.000000000 tolerance=0.950000000 PASS
-SETA_SWEEP mode=strict uncovered_px=128 trail_max=0.000000 adjacent_max=0.738525 motion_error_px=0.000001 far_difference=0.000000
+SETA_SWEEP mode=strict uncovered_px=128 trail_max=0.000000 adjacent_max=0.000000 motion_error_px=0.000001 far_difference=0.000000
 CHECK seta sweep uncovers a trailing band every moving frame PASS
 SAMPLE seta sweep strict: motion target equals the 5 px displacement at every covered pixel (px) actual=0.000000777 expected=0.000000000 tolerance=0.100000000 PASS
 SAMPLE seta sweep strict: uncovered sky beyond the dilation band is current-only (no square history) actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
 SAMPLE seta sweep strict: identical to loose eight pixels and more from the square actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE seta sweep strict: dilated band beside the 5 px/frame silhouette carries no hull history (band term) actual=0.000000000 expected=0.000000000 tolerance=0.100000000 PASS
 CHECK edge scene has a routed object PASS
 CHECK edge scene motion target equals the producer contract at every covered pixel PASS
 CHECK edge history follows the sequence PASS
@@ -3782,6 +3985,207 @@ SETA_FADE routed_px=256 strict_vs_loose_on_routed=0.000000 routed_px_with_histor
 CHECK fade-band sweep routes its object and reproduces the sky smear beside it under loose PASS
 SAMPLE seta fade-band strict: identical to loose on every pixel the fade-band draw routes (its history accepted) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE seta fade-band strict: the fade-band draw's pixels keep using history (pixels whose output differs from the current sample) actual=1.000000000 expected=1.000000000 tolerance=0.000000000 PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+SETA_SLOW velocity_px=0.50 adjacent_loose=0.805786 adjacent_strict=0.805786 strict_vs_loose=0.000000
+SAMPLE seta slow sweep (0.5 px/frame): strict identical to loose on every pixel (the band keeps the geometry path below bandSpeed) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+SETA_RING mode=loose d1_variance=0.00001843 d2_variance=0.00002188 d3_variance=0.00001586 sky_variance=0.00003744 d1_px=40 d2_px=48 d3_px=56
+SETA_RING mode=strict d1_variance=0.00001843 d2_variance=0.00002188 d3_variance=0.00001586 sky_variance=0.00003744 d1_px=40 d2_px=48 d3_px=56
+SAMPLE seta static ring: strict identical to loose on every sky pixel over two periods (no ring flicker from the strict term under a static camera) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+SETA_PAN velocity_px=3.00 adjacent_loose=0.815308 adjacent_strict=0.815308 strict_vs_loose=0.000000 sky_max_deviation=0.193359 sky_px_with_history=3570
+CHECK pan: the border beside the panned square accumulates under strict (its output differs from the current sample) PASS
+SAMPLE seta pan (camera 3 px/frame past a static square): strict identical to loose on every pixel (the band's camera-relative displacement is 0) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+SETA_FADE_OCCLUDER routed_fade_px=1344 beside_occluder_px=31 beside_current_only_loose=15 beside_current_only_strict=15 strict_vs_loose_on_routed=0.322754
+CHECK fade-band strip has pixels beside the sweeping occluder every frame and loose keeps history on ten or more PASS
+SAMPLE seta fade-band beside a 5 px/frame occluder: strict leaves no routed fade-band pixel beside it current-only that loose accumulates (alpha gate of the band term) actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+SETA_PAN_PROJECTIVE focal=16 yaw_deg=0.6714 centre_step_px=3.0033 adjacent_loose=0.815308 adjacent_strict=0.815308 strict_vs_loose=0.000000
+CHECK projective pan: the border beside the panned square accumulates under strict PASS
+SAMPLE seta projective pan (yaw 3 px/frame at the centre, focal 16, far-plane matrix form): strict identical to loose on every pixel actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge scene has a routed object PASS
+CHECK edge scene motion target equals the producer contract at every covered pixel PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+CHECK edge history follows the sequence PASS
+SETA_HUGE_CAMERA band_px=252 band_deviation_loose=0.815308 band_deviation_strict=0.000000 nonfinite_outputs=0
+CHECK huge camera path: the band accumulates under loose (the routed path is unaffected) PASS
+SAMPLE seta huge camera path (rows at 1e15): the band is current-only under strict (fail closed) and no output is nonfinite actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CAMERA_CASES
 CHECK camera pose validates PASS
 CHECK camera sequence keeps a history PASS
@@ -5169,4 +5573,4 @@ CHECK the refused run left the main target untouched PASS
 CHECK draw copy mode with an FP16 input PASS
 CHECK route atomic outputs valid PASS
 CHECK an FP16 input takes no copy in draw mode PASS
-RESULT PASS numerical=532 state_restorations=278 generations=2
+RESULT PASS numerical=570 state_restorations=278 generations=2

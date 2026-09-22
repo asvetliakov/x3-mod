@@ -643,7 +643,8 @@ public:
     // X3M_TAA_SKY_HISTORY=strict (default loose): the resolve's strict sky term whenever the
     // camera path is in effect. A sky pixel whose 3x3 holds no routed geometry
     // accepts sentinel history taps only (docs/architecture/seta-motion.md).
-    void configure_sky_history(bool strict) noexcept { sky_history_strict_ = strict; }
+    // band_px: X3M_TAA_SKY_HISTORY_BAND_PX (1..16, default 3), the band term's threshold in px/frame (seta-motion.md section 4).
+    void configure_sky_history(bool strict, float band_px = 3.f) noexcept { sky_history_strict_ = strict; sky_history_band_px_ = band_px >= 1.f && band_px <= 16.f ? band_px : 3.f; }
     // RT1/RT2 binding policy (X3M_MOTION_RT_MODE). perdraw (default): each
     // routed draw binds RT1/RT2 and COLORWRITEENABLE1/2 and after_draw puts
     // the application's values back. lazy (experiment): the bindings stay
@@ -2113,6 +2114,7 @@ private:
     std::uintptr_t camera_projection_address_ = 0, camera_view_address_ = 0;
     renderer::SentinelMode sentinel_mode_ = renderer::SentinelMode::Auto;
     bool sky_history_strict_ = false; // X3M_TAA_SKY_HISTORY=strict: FrameInputs::sentinel_strict_sky with the camera path
+    float sky_history_band_px_ = 3.f; // X3M_TAA_SKY_HISTORY_BAND_PX: FrameInputs::sky_history_band_px
     // Static-world previous rows for new keys (temporal-integration.md). The
     // camera verdict is evaluated once per frame, on the frame's first miss.
     unsigned unmatched_static_ = 0;
