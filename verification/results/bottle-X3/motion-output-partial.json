@@ -27,14 +27,13 @@
       "X3M_ADMISSION": "1"
     }
   },
-  "consume_only": false,
+  "consume_only": true,
   "selected_cases": [
     "seam-ownership-shadow-pool-static-live",
     "seam-ownership-shadow-retention-census",
     "seam-ownership-shadow-retention-live",
     "seam-ownership-shadow-retention-live-poll",
-    "seam-ownership-shadow-retention-off",
-    "seam-taa-unmatched-static-node"
+    "seam-ownership-shadow-retention-off"
   ],
   "cases": {
     "seam-ownership-shadow-retention-live": {
@@ -166,13 +165,13 @@
             "frames_over_eps": 1
           },
           "us": {
-            "median": 4.0,
-            "max": 409.9,
-            "p99": 47.5
+            "median": 3.5,
+            "max": 708.7,
+            "p99": 48.2
           },
           "draw_us_per_call": {
-            "median": 0.2,
-            "max": 1.5333333333333332
+            "median": 0.15,
+            "max": 2.066666666666667
           },
           "moving_share_median": 0.0,
           "resight": {
@@ -231,13 +230,13 @@
           }
         },
         "full_store_frames": 11,
-        "full_store_us_median": 48.9,
-        "full_store_walk_us_max": 103.5,
-        "overflow_frame_us": 190.2,
+        "full_store_us_median": 49.5,
+        "full_store_walk_us_max": 105.7,
+        "overflow_frame_us": 194.7,
         "burst_frame": {
           "retired": 591,
           "us": 64.5,
-          "journal_us": 37.9
+          "journal_us": 38.1
         }
       },
       "failed_reset": "8876086c",
@@ -261,20 +260,20 @@
       },
       "us": {
         "frames": 1527,
-        "min": 21.0,
+        "min": 20.3,
         "median": 29.0,
-        "max": 2412.5,
+        "max": 2384.6,
         "bulk": {
           "frames": 16,
           "issues_median": 1450,
-          "us_median": 1549.1
+          "us_median": 1574.6
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-ownership-shadow-retention-live-20260922-031107-834102",
-      "trace_sha256": "9d8b7f356869d71e1ea03c98683525a4627be4ee0d8a000626455964e5c8f085",
-      "dll_sha256": "c128887b2bc651f520a653a68760e9fc78db9722a3d948fbb5b52f627bd409d3",
-      "exe_sha256": "a0112941b84080d03bf4fd4d9f5b28c8856061fedf01b5ff6780a4e74259b676"
+      "directory": "verification/probe/build/motion-output-seam-ownership-shadow-retention-live-20260922-033828-154319",
+      "trace_sha256": "4f66d25a22888ec7938f0fa4abb69cac9823fe5d49a8fcdfd7e07f05b1845916",
+      "dll_sha256": "78bca83875d5ba62f342d5546b4793cc25edd2a4d8bdd6bef1b647125dc828ac",
+      "exe_sha256": "c02f4ab1965f3b7d2a2e2e9be192fb1d30211bbc2dcd9ff09912b6b99dc3eebc"
     },
     "seam-ownership-shadow-retention-census": {
       "mode": "census",
@@ -405,13 +404,13 @@
             "frames_over_eps": 1
           },
           "us": {
-            "median": 3.8,
-            "max": 424.5,
-            "p99": 47.0
+            "median": 3.2,
+            "max": 394.1,
+            "p99": 43.7
           },
           "draw_us_per_call": {
-            "median": 0.2,
-            "max": 1.2
+            "median": 0.16666666666666666,
+            "max": 1.4333333333333333
           },
           "moving_share_median": 0.0,
           "resight": {
@@ -470,13 +469,13 @@
           }
         },
         "full_store_frames": 11,
-        "full_store_us_median": 48.4,
-        "full_store_walk_us_max": 96.7,
-        "overflow_frame_us": 196.8,
+        "full_store_us_median": 44.9,
+        "full_store_walk_us_max": 101.6,
+        "overflow_frame_us": 164.8,
         "burst_frame": {
           "retired": 591,
-          "us": 70.7,
-          "journal_us": 43.4
+          "us": 63.5,
+          "journal_us": 39.0
         }
       },
       "failed_reset": "8876086c",
@@ -501,19 +500,19 @@
       "us": {
         "frames": 1527,
         "min": 19.9,
-        "median": 24.7,
-        "max": 1983.5,
+        "median": 25.5,
+        "max": 1915.7,
         "bulk": {
           "frames": 5,
           "issues_median": 1450,
-          "us_median": 1630.0
+          "us_median": 1686.6
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-ownership-shadow-retention-census-20260922-031116-353366",
-      "trace_sha256": "cd6845e5126696cc3d6ba9550b17b4c720e286cc5272183faf25120128317cf0",
-      "dll_sha256": "c128887b2bc651f520a653a68760e9fc78db9722a3d948fbb5b52f627bd409d3",
-      "exe_sha256": "a0112941b84080d03bf4fd4d9f5b28c8856061fedf01b5ff6780a4e74259b676",
+      "directory": "verification/probe/build/motion-output-seam-ownership-shadow-retention-census-20260922-033835-697691",
+      "trace_sha256": "86f166d5334dea5b5e240ca74ca8cdcfb55071fdd3859c86108948f16363ab5e",
+      "dll_sha256": "78bca83875d5ba62f342d5546b4793cc25edd2a4d8bdd6bef1b647125dc828ac",
+      "exe_sha256": "c02f4ab1965f3b7d2a2e2e9be192fb1d30211bbc2dcd9ff09912b6b99dc3eebc",
       "presented_identical_to": [
         "seam-ownership-shadow-retention-live"
       ]
@@ -557,20 +556,20 @@
       },
       "us": {
         "frames": 1527,
-        "min": 19.3,
-        "median": 24.9,
-        "max": 1891.3,
+        "min": 19.6,
+        "median": 25.7,
+        "max": 1976.4,
         "bulk": {
           "frames": 5,
           "issues_median": 1450,
-          "us_median": 1569.8
+          "us_median": 1640.8
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-ownership-shadow-retention-off-20260922-031121-621852",
-      "trace_sha256": "24ad1d337e9d0f687cbd798475a68b10e50c5d4f868e14540e312ab3a78f89a6",
-      "dll_sha256": "c128887b2bc651f520a653a68760e9fc78db9722a3d948fbb5b52f627bd409d3",
-      "exe_sha256": "a0112941b84080d03bf4fd4d9f5b28c8856061fedf01b5ff6780a4e74259b676",
+      "directory": "verification/probe/build/motion-output-seam-ownership-shadow-retention-off-20260922-033840-991151",
+      "trace_sha256": "e9b4d46e834546dbdc4cbcf0185af240fd1620e8b15ba7131f55240a0ca8e66f",
+      "dll_sha256": "78bca83875d5ba62f342d5546b4793cc25edd2a4d8bdd6bef1b647125dc828ac",
+      "exe_sha256": "c02f4ab1965f3b7d2a2e2e9be192fb1d30211bbc2dcd9ff09912b6b99dc3eebc",
       "presented_identical_to": [
         "seam-ownership-shadow-retention-live",
         "seam-ownership-shadow-retention-census"
@@ -706,13 +705,13 @@
             "frames_over_eps": 1
           },
           "us": {
-            "median": 3.8,
-            "max": 390.5,
-            "p99": 48.4
+            "median": 3.4,
+            "max": 375.8,
+            "p99": 45.5
           },
           "draw_us_per_call": {
-            "median": 0.2,
-            "max": 2.466666666666667
+            "median": 0.15,
+            "max": 1.9666666666666668
           },
           "moving_share_median": 0.0,
           "resight": {
@@ -771,13 +770,13 @@
           }
         },
         "full_store_frames": 11,
-        "full_store_us_median": 50.0,
-        "full_store_walk_us_max": 99.5,
-        "overflow_frame_us": 186.2,
+        "full_store_us_median": 47.0,
+        "full_store_walk_us_max": 95.7,
+        "overflow_frame_us": 170.1,
         "burst_frame": {
           "retired": 591,
-          "us": 74.0,
-          "journal_us": 45.2
+          "us": 65.2,
+          "journal_us": 39.2
         }
       },
       "failed_reset": "8876086c",
@@ -801,20 +800,20 @@
       },
       "us": {
         "frames": 1539,
-        "min": 21.5,
-        "median": 28.3,
-        "max": 2247.4,
+        "min": 20.8,
+        "median": 28.7,
+        "max": 2447.9,
         "bulk": {
           "frames": 16,
           "issues_median": 1450,
-          "us_median": 1471.0
+          "us_median": 1698.6
         }
       },
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-ownership-shadow-retention-live-poll-20260922-031126-567332",
-      "trace_sha256": "d16d4b2f12e788eb5557b9b89a31e62b23bdb6b1bf81a312e1c1671dc093a280",
-      "dll_sha256": "c128887b2bc651f520a653a68760e9fc78db9722a3d948fbb5b52f627bd409d3",
-      "exe_sha256": "a0112941b84080d03bf4fd4d9f5b28c8856061fedf01b5ff6780a4e74259b676"
+      "directory": "verification/probe/build/motion-output-seam-ownership-shadow-retention-live-poll-20260922-033845-893040",
+      "trace_sha256": "5f826b789e62a1519cd504229a27ed193556aca849b2312fa5a9241dd78da2a1",
+      "dll_sha256": "78bca83875d5ba62f342d5546b4793cc25edd2a4d8bdd6bef1b647125dc828ac",
+      "exe_sha256": "c02f4ab1965f3b7d2a2e2e9be192fb1d30211bbc2dcd9ff09912b6b99dc3eebc"
     },
     "seam-ownership-shadow-pool-static-live": {
       "script": "static",
@@ -1436,9 +1435,9 @@
       },
       "us": {
         "frames": 14,
-        "min": 34.5,
-        "median": 42.75,
-        "max": 1793.4
+        "min": 37.7,
+        "median": 50.2,
+        "max": 1738.8
       },
       "classified": {
         "class_store": 29,
@@ -1454,217 +1453,10 @@
       ],
       "large_min": 100.0,
       "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-static-live-20260922-031131-866638",
-      "trace_sha256": "5646df073446ed6ac6392501831d58427f87da670c6dfac71acc6cc62eadfd0b",
-      "dll_sha256": "c128887b2bc651f520a653a68760e9fc78db9722a3d948fbb5b52f627bd409d3",
-      "exe_sha256": "a0112941b84080d03bf4fd4d9f5b28c8856061fedf01b5ff6780a4e74259b676"
-    },
-    "seam-taa-unmatched-static-node": {
-      "checks": 95,
-      "setting": "node",
-      "motion_hashes": {
-        "0": [
-          "39e6e57a44fc2325",
-          "560f2a759a90d965"
-        ],
-        "1": [
-          "6ff6d482991b0e4e",
-          "cb41eee05e64bd69"
-        ],
-        "2": [
-          "75313d5f181617c6",
-          "f89d68583ab90d1d"
-        ],
-        "3": [
-          "9236ef4b4d9af656",
-          "a4548f8876a411ba"
-        ],
-        "4": [
-          "a0aadaae596d3d8e",
-          "35dc19c9ebff7ecf"
-        ],
-        "5": [
-          "33c6c8988b1a1bed",
-          "e5a75bc27a7ce34b"
-        ],
-        "6": [
-          "af9bbb11a85bce79",
-          "fc9fd479249e3673"
-        ],
-        "7": [
-          "3869c14b9ac7af1d",
-          "6dbf7ae8379ad259"
-        ],
-        "8": [
-          "e258dca567b83345",
-          "c1ad6c00daee4881"
-        ]
-      },
-      "color_hashes": {
-        "0": "cc9129a36f23978f",
-        "1": "26ecb29f63c9b05b",
-        "2": "88a5f52e50321180",
-        "3": "25e4c90105c945f7",
-        "4": "a30cf30f653ceaac",
-        "5": "65fa86258bbd9ac8",
-        "6": "b12db3fa96a9fb67",
-        "7": "4a1c5db2fd80663f",
-        "8": "79244e8a7b2c3d53"
-      },
-      "bodies": {
-        "0M": {
-          "expect": "sentinel",
-          "pixels": 60,
-          "changed": 0,
-          "max_uv_pixels": 0.0,
-          "max_depth_error": 0.0
-        },
-        "0S": {
-          "expect": "sentinel",
-          "pixels": 185,
-          "changed": 0,
-          "max_uv_pixels": 0.0,
-          "max_depth_error": 0.0
-        },
-        "1M": {
-          "expect": "matched",
-          "pixels": 60,
-          "changed": 44,
-          "max_uv_pixels": 0.000773695755,
-          "max_depth_error": 4.20738666e-09
-        },
-        "1S": {
-          "expect": "matched",
-          "pixels": 191,
-          "changed": 96,
-          "max_uv_pixels": 0.00138354112,
-          "max_depth_error": 1.08372081e-08
-        },
-        "2M": {
-          "expect": "matched",
-          "pixels": 65,
-          "changed": 42,
-          "max_uv_pixels": 0.00178662171,
-          "max_depth_error": 9.15106971e-08
-        },
-        "2S": {
-          "expect": "matched",
-          "pixels": 216,
-          "changed": 121,
-          "max_uv_pixels": 0.00173355089,
-          "max_depth_error": 1.94547514e-07
-        },
-        "3M": {
-          "expect": "matched",
-          "pixels": 67,
-          "changed": 49,
-          "max_uv_pixels": 0.00156567846,
-          "max_depth_error": 2.13433172e-07
-        },
-        "3S": {
-          "expect": "static",
-          "pixels": 221,
-          "changed": 100,
-          "max_uv_pixels": 0.000664647885,
-          "max_depth_error": 1.71420271e-07
-        },
-        "4M": {
-          "expect": "matched",
-          "pixels": 64,
-          "changed": 50,
-          "max_uv_pixels": 0.00161040216,
-          "max_depth_error": 3.443932e-07
-        },
-        "4S": {
-          "expect": "matched",
-          "pixels": 251,
-          "changed": 126,
-          "max_uv_pixels": 0.000850629425,
-          "max_depth_error": 2.72631064e-07
-        },
-        "5M": {
-          "expect": "matched",
-          "pixels": 74,
-          "changed": 51,
-          "max_uv_pixels": 0.00114881747,
-          "max_depth_error": 3.01365482e-07
-        },
-        "5S": {
-          "expect": "matched",
-          "pixels": 252,
-          "changed": 102,
-          "max_uv_pixels": 0.000790627242,
-          "max_depth_error": 2.17538747e-07
-        },
-        "6M": {
-          "expect": "matched",
-          "pixels": 90,
-          "changed": 67,
-          "max_uv_pixels": 0.00139371137,
-          "max_depth_error": 3.29063581e-07
-        },
-        "6N": {
-          "expect": "sentinel",
-          "pixels": 82,
-          "changed": 0,
-          "max_uv_pixels": 0.0,
-          "max_depth_error": 0.0
-        },
-        "6S": {
-          "expect": "matched",
-          "pixels": 288,
-          "changed": 155,
-          "max_uv_pixels": 0.00110777184,
-          "max_depth_error": 2.67986167e-07
-        },
-        "7M": {
-          "expect": "matched",
-          "pixels": 90,
-          "changed": 66,
-          "max_uv_pixels": 0.00103274413,
-          "max_depth_error": 4.57420844e-07
-        },
-        "7N": {
-          "expect": "matched",
-          "pixels": 85,
-          "changed": 64,
-          "max_uv_pixels": 0.00155656649,
-          "max_depth_error": 5.20688618e-07
-        },
-        "7S": {
-          "expect": "matched",
-          "pixels": 313,
-          "changed": 174,
-          "max_uv_pixels": 0.00117415656,
-          "max_depth_error": 3.85485073e-07
-        },
-        "8M": {
-          "expect": "matched",
-          "pixels": 80,
-          "changed": 56,
-          "max_uv_pixels": 0.00127599104,
-          "max_depth_error": 5.71525559e-07
-        },
-        "8N": {
-          "expect": "matched",
-          "pixels": 91,
-          "changed": 61,
-          "max_uv_pixels": 0.00129881708,
-          "max_depth_error": 5.88986292e-07
-        },
-        "8S": {
-          "expect": "matched",
-          "pixels": 340,
-          "changed": 146,
-          "max_uv_pixels": 0.00148705009,
-          "max_depth_error": 1.18574616e-07
-        }
-      },
-      "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-taa-unmatched-static-node-20260922-031133-581916",
-      "trace_sha256": "f874f3790372fcf59aff53563e3db45728972ecac9b7871cadbdf4b210388e31",
-      "dll_sha256": "c128887b2bc651f520a653a68760e9fc78db9722a3d948fbb5b52f627bd409d3",
-      "exe_sha256": "a0112941b84080d03bf4fd4d9f5b28c8856061fedf01b5ff6780a4e74259b676"
+      "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-static-live-20260922-033851-223478",
+      "trace_sha256": "71814df0f1ce44d67c3443352d7f12d16616d536d085054dc546944ad92031be",
+      "dll_sha256": "78bca83875d5ba62f342d5546b4793cc25edd2a4d8bdd6bef1b647125dc828ac",
+      "exe_sha256": "c02f4ab1965f3b7d2a2e2e9be192fb1d30211bbc2dcd9ff09912b6b99dc3eebc"
     }
   },
   "local_inputs": {
@@ -1672,7 +1464,7 @@
     "/tmp/x3-shader-sweep/programs/ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0"
   },
   "sources_before_build": {
-    "CMakeLists.txt": "b33d487e273c0f0e2e1be4ac13e94f9c0c32028f0af2479ddef1406226e2c951",
+    "CMakeLists.txt": "d09edf50be4a0de5cb3f4e4bafdf1c288077a61dd02c39a377a3e88cf19a8151",
     "cmake/FogField.cmake": "34cf44c09a98e6d6d477a882cea475fc5b80ea26b84d606463082c9bb6a7ee3c",
     "cmake/mingw-i686.cmake": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
     "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
@@ -1699,13 +1491,13 @@
     "src/ownership/surface_lock_observation.h": "810e3931317548565aeb5727e0158e4dbb2cf7f33feb402a8973dee58e304c0f",
     "src/proxy/camera_state.cpp": "bdbb78395368ea270c156fc61c90834c536b3ce26e846acbba7f2e7777285969",
     "src/proxy/camera_state.h": "7b3b6de807488c6785d1676eb6df274a3ed2b07a5e7c9da52397a4762306a742",
-    "src/proxy/capture.cpp": "fd6fb1562ba021e26e0ca73adaeeaa3aae3111f3262641728147db2e7bba5091",
+    "src/proxy/capture.cpp": "5b6d5a041c98ec7f52191da863df3011655d6d026c20eb782fa52bdea90688c0",
     "src/proxy/capture.h": "e2d6b0dfad5239845f9fd668e1a468c335c7697642063736494dd0b449bcc5af",
     "src/proxy/capture_state.cpp": "7ac6bd3f6a926b8ad549d4d23d3d81ed1ab9399fdcc97a126960a3e7a1af7d0a",
     "src/proxy/capture_state.h": "d69f9781dc9ac83acf6cc84036e84ff9e3c3951eaa6098c6756b1863256d3324",
     "src/proxy/chase_aim_trace.cpp": "5871dc3242b53473970ceab2e9115d8a20a41fa633106ef3a86454565c6f5b75",
     "src/proxy/chase_aim_trace.h": "29da515414a3291e905cbd81743abe86a9de5aa6538200b0c2aa50f5fadb4947",
-    "src/proxy/chase_camera.cpp": "4bb1231694fedbf377944ea3f9884316060715279656ae073e43b2d006d3f165",
+    "src/proxy/chase_camera.cpp": "5d40e0ce095c9d19b41243277303c559f81ee80b2388dfad7c804286ebec00e4",
     "src/proxy/chase_camera.h": "1bb36621bc6c04dab3081c7800e724056b34a0fe3e67621587e3f5c9c2282e8f",
     "src/proxy/chase_camera_math.h": "5922ceffc72a0ce25b81e23f0c5a6082d7a2a3ac87796e9acdf9a0abcf0de462",
     "src/proxy/chase_camera_native.h": "0f348abc94d1d44a57cf096a3fb095508f18daa86ce30d87f94951ddf3085c3d",
@@ -1753,8 +1545,8 @@
     "src/proxy/d3d9.def": "a826f129abc038d6f1c2d7dcb59b49f37eb772709692f8f331827dc026528d33",
     "src/proxy/draw_input.cpp": "ed2baaa9b0542b6df18eb1e9fa37d2fa1d8ba8a3713eb9dc5b23dffa94f24778",
     "src/proxy/draw_input.h": "e4a0b30628a7bb8064ec373efa2ffe64552f4cea9d5b25110fa8f3f876776471",
-    "src/proxy/engine_memory.cpp": "d64e2d606f9e96afd949b66bda960c6f8311e3a4a22faf2e6851b91600ef6631",
-    "src/proxy/engine_memory.h": "bc27febe3e4d3f0c55875ead1a143781cfc830681b81854cc7ced8d28bb5b2d6",
+    "src/proxy/engine_memory.cpp": "31b2addd09b1efeebdac5941e0c99f342e3f27573320db0809e10a7de69d66ff",
+    "src/proxy/engine_memory.h": "6972f184043adfacfa6a3fc646166b4f6add140968ea1a3874ce8128ba73cf8b",
     "src/proxy/engine_patch.cpp": "9eb31fbf19e4f88432655ccccfe6e054739d9b8ba5f5be4054dfccf513330a2b",
     "src/proxy/engine_patch.h": "d8a777ee51e076271c0e22889701a594d98a4fad882a4be0c1c08cefc5771e66",
     "src/proxy/fade_region.cpp": "8167cbd89da7c8719ea781f5408a49e5d84145578b8884fd8cc6ef5a4989f87a",
@@ -1779,13 +1571,6 @@
     "src/proxy/game_phases_core.h": "7394c4851fb1ac1de9db3f0710f41cad20553fea128be60de11272b24c4c74d7",
     "src/proxy/gz_buffer.cpp": "1ec0c3b421e3505671040f18fc00e402bed23c1621d02c46863819cc8e592da3",
     "src/proxy/gz_buffer.h": "bacec1b06195c83f7007fe5ed4a9d18cd9ad79503d9cfbc8e6dbaa1390f2ec2d",
-    "src/proxy/lattice_geometry_packet.h": "36b2ac9d2dbe2e907a0ed3ac5b6cf6084496e302f9151accd6ab8939fd72571d",
-    "src/proxy/lattice_geometry_windows.h": "102209a8aa761f611f60e9668f6ccdceb747a9741be84b439b994fbed745f8e1",
-    "src/proxy/lattice_state_capture.cpp": "cd1f4a7f3b0ee3d39d3e19f3fcf42d0647d5a07f3ec08a8f9b9e9012cb0c00e2",
-    "src/proxy/lattice_state_capture.h": "2a57beda13ddc2691fe221204a81cf3456b1f250b49f3a11df523342bbf95469",
-    "src/proxy/lattice_state_policy.h": "5d4491cc6e356a601f4f74225ae8a224972189736987d9295d95355604547d0e",
-    "src/proxy/lattice_upload_hook.cpp": "859368e263bf39381092edc85f644a8555e549605729a7d723bc91d3b1e2126c",
-    "src/proxy/lattice_upload_hook.h": "01adbd817650e4ab5323f829e9fbb00f1d249bcede1906255b7f1ea0f3fe7f62",
     "src/proxy/lean_stub.cpp": "b3e1215cf1850b79cfc31b3e2f0196e5a3df25377251b3282384d8e29949ee17",
     "src/proxy/lean_stub.h": "5415970c7f1638cc3c670c21574c85b56ebf3c20e861307d054fad0df0885fa6",
     "src/proxy/light_phase_sites.h": "bf3eb6be3317db65708d66b322992289ebddfc25880d6e80352f75376974e9c0",
@@ -1821,7 +1606,7 @@
     "src/proxy/motion_capture.h": "7b4504dde21d61a64d92e94dea5c48e2d7367d694efa25b1706f6b09982504df",
     "src/proxy/motion_output.cpp": "33e7dedb806e26e77dfc554ed9080e9f9b11d66fa46c3d9c8e79a7c2e2da47fc",
     "src/proxy/motion_output.h": "329b65ded557b8a1b58be7ba1bc820ec4a90b57d340c18cf4e4fa6f6f1ddd182",
-    "src/proxy/motion_output_fog_inc.h": "f1f5fb2bcf53d3688fa97c157cc43d1899acd93c49f4a591a04dd6fececdfe13",
+    "src/proxy/motion_output_fog_inc.h": "56549b0589053885335024929e2f844a478c9c0e0f8dffd1057fe3b8973a10e6",
     "src/proxy/motion_output_shadow_adaptive_inc.h": "04e67702f19d1a4372e7cddb3d26cfa09af8295eee8b9c27038c497e1f5a3b66",
     "src/proxy/motion_output_shadow_replay_inc.h": "d4c92c0a9866c2131356ecb183834c26f8120a635a9749af52952cded1713117",
     "src/proxy/motion_output_shadow_retention_inc.h": "953cec681e9ad62a42dee47f972a956034c83ae509576bf509eb83c37f686add",
@@ -1830,7 +1615,7 @@
     "src/proxy/object_lifetime.cpp": "94c0ed5c3c07145c51c2aca1dcda1b06eb692e0cd428d35d025f4f16cf32dae9",
     "src/proxy/object_lifetime.h": "f2e77f4f3857b8ff4bd124eedf0109b78b189e1e7559b736ebcb617f4ac7d368",
     "src/proxy/object_trace.cpp": "e1a30a19038be21ea7a3061e41f14926d348479363c13679dd3c7edbe5eea79c",
-    "src/proxy/object_trace.h": "91fdf715014c684ed521e9a56730fced743d9e2712b6463dde78e9d37088244f",
+    "src/proxy/object_trace.h": "5c45c84cc2f7aa5b15c287122be9b74b9ad0fb6ce36c533e967768216370bdfa",
     "src/proxy/own_ship_cache.h": "23b3fb16b772c8ad546fcb868e263defa8554b7c9125a186444a5c1fe05a458f",
     "src/proxy/pass_phase_sites.h": "f3d0c741308cec39ee22c31d343caa40db7a7919397fa81bbb7dc23e321d7398",
     "src/proxy/pass_phases.cpp": "dd81f54ddc823aababd1622b8c60f419a181c39574552307722fce1bf793531e",
@@ -1909,19 +1694,19 @@
     "src/renderer/fog_composite_program_inc.h": "b100f49eb24846ab0694f9bec80b993289b48d55d83c270b20df11440209c978",
     "src/renderer/fog_density_composite_look_program_inc.h": "b9588b3a4f260da1b7fc3a8b132f878cc65a4243c0632e0037ff775aa2b21bc4",
     "src/renderer/fog_density_composite_program_inc.h": "a5fb4481749007eed92bc8ae22fe0a6e9188f4e9199b31f6e2cb0767f8b73bb9",
-    "src/renderer/fog_density_march_look1_program_inc.h": "fec29758b2bc6dfcadd51c3c9485de8f41ba322dbcd79ae312424c8bd662f849",
-    "src/renderer/fog_density_march_look2_program_inc.h": "b4d0f6eadc2ad83bbd8090ef51ccdfa18cca57443ae0291ff45d54748713863b",
+    "src/renderer/fog_density_march_look1_program_inc.h": "6b0d76e634c4944a6b19ffe63c162c8318d8d19539f075d579b446ce940344be",
+    "src/renderer/fog_density_march_look2_program_inc.h": "5172d66fc68d370a92d3831056912eefbb710301159015ff8b19ade583697d71",
     "src/renderer/fog_density_march_program_inc.h": "7a5ad72830d5a6ff4dd3f77e9e98187afcf191c2c0e1628b3b3f64cdea5154bf",
-    "src/renderer/fog_density_repair_look1_program_inc.h": "b7018346686ab36be865ab9a6cf560e67f33f72bb3db384e609aa4d7aea6693d",
-    "src/renderer/fog_density_repair_look2_program_inc.h": "80170c6684ef6483edc9590bff5369064e9a185f6594bc127bf7c16fcbd7c2fc",
+    "src/renderer/fog_density_repair_look1_program_inc.h": "afef206245608a87c1328373c4ba1f7d64008f771e99b387e7066ff9fa9477ba",
+    "src/renderer/fog_density_repair_look2_program_inc.h": "7a9601446366ff7d7ce9b15a61948106f70efc09219d2043015cdcc7a7b7530c",
     "src/renderer/fog_density_repair_program_inc.h": "c1a59bdf0a8dd2d5b4a5bb206b9d97cba895a55e07cef0f1ab984076ab963e3a",
     "src/renderer/fog_family_chroma_inc.h": "210c7f54c7834a8b17bddf6d63e4cb01f7ee7bda745d6e960c92b68304c66cbd",
     "src/renderer/fog_field_assets.cpp": "c18fe5a39aac2fc0e1060e12a52d592df21b2718bb0f0c9b48e4b131ec006b45",
     "src/renderer/fog_field_assets.h": "19768c0b1c105779f757a458b3a2bb9205f9660cf03a270c6ed1fc26510dbdfd",
-    "src/renderer/fog_look_math.h": "c26bf8bc2d0f918b4841f6ca2ba96749245fc03cede97d97dadb63d7e20c4f91",
+    "src/renderer/fog_look_math.h": "fc5368e69cc3704fe63aaace04bc3bba021a405604c21fd59b833a67579374fe",
     "src/renderer/fog_march_program_inc.h": "610d0a2243b5619346309205563e06acea8b8e0b87a2758f80a12b32f90d0f30",
-    "src/renderer/fog_pass.cpp": "af5db07b2f1d47473bc2d5687cfee117faa3517769833f81d163f1970b534001",
-    "src/renderer/fog_pass.h": "b4c0816f2f2bd241d43873823697f3600b196ff0fa4e3a39b8dbd5058d905856",
+    "src/renderer/fog_pass.cpp": "80d201a3bcf15de441d78d2cae9874a3c95a38ba7eb94e8f7e191faa877d5d5f",
+    "src/renderer/fog_pass.h": "44eefaf1208c624ba7051aa79cb78790bee94866de9ff00264a83020deae0530",
     "src/renderer/fog_pass_math.h": "42266351dbf2b20aea46de3c7de2182d4f7ebe7256ef0b6c358ee210181b28c0",
     "src/renderer/fog_sky_level0_program_inc.h": "9a55f341a3884b37779df4d766e36919228f9939db4f0bd2dbd2b5f150c43b57",
     "src/renderer/fog_sky_reduce_program_inc.h": "c86e585c6da04d508b14faccd343882fe2f86aa0c0cf7d700795e23ef3feb213",
@@ -2081,7 +1866,7 @@
     "verification/probe/bottle.py": "4c1af6d9729c3a4bfd0cda3ceea25839816886e39bf8a02666a2669c5d19dc3f",
     "verification/probe/build_motion_output.sh": "b8fe695d14c784791a73bbafd48e26c473d4a0a76136a99ac3c3eeaab8a366ef",
     "verification/probe/game_guard.py": "7a2201deacb72be844de6e11be1eaf9128e0bbebfac4ba57beb12dc312bf93db",
-    "verification/probe/motion_output_fixture.cpp": "7b852566d034e6a5a30e51cbce41db6e5a61533df453af3b778b236e49bd9fb0",
+    "verification/probe/motion_output_fixture.cpp": "275d4078ba6431b94aa3d687065037041bd1576847c2d5fd3e59215f8a4383f0",
     "verification/probe/motion_output_lightmap_fade_inc.h": "308cba630eb4e4d07dee31ab520e8dcb12486142d29fa62738f7c5efc5260ad9",
     "verification/probe/motion_output_shadow_pool_inc.h": "269850484c7c3c43ca07d16425850d8b874dbf32101f57d061fbf8cd608f1d56",
     "verification/probe/motion_output_shadow_retention_inc.h": "964649030f34c9aa07ce85ea774e7f8c75d7ea2edfce1f08a56243a0f78d1339",
@@ -2095,47 +1880,16 @@
     "verification/probe/verify_ownership_integration.py": "d9d18f4f5ce36c570e095a6ead68ce38a278a1418caa06dfdf5369abdd930cf3",
     "verification/probe/wine_lock.py": "7406105cb53b0aecea4ce04dee5070b39df6befa2f35929019a6ed5b8fe2c484"
   },
-  "build_commands": [
-    [
-      "cmake",
-      "-S",
-      ".",
-      "-B",
-      "build",
-      "-DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake",
-      "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
-    ],
-    [
-      "cmake",
-      "--build",
-      "build",
-      "--clean-first",
-      "-j4"
-    ],
-    [
-      "i686-w64-mingw32-g++",
-      "-std=c++17",
-      "-Wall",
-      "-Wextra",
-      "-c",
-      "verification/probe/abi_check.cpp",
-      "-o",
-      "verification/probe/build/abi_check.o"
-    ],
-    [
-      "sh",
-      "verification/probe/build_motion_output.sh"
-    ]
-  ],
+  "build_commands": [],
   "binaries": {
-    "verification/probe/build/motion_output_fixture.exe": "a0112941b84080d03bf4fd4d9f5b28c8856061fedf01b5ff6780a4e74259b676",
-    "verification/probe/build/motion-output-seam/d3d9.dll": "c128887b2bc651f520a653a68760e9fc78db9722a3d948fbb5b52f627bd409d3",
-    "build/d3d9.dll": "185eae6ff34b0e1a6447bb6f1766aada0141ce47c5926baeb535837e855cfc86"
+    "/private/tmp/x3-run63-candidate/binaries/motion_output_fixture.exe": "c02f4ab1965f3b7d2a2e2e9be192fb1d30211bbc2dcd9ff09912b6b99dc3eebc",
+    "/private/tmp/x3-run63-candidate/binaries/motion-output-seam/d3d9.dll": "78bca83875d5ba62f342d5546b4793cc25edd2a4d8bdd6bef1b647125dc828ac",
+    "/private/tmp/x3-run63-candidate/build/d3d9.dll": "b0cde4911ece0c7b47d61fb0cf147615bca4f86d154e663524b9b64faf79bb2b"
   },
   "bench": {},
   "shadow_replay_twins": {},
   "sources_after_run": {
-    "CMakeLists.txt": "b33d487e273c0f0e2e1be4ac13e94f9c0c32028f0af2479ddef1406226e2c951",
+    "CMakeLists.txt": "d09edf50be4a0de5cb3f4e4bafdf1c288077a61dd02c39a377a3e88cf19a8151",
     "cmake/FogField.cmake": "34cf44c09a98e6d6d477a882cea475fc5b80ea26b84d606463082c9bb6a7ee3c",
     "cmake/mingw-i686.cmake": "8283b1ff75ac25dce2f1a8790dd936366141135d1636bd675eb137869e8fa488",
     "src/ownership/application_admission.cpp": "2a9b5db81043e236658c1a73b24f06b09cb0661f8ef99a2040bd199abf7d6f13",
@@ -2162,13 +1916,13 @@
     "src/ownership/surface_lock_observation.h": "810e3931317548565aeb5727e0158e4dbb2cf7f33feb402a8973dee58e304c0f",
     "src/proxy/camera_state.cpp": "bdbb78395368ea270c156fc61c90834c536b3ce26e846acbba7f2e7777285969",
     "src/proxy/camera_state.h": "7b3b6de807488c6785d1676eb6df274a3ed2b07a5e7c9da52397a4762306a742",
-    "src/proxy/capture.cpp": "fd6fb1562ba021e26e0ca73adaeeaa3aae3111f3262641728147db2e7bba5091",
+    "src/proxy/capture.cpp": "5b6d5a041c98ec7f52191da863df3011655d6d026c20eb782fa52bdea90688c0",
     "src/proxy/capture.h": "e2d6b0dfad5239845f9fd668e1a468c335c7697642063736494dd0b449bcc5af",
     "src/proxy/capture_state.cpp": "7ac6bd3f6a926b8ad549d4d23d3d81ed1ab9399fdcc97a126960a3e7a1af7d0a",
     "src/proxy/capture_state.h": "d69f9781dc9ac83acf6cc84036e84ff9e3c3951eaa6098c6756b1863256d3324",
     "src/proxy/chase_aim_trace.cpp": "5871dc3242b53473970ceab2e9115d8a20a41fa633106ef3a86454565c6f5b75",
     "src/proxy/chase_aim_trace.h": "29da515414a3291e905cbd81743abe86a9de5aa6538200b0c2aa50f5fadb4947",
-    "src/proxy/chase_camera.cpp": "4bb1231694fedbf377944ea3f9884316060715279656ae073e43b2d006d3f165",
+    "src/proxy/chase_camera.cpp": "5d40e0ce095c9d19b41243277303c559f81ee80b2388dfad7c804286ebec00e4",
     "src/proxy/chase_camera.h": "1bb36621bc6c04dab3081c7800e724056b34a0fe3e67621587e3f5c9c2282e8f",
     "src/proxy/chase_camera_math.h": "5922ceffc72a0ce25b81e23f0c5a6082d7a2a3ac87796e9acdf9a0abcf0de462",
     "src/proxy/chase_camera_native.h": "0f348abc94d1d44a57cf096a3fb095508f18daa86ce30d87f94951ddf3085c3d",
@@ -2216,8 +1970,8 @@
     "src/proxy/d3d9.def": "a826f129abc038d6f1c2d7dcb59b49f37eb772709692f8f331827dc026528d33",
     "src/proxy/draw_input.cpp": "ed2baaa9b0542b6df18eb1e9fa37d2fa1d8ba8a3713eb9dc5b23dffa94f24778",
     "src/proxy/draw_input.h": "e4a0b30628a7bb8064ec373efa2ffe64552f4cea9d5b25110fa8f3f876776471",
-    "src/proxy/engine_memory.cpp": "d64e2d606f9e96afd949b66bda960c6f8311e3a4a22faf2e6851b91600ef6631",
-    "src/proxy/engine_memory.h": "bc27febe3e4d3f0c55875ead1a143781cfc830681b81854cc7ced8d28bb5b2d6",
+    "src/proxy/engine_memory.cpp": "31b2addd09b1efeebdac5941e0c99f342e3f27573320db0809e10a7de69d66ff",
+    "src/proxy/engine_memory.h": "6972f184043adfacfa6a3fc646166b4f6add140968ea1a3874ce8128ba73cf8b",
     "src/proxy/engine_patch.cpp": "9eb31fbf19e4f88432655ccccfe6e054739d9b8ba5f5be4054dfccf513330a2b",
     "src/proxy/engine_patch.h": "d8a777ee51e076271c0e22889701a594d98a4fad882a4be0c1c08cefc5771e66",
     "src/proxy/fade_region.cpp": "8167cbd89da7c8719ea781f5408a49e5d84145578b8884fd8cc6ef5a4989f87a",
@@ -2242,13 +1996,6 @@
     "src/proxy/game_phases_core.h": "7394c4851fb1ac1de9db3f0710f41cad20553fea128be60de11272b24c4c74d7",
     "src/proxy/gz_buffer.cpp": "1ec0c3b421e3505671040f18fc00e402bed23c1621d02c46863819cc8e592da3",
     "src/proxy/gz_buffer.h": "bacec1b06195c83f7007fe5ed4a9d18cd9ad79503d9cfbc8e6dbaa1390f2ec2d",
-    "src/proxy/lattice_geometry_packet.h": "36b2ac9d2dbe2e907a0ed3ac5b6cf6084496e302f9151accd6ab8939fd72571d",
-    "src/proxy/lattice_geometry_windows.h": "102209a8aa761f611f60e9668f6ccdceb747a9741be84b439b994fbed745f8e1",
-    "src/proxy/lattice_state_capture.cpp": "cd1f4a7f3b0ee3d39d3e19f3fcf42d0647d5a07f3ec08a8f9b9e9012cb0c00e2",
-    "src/proxy/lattice_state_capture.h": "2a57beda13ddc2691fe221204a81cf3456b1f250b49f3a11df523342bbf95469",
-    "src/proxy/lattice_state_policy.h": "5d4491cc6e356a601f4f74225ae8a224972189736987d9295d95355604547d0e",
-    "src/proxy/lattice_upload_hook.cpp": "859368e263bf39381092edc85f644a8555e549605729a7d723bc91d3b1e2126c",
-    "src/proxy/lattice_upload_hook.h": "01adbd817650e4ab5323f829e9fbb00f1d249bcede1906255b7f1ea0f3fe7f62",
     "src/proxy/lean_stub.cpp": "b3e1215cf1850b79cfc31b3e2f0196e5a3df25377251b3282384d8e29949ee17",
     "src/proxy/lean_stub.h": "5415970c7f1638cc3c670c21574c85b56ebf3c20e861307d054fad0df0885fa6",
     "src/proxy/light_phase_sites.h": "bf3eb6be3317db65708d66b322992289ebddfc25880d6e80352f75376974e9c0",
@@ -2284,7 +2031,7 @@
     "src/proxy/motion_capture.h": "7b4504dde21d61a64d92e94dea5c48e2d7367d694efa25b1706f6b09982504df",
     "src/proxy/motion_output.cpp": "33e7dedb806e26e77dfc554ed9080e9f9b11d66fa46c3d9c8e79a7c2e2da47fc",
     "src/proxy/motion_output.h": "329b65ded557b8a1b58be7ba1bc820ec4a90b57d340c18cf4e4fa6f6f1ddd182",
-    "src/proxy/motion_output_fog_inc.h": "f1f5fb2bcf53d3688fa97c157cc43d1899acd93c49f4a591a04dd6fececdfe13",
+    "src/proxy/motion_output_fog_inc.h": "56549b0589053885335024929e2f844a478c9c0e0f8dffd1057fe3b8973a10e6",
     "src/proxy/motion_output_shadow_adaptive_inc.h": "04e67702f19d1a4372e7cddb3d26cfa09af8295eee8b9c27038c497e1f5a3b66",
     "src/proxy/motion_output_shadow_replay_inc.h": "d4c92c0a9866c2131356ecb183834c26f8120a635a9749af52952cded1713117",
     "src/proxy/motion_output_shadow_retention_inc.h": "953cec681e9ad62a42dee47f972a956034c83ae509576bf509eb83c37f686add",
@@ -2293,7 +2040,7 @@
     "src/proxy/object_lifetime.cpp": "94c0ed5c3c07145c51c2aca1dcda1b06eb692e0cd428d35d025f4f16cf32dae9",
     "src/proxy/object_lifetime.h": "f2e77f4f3857b8ff4bd124eedf0109b78b189e1e7559b736ebcb617f4ac7d368",
     "src/proxy/object_trace.cpp": "e1a30a19038be21ea7a3061e41f14926d348479363c13679dd3c7edbe5eea79c",
-    "src/proxy/object_trace.h": "91fdf715014c684ed521e9a56730fced743d9e2712b6463dde78e9d37088244f",
+    "src/proxy/object_trace.h": "5c45c84cc2f7aa5b15c287122be9b74b9ad0fb6ce36c533e967768216370bdfa",
     "src/proxy/own_ship_cache.h": "23b3fb16b772c8ad546fcb868e263defa8554b7c9125a186444a5c1fe05a458f",
     "src/proxy/pass_phase_sites.h": "f3d0c741308cec39ee22c31d343caa40db7a7919397fa81bbb7dc23e321d7398",
     "src/proxy/pass_phases.cpp": "dd81f54ddc823aababd1622b8c60f419a181c39574552307722fce1bf793531e",
@@ -2372,19 +2119,19 @@
     "src/renderer/fog_composite_program_inc.h": "b100f49eb24846ab0694f9bec80b993289b48d55d83c270b20df11440209c978",
     "src/renderer/fog_density_composite_look_program_inc.h": "b9588b3a4f260da1b7fc3a8b132f878cc65a4243c0632e0037ff775aa2b21bc4",
     "src/renderer/fog_density_composite_program_inc.h": "a5fb4481749007eed92bc8ae22fe0a6e9188f4e9199b31f6e2cb0767f8b73bb9",
-    "src/renderer/fog_density_march_look1_program_inc.h": "fec29758b2bc6dfcadd51c3c9485de8f41ba322dbcd79ae312424c8bd662f849",
-    "src/renderer/fog_density_march_look2_program_inc.h": "b4d0f6eadc2ad83bbd8090ef51ccdfa18cca57443ae0291ff45d54748713863b",
+    "src/renderer/fog_density_march_look1_program_inc.h": "6b0d76e634c4944a6b19ffe63c162c8318d8d19539f075d579b446ce940344be",
+    "src/renderer/fog_density_march_look2_program_inc.h": "5172d66fc68d370a92d3831056912eefbb710301159015ff8b19ade583697d71",
     "src/renderer/fog_density_march_program_inc.h": "7a5ad72830d5a6ff4dd3f77e9e98187afcf191c2c0e1628b3b3f64cdea5154bf",
-    "src/renderer/fog_density_repair_look1_program_inc.h": "b7018346686ab36be865ab9a6cf560e67f33f72bb3db384e609aa4d7aea6693d",
-    "src/renderer/fog_density_repair_look2_program_inc.h": "80170c6684ef6483edc9590bff5369064e9a185f6594bc127bf7c16fcbd7c2fc",
+    "src/renderer/fog_density_repair_look1_program_inc.h": "afef206245608a87c1328373c4ba1f7d64008f771e99b387e7066ff9fa9477ba",
+    "src/renderer/fog_density_repair_look2_program_inc.h": "7a9601446366ff7d7ce9b15a61948106f70efc09219d2043015cdcc7a7b7530c",
     "src/renderer/fog_density_repair_program_inc.h": "c1a59bdf0a8dd2d5b4a5bb206b9d97cba895a55e07cef0f1ab984076ab963e3a",
     "src/renderer/fog_family_chroma_inc.h": "210c7f54c7834a8b17bddf6d63e4cb01f7ee7bda745d6e960c92b68304c66cbd",
     "src/renderer/fog_field_assets.cpp": "c18fe5a39aac2fc0e1060e12a52d592df21b2718bb0f0c9b48e4b131ec006b45",
     "src/renderer/fog_field_assets.h": "19768c0b1c105779f757a458b3a2bb9205f9660cf03a270c6ed1fc26510dbdfd",
-    "src/renderer/fog_look_math.h": "c26bf8bc2d0f918b4841f6ca2ba96749245fc03cede97d97dadb63d7e20c4f91",
+    "src/renderer/fog_look_math.h": "fc5368e69cc3704fe63aaace04bc3bba021a405604c21fd59b833a67579374fe",
     "src/renderer/fog_march_program_inc.h": "610d0a2243b5619346309205563e06acea8b8e0b87a2758f80a12b32f90d0f30",
-    "src/renderer/fog_pass.cpp": "af5db07b2f1d47473bc2d5687cfee117faa3517769833f81d163f1970b534001",
-    "src/renderer/fog_pass.h": "b4c0816f2f2bd241d43873823697f3600b196ff0fa4e3a39b8dbd5058d905856",
+    "src/renderer/fog_pass.cpp": "80d201a3bcf15de441d78d2cae9874a3c95a38ba7eb94e8f7e191faa877d5d5f",
+    "src/renderer/fog_pass.h": "44eefaf1208c624ba7051aa79cb78790bee94866de9ff00264a83020deae0530",
     "src/renderer/fog_pass_math.h": "42266351dbf2b20aea46de3c7de2182d4f7ebe7256ef0b6c358ee210181b28c0",
     "src/renderer/fog_sky_level0_program_inc.h": "9a55f341a3884b37779df4d766e36919228f9939db4f0bd2dbd2b5f150c43b57",
     "src/renderer/fog_sky_reduce_program_inc.h": "c86e585c6da04d508b14faccd343882fe2f86aa0c0cf7d700795e23ef3feb213",
@@ -2544,7 +2291,7 @@
     "verification/probe/bottle.py": "4c1af6d9729c3a4bfd0cda3ceea25839816886e39bf8a02666a2669c5d19dc3f",
     "verification/probe/build_motion_output.sh": "b8fe695d14c784791a73bbafd48e26c473d4a0a76136a99ac3c3eeaab8a366ef",
     "verification/probe/game_guard.py": "7a2201deacb72be844de6e11be1eaf9128e0bbebfac4ba57beb12dc312bf93db",
-    "verification/probe/motion_output_fixture.cpp": "7b852566d034e6a5a30e51cbce41db6e5a61533df453af3b778b236e49bd9fb0",
+    "verification/probe/motion_output_fixture.cpp": "275d4078ba6431b94aa3d687065037041bd1576847c2d5fd3e59215f8a4383f0",
     "verification/probe/motion_output_lightmap_fade_inc.h": "308cba630eb4e4d07dee31ab520e8dcb12486142d29fa62738f7c5efc5260ad9",
     "verification/probe/motion_output_shadow_pool_inc.h": "269850484c7c3c43ca07d16425850d8b874dbf32101f57d061fbf8cd608f1d56",
     "verification/probe/motion_output_shadow_retention_inc.h": "964649030f34c9aa07ce85ea774e7f8c75d7ea2edfce1f08a56243a0f78d1339",

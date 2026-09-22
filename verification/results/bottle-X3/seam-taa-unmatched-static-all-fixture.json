@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "/private/tmp/x3-run62-candidate/binaries/motion_output_fixture.exe": "bdd5eb6bd1dd56a851ba766a9b45449074a292d7597f358783c0e1445fbacfdd",
-  "/private/tmp/x3-run62-candidate/binaries/motion-output-seam/d3d9.dll": "4a27431b9e9c2847a5738b0cd783f1c67d58f5c03d8796343478b510e9043470",
-  "/private/tmp/x3-run62-candidate/build/d3d9.dll": "924be5c0699207db19b8b6e361d7c213ac6678a0b85a02e48b8c9608e9077156"
+  "/private/tmp/x3-run63-candidate/binaries/motion_output_fixture.exe": "c02f4ab1965f3b7d2a2e2e9be192fb1d30211bbc2dcd9ff09912b6b99dc3eebc",
+  "/private/tmp/x3-run63-candidate/binaries/motion-output-seam/d3d9.dll": "78bca83875d5ba62f342d5546b4793cc25edd2a4d8bdd6bef1b647125dc828ac",
+  "/private/tmp/x3-run63-candidate/build/d3d9.dll": "b0cde4911ece0c7b47d61fb0cf147615bca4f86d154e663524b9b64faf79bb2b"
  },
  "checks": 95,
  "setting": "all",
@@ -42,7 +42,7 @@
    "e5a75bc27a7ce34b"
   ],
   "6": [
-   "135629ad4d1695a9",
+   "b5e335dba27b6081",
    "fc9fd479249e3673"
   ],
   "7": [
@@ -162,7 +162,7 @@
    "pixels": 82,
    "changed": 82,
    "max_uv_pixels": 0.00111576861,
-   "max_depth_error": 4.73852455e-07
+   "max_depth_error": 4.60263405e-07
   },
   "6S": {
    "expect": "matched",
@@ -215,10 +215,10 @@
   }
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-taa-unmatched-static-all-20260922-014101-410040",
- "trace_sha256": "ec466b2f44c63017a6f6ce9ee02dc7c732851dc977c6b22fe50976c636c3be52",
- "dll_sha256": "4a27431b9e9c2847a5738b0cd783f1c67d58f5c03d8796343478b510e9043470",
- "exe_sha256": "bdd5eb6bd1dd56a851ba766a9b45449074a292d7597f358783c0e1445fbacfdd",
+ "directory": "verification/probe/build/motion-output-seam-taa-unmatched-static-all-20260922-033812-283548",
+ "trace_sha256": "9234406f0ede15611cc30b9bcc64fe031fafd3af6132ee5979107f496130e48c",
+ "dll_sha256": "78bca83875d5ba62f342d5546b4793cc25edd2a4d8bdd6bef1b647125dc828ac",
+ "exe_sha256": "c02f4ab1965f3b7d2a2e2e9be192fb1d30211bbc2dcd9ff09912b6b99dc3eebc",
  "motion_frames_differing_from_seam-taa-unmatched-static-node": [
   6
  ]

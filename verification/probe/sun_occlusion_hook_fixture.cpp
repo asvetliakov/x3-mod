@@ -303,7 +303,7 @@ int main() {
       const auto before = x3m::engine_memory::stats();
       fx_probe_answer = 1; frame(record_block, 1, 1, "production_walk_frame1"); fx_probe_answer = 0; frame(record_block, 0, 1, "production_walk_frame2");
       const auto after = x3m::engine_memory::stats();
-      check("production_walk_reached_the_reader", after.rejected > before.rejected || after.queries > before.queries || after.syscalls > before.syscalls);
+      check("production_walk_reached_the_reader", after.rejected > before.rejected || after.queries > before.queries);
       check("shutdown_production_walk", so::shutdown()); }
     // Late claim.
     x3m::engine_patch::close_install_window("fixture");

@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-21T22:59:15.517637+00:00",
+  "started_utc": "2026-09-21T23:56:20.265277+00:00",
   "game_launched": false,
   "bottle": {
     "name": "X3",
@@ -31,18 +31,18 @@
     "verification/probe/build_object_lifetime.sh": "d4ecfba9f59a16e9600751ea45916c99d3a4034ef7fe6c8bbb55bfbdd9bcfff9",
     "verification/probe/run_object_lifetime.py": "138317e02c7cdf375d36905b06b0c917a94363adf5e1c9f9118c8740ac1033e3"
   },
-  "executable_sha256": "ee8d8766118c836d399a2640336b617f7b2884c78cae0b3bb1035497a04899d3",
+  "executable_sha256": "d70140cb13e76a2b47262e76dfaeb9e964735383fcb2bb968c9db5a22112ce64",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
     "X3",
     "--no-update",
     "--workdir",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a2d8cb56073baf2cd/verification/probe/build",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a2d8cb56073baf2cd/verification/probe/build/object_lifetime.exe"
+    "/Users/asvetl/x3-mod/verification/probe/build",
+    "/Users/asvetl/x3-mod/verification/probe/build/object_lifetime.exe"
   ],
   "exit_code": 0,
-  "executable_sha256_after_run": "ee8d8766118c836d399a2640336b617f7b2884c78cae0b3bb1035497a04899d3",
+  "executable_sha256_after_run": "d70140cb13e76a2b47262e76dfaeb9e964735383fcb2bb968c9db5a22112ce64",
   "sources_after_run": {
     "src/proxy/object_lifetime.cpp": "94c0ed5c3c07145c51c2aca1dcda1b06eb692e0cd428d35d025f4f16cf32dae9",
     "src/proxy/object_lifetime.h": "f2e77f4f3857b8ff4bd124eedf0109b78b189e1e7559b736ebcb617f4ac7d368",
@@ -52,7 +52,7 @@
     "verification/probe/build_object_lifetime.sh": "d4ecfba9f59a16e9600751ea45916c99d3a4034ef7fe6c8bbb55bfbdd9bcfff9",
     "verification/probe/run_object_lifetime.py": "138317e02c7cdf375d36905b06b0c917a94363adf5e1c9f9118c8740ac1033e3"
   },
-  "report_sha256": "dd46ae0a102fe2106db04b883523c4b4d53cc728a5283a00d321378def4eb7c0",
+  "report_sha256": "24fee813a37e4892b8a4298555ec2a98b078f165b777c83da978d15fd3c40583",
   "checks": 657,
   "failures": 0,
   "backend_calls": 172590,
@@ -60,7 +60,7 @@
     "timing": [
       {
         "mode": "direct",
-        "snapshot_us": "0.744",
+        "snapshot_us": "0.748",
         "reads_per_call": "12.00",
         "queries_per_call": "0.0237",
         "record": "853bfaca11e07f83"
@@ -71,9 +71,9 @@
   "journal": [
     {
       "capacity": "2048",
-      "cycle_idle_us": "1.2728",
-      "cycle_journal_us": "1.2823",
-      "retirement_delta_us": "0.0096",
+      "cycle_idle_us": "1.2537",
+      "cycle_journal_us": "1.2394",
+      "retirement_delta_us": "-0.0143",
       "empty_drain_us": "0.0063",
       "drained": "40000"
     }

@@ -1,0 +1,451 @@
+{
+ "schema": 1,
+ "candidate": {
+  "commit": "5112bb43",
+  "commit_full": "5112bb43f92da63ec3421e33660fbcfe116c1edd",
+  "branch": "main",
+  "checkout": "/Users/asvetl/x3-mod",
+  "source_clean": true,
+  "dll": "/tmp/x3-run63-candidate/build/d3d9.dll",
+  "sha256": "b0cde4911ece0c7b47d61fb0cf147615bca4f86d154e663524b9b64faf79bb2b",
+  "bytes": 55279659,
+  "embedded_marker": "X3M_SOURCE_COMMIT=5112bb43f92da63ec3421e33660fbcfe116c1edd",
+  "configuration": "RelWithDebInfo",
+  "toolchain": "cmake/mingw-i686.cmake",
+  "python3": "/usr/bin/python3 (NumPy for the fog asset step)",
+  "build_commands": [
+   "cmake -S . -B /tmp/x3-run63-candidate/build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPython3_EXECUTABLE=/usr/bin/python3",
+   "cmake --build /tmp/x3-run63-candidate/build -j"
+  ],
+  "build_warnings": 0,
+  "supersedes": "Run62 candidate 924be5c0 (35f5a9cf)"
+ },
+ "scope": "Versus Run62 DLL 924be5c0 (35f5a9cf): partial sun occlusion step 1 behind --sun-occlusion (855fc1bc, default off); lattice capture diagnostic and rpm engine-read fallback removed (98fb849f); exact inverse of the 16.16 view basis at every world-recovery site with shadow caster retention engaging in flight (84b816f8); host doubles/bloom manifests (b86fdb64, test-side); stored fog looks jitter only the shadow-shaft lookup, bin centre when TAA is off (5112bb43).",
+ "linked_audit": {
+  "command": "python3 verification/probe/check_no_x87.py /tmp/x3-run63-candidate/build/d3d9.dll",
+  "cwd": "/Users/asvetl/x3-mod",
+  "result": "PASS",
+  "roots_count": 100,
+  "reachable_functions": 620,
+  "violations": {},
+  "comparison": {
+   "run62": "95 roots / 547 reachable / 0 violations; the growth is the sun-occlusion probe/lens thunks and collide-query roots added since 35f5a9cf"
+  },
+  "import_delta": {
+   "command": "i686-w64-mingw32-objdump -p",
+   "baseline_dll": "/tmp/x3-run62-candidate/build/d3d9.dll",
+   "imported_dlls": 15,
+   "new_imported_dlls": [],
+   "removed_imported_dlls": [],
+   "total_imported_functions": {
+    "run62": 217,
+    "run63": 209
+   },
+   "per_function_delta": {
+    "new": [],
+    "removed": [
+     "KERNEL32.dll:DeleteFileW",
+     "KERNEL32.dll:MoveFileExW",
+     "KERNEL32.dll:MoveFileW",
+     "api-ms-win-crt-math-l1-1-0.dll:_fdopen",
+     "api-ms-win-crt-stdio-l1-1-0.dll:_close",
+     "api-ms-win-crt-stdio-l1-1-0.dll:_open_osfhandle",
+     "api-ms-win-crt-stdio-l1-1-0.dll:ferror",
+     "api-ms-win-crt-stdio-l1-1-0.dll:ftell"
+    ]
+   },
+   "reading": "Exactly the 8 CRT/file imports the lattice capture diagnostic used; 0 additions."
+  }
+ },
+ "selected_render_smoke": {
+  "status": "PARTIAL",
+  "consume_only": true,
+  "rebuilt_candidate": false,
+  "scope": "The ten actual-DLL cases Run62 qualified (four production, the camera-gate seam pair, four unmatched-static options) plus the five shadow cases widened by the exact-inverse/retention change. No full renderer suite, no benchmark.",
+  "commands": [
+   "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run63-candidate/lock-timings-prod.json python3 verification/probe/run_motion_output.py --dll /tmp/x3-run63-candidate/build/d3d9.dll --seam /tmp/x3-run63-candidate/binaries/motion-output-seam/d3d9.dll --fixture /tmp/x3-run63-candidate/binaries/motion_output_fixture.exe production-ownership-hdr-on production-taa-hdr-on production-ownership-on production-ownership-taa-on seam-taa-camera-on seam-taa-on",
+   "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run63-candidate/lock-timings-static.json python3 verification/probe/run_motion_output.py --dll ... seam-taa-unmatched-static-unset seam-taa-unmatched-static-off seam-taa-unmatched-static-node seam-taa-unmatched-static-all",
+   "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run63-candidate/lock-timings-retention.json python3 verification/probe/run_motion_output.py --dll ... seam-ownership-shadow-retention-live seam-ownership-shadow-retention-census seam-ownership-shadow-retention-off seam-ownership-shadow-retention-live-poll seam-ownership-shadow-pool-static-live"
+  ],
+  "serialisation": "Three wine_lock invocations strictly one after the other; the four unmatched-static cases share one invocation because run_motion_output.py asserts each case against its twin inside the same result dict.",
+  "binaries": {
+   "/tmp/x3-run63-candidate/binaries/motion_output_fixture.exe": "c02f4ab1965f3b7d2a2e2e9be192fb1d30211bbc2dcd9ff09912b6b99dc3eebc",
+   "/tmp/x3-run63-candidate/binaries/motion-output-seam/d3d9.dll": "78bca83875d5ba62f342d5546b4793cc25edd2a4d8bdd6bef1b647125dc828ac",
+   "/tmp/x3-run63-candidate/build/d3d9.dll": "b0cde4911ece0c7b47d61fb0cf147615bca4f86d154e663524b9b64faf79bb2b"
+  },
+  "seam_build": {
+   "command": "X3M_CANDIDATE_BUILD=/tmp/x3-run63-candidate/build sh verification/probe/build_motion_output.sh",
+   "note": "seam DLL and fixture rebuilt from HEAD against the frozen candidate objects, then frozen under /tmp/x3-run63-candidate/binaries; candidate d3d9.dll never rebuilt"
+  },
+  "cases": {
+   "production-ownership-on": {
+    "exit": 0,
+    "checks": 43,
+    "restorations": 39,
+    "frames": 12,
+    "motion_pixels": 0
+   },
+   "seam-taa-on": {
+    "exit": 0,
+    "checks": 164,
+    "restorations": 51,
+    "frames": 12,
+    "motion_pixels": 44279
+   },
+   "production-ownership-taa-on": {
+    "exit": 0,
+    "checks": 83,
+    "restorations": 51,
+    "frames": 12,
+    "motion_pixels": 0
+   },
+   "seam-taa-camera-on": {
+    "exit": 0,
+    "checks": 177,
+    "restorations": 51,
+    "frames": 12,
+    "motion_pixels": 44279
+   },
+   "production-ownership-hdr-on": {
+    "exit": 0,
+    "checks": 43,
+    "restorations": 39,
+    "frames": 12,
+    "motion_pixels": 0
+   },
+   "production-taa-hdr-on": {
+    "exit": 0,
+    "checks": 83,
+    "restorations": 51,
+    "frames": 12,
+    "motion_pixels": 0
+   },
+   "seam-taa-unmatched-static-unset": {
+    "exit": 0,
+    "checks": 95
+   },
+   "seam-taa-unmatched-static-off": {
+    "exit": 0,
+    "checks": 95,
+    "motion_frames_differing_from_seam-taa-unmatched-static-unset": []
+   },
+   "seam-taa-unmatched-static-node": {
+    "exit": 0,
+    "checks": 95,
+    "motion_frames_differing_from_seam-taa-unmatched-static-off": [
+     3
+    ],
+    "max_uv_pixels": 0.000664647885,
+    "max_depth_error": 1.71420271e-07
+   },
+   "seam-taa-unmatched-static-all": {
+    "exit": 0,
+    "checks": 95,
+    "motion_frames_differing_from_seam-taa-unmatched-static-node": [
+     6
+    ],
+    "max_uv_pixels": 0.00111576861,
+    "max_depth_error": 4.60263405e-07
+   },
+   "seam-ownership-shadow-retention-live": {
+    "exit": 0,
+    "checks": 9743,
+    "mode": "live",
+    "frames": 1535,
+    "compared": 39,
+    "retained_compared": 28,
+    "max_depth_error": 5.541019532318003e-06,
+    "refs_held": 3,
+    "age_max": 640
+   },
+   "seam-ownership-shadow-retention-census": {
+    "exit": 0,
+    "checks": 9740,
+    "mode": "census",
+    "frames": 1535,
+    "compared": 39,
+    "retained_compared": 0,
+    "max_depth_error": 1.8642249843825454e-06
+   },
+   "seam-ownership-shadow-retention-off": {
+    "exit": 0,
+    "checks": 6629,
+    "mode": "off",
+    "frames": 1535,
+    "compared": 39,
+    "retained_compared": 0,
+    "max_depth_error": 1.8642249843825454e-06
+   },
+   "seam-ownership-shadow-retention-live-poll": {
+    "exit": 0,
+    "checks": 9890,
+    "mode": "live",
+    "frames": 1547,
+    "compared": 40,
+    "retained_compared": 29,
+    "max_depth_error": 1.4687070698182758e-05
+   },
+   "seam-ownership-shadow-pool-static-live": {
+    "exit": 0,
+    "checks": 182,
+    "script": "static",
+    "store": 2,
+    "frames": 14,
+    "maps": 27,
+    "max_depth_error": 4.412964153133192e-05,
+    "full_store_us_median": 50.2
+   }
+  },
+  "comparison_to_run62": "The ten Run62 cases are identical: checks 43/83/43/83/177/164 and 95x4, restorations 39/51, 12 frames, seam motion_pixels 44279, node differs from off at frame 3, all differs from node at frame 6, node max_uv 0.000664647885.",
+  "comparison_shadow_cases": "Camera-path shadow numbers versus the pre-inverse Run62-era record in docs/verification/directional-shadows.md (line 1632): -retention-live 9,743 checks / 1,535 frames / 39 (28) compared and 78 maps unchanged, max depth error 1.7e-6 -> 5.5e-6 (the retention script now uses the engine's 16.16 quantised camera and the maps really are compared against retained rows); -census 9,740, -off 6,629, -live-poll 9,890 (1.5e-5), pool-static-live 182 checks / 27 maps / 4.4e-5. All gates pass; each of the five fixture records reproduces the record committed at 84b816f8/5112bb43 field for field (only run directory and timings differ), so the candidate DLL matches the reviewed tree's behaviour.",
+  "partial_records": {
+   "production_and_seam_taa": "/tmp/x3-run63-candidate/motion-output-partial-prod.json",
+   "unmatched_static": "/tmp/x3-run63-candidate/motion-output-partial-static.json",
+   "shadow_retention_and_pool": "/tmp/x3-run63-candidate/motion-output-partial-retention.json"
+  },
+  "lock": {
+   "production_and_seam_taa": {
+    "lock_wait_seconds": 3.083000000000946e-06,
+    "child_elapsed_seconds": 16.857090125,
+    "exit_code": 0
+   },
+   "unmatched_static": {
+    "lock_wait_seconds": 3.29200000000196e-06,
+    "child_elapsed_seconds": 9.878289959,
+    "exit_code": 0
+   },
+   "shadow_retention_and_pool": {
+    "lock_wait_seconds": 3.2499999999963114e-06,
+    "child_elapsed_seconds": 25.350045375,
+    "exit_code": 0
+   }
+  },
+  "unmatched_static_default_note": "run_motion_output.py pins X3M_TAA_UNMATCHED_STATIC=0 for every case, so \"unset\" is the runner-pinned off, not the DLL node default; the node default is exercised by the dry-runs below. run_motion_output.py likewise pins the sentinel stabiliser off, so its new native default-on is only covered by the dry-run."
+ },
+ "temporal_pass": {
+  "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run63-candidate/lock-timings-temporal.json python3 verification/probe/run_temporal_pass.py",
+  "reason": "exact view-inverse at the world-recovery sites and the stored-fog jitter change touch the reprojection path",
+  "passed": true,
+  "exit_code": 0,
+  "samples": 388,
+  "state_restorations": 278,
+  "generations": 2,
+  "source_unchanged": true,
+  "binary_unchanged": true,
+  "compiler_unchanged": true,
+  "summary": "verification/results/bottle-X3/temporal-pass-summary.json",
+  "camera_drift_px_error": {
+   "static-builder": [
+    0.0686,
+    0.00753
+   ],
+   "yaw-builder": [
+    0.0662,
+    0.00881
+   ],
+   "pitch-builder": [
+    0.0574,
+    0.01103
+   ],
+   "yaw-builder-unjittered": [
+    0.0664,
+    0.00618
+   ],
+   "narrow-yaw-builder-unjittered": [
+    0.0302,
+    0.00885
+   ],
+   "yaw-single-step": [
+    0.0369,
+    0.0039
+   ],
+   "pitch-single-step": [
+    0.0335,
+    0.00336
+   ],
+   "yaw-identity": [
+    0.8621,
+    0.07596
+   ],
+   "yaw-swapped": [
+    1.0539,
+    0.09244
+   ],
+   "yaw-cut-resumed": [
+    0.0624,
+    0.00878
+   ]
+  },
+  "shift_versus_run62": "Nine of ten camera rows are bit-identical to Run62; only narrow-yaw-builder-unjittered moves 0.0301 -> 0.0302 px drift (error 0.00885 unchanged). camera_pan still 2 deg / 40 frames, w_below 15680 / w_above 19200 px, 0 current-only, frames_hit 0 on both rows. samples/restorations/generations unchanged at 388/278/2.",
+  "lock": {
+   "lock_wait_seconds": 3.5829999999979767e-06,
+   "child_elapsed_seconds": 136.793534709,
+   "exit_code": 0
+  }
+ },
+ "fog_stored_density": {
+  "reason": "stored fog looks now jitter only the shadow-shaft lookup and use the bin centre with TAA off",
+  "build": "python3 verification/probe/fog_density_shader_run.py build --output /tmp/x3-run63-candidate/fog (host)",
+  "reference": "python3 tools/analysis/fog_density_shader_reference.py --asset-data /tmp/x3-run63-candidate/fog/fog_field --output /tmp/x3-run63-candidate/fog-reference (host)",
+  "run": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run63-candidate/lock-timings-fog-run.json python3 verification/probe/fog_density_shader_run.py run --output /tmp/x3-run63-candidate/fog --reference /tmp/x3-run63-candidate/fog-reference",
+  "check": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run63-candidate/lock-timings-fog-check.json python3 verification/probe/fog_density_shader_run.py check --output /tmp/x3-run63-candidate/fog --reference /tmp/x3-run63-candidate/fog-reference",
+  "executable_sha256": "3c6eb805c0bb2bb293ab1c5d6d46a89ddbbcd6a312b9ef79060ecc9925f4a80f",
+  "pass_executable_sha256": "a467a5f2d882567da2dc53b145c119b65ebf8527c2a48f6b3eac8923ba0832d9",
+  "run_returncode": 0,
+  "run_seconds": 47.53933425,
+  "pass_seconds": 26.971343875,
+  "check_result": "PASS",
+  "gates": {
+   "pass_fixture_passed": true,
+   "fixture_passed": true,
+   "slots_below_512": true,
+   "march_loops_kept": true,
+   "look_shaft_offset_exercised": true,
+   "repair_shaft_lookup": true,
+   "look_cases": true,
+   "look0_shadowed_black": true,
+   "look1_shadowed_coloured": true,
+   "candidate_T": true,
+   "parity_T": true,
+   "dense64_T": true,
+   "dense64_S": true,
+   "candidate_S": true,
+   "production_rgba16f_candidate": true,
+   "production_rgba16f_dense64": true,
+   "temporal": true,
+   "production_rgba16f_temporal": true
+  },
+  "new_gates_versus_run62": [
+   "look_shaft_offset_exercised",
+   "repair_shaft_lookup"
+  ],
+  "reference_manifest_sha256": "db0a8dd1db2d538872b1930f2a8dcd7ca763760a70c3d72c8b3cd4b2c1500a30 (identical to Run62)",
+  "summary": "/tmp/x3-run63-candidate/fog/summary.json",
+  "summary_sha256": "b585d60e2ff18a7cee8fe660878b29bf046d108c2307633e7569319bcf880646",
+  "images": "138 readbacks (Run62 128); the extra ten are the repair1/repair2 shaft cases",
+  "first_attempt": {
+   "result": "TIMEOUT",
+   "note": "The first shader-fixture invocation wrote all 138 readbacks in ~40 s, then sat at 0 % CPU until the runner's own 540 s timeout; the orphaned fixture process was killed and the whole step repeated in a fresh output directory, where it completed in 47.5 s. Witness kept at /tmp/x3-run63-candidate/fog-attempt1 and /tmp/x3-run63-fog-run.txt. Not reproduced; treated as a one-off bottle/wineserver stall, not a candidate defect.",
+   "timeout_seconds": 540
+  },
+  "lock": {
+   "run": {
+    "lock_wait_seconds": 3.500000000000031e-06,
+    "child_elapsed_seconds": 74.64149975000001,
+    "exit_code": 0
+   },
+   "check": {
+    "lock_wait_seconds": 2.833000000000696e-06,
+    "child_elapsed_seconds": 0.23336825,
+    "exit_code": 0
+   }
+  }
+ },
+ "sun_occlusion": {
+  "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run63-candidate/lock-timings-sun-occlusion.json python3 verification/probe/run_sun_occlusion.py",
+  "result": "BUILD FAILURE, not run",
+  "exit_code": 1,
+  "cause": "verification/probe/sun_occlusion_hook_fixture.cpp:306 reads after.syscalls / before.syscalls, but cleanup batch 7 (98fb849f) removed Stats::syscalls from src/proxy/engine_memory.h; i686-w64-mingw32-g++ fails with -Werror before any Wine step. Pre-existing breakage at main HEAD in verification source, independent of this build.",
+  "witness": "/tmp/x3-run63-sun-occlusion.txt",
+  "consequence": "The sun-occlusion GPU fixture is unverified at 5112bb43. The feature is default off and the dry-run below confirms the launcher path (X3M_SUN_OCCLUSION=1 with the log, exit 0, no refusal).",
+  "lock": {
+   "lock_wait_seconds": 3.6669999999988656e-06,
+   "child_elapsed_seconds": 0.31195883300000005,
+   "exit_code": 1
+  }
+ },
+ "engine_read_and_draw_hook": {
+  "reason": "the lattice/rpm removal touched the draw_indexed hook and the engine-read path",
+  "commands": [
+   "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run63-candidate/lock-timings-object-trace.json python3 verification/probe/run_object_trace.py",
+   "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run63-candidate/lock-timings-object-lifetime.json python3 verification/probe/run_object_lifetime.py"
+  ],
+  "object_trace": {
+   "passed": true,
+   "checks": 153,
+   "read_path_reported": true,
+   "lock": {
+    "lock_wait_seconds": 3.415999999999142e-06,
+    "child_elapsed_seconds": 9.685504042,
+    "exit_code": 0
+   }
+  },
+  "object_lifetime": {
+   "passed": true,
+   "checks": 657,
+   "lock": {
+    "lock_wait_seconds": 3.083000000000946e-06,
+    "child_elapsed_seconds": 9.373187708,
+    "exit_code": 0
+   }
+  },
+  "reproduces_committed": "Scalar diff of both summaries against the copies committed at HEAD: 0 behavioural differences, 0 missing or new fields; only started_utc and the build path (a worktree in the committed copy) differ."
+ },
+ "dry_run": {
+  "command_script": "/tmp/x3-run63-candidate/dryrun.sh",
+  "cwd": "/Users/asvetl/x3-mod",
+  "base": "Run 62 session A and B command lines (docs/verification/user-runs.md) with --dry-run; tools/manage.py launch invoked directly because x3run takes the wine lock itself",
+  "game_launched": false,
+  "output": "/tmp/x3-run63-dryrun.txt",
+  "cases": {
+   "A": {
+    "variant": "Run 62 session A with --taa-sentinel-stabiliser 0.7 removed and --sun-occlusion --sun-occlusion-log added",
+    "exit": 0,
+    "observed": {
+     "X3M_TAA_UNMATCHED_STATIC": "node",
+     "X3M_TAA_SENTINEL_STABILISER": "0.7",
+     "X3M_SUN_OCCLUSION": "1",
+     "X3M_SUN_OCCLUSION_LOG": "1",
+     "X3M_VOLUMETRIC_FOG": "0",
+     "X3M_VOLUMETRIC_FOG_LOOK": "0",
+     "X3M_VOLUMETRIC_FOG_RANGE": "legacy",
+     "X3M_VOLUMETRIC_FOG_STRENGTH": "0.02",
+     "X3M_VOLUMETRIC_FOG_CARDS": "keep",
+     "X3M_VOLUMETRIC_FOG_TIMING": "0"
+    },
+    "sentinel_stabiliser_default": "0.7 resolves with no flag on the line, so the stabiliser is on natively",
+    "submit_phases": "absent from the line (no --submit-phases / diagnostic flag); the sun feature's refusal of that combination is not triggered and the dry-run reports no refusal or warning"
+   },
+   "B": {
+    "variant": "Run 62 session B verbatim",
+    "exit": 0,
+    "observed": {
+     "X3M_TAA_UNMATCHED_STATIC": "node",
+     "X3M_TAA_SENTINEL_STABILISER": "0.7",
+     "X3M_VOLUMETRIC_FOG": "1",
+     "X3M_VOLUMETRIC_FOG_CARDS": "replace",
+     "X3M_VOLUMETRIC_FOG_LOOK": "2",
+     "X3M_VOLUMETRIC_FOG_RANGE": "stored",
+     "X3M_VOLUMETRIC_FOG_STRENGTH": "0.02",
+     "X3M_VOLUMETRIC_FOG_TIMING": "1"
+    },
+    "strength_resolves_to": 0.02,
+    "fog_range": "stored (full fog to 13 km, fading out by 22.5 km)",
+    "sun_occlusion": "no X3M_SUN_OCCLUSION in the environment: default off, as expected"
+   }
+  }
+ },
+ "build_logs": {
+  "/tmp/x3-run63-configure.log": "d8f8fb068595dd893becefcaa7013553b323ac6c4006cb8bf45b47fce02c1d6c",
+  "/tmp/x3-run63-build.log": "39e573241251b73f30365f33be2c6ced98f4a69c9c4c5f28540b3ed2cd0d9845",
+  "/tmp/x3-run63-seam-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+ },
+ "bottle": "X3",
+ "wine_arch": "arm64",
+ "environment": {
+  "FEX_X87REDUCEDPRECISION": "1",
+  "WINEMSYNC": "1",
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "native_windows": "unverified",
+ "game_acceptance": "pending Run63",
+ "host": {
+  "note": "Full host suite run by the orchestrator at this commit before qualification: run_host_suite.py, 225 modules, 2231 tests, 0 failing; not rerun here."
+ },
+ "installed": false,
+ "sun_occlusion_fixture_followup": {
+  "note": "run_sun_occlusion.py could not build at 5112bb43 (fixture read the removed engine_memory Stats::syscalls). Test-side one-line fix after the candidate was frozen; production sources and the candidate DLL unchanged.",
+  "result": "passed: hook 64 checks 0 failures, gpu 89 checks, device calls execute=33 lens_draw=5",
+  "run_by": "orchestrator under wine_lock, bottle X3"
+ }
+}
