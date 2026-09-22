@@ -373,7 +373,7 @@ fixtures green on its own.
    **3,849 lines deleted, 132 re-added (net 3,717)**, 74 files outside `docs/`, including a
    one-line tool-source digest refresh in the 19 bloom and stored-fog program
    records that hash `generate_rigid_motion_pixel.py` (bytecode unchanged).
-   Wine fixtures (temporal-pass, fog, sun-shadow-apply) are pending.
+   Wine fixtures run 2026-09-23 on main 775dd59f, all PASS: run_temporal_pass.py (570 numerical checks, adjacent_max 0.000, pans strict == loose), fog_density_shader_run.py check 28/28 gates, run_motion_output.py sun-shadow-apply cases (checks 175 identical) and the full motion-output suite (190 cases PASS); results under verification/results/bottle-X3/.
 6. **Batch 6 — dead TAA resolve variants** (E1–E4), keeping the screen line
    mask, the age R32F target pair and every far/thin/box program. Check:
    `run_temporal_pass.py` gates, `test_taa_image_defaults.py`,

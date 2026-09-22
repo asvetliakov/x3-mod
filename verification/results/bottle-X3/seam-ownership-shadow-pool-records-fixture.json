@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "verification/probe/build/motion_output_fixture.exe": "f935be3b00052e59b3448365ec3cc3a4441e80d32fa9432f851ec685c560be56",
-  "verification/probe/build/motion-output-seam/d3d9.dll": "ba6e7aec1707e0d526d3edf1cfe9b7a464ee4c4544970da1ea549ae34b56f19d",
-  "build/d3d9.dll": "c028798dc421b9d70778e22921aff361bc7f25b5315bb0d5395c61ab4d46f6b2"
+  "verification/probe/build/motion_output_fixture.exe": "d77f6a249c02852c27f4c0fab8e77a42a81e3f9796bdf39109d8a9605835254c",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "c7f0f543fb9287916cde5b6aafce2461c50b6086e1d3cb71b6e8a90d8dfe369d",
+  "build/d3d9.dll": "cd42aff372d3b9ce9adc1518177afdcceda30f327e2b8016355db45a7cd69bf9"
  },
  "script": "records",
  "store": 0,
@@ -37,7 +37,17 @@
      0.0,
      0.0
     ],
-    "select_us": 372.6
+    "select_us": 414.2,
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 1,
+    "flip_reset": 1
    },
    "draws": [
     1,
@@ -59,7 +69,17 @@
      0.0,
      0.02977
     ],
-    "select_us": 70.2
+    "select_us": 74.5,
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 1,
+    "flip_reset": 0
    },
    "draws": [
     1,
@@ -81,7 +101,17 @@
      0.0,
      0.02977
     ],
-    "select_us": 75.9
+    "select_us": 76.2,
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 1,
+    "flip_reset": 0
    },
    "draws": [
     1,
@@ -103,7 +133,17 @@
      0.0,
      0.02977
     ],
-    "select_us": 71.3
+    "select_us": 77.5,
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 1,
+    "flip_reset": 0
    },
    "draws": [
     1,
@@ -125,7 +165,17 @@
      0.0,
      0.02977
     ],
-    "select_us": 71.8
+    "select_us": 73.3,
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 1,
+    "flip_reset": 0
    },
    "draws": [
     1,
@@ -147,7 +197,17 @@
      0.0,
      0.02977
     ],
-    "select_us": 71.5
+    "select_us": 75.6,
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 1,
+    "flip_reset": 0
    },
    "draws": [
     1,
@@ -163,18 +223,18 @@
  },
  "us": {
   "frames": 6,
-  "min": 51.8,
-  "median": 2583.7,
-  "max": 5999.3
+  "min": 53.8,
+  "median": 2099.65,
+  "max": 6492.6
  },
  "dropped_min_size1": 0.02977,
  "select_us": {
-  "median": 71.8,
-  "max": 372.6
+  "median": 76.2,
+  "max": 414.2
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-records-20260918-023139-128582",
- "trace_sha256": "f49125b5506ef489a336d78b6d4db8ef24c69938d5b95c7e312be03442f075fc",
- "dll_sha256": "ba6e7aec1707e0d526d3edf1cfe9b7a464ee4c4544970da1ea549ae34b56f19d",
- "exe_sha256": "f935be3b00052e59b3448365ec3cc3a4441e80d32fa9432f851ec685c560be56"
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-records-20260923-000245-997469",
+ "trace_sha256": "f4713b4aac22f482d072792926a2f22359e3f8bf02afdb88e2b9828ef7423e21",
+ "dll_sha256": "c7f0f543fb9287916cde5b6aafce2461c50b6086e1d3cb71b6e8a90d8dfe369d",
+ "exe_sha256": "d77f6a249c02852c27f4c0fab8e77a42a81e3f9796bdf39109d8a9605835254c"
 }

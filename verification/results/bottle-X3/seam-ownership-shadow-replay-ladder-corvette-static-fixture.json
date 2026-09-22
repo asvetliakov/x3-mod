@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "verification/probe/build/motion_output_fixture.exe": "79ec2cb1f03355b0e0081446181ac598c26cd3aae0deb303d377e379ae8ee027",
-  "verification/probe/build/motion-output-seam/d3d9.dll": "63369a260a6c7a7fe919327920172a593b3ec788fcc0412998ce03b2b49a69fc",
-  "build/d3d9.dll": "ee098373f6715bd5119dbd40e099b0936b99cec602f2bbdb66cf7b82f2e453af"
+  "verification/probe/build/motion_output_fixture.exe": "d77f6a249c02852c27f4c0fab8e77a42a81e3f9796bdf39109d8a9605835254c",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "c7f0f543fb9287916cde5b6aafce2461c50b6086e1d3cb71b6e8a90d8dfe369d",
+  "build/d3d9.dll": "cd42aff372d3b9ce9adc1518177afdcceda30f327e2b8016355db45a7cd69bf9"
  },
  "checks": 373,
  "depth": true,
@@ -205,15 +205,15 @@
  "frames": 8,
  "us": {
   "frames": 5,
-  "min": 87.9,
-  "median": 147.3,
-  "max": 2848.3
+  "min": 48.1,
+  "median": 79.3,
+  "max": 2215.5
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-ownership-shadow-replay-ladder-corvette-static-20260922-192548-149329",
- "trace_sha256": "6fdcdbfa884f356d55847ab66967e2f6f3c66b4ccbbcbf4dc442646db2c76578",
- "dll_sha256": "63369a260a6c7a7fe919327920172a593b3ec788fcc0412998ce03b2b49a69fc",
- "exe_sha256": "79ec2cb1f03355b0e0081446181ac598c26cd3aae0deb303d377e379ae8ee027",
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-replay-ladder-corvette-static-20260923-000151-619042",
+ "trace_sha256": "81d8b7f7d6e7b0ca2c9e6b5995ff3422beae938d5646698a44cde6d537cb6ecb",
+ "dll_sha256": "c7f0f543fb9287916cde5b6aafce2461c50b6086e1d3cb71b6e8a90d8dfe369d",
+ "exe_sha256": "d77f6a249c02852c27f4c0fab8e77a42a81e3f9796bdf39109d8a9605835254c",
  "map": {
   "max_depth_error": 6.156232292831021e-07,
   "covered_texels": 26723

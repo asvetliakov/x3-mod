@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "verification/probe/build/motion_output_fixture.exe": "f935be3b00052e59b3448365ec3cc3a4441e80d32fa9432f851ec685c560be56",
-  "verification/probe/build/motion-output-seam/d3d9.dll": "ba6e7aec1707e0d526d3edf1cfe9b7a464ee4c4544970da1ea549ae34b56f19d",
-  "build/d3d9.dll": "c028798dc421b9d70778e22921aff361bc7f25b5315bb0d5395c61ab4d46f6b2"
+  "verification/probe/build/motion_output_fixture.exe": "d77f6a249c02852c27f4c0fab8e77a42a81e3f9796bdf39109d8a9605835254c",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "c7f0f543fb9287916cde5b6aafce2461c50b6086e1d3cb71b6e8a90d8dfe369d",
+  "build/d3d9.dll": "cd42aff372d3b9ce9adc1518177afdcceda30f327e2b8016355db45a7cd69bf9"
  },
  "script": "static",
  "store": 0,
@@ -48,7 +48,17 @@
     "classified": {
      "class_store": 0,
      "class_ring": 0
-    }
+    },
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 1
    },
    "draws": [
     4,
@@ -81,7 +91,17 @@
     "classified": {
      "class_store": 0,
      "class_ring": 4
-    }
+    },
+    "flip": [
+     0,
+     3
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
    },
    "draws": [
     4,
@@ -114,7 +134,17 @@
     "classified": {
      "class_store": 0,
      "class_ring": 4
-    }
+    },
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
    },
    "draws": [
     4,
@@ -147,7 +177,17 @@
     "classified": {
      "class_store": 0,
      "class_ring": 4
-    }
+    },
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
    },
    "draws": [
     4,
@@ -180,7 +220,17 @@
     "classified": {
      "class_store": 0,
      "class_ring": 4
-    }
+    },
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
    },
    "draws": [
     4,
@@ -213,7 +263,17 @@
     "classified": {
      "class_store": 0,
      "class_ring": 4
-    }
+    },
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
    },
    "draws": [
     4,
@@ -246,7 +306,17 @@
     "classified": {
      "class_store": 0,
      "class_ring": 4
-    }
+    },
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
    },
    "draws": [
     4,
@@ -279,7 +349,17 @@
     "classified": {
      "class_store": 0,
      "class_ring": 4
-    }
+    },
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
    },
    "draws": [
     4,
@@ -312,7 +392,17 @@
     "classified": {
      "class_store": 0,
      "class_ring": 4
-    }
+    },
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
    },
    "draws": [
     4,
@@ -345,7 +435,17 @@
     "classified": {
      "class_store": 0,
      "class_ring": 4
-    }
+    },
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
    },
    "draws": [
     4,
@@ -378,7 +478,17 @@
     "classified": {
      "class_store": 0,
      "class_ring": 4
-    }
+    },
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
    },
    "draws": [
     4,
@@ -411,7 +521,17 @@
     "classified": {
      "class_store": 0,
      "class_ring": 4
-    }
+    },
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
    },
    "draws": [
     4,
@@ -444,7 +564,17 @@
     "classified": {
      "class_store": 0,
      "class_ring": 4
-    }
+    },
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
    },
    "draws": [
     4,
@@ -477,7 +607,17 @@
     "classified": {
      "class_store": 0,
      "class_ring": 4
-    }
+    },
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
    },
    "draws": [
     4,
@@ -493,9 +633,9 @@
  },
  "us": {
   "frames": 14,
-  "min": 37.1,
-  "median": 48.0,
-  "max": 1552.3
+  "min": 41.0,
+  "median": 49.7,
+  "max": 1773.5
  },
  "classified": {
   "class_store": 0,
@@ -511,8 +651,8 @@
  ],
  "large_min": 100.0,
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-static-off-20260918-023122-176089",
- "trace_sha256": "1f5524c1560ab0a1760674a1c0e7c50f5cd0e2976692ceae17056673cc916891",
- "dll_sha256": "ba6e7aec1707e0d526d3edf1cfe9b7a464ee4c4544970da1ea549ae34b56f19d",
- "exe_sha256": "f935be3b00052e59b3448365ec3cc3a4441e80d32fa9432f851ec685c560be56"
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-static-off-20260923-000219-797544",
+ "trace_sha256": "547724afe2bbbc40656d17cfe79169968437df47bc1f0abd2b0d2eb40ec8ce9f",
+ "dll_sha256": "c7f0f543fb9287916cde5b6aafce2461c50b6086e1d3cb71b6e8a90d8dfe369d",
+ "exe_sha256": "d77f6a249c02852c27f4c0fab8e77a42a81e3f9796bdf39109d8a9605835254c"
 }

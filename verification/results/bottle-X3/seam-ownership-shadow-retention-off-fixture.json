@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "/private/tmp/x3-run67-candidate/binaries/motion_output_fixture.exe": "b4166e5b08fe0545d6d299cf999b968fd466b85502efcba9712d3db43f0b1f36",
-  "/private/tmp/x3-run67-candidate/binaries/motion-output-seam/d3d9.dll": "132031a0dd8e7ef0de66e3b184a4afdb92f518f42afa8498a931efa14d7422f8",
-  "/private/tmp/x3-run67-candidate/build/d3d9.dll": "621cad639d477fd4f9b8f9819068b04d28c2565a7655fb817aff2b4c9260313f"
+  "verification/probe/build/motion_output_fixture.exe": "d77f6a249c02852c27f4c0fab8e77a42a81e3f9796bdf39109d8a9605835254c",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "c7f0f543fb9287916cde5b6aafce2461c50b6086e1d3cb71b6e8a90d8dfe369d",
+  "build/d3d9.dll": "cd42aff372d3b9ce9adc1518177afdcceda30f327e2b8016355db45a7cd69bf9"
  },
  "mode": "off",
  "frames": 1535,
@@ -52,20 +52,20 @@
  },
  "us": {
   "frames": 1527,
-  "min": 19.2,
-  "median": 26.0,
-  "max": 1945.5,
+  "min": 19.7,
+  "median": 26.3,
+  "max": 2048.3,
   "bulk": {
    "frames": 5,
    "issues_median": 1450,
-   "us_median": 1675.4
+   "us_median": 1587.5
   }
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-ownership-shadow-retention-off-20260922-215145-181217",
- "trace_sha256": "d7d90c7f6e7df092f7feb6e422e8fba263f4a91cf2b2b4979f723b3e1714dd6c",
- "dll_sha256": "132031a0dd8e7ef0de66e3b184a4afdb92f518f42afa8498a931efa14d7422f8",
- "exe_sha256": "b4166e5b08fe0545d6d299cf999b968fd466b85502efcba9712d3db43f0b1f36",
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-retention-off-20260923-000208-735176",
+ "trace_sha256": "3fa4774233f4fad00195ce7bc5fb7e6b78fd10e6ccf80d072d0db8889be8b54d",
+ "dll_sha256": "c7f0f543fb9287916cde5b6aafce2461c50b6086e1d3cb71b6e8a90d8dfe369d",
+ "exe_sha256": "d77f6a249c02852c27f4c0fab8e77a42a81e3f9796bdf39109d8a9605835254c",
  "presented_identical_to": [
   "seam-ownership-shadow-retention-live",
   "seam-ownership-shadow-retention-census"
