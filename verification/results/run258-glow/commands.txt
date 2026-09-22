@@ -1,0 +1,9 @@
+# Run 69 B triage (2026-09-23), log /tmp/x3-bottleX3-run258/session-20260923-032555-708.log; P=../run257-pilot
+python3 $P/node_census.py <log> 6814 8516 > census_run258_out.txt
+python3 $P/ship_draws.py <log> <frame> 00004f72,00004f75,00004f76,000053b8 > ship_draws_run258_<frame>.txt
+python3 ship_textures.py <log> <frame> <models> > tex_run258_<frame>.txt   # copy of $P version, None-safe sort
+python3 stage_match.py tex_run258_6814.txt tex_run258_8516.txt > stage_match_6814_vs_8516.txt
+python3 $P/range_medians.py <log> 6500-6799 8200-8499 8524-8800 > range_medians_run258_out.txt
+python3 $P/burst_load.py <log> 6814 6815 8516 8517 > burst_load_run258_out.txt
+python3 body_diff.py $P/census_run257_out.txt 3615 census_run258_out.txt 6814 > body_diff_257_3615_vs_258_6814.txt  (and run255 3351)
+grep '^cull_census_frame' <log> -> 16 frames overflow=0; grep -o 'stale=[0-9]*' -> 11600x stale=0

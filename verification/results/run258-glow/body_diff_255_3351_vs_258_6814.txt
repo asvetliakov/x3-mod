@@ -1,0 +1,8 @@
+body  A(draws,alpha,nodes)  B(draws,alpha,nodes)  delta_draws
+00004f75 ships\argon\argon_M1                                                    [64, 8, 2] [10, 0, 2] -54
+0000552a ships\M7\Argon_m7m                                                      [37, 7, 1] [0, 0, 0] -37
+000053b8 Stations\others\military_outpost_middleb                                [68, 12, 2] [37, 7, 2] -31
+00004f76 ships\argon\argon_M2                                                    [32, 4, 1] [5, 0, 1] -27
+00004f72 ships\argon\argon_TL                                                    [31, 4, 1] [5, 0, 1] -26
+00000000 -                                                                       [8, 0, 1] [7, 0, 1] -1
+0000568e effects/menugfx/GUI/gui_master                                          [0, 0, 0] [1, 0, 1] 1

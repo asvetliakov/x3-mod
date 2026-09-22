@@ -1683,3 +1683,22 @@ Run 69 A (`/tmp/x3-bottleX3-run257`, Run68 DLL, the run255 options, pilot overla
   ~298 draws ran 20–21 ms against run255's 24–25 ms at 447 draws, consistent with the
   27 µs/draw slope (inferred). `footprint_refused4=19` is a value, not a count (mean 15.9 vs
   14.6 per frame). Rule: no host suite or build while the game is up.
+
+## Run 258: glow collapse in flight (2026-09-23)
+
+Run 69 B (`/tmp/x3-bottleX3-run258`, Run68 DLL, overlay `def76feb…` with the glow collapse,
+pad placement, 50 / 100 px). Outputs: `verification/results/run258-glow/`. All measured.
+The user: "I see glow now"; asks for 80 / 150.
+
+- Fighter view (f6814): 272 draws at 18 ms p50 uncontended (run257 297 / 20 ms, run255
+  447 / 24 ms; Argon_m7m with 38 draws left the view, the pilot bodies gained 13). Pilot nodes
+  M2 (s 30), M1 ×2 (s 25, 21), TL (s 24) at LOD 4 with 5 draws each; outpost (s 96) at LOD 3
+  with 3 draws, its lattice draw alpha-tested. The glow draws bind the same texture sets as
+  the same materials' LOD 0 draws (M2 5/5, M1 9/10 matched by `stage_match.py`), on the
+  DEFAULT-technique shader `8759c7838bbc86c2` with the stages shifted down by one (light
+  map on s2), so the DEFAULT technique samples the light map. Timeline flat 16.8–20.8 ms.
+- Burst 2 had the M2 at s 183 and the M1 at 63, both LOD 0 (32 draws), so only burst 1 tests
+  the overlay. No census overflow, no stale rows, no device rows.
+- **Installed next (compact placement, 80 / 150):** the coarse record is LOD 1, the pad LOD 2,
+  the original records 1–3 dropped (unreachable below T_pad); the 0x100000 flag is never set,
+  so the bump-mapped technique applies. Run 69 C.

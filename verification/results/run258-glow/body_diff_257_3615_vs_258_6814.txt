@@ -1,0 +1,6 @@
+body  A(draws,alpha,nodes)  B(draws,alpha,nodes)  delta_draws
+0000552a ships\M7\Argon_m7m                                                      [38, 8, 1] [0, 0, 0] -38
+000053b8 Stations\others\military_outpost_middleb                                [36, 7, 2] [37, 7, 2] 1
+00004f76 ships\argon\argon_M2                                                    [2, 0, 1] [5, 0, 1] 3
+00004f72 ships\argon\argon_TL                                                    [2, 0, 1] [5, 0, 1] 3
+00004f75 ships\argon\argon_M1                                                    [4, 0, 2] [10, 0, 2] 6
