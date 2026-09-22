@@ -1121,3 +1121,123 @@ behavior. The [lattice decision](taa-lattice-crawl.md#25-next-flight-state-decis
 retains the next discriminating observation. Detailed alternatives and source
 mapping remain local in `/tmp/x3-next-flight-engine-lattice-audit.md`; this audit
 made no production change and ran no build, Wine command or game.
+
+## Run 238: frame time near the end (2026-09-22)
+
+Session `/tmp/x3-bottleX3-run238/session-20260922-172032-212.log` (Run65
+2d11aac4, session C: fog L2 1.0x, `--volumetric-fog-timing --telemetry`, TAA,
+HDR, shadows, fog cards). No `--frame-timing`/`--frame-phases`; the log has no
+per-draw GPU cost fields (`gate_us`, `route_draw_us` etc. are all 0.0 because
+`per_draw=0`). Built a `frame_end` (`dt_ms`, `qpc`) time series: 6370 rows over
+~125 s wall.
+
+10 s-window p50/mean dt_ms is flat and healthy (~10-18 ms, i.e. 55-100 fps)
+except one single-frame catastrophic stall at wall time t=123.27 s:
+`frame_end frame=6224 dt_ms=383`, `frame_end frame=6225 dt_ms=6079`,
+`frame_end frame=6226 dt_ms=73`. Frames 6100-6223 (pre) mean 15.8 ms max
+23 ms; frames 6227-6369 (post) mean 11.0 ms max 133 ms. This one frame, not a
+sustained region, is the entire "low FPS near the end" the user saw.
+
+Cause, from evidence co-timed with frame 6225: `volumetric_fog_sector
+frame=6225 reason=no_cockpit sector=00000000 index=-1` and
+`volumetric_fog_cache frame=6225 event=epoch reason=sample_gap` (a fog-cache
+sector-key jump), plus a burst of `loading_metric` rows inside that interval:
+`D3DXCreateMesh` counts 59/333/175/189/230, `D3DXCreateTextureFromFileInMemoryEx`
+up to 62-86 MB per burst, `GenerateAdjacency`/`OptimizeInplace` on hundreds of
+meshes, hundreds of failing `FindFirstFileA` probes. `motion_output_frame`
+frames 6224-6227 show `hook_state=9 hook_outside_scene=1 camera_valid=0`
+(engine outside the render scene during this span). This is synchronous
+mesh/texture streaming for a sector/geometry change, not fog or shadow render
+cost: `sun_shadow_lane_frame`/`shadow_retention_frame` around frame 6223 show
+ordinary counts (`us=368.9`, `receiver_draws=277`), and no per-frame field
+scales with view direction in this log (camera_rotation_deg is 0 or small
+throughout, since per-frame TAA is skipped during the stall).
+
+Open issue: this log alone cannot attribute the 6.08 s stall to a specific
+loading call (only bucketed per-second `loading_metric` sums exist, not a
+per-call timestamp inside the stalled frame) nor confirm whether the "viewing
+station/sector at an angle" framing in the report is this same event or a
+separate, uncaptured slow interval. A repeat run should add `--frame-timing
+--frame-phases --loading-intervals` (already available in `tools/manage.py`)
+to get per-frame engine-phase splits and per-call loading intervals so a
+single-frame streaming stall can be distinguished from a genuine per-frame
+render-cost region tied to view angle.
+
+## Run 239: frame time with the split (2026-09-22)
+
+Session `/tmp/x3-bottleX3-run239/session-20260922-180304-212.log` (Run65
+2d11aac4, session C: fog L2, TAA, HDR, shadows with retention, fog cards,
+`--frame-timing --frame-phases --fps-overlay`). `frame_end`: 11449 rows over
+204.8 s wall; `frame_timing`/`frame_phases`: 38 windows (300-frame stride).
+
+**10 s-window `frame_end` p50/p95** (session-wide median dt=14.0 ms). Only
+the startup window (0-10 s, n=4, includes the 2.3 s/1.0 s init frames)
+formally exceeds 1.5x median. The user-reported region is a *sustained*
+climb that never crosses the 1.5x-of-global-median bar but is a clear local
+plateau: windows 40-100 s hold p50 10-12 ms (~85-100 fps); windows 150-200 s
+hold p50 19 ms (~53 fps), 1.6-1.9x the 40-100 s baseline.
+
+**300-frame `frame_timing`/`frame_phases` windows, control vs plateau**
+(`frame_timing`/`frame_phases frame=3000` vs `frame=10200`, both `slow=0-1`,
+no capture in either window):
+
+| Field | frame=3000 (~100 fps) | frame=10200 (~52 fps) | ratio |
+|---|---|---|---|
+| `dt_p50_us` | 9981 | 19226 | 1.93x |
+| `draws_p50` | 72 (`frame_end` draws=77) | 368 | 4.8-5.1x |
+| `pre_render_p50_us` | 3750 | 2661 | 0.71x |
+| `views_p50_us` | 5735 | 15727 | 2.74x |
+| — `view_setup_p50_us` | 551 | 1302 | 2.36x |
+| — `view_submit_p50_us` | 2201 | 10753 | **4.89x** |
+| — views residual (particles/TAA/shadow-replay/sun/env-map) | 2983 | 3672 | 1.23x |
+| `scene_end_p50_us`+`present_p50_us` | 139 | 182 | 1.31x |
+| `draw_p50_us` (per-draw proxy) | 555 | 2990 | 5.4x |
+| `draw_native_p50_us` | 208 | 1167 | 5.6x |
+| `state_calls_p50` | 3739 | 23043 | 6.2x |
+
+`view_submit`'s +8552 us carries 92 % of the +9245 us `dt` delta. `pre_render`
+(script/AI/sim/proxy post-Present) is *lower* at the slow window, ruling out
+non-render CPU cost. This is engine draw/state submission scaling with draw
+count, not a GPU-bound present (present_p50_us stays 5-6 us both windows).
+
+**Fog** (`volumetric_fog_frame`/`volumetric_fog_cards`, frame=3000 vs 10200):
+`cpu_us` 718.3/581.0/544.3 (control) vs 684.6/598.4/634.3 (plateau) — flat,
+~0.6-0.7 ms either way, 3-7 % of `dt`. Matches the user's report that toggling
+fog did not change the fps: fog is not the cost carrier here.
+
+**Shadow lane / retention** (`sun_shadow_lane_frame`/`shadow_retention_frame`,
+frame=3000 vs 10200): `receiver_draws` 45→296 (6.6x), `cutout_opaque_routed`
+6→44, `stamped_prims` 0→1052; `shadow_retention_frame` `records` 292→352,
+`live_c4` (farthest-cascade retained live casters) **39→241 (6.2x)**, while
+retention's own walk cost is *not* the driver (`us` 370.5→186.1, `walk_us`
+369.6→185.4 — cheaper at the plateau, since fewer `records_unseen` are
+rescanned: 253→111). The 6x growth is in cascade-classified live casters that
+get drawn every frame (receiver_draws, part of `view_submit`), not in the
+bookkeeping walk. `camera_rotation_deg` is near 0 both windows (0.0931 vs
+0.0000): this is a static-camera plateau, not a per-frame pan cost.
+
+**Streaming stalls, separated from the plateau**: nine single frames with
+`dt_ms>200` in the whole log: frame 4 (7112 ms, startup load), frame 462
+(17542 ms, `volumetric_fog_sector reason=bluewell` sector entry), frame 495
+(559 ms), frames 10998-11005 (635-720 ms each, exactly the 8 `capture_event`
+frames — an F8 burst inside the plateau, draws=368 there same as neighbors,
+so the burst adds ~0.6-0.7 s of capture I/O on top of the plateau but is not
+its cause), frame 11339 (438 ms) and frame 11340 (6433 ms,
+`volumetric_fog_cache event=epoch reason=sample_gap`, sector exit). These are
+discrete streaming events; the 150-200 s plateau itself has no `loading_metric`
+correlate and no dt outlier — it is a genuine steady per-frame cost region.
+
+**Conclusion**: yes, an angle/position-dependent *sustained* cost exists
+(~1.9x dt, 50 vs 100 fps), and it is not a stutter and not fog. It is carried
+by `view_submit` (draw + state submission), driven by a ~5-6x jump in per-frame
+draw calls and state calls, itself tracking a 6.2x jump in shadow-retention's
+farthest-cascade (`live_c4`) live caster count and shadow-lane
+`receiver_draws` — i.e. more casters/receivers submitted into the shadow
+cascades from this position than from the control position, independent of
+what is visible on screen. This log cannot show whether those `live_c4`
+casters are on-screen, occluded, or purely off-screen-but-in-frustum-bounds;
+`shadow_retention_frame` has no per-caster screen-visibility field. A repeat
+run with a per-cascade draw-count breakdown (main pass vs each shadow cascade
+pass, not only the combined `receiver_draws`) and a caster bounding-box dump
+at this stand would confirm whether the extra draws are off-screen casters
+feeding distant cascades.

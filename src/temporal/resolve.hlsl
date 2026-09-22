@@ -32,7 +32,16 @@ float4 rejection : register(c6); // absolute device-depth tolerance, relative to
 // depth is the -1 sentinel (no routed opaque draw wrote it) is current-only;
 // 2 such a pixel is reprojected through the camera path with depth = far (1),
 // for a route that supplies a valid clip_to_previous for the background.
-float4 options : register(c7); // motion enabled, reactive enabled, snapshot mode (resolve_snapshot.hlsl only; 0 here), depth-sentinel policy
+// options.z is the strict sky history term (0 off, 3 on; policy 2 only;
+// docs/architecture/seta-motion.md): an unrouted far-plane pixel on its own path
+// (motion alpha not 1, no closer neighbour won the dilation) accepts sentinel
+// history taps only; a routed pixel (alpha 1, e.g. a fade-band draw with RT2
+// masked over sky) keeps the test below whatever its depth target. Without
+// it the relative tolerance (c6.y, 0.02 of depth 1) proves any geometry beyond
+// device depth 0.98 "at or behind" the far plane, so the hull of a station that
+// moved away this frame (depth 0.9997 under SETA, 5-30 px/frame) is accepted as
+// the sky's history. The mask and snapshot programs upload their own c7.z.
+float4 options : register(c7); // motion enabled, reactive enabled, strict sky term (the resolve) / mode (mask and snapshot programs), depth-sentinel policy
 // c22.x is k of the reversible luminance weighting (c8..c21 are the AgX
 // block of the HDR write-back, left clear). Every colour that enters the
 // temporal statistics -- the current pixel, its 3x3 neighbourhood and every
@@ -270,7 +279,9 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
         [loop] for (int kx = -1; kx <= 1; ++kx) {
             if (kx != 0 || ky != 0) {
                 float neighbor = fetch(currentDepth, uv + float2(kx, ky) * sizeJitter.xy).r;
-                if (validDepth(neighbor) && neighbor < nearest) { nearest = neighbor; dilate = float2(kx, ky); }
+                // neighbor >= 0 && neighbor < nearest is validDepth(neighbor) && neighbor < nearest here:
+                // nearest starts at the validated centre depth (<= 1) and only falls, and a NaN fails >=.
+                if (neighbor >= 0 && neighbor < nearest) { nearest = neighbor; dilate = float2(kx, ky); }
 #ifdef X3M_SENTINEL_SOFT_CLIP
                 if (validDepth(neighbor)) sawValid = true;
                 if (neighbor <= -0.5 && neighbor >= -1e30) sawSentinel = true;
@@ -302,6 +313,11 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     expectedDepth = previousClip.z / max(previousClip.w, rejection.w);
     if (options.x > 0.5) {
         float4 motion = fetch(motionOverride, dilatedUV);
+        // A routed correspondence (alpha 1) is never the strict sky path: nearest
+        // drops to 0 for it and stays for alpha 0 / -1 (sge + mul; a NaN alpha
+        // gives 0 and rejects below anyway). nearest's only readers after this
+        // point are the fill-pair test below and the strict term.
+        nearest *= step(motion.w, 0.5);
         if (motion.w == 1) {
             // RG is the producer's previous unjittered texture-center UV of the
             // content at this jittered sample; add the current jitter only.
@@ -316,7 +332,9 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
             // the camera path. A dilated neighbor with alpha -1 is a routed
             // draw without history (mode 0) and still rejects; any other
             // alpha rejects as before. (>= -1 && <= -1: exactly -1, NaN-safe.)
-            if (!(farPlane && all(dilate == 0) && motion.w >= -1 && motion.w <= -1)) valid = false;
+            // nearest >= 1 is all(dilate == 0) here: a far-plane pixel starts at
+            // 1, only a neighbour below 1 lowers it, and alpha -1 left it alone.
+            if (!(farPlane && nearest >= 1 && motion.w >= -1 && motion.w <= -1)) valid = false;
         }
     }
     // The dilated pixel's velocity, applied to this pixel.
@@ -348,6 +366,18 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // which a NaN fails (the compiler folds v == v to true and emits < and >
     // as negated forms that a NaN passes), so it fails closed.
     float tolerance = max(rejection.x, rejection.y * abs(expectedDepth));
+    // Strict sky history (c7.z = 3, else 0): an unrouted pixel (alpha not 1)
+    // whose 3x3 holds no depth below 1 has nearest == 1 (the far-plane pixel on
+    // its own path; a valid neighbour below 1 would have won the dilation) and
+    // no silhouette to accumulate: geometry in its history was an occluder that
+    // moved away, whatever its depth. The term lifts the threshold above every
+    // valid depth so only sentinel taps prove (a history depth of exactly 1.0
+    // that is not the sentinel rejects too). A dilated far-plane pixel
+    // (nearest < 1), a routed pixel (alpha 1: a fade-band draw over sky keeps
+    // its own history, its depth target being motion.z) and every geometry
+    // pixel keep the test as is; a routed pixel rasterised at exactly 1.0 is
+    // therefore never strict. Slot budget: see docs/architecture/seta-motion.md.
+    tolerance -= step(1, nearest) * options.z;
     float considered = 0, proven = 0;
     [loop] for (int ty = 0; ty < 2; ++ty) {
         [loop] for (int tx = 0; tx < 2; ++tx) {
@@ -448,7 +478,8 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     float4 stabilise = fetch(lineMask, uv);
     float soft = stabilise.b * flicker.x;
 #else
-    float soft = sawValid && sawSentinel ? flicker.x * (1 - saturate((speed - 2) * 0.5)) : 0;
+    // saturate(2 - 0.5 speed) is 1 - saturate((speed - 2) * 0.5) for the finite speed (one mad_sat).
+    float soft = sawValid && sawSentinel ? flicker.x * saturate(2 - 0.5 * speed) : 0;
 #endif
 #ifdef X3M_CAMERA_GATE
     // The strength the camera term added (b - a) takes the history clipped to the current 7x7 box; the screen gate's own share (a) the unclipped one.

@@ -417,7 +417,8 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     x3::temporal::ResolveConstants constants{};std::copy(in.rejection,in.rejection+4,constants.rejection);
     if(!x3::temporal::prepare(constants,history_,in.clip_to_previous,in.current_jitter[0],in.current_jitter[1],
         in.previous_jitter[0],in.previous_jitter[1],in.weight,in.motion_policy==MotionPolicy::PerPixel,
-        mask,sentinel,sentinel&&in.sentinel_camera,in.luminance_k,in.current_filter))return fail(E_INVALIDARG);
+        mask,sentinel,sentinel&&in.sentinel_camera,in.luminance_k,in.current_filter,in.sentinel_strict_sky))return fail(E_INVALIDARG);
+    const float strict_sky_term=constants.options[2]; // the resolve's c7.z; the snapshot and mask draws below set their own mode and put it back
     constants.luminance[2]=in.alpha_history?1.f:0.f; // read by the flicker variants only
     constants.luminance[3]=lined?in.line_filter:far_on?in.far_filter:0.f; // A of the masked filter: line-filter / far variants only
     float flicker_constants[4]{};x3::temporal::prepare_flicker(flicker_constants,in.thin_clip,in.adaptive_weight,in.adaptive_lo,in.adaptive_hi);
@@ -501,7 +502,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
            step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,4,constants.size_jitter,1))&&
            step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,7,constants.options,1))&&
            step(call<SetTextureFn>(SetTexture)(d,5,in.reactive)))hr=quad(in.width,in.height);
-        constants.options[2]=0;
+        constants.options[2]=strict_sky_term;
     }
     // Line filter: the mask of the current depth (now complete in depths_[next]),
     // line-like pixels then their 3x3 maximum, bound at s8 for the resolve
@@ -539,7 +540,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
                step(call<SetTextureFn>(SetTexture)(d,4,in.motion_policy==MotionPolicy::PerPixel?in.motion:nullptr))&&
                step(call<SetTextureFn>(SetTexture)(d,1,source)))hr=quad(in.width,in.height);
         }
-        constants.options[2]=0;constants.options[3]=resolve_policy;
+        constants.options[2]=strict_sky_term;constants.options[3]=resolve_policy;
         if(SUCCEEDED(hr)&&step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_MINFILTER,D3DTEXF_POINT))&&step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_MAGFILTER,D3DTEXF_POINT))&&
            step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_MIPFILTER,D3DTEXF_NONE))&&step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_ADDRESSU,D3DTADDRESS_CLAMP))&&
            step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_ADDRESSV,D3DTADDRESS_CLAMP))&&step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_SRGBTEXTURE,FALSE))&&

@@ -10,8 +10,11 @@ struct ResolveConstants {
     float history[4]{};
     // Depth tolerance max(absolute, relative * |expected|), HDR limit, minimum W.
     float rejection[4]{0.0001f, 0.02f, 65000.0f, 0.000001f};
-    // motion enabled, reactive masks enabled, mask-snapshot mode, depth-sentinel
-    // policy (0 off, 1 sentinel pixels current-only, 2 camera path at the far plane).
+    // motion enabled, reactive masks enabled, strict sky history term (0 off, 3
+    // on: under policy 2 a far-plane pixel on its own path accepts sentinel
+    // history taps only, docs/architecture/seta-motion.md; the mask and snapshot
+    // programs upload their own mode in this lane), depth-sentinel policy (0 off,
+    // 1 sentinel pixels current-only, 2 camera path at the far plane).
     float options[4]{};
     // c22 (kLuminanceRegister; c8..c21 belong to the AgX block, agx.h): x is k
     // of the reversible luminance weighting w = 1 / (1 + k * luma) the resolve
@@ -101,6 +104,9 @@ struct HistoryState {
 // sentinel_camera (with depth_sentinel_reactive) reprojects sentinel pixels
 // through the camera matrix at the far plane instead of keeping them
 // current-only; only valid when matrix_rows is a real camera reprojection.
+// sentinel_strict_sky (with sentinel_camera) uploads the strict sky term c7.z = 3:
+// geometry history never proves a far-plane pixel whose 3x3 holds no geometry;
+// ignored otherwise.
 // luminance_k is the weighting constant (c22.x): finite, 0 <= k <= 65504.
 // current_filter is A of the filtered current sample (c22.y): finite, 0..4.
 inline bool prepare(ResolveConstants& out, const HistoryState& state,
@@ -108,7 +114,7 @@ inline bool prepare(ResolveConstants& out, const HistoryState& state,
                     float previous_x, float previous_y, float weight,
                     bool motion_enabled, bool reactive_enabled=false,
                     bool depth_sentinel_reactive=false, bool sentinel_camera=false,
-                    float luminance_k=0.f, float current_filter=0.f) noexcept {
+                    float luminance_k=0.f, float current_filter=0.f, bool sentinel_strict_sky=false) noexcept {
     if(!matrix_rows || !state.width || !state.height || !std::isfinite(weight)
         || weight<0 || weight>1 || !std::isfinite(current_x) || !std::isfinite(current_y)
         || !std::isfinite(previous_x) || !std::isfinite(previous_y)
@@ -128,7 +134,7 @@ inline bool prepare(ResolveConstants& out, const HistoryState& state,
     out.history[2]=weight; out.history[3]=state.valid?1.f:0.f;
     out.options[0]=motion_enabled?1.f:0.f;
     out.options[1]=reactive_enabled?1.f:0.f;
-    out.options[2]=0;
+    out.options[2]=depth_sentinel_reactive&&sentinel_camera&&sentinel_strict_sky?3.f:0.f;
     out.options[3]=depth_sentinel_reactive?(sentinel_camera?2.f:1.f):0.f;
     out.luminance[0]=luminance_k; out.luminance[1]=current_filter; out.luminance[2]=out.luminance[3]=0.f;
     return true;

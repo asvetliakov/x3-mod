@@ -688,7 +688,7 @@ void stationary_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder
 // unjittered texture-center UV of the content at the jittered sample
 // (p + 0.5 - j - v)/S, the expected depth and alpha 1 (the background's fill
 // alpha is a parameter: -1 unknown as the route fills today, 0 camera path).
-struct EdgeObject { double l,t,r,b; float value,depth; double vx=0,vy=0; bool scroll=false; double u0=0; bool colourOnly=false; }; // colourOnly: blended without depth and unrouted (no motion, no depth write)
+struct EdgeObject { double l,t,r,b; float value,depth; double vx=0,vy=0; bool scroll=false; double u0=0; bool colourOnly=false; bool noDepth=false; }; // colourOnly: blended without depth and unrouted (no motion, no depth write); noDepth: the route's fade-band draw (RT1 written with alpha 1 and its depth target, RT2 masked: the depth stays the sentinel)
 struct EdgeBackground { float value,depth,alpha; };
 struct EdgeScene {
     static constexpr UINT S=32,P=16;
@@ -737,7 +737,7 @@ struct EdgeScene {
         check("edge motion End",d->EndScene());
         target(depthSurface.p);check("edge depth Begin",d->BeginScene());check("edge depth bind",d->SetPixelShader(flat.p));
         constant(bg.depth,0,0,0);quad(0,0,S,S,0,0);
-        for(auto& o:objects){if(o.colourOnly)continue;constant(o.depth,0,0,0);quad(o.l,o.t,o.r,o.b,jx,jy);}
+        for(auto& o:objects){if(o.colourOnly||o.noDepth)continue;constant(o.depth,0,0,0);quad(o.l,o.t,o.r,o.b,jx,jy);}
         check("edge depth End",d->EndScene());
     }
     std::vector<float> read(IDirect3DTexture9* texture){D3DSURFACE_DESC desc{};check("edge level desc",texture->GetLevelDesc(0,&desc));Com<IDirect3DSurface9> level,sys;check("edge level",texture->GetSurfaceLevel(0,&level.p));check("edge readback surface",d->CreateOffscreenPlainSurface(S,S,desc.Format,D3DPOOL_SYSTEMMEM,&sys.p,nullptr));check("edge validation-only readback",d->GetRenderTargetData(level.p,sys.p));D3DLOCKED_RECT lock{};check("edge lock",sys->LockRect(&lock,nullptr,D3DLOCK_READONLY));std::vector<float> out(S*S*4);
@@ -746,19 +746,20 @@ struct EdgeScene {
             out[(y*S+x)*4+c]=v;}
         check("edge unlock",sys->UnlockRect());return out;}
 };
-struct EdgeRun { std::vector<std::vector<float>> current,output,depth; };
-template<class Objects> EdgeRun edge_sequence(EdgeScene& s,const DWORD* decoder,const DWORD* resolver,Objects objects,const EdgeBackground& bg,unsigned frames,bool sentinelCamera,bool perPixel,const char* label){
+struct EdgeRun { std::vector<std::vector<float>> current,output,depth,motion; std::vector<double> jx,jy; };
+// strictSky: FrameInputs::sentinel_strict_sky (the resolve's strict sky term c7.z with the camera path; the sweep case below).
+template<class Objects> EdgeRun edge_sequence(EdgeScene& s,const DWORD* decoder,const DWORD* resolver,Objects objects,const EdgeBackground& bg,unsigned frames,bool sentinelCamera,bool perPixel,const char* label,bool strictSky=false){
     constexpr UINT S=EdgeScene::S,P=EdgeScene::P;TemporalPass pass;check("edge initialize",pass.initialize(s.d,decoder,resolver));EdgeRun run;
     for(unsigned n=0;n<frames;++n){
         const unsigned index=n%P+1;const double jx=halton(index,2)-.5,jy=halton(index,3)-.5;const auto scene=objects(n);
-        s.render(scene,bg,jx,jy);run.current.push_back(s.read(s.color.p));run.depth.push_back(s.read(s.depth32.p));
-        if(n==0){ // The motion target follows the producer contract: for every pixel the first object covers, RG = (p + 0.5 - j - v)/S, B = its depth, A = 1.
-            const auto m=s.read(s.motion.p);double worst=0;unsigned covered=0;
-            for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x)if(run.depth[0][(y*S+x)*4]==scene[0].depth){++covered;for(double e:{std::fabs(m[(y*S+x)*4]-(x+.5-jx-scene[0].vx)/S),std::fabs(m[(y*S+x)*4+1]-(y+.5-jy-scene[0].vy)/S),double(std::fabs(m[(y*S+x)*4+2]-scene[0].depth)),double(std::fabs(m[(y*S+x)*4+3]-1))})worst=std::max(worst,e);}
+        s.render(scene,bg,jx,jy);run.current.push_back(s.read(s.color.p));run.depth.push_back(s.read(s.depth32.p));run.motion.push_back(s.read(s.motion.p));run.jx.push_back(jx);run.jy.push_back(jy);
+        if(n==0){ // The motion target follows the producer contract: for every pixel the first routed object covers, RG = (p + 0.5 - j - v)/S, B = its depth, A = 1.
+            const auto& m=run.motion[0];double worst=0;unsigned covered=0;const EdgeObject* first=nullptr;for(auto& o:scene)if(!o.colourOnly){first=&o;break;}require(first!=nullptr,"edge scene has a routed object");
+            for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x)if(run.depth[0][(y*S+x)*4]==first->depth){++covered;for(double e:{std::fabs(m[(y*S+x)*4]-(x+.5-jx-first->vx)/S),std::fabs(m[(y*S+x)*4+1]-(y+.5-jy-first->vy)/S),double(std::fabs(m[(y*S+x)*4+2]-first->depth)),double(std::fabs(m[(y*S+x)*4+3]-1))})worst=std::max(worst,e);}
             ++numeric_checks;require(covered>0&&worst<=1e-6,"edge scene motion target equals the producer contract at every covered pixel");}
         FrameInputs in;in.color=s.color.p;in.current_depth=s.depth32.p;in.motion=perPixel?s.motion.p:nullptr;in.width=S;in.height=S;in.epoch=1;std::copy(identity,identity+16,in.clip_to_previous);
         in.current_jitter[0]=float(jx);in.current_jitter[1]=float(jy);in.weight=.9f;in.motion_policy=perPixel?MotionPolicy::PerPixel:MotionPolicy::KnownCameraOnly;
-        in.reactive_policy=ReactivePolicy::DerivedFromDepthSentinel;in.sentinel_camera=sentinelCamera;in.history_allowed=true;in.caller_queries_idle=true;in.caller_scene_open=true;
+        in.reactive_policy=ReactivePolicy::DerivedFromDepthSentinel;in.sentinel_camera=sentinelCamera;in.sentinel_strict_sky=strictSky;in.history_allowed=true;in.caller_queries_idle=true;in.caller_scene_open=true;
         Output out;check("edge Begin resolve",s.d->BeginScene());check(label,pass.run(in,&out));check("edge End resolve",s.d->EndScene());
         require(out.color&&pass.diagnostics().history_valid&&out.used_history==(n>0),"edge history follows the sequence");
         run.output.push_back(s.read(out.color));
@@ -883,6 +884,47 @@ void edge_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,const
     metric("scrolling wave: shader matches the Catmull-Rom CPU model",oracle,0,.01);
     metric("scrolling wave: period-8 amplitude of the output over the input (Catmull-Rom)",std::min(shader/input,1.),1,.1);
     metric("scrolling wave: Catmull-Rom keeps more amplitude than the previous bilinear filter",std::min(shader/input-bilinearModel/input,1.),1,.9);
+    // (d) SETA sweep (docs/architecture/seta-motion.md; run235): a black 8x8 square at device depth 0.9997 (a station a few
+    // km out) static for 8 frames, then +5 px/frame for 4 frames over a textured sky (the wave, colour only: no depth, no
+    // motion, the route's sentinel fill under it), the square's motion the exact displacement. Under policy 2 a trailing sky
+    // pixel reprojects onto its own previous position, where the square's depth 0.9997 >= 1 - 0.02 proves the black hull as
+    // its history; the strict sky history (c7.z = 3) accepts sentinel taps only there. Far from the square both are identical.
+    {const double sl2=2.37,st2=12.37;const unsigned moveFrom=8,frames=12;constexpr float squareDepth=.9997f;const double v=5;
+     auto sweep=[&](unsigned n){const double l=sl2+v*(n>=moveFrom?n-moveFrom+1:0);return std::vector<EdgeObject>{{0,0,S,S,0,-1.f,0,0,true,0,true},{l,st2,l+8,st2+8,0,squareDepth,n>=moveFrom?v:0.,0}};};
+     EdgeRun runs[2];const char* names[2]={"loose","strict"};
+     for(unsigned m=0;m<2;++m)runs[m]=edge_sequence(s,decoder,resolver,sweep,sentinelFill,frames,true,true,"seta sweep",m==1);
+     for(unsigned m=0;m<2;++m){const EdgeRun& run=runs[m];double trail=0,adjacent=0,motionError=0,farDiff=0;unsigned uncovered=0;
+        for(unsigned n=moveFrom;n<frames;++n){const double l=sl2+v*(n-moveFrom+1);
+            for(UINT y=1;y+1<S;++y)for(UINT x=1;x+1<S;++x){const std::size_t i=y*S+x;bool beside=false;for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx)beside|=px(run.depth[n],x+dx,y+dy)==squareDepth;
+                const bool sky=px(run.depth[n],x,y)==-1.f,wasSquare=px(run.depth[n-1],x,y)==squareDepth;
+                const double dev=std::fabs(px(run.output[n],x,y)-px(run.current[n],x,y));
+                if(sky&&wasSquare&&!beside){++uncovered;trail=std::max(trail,dev);}
+                else if(sky&&beside)adjacent=std::max(adjacent,dev);
+                if(px(run.depth[n],x,y)==squareDepth){const double dx=(x+.5-run.jx[n])-run.motion[n][i*4]*S,dy=(y+.5-run.jy[n])-run.motion[n][i*4+1]*S;motionError=std::max(motionError,std::max(std::fabs(dx-v),std::fabs(dy)));}
+                if(x+8<sl2||x>l+8+8)farDiff=std::max(farDiff,double(std::fabs(px(runs[0].output[n],x,y)-px(runs[1].output[n],x,y))));}}
+        std::printf("SETA_SWEEP mode=%s uncovered_px=%u trail_max=%.6f adjacent_max=%.6f motion_error_px=%.6f far_difference=%.6f\n",names[m],uncovered,trail,adjacent,motionError,farDiff);
+        require(uncovered>=100,"seta sweep uncovers a trailing band every moving frame");
+        const std::string prefix=std::string("seta sweep ")+names[m]+": ";
+        metric((prefix+"motion target equals the 5 px displacement at every covered pixel (px)").c_str(),motionError,0,.1);
+        if(m)metric((prefix+"uncovered sky beyond the dilation band is current-only (no square history)").c_str(),trail,0,1./255);
+        else metric((prefix+"uncovered sky carries the square's history under policy 2 (the smear reproduced)").c_str(),std::min(trail,1.),1,.95);
+        if(m)metric((prefix+"identical to loose eight pixels and more from the square").c_str(),farDiff,0,0);}
+     // (e) Fade-band object (review finding 1): a routed 8x8 square of value 0.6 at depth 0.9997, static and depth-writing for 8
+     // frames, then a fade-band draw (RT1 alpha 1 with its depth target, RT2 masked: current depth sentinel) moving +5 px/frame
+     // over the textured sky. Its history taps at frame 8 land on its own depth of frame 7; strict must accept them like loose
+     // (alpha 1 switches the term off), so the two runs are identical on every pixel the object routes, while the uncovered
+     // sky at frame 8 (previous depth 0.9997, alpha -1 now) is the smear case again.
+     auto fade=[&](unsigned n){const double l=sl2+v*(n>=moveFrom?n-moveFrom+1:0);EdgeObject o{l,st2,l+8,st2+8,.6f,squareDepth,n>=moveFrom?v:0.,0};o.noDepth=n>=moveFrom;return std::vector<EdgeObject>{{0,0,S,S,0,-1.f,0,0,true,0,true},o};};
+     EdgeRun fades[2];for(unsigned m=0;m<2;++m)fades[m]=edge_sequence(s,decoder,resolver,fade,sentinelFill,frames,true,true,"fade-band sweep",m==1);
+     {double routedDiff=0,skyDiff=0;unsigned routed=0,accumulated=0;
+      for(unsigned n=moveFrom;n<frames;++n)for(UINT y=1;y+1<S;++y)for(UINT x=1;x+1<S;++x){const std::size_t i=y*S+x;const bool own=fades[1].motion[n][i*4+3]==1;
+          const double diff=std::fabs(px(fades[0].output[n],x,y)-px(fades[1].output[n],x,y));
+          if(own){++routed;routedDiff=std::max(routedDiff,diff);if(std::fabs(px(fades[1].output[n],x,y)-px(fades[1].current[n],x,y))>1./255)++accumulated;}
+          else skyDiff=std::max(skyDiff,diff);}
+      std::printf("SETA_FADE routed_px=%u strict_vs_loose_on_routed=%.6f routed_px_with_history=%u strict_vs_loose_on_sky=%.6f\n",routed,routedDiff,accumulated,skyDiff);
+      require(routed>=200&&skyDiff>.05,"fade-band sweep routes its object and reproduces the sky smear beside it under loose");
+      metric("seta fade-band strict: identical to loose on every pixel the fade-band draw routes (its history accepted)",routedDiff,0,0);
+      metric("seta fade-band strict: the fade-band draw's pixels keep using history (pixels whose output differs from the current sample)",std::min(double(accumulated),1.),1,0);}}
     if(!deferredFailures.empty())throw std::runtime_error(deferredFailures.front());
 }
 // ---- run 139: 1-px jittered lattice, filtered current sample and history weight ----

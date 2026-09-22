@@ -2191,3 +2191,14 @@ was reported. Capture preserved in `/tmp/x3-bottleX3-run224` (not triaged; no op
 symptom). This closes the run222 shaft comb and the appear/disappear defect. Next:
 collapse the presets to one look (L2 law), keep the env tuning; dust motes; shadow
 lookup in its own pass for cascade cross-fade, the finest cascade and penumbra.
+
+## Run 239 triage: fog cleared as the plateau cost (2026-09-22)
+
+`/tmp/x3-bottleX3-run239` station-angle ~50 fps plateau (vs ~100 fps control,
+same session): `volumetric_fog_frame cpu_us` is flat (~0.6-0.7 ms) in both the
+slow and fast windows — fog is 3-7 % of `dt` and does not track the fps drop,
+matching the user's own toggle test. The cost is in `frame_phases`
+`view_submit` (draw/state submission, 4.9x), tied to shadow-lane
+`receiver_draws` and retention's `live_c4` cascade caster count (both ~6x).
+Full split: `docs/architecture/engine-frame-time.md` "Run 239: frame time
+with the split".

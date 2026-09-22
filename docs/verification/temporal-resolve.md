@@ -1359,3 +1359,46 @@ resolved rest-flicker leak at 4.4-6.9x. `tools/manage.py` now resolves an omitte
 whenever `--taa`, `--taa-thin-region` with `W > 0` and `--hdr` are in effect, and leaves it absent without `--hdr`, where
 the display-referred scene makes the vote inert; an explicit `0` is the opt-out. Covered by
 `verification/analysis/test_taa_image_defaults.py` and a `launch --dry-run` of the Run 65 session B command.
+
+## 2026-09-22 run235 SETA approach smear: diagnosis and the strict sky history fixture
+
+Diagnosis in docs/architecture/seta-motion.md. Correction to the Run 235 section above: the
+motion buffer's RG is the previous absolute UV, not a displacement; decoded per the ABI the
+station's vectors are 3-38 px and match a block match of the depth silhouette within 0.31 +-
+0.88 px (x) / 0.24 +- 0.63 px (y) over 9 windows, the cockpit decodes to 0.000 px. The
+smear is the far-plane disocclusion test accepting the station's hull (depth 0.9997, within
+the 2 % relative tolerance of 1.0) as sky history on the 400-600 freshly uncovered pixels
+per frame (uncovered vs control sky, bright nebula: `present - colour` median -8.7 to -29.8
+vs -0.4 luma). Fix: `--taa-sky-history strict` (X3M_TAA_SKY_HISTORY, resolve c7.z = 3),
+default loose = bit-identical to before.
+
+Fixture: `run_temporal_pass.py` edge case (d) "SETA sweep" (`SETA_SWEEP` lines): a black 8x8
+square at depth 0.9997, static 8 frames then +5 px/frame for 4 frames over a textured sky
+(colour only, sentinel depth, sentinel-fill background, camera path), loose and strict.
+
+| 2026-09-22 | loose | strict |
+| --- | --- | --- |
+| uncovered trailing pixels (sky now, square last frame, no square in the current 3x3), 4 moving frames | 128 | 128 |
+| max `|output - current|` on them (the smear) | **0.237305** (asserted >= 0.05) | **0.000000** (asserted <= 1/255) |
+| motion target vs the 5 px displacement at covered pixels, max error | **0.000001** px (<= 0.1) | **0.000001** px (<= 0.1) |
+| max difference strict vs loose eight pixels and more from the square | | **0.000000** (asserted 0) |
+| dilated 1-px band beside the silhouette, max deviation (reported, the documented AA-edge behaviour) | 0.738525 | 0.738525 |
+
+Edge case (e) "fade-band sweep" (`SETA_FADE`, review finding 1): the same square at value 0.6, routed and depth-writing
+for 8 frames, then a fade-band draw (RT1 alpha 1 with its depth target, RT2 masked: current depth sentinel) moving
++5 px/frame; its frame-8 history taps land on its own depth of frame 7, the case strict must not reject.
+
+| 2026-09-22 | number |
+| --- | --- |
+| pixels the fade-band draw routes over the 4 moving frames / of them with history in the output (strict) | **256** / **18** |
+| max `|strict - loose|` on those pixels (asserted 0: the object's history is accepted under strict) | **0.000000** |
+| max `|strict - loose|` on the sky beside it (the smear case, loose accepts the hull; reported) | 0.297363 |
+
+| command | result |
+| --- | --- |
+| `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py /usr/bin/python3 verification/probe/run_temporal_pass.py` | `passed: true`; base mode **532 / 278 / 2**, **402** samples (510 / 388 before: four sequences with their motion-contract check and seven metrics per generation); lattice `RESULT PASS numerical=583 state_restorations=23`; `RESOLVE_BUDGET` age_line **511**, far_camera 509, age_filter 508, far 497, age 496 (HEAD: 509 / 508 / 506 / 496 / 494), all within 512. The age_line variant (the 512-slot one) is created by `CreatePixelShader` on this backend like every embedded program (`temporal_pass.cpp` `make(temporal_resolve_age_line_program(), &age_line_)`, dropped on failure) and a refusal fails soft: `run` refuses the line filter with the age weight as unavailable (`aged && !far_requested && !age_line_` in its input validation), it does not crash |
+| `PYTHONPATH=verification/probe /usr/bin/python3 -m unittest verification/analysis/test_taa_sky_history.py` | 3 tests, 0 failures |
+| resolve headers | `generate_rigid_motion_pixel.py` for the twelve resolve programs under the Wine lock, PASS (plain 1706 -> 1712 dwords) |
+| review fixes (same day) | strict restricted to unrouted pixels (alpha not 1; fixture row (e)); `X3M_TAA_SKY_HISTORY` read requires 0 < length < 32; the term costs `sge`, `mad`, `sge`, `mul` and is paid for by `nearest >= 1` replacing `all(dilate == 0)` in the fill-pair test and `saturate(2 - 0.5 speed)` replacing `1 - saturate((speed - 2) * 0.5)` in the thin soft clip (both exact for the finite operands); rerun: `passed: true`, 532 / 278 / 2, 402 samples, lattice 583 / 23, `SETA_FADE routed_px=256 strict_vs_loose_on_routed=0.000000 routed_px_with_history=18` |
+| scratch DLL (not a candidate) | `cmake -S . -B build-seta ... && cmake --build build-seta`; `check_no_x87.py` 0 violations; sha256 3b880ba5... |
+

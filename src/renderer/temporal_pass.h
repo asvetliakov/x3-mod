@@ -225,6 +225,11 @@ struct FrameInputs {
     // Set true only when clip_to_previous is an actual valid camera
     // reprojection; leave false when that contract is unavailable.
     bool sentinel_camera = false;
+    // With sentinel_camera: the strict sky history (resolve c7.z = 3). A far-plane
+    // pixel whose 3x3 holds no geometry accepts sentinel history taps only, so the
+    // hull of an object that moved away this frame never becomes the sky's history
+    // (docs/architecture/seta-motion.md). Ignored without sentinel_camera.
+    bool sentinel_strict_sky = false;
     bool caller_scene_open = true;
     bool caller_stateblock_recording = false;
     bool caller_queries_idle = false; // positive knowledge: no active occlusion/statistics query

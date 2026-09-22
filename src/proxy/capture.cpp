@@ -235,6 +235,12 @@ float camera_cut_degrees = 20.f;
 // frame under another key; all: any new key. Absent is the run212-accepted
 // default: node whenever the TAA route is on ("off" or "0" is the opt-out).
 unsigned taa_unmatched_static = 0;
+// X3M_TAA_SKY_HISTORY=strict|loose (requires X3M_TAA=1; default loose, the
+// pre-existing behaviour bit for bit): strict is the resolve's strict sky term
+// under the camera path, a sky pixel whose 3x3 holds no routed geometry accepts sentinel
+// history taps only, so a station that moved away this frame (SETA approach)
+// never becomes the sky's history (docs/architecture/seta-motion.md).
+bool taa_sky_history_strict = false;
 unsigned camera_log_frames = 300;
 unsigned motion_jitter_samples = 8;
 // The finite huge displacement bound is a practical off switch. A missing
@@ -2310,6 +2316,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_frame_log(motion_frame_log);
     hooked.motion_output.configure_sentinel(taa_sentinel_mode,camera_cut_degrees,camera_log_frames);
     hooked.motion_output.configure_unmatched_static(taa_unmatched_static);
+    hooked.motion_output.configure_sky_history(taa_sky_history_strict);
     // Render-state configuration (hybrid unhook): the reasons that keep the
     // SetRenderState/SetSamplerState hooks installed, then the capability
     // check of the documented reads the unhooked route depends on (the proxy
@@ -3248,11 +3255,15 @@ void initialize_log(HMODULE module) {
         else if(wcscmp(setting,L"0")!=0&&wcscmp(setting,L"off")!=0)log("taa_unmatched_static_setting invalid=1");
     }
     else if(taa_requested)taa_unmatched_static=1; // run212: node is the default with the TAA route (an explicit "off"/"0" opts out)
+    if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_SKY_HISTORY",setting,32);n>0&&n<32){ // a truncated value would be the buffer's previous text
+        if(!wcscmp(setting,L"strict")||!wcscmp(setting,L"1"))taa_sky_history_strict=taa_requested;
+        else if(wcscmp(setting,L"loose")!=0&&wcscmp(setting,L"0")!=0&&wcscmp(setting,L"off")!=0)log("taa_sky_history_setting invalid=1");
+    }
     if(GetEnvironmentVariableW(L"X3M_CAMERA_CUT_DEG",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=180)camera_cut_degrees=v;}
     if(GetEnvironmentVariableW(L"X3M_CAMERA_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=1000000)camera_log_frames=unsigned(n);}
-    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s unmatched_static=%u sentinel_stabiliser=%.3f sentinel_emitter=%.3f camera_cut_deg=%.2f camera_log=%u state_shadow=%s scene_hook=%u hdr=%u taa_k=%.5f mip_bias=%g taa_sharpen=%.3f taa_current_filter=%.3f taa_history_weight=%.3f",
+    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s unmatched_static=%u sentinel_stabiliser=%.3f sentinel_emitter=%.3f sky_history=%s camera_cut_deg=%.2f camera_log=%u state_shadow=%s scene_hook=%u hdr=%u taa_k=%.5f mip_bias=%g taa_sharpen=%.3f taa_current_filter=%.3f taa_history_weight=%.3f",
         motion_output_requested,taa_requested,taa_requested,taa_debug_requested,motion_jitter_requested,motion_jitter_samples,motion_cut_median_px,motion_cut_missing,motion_rt_lazy?"lazy":"perdraw",motion_frame_log,
-        taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",taa_unmatched_static,double(taa_sentinel[0]),double(taa_sentinel[1]),camera_cut_degrees,camera_log_frames,motion_state_shadow<0?"auto":motion_state_shadow?"1":"0",scene_hook_requested,hdr_requested,taa_k_override,double(taa_mip_bias),taa_sharpen,double(taa_current_filter),double(taa_history_weight));
+        taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",taa_unmatched_static,double(taa_sentinel[0]),double(taa_sentinel[1]),taa_sky_history_strict?"strict":"loose",camera_cut_degrees,camera_log_frames,motion_state_shadow<0?"auto":motion_state_shadow?"1":"0",scene_hook_requested,hdr_requested,taa_k_override,double(taa_mip_bias),taa_sharpen,double(taa_current_filter),double(taa_history_weight));
     log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
     telemetry::initialize([]{if(logfile)fflush(logfile);});
     game_phases::initialize(); // all 33 claims here, before the first Present

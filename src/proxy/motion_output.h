@@ -633,6 +633,10 @@ public:
     // X3M_TAA_UNMATCHED_STATIC (default off): 0 off, 1 "node" (a new key whose
     // object was drawn last frame under another key), 2 "all" (any new key).
     void configure_unmatched_static(unsigned mode) noexcept { unmatched_static_ = mode <= 2 ? mode : 0; }
+    // X3M_TAA_SKY_HISTORY=strict (default loose): the resolve's strict sky term whenever the
+    // camera path is in effect. A sky pixel whose 3x3 holds no routed geometry
+    // accepts sentinel history taps only (docs/architecture/seta-motion.md).
+    void configure_sky_history(bool strict) noexcept { sky_history_strict_ = strict; }
     // RT1/RT2 binding policy (X3M_MOTION_RT_MODE). perdraw (default): each
     // routed draw binds RT1/RT2 and COLORWRITEENABLE1/2 and after_draw puts
     // the application's values back. lazy (experiment): the bindings stay
@@ -2089,6 +2093,7 @@ private:
     chase_camera::SnapCursor chase_snap_cursor_{}; // independent cut observation for this device's history
     std::uintptr_t camera_projection_address_ = 0, camera_view_address_ = 0;
     renderer::SentinelMode sentinel_mode_ = renderer::SentinelMode::Auto;
+    bool sky_history_strict_ = false; // X3M_TAA_SKY_HISTORY=strict: FrameInputs::sentinel_strict_sky with the camera path
     // Static-world previous rows for new keys (temporal-integration.md). The
     // camera verdict is evaluated once per frame, on the frame's first miss.
     unsigned unmatched_static_ = 0;
