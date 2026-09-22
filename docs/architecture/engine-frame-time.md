@@ -1659,3 +1659,27 @@ are identical (the game was probably paused).
   saving at the stand: the four ship nodes' 126 draws become 4 (inferred).
 - Anomalies: none (census overflow 0, no stale bounds rows, no device rows); a node with
   s = 117440512 is the offscreen sentinel (inferred).
+
+## Run 257: merged-LOD pilot in flight (2026-09-23)
+
+Run 69 A (`/tmp/x3-bottleX3-run257`, Run68 DLL, the run255 options, pilot overlay
+`addon/05.cat` `c5737a0a…` with the two-group collapse). Scripts and outputs:
+`verification/results/run257-pilot/`. All measured unless marked.
+
+- **The overlay works as designed:** argon_M1 ×2 (s 21), argon_M2 (s 41) and argon_TL (s 28)
+  drew LOD 4 at 2 draws each, the outpost (s 95) LOD 3 at 2 draws; at s 56 the M2 was back at
+  LOD 0 with 32 draws (the 50 px switch). Fighter view 297 draws per frame against 447 in
+  run255 (only the four pilot bodies changed: M1 64→4, outpost 68→36, M2 32→2, TL 31→2).
+  Alpha-tested draws 48 / 38 against 68. Census overflow 0, no stale rows, no device rows.
+- **User verdict:** stations and ships look fine, but the ships' engine glows vanish while the
+  coarse record is drawn (the Titan/M2 at 41 px, back at 56 px). No child node went missing
+  (`body_diff_out.txt`); the glow is the light map (stage 3) of the `exhaust` materials,
+  dropped by the collapse onto one material (`ship_draws_*.txt`, `tex_*.txt`). Fix: the glow
+  collapse rule ([merged-lod-feasibility.md](merged-lod-feasibility.md), "Overlay tooling").
+- **Frame time is not comparable in burst 1:** 32–36 ms at 297 draws, but every phase and
+  every fixed fullscreen pass slowed alike (HDR writeback 109→589 µs, TAA 0.80→2.23 ms) in
+  two spans that start to the second with the orchestrator's host suite and `-j8` build
+  during the flight (`slowdown_timeline_run257_out.txt`). Uncontended frames 2520–2819 at
+  ~298 draws ran 20–21 ms against run255's 24–25 ms at 447 draws, consistent with the
+  27 µs/draw slope (inferred). `footprint_refused4=19` is a value, not a count (mean 15.9 vs
+  14.6 per frame). Rule: no host suite or build while the game is up.
