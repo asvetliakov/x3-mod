@@ -1334,3 +1334,46 @@ frame to frame and not an artifact of the capture burst. **Conclusion: the
 plateau reproduces** (draws and state-call counts, not just dt) despite the
 parallel load; absolute dt at this stand is additionally noisy from that
 load and cannot be compared to run239's dt numbers directly.
+
+### Run 242 follow-up (--cull-small-parts-px 4, same stand, 2026-09-22)
+
+(1) `/tmp/x3-bottleX3-run242/session-20260922-190129-216.log`, F8 burst
+frames 8352-8359 (window `frame=8400`/`8100`): `cull_small_parts_value px=4
+threshold=6` (not 5 — `m00=0.799999952` not exactly 0.8, so
+`ceil(4/0.79999995)` rounds up). vs run240 (px=2, threshold=3): `draws_p50`
+448→397 (-51, -11.4%), `state_calls_p50` 28810→25962 (-9.9%), `dt_p50_us`
+26072/28488→22096 (noisy, parallel load). Census verdicts, 8 frames:
+`culled_small` 368→544 (46→68/frame, +22/frame — threshold 6 removes far
+more than the 5/frame predicted for threshold 5, because the true threshold
+is 6, not 5); `kept` 696→712 (87→89/frame, sentinel-adjusted 63→66/frame) —
+essentially flat or slightly higher, not lower, in the 8-frame census sample
+even though `draws_p50` (300-frame window) dropped 51. The 8 census frames
+and the 300-frame `frame_timing` window are not the same sample (F8 pressed
+at a different frame/camera position each run); this data cannot show
+whether the drop is from the new threshold or from a slightly different
+camera position, only that `culled_small` did rise sharply as predicted in
+direction, more than in size.
+
+(2) Draws per kept node: `motion_input` logs one line per actual draw with
+`vs`/`ps` hashes, and its count on frame 5783 (run240) is exactly 448 —
+matching `draws_p50`. 87 census-kept nodes → 448 draws = 5.1 draws/node
+average, but the split is not even multi-pass: top `ps` hashes on frame 5783
+are `ca6bfa4a6cca7e2a`=226 draws (50% of the frame, one dominant
+material/shader), `8759c7838bbc86c2`=46, `5e0a10fe752b6140`=46,
+`fffdabd910793aba`=35, `5f82ecacd39529cd`=28, `6109cf64c03529dd`=14 (the
+rest under 12 each). This is one draw per submesh/part under a kept node
+(many small parts sharing one dominant hull/opaque shader), not a fixed
+N-pass-per-material pattern — no evidence here of separate shadow/reflection
+view draws in this count (no `sun_shadow`/env-map per-draw lines match this
+frame's `motion_input` index range).
+
+(3) State-call mix per draw at the stand (`frame_timing frame=6000`,
+run240, `state_top`, `draws_p50=448`): `set_sampler_state` 32.9/draw,
+`set_render_state` 18.8/draw, `set_texture` 4.70/draw, `set_vs`/`set_ps`
+1.0/draw each, `set_vs_constant_f` ~1.0/draw, `state_other_p50` 2.91/draw
+(SetStreamSource/SetIndices/etc., not itemized). Redundancy
+(`state_redundant`/`state_shadowed`, order render-state/sampler-state/
+texture per `engine-state-filter.md`): render-state 1255502/1331110=94.3%
+redundant, sampler-state 745871/754571=98.8%, texture 213028/631261=33.7% —
+matching that note's baseline magnitudes (~94.9/99.3/40.2%), i.e. the
+redundancy profile at this stand is not itself unusual.
