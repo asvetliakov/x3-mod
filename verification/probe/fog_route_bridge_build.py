@@ -6,7 +6,7 @@ from fog_spatial_build import asset_inputs
 ROOT=Path(__file__).resolve().parents[2]
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--production-root',type=Path,required=True);p.add_argument('--spatial-root',type=Path,required=True);p.add_argument('--asset-data',type=Path,required=True);p.add_argument('--output',type=Path,required=True);p.add_argument('--baseline',action='store_true',help='production root predates the stored-density range: legacy witnesses and IMAGE hashes only');a=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('--production-root',type=Path,required=True);p.add_argument('--spatial-root',type=Path,required=True);p.add_argument('--asset-data',type=Path,required=True);p.add_argument('--output',type=Path,required=True);p.add_argument('--baseline',action='store_true',help='production root predates the stored-density range (pinned: 6f16dbf6, parent of 39c98242, as a scratch git worktree): legacy witnesses and IMAGE hashes only');a=p.parse_args()
     prod=a.production_root.resolve();base=a.spatial_root.resolve();data=a.asset_data.resolve();out=a.output.resolve();out.mkdir(parents=True,exist_ok=True)
     exe=out/'fog_route_bridge.exe'
     if exe.exists():raise ValueError('refuse overwrite of frozen executable')

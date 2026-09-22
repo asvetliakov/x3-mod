@@ -24,6 +24,11 @@ using GetRenderTargetFn=HRESULT(WINAPI*)(IDirect3DDevice9*,DWORD,IDirect3DSurfac
 using GetStreamFreqFn=HRESULT(WINAPI*)(IDirect3DDevice9*,UINT,UINT*);
 using SetRenderStateFn=HRESULT(WINAPI*)(IDirect3DDevice9*,D3DRENDERSTATETYPE,DWORD);
 constexpr float projection_default_m22=1.00001f,projection_default_m32=-.100001f;
+#ifdef X3M_ROUTE_BRIDGE_BASELINE
+// The pinned baseline root (6f16dbf6, parent of the stored-density wiring 39c98242) predates the
+// rename to projection_default_* (7c8e0462); its fragment reads the old names. Same values.
+constexpr float ao_default_m22=projection_default_m22,ao_default_m32=projection_default_m32;
+#endif
 enum class TaaInvalidateSite {FogTransition,StateLost};enum class HdrState {Active,Off};
 struct MotionDrawCall {bool indexed=true,user_memory=false;D3DPRIMITIVETYPE topology=D3DPT_TRIANGLELIST;unsigned primitives=2,vertex_count=4;};
 struct MotionRoute {FogCardMask fog_card_mask{};HRESULT preparation_error=S_OK,submission_error=S_OK;bool submit=true;};

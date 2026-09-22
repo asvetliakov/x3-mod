@@ -2365,3 +2365,17 @@ in `verification/results/run251-fog-shadow/`.
 **Outcome.** Nothing failed and the pass ran on every applied frame's call count, but neither the look nor
 the cost is measured: both need an in-session A/B, which the next build provides with a Ctrl+Shift+F11
 toggle and a per-frame grid row (in progress). User verdict: "softer?", low confidence.
+
+## Route bridge baseline pinned to 6f16dbf6 (2026-09-23)
+
+The `--baseline` build of `fog_route_bridge_build.py` produces the legacy bit-identity witness: the route
+bridge's five legacy image hashes must equal its output. That build now uses a pinned production root,
+**`6f16dbf6`**, the direct parent of the stored-density wiring `39c98242`, checked out with
+`git worktree add --detach`. Earlier runs used `184843cd` and `85c7c821`, which also predate the wiring. The
+harness comes from the current tree, and cleanup batch 5 (`7c8e0462`) renamed `ao_default_m22/m32` to
+`projection_default_m22/m32`. Under `X3M_ROUTE_BRIDGE_BASELINE`, `verification/probe/fog_route_owner_inc.h`
+therefore also defines the old names with the same values. The change is limited to the harness and leaves
+production source untouched. Host builds [M], MinGW i686, asset data `build-post-batch5/generated/fog_field`:
+the baseline build (root `6f16dbf6`) produced exe `00c9bf2fbab6a939…` with 58 bound inputs; the route build
+(current tree) produced exe `fdfd1422df4c1114…` with 65 bound inputs. `test_fog_route_bridge`: 5 tests OK.
+Not run under Wine yet.

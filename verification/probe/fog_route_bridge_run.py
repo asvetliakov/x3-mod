@@ -4,7 +4,8 @@
   build-exit --output DIR                     cross-compile the exit DLL and executable (no Wine)
   run   --output DIR --cases CASES.txt        only under X3M_FIXTURE_BOTTLE=X3 wine_lock.py:
         DIR/build and DIR/baseline-build come from fog_route_bridge_build.py (the latter with
-        --baseline from the previous production tree); runs baseline, bridge, exit fixture in turn
+        --baseline from the pinned pre-wiring tree 6f16dbf6, the parent of 39c98242, checked out as
+        a scratch git worktree); runs baseline, bridge, exit fixture in turn
   check --output DIR [--summary FILE]         validate the retained logs, write the compact summary
 Never launches the game and never rebuilds a DLL of the proxy."""
 import argparse, hashlib, json, os, re, subprocess, sys, time
