@@ -1,0 +1,2 @@
+pbb resources=1688 kinds={'CUT1': 53, 'BOB1': 1635} BOB1 round-trip equal=1634 failed=1
+  fail 01.cat:objects/others/Bothers_khaak_hive_stations.pbb: truncated at 0x113d (need 4 bytes)

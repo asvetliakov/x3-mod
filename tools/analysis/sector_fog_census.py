@@ -307,6 +307,18 @@ def write_csv(result, path):
         writer.writerows(rows)
 
 
+def write_catalogue(cat, members):
+    """Write a CAT/DAT pair: members are (archive path, stored bytes) in DAT order.
+
+    The inverse of read_catalogue plus the 0x33 DAT XOR; stored bytes are written
+    as given (callers gzip them when the member is a packed resource)."""
+    cat.parent.mkdir(parents=True, exist_ok=True)
+    index = (cat.with_suffix('.dat').name + '\n' + ''.join(
+        f'{name} {len(data)}\n' for name, data in members)).encode()
+    cat.write_bytes(bytes(v ^ ((0xdb + i) & 255) for i, v in enumerate(index)))
+    cat.with_suffix('.dat').write_bytes(bytes(v ^ 0x33 for _, data in members for v in data))
+
+
 def self_test():
     checks = 0
 
@@ -323,12 +335,7 @@ def self_test():
         else:
             raise ValueError(message)
 
-    def catalogue(cat, members):
-        cat.parent.mkdir(parents=True, exist_ok=True)
-        index = (cat.with_suffix('.dat').name + '\n' + ''.join(
-            f'{name} {len(data)}\n' for name, data in members)).encode()
-        cat.write_bytes(bytes(v ^ ((0xdb + i) & 255) for i, v in enumerate(index)))
-        cat.with_suffix('.dat').write_bytes(bytes(v ^ 0x33 for _, data in members for v in data))
+    catalogue = write_catalogue
 
     payload = b'25;0;\n'
     compressed = gzip.compress(payload)

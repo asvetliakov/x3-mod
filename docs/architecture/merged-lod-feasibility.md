@@ -268,6 +268,69 @@ the two cases in "Unknown" below per model. Status: site verifier 21/21, host
 tests and the fixture build pass. The Wine CPU fixture and a flight have not
 run yet.
 
+### Overlay tooling (2026-09-23)
+
+`tools/analysis/bob1.py` is the production BOB1 reader/writer (layout of
+[body-format-bob1.md](../reverse-engineering/body-format-bob1.md); `CUT1` scene
+members are recognised and skipped). Over every installed `.pbb` it round-trips
+1634 of 1635 `BOB1` bodies byte for byte and rejects the truncated khaak hive
+body explicitly (`verification/results/bob1-format/bob1_module_roundtrip.py`).
+`tools/analysis/lod_overlay.py` builds the pilot overlay: for each named body it
+copies the coarsest LOD (points, part flags, per-group 7-int records and the 10
+part ints copied, nothing recomputed), collapses each part's groups into one
+group with the part's dominant material by face count, and appends it as a new
+LOD with threshold `T` (default: coarsest threshold // 2; single-LOD bodies need
+`--threshold`, and `T` must stay below the current coarsest threshold). The
+output is `addon/NN.cat`/`.dat` with `NN` one past the highest installed addon
+slot (`addon/05` today; `--slot` must equal it unless `--force-slot`). The
+engine's resolver is now traced ([body-format-bob1.md
+§7](../reverse-engineering/body-format-bob1.md#7-which-file-wins-extension-and-archive-precedence)):
+a loose file wins, otherwise the highest-numbered catalogue holding the name
+under any body extension, with extension order applying only within that layer.
+So the new slot overrides the shipped member without any mod selection; the
+member keeps the winning member's exact archive path, and a body whose winning
+resource is loose is refused. `addon/mods/` is not used because a mod package is
+searched only when selected in the launcher.
+
+Hide-at-coarsest (§1, `0047d4d7`): a node with `node+0x12c & 0x8000` is not
+rendered at its body's coarsest LOD. The appended record becomes the coarsest, so
+flagged nodes hide only below the new threshold and the old coarsest record now
+draws them in the band between the new and old thresholds, where they used to be
+hidden. `--keep-coarsest-hidden` instead gives the new record the old coarsest
+threshold: it covers exactly the old coarsest range (the old record is never
+selected), so hidden ranges are unchanged. Either way the pilot flight must check
+flagged nodes. Every installed CAT/DAT is hashed before and
+after a real run (outputs are removed if any changed), and an
+`addon/NN.x3m-lod.json` manifest records the source and overlay hashes; the
+tool refuses to run while such a manifest is installed.
+
+`python3 tools/analysis/bob1.py audit [--summary] [--json OUT]` classifies every
+installed body's ladder (`verification/results/bob1-format/bob1_audit_out.txt`,
+measured over 1634 parsed `BOB1` bodies; classes overlap): **684 single-LOD**,
+**15 non-monotonic** (a later record's threshold ≥ an earlier one's, so under the
+`0047d429` walk 37 records are never selected; 10 of the 15 are stations, e.g.
+`argon_dock_center` 30/10/3/30 shadows LOD 1–3 and runs its 1-group LOD 4 wherever
+LOD 1 would apply), and **777 whose coarsest LOD draws more than one group** (551
+of them multi-LOD). 392 multi-LOD bodies fall in none of the three classes.
+
+```sh
+python3 tools/analysis/bob1.py info objects/stations/station_scenes/others/argon_L_solarpowerplant
+python3 tools/analysis/lod_overlay.py --dry-run <body> [--threshold T]
+python3 tools/analysis/lod_overlay.py --out <scratch dir> <body> [--threshold T]
+python3 tools/analysis/lod_overlay.py --install <body> [--threshold T]   # game dir; never overwrites
+PYTHONPATH=verification/probe /usr/bin/python3 -m unittest verification.analysis.test_bob1
+```
+
+Removing `addon/NN.cat`, `.dat` and `.x3m-lod.json` reverts the install. The
+pilot flight must show, at the run240 stand with `--cull-census`, the overlaid
+body's nodes reporting the new `lod` index (one past the shipped ladder) and
+their per-node draw count dropping to the part count of that record, with
+`draws_p50` compared at the same stand. A file that loads without a `lod` or
+draw change is not acceptance. Not yet possible: the heavy stand bodies are
+unnamed until the census logs model id to body name, and both worked examples
+(`argon_L_solarpowerplant`, `argon_dock_center`) already end in a one-group
+LOD, so collapsing them saves no draws.
+
 ### Effort against existing machinery
 
 - Archive read/write: mostly present. `tools/analysis/inspect_x3.py`

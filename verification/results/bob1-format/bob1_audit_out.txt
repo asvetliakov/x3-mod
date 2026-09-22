@@ -1,0 +1,20 @@
+# /usr/bin/python3 tools/analysis/bob1.py audit --json <scratch>/audit.json   (2026-09-23, bottle X3, read-only; about 3 min)
+# summary = `tail -2` of that output; rows = `grep non_monotonic <output> | grep -v '^summary' | grep -v '^classes'`
+# summary lines, then the 15 non_monotonic rows of the per-body output
+summary pbb_resources=1688 cut1=53 bob1=1635 rejected=1 single_lod=684 non_monotonic=15 coarse_multi_group=777 shadowed_records=37 clean_multi_lod=392
+classes: single_lod = one LOD record; non_monotonic = some record i >= 1 is never selected because a later record has threshold >= T_i; coarse_multi_group = coarsest LOD draws > 1 (classes overlap)
+01.cat:objects/effects/others/argon_gate.pbb lods=5 thresholds=[30, 20, 10, 30] groups=[16, 16, 16, 14, 12] non_monotonic,coarse_multi_group shadowed=[1, 2, 3]
+01.cat:objects/environments/asteroids/asteroid_B_ClassMine.pbb lods=5 thresholds=[20, 5, 2, 30] groups=[1, 1, 1, 1, 1] non_monotonic shadowed=[1, 2, 3]
+01.cat:objects/others/argon_gate.pbb lods=5 thresholds=[30, 20, 10, 30] groups=[16, 16, 16, 14, 12] non_monotonic,coarse_multi_group shadowed=[1, 2, 3]
+02.cat:objects/ships/boron/boron_M2_wreck.pbb lods=3 thresholds=[15, 15] groups=[1, 1, 1] non_monotonic shadowed=[1]
+02.cat:objects/ships/paranid/paranid_TL_var1_wreck.pbb lods=3 thresholds=[15, 15] groups=[1, 1, 1] non_monotonic shadowed=[1]
+02.cat:objects/stations/docks/argon_dock_center.pbb lods=5 thresholds=[30, 10, 3, 30] groups=[18, 12, 5, 1, 1] non_monotonic shadowed=[1, 2, 3]
+02.cat:objects/stations/living_sections/argon_livingsection.pbb lods=5 thresholds=[30, 15, 5, 30] groups=[17, 11, 5, 1, 1] non_monotonic shadowed=[1, 2, 3]
+02.cat:objects/stations/others/argon_goner_temple.pbb lods=5 thresholds=[30, 20, 10, 30] groups=[35, 35, 33, 33, 31] non_monotonic,coarse_multi_group shadowed=[1, 2, 3]
+02.cat:objects/stations/trading_stations/argon_trading_station_partA.pbb lods=5 thresholds=[30, 15, 5, 5] groups=[32, 21, 11, 1, 1] non_monotonic shadowed=[3]
+02.cat:objects/stations/trading_stations/argon_trading_station_partB.pbb lods=5 thresholds=[30, 20, 10, 30] groups=[36, 34, 32, 29, 29] non_monotonic,coarse_multi_group shadowed=[1, 2, 3]
+02.cat:objects/stations/trading_stations/boron_trading_station.pbb lods=5 thresholds=[30, 20, 10, 30] groups=[11, 11, 11, 9, 9] non_monotonic,coarse_multi_group shadowed=[1, 2, 3]
+02.cat:objects/stations/trading_stations/split_trading_station.pbb lods=5 thresholds=[30, 20, 10, 30] groups=[11, 11, 11, 9, 8] non_monotonic,coarse_multi_group shadowed=[1, 2, 3]
+02.cat:objects/stations/trading_stations/split_trading_station_wreck.pbb lods=3 thresholds=[15, 150] groups=[1, 1, 1] non_monotonic shadowed=[1]
+02.cat:objects/stations/trading_stations/teladi_trading_station_partA.pbb lods=5 thresholds=[30, 20, 10, 30] groups=[15, 15, 14, 14, 14] non_monotonic,coarse_multi_group shadowed=[1, 2, 3]
+02.cat:objects/stations/trading_stations/teladi_trading_station_partB.pbb lods=5 thresholds=[30, 20, 10, 30] groups=[16, 16, 15, 15, 15] non_monotonic,coarse_multi_group shadowed=[1, 2, 3]
