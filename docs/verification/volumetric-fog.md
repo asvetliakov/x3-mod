@@ -2335,3 +2335,33 @@ study (design item 3) was not run. **Host**: `test_fog_shadow_grid` (7 tests: he
 `tools/manage.py launch --dry-run --bottle X3` with the Run 65 session C options plus `--fog-shadow-pass on`
 exits 0 with `X3M_FOG_SHADOW_PASS=1`. Fetch ceilings per frame: 1280×768 62.9 M map + ≤ 15.7 M grid fetches
 (3.9 MB atlas); 2560×1440 235.9 M + ≤ 59.0 M (14.7 MB).
+
+## Run 251: fog shadow pass in flight, no A/B (2026-09-22)
+
+Run 67 session C, Run67 DLL `621cad63…`, `/tmp/x3-bottleX3-run251/session-20260922-231055-216.log`
+(`--fog-shadow-pass on --shadow-cascade-min-footprint 8`, stored range, single look), compared with session B
+(run250, same fog options, pass off). [M] = measured by the named script, [I] = inferred; scripts and outputs
+in `verification/results/run251-fog-shadow/`.
+
+- Options [M] (`log_facts.py`): one `volumetric_fog_shadow_pass enabled=1 grid=quarter slices=64 tiles=4x4
+  format=A8R8G8B8 cascades=3 taps=4 penumbra=1,1,16` row. The build logs no per-frame grid or fallback row
+  (no fog row type naming either) [M], so whether each frame took the grid path is not observable.
+- Device calls [M] (`fog_cost_retention.py`): every applied frame issues **338** fog calls (37,917 frames)
+  against **324** in run250 (7,411 frames): +14, where the fixture measured 19 extra device calls for a pass-on
+  frame with a cascade (section "Sun-visibility grid pass built, default off"). The gap is unexplained.
+- No device-call failure [M] (`log_facts.py`): all 37,917 applied `volumetric_fog_frame` rows carry
+  `result=00000000 restore=00000000`.
+- `cpu_us` [M] (`fog_cost_retention.py`, first 200 applied frames skipped): p50 682 / p95 1,430 us against
+  run250's 782 / 1,356 us. This is render-thread CPU time of the fog transaction, not GPU time.
+- Frame time is not comparable [M] (`fog_cost_retention.py`, `frame_timing` windows): run251's bursts sit at
+  95 (9600-9900) and 129 (11400) `draws_p50`, most of the flight at 95-254, against 391-416 at run250's
+  bursts. Different scenes, not an A/B.
+- Captures [M] (`log_facts.py`, `footprint_census.py`): two complete 8-frame bursts, 9772-9779 and
+  11400-11407, 8 files per frame.
+- Shaft edge [M] (`shaft_edge_width.py`, horizontal luminance profile across the pale column above the ship,
+  rows 330-460): 10-90 % rise 261 / 241 px (frame 9772) and 278 / 218 px (frame 11400), left / right flank,
+  contrast 97-149 %. Absolute widths with no pass-off capture; that the column is a shaft is [I].
+
+**Outcome.** Nothing failed and the pass ran on every applied frame's call count, but neither the look nor
+the cost is measured: both need an in-session A/B, which the next build provides with a Ctrl+Shift+F11
+toggle and a per-frame grid row (in progress). User verdict: "softer?", low confidence.

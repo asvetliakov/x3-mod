@@ -1,0 +1,18 @@
+f3523: dark d3-12 n=193 motion.w=-1 193 cur_only 0
+  A prev-depth geometry 0; prev sky 193 (prev dist 1-2 7, 3-12 182, >=13 4)
+  B prev taa < 0.5 prev hdr 22;  C |taa-hdr|<=10% 0; taa<0.5 hdr 101; taa>hdr 0
+  hdrL p10/50/90 [0.1395, 0.1925, 0.313] taaL [0.0459, 0.1019, 0.1773] prev_taaL [0.0433, 0.0978, 0.1725] prev_hdrL [0.0436, 0.1013, 0.304]
+  colour/present luma(bgra8) median 79.4/32.7; ratio taa/hdr median 0.484
+  control sky d3-12 n=62981: taa/hdr median 0.999; cur_only 6884; prev geometry 1768
+f3530: dark d3-12 n=204 motion.w=-1 204 cur_only 0
+  A prev-depth geometry 0; prev sky 204 (prev dist 1-2 25, 3-12 140, >=13 39)
+  B prev taa < 0.5 prev hdr 32;  C |taa-hdr|<=10% 0; taa<0.5 hdr 75; taa>hdr 0
+  hdrL p10/50/90 [0.1555, 0.2417, 0.3423] taaL [0.0712, 0.1359, 0.1849] prev_taaL [0.066, 0.1272, 0.1691] prev_hdrL [0.0667, 0.1753, 0.341]
+  colour/present luma(bgra8) median 99.7/50.6; ratio taa/hdr median 0.525
+  control sky d3-12 n=63411: taa/hdr median 0.999; cur_only 9471; prev geometry 2106
+f3540: dark d3-12 n=78 motion.w=-1 78 cur_only 0
+  A prev-depth geometry 0; prev sky 78 (prev dist 1-2 15, 3-12 58, >=13 5)
+  B prev taa < 0.5 prev hdr 11;  C |taa-hdr|<=10% 0; taa<0.5 hdr 33; taa>hdr 0
+  hdrL p10/50/90 [0.1274, 0.2505, 0.3771] taaL [0.0396, 0.139, 0.2094] prev_taaL [0.0357, 0.1337, 0.1986] prev_hdrL [0.036, 0.2114, 0.3771]
+  colour/present luma(bgra8) median 102.7/52.6; ratio taa/hdr median 0.541
+  control sky d3-12 n=63795: taa/hdr median 0.999; cur_only 11738; prev geometry 4008

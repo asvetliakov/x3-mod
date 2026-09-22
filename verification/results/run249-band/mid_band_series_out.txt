@@ -1,0 +1,6 @@
+f3523 d3-12: n=193 density=3.06/1000 CV=0.40 lag1=-0.02 dark_nb=89% hdr/mean8=1.77 taa/mean8=0.90 prevtaa/mean8=0.83 mean8=0.111
+f3523 d>=13: n=579 density=0.67/1000 CV=0.53 lag1=-0.02 dark_nb=74% hdr/mean8=2.33 taa/mean8=0.84 prevtaa/mean8=0.75 mean8=0.061
+f3530 d3-12: n=204 density=3.22/1000 CV=0.37 lag1=-0.02 dark_nb=94% hdr/mean8=1.71 taa/mean8=0.91 prevtaa/mean8=0.86 mean8=0.146
+f3530 d>=13: n=877 density=1.02/1000 CV=0.40 lag1=-0.02 dark_nb=75% hdr/mean8=2.03 taa/mean8=0.89 prevtaa/mean8=0.83 mean8=0.079
+f3540 d3-12: n=78 density=1.22/1000 CV=0.38 lag1=0.00 dark_nb=83% hdr/mean8=1.62 taa/mean8=0.85 prevtaa/mean8=0.80 mean8=0.172
+f3540 d>=13: n=730 density=0.85/1000 CV=0.44 lag1=-0.02 dark_nb=77% hdr/mean8=2.17 taa/mean8=0.88 prevtaa/mean8=0.78 mean8=0.068

@@ -1,0 +1,2 @@
+frame 9772 peak x=686 lum=0.1711 | left: base=0.0780 contrast=119.5% width10-90=261px | right: base=0.0686 contrast=149.3% width10-90=241px
+frame 11400 peak x=724 lum=0.1606 | left: base=0.0814 contrast=97.3% width10-90=278px | right: base=0.0690 contrast=132.9% width10-90=218px

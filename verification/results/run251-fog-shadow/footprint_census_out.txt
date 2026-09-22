@@ -1,0 +1,50 @@
+run251 fields: capped0 capped1 capped2 capped3 capped4 footprint_refused0 footprint_refused1 footprint_refused2 footprint_refused3 footprint_refused4 footprint_aged0 footprint_aged1 footprint_aged2 footprint_aged3 footprint_aged4 dropped_min_size0 dropped_min_size1 dropped_min_size2 dropped_min_size3 dropped_min_size4
+run251 rows 39318
+  capped0                mean 0.00  frames_nonzero 0
+  capped1                mean 0.00  frames_nonzero 0
+  capped2                mean 0.00  frames_nonzero 0
+  capped3                mean 0.00  frames_nonzero 0
+  capped4                mean 0.00  frames_nonzero 0
+  footprint_refused0     mean 0.00  frames_nonzero 0
+  footprint_refused1     mean 0.00  frames_nonzero 9
+  footprint_refused2     mean 2.37  frames_nonzero 38956
+  footprint_refused3     mean 5.74  frames_nonzero 39313
+  footprint_refused4     mean 16.16  frames_nonzero 39314
+  footprint_aged0        mean 0.00  frames_nonzero 0
+  footprint_aged1        mean 0.00  frames_nonzero 0
+  footprint_aged2        mean 0.00  frames_nonzero 0
+  footprint_aged3        mean 5.93  frames_nonzero 19064
+  footprint_aged4        mean 48.16  frames_nonzero 32850
+  dropped_min_size0      mean 0.00  frames_nonzero 0
+  dropped_min_size1      mean 0.00  frames_nonzero 0
+  dropped_min_size2      mean 0.00  frames_nonzero 0
+  dropped_min_size3      mean 0.00  frames_nonzero 0
+  dropped_min_size4      mean 0.00  frames_nonzero 0
+  capture frame 9772 footprint_refused0..4 ['0', '0', '2', '4', '7']
+  capture frame 9773 footprint_refused0..4 ['0', '0', '2', '4', '7']
+  capture frame 9774 footprint_refused0..4 ['0', '0', '2', '4', '7']
+  capture frame 9775 footprint_refused0..4 ['0', '0', '2', '4', '7']
+  capture frame 9776 footprint_refused0..4 ['0', '0', '2', '4', '7']
+  capture frame 9777 footprint_refused0..4 ['0', '0', '2', '4', '7']
+  capture frame 9778 footprint_refused0..4 ['0', '0', '2', '4', '7']
+  capture frame 9779 footprint_refused0..4 ['0', '0', '2', '4', '7']
+  capture frame 11400 footprint_refused0..4 ['0', '0', '2', '4', '14']
+  capture frame 11401 footprint_refused0..4 ['0', '0', '2', '4', '14']
+  capture frame 11402 footprint_refused0..4 ['0', '0', '2', '4', '14']
+  capture frame 11403 footprint_refused0..4 ['0', '0', '2', '4', '14']
+  capture frame 11404 footprint_refused0..4 ['0', '0', '2', '4', '14']
+  capture frame 11405 footprint_refused0..4 ['0', '0', '2', '4', '14']
+  capture frame 11406 footprint_refused0..4 ['0', '0', '2', '4', '14']
+  capture frame 11407 footprint_refused0..4 ['0', '0', '2', '4', '14']
+run250 fields: capped0 capped1 capped2 capped3 capped4 dropped_min_size0 dropped_min_size1 dropped_min_size2 dropped_min_size3 dropped_min_size4
+run250 rows 11192
+  capped0                mean 0.00  frames_nonzero 0
+  capped1                mean 0.00  frames_nonzero 0
+  capped2                mean 0.00  frames_nonzero 0
+  capped3                mean 0.00  frames_nonzero 0
+  capped4                mean 0.00  frames_nonzero 0
+  dropped_min_size0      mean 0.00  frames_nonzero 0
+  dropped_min_size1      mean 0.00  frames_nonzero 0
+  dropped_min_size2      mean 0.00  frames_nonzero 0
+  dropped_min_size3      mean 0.00  frames_nonzero 0
+  dropped_min_size4      mean 0.00  frames_nonzero 0

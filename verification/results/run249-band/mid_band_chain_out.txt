@@ -1,0 +1,3 @@
+f3523: far-sky shift f-1->f (dy,dx)=(0,0) peak 0.886 far_px=686281; d3-12 dark n=193: dark also on f-1 58, run>=2 37, run>=4 19, run>=8 5; dark on f+1 49
+f3530: far-sky shift f-1->f (dy,dx)=(0,0) peak 0.912 far_px=689827; d3-12 dark n=204: dark also on f-1 77, run>=2 53, run>=4 18, run>=8 2; dark on f+1 67
+f3540: far-sky shift f-1->f (dy,dx)=(0,0) peak 0.909 far_px=689141; d3-12 dark n=78: dark also on f-1 32, run>=2 23, run>=4 14, run>=8 5; dark on f+1 27

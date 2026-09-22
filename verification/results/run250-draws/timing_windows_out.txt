@@ -1,0 +1,16 @@
+frame_timing frame=6900 dt_p50_us=21940 dt_p95_us=23870 draws_p50=391 draw_p50_us=3447 draw_native_p50_us=1308 scene_p50_us=4131 state_calls_p50=25434 present_p50_us=6
+frame_phases frame=6900 dt_p50_us=21930 pre_render_p50_us=3154 begin_scene_p50_us=280 views_p50_us=18063 view_setup_p50_us=1397 view_submit_p50_us=12543 scene_end_p50_us=281 present_p50_us=7 views_p50=8 incomplete=0
+frame_timing frame=7200 dt_p50_us=21603 dt_p95_us=23870 draws_p50=391 draw_p50_us=3430 draw_native_p50_us=1284 scene_p50_us=4043 state_calls_p50=25434 present_p50_us=6
+frame_phases frame=7200 dt_p50_us=21603 pre_render_p50_us=2832 begin_scene_p50_us=273 views_p50_us=18141 view_setup_p50_us=1345 view_submit_p50_us=12868 scene_end_p50_us=242 present_p50_us=7 views_p50=8 incomplete=0
+frame_timing frame=7500 dt_p50_us=21745 dt_p95_us=25358 draws_p50=391 draw_p50_us=3438 draw_native_p50_us=1291 scene_p50_us=4243 state_calls_p50=25434 present_p50_us=6
+frame_phases frame=7500 dt_p50_us=21739 pre_render_p50_us=3027 begin_scene_p50_us=283 views_p50_us=18062 view_setup_p50_us=1319 view_submit_p50_us=12562 scene_end_p50_us=286 present_p50_us=7 views_p50=8 incomplete=0
+frame_timing frame=7800 dt_p50_us=21572 dt_p95_us=22954 draws_p50=391 draw_p50_us=3428 draw_native_p50_us=1283 scene_p50_us=4179 state_calls_p50=25434 present_p50_us=6
+frame_phases frame=7800 dt_p50_us=21567 pre_render_p50_us=3004 begin_scene_p50_us=285 views_p50_us=17908 view_setup_p50_us=1285 view_submit_p50_us=12433 scene_end_p50_us=274 present_p50_us=7 views_p50=8 incomplete=0
+frame_timing frame=10200 dt_p50_us=24617 dt_p95_us=27892 draws_p50=415 draw_p50_us=3891 draw_native_p50_us=1435 scene_p50_us=3677 state_calls_p50=28322 present_p50_us=8
+frame_phases frame=10200 dt_p50_us=24606 pre_render_p50_us=3690 begin_scene_p50_us=357 views_p50_us=19884 view_setup_p50_us=1793 view_submit_p50_us=14414 scene_end_p50_us=415 present_p50_us=9 views_p50=9 incomplete=0
+frame_timing frame=10500 dt_p50_us=23962 dt_p95_us=26282 draws_p50=415 draw_p50_us=3773 draw_native_p50_us=1400 scene_p50_us=3632 state_calls_p50=28322 present_p50_us=7
+frame_phases frame=10500 dt_p50_us=23949 pre_render_p50_us=3684 begin_scene_p50_us=347 views_p50_us=19199 view_setup_p50_us=1753 view_submit_p50_us=13936 scene_end_p50_us=398 present_p50_us=8 views_p50=9 incomplete=0
+frame_timing frame=10800 dt_p50_us=23063 dt_p95_us=26454 draws_p50=416 draw_p50_us=3722 draw_native_p50_us=1395 scene_p50_us=3553 state_calls_p50=28356 present_p50_us=6
+frame_phases frame=10800 dt_p50_us=23069 pre_render_p50_us=3749 begin_scene_p50_us=323 views_p50_us=18464 view_setup_p50_us=1658 view_submit_p50_us=13391 scene_end_p50_us=332 present_p50_us=7 views_p50=9 incomplete=0
+frame_timing frame=11100 dt_p50_us=24282 dt_p95_us=27944 draws_p50=416 draw_p50_us=3734 draw_native_p50_us=1366 scene_p50_us=3555 state_calls_p50=28372 present_p50_us=7
+frame_phases frame=11100 dt_p50_us=24278 pre_render_p50_us=4373 begin_scene_p50_us=313 views_p50_us=19177 view_setup_p50_us=1564 view_submit_p50_us=14156 scene_end_p50_us=342 present_p50_us=8 views_p50=9 incomplete=0

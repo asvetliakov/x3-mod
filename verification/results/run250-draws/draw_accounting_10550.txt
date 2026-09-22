@@ -1,0 +1,21 @@
+frame 10550 1280x768 depth=depth_1_10550.rgba32f us_per_draw=57.74 draws=416 with_box=335 tiny_on_screen=34
+bucket      draws     prims      ms  covered
+offscreen      12     13196    0.69     0.00
+occluded        1       194    0.06     1.00
+tiny           34      2070    1.96     0.03
+partial        83    161284    4.79     0.19
+visible       205    299598   11.84     0.00
+no_box         81     21953    4.68     0.00
+node      model       draws     prims      ms  buckets
+33349878  0000552a       30     10481    1.73  tiny=3 visible=27
+592b1ea8  000053b8       28     72325    1.62  offscreen=12 visible=16
+3bba1d08  000053b8       28     72325    1.62  occluded=1 tiny=2 partial=19 visible=6
+290a1168  00005434       28     65265    1.62  tiny=4 partial=22 visible=2
+2a661318  00004f75       28      8411    1.62  tiny=3 visible=25
+333bb020  00004f75       28      8411    1.62  tiny=5 partial=21 visible=2
+39a4c788  00004f76       28     21610    1.62  visible=28
+2ede3a18  00004f72       27      6982    1.56  tiny=5 visible=22
+3bee87f8  00005530       17     89838    0.98  tiny=3 visible=14
+35f3cbd8  00005411       16     52937    0.92  tiny=1 visible=15
+3b5616b0  00005529       14     12430    0.81  tiny=1 visible=13
+2eef78f0  00005529       14     12430    0.81  tiny=1 partial=13

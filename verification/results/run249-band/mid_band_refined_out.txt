@@ -1,0 +1,6 @@
+f3523 refined n=37: min prior dist 0 (covered) 20, 1-2 13, 3-12 4, >=13 0; d_f - d_(f-8) median 4
+f3523 rest n=156: min prior dist 0 (covered) 38, 1-2 16, 3-12 100, >=13 2; d_f - d_(f-8) median 0
+f3530 refined n=41: min prior dist 0 (covered) 32, 1-2 5, 3-12 4, >=13 0; d_f - d_(f-8) median 3
+f3530 rest n=163: min prior dist 0 (covered) 71, 1-2 14, 3-12 49, >=13 29; d_f - d_(f-8) median 0
+f3540 refined n=22: min prior dist 0 (covered) 9, 1-2 9, 3-12 4, >=13 0; d_f - d_(f-8) median 2
+f3540 rest n=56: min prior dist 0 (covered) 16, 1-2 6, 3-12 32, >=13 2; d_f - d_(f-8) median 0

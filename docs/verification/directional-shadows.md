@@ -3683,3 +3683,41 @@ Build: scratch `build-footprint` (MinGW i686, RelWithDebInfo), `check_no_x87.py`
 638 reachable functions**, DLL `42b5544d…`. `tools/manage.py launch --dry-run --bottle X3` with the
 Run 65 session C options plus `--shadow-cascade-min-footprint 8` passes
 (`X3M_SHADOW_CASCADE_MIN_FOOTPRINT=8.0`). Not installed, not measured in flight.
+
+## Run 251: minimum caster footprint P=8 in flight (2026-09-22)
+
+Run 67 session C (`/tmp/x3-bottleX3-run251`, `--shadow-cascade-min-footprint 8`, Run67 DLL `621cad63…`),
+against session B (run250, no footprint option). [M] = measured by the named script, [I] = inferred; scripts
+and outputs in `verification/results/run251-fog-shadow/`.
+
+Per-frame `shadow_replay_candidates` counters [M] (`footprint_census.py`, 39,318 run251 rows, 11,192 run250):
+
+| cascade | `capped` | `dropped_min_size` | `footprint_refused` mean (frames nonzero) | `footprint_aged` mean (frames nonzero) | at 9772-9779 / 11400-11407 refused |
+| --- | --- | --- | --- | --- | --- |
+| c0 | 0 | 0 | 0 (0) | 0 (0) | 0 / 0 |
+| c1 | 0 | 0 | 0.00 (9) | 0 (0) | 0 / 0 |
+| c2 | 0 | 0 | 2.37 (38,956) | 0 (0) | 2 / 2 |
+| c3 | 0 | 0 | 5.74 (39,313) | 5.93 (19,064) | 4 / 4 |
+| c4 | 0 | 0 | 16.16 (39,314) | 48.16 (32,850) | 7 / 14 |
+
+`capped` and `dropped_min_size` are 0 on every frame of both runs. Mean live casters per frame [M]
+(`fog_cost_retention.py`, `shadow_retention_frame`): c4 55.2 against run250's 177.8 (c3 31.3 / 48.0, c0 7.6 /
+17.1); the scenes differ (95-254 against 391-416 draws at the bursts), so the footprint's share of that drop is
+not separable [I].
+
+**Second sector, run253** (`/tmp/x3-bottleX3-run253`, same options; scripts and outputs in
+`verification/results/run253-footprint/`). Per-frame means [M] (`footprint_census.py`, 6,159 rows):
+`footprint_refused` c2 / c3 / c4 6.88 / 7.85 / 17.49, `footprint_aged` c3 / c4 8.18 / 61.78, live c4 223.1
+(a busier scene than run251's 55.2); `capped` and `dropped_min_size` 0 on every frame. Replay cost [M]
+(`replay_cost_fit.py`, OLS of `shadow_replay_depth` `us` on the summed per-cascade draws): 1.19 / 1.26 /
+1.13 us per draw, r 0.98 / 0.94 / 0.87, for run253 / run251 / run250; mean replay 647 / 438 / 649 us per
+frame (`footprint_census.py`). At that slope the footprint saves about 39 us (run253) and 29 us (run251)
+per frame [I: slope x refused casters]. Smallest kept caster from the size law
+(`src/renderer/shadow_cascade_footprint_core.h` lines 64-75, `m00` 0.8, width 1280), metres, c1 / c2 / c3
+/ c4 [I: computed by the orchestrator, no saved script]: P=8 0.9 / 4.5 / 22 / 111; P=12 1.1 / 6.7 / 33 /
+167; P=16 1.5 / 8.9 / 45 / 223.
+
+**Outcome.** Every caster drop in run251 and run253 is the footprint's, none the cap's; cascade 0 is never
+gated, as the fixture required. The user reported no missing shadow in run251 and no shadow popping in the
+second sector, and accepts P=8 as the launcher default. 8 stays: a larger P saves well under 0.1 ms per frame
+[I] and starts removing M5/M4-class ship shadows on c3 [I: the P=12 / 16 sizes above].

@@ -1,0 +1,110 @@
+== run253 X3M_SHADOW_CASCADES=250.0,1500.0,7500.0,37500.0,150000.0 X3M_SHADOW_CASCADE_ADAPTIVE_C0=1.5 X3M_SHADOW_CASCADE_DROP_ORDER=importance X3M_SHADOW_CASCADE_MIN_FOOTPRINT=8.0 X3M_SHADOW_CASCADE_RECORDS=1024,1024,2048,4096,4096 X3M_SHADOW_CASCADE_SIZES=2048,2048,2048,2048,2048
+  shadow_replay_candidates rows 6159
+    capped0              mean      0.00  nonzero 0
+    capped1              mean      0.00  nonzero 0
+    capped2              mean      0.00  nonzero 0
+    capped3              mean      0.00  nonzero 0
+    capped4              mean      0.00  nonzero 0
+    dropped_min_size0    mean      0.00  nonzero 0
+    dropped_min_size1    mean      0.00  nonzero 0
+    dropped_min_size2    mean      0.00  nonzero 0
+    dropped_min_size3    mean      0.00  nonzero 0
+    dropped_min_size4    mean      0.00  nonzero 0
+    footprint_aged0      mean      0.00  nonzero 0
+    footprint_aged1      mean      0.00  nonzero 0
+    footprint_aged2      mean      0.00  nonzero 0
+    footprint_aged3      mean      8.18  nonzero 5830
+    footprint_aged4      mean     61.78  nonzero 5957
+    footprint_refused0   mean      0.00  nonzero 0
+    footprint_refused1   mean      0.00  nonzero 0
+    footprint_refused2   mean      6.88  nonzero 6136
+    footprint_refused3   mean      7.85  nonzero 6136
+    footprint_refused4   mean     17.49  nonzero 6158
+  shadow_retention_frame rows 6159
+    live_c0              mean     19.95  nonzero 6159
+    live_c1              mean     21.43  nonzero 6159
+    live_c2              mean     19.62  nonzero 6159
+    live_c3              mean     83.00  nonzero 6159
+    live_c4              mean    223.07  nonzero 6159
+  shadow_replay_depth rows 5312
+    apply_us             mean     72.42  nonzero 5268
+    draws                mean    229.31  nonzero 5312
+    draws0               mean     21.02  nonzero 5312
+    draws1               mean     23.42  nonzero 5312
+    draws2               mean     30.52  nonzero 5312
+    draws3               mean    169.39  nonzero 5312
+    draws4               mean    260.50  nonzero 4280
+    issues               mean    584.02  nonzero 5312
+    replayed             mean    229.31  nonzero 5312
+    us                   mean    646.76  nonzero 5312
+    replay us/draw: ratio-of-means 2.820  OLS slope 0.311  intercept 575.5  median us 656.0  p95 us 891.2
+== run251 X3M_SHADOW_CASCADES=250.0,1500.0,7500.0,37500.0,150000.0 X3M_SHADOW_CASCADE_ADAPTIVE_C0=1.5 X3M_SHADOW_CASCADE_DROP_ORDER=importance X3M_SHADOW_CASCADE_MIN_FOOTPRINT=8.0 X3M_SHADOW_CASCADE_RECORDS=1024,1024,2048,4096,4096 X3M_SHADOW_CASCADE_SIZES=2048,2048,2048,2048,2048
+  shadow_replay_candidates rows 39318
+    capped0              mean      0.00  nonzero 0
+    capped1              mean      0.00  nonzero 0
+    capped2              mean      0.00  nonzero 0
+    capped3              mean      0.00  nonzero 0
+    capped4              mean      0.00  nonzero 0
+    dropped_min_size0    mean      0.00  nonzero 0
+    dropped_min_size1    mean      0.00  nonzero 0
+    dropped_min_size2    mean      0.00  nonzero 0
+    dropped_min_size3    mean      0.00  nonzero 0
+    dropped_min_size4    mean      0.00  nonzero 0
+    footprint_aged0      mean      0.00  nonzero 0
+    footprint_aged1      mean      0.00  nonzero 0
+    footprint_aged2      mean      0.00  nonzero 0
+    footprint_aged3      mean      5.93  nonzero 19064
+    footprint_aged4      mean     48.16  nonzero 32850
+    footprint_refused0   mean      0.00  nonzero 0
+    footprint_refused1   mean      0.00  nonzero 9
+    footprint_refused2   mean      2.37  nonzero 38956
+    footprint_refused3   mean      5.74  nonzero 39313
+    footprint_refused4   mean     16.16  nonzero 39314
+  shadow_retention_frame rows 39318
+    live_c0              mean      7.65  nonzero 39316
+    live_c1              mean      8.87  nonzero 39316
+    live_c2              mean     15.06  nonzero 39316
+    live_c3              mean     31.26  nonzero 27993
+    live_c4              mean     55.17  nonzero 36396
+  shadow_replay_depth rows 39318
+    apply_us             mean     81.55  nonzero 39299
+    draws                mean     67.81  nonzero 39318
+    draws0               mean      8.38  nonzero 39300
+    draws1               mean     10.35  nonzero 39300
+    draws2               mean     27.26  nonzero 39300
+    draws3               mean     90.94  nonzero 37582
+    draws4               mean    192.10  nonzero 39216
+    issues               mean    329.82  nonzero 39318
+    replayed             mean     67.78  nonzero 39302
+    us                   mean    438.19  nonzero 39302
+    replay us/draw: ratio-of-means 6.462  OLS slope 3.138  intercept 225.4  median us 477.6  p95 us 753.9
+== run250 X3M_SHADOW_CASCADES=250.0,1500.0,7500.0,37500.0,150000.0 X3M_SHADOW_CASCADE_ADAPTIVE_C0=1.5 X3M_SHADOW_CASCADE_DROP_ORDER=importance X3M_SHADOW_CASCADE_RECORDS=1024,1024,2048,4096,4096 X3M_SHADOW_CASCADE_SIZES=2048,2048,2048,2048,2048
+  shadow_replay_candidates rows 11192
+    capped0              mean      0.00  nonzero 0
+    capped1              mean      0.00  nonzero 0
+    capped2              mean      0.00  nonzero 0
+    capped3              mean      0.00  nonzero 0
+    capped4              mean      0.00  nonzero 0
+    dropped_min_size0    mean      0.00  nonzero 0
+    dropped_min_size1    mean      0.00  nonzero 0
+    dropped_min_size2    mean      0.00  nonzero 0
+    dropped_min_size3    mean      0.00  nonzero 0
+    dropped_min_size4    mean      0.00  nonzero 0
+  shadow_retention_frame rows 11192
+    live_c0              mean     17.13  nonzero 11191
+    live_c1              mean     18.27  nonzero 11191
+    live_c2              mean     26.06  nonzero 11191
+    live_c3              mean     48.04  nonzero 11192
+    live_c4              mean    177.80  nonzero 11192
+  shadow_replay_depth rows 11192
+    apply_us             mean    104.84  nonzero 11182
+    draws                mean    177.80  nonzero 11192
+    draws0               mean     17.16  nonzero 11183
+    draws1               mean     18.46  nonzero 11183
+    draws2               mean     34.76  nonzero 11183
+    draws3               mean    111.99  nonzero 11184
+    draws4               mean    294.12  nonzero 9921
+    issues               mean    535.93  nonzero 11192
+    replayed             mean    177.74  nonzero 11184
+    us                   mean    649.27  nonzero 11184
+    replay us/draw: ratio-of-means 3.652  OLS slope 0.557  intercept 550.2  median us 634.3  p95 us 1067.0

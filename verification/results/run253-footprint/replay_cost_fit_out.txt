@@ -1,0 +1,3 @@
+run253 n 5312 | us~sum(draws_c): slope 1.193 us  intercept 44.4  r 0.98  mean_x 504.8 | us~issues: slope 0.363 us  intercept 434.9  r 0.21  mean_x 584.0
+run251 n 39302 | us~sum(draws_c): slope 1.257 us  intercept 24.8  r 0.94  mean_x 329.2 | us~issues: slope 1.245 us  intercept 27.6  r 0.94  mean_x 329.9
+run250 n 11184 | us~sum(draws_c): slope 1.128 us  intercept 112.1  r 0.87  mean_x 476.8 | us~issues: slope 0.531 us  intercept 365.0  r 0.43  mean_x 536.1

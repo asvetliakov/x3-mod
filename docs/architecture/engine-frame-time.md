@@ -1515,6 +1515,53 @@ plus a logged world-space AABB (min/max) per `object_context` row, so bounds
 can be projected against the frustum and against the `depth_` readback on the
 same stand, would settle both.
 
+## Run 250: draw accounting at the stand and the busy view (2026-09-22)
+
+Run 67 session B, Run67 DLL `621cad63…`, `/tmp/x3-bottleX3-run250/session-20260922-230123-216.log`
+(`--lod-scale 0.5 --object-bounds-log --cull-small-parts 4 --frame-timing --frame-phases`, fog on).
+[M] = measured by the named script, [I] = inferred; scripts and outputs in
+`verification/results/run250-draws/`. The log's `lod_scale_value` row reads `applied=0.5` [M]
+(`log_facts.py`); the heavy station body `000053a0` draws at LOD 3 [M] (`no_box_census_out.txt`,
+`lod=00000003`; its identity as the heavy body is from the Run 245-247 section). Two F8 bursts: frame 7357,
+the stand, **391 draws**, and frame 10550, the busy view, **416 draws** [M] (`draw_accounting.py` header).
+The stand is not run248's exact position: the view translation differs by 8,570 units between run248 frame
+8055 and run250 frame 7357 [M] (`log_facts.py`); the eye distance depends on the view-matrix convention
+(1,566 or 14,246 units) and is not established.
+
+**Buckets** [M] (`tools/analysis/draw_accounting.py`, saved as `draw_accounting_7357.txt` and
+`draw_accounting_10550.txt`; ms at the tool's whole-frame rate `dt_p50 / draws_p50` = 55.61 / 57.74 us):
+
+| bucket | 7357 draws | prims | ms | covered | 10550 draws | prims | ms | covered |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| offscreen | 0 | 0 | 0.00 | - | 12 | 13,196 | 0.69 | 0.00 |
+| occluded | 25 | 2,398 | 1.39 | 1.00 | 1 | 194 | 0.06 | 1.00 |
+| tiny | 13 | 339 | 0.72 | 0.03 | 34 | 2,070 | 1.96 | 0.03 |
+| partial | 160 | 187,357 | 8.90 | 0.49 | 83 | 161,284 | 4.79 | 0.19 |
+| visible | 99 | 169,580 | 5.51 | 0.00 | 205 | 299,598 | 11.84 | 0.00 |
+| no_box | 94 | 49,728 | 5.23 | - | 81 | 21,953 | 4.68 | - |
+
+**`no_box`** [M] (`no_box_census.py`), 7357 / 10550: 55 / 55 alpha-tested routed draws (`atest=1`, gate 0:
+routed, but the run250 log has no box for alpha-tested draws), 25 / 21 without a `motion_route` row, 14 / 5
+unrouted (gate 3 or 4), 8 / 7 unscoped (`model=0`, `scoped=0`); every draw with a box is routed.
+
+**Scene difference** [M] (`model_diff.py`): against run248's stand (frame 8055, 367 draws) the changes are
+per-model swaps of small ships, `00004f72` +62, `00004f76` +32, `0000552a` -37, `00004f75` -32 and single
+draws; against run246 frame 8975 (451 draws) the same kind, `00004f75` -96, `00004f72` +93, `00005531` -33,
+`00004f76` +32, `35ba45c3` -25, `00005529` -16. The station set is unchanged; the differences are traffic [I].
+
+**Cost** [I: products of the rows above]. At the per-draw submission gap (`gap_draw_p50 / draws_p50` of the
+enclosing `frame_timing` window, 10,671 / 391 = 27.29 us and 11,817 / 415 = 28.47 us [M],
+`verification/results/run251-fog-shadow/fog_cost_retention.py`, run250 section; run248's stand 27.2 us, Run
+248 section) the cullable buckets (offscreen + occluded + tiny) are 38 / 47 draws = **1.04 / 1.34 ms**
+(2.11 / 2.71 ms at the tool's whole-frame rate), against visible + partial 14.4 / 16.6 ms at the tool's rate.
+Timing windows [M] (`timing_windows.py`): 6900-7800 `dt_p50` 21.6-21.9 ms, `view_submit_p50` 12.4-12.9 ms,
+391 draws; 10200-11100 `dt_p50` 23.0-24.6 ms, `view_submit_p50` 13.4-14.4 ms, 415-416 draws.
+
+**Conclusion.** No cullable bucket justifies the next per-node cull: at most 1.3 ms of submission, most of it
+in `tiny`, which the existing `--cull-small-parts` site already sees. The 55 alpha-tested draws per frame are
+the largest unmeasured group; the extended `--object-bounds-log` (Object bounds log below, `alpha_tested=1`
+rows) logs their boxes and needs one flight.
+
 ## Object bounds log (2026-09-22)
 
 Sizing the two buckets the draw accounting could not size — drawn outside the

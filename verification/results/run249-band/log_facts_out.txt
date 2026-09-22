@@ -1,0 +1,1 @@
+motion_output_mode sky_history=strict sky_history_band_px=3.00

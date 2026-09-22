@@ -1,0 +1,4 @@
+lod_scale requested=0.5 applied=0 game_value=0 proxy_value=0 patched=1 reason=game_value_pending write=plain
+lod_scale_value game_value=1 proxy_value=2 applied=0.5
+eye distance run248 f8055 -> run250 f7357: column form 14246, row form 1566 units
+|t| difference: 8570 units

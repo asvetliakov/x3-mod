@@ -1,0 +1,4 @@
+volumetric_fog_shadow_pass enabled=1 grid=quarter slices=64 tiles=4x4 format=A8R8G8B8 cascades=3 taps=4 penumbra=1,1,16
+fog grid/fallback row types: none
+applied fog frames 37917, with result or restore != 00000000: 0
+capture files per frame: 9772:8 9773:8 9774:8 9775:8 9776:8 9777:8 9778:8 9779:8 11400:8 11401:8 11402:8 11403:8 11404:8 11405:8 11406:8 11407:8

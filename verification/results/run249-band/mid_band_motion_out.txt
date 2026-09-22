@@ -1,0 +1,6 @@
+f3523: n=193 local_max(hdr) 51; taa/mean8(hdr) median 0.896 p10/p90 0.624/0.973; hdr/mean8 median 1.775
+  block match f vs f-1 (n=193): disp 0 23, <3 75, 3-12 95, median 2.24; SSD(zero)/SSD(best) median 1.56
+f3530: n=204 local_max(hdr) 45; taa/mean8(hdr) median 0.909 p10/p90 0.602/1.097; hdr/mean8 median 1.714
+  block match f vs f-1 (n=204): disp 0 51, <3 58, 3-12 95, median 2.24; SSD(zero)/SSD(best) median 1.57
+f3540: n=78 local_max(hdr) 24; taa/mean8(hdr) median 0.854 p10/p90 0.493/1.021; hdr/mean8 median 1.623
+  block match f vs f-1 (n=78): disp 0 23, <3 22, 3-12 33, median 2.24; SSD(zero)/SSD(best) median 1.46

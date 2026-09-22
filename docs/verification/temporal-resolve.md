@@ -1560,3 +1560,110 @@ presented image only and cannot recover misregistered history.
 Open: unrelated observation from the same measurement: run244's sky
 is current-only at 6-8 % out to 6 px from the station (1.1-1.5 % in run235, 2.4-6.3 % on far
 sky in both), on pixels the strict term cannot refuse; not investigated.
+
+## Run 249: strict + band term in flight (2026-09-22)
+
+Run 67 session A, Run67 DLL `621cad63…`, `/tmp/x3-bottleX3-run249` (`--taa-sky-history strict`, band
+threshold left at its default). [M] = measured by the named script, [I] = inferred. Scripts and their
+outputs: `verification/results/run249-band/` (`<script>.py` beside `<script>_out.txt`; `ring_flicker.py`
+writes `ring_out.txt`). The first `motion_output_mode` row carries `sky_history=strict
+sky_history_band_px=3.00` [M] (`log_facts.py`).
+
+**Bursts** [M] (`burst_log.py`, input pre-filtered by `extract_log.sh`), 32 frames each, no `camera_cut`:
+
+| burst | frames | translation per frame, median (min-max) | `rotation_deg` | `gate6` sum |
+| --- | --- | --- | --- | --- |
+| SETA 1 | 3515-3546 | 862.5 u (36.2-862.5) | 0.197 constant | 157 |
+| normal speed | 4150-4181 | 172.0 u (22.3-172.7) | 0.000-0.244 | 42 |
+| SETA 2 | 5538-5569 | 862.5 u (108.7-862.5) | 0.212 constant | 100 |
+| pan | 9267-9298 | 96.6 u (10.7-501.7) | 0.136-2.350 | 153 |
+
+The pan burst is a turn with a translating chase camera, not a rotation-only pan [I] (the translation above).
+
+**Dark-sky census** [M] (`darksky.py`, method of the Run 244 section, 32 frames from the given start):
+
+| burst | dark-sky px | d 1-2 | d 3-12 | d >= 13 | mean uncovered fraction |
+| --- | --- | --- | --- | --- | --- |
+| run235 b2 (loose), 6967 | 56,072 | 18,153 (32 %) | 10,797 (19 %) | 27,122 (48 %) | 0.199 |
+| run244 b1 (strict), 3733 | 32,505 | 6,767 (21 %) | 4,775 (15 %) | 20,963 (64 %) | 0.080 |
+| run249 SETA 1, 3515 | 26,056 | 3,320 (13 %) | 4,155 (16 %) | 18,581 (71 %) | 0.053 |
+| run249 SETA 2, 5538 | 26,676 | 1,625 (6 %) | 4,509 (17 %) | 20,542 (77 %) | 0.008 |
+| run249 normal, 4150 | 46,872 | 5,842 (12 %) | 3,165 (7 %) | 37,865 (81 %) | 0.045 |
+| run249 pan, 9267 | 38,507 | 2,924 (8 %) | 1,710 (4 %) | 33,873 (88 %) | 0.031 |
+
+Against run244 b1 the SETA totals fall 20 % / 18 % and the 1-2 px band 51 % / 76 %; the 3-12 px band only
+13 % / 6 % and the far tail 11 % / 2 % [I: ratios of the rows above]. These totals differ slightly from the
+Run 244 table (32,505 total, but 6,648 / 4,202 / 21,655 by distance there, over 31 frames); compare run249
+only with the `darksky.py` rows. The normal-speed comparator (run244 b2, 7961: 44,512 dark-sky px, 16,194 /
+3,669 / 24,649) is the first row of `far_tail_out.txt` [M] (`far_tail.py` reruns the same census).
+
+**Band engagement by parallax** [M] (`band_parallax.py`: sky pixels at distance 1, binned by the routed
+displacement of the nearest routed neighbour, px/frame; current-only proxy `taa == hdr`):
+
+| bin | run244 b1: current-only / dark | run249 SETA 1: current-only / dark | run249 SETA 2: current-only / dark |
+| --- | --- | --- | --- |
+| < 2 | 0.0 % / 1,682 | 0.0 % / 2,025 | 0.0 % / 290 |
+| 2-3 | 0.0 % / 382 | 8.7 % / 489 | 13.5 % / 205 |
+| 3-6 | 0.1 % / 391 | 90.6 % / 38 | 96.6 % / 39 |
+| >= 6 | 3.9 % / 3,443 | 100.0 % / 0 | 100.0 % / 0 |
+
+The band term does what it was built for: at >= 3 px/frame parallax the distance-1 border is 91-100 %
+current-only and carries almost no dark pixels; below 2 px/frame it never engages, and that bin now holds
+most of the remaining distance-1 dark pixels. Distance-1 current-only share over the whole burst [M]
+(`band.py`): 0.98 % run244 b1, 37.4 % / 66.5 % run249 SETA 1 / 2.
+
+**Border flicker** [M] (`ring_flicker.py`, mean |present luma(f) - luma(f-1)| on sky present in both frames;
+comparable only across runs with this script):
+
+| burst | d1 | d2 | d3 | far control | d1 current-only |
+| --- | --- | --- | --- | --- | --- |
+| run244 b2 (7961) | 3.86 | 0.49 | 0.38 | 0.23 | 0.1 % |
+| run249 normal (4150) | 3.43 | 0.58 | 0.38 | 0.27 | 56.5 % |
+| run244 b3 (9992) | 18.00 | 6.63 | 6.02 | 4.51 | 0.9 % |
+| run249 pan (9267) | 9.23 | 6.58 | 6.14 | 7.17 | 33.0 % |
+
+Normal speed: the border is no noisier than run244's (3.43 against 3.86) although more than half of it is
+now current-only. Pan: 33 % of the border is current-only because the chase camera translates [I]; its d1 /
+far ratio is 1.3 against 4.0 in run244 b3 [I: ratio of the rows], i.e. the border flickers barely more than
+the sky of the same burst. The same script's parallax bins for the pan (99.6 % current-only below 2 px/frame)
+are not a parallax under rotation and are not read as one.
+
+**Diagnosis of the 3-12 px band** (the population the band term cannot reach). Frames 3523 / 3530 / 3540 of
+SETA 1:
+
+- Camera path [M] (`mid_band_chain.py`): the far sky's phase-correlation shift f-1 -> f is (0, 0), peak
+  0.886-0.912, so the unrouted sky's history lookup is the identity on this leg.
+- What the pixels are [M] (`mid_band_mech.py`): 193 / 204 / 78 dark pixels, all unrouted (`motion.w = -1`),
+  none current-only, none covered by geometry on f-1; `taa / hdr` median 0.48-0.54 against 0.999 for all sky
+  at 3-12 px.
+- Temporal signature [M] (`mid_band_series.py`): current HDR coefficient of variation 0.37-0.40, lag-1
+  autocorrelation -0.02 to 0.00, output 0.85-0.91 of the pixel's own 8-frame HDR mean; the >= 13 px control
+  gives lag-1 -0.02 and 0.84-0.89. Frame-to-frame flicker, not a moving feature, and the same statistics as
+  far sky. The 1-2 px band (`near_band_series.py`) sits at 0.60-0.74 of its own mean.
+- Refined criterion [M] (`dark_vs_own_mean.py`: dark and output below 0.7 x own 8-frame HDR mean), frames
+  f0+7..f0+31:
+
+  | burst | d 1-2 | d 3-12 | d >= 13 |
+  | --- | --- | --- | --- |
+  | SETA 1 (3522-3546) | 1,455 of 2,755 (53 %) | 914 of 3,386 (27 %) | 2,697 of 14,644 (18 %) |
+  | SETA 2 (5545-5569) | 656 of 1,169 (56 %) | 1,146 of 3,407 (34 %) | 2,476 of 15,875 (16 %) |
+
+  So 66-73 % of the 3-12 px dark pixels are ordinary accumulation of flickering sky, the same as the far
+  tail [I: complement of the refined share].
+- The refined 27-34 % [M] (`mid_band_refined.py`): of 37 / 41 / 22 refined pixels, 20 / 32 / 9 were covered
+  and 13 / 5 / 9 were in the 1-2 px band at some point of the previous 8 frames (4 each only ever at 3-12 px);
+  their silhouette distance grew by a median 4 / 3 / 2 px over those 8 frames (0.25-0.5 px/frame), against 0
+  for the rest. A genuine hull share that entered history while covered or in the band below the 3 px/frame
+  threshold, carried outward as the silhouette recedes [I].
+- Mechanism in `src/temporal/resolve.hlsl` [I: reading of the source against the numbers above]: `band` is
+  set only for the dilated pixel (line 308) and refused only at >= the band threshold (line 384); the strict
+  tolerance applies to the pixel's own path (line 440); one pixel further out the depth proof passes on
+  sentinel taps (lines 449-464); the 3x3 clip box of flickering sky (mean +- gamma sigma, softened by the far
+  stabiliser, lines 539-564) contains the darkened history; the keep weight up to the far stabiliser's 0.985
+  (lines 575-598) then decays it slowly.
+
+**Outcome.** Strict + band stay opt-in (not the default). The band threshold is not the lever: the residual
+enters below it or while covered and survives by ordinary accumulation outside the band. The fix is a design
+question (`docs/architecture/seta-sky-hull-share-decay.md`, pending). Flight acceptance for that fix: the
+refined 3-12 px share (`dark_vs_own_mean.py`) falls to the far-tail level of 16-18 %. User verdict: SETA
+still smears a little; normal speed and the pan looked clean.
