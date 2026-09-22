@@ -96,12 +96,19 @@ prose itself. Not for routine design questions.
 The agent's final message is the only thing that enters the main context.
 Every agent definition enforces this shape; hold ad-hoc `Agent` calls to it too.
 
-- At most 25 lines, in this order: **Outcome**, **Evidence** (command and the
-  numbers it produced), **Files changed**, **Open issues**.
+- In this order: **Outcome**, **Evidence** (command and the numbers it
+  produced), **Files changed**, **Open issues**. About 25 lines of prose;
+  tables do not count, pasted log rows and file contents are not allowed.
+- The brief's numbered questions are answered in its order, each with its
+  number, so reports can be scored and compared mechanically.
+- Every figure is marked measured or inferred. Evidence that will enter a
+  ledger keeps its producing script or one-liner under `verification/results/`,
+  not only in the session scratchpad.
 - Long findings go into the owning note under `docs/`; the report gives the
   path and the outcome line only.
-- No pasted file contents, no restatement of the task, no rejected
-  alternatives, no narrative of attempts unless it changes the next step.
+- No restatement of the task, no narrative of attempts unless it changes the
+  next step. Rejected alternatives stay out of every report except that the
+  `design` note (not its report) records the options considered and why they lose.
 
 ## Documentation rules
 

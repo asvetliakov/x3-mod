@@ -228,10 +228,14 @@ when model latency is the bottleneck, never a default for waiting on fixtures.
   block the rest of the brief; it stops early only when nothing can move
   without the orchestrator. An agent that returns with open items and no
   blocker is resumed once or twice with the items named, then treated as stuck.
-- Reports use **Outcome**, **Evidence**, **Files changed**, **Open issues**, at
-  most 25 lines. Include commands, counts, paths and material limitations. Put
-  longer findings in the owning note; never omit a material finding to meet the
-  limit. Distinguish measured facts from inference. No pasted logs or task recap.
+- Reports use **Outcome**, **Evidence**, **Files changed**, **Open issues**,
+  about 25 lines of prose; tables do not count, pasted log rows do. Answer the
+  brief's numbered questions in its order, each with its number. Include
+  commands, counts, paths and material limitations, and mark each figure
+  measured or inferred. Evidence bound for a ledger keeps its producing script
+  or one-liner under `verification/results/`, not only in a scratch directory.
+  Put longer findings in the owning note; never omit a material finding to meet
+  the limit. No task recap; rejected alternatives only in a design note.
 - Agents run affected checks and fix in-scope defects; broaden only for changed
   code, a failure or an unresolved concern. They do not commit, install, rebuild
   a frozen DLL or run Wine unless the owner explicitly assigns that operation.
