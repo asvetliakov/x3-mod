@@ -1,0 +1,7 @@
+M1 model-slot writer ->[esp+0x18] -> FAIL failed: ['exe_identity', 'ladder_pattern_bytes', 'slot_writers']
+M2 new ebx writer 0x47d45c sub ebx,1 -> FAIL failed: ['ebx_writers_between_sites', 'exe_identity']
+M3 D-slot writer ->[esp+0xc] -> FAIL failed: ['exe_identity', 'ladder_pattern_bytes', 'slot_writers']
+M4 restore from D slot -> FAIL failed: ['exe_identity', 'ladder_pattern_bytes']
+M5 new esp writer 0x47d42b mov esp,ebp -> FAIL failed: ['esp_writers_between_sites', 'exe_identity']
+M6 ebx write outside window 0x47d4e1 movsx ebx -> FAIL failed: ['ebx_writers_between_sites', 'exe_identity']
+M0 unmodified -> PASS failed: []
