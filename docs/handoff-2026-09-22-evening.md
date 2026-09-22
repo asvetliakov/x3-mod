@@ -1,25 +1,30 @@
-# Handoff 2026-09-22 evening — Run 66 flown, Run 67 in qualification
+# Handoff 2026-09-22 evening — Run 66 flown, Run67 installed, Run 67 queued
 
 Replaces the [2026-09-22 handoff](archive/handoff-2026-09-22.md); its operating rules
 still bind (never launch the game; every Wine command through
 `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py`; one candidate owner;
 install only with `tools/manage.py install --bottle X3 --dll-source <dll>`; native
 Windows is a required, unverified target — [portability](architecture/platform-portability.md)).
-Installed-build identity lives only in [status](status.md). Main is clean at `1b4d745c`.
+Installed-build identity lives only in [status](status.md). Main is clean at `b671c5ec` (production source last changed at `1b4d745c`).
 Run authority: [user-runs.md](verification/user-runs.md), now archived by
 [`tools/analysis/archive_user_runs.py`](../tools/analysis/archive_user_runs.py)
 (126 → 57 lines; `--check` is idempotent).
 
 ## State
 
-- **Installed:** Run66 DLL `1f9a85f5…` from `387d5cd9` ([status](status.md)).
-  Rollback Run65 `/tmp/x3-run65-candidate/build/d3d9.dll`, then Run64 and older.
-- **Run 67 candidate in qualification from HEAD `1b4d745c`**; DLL hash **`621cad63…` (installed 2026-09-22 night)**
-  (candidate owner fills it into [status](status.md) with the qualification record).
+- **Installed:** Run67 DLL `621cad63…` from `1b4d745c` ([status](status.md),
+  [qualification](../verification/results/run67-candidate-qualification.json),
+  [install](../verification/results/run67-candidate-install.json)). Rollback Run66
+  `/tmp/x3-run66-candidate/build/d3d9.dll` (`1f9a85f5…`), then Run65 and older.
+- **Run 67 is queued** ([user-runs.md](verification/user-runs.md)): A = SETA approach, slow pan
+  and a close flyby with `--taa-sky-history strict` (band term default 3 px;
+  `--taa-sky-history-band-px 2` if a faint band remains); B = the run248 stand with
+  `--lod-scale 0.5 --object-bounds-log` (then `python3 tools/analysis/draw_accounting.py <run dir>`);
+  C = fog with `--fog-shadow-pass on --shadow-cascade-min-footprint 8` at a shaft-rich spot,
+  overlay against `--fog-shadow-pass off`. All three dry-runs passed.
 - **Run 66 is flown and triaged**: session A as **run244** (SETA + pan with
   `--taa-sky-history strict`), session B as **run245/246/247** (lod-scale 0.25 / 0.5 /
-  vanilla ladder) and **run248** (draw accounting). No run is open in the queue; Run 67
-  instructions are still to be written. No agent, Wine process or install is running.
+  vanilla ladder) and **run248** (draw accounting). No agent, Wine process or build is running.
 
 ## Accepted since the previous handoff (all on main, all flown or measured)
 
@@ -93,12 +98,14 @@ Run authority: [user-runs.md](verification/user-runs.md), now archived by
 
 ## Next steps
 
-- **Write and queue Run 67** once the candidate is qualified and installed: (1) SETA and
-  a slow pan with `--taa-sky-history strict` plus the band term (a close flyby is the
-  risk case); (2) the frame-time stand with `--object-bounds-log` and
-  `draw_accounting.py` to size the frustum-outside and occluded buckets; (3) the fog
-  shadow pass A/B at a shaft-rich spot (look and at-rest frame time); (4) a cascade
-  footprint A/B at the same stand.
+- **Triage Run 67 when reported** (triage agent per session): A against the run244 method
+  in [temporal-resolve.md](verification/temporal-resolve.md) (dark-sky band, ring flicker,
+  flyby border aliasing) — clean means strict + band become defaults; B with
+  `draw_accounting.py` (which bucket is large decides the next per-node cull at the census
+  site); C look + overlay numbers — a win makes the fog pass the default, and the footprint
+  P=8 the default if no shadow is missed.
+- **Pending user decision**: `--lod-scale 0.5` (or 0.7) and `--cull-small-parts 4` as launcher
+  defaults (0.5 "helps, few parts pop"; at the stand 394 → ~275 draws, 21.7 → 17.4 ms).
 - **Merged-LOD asset pilot**, narrowed to bodies that stay at LOD 0 while small on
   screen (run245–247 showed the heavy station body already has a usable ladder, so this
   is a threshold question for most nodes).
