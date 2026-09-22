@@ -13,6 +13,7 @@
 #include <thread>
 #include <vector>
 #include "../../src/proxy/comparison_controls.h"
+#include "../../src/proxy/capture_arm_core.h" // portable; only so the Device replica can hold the pending-capture member
 
 #define WINAPI
 using DWORD = std::uint32_t;
@@ -249,6 +250,7 @@ struct Device : Hooks {
     bool reset_active = false, bloom_attempted = false, composition_scene_owner = false;
     unsigned bloom_failure_reports = 0, bloom_prepared = 0, bloom_committed = 0, remaining = 0;
     bool capture = false;
+    capture_arm::core::Pending capture_pending; // mirrors the production struct so the extracted bodies compile
     static std::atomic<unsigned> destructors;
     ~Device() { ++destructors; }
 };

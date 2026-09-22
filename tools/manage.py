@@ -253,6 +253,11 @@ def main():
     parser.add_argument('--capture-start', type=int, default=120)
     parser.add_argument('--capture-frames', type=int, choices=range(0, 65), metavar='0..64', default=1,
                         help='Consecutive capture frames (X3M_CAPTURE_FRAMES). Above 8 is meant for the raw --taa-debug dumps (32 frames separate the 8-frame jitter ripple from slower crawl): about 40 MB per frame at 1280x768 on the HDR route (hdr + taa rgba16f 7.9 MB each, motion rgba32f 15.7 MB, depth 3.9 MB or 15.7 MB on the sun lane, present bgra8 3.9 MB), so 1.3-1.7 GB for 32 frames')
+    parser.add_argument('--capture-delay', type=int, choices=range(0, 36001), metavar='0..36000', default=0,
+                        help='Frames between the F8 press and the start of the capture burst (X3M_CAPTURE_DELAY; default 0 = start at once, today\'s behaviour). '
+                             'The unit is frames, roughly 60 per second, so 600 is about ten seconds. The game cancels SETA time compression on the key press, '
+                             'so re-engage SETA during the delay to capture the compressed case; the DLL logs one capture_armed line when F8 arms the burst, '
+                             'and a second F8 while it is pending neither re-arms nor cancels it')
     parser.add_argument('--direct', action='store_true', help='Skip launcher and intro using X3 command-line switches')
     parser.add_argument('--vanilla', action='store_true', help='Launch with builtin D3D9, ignoring the installed proxy')
     parser.add_argument('--telemetry', action='store_true', help='Enable bounded loading, presentation and cursor diagnostics')
@@ -1051,6 +1056,12 @@ def main():
         env = os.environ.copy()
         env['X3M_CAPTURE_START'] = str(max(1, args.capture_start))
         env['X3M_CAPTURE_FRAMES'] = str(args.capture_frames)
+        # Delayed F8 capture: set only when requested, so a stale shell value
+        # cannot delay a capture the user expects to start at once.
+        if args.capture_delay:
+            env['X3M_CAPTURE_DELAY'] = str(args.capture_delay)
+        else:
+            env.pop('X3M_CAPTURE_DELAY', None)
         env['X3M_TELEMETRY'] = '1' if args.telemetry else '0'
         env['X3M_GAME_PHASES'] = '1' if args.game_phases else '0'
         env['X3M_GAME_PHASE_THRESHOLD_MS'] = str(args.game_phase_threshold_ms)

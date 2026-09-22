@@ -13,6 +13,7 @@
 #include "collide_memo.h"
 #include "sun_occlusion.h"
 #include "cull_small_parts.h"
+#include "capture_arm_core.h"
 #include "frame_timing.h"
 #include "frame_phases.h"
 #include "pass_phases.h"
@@ -78,6 +79,11 @@ HANDLE log_os_handle=INVALID_HANDLE_VALUE; // log_handle(): exception-context wr
 std::wstring directory;
 unsigned capture_start = 120;
 unsigned capture_count = 1;
+// X3M_CAPTURE_DELAY (launcher --capture-delay, frames, 0 = immediate): the F8
+// press only arms the burst, which starts this many frames later. F8 cancels
+// the game's SETA time compression, so a capture of the compressed case needs
+// the delay to re-engage SETA (src/proxy/capture_arm_core.h).
+unsigned capture_delay = 0;
 // X3M_FRAME_END_STRIDE (1..frame_end_stride_max, default 300; launcher
 // --frame-end-stride): frames between two frame_end lines. Read once at attach,
 // used as a divisor on the Present path only; 1 logs every frame (about 100 B
@@ -317,6 +323,7 @@ struct Device : Hooks {
     sector_background::Diagnostic sector_background_evidence;
     object_capture::Cache object_evidence; // capture-only; existing HookGuard owns it
     bool key_down = false;
+    capture_arm::core::Pending capture_pending; // X3M_CAPTURE_DELAY only; cleared on Reset
     explicit Device(void* object, size_t size) : Hooks(object, size) {}
 };
 // Preserve the original serialization while exposing its CPU-side wait cost.
@@ -1454,7 +1461,13 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
 #endif
     ctx.events=0; ctx.stats.frame=ctx.frame;
     const bool down=(GetAsyncKeyState(VK_F8)&0x8000)!=0;
-    if ((down&&!ctx.key_down) || (capture_count && ctx.frame==capture_start)) ctx.remaining=capture_count ? capture_count : 1;
+    // With X3M_CAPTURE_DELAY=0 the edge starts the burst as before; with a delay
+    // it arms one, and a further F8 while it is pending neither re-arms nor
+    // cancels. The capture_start schedule is unaffected either way.
+    const auto arm=capture_arm::core::step(ctx.capture_pending,down&&!ctx.key_down,ctx.frame,capture_delay);
+    if (arm==capture_arm::core::Action::arm)
+        log("capture_armed device=%llu frame=%llu start_frame=%llu delay=%u",ctx.id,ctx.frame,ctx.capture_pending.start_frame,capture_delay);
+    if (arm==capture_arm::core::Action::start || (capture_count && ctx.frame==capture_start)) ctx.remaining=capture_count ? capture_count : 1;
     ctx.key_down=down; ctx.capture=ctx.remaining>0;
     point_light_admission::begin_frame(ctx.capture); // option on only: enables the per-node sample for a capture frame
     cull_census::begin_frame(ctx.capture); // X3M_CULL_CENSUS=1 only: arms the two pass stubs for a capture frame
@@ -1485,7 +1498,7 @@ HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODE
     ctx.fps_overlay.reset();ctx.fps_notice.text("",""); // the window restarts after Reset; visibility is kept
     ctx.bloom_effective_frame=UINT64_MAX;
     revoke_compositor(ctx);
-    ctx.capture=false; ctx.remaining=0;ctx.stats.had_present=false;ctx.stats.last_frame_capture=false;++ctx.stats.resets;
+    ctx.capture=false; ctx.remaining=0;capture_arm::core::clear(ctx.capture_pending);ctx.stats.had_present=false;ctx.stats.last_frame_capture=false;++ctx.stats.resets;
     ctx.scene_depth.invalidate();
     ctx.motion.invalidate();
     {
@@ -2675,6 +2688,17 @@ void initialize_log(HMODULE module) {
     // 64: a plain frame counter (ctx.remaining); above 8 serves the raw TAA
     // debug dumps (about 40 MB per 1280x768 frame), see tools/manage.py.
     if(capture_count>64) capture_count=64;
+    // X3M_CAPTURE_DELAY (frames, default 0 = immediate): frames between the F8
+    // press and the start of the burst, so SETA can be re-engaged after the key
+    // press cancels it. Malformed keeps 0; read once, used on the Present path.
+    {   // A return of 32 or more means truncation: the buffer content is then
+        // undefined, so the value is refused rather than parsed.
+        const DWORD length=GetEnvironmentVariableW(L"X3M_CAPTURE_DELAY",setting,32);
+        if(length>0&&length<32){
+            wchar_t* stop=nullptr; const unsigned long v=wcstoul(setting,&stop,10);
+            if(stop!=setting&&*stop==L'\0'&&v<=capture_arm::core::delay_max) capture_delay=unsigned(v);
+        }
+    }
     // X3M_FRAME_END_STRIDE (1..100000, default 300): frames between frame_end
     // lines. Out of range or malformed keeps the default; the line is written
     // only when the stride is not the default, so a default run is unchanged.
