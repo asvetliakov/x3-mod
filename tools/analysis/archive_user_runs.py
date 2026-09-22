@@ -14,8 +14,10 @@ bound and are moved here into `docs/archive/user-runs-completed.md`:
    sentences about the immediately previous run, appended under
    `## Run history paragraphs`.
 
-The block of the open (queued) run and its commands are never touched.
-Running the tool twice changes nothing.
+Moved text is unchanged except for relative Markdown link targets, which are
+rewritten to resolve from docs/archive/ (`rewrite_links`). The block of the
+open (queued) run and its commands are never touched. Running the tool twice
+changes nothing.
 """
 
 from __future__ import annotations
@@ -41,6 +43,14 @@ PARAGRAPH_HEADING = "## Run history paragraphs"
 TABLE_COLUMNS = ("| Run | Purpose | Sessions | Status |", "| --- | --- | ---: | --- |")
 
 INVOCATION_SENTENCE = "Archive with `python3 tools/analysis/archive_user_runs.py`"
+
+# Inline Markdown link or image target: `](target)` or `](target "title")`.
+LINK_TARGET_RE = re.compile(r"(\]\()([^)\s]+)((?:\s+\"[^\"]*\")?\))")
+SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
+# Inline code span: a backtick run closed by a run of the same length.
+CODE_SPAN_RE = re.compile(r"(?<!`)(`+)(?!`).*?(?<!`)\1(?!`)")
+# user-runs.md lives in docs/verification/, the archive in docs/archive/.
+SOURCE_DIR_FROM_ARCHIVE = "../verification/"
 
 
 class DocError(RuntimeError):
@@ -151,6 +161,50 @@ def find_blocks(lines, table_end, trailing_index):
             continue
         blocks.append((run, start, end))
     return blocks
+
+
+# --- link rewriting ----------------------------------------------------------
+
+
+def rewrite_target(target):
+    """Rewrite one link target written for docs/verification/ to docs/archive/.
+
+    `foo.md#a` and `./foo.md` become `../verification/foo.md#a`; targets that
+    start with `../` already resolve the same from both sibling directories
+    and stay; bare `#anchor`, absolute paths and URLs (any scheme) stay.
+    """
+    if not target or target.startswith(("#", "/", "../")) or SCHEME_RE.match(target):
+        return target
+    while target.startswith("./"):
+        target = target[2:]
+    return SOURCE_DIR_FROM_ARCHIVE + target
+
+
+def rewrite_links(line):
+    """Rewrite inline link targets in `line` outside inline code spans.
+
+    Fenced code is the caller's job.
+    """
+    out = []
+    pos = 0
+    for span in CODE_SPAN_RE.finditer(line):
+        out.append(_rewrite_plain(line[pos:span.start()]))
+        out.append(span.group(0))
+        pos = span.end()
+    out.append(_rewrite_plain(line[pos:]))
+    return "".join(out)
+
+
+def _rewrite_plain(text):
+    return LINK_TARGET_RE.sub(
+        lambda m: m.group(1) + rewrite_target(m.group(2)) + m.group(3), text
+    )
+
+
+def rewrite_moved_lines(lines):
+    """`rewrite_links` over moved lines, skipping lines inside code fences."""
+    fences = _fence_map(lines)
+    return [line if fences[i] else rewrite_links(line) for i, line in enumerate(lines)]
 
 
 # --- archive writing ---------------------------------------------------------
@@ -293,7 +347,7 @@ def build_plan(runs_text, archive_text, keep, today):
             continue
         detail = _block_detail(run, segments, runs_lines[start])
         heading = "## Run %d (completed %s: %s)" % (run, today, detail)
-        block_appends.append((heading, runs_lines[start:end]))
+        block_appends.append((heading, rewrite_moved_lines(runs_lines[start:end])))
         move_ranges.append((start, end, True))
         plan.append("block Run %d -> %s" % (run, heading))
 
@@ -310,7 +364,7 @@ def build_plan(runs_text, archive_text, keep, today):
             drop_segments = [s for s in segments[1:] if s[0] != previous]
             if drop_segments:
                 new_paragraph = " ".join(text for _, text in keep_segments)
-                paragraph_tail = [text for _, text in drop_segments]
+                paragraph_tail = [rewrite_links(text) for _, text in drop_segments]
                 plan.append(
                     "paragraph: keep queued sentence + Run %d, move %d sentence(s) "
                     "about runs %s"
@@ -343,9 +397,9 @@ def build_plan(runs_text, archive_text, keep, today):
     for heading, body in block_appends:
         append_block(new_archive_lines, heading, body)
     if new_archive_rows:
-        body = new_archive_rows
+        body = [rewrite_links(r) for r in new_archive_rows]
         if section_end(new_archive_lines, ARCHIVED_TABLE_HEADING) is None:
-            body = list(TABLE_COLUMNS) + new_archive_rows
+            body = list(TABLE_COLUMNS) + body
         append_section(new_archive_lines, ARCHIVED_TABLE_HEADING, body)
     if paragraph_tail:
         append_section(

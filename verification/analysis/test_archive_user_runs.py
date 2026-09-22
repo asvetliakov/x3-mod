@@ -124,6 +124,42 @@ class ArchiveUserRunsTest(unittest.TestCase):
         self.assertEqual(archive.count('| 1 | Purpose 1'), 1)
         self.assertNotIn('| 1 | Purpose 1', self.runs.read_text())
 
+    def test_moved_row_links_are_rewritten_to_resolve_from_the_archive(self):
+        row = ('| 1 | See [cue](foo.md#run50-anchor), [arch](../architecture/x.md), '
+               '[st](../status.md), [ext](https://e.org/a.md), [top](#local) | 0 | Done |')
+        self.runs.write_text(runs_doc().replace('| 1 | Purpose 1 | 0 | Completed as run101 |', row))
+        self.run_tool('--keep', '8')
+        archive = self.archive.read_text()
+        self.assertIn('[cue](../verification/foo.md#run50-anchor)', archive)
+        self.assertIn('[arch](../architecture/x.md)', archive)
+        self.assertIn('[st](../status.md)', archive)
+        self.assertIn('[ext](https://e.org/a.md)', archive)
+        self.assertIn('[top](#local)', archive)
+        self.assertNotIn('](foo.md', archive)
+
+    def test_links_inside_inline_code_spans_are_not_rewritten(self):
+        row = ('| 1 | Quoted `[a](b.md)` and ``x `[c](d.md)` y``, real [r](e.md#h) | 0 | Done |')
+        self.runs.write_text(runs_doc().replace('| 1 | Purpose 1 | 0 | Completed as run101 |', row))
+        self.run_tool('--keep', '8')
+        archive = self.archive.read_text()
+        self.assertIn('Quoted `[a](b.md)` and ``x `[c](d.md)` y``, real [r](../verification/e.md#h)',
+                      archive)
+
+    def test_moved_block_and_paragraph_links_are_rewritten_outside_fences(self):
+        block = CLOSED_BLOCK.strip().replace(
+            'Session A (installed behaviour):',
+            'Session A ([ledger](./motion-output.md#s)):',
+        ).replace('--closed-run', '--closed-run # [x](keep.md)')
+        text = runs_doc().replace(CLOSED_BLOCK.strip(), block).replace(
+            '(flashes).', '(flashes, [note](media-cues.md#run17)).'
+        )
+        self.runs.write_text(text)
+        self.run_tool()
+        archive = self.archive.read_text()
+        self.assertIn('[ledger](../verification/motion-output.md#s)', archive)
+        self.assertIn('# [x](keep.md)', archive)
+        self.assertIn('[note](../verification/media-cues.md#run17)', archive)
+
     # --- blocks ------------------------------------------------------------
     def test_closed_block_moves_and_open_block_is_untouched(self):
         before = self.runs.read_text()
