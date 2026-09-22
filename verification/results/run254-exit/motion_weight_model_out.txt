@@ -1,0 +1,12 @@
+A=-0.003333 B=1.013333; cap at 1/2/3/3.31/4/5/6/8/12: [1.0, 1.0, 0.983, 0.977, 0.96, 0.93, 0.893, 0.8, 0.8]
+cap reaches 0.97 at 3.61 px, 0.9 at 5.83 px
+w=0.97: sigma_est=1.63 alias_amp=0.123
+w=0.93: sigma_est=1.14 alias_amp=0.190
+w=0.9: sigma_est=1.00 alias_amp=0.229
+w=0.893: sigma_est=0.98 alias_amp=0.238
+w=0.8: sigma_est=0.80 alias_amp=0.333
+w=0.7: sigma_est=0.73 alias_amp=0.420
+sigma=0.6: energy kept on period-4 stripe=0.411
+sigma=0.8: energy kept on period-4 stripe=0.206
+sigma=1.0: energy kept on period-4 stripe=0.085
+sigma=1.4: energy kept on period-4 stripe=0.008
