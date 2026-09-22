@@ -18,9 +18,9 @@ float4 fine_local : register(c22); // camera modulo 128*512 (centred, |x| <= 64*
 float4 far_local : register(c23);  // camera modulo 128*4096 (centred), 1/4096
 float4 chroma_ready : register(c24); // family mean chroma RGB, fine readiness 0..1
 #ifdef FOG_LOOK
-// Look presets L1-L3 (docs/architecture/fog-density-runtime-integration.md, "Look presets"). FOG_LOOK 1 is
-// the shaped law; 2 adds Beer-powder, the two-tap self-shadow and the sample offset (L3 = non-zero c31.zw).
-// All rows come from renderer::fog_look_constants; the unshaped programs never declare them.
+// The single stored-range look (docs/architecture/fog-density-runtime-integration.md, "The look"): the shaped
+// law with Beer-powder and the sun-ward self-shadow, the former L2. The retired presets L0/L1/L3 are gone
+// (2026-09-22). All rows come from renderer::fog_look_constants; the unshaped reference programs never declare them.
 float4 look_remap : register(c25);      // coverage c, 1/(1-c), exponent p, sky column cap
 float4 look_albedo : register(c26);     // scatter albedo RGB, shaft visibility floor
 float4 look_ambient0 : register(c27);   // ambient radiance away from the sun RGB, multiple-scatter weight / 4
@@ -76,7 +76,7 @@ float fog_visibility(float3 view_position) {
 }
 
 #ifdef FOG_LOOK
-// Look programs: two cascades (FogPass binds the two coarsest current maps to slots 0 and 1; the finest map
+// The look program: two cascades (FogPass binds the two coarsest current maps to slots 0 and 1; the finest map
 // spans a few fog bins only), the first that holds the point inside its blend-band start, one 2x2 comparison
 // of that map. The three-way cross-fade above costs 207 instruction slots, which would put the look programs
 // past the 512 a ps_3_0 device has to offer (CrossOver reports exactly 512). Same rows, bias and texel law.
@@ -120,7 +120,7 @@ float slice_fetch(sampler2D atlas, float z, float2 sxy, float2 f) {
 #endif
 }
 #ifdef FOG_LOOK
-// Look programs: the same texels and the same trilinear weights as below in a smaller body (it helps keep
+// The look program: the same texels and the same trilinear weights as below in a smaller body (it helps keep
 // the look programs inside 512 instruction slots). The four lanes of one texel are consecutive Z slices, so a
 // tent over the lanes interpolates Z inside a group; lane 3 blends into lane 0 of the next group (31 wraps to
 // 0). That second fetch stays unconditional: made conditional, this D3DX compiler emits a truncated program
@@ -148,6 +148,9 @@ bool geometry(float4 d) { return d.r >= 0.0 && d.r <= 1.0; }
 // Ordered comparisons reject NaN and infinity without propagating them into weights.
 bool valid_geometry_depth(float4 d) { return d.b > 0.0 && d.b <= 3.402823466e38; }
 #ifndef FOG_LOOK
+// Verification only since 2026-09-22 (the unshaped law is no longer a preset the renderer can draw): the
+// reference march of verification/probe/fog_density_march_exact_ps.hlsl and the fixture's candidate/dense64
+// parity programs (src/fog/fog_density_{march,composite,repair}_ps.hlsl without FOG_LOOK).
 // One loop of 64 bins: 24 over [0,min(L,12000)], 40 over [12000,L] (zero width, no
 // reads, when L <= 12000). Fine level to 30000, far from 20000, horizon taper
 // 150000-200000. A single loop inlines each level sampler and fog_visibility once.
@@ -199,9 +202,9 @@ float look_density(float rho, float cover) {
 }
 // Parabolic sine of period 1, range [-1,1].
 float3 look_wave(float3 x) { float3 t = frac(x)-0.5; return t*(8.0-16.0*abs(t)); }
-// The shaped law on the same 24+40 bins. Per pixel: two-lobe phase, two-colour ambient, sky column cap and
-// (FOG_LOOK 2) the interleaved-gradient sample offset. Per sample: density remap, shaft visibility floor,
-// the half-extinction isotropic octave, and (FOG_LOOK 2) two far-level taps toward the sun.
+// The shaped law on the same 24+40 bins. Per pixel: two-lobe phase, two-colour ambient, sky column cap and the
+// interleaved-gradient offset of the shadow-shaft lookup. Per sample: density remap, shaft visibility floor,
+// the half-extinction isotropic octave, and one far-level tap toward the sun (Beer-powder self-shadow).
 float4 march_depth(float2 uv, float4 depth) {
     if (geometry(depth) && !valid_geometry_depth(depth)) return float4(0,0,0,1);
     float3 view = float3((2.0*uv.x-1.0-projection.z)/projection.x,
@@ -214,8 +217,9 @@ float4 march_depth(float2 uv, float4 depth) {
     // Scalars that live across the loop share registers (ps_3_0 has 32 temporaries and the compiler gives
     // every live scalar its own): steps = near step, far step.
     float2 steps = float2(min(distance,12000.0)/24.0,max(distance-12000.0,0.0)/40.0);
-    // Sample offsets in bins: xy density and lighting (L3 only, look_self.zw), zw the shaft lookup (look_taps.zw; zero
-    // without a temporal resolve, so cascade selection is then the bin centre's as well).
+    // Sample offsets in bins: zw the shaft lookup (look_taps.zw; zero without a temporal resolve, so cascade
+    // selection is then the bin centre's as well), xy the density and lighting offset (look_self.zw, always zero
+    // since the retirement of L3; the rows keep their layout).
     // A bin-centre shaft lookup stamps one copy of an occluder silhouette per bin (a comb, run222); offsetting that
     // lookup alone per pixel and frame lets TAA integrate the shaft along the bin while cloud detail stays noise free.
     float4 offset = 0.5;
@@ -249,14 +253,12 @@ float4 march_depth(float2 uv, float4 depth) {
 #ifndef FOG_DENSITY_NO_SHAFTS
                 [branch] if (shadow_select.x > 0.0) light.x = fog_look_visibility(view_direction*bin.z);
 #endif
-#if FOG_LOOK >= 2
                 // One far-level tap toward the sun (shadowing is low frequency and the far window covers it)
                 // stands for the optical depth over look_taps.y units; a second tap needs an inner loop that
                 // puts repair past 512 instruction slots. Powder also counts the sample's own density.
                 float2 r = float2(look_density(level_sample(far_atlas,far_local,ray+sun_horizon.xyz*look_taps.x),cover)*look_taps.y,0.0);
                 float tau = camera_sigma.w*look_self.x*r.x;
                 light.y = exp(-tau)*(1.0-look_self.y*exp(-2.0*(tau+camera_sigma.w*look_self.x*rho*look_taps.x)));
-#endif
             }
             sum.xy += sum.z*a*float2(light.y*lerp(look_albedo.w,1.0,light.x),lerp(look_ambient1.w,1.0,light.x));
             sum.z *= 1.0-a.x;

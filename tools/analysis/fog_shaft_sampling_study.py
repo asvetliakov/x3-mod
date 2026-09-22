@@ -109,24 +109,24 @@ def study(directory, frame, width, height, uniform, bias_units, field_origin, ph
     # Scale the half-resolution pixel grid so the interleaved-gradient pattern is the flight's (960x540 half target).
     pixels = (np.round(x * 960 / width), np.round(y * 540 / height))
 
-    met = np.ones(len(d))  # lowest shaft visibility any bin-centre or offset lookup (L1/L2 law, every phase) returned per ray
+    met = np.ones(len(d))  # lowest shaft visibility any bin-centre or offset lookup (every phase) returned per ray
 
-    def march(look, phase=0, jitter=1., taps=(0.,), lit=False, seen=None):
-        S, _ = ref.look_march(origin, d, np.full(len(d), 2e5), False, CHROMA, store, look, SIGMA, phase, pixels, sun=sun,
+    def march(phase=0, jitter=1., taps=(0.,), lit=False, seen=None):
+        S, _ = ref.look_march(origin, d, np.full(len(d), 2e5), False, CHROMA, store, SIGMA, phase, pixels, sun=sun,
                               visibility=None if lit else map_visibility(camera, cascades, maps, bias_units, taps, seen), tuning=dict(ref.TUNING, shadow_jitter=jitter))
         return S[:, 1].astype(np.float64)
     np.seterr(divide='ignore', invalid='ignore')  # masked-out rays
-    lit = march(2, lit=True); keep = lit > .02 * lit.max()
-    dense = march(2, jitter=0., taps=tuple((j + .5) / 16 - .5 for j in range(16)))
+    lit = march(lit=True); keep = lit > .02 * lit.max()
+    dense = march(jitter=0., taps=tuple((j + .5) / 16 - .5 for j in range(16)))
     shaft = keep & (dense < .995 * lit); clear = keep & (dense >= lit * (1 - 1e-9))
     error = lambda S, mask=keep: stats(((S - dense) / lit)[mask])
-    centres = march(2, jitter=0., seen=met)
-    jittered = [march(2, p, seen=met) for p in range(phases)]; full = [march(3, p) for p in range(phases)]
-    two = march(2, jitter=0., taps=(-.25, .25)); two_jittered = [march(2, p, jitter=.5, taps=(-.25, .25)) for p in range(phases)]
+    centres = march(jitter=0., seen=met)
+    jittered = [march(p, seen=met) for p in range(phases)]
+    two = march(jitter=0., taps=(-.25, .25)); two_jittered = [march(p, jitter=.5, taps=(-.25, .25)) for p in range(phases)]
     out = dict(frame=frame, rays=[width, height], density='uniform' if uniform else 'analytic family field at %s' % list(map(float, origin)), fogged_rays=int(keep.sum()), shaft_rays=int(shaft.sum()), clear_rays=int(clear.sum()),
-               comb_vs_dense=dict(bin_centres=error(centres), shadow_jitter_one_phase=error(jittered[0]), shadow_jitter_mean=error(np.mean(jittered, 0)), look3_one_phase=error(full[0]), look3_mean=error(np.mean(full, 0)),
+               comb_vs_dense=dict(bin_centres=error(centres), shadow_jitter_one_phase=error(jittered[0]), shadow_jitter_mean=error(np.mean(jittered, 0)),
                                   two_taps=error(two), two_taps_jitter_one_phase=error(two_jittered[0]), two_taps_jitter_mean=error(np.mean(two_jittered, 0))),
-               grain_clear=dict(shadow_jitter=grain(jittered, clear), look3=grain(full, clear)), grain_shaft=dict(shadow_jitter=grain(jittered, shaft), look3=grain(full, shaft), two_taps_jitter=grain(two_jittered, shaft)),
+               grain_clear=dict(shadow_jitter=grain(jittered, clear)), grain_shaft=dict(shadow_jitter=grain(jittered, shaft), two_taps_jitter=grain(two_jittered, shaft)),
                # A repair pixel keeps bin centres beside half-resolution neighbours whose lookup is offset: its step against
                # them, relative to the local in-scatter, against one frame and against what the history converges to.
                repair_step_in_shaft=dict(vs_one_phase=stats(((centres - jittered[0]) / dense)[shaft]), vs_resolved=stats(((centres - np.mean(jittered, 0)) / dense)[shaft]),

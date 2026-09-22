@@ -115,26 +115,29 @@ As built, uploads use `UpdateSurface` rectangles (budget 1,065,024 B and 64 rect
 frame) rather than `AddDirtyRect` + `UpdateTexture`, and retargets trigger at 2 fine / 9 far
 nodes off the window centre.
 
-## Look presets L0-L3 (2026-09-21)
+## The look (2026-09-21; the only one since 2026-09-22)
 
 Spec: `fog-visual-direction-review-2026-09-21.md` sections 3-4, plus the later "visible bulbs" feedback
-(rounded value-noise silhouettes where patches fade into void). One build, A/B in flight:
-`--volumetric-fog-look {0,1,2,3}` (`X3M_VOLUMETRIC_FOG_LOOK`) sets the starting preset; with the stored range the
-default is **2** in the launcher and in the DLL's own fallback (`fog_look_default`, since 2026-09-22; `--volumetric-fog-look 0`
-selects the unshaped law, the legacy range has no look),
-**Ctrl+Alt+F11** cycles it, the FPS overlay shows `FOG 1.50x L2`. Atlas format, cache, uploads and the
-composite/repair split are unchanged.
+(rounded value-noise silhouettes where patches fade into void). The A/B presets L0, L1 and L3 were retired on
+2026-09-22 after the user accepted L2: the stored range now has **one** law, the former L2, with no selector,
+no `--volumetric-fog-look`, no Ctrl+Alt+F11 cycle and no overlay L-readout (`X3M_VOLUMETRIC_FOG_LOOK` is
+ignored with one `volumetric_fog_look_ignored` line). Atlas format, cache, uploads and the composite/repair
+split are unchanged, and the drawn output is bit-identical to the retired L2 (fixture hashes in
+`docs/verification/volumetric-fog.md`). The rows below are the law as flown; the retired presets' own rows
+are in the git history of this note.
 
-| Preset | Law |
+| Term | Law |
 | --- | --- |
-| L0 | Current law: the three base programs, byte-identical bytecode (march `4dacf7e4...`), rows c0-c24 only. |
-| L1 "shaped" | Density remap `rho' = saturate((rho-c-dc)/(1-c))^p` (c .35, p 2: exact zero below the coverage, zero-slope toe) with sigma x8; coverage moved by `dc = .12 x mean of three parabolic-sine plane waves` along (1,-2,1), (2,1,-1), (-1,1,2) cycles per 65536 units (26756 units = 5.35 km each at 5000 units per km, world anchored, evaluated at the warped position) so an edge is not one iso-surface of the stored noise and no term is constant along a world axis; fetch-free domain warp of the lookup position (two octaves of a parabolic sine, 5 and 13 whole cycles per 65536 units so it is world anchored under the camera modulo, 1400 + 500 units, each axis driven by the two others); two-lobe phase `.7 HG(.75) + .3 HG(-.15)` per pixel; two-colour ambient `S += albedo x ambient x (1-T)`, ambient = lerp(away, sun-side, .5+.5 cos) with sun-side = family chroma and away = `.3 (chroma + chroma.brg)`, both x `.35 x mean(E/pi)`; albedo `lerp(chroma, 1, .5)`; tinted extinction `T_rgb = T^k`, `k = 1 + .6 (1-chroma)` in composite and repair (no new target); multiple-scatter lift `.5 x 1/4 x sum T (1-exp(-.5 sigma rho ds))` with shaft floor .5; shaft visibility floor .15 on the sun term (softer umbra); every ray, sky or geometry, ends at the column cap (`SKY_CAP`, 112500 units = 22.5 km) with a smoothstep fade that starts at `TAPER_START` (65000 units = 13 km), so a distant hull and the sky beside it agree. `--volumetric-fog-anisotropy` has no effect. |
-| L2 | L1 + one far-level tap toward the sun at 3000 units standing for 9000 units of path: Beer `exp(-3 tau)` and powder `1 - .5 exp(-2 (3 tau + 3 sigma rho 3000))`. |
-| L3 | L2 + per-pixel per-frame sample offset: interleaved gradient noise on the half-resolution pixel, shifted by `5.588238 x TAA jitter index`, +-half a bin on all 64 bins. Repair pixels keep bin centres. |
+| Shaping (was L1) | Density remap `rho' = saturate((rho-c-dc)/(1-c))^p` (c .35, p 2: exact zero below the coverage, zero-slope toe) with sigma x8; coverage moved by `dc = .12 x mean of three parabolic-sine plane waves` along (1,-2,1), (2,1,-1), (-1,1,2) cycles per 65536 units (26756 units = 5.35 km each at 5000 units per km, world anchored, evaluated at the warped position) so an edge is not one iso-surface of the stored noise and no term is constant along a world axis; fetch-free domain warp of the lookup position (two octaves of a parabolic sine, 5 and 13 whole cycles per 65536 units so it is world anchored under the camera modulo, 1400 + 500 units, each axis driven by the two others); two-lobe phase `.7 HG(.75) + .3 HG(-.15)` per pixel; two-colour ambient `S += albedo x ambient x (1-T)`, ambient = lerp(away, sun-side, .5+.5 cos) with sun-side = family chroma and away = `.3 (chroma + chroma.brg)`, both x `.35 x mean(E/pi)`; albedo `lerp(chroma, 1, .5)`; tinted extinction `T_rgb = T^k`, `k = 1 + .6 (1-chroma)` in composite and repair (no new target); multiple-scatter lift `.5 x 1/4 x sum T (1-exp(-.5 sigma rho ds))` with shaft floor .5; shaft visibility floor .15 on the sun term (softer umbra); every ray, sky or geometry, ends at the column cap (`SKY_CAP`, 112500 units = 22.5 km) with a smoothstep fade that starts at `TAPER_START` (65000 units = 13 km), so a distant hull and the sky beside it agree. `--volumetric-fog-anisotropy` has no effect. |
+| Self-shadow (was L2) | One far-level tap toward the sun at 3000 units standing for 9000 units of path: Beer `exp(-3 tau)` and powder `1 - .5 exp(-2 (3 tau + 3 sigma rho 3000))`. |
 
-Shaft lookup offset (L1-L3, 2026-09-22). The shadow-map lookup of a sample, and only that, sits at
-`s + (noise - .5) x SHADOW_JITTER x ds` along the ray: the same interleaved-gradient value and TAA phase as the L3 offset.
-Without a running TAA resolve (`FogFrame::look_resolved` false) the amplitude is 0 for L1/L2: a static dither would not
+The retired L3 per-frame **sample** offset is gone: `look_self.zw` (c31.zw) stay zero and the rows keep their
+layout. Only the shadow-shaft lookup is offset, as below.
+
+Shaft lookup offset (2026-09-22). The shadow-map lookup of a sample, and only that, sits at
+`s + (noise - .5) x SHADOW_JITTER x ds` along the ray, from the interleaved-gradient noise of the half-resolution
+pixel and the TAA phase.
+Without a running TAA resolve (`FogFrame::look_resolved` false) the amplitude is 0: a static dither would not
 remove the comb, and because cascade selection uses the lookup position it would also dither the hard .85 switch across
 the hand-over band; with the resolve that dither is averaged like the rest. Density, warp, coverage, sun-ward tap and extinction stay at the bin centre, so cloud
 detail carries no noise; a ray that meets no occluder is bit-identical to the bin-centre march. It removes the per-bin
@@ -152,7 +155,7 @@ Every scalar is `FogLookTuning` (`src/renderer/fog_look_math.h`), overridable on
 `X3M_FOG_LOOK_<NAME>` with NAME one of `COVERAGE`, `EXPONENT`, `SIGMA_SCALE`, `COVERAGE_VARIATION`,
 `WARP_CYCLES_NEAR`, `WARP_NEAR`, `WARP_CYCLES_FAR`, `WARP_FAR`, `FORWARD_G`, `FORWARD_WEIGHT`, `BACK_G`,
 `ALBEDO_WHITE`, `AMBIENT_GAIN`, `EXTINCTION_TINT`, `SCATTER_LIFT`, `LIFT_FLOOR`, `SHADOW_FLOOR`, `SKY_CAP`, `TAPER_START`,
-`SELF_SHADOW`, `POWDER`, `TAP_DISTANCE`, `TAP_LENGTH`, `JITTER_NEAR`, `JITTER_FAR`, `SHADOW_JITTER` (floats, ranges in
+`SELF_SHADOW`, `POWDER`, `TAP_DISTANCE`, `TAP_LENGTH`, `SHADOW_JITTER` (floats, ranges in
 `fog_look_fields`), plus `X3M_FOG_LOOK_AMBIENT_SUN` / `_AWAY` = `r,g,b` in 0..4; out-of-range values keep
 the default and the session log prints the resolved set (`volumetric_fog_look_mode`). The launcher
 passes the inherited variables through.
@@ -163,30 +166,35 @@ cap. To compare in one flight: 14 km `TAPER_START=52500 SKY_CAP=70000` (the Run 
 `65000 / 112500`, 35 km `150000 / 200000` (the L0 range). The 64 bins stay 24 over [0,12000] and 40 over [12000,cap]:
 far bins are 2512 units at the default, 4700 at 200000 (coarser than the 4096-unit far node; numbers in the ledger).
 
-Implementation. `FOG_LOOK` 1 and 2 variants of march and repair plus one composite variant (five programs,
-`src/fog/fog_density_*_look*_ps.hlsl`), created in `FogPass::density_resources` with the base programs and
-released with them; pixel shaders survive Reset. A frame carries `FogFrame::look` and `look_phase`;
-`execute` fills rows c25-c35 with `fog_look_constants`, multiplies c2.w and picks the variant: no creation,
-allocation or lock on the hotkey or draw path, and the D3DSBT_ALL block restores the rows. If the variants
-cannot be created the base path stays and every frame draws L0 (`volumetric_fog_look_refused`, once).
+Implementation. Three programs, the `FOG_LOOK` march, composite and repair
+(`src/fog/fog_density_*_look_ps.hlsl` -> `src/renderer/fog_density_*_look_program_inc.h`), created once in
+`FogPass::density_resources`; pixel shaders survive Reset. Since 2026-09-22 these **are** the stored-density
+programs: `density_march_/composite_/repair_` hold them, and a creation refusal is final (`density_program_create`)
+because there is no unshaped fallback left - the stored path stays off and the legacy path is untouched. A frame
+carries `FogFrame::look_phase` and `look_resolved` only; `execute` fills rows c25-c35 with `fog_look_constants`
+and multiplies c2.w: no creation, allocation or lock on the draw path, and the D3DSBT_ALL block restores the rows.
+The three unshaped programs (`fog_density_{march,composite,repair}_ps.hlsl`, `#ifndef FOG_LOOK` in
+`fog_density_field_inc.h`) are no longer created by the renderer; they and the texel-exact march remain the
+shader fixture's parity reference for the field sampling and the 24+40 bin law.
 
-ps_3_0 budget. CrossOver reports `MaxPixelShader30InstructionSlots = 512`, so every variant has to fit the
-base ceiling. Microsoft-table slots / static texture instructions: march L0 415/17, L1 365/13, L2-3 425/15;
-repair L0 510/22, L1 466/18, L2-3 510/20; composite 203/10 and 210/10. The 64-bin march stays one `rep`
-loop in every program. What paid for the look terms: (1) the look programs read **two** shaft cascades (the
-two coarsest current maps, compacted into slots 0-1 by `execute`) with a hard switch at the blend-band start
-and one 2x2 comparison, instead of three with cross-fade (207 slots in L0); (2) `level_sample` interpolates Z
-with a tent over the four lanes of one texel plus lane 0 of the next group: same texels and weights, smaller
-body. Fetches per non-empty sample: L0 4 atlas + up to 12 shaft; L1 4 + 4; L2/L3 6 + 4. More exactly-empty
-samples (45-69 % of the fixture's sky rays end exactly empty) skip the shaft and tap reads entirely. This D3DX compiler emits a
-truncated program without an output write when the second lane fetch is made conditional, so it stays
-unconditional; a second sun-ward tap needs an inner loop that puts repair L2 past 512.
+ps_3_0 budget. CrossOver reports `MaxPixelShader30InstructionSlots = 512`, so every program has to fit that
+ceiling. Microsoft-table slots / static texture instructions of the three drawn programs: march 425/15,
+repair 510/20, composite 210/10 (1145 slots in total, against 3104 for the eight programs the preset era
+created: the unshaped 415/203/510 plus L1's 365 and 466). The 64-bin march stays one `rep` loop. What paid for
+the look terms: (1) the look programs read **two** shaft cascades (the two coarsest current maps, compacted into
+slots 0-1 by `execute`) with a hard switch at the blend-band start and one 2x2 comparison, instead of three with
+cross-fade (207 slots in the unshaped law); (2) `level_sample` interpolates Z with a tent over the four lanes of
+one texel plus lane 0 of the next group: same texels and weights, smaller body. Fetches per non-empty sample:
+6 atlas + 4 shaft (the unshaped reference: 4 + up to 12). More exactly-empty samples (45-69 % of the fixture's
+sky rays end exactly empty) skip the shaft and tap reads entirely. This D3DX compiler emits a truncated program
+without an output write when the second lane fetch is made conditional, so it stays unconditional; a second
+sun-ward tap needs an inner loop that puts repair past 512.
 
-L3 caveats. Repair pixels (depth-class edges with no compatible half sample) march bin centres while their
-neighbours are offset per frame: after the TAA resolve they hold the mean the neighbours converge to, but a
-one-pixel outline can show while history is short (cuts, fast pans). With TAA off the offset phase is held
-at 0, so L3 is a static dither rather than an animated one. A two-cascade cross-fade (.85 to .95 like the base
-law) was compiled and measured at 546 slots for repair L2 against 503 with the hard switch (510 since the 2026-09-22 coverage waves): it does not fit.
+Caveats. Repair pixels (depth-class edges with no compatible half sample) hold the bin centres for the shaft
+lookup while their neighbours are offset per frame: after the TAA resolve they hold the mean the neighbours
+converge to, but a one-pixel outline can show while history is short (cuts, fast pans). A two-cascade cross-fade
+(.85 to .95 like the unshaped law) was compiled and measured at 546 slots for repair against 503 with the hard
+switch (510 since the 2026-09-22 coverage waves): it does not fit.
 
 Not done, by decision or cost: edge erosion from the fine grid at another scale (a scaled lookup of a
 toroidal *window* is not a periodic field: it shows the window seam and pops as nodes are replaced) and a

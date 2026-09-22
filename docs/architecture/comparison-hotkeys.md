@@ -209,12 +209,11 @@ medium at zero) or `FOG OFF` beside the `SHADOWS` state, rewritten the frame
 it changes. The Alt key is polled with either option. Without the option no
 key is polled. In-game behavior is unverified.
 
-With `--volumetric-fog-range stored`, **Ctrl+Alt+F11** (same Alt rule, raw F11
-latch of its own, so Ctrl+Shift+F11 stays the ambient occlusion toggle) cycles
-the stored fog's look preset L0..L3 (`volumetric_fog_look`; presets in
-`fog-density-runtime-integration.md`, "Look presets"). The overlay's fog part
-reads `FOG 1.50x L2`. The press changes constants and selects a program created
-with the pass; it creates and allocates nothing. In-game behavior is unverified.
+The stored fog's look-preset cycle (**Ctrl+Alt+F11**) and the overlay's `L0..L3`
+readout were retired on 2026-09-22 with the presets themselves: the stored range
+has one look (`fog-density-runtime-integration.md`, "The look"), F11 under
+Ctrl+Alt produces no fog action, and Ctrl+Shift+F11 remains the ambient
+occlusion toggle. The overlay's fog part reads `FOG 1.50x`.
 
 ## Exposure handoff and capability preparation
 

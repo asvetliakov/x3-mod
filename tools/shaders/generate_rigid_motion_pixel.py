@@ -181,8 +181,9 @@ SHADERS = {
                            header=ROOT / 'src/renderer/fog_sky_reduce_program_inc.h',
                            provenance=ROOT / 'verification/results/fog-sky-reduce-program.json'),
     # Stored-density fog (docs/architecture/fog-density-runtime-integration.md, checkpoint 2): the
-    # 24+40 two-level march, the composite without in-line repair, the separate full-resolution
-    # repair draw, and the verification-only texel-exact march (FP16 bilinear parity reference).
+    # 24+40 two-level march, the composite without in-line repair and the separate full-resolution
+    # repair draw. The three `*_look` programs are what the renderer draws (the single look, FOG_LOOK);
+    # the three unshaped ones and the texel-exact march are the shader fixture's parity reference only.
     'fog_density_march': dict(source=ROOT / 'src/fog/fog_density_march_ps.hlsl',
                               header=ROOT / 'src/renderer/fog_density_march_program_inc.h',
                               provenance=ROOT / 'verification/results/fog-density-march-program.json'),
@@ -192,22 +193,16 @@ SHADERS = {
     'fog_density_repair': dict(source=ROOT / 'src/fog/fog_density_repair_ps.hlsl',
                                header=ROOT / 'src/renderer/fog_density_repair_program_inc.h',
                                provenance=ROOT / 'verification/results/fog-density-repair-program.json'),
-    # Look presets L1-L3: FOG_LOOK variants of the three programs above (L3 shares the L2 programs).
-    'fog_density_march_look1': dict(source=ROOT / 'src/fog/fog_density_march_look1_ps.hlsl',
-                              header=ROOT / 'src/renderer/fog_density_march_look1_program_inc.h',
-                              provenance=ROOT / 'verification/results/fog-density-march-look1-program.json'),
-    'fog_density_march_look2': dict(source=ROOT / 'src/fog/fog_density_march_look2_ps.hlsl',
-                              header=ROOT / 'src/renderer/fog_density_march_look2_program_inc.h',
-                              provenance=ROOT / 'verification/results/fog-density-march-look2-program.json'),
+    # The single look (FOG_LOOK): the production variants of the three programs above.
+    'fog_density_march_look': dict(source=ROOT / 'src/fog/fog_density_march_look_ps.hlsl',
+                              header=ROOT / 'src/renderer/fog_density_march_look_program_inc.h',
+                              provenance=ROOT / 'verification/results/fog-density-march-look-program.json'),
     'fog_density_composite_look': dict(source=ROOT / 'src/fog/fog_density_composite_look_ps.hlsl',
                               header=ROOT / 'src/renderer/fog_density_composite_look_program_inc.h',
                               provenance=ROOT / 'verification/results/fog-density-composite-look-program.json'),
-    'fog_density_repair_look1': dict(source=ROOT / 'src/fog/fog_density_repair_look1_ps.hlsl',
-                              header=ROOT / 'src/renderer/fog_density_repair_look1_program_inc.h',
-                              provenance=ROOT / 'verification/results/fog-density-repair-look1-program.json'),
-    'fog_density_repair_look2': dict(source=ROOT / 'src/fog/fog_density_repair_look2_ps.hlsl',
-                              header=ROOT / 'src/renderer/fog_density_repair_look2_program_inc.h',
-                              provenance=ROOT / 'verification/results/fog-density-repair-look2-program.json'),
+    'fog_density_repair_look': dict(source=ROOT / 'src/fog/fog_density_repair_look_ps.hlsl',
+                              header=ROOT / 'src/renderer/fog_density_repair_look_program_inc.h',
+                              provenance=ROOT / 'verification/results/fog-density-repair-look-program.json'),
     'fog_density_march_exact': dict(source=ROOT / 'verification/probe/fog_density_march_exact_ps.hlsl',
                                     header=ROOT / 'verification/probe/fog_density_march_exact_program_inc.h',
                                     provenance=ROOT / 'verification/results/fog-density-march-exact-program.json'),

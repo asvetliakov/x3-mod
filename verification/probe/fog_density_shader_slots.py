@@ -18,9 +18,10 @@ PROGRAMS = {
     'fog_density_repair': ROOT / 'src/renderer/fog_density_repair_program_inc.h',
     'fog_density_march_exact': ROOT / 'verification/probe/fog_density_march_exact_program_inc.h',
 }
-# Look presets L1-L3 (FOG_LOOK variants): the same 512-slot ceiling as the base programs (CrossOver reports exactly 512).
+# The single look (FOG_LOOK), the three programs the renderer draws: the same 512-slot ceiling as the
+# unshaped parity programs above (CrossOver reports exactly 512).
 LOOK_PROGRAMS = {name: ROOT / ('src/renderer/%s_program_inc.h' % name) for name in (
-    'fog_density_march_look1', 'fog_density_march_look2', 'fog_density_composite_look', 'fog_density_repair_look1', 'fog_density_repair_look2')}
+    'fog_density_march_look', 'fog_density_composite_look', 'fog_density_repair_look')}
 PROGRAMS.update(LOOK_PROGRAMS)
 ZERO = {31, 48, 81, 47, 30}                    # dcl, defi, def, defb, label
 COST = {37: 8, 66: 6,                          # sincos, texldb

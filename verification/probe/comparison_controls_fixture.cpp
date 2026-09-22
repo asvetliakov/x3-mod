@@ -146,12 +146,11 @@ int main(){
     g.control=true;g.fog_toggle=false;fog.sample(g);g.foreground=false;g.fog_toggle=true;CHECK(!fog.sample(g).fog_toggle);
     g.foreground=true;CHECK(!fog.sample(g).fog_toggle); // held through alt-tab
     g.fog_toggle=false;fog.sample(g);g.fog_toggle=true;CHECK(fog.sample(g).fog_toggle);
-    // Ctrl+Alt+F11 (stored fog look preset): the physical F11 also raises ambient occlusion's raw key; only the modifiers decide.
-    g.fog_toggle=false;fog.sample(g);g.fog_look=g.ambient_occlusion=true;{const auto a=fog.sample(g);CHECK(a.fog_look&&!a.ambient_occlusion&&!a.fog_step&&!a.fog_toggle);}
-    for(unsigned i=0;i<1000;++i)CHECK(!fog.sample(g).fog_look); // held is not a second press
-    g.alt=false;g.shift=true;CHECK(!fog.sample(g).fog_look); // swapping Alt for Shift on a held F11 presses nothing here
-    g.fog_look=g.ambient_occlusion=false;fog.sample(g);g.fog_look=g.ambient_occlusion=true;{const auto a=fog.sample(g);CHECK(a.ambient_occlusion&&!a.fog_look);} // Ctrl+Shift+F11 stays AO
-    g.fog_look=g.ambient_occlusion=false;g.shift=false;g.alt=true;fog.sample(g);
+    // The stored fog look cycle (Ctrl+Alt+F11) was retired with the presets on 2026-09-22: F11 under Ctrl+Alt
+    // produces no fog action at all, and Ctrl+Shift+F11 remains ambient occlusion.
+    g.fog_toggle=false;fog.sample(g);g.ambient_occlusion=true;{const auto a=fog.sample(g);CHECK(!a.ambient_occlusion&&!a.fog_step&&!a.fog_toggle);}
+    g.ambient_occlusion=false;g.shift=true;g.alt=false;fog.sample(g);g.ambient_occlusion=true;{const auto a=fog.sample(g);CHECK(a.ambient_occlusion);} // Ctrl+Shift+F11 stays AO
+    g.ambient_occlusion=false;g.shift=false;g.alt=true;fog.sample(g);
     // A launch with only --fps-overlay: the caller leaves every other key
     // false (their polls are gated on their own options), so the overlay chord
     // is the only action the sampler can ever produce, edge after edge.

@@ -113,7 +113,7 @@ accepted same-draw motion route.
 ### EXPERIMENT-OPEN
 `--volumetric-fog-range stored` (implemented in four checkpoints, first flight
 Run 61 B: "looks accepted, L2 preferred, ribs from axis-aligned coverage
-waves"), `--volumetric-fog-look` (L0–L3, same run), `--taa-sentinel-stabiliser`
+waves"), `--volumetric-fog-look` (L0–L3, same run; **retired in batch 8**, 2026-09-22), `--taa-sentinel-stabiliser`
 (Run 61 A traced the residual distant-station pan flicker to far-plane history
 rejection, fixed for Run 62), `--chase-scene-fix` (waits for a run showing an
 external-view HUD element).
@@ -398,6 +398,28 @@ fixtures green on its own.
    `MoveFileExW`, `_fdopen`, `_close`, `_open_osfhandle`, `ferror`, `ftell`),
    `check_no_x87.py` clean over 596 reachable functions. After merging main
    `855fc1bc` the same build is 55,279,273 B with 617 reachable functions, clean.
+
+10. **Batch 8 - stored fog look presets L0/L1/L3** - **done 2026-09-22.**
+   The user accepted L2 (runs 231-237), so the preset machinery went and the L2 law became the single
+   stored-range look. Removed: `fog_density_march_look1_ps.hlsl`, `fog_density_repair_look1_ps.hlsl`
+   with their generated headers and provenance JSONs; the `look2` name (the kept programs are
+   `fog_density_{march,repair}_look_ps.hlsl` + `fog_density_composite_look_ps.hlsl`); the `#if FOG_LOOK >= 2`
+   level in `fog_density_field_inc.h`; `fog_look_count`, `fog_look_default`, `fog_look_next` and the
+   L3-only `JITTER_NEAR`/`JITTER_FAR` tunables in `fog_look_math.h`; `FogFrame::look`, `FogResult::look`,
+   `FogDensityStatus::looks/look_reason` and the `look_march_/look_repair_/look_composite_` arrays in
+   `fog_pass.{h,cpp}`; `MotionOutput::volumetric_fog_look_step/volumetric_fog_look`, `fog_look_`, the
+   `volumetric_fog_look_refused` log and the overlay `L%d` readout; the `fog_look` key/action of
+   `comparison_controls.h` (Ctrl+Alt+F11); `--volumetric-fog-look` (now refused by name) and the
+   `X3M_VOLUMETRIC_FOG_LOOK` forward in `tools/manage.py`. The DLL logs one
+   `volumetric_fog_look_ignored` line if the variable is inherited, whatever the fog state is. Every `X3M_FOG_LOOK_*` tuning
+   variable the look reads is kept (list in the ledger).
+   **Stored-range ps_3_0 slots: 3104 over 8 created programs -> 1145 over 3** (march 425, repair 510,
+   composite 210); the three unshaped programs and the texel-exact march stay as the shader fixture's
+   parity reference and are no longer created by the renderer. The pass fixture's CPU twin
+   (`fog_density_cpu_march.h`) gained the look law, since every stored draw now uses it.
+   **Bit-identity:** the six reused L2 fixture cases and the repair-with-shafts image are byte-for-byte
+   equal before and after, and all seven stored-density programs keep their bytecode hashes.
+   Evidence: `docs/verification/volumetric-fog.md`, "Single look" section (2026-09-22).
 
 ## 5. Caveats
 

@@ -1,5 +1,5 @@
-// Generated from our original src/fog/fog_density_repair_look2_ps.hlsl. Do not edit.
-// Reproduce: X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 tools/shaders/generate_rigid_motion_pixel.py --shader fog_density_repair_look2 --check
+// Generated from our original src/fog/fog_density_repair_look_ps.hlsl. Do not edit.
+// Reproduce: X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 tools/shaders/generate_rigid_motion_pixel.py --shader fog_density_repair_look --check
     0xffff0300u, 0x011bfffeu, 0x42415443u, 0x0000001cu, 0x00000437u, 0xffff0300u,
     0x0000001fu, 0x0000001cu, 0x20008100u, 0x00000430u, 0x00000288u, 0x00020002u,
     0x000a0001u, 0x00000298u, 0x00000000u, 0x000002a8u, 0x00180002u, 0x00620001u,

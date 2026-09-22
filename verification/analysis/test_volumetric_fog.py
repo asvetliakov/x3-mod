@@ -241,8 +241,8 @@ class FogLauncherTests(unittest.TestCase):
         for line in ('"X3M_VOLUMETRIC_FOG": "1"', '"X3M_VOLUMETRIC_FOG_STRENGTH": "0.02"',
                      '"X3M_VOLUMETRIC_FOG_EVERYWHERE": "0"', '"X3M_VOLUMETRIC_FOG_TIMING": "0"'):
             self.assertIn(line, output)
-        # The superseded --volumetric-fog-anisotropy was removed (looks 1-3 carry
-        # their own two-lobe phase); the DLL keeps its own g = 0.3 default.
+        # The superseded --volumetric-fog-anisotropy was removed (the stored look carries
+        # its own two-lobe phase); the DLL keeps its own g = 0.3 default.
         self.assertNotIn('X3M_VOLUMETRIC_FOG_ANISOTROPY', output)
         status, output, error = self.launch(*self.BASE, '--volumetric-fog', '0.05', '--volumetric-fog-everywhere', '--volumetric-fog-timing')
         self.assertEqual(status, 0, error)
@@ -284,24 +284,32 @@ class FogLauncherTests(unittest.TestCase):
         self.assertIn('fog_env(L"X3M_VOLUMETRIC_FOG_RANGE")==6 && !wcscmp(setting,L"stored")', capture)
         self.assertIn('volumetric_fog_range_stored=volumetric_fog_requested &&', capture)
 
-    def test_look_option(self):
+    def test_look_option_and_variable_are_retired(self):
+        # 2026-09-22: the presets L0/L1/L3 are gone, the former L2 is the only look, and there is no selector.
         stored = ('--volumetric-fog', '0.03', '--volumetric-fog-cards', 'replace', '--volumetric-fog-range', 'stored')
         status, output, error = self.launch(*self.BASE, *stored)
         self.assertEqual(status, 0, error)
-        self.assertIn('"X3M_VOLUMETRIC_FOG_LOOK": "2"', output)  # stored range starts on look 2
-        legacy = self.launch(*self.BASE, '--volumetric-fog', '0.03')
-        self.assertEqual(legacy[0], 0, legacy[2]); self.assertIn('"X3M_VOLUMETRIC_FOG_LOOK": "0"', legacy[1])
-        self.assertIn('volumetric_fog_look=renderer::fog_look_default;', (ROOT / 'src/proxy/capture.cpp').read_text())
-        self.assertIn('constexpr unsigned fog_look_default = 2;', (ROOT / 'src/renderer/fog_look_math.h').read_text())
-        for look in '0123':
-            status, output, error = self.launch(*self.BASE, *stored, '--volumetric-fog-look', look)
-            self.assertEqual(status, 0, error)
-            self.assertIn('"X3M_VOLUMETRIC_FOG_LOOK": "%s"' % look, output)
-        # An inherited preset never survives; the look needs the stored range; 4 is no preset.
-        status, output, error = self.launch(*self.BASE, *stored, environment={'X3M_VOLUMETRIC_FOG_LOOK': '1'})
-        self.assertIn('"X3M_VOLUMETRIC_FOG_LOOK": "2"', output)
+        self.assertNotIn('X3M_VOLUMETRIC_FOG_LOOK', output)  # the launcher no longer sets the selector at all
+        for extra in (('--volumetric-fog-look', '2'), ('--volumetric-fog-look', '0'), ('--volumetric-fog-look',)):
+            status, _, error = self.launch(*self.BASE, *stored, *extra)
+            self.assertEqual(status, 2, extra)
+            self.assertIn('--volumetric-fog-look was removed on 2026-09-22', error)
+            self.assertIn('single look', error)
         self.assertEqual(self.launch(*self.BASE, '--volumetric-fog', '--volumetric-fog-look', '1')[0], 2)
-        self.assertEqual(self.launch(*self.BASE, *stored, '--volumetric-fog-look', '4')[0], 2)
+        # An inherited variable is ignored by the DLL with one log line, and no preset level is left in the source.
+        status, output, error = self.launch(*self.BASE, *stored, environment={'X3M_VOLUMETRIC_FOG_LOOK': '1'})
+        self.assertEqual(status, 0, error); self.assertNotIn('X3M_VOLUMETRIC_FOG_LOOK', output)
+        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        self.assertIn('volumetric_fog_look_ignored variable=X3M_VOLUMETRIC_FOG_LOOK reason=single_look_since_2026_09_22', capture)
+        self.assertNotIn('volumetric_fog_look_step', capture)  # the Ctrl+Alt+F11 cycle is gone with the presets
+        self.assertNotIn('" L%d"', capture)                    # and so is the overlay L-readout
+        look_math = (ROOT / 'src/renderer/fog_look_math.h').read_text()
+        for gone in ('fog_look_default', 'fog_look_count', 'fog_look_next', 'jitter_near', 'JITTER_NEAR'):
+            self.assertNotIn(gone, look_math, gone)
+        # Every tuning variable the look reads is still available, the L3-only ones are not.
+        self.assertIn('X3M_FOG_LOOK_', capture)
+        for kept in ('COVERAGE', 'EXPONENT', 'SIGMA_SCALE', 'SELF_SHADOW', 'POWDER', 'TAP_DISTANCE', 'TAP_LENGTH', 'SHADOW_JITTER'):
+            self.assertIn('"%s"' % kept, look_math, kept)
 
     def test_dependencies_and_ranges(self):
         for missing in ('--taa', '--hdr', '--shadow-replay-depth'):

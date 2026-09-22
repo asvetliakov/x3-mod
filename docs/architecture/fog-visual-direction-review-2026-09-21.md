@@ -167,6 +167,18 @@ What the user should look for, in a bluewell or green sector with a station and 
 
 Capture request: one F-key capture burst per preset from the same pose.
 
+## Outcome: one look since 2026-09-22
+
+The four-preset experiment of section 4 is closed. The user flew L0-L3 (runs 214-237) and accepted **L2**:
+shaping (density remap with coverage waves and domain warp, dual-lobe phase, coloured ambient, desaturated
+albedo with tinted extinction, multiple-scatter lift, sky column cap at 22.5 km) plus Beer-powder and the
+one-tap sun-ward self-shadow, with the shadow-shaft lookup jittered under TAA and held at the bin centres
+without a resolve. On 2026-09-22 L0, L1 and L3 were removed: their shader variants, generated headers,
+provenance JSONs, the preset selector (`--volumetric-fog-look`, `X3M_VOLUMETRIC_FOG_LOOK`), the Ctrl+Alt+F11
+cycle and the overlay L-readout are gone, and the L2 law is the single stored-range look with bit-identical
+output (fixture evidence in `docs/verification/volumetric-fog.md`). Dust motes (change 8) and the local-light
+inscatter (10) remain unbuilt; the L3 per-frame sample offset was rejected in flight and is not coming back.
+
 ## Unknowns and what settles them
 
 - **Actual per-pixel opacity in Run 214** was inferred from sigma and ledger statistics, not

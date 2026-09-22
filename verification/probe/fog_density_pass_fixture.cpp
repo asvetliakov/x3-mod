@@ -150,9 +150,16 @@ void raster_ray(const FogFrame& f,double px,double py,double view[3]){
     const double raster_x=double(f.params.m20)-1.0/f.width,raster_y=double(f.params.m21)+1.0/f.height;
     view[0]=(2.0*px/f.width-1.0-raster_x)/double(f.params.m00);view[1]=(1.0-2.0*py/f.height-raster_y)/double(f.params.m11);view[2]=1;
 }
+// The look rows every stored draw binds, at the bin centres (the frames below leave look_resolved false,
+// so the shaft lookup offset is dropped and the twin needs no pixel noise), and the sigma factor with them.
+float cpu_look_rows[x3m::renderer::fog_look_rows][4];
 fog_cpu::Setup cpu_setup(const FogFrame& f,const FogDensityConfig& config){
     fog_cpu::Setup s;for(int a=0;a<3;++a){s.camera[a]=f.camera_world[a];s.chroma[a]=config.chroma[a];for(int b=0;b<3;++b)s.inverse[a][b]=f.params.world.inverse_columns[3*a+b];}
-    s.sigma=double(config.sigma);s.offset={config.world_offset[0],config.world_offset[1],config.world_offset[2]};return s;
+    s.sigma=double(config.sigma);s.offset={config.world_offset[0],config.world_offset[1],config.world_offset[2]};
+    if(f.look_resolved)throw std::runtime_error("cpu twin needs bin centres (look_resolved=false)");
+    const float radiance[3]={float(s.radiance[0]),float(s.radiance[1]),float(s.radiance[2])}; // c8.rgb = E/pi of the frame
+    s.sigma*=double(x3m::renderer::fog_look_constants(config.look,config.chroma,radiance,f.look_phase,cpu_look_rows,false));
+    s.look=cpu_look_rows;return s;
 }
 
 struct Harness{
@@ -350,9 +357,16 @@ void run(const std::string& cases_file){
             };
             const auto none=shade(nullptr,0),all_lit=shade(lit_texture.p,1e-9f),all_dark=shade(dark_texture.p,1e-9f);const auto split_bytes=shade(split_texture.p,1e-5f);
             require(all_lit==none,"shafts_fully_lit_map_is_bit_identical_to_no_map");
-            const auto plain=half_image(none),dark=half_image(all_dark),split=half_image(split_bytes);bool dark_ok=true,fogged=false;
-            for(std::size_t i=0;i<plain.size();i+=4){dark_ok=dark_ok&&dark[i]==0&&dark[i+1]==0&&dark[i+2]==0&&dark[i+3]==plain[i+3];fogged=fogged||plain[i+1]>0;}
-            require(dark_ok&&fogged,"shafts_fully_shadowed_zero_inscatter_same_transmittance");
+            // The look removes sun light only: a fully shadowed column keeps its transmittance bit for bit and keeps
+            // coloured in-scatter (ambient plus the shaft and lift floors), dimmer than the unshadowed one.
+            const auto plain=half_image(none),dark=half_image(all_dark),split=half_image(split_bytes);bool dark_ok=true;unsigned fogged=0;
+            for(std::size_t i=0;i<plain.size();i+=4){
+                dark_ok=dark_ok&&dark[i+3]==plain[i+3]&&dark[i]<=plain[i]&&dark[i+1]<=plain[i+1]&&dark[i+2]<=plain[i+2];
+                if(!(dark[i+3]<.98f))continue;++fogged; // FP16 target: in-scatter below the smallest normal half may flush to zero
+                dark_ok=dark_ok&&dark[i]>0&&dark[i+1]>0&&dark[i+2]>0&&dark[i+1]<plain[i+1];
+            }
+            std::printf("SHAFTS dark_map fogged_pixels=%u\n",fogged);
+            require(dark_ok&&fogged>0,"shafts_fully_shadowed_dim_coloured_same_transmittance");
             // Split map: map x = 1e-5 * view x, left half lit. CPU twin of fog_pcf / shadow_weight (cascade 0 only).
             const FogFrame f=make_frame(A,scene,hx.frame,true);fog_cpu::Setup cpu=cpu_setup(f,config);
             cpu.visibility=[&](const double p[3]){
@@ -367,28 +381,29 @@ void run(const std::string& cases_file){
             std::printf("SHAFTS split_map worst_S_vs_cpu=%.6f\n",worst);require(worst<=.003&&differs,"shafts_split_map_matches_cpu_visibility");
         }
 
-        // --- Look presets through the production pass: prebuilt programs and constants only ---
-        std::vector<std::uint8_t> look2_before;
+        // --- The single look through the production pass: prebuilt programs and constants only ---
+        std::vector<std::uint8_t> look_before;
         {
-            require(hx.settle(A.cam),"look pose settles");require(pass.density_status().looks,"look_programs_created_with_the_base_programs");
+            require(hx.settle(A.cam),"look pose settles");
             const UINT N=64;const std::vector<float> dark_map(N*N,0.f);Com<IDirect3DTexture9> dark_texture;upload(d,N,N,D3DFMT_R32F,4,dark_map.data(),0,&dark_texture.p);
             const unsigned references=pass.references(),allocations=pass.allocations();
-            auto shade=[&](unsigned look,unsigned phase,bool dark){
-                check(hx.prepare(A.cam),"look prepare");FogFrame f=make_frame(A,scene,hx.frame,true);f.look=look;f.look_phase=phase;
+            auto shade=[&](unsigned phase,bool dark,bool resolved=true){
+                check(hx.prepare(A.cam),"look prepare");FogFrame f=make_frame(A,scene,hx.frame,true);f.look_phase=phase;f.look_resolved=resolved;
                 if(dark){f.count=1;auto& k=f.cascades[0];k.map=dark_texture.p;k.valid=true;k.frame=hx.frame;k.bias=0;k.rows[0]=1e-9f;k.rows[5]=1e-9f;k.rows[10]=1e-9f;k.rows[11]=.5f;}
-                FogResult r;if(hx.execute(A,scene,r,false,&f)!=S_OK||!r.applied||r.look!=look)throw std::runtime_error("look transaction");return surface_bytes(d,pass.fixture_st());
+                FogResult r;if(hx.execute(A,scene,r,false,&f)!=S_OK||!r.applied)throw std::runtime_error("look transaction");return surface_bytes(d,pass.fixture_st());
             };
-            const auto l0=shade(0,0,false),l1=shade(1,0,false),l2=shade(2,0,false),l3=shade(3,3,false),l3_next=shade(3,4,false),l2_again=shade(2,5,false),l0_again=shade(0,0,false);
-            require(l0_again==l0,"look_0_after_cycling_is_byte_identical_to_before");
-            require(l1!=l0&&l2!=l1&&l3!=l2&&l3_next!=l3&&l2_again==l2,"looks_differ_and_only_look_3_depends_on_the_frame_phase");
-            require(pass.references()==references&&pass.allocations()==allocations,"look_switch_creates_and_allocates_nothing");
-            const auto dark0=half_image(shade(0,0,true)),dark1=half_image(shade(1,0,true));unsigned fogged=0;bool black=true,coloured=true;
-            for(std::size_t i=0;i<dark0.size();i+=4){if(!(dark0[i+3]<1))continue;black=black&&dark0[i]==0&&dark0[i+1]==0&&dark0[i+2]==0;}
-            for(std::size_t i=0;i<dark1.size();i+=4){if(!(dark1[i+3]<.98f))continue;++fogged; // FP16 target: in-scatter below the smallest normal half (6.1e-5) may flush to zero
-            coloured=coloured&&dark1[i]>0&&dark1[i+1]>0&&dark1[i+2]>0;}
-            std::printf("LOOKS shadowed_look1_fogged_pixels=%u look0_black=%u look1_coloured=%u\n",fogged,unsigned(black),unsigned(coloured));
-            require(fogged>0&&black&&coloured,"fully_shadowed_fog_is_black_under_look_0_and_coloured_under_look_1");
-            look2_before=l2;
+            const auto a=shade(0,false),b=shade(0,false),c3=shade(3,false),c4=shade(4,false),held=shade(3,false,false);
+            require(b==a,"look_frames_are_byte_identical_frame_to_frame");
+            // With no cascade bound nothing reads the phase: the retired L3 sample offset is gone, so the density
+            // samples sit at the bin centres whatever the TAA phase or resolve state is.
+            require(c3==a&&c4==a&&held==a,"phase_and_resolve_move_no_density_sample");
+            require(pass.references()==references&&pass.allocations()==allocations,"look_frames_create_and_allocate_nothing");
+            const auto dark=half_image(shade(0,true));unsigned fogged=0;bool coloured=true;
+            for(std::size_t i=0;i<dark.size();i+=4){if(!(dark[i+3]<.98f))continue;++fogged; // FP16 target: in-scatter below the smallest normal half (6.1e-5) may flush to zero
+            coloured=coloured&&dark[i]>0&&dark[i+1]>0&&dark[i+2]>0;}
+            std::printf("LOOKS shadowed_fogged_pixels=%u coloured=%u\n",fogged,unsigned(coloured));
+            require(fogged>0&&coloured,"fully_shadowed_fog_is_coloured");
+            look_before=a;
         }
 
         // --- Reset in the middle of a fill, then Reset of a complete cache ---
@@ -400,8 +415,8 @@ void run(const std::string& cases_file){
             check(pass.prepare_targets(scene.w,scene.h),"targets after Reset");require(hx.settle(A.cam)&&hx.atlases_equal_static(scene,"reset_mid_fill"),"reset_mid_fill_recovers_bit_for_bit");
             require(pass.density_status().nodes_generated-nodes_before<=2ull*2097152,"reset_mid_fill_generates_nothing_twice");
             FogResult r;require(hx.execute(A,scene,r)==S_OK&&r.applied&&surface_bytes(d,pass.fixture_st())==image_before,"after_reset_image_byte_identical_to_before");
-            {check(hx.prepare(A.cam),"look prepare after Reset");FogFrame f=make_frame(A,scene,hx.frame,true);f.look=2;FogResult lr;
-             require(hx.execute(A,scene,lr,false,&f)==S_OK&&lr.look==2&&surface_bytes(d,pass.fixture_st())==look2_before,"look_2_after_reset_byte_identical_to_before");}
+            {check(hx.prepare(A.cam),"look prepare after Reset");FogFrame f=make_frame(A,scene,hx.frame,true);FogResult lr;
+             require(hx.execute(A,scene,lr,false,&f)==S_OK&&surface_bytes(d,pass.fixture_st())==look_before,"look_after_reset_byte_identical_to_before");}
             const std::uint64_t nodes=pass.density_status().nodes_generated,bytes=pass.density_status().upload_bytes_total;const std::uint64_t frame_before=hx.frame;
             scene.release();pass.before_reset();const HRESULT again=d->Reset(&pp);pass.after_reset(again);check(again,"second Reset");scene.create();check(pass.prepare_targets(scene.w,scene.h),"targets after second Reset");
             check(hx.prepare(A.cam),"prepare after Reset");require(pass.density_status().ready_far==0,"reset_drops_readiness_until_reuploaded");
@@ -434,11 +449,12 @@ void run(const std::string& cases_file){
                 if(x%2){ // no sky-class half sample can serve a geometry pixel: repaired at full resolution
                     if(y%3)continue;double v[3];raster_ray(f,x,y,v);const double depth_b=double(depth[(std::size_t(y)*31+x)*4+2]);const auto ref=fog_cpu::march(cpu,v,depth_b);
                     raster_ray(f,x+.5,y+.5,v);const auto shifted=fog_cpu::march(cpu,v,depth_b);++repaired;
-                    for(int c=0;c<3;++c){repair_worst=std::max(repair_worst,std::fabs(fog_cpu::apply(scene_rgb[c],ref.S[c],ref.T,1)-g[c]));shifted_worst=std::max(shifted_worst,std::fabs(fog_cpu::apply(scene_rgb[c],shifted.S[c],shifted.T,1)-g[c]));}
+                    for(int c=0;c<3;++c){const double k=double(cpu_look_rows[8][c]); // the look's per-channel extinction exponent
+                        repair_worst=std::max(repair_worst,std::fabs(fog_cpu::apply(scene_rgb[c],ref.S[c],ref.T,1,k)-g[c]));shifted_worst=std::max(shifted_worst,std::fabs(fog_cpu::apply(scene_rgb[c],shifted.S[c],shifted.T,1,k)-g[c]));}
                 }else{ // sky: the composite's 2x2 footprint over the half-resolution (S,T), clamped at the odd edge (half 15 / 8)
                     const UINT hx0=x/2,hy0=y/2,hy1=std::min(hy0+1,8u);const double fy=(y%2)?.5:0;
                     for(int c=0;c<3;++c){const double S=lit[(std::size_t(hy0)*16+hx0)*4+c]*(1-fy)+lit[(std::size_t(hy1)*16+hx0)*4+c]*fy,T=lit[(std::size_t(hy0)*16+hx0)*4+3]*(1-fy)+lit[(std::size_t(hy1)*16+hx0)*4+3]*fy;
-                        composite_worst=std::max(composite_worst,std::fabs(fog_cpu::apply(scene_rgb[c],S,T,1)-g[c]));}
+                        composite_worst=std::max(composite_worst,std::fabs(fog_cpu::apply(scene_rgb[c],S,T,1,double(cpu_look_rows[8][c]))-g[c]));}
                 }
             }
             std::printf("REPAIR odd_target=31x17 repaired_checked=%u worst_vs_cpu=%.6f half_pixel_shift_control=%.6f composite_worst=%.6f\n",repaired,repair_worst,shifted_worst,composite_worst);

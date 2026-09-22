@@ -68,14 +68,14 @@ struct FogFrame {
  IDirect3DTexture9* depth_share=nullptr;IDirect3DSurface9* target=nullptr;
  fog_field::Profile profile=fog_field::Profile::None;unsigned recipe_id=0;std::uint64_t field_generation=0;
  bool main_target=false,linear_depth_current=false,caller_scene_known=false,caller_stateblock_recording=false,caller_queries_idle=true;
- struct Params {FogWorldBasis world{};} params;bool density=false;double camera_world[3]{};unsigned look=0,look_phase=0;bool look_resolved=false;
+ struct Params {FogWorldBasis world{};} params;bool density=false;double camera_world[3]{};unsigned look_phase=0;bool look_resolved=false;
 };
 // Stored-density range: the option is off in this host witness; the types only let the unchanged methods compile.
 struct FogDensityConfig {bool enabled=false;std::uint64_t sector_key=0;double world_offset[3]{};};
-struct FogDensityStatus {bool looks=true;const char* look_reason="";float ready_far=0,ready_fine=0;unsigned upload_bytes=0,upload_rects=0;std::uint64_t nodes_generated=0,worker_busy_us=0,missed_locks=0;};
+struct FogDensityStatus {float ready_far=0,ready_fine=0;unsigned upload_bytes=0,upload_rects=0;std::uint64_t nodes_generated=0,worker_busy_us=0,missed_locks=0;};
 struct FogResult {
  bool applied=false;HRESULT restore=0;bool caller_state_restored=true,route_poisoned=false,scene_known=true,scene_open=true;
- HRESULT operation=0;FogStage failed=FogStage::None;unsigned cascades_bound=0,device_calls=0,look=0;
+ HRESULT operation=0;FogStage failed=FogStage::None;unsigned cascades_bound=0,device_calls=0;
 };
 }
 namespace x3m {
@@ -109,7 +109,6 @@ struct MotionOutput {
  renderer::FogSectorLatch fog_latch_{};
  struct Camera {bool valid=false;float r[9]{},t[3]{};} camera_scene_;
  bool fog_density_requested_=false,fog_density_refused_=false,fog_density_prepared_=false,fog_density_camera_valid_=false;
- unsigned fog_look_=0;bool fog_look_refusal_logged_=false;int volumetric_fog_look_step() noexcept;
  std::uint64_t fog_density_sample_frame_=~std::uint64_t(0);long long fog_density_sample_qpc_=0;static constexpr unsigned fog_density_gap_ms=500;double fog_density_camera_[3]{};renderer::FogDensityConfig fog_density_config_{};
  bool fog_density_active()const noexcept{return fog_density_requested_&&!fog_density_refused_;}
  void fog_density_epoch(const char*)noexcept{}

@@ -353,13 +353,6 @@ int MotionOutput::volumetric_fog_step() noexcept {
     log("volumetric_fog_strength device=%llu frame=%llu strength=%.4f density_scale=%.3f enabled=%u", id_, frame_, double(fog_strength_), double(fog_strength_ / .02f), unsigned(fog_enabled_));
     return int(fog_strength_ * 1000.f + .5f);
 }
-int MotionOutput::volumetric_fog_look_step() noexcept {
-    if (!fog_density_requested_) return -1;
-    fog_look_ = renderer::fog_look_next(fog_look_); fog_look_refusal_logged_ = false;
-    const bool programs = fog_ && fog_->density_status().looks;
-    log("volumetric_fog_look device=%llu frame=%llu look=%u programs=%u reason=%s", id_, frame_, fog_look_, unsigned(programs), fog_ ? fog_->density_status().look_reason : "detached");
-    return int(fog_look_);
-}
 void MotionOutput::disable_volumetric_fog(const char* why, HRESULT result) noexcept {
     fog_disabled_ = true;
     log("volumetric_fog_disabled device=%llu frame=%llu reason=%s result=%08lx session=1", id_, frame_, why, result);
@@ -424,7 +417,7 @@ void MotionOutput::run_volumetric_fog() noexcept {
             // Not resident yet (sector entry, jump, Reset): no fog and no card suppression, never the legacy field.
             if (!fog_density_prepared_ || !fog_->density_ready(in.width, in.height)) skip = "density_unprepared";
             else if (!fog_->density_drawable(in.camera_world)) skip = "density_filling";
-            else { in.density = true; in.look = fog_look_; in.look_resolved = jitter_active_ && taa_enabled_ && !taa_failed_; in.look_phase = in.look_resolved ? counters_.jitter_index : 0u; } // no resolve to average it: hold the L3 offset
+            else { in.density = true; in.look_resolved = jitter_active_ && taa_enabled_ && !taa_failed_; in.look_phase = in.look_resolved ? counters_.jitter_index : 0u; } // no resolve to average it: hold the shaft lookup at the bin centres
         }
     }
     if (!skip) {
@@ -451,10 +444,6 @@ void MotionOutput::run_volumetric_fog() noexcept {
             }
         } else if (hr == S_OK && out.applied) {
             fog_failures_ = 0; ++fog_applied_frames_;
-            if (in.look != out.look && !fog_look_refusal_logged_) { // once per selection: the look programs are unavailable, L0 is drawn
-                fog_look_refusal_logged_ = true;
-                log("volumetric_fog_look_refused device=%llu frame=%llu look=%u drawn=%u reason=%s", id_, frame_, in.look, out.look, fog_->density_status().look_reason);
-            }
         }
     }
     release(depth); release(rt0);

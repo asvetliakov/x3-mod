@@ -11,7 +11,7 @@ sys.path.insert(0, str(ROOT / 'verification/probe'))
 import fog_density_shader_slots as slots  # noqa: E402
 
 BASE = ('fog_density_march', 'fog_density_composite', 'fog_density_repair', 'fog_density_march_exact')
-NAMES = BASE + tuple(slots.LOOK_PROGRAMS)  # look presets L1-L3: FOG_LOOK variants of march, composite and repair
+NAMES = BASE + tuple(slots.LOOK_PROGRAMS)  # the single look: FOG_LOOK variants of march, composite and repair
 
 
 def digest(path):
@@ -50,9 +50,9 @@ class FogDensityShaders(unittest.TestCase):
         # Static texture instructions: depth + 2x2 atlas slices + 12 shaft taps; composite 1+1+4+4;
         # repair adds its four footprint taps and the scene; the exact variant has 16 atlas fetches.
         self.assertEqual([counts[n]['texture_instructions'] for n in BASE], [17, 10, 22, 17])
-        # Look variants: depth + 2x2 atlas fetches + 2 cascades x 4 shaft taps (13); FOG_LOOK 2 adds the sun-ward tap's
-        # two far fetches (15); repair adds four footprint taps and the scene. The 64-bin march stays one loop.
-        self.assertEqual([counts[n]['texture_instructions'] for n in slots.LOOK_PROGRAMS], [13, 15, 10, 18, 20])
+        # The look: depth + 2x2 atlas fetches + 2 cascades x 4 shaft taps + the sun-ward tap's two far fetches (15);
+        # composite 1+1+4+4; repair adds four footprint taps and the scene. The 64-bin march stays one loop.
+        self.assertEqual([counts[n]['texture_instructions'] for n in slots.LOOK_PROGRAMS], [15, 10, 20])
         for name in NAMES:
             self.assertEqual(counts[name]['loops'], 0 if 'composite' in name else 1, name)
         with self.assertRaises(ValueError):
@@ -65,18 +65,28 @@ class FogDensityShaders(unittest.TestCase):
             self.assertTrue(slots.PROGRAMS[name].name.endswith('_program_inc.h'))
         self.assertEqual(slots.PROGRAMS['fog_density_march_exact'].parent, ROOT / 'verification/probe')
 
-    def test_look_variants_leave_the_current_law_untouched(self):
-        # L0 is the unshaped programs: every FOG_LOOK edit of the shared include sits behind the define.
+    def test_one_look_and_an_unshaped_parity_reference(self):
+        # The look is the only law the renderer draws; the unshaped law survives behind #ifndef FOG_LOOK as the
+        # fixture's parity reference (the presets L0/L1/L3 were retired on 2026-09-22, and no preset level remains).
         text = (ROOT / 'src/fog/fog_density_field_inc.h').read_text()
-        # Every preprocessor guard of the include names FOG_LOOK*: one whole-law #ifndef, the repair opt-out, the rest #ifdef/#if.
         guards = [line.split('//')[0].strip() for line in text.splitlines() if line.startswith(('#if', '#ifdef', '#ifndef')) and 'FOG_LOOK' in line]
-        self.assertEqual(sorted(guards), sorted(['#ifdef FOG_LOOK'] * 4 + ['#ifndef FOG_LOOK', '#ifndef FOG_LOOK_NO_OFFSET', '#if FOG_LOOK >= 2']))
+        self.assertEqual(sorted(guards), sorted(['#ifdef FOG_LOOK'] * 4 + ['#ifndef FOG_LOOK', '#ifndef FOG_LOOK_NO_OFFSET']))
+        self.assertNotIn('FOG_LOOK >=', text)
         for name in BASE:
             self.assertNotIn('FOG_LOOK', (ROOT / record(name)['source']).read_text(), name)
         for name in slots.LOOK_PROGRAMS:
-            self.assertIn('#define FOG_LOOK ', (ROOT / record(name)['source']).read_text(), name)
-        # Pinned by the commit that introduced the looks: the three production programs did not change.
-        self.assertEqual(record('fog_density_march')['bytecode_sha256'], '4dacf7e4d3ffa909cbd8b8a75352b44d55a471d36ba3222d977662cf6afda60f')
+            self.assertIn('#define FOG_LOOK\n', (ROOT / record(name)['source']).read_text(), name)
+        # The unshaped parity programs and the look programs are unchanged by the retirement: pinned bytecode.
+        for name, digest in (('fog_density_march', '4dacf7e4d3ffa909cbd8b8a75352b44d55a471d36ba3222d977662cf6afda60f'),
+                             ('fog_density_march_look', '6a347ac2c07d4be702c8b267f704b1aad2cdde16cd729565a2f01a0acf83ed25'),
+                             ('fog_density_composite_look', '6c6a78b9fb72c4086e0a169ac249940d8eb4821a2eb457381e4333588e8ef369'),
+                             ('fog_density_repair_look', '155a82e2833141db22e2f0688eb11c4aef2a614f612127a348fc739a49b85056')):
+            self.assertEqual(record(name)['bytecode_sha256'], digest, name)
+        # The renderer creates the three look programs and no unshaped one.
+        pass_source = (ROOT / 'src/renderer/fog_pass.cpp').read_text()
+        for name in ('march', 'composite', 'repair'):
+            self.assertIn('#include "fog_density_%s_look_program_inc.h"' % name, pass_source)
+            self.assertNotIn('#include "fog_density_%s_program_inc.h"' % name, pass_source)
 
     def test_recorded_fixture_summary_passes_the_gates(self):
         s = json.loads((ROOT / 'verification/results/fog-density-shader/summary.json').read_text())
@@ -92,19 +102,20 @@ class FogDensityShaders(unittest.TestCase):
         self.assertNotIn('design_section5_S_gates', s)
         for gate in ('dense64_S', 'candidate_S', 'production_rgba16f_candidate', 'production_rgba16f_dense64', 'production_rgba16f_temporal', 'pass_fixture_passed'):
             self.assertIs(s['gates'][gate], True, gate)
-        # Look presets: every preset's GPU (S,T) against the host look_march inside the same gates, the fully
-        # shadowed sample black under L0 and coloured under L1, and the production pass cycling the presets.
-        for gate in ('look_cases', 'look_shaft_offset_exercised', 'repair_shaft_lookup', 'look0_shadowed_black', 'look1_shadowed_coloured', 'march_loops_kept', 'slots_below_512'):
+        # The look: every case's GPU (S,T) against the host look_march inside the same gates, the fully
+        # shadowed sample coloured, and the production pass drawing it.
+        for gate in ('look_cases', 'look_shaft_offset_exercised', 'repair_shaft_lookup', 'look_shadowed_coloured', 'march_loops_kept', 'slots_below_512'):
             self.assertIs(s['gates'][gate], True, gate)
-        looks = s['look_presets_versus_host']
-        self.assertEqual(sorted(looks), ['A_look1_depth90000', 'A_look1_shadowed', 'A_look1_sky', 'A_look1_stripes', 'A_look2_depth3', 'A_look2_sky', 'A_look2_stripes', 'A_look2_stripes_held', 'A_look3_sky', 'A_look3_stripes', 'B_look1_sky', 'B_look2_sky', 'B_look3_sky'])
+        self.assertNotIn('look0_shadowed_black', s['gates'])
+        looks = s['look_versus_host']
+        self.assertEqual(sorted(looks), ['A_look_depth3', 'A_look_depth90000', 'A_look_shadowed', 'A_look_sky', 'A_look_stripes', 'A_look_stripes_held', 'B_look_sky'])
         for label, row in looks.items():
             self.assertGreater(row['fogged'], 50, label); self.assertLessEqual(row['left_out_near_noise_wrap'], 6, label)
             for variant in ('bilinear32', 'bilinear16'):
                 self.assertLessEqual(row[variant]['T']['max'], .003, label); self.assertLessEqual(row[variant]['S']['max'], .003, label)
-        self.assertGreater(looks['A_look1_shadowed']['shadowed_min_S'], 0)
+        self.assertGreater(looks['A_look_shadowed']['shadowed_min_S'], 0)
         p = s['pass_fixture']
-        self.assertGreaterEqual(p['checks'], 58); self.assertEqual(p['failed'], [])
+        self.assertGreaterEqual(p['checks'], 57); self.assertEqual(p['failed'], [])
         self.assertGreaterEqual(p['state_restorations'], 100)
         self.assertGreaterEqual(p['atlas_comparisons'], 10); self.assertEqual(p['atlas_differing_bytes'], 0)
         self.assertLessEqual(p['prepare_cpu']['max_upload_bytes'], 8 * 129 * 129 * 8)

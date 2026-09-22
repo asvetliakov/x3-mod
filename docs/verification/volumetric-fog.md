@@ -2206,3 +2206,73 @@ with the split".
 ## 2026-09-22: GPU timer built, not merged (bottle X3 has no timestamp queries)
 
 A `--gpu-timing` pass timer (IDirect3DQuery9 TIMESTAMP / TIMESTAMPFREQ / TIMESTAMPDISJOINT ring around the fog, TAA, bloom and Present work) was implemented and fixture-qualified on branch `worktree-agent-a2b067e4005541a7a` (commit 423bd098). On bottle X3 the D3D9 device refuses all three query types (`CreateQuery(nullptr)` = 0x8876086a; adapter reported as "NVIDIA GeForce 8800 GTX"/nvd3dum.dll), so the timer can only soft-fail here; it is kept on the branch for native Windows and not merged. GPU cost on this Mac is measured by frame-time A/B with the pass on and off (fps overlay / `--frame-timing`), which run239 already did for fog: flat within a millisecond.
+
+## Single look: L0/L1/L3 retired, the L2 law is the only one (2026-09-22)
+
+The user accepted L2 (runs 231-237), so the preset machinery is gone and the L2 law is the single
+stored-range look; `docs/architecture/fog-density-runtime-integration.md`, "The look", owns the law and
+`docs/architecture/cleanup-inventory-2026-09-22.md` batch 8 owns the removal list. No look selection exists
+any more: `--volumetric-fog-look` is refused by name, `X3M_VOLUMETRIC_FOG_LOOK` is dropped by the launcher and
+ignored by the DLL with one `volumetric_fog_look_ignored` line, Ctrl+Alt+F11 no longer cycles anything and the
+overlay reads `FOG 1.50x` without an L-suffix. A look-program creation failure is now final
+(`density_program_create`): there is no unshaped fallback, so the stored path stays off and legacy is untouched.
+
+**Shader slots, stored range.** Before: eight created programs, 3104 Microsoft-table ps_3_0 slots
+(unshaped march/composite/repair 415/203/510, L1 march/repair 365/466, L2 march/repair 425/510, look
+composite 210). After: three created programs, **1145 slots** (march `fog_density_march_look` 425/15 texture
+instructions, repair `fog_density_repair_look` 510/20, composite `fog_density_composite_look` 210/10), all
+under the 512-slot ceiling, the march still one `rep` loop. The three unshaped programs (1128 slots) and the
+texel-exact march stay as the shader fixture's parity reference and are no longer created by the renderer.
+Deleted with L1: `fog_density_{march,repair}_look1_ps.hlsl`, their `*_program_inc.h` and
+`verification/results/fog-density-{march,repair}-look1-program.json`; the kept pair lost the `2` in its name.
+
+**Bit-identity (acceptance).** `fog_density_shader_run.py build|run|check` on bottle X3 before the change
+(`/tmp`-local output, reference `ref-before`) and after (`fog-after3`, reference `ref-after`), same baked
+packets. All seven stored-density programs keep their bytecode: march `4dacf7e4d3ffa909`, composite
+`ec97163d99f8a0be`, repair `d40f9a07538f1e67`, exact `a718e8e9161ae256`, look march `6a347ac2c07d4be7`, look
+composite `6c6a78b9fb72c408`, look repair `155a82e2833141db` (16-hex prefixes; full values in the program
+JSONs). The six reused L2 cases and the repair-with-shafts image are byte-for-byte equal, FP32 and FP16
+(sha256 prefixes of the new files, old name -> new name):
+
+| Case | bilinear32 | bilinear16 |
+| --- | --- | --- |
+| `A_look2_sky` -> `A_look_sky` | `5a6ce47b291850ef` | `8e3cbf876597046c` |
+| `A_look2_depth3` -> `A_look_depth3` | `5a6ce47b291850ef` | `8e3cbf876597046c` |
+| `B_look2_sky` -> `B_look_sky` | `84d78267f42bfce8` | `e4fa96f9500cd8cf` |
+| `A_look2_stripes` -> `A_look_stripes` | `942e53e4023007fe` | `f137782af8513f83` |
+| `A_look2_stripes_held` -> `A_look_stripes_held` | `297f4cdb1fa90556` | `2d5d71614d4519f7` |
+| `repair2_shafts.full` -> `repair_shafts.full` | `88d6d32842e0a067` | - |
+
+(`A_look_depth3` hashes equal the sky case because its 149999-unit depth clamps to the 112500-unit column cap.)
+The host reference arrays for those cases are equal element for element as well, so both sides of the
+comparison are unchanged. Fixture result after: **PASS, 17 gates**, shader fixture 23 checks, pass fixture 57
+checks / 0 failures / 1105 state restorations (1162 before the change, with the preset cycle's extra frames), run 46.5 s + 28.6 s, summary
+`verification/results/fog-density-shader/summary.json`.
+
+**Fixture changes with the retirement.** Look cases are now `A_look_{sky,stripes,stripes_held,depth3,depth90000,shadowed}`
+and `B_look_sky` (seven, from thirteen); `look0_shadowed_black` and `look1_shadowed_coloured` became
+`look_shadowed_coloured` (a fully shadowed sample keeps coloured light: ambient plus the shaft and lift
+floors); `look_presets_versus_host` is `look_versus_host`; the repair-with-shafts gate has one entry instead of
+two. The pass fixture's CPU twin (`verification/probe/fog_density_cpu_march.h`) gained the look law
+(remap over the coverage waves, domain warp, two-lobe phase, coloured ambient, lift octave, one-tap
+Beer-powder, tinted extinction in `apply`) at the bin centres, because every stored draw now uses it; its
+frames keep `look_resolved` false, and `cpu_setup` throws if that ever changes. The former
+"fully shadowed zero in-scatter" shaft check is now
+`shafts_fully_shadowed_dim_coloured_same_transmittance`: transmittance bit-identical to the unshadowed frame,
+in-scatter dimmer but positive. The preset-cycle checks became "frame to frame byte-identical" and
+"phase and resolve move no density sample" (the retired L3 sample offset is gone; `look_self.zw` stay zero).
+
+**Tuning variables kept** (`X3M_FOG_LOOK_<NAME>`, read once at init, all read by the look):
+`COVERAGE`, `EXPONENT`, `SIGMA_SCALE`, `COVERAGE_VARIATION`, `WARP_CYCLES_NEAR`, `WARP_NEAR`,
+`WARP_CYCLES_FAR`, `WARP_FAR`, `FORWARD_G`, `FORWARD_WEIGHT`, `BACK_G`, `ALBEDO_WHITE`, `AMBIENT_GAIN`,
+`EXTINCTION_TINT`, `SCATTER_LIFT`, `LIFT_FLOOR`, `SHADOW_FLOOR`, `SKY_CAP`, `TAPER_START`, `SELF_SHADOW`,
+`POWDER`, `TAP_DISTANCE`, `TAP_LENGTH`, `SHADOW_JITTER`, plus `AMBIENT_SUN` / `AMBIENT_AWAY` (r,g,b).
+**Removed:** `JITTER_NEAR`, `JITTER_FAR` (L3 only).
+
+**Other checks.** Full host suite `227 modules, 2260 tests, 0 failing`; scratch production build
+(`build-fogl2`, MinGW i686 RelWithDebInfo) `check_no_x87.py` PASS, 0 violations over 637 reachable functions;
+`tools/manage.py launch --dry-run --bottle X3` with the Run 65 session C options (no `--volumetric-fog-look`)
+exits 0 with no `X3M_VOLUMETRIC_FOG_LOOK` in the environment. The nine `bloom-*-program.json` records were
+restamped for the new `generate_rigid_motion_pixel.py` hash (one `tool_sources` line each, bytecode and
+headers untouched, as in commit `babe1547`); a native re-promotion cannot run from a worktree because
+`stage_bloom_programs.py` pins absolute main-checkout paths.

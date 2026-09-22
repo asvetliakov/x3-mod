@@ -188,9 +188,9 @@ bool volumetric_fog_requested = false, volumetric_fog_everywhere = false, volume
 // X3M_VOLUMETRIC_FOG_RANGE=legacy|stored (default legacy; fog-density-runtime-integration.md):
 // stored selects the two-level stored-density field with its 30-40 km horizon. Anything else is legacy.
 bool volumetric_fog_range_stored = false;
-// X3M_VOLUMETRIC_FOG_LOOK=0..3 (default renderer::fog_look_default = 2; 0 is the unshaped law) and X3M_FOG_LOOK_<NAME>=<float> tuning
-// (renderer::fog_look_fields; X3M_FOG_LOOK_AMBIENT_SUN / _AWAY = r,g,b): read once here, stored range only.
-unsigned volumetric_fog_look = 0;
+// X3M_FOG_LOOK_<NAME>=<float> tuning of the single stored-range look (renderer::fog_look_fields;
+// X3M_FOG_LOOK_AMBIENT_SUN / _AWAY = r,g,b): read once here, stored range only. The preset selector
+// X3M_VOLUMETRIC_FOG_LOOK was retired with L0/L1/L3 on 2026-09-22 and is ignored with one log line.
 x3m::renderer::FogLookTuning volumetric_fog_look_tuning{};
 float volumetric_fog_strength = x3m::renderer::fog_strength_default, volumetric_fog_anisotropy = x3m::renderer::fog_anisotropy_default;
 float emission_gain = 1.f;
@@ -1251,8 +1251,6 @@ void comparison_begin_frame(Device& ctx) noexcept {
     // --volumetric-fog (raw F9/F10 latches of their own; Ctrl+Shift+F9/F10 stay exposure and bloom).
     keys.fog_toggle=volumetric_fog_requested && (GetAsyncKeyState(VK_F9)&0x8000)!=0;
     keys.fog_step=volumetric_fog_requested && (GetAsyncKeyState(VK_F10)&0x8000)!=0;
-    // Ctrl+Alt+F11 with Shift up: the stored fog's look preset L0..L3, polled only with --volumetric-fog-range stored.
-    keys.fog_look=volumetric_fog_range_stored && (GetAsyncKeyState(VK_F11)&0x8000)!=0;
     // Ctrl+Alt+F7 with Shift up: the FPS overlay (comparison-hotkeys.md, "FPS
     // overlay"), polled only with --fps-overlay. The telemetry phase marker
     // is Ctrl+Shift+F7 (telemetry.cpp requires Shift), so the chords are
@@ -1264,7 +1262,6 @@ void comparison_begin_frame(Device& ctx) noexcept {
     if(action.sun_shadow)ctx.motion_output.sun_shadow_toggle();
     if(action.fog_toggle)ctx.motion_output.volumetric_fog_toggle();
     if(action.fog_step)ctx.motion_output.volumetric_fog_step();
-    if(action.fog_look)ctx.motion_output.volumetric_fog_look_step();
     ctx.motion_output.volumetric_fog_begin_frame();
     if(action.fps_overlay)log("fps_overlay_toggle device=%llu frame=%llu visible=%u reason=key",ctx.id,ctx.frame,unsigned(ctx.fps_overlay.toggle()));
     const bool emitter=action.screen_additive||action.source_gain||action.hull_gain;
@@ -1402,11 +1399,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
             char second[40];
             if(fog<0)std::snprintf(second,sizeof second,"%s",at_rest);
             else if(!(fog&1))std::snprintf(second,sizeof second,"%s%sFOG OFF",at_rest,*at_rest?"  ":"");
-            else {
-                const int look=ctx.motion_output.volumetric_fog_look(); // -1 unless the stored range is on
-                char preset[8]{};if(look>=0)std::snprintf(preset,sizeof preset," L%d",look);
-                std::snprintf(second,sizeof second,"%s%sFOG %.2fx%s%s",at_rest,*at_rest?"  ":"",double(ctx.motion_output.volumetric_fog_strength() / .02f),preset,(fog&2)?"":" IDLE");
-            }
+            else std::snprintf(second,sizeof second,"%s%sFOG %.2fx%s",at_rest,*at_rest?"  ":"",double(ctx.motion_output.volumetric_fog_strength() / .02f),(fog&2)?"":" IDLE");
             ctx.fps_notice.text(ctx.fps_overlay.line(),second);
         }
     }
@@ -2513,7 +2506,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_ambient_occlusion(ambient_occlusion_requested,ambient_occlusion_radius,ambient_occlusion_strength,ambient_occlusion_debug,ambient_occlusion_timing);
     hooked.motion_output.configure_volumetric_fog(volumetric_fog_requested,volumetric_fog_strength,volumetric_fog_anisotropy,volumetric_fog_everywhere,volumetric_fog_timing,volumetric_fog_cards_replace);
     hooked.motion_output.configure_volumetric_fog_range(volumetric_fog_range_stored);
-    hooked.motion_output.configure_volumetric_fog_look(volumetric_fog_look,volumetric_fog_look_tuning);
+    hooked.motion_output.configure_volumetric_fog_look(volumetric_fog_look_tuning);
     { LARGE_INTEGER frequency{};QueryPerformanceFrequency(&frequency); // the frame_end clock; one read per device
       hooked.fps_overlay.configure(fps_overlay_requested,frequency.QuadPart>0?uint64_t(frequency.QuadPart):1); }
     hooked.motion_output.configure_screen_emission_timing(screen_emission_timing_requested);
@@ -3204,10 +3197,11 @@ void initialize_log(HMODULE module) {
      volumetric_fog_timing=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_TIMING")==1 && setting[0]==L'1';
      volumetric_fog_cards_replace=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_CARDS")==7 && !wcscmp(setting,L"replace");
      volumetric_fog_range_stored=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_RANGE")==6 && !wcscmp(setting,L"stored");
-     volumetric_fog_look=0;volumetric_fog_look_tuning={};
+     volumetric_fog_look_tuning={};
+     // The retired preset selector: accepted from an older launcher or a stale environment, never acted on,
+     // and reported whatever the fog state is (the variable says the caller expected a preset).
+     if(fog_env(L"X3M_VOLUMETRIC_FOG_LOOK"))log("volumetric_fog_look_ignored variable=X3M_VOLUMETRIC_FOG_LOOK reason=single_look_since_2026_09_22");
      if(volumetric_fog_range_stored){
-        volumetric_fog_look=renderer::fog_look_default; // absent or malformed: the default look
-        if(fog_env(L"X3M_VOLUMETRIC_FOG_LOOK")==1&&setting[0]>=L'0'&&setting[0]<L'0'+wchar_t(renderer::fog_look_count))volumetric_fog_look=unsigned(setting[0]-L'0');
         unsigned overrides=0;
         for(const auto& field:renderer::fog_look_fields){
             wchar_t name[48]{};std::swprintf(name,std::size(name),L"X3M_FOG_LOOK_%hs",field.name);
@@ -3229,7 +3223,7 @@ void initialize_log(HMODULE module) {
             if(n<0||std::size_t(used+n)>=sizeof values)break;
             used+=n;
         }
-        log("volumetric_fog_look_mode look=%u overrides=%u key=ctrl_alt_f11%s",volumetric_fog_look,overrides,values);
+        log("volumetric_fog_look_mode look=single overrides=%u%s",overrides,values);
      }
      if(asked)log("volumetric_fog_range mode=%s atlas_bytes=%u levels=2 cpu_bytes=%u upload_budget_bytes=%u upload_rects=%u ramp_frames=%u worker_threads=%u",volumetric_fog_range_stored?"stored":"legacy",
         volumetric_fog_range_stored?unsigned(fog::kAtlasBytes):0u,volumetric_fog_range_stored?unsigned(4*fog::kAtlasBytes):0u,volumetric_fog_range_stored?unsigned(fog::kDefaultUploadBudget):0u,

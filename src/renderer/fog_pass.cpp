@@ -63,35 +63,20 @@ constexpr DWORD march_words[] = {
 constexpr DWORD composite_words[] = {
 #include "fog_composite_program_inc.h"
 };
-// Stored-density programs (src/fog/fog_density_*_ps.hlsl). Repair is 510 of 512 ps_3_0 slots
-// on the Microsoft table: nothing may be added to it (fog_density_shader_slots.py).
+// Stored-density programs: the single look (src/fog/fog_density_*_look_ps.hlsl, FOG_LOOK). Repair is
+// 510 of 512 ps_3_0 slots on the Microsoft table: nothing may be added to it
+// (fog_density_shader_slots.py). The unshaped programs of the retired L0 preset are no longer
+// created by the renderer; they survive as the shader fixture's parity reference only.
 constexpr DWORD density_march_words[] = {
-#include "fog_density_march_program_inc.h"
+#include "fog_density_march_look_program_inc.h"
 };
 constexpr DWORD density_composite_words[] = {
-#include "fog_density_composite_program_inc.h"
-};
-constexpr DWORD density_repair_words[] = {
-#include "fog_density_repair_program_inc.h"
-};
-constexpr unsigned density_required_slots=512;
-// Look presets L1-L3 (FOG_LOOK variants, each inside the same 512 ps_3_0 slots as the base programs;
-// fog_density_shader_slots.py). A creation failure keeps the base path and every frame draws L0.
-constexpr DWORD look_march1_words[] = {
-#include "fog_density_march_look1_program_inc.h"
-};
-constexpr DWORD look_march2_words[] = {
-#include "fog_density_march_look2_program_inc.h"
-};
-constexpr DWORD look_composite_words[] = {
 #include "fog_density_composite_look_program_inc.h"
 };
-constexpr DWORD look_repair1_words[] = {
-#include "fog_density_repair_look1_program_inc.h"
+constexpr DWORD density_repair_words[] = {
+#include "fog_density_repair_look_program_inc.h"
 };
-constexpr DWORD look_repair2_words[] = {
-#include "fog_density_repair_look2_program_inc.h"
-};
+constexpr unsigned density_required_slots=512;
 // c0.zw of the full-resolution repair draw. FogParams::m20/m21 carry the raster offset plus
 // the full-resolution quad pixel-centre term (+1/W, -1/H): a program that forms
 // ndc = 2 uv - 1 from the centre uv of full texel P then looks through raster pixel P, the
@@ -198,7 +183,6 @@ void FogPass::detach() noexcept {
     release_density_default();
     for(unsigned i=0;i<2;++i){drop(density_staging_surface_[i]);drop(density_staging_[i]);}
     drop(density_march_);drop(density_composite_);drop(density_repair_);
-    for(unsigned i=0;i<2;++i){drop(look_march_[i]);drop(look_repair_[i]);}drop(look_composite_);
     fog::DensityCache::retire(density_);density_=nullptr; // joins the worker; a cache it had to abandon is leaked, not freed
     density_config_={};density_status_={};density_refused_=false;ps30_slots_=0;drop(march_);drop(composite_);drop(quad_vs_);drop(quad_declaration_);
     device_=nullptr;vtable_=nullptr;caps_={};reset_pending_=false;disarm_field();cached_profile_=fog_field::Profile::None;
@@ -213,8 +197,6 @@ unsigned FogPass::references() const noexcept {
     unsigned n=0;
     for(unsigned i=0;i<2;++i)n+=(density_staging_[i]!=nullptr)+(density_atlas_[i]!=nullptr)+(density_staging_surface_[i]!=nullptr)+(density_atlas_surface_[i]!=nullptr);
     n+=(density_march_!=nullptr)+(density_composite_!=nullptr)+(density_repair_!=nullptr);
-    for(unsigned i=0;i<2;++i)n+=(look_march_[i]!=nullptr)+(look_repair_[i]!=nullptr);
-    n+=look_composite_!=nullptr;
     for(const void* p:{static_cast<void*>(atlas_),static_cast<void*>(lit_),static_cast<void*>(scratch_),static_cast<void*>(lit_surface_),static_cast<void*>(scratch_surface_),static_cast<void*>(march_),static_cast<void*>(composite_),static_cast<void*>(quad_vs_),static_cast<void*>(quad_declaration_),static_cast<void*>(block_)})n+=p!=nullptr;
     return n;
 }
@@ -293,29 +275,18 @@ HRESULT FogPass::density_resources() noexcept {
     if(!density_march_){
         // attach already proved ps_3_0, unrestricted NPOT >= 1560x1430, FP16 linear filtering and FP16 targets.
         if(ps30_slots_<density_required_slots)return refuse("density_ps30_slots",D3DERR_NOTAVAILABLE);
-        for(auto p:{std::pair{density_march_words,std::size(density_march_words)},std::pair{density_composite_words,std::size(density_composite_words)},std::pair{density_repair_words,std::size(density_repair_words)}})
-            if(!ambient_occlusion_program_slots(reinterpret_cast<const std::uint32_t*>(p.first),p.second))return refuse("density_compiled_slots",D3DERR_NOTAVAILABLE);
+        // Per program, not only the device's ps_3_0 count: repair sits at 510 of the 512 slots a ps_3_0
+        // device has to offer, so a program that grew past the ceiling must refuse before it is created.
+        for(auto p:{std::pair{density_march_words,std::size(density_march_words)},std::pair{density_composite_words,std::size(density_composite_words)},std::pair{density_repair_words,std::size(density_repair_words)}}){
+            const unsigned slots=ambient_occlusion_program_slots(reinterpret_cast<const std::uint32_t*>(p.first),p.second);
+            if(!slots||slots>=density_required_slots)return refuse("density_compiled_slots",D3DERR_NOTAVAILABLE);
+        }
         HRESULT hr=call<CreatePsFn>(CreatePixelShader)(device_,density_march_words,&density_march_);
         if(SUCCEEDED(hr))hr=call<CreatePsFn>(CreatePixelShader)(device_,density_composite_words,&density_composite_);
         if(SUCCEEDED(hr))hr=call<CreatePsFn>(CreatePixelShader)(device_,density_repair_words,&density_repair_);
+        // Pixel shaders survive Reset; nothing is created on a draw path. A refusal is final: with the
+        // retired presets gone there is no unshaped fallback, so the stored path stays off (legacy untouched).
         if(FAILED(hr)){drop(density_march_);drop(density_composite_);drop(density_repair_);if(lost(hr)){reset_pending_=true;return hr;}return refuse("density_program_create",hr);}
-        // The look variants are created here, once, never on the hotkey or draw path. Pixel shaders survive
-        // Reset. Any refusal keeps the base path and leaves every look drawing L0.
-        density_status_.looks=false;
-        {
-            struct {const DWORD* words;std::size_t count;IDirect3DPixelShader9** out;} const looks[]={{look_march1_words,std::size(look_march1_words),&look_march_[0]},{look_march2_words,std::size(look_march2_words),&look_march_[1]},
-                {look_composite_words,std::size(look_composite_words),&look_composite_},{look_repair1_words,std::size(look_repair1_words),&look_repair_[0]},{look_repair2_words,std::size(look_repair2_words),&look_repair_[1]}};
-            for(const auto& l:looks){
-                const unsigned slots=ambient_occlusion_program_slots(reinterpret_cast<const std::uint32_t*>(l.words),l.count);
-                hr=slots&&slots<density_required_slots?call<CreatePsFn>(CreatePixelShader)(device_,l.words,l.out):E_FAIL;
-                if(FAILED(hr))break;
-            }
-            if(FAILED(hr)){
-                for(unsigned i=0;i<2;++i){drop(look_march_[i]);drop(look_repair_[i]);}drop(look_composite_);
-                if(lost(hr)){drop(density_march_);drop(density_composite_);drop(density_repair_);reset_pending_=true;return hr;}
-                density_status_.look_reason="program_create";
-            } else {density_status_.looks=true;density_status_.look_reason="";}
-        }
     }
     if(!density_){
         density_=new(std::nothrow) fog::DensityCache;
@@ -479,14 +450,9 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
     }
     for(unsigned i=0;i<3;++i)for(unsigned j=0;j<3;++j)constants[4+i][j]=p.world.inverse_columns[3*i+j];
     fog_phase_constants(p.anisotropy,p.decode_exponent,p.sun_radiance,constants[7],constants[8]);
-    // Look preset: rows c25..c33, the sigma factor and an already created program variant. Nothing else changes.
-    const unsigned look=density&&density_status_.looks&&f.look<fog_look_count?f.look:0u;
-    if(look)constants[2][3]*=fog_look_constants(look,density_config_.look,density_config_.chroma,constants[8],f.look_phase,constants+fog_look_first_register,f.look_resolved);
-    const unsigned variant=look>=2?1u:0u,constant_rows=look?fog_look_first_register+fog_look_rows:25u;
-    IDirect3DPixelShader9* const density_march=look?look_march_[variant]:density_march_;
-    IDirect3DPixelShader9* const density_composite=look?look_composite_:density_composite_;
-    IDirect3DPixelShader9* const density_repair=look?look_repair_[variant]:density_repair_;
-    r.look=look;
+    // The look: rows c25..c35 and the sigma factor, bound by the stored path only. Nothing else changes.
+    if(density)constants[2][3]*=fog_look_constants(density_config_.look,density_config_.chroma,constants[8],f.look_phase,constants+fog_look_first_register,f.look_resolved);
+    constexpr unsigned constant_rows=fog_look_first_register+fog_look_rows;
     constants[9][1]=.95f;constants[9][2]=.85f;constants[9][3]=10.f;
     for(unsigned i=0;i<std::min(f.count,fog_cascade_max);++i) {
         const auto& k=f.cascades[i];
@@ -502,8 +468,8 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
         block[3][0]=float(desc.Width);block[3][1]=1.f/float(desc.Width);block[3][2]=k.bias;block[3][3]=1.f;
         shadow_maps[i]=k.map;++r.cascades_bound;
     }
-    if(look&&r.cascades_bound){
-        // The look programs read two cascades: the two coarsest admitted maps move to slots 0 and 1.
+    if(density&&r.cascades_bound){
+        // The look program reads two cascades: the two coarsest admitted maps move to slots 0 and 1.
         unsigned kept[fog_cascade_max]{},n=0;
         for(unsigned i=0;i<fog_cascade_max;++i)if(shadow_maps[i])kept[n++]=i;
         const unsigned first=n>fog_look_cascades?n-fog_look_cascades:0u;
@@ -551,7 +517,7 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
         }
     }
     const UINT samplers=density?8u:7u;
-    if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,bind_target(lit_surface_,half_width_,half_height_,density?density_march:march_,samplers));
+    if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,bind_target(lit_surface_,half_width_,half_height_,density?density_march_:march_,samplers));
     if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetPsConstantsFn>(SetPixelShaderConstantF)(device_,0,&constants[0][0],density?constant_rows:22u));
     if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetTextureFn>(SetTexture)(device_,0,f.depth_share));
     if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetTextureFn>(SetTexture)(device_,1,density?density_atlas_[0]:atlas_));
@@ -561,11 +527,11 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
     if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,quad(half_width_,half_height_));
     if(density&&may_draw&&SUCCEEDED(r.operation)){
         // Composite never marches (no atlas, no maps); repair marches only the pixels no half sample serves.
-        record(FogStage::Composite,bind_target(f.target,width_,height_,density_composite,samplers));
+        record(FogStage::Composite,bind_target(f.target,width_,height_,density_composite_,samplers));
         IDirect3DTexture9* composite_inputs[]={f.depth_share,nullptr,scratch_,lit_};
         for(UINT i=0;i<4&&SUCCEEDED(r.operation);++i)if(composite_inputs[i])record(FogStage::Composite,call<SetTextureFn>(SetTexture)(device_,i,composite_inputs[i]));
         if(SUCCEEDED(r.operation)){r.scene_write_started=true;record(FogStage::Composite,quad(width_,height_));}
-        if(SUCCEEDED(r.operation))record(FogStage::Repair,bind_target(f.target,width_,height_,density_repair,samplers));
+        if(SUCCEEDED(r.operation))record(FogStage::Repair,bind_target(f.target,width_,height_,density_repair_,samplers));
         float repair_c0[4];density_repair_projection(p,repair_c0);
         if(SUCCEEDED(r.operation))record(FogStage::Repair,call<SetPsConstantsFn>(SetPixelShaderConstantF)(device_,0,repair_c0,1));
         IDirect3DTexture9* repair_inputs[]={f.depth_share,density_atlas_[0],scratch_,nullptr,shadow_maps[0],shadow_maps[1],shadow_maps[2],density_atlas_[1]};
