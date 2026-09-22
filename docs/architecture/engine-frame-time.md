@@ -1241,3 +1241,96 @@ run with a per-cascade draw-count breakdown (main pass vs each shadow cascade
 pass, not only the combined `receiver_draws`) and a caster bounding-box dump
 at this stand would confirm whether the extra draws are off-screen casters
 feeding distant cascades.
+
+## Run 240: cull census at the stand (2026-09-22)
+
+`/tmp/x3-bottleX3-run240/session-20260922-185208-216.log` (Run65 2d11aac4,
+session C, `--cull-census --frame-timing --frame-phases --fps-overlay
+--frame-timing-state-stamps 8`; F8 burst at the slow stand). Other processes
+ran in parallel per the user's warning; ratios and counts are used, not
+absolute times. `cull_census_frame` was on for the 8 captured frames
+(5783-5790, exactly the F8 burst). `X3M_CULL_SMALL_PARTS_PX=2` was also live
+(`cull_small_parts_value px=2 m00=0.79999995 width=1280 threshold=3`;
+px = s * m00 * width / 1280 = s * 0.8 here), so the current stand already
+culls `s<3` (`culled=404-448`/frame, `cull_small_parts_frame`).
+
+**Census totals, 8 frames** (`grep -c "^cull_census device"` = 3981 entry
+rows; per-frame breakdown identical to +-1 in `culled_size`):
+
+| Verdict | count (8 frames) | per frame |
+|---|---|---|
+| considered (all rows) | 3981 | ~497.6 |
+| `culled_size` | 1685 | ~211 |
+| `culled_min` | 1232 | 154 (exact) |
+| `culled_small` (s<3, current threshold) | 368 | 46 (exact) |
+| `kept` (drawn) | 696 | 87 (exact) |
+
+Of the 696 kept rows, 192 (24/frame, exact every frame) carry the exact
+sentinel `s=117440512` (0x7000000) with `d` in {0,9,10,...,615}: these are
+camera-local objects (models `0000568e`/`00005691`/`00005017`/`00005018`/
+`0000568d`/`00005695`/`00005696`/`00005697`) whose engine distance is near
+zero, saturating `s`; they are not comparable to a screen-px threshold and
+are excluded below. The remaining 504 "normal" kept rows: `s` min 3, median
+34, max 2134; `d` min 690, median 701231, max 229355495 (raw engine units,
+scale not established in this evidence).
+
+**`--cull-small-parts-px 3` / `4` at this stand**, applied to the 504
+normal-drawn rows (px = s*0.8; current threshold already removes s<3):
+
+| Threshold | rows removed (8 fr) | per frame | fraction of normal-drawn | est. ms/frame at 26 us/draw |
+|---|---|---|---|---|
+| px 3 (s<3.75, i.e. threshold 4) | 24 | 3 | 4.8 % | 0.078 |
+| px 4 (s<5, i.e. threshold 5) | 40 | 5 | 7.9 % | 0.13 |
+
+The same 5 (model,node) pairs recur in all 8 frames under px 4 — a stable
+stand-local set, not flicker: model `000054f8`/node `381294c0`, model
+`00005412`/nodes `31c52ac0` and `31c53240`, model `00005592`/node
+`39ba7a20`, model `35ba45c3`/node `50451d20`. This log has no name/class for
+these model ids beyond the hex value; confirming what they visually are
+needs a model-id-to-asset lookup this session does not have. At 3-5
+draws/frame removed, `--cull-small-parts-px 3/4` is not a lever for this
+plateau (0.08-0.13 ms/frame against a ~10-14 ms dt gap below); `kept` (87
+nodes/frame) is also far below `draws_p50` (448), i.e. each kept node
+submits ~5.1 draws on average here — the cost is not concentrated in a few
+huge-part-count nodes visible to the census.
+
+**State-call split, `--frame-timing-state-stamps 8`** (`frame_timing`
+`frame=1200` control, no capture, vs `frame=6000`, the window containing the
+F8 burst; both `dt_p50_us` include parallel-process noise, ratios below do
+not):
+
+| Field | frame=1200 (control) | frame=6000 (stand) | ratio |
+|---|---|---|---|
+| `draws_p50` | 231 | 448 | 1.94x |
+| `draw_p50_us` / draw | 7.45 us | 9.55 us | 1.28x |
+| `draw_native_p50_us` / draw | 3.03 us | 3.56 us | 1.18x |
+| `state_p50_us` / draw | 17.63 us | 20.68 us | 1.17x |
+| `state_calls_p50` / draw | 57.3 | 64.3 | 1.12x |
+| per state call (`state_p50_us/state_calls_p50`) | 0.308 us | 0.322 us | 1.05x |
+
+Per-call cost is flat (1.05x); the ~21 us/draw state figure at the stand
+(20.68 us here) grows almost entirely from more state calls per draw (57→64)
+and more draws, not from a per-call slowdown. Using run46D's sampled
+hook-self-cost estimate (~0.23 us per stamped call, N=8 stride, no native
+per-site instrument in this run): stand self-cost ~ (28810/8)*0.23/448 =
+1.85 us/draw; control ~ (13227/8)*0.23/231 = 1.65 us/draw. That leaves
+~18.8 us/draw (stand) vs ~16.0 us/draw (control) as native/engine state
+submission (`SetSamplerState`/`SetRenderState`, per `state_top`) — the
+proxy's own hook overhead is a small, near-constant fraction (~9 %) of the
+state-phase cost at both windows; this is an estimate, not a direct
+per-site split (no separate native-side state-hook stamp exists in this
+log).
+
+**Plateau reproduction**: `frame=1200` (calm, pre-plateau) draws_p50=231,
+dt_p50_us=14428; `frame=5700` (plateau, no capture) draws_p50=448,
+dt_p50_us=28488; `frame=6000` (the F8-burst window) draws_p50=448,
+dt_p50_us=26072 but dt_max_us=896566 and scene_max_us=204798 (one frame
+spikes hard, consistent with the user's parallel-load warning and/or capture
+I/O). The draw-count ratio (448/231=1.94x) reproduces run239's plateau
+signature almost exactly (run239: 368/72=5.1x from a lower control baseline,
+same direction); state_calls_p50 also holds flat at 28810 across both
+plateau windows (5700 and 6000), i.e. the stand's draw/state load is stable
+frame to frame and not an artifact of the capture burst. **Conclusion: the
+plateau reproduces** (draws and state-call counts, not just dt) despite the
+parallel load; absolute dt at this stand is additionally noisy from that
+load and cannot be compared to run239's dt numbers directly.
