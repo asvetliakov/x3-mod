@@ -2070,6 +2070,9 @@ Run 66 returned **run244** (A: strict removes 42 % of the SETA dark sky, the nea
 Moved from `user-runs.md` on 2026-09-23:
 
 Run 67 returned **run249** (A: SETA still smears a little, normal speed and pan clean; the residual is a hull share carried outward in the 3-12 px band, a design question), **run250** (B: draw accounting at the stand, no cull justified; the alpha-tested draws need one flight with the extended bounds log), **run251** (C: fog shadow pass "softer?", no A/B yet; footprint 8 without a missing shadow) and **run253** (C, second sector: no shadow popping; footprint 8 accepted as the launcher default).
+Moved from `user-runs.md` on 2026-09-23:
+
+Run 68 returned **run254** (A: SETA smear gone by the numbers, 7 % / 6 % against 27 % / 34 %; strict + band + exit reset become defaults; the SETA station blur is resample softening, a motion-weight option is being built), **run255** (B: 466 draws at the stand, the pilot placement corrected to the pad rule, T_pad 50/100) and **run256** (C: the toggle worked without a notice, no visible or median-cost difference, the pass stays off).
 
 ## Run 66 (completed 2026-09-22: run244 (SETA/pan, strict), run245-run248 (lod-scale A/B at the stand))
 

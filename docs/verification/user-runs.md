@@ -40,7 +40,7 @@ not rerun requests.
 <a id="53-spatial-fog-and-moving-lattice-state--ready-for-flight"></a>
 Run51/53 instructions are [archived](../archive/run53-completed-2026-09-20.md); they are not rerun requests.
 
-Run 69 B is the only queued run. Run 69 A returned **run257** (the pilot draws as designed, 297 vs 447 draws; engine glows lost because the two-group collapse dropped the exhaust materials' light maps; fixed by the glow collapse, reinstalled). Run 68 returned **run254** (A: SETA smear gone by the numbers, 7 % / 6 % against 27 % / 34 %; strict + band + exit reset become defaults; the SETA station blur is resample softening, a motion-weight option is being built), **run255** (B: 466 draws at the stand, the pilot placement corrected to the pad rule, T_pad 50/100) and **run256** (C: the toggle worked without a notice, no visible or median-cost difference, the pass stays off).
+Run 69 B is the only queued run. Run 69 A returned **run257** (the pilot draws as designed, 297 vs 447 draws; engine glows lost because the two-group collapse dropped the exhaust materials' light maps; fixed by the glow collapse, reinstalled).
 
 
 **Run 69 B (queued 2026-09-23): the installed Run68 DLL `39c8c70d…` (no new DLL); the pilot overlay was replaced by the glow build `addon/05.cat` `def76feb…` / `05.dat` `b3fbf984…` ([install record](../verification/results/lod-overlay-pilot/install.json)). Start the game fresh so it mounts the new catalogue.**
