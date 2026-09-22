@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-22T06:21:04.337831+00:00",
+  "started_utc": "2026-09-22T15:40:49.880994+00:00",
   "game_launched": false,
   "bottle": {
     "name": "X3",
@@ -31,7 +31,7 @@
     "verification/probe/build_object_lifetime.sh": "d4ecfba9f59a16e9600751ea45916c99d3a4034ef7fe6c8bbb55bfbdd9bcfff9",
     "verification/probe/run_object_lifetime.py": "138317e02c7cdf375d36905b06b0c917a94363adf5e1c9f9118c8740ac1033e3"
   },
-  "executable_sha256": "c0a30500373225b91e8720feabf69734ffdaf8e5f3bec3e91aa2277080c28a40",
+  "executable_sha256": "1d79367ee265567b7660c15f6518ea5dc50f709996258adbad44ba36d0335d12",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -42,7 +42,7 @@
     "/Users/asvetl/x3-mod/verification/probe/build/object_lifetime.exe"
   ],
   "exit_code": 0,
-  "executable_sha256_after_run": "c0a30500373225b91e8720feabf69734ffdaf8e5f3bec3e91aa2277080c28a40",
+  "executable_sha256_after_run": "1d79367ee265567b7660c15f6518ea5dc50f709996258adbad44ba36d0335d12",
   "sources_after_run": {
     "src/proxy/object_lifetime.cpp": "94c0ed5c3c07145c51c2aca1dcda1b06eb692e0cd428d35d025f4f16cf32dae9",
     "src/proxy/object_lifetime.h": "f2e77f4f3857b8ff4bd124eedf0109b78b189e1e7559b736ebcb617f4ac7d368",
@@ -52,7 +52,7 @@
     "verification/probe/build_object_lifetime.sh": "d4ecfba9f59a16e9600751ea45916c99d3a4034ef7fe6c8bbb55bfbdd9bcfff9",
     "verification/probe/run_object_lifetime.py": "138317e02c7cdf375d36905b06b0c917a94363adf5e1c9f9118c8740ac1033e3"
   },
-  "report_sha256": "07b14e4f2c7efac3995de6c7f48dac098182396899d2bd4b440acdc3c4b431a4",
+  "report_sha256": "c1afbd5d6c25cef70019f7975e614cc8b299521654955fa966409d7e61cd4784",
   "checks": 657,
   "failures": 0,
   "backend_calls": 172590,
@@ -60,7 +60,7 @@
     "timing": [
       {
         "mode": "direct",
-        "snapshot_us": "0.807",
+        "snapshot_us": "0.757",
         "reads_per_call": "12.00",
         "queries_per_call": "0.0237",
         "record": "853bfaca11e07f83"
@@ -71,10 +71,10 @@
   "journal": [
     {
       "capacity": "2048",
-      "cycle_idle_us": "1.3518",
-      "cycle_journal_us": "1.3804",
-      "retirement_delta_us": "0.0286",
-      "empty_drain_us": "0.0071",
+      "cycle_idle_us": "1.2666",
+      "cycle_journal_us": "1.2721",
+      "retirement_delta_us": "0.0055",
+      "empty_drain_us": "0.0065",
       "drained": "40000"
     }
   ],

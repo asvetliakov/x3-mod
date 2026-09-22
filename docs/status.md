@@ -1,36 +1,34 @@
 # Project status
 
-Updated 2026-09-22: the Run65 candidate is installed and Run 65 is queued (sun edge shimmer fix, widening R1+R2, TAA emissive vote, delayed capture); Run 64 accepted the stored fog regression; Run 59 accepted the camera-relative gate for pans. Run56 (run200) is accepted for media stability: the user
+Updated 2026-09-22 (evening): the Run66 candidate is installed and Run 66 is queued (SETA smear fix behind --taa-sky-history strict, fog single look, lod-scale band for the frame-time stand); Run 65 accepted the sun edge fix, core dimming, widening 4 with the emissive vote and the fog regression; Run 59 accepted the camera-relative gate for pans. Run56 (run200) is accepted for media stability: the user
 reports no crash and no media-related stutter. The accepted production baseline
 is merged to main. Run57 accepts the station-flash default correction. Fog-range and moving-lattice
 work remain open. The agent never launches the game. See the [run queue](verification/user-runs.md).
 
 ## Installed build
 
-Bottle **X3**, **CrossOver Preview.app**. Run65 DLL SHA-256:
-`2d11aac44a5be7872ac79b5dc9aebbaa699b83cee1e8105d86be71dda86a83a0`
-(55,487,969 bytes), built once from clean reviewed main `85fbc868`.
-Retained DLL: `/tmp/x3-run65-candidate/build/d3d9.dll`. Installed 2026-09-22.
+Bottle **X3**, **CrossOver Preview.app**. Run66 DLL SHA-256:
+`1f9a85f53f6612803466a1ba8be2b5a1f9de4ecc9f188e4e840a0c50e1c952ca`
+(55,416,569 bytes), built once from clean reviewed main `387d5cd9`.
+Retained DLL: `/tmp/x3-run66-candidate/build/d3d9.dll`. Installed 2026-09-22.
 
-Changes against Run64 (`e839dc7c…`), all default-off or diagnostic: (1) sun occlusion
-jitter-stable: the visibility taps read the jittered depth at the right offset and the
-per-pixel clip uses a bounded-step kernel (edge shimmer) ([ledger](verification/sun-occlusion.md));
-(2) hull emissive widening R1+R2: per-pixel k from the light map's texel footprint and a
-guarded thin-emitter boost, `--hull-emissive-widening K[,B]` ([design](architecture/thin-glow-lines.md),
-[ledger](verification/hull-emissive-widening.md)); (3) `--taa-thin-region-emissive E`: bright
-thin peaks join the TAA thin-region mask ([ledger](verification/temporal-resolve.md));
-(4) `--capture-delay N`: F8 arms a burst N frames later (SETA captures).
+Changes against Run65 (`2d11aac4…`): core dimming default with `--sun-occlusion`
+(`--sun-occlusion-core-f off` opts out); launcher defaults `--hull-emissive-widening 4`
+and `--taa-thin-region-emissive 1` on HDR sessions; `--taa-sky-history strict` (opt-in,
+loose bit-identical) closing the SETA approach smear ([note](architecture/seta-motion.md),
+[ledger](verification/temporal-resolve.md)); per-cascade state-call split in the shadow
+replay log; the stored fog has one look, output bit-identical, `--volumetric-fog-look`
+removed ([ledger](verification/volumetric-fog.md)); `--lod-scale` accepts 0.25..4.
 
-[Qualification](../verification/results/run65-candidate-qualification.json): host
-suite 2,257 tests pass; linked audit 100 roots / 637 reachable / zero violations;
-imports identical to Run64; every Run64 off-path fixture case identical; sun GPU 128/0
-(f invariant across the 8 jitter phases, clip step 0.2255), widening seam cases per the
-ledger, temporal pass 388/278/2 with the R3 rows. Not a full renderer-suite pass or
-native Windows execution. The
-[install record](../verification/results/run65-candidate-install.json) verifies
+[Qualification](../verification/results/run66-candidate-qualification.json): host
+suite 2,264 tests pass; linked audit 100 roots / 637 reachable / zero violations;
+imports identical to Run65; every Run65 fixture case identical; sky-history rows
+(SETA sweep loose 0.237 / strict 0.000), fog single look hashes equal the ledger.
+Not a full renderer-suite pass or native Windows execution. The
+[install record](../verification/results/run66-candidate-install.json) verifies
 installed bytes and unchanged X3AP.exe `fdbf3418…` and cxbottle.conf `cc5d6c00…`.
-Rollback: Run64 `/tmp/x3-run64-candidate/build/d3d9.dll`, then Run63 and older.
-All three Run 65 dry-runs passed; no game was launched by the agent.
+Rollback: Run65 `/tmp/x3-run65-candidate/build/d3d9.dll`, then Run64 and older.
+Both Run 66 dry-runs passed; no game was launched by the agent.
 
 ## Current work and pending acceptance
 

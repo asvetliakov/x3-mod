@@ -18,7 +18,7 @@
   "src/proxy/engine_patch.cpp": "9eb31fbf19e4f88432655ccccfe6e054739d9b8ba5f5be4054dfccf513330a2b",
   "src/proxy/cpu_state.h": "73784e6190929661764c85d54778e97a4935a3841b7fca6f12e408751c1f4d6a",
   "src/renderer/sun_occlusion_pass.cpp": "d04fc0a166a2dad4c39b5d559372bdf21b4f3bdbda4bed5b2c747fa2a9b96cfe",
-  "src/renderer/sun_occlusion_pass.h": "2e614f2b10b207a4bc9fd0efc396b26854d6c46f79f5d1c6b55974cf111da436",
+  "src/renderer/sun_occlusion_pass.h": "c4067010caef8bd5210450ceefbc8cf12775382fd42e55c98c1c2d2dd5fac1ba",
   "src/renderer/lens_visibility_variant.cpp": "e27c5771402de391fc9aa7b95cda9900708cab98f25bed43d70b6f12718b9377",
   "src/renderer/lens_visibility_variant.h": "5d0c255a33de1a274d69fdff17409d8a67dd08ead3f183cde0aa6344e44639ba",
   "src/renderer/sun_visibility_program_inc.h": "57e633c5dc3c11e291811f767e3ef4cda946abfd165a055b9b0ea513063985a9",
@@ -78,8 +78,8 @@
   },
   "failure_lines": [],
   "exit_status": 0,
-  "elapsed_s": 12.6,
-  "executable_sha256": "117ebfaa06307615c59fa10b18732986b5c85c5cf566e6a56324a058fa59af7f"
+  "elapsed_s": 6.1,
+  "executable_sha256": "5c338dcd5f522ecd91a294096f9868c339b06b9d1bc72b78edd64b61976e4994"
  },
  "gpu": {
   "checks": 128,
@@ -599,7 +599,7 @@
    }
   ],
   "exit_status": 0,
-  "elapsed_s": 7.6,
-  "executable_sha256": "3390a3a0d2680d9a4a10d2f4c30e331216317948bf00306857740be9186b5a39"
+  "elapsed_s": 10.3,
+  "executable_sha256": "4d66c0e811f2267515fe23cabdeee3535017afa2f546848494d66c90b8dc1c68"
  }
 }
