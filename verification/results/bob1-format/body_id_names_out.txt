@@ -1,0 +1,77 @@
+layers searched (after loose): ['addon/04.cat', 'addon/03.cat', 'addon/02.cat', 'addon/01.cat', '13.cat', '12.cat', '11.cat', '10.cat', '09.cat', '08.cat', '07.cat', '06.cat', '05.cat', '04.cat', '03.cat', '02.cat', '01.cat']; mod cats present: 0
+X11.sav: 2174 dynamic body names (ids 20000..22173); names registered twice after '/'->'\\' + case folding: 3
+X12.sav: 2179 dynamic body names (ids 20000..22178); names registered twice after '/'->'\\' + case folding: 3
+X13.sav: 2180 dynamic body names (ids 20000..22179); names registered twice after '/'->'\\' + case folding: 3
+ids with the same name in all 3 saves: 2174 of first 2174
+X11.sav: example stations\docks\argon_dock_center -> ids [21411]
+X12.sav: example stations\docks\argon_dock_center -> ids [21411]
+X13.sav: example stations\docks\argon_dock_center -> ids [21411]
+X11.sav: joins matching the resolved body: 8 of 20
+  542a (21546) LOD1 measured 1/1842 [run49] -> stations\station_scenes\tech\argon_tech_S_laser_E [02.cat:pbb, nLOD 5] body (25, 29582) differs
+  542a (21546) LOD0 measured 15/11538 [run36] -> stations\station_scenes\tech\argon_tech_S_laser_E [02.cat:pbb, nLOD 5] body (37, 60897) differs
+  5427 (21543) LOD1 measured 1/2592 [run36] -> stations\station_scenes\tech\argon_tech_S_laser_A [02.cat:pbb, nLOD 5] body (23, 28754) differs
+  5427 (21543) LOD0 measured 14/10967 [run36] -> stations\station_scenes\tech\argon_tech_S_laser_A [02.cat:pbb, nLOD 5] body (36, 58672) differs
+  5436 (21558) LOD1 measured 1/3002 [run39] -> stations\station_scenes\tech\argon_tech_L_laser_N [02.cat:pbb, nLOD 5] body (24, 30243) differs
+  5436 (21558) LOD0 measured 13/11921 [run36] -> stations\station_scenes\tech\argon_tech_L_laser_N [02.cat:pbb, nLOD 5] body (37, 61834) differs
+  543f (21567) LOD1 measured 1/3439 [run49] -> stations\station_scenes\tech\argon_tech_L_shield_F [02.cat:pbb, nLOD 5] body (26, 46010) differs
+  543f (21567) LOD0 measured 15/16191 [run36] -> stations\station_scenes\tech\argon_tech_L_shield_F [02.cat:pbb, nLOD 5] body (38, 96942) differs
+  542b (21547) LOD1 measured 1/2517 [run48] -> stations\station_scenes\tech\argon_tech_M_laser_G [02.cat:pbb, nLOD 5] body (25, 46797) differs
+  542b (21547) LOD0 measured 15/18544 [run48] -> stations\station_scenes\tech\argon_tech_M_laser_G [02.cat:pbb, nLOD 5] body (38, 94502) differs
+  546b (21611) LOD1 measured 3/1207 [run48] -> stations\station_scenes\others\argon_S_solarpowerplant [02.cat:pbb, nLOD 5] body (21, 19753) differs
+  546b (21611) LOD0 measured 24/17060 [run48] -> stations\station_scenes\others\argon_S_solarpowerplant [02.cat:pbb, nLOD 5] body (29, 38141) differs
+  53ab (21419) LOD3 measured 1/467 [run240] -> stations\living_sections\argon_livingsection [02.cat:pbb, nLOD 5] body (1, 467) MATCH
+  53ab (21419) LOD0 measured 17/16011 [run240] -> stations\living_sections\argon_livingsection [02.cat:pbb, nLOD 5] body (17, 16011) MATCH
+  5411 (21521) LOD1 measured 20/54709 [-] -> stations\station_scenes\others\argon_spacedock [02.cat:pbb, nLOD 5] body (20, 54709) MATCH
+  5411 (21521) LOD0 measured 35/107397 [-] -> stations\station_scenes\others\argon_spacedock [02.cat:pbb, nLOD 5] body (35, 107397) MATCH
+  546d (21613) LOD1 measured 18/77128 [-] -> stations\station_scenes\others\argon_L_solarpowerplant [02.cat:pbb, nLOD 5] body (18, 77128) MATCH
+  546d (21613) LOD0 measured 25/152900 [-] -> stations\station_scenes\others\argon_L_solarpowerplant [02.cat:pbb, nLOD 5] body (25, 152900) MATCH
+  5530 (21808) LOD1 measured 19/44395 [-] -> ships\owp\owp_large [02.cat:pbb, nLOD 4] body (19, 44395) MATCH
+  5530 (21808) LOD0 measured 20/90006 [-] -> ships\owp\owp_large [02.cat:pbb, nLOD 4] body (20, 90006) MATCH
+X12.sav: joins matching the resolved body: 8 of 20
+  542a (21546) LOD1 measured 1/1842 [run49] -> stations\station_scenes\tech\argon_tech_S_laser_E [02.cat:pbb, nLOD 5] body (25, 29582) differs
+  542a (21546) LOD0 measured 15/11538 [run36] -> stations\station_scenes\tech\argon_tech_S_laser_E [02.cat:pbb, nLOD 5] body (37, 60897) differs
+  5427 (21543) LOD1 measured 1/2592 [run36] -> stations\station_scenes\tech\argon_tech_S_laser_A [02.cat:pbb, nLOD 5] body (23, 28754) differs
+  5427 (21543) LOD0 measured 14/10967 [run36] -> stations\station_scenes\tech\argon_tech_S_laser_A [02.cat:pbb, nLOD 5] body (36, 58672) differs
+  5436 (21558) LOD1 measured 1/3002 [run39] -> stations\station_scenes\tech\argon_tech_L_laser_N [02.cat:pbb, nLOD 5] body (24, 30243) differs
+  5436 (21558) LOD0 measured 13/11921 [run36] -> stations\station_scenes\tech\argon_tech_L_laser_N [02.cat:pbb, nLOD 5] body (37, 61834) differs
+  543f (21567) LOD1 measured 1/3439 [run49] -> stations\station_scenes\tech\argon_tech_L_shield_F [02.cat:pbb, nLOD 5] body (26, 46010) differs
+  543f (21567) LOD0 measured 15/16191 [run36] -> stations\station_scenes\tech\argon_tech_L_shield_F [02.cat:pbb, nLOD 5] body (38, 96942) differs
+  542b (21547) LOD1 measured 1/2517 [run48] -> stations\station_scenes\tech\argon_tech_M_laser_G [02.cat:pbb, nLOD 5] body (25, 46797) differs
+  542b (21547) LOD0 measured 15/18544 [run48] -> stations\station_scenes\tech\argon_tech_M_laser_G [02.cat:pbb, nLOD 5] body (38, 94502) differs
+  546b (21611) LOD1 measured 3/1207 [run48] -> stations\station_scenes\others\argon_S_solarpowerplant [02.cat:pbb, nLOD 5] body (21, 19753) differs
+  546b (21611) LOD0 measured 24/17060 [run48] -> stations\station_scenes\others\argon_S_solarpowerplant [02.cat:pbb, nLOD 5] body (29, 38141) differs
+  53ab (21419) LOD3 measured 1/467 [run240] -> stations\living_sections\argon_livingsection [02.cat:pbb, nLOD 5] body (1, 467) MATCH
+  53ab (21419) LOD0 measured 17/16011 [run240] -> stations\living_sections\argon_livingsection [02.cat:pbb, nLOD 5] body (17, 16011) MATCH
+  5411 (21521) LOD1 measured 20/54709 [-] -> stations\station_scenes\others\argon_spacedock [02.cat:pbb, nLOD 5] body (20, 54709) MATCH
+  5411 (21521) LOD0 measured 35/107397 [-] -> stations\station_scenes\others\argon_spacedock [02.cat:pbb, nLOD 5] body (35, 107397) MATCH
+  546d (21613) LOD1 measured 18/77128 [-] -> stations\station_scenes\others\argon_L_solarpowerplant [02.cat:pbb, nLOD 5] body (18, 77128) MATCH
+  546d (21613) LOD0 measured 25/152900 [-] -> stations\station_scenes\others\argon_L_solarpowerplant [02.cat:pbb, nLOD 5] body (25, 152900) MATCH
+  5530 (21808) LOD1 measured 19/44395 [-] -> ships\owp\owp_large [02.cat:pbb, nLOD 4] body (19, 44395) MATCH
+  5530 (21808) LOD0 measured 20/90006 [-] -> ships\owp\owp_large [02.cat:pbb, nLOD 4] body (20, 90006) MATCH
+X13.sav: joins matching the resolved body: 8 of 20
+  542a (21546) LOD1 measured 1/1842 [run49] -> stations\station_scenes\tech\argon_tech_S_laser_E [02.cat:pbb, nLOD 5] body (25, 29582) differs
+  542a (21546) LOD0 measured 15/11538 [run36] -> stations\station_scenes\tech\argon_tech_S_laser_E [02.cat:pbb, nLOD 5] body (37, 60897) differs
+  5427 (21543) LOD1 measured 1/2592 [run36] -> stations\station_scenes\tech\argon_tech_S_laser_A [02.cat:pbb, nLOD 5] body (23, 28754) differs
+  5427 (21543) LOD0 measured 14/10967 [run36] -> stations\station_scenes\tech\argon_tech_S_laser_A [02.cat:pbb, nLOD 5] body (36, 58672) differs
+  5436 (21558) LOD1 measured 1/3002 [run39] -> stations\station_scenes\tech\argon_tech_L_laser_N [02.cat:pbb, nLOD 5] body (24, 30243) differs
+  5436 (21558) LOD0 measured 13/11921 [run36] -> stations\station_scenes\tech\argon_tech_L_laser_N [02.cat:pbb, nLOD 5] body (37, 61834) differs
+  543f (21567) LOD1 measured 1/3439 [run49] -> stations\station_scenes\tech\argon_tech_L_shield_F [02.cat:pbb, nLOD 5] body (26, 46010) differs
+  543f (21567) LOD0 measured 15/16191 [run36] -> stations\station_scenes\tech\argon_tech_L_shield_F [02.cat:pbb, nLOD 5] body (38, 96942) differs
+  542b (21547) LOD1 measured 1/2517 [run48] -> stations\station_scenes\tech\argon_tech_M_laser_G [02.cat:pbb, nLOD 5] body (25, 46797) differs
+  542b (21547) LOD0 measured 15/18544 [run48] -> stations\station_scenes\tech\argon_tech_M_laser_G [02.cat:pbb, nLOD 5] body (38, 94502) differs
+  546b (21611) LOD1 measured 3/1207 [run48] -> stations\station_scenes\others\argon_S_solarpowerplant [02.cat:pbb, nLOD 5] body (21, 19753) differs
+  546b (21611) LOD0 measured 24/17060 [run48] -> stations\station_scenes\others\argon_S_solarpowerplant [02.cat:pbb, nLOD 5] body (29, 38141) differs
+  53ab (21419) LOD3 measured 1/467 [run240] -> stations\living_sections\argon_livingsection [02.cat:pbb, nLOD 5] body (1, 467) MATCH
+  53ab (21419) LOD0 measured 17/16011 [run240] -> stations\living_sections\argon_livingsection [02.cat:pbb, nLOD 5] body (17, 16011) MATCH
+  5411 (21521) LOD1 measured 20/54709 [-] -> stations\station_scenes\others\argon_spacedock [02.cat:pbb, nLOD 5] body (20, 54709) MATCH
+  5411 (21521) LOD0 measured 35/107397 [-] -> stations\station_scenes\others\argon_spacedock [02.cat:pbb, nLOD 5] body (35, 107397) MATCH
+  546d (21613) LOD1 measured 18/77128 [-] -> stations\station_scenes\others\argon_L_solarpowerplant [02.cat:pbb, nLOD 5] body (18, 77128) MATCH
+  546d (21613) LOD0 measured 25/152900 [-] -> stations\station_scenes\others\argon_L_solarpowerplant [02.cat:pbb, nLOD 5] body (25, 152900) MATCH
+  5530 (21808) LOD1 measured 19/44395 [-] -> ships\owp\owp_large [02.cat:pbb, nLOD 4] body (19, 44395) MATCH
+  5530 (21808) LOD0 measured 20/90006 [-] -> ships\owp\owp_large [02.cat:pbb, nLOD 4] body (20, 90006) MATCH
+body stems under objects/: 3398; in more than one layer or extension: 245; with mixed extensions: 53; mixed extensions inside one layer: 16
+  objects\cut\00749: [('addon/03.cat', 'pbd'), ('addon/01.cat', 'pbd'), ('13.cat', 'pbd'), ('09.cat', 'pbd'), ('07.cat', 'pbd'), ('01.cat', 'pbd')] -> engine takes ('addon/03.cat', 'pbd')
+  objects\cut\00948: [('addon/01.cat', 'pbb'), ('01.cat', 'pbb')] -> engine takes ('addon/01.cat', 'pbb')
+  objects\cut\00954: [('addon/01.cat', 'pbd'), ('01.cat', 'pbd')] -> engine takes ('addon/01.cat', 'pbd')
+  objects\cut\01950: [('addon/01.cat', 'pbd'), ('01.cat', 'pbd')] -> engine takes ('addon/01.cat', 'pbd')
+  objects\cut\04701: [('05.cat', 'pbd'), ('01.cat', 'pbd')] -> engine takes ('05.cat', 'pbd')

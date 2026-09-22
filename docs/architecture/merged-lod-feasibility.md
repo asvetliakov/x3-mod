@@ -286,6 +286,8 @@ draw count changing, not by the file loading.
 
 **Update 2026-09-23:** the `POIN` and `PART` layouts, the tag dispatch and the LOD/subset population path are now established in [body-format-bob1.md](../reverse-engineering/body-format-bob1.md) (parser `0x00481aa0`; a reader round-trips 1634 of 1635 installed BOB1 bodies byte for byte, `verification/results/bob1-format/bob1_roundtrip.py`). Of 1635 bodies, 684 ship a single LOD record; among the 950 multi-LOD bodies the coarsest record has fewer groups in 511 and the same count in 438. The items below that concern those layouts are closed; the remaining unknowns for emitting a coarse LOD are listed in that note.
 
+**Update 2026-09-23 (later):** the model-id-to-asset mapping and the `.pbb`/`.bod` override order are closed in [body-format-bob1.md](../reverse-engineering/body-format-bob1.md) §6–§7: ids ≥ 20000 are dynamic body-table slots (`0x0046e400`, registration order, persisted in the savegame), the name is a `char*` at slot `+0x0c` of `*(0x00608518)+0xbc`, readable at Present; the resolver `0x004e7590` takes a loose file first, else the highest catalogue holding the stem, with the extension rank applying only inside that catalogue, so the pilot overlay goes into `addon/05.cat` as `.pbb`.
+
 - Whether the heavy LOD-0 nodes are single-LOD bodies or bodies with tiny
   thresholds. Everything in §6 depends on this and nothing here settles it.
 - The model-id-to-asset mapping. The EXE builds body names with `v\%05d` and

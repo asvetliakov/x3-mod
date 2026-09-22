@@ -232,6 +232,160 @@ installed set (not a sample), keep every opaque field (material words, point `u3
 face word, the 7-int group records, the 10 part ints) as read, and add the negative
 checks the engine applies: unknown tag, wrong closer, `WEIG` count ≠ point count.
 
+## 6. Body id → name (for logging `body=<name>` per model)
+
+Follow-up, 2026-09-23 (same EXE, same Ghidra project; helpers `X3XrefsTo.java`,
+`X3ListRange.java`, `X3GrepInsns.java` under `tools/analysis/`).
+
+**Result.** The model does not carry its scene name. The name lives in the engine's
+**body table**, indexed by the body id; the id is model **`+0x08`** (stored at
+`0x00481c7a` from `0x00481aa0`'s first argument) and node **`+0x140`** (what the
+cull census and `object_context` already log as `model=`). Model `+0x4c` is the
+`BOB1` `NAME` tag (`0x00481e62`), and no installed body carries `NAME` (§1 section
+census), so it is null in practice. The registry hash entry holds only
+`{next, key = id + 1, model}`.
+
+| address | role |
+|---|---|
+| `0x00608518` | image global → body manager `g` |
+| `g+0x04 / +0x08` | loaded-model list (model `+0x00` next, `+0x04` prev; linked at `/BOB`) |
+| `g+0x14` | model hash `{+0 buckets, +4 bucket count (power of 2), +0xc entries}`; lookup `0x004863c0`, insert `0x004efbf0` |
+| `g+0xb4` | fixed slot count, **11000** (`0x0046d910`) |
+| `g+0xb8` | dynamic slot count (incremented at `0x0046e51b`) |
+| `g+0xbc` | slot array, **`0x1c`** per slot |
+| `g+0xc0 / +0xc4 / +0xc8` | the same scheme for `cut\%05d` scenes (ids ≥ 50000; `0x0046e260`, 8-byte slots) |
+
+**Id → slot** (repeated verbatim in `0x0046df60`, `0x0046e040`, `0x0046e0a0`,
+`0x0046e100`, `0x0046ed00..0x0046edc0`): `id < 1000` → `id`; `1000 ≤ id < 20000` →
+`id − 9000` (so 1000…8999 are invalid); `id ≥ 20000` → `g+0xb4 + id − 20000`; valid
+when `0 ≤ slot < g+0xb4 + g+0xb8`.
+
+**Slot** (`0x1c` bytes): `+0x00`, `+0x04` (init −2) and `+0x08` (init −1) are the
+`BodyData` columns; **`+0x0c` = `char*` name** (NUL-terminated heap copy) or 0;
+`+0x10` load-failed flag (set by `0x0046e100` when `0x004863c0` fails, tested by
+`0x0046e0a0` before a load); `+0x14` flag copied into model `+0x50 |= 0x40`
+(`0x0046e040`); `+0x18` zeroed.
+
+**How ids are assigned.** Fixed slots (ids 0…999 and 9000…19999) come from
+`types\BodyData` (`0x0046e860`: per row id, two `u32`, one `i32`, name). Every other
+name goes through **`0x0046e400`** (get-or-register, 46 call sites incl. the scene
+loaders `0x00490ec0`, `0x00491b10`, `0x00434e40`): a string starting with a digit or
+`-` is `sscanf("%d")` and used as the id; otherwise `_stricmp` against every slot's
+name, fixed then dynamic, returns the existing id; a miss **appends a dynamic slot**,
+id = `20000 + (g+0xb8 − 1)`, copies the name into `+0x0c` (`0x0046deb0`) and grows the
+array by 1000 slots (`0x004b8920`, a `realloc`) on every 1000th registration. So the
+captured ids 20463…22161 are dynamic slots: **20000 + registration order**. The
+compare folds case but not `/` vs `\`, so a name spelled both ways gets two ids
+(3 such pairs in each save, measured).
+
+**Name → file.** `0x0046df60` yields the slot name, or `v\%05d` when `+0x0c` is null;
+`0x004863c0` formats it with `objects\%s` (path table `0x0057c008 + 0x1c` →
+`0x0054d520`), so the request is `objects\<name>` without extension (§7 picks the
+extension).
+
+**Lifetime.** The name is written once at registration and is never freed or
+rewritten during play. It is bulk-freed by `0x0046dc20` (first call of the savegame
+loader `0x0046ee20`, which is reached from `0x00475b10`, `0x00476140`, `0x0047a720`)
+and by the teardown `0x0046d9b0` (from `0x004710f0`). The **slot array moves**:
+`0x0046e400` (every 1000th registration), `0x0046dc20` and `0x0046ee20` reallocate it.
+`0x0046f1c0` writes the dynamic names into the savegame (`u32` count, then per slot
+`u8 length` + bytes) and `0x0046ee20` restores them into slots `g+0xb4 + i`, so **ids
+are stable within a save lineage** and re-bound when a game is loaded.
+
+**Read recipe** (Present time, `engine_memory::read`, 32-bit little-endian):
+
+```
+g    = u32 [0x00608518]                      ; 0 → body system not up
+nfix = i32 [g+0xb4]  ndyn = i32 [g+0xb8]  tab = u32 [g+0xbc]
+require nfix == 11000, 0 <= ndyn < 1000000, tab != 0
+slot = id < 1000 ? id : id < 20000 ? id - 9000 : nfix + id - 20000
+require 0 <= slot < nfix + ndyn               ; rejects 1000..8999
+p    = u32 [tab + slot*0x1c + 0x0c]
+p == 0 → name = "v\%05d" % id
+else   → read ≤ 256 bytes at p up to NUL (names ≤ 255 by the save format); no NUL → reject
+file   = "objects\" + name                   ; extension per §7
+```
+
+Cache the string by id and drop the cache when `tab` changes or `ndyn` decreases
+(game load / new game re-binds ids). Cost is 5 reads for a new id, none for a cached
+one. No hook is involved: it is a pure data read, so instruction boundaries, flags and
+reentrancy do not apply; the only hazard is a read racing `0x0046dc20`/`0x0046ee20`
+(free then refill during a load), which `engine_memory::read` turns into a failed or
+stale read, not a fault, except in the decommit window documented in
+`engine_memory.h`. Which thread runs `0x0046e400` relative to Present was not traced.
+
+**Verification against live data** (`verification/results/bob1-format/body_id_names.py`,
+output `body_id_names_out.txt`, measured). No dump of the live table exists, but the
+savegames carry it. The three saves in the X3 bottle hold 2174 / 2179 / 2180 dynamic
+names (ids up to 22179, covering the captured range), and the first 2174 are
+identical in all three; `stations\docks\argon_dock_center` is id **21411** in all three.
+Mapping the model ids of the measured draw joins in [lod-selection.md](lod-selection.md)
+through the table, resolving with §7 and parsing the body gives **exact
+(draws, primitives) equality on 8 of 8 LOD rows of 4 models**: `53ab` (21419) →
+`stations\living_sections\argon_livingsection` (LOD 0 17 / 16 011, LOD 3 1 / 467,
+run240), `5411` → `stations\station_scenes\others\argon_spacedock` (35 / 107 397,
+20 / 54 709), `546d` → `…\argon_L_solarpowerplant` (25 / 152 900, 18 / 77 128),
+`5530` → `ships\owp\owp_large` (20 / 90 006, 19 / 44 395). The six older station
+rows (`542a`, `5427`, `5436`, `543f`, `542b`, `546b`, run36–run49) match **no**
+installed `.pbb` by whole-LOD sums (1688 stems searched), so they cannot confirm or
+refute the mapping; what those rows counted was not re-examined.
+
+## 7. Which file wins: extension and archive precedence
+
+**Rule** (for the `objects\<name>` request of §6):
+
+1. **A loose file wins over every catalogue.** Among loose files in that directory,
+   the lowest index in `"pbb bob pbd bod"` wins, and `<name>-L<lang>.<ext>` beats
+   `<name>.<ext>`.
+2. Otherwise the **catalogue slots are searched from the highest slot down**, and the
+   search **stops at the first catalogue holding the stem under any accepted
+   extension**. Slot order, highest first: `addon\mods\<mod>.cat` (only when a mod is
+   selected) → `addon\NN.cat` from high NN to 01 → `NN.cat` from high NN to 01.
+3. **Extension order applies only inside the winning layer.** A `.bod`/`.pbd` in a
+   higher catalogue beats a `.pbb` in a lower one; within one catalogue `.pbb` >
+   `.bob` > `.pbd` > `.bod`, with the `-L<lang>` variant preferred.
+
+The extension does not select the parser: `0x004e8880` inflates gzip (plain, or
+single-byte XOR-keyed with key `first byte ^ 0xC8`) and returns raw bytes otherwise,
+and `0x004863c0` sends a payload starting with `BOB` to `0x00481aa0`, anything else to
+the text parser `0x00483f20`.
+
+| address | what it establishes |
+|---|---|
+| `0x004e9840` | stream open; pushes **0** as the "user directory" flag to `0x004e8e10` (so loose paths are relative to the working directory, i.e. the game folder, and catalogues are allowed) |
+| `0x004e8e10` → `0x004e8780` | resolve (`0x004e7590`, `thiscall`, `ECX` = extension list, args file object, path, flag); then a loose hit → `fopen`, a catalogue hit → `0x004e6fa0` (exact-name search, slots top-down, sets `G+0xc6`) and `fseek` into the `.dat` |
+| `0x004e7590` | splits the extension list at spaces (≤ 10); builds `-L%03d` from `G+0x76c` (`0x004e78ba`); **loose phase** `0x004d2950` = `_findfirst("<dir>\*.*")`, each name ranked by `0x004e7470`; if found, `0x004e7ce1` jumps to the exit **without the catalogue phase**; **catalogue phase** `0x004e7cec..0x004e7d47`: requires `G+0xc0` and `G+0xbc & 1`, `i = word G+0xc8 − 1` down to 0, skips empty slots, loop condition includes "nothing found yet" |
+| `0x004e7470` | rank = lowest `i` with `_stricmp(found, base + "." + ext[i]) == 0` (separator `0x005559b0` `"."`), else `0x7fffffff` |
+| `0x004e6ee0` | `bsearch` comparator: **prefix** match (key exhausted → equal); the resolver then walks both neighbours while `strncmp` on the key length matches, ranking each |
+| `0x004ec960`, `0x004ed750` | key and every catalogue entry are upper-cased with `/` → `\`; entries `{offset, size, name}` (`0xc`) sorted by `0x004ec9a0` |
+| `0x004ec9e0` (`0x004ed3d2..0x004ed6cf`) | mounting: counts `%02d.cat` from 01 **until the first missing number**, then `addon\%02d.cat` the same way; slots `0..nb−1` = base, `nb..nb+na−1` = addon, one extra slot; `G+0xc8 = nb + na + 1` |
+| `0x004ede00` | loads `addon\mods\%s.cat` (path table `+0x40`) into slot `G+0xc8 − 1` when `G+0x79c` (mod name) is set |
+
+`G` is `*(0x00606f34)`; the path table is `0x0057c008` (`+0x34` `%02d.cat`,
+`+0x38` `addon\%02d.cat`, `+0x40` `addon\mods\%s.cat`, `+0x1c` `objects\%s`).
+
+**Installed tree** (`body_id_names_out.txt`, measured): search order after loose
+files is `addon/04 … addon/01, 13 … 01`; no `addon\mods` folder and no loose
+`objects` folder (in the game folder or under `addon`). Catalogue body members are
+1726 `.pbb` and 1958 `.pbd`. No `addon\` catalogue
+contains an `addon/objects/…` member (their `addon/` members are `director`, `types`,
+`t`, `maps`, `cutscenes`), so bodies share one `objects\` namespace across all 17
+catalogues. Of 3398 body stems, 245 occur in more than one layer or extension; 53 mix
+`.pbb` and `.pbd` (no `.bob`/`.bod` members at all), 16 of them inside one catalogue.
+One stem exercises rule 3: `objects\effects\engines\fx_engine_boron_m3` is `.pbd` in
+`addon/01.cat` and `.pbb` in `01.cat`, and the code picks the `addon/01` `.pbd`
+(inferred from the code; not observed in game).
+
+**For the overlay builder.** Write the merged body as `objects\<name>.pbb` into a new
+**`addon\05.cat`/`05.dat`**: numbering must stay contiguous (the mount loop stops at
+the first gap), 05 is the next free number, and it becomes the highest non-mod slot, so
+it overrides the shipped body whatever extension that uses. Do not also ship
+`<name>.bod`/`-Lnnn` variants in the same or a higher layer. A loose
+`objects\…\<name>.pbb` in the game folder overrides every catalogue (a development
+shortcut), and a selected `addon\mods` catalogue would override `addon\05`.
+`sector_fog_census.Assets` agrees on the layer order (loose > later catalogue) but
+does not apply the in-layer extension rank (`logical()` rejects mixed formats).
+
 ## Unknown
 
 - **What a coarse LOD must contain to be accepted and drawn correctly** beyond the
@@ -246,10 +400,12 @@ checks the engine applies: unknown tag, wrong closer, `WEIG` count ≠ point cou
   a body inherits it automatically, so this matters only for a new body.
 - **Material index 0 vs record `u16`**: groups index the material array by position;
   whether the `u16` field is ever used for lookup was not traced.
-- **`.bod` override order**: `0x004863c0` tries `"pbb bob pbd bod"`, but the resolver
-  (`0x004e8e10` → `0x004e8780`/`0x004e8880`) was not followed, so whether a loose text
-  `.bod` or a later-layer `.pbb` wins for the same stem is still not established from
-  code.
+- **`.bod` override order**: resolved in §7 (loose > highest catalogue > extension
+  rank inside that layer).
+- **Body table threading and model flush**: which thread runs `0x0046e400` relative to
+  Present, and whether models cached under an id are dropped when a game load re-binds
+  ids (`0x004802b0`'s callers), were not traced. Where `G+0x79c` (the mod name) is set
+  was not traced.
 - `MAT1`/`MAT2`, `MAT3`, `BONE`, `WEIG` and effect types 3/4/6/7: decoded from code
   only; no installed member exercises them. The LOD flag `0x40` (half the bodies) is
   unexplained.
@@ -274,4 +430,11 @@ PYTHONPATH=tools/analysis python3 verification/results/bob1-format/bob1_roundtri
 # Material-form / LOD-0 flag census (about 1 min)
 python3 verification/results/bob1-format/material_forms.py \
   > verification/results/bob1-format/material_forms_out.txt
+# §6/§7: id -> name from the savegames, resolver order, draw-join check (about 25 s)
+PYTHONPATH=tools/analysis python3 verification/results/bob1-format/body_id_names.py \
+  > verification/results/bob1-format/body_id_names_out.txt
+# §6/§7 Ghidra: -postScript X3DecompileFunctions.java <out> 0046e400 0046deb0 0046df60 \
+#   0046dc20 0046ee20 0046f1c0 004e7590 004e7470 004e8780 004ec9e0 004ed750 004ede00
+# plus X3ListRange.java <out> 004e7cc0:004e7d90 004e6ea0:004e6f1f and
+# X3XrefsTo.java <out> 0046e400 004ed750 004ede00
 ```
