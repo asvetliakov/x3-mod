@@ -2379,3 +2379,8 @@ production source untouched. Host builds [M], MinGW i686, asset data `build-post
 the baseline build (root `6f16dbf6`) produced exe `00c9bf2fbab6a939…` with 58 bound inputs; the route build
 (current tree) produced exe `fdfd1422df4c1114…` with 65 bound inputs. `test_fog_route_bridge`: 5 tests OK.
 Not run under Wine yet.
+
+
+## Fog shadow-pass A/B toggle fixtures on main (2026-09-23)
+
+Main `b4f32d8c` (toggle) and `805e9186` (bridge baseline pin). Pass fixture `fog_density_shader_run.py build/run/check` against a reference from `tools/analysis/fog_density_shader_reference.py`: `RESULT PASS checks=78 failures=0`, 28/28 documented gates plus the `grid_*` A/B checks, `GRID_REPORT calls=20 net_calls=15`, `GRID_TOGGLE off_calls=323 on_calls=338 difference=15` (measured; one earlier attempt hit the runner's 540 s timeout under host load and passed on retry). Route bridge (`fog_route_bridge_run.py run` under the Wine lock, baseline root `6f16dbf6`): baseline 515 checks PASS, bridge 30,476 checks PASS with all 15 `shadow_ab_*` names PASS (toggle off logs one row, in-march frame byte-identical, grid kept, Reset while off keeps no grid, toggle on recreates the grid once with no null target and matches the pre-toggle grid frame, change rows throttled and on their own budget), exit 4 checks PASS; `legacy_bit_identical_to_baseline` true (`verification/results/fog-density-route/summary.json`). Both measured.
