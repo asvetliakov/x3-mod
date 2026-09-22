@@ -1,2 +1,2 @@
-TIMING mode=direct baseline_us=0.041 route_us=1.339 capture_us=1.618 route_read_us=1.298 capture_read_us=1.577 route_queries_per_call=0.0040 route_record=5d9c86811e5cd583 capture_record=0e4093189888fb83
+TIMING mode=direct baseline_us=0.041 route_us=1.324 capture_us=1.657 route_read_us=1.283 capture_read_us=1.616 route_queries_per_call=0.0040 route_record=5d9c86811e5cd583 capture_record=0e4093189888fb83
 RESULT PASS checks=153 failures=0 backend_calls=60013

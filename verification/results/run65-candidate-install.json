@@ -1,0 +1,42 @@
+{
+ "candidate": {
+  "commit": "85fbc868",
+  "dll": "/tmp/x3-run65-candidate/build/d3d9.dll",
+  "sha256": "2d11aac44a5be7872ac79b5dc9aebbaa699b83cee1e8105d86be71dda86a83a0",
+  "bytes": 55487969
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run65-candidate/build/d3d9.dll",
+ "cwd": "/Users/asvetl/x3-mod",
+ "exit": 0,
+ "installed": {
+  "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "sha256": "2d11aac44a5be7872ac79b5dc9aebbaa699b83cee1e8105d86be71dda86a83a0"
+ },
+ "rollback": {
+  "dll": "/tmp/x3-run64-candidate/build/d3d9.dll",
+  "sha256": "e839dc7c3018d572582628318723f72a70f8d640c6b12205de63014e66ad0b1b",
+  "records": [
+   "verification/results/run64-candidate-qualification.json",
+   "verification/results/run64-candidate-install.json"
+  ],
+  "older": "Run63 /tmp/x3-run63-candidate, Run62, Run61, Run60, Run59, Run56 baseline"
+ },
+ "protected": {
+  "X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c",
+  "unchanged": true
+ },
+ "dry_runs": {
+  "session_A": "exit 0: sun occlusion + log, capture delay 300, fog off",
+  "session_B": "exit 0: hull emissive widening 3 (B=3), taa-thin-region-emissive 1, capture delay 300, fog off",
+  "session_C": "exit 0: stored fog look 2, capture delay 300",
+  "game_launched": false
+ },
+ "bottle": "X3",
+ "wine_arch": "arm64",
+ "environment": {
+  "FEX_X87REDUCEDPRECISION": "1",
+  "WINEMSYNC": "1"
+ },
+ "native_windows": "unverified"
+}

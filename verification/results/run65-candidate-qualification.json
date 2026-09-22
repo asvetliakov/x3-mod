@@ -1,0 +1,608 @@
+{
+ "schema": 1,
+ "candidate": {
+  "commit": "85fbc868",
+  "commit_full": "85fbc8688383d06bda5191c9019c32c8dc25ac28",
+  "branch": "main",
+  "checkout": "/Users/asvetl/x3-mod",
+  "source_clean": true,
+  "dll": "/tmp/x3-run65-candidate/build/d3d9.dll",
+  "sha256": "2d11aac44a5be7872ac79b5dc9aebbaa699b83cee1e8105d86be71dda86a83a0",
+  "bytes": 55487969,
+  "embedded_marker": "X3M_SOURCE_COMMIT=85fbc8688383d06bda5191c9019c32c8dc25ac28",
+  "configuration": "RelWithDebInfo",
+  "toolchain": "cmake/mingw-i686.cmake",
+  "python3": "/usr/bin/python3 (NumPy for the fog asset step)",
+  "build_commands": [
+   "cmake -S . -B /tmp/x3-run65-candidate/build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPython3_EXECUTABLE=/usr/bin/python3",
+   "cmake --build /tmp/x3-run65-candidate/build -j"
+  ],
+  "build_warnings": 0,
+  "supersedes": "Run64 candidate e839dc7c (6837a968)"
+ },
+ "scope": "Versus Run64 DLL e839dc7c (6837a968), four default-off or diagnostic changes: delayed F8 capture --capture-delay N / X3M_CAPTURE_DELAY (20be97df); TAA thin-region emissive vote --taa-thin-region-emissive E (ae314d83, default off); sun occlusion jitter-stable visibility taps (c2) and the knight-move clip kernel with a slot budget refusal and def-register restore (decfef66); hull emissive widening R1+R2 --hull-emissive-widening K[,B] with per-pixel k, the guarded thin-emitter boost, axis-separated gate, minification gate and the anisotropic raise on LINEAR light-map stages (85fbc868). Off paths bit-identical to Run64: the six standard actual-DLL cases, the four unmatched-static cases and the five shadow cases reproduce Run64 exactly, and the ten temporal camera rows are unchanged. Changed on purpose: the sun GPU fixture (122 -> 128 checks, the jitter rows) and the widening seam cases, which R2 reshaped (472-503 checks against Run64's 180, new per-phase/model fields). No full renderer suite, no benchmark.",
+ "linked_audit": {
+  "command": "python3 verification/probe/check_no_x87.py /tmp/x3-run65-candidate/build/d3d9.dll",
+  "cwd": "/Users/asvetl/x3-mod",
+  "result": "PASS",
+  "roots_count": 100,
+  "reachable_functions": 637,
+  "violations": 0,
+  "comparison": {
+   "run64": "100 roots / 636 reachable / 0 violations; the +1 reachable function is the widening's R2 code, no new roots"
+  },
+  "import_delta": {
+   "command": "i686-w64-mingw32-objdump -p",
+   "baseline_dll": "/tmp/x3-run64-candidate/build/d3d9.dll",
+   "imported_dlls": 15,
+   "new_imported_dlls": [],
+   "removed_imported_dlls": [],
+   "total_imported_functions": {
+    "run64": 209,
+    "run65": 209
+   },
+   "per_function_delta": {
+    "new": [],
+    "removed": []
+   },
+   "reading": "Import table unchanged: same 15 DLLs, same 209 functions."
+  }
+ },
+ "selected_render_smoke": {
+  "status": "PARTIAL",
+  "consume_only": true,
+  "rebuilt_candidate": false,
+  "scope": "The six standard actual-DLL cases (four production, the camera-gate seam pair), the four unmatched-static options, the five shadow retention/pool cases, and the widening cases in their R2 shape (off, k2, k3b1, k3, k3-aniso, programs). k3b1 is included because k3 records its boost against it in the same invocation. No full renderer suite, no benchmark.",
+  "commands": [
+   "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run65-candidate/lock-timings-prod.json python3 verification/probe/run_motion_output.py --dll /tmp/x3-run65-candidate/build/d3d9.dll --seam /tmp/x3-run65-candidate/binaries/motion-output-seam/d3d9.dll --fixture /tmp/x3-run65-candidate/binaries/motion_output_fixture.exe production-ownership-hdr-on production-taa-hdr-on production-ownership-on production-ownership-taa-on seam-taa-camera-on seam-taa-on",
+   "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json .../lock-timings-static.json python3 verification/probe/run_motion_output.py --dll ... seam-taa-unmatched-static-unset seam-taa-unmatched-static-off seam-taa-unmatched-static-node seam-taa-unmatched-static-all",
+   "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json .../lock-timings-retention.json python3 verification/probe/run_motion_output.py --dll ... seam-ownership-shadow-retention-live seam-ownership-shadow-retention-census seam-ownership-shadow-retention-off seam-ownership-shadow-retention-live-poll seam-ownership-shadow-pool-static-live",
+   "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json .../lock-timings-widen.json python3 verification/probe/run_motion_output.py --dll ... seam-lightmap-widen-off seam-lightmap-widen-k2 seam-lightmap-widen-k3b1 seam-lightmap-widen-k3 seam-lightmap-widen-k3-aniso seam-lightmap-widen-programs"
+  ],
+  "serialisation": "Four wine_lock invocations strictly one after the other; cases compared against a twin share one invocation (the unmatched-static four, the widening six).",
+  "binaries": {
+   "/tmp/x3-run65-candidate/binaries/motion_output_fixture.exe": "d402fa43638871a6466d8924246f343e41a85529df60c67bfebfcb6d231d7219",
+   "/tmp/x3-run65-candidate/binaries/motion-output-seam/d3d9.dll": "749016d88298dc89f1b489a8a79543d3043701d489e65877df3680bd35cf67f5",
+   "/tmp/x3-run65-candidate/build/d3d9.dll": "2d11aac44a5be7872ac79b5dc9aebbaa699b83cee1e8105d86be71dda86a83a0"
+  },
+  "seam_build": {
+   "command": "X3M_CANDIDATE_BUILD=/tmp/x3-run65-candidate/build sh verification/probe/build_motion_output.sh",
+   "note": "seam DLL and fixture rebuilt from HEAD against the frozen candidate objects, then frozen under /tmp/x3-run65-candidate/binaries; candidate d3d9.dll never rebuilt",
+   "warnings": 0
+  },
+  "cases": {
+   "production-ownership-on": {
+    "exit": 0,
+    "checks": 43,
+    "restorations": 39,
+    "frames": 12,
+    "motion_pixels": 0,
+    "mode": "production"
+   },
+   "seam-taa-on": {
+    "exit": 0,
+    "checks": 164,
+    "restorations": 51,
+    "frames": 12,
+    "motion_pixels": 44279,
+    "mode": "seam"
+   },
+   "production-ownership-taa-on": {
+    "exit": 0,
+    "checks": 83,
+    "restorations": 51,
+    "frames": 12,
+    "motion_pixels": 0,
+    "mode": "production"
+   },
+   "seam-taa-camera-on": {
+    "exit": 0,
+    "checks": 177,
+    "restorations": 51,
+    "frames": 12,
+    "motion_pixels": 44279,
+    "mode": "seam"
+   },
+   "production-ownership-hdr-on": {
+    "exit": 0,
+    "checks": 43,
+    "restorations": 39,
+    "frames": 12,
+    "motion_pixels": 0,
+    "mode": "production"
+   },
+   "production-taa-hdr-on": {
+    "exit": 0,
+    "checks": 83,
+    "restorations": 51,
+    "frames": 12,
+    "motion_pixels": 0,
+    "mode": "production"
+   },
+   "seam-taa-unmatched-static-unset": {
+    "exit": 0,
+    "checks": 95
+   },
+   "seam-taa-unmatched-static-off": {
+    "exit": 0,
+    "checks": 95
+   },
+   "seam-taa-unmatched-static-node": {
+    "exit": 0,
+    "checks": 95
+   },
+   "seam-taa-unmatched-static-all": {
+    "exit": 0,
+    "checks": 95
+   },
+   "seam-ownership-shadow-retention-live": {
+    "exit": 0,
+    "checks": 9743,
+    "frames": 1535,
+    "mode": "live",
+    "compared": 39,
+    "retained_compared": 28,
+    "maps": 78,
+    "max_depth_error": 5.541019532318003e-06,
+    "refs_held": 3,
+    "age_max": 640,
+    "full_store_us_median": 49.7
+   },
+   "seam-ownership-shadow-retention-census": {
+    "exit": 0,
+    "checks": 9740,
+    "frames": 1535,
+    "mode": "census",
+    "compared": 39,
+    "retained_compared": 0,
+    "maps": 78,
+    "max_depth_error": 1.8642249843825454e-06,
+    "refs_held": 0,
+    "age_max": 640,
+    "full_store_us_median": 49.5
+   },
+   "seam-ownership-shadow-retention-off": {
+    "exit": 0,
+    "checks": 6629,
+    "frames": 1535,
+    "mode": "off",
+    "compared": 39,
+    "retained_compared": 0,
+    "maps": 78,
+    "max_depth_error": 1.8642249843825454e-06,
+    "full_store_us_median": 24.2
+   },
+   "seam-ownership-shadow-retention-live-poll": {
+    "exit": 0,
+    "checks": 9890,
+    "frames": 1547,
+    "mode": "live",
+    "compared": 40,
+    "retained_compared": 29,
+    "maps": 80,
+    "max_depth_error": 1.4687070698182758e-05,
+    "refs_held": 3,
+    "age_max": 640,
+    "full_store_us_median": 50.8
+   },
+   "seam-ownership-shadow-pool-static-live": {
+    "exit": 0,
+    "checks": 182,
+    "frames": 14,
+    "script": "static",
+    "store": 2,
+    "compared": 14,
+    "retained_compared": 0,
+    "maps": 27,
+    "max_depth_error": 4.412964153133192e-05,
+    "full_store_us_median": 55.75
+   },
+   "seam-lightmap-widen-off": {
+    "exit": 0,
+    "checks": 472,
+    "kb": null,
+    "dxt1": true,
+    "strip1_64_h_peak_vs_base": 1.0,
+    "strip1_64_phase_ratio": 0.5002061088639118,
+    "strip1_64_half_peak_width_px": 1.38,
+    "panel_64_rim_vs_interior": null,
+    "panel_64_corner_vs_interior": null,
+    "panel_64_boosted_max": 0.0,
+    "filter_sets": 0,
+    "filter_failures": 0
+   },
+   "seam-lightmap-widen-k2": {
+    "exit": 0,
+    "checks": 498,
+    "kb": [
+     2.0,
+     2.0
+    ],
+    "dxt1": true,
+    "strip1_64_h_peak_vs_base": 1.1711,
+    "strip1_64_phase_ratio": 0.7503421854990232,
+    "strip1_64_half_peak_width_px": 1.12,
+    "panel_64_rim_vs_interior": 1.0,
+    "panel_64_corner_vs_interior": 1.0,
+    "panel_64_boosted_max": 0.0,
+    "filter_sets": 91,
+    "filter_failures": 0
+   },
+   "seam-lightmap-widen-k3b1": {
+    "exit": 0,
+    "checks": 503,
+    "kb": [
+     3.0,
+     1.0
+    ],
+    "dxt1": true,
+    "strip1_64_h_peak_vs_base": 0.3981,
+    "strip1_64_phase_ratio": 0.8624319090998704,
+    "strip1_64_half_peak_width_px": 3.12,
+    "panel_64_rim_vs_interior": 1.0000133582364097,
+    "panel_64_corner_vs_interior": 1.0000133582364097,
+    "panel_64_boosted_max": 0.0,
+    "filter_sets": 91,
+    "filter_failures": 0
+   },
+   "seam-lightmap-widen-k3": {
+    "exit": 0,
+    "checks": 503,
+    "kb": [
+     3.0,
+     3.0
+    ],
+    "dxt1": true,
+    "strip1_64_h_peak_vs_base": 1.194,
+    "strip1_64_phase_ratio": 0.8619255168979381,
+    "strip1_64_half_peak_width_px": 1.88,
+    "panel_64_rim_vs_interior": 1.0000133582364097,
+    "panel_64_corner_vs_interior": 1.0000133582364097,
+    "panel_64_boosted_max": 0.0,
+    "filter_sets": 91,
+    "filter_failures": 0,
+    "boost_vs_b1_strip1_64": {
+     "h_peak": 2.9997,
+     "panel": 1.88,
+     "phase_ratio": 0.8619,
+     "b1_phase_ratio": 0.8624
+    }
+   },
+   "seam-lightmap-widen-k3-aniso": {
+    "exit": 0,
+    "checks": 503,
+    "kb": [
+     3.0,
+     3.0
+    ],
+    "dxt1": true,
+    "strip1_64_h_peak_vs_base": 1.194,
+    "strip1_64_phase_ratio": 0.8619255168979381,
+    "strip1_64_half_peak_width_px": 1.88,
+    "panel_64_rim_vs_interior": 1.0000133582364097,
+    "panel_64_corner_vs_interior": 1.0000133582364097,
+    "panel_64_boosted_max": 0.0,
+    "filter_sets": 0,
+    "filter_failures": 0
+   },
+   "seam-lightmap-widen-programs": {
+    "exit": 0,
+    "checks": 80,
+    "k": null,
+    "disassembler": true,
+    "max_codes_all_zero": true,
+    "family_pairs": 11
+   }
+  },
+  "comparison_to_run64": "The six standard cases are identical: checks 43/83/43/83/177/164, restorations 39/51, 12 frames, seam motion_pixels 44279. The four unmatched-static cases are identical at 95 checks each, with off bit-identical to unset, node differing from off at frame 3 alone (max_uv 0.000664647885, depth 1.71420271e-07) and all from node at frame 6 alone (0.00111576861, 4.60263405e-07). The five shadow cases are identical: 9743/9740/6629/9890/182 checks, 1535/1535/1535/1547/14 frames, 39(28)/39(0)/39(0)/40(29)/14(0) compared, 78/78/78/80/27 maps, max depth errors 5.541019532318003e-06 / 1.8642249843825454e-06 / 1.8642249843825454e-06 / 1.4687070698182758e-05 / 4.412964153133192e-05, refs_held 3, age_max 640. Only shifts are host timing figures with no gate (full_store/us medians 49.7/49.5/24.2/50.8/55.75 against Run64's 46.0/45.6/27.5/46.9/53.75).",
+  "widening_cases_changed": "R2 reshaped the widening cases (per-pixel k, B boost, gates, anisotropic raise), so the Run64 R1 fields (above_h_ratio / oblique_512_*) no longer exist: 472 checks off, 498 at K2, 503 at K3B1/K3/K3-aniso, 80 for programs (Run64: 180/180/180/180/99). Measured, matching docs/verification/hull-emissive-widening.md: off strip peak ratio 0.500 and half-peak width 1.38 px, K2 0.750 / 1.12 px at 1.171x base, K3B1 0.862 / 3.12 px at 0.398x base (the energy-conserving law), K3B3 0.862 / 1.88 px at 1.194x base and 2.9997x the B=1 peak with the panel unchanged, k3-aniso identical to k3 with filter_sets 0 (the stage is already ANISOTROPIC) against 91 MINFILTER raises per widened LINEAR case, 0 filter failures, 0 boosted pixels on the panel, and 0 differing FP16 codes at k=1 over all 11 family pairs.",
+  "partial_records": {
+   "production_and_seam_taa": "/tmp/x3-run65-candidate/motion-output-partial-prod.json",
+   "unmatched_static": "/tmp/x3-run65-candidate/motion-output-partial-static.json",
+   "shadow_retention_and_pool": "/tmp/x3-run65-candidate/motion-output-partial-retention.json",
+   "lightmap_widen": "/tmp/x3-run65-candidate/motion-output-partial-widen.json"
+  },
+  "lock": {
+   "production_and_seam_taa": {
+    "lock_wait_seconds": 3.625000000000156e-06,
+    "child_elapsed_seconds": 13.658844542,
+    "exit_code": 0
+   },
+   "unmatched_static": {
+    "lock_wait_seconds": 4.209000000001545e-06,
+    "child_elapsed_seconds": 9.572115833,
+    "exit_code": 0
+   },
+   "shadow_retention_and_pool": {
+    "lock_wait_seconds": 3.208000000001071e-06,
+    "child_elapsed_seconds": 29.225074167,
+    "exit_code": 0
+   },
+   "lightmap_widen": {
+    "lock_wait_seconds": 3.915999999992703e-06,
+    "child_elapsed_seconds": 19.647755834,
+    "exit_code": 0
+   }
+  },
+  "unmatched_static_default_note": "run_motion_output.py pins X3M_TAA_UNMATCHED_STATIC=0 and the sentinel stabiliser off for every case, so \"unset\" is the runner-pinned off; the node and stabiliser defaults are covered by the dry-runs below."
+ },
+ "temporal_pass": {
+  "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run65-candidate/lock-timings-temporal.json python3 verification/probe/run_temporal_pass.py",
+  "reason": "the thin-region emissive vote (R3) is a resolve-side change and the widening latches the camera projection; both touch the reprojection path",
+  "passed": true,
+  "exit_code": 0,
+  "samples": 388,
+  "state_restorations": 278,
+  "generations": 2,
+  "source_unchanged": true,
+  "binary_unchanged": true,
+  "compiler_unchanged": true,
+  "summary": "verification/results/bottle-X3/temporal-pass-summary.json",
+  "lattice": {
+   "result": "PASS",
+   "numerical": 583,
+   "state_restorations": 23,
+   "note": "583 numerical checks against 576 before the R3 cases (THIN_REGION_EMISSIVE and THIN_REGION_EMISSIVE_NONFINITE); Run64 predates both"
+  },
+  "camera_drift_px_error": {
+   "static-builder": [
+    0.0686,
+    0.00753
+   ],
+   "yaw-builder": [
+    0.0662,
+    0.00881
+   ],
+   "pitch-builder": [
+    0.0574,
+    0.01103
+   ],
+   "yaw-builder-unjittered": [
+    0.0664,
+    0.00618
+   ],
+   "narrow-yaw-builder-unjittered": [
+    0.0302,
+    0.00885
+   ],
+   "yaw-single-step": [
+    0.0369,
+    0.0039
+   ],
+   "pitch-single-step": [
+    0.0335,
+    0.00336
+   ],
+   "yaw-identity": [
+    0.8621,
+    0.07596
+   ],
+   "yaw-swapped": [
+    1.0539,
+    0.09244
+   ],
+   "yaw-cut-resumed": [
+    0.0624,
+    0.00878
+   ]
+  },
+  "shift_versus_run64": "All ten camera rows bit-identical to Run64 (drift and error); base samples/restorations/generations unchanged at 388/278/2. Changed only in the lattice mode: numerical 576 -> 583 for the two new R3 emissive-vote cases, state_restorations 23.",
+  "lock": {
+   "lock_wait_seconds": 3.249999999999781e-06,
+   "child_elapsed_seconds": 144.432290917,
+   "exit_code": 0
+  }
+ },
+ "sun_occlusion": {
+  "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run65-candidate/lock-timings-sun-occlusion.json python3 verification/probe/run_sun_occlusion.py",
+  "reason": "the jitter-stable visibility taps and the knight-move clip kernel are the sun feature itself",
+  "passed": true,
+  "hook": {
+   "checks": 74,
+   "failures": 0,
+   "counters": {
+    "probes": 53,
+    "own": 37,
+    "visible": 21,
+    "hidden": 2,
+    "original": 30,
+    "brackets": 10,
+    "multi": 1,
+    "blocked": 1
+   }
+  },
+  "gpu": {
+   "checks": 128,
+   "failed_checks": 0,
+   "slots": 389,
+   "scenes": [
+    "covered",
+    "half",
+    "open",
+    "quarter",
+    "screen_edge_covered",
+    "screen_edge_open",
+    "three_quarter"
+   ],
+   "device_calls": {
+    "execute": 33,
+    "lens_draw": 5
+   },
+   "lens_draws": 10,
+   "lens_fraction": 0.5,
+   "clip_blend_modes": [
+    "one_invsrcalpha",
+    "one_one",
+    "one_one_core_f",
+    "srcalpha_invsrcalpha"
+   ],
+   "clip_reset": {
+    "verdict": "applied",
+    "clipped": 1,
+    "f": 0.5,
+    "open": "1.0000,1.0000,1.0000",
+    "covered": "0.2000,0.4000,0.6000",
+    "ps_created": 0,
+    "vs_created": 0,
+    "pairs": 2
+   },
+   "jitter_visibility": {
+    "x_corrected": 0.5625,
+    "y_corrected": 0.375,
+    "distinct_x": 2,
+    "distinct_y": 2,
+    "x_uncorrected": [
+     0.53125,
+     0.5625
+    ],
+    "y_uncorrected": [
+     0.375,
+     0.40625
+    ]
+   },
+   "clip_jitter": {
+    "edge": 164.703,
+    "silhouettes": "165,164",
+    "distinct": 2,
+    "max_delta_measured": 0.2255,
+    "max_delta_kernel": 0.2222,
+    "max_delta_cross": 0.5556,
+    "columns_moving": 5
+   }
+  },
+  "comparison_to_run64": "Changed as designed: GPU 122 -> 128 checks, adding the jitter rows (corrected f 0.5625 / 0.375 bit-identical in all 8 phases against the uncorrected 0.53125 / 0.40625 of the pre-fix read) and the clip kernel rows (measured max |delta open| 0.2255 against the kernel model 0.2222 and the former cross model 0.5556, 5 columns moving), matching docs/verification/sun-occlusion.md 2026-09-22. Unchanged: hook 74 checks / 0 failures with the same eight counters, seven scenes, device calls execute=33 lens_draw=5, lens_fraction 0.5, the four clip blend modes and clip_reset applied with f=0.5 and 0 shaders created. The reported slots figure moved 469 -> 389 with the kernel's tap set (the lens program itself stays 40 arithmetic / 11 texture per the ledger); no refusal, no failed check.",
+  "first_attempt": null,
+  "lock": {
+   "lock_wait_seconds": 3.291999999995021e-06,
+   "child_elapsed_seconds": 23.17713525,
+   "exit_code": 0
+  }
+ },
+ "engine_read_and_draw_hook": {
+  "reason": "the widening rides the draw/material path and the sun hooks read engine state",
+  "commands": [
+   "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run65-candidate/lock-timings-object-trace.json python3 verification/probe/run_object_trace.py",
+   "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run65-candidate/lock-timings-object-lifetime.json python3 verification/probe/run_object_lifetime.py"
+  ],
+  "object_trace": {
+   "passed": true,
+   "checks": 153,
+   "read_path_reported": true,
+   "lock": {
+    "lock_wait_seconds": 3.790999999999517e-06,
+    "child_elapsed_seconds": 9.051990542,
+    "exit_code": 0
+   }
+  },
+  "object_lifetime": {
+   "passed": true,
+   "checks": 657,
+   "lock": {
+    "lock_wait_seconds": 3.415999999999142e-06,
+    "child_elapsed_seconds": 6.766351042,
+    "exit_code": 0
+   }
+  },
+  "comparison_to_run64": "Identical: object trace 153 checks with the read path reported, object lifetime 657 checks."
+ },
+ "dry_run": {
+  "command_script": "/tmp/x3-run65-candidate/dryrun.sh",
+  "cwd": "/Users/asvetl/x3-mod",
+  "base": "Run 64 session A/B/C command lines (docs/verification/user-runs.md) with --dry-run; tools/manage.py launch invoked directly because x3run takes the wine lock itself",
+  "game_launched": false,
+  "output": "/tmp/x3-run65-dryrun.txt",
+  "cases": {
+   "A": {
+    "variant": "Run 64 session A plus --capture-delay 300 (sun occlusion + log, fog off)",
+    "exit": 0,
+    "observed": {
+     "X3M_SUN_OCCLUSION": "1",
+     "X3M_SUN_OCCLUSION_LOG": "1",
+     "X3M_HULL_EMISSIVE_WIDENING": "absent (default off)",
+     "X3M_TAA_THIN_REGION_EMISSIVE": "absent (default off)",
+     "X3M_CAPTURE_DELAY": "300",
+     "X3M_TAA_SENTINEL_STABILISER": "0.7",
+     "X3M_TAA_UNMATCHED_STATIC": "node",
+     "X3M_TAA_DEBUG": "1",
+     "X3M_VOLUMETRIC_FOG": "0",
+     "X3M_VOLUMETRIC_FOG_LOOK": "0",
+     "X3M_VOLUMETRIC_FOG_RANGE": "legacy",
+     "X3M_VOLUMETRIC_FOG_STRENGTH": "0.02",
+     "X3M_VOLUMETRIC_FOG_CARDS": "keep",
+     "X3M_VOLUMETRIC_FOG_TIMING": "0"
+    }
+   },
+   "B": {
+    "variant": "Run 64 session B with --hull-emissive-widening 3 --taa-thin-region-emissive 1 --capture-delay 300 (fog off, TAA on with --taa-debug)",
+    "exit": 0,
+    "observed": {
+     "X3M_SUN_OCCLUSION": "absent (default off)",
+     "X3M_SUN_OCCLUSION_LOG": "absent (default off)",
+     "X3M_HULL_EMISSIVE_WIDENING": "3,3",
+     "X3M_TAA_THIN_REGION_EMISSIVE": "1",
+     "X3M_CAPTURE_DELAY": "300",
+     "X3M_TAA_SENTINEL_STABILISER": "0.7",
+     "X3M_TAA_UNMATCHED_STATIC": "node",
+     "X3M_TAA_DEBUG": "1",
+     "X3M_VOLUMETRIC_FOG": "0",
+     "X3M_VOLUMETRIC_FOG_LOOK": "0",
+     "X3M_VOLUMETRIC_FOG_RANGE": "legacy",
+     "X3M_VOLUMETRIC_FOG_STRENGTH": "0.02",
+     "X3M_VOLUMETRIC_FOG_CARDS": "keep",
+     "X3M_VOLUMETRIC_FOG_TIMING": "0"
+    },
+    "note": "--hull-emissive-widening 3 resolves to X3M_HULL_EMISSIVE_WIDENING=3,3 (B defaults to K); the emissive vote E=1 is display-referred and needs the HDR route, which the line carries. No refusal or warning printed."
+   },
+   "C": {
+    "variant": "Run 64 session C plus --capture-delay 300 (stored fog L2)",
+    "exit": 0,
+    "observed": {
+     "X3M_SUN_OCCLUSION": "absent (default off)",
+     "X3M_SUN_OCCLUSION_LOG": "absent (default off)",
+     "X3M_HULL_EMISSIVE_WIDENING": "absent (default off)",
+     "X3M_TAA_THIN_REGION_EMISSIVE": "absent (default off)",
+     "X3M_CAPTURE_DELAY": "300",
+     "X3M_TAA_SENTINEL_STABILISER": "0.7",
+     "X3M_TAA_UNMATCHED_STATIC": "node",
+     "X3M_TAA_DEBUG": "0",
+     "X3M_VOLUMETRIC_FOG": "1",
+     "X3M_VOLUMETRIC_FOG_LOOK": "2",
+     "X3M_VOLUMETRIC_FOG_RANGE": "stored",
+     "X3M_VOLUMETRIC_FOG_STRENGTH": "0.02",
+     "X3M_VOLUMETRIC_FOG_CARDS": "replace",
+     "X3M_VOLUMETRIC_FOG_TIMING": "1"
+    }
+   }
+  },
+  "sentinel_stabiliser_default": "0.7 resolves on all three lines with no flag present, so the stabiliser is on natively",
+  "capture_delay": "X3M_CAPTURE_DELAY=300 resolves on all three lines; absent by default (Run64 had no such variable)"
+ },
+ "host": {
+  "command": "/usr/bin/python3 verification/probe/run_host_suite.py",
+  "modules": 227,
+  "tests": 2257,
+  "failing_modules": 0,
+  "wall_seconds": 88.3,
+  "jobs": 12,
+  "report": "/tmp/x3-run65-hostsuite.txt",
+  "comparison_to_run64": "Run64 recorded 226 modules / 2243 tests; +1 module and +14 tests from the four changes' host coverage."
+ },
+ "build_logs": {
+  "/tmp/x3-run65-configure.log": "bcaee5ae114790c7dcb21e4e16d66b72ef6b8a56c869771615cce4793f440a0e",
+  "/tmp/x3-run65-build.log": "bcd540225d6686cc077b5c3f07a001d0250b7dc2e26d4136329f55b08fef0554",
+  "/tmp/x3-run65-seam-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+ },
+ "bottle": "X3",
+ "wine_arch": "arm64",
+ "environment": {
+  "FEX_X87REDUCEDPRECISION": "1",
+  "WINEMSYNC": "1",
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "native_windows": "unverified",
+ "game_acceptance": "pending Run65",
+ "fog": {
+  "status": "not run",
+  "note": "The Run64 record contains no fog fixture case (the fog runners were not part of that qualification), so there is no candidate fog smoke to reproduce; fog source is unchanged since Run64 and session C exercises it in flight."
+ }
+}
