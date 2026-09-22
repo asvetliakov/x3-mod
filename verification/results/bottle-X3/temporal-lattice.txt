@@ -2151,12 +2151,12 @@ CHECK line filter lowers the roping at a bounded line-peak cost PASS
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
-LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.6151 current_filter_ms=0.6036 line_filter_ms=0.8933 far_stabiliser_ms=0.8283 thin_region_ms=1.4712 taps_delta_ms=-0.0115 line_delta_ms=0.2782 far_delta_ms=0.2132 thin_region_delta_ms=0.8561 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.4712 no_region_camera_ms=1.6113 no_region_camera_delta_ms=0.1401 fragmented_pan_thin_ms=1.3329 fragmented_pan_camera_ms=1.8870 fragmented_pan_camera_delta_ms=0.5541 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.8870 lane_input_law_ms=1.7666 lane_input_lane_ms=1.7883 lane_fetch_delta_ms=0.0217 lane_input_over_r32f_ms=-0.1204 scope=cpu_wall_with_event_query_drain
+LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.5681 current_filter_ms=0.5635 line_filter_ms=0.8187 far_stabiliser_ms=0.7732 thin_region_ms=1.3489 taps_delta_ms=-0.0046 line_delta_ms=0.2506 far_delta_ms=0.2051 thin_region_delta_ms=0.7808 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.3489 no_region_camera_ms=1.5017 no_region_camera_delta_ms=0.1528 fragmented_pan_thin_ms=1.0570 fragmented_pan_camera_ms=1.4269 fragmented_pan_camera_delta_ms=0.3699 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.4269 lane_input_law_ms=1.4519 lane_input_lane_ms=1.4670 lane_fetch_delta_ms=0.0152 lane_input_over_r32f_ms=0.0249 scope=cpu_wall_with_event_query_drain
 CHECK sentinel timing: separable box programs created PASS
 CHECK sentinel timing: separable box programs created PASS
-LINE_TIMING_SENTINEL width=1280 height=768 rounds=6 content=all_unrouted_sentinel_pan strength_off_ms=1.2322 strength_on_separable_ms=1.5039 sentinel_delta_ms=0.2718 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_SENTINEL width=1280 height=768 rounds=6 content=all_unrouted_sentinel_pan strength_off_ms=1.2859 strength_on_separable_ms=1.3962 sentinel_delta_ms=0.1103 scope=cpu_wall_with_event_query_drain
 LINE_BASE numerical=255 state_restorations=15
 FAR_CASES
 FAR_GATE ok=1 d0=0.99985647 inv=17734.900 expected_d0=0.99985652 expected_inv=17749.280

@@ -1,19 +1,20 @@
--- Configuring done (0.8s)
+source commit: d2f883c94e26e7548ce7f3b5ab2fa7f9c2a42279
+-- Configuring done (0.5s)
 -- Generating done (0.1s)
 -- Build files have been written to: /Users/asvetl/x3-mod/build
+[  1%] Baking spatial-fog family fields
 [  2%] Refreshing compiled-in source commit
-[  2%] Baking spatial-fog family fields
-source commit: 7499da8268ca379473b22842b8b30c0a32249ab8
+source commit: d2f883c94e26e7548ce7f3b5ab2fa7f9c2a42279
 [  2%] Built target x3m_source_commit
-{"output": "/Users/asvetl/x3-mod/build/generated/fog_field", "packet_bytes": 34142200, "profiles": 14, "seconds": 20.458690875000002}
+{"output": "/Users/asvetl/x3-mod/build/generated/fog_field", "packet_bytes": 34142200, "profiles": 14, "seconds": 19.65784975}
 [  2%] Built target x3m_fog_field_assets
 [  3%] Packaging compositor SEH (GNU/no-SafeSEH, narrow CRT import)
 [  4%] Building compositor CPU boundary
 /Users/asvetl/x3-mod/build/compositor_bridge
 [  5%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/compositor_owner.cpp.obj
+[  7%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj
 [  7%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/bloom_pass.cpp.obj
-[  7%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loader.cpp.obj
-[  8%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj
+[  8%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loader.cpp.obj
 [  9%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/proxy_identity.cpp.obj
 [ 10%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture_state.cpp.obj
 [ 12%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/comparison_notice.cpp.obj
@@ -35,7 +36,7 @@ source commit: 7499da8268ca379473b22842b8b30c0a32249ab8
 [ 29%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/chase_transition.cpp.obj
 [ 30%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/chase_lead.cpp.obj
 [ 31%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/game_phases.cpp.obj
-[ 32%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/voice_dmo_fallback.cpp.obj
+[ 34%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/voice_dmo_fallback.cpp.obj
 [ 34%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/lod_scale.cpp.obj
 [ 35%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/point_light_admission.cpp.obj
 [ 36%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/cull_census.cpp.obj

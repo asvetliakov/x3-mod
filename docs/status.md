@@ -1,35 +1,37 @@
 # Project status
 
-Updated 2026-09-22 (night): the Run67 candidate is installed and Run 67 is queued (strict band term, fog shadow pass, cascade footprint, draw accounting); Run 66 flew: strict cut the SETA smear, lod-scale 0.5 helps at the stand; Run 65 accepted the sun edge fix, core dimming, widening 4 with the emissive vote and the fog regression; Run 59 accepted the camera-relative gate for pans. Run56 (run200) is accepted for media stability: the user
+Updated 2026-09-23: the Run68 candidate is installed and Run 68 is queued (SETA exit reset, stand census with ladder/body/screen size, fog A/B toggle); Run 67 flew: footprint 8 accepted as the default, the SETA residual diagnosed and fixed behind an option, no cullable draw bucket left, fog pass needs its A/B; the merged-LOD pilot is tooled (bob1.py, lod_overlay.py); lod-scale stays off by user decision; Run 65 accepted the sun edge fix, core dimming, widening 4 with the emissive vote and the fog regression; Run 59 accepted the camera-relative gate for pans. Run56 (run200) is accepted for media stability: the user
 reports no crash and no media-related stutter. The accepted production baseline
 is merged to main. Run57 accepts the station-flash default correction. Fog-range and moving-lattice
 work remain open. The agent never launches the game. See the [run queue](verification/user-runs.md) and the current
-[handoff](handoff-2026-09-22-evening.md).
+[handoff](handoff-2026-09-23.md).
 
 ## Installed build
 
-Bottle **X3**, **CrossOver Preview.app**. Run67 DLL SHA-256:
-`621cad639d477fd4f9b8f9819068b04d28c2565a7655fb817aff2b4c9260313f`
-(55,505,991 bytes), built once from clean reviewed main `1b4d745c`.
-Retained DLL: `/tmp/x3-run67-candidate/build/d3d9.dll`. Installed 2026-09-22.
+Bottle **X3**, **CrossOver Preview.app**. Run68 DLL SHA-256:
+`39c8c70d3e643aa97b4d84e8c50245cf910aac79e2e812fd377413a638e43832`
+(55,351,884 bytes), built once from clean reviewed main `d2f883c9`.
+Retained DLL: `/tmp/x3-run68-candidate/build/d3d9.dll`. Installed 2026-09-23.
 
-Changes against Run66 (`1f9a85f5…`), all default-off or diagnostic: the strict sky
-history's band term (`--taa-sky-history-band-px`, default 3; [note](architecture/seta-motion.md));
-the fog sun-visibility grid pass `--fog-shadow-pass on` ([design](architecture/fog-shadow-pass.md),
-[ledger](verification/volumetric-fog.md)); the per-cascade minimum caster footprint
-`--shadow-cascade-min-footprint P` ([policy](architecture/shadow-cascade-cost-policy.md),
-[ledger](verification/directional-shadows.md)); the `--object-bounds-log` draw-accounting
-diagnostic ([note](architecture/engine-frame-time.md)).
+Changes against Run67 (`621cad63…`): the strict-sky exit reset `--taa-sky-history-exit-px`
+(default off; [design as built](architecture/seta-sky-hull-share-decay.md)); the fog shadow-pass
+run-time A/B toggle Ctrl+Shift+F11 with grid fields on `volumetric_fog_frame`
+([note](architecture/fog-shadow-pass.md)); cull census rows carry `lods=`, `thr=` and `body=`
+([lod-selection.md](reverse-engineering/lod-selection.md)); `--object-bounds-log` covers
+alpha-tested draws; `--shadow-cascade-min-footprint` defaults to 8 (accepted, `0` opts out);
+the GTAO/SSAO chain is removed (cleanup batch 5). Launcher defaults otherwise unchanged.
 
-[Qualification](../verification/results/run67-candidate-qualification.json): host
-suite 2,311 tests pass; linked audit 100 roots / 639 reachable / zero violations;
-imports identical to Run66 plus `truncf`; every Run66 fixture case identical; band rows
-(SETA sweep strict 0.000, pans strict == loose), fog 28 gates, footprint cases per the
-ledger. Not a full renderer-suite pass or native Windows execution. The
-[install record](../verification/results/run67-candidate-install.json) verifies
-installed bytes and unchanged X3AP.exe `fdbf3418…` and cxbottle.conf `cc5d6c00…`.
-Rollback: Run66 `/tmp/x3-run66-candidate/build/d3d9.dll`, then Run65 and older.
-All three Run 67 dry-runs passed; no game was launched by the agent.
+[Qualification](../verification/results/run68-candidate-qualification.json): host suite
+231 modules / 2,330 tests pass; x87 walk 100 roots / 638 reachable / zero violations; imports
+identical to Run67 (15 DLLs, 210 functions), 17 exports; temporal pass RESULT PASS 672 (band
+`adjacent_max` 0.000, pans strict == loose, SETA_EXIT straight cast 0.000 on age, far and
+far_camera; far_camera 510 of 512 slots); motion-output suite 190 cases / 271,369 checks
+identical to the last run; fog pass 78 checks and route bridge 30,476 checks reused from
+`805e9186`; cull census 101/0 reused from the body-name merge. Not a native Windows execution.
+The [install record](../verification/results/run68-candidate-install.json) verifies installed
+bytes and unchanged X3AP.exe `fdbf3418…` and cxbottle.conf `cc5d6c00…`. Rollback: Run67
+`/tmp/x3-run67-candidate/build/d3d9.dll`, then Run66 and older. All three Run 68 dry-runs
+passed; no game was launched by the agent.
 
 ## Current work and pending acceptance
 

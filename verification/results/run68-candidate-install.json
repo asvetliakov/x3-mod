@@ -1,0 +1,34 @@
+{
+ "candidate": {
+  "commit": "d2f883c9",
+  "dll": "/tmp/x3-run68-candidate/build/d3d9.dll",
+  "sha256": "39c8c70d3e643aa97b4d84e8c50245cf910aac79e2e812fd377413a638e43832",
+  "bytes": 55351884
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run68-candidate/build/d3d9.dll",
+ "cwd": "/Users/asvetl/x3-mod",
+ "exit": 0,
+ "installed": {
+  "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "sha256": "39c8c70d3e643aa97b4d84e8c50245cf910aac79e2e812fd377413a638e43832",
+  "bytes": 55351884
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+ },
+ "rollback": {
+  "dll": "/tmp/x3-run67-candidate/build/d3d9.dll",
+  "sha256": "621cad639d477fd4f9b8f9819068b04d28c2565a7655fb817aff2b4c9260313f",
+  "records": [
+   "verification/results/run67-candidate-qualification.json",
+   "verification/results/run67-candidate-install.json"
+  ],
+  "launcher_previous": "x3-modern-media/rollback/687b40ae220b409fb10600cdde89abfd",
+  "older": "Run66 /tmp/x3-run66-candidate, Run65, Run64 and older"
+ },
+ "qualification": "verification/results/run68-candidate-qualification.json",
+ "installed_at": "2026-09-23",
+ "game_running_at_install": false,
+ "produced_by": "one-off Python in the orchestrator session (hashes via hashlib.sha256 over the files named)"
+}
