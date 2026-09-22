@@ -1,0 +1,8 @@
+/tmp/x3-bottleX3-run254 5496+32
+class sky_px cur_only% dark dark_routed% dark_cur_only% sky_routed%
+d1 226539 41.82 2021 0.0 0.0 0.00
+d2 199694 32.73 257 0.0 0.0 0.00
+d3-6 736477 23.36 843 0.0 0.0 0.00
+d7-12 1072329 15.61 1529 0.0 0.0 0.00
+d>=13 26810320 7.86 17539 0.0 0.0 0.00
+dark d>=13 median color/present/diff luma over frames: 58.9 15.0 42.8

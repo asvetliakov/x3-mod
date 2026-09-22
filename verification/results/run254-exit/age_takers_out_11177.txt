@@ -1,0 +1,1 @@
+/tmp/x3-bottleX3-run254 11177+32 totals: takers 42180 re-marked 22138 left_band 20042 (per frame median 591): cur_only 15397 (76.8%) age1 20039 (100.0%) age>1 3; left_band at d>=2 19583; dark d1-2 1170 of which marked 963 (82.3%)

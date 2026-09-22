@@ -1,0 +1,10 @@
+   8 b1 Stations\others\military_outpost_middleb 17592248 117440512 0
+   8 b1 Stations\others\military_outpost_middleb 19418410 95 0
+   8 b1 ships\argon\argon_M1 309dc9e8 21 0
+   8 b1 ships\argon\argon_M1 3298aa90 21 0
+   8 b1 ships\argon\argon_M2 3299ec68 43 0
+   8 b1 ships\argon\argon_TL 344a8ab0 28 0
+   8 b2 ships\argon\argon_M1 16d25008 45 0
+   8 b2 ships\argon\argon_M2 19994bf8 30 0
+   8 b2 ships\argon\argon_TL 171e49d0 39 0
+   8 b2 ships\argon\argon_TL 21dd4218 29 0

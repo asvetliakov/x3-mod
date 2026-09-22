@@ -1,0 +1,22 @@
+ladder frame 3355 view=34869178 models=130 draws=447 joined_draws=425 no_ladder=4 (15 draws) lod0_below_t1=5 unresolved=107
+model      lods  thr (t0,t1,...)             lod:nodes      nodes  kept  draws   s_min   s_max  flags                     body
+000053b8      3  100000,30,15                0:2                2     2     68      95117440512                            Stations\others\military_outpost_middleb
+00004f75      4  100000,30,15,5              0:2                2     2     64      21      21  lod0_below_t1             ships\argon\argon_M1
+00005434      4  100000,30,15,5              0:1                1     1     38      17      17  lod0_below_t1             stations\station_scenes\tech\argon_tech_L_laser_bb
+0000552a      4  100000,30,15,5              1:1                1     1     37      14      14                            ships\M7\Argon_m7m
+00005411      5  100000,250,150,80,30        0:1                1     1     35     183     183  lod0_below_t1             stations\station_scenes\others\argon_spacedock
+00004f76      4  100000,30,15,5              0:1                1     1     32      43      43                            ships\argon\argon_M2
+00005529      4  100000,30,15,5              0:2                2     2     32      18      29  lod0_below_t1             ships\M7\Argon_M7
+00004f72      4  100000,30,15,5              0:1                1     1     31      28      28  lod0_below_t1             ships\argon\argon_TL
+00005530      4  100000,30,15,5              0:1                1     1     20      34      34                            ships\owp\owp_large
+0000543f      5  100000,250,150,80,30        2:1                1     1     15      44      44                            stations\station_scenes\tech\argon_tech_L_shield_F
+000056a0      5  100000,30,20,10,30          3:1                1     1     14      27      27                            others\argon_gate
+00005536      4  100000,30,15,5              1:1                1     1     11       8       8                            ships\m7\split_M7M
+00005421      1  100000                      0:8               16     8      8       9       9  no_ladder                 stations\connections\connect_argon_pipe_huge_cargoanimA_
+00004a88      4  100000,30,15,5              0:6              187     6      6      53      62                            ships\props\weapondummy
+00005422      1  100000                      0:4                8     4      4       8       9  no_ladder                 stations\connections\connect_argon_pipe_huge_cargoanimB_
+00004fea      4  100000,30,15,5              0:1                5     1      2     218     218                            ships\argon\argon_M3_var2
+000056a1      1  100000                      0:1                1     1      2      19      19  no_ladder                 others\argon_gate_effect
+00004e86      1  100000                      0:1               26     1      1     263     263  no_ladder                 effects\engines\fx_engine_argon_M3
+00004fee      3  100000,20,5                 0:1                1     1      1      70      70                            environments\asteroids\asteroid_A_ClassMine
+00004fef      5  100000,20,5,2,30            0:1                1     1      1      80      80                            environments\asteroids\asteroid_B_ClassMine

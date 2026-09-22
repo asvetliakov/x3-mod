@@ -1,0 +1,40 @@
+frame 14292 1280x768 depth=depth_1_14292.rgba32f us_per_draw=51.46 draws=466 with_box=425 alpha_tested=77 stale=0 tiny_on_screen=40
+bucket      draws     prims      ms  covered
+offscreen       0         0    0.00     0.00
+occluded       71     12526    3.65     1.00
+tiny           18       478    0.93     0.12
+partial       188    239913    9.68     0.61
+visible       148    275545    7.62     0.00
+no_box         41     21474    2.11     0.00
+node      model       draws     prims      ms  buckets
+2e1e8ee8  0000552a       37     10812    1.90  occluded=37
+2f9bf150  000053a0       36     24862    1.85  occluded=5 tiny=1 partial=30
+33ffa5c0  00005428       36    116315    1.85  tiny=6 visible=30
+61c3f830  00005411       35    107397    1.80  occluded=1 partial=26 visible=8
+333558c8  000053aa       33    108429    1.70  tiny=1 visible=32
+19994bf8  00004f76       32     21768    1.65  occluded=5 partial=27
+16d25008  00004f75       32     18075    1.65  tiny=1 visible=31
+2f9beed0  0000539f       31      7490    1.60  occluded=3 tiny=3 partial=25
+21dd4218  00004f72       31     15284    1.60  tiny=3 visible=28
+171e49d0  00004f72       31     15284    1.60  occluded=8 partial=23
+16478478  000053ab       17     16011    0.87  occluded=1 partial=16
+194091e0  000056a0       16     23744    0.82  partial=15 visible=1
+1d453488  0000547a       14     14878    0.72  occluded=1 partial=13
+2ed6fc80  000054f9        9      1860    0.46  occluded=7 partial=2
+2f9c20d0  00005409        5      5144    0.26  occluded=1 partial=4
+2f9c2350  00005409        5      5144    0.26  visible=5
+2f9c25d0  0000540a        5      2912    0.26  occluded=2 partial=3
+16478e78  35b42b43        2       854    0.10  tiny=1 visible=1
+16479d78  35b42b43        2       854    0.10  tiny=1 visible=1
+61c3bc30  35b42b43        2       854    0.10  visible=2
+61c3cb30  35b42b43        2       854    0.10  tiny=1 visible=1
+61c3da30  35b42b43        2       854    0.10  visible=2
+15cf6680  00004f78        2      4192    0.10  partial=1 visible=1
+164790f8  35b42b44        1       134    0.05  visible=1
+16479ff8  35b42b44        1       134    0.05  visible=1
+61c3beb0  35b42b44        1       134    0.05  partial=1
+61c3cdb0  35b42b44        1       134    0.05  visible=1
+61c3dcb0  35b42b44        1       134    0.05  visible=1
+15cf6e00  00004a88        1      1727    0.05  partial=1
+15cf7080  00004a88        1      1727    0.05  partial=1
+33355dc8  000053ab        1       467    0.05  visible=1

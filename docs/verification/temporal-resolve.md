@@ -1756,3 +1756,47 @@ the straight row is the flown case; a turning leg keeps a residual.
 | scratch DLL `build-exit` (`cmake/mingw-i686.cmake`, RelWithDebInfo), no warnings; `check_no_x87.py` | built; PASS, 638 reachable functions, 0 violations; sha256 `8b19f6ce2a0c780d6cdf655df48c75e0d36dd85d5155ae8186f3cc5934fed2f9` (after the review fixes: a non-numeric `X3M_TAA_SKY_HISTORY_EXIT_PX` logs `invalid=1`) |
 | `PYTHONPATH=verification/probe /usr/bin/python3 -m unittest verification.analysis.test_taa_image_defaults verification.analysis.test_taa_sky_history verification.analysis.test_shader_compiler_provenance` | 28 tests, OK (four new: exit forwarded as the float given with each age program; 0 accepted as the explicit off with `--taa` alone; omitted / inherited dropped; range 0.125..band and the `--taa`, strict and age-program requirements refused; DLL default 0) |
 | `--taa-debug` age readback consumers | `tools/analysis/taa_sentinel_pan_replay.py` and `taa_sentinel_pan_variants.py` seed the replay with `abs()` of the `taa_age` dump (a negative count is the mark); no host test covers them |
+
+## Run 254: exit reset in flight, accepted (2026-09-23)
+
+Run 68 A (`/tmp/x3-bottleX3-run254`, Run68 DLL `39c8c70d…`): the Run 67 A command plus
+`--taa-sky-history-exit-px 0.25` (strict + band 3 px + exit reset). Three F8 bursts:
+SETA 1 (5496–5527, logged yaw 0.2549°/frame but no measurable sky shift), normal speed
+(6875–6906), SETA 2 (11177–11208, straight). The user reports no SETA smearing and a clean
+normal-speed flyby and pan. Scripts and outputs: `verification/results/run254-exit/`
+(`run_all.sh` reproduces them; the run249 scripts reused, plus `age_census.py`,
+`age_takers.py`, `hull_sharp.py`, `hull_blurfit.py`, `hull_region_split.py`). All measured.
+
+- **Acceptance met.** `dark_vs_own_mean.py` 3–12 px genuine dark-sky share: SETA 1
+  132/2,010 (7 %), SETA 2 101/1,657 (6 %), against run249's 27 % / 34 % and its 16–18 % far
+  tail; this run's own far tail (≥13 px) is 9–11 %. Total dark sky 22,189 / 19,560
+  (run249: 26,056 / 26,676). Of the remaining d1–2 dark pixels, 82–87 % are band pixels
+  still blending history and carrying the mark.
+- **Reset active.** `motion_output_mode` logs `sky_history=strict sky_history_band_px=3.00
+  sky_history_exit_px=0.250`; no refusal. Marked band pixels per frame (median) 2,330 /
+  1,988 / 4,724 (all sky at distance 1–2, none on hull); pixels leaving the band and taking
+  the reset 570 / 591 / 881 per frame, 99–100 % restarted at age 1, 74–77 % current-only to
+  the bit (the rest HDR-route rounding as designed).
+- **Band behaviour unchanged from run249:** 3–6 px bin 91.6 % / 92.3 % current-only,
+  ≥6 px 100 %; border flicker at d1 2.94 / 2.41, far sky 0.01.
+- **Normal-speed burst is a different scene:** every d1 sky pixel sits below 3 px/frame of
+  parallax, so the band never engages (run249's normal burst had most of its border at
+  ≥3 px/frame); d1 flicker 6.23 vs 3.43 and uncovered fraction 0.207 match the pre-exit
+  run244 b2 (0.185) and are scene, not regression (inferred; that path is bit-identical on
+  the fixture with the option on or off). No pan burst was captured. A like-for-like
+  normal-speed check stays open.
+- **Anomalies:** none; 96/96 frames per target, 1,248 readbacks `result=00000000`, no
+  device or TAA failures, 789 `taa_invalidate` rows all `site=not_resolved` outside bursts.
+- **Station blur under SETA (the user's question):** hull sharpness ratio (output / pre-
+  history HF energy) 0.44 / 0.46 / 0.35 below 0.5 px/frame, 0.25 / 0.38 / 0.12 at 0.5–1,
+  0.02–0.10 at ≥1 px/frame in every burst including normal speed; Gaussian-equivalent σ
+  0.5–0.7 px at rest, 1.0–1.4 px at ≥1 px/frame, explaining 84–89 % of output−input, so it is
+  resample softening of long-lived history (median age 48–64; thin-region b=255 on 52–64 %
+  of moving hull gives σ 1.4, b=0 σ 1.0), not ghosting. `taa_weight=0.900`, sharpen and mip
+  bias −0.5 constant across motion bins. Hull motion p50/p90/p99: SETA 0.46/12.6/26.5,
+  normal 0.38/0.99/1.64 px/frame. Design note: `docs/architecture/taa-motion-history-weight.md`.
+
+**Decision (2026-09-23):** strict sky history, the 3 px band term and the exit reset at
+0.25 become the launcher and DLL defaults (`--taa-sky-history loose` and
+`--taa-sky-history-exit-px 0` opt out). The age/mask readbacks of the three bursts were
+copied from the bottle's capture folder into the run directory (identical colour bytes).

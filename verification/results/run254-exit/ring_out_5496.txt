@@ -1,0 +1,1 @@
+/tmp/x3-bottleX3-run254 5496: mean|dLuma| d1 2.94 d2 0.21 d3 0.06 far 0.01; d1 cur_only 41.8%

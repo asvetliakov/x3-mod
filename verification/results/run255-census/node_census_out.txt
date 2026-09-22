@@ -1,0 +1,63 @@
+== frame 3351 node_draws=447 alpha_tested=68 census_views={'34869178': 1264, '348c4a40': 81, '348c42a8': 6}
+node      model     draws alpha opaque drawn_lod census(s,lod,verdict) lods thr body
+2870d5b8 00005434    38    10     28 [0] 17,0,kept 4 100000,30,15,5 stations\station_scenes\tech\argon_tech_L_laser_bb
+325527a0 0000552a    37     7     30 [1] 14,1,kept 4 100000,30,15,5 ships\M7\Argon_m7m
+1666c640 00005411    35     6     29 [0] 183,0,kept 5 100000,250,150,80,30 stations\station_scenes\others\argon_spacedock
+17592248 000053b8    34     6     28 [0] 117440512,0,kept 3 100000,30,15 Stations\others\military_outpost_middleb
+19418410 000053b8    34     6     28 [0] 95,0,kept 3 100000,30,15 Stations\others\military_outpost_middleb
+309dc9e8 00004f75    32     4     28 [0] 21,0,kept 4 100000,30,15,5 ships\argon\argon_M1
+3298aa90 00004f75    32     4     28 [0] 21,0,kept 4 100000,30,15,5 ships\argon\argon_M1
+3299ec68 00004f76    32     4     28 [0] 43,0,kept 4 100000,30,15,5 ships\argon\argon_M2
+344a8ab0 00004f72    31     4     27 [0] 28,0,kept 4 100000,30,15,5 ships\argon\argon_TL
+195d9458 00005530    20     3     17 [0] 34,0,kept 4 100000,30,15,5 ships\owp\owp_large
+199b50d8 00005529    16     2     14 [0] 29,0,kept 4 100000,30,15,5 ships\M7\Argon_M7
+34702b18 00005529    16     2     14 [0] 18,0,kept 4 100000,30,15,5 ships\M7\Argon_M7
+1cebad48 0000543f    15     8      7 [2] 44,2,kept 5 100000,250,150,80,30 stations\station_scenes\tech\argon_tech_L_shield_F
+1606f2b0 000056a0    14     1     13 [3] 27,3,kept 5 100000,30,20,10,30 others\argon_gate
+3019ee00 00005536    11     1     10 [1] 8,1,kept 4 100000,30,15,5 ships\m7\split_M7M
+00000000 00000000     8     0      8 [0] - - - -
+34865f78 000050e9     4     0      4 [0] 117440512,0,kept 1 100000 environments\nebulae\greenvoid\nebula_greenvoid_background_01
+1666a0c0 00004fea     2     0      2 [0] 218,0,kept 4 100000,30,15,5 ships\argon\argon_M3_var2
+1606f7b0 000056a1     2     0      2 [0] 19,0,kept 1 100000 others\argon_gate_effect
+1606d730 00005696     2     0      2 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_radar_2d
+alpha-tested ps: {'5e0a10fe752b6140': 30, 'e6794b6ec37ff71a': 20, 'f1b0e820c7b488c3': 17, '63f96eba9eea7880': 1}
+== frame 14286 node_draws=466 alpha_tested=77 census_views={'15d0ded0': 477, '15d5dae0': 38, '15d08208': 6}
+node      model     draws alpha opaque drawn_lod census(s,lod,verdict) lods thr body
+2e1e8ee8 0000552a    37     7     30 [1] 11,1,kept 4 100000,30,15,5 ships\M7\Argon_m7m
+2f9bf150 000053a0    36     6     30 [0] 34,0,kept 5 100000,30,20,10,30 stations\trading_stations\argon_trading_station_partB
+33ffa5c0 00005428    36     9     27 [0] 21,0,kept 4 100000,30,15,5 stations\station_scenes\tech\argon_tech_M_laser_cc
+61c3f830 00005411    35     6     29 [0] 1154,0,kept 5 100000,250,150,80,30 stations\station_scenes\others\argon_spacedock
+333558c8 000053aa    33     5     28 [0] 80,0,kept 4 100000,30,15,5 stations\station_scenes\others\argon_equipmentdock
+2f9beed0 0000539f    32     6     26 [0] 22,0,kept 5 100000,30,15,5,5 stations\trading_stations\argon_trading_station_partA
+19994bf8 00004f76    32     4     28 [0] 30,0,kept 4 100000,30,15,5 ships\argon\argon_M2
+16d25008 00004f75    32     4     28 [0] 45,0,kept 4 100000,30,15,5 ships\argon\argon_M1
+21dd4218 00004f72    31     4     27 [0] 29,0,kept 4 100000,30,15,5 ships\argon\argon_TL
+171e49d0 00004f72    31     4     27 [0] 39,0,kept 4 100000,30,15,5 ships\argon\argon_TL
+16478478 000053ab    17     2     15 [0] 78,0,kept 5 100000,30,15,5,30 stations\living_sections\argon_livingsection
+194091e0 000056a0    16     2     14 [0] 42,0,kept 5 100000,30,20,10,30 others\argon_gate
+1d453488 0000547a    15     9      6 [2] 45,2,kept 5 100000,250,150,80,30 stations\station_scenes\tech\argon_tech_L_missile_C
+2ed6fc80 000054f9    10     3      7 [0] 11,0,kept 2 100000,15 others\argon_adsign_C
+00000000 00000000     8     0      8 [0] - - - -
+2f9c20d0 00005409     6     2      4 [0] 13,0,kept 3 100000,25,5 stations\X3AP\StockmarketBoardXL
+2f9c2350 00005409     6     2      4 [0] 13,0,kept 3 100000,25,5 stations\X3AP\StockmarketBoardXL
+2f9c25d0 0000540a     6     2      4 [0] 8,0,kept 3 100000,25,5 stations\X3AP\StockmarketBoardM
+16ff99a8 00005018     4     0      4 [0] 117440512,0,kept 1 100000 environments\nebulae\bluewell\nebula_bluewell_background_01
+19408a60 00004e6f     4     0      4 [0] 618,0,kept 1 100000 environments\planets\planet_close_waterworld
+16478e78 35b42b43     2     0      2 [0] 18,0,kept 1 10000 -
+16479d78 35b42b43     2     0      2 [0] 18,0,kept 1 10000 -
+61c3bc30 35b42b43     2     0      2 [0] 18,0,kept 1 10000 -
+61c3cb30 35b42b43     2     0      2 [0] 18,0,kept 1 10000 -
+61c3da30 35b42b43     2     0      2 [0] 18,0,kept 1 10000 -
+15cf6680 00004f78     2     0      2 [0] 295,0,kept 4 100000,30,15,5 ships\argon\argon_M4
+194096e0 000056a1     2     0      2 [0] 29,0,kept 1 100000 others\argon_gate_effect
+24167298 00005696     2     0      2 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_radar_2d
+alpha-tested ps: {'5e0a10fe752b6140': 47, 'f1b0e820c7b488c3': 14, 'e6794b6ec37ff71a': 13, '63f96eba9eea7880': 3}
+== frame_timing windows (frame, dt_p50_us, draws_p50) near bursts
+(3000, 25198, 447)
+(3300, 24239, 447)
+(3600, 24801, 447)
+(3900, 12586, 402)
+(13800, 25482, 466)
+(14100, 23907, 466)
+(14400, 23982, 466)
+(14700, 22434, 411)

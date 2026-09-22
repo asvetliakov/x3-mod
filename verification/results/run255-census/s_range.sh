@@ -1,0 +1,2 @@
+# s range and lod per candidate body across all 16 burst frames (main-view census rows only)
+grep '^cull_census ' /tmp/x3-bottleX3-run255/session-20260923-021931-212.log | grep -E 'frame=(335[1-8]|1428[6-9]|1429[0-3]) ' | grep -E 'view=(34869178|15d0ded0) ' | grep -E 'body=\S*(argon_TL|argon_M2|argon_M1|military_outpost_middleb)( |\r|$)' | awk '{for(i=1;i<=NF;i++){split($i,a,"=");v[a[1]]=a[2]}; b=(v["frame"]<5000?"b1":"b2"); print b, v["body"], v["node"], v["s"], v["lod"]}' | sort | uniq -c

@@ -40,7 +40,7 @@ not rerun requests.
 <a id="53-spatial-fog-and-moving-lattice-state--ready-for-flight"></a>
 Run51/53 instructions are [archived](../archive/run53-completed-2026-09-20.md); they are not rerun requests.
 
-Run 68 is the only queued run. Run 67 returned **run249** (A: SETA still smears a little, normal speed and pan clean; the residual is a hull share carried outward in the 3-12 px band, a design question), **run250** (B: draw accounting at the stand, no cull justified; the alpha-tested draws need one flight with the extended bounds log), **run251** (C: fog shadow pass "softer?", no A/B yet; footprint 8 without a missing shadow) and **run253** (C, second sector: no shadow popping; footprint 8 accepted as the launcher default).
+Run 68 is the only queued run; its session A returned **run254** (SETA smear gone by the numbers, 7 % / 6 % against 27 % / 34 %; strict + band + exit reset become defaults; the SETA station blur is resample softening, design note queued). Run 67 returned **run249** (A: SETA still smears a little, normal speed and pan clean; the residual is a hull share carried outward in the 3-12 px band, a design question), **run250** (B: draw accounting at the stand, no cull justified; the alpha-tested draws need one flight with the extended bounds log), **run251** (C: fog shadow pass "softer?", no A/B yet; footprint 8 without a missing shadow) and **run253** (C, second sector: no shadow popping; footprint 8 accepted as the launcher default).
 
 
 **Run 68 (queued 2026-09-23): Run68 DLL `39c8c70d…` from `d2f883c9`. Three sessions; all dry-runs verified. `--capture-delay 300` stays in every command.**

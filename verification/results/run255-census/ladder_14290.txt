@@ -1,0 +1,22 @@
+ladder frame 14290 view=15d0ded0 models=67 draws=466 joined_draws=434 no_ladder=4 (18 draws) lod0_below_t1=6 unresolved=46
+model      lods  thr (t0,t1,...)             lod:nodes      nodes  kept  draws   s_min   s_max  flags                     body
+00004f72      4  100000,30,15,5              0:2                2     2     62      29      39  lod0_below_t1             ships\argon\argon_TL
+0000552a      4  100000,30,15,5              1:1                1     1     37      11      11                            ships\M7\Argon_m7m
+000053a0      5  100000,30,20,10,30          0:1                1     1     36      34      34                            stations\trading_stations\argon_trading_station_partB
+00005428      4  100000,30,15,5              0:1                1     1     36      21      21  lod0_below_t1             stations\station_scenes\tech\argon_tech_M_laser_cc
+00005411      5  100000,250,150,80,30        0:1                1     1     35    1154    1154                            stations\station_scenes\others\argon_spacedock
+000053aa      4  100000,30,15,5              0:1                1     1     33      80      80                            stations\station_scenes\others\argon_equipmentdock
+00004f75      4  100000,30,15,5              0:1                1     1     32      45      45                            ships\argon\argon_M1
+00004f76      4  100000,30,15,5              0:1                1     1     32      30      30                            ships\argon\argon_M2
+0000539f      5  100000,30,15,5,5            0:1                1     1     32      22      22  lod0_below_t1             stations\trading_stations\argon_trading_station_partA
+000053ab      5  100000,30,15,5,30           0:1 3:1            2     2     18      10      78                            stations\living_sections\argon_livingsection
+000056a0      5  100000,30,20,10,30          0:1                1     1     16      42      42                            others\argon_gate
+0000547a      5  100000,250,150,80,30        2:1                1     1     15      45      45                            stations\station_scenes\tech\argon_tech_L_missile_C
+00005409      3  100000,25,5                 0:2                2     2     12      13      13  lod0_below_t1             stations\X3AP\StockmarketBoardXL
+000054f9      2  100000,15                   0:1                1     1     10      11      11  lod0_below_t1             others\argon_adsign_C
+35b42b43      1  10000                       0:5               45     5     10      18      18  no_ladder                 -
+0000540a      3  100000,25,5                 0:1                1     1      6       8       8  lod0_below_t1             stations\X3AP\StockmarketBoardM
+35b42b44      1  10000                       0:5               45     5      5      13      13  no_ladder                 -
+00004a88      4  100000,30,15,5              0:2               13     2      2      98     101                            ships\props\weapondummy
+00004f78      4  100000,30,15,5              0:1                4     1      2     295     295                            ships\argon\argon_M4
+000056a1      1  100000                      0:1                1     1      2      29      29  no_ladder                 others\argon_gate_effect

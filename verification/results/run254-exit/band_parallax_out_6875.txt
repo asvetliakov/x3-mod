@@ -1,0 +1,5 @@
+/tmp/x3-bottleX3-run254 6875: bin d1_sky cur_only% dark dark_cur_only
+  <2 204678 0.1 19125 0
+  2-3 232 0.0 1 0
+  3-6 0 0.0 0 0
+  >=6 0 0.0 0 0

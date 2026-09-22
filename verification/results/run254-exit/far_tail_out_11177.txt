@@ -1,0 +1,1 @@
+/tmp/x3-bottleX3-run254 11177: far_dark=16361 local_max=36.6% isolated=20.1% ring_luma_median=27.5

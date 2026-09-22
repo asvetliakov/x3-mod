@@ -1,0 +1,48 @@
+frame 3352 1280x768 depth=depth_1_3352.rgba32f us_per_draw=54.23 draws=447 with_box=421 alpha_tested=68 stale=0 tiny_on_screen=57
+bucket      draws     prims      ms  covered
+offscreen      15     13972    0.81     0.00
+occluded        1       194    0.05     1.00
+tiny           57      6033    3.09     0.01
+partial        64    235956    3.47     0.13
+visible       284    467040   15.40     0.00
+no_box         26      6612    1.41     0.00
+node      model       draws     prims      ms  buckets
+2870d5b8  00005434       38    170744    2.06  tiny=8 partial=15 visible=15
+325527a0  0000552a       37     10812    2.01  tiny=9 visible=28
+1666c640  00005411       35    107397    1.90  tiny=3 visible=32
+17592248  000053b8       34     73749    1.84  offscreen=15 visible=19
+19418410  000053b8       34     73749    1.84  occluded=1 tiny=3 partial=22 visible=8
+309dc9e8  00004f75       32     18075    1.74  tiny=2 visible=30
+3298aa90  00004f75       32     18075    1.74  tiny=6 partial=6 visible=20
+3299ec68  00004f76       32     21768    1.74  tiny=1 visible=31
+344a8ab0  00004f72       31     15284    1.68  tiny=5 visible=26
+195d9458  00005530       20     90006    1.08  tiny=3 visible=17
+199b50d8  00005529       16     25204    0.87  tiny=2 visible=14
+34702b18  00005529       16     25204    0.87  tiny=2 partial=13 visible=1
+1606f2b0  000056a0       14      1803    0.76  visible=14
+1cebad48  0000543f       14     16185    0.76  visible=14
+3019ee00  00005536       11     23494    0.60  tiny=1 visible=10
+1666a0c0  00004fea        2      9834    0.11  partial=1 visible=1
+1606e630  00004fee        1      1712    0.05  partial=1
+1606e8b0  00004fef        1      1712    0.05  visible=1
+16665aa8  00004a88        1      1727    0.05  partial=1
+16665d28  00004a88        1      1727    0.05  partial=1
+16665fa8  00004a88        1      1727    0.05  partial=1
+16666728  00004a88        1      1727    0.05  partial=1
+166669a8  00004a88        1      1727    0.05  partial=1
+16666c28  00004a88        1      1727    0.05  partial=1
+1606fcb0  000053ab        1       467    0.05  visible=1
+19d32bf0  00005421        1       320    0.05  tiny=1
+19d32e70  00005422        1       160    0.05  tiny=1
+19d330f0  00005421        1       320    0.05  tiny=1
+19d33370  00005421        1       320    0.05  tiny=1
+1ceb46b0  00005422        1       160    0.05  tiny=1
+1ceb4930  00005421        1       320    0.05  tiny=1
+1ceb4bb0  00005421        1       320    0.05  tiny=1
+1ceb4e30  00005422        1       160    0.05  tiny=1
+1ceb50b0  00005421        1       320    0.05  tiny=1
+1ceb5330  00005421        1       320    0.05  tiny=1
+1ceb55b0  00005422        1       160    0.05  tiny=1
+1ceb5830  00005421        1       320    0.05  tiny=1
+255656e8  0000542a        1      1842    0.05  visible=1
+29707d58  0000542b        1      2517    0.05  visible=1

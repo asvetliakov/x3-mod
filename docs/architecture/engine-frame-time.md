@@ -1627,3 +1627,35 @@ at `--max-samples` per box. Host coverage:
 `verification/analysis/test_object_bounds_log.py` (projection core against known
 matrices, the wiring and the launcher gate) and
 `verification/analysis/test_draw_accounting.py` (synthetic log and depth image).
+
+## Run 255: stand census with ladder, body and screen size (2026-09-23)
+
+Run 68 B (`/tmp/x3-bottleX3-run255`, Run68 DLL `39c8c70d…`): the run248 stand set with
+`--cull-census --object-bounds-log` and vanilla LOD (no `--lod-scale`). Outputs under
+`verification/results/run255-census/` (`draw_accounting*.txt`, `acc_*`/`ladder_*` per frame,
+`node_census.py`, `s_range.sh`). All measured unless marked; the eight frames of each burst
+are identical (the game was probably paused).
+
+- **Burst 2 is the run248/run250 stand** (same bodies): 466 draws per frame at 24.0 ms
+  (77 alpha-tested; boxes 0 offscreen / 70 occluded / 18 tiny / 189 partial / 148 visible /
+  41 no_box) against run250's 391 draws at 21.7 ms, which ran at lod-scale 0.5, so the +75
+  draws cross a LOD-scale change (inferred; e.g. `argon_trading_station_partB` 26 → 36).
+  Burst 1 (fighter save, run250's 10550 view) 447 draws at 24.2–24.8 ms, 68 alpha-tested.
+- **Who draws:** about twelve bodies at 31–37 draws each carry ~390 of the 466 draws, at
+  screen size s 11–80 (spacedock 1154), nearly all at LOD 0: Argon_m7m 37 (s 11, LOD 1),
+  trading_station_partB 36 (s 34), tech_M_laser_cc 36 (s 21), spacedock 35, equipmentdock 33
+  (s 80), trading_station_partA 32 (s 22), argon_M2 32 (s 30), argon_M1 32 (s 45),
+  argon_TL ×2 31 (s 29, 39). Ladders are 100000,30,15,5 for the ships; the census LOD
+  matched `object_context` on every node, consistent with the Very High rule at f = 1.
+- **Alpha-tested draws** 68 / 77 per frame, four pixel shaders (`5e0a10fe` 47 at the stand);
+  they exceed opaque draws only on tech_L_missile_C (9 vs 6) and tech_L_shield_F (8 vs 7).
+- **Pilot placement finding:** with the Very High −1 rule a record is drawn when the record
+  *after* it admits s, so the overlay's "before-last with T = T_last" placement draws the
+  coarse record only below T_last (5 px ships, 15 px outpost), never at the stand. The pad
+  placement (coarse record plus a never-drawn pad whose threshold T_pad is the switch size)
+  replaces it ([lod-selection.md](../reverse-engineering/lod-selection.md)). Stand s of the
+  pilot bodies: argon_TL 28–39, argon_M2 30–43, argon_M1 21–45, military_outpost_middleb 95.
+  **Pilot thresholds chosen: T_pad 50 for the three ships, 100 for the outpost.** Expected
+  saving at the stand: the four ship nodes' 126 draws become 4 (inferred).
+- Anomalies: none (census overflow 0, no stale bounds rows, no device rows); a node with
+  s = 117440512 is the offscreen sentinel (inferred).
