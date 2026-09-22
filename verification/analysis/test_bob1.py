@@ -451,6 +451,9 @@ class Installed(unittest.TestCase):
         self.assertEqual(done, 20)
 
     def test_overlay_on_installed_body(self):
+        if sorted((bob1.DEFAULT_GAME / 'addon').glob('*' + lod_overlay.MARKER_SUFFIX)):
+            self.skipTest('an x3m-lod overlay is installed in the game directory (pilot flight); '
+                          'the tool refuses a second overlay by design')
         originals = lod_overlay.original_archives(bob1.DEFAULT_GAME)
         before = lod_overlay.hash_files(originals)
         with tempfile.TemporaryDirectory() as folder:

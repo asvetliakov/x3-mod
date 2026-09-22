@@ -230,8 +230,9 @@ float camera_cut_degrees = 20.f;
 // frame under another key; all: any new key. Absent is the run212-accepted
 // default: node whenever the TAA route is on ("off" or "0" is the opt-out).
 unsigned taa_unmatched_static = 0;
-// X3M_TAA_SKY_HISTORY=strict|loose (requires X3M_TAA=1; default loose, the
-// pre-existing behaviour bit for bit): strict is the resolve's strict sky term
+// X3M_TAA_SKY_HISTORY=strict|loose (requires X3M_TAA=1; default strict with the TAA
+// route since 2026-09-23 after Run 68 A; "loose"/"0"/"off" opts out and is the
+// pre-SETA behaviour bit for bit): strict is the resolve's strict sky term
 // under the camera path, a sky pixel whose 3x3 holds no routed geometry accepts sentinel
 // history taps only, so a station that moved away this frame (SETA approach)
 // never becomes the sky's history (docs/architecture/seta-motion.md).
@@ -240,8 +241,8 @@ bool taa_sky_history_strict = false;
 // section 4): the strict term's band threshold, px/frame of translation parallax
 // at which the dilated sky band beside a silhouette stops taking its history.
 float taa_sky_history_band_px = 3.f;
-// X3M_TAA_SKY_HISTORY_EXIT_PX (0 off, else 0.125..the band threshold; default 0;
-// docs/architecture/seta-sky-hull-share-decay.md): the exit reset's parallax floor,
+// X3M_TAA_SKY_HISTORY_EXIT_PX (0 off, else 0.125..the band threshold; default 0.25 under
+// strict since 2026-09-23 after Run 68 A, 0 without strict; docs/architecture/seta-sky-hull-share-decay.md): the exit reset's parallax floor,
 // px/frame at which a band pixel that took a silhouette's history is marked in the age
 // target and dropped the frame it leaves the band. Refused without strict; needs an age
 // program (far stabiliser, thin region or adaptive weight), which motion_output judges.
@@ -3274,20 +3275,23 @@ void initialize_log(HMODULE module) {
         else if(wcscmp(setting,L"0")!=0&&wcscmp(setting,L"off")!=0)log("taa_unmatched_static_setting invalid=1");
     }
     else if(taa_requested)taa_unmatched_static=1; // run212: node is the default with the TAA route (an explicit "off"/"0" opts out)
+    taa_sky_history_strict=taa_requested; // Run 68 A (2026-09-23): strict is the default with the TAA route; an invalid value keeps it
     if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_SKY_HISTORY",setting,32);n>0&&n<32){ // a truncated value would be the buffer's previous text
-        if(!wcscmp(setting,L"strict")||!wcscmp(setting,L"1"))taa_sky_history_strict=taa_requested;
-        else if(wcscmp(setting,L"loose")!=0&&wcscmp(setting,L"0")!=0&&wcscmp(setting,L"off")!=0)log("taa_sky_history_setting invalid=1");
+        if(!wcscmp(setting,L"loose")||!wcscmp(setting,L"0")||!wcscmp(setting,L"off"))taa_sky_history_strict=false;
+        else if(wcscmp(setting,L"strict")!=0&&wcscmp(setting,L"1")!=0)log("taa_sky_history_setting invalid=1");
     }
     if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_SKY_HISTORY_BAND_PX",setting,32);n>0&&n<32){
         const float v=wcstof(setting,nullptr);
         if(v>=1.f&&v<=16.f)taa_sky_history_band_px=v;else log("taa_sky_history_band_px_setting invalid=1");
     }
-    if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_SKY_HISTORY_EXIT_PX",setting,32);n>0&&n<32){
+    if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_SKY_HISTORY_EXIT_PX",setting,32);n>=32)log("taa_sky_history_exit_px_setting invalid=1"); // oversized: invalid, stays off
+    else if(n>0){
         wchar_t* end=nullptr;const float v=wcstof(setting,&end); // a value that is not a number (wcstof's 0 with nothing consumed, or trailing text) is invalid, never "off"
         if(end==setting||*end||!x3::temporal::valid_sky_history_exit(v,taa_sky_history_band_px))log("taa_sky_history_exit_px_setting invalid=1");
         else if(v>0.f&&!taa_sky_history_strict)log("taa_sky_history_exit_px_setting refused=1 reason=requires_strict");
         else taa_sky_history_exit_px=v;
     }
+    else if(taa_sky_history_strict)taa_sky_history_exit_px=.25f; // Run 68 A (2026-09-23): the default under strict (0 is the opt-out); motion_output drops it without an age program
     if(GetEnvironmentVariableW(L"X3M_CAMERA_CUT_DEG",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=180)camera_cut_degrees=v;}
     if(GetEnvironmentVariableW(L"X3M_CAMERA_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=1000000)camera_log_frames=unsigned(n);}
     log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s unmatched_static=%u sentinel_stabiliser=%.3f sentinel_emitter=%.3f sky_history=%s sky_history_band_px=%.2f sky_history_exit_px=%.3f camera_cut_deg=%.2f camera_log=%u state_shadow=%s scene_hook=%u hdr=%u taa_k=%.5f mip_bias=%g taa_sharpen=%.3f taa_current_filter=%.3f taa_history_weight=%.3f",

@@ -36,6 +36,7 @@ CHASE_FRAMING_DEFAULTS = {'X3M_CHASE_PITCH_DOWN_DEG': 0.5, 'X3M_CHASE_OFFSET_Y':
 # disables either one and keeps the bit-identical route.
 TAA_MIP_BIAS_DEFAULT = -0.5
 TAA_SHARPEN_DEFAULT = 0.75
+TAA_SKY_HISTORY_EXIT_PX_DEFAULT = 0.25  # Run 68 A (2026-09-23): exit reset of the strict sky history, px/frame
 # Hull light-map gain the launcher forwards in HDR mode when the option is
 # unset (user selection after run 41 C / run128, 2026-09-18,
 # docs/architecture/linear-emission-cost.md, "Hull light-map gain"). The DLL's
@@ -339,9 +340,9 @@ def main():
     parser.add_argument('--taa-alpha-history', action='store_true', help='Time-accumulate the resolved alpha on the HDR route (X3M_TAA_ALPHA_HISTORY=1; requires --taa; has an effect only with --hdr, where bloom reads it as the authored-glow weight)')
     parser.add_argument('--taa-sentinel', choices=['auto', '1', '2'], default='auto', help='Depth-sentinel policy of the resolve (requires --taa): auto reprojects unrouted (background) pixels through the live camera at the far plane whenever the engine camera read yields a transform, 1 keeps them current-only, 2 is strict (skips the resolve on frames without a transform)')
     parser.add_argument('--taa-unmatched-static', choices=['off', 'node', 'all'], default=None, help='A routed draw whose motion-history key is new this frame (e.g. a LOD or mesh swap) reprojects through the camera as a static object for that one frame instead of resolving current-only (X3M_TAA_UNMATCHED_STATIC; requires --taa). node: only when the same engine node was drawn last frame under another key; all: any new key. Default when omitted with --taa = node, accepted after run212 (no approach flash, 22-draw unmatched groups filled on 36 approach frames); "off" is the opt-out and is the pre-run212 behaviour bit for bit')
-    parser.add_argument('--taa-sky-history', choices=['loose', 'strict'], default=None, help='Sky history rule of the TAA resolve under the camera path (X3M_TAA_SKY_HISTORY; requires --taa). strict: a sky pixel (depth sentinel) whose 3x3 holds no routed geometry accepts sentinel history only, so the hull of a station that moved away this frame is never blended into the sky (the SETA approach smear of run235, docs/architecture/seta-motion.md). loose, the default when omitted, is the pre-existing behaviour bit for bit: the 2%% relative depth tolerance proves any geometry beyond device depth 0.98 as the sky\'s history')
+    parser.add_argument('--taa-sky-history', choices=['loose', 'strict'], default=None, help='Sky history rule of the TAA resolve under the camera path (X3M_TAA_SKY_HISTORY; requires --taa). strict: a sky pixel (depth sentinel) whose 3x3 holds no routed geometry accepts sentinel history only, so the hull of a station that moved away this frame is never blended into the sky (the SETA approach smear of run235, docs/architecture/seta-motion.md); the default when omitted with --taa since 2026-09-23 (accepted in Run 68 A). loose is the opt-out and the pre-SETA behaviour bit for bit: the 2%% relative depth tolerance proves any geometry beyond device depth 0.98 as the sky\'s history')
     parser.add_argument('--taa-sky-history-band-px', type=float, default=None, help='Band threshold of the strict sky history in px/frame (X3M_TAA_SKY_HISTORY_BAND_PX; requires --taa; 1..16, DLL default 3): the translation parallax at which the 1-px sky band beside a silhouette stops taking its history under --taa-sky-history strict (docs/architecture/seta-motion.md section 4)')
-    parser.add_argument('--taa-sky-history-exit-px', type=float, default=None, help='Exit reset of the strict sky history in px/frame (X3M_TAA_SKY_HISTORY_EXIT_PX; requires --taa; a value above 0 also requires --taa-sky-history strict and an age program: --taa-far-stabiliser, --taa-thin-region or --taa-adaptive-weight; 0 is the explicit off (the DLL default), else 0.125..the band threshold; suggested 0.25): a sky pixel in the 1-px band beside a silhouette that took the silhouette\'s history while it moved at least this much translation parallax is marked in the age target and drops that history the frame it leaves the band, so the hull share it acquired leaves in one frame instead of decaying at the history weight (docs/architecture/seta-sky-hull-share-decay.md)')
+    parser.add_argument('--taa-sky-history-exit-px', type=float, default=None, help='Exit reset of the strict sky history in px/frame (X3M_TAA_SKY_HISTORY_EXIT_PX; requires --taa; a value above 0 also requires --taa-sky-history strict and an age program: --taa-far-stabiliser, --taa-thin-region or --taa-adaptive-weight; default when omitted with --taa = 0.25 (accepted in Run 68 A, 2026-09-23) under strict with an age program, else 0 = off, never an error: a plain --taa launch has no age program, so the reset resolves to 0 there, and it is on with --taa-far-stabiliser or --taa-thin-region; 0 is the explicit off and the opt-out, else 0.125..the band threshold): a sky pixel in the 1-px band beside a silhouette that took the silhouette\'s history while it moved at least this much translation parallax is marked in the age target and drops that history the frame it leaves the band, so the hull share it acquired leaves in one frame instead of decaying at the history weight (docs/architecture/seta-sky-hull-share-decay.md)')
     parser.add_argument('--camera-cut-deg', type=float, default=20.0, help='Camera rotation per frame (degrees) above which the resolve declares a cut (requires --taa; default 20)')
     parser.add_argument('--camera-log', type=int, default=300, help='Cadence in frames of the camera_state log line (requires --taa; capture frames always log; default 300)')
     parser.add_argument('--scene-hook', nargs='?', const='on', default=None, choices=['on', 'off'], help='Engine scene-end hook (X3M_SCENE_HOOK): patch the frame routine\'s compositing callsite (0x004721b1, exact executable and bytes only, otherwise it fails closed to the bloom-copy/selector boundary) so the route learns the scene end from the engine and, with --taa, resolves there before the glow pass. Default on with --motion-output since review 26 (iteration 10: 214/214 agreement); "--scene-hook" alone means on; "--scene-hook off" keeps the copy/selector boundary')
@@ -697,6 +698,10 @@ def main():
         args.taa_unmatched_static = 'node'
     if not args.taa and args.taa_sky_history is not None:
         parser.error('--taa-sky-history requires --taa.')
+    elif args.taa and args.taa_sky_history is None:
+        # User-accepted Run 68 A default (2026-09-23, docs/architecture/seta-sky-hull-share-decay.md):
+        # strict sky history whenever the TAA route runs; "loose" is the opt-out.
+        args.taa_sky_history = 'strict'
     if args.taa_sky_history_band_px is not None:
         if not args.taa:
             parser.error('--taa-sky-history-band-px requires --taa.')
@@ -707,13 +712,18 @@ def main():
             parser.error('--taa-sky-history-exit-px requires --taa.')
         if not (args.taa_sky_history_exit_px == 0.0 or 0.125 <= args.taa_sky_history_exit_px <= 16.0):
             parser.error('--taa-sky-history-exit-px must be 0 or within 0.125..the band threshold (%g) px/frame.' % (3.0 if args.taa_sky_history_band_px is None else args.taa_sky_history_band_px))
-    if args.taa_sky_history_exit_px:  # 0 is the explicit off spelling: forwarded as given, no further requirement (the DLL accepts 0 without strict too)
+    # The exit mark lives in the age target: one of the age programs must be in effect (the DLL drops it otherwise too).
+    age_program = (args.taa_far_stabiliser is not None and any(float(v) > 0 for v in args.taa_far_stabiliser.split(',')[:2])) \
+        or (args.taa_thin_region is not None and float(args.taa_thin_region.split(',')[0]) > 0) \
+        or (args.taa_adaptive_weight is not None and float(args.taa_adaptive_weight.split(',')[0]) > 0)
+    if args.taa and args.taa_sky_history_exit_px is None:
+        # User-accepted Run 68 A default (2026-09-23): 0.25 px/frame under strict with an age program, else the
+        # explicit off 0 (never an error); always forwarded with --taa, so neither a stale shell value nor the
+        # DLL's own 0.25 fallback can apply where the launcher resolved it off. 0 is the opt-out.
+        args.taa_sky_history_exit_px = TAA_SKY_HISTORY_EXIT_PX_DEFAULT if args.taa_sky_history == 'strict' and age_program else 0.0
+    elif args.taa_sky_history_exit_px:  # 0 is the explicit off spelling: forwarded as given, no further requirement (the DLL accepts 0 without strict too)
         if args.taa_sky_history != 'strict':
             parser.error('--taa-sky-history-exit-px requires --taa-sky-history strict.')
-        # The mark lives in the age target: one of the age programs must be in effect (the DLL refuses it otherwise too).
-        age_program = (args.taa_far_stabiliser is not None and any(float(v) > 0 for v in args.taa_far_stabiliser.split(',')[:2])) \
-            or (args.taa_thin_region is not None and float(args.taa_thin_region.split(',')[0]) > 0) \
-            or (args.taa_adaptive_weight is not None and float(args.taa_adaptive_weight.split(',')[0]) > 0)
         if not age_program:
             parser.error('--taa-sky-history-exit-px requires an age program: --taa-far-stabiliser, --taa-thin-region or --taa-adaptive-weight.')
         band = 3.0 if args.taa_sky_history_band_px is None else args.taa_sky_history_band_px

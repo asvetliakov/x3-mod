@@ -256,8 +256,8 @@ enters the sky's history *below* the band threshold (97-98 % of it at 0.25-3 px/
 `verification/results/run249-band/band_parallax_fine_out.txt`) or while covered, and then survives
 by ordinary accumulation outside the band. The band threshold is not the lever. The fix is the
 **exit reset** of `docs/architecture/seta-sky-hull-share-decay.md`: on the age variants a band
-pixel that accepts history at or above `--taa-sky-history-exit-px` (default off; 0.25 is the flown
-candidate) writes its age negated into the existing R32F age target; the next frame a strict-sky
+pixel that accepts history at or above `--taa-sky-history-exit-px` (default 0.25 since 2026-09-23 after
+Run 68 A, under strict with an age program, otherwise 0) writes its age negated into the existing R32F age target; the next frame a strict-sky
 pixel whose nearest reprojected age texel is negative keeps no history once (`keep` 0 at the
 blend, its count restarted: the output is the current sample, the note's `considered` form moved
 to the blend because an age read before the depth verdict made the compiler regroup the

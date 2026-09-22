@@ -339,7 +339,8 @@ struct Reference {
         in.width = W; in.height = H; in.epoch = epoch;
         std::memcpy(in.clip_to_previous, clip_to_previous, 16 * sizeof(float));
         in.sentinel_camera = sentinel_camera;
-        { char setting[8]{}; in.sentinel_strict_sky = sentinel_camera && GetEnvironmentVariableA("X3M_TAA_SKY_HISTORY", setting, sizeof setting) > 0 && (!std::strcmp(setting, "strict") || !std::strcmp(setting, "1")); } // the DLL's X3M_TAA_SKY_HISTORY parse (capture.cpp)
+        { char setting[8]{}; const DWORD n = GetEnvironmentVariableA("X3M_TAA_SKY_HISTORY", setting, sizeof setting); // the DLL's X3M_TAA_SKY_HISTORY parse (capture.cpp):
+          in.sentinel_strict_sky = sentinel_camera && !(n > 0 && n < sizeof setting && (!std::strcmp(setting, "loose") || !std::strcmp(setting, "0") || !std::strcmp(setting, "off"))); } // strict unless loose/0/off (Run 68 A default)
         in.current_jitter[0] = float(jx); in.current_jitter[1] = float(jy); in.previous_jitter[0] = float(pjx); in.previous_jitter[1] = float(pjy);
         in.motion_policy = x3m::renderer::MotionPolicy::PerPixel; in.reactive_policy = reactive_policy;
         if(reactive_policy==x3m::renderer::ReactivePolicy::SupplementalMaskWithDepthSentinel)in.reactive=reactive16.p;

@@ -1,0 +1,4 @@
+bare {'X3M_TAA': '0', 'X3M_TAA_SKY_HISTORY': None, 'X3M_TAA_SKY_HISTORY_BAND_PX': None, 'X3M_TAA_SKY_HISTORY_EXIT_PX': None}
+taa_age_default {'X3M_TAA': '1', 'X3M_TAA_SKY_HISTORY': 'strict', 'X3M_TAA_SKY_HISTORY_BAND_PX': None, 'X3M_TAA_SKY_HISTORY_EXIT_PX': '0.25'}
+taa_age_optout {'X3M_TAA': '1', 'X3M_TAA_SKY_HISTORY': 'loose', 'X3M_TAA_SKY_HISTORY_BAND_PX': None, 'X3M_TAA_SKY_HISTORY_EXIT_PX': '0.0'}
+taa_no_age_default {'X3M_TAA': '1', 'X3M_TAA_SKY_HISTORY': 'strict', 'X3M_TAA_SKY_HISTORY_BAND_PX': None, 'X3M_TAA_SKY_HISTORY_EXIT_PX': '0.0'}

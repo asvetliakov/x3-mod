@@ -5583,6 +5583,11 @@ def main(argv=None):
                        # thin-region camera gate (run216/run221). No script here sets X3M_TAA_THIN_REGION, so the
                        # gate never resolves on, but the pin keeps that independent of the DLL default and of an
                        # inherited shell value; the oracles model the stabiliser off.
+                       # Likewise the DLL defaults X3M_TAA_SKY_HISTORY to strict with the TAA route and the exit
+                       # reset to 0.25 under strict (Run 68 A, 2026-09-23). The oracles here and the committed case
+                       # results model the loose sky history, so the runner pins loose with the reset off; the
+                       # fixture's mirror of the parse reads the same variable.
+                       X3M_TAA_SKY_HISTORY='loose', X3M_TAA_SKY_HISTORY_EXIT_PX='0',
                        X3M_TAA_SENTINEL_STABILISER='0',
                        X3M_TELEMETRY_DRAW='1',  # per-draw metrics (gate_us, route_draw_us, ...) are gated behind this switch since a8d4309; the validators require them
                        X3M_FIXTURE_CAMERA='rotate' if camera else 'none', X3M_TAA_SENTINEL=sentinel or 'auto', X3M_FIXTURE_WRAP='0',

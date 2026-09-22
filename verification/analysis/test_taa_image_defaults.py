@@ -103,15 +103,21 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
                 self.assertEqual(code, 2, option)
                 self.assertIn(f'{option} requires --taa', error)
 
-    def test_sky_history_exit_is_absent_unless_given(self):
-        # --taa-sky-history-exit-px (docs/architecture/seta-sky-hull-share-decay.md): default off in the launcher and the
-        # DLL (X3M_TAA_SKY_HISTORY_EXIT_PX absent; capture.cpp starts at 0), so no strict flight resets sky history unasked.
+    def test_sky_history_defaults_to_strict_with_the_exit_reset(self):
+        # Run 68 A (2026-09-23, docs/architecture/seta-sky-hull-share-decay.md): with --taa the launcher resolves
+        # X3M_TAA_SKY_HISTORY=strict and X3M_TAA_SKY_HISTORY_EXIT_PX=0.25 (with an age program, else 0), and the DLL falls
+        # back to the same pair when the launcher passes nothing: strict with TAA on, 0.25 under strict only.
         with tempfile.TemporaryDirectory() as directory:
-            strict = ('--taa-sky-history', 'strict', '--taa-far-stabiliser', '0.985')
-            self.assertNotIn('X3M_TAA_SKY_HISTORY_EXIT_PX', self.env(directory, *TAA, *strict, inherited={'X3M_TAA_SKY_HISTORY_EXIT_PX': '0.25'}))
-            self.assertEqual(self.env(directory, *TAA, *strict, '--taa-sky-history-exit-px', '0.25')['X3M_TAA_SKY_HISTORY_EXIT_PX'], '0.25')
+            env = self.env(directory, *TAA, '--taa-far-stabiliser', '0.985', inherited={'X3M_TAA_SKY_HISTORY': 'loose', 'X3M_TAA_SKY_HISTORY_EXIT_PX': '0'})
+            self.assertEqual((env['X3M_TAA_SKY_HISTORY'], env['X3M_TAA_SKY_HISTORY_EXIT_PX']), ('strict', '0.25'))
+            self.assertNotIn('X3M_TAA_SKY_HISTORY_BAND_PX', env)  # the band threshold stays at the DLL default 3
+            env = self.env(directory, *TAA, '--taa-far-stabiliser', '0.985', '--taa-sky-history', 'loose', '--taa-sky-history-exit-px', '0')
+            self.assertEqual((env['X3M_TAA_SKY_HISTORY'], float(env['X3M_TAA_SKY_HISTORY_EXIT_PX'])), ('loose', 0.0))
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
         self.assertIn('float taa_sky_history_exit_px = 0.f;', capture)
+        self.assertIn('float taa_sky_history_band_px = 3.f;', capture)
+        self.assertIn('taa_sky_history_strict=taa_requested;', capture)
+        self.assertIn('else if(taa_sky_history_strict)taa_sky_history_exit_px=.25f;', capture)
         self.assertIn('L"X3M_TAA_SKY_HISTORY_EXIT_PX"', capture)
 
     def test_line_filter_is_absent_unless_given(self):

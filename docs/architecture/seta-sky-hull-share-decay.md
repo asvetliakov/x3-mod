@@ -6,8 +6,9 @@ silhouette, so the 3-12 px trail behind a SETA silhouette disappears without tou
 static edges or the flickering sky's ordinary accumulation. Predecessors:
 `seta-motion.md` sections 3 (strict term) and 4 (band term); evidence
 `verification/results/run249-band/` (Run67 DLL, strict + band 3 px, `/tmp/x3-bottleX3-run249`).
-Status: **implemented 2026-09-22 (fixture-proven, awaiting review and commit; `docs/verification/temporal-resolve.md`
-"2026-09-22 exit reset"), default off until flown.** Sections 1, 4, 6 and 7 describe the as-built form; section 5 is the
+Status: **implemented 2026-09-22 (fixture-proven, committed d2f883c9; `docs/verification/temporal-resolve.md`
+"2026-09-22 exit reset"). Default on since 2026-09-23 after Run 68 A: `--taa` resolves `--taa-sky-history strict` and
+`--taa-sky-history-exit-px 0.25` (0 without an age program); `loose` / `0` opt out.** Sections 1, 4, 6 and 7 describe the as-built form; section 5 is the
 design-time comparison as written.
 
 ## 1. Decision (as built)
@@ -147,7 +148,9 @@ That is the one look risk (section 7).
   term is under `#ifdef X3M_AGE_WEIGHT`).
 - Launcher: `--taa-sky-history-exit-px P` (`X3M_TAA_SKY_HISTORY_EXIT_PX`; requires `--taa`; a
   value above 0 also requires `--taa-sky-history strict` and one of the three age options; 0 is
-  the explicit off, accepted with `--taa` alone; else 0.125 <= P <= band px; **default off**).
+  the explicit off, accepted with `--taa` alone; else 0.125 <= P <= band px; **default 0.25 since 2026-09-23 under strict with an age program, otherwise 0**, see the status line). A plain
+  `--taa` launch has no age program, so the reset resolves to 0 there; it is on with `--taa-far-stabiliser` or
+  `--taa-thin-region`.
   The DLL logs `sky_history_exit_px` in `motion_output_mode`, refuses a non-numeric or
   out-of-range value (`taa_sky_history_exit_px_setting invalid=1`) and a positive value without
   strict (`refused=1 reason=requires_strict`). `TemporalPass::run()` validates

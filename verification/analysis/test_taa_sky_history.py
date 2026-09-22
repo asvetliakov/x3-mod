@@ -1,6 +1,7 @@
 """Host tests of --taa-sky-history (X3M_TAA_SKY_HISTORY, docs/architecture/seta-motion.md):
-forwarded only when given, in TAA mode only; an inherited shell value never survives
-a launch that did not ask for it. No game, no Wine."""
+strict and the exit reset 0.25 are the TAA defaults since Run 68 A (2026-09-23), always
+resolved in TAA mode and never forwarded outside it; an inherited shell value never
+survives a launch that did not ask for it. No game, no Wine."""
 import contextlib
 import importlib.util
 import io
@@ -47,10 +48,12 @@ class SkyHistoryLaunch(unittest.TestCase):
         self.assertEqual(code, 0, error)
         return json.loads(output)['env']
 
-    def test_omitted_is_not_forwarded_and_drops_an_inherited_value(self):
+    def test_omitted_resolves_to_strict_with_taa_and_drops_an_inherited_value(self):
+        # Run 68 A (2026-09-23): strict is the default with --taa; loose is the opt-out.
         with tempfile.TemporaryDirectory() as directory:
-            self.assertNotIn('X3M_TAA_SKY_HISTORY', self.env(directory, *TAA))
-            self.assertNotIn('X3M_TAA_SKY_HISTORY', self.env(directory, *TAA, inherited={'X3M_TAA_SKY_HISTORY': 'strict'}))
+            self.assertEqual(self.env(directory, *TAA)['X3M_TAA_SKY_HISTORY'], 'strict')
+            self.assertEqual(self.env(directory, *TAA, inherited={'X3M_TAA_SKY_HISTORY': 'loose'})['X3M_TAA_SKY_HISTORY'], 'strict')
+            self.assertNotIn('X3M_TAA_SKY_HISTORY', self.env(directory, '--motion-output', inherited={'X3M_TAA_SKY_HISTORY': 'strict'}))
 
     def test_strict_and_loose_are_forwarded_verbatim(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -88,14 +91,21 @@ class SkyHistoryLaunch(unittest.TestCase):
             self.assertIn('--taa-sky-history-band-px requires --taa', error)
 
     # --taa-sky-history-exit-px (X3M_TAA_SKY_HISTORY_EXIT_PX; seta-sky-hull-share-decay.md): the exit reset's parallax
-    # floor, forwarded only when given, under strict with an age program, 0 or within 0.125..the band threshold.
+    # floor, 0 or within 0.125..the band threshold; with --taa always forwarded, by default 0.25 under strict with an age
+    # program (Run 68 A, 2026-09-23) and the explicit off 0 otherwise.
     EXIT = ('--taa-sky-history', 'strict', '--taa-far-stabiliser', '0.985')
 
-    def test_exit_px_omitted_is_not_forwarded_and_drops_an_inherited_value(self):
+    def test_exit_px_omitted_resolves_by_strict_and_age_program_and_drops_an_inherited_value(self):
         with tempfile.TemporaryDirectory() as directory:
-            self.assertNotIn('X3M_TAA_SKY_HISTORY_EXIT_PX', self.env(directory, *TAA, *self.EXIT))
-            self.assertNotIn('X3M_TAA_SKY_HISTORY_EXIT_PX', self.env(directory, *TAA, *self.EXIT, inherited={'X3M_TAA_SKY_HISTORY_EXIT_PX': '0.25'}))
-            self.assertNotIn('X3M_TAA_SKY_HISTORY_EXIT_PX', self.env(directory, *TAA, inherited={'X3M_TAA_SKY_HISTORY_EXIT_PX': '0.25'}))
+            self.assertEqual(float(self.env(directory, *TAA, *self.EXIT)['X3M_TAA_SKY_HISTORY_EXIT_PX']), 0.25)
+            self.assertEqual(float(self.env(directory, *TAA, '--taa-far-stabiliser', '0.985')['X3M_TAA_SKY_HISTORY_EXIT_PX']), 0.25)
+            self.assertEqual(float(self.env(directory, *TAA, '--taa-thin-region', '0.97', inherited={'X3M_TAA_SKY_HISTORY_EXIT_PX': '1'})['X3M_TAA_SKY_HISTORY_EXIT_PX']), 0.25)
+            # Resolved off (never an error) without strict or without an age program; forwarded as 0 so the DLL's own
+            # 0.25 fallback cannot apply.
+            self.assertEqual(float(self.env(directory, *TAA, inherited={'X3M_TAA_SKY_HISTORY_EXIT_PX': '0.25'})['X3M_TAA_SKY_HISTORY_EXIT_PX']), 0.0)
+            self.assertEqual(float(self.env(directory, *TAA, '--taa-sky-history', 'loose', '--taa-far-stabiliser', '0.985')['X3M_TAA_SKY_HISTORY_EXIT_PX']), 0.0)
+            self.assertEqual(float(self.env(directory, *TAA, '--taa-far-stabiliser', '0')['X3M_TAA_SKY_HISTORY_EXIT_PX']), 0.0)
+            self.assertNotIn('X3M_TAA_SKY_HISTORY_EXIT_PX', self.env(directory, '--motion-output', inherited={'X3M_TAA_SKY_HISTORY_EXIT_PX': '0.25'}))
 
     def test_exit_px_is_forwarded_as_the_float_given_with_each_age_program(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -125,11 +135,12 @@ class SkyHistoryLaunch(unittest.TestCase):
             code, _, error = self.launch(directory, *TAA, '--taa-sky-history-exit-px', '0.1')
             self.assertNotEqual(code, 0)
             self.assertIn('--taa-sky-history-exit-px must be 0 or within 0.125..the band threshold (3)', error)
-            for args in (('--taa-far-stabiliser', '0.985'), ('--taa-sky-history', 'loose', '--taa-far-stabiliser', '0.985')):
-                code, _, error = self.launch(directory, *TAA, *args, '--taa-sky-history-exit-px', '0.25')
-                self.assertNotEqual(code, 0, args)
-                self.assertIn('--taa-sky-history-exit-px requires --taa-sky-history strict', error)
-            for args in (('--taa-sky-history', 'strict'), ('--taa-sky-history', 'strict', '--taa-far-stabiliser', '0'), ('--taa-sky-history', 'strict', '--taa-thin-region', '0')):
+            code, _, error = self.launch(directory, *TAA, '--taa-sky-history', 'loose', '--taa-far-stabiliser', '0.985', '--taa-sky-history-exit-px', '0.25')
+            self.assertNotEqual(code, 0)
+            self.assertIn('--taa-sky-history-exit-px requires --taa-sky-history strict', error)
+            # strict by default (Run 68 A): an explicit positive value needs only the age program.
+            self.assertEqual(float(self.env(directory, *TAA, '--taa-far-stabiliser', '0.985', '--taa-sky-history-exit-px', '0.5')['X3M_TAA_SKY_HISTORY_EXIT_PX']), 0.5)
+            for args in ((), ('--taa-sky-history', 'strict'), ('--taa-sky-history', 'strict', '--taa-far-stabiliser', '0'), ('--taa-sky-history', 'strict', '--taa-thin-region', '0')):
                 code, _, error = self.launch(directory, *TAA, *args, '--taa-sky-history-exit-px', '0.25')
                 self.assertNotEqual(code, 0, args)
                 self.assertIn('--taa-sky-history-exit-px requires an age program', error)

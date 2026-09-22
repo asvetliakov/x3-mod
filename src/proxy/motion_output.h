@@ -627,11 +627,11 @@ public:
     // X3M_TAA_UNMATCHED_STATIC (default off): 0 off, 1 "node" (a new key whose
     // object was drawn last frame under another key), 2 "all" (any new key).
     void configure_unmatched_static(unsigned mode) noexcept { unmatched_static_ = mode <= 2 ? mode : 0; }
-    // X3M_TAA_SKY_HISTORY=strict (default loose): the resolve's strict sky term whenever the
+    // X3M_TAA_SKY_HISTORY=strict (default with the TAA route since Run 68 A, resolved by the caller): the resolve's strict sky term whenever the
     // camera path is in effect. A sky pixel whose 3x3 holds no routed geometry
     // accepts sentinel history taps only (docs/architecture/seta-motion.md).
     // band_px: X3M_TAA_SKY_HISTORY_BAND_PX (1..16, default 3), the band term's threshold in px/frame (seta-motion.md section 4).
-    // exit_px: X3M_TAA_SKY_HISTORY_EXIT_PX (0 off, else 0.125..band_px; default 0), the exit reset's parallax floor
+    // exit_px: X3M_TAA_SKY_HISTORY_EXIT_PX (0 off, else 0.125..band_px; the caller's default 0.25 under strict since Run 68 A), the exit reset's parallax floor
     // (docs/architecture/seta-sky-hull-share-decay.md); needs strict (the caller refuses it otherwise) and an age program
     // (the far stabiliser, the thin region or the adaptive weight: taa_initialize logs it unavailable and drops it otherwise).
     void configure_sky_history(bool strict, float band_px = 3.f, float exit_px = 0.f) noexcept {

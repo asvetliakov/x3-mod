@@ -666,6 +666,14 @@ both so the next run can tell); the read observes only views that issue a
 per-view Clear; the first frame, every cut and every Reset resolve
 current-only for one frame.
 
+**Sky history default (2026-09-23, Run 68 A).** With `--taa` the launcher resolves
+`X3M_TAA_SKY_HISTORY=strict` (the strict sky term, band threshold at the DLL default
+3 px/frame) and `X3M_TAA_SKY_HISTORY_EXIT_PX=0.25` when an age program is in effect
+(else 0: a plain `--taa` launch has none; `--taa-far-stabiliser` or `--taa-thin-region`
+turns it on); the DLL falls back to strict with TAA on and 0.25 under strict when the
+variables are absent. `--taa-sky-history loose` and `--taa-sky-history-exit-px 0` opt
+out ([seta-sky-hull-share-decay.md](seta-sky-hull-share-decay.md)).
+
 ## Stage 3 of the HDR scene path: TAA on HDR (2026-09-12)
 
 Implemented per [hdr-scene-path.md](hdr-scene-path.md) §3 ("TAA on HDR")

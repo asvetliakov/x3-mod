@@ -1800,3 +1800,14 @@ normal-speed flyby and pan. Scripts and outputs: `verification/results/run254-ex
 0.25 become the launcher and DLL defaults (`--taa-sky-history loose` and
 `--taa-sky-history-exit-px 0` opt out). The age/mask readbacks of the three bursts were
 copied from the bottle's capture folder into the run directory (identical colour bytes).
+
+**Defaults merged (2026-09-23):** `--taa-sky-history strict` and `--taa-sky-history-exit-px 0.25`
+are the launcher and DLL defaults whenever TAA is on (0.25 only under strict with an age
+program, i.e. with `--taa-far-stabiliser` or `--taa-thin-region`; a plain `--taa` launch
+resolves 0). Evidence: `verification/results/sky-history-default/dry_run_env_out.txt`
+(four cases) and `compare_motion_output_out.txt` (motion-output suite 190 cases / 271,369
+checks identical to the committed run after the fixture mirror and runner were aligned);
+one review (Opus) with fixes; post-merge gate: host suite 231 modules / 2,333 tests with
+only the two installer-lock modules failing while the user's game held the lock and
+`test_bob1` skipping its live-overlay case, production scratch build OK, x87 638 reachable /
+0 violations. All measured.
