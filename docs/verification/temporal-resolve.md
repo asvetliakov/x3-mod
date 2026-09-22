@@ -1272,3 +1272,82 @@ for both mask programs.
 
 Mask program bytecode: plain `temporal_line_mask` 1196 -> 1401 DWORDs; camera `temporal_line_mask_camera` 1101 -> 1307 DWORDs
 (`verification/results/temporal-line-mask{,-camera}-program.json` carry the sha256 of each).
+
+## Run 235: SETA approach smear (2026-09-22)
+
+Run `/tmp/x3-bottleX3-run235` (Run65 candidate 2d11aac4, `--sun-occlusion
+--sun-occlusion-log --sun-occlusion-core-f --capture-delay 300`, TAA thin-region
+0.97 camera gate, sentinel stabiliser 0.7, unmatched-static node, fog off).
+Two F8 bursts captured (`capture_armed` -> `start_frame=5152`, `start_frame=6967`,
+each 32 frames, 1280x768). Readback formats confirmed from the log:
+`depth_1_*.rgba32f` carries the depth in channel R (sentinel `-1.0`, matching
+`test_motion_readback.py`'s "same statistics from `.r`" contract for the
+`rgba32f` depth-format variant); `motion_1_*.rgba32f` alpha is 1 valid / -1
+sentinel with xy in **pixels** (not UV).
+
+Burst 1 (5152-5183) is a near-collision frame: depth >=0.99 non-sentinel
+geometry already covers the full 1280x768 frame every sample (390-391k px,
+centroid stationary at ~661,569) - no open sky to smear against, not usable
+for the disocclusion question.
+
+Burst 2 (6967-6998) is the useful approach: the station's silhouette (depth
+bucket 0.99-1.0, distinct from a fixed low-depth cockpit cluster at
+0.938-0.963 that repeats near-identically between bursts) grows steadily,
+leading edge moving from x=192 to x=83 over 31 frames, roughly -3 to -5 px/frame
+(`probe1.py` left-edge trace).
+
+**Motion buffer vs. measured silhouette speed.** Inside/around the station
+region the motion vector magnitude never exceeds ~1.3-1.4 px across the whole
+routed buffer for any sampled frame (max 1.2549/1.3341/1.3671 px at frames
+6970/6980/6990; median ~0.9-1.0 px, p99 ~1.23-1.33 px), while the silhouette
+itself moves 3-5 px/frame. The routed/alpha=1 fraction inside the bbox is
+0.9993-1.0 (motion is present, not simply missing). The vectors are **3-5x too
+small** for the true screen motion; the small growth of the max value frame
+to frame (1.25 -> 1.33 -> 1.37) is not a hard round-number clamp.
+
+**Smear geometry (dark = present darker than color by >40 luma, sky = current
+depth sentinel).** Per frame (6968-6997) dark-sky count 1100-2200 px. Of the
+truly newly-uncovered band (previous-frame station AND current-frame sky),
+only ~5-10% goes dark (493/5592 at f6975, 421/8510 at f6985, 408/9312 at
+f6990) - the one-sided closest-depth disocclusion test **is rejecting most of
+the correctly-reprojected uncovered pixels** as documented (history in front
+of current closest depth rejects). The remaining 75-80% of dark-sky pixels lie
+**outside** the previous frame's station footprint, and a Chebyshev-distance
+histogram to the current silhouette is bimodal: a normal edge band at distance
+1 (~400-560 px, matches the pre-existing <=1px AA-edge finding) plus a large
+tail at distance 13+ (693-1016 px, roughly half of all dark-sky pixels)
+scattered away from any geometry boundary - not concentrated at the trailing
+edge as pure in-place disocclusion (H1) would predict.
+
+**Temporal decay.** 20 dark sky pixels sampled at f6975 and tracked 8 frames
+in `taa_`: most decay very slowly (a few % per frame, e.g. 0.0625->0.0582,
+0.2047->0.2026), far slower than a single bad injection at the documented 0.9
+history weight would predict if immediately rejected thereafter, i.e. the
+pixel keeps re-accepting bad history rather than being caught once and
+cleared. A minority instead flicker frame to frame (values swinging between
+~0.02 and ~0.33), consistent with jitter-driven resampling of nebula detail,
+not the smear.
+
+**Log correlation.** `motion_unmatched_static_frame` fires mid-burst
+(frame=6969 `applied=38`, frame=6973 `applied=17 object_unknown=2`) - the
+unmatched-static path is live in this exact window. `camera_cut=0` and
+`cut_missing` ~0 throughout (no camera-cut invalidation event masks the
+result). `gate6` (disocclusion rejections per `motion_output_frame`) is mostly
+0 with occasional bursts (19-38) coincident with the unmatched-static frames,
+i.e. rejection is intermittent rather than continuous while the station keeps
+moving.
+
+**Outcome:** the numbers do not support pure H1 (in-place disocclusion
+ghosting): the correct newly-uncovered band is mostly rejected, and most dark
+pixels lie away from both the current silhouette and the previous frame's
+footprint. They support **H2** (motion vectors undersized for SETA-speed
+approach, measured 3-5x too small versus the observed silhouette speed),
+compounded by a persistent-history path: the `motion_unmatched_static_frame`
+node is active in the same frames, and the slow multi-frame decay of many dark
+pixels looks like repeated re-acceptance of stale history rather than a single
+rejected disocclusion event. This evidence cannot on its own attribute the
+mechanism to the unmatched-static node specifically versus another
+per-pixel history-acceptance path; that requires a diagnostic dump of the
+resolve's per-pixel accept/reject decision and the motion source (game vs.
+unmatched-static-substituted) for the dark-sky pixel set, which this capture
+does not carry.

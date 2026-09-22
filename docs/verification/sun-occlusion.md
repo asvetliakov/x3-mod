@@ -428,3 +428,14 @@ and every `_state_restored` check passes; `before_reset` releases 13 objects (th
 have different `def` registers and therefore separate blocks). Under wined3d a `def` never touches the constant
 file, so the readback cannot show the native failure; the fixture proves the block records and restores the
 registers.
+
+## Run 235 sun check (2026-09-22)
+
+`sun_occlusion_config` shows `core_f=1` (one banner line, as before). Burst 2
+(6967-6998) has the sun out of view the whole time (`sun_visibility skip=record
+... f_raw=-1.0000` every frame) so it gives no edge data. Across the rest of
+the run's `single=1 answered=1` samples, the still half-covered case
+(`f_raw=0.6562`) recurs at every `jitter_index` 0-7 with no alternation by
+jitter (counts 97-143 per index, same value) - the shimmer fix holds; matches
+the user's "shimmer reduced or gone" report. Not independently re-derived
+beyond this count; no new edge-walk measurement was taken this run.
