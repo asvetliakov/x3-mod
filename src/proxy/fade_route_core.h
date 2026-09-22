@@ -97,21 +97,17 @@ inline float lightmap_far_gain(float w, bool camera_valid, float m00, float widt
     if (t >= 1.f) return floor;
     return gain + (floor - gain) * t;
 }
-// Hull emissive widening (--hull-emissive-widening K,Q0,Q1;
-// hull-emissive-widening.md section 1.5): the per-draw gradient scale k of one
-// draw, from the same footprint as the far fade: 1 up to Q0, K from Q1, linear
-// between (inv = 1 / (Q1 - Q0)); both ends exact, so a near draw binds the
-// un-widened variant and a far one gets K itself. No camera, a nonpositive
-// scale or an origin at or behind the camera plane (near) keeps 1: the
-// widening never fires without the footprint. One division, no branches on the
-// device; SSE scalar arithmetic only.
-inline float lightmap_widen_scale(float w, bool camera_valid, float m00, float width, float k,
-                                  float q0, float inv) noexcept {
-    if (!camera_valid || !(m00 > 0.f) || !(width > 0.f) || !(w > 0.f)) return 1.f;
-    const float t = (2.f * w / (m00 * width) - q0) * inv;
-    if (!(t > 0.f)) return 1.f;
-    if (t >= 1.f) return k;
-    return 1.f + (k - 1.f) * t;
+// Hull emissive widening (--hull-emissive-widening K[,B];
+// hull-emissive-widening.md section 8.3 R1): the per-draw lane the widened
+// block multiplies the squared UV gradient by, (size . K)^2 for one axis of
+// the bound light map (level-0 texels), so that the block's k = clamp(K .
+// texels per pixel, 1, K) is the light map's own footprint, not the object
+// origin's distance. An unknown size (0: no 2D texture on the stage yet)
+// gives 0, which the block reads as k = 1. Two multiplies; SSE scalar only.
+inline float lightmap_widen_scale(std::uint32_t size, float k) noexcept {
+    if (!size || !(k > 0.f)) return 0.f;
+    const float scaled = float(size) * k;
+    return scaled * scaled;
 }
 // The vertex program's alpha (asteroid-fog-temporal.md, "Exact shader alpha"):
 // COLOR0.a = g_AlphaValue.x * saturate(g_FogClip.x - g_FogClip.y * distance)

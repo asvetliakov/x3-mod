@@ -69,7 +69,7 @@ constexpr D3DRENDERSTATETYPE D3DRS_ZENABLE = 7, D3DRS_FILLMODE = 8,
 constexpr std::size_t motion_shadow_state_count = 32;
 constexpr std::size_t sampler_stage_count = 16;
 constexpr unsigned failure_log_limit = 16;
-constexpr D3DSAMPLERSTATETYPE D3DSAMP_MIPFILTER = 7, D3DSAMP_MIPMAPLODBIAS = 8,
+constexpr D3DSAMPLERSTATETYPE D3DSAMP_MINFILTER = 6, D3DSAMP_MIPFILTER = 7, D3DSAMP_MIPMAPLODBIAS = 8,
     D3DSAMP_SRGBTEXTURE = 11;
 
 struct D3DCAPS9 {
@@ -249,9 +249,10 @@ public:
         std::uint32_t cutout_opaque_reasons[x3m::renderer::sun_untracked_reason_count]{};
     } counters_;
     struct Sampler {
-        DWORD saved_bias = 0, srgb = 0, mipfilter = 0;
-        bool srgb_known = false, mipfilter_known = false, saved_known = false, biased = false;
+        DWORD saved_bias = 0, srgb = 0, mipfilter = 0, minfilter = 0;
+        bool srgb_known = false, mipfilter_known = false, saved_known = false, biased = false, minfilter_known = false;
     } samplers_[sampler_stage_count];
+    bool lightmap_widen_ = false; // hull emissive widening: off in this harness (the MINFILTER shadow branch of set_sampler_state)
     std::uint32_t sampler_biased_mask_ = 0;
     std::uint32_t mip_bias_total_restores_ = 0, mip_bias_total_game_writes_ = 0;
     std::uint32_t mip_bias_total_failures_ = 0;

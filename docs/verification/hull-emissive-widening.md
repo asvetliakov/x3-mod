@@ -1,8 +1,8 @@
 # Hull emissive widening: verification ledger
 
-Feature: `--hull-emissive-widening K,Q0,Q1` (`X3M_HULL_EMISSIVE_WIDENING`), design
-[hull-emissive-widening.md](../architecture/hull-emissive-widening.md), problem
-[thin-glow-lines.md](../architecture/thin-glow-lines.md). Default off; nothing installed.
+Feature: `--hull-emissive-widening K[,B]` (`X3M_HULL_EMISSIVE_WIDENING`; the first build took `K,Q0,Q1`), design
+[hull-emissive-widening.md](../architecture/hull-emissive-widening.md) ("As built (R1 + R2)"), problem and revision
+[thin-glow-lines.md](../architecture/thin-glow-lines.md) §8.3. Default off; nothing installed.
 
 ## 2026-09-22: built and qualified on the fixture (WIP, worktree branch)
 
@@ -214,3 +214,125 @@ periodic signal as the resolve's, only compressed further, not injected or ampli
 here is to *damp* the resolved wobble (likely display-range clamping near the AgX/white-target ceiling on this bright
 strip), not to add gain. **Answer: the displayed rest flicker is the TAA residual, further reduced (not amplified) by
 sharpen/bloom/tonemap; no post-resolve stage is the amplifier.**
+
+## 2026-09-22 (evening): R1 + R2 revision built and qualified on the fixture (worktree, not installed)
+
+Final state after the two review rounds (axis-separated gate; MINFILTER raised to ANISOTROPIC per widened draw and
+restored; brightness floor `b = saturate(32 L_k - 1)`; minification gate `g = saturate(rho^2 / K - 1)`; static
+flow-control depth 0 with loop/rep/if counted and label/call refused; size shadow keyed by resource identity on
+s2/s3): block 28 instructions, 117 DWORDs, **+35 slots** (largest widened variant **299 of 512**:
+`xt_standard_lighting` f1b0e820c7b488c3 share; the damage share 295; plain 220), three light-map fetches and about
+22 ALU instructions per pixel of every gain hull draw, temporaries rG/rT/rU (share variants reach r26).
+
+Source: transformer `linear_material.cpp` (`lightmap_widen_fetch`: the 26-instruction block, `lightmap_widen_definitions`:
+`def c210/c211/c203`, `lightmap_widen_site`, `linear_material_flow_control_depth`, the emitted-program free-lane proof),
+route `motion_output.cpp` (`configure_hull_emissive_widening(K, B)`, c217.yz = `(W K)^2, (H K)^2` from the light-map
+stage's shadowed level-0 size keyed by pointer and resource identity, the widened variant on every gain draw,
+`ensure_widen_filter` + the `undo` restore, `hull_lightmap_widen_draw` capture-frame line), `capture.cpp` (option
+`K[,B]`, `resource_id` + `GetLevelDesc(0)` beside `GetLevelCount` in the `SetTexture` hook, the sampler hook installed
+for the option), `fade_route_core.h::lightmap_widen_scale(size, K)`, launcher `tools/manage.py`. Bottle X3 (CrossOver
+Preview, arm64 Wine/FEX, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`), fixture seam DLL sha256 `ae8fbed8d1b6…`,
+production `build/d3d9.dll` `cce88b136acc…` (the runner's clean build of this worktree's tree, parent 775c69e7 + the
+diff), scratch production build `build-widen2/d3d9.dll` `959160fc0774…` (same sources; the two builds differ only in
+build directory paths).
+
+### Host
+
+- `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_hull_emissive_widening`: 8 tests OK. The
+  Python reference rebuilds all 600 widened variants byte for byte from the gained ones (the 117-word block, the three
+  DEFs at the first `dcl`, rG = highest temporary + 1, rT/rU = rG + 1/2, max r24/r26 in the share variants); +131
+  DWORDs, +27 instructions, +35 weighted slots everywhere; the 8 programs without the term unchanged; K/B out of
+  range and `widen` with G = 1 refused (InvalidConfig); `B = 1` against `B = 3` differs in the single c210.z literal.
+  `test_free_lanes_and_constants` (the oracle's free-lane proof, 1000 variants): c217 is read once through `.yzyz`
+  (the block) and otherwise only as replicated `.x` (motion) or `.w` (far fade); c210/c211/c203 defined once and read
+  5 / 4 / 3 times in the widened variants, absent from the gained ones. `test_flow_control_depth_refusal`
+  (behavioural: the driver's depth table on synthetic programs): the fetch inside `if`, `rep` and `loop` at depth 1,
+  nested `if`/`loop` 2, after the closing token or outside 0, after `label`/`ret` or `call` -2 (`Subroutine`),
+  off-boundary and site-0 -1 (12 checks); all 100 corpus programs transform, so their fetch is at depth 0. Launcher: `K`, `K,B` accepted with `B` defaulting to K, `B` outside `[1, K]`, three fields and non-finite
+  values refused. `test_hull_lightmap_gain` 9 OK, `test_motion_output_runner` 12 OK (73 HDR cases),
+  `test_motion_wrap_states` 4 OK (the extracted bind/undo paths with the filter fields stubbed), `test_motion_hdr_scene`
+  1 OK, `test_linear_cutout_contract` 4 OK.
+- Coverage JSON regenerated: 101 SM3 light-map programs, 100 widened (44 at s2, 56 at s3), moon excluded; largest
+  widened variant **299 of 512** slots (was 271 in the first build).
+- `python3 verification/probe/check_no_x87.py build-widen2/d3d9.dll`: 639 reachable functions, no violations.
+- Full `/usr/bin/python3 verification/probe/run_host_suite.py`: **226 modules, 2245 tests, 0 failing modules**
+  (about 80-90 s wall, 12 jobs).
+
+### Fixture (`X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py ... seam-lightmap-widen-{off,k2,k3b1,k3,k4,k3-aniso,programs}`)
+
+Record: [hull-emissive-widening-seam.json](../../verification/results/bottle-X3/hull-emissive-widening-seam.json)
+(untracked capture logs and stdout beside it). 256 x 256 target, gain 4, the standard DEFAULT pair, a 64-texel light
+map (A8R8G8B8 with an exact box mip chain; DXT1 copies of the 1-texel strip and the panel through the fixture's own
+encoder, `LIGHTMAP_WIDEN_DXT1 available=1`), the quad's pixel size setting `rho = K . 64 / quad` (192 -> 1, 96 -> 2,
+64 -> 3, 32 -> 6, 128 -> 1.5 for K = 3), a 24-texel panel drawn rotated 45 degrees on screen (`panel_rot45`), 8
+sub-pixel phases, every frame drawn widened and with the widening suppressed (the gained `texld`) in the same process; the light-map stage LINEAR with MAXANISOTROPY 16 (the flight's
+value on every stage) so the route raises MINFILTER on every widened draw; `k3-aniso` sets ANISOTROPIC itself (no
+raise). 472-508 checks per case, 80 for the programs case. `I` below is the term of a full texel (the panel interior,
+3.998 in every case); "base" is the same-phase un-widened frame; the model is the runner's box-mip/trilinear model of
+the block with two-tap anisotropic coarse fetches (`lightmap_widen_model`).
+
+| case | strip 1 texel, rho 2 (1.5 px): peak / I, x base | rho 3 (1 px) | rho 6 (0.5 px) | per-phase peak ratio at rho 3 | half-peak width rho 3 (px) | strip energy x base (rho 3) | measured / model (peak, energy) |
+|---|---|---|---|---|---|---|---|
+| off | 0.83, 1 | 0.75, 1 | 0.38, 1 | 0.500 | 1.38 | 1 | - |
+| K 2, B 2 | 0.83, 1.000 (k 1.33, magnified: g = 0, hash-identical to base) | 0.88, 1.17 (k 2) | 0.44, 1.17 | 0.750 | 1.12 | 1.50 | 1.004, 1.006 |
+| K 3, B 1 | 0.65, 0.78 (k 2) | 0.298, 0.398 | 0.149, 0.396 | 0.862 | 3.12 | 1.003 | 1.013, 1.007 |
+| K 3, B 3 | 1.08, 1.29 (k 2, g 0.33) | 0.896, 1.19 | 0.448, 1.19 | 0.862 | 1.88 | 2.01 | 1.013, 1.015 |
+| K 3, B 3, aniso | 1.08, 1.29 | 0.896, 1.19 | 0.448, 1.19 | 0.862 | 1.88 | 2.01 | 1.013, 1.015 |
+| K 4, B 4 | 1.63, 1.96 (k 2.67, g 0.78) | 0.94, 1.26 | 0.47, 1.25 | 0.875 | 2.38 | 2.49 | 1.00, 1.01 |
+
+- **k = 1 is the texld, bit for bit**: at rho <= 1 (quad 192, K 2/3) and at k 1.33 with both fetches still magnified
+  (quad 192, K 4; quad 128 strip4 at K <= 3) every widened frame hashes equal to its suppressed frame (`identical_to_base`
+  on `strip1/192`, `strip4/128`, `panel/192` in every case, the raised anisotropic filter included). Programs case:
+  the block at k = 1 against the gained `texld` on all 11 family pairs: **0 FP16 codes differ** over the whole target.
+- **MINFILTER raise and restore**: every widened draw of the LINEAR stage counts one raise (`filter_sets` = 91 per
+  case = the 93 widened frames minus the two oblique aniso16 frames; 0 in `k3-aniso`; 0 on every suppressed and F4-off
+  frame; `filter_failures` 0), the fixture reads the stage's MINFILTER back after every draw and finds its own value
+  (LINEAR, or ANISOTROPIC where it set it) on all 1,267 frames of the seven cases, and the session line's
+  `filter_sets` equals the frame sum. The programs case raises on both widened draws of every pair (`filter_sets=1,1`).
+- **B = 1 is the energy-conserving law**: strip energy x1.003 of the un-widened at rho 3, peak `I w / k` (0.298 I
+  measured against 0.333 I ideal, the 8-phase mean of a 1-px strip under the trilinear fetch; model 1.013), width
+  1.38 -> 3.12 px, per-phase ratio 0.862 (the first build's 0.867; design floor 0.833).
+- **B = K restores about I w**: the 1-px strip at rho 3 shows 0.896 I with B = K = 3 (x3.0 against B = 1,
+  `boost_vs_b1`; 0.888 I before the brightness floor: the floor is inert on strips, whose widened luma 1/3 and 1/6 sit
+  above its 1/16 knee), the 0.5-px strip 0.448 I (= 0.9 I w); the per-phase ratio stays 0.862. The 1.5-px strip at
+  rho 2 (k = 2 < K) reads 1.08 I under the minification gate (`g = rho^2 / K - 1 = 0.33`; 1.94 I = `I w K / k`
+  without it), the design's over-brightening band reduced to x1.29 of the un-widened; at K = 4 the 1-px strip
+  reaches 0.94 I and the 1.5-px one 1.63 I (g 0.78).
+- **Panels, corners, DXT1**: interior within 1.3e-5 of the un-widened (1 FP16 code) at every K and B; the 1-D edge
+  rim **and the screen-aligned convex corners exactly 1.000 x interior with 0 boosted pixels** on the A8R8G8B8 and the
+  DXT1 panel at K 2 / 3 / 4 (before the anisotropic raise the LINEAR stage boosted the corners to B x: 4 / 13 / 32
+  pixels; no `t > 0` remains anywhere on either panel). **Rotated corner (finding, decided after the flight)**: the
+  24-texel panel rotated 45 degrees on screen puts its convex corners on the diagonal of both screen axes, where the
+  axis-separated ratios both rise: corner **1.27 / 1.96 / 2.48 x interior, 4 / 16 / 28 boosted pixels** per frame at
+  K 2 / 3 / 4 (anisotropic filter; the rotated interior itself within 1e-3 of the un-widened). Recorded, no redesign. The DXT1 strip is 3.5 % brighter than the A8R8G8B8 one (565
+  quantisation of the mip levels), model ratio 1.044.
+- **4-texel strip**: 8 px at rho 1.5 unboosted and identical to the un-widened (r = 1); 4 px at rho 3 (1.33 k)
+  **not boosted** under the anisotropic coarse taps (0.714 x base, the un-boosted widened value; 2.12 x before the
+  raise); 4 px at K 2 (= 2 k) 1.000 x (2.00 x before the raise: the misaligned coarse texel no longer opens the gate).
+- **Transition band, closed by the minification gate**: the 1.5-px strip at K 2 (k 1.33, the widened fetch still
+  magnified) toggled its boost with the sub-pixel phase before the gate (peaks 2.67-8.0, per-phase ratio 0.33); with
+  `g = 0` there it is now **hash-identical to the un-widened texld** on all 8 phases (`identical_to_base`), and every
+  row with `rho >= 1` keeps its boost (the model asserts the minified rows, k / w >= 1).
+- F4 off drops gain and widening together (0 / 0 draws, no raise); after Reset the frame binds the widened variant
+  again; `hull_lightmap_widen_frame` lines on all 181 gain frames, `hull_lightmap_widen_draw` on the 7 capture-frame
+  widened draws (`size=64x64 c=K scale=(64 K)^2,(64 K)^2`), one summary with `widened_draws=93`.
+- **Oblique** (perspective rows, LINEAR against ANISOTROPIC 16): the LINEAR pair now equals the anisotropic one (the
+  route raises it): the 3-px strip factor is **1.00** at K 3 (3.89 both; 2.84 before the raise) and both peaks match
+  at rho 3 (6.048 / 6.048), so `aniso_applied` is false everywhere (the hashes agree).
+- **Programs**: `CreatePixelShader` accepts the widened form of all **100** light-map programs of the local corpus
+  (495 ps programs scanned, 100 applied, 100 created, D3DX maximum 184 slots for the static-gain plain variants);
+  D3DX slots on the 11 drawn pairs gained -> widened: 79->114, 78->113, 79->114, 78->113, 77->112, 90->125, 91->126,
+  89->124, 77->112, 129->164, 109->144 (**+35 each**).
+
+### Cost
+
+Three light-map fetches and about 22 ALU instructions per pixel of every gain hull draw (near hulls included: the
+widened variant binds at k = 1 too), one `SetSamplerState` before and after each widened draw whose light-map stage is
+LINEAR (about half of the stage-3 draws in run231), one `GetPrivateData` per `SetTexture` call that binds a new pointer
+on s2 or s3 while the option is on (a reallocation at the same pointer without an intervening rebind is not detected).
+**Unmeasured in flight**: no GPU timer exists in the proxy; the fps overlay is the flight measure (compare with the
+same scene at `--hull-emissive-widening` off).
+
+Not measured here: the post-resolve (TAA) behaviour (R3 is the TAA-side change), the flight cost above, non-square light
+maps (the per-axis lanes are exercised with W = H = 64 only), MAXANISOTROPY below 2 (the raise would be inert; run231
+holds 16 throughout). Native Windows: cross-compiled only.

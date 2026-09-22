@@ -23,7 +23,9 @@ struct LinearMaterialConfig {
 };
 enum class LinearMaterialResult {
     Applied, InvalidInput, InvalidConfig, UnsupportedShader, ProfileMismatch,
-    ResourceLimit, AllocationFailure
+    ResourceLimit, AllocationFailure,
+    FlowControl, // hull emissive widening: the light-map fetch sits inside loop/rep/if (dsx/dsy need depth 0)
+    Subroutine   // hull emissive widening: a label/call/callnz/ret precedes the fetch (the static walk cannot place it)
 };
 struct MaterialExposureAbi {
     static constexpr unsigned vertex_constant = 250; // x = 1/e
@@ -138,6 +140,17 @@ LinearMaterialResult linear_material_pixel_variant_sun_share(const std::uint32_t
 LinearMaterialResult linear_material_original_fill_pixel_variant(const std::uint32_t* original,
     std::size_t words, float fill, std::vector<std::uint32_t>& output, bool current_depth,
     bool& fill_applied) noexcept;
+// Hull emissive widening parameters (K, B; see the widen paragraph below).
+struct HullLightmapWiden { float k = 3.f; float b = 3.f; };
+// Static flow-control depth of the instruction at DWORD offset `site` of a
+// ps_3_0 program: loop/rep/if/ifc open a level, endloop/endrep/endif close one
+// (else keeps it). -1 when the walk does not land on an instruction boundary
+// at `site` or the program is malformed; -2 when a label, call, callnz or ret
+// precedes the site (a subroutine the static walk cannot place). The widening
+// refuses a fetch at depth > 0 (LinearMaterialResult::FlowControl) or after a
+// subroutine construct (Subroutine): dsx/dsy are undefined inside dynamic flow
+// control. Pure, no D3D.
+int linear_material_flow_control_depth(const std::uint32_t* code, std::size_t words, std::size_t site) noexcept;
 // Original-shading share producer (docs/architecture/legacy-sun-application.md
 // 1): the fill variant above (K = fill, K = 0 is the plain motion variant)
 // plus the sun's code-value contribution S_c propagated on the original
@@ -158,7 +171,7 @@ LinearMaterialResult linear_material_original_fill_pixel_variant(const std::uint
 LinearMaterialResult linear_material_original_sun_share_pixel_variant(const std::uint32_t* original,
     std::size_t words, float fill, std::vector<std::uint32_t>& output, bool current_depth,
     bool& share_applied, float lightmap_gain = 1.0f, bool* lightmap_gain_applied = nullptr,
-    bool lightmap_dynamic = false, bool widen = false, bool* widen_applied = nullptr) noexcept;
+    bool lightmap_dynamic = false, const HullLightmapWiden* widen = nullptr, bool* widen_applied = nullptr) noexcept;
 // Hull self-illumination gain (docs/reverse-engineering/hull-self-illumination.md
 // 5, --hull-lightmap-gain): the fill variant above (K = fill, K = 0 the plain
 // motion variant) plus, in the 100 reviewed programs that add a light-map
@@ -176,18 +189,30 @@ LinearMaterialResult linear_material_original_sun_share_pixel_variant(const std:
 // (MaterialMotionAbi::pixel_mode_constant), so the caller MUST upload the
 // effective gain there on every draw that binds the variant. dynamic = false
 // is byte for byte the program above.
-// widen (docs/architecture/hull-emissive-widening.md, --hull-emissive-widening,
-// both entry points): the gained variant's light-map `texld rL, v1, s` is
-// replaced by `dsx rG.xy, v1 / dsy rG.zw, v1.xyxy / mul rG, rG, c217.z /
-// texldd rL, v1, s, rG.xy, rG.zw` (+3 instructions, +7 slots, +12 DWORDs, one
-// temporary above the program's highest); the sampler then filters the light
-// map over a k x k pixel footprint, k the per-draw factor the caller MUST
-// upload in c217.z (1 = the un-widened image; the route binds the un-widened
-// gained variant at k = 1 instead). No intensity rescale. widen_applied
-// reports it (equal to gain_applied); widen with G = 1 is InvalidConfig.
+// widen (docs/architecture/hull-emissive-widening.md 8.3 R1/R2,
+// --hull-emissive-widening K[,B], both entry points): the gained variant's
+// light-map `texld rL, v1, s` is replaced by a 28-instruction block (117 DWORDs,
+// +35 weighted slots, three temporaries rG/rT/rU above the program's highest):
+// dsx/dsy of v1 into rG; the light map's own texel footprint per pixel
+// rho^2 = max(|dUV/dx|^2, |dUV/dy|^2) . (W c, H c)^2 from the per-draw lanes
+// c217.yz (the caller MUST upload ((W c)^2, (H c)^2) of the bound light map
+// on every draw that binds the variant; 0 gives k = 1); k = clamp(rho, 1, K)
+// (rsq, max_sat against 1/K, rcp); `texldd rL, v1, s, k rG` (the sampler
+// filters the light map over a k x k pixel footprint); two coarse texldd with
+// one axis of the gradients doubled each (2 k on x, then on y);
+// r = luma(rL) / max(min(luma_x, luma_y), 2^-8) (the larger axis ratio: a
+// strip 2.0, a 1-D edge and a convex corner 1.33), t = saturate((r - 1.35)
+// / 0.15), b = saturate(32 luma(rL) - 1) (no boost below luma 1/32, full from
+// 1/16), g = saturate(rho^2 / K - 1) (no boost while the widened fetch is still
+// magnified), rL.xyz *= 1 + (B - 1) t b g (the guarded thin-emitter boost). Three
+// shader-local DEFs: c210 = (1/K, 2^-8, B - 1, 1/0.15), c211 = (Rec.709 luma,
+// 9), c203 = (32, 1, 0, 0); all proven free of the original. The fetch must
+// sit at flow-control depth 0 (FlowControl otherwise). No intensity rescale otherwise. K
+// finite in (1, 8], B finite in [1, K]; widen with G = 1 or out-of-range
+// K/B is InvalidConfig. widen_applied reports it (equal to gain_applied).
 LinearMaterialResult linear_material_hull_lightmap_gain_pixel_variant(const std::uint32_t* original,
     std::size_t words, float fill, float gain, std::vector<std::uint32_t>& output, bool current_depth,
-    bool& fill_applied, bool& gain_applied, bool dynamic = false, bool widen = false, bool* widen_applied = nullptr) noexcept;
+    bool& fill_applied, bool& gain_applied, bool dynamic = false, const HullLightmapWiden* widen = nullptr, bool* widen_applied = nullptr) noexcept;
 // The light-map sampler stage of a reviewed hull/palette/XT pixel program (2 for
 // DEFAULT layouts, 3 for BUMPMAP), 0 for a program without the term (glass,
 // asteroid) or an unreviewed one. Table lookup only, no bytecode.

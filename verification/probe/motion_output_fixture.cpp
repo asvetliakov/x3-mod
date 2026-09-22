@@ -571,7 +571,7 @@ struct Fixture {
         config.emission_scene_owner = emissions || suncomposition;
         config.force_taa_readback = sunlane || (emissions && !emission_bench);
         config.observe_native_wrap = materialwrap || materialxt || materialglass;
-        config.force_lightmap_widen = widen_force; // the widening script's texldd(k=1) against texld frame
+        config.suppress_lightmap_widen = widen_suppress; // the widening script: the gained texld against the block at k = 1
         if (object) config.scope = object->scope;
         configure(&config);
     }

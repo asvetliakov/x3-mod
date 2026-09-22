@@ -46,6 +46,7 @@ struct MotionRoute {
  bool original_fill=false; // X3M_ORIGINAL_FILL: the bind path records the fill variant it selected
  bool hull_lightmap=false; // hull light-map gain PS selected in the routed pair
  bool hull_lightmap_widen=false,alpha_tested=false; // hull emissive widening: the widened PS selected; the draw's alpha test (never here)
+ bool widen_filter_set=false;std::uint8_t widen_filter_stage=0;DWORD widen_filter_saved=0; // hull emissive widening: MINFILTER raised for the draw (never here: the option is off)
  // Scoped owned restoration references taken once per routed draw.
  Shader*restore_vs=nullptr,*restore_ps=nullptr;bool restore_held=false;
 };
@@ -63,10 +64,14 @@ struct Device {
 };
 using GetRenderStateFn=HRESULT(*)(Device*,D3DRENDERSTATETYPE,DWORD*);
 using SetRenderStateFn=HRESULT(*)(Device*,D3DRENDERSTATETYPE,DWORD);
+using D3DSAMPLERSTATETYPE=unsigned;constexpr unsigned D3DSAMP_MINFILTER=6;
+using SetSamplerStateFn=HRESULT(*)(Device*,DWORD,D3DSAMPLERSTATETYPE,DWORD);using GetSamplerStateFn=HRESULT(*)(Device*,DWORD,D3DSAMPLERSTATETYPE,DWORD*);
 using SetPsFn=HRESULT(*)(Device*,Shader*);using SetVsFn=SetPsFn;
 using GetVsFn=HRESULT(*)(Device*,Shader**);using GetPsFn=GetVsFn;
 using SetConstantsFFn=HRESULT(*)(Device*,unsigned,const float*,unsigned);
-enum{GetRenderState,SetRenderState,SetPixelShader,SetVertexShader,GetVertexShader,GetPixelShader,SetVertexShaderConstantF,SetPixelShaderConstantF};
+enum{GetRenderState,SetRenderState,SetPixelShader,SetVertexShader,GetVertexShader,GetPixelShader,SetVertexShaderConstantF,SetPixelShaderConstantF,SetSamplerState,GetSamplerState};
+HRESULT set_sampler(Device*,DWORD,D3DSAMPLERSTATETYPE,DWORD){return E_FAIL;} // never reached: the widening is off in this seam
+HRESULT get_sampler(Device*,DWORD,D3DSAMPLERSTATETYPE,DWORD*){return E_FAIL;}
 HRESULT get_state(Device*d,unsigned s,DWORD*v){++d->gets;for(auto n:d->fail_get)if(n==d->gets)return E_FAIL;*v=d->states[s];return S_OK;}
 HRESULT set_state(Device*d,unsigned s,DWORD v){
  ++d->sets;d->writes[(d->sets-1)%d->writes.size()]={s,v};HRESULT result=d->set_result[d->sets];
@@ -116,7 +121,9 @@ public:
  template<class F,class...A> HRESULT direct_call(unsigned n,A...a){return native<F>(n)(device_,a...);} // the route's value-only entry
  template<class F> F native(unsigned n){switch(n){case GetRenderState:return reinterpret_cast<F>(reinterpret_cast<void*>(get_state));case SetRenderState:return reinterpret_cast<F>(reinterpret_cast<void*>(set_state));
  case SetPixelShader:return reinterpret_cast<F>(reinterpret_cast<void*>(set_ps));case SetVertexShader:return reinterpret_cast<F>(reinterpret_cast<void*>(set_vs));
- case GetVertexShader:return reinterpret_cast<F>(reinterpret_cast<void*>(get_vs));case GetPixelShader:return reinterpret_cast<F>(reinterpret_cast<void*>(get_ps));default:return reinterpret_cast<F>(reinterpret_cast<void*>(set_constants));}}
+ case GetVertexShader:return reinterpret_cast<F>(reinterpret_cast<void*>(get_vs));case GetPixelShader:return reinterpret_cast<F>(reinterpret_cast<void*>(get_ps));
+ case SetSamplerState:return reinterpret_cast<F>(reinterpret_cast<void*>(set_sampler));case GetSamplerState:return reinterpret_cast<F>(reinterpret_cast<void*>(get_sampler));default:return reinterpret_cast<F>(reinterpret_cast<void*>(set_constants));}}
+ bool ensure_widen_filter(MotionRoute&){return false;} // hull emissive widening off: never called (widen_draw is false without the footprint lanes)
  HRESULT bind_target(unsigned,void*){return S_OK;}
  // Mirrors motion_output.h; the bind path reads it for the original-fill gate.
  enum class HdrState{Off,Active,Suspended};HdrState hdr_state_=HdrState::Active;
@@ -128,7 +135,7 @@ public:
  bool sun_lane_requested_=false,sun_lane_qualified_=false,sun_lane_active_=false,sun_lane_failed_=false;
  bool original_fill_requested_=false; unsigned sun_original_refused_draws_=0; // read by the bind path's original-share gate
  bool hull_gain_enabled_=true,hull_lightmap_enabled_=true; std::uint32_t hull_lightmap_draws_=0; // F6 guide-light flag, F4 light-map flag and light-map draw counter read by the bind/after-draw paths
- float lightmap_widen_draw_k_=0.f; struct{DWORD levels=0;}samplers_[16]; // hull emissive widening: this draw's k (0 = off) and the sampler shadow's level counts read by the bind path
+ float lightmap_widen_draw_scale_[2]={0.f,0.f}; struct{DWORD levels=0;}samplers_[16]; // hull emissive widening: this draw's footprint lanes (0 = off) and the sampler shadow's level counts read by the bind path
  unsigned sun_qualifications_=0;void qualify_sun_lane(){++sun_qualifications_;}
  struct{bool failed=false,published=false,available=false,coverage_required=false;unsigned receivers=0,covered=0,untracked=0;}sun_frame_;
  bool screen_emission_bound_=false; // step B locked-prefix request; inert for the wrap-state seam

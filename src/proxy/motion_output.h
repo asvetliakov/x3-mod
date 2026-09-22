@@ -128,7 +128,9 @@ struct MotionRoute {
     bool hull_gain = false;       // Hull-emitter gain PS bound natively for this ONE/ONE draw (emitter plan phase 3); restored after it.
     bool original_fill = false;   // Original-fill PS selected in the routed pair (undone with the route).
     bool hull_lightmap = false;   // Hull light-map gain PS (fill K composed) selected in the routed pair (undone with the route).
-    bool hull_lightmap_widen = false; // The widened light-map variant (k > 1 uploaded in c217.z) selected instead of the gained one.
+    bool hull_lightmap_widen = false; // The widened light-map variant (per-draw texel footprint lanes in c217.yz) selected instead of the gained one.
+    bool widen_filter_set = false;    // The light-map stage's MINFILTER raised to ANISOTROPIC for this widened draw (undo restores widen_filter_saved).
+    std::uint8_t widen_filter_stage = 0; DWORD widen_filter_saved = 0;
     bool vs_set = false, ps_set = false, rt_set = false, write_set = false;
     bool vs_constants_set = false, ps_constants_set = false;
     // Scoped shader restoration (docs/architecture/ownership-shadow-lifetime-diagnosis.md):
@@ -461,7 +463,7 @@ struct MotionOutputFixtureConfig {
     std::uint32_t emission_scene_owner = 0;
     std::uint32_t force_taa_readback = 0; // Successful resolve output only; no per-draw capture.
     std::uint32_t observe_native_wrap = 0; // Native indexed-draw observation only.
-    std::uint32_t force_lightmap_widen = 0; // Bind the widened light-map variant at k = 1 too (the widening script's texldd(k=1) against texld).
+    std::uint32_t suppress_lightmap_widen = 0; // Bind the gained variant instead of the widened one (the widening script's texld against the block at k = 1).
 };
 // Device-owned last native indexed submission. Failure is diagnostic only and
 // never changes source submission, route state, or the caller's WRAP values.
@@ -774,19 +776,22 @@ public:
     // programs and uploads byte for byte the constant-gain ones.
     bool configure_lightmap_far_fade(float p0, float p1, float floor) noexcept;
     bool lightmap_far_fade() const noexcept { return lightmap_far_fade_; }
-    // Hull emissive widening (X3M_HULL_EMISSIVE_WIDENING=K,Q0,Q1; call after
+    // Hull emissive widening (X3M_HULL_EMISSIVE_WIDENING=K[,B]; call after
     // configure_hull_lightmap_gain, before attach; docs/architecture/
-    // hull-emissive-widening.md): beside every gained light-map variant a
-    // widened one whose light-map fetch is a texldd with the pixel's own
-    // gradients scaled by c217.z; every routed draw of a gain pair uploads
-    // k_draw = 1 + (K - 1) * sat((f - Q0) / (Q1 - Q0)) there with the motion
-    // ABI's own two vectors (f the far fade's footprint, units/px), and the
-    // route binds the widened variant only when k_draw > 1 on an opaque,
-    // non-alpha-tested draw whose light-map stage holds a mip chain; at
-    // k_draw = 1 the un-widened gained variant binds (bit-identical bytes).
-    // Finite K in (1, 8], 0 <= Q0 < Q1 <= 1e6; anything else, or no gain,
-    // leaves the option off (no variant, c217.z stays 0).
-    bool configure_hull_emissive_widening(float k, float q0, float q1) noexcept;
+    // hull-emissive-widening.md "As built (R1 + R2)"): beside every gained
+    // light-map variant a widened one whose light-map fetch is the block of
+    // linear_material.h (k = clamp(K . texels per pixel, 1, K) per pixel from
+    // the light map's own footprint, the axis-separated gate, the boost B);
+    // every routed draw of a gain pair uploads ((W K)^2, (H K)^2) of the
+    // light-map stage's shadowed level-0 size in c217.yz with the motion ABI's
+    // own two vectors, and the route binds the widened variant on every
+    // opaque, non-alpha-tested gain draw whose light-map stage holds a mip
+    // chain of known size (the block itself is the texld bit for bit at
+    // k = 1), raising the stage's MINFILTER to ANISOTROPIC for the draw when
+    // the shadowed value is anything else (restored by undo). Finite K in
+    // (1, 8], B in [1, K]; anything else, or no gain, leaves the option off
+    // (no variant, c217.yz stay 0).
+    bool configure_hull_emissive_widening(float k, float b) noexcept;
     bool hull_emissive_widening() const noexcept { return lightmap_widen_; }
     void configure_linear_distance_fade(bool requested) noexcept;
     // Step C of docs/architecture/screen-emission-region.md: the packed screen
@@ -856,10 +861,20 @@ public:
     // After a successful application SetTexture / SetSamplerState (light
     // hooks). `levels` is the texture's level count when `queried` (the hook
     // asks the texture once per pointer change, inside its native section).
-    void set_texture(DWORD stage, IDirect3DBaseTexture9* texture, DWORD levels, bool queried, int reader = 2) noexcept;
+    void set_texture(DWORD stage, IDirect3DBaseTexture9* texture, DWORD levels, bool queried, int reader = 2, DWORD width = 0, DWORD height = 0, std::uint64_t identity = 0) noexcept;
     int composition_texture_reader(DWORD stage, IDirect3DBaseTexture9* texture) noexcept; // native CPU section
     void before_texture_write(IDirect3DBaseTexture9* texture) noexcept;
-    bool texture_levels_wanted(DWORD stage, IDirect3DBaseTexture9* texture) const noexcept;
+    bool texture_levels_wanted(DWORD stage, IDirect3DBaseTexture9* texture, std::uint64_t identity = 0) const noexcept;
+    // Hull emissive widening: the SetTexture hook reads the proxy's resource identity only for the two light-map
+    // stages the transform uses (s2 DEFAULT, s3 BUMPMAP: the coverage JSON) and only when the pointer differs from the
+    // shadow or the shadow's identity is unknown; the identity keys the size shadow with the pointer.
+    bool texture_identity_wanted(DWORD stage, IDirect3DBaseTexture9* texture) const noexcept;
+    // Hull emissive widening: the level-0 size of a newly bound 2D texture is
+    // read once per pointer change beside its level count (GetType,
+    // GetLevelDesc(0), both documented; 0 x 0 for a cube, volume or failed
+    // query), by the SetTexture hook and resync_samplers; never per draw.
+    bool texture_size_wanted() const noexcept { return lightmap_widen_; }
+    static void texture_level0_size(IDirect3DBaseTexture9* texture, DWORD& width, DWORD& height) noexcept;
     void set_sampler_state(DWORD stage, D3DSAMPLERSTATETYPE type, DWORD value) noexcept;
     void before_set_sampler_state(DWORD stage, D3DSAMPLERSTATETYPE type) noexcept;
     void sampler_state_failed(DWORD stage, D3DSAMPLERSTATETYPE type) noexcept;
@@ -1839,16 +1854,20 @@ private:
     float lightmap_fade_min_ = 0.f;             // frame line: least gain drawn
     std::uint32_t lightmap_fade_draws_ = 0;     // frame line: gain draws below the configured gain
     std::uint32_t hull_lightmap_draws_ = 0; // routed draws that bound a light-map gain variant (plain or share) this frame (frame line only)
-    // Hull emissive widening (X3M_HULL_EMISSIVE_WIDENING=K,Q0,Q1): the per-draw
-    // k in c217.z (lightmap_widen_draw_k_, 0 for a pair without a gain
-    // variant), the frame and session ranges for the frame line and the
+    // Hull emissive widening (X3M_HULL_EMISSIVE_WIDENING=K[,B]): K and B are
+    // baked into the variants' DEFs; per draw the route uploads the bound
+    // light map's texel-footprint scale ((W K)^2, (H K)^2) in c217.yz
+    // (lightmap_widen_draw_scale_, 0 for a pair without a gain variant or an
+    // unknown size), counts the widened draws for the frame line and the
     // session summary, and the widened variants created (fixture counter).
     bool lightmap_widen_ = false;
-    float lightmap_widen_k_ = 1.f, lightmap_widen_q0_ = 0.f, lightmap_widen_q1_ = 0.f, lightmap_widen_inv_ = 0.f;
-    float lightmap_widen_draw_k_ = 0.f;
-    float lightmap_widen_min_ = 0.f, lightmap_widen_max_ = 0.f;                 // frame line: k range of the widened draws
-    float lightmap_widen_session_min_ = 0.f, lightmap_widen_session_max_ = 0.f; // session summary (logged at detach)
-    std::uint32_t lightmap_widen_draws_ = 0, lightmap_widen_unity_ = 0;         // frame line: widened draws / gain draws held at k = 1
+    float lightmap_widen_k_ = 1.f, lightmap_widen_b_ = 1.f;
+    float lightmap_widen_draw_scale_[2] = {0.f, 0.f};
+    DWORD lightmap_widen_draw_size_[2] = {0, 0};                         // this draw's light-map level-0 size (capture-frame draw line)
+    std::uint32_t lightmap_widen_draws_ = 0, lightmap_widen_held_ = 0;  // frame line: widened draws / gain draws that kept the un-widened variant
+    std::uint32_t lightmap_widen_filter_sets_ = 0, lightmap_widen_filter_reads_ = 0, lightmap_widen_filter_failures_ = 0; // frame line: MINFILTER raised / read / failed
+    std::uint32_t lightmap_widen_session_filter_sets_ = 0;
+    bool ensure_widen_filter(MotionRoute& route) noexcept;
     std::uint32_t lightmap_widen_session_draws_ = 0, lightmap_widen_variants_ = 0;
     bool lightmap_widen_summary_logged_ = false;
     std::uint32_t sun_original_lightmap_variants_ = 0; // gained share variants created (fixture counter)
@@ -2119,6 +2138,9 @@ private:
     struct SamplerShadow {
         IDirect3DBaseTexture9* texture = nullptr;
         DWORD levels = 0, mipfilter = 0, saved_bias = 0;
+        DWORD width = 0, height = 0; // level-0 size of a 2D texture (hull emissive widening only; 0 = unknown or not 2D)
+        std::uint64_t identity = 0;  // the proxy's resource identity of `texture` when the size was read (a freed and reallocated texture at the same address re-reads)
+        DWORD minfilter = 0; bool minfilter_known = false; // the application's MINFILTER (hull emissive widening: restored after a widened draw that raised it)
         DWORD srgb = 0;
         bool srgb_known = false;
         bool mipfilter_known = false, saved_known = false, biased = false;

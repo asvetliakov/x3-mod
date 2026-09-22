@@ -2,7 +2,7 @@
 // (linear_material_hull_lightmap_gain_pixel_variant, --hull-lightmap-gain;
 // docs/reverse-engineering/hull-self-illumination.md 5) and of the hull
 // emissive widening built on it (--hull-emissive-widening,
-// docs/architecture/hull-emissive-widening.md 2). Reads every ps_/vs_
+// docs/architecture/hull-emissive-widening.md 2, 8.3). Reads every ps_/vs_
 // program of the local corpus, writes the fill variant (K = 0 and 0.05, the
 // control), the gained variant (G = 4) and the widened dynamic-gain variant for
 // both depth modes next to them in a caller-supplied local folder, and prints
@@ -89,6 +89,33 @@ int main(int argc,char** argv) {
         require(argc==3,"usage: hull_lightmap_gain_structure <original directory> <local output directory>");
         const fs::path corpus=argv[1], out=argv[2];
         const float fills[]={0.0f,0.05f}, gain=4.0f;
+        // Hull emissive widening K = 3, B = 3 (docs/architecture/hull-emissive-widening.md 8.3): the block adds
+        // 131 DWORDs (113 in the block, 18 in three DEFs), 27 instructions and 35 weighted slots to the gained variant.
+        const HullLightmapWiden widen{3.0f,3.0f};
+        constexpr unsigned widen_words=131, widen_instructions=27, widen_slots_added=35; // 113 block words + three 6-word DEFs
+        // Flow-control depth at the light-map fetch (linear_material_flow_control_depth) on synthetic ps_3_0
+        // programs: the fetch `texld r0, v1, s2` inside `if b0`, `rep i0` and `loop aL, i0` is at depth 1 (the
+        // widening refuses such a site with FlowControl), after the closing endif/endrep/endloop at 0, outside any
+        // block at 0; a `label`/`call` before the fetch is -2 (Subroutine); off-boundary and malformed sites -1.
+        // The Python oracle compares this table (behaviour, not source text).
+        const Words fetch_words={0x03000042u,0x800f0000u,0x90e40001u,0xa0e40802u};
+        auto program=[&](std::initializer_list<Words> parts){ Words w{0xffff0300u}; for (const auto& part:parts) w.insert(w.end(),part.begin(),part.end()); w.push_back(0x0000ffffu); return w; };
+        const Words if_open={0x01000028u,0xe0000800u}, endif_={0x0000002bu}, rep_open={0x01000026u,0xf0e40000u}, endrep_={0x00000027u},
+                    loop_open={0x0200001bu,0xf0e40800u,0xf0e40000u}, endloop_={0x0000001du}, label_={0x0100001eu,0xa0e41000u}, ret_={0x0000001cu}, call_={0x01000019u,0xa0e41000u};
+        struct FlowCase { const char* name; Words code; std::size_t site; int expected; };
+        const FlowCase flow_cases[]={
+            {"inside_if",program({if_open,fetch_words,endif_}),3,1},{"after_endif",program({if_open,endif_,fetch_words}),4,0},
+            {"inside_rep",program({rep_open,fetch_words,endrep_}),3,1},{"inside_loop",program({loop_open,fetch_words,endloop_}),4,1},
+            {"after_endloop",program({loop_open,endloop_,fetch_words}),5,0},{"nested",program({if_open,loop_open,fetch_words,endloop_,endif_}),6,2},
+            {"outside",program({fetch_words}),1,0},{"after_label_ret",program({label_,ret_,fetch_words}),4,-2},{"after_call",program({call_,fetch_words}),3,-2},
+            {"off_boundary",program({if_open,fetch_words,endif_}),4,-1},{"site_zero",program({fetch_words}),0,-1}};
+        std::string flow_json; unsigned flow_checks=0;
+        for (const auto& fc:flow_cases) {
+            const int depth=linear_material_flow_control_depth(fc.code.data(),fc.code.size(),fc.site);
+            require(depth==fc.expected,fc.name); ++flow_checks;
+            flow_json+=std::string(flow_json.empty()?"":",")+"\""+fc.name+"\":"+std::to_string(depth);
+        }
+        require(linear_material_flow_control_depth(nullptr,0,1)==-1,"null program: -1"); ++flow_checks;
         std::vector<std::string> names;
         for (const auto& entry:fs::directory_iterator(corpus)) {
             const auto name=entry.path().filename().string();
@@ -147,26 +174,41 @@ int main(int argc,char** argv) {
                                 dynamic_fill==fill_applied && dynamic_gain==gain_applied,"dynamic gain: the same verdict");
                         require(dynamic==(gain_applied?expected_dynamic(result):base),"dynamic gain: no DEF, the MUL reads c217.w; untouched programs stay the fill variant");
                         // Hull emissive widening on the dynamic-gain variant: the
-                        // same verdict as the gain, +12 DWORDs and +7 weighted
+                        // same verdict as the gain, +131 DWORDs and +35 weighted
                         // slots (the Python oracle rebuilds the bytes); the static
-                        // gain composes identically (+12 over the static variant).
+                        // gain composes identically (+131 over the static variant).
                         Words widened{0x12345678}; bool widen_fill=!fill_applied, widen_gain=!gain_applied, widen_applied=!gain_applied;
-                        require(linear_material_hull_lightmap_gain_pixel_variant(original.data(),original.size(),fills[f],gain,widened,depth,widen_fill,widen_gain,true,true,&widen_applied)==LinearMaterialResult::Applied &&
+                        require(linear_material_hull_lightmap_gain_pixel_variant(original.data(),original.size(),fills[f],gain,widened,depth,widen_fill,widen_gain,true,&widen,&widen_applied)==LinearMaterialResult::Applied &&
                                 widen_fill==fill_applied && widen_gain==gain_applied && widen_applied==gain_applied,"widening: the gain's verdict");
                         if (gain_applied) {
                             widen_applied_any=true;
-                            require(widened.size()==dynamic.size()+12,"widening: +12 DWORDs");
+                            require(widened.size()==dynamic.size()+widen_words,"widening: +131 DWORDs");
                             const auto [instructions,slots]=weighted_slots(widened);
-                            require(instructions==variant_instructions[f][depth]+3 && slots==variant_slots[f][depth]+7 && slots<=512,"widening: +3 instructions, +7 slots, within 512");
+                            require(instructions==variant_instructions[f][depth]+widen_instructions && slots==variant_slots[f][depth]+widen_slots_added && slots<=512,"widening: +27 instructions, +35 slots, within 512");
                             widen_slots[f][depth]=slots; max_widen_slots=std::max(max_widen_slots,slots);
                             Words widened_static{0x12345678}; bool sf=false, sg=false, sw=false;
-                            require(linear_material_hull_lightmap_gain_pixel_variant(original.data(),original.size(),fills[f],gain,widened_static,depth,sf,sg,false,true,&sw)==LinearMaterialResult::Applied &&
-                                    sw && widened_static.size()==result.size()+12 && expected_dynamic(widened_static)==widened,"widening composes with the static gain (DEF c223, c223.x -> c217.w is the dynamic widened variant)");
+                            require(linear_material_hull_lightmap_gain_pixel_variant(original.data(),original.size(),fills[f],gain,widened_static,depth,sf,sg,false,&widen,&sw)==LinearMaterialResult::Applied &&
+                                    sw && widened_static.size()==result.size()+widen_words && expected_dynamic(widened_static)==widened,"widening composes with the static gain (DEF c223, c223.x -> c217.w is the dynamic widened variant)");
                         } else require(widened==base,"widening: a program without the term keeps the fill variant byte for byte");
                         write(out/(name+"-hlwiden-"+std::to_string(f)+"-"+std::to_string(depth)+".bin"),widened);
                         Words invalid{91,92}; bool ifill=true, igain=true, iwiden=true;
-                        require(linear_material_hull_lightmap_gain_pixel_variant(original.data(),original.size(),fills[f],1.0f,invalid,depth,ifill,igain,true,true,&iwiden)==LinearMaterialResult::InvalidConfig &&
+                        require(linear_material_hull_lightmap_gain_pixel_variant(original.data(),original.size(),fills[f],1.0f,invalid,depth,ifill,igain,true,&widen,&iwiden)==LinearMaterialResult::InvalidConfig &&
                                 invalid==Words({91,92}) && !ifill && !igain && !iwiden,"widening without a gain is InvalidConfig");
+                        // K and B bounds: 1 < K <= 8, 1 <= B <= K, both finite.
+                        for (const HullLightmapWiden bad:{HullLightmapWiden{1.0f,1.0f},HullLightmapWiden{8.5f,1.0f},HullLightmapWiden{3.0f,0.5f},HullLightmapWiden{3.0f,3.5f},
+                                                          HullLightmapWiden{std::numeric_limits<float>::quiet_NaN(),1.0f},HullLightmapWiden{3.0f,std::numeric_limits<float>::infinity()}}) {
+                            Words rejected{91,92}; bool rf=true, rg=true, rw=true;
+                            require(linear_material_hull_lightmap_gain_pixel_variant(original.data(),original.size(),fills[f],gain,rejected,depth,rf,rg,true,&bad,&rw)==LinearMaterialResult::InvalidConfig &&
+                                    rejected==Words({91,92}) && !rf && !rg && !rw,"widening with K or B out of range is InvalidConfig");
+                        }
+                        // B = 1 and B = K differ only in the c210.z literal (B - 1).
+                        if (gain_applied) {
+                            const HullLightmapWiden unit{widen.k,1.0f}; Words plain{0x12345678}; bool pf=false, pg=false, pw=false;
+                            require(linear_material_hull_lightmap_gain_pixel_variant(original.data(),original.size(),fills[f],gain,plain,depth,pf,pg,true,&unit,&pw)==LinearMaterialResult::Applied && pw && plain.size()==widened.size(),"B = 1 variant");
+                            unsigned differing=0; std::size_t where=0;
+                            for (std::size_t i=0;i<plain.size();++i) if (plain[i]!=widened[i]) { ++differing; where=i; }
+                            require(differing==1 && plain[where]==0u && widened[where]==0x40000000u && where>=4 && widened[where-4]==0x05000051u && (widened[where-3]&0x7ffu)==210u,"B = 1 against B = 3: only the c210.z literal (0 against 2)");
+                        }
                     }
                     Words alias=original; bool alias_fill=false, alias_gain=false;
                     require(linear_material_hull_lightmap_gain_pixel_variant(alias.data(),alias.size(),fills[f],gain,alias,depth,alias_fill,alias_gain)==LinearMaterialResult::Applied &&
@@ -200,12 +242,12 @@ int main(int argc,char** argv) {
                     require(linear_material_original_sun_share_pixel_variant(original.data(),original.size(),fills[f],dynamic,true,dynamic_share,gain,&dynamic_gain,true)==LinearMaterialResult::Applied &&
                             dynamic_share && dynamic_gain==result_gain && dynamic==(result_gain?expected_dynamic(result):share),"dynamic gained share: no DEF, the MUL reads c217.w");
                     Words widened{0x12345678}; bool widen_share=false, widen_gain=!result_gain, widen_applied=!result_gain;
-                    require(linear_material_original_sun_share_pixel_variant(original.data(),original.size(),fills[f],widened,true,widen_share,gain,&widen_gain,true,true,&widen_applied)==LinearMaterialResult::Applied &&
+                    require(linear_material_original_sun_share_pixel_variant(original.data(),original.size(),fills[f],widened,true,widen_share,gain,&widen_gain,true,&widen,&widen_applied)==LinearMaterialResult::Applied &&
                             widen_share && widen_gain==result_gain && widen_applied==result_gain,"widened share: the gain's verdict");
                     if (result_gain) {
-                        require(widened.size()==dynamic.size()+12,"widened share: +12 DWORDs");
+                        require(widened.size()==dynamic.size()+widen_words,"widened share: +131 DWORDs");
                         share_widen_slots[f]=weighted_slots(widened).second;
-                        require(share_widen_slots[f]==share_variant_slots[f]+7 && share_widen_slots[f]<=512,"widened share: +7 slots, within 512");
+                        require(share_widen_slots[f]==share_variant_slots[f]+widen_slots_added && share_widen_slots[f]<=512,"widened share: +35 slots, within 512");
                         max_widen_slots=std::max(max_widen_slots,share_widen_slots[f]);
                     } else require(widened==share,"widened share: a program without the term keeps the share variant byte for byte");
                     write(out/(name+"-hlsharewiden-"+std::to_string(f)+".bin"),widened);
@@ -245,6 +287,6 @@ int main(int argc,char** argv) {
         require(linear_material_hull_lightmap_gain_pixel_variant(authored.data(),authored.size(),0.05f,gain,result,true,authored_fill,authored_gain)==LinearMaterialResult::UnsupportedShader &&
                 result==Words({91,92}) && !authored_fill && !authored_gain,"unreviewed valid framing");
         std::cout<<"],\"programs\":"<<names.size()<<",\"supported\":"<<supported<<",\"applied\":"<<applied<<",\"untouched\":"<<untouched<<",\"gain\":"<<gain
-                 <<",\"max_variant_slots\":"<<max_slots<<",\"max_widen_slots\":"<<max_widen_slots<<",\"dynamic_checks\":"<<dynamic_checks<<",\"checks\":"<<checks<<",\"creates_ns\":"<<create_ns<<"}\n";
+                 <<",\"max_variant_slots\":"<<max_slots<<",\"max_widen_slots\":"<<max_widen_slots<<",\"flow_control_checks\":"<<flow_checks<<",\"flow_control\":{"<<flow_json<<"},\"dynamic_checks\":"<<dynamic_checks<<",\"checks\":"<<checks<<",\"creates_ns\":"<<create_ns<<"}\n";
     } catch (const std::exception& error) { std::cerr<<error.what()<<'\n'; return 1; }
 }

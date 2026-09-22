@@ -1043,44 +1043,114 @@ Word lightmap_gain_operand(bool dynamic) noexcept {
 void lightmap_gain_instruction(Words& out, unsigned reg, bool dynamic) {
     emit(out,mul,{dst(temp,reg),src(temp,reg),lightmap_gain_operand(dynamic)});
 }
-// Hull emissive widening (docs/architecture/hull-emissive-widening.md 2.2,
-// --hull-emissive-widening): the pinned `texld rL, v1, s` becomes a texldd
-// whose screen-space gradients are the pixel's own dsx/dsy of the coordinate
-// scaled by the per-draw factor k the route uploads in c217.z (the motion
-// ABI's mode vector; .z is read by no other program). 16 DWORDs for 4:
-//   dsx    rG.xy, v1            (2 slots)
-//   dsy    rG.zw, v1.xyxy       (2 slots)
-//   mul    rG,    rG, c217.z    (1 slot)
-//   texldd rL{_pp}, v1, s, rG.xy, rG.zw   (3 slots; destination word as the texld's)
-// rG is one temporary above every register of the combined program
-// (lightmap_widen_temporary); no intensity rescale (the mip chain conserves
-// energy). Byte layout is fixed: the words at the offsets below are patched
-// once rG is known.
-constexpr unsigned lightmap_widen_words = 16, lightmap_widen_fetch_offset = 10;
-constexpr unsigned swizzle_xyxy = 0x44, swizzle_xyyy = 0x54, swizzle_zwww = 0xfe;
-Word lightmap_widen_operand() noexcept { return lane(constant,lightmap_dynamic_constant,2); }
+// Hull emissive widening (docs/architecture/hull-emissive-widening.md 8.3
+// R1/R2, --hull-emissive-widening K[,B]): the pinned `texld rL, v1, s` becomes
+// a 28-instruction block (117 DWORDs, 36 weighted slots) with three temporaries
+// rG (gradients), rT = rG + 1 and rU = rG + 2 (scratch, the coarse fetches):
+//   dsx     rG.xy, v1                         (2)  screen-space UV gradients
+//   dsy     rG.zw, v1.xyxy                    (2)
+//   mul     rT, rG, rG                        (1)  squared components
+//   mul     rT, rT, c217.yzyz                 (1)  . ((W c)^2, (H c)^2): texels^2 per pixel^2, times c^2
+//   add     rT.xy, rT.xzxx, rT.ywxx           (1)  rho_x^2, rho_y^2
+//   max     rT.x, rT.x, rT.y                  (1)  rho_max^2
+//   mad_sat rU.w, rT.x, c210.x, -c203.y       (1)  g = saturate(rho^2 / K - 1) = saturate(K tau^2 - 1): the minification
+//                                                  gate of the boost (0 while the widened fetch is still magnified,
+//                                                  rho^2 < K; 1 from rho^2 >= 2 K); rU.w survives the .xyz fetch below
+//   rsq     rT.x, rT.x                        (1)  1 / rho
+//   max_sat rT.x, rT.x, c210.x                (1)  1 / k = clamp(1 / rho, 1 / K, 1)
+//   rcp     rT.x, rT.x                        (1)  k
+//   mul     rG, rG, rT.x                      (1)  k . gradients
+//   texldd  rL{_pp}, v1, s, rG.xy, rG.zw      (3)  the widened fetch (destination word as the texld's)
+//   add     rT, rG, rG                        (1)  2 k . gradients
+//   texldd  rU.xyz, v1, s, rT.xy, rG.zw       (3)  the coarse fetch, x axis doubled
+//   dp3     rU.x, rU, c211                    (1)  luma(coarse x)
+//   texldd  rT.xyz, v1, s, rG.xy, rT.zw       (3)  the coarse fetch, y axis doubled
+//   dp3     rT.w, rT, c211                    (1)  luma(coarse y)
+//   min     rT.w, rT.w, rU.x                  (1)  r = L_k / min(L_2kx, L_2ky) = max of the two axis ratios:
+//                                                  a strip peaks on one axis (2.0), a convex panel corner is
+//                                                  1.33 on each axis alone (not 1.78), a 1-D edge 1.33
+//   dp3     rT.x, rL, c211                    (1)  luma(widened) L_k
+//   mad_sat rT.y, rT.x, c203.x, -c203.y       (1)  b = saturate(32 L_k - 1): the brightness floor of the boost
+//                                                  (no boost below 1/32, full from 1/16; a near-black pixel whose
+//                                                  coarse lumas quantise to 0 cannot take B)
+//   max     rT.w, rT.w, c210.y                (1)  max(luma(coarse), eps)
+//   rcp     rT.w, rT.w                        (1)
+//   mul     rT.x, rT.x, rT.w                  (1)  r
+//   mad_sat rT.x, rT.x, c210.w, -c211.w       (1)  t = saturate((r - 1.35) / 0.15) = saturate(r / 0.15 - 9)
+//   mul     rT.x, rT.x, rT.y                  (1)  t b
+//   mul     rT.x, rT.x, rU.w                  (1)  t b g
+//   mul     rT.x, rT.x, c210.z                (1)  (B - 1) t b g
+//   mad     rL.xyz, rL, rT.x, rL              (1)  rL . (1 + (B - 1) t)
+// c217.yz are the per-draw lanes the route uploads ((W c)^2, (H c)^2 of the
+// bound light map; the motion fragment reads c217.x, the far fade c217.w);
+// c210/c211/c203 are shader-local DEFs (constant_free of the original). No
+// intensity rescale otherwise (the mip chain conserves energy). Byte layout is
+// fixed: the block is regenerated once rG is known (lightmap_widen_patch).
+constexpr unsigned lightmap_widen_words = 117, lightmap_widen_fetch_offset = 41,
+                   lightmap_widen_before = 11, lightmap_widen_after = 16;
+constexpr unsigned lightmap_widen_constant = 210, lightmap_widen_luma_constant = 211, lightmap_widen_gate_constant = 203;
+constexpr float lightmap_widen_floor_scale = 32.0f; // b = saturate(32 L_k - 1)
+constexpr unsigned swizzle_xyxy = 0x44, swizzle_xyyy = 0x54, swizzle_zwww = 0xfe, swizzle_yzyz = 0x99, swizzle_xzxx = 0x08, swizzle_ywxx = 0x0d;
+constexpr float lightmap_widen_epsilon = 0x1p-8f, lightmap_widen_gate_scale = 1.0f/0.15f, lightmap_widen_gate_offset = 9.0f;
+Word lightmap_widen_operand() noexcept { return src(constant,lightmap_dynamic_constant,swizzle_yzyz); }
+bool lightmap_widen_valid(const HullLightmapWiden& w) noexcept {
+    return std::isfinite(w.k) && std::isfinite(w.b) && w.k>1.0f && w.k<=8.0f && w.b>=1.0f && w.b<=w.k;
+}
 // The fetch's coordinate must be a plain input register (v1 in every reviewed
 // program): no swizzle, no modifier, no relative addressing.
 bool lightmap_widen_coordinate(Word operand) noexcept {
     return kind(operand)==input && ((operand>>16)&0xff)==identity && ((operand>>24)&0xf)==0 && !(operand&relative);
 }
+void lightmap_widen_definitions(Words& out, const HullLightmapWiden& w) {
+    emit(out,def,{dst(constant,lightmap_widen_constant,xyzw),bits(1.0f/w.k),bits(lightmap_widen_epsilon),bits(w.b-1.0f),bits(lightmap_widen_gate_scale)});
+    emit(out,def,{dst(constant,lightmap_widen_luma_constant,xyzw),bits(0.2126f),bits(0.7152f),bits(0.0722f),bits(lightmap_widen_gate_offset)});
+    emit(out,def,{dst(constant,lightmap_widen_gate_constant,xyzw),bits(lightmap_widen_floor_scale),bits(1.0f),bits(0.0f),bits(0.0f)});
+}
+// fetch: the texld's four words (opcode, destination, coordinate, sampler); g: rG (rT = g + 1, rU = g + 2).
 void lightmap_widen_fetch(Words& out, const Word* fetch, unsigned g) {
-    const Word coordinate=fetch[2];
+    const Word coordinate=fetch[2], sampler=fetch[3], destination=fetch[1];
+    const unsigned t=g+1, u=g+2, reg=index(destination);
+    constexpr unsigned rcp_op=6, rsq_op=7, dp3=8;
     emit(out,dsx,{dst(temp,g,3u),coordinate});
     emit(out,dsy,{dst(temp,g,12u),(coordinate&~0xff0000u)|(swizzle_xyxy<<16)});
-    emit(out,mul,{dst(temp,g,xyzw),src(temp,g),lightmap_widen_operand()});
-    emit(out,texldd,{fetch[1],fetch[2],fetch[3],src(temp,g,swizzle_xyyy),src(temp,g,swizzle_zwww)});
+    emit(out,mul,{dst(temp,t,xyzw),src(temp,g),src(temp,g)});
+    emit(out,mul,{dst(temp,t,xyzw),src(temp,t),lightmap_widen_operand()});
+    emit(out,add,{dst(temp,t,3u),src(temp,t,swizzle_xzxx),src(temp,t,swizzle_ywxx)});
+    emit(out,max_op,{dst(temp,t,1u),lane(temp,t,0),lane(temp,t,1)});
+    emit(out,mad,{dst(temp,u,8u)|sat,lane(temp,t,0),lane(constant,lightmap_widen_constant,0),src(constant,lightmap_widen_gate_constant,0x55,1)});
+    emit(out,rsq_op,{dst(temp,t,1u),lane(temp,t,0)});
+    emit(out,max_op,{dst(temp,t,1u)|sat,lane(temp,t,0),lane(constant,lightmap_widen_constant,0)});
+    emit(out,rcp_op,{dst(temp,t,1u),lane(temp,t,0)});
+    emit(out,mul,{dst(temp,g,xyzw),src(temp,g),lane(temp,t,0)});
+    emit(out,texldd,{destination,coordinate,sampler,src(temp,g,swizzle_xyyy),src(temp,g,swizzle_zwww)});
+    emit(out,add,{dst(temp,t,xyzw),src(temp,g),src(temp,g)});
+    emit(out,texldd,{dst(temp,u,xyz),coordinate,sampler,src(temp,t,swizzle_xyyy),src(temp,g,swizzle_zwww)});
+    emit(out,dp3,{dst(temp,u,1u),src(temp,u),src(constant,lightmap_widen_luma_constant)});
+    emit(out,texldd,{dst(temp,t,xyz),coordinate,sampler,src(temp,g,swizzle_xyyy),src(temp,t,swizzle_zwww)});
+    emit(out,dp3,{dst(temp,t,8u),src(temp,t),src(constant,lightmap_widen_luma_constant)});
+    emit(out,min_op,{dst(temp,t,8u),lane(temp,t,3),lane(temp,u,0)});
+    emit(out,dp3,{dst(temp,t,1u),src(temp,reg),src(constant,lightmap_widen_luma_constant)});
+    emit(out,mad,{dst(temp,t,2u)|sat,lane(temp,t,0),lane(constant,lightmap_widen_gate_constant,0),src(constant,lightmap_widen_gate_constant,0x55,1)});
+    emit(out,max_op,{dst(temp,t,8u),lane(temp,t,3),lane(constant,lightmap_widen_constant,1)});
+    emit(out,rcp_op,{dst(temp,t,8u),lane(temp,t,3)});
+    emit(out,mul,{dst(temp,t,1u),lane(temp,t,0),lane(temp,t,3)});
+    emit(out,mad,{dst(temp,t,1u)|sat,lane(temp,t,0),lane(constant,lightmap_widen_constant,3),src(constant,lightmap_widen_luma_constant,0xff,1)});
+    emit(out,mul,{dst(temp,t,1u),lane(temp,t,0),lane(temp,t,1)});
+    emit(out,mul,{dst(temp,t,1u),lane(temp,t,0),lane(temp,u,3)});
+    emit(out,mul,{dst(temp,t,1u),lane(temp,t,0),lane(constant,lightmap_widen_constant,2)});
+    emit(out,mad,{dst(temp,reg),src(temp,reg),lane(temp,t,0),src(temp,reg)});
 }
-void lightmap_widen_patch(Word* block, unsigned g) noexcept {
-    block[1]=dst(temp,g,3u); block[4]=dst(temp,g,12u);
-    block[7]=dst(temp,g,xyzw); block[8]=src(temp,g);
-    block[14]=src(temp,g,swizzle_xyyy); block[15]=src(temp,g,swizzle_zwww);
+void lightmap_widen_patch(Word* block, unsigned g) {
+    // The block's texldd holds the texld's own words; regenerate with rG = g.
+    const Word fetch_words[4]={0,block[lightmap_widen_fetch_offset+1],block[lightmap_widen_fetch_offset+2],block[lightmap_widen_fetch_offset+3]};
+    Words expected; lightmap_widen_fetch(expected,fetch_words,g);
+    std::copy(expected.begin(),expected.end(),block);
 }
-// The widened fetch at instruction i of s: exactly the four instructions above
-// with one gradient temporary g (returned), the coordinate and sampler words of
-// the fetch. -1 otherwise.
+// The widened fetch at instruction i of s (the first texldd): exactly the 28
+// instructions above with gradient temporary g and scratch g + 1, g + 2 (g
+// returned), the coordinate and sampler words of the fetch. -1 otherwise.
 int lightmap_widen_site(const Word* code, const Structure& s, std::size_t i, unsigned stage) noexcept {
-    if (i<3 || i>=s.instructions.size()) return -1;
+    if (i<lightmap_widen_before || i+lightmap_widen_after>=s.instructions.size()) return -1;
     const auto& fetch=s.instructions[i];
     if (fetch.opcode!=texldd || fetch.count!=5 || fetch.at<lightmap_widen_fetch_offset) return -1;
     const Word* block=code+fetch.at-lightmap_widen_fetch_offset;
@@ -1089,9 +1159,11 @@ int lightmap_widen_site(const Word* code, const Structure& s, std::size_t i, uns
     const Word gx=code[fetch.at+4];
     if (kind(gx)!=temp) return -1;
     const unsigned g=index(gx);
-    if (s.instructions[i-3].at!=fetch.at-10 || s.instructions[i-2].at!=fetch.at-7 || s.instructions[i-1].at!=fetch.at-4) return -1;
+    if (g+2>=32u) return -1;
+    const auto& first=s.instructions[i-lightmap_widen_before], last=s.instructions[i+lightmap_widen_after];
+    if (first.at!=fetch.at-lightmap_widen_fetch_offset || last.at+last.count+1!=first.at+lightmap_widen_words) return -1;
     // Rebuild the block from the fetch's own words (destination, coordinate,
-    // sampler) and compare all 16.
+    // sampler) and compare all 117.
     Words expected;
     const Word fetch_words[4]={0,code[fetch.at+1],coordinate,sampler};
     lightmap_widen_fetch(expected,fetch_words,g);
@@ -1122,13 +1194,16 @@ int lightmap_term(const Word* code, const Structure& s, std::size_t site, std::s
     if (kind(target)!=temp || (target&~pp)!=dst(temp,index(target),xyzw) ||
         kind(code[fetch.at+3])!=10 || index(code[fetch.at+3])!=stage || (code[fetch.at+3]&relative)) return -1;
     const unsigned reg=index(target);
-    if (widen && unsigned(*widened)==reg) return -1;
+    if (widen && (unsigned(*widened)==reg || unsigned(*widened)+1==reg || unsigned(*widened)+2==reg)) return -1;
     // The stage must be a declared 2D sampler: the glass programs fetch their
     // cube at s2 into r0 and add it in the same final form.
     bool two_dimensional=false;
     for (const auto& in:s.instructions)
         if (in.opcode==dcl && kind(code[in.at+2])==10 && index(code[in.at+2])==stage) two_dimensional=((code[in.at+1]>>27)&15)==2;
     if (!two_dimensional) return -1;
+    // The widened block's boost (its last sixteen instructions, proven word
+    // for word above) is the term's own; the gain MUL follows the block.
+    if (widen) i+=lightmap_widen_after;
     if (gained) {
         if (++i>=s.instructions.size()) return -1;
         const auto& gain=s.instructions[i];
@@ -1791,14 +1866,15 @@ bool original_sun_plan(const Word* original, const Structure& source, const std:
 // (one DEF, one MUL after the light-map fetch, lightmap_term above); a
 // program without the term (glass, asteroid) keeps the fill/motion variant
 // byte for byte and reports lightmap_gain_applied = false.
-// With widen (hull-emissive-widening.md 2.2) the gained variant's light-map
-// texld becomes the widened texldd (lightmap_widen_fetch); widen_applied
-// reports it (always equal to the gain verdict). widen without a gain is
-// InvalidConfig: the widened program is a gained program.
+// With widen (hull-emissive-widening.md 8.3) the gained variant's light-map
+// texld becomes the widened block (lightmap_widen_fetch, two DEFs);
+// widen_applied reports it (always equal to the gain verdict). widen without
+// a gain or with K/B out of range is InvalidConfig: the widened program is a
+// gained program.
 LinearMaterialResult original_fill_transform(const Word* original, std::size_t words, float fill,
     Words& output, bool current_depth, bool& fill_applied, bool* share_applied=nullptr,
     float lightmap_gain=1.0f, bool* lightmap_gain_applied=nullptr, bool lightmap_dynamic=false,
-    bool widen=false, bool* widen_applied=nullptr) noexcept {
+    const HullLightmapWiden* widen=nullptr, bool* widen_applied=nullptr) noexcept {
     fill_applied=false;
     if (share_applied) *share_applied=false;
     if (lightmap_gain_applied) *lightmap_gain_applied=false;
@@ -1806,7 +1882,7 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
     if (!original || words<2) return LinearMaterialResult::InvalidInput;
     if (!std::isfinite(fill) || fill<0.0f || fill>0.5f) return LinearMaterialResult::InvalidConfig;
     if (!std::isfinite(lightmap_gain) || lightmap_gain<1.0f || lightmap_gain>8.0f) return LinearMaterialResult::InvalidConfig;
-    if (widen && lightmap_gain==1.0f) return LinearMaterialResult::InvalidConfig;
+    if (widen && (lightmap_gain==1.0f || !lightmap_widen_valid(*widen))) return LinearMaterialResult::InvalidConfig;
     if (words>1791 || original[0]!=0xffff0300u) return LinearMaterialResult::UnsupportedShader;
     const auto hash=material_motion_fingerprint(original,words);
     const XtPixel* xt=nullptr;
@@ -1856,8 +1932,18 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
             lightmap_on=reg>=0 && (xt ? unsigned(reg)==xt->texture_reg[lightmap_stage] : reg==0) &&
                         constant_free(original,s,lightmap_gain_constant);
             // Widening: the coordinate must be a plain input register (dsx/dsy
-            // source it directly) and the original must read no c217 lane.
-            if (lightmap_on && widen && !(lightmap_widen_coordinate(original[lightmap_site+2]) && constant_free(original,s,lightmap_dynamic_constant)))
+            // source it directly) and the original must read no c217 lane and
+            // none of the block's DEF constants; the fetch must sit at flow-
+            // control depth 0 (dsx/dsy inside rep/if are undefined): refused
+            // with its own reason, never silently un-widened.
+            if (lightmap_on && widen) {
+                const int depth=linear_material_flow_control_depth(original,words,lightmap_site);
+                if (depth==-2) return LinearMaterialResult::Subroutine;
+                if (depth!=0) return LinearMaterialResult::FlowControl;
+            }
+            if (lightmap_on && widen && !(lightmap_widen_coordinate(original[lightmap_site+2]) && constant_free(original,s,lightmap_dynamic_constant) &&
+                                          constant_free(original,s,lightmap_widen_constant) && constant_free(original,s,lightmap_widen_luma_constant) &&
+                                          constant_free(original,s,lightmap_widen_gate_constant)))
                 lightmap_on=false;
             if (lightmap_on) lightmap_reg=unsigned(reg);
         }
@@ -1909,6 +1995,7 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
                     emit(combined,def,{dst(constant,sun_constant,xyzw),bits(0.2126f),bits(0.7152f),bits(0.0722f),bits(0x1p-20f)});
                 }
                 if (lightmap_on && !lightmap_dynamic) emit(combined,def,{dst(constant,lightmap_gain_constant,xyzw),bits(lightmap_gain),bits(0.0f),bits(0.0f),bits(0.0f)});
+                if (widen_on) lightmap_widen_definitions(combined,*widen);
             }
             if (original[at]==end_token) {
                 // After the motion body's depth write: the sole oC2.g MOV.
@@ -1960,7 +2047,7 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
                     for (unsigned q=1;q<=n;++q) if (kind(combined[at+q])==temp) highest=std::max(highest,index(combined[at+q])+1u);
                 at+=n+1;
             }
-            if (highest>=32u) return LinearMaterialResult::ResourceLimit;
+            if (highest+2>=32u) return LinearMaterialResult::ResourceLimit; // rG, rT = rG + 1, rU = rG + 2
             widen_reg=highest;
             lightmap_widen_patch(combined.data()+widen_at,widen_reg);
         }
@@ -1968,20 +2055,42 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
         if (!structure(combined.data(),combined.size(),false,final_structure,false,abi,temp_count,false,false,xt!=nullptr))
             return LinearMaterialResult::ResourceLimit;
         if (widen_on) {
-            // The emitted program re-proves the widening: rG referenced by the
-            // block's six operands and nothing else; c217.z read once (the
-            // block's MUL), defined nowhere.
-            unsigned references=0, lane_reads=0, definitions=0, reads=0;
+            // The emitted program re-proves the widening: rG, rT and rU referenced
+            // exactly as often as the block itself references them (nothing
+            // else touches them); c217 read only through the block's .yzyz
+            // (once), the gain's .w and the motion fragment's .x; c210/c211/c203
+            // defined once each and read only by the block (5, 4 and 3 reads).
+            Words block; const Word fetch_words[4]={0,combined[combined_site+1],combined[combined_site+2],combined[combined_site+3]};
+            lightmap_widen_fetch(block,fetch_words,widen_reg);
+            unsigned block_g=0, block_t=0, block_u=0;
+            for (std::size_t at=0; at<block.size();) {
+                const unsigned n=length(block[at]);
+                for (unsigned q=1;q<=n;++q) if (kind(block[at+q])==temp) { const unsigned r=index(block[at+q]); if (r==widen_reg) ++block_g; if (r==widen_reg+1) ++block_t; if (r==widen_reg+2) ++block_u; }
+                at+=n+1;
+            }
+            unsigned references_g=0, references_t=0, references_u=0, lane_reads=0, other_lanes=0, definitions=0, reads=0;
             for (const auto& in:final_structure.instructions) {
                 if (in.opcode==dcl || in.opcode==def) continue;
                 for (unsigned q=1;q<=in.count;++q) {
                     const Word operand=combined[in.at+q];
-                    if (kind(operand)==temp && index(operand)==widen_reg) ++references;
-                    if (q>=2 && operand==lightmap_widen_operand()) ++lane_reads;
+                    if (kind(operand)==temp && index(operand)==widen_reg) ++references_g;
+                    if (kind(operand)==temp && index(operand)==widen_reg+1) ++references_t;
+                    if (kind(operand)==temp && index(operand)==widen_reg+2) ++references_u;
+                    if (q>=2 && kind(operand)==constant && index(operand)==lightmap_dynamic_constant && !(operand&relative)) {
+                        const unsigned sw=(operand>>16)&0xff;
+                        if (operand==lightmap_widen_operand()) ++lane_reads;
+                        else if (sw!=0x00 && sw!=0xff) ++other_lanes; // anything but a replicated .x or .w
+                    }
                 }
             }
             constant_uses(combined.data(),final_structure,lightmap_dynamic_constant,definitions,reads);
-            if (references!=6 || lane_reads!=1 || definitions!=0) return LinearMaterialResult::ProfileMismatch;
+            if (references_g!=block_g || references_t!=block_t || references_u!=block_u || lane_reads!=1 || other_lanes!=0 || definitions!=0) return LinearMaterialResult::ProfileMismatch;
+            constant_uses(combined.data(),final_structure,lightmap_widen_constant,definitions,reads);
+            if (definitions!=1 || reads!=5) return LinearMaterialResult::ProfileMismatch;
+            constant_uses(combined.data(),final_structure,lightmap_widen_luma_constant,definitions,reads);
+            if (definitions!=1 || reads!=4) return LinearMaterialResult::ProfileMismatch;
+            constant_uses(combined.data(),final_structure,lightmap_widen_gate_constant,definitions,reads);
+            if (definitions!=1 || reads!=3) return LinearMaterialResult::ProfileMismatch;
         }
         if (lightmap_on) {
             // The emitted program re-proves the term: one DEF and one read of
@@ -2018,19 +2127,34 @@ LinearMaterialResult original_fill_transform(const Word* original, std::size_t w
     } catch (...) { return LinearMaterialResult::AllocationFailure; }
 }
 } // namespace
+int linear_material_flow_control_depth(const Word* code, std::size_t words, std::size_t site) noexcept {
+    if (!code || words<2 || site==0 || site>=words) return -1;
+    int depth=0;
+    for (std::size_t at=1; at<words;) {
+        if (at==site) return depth;
+        if (at>site) return -1;
+        const Word token=code[at]; const unsigned op=token&0xffff, n=length(token);
+        if (token==end_token || n>words-at-1) return -1;
+        if (op==25 || op==26 || op==30 || op==28) return -2;      // call, callnz, label, ret: a subroutine before the fetch (its body is not walked)
+        if (op==27 || op==38 || op==40 || op==41) ++depth;        // loop, rep, if, ifc
+        else if (op==29 || op==39 || op==43) { if (--depth<0) return -1; } // endloop, endrep, endif
+        at+=n+1;
+    }
+    return -1;
+}
 LinearMaterialResult linear_material_original_fill_pixel_variant(const Word* original, std::size_t words,
     float fill, Words& output, bool current_depth, bool& fill_applied) noexcept {
     return original_fill_transform(original,words,fill,output,current_depth,fill_applied);
 }
 LinearMaterialResult linear_material_original_sun_share_pixel_variant(const Word* original, std::size_t words,
     float fill, Words& output, bool current_depth, bool& share_applied, float lightmap_gain, bool* lightmap_gain_applied,
-    bool lightmap_dynamic, bool widen, bool* widen_applied) noexcept {
+    bool lightmap_dynamic, const HullLightmapWiden* widen, bool* widen_applied) noexcept {
     bool fill_applied=false;
     return original_fill_transform(original,words,fill,output,current_depth,fill_applied,&share_applied,lightmap_gain,lightmap_gain_applied,lightmap_dynamic,widen,widen_applied);
 }
 LinearMaterialResult linear_material_hull_lightmap_gain_pixel_variant(const Word* original, std::size_t words,
     float fill, float gain, Words& output, bool current_depth, bool& fill_applied, bool& gain_applied, bool dynamic,
-    bool widen, bool* widen_applied) noexcept {
+    const HullLightmapWiden* widen, bool* widen_applied) noexcept {
     return original_fill_transform(original,words,fill,output,current_depth,fill_applied,nullptr,gain,&gain_applied,dynamic,widen,widen_applied);
 }
 unsigned linear_material_hull_lightmap_stage(std::uint64_t pixel, std::size_t words) noexcept {
