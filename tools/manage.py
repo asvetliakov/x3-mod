@@ -54,6 +54,13 @@ HULL_EMISSIVE_WIDENING_DEFAULT = '4'
 # 2026-09-22; the vote is inert without --hdr, whose display-referred scene
 # never exceeds 1). An explicit 0 is the opt-out.
 TAA_THIN_REGION_EMISSIVE_DEFAULT = '1'
+# Minimum caster footprint of the sun-shadow cascades, forwarded whenever
+# --shadow-cascades is present and the option is unset (user selection after
+# run251/run253, 2026-09-22, docs/verification/directional-shadows.md). The
+# DLL's own fallback with the variable absent is the same 8 px
+# (shadow_cascade_min_footprint_default); an explicit 0 is the opt-out and is
+# forwarded as "0" (off, bit-identical).
+SHADOW_CASCADE_MIN_FOOTPRINT_DEFAULT = 8.0
 # Small-parts cull the launcher forwards on every modded launch when the option
 # is unset (user selection after run 43 B, 2026-09-19,
 # docs/verification/cull-small-parts.md): 2 px at scope `all` took the busy view
@@ -362,7 +369,7 @@ def main():
     parser.add_argument('--shadow-sun-trace', action='store_true', help='Per-frame sun trace of the cascades (X3M_SHADOW_SUN_TRACE=1; default off; requires --shadow-cascades): one shadow_sun_frame line per frame with the frame\'s sun source, the reason and the poll status, the cascades that re-derived their direction (rederived= and the bit mask rederived_mask=), the poll/constant agreement angle and the light distance, so the re-derivation rate while moving and at rest is measurable between the sparse shadow_replay_sun_point lines (about 200 B per frame; read by tools/analysis/shadow_sun_frame.py)')
     parser.add_argument('--shadow-cascade-budget', type=int, default=None, metavar='B', help='Draw issues per frame above which the far cascade replays on even frames only, 1..4096, default 640 (X3M_SHADOW_CASCADE_BUDGET; requires --shadow-cascades)')
     parser.add_argument('--shadow-cascade-adaptive-c0', type=float, default=None, metavar='K', help='Own-ship-adaptive near cascade (X3M_SHADOW_CASCADE_ADAPTIVE_C0; default off; requires --shadow-cascades; suggested 1.5): the first cascade\'s half-extent becomes max(its configured value, K x the own ship\'s radius), the radius being the largest object-space AABB corner distance over the player ship\'s z-writing draws (the ship is the active cockpit\'s ref object of the verified executable), committed at once on a ship change and after eight stable frames on a > 20 %% size change, clamped to the last cascade\'s extent; the texel is 2 E0 / size. While E0 is above its configured value the configured ladder slides with it (--shadow-cascade-ladder-ratio): cascade i becomes max(its configured extent, E0 x R^i), capped at the last cascade\'s configured extent, and a cascade whose slid extent reaches the next one\'s is dropped (its map stays allocated, nothing replays into it, the apply owns no pixel with it); every slid cascade re-anchors its texel grid once per commit. One shadow_cascade_set line (own_radius= e0= texel0= active_mask= slid= extents=) per commit and per F8 frame (docs/architecture/shadow-cascade-extents.md, 5)')
-    parser.add_argument('--shadow-cascade-min-footprint', type=float, default=None, metavar='P', help='Per-part minimum light-space footprint of the shadow cascades in screen pixels (0 < P <= 64; X3M_SHADOW_CASCADE_MIN_FOOTPRINT; requires --shadow-cascades; default absent = off, bit-identical). A caster part leaves cascade k when the largest lateral side of its sun-space box is below max(P x 0.95 x E_{k-1} x 2 / (m00 x width), 3 texels of cascade k): the receivers cascade k serves are at least 0.95 x E_{k-1} away, so such a part can darken at most P pixels of any of them. With P = 8 on 1280 px and the 250/1500/7500/37500/150000 set that is about 557 u on c4, 111 u on c3 and nothing binding on c0-c2: fighters and turrets stop replaying into the far maps, big hull parts are untouched. Live and retained casters alike; the thresholds are logged as shadow_cascade_footprint and the drops count footprint_refused<i> / footprint_aged<i> on shadow_replay_candidates (docs/architecture/shadow-cascades.md, "Minimum caster footprint")')
+    parser.add_argument('--shadow-cascade-min-footprint', type=float, default=None, metavar='P', help='Per-part minimum light-space footprint of the shadow cascades in screen pixels (0 < P <= 64, or 0 = off; X3M_SHADOW_CASCADE_MIN_FOOTPRINT; requires --shadow-cascades; default 8 whenever --shadow-cascades is given, the DLL\'s own fallback with the variable absent is also 8; 0 is the opt-out, forwarded as 0 = off, bit-identical). A caster part leaves cascade k when the largest lateral side of its sun-space box is below max(P x 0.95 x E_{k-1} x 2 / (m00 x width), 3 texels of cascade k): the receivers cascade k serves are at least 0.95 x E_{k-1} away, so such a part can darken at most P pixels of any of them. With P = 8 on 1280 px and the 250/1500/7500/37500/150000 set that is about 557 u on c4, 111 u on c3 and nothing binding on c0-c2: fighters and turrets stop replaying into the far maps, big hull parts are untouched. Live and retained casters alike; the thresholds are logged as shadow_cascade_footprint and the drops count footprint_refused<i> / footprint_aged<i> on shadow_replay_candidates (docs/architecture/shadow-cascades.md, "Minimum caster footprint")')
     parser.add_argument('--shadow-cascade-ladder-ratio', type=float, default=None, metavar='R', help='Ratio between consecutive cascades of the slid ladder under --shadow-cascade-adaptive-c0 (X3M_SHADOW_CASCADE_LADDER_RATIO; 2..16, default 5; requires --shadow-cascade-adaptive-c0): with a corvette at E0 675 the set 250 / 1500 / 7500 / 37500 becomes 675 / 3375 / 16875 / 37500; a fighter at the configured E0 keeps the configured set. The per-cascade caps and records, --shadow-cascade-static-from and --shadow-cascade-large-min slide with the extents: each live cascade takes the policy of the configured cascade its extent most closely matches (a dropped cascade keeps no cap; the active caps are scaled down together when their sum would exceed the configured storage); every slid or dropped/restored cascade re-anchors its grid once per commit')
     parser.add_argument('--shadow-retention-census', action='store_true', help='Caster retention census (X3M_SHADOW_RETENTION_CENSUS=1; default off; requires --shadow-cascades): the node-keyed retention store runs with every expiry decision taken as if live but holds no references and replays nothing; one shadow_retention_frame line per frame, one cumulative shadow_retention_resight line every 300 frames and shadow_retention_caster lines on F8 frames calibrate eps, the age cap and the budget before --shadow-caster-retention is trusted (docs/architecture/shadow-caster-retention.md, stage 1)')
     parser.add_argument('--shadow-caster-retention', action='store_true', help='Retention of static sun-shadow casters the engine stopped submitting (X3M_SHADOW_CASTER_RETENTION=1; default off; requires --shadow-cascades; wins over --shadow-retention-census): nodes whose world rows held still for 8 sightings keep their draws, with the store\'s own references on VB, IB and declaration, and are replayed into the cascades they meet inside the per-cascade caps and the issue budget until the node retires, leaves 2 x the outermost box, its buffers change, the age cap passes, the sun re-latches or the device resets (docs/architecture/shadow-caster-retention.md, stage 2)')
@@ -753,7 +760,8 @@ def main():
     SHADOW_CASCADE_LADDER_RANGE = (2.0, 16.0)  # shadow_cascade_ladder_ratio_min/max
     def shadow_cascade_env(parser, args):
         """Validates --shadow-cascades and its companions; returns their environment
-        ('X3M_SHADOW_CASCADES': '0' when off, the companions only when given)."""
+        ('X3M_SHADOW_CASCADES': '0' when off, the companions only when given, except
+        X3M_SHADOW_CASCADE_MIN_FOOTPRINT, forwarded at its default 8 when unset)."""
         companions = (('--shadow-cascade-sizes', args.shadow_cascade_sizes), ('--shadow-cascade-caps', args.shadow_cascade_caps),
                       ('--shadow-cascade-budget', args.shadow_cascade_budget), ('--shadow-sun-poll', args.shadow_sun_poll),
                       ('--shadow-cascade-records', args.shadow_cascade_records), ('--shadow-cascade-static-from', args.shadow_cascade_static_from),
@@ -807,10 +815,12 @@ def main():
                     parser.error(f'--shadow-cascade-backface-from must be within [0, cascades-1] ({len(extents)} cascades configured) or none.')
                 value = str(int(value))
             env['X3M_SHADOW_CASCADE_BACKFACE_FROM'] = value
-        if args.shadow_cascade_min_footprint is not None:
-            if not (math.isfinite(args.shadow_cascade_min_footprint) and 0.0 < args.shadow_cascade_min_footprint <= 64.0):
-                parser.error('--shadow-cascade-min-footprint must be within (0, 64].')
-            env['X3M_SHADOW_CASCADE_MIN_FOOTPRINT'] = repr(args.shadow_cascade_min_footprint)
+        min_footprint = SHADOW_CASCADE_MIN_FOOTPRINT_DEFAULT if args.shadow_cascade_min_footprint is None else args.shadow_cascade_min_footprint
+        if not (math.isfinite(min_footprint) and 0.0 <= min_footprint <= 64.0):
+            parser.error('--shadow-cascade-min-footprint must be 0 (off) or within (0, 64].')
+        # Always forwarded while the cascades are on: the DLL reads an absent variable as the
+        # default 8, so the opt-out must travel as an explicit "0".
+        env['X3M_SHADOW_CASCADE_MIN_FOOTPRINT'] = repr(min_footprint)
         if args.shadow_cascade_large_min is not None:
             if not (math.isfinite(args.shadow_cascade_large_min) and 0.0 <= args.shadow_cascade_large_min <= 1000000.0):
                 parser.error('--shadow-cascade-large-min must be within [0, 1000000].')

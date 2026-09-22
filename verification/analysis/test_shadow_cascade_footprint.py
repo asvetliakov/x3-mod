@@ -21,8 +21,14 @@ yields are compiled natively (no Wine, no D3D) into one driver:
 * shadow_cascade_pool's band for the option (0 = off, 64 max, NaN refused) and
   that the adaptive ladder's rebuilt set carries the value.
 
-The launcher option is checked in test_shadow_cascades.py (LauncherOptions).
+The launcher option's band is checked in test_shadow_cascades.py (LauncherOptions);
+LauncherDefault here checks the default 8 (2026-09-22): applied with --shadow-cascades,
+absent without, the opt-out 0 forwarded, an explicit value kept, and the DLL's
+fallback with the variable absent equal to the launcher's default.
 """
+import importlib.util
+import json
+import re
 import shutil
 import subprocess
 import tempfile
@@ -218,6 +224,7 @@ class EnvironmentParse(unittest.TestCase):
         source = (ROOT / 'src/proxy/capture.cpp').read_text()
         block = source[source.index('X3M_SHADOW_CASCADE_MIN_FOOTPRINT'):]
         block = block[:block.index('shadow_cascade_pool(')]
+        self.assertIn('float min_footprint=renderer::shadow_cascade_min_footprint_default;', block)  # absent: the default 8
         self.assertIn('if(n>=128)reason="min_footprint";', block)          # truncation is refused, never read
         self.assertIn('else if(v<=0.)min_footprint=0.f;', block)          # "0", "0.0", "-1": off
         self.assertIn('!(v==v))reason="min_footprint"', block)            # NaN
@@ -234,6 +241,39 @@ class LawMatchesTheNote(unittest.TestCase):
         self.assertIn('constexpr float shadow_cascade_footprint_select_margin = .95f', header)
         self.assertIn('constexpr float shadow_cascade_footprint_texels = 3.f', header)
         self.assertIn('constexpr float shadow_cascade_min_footprint_max = 64.f', header)
+
+
+def _launch(directory, *args):
+    spec = importlib.util.spec_from_file_location('footprint_cascade_launch', ROOT / 'verification/analysis/test_shadow_cascades.py')
+    module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+    return module.launch(directory, *args)
+
+
+class LauncherDefault(unittest.TestCase):
+    """The default 8 px (user selection after run251/run253, 2026-09-22)."""
+    BASE = ['--motion-output', '--ownership', '--shadow-replay-depth']
+    NAME = 'X3M_SHADOW_CASCADE_MIN_FOOTPRINT'
+
+    def env(self, directory, *args):
+        code, output, error = _launch(directory, *self.BASE, *args)
+        self.assertEqual(code, 0, error)
+        return json.loads(output)['env']
+
+    def test_default_rule(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self.assertEqual(self.env(directory, '--shadow-cascades', 'default')[self.NAME], '8.0')           # applied
+            self.assertEqual(self.env(directory, '--shadow-cascades', '250,1500,7500,37500,150000')[self.NAME], '8.0')
+            self.assertNotIn(self.NAME, self.env(directory))                                                 # absent without the cascades
+            self.assertEqual(self.env(directory, '--shadow-cascades', 'default', '--shadow-cascade-min-footprint', '0')[self.NAME], '0.0')  # opt-out
+            self.assertEqual(self.env(directory, '--shadow-cascades', 'default', '--shadow-cascade-min-footprint', '24')[self.NAME], '24.0')  # explicit
+
+    def test_dll_fallback_matches_the_launcher(self):
+        header = (ROOT / 'src/renderer/shadow_cascade_footprint_core.h').read_text()
+        dll = float(re.search(r'constexpr float shadow_cascade_min_footprint_default = ([0-9.]+)f;', header).group(1))
+        spec = importlib.util.spec_from_file_location('footprint_manage', ROOT / 'tools/manage.py')
+        manage = importlib.util.module_from_spec(spec); spec.loader.exec_module(manage)
+        self.assertEqual(dll, manage.SHADOW_CASCADE_MIN_FOOTPRINT_DEFAULT)
+        self.assertEqual(dll, 8.0)
 
 
 if __name__ == '__main__':

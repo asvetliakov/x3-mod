@@ -28,9 +28,12 @@
 #include <cstdint>
 
 namespace x3m::renderer {
-// The option's band (X3M_SHADOW_CASCADE_MIN_FOOTPRINT, screen pixels): 0 or
-// absent is off (bit-identical), 64 px is a guard against a typo.
+// The option's band (X3M_SHADOW_CASCADE_MIN_FOOTPRINT, screen pixels): 0 is
+// off (bit-identical), 64 px is a guard against a typo. Absent, the cascades use
+// the default 8 px, the launcher's default (user selection after run251/run253,
+// 2026-09-22), so a launch without the launcher behaves the same.
 constexpr float shadow_cascade_min_footprint_max = 64.f;
+constexpr float shadow_cascade_min_footprint_default = 8.f;
 constexpr float shadow_cascade_footprint_select_margin = .95f; // the apply quad's cascade-selection margin
 constexpr float shadow_cascade_footprint_texels = 3.f;         // the texel floor of the law
 constexpr unsigned shadow_cascade_footprint_max_cascades = 5;  // renderer::shadow_cascade_max

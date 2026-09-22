@@ -1016,17 +1016,17 @@ class LauncherOptions(unittest.TestCase):
 
     def test_min_footprint_option(self):
         """--shadow-cascade-min-footprint (shadow-cascade-cost-policy.md, option (a)):
-        absent by default, an inherited value cannot leak, the value passes through
-        and the band (0, 64] is enforced."""
+        default 8 with the cascades (an inherited value cannot override it), the value
+        passes through, 0 is the forwarded opt-out and the band [0, 64] is enforced."""
         with tempfile.TemporaryDirectory() as directory:
-            code, output, error = launch(directory, *self.BASE, '--shadow-cascades', 'default', inherited={'X3M_SHADOW_CASCADE_MIN_FOOTPRINT': '8'})
-            self.assertEqual(code, 0, error); self.assertNotIn('X3M_SHADOW_CASCADE_MIN_FOOTPRINT', json.loads(output)['env'])
-            for value, expected in (('8', '8.0'), ('0.5', '0.5'), ('64', '64.0')):
+            code, output, error = launch(directory, *self.BASE, '--shadow-cascades', 'default', inherited={'X3M_SHADOW_CASCADE_MIN_FOOTPRINT': '24'})
+            self.assertEqual(code, 0, error); self.assertEqual(json.loads(output)['env']['X3M_SHADOW_CASCADE_MIN_FOOTPRINT'], '8.0')
+            for value, expected in (('8', '8.0'), ('0.5', '0.5'), ('64', '64.0'), ('0', '0.0')):
                 code, output, error = launch(directory, *self.BASE, '--shadow-cascades', 'default', '--shadow-cascade-min-footprint', value)
                 self.assertEqual(code, 0, error); self.assertEqual(json.loads(output)['env']['X3M_SHADOW_CASCADE_MIN_FOOTPRINT'], expected)
-            for value in ('0', '-1', '64.5', 'nan'):
+            for value in ('-1', '64.5', 'nan'):
                 code, _, error = launch(directory, *self.BASE, '--shadow-cascades', 'default', '--shadow-cascade-min-footprint', value)
-                self.assertNotEqual(code, 0, value); self.assertIn('--shadow-cascade-min-footprint must be within (0, 64]', error)
+                self.assertNotEqual(code, 0, value); self.assertIn('--shadow-cascade-min-footprint must be 0 (off) or within (0, 64]', error)
             code, _, error = launch(directory, *self.BASE, '--shadow-cascade-min-footprint', '8')
             self.assertNotEqual(code, 0); self.assertIn('--shadow-cascade-min-footprint requires --shadow-cascades', error)
 

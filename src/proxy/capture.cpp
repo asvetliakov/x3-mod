@@ -2451,12 +2451,13 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
                     else { wchar_t* end=nullptr; const unsigned long v=wcstoul(list,&end,10); if(end==list||*end!=L'\0'||v>=count)reason="backface_from"; else backface_from=unsigned(v); } }
                 // Per-part minimum light-space footprint (shadow-cascades.md, "Minimum caster
                 // footprint"): X3M_SHADOW_CASCADE_MIN_FOOTPRINT = P screen pixels within
-                // (0, 64]. Absent, or any parsed value at or below zero ("0", "0.0", "-1"), is
+                // (0, 64]. Absent is the default 8 px (shadow_cascade_min_footprint_default, the
+                // launcher's default); any parsed value at or below zero ("0", "0.0", "-1") is
                 // off (bit-identical): a zero footprint never disables the cascades. Malformed
                 // text, a value above the band and a truncated variable (128 wide characters or
                 // more: `list` would hold no usable value) leave the cascades off, never a silent
                 // no-op.
-                float min_footprint=0.f;
+                float min_footprint=renderer::shadow_cascade_min_footprint_default;
                 if(!reason){ const DWORD n=GetEnvironmentVariableW(L"X3M_SHADOW_CASCADE_MIN_FOOTPRINT",list,128);
                     if(n>=128)reason="min_footprint";
                     else if(n>0){ wchar_t* end=nullptr; const double v=wcstod(list,&end);

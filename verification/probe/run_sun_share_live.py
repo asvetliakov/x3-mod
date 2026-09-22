@@ -45,7 +45,7 @@ def apply_base(case):
 # the sun_shadow_apply_params line with per-cascade rows, bias and texel, and
 # the cascade twin on those dumps.
 CASCADE_LIVE_ENV = dict(X3M_SHADOW_CASCADES='250,1500', X3M_FIXTURE_SHADOW_CASCADES='32,256', X3M_SHADOW_CASCADE_SIZES='512', X3M_CAPTURE_FRAMES='8',
-                        X3M_LINEAR_MATERIALS='0')  # original shading, as shadow_apply
+                        X3M_LINEAR_MATERIALS='0', X3M_SHADOW_CASCADE_MIN_FOOTPRINT='0')  # original shading, as shadow_apply
 # hull_emission (emitter plan phase 3, hull_emission_live_inc.h): the covered
 # standard_lighting pair vs_494fe349b8bc12ec / ps_7c83ed50c9894e44 under the
 # HDR scene with X3M_HULL_EMISSION_GAIN=2 (variant created, the ONE/ONE draw

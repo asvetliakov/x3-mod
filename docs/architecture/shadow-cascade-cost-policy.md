@@ -222,3 +222,9 @@ in use; no new device calls, formats or vendor paths. Unverified natively, as th
 ## User verdict 2026-09-22
 
 The user rejects shortening the farthest cascade to 22.5 km ("too low") and would accept 90-100 km. Any A/B of the c4 extent uses 100 km (500,000 units), not 22.5 or 75 km; the per-part minimum footprint and the caps remain the levers for c4 cost.
+
+Option (a) shipped as `--shadow-cascade-min-footprint P` (one P for every cascade, not the
+per-cascade `--shadow-cascade-min-px` sketched above) and is the default at P = 8 since 2026-09-22
+(run251/run253, [../verification/directional-shadows.md](../verification/directional-shadows.md),
+"Run 251"); `--shadow-cascade-min-footprint 0` turns it off ([shadow-cascades.md](shadow-cascades.md),
+"Minimum caster footprint").

@@ -314,7 +314,7 @@ SHADOW_REPLAY_SUN_ENV = dict(SHADOW_REPLAY_ENV, X3M_FIXTURE_SHADOW_SUN_PROGRAMS=
 # odd frames, its loss at every refusal and at the Reset, and every replayed
 # map against the CPU projection of the draws that cascade kept.
 SHADOW_REPLAY_CASCADES_ENV = dict(X3M_SHADOW_REPLAY_DEPTH='1', X3M_SHADOW_REPLAY_SIZE='256', X3M_FIXTURE_SLICE_NEAR='0.5', X3M_SHADOW_CASCADES='250,1500', X3M_FIXTURE_SHADOW_CASCADES='8,400',
-                                  X3M_SHADOW_CASCADE_SIZES='256', X3M_SHADOW_CASCADE_CAPS='2,8', X3M_SHADOW_CASCADE_BUDGET='5')
+                                  X3M_SHADOW_CASCADE_SIZES='256', X3M_SHADOW_CASCADE_CAPS='2,8', X3M_SHADOW_CASCADE_BUDGET='5', X3M_SHADOW_CASCADE_MIN_FOOTPRINT='0')
 CASES += [case('seam-ownership-shadow-replay-sun-programs', 'shadowreplay', 'ownership', camera=True, hdr_env=SHADOW_REPLAY_SUN_ENV),
           case('seam-ownership-shadow-replay-cascades', 'shadowreplay', 'ownership', camera=True, hdr_env=SHADOW_REPLAY_CASCADES_ENV),
           case('seam-ownership-shadow-replay-cascades-casters-20', 'shadowreplay', 'ownership', camera=True,
@@ -365,7 +365,7 @@ CASES += [case(f'seam-ownership-shadow-replay-cascades-poll-{m}', 'shadowreplay'
 # re-anchor event at the frame-5 boundary, the far cascades untouched.
 SHADOW_ADAPTIVE_ENV = dict(X3M_SHADOW_REPLAY_DEPTH='1', X3M_SHADOW_REPLAY_SIZE='256', X3M_FIXTURE_SLICE_NEAR='0.5', X3M_SHADOW_CASCADES='250,1500,7500,25000',
                            X3M_FIXTURE_SHADOW_CASCADES='8,48,240,800', X3M_SHADOW_CASCADE_SIZES='256', X3M_SHADOW_CASCADE_CAPS='8', X3M_SHADOW_CASCADE_BUDGET='640',
-                           X3M_SHADOW_CASCADE_ADAPTIVE_C0='1.5')
+                           X3M_SHADOW_CASCADE_ADAPTIVE_C0='1.5', X3M_SHADOW_CASCADE_MIN_FOOTPRINT='0')
 # `reuse`: H1 is the ship and H2's node is declared its part until frame 4, from which the same
 # address carries another handle (a freed part reused by a non-own node): the (node, handle)
 # cache misses, H2 no longer counts, the frame radius drops to H1's while the committed E0
@@ -410,7 +410,7 @@ CASES += [case('seam-ownership-shadow-replay-wide', 'shadowreplay', 'ownership',
 # per-draw telemetry is off (the capacity case submits about 10,000 draws).
 SHADOW_RETENTION_ENV = dict(X3M_SHADOW_REPLAY_DEPTH='1', X3M_SHADOW_REPLAY_SIZE='256', X3M_FIXTURE_SLICE_NEAR='0.5', X3M_SHADOW_CASCADES='250,1500', X3M_FIXTURE_SHADOW_CASCADES='8,400',
                             X3M_SHADOW_CASCADE_SIZES='256', X3M_SHADOW_CASCADE_CAPS='1024,1024', X3M_SHADOW_CASCADE_BUDGET='640', X3M_SHADOW_CASTER_RETENTION_AGE='640',
-                            X3M_TELEMETRY_DRAW='0', X3M_CAPTURE_START='10', X3M_SHADOW_RETENTION_TIMING='1')
+                            X3M_TELEMETRY_DRAW='0', X3M_CAPTURE_START='10', X3M_SHADOW_RETENTION_TIMING='1', X3M_SHADOW_CASCADE_MIN_FOOTPRINT='0')
 SHADOW_RETENTION_CASES = {'seam-ownership-shadow-retention-live': dict(X3M_SHADOW_CASTER_RETENTION='1'), 'seam-ownership-shadow-retention-census': dict(X3M_SHADOW_RETENTION_CENSUS='1'),
                           'seam-ownership-shadow-retention-off': {}}
 SHADOW_RETENTION_SCRIPT = ('a_turn_away', 'b_moving', 'c_retired', 'd_lod_swap', 'e_shared_mesh', 'f_buffer_lock', 'g_release_first', 'h_reset', 'm_observer', 'j_excluded', 'i_capacity', 'k_age_and_sun', 'teardown')
@@ -431,7 +431,7 @@ CASES += [case(SHADOW_RETENTION_POLL_CASE, 'shadowretention', 'ownership', camer
 # capped at 4,095 under the importance order (the scene-end selection timed
 # at the full list), the far cascade alternating over the budget.
 SHADOW_POOL_ENV = dict(X3M_SHADOW_REPLAY_DEPTH='1', X3M_SHADOW_REPLAY_SIZE='256', X3M_FIXTURE_SLICE_NEAR='0.5', X3M_SHADOW_CASCADES='250,1500', X3M_FIXTURE_SHADOW_CASCADES='8,40',
-                       X3M_SHADOW_CASCADE_SIZES='256', X3M_SHADOW_CASCADE_BUDGET='640', X3M_TELEMETRY_DRAW='0')
+                       X3M_SHADOW_CASCADE_SIZES='256', X3M_SHADOW_CASCADE_BUDGET='640', X3M_TELEMETRY_DRAW='0', X3M_SHADOW_CASCADE_MIN_FOOTPRINT='0')
 # importance: ids 3 and 4 share one scale; 3 sits at the cap boundary and moves 0.02 row units farther on
 # even frames (a few % smaller than 4): the hysteresis keeps it, so the kept set never flips.
 # The static script's W (a 200-unit moving sliver, the capital-hull stand-in) enters cascade 1 under
@@ -455,7 +455,7 @@ CASES += [case(name, 'shadowpool', 'ownership', camera=True, hdr_env=dict(SHADOW
 # The minimum light-space footprint (docs/architecture/shadow-cascades.md, "Minimum caster
 # footprint"; the cost policy note's option (a)): the "footprint" script's five casters
 # (0.62 / 0.62 / 1.87 / 6.24 / 18.71 units across in light space) on the 8 / 40 pair.
-# off: the option absent, every caster in both cascades and no footprint field on the
+# off: the option at 0 (pinned in SHADOW_POOL_ENV: absent is the DLL's default 8), every caster in both cascades and no footprint field on the
 # counter line; px8: cascade 1's threshold 3.17 u, the three smallest casters leave it;
 # px24: 9.5 u, the 6.24-unit one as well. Cascade 0's threshold is its three texels
 # (0.1875 u): nothing ever leaves it, so no receiver of cascade 0 changes.

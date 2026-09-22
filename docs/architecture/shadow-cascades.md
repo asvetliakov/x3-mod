@@ -326,7 +326,7 @@ would need is already the far cascade's (`ShadowReplayPass::retain`, the apply's
 `valid` / `map_frame<k>` fields), and the two consumers to relax are the apply's
 `kept->frame == frame_ || far && kept->frame + 1 == frame_` and the fog's `fog_shadow_current`.
 
-### Minimum caster footprint (2026-09-22, default off)
+### Minimum caster footprint (2026-09-22, default 8)
 
 Recommendation (a) of [shadow-cascade-cost-policy.md](shadow-cascade-cost-policy.md), with its cap
 ceiling (c). A caster **part** leaves cascade k when the largest LATERAL side of its sun-space box
@@ -353,9 +353,13 @@ population it is for (fighters 100-250 u, turrets and antennae 100-610 u) replay
 texels today.
 
 - Launcher `--shadow-cascade-min-footprint P` (env `X3M_SHADOW_CASCADE_MIN_FOOTPRINT`, 0 < P <= 64,
-  **default absent = off and bit-identical**: the law is cleared, the box test is not asked for a
-  measure and no field is emitted). An explicit zero or any non-positive value ("0", "0.0", "-1")
-  is off too: a zero footprint never disables the cascades. Malformed text, a value above the band
+  **default 8** since 2026-09-22, the user's selection after run251/run253): the launcher forwards
+  `8.0` whenever `--shadow-cascades` is given and the option is not, and the DLL reads an absent
+  variable as the same 8 (`shadow_cascade_min_footprint_default`), so a launch without the launcher
+  behaves the same. `--shadow-cascade-min-footprint 0` is the opt-out, forwarded as `0.0`: off and
+  bit-identical (the law is cleared, the box test is not asked for a measure and no field is
+  emitted). Any non-positive value ("0", "0.0", "-1") is off in the DLL: a zero footprint never
+  disables the cascades. Malformed text, a value above the band
   and a truncated variable leave the cascades off (`shadow_cascades_mode reason=min_footprint`),
   never a silent no-op.
 - Where: the law is `src/renderer/shadow_cascade_footprint_core.h` (header-only, no Windows and no

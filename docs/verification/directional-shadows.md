@@ -3713,7 +3713,7 @@ not separable [I].
 1.13 us per draw, r 0.98 / 0.94 / 0.87, for run253 / run251 / run250; mean replay 647 / 438 / 649 us per
 frame (`footprint_census.py`). At that slope the footprint saves about 39 us (run253) and 29 us (run251)
 per frame [I: slope x refused casters]. Smallest kept caster from the size law
-(`src/renderer/shadow_cascade_footprint_core.h` lines 64-75, `m00` 0.8, width 1280), metres, c1 / c2 / c3
+(`src/renderer/shadow_cascade_footprint_core.h` lines 67-78, `m00` 0.8, width 1280), metres, c1 / c2 / c3
 / c4 [I: computed by the orchestrator, no saved script]: P=8 0.9 / 4.5 / 22 / 111; P=12 1.1 / 6.7 / 33 /
 167; P=16 1.5 / 8.9 / 45 / 223.
 
@@ -3721,3 +3721,10 @@ per frame [I: slope x refused casters]. Smallest kept caster from the size law
 gated, as the fixture required. The user reported no missing shadow in run251 and no shadow popping in the
 second sector, and accepts P=8 as the launcher default. 8 stays: a larger P saves well under 0.1 ms per frame
 [I] and starts removing M5/M4-class ship shadows on c3 [I: the P=12 / 16 sizes above].
+
+**Default 8 (2026-09-22).** `tools/manage.py` forwards `X3M_SHADOW_CASCADE_MIN_FOOTPRINT=8.0` whenever
+`--shadow-cascades` is given without the option; `--shadow-cascade-min-footprint 0` is the opt-out (forwarded
+`0.0`, off and bit-identical). The DLL's fallback with the variable absent is also 8
+(`shadow_cascade_min_footprint_default`), so fixtures that expect the old absent-is-off behaviour pin
+`X3M_SHADOW_CASCADE_MIN_FOOTPRINT='0'` (`run_motion_output.py`, `run_route_bench.py`, `run_sun_share_live.py`).
+Host check: `test_shadow_cascade_footprint.LauncherDefault`.
