@@ -2181,3 +2181,13 @@ half pixel's noise, L2 bin centres), 573 / 576 stratified odd pixels: max 4.9e-4
 build/run/check` PASS, 29 + 58 checks, 13 look cases, all gates true; generator `--check` PASS for the nine fog programs.
 Host modules `test_fog_look_reference test_fog_density_shaders test_volumetric_fog test_shader_compiler_provenance`: 26 tests
 pass. Scratch production build RelWithDebInfo links; `check_no_x87.py` reports no violations. No flight yet.
+
+## Run 63 session B verdict (2026-09-22, run224)
+
+Run63 DLL `b0cde491…`, L2 at 1.0x with the shadow-only shaft lookup jitter and caster
+retention engaged: the user reports the station shadow shaft **no longer disappears**
+and reads like L3 (clean shafts) while the fog stays L2-calm. No rim on silhouettes
+was reported. Capture preserved in `/tmp/x3-bottleX3-run224` (not triaged; no open
+symptom). This closes the run222 shaft comb and the appear/disappear defect. Next:
+collapse the presets to one look (L2 law), keep the env tuning; dust motes; shadow
+lookup in its own pass for cascade cross-fade, the finest cascade and penumbra.
