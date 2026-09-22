@@ -7,33 +7,31 @@ work remain open. The agent never launches the game. See the [run queue](verific
 
 ## Installed build
 
-Bottle **X3**, **CrossOver Preview.app**. Run63 DLL SHA-256:
-`b0cde4911ece0c7b47d61fb0cf147615bca4f86d154e663524b9b64faf79bb2b`
-(55,279,659 bytes), built once from clean reviewed main `5112bb43`.
-Retained DLL: `/tmp/x3-run63-candidate/build/d3d9.dll`. Installed 2026-09-22.
+Bottle **X3**, **CrossOver Preview.app**. Run64 DLL SHA-256:
+`e839dc7c3018d572582628318723f72a70f8d640c6b12205de63014e66ad0b1b`
+(55,470,739 bytes), built once from clean reviewed main `6837a968`.
+Retained DLL: `/tmp/x3-run64-candidate/build/d3d9.dll`. Installed 2026-09-22.
 
-Changes against Run62 (`924be5c0…`; user-accepted far-plane history fix and fog
-look): (1) exact inverse of the 16.16 view basis at every world-recovery site, so
-shadow caster retention engages in flight for the first time
-([ledger](verification/directional-shadows.md)); (2) fog looks jitter only the
-shadow-shaft lookup ([ledger](verification/volumetric-fog.md)); (3) sentinel
-stabiliser 0.7 default with TAA and the camera gate; (4) default-off
-`--sun-occlusion` step 1 ([design](architecture/sun-partial-occlusion.md),
-[ledger](verification/sun-occlusion.md)); (5) the lattice capture diagnostic and
-the `rpm` engine-read fallback removed
-([inventory](architecture/cleanup-inventory-2026-09-22.md)).
+Changes against Run63 (`b0cde491…`; user-accepted shaft fix and retention), both
+default-off: (1) sun occlusion now eligible on the main view's re-probe of the
+background-owned sun record, absolute radius, and step 2: the core disc is clipped
+per pixel against scene depth, glare scaled by the visible fraction
+([design](architecture/sun-partial-occlusion.md), [ledger](verification/sun-occlusion.md));
+(2) `--hull-emissive-widening K,Q0,Q1`: distance-scaled gradient widening of the
+light-map fetch in all 100 gained SM3 hull programs, for torn/flickering thin glow
+strips ([design](architecture/hull-emissive-widening.md),
+[ledger](verification/hull-emissive-widening.md), [problem](architecture/thin-glow-lines.md)).
 
-[Qualification](../verification/results/run63-candidate-qualification.json): host
-suite 2,231 tests pass; linked audit 100 roots / 620 reachable / zero violations;
-imports 217 -> 209 (eight CRT/file functions removed, none added); the ten
-actual-DLL cases identical to Run62; five shadow retention/pool cases, temporal
-pass, fog shader (18 gates), object trace and object lifetime fixtures pass; the
-sun occlusion fixture passed after a test-side fixture fix made after the freeze.
-Not a full renderer-suite pass or native Windows execution. The
-[install record](../verification/results/run63-candidate-install.json) verifies
+[Qualification](../verification/results/run64-candidate-qualification.json): host
+suite 2,243 tests pass; linked audit 100 roots / 636 reachable / zero violations;
+imports identical to Run63; every Run63 fixture case identical; new widening cases
+(strip floor 0.50/0.75/0.867/0.875 at K=off/2/3/4, 11 real family pairs bit-identical
+at k=1) and the sun fixtures (hook 74, GPU 122) pass. Not a full renderer-suite pass
+or native Windows execution. The
+[install record](../verification/results/run64-candidate-install.json) verifies
 installed bytes and unchanged X3AP.exe `fdbf3418…` and cxbottle.conf `cc5d6c00…`.
-Rollback: Run62 `/tmp/x3-run62-candidate/build/d3d9.dll`, then Run61, Run60, Run59,
-Run56. Both Run 63 dry-runs passed; no game was launched by the agent.
+Rollback: Run63 `/tmp/x3-run63-candidate/build/d3d9.dll`, then Run62 and older.
+All three Run 64 dry-runs passed; no game was launched by the agent.
 
 ## Current work and pending acceptance
 
