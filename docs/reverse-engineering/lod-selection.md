@@ -56,7 +56,10 @@ computes `T_i = (int)((float)LODrec_i[+0x34] * f)` and takes the first `i` with
 **coarser** LOD nearer the camera — consistent with the mapping above, where weaker
 shader hardware gets `1.2…1.4`. The switch distance is `D_i = r·640/T_i ∝ 1/f`, so
 **keeping LOD 2 two to three times farther means `f ≈ 0.5 … 0.333`**, a value the
-engine never produces and no setting can reach.
+engine never produces and no setting can reach. The loop's choice is not the final
+index: a shared tail adds `+1` in the env-map view or `-1` at View Distance Very High
+(this bottle's setting) and clamps; see "What the selection really does, end to end"
+below.
 
 ## What the settings actually expose
 
@@ -286,6 +289,167 @@ step finer and raises the far plane to 500 M; `= 4`, registry-only, forces LOD 0
 everywhere. Neither is a 2–3× ladder shift and both change fog/cull distance as a
 side effect, but "Very High" is the correct baseline to set before measuring
 anything else.
+
+## What the selection really does, end to end (2026-09-23)
+
+Question: why run250 drew `argon_trading_station_partB` (model `0x53a0`, file
+thresholds 30/20/10/30 for records 1..4) at LOD 3 although record 4 is tested
+first and has the larger threshold, and why the `argon_livingsection` (`0x53ab`,
+30/15/5/30) LOD 3 row has record 3's 467 faces and not record 4's 202. Source:
+objdump of the installed EXE (`fdbf3418…`), `0047cfe0..0047d551` and the BODY
+loader `004823c7..004824b8`; the X3 bottle's `user.reg` (read only); asset
+ladders from `tools/analysis/bob1.py info`/`audit`. Raw disassembly stays in
+`/tmp/x3-lod/`. No game launch, no Wine.
+
+### 1. The loop `0047d429..0047d46e`
+
+| site | instruction | meaning |
+| --- | --- | --- |
+| `0047d321`, `0047d32a` | `movsx ebp,word [ebx+0x10]`; `sub ebp,1` | `EBP = n-1`, `n` = LOD count |
+| `0047d362` | `cmp byte [esp+0x18],0; je 0047d429` | non-zero flag → distance branch (below); zero → the loop |
+| `0047d429..0047d42d` | `test ebp,ebp; mov esi,ebp; jle 0047d472` | `n <= 1`: no loop at all |
+| `0047d42f..0047d436` | `ebx = &model+0x0c[n-1]` | cursor starts at the **last** record |
+| `0047d440..0047d451` | `fild [rec+0x34]; fmul [cfg+0x760]; call 0052b5d0` | `T_i = trunc(rec_i+0x34 · f)` (ftol truncates) |
+| `0047d456..0047d45a` | `cmp [esp+0x2c],eax; jl 0047d468` | **signed, strict** `s < T_i` |
+| `0047d45c..0047d464` | `sub esi,1; sub ebx,4; test esi,esi; jg 0047d440` | walk down; stops **before** record 0 (never compared) |
+| `0047d468` | `mov [edi+0x14c],esi` | first hit wins, i.e. the highest `i` with `s < T_i` |
+| no hit | — | `+0x14c` keeps the `0` stored on entry at `0047d001` |
+
+`s` lives in `[esp+0x2c]`, the stack slot of the pass's second argument (`ret 8`;
+the argument's flag byte was copied to the local `[esp+0x18]` at `0047d007`).
+It is overwritten at `0047d24a` with `0x00469a30(r = node+0xa0, 640, D)` (the
+`r·640/D` metric), set to `1` when that returns `0` (`0047d250`) and to
+`0x7000000` when `D < 640` (`0047d229`), and rescaled at `0047d35e` by
+`(cfg+0x748 + 10)/110` when `cfg+0xfc & 0x800000` and `s < 32`. Because
+`s >= 1`, a record with `T_i <= 1` is never hit.
+
+**Distance branch** (`[esp+0x18] != 0`, `0047d36d..0047d427`): the index comes
+from the four distance constants, is clamped to `[0, n-1]`, then steps one finer
+if `rec_k+0x34 < 2` (`0047d3ea`) or if `rec_k+0x00 < rec_{k-1}+0x00 / 3`
+(`0047d40a..0047d421`; `+0x00` is the record's point count). It then joins the
+common tail.
+
+### 2. The common tail `0047d472..0047d51e` and what is *not* read
+
+Both paths end in the same adjustment, applied to whatever the loop or the
+distance branch chose:
+
+| site | condition | effect on `+0x14c` |
+| --- | --- | --- |
+| `0047d472..0047d489` | `view+0x270 & 0x1000000` (the env-map view of the census note) | `+1`, and the next test is skipped |
+| `0047d48b..0047d499` | otherwise `cfg+0x768 >= 3` (View Distance "Very High") | **`-1`** |
+| `0047d4a0..0047d4af` | `cfg+0x768 > 3` | `= 0` |
+| `0047d4b9..0047d4d1` | always | clamp to `[0, n-1]` |
+| `0047d4d7..0047d502` | final `> 0`, final `== n-1` and `node+0x12c & 0x8000` | renderable bit cleared (hide at the final coarsest index) |
+| `0047d519..0047d51e` | final `>= 3` | `node+0x130 |= 0x100000` |
+
+The pass reads nothing else from a LOD record: only `+0x34` in the loop, `+0x34`
+and `+0x00` in the distance branch. The file's per-LOD `u32` flags word is stored
+at record `+0x30` (`004824b8`) and never read here; group/subset counts are not
+read either. Records are stored in file order (`model+0x0c[i]` written at
+`0048243b` for the loop counter `[esp+0x3c]`; `+0x34` = file value for `i >= 1`
+at `0048248b`, `100000` for record 0 at `004824a3`). Measured over the 15
+non-monotonic bodies (`bob1.py info`): every record of a body carries the same
+flags value (`0x0`; `0x40` on both `argon_gate` copies), the last one included.
+So neither the flags word, nor a group count, nor the node flag `0x8000` makes
+the last record a distinct kind; `0x8000` only hides a node whose *final* index
+is `n-1`.
+
+**The bottle runs at Very High.** `HKCU\Software\EGOSOFT\X3AP` in the X3 bottle's
+`user.reg` holds `VideoViewDistance = 3` (key time 2026-09-12 13:18 UTC, before
+run250), and `004b711e` loads it into `cfg+0x768`. So every main-view LOD in
+the captures since then is the loop's choice **minus one**. This is inferred
+from the registry, not read in process: no proxy log line reports `cfg+0x768`.
+
+### 3. The corrected rule and the two observations
+
+```
+sel   = highest i in 1..n-1 with s < trunc(T_i · f), else 0
+adj   = +1 in a view with view+0x270 & 0x1000000; else -1 if cfg+0x768 >= 3; else 0
+final = 0 if cfg+0x768 > 3, else clamp(sel + adj, 0, n-1)
+```
+
+In the main view at Very High the final index is therefore at most `n-2`: **the
+last record of every multi-LOD body is never drawn there, the `0x8000` hide never
+fires there, and a two-LOD body always draws LOD 0.** The last record is drawn in
+the main view only at View Distance Low..High, and in the `0x1000000` views.
+
+- `0x53a0` partB, f = 2: the loop's reachable set is `{0, 4}` (record 4, `T = 60`,
+  is tested first; records 3, 2, 1 have `T` = 20, 40, 60, none larger than 60).
+  So `s < 60` → `sel = 4` → `-1` → **LOD 3**, and `s >= 60` → LOD 0. Records 3 and 4
+  of this body are the same mesh (3 035 points, 1 275 faces, 29 groups each,
+  measured), so the drawn geometry is also what record 4 would give. No
+  contradiction.
+- `0x53ab` livingsection: the same `{0, 4}` → final `{0, 3}`; the LOD 3 row is
+  `sel = 4` shifted to **record 3** (1 079 points, 467 faces), which is why it has
+  467 primitives. Record 4 (303 points, 202 faces) is never drawn in the main
+  view at Very High.
+- Consequence for `verification/results/run250-draws/stand_bodies.py`: its
+  `s_bound` column assumes `adj = 0`. At Very High a drawn LOD `k >= 1` means
+  `sel = k+1`, i.e. `trunc(T_{k+2} f) <= s < trunc(T_{k+1} f)` for a monotone
+  ladder, and LOD 0 means `s >= trunc(T_2 f)`. Example: `argon_TL` (30/15/5) at
+  LOD 1 is `10 <= s < 30`, not `30 <= s < 60`; the `argon_spacedock` LOD 1 row is
+  `160 <= s < 300`. The same one-level offset applies to earlier ladder-to-distance
+  conversions made from main-view captures in this bottle.
+
+### 4. "Shadowed" records and the 15 non-monotonic bodies
+
+A record is **never drawn in a case** when it is not in that case's drawable set:
+with `R` = `{0}` ∪ `{i >= 1 : trunc(T_i f) >= 2 and trunc(T_i f) > trunc(T_j f) for all j > i}`,
+the main view draws `R` at View Distance Low..High, `{max(0, r-1) : r ∈ R}` at
+Very High, `{0}` at 4; a `0x1000000` view draws `{min(r+1, n-1)}`. The old audit
+term ("a later record has threshold >= T_i") is the complement of `R` and is
+correct only for Low..High. Measured over the 950 installed multi-LOD bodies
+(`verification/results/bob1-format/lod_drawn_sets.py`, output beside it, f = 2):
+
+| quantity | bodies |
+| --- | --- |
+| last record never drawn in the main view at Very High | **950** (all) |
+| only LOD 0 drawable in the main view at Very High | 75 |
+| some record drawn in no main-view setting | 12 (11 of them non-monotonic) |
+| coarsest *drawable* record has > 1 group, Very High / Low..High | 581 / 551 |
+
+Of the 15 non-monotonic bodies, the 11 with the `x/y/z/30` shape (both
+`argon_gate` copies, `asteroid_B_ClassMine`, `argon_dock_center`,
+`argon_livingsection`, `argon_goner_temple`, and the argon partB, boron, split,
+teladi partA/partB trading stations) are genuinely defective: records 1 and 2
+are drawn in no main-view setting, and the body pops from LOD 0 straight to
+record 3 (Very High) or 4 (Low..High) at `s < 30·f`, the distance where LOD 1
+should start. The other four are not: the two wrecks (15/15), the split wreck
+(15/150) and `argon_trading_station_partA` (30/15/5/5) lose a record only at
+Low..High; at Very High the `-1` makes it drawable. In 5 of the 11 the last
+record is an exact copy of record 3 (partB, boron, teladi partA/partB; and
+`asteroid_B_ClassMine` in points and faces). That fits an authoring habit of
+padding the ladder so the finest-to-coarsest range survives the Very High `-1`,
+with the pad's threshold copied from `T_1`; this is an inference, the engine
+gives the pad no meaning.
+
+**Overlay placement.** The engine has no "far record" semantic, but at Very High
+the *position* matters: the record at index `n-1` is never drawn in the main
+view. Appending a coarse record after the last one (what `lod_overlay.py` does
+today) therefore never shows the new record at Very High; it only lets the old
+coarsest record draw in the new band `s < T_new·f`, where `n-2` drew before, and
+the pilot acceptance "the node reports the new index one past the shipped
+ladder" cannot be met in this bottle. A new record must sit at an index
+`<= count-2` of the new ladder. Two layouts do that, with different effects:
+
+- insert it **before** the last record with a threshold `<= T_last`: at Very High
+  it replaces record `n-2` over the whole of the old `sel = n-1` range; at Low..High
+  it is unreachable and nothing changes;
+- append it **and** a pad copy after it, both with threshold `T_new`: the new mesh
+  draws at `s < T_new·f` in every setting (as index `n` at Very High, as the pad at
+  Low..High); above that the old ladder is unchanged at Very High, while at
+  Low..High `0x8000`-flagged nodes now hide only below `T_new·f`.
+
+Which one the pilot uses is a design decision; `--keep-coarsest-hidden` as
+described in [merged-lod-feasibility.md](../architecture/merged-lod-feasibility.md)
+does not hold at Very High, where the hide never fires in the main view.
+
+Open: the `0x1000000` view is identified only by the census note's env-map
+reading; the other writers of an `+0x14c` field found by a program-wide scan
+(`0041fb42`, `0042c47c`, `004c1cbf`, …) were not checked for being render nodes;
+why the run250 partB node shows 26 draws / 1 211 primitives against record 3's
+29 groups / 1 275 faces was not examined.
 
 ## Unknown
 

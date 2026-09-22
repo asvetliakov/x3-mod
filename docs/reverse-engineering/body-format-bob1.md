@@ -125,8 +125,10 @@ pointers to **`0x60`-byte LOD records** (allocation `0x0048242a`). Per LOD `i`:
 | — | — | `+0x54` = owning model |
 
 The threshold of LOD 0 is never read by the ladder: `0047d429..0047d46e` walks
-`i = nLOD-1 … 1` and takes the first `i` with `s < T_i·f`
-([lod-selection.md](lod-selection.md)). A body with `nLOD = 1` never enters the loop.
+`i = nLOD-1 … 1` and takes the first `i` with `s < T_i·f`; the drawn index is that
+choice `+1` in the env-map view or `-1` at View Distance Very High, clamped
+([lod-selection.md](lod-selection.md), "What the selection really does, end to
+end"). The flags word at `+0x30` is not read by the selection. A body with `nLOD = 1` never enters the loop.
 Across the 950 multi-LOD bodies, 935 have strictly decreasing `T_1 > T_2 > …` and 15
 do not (measured; the engine does not require ordering).
 

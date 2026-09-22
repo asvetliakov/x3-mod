@@ -38,8 +38,18 @@ subset). **So both the geometry and the number of draws are per-LOD-record
 fields**: a coarser LOD is not only a smaller mesh, it is a different, usually
 shorter, subset list.
 
+**Selection rule (corrected 2026-09-23, [lod-selection.md](../reverse-engineering/lod-selection.md)
+"What the selection really does, end to end").** The loop `0047d429..0047d46e`
+takes the highest `i` in `1..n-1` with `s < trunc(T_i·f)` (else 0), but that is
+not the drawn index: a shared tail adds `+1` in a view with `view+0x270 &
+0x1000000`, otherwise `-1` when View Distance is Very High (`cfg+0x768 >= 3`, the X3
+bottle's setting), forces 0 at `cfg+0x768 > 3`, and clamps to `[0, n-1]`. So in the
+main view at Very High the last record of every body is never drawn, and a
+two-LOD body always draws LOD 0. No record flag, group count or "far record"
+marker is consulted.
+
 Side effects that touch the *node set*: at `0047d4d7..0047d51e`, a node whose
-selected LOD equals `count-1` (its coarsest) **and** which carries
+*final* LOD (after the tail above) equals `count-1` (its coarsest) **and** which carries
 `node+0x12c & 0x8000` has its renderable bit cleared — the asset can mark a
 detail part to disappear at the coarsest level, and `0047d055..0047d076` then
 takes its `0x40000`-flagged children with it. The recursion into `node+0xc` at
@@ -292,6 +302,16 @@ member keeps the winning member's exact archive path, and a body whose winning
 resource is loose is refused. `addon/mods/` is not used because a mod package is
 searched only when selected in the launcher.
 
+**Placement correction (2026-09-23).** At View Distance Very High (this bottle)
+the main view never draws the record at index `count-1`, so an appended record is
+never shown there: appending only lets the old coarsest record draw below
+`T_new·f`, and the "index one past the shipped ladder" acceptance below cannot be
+met. The new record must sit at index `<= count-2`: inserted before the last
+record, or appended together with a pad copy after it
+([lod-selection.md](../reverse-engineering/lod-selection.md) §4 of the 2026-09-23
+section gives both layouts' effects). The paragraph below holds only at View
+Distance Low..High; at Very High the hide never fires in the main view.
+
 Hide-at-coarsest (§1, `0047d4d7`): a node with `node+0x12c & 0x8000` is not
 rendered at its body's coarsest LOD. The appended record becomes the coarsest, so
 flagged nodes hide only below the new threshold and the old coarsest record now
@@ -308,9 +328,14 @@ tool refuses to run while such a manifest is installed.
 installed body's ladder (`verification/results/bob1-format/bob1_audit_out.txt`,
 measured over 1634 parsed `BOB1` bodies; classes overlap): **684 single-LOD**,
 **15 non-monotonic** (a later record's threshold ≥ an earlier one's, so under the
-`0047d429` walk 37 records are never selected; 10 of the 15 are stations, e.g.
-`argon_dock_center` 30/10/3/30 shadows LOD 1–3 and runs its 1-group LOD 4 wherever
-LOD 1 would apply), and **777 whose coarsest LOD draws more than one group** (551
+`0047d429` walk 37 records are never *selected*; 10 of the 15 are stations, e.g.
+`argon_dock_center` 30/10/3/30 never selects LOD 1–3 and pops from LOD 0 to a
+1-group record wherever LOD 1 would apply: record 4 at View Distance Low..High,
+record 3 at Very High. Correction 2026-09-23: "shadowed" must be taken per
+setting after the `+1`/`-1` tail; 11 of the 15 lose records 1–2 in every
+main-view setting, the other 4 are drawable at Very High, and at Very High the
+last record of all 950 multi-LOD bodies is never drawn in the main view —
+`verification/results/bob1-format/lod_drawn_sets_out.txt`), and **777 whose coarsest LOD draws more than one group** (551
 of them multi-LOD). 392 multi-LOD bodies fall in none of the three classes.
 
 ```sh
