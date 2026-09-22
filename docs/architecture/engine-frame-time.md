@@ -1465,3 +1465,52 @@ The `draws_p50` comparison is confounded by (a) the extra ship in run246 and
 (b) the F8 8-frame sample not matching the 300-frame `frame_timing` window
 (same caveat as run242); the corrected estimate above removes (a) but not
 (b).
+
+## Run 248: draw accounting at the stand (2026-09-22)
+
+Run66 DLL 1f9a85f5, `/tmp/x3-bottleX3-run248/session-20260922-202645-472.log`
+(`--lod-scale 0.5 --cull-small-parts 4 --frame-timing --frame-phases
+--fps-overlay`; no `--cull-census`, so per-node data comes from joining
+`object_context`×`motion_input`×`draw` on `(frame,index)`, as in run245-247,
+not from census `s`/verdict rows). Three F8 bursts, exact per-frame draw
+counts from `grep -c "^draw .*frame=<n> "`: frames 8055-8062 and 9872-9879
+both **367 draws/frame** (`frame_timing` window `dt_p50_us=21174/20934`,
+~47.3/47.8 fps — the reported stand), frames 14565-14572 **415 draws/frame**
+(`dt_p50_us=23895`, ~41.8 fps, busier but not the 987-draw run31-33 view,
+which is not reproduced in this capture).
+
+**Bucket table, frame 8055 (stand, representative; camera-local model ids
+from run240's sentinel list `0000568e/91/00005017/18/68d/95/96/97`):**
+
+| Bucket | draws | % of 367 | prims | note |
+|---|---|---|---|---|
+| (a) camera-local | 13 | 3.5% | 4752 | 7 of 8 sentinel models present; node `3b5ca538`/model `00005018` draws 4x with distinct `vb`/`ib` (406/408/410/412) = 4 real submesh parts, not a duplicate pass |
+| (b) frustum-outside, drawn | n/a | n/a | n/a | not measurable: no per-object world bounds decode this run (`object_position` is packed bits, scale unestablished per run240) |
+| (c) occluded, drawn | n/a | n/a | n/a | same gap — no bounds-to-depth projection possible from this log |
+| (d) 4-8px census survivors | n/a | n/a | n/a | requires `--cull-census`, absent this run |
+| (e) draws with <20 prims | 70 | 19.1% | 502 (0.13% of frame's 385901 total) | dominated by model `000053a0` (15 of its 29 LOD3 draws) — same model run245-247 documented moving to LOD3's coarse, many-tiny-part mesh |
+| (f) repeated same-node draws (multi-pass) | 0 | - | - | checked node `3b5ca538` 4x-repeat: distinct vb/ib per draw, same `vs`/`ps` — real submesh split, not a pass duplicate; `scene_end_marker`=1/frame confirms one view/scene, no second (env-map/HUD) pass |
+| (g) remainder (normal visible geometry) | ~354 | ~96.5% | ~381k | top models: `0000552a` 37 draws/10812 prims, `00005411` 35/107397, `00005428` 34/52225, `000053aa` 33/108429, `00004f75` 32/18075, `00004f72` 31/15284 |
+
+**Busy frame 14565** (415 draws): camera-local 7 draws, tiny(<20 prim) 59
+draws, heaviest single model `000053b8` 68 draws/147498 prims (a body not
+present in the stand frames — different view, not a duplication artifact).
+
+**Cost estimate** at this run's measured `gap_draw_per_draw_us=27.2` (stand):
+367 draws ≈ 9.98 ms of the 21.17 ms `dt_p50`. Camera-local (a) ≈ 0.35 ms;
+tiny-prim (e) ≈ 1.90 ms in per-draw overhead despite negligible (0.13%)
+primitive cost — the waste here is draw-call count, not vertex work, and is
+not addressable by the existing per-node size-cull site (px 4 already active;
+these 70 draws already passed it). Buckets (b)/(c)/(d) cannot be sized from
+this evidence.
+
+**Conclusion:** no evidence of duplicate/multi-pass submission or a second
+scene view inflating the 367; camera-local (cockpit/ship) draws are a small
+4% slice. The measurable waste is bucket (e) (19% of draws, <20 prims each,
+concentrated in one LOD3 model's shattered mesh) — an instancing/merge
+candidate, engine-only, not reachable from the proxy's current px-size cull
+site. Buckets (b) frustum-outside and (c) occluded cannot be answered without
+new instrumentation: **one launch** with `--cull-census` (per-node `s`/verdict)
+plus a logged world-space AABB (min/max) per `object_context` row, so bounds
+can be projected against the frustum and against the `depth_` readback on the
+same stand, would settle both.
