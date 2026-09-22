@@ -39,7 +39,9 @@ the LOD count `lods` (word model+0x10) and the record thresholds `thr`
 (record_i+0x34, i < min(lods, 8); `t0` is record 0's value, which the engine's
 loop never compares, `t1` is the LOD 0 -> 1 switch value), the LOD indices the
 engine selected (`lod:nodes`), the model's nodes and kept nodes, its draws and
-the `s` range of its kept nodes. A draw counts for a model only when its
+the `s` range of its kept nodes, and the body name of the model id (`body=`,
+the engine's body table, docs/reverse-engineering/body-format-bob1.md 6; `-`
+when no row of the model named it). A draw counts for a model only when its
 `object_context` node has a census row of that model in the chosen view, so
 nodes and draws come from the same view; `--view` naming a view without rows
 is refused. Flags: `no_ladder` (lods == 1: the threshold
@@ -64,7 +66,7 @@ DRAW_RE = re.compile(r'\bdraw device=(\d+) frame=(\d+) index=(\d+) kind=\w+ topo
 CONTEXT_RE = re.compile(r'\bobject_context device=(\d+) frame=(\d+) index=(\d+) .*?\bnode=([0-9a-fA-F]+) .*?\bmodel=([0-9a-fA-F]+) lod=([0-9a-fA-F]+)')
 DEPTH_RE = re.compile(r'\bmotion_output_depth_readback device=(\d+) frame=(\d+) file=(\S+) width=(\d+) height=(\d+) format=(\S+) result=([0-9a-fA-F]+)')
 CENSUS_RE = re.compile(r'\bcull_census device=(\d+) frame=(\d+) view=([0-9a-f]{8}) node=([0-9a-f]{8}) model=([0-9a-f]{8}) s=(-?\d+) '
-                       r'.*? lod=(-?\d+) verdict=(\w+)(?: scope=\w+)?(?: lods=(-?\d+|-) thr=(-?\d+(?:,-?\d+)*|-))?')
+                       r'.*? lod=(-?\d+) verdict=(\w+)(?: scope=\w+)?(?: lods=(-?\d+|-) thr=(-?\d+(?:,-?\d+)*|-)(?: body=([!-~]+))?)?')
 TIMING_RE = re.compile(r'\bframe_timing qpc=\d+ frame=(\d+) frames=\d+ dt_p50_us=(\d+) .*?\bdraws_p50=(\d+)')
 SESSION_RE = re.compile(r'session-\d{8}-\d{6}-\d+\.log\Z')
 DEPTH_LANES = {'r32f_row_major': 1, 'rg32f_row_major': 2, 'rgba32f_row_major': 4}
@@ -99,11 +101,12 @@ def parse(lines, device=None):
         if 'cull_census device=' in line:
             m = CENSUS_RE.search(line)
             if m and (device is None or int(m.group(1)) == device):
-                lods, thr = m.group(9), m.group(10)
+                lods, thr, body = m.group(9), m.group(10), m.group(11)
                 census[int(m.group(2))].append({
                     'view': m.group(3), 'node': m.group(4), 'model': m.group(5), 's': int(m.group(6)), 'lod': int(m.group(7)),
                     'verdict': m.group(8), 'lods': None if lods in (None, '-') else int(lods),
-                    'thr': [] if thr in (None, '-') else [int(v) for v in thr.split(',')]})
+                    'thr': [] if thr in (None, '-') else [int(v) for v in thr.split(',')],
+                    'body': None if body in (None, '-') else body})
         elif 'object_bounds ' in line:
             m = BOUNDS_RE.search(line)
             if m and (device is None or int(m.group(1)) == device):
@@ -275,9 +278,11 @@ def ladder(parsed, frame, view=None):
     for row in rows:
         if row['view'] != main_view:
             continue
-        entry = models.setdefault(row['model'], {'model': row['model'], 'lods': None, 'thr': [], 'selected': defaultdict(int),
+        entry = models.setdefault(row['model'], {'model': row['model'], 'body': None, 'lods': None, 'thr': [], 'selected': defaultdict(int),
                                                  'nodes': 0, 'kept': 0, 's_min': None, 's_max': None, 'lod0_below_t1': 0})
         entry['nodes'] += 1
+        if entry['body'] is None:
+            entry['body'] = row['body']
         if row['lods'] is not None and (entry['lods'] is None or len(row['thr']) > len(entry['thr'])):
             entry['lods'], entry['thr'] = row['lods'], row['thr']
         if row['verdict'] != 'kept':
@@ -315,14 +320,14 @@ def ladder_report(result, models=40):
     out = [f'ladder frame {result["frame"]} view={result["view"]} models={len(result["models"])} draws={result["draws_in_frame"]} '
            f'joined_draws={result["joined_draws"]} no_ladder={result["no_ladder"]} ({result["no_ladder_draws"]} draws) '
            f'lod0_below_t1={result["lod0_below_t1"]} unresolved={result["unresolved"]}',
-           f'{"model":<10}{"lods":>5}  {"thr (t0,t1,...)":<28}{"lod:nodes":<14}{"nodes":>6}{"kept":>6}{"draws":>7}{"s_min":>8}{"s_max":>8}  flags']
+           f'{"model":<10}{"lods":>5}  {"thr (t0,t1,...)":<28}{"lod:nodes":<14}{"nodes":>6}{"kept":>6}{"draws":>7}{"s_min":>8}{"s_max":>8}  {"flags":<24}  body']
     for e in result['models'][:models]:
         lods = '-' if e['lods'] is None else str(e['lods'])
         thr = ','.join(map(str, e['thr'])) or '-'
         selected = ' '.join(f'{lod}:{n}' for lod, n in e['selected'].items()) or '-'
         s_min = '-' if e['s_min'] is None else str(e['s_min'])
         s_max = '-' if e['s_max'] is None else str(e['s_max'])
-        out.append(f'{e["model"]:<10}{lods:>5}  {thr:<28}{selected:<14}{e["nodes"]:>6}{e["kept"]:>6}{e["draws"]:>7}{s_min:>8}{s_max:>8}  {" ".join(e["flags"])}')
+        out.append(f'{e["model"]:<10}{lods:>5}  {thr:<28}{selected:<14}{e["nodes"]:>6}{e["kept"]:>6}{e["draws"]:>7}{s_min:>8}{s_max:>8}  {" ".join(e["flags"]):<24}  {e["body"] or "-"}')
     return '\n'.join(out)
 
 

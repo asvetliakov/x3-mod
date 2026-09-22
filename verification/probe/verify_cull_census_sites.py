@@ -75,7 +75,7 @@ FRAME_RE = re.compile(r'\bcull_census_frame device=(?P<device>\d+) frame=(?P<fra
 ROW_RE = re.compile(r'\bcull_census device=(?P<device>\d+) frame=(?P<frame>\d+) view=(?P<view>[0-9a-f]{8}) node=(?P<node>[0-9a-f]{8}) model=(?P<model>[0-9a-f]{8}) '
                     r's=(?P<s>-?\d+) measure=(?P<measure>-?\d+) d=(?P<d>-?\d+) radius=(?P<radius>-?\d+) thr_1dc=(?P<thr_1dc>-?\d+) thr_1d8=(?P<thr_1d8>-?\d+) '
                     r'limit=(?P<limit>-?\d+) flags_in=(?P<flags_in>[0-9a-f]{8}) flags_out=(?P<flags_out>[0-9a-f]{8}) lod=(?P<lod>-?\d+) verdict=(?P<verdict>\w+)'
-                    r'(?: scope=\w+)?(?: lods=(?P<lods>-?\d+|-) thr=(?P<thr>-?\d+(?:,-?\d+)*|-))?')
+                    r'(?: scope=\w+)?(?: lods=(?P<lods>-?\d+|-) thr=(?P<thr>-?\d+(?:,-?\d+)*|-)(?: body=(?P<body>[!-~]+))?)?')
 VERDICTS = ('kept', 'culled_size', 'culled_min', 'culled_other', 'no_exit', 'culled_small')
 HEX_FIELDS = ('view', 'node', 'model', 'flags_in', 'flags_out')
 
@@ -132,16 +132,19 @@ def parse_frame_line(line):
 
 def parse_row(line):
     """One per-node `cull_census` row -> dict, or None. Rows with the ladder fields also carry
-    `lods` (int, None for `-`) and `thr` (list of ints, empty for `-`); older rows carry neither key."""
+    `lods` (int, None for `-`) and `thr` (list of ints, empty for `-`); older rows carry neither key.
+    Rows with the body field also carry `body` (the body-table name, None for `-`)."""
     match = ROW_RE.search(line)
     if not match:
         return None
     row = match.groupdict()
-    lods, thr = row.pop('lods'), row.pop('thr')
+    lods, thr, body = row.pop('lods'), row.pop('thr'), row.pop('body')
     out = {k: (int(v, 16) if k in HEX_FIELDS else v if k == 'verdict' else int(v)) for k, v in row.items()}
     if lods is not None:
         out['lods'] = None if lods == '-' else int(lods)
         out['thr'] = [] if thr == '-' else [int(v) for v in thr.split(',')]
+    if body is not None:
+        out['body'] = None if body == '-' else body
     return out
 
 

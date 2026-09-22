@@ -594,6 +594,36 @@ a four-record ladder, a null model, a count-0 model, a record 0 on a
 `PAGE_NOACCESS` page, and direct hostile exit arguments. It has been built but
 not yet run under Wine. Report: `tools/analysis/draw_accounting.py <run> --ladder`.
 
+**Body name field (2026-09-23).** After `thr=` each row ends in
+` body=<name|->`: the name of the row's model id (`model=`, node `+0x140` ==
+model `+0x08`) from the engine's body table
+([body-format-bob1.md](body-format-bob1.md) §6). The model itself carries no
+name. At a captured frame's Present, through `engine_memory::read`: once per
+frame the manager `g = *(0x00608518)` and its 12-byte header `g+0xb4` (fixed
+count, must be 11000), `g+0xb8` (dynamic count, `0 ≤ n < 1 000 000`), `g+0xbc`
+(slot array, non-null); then once per distinct id the slot's name pointer at
+`slots + slot*0x1c + 0x0c` (id → slot as `0x0046df60`: `id < 1000` → id,
+`9000..19999` → `id − 9000`, `≥ 20000` → `11000 + id − 20000`, `1000..8999` and
+`slot ≥ fixed + dynamic` refused) and up to 256 bytes of the name, read in
+page-bounded chunks up to the NUL. A null name pointer prints `v\%05d`, the
+census's own label: `0x0046df60` itself picks `v\%05d` or `%d` for a null name by
+a caller flag (`0x0046dfd6`), so the engine has no single name for that case. Printed names are cut at 63 characters, and every byte outside
+`0x21..0x7e` is shown as `?`. `body=-` covers no manager, a wrong header, an
+invalid id, any unreadable span and a name with no NUL in 256 bytes. The header
+and names are re-read every captured frame, because `0x0046e400`, `0x0046dc20` and
+`0x0046ee20` reallocate the slot array and a game load re-binds the ids. The
+cache is direct-mapped by id (256 entries) and cleared per captured frame. No
+work is added to the off path or to uncaptured frames. The global is the
+constant `0x00608518` in production; only the fixture build
+(`-DX3M_CULL_CENSUS_FIXTURE`) has the `set_body_table_global()` seam. The layout is pinned
+against the installed EXE by `verification/analysis/test_body_table_exe.py`:
+24 byte patterns in `0x0046d910`, `0x0046df60` and `0x0046e400` encode the
+global, the offsets `+0xb4/+0xb8/+0xbc`, the 11000 count, the id bounds with
+their signed branches (`jge` at `0046df76`/`0046df82`/`0046dfac`, `jl` at
+`0046df9c`), the
+stride (`lea r,[slot*8]; sub r,slot; mov r,[base+r*4+0x0c]`) and the name
+offset. `draw_accounting.py --ladder` prints the name per model.
+
 ## Cull small parts site (`--cull-small-parts <px>`, 2026-09-18)
 
 The projected-size lever of [engine-frame-time.md](../architecture/engine-frame-time.md)

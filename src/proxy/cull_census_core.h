@@ -118,6 +118,52 @@ inline bool format_ladder(char* out, unsigned size, bool known, std::int32_t cou
     out[at] = 0;
     return ok;
 }
+// The body name behind a model id (docs/reverse-engineering/body-format-bob1.md
+// 6): the id (node+0x140 == model+0x08) indexes the body table of the manager
+// at *body_global_va; slot array at +0xbc (0x1c per slot, reallocated as ids
+// are registered: never cached across frames), fixed count +0xb4 (11000),
+// dynamic count +0xb8, the name a char* at slot +0x0c (null: the engine uses
+// "v\%05d"). 0x0046df60 and 0x0046e400 encode the same fields
+// (verification/analysis/test_body_table_exe.py pins them in the installed EXE).
+constexpr std::uintptr_t body_global_va = 0x00608518;
+constexpr unsigned body_fixed_count_offset = 0xb4, body_dynamic_count_offset = 0xb8, body_slots_offset = 0xbc,
+                   body_slot_stride = 0x1c, body_slot_name_offset = 0x0c;
+constexpr std::int32_t body_fixed_count = 11000, body_dynamic_limit = 1000000;
+constexpr unsigned body_name_cap = 63, body_name_scan = 256;   // printed / scanned for the NUL (names <= 255 by the save format)
+// The engine's id -> slot (0x0046df60): id < 1000 -> id; 1000..19999 -> id - 9000
+// (1000..8999 invalid); >= 20000 -> fixed + id - 20000; valid when 0 <= slot < fixed + dynamic.
+inline bool body_slot(std::int32_t id, std::int32_t fixed, std::int32_t dynamic, std::uint32_t* slot) {
+    const std::int64_t s = id < 1000 ? std::int64_t(id) : id < 20000 ? std::int64_t(id) - 9000 : std::int64_t(fixed) + id - 20000;
+    if (s < 0 || s >= std::int64_t(fixed) + dynamic) return false;
+    *slot = std::uint32_t(s);
+    return true;
+}
+// The engine's name for a slot whose +0x0c is null: "v\%05d" % id (id >= 0 here).
+inline void body_default_name(std::int32_t id, char* out /* >= 13 bytes */) {
+    char digits[11]; unsigned n = 0;
+    std::uint32_t u = id < 0 ? 0u : std::uint32_t(id);
+    do { digits[n++] = char('0' + u % 10); u /= 10; } while (u);
+    unsigned at = 0;
+    out[at++] = 'v'; out[at++] = '\\';
+    for (unsigned pad = n; pad < 5; ++pad) out[at++] = '0';
+    while (n) out[at++] = digits[--n];
+    out[at] = 0;
+}
+// The row suffix ` body=<name>`: the name (NUL-terminated, may be null) cut at
+// body_name_cap characters, every byte outside 0x21..0x7e shown as '?' so the
+// field stays one space-free token; `-` when unknown or empty. `out` holds at
+// least body_suffix_size bytes.
+constexpr unsigned body_suffix_size = 6 + body_name_cap + 1;
+inline void format_body(char* out, const char* name) {
+    std::memcpy(out, " body=", 6);
+    unsigned at = 6;
+    for (unsigned i = 0; name && name[i] && i < body_name_cap; ++i) {
+        const unsigned char c = static_cast<unsigned char>(name[i]);
+        out[at++] = c > 0x20 && c < 0x7f ? char(c) : '?';
+    }
+    if (at == 6) out[at++] = '-';
+    out[at] = 0;
+}
 // The engine's effective size threshold: max(node+0x1d8, parent+0x1d8) when the
 // node has a parent, node+0x1d8 otherwise (0x0047d2a2..0x0047d2b9, signed).
 inline std::int32_t size_limit(std::int32_t own, bool has_parent, std::int32_t parent) {

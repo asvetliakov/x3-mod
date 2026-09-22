@@ -10,8 +10,8 @@ area stays occluded), the margin (a pixel at exactly zmin does not cover), the
 per-node table and the milliseconds taken from frame_timing. The `--ladder`
 report on a second synthetic log (cull_census rows with and without the LOD
 ladder fields, two views, a draw without a census row, another frame): per-model
-count, thresholds, selected LODs, draws and `s`, sorted by draws, with the
-`no_ladder`, `lod0_below_t1` and `unresolved` flags. No Wine, no D3D.
+count, thresholds, selected LODs, draws, `s` and the body name, sorted by
+draws, with the `no_ladder`, `lod0_below_t1` and `unresolved` flags. No Wine, no D3D.
 """
 import array
 import contextlib
@@ -249,13 +249,15 @@ class LadderReport(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory(prefix='x3-draw-accounting-ladder-')
         rows = [f'frame_begin device=1 frame={LADDER_FRAME}']
         # A single-LOD body: three kept nodes at LOD 0, four draws.
-        rows += [census_line('3100000%d' % i, '000053a0', s, 0, 'kept', 'lods=1 thr=0') for i, s in ((1, 20), (2, 26), (3, 30))]
+        # The first row predates the body field; the model's name comes from the second.
+        rows += [census_line('31000001', '000053a0', 20, 0, 'kept', 'lods=1 thr=0')]
+        rows += [census_line('3100000%d' % i, '000053a0', s, 0, 'kept', 'lods=1 thr=0 body=stations\\docks\\argon_dock_center') for i, s in ((2, 26), (3, 30))]
         # A laddered body kept at LOD 0 with s below t1 (250): flagged; two draws.
-        rows.append(census_line('31000010', '00005470', 26, 0, 'kept', 'lods=4 thr=0,250,150,80'))
+        rows.append(census_line('31000010', '00005470', 26, 0, 'kept', 'lods=4 thr=0,250,150,80 body=v\\00043'))
         # A laddered body that switched normally (s 10 < t2 24): one draw, no flag.
         rows.append(census_line('31000020', '00005480', 10, 2, 'kept', 'lods=3 thr=0,50,24'))
         # A node culled before the model lookup (no ladder) and a pre-ladder row: unresolved, no draws.
-        rows.append(census_line('31000030', '00005490', 1, 0, 'culled_size', 'lods=- thr=-'))
+        rows.append(census_line('31000030', '00005490', 1, 0, 'culled_size', 'lods=- thr=- body=-'))
         rows.append(census_line('31000040', '000054a0', 40, 0, 'kept'))
         # The env-map view and another frame must not enter the main-view table.
         rows.append(census_line('31000001', '000053a0', 5, 0, 'kept', 'lods=1 thr=0', view='01000000'))
@@ -287,6 +289,7 @@ class LadderReport(unittest.TestCase):
         self.assertEqual((body['lods'], body['thr'], body['selected'], body['nodes'], body['kept'], body['draws'], body['s_min'], body['s_max']),
                          (1, [0], {0: 3}, 3, 3, 4, 20, 30))
         self.assertEqual(body['flags'], ['no_ladder'])
+        self.assertEqual([m['body'] for m in result['models']], ['stations\\docks\\argon_dock_center', 'v\\00043', None, None, None])
         self.assertEqual((stuck['lods'], stuck['thr'], stuck['lod0_below_t1'], stuck['flags']), (4, [0, 250, 150, 80], 1, ['lod0_below_t1']))
         self.assertEqual((normal['selected'], normal['flags']), ({2: 1}, []))
         self.assertEqual((culled['lods'], culled['kept'], culled['draws'], culled['flags']), (None, 0, 0, ['unresolved']))
@@ -305,8 +308,10 @@ class LadderReport(unittest.TestCase):
         text = output.getvalue()
         self.assertIn(f'ladder frame {LADDER_FRAME} view=34766bf8 models=5 draws=9 joined_draws=7 no_ladder=1 (4 draws) lod0_below_t1=1 unresolved=2', text)
         lines = text.splitlines()
-        self.assertTrue(lines[2].startswith('000053a0') and lines[2].rstrip().endswith('no_ladder'), lines[2])
+        self.assertTrue(lines[1].rstrip().endswith('flags                     body'), lines[1])
+        self.assertTrue(lines[2].startswith('000053a0') and 'no_ladder' in lines[2] and lines[2].endswith('  stations\\docks\\argon_dock_center'), lines[2])
         self.assertIn('0,250,150,80', lines[3])
+        self.assertTrue(lines[3].endswith('  v\\00043') and lines[4].endswith('  -'), lines[3:5])
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             self.assertEqual(self.module.main([self.temporary.name, '--ladder', '--json', '--view', '1000000']), 0)

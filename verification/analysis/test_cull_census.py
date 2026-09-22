@@ -5,8 +5,8 @@ flag writer/consumer next to each site, interior-branch, extra-source and
 changed-byte refusal, the LOD-ladder pattern and the EBX/ESP/slot writer
 sets), the source constants, the stub encoders, the install, frame and
 per-node row parsers (with and without the ladder fields), the core
-classification, the exit-site model-pointer guard and the ladder suffix compiled with the
-host compiler, the tools/analysis/cull_census.py bucket table on a synthetic
+classification, the exit-site model-pointer guard, the ladder suffix and the
+body-name slot mapping and suffix compiled with the host compiler, the tools/analysis/cull_census.py bucket table on a synthetic
 log, and the --cull-census launcher gate (--dry-run only, never a launch). The
 installed executable is only read when present. No Wine, no game.
 """
@@ -61,6 +61,22 @@ int main() {
     check(exit_model_pointer(0x0a000000, 0x0a000000, 100000) == 0x0a000000, "model pointer: EBX equal to the model slot, not D");
     check(exit_model_pointer(100000, 0x0a000000, 100000) == 0 && exit_model_pointer(100000, 100000, 100000) == 0, "model pointer: EBX still D (culled at 0x0047d2e7) is refused");
     check(exit_model_pointer(0, 0, 5) == 0 && exit_model_pointer(0x0a000000, 0x0b000000, 5) == 0, "model pointer: null EBX or a stale slot is refused");
+    std::uint32_t slot = 0;
+    check(body_slot(0, 11000, 3, &slot) && slot == 0 && body_slot(999, 11000, 3, &slot) && slot == 999, "body slot: ids below 1000 are their slot");
+    check(!body_slot(1000, 11000, 3, &slot) && !body_slot(8999, 11000, 3, &slot) && body_slot(9000, 11000, 3, &slot) && slot == 0 && body_slot(19999, 11000, 3, &slot) && slot == 10999, "body slot: 1000..8999 invalid, 9000..19999 -> id - 9000");
+    check(body_slot(20000, 11000, 3, &slot) && slot == 11000 && body_slot(20002, 11000, 3, &slot) && slot == 11002 && !body_slot(20003, 11000, 3, &slot), "body slot: dynamic ids bounded by the dynamic count");
+    check(!body_slot(-1, 11000, 3, &slot) && !body_slot(2147483647, 11000, 3, &slot) && !body_slot(20000, 11000, 0, &slot), "body slot: negative, huge and no dynamic slot refused");
+    char body[body_suffix_size];
+    body_default_name(43, body); check(!std::strcmp(body, "v\\00043"), "body default name v\\%05d");
+    body_default_name(123456, body); check(!std::strcmp(body, "v\\123456"), "body default name wider than five digits");
+    format_body(body, "stations\\docks\\argon_dock_center"); check(!std::strcmp(body, " body=stations\\docks\\argon_dock_center"), "body suffix: name as stored");
+    format_body(body, nullptr); check(!std::strcmp(body, " body=-"), "body suffix: unknown");
+    format_body(body, ""); check(!std::strcmp(body, " body=-"), "body suffix: empty name");
+    format_body(body, "a b\tc\x7f\x80"); check(!std::strcmp(body, " body=a?b?c??"), "body suffix: space, control and high bytes sanitised");
+    char longest[200]; std::memset(longest, 'x', sizeof longest - 1); longest[sizeof longest - 1] = 0;
+    format_body(body, longest); check(std::strlen(body) == 6 + body_name_cap && body_name_cap == 63, "body suffix: capped at 63 characters");
+    check(body_global_va == 0x00608518 && body_fixed_count_offset == 0xb4 && body_dynamic_count_offset == 0xb8 && body_slots_offset == 0xbc
+          && body_slot_stride == 0x1c && body_slot_name_offset == 0x0c && body_fixed_count == 11000, "body table constants");
     char text[128];
     const std::int32_t thr[ladder_cap] = {900, 100, 50, 25, -1, 7, 8, 9};
     check(format_ladder(text, sizeof text, true, 3, 3, thr) && !std::strcmp(text, " lods=3 thr=900,100,50"), "ladder suffix: three records");
@@ -216,6 +232,11 @@ class CullCensusSites(unittest.TestCase):
         scoped = probe.parse_row(prefix + 'verdict=culled_small scope=bodies lods=1 thr=-5')
         self.assertEqual((scoped['verdict'], scoped['lods'], scoped['thr']), ('culled_small', 1, [-5]))
         self.assertNotIn('lods', node)   # a row written before the ladder fields carries neither key
+        self.assertNotIn('body', laddered)   # nor a row written before the body field
+        named = probe.parse_row(prefix + 'verdict=kept lods=3 thr=900,100,50 body=stations\\docks\\argon_dock_center')
+        self.assertEqual((named['lods'], named['thr'], named['body']), (3, [900, 100, 50], 'stations\\docks\\argon_dock_center'))
+        self.assertIsNone(probe.parse_row(prefix + 'verdict=culled_size scope=all lods=- thr=- body=-')['body'])
+        self.assertEqual(probe.parse_row(prefix + 'verdict=kept lods=- thr=- body=v\\00043')['body'], 'v\\00043')
         self.assertIsNone(probe.parse_row('cull_census_frame device=1 frame=3494 entries=5 overflow=0 unmeasured=3 exited=5 ring=8192'))
         self.assertIsNone(probe.parse_row('cull_census requested=1 patched=1 reason=ok'))
 

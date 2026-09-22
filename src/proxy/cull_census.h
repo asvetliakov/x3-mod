@@ -11,15 +11,16 @@
 // LOD index the pass selected, and keeps EBX when it is the model pointer the
 // pass resolved (core::exit_model_pointer); on a captured frame's Present the
 // rows gain the model's LOD count (word model+0x10) and up to eight record
-// thresholds (record+0x34), read through engine_memory::read, never inside the
-// pass. Bounded ring of 8,192 entries, no allocation
+// thresholds (record+0x34) and the body name of the model id (the engine's body
+// table, docs/reverse-engineering/body-format-bob1.md 6), read through
+// engine_memory::read, never inside the pass. Bounded ring of 8,192 entries, no allocation
 // and no logging per node: outside capture frames each site costs the
 // trampoline round trip (site jmp, dispatcher jmp, a byte compare and
 // branch, jmp back and the displaced tail; measured 0.234 -> 0.244 us per
 // 12-node pass), and a compare-and-store through an integer-only cdecl
 // handler inside them. The rows are emitted at Present
 // (`cull_census_frame` with `overflow=`, then one `cull_census` row per
-// entry, ending ` lods=<n|-> thr=<t0,t1,...|->`). Installed on the backend-load path inside the engine_patch install
+// entry, ending ` lods=<n|-> thr=<t0,t1,...|-> body=<name|->`). Installed on the backend-load path inside the engine_patch install
 // window after the exact-executable and window-byte checks, with this module
 // pinned; a failed second claim rolls the first back.
 namespace x3m::cull_census {
@@ -43,6 +44,12 @@ Stats stats();
 // 0 = none): rows whose `s` is below it and that the engine's own limit did
 // not cull are reported as `culled_small`. One plain store per frame.
 void note_small_threshold(std::int32_t threshold, bool bodies_only = false);   // bodies_only: the stub's scope (parentless nodes only)
+#ifdef X3M_CULL_CENSUS_FIXTURE
+// Fixture build only: the image global holding the body manager pointer
+// (production reads the constant core::body_global_va); the CPU fixture points
+// it at a synthetic manager.
+void set_body_table_global(std::uintptr_t va);
+#endif
 }
 // The stubs' cdecl targets: integer only, no Win32 call, LastError untouched by
 // construction; EBX/ESI/EDI/EBP preserved by the ABI, the stubs save EAX/ECX/EDX.

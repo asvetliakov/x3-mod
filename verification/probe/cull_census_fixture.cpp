@@ -11,7 +11,11 @@
 // thresholds) only where the pass resolved a model pointer (not for nodes
 // culled with EBX still D, a null model, and never a fault for a count-0 model,
 // an unreadable record or a hostile EBX); early-rejected nodes count as unmeasured; the ring
-// never overflows silently (overflow= on the frame row); disarmed frames
+// never overflows silently (overflow= on the frame row); the body name of each
+// model id from a synthetic body table (fixed, 9000..19999 and dynamic ids,
+// slot out of range, invalid id range, null, no-access and page-edge name
+// pointers, a name across two pages, no NUL within 256 bytes, the 63-character cap, one read set per id, a moved slot array, no manager, a
+// wrong fixed count); disarmed frames
 // record nothing; LastError preserved; exact rollback; option off untouched;
 // changed window bytes refused; late window refused. Diagnostic timings only;
 // not game FPS. Never launches the game.
@@ -433,7 +437,9 @@ static double bench_us(Node& root, View& view, bool arm, unsigned loops = 20000)
     return double(e.QuadPart - s.QuadPart) * 1e6 / double(f.QuadPart) / double(loops);
 }
 
+static std::uint32_t no_body_manager = 0;   // the body-table global the main scenario sees: body system not up, every row body=-
 int main() {
+    census::set_body_table_global(addr(&no_body_manager));
     // The synthetic code lives in .text: make the two windows writable for the patch (the engine's pages are handled by engine_patch).
     DWORD old = 0;
     check(VirtualProtect(reinterpret_cast<void*>(reinterpret_cast<std::uintptr_t>(synthetic_measure_window) & ~std::uintptr_t(0xfff)), 0x2000, PAGE_EXECUTE_READWRITE, &old) != FALSE, "synthetic code writable");
@@ -627,6 +633,106 @@ int main() {
         check(rows.size() == 3 && ladder_is(&rows[0], "-", "-") && ladder_is(&rows[1], "-", "-") && ladder_is(&rows[2], "-", "-"),
               "hostile exit arguments: no-access model, EBX equal to D and a null-page model all give lods=- thr=-, no fault");
         frame_lines.clear(); entry_lines.clear();
+    }
+
+    // ---- body names: a synthetic body manager (0x0046df60's id -> slot map, the name char* at slot +0x0c) ----
+    {
+        constexpr unsigned dynamic = 4, slots = core::body_fixed_count + dynamic;   // valid slots 0..11003
+        static unsigned char manager[0xc0];
+        auto* table = static_cast<unsigned char*>(VirtualAlloc(nullptr, slots * core::body_slot_stride, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+        auto* edge = static_cast<unsigned char*>(VirtualAlloc(nullptr, 0x2000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));   // a name ending at a page end
+        DWORD was = 0;
+        check(table && edge && VirtualProtect(edge + 0x1000, 0x1000, PAGE_NOACCESS, &was) != FALSE, "body table: synthetic slots and an edge page");
+        if (!table || !edge) { std::printf("CULL CENSUS CPU checks=%u failures=%u\n", checks, failures); return 1; }
+        auto name_at = [&](unsigned slot, const void* name) { put(table + slot * core::body_slot_stride, core::body_slot_name_offset, addr(name)); };
+        static char m5[] = "ships\\argon\\argon_m5", dock[] = "stations\\docks\\argon_dock_center";
+        static char longest[101]; std::memset(longest, 'y', 100);
+        std::memcpy(edge + 0x1000 - 4, "abc", 4);
+        name_at(42, m5);                                          // id 42 (< 1000): slot 42
+        name_at(core::body_fixed_count + 1, dock);                // id 20001: slot 11001
+        name_at(core::body_fixed_count + 2, noaccess);            // id 20002: the name pointer on a no-access page
+        name_at(core::body_fixed_count + 3, edge + 0x1000 - 4);   // id 20003: "abc" ending just before a no-access page
+        name_at(44, longest);                                     // id 44: 100 characters, printed 63
+        // id 45: 256 bytes without a NUL (the NUL at byte 256 is past the scan): refused
+        static char unterminated[257]; std::memset(unterminated, 'z', 256);
+        name_at(45, unterminated);
+        // id 46: a name continuing from one readable page into the next (two page-bounded chunks)
+        auto* span = static_cast<unsigned char*>(VirtualAlloc(nullptr, 0x2000, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+        check(span != nullptr, "body table: a two-page readable span");
+        if (!span) { std::printf("CULL CENSUS CPU checks=%u failures=%u\n", checks, failures); return 1; }
+        std::memcpy(span + 0x1000 - 5, "abcdefghij", 11);
+        name_at(46, span + 0x1000 - 5);
+        // id 10500 (9000..19999): slot 1500
+        static char fixed[] = "ships\\teladi\\teladi_m6";
+        name_at(10500 - 9000, fixed);
+        // id 43: slot 43 has no name (the engine's "v\%05d"); id 20005: slot 11005 beyond the 11004 slots; id 5000: 1000..8999 has no slot
+        put(manager, core::body_fixed_count_offset, core::body_fixed_count); put(manager, core::body_dynamic_count_offset, dynamic);
+        put(manager, core::body_slots_offset, addr(table));
+        static std::uint32_t manager_global = 0; manager_global = addr(manager);
+        census::set_body_table_global(addr(&manager_global));
+        static Node named[12];
+        auto frame_of = [&](const std::uint32_t* ids, unsigned count, unsigned long long frame) {
+            census::begin_frame(true);
+            for (unsigned i = 0; i < count; ++i) {
+                node_set(named[i], nullptr, 3000, 100000, 0x1002, 0, 0, ids[i]);
+                x3m_cull_census_measure(addr(&named[i]), 38, 19, 100000, addr(&view));
+                x3m_cull_census_exit(addr(&named[i]), 100000, 100000, 100000);   // EBX == D: no ladder read, only the body read
+            }
+            census::present(7, frame, true);
+            std::vector<std::string> bodies;
+            for (const std::string& line : entry_lines) {
+                const char* b = std::strstr(line.c_str(), " body="); char text[128] = "?";
+                if (b) std::sscanf(b, " body=%127s", text);
+                bodies.emplace_back(text);
+            }
+            frame_lines.clear(); entry_lines.clear();
+            return bodies;
+        };
+        static const std::uint32_t ids[12] = {42, 20001, 20005, 20002, 43, 5000, 20003, 44, 42, 45, 46, 10500};
+        SetLastError(0x6170);
+        const std::vector<std::string> bodies = frame_of(ids, 12, 49);
+        check(GetLastError() == 0x6170, "body names: LastError preserved across the Present-time reads");
+        check(bodies.size() == 12, "body names: twelve rows");
+        if (bodies.size() == 12) {
+            check(bodies[0] == "ships\\argon\\argon_m5" && bodies[8] == bodies[0], "body names: id 42 (fixed, below 1000) named, and again on a second row");
+            check(bodies[1] == "stations\\docks\\argon_dock_center", "body names: id 20001 (dynamic) named");
+            check(bodies[2] == "-", "body names: id 20005, slot out of range: body=-");
+            check(bodies[3] == "-", "body names: id 20002, name pointer on a no-access page: body=-, no fault");
+            check(bodies[4] == "v\\00043", "body names: id 43, null name pointer: the engine's v\\%05d");
+            check(bodies[5] == "-", "body names: id 5000 (1000..8999, no slot): body=-");
+            check(bodies[6] == "abc", "body names: a name ending just before a no-access page reads");
+            check(bodies[7] == std::string(63, 'y'), "body names: a 100-character name capped at 63");
+            check(bodies[9] == "-", "body names: id 45, no NUL within 256 bytes: body=-");
+            check(bodies[10] == "abcdefghij", "body names: id 46, a name continuing into a second readable page");
+            check(bodies[11] == "ships\\teladi\\teladi_m6", "body names: id 10500 (9000..19999) maps to slot id - 9000");
+        }
+        // One read set per distinct id per captured frame: three rows of id 42 cost the same reads as one.
+        static const std::uint32_t same[3] = {42, 42, 42};
+        std::uint64_t before = x3m::engine_memory::stats().reads;
+        frame_of(same, 1, 50);
+        const std::uint64_t one = x3m::engine_memory::stats().reads - before;
+        before = x3m::engine_memory::stats().reads;
+        frame_of(same, 3, 51);
+        const std::uint64_t three = x3m::engine_memory::stats().reads - before;
+        check(one > 0 && three == one, "body names: one read set per distinct id per captured frame");
+        // The slot array moves between frames (0x0046e400 reallocates it): the next captured frame reads the new one.
+        auto* moved = static_cast<unsigned char*>(VirtualAlloc(nullptr, slots * core::body_slot_stride, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+        static char renamed[] = "ships\\boron\\boron_m5";
+        if (moved) {
+            std::memcpy(moved, table, slots * core::body_slot_stride);
+            put(moved + 42 * core::body_slot_stride, core::body_slot_name_offset, addr(renamed));
+            put(manager, core::body_slots_offset, addr(moved));
+        }
+        const std::vector<std::string> after = frame_of(same, 1, 52);
+        check(moved && after.size() == 1 && after[0] == "ships\\boron\\boron_m5", "body names: a reallocated slot array is re-read on the next captured frame");
+        // The body system not up (manager pointer 0), then a fixed count other than 11000: every row body=-.
+        manager_global = 0;
+        const std::vector<std::string> down = frame_of(ids, 2, 53);
+        manager_global = addr(manager); put(manager, core::body_fixed_count_offset, core::body_fixed_count + 1);
+        const std::vector<std::string> wrong = frame_of(ids, 2, 54);
+        check(down.size() == 2 && down[0] == "-" && down[1] == "-" && wrong.size() == 2 && wrong[0] == "-" && wrong[1] == "-",
+              "body names: no manager or a fixed count other than 11000 gives body=-");
+        census::set_body_table_global(addr(&no_body_manager));
     }
 
     // ---- overflow: 8,200 measured nodes keep 8,192 rows and count the rest ----

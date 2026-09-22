@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[2]
 BUILD = ROOT / 'build/verification/cull-census'
 NO_SSE = ['-mno-sse', '-mno-mmx', '-mfpmath=387']
 ALLOWED = {'fwait'}
+FIXTURE_DEFINE = '-DX3M_CULL_CENSUS_FIXTURE'
 HANDLERS = ('_x3m_cull_census_measure', '_x3m_cull_census_exit')
 
 
@@ -45,8 +46,9 @@ def audit_module(path):
 def build():
     BUILD.mkdir(parents=True, exist_ok=True)
     objects = []
-    for source, stem, extra in [('verification/probe/cull_census_fixture.cpp', 'fixture', []),
-                                ('src/proxy/cull_census.cpp', 'module', NO_SSE),
+    # X3M_CULL_CENSUS_FIXTURE: the body-table global seam (set_body_table_global), absent from production.
+    for source, stem, extra in [('verification/probe/cull_census_fixture.cpp', 'fixture', [FIXTURE_DEFINE]),
+                                ('src/proxy/cull_census.cpp', 'module', [*NO_SSE, FIXTURE_DEFINE]),
                                 ('src/proxy/engine_patch.cpp', 'patch', []),
                                 ('src/proxy/engine_memory.cpp', 'memory', NO_SSE)]:
         out = BUILD / (stem + '.o')

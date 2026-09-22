@@ -69,6 +69,66 @@ const Ladder& ladder_of(std::uint32_t model) {
     return slot;
 }
 
+// The body name of each model id a captured frame's rows name (body-format-bob1.md 6),
+// read at Present through engine_memory::read like the ladder: the table header once
+// per captured frame (the slot array may be reallocated between frames), then per
+// distinct id the slot's name pointer and up to body_name_scan bytes of the name.
+// Direct-mapped by id and cleared per captured frame; the row gets `body=-` on any
+// unreadable span, an invalid id or a name without a NUL within the scan.
+#ifdef X3M_CULL_CENSUS_FIXTURE
+std::uintptr_t body_global_ = body_global_va;   // the fixture points it at a synthetic manager
+#else
+constexpr std::uintptr_t body_global_ = body_global_va;
+#endif
+struct BodyTable { bool read, valid; std::int32_t fixed, dynamic; std::uint32_t slots; };
+BodyTable body_table_{};
+struct BodyName { std::uint32_t id; bool valid; char suffix[body_suffix_size]; };
+constexpr unsigned body_cache_size = 256;
+BodyName body_cache_[body_cache_size];
+
+const BodyTable& body_table() {
+    if (body_table_.read) return body_table_;
+    body_table_.read = true;
+    std::uint32_t g = 0; std::int32_t head[3]{};   // +0xb4 fixed, +0xb8 dynamic, +0xbc slots
+    static_assert(body_dynamic_count_offset == body_fixed_count_offset + 4 && body_slots_offset == body_fixed_count_offset + 8, "one 12-byte header read");
+    if (!engine_memory::read(body_global_, &g, 4) || !g || !engine_memory::read(std::uintptr_t(g) + body_fixed_count_offset, head, sizeof head)) return body_table_;
+    body_table_.fixed = head[0]; body_table_.dynamic = head[1]; body_table_.slots = std::uint32_t(head[2]);
+    body_table_.valid = head[0] == body_fixed_count && head[1] >= 0 && head[1] < body_dynamic_limit && head[2] != 0;
+    return body_table_;
+}
+// The name at `p`, scanned in page-bounded chunks so a short name ending just before
+// an unreadable page still reads; false without a NUL within body_name_scan bytes.
+bool read_name(std::uint32_t p, char* name) {
+    unsigned have = 0;
+    while (have < body_name_scan) {
+        const std::uintptr_t at = std::uintptr_t(p) + have;
+        unsigned chunk = unsigned(0x1000 - (at & 0xfff));
+        if (chunk > body_name_scan - have) chunk = body_name_scan - have;
+        if (!engine_memory::read(at, name + have, chunk)) return false;
+        for (unsigned i = have; i < have + chunk; ++i) if (!name[i]) return true;
+        have += chunk;
+    }
+    return false;
+}
+const char* body_of(std::uint32_t id) {
+    BodyName& slot = body_cache_[id % body_cache_size];
+    if (slot.valid && slot.id == id) return slot.suffix;
+    slot.id = id; slot.valid = true;
+    const BodyTable& t = body_table();
+    std::uint32_t index = 0, p = 0;
+    char name[body_name_scan];
+    const char* shown = nullptr;
+    std::uint64_t entry = 0;   // computed in 64 bits: a slot address that would wrap is refused, not read
+    if (t.valid && body_slot(std::int32_t(id), t.fixed, t.dynamic, &index)
+        && (entry = std::uint64_t(t.slots) + std::uint64_t(index) * body_slot_stride + body_slot_name_offset) <= 0xfffffffcu
+        && engine_memory::read(std::uintptr_t(entry), &p, 4)) {
+        if (!p) { body_default_name(std::int32_t(id), name); shown = name; }
+        else if (read_name(p, name)) shown = name;
+    }
+    format_body(slot.suffix, shown);
+    return slot.suffix;
+}
+
 bool bytes_match(std::uintptr_t at, const unsigned char* expected, unsigned length) {
     unsigned char actual[measure_window_length]{};
     return length <= measure_window_length && engine_patch::read_code(at, actual, length) && !std::memcmp(actual, expected, length);
@@ -226,6 +286,9 @@ void begin_frame(bool capture) {
     pending_node_ = 0; pending_index_ = no_index;
     x3m_cull_census_enabled = capture ? 1 : 0;
 }
+#ifdef X3M_CULL_CENSUS_FIXTURE
+void set_body_table_global(std::uintptr_t va) { body_global_ = va; }
+#endif
 void note_small_threshold(std::int32_t threshold, bool bodies_only) { small_threshold_ = threshold; small_bodies_only_ = bodies_only; }
 Stats stats() {
     Stats s{};
@@ -244,21 +307,22 @@ void present(unsigned long long device, unsigned long long frame, bool captured)
         log("cull_census_frame device=%llu frame=%llu entries=%lu overflow=%lu unmeasured=%lu exited=%lu ring=%u",
             device, frame, (unsigned long)entries, (unsigned long)s.overflow, (unsigned long)s.unmeasured, (unsigned long)s.exited, ring_size);
         std::memset(ladder_cache_, 0, sizeof ladder_cache_);
+        std::memset(body_cache_, 0, sizeof body_cache_); body_table_ = BodyTable{};
         // A fresh validation epoch for this frame's ladder reads: on a census-only run no motion
         // route advances it, so region checks would otherwise be trusted for up to 100 ms.
         engine_memory::next_frame();
         for (std::uint32_t i = 0; i < entries && ring_; ++i) {
             const Entry& e = ring_[i];
             // A culled_small row names the scope that culled it, then the model's LOD ladder
-            // (appended: the row parsers anchor on the fields before them).
+            // and the body name of its id (appended: the row parsers anchor on the fields before them).
             const Verdict verdict = classify(e, small_threshold_, small_bodies_only_);
             char ladder[8 + 12 + 5 + ladder_cap * 12 + 1];
             const Ladder& l = ladder_of(e.model_ptr);
             format_ladder(ladder, sizeof ladder, e.model_ptr && l.known, l.count, l.thresholds, l.thr);
-            log("cull_census device=%llu frame=%llu view=%08lx node=%08lx model=%08lx s=%ld measure=%ld d=%ld radius=%ld thr_1dc=%ld thr_1d8=%ld limit=%ld flags_in=%08lx flags_out=%08lx lod=%ld verdict=%s%s%s",
+            log("cull_census device=%llu frame=%llu view=%08lx node=%08lx model=%08lx s=%ld measure=%ld d=%ld radius=%ld thr_1dc=%ld thr_1d8=%ld limit=%ld flags_in=%08lx flags_out=%08lx lod=%ld verdict=%s%s%s%s",
                 device, frame, (unsigned long)e.view, (unsigned long)e.node, (unsigned long)e.model, (long)e.s, (long)e.measure, (long)e.d, (long)e.radius,
                 (long)e.thr_1dc, (long)e.thr_1d8, (long)e.limit, (unsigned long)e.flags_in, (unsigned long)e.flags_out, (long)e.lod, verdict_name(verdict),
-                verdict == Verdict::culled_small ? (small_bodies_only_ ? " scope=bodies" : " scope=all") : "", ladder);
+                verdict == Verdict::culled_small ? (small_bodies_only_ ? " scope=bodies" : " scope=all") : "", ladder, body_of(e.model));
         }
     }
     count_.store(0, std::memory_order_relaxed); overflow_.store(0, std::memory_order_relaxed);
