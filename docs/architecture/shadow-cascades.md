@@ -292,3 +292,36 @@ when the frame exceeds the budget, always in full (never a partial map); with fi
 C4 alone, C3 replays every frame. Memory at 4096²: 5 × 64 MiB maps + 64 MiB depth = 384 MiB.
 Fixture: `sun-shadow-apply-cascades-5` (five 256² maps, the box's shadow at each cascade's range
 and across each seam); evidence in the ledger, "Five cascades".
+
+### Per-cascade cost split; staggered refresh not adopted (2026-09-22)
+
+Run 239 (a static-camera ~52 fps plateau against ~100 fps; [engine-frame-time.md](engine-frame-time.md),
+"Run 239"; evidence in [../verification/directional-shadows.md](../verification/directional-shadows.md),
+"Run 239 plateau: the replay is 0.7 ms") asked whether the proxy's own cascade replays carry the
+extra draws. They do not: `frame_end draws=` and `frame_timing draw_calls/state_calls` count the
+application's calls through the proxy vtable, and the pass issues its replays through the native
+table, so the 77 → 368 draws and 3.7 k → 23 k state calls of the plateau are the engine's; the whole
+cascade transaction is `shadow_replay_depth us=` (0.49 → 0.73 ms, 390 → 571 issues). The line now
+carries the proxy side of the split explicitly: `state_calls<k>=` per cascade, the native non-draw
+calls the pass made into map k this frame (`ShadowReplayResult::state_calls_map`: SetRenderTarget,
+SetViewport and Clear per bound map, then SetVertexDeclaration, SetStreamSource, SetIndices,
+SetRenderState and SetVertexShaderConstantF per issue, so 3 + 5 × `draws<k>`; a map not replayed
+this frame reads 0, a refused frame reads 0 everywhere; the block capture/restore is not counted).
+`shadow_replay_depth.py` parses the group (`row['state_calls']`) and enforces the identity;
+`seam-ownership-shadow-replay-cascades*` assert it per frame. The on-screen / off-screen split per
+cascade already exists across two lines: `shadow_replay_candidates c<k>=` (engine-submitted this
+frame) and `shadow_retention_frame would_c<k>=` (retained records the store admitted), which sum to
+`draws<k>=` on the depth line (10200: c2 48 + 15 = 63, c3 48 + 62 = 110, c4 241 + 111 = 352).
+
+A staggered far-cascade refresh (`N0,…,N4`: cascade k re-rendered every Nk frames on the phase
+`(frame + k) % Nk == 0`, the retained map and basis held between, early refresh when absent, forced,
+the sun turned beyond 0.25°, the snapped centre moved beyond 5 % of the half-extent, the caster
+count changed by more than 10 % or the age reached Nk; a currency law with one frame of slack for
+the budget-held far cascade) was designed for the same plateau and **not wired in**: it could save at
+most the replay's ~0.5 ms of the +8.5 ms. What exists is the header-only core
+`src/renderer/shadow_cascade_refresh_core.h` (schedule parse, `shadow_cascade_refresh_decide`,
+`shadow_cascade_map_current`) with its host test `verification/analysis/test_shadow_cascade_refresh.py`;
+no launcher option, no environment variable, no consumer in the proxy. The retained-basis plumbing it
+would need is already the far cascade's (`ShadowReplayPass::retain`, the apply's `kept->basis`, the
+`valid` / `map_frame<k>` fields), and the two consumers to relax are the apply's
+`kept->frame == frame_ || far && kept->frame + 1 == frame_` and the fog's `fog_shadow_current`.

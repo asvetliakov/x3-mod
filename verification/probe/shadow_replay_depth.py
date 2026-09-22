@@ -86,6 +86,22 @@ def parse_depth_line(line):
         if apply_us < 0 or apply_us != apply_us or not 0 <= apply_cascades <= 5:  # shadow_cascade_max = 5
             raise MalformedLine(line.strip())
         row['apply'] = {'us': apply_us, 'cascades': apply_cascades}
+    # The proxy's own per-cascade cost split (engine-frame-time.md, "Run 239"):
+    # state_calls<i>, the native non-draw device calls the pass made into map i
+    # (three per bound map, five per issue), after the cull pair and before the
+    # apply pair; absent on older lines and on the single-map path.
+    states = [(k, v) for k, v in tail if k.startswith('state_calls')]
+    if states:
+        if [k for k, _ in tail[-len(states):]] != [k for k, _ in states] or [k for k, _ in states] != [f'state_calls{i}' for i in range(len(states))] or len(states) > 5:
+            raise MalformedLine(line.strip())
+        tail = tail[:len(tail) - len(states)]
+        try:
+            values = [int(v) for _, v in states]
+        except ValueError as error:
+            raise MalformedLine(line.strip()) from error
+        if any(v < 0 for v in values):
+            raise MalformedLine(line.strip())
+        row['state_calls'] = values
     # Back-face cascades (shadow-cascade-extents.md, "Caster pool control" amendments): the
     # issued records by cull mode per cascade, cull_none<i> cull_inverted<i>, at the end of the line.
     culls = [(k, v) for k, v in tail if k.startswith('cull_')]
@@ -133,6 +149,11 @@ def parse_depth_line(line):
         row['cascades'] = cascades
         if 'retention' in row and [a + b for a, b in zip(row['retention']['live'], row['retention']['retained'])] != cascades['draws']:
             raise MalformedLine(f'live + retained issues differ from the cascade draws: {line.strip()}')
+        # A replayed map costs its bind, viewport and Clear plus five calls per issue; a map not replayed this frame costs nothing.
+        if 'state_calls' in row and row['state_calls'] != [3 + 5 * d if d else 0 for d in cascades['draws']]:
+            raise MalformedLine(f'state calls differ from the cascade draws: {line.strip()}')
+    elif 'state_calls' in row:
+        raise MalformedLine(f'state calls without cascades: {line.strip()}')
     for key, value in pairs:
         try:
             row[key] = float(value) if key == 'us' else int(value)

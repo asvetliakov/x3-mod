@@ -477,6 +477,18 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
             length += std::snprintf(cull_text + length, sizeof cull_text - length, " cull_none%u=%u cull_inverted%u=%u", k, refused ? 0u : cull_none[k], k, refused ? 0u : cull_inverted[k]);
         if (length < 0 || length >= int(sizeof cull_text)) cull_text[0] = 0;
     }
+    // The proxy's own per-cascade cost split (engine-frame-time.md, "Run 239"): the
+    // native state calls the pass made into each map this frame (three per bound
+    // map, five per issue; ShadowReplayResult::state_calls_map), beside draws<k>=.
+    // Neither is in frame_timing's draw_calls/state_calls, which count the
+    // application's calls through the proxy vtable; a refused frame reads 0.
+    char state_text[112]; state_text[0] = 0;
+    {
+        int length = 0;
+        for (unsigned k = 0; k < cascades && length >= 0 && length < int(sizeof state_text); ++k)
+            length += std::snprintf(state_text + length, sizeof state_text - length, " state_calls%u=%u", k, refused ? 0u : out.state_calls_map[k]);
+        if (length < 0 || length >= int(sizeof state_text)) state_text[0] = 0;
+    }
     // Sun-shadow apply cost (legacy-sun-application.md, 2): the previous
     // frame's apply, its QPC micros and the cascade maps it sampled, on this
     // line so the replay's cost and the apply's are read together. The fields
@@ -491,9 +503,9 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
                                     previous ? sun_apply_us_ : 0., previous ? sun_apply_sampled_ : 0u);
         if (n < 0 || n >= int(sizeof apply_text)) apply_text[0] = 0;
     }
-    log("shadow_replay_depth device=%llu frame=%llu replayed=%u skipped_lease=%u skipped_state=%u skipped_caps=%u draws=%u us=%.1f shadow_toggle=%u%s far_replayed=%u far_frame=%lld issues=%u budget=%u%s%s%s",
+    log("shadow_replay_depth device=%llu frame=%llu replayed=%u skipped_lease=%u skipped_state=%u skipped_caps=%u draws=%u us=%.1f shadow_toggle=%u%s far_replayed=%u far_frame=%lld issues=%u budget=%u%s%s%s%s",
         id_, frame_, c.replayed, c.skipped_lease, c.skipped_state, c.skipped_caps, c.draws, c.us, unsigned(sun_shadow_enabled_), text, unsigned(far_replayed),
-        far_kept ? static_cast<long long>(far_kept->frame) : -1ll, issues, depth_cascades_.budget, retained_text, cull_text, apply_text);
+        far_kept ? static_cast<long long>(far_kept->frame) : -1ll, issues, depth_cascades_.budget, retained_text, cull_text, state_text, apply_text);
 }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 // Seam: the map as floats (R32F only) and the last replayed frame's basis:

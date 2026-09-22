@@ -111,6 +111,27 @@ class CascadeFields(unittest.TestCase):
             with self.assertRaises(depth.MalformedLine, msg=bad[-60:]):
                 depth.parse_depth_line(bad)
 
+    def test_state_calls_split(self):
+        """The proxy's own per-cascade cost split (engine-frame-time.md, "Run
+        239"): state_calls<i> after the cull pair and before the apply pair,
+        three per replayed map plus five per issue, 0 for a map not replayed
+        this frame; absent on older lines and never without the cascade tail."""
+        cull = ' cull_none0=0 cull_inverted0=0 cull_none1=0 cull_inverted1=4'
+        row = depth.parse_depth_line(line(6, replayed=4, draws=4) + ' shadow_toggle=1' + self.TAIL + cull + ' state_calls0=13 state_calls1=23 apply_us=310.5 apply_cascades=2')
+        self.assertEqual((row['state_calls'], row['cascades']['draws'], row['cull']['inverted'], row['apply']['cascades']), ([13, 23], [2, 4], [0, 4], 2))
+        held = depth.parse_depth_line(line(7, replayed=4, draws=4) + ' draws0=2 draws1=0 far_replayed=0 far_frame=6 issues=6 budget=5 state_calls0=13 state_calls1=0')
+        self.assertEqual(held['state_calls'], [13, 0])
+        self.assertNotIn('state_calls', depth.parse_depth_line(line(6, replayed=4, draws=4) + self.TAIL))
+        good = line(6, replayed=4, draws=4) + self.TAIL + ' state_calls0=13 state_calls1=23'
+        for bad in (good.replace('state_calls1=23', 'state_calls1=22'),            # not three plus five per issue
+                    good.replace('state_calls0=13 ', ''),                          # a cascade missing
+                    good.replace('state_calls1=23', 'state_calls1=-1'), good.replace('state_calls1=23', 'state_calls1=x'),
+                    good + ' state_calls2=0',                                      # more entries than cascades
+                    line(7) + ' state_calls0=13',                                  # the single-map line carries no split
+                    line(6, replayed=4, draws=4) + ' state_calls0=13 state_calls1=23' + self.TAIL):  # before the cascade tail
+            with self.assertRaises(depth.MalformedLine, msg=bad[-70:]):
+                depth.parse_depth_line(bad)
+
     def test_five_cascades(self):
         good = line(6, replayed=4, draws=4) + self.TAIL
         row = depth.parse_depth_line(good.replace('draws0=2 draws1=4', 'draws0=1 draws1=1 draws2=1 draws3=1 draws4=2'))

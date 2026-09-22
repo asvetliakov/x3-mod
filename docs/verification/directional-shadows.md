@@ -3555,3 +3555,42 @@ turning. Fixture live case: frames 1,535, static_frames 1,354, retained_frames 1
   double compiles the `draw_indexed` slice of `capture.cpp`, changed by that landing and untouched here) and
   `test_bloom_programs` (program records pin an older `tools/shaders/generate_rigid_motion_pixel.py` hash). Before the
   merge the suite was 229 / 229.
+
+## Run 239 plateau: the replay is 0.7 ms, the extra draws are the engine's (2026-09-22, worktree `agent-a818eb9c832d16276`)
+
+Session `/tmp/x3-bottleX3-run239/session-20260922-180304-212.log` (Run65 `2d11aac4`, session C with
+`--frame-timing --frame-phases`), control frame 3000 (~100 fps) against plateau frame 10200 (~52 fps),
+all numbers grep'd from the per-frame lines. The hypothesis under test was that the proxy's own
+cascade replays (retained casters re-issued into the far cascades every frame) carry the plateau's
+extra draws and state calls. Measured, they do not.
+
+| Counter (frame 3000 → 10200) | value | source line |
+| --- | --- | --- |
+| Engine draws through the proxy (`frame_end draws=`, `frame_timing draw_calls_p50`) | 77 → 368 (72 → 368 p50) | the application's Draw* calls only: the pass replays through the native table |
+| Engine state calls (`state_calls_p50`; `set_sampler_state` 1658 → 11682, `set_render_state` 1275 → 6797) | 3,739 → 23,043 (52 → 63 per draw) | `frame_timing` |
+| `view_submit_p50_us` / `dt_p50_us` | 2,201 → 10,753 (+8,552) / 9,981 → 19,226 (+9,245) | `frame_phases` |
+| Replay issues per cascade `draws0..4=` | 4 / 4 / 4 / 86 / 292 = 390 → 21 / 25 / 63 / 110 / 352 = 571 (`budget=640`, `far_replayed=1` both) | `shadow_replay_depth` |
+| Whole cascade transaction `us=` | 492.3 → 725.6 µs (1.26 → 1.27 µs per issue; 4.9 % → 3.8 % of dt; +0.23 ms of the +9.2 ms) | `shadow_replay_depth` |
+| Native state calls the pass made (3 per bound map + 5 per issue; counted from this change on as `state_calls<k>=`) | 1,965 → 2,870 (computed for this log) | `shadow_replay_pass.cpp` |
+| On-screen (engine-submitted) casters per cascade `c0..c4=` | 4 / 4 / 4 / 39 / 39 → 21 / 25 / 48 / 48 / 241 | `shadow_replay_candidates` (= `shadow_retention_frame live_c<k>`) |
+| Off-screen retained records admitted per cascade `would_c0..c4=` | 0 / 0 / 0 / 47 / 253 → 0 / 0 / 15 / 62 / 111 | `shadow_retention_frame` (`mode=live`; c<k> + would_c<k> = draws<k>) |
+| Proxy per-draw path / native draw (`draw_p50_us`, `draw_native_p50_us`, per frame) | 555 → 2,990 (7.7 → 8.1 µs per engine draw) / 208 → 1,167 (2.9 → 3.2 µs) | `frame_timing` |
+| Engine time between hooked calls per draw (`gap_draw_per_draw_us`) | 29.7 → 23.7 µs | `frame_timing` |
+
+Conclusion: the +8.5 ms of `view_submit` is 296 additional **engine** draws at about 21 µs of engine
+time plus about 5 µs of proxy time each with 62 state calls per draw, submitted by the engine from
+this stand (a station complex in and around the frustum) regardless of what is visible. The retained
+off-screen casters are fewer at the plateau than at the control (364 → 188), and the whole shadow
+replay costs 0.73 ms. The retention walk is cheaper too (`us=` 370.5 → 186.1). A staggered
+far-cascade refresh therefore cannot address the plateau (it bounds the saving at ~0.5 ms) and was
+not wired in; the design and the header-only core that exists are recorded in
+[../architecture/shadow-cascades.md](../architecture/shadow-cascades.md), "Per-cascade cost split".
+What would address it is engine-side: fewer draws submitted from that stand (engine culling / LOD),
+or a cheaper proxy per-draw path (the 5 µs × 368 = 1.8 ms of proxy time per frame is the only part
+this project owns; the engine's 21 µs per draw is not).
+
+Change landed with this diagnosis: `shadow_replay_depth` gains `state_calls<k>=` per cascade
+(the pass's native non-draw calls into map k, 3 + 5 × `draws<k>`, 0 when not replayed or refused),
+`ShadowReplayResult::state_calls_map`, the parser group `row['state_calls']` with the identity
+enforced (`test_shadow_replay_depth`, 15 tests), the per-frame assertion in
+`seam-ownership-shadow-replay-cascades*`, and `test_shadow_cascade_refresh` for the unwired core.

@@ -270,13 +270,15 @@ HRESULT ShadowReplayPass::bind() noexcept {
 // One draw: the application's own geometry bindings and cull mode (inverted
 // for a back-face map: shadow_replay_cull_mode), the light rows (c0-c3, or
 // c0-c2 of a cascade issue over the transaction's constant c3).
-HRESULT ShadowReplayPass::issue(const ShadowReplayDraw& r, const float* rows, unsigned vectors, bool invert_cull) noexcept {
+HRESULT ShadowReplayPass::issue(const ShadowReplayDraw& r, const float* rows, unsigned vectors, bool invert_cull, unsigned* state_calls) noexcept {
     D d = device_;
-    HRESULT hr = call<SetDeclarationFn>(SetVertexDeclaration)(d, r.declaration);
-    if (SUCCEEDED(hr)) hr = call<SetStreamFn>(SetStreamSource)(d, 0, r.vertex_buffer, r.stream_offset, r.stride);
-    if (SUCCEEDED(hr)) hr = call<SetIndicesFn>(SetIndices)(d, r.indexed ? r.index_buffer : nullptr);
-    if (SUCCEEDED(hr)) hr = call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, shadow_replay_cull_mode(r.cull_mode, invert_cull));
-    if (SUCCEEDED(hr)) hr = call<SetVsConstantsFn>(SetVertexShaderConstantF)(d, 0, rows, vectors);
+    unsigned made = 0; // native state calls made (each only after the previous succeeded)
+    HRESULT hr = call<SetDeclarationFn>(SetVertexDeclaration)(d, r.declaration); ++made;
+    if (SUCCEEDED(hr)) { hr = call<SetStreamFn>(SetStreamSource)(d, 0, r.vertex_buffer, r.stream_offset, r.stride); ++made; }
+    if (SUCCEEDED(hr)) { hr = call<SetIndicesFn>(SetIndices)(d, r.indexed ? r.index_buffer : nullptr); ++made; }
+    if (SUCCEEDED(hr)) { hr = call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, shadow_replay_cull_mode(r.cull_mode, invert_cull)); ++made; }
+    if (SUCCEEDED(hr)) { hr = call<SetVsConstantsFn>(SetVertexShaderConstantF)(d, 0, rows, vectors); ++made; }
+    if (state_calls) *state_calls += made;
     if (FAILED(hr)) return hr;
     return r.indexed ? call<DrawIndexedFn>(DrawIndexedPrimitive)(d, r.topology, r.base_vertex, r.min_vertex, r.vertex_count, r.first, r.primitives)
                      : call<DrawFn>(DrawPrimitive)(d, r.topology, r.first, r.primitives);
@@ -328,10 +330,12 @@ HRESULT ShadowReplayPass::execute_cascades(const ShadowReplayDraw* draws, unsign
     if (SUCCEEDED(hr)) step(ShadowReplayStage::Bind, call<SetVsConstantsFn>(SetVertexShaderConstantF)(d, 3, w_row, 1));
     for (unsigned l = 0; l < list_count && SUCCEEDED(hr); ++l) {
         const auto& list = lists[l];
+        out->state_calls_map[list.map] += 2; // bind_map: SetRenderTarget and SetViewport
         if (!step(ShadowReplayStage::Bind, bind_map(list.map))) break;
+        ++out->state_calls_map[list.map];
         if (!step(ShadowReplayStage::Clear, call<ClearFn>(Clear)(d, 0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0xffffffffu, 1.f, 0))) break;
         for (unsigned i = 0; i < list.count; ++i) {
-            if (!step(ShadowReplayStage::Draw, issue(draws[list.issues[i].draw], list.issues[i].rows, 3, list.invert_cull))) break;
+            if (!step(ShadowReplayStage::Draw, issue(draws[list.issues[i].draw], list.issues[i].rows, 3, list.invert_cull, &out->state_calls_map[list.map]))) break;
             ++out->drawn; ++out->drawn_map[list.map];
         }
     }
@@ -371,7 +375,7 @@ HRESULT ShadowReplayPass::execute(const ShadowReplayDraw* draws, unsigned count,
     // Far depth everywhere (1.0 in the R32F .r and in the depth attachment).
     if (SUCCEEDED(hr)) step(ShadowReplayStage::Clear, call<ClearFn>(Clear)(d, 0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0xffffffffu, 1.f, 0));
     for (unsigned i = 0; i < count && SUCCEEDED(hr); ++i) {
-        if (!step(ShadowReplayStage::Draw, issue(draws[i], draws[i].light_rows, 4))) break;
+        if (!step(ShadowReplayStage::Draw, issue(draws[i], draws[i].light_rows, 4, false, &out->state_calls_map[0]))) break;
         ++out->drawn;
     }
     if (own_scene && !lost(hr)) { const HRESULT end = call<SceneFn>(EndScene)(d); if (SUCCEEDED(hr) || lost(end)) { if (FAILED(end)) stage = ShadowReplayStage::EndScene; hr = end; } }

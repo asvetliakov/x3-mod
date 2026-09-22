@@ -2121,6 +2121,8 @@ def validate_shadow_replay_cascades(name, text, trace, directory, env, taa):
         expected_issues = issues - (sum(1 for c in range(count) if masks_of(frame)[('A', 0)] >> c & 1 and ('A', 0) in kept[c]) if frame in (SHADOW_REPLAY_LOCK_FRAME, SHADOW_REPLAY_MULTISTREAM_FRAME) else 0)
         assert d_row['cascades']['issues'] == expected_issues, (name, frame, d_row, expected_issues)
         assert d_row['draws'] == len(order) - dropped and d_row['replayed'] == (0 if is_refused else d_row['draws']), (name, frame, d_row)
+        # The proxy's own per-cascade cost split (engine-frame-time.md, "Run 239"): the pass's native state calls per map on every cascade line.
+        assert d_row.get('state_calls') == [3 + 5 * d if d else 0 for d in draws], (name, frame, d_row.get('state_calls'), draws)
     assert [(r['reason'], r['detail'], int(r['frame'])) for r in refused] == [(v[0], v[1], k) for k, v in sorted(refused_frames.items()) if k not in off_window], (name, refused)
     # The Reset's targets are recreated by the next transaction; inside an off
     # window that is the first frame back on.

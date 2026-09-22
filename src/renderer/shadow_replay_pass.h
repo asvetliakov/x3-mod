@@ -54,6 +54,13 @@ struct ShadowReplayResult {
     ShadowReplayStage failed = ShadowReplayStage::None;
     unsigned drawn = 0; // draws re-issued before the first failure
     unsigned drawn_map[shadow_replay_maps_max]{}; // execute_cascades: per map
+    // Native non-draw device calls the pass made per map (execute_cascades; the
+    // single map counts in [0]): the map's bind, viewport and Clear, then per
+    // issue the declaration, stream, indices, cull mode and constant rows. The
+    // transaction's block capture/restore and scene calls are not counted. The
+    // engine's per-draw state calls (frame_timing state_calls) never include
+    // these: the pass calls the native table.
+    unsigned state_calls_map[shadow_replay_maps_max]{};
 };
 class ShadowReplayPass {
 public:
@@ -128,7 +135,7 @@ private:
     HRESULT ensure_block() noexcept;
     HRESULT bind() noexcept;
     HRESULT bind_map(unsigned map) noexcept;
-    HRESULT issue(const ShadowReplayDraw&, const float* rows, unsigned vectors, bool invert_cull = false) noexcept;
+    HRESULT issue(const ShadowReplayDraw&, const float* rows, unsigned vectors, bool invert_cull = false, unsigned* state_calls = nullptr) noexcept;
     void release_targets() noexcept;
     IDirect3DDevice9* device_ = nullptr;
     void* const* vtable_ = nullptr;
