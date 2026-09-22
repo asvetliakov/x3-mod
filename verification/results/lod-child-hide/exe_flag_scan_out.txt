@@ -1,0 +1,132 @@
+== register-sourced writes to +0x12c (source within 25 instructions)
+414e9e or DWORD PTR [edi+0x12c],eax <= 414e9a mov eax,DWORD PTR [edx+esi*1+0x4]
+4157a9 or DWORD PTR [edi+0x12c],edx <= 4157a5 mov edx,DWORD PTR [ecx+esi*1+0x4]
+415964 or DWORD PTR [edi+0x12c],ecx <= 415960 mov ecx,DWORD PTR [edx+eax*1+0x4]
+41f179 mov DWORD PTR [edi+0x12c],eax <= 41f16a and eax,0xffefffff ; 41f149 and eax,0xffefffff ; 41f121 mov eax,DWORD PTR [edi+0x12c]
+41f2f4 mov DWORD PTR [edi+0x12c],eax <= 41f2ef or eax,0x100000 ; 41f2d2 mov eax,DWORD PTR [esp+0x38]
+42182c mov DWORD PTR [edi+0x12c],edx <= 421826 and edx,0xdffdffff ; 421820 or edx,DWORD PTR [edi+0x12c] ; 42181a and edx,0xc00000 ; 421814 mov edx,DWORD PTR [esi+0x12c]
+42c452 or DWORD PTR [eax+0x12c],ebx <= 42c44d mov ebx,0x8
+42c48b or DWORD PTR [eax+0x12c],ebx <= 42c44d mov ebx,0x8
+42c4b9 or DWORD PTR [ebp+0x12c],ebx <= 
+42cdbc or DWORD PTR [eax+0x12c],edx <= 42cdb7 mov edx,0x100000
+42cdd0 or DWORD PTR [eax+0x12c],edx <= 42cdb7 mov edx,0x100000
+42d2b4 or DWORD PTR [ebp+0x12c],ecx <= 42d2af mov ecx,0x100000
+42d2c0 or DWORD PTR [eax+0x12c],ecx <= 42d2af mov ecx,0x100000
+4346a7 mov DWORD PTR [esi+0x12c],eax <= 4346a4 or eax,0x20 ; 43469f and eax,0xffff7fff ; 434699 mov eax,DWORD PTR [esi+0x12c]
+434700 mov DWORD PTR [esi+0x12c],ecx <= 4346fa or ecx,0x200 ; 4346f4 and ecx,0xffff7fff ; 4346ee mov ecx,DWORD PTR [esi+0x12c]
+43b70b or DWORD PTR [eax+0x12c],ecx <= 43b706 mov ecx,0x100000
+43b720 or DWORD PTR [eax+0x12c],ecx <= 43b706 mov ecx,0x100000
+43babd or DWORD PTR [esi+0x12c],ecx <= 43bab8 mov ecx,0x100000
+43bad0 or DWORD PTR [eax+0x12c],ecx <= 43bab8 mov ecx,0x100000
+43c4d2 or DWORD PTR [ecx+0x12c],edx <= 43c4cd mov edx,0x100000
+43c4e0 or DWORD PTR [eax+0x12c],edx <= 43c4cd mov edx,0x100000
+43d371 or DWORD PTR [ebx+0x12c],ecx <= 43d2fe mov ecx,0x80000
+43d47b mov DWORD PTR [ebx+0x12c],ecx <= 43d46e or ecx,0x100000 ; 43d468 and ecx,0xffff7fff ; 43d45c mov ecx,DWORD PTR [ebx+0x12c]
+43d4c6 mov DWORD PTR [ebx+0x12c],edx <= 43d4b2 or edx,0x100000 ; 43d4ac and edx,0xffff7fff ; 43d4a0 mov edx,DWORD PTR [ebx+0x12c]
+43d5a7 mov DWORD PTR [ebx+0x12c],eax <= 43d595 or eax,0x100000 ; 43d56f mov eax,DWORD PTR [ebx+0x12c]
+43d8a8 mov DWORD PTR [ebx+0x12c],eax <= 43d8a3 or eax,0x8000000 ; 43d889 mov eax,DWORD PTR [ebx+0x12c]
+4410d2 or DWORD PTR [eax+0x12c],ecx <= 4410ce mov ecx,DWORD PTR [esp+0x18]
+441235 or DWORD PTR [eax+0x12c],ecx <= 441231 mov ecx,DWORD PTR [esp+0x18]
+44128c or DWORD PTR [eax+0x12c],edx <= 441288 mov edx,DWORD PTR [esp+0x18]
+451cf7 or DWORD PTR [esi+0x12c],edi <= 451ccb mov edi,0x100000
+451d02 or DWORD PTR [eax+0x12c],edi <= 451ccb mov edi,0x100000
+45b069 mov DWORD PTR [edx+0x12c],ecx <= 45b067 and ecx,esi ; 45b054 mov ecx,DWORD PTR [edx+0x12c]
+45b118 mov DWORD PTR [edx+0x12c],eax <= 45b116 or eax,ecx ; 45b107 mov eax,DWORD PTR [edx+0x12c]
+45b130 or DWORD PTR [eax+0x12c],ecx <= 45b10d mov ecx,0x100000
+45f51a or DWORD PTR [edi+0x12c],ecx <= 
+45f8dc or DWORD PTR [ecx+0x12c],edx <= 45f8c7 mov edx,0x100000
+45f8f0 or DWORD PTR [eax+0x12c],edx <= 45f8c7 mov edx,0x100000
+476a16 mov DWORD PTR [ecx+0x12c],eax <= 476a11 and eax,0xffffefff ; 476a00 mov eax,DWORD PTR [esp+0x20]
+47a005 mov DWORD PTR [ebx+0x12c],edx <= 479ffe mov edx,DWORD PTR [esp+0x194]
+47c58a mov DWORD PTR [ecx+0x12c],eax <= 47c585 and eax,0xffffff7f ; 47c57b mov eax,DWORD PTR [ecx+0x12c]
+47c5d5 mov DWORD PTR [esi+0x12c],eax <= 47c5d0 and eax,0xffffff7f ; 47c5c6 mov eax,DWORD PTR [esi+0x12c]
+47d033 mov DWORD PTR [edi+0x12c],eax <= 47d030 and eax,0xfffffffd ; 47d023 mov eax,DWORD PTR [edi+0x12c]
+47d076 mov DWORD PTR [edi+0x12c],eax <= 47d073 and eax,0xfffffffd ; 47d055 mov eax,DWORD PTR [edi+0x12c]
+47d09e mov DWORD PTR [edi+0x12c],ebx <= 47d09b and ebx,0xfffffffd ; 47d07c mov ebx,DWORD PTR [edi+0x12c]
+47d0e4 mov DWORD PTR [edi+0x12c],ebx <= 47d0e1 and ebx,0xfffffffd ; 47d09b and ebx,0xfffffffd ; 47d07c mov ebx,DWORD PTR [edi+0x12c]
+47d195 mov DWORD PTR [edi+0x12c],edx <= 47d192 and edx,0xfffffffd ; 47d140 mov edx,DWORD PTR [edi+0x12c]
+47d2e1 mov DWORD PTR [edi+0x12c],eax <= 47d2de and eax,0xfffffffd ; 47d2d1 mov eax,DWORD PTR [edi+0x12c]
+47d4fc mov DWORD PTR [edi+0x12c],eax <= 47d4f9 and eax,0xfffffffd ; 47d4ec mov eax,DWORD PTR [edi+0x12c]
+47d513 mov DWORD PTR [edi+0x12c],edx <= 47d510 or edx,0x2 ; 47d50a and edx,0xfffffeff ; 47d504 mov edx,DWORD PTR [edi+0x12c]
+486ce8 or DWORD PTR [ecx+0x12c],edi <= 486ce4 mov edi,DWORD PTR [esp+0x10]
+487198 or DWORD PTR [eax+0x12c],ecx <= 487194 mov ecx,DWORD PTR [esp+0x8]
+488009 or DWORD PTR [eax+0x12c],ebx <= 487fcd mov ebx,0x100000
+488d12 mov DWORD PTR [edi+0x12c],ecx <= 488d00 or ecx,0x1 ; 488cfd and ecx,0xfffffffb ; 488cf6 mov ecx,DWORD PTR [edi+0x12c]
+489c80 or DWORD PTR [edi+0x12c],ebx <= 
+489e68 or DWORD PTR [edi+0x12c],esi <= 489e29 mov esi,0x1000
+48a270 or DWORD PTR [edi+0x12c],ebx <= 
+48a3a7 or DWORD PTR [edi+0x12c],ecx <= 48a3a2 mov ecx,0x100000
+48a3b4 or DWORD PTR [eax+0x12c],ecx <= 48a3a2 mov ecx,0x100000
+494a97 mov DWORD PTR [eax+0x12c],ecx <= 494a94 mov ecx,DWORD PTR [esi+0x6]
+writes 150 immediate writes carrying 0x40000 0
+== readers of +0x12c & 0x40000
+reg 47d055 mov eax,DWORD PTR [edi+0x12c] 47d05b test eax,0x40000
+== readers of +0x12c & 0x2
+direct 47d062 test BYTE PTR [ecx+0x12c],0x2
+direct 47d1a8 test BYTE PTR [edi+0x12c],0x2
+direct 47d9d0 test BYTE PTR [ebx+0x12c],0x2
+reg 46ce20 mov eax,DWORD PTR [esi+0x12c] 46ce26 test al,0x2
+reg 47d07c mov ebx,DWORD PTR [edi+0x12c] 47d082 test bl,0x2
+reg 47e988 mov eax,DWORD PTR [esi+0x12c] 47e98e test al,0x2
+reg 488aef mov eax,DWORD PTR [edi+0x12c] 488afc test al,0x2
+reg 4c0197 mov eax,DWORD PTR [eax+0x12c] 4c01a8 test al,0x2
+== tests of +0x130 & 0x100000
+direct 4c09a0 test DWORD PTR [ecx+0x130],0x100000
+direct 4c09b6 test DWORD PTR [edx+0x130],0x100000
+direct 4c0b69 test DWORD PTR [ecx+0x130],0x100000
+direct 4c32f6 test DWORD PTR [eax+0x130],0x100000
+== [reg+0x14c] accesses
+41fb42 mov DWORD PTR [edi+0x14c],ebp
+42154f mov esi,DWORD PTR [eax+ecx*1+0x14c]
+42c47c mov DWORD PTR [eax+0x14c],edi
+42c4aa mov DWORD PTR [eax+0x14c],edi
+42c4d9 mov DWORD PTR [ebp+0x14c],edi
+42c50c mov DWORD PTR [ebx+0x14c],edi
+430559 mov DWORD PTR [ebx+0x14c],eax
+43066d mov ecx,DWORD PTR [ebx+0x14c]
+430724 mov ecx,DWORD PTR [ebx+0x14c]
+4368dc mov DWORD PTR [ebp+0x14c],eax
+4368ec mov DWORD PTR [ebp+0x14c],eax
+439deb mov edi,DWORD PTR [ebx+0x14c]
+452508 mov DWORD PTR [esi+0x14c],0x989680
+453e4d mov eax,DWORD PTR [eax+0x14c]
+453ef8 mov ecx,DWORD PTR [edi+0x14c]
+453f25 mov ecx,DWORD PTR [edi+0x14c]
+453f56 mov ecx,DWORD PTR [edi+0x14c]
+46443f mov ecx,DWORD PTR [eax+0x14c]
+464468 mov DWORD PTR [eax+0x14c],ecx
+4679b9 mov edx,DWORD PTR [eax+ecx*1+0x14c]
+46cfa4 mov ecx,DWORD PTR [edi+0x14c]
+472d4b cmp ecx,DWORD PTR [ebx+0x14c]
+4732e2 mov eax,DWORD PTR [ebx+0x14c]
+476c1f mov DWORD PTR [ecx+0x14c],eax
+478972 mov edx,DWORD PTR [esi+0x14c]
+47a06d mov DWORD PTR [ebx+0x14c],ecx
+47d001 mov DWORD PTR [edi+0x14c],edx
+47d03e mov DWORD PTR [edi+0x14c],edx
+47d06b cmp DWORD PTR [ecx+0x14c],edx
+47d37c mov DWORD PTR [edi+0x14c],0x4
+47d38f mov DWORD PTR [edi+0x14c],0x3
+47d3a2 mov DWORD PTR [edi+0x14c],0x2
+47d3b8 mov DWORD PTR [edi+0x14c],ecx
+47d3be mov eax,DWORD PTR [edi+0x14c]
+47d3de mov DWORD PTR [edi+0x14c],eax
+47d3f3 mov DWORD PTR [edi+0x14c],eax
+47d421 mov DWORD PTR [edi+0x14c],ecx
+47d468 mov DWORD PTR [edi+0x14c],esi
+47d482 add DWORD PTR [edi+0x14c],0x1
+47d499 add DWORD PTR [edi+0x14c],0xffffffff
+47d4af mov DWORD PTR [edi+0x14c],0x0
+47d4b9 mov eax,DWORD PTR [edi+0x14c]
+47d4d1 mov DWORD PTR [edi+0x14c],eax
+47d4d7 mov ecx,DWORD PTR [edi+0x14c]
+47dfe0 mov ecx,DWORD PTR [ebx+0x14c]
+486dd0 mov DWORD PTR [ebx+0x14c],ebp
+4949fc mov DWORD PTR [esi+0x14c],eax
+4c1cbf mov DWORD PTR [edi+0x14c],eax
+4c34ea cmp DWORD PTR [ecx+0x14c],0x0
+4c3b3d mov eax,DWORD PTR [esi+0x14c]
+4c55ae mov edx,DWORD PTR [eax+0x14c]
+4c57ed mov edx,DWORD PTR [eax+0x14c]
+4c5d3f mov ecx,DWORD PTR [eax+0x14c]
+4c5d79 mov ecx,DWORD PTR [eax+0x14c]

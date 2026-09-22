@@ -1,0 +1,13 @@
+B3D_InstSetFlags strg_offset 15427 call_sites 8
+B3D_InstGetFlags strg_offset 15410 call_sites 8
+B3D_InstSetFlags2 strg_offset 15551 call_sites 33
+B3D_InstGetFlags2 strg_offset 15533 call_sites 39
+SetFlags call at CODE+63964 OR masks before it ['0x20']
+SetFlags call at CODE+64268 OR masks before it ['0x2000000']
+SetFlags call at CODE+64451 OR masks before it ['0x20000000', '0x20000', '0x80000']
+SetFlags call at CODE+571170 OR masks before it ['0x2000000']
+SetFlags call at CODE+598840 OR masks before it ['0x2000000']
+SetFlags call at CODE+616098 OR masks before it ['0x2000000']
+SetFlags call at CODE+1007705 OR masks before it ['0x80000', '0x800000']
+SetFlags call at CODE+1255154 OR masks before it ['0x100000']
+push 0x40000 total 81 within 60 bytes of a B3D flag native 0

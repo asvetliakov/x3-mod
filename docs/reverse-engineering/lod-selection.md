@@ -480,6 +480,8 @@ detail-reduction flag, effect unknown): `C` sits at index 4 (ships) or 3
 (outpost), so the flag is now set at Very High where these bodies never reached
 index 3 before.
 
+Follow-up: [lod-child-hide.md](lod-child-hide.md) (2026-09-23): no EXE code sets `0x40000`, no flagged node in runs 255/257; `0x100000` selects the `DEFAULT` technique.
+
 The earlier layouts remain selectable for the record (`--placement before-last`,
 `--placement append-pad`, the latter `C:T`, `pad:T-1`, with `T < T_last` on a
 multi-LOD body). The former `--keep-coarsest-hidden` option stays removed.

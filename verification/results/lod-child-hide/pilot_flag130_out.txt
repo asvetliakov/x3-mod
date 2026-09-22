@@ -1,0 +1,12 @@
+== session-20260923-021931-212.log
+768 argon_M1 0 False
+512 argon_M2 0 False
+744 argon_TL 0 False
+544 military_outpost_middleb 0 False
+== session-20260923-024913-212.log
+64 argon_M1 4 True
+256 argon_M2 0 False
+16 argon_M2 4 True
+32 argon_TL 4 True
+544 military_outpost_middleb 0 False
+16 military_outpost_middleb 3 True

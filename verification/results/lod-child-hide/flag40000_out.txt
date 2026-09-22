@@ -1,0 +1,10 @@
+== /tmp/x3-bottleX3-run257/session-20260923-024913-212.log
+{'rows': 19169}
+verdicts []
+{'rows': 4759, 'f130_100000': 1479} distinct nodes 77 flagged nodes 0
+[]
+== /tmp/x3-bottleX3-run255/session-20260923-021931-212.log
+{'rows': 14811}
+verdicts []
+{'rows': 7304, 'f130_100000': 1712} distinct nodes 105 flagged nodes 0
+[]

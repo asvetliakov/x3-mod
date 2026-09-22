@@ -1,0 +1,72 @@
+== run255 frame 3351
+3 fx_engine_Split_M4 culled_min 08001002
+25 fx_engine_argon_M3 culled_min 08001002
+1 fx_engine_argon_M3 kept 08001002
+5 fx_engine_argon_M3plus culled_min 08001002
+14 fx_engine_argon_M4 culled_min 08001002
+3 fx_engine_argon_M5 culled_min 08001002
+1 fx_engine_argon_TM culled_min 08001002
+7 fx_engine_argon_TS culled_min 08001002
+4 fx_engine_argon_m4p_lower culled_min 08001002
+4 fx_engine_argon_m4p_upper culled_min 08001002
+1 fx_engine_argon_m8_middle culled_min 08001002
+1 fx_engine_argon_m8_topbottom culled_min 08001002
+1 fx_engine_boron_M3 culled_min 08001002
+1 fx_engine_boron_M3 culled_small 08001002
+1 fx_engine_emitter culled_min 08001002
+1 fx_engine_paranid_M3_var1 culled_small 08001002
+1 fx_engine_split2_TS culled_min 08001002
+5 fx_engine_split_M3 culled_min 08001002
+1 fx_engine_split_M4p culled_min 08001002
+1 fx_engine_split_M4p_middle culled_min 08001002
+2 fx_engine_split_M5 culled_min 08001002
+1 fx_engine_split_TS culled_min 08001002
+3 fx_engine_split_m8 culled_min 08001002
+1 fx_engine_teladi_M3_var1 culled_min 08001002
+2 fx_engine_teladi_M4m culled_min 08001002
+2 fx_engine_teladi_M4p culled_min 08001002
+2 fx_engine_teladi_M4p_middle culled_min 08001002
+2 fx_engine_teladi_M4p_top culled_min 08001002
+1 fx_engine_teladi_M4s culled_min 08001002
+1 fx_engine_teladi_m3pxtm culled_min 08001002
+kept rows:
+  fx_engine_argon_M3 s= 263 d= 10128 radius= 4170 lod= 0 08001002 08001002 kept
+  fx_engine_paranid_M3_var1 s= 1 d= 2226391 radius= 3927 lod= 0 08001002 08001000 culled_small
+  fx_engine_boron_M3 s= 1 d= 2039580 radius= 4219 lod= 0 08001002 08001000 culled_small
+== run257 frame 3615
+3 fx_engine_Split_M4 culled_min 08001002
+22 fx_engine_argon_M3 culled_min 08001002
+1 fx_engine_argon_M3 culled_small 08001002
+1 fx_engine_argon_M3 kept 08001002
+5 fx_engine_argon_M3plus culled_min 08001002
+14 fx_engine_argon_M4 culled_min 08001002
+3 fx_engine_argon_M5 culled_min 08001002
+1 fx_engine_argon_TM culled_min 08001002
+7 fx_engine_argon_TS culled_min 08001002
+4 fx_engine_argon_m4p_lower culled_min 08001002
+4 fx_engine_argon_m4p_upper culled_min 08001002
+1 fx_engine_argon_m8_middle culled_min 08001002
+1 fx_engine_argon_m8_topbottom culled_min 08001002
+1 fx_engine_boron_M3 culled_min 08001002
+1 fx_engine_boron_M3 culled_small 08001002
+1 fx_engine_emitter culled_min 08001002
+1 fx_engine_paranid_M3_var1 culled_small 08001002
+1 fx_engine_split2_TS culled_min 08001002
+4 fx_engine_split_M3 culled_min 08001002
+1 fx_engine_split_M4p culled_min 08001002
+1 fx_engine_split_M4p_middle culled_min 08001002
+2 fx_engine_split_M5 culled_min 08001002
+1 fx_engine_split_TS culled_min 08001002
+3 fx_engine_split_m8 culled_min 08001002
+1 fx_engine_teladi_M3_var1 culled_min 08001002
+2 fx_engine_teladi_M4m culled_min 08001002
+2 fx_engine_teladi_M4p culled_min 08001002
+2 fx_engine_teladi_M4p_middle culled_min 08001002
+2 fx_engine_teladi_M4p_top culled_min 08001002
+1 fx_engine_teladi_M4s culled_min 08001002
+1 fx_engine_teladi_m3pxtm culled_min 08001002
+kept rows:
+  fx_engine_argon_M3 s= 263 d= 10128 radius= 4170 lod= 0 08001002 08001002 kept
+  fx_engine_argon_M3 s= 1 d= 2514936 radius= 4691 lod= 0 08001002 08001000 culled_small
+  fx_engine_paranid_M3_var1 s= 1 d= 1755247 radius= 3927 lod= 0 08001002 08001000 culled_small
+  fx_engine_boron_M3 s= 1 d= 1497645 radius= 4219 lod= 0 08001002 08001000 culled_small
