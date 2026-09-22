@@ -222,6 +222,12 @@ when model latency is the bottleneck, never a default for waiting on fixtures.
   fresh stronger agent. Do not interrupt useful work merely to switch models.
 - Choose reviewer depth upfront. A clean review alone does not trigger a second
   review. Review source and evidence together under the proportional rules above.
+- An agent's first message without a tool call ends its turn and is taken as
+  its report; briefs and agent definitions say so. An agent does not stop to
+  summarise progress, announce a next step or offer a choice that does not
+  block the rest of the brief; it stops early only when nothing can move
+  without the orchestrator. An agent that returns with open items and no
+  blocker is resumed once or twice with the items named, then treated as stuck.
 - Reports use **Outcome**, **Evidence**, **Files changed**, **Open issues**, at
   most 25 lines. Include commands, counts, paths and material limitations. Put
   longer findings in the owning note; never omit a material finding to meet the
@@ -232,5 +238,7 @@ when model latency is the bottleneck, never a default for waiting on fixtures.
 - Compare routing over real checkpoints using available usage, elapsed time,
   retries and substantive review fixes through accepted completion. Include
   child work; distinguish model time from tool/lock/user waits. Do not add Wine
-  runs or an accounting framework just to benchmark models. No task-cost savings
-  are established yet.
+  runs or an accounting framework just to benchmark models. Record comparisons
+  in `docs/verification/model-routing.md`; a blind re-triage of ledgered runs
+  (agents barred from `docs/` and `verification/results/`) is the accepted
+  cheap A/B shape. No task-cost savings are established for Codex yet.
