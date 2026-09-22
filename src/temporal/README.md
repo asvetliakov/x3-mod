@@ -187,7 +187,8 @@ Per output pixel `p` (unjittered grid), in this order:
    pixel with one bright neighbor by about 0.013 of coverage; 1.0 dims thin
    lines visibly, larger values readmit clamp-bounded ghosting.
 
-Filtered current sample (`resolve_filter.hlsl` = `resolve.hlsl` compiled with
+Filtered current sample (removed 2026-09-23, cleanup batch 6, with `--taa-current-filter`; the far
+stabiliser keeps the same masked filter; `resolve_filter.hlsl` was `resolve.hlsl` compiled with
 `X3M_CURRENT_FILTER`; `c22.y` = A in (0, 4], `X3M_TAA_CURRENT_FILTER`): the
 `current` of that blend is the normalised exp(-A·d²) average of the finite
 weighted 3×3 samples the clip already fetched, d in pixels from the pixel
@@ -238,11 +239,11 @@ particle motion or transparent layers.
 safe/reactive to 0/1 and writes a distinct R32F target. Since 2026-09-19 the
 snapshot modes are their own program (`resolve_snapshot.hlsl`, same registers),
 which `TemporalPass` creates itself and binds for those draws; `resolve.hlsl`
-no longer reads `c7.z`. The flicker-suppression variants (`resolve_thin*.hlsl`,
-`resolve_age*.hlsl`; `docs/architecture/taa-flicker-suppression.md`) add `c24`
+no longer reads `c7.z`. The flicker-suppression variants (`resolve_thin.hlsl`,
+`resolve_age.hlsl`; `docs/architecture/taa-flicker-suppression.md`) add `c24`
 (thin-clip S, age wmax, LO, 1 / (HI - LO)), `c22.z` (alpha history), `s7` (previous
 R32F age) and `COLOR1` (next age); the plain programs read none of them. The line-filter variants
-(`resolve_*line.hlsl`; `docs/architecture/taa-lattice-crawl.md` section 9) add `c22.w` (A) and `s8`, the
+(`resolve_*line.hlsl`, removed 2026-09-23 with `--taa-line-filter`, cleanup batch 6; `docs/architecture/taa-lattice-crawl.md` section 9) add `c22.w` (A) and `s8`, the
 A8R8G8B8 line mask `TemporalPass` draws first with `line_mask_ps.hlsl` (`s1` input, `c4.xy`, `c7.z` pass, `c7.w` width). The far
 stabiliser (`resolve_far.hlsl`; `docs/architecture/taa-distant-line-fade.md` section 9) is the age variant with that mask's
 `r` (filter weight) and `g` (far history-weight gate); the mask program takes the gate in `c5` (d0, inv, filter on, weight on)

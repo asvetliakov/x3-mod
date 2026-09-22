@@ -406,6 +406,9 @@ concrete remaining gates, removal status and the separate depth-adapter gap.
 
 ## 2026-09-19: `--taa-current-filter` exceeds the guaranteed ps_3_0 slot count
 
+**Closed 2026-09-23 (cleanup batch 6):** the option and `resolve_filter.hlsl` were removed; every embedded resolve
+program now fits 512 slots (largest `far_camera` 510, fixture `RESOLVE_BUDGET`). The text below is history.
+
 The filtered TAA resolve variant (`src/temporal/resolve_filter.hlsl`, default off) compiles to 521 instruction
 slots; ps_3_0 guarantees 512 (`MaxPixelShader30InstructionSlots` may advertise more). Creation is the capability
 test: a device that refuses it keeps the plain resolve and logs `motion_output_taa_current_filter unavailable=1`.

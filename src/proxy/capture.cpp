@@ -109,17 +109,12 @@ float taa_mip_bias = 0.f;
 // temporal-integration.md, "Post-resolve sharpen"); an explicit 0 is off, with
 // bit-identical output. Off entirely without TAA.
 float taa_sharpen = 0.f;
-float taa_current_filter = 0.f;  // X3M_TAA_CURRENT_FILTER (0..4; 0 off)
-float taa_line_filter = 0.f;     // X3M_TAA_LINE_FILTER=A[,W] (A 0..4; 0 off; ignored with X3M_TAA_CURRENT_FILTER > 0)
 float taa_far[6] = {0.f, 0.f, 80.f, 130.f, .03f, .25f}; // X3M_TAA_FAR_STABILISER=W[,A[,F0,F1[,LO,HI]]]: far weight (0 off), far filter A (0 off), gate footprints, speed gate px/frame
 float taa_thin_region[4] = {0.f, 1.f, .03f, .25f}; // X3M_TAA_THIN_REGION=W[,RELAX[,LO,HI]]
 bool taa_thin_gate_given = false;
 float taa_thin_emissive = 0.f; // X3M_TAA_THIN_REGION_EMISSIVE=E (thin-glow-lines.md 8.3 R3): emissive vote of the thin region (0 off)
 bool taa_thin_camera_gate = false; // X3M_TAA_THIN_REGION_GATE=camera (taa-lattice-crawl.md section 32.1)
 float taa_sentinel[2] = {0.f, 1.f}; // X3M_TAA_SENTINEL_STABILISER=S[,E] (temporal-integration.md "sentinel stabiliser"): strength (0 off), emitter bound (0 none)
-unsigned taa_line_width = 1;     // W: line mask width 1 (default) or 2 px
-float taa_thin_clip = 0.f;       // X3M_TAA_THIN_CLIP (0..1; 0 off)
-float taa_adaptive_weight = 0.f, taa_adaptive_lo = .1f, taa_adaptive_hi = .5f; // X3M_TAA_ADAPTIVE_WEIGHT=WMAX[,LO,HI] (0 off)
 bool taa_alpha_history = false;  // X3M_TAA_ALPHA_HISTORY=1
 float taa_history_weight = .9f;  // X3M_TAA_HISTORY_WEIGHT (0.5..0.98)
 // X3M_HDR=1 (default off; requires X3M_MOTION_OUTPUT=1): the FP16 HDR scene
@@ -245,7 +240,7 @@ float taa_sky_history_band_px = 3.f;
 // strict since 2026-09-23 after Run 68 A, 0 without strict; docs/architecture/seta-sky-hull-share-decay.md): the exit reset's parallax floor,
 // px/frame at which a band pixel that took a silhouette's history is marked in the age
 // target and dropped the frame it leaves the band. Refused without strict; needs an age
-// program (far stabiliser, thin region or adaptive weight), which motion_output judges.
+// program (far stabiliser or thin region), which motion_output judges.
 float taa_sky_history_exit_px = 0.f;
 unsigned camera_log_frames = 300;
 unsigned motion_jitter_samples = 8;
@@ -2306,12 +2301,11 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_mip_bias(taa_mip_bias);
     hooked.motion_output.configure_taa_sharpen(taa_sharpen);
     hooked.motion_output.configure_sun_occlusion({sun_occlusion::override_enabled(),sun_occlusion::logging(),sun_occlusion_radius,sun_occlusion_curve,sun_occlusion_core_f});
-    hooked.motion_output.configure_taa_resolve(taa_current_filter,taa_history_weight);
-    hooked.motion_output.configure_taa_line_filter(taa_line_filter,taa_line_width);
+    hooked.motion_output.configure_taa_resolve(taa_history_weight);
     hooked.motion_output.configure_taa_far(taa_far[0],taa_far[1],taa_far[2],taa_far[3],taa_far[4],taa_far[5]);
     hooked.motion_output.configure_taa_thin_region(taa_thin_region[0],taa_thin_region[1],taa_thin_region[2],taa_thin_region[3],taa_thin_gate_given,taa_thin_camera_gate,taa_thin_emissive);
     hooked.motion_output.configure_taa_sentinel(taa_sentinel[0],taa_sentinel[1]);
-    hooked.motion_output.configure_taa_flicker(taa_thin_clip,taa_adaptive_weight,taa_adaptive_lo,taa_adaptive_hi,taa_alpha_history);
+    hooked.motion_output.configure_taa_flicker(taa_alpha_history);
     hooked.motion_output.configure_rt_mode(motion_rt_lazy);
     hooked.motion_output.configure_frame_log(motion_frame_log);
     hooked.motion_output.configure_sentinel(taa_sentinel_mode,camera_cut_degrees,camera_log_frames);
@@ -2795,15 +2789,6 @@ void initialize_log(HMODULE module) {
     // Unset or invalid with the resolve on: 0.75; off entirely without TAA.
     taa_sharpen=taa_requested?0.75f:0.f;
     if(taa_requested&&GetEnvironmentVariableW(L"X3M_TAA_SHARPEN",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=0.f&&v<=1.f)taa_sharpen=v;}
-    // X3M_TAA_CURRENT_FILTER=<A> (0 <= A <= 4; 0 or unset: off) and
-    // X3M_TAA_HISTORY_WEIGHT=<w> (0.5 <= w <= 0.98; unset: 0.9): the resolve's
-    // filtered current sample and history weight (docs/verification/
-    // motion-output.md, "Run 139"). The whole string must parse; an invalid
-    // value keeps the default.
-    if(taa_requested&&GetEnvironmentVariableW(L"X3M_TAA_CURRENT_FILTER",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=0.f&&v<=4.f)taa_current_filter=v;}
-    // X3M_TAA_LINE_FILTER=<A>[,<W>] (A 0..4; 0 or unset: off; W 1 or 2, default 1): the same filter on line-like pixels only
-    // (docs/architecture/taa-lattice-crawl.md section 9); refused by the route when the global filter is on.
-    if(taa_requested&&GetEnvironmentVariableW(L"X3M_TAA_LINE_FILTER",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&v>=0.f&&v<=4.f){if(*end==L'\0')taa_line_filter=v;else if(*end==L','&&(end[1]==L'1'||end[1]==L'2')&&end[2]==L'\0'){taa_line_filter=v;taa_line_width=unsigned(end[1]-L'0');}}}
     // X3M_TAA_FAR_STABILISER=<W>[,<A>[,<F0>,<F1>[,<LO>,<HI>]]] (0 <= LO < HI <= 64 px/frame, the weight's speed gate) (docs/architecture/taa-distant-line-fade.md section 9; unset: off):
     // W 0 or 0.5..0.99 (checked against the history weight at attach), A 0..4, 0 < F0 < F1 <= 1e6 units per pixel.
     // The whole string must parse (1, 2, 4 or 6 fields); anything else keeps the option off.
@@ -2834,12 +2819,11 @@ void initialize_log(HMODULE module) {
     // X3M_TAA_THIN_REGION_GATE=screen|camera (section 32.1): "camera" gates the region on min(screen speed, camera-relative
     // speed) with the 7x7 box clip where the camera term alone opens it; "screen" is the screen-speed gate the thin region
     // originally had. Anything else keeps the screen gate and is logged. Meaningful only with X3M_TAA_THIN_REGION on.
-    // Absent is the Run59-accepted default: camera whenever the thin region is on, except with the line filter, whose mask
-    // channel carries the only gate it can have, where the default stays screen (the route refuses the pair as well).
+    // Absent is the Run59-accepted default: camera whenever the thin region is on.
     {wchar_t gate_setting[16];const DWORD length=taa_requested?GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION_GATE",gate_setting,16):0;
         if(length>0&&length<16){if(wcscmp(gate_setting,L"camera")==0)taa_thin_camera_gate=true;else if(wcscmp(gate_setting,L"screen")!=0)log("taa_thin_region_gate_setting invalid=1");}
         else if(length>=16)log("taa_thin_region_gate_setting invalid=1 reason=too_long length=%lu",length);
-        else if(taa_requested&&taa_thin_region[0]>0.f&&taa_line_filter<=0.f)taa_thin_camera_gate=true;}
+        else if(taa_requested&&taa_thin_region[0]>0.f)taa_thin_camera_gate=true;}
     // X3M_TAA_SENTINEL_STABILISER=<S>[,<E>] (docs/architecture/temporal-integration.md "Distant unrouted stations under a
     // pan"): S 0..1, the thin-region strength of unrouted depth-sentinel pixels through the camera
     // gate (always box-clipped); E >= 0, the emitter bound in scene luma (default 1; 0 = none). 1 or 2 fields; anything else
@@ -2853,21 +2837,16 @@ void initialize_log(HMODULE module) {
             if(ok){taa_sentinel[0]=v[0];taa_sentinel[1]=v[1];}else log("taa_sentinel_stabiliser_setting invalid=1");}
         else if(length>=32)log("taa_sentinel_stabiliser_setting invalid=1 reason=too_long length=%lu",length);
         else if(taa_requested&&taa_thin_camera_gate)taa_sentinel[0]=.7f;} // run216/run221: 0.7 is the default with the camera gate ("0" opts out)
+    // X3M_TAA_HISTORY_WEIGHT=<w> (0.5 <= w <= 0.98; unset: 0.9): the resolve's history weight (docs/verification/
+    // motion-output.md, "Run 139"). The whole string must parse; an invalid value keeps the default.
     if(taa_requested&&GetEnvironmentVariableW(L"X3M_TAA_HISTORY_WEIGHT",setting,32)>0){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=.5f&&v<=.98f)taa_history_weight=v;}
-    // Flicker suppression (docs/architecture/taa-flicker-suppression.md), all
-    // off when unset or invalid: X3M_TAA_THIN_CLIP=<S> (0..1),
-    // X3M_TAA_ADAPTIVE_WEIGHT=<WMAX>[,<LO>,<HI>] (WMAX 0.5..0.99, 0 <= LO < HI
-    // <= 64 px/frame; the route refuses it without the thin clip or below the
-    // history weight) and X3M_TAA_ALPHA_HISTORY=1 (HDR route only).
+    // Flicker suppression (docs/architecture/taa-flicker-suppression.md), off
+    // when unset or invalid: X3M_TAA_ALPHA_HISTORY=1 (HDR route only). The thin
+    // clip and adaptive weight were removed 2026-09-23 (cleanup batch 6).
     // GetEnvironmentVariableW returns the required size (>= 32) without writing
     // when the value does not fit, leaving the previous variable's text in the
     // buffer: such a value is invalid (option off, one log line), never parsed.
     auto flicker_setting=[&](const wchar_t* name,const char* label){const DWORD length=GetEnvironmentVariableW(name,setting,32);if(length>=32){log("taa_flicker_setting name=%s invalid=1 reason=too_long length=%lu",label,length);return false;}return length>0;};
-    if(taa_requested&&flicker_setting(L"X3M_TAA_THIN_CLIP","X3M_TAA_THIN_CLIP")){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=0.f&&v<=1.f)taa_thin_clip=v;}
-    if(taa_requested&&flicker_setting(L"X3M_TAA_ADAPTIVE_WEIGHT","X3M_TAA_ADAPTIVE_WEIGHT")){wchar_t* end=nullptr;const float wmax=wcstof(setting,&end);float lo=.1f,hi=.5f;bool okay=end!=setting&&wmax>=.5f&&wmax<=.99f;
-        if(okay&&*end==L','){wchar_t* next=nullptr;lo=wcstof(end+1,&next);okay=next!=end+1&&*next==L',';if(okay){end=nullptr;hi=wcstof(next+1,&end);okay=end!=next+1&&*end==L'\0'&&lo>=0.f&&hi>lo&&hi<=64.f;}}
-        else okay=okay&&*end==L'\0';
-        if(okay){taa_adaptive_weight=wmax;taa_adaptive_lo=lo;taa_adaptive_hi=hi;}}
     taa_alpha_history=taa_requested&&flicker_setting(L"X3M_TAA_ALPHA_HISTORY","X3M_TAA_ALPHA_HISTORY")&&setting[0]==L'1'&&setting[1]==L'\0';
     // The FP16 HDR scene path (stage 1: redirect, identity write-back) needs
     // the route's hooks and selector.
@@ -3294,9 +3273,9 @@ void initialize_log(HMODULE module) {
     else if(taa_sky_history_strict)taa_sky_history_exit_px=.25f; // Run 68 A (2026-09-23): the default under strict (0 is the opt-out); motion_output drops it without an age program
     if(GetEnvironmentVariableW(L"X3M_CAMERA_CUT_DEG",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=180)camera_cut_degrees=v;}
     if(GetEnvironmentVariableW(L"X3M_CAMERA_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=1000000)camera_log_frames=unsigned(n);}
-    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s unmatched_static=%u sentinel_stabiliser=%.3f sentinel_emitter=%.3f sky_history=%s sky_history_band_px=%.2f sky_history_exit_px=%.3f camera_cut_deg=%.2f camera_log=%u state_shadow=%s scene_hook=%u hdr=%u taa_k=%.5f mip_bias=%g taa_sharpen=%.3f taa_current_filter=%.3f taa_history_weight=%.3f",
+    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s unmatched_static=%u sentinel_stabiliser=%.3f sentinel_emitter=%.3f sky_history=%s sky_history_band_px=%.2f sky_history_exit_px=%.3f camera_cut_deg=%.2f camera_log=%u state_shadow=%s scene_hook=%u hdr=%u taa_k=%.5f mip_bias=%g taa_sharpen=%.3f taa_history_weight=%.3f",
         motion_output_requested,taa_requested,taa_requested,taa_debug_requested,motion_jitter_requested,motion_jitter_samples,motion_cut_median_px,motion_cut_missing,motion_rt_lazy?"lazy":"perdraw",motion_frame_log,
-        taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",taa_unmatched_static,double(taa_sentinel[0]),double(taa_sentinel[1]),taa_sky_history_strict?"strict":"loose",taa_sky_history_band_px,double(taa_sky_history_exit_px),camera_cut_degrees,camera_log_frames,motion_state_shadow<0?"auto":motion_state_shadow?"1":"0",scene_hook_requested,hdr_requested,taa_k_override,double(taa_mip_bias),taa_sharpen,double(taa_current_filter),double(taa_history_weight));
+        taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",taa_unmatched_static,double(taa_sentinel[0]),double(taa_sentinel[1]),taa_sky_history_strict?"strict":"loose",taa_sky_history_band_px,double(taa_sky_history_exit_px),camera_cut_degrees,camera_log_frames,motion_state_shadow<0?"auto":motion_state_shadow?"1":"0",scene_hook_requested,hdr_requested,taa_k_override,double(taa_mip_bias),taa_sharpen,double(taa_history_weight));
     log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
     telemetry::initialize([]{if(logfile)fflush(logfile);});
     game_phases::initialize(); // all 33 claims here, before the first Present

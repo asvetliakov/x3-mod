@@ -6,9 +6,7 @@ Fifteen authored programs are embedded: the motion fragment
 the current-depth fragment
 (src/temporal/current_depth_ps.hlsl -> src/renderer/current_depth_pixel_program_inc.h),
 the temporal resolve the live route runs (temporal step 3;
-src/temporal/resolve.hlsl -> src/renderer/temporal_resolve_program_inc.h; its
-filtered-current-sample variant src/temporal/resolve_filter.hlsl ->
-src/renderer/temporal_resolve_filter_program_inc.h),
+src/temporal/resolve.hlsl -> src/renderer/temporal_resolve_program_inc.h),
 the HDR scene path's stage-1 identity write-back (src/temporal/hdr_writeback_ps.hlsl
 -> src/renderer/hdr_writeback_program_inc.h) and its stage-2 AgX tonemap
 (src/temporal/agx.hlsl -> src/renderer/hdr_tonemap_program_inc.h) and exposure
@@ -54,11 +52,6 @@ SHADERS = {
     'temporal_resolve': dict(source=ROOT / 'src/temporal/resolve.hlsl',
                              header=ROOT / 'src/renderer/temporal_resolve_program_inc.h',
                              provenance=ROOT / 'verification/results/temporal-resolve-program.json'),
-    # The same resolve with the filtered current sample (X3M_TAA_CURRENT_FILTER):
-    # a #define plus an include of resolve.hlsl, bound only when A > 0.
-    'temporal_resolve_filter': dict(source=ROOT / 'src/temporal/resolve_filter.hlsl',
-                                    header=ROOT / 'src/renderer/temporal_resolve_filter_program_inc.h',
-                                    provenance=ROOT / 'verification/results/temporal-resolve-filter-program.json'),
     # The reactive-mask snapshot modes, split out of the resolve (options.z).
     'temporal_resolve_snapshot': dict(source=ROOT / 'src/temporal/resolve_snapshot.hlsl',
                                       header=ROOT / 'src/renderer/temporal_resolve_snapshot_program_inc.h',
@@ -67,25 +60,9 @@ SHADERS = {
     'temporal_resolve_thin': dict(source=ROOT / 'src/temporal/resolve_thin.hlsl',
         header=ROOT / 'src/renderer/temporal_resolve_thin_program_inc.h',
         provenance=ROOT / 'verification/results/temporal-resolve-thin-program.json'),
-    'temporal_resolve_thin_filter': dict(source=ROOT / 'src/temporal/resolve_thin_filter.hlsl',
-        header=ROOT / 'src/renderer/temporal_resolve_thin_filter_program_inc.h',
-        provenance=ROOT / 'verification/results/temporal-resolve-thin-filter-program.json'),
     'temporal_resolve_age': dict(source=ROOT / 'src/temporal/resolve_age.hlsl',
         header=ROOT / 'src/renderer/temporal_resolve_age_program_inc.h',
         provenance=ROOT / 'verification/results/temporal-resolve-age-program.json'),
-    'temporal_resolve_age_filter': dict(source=ROOT / 'src/temporal/resolve_age_filter.hlsl',
-        header=ROOT / 'src/renderer/temporal_resolve_age_filter_program_inc.h',
-        provenance=ROOT / 'verification/results/temporal-resolve-age-filter-program.json'),
-    # Line-masked filtered current sample (docs/architecture/taa-lattice-crawl.md section 9).
-    'temporal_resolve_line': dict(source=ROOT / 'src/temporal/resolve_line.hlsl',
-        header=ROOT / 'src/renderer/temporal_resolve_line_program_inc.h',
-        provenance=ROOT / 'verification/results/temporal-resolve-line-program.json'),
-    'temporal_resolve_thin_line': dict(source=ROOT / 'src/temporal/resolve_thin_line.hlsl',
-        header=ROOT / 'src/renderer/temporal_resolve_thin_line_program_inc.h',
-        provenance=ROOT / 'verification/results/temporal-resolve-thin-line-program.json'),
-    'temporal_resolve_age_line': dict(source=ROOT / 'src/temporal/resolve_age_line.hlsl',
-        header=ROOT / 'src/renderer/temporal_resolve_age_line_program_inc.h',
-        provenance=ROOT / 'verification/results/temporal-resolve-age-line-program.json'),
     'temporal_resolve_far': dict(source=ROOT / 'src/temporal/resolve_far.hlsl',
         header=ROOT / 'src/renderer/temporal_resolve_far_program_inc.h',
         provenance=ROOT / 'verification/results/temporal-resolve-far-program.json'),

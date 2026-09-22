@@ -1,5 +1,9 @@
 # TAA flicker suppression without global blur
 
+**Removed 2026-09-23, cleanup batch 6:** the launcher and DLL options `--taa-thin-clip` and `--taa-adaptive-weight` (and the
+filtered variants); `--taa-alpha-history` stays. The pass keeps the thin and age programs and both inputs, which the temporal
+fixture uses to reach the age program (`resolve_age.hlsl`, the exit-reset rows).
+
 **Ratified 2026-09-19 (orchestrator).** Steps 0–3 go into one candidate, all default-off, in this order, each
 verified by the temporal-pass fixture before the next: step 0 must be bit-identical (program hashes of the
 resolve's live path may change only by the removal of the snapshot modes; resolved output identical on every

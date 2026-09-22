@@ -166,7 +166,7 @@ struct BoxCreationFault {
 FarRun thin_sequence(EdgeScene& s,const DWORD* resolver,const LineConfig& c,unsigned frames,bool failMasks=false,bool failBoxes=false){
     TemporalPass pass;check("thin initialize",thinFlight&&flight.lane?pass.initialize(s.d,nullptr,resolver,nullptr,nullptr,reinterpret_cast<const DWORD*>(x3m::renderer::hdr_writeback_program())):pass.initialize(s.d,nullptr,resolver));const bool on=c.thinW>0||c.farW>0;constexpr UINT S=EdgeScene::S;
     if(on){check("thin configure",pass.configure_far());if(c.sentS>0){require(!pass.sentinel_available(),"separable box programs are not created by configure_far");check("thin configure sentinel",pass.configure_sentinel());}require(pass.far_available(),"thin-region program created on this device");if(c.camera)require(pass.camera_gate_available(),"camera-gate programs created on this device");}
-    const FlickerConfig f{c.name,0,0,.1f,.5f,false,false,.9f};FarRun run;bool sequence=true;
+    const FlickerConfig f{c.name,0,0,.1f,.5f,false,.9f};FarRun run;bool sequence=true;
     for(unsigned n=0;n<frames;++n){const unsigned index=n%latticePhases+1;const double jx=halton(index,2)-.5,jy=halton(index,3)-.5;
         s.render(thin_objects(n),sentinelBackground,jx,jy);run.current.push_back(s.read(s.color.p));run.depth.push_back(s.read(s.depth32.p));if(thinSentinel||thinEmissive)run.motion.push_back(s.read(s.motion.p));
         auto in=flicker_inputs(s,f,jx,jy,true);in.sentinel_strength=thinFailRows&&n==0?0.f:c.sentS;in.sentinel_emitter=c.sentE;in.camera_cut=n==thinCutFrame;in.thin_region_weight=c.thinW;in.thin_region_relax=c.relax;in.far_weight=c.farW;in.far_d0=farD0;in.far_inv=farInv;in.far_speed_lo=farLo;in.far_speed_hi=farHi;
@@ -205,7 +205,7 @@ void sentinel_stabiliser_cases(EdgeScene& s,const DWORD* resolver,const LineConf
     auto same_mask=[&](const FarRun& a,const FarRun& b){return !a.mask.empty()&&a.mask.size()==b.mask.size()&&std::memcmp(a.mask[0].data(),b.mask[0].data(),a.mask[0].size()*sizeof(float))==0;};
     auto same_pixel=[&](const FarRun& a,const FarRun& b,unsigned n,UINT x,UINT y){return std::memcmp(&a.output[n][(y*S+x)*4],&b.output[n][(y*S+x)*4],4*sizeof(float))==0&&(a.age.empty()||a.age[n][(y*S+x)*4]==b.age[n][(y*S+x)*4]);};
     // refusals, hostile state, a failed columns draw, Reset
-    {thinSentinel=true;s.render(thin_objects(0),sentinelBackground,0,0);Output out;const FlickerConfig none{"sentinel-validation",0,0,.1f,.5f,false,false,.9f};
+    {thinSentinel=true;s.render(thin_objects(0),sentinelBackground,0,0);Output out;const FlickerConfig none{"sentinel-validation",0,0,.1f,.5f,false,.9f};
         TemporalPass pass;check("sentinel initialize",pass.initialize(d,nullptr,resolver));check("sentinel configure",pass.configure_far());
         auto in=flicker_inputs(s,none,0,0,true);in.caller_scene_open=false;in.thin_region_weight=.97f;in.thin_region_camera_gate=true;
         for(float bad:{-.1f,1.5f,NAN}){in.sentinel_strength=bad;require(pass.run(in,&out)==E_INVALIDARG,"sentinel strength outside [0, 1] is refused");}in.sentinel_strength=.7f;
@@ -313,7 +313,7 @@ void sentinel_stabiliser_cases(EdgeScene& s,const DWORD* resolver,const LineConf
 // CPU oracle, the three classes (routed strip / lit panel interior / unrouted sentinel emitter) and the strip's rest leak.
 void emissive_vote_cases(EdgeScene& s,const DWORD* resolver,const LineConfig& region){
     constexpr UINT S=EdgeScene::S;constexpr unsigned frames=64,analysed=32;
-    const LineConfig plain{"emissive-plain",false,0,0,0};
+    const LineConfig plain{"emissive-plain",0,0};
     LineConfig off=region,vote=region;off.name="emissive-E-0";off.emisE=0;vote.name="emissive-E-1";vote.emisE=1;
     struct Scene{Scene(){thinEmissive=true;}~Scene(){thinEmissive=false;}} scene;
     const auto plainRun=thin_sequence(s,resolver,plain,frames),offRun=thin_sequence(s,resolver,off,frames),voteRun=thin_sequence(s,resolver,vote,frames);
@@ -360,13 +360,13 @@ void thin_region_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolv
     struct Defer{Defer(){deferMetrics=true;deferredFailures.clear();}~Defer(){deferMetrics=false;}} defer;
     struct Hooks{Hooks(){line_velocity=thin_velocity;line_velocity_x=thin_velocity_x;farD0=.98f;farInv=200;} // far gate for the combined config: farw 1 on the shards (0.99), 0 on the square (0.98)
         ~Hooks(){line_velocity=line_velocity_default;line_velocity_x=line_velocity_x_default;thinDrift=0;thinMoveFrom=~0u;thinBadTap=false;thinBadMotion=0;thinPatchGlass=thinBadGlass=false;thinK=0;oracleK=0;thinFlight=false;flight=Flight{};flightLane=nullptr;thinForward=thinForwardMover=false;thinForwardParallax=true;thinPanX=cameraPanX=thinPatchV=0;thinPatchFrom=thinInjectFrame=oracleInjectFrame=~0u;farD0=farInv=0;cameraPanAlternates=false;cameraPanSpeed=0;thinSentinel=sentinelProps=thinFailRows=sentinelBadBlock=thinEmissive=thinEmissiveBad=false;cameraPanVertical=false;cameraPanY=0;oracleSkipCeiling=0;sentinelFacets=true;sentinelMover=0;sentinelBarFrom=thinCutFrame=~0u;}} hooks;
-    const LineConfig base{"thin-base",false,0,0,0},on97{"thin-region-0.97",false,0,0,0,1,0,0,.97f,1},on985{"thin-region-0.985",false,0,0,0,1,0,0,.985f,1},half{"thin-region-0.97-relax-0.5",false,0,0,0,1,0,0,.97f,.5f},weightOnly{"thin-region-0.97-relax-0",false,0,0,0,1,0,0,.97f,0},withFar{"thin-region-0.97+far-weight-0.985",false,0,0,0,1,.985f,0,.97f,1},
-        camera97{"thin-region-0.97-camera-gate",false,0,0,0,1,0,0,.97f,1,true};
+    const LineConfig base{"thin-base",0,0},on97{"thin-region-0.97",0,0,0,0,.97f,1},on985{"thin-region-0.985",0,0,0,0,.985f,1},half{"thin-region-0.97-relax-0.5",0,0,0,0,.97f,.5f},weightOnly{"thin-region-0.97-relax-0",0,0,0,0,.97f,0},withFar{"thin-region-0.97+far-weight-0.985",0,0,.985f,0,.97f,1},
+        camera97{"thin-region-0.97-camera-gate",0,0,0,0,.97f,1,true};
     // ---- refusals, hostile state, failed draw, Reset ----
-    {s.render(thin_objects(0),sentinelBackground,0,0);Output out;const FlickerConfig none{"thin-validation",0,0,.1f,.5f,false,false,.9f};
+    {s.render(thin_objects(0),sentinelBackground,0,0);Output out;const FlickerConfig none{"thin-validation",0,0,.1f,.5f,false,.9f};
         TemporalPass bare;check("thin bare initialize",bare.initialize(d,nullptr,resolver));auto in=flicker_inputs(s,none,0,0,true);in.caller_scene_open=false;in.thin_region_weight=.97f;
         require(bare.run(in,&out)==E_INVALIDARG,"thin region without configure_far is refused");
-        TemporalPass pass;check("thin validation initialize",pass.initialize(d,nullptr,resolver,nullptr,nullptr,nullptr,resolver));check("thin validation configure",pass.configure_far());check("thin validation flicker",pass.configure_flicker());
+        TemporalPass pass;check("thin validation initialize",pass.initialize(d,nullptr,resolver));check("thin validation configure",pass.configure_far());check("thin validation flicker",pass.configure_flicker());
         for(float bad:{-.1f,.5f,.995f,NAN}){in.thin_region_weight=bad;require(pass.run(in,&out)==E_INVALIDARG,"thin-region weight outside {0} U [weight, 0.99] is refused");}in.thin_region_weight=.97f;
         for(float bad:{-.1f,1.5f,NAN}){in.thin_region_relax=bad;require(pass.run(in,&out)==E_INVALIDARG,"thin-region relax outside [0, 1] is refused");}in.thin_region_relax=1;
         for(float bad:{-.1f,NAN}){in.thin_region_emissive=bad;require(pass.run(in,&out)==E_INVALIDARG,"negative or non-finite emissive E is refused while the thin region is on");
@@ -383,7 +383,7 @@ void thin_region_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolv
         pass.before_reset();pass.after_reset(S_OK);check("thin after Reset",pass.run(in,&out));require(out.color&&!out.used_history&&out.stabiliser_mask,"Reset protocol recreates the masks and restarts the history");
         // ---- camera gate (section 32.1): refusals, hostile state, failed box draw, Reset ----
         require(pass.camera_gate_available(),"camera-gate programs created by configure_far");
-        in.thin_region_camera_gate=true;in.line_filter=1;check("thin camera line configure",pass.configure_line_filter());require(pass.run(in,&out)==E_INVALIDARG,"camera gate beside the line filter is refused (the mask's line channel carries the second gate)");in.line_filter=0;
+        in.thin_region_camera_gate=true;
         require(bare.run(in,&out)==E_INVALIDARG,"camera gate without configure_far is refused");
         in.thin_region_weight=0;require(SUCCEEDED(pass.run(in,&out))&&!out.stabiliser_mask,"camera gate without the thin region is ignored (plain resolve)");in.thin_region_weight=.97f;
         require(SUCCEEDED(pass.run(in,&out))&&out.age&&out.stabiliser_mask,"camera-gate run publishes the age target and the mask");

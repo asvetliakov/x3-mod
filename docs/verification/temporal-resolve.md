@@ -1811,3 +1811,18 @@ one review (Opus) with fixes; post-merge gate: host suite 231 modules / 2,333 te
 only the two installer-lock modules failing while the user's game held the lock and
 `test_bob1` skipping its live-overlay case, production scratch build OK, x87 638 reachable /
 0 violations. All measured.
+
+## 2026-09-23 cleanup batch 6: dead resolve variants removed
+
+`--taa-current-filter`, `--taa-line-filter`, `--taa-thin-clip` and `--taa-adaptive-weight` are gone from the launcher
+(refused by name) and the DLL, with the six programs `resolve_{filter,line,thin_filter,thin_line,age_filter,age_line}`
+(HLSL, `_inc.h`, provenance JSON). Kept: plain, snapshot, thin (alpha history), age (the fixture's `SETA_EXIT` rows reach
+it through `FrameInputs::thin_clip` / `adaptive_weight`), far, far_camera, the line masks and the box programs
+(`docs/architecture/cleanup-inventory-2026-09-22.md`, item 6).
+
+| Check | Result |
+| --- | --- |
+| Hash gate, `python3 verification/results/cleanup-batch6-hash-gate.py` | HASH_GATE PASS: `temporal-resolve{,-thin,-age,-far,-far-camera}-program.json` byte-identical to 112b6aa9, embedded words = `bytecode_sha256` |
+| `run_temporal_pass.py`, bottle X3, main run | RESULT PASS 672 / 278, 488 samples, 28 `SETA_EXIT` rows: unchanged, report line for line the previous one |
+| same, lattice run | 583 / 23 -> **500 / 12**: LATTICE_BASE 28 / 9 -> 10 / 0 (filtered run-139 rows and refusals; weight rows kept), flicker block 182 / 4 -> 180 / 4 (filtered bit-identity pair), line block 45 / 2 -> 0 / 0 (timing only), far block 127 / 2 -> 109 / 2 (line-filter far row, `FAR_STABILISER` 24 -> 20, line mask-failure check), thin-region block 201 / 6 unchanged; every kept row's values equal the previous report |
+

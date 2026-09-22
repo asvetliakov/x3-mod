@@ -327,22 +327,21 @@ def main():
     parser.add_argument('--taa-k', type=float, default=None, help='Fixed k of the resolve luminance weighting on the FP16 scene, 0 = unweighted (X3M_TAA_K; requires --taa and --hdr; default: derived from the write-back exposure)')
     parser.add_argument('--taa-mip-bias', type=float, default=None, help='D3DSAMP_MIPMAPLODBIAS applied to the mip-mapped sampler stages of routed material draws while the TAA jitter is on, restored before every other draw (X3M_TAA_MIP_BIAS; requires --taa; 0 = off; the value for the 4-sample jitter; default -0.5 with --taa; 0 disables)')
     parser.add_argument('--taa-sharpen', type=float, default=None, help='Post-resolve sharpen of the presented image, 0..1 (X3M_TAA_SHARPEN; requires --taa): robust contrast-adaptive sharpening of the resolved image only, never of the history; 1 is the strongest setting, 0.5 one stop softer; default 0.75 with --taa; 0 disables, leaving the output bit-identical to the unsharpened route (docs/architecture/temporal-integration.md, "Post-resolve sharpen")')
-    parser.add_argument('--taa-current-filter', type=float, default=None, metavar='A', help='Filtered current sample of the TAA resolve, 0..4 (X3M_TAA_CURRENT_FILTER; requires --taa): the current colour that enters the history blend becomes the exp(-A d^2) average of the 3x3 current samples (d in pixels from the pixel centre to each jittered sample position) instead of the point sample; the neighbourhood clip is unchanged. Default 0 = off, the unchanged resolve program; 1.0 is the modelled optimum, 2.29 the sharper setting (docs/verification/motion-output.md, "Run 139")')
-    parser.add_argument('--taa-line-filter', default=None, metavar='A[,W]', help='Line-masked filtered current sample of the TAA resolve (X3M_TAA_LINE_FILTER; requires --taa; not with --taa-current-filter > 0; default absent = off; suggested 1.0, 2.0 is milder): the exp(-A d^2) average of --taa-current-filter, A within 0..4, applied only where the 3x3 depth holds a line-like pixel: geometry with background or farther geometry on both sides along one of four directions, W = 1 (default) or 2 px wide; silhouettes and surfaces keep the point sample. Against roping of sub-pixel lattices and distant struts (docs/architecture/taa-lattice-crawl.md section 9).')
-    parser.add_argument('--taa-far-stabiliser', default=None, metavar='W[,A[,F0,F1[,LO,HI]]]', help='Far-gated stabiliser of the TAA resolve against shimmer of distant sub-pixel detail (X3M_TAA_FAR_STABILISER; requires --taa; not with --taa-adaptive-weight, --taa-thin-clip or --taa-current-filter > 0; default absent = off; suggested 0.985 for the weight alone, 0.985,1 with the filter): on pixels whose footprint exceeds F0 world units per pixel, fully at F1 (default 80,130), W is the history weight (0 off, else history weight..0.99; falls back to the history weight across the LO..HI speed gate) and A the exp(-A d^2) current-sample filter (0 off, else up to 4; must equal --taa-line-filter A when both are given). The weight is full while the far content moves at most LO px/frame on screen and back at the history weight from HI (default 0.03,0.25: a long history softens sliding detail; the one gate is shared with --taa-thin-region, see there). --taa-thin-clip is refused beside this option on purpose: the far program carries no 3x3 soft clip (it was inert on every real capture). The two components are separate: W,0 is weight only, 0,A filter only (docs/architecture/taa-distant-line-fade.md section 9).')
-    parser.add_argument('--taa-thin-region', default=None, metavar='W[,RELAX[,LO,HI]]', help='Thin-region stabiliser of the TAA resolve against the jitter-cycle shimmer of lattices, struts and foreshortened panels (X3M_TAA_THIN_REGION; requires --taa; not with --taa-adaptive-weight, --taa-thin-clip or --taa-current-filter > 0; default absent = off; suggested 0.97): where the depth is fragmented (some 7-tap line through a pixel changes between geometry and its background at least twice) and nothing nearby moves faster than the speed gate, the history weight rises to min(n/(n+1), W) (W 0 off, else history weight..0.99) and the history is pulled only (1 - RELAX) of the way to the variance clip (default 1: clip off there). LO,HI px/frame is the speed gate: full effect at or below LO, none from HI. There is ONE gate for this option and --taa-far-stabiliser: given on either, it applies to both (default 0.03,0.25); given on both, the two pairs must be equal. The region is the 11x11 around fragmented pixels and closes when anything within 8 px moves faster than the gate. Plain silhouettes and everything outside the region are unchanged (docs/architecture/taa-lattice-crawl.md section 13).')
+    # Retired 2026-09-23 (cleanup batch 6, rejected / superseded resolve variants): registered only so that an old command line is refused by name.
+    for retired in ('--taa-current-filter', '--taa-line-filter', '--taa-thin-clip', '--taa-adaptive-weight'):
+        parser.add_argument(retired, nargs='?', const='', default=None, help=argparse.SUPPRESS)
+    parser.add_argument('--taa-far-stabiliser', default=None, metavar='W[,A[,F0,F1[,LO,HI]]]', help='Far-gated stabiliser of the TAA resolve against shimmer of distant sub-pixel detail (X3M_TAA_FAR_STABILISER; requires --taa; default absent = off; suggested 0.985 for the weight alone, 0.985,1 with the filter): on pixels whose footprint exceeds F0 world units per pixel, fully at F1 (default 80,130), W is the history weight (0 off, else history weight..0.99; falls back to the history weight across the LO..HI speed gate) and A the exp(-A d^2) current-sample filter (0 off, else up to 4). The weight is full while the far content moves at most LO px/frame on screen and back at the history weight from HI (default 0.03,0.25: a long history softens sliding detail; the one gate is shared with --taa-thin-region, see there). The two components are separate: W,0 is weight only, 0,A filter only (docs/architecture/taa-distant-line-fade.md section 9).')
+    parser.add_argument('--taa-thin-region', default=None, metavar='W[,RELAX[,LO,HI]]', help='Thin-region stabiliser of the TAA resolve against the jitter-cycle shimmer of lattices, struts and foreshortened panels (X3M_TAA_THIN_REGION; requires --taa; default absent = off; suggested 0.97): where the depth is fragmented (some 7-tap line through a pixel changes between geometry and its background at least twice) and nothing nearby moves faster than the speed gate, the history weight rises to min(n/(n+1), W) (W 0 off, else history weight..0.99) and the history is pulled only (1 - RELAX) of the way to the variance clip (default 1: clip off there). LO,HI px/frame is the speed gate: full effect at or below LO, none from HI. There is ONE gate for this option and --taa-far-stabiliser: given on either, it applies to both (default 0.03,0.25); given on both, the two pairs must be equal. The region is the 11x11 around fragmented pixels and closes when anything within 8 px moves faster than the gate. Plain silhouettes and everything outside the region are unchanged (docs/architecture/taa-lattice-crawl.md section 13).')
     parser.add_argument('--taa-thin-region-emissive', default=None, metavar='E', help='Emissive vote in the thin-region stabiliser mask (X3M_TAA_THIN_REGION_EMISSIVE; requires --taa-thin-region with W > 0; omitted resolves to 1 with --hdr (the user-accepted run236/run237 default since 2026-09-22, which cuts the resolved rest-flicker leak 4.4-6.9x) and stays absent = off, the mask bit for bit, without it, where the vote is inert; 0 is the opt-out: E is in the units of the scene the resolve reads, and without --hdr that is the display-referred image, where nothing exceeds 1; E in 0..65000 scene luma): a routed pixel with valid depth whose own HDR luma exceeds E and whose 3x3 luma minimum is below that luma / 3 also joins the region, so a thin emissive glow strip on a distant hull takes the region\'s history weight min(n/(n+1), W) at rest and, with the camera gate, under a camera pan, instead of the base weight (the jitter-cycle leak drops about 3.4x at W = 0.97). The test is a LOCAL PEAK: a uniformly lit panel, whose 3x3 minimum is its own luma, casts no vote, and neither do unrouted depth-sentinel pixels (lasers, engine glows, sky), which keep the sentinel law. A non-finite pixel (NaN, or luma above the resolve\'s 65000 limit) casts no vote and cannot lower a neighbour\'s minimum. The vote follows the region\'s existing 11x11 grow, speed gate, camera gate and box clip; the resolve programs are unchanged (docs/architecture/thin-glow-lines.md 8.3 R3, taa-lattice-crawl.md section 32.7).')
-    parser.add_argument('--taa-thin-region-gate', default=None, choices=('screen', 'camera'), help='Gate mode of --taa-thin-region (X3M_TAA_THIN_REGION_GATE; requires --taa-thin-region with W > 0; not with --taa-line-filter A > 0; default when omitted with the thin region on = camera, accepted in Run 59, except with --taa-line-filter, where it silently resolves to screen; "screen" is the opt-out and is the installed pre-Run59 behaviour bit for bit). "camera": the region\'s gate speed is min(screen speed, camera-relative speed), the camera-relative speed being each pixel\'s routed motion measured against the camera path at its depth, so a coherent camera pan no longer closes the region (every pixel the screen gate leaves open stays open); where the camera term alone keeps a pixel open, the retained history is clipped to the 7x7 min/max box of the current colour instead of running clip-free, which bounds a stale ghost to colours present nearby (host replay: 74 codes against 237 clip-off and 47 installed). At rest and on pixels the screen gate already handles the output is the screen mode\'s exactly (docs/architecture/taa-lattice-crawl.md section 32.1).')
-    parser.add_argument('--taa-sentinel-stabiliser', default=None, metavar='S[,E]', help='Sentinel stabiliser of the TAA resolve against the flicker of distant stations the engine draws blended without depth, under a camera pan (X3M_TAA_SENTINEL_STABILISER; requires --taa-thin-region with W > 0 and the camera gate; default when omitted with --taa and the camera gate in effect = 0.7 (E = 1), accepted after Run 61 (run216: lasers over sky clean) and Run 62 (run221: the distant-station pan flicker fixed); "off" or "0" is the opt-out and is the pre-Run62 behaviour bit for bit; without the camera gate (no thin region, --taa-thin-region-gate screen, the line filter) or without --taa it resolves to off rather than an error: unrouted pixels on the empty-depth sentinel (sky, far blended stations) get thin-region strength S (0..1) through the camera gate, always with the history clipped to the 7x7 min/max box of the current colour, closed within 8 px of anything routed that moves against the camera path. E (default 1, 0 = none) is the emitter bound in scene luma: next to anything brighter (lasers, trails, suns) the box shrinks to the inner 3x3, so their ghost stays within one pixel. Slight ghosting of unrouted content over sky (at most 3 px, decaying) is the accepted trade (docs/architecture/temporal-integration.md)')
+    parser.add_argument('--taa-thin-region-gate', default=None, choices=('screen', 'camera'), help='Gate mode of --taa-thin-region (X3M_TAA_THIN_REGION_GATE; requires --taa-thin-region with W > 0; default when omitted with the thin region on = camera, accepted in Run 59; "screen" is the opt-out and is the installed pre-Run59 behaviour bit for bit). "camera": the region\'s gate speed is min(screen speed, camera-relative speed), the camera-relative speed being each pixel\'s routed motion measured against the camera path at its depth, so a coherent camera pan no longer closes the region (every pixel the screen gate leaves open stays open); where the camera term alone keeps a pixel open, the retained history is clipped to the 7x7 min/max box of the current colour instead of running clip-free, which bounds a stale ghost to colours present nearby (host replay: 74 codes against 237 clip-off and 47 installed). At rest and on pixels the screen gate already handles the output is the screen mode\'s exactly (docs/architecture/taa-lattice-crawl.md section 32.1).')
+    parser.add_argument('--taa-sentinel-stabiliser', default=None, metavar='S[,E]', help='Sentinel stabiliser of the TAA resolve against the flicker of distant stations the engine draws blended without depth, under a camera pan (X3M_TAA_SENTINEL_STABILISER; requires --taa-thin-region with W > 0 and the camera gate; default when omitted with --taa and the camera gate in effect = 0.7 (E = 1), accepted after Run 61 (run216: lasers over sky clean) and Run 62 (run221: the distant-station pan flicker fixed); "off" or "0" is the opt-out and is the pre-Run62 behaviour bit for bit; without the camera gate (no thin region, --taa-thin-region-gate screen) or without --taa it resolves to off rather than an error: unrouted pixels on the empty-depth sentinel (sky, far blended stations) get thin-region strength S (0..1) through the camera gate, always with the history clipped to the 7x7 min/max box of the current colour, closed within 8 px of anything routed that moves against the camera path. E (default 1, 0 = none) is the emitter bound in scene luma: next to anything brighter (lasers, trails, suns) the box shrinks to the inner 3x3, so their ghost stays within one pixel. Slight ghosting of unrouted content over sky (at most 3 px, decaying) is the accepted trade (docs/architecture/temporal-integration.md)')
     parser.add_argument('--taa-history-weight', type=float, default=None, metavar='W', help='History weight of the TAA resolve, 0.5..0.98 (X3M_TAA_HISTORY_WEIGHT; requires --taa): the fraction of the accepted history kept per frame. Default absent = 0.9; 0.95 halves the per-frame ripple and doubles the convergence time and the life of clamp-bounded ghost trails')
-    parser.add_argument('--taa-thin-clip', type=float, default=None, metavar='S', help='Thin-feature soft clip of the TAA resolve, 0..1 (X3M_TAA_THIN_CLIP; requires --taa; default absent = off; suggested 0.75): where the 3x3 depth mixes the empty-depth sentinel and geometry the history is pulled only (1 - S) of the way to the clip box, fading out between 2 and 4 px/frame (docs/architecture/taa-flicker-suppression.md)')
-    parser.add_argument('--taa-adaptive-weight', default=None, metavar='WMAX[,LO,HI]', help='Per-pixel age/speed history weight, w = min(n/(n+1), wmax(speed)) (X3M_TAA_ADAPTIVE_WEIGHT; requires --taa and --taa-thin-clip; default absent = off; suggested 0.97): WMAX within [history weight, 0.99] for slow content, falling to the history weight between LO and HI px/frame (default 0.1,0.5; the wide gate is 0.8,1.5). Costs two R32F targets (8 bytes per pixel)')
     parser.add_argument('--taa-alpha-history', action='store_true', help='Time-accumulate the resolved alpha on the HDR route (X3M_TAA_ALPHA_HISTORY=1; requires --taa; has an effect only with --hdr, where bloom reads it as the authored-glow weight)')
     parser.add_argument('--taa-sentinel', choices=['auto', '1', '2'], default='auto', help='Depth-sentinel policy of the resolve (requires --taa): auto reprojects unrouted (background) pixels through the live camera at the far plane whenever the engine camera read yields a transform, 1 keeps them current-only, 2 is strict (skips the resolve on frames without a transform)')
     parser.add_argument('--taa-unmatched-static', choices=['off', 'node', 'all'], default=None, help='A routed draw whose motion-history key is new this frame (e.g. a LOD or mesh swap) reprojects through the camera as a static object for that one frame instead of resolving current-only (X3M_TAA_UNMATCHED_STATIC; requires --taa). node: only when the same engine node was drawn last frame under another key; all: any new key. Default when omitted with --taa = node, accepted after run212 (no approach flash, 22-draw unmatched groups filled on 36 approach frames); "off" is the opt-out and is the pre-run212 behaviour bit for bit')
     parser.add_argument('--taa-sky-history', choices=['loose', 'strict'], default=None, help='Sky history rule of the TAA resolve under the camera path (X3M_TAA_SKY_HISTORY; requires --taa). strict: a sky pixel (depth sentinel) whose 3x3 holds no routed geometry accepts sentinel history only, so the hull of a station that moved away this frame is never blended into the sky (the SETA approach smear of run235, docs/architecture/seta-motion.md); the default when omitted with --taa since 2026-09-23 (accepted in Run 68 A). loose is the opt-out and the pre-SETA behaviour bit for bit: the 2%% relative depth tolerance proves any geometry beyond device depth 0.98 as the sky\'s history')
     parser.add_argument('--taa-sky-history-band-px', type=float, default=None, help='Band threshold of the strict sky history in px/frame (X3M_TAA_SKY_HISTORY_BAND_PX; requires --taa; 1..16, DLL default 3): the translation parallax at which the 1-px sky band beside a silhouette stops taking its history under --taa-sky-history strict (docs/architecture/seta-motion.md section 4)')
-    parser.add_argument('--taa-sky-history-exit-px', type=float, default=None, help='Exit reset of the strict sky history in px/frame (X3M_TAA_SKY_HISTORY_EXIT_PX; requires --taa; a value above 0 also requires --taa-sky-history strict and an age program: --taa-far-stabiliser, --taa-thin-region or --taa-adaptive-weight; default when omitted with --taa = 0.25 (accepted in Run 68 A, 2026-09-23) under strict with an age program, else 0 = off, never an error: a plain --taa launch has no age program, so the reset resolves to 0 there, and it is on with --taa-far-stabiliser or --taa-thin-region; 0 is the explicit off and the opt-out, else 0.125..the band threshold): a sky pixel in the 1-px band beside a silhouette that took the silhouette\'s history while it moved at least this much translation parallax is marked in the age target and drops that history the frame it leaves the band, so the hull share it acquired leaves in one frame instead of decaying at the history weight (docs/architecture/seta-sky-hull-share-decay.md)')
+    parser.add_argument('--taa-sky-history-exit-px', type=float, default=None, help='Exit reset of the strict sky history in px/frame (X3M_TAA_SKY_HISTORY_EXIT_PX; requires --taa; a value above 0 also requires --taa-sky-history strict and an age program: --taa-far-stabiliser or --taa-thin-region; default when omitted with --taa = 0.25 (accepted in Run 68 A, 2026-09-23) under strict with an age program, else 0 = off, never an error: a plain --taa launch has no age program, so the reset resolves to 0 there, and it is on with --taa-far-stabiliser or --taa-thin-region; 0 is the explicit off and the opt-out, else 0.125..the band threshold): a sky pixel in the 1-px band beside a silhouette that took the silhouette\'s history while it moved at least this much translation parallax is marked in the age target and drops that history the frame it leaves the band, so the hull share it acquired leaves in one frame instead of decaying at the history weight (docs/architecture/seta-sky-hull-share-decay.md)')
     parser.add_argument('--camera-cut-deg', type=float, default=20.0, help='Camera rotation per frame (degrees) above which the resolve declares a cut (requires --taa; default 20)')
     parser.add_argument('--camera-log', type=int, default=300, help='Cadence in frames of the camera_state log line (requires --taa; capture frames always log; default 300)')
     parser.add_argument('--scene-hook', nargs='?', const='on', default=None, choices=['on', 'off'], help='Engine scene-end hook (X3M_SCENE_HOOK): patch the frame routine\'s compositing callsite (0x004721b1, exact executable and bytes only, otherwise it fails closed to the bloom-copy/selector boundary) so the route learns the scene end from the engine and, with --taa, resolves there before the glow pass. Default on with --motion-output since review 26 (iteration 10: 214/214 agreement); "--scene-hook" alone means on; "--scene-hook off" keeps the copy/selector boundary')
@@ -550,24 +549,10 @@ def main():
         parser.error('--taa-sharpen requires --taa.')
     if args.taa_sharpen is not None and not 0.0 <= args.taa_sharpen <= 1.0:
         parser.error('--taa-sharpen must be within [0, 1].')
-    # `not lo <= v <= hi` also rejects NaN.
-    if args.taa_current_filter is not None and not args.taa:
-        parser.error('--taa-current-filter requires --taa.')
-    if args.taa_current_filter is not None and not 0.0 <= args.taa_current_filter <= 4.0:
-        parser.error('--taa-current-filter must be within [0, 4].')
-    if args.taa_line_filter is not None and not args.taa:
-        parser.error('--taa-line-filter requires --taa.')
-    if args.taa_line_filter is not None:
-        amount, comma, width = args.taa_line_filter.partition(',')
-        try:
-            amount = float(amount)
-        except ValueError:
-            amount = float('nan')
-        if not 0.0 <= amount <= 4.0 or width not in (('1', '2') if comma else ('',)):
-            parser.error('--taa-line-filter takes A[,W]: A within [0, 4], W 1 or 2.')
-        if amount > 0 and args.taa_current_filter:
-            parser.error('--taa-line-filter and --taa-current-filter exclude each other (the global filter already covers every pixel).')
-        args.taa_line_filter = '%.5g' % amount + (',' + width if width else '')
+    for retired in ('taa_current_filter', 'taa_line_filter', 'taa_thin_clip', 'taa_adaptive_weight'):
+        if getattr(args, retired) is not None:
+            parser.error('--%s was removed on 2026-09-23 (cleanup batch 6): the rejected / superseded TAA resolve variants are retired; '
+                         'use --taa-far-stabiliser and --taa-thin-region (docs/architecture/taa-lattice-crawl.md).' % retired.replace('_', '-'))
     if args.taa_far_stabiliser is not None:
         if not args.taa:
             parser.error('--taa-far-stabiliser requires --taa.')
@@ -582,15 +567,6 @@ def main():
         base_weight = args.taa_history_weight if args.taa_history_weight is not None else 0.9
         if not (far[0] == 0.0 or base_weight <= far[0] <= 0.99) or not 0.0 <= far[1] <= 4.0 or not 0.0 < far[2] < far[3] <= 1e6 or not 0.0 <= far[4] < far[5] <= 64.0:
             parser.error('--taa-far-stabiliser: W is 0 or within [history weight, 0.99], A within [0, 4], 0 < F0 < F1 <= 1e6, 0 <= LO < HI <= 64.')
-        if far[0] > 0 or far[1] > 0:
-            if args.taa_adaptive_weight is not None:
-                parser.error('--taa-far-stabiliser and --taa-adaptive-weight exclude each other (one history-weight gate).')
-            if args.taa_thin_clip:
-                parser.error('--taa-far-stabiliser and --taa-thin-clip exclude each other (the far program has no 3x3 soft clip; see --taa-thin-region).')
-            if args.taa_current_filter:
-                parser.error('--taa-far-stabiliser and --taa-current-filter exclude each other (the global filter already covers every pixel).')
-            if far[1] > 0 and args.taa_line_filter is not None and float(args.taa_line_filter.partition(',')[0]) not in (0.0, far[1]):
-                parser.error('--taa-far-stabiliser A must equal --taa-line-filter A when both are given (one Gaussian per frame).')
         args.taa_far_stabiliser = ','.join('%.6g' % value for value in far)
     if args.taa_thin_region is not None:
         if not args.taa:
@@ -607,10 +583,6 @@ def main():
         if not (thin[0] == 0.0 or base_weight <= thin[0] <= 0.99) or not 0.0 <= thin[1] <= 1.0 or not 0.0 <= thin[2] < thin[3] <= 64.0:
             parser.error('--taa-thin-region: W is 0 or within [history weight, 0.99], RELAX within [0, 1], 0 <= LO < HI <= 64.')
         if thin[0] > 0:
-            if args.taa_adaptive_weight is not None or args.taa_thin_clip:
-                parser.error('--taa-thin-region excludes --taa-adaptive-weight and --taa-thin-clip (one history-weight gate; the program has no 3x3 soft clip).')
-            if args.taa_current_filter:
-                parser.error('--taa-thin-region and --taa-current-filter exclude each other.')
             if gate_given and getattr(args, 'taa_far_gate_given', False) and [float(v) for v in args.taa_far_stabiliser.split(',')[4:]] != thin[2:]:
                 parser.error('--taa-thin-region LO,HI must equal the --taa-far-stabiliser speed gate when both are given (one gate).')
         args.taa_thin_region = ','.join('%.6g' % value for value in (thin if gate_given else thin[:2]))
@@ -619,14 +591,10 @@ def main():
     if args.taa_thin_region_gate is not None:
         if args.taa_thin_region is None or float(args.taa_thin_region.split(',')[0]) <= 0:
             parser.error('--taa-thin-region-gate requires --taa-thin-region with W > 0.')
-        if args.taa_thin_region_gate == 'camera' and args.taa_line_filter is not None and float(args.taa_line_filter.partition(',')[0]) > 0:
-            parser.error('--taa-thin-region-gate camera and --taa-line-filter exclude each other (the mask carries the second gate in the line channel).')
     elif args.taa_thin_region is not None and float(args.taa_thin_region.split(',')[0]) > 0:
         # User-accepted Run59 default (docs/verification/temporal-resolve.md): whenever the thin
-        # region is active the gate is camera-relative unless the line filter occupies the mask's
-        # line channel, where the only possible gate is the screen one; resolve it silently there
-        # rather than refusing a request the user did not make. Explicit "screen" is the opt-out.
-        args.taa_thin_region_gate = 'screen' if args.taa_line_filter is not None and float(args.taa_line_filter.partition(',')[0]) > 0 else 'camera'
+        # region is active the gate is camera-relative. Explicit "screen" is the opt-out.
+        args.taa_thin_region_gate = 'camera'
     if args.taa_thin_region_emissive is None and args.taa and args.hdr \
             and args.taa_thin_region is not None and float(args.taa_thin_region.split(',')[0]) > 0:
         # User-accepted run236/run237 default (2026-09-22, docs/architecture/taa-lattice-crawl.md
@@ -663,32 +631,14 @@ def main():
         if len(sentinel) not in (1, 2) or not all(math.isfinite(v) for v in sentinel) or not 0 <= sentinel[0] <= 1 or (len(sentinel) == 2 and not 0 <= sentinel[1] <= 65000):
             parser.error('--taa-sentinel-stabiliser expects S in 0..1 and E in 0..65000.')
         if sentinel[0] > 0 and args.taa_thin_region_gate != 'camera':
-            parser.error('--taa-sentinel-stabiliser requires --taa-thin-region with W > 0 and the camera gate (--taa-thin-region-gate camera, the default without --taa-line-filter).')
+            parser.error('--taa-sentinel-stabiliser requires --taa-thin-region with W > 0 and the camera gate (--taa-thin-region-gate camera, the default).')
         args.taa_sentinel_stabiliser = ','.join('%.6g' % value for value in sentinel)
     if args.taa_history_weight is not None and not args.taa:
         parser.error('--taa-history-weight requires --taa.')
     if args.taa_history_weight is not None and not 0.5 <= args.taa_history_weight <= 0.98:
         parser.error('--taa-history-weight must be within [0.5, 0.98].')
-    if (args.taa_thin_clip is not None or args.taa_adaptive_weight is not None or args.taa_alpha_history) and not args.taa:
-        parser.error('--taa-thin-clip, --taa-adaptive-weight and --taa-alpha-history require --taa.')
-    if args.taa_thin_clip is not None and not 0.0 <= args.taa_thin_clip <= 1.0:
-        parser.error('--taa-thin-clip must be within [0, 1].')
-    if args.taa_adaptive_weight is not None:
-        try:
-            adaptive = [float(part) for part in args.taa_adaptive_weight.split(',')]
-        except ValueError:
-            adaptive = []
-        if len(adaptive) not in (1, 3):
-            parser.error('--taa-adaptive-weight takes WMAX or WMAX,LO,HI.')
-        history_weight = 0.9 if args.taa_history_weight is None else args.taa_history_weight
-        if not max(history_weight, 0.5) <= adaptive[0] <= 0.99:
-            parser.error('--taa-adaptive-weight WMAX must be within [history weight, 0.99].')
-        if len(adaptive) == 3 and not 0.0 <= adaptive[1] < adaptive[2] <= 64.0:
-            parser.error('--taa-adaptive-weight needs 0 <= LO < HI <= 64 px/frame.')
-        if not (args.taa_thin_clip is not None and args.taa_thin_clip > 0.0):
-            parser.error('--taa-adaptive-weight requires --taa-thin-clip > 0 (alone it dims thin lattices).')
-        # Short fixed format: the DLL reads the value through a 32-character buffer (three components <= 23 characters).
-        args.taa_adaptive_weight = ','.join('%.5g' % value for value in adaptive)
+    if args.taa_alpha_history and not args.taa:
+        parser.error('--taa-alpha-history requires --taa.')
     if not args.taa and args.taa_unmatched_static is not None:
         parser.error('--taa-unmatched-static requires --taa.')
     elif args.taa and args.taa_unmatched_static is None:
@@ -714,8 +664,7 @@ def main():
             parser.error('--taa-sky-history-exit-px must be 0 or within 0.125..the band threshold (%g) px/frame.' % (3.0 if args.taa_sky_history_band_px is None else args.taa_sky_history_band_px))
     # The exit mark lives in the age target: one of the age programs must be in effect (the DLL drops it otherwise too).
     age_program = (args.taa_far_stabiliser is not None and any(float(v) > 0 for v in args.taa_far_stabiliser.split(',')[:2])) \
-        or (args.taa_thin_region is not None and float(args.taa_thin_region.split(',')[0]) > 0) \
-        or (args.taa_adaptive_weight is not None and float(args.taa_adaptive_weight.split(',')[0]) > 0)
+        or (args.taa_thin_region is not None and float(args.taa_thin_region.split(',')[0]) > 0)
     if args.taa and args.taa_sky_history_exit_px is None:
         # User-accepted Run 68 A default (2026-09-23): 0.25 px/frame under strict with an age program, else the
         # explicit off 0 (never an error); always forwarded with --taa, so neither a stale shell value nor the
@@ -725,7 +674,7 @@ def main():
         if args.taa_sky_history != 'strict':
             parser.error('--taa-sky-history-exit-px requires --taa-sky-history strict.')
         if not age_program:
-            parser.error('--taa-sky-history-exit-px requires an age program: --taa-far-stabiliser, --taa-thin-region or --taa-adaptive-weight.')
+            parser.error('--taa-sky-history-exit-px requires an age program: --taa-far-stabiliser or --taa-thin-region.')
         band = 3.0 if args.taa_sky_history_band_px is None else args.taa_sky_history_band_px
         if not 0.125 <= args.taa_sky_history_exit_px <= band:
             parser.error('--taa-sky-history-exit-px must be 0 or within 0.125..the band threshold (%g) px/frame.' % band)
@@ -1199,17 +1148,20 @@ def main():
             env.pop('X3M_TAA_MIP_BIAS', None)
             env.pop('X3M_TAA_SHARPEN', None)
         # The resolve A/B options are forwarded only when given: a stale shell
-        # value can neither enable the filter nor change the weight. The three
+        # value can neither enable an option nor change the weight. The three
         # with a resolved default (the thin-region gate, its emissive vote
         # and the sentinel stabiliser) are already set or cleared above, so an
         # inherited value cannot survive either.
-        for name, value in (('X3M_TAA_CURRENT_FILTER', args.taa_current_filter), ('X3M_TAA_HISTORY_WEIGHT', args.taa_history_weight), ('X3M_TAA_LINE_FILTER', args.taa_line_filter), ('X3M_TAA_FAR_STABILISER', args.taa_far_stabiliser), ('X3M_TAA_THIN_REGION', args.taa_thin_region), ('X3M_TAA_THIN_REGION_GATE', args.taa_thin_region_gate), ('X3M_TAA_THIN_REGION_EMISSIVE', args.taa_thin_region_emissive), ('X3M_TAA_SENTINEL_STABILISER', args.taa_sentinel_stabiliser),
-                            ('X3M_TAA_THIN_CLIP', args.taa_thin_clip), ('X3M_TAA_ADAPTIVE_WEIGHT', args.taa_adaptive_weight), ('X3M_TAA_SKY_HISTORY', args.taa_sky_history), ('X3M_TAA_SKY_HISTORY_BAND_PX', args.taa_sky_history_band_px), ('X3M_TAA_SKY_HISTORY_EXIT_PX', args.taa_sky_history_exit_px),
+        for name, value in (('X3M_TAA_HISTORY_WEIGHT', args.taa_history_weight), ('X3M_TAA_FAR_STABILISER', args.taa_far_stabiliser), ('X3M_TAA_THIN_REGION', args.taa_thin_region), ('X3M_TAA_THIN_REGION_GATE', args.taa_thin_region_gate), ('X3M_TAA_THIN_REGION_EMISSIVE', args.taa_thin_region_emissive), ('X3M_TAA_SENTINEL_STABILISER', args.taa_sentinel_stabiliser),
+                            ('X3M_TAA_SKY_HISTORY', args.taa_sky_history), ('X3M_TAA_SKY_HISTORY_BAND_PX', args.taa_sky_history_band_px), ('X3M_TAA_SKY_HISTORY_EXIT_PX', args.taa_sky_history_exit_px),
                             ('X3M_TAA_ALPHA_HISTORY', '1' if args.taa_alpha_history else None)):
             if value is not None:
-                env[name] = value if isinstance(value, str) else ('%.5g' % value if name == 'X3M_TAA_THIN_CLIP' else repr(value))
+                env[name] = value if isinstance(value, str) else repr(value)
             else:
                 env.pop(name, None)
+        # Retired 2026-09-23 (cleanup batch 6): never inherited, never set (the DLL no longer reads them).
+        for name in ('X3M_TAA_CURRENT_FILTER', 'X3M_TAA_LINE_FILTER', 'X3M_TAA_THIN_CLIP', 'X3M_TAA_ADAPTIVE_WEIGHT'):
+            env.pop(name, None)
         env['X3M_TAA_SENTINEL'] = args.taa_sentinel
         # node by default with --taa (run212), off without it: always resolved here, so an
         # inherited shell value can neither select a mode nor survive a launch without --taa.

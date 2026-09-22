@@ -62,28 +62,6 @@ struct FrameInputs {
     // image, so the weighted domain is the display-relative luminance. Finite,
     // 0 <= k <= 65504; run refuses anything else.
     float luminance_k = 0.f;
-    // A of the filtered current sample (resolve.h, c22.y; resolve_filter.hlsl):
-    // 0 (the default) binds the plain resolve program and the run is
-    // bit-identical to a run without the field; in (0, 4] the pass binds the
-    // filtered variant, whose blend takes the exp(-A d^2) average of the 3x3
-    // current samples instead of the point sample (the clip box is unchanged).
-    // Requires a pass initialised with the filtered program; anything else,
-    // or a value outside [0, 4], refuses the run.
-    float current_filter = 0.f;
-    // A of the line-masked filtered current sample (c22.w; resolve_line.hlsl,
-    // resolve_thin_line.hlsl, resolve_age_line.hlsl; docs/architecture/
-    // taa-lattice-crawl.md section 9): 0 (the default) selects the programs a
-    // run without the field binds; in (0, 4] the same exp(-A d^2) average
-    // enters the blend only where the current 3x3 depth holds a line-like
-    // pixel (geometry with background on both sides along one of four
-    // directions). Requires configure_line_filter() and current_filter == 0
-    // (the global filter already covers every pixel); anything else refuses.
-    float line_filter = 0.f;
-    // Width of the line mask in pixels, 1 (default) or 2: with 2 a side of the
-    // pixel also counts as background when the neighbour at distance 2 is
-    // (replay: more of thick or distant lattices, about 4 % softer silhouettes
-    // against 1 %). Anything else refuses a line-filtered run.
-    unsigned line_width = 1;
     // Far stabiliser (docs/architecture/taa-distant-line-fade.md section 9),
     // two separately switchable components gated by farw = saturate((depth -
     // far_d0) * far_inv) of the pixel's own depth (0 on the sentinel; the
@@ -94,9 +72,8 @@ struct FrameInputs {
     // target. far_filter: 0 off, else A in (0, 4]: current sample lerp(point,
     // exp(-A d^2) average, farw). Either needs configure_far() and
     // MotionPolicy::PerPixel (the speed gate reads the routed motion); refused beside
-    // adaptive_weight (one gate) and current_filter, and beside a line_filter
-    // of a different A (one Gaussian per frame). farw = 0 pixels are the thin /
-    // plain blend bit for bit.
+    // adaptive_weight (one gate) and thin_clip. farw = 0 pixels are the plain
+    // blend bit for bit.
     float far_weight = 0.f, far_filter = 0.f, far_d0 = 0.f, far_inv = 0.f;
     // Thin-region stabiliser (docs/architecture/taa-lattice-crawl.md section 13):
     // where the depth is FRAGMENTED (some 7-tap line through the pixel changes
@@ -107,10 +84,9 @@ struct FrameInputs {
     // min(n / (n + 1), thin_region_weight): the cumulative mean of the jitter
     // cycle until the cap binds. 0 off, else within [weight, 0.99]. Runs on the
     // far-stabiliser program (configure_far(), PerPixel motion, the age target),
-    // shares its speed gate, and like it excludes adaptive_weight and
-    // current_filter; with either of the two, thin_clip must be 0 (the program
-    // has no 3x3 sentinel soft clip). Pixels outside the region are the far /
-    // plain blend bit for bit.
+    // shares its speed gate, and like it excludes adaptive_weight and needs
+    // thin_clip 0 (the program has no 3x3 sentinel soft clip). Pixels outside
+    // the region are the far / plain blend bit for bit.
     float thin_region_weight = 0.f, thin_region_relax = 1.f;
     // Emissive vote of the thin region (docs/architecture/thin-glow-lines.md 8.3
     // R3; taa-lattice-crawl.md section 32.7), E in scene luma: 0 (the default)
@@ -142,8 +118,7 @@ struct FrameInputs {
     // min / max box of the current colour (one extra MRT draw into two owned
     // FP16 targets). Pixels the screen-speed gate leaves open, and every pixel
     // at rest, are the screen-gate run's exactly. Needs camera_gate_available()
-    // (configure_far() created the three programs) and line_filter == 0 (the
-    // mask's r channel carries the second gate); anything else refuses the run.
+    // (configure_far() created the three programs); anything else refuses the run.
     // Ignored without thin_region_weight. A failed box-target allocation that is
     // not a lost device falls back to the screen-speed gate for the session
     // (camera_gate_failed(); re-armed by Reset), the mask fallback's policy.
@@ -197,7 +172,11 @@ struct FrameInputs {
     // Flicker suppression (docs/architecture/taa-flicker-suppression.md), all
     // off by default; with all three off the pass binds the plain programs and
     // the run is bit-identical to a run without the fields. Any of them needs
-    // configure_flicker() to have succeeded, else the run is refused.
+    // configure_flicker() to have succeeded, else the run is refused. The DLL
+    // sets alpha_history only: its thin-clip and adaptive-weight options were
+    // removed 2026-09-23 (cleanup batch 6); thin_clip and adaptive_weight stay
+    // here as the way the temporal fixture selects the age program
+    // (resolve_age.hlsl), on which its exit-reset rows run.
     // thin_clip S in [0, 1]: where the current 3x3 depth mixes the sentinel
     // and geometry the history is pulled only (1 - S) of the way to the clip
     // box, fading out between 2 and 4 px/frame.
@@ -274,10 +253,10 @@ struct Output {
     // S_OK when it drew (display_written), otherwise the failure that left the
     // display to the caller's copy-back; a lost device fails the run instead.
     HRESULT copy_result = S_FALSE;
-    // The age target written by this run (adaptive_weight > 0), else null;
+    // The age target written by this run (adaptive_weight > 0 or a far-program run), else null;
     // same borrowing rules. For capture dumps only.
     IDirect3DTexture9* age = nullptr;
-    // Line filter / far stabiliser runs: the owned A8R8G8B8 mask the resolve read at s8 (r filter weight, g far
+    // Far stabiliser / thin region runs: the owned A8R8G8B8 mask the resolve read at s8 (r filter weight, g far
     // history-weight gate); diagnostic, same borrowing rules. Keep last: run() fills the struct positionally.
     IDirect3DTexture9* stabiliser_mask = nullptr;
 };
@@ -319,13 +298,7 @@ public:
     // binds the embedded vs_3_0 pass-through (quad_vertex_program.h) and its
     // declaration, both created here and surviving Reset.
     HRESULT initialize(IDirect3DDevice9* native_device, const DWORD* decoder, const DWORD* resolve,
-                       void* const* native_vtable = nullptr, const DWORD* sharpen = nullptr, const DWORD* copy = nullptr,
-                       const DWORD* resolve_filtered = nullptr) noexcept;
-    // `resolve_filtered` (ps_3_0 bytecode of src/temporal/resolve_filter.hlsl)
-    // may be null; FrameInputs::current_filter > 0 is then refused. A device
-    // that refuses the program at creation does not fail initialize: the
-    // filter is unavailable and current_filter_result() holds the HRESULT
-    // (S_FALSE when no program was supplied).
+                       void* const* native_vtable = nullptr, const DWORD* sharpen = nullptr, const DWORD* copy = nullptr) noexcept;
     // Creates the embedded flicker-suppression variants (temporal_resolve_program.h);
     // they survive Reset like the other programs. Call once after initialize
     // when any of thin_clip / adaptive_weight / alpha_history will be used; the
@@ -334,18 +307,11 @@ public:
     // render targets and D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS (R32F beside
     // A16B16G16R16F), read from the device caps at initialize.
     HRESULT configure_flicker() noexcept;
-    // Creates the embedded line-filter variants (plain, thin clip and, with the
-    // age caps, age weight). Call once after initialize when line_filter will
-    // be used; the default path never creates them. A failure leaves the pass
-    // usable without the option. A line-filtered run draws the line mask
-    // (line_mask_ps.hlsl, two quads into two owned A8R8G8B8 targets of the
+    // Creates the far-stabiliser program (and the mask program); needs the age
+    // caps. A failure leaves the pass usable without the option. A far run
+    // draws the mask (line_mask_ps.hlsl into two owned A8R8G8B8 targets of the
     // frame size, 8 bytes per pixel, created on the first such run) and binds
     // it at s8 for the resolve.
-    HRESULT configure_line_filter() noexcept;
-    bool line_filter_available() const noexcept { return line_mask_ != nullptr && line_ != nullptr && thin_line_ != nullptr; }
-    bool age_line_available() const noexcept { return age_line_ != nullptr; }
-    // Creates the far-stabiliser program (and the mask program); needs the age
-    // caps. A failure leaves the pass usable without the option.
     // reference_program: fixtures only (an earlier build of resolve_far.hlsl for an identity comparison); production passes none.
     HRESULT configure_far(const DWORD* reference_program = nullptr) noexcept;
     bool far_available() const noexcept { return mrt_age_ && line_mask_ != nullptr && far_ != nullptr; }
@@ -359,8 +325,8 @@ public:
     bool sentinel_failed() const noexcept { return box_rows_failed_; }
     HRESULT sentinel_result() const noexcept { return box_rows_result_; }
     HRESULT camera_gate_result() const noexcept { return boxes_result_; }
-    // The mask targets could not be created (not a lost device): the line
-    // filter and the far stabiliser are off for the rest of the session, runs
+    // The mask targets could not be created (not a lost device): the far
+    // stabiliser and the thin region are off for the rest of the session, runs
     // that ask for them proceed without (history kept), and this holds the
     // HRESULT for the caller's one log line. before_reset re-arms one attempt
     // (a Reset frees video memory; one CreateTexture pair per Reset cannot
@@ -368,15 +334,13 @@ public:
     // until the next resize or Reset: dropping it would cut the history.
     bool line_masks_failed() const noexcept { return line_masks_failed_; }
     HRESULT line_masks_result() const noexcept { return line_masks_result_; }
-    bool flicker_available() const noexcept { return thin_ != nullptr && (!resolve_filtered_ || thin_filtered_ != nullptr); }
-    bool age_available() const noexcept { return flicker_available() && mrt_age_ && age_ != nullptr && (!resolve_filtered_ || age_filtered_ != nullptr); }
+    bool flicker_available() const noexcept { return thin_ != nullptr; }
+    bool age_available() const noexcept { return flicker_available() && mrt_age_ && age_ != nullptr; }
     // The mask-snapshot program (resolve_snapshot.hlsl) is created by initialize
     // and optional: a refusal leaves every run without a mask policy working;
     // RequiredMask / SupplementalMaskWithDepthSentinel runs are then refused.
     bool snapshot_available() const noexcept { return snapshot_ != nullptr; }
     HRESULT snapshot_result() const noexcept { return snapshot_result_; }
-    bool current_filter_available() const noexcept { return resolve_filtered_ != nullptr; }
-    HRESULT current_filter_result() const noexcept { return resolve_filtered_result_; }
     // How an 8-bit color_surface input reaches the FP16 scratch and how the
     // resolved history reaches it again: false (default) by format-converting
     // StretchRect both ways (the caller copies back); true by a same-format
@@ -417,14 +381,14 @@ private:
     // after every run instead of being created per frame. Default-pool-like:
     // released before Reset and re-created lazily afterwards.
     IDirect3DStateBlock9* block_ = nullptr;
-    IDirect3DPixelShader9 *decoder_ = nullptr, *resolve_ = nullptr, *snapshot_ = nullptr, *resolve_filtered_ = nullptr, *sharpen_ = nullptr, *copy_ = nullptr;
-    HRESULT resolve_filtered_result_ = S_FALSE, snapshot_result_ = S_FALSE;
-    IDirect3DPixelShader9 *thin_ = nullptr, *thin_filtered_ = nullptr, *age_ = nullptr, *age_filtered_ = nullptr;
+    IDirect3DPixelShader9 *decoder_ = nullptr, *resolve_ = nullptr, *snapshot_ = nullptr, *sharpen_ = nullptr, *copy_ = nullptr;
+    HRESULT snapshot_result_ = S_FALSE;
+    IDirect3DPixelShader9 *thin_ = nullptr, *age_ = nullptr;
     bool line_masks_failed_ = false;
     HRESULT line_masks_result_ = S_OK;
     IDirect3DPixelShader9* far_ = nullptr;
-    IDirect3DPixelShader9 *line_mask_ = nullptr, *line_ = nullptr, *thin_line_ = nullptr, *age_line_ = nullptr;
-    // Line mask targets (A8R8G8B8, default pool, released with the histories): [0] line-like, [1] its 3x3 maximum.
+    IDirect3DPixelShader9 *line_mask_ = nullptr;
+    // Mask targets (A8R8G8B8, default pool, released with the histories; line_mask_ps.hlsl's modes decide the layout).
     IDirect3DTexture9* line_masks_[2]{};
     IDirect3DSurface9* line_mask_surfaces_[2]{};
     HRESULT ensure_line_masks() noexcept;
@@ -445,7 +409,7 @@ private:
     HRESULT box_rows_result_ = S_OK;
     HRESULT ensure_box_rows() noexcept;
     bool mrt_age_ = false; // caps: >= 2 simultaneous RTs with independent bit depths
-    IDirect3DTexture9* ages_[2]{};          // R32F per-pixel accumulated-frame count (adaptive weight only)
+    IDirect3DTexture9* ages_[2]{};          // R32F per-pixel accumulated-frame count (age and far programs)
     IDirect3DSurface9* age_surfaces_[2]{};
     IDirect3DVertexShader9* quad_vs_ = nullptr;          // vs_3_0 pass-through of every quad (survives Reset)
     IDirect3DVertexDeclaration9* quad_declaration_ = nullptr;

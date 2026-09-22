@@ -1,46 +1,25 @@
 MODULE C:\windows\system32\d3d9.dll
 MODULE C:\X3\d3dx9_37.dll
-RESOLVE_BUDGET variant=current_filter dwords=1727 instruction_slots=443 device_limit=512 headroom=69 within_guaranteed_512=1
-CHECK resolve instruction budget parsed for ps_3_0 PASS
 RESOLVE_BUDGET variant=plain dwords=1681 instruction_slots=432 device_limit=512 headroom=80 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
-RESOLVE_BUDGET_DELTA instruction_slots=-11 dwords=-46
 RESOLVE_BUDGET variant=embedded_plain dwords=1681 instruction_slots=432 device_limit=512 headroom=80 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_plain within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_current_filter dwords=1727 instruction_slots=443 device_limit=512 headroom=69 within_guaranteed_512=1
-CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_current_filter within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_snapshot dwords=187 instruction_slots=46 device_limit=512 headroom=466 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_snapshot within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_thin dwords=1818 instruction_slots=465 device_limit=512 headroom=47 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_thin within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_thin_filter dwords=1861 instruction_slots=477 device_limit=512 headroom=35 within_guaranteed_512=1
-CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_thin_filter within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_age dwords=1946 instruction_slots=495 device_limit=512 headroom=17 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_age within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_age_filter dwords=1989 instruction_slots=507 device_limit=512 headroom=5 within_guaranteed_512=1
-CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_age_filter within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_line_mask dwords=1401 instruction_slots=368 device_limit=512 headroom=144 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_line_mask within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_far dwords=1958 instruction_slots=498 device_limit=512 headroom=14 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_far within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_line dwords=1748 instruction_slots=447 device_limit=512 headroom=65 within_guaranteed_512=1
-CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_line within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_thin_line dwords=1888 instruction_slots=483 device_limit=512 headroom=29 within_guaranteed_512=1
-CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_thin_line within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_age_line dwords=1998 instruction_slots=507 device_limit=512 headroom=5 within_guaranteed_512=1
-CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_age_line within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_line_mask_camera dwords=1307 instruction_slots=344 device_limit=512 headroom=168 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_line_mask_camera within the guaranteed 512 slots PASS
@@ -59,15 +38,6 @@ CHECK embedded_thin_box_columns within the guaranteed 512 slots PASS
 LATTICE_CASES
 LATTICE_MARGIN 0.0600
 CHECK lattice geometry keeps jittered edges off the sample centers PASS
-CHECK current filter without the filtered program is refused PASS
-CHECK current filter outside [0, 4] is refused PASS
-CHECK current filter outside [0, 4] is refused PASS
-CHECK current filter outside [0, 4] is refused PASS
-CHECK current filter outside [0, 4] is refused PASS
-CHECK current filter 4 runs PASS
-CHECK refused filtered program is reported, initialize succeeds PASS
-CHECK current filter on a pass whose device refused the program is refused PASS
-CHECK the pass without the filter still runs PASS
 CHECK lattice history follows the sequence PASS
 CHECK lattice history follows the sequence PASS
 CHECK lattice history follows the sequence PASS
@@ -196,7 +166,7 @@ CHECK lattice history follows the sequence PASS
 CHECK lattice history follows the sequence PASS
 CHECK lattice history follows the sequence PASS
 CHECK lattice history follows the sequence PASS
-LATTICE config=baseline filter=0.00 weight=0.90 k=0.0000 raw_flicker=0.200000 flicker=0.010791 peak=0.040527 codes_mean=2.752 ratio=1.0000
+LATTICE config=baseline weight=0.90 k=0.0000 raw_flicker=0.200000 flicker=0.010791 peak=0.040527 codes_mean=2.752 ratio=1.0000
 CHECK lattice history follows the sequence PASS
 CHECK lattice history follows the sequence PASS
 CHECK lattice history follows the sequence PASS
@@ -325,7 +295,7 @@ CHECK lattice history follows the sequence PASS
 CHECK lattice history follows the sequence PASS
 CHECK lattice history follows the sequence PASS
 CHECK lattice history follows the sequence PASS
-LATTICE config=off filter=0.00 weight=0.90 k=0.0000 raw_flicker=0.200000 flicker=0.010791 peak=0.040527 codes_mean=2.752 ratio=1.0000
+LATTICE config=weight-0.95 weight=0.95 k=0.0000 raw_flicker=0.200000 flicker=0.005192 peak=0.019531 codes_mean=1.324 ratio=0.4811
 CHECK lattice history follows the sequence PASS
 CHECK lattice history follows the sequence PASS
 CHECK lattice history follows the sequence PASS
@@ -454,7 +424,7 @@ CHECK lattice history follows the sequence PASS
 CHECK lattice history follows the sequence PASS
 CHECK lattice history follows the sequence PASS
 CHECK lattice history follows the sequence PASS
-LATTICE config=filter-1.0 filter=1.00 weight=0.90 k=0.0000 raw_flicker=0.200000 flicker=0.006415 peak=0.022461 codes_mean=1.636 ratio=0.5945
+LATTICE config=k-baseline weight=0.90 k=2.4276 raw_flicker=0.200000 flicker=0.010254 peak=0.051514 codes_mean=2.615 ratio=1.0000
 CHECK lattice history follows the sequence PASS
 CHECK lattice history follows the sequence PASS
 CHECK lattice history follows the sequence PASS
@@ -583,809 +553,16 @@ CHECK lattice history follows the sequence PASS
 CHECK lattice history follows the sequence PASS
 CHECK lattice history follows the sequence PASS
 CHECK lattice history follows the sequence PASS
-LATTICE config=weight-0.95 filter=0.00 weight=0.95 k=0.0000 raw_flicker=0.200000 flicker=0.005192 peak=0.019531 codes_mean=1.324 ratio=0.4811
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-LATTICE config=both-1.0 filter=1.00 weight=0.95 k=0.0000 raw_flicker=0.200000 flicker=0.003186 peak=0.011841 codes_mean=0.812 ratio=0.2952
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-LATTICE config=filter-2.29 filter=2.29 weight=0.90 k=0.0000 raw_flicker=0.200000 flicker=0.007227 peak=0.019531 codes_mean=1.843 ratio=0.6697
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-LATTICE config=both-2.29 filter=2.29 weight=0.95 k=0.0000 raw_flicker=0.200000 flicker=0.003495 peak=0.009766 codes_mean=0.891 ratio=0.3239
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-LATTICE config=k-baseline filter=0.00 weight=0.90 k=2.4276 raw_flicker=0.200000 flicker=0.010254 peak=0.051514 codes_mean=2.615 ratio=1.0000
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-LATTICE config=k-filter-1.0 filter=1.00 weight=0.90 k=2.4276 raw_flicker=0.200000 flicker=0.003892 peak=0.010742 codes_mean=0.992 ratio=0.3796
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-LATTICE config=k-weight-0.95 filter=0.00 weight=0.95 k=2.4276 raw_flicker=0.200000 flicker=0.004932 peak=0.024902 codes_mean=1.258 ratio=0.4810
-CHECK lattice off path is bit-identical to the baseline pass over every frame PASS
+LATTICE config=k-weight-0.95 weight=0.95 k=2.4276 raw_flicker=0.200000 flicker=0.004932 peak=0.024902 codes_mean=1.258 ratio=0.4810
 LATTICE_ORACLE config=baseline error=0.002441
-SAMPLE lattice baseline: shader matches the CPU model of the filtered resolve actual=0.002441406 expected=0.000000000 tolerance=0.002999999 PASS
-LATTICE_ORACLE config=filter-1.0 error=0.002441
-SAMPLE lattice filter-1.0: shader matches the CPU model of the filtered resolve actual=0.002441406 expected=0.000000000 tolerance=0.002999999 PASS
+SAMPLE lattice baseline: shader matches the CPU model of the resolve actual=0.002441406 expected=0.000000000 tolerance=0.002999999 PASS
 LATTICE_ORACLE config=weight-0.95 error=0.004883
-SAMPLE lattice weight-0.95: shader matches the CPU model of the filtered resolve actual=0.004882812 expected=0.000000000 tolerance=0.005999999 PASS
-LATTICE_ORACLE config=both-1.0 error=0.004883
-SAMPLE lattice both-1.0: shader matches the CPU model of the filtered resolve actual=0.004882812 expected=0.000000000 tolerance=0.005999999 PASS
-LATTICE_ORACLE config=filter-2.29 error=0.002441
-SAMPLE lattice filter-2.29: shader matches the CPU model of the filtered resolve actual=0.002441406 expected=0.000000000 tolerance=0.002999999 PASS
+SAMPLE lattice weight-0.95: shader matches the CPU model of the resolve actual=0.004882812 expected=0.000000000 tolerance=0.005999999 PASS
 SAMPLE lattice: the resolve removes at least 80% of the raw input flicker actual=0.053955078 expected=0.000000000 tolerance=0.200000000 PASS
-SAMPLE lattice filter 1.0: 8-phase ripple over the baseline (modelled 0.52) actual=0.594457014 expected=0.520000000 tolerance=0.150000000 PASS
 SAMPLE lattice weight 0.95: 8-phase ripple over the baseline (modelled 0.62) actual=0.481146305 expected=0.620000000 tolerance=0.150000000 PASS
-SAMPLE lattice filter 2.29 + weight 0.95: 8-phase ripple over the baseline (modelled 0.47) actual=0.323906486 expected=0.470000000 tolerance=0.150000000 PASS
-SAMPLE lattice filter 1.0 + weight 0.95: below either option alone actual=0.613636364 expected=0.000000000 tolerance=0.999000000 PASS
-SAMPLE lattice k 2.4276 filter 1.0: ripple below the weighted baseline actual=0.379563492 expected=0.000000000 tolerance=0.900000000 PASS
 SAMPLE lattice k 2.4276 weight 0.95: ripple below the weighted baseline actual=0.480952381 expected=0.000000000 tolerance=0.900000000 PASS
-LATTICE_FLAT config=filter-1.0 max_difference=0.000488
-SAMPLE lattice filter-1.0: static flat regions unchanged actual=0.000488281 expected=0.000000000 tolerance=0.003921569 PASS
 LATTICE_FLAT config=weight-0.95 max_difference=0.000000
 SAMPLE lattice weight-0.95: static flat regions unchanged actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
-LATTICE_FLAT config=both-1.0 max_difference=0.000488
-SAMPLE lattice both-1.0: static flat regions unchanged actual=0.000488281 expected=0.000000000 tolerance=0.003921569 PASS
-LATTICE_FLAT config=filter-2.29 max_difference=0.000488
-SAMPLE lattice filter-2.29: static flat regions unchanged actual=0.000488281 expected=0.000000000 tolerance=0.003921569 PASS
-LATTICE_FLAT config=both-2.29 max_difference=0.000000
-SAMPLE lattice both-2.29: static flat regions unchanged actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
 CHECK lattice history follows the sequence PASS
 CHECK lattice history follows the sequence PASS
 CHECK lattice history follows the sequence PASS
@@ -1474,109 +651,13 @@ CHECK lattice history follows the sequence PASS
 CHECK lattice history follows the sequence PASS
 CHECK lattice history follows the sequence PASS
 CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-CHECK lattice history follows the sequence PASS
-LATTICE_MOVING config=moving-baseline ghost_far=0.000000 added_outside_square=0.000000 bound=0.003922 kernel_side_share=0.0000 moving_interior_min=1.0000
+LATTICE_MOVING config=moving-baseline ghost_far=0.000000 added_outside_square=0.000000 bound=0.003922 moving_interior_min=1.0000
 SAMPLE lattice moving-baseline: revealed background beyond one pixel carries no square colour actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
-LATTICE_MOVING config=moving-filter-1.0 ghost_far=0.000122 added_outside_square=0.009033 bound=0.036432 kernel_side_share=0.4335 moving_interior_min=0.9995
-SAMPLE lattice moving-filter-1.0: revealed background beyond one pixel carries no square colour actual=0.000122070 expected=0.000000000 tolerance=0.003921569 PASS
-SAMPLE lattice moving-filter-1.0: colour added outside the square over the baseline within the stated bound actual=0.009033203 expected=0.000000000 tolerance=0.036432423 PASS
-SAMPLE lattice moving-filter-1.0: moving square interior stays bright actual=0.999511719 expected=1.000000000 tolerance=0.100000000 PASS
-LATTICE_MOVING config=moving-weight-0.95 ghost_far=0.000000 added_outside_square=0.000000 bound=0.041422 kernel_side_share=0.0000 moving_interior_min=1.0000
+LATTICE_MOVING config=moving-weight-0.95 ghost_far=0.000000 added_outside_square=0.000000 bound=0.041422 moving_interior_min=1.0000
 SAMPLE lattice moving-weight-0.95: revealed background beyond one pixel carries no square colour actual=0.000000000 expected=0.000000000 tolerance=0.003921569 PASS
 SAMPLE lattice moving-weight-0.95: colour added outside the square over the baseline within the stated bound actual=0.000000000 expected=0.000000000 tolerance=0.041421560 PASS
 SAMPLE lattice moving-weight-0.95: moving square interior stays bright actual=1.000000000 expected=1.000000000 tolerance=0.100000000 PASS
-LATTICE_MOVING config=moving-both-1.0 ghost_far=0.000122 added_outside_square=0.004395 bound=0.057677 kernel_side_share=0.4335 moving_interior_min=0.9995
-SAMPLE lattice moving-both-1.0: revealed background beyond one pixel carries no square colour actual=0.000122070 expected=0.000000000 tolerance=0.003921569 PASS
-SAMPLE lattice moving-both-1.0: colour added outside the square over the baseline within the stated bound actual=0.004394531 expected=0.000000000 tolerance=0.057676987 PASS
-SAMPLE lattice moving-both-1.0: moving square interior stays bright actual=0.999511719 expected=1.000000000 tolerance=0.100000000 PASS
-LATTICE_BASE numerical=28 state_restorations=9
+LATTICE_BASE numerical=10 state_restorations=0
 FLICKER_CASES
 FLICKER_CAPS simultaneous_rts=4 mrt_independent_bit_depths=1 age_bytes_per_pixel=8 age_bytes_1280x768=7864320 age_bytes_3840x2160=66355200
 CHECK thin clip without configure_flicker is refused PASS
@@ -1994,14 +1075,6 @@ CHECK variant at S = 0 is bit-identical to the plain program PASS
 CHECK flicker history and age output follow the sequence PASS
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
-CHECK filtered variant at S = 0 is bit-identical to the filtered program PASS
-CHECK flicker history and age output follow the sequence PASS
-CHECK flicker programs available PASS
-CHECK flicker history and age output follow the sequence PASS
-CHECK filtered variant at S = 0 is bit-identical to the filtered program PASS
-CHECK flicker history and age output follow the sequence PASS
-CHECK flicker programs available PASS
-CHECK flicker history and age output follow the sequence PASS
 CHECK soft clip with no thin pixel is bit-identical to the baseline PASS
 CHECK flicker history and age output follow the sequence PASS
 FLICKER_GHOST config=base ghost_far=0.000000 ghost_trailing_adjacent=0.622559 bound=0.678922
@@ -2051,113 +1124,18 @@ SAMPLE flicker alpha-history+soft-0.75+w-0.97: alpha ripple ratio as the colour'
 CHECK flicker programs available PASS
 CHECK flicker history and age output follow the sequence PASS
 CHECK alpha history off: the output alpha is the current alpha bit for bit PASS
-FLICKER_BASE numerical=210 state_restorations=13
+FLICKER_BASE numerical=190 state_restorations=4
 LINE_CASES
-CHECK line filter without configure_line_filter is refused PASS
-CHECK the unconfigured pass runs the plain resolve PASS
-CHECK line filter outside [0, 4] is refused PASS
-CHECK line filter outside [0, 4] is refused PASS
-CHECK line filter outside [0, 4] is refused PASS
-CHECK line filter outside [0, 4] is refused PASS
-CHECK line filter beside the global current filter is refused PASS
-CHECK line filter 4 runs PASS
-CHECK line width other than 1 or 2 is refused PASS
-CHECK line width other than 1 or 2 is refused PASS
-CHECK line width 2 runs PASS
-CHECK line filter with the thin clip but without configure_flicker is refused PASS
-CHECK line-filtered run restores the caller's state PASS
-CHECK failed line-filtered resolve draw publishes nothing PASS
-CHECK after a failed run the line-filtered resolve restarts without history PASS
-CHECK Reset protocol keeps the line-filter programs and restarts the history PASS
-CHECK line history and age output follow the sequence PASS
-CHECK line-filter programs created on this device PASS
-CHECK line history and age output follow the sequence PASS
-CHECK line filter configured but A = 0 is bit-identical to the unconfigured pass PASS
-LINE_FILTER background=sentinel config=line-base A=0.00 oracle_error=0.002441 age_oracle_error=0.000000 mask_share_line_region=0.6511 silhouette_px=2688 silhouette_masked=0 silhouette_differs=0 silhouette_gradient_ratio=1.000000 bead_amplitude=0.1591 bead_ratio=1.0000 line_peak=0.2548 line_peak_ratio=1.0000
-SAMPLE line line-base: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.006000000 PASS
-CHECK line mask never holds on the square's silhouette PASS
-CHECK square silhouette bit-identical to the unfiltered resolve (gradient energy unchanged) PASS
-CHECK line-filter programs created on this device PASS
-CHECK line history and age output follow the sequence PASS
-LINE_FILTER background=sentinel config=line-A2 A=2.00 oracle_error=0.002441 age_oracle_error=0.000000 mask_share_line_region=0.6511 silhouette_px=2688 silhouette_masked=0 silhouette_differs=0 silhouette_gradient_ratio=1.000000 bead_amplitude=0.0999 bead_ratio=0.6278 line_peak=0.2193 line_peak_ratio=0.8607
-SAMPLE line line-A2: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.006000000 PASS
-CHECK line mask never holds on the square's silhouette PASS
-CHECK square silhouette bit-identical to the unfiltered resolve (gradient energy unchanged) PASS
-CHECK line mask covers the lattice region PASS
-CHECK line filter lowers the roping at a bounded line-peak cost PASS
-CHECK line-filter programs created on this device PASS
-CHECK line history and age output follow the sequence PASS
-LINE_FILTER background=sentinel config=line-A1 A=1.00 oracle_error=0.002441 age_oracle_error=0.000000 mask_share_line_region=0.6511 silhouette_px=2688 silhouette_masked=0 silhouette_differs=0 silhouette_gradient_ratio=1.000000 bead_amplitude=0.0722 bead_ratio=0.4539 line_peak=0.1944 line_peak_ratio=0.7627
-SAMPLE line line-A1: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.006000000 PASS
-CHECK line mask never holds on the square's silhouette PASS
-CHECK square silhouette bit-identical to the unfiltered resolve (gradient energy unchanged) PASS
-CHECK line mask covers the lattice region PASS
-CHECK line filter lowers the roping at a bounded line-peak cost PASS
-CHECK line-filter programs created on this device PASS
-CHECK line history and age output follow the sequence PASS
-LINE_FILTER background=sentinel config=line-A1-width-2 A=1.00 oracle_error=0.002441 age_oracle_error=0.000000 mask_share_line_region=0.6511 silhouette_px=1344 silhouette_masked=0 silhouette_differs=0 silhouette_gradient_ratio=1.000000 bead_amplitude=0.0722 bead_ratio=0.4539 line_peak=0.1944 line_peak_ratio=0.7627
-SAMPLE line line-A1-width-2: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.006000000 PASS
-CHECK line mask never holds on the square's silhouette PASS
-CHECK square silhouette bit-identical to the unfiltered resolve (gradient energy unchanged) PASS
-CHECK line mask covers the lattice region PASS
-CHECK line filter lowers the roping at a bounded line-peak cost PASS
-CHECK line: flicker programs available PASS
-CHECK line-filter programs created on this device PASS
-CHECK line history and age output follow the sequence PASS
-LINE_FILTER background=sentinel config=line-A1+soft-0.75 A=1.00 oracle_error=0.002441 age_oracle_error=0.000000 mask_share_line_region=0.6511 silhouette_px=2688 silhouette_masked=0 silhouette_differs=0 silhouette_gradient_ratio=1.000000 bead_amplitude=0.0727 bead_ratio=0.4568 line_peak=0.1942 line_peak_ratio=0.7621
-SAMPLE line line-A1+soft-0.75: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.006000000 PASS
-CHECK line mask never holds on the square's silhouette PASS
-CHECK line mask covers the lattice region PASS
-CHECK line: flicker programs available PASS
-CHECK line-filter programs created on this device PASS
-CHECK line history and age output follow the sequence PASS
-LINE_FILTER background=sentinel config=line-A1+soft-0.75+w-0.97 A=1.00 oracle_error=0.008301 age_oracle_error=0.000000 mask_share_line_region=0.6511 silhouette_px=2688 silhouette_masked=0 silhouette_differs=0 silhouette_gradient_ratio=1.000000 bead_amplitude=0.0662 bead_ratio=0.4159 line_peak=0.1673 line_peak_ratio=0.6565
-SAMPLE line line-A1+soft-0.75+w-0.97: shader matches the 2-D CPU oracle within the FP16 bound actual=0.008300781 expected=0.000000000 tolerance=0.020000019 PASS
-SAMPLE line line-A1+soft-0.75+w-0.97: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
-CHECK line mask never holds on the square's silhouette PASS
-CHECK line mask covers the lattice region PASS
-CHECK line history and age output follow the sequence PASS
-CHECK line-filter programs created on this device PASS
-CHECK line history and age output follow the sequence PASS
-CHECK line filter configured but A = 0 is bit-identical to the unconfigured pass PASS
-LINE_FILTER background=far_geometry config=line-base A=0.00 oracle_error=0.002441 age_oracle_error=0.000000 mask_share_line_region=0.6511 silhouette_px=2688 silhouette_masked=0 silhouette_differs=0 silhouette_gradient_ratio=1.000000 bead_amplitude=0.1591 bead_ratio=1.0000 line_peak=0.2548 line_peak_ratio=1.0000
-SAMPLE line line-base: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.006000000 PASS
-CHECK line mask never holds on the square's silhouette PASS
-CHECK square silhouette bit-identical to the unfiltered resolve (gradient energy unchanged) PASS
-CHECK line-filter programs created on this device PASS
-CHECK line history and age output follow the sequence PASS
-LINE_FILTER background=far_geometry config=line-A2 A=2.00 oracle_error=0.002441 age_oracle_error=0.000000 mask_share_line_region=0.6511 silhouette_px=2688 silhouette_masked=0 silhouette_differs=0 silhouette_gradient_ratio=1.000000 bead_amplitude=0.0999 bead_ratio=0.6278 line_peak=0.2193 line_peak_ratio=0.8607
-SAMPLE line line-A2: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.006000000 PASS
-CHECK line mask never holds on the square's silhouette PASS
-CHECK square silhouette bit-identical to the unfiltered resolve (gradient energy unchanged) PASS
-CHECK line mask covers the lattice region PASS
-CHECK line filter lowers the roping at a bounded line-peak cost PASS
-CHECK line-filter programs created on this device PASS
-CHECK line history and age output follow the sequence PASS
-LINE_FILTER background=far_geometry config=line-A1 A=1.00 oracle_error=0.002441 age_oracle_error=0.000000 mask_share_line_region=0.6511 silhouette_px=2688 silhouette_masked=0 silhouette_differs=0 silhouette_gradient_ratio=1.000000 bead_amplitude=0.0722 bead_ratio=0.4539 line_peak=0.1944 line_peak_ratio=0.7627
-SAMPLE line line-A1: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.006000000 PASS
-CHECK line mask never holds on the square's silhouette PASS
-CHECK square silhouette bit-identical to the unfiltered resolve (gradient energy unchanged) PASS
-CHECK line mask covers the lattice region PASS
-CHECK line filter lowers the roping at a bounded line-peak cost PASS
-CHECK line-filter programs created on this device PASS
-CHECK line history and age output follow the sequence PASS
-LINE_FILTER background=far_geometry config=line-A1-width-2 A=1.00 oracle_error=0.002441 age_oracle_error=0.000000 mask_share_line_region=0.6511 silhouette_px=1344 silhouette_masked=0 silhouette_differs=0 silhouette_gradient_ratio=1.000000 bead_amplitude=0.0722 bead_ratio=0.4539 line_peak=0.1944 line_peak_ratio=0.7627
-SAMPLE line line-A1-width-2: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.006000000 PASS
-CHECK line mask never holds on the square's silhouette PASS
-CHECK square silhouette bit-identical to the unfiltered resolve (gradient energy unchanged) PASS
-CHECK line mask covers the lattice region PASS
-CHECK line filter lowers the roping at a bounded line-peak cost PASS
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
-LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.5681 current_filter_ms=0.5635 line_filter_ms=0.8187 far_stabiliser_ms=0.7732 thin_region_ms=1.3489 taps_delta_ms=-0.0046 line_delta_ms=0.2506 far_delta_ms=0.2051 thin_region_delta_ms=0.7808 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.3489 no_region_camera_ms=1.5017 no_region_camera_delta_ms=0.1528 fragmented_pan_thin_ms=1.0570 fragmented_pan_camera_ms=1.4269 fragmented_pan_camera_delta_ms=0.3699 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.4269 lane_input_law_ms=1.4519 lane_input_lane_ms=1.4670 lane_fetch_delta_ms=0.0152 lane_input_over_r32f_ms=0.0249 scope=cpu_wall_with_event_query_drain
+LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.7237 far_stabiliser_ms=1.0139 thin_region_ms=1.5416 far_delta_ms=0.2901 thin_region_delta_ms=0.8178 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.5416 no_region_camera_ms=1.7170 no_region_camera_delta_ms=0.1754 fragmented_pan_thin_ms=1.5307 fragmented_pan_camera_ms=2.1735 fragmented_pan_camera_delta_ms=0.6428 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=2.1735 lane_input_law_ms=2.2467 lane_input_lane_ms=2.2229 lane_fetch_delta_ms=-0.0239 lane_input_over_r32f_ms=0.0732 scope=cpu_wall_with_event_query_drain
 CHECK sentinel timing: separable box programs created PASS
 CHECK sentinel timing: separable box programs created PASS
-LINE_TIMING_SENTINEL width=1280 height=768 rounds=6 content=all_unrouted_sentinel_pan strength_off_ms=1.2859 strength_on_separable_ms=1.3962 sentinel_delta_ms=0.1103 scope=cpu_wall_with_event_query_drain
-LINE_BASE numerical=255 state_restorations=15
+LINE_TIMING_SENTINEL width=1280 height=768 rounds=6 content=all_unrouted_sentinel_pan strength_off_ms=1.6557 strength_on_separable_ms=2.0206 sentinel_delta_ms=0.3649 scope=cpu_wall_with_event_query_drain
+LINE_BASE numerical=190 state_restorations=4
 FAR_CASES
 FAR_GATE ok=1 d0=0.99985647 inv=17734.900 expected_d0=0.99985652 expected_inv=17749.280
 CHECK far gate equals the footprint inversion of the projection PASS
@@ -2183,9 +1161,6 @@ CHECK far weight over a history weight of 0 is refused PASS
 CHECK far stabiliser without per-pixel motion is refused PASS
 CHECK far gate origin must be finite PASS
 CHECK far stabiliser beside the adaptive weight is refused (one gate) PASS
-CHECK far stabiliser beside the global current filter is refused PASS
-CHECK far filter beside a line filter of another A is refused PASS
-CHECK far filter beside a line filter of the same A runs PASS
 CHECK far run publishes the age target and the mask PASS
 CHECK far run restores c5, c22, c24, sampler 8, RT1 and COLORWRITEENABLE1 PASS
 CHECK failed far mask draw publishes nothing PASS
@@ -2222,14 +1197,6 @@ SAMPLE far far-weight+filter: age target matches the CPU oracle actual=0.0000000
 SAMPLE far far-weight+filter: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
 SAMPLE far far-weight+filter: far-band ripple ratio as the oracle's actual=0.153473614 expected=0.154046188 tolerance=0.030000000 PASS
 CHECK near pixels (farw 0) bit-identical to the ungated plain resolve, all four channels PASS
-CHECK static far ripple <= 0.25 x base; the mid band lies between PASS
-CHECK far-stabiliser program created on this device PASS
-CHECK far history follows the sequence (a mask fallback included) PASS
-FAR_STABILISER drift=0.00 config=far-weight+filter+line-A1 oracle_error=0.000122 age_oracle_error=0.000000 near_px=0 near_differs=0 ripple_near=0.011602 ripple_mid=0.007952 ripple_far=0.001781 ratio_near=1.0000 ratio_mid=0.6854 ratio_far=0.1535 oracle_ratio_far=0.1540 mask_error=0.000000
-SAMPLE far far-weight+filter+line-A1: shader matches the 2-D CPU oracle within the FP16 bound actual=0.000122070 expected=0.000000000 tolerance=0.040000038 PASS
-SAMPLE far far-weight+filter+line-A1: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
-SAMPLE far far-weight+filter+line-A1: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
-SAMPLE far far-weight+filter+line-A1: far-band ripple ratio as the oracle's actual=0.153473614 expected=0.154046188 tolerance=0.030000000 PASS
 CHECK static far ripple <= 0.25 x base; the mid band lies between PASS
 CHECK far-stabiliser program created on this device PASS
 CHECK far history follows the sequence (a mask fallback included) PASS
@@ -2272,13 +1239,6 @@ SAMPLE far far-weight+filter: far-band ripple ratio as the oracle's actual=0.192
 CHECK near pixels (farw 0) bit-identical to the ungated plain resolve, all four channels PASS
 CHECK far-stabiliser program created on this device PASS
 CHECK far history follows the sequence (a mask fallback included) PASS
-FAR_STABILISER drift=0.04 config=far-weight+filter+line-A1 oracle_error=0.000122 age_oracle_error=0.000000 near_px=0 near_differs=0 ripple_near=0.014322 ripple_mid=0.010024 ripple_far=0.002751 ratio_near=1.0000 ratio_mid=0.6999 ratio_far=0.1921 oracle_ratio_far=0.1925 mask_error=0.000000
-SAMPLE far far-weight+filter+line-A1: shader matches the 2-D CPU oracle within the FP16 bound actual=0.000122070 expected=0.000000000 tolerance=0.040000038 PASS
-SAMPLE far far-weight+filter+line-A1: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
-SAMPLE far far-weight+filter+line-A1: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
-SAMPLE far far-weight+filter+line-A1: far-band ripple ratio as the oracle's actual=0.192114186 expected=0.192491070 tolerance=0.030000000 PASS
-CHECK far-stabiliser program created on this device PASS
-CHECK far history follows the sequence (a mask fallback included) PASS
 FAR_STABILISER drift=0.04 config=far-weight-0.985+thin-region-0.97 oracle_error=0.000122 age_oracle_error=0.000000 near_px=39936 near_differs=0 ripple_near=0.014322 ripple_mid=0.005632 ripple_far=0.002755 ratio_near=1.0000 ratio_mid=0.3932 ratio_far=0.1924 oracle_ratio_far=0.1924 mask_error=0.000000
 SAMPLE far far-weight-0.985+thin-region-0.97: shader matches the 2-D CPU oracle within the FP16 bound actual=0.000122070 expected=0.000000000 tolerance=0.040000038 PASS
 SAMPLE far far-weight-0.985+thin-region-0.97: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
@@ -2315,13 +1275,6 @@ SAMPLE far far-weight+filter: age target matches the CPU oracle actual=0.0000000
 SAMPLE far far-weight+filter: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
 SAMPLE far far-weight+filter: far-band ripple ratio as the oracle's actual=0.576820307 expected=0.577672185 tolerance=0.030000000 PASS
 CHECK near pixels (farw 0) bit-identical to the ungated plain resolve, all four channels PASS
-CHECK far-stabiliser program created on this device PASS
-CHECK far history follows the sequence (a mask fallback included) PASS
-FAR_STABILISER drift=0.14 config=far-weight+filter+line-A1 oracle_error=0.000122 age_oracle_error=0.000000 near_px=0 near_differs=0 ripple_near=0.014866 ripple_mid=0.012608 ripple_far=0.008575 ratio_near=1.0000 ratio_mid=0.8481 ratio_far=0.5768 oracle_ratio_far=0.5777 mask_error=0.000000
-SAMPLE far far-weight+filter+line-A1: shader matches the 2-D CPU oracle within the FP16 bound actual=0.000122070 expected=0.000000000 tolerance=0.040000038 PASS
-SAMPLE far far-weight+filter+line-A1: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
-SAMPLE far far-weight+filter+line-A1: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
-SAMPLE far far-weight+filter+line-A1: far-band ripple ratio as the oracle's actual=0.576820307 expected=0.577672185 tolerance=0.030000000 PASS
 CHECK far-stabiliser program created on this device PASS
 CHECK far history follows the sequence (a mask fallback included) PASS
 FAR_STABILISER drift=0.14 config=far-weight-0.985+thin-region-0.97 oracle_error=0.000305 age_oracle_error=0.000000 near_px=39936 near_differs=0 ripple_near=0.014866 ripple_mid=0.010153 ripple_far=0.008583 ratio_near=1.0000 ratio_mid=0.6830 ratio_far=0.5773 oracle_ratio_far=0.5778 mask_error=0.000000
@@ -2361,13 +1314,6 @@ SAMPLE far far-weight+filter: age target matches the CPU oracle actual=0.0000000
 SAMPLE far far-weight+filter: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
 SAMPLE far far-weight+filter: far-band ripple ratio as the oracle's actual=1.000468599 expected=1.001011262 tolerance=0.030000000 PASS
 CHECK near pixels (farw 0) bit-identical to the ungated plain resolve, all four channels PASS
-CHECK far-stabiliser program created on this device PASS
-CHECK far history follows the sequence (a mask fallback included) PASS
-FAR_STABILISER drift=0.30 config=far-weight+filter+line-A1 oracle_error=0.000122 age_oracle_error=0.000000 near_px=0 near_differs=0 ripple_near=0.012146 ripple_mid=0.012282 ripple_far=0.012152 ratio_near=1.0000 ratio_mid=1.0112 ratio_far=1.0005 oracle_ratio_far=1.0010 mask_error=0.000000
-SAMPLE far far-weight+filter+line-A1: shader matches the 2-D CPU oracle within the FP16 bound actual=0.000122070 expected=0.000000000 tolerance=0.040000038 PASS
-SAMPLE far far-weight+filter+line-A1: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
-SAMPLE far far-weight+filter+line-A1: published mask equals the quantised gate actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
-SAMPLE far far-weight+filter+line-A1: far-band ripple ratio as the oracle's actual=1.000468599 expected=1.001011262 tolerance=0.030000000 PASS
 CHECK far-stabiliser program created on this device PASS
 CHECK far history follows the sequence (a mask fallback included) PASS
 FAR_STABILISER drift=0.30 config=far-weight-0.985+thin-region-0.97 oracle_error=0.000122 age_oracle_error=0.000000 near_px=39936 near_differs=0 ripple_near=0.012146 ripple_mid=0.012146 ripple_far=0.012146 ratio_near=1.0000 ratio_mid=1.0000 ratio_far=1.0000 oracle_ratio_far=1.0011 mask_error=0.000000
@@ -2416,10 +1362,7 @@ CHECK far history follows the sequence (a mask fallback included) PASS
 CHECK far stabiliser with inv = 0 (no valid projection) is the plain resolve bit for bit PASS
 CHECK mask-target creation failure: option off for the session, plain resolve bit for bit, history kept PASS
 CHECK mask failure is sticky within the session and re-armed once by a Reset PASS
-CHECK mask creation fault reached PASS
-CHECK far history follows the sequence (a mask fallback included) PASS
-CHECK mask-target creation failure under the line filter: plain resolve, history kept PASS
-FAR_BASE numerical=382 state_restorations=17
+FAR_BASE numerical=299 state_restorations=6
 THIN_REGION_CASES
 CHECK thin region without configure_far is refused PASS
 CHECK thin-region weight outside {0} U [weight, 0.99] is refused PASS
@@ -2443,7 +1386,6 @@ CHECK failed second mask draw publishes nothing PASS
 CHECK after a failed run the thin-region resolve restarts without history PASS
 CHECK Reset protocol recreates the masks and restarts the history PASS
 CHECK camera-gate programs created by configure_far PASS
-CHECK camera gate beside the line filter is refused (the mask's line channel carries the second gate) PASS
 CHECK camera gate without configure_far is refused PASS
 CHECK camera gate without the thin region is ignored (plain resolve) PASS
 CHECK camera-gate run publishes the age target and the mask PASS
@@ -5239,4 +4181,4 @@ CHECK thin-region history follows the sequence PASS
 CHECK thin-region program created on this device PASS
 CHECK thin-region history follows the sequence PASS
 CHECK mask-target creation failure under the thin region: plain resolve, history kept PASS
-RESULT PASS numerical=583 state_restorations=23 lattice=1
+RESULT PASS numerical=500 state_restorations=12 lattice=1

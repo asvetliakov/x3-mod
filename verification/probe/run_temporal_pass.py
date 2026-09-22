@@ -8,7 +8,7 @@ sys.path.insert(0,str(root/'tools/analysis'))
 import analyze_iteration09_run2 as it09  # noqa: E402  the run-2 sharpness metrics (gradient energy, edge spread / MTF50)
 results=bottle.results_dir(root)
 exe=root/'verification/probe/build/temporal_pass_fixture.exe'
-paths=[root/name for name in ('src/renderer/temporal_pass.h','src/renderer/temporal_pass.cpp','src/temporal/resolve.h','src/temporal/resolve.hlsl','src/temporal/resolve_filter.hlsl','src/temporal/resolve_snapshot.hlsl','src/renderer/temporal_resolve_snapshot_program_inc.h','src/renderer/temporal_resolve_program.h','src/temporal/resolve_thin.hlsl','src/renderer/temporal_resolve_thin_program_inc.h','src/temporal/resolve_thin_filter.hlsl','src/renderer/temporal_resolve_thin_filter_program_inc.h','src/temporal/resolve_age.hlsl','src/renderer/temporal_resolve_age_program_inc.h','src/temporal/resolve_age_filter.hlsl','src/renderer/temporal_resolve_age_filter_program_inc.h','verification/probe/temporal_flicker_inc.h','verification/probe/temporal_line_inc.h','verification/probe/temporal_far_inc.h','verification/probe/temporal_thin_region_inc.h','src/temporal/line_mask_camera_ps.hlsl','src/renderer/temporal_line_mask_camera_program_inc.h','src/temporal/resolve_far_camera.hlsl','src/renderer/temporal_resolve_far_camera_program_inc.h','src/temporal/thin_box_ps.hlsl','src/renderer/temporal_thin_box_program_inc.h','src/temporal/thin_box_rows_ps.hlsl','src/renderer/temporal_thin_box_rows_program_inc.h','src/temporal/thin_box_columns_ps.hlsl','src/renderer/temporal_thin_box_columns_program_inc.h','verification/probe/temporal_resolve_far_reference_inc.h','src/temporal/resolve_far.hlsl','src/renderer/temporal_resolve_far_program_inc.h','src/temporal/line_mask_ps.hlsl','src/renderer/temporal_line_mask_program_inc.h','src/temporal/resolve_line.hlsl','src/renderer/temporal_resolve_line_program_inc.h','src/temporal/resolve_thin_line.hlsl','src/renderer/temporal_resolve_thin_line_program_inc.h','src/temporal/resolve_age_line.hlsl','src/renderer/temporal_resolve_age_line_program_inc.h','src/temporal/depth_decode.hlsl','src/temporal/sharpen.h','src/temporal/rcas.hlsl','src/temporal/taa_sharpen_ps.hlsl','verification/probe/temporal_pass_fixture.cpp','verification/probe/build_temporal_pass.sh','verification/probe/run_temporal_pass.py')]
+paths=[root/name for name in ('src/renderer/temporal_pass.h','src/renderer/temporal_pass.cpp','src/temporal/resolve.h','src/temporal/resolve.hlsl','src/temporal/resolve_snapshot.hlsl','src/renderer/temporal_resolve_snapshot_program_inc.h','src/renderer/temporal_resolve_program.h','src/temporal/resolve_thin.hlsl','src/renderer/temporal_resolve_thin_program_inc.h','src/temporal/resolve_age.hlsl','src/renderer/temporal_resolve_age_program_inc.h','verification/probe/temporal_flicker_inc.h','verification/probe/temporal_line_inc.h','verification/probe/temporal_far_inc.h','verification/probe/temporal_thin_region_inc.h','src/temporal/line_mask_camera_ps.hlsl','src/renderer/temporal_line_mask_camera_program_inc.h','src/temporal/resolve_far_camera.hlsl','src/renderer/temporal_resolve_far_camera_program_inc.h','src/temporal/thin_box_ps.hlsl','src/renderer/temporal_thin_box_program_inc.h','src/temporal/thin_box_rows_ps.hlsl','src/renderer/temporal_thin_box_rows_program_inc.h','src/temporal/thin_box_columns_ps.hlsl','src/renderer/temporal_thin_box_columns_program_inc.h','verification/probe/temporal_resolve_far_reference_inc.h','src/temporal/resolve_far.hlsl','src/renderer/temporal_resolve_far_program_inc.h','src/temporal/line_mask_ps.hlsl','src/renderer/temporal_line_mask_program_inc.h','src/temporal/depth_decode.hlsl','src/temporal/sharpen.h','src/temporal/rcas.hlsl','src/temporal/taa_sharpen_ps.hlsl','verification/probe/temporal_pass_fixture.cpp','verification/probe/build_temporal_pass.sh','verification/probe/run_temporal_pass.py')]
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
 hashes=lambda:{str(p.relative_to(root)):sha(p) for p in paths}
 d3dx=bottle.game_dir() / 'd3dx9_37.dll'
@@ -134,17 +134,15 @@ try:
     assert ratios==sorted(ratios) and ratios[0]>1.0 and report['sharpen_measure']['on']['1.0']['rise_ratio']<1.0,report['sharpen_measure']
     assert hashes()==report['sources_before_build'],'Source changed during the measurement'
     # Run 139 (docs/verification/motion-output.md): the 1-px jittered lattice
-    # under the filtered current sample (resolve_filter.hlsl, c22.y) and the
-    # history weight. The fixture asserts: off path bit-identical to a pass
-    # without the filtered program; shader = CPU definition of the filter;
-    # 8-phase ripple ratios within 0.15 of the modelled 0.52 / 0.62 / 0.47;
-    # flat regions within 1/255; the moving edge's bounds. Both programs'
-    # instruction slots are recorded (the filtered one exceeds the 512 every
-    # ps_3_0 device guarantees; the pass treats a refused creation as
-    # 'filter unavailable').
+    # under the history weight. The fixture asserts: shader = CPU model of the
+    # resolve; the 8-phase ripple ratio within 0.15 of the modelled 0.62; flat
+    # regions within 1/255; the moving edge's bounds. Every embedded program's
+    # instruction slots are recorded. (The filtered current sample of that run,
+    # resolve_filter.hlsl, and the line filter were removed 2026-09-23, cleanup
+    # batch 6, with their cases.)
     lattice_path=results/'temporal-lattice.txt'
     with lattice_path.open('w') as out,(results/'temporal-pass-wine.log').open('a') as err:
-        lattice=subprocess.run(command+['lattice','Z:'+str(root/'src/temporal/resolve_filter.hlsl')],stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=600)
+        lattice=subprocess.run(command+['lattice'],stdout=out,stderr=err,env=dict(os.environ,WINEDLLOVERRIDES='d3d9=b'),timeout=600)
     lattice_text=lattice_path.read_text()
     fields=lambda prefix:[dict(re.findall(r'(\w+)=(\S+)',line)) for line in lattice_text.splitlines() if line.startswith(prefix)]
     number=lambda rows,key='config':{row.pop(key):{k:float(v) for k,v in row.items()} for row in rows}
@@ -155,11 +153,11 @@ try:
     # drifting-lattice table (per-pixel / 8x8-block band rms in codes, contrast, shader-vs-CPU-oracle error) and the step gates.
     report['flicker']={'caps':fields('FLICKER_CAPS '),'drift':fields('FLICKER_DRIFT '),'step1':fields('FLICKER_STEP1 '),'speed_gate':fields('FLICKER_SPEED_GATE '),
                        'near_depth':fields('FLICKER_NEAR_DEPTH '),'ghost':fields('FLICKER_GHOST '),'step2':fields('FLICKER_STEP2 ')+fields('FLICKER_STEP2_FAST '),'alpha':fields('FLICKER_ALPHA ')}
-    # Line filter (docs/architecture/taa-lattice-crawl.md section 9): oracle error, mask precision on the square silhouette, roping (bead amplitude) and the pass time.
-    report['line_filter']={'cases':fields('LINE_FILTER '),'timing':fields('LINE_TIMING ')}
+    # Pass time of the plain, far-stabiliser and thin-region resolves (the line-filter cases went with the option, cleanup batch 6).
+    report['pass_timing']=fields('LINE_TIMING ')
     # Far stabiliser (docs/architecture/taa-distant-line-fade.md section 9): the CPU gate, oracle error, near-pixel bit-identity, ripple ratios per band.
     report['far_stabiliser']={'gate':fields('FAR_GATE '),'speed_ramp':fields('FAR_SPEED_RAMP ')+fields('FAR_SPEED_GATE_CUSTOM '),'cases':fields('FAR_STABILISER '),'filter_effect':fields('FAR_FILTER_EFFECT ')}
-    assert len(report['far_stabiliser']['cases'])==24 and all(c['near_differs']=='0' for c in report['far_stabiliser']['cases']),report['far_stabiliser']
+    assert len(report['far_stabiliser']['cases'])==20 and all(c['near_differs']=='0' for c in report['far_stabiliser']['cases']),report['far_stabiliser']
     # Thin region (docs/architecture/taa-lattice-crawl.md section 13): oracle error, gate = oracle, shard ripple, plain-silhouette bit-identity, motion start.
     report['thin_region']={'cases':fields('THIN_REGION '),'motion_start':fields('THIN_REGION_MOTION_START '),'emissive':fields('THIN_REGION_EMISSIVE '),'emissive_nonfinite':fields('THIN_REGION_EMISSIVE_NONFINITE ')}
     # Emissive vote (docs/architecture/thin-glow-lines.md 8.3 R3): E = 0 bit-identical to the plain resolve, the vote on the
@@ -190,14 +188,19 @@ try:
     assert all(int(sentinel['emitter'][0][k+'_bound_1'])<=1 and int(sentinel['emitter'][0][k+'_unbound'])<=3 for k in ('trail_px','added_trail_px','added_reach_px')) and sentinel['emitter'][0]['nonzero_px_after_exit_bound_1']==sentinel['emitter'][0]['nonzero_px_after_exit_unbound']=='0',sentinel['emitter']
     assert sentinel['nonfinite_block'][0]['block_differs_or_nonzero']=='0' and sentinel['nonfinite_block'][0]['all_finite']=='1' and float(sentinel['emitter'][0]['trail_excess_bound_1'])<=float(sentinel['emitter'][0]['trail_excess_s0'])+.4,sentinel
     assert sentinel['cut'][0]['output_minus_current_max']=='0.000000',sentinel['cut']
-    assert 'FAR_BASE numerical=382 state_restorations=17' in lattice_text and len(report['thin_region']['cases'])==21 and all(c['square_differs']=='0' for c in report['thin_region']['cases']),report['thin_region']
-    assert len(report['line_filter']['cases'])==10 and all(c['silhouette_masked']=='0' and c['silhouette_differs']=='0' for c in report['line_filter']['cases']),report['line_filter']
-    # 28 / 9 are the run-139 lattice cases (FLICKER_BASE); the line-filter cases add 45 numerical and 2 state checks (LINE_BASE), the far-stabiliser cases 127 and 2 (FAR_BASE), the thin-region cases 201 and 6 (7 and 0 of them the emissive vote, thin-glow-lines.md 8.3 R3) (79 and 2 of them the camera gate, taa-lattice-crawl.md sections 32.1, 32.3, 32.4 and 32.5; 38 and 2 the sentinel stabiliser, temporal-integration.md).
-    # 28 / 9 are the run-139 lattice cases (LATTICE_BASE); the flicker cases add 182 numerical and 4 state checks.
-    assert lattice.returncode==0 and 'LATTICE_BASE numerical=28 state_restorations=9' in lattice_text and 'FLICKER_BASE numerical=210 state_restorations=13' in lattice_text and 'LINE_BASE numerical=255 state_restorations=15' in lattice_text and 'RESULT PASS numerical=583 state_restorations=23 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
+    assert 'FAR_BASE numerical=299 state_restorations=6' in lattice_text and len(report['thin_region']['cases'])==21 and all(c['square_differs']=='0' for c in report['thin_region']['cases']),report['thin_region']
+    assert len(report['pass_timing'])==1,report['pass_timing']
+    # Cleanup batch 6 (2026-09-23): 10 / 0 are the run-139 history-weight cases (LATTICE_BASE; the filtered-sample rows and
+    # their refusals, 18 and 9, went with --taa-current-filter); the flicker cases add 180 numerical and 4 state checks
+    # (FLICKER_BASE; the filtered bit-identity pair went); the line block is timing only now (LINE_BASE adds 0 and 0; the
+    # 45 and 2 line-filter checks went); the far-stabiliser cases add 109 and 2 (FAR_BASE; the line-filter row and the
+    # line mask-failure check, 18, went); the thin-region cases 201 and 6 (7 and 0 of them the emissive vote,
+    # thin-glow-lines.md 8.3 R3) (79 and 2 of them the camera gate, taa-lattice-crawl.md sections 32.1, 32.3, 32.4 and
+    # 32.5; 38 and 2 the sentinel stabiliser, temporal-integration.md).
+    assert lattice.returncode==0 and 'LATTICE_BASE numerical=10 state_restorations=0' in lattice_text and 'FLICKER_BASE numerical=190 state_restorations=4' in lattice_text and 'LINE_BASE numerical=190 state_restorations=4' in lattice_text and 'RESULT PASS numerical=500 state_restorations=12 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
     assert len(report['flicker']['drift'])==64 and len(report['flicker']['near_depth'])==8 and all(float(v['instruction_slots'])<=512 for k,v in report['lattice']['budget'].items()),report['lattice']['budget']
     ripple=report['lattice']['ripple']
-    assert len(ripple)==10 and ripple['off']==ripple['baseline'] and report['lattice']['budget']['plain']['instruction_slots']<=512,report['lattice']
+    assert len(ripple)==4 and report['lattice']['budget']['plain']['instruction_slots']<=512,report['lattice']
     assert hashes()==report['sources_before_build'],'Source changed during the lattice cases'
     report['passed']=True
 finally:

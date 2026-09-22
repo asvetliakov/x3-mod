@@ -1,5 +1,8 @@
 // Flicker-suppression cases of temporal_pass_fixture.cpp (lattice mode);
-// docs/architecture/taa-flicker-suppression.md, steps 1-3. Included after the
+// docs/architecture/taa-flicker-suppression.md, steps 1-3. The launcher and DLL
+// options of the thin clip and the adaptive weight were removed 2026-09-23
+// (cleanup batch 6); the pass keeps both inputs (the age program, resolve_age.hlsl,
+// is reached through them), so these cases stay. Included after the
 // lattice cases: uses EdgeScene, EdgeRun, halton, metric, Snapshot, Fault.
 //
 // Depths are game-like (replay of run148/run142, section 10.1 of the note: the
@@ -13,7 +16,7 @@
 // over x, y in [8, 24): per-pixel and 8x8-block band rms in 8-bit codes for
 // periods [2,4], (4,8], (8,32] and the spatial contrast against the analytic
 // box-filtered lattice. CPU oracle: flicker_model below.
-struct FlickerConfig { const char* name; float thin,wmax,lo,hi; bool filtered,alpha; float weight; };
+struct FlickerConfig { const char* name; float thin,wmax,lo,hi; bool alpha; float weight; };
 struct FlickerRun : EdgeRun { std::vector<std::vector<float>> age,motion; }; // motion: the sentinel-stabiliser runs only (the oracle reads its alpha)
 struct DriftSpec { double v,pitch,width; };
 constexpr double driftStart=.31;
@@ -29,9 +32,9 @@ FrameInputs flicker_inputs(EdgeScene& s,const FlickerConfig& c,double jx,double 
     constexpr UINT S=EdgeScene::S;FrameInputs in;in.color=s.color.p;in.current_depth=s.depth32.p;in.motion=s.motion.p;in.width=S;in.height=S;in.epoch=1;std::copy(identity,identity+16,in.clip_to_previous);
     in.current_jitter[0]=float(jx);in.current_jitter[1]=float(jy);in.weight=c.weight;in.motion_policy=MotionPolicy::PerPixel;in.reactive_policy=ReactivePolicy::DerivedFromDepthSentinel;in.sentinel_camera=sentinelCamera;
     in.history_allowed=true;in.caller_queries_idle=true;in.caller_scene_open=true;
-    in.thin_clip=c.thin;in.adaptive_weight=c.wmax;in.adaptive_lo=c.lo;in.adaptive_hi=c.hi;in.alpha_history=c.alpha;in.current_filter=c.filtered?1.f:0.f;return in;}
-template<class Objects> FlickerRun flicker_sequence(EdgeScene& s,const DWORD* resolver,const DWORD* filtered,Objects objects,unsigned frames,const FlickerConfig& c,const EdgeBackground& bg){
-    TemporalPass pass;check("flicker initialize",pass.initialize(s.d,nullptr,resolver,nullptr,nullptr,nullptr,c.filtered?filtered:nullptr));
+    in.thin_clip=c.thin;in.adaptive_weight=c.wmax;in.adaptive_lo=c.lo;in.adaptive_hi=c.hi;in.alpha_history=c.alpha;return in;}
+template<class Objects> FlickerRun flicker_sequence(EdgeScene& s,const DWORD* resolver,Objects objects,unsigned frames,const FlickerConfig& c,const EdgeBackground& bg){
+    TemporalPass pass;check("flicker initialize",pass.initialize(s.d,nullptr,resolver));
     if(c.thin>0||c.wmax>0||c.alpha){check("flicker configure",pass.configure_flicker());require(pass.flicker_available()&&(c.wmax<=0||pass.age_available()),"flicker programs available");}
     FlickerRun run;bool sequence=true;
     for(unsigned n=0;n<frames;++n){const unsigned index=n%latticePhases+1;const double jx=halton(index,2)-.5,jy=halton(index,3)-.5;
@@ -100,13 +103,13 @@ FlickerBands flicker_bands(const FlickerRun& run,const DriftSpec& spec){FlickerB
 bool same_rgb(const std::vector<std::vector<float>>& a,const std::vector<std::vector<float>>& b,bool alphaToo=true){if(a.size()!=b.size())return false;
     for(unsigned n=0;n<a.size();++n)for(unsigned i=0;i<a[n].size();++i)if((alphaToo||i%4!=3)&&std::memcmp(&a[n][i],&b[n][i],sizeof(float)))return false;
     return true;}
-void flicker_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver,const DWORD* filtered){
+void flicker_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
     std::puts("FLICKER_CASES");EdgeScene s(d,compiler);constexpr UINT S=EdgeScene::S;
     struct Defer{Defer(){deferMetrics=true;deferredFailures.clear();}~Defer(){deferMetrics=false;}} defer;
     D3DCAPS9 caps{};check("flicker caps",d->GetDeviceCaps(&caps));
     std::printf("FLICKER_CAPS simultaneous_rts=%lu mrt_independent_bit_depths=%u age_bytes_per_pixel=8 age_bytes_1280x768=%u age_bytes_3840x2160=%u\n",caps.NumSimultaneousRTs,unsigned((caps.PrimitiveMiscCaps&D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS)!=0),2u*1280*768*4,2u*3840*2160*4);
-    const FlickerConfig base{"base",0,0,.1f,.5f,false,false,.9f},soft{"soft-0.75",.75f,0,.1f,.5f,false,false,.9f},
-        narrow{"soft-0.75+w-0.97-narrow",.75f,.97f,.1f,.5f,false,false,.9f},wide{"soft-0.75+w-0.97-wide",.75f,.97f,.8f,1.5f,false,false,.9f};
+    const FlickerConfig base{"base",0,0,.1f,.5f,false,.9f},soft{"soft-0.75",.75f,0,.1f,.5f,false,.9f},
+        narrow{"soft-0.75+w-0.97-narrow",.75f,.97f,.1f,.5f,false,.9f},wide{"soft-0.75+w-0.97-wide",.75f,.97f,.8f,1.5f,false,.9f};
     // ---- validation and refusals ----
     {const DriftSpec spec{.4,2.37,.8};s.render(drift_objects(spec,0),sentinelBackground,0,0);Output out;
         TemporalPass bare;check("flicker bare initialize",bare.initialize(d,nullptr,resolver));auto in=flicker_inputs(s,soft,0,0,true);in.caller_scene_open=false;
@@ -156,7 +159,7 @@ void flicker_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver,c
     const double speeds[]={0,.25,.4,.6},pitches[]={4,2.37},widths[]={.8,1.25};const FlickerConfig* table[]={&base,&soft,&narrow,&wide};
     FlickerBands bands[2][2][4][4];FlickerRun staticRuns[4];
     for(unsigned q=0;q<2;++q)for(unsigned p=0;p<2;++p)for(unsigned v=0;v<4;++v)for(unsigned c=0;c<4;++c){const DriftSpec spec{speeds[v],pitches[p],widths[q]};const FlickerConfig& config=*table[c];
-        auto run=flicker_sequence(s,resolver,filtered,[&](unsigned n){return drift_objects(spec,n);},driftFrames,config,sentinelBackground);
+        auto run=flicker_sequence(s,resolver,[&](unsigned n){return drift_objects(spec,n);},driftFrames,config,sentinelBackground);
         auto b=flicker_bands(run,spec);const auto model=flicker_model(run,config,spec.v);b.oracle=b.ageOracle=0;
         for(unsigned n=0;n<driftFrames;++n)for(UINT y=1;y+1<S;++y)for(UINT x=2;x+2<S;++x){b.oracle=std::max(b.oracle,double(std::fabs(px(run.output[n],x,y)-model.color[n][y*S+x])));if(!run.age.empty())b.ageOracle=std::max(b.ageOracle,double(std::fabs(px(run.age[n],x,y)-model.age[n][y*S+x])));}
         bands[q][p][v][c]=b;
@@ -169,7 +172,7 @@ void flicker_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver,c
     // test (current-only, age 1). Oracle only; the band numbers are reported, not gated.
     driftDepth=.5f;
     for(double v:{0.,.4})for(unsigned c=0;c<4;++c){const DriftSpec spec{v,4,.8};const FlickerConfig& config=*table[c];
-        auto run=flicker_sequence(s,resolver,filtered,[&](unsigned n){return drift_objects(spec,n);},driftFrames,config,sentinelBackground);auto b=flicker_bands(run,spec);const auto model=flicker_model(run,config,spec.v);double oracle=0,ageOracle=0;unsigned restarts=0;
+        auto run=flicker_sequence(s,resolver,[&](unsigned n){return drift_objects(spec,n);},driftFrames,config,sentinelBackground);auto b=flicker_bands(run,spec);const auto model=flicker_model(run,config,spec.v);double oracle=0,ageOracle=0;unsigned restarts=0;
         for(unsigned n=0;n<driftFrames;++n)for(UINT y=1;y+1<S;++y)for(UINT x=2;x+2<S;++x){oracle=std::max(oracle,double(std::fabs(px(run.output[n],x,y)-model.color[n][y*S+x])));if(!run.age.empty()){ageOracle=std::max(ageOracle,double(std::fabs(px(run.age[n],x,y)-model.age[n][y*S+x])));if(n>8&&x>=driftLo&&x<driftHi&&y>=driftLo&&y<driftHi&&px(run.age[n],x,y)==1.f)++restarts;}}
         std::printf("FLICKER_NEAR_DEPTH depth=0.50 width=%.2f pitch=%.2f v=%.2f config=%s pixel_p2_4=%.3f pixel_p4_8=%.3f pixel_p8_32=%.3f block_p2_4=%.3f block_p4_8=%.3f block_p8_32=%.3f contrast=%.4f oracle_error=%.6f age_oracle_error=%.6f age_restarts=%u\n",spec.width,spec.pitch,spec.v,config.name,b.pixel[0],b.pixel[1],b.pixel[2],b.block[0],b.block[1],b.block[2],b.contrast,oracle,ageOracle,restarts);
         metric((std::string("flicker near depth ")+config.name+": shader matches the CPU oracle").c_str(),oracle,0,.0006/(1-(config.wmax>0?config.wmax:config.weight)));
@@ -178,8 +181,8 @@ void flicker_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver,c
     // Screen speed is the content's velocity, not the dilation offset: on the static lattice every thin pixel takes its
     // correspondence from a neighbour (dilate != 0), and the default gate (LO 0.1, HI 0.5) must equal a gate no dilation
     // offset (<= 1.41 px) could pass, bit for bit.
-    {const FlickerConfig beyond{"soft-0.75+w-0.97-gate-10-20",.75f,.97f,10,20,false,false,.9f};const DriftSpec spec{0,4,.8};
-        const auto a=flicker_sequence(s,resolver,filtered,[&](unsigned n){return drift_objects(spec,n);},64,narrow,sentinelBackground),b=flicker_sequence(s,resolver,filtered,[&](unsigned n){return drift_objects(spec,n);},64,beyond,sentinelBackground);
+    {const FlickerConfig beyond{"soft-0.75+w-0.97-gate-10-20",.75f,.97f,10,20,false,.9f};const DriftSpec spec{0,4,.8};
+        const auto a=flicker_sequence(s,resolver,[&](unsigned n){return drift_objects(spec,n);},64,narrow,sentinelBackground),b=flicker_sequence(s,resolver,[&](unsigned n){return drift_objects(spec,n);},64,beyond,sentinelBackground);
         ++numeric_checks;require(same_rgb(a.output,b.output),"static dilated pixels have zero screen speed: default gate bit-identical to a 10-20 px/frame gate");}
     // ---- step 1 gates. The note's 1-D prediction (block period 2-4 <= 0.65 x baseline, static contrast 0.55 -> 0.91) is reported
     // against the measurement and NOT asserted: the real shader shows no such gain (see the ledger entry). Asserted: no band
@@ -191,21 +194,21 @@ void flicker_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver,c
         metric("flicker soft clip: no band above 1.10 x baseline",std::max(worst,1.),1,.1);
         metric("flicker soft clip: contrast at least 0.95 x baseline",std::min(t.contrast/b.contrast,1.),1,.05);}
     // Speed gate through the oracle: 3 px/frame (half strength) and 4.5 px/frame (off).
-    for(double fast:{3.,4.5}){const DriftSpec spec{fast,4,.8};auto run=flicker_sequence(s,resolver,filtered,[&](unsigned n){return drift_objects(spec,n);},64,soft,sentinelBackground);const auto model=flicker_model(run,soft,fast);double oracle=0;
+    for(double fast:{3.,4.5}){const DriftSpec spec{fast,4,.8};auto run=flicker_sequence(s,resolver,[&](unsigned n){return drift_objects(spec,n);},64,soft,sentinelBackground);const auto model=flicker_model(run,soft,fast);double oracle=0;
         for(unsigned n=0;n<64;++n)for(UINT y=1;y+1<S;++y)for(UINT x=2;x+2<S;++x)oracle=std::max(oracle,double(std::fabs(px(run.output[n],x,y)-model.color[n][y*S+x])));
         std::printf("FLICKER_SPEED_GATE v=%.2f oracle_error=%.6f\n",fast,oracle);metric("flicker soft clip speed gate: shader matches the CPU oracle",oracle,0,.006);}
     // Bit-identity: the variants with S = 0 (forced by the alpha flag over a constant alpha) against the plain programs on
-    // fractional history lookups (the variants drop the single-tap branch), plain and filtered; and the soft clip where no
-    // pixel is thin (routed background).
+    // fractional history lookups (the variants drop the single-tap branch); and the soft clip where no pixel is thin
+    // (routed background).
     {const DriftSpec spec{.4,2.37,.8};auto objects=[&](unsigned n){return drift_objects(spec,n);};
-        for(bool filter:{false,true}){const FlickerConfig plain{"identity-plain",0,0,.1f,.5f,filter,false,.9f},variant{"identity-variant-s0",0,0,.1f,.5f,filter,true,.9f};
-            for(const auto* bg:{&sentinelBackground,&routedBackground}){const auto a=flicker_sequence(s,resolver,filtered,objects,64,plain,*bg),b=flicker_sequence(s,resolver,filtered,objects,64,variant,*bg);++numeric_checks;require(same_rgb(a.output,b.output),filter?"filtered variant at S = 0 is bit-identical to the filtered program":"variant at S = 0 is bit-identical to the plain program");}}
-        const auto a=flicker_sequence(s,resolver,filtered,objects,64,base,routedBackground),b=flicker_sequence(s,resolver,filtered,objects,64,soft,routedBackground);++numeric_checks;require(same_rgb(a.output,b.output),"soft clip with no thin pixel is bit-identical to the baseline");}
+        {const FlickerConfig plain{"identity-plain",0,0,.1f,.5f,false,.9f},variant{"identity-variant-s0",0,0,.1f,.5f,true,.9f};
+            for(const auto* bg:{&sentinelBackground,&routedBackground}){const auto a=flicker_sequence(s,resolver,objects,64,plain,*bg),b=flicker_sequence(s,resolver,objects,64,variant,*bg);++numeric_checks;require(same_rgb(a.output,b.output),"variant at S = 0 is bit-identical to the plain program");}}
+        const auto a=flicker_sequence(s,resolver,objects,64,base,routedBackground),b=flicker_sequence(s,resolver,objects,64,soft,routedBackground);++numeric_checks;require(same_rgb(a.output,b.output),"soft clip with no thin pixel is bit-identical to the baseline");}
     // Square over the sentinel background, static 32 frames, then +1 px/frame with zero reported motion: a pixel whose 3x3
     // holds no square depth is the background exactly (clamp); the revealed pixel beside the square keeps at most w of the contrast.
     {const double sl=10.28,st=10.37;auto square=[&](unsigned n){const double l=sl+(n>=32?n-31:0);return std::vector<EdgeObject>{{l,st,l+6,st+6,1,driftDepth,0,0}};}; // moves 1 px/frame but reports NO motion (a draw without history): the revealed pixel reads its own stale history
         double baseTrailing=0;
-        for(const FlickerConfig* c:{&base,&soft,&narrow}){const auto run=flicker_sequence(s,resolver,filtered,square,44,*c,sentinelBackground);double distant=0,trailing=0;
+        for(const FlickerConfig* c:{&base,&soft,&narrow}){const auto run=flicker_sequence(s,resolver,square,44,*c,sentinelBackground);double distant=0,trailing=0;
             for(unsigned n=33;n<44;++n)for(UINT y=1;y+1<S;++y)for(UINT x=1;x+1<S;++x){bool adjacent=false;for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx)adjacent|=px(run.depth[n],x+dx,y+dy)==driftDepth;
                 const double lx=sl+(n-31),value=std::fabs(px(run.output[n],x,y)-.25);if(!adjacent)distant=std::max(distant,value);else if(px(run.depth[n],x,y)<=-.5f&&x+.5<lx)trailing=std::max(trailing,value);}
             // The trailing adjacent pixel's box holds the square, so even the baseline keeps w of the contrast there; the soft
@@ -231,13 +234,13 @@ void flicker_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver,c
         ++numeric_checks;require(cut8<=cut20,"adaptive weight converges in one jitter cycle");
         // Speed >= HI: the weight is the baseline's. With weight 0.5 the age ramp n / (n + 1) >= 0.5 never binds, so the
         // aged run must equal the thin-clip run bit for bit, rejections and age restarts included.
-        const FlickerConfig fastSoft{"fast-soft",.75f,0,.1f,.5f,false,false,.5f},fastAged{"fast-aged",.75f,.97f,.1f,.5f,false,false,.5f};const DriftSpec spec{.6,2.37,.8};
-        const auto a=flicker_sequence(s,resolver,filtered,[&](unsigned n){return drift_objects(spec,n);},64,fastSoft,sentinelBackground),b=flicker_sequence(s,resolver,filtered,[&](unsigned n){return drift_objects(spec,n);},64,fastAged,sentinelBackground);
+        const FlickerConfig fastSoft{"fast-soft",.75f,0,.1f,.5f,false,.5f},fastAged{"fast-aged",.75f,.97f,.1f,.5f,false,.5f};const DriftSpec spec{.6,2.37,.8};
+        const auto a=flicker_sequence(s,resolver,[&](unsigned n){return drift_objects(spec,n);},64,fastSoft,sentinelBackground),b=flicker_sequence(s,resolver,[&](unsigned n){return drift_objects(spec,n);},64,fastAged,sentinelBackground);
         ++numeric_checks;require(same_rgb(a.output,b.output),"adaptive weight at speed >= HI is bit-identical to the thin-clip baseline");}
     // ---- step 3 gates: alpha history (alpha follows the colour in these scenes) ----
-    {s.alphaFollows=true;const FlickerConfig alphaOn{"alpha-history",0,0,.1f,.5f,false,true,.9f},alphaSoft{"alpha-history+soft-0.75+w-0.97",.75f,.97f,.1f,.5f,false,true,.9f};
+    {s.alphaFollows=true;const FlickerConfig alphaOn{"alpha-history",0,0,.1f,.5f,true,.9f},alphaSoft{"alpha-history+soft-0.75+w-0.97",.75f,.97f,.1f,.5f,true,.9f};
         for(double v:{0.,.4}){const DriftSpec spec{v,4,1.25};auto objects=[&](unsigned n){return drift_objects(spec,n);};
-            for(const FlickerConfig* c:{&alphaOn,&alphaSoft}){const auto run=flicker_sequence(s,resolver,filtered,objects,96,*c,sentinelBackground);const auto model=flicker_model(run,*c,v);double oracle=0;
+            for(const FlickerConfig* c:{&alphaOn,&alphaSoft}){const auto run=flicker_sequence(s,resolver,objects,96,*c,sentinelBackground);const auto model=flicker_model(run,*c,v);double oracle=0;
                 for(unsigned n=0;n<96;++n)for(UINT y=1;y+1<S;++y)for(UINT x=2;x+2<S;++x)oracle=std::max(oracle,double(std::fabs(px(run.output[n],x,y,3)-model.alpha[n][y*S+x])));
                 auto ripple=[&](const std::vector<std::vector<float>>& o,UINT ch){double sum=0;unsigned count=0;for(unsigned n=96-latticePhases-1;n<95;++n)for(UINT y=driftLo;y<driftHi;++y)for(UINT x=driftLo;x<driftHi;++x){sum+=std::fabs(px(o[n+1],x,y,ch)-2*px(o[n],x,y,ch)+px(o[n-1],x,y,ch))/2;++count;}return sum/count;};
                 const double alphaRatio=ripple(run.output,3)/ripple(run.current,3),colourRatio=ripple(run.output,0)/ripple(run.current,0);
@@ -245,7 +248,7 @@ void flicker_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver,c
                 metric((std::string("flicker ")+c->name+": resolved alpha matches the CPU oracle").c_str(),oracle,0,.0006/(1-(c->wmax>0?c->wmax:c->weight)));
                 metric((std::string("flicker ")+c->name+": alpha ripple ratio as the colour's").c_str(),alphaRatio,colourRatio,.15);}}
         // Off: the variant without the flag hands the current alpha through bit for bit.
-        const DriftSpec spec{.4,4,1.25};const auto run=flicker_sequence(s,resolver,filtered,[&](unsigned n){return drift_objects(spec,n);},32,soft,sentinelBackground);bool identical=true;
+        const DriftSpec spec{.4,4,1.25};const auto run=flicker_sequence(s,resolver,[&](unsigned n){return drift_objects(spec,n);},32,soft,sentinelBackground);bool identical=true;
         for(unsigned n=0;n<32;++n)for(UINT i=0;i<S*S;++i)identical=identical&&!std::memcmp(&run.output[n][i*4+3],&run.current[n][i*4+3],sizeof(float));
         ++numeric_checks;require(identical,"alpha history off: the output alpha is the current alpha bit for bit");s.alphaFollows=false;}
     if(!deferredFailures.empty())throw std::runtime_error(deferredFailures.front());

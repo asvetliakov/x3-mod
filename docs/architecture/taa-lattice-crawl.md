@@ -250,6 +250,10 @@ more sharpen variants and a mask hand-over through the bloom staging path (`bloo
 
 ## 9. Implemented, unflown (2026-09-19): `--taa-line-filter A[,W]`, general line mask
 
+**Removed 2026-09-23, cleanup batch 6:** `--taa-line-filter` and `--taa-current-filter` (with their programs, DLL options and
+fixture cases) are gone; this section and the flights below are history. The line mask program stays (the far stabiliser and
+the thin region draw it).
+
 **Mask choice [M].** The section-4 lattice mask needs routed blended glass behind the lines, so it never fires on trusses,
 antennas or the distant station (coverage 0.0000 there). Compared in replay (`MASKS=<names> ... lattice`; masks are 3x3
 dilations `x` of a per-pixel test; `line1`: valid depth whose two opposite neighbours at distance 1 along h, v or a

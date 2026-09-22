@@ -23,19 +23,19 @@ struct ResolveConstants {
     // (docs/architecture/hdr-scene-path.md, section 3). 0 is the exact
     // identity (the 8-bit route, and the migration test); the HDR route uploads
     // the exposure multiplier the write-back applies to the resolved image.
-    // y is A of the filtered current sample (0 off; read only by the
-    // resolve_filter.hlsl variant, which the pass binds when A > 0); w is A of
-    // the line-masked filter (resolve_*line.hlsl variants), set by the pass.
+    // y is 0 (no remaining program reads it; the global filtered current
+    // sample was removed 2026-09-23, cleanup batch 6); z is the alpha-history
+    // flag and w A of the far stabiliser's masked filter, both set by the pass.
     float luminance[4]{};
 };
 static_assert(sizeof(ResolveConstants) == 9 * 4 * sizeof(float));
 constexpr unsigned kResolveRegisterCount = 8;   // c0..c7, uploaded as one block
 constexpr unsigned kLuminanceRegister = 22;     // ResolveConstants::luminance
-// c24 of the flicker-suppression variants (resolve_thin*.hlsl, resolve_age*.hlsl;
+// c24 of the flicker-suppression variants (resolve_thin.hlsl, resolve_age.hlsl;
 // c23 is the sharpen's): thin-clip S, age wmax, speed LO, 1 / (HI - LO). The
 // alpha-history flag is c22.z. The plain programs read neither.
 constexpr unsigned kFlickerRegister = 24;
-// c25 of the age variants (resolve_age*.hlsl, resolve_far*.hlsl), uploaded with c24 as one
+// c25 of the age variants (resolve_age.hlsl, resolve_far*.hlsl), uploaded with c24 as one
 // two-register block: x = the exit floor squared (px^2) of the strict sky history's exit
 // reset (docs/architecture/seta-sky-hull-share-decay.md), kSkyHistoryExitOff when the
 // option is off or the strict term is not in effect; yzw 0. The thin (non-age) programs
@@ -90,7 +90,7 @@ inline bool far_gate(float p00, float p22, float p32, unsigned width, float f0, 
     d0=a; inv=1.f/(b-a); return std::isfinite(inv);
 }
 constexpr float kLuminanceMaxK = 65504.f;       // FP16 max; the weighted domain stays finite
-constexpr float kCurrentFilterMax = 4.f;        // A of exp(-A d^2); the centre weight stays >= exp(-2)
+constexpr float kCurrentFilterMax = 4.f;        // A of exp(-A d^2) (the far stabiliser's filter); the centre weight stays >= exp(-2)
 constexpr float kHistoryWeightDefault = .9f;    // c5.z of the live route
 constexpr float kHistoryWeightMin = .5f, kHistoryWeightMax = .98f; // launcher range of X3M_TAA_HISTORY_WEIGHT
 inline bool valid_current_filter(float a) noexcept { return std::isfinite(a) && a>=0 && a<=kCurrentFilterMax; }
@@ -126,18 +126,16 @@ struct HistoryState {
 // geometry history never proves a far-plane pixel whose 3x3 holds no geometry;
 // ignored otherwise.
 // luminance_k is the weighting constant (c22.x): finite, 0 <= k <= 65504.
-// current_filter is A of the filtered current sample (c22.y): finite, 0..4.
 inline bool prepare(ResolveConstants& out, const HistoryState& state,
                     const float* matrix_rows, float current_x, float current_y,
                     float previous_x, float previous_y, float weight,
                     bool motion_enabled, bool reactive_enabled=false,
                     bool depth_sentinel_reactive=false, bool sentinel_camera=false,
-                    float luminance_k=0.f, float current_filter=0.f, bool sentinel_strict_sky=false) noexcept {
+                    float luminance_k=0.f, bool sentinel_strict_sky=false) noexcept {
     if(!matrix_rows || !state.width || !state.height || !std::isfinite(weight)
         || weight<0 || weight>1 || !std::isfinite(current_x) || !std::isfinite(current_y)
         || !std::isfinite(previous_x) || !std::isfinite(previous_y)
-        || !std::isfinite(luminance_k) || luminance_k<0 || luminance_k>kLuminanceMaxK
-        || !valid_current_filter(current_filter)) return false;
+        || !std::isfinite(luminance_k) || luminance_k<0 || luminance_k>kLuminanceMaxK) return false;
     for(unsigned i=0;i<16;++i) {
         if(!std::isfinite(matrix_rows[i]) || std::fabs(matrix_rows[i])>1e15f) return false;
         out.clip_to_previous[i/4][i%4]=matrix_rows[i];
@@ -154,7 +152,7 @@ inline bool prepare(ResolveConstants& out, const HistoryState& state,
     out.options[1]=reactive_enabled?1.f:0.f;
     out.options[2]=depth_sentinel_reactive&&sentinel_camera&&sentinel_strict_sky?3.f:0.f;
     out.options[3]=depth_sentinel_reactive?(sentinel_camera?2.f:1.f):0.f;
-    out.luminance[0]=luminance_k; out.luminance[1]=current_filter; out.luminance[2]=out.luminance[3]=0.f;
+    out.luminance[0]=luminance_k; out.luminance[1]=out.luminance[2]=out.luminance[3]=0.f;
     return true;
 }
 } // namespace x3::temporal

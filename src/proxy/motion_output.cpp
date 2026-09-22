@@ -1491,59 +1491,31 @@ bool MotionOutput::ensure_taa() noexcept {
     // whichever mode the device decided (taa_copy in motion_output_device).
     taa_call([&] { hr = taa_->initialize(device_, nullptr, reinterpret_cast<const DWORD*>(renderer::temporal_resolve_program()), native_,
                                          taa_sharpen_ > 0.f ? reinterpret_cast<const DWORD*>(renderer::taa_sharpen_program()) : nullptr,
-                                         reinterpret_cast<const DWORD*>(renderer::hdr_writeback_program()),
-                                         taa_current_filter_ > 0.f ? reinterpret_cast<const DWORD*>(renderer::temporal_resolve_filter_program()) : nullptr); });
+                                         reinterpret_cast<const DWORD*>(renderer::hdr_writeback_program())); });
     if (SUCCEEDED(hr)) taa_->configure_copy(taa_copy_draw_);
-    // A device that refuses the filtered program keeps the plain resolve.
-    if (SUCCEEDED(hr) && taa_current_filter_ > 0.f && !taa_->current_filter_available()) {
-        log("motion_output_taa_current_filter device=%llu unavailable=1 create=%08lx requested=%.3f", id_, taa_->current_filter_result(), double(taa_current_filter_));
-        taa_current_filter_ = 0.f;
-    }
-    // Line-masked filter: its variants exist only when asked for; refused next
-    // to the global filter, on a device that refuses the programs, and with the
-    // adaptive weight when the aged line variant is missing (run() refuses).
-    if (SUCCEEDED(hr) && taa_line_filter_ > 0.f) {
-        HRESULT line = E_FAIL;
-        if (!(taa_current_filter_ > 0.f)) taa_call([&] { line = taa_->configure_line_filter(); });
-        if (FAILED(line) || !taa_->line_filter_available()) {
-            log("motion_output_taa_line_filter device=%llu unavailable=1 reason=%s create=%08lx requested=%.3f", id_, taa_current_filter_ > 0.f ? "current_filter" : "program", line, double(taa_line_filter_));
-            taa_line_filter_ = 0.f;
-        }
-    }
     if (SUCCEEDED(hr) && !taa_->snapshot_available())
         log("motion_output_taa_snapshot device=%llu unavailable=1 create=%08lx", id_, taa_->snapshot_result());
-    // Flicker suppression: the variant programs exist only when an option asks
-    // for them. The adaptive weight is refused without the thin clip (alone it
-    // dims thin lattices) or below the history weight; a device that refuses
-    // the variants, or lacks two render targets of independent bit depths for
-    // the R32F age target, runs without the option (one log line each).
-    if (SUCCEEDED(hr) && taa_adaptive_weight_ > 0.f && (!(taa_thin_clip_ > 0.f) || !x3::temporal::valid_adaptive_weight(taa_adaptive_weight_, taa_adaptive_lo_, taa_adaptive_hi_, taa_history_weight_))) {
-        log("motion_output_taa_adaptive_weight device=%llu refused=1 reason=%s requested=%.3f thin_clip=%.3f history_weight=%.3f", id_, taa_thin_clip_ > 0.f ? "range" : "requires_thin_clip", double(taa_adaptive_weight_), double(taa_thin_clip_), double(taa_history_weight_));
-        taa_adaptive_weight_ = 0.f;
-    }
-    if (SUCCEEDED(hr) && (taa_thin_clip_ > 0.f || taa_adaptive_weight_ > 0.f || taa_alpha_history_)) {
+    // Alpha history: the thin variant program exists only when it is asked for; a device
+    // that refuses it runs without the option (one log line).
+    if (SUCCEEDED(hr) && taa_alpha_history_) {
         HRESULT flicker = E_FAIL;
         taa_call([&] { flicker = taa_->configure_flicker(); });
         if (FAILED(flicker) || !taa_->flicker_available()) {
             log("motion_output_taa_flicker device=%llu unavailable=1 create=%08lx", id_, flicker);
-            taa_thin_clip_ = taa_adaptive_weight_ = 0.f; taa_alpha_history_ = false;
-        } else if (taa_adaptive_weight_ > 0.f && !taa_->age_available()) {
-            log("motion_output_taa_adaptive_weight device=%llu unavailable=1 reason=mrt_independent_bit_depths_or_program requested=%.3f", id_, double(taa_adaptive_weight_));
-            taa_adaptive_weight_ = 0.f;
+            taa_alpha_history_ = false;
         }
     }
-    // Far stabiliser: its program exists only when asked for. Refused beside the
-    // adaptive weight (one gate) and the global current filter, beside a line
-    // filter of another A, below the history weight, and on a device without
-    // the age caps or that refuses the program (one log line, option off).
+    // Far stabiliser: its program exists only when asked for. Refused below the
+    // history weight and on a device without the age caps or that refuses the
+    // program (one log line, option off).
     // Each option is judged on its own: an out-of-range thin-region weight takes only the thin region out (and the other way round);
-    // what both need (no adaptive weight / current filter / 3x3 thin clip, the program, the age caps) takes both. One log line each.
+    // what both need (the program, the age caps) takes both. One log line each.
     if (SUCCEEDED(hr) && taa_thin_weight_ > 0.f && !x3::temporal::valid_far_weight(taa_thin_weight_, taa_history_weight_)) {
         log("motion_output_taa_thin_region device=%llu unavailable=1 reason=weight_range weight=%.4f history_weight=%.3f far_weight=%.4f far_filter=%.3f", id_, double(taa_thin_weight_), double(taa_history_weight_), double(taa_far_weight_), double(taa_far_filter_));
         taa_thin_weight_ = 0.f;
     }
     if (SUCCEEDED(hr) && (taa_far_weight_ > 0.f || taa_far_filter_ > 0.f)) {
-        const char* reason = taa_line_filter_ > 0.f && taa_far_filter_ > 0.f && taa_line_filter_ != taa_far_filter_ ? "line_filter_a" : !x3::temporal::valid_far_weight(taa_far_weight_, taa_history_weight_) ? "weight_range" : nullptr;
+        const char* reason = !x3::temporal::valid_far_weight(taa_far_weight_, taa_history_weight_) ? "weight_range" : nullptr;
         if (reason) {
             log("motion_output_taa_far device=%llu unavailable=1 reason=%s create=%08lx weight=%.4f filter=%.3f thin_region=%.4f", id_, reason, 0ul, double(taa_far_weight_), double(taa_far_filter_), double(taa_thin_weight_));
             taa_far_weight_ = taa_far_filter_ = 0.f;
@@ -1551,19 +1523,16 @@ bool MotionOutput::ensure_taa() noexcept {
     }
     if (SUCCEEDED(hr) && (taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f)) {
         const char* reason = nullptr; HRESULT far_result = S_OK;
-        if (taa_adaptive_weight_ > 0.f) reason = "adaptive_weight";
-        else if (taa_current_filter_ > 0.f) reason = "current_filter";
-        else if (taa_thin_clip_ > 0.f) reason = "thin_clip"; // deliberate: the far program compiles no 3x3 sentinel soft clip (inert on every real capture)
-        else { taa_call([&] { far_result = taa_->configure_far(); }); if (FAILED(far_result) || !taa_->far_available()) reason = "program_or_age_caps"; }
+        taa_call([&] { far_result = taa_->configure_far(); }); if (FAILED(far_result) || !taa_->far_available()) reason = "program_or_age_caps";
         if (reason) {
             log("motion_output_taa_far device=%llu unavailable=1 reason=%s create=%08lx weight=%.4f filter=%.3f thin_region=%.4f", id_, reason, far_result, double(taa_far_weight_), double(taa_far_filter_), double(taa_thin_weight_));
             taa_far_weight_ = taa_far_filter_ = taa_thin_weight_ = 0.f;
         }
     }
     // Camera-relative gate of the thin region (section 32.1): its three programs are created by configure_far above; without
-    // them, or beside the line filter (the mask's r channel carries the second gate), the thin region keeps its screen-speed gate.
-    if (SUCCEEDED(hr) && taa_thin_camera_gate_ && (taa_thin_weight_ <= 0.f || taa_line_filter_ > 0.f || !taa_->camera_gate_available())) {
-        log("motion_output_taa_thin_region device=%llu camera_gate_unavailable=1 reason=%s thin_region=%.4f line_filter=%.3f", id_, taa_thin_weight_ <= 0.f ? "thin_region_off" : taa_line_filter_ > 0.f ? "line_filter" : "camera_program", double(taa_thin_weight_), double(taa_line_filter_));
+    // them the thin region keeps its screen-speed gate.
+    if (SUCCEEDED(hr) && taa_thin_camera_gate_ && (taa_thin_weight_ <= 0.f || !taa_->camera_gate_available())) {
+        log("motion_output_taa_thin_region device=%llu camera_gate_unavailable=1 reason=%s thin_region=%.4f", id_, taa_thin_weight_ <= 0.f ? "thin_region_off" : "camera_program", double(taa_thin_weight_));
         taa_thin_camera_gate_ = false;
     }
     // Sentinel stabiliser: rides the camera gate and needs the separable box programs configure_far created on top of it.
@@ -1577,19 +1546,15 @@ bool MotionOutput::ensure_taa() noexcept {
         log("motion_output_taa_sentinel device=%llu unavailable=1 reason=%s requested=%.3f", id_, !taa_thin_camera_gate_ ? "camera_gate_off" : "box_program", double(taa_sentinel_strength_));
         taa_sentinel_strength_ = 0.f;
     }
-    if (SUCCEEDED(hr) && taa_line_filter_ > 0.f && taa_adaptive_weight_ > 0.f && !taa_->age_line_available()) {
-        log("motion_output_taa_line_filter device=%llu unavailable=1 reason=age_program requested=%.3f", id_, double(taa_line_filter_));
-        taa_line_filter_ = 0.f;
-    }
     // Exit reset of the strict sky history (seta-sky-hull-share-decay.md): carried in the age target, so it needs one of the
     // age programs to be in effect on this device (the far stabiliser's rule: one log line, option off otherwise).
-    if (SUCCEEDED(hr) && sky_history_exit_px_ > 0.f && !(taa_adaptive_weight_ > 0.f || taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f)) {
+    if (SUCCEEDED(hr) && sky_history_exit_px_ > 0.f && !(taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f)) {
         log("motion_output_taa_sky_history_exit device=%llu unavailable=1 reason=no_age_program requested=%.3f", id_, double(sky_history_exit_px_));
         sky_history_exit_px_ = 0.f;
     }
     taa_failed_ = FAILED(hr);
-    log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f current_filter=%.3f history_weight=%.3f copy=%s thin_clip=%.3f adaptive_weight=%.3f adaptive_lo=%.3f adaptive_hi=%.3f alpha_history=%u age_bytes_per_pixel=%u line_filter=%.3f line_width=%u far_weight=%.4f far_filter=%.3f far_f0=%.1f far_f1=%.1f far_speed_lo=%.3f far_speed_hi=%.3f thin_region=%.4f thin_relax=%.3f thin_gate=%s thin_emissive=%.3f sentinel_stabiliser=%.3f sentinel_emitter=%.3f", id_, hr, taa_references_, double(taa_sharpen_), double(taa_current_filter_), double(taa_history_weight_), taa_copy_draw_ ? "draw" : "stretch",
-        double(taa_thin_clip_), double(taa_adaptive_weight_), double(taa_adaptive_lo_), double(taa_adaptive_hi_), unsigned(taa_alpha_history_), taa_adaptive_weight_ > 0.f || taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f ? 8u : 0u, double(taa_line_filter_), taa_line_width_, double(taa_far_weight_), double(taa_far_filter_), double(taa_far_f0_), double(taa_far_f1_), double(taa_far_lo_), double(taa_far_hi_), double(taa_thin_weight_), double(taa_thin_relax_), taa_thin_camera_gate_ ? "camera" : "screen", double(taa_thin_emissive_), double(taa_sentinel_strength_), double(taa_sentinel_emitter_));
+    log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f history_weight=%.3f copy=%s alpha_history=%u age_bytes_per_pixel=%u far_weight=%.4f far_filter=%.3f far_f0=%.1f far_f1=%.1f far_speed_lo=%.3f far_speed_hi=%.3f thin_region=%.4f thin_relax=%.3f thin_gate=%s thin_emissive=%.3f sentinel_stabiliser=%.3f sentinel_emitter=%.3f", id_, hr, taa_references_, double(taa_sharpen_), double(taa_history_weight_), taa_copy_draw_ ? "draw" : "stretch",
+        unsigned(taa_alpha_history_), taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f ? 8u : 0u, double(taa_far_weight_), double(taa_far_filter_), double(taa_far_f0_), double(taa_far_f1_), double(taa_far_lo_), double(taa_far_hi_), double(taa_thin_weight_), double(taa_thin_relax_), taa_thin_camera_gate_ ? "camera" : "screen", double(taa_thin_emissive_), double(taa_sentinel_strength_), double(taa_sentinel_emitter_));
     return !taa_failed_;
 }
 // The whole resolve at the bloom copy: RT1/RT2 containers as inputs, the
@@ -1624,12 +1589,9 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             // its history into the main target in place of the copy-back
             // below (the HDR route sharpens in the write-back instead).
             in.sharpen = hdr_scene || taa_sharpen_failures_ >= sharpen_failure_limit ? 0.f : taa_sharpen_;
-            // X3M_TAA_CURRENT_FILTER / X3M_TAA_HISTORY_WEIGHT (both routes;
-            // unset: 0 and 0.9, the pass's defaults, bit for bit).
-            in.current_filter = taa_current_filter_; in.line_filter = taa_line_filter_; in.line_width = taa_line_width_; in.weight = taa_history_weight_;
-            // Flicker suppression (all 0 / false unless requested); the alpha
-            // history only where the resolved alpha feeds bloom (FP16 input).
-            in.thin_clip = taa_thin_clip_; in.adaptive_weight = taa_adaptive_weight_; in.adaptive_lo = taa_adaptive_lo_; in.adaptive_hi = taa_adaptive_hi_;
+            // X3M_TAA_HISTORY_WEIGHT (both routes; unset: 0.9, the pass's default, bit for bit).
+            in.weight = taa_history_weight_;
+            // Alpha history (false unless requested) only where the resolved alpha feeds bloom (FP16 input).
             in.alpha_history = taa_alpha_history_ && hdr_scene != nullptr;
             // Far stabiliser: the gate follows this frame's latched projection and the target width; without a valid
             // latch far_gate leaves d0 = inv = 0 and the mask is off for the frame (the program stays bound: no history cut).
@@ -1708,7 +1670,7 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             if (injected) { hr = E_FAIL; taa_->invalidate(); } else hr = taa_->run(in, &out);
             if (taa_->line_masks_failed() && !taa_masks_logged_) {
                 taa_masks_logged_ = true;
-                log("motion_output_taa_masks device=%llu unavailable=1 create=%08lx line_filter=%.3f far_weight=%.4f far_filter=%.3f effect=options_off_for_session", id_, taa_->line_masks_result(), double(taa_line_filter_), double(taa_far_weight_), double(taa_far_filter_));
+                log("motion_output_taa_masks device=%llu unavailable=1 create=%08lx far_weight=%.4f far_filter=%.3f effect=options_off_for_session", id_, taa_->line_masks_result(), double(taa_far_weight_), double(taa_far_filter_));
             }
             release(composition_mask);
             const std::uint64_t run_ticks = stamp() - run_begin;
@@ -1733,8 +1695,7 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
 #endif
                     )
                     readback_surface(out.color_surface, D3DFMT_A16B16G16R16F, 8, L"taa", L"rgba16f", "motion_output_taa_readback", "rgba16f_row_major", target_width_, target_height_);
-                // Capture frames only: the age target of the adaptive weight (the
-                // thin mask is the 3x3 sentinel/geometry mix of the depth dump).
+                // Capture frames only: the age target of the far programs.
                 if (capture_ && taa_debug_ && out.age) {
                     IDirect3DSurface9* age = nullptr;
                     if (SUCCEEDED(out.age->GetSurfaceLevel(0, &age)) && age) {
@@ -6763,7 +6724,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             counters_.cut, counters_.cut_median_px, counters_.cut_missing_fraction,
             static_cast<unsigned long>(counters_.displacement_samples), taa_enabled_, counters_.taa.attempted, counters_.taa.resolved,
             counters_.taa.used_history, static_cast<unsigned long>(counters_.taa.skip), counters_.taa.result, counters_.taa.restore,
-            counters_.taa.copy, counters_.taa.hdr, counters_.taa.k, counters_.taa.sharpened, double(taa_current_filter_), double(taa_history_weight_), scene_open_, static_cast<unsigned long>(active_queries_), taa_references_,
+            counters_.taa.copy, counters_.taa.hdr, counters_.taa.k, counters_.taa.sharpened, 0.0 /* taa_filter: the removed global current filter, kept 0 for log parsers */, double(taa_history_weight_), scene_open_, static_cast<unsigned long>(active_queries_), taa_references_,
             counters_.camera_scene_valid, counters_.camera_background_valid, static_cast<unsigned long>(counters_.camera_reads),
             static_cast<unsigned long>(counters_.taa.camera_policy), static_cast<unsigned long>(counters_.taa.camera_reason),
             counters_.taa.camera_cut, counters_.taa.camera_rotation_deg,

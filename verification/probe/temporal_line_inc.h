@@ -1,22 +1,11 @@
-// Line-filter cases of temporal_pass_fixture.cpp (lattice mode);
-// docs/architecture/taa-lattice-crawl.md section 9. Included after
+// Shared 2-D oracle of the far-stabiliser and thin-region cases of
+// temporal_pass_fixture.cpp (lattice mode), and the pass timings. Included after
 // temporal_flicker_inc.h: uses EdgeScene, FlickerRun, halton, metric, Snapshot.
-//
-// Scene: three lines 0.7 px thick, 16 degrees off the x axis (one 1-px column
-// quad per x in [2, 18), each 0.2867 px lower than the last: the staircase the
-// game's rasteriser makes of a sub-pixel strut), vertical pitch 5 px, value 1 at
-// game-like depth 0.99, drifting +0.3 px/frame along y and wrapping by the
-// pitch; a static 8x8 square (value 1, depth 0.98) at x in [21, 29) as the
-// ordinary silhouette. Background: the depth sentinel (alpha -1, policy 2 with
-// the identity camera) or routed static geometry farther than the lines (depth
-// 0.999, alpha 1). 8-sample Halton jitter, 96 frames, the last 64 analysed.
-constexpr double lineSlope=.2867,linePitch=5,lineThick=.7,lineDrift=.3,lineStart=4.13;
-constexpr unsigned lineFrames=96,lineAnalysed=64;
+// (The line-filter cases, docs/architecture/taa-lattice-crawl.md section 9, went
+// with the option on 2026-09-23, cleanup batch 6.)
+constexpr double lineDrift=.3;
 constexpr float lineDepth=.99f,squareDepth=.98f;
-std::vector<EdgeObject> line_objects(unsigned n){std::vector<EdgeObject> o;const double phase=std::fmod(lineStart+lineDrift*n,linePitch);
-    for(double top=phase-linePitch;top<32;top+=linePitch)for(unsigned x=2;x<18;++x){const double t=top+lineSlope*(x-2);if(t>=2&&t+lineThick<=30)o.push_back({double(x),t,double(x+1),t+lineThick,1,lineDepth,0,lineDrift});}
-    o.push_back({21,12,29,20,1,squareDepth,0,0});return o;}
-struct LineConfig { const char* name; bool configure; float A,thin,wmax; unsigned width=1; float farW=0,farA=0,thinW=0,relax=1; bool camera=false; float sentS=0,sentE=1,emisE=0; }; // sentS / sentE: the sentinel stabiliser (temporal-integration.md), camera gate only; emisE: the thin region's emissive vote (thin-glow-lines.md 8.3 R3)
+struct LineConfig { const char* name; float thin,wmax; float farW=0,farA=0,thinW=0,relax=1; bool camera=false; float sentS=0,sentE=1,emisE=0; }; // sentS / sentE: the sentinel stabiliser (temporal-integration.md), camera gate only; emisE: the thin region's emissive vote (thin-glow-lines.md 8.3 R3)
 // Far stabiliser gate of the far cases (temporal_far_inc.h) and the scene hooks the shared oracle uses.
 float farD0=0,farInv=0,farLo=x3::temporal::kFarSpeedLo,farHi=x3::temporal::kFarSpeedHi;
 double line_velocity_default(double nearest){return nearest==double(lineDepth)?lineDrift:0;}
@@ -80,31 +69,11 @@ float thin_region_strength(const std::vector<float>& depth,int x,int y,bool came
 float far_gate_weight_raw(float depth){if(!(depth>=0&&depth<=1))return 0;return std::min(std::max((depth-farD0)*farInv,0.f),1.f);}
 float far_gate_weight(float depth){if(!(depth>=0&&depth<=1))return 0;const float w=std::min(std::max((depth-farD0)*farInv,0.f),1.f);return float(std::lround(w*255.f))/255.f;} // as the A8R8G8B8 mask stores it
 
-FlickerRun line_sequence(EdgeScene& s,const DWORD* resolver,const LineConfig& c,const EdgeBackground& bg,unsigned frames=lineFrames){
-    TemporalPass pass;check("line initialize",pass.initialize(s.d,nullptr,resolver));
-    if(c.thin>0||c.wmax>0){check("line configure flicker",pass.configure_flicker());require(pass.flicker_available()&&(c.wmax<=0||pass.age_available()),"line: flicker programs available");}
-    if(c.configure){check("line configure",pass.configure_line_filter());check("line configure is idempotent",pass.configure_line_filter());require(pass.line_filter_available()&&(c.wmax<=0||pass.age_line_available()),"line-filter programs created on this device");}
-    const FlickerConfig f{c.name,c.thin,c.wmax,.1f,.5f,false,false,.9f};FlickerRun run;bool sequence=true;
-    for(unsigned n=0;n<frames;++n){const unsigned index=n%latticePhases+1;const double jx=halton(index,2)-.5,jy=halton(index,3)-.5;
-        s.render(line_objects(n),bg,jx,jy);run.current.push_back(s.read(s.color.p));run.depth.push_back(s.read(s.depth32.p));
-        auto in=flicker_inputs(s,f,jx,jy,bg.depth<0);in.line_filter=c.A;in.line_width=c.width;
-        Output out;check("line Begin resolve",s.d->BeginScene());check(c.name,pass.run(in,&out));check("line End resolve",s.d->EndScene());
-        sequence=sequence&&out.color&&pass.diagnostics().history_valid&&out.used_history==(n>0)&&bool(out.age)==(c.wmax>0);
-        run.output.push_back(s.read(out.color));if(out.age)run.age.push_back(s.read(out.age));}
-    require(sequence,"line history and age output follow the sequence");return run;}
-// The mask exactly as resolve.hlsl defines it: a line-like pixel in the 3x3.
-bool line_like(const std::vector<float>& depth,UINT x,UINT y,unsigned width){
-    auto background=[](float q,float d){return q<=-.5f||(q>=0&&q<=1&&(1-q)*1.1f<1-d);};
-    const float d=px(depth,x,y);if(!(d>=0&&d<=1))return false;
-    const int dirs[4][2]={{1,0},{0,1},{1,1},{1,-1}};for(auto& k:dirs){bool before=background(px(depth,x-k[0],y-k[1]),d),after=background(px(depth,x+k[0],y+k[1]),d);
-        if(width==2){before=before||background(px(depth,x-2*k[0],y-2*k[1]),d);after=after||background(px(depth,x+2*k[0],y+2*k[1]),d);}if(before&&after)return true;}
-    return false;}
-bool line_mask(const std::vector<float>& depth,UINT x,UINT y,unsigned width){for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx)if(line_like(depth,x+dx,y+dy,width))return true;return false;}
 // 2-D CPU oracle of the resolve on this scene at k = 0 (interior pixels [3, S-3); the rest take the shader's output):
 // closest-depth dilation (content moves by (line_velocity_x, line_velocity) of the closest depth; the camera path by
 // (cameraPanX, 0)), the disocclusion proof over the 2x2 footprint, 4x4 Catmull-Rom history with the snap, the 3x3 clip, the thin
 // soft clip and age weight of the variants, the camera gate's 7x7 box clip by the share of the strength the camera term added,
-// and the exp(-A d^2) current sample where line_mask holds. FP16 rounding per frame.
+// and the far stabiliser's exp(-A d^2) current sample by the far gate. FP16 rounding per frame.
 FlickerModel line_model(const FlickerRun& run,const LineConfig& c){constexpr UINT S=EdgeScene::S;const unsigned N=unsigned(run.current.size());FlickerModel m;m.color.resize(N);m.age.resize(N);
     auto valid=[](float d){return d>=0&&d<=1;};auto sentinel=[](float d){return d<=-.5f;};const double w=.9;
     oracleSkipped=0;
@@ -118,7 +87,7 @@ FlickerModel line_model(const FlickerRun& run,const LineConfig& c){constexpr UIN
             bool sawValid=valid(centre),sawSentinel=sentinel(centre);double nearest=sentinel(centre)?1:centre,lo=wcur,hi=wcur,m1=0,m2=0,sum=0,total=0;
             for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx){const float d=px(run.depth[n],x+dx,y+dy);if(valid(d)){sawValid=true;if(d<nearest)nearest=d;}if(sentinel(d))sawSentinel=true;
                 const double raw=px(run.current[n],x+dx,y+dy);if(!oracle_finite(raw))continue;
-                const double q=oracle_weigh(raw);++finiteCount;lo=std::min(lo,q);hi=std::max(hi,q);m1+=q;m2+=q*q;const double g=std::exp(-double(c.A>0?c.A:c.farA)*((dx-jx)*(dx-jx)+(dy-jy)*(dy-jy)));sum+=q*g;total+=g;}
+                const double q=oracle_weigh(raw);++finiteCount;lo=std::min(lo,q);hi=std::max(hi,q);m1+=q;m2+=q*q;const double g=std::exp(-double(c.farA)*((dx-jx)*(dx-jx)+(dy-jy)*(dy-jy)));sum+=q*g;total+=g;}
             m1/=finiteCount;m2/=finiteCount;const double sigma=std::sqrt(std::max(m2-m1*m1,0.));lo=std::max(lo,m1-1.25*sigma);hi=std::min(hi,m1+1.25*sigma);
             const double vx=line_velocity_x(nearest),vy=line_velocity(nearest),speed=std::hypot(vx,vy);
             auto snap=[](double position,double& base,double& f){base=std::floor(position);f=position-base;if(f>1-1e-4){base+=1;f=0;}else if(f<1e-4)f=0;};
@@ -148,67 +117,14 @@ FlickerModel line_model(const FlickerRun& run,const LineConfig& c){constexpr UIN
                 keep=gate>0?std::max(farKeep,w+gate*(std::min(ramp,double(c.thinW))-w)):farKeep;
                 m.age[n][i]=float(std::min(a+1,64.));}
             if(c.wmax>0){double a=m.age[n-1][ageIndex];if(!(a>=1&&a<=64))a=1;const double t=std::min(std::max((speed-.1)/.4,0.),1.);keep=std::min(a/(a+1),c.wmax+t*(w-c.wmax));m.age[n][i]=float(std::min(a+1,64.));}
-            const double filterWeight=std::max(c.A>0&&line_mask(run.depth[n],x,y,c.width)?1.:0.,c.farA>0?farw:0.);
-            const double blend=farOn?wcur+filterWeight*(sum/total-wcur):filterWeight>0?sum/total:wcur;
+            const double filterWeight=c.farA>0?farw:0.;
+            const double blend=farOn?wcur+filterWeight*(sum/total-wcur):wcur;
             m.color[n][i]=halfFloat(toHalf(float(oracle_unweigh(blend+keep*(old-blend)))));}}
     if(oracleSkipped>oracleSkipCeiling)throw std::runtime_error("line_model: oracle skipped "+std::to_string(oracleSkipped)+" border pixels, ceiling "+std::to_string(oracleSkipCeiling));
     return m;}
-// Roping: per analysed frame and line, the peak of the output over the rows around the line's centre in each column;
-// bead amplitude = std / mean of those peaks along the line (0 for a phase-independent reconstruction), and their mean.
-void line_beads(const FlickerRun& run,double& bead,double& peak){double beadSum=0,peakSum=0;unsigned lines=0;
-    for(unsigned n=lineFrames-lineAnalysed;n<lineFrames;++n){const double phase=std::fmod(lineStart+lineDrift*n,linePitch);
-        for(double top=phase-linePitch;top<32;top+=linePitch){if(top<6||top+lineSlope*16>25)continue;double s1=0,s2=0;unsigned count=0;
-            for(UINT x=4;x<16;++x){const double centre=top+lineSlope*(x-2)+lineThick/2-.5;const int row=int(std::lround(centre));double best=0;for(int dy=-1;dy<=1;++dy)best=std::max(best,double(px(run.output[n],x,UINT(row+dy)))-.25);s1+=best;s2+=best*best;++count;}
-            const double mean=s1/count;beadSum+=std::sqrt(std::max(s2/count-mean*mean,0.))/mean;peakSum+=mean;++lines;}}
-    bead=beadSum/lines;peak=peakSum/lines;}
 void line_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
-    std::puts("LINE_CASES");EdgeScene s(d,compiler);constexpr UINT S=EdgeScene::S;
+    std::puts("LINE_CASES");EdgeScene s(d,compiler);
     struct Defer{Defer(){deferMetrics=true;deferredFailures.clear();}~Defer(){deferMetrics=false;}} defer;
-    const EdgeBackground farGeometry{.25f,.999f,1};
-    // ---- validation, refusals, hostile state, Reset ----
-    {s.render(line_objects(0),sentinelBackground,0,0);Output out;const FlickerConfig none{"line-validation",0,0,.1f,.5f,false,false,.9f};
-        TemporalPass bare;check("line bare initialize",bare.initialize(d,nullptr,resolver));auto in=flicker_inputs(s,none,0,0,true);in.caller_scene_open=false;in.line_filter=1;
-        require(!bare.line_filter_available()&&bare.run(in,&out)==E_INVALIDARG,"line filter without configure_line_filter is refused");
-        in.line_filter=0;require(SUCCEEDED(bare.run(in,&out)),"the unconfigured pass runs the plain resolve");
-        // (any ps_3_0 program stands in for the filtered one: only its presence matters to the refusal below)
-        TemporalPass pass;check("line validation initialize",pass.initialize(d,nullptr,resolver,nullptr,nullptr,nullptr,resolver));check("line validation configure",pass.configure_line_filter());
-        for(float bad:{-1.f,4.5f,NAN,INFINITY}){in.line_filter=bad;require(pass.run(in,&out)==E_INVALIDARG,"line filter outside [0, 4] is refused");}
-        in.line_filter=1;in.current_filter=1;require(pass.run(in,&out)==E_INVALIDARG,"line filter beside the global current filter is refused");in.current_filter=0;
-        in.line_filter=4;require(SUCCEEDED(pass.run(in,&out)),"line filter 4 runs");
-        for(unsigned bad:{0u,3u}){in.line_width=bad;require(pass.run(in,&out)==E_INVALIDARG,"line width other than 1 or 2 is refused");}in.line_width=2;require(SUCCEEDED(pass.run(in,&out)),"line width 2 runs");in.line_width=1;
-        in.line_filter=1;in.thin_clip=.75f;require(pass.run(in,&out)==E_INVALIDARG,"line filter with the thin clip but without configure_flicker is refused");in.thin_clip=0;
-        // Hostile c22/c24 and sampler 1 around a line-filtered run; the state block restores them.
-        const float junk[4]={9,8,7,6};check("line hostile c22",d->SetPixelShaderConstantF(22,junk,1));check("line hostile s1",d->SetSamplerState(1,D3DSAMP_MINFILTER,D3DTEXF_LINEAR));check("line hostile s1 u",d->SetSamplerState(1,D3DSAMP_ADDRESSU,D3DTADDRESS_WRAP));
-        {Snapshot before(d);check("line hostile run",pass.run(in,&out));before.equals(d,"line-filtered run restores the caller's state");}
-        // A failed resolve draw publishes nothing; the next run restarts from a rejected history.
-        {Output failed;{Fault fault(d,1);require(pass.run(in,&failed)==E_FAIL&&!failed.color&&!pass.diagnostics().history_valid,"failed line-filtered resolve draw publishes nothing");}
-            check("line recovery",pass.run(in,&out));require(out.color&&!out.used_history,"after a failed run the line-filtered resolve restarts without history");}
-        pass.before_reset();pass.after_reset(S_OK);check("line after Reset",pass.run(in,&out));
-        require(out.color&&!out.used_history&&pass.line_filter_available(),"Reset protocol keeps the line-filter programs and restarts the history");state_checks+=1;s.target(s.colorSurface.p);}
-    const LineConfig base{"line-base",false,0,0,0},off{"line-off",true,0,0,0},a2{"line-A2",true,2,0,0},a1{"line-A1",true,1,0,0},thin{"line-A1+soft-0.75",true,1,.75f,0},aged{"line-A1+soft-0.75+w-0.97",true,1,.75f,.97f},wide{"line-A1-width-2",true,1,0,0,2};
-    for(const auto* bg:{&sentinelBackground,&farGeometry}){const char* bgName=bg==&sentinelBackground?"sentinel":"far_geometry";
-        const auto baseRun=line_sequence(s,resolver,base,*bg);double baseBead=0,basePeak=0;line_beads(baseRun,baseBead,basePeak);
-        {const auto offRun=line_sequence(s,resolver,off,*bg);++numeric_checks;require(same_rgb(baseRun.output,offRun.output),"line filter configured but A = 0 is bit-identical to the unconfigured pass");}
-        for(const LineConfig* c:{&base,&a2,&a1,&wide,&thin,&aged}){if(bg==&farGeometry&&c->thin>0)continue; // no sentinel in that scene: the thin clip is inert there
-            const auto run=c==&base?baseRun:line_sequence(s,resolver,*c,*bg);const auto model=line_model(run,*c);double oracle=0,ageOracle=0,bead=0,peak=0;line_beads(run,bead,peak);
-            // Mask precision, from the oracle's own mask: share of the line region masked; square silhouette pixels (both sides of each
-            // edge, at least 2 px from the corners (3 px with width 2), where a diagonal has background on both sides) never masked and bit-identical to the base run.
-            unsigned masked=0,region=0,edgeMasked=0,edgeDiffers=0,edgePixels=0;double offMask=0,offMaskBase=0;
-            for(unsigned n=0;n<lineFrames;++n)for(UINT y=3;y+3<S;++y)for(UINT x=3;x+3<S;++x){oracle=std::max(oracle,double(std::fabs(px(run.output[n],x,y)-model.color[n][y*S+x])));
-                if(!run.age.empty())ageOracle=std::max(ageOracle,double(std::fabs(px(run.age[n],x,y)-model.age[n][y*S+x])));
-                const bool mask=line_mask(run.depth[n],x,y,c->width);if(x<18&&y>=6&&y<26){++region;masked+=mask;}
-                const UINT inset=c->width; // a convex corner is line-like along the diagonal across it; with width 2 so are its two edge neighbours
-                auto isEdge=[inset](UINT ex,UINT ey){return ((ex==20||ex==21||ex==28||ex==29)&&ey>=13+inset&&ey<19-inset)||((ey==11||ey==12||ey==19||ey==20)&&ex>=22+inset&&ex<28-inset);};const bool edge=isEdge(x,y);
-                if(edge){++edgePixels;edgeMasked+=mask;edgeDiffers+=std::memcmp(&run.output[n][(y*S+x)*4],&baseRun.output[n][(y*S+x)*4],sizeof(float))!=0;
-                    if(isEdge(x+1,y)){const double g=px(run.output[n],x+1,y)-px(run.output[n],x,y),gb=px(baseRun.output[n],x+1,y)-px(baseRun.output[n],x,y);offMask+=g*g;offMaskBase+=gb*gb;}}}
-            std::printf("LINE_FILTER background=%s config=%s A=%.2f oracle_error=%.6f age_oracle_error=%.6f mask_share_line_region=%.4f silhouette_px=%u silhouette_masked=%u silhouette_differs=%u silhouette_gradient_ratio=%.6f bead_amplitude=%.4f bead_ratio=%.4f line_peak=%.4f line_peak_ratio=%.4f\n",
-                bgName,c->name,c->A,oracle,ageOracle,double(masked)/region,edgePixels,edgeMasked,edgeDiffers,offMask/offMaskBase,bead,bead/baseBead,peak,peak/basePeak);
-            metric((std::string("line ")+c->name+": shader matches the 2-D CPU oracle within the FP16 bound").c_str(),oracle,0,.0006/(1-(c->wmax>0?c->wmax:.9)));
-            if(c->wmax>0)metric((std::string("line ")+c->name+": age target matches the CPU oracle").c_str(),ageOracle,0,0);
-            ++numeric_checks;require(edgePixels>0&&edgeMasked==0,"line mask never holds on the square's silhouette");
-            if(c->thin<=0){++numeric_checks;require(edgeDiffers==0&&offMask==offMaskBase,"square silhouette bit-identical to the unfiltered resolve (gradient energy unchanged)");}
-            if(c->A>0){++numeric_checks;require(double(masked)/region>.5,"line mask covers the lattice region");
-                if(c->thin<=0){++numeric_checks;require(bead<baseBead*.85&&peak<basePeak&&peak>basePeak*.4,"line filter lowers the roping at a bounded line-peak cost");}}}}
     // ---- pass time, 1280x768, every pixel geometry (the mask's worst case: all 72 extra depth fetches), event-query drained ----
     {LARGE_INTEGER frequency{};QueryPerformanceFrequency(&frequency);Com<IDirect3DQuery9> completion;check("line timing query",d->CreateQuery(D3DQUERYTYPE_EVENT,&completion.p));
         auto stamp=[](){LARGE_INTEGER now{};QueryPerformanceCounter(&now);return now.QuadPart;};
@@ -219,34 +135,33 @@ void line_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
         for(UINT n=0;n<20;++n)check("line timing unbind",d->SetTexture(n<16?n:D3DVERTEXTEXTURESAMPLER0+n-16,nullptr));
         check("line timing color target",d->SetRenderTarget(0,colorSurface.p));check("line timing color clear",d->Clear(0,nullptr,D3DCLEAR_TARGET,D3DCOLOR_ARGB(255,128,128,128),1,0));
         check("line timing depth target",d->SetRenderTarget(0,depthSurface.p));check("line timing depth clear",d->Clear(0,nullptr,D3DCLEAR_TARGET,0,1,0));check("line timing restore",d->SetRenderTarget(0,saved.p));check("line timing restore viewport",d->SetViewport(&vp));
-        // Four passes, interleaved: plain; the global current filter (the nine exp() taps alone); the line filter (taps + two mask
-        // draws + one fetch); the far stabiliser (taps + one mask draw + the age target).
-        namespace r=x3m::renderer;TemporalPass passes[6];const char* labels[6]={"plain","current_filter","line_filter","far_stabiliser","thin_region","thin_region_camera"};
-        for(unsigned i=0;i<6;++i){check("line timing initialize",passes[i].initialize(d,nullptr,resolver,nullptr,nullptr,nullptr,i==1?reinterpret_cast<const DWORD*>(r::temporal_resolve_filter_program()):nullptr));
-            if(i==2){check("line timing configure",passes[i].configure_line_filter());}
-            if(i>=3){check("line timing configure far",passes[i].configure_far());require(passes[i].camera_gate_available(),"line timing: camera-gate programs created");}}
+        // Four passes, interleaved: plain; the far stabiliser (taps + one mask draw + the age target); the thin region; the thin
+        // region with the camera gate.
+        namespace r=x3m::renderer;TemporalPass passes[4];
+        for(unsigned i=0;i<4;++i){check("line timing initialize",passes[i].initialize(d,nullptr,resolver));
+            if(i>=1){check("line timing configure far",passes[i].configure_far());require(passes[i].camera_gate_available(),"line timing: camera-gate programs created");}}
         FrameInputs base{};base.color=color.p;base.current_depth=depth.p;base.width=W;base.height=H;base.epoch=1;base.weight=.9f;std::copy(identity,identity+16,base.clip_to_previous);base.motion_policy=MotionPolicy::KnownCameraOnly;base.reactive_policy=ReactivePolicy::DerivedFromDepthSentinel;base.history_allowed=true;base.caller_queries_idle=true;base.caller_scene_open=false;
         Com<IDirect3DTexture9> motion;Com<IDirect3DSurface9> motionSurface;check("line timing motion",d->CreateTexture(W,H,1,D3DUSAGE_RENDERTARGET,D3DFMT_A32B32G32R32F,D3DPOOL_DEFAULT,&motion.p,nullptr));check("line timing motion surface",motion->GetSurfaceLevel(0,&motionSurface.p));
         check("line timing motion target",d->SetRenderTarget(0,motionSurface.p));check("line timing motion clear",d->Clear(0,nullptr,D3DCLEAR_TARGET,0,1,0));check("line timing motion restore",d->SetRenderTarget(0,saved.p));check("line timing motion viewport",d->SetViewport(&vp)); // alpha 0: the camera path
-        FrameInputs ins[6]={base,base,base,base,base,base};for(unsigned i=3;i<6;++i){ins[i].motion_policy=MotionPolicy::PerPixel;ins[i].motion=motion.p;}ins[4].thin_region_weight=ins[5].thin_region_weight=.97f;ins[5].thin_region_camera_gate=true;ins[1].current_filter=1;ins[2].line_filter=1;ins[3].far_weight=.985f;ins[3].far_filter=1;ins[3].far_d0=-.5f;ins[3].far_inv=1; // depth 0 everywhere: farw = 0.5
-        Output out;double ms[6]{};
-        for(unsigned warm=0;warm<3;++warm)for(unsigned which=0;which<6;++which){check("line timing warm",passes[which].run(ins[which],&out));drain();}
-        for(unsigned round=0;round<6;++round)for(unsigned step=0;step<6;++step){const unsigned which=(round+step)%6;drain();const auto start=stamp();check("line timing run",passes[which].run(ins[which],&out));drain();ms[which]+=1000.*double(stamp()-start)/double(frequency.QuadPart)/6;}
-        // Clear writes depth 0 (R32F from the ARGB clear colour): valid geometry everywhere, no line-like pixel.
-        std::printf("LINE_TIMING width=%u height=%u content=all_geometry rounds=6 plain_ms=%.4f current_filter_ms=%.4f line_filter_ms=%.4f far_stabiliser_ms=%.4f thin_region_ms=%.4f taps_delta_ms=%.4f line_delta_ms=%.4f far_delta_ms=%.4f thin_region_delta_ms=%.4f scope=cpu_wall_with_event_query_drain\n",W,H,ms[0],ms[1],ms[2],ms[3],ms[4],ms[1]-ms[0],ms[2]-ms[0],ms[3]-ms[0],ms[4]-ms[0]);(void)labels;
+        FrameInputs ins[4]={base,base,base,base};for(unsigned i=1;i<4;++i){ins[i].motion_policy=MotionPolicy::PerPixel;ins[i].motion=motion.p;}ins[2].thin_region_weight=ins[3].thin_region_weight=.97f;ins[3].thin_region_camera_gate=true;ins[1].far_weight=.985f;ins[1].far_filter=1;ins[1].far_d0=-.5f;ins[1].far_inv=1; // depth 0 everywhere: farw = 0.5
+        Output out;double ms[4]{};
+        for(unsigned warm=0;warm<3;++warm)for(unsigned which=0;which<4;++which){check("line timing warm",passes[which].run(ins[which],&out));drain();}
+        for(unsigned round=0;round<6;++round)for(unsigned step=0;step<4;++step){const unsigned which=(round+step)%4;drain();const auto start=stamp();check("line timing run",passes[which].run(ins[which],&out));drain();ms[which]+=1000.*double(stamp()-start)/double(frequency.QuadPart)/6;}
+        // Clear writes depth 0 (R32F from the ARGB clear colour): valid geometry everywhere.
+        std::printf("LINE_TIMING width=%u height=%u content=all_geometry rounds=6 plain_ms=%.4f far_stabiliser_ms=%.4f thin_region_ms=%.4f far_delta_ms=%.4f thin_region_delta_ms=%.4f scope=cpu_wall_with_event_query_drain\n",W,H,ms[0],ms[1],ms[2],ms[1]-ms[0],ms[2]-ms[0]);
         // The camera gate (section 32.1) beside the thin region: on the all-geometry frame (no region: the box pass skips every
         // pixel) and on a fully fragmented frame under a 1 px/frame camera pan (rows alternate geometry and the sentinel; the
         // camera path is the correspondence, so the screen gate closes everywhere and the camera term reopens everywhere: the
         // box pass and the resolve's box clip run on every pixel, the worst case).
-        const double camNoRegion[2]={ms[4],ms[5]};
+        const double camNoRegion[2]={ms[2],ms[3]};
         {s.target(depthSurface.p);D3DVIEWPORT9 full{0,0,W,H,0,1};check("camera timing viewport",d->SetViewport(&full));
             check("camera timing Begin",d->BeginScene());check("camera timing flat",d->SetPixelShader(s.flat.p));s.constant(-1,0,0,0);
             struct V{float x,y,z,rhw,u,v;};for(UINT y=1;y<H;y+=2){const V v[]={{-.5f,y-.5f,.5f,1,0,0},{W-.5f,y-.5f,.5f,1,1,0},{-.5f,y+.5f,.5f,1,0,1},{W-.5f,y+.5f,.5f,1,1,1}};check("camera timing stripe",d->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP,2,v,sizeof(V)));}
             check("camera timing End",d->EndScene());check("camera timing restore",d->SetRenderTarget(0,saved.p));check("camera timing restore viewport",d->SetViewport(&vp));
-            for(unsigned i=4;i<6;++i){ins[i].clip_to_previous[3]=-2.f/W;ins[i].sentinel_camera=true;ms[i]=0;}
-            for(unsigned warm=0;warm<3;++warm)for(unsigned which=4;which<6;++which){check("camera timing warm",passes[which].run(ins[which],&out));drain();}
-            for(unsigned round=0;round<6;++round)for(unsigned step=0;step<2;++step){const unsigned which=4+(round+step)%2;drain();const auto start=stamp();check("camera timing run",passes[which].run(ins[which],&out));drain();ms[which]+=1000.*double(stamp()-start)/double(frequency.QuadPart)/6;}
-            std::printf("LINE_TIMING_CAMERA width=%u height=%u rounds=6 no_region_thin_ms=%.4f no_region_camera_ms=%.4f no_region_camera_delta_ms=%.4f fragmented_pan_thin_ms=%.4f fragmented_pan_camera_ms=%.4f fragmented_pan_camera_delta_ms=%.4f scope=cpu_wall_with_event_query_drain\n",W,H,camNoRegion[0],camNoRegion[1],camNoRegion[1]-camNoRegion[0],ms[4],ms[5],ms[5]-ms[4]);
+            for(unsigned i=2;i<4;++i){ins[i].clip_to_previous[3]=-2.f/W;ins[i].sentinel_camera=true;ms[i]=0;}
+            for(unsigned warm=0;warm<3;++warm)for(unsigned which=2;which<4;++which){check("camera timing warm",passes[which].run(ins[which],&out));drain();}
+            for(unsigned round=0;round<6;++round)for(unsigned step=0;step<2;++step){const unsigned which=2+(round+step)%2;drain();const auto start=stamp();check("camera timing run",passes[which].run(ins[which],&out));drain();ms[which]+=1000.*double(stamp()-start)/double(frequency.QuadPart)/6;}
+            std::printf("LINE_TIMING_CAMERA width=%u height=%u rounds=6 no_region_thin_ms=%.4f no_region_camera_ms=%.4f no_region_camera_delta_ms=%.4f fragmented_pan_thin_ms=%.4f fragmented_pan_camera_ms=%.4f fragmented_pan_camera_delta_ms=%.4f scope=cpu_wall_with_event_query_drain\n",W,H,camNoRegion[0],camNoRegion[1],camNoRegion[1]-camNoRegion[0],ms[2],ms[3],ms[3]-ms[2]);
             // The four-channel lane as the depth input (section 32.4): the same fragmented pan frame copied into an A32B32G32R32F
             // target (.b = 1 on geometry: every valid pixel takes the lane fetch). Two camera-gate passes on that input, one
             // with the lane term (s5 bound, c9.w = 1), one without (c9 = 0, the c8 law): their difference is the extra fetch;
@@ -256,13 +171,13 @@ void line_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
             check("lane timing min",d->SetSamplerState(0,D3DSAMP_MINFILTER,D3DTEXF_POINT));check("lane timing mag",d->SetSamplerState(0,D3DSAMP_MAGFILTER,D3DTEXF_POINT));
             {const V v[]={{-.5f,-.5f,.5f,1,0,0},{W-.5f,-.5f,.5f,1,1,0},{-.5f,H-.5f,.5f,1,0,1},{W-.5f,H-.5f,.5f,1,1,1}};check("lane timing copy",d->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP,2,v,sizeof(V)));}
             check("lane timing End",d->EndScene());check("lane timing unbind",d->SetTexture(0,nullptr));check("lane timing restore",d->SetRenderTarget(0,saved.p));check("lane timing restore viewport",d->SetViewport(&vp));
-            TemporalPass lanePasses[2];FrameInputs laneIns[2]={ins[5],ins[5]};double laneMs[2]{};
+            TemporalPass lanePasses[2];FrameInputs laneIns[2]={ins[3],ins[3]};double laneMs[2]{};
             for(unsigned i=0;i<2;++i){check("lane timing initialize",lanePasses[i].initialize(d,nullptr,resolver,nullptr,nullptr,reinterpret_cast<const DWORD*>(r::hdr_writeback_program())));check("lane timing configure far",lanePasses[i].configure_far());laneIns[i].current_depth=lane.p;
                 laneIns[i].camera_depth_parallax[0]=1e-4f;laneIns[i].camera_depth_parallax[3]=1.000003f;}
             laneIns[1].camera_lane_parallax[0]=1e-4f;laneIns[1].camera_lane_parallax[3]=1;
             for(unsigned warm=0;warm<3;++warm)for(unsigned which=0;which<2;++which){check("lane timing warm",lanePasses[which].run(laneIns[which],&out));drain();}
             for(unsigned round=0;round<6;++round)for(unsigned step=0;step<2;++step){const unsigned which=(round+step)%2;drain();const auto start=stamp();check("lane timing run",lanePasses[which].run(laneIns[which],&out));drain();laneMs[which]+=1000.*double(stamp()-start)/double(frequency.QuadPart)/6;}
-            std::printf("LINE_TIMING_CAMERA_LANE width=%u height=%u rounds=6 r32f_camera_ms=%.4f lane_input_law_ms=%.4f lane_input_lane_ms=%.4f lane_fetch_delta_ms=%.4f lane_input_over_r32f_ms=%.4f scope=cpu_wall_with_event_query_drain\n",W,H,ms[5],laneMs[0],laneMs[1],laneMs[1]-laneMs[0],laneMs[0]-ms[5]);
+            std::printf("LINE_TIMING_CAMERA_LANE width=%u height=%u rounds=6 r32f_camera_ms=%.4f lane_input_law_ms=%.4f lane_input_lane_ms=%.4f lane_fetch_delta_ms=%.4f lane_input_over_r32f_ms=%.4f scope=cpu_wall_with_event_query_drain\n",W,H,ms[3],laneMs[0],laneMs[1],laneMs[1]-laneMs[0],laneMs[0]-ms[3]);
             // Sentinel stabiliser (temporal-integration.md "Distant unrouted stations under a pan"): an all-sentinel, unrouted frame
             // (depth -1, motion alpha -1) under the same 1 px/frame pan. S = 0: no region, the box pass skips every pixel. S = 0.7: the
             // separable box (rows draw on every pixel, columns draw and the resolve's box clip on every pixel), the worst case; the
@@ -270,7 +185,7 @@ void line_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
             for(auto* surface:{depthSurface.p,motionSurface.p}){s.target(surface);check("sentinel timing viewport",d->SetViewport(&full));check("sentinel timing Begin",d->BeginScene());check("sentinel timing flat",d->SetPixelShader(s.flat.p));s.constant(surface==depthSurface.p?-1.f:0.f,0,0,-1);
                 const V v[]={{-.5f,-.5f,.5f,1,0,0},{W-.5f,-.5f,.5f,1,1,0},{-.5f,H-.5f,.5f,1,0,1},{W-.5f,H-.5f,.5f,1,1,1}};check("sentinel timing fill",d->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP,2,v,sizeof(V)));check("sentinel timing End",d->EndScene());}
             check("sentinel timing restore",d->SetRenderTarget(0,saved.p));check("sentinel timing restore viewport",d->SetViewport(&vp));
-            TemporalPass sentinelPasses[2];FrameInputs sentinelIns[2]={ins[5],ins[5]};double sentinelMs[2]{};sentinelIns[1].sentinel_strength=.7f;
+            TemporalPass sentinelPasses[2];FrameInputs sentinelIns[2]={ins[3],ins[3]};double sentinelMs[2]{};sentinelIns[1].sentinel_strength=.7f;
             for(unsigned i=0;i<2;++i){check("sentinel timing initialize",sentinelPasses[i].initialize(d,nullptr,resolver));check("sentinel timing configure far",sentinelPasses[i].configure_far());if(i)check("sentinel timing configure sentinel",sentinelPasses[i].configure_sentinel());require(i==0||sentinelPasses[i].sentinel_available(),"sentinel timing: separable box programs created");}
             for(unsigned warm=0;warm<3;++warm)for(unsigned which=0;which<2;++which){check("sentinel timing warm",sentinelPasses[which].run(sentinelIns[which],&out));drain();}
             for(unsigned round=0;round<6;++round)for(unsigned step=0;step<2;++step){const unsigned which=(round+step)%2;drain();const auto start=stamp();check("sentinel timing run",sentinelPasses[which].run(sentinelIns[which],&out));drain();sentinelMs[which]+=1000.*double(stamp()-start)/double(frequency.QuadPart)/6;}

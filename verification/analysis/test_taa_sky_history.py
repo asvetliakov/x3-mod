@@ -117,7 +117,6 @@ class SkyHistoryLaunch(unittest.TestCase):
             self.assertEqual(float(self.env(directory, *TAA, *self.EXIT, '--taa-sky-history-exit-px', '3')['X3M_TAA_SKY_HISTORY_EXIT_PX']), 3.0)
             self.assertEqual(float(self.env(directory, *TAA, *self.EXIT, '--taa-sky-history-band-px', '4', '--taa-sky-history-exit-px', '3.5')['X3M_TAA_SKY_HISTORY_EXIT_PX']), 3.5)
             self.assertEqual(float(self.env(directory, *TAA, '--taa-sky-history', 'strict', '--taa-thin-region', '0.97', '--taa-sky-history-exit-px', '0.5')['X3M_TAA_SKY_HISTORY_EXIT_PX']), 0.5)
-            self.assertEqual(float(self.env(directory, *TAA, '--taa-sky-history', 'strict', '--taa-thin-clip', '0.7', '--taa-adaptive-weight', '0.97', '--taa-sky-history-exit-px', '0.125')['X3M_TAA_SKY_HISTORY_EXIT_PX']), 0.125)
 
     def test_exit_px_requirements_and_bounds(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -1079,7 +1079,7 @@ Implementation status: `--taa-sentinel-stabiliser S[,E]` / `X3M_TAA_SENTINEL_STA
 the TAA route runs with the thin-region camera gate in effect**, in the launcher and in the DLL's native fallback, after
 Run 61 (run216: lasers over sky clean, no ghost complaint) and Run 62 (run221: the distant-station pan flicker the option
 was written for reported fixed at 0.7). The stabiliser can only ride that gate, so where the gate is not in effect - no
-`--taa-thin-region` (or W = 0), an explicit `--taa-thin-region-gate screen`, an active `--taa-line-filter`, or no `--taa`
+`--taa-thin-region` (or W = 0), an explicit `--taa-thin-region-gate screen`, an active `--taa-line-filter` (removed 2026-09-23, cleanup batch 6), or no `--taa`
 at all - the default resolves to **off**, not to an error; an explicitly requested S > 0 in those cases is still refused.
 `off` (or `0`) is the opt-out and is the pre-Run62 behaviour bit for bit. The launcher always resolves the value, so an
 inherited shell variable can neither turn the stabiliser on without the gate nor change the default; the DLL falls back

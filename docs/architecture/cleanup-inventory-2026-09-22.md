@@ -374,21 +374,38 @@ fixtures green on its own.
    one-line tool-source digest refresh in the 19 bloom and stored-fog program
    records that hash `generate_rigid_motion_pixel.py` (bytecode unchanged).
    Wine fixtures run 2026-09-23 on main 775dd59f, all PASS: run_temporal_pass.py (570 numerical checks, adjacent_max 0.000, pans strict == loose), fog_density_shader_run.py check 28/28 gates, run_motion_output.py sun-shadow-apply cases (checks 175 identical) and the full motion-output suite (190 cases PASS); results under verification/results/bottle-X3/.
-6. **Batch 6 — dead TAA resolve variants** (E1–E4), keeping the screen line
-   mask, the age R32F target pair and every far/thin/box program. Check:
-   `run_temporal_pass.py` gates, `test_taa_image_defaults.py`,
-   `test_temporal_*`, and a byte-comparison that the flown
-   `--taa-far-stabiliser 0.985 --taa-thin-region 0.97` resolve program hashes
-   are unchanged. ~2,700 lines. Do this one last of the code batches: it is the
-   only batch that edits the flown resolve. **Exit reset dependency (2026-09-22,
-   `seta-sky-hull-share-decay.md`):** the fixture's `SETA_EXIT` rows run on the
-   `age` program (thin clip 0.7, WMAX 0.9; the off / slow / loose rows and the
-   adaptive on rows) as well as on `far` and `far_camera`, so batch 6 must
-   either keep one age variant (`resolve_age.hlsl` and its include) or move the
-   age-program rows to far / far_camera first (the runner's counts 672 / 488
-   change); and its "flown hashes unchanged" gate must be rebased onto the
-   hashes that change records (`temporal-resolve-far{,-camera}-program.json`:
-   the term is compiled into every age-writing variant), not the pre-exit ones.
+6. **Batch 6 — dead TAA resolve variants** (E1–E4) — **done 2026-09-23.**
+   18 files deleted (**2,049 lines**): the six generated includes
+   `temporal_resolve_{filter,line,thin_filter,thin_line,age_filter,age_line}_program_inc.h` (1,883), their HLSL
+   `resolve_{filter,line,thin_filter,thin_line,age_filter,age_line}.hlsl` (22) and their six provenance records
+   `temporal-resolve-{filter,line,thin-filter,thin-line,age-filter,age-line}-program.json` (144). In 37 edited files
+   outside `docs/`, **712 lines removed and 346 added**, so **2,761 deleted, net 2,415** (not counting the new 31-line gate script and the
+   refreshed `bottle-X3/temporal-pass-summary.json`). Unwired:
+   `--taa-current-filter`, `--taa-line-filter`, `--taa-thin-clip` and `--taa-adaptive-weight` (now refused by name, and
+   the launcher drops an inherited `X3M_TAA_CURRENT_FILTER` / `_LINE_FILTER` / `_THIN_CLIP` / `_ADAPTIVE_WEIGHT`), their
+   mutual refusals, the DLL's four environment reads and their `motion_output_taa` fields (the per-frame `taa_filter=`
+   stays, printing 0, for `taa_resolve_replay.py`); `TemporalPass::configure_line_filter`, the `resolve_filtered`
+   initialize argument, `FrameInputs::current_filter / line_filter / line_width`, the filtered and line program slots and
+   `prepare()`'s `current_filter` (c22.y is uploaded as 0; no kept program reads it). The generator's six entries went;
+   its digest was refreshed in the 19 bloom / stored-fog records whose tests check it (bytecode unchanged).
+   **Kept against the inventory's list:** `resolve_age.hlsl`, `temporal_resolve_age_program_inc.h` and
+   `temporal-resolve-age-program.json` (the fixture's `SETA_EXIT` off / slow / loose / straight / yaw rows run on it), and
+   with it `FrameInputs::thin_clip` / `adaptive_weight` / `adaptive_lo` / `adaptive_hi` and their validation in
+   `TemporalPass::run`: the renderer-level inputs through which the fixture selects the age program. Only the launcher and
+   DLL options went. `configure_flicker()` still creates the thin program (it carries `--taa-alpha-history`, kept) and
+   the age program; the line mask, the age R32F pair and every far / thin / box program are untouched.
+   **Hash gate:** the five kept resolve records (`temporal-resolve{,-thin,-age,-far,-far-camera}-program.json`, the
+   post-exit-reset records) and their includes are byte-identical to 112b6aa9
+   (`verification/results/cleanup-batch6-hash-gate.py`: HASH_GATE PASS). **Fixture** (`run_temporal_pass.py`, bottle X3):
+   the main run is unchanged, RESULT PASS 672 / 278, 488 samples, 28 `SETA_EXIT` rows, and its report is line for line
+   the committed one. The lattice run lost the removed variants' rows: LATTICE_BASE 28 / 9 -> 10 / 0 (the filtered
+   run-139 rows and refusals; the history-weight rows stay), FLICKER_BASE 210 / 13 -> 190 / 4, LINE_BASE 255 / 15 ->
+   190 / 4 (the line block is the pass timing only), FAR_BASE 382 / 17 -> 299 / 6 (the line-filter far row, 24 -> 20
+   `FAR_STABILISER` rows, and the line mask-failure check), RESULT 583 / 23 -> 500 / 12. Build `check_no_x87.py`
+   clean over 638 reachable functions; host suite 231 modules / 2,330 tests green.
+   **Deferred to the next shader change of those files** (editing them now would change the kept manifests' source
+   hashes): the stale variant comments in `resolve.hlsl` (lines 71-87, 137) and the dead mode-4 / `options.w` line-width
+   path of `line_mask_ps.hlsl` (lines 189, 248-252).
 7. **Not scheduled** — H (retired converted-material law inside
    `linear_material.cpp`) and I (`--linear-emissions` bracket). Both need a
    deliberate split of shared code first; propose separately if the user wants

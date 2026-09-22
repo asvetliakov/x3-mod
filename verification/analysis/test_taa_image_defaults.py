@@ -84,24 +84,37 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
                 self.assertIn(f'{option} requires --taa', error)
 
     def test_resolve_options_are_absent_unless_given(self):
-        # --taa-current-filter / --taa-history-weight (run 139 A/B): forwarded
-        # only when given, a stale shell value dropped, ranges enforced.
-        names = ('X3M_TAA_CURRENT_FILTER', 'X3M_TAA_HISTORY_WEIGHT')
+        # --taa-history-weight (run 139 A/B): forwarded only when given, a stale
+        # shell value dropped, range enforced.
         with tempfile.TemporaryDirectory() as directory:
-            env = self.env(directory, *TAA, inherited={'X3M_TAA_CURRENT_FILTER': '2', 'X3M_TAA_HISTORY_WEIGHT': '0.5'})
-            for name in names:
+            self.assertNotIn('X3M_TAA_HISTORY_WEIGHT', self.env(directory, *TAA, inherited={'X3M_TAA_HISTORY_WEIGHT': '0.5'}))
+            self.assertEqual(self.env(directory, *TAA, '--taa-history-weight', '0.95')['X3M_TAA_HISTORY_WEIGHT'], '0.95')
+            for value in ('0.99', '0.4', 'nan'):
+                code, _, error = self.launch(directory, *TAA, '--taa-history-weight', value)
+                self.assertEqual(code, 2, value)
+                self.assertIn('--taa-history-weight must be within', error)
+            code, _, error = self.launch(directory, '--motion-output', '--taa-history-weight', '0.9')
+            self.assertEqual(code, 2)
+            self.assertIn('--taa-history-weight requires --taa', error)
+
+    def test_retired_resolve_variants_are_refused_by_name(self):
+        # Cleanup batch 6 (2026-09-23; docs/architecture/cleanup-inventory-2026-09-22.md): the four
+        # rejected / superseded resolve variants are refused by name, and a stale shell value of
+        # their variables never reaches the DLL (which no longer reads them either).
+        retired = {'--taa-current-filter': 'X3M_TAA_CURRENT_FILTER', '--taa-line-filter': 'X3M_TAA_LINE_FILTER',
+                   '--taa-thin-clip': 'X3M_TAA_THIN_CLIP', '--taa-adaptive-weight': 'X3M_TAA_ADAPTIVE_WEIGHT'}
+        with tempfile.TemporaryDirectory() as directory:
+            env = self.env(directory, *TAA, inherited={name: '1' for name in retired.values()})
+            for name in retired.values():
                 self.assertNotIn(name, env)
-            env = self.env(directory, *TAA, '--taa-current-filter', '1.0', '--taa-history-weight', '0.95')
-            self.assertEqual([env[name] for name in names], ['1.0', '0.95'])
-            for option, value in (('--taa-current-filter', '4.5'), ('--taa-current-filter', 'nan'), ('--taa-current-filter', '-1'),
-                                  ('--taa-history-weight', '0.99'), ('--taa-history-weight', '0.4'), ('--taa-history-weight', 'nan')):
-                code, _, error = self.launch(directory, *TAA, option, value)
-                self.assertEqual(code, 2, (option, value))
-                self.assertIn(f'{option} must be within', error)
-            for option in ('--taa-current-filter', '--taa-history-weight'):
-                code, _, error = self.launch(directory, '--motion-output', option, '0.9')
-                self.assertEqual(code, 2, option)
-                self.assertIn(f'{option} requires --taa', error)
+            for option in retired:
+                for extra in ((), ('1',)):
+                    code, _, error = self.launch(directory, *TAA, option, *extra)
+                    self.assertEqual(code, 2, (option, extra))
+                    self.assertIn(f'{option} was removed on 2026-09-23', error)
+        source = (ROOT / 'src/proxy/capture.cpp').read_text()
+        for name in retired.values():
+            self.assertNotIn(f'L"{name}"', source)
 
     def test_sky_history_defaults_to_strict_with_the_exit_reset(self):
         # Run 68 A (2026-09-23, docs/architecture/seta-sky-hull-share-decay.md): with --taa the launcher resolves
@@ -120,37 +133,15 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
         self.assertIn('else if(taa_sky_history_strict)taa_sky_history_exit_px=.25f;', capture)
         self.assertIn('L"X3M_TAA_SKY_HISTORY_EXIT_PX"', capture)
 
-    def test_line_filter_is_absent_unless_given(self):
-        # --taa-line-filter A[,W] (docs/architecture/taa-lattice-crawl.md section 9).
-        with tempfile.TemporaryDirectory() as directory:
-            self.assertNotIn('X3M_TAA_LINE_FILTER', self.env(directory, *TAA, inherited={'X3M_TAA_LINE_FILTER': '1'}))
-            self.assertEqual(self.env(directory, *TAA, '--taa-line-filter', '1.0')['X3M_TAA_LINE_FILTER'], '1')
-            self.assertEqual(self.env(directory, *TAA, '--taa-line-filter', '2,2')['X3M_TAA_LINE_FILTER'], '2,2')
-            for value in ('4.5', 'nan', '-1', '1,3', '1,', 'x'):
-                code, _, error = self.launch(directory, *TAA, '--taa-line-filter', value)
-                self.assertEqual(code, 2, value)
-                self.assertIn('--taa-line-filter takes A[,W]', error)
-            code, _, error = self.launch(directory, *TAA, '--taa-line-filter', '1', '--taa-current-filter', '1')
-            self.assertEqual(code, 2)
-            self.assertIn('exclude each other', error)
-            code, _, error = self.launch(directory, '--motion-output', '--taa-line-filter', '1')
-            self.assertEqual(code, 2)
-            self.assertIn('--taa-line-filter requires --taa', error)
-
     def test_far_stabiliser_is_absent_unless_given(self):
         # --taa-far-stabiliser W[,A[,F0,F1]] (docs/architecture/taa-distant-line-fade.md section 9): components separate.
         with tempfile.TemporaryDirectory() as directory:
             self.assertNotIn('X3M_TAA_FAR_STABILISER', self.env(directory, *TAA, inherited={'X3M_TAA_FAR_STABILISER': '0.985'}))
             for given, forwarded in (('0.985', '0.985,0,80,130,0.03,0.25'), ('0.985,1', '0.985,1,80,130,0.03,0.25'), ('0,1', '0,1,80,130,0.03,0.25'), ('0.97,0.5,100,160', '0.97,0.5,100,160,0.03,0.25'), ('0.985,0,80,130,0.5,2', '0.985,0,80,130,0.5,2')):
                 self.assertEqual(self.env(directory, *TAA, '--taa-far-stabiliser', given)['X3M_TAA_FAR_STABILISER'], forwarded)
-            self.assertEqual(self.env(directory, *TAA, '--taa-far-stabiliser', '0.985,1', '--taa-line-filter', '1')['X3M_TAA_FAR_STABILISER'], '0.985,1,80,130,0.03,0.25')
             for value in ('0.8', '0.995', 'nan', '0.985,5', '0.985,1,80', '0.985,1,130,80', '0.985,1,0,80', 'x', '0.985,1,80,130,1', '0.985,0,80,130,0.5,0.5', '0.985,0,80,130,-1,2', '0.985,0,80,130,0.1,65'):
                 code, _, error = self.launch(directory, *TAA, '--taa-far-stabiliser', value)
                 self.assertEqual(code, 2, value)
-                self.assertIn('--taa-far-stabiliser', error)
-            for extra in (('--taa-thin-clip', '0.75', '--taa-adaptive-weight', '0.97'), ('--taa-current-filter', '1'), ('--taa-line-filter', '2')):
-                code, _, error = self.launch(directory, *TAA, '--taa-far-stabiliser', '0.985,1', *extra)
-                self.assertEqual(code, 2, extra)
                 self.assertIn('--taa-far-stabiliser', error)
             code, _, error = self.launch(directory, '--motion-output', '--taa-far-stabiliser', '0.985')
             self.assertEqual(code, 2)
@@ -205,10 +196,9 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
                 code, _, error = self.launch(directory, *TAA, '--taa-thin-region', value)
                 self.assertEqual(code, 2, value)
                 self.assertIn('--taa-thin-region', error)
-            for extra in (('--taa-thin-clip', '0.75'), ('--taa-thin-clip', '0.75', '--taa-adaptive-weight', '0.97'), ('--taa-current-filter', '1'), ('--taa-far-stabiliser', '0.985,0,80,130,0.5,2')):
-                code, _, error = self.launch(directory, *TAA, '--taa-thin-region', '0.97,1,0.03,0.25', *extra)
-                self.assertEqual(code, 2, extra)
-                self.assertIn('--taa-thin-region', error)
+            code, _, error = self.launch(directory, *TAA, '--taa-thin-region', '0.97,1,0.03,0.25', '--taa-far-stabiliser', '0.985,0,80,130,0.5,2')
+            self.assertEqual(code, 2)
+            self.assertIn('--taa-thin-region', error)
             code, _, error = self.launch(directory, '--motion-output', '--taa-thin-region', '0.97')
             self.assertEqual(code, 2)
             self.assertIn('--taa-thin-region requires --taa', error)
@@ -216,8 +206,7 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
     def test_thin_region_gate_defaults_to_camera_when_the_region_is_on(self):
         # --taa-thin-region-gate screen|camera (docs/architecture/taa-lattice-crawl.md section 32.1). Run 59
         # (run207 screen / run208 camera) accepted the camera gate, so it is the default whenever the thin
-        # region is active; the line filter (whose mask channel carries the only gate it can have) resolves
-        # to screen silently, while an explicit camera plus the line filter is still refused.
+        # region is active.
         with tempfile.TemporaryDirectory() as directory:
             env = self.env(directory, *TAA, '--taa-thin-region', '0.97')
             self.assertEqual((env['X3M_TAA_THIN_REGION'], env['X3M_TAA_THIN_REGION_GATE']), ('0.97,1', 'camera'))
@@ -226,18 +215,13 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
             self.assertEqual(self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-thin-region-gate', 'screen')['X3M_TAA_THIN_REGION_GATE'], 'screen')
             env = self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-thin-region-gate', 'camera')
             self.assertEqual(env['X3M_TAA_THIN_REGION_GATE'], 'camera')
-            env = self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-far-stabiliser', '0.985', '--taa-thin-region-gate', 'camera', '--taa-line-filter', '0')
+            env = self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-far-stabiliser', '0.985', '--taa-thin-region-gate', 'camera')
             self.assertEqual(env['X3M_TAA_THIN_REGION_GATE'], 'camera')
-            # An active line filter silently keeps the screen gate; a zero A does not count as active.
-            self.assertEqual(self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-line-filter', '1')['X3M_TAA_THIN_REGION_GATE'], 'screen')
-            self.assertEqual(self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-line-filter', '2,2')['X3M_TAA_THIN_REGION_GATE'], 'screen')
-            self.assertEqual(self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-line-filter', '0')['X3M_TAA_THIN_REGION_GATE'], 'camera')
             # Without the thin region (absent or W 0) no gate variable is emitted, inherited or not.
             for args in ((), ('--taa-thin-region', '0')):
                 for inherited in (None, {'X3M_TAA_THIN_REGION_GATE': 'camera'}):
                     self.assertNotIn('X3M_TAA_THIN_REGION_GATE', self.env(directory, *TAA, *args, inherited=inherited))
             for args in (('--taa-thin-region-gate', 'camera'), ('--taa-thin-region', '0', '--taa-thin-region-gate', 'camera'),
-                         ('--taa-thin-region', '0.97', '--taa-thin-region-gate', 'camera', '--taa-line-filter', '1'),
                          ('--taa-thin-region', '0.97', '--taa-thin-region-gate', 'wide')):
                 code, _, error = self.launch(directory, *TAA, *args)
                 self.assertEqual(code, 2, args)
@@ -315,8 +299,7 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
                 env = self.env(directory, *TAA, '--taa-thin-region', '0.97', inherited=inherited)
                 self.assertEqual((env['X3M_TAA_THIN_REGION_GATE'], env['X3M_TAA_SENTINEL_STABILISER']), ('camera', '0.7'))
             # No camera gate: the option resolves to off (the variable is dropped, inherited or not), never an error.
-            for args in ((), ('--taa-thin-region', '0'), ('--taa-thin-region', '0.97', '--taa-thin-region-gate', 'screen'),
-                         ('--taa-thin-region', '0.97', '--taa-line-filter', '1')):
+            for args in ((), ('--taa-thin-region', '0'), ('--taa-thin-region', '0.97', '--taa-thin-region-gate', 'screen')):
                 for inherited in (None, {'X3M_TAA_SENTINEL_STABILISER': '0.7'}):
                     self.assertNotIn('X3M_TAA_SENTINEL_STABILISER', self.env(directory, *TAA, *args, inherited=inherited), args)
             # Without --taa nothing is forwarded either (and no error, since nothing was asked for).
@@ -333,7 +316,6 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
                 self.assertEqual(code, 2, value)
                 self.assertIn('--taa-sentinel-stabiliser requires --taa', error)
             for args in (('--taa-sentinel-stabiliser', '0.7'), ('--taa-thin-region', '0.97', '--taa-thin-region-gate', 'screen', '--taa-sentinel-stabiliser', '0.7'),
-                         ('--taa-thin-region', '0.97', '--taa-line-filter', '1', '--taa-sentinel-stabiliser', '0.7'),
                          ('--taa-thin-region', '0.97', '--taa-sentinel-stabiliser', '1.5'), ('--taa-thin-region', '0.97', '--taa-sentinel-stabiliser', '0.7,-1'),
                          ('--taa-thin-region', '0.97', '--taa-sentinel-stabiliser', '0.7,1,2'), ('--taa-thin-region', '0.97', '--taa-sentinel-stabiliser', 'nan')):
                 code, _, error = self.launch(directory, *TAA, *args)
@@ -344,7 +326,7 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
         self.assertIn('taa_requested?GetEnvironmentVariableW(L"X3M_TAA_SENTINEL_STABILISER"', source)
         self.assertIn('sentinel_stabiliser=%.3f sentinel_emitter=%.3f', (ROOT / 'src/proxy/motion_output.cpp').read_text())
         # The native fallback mirrors the launcher: 0.7 (E at its initialiser 1) when the camera gate is
-        # in effect, resolved after that gate and after the thin region and the line filter it depends on.
+        # in effect, resolved after that gate and after the thin region it depends on.
         self.assertIn('else if(taa_requested&&taa_thin_camera_gate)taa_sentinel[0]=.7f;', source)
         stabiliser = source.index('GetEnvironmentVariableW(L"X3M_TAA_SENTINEL_STABILISER"')
         self.assertLess(source.index('GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION_GATE"'), stabiliser)
@@ -371,24 +353,23 @@ class TaaImageDefaultsDll(unittest.TestCase):
         self.assertIn('taa_mip_bias=taa_requested?-0.5f:0.f;', source)
         self.assertIn('taa_sharpen=taa_requested?0.75f:0.f;', source)
         # The env value is still parsed whole, so an explicit 0 disables either.
-        for name in ('X3M_TAA_MIP_BIAS', 'X3M_TAA_SHARPEN', 'X3M_TAA_CURRENT_FILTER', 'X3M_TAA_HISTORY_WEIGHT'):
+        for name in ('X3M_TAA_MIP_BIAS', 'X3M_TAA_SHARPEN', 'X3M_TAA_HISTORY_WEIGHT'):
             line = next(l for l in source.splitlines() if f'GetEnvironmentVariableW(L"{name}"' in l)
             self.assertIn("*end==L'\\0'", line)
 
     def test_thin_region_gate_native_fallback_defaults_to_camera(self):
         # Absent X3M_TAA_THIN_REGION_GATE mirrors the launcher: camera when the thin region is on,
-        # screen with the line filter, and untouched when the region is off or TAA is not requested.
+        # and untouched when the region is off or TAA is not requested.
         source = (ROOT / 'src/proxy/capture.cpp').read_text()
-        self.assertIn('else if(taa_requested&&taa_thin_region[0]>0.f&&taa_line_filter<=0.f)taa_thin_camera_gate=true;', source)
+        self.assertIn('else if(taa_requested&&taa_thin_region[0]>0.f)taa_thin_camera_gate=true;', source)
         # The default is resolved after both values are parsed, so it sees the final settings.
         gate = source.index('GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION_GATE"')
         self.assertLess(source.index('GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION"'), gate)
-        self.assertLess(source.index('GetEnvironmentVariableW(L"X3M_TAA_LINE_FILTER"'), gate)
         # An explicit value still decides, and the route's own fallbacks to the screen gate are unchanged:
         # the configure-time refusal and the box-allocation failure both leave the screen behaviour.
         self.assertIn('if(wcscmp(gate_setting,L"camera")==0)taa_thin_camera_gate=true;', source)
         self.assertIn('taa_thin_camera_gate_ = false;', (ROOT / 'src/proxy/motion_output.cpp').read_text())
-        self.assertIn('camera_requested&&(!camera_gate_available()||lined)', (ROOT / 'src/renderer/temporal_pass.cpp').read_text())
+        self.assertIn('camera_requested&&!camera_gate_available()', (ROOT / 'src/renderer/temporal_pass.cpp').read_text())
 
 
 if __name__ == '__main__':

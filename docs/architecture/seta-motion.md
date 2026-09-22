@@ -89,8 +89,9 @@ the thin soft clip): age_line 509 -> **511**, far_camera 508 -> 509, age_filter 
 of the guaranteed 512. A predicate on `farPlane && all(dilate == 0)` inside the tap loop
 cost 9 slots and overflowed age_filter by 3, a flag cleared inside the alpha-1 branch 5.
 The 512-slot class is created by `CreatePixelShader` like every embedded program
-(`temporal_pass.cpp`, `make(temporal_resolve_age_line_program(), &age_line_)`) and a refusal
-fails soft: the line filter with the age weight becomes unavailable, nothing crashes.
+(`temporal_pass.cpp`, `configure_flicker` / `configure_far`) and a refusal fails soft: the
+program's option becomes unavailable, nothing crashes (the age_filter / age_line variants named
+here were removed 2026-09-23, cleanup batch 6).
 No new variant: the term rides in `ResolveConstants::options[2]` (the mask and snapshot
 draws upload their own mode in that lane and the pass puts the term back),
 `x3::temporal::prepare(..., sentinel_strict_sky)`, `FrameInputs::sentinel_strict_sky`,

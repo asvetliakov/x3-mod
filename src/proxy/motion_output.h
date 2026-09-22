@@ -633,7 +633,7 @@ public:
     // band_px: X3M_TAA_SKY_HISTORY_BAND_PX (1..16, default 3), the band term's threshold in px/frame (seta-motion.md section 4).
     // exit_px: X3M_TAA_SKY_HISTORY_EXIT_PX (0 off, else 0.125..band_px; the caller's default 0.25 under strict since Run 68 A), the exit reset's parallax floor
     // (docs/architecture/seta-sky-hull-share-decay.md); needs strict (the caller refuses it otherwise) and an age program
-    // (the far stabiliser, the thin region or the adaptive weight: taa_initialize logs it unavailable and drops it otherwise).
+    // (the far stabiliser or the thin region: taa_initialize logs it unavailable and drops it otherwise).
     void configure_sky_history(bool strict, float band_px = 3.f, float exit_px = 0.f) noexcept {
         sky_history_strict_ = strict; sky_history_band_px_ = band_px >= 1.f && band_px <= 16.f ? band_px : 3.f;
         sky_history_exit_px_ = strict && x3::temporal::valid_sky_history_exit(exit_px, sky_history_band_px_) ? exit_px : 0.f;
@@ -917,19 +917,9 @@ public:
     void sun_occlusion_begin() noexcept;
     void sun_occlusion_end() noexcept;
     void prepare_lens(const MotionDrawCall& call, MotionRoute& route) noexcept;
-    // X3M_TAA_CURRENT_FILTER (A of the resolve's filtered current sample, 0
-    // off) and X3M_TAA_HISTORY_WEIGHT (c5.z, default 0.9); both validated by
-    // the caller and read at the pass's initialisation / every resolve.
-    void configure_taa_resolve(float current_filter, float history_weight) noexcept { taa_current_filter_ = current_filter; taa_history_weight_ = history_weight; }
-    // Flicker suppression (docs/architecture/taa-flicker-suppression.md), all
-    // off by default: X3M_TAA_THIN_CLIP (S, 0..1), X3M_TAA_ADAPTIVE_WEIGHT
-    // (WMAX[,LO,HI]; refused at the pass's initialisation without the thin
-    // clip, below the history weight, or on a device without two render
-    // targets of independent bit depths) and X3M_TAA_ALPHA_HISTORY (HDR route
-    // only). With all three off the pass never creates the variant programs.
-    // X3M_TAA_LINE_FILTER (A of the line-masked filtered current sample, 0 off;
-    // docs/architecture/taa-lattice-crawl.md section 9). Before attach, like the others.
-    void configure_taa_line_filter(float a, unsigned width) noexcept { taa_line_filter_ = a; taa_line_width_ = width == 2 ? 2u : 1u; }
+    // X3M_TAA_HISTORY_WEIGHT (c5.z, default 0.9); validated by the caller and
+    // read at every resolve.
+    void configure_taa_resolve(float history_weight) noexcept { taa_history_weight_ = history_weight; }
     // X3M_TAA_FAR_STABILISER=W[,A[,F0,F1[,LO,HI]]] (docs/architecture/taa-distant-line-fade.md
     // sections 9-10), off by default: far history weight W (0 off), far current
     // filter A (0 off), gate footprints F0 < F1 in world units per pixel, speed
@@ -953,9 +943,10 @@ public:
     // clipped; emitter bound E (0 none). Turned off at initialisation without
     // the camera gate or the separable box programs.
     void configure_taa_sentinel(float strength, float emitter) noexcept { taa_sentinel_strength_ = strength; taa_sentinel_emitter_ = emitter; }
-    void configure_taa_flicker(float thin_clip, float adaptive_weight, float adaptive_lo, float adaptive_hi, bool alpha_history) noexcept {
-        taa_thin_clip_ = thin_clip; taa_adaptive_weight_ = adaptive_weight; taa_adaptive_lo_ = adaptive_lo; taa_adaptive_hi_ = adaptive_hi; taa_alpha_history_ = alpha_history;
-    }
+    // X3M_TAA_ALPHA_HISTORY (docs/architecture/taa-flicker-suppression.md; HDR route only), off by default: with it
+    // off the pass never creates the variant program. (The thin clip and adaptive weight of the same note were
+    // removed 2026-09-23, cleanup batch 6.) Before attach, like the others.
+    void configure_taa_flicker(bool alpha_history) noexcept { taa_alpha_history_ = alpha_history; }
     // Volumetric sun fog (X3M_VOLUMETRIC_FOG=1; docs/architecture/volumetric-fog.md,
     // spatial family implementation): after sun apply, before resolve.
     // `strength` is density tuning S/.02; `anisotropy` is Henyey-Greenstein g;
@@ -2188,17 +2179,12 @@ private:
     float hdr_taa_k_ = 0.f;
     float taa_k_override_ = -1.f;             // X3M_TAA_K (negative: derived)
     float taa_sharpen_ = 0.f;                 // X3M_TAA_SHARPEN (0: off)
-    float taa_current_filter_ = 0.f;          // X3M_TAA_CURRENT_FILTER (0: off, the plain resolve program)
-    float taa_line_filter_ = 0.f;             // X3M_TAA_LINE_FILTER (0: off)
-    unsigned taa_line_width_ = 1;             // X3M_TAA_LINE_FILTER=A,W: mask width 1 or 2 px
     float taa_far_weight_ = 0.f, taa_far_filter_ = 0.f, taa_far_f0_ = 80.f, taa_far_f1_ = 130.f, taa_far_lo_ = .03f, taa_far_hi_ = .25f; // X3M_TAA_FAR_STABILISER
     float taa_thin_weight_ = 0.f, taa_thin_relax_ = 1.f; // X3M_TAA_THIN_REGION
     bool taa_thin_camera_gate_ = false; // X3M_TAA_THIN_REGION_GATE=camera
     float taa_thin_emissive_ = 0.f;     // X3M_TAA_THIN_REGION_EMISSIVE=E: emissive vote of the thin region (thin-glow-lines.md 8.3 R3)
     float taa_sentinel_strength_ = 0.f, taa_sentinel_emitter_ = 1.f; // X3M_TAA_SENTINEL_STABILISER=S[,E]
     bool taa_masks_logged_ = false;           // the one line for TemporalPass::line_masks_failed()
-    float taa_thin_clip_ = 0.f;               // X3M_TAA_THIN_CLIP (0: off)
-    float taa_adaptive_weight_ = 0.f, taa_adaptive_lo_ = .1f, taa_adaptive_hi_ = .5f; // X3M_TAA_ADAPTIVE_WEIGHT (0: off)
     bool taa_alpha_history_ = false;          // X3M_TAA_ALPHA_HISTORY (HDR route only)
     float taa_history_weight_ = .9f;          // X3M_TAA_HISTORY_WEIGHT
     // 8-bit route: failed sharpened draws (the pass kept the resolve, the
