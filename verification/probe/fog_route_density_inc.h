@@ -39,8 +39,60 @@ struct DensityRun {
             Sleep(1);
         }
     }
+    // The frame row the fragment logged for the owner's current frame (empty when it logged none).
+    static std::string row_of(const x3m::MotionOutput& m){
+        char needle[64];std::snprintf(needle,sizeof needle," frame=%llu applied=",(unsigned long long)m.frame_);
+        return std::strstr(x3m::last_frame_row,needle)?std::string(x3m::last_frame_row):std::string();
+    }
+    static bool has(const std::string& row,const char* field){return row.find(field)!=std::string::npos;}
+    // Ctrl+Shift+F11 (fog-shadow-pass.md, "A/B toggle and log row") through the production fragment: the toggle the
+    // fixture export x3m_fog_shadow_pass_fixture_toggle forwards to, called between frames, a launch with the pass on.
+    // The bridge publishes no shaft maps, so the grid variant draws no visibility quad (march=grid_unshadowed,
+    // fallback=no_cascade) and its image equals the in-march one by the no-cascade identity; the split-map identity and
+    // the call counts with a cascade are the FogPass fixture's (fog_density_pass_fixture.cpp).
+    void shadow_pass_ab(const std::vector<std::uint16_t>& vanilla,const std::vector<std::uint16_t>& in_march){
+        fog_spatial_state::Hooks hooks(d,api);fog_spatial_state::Scene scene(d,inputs,caps,std::vector<DWORD>(std::begin(card_program),std::end(card_program)));
+        Bridge b(d,hooks,scene,caps);b.record_aux();auto& m=b.motion;place(m);m.fog_density_requested_=true;m.fog_timing_=false;
+        m.fog_shadow_pass_launch_=true;m.fog_density_config_.shadow_pass=true; // configure_volumetric_fog_shadow_pass(true)
+        Fill grid_fill=fill(b,vanilla);const auto grid_image=grid_fill.last.image;IDirect3DTexture9* const grid=m.fog_->fixture_grid();
+        const std::string grid_row=row_of(m);
+        std::printf("SHADOW_AB grid_frames=%u grid=%u grid_row=%u\n",grid_fill.frames,unsigned(grid!=nullptr),unsigned(!grid_row.empty()));
+        require(grid&&m.fog_->grid_variant()&&grid_image==in_march&&grid_fill.last.quads==3,"shadow_ab_launch_on_builds_the_grid_no_cascade_identity");
+        // Toggle off at the frame boundary: the next latch hands shadow_pass=false over; the frame is the in-march one.
+        const unsigned allocations=m.fog_->allocations(),references=m.fog_->references();
+        const int off_state=m.volumetric_fog_shadow_pass_toggle();
+        require(off_state==0&&has(x3m::last_toggle_row,"enabled=0 refused=none key=ctrl_shift_f11"),"shadow_ab_toggle_off_logs_one_row");
+        const unsigned rows_before=x3m::frame_rows,density_logs=m.fog_density_logs_,change_logs=m.fog_grid_change_logs_;const bool off_periodic=(m.frame_+1)%600u==0u;
+        Frame off=frame(b);const std::string off_row=row_of(m);
+        std::printf("SHADOW_AB off_row=%s\n",off_row.empty()?"none":off_row.c_str());
+        require(off.applied&&off.image==in_march&&off.quads==3&&!m.fog_->grid_variant(),"shadow_ab_toggled_off_frame_is_the_in_march_frame");
+        require(x3m::frame_rows==rows_before+1&&has(off_row," grid_pass=0 ")&&has(off_row," march=in_march fallback=toggled_off "),"shadow_ab_toggled_off_row_fields");
+        // The change-driven row has its own session counter (cap 16); the density lines' 64-line budget is untouched.
+        require(m.fog_grid_change_logs_==change_logs+unsigned(!off_periodic)&&m.fog_density_logs_==density_logs,"shadow_ab_change_row_own_budget");
+        require(m.fog_->fixture_grid()==grid&&m.fog_->allocations()==allocations&&m.fog_->references()==references,"shadow_ab_toggled_off_keeps_the_grid");
+        // Alternating the variant every frame: one toggle row per press, the change-driven frame row throttled (<= 1 per 60 frames).
+        unsigned periodic=0;const unsigned rows_alternating=x3m::frame_rows,toggles_before=x3m::toggle_rows,change_logs_alternating=m.fog_grid_change_logs_;
+        for(unsigned i=0;i<20;++i){m.volumetric_fog_shadow_pass_toggle();Frame f=frame(b);periodic+=unsigned(m.frame_%600u==0u);require(f.applied&&f.image==in_march,"shadow_ab_alternating_frames_applied");}
+        std::printf("SHADOW_AB alternating_frames=20 frame_rows=%u periodic=%u toggle_rows=%u\n",x3m::frame_rows-rows_alternating,periodic,x3m::toggle_rows-toggles_before);
+        require(x3m::frame_rows-rows_alternating==periodic&&m.fog_grid_change_logs_==change_logs_alternating&&x3m::toggle_rows-toggles_before==20u&&!m.fog_->grid_variant(),"shadow_ab_change_rows_throttled");
+        require(m.fog_->fixture_grid()==grid&&m.fog_->allocations()==allocations,"shadow_ab_alternating_creates_nothing");
+        // Reset while off: the grid target goes with the other targets and is not re-created while off.
+        m.fog_->before_reset();m.fog_sector_={};m.fog_cards_={};m.fog_attach_failed_=false;m.fog_density_prepared_=false;++m.generation_;m.fog_->after_reset(S_OK);
+        Fill reset_off=fill(b,vanilla);
+        require(!m.fog_->fixture_grid()&&reset_off.native_exact&&reset_off.no_fault&&reset_off.last.image==in_march,"shadow_ab_reset_while_off_keeps_no_grid");
+        // Toggle on: the first latch re-creates the grid once; the next frame creates nothing; images equal the pre-toggle grid frame.
+        const unsigned before_on=m.fog_->allocations();
+        require(m.volumetric_fog_shadow_pass_toggle()==1&&has(x3m::last_toggle_row,"enabled=1 refused=none"),"shadow_ab_toggle_on_logs_one_row");
+        Frame on1=frame(b);const std::string on_row=row_of(m);IDirect3DTexture9* const regrown=m.fog_->fixture_grid();const unsigned after_first=m.fog_->allocations();
+        Frame on2=frame(b);
+        std::printf("SHADOW_AB on_allocations=%u,%u on_row=%s\n",after_first-before_on,m.fog_->allocations()-after_first,on_row.empty()?"none":on_row.c_str());
+        require(regrown&&after_first==before_on+1&&m.fog_->fixture_grid()==regrown&&m.fog_->allocations()==after_first,"shadow_ab_toggle_on_recreates_the_grid_once");
+        require(m.fog_->grid_variant()&&m.fog_->density_ready(scene.input.w,scene.input.h),"shadow_ab_toggle_on_grid_ready_no_null_target");
+        require(on1.applied&&on2.applied&&on1.image==grid_image&&on2.image==grid_image,"shadow_ab_toggle_on_matches_the_pre_toggle_grid_frame");
+        require(has(on_row," grid_pass=1 ")&&has(on_row," march=grid_unshadowed fallback=no_cascade "),"shadow_ab_toggle_on_row_fields");
+    }
     void run(){
-        std::vector<std::uint16_t> legacy_image,legacy_warm,vanilla;
+        std::vector<std::uint16_t> legacy_image,legacy_warm,vanilla,stored_reference;
         {   // Legacy reference at the same camera: the option off must never reach the density path.
             fog_spatial_state::Hooks hooks(d,api);fog_spatial_state::Scene scene(d,inputs,caps,std::vector<DWORD>(std::begin(card_program),std::end(card_program)));
             Bridge b(d,hooks,scene,caps);b.record_aux();place(b.motion);
@@ -72,6 +124,7 @@ struct DensityRun {
             require(stored_a!=legacy_image&&stored_a!=inputs.scene&&stored_a!=vanilla,"stored_renders_through_route");
             require(m.fog_->fixture_density_cache()&&m.fog_->density_status().available&&m.fog_->density_ready(scene.input.w,scene.input.h),"stored_dynamic_cache_live");
             Frame steady=frame(b);require(steady.image==stored_a&&steady.suppressed&&steady.applied,"stored_steady_frame_bit_identical");
+            stored_reference=stored_a; // the launch-off (in-march) frame at pose A for the shadow-pass A/B below
             std::printf("IMAGE stored_sector_a %016llx\n",fnv(stored_a));
             // Sector change: re-key, zero readiness in the same frame, native cards while it refills.
             const auto nodes_a=steady.nodes;
@@ -158,5 +211,6 @@ struct DensityRun {
             std::printf("DENSITY_ABANDON ms=%.2f\n",took);
             require(gone&&took<200.&&device_refs(d)==refs,"abandon_then_pass_destructor_is_prompt_and_balanced");
         }
+        shadow_pass_ab(vanilla,stored_reference);
     }
 };

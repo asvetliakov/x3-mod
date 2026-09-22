@@ -968,7 +968,11 @@ public:
         fog_density_config_.look = tuning;
     }
     // X3M_FOG_SHADOW_PASS=1 (fog-shadow-pass.md): the sun-visibility grid pass of the stored range, read once at init.
-    void configure_volumetric_fog_shadow_pass(bool on) noexcept { fog_density_config_.shadow_pass = on; }
+    void configure_volumetric_fog_shadow_pass(bool on) noexcept { fog_shadow_pass_launch_ = on; fog_density_config_.shadow_pass = on; }
+    // Ctrl+Shift+F11 (comparison-hotkeys.md; launched with the pass only): flips the grid variant the next owner latch
+    // hands to FogPass::prepare_density, so every frame draws one variant and off is the launch-off in-march path (the
+    // grid target stays allocated). One fog_shadow_pass_toggle line per press; returns the new state, -1 without the pass.
+    int volumetric_fog_shadow_pass_toggle() noexcept;
     // DllMain DLL_PROCESS_DETACH only (FogPass::abandon_density_worker): no join, no lock, no log.
     void abandon_volumetric_fog_worker() noexcept { if (fog_) fog_->abandon_density_worker(); }
     // Ctrl+Alt+F9 toggles the pass, Ctrl+Alt+F10 steps the strength through
@@ -2212,6 +2216,12 @@ private:
     // Stored-density range. The camera is the previous scene end's (read after the owner latch).
     bool fog_density_requested_ = false, fog_density_refused_ = false, fog_density_prepared_ = false, fog_density_camera_valid_ = false;
     bool fog_density_config_logged_ = false, fog_density_ready_logged_[2]{}, fog_shadow_pass_refused_logged_ = false;
+    bool fog_shadow_pass_launch_ = false; // X3M_FOG_SHADOW_PASS=1 at launch: arms the F11 toggle and the grid fields of volumetric_fog_frame
+    const char* fog_grid_last_march_ = "none"; // the march variant the last frame row printed (a change forces a throttled row)
+    std::uint64_t fog_grid_logged_frame_ = 0; // the last change-driven frame row
+    static constexpr std::uint64_t fog_grid_change_frames = 60; // at most one change-driven row per 60 frames (the card row's spacing)
+    static constexpr unsigned fog_grid_change_cap = 16; // change-driven rows per session; the toggle row is not budgeted
+    unsigned fog_grid_change_logs_ = 0;
     unsigned fog_density_logs_ = 0;
     std::uint64_t fog_density_sample_frame_ = ~std::uint64_t(0), fog_density_key_ = 0;
     long long fog_density_epoch_qpc_ = 0, fog_density_sample_qpc_ = 0;

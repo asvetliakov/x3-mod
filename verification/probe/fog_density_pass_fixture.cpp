@@ -529,6 +529,25 @@ void run(const std::string& cases_file){
         for(std::size_t i=0;i<split.size();i+=4){t_same=t_same&&split[i+3]==off[i+3];if(!(split[i+3]<1.f))continue;++fogged;for(int c=0;c<3;++c)worst=std::max(worst,std::fabs(double(split[i+c])-off[i+c]));differs+=split[i+1]!=off[i+1];}
         std::printf("GRID extra_device_calls=%d fogged_pixels=%u in_scatter_differs=%u worst_S_vs_in_march=%.6f\n",int(r_split.device_calls)-int(r_none.device_calls),fogged,differs,worst);
         require(t_same&&fogged>0&&differs>0,"grid_transmittance_identical_in_scatter_moves");
+        // The A/B toggle (fog-shadow-pass.md, "A/B toggle and log row"): the per-frame report of the split frame, then
+        // prepare_density with shadow_pass off (what Ctrl+Shift+F11 hands over) draws the in-march programs' split frame
+        // byte-identically with the grid kept allocated and nothing created; back on, the grid frame returns unchanged.
+        // One cascade: the gross count is visibility 16 + march 3 + repair 1 = 20, the net 16 - 1 (the march's own
+        // constant upload) + (3 - 3) + (1 - 1) = 15 (with two or more cascades the in-march repair binds two: 14).
+        {
+            const FogGridReport g=pass.grid_report();
+            std::printf("GRID_REPORT frame_current=%u drawn=%u bind=%08lx unshadowed=%s cascades=%u kernel=%.4g,%.4g,%.4g far_width=%.1f frame_term=%.4f calls=%u net_calls=%d\n",
+                        unsigned(g.frame==hx.frame),unsigned(g.drawn),(unsigned long)g.bind,g.unshadowed,g.cascades,g.kernel[0],g.kernel[1],g.kernel[2],g.far_width,g.frame_term,g.calls,g.net_calls);
+            require(g.frame==hx.frame&&g.drawn&&g.bind==S_OK&&std::string(g.unshadowed)=="none"&&g.cascades==1u&&g.kernel[0]>0&&g.far_width>0&&g.calls==20u&&g.net_calls==15,"grid_report_counts_the_pass_calls");
+            const unsigned toggle_references=pass.references(),toggle_allocations=pass.allocations();IDirect3DTexture9* const kept_grid=pass.fixture_grid();
+            hx.config.shadow_pass=false;FogResult r_off;const auto toggled_off=shade(split_texture.p,1e-5f,r_off);
+            std::printf("GRID_TOGGLE off_calls=%u on_calls=%u difference=%d\n",r_off.device_calls,r_split.device_calls,int(r_split.device_calls)-int(r_off.device_calls));
+            require(toggled_off==off_split&&!r_off.grid&&!pass.grid_variant()&&pass.grid_report().frame!=hx.frame,"grid_toggled_off_draws_the_in_march_split_frame_byte_identical");
+            require(pass.fixture_grid()==kept_grid&&kept_grid&&pass.references()==toggle_references&&pass.allocations()==toggle_allocations,"grid_toggled_off_keeps_the_grid_and_creates_nothing");
+            require(int(r_split.device_calls)-int(r_off.device_calls)==g.net_calls,"grid_report_net_calls_match_the_toggled_off_frame");
+            hx.config.shadow_pass=true;FogResult r_on;const auto toggled_on=shade(split_texture.p,1e-5f,r_on);
+            require(toggled_on==split_bytes&&r_on.grid&&r_on.device_calls==r_split.device_calls&&pass.fixture_grid()==kept_grid&&pass.allocations()==toggle_allocations,"grid_toggled_back_on_byte_identical");
+        }
         const unsigned references=pass.references(),allocations=pass.allocations();
         FogResult again;const auto repeat=shade(split_texture.p,1e-5f,again);
         require(repeat==split_bytes&&pass.references()==references&&pass.allocations()==allocations,"grid_frames_byte_identical_create_and_allocate_nothing");

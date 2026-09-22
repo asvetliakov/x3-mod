@@ -53,6 +53,22 @@ struct FogCascadeInput {
     float texel_world=0,depth_range=0;
 };
 constexpr unsigned fog_cascade_max=3;
+// The visibility grid's per-frame report (docs/architecture/fog-shadow-pass.md, "A/B toggle and log row"). execute
+// writes it only on a density frame that takes the grid variant (FogDensityConfig::shadow_pass after prepare_density),
+// so the pass-off path does no extra work; `frame` is the FogFrame::frame it describes (stale otherwise).
+struct FogGridReport {
+    std::uint64_t frame=~std::uint64_t(0);
+    bool drawn=false;                 // the visibility quad was drawn (FogResult::grid)
+    HRESULT bind=S_FALSE;             // the visibility stage's bind_target; S_FALSE: not attempted
+    const char* unshadowed="none";    // why the grid march read no grid: no_cascade, grid_column_cap, failed
+    unsigned cascades=0;              // bit i: cascade i admitted and read by the pass
+    float kernel[fog_cascade_max]{};  // range_world / texel_world per cascade (c36..c38 .z); 0: the fixed minimum kernel
+    float far_width=0,frame_term=0;   // c39.y (slice width past the near range, world units) and c41.w (strata/rotation)
+    unsigned calls=0;                 // device calls issued for the grid: visibility stage, march s4 filter and bind, repair bind
+    // Against the in-march path of the same frame (derived, exact on a completed frame): calls minus the march constant
+    // upload, the three march map binds and the repair map binds (min(admitted, 2)) that the grid variant replaces.
+    int net_calls=0;
+};
 struct FogParams {
     // Already corrected exactly once for raster jitter and quad pixel centres.
     float m00=0,m11=0,m20=0,m21=0,m22=0,m32=0;
@@ -129,6 +145,9 @@ public:
     // decoded field or for a profile the table does not know.
     bool field_family(float chroma[3],float* sigma) const noexcept;
     const FogDensityStatus& density_status() const noexcept { return density_status_; }
+    const FogGridReport& grid_report() const noexcept { return grid_report_; }
+    bool grid_refused() const noexcept { return grid_refused_; } // sticky until detach; the in-march programs draw
+    bool grid_variant() const noexcept { return density_config_.shadow_pass; } // the variant the last prepare_density latched
     // Caller contract for the worker's lifetime:
     //  - MotionOutput::release_resources (the device release path, never under the loader lock)
     //    calls detach(), which joins the worker and releases every density resource. If the join
@@ -209,6 +228,7 @@ private:
     IDirect3DPixelShader9 *density_visibility_=nullptr,*density_march_grid_=nullptr,*density_repair_grid_=nullptr;
     IDirect3DTexture9* grid_=nullptr; IDirect3DSurface9* grid_surface_=nullptr; UINT grid_width_=0,grid_height_=0;
     FogDensityConfig density_config_{}; FogDensityStatus density_status_{};
+    FogGridReport grid_report_{};
     unsigned ps30_slots_=0; bool density_refused_=false,grid_refused_=false;
 };
 } // namespace x3m::renderer

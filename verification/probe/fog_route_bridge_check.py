@@ -34,6 +34,12 @@ DENSITY_REQUIRED={
  'camera_jump_is_native_same_frame','camera_jump_refills',
  'device_release_with_live_worker_joins_and_balances','stored_route_leaves_device_refcount',
  'abandon_witness_has_live_worker','abandon_then_pass_destructor_is_prompt_and_balanced',
+ # The fog shadow-pass A/B (Ctrl+Shift+F11; fog-shadow-pass.md, "A/B toggle and log row") through the same fragment.
+ 'shadow_ab_launch_on_builds_the_grid_no_cascade_identity','shadow_ab_toggle_off_logs_one_row','shadow_ab_toggled_off_frame_is_the_in_march_frame',
+ 'shadow_ab_toggled_off_row_fields','shadow_ab_change_row_own_budget','shadow_ab_toggled_off_keeps_the_grid','shadow_ab_alternating_frames_applied','shadow_ab_change_rows_throttled',
+ 'shadow_ab_alternating_creates_nothing','shadow_ab_reset_while_off_keeps_no_grid','shadow_ab_toggle_on_logs_one_row',
+ 'shadow_ab_toggle_on_recreates_the_grid_once','shadow_ab_toggle_on_grid_ready_no_null_target','shadow_ab_toggle_on_matches_the_pre_toggle_grid_frame',
+ 'shadow_ab_toggle_on_row_fields',
 }
 LEGACY_IMAGES=('legacy_warm','legacy_replaced','legacy_captured_cameras_33','legacy_new_family_warm','legacy_after_reset')
 DENSITY_SCOPE='DENSITY_SCOPE range=stored worker=real_thread cache=dynamic owner=synthetic native_reset=pass_edges_only process_exit=separate_exit_fixture'

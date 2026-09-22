@@ -1243,6 +1243,10 @@ void comparison_begin_frame(Device& ctx) noexcept {
     // without it never queries the key; no notice and no report, one
     // sun_shadow_toggle line per accepted press.
     keys.sun_shadow=sun_shadow_apply_requested && (GetAsyncKeyState(VK_F12)&0x8000)!=0;
+    // Ctrl+Shift+F11: the fog shadow-pass A/B (comparison-hotkeys.md, "Fog
+    // shadow pass"). Polled only when the pass was enabled at launch; one
+    // fog_shadow_pass_toggle line per accepted press, no notice.
+    keys.fog_shadow_pass=volumetric_fog_shadow_pass && (GetAsyncKeyState(VK_F11)&0x8000)!=0;
     // Ctrl+Alt+F9 / F10 with Shift up: the volumetric fog on/off and its strength ladder, polled only with
     // --volumetric-fog (raw F9/F10 latches of their own; Ctrl+Shift+F9/F10 stay exposure and bloom).
     keys.fog_toggle=volumetric_fog_requested && (GetAsyncKeyState(VK_F9)&0x8000)!=0;
@@ -1255,6 +1259,7 @@ void comparison_begin_frame(Device& ctx) noexcept {
     keys.fps_overlay=fps_overlay_requested && (GetAsyncKeyState(VK_F7)&0x8000)!=0;
     const auto action=ctx.comparison.sample(keys);
     if(action.sun_shadow)ctx.motion_output.sun_shadow_toggle();
+    if(action.fog_shadow_pass)ctx.motion_output.volumetric_fog_shadow_pass_toggle();
     if(action.fog_toggle)ctx.motion_output.volumetric_fog_toggle();
     if(action.fog_step)ctx.motion_output.volumetric_fog_step();
     ctx.motion_output.volumetric_fog_begin_frame();
@@ -3522,6 +3527,14 @@ extern "C" __declspec(dllexport) int x3m_sun_shadow_fixture_toggle(IDirect3DDevi
     x3m::CaptureLock lock;
     const auto it=x3m::devices.find(device);
     return it==x3m::devices.end()?-1:it->second->motion_output.sun_shadow_toggle();
+}
+// The fog shadow-pass A/B (comparison-hotkeys.md, "Fog shadow pass"): the
+// Ctrl+Shift+F11 action without the key, at the same frame boundary. Returns
+// the new state (1 on / 0 off), -1 without the pass or for an unknown device.
+extern "C" __declspec(dllexport) int x3m_fog_shadow_pass_fixture_toggle(IDirect3DDevice9* device) {
+    x3m::CaptureLock lock;
+    const auto it=x3m::devices.find(device);
+    return it==x3m::devices.end()?-1:it->second->motion_output.volumetric_fog_shadow_pass_toggle();
 }
 // Own-ship-adaptive cascade 0 seam (shadow-cascade-extents.md, section 5):
 // the fixture executable's synthetic own-ship root node stands in for the

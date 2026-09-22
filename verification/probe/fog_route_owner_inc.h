@@ -12,7 +12,11 @@
 namespace x3 { namespace temporal { enum class AgxDecode {none,gamma22}; } }
 namespace x3m {
 namespace sun_light_poll { enum class Status {Ok};struct Sample {Status status=Status::Ok;std::int32_t colour[3]{256,256,256};};inline const char* status_name(Status){return "synthetic";} }
-inline void log(const char* format,...){va_list args;va_start(args,format);std::vprintf(format,args);std::puts("");va_end(args);}
+// The fog shadow-pass A/B witness reads back the last frame row and toggle row the production fragment logged.
+inline char last_frame_row[2048]{},last_toggle_row[512]{};inline unsigned frame_rows=0,toggle_rows=0;
+inline void log(const char* format,...){char line[2048];va_list args;va_start(args,format);std::vsnprintf(line,sizeof line,format,args);va_end(args);std::puts(line);
+    if(!std::strncmp(line,"volumetric_fog_frame ",21)){++frame_rows;std::snprintf(last_frame_row,sizeof last_frame_row,"%s",line);}
+    else if(!std::strncmp(line,"fog_shadow_pass_toggle ",23)){++toggle_rows;std::snprintf(last_toggle_row,sizeof last_toggle_row,"%s",line);}}
 template<class T>void release(T*& value){if(value)value->Release();value=nullptr;}
 constexpr unsigned GetDisplayMode=8,GetRenderTarget=38,SetRenderState=57,GetStreamSourceFreq=103;
 using GetDisplayModeFn=HRESULT(WINAPI*)(IDirect3DDevice9*,UINT,D3DDISPLAYMODE*);
@@ -63,7 +67,12 @@ struct MotionOutput {
 #ifndef X3M_ROUTE_BRIDGE_BASELINE
     // Stored-density range: the production members, verbatim defaults.
     bool fog_density_requested_=false,fog_density_refused_=false,fog_density_prepared_=false,fog_density_camera_valid_=false;
-    bool fog_density_config_logged_=false,fog_density_ready_logged_[2]{};
+    bool fog_density_config_logged_=false,fog_density_ready_logged_[2]{},fog_shadow_pass_refused_logged_=false;
+    // The grid pass A/B (fog-shadow-pass.md): the production members, verbatim defaults; set both as
+    // configure_volumetric_fog_shadow_pass(true) does to launch with the pass.
+    bool fog_shadow_pass_launch_=false;const char* fog_grid_last_march_="none";std::uint64_t fog_grid_logged_frame_=0;
+    static constexpr std::uint64_t fog_grid_change_frames=60;static constexpr unsigned fog_grid_change_cap=16;unsigned fog_grid_change_logs_=0;
+    int volumetric_fog_shadow_pass_toggle()noexcept;
     unsigned fog_density_logs_=0;
     std::uint64_t fog_density_sample_frame_=~std::uint64_t(0),fog_density_key_=0;
     long long fog_density_epoch_qpc_=0,fog_density_sample_qpc_=0;double fog_density_camera_[3]{};

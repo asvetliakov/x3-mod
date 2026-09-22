@@ -521,12 +521,21 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
         shadow_maps[i]=k.map;++r.cascades_bound;
         grid_cascades[i].texel_world=k.texel_world;grid_cascades[i].range_world=k.depth_range; // fog_grid_constants validates them
     }
+    unsigned grid_replaced_repair=0; // the grid report: map binds the in-march repair would issue (min(admitted, 2))
     if(grid){
+        grid_report_=FogGridReport{};grid_report_.frame=f.frame;
+        for(unsigned i=0;i<fog_cascade_max;++i)if(shadow_maps[i])grid_report_.cascades|=1u<<i;
+        grid_replaced_repair=std::min(r.cascades_bound,fog_look_cascades);
         // The pass reads every admitted cascade, finest first, with the cross-fade: no remap to the two coarsest. A column
         // cap the slice law cannot divide (not finite or below 12040) drops every cascade for the frame: lit fog, no grid read.
         if(!fog_grid_constants(density_config_.look,constants[fog_look_first_register][3],width_,height_,grid_cascades,f.look_phase,f.look_resolved,constants+fog_grid_first_register)){
             for(unsigned i=0;i<fog_cascade_max;++i){shadow_maps[i]=nullptr;std::memset(constants[10+4*i],0,sizeof(float)*16);}
             r.cascades_bound=0;density_status_.shadow_pass_refused="grid_column_cap";
+            grid_report_.cascades=0;grid_report_.unshadowed="grid_column_cap";
+        } else {
+            for(unsigned i=0;i<fog_cascade_max;++i)grid_report_.kernel[i]=constants[fog_grid_first_register+i][2];
+            grid_report_.far_width=constants[fog_grid_first_register+3][1];grid_report_.frame_term=constants[fog_grid_first_register+5][3];
+            if(!r.cascades_bound)grid_report_.unshadowed="no_cascade";
         }
     } else if(density&&r.cascades_bound){
         // The look program reads two cascades: the two coarsest admitted maps move to slots 0 and 1.
@@ -581,11 +590,20 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
     // (a failure fails the transaction like a failed march). No cascade: skipped, and shadow_select.x = 0 keeps the
     // march from reading the grid at all (today's lit path). Constants are device state: uploaded once here.
     const bool draw_grid=grid&&r.cascades_bound>0;bool constants_set=false;
-    if(draw_grid&&may_draw&&SUCCEEDED(r.operation))record(FogStage::Visibility,bind_target(grid_surface_,grid_width_,grid_height_,density_visibility_,samplers));
+    unsigned grid_calls_start=0;if(grid)grid_calls_start=calls_;
+    if(draw_grid&&may_draw&&SUCCEEDED(r.operation)){
+        const HRESULT bind=bind_target(grid_surface_,grid_width_,grid_height_,density_visibility_,samplers);
+        grid_report_.bind=bind;record(FogStage::Visibility,bind);
+    }
     if(draw_grid&&may_draw&&SUCCEEDED(r.operation)){constants_set=record(FogStage::Visibility,call<SetPsConstantsFn>(SetPixelShaderConstantF)(device_,0,&constants[0][0],fog_constant_rows));}
     for(unsigned i=0;i<fog_cascade_max&&draw_grid&&may_draw&&SUCCEEDED(r.operation);++i)
         record(FogStage::Visibility,call<SetTextureFn>(SetTexture)(device_,4+i,shadow_maps[i]));
     if(draw_grid&&may_draw&&SUCCEEDED(r.operation))r.grid=record(FogStage::Visibility,quad(grid_width_,grid_height_));
+    if(grid){
+        // The in-march march uploads its own constants; the grid frame's single upload above replaces it.
+        grid_report_.drawn=r.grid;grid_report_.calls=calls_-grid_calls_start;grid_report_.net_calls=int(grid_report_.calls)-int(constants_set);
+        if(draw_grid&&!r.grid)grid_report_.unshadowed="failed";
+    }
     if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,bind_target(lit_surface_,half_width_,half_height_,density?(grid?density_march_grid_:density_march_):march_,samplers));
     if(may_draw&&SUCCEEDED(r.operation)&&!constants_set)record(FogStage::March,call<SetPsConstantsFn>(SetPixelShaderConstantF)(device_,0,&constants[0][0],density?fog_constant_rows:22u));
     if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetTextureFn>(SetTexture)(device_,0,f.depth_share));
@@ -593,9 +611,12 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
     if(density&&may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetTextureFn>(SetTexture)(device_,7,density_atlas_[1]));
     if(grid){
         // The grid at s4, LINEAR (normalize left s4 POINT for the pass's map); the block bracket restores the sampler.
+        // The in-march march binds s4..s6 here (three calls) whenever it gets this far.
+        const unsigned march_start=calls_;const bool reached=may_draw&&SUCCEEDED(r.operation);
         if(draw_grid&&may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetSamplerFn>(SetSamplerState)(device_,4,D3DSAMP_MINFILTER,D3DTEXF_LINEAR));
         if(draw_grid&&may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetSamplerFn>(SetSamplerState)(device_,4,D3DSAMP_MAGFILTER,D3DTEXF_LINEAR));
         if(draw_grid&&may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetTextureFn>(SetTexture)(device_,4,grid_));
+        grid_report_.calls+=calls_-march_start;grid_report_.net_calls+=int(calls_-march_start)-(reached?3:0);
     } else for(unsigned i=0;i<fog_cascade_max&&may_draw&&SUCCEEDED(r.operation);++i)
         record(FogStage::March,call<SetTextureFn>(SetTexture)(device_,4+i,shadow_maps[i]));
     if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,quad(half_width_,half_height_));
@@ -609,7 +630,9 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
         float repair_c0[4];density_repair_projection(p,repair_c0);
         if(SUCCEEDED(r.operation))record(FogStage::Repair,call<SetPsConstantsFn>(SetPixelShaderConstantF)(device_,0,repair_c0,1));
         IDirect3DTexture9* repair_inputs[]={f.depth_share,density_atlas_[0],scratch_,nullptr,grid?(draw_grid?grid_:nullptr):shadow_maps[0],grid?nullptr:shadow_maps[1],grid?nullptr:shadow_maps[2],density_atlas_[1]};
-        for(UINT i=0;i<8&&SUCCEEDED(r.operation);++i)if(repair_inputs[i])record(FogStage::Repair,call<SetTextureFn>(SetTexture)(device_,i,repair_inputs[i]));
+        UINT slot=0; // the slots bound (or tried) before a failure stopped the loop
+        for(;slot<8&&SUCCEEDED(r.operation);++slot)if(repair_inputs[slot])record(FogStage::Repair,call<SetTextureFn>(SetTexture)(device_,slot,repair_inputs[slot]));
+        if(grid&&slot>4){const unsigned bound=draw_grid?1u:0u;grid_report_.calls+=bound;grid_report_.net_calls+=int(bound)-int(grid_replaced_repair);}
         if(SUCCEEDED(r.operation))r.applied=record(FogStage::Repair,quad(width_,height_));
     }
     if(!density&&may_draw&&SUCCEEDED(r.operation))record(FogStage::Composite,bind_target(f.target,width_,height_,composite_));

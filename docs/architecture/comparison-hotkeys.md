@@ -23,8 +23,9 @@ falls back to fixed.
 
 Hold **Ctrl+Shift**, then press **F9** for AUTO ↔ fixed EV 0 or **F10** for bloom
 ON ↔ OFF (**F12** switches the sun shadows off and on with `--sun-shadow-apply`,
-"Sun shadows at rest" below; Ctrl+Shift+F11, the former ambient-occlusion toggle, was
-removed with the GTAO/SSAO chain on 2026-09-22 and F11 now has no action). Three more keys switch one emitter gain between its configured
+"Sun shadows at rest" below; **F11** switches the fog's sun-visibility grid pass off and on
+with `--fog-shadow-pass on`, "Fog shadow pass" below; it was the ambient-occlusion toggle until
+that chain was removed on 2026-09-22). Three more keys switch one emitter gain between its configured
 gain and native, without recreating anything: **F4** the hull light-map gain
 alone (`--hull-lightmap-gain G`, the self-illumination term of the 100 opaque
 hull programs, `linear-emission-cost.md` "Hull light-map gain"), **F5** the
@@ -210,8 +211,24 @@ key is polled. In-game behavior is unverified.
 The stored fog's look-preset cycle (**Ctrl+Alt+F11**) and the overlay's `L0..L3`
 readout were retired on 2026-09-22 with the presets themselves: the stored range
 has one look (`fog-density-runtime-integration.md`, "The look"), F11 under
-Ctrl+Alt produces no fog action (Ctrl+Shift+F11 went with ambient occlusion
-the same day). The overlay's fog part reads `FOG 1.50x`.
+Ctrl+Alt produces no fog action. The overlay's fog part reads `FOG 1.50x`.
+
+## Fog shadow pass
+
+**Ctrl+Shift+F11** switches the stored fog's sun-visibility grid pass
+(`fog-shadow-pass.md`, "A/B toggle and log row") off and on while the pass was
+enabled at launch (`--fog-shadow-pass on`, `X3M_FOG_SHADOW_PASS=1`); otherwise
+the key is not polled. The Ctrl+Shift chord, edge and focus rules are the
+sampler's, on F11's own latch. The press flips the proxy's copy of the variant;
+the fog pass latches it at the next owner latch (`prepare_density`), so every
+frame draws one variant. Off is the launch-off path: the in-march programs and
+their shadow lookup, no grid pass; the grid target and programs stay allocated
+(a Reset while off releases the target with the other targets, and the next
+latch after switching back on re-creates it). One
+`fog_shadow_pass_toggle device= frame= enabled=0|1 refused=<reason|none>
+key=ctrl_shift_f11` line per press; no notice, no overlay text. The fixture
+export `x3m_fog_shadow_pass_fixture_toggle` stands in for the press in the
+motion-output fixture build. In-game and native Windows behavior are unverified.
 
 ## Exposure handoff and capability preparation
 

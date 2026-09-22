@@ -145,17 +145,34 @@ int main(){
     g.control=true;g.fog_toggle=false;fog.sample(g);g.foreground=false;g.fog_toggle=true;CHECK(!fog.sample(g).fog_toggle);
     g.foreground=true;CHECK(!fog.sample(g).fog_toggle); // held through alt-tab
     g.fog_toggle=false;fog.sample(g);g.fog_toggle=true;CHECK(fog.sample(g).fog_toggle);
-    // The stored fog look cycle (Ctrl+Alt+F11) was retired with the presets and Ctrl+Shift+F11 with ambient
-    // occlusion (both 2026-09-22): F11 has no key in the sampler.
+    // F11 (the fog shadow-pass A/B, --fog-shadow-pass on only): the Ctrl+Shift chord, edge and focus rules on
+    // its own latch, independent of F12 and of the Ctrl+Alt fog chords. (The retired Ctrl+Alt+F11 look cycle
+    // stays retired: Ctrl+Alt+F11 is no press.)
+    x3m::ComparisonControls grid;
+    x3m::ComparisonKeys q{};q.foreground=true;q.control=q.shift=true;grid.sample(q);
+    q.fog_shadow_pass=true;{const auto a=grid.sample(q);CHECK(a.fog_shadow_pass&&!a.sun_shadow&&!a.fog_toggle&&!a.exposure&&!a.bloom&&!a.fps_overlay);}
+    for(unsigned i=0;i<1000;++i)CHECK(!grid.sample(q).fog_shadow_pass); // held is not a second press
+    q.fog_shadow_pass=false;grid.sample(q);q.sun_shadow=true;{const auto a=grid.sample(q);CHECK(a.sun_shadow&&!a.fog_shadow_pass);} // F12 does not fire F11
+    q.sun_shadow=false;grid.sample(q);q.fog_shadow_pass=true;CHECK(grid.sample(q).fog_shadow_pass);
+    q.foreground=false;CHECK(!grid.sample(q).fog_shadow_pass);
+    q.foreground=true;CHECK(!grid.sample(q).fog_shadow_pass); // held through alt-tab
+    q.fog_shadow_pass=false;grid.sample(q);q.shift=false;q.alt=true;grid.sample(q);q.fog_shadow_pass=true;
+    CHECK(!grid.sample(q).fog_shadow_pass); // Ctrl+Alt+F11: no press
+    q.fog_shadow_pass=false;q.alt=false;grid.sample(q);q.shift=true;q.fog_shadow_pass=true;
+    CHECK(!grid.sample(q).fog_shadow_pass); // the chord must be armed in the previous sample
+    q.fog_shadow_pass=false;grid.sample(q);q.fog_shadow_pass=true;CHECK(grid.sample(q).fog_shadow_pass);
+    grid.reset_focus();CHECK(!grid.sample(q).fog_shadow_pass);
+    {x3m::ComparisonControls first;x3m::ComparisonKeys h{};h.foreground=true;h.control=h.shift=h.fog_shadow_pass=true;
+     CHECK(!first.sample(h).fog_shadow_pass);CHECK(!first.sample(h).fog_shadow_pass);} // held before the first foreground sample
     // A launch with only --fps-overlay: the caller leaves every other key
     // false (their polls are gated on their own options), so the overlay chord
     // is the only action the sampler can ever produce, edge after edge.
     {x3m::ComparisonControls alone;x3m::ComparisonKeys only{};only.foreground=true;alone.sample(only);
      for(unsigned i=0;i<50;++i){
         only.control=only.alt=true;only.shift=(i%5==0);only.fps_overlay=true;const auto a=alone.sample(only);
-        CHECK(a.fps_overlay==!only.shift&&!a.exposure&&!a.bloom&&!a.screen_additive&&!a.source_gain&&!a.hull_gain&&!a.sun_shadow);
+        CHECK(a.fps_overlay==!only.shift&&!a.exposure&&!a.bloom&&!a.screen_additive&&!a.source_gain&&!a.hull_gain&&!a.sun_shadow&&!a.fog_shadow_pass);
         only.fps_overlay=false;const auto b=alone.sample(only);
-        CHECK(!b.fps_overlay&&!b.exposure&&!b.bloom&&!b.screen_additive&&!b.source_gain&&!b.hull_gain&&!b.sun_shadow);
+        CHECK(!b.fps_overlay&&!b.exposure&&!b.bloom&&!b.screen_additive&&!b.source_gain&&!b.hull_gain&&!b.sun_shadow&&!b.fog_shadow_pass);
      }}
     x3m::ComparisonControls marker;x3m::ComparisonKeys m{};m.foreground=true;m.control=m.shift=m.fps_overlay=true;marker.sample(m);
     m.fps_overlay=false;marker.sample(m);m.fps_overlay=true;CHECK(!marker.sample(m).fps_overlay); // the marker chord alone, Alt up: never the overlay

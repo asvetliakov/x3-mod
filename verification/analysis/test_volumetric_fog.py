@@ -21,6 +21,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from verification.analysis.test_capture_bloom_lifetime import extract_function
+
 ROOT = Path(__file__).resolve().parents[2]
 PROGRAMS = ('march', 'composite', 'sky_level0', 'sky_reduce')
 DRIVER = r'''
@@ -308,6 +310,59 @@ class FogLauncherTests(unittest.TestCase):
         self.assertIn('fog_density_config_.shadow_pass = on;', (ROOT / 'src/proxy/motion_output.h').read_text())
         fragment = (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
         self.assertIn('k.texel_world = size ? float(2. * double(cascade.half_extent) / double(size)) : 0.f; k.depth_range = float(cascade.depth_range());', fragment)
+
+    def test_shadow_pass_ab_toggle_and_frame_row(self):
+        # fog-shadow-pass.md "A/B toggle and log row": toggled off, FogPass latches shadow_pass=false at prepare_density
+        # and draws the launch-off in-march path; the grid stays allocated (only refuse_grid and release_targets drop it).
+        source = (ROOT / 'src/renderer/fog_pass.cpp').read_text()
+        header = (ROOT / 'src/renderer/fog_pass.h').read_text()
+        prepare = extract_function(source, 'HRESULT FogPass::prepare_density(')
+        self.assertIn('density_config_=config;', prepare)
+        resources = extract_function(source, 'HRESULT FogPass::density_resources(')
+        self.assertIn('if(density_config_.shadow_pass&&!grid_&&width_&&height_){', resources)
+        # The grid target goes only with the targets, the DEFAULT density resources, a refusal or a lost creation; never with the variant.
+        self.assertEqual(source.count('release_grid();'), 4)
+        self.assertNotIn('release_grid', prepare)
+        self.assertIn('(!density_config_.shadow_pass||(density_visibility_&&density_march_grid_&&density_repair_grid_&&grid_surface_))', header)
+        self.assertIn('bool grid_variant() const noexcept { return density_config_.shadow_pass; }', header)
+        # The per-frame grid report: written only under the grid variant, so the pass-off path does no extra work.
+        execute = extract_function(source, 'HRESULT FogPass::execute(')
+        self.assertIn('const bool grid=density&&density_config_.shadow_pass;', execute)
+        self.assertIn('grid_report_=FogGridReport{};grid_report_.frame=f.frame;', execute)
+        self.assertLess(execute.index('if(grid){\n        grid_report_=FogGridReport{};'), execute.index('fog_grid_constants('))
+        self.assertIn('if(grid)grid_calls_start=calls_;', execute)
+        self.assertIn('if(grid&&slot>4){', execute)
+        self.assertIn('grid_report_.net_calls=int(grid_report_.calls)-int(constants_set);', execute)
+        self.assertIn('grid_report_.net_calls+=int(calls_-march_start)-(reached?3:0);', execute)
+        self.assertIn('grid_replaced_repair=std::min(r.cascades_bound,fog_look_cascades);', execute)
+        # The row: the frame line carries the grid fields only when the pass was enabled at launch; a variant change forces a line.
+        fragment = (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
+        run = extract_function(fragment, 'void MotionOutput::run_volumetric_fog(')
+        # A variant change forces at most one row per fog_grid_change_frames (60) frames and 16 a session, on its own counter.
+        self.assertIn('const bool periodic = fog_timing_ || changed || frame_ % 600u == 0u;', run)
+        self.assertIn('if (periodic || grid_changed) {', run)
+        self.assertIn('frame_ - fog_grid_logged_frame_ >= fog_grid_change_frames && fog_grid_change_logs_ < fog_grid_change_cap;', run)
+        self.assertIn('if (grid_changed && !periodic) { ++fog_grid_change_logs_; fog_grid_logged_frame_ = frame_; }', run)
+        self.assertNotIn('fog_density_logs_', run[run.index('bool grid_changed = false;'):run.index('char grid_fields[320];')])
+        motion_header = (ROOT / 'src/proxy/motion_output.h').read_text()
+        self.assertIn('static constexpr std::uint64_t fog_grid_change_frames = 60;', motion_header)
+        self.assertIn('static constexpr unsigned fog_grid_change_cap = 16;', motion_header)
+        toggle = extract_function(fragment, 'int MotionOutput::volumetric_fog_shadow_pass_toggle(')
+        self.assertNotIn('logs_', toggle)  # the toggle row is not budgeted
+        # A frame whose density transaction issued no device call reads not_executed in every variant, before any variant test.
+        first = 'if (!fog_ || !in.density || out.device_calls == 0) grid_fallback = "not_executed";'
+        self.assertIn(first, run)
+        self.assertLess(run.index(first), run.index('grid_fallback = "refused"'))
+        self.assertLess(run.index(first), run.index('grid_fallback = "toggled_off"'))
+        self.assertIn('restore=%08lx stage=%u%s",', run)
+        self.assertLess(run.index('if (fog_shadow_pass_launch_) {\n            const renderer::FogGridReport none{};'), run.index('std::snprintf(grid_fields'))
+        for field in ('grid_pass=%u', 'grid_built=%u', 'grid_bind=%08lx', 'march=%s', 'fallback=%s', 'grid_refused=%s', 'grid_cascades=%u',
+                      'grid_kernel=%.3g,%.3g,%.3g', 'grid_far_width=%.1f', 'grid_frame_term=%.4f', 'grid_calls=%u', 'grid_net_calls=%d'):
+            self.assertIn(field, run)
+        for value in ('"in_march"; grid_fallback = "refused"', '"in_march"; grid_fallback = "toggled_off"',
+                      'grid->drawn ? "grid" : "grid_unshadowed"', 'grid_fallback = "not_executed"'):
+            self.assertIn(value, run)
+        self.assertIn('else if (fog_->grid_report().frame == frame_)', run)
 
     def test_look_option_and_variable_are_retired(self):
         # 2026-09-22: the presets L0/L1/L3 are gone, the former L2 is the only look, and there is no selector.

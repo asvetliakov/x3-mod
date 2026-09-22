@@ -332,8 +332,11 @@ Deviations from the design above, all measured by the fixture:
   restores them). Extra device calls per frame: **19**, measured by the pass fixture as the pass-on frame with a
   cascade against the pass-on frame with none (so it counts the `bind_target` of the visibility stage, its
   constant upload, three map binds, the draw, the two sampler calls and the grid bind); the design's ≈ 14 above
-  was against the toggle-off frame, which also binds the three maps for the march. Against toggle-off the
-  difference is 19 − 3 = 16.
+  was against the toggle-off frame. Against toggle-off (the in-march programs) the difference is 19 − 3 − 2 = **14**
+  with two or more admitted cascades (15 with one): the in-march march binds s4–s6 (3 calls) where the no-cascade
+  grid frame binds nothing, and its repair binds the two coarsest maps where the no-cascade grid repair binds none.
+  Run 251 (pass on) against Run 250 (off) logged 338 against 324 calls per applied frame, the 14 of this count
+  (`verification/results/run251-fog-shadow/fog_cost_retention_out.txt`).
 - **Constants** are uploaded as 42 rows in both modes: with the pass off the six grid rows are zero and the look
   programs never read c36–c41, which is why the off images stay byte-identical (the upload count is not the
   identity; the programs are).
@@ -374,3 +377,38 @@ pre-flight check if the A/B raises a numeric doubt. Item 6: slots above; generat
 ten programs; host modules `test_fog_shadow_grid`, `test_fog_density_shaders`, `test_fog_look_reference`,
 `test_volumetric_fog`, `test_shader_compiler_provenance`. Evidence and hashes:
 [../verification/volumetric-fog.md](../verification/volumetric-fog.md), "Sun-visibility grid pass built".
+
+### A/B toggle and log row
+
+With the pass enabled at launch, **Ctrl+Shift+F11** (`comparison-hotkeys.md`, "Fog shadow pass") flips
+`FogDensityConfig::shadow_pass` in the proxy at the frame boundary; `FogPass::prepare_density` latches it at the
+next owner latch, so a frame never mixes the variants. Off is the launch-off configuration: `density_resources`
+builds no grid, `density_ready` ignores it, `execute` takes `grid=false` (in-march programs, s4–s6 maps, the
+two-coarsest remap), while the grid target and programs stay allocated (a Reset while off drops the target with
+the other targets; the first latch back on re-creates it). A refused grid stays refused; the toggle then only logs.
+One `fog_shadow_pass_toggle device= frame= enabled=0|1 refused=<reason|none> key=ctrl_shift_f11` line per press.
+
+`execute` fills a `FogGridReport` (`FogPass::grid_report()`) only on a frame that takes the grid variant, so the
+launch-off path does no extra work. With the pass enabled at launch, the `volumetric_fog_frame` line (per frame
+with `--volumetric-fog-timing`; otherwise on a reason change and every 600 frames, plus at most one line per 60
+frames (`fog_grid_change_frames`) when the march variant differs from the last line's, at most 16 such lines a
+session on their own counter (`fog_grid_change_logs_`, cap `fog_grid_change_cap`), never the 64-line budget of the
+density cache lines; the `fog_shadow_pass_toggle` line is not budgeted) gains: `grid_pass` (the toggle state), `grid_built` (the visibility quad was drawn), `grid_bind` (the
+visibility `bind_target` HRESULT, `00000001` when not attempted), `march` (`grid`, `grid_unshadowed`, `in_march`,
+`none`), `fallback` (`none`, `toggled_off`, `refused`, `no_cascade`, `grid_column_cap`, `failed`, `not_executed`;
+a frame whose density transaction issued no device call, including the zero-call `S_FALSE` exit, reads
+`march=none fallback=not_executed` in every variant),
+`grid_refused` (the sticky reason), `grid_cascades` (bit mask of the cascades the pass read), `grid_kernel`
+(range/texel per cascade, c36–c38 .z), `grid_far_width` (c39.y), `grid_frame_term` (c41.w), `grid_calls` (device
+calls issued for the grid: 16 visibility + 3 march + 1 repair = 20 with a cascade) and `grid_net_calls` (against the
+in-march path of the same frame: 14 with two or more cascades, 15 with one; derived, exact on a completed frame).
+The blend band (.85–.95) is a fixed constant and not logged. The pass fixture checks the report (20 / 15 with its one
+cascade), the toggled-off frame byte-identical to the in-march split frame with the grid kept and nothing created,
+the call difference equal to `net_calls`, and the toggled-back-on frame byte-identical to the grid frame
+(`grid_report_counts_the_pass_calls`, `grid_toggled_off_*`, `grid_toggled_back_on_byte_identical`). The route bridge
+(`verification/probe/fog_route_density_inc.h`, `shadow_ab_*` witnesses) drives the production fragment and the toggle
+the fixture export forwards to: launch on, toggle off between frames (in-march bytes, one toggle line, the frame line's
+`march=in_march fallback=toggled_off`, grid kept), twenty alternating frames (no change-driven line), a Reset while
+off (no grid), toggle on (the grid created exactly once at the first latch, bytes equal to the pre-toggle grid
+frame). The bridge publishes no shaft maps, so there the grid variant is `grid_unshadowed` and its bytes equal the
+in-march ones by the no-cascade identity. Neither fixture has been run yet.
