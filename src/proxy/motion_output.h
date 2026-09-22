@@ -554,6 +554,13 @@ public:
         candidates_requested_=requested; candidates_monitor_=requested?monitor:nullptr;
         candidate_cap_=cap<1u?1u:cap>shadow_replay::record_capacity?shadow_replay::record_capacity:cap;
     }
+    // Object bounds log (docs/architecture/engine-frame-time.md, "Object bounds
+    // log"; X3M_OBJECT_BOUNDS_LOG=1): on capture frames only, one object_bounds
+    // line per routed draw whose object box the candidate route above already
+    // computed, giving its projected screen box, depth range and frustum corner
+    // count. Diagnostic only; nothing reads it back. Off (the default): one bool
+    // test on the box path, no line and no transform.
+    void configure_object_bounds_log(bool requested) noexcept { object_bounds_log_ = requested; }
     // One-cascade depth replay (shadow_replay_depth.h; X3M_SHADOW_REPLAY_DEPTH=1):
     // the leased slice-0 candidates re-issued into a private sun-space map at
     // the scene end, one shadow_replay_depth line per frame. Requires the
@@ -1420,6 +1427,7 @@ private:
     // Caster-candidate counter storage: fixed, cleared at begin_frame and after
     // publication; the witness count is per device (attach clears it).
     bool candidates_requested_=false;
+    bool object_bounds_log_=false; // X3M_OBJECT_BOUNDS_LOG: object_bounds lines on capture frames (diagnostic)
     ownership::AdmissionMonitor* candidates_monitor_=nullptr;
     shadow_replay::Frame candidates_{};
     shadow_replay::PoolCache candidate_pools_{};
@@ -1475,6 +1483,7 @@ private:
     shadow_replay::PoolClass candidate_pool_of(std::uint64_t id, IDirect3DResource9* buffer, bool vertex) noexcept;
     void note_candidate_distance(MotionRoute& route, const float* rows) noexcept;
     void note_candidate_draw(const MotionRoute& route) noexcept;
+    void log_object_bounds(const MotionRoute& route, const float* rows, const float* lo, const float* hi) noexcept; // X3M_OBJECT_BOUNDS_LOG, capture frames only
     bool ensure_candidate_bounds_rows() noexcept;
     void queue_candidate_extent(const shadow_replay::ExtentKey& key, std::uintptr_t identity, bool priority) noexcept;
     void read_candidate_extents() noexcept;    // the scene end: Lock READONLY through the wrapper, scan, cache, release

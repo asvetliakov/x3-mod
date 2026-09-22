@@ -2381,6 +2381,20 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
       unsigned cap=shadow_replay::default_cap; // X3M_SHADOW_REPLAY_CAP (1..record_capacity, default 512): managed candidates recorded per frame
       { wchar_t text[16]{}; if(GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_CAP",text,16)>0){ const unsigned long v=wcstoul(text,nullptr,10); if(v>=1&&v<=shadow_replay::record_capacity)cap=unsigned(v); } }
       hooked.motion_output.configure_shadow_replay_candidates(enabled,enabled?ownership::process_admission_monitor():nullptr,cap);
+      // Object bounds log (docs/architecture/engine-frame-time.md, "Object bounds log";
+      // X3M_OBJECT_BOUNDS_LOG=1, default off): on F8 capture frames only, one object_bounds
+      // line per routed draw whose object box the candidate route already computed, with the
+      // box's projected screen rectangle, depth range and frustum corner count. It rides that
+      // counter (no box without it) and needs the verified submission identity that object_context
+      // needs, because node=/model= are the scope's. Refused otherwise, and always noted.
+      { wchar_t flag[4]{};
+        const bool bounds_asked=GetEnvironmentVariableW(L"X3M_OBJECT_BOUNDS_LOG",flag,4)==1&&flag[0]==L'1';
+        if(bounds_asked){
+            const bool traced=object_trace::active();
+            const bool bounds_enabled=enabled&&traced;
+            log("object_bounds_mode requested=1 enabled=%u candidates=%u object_trace=%u",bounds_enabled,enabled,traced);
+            hooked.motion_output.configure_object_bounds_log(bounds_enabled);
+        } }
       if(depth_asked){
           // The cascade-0 box, read once here (shadow_replay_projection.h ranges):
           // X3M_SHADOW_REPLAY_SIZE (64..4096, default 1024), X3M_SHADOW_REPLAY_EXTENT

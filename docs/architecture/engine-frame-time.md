@@ -1514,3 +1514,53 @@ new instrumentation: **one launch** with `--cull-census` (per-node `s`/verdict)
 plus a logged world-space AABB (min/max) per `object_context` row, so bounds
 can be projected against the frustum and against the `depth_` readback on the
 same stand, would settle both.
+
+## Object bounds log (2026-09-22)
+
+Sizing the two buckets the draw accounting could not size — drawn outside the
+view frustum, and drawn while fully occluded by nearer geometry (X3 has no
+occlusion culling) — needs per-draw bounds, which no log line carried. The
+`--object-bounds-log` launcher option (`X3M_OBJECT_BOUNDS_LOG=1`, launch only,
+default off) adds them on F8 capture frames only:
+
+```
+object_bounds device= frame= index= node= model= sx0= sy0= sx1= sy1= zmin= zmax= inside= [offscreen=1] [near=1]
+```
+
+One line per routed draw whose object box the caster-candidate route already
+computed for its own verdict, so nothing transforms geometry a second time:
+`src/renderer/object_bounds_projection.h` (header-only, no D3D types) puts the
+box's eight corners through the draw's own clip rows — the rows the same-draw
+motion output latches — and reports
+
+* `sx0..sy1`: the projected screen box in pixels of the routed target (the size
+  the `depth_` readback is dumped at), clipped to it; `offscreen=1` instead when
+  the clipped box is empty;
+* `zmin`/`zmax`: the box's device depth (`clip.z / clip.w`) range;
+* `inside`: how many of the eight corners are inside all six frustum planes;
+* `near=1`: the box straddles the eye plane, so its projection is unbounded —
+  the row then carries the whole viewport and `zmin` 0.
+
+Prerequisites, enforced by the launcher and re-checked in the DLL (one
+`object_bounds_mode` line records both): `--object-trace`, because `node=` and
+`model=` are the verified submission scope's, and `--shadow-replay-candidates`
+or `--shadow-replay-depth`, because the object box is that route's. `index=` is
+the frame's draw index, joinable with `draw`, `object_context` and
+`motion_route`. Off, and on non-capture frames, the cost is one bool test on the
+box path; nothing is patched and no line is written.
+
+`tools/analysis/draw_accounting.py <run dir>` buckets one frame: it joins the
+`object_bounds`, `draw` and `object_context` rows with that frame's
+`depth_<device>_<frame>.r32f`/`.rgba32f` readback (device depth in `.r`, `-1`
+where no routed draw covered the pixel) and reports draws, primitives and
+milliseconds at the frame's measured per-draw cost (`frame_timing`
+`dt_p50_us / draws_p50`), plus a per-node table. Buckets, in priority order:
+`offscreen`, `occluded` (every sampled pixel of the box carries depth closer
+than `zmin` by `--margin`), `tiny` (box area below `--tiny-px`, default 16 px²),
+`partial` (some pixels covered; the covered fraction is reported), `visible`,
+and `no_box` for the frame's remaining draws (unrouted, or routed without a
+known box) so the buckets sum to the frame's own draw count. Sampling is capped
+at `--max-samples` per box. Host coverage:
+`verification/analysis/test_object_bounds_log.py` (projection core against known
+matrices, the wiring and the launcher gate) and
+`verification/analysis/test_draw_accounting.py` (synthetic log and depth image).

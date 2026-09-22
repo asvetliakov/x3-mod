@@ -10,6 +10,7 @@
 #include "object_trace.h"
 #include "object_lifetime.h"
 #include "../renderer/static_previous_rows.h"
+#include "../renderer/object_bounds_projection.h"
 #include "engine_memory.h"
 #include "object_capture.h"
 #include "camera_state.h"
@@ -7460,6 +7461,10 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
                     if (old) { inflated = *stale; stale->inflated(inflated.lo, inflated.hi); e = &inflated; }
                 }
                 if (e) {
+                    // Object bounds log: the box this draw's verdict uses, projected
+                    // through the draw's own clip rows. Capture frames only, and only
+                    // with X3M_OBJECT_BOUNDS_LOG; the corners are the route's own.
+                    if (object_bounds_log_ && capture_ && e->state == shadow_replay::ExtentState::Known) log_object_bounds(route, draw_rows(), e->lo, e->hi);
                     if (e->state == shadow_replay::ExtentState::Known && !ensure_candidate_bounds_rows()) ++candidate_bounds_unavailable_;
                     else if (e->state == shadow_replay::ExtentState::Known) {
                         const float* rows = draw_rows();
@@ -7549,6 +7554,23 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
         g.sun_register = std::int8_t(draw_sun_register); g.sun_known = draw_sun_agrees; std::memcpy(g.sun, draw_sun, sizeof g.sun);
         if (retention_ && candidates_published_frame_ != frame_) note_retention_draw(route, r, g, exact_extent); // a draw after the frame's scene end is not a sighting
     }
+}
+// One object_bounds line for this routed draw (X3M_OBJECT_BOUNDS_LOG, capture
+// frames only): the projected screen box of the route's own object box in
+// pixels of the routed target (the same size the depth_ readback is dumped at),
+// clipped to it, the box's device depth range and how many of its eight corners
+// are inside the frustum. `offscreen=1` replaces an empty clipped box; `near=1`
+// marks a box straddling the eye plane, whose screen box is the whole viewport
+// and whose zmin is pinned to 0. No line when the rows or the target size are
+// unknown, or when a corner is nonfinite. Diagnostics only: the analysis is
+// tools/analysis/draw_accounting.py.
+void MotionOutput::log_object_bounds(const MotionRoute& route, const float* rows, const float* lo, const float* hi) noexcept {
+    renderer::ObjectScreenBox box{};
+    if (!renderer::object_screen_box(rows, lo, hi, target_width_, target_height_, box)) return;
+    log("object_bounds device=%llu frame=%llu index=%lu node=%p model=%08lx sx0=%.1f sy0=%.1f sx1=%.1f sy1=%.1f zmin=%.6f zmax=%.6f inside=%u%s%s",
+        id_, frame_, counters_.draws, reinterpret_cast<void*>(route.key.node), static_cast<unsigned long>(route.key.model),
+        double(box.x0), double(box.y0), double(box.x1), double(box.y1), double(box.zmin), double(box.zmax), box.inside,
+        box.offscreen ? " offscreen=1" : "", box.crosses_near ? " near=1" : "");
 }
 // The bound program's LightDir_Dir0 as the application last wrote it, fed to
 // the frame's latch. False without a register, before its first write, or
