@@ -921,7 +921,12 @@ public:
     // px/frame. Runs on the far-stabiliser program and shares its speed gate.
     // camera_gate: X3M_TAA_THIN_REGION_GATE=camera (section 32.1), the
     // camera-relative gate with the 7x7 box clip; off = the screen-speed gate.
-    void configure_taa_thin_region(float weight, float relax, float lo, float hi, bool gate_given, bool camera_gate = false) noexcept { taa_thin_weight_ = weight; taa_thin_relax_ = relax; taa_thin_camera_gate_ = camera_gate; if (gate_given) { taa_far_lo_ = lo; taa_far_hi_ = hi; } }
+    // emissive: X3M_TAA_THIN_REGION_EMISSIVE=E (thin-glow-lines.md 8.3 R3;
+    // taa-lattice-crawl.md section 32.7), the emissive vote in the mask (0 off);
+    // turned off at initialisation with the thin region off, and the mask is then
+    // bit for bit what it was. E is in the units of the scene the pass binds, so
+    // E >= 1 needs the HDR route (the 8-bit route's copy never exceeds 1).
+    void configure_taa_thin_region(float weight, float relax, float lo, float hi, bool gate_given, bool camera_gate = false, float emissive = 0.f) noexcept { taa_thin_weight_ = weight; taa_thin_relax_ = relax; taa_thin_camera_gate_ = camera_gate; taa_thin_emissive_ = emissive; if (gate_given) { taa_far_lo_ = lo; taa_far_hi_ = hi; } }
     // X3M_TAA_SENTINEL_STABILISER=S[,E] (docs/architecture/temporal-integration.md
     // "Distant unrouted stations under a pan"), off by default: thin-region
     // strength S of unrouted depth-sentinel pixels through the camera gate, box
@@ -2152,6 +2157,7 @@ private:
     float taa_far_weight_ = 0.f, taa_far_filter_ = 0.f, taa_far_f0_ = 80.f, taa_far_f1_ = 130.f, taa_far_lo_ = .03f, taa_far_hi_ = .25f; // X3M_TAA_FAR_STABILISER
     float taa_thin_weight_ = 0.f, taa_thin_relax_ = 1.f; // X3M_TAA_THIN_REGION
     bool taa_thin_camera_gate_ = false; // X3M_TAA_THIN_REGION_GATE=camera
+    float taa_thin_emissive_ = 0.f;     // X3M_TAA_THIN_REGION_EMISSIVE=E: emissive vote of the thin region (thin-glow-lines.md 8.3 R3)
     float taa_sentinel_strength_ = 0.f, taa_sentinel_emitter_ = 1.f; // X3M_TAA_SENTINEL_STABILISER=S[,E]
     bool taa_masks_logged_ = false;           // the one line for TemporalPass::line_masks_failed()
     float taa_thin_clip_ = 0.f;               // X3M_TAA_THIN_CLIP (0: off)

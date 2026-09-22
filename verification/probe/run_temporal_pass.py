@@ -144,7 +144,19 @@ try:
     report['far_stabiliser']={'gate':fields('FAR_GATE '),'speed_ramp':fields('FAR_SPEED_RAMP ')+fields('FAR_SPEED_GATE_CUSTOM '),'cases':fields('FAR_STABILISER '),'filter_effect':fields('FAR_FILTER_EFFECT ')}
     assert len(report['far_stabiliser']['cases'])==24 and all(c['near_differs']=='0' for c in report['far_stabiliser']['cases']),report['far_stabiliser']
     # Thin region (docs/architecture/taa-lattice-crawl.md section 13): oracle error, gate = oracle, shard ripple, plain-silhouette bit-identity, motion start.
-    report['thin_region']={'cases':fields('THIN_REGION '),'motion_start':fields('THIN_REGION_MOTION_START ')}
+    report['thin_region']={'cases':fields('THIN_REGION '),'motion_start':fields('THIN_REGION_MOTION_START '),'emissive':fields('THIN_REGION_EMISSIVE '),'emissive_nonfinite':fields('THIN_REGION_EMISSIVE_NONFINITE ')}
+    # Emissive vote (docs/architecture/thin-glow-lines.md 8.3 R3): E = 0 bit-identical to the plain resolve, the vote on the
+    # routed strip only, and the strip's rest leak down 3.4 x (the IIR prediction for 0.9 -> 0.97 at the jitter fundamental).
+    assert len(report['thin_region']['emissive'])==1,report['thin_region']['emissive']
+    emissive=report['thin_region']['emissive'][0]
+    assert (float(emissive['e0_vs_plain_max_diff']),float(emissive['e0_mask_b_max']),float(emissive['e1_mask_oracle_error']))==(0.0,0.0,0.0),emissive
+    assert (float(emissive['e1_strip_b_min']),float(emissive['e1_panel_core_b_max']),float(emissive['e1_unrouted_sentinel_b_max']))==(1.0,0.0,0.0),emissive
+    assert 2.5<=float(emissive['delta_ratio'])<=4.5,emissive
+    # Non-finite scene: a NaN pixel and one above the resolve's 65000 limit, and their eight neighbours, cast no vote.
+    assert len(report['thin_region']['emissive_nonfinite'])==1,report['thin_region']['emissive_nonfinite']
+    bad=report['thin_region']['emissive_nonfinite'][0]
+    assert (bad['nan_present'],bad['overflow_present'])==('1','1'),bad
+    assert (float(bad['control_b']),float(bad['nan_and_panel_core_b_max']),float(bad['overflow_b_max_3x3']),float(bad['mask_oracle_error']))==(1.0,0.0,0.0,0.0),bad
     # Camera-relative gate (section 32.1): static-camera bit-identity, the pan scene's oracle / gate share / ripple, the stale-history bound, the pass time.
     report['thin_region_camera']={'static':fields('THIN_REGION_CAMERA_STATIC '),'pan_oracle':fields('THIN_REGION_PAN '),'pan':fields('THIN_REGION_CAMERA '),'forward':fields('THIN_REGION_CAMERA_FORWARD '),'flight':fields('THIN_REGION_CAMERA_FLIGHT '),'stale':fields('THIN_REGION_STALE '),'box_domain':fields('THIN_REGION_BOX_DOMAIN '),'bad_motion':fields('THIN_REGION_BAD_MOTION '),'glass_mover':fields('THIN_REGION_GLASS_MOVER '),'timing':fields('LINE_TIMING_CAMERA '),'timing_lane':fields('LINE_TIMING_CAMERA_LANE ')}
     assert [(m['kind'],m['glass']) for m in report['thin_region_camera']['bad_motion']]==[('overflow_1e30','0'),('nan','0'),('overflow_1e30','1'),('nan','1')] and all(m['camera_gate_max_within_8px']=='0.0000' and int(m['covered_px'])>0 for m in report['thin_region_camera']['bad_motion'] if m['asserted']=='1') and len(report['thin_region_camera']['glass_mover'])==1 and len(report['thin_region_camera']['box_domain'])==1 and len(report['thin_region_camera']['forward'])==1 and len(report['thin_region_camera']['flight'])==15 and [f['mover_reach_max'] for f in report['thin_region_camera']['flight'] if f['mover']=='1']==['0.0000','0.0000'] and len(report['thin_region_camera']['timing_lane'])==1,report['thin_region_camera']
@@ -163,9 +175,9 @@ try:
     assert sentinel['cut'][0]['output_minus_current_max']=='0.000000',sentinel['cut']
     assert 'FAR_BASE numerical=382 state_restorations=17' in lattice_text and len(report['thin_region']['cases'])==21 and all(c['square_differs']=='0' for c in report['thin_region']['cases']),report['thin_region']
     assert len(report['line_filter']['cases'])==10 and all(c['silhouette_masked']=='0' and c['silhouette_differs']=='0' for c in report['line_filter']['cases']),report['line_filter']
-    # 28 / 9 are the run-139 lattice cases (FLICKER_BASE); the line-filter cases add 45 numerical and 2 state checks (LINE_BASE), the far-stabiliser cases 127 and 2 (FAR_BASE), the thin-region cases 194 and 6 (79 and 2 of them the camera gate, taa-lattice-crawl.md sections 32.1, 32.3, 32.4 and 32.5; 38 and 2 the sentinel stabiliser, temporal-integration.md).
+    # 28 / 9 are the run-139 lattice cases (FLICKER_BASE); the line-filter cases add 45 numerical and 2 state checks (LINE_BASE), the far-stabiliser cases 127 and 2 (FAR_BASE), the thin-region cases 201 and 6 (7 and 0 of them the emissive vote, thin-glow-lines.md 8.3 R3) (79 and 2 of them the camera gate, taa-lattice-crawl.md sections 32.1, 32.3, 32.4 and 32.5; 38 and 2 the sentinel stabiliser, temporal-integration.md).
     # 28 / 9 are the run-139 lattice cases (LATTICE_BASE); the flicker cases add 182 numerical and 4 state checks.
-    assert lattice.returncode==0 and 'LATTICE_BASE numerical=28 state_restorations=9' in lattice_text and 'FLICKER_BASE numerical=210 state_restorations=13' in lattice_text and 'LINE_BASE numerical=255 state_restorations=15' in lattice_text and 'RESULT PASS numerical=576 state_restorations=23 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
+    assert lattice.returncode==0 and 'LATTICE_BASE numerical=28 state_restorations=9' in lattice_text and 'FLICKER_BASE numerical=210 state_restorations=13' in lattice_text and 'LINE_BASE numerical=255 state_restorations=15' in lattice_text and 'RESULT PASS numerical=583 state_restorations=23 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
     assert len(report['flicker']['drift'])==64 and len(report['flicker']['near_depth'])==8 and all(float(v['instruction_slots'])<=512 for k,v in report['lattice']['budget'].items()),report['lattice']['budget']
     ripple=report['lattice']['ripple']
     assert len(ripple)==10 and ripple['off']==ripple['baseline'] and report['lattice']['budget']['plain']['instruction_slots']<=512,report['lattice']

@@ -1,8 +1,8 @@
 {
   "passed": true,
   "sources_before_build": {
-    "src/renderer/temporal_pass.h": "98b648103405f8ec5d9c21a4b637f2fc7bda658c43a4225120d413b80a0e7ef5",
-    "src/renderer/temporal_pass.cpp": "e35cf94f9f745fc0c9a1bcb6bd2a7ec7b54d695921f55a5368bfaaa686981815",
+    "src/renderer/temporal_pass.h": "83be63d3614daf12ff7769804c82c76942299381034176230c3ac1bd989f536b",
+    "src/renderer/temporal_pass.cpp": "df32048d6f27e6369870255b9853885d107558e94814000f9ffa1101bf11523e",
     "src/temporal/resolve.h": "758911becb4c1c7ea29cc0616511022e0bc7dd555b9837f899b5126cfcb3b660",
     "src/temporal/resolve.hlsl": "fae8d29f9248f733ba67bf27a599c25cc2a048ea5d196bea0a90cbb655927966",
     "src/temporal/resolve_filter.hlsl": "65aedd02762660c77ff6af3530c429edb580ea3ccb52416cd303974ce86d51f6",
@@ -18,11 +18,11 @@
     "src/temporal/resolve_age_filter.hlsl": "5a13f4045d9128eb7c00a22b4a0c2c088a663d99936b54d71f3e68b4601abcdb",
     "src/renderer/temporal_resolve_age_filter_program_inc.h": "1e047b942856e3ec3230279c6e2047ab3c472d696e5c5f5b72f3e1b161f86c35",
     "verification/probe/temporal_flicker_inc.h": "30de4676b093fb9eb0c09fe66a4d1e49051ed6528df15dd17f86d6b5fb9896ec",
-    "verification/probe/temporal_line_inc.h": "91e9359ed2463ac0e6bfc0b232d5710498c77396df42777175a7e1fb9afe2a72",
+    "verification/probe/temporal_line_inc.h": "15224ee136ad9a12c8383ed6541ab9d40c5e047d672285931cc21a9479f398a4",
     "verification/probe/temporal_far_inc.h": "315ce3471778ea438262ea6725c1eb62ecf652cda81ef95758532c3b99b9e3da",
-    "verification/probe/temporal_thin_region_inc.h": "13d278d1bfceceecad16f8f3bddd50dd216654d2624f0d92ca07e5133340b389",
+    "verification/probe/temporal_thin_region_inc.h": "75eca33a7eba97b2f2671ca9ff9d27c39cdb3f2c017032785cfd230f72f85271",
     "src/temporal/line_mask_camera_ps.hlsl": "c60a1986f5d304b6690d05e20ac94ce96c762dd6e618cc2d5a46ad5601a17923",
-    "src/renderer/temporal_line_mask_camera_program_inc.h": "5c39bbd7f0d827e19269aafb33798ba3e0b4a0300a4ca9eca672b184d294569e",
+    "src/renderer/temporal_line_mask_camera_program_inc.h": "0a92892c56674f29b1fa15e435883a4de12f0f6dbcd7db67d1a8fb0a5993ccec",
     "src/temporal/resolve_far_camera.hlsl": "375cb64c664241e7915f976e4b0ac4ff0f773caea5abcf728c72823d611bbd9d",
     "src/renderer/temporal_resolve_far_camera_program_inc.h": "d1af33789b924a430edf6749167a72d153c911c72e24d2664f40d96249a12112",
     "src/temporal/thin_box_ps.hlsl": "0f12a9cb79e8945b11844c977c5ad67bd7bc958af9275949b6ddc1c947b942e9",
@@ -34,8 +34,8 @@
     "verification/probe/temporal_resolve_far_reference_inc.h": "b0ea38f96cc810280b8b7f5348ab6b624b9b0fcb254545893e4b0035d9dcd226",
     "src/temporal/resolve_far.hlsl": "30087df4338b9a3fec4d6dbca256e5c7b8515bb3cea41fe540e7e4a5af00e7b9",
     "src/renderer/temporal_resolve_far_program_inc.h": "fbaf0e28ccab2493cf91fb0817ffaae6d4c4c694ecc1523da4d5692e3cae2a26",
-    "src/temporal/line_mask_ps.hlsl": "de14c923b6952368cfbdf01ceb8d720feda63fc8fbe0d713a1cb5a021c1a61a3",
-    "src/renderer/temporal_line_mask_program_inc.h": "7a9a37a7f4abd963394bfbdf4792e4f6d4db702b5a0abc83fb1a41bb27cecf54",
+    "src/temporal/line_mask_ps.hlsl": "2961611353f8b80b1991c3e5d6aafc5fb9d7b4cb31b7b1a51b232203a5f9a23e",
+    "src/renderer/temporal_line_mask_program_inc.h": "e48d63180cdb08c5f53b0b704ac5467c580bf911f2c9b39b76a84e0c1c857297",
     "src/temporal/resolve_line.hlsl": "18807f732512dc66460deda4367c560e733160bb4e75263875fdd0c00bb52f31",
     "src/renderer/temporal_resolve_line_program_inc.h": "543713f79f560dd3136a055415640cc3cae61a0e7700036d88974574a7b0476a",
     "src/temporal/resolve_thin_line.hlsl": "ccb52ae55590b7c196966667583f227a3552722080c17c893f2d352f33ba2c9f",
@@ -48,7 +48,7 @@
     "src/temporal/taa_sharpen_ps.hlsl": "af6a6734bcc506afaf990de01add0bcb2d7e57617c738ba08fa6ab2e7167d9a8",
     "verification/probe/temporal_pass_fixture.cpp": "8ac50926a05125156b8cc98cee013b1355883c2896fa3eabf65930f538154b3c",
     "verification/probe/build_temporal_pass.sh": "a59f6e17764411adad516db293587561c0f30a63ebc8a58a663e067f4e49f6e9",
-    "verification/probe/run_temporal_pass.py": "7a66f765e0c3977077b4749bb58902293925f6b6ceb56b619ca4e18af8d7c0ca"
+    "verification/probe/run_temporal_pass.py": "463ffe4f2914845ec6123cc0c2b2e3034cdabb9779238c1cb0898bd54129c267"
   },
   "game_launched": false,
   "bottle": {
@@ -61,7 +61,7 @@
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
-  "executable_sha256": "a7bb124f5af89c974fa13aa57679ef101f69b4c16981fca6a3be1bc179d29986",
+  "executable_sha256": "b4065939ff87daccfc95fb5552044611bba0064ad8de1551b1daf4650e2b15dc",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -70,12 +70,12 @@
     "--dll",
     "d3d9=b",
     "--workdir",
-    "/Users/asvetl/x3-mod/verification/probe/build",
-    "/Users/asvetl/x3-mod/verification/probe/build/temporal_pass_fixture.exe",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a0dd304122136ce55/verification/probe/build",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a0dd304122136ce55/verification/probe/build/temporal_pass_fixture.exe",
     "C:\\X3\\d3dx9_37.dll",
-    "Z:/Users/asvetl/x3-mod/src/temporal/depth_decode.hlsl",
-    "Z:/Users/asvetl/x3-mod/src/temporal/resolve.hlsl",
-    "Z:/Users/asvetl/x3-mod/src/temporal/taa_sharpen_ps.hlsl"
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a0dd304122136ce55/src/temporal/depth_decode.hlsl",
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a0dd304122136ce55/src/temporal/resolve.hlsl",
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a0dd304122136ce55/src/temporal/taa_sharpen_ps.hlsl"
   ],
   "exit_code": 0,
   "source_unchanged": true,
@@ -315,7 +315,7 @@
   },
   "lattice": {
     "report": "temporal-lattice.txt",
-    "report_sha256": "e093566b8dfc12fbc7a75822acd12a0f76f51a861fc9438690c9f2404ca1dcdf",
+    "report_sha256": "fdeb25a5f8a138edf45f7e731219542d55fb0baff6c7901071222244402c4ec3",
     "exit_code": 0,
     "budget": {
       "current_filter": {
@@ -382,10 +382,10 @@
         "within_guaranteed_512": 1.0
       },
       "embedded_line_mask": {
-        "dwords": 1196.0,
-        "instruction_slots": 305.0,
+        "dwords": 1401.0,
+        "instruction_slots": 368.0,
         "device_limit": 512.0,
-        "headroom": 207.0,
+        "headroom": 144.0,
         "within_guaranteed_512": 1.0
       },
       "embedded_far": {
@@ -417,10 +417,10 @@
         "within_guaranteed_512": 1.0
       },
       "embedded_line_mask_camera": {
-        "dwords": 1101.0,
-        "instruction_slots": 281.0,
+        "dwords": 1307.0,
+        "instruction_slots": 344.0,
         "device_limit": 512.0,
-        "headroom": 231.0,
+        "headroom": 168.0,
         "within_guaranteed_512": 1.0
       },
       "embedded_far_camera": {
@@ -2131,15 +2131,15 @@
         "height": "768",
         "content": "all_geometry",
         "rounds": "6",
-        "plain_ms": "0.5664",
-        "current_filter_ms": "0.5650",
-        "line_filter_ms": "0.7656",
-        "far_stabiliser_ms": "0.7219",
-        "thin_region_ms": "1.2970",
-        "taps_delta_ms": "-0.0014",
-        "line_delta_ms": "0.1992",
-        "far_delta_ms": "0.1555",
-        "thin_region_delta_ms": "0.7306",
+        "plain_ms": "0.6643",
+        "current_filter_ms": "0.6344",
+        "line_filter_ms": "0.8581",
+        "far_stabiliser_ms": "0.8175",
+        "thin_region_ms": "1.2844",
+        "taps_delta_ms": "-0.0299",
+        "line_delta_ms": "0.1938",
+        "far_delta_ms": "0.1532",
+        "thin_region_delta_ms": "0.6201",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]
@@ -2838,6 +2838,34 @@
         "background_trail": "0.248535",
         "base_background_trail": "0.218994"
       }
+    ],
+    "emissive": [
+      {
+        "frames": "64",
+        "hull": "0.16",
+        "strip": "3.0",
+        "weight": "0.97",
+        "e0_vs_plain_max_diff": "0.000000000",
+        "e0_mask_b_max": "0.000000",
+        "e1_mask_oracle_error": "0.000000",
+        "e1_strip_b_min": "1.0000",
+        "e1_panel_core_b_max": "0.0000",
+        "e1_unrouted_sentinel_b_max": "0.0000",
+        "e0_strip_delta_codes": "36.8535",
+        "e1_strip_delta_codes": "10.6967",
+        "delta_ratio": "3.4453"
+      }
+    ],
+    "emissive_nonfinite": [
+      {
+        "frames": "16",
+        "nan_present": "1",
+        "overflow_present": "1",
+        "control_b": "1.0000",
+        "nan_and_panel_core_b_max": "0.0000",
+        "overflow_b_max_3x3": "0.0000",
+        "mask_oracle_error": "0.000000"
+      }
     ]
   },
   "thin_region_camera": {
@@ -3369,12 +3397,12 @@
         "width": "1280",
         "height": "768",
         "rounds": "6",
-        "no_region_thin_ms": "1.2970",
-        "no_region_camera_ms": "1.4931",
-        "no_region_camera_delta_ms": "0.1961",
-        "fragmented_pan_thin_ms": "1.1394",
-        "fragmented_pan_camera_ms": "1.6717",
-        "fragmented_pan_camera_delta_ms": "0.5323",
+        "no_region_thin_ms": "1.2844",
+        "no_region_camera_ms": "1.5272",
+        "no_region_camera_delta_ms": "0.2428",
+        "fragmented_pan_thin_ms": "1.0528",
+        "fragmented_pan_camera_ms": "1.4518",
+        "fragmented_pan_camera_delta_ms": "0.3990",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ],
@@ -3383,11 +3411,11 @@
         "width": "1280",
         "height": "768",
         "rounds": "6",
-        "r32f_camera_ms": "1.6717",
-        "lane_input_law_ms": "1.6926",
-        "lane_input_lane_ms": "1.7617",
-        "lane_fetch_delta_ms": "0.0692",
-        "lane_input_over_r32f_ms": "0.0209",
+        "r32f_camera_ms": "1.4518",
+        "lane_input_law_ms": "1.6674",
+        "lane_input_lane_ms": "1.6555",
+        "lane_fetch_delta_ms": "-0.0119",
+        "lane_input_over_r32f_ms": "0.2157",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]
@@ -3599,9 +3627,9 @@
         "height": "768",
         "rounds": "6",
         "content": "all_unrouted_sentinel_pan",
-        "strength_off_ms": "1.2653",
-        "strength_on_separable_ms": "1.5387",
-        "sentinel_delta_ms": "0.2734",
+        "strength_off_ms": "1.3978",
+        "strength_on_separable_ms": "1.7143",
+        "sentinel_delta_ms": "0.3166",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]

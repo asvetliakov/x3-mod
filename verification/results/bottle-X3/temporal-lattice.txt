@@ -26,7 +26,7 @@ CHECK embedded_age within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_age_filter dwords=1998 instruction_slots=506 device_limit=512 headroom=6 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_age_filter within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_line_mask dwords=1196 instruction_slots=305 device_limit=512 headroom=207 within_guaranteed_512=1
+RESOLVE_BUDGET variant=embedded_line_mask dwords=1401 instruction_slots=368 device_limit=512 headroom=144 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_line_mask within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_far dwords=1965 instruction_slots=496 device_limit=512 headroom=16 within_guaranteed_512=1
@@ -41,7 +41,7 @@ CHECK embedded_thin_line within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_age_line dwords=2016 instruction_slots=509 device_limit=512 headroom=3 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_age_line within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_line_mask_camera dwords=1101 instruction_slots=281 device_limit=512 headroom=231 within_guaranteed_512=1
+RESOLVE_BUDGET variant=embedded_line_mask_camera dwords=1307 instruction_slots=344 device_limit=512 headroom=168 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_line_mask_camera within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_far_camera dwords=2023 instruction_slots=508 device_limit=512 headroom=4 within_guaranteed_512=1
@@ -2151,12 +2151,12 @@ CHECK line filter lowers the roping at a bounded line-peak cost PASS
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
-LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.5664 current_filter_ms=0.5650 line_filter_ms=0.7656 far_stabiliser_ms=0.7219 thin_region_ms=1.2970 taps_delta_ms=-0.0014 line_delta_ms=0.1992 far_delta_ms=0.1555 thin_region_delta_ms=0.7306 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.2970 no_region_camera_ms=1.4931 no_region_camera_delta_ms=0.1961 fragmented_pan_thin_ms=1.1394 fragmented_pan_camera_ms=1.6717 fragmented_pan_camera_delta_ms=0.5323 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.6717 lane_input_law_ms=1.6926 lane_input_lane_ms=1.7617 lane_fetch_delta_ms=0.0692 lane_input_over_r32f_ms=0.0209 scope=cpu_wall_with_event_query_drain
+LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.6643 current_filter_ms=0.6344 line_filter_ms=0.8581 far_stabiliser_ms=0.8175 thin_region_ms=1.2844 taps_delta_ms=-0.0299 line_delta_ms=0.1938 far_delta_ms=0.1532 thin_region_delta_ms=0.6201 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.2844 no_region_camera_ms=1.5272 no_region_camera_delta_ms=0.2428 fragmented_pan_thin_ms=1.0528 fragmented_pan_camera_ms=1.4518 fragmented_pan_camera_delta_ms=0.3990 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.4518 lane_input_law_ms=1.6674 lane_input_lane_ms=1.6555 lane_fetch_delta_ms=-0.0119 lane_input_over_r32f_ms=0.2157 scope=cpu_wall_with_event_query_drain
 CHECK sentinel timing: separable box programs created PASS
 CHECK sentinel timing: separable box programs created PASS
-LINE_TIMING_SENTINEL width=1280 height=768 rounds=6 content=all_unrouted_sentinel_pan strength_off_ms=1.2653 strength_on_separable_ms=1.5387 sentinel_delta_ms=0.2734 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_SENTINEL width=1280 height=768 rounds=6 content=all_unrouted_sentinel_pan strength_off_ms=1.3978 strength_on_separable_ms=1.7143 sentinel_delta_ms=0.3166 scope=cpu_wall_with_event_query_drain
 LINE_BASE numerical=255 state_restorations=15
 FAR_CASES
 FAR_GATE ok=1 d0=0.99985647 inv=17734.900 expected_d0=0.99985652 expected_inv=17749.280
@@ -2429,12 +2429,16 @@ CHECK thin-region weight outside {0} U [weight, 0.99] is refused PASS
 CHECK thin-region relax outside [0, 1] is refused PASS
 CHECK thin-region relax outside [0, 1] is refused PASS
 CHECK thin-region relax outside [0, 1] is refused PASS
+CHECK negative or non-finite emissive E is refused while the thin region is on PASS
+CHECK the emissive vote is neither read nor validated with the thin region off PASS
+CHECK negative or non-finite emissive E is refused while the thin region is on PASS
+CHECK the emissive vote is neither read nor validated with the thin region off PASS
 CHECK thin region beside the 3x3 thin clip is refused (the program has no sentinel soft clip) PASS
 CHECK far stabiliser beside the 3x3 thin clip is refused PASS
 CHECK thin region beside the adaptive weight is refused PASS
 CHECK thin region without per-pixel motion is refused PASS
 CHECK thin-region run publishes the age target and the mask PASS
-CHECK thin-region run restores c0..c7, c22, c24, samplers 4 and 8, RT1 and COLORWRITEENABLE1 PASS
+CHECK thin-region run restores c0..c7, c10, c22, c24, samplers 0, 4 and 8, RT1 and COLORWRITEENABLE1 PASS
 CHECK failed second mask draw publishes nothing PASS
 CHECK after a failed run the thin-region resolve restarts without history PASS
 CHECK Reset protocol recreates the masks and restarts the history PASS
@@ -2443,7 +2447,7 @@ CHECK camera gate beside the line filter is refused (the mask's line channel car
 CHECK camera gate without configure_far is refused PASS
 CHECK camera gate without the thin region is ignored (plain resolve) PASS
 CHECK camera-gate run publishes the age target and the mask PASS
-CHECK camera-gate run restores c0..c7, c22, c24, samplers 8..10, RT1 and COLORWRITEENABLE1 PASS
+CHECK camera-gate run restores c0..c7, c10, c22, c24, samplers 8..10, RT1 and COLORWRITEENABLE1 PASS
 CHECK failed box draw (the fourth draw) publishes nothing PASS
 CHECK after a failed box draw the camera-gate resolve restarts without history PASS
 CHECK Reset protocol keeps the camera-gate programs and recreates the box targets PASS
@@ -5041,6 +5045,22 @@ CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
 CHECK thin-region history follows the sequence PASS
 THIN_REGION_BAD_MOTION kind=nan glass=1 asserted=0 covered_px=4 screen_gate_max_within_8px=1.0000 camera_gate_max_within_8px=1.0000 camera_screen_channel_max=1.0000 identical_to_screen_gate=1
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_EMISSIVE frames=64 hull=0.16 strip=3.0 weight=0.97 e0_vs_plain_max_diff=0.000000000 e0_mask_b_max=0.000000 e1_mask_oracle_error=0.000000 e1_strip_b_min=1.0000 e1_panel_core_b_max=0.0000 e1_unrouted_sentinel_b_max=0.0000 e0_strip_delta_codes=36.8535 e1_strip_delta_codes=10.6967 delta_ratio=3.4453
+CHECK emissive vote at E = 0: colour, alpha and mask bit-identical to the plain resolve (no pixel of this scene is fragmented) PASS
+SAMPLE emissive vote at E = 1: published strength equals the CPU oracle's (vote, 11x11 grow, 17x17 speed gate) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK emissive vote: the routed strip carries the full thin-region strength on every row PASS
+CHECK emissive vote: a uniformly lit panel's interior and an unrouted sentinel emitter of the same luma cast no vote PASS
+CHECK emissive vote: the strip's frame-to-frame leak at rest falls at least 2.5 x (IIR prediction 3.4 x for 0.9 -> 0.97) PASS
+CHECK thin-region program created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_EMISSIVE_NONFINITE frames=16 nan_present=1 overflow_present=1 control_b=1.0000 nan_and_panel_core_b_max=0.0000 overflow_b_max_3x3=0.0000 mask_oracle_error=0.000000
+SAMPLE emissive vote, non-finite scene: published strength equals the CPU oracle's actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK emissive vote: a NaN inside a lit panel, its eight neighbours (the panel's ungrown core) and a pixel above the resolve's finite limit cast no vote, while a finite peak elsewhere does PASS
 CHECK sentinel strength outside [0, 1] is refused PASS
 CHECK sentinel strength outside [0, 1] is refused PASS
 CHECK sentinel strength outside [0, 1] is refused PASS
@@ -5219,4 +5239,4 @@ CHECK thin-region history follows the sequence PASS
 CHECK thin-region program created on this device PASS
 CHECK thin-region history follows the sequence PASS
 CHECK mask-target creation failure under the thin region: plain resolve, history kept PASS
-RESULT PASS numerical=576 state_restorations=23 lattice=1
+RESULT PASS numerical=583 state_restorations=23 lattice=1

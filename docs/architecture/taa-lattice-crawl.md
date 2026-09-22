@@ -2253,3 +2253,37 @@ is the model of this change.
 #### 32.6 Run 61 verdict (2026-09-22)
 
 run215/run216 on the Run61 DLL: the user reports the solar-plant crawl as fixed or nearly so in forward flight and pans. The thin-region weight stays at **0.97**: the user could not reliably separate 0.97 from `0.94,1` (0.94 perhaps slightly less blur in motion, slightly more crawl). A speed-eased weight is the fallback if motion blur becomes a complaint. Lasers over sky showed no trails with `--taa-sentinel-stabiliser 0.7`. Open: distant unrouted stations still flicker under fast pans (temporal-resolve ledger, run215 entries).
+
+### 32.7 Emissive vote in the mask: thin glow strips join the region (2026-09-22)
+
+R3 of [thin-glow-lines.md](thin-glow-lines.md) 8.3. The thin region admits a pixel only where the DEPTH is fragmented, so a thin
+emissive strip painted on a continuous hull -- the distant station glow lines of run231 -- never joins it and keeps the base
+history weight, leaking a fixed fraction of the jitter cycle at rest (8.1 of that note). `--taa-thin-region-emissive E`
+(`X3M_TAA_THIN_REGION_EMISSIVE`, default absent = off) adds a second, luminance-based admission in the mask's tests draw
+(`line_mask_ps.hlsl`, `c7.z = 0`), reading this frame's HDR scene through the previously unbound `s0` and `E` from the previously
+unused `c10.x`:
+
+> `b` also becomes 1 where the pixel is ROUTED with valid depth (motion alpha exactly 1, the routing the resolve itself reads),
+> its own Rec.709 luma `L` exceeds `E`, and the MINIMUM luma of its 3x3 is below `L / 3`.
+
+Nine taps of the scene. The 3x3 minimum is what separates a strip from a panel: a uniformly lit panel's interior minimum is its
+own luma, so it votes nowhere, while a one-pixel strip on a `0.16` hull sees `0.16` next to its `3`. The vote lands in `b` and
+takes the whole existing chain unchanged -- the 11x11 grow, the 17x17 speed gate, the camera gate of 32.1 and the 7x7 box clip --
+so a voting pixel gets `min(n / (n + 1), W)` at rest and, with the camera gate, under a coherent pan, and a nearby fast mover still
+closes it. The resolve programs are untouched. Unrouted depth-sentinel pixels (lasers, engine glows, sky) are outside the class
+and keep the sentinel law of temporal-integration.md; a non-finite luma fails both comparisons and casts no vote.
+
+`E` is in the units of the bound scene, and the pass binds what the resolve reads: the FP16 scene on the HDR route, the FP16 copy
+of the display-referred 8-bit target otherwise, where nothing exceeds 1 and any `E >= 1` never fires. **The option therefore needs
+`--hdr` to have an effect at the suggested `E = 1`**; without it only an `E` below 1 can vote, on display-referred luma.
+
+Non-finite taps cannot vote and cannot enable a neighbour: a tap is taken only when it compares finite (`|L| <= 65000`, the
+resolve's own `rejection.z` rule, which a NaN fails in either direction), and a tap that is not counts as 0 at the centre and as
+the limit as a neighbour, so the `L / 3` test fails instead of passing by accident. No `max(NaN, 0)` fold is relied on.
+
+`E = 0` (the default) takes no tap and no branch: every mask target is bit for bit what it was, which the fixture measures against
+the plain resolve. Cost: the tests draw grows from 1196 to 1401 bytecode DWORDs (plain mask) and 1101 to 1307 (camera mask), one
+draw per frame at target resolution; the motion texel the speed gate already samples is shared with the vote, so the only new
+fetches are the nine scene taps, and the bound scene texture is the one the resolve reads a draw later. Specular glints on
+routed hulls qualify too and gain the region's weight under a pan; the 7x7 box clip bounds their ghost, the trade the user accepted
+for the lattice. Fixture numbers: [temporal-resolve.md](../verification/temporal-resolve.md), 2026-09-22 emissive-vote section.

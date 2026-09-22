@@ -1219,3 +1219,56 @@ thin region 0.97): the user reports the distant-station shimmer/flicker under pa
 triaged; no open symptom). Lasers over sky were clean on Run 61 (run216). Follow-up:
 make the sentinel stabiliser 0.7 the default with TAA and the camera gate (`off` opts
 out), following the Run57/Run59/Run61 default pattern.
+
+## 2026-09-22 thin-region emissive vote (R3): fixture
+
+`--taa-thin-region-emissive E` / `X3M_TAA_THIN_REGION_EMISSIVE`, the luminance admission in the stabiliser mask
+([taa-lattice-crawl.md](../architecture/taa-lattice-crawl.md) 32.7; design [thin-glow-lines.md](../architecture/thin-glow-lines.md)
+8.3 R3). Default off. `E` is in the units of the scene the pass binds, which is the display-referred 8-bit target's FP16 copy
+without `--hdr`: **the suggested `E = 1` needs the HDR route to have any effect**.
+
+New fixture case `THIN_REGION_EMISSIVE` in `run_temporal_pass.py`'s lattice mode (scene "emissive" of
+`temporal_thin_region_inc.h`): a routed dark hull (luma 0.16, depth 0.99) over rows [0, 20) of the sentinel, a 1.4 px bright strip
+(luma 3) at x in [6.1, 7.5) on it (column 6 bright on every one of the 8 jitter phases, column 7 on 3 of them: the period-2 toggle
+of a strip about a pixel wide), a 16x16 uniformly lit panel of the same luma 3, and an unrouted colour-only patch of luma 3 on the
+sentinel. No 7-tap line in the window changes depth class twice, so FRAGMENTED is 0 everywhere and `b` carries the vote alone.
+64 frames at rest, screen gate, `W = 0.97`, base weight 0.9.
+
+| measurement | number |
+| --- | --- |
+| `E = 0` against the plain resolve, all frames and channels | max difference **0.000000000**; mask `b` max **0** |
+| `E = 1` published strength against the CPU oracle (vote, 11x11 grow, 17x17 gate) | error **0.000000** (tolerance 0.5/255) |
+| `E = 1` strip `b`, rows [2, 18), columns 6-7 | minimum **1.0000** |
+| `E = 1` lit-panel interior `b` (x [20, 24), y [8, 12)) / unrouted sentinel emitter `b` | **0.0000** / **0.0000** |
+| strip rest leak, rms frame-to-frame step of the resolved column 7, last 32 frames | `E = 0` **36.85** codes, `E = 1` **10.70** codes, ratio **3.4453** |
+
+The ratio matches the IIR prediction 3.4 for 0.9 -> 0.97 (8.1 of the design note: 0.136 / 0.040 at the jitter fundamental,
+0.0526 / 0.0152 at the period-2 tone this strip carries).
+
+`THIN_REGION_EMISSIVE_NONFINITE` (same hull, 16 frames, `E = 1`): a 15x15 uniformly lit panel of luma 3 with a **NaN** pixel at its
+centre, a **65504** pixel (above the resolve's `rejection.z` limit 65000) on the bare hull 7 px clear of the panel ring, and a
+finite control peak. Only the panel's boundary ring is a local peak, so after the 11x11 grow the panel's core is exactly the NaN's
+3x3: nothing can reach it from outside, and the NaN's eight neighbours have luma 3 > E with a finite 3x3 minimum of 3.
+
+| measurement | number |
+| --- | --- |
+| NaN present in the readback / 65504 present | **1** / **1** |
+| control peak `b` | **1.0000** |
+| NaN's 3x3 (= the panel's ungrown core) `b` max | **0.0000** |
+| 65504 pixel's 3x3 `b` max | **0.0000** |
+| published strength against the CPU oracle over the whole window | error **0.000000** |
+
+Both would read 1 if a non-finite tap counted as a low 3x3 minimum (a folded `max(NaN, 0)`) or if the 65000 limit were absent, so
+the row is discriminating rather than merely quiet. Also in the case set: the pass refuses a negative or non-finite `E` while the
+thin region is on and neither reads nor validates it with the region off; the hostile-state snapshot now covers `c10` and sampler 0
+for both mask programs.
+
+| 2026-09-22 | command | result |
+| --- | --- | --- |
+| launcher/option mapping | `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_taa_image_defaults` | 16 tests, 0 failures |
+| fixture | `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_temporal_pass.py` | `passed: true`; base mode 510 / 278 / 2, 388 samples; lattice `RESULT PASS numerical=583 state_restorations=23` (576 before these two cases) |
+| host suite | `/usr/bin/python3 verification/probe/run_host_suite.py` | 226 modules, 2244 tests, 0 failing |
+| scratch DLL (not a candidate) | `cmake -S . -B build-r3 -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPython3_EXECUTABLE=/usr/bin/python3 && cmake --build build-r3 --target d3d9 -j8`; `python3 verification/probe/check_no_x87.py build-r3/d3d9.dll` | 0 warnings; PASS, 636 reachable functions, 0 violations |
+
+Mask program bytecode: plain `temporal_line_mask` 1196 -> 1401 DWORDs; camera `temporal_line_mask_camera` 1101 -> 1307 DWORDs
+(`verification/results/temporal-line-mask{,-camera}-program.json` carry the sha256 of each).

@@ -114,6 +114,7 @@ float taa_line_filter = 0.f;     // X3M_TAA_LINE_FILTER=A[,W] (A 0..4; 0 off; ig
 float taa_far[6] = {0.f, 0.f, 80.f, 130.f, .03f, .25f}; // X3M_TAA_FAR_STABILISER=W[,A[,F0,F1[,LO,HI]]]: far weight (0 off), far filter A (0 off), gate footprints, speed gate px/frame
 float taa_thin_region[4] = {0.f, 1.f, .03f, .25f}; // X3M_TAA_THIN_REGION=W[,RELAX[,LO,HI]]
 bool taa_thin_gate_given = false;
+float taa_thin_emissive = 0.f; // X3M_TAA_THIN_REGION_EMISSIVE=E (thin-glow-lines.md 8.3 R3): emissive vote of the thin region (0 off)
 bool taa_thin_camera_gate = false; // X3M_TAA_THIN_REGION_GATE=camera (taa-lattice-crawl.md section 32.1)
 float taa_sentinel[2] = {0.f, 1.f}; // X3M_TAA_SENTINEL_STABILISER=S[,E] (temporal-integration.md "sentinel stabiliser"): strength (0 off), emitter bound (0 none)
 unsigned taa_line_width = 1;     // W: line mask width 1 (default) or 2 px
@@ -2293,7 +2294,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_taa_resolve(taa_current_filter,taa_history_weight);
     hooked.motion_output.configure_taa_line_filter(taa_line_filter,taa_line_width);
     hooked.motion_output.configure_taa_far(taa_far[0],taa_far[1],taa_far[2],taa_far[3],taa_far[4],taa_far[5]);
-    hooked.motion_output.configure_taa_thin_region(taa_thin_region[0],taa_thin_region[1],taa_thin_region[2],taa_thin_region[3],taa_thin_gate_given,taa_thin_camera_gate);
+    hooked.motion_output.configure_taa_thin_region(taa_thin_region[0],taa_thin_region[1],taa_thin_region[2],taa_thin_region[3],taa_thin_gate_given,taa_thin_camera_gate,taa_thin_emissive);
     hooked.motion_output.configure_taa_sentinel(taa_sentinel[0],taa_sentinel[1]);
     hooked.motion_output.configure_taa_flicker(taa_thin_clip,taa_adaptive_weight,taa_adaptive_lo,taa_adaptive_hi,taa_alpha_history);
     hooked.motion_output.configure_rt_mode(motion_rt_lazy);
@@ -2775,6 +2776,15 @@ void initialize_log(HMODULE module) {
             ok=ok&&(count==1||count==2||count==4)&&(v[0]==0.f||(v[0]>=.5f&&v[0]<=.99f))&&v[1]>=0.f&&v[1]<=1.f&&v[2]>=0.f&&v[3]>v[2]&&v[3]<=64.f;
             if(ok){for(unsigned i=0;i<4;++i)taa_thin_region[i]=v[i];taa_thin_gate_given=count==4;}else log("taa_thin_region_setting invalid=1");}
         else if(length>=48)log("taa_thin_region_setting invalid=1 reason=too_long length=%lu",length);}
+    // X3M_TAA_THIN_REGION_EMISSIVE=<E> (docs/architecture/thin-glow-lines.md 8.3 R3; unset or 0: off, the mask bit for bit):
+    // E >= 0 in scene luma also puts a routed local luminance peak (own luma above E, 3x3 luma minimum below that luma / 3)
+    // into the thin region, so thin emissive strips on distant hulls take the region's history weight. One field; anything
+    // else, or the thin region off, keeps it off. Suggested 1.0 (hull 0.16, strips 1.6-3.7 in run231's capture) with X3M_HDR=1:
+    // the 8-bit route's scene copy is display-referred, so no E >= 1 can fire there.
+    {wchar_t emissive_setting[32];const DWORD length=taa_requested?GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION_EMISSIVE",emissive_setting,32):0;
+        if(length>0&&length<32){wchar_t* end=nullptr;const float v=wcstof(emissive_setting,&end);
+            if(end!=emissive_setting&&*end==L'\0'&&v>=0.f&&v<=65000.f)taa_thin_emissive=v;else log("taa_thin_region_emissive_setting invalid=1");}
+        else if(length>=32)log("taa_thin_region_emissive_setting invalid=1 reason=too_long length=%lu",length);}
     // X3M_TAA_THIN_REGION_GATE=screen|camera (section 32.1): "camera" gates the region on min(screen speed, camera-relative
     // speed) with the 7x7 box clip where the camera term alone opens it; "screen" is the screen-speed gate the thin region
     // originally had. Anything else keeps the screen gate and is logged. Meaningful only with X3M_TAA_THIN_REGION on.

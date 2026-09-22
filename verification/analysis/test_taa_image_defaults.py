@@ -226,6 +226,46 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
                 self.assertEqual(code, 2, args)
                 self.assertIn('--taa-thin-region-gate', error)
 
+    def test_thin_region_emissive_vote_is_absent_unless_given(self):
+        # --taa-thin-region-emissive E (docs/architecture/thin-glow-lines.md 8.3 R3): the emissive vote in
+        # the thin-region mask. Off unless given (E = 0 leaves the mask bit for bit), and it has nowhere to
+        # land without the region, so it requires --taa-thin-region with W > 0.
+        with tempfile.TemporaryDirectory() as directory:
+            for inherited in (None, {'X3M_TAA_THIN_REGION_EMISSIVE': '1'}):
+                self.assertNotIn('X3M_TAA_THIN_REGION_EMISSIVE', self.env(directory, *TAA, inherited=inherited))
+                self.assertNotIn('X3M_TAA_THIN_REGION_EMISSIVE',
+                                 self.env(directory, *TAA, '--taa-thin-region', '0.97', inherited=inherited))
+            for given, forwarded in (('1', '1'), ('1.0', '1'), ('0', '0'), ('0.5', '0.5'), ('3.7', '3.7')):
+                env = self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-thin-region-emissive', given)
+                self.assertEqual(env['X3M_TAA_THIN_REGION_EMISSIVE'], forwarded, given)
+            # It rides the screen gate as well as the camera one: the vote is in the mask's fragmentation channel.
+            env = self.env(directory, *TAA, '--taa-thin-region', '0.97', '--taa-thin-region-gate', 'screen', '--taa-thin-region-emissive', '1')
+            self.assertEqual((env['X3M_TAA_THIN_REGION_GATE'], env['X3M_TAA_THIN_REGION_EMISSIVE']), ('screen', '1'))
+            for args in (('--taa-thin-region-emissive', '1'), ('--taa-thin-region', '0', '--taa-thin-region-emissive', '1'),
+                         ('--taa-thin-region', '0.97', '--taa-thin-region-emissive', '-1'),
+                         ('--taa-thin-region', '0.97', '--taa-thin-region-emissive', '65001'),
+                         ('--taa-thin-region', '0.97', '--taa-thin-region-emissive', 'nan'),
+                         ('--taa-thin-region', '0.97', '--taa-thin-region-emissive', 'x'),
+                         ('--taa-thin-region', '0.97', '--taa-thin-region-emissive', '1,2')):
+                code, _, error = self.launch(directory, *TAA, *args)
+                self.assertEqual(code, 2, args)
+                self.assertIn('--taa-thin-region-emissive', error)
+        source = (ROOT / 'src/proxy/capture.cpp').read_text()
+        self.assertIn('float taa_thin_emissive = 0.f;', source)
+        self.assertIn('taa_requested?GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION_EMISSIVE"', source)
+        # The whole field must parse and stay within range; nothing else may turn it on.
+        self.assertIn('wcstof(emissive_setting', source)
+        self.assertIn("if(end!=emissive_setting&&*end==L'\\0'&&v>=0.f&&v<=65000.f)taa_thin_emissive=v;", source)
+        # Route: off at initialisation without the thin region, then forwarded per frame, and in the log line.
+        route = (ROOT / 'src/proxy/motion_output.cpp').read_text()
+        self.assertIn('taa_thin_emissive_ > 0.f && taa_thin_weight_ <= 0.f', route)
+        self.assertIn('in.thin_region_emissive = taa_thin_emissive_;', route)
+        self.assertIn('thin_gate=%s thin_emissive=%.3f', route)
+        # The pass refuses a non-finite or negative E while the region is on, and the mask uploads c10 on every draw.
+        passcpp = (ROOT / 'src/renderer/temporal_pass.cpp').read_text()
+        self.assertIn('thin_region&&(!std::isfinite(in.thin_region_emissive)||in.thin_region_emissive<0)', passcpp)
+        self.assertIn('SetPixelShaderConstantF)(d,10,emissive_constants,1)', passcpp)
+
     def test_sentinel_stabiliser_defaults_to_0_7_with_the_camera_gate(self):
         # --taa-sentinel-stabiliser S[,E] (docs/architecture/temporal-integration.md, "Distant unrouted
         # stations under a pan"). Run 61 (run216: lasers over sky clean) and Run 62 (run221: the

@@ -16,7 +16,7 @@ constexpr float lineDepth=.99f,squareDepth=.98f;
 std::vector<EdgeObject> line_objects(unsigned n){std::vector<EdgeObject> o;const double phase=std::fmod(lineStart+lineDrift*n,linePitch);
     for(double top=phase-linePitch;top<32;top+=linePitch)for(unsigned x=2;x<18;++x){const double t=top+lineSlope*(x-2);if(t>=2&&t+lineThick<=30)o.push_back({double(x),t,double(x+1),t+lineThick,1,lineDepth,0,lineDrift});}
     o.push_back({21,12,29,20,1,squareDepth,0,0});return o;}
-struct LineConfig { const char* name; bool configure; float A,thin,wmax; unsigned width=1; float farW=0,farA=0,thinW=0,relax=1; bool camera=false; float sentS=0,sentE=1; }; // sentS / sentE: the sentinel stabiliser (temporal-integration.md), camera gate only
+struct LineConfig { const char* name; bool configure; float A,thin,wmax; unsigned width=1; float farW=0,farA=0,thinW=0,relax=1; bool camera=false; float sentS=0,sentE=1,emisE=0; }; // sentS / sentE: the sentinel stabiliser (temporal-integration.md), camera gate only; emisE: the thin region's emissive vote (thin-glow-lines.md 8.3 R3)
 // Far stabiliser gate of the far cases (temporal_far_inc.h) and the scene hooks the shared oracle uses.
 float farD0=0,farInv=0,farLo=x3::temporal::kFarSpeedLo,farHi=x3::temporal::kFarSpeedHi;
 double line_velocity_default(double nearest){return nearest==double(lineDepth)?lineDrift:0;}
@@ -55,8 +55,23 @@ bool fragmented(const std::vector<float>& depth,int x,int y){const int dirs[4][2
 double line_velocity_default(double nearest);
 double (*line_velocity)(double)=line_velocity_default;
 // motion + sentS > 0 (camera): the sentinel stabiliser, max(strength, sentS * (1 - closure)) on an unrouted sentinel pixel (motion alpha -1).
-float thin_region_strength(const std::vector<float>& depth,int x,int y,bool camera=false,const std::vector<float>* motion=nullptr,float sentS=0){bool any=false;float closure=0;
-    for(int dy=-8;dy<=8;++dy)for(int dx=-8;dx<=8;++dx){if(std::abs(dx)<=5&&std::abs(dy)<=5)any=any||fragmented(depth,x+dx,y+dy);const float d=depth_clamped(depth,x+dx,y+dy);const bool geometry=d>=0&&d<=1;
+// Emissive vote of the thin region exactly as line_mask_ps.hlsl casts it (thin-glow-lines.md 8.3 R3, clamped addressing): a ROUTED
+// pixel (motion alpha 1) of valid depth whose own Rec.709 luma exceeds E and whose 3x3 luma minimum is below that luma / 3.
+// A tap that is not finite (NaN, or |L| above the resolve's 65000 limit) counts as 0 at the centre and as the limit as a
+// neighbour, so it can neither vote itself nor lower the minimum that admits its neighbours.
+constexpr double emissiveFinite=65000;
+bool emissive_vote(const std::vector<float>& current,const std::vector<float>& depth,const std::vector<float>& motion,int x,int y,float E){
+    constexpr int S=int(EdgeScene::S);auto clampx=[](int v){return UINT(std::min(std::max(v,0),S-1));};
+    auto luma=[&](int qx,int qy,double bad){const UINT cx=clampx(qx),cy=clampx(qy);const double l=.2126*double(px(current,cx,cy,0))+.7152*double(px(current,cx,cy,1))+.0722*double(px(current,cx,cy,2));
+        return (l==l&&std::fabs(l)<=emissiveFinite)?std::max(l,0.):bad;};
+    const float d=depth_clamped(depth,x,y);if(!(d>=0&&d<=1))return false;
+    if(px(motion,clampx(x),clampx(y),3)!=1.f)return false;
+    const double centre=luma(x,y,0);if(!(centre>double(E)))return false;
+    double lowest=emissiveFinite;for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx)lowest=std::min(lowest,luma(x+dx,y+dy,emissiveFinite));
+    return lowest*3<centre;}
+float thin_region_strength(const std::vector<float>& depth,int x,int y,bool camera=false,const std::vector<float>* motion=nullptr,float sentS=0,const std::vector<float>* current=nullptr,float emisE=0){bool any=false;float closure=0;
+    const bool vote=current&&motion&&emisE>0;
+    for(int dy=-8;dy<=8;++dy)for(int dx=-8;dx<=8;++dx){if(std::abs(dx)<=5&&std::abs(dy)<=5)any=any||fragmented(depth,x+dx,y+dy)||(vote&&emissive_vote(*current,depth,*motion,x+dx,y+dy,emisE));const float d=depth_clamped(depth,x+dx,y+dy);const bool geometry=d>=0&&d<=1;
         const double vx=geometry?line_velocity_x(d):cameraPanX,vy=geometry?line_velocity(d):0,screen=std::hypot(vx,vy),relative=std::hypot(vx-cameraPanX,vy),speed=camera?std::min(screen,relative):screen;
         closure=std::max(closure,quantise8((speed-double(farLo))/(double(farHi)-double(farLo))));}
     float strength=any?1-closure:0;

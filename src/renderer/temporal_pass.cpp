@@ -373,6 +373,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
         !x3::temporal::valid_current_filter(in.line_filter)||(in.line_filter>0&&(in.current_filter>0||(in.line_width!=1&&in.line_width!=2)||!line_filter_available()||(aged&&!far_requested&&!age_line_)))||
         !x3::temporal::valid_far_weight(in.far_weight,in.weight)||!x3::temporal::valid_current_filter(in.far_filter)||!std::isfinite(in.far_d0)||!std::isfinite(in.far_inv)||in.far_inv<0||
         !x3::temporal::valid_far_weight(in.thin_region_weight,in.weight)||!x3::temporal::valid_thin_clip(in.thin_region_relax)||
+        (thin_region&&(!std::isfinite(in.thin_region_emissive)||in.thin_region_emissive<0))||
         (far_requested&&(in.thin_clip>0||!x3::temporal::valid_far_speed_gate(in.far_speed_lo,in.far_speed_hi)||!far_available()||in.motion_policy!=MotionPolicy::PerPixel||adaptive||in.current_filter>0||(lined&&in.far_filter>0&&in.far_filter!=in.line_filter)||(in.line_width!=1&&in.line_width!=2)))||
         (camera_requested&&(!camera_gate_available()||lined))||
         (camera_requested&&!x3::temporal::valid_thin_clip(in.sentinel_strength))||(sentinel_requested&&(!std::isfinite(in.sentinel_emitter)||in.sentinel_emitter<0||!sentinel_available()))||
@@ -428,6 +429,10 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
         constants.history[0]=thin_on?in.thin_region_weight:in.weight;}
     const float far_constants[4]={in.far_d0,far_on?in.far_inv:0.f,far_on&&in.far_filter>0?1.f:0.f,far_on&&in.far_weight>0?1.f:0.f};
     const float thin_constants[4]={stabilise?in.sentinel_strength:0.f,thin_on?1.f:0.f,in.far_speed_lo,far_on?1.f/(in.far_speed_hi-in.far_speed_lo):0.f};
+    // Mask tests draw only (thin-glow-lines.md 8.3 R3): c10.x = E of the emissive vote, uploaded on every mask draw so no
+    // stale caller constant can open it; 0 (off, or the thin region off) leaves the mask bit for bit and takes no scene tap.
+    const bool emissive_vote=thin_on&&in.thin_region_emissive>0;
+    const float emissive_constants[4]={emissive_vote?in.thin_region_emissive:0.f,0.f,0.f,0.f};
     const bool filtered=in.current_filter>0;
     UINT final_mask=1; // which owned mask target the resolve reads
     const bool thin_bound=flicker&&thin_; // after a mask fallback of a far run the thin variants may not exist: plain then
@@ -525,6 +530,9 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
                step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,5,far_constants,1))&&
                step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,6,thin_constants,1))&&
                step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,7,constants.options,1))&&
+               step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,10,emissive_constants,1))&&
+               // The emissive vote reads this frame's scene at s0 (already point / clamp from normalize; the resolve rebinds it).
+               (!emissive_vote||step(call<SetTextureFn>(SetTexture)(d,0,pass==0?(in.color?in.color:scratch_):nullptr)))&&
                (!camera||(step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,8,parallax_constants,1))&&step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,9,lane_constants,1))&&
                           step(call<SetTextureFn>(SetTexture)(d,5,lane&&pass==0?in.current_depth:nullptr))))&& // s0..s6 are point / clamp already; the resolve rebinds s5
                (!stabilise||step(call<SetTextureFn>(SetTexture)(d,6,pass==2?depths_[next]:nullptr)))&& // sentinel stabiliser: the composition reads the pixel's own depth; the resolve rebinds s6

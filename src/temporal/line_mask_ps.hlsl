@@ -72,6 +72,11 @@
 // exactly -1, per-pixel motion on) gets b = max(b, S * the 17x17 minimum of the camera openness); a keeps the screen
 // strength, so the whole added strength takes the box-clipped history. Not dilated; a routed sentinel pixel (alpha 1,
 // section 32.5 glass) is outside the class. S = 0 skips the two fetches and is the previous composition bit for bit.
+// X3M_TAA_THIN_REGION_EMISSIVE (docs/architecture/thin-glow-lines.md 8.3 R3; taa-lattice-crawl.md section 32.7): c10.x = E > 0
+// adds an EMISSIVE VOTE to b in the tests draw (c7.z = 0), reading this frame's scene at s0. E = 0 (the default) does not
+// read s0 or c10 at all and the mask is what it was bit for bit. E is in the units of the bound scene: the HDR route binds the
+// FP16 scene, the 8-bit route the FP16 copy of the display-referred target, where nothing exceeds 1 and E >= 1 never fires.
+sampler2D scene : register(s0);
 sampler2D source : register(s1);
 sampler2D motionOverride : register(s4);
 float4 reprojection0 : register(c0);
@@ -82,6 +87,7 @@ float4 sizeJitter : register(c4);
 float4 farGate : register(c5);
 float4 thinGate : register(c6); // sentinel-stabiliser S (camera program; else unused), on, speed LO, 1 / (HI - LO)
 float4 options : register(c7);
+float4 emissive : register(c10); // x = E, the emissive vote's luma threshold in scene units; 0 = off (no tap, no vote)
 #ifdef X3M_CAMERA_GATE
 float4 depthParallax : register(c8); // camera_depth_parallax(): (DX, DY, DW) / m32, m22; xyz = 0 is the far-plane path
 float4 laneParallax : register(c9);  // camera_lane_parallax(): (DX, DY, DW), 1 where s5 carries the view z; w = 0: c8 alone
@@ -89,6 +95,8 @@ sampler2D laneDepth : register(s5);  // the caller's four-channel current depth 
 sampler2D ownDepth : register(s6);   // composition with c6.x > 0 only: the current depth (.r), point / clamp
 #endif
 static const float lineMargin = 1.1;
+static const float3 lumaWeights = float3(0.2126, 0.7152, 0.0722); // Rec.709, as resolve.hlsl and the box programs weigh luma
+static const float emissiveFinite = 65000; // the resolve's own finite limit (rejection.z), as thin_box_*_ps.hlsl applies it
 float4 fetch(float2 uv) { return tex2Dlod(source, float4(uv, 0, 0)); }
 bool validDepth(float v) { return v >= 0 && v <= 1; }
 bool sentinelDepth(float v) { return v <= -0.5 && v >= -1e30; }
@@ -96,11 +104,35 @@ bool sentinelDepth(float v) { return v <= -0.5 && v >= -1e30; }
 bool lineBackground(float q, float d) { return sentinelDepth(q) || (validDepth(q) && (1 - q) * lineMargin < 1 - d); }
 bool classChange(float a, float b) { return (validDepth(a) && lineBackground(b, a)) || (validDepth(b) && lineBackground(a, b)); }
 float farWeight(float depth) { return validDepth(depth) ? saturate((depth - farGate.x) * farGate.y) : 0; }
+// Emissive vote of the thin region, tests draw only. A pixel qualifies when it is ROUTED with valid depth (motion alpha
+// exactly 1, the routing the resolve itself reads, sampled once by the caller), its own scene luma L exceeds E, and the
+// MINIMUM luma of its 3x3 is below L / 3: a local peak, i.e. a thin emissive strip on a hull, and not a uniformly lit panel,
+// whose 3x3 minimum is its own luma. 9 taps of the scene through s0 and no further motion fetch. Unrouted sentinel pixels
+// (lasers, engine glows, sky) are outside the class and keep the sentinel law. The vote lands in b and follows the whole
+// existing chain: the 11x11 grow, the 17x17 speed gate, the camera gate and the 7x7 box clip.
+// Non-finite taps, both ways, with no reliance on how a compiler folds max(NaN, 0): a tap is taken only when it compares
+// finite (|L| <= 65000, the resolve's own limit, which a NaN fails in either direction and an infinity in one), and a tap
+// that is not becomes 0 AT THE CENTRE (so the pixel's own luma cannot clear E) and the limit AS A NEIGHBOUR (so it cannot
+// lower the 3x3 minimum and let the centre through). A pixel whose whole 3x3 is non-finite keeps lowest = centre = 0.
+float sceneLuma(float2 uv) { return dot(tex2Dlod(scene, float4(uv, 0, 0)).rgb, lumaWeights); }
+bool emissiveVote(float2 uv, float depth, float alpha) {
+    if (!validDepth(depth) || !(options.x > 0.5)) return false;
+    if (!(alpha >= 1 && alpha <= 1)) return false;
+    float centre = 0, lowest = emissiveFinite;
+    [loop] for (int ny = -1; ny <= 1; ++ny) {
+        [loop] for (int nx = -1; nx <= 1; ++nx) {
+            float tap = sceneLuma(uv + float2(nx, ny) * sizeJitter.xy);
+            bool finite = tap == tap && tap <= emissiveFinite && tap >= -emissiveFinite;
+            lowest = min(lowest, finite ? max(tap, 0) : emissiveFinite);
+            if (nx == 0 && ny == 0) centre = finite ? max(tap, 0) : 0;
+        }
+    }
+    return centre > emissive.x && lowest * 3 < centre;
+}
 #ifndef X3M_CAMERA_GATE
 // Screen speed of this pixel's own correspondence, px/frame (no dilation: the 13x13 maximum of the later draws covers the neighbours).
-float gateClosure(float2 uv, float depth) {
+float gateClosure(float2 uv, float depth, float4 motion) {
     float2 previousUV = uv;
-    float4 motion = tex2Dlod(motionOverride, float4(uv, 0, 0));
     if (options.x > 0.5 && motion.w >= 1 && motion.w <= 1) previousUV = motion.xy + sizeJitter.zw;
     else if (validDepth(depth) || sentinelDepth(depth)) {
         float2 unjittered = uv - 0.5 * sizeJitter.xy - sizeJitter.zw;
@@ -120,8 +152,7 @@ float gateClosure(float2 uv, float depth) {
 // far plane its relative speed is the whole translation parallax, which the 17x17 minimum would spread over every strut.
 // A VALID depth whose lane .b is not positive still votes from the far plane (fail closed on an inconsistent frame).
 float gateOpenness(float speed) { return saturate(1 - (speed - thinGate.z) * thinGate.w); }
-float2 gateOpen(float2 uv, float depth) {
-    float4 motion = tex2Dlod(motionOverride, float4(uv, 0, 0));
+float2 gateOpen(float2 uv, float depth, float4 motion) {
     const bool routed = options.x > 0.5 && motion.w >= 1 && motion.w <= 1;
     const bool cameraPath = validDepth(depth) || sentinelDepth(depth);
     float2 cameraUV = uv;
@@ -198,10 +229,12 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0
         float depth = fetch(uv).r;
         result.g = farWeight(depth);
         [branch] if (thinGate.y > 0.5) {
+            // One motion sample for the whole draw: the speed gate and the emissive vote read the same texel.
+            float4 motion = tex2Dlod(motionOverride, float4(uv, 0, 0));
 #ifdef X3M_CAMERA_GATE
-            result.ar = gateOpen(uv, depth);
+            result.ar = gateOpen(uv, depth, motion);
 #else
-            result.a = gateClosure(uv, depth);
+            result.a = gateClosure(uv, depth, motion);
 #endif
             [loop] for (int k = 0; k < 4; ++k) {
                 float2 along = (k == 0 ? float2(1, 0) : (k == 1 ? float2(0, 1) : (k == 2 ? float2(1, 1) : float2(1, -1)))) * sizeJitter.xy;
@@ -209,6 +242,7 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0
                 [loop] for (int t = -2; t <= 3; ++t) { float next = fetch(uv + t * along).r; if (classChange(previous, next)) changes += 1; previous = next; }
                 if (changes >= 2) result.b = 1;
             }
+            [branch] if (emissive.x > 0) { if (emissiveVote(uv, depth, motion.w)) result.b = 1; }
         }
 #ifndef X3M_CAMERA_GATE
         if (validDepth(depth) && options.w > 0.5) {

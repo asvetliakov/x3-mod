@@ -112,6 +112,27 @@ struct FrameInputs {
     // has no 3x3 sentinel soft clip). Pixels outside the region are the far /
     // plain blend bit for bit.
     float thin_region_weight = 0.f, thin_region_relax = 1.f;
+    // Emissive vote of the thin region (docs/architecture/thin-glow-lines.md 8.3
+    // R3; taa-lattice-crawl.md section 32.7), E in scene luma: 0 (the default)
+    // leaves every mask target bit for bit what a run without the field writes.
+    // E > 0 also puts a ROUTED pixel of valid depth (motion alpha 1, the routing
+    // the resolve reads) whose own HDR luma L exceeds E and whose 3x3 luma minimum
+    // is below L / 3 into the region: a local peak, i.e. a thin emissive strip on a
+    // distant hull, not a uniformly lit panel. Those pixels then take the
+    // thin-region weight min(n / (n + 1), thin_region_weight) at rest and, with the
+    // camera gate, under a camera pan, instead of the base weight. The vote lands in
+    // the mask's fragmentation channel and follows the whole existing chain (11x11
+    // grow, 17x17 speed gate, camera gate, 7x7 box clip); the resolve programs are
+    // untouched. Unrouted sentinel pixels (lasers, engine glows, sky) are outside
+    // the class and keep the sentinel law, as do non-finite taps (|L| > 65000 or
+    // NaN), which can neither vote nor lower a neighbour's 3x3 minimum. E is in the
+    // units of the scene this pass binds for the resolve: with an 8-bit color_surface
+    // that is the display-referred copy, where nothing exceeds 1 and E >= 1 never
+    // fires; the FP16 `color` input is the HDR scene the design's E = 1 assumes.
+    // Finite and >= 0, read and validated only with thin_region_weight > 0; costs 9
+    // scene taps in the mask's tests draw and no extra motion fetch (the speed gate's
+    // sample is shared).
+    float thin_region_emissive = 0.f;
     // Camera-relative gate mode of the thin region (taa-lattice-crawl.md section
     // 32.1), off by default (the screen-speed gate above, bit for bit). On: the
     // region's gate speed is min(screen speed, camera-relative speed), the
