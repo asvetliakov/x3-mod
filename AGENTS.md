@@ -153,6 +153,9 @@ settings.
 - `docs/verification/user-runs.md` holds open runs and the completed-run table.
   Completed instructions, superseded handoffs, pause snapshots and status
   archives live in `docs/archive/`.
+  `python3 tools/analysis/archive_user_runs.py` does that move (table rows past
+  the newest eight, completed instruction blocks and the trailing run-history
+  sentences); `--check` fails when the file still carries archivable material.
 
 ## Context discipline
 
