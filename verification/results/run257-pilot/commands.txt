@@ -1,0 +1,16 @@
+python3 node_census.py /tmp/x3-bottleX3-run257/session-20260923-024913-212.log 3615 5968 > census_run257_out.txt
+python3 node_census.py /tmp/x3-bottleX3-run255/session-*.log 3351 > census_run255_3351_out.txt
+python3 body_diff.py > body_diff_out.txt
+python3 ship_draws.py <log> <frame> 00004f72,00004f75,00004f76,000053b8 > ship_draws_run25X_<frame>.txt
+python3 ship_textures.py <log> <frame> <models> > tex_*.txt
+python3 tools/analysis/draw_accounting.py /tmp/x3-bottleX3-run257 [--ladder] > draw_accounting[_ladder].txt
+grep '^cull_census_frame' <log>  -> 16 frames, overflow=0 all
+# frame-time rise triage (2026-09-23)
+python3 phase_windows.py <run257 log> > phase_windows_run257_out.txt ; same for run255 -> phase_windows_run255_out.txt
+python3 slowdown_timeline.py <run257 log> 2100 8100 > slowdown_timeline_run257_out.txt
+python3 range_medians.py <run257 log> 2520-2819 3300-3599 5880-5999 > range_medians_run257_out.txt ; run255 3050-3349 -> range_medians_run255_out.txt
+python3 burst_load.py <log> <burst frames> > burst_load_run25X_out.txt
+python3 pause_check.py <log> <frames around bursts> > pause_check_run25X_out.txt
+python3 host_activity_scan.py 2026-09-22T22:50:00 2026-09-22T22:53:00 | grep -E 'run_host_suite|g\+\+|cmake|unittest|wine_lock|build' > host_activity_run257_out.txt (+ file mtimes appended)
+grep '^shadow_replay_candidates ' <log> | grep -o 'footprint_refused4=[0-9]*' | sort | uniq -c | sort -rn | head -5   # value histogram
+grep '^shadow_replay_candidates ' <log> | grep -o 'footprint_refused4=[0-9]*' | awk -F= '{s+=$2;n++} END{print n, s/n}'   # run255 13549 rows mean 14.60; run257 14799 rows mean 15.93

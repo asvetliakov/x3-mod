@@ -1,0 +1,8 @@
+body  run255(draws,alpha,nodes)  run257(draws,alpha,nodes)  delta_draws
+00004f75 ships\argon\argon_M1                                                    [64, 8, 2] [4, 0, 2] -60
+000053b8 Stations\others\military_outpost_middleb                                [68, 12, 2] [36, 7, 2] -32
+00004f76 ships\argon\argon_M2                                                    [32, 4, 1] [2, 0, 1] -30
+00004f72 ships\argon\argon_TL                                                    [31, 4, 1] [2, 0, 1] -29
+00000000 -                                                                       [8, 0, 1] [7, 0, 1] -1
+0000568e effects/menugfx/GUI/gui_master                                          [0, 0, 0] [1, 0, 1] 1
+0000552a ships\M7\Argon_m7m                                                      [37, 7, 1] [38, 8, 1] 1

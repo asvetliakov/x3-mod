@@ -1,0 +1,10 @@
+22:50:29 ec1d2a17-c1f5-4762-8f3 S=/private/tmp/claude-501/-Users-asvetl-x3-mod/ec1d2a17-c1f5-4762-8f3d-98edd98ef126/scratchpad; ( /usr/bin/python3 verification/probe/run_host_suite.py > $S/gat
+22:50:30 agent-a617e3d7c5fdbe2b i686-w64-mingw32-g++ -std=c++17 -O2 -Wall -Wextra -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2 -static /private/tmp/claude-501/-Users-asvetl-x
+22:50:41 agent-a617e3d7c5fdbe2b X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --holder motion-weight-slots python3 /private/tmp/claude-501/-Users-asvetl-x3-mod/ec1d2a17-c1f5-47
+gate-skydef-host.txt: born 02:50:29 local, last write 02:52:04 local; tail: 231 modules, 2333 tests, 95.6s wall (12 jobs)
+same command then ran cmake --build -j8 (scratch gate build): gate-skydef-build.txt born 02:52:04, d3d9.dll 02:52:43 local; object files by 10 s slot:
+  13 02:52:2
+  74 02:52:3
+   1 02:52:4
+Wine fixtures of agents a940/a617 waited on the lock (held by 16544 user-game) and did not run during the flight
+run255 flight window 22:19-22:26 UTC: 0 host-suite/compile/build calls in transcripts
