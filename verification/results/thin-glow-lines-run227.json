@@ -1,0 +1,58 @@
+{
+ "captures": {
+  "run225_baseline": "/tmp/x3-bottleX3-run225 frames 6516-6523 (X3M_TAA_MIP_BIAS=-0.5, no taa_debug: hdr/depth/motion only)",
+  "run227_burstA": "/tmp/x3-bottleX3-run227 frames 3943-3950 (X3M_TAA_MIP_BIAS=0.5, taa_debug=1: hdr/depth/motion/color/taa/present present)",
+  "run227_burstB": "/tmp/x3-bottleX3-run227 frames 5383-5390 (same run, second F8 burst, different pose)"
+ },
+ "bias_confirmation": {
+  "run225_env": "X3M_TAA_MIP_BIAS=-0.5",
+  "run227_env": "X3M_TAA_MIP_BIAS=0.5",
+  "run227_engine_state_mip_bias": 0.5,
+  "evidence": "grep -a -o 'mip_bias=[^ ]*' session log motion_output_mode/motion_output_device lines, both frames 3943 and 5383",
+  "note": "bias is a single global sampler value (motion_output_mode mip_bias=0.5), applied to every stage, not a light-map-stage-only value; this is the section-5 recommended A/B form, not the production stage-only form"
+ },
+ "station_identity": {
+  "model": "00005428",
+  "routed_draws_per_frame_run227": 99,
+  "routed_draws_per_frame_run225_note": 36,
+  "note": "draw count differs because run227's camera/LOD selection differs from run225's pose; same model id confirmed in both"
+ },
+ "method_caveat": "Re-implemented from the note's description only (original scratchpad scripts are gone). Strip mask = HDR luma>0.8 AND depth valid (channel index 2 of depth_1 != -1) AND view_z in [5000,9500] units, a z-band proxy for the station, NOT the note's exact spar-box ROI (unrecoverable). Per-emitter forward tracking uses motion_1's (u,v,a) fields per tools/analysis/analyze_motion_readback.py's decode (dx=(u)*W-(px+0.5)) WITHOUT the per-frame jitter/raster-jitter correction that script applies; this is a known simplification.",
+ "sanity_check_failed": {
+  "description": "Re-running this session's tracker on the SAME run225 frames the note used does not reproduce the note's own numbers.",
+  "note_reported_in_peak_change_p50_p90": [0.049, 0.481],
+  "this_session_recomputed_run225_p50_p90": [0.220, 2.530],
+  "conclusion": "This session's per-emitter peak-ratio and frame-to-frame change numbers are NOT trustworthy (off by 4-5x from the note's own baseline, almost certainly a tracking/jitter-decode bug in the quick reimplementation, not a change in the scene). They are recorded below for completeness but should not be used for the verdict."
+ },
+ "robust_measured_metrics": {
+  "per_phase_lit_px": {
+   "run225": [931, 936, 921, 926, 926, 917, 936, 911],
+   "run227_A": [1152, 1135, 1145, 1126, 1129, 1131, 1148, 1143],
+   "run227_B": [1588, 1572, 1583, 1552, 1540, 1505, 1504, 1497]
+  },
+  "per_phase_energy": {
+   "run225": [1709.8, 1710.8, 1700.2, 1690.0, 1688.5, 1693.8, 1707.8, 1670.2],
+   "run227_A": [1515.4, 1499.8, 1503.7, 1468.0, 1475.3, 1474.7, 1495.8, 1495.7],
+   "run227_B": [2241.4, 2232.1, 2257.5, 2228.8, 2214.1, 2186.9, 2184.2, 2179.9]
+  },
+  "phase_spread_pct": {"run225": 2.7, "run227_A": 2.3, "run227_B": 3.4},
+  "horizontal_run_length_histogram": {
+   "run225": {"1": 147, "2": 98, "3": 72, "4": 30, "5": 25, "6": 15, "7": 1},
+   "run227_A": {"1": 120, "2": 103, "3": 86, "4": 46, "5": 21, "6": 14, "7": 16},
+   "run227_B": {"1": 179, "2": 123, "3": 108, "4": 66, "5": 31, "6": 32, "7": 10}
+  },
+  "horizontal_1px_run_share": {"run225": 0.379, "run227_A": 0.296, "run227_B": 0.326},
+  "vertical_1px_run_share": {"run225": 0.566, "run227_A": 0.577, "run227_B": 0.504}
+ },
+ "unreliable_tracked_metrics_do_not_use": {
+  "peak_ratio_p10_p50_p90": {"run225": [0.497, 0.733, 0.898], "run227_A": [0.713, 0.880, 0.957], "run227_B": [0.502, 0.865, 0.950]},
+  "frame_to_frame_change_p50_p90": {"run225": [0.220, 2.530], "run227_A": [0.074, 0.424], "run227_B": [0.087, 0.827]},
+  "taa_frame_to_frame_change_p50_p90": {"run227_A": [0.050, 0.141], "run227_B": [0.061, 0.196]},
+  "taa_gap_fraction": {"run227_A": 0.002, "run227_B": 0.014}
+ },
+ "verdict": {
+  "did_bias_change_strips": "Modest, not decisive: horizontal 1-px run share dropped from 0.379 (bias -0.5) to 0.296-0.326 (bias +0.5) in both independent bursts, i.e. slightly fewer of the narrowest dashes / a small widening. Vertical 1-px share is unchanged in burst A (0.577 vs 0.566) and lower in burst B (0.504). Per-phase lit-pixel count and energy stayed within +-3.4% across phases in all three captures (jitter still moves energy between pixels, does not lose it), same as the note's finding, at both bias settings.",
+  "why_the_user_still_sees_no_help": "The measured horizontal widening (about 15-20% relative drop in the narrowest-run share) is real but small, consistent with the note's mechanism: strips at this range have a coverage proxy far below 1 px (run225 median 0.76), so a 1-stop mip shift moves the sampled texel size but not far enough to cross the 1-px threshold; most dashes stay sub-pixel and keep tearing. The evidence rules out 'bias not reaching the light-map stage' as the reason (mip_bias=0.5 is a single global value, logged and applied to every stage including stage 2, confirmed above) -- so the remaining candidates from the note's Unknown section (aniso already integrating across the strip, or the selected mip already having a >=1px texel on this hull) are not distinguished by this A/B; both are still open per the note.",
+  "bearing_on_option_a_vs_b_prime": "The small, inconsistent-in-direction effect (vertical axis) argues for the note's existing preference for option (a), a per-pixel analytic footprint, over further tuning of the per-stage mip bias: a full 1-stop global bias swing produced a sub-threshold change, so a stage-only bias (a strict subset of this A/B's effect) is very unlikely to do better. This session adds no new evidence against (a) and weak evidence that (b') alone will not resolve the symptom."
+ }
+}

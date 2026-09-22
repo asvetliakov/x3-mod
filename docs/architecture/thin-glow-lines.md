@@ -145,3 +145,49 @@ is the cheap way to get the same effect. **[A]** the user's reason for 720p is n
   may be the part the user names "flicker"; needs the `--taa-debug` capture of step 2 (the run225 burst has no
   `taa_1`).
 - The 8-frame burst holds one jitter cycle under motion; every per-phase number is from one pass through the phases.
+
+## 7. run227 A/B: `--taa-mip-bias 0.5`, 2026-09-22
+
+Status: triage, no build, no fixture. Tags: **[M]** measured this session, **[I]** inferred. Inputs: `/tmp/x3-bottleX3-run227`
+(Run63 DLL, `X3M_TAA_DEBUG=1`, two F8 bursts, frames 3943-3950 and 5383-5390, station model `00005428` confirmed in
+both, 99 routed draws/frame vs run225's 36 — different pose/LOD, same model id). Baseline: run225 (§1-6), bias -0.5.
+Compact numbers: `verification/results/thin-glow-lines-run227.json`. The original run225 scoring scripts (scratchpad)
+are gone; this session's metrics are a fresh, partial re-implementation from §2's description, not the same code.
+
+**(1) Bias applied [M].** `grep -a -o mip_bias=... session-*.log` on the `motion_output_mode` / `motion_output_device`
+per-frame lines gives `mip_bias=0.5` at both burst starts (frame 3943 and 5383), against run225's `-0.5`. This is the
+engine's applied per-frame state, not only the launch option. It is a single **global** sampler value (every stage),
+the §5 recommended A/B form, not the production light-map-stage-only form.
+
+**(2) Same strips, robust metrics [M].** Mask = HDR luma > 0.8, depth valid, view_z in a 5000-9500 unit band (a
+z-band proxy for the station, not the note's exact spar box, which could not be recovered). Per-phase lit pixel count
+and energy stay within +-3.4% of their mean at both bias settings (run225 2.7%, run227-A 2.3%, run227-B 3.4%): same
+"jitter moves energy, does not lose it" behaviour as §2. Horizontal run-length histogram, 1-px-run share: run225
+(bias -0.5) **0.379**, run227-A (bias +0.5) **0.296**, run227-B **0.326** — a real but modest ~15-22% relative drop
+in the narrowest dashes in both independent bursts. Vertical 1-px-run share: run225 0.566, run227-A 0.577 (no
+change), run227-B 0.504 (some widening). **Per-emitter tracked metrics (peak ratio, frame-to-frame change, post-TAA
+change, gap fraction) failed a sanity check**: re-running this session's forward tracker on run225's own frames gives
+a p50/p90 frame-to-frame change of 0.220/2.530 against the note's reported 0.049/0.481 — 4-5x off, almost certainly a
+jitter/direction bug in the quick motion-vector decode (it omits the raster-jitter and jitter-UV terms that
+`tools/analysis/analyze_motion_readback.py`'s `analyze_pixels` applies). Those numbers are recorded in the JSON for
+completeness but are **not used** for the verdict below.
+
+**(3) Verdict [M/I].** The bias did change the strips, by a small, measurable amount (horizontal narrowing of the
+1-px-run share, not vertical, in both bursts), not by nothing and not by enough to read as "helped." This rules out
+one of the three candidate explanations directly: the bias is confirmed global and applied to the light-map stage (it
+is applied to every stage), so **it is not a routing/stage-reach problem**. The small, axis-inconsistent size of the
+effect is consistent with the note's other two open explanations — anisotropic filtering already integrating across
+the strip on this oblique hull, or the mip already landing on a texel near/above 1 px before the bias moves it the
+rest of the way — and this A/B does not distinguish between them; both remain open, as in §6.
+
+**(4) Bearing on option (a) vs (b') [I].** A full 1-stop global bias swing (twice the size of any plausible
+stage-only change) produced a sub-threshold, partly inconsistent effect. A stage-only bias, a strict subset of this
+A/B's effect, is very unlikely to do better. This is weak additional evidence for the note's §3 preference for (a),
+the per-pixel analytic footprint, over further tuning of (b').
+
+**Open issues.** (i) The tracked per-emitter metrics need a corrected, jitter-aware re-implementation (or the
+original script, if it can be found) before per-emitter peak-ratio/flicker numbers can be trusted again. (ii) The
+z-band ROI here is a proxy for the note's spar box, not the same region; a repeat with the same pose as run225 would
+let lit-pixel/energy counts be compared directly instead of only their phase-stability. (iii) Distinguishing "aniso
+already integrates" from "mip already >= 1 px" still needs the note's oblique-quad fixture (§3, option b' row);
+nothing here settles it.
