@@ -284,6 +284,8 @@ draw count changing, not by the file loading.
 
 ## Unknown
 
+**Update 2026-09-23:** the `POIN` and `PART` layouts, the tag dispatch and the LOD/subset population path are now established in [body-format-bob1.md](../reverse-engineering/body-format-bob1.md) (parser `0x00481aa0`; a reader round-trips 1634 of 1635 installed BOB1 bodies byte for byte, `verification/results/bob1-format/bob1_roundtrip.py`). Of 1635 bodies, 684 ship a single LOD record; among the 950 multi-LOD bodies the coarsest record has fewer groups in 511 and the same count in 438. The items below that concern those layouts are closed; the remaining unknowns for emitting a coarse LOD are listed in that note.
+
 - Whether the heavy LOD-0 nodes are single-LOD bodies or bodies with tiny
   thresholds. Everything in §6 depends on this and nothing here settles it.
 - The model-id-to-asset mapping. The EXE builds body names with `v\%05d` and

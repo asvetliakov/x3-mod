@@ -1,0 +1,34 @@
+SAMPLE objects/stations/station_scenes/others/argon_L_solarpowerplant.pbb tags=['INFO', 'MAT6', 'BODY']
+  MAT6 materials=49 effect_materials=49 first_index=0 first_flags=0x2000000 first_effect=standard_lighting.fx first_params=57
+  LOD0 value=1567294 flags=0x0 points=224132 point_flags={27: 224132} parts=1 groups(subsets)=25 faces=152900 distinct_materials=25 bones=0 weights=no part_flags=['0x30000001']
+    first_point=[27, [-505, -1794, 994], [34856, 8246], [-32768, 0, 56755], 0]
+    first_group material=1 faces=1662 first_face=[3582, 3584, 3583, 1] extra=3024 first_extra=[3582, 33225, -56475, 1238, -51693, -39443, 8183]
+    first_part_bounds=[107, -925, -350, 65185, 21, -4012, -4173, 63345, 12450, 61362]
+  LOD1 value=250 flags=0x0 points=122190 point_flags={27: 122190} parts=1 groups(subsets)=18 faces=77128 distinct_materials=18 bones=0 weights=no part_flags=['0x30000001']
+  LOD2 value=150 flags=0x0 points=57127 point_flags={27: 57127} parts=1 groups(subsets)=11 faces=32972 distinct_materials=11 bones=0 weights=no part_flags=['0x30000001']
+  LOD3 value=80 flags=0x0 points=9029 point_flags={27: 9029} parts=1 groups(subsets)=3 faces=4438 distinct_materials=3 bones=0 weights=no part_flags=['0x30000001']
+  LOD4 value=30 flags=0x0 points=14094 point_flags={27: 14094} parts=1 groups(subsets)=1 faces=7388 distinct_materials=1 bones=0 weights=no part_flags=['0x30000001']
+SAMPLE objects/stations/x3ap/others/XTC_teladi_EQD_Ring1B.pbb tags=['INFO', 'MAT6', 'BODY']
+  MAT6 materials=29 effect_materials=29 first_index=0 first_flags=0x2000000 first_effect=XT_standard_lighting.fx first_params=80
+  LOD0 value=570692 flags=0x0 points=5008 point_flags={27: 5008} parts=1 groups(subsets)=5 faces=3656 distinct_materials=5 bones=0 weights=no part_flags=['0x10000001']
+    first_point=[27, [5235, 3199, 62610], [1148145, 41227], [6850, 0, 65177], 1]
+    first_group material=2 faces=120 first_face=[0, 1, 2, 1] extra=122 first_extra=[0, -65177, 0, 6850, 0, 0, 65536]
+    first_part_bounds=[-4, -2842, -107, 71972, -4, -2842, -107, 65425, 13715, 65429]
+  LOD1 value=50 flags=0x0 points=2989 point_flags={27: 2989} parts=1 groups(subsets)=5 faces=1833 distinct_materials=5 bones=0 weights=no part_flags=['0x10000001']
+  LOD2 value=24 flags=0x0 points=1747 point_flags={27: 1747} parts=1 groups(subsets)=5 faces=884 distinct_materials=5 bones=0 weights=no part_flags=['0x10000001']
+  LOD3 value=13 flags=0x0 points=1129 point_flags={27: 1129} parts=1 groups(subsets)=4 faces=488 distinct_materials=4 bones=0 weights=no part_flags=['0x10000001']
+SAMPLE objects/stations/x3tc/torus_backgroundtraffic_dots.pbb tags=['INFO', 'MAT6', 'BODY']
+  MAT6 materials=1 effect_materials=1 first_index=0 first_flags=0x2000000 first_effect=XT_standard_lighting.fx first_params=80
+  LOD0 value=123924 flags=0x0 points=12 point_flags={27: 12} parts=1 groups(subsets)=1 faces=6 distinct_materials=1 bones=0 weights=no part_flags=['0x30000001']
+    first_point=[27, [-2807, -59734, 58715], [119, -17], [-65536, 0, 0], 1]
+    first_group material=0 faces=6 first_face=[0, 2, 1, 1] extra=12 first_extra=[0, 0, 65535, -340, 0, 393, 65534]
+    first_part_bounds=[-935, -928, -1206, 66742, 0, 0, 0, 60050, 62125, 65536]
+members=1688 magic={'CUT1': 53, 'BOB1': 1635} BOB1_roundtrip_equal=1634 BOB1_failed=1
+  failure 1: unpack_from requires a buffer of | 01.cat:objects/others/Bothers_khaak_hive_stations.pbb
+section sequences: {'INFO MAT6 BODY': 1630, 'MAT6 BODY': 3, 'INFO MAT5 BODY': 1}
+material tags: {'MAT6': 1633, 'MAT5': 1}
+LOD count histogram: {1: 684, 2: 74, 3: 229, 4: 532, 5: 113, 6: 1, 9: 1}
+LOD records: 4227 with BONE: 0 with WEIG: 0
+point flag histogram: {'0x1b': 67391381, '0x1f': 14424994}
+part flag histogram: {'0x30000001': 3327, '0x10000001': 981, '0x30008001': 46, '0x1': 21, '0x10008001': 20, '0x30000201': 10, '0x30006001': 2, '0x10000201': 2}
+multi-LOD bodies: coarsest has fewer subsets=511 same=438 more=1; thresholds strictly decreasing=935 other=15
