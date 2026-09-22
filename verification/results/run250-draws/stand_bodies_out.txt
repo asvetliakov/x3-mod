@@ -1,0 +1,47 @@
+== frame 7357: 12 heavy nodes, 267 draws
+model 0x4f72 (20338) ships\argon\argon_TL nLOD=4 ladder[L0:T=None,g=37 L1:T=30,g=31 L2:T=15,g=28 L3:T=5,g=23] audit=coarse_multi_group
+  node 3b13aea8 draws=27 prims=15156 lod=[0] groups@lod=37 s_bound(f=2)=s>=60 save_1group=26
+  node 3b605b38 draws=27 prims=15156 lod=[0] groups@lod=37 s_bound(f=2)=s>=60 save_1group=26
+  node 3b60f8e8 draws=27 prims=15156 lod=[0] groups@lod=37 s_bound(f=2)=s>=60 save_1group=26
+model 0x5411 (21521) stations\station_scenes\others\argon_spacedock nLOD=5 ladder[L0:T=None,g=35 L1:T=250,g=20 L2:T=150,g=10 L3:T=80,g=1 L4:T=30,g=1] audit=clean_multi_lod
+  node 2e0d3048 draws=29 prims=105225 lod=[0] groups@lod=35 s_bound(f=2)=s>=500 save_1group=28
+model 0x53aa (21418) stations\station_scenes\others\argon_equipmentdock nLOD=4 ladder[L0:T=None,g=33 L1:T=30,g=33 L2:T=15,g=31 L3:T=5,g=25] audit=coarse_multi_group
+  node 312c6730 draws=28 prims=97855 lod=[0] groups@lod=33 s_bound(f=2)=s>=60 save_1group=27
+model 0x4f76 (20342) ships\argon\argon_M2 nLOD=4 ladder[L0:T=None,g=38 L1:T=30,g=32 L2:T=15,g=30 L3:T=5,g=25] audit=coarse_multi_group
+  node 39cb0638 draws=28 prims=21610 lod=[0] groups@lod=38 s_bound(f=2)=s>=60 save_1group=27
+model 0x5428 (21544) stations\station_scenes\tech\argon_tech_M_laser_cc nLOD=4 ladder[L0:T=None,g=36 L1:T=30,g=34 L2:T=15,g=31 L3:T=5,g=28] audit=coarse_multi_group
+  node 2ef4f708 draws=27 prims=46483 lod=[1] groups@lod=34 s_bound(f=2)=30<=s<60 save_1group=26
+model 0x53a0 (21408) stations\trading_stations\argon_trading_station_partB nLOD=5 ladder[L0:T=None,g=36 L1:T=30,g=34 L2:T=20,g=32 L3:T=10,g=29 L4:T=30,g=29] audit=non_monotonic+coarse_multi_group+shadowed=[1, 2, 3]
+  node 3347d5d8 draws=26 prims=1211 lod=[3] groups@lod=29 s_bound(f=2)=60<=s<20 CONTRADICTS walk rule save_1group=25
+model 0x53ab (21419) stations\living_sections\argon_livingsection nLOD=5 ladder[L0:T=None,g=17 L1:T=30,g=11 L2:T=15,g=5 L3:T=5,g=1 L4:T=30,g=1] audit=non_monotonic+shadowed=[1, 2, 3]
+  node 29e9d368 draws=15 prims=15939 lod=[0] groups@lod=17 s_bound(f=2)=s>=60 save_1group=14
+model 0x539f (21407) stations\trading_stations\argon_trading_station_partA nLOD=5 ladder[L0:T=None,g=32 L1:T=30,g=21 L2:T=15,g=11 L3:T=5,g=1 L4:T=5,g=1] audit=non_monotonic+shadowed=[3]
+  node 3347d358 draws=14 prims=3481 lod=[1] groups@lod=21 s_bound(f=2)=30<=s<60 save_1group=13
+model 0x5698 (22168) effects/menugfx/hud_weapons_2d nLOD=0 ladder[] audit=?
+  node 240eb2d0 draws=13 prims=1739 lod=[3] groups@lod=None s_bound(f=2)=n/a save_1group=12
+model 0x54f9 (21753) others\argon_adsign_C nLOD=2 ladder[L0:T=None,g=10 L1:T=15,g=7] audit=coarse_multi_group
+  node 35c74c80 draws=6 prims=1428 lod=[0] groups@lod=10 s_bound(f=2)=s>=30 save_1group=5
+  frame 7357 total saving if every heavy node drew 1 group: 255
+== frame 10550: 12 heavy nodes, 286 draws
+model 0x53b8 (21432) Stations\others\military_outpost_middleb nLOD=3 ladder[L0:T=None,g=34 L1:T=30,g=33 L2:T=15,g=30] audit=coarse_multi_group
+  node 592b1ea8 draws=28 prims=72325 lod=[0] groups@lod=34 s_bound(f=2)=s>=60 save_1group=27
+  node 3bba1d08 draws=28 prims=72325 lod=[0] groups@lod=34 s_bound(f=2)=s>=60 save_1group=27
+model 0x4f75 (20341) ships\argon\argon_M1 nLOD=4 ladder[L0:T=None,g=33 L1:T=30,g=32 L2:T=15,g=29 L3:T=5,g=24] audit=coarse_multi_group
+  node 2a661318 draws=28 prims=8411 lod=[1] groups@lod=32 s_bound(f=2)=30<=s<60 save_1group=27
+  node 333bb020 draws=28 prims=8411 lod=[1] groups@lod=32 s_bound(f=2)=30<=s<60 save_1group=27
+model 0x552a (21802) ships\M7\Argon_m7m nLOD=4 ladder[L0:T=None,g=38 L1:T=30,g=37 L2:T=15,g=35 L3:T=5,g=27] audit=coarse_multi_group
+  node 33349878 draws=30 prims=10481 lod=[1] groups@lod=37 s_bound(f=2)=30<=s<60 save_1group=29
+model 0x5434 (21556) stations\station_scenes\tech\argon_tech_L_laser_bb nLOD=4 ladder[L0:T=None,g=38 L1:T=30,g=35 L2:T=15,g=33 L3:T=5,g=29] audit=coarse_multi_group
+  node 290a1168 draws=28 prims=65265 lod=[1] groups@lod=35 s_bound(f=2)=30<=s<60 save_1group=27
+model 0x4f76 (20342) ships\argon\argon_M2 nLOD=4 ladder[L0:T=None,g=38 L1:T=30,g=32 L2:T=15,g=30 L3:T=5,g=25] audit=coarse_multi_group
+  node 39a4c788 draws=28 prims=21610 lod=[0] groups@lod=38 s_bound(f=2)=s>=60 save_1group=27
+model 0x5529 (21801) ships\M7\Argon_M7 nLOD=4 ladder[L0:T=None,g=16 L1:T=30,g=16 L2:T=15,g=16 L3:T=5,g=11] audit=coarse_multi_group
+  node 3b5616b0 draws=14 prims=12430 lod=[1] groups@lod=16 s_bound(f=2)=30<=s<60 save_1group=13
+  node 2eef78f0 draws=14 prims=12430 lod=[1] groups@lod=16 s_bound(f=2)=30<=s<60 save_1group=13
+model 0x4f72 (20338) ships\argon\argon_TL nLOD=4 ladder[L0:T=None,g=37 L1:T=30,g=31 L2:T=15,g=28 L3:T=5,g=23] audit=coarse_multi_group
+  node 2ede3a18 draws=27 prims=6982 lod=[1] groups@lod=31 s_bound(f=2)=30<=s<60 save_1group=26
+model 0x5530 (21808) ships\owp\owp_large nLOD=4 ladder[L0:T=None,g=20 L1:T=30,g=19 L2:T=15,g=17 L3:T=5,g=16] audit=coarse_multi_group
+  node 3bee87f8 draws=17 prims=89838 lod=[0] groups@lod=20 s_bound(f=2)=s>=60 save_1group=16
+model 0x5411 (21521) stations\station_scenes\others\argon_spacedock nLOD=5 ladder[L0:T=None,g=35 L1:T=250,g=20 L2:T=150,g=10 L3:T=80,g=1 L4:T=30,g=1] audit=clean_multi_lod
+  node 35f3cbd8 draws=16 prims=52937 lod=[1] groups@lod=20 s_bound(f=2)=300<=s<500 save_1group=15
+  frame 10550 total saving if every heavy node drew 1 group: 274
