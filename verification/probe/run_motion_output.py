@@ -834,6 +834,180 @@ CASES += [case(name, 'faderoute', jitter=True, taa=True, lazy=True, hdr=True,
           for name, extra in LIGHTMAP_FADE_OVERLAY_CASES.items()]
 LIGHTMAP_FADE_STEPS = (('near', 1, True), ('far', 128, True), ('mid', 64, True), ('near_off', 1, False), ('far_off', 128, False),
                        ('mid_on', 64, True), ('mid_reset', 64, True), ('near_reset', 1, True))
+# Hull emissive widening (motion_output_lightmap_widen_inc.h, --hull-emissive-widening;
+# docs/architecture/hull-emissive-widening.md section 3): the standard DEFAULT hull pair under the light-map
+# gain 4 at 256 x 256 (footprint w / 102.4), a 0.5-px strip light map with a full mip chain drifting 6.125 px
+# per frame over eight phases at w = 4 (below Q0), 128 (inside: t = 0.5) and 512 (above Q1), K in {off, 2, 3, 4};
+# the panel map at the ramp's ends; F4 off, Reset, the oblique LINEAR/ANISOTROPIC pairs. '-programs' draws one
+# reviewed pair per drivable family group near (gained), near with the widened variant forced (k = 1) and far.
+LIGHTMAP_WIDEN_Q = (0.5, 2.0)
+LIGHTMAP_WIDEN_ENV = dict(X3M_HULL_LIGHTMAP_GAIN=repr(LIGHTMAP_FADE_GAIN), X3M_LINEAR_MATERIALS='0', X3M_HDR_CLAMP='0', X3M_HDR_BLOOM='0', X3M_MOTION_FRAME_LOG='1')
+LIGHTMAP_WIDEN_CASES = {'seam-lightmap-widen-off': None, 'seam-lightmap-widen-k2': 2.0, 'seam-lightmap-widen-k3': 3.0, 'seam-lightmap-widen-k4': 4.0}
+LIGHTMAP_WIDEN_PROGRAMS_CASE = 'seam-lightmap-widen-programs'
+CASES += [case(name, 'lightmapwiden', camera=True, hdr=True,
+               hdr_env=dict(LIGHTMAP_WIDEN_ENV, **({} if k is None else {'X3M_HULL_EMISSIVE_WIDENING': '%g,%g,%g' % (k, *LIGHTMAP_WIDEN_Q)})))
+          for name, k in LIGHTMAP_WIDEN_CASES.items()]
+CASES += [case(LIGHTMAP_WIDEN_PROGRAMS_CASE, 'lightmapwiden', camera=True, hdr=True,
+               hdr_env=dict(LIGHTMAP_WIDEN_ENV, X3M_HULL_EMISSIVE_WIDENING='3,%g,%g' % LIGHTMAP_WIDEN_Q, X3M_FIXTURE_WIDEN_SCRIPT='programs'))]
+LIGHTMAP_WIDEN_DISTANCES = {'below': 4.0, 'inside': 128.0, 'above': 512.0}
+LIGHTMAP_WIDEN_PAIRS = 11
+
+
+def lightmap_widen_law(k, w):
+    if k is None:
+        return 0.0
+    t = min(1.0, max(0.0, (w / 102.4 - LIGHTMAP_WIDEN_Q[0]) / (LIGHTMAP_WIDEN_Q[1] - LIGHTMAP_WIDEN_Q[0])))
+    return 1.0 + (k - 1.0) * t
+
+
+def validate_lightmap_widen(name, k, text, trace):
+    """The strips script: per (map, distance) the eight phases' metrics, the uploads, the variant selection, F4,
+    Reset and the oblique pairs; the trace's configuration, per-frame and session lines."""
+    lines = text.splitlines()
+    assert 'RESET PASS' in lines, name
+    rows = [fields(l) for l in lines if l.startswith('LIGHTMAP_WIDEN ')]
+    assert len(rows) == 8 * (3 + 2), (name, len(rows))
+    checks = 0
+    groups = {}
+    for row in rows:
+        w = float(row['w']); law = lightmap_widen_law(k, w)
+        assert abs(float(row['abi_k']) - law) <= 1e-5 * max(1.0, law), (name, row['map'], row['dist'], row['abi_k'], law)
+        if law in (0.0, 1.0) or w in (4.0, 512.0):
+            assert float(row['abi_k']) == law, (name, 'the ends are exact', row['abi_k'], law)
+        assert int(row['gained_draws']) == 1 and int(row['widened_draws']) == int(law > 1.0), (name, row)
+        assert float(row['max']) > 0 and float(row['lit']) > 0, (name, row)
+        g = groups.setdefault((row['map'], row['dist']), dict(w=w, k=law, phases=[]))
+        g['phases'].append({key: float(row[key]) for key in ('h_peak', 'h_energy', 'h_width', 'h_row', 'v_peak', 'v_energy', 'v_width', 'v_col', 'panel', 'lit', 'max', 'median')} | {'hash': row['hdr_hash']})
+        checks += 4
+    summary = {}
+    for (map_name, dist), g in groups.items():
+        phases = g['phases']
+        assert len(phases) == 8, (name, map_name, dist)
+        def stat(key):
+            values = [p[key] for p in phases]
+            return dict(mean=sum(values) / len(values), min=min(values), max=max(values), ratio=(min(values) / max(values)) if max(values) > 0 else None)
+        entry = dict(w=g['w'], k=g['k'], hashes=[p['hash'] for p in phases], lit=stat('lit'), median=stat('median'))
+        if map_name == 'strips':
+            entry.update(h_peak=stat('h_peak'), h_energy=stat('h_energy'), h_width=stat('h_width'), h_row=stat('h_row'),
+                         v_peak=stat('v_peak'), v_energy=stat('v_energy'), v_width=stat('v_width'), v_col=stat('v_col'))
+            # The strips are where the map puts them (u = v = 0.5 of the 128-px quad) at every phase.
+            assert 50 <= entry['h_row']['min'] and entry['h_row']['max'] <= 78, (name, dist, entry['h_row'])
+            assert 50 <= entry['v_col']['min'] and entry['v_col']['max'] <= 78, (name, dist, entry['v_col'])
+            checks += 2
+        else:
+            entry.update(panel=stat('panel'))
+        summary[f'{map_name}/{dist}'] = entry
+    # With the widening on, the light map at the ramp's ends: below = the un-widened image (k = 1 binds the gained
+    # variant), above = k = K. Widened strips: lower peak, wider, energy conserved (below against above).
+    for map_name in ('strips', 'panel'):
+        below, above = summary[f'{map_name}/below'], summary[f'{map_name}/above']
+        if map_name == 'strips':
+            for axis in 'hv':
+                energy_ratio = above[f'{axis}_energy']['mean'] / below[f'{axis}_energy']['mean']
+                above[f'{axis}_energy_vs_below'] = energy_ratio
+                above[f'{axis}_peak_vs_below'] = above[f'{axis}_peak']['mean'] / below[f'{axis}_peak']['mean']
+                assert abs(energy_ratio - 1.0) <= (0.03 if k is None else 0.05), (name, axis, 'strip energy conserved', energy_ratio)
+                if k is None:
+                    assert above['hashes'] == below['hashes'], (name, 'option off: the distance changes nothing')
+                else:
+                    assert above[f'{axis}_peak']['mean'] < 0.8 * below[f'{axis}_peak']['mean'], (name, axis, 'widened strip peak lower', above[f'{axis}_peak'], below[f'{axis}_peak'])
+                    assert above[f'{axis}_width']['mean'] > below[f'{axis}_width']['mean'], (name, axis, 'widened strip wider')
+                checks += 3
+        else:
+            above['panel_vs_below'] = above['panel']['mean'] / below['panel']['mean']
+            assert abs(above['panel_vs_below'] - 1.0) <= 0.01, (name, 'wide panel interior undimmed', above['panel_vs_below'])
+            checks += 1
+    off = fields(next(l for l in lines if l.startswith('LIGHTMAP_WIDEN_OFF ')))
+    reset = fields(next(l for l in lines if l.startswith('LIGHTMAP_WIDEN_RESET ')))
+    assert int(off['gained_draws']) == 0 and int(off['widened_draws']) == 0, (name, off)
+    assert int(reset['gained_draws']) == 1 and int(reset['widened_draws']) == int(k is not None), (name, reset)
+    assert reset['hdr_hash'] == summary['strips/above']['hashes'][0], (name, 'the Reset frame is the above phase-0 frame')
+    aniso = {(r['w'], r['filter']): r for r in (fields(l) for l in lines if l.startswith('LIGHTMAP_WIDEN_ANISO '))}
+    assert set(aniso) == {(w, f) for w in ('4', '512') for f in ('linear', 'aniso16')}, (name, sorted(aniso))
+    oblique = {}
+    for w in ('4', '512'):
+        linear, anisotropic = aniso[(w, 'linear')], aniso[(w, 'aniso16')]
+        oblique[w] = dict(k=float(linear['abi_k']), widened=int(linear['widened_draws']), aniso_applied=linear['hdr_hash'] != anisotropic['hdr_hash'],
+                          linear=dict(peak=float(linear['peak']), sum=float(linear['sum'])), aniso16=dict(peak=float(anisotropic['peak']), sum=float(anisotropic['sum'])))
+        assert int(linear['widened_draws']) == int(anisotropic['widened_draws']) == int(k is not None and w == '512'), (name, w)
+    checks += 4
+    # The trace: configuration, the per-frame line beside every gain frame, the session summary, the created variant.
+    configured = [l for l in trace.splitlines() if l.startswith('hull_emissive_widening_configured ')]
+    frames = [fields(l) for l in trace.splitlines() if l.startswith('hull_lightmap_widen_frame ')]
+    variants = [fields(l) for l in trace.splitlines() if l.startswith('hull_lightmap_widen_variant ')]
+    summaries = [fields(l) for l in trace.splitlines() if l.startswith('hull_lightmap_widen_summary ')]
+    if k is None:
+        assert not configured and not frames and not variants and not summaries and 'hull_emissive_widening_mode' not in trace, name
+    else:
+        assert len(configured) == 1 and 'accepted=1' in configured[0], (name, configured)
+        mode = [fields(l) for l in trace.splitlines() if l.startswith('hull_emissive_widening_mode ')]
+        assert len(mode) == 1 and mode[0]['enabled'] == '1' and float(mode[0]['k']) == k, (name, mode)
+        gained_frames = [fields(l) for l in trace.splitlines() if l.startswith('hull_lightmap_frame ')]
+        assert len(frames) == len(gained_frames) == 8 * 5 + 1 + 4, (name, len(frames), len(gained_frames))
+        widened_frames = sum(int(f['widened']) for f in frames)
+        assert widened_frames == 8 * 3 + 1 + 2, (name, widened_frames)  # inside/above of both maps, the Reset frame, the far oblique pair
+        assert all(f['camera'] == '1' for f in frames), name
+        # The variant for the pair's PS was created (the shader objects survive the fixture's Reset), the stage is the DEFAULT layout's s2.
+        ours = [v for v in variants if v['original'] == '7c83ed50c9894e44']
+        assert len(ours) >= 1 and all(v['create'] == '00000000' and v['widen_applied'] == '1' and v['stage'] == '2' and float(v['k']) == k for v in ours), (name, ours)
+        assert len(summaries) == 1 and float(summaries[0]['k_max']) == k and int(summaries[0]['widened_draws']) == widened_frames, (name, summaries)
+    checks += 3
+    return dict(k=k, checks=checks, summary=summary, off=dict(gained=int(off['gained_draws']), widened=int(off['widened_draws'])),
+                reset=dict(gained=int(reset['gained_draws']), widened=int(reset['widened_draws'])), oblique=oblique,
+                widen_frames=len(frames), variants=len(variants))
+
+
+def validate_lightmap_widen_programs(name, text, trace):
+    lines = text.splitlines()
+    programs = [fields(l) for l in lines if l.startswith('LIGHTMAP_WIDEN_PROGRAM ')]
+    pairs = [fields(l) for l in lines if l.startswith('LIGHTMAP_WIDEN_PAIR ')]
+    disassembler = fields(next(l for l in lines if l.startswith('LIGHTMAP_WIDEN_DISASSEMBLER ')))['available'] == '1'
+    assert len(programs) == len(pairs) == LIGHTMAP_WIDEN_PAIRS, (name, len(programs), len(pairs))
+    checks = 0
+    rows = {}
+    for program, pair in zip(programs, pairs):
+        assert program['ps'] == pair['ps'], name
+        assert program['create_widened'] == '00000000' and program['create_gained'] == '00000000', (name, program)
+        assert int(program['widened_words']) == int(program['gained_words']) + 12, (name, program)
+        gained_slots, widened_slots = int(program['gained_slots']), int(program['widened_slots'])
+        if disassembler:
+            assert widened_slots == gained_slots + 7 and widened_slots <= 512, (name, program)
+        assert int(pair['near_widened']) == 1 and int(pair['far_widened']) == 1, (name, pair)
+        assert float(pair['near_k']) == 1.0 and float(pair['far_k']) == 3.0, (name, pair)
+        max_codes = int(pair['max_codes'])
+        assert max_codes <= 1, (name, pair['family'], 'texldd(k=1) against texld', max_codes)
+        energy = {axis: float(pair[f'far_{axis}_energy']) / float(pair[f'near_{axis}_energy']) for axis in 'hv'}
+        peak = {axis: float(pair[f'far_{axis}_peak']) / float(pair[f'near_{axis}_peak']) for axis in 'hv'}
+        for axis in 'hv':
+            assert abs(energy[axis] - 1.0) <= 0.1, (name, pair['family'], axis, 'energy', energy[axis])
+            assert peak[axis] < 0.8, (name, pair['family'], axis, 'peak', peak[axis])
+        rows[pair['ps']] = dict(family=pair['family'], words=int(program['words']), gained_slots=gained_slots, widened_slots=widened_slots,
+                                near_hash=pair['near_hash'], forced_hash=pair['forced_hash'], far_hash=pair['far_hash'],
+                                texldd_k1_max_codes=max_codes, texldd_k1_differing=int(pair['differing']),
+                                energy_far_vs_near=energy, peak_far_vs_near=peak, lit=dict(near=float(pair['near_lit']), far=float(pair['far_lit'])))
+        checks += 9
+    variants = [fields(l) for l in trace.splitlines() if l.startswith('hull_lightmap_widen_variant ')]
+    created = {v['original'] for v in variants if v['create'] == '00000000' and v['widen_applied'] == '1'}
+    assert set(rows) <= created, (name, 'the widened variant of every drawn pair was created', sorted(set(rows) - created))
+    return dict(checks=checks, disassembler=disassembler, programs=rows, variants_created=len(created))
+
+
+def write_lightmap_widen_record(result):
+    """The tracked compact record of a selected hull emissive widening run (docs/verification/hull-emissive-widening.md)."""
+    names = [n for n in list(LIGHTMAP_WIDEN_CASES) + [LIGHTMAP_WIDEN_PROGRAMS_CASE] if n in result['cases']]
+    if not names:
+        return
+    cases = {}
+    for n in names:
+        c = result['cases'][n]
+        row = dict(exit=c.get('exit'), checks=c.get('checks'), dll_sha256=c.get('dll_sha256'), exe_sha256=c.get('exe_sha256'),
+                   trace_sha256=c.get('trace_sha256'), directory=c.get('directory'), capture_log=f'motion-output-{n}-capture.log (untracked)')
+        for key in ('k', 'summary', 'off', 'reset', 'oblique', 'widen_frames', 'variants', 'below_matches_off', 'trend', 'disassembler', 'programs', 'variants_created'):
+            if key in c:
+                row[key] = c[key]
+        cases[n] = row
+    (RESULTS / 'hull-emissive-widening-seam.json').write_text(json.dumps(dict(
+        bottle=result['bottle'], binaries=result.get('binaries'), q=LIGHTMAP_WIDEN_Q, selected=sorted(result['selected_cases']), cases=cases), indent=1) + '\n')
 
 
 def write_lightmap_fade_record(result):
@@ -5152,7 +5326,7 @@ def main(argv=None):
             directory = BUILD / ('motion-output-' + name + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
             directory.mkdir(parents=True)
             shutil.copy(candidate_exe, directory)
-            shutil.copy(candidate_seam if mode in ('seam', 'msaa', 'cutout', 'zonly', 'faderoute', 'lightmapfade', 'shadowreplay', 'shadowretention', 'shadowpool', 'unmatchedstatic') + HDR_MODES and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
+            shutil.copy(candidate_seam if mode in ('seam', 'msaa', 'cutout', 'zonly', 'faderoute', 'lightmapfade', 'lightmapwiden', 'shadowreplay', 'shadowretention', 'shadowpool', 'unmatchedstatic') + HDR_MODES and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
             env = dict(os.environ, X3M_CAMERA='vanilla', X3M_CHASE_SCENE_FIX='0', X3M_CHASE_COMBAT_TIGHTNESS='0', X3M_MOTION_OUTPUT=enabled, X3M_MOTION_JITTER='1' if jitter else '0', X3M_MOTION_JITTER_SAMPLES=str(JITTER_SAMPLES),
                        X3M_TAA='1' if taa else '0', X3M_TAA_DEBUG='1' if taa and not bench else '0',
                        X3M_CAPTURE_START='1000' if bench else str(BURST_CAPTURE[0]) if burst else '1',
@@ -5363,6 +5537,49 @@ def main(argv=None):
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} gains={ {k: v["gain"] for k, v in case["steps"].items()} } near_matches_off={case.get("near_matches_off")}', flush=True)
                 continue
+            if mode == 'lightmapwiden':
+                if name == LIGHTMAP_WIDEN_PROGRAMS_CASE:
+                    case = validate_lightmap_widen_programs(name, text, trace)
+                else:
+                    case = validate_lightmap_widen(name, LIGHTMAP_WIDEN_CASES[name], text, trace)
+                    off = result['cases'].get('seam-lightmap-widen-off')
+                    if off and name != 'seam-lightmap-widen-off':
+                        # k = 1 binds the un-widened gained variant: the below frames are the option-off run's bit for bit.
+                        for key in ('strips/below', 'panel/below'):
+                            assert case['summary'][key]['hashes'] == off['summary'][key]['hashes'], (name, key, 'below differs from the option-off run')
+                        case['below_matches_off'] = True
+                        # The per-phase peak ratio (min/max over the eight phases) of the 0.5-px strips at the far
+                        # distance against the un-widened one, with the design's floor 1 - 0.5/T recorded beside it:
+                        # at 2 texels/px the un-widened fetch already sits at level 1 (T = 1 px), the widened one at
+                        # level log2(2k) (T = k px), so the floors are 0.5 and 1 - 0.5/k.
+                        k = LIGHTMAP_WIDEN_CASES[name]
+                        trend = {}
+                        for axis in 'hv':
+                            mine, base = case['summary']['strips/above'][f'{axis}_peak']['ratio'], off['summary']['strips/above'][f'{axis}_peak']['ratio']
+                            trend[axis] = dict(ratio=mine, off_ratio=base, floor=1 - 0.5 / k, off_floor=0.5)
+                            assert mine >= base - 0.02, (name, axis, 'per-phase peak ratio not below the un-widened one', mine, base)
+                            for lower_name, lower_k in LIGHTMAP_WIDEN_CASES.items():
+                                lower = result['cases'].get(lower_name)
+                                if lower and lower_k and lower_k < k:
+                                    assert mine >= lower['summary']['strips/above'][f'{axis}_peak']['ratio'] - 0.02, (name, axis, 'ratio ordering against', lower_name)
+                            # Energy against the off run's strips at every distance (the mip chain conserves it).
+                            for dist in LIGHTMAP_WIDEN_DISTANCES:
+                                ratio = case['summary'][f'strips/{dist}'][f'{axis}_energy']['mean'] / off['summary'][f'strips/{dist}'][f'{axis}_energy']['mean']
+                                assert abs(ratio - 1.0) <= 0.05, (name, axis, dist, 'energy against off', ratio)
+                        ratio = case['summary']['panel/above']['panel']['mean'] / off['summary']['panel/above']['panel']['mean']
+                        assert abs(ratio - 1.0) <= 0.01, (name, 'panel against off', ratio)
+                        trend['panel_vs_off'] = ratio
+                        case['trend'] = trend
+                case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
+                shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
+                result['cases'][name] = case
+                save()
+                if name == LIGHTMAP_WIDEN_PROGRAMS_CASE:
+                    print(f'{name}: exit={completed.returncode} checks={case["checks"]} disassembler={case["disassembler"]} max_codes={ {v["family"]: v["texldd_k1_max_codes"] for v in case["programs"].values()} }', flush=True)
+                else:
+                    print(f'{name}: exit={completed.returncode} checks={case["checks"]} k={case["k"]} above_h_ratio={case["summary"]["strips/above"]["h_peak"]["ratio"]:.3f} above_v_ratio={case["summary"]["strips/above"]["v_peak"]["ratio"]:.3f} panel={case["summary"]["panel/above"].get("panel_vs_below")} oblique={case["oblique"]}', flush=True)
+                continue
             if mode == 'unmatchedstatic':
                 case = validate_unmatched_static(name, UNMATCHED_STATIC_CASES[name], text, trace)
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
@@ -5484,6 +5701,7 @@ def main(argv=None):
             report_path.write_text(''.join(report))
             compare_mask_twins(result, save)
             write_lightmap_fade_record(result)
+            write_lightmap_widen_record(result)
             print('partial run: no cross-case comparisons, not a pass')
             return
         # Resolve cost: the boundary with the switch on minus off, per size.

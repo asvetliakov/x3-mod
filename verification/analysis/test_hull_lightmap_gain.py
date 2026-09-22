@@ -109,8 +109,10 @@ class HullLightmapGainTransformerTests(unittest.TestCase):
     def test_far_fade_dynamic_variant_drops_the_def_and_reads_c217_w(self):
         # --light-map-far-fade: the driver rebuilds every dynamic variant from
         # the constant-gain one (DEF removed, c223.x -> c217.w) and compares it
-        # byte for byte: 100 programs x (2 fills x 2 depth modes + 2 share).
-        self.assertEqual(self.driver['dynamic_checks'], 100 * 6)
+        # byte for byte: 100 programs x (2 fills x 2 depth modes + 2 share), plus
+        # the same rebuild of the 400 static widened variants (hull emissive
+        # widening composes with either gain form).
+        self.assertEqual(self.driver['dynamic_checks'], 100 * 6 + 100 * 4)
 
     def test_untouched_programs_keep_the_fill_variant_byte_for_byte(self):
         for name in sorted(UNTOUCHED):
@@ -284,9 +286,10 @@ class LauncherAndProxyGateTests(unittest.TestCase):
         motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         draw = extract_function(motion, 'void MotionOutput::evaluate_draw(')
         # The gain rides the motion ABI's own two-vector upload: no additional constant write, no Get*.
-        self.assertIn('previous_rows ? 1.f : 0.f, 0.f, 0.f, lightmap_fade_gain_};', draw)
+        self.assertIn('previous_rows ? 1.f : 0.f, 0.f, lightmap_widen_draw_k_, lightmap_fade_gain_};', draw)
         self.assertEqual(draw.count('SetPixelShaderConstantF'), 1)
-        self.assertIn('lightmap_far_fade_ && (shadow_.hull_lightmap_pair || shadow_.ps_sun_original_lightmap)', draw)
+        self.assertIn('const bool gain_pair = shadow_.hull_lightmap_pair || shadow_.ps_sun_original_lightmap;', draw)
+        self.assertIn('lightmap_fade_gain_ = lightmap_far_fade_ && gain_pair', draw)
         # Every program that reads c217.w gets it: the two gained selections of the one bind site are covered by the
         # upload's gate (plain: hull_lightmap_pair; share, the lane's cutout pairs included: ps_sun_original_lightmap),
         # and the fade-band / overlay arm never binds a gained variant.

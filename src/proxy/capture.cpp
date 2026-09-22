@@ -143,6 +143,8 @@ bool lightmap_far_fade_requested = false; // X3M_LIGHT_MAP_FAR_FADE=P0,P1[,G]: t
 float lightmap_far_fade[3] = {0.f, 0.f, 1.f};
 bool sun_occlusion_core_f = false; // X3M_SUN_OCCLUSION_CORE_F=1: the clipped core bodies are also scaled by f (flight comparison)
 float sun_occlusion_radius = sun_occlusion::core::radius_default_u, sun_occlusion_curve = 1.f; // X3M_SUN_OCCLUSION_RADIUS (0.005..0.25, the disc's half-width as a fraction of the back-buffer width), X3M_SUN_OCCLUSION_CURVE (0.25..4, exponent on the used fraction)
+bool hull_emissive_widening_requested = false; // X3M_HULL_EMISSIVE_WIDENING=K,Q0,Q1 (hull-emissive-widening.md): the light-map fetch of the gained hull variants widens to k x k px, k ramping 1 -> K over the footprint band [Q0, Q1] units/px; needs the gain
+float hull_emissive_widening[3] = {1.f, 0.f, 0.f};
 float hull_lightmap_gain = 1.f;        // X3M_HULL_LIGHTMAP_GAIN: gain on the light-map (self-illumination) term inside the original hull pixel programs, finite 1..8, 1 = off (requires X3M_HDR=1, excludes X3M_LINEAR_MATERIALS=1; Ctrl+Shift+F4 switches it alone)
 bool screen_emission_additive_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE=G: in-place ADD/ONE/ONE bullets with a colour gain (screen-emission-region.md, "Additive option")
 float screen_emission_additive_gain = 1.f;       // G, finite 1..8; anything else refuses the option
@@ -2318,6 +2320,10 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         const bool accepted=hooked.motion_output.configure_lightmap_far_fade(lightmap_far_fade[0],lightmap_far_fade[1],lightmap_far_fade[2]);
         log("light_map_far_fade_configured accepted=%u",unsigned(accepted));
     }
+    if(hull_emissive_widening_requested){
+        const bool accepted=hooked.motion_output.configure_hull_emissive_widening(hull_emissive_widening[0],hull_emissive_widening[1],hull_emissive_widening[2]);
+        log("hull_emissive_widening_configured accepted=%u k=%g q0=%g q1=%g",unsigned(accepted),double(hull_emissive_widening[0]),double(hull_emissive_widening[1]),double(hull_emissive_widening[2]));
+    }
     hooked.motion_output.configure_screen_emission_additive(screen_emission_additive_requested,screen_emission_additive_gain,screen_emission_additive_alpha_requested,screen_emission_additive_alpha);
     hooked.motion_output.configure_fade_witness(fade_witness_frames);
     hooked.motion_output.configure_fade_route(fade_route_threshold);
@@ -2504,9 +2510,10 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         // the hooked configuration (state_hooks above: explicit shadow, frame
         // timing's state-call counts, or a failed Get* check). Otherwise the route reads at the draw.
         if(hooked.motion_output.state_hooks())hooked.set(57,set_render_state);
-        // Texture levels are needed only for mip bias; the composition reader
-        // identity stays on SetTexture in both configurations.
-        if(hooked.motion_output.mip_bias_active()||hooked.motion_output.composition_requested())hooked.set(65,set_texture);
+        // Texture levels are needed for mip bias and for the hull emissive
+        // widening's mip-chain gate; the composition reader identity stays on
+        // SetTexture in both configurations.
+        if(hooked.motion_output.mip_bias_active()||hooked.motion_output.hull_emissive_widening()||hooked.motion_output.composition_requested())hooked.set(65,set_texture);
         // Sampler writes (mip-bias restore ahead of an application LODBIAS
         // write, sRGB decode shadow of the material and screen gates) in the
         // hooked configuration only; frame timing counts them like the rest.
@@ -3013,6 +3020,31 @@ void initialize_log(HMODULE module) {
          if(lightmap_far_fade_requested){lightmap_far_fade[0]=parsed[0];lightmap_far_fade[1]=parsed[1];lightmap_far_fade[2]=parsed[2];
              camera_state::request_consumer();} // the footprint's P[0]: armed only for an accepted value
          log("light_map_far_fade_mode requested=1 enabled=%u valid=%u p0=%g p1=%g floor=%g gain=%g%s",unsigned(lightmap_far_fade_requested),unsigned(valid),
+             double(parsed[0]),double(parsed[1]),double(parsed[2]),double(hull_lightmap_gain),valid&&!gained?" refused=no_gain":"");}}
+    // X3M_HULL_EMISSIVE_WIDENING=K,Q0,Q1 (docs/architecture/hull-emissive-widening.md):
+    // the gained hull variants' light-map fetch widens to a k x k pixel
+    // footprint (texldd with the pixel's own gradients times k), k ramping
+    // from 1 at footprint Q0 to K at Q1 world units per pixel (finite,
+    // 1 < K <= 8, 0 <= Q0 < Q1 <= 1e6). Unset or empty = off; malformed, out of
+    // range or no gain to widen keeps it off and logs.
+    {hull_emissive_widening_requested=false;hull_emissive_widening[0]=1.f;hull_emissive_widening[1]=hull_emissive_widening[2]=0.f;
+     wchar_t widen_setting[96]{};
+     const DWORD widen_length=GetEnvironmentVariableW(L"X3M_HULL_EMISSIVE_WIDENING",widen_setting,96);
+     if(widen_length){
+         float parsed[3]={1.f,0.f,0.f};unsigned count=0;bool valid=widen_length<96;
+         const wchar_t* at=widen_setting;
+         while(valid&&count<3){
+             wchar_t* end=nullptr;parsed[count]=wcstof(at,&end);
+             if(end==at||!std::isfinite(parsed[count])){valid=false;break;}
+             ++count;if(!*end)break;
+             if(*end!=L','||count==3){valid=false;break;}
+             at=end+1;}
+         valid=valid&&count==3&&parsed[0]>1.f&&parsed[0]<=8.f&&parsed[1]>=0.f&&parsed[2]>parsed[1]&&parsed[2]<=1e6f;
+         const bool gained=hull_lightmap_gain!=1.f;
+         hull_emissive_widening_requested=valid&&gained;
+         if(hull_emissive_widening_requested){hull_emissive_widening[0]=parsed[0];hull_emissive_widening[1]=parsed[1];hull_emissive_widening[2]=parsed[2];
+             camera_state::request_consumer();} // the footprint's P[0]: armed only for an accepted value
+         log("hull_emissive_widening_mode requested=1 enabled=%u valid=%u k=%g q0=%g q1=%g gain=%g%s",unsigned(hull_emissive_widening_requested),unsigned(valid),
              double(parsed[0]),double(parsed[1]),double(parsed[2]),double(hull_lightmap_gain),valid&&!gained?" refused=no_gain":"");}}
     // X3M_SCREEN_EMISSION_ADDITIVE=G (finite 1..8; unset, 0 or invalid = off):
     // the additive option of the same nine screen pairs, drawn in place with

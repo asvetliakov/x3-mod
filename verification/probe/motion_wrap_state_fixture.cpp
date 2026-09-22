@@ -45,6 +45,7 @@ struct MotionRoute {
  bool fade_arm=false,sun_receiver=false; // fade-band arm and sun-share lane flags read by the bind path
  bool original_fill=false; // X3M_ORIGINAL_FILL: the bind path records the fill variant it selected
  bool hull_lightmap=false; // hull light-map gain PS selected in the routed pair
+ bool hull_lightmap_widen=false,alpha_tested=false; // hull emissive widening: the widened PS selected; the draw's alpha test (never here)
  // Scoped owned restoration references taken once per routed draw.
  Shader*restore_vs=nullptr,*restore_ps=nullptr;bool restore_held=false;
 };
@@ -108,6 +109,7 @@ public:
   Shader*ps_sun_motion=nullptr,*ps_sun_material=nullptr,*ps_sun_xt=nullptr;bool ps_sun_extraction=false;
   Shader*ps_sun_original=nullptr;bool original_share_pair=false,original_share_refused=false; // original share variant (legacy-sun-application.md 4.1)
   Shader*ps_sun_original_lightmap=nullptr,*ps_hull_lightmap_variant=nullptr;bool hull_lightmap_pair=false; // hull light-map gain variants; inert here
+  Shader*ps_hull_lightmap_widen=nullptr,*ps_sun_original_lightmap_widen=nullptr;std::uint8_t hull_lightmap_stage=0; // hull emissive widening variants; inert here
   float vs_reserved[16]{},ps_reserved[8]{};renderer::LinearMaterialPairContract material_contract{};
  }shadow_;
  explicit MotionOutput(Device&d):device_(&d){}
@@ -126,6 +128,7 @@ public:
  bool sun_lane_requested_=false,sun_lane_qualified_=false,sun_lane_active_=false,sun_lane_failed_=false;
  bool original_fill_requested_=false; unsigned sun_original_refused_draws_=0; // read by the bind path's original-share gate
  bool hull_gain_enabled_=true,hull_lightmap_enabled_=true; std::uint32_t hull_lightmap_draws_=0; // F6 guide-light flag, F4 light-map flag and light-map draw counter read by the bind/after-draw paths
+ float lightmap_widen_draw_k_=0.f; struct{DWORD levels=0;}samplers_[16]; // hull emissive widening: this draw's k (0 = off) and the sampler shadow's level counts read by the bind path
  unsigned sun_qualifications_=0;void qualify_sun_lane(){++sun_qualifications_;}
  struct{bool failed=false,published=false,available=false,coverage_required=false;unsigned receivers=0,covered=0,untracked=0;}sun_frame_;
  bool screen_emission_bound_=false; // step B locked-prefix request; inert for the wrap-state seam

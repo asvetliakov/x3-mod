@@ -1,0 +1,1520 @@
+{
+ "description": "Every ps_3_0 program of the local archive declaring LightMapTexSampler: widened (hull emissive widening) or excluded by design. Slots are the weighted SM3 totals of the widened variants (+7 over the gained ones); the moon program is out of scope.",
+ "source_manifest_sha256": "9d5e1bbfba603b854c695f59c683b583d1e787ae610960db1d24f7fff382b4de",
+ "programs": 101,
+ "transformed": 100,
+ "excluded": {
+  "6aaaa2cb27e92cc8": "moon (shader/3_0/moon_0000.fb, moon_0001.fb: coordinate v2, no motion row)"
+ },
+ "slot_growth_per_variant": 7,
+ "per_family": {
+  "split": {
+   "programs": 12,
+   "max_plain_slots": 138,
+   "max_share_slots": 215
+  },
+  "terran": {
+   "programs": 12,
+   "max_plain_slots": 137,
+   "max_share_slots": 213
+  },
+  "standard_lighting": {
+   "programs": 18,
+   "max_plain_slots": 139,
+   "max_share_slots": 216
+  },
+  "paranid": {
+   "programs": 12,
+   "max_plain_slots": 137,
+   "max_share_slots": 206
+  },
+  "xt_terraformer": {
+   "programs": 6,
+   "max_plain_slots": 172,
+   "max_share_slots": 253
+  },
+  "khaak+teladi+teladi_nodiff+xenon": {
+   "programs": 12,
+   "max_plain_slots": 139,
+   "max_share_slots": 216
+  },
+  "xt_standard_lighting_damage": {
+   "programs": 2,
+   "max_plain_slots": 185,
+   "max_share_slots": 264
+  },
+  "boron": {
+   "programs": 8,
+   "max_plain_slots": 149,
+   "max_share_slots": 223
+  },
+  "xt_standard_lighting+xt_standard_lighting_damage": {
+   "programs": 4,
+   "max_plain_slots": 188,
+   "max_share_slots": 267
+  },
+  "argon": {
+   "programs": 12,
+   "max_plain_slots": 138,
+   "max_share_slots": 215
+  },
+  "xt_standard_lighting": {
+   "programs": 2,
+   "max_plain_slots": 192,
+   "max_share_slots": 271
+  }
+ },
+ "rows": [
+  {
+   "hash": "02606104fa59fb29",
+   "family": [
+    "split"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 1181,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 107,
+    "share": 176
+   }
+  },
+  {
+   "hash": "042c9ae16f41feff",
+   "family": [
+    "terran"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 1248,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 118,
+    "share": 187
+   }
+  },
+  {
+   "hash": "0c1f3f0f440e4a0c",
+   "family": [
+    "standard_lighting"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 1366,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 134,
+    "share": 211
+   }
+  },
+  {
+   "hash": "188c5ab9dbb98393",
+   "family": [
+    "paranid"
+   ],
+   "group": "palette",
+   "stage": 3,
+   "words": 1347,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 137,
+    "share": 206
+   }
+  },
+  {
+   "hash": "18d372968af4a480",
+   "family": [
+    "paranid"
+   ],
+   "group": "palette",
+   "stage": 3,
+   "words": 1321,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 132,
+    "share": 201
+   }
+  },
+  {
+   "hash": "1d638938d93421b3",
+   "family": [
+    "split"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 1207,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 112,
+    "share": 181
+   }
+  },
+  {
+   "hash": "1de3d2dde345a7e3",
+   "family": [
+    "xt_terraformer"
+   ],
+   "group": "xt",
+   "stage": 3,
+   "words": 1710,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 172,
+    "share": 253
+   }
+  },
+  {
+   "hash": "1ed1bf0fdec00e1a",
+   "family": [
+    "khaak",
+    "teladi",
+    "teladi_nodiff",
+    "xenon"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 1281,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 125,
+    "share": 194
+   }
+  },
+  {
+   "hash": "1f26d41bcb7dac1e",
+   "family": [
+    "khaak",
+    "teladi",
+    "teladi_nodiff",
+    "xenon"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 1332,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 134,
+    "share": 211
+   }
+  },
+  {
+   "hash": "22cc5b05a55ef61e",
+   "family": [
+    "split"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 350,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 120,
+    "share": 189
+   }
+  },
+  {
+   "hash": "2b04461d0dae038b",
+   "family": [
+    "khaak",
+    "teladi",
+    "teladi_nodiff",
+    "xenon"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 336,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 116,
+    "share": 185
+   }
+  },
+  {
+   "hash": "3006f8030a467739",
+   "family": [
+    "split"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 1312,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 133,
+    "share": 210
+   }
+  },
+  {
+   "hash": "31445adb0a62d134",
+   "family": [
+    "xt_standard_lighting_damage"
+   ],
+   "group": "xt",
+   "stage": 3,
+   "words": 1746,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 185,
+    "share": 264
+   }
+  },
+  {
+   "hash": "3602b05ce11ca6ff",
+   "family": [
+    "terran"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 1324,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 132,
+    "share": 208
+   }
+  },
+  {
+   "hash": "3755809bd40afc13",
+   "family": [
+    "terran"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 1206,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 111,
+    "share": 180
+   }
+  },
+  {
+   "hash": "39eb3c2258a516e1",
+   "family": [
+    "boron"
+   ],
+   "group": "palette",
+   "stage": 2,
+   "words": 432,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 132,
+    "share": 206
+   }
+  },
+  {
+   "hash": "3b94320087e81945",
+   "family": [
+    "khaak",
+    "teladi",
+    "teladi_nodiff",
+    "xenon"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 1264,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 122,
+    "share": 199
+   }
+  },
+  {
+   "hash": "43c9405568d2226f",
+   "family": [
+    "paranid"
+   ],
+   "group": "palette",
+   "stage": 3,
+   "words": 1347,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 137,
+    "share": 206
+   }
+  },
+  {
+   "hash": "462342e3e5781384",
+   "family": [
+    "split"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 1250,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 121,
+    "share": 196
+   }
+  },
+  {
+   "hash": "496049cec2066ed3",
+   "family": [
+    "xt_standard_lighting",
+    "xt_standard_lighting_damage"
+   ],
+   "group": "xt",
+   "stage": 3,
+   "words": 1780,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 188,
+    "share": 267
+   }
+  },
+  {
+   "hash": "4f052209611387f0",
+   "family": [
+    "standard_lighting"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 1326,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 126,
+    "share": 195
+   }
+  },
+  {
+   "hash": "55826dc176afe464",
+   "family": [
+    "standard_lighting"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 339,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 110,
+    "share": 179
+   }
+  },
+  {
+   "hash": "57acf59d19c73791",
+   "family": [
+    "boron"
+   ],
+   "group": "palette",
+   "stage": 2,
+   "words": 464,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 137,
+    "share": 211
+   }
+  },
+  {
+   "hash": "593e5dea9b3457d5",
+   "family": [
+    "argon"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 264,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 103,
+    "share": 172
+   }
+  },
+  {
+   "hash": "5c823b8507fa1442",
+   "family": [
+    "terran"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 323,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 114,
+    "share": 183
+   }
+  },
+  {
+   "hash": "5e056627e9ff3a8d",
+   "family": [
+    "paranid"
+   ],
+   "group": "palette",
+   "stage": 3,
+   "words": 402,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 128,
+    "share": 197
+   }
+  },
+  {
+   "hash": "5e0a10fe752b6140",
+   "family": [
+    "argon"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 1354,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 138,
+    "share": 215
+   }
+  },
+  {
+   "hash": "5f82ecacd39529cd",
+   "family": [
+    "xt_standard_lighting"
+   ],
+   "group": "xt",
+   "stage": 3,
+   "words": 1765,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 187,
+    "share": 266
+   }
+  },
+  {
+   "hash": "61418505e5d8f998",
+   "family": [
+    "terran"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 261,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 102,
+    "share": 171
+   }
+  },
+  {
+   "hash": "62c180abe017e239",
+   "family": [
+    "boron"
+   ],
+   "group": "palette",
+   "stage": 3,
+   "words": 526,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 149,
+    "share": 223
+   }
+  },
+  {
+   "hash": "63379470db8d2a86",
+   "family": [
+    "argon"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 1251,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 119,
+    "share": 188
+   }
+  },
+  {
+   "hash": "63f96eba9eea7880",
+   "family": [
+    "argon"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 1292,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 126,
+    "share": 201
+   }
+  },
+  {
+   "hash": "64bac8bb307eb896",
+   "family": [
+    "standard_lighting"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 1392,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 139,
+    "share": 216
+   }
+  },
+  {
+   "hash": "6733b119142c8d42",
+   "family": [
+    "xt_standard_lighting",
+    "xt_standard_lighting_damage"
+   ],
+   "group": "xt",
+   "stage": 3,
+   "words": 1754,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 183,
+    "share": 262
+   }
+  },
+  {
+   "hash": "675f9077d8fd21c4",
+   "family": [
+    "paranid"
+   ],
+   "group": "palette",
+   "stage": 2,
+   "words": 366,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 121,
+    "share": 190
+   }
+  },
+  {
+   "hash": "68915563dd0aac9a",
+   "family": [
+    "argon"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 332,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 115,
+    "share": 184
+   }
+  },
+  {
+   "hash": "68f0dd6791fd7d3d",
+   "family": [
+    "terran"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 1274,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 123,
+    "share": 192
+   }
+  },
+  {
+   "hash": "6aaaa2cb27e92cc8",
+   "family": [
+    "moon"
+   ],
+   "group": null,
+   "stage": 2,
+   "words": 270,
+   "transformed": false,
+   "excluded": "moon (shader/3_0/moon_0000.fb, moon_0001.fb: coordinate v2, no motion row)"
+  },
+  {
+   "hash": "75fb9c6b05e28ea2",
+   "family": [
+    "xt_terraformer"
+   ],
+   "group": "xt",
+   "stage": 3,
+   "words": 1673,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 163,
+    "share": 244
+   }
+  },
+  {
+   "hash": "769c3814fc0efba8",
+   "family": [
+    "split"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 324,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 115,
+    "share": 184
+   }
+  },
+  {
+   "hash": "77a5b2d62fb3be48",
+   "family": [
+    "boron"
+   ],
+   "group": "palette",
+   "stage": 2,
+   "words": 352,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 119,
+    "share": 188
+   }
+  },
+  {
+   "hash": "789449ffd931d23e",
+   "family": [
+    "standard_lighting"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 1300,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 121,
+    "share": 190
+   }
+  },
+  {
+   "hash": "78963cdc7c710e04",
+   "family": [
+    "khaak",
+    "teladi",
+    "teladi_nodiff",
+    "xenon"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 1255,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 120,
+    "share": 189
+   }
+  },
+  {
+   "hash": "7a0bb00a8070496a",
+   "family": [
+    "argon"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 1215,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 112,
+    "share": 181
+   }
+  },
+  {
+   "hash": "7a14d4dcb28f27e5",
+   "family": [
+    "khaak",
+    "teladi",
+    "teladi_nodiff",
+    "xenon"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 1187,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 108,
+    "share": 177
+   }
+  },
+  {
+   "hash": "7c83ed50c9894e44",
+   "family": [
+    "standard_lighting"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 1298,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 122,
+    "share": 200
+   }
+  },
+  {
+   "hash": "7e5e41276b3d7514",
+   "family": [
+    "paranid"
+   ],
+   "group": "palette",
+   "stage": 3,
+   "words": 1321,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 132,
+    "share": 201
+   }
+  },
+  {
+   "hash": "827d8d2d617bedce",
+   "family": [
+    "split"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 1276,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 126,
+    "share": 201
+   }
+  },
+  {
+   "hash": "8759c7838bbc86c2",
+   "family": [
+    "argon"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 1260,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 121,
+    "share": 196
+   }
+  },
+  {
+   "hash": "8ab6188a40ca15ea",
+   "family": [
+    "khaak",
+    "teladi",
+    "teladi_nodiff",
+    "xenon"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 1219,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 113,
+    "share": 182
+   }
+  },
+  {
+   "hash": "8d5b2ba0fb4d13bf",
+   "family": [
+    "argon"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 1183,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 107,
+    "share": 176
+   }
+  },
+  {
+   "hash": "8df6143d0e77d92e",
+   "family": [
+    "khaak",
+    "teladi",
+    "teladi_nodiff",
+    "xenon"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 268,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 104,
+    "share": 173
+   }
+  },
+  {
+   "hash": "8e58ac79b59b02b1",
+   "family": [
+    "terran"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 1350,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 137,
+    "share": 213
+   }
+  },
+  {
+   "hash": "91b6c09eb47f8555",
+   "family": [
+    "terran"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 1282,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 125,
+    "share": 199
+   }
+  },
+  {
+   "hash": "99153c144030c396",
+   "family": [
+    "standard_lighting"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 1355,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 130,
+    "share": 207
+   }
+  },
+  {
+   "hash": "9d27e7ba242f3831",
+   "family": [
+    "paranid"
+   ],
+   "group": "palette",
+   "stage": 2,
+   "words": 1259,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 120,
+    "share": 189
+   }
+  },
+  {
+   "hash": "a6e1328c0bb3f401",
+   "family": [
+    "terran"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 355,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 119,
+    "share": 188
+   }
+  },
+  {
+   "hash": "a910daef935891ce",
+   "family": [
+    "boron"
+   ],
+   "group": "palette",
+   "stage": 3,
+   "words": 500,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 144,
+    "share": 218
+   }
+  },
+  {
+   "hash": "abf3c0fad53456d8",
+   "family": [
+    "standard_lighting"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 375,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 117,
+    "share": 186
+   }
+  },
+  {
+   "hash": "acc83ed2509d84a1",
+   "family": [
+    "khaak",
+    "teladi",
+    "teladi_nodiff",
+    "xenon"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 362,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 121,
+    "share": 190
+   }
+  },
+  {
+   "hash": "b0f9313b77cc78ee",
+   "family": [
+    "standard_lighting"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 1289,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 117,
+    "share": 186
+   }
+  },
+  {
+   "hash": "b5f1d4145171026b",
+   "family": [
+    "terran"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 287,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 107,
+    "share": 176
+   }
+  },
+  {
+   "hash": "bd4d51c08486c6e0",
+   "family": [
+    "split"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 256,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 103,
+    "share": 172
+   }
+  },
+  {
+   "hash": "bdcdb3ab996ae4e0",
+   "family": [
+    "khaak",
+    "teladi",
+    "teladi_nodiff",
+    "xenon"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 1358,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 139,
+    "share": 216
+   }
+  },
+  {
+   "hash": "c1452981fd0bff64",
+   "family": [
+    "standard_lighting"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 1381,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 135,
+    "share": 212
+   }
+  },
+  {
+   "hash": "c997a37560e266df",
+   "family": [
+    "paranid"
+   ],
+   "group": "palette",
+   "stage": 2,
+   "words": 340,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 116,
+    "share": 185
+   }
+  },
+  {
+   "hash": "ca6bfa4a6cca7e2a",
+   "family": [
+    "argon"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 1328,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 133,
+    "share": 210
+   }
+  },
+  {
+   "hash": "cc09f17db377fd9e",
+   "family": [
+    "terran"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 1180,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 106,
+    "share": 175
+   }
+  },
+  {
+   "hash": "cf449bcb069aec4f",
+   "family": [
+    "standard_lighting"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 407,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 122,
+    "share": 191
+   }
+  },
+  {
+   "hash": "d086fde54698070c",
+   "family": [
+    "argon"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 1277,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 124,
+    "share": 193
+   }
+  },
+  {
+   "hash": "d22f2ce2c740e6a7",
+   "family": [
+    "xt_terraformer"
+   ],
+   "group": "xt",
+   "stage": 3,
+   "words": 1684,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 167,
+    "share": 248
+   }
+  },
+  {
+   "hash": "d514bf852d8a9c58",
+   "family": [
+    "standard_lighting"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 1315,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 122,
+    "share": 191
+   }
+  },
+  {
+   "hash": "d51cf763125cb85a",
+   "family": [
+    "xt_standard_lighting_damage"
+   ],
+   "group": "xt",
+   "stage": 3,
+   "words": 1720,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 180,
+    "share": 259
+   }
+  },
+  {
+   "hash": "d6e8bdde0e4c515f",
+   "family": [
+    "split"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 1338,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 138,
+    "share": 215
+   }
+  },
+  {
+   "hash": "dab93928f26906f7",
+   "family": [
+    "argon"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 296,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 108,
+    "share": 177
+   }
+  },
+  {
+   "hash": "db644b73b68c0547",
+   "family": [
+    "standard_lighting"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 1232,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 109,
+    "share": 178
+   }
+  },
+  {
+   "hash": "dd87737d697c6764",
+   "family": [
+    "xt_terraformer"
+   ],
+   "group": "xt",
+   "stage": 2,
+   "words": 1587,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 157,
+    "share": 238
+   }
+  },
+  {
+   "hash": "de2dd381fa64193d",
+   "family": [
+    "split"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 288,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 108,
+    "share": 177
+   }
+  },
+  {
+   "hash": "dff6a3d360603fa2",
+   "family": [
+    "standard_lighting"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 364,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 113,
+    "share": 182
+   }
+  },
+  {
+   "hash": "e16a9806ee3544c3",
+   "family": [
+    "khaak",
+    "teladi",
+    "teladi_nodiff",
+    "xenon"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 300,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 109,
+    "share": 178
+   }
+  },
+  {
+   "hash": "e1acf8a03850acaf",
+   "family": [
+    "paranid"
+   ],
+   "group": "palette",
+   "stage": 2,
+   "words": 1285,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 125,
+    "share": 194
+   }
+  },
+  {
+   "hash": "e3b7acc16da9932d",
+   "family": [
+    "khaak",
+    "teladi",
+    "teladi_nodiff",
+    "xenon"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 1296,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 127,
+    "share": 204
+   }
+  },
+  {
+   "hash": "e5ea78b8b0b0fe07",
+   "family": [
+    "split"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 1243,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 119,
+    "share": 188
+   }
+  },
+  {
+   "hash": "e6794b6ec37ff71a",
+   "family": [
+    "xt_standard_lighting",
+    "xt_standard_lighting_damage"
+   ],
+   "group": "xt",
+   "stage": 2,
+   "words": 1674,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 177,
+    "share": 256
+   }
+  },
+  {
+   "hash": "e70adc744a38ca59",
+   "family": [
+    "standard_lighting"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 1324,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 127,
+    "share": 205
+   }
+  },
+  {
+   "hash": "ebf41e1ace7af45b",
+   "family": [
+    "paranid"
+   ],
+   "group": "palette",
+   "stage": 2,
+   "words": 1285,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 125,
+    "share": 194
+   }
+  },
+  {
+   "hash": "ed44232013f67072",
+   "family": [
+    "boron"
+   ],
+   "group": "palette",
+   "stage": 3,
+   "words": 388,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 126,
+    "share": 195
+   }
+  },
+  {
+   "hash": "edaef099780fcafe",
+   "family": [
+    "xt_terraformer"
+   ],
+   "group": "xt",
+   "stage": 3,
+   "words": 1699,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 168,
+    "share": 249
+   }
+  },
+  {
+   "hash": "ef2bf556f207b8bd",
+   "family": [
+    "terran"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 1256,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 120,
+    "share": 194
+   }
+  },
+  {
+   "hash": "f17fffd88d134b04",
+   "family": [
+    "argon"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 358,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 120,
+    "share": 189
+   }
+  },
+  {
+   "hash": "f1b0e820c7b488c3",
+   "family": [
+    "xt_standard_lighting"
+   ],
+   "group": "xt",
+   "stage": 3,
+   "words": 1791,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 192,
+    "share": 271
+   }
+  },
+  {
+   "hash": "f1d14a7dbf7c6173",
+   "family": [
+    "standard_lighting"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 396,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 118,
+    "share": 187
+   }
+  },
+  {
+   "hash": "f286856c3f400377",
+   "family": [
+    "boron"
+   ],
+   "group": "palette",
+   "stage": 3,
+   "words": 414,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 131,
+    "share": 200
+   }
+  },
+  {
+   "hash": "f42202faf57a3c89",
+   "family": [
+    "split"
+   ],
+   "group": "hull",
+   "stage": 3,
+   "words": 1269,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 124,
+    "share": 193
+   }
+  },
+  {
+   "hash": "f646f03be5a8708d",
+   "family": [
+    "paranid"
+   ],
+   "group": "palette",
+   "stage": 2,
+   "words": 1259,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 120,
+    "share": 189
+   }
+  },
+  {
+   "hash": "f6a501717c3e5ca8",
+   "family": [
+    "standard_lighting"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 313,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 105,
+    "share": 174
+   }
+  },
+  {
+   "hash": "f917d48ee826da1f",
+   "family": [
+    "boron"
+   ],
+   "group": "palette",
+   "stage": 2,
+   "words": 320,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 114,
+    "share": 183
+   }
+  },
+  {
+   "hash": "fce465befff2f623",
+   "family": [
+    "paranid"
+   ],
+   "group": "palette",
+   "stage": 3,
+   "words": 428,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 133,
+    "share": 202
+   }
+  },
+  {
+   "hash": "fd58e6b7e8cf969c",
+   "family": [
+    "xt_terraformer"
+   ],
+   "group": "xt",
+   "stage": 2,
+   "words": 1561,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 152,
+    "share": 233
+   }
+  },
+  {
+   "hash": "ff32b602a271c327",
+   "family": [
+    "standard_lighting"
+   ],
+   "group": "hull",
+   "stage": 2,
+   "words": 1258,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 114,
+    "share": 183
+   }
+  },
+  {
+   "hash": "fffdabd910793aba",
+   "family": [
+    "xt_standard_lighting",
+    "xt_standard_lighting_damage"
+   ],
+   "group": "xt",
+   "stage": 2,
+   "words": 1648,
+   "transformed": true,
+   "widened_slots": {
+    "plain": 172,
+    "share": 251
+   }
+  }
+ ]
+}

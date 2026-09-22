@@ -386,6 +386,7 @@ def main():
     light_map_fade = parser.add_mutually_exclusive_group()
     light_map_fade.add_argument('--light-map-far-fade', default=None, metavar='P0,P1[,G]', help='Fade the hull light-map gain with distance: a routed hull draw keeps --hull-lightmap-gain while its pixel footprint (world units per pixel at the object origin, the --taa-far-stabiliser measure) is below P0 and falls linearly to G (default 1 = the game\'s own brightness, within [0, gain]) at P1, so sub-pixel glowing windows of distant objects stop shimmering under TAA. 0 < P0 < P1 <= 1e6; launcher default 80,220,1. The option latches the camera projection itself (no --taa needed). Enabled by default with an active original-hull light-map gain; --no-light-map-far-fade disables it. Requires an active light-map gain (--hdr, not --linear-materials, gain above 1).')
     light_map_fade.add_argument('--no-light-map-far-fade', action='store_true', help='Disable the default distance fade of hull light-map brightness; keep the configured gain at all distances.')
+    parser.add_argument('--hull-emissive-widening', default=None, metavar='K,Q0,Q1', help='Widen the light-map (window/hull-light) fetch of every gained hull program with distance (X3M_HULL_EMISSIVE_WIDENING; docs/architecture/hull-emissive-widening.md): the fetch becomes a texldd whose screen-space gradients are the pixel\'s own times k, so the sampler filters the light map over a k x k pixel footprint and sub-pixel window strips come back k px wide at 1/k of their peak (the mip chain conserves the energy; nothing is rescaled) instead of tearing under TAA. k ramps per draw from 1 (the un-widened gained program, bit for bit) at footprint Q0 to K at Q1 world units per pixel (the --light-map-far-fade measure). Finite 1 < K <= 8, 0 <= Q0 < Q1 <= 1e6; absent = off (default). Requires an active light-map gain (--hdr, not --linear-materials, --hull-lightmap-gain above 1); latches the camera projection itself (no --taa needed). Ctrl+Shift+F4 drops it with the gain.')
     parser.add_argument('--hdr-look', choices=['none', 'golden', 'punchy'], default='none', help='AgX look (X3M_HDR_LOOK; requires --hdr-tonemap; default none)')
     parser.add_argument('--hdr-bloom', action='store_true', help='Replace stock bloom RGB with bloom from the FP16 scene before AgX (X3M_HDR_BLOOM=1; requires --hdr-tonemap and scene hook; default off)')
     parser.add_argument('--bloom-source-clamp', type=float, default=None, metavar='C', help='Decoded-space ceiling on the bloom extraction source only (X3M_BLOOM_SOURCE_CLAMP=C, finite 0 < C <= 64; requires --hdr-bloom; absent keeps today\'s unbounded feed). The pyramid then sees at most code C, so an over-bright emitter (additive bolts at gain 5, overlapping sprites) can no longer feed tens or hundreds of units into the halo and saturate it into a white disk; the presented scene keeps its full HDR value and every source at code C or below is bit-identical to today. Recommended value 1.0, the ceiling of the native A8R8G8B8 scene map the original compositor read (docs/architecture/bloom-falloff.md)')
@@ -908,6 +909,19 @@ def main():
         if not all(math.isfinite(value) for value in fade) or not 0.0 < fade[0] < fade[1] <= 1e6 or not 0.0 <= fade[2] <= gain:
             parser.error('--light-map-far-fade: 0 < P0 < P1 <= 1e6 and G within [0, light-map gain].')
         args.light_map_far_fade = ','.join('%.6g' % value for value in fade)
+    if args.hull_emissive_widening is not None:
+        gain = args.hull_lightmap_gain if args.hull_lightmap_gain is not None else (HULL_LIGHTMAP_GAIN_DEFAULT if args.hdr and not args.linear_materials else 1.0)
+        if not gain > 1.0:
+            parser.error('--hull-emissive-widening requires an active light-map gain (--hdr without --linear-materials, --hull-lightmap-gain above 1).')
+        try:
+            widen = [float(field) for field in args.hull_emissive_widening.split(',')]
+        except ValueError:
+            widen = []
+        if len(widen) != 3:
+            parser.error('--hull-emissive-widening takes K,Q0,Q1.')
+        if not all(math.isfinite(value) for value in widen) or not 1.0 < widen[0] <= 8.0 or not 0.0 <= widen[1] < widen[2] <= 1e6:
+            parser.error('--hull-emissive-widening: 1 < K <= 8 and 0 <= Q0 < Q1 <= 1e6.')
+        args.hull_emissive_widening = ','.join('%.6g' % value for value in widen)
     if args.hdr_bloom and (not args.hdr_tonemap or args.scene_hook == 'off'):
         parser.error('--hdr-bloom requires --hdr-tonemap and the scene hook.')
     if args.bloom_source_clamp is not None and not args.hdr_bloom:
@@ -1202,6 +1216,11 @@ def main():
             env['X3M_LIGHT_MAP_FAR_FADE'] = args.light_map_far_fade
         else:
             env.pop('X3M_LIGHT_MAP_FAR_FADE', None)
+        # Hull emissive widening: absent means off (first flight, default off).
+        if args.hull_emissive_widening is not None:
+            env['X3M_HULL_EMISSIVE_WIDENING'] = args.hull_emissive_widening
+        else:
+            env.pop('X3M_HULL_EMISSIVE_WIDENING', None)
         env['X3M_HDR_TONEMAP'] = 'agx' if args.hdr_tonemap else 'identity'
         env['X3M_HDR_BLOOM'] = '1' if args.hdr_bloom else '0'
         # Absent means the unbounded feed: drop the inherited variable entirely

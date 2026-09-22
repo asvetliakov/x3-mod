@@ -127,8 +127,10 @@ PS2_LIMITS = {'2_0': {'arithmetic_slots': 64, 'texture_slots': 32, 'temporaries'
 VS2_INSTRUCTION_SLOTS = 256
 SM2_TEXCOORD_LINKS = 8
 # Slot costs of the macro instructions; everything else executable costs one.
+# dsx/dsy (2) and texldd (3) are the hull emissive widening's fetch
+# (docs/architecture/hull-emissive-widening.md 2.2): no original uses them.
 SLOT_COSTS = {'crs': 2, 'lrp': 2, 'm3x2': 2, 'm3x3': 3, 'm3x4': 4, 'm4x3': 3,
-              'm4x4': 4, 'nrm': 3, 'pow': 3, 'sincos': 8}
+              'm4x4': 4, 'nrm': 3, 'pow': 3, 'sincos': 8, 'dsx': 2, 'dsy': 2, 'texldd': 3}
 TEXTURE_OPCODES = {'texld', 'texkill', 'texldd', 'texldl'}
 # The authored motion fragment (rigid_motion_pixel_program_inc.h): 25 arithmetic
 # instructions, no texture instruction, three DEFs, one input declaration; the

@@ -158,7 +158,7 @@ LinearMaterialResult linear_material_original_fill_pixel_variant(const std::uint
 LinearMaterialResult linear_material_original_sun_share_pixel_variant(const std::uint32_t* original,
     std::size_t words, float fill, std::vector<std::uint32_t>& output, bool current_depth,
     bool& share_applied, float lightmap_gain = 1.0f, bool* lightmap_gain_applied = nullptr,
-    bool lightmap_dynamic = false) noexcept;
+    bool lightmap_dynamic = false, bool widen = false, bool* widen_applied = nullptr) noexcept;
 // Hull self-illumination gain (docs/reverse-engineering/hull-self-illumination.md
 // 5, --hull-lightmap-gain): the fill variant above (K = fill, K = 0 the plain
 // motion variant) plus, in the 100 reviewed programs that add a light-map
@@ -176,9 +176,22 @@ LinearMaterialResult linear_material_original_sun_share_pixel_variant(const std:
 // (MaterialMotionAbi::pixel_mode_constant), so the caller MUST upload the
 // effective gain there on every draw that binds the variant. dynamic = false
 // is byte for byte the program above.
+// widen (docs/architecture/hull-emissive-widening.md, --hull-emissive-widening,
+// both entry points): the gained variant's light-map `texld rL, v1, s` is
+// replaced by `dsx rG.xy, v1 / dsy rG.zw, v1.xyxy / mul rG, rG, c217.z /
+// texldd rL, v1, s, rG.xy, rG.zw` (+3 instructions, +7 slots, +12 DWORDs, one
+// temporary above the program's highest); the sampler then filters the light
+// map over a k x k pixel footprint, k the per-draw factor the caller MUST
+// upload in c217.z (1 = the un-widened image; the route binds the un-widened
+// gained variant at k = 1 instead). No intensity rescale. widen_applied
+// reports it (equal to gain_applied); widen with G = 1 is InvalidConfig.
 LinearMaterialResult linear_material_hull_lightmap_gain_pixel_variant(const std::uint32_t* original,
     std::size_t words, float fill, float gain, std::vector<std::uint32_t>& output, bool current_depth,
-    bool& fill_applied, bool& gain_applied, bool dynamic = false) noexcept;
+    bool& fill_applied, bool& gain_applied, bool dynamic = false, bool widen = false, bool* widen_applied = nullptr) noexcept;
+// The light-map sampler stage of a reviewed hull/palette/XT pixel program (2 for
+// DEFAULT layouts, 3 for BUMPMAP), 0 for a program without the term (glass,
+// asteroid) or an unreviewed one. Table lookup only, no bytecode.
+unsigned linear_material_hull_lightmap_stage(std::uint64_t pixel, std::size_t words) noexcept;
 // Four XT DEFAULT programs require an explicitly authored producer repair.
 // Ordinary and linear repaired pairs must be published together by the caller;
 // these APIs never make the shared original VS a stage-global replacement.

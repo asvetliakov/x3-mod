@@ -71,7 +71,7 @@ class MotionOutputRunnerTests(unittest.TestCase):
                        'seam-taa-cutout-opaque-get': '0'})
         self.assertEqual({n for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'auto'}, automatic)
         self.assertEqual({n: e['X3M_HDR_EV_MANUAL'] for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'manual'}, manual)
-        self.assertEqual((len(hdr), len(automatic), len(manual)), (66, 14, 31))  # 4 seam-*lightmap-far-fade* cases set no exposure mode (runtime default)
+        self.assertEqual((len(hdr), len(automatic), len(manual)), (71, 14, 31))  # 4 seam-*lightmap-far-fade* and 5 seam-lightmap-widen-* cases set no exposure mode (runtime default)
         for name, env in hdr.items():
             with self.subTest(case=name):
                 if name in automatic:

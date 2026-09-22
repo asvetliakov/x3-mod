@@ -1,6 +1,7 @@
 # Hull emissive widening: footprint-scaled light-map sampling in the hull pixel programs
 
-Status: design note for ratification, 2026-09-22. Nothing here is implemented; no production source changed. Tags:
+Status: ratified 2026-09-22 and built the same day behind `--hull-emissive-widening K,Q0,Q1` (default off; see
+"As built" at the end and the ledger [hull-emissive-widening.md](../verification/hull-emissive-widening.md)). Tags:
 **[M]** measured this session (archive census, source reading), **[C]** measured earlier and cited, **[I]** inferred,
 **[A]** assumed. Owner of the problem: [thin-glow-lines.md](thin-glow-lines.md) (run225 §2, run227 §7). The transform
 host and its proofs: [hull-self-illumination.md](../reverse-engineering/hull-self-illumination.md) §5,
@@ -308,3 +309,36 @@ run227 quick tracker.
   most hardware, re-introducing aliasing along the major axis. Loses to `texldd`.
 - **3-tap or 2x2 supersampled light-map fetch**: 3-4 fetches per hull pixel, isotropic in texel space unless the same
   gradients are computed anyway. Superseded.
+
+## As built (2026-09-22, WIP on the worktree branch, not installed)
+
+Implemented as designed with these concrete choices and measured facts:
+
+- **Transform** (`linear_material.cpp`): `lightmap_widen_fetch` emits the 16-DWORD block of §2.2 in place of the
+  texld; `rG` is one above the highest temporary of the *combined* program (walked after assembly, the block itself
+  excepted; r9-r11 in the plain variants, r24 in the share variants), refused at 32. `structure()`/`body_shape()`
+  admit 91/92 (2 operands, 2 slots) and 93 (5 operands, 3 slots, 2D sampler only) in emitted programs and refuse
+  them in originals and vertex programs. The proof re-reads the block word for word (`lightmap_widen_site`), counts
+  the six `rG` references and exactly one `c217.z` read. `widen` composes with the static (`def c223`) and the
+  dynamic (`c217.w`) gain alike; `widen` with G = 1 is InvalidConfig. Coverage: 100 of the 101 SM3 light-map programs
+  (the moon excluded), +7 slots each, largest 271 of 512 (share) / 192 (plain).
+- **Route** (`motion_output.cpp`): `configure_hull_emissive_widening(K, Q0, Q1)` (needs the gain; 1 < K <= 8,
+  0 <= Q0 < Q1 <= 1e6); the widened variants are created beside a *created* gained variant (both lanes), the
+  light-map stage stored per program (`linear_material_hull_lightmap_stage`); `evaluate_draw` uploads
+  `k_draw = lightmap_widen_scale(footprint)` in `pixel[6]` (c217.z; 0 without the option or a gain pair; 1 without a
+  camera); `bind_variant_pair` selects the widened variant when `k_draw > 1`, the draw is not alpha tested (blending
+  is already refused by the opaque chain) and the stage's level count exceeds 1. The `SetTexture` hook installs for
+  the option as for the mip bias so the level counts exist without `--taa-mip-bias`. Frame line
+  `hull_lightmap_widen_frame` (widened / unity counts, k range, camera), detach line `hull_lightmap_widen_summary`
+  (session k range). Ctrl+Shift+F4 drops the widened variant with the gain. No new API call or allocation per draw.
+- **Option**: `X3M_HULL_EMISSIVE_WIDENING=K,Q0,Q1` parsed in `capture.cpp` (logs `hull_emissive_widening_mode` /
+  `_configured`), launcher `--hull-emissive-widening K,Q0,Q1` (requires the active light-map gain: `--hdr`, not
+  `--linear-materials`, gain above 1; no `--taa` requirement: the option latches the camera projection itself, as
+  the far fade does); no default (first flight off).
+- **Measured** (fixture, CrossOver/FEX, ledger): `CreatePixelShader` accepts every widened program with `dsx`/`dsy`
+  on `v1` (no `mov` fallback needed); `texldd` with k = 1 is bit-identical to `texld` on 11 family programs;
+  D3DX slot counts +7 on each; the 0.5-px strip's per-phase peak ratio 0.500 (off) -> 0.750 / 0.867 / 0.875
+  (K = 2 / 3 / 4), the design's `1 - 0.5/k`; strip energy within 0.4 % and a 64-texel panel within 0.007 % of the
+  un-widened image (no rescale); anisotropic filtering is applied to the explicit-gradient fetch (§6 question 2:
+  yes, on this backend). Open from §6: the game's DDS mip normalisation, the real hulls' UV density (hence the
+  `Q` band), the post-resolve metric, and the flight verdict on K (§7 unchanged).

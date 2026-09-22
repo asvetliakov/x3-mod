@@ -128,6 +128,7 @@ struct MotionRoute {
     bool hull_gain = false;       // Hull-emitter gain PS bound natively for this ONE/ONE draw (emitter plan phase 3); restored after it.
     bool original_fill = false;   // Original-fill PS selected in the routed pair (undone with the route).
     bool hull_lightmap = false;   // Hull light-map gain PS (fill K composed) selected in the routed pair (undone with the route).
+    bool hull_lightmap_widen = false; // The widened light-map variant (k > 1 uploaded in c217.z) selected instead of the gained one.
     bool vs_set = false, ps_set = false, rt_set = false, write_set = false;
     bool vs_constants_set = false, ps_constants_set = false;
     // Scoped shader restoration (docs/architecture/ownership-shadow-lifetime-diagnosis.md):
@@ -460,6 +461,7 @@ struct MotionOutputFixtureConfig {
     std::uint32_t emission_scene_owner = 0;
     std::uint32_t force_taa_readback = 0; // Successful resolve output only; no per-draw capture.
     std::uint32_t observe_native_wrap = 0; // Native indexed-draw observation only.
+    std::uint32_t force_lightmap_widen = 0; // Bind the widened light-map variant at k = 1 too (the widening script's texldd(k=1) against texld).
 };
 // Device-owned last native indexed submission. Failure is diagnostic only and
 // never changes source submission, route state, or the caller's WRAP values.
@@ -772,6 +774,20 @@ public:
     // programs and uploads byte for byte the constant-gain ones.
     bool configure_lightmap_far_fade(float p0, float p1, float floor) noexcept;
     bool lightmap_far_fade() const noexcept { return lightmap_far_fade_; }
+    // Hull emissive widening (X3M_HULL_EMISSIVE_WIDENING=K,Q0,Q1; call after
+    // configure_hull_lightmap_gain, before attach; docs/architecture/
+    // hull-emissive-widening.md): beside every gained light-map variant a
+    // widened one whose light-map fetch is a texldd with the pixel's own
+    // gradients scaled by c217.z; every routed draw of a gain pair uploads
+    // k_draw = 1 + (K - 1) * sat((f - Q0) / (Q1 - Q0)) there with the motion
+    // ABI's own two vectors (f the far fade's footprint, units/px), and the
+    // route binds the widened variant only when k_draw > 1 on an opaque,
+    // non-alpha-tested draw whose light-map stage holds a mip chain; at
+    // k_draw = 1 the un-widened gained variant binds (bit-identical bytes).
+    // Finite K in (1, 8], 0 <= Q0 < Q1 <= 1e6; anything else, or no gain,
+    // leaves the option off (no variant, c217.z stays 0).
+    bool configure_hull_emissive_widening(float k, float q0, float q1) noexcept;
+    bool hull_emissive_widening() const noexcept { return lightmap_widen_; }
     void configure_linear_distance_fade(bool requested) noexcept;
     // Step C of docs/architecture/screen-emission-region.md: the packed screen
     // bracket (policy 8) for the nine SM1 screen pairs of
@@ -1136,6 +1152,11 @@ private:
                          // (X3M_HULL_LIGHTMAP_GAIN); selected over sun_original_variant while
                          // the F4 flag is on; null without the option or the term.
                          IDirect3DPixelShader9* sun_original_lightmap_variant = nullptr;
+                         // The widened forms of the two gained variants above
+                         // (X3M_HULL_EMISSIVE_WIDENING); null without the option or the term.
+                         IDirect3DPixelShader9* sun_original_lightmap_widen_variant = nullptr;
+                         IDirect3DPixelShader9* hull_lightmap_widen_variant = nullptr;
+                         std::uint8_t hull_lightmap_stage = 0; // the light-map sampler stage (2/3) of a widened program; 0 = none
                          // XT DEFAULT is pair-specific: the shared VS retains
                          // its generic objects for every earlier exact pair.
                          IUnknown* xt_default_ordinary_variant = nullptr;
@@ -1205,6 +1226,11 @@ private:
         // reviewed-pair predicate (refreshed with the pair identities).
         IDirect3DPixelShader9* ps_hull_lightmap_variant = nullptr;
         bool hull_lightmap_pair = false;
+        // Hull emissive widening: the widened forms of the bound PS's gained
+        // variants and the light-map stage they read (refreshed with the pair).
+        IDirect3DPixelShader9* ps_hull_lightmap_widen = nullptr;
+        IDirect3DPixelShader9* ps_sun_original_lightmap_widen = nullptr;
+        std::uint8_t hull_lightmap_stage = 0;
         IDirect3DPixelShader9* ps_screen_variant = nullptr;
         // Exact SM1 screen pair (screen_emission_admission.h) and its created
         // packed producer; shader eligibility only, admission is per draw.
@@ -1808,6 +1834,18 @@ private:
     float lightmap_fade_min_ = 0.f;             // frame line: least gain drawn
     std::uint32_t lightmap_fade_draws_ = 0;     // frame line: gain draws below the configured gain
     std::uint32_t hull_lightmap_draws_ = 0; // routed draws that bound a light-map gain variant (plain or share) this frame (frame line only)
+    // Hull emissive widening (X3M_HULL_EMISSIVE_WIDENING=K,Q0,Q1): the per-draw
+    // k in c217.z (lightmap_widen_draw_k_, 0 for a pair without a gain
+    // variant), the frame and session ranges for the frame line and the
+    // session summary, and the widened variants created (fixture counter).
+    bool lightmap_widen_ = false;
+    float lightmap_widen_k_ = 1.f, lightmap_widen_q0_ = 0.f, lightmap_widen_q1_ = 0.f, lightmap_widen_inv_ = 0.f;
+    float lightmap_widen_draw_k_ = 0.f;
+    float lightmap_widen_min_ = 0.f, lightmap_widen_max_ = 0.f;                 // frame line: k range of the widened draws
+    float lightmap_widen_session_min_ = 0.f, lightmap_widen_session_max_ = 0.f; // session summary (logged at detach)
+    std::uint32_t lightmap_widen_draws_ = 0, lightmap_widen_unity_ = 0;         // frame line: widened draws / gain draws held at k = 1
+    std::uint32_t lightmap_widen_session_draws_ = 0, lightmap_widen_variants_ = 0;
+    bool lightmap_widen_summary_logged_ = false;
     std::uint32_t sun_original_lightmap_variants_ = 0; // gained share variants created (fixture counter)
     bool screen_additive_requested_ = false; // X3M_SCREEN_EMISSION_ADDITIVE=G (finite 1..8), exclusive with the packed route
     float screen_additive_gain_ = 1.f;

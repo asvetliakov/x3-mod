@@ -74,6 +74,8 @@
 #include "../../src/renderer/quad_vertex_program.h" // quad_pixel_centre_m20/m21: the apply latch of the sunapply scripts
 #include "../../src/renderer/shadow_replay_projection.h"
 #include "../../src/renderer/shadow_replay_pass.h"
+#include "../../src/renderer/linear_material.h" // the widening script creates the transformer's own bytes for CreatePixelShader / D3DX slot counts
+#include <d3dx9shader.h> // ID3DXBuffer for the game's d3dx9_37 disassembler (loaded at run time, never linked)
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -406,6 +408,7 @@ struct Fixture {
     bool cutout = false, cutout_bench = false;
     bool sunlane = false, suncomposition = false, hullemission = false;
     bool lightmapfade = false; // the light-map far fade script (motion_output_lightmap_fade_inc.h): the hullemission setup, its own frames
+    bool lightmapwiden = false; // the hull emissive widening script (motion_output_lightmap_widen_inc.h): the same setup at 256 x 256
     bool faderoute = false; // fade-band motion arm script (motion_output_fade_route_inc.h, X3M_FIXTURE_FADE_SCRIPT)
     bool skip_c4 = false;   // shadowreplay script: material_state leaves PS c4 unwritten (a frame without a sun write)
     bool distancefade_enabled = false, distancefade_emissions_enabled = false;
@@ -568,6 +571,7 @@ struct Fixture {
         config.emission_scene_owner = emissions || suncomposition;
         config.force_taa_readback = sunlane || (emissions && !emission_bench);
         config.observe_native_wrap = materialwrap || materialxt || materialglass;
+        config.force_lightmap_widen = widen_force; // the widening script's texldd(k=1) against texld frame
         if (object) config.scope = object->scope;
         configure(&config);
     }
@@ -2434,6 +2438,7 @@ struct Fixture {
     #include "sun_share_live_inc.h"
     #include "hull_emission_live_inc.h"
     #include "motion_output_lightmap_fade_inc.h"
+    #include "motion_output_lightmap_widen_inc.h"
 
     // XT live admission/transport witness. Full shader mathematics and authored
     // DEFAULT UV/weight policy are qualified by the detached reference fixture.
@@ -3180,7 +3185,7 @@ int main(int argc, char** argv) {
     HWND window = CreateWindowA(cls.lpszClassName, "Live motion route fixture", WS_OVERLAPPEDWINDOW, 0, 0, 96, 96, nullptr, nullptr, cls.hInstance, nullptr);
     HMODULE runtime = LoadLibraryA("d3d9.dll");
     try {
-        if ((argc != 4 && argc != 5 && argc != 6 && argc != 9) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|unmatchedstatic|bench|routebench|burst|mipbias|zonly|envmap|hook|aohook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials|materialwrap|materialxt|materialglass|sunlane|hullemission|emissions|emissionsbench|distancefade|distancefadebench|screenemission|screenemissionbench|cutout|cutoutbench|faderoute|shadowreplay [WxH|draws|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
+        if ((argc != 4 && argc != 5 && argc != 6 && argc != 9) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|unmatchedstatic|bench|routebench|burst|mipbias|zonly|envmap|hook|aohook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials|materialwrap|materialxt|materialglass|sunlane|hullemission|lightmapfade|lightmapwiden|emissions|emissionsbench|distancefade|distancefadebench|screenemission|screenemissionbench|cutout|cutoutbench|faderoute|shadowreplay [WxH|draws|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
         Fixture f;
         f.runtime = runtime; f.window = window;
         const std::string mode = argv[3];
@@ -3200,7 +3205,8 @@ int main(int argc, char** argv) {
         f.materialwrap = mode == "materialwrap"; f.materialxt = mode == "materialxt"; f.materialglass = mode == "materialglass";
         f.linearmaterials = mode == "linearmaterials" || f.materialwrap;
         f.cutout_bench = mode == "cutoutbench"; f.cutout = mode == "cutout" || f.cutout_bench;
-        f.faderoute = mode == "faderoute"; f.sunlane = mode == "sunlane"; f.lightmapfade = mode == "lightmapfade"; f.hullemission = mode == "hullemission" || f.lightmapfade;
+        f.faderoute = mode == "faderoute"; f.sunlane = mode == "sunlane"; f.lightmapfade = mode == "lightmapfade"; f.lightmapwiden = mode == "lightmapwiden"; f.hullemission = mode == "hullemission" || f.lightmapfade || f.lightmapwiden;
+        if (f.lightmapwiden) { Fixture::W = 256; Fixture::H = 256; }
         {char scenario[24]{};GetEnvironmentVariableA("X3M_FIXTURE_SUN_LIVE_CASE",scenario,sizeof scenario);
          f.suncomposition=f.sunlane&&!std::strncmp(scenario,"composition",11);}
         f.distancefade_bench = mode == "distancefadebench";
@@ -3306,7 +3312,7 @@ int main(int argc, char** argv) {
         api(f.factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &f.pp, &f.d.p), "CreateDevice");
         f.create(mode == "production");
         if ((f.taa || f.cutout || f.faderoute) && f.enabled && f.seam && !f.bench && !f.emission_bench && !f.msaa) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
-        if (mode == "unmatchedstatic") run_unmatched_static(f); else if (f.sunlane) f.run_sun_lane(argv[1]); else if (f.lightmapfade) f.run_lightmap_fade(argv[1]); else if (f.hullemission) f.run_hull_emission(argv[1]); else if (mode == "shadowreplay") run_shadow_replay_integration(f); else if (mode == "shadowretention") run_shadow_retention_integration(f); else if (mode == "shadowpool") run_shadow_pool_integration(f); else if (mode == "sunapply") { char cascades[4]{}; const bool scripted = GetEnvironmentVariableA("X3M_FIXTURE_SUNAPPLY_CASCADES", cascades, sizeof cascades) == 1; if (scripted && cascades[0] == '1') run_sun_apply_cascades(f, 3); else if (scripted && cascades[0] == '5') run_sun_apply_cascades(f, 5); else run_sun_apply_integration(f); } else if (f.cutout) run_cutout_integration(f,argv[1]); else if (f.faderoute) run_fade_route_integration(f,argv[1]); else if (f.screenemission) run_screen_emission_integration(f,argv[1]); else if (f.distancefade) run_distance_fade_integration(f,argv[1]); else if (f.materialglass) f.run_glass_materials(argv[1]); else if (f.materialxt) f.run_xt_materials(argv[1]); else if (f.emissions) run_emission_integration(f,argv[4],argv[5]); else if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.routebench) f.run_route_bench(12, f.routebench_draws); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.zonly) f.run_zonly(argv[1], 9); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook(); else if (f.aohook) f.run_ao_hook();
+        if (mode == "unmatchedstatic") run_unmatched_static(f); else if (f.sunlane) f.run_sun_lane(argv[1]); else if (f.lightmapfade) f.run_lightmap_fade(argv[1]); else if (f.lightmapwiden) f.run_lightmap_widen(argv[1]); else if (f.hullemission) f.run_hull_emission(argv[1]); else if (mode == "shadowreplay") run_shadow_replay_integration(f); else if (mode == "shadowretention") run_shadow_retention_integration(f); else if (mode == "shadowpool") run_shadow_pool_integration(f); else if (mode == "sunapply") { char cascades[4]{}; const bool scripted = GetEnvironmentVariableA("X3M_FIXTURE_SUNAPPLY_CASCADES", cascades, sizeof cascades) == 1; if (scripted && cascades[0] == '1') run_sun_apply_cascades(f, 3); else if (scripted && cascades[0] == '5') run_sun_apply_cascades(f, 5); else run_sun_apply_integration(f); } else if (f.cutout) run_cutout_integration(f,argv[1]); else if (f.faderoute) run_fade_route_integration(f,argv[1]); else if (f.screenemission) run_screen_emission_integration(f,argv[1]); else if (f.distancefade) run_distance_fade_integration(f,argv[1]); else if (f.materialglass) f.run_glass_materials(argv[1]); else if (f.materialxt) f.run_xt_materials(argv[1]); else if (f.emissions) run_emission_integration(f,argv[4],argv[5]); else if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.routebench) f.run_route_bench(12, f.routebench_draws); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.zonly) f.run_zonly(argv[1], 9); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook(); else if (f.aohook) f.run_ao_hook();
         else if (f.hdrvalues) f.run_hdrvalues(); else if (f.hdrfault) f.run_hdrfault();
         else if (f.hdrramp) f.run_hdrramp(); else if (f.hdrexposure) f.run_hdrexposure(); else if (f.hdrtonemapfault) f.run_hdrtonemapfault(); else if (f.msaa) f.run_msaa(); else f.run();
         if (f.reference_ready) { f.reference.destroy(); f.reference_ready = false; }

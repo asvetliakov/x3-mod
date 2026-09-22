@@ -593,3 +593,18 @@ limit, is rejected by `CreatePixelShader`, which the pass treats as a refusal an
 answers by returning the decision to the engine's probe; the fixture's two originals are far below
 the limits, so that refusal is not exercised); point sampling of a 1x1 FP16 texture from SM2 programs on
 drivers without FP16 filtering (the pass forces POINT / NONE for that reason).
+
+## 2026-09-22: hull emissive widening (`--hull-emissive-widening`, default off)
+
+Bytecode only: the gained hull variants' light-map `texld` becomes `dsx` / `dsy` / `mul` / `texldd` (ps_3_0
+opcodes 91, 92, 93 of the documented D3D9 shader model; `dsx`/`dsy` source the input register `v1` directly), built
+at `CreatePixelShader` time by the same transformer as the gain and read through the constant lane `c217.z` the
+route already uploads with the motion ABI. No new D3D call, getter, sampler-state write or query: the per-draw factor
+is one multiply-add on the footprint the far fade computes, and the mip-chain gate reads the level count the
+`SetTexture` hook already keeps for the mip bias (`GetLevelCount` on the object the application passed). Windows x86
+cross-compilation, `check_no_x87.py` and the X3/FEX fixtures pass
+([ledger](../verification/hull-emissive-widening.md)). Unverified natively: `CreatePixelShader` acceptance of the
+widened programs on a native driver (D3DX disassembles them; CrossOver's backend accepts all 100), the derivative
+quad convention (`texldd(k=1)` was bit-identical to `texld` on CrossOver's backend, and the route never relies on it:
+k = 1 binds the un-widened variant), and anisotropic filtering of explicit-gradient fetches (applied on CrossOver's
+backend; documented as implementation-defined).

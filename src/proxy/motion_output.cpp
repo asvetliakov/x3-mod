@@ -368,7 +368,7 @@ unsigned MotionOutput::device_references() const noexcept {
     if (quad_vs_) ++count;
     if (quad_declaration_) ++count;
     for (const auto& entry : vertex_) { if (entry.second.variant) ++count; if (entry.second.material_variant) ++count; if (entry.second.xt_default_ordinary_variant) ++count; if (entry.second.xt_default_linear_variant) ++count; if (entry.second.distance_fade_variant) ++count; }
-    for (const auto& entry : pixel_) { if (entry.second.variant) ++count; if (entry.second.material_variant) ++count; if (entry.second.xt_default_ordinary_variant) ++count; if (entry.second.xt_default_linear_variant) ++count; if (entry.second.distance_fade_variant) ++count; if (entry.second.emission_variant) ++count; if (entry.second.source_gain_variant) ++count; if (entry.second.hull_gain_variant) ++count; if (entry.second.original_fill_variant) ++count; if (entry.second.hull_lightmap_variant) ++count; if (entry.second.screen_variant) ++count; if (entry.second.screen_additive_variant) ++count; if(entry.second.sun_motion_variant)++count; if(entry.second.sun_material_variant)++count; if(entry.second.sun_xt_variant)++count; if(entry.second.sun_original_variant)++count;if(entry.second.sun_original_lightmap_variant)++count; }
+    for (const auto& entry : pixel_) { if (entry.second.variant) ++count; if (entry.second.material_variant) ++count; if (entry.second.xt_default_ordinary_variant) ++count; if (entry.second.xt_default_linear_variant) ++count; if (entry.second.distance_fade_variant) ++count; if (entry.second.emission_variant) ++count; if (entry.second.source_gain_variant) ++count; if (entry.second.hull_gain_variant) ++count; if (entry.second.original_fill_variant) ++count; if (entry.second.hull_lightmap_variant) ++count; if (entry.second.screen_variant) ++count; if (entry.second.screen_additive_variant) ++count; if(entry.second.sun_motion_variant)++count; if(entry.second.sun_material_variant)++count; if(entry.second.sun_xt_variant)++count; if(entry.second.sun_original_variant)++count;if(entry.second.sun_original_lightmap_variant)++count; if(entry.second.hull_lightmap_widen_variant)++count; if(entry.second.sun_original_lightmap_widen_variant)++count; }
     return count;
 }
 
@@ -385,7 +385,7 @@ void MotionOutput::release_resources() noexcept {
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
     shadow_.vs_xt_default_ordinary = shadow_.vs_xt_default_linear = nullptr;
     shadow_.ps_xt_default_ordinary = nullptr;
-    shadow_.ps_sun_motion=shadow_.ps_sun_material=shadow_.ps_sun_xt=nullptr;shadow_.ps_sun_extraction=false; shadow_.ps_sun_original=nullptr;shadow_.ps_sun_original_lightmap=nullptr; shadow_.original_share_pair=false; shadow_.original_share_refused=false;
+    shadow_.ps_sun_motion=shadow_.ps_sun_material=shadow_.ps_sun_xt=nullptr;shadow_.ps_sun_extraction=false; shadow_.ps_sun_original=nullptr;shadow_.ps_sun_original_lightmap=nullptr;shadow_.ps_sun_original_lightmap_widen=nullptr;shadow_.ps_hull_lightmap_widen=nullptr;shadow_.hull_lightmap_stage=0; shadow_.original_share_pair=false; shadow_.original_share_refused=false;
     shadow_.material_contract = {};
     shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
     shadow_.fade_sampler_mask = 0; shadow_.emission_pair = false; shadow_.emission_eligible_variant = nullptr; shadow_.ps_emission_variant = nullptr;
@@ -420,7 +420,7 @@ void MotionOutput::release_resources() noexcept {
     sun_stamp_ps_failed_[0] = sun_stamp_ps_failed_[1] = false;
     release(quad_vs_); release(quad_declaration_);
     for (auto& entry : vertex_) { entry.second.registered = false; release(entry.second.variant); release(entry.second.material_variant); release(entry.second.xt_default_ordinary_variant); release(entry.second.xt_default_linear_variant); release(entry.second.distance_fade_variant); }
-    for (auto& entry : pixel_) { entry.second.registered = false; release(entry.second.variant); release(entry.second.material_variant); release(entry.second.xt_default_ordinary_variant); release(entry.second.xt_default_linear_variant); release(entry.second.distance_fade_variant); release(entry.second.emission_variant); release(entry.second.source_gain_variant); release(entry.second.hull_gain_variant); entry.second.hull_program = false; release(entry.second.original_fill_variant); release(entry.second.hull_lightmap_variant); release(entry.second.screen_variant); release(entry.second.screen_additive_variant); release(entry.second.sun_motion_variant); release(entry.second.sun_material_variant); release(entry.second.sun_xt_variant); release(entry.second.sun_original_variant); release(entry.second.sun_original_lightmap_variant); }
+    for (auto& entry : pixel_) { entry.second.registered = false; release(entry.second.variant); release(entry.second.material_variant); release(entry.second.xt_default_ordinary_variant); release(entry.second.xt_default_linear_variant); release(entry.second.distance_fade_variant); release(entry.second.emission_variant); release(entry.second.source_gain_variant); release(entry.second.hull_gain_variant); entry.second.hull_program = false; release(entry.second.original_fill_variant); release(entry.second.hull_lightmap_variant); release(entry.second.screen_variant); release(entry.second.screen_additive_variant); release(entry.second.sun_motion_variant); release(entry.second.sun_material_variant); release(entry.second.sun_xt_variant); release(entry.second.sun_original_variant); release(entry.second.sun_original_lightmap_variant); release(entry.second.hull_lightmap_widen_variant); release(entry.second.sun_original_lightmap_widen_variant); entry.second.hull_lightmap_stage = 0; }
     shadow_.vs_variant = nullptr; shadow_.ps_variant = nullptr;
     shadow_.vs_material_variant = nullptr; shadow_.ps_material_variant = nullptr;
     shadow_.material_contract = {};
@@ -440,6 +440,15 @@ void MotionOutput::release_resources() noexcept {
             id_, double(mip_bias_), static_cast<unsigned long>(mip_bias_total_sets_), static_cast<unsigned long>(mip_bias_total_restores_),
             static_cast<unsigned long>(mip_bias_total_reads_), static_cast<unsigned long>(mip_bias_total_game_writes_),
             static_cast<unsigned long>(mip_bias_total_failures_), static_cast<unsigned long>(sampler_biased_mask_));
+    }
+    if (lightmap_widen_ && !lightmap_widen_summary_logged_) {
+        // Session summary of the widening: the k range the widened draws saw
+        // (the per-frame line carries the frame's). Once, as the bias summary.
+        lightmap_widen_summary_logged_ = true;
+        log("hull_lightmap_widen_summary device=%llu k=%g q0=%g q1=%g variants=%lu widened_draws=%lu k_min=%g k_max=%g",
+            id_, double(lightmap_widen_k_), double(lightmap_widen_q0_), double(lightmap_widen_q1_), static_cast<unsigned long>(lightmap_widen_variants_),
+            static_cast<unsigned long>(lightmap_widen_session_draws_),
+            double(lightmap_widen_session_draws_ ? lightmap_widen_session_min_ : 1.f), double(lightmap_widen_session_draws_ ? lightmap_widen_session_max_ : 1.f));
     }
     releasing_ = false;
 }
@@ -714,7 +723,7 @@ void MotionOutput::configure_mip_bias(float bias) noexcept {
     std::memcpy(&mip_bias_bits_, &mip_bias_, sizeof mip_bias_bits_);
 }
 bool MotionOutput::texture_levels_wanted(DWORD stage, IDirect3DBaseTexture9* texture) const noexcept {
-    return mip_bias_bits_ && texture && stage < sampler_stage_count && samplers_[stage].texture != texture;
+    return (mip_bias_bits_ || lightmap_widen_) && texture && stage < sampler_stage_count && samplers_[stage].texture != texture;
 }
 void MotionOutput::set_texture(DWORD stage, IDirect3DBaseTexture9* texture, DWORD levels, bool queried, int reader) noexcept {
     if (composition_requested() && !shadow_.recording) {
@@ -863,7 +872,7 @@ void MotionOutput::resync_samplers() noexcept {
         // The packed screen readiness gate reads stage 0 only (the diffuse sampler).
         if (state_hooks_ && ((linear_material_requested_ && stage < 6) || ((screen_emission_requested_ || screen_additive_requested_) && stage == 0)))
             s.srgb_known = SUCCEEDED(direct_call<GetSamplerStateFn>(GetSamplerState, stage, D3DSAMP_SRGBTEXTURE, &s.srgb));
-        if (!mip_bias_bits_ && !composition_requested()) continue;
+        if (!mip_bias_bits_ && !lightmap_widen_ && !composition_requested()) continue;
         IDirect3DBaseTexture9* texture = nullptr;
         const HRESULT get = native<GetTextureFn>(GetTexture)(device_, stage, &texture);
         if (composition_requested()) {
@@ -871,7 +880,7 @@ void MotionOutput::resync_samplers() noexcept {
             set_texture(stage, texture, 0, false, reader);
         }
         if (SUCCEEDED(get) && texture) {
-            s.texture = texture; s.levels = mip_bias_bits_ ? texture->GetLevelCount() : 0;
+            s.texture = texture; s.levels = (mip_bias_bits_ || lightmap_widen_) ? texture->GetLevelCount() : 0;
             sampler_bound_mask_ |= 1u << stage;
         }
         release(texture);
@@ -2284,6 +2293,16 @@ bool MotionOutput::configure_lightmap_far_fade(float p0, float p1, float floor) 
     lightmap_fade_floor_ = lightmap_far_fade_ ? floor : 1.f;
     return lightmap_far_fade_;
 }
+bool MotionOutput::configure_hull_emissive_widening(float k, float q0, float q1) noexcept {
+    if (device_) return lightmap_widen_; // Creation-time shader variant: immutable after attach.
+    lightmap_widen_ = hull_lightmap_gain_requested_ && std::isfinite(k) && std::isfinite(q0) && std::isfinite(q1)
+        && k > 1.f && k <= 8.f && q0 >= 0.f && q1 > q0 && q1 <= 1e6f;
+    lightmap_widen_k_ = lightmap_widen_ ? k : 1.f;
+    lightmap_widen_q0_ = lightmap_widen_ ? q0 : 0.f;
+    lightmap_widen_q1_ = lightmap_widen_ ? q1 : 0.f;
+    lightmap_widen_inv_ = lightmap_widen_ ? 1.f / (q1 - q0) : 0.f;
+    return lightmap_widen_;
+}
 int MotionOutput::hull_emission_gain_toggle(bool lightmap) noexcept {
     const bool available = lightmap ? hull_lightmap_gain_requested_ : hull_emission_gain_requested_;
     if (available) {
@@ -3080,7 +3099,7 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
         auto& entry = vertex_[shader];
         entry.registered = false;
         release(entry.variant);
-        release(entry.sun_motion_variant); release(entry.sun_material_variant); release(entry.sun_xt_variant); release(entry.sun_original_variant); release(entry.sun_original_lightmap_variant); entry.sun_extraction=false;
+        release(entry.sun_motion_variant); release(entry.sun_material_variant); release(entry.sun_xt_variant); release(entry.sun_original_variant); release(entry.sun_original_lightmap_variant); release(entry.hull_lightmap_widen_variant); release(entry.sun_original_lightmap_widen_variant); entry.hull_lightmap_stage=0; entry.sun_extraction=false;
         release(entry.material_variant);
         release(entry.xt_default_ordinary_variant);
         release(entry.xt_default_linear_variant);
@@ -3172,14 +3191,14 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
         shadow_.xt_default_pair = shadow_.xt_default_ready = false;
         shadow_.ps_xt_default_ordinary = nullptr;
         shadow_.ps_hash = 0; shadow_.ps_variant = nullptr; shadow_.ps_material_variant = nullptr;
-        shadow_.ps_sun_motion=shadow_.ps_sun_material=shadow_.ps_sun_xt=nullptr; shadow_.ps_sun_extraction=false; shadow_.ps_sun_original=nullptr;shadow_.ps_sun_original_lightmap=nullptr; shadow_.original_share_pair=false; shadow_.original_share_refused=false;
+        shadow_.ps_sun_motion=shadow_.ps_sun_material=shadow_.ps_sun_xt=nullptr; shadow_.ps_sun_extraction=false; shadow_.ps_sun_original=nullptr;shadow_.ps_sun_original_lightmap=nullptr;shadow_.ps_sun_original_lightmap_widen=nullptr;shadow_.ps_hull_lightmap_widen=nullptr;shadow_.hull_lightmap_stage=0; shadow_.original_share_pair=false; shadow_.original_share_refused=false;
     }
     if (!requested_ || !shader) return;
     try {
         auto& entry = pixel_[shader];
         entry.registered = false;
         release(entry.variant);
-        release(entry.sun_motion_variant); release(entry.sun_material_variant); release(entry.sun_xt_variant); release(entry.sun_original_variant); release(entry.sun_original_lightmap_variant); entry.sun_extraction=false;
+        release(entry.sun_motion_variant); release(entry.sun_material_variant); release(entry.sun_xt_variant); release(entry.sun_original_variant); release(entry.sun_original_lightmap_variant); release(entry.hull_lightmap_widen_variant); release(entry.sun_original_lightmap_widen_variant); entry.hull_lightmap_stage=0; entry.sun_extraction=false;
         release(entry.material_variant);
         release(entry.xt_default_ordinary_variant);
         release(entry.xt_default_linear_variant);
@@ -3373,6 +3392,30 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
                     log("hull_lightmap_variant device=%llu original=%016llx transform=%u create=%08lx words=%u depth=%u fill=%g gain=%g fill_applied=%u gain_applied=%u",
                         id_, hash, unsigned(gained), gain_hr, unsigned(words.size()), depth_enabled_, double(original_fill_requested_ ? original_fill_ : 0.f),
                         double(hull_lightmap_gain_), unsigned(fill_applied), unsigned(gain_applied));
+                // Hull emissive widening (hull-emissive-widening.md 2.2): the
+                // same gained variant with the light-map texld replaced by the
+                // gradient-scaled texldd, created only beside a created gained
+                // variant (k = 1 falls back to it); selected in bind_variant_pair
+                // while the uploaded k exceeds 1. widen_applied=0 or a failed
+                // create is the fail-closed refusal: no object, the gained
+                // variant stays bound at every distance.
+                if (lightmap_widen_ && entry.hull_lightmap_variant) {
+                    words.clear();
+                    bool widen_fill = false, widen_gain = false, widen_applied = false;
+                    const auto widened = renderer::linear_material_hull_lightmap_gain_pixel_variant(
+                        reinterpret_cast<const std::uint32_t*>(code), bytes / 4, original_fill_requested_ ? original_fill_ : 0.f, hull_lightmap_gain_,
+                        words, depth_enabled_, widen_fill, widen_gain, lightmap_far_fade_, true, &widen_applied);
+                    IDirect3DPixelShader9* widen_variant = nullptr;
+                    HRESULT widen_hr = E_FAIL;
+                    if (widened == renderer::LinearMaterialResult::Applied && widen_applied)
+                        widen_hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &widen_variant);
+                    const unsigned stage = renderer::linear_material_hull_lightmap_stage(hash, bytes / 4);
+                    if (SUCCEEDED(widen_hr) && widen_variant && stage) { entry.hull_lightmap_widen_variant = widen_variant; entry.hull_lightmap_stage = std::uint8_t(stage); ++lightmap_widen_variants_; }
+                    else release(widen_variant);
+                    if (widened != renderer::LinearMaterialResult::UnsupportedShader)
+                        log("hull_lightmap_widen_variant device=%llu original=%016llx transform=%u create=%08lx words=%u depth=%u k=%g stage=%u widen_applied=%u",
+                            id_, hash, unsigned(widened), widen_hr, unsigned(words.size()), depth_enabled_, double(lightmap_widen_k_), stage, unsigned(widen_applied));
+                }
             }
             // Original-shading share producer (legacy-sun-application.md section
             // 1): the lane's bind pair for a routed reviewed original pair, the
@@ -3420,6 +3463,24 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
                         log("sun_shadow_original_lightmap_variant device=%llu original=%016llx transform=%u create=%08lx words=%u depth=%u fill=%g gain=%g share_applied=%u gain_applied=%u",
                             id_, hash, unsigned(gained), gain_hr, unsigned(words.size()), depth_enabled_, double(original_fill_requested_ ? original_fill_ : 0.f),
                             double(hull_lightmap_gain_), unsigned(gained_share), unsigned(gain_applied));
+                    // Its widened form (hull emissive widening), beside a created gained share variant.
+                    if (lightmap_widen_ && entry.sun_original_lightmap_variant) {
+                        words.clear();
+                        bool widen_share = false, widen_gain = false, widen_applied = false;
+                        const auto widened = renderer::linear_material_original_sun_share_pixel_variant(
+                            reinterpret_cast<const std::uint32_t*>(code), bytes / 4, original_fill_requested_ ? original_fill_ : 0.f, words, depth_enabled_, widen_share,
+                            hull_lightmap_gain_, &widen_gain, lightmap_far_fade_, true, &widen_applied);
+                        IDirect3DPixelShader9* widen_variant = nullptr;
+                        HRESULT widen_hr = E_FAIL;
+                        if (widened == renderer::LinearMaterialResult::Applied && widen_share && widen_applied)
+                            widen_hr = native<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(words.data()), &widen_variant);
+                        const unsigned stage = renderer::linear_material_hull_lightmap_stage(hash, bytes / 4);
+                        if (SUCCEEDED(widen_hr) && widen_variant && stage) { entry.sun_original_lightmap_widen_variant = widen_variant; entry.hull_lightmap_stage = std::uint8_t(stage); ++lightmap_widen_variants_; }
+                        else release(widen_variant);
+                        if (widened != renderer::LinearMaterialResult::UnsupportedShader)
+                            log("sun_shadow_original_lightmap_widen_variant device=%llu original=%016llx transform=%u create=%08lx words=%u depth=%u k=%g stage=%u share_applied=%u widen_applied=%u",
+                                id_, hash, unsigned(widened), widen_hr, unsigned(words.size()), depth_enabled_, double(lightmap_widen_k_), stage, unsigned(widen_share), unsigned(widen_applied));
+                    }
                 }
             }
             if (linear_material_requested_ && entry.variant) {
@@ -3510,7 +3571,7 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     shadow_.cutout_pair = false; shadow_.asteroid_pair = false;
     shadow_.xt_default_pair = shadow_.xt_default_ready = false;
     shadow_.ps_xt_default_ordinary = nullptr;
-    shadow_.ps_sun_motion=nullptr; shadow_.ps_sun_material=nullptr; shadow_.ps_sun_xt=nullptr; shadow_.ps_sun_extraction=false; shadow_.ps_sun_original=nullptr;shadow_.ps_sun_original_lightmap=nullptr; shadow_.original_share_pair=false; shadow_.original_share_refused=false;
+    shadow_.ps_sun_motion=nullptr; shadow_.ps_sun_material=nullptr; shadow_.ps_sun_xt=nullptr; shadow_.ps_sun_extraction=false; shadow_.ps_sun_original=nullptr;shadow_.ps_sun_original_lightmap=nullptr;shadow_.ps_sun_original_lightmap_widen=nullptr;shadow_.ps_hull_lightmap_widen=nullptr;shadow_.hull_lightmap_stage=0; shadow_.original_share_pair=false; shadow_.original_share_refused=false;
     shadow_.fog_card_pair = false;
     shadow_.fog_card_source = false;
     shadow_.ps = shader; shadow_.ps_hash = 0; shadow_.ps_variant = nullptr; shadow_.ps_material_variant = nullptr;
@@ -3530,6 +3591,9 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     shadow_.ps_hull_program = it->second.hull_program; shadow_.ps_hull_gain_variant = it->second.hull_gain_variant;
     shadow_.ps_original_fill_variant = it->second.original_fill_variant;
     shadow_.ps_hull_lightmap_variant = it->second.hull_lightmap_variant;
+    shadow_.ps_hull_lightmap_widen = it->second.hull_lightmap_widen_variant;
+    shadow_.ps_sun_original_lightmap_widen = it->second.sun_original_lightmap_widen_variant;
+    shadow_.hull_lightmap_stage = it->second.hull_lightmap_stage;
     shadow_.ps_screen_variant = it->second.screen_variant;
     shadow_.ps_screen_additive_variant = it->second.screen_additive_variant;
     shadow_.ps_variant = static_cast<IDirect3DPixelShader9*>(it->second.variant);
@@ -4832,6 +4896,19 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
     route.sun_receiver=false;
     bool fill = false;
     bool lightmap = false; // a light-map gain variant (plain or share) selected: counted on the frame line
+    // Hull emissive widening: the widened form of the selected gain variant when
+    // this draw's uploaded k exceeds 1 (evaluate_draw), the draw is not alpha
+    // tested (the opaque chain already refused blending; rL.w is widened too)
+    // and the light-map stage holds a mip chain (the shadow's level count; a
+    // single-level placeholder would sample identically). No getter.
+#ifdef X3M_MOTION_OUTPUT_FIXTURE
+    const bool widen_forced = fixture_configured_ && fixture_.force_lightmap_widen != 0 && lightmap_widen_draw_k_ >= 1.f;
+#else
+    constexpr bool widen_forced = false;
+#endif
+    const bool widen_draw = (lightmap_widen_draw_k_ > 1.f || widen_forced) && !route.alpha_tested && shadow_.hull_lightmap_stage
+        && samplers_[shadow_.hull_lightmap_stage].levels > 1;
+    bool widen = false;
     if(sun_lane_active_&&route.depth&&!route.fade_arm&&!material&&shadow_.original_share_refused&&!shadow_.xt_default_ready){
         // Fail closed (legacy-sun-application.md section 4.1): a reviewed
         // original pair whose share producer refused keeps its ordinary
@@ -4848,8 +4925,9 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
         // The gained share variant (hull light-map gain) over the plain one
         // while the F4 flag is on; the same reviewed pair, the FP16 scene.
         const bool gained_original=original&&hull_lightmap_enabled_&&shadow_.ps_sun_original_lightmap&&hdr_state_==HdrState::Active;
-        const auto lane=material?shadow_.ps_sun_material:gained_original?shadow_.ps_sun_original_lightmap:original?shadow_.ps_sun_original:shadow_.xt_default_ready?shadow_.ps_sun_xt:shadow_.ps_sun_motion;
-        if(lane){ps=lane;route.sun_receiver=material?shadow_.ps_sun_extraction:original;fill=original&&original_fill_requested_;lightmap=gained_original;}
+        const bool widened_original=gained_original&&widen_draw&&shadow_.ps_sun_original_lightmap_widen;
+        const auto lane=material?shadow_.ps_sun_material:widened_original?shadow_.ps_sun_original_lightmap_widen:gained_original?shadow_.ps_sun_original_lightmap:original?shadow_.ps_sun_original:shadow_.xt_default_ready?shadow_.ps_sun_xt:shadow_.ps_sun_motion;
+        if(lane){ps=lane;route.sun_receiver=material?shadow_.ps_sun_extraction:original;fill=original&&original_fill_requested_;lightmap=gained_original;widen=widened_original;}
         else {sun_frame_.failed=true;sun_lane_failed_=true;}
     }
     // Original fill: the same one bind pair, the PS being the motion variant
@@ -4864,6 +4942,7 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
     if (shadow_.hull_lightmap_pair && hull_lightmap_enabled_ && !material && !shadow_.xt_default_ready && hdr_state_ == HdrState::Active
         && (ps == shadow_.ps_variant || (fill && ps == shadow_.ps_original_fill_variant)) && !route.fade_arm && shadow_.ps_hull_lightmap_variant) {
         ps = shadow_.ps_hull_lightmap_variant; lightmap = true;
+        if (widen_draw && shadow_.ps_hull_lightmap_widen) { ps = shadow_.ps_hull_lightmap_widen; widen = true; }
     }
     route.vs_set = true;
     HRESULT hr = native<SetVsFn>(SetVertexShader)(device_, vs);
@@ -4897,6 +4976,7 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
     route.linear_material = material && SUCCEEDED(hr);
     if (fill && SUCCEEDED(hr)) route.original_fill = true;
     if (lightmap && SUCCEEDED(hr)) route.hull_lightmap = true;
+    if (widen && SUCCEEDED(hr)) route.hull_lightmap_widen = true;
     return hr;
 }
 
@@ -5410,12 +5490,20 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     // c217.w: the light-map far fade's per-draw gain (the dynamic gain
     // variants' MUL operand; every other program ignores the lane). Zero, as
     // before, with the option off or for a pair without a gain variant.
-    lightmap_fade_gain_ = lightmap_far_fade_ && (shadow_.hull_lightmap_pair || shadow_.ps_sun_original_lightmap)
+    const bool gain_pair = shadow_.hull_lightmap_pair || shadow_.ps_sun_original_lightmap;
+    lightmap_fade_gain_ = lightmap_far_fade_ && gain_pair
         ? fade_route::lightmap_far_gain(rows[15], lightmap_fade_m00_ > 0.f, lightmap_fade_m00_, float(target_width_),
                                         hull_lightmap_gain_, lightmap_fade_floor_, lightmap_fade_p0_, lightmap_fade_inv_)
         : 0.f;
+    // c217.z: the hull emissive widening's per-draw gradient scale k (the
+    // widened variants' MUL operand; every other program ignores the lane),
+    // from the same footprint. Zero with the option off or without a gain pair.
+    lightmap_widen_draw_k_ = lightmap_widen_ && gain_pair
+        ? fade_route::lightmap_widen_scale(rows[15], lightmap_fade_m00_ > 0.f, lightmap_fade_m00_, float(target_width_),
+                                           lightmap_widen_k_, lightmap_widen_q0_, lightmap_widen_inv_)
+        : 0.f;
     const float pixel[8] = {1.f / float(target_width_), 1.f / float(target_height_), 0.f, 0.f,
-                            previous_rows ? 1.f : 0.f, 0.f, 0.f, lightmap_fade_gain_};
+                            previous_rows ? 1.f : 0.f, 0.f, lightmap_widen_draw_k_, lightmap_fade_gain_};
     const std::uint64_t apply_begin = draw_stamp();
     bool material = false;
     if (linear_material_requested_) {
@@ -5970,6 +6058,13 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
         if (lightmap_far_fade_ && lightmap_fade_gain_ < hull_lightmap_gain_) {
             if (!lightmap_fade_draws_++ || lightmap_fade_gain_ < lightmap_fade_min_) lightmap_fade_min_ = lightmap_fade_gain_;
         }
+        if (route.hull_lightmap_widen) {
+            const float k = lightmap_widen_draw_k_;
+            if (!lightmap_widen_draws_++ || k < lightmap_widen_min_) lightmap_widen_min_ = k;
+            if (k > lightmap_widen_max_) lightmap_widen_max_ = k;
+            if (!lightmap_widen_session_draws_++ || k < lightmap_widen_session_min_) lightmap_widen_session_min_ = k;
+            if (k > lightmap_widen_session_max_) lightmap_widen_session_max_ = k;
+        } else if (lightmap_widen_) ++lightmap_widen_unity_;
         ++hull_lightmap_draws_;
     }
     if (route.source_gain) finish_source_gain(route);
@@ -6416,7 +6511,7 @@ void MotionOutput::read_camera(bool scene) noexcept {
     if (!(taa_enabled_ || candidates_requested_)) {
         // The far fade alone: its private P[0], so camera_scene_ (the fade-band
         // arm's origin rule, the resolve, the candidates) is exactly as without the option.
-        if (lightmap_far_fade_ && scene) { camera_state::Sample sample{}; lightmap_fade_m00_ = camera_state::read(&sample) ? sample.state.m00 : 0.f; }
+        if ((lightmap_far_fade_ || lightmap_widen_) && scene) { camera_state::Sample sample{}; lightmap_fade_m00_ = camera_state::read(&sample) ? sample.state.m00 : 0.f; }
         return;
     }
     camera_state::Sample sample{};
@@ -6763,7 +6858,11 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             log("hull_lightmap_far_fade_frame device=%llu frame=%llu admitted=%u faded=%u min_gain=%g floor=%g camera=%u",
                 id_, frame_, hull_lightmap_draws_, lightmap_fade_draws_, double(lightmap_fade_draws_ ? lightmap_fade_min_ : hull_lightmap_gain_),
                 double(lightmap_fade_floor_), unsigned(lightmap_fade_m00_ > 0.f));
-        hull_lightmap_draws_ = 0; lightmap_fade_draws_ = 0;
+        if (lightmap_widen_)
+            log("hull_lightmap_widen_frame device=%llu frame=%llu admitted=%u widened=%u unity=%u k_min=%g k_max=%g camera=%u",
+                id_, frame_, hull_lightmap_draws_, lightmap_widen_draws_, lightmap_widen_unity_,
+                double(lightmap_widen_draws_ ? lightmap_widen_min_ : 1.f), double(lightmap_widen_draws_ ? lightmap_widen_max_ : 1.f), unsigned(lightmap_fade_m00_ > 0.f));
+        hull_lightmap_draws_ = 0; lightmap_fade_draws_ = 0; lightmap_widen_draws_ = 0; lightmap_widen_unity_ = 0;
     }
     if (capture_ || (telemetry_ && frame_ % frame_log_interval_ == 0)) {
         // Appended cost fields (totals for this frame; docs/verification/telemetry.md):
@@ -6974,6 +7073,8 @@ unsigned MotionOutput::fixture_emission_status(unsigned key) const noexcept {
     case 77: return original_fill_draws_;        // fixture: original-fill draws admitted this frame (reset by the frame line)
     case 78: return hull_lightmap_draws_;        // fixture: hull light-map gain draws admitted this frame (reset by the frame line)
     case 79: return sun_original_lightmap_variants_; // fixture: gained original share variants created
+    case 80: return lightmap_widen_draws_;           // fixture: widened light-map draws this frame (reset by the frame line)
+    case 81: return lightmap_widen_variants_;        // fixture: widened variants created (plain and share)
     case 75: return sun_apply_ && sun_apply_->caps().enabled;
     case 61: return screen_additive_refused_;
     case 62: return screen_additive_failures_;
