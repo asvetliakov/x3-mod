@@ -9,9 +9,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-acd808f6cf21681d3/verification/probe/build/motion_output_fixture.exe": "851bbfec9ed69a6e66a164091f26d99bcd971635dddcab2876350c60ca54d8ea",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-acd808f6cf21681d3/verification/probe/build/motion-output-seam/d3d9.dll": "c77292af54e4658cf0bee7c8e49449d741ee3fb5d7f40484f1bd100bc201d585",
-  "/Users/asvetl/x3-mod/.claude/worktrees/agent-acd808f6cf21681d3/build/d3d9.dll": "c471cc12d4f7061e9afab3162d37ef1c96d4dad2f328cc0febec7ad28032c76f"
+  "/private/tmp/x3-run64-candidate/binaries/motion_output_fixture.exe": "7f07717c83f0429caf3b6f06d5fdf07647ec8018f5749fa2058857d9dfa7ac82",
+  "/private/tmp/x3-run64-candidate/binaries/motion-output-seam/d3d9.dll": "f8ea65720de661c9c1a5d1d5508acaef8b415a7a7c3326ebfb625efbc361c7b2",
+  "/private/tmp/x3-run64-candidate/build/d3d9.dll": "e839dc7c3018d572582628318723f72a70f8d640c6b12205de63014e66ad0b1b"
  },
  "q": [
   0.5,
@@ -28,10 +28,10 @@
   "seam-lightmap-widen-off": {
    "exit": 0,
    "checks": 180,
-   "dll_sha256": "c77292af54e4658cf0bee7c8e49449d741ee3fb5d7f40484f1bd100bc201d585",
-   "exe_sha256": "851bbfec9ed69a6e66a164091f26d99bcd971635dddcab2876350c60ca54d8ea",
-   "trace_sha256": "8c7b791ed04f167acf6c6e7340019d45801fe78258b1f574b699fe2877c15a20",
-   "directory": "verification/probe/build/motion-output-seam-lightmap-widen-off-20260922-061339-680391",
+   "dll_sha256": "f8ea65720de661c9c1a5d1d5508acaef8b415a7a7c3326ebfb625efbc361c7b2",
+   "exe_sha256": "7f07717c83f0429caf3b6f06d5fdf07647ec8018f5749fa2058857d9dfa7ac82",
+   "trace_sha256": "8a0fd7cd7603f4c0447592852765a9e1faf6807966a1afe07a199743489d4498",
+   "directory": "verification/probe/build/motion-output-seam-lightmap-widen-off-20260922-063506-018468",
    "capture_log": "motion-output-seam-lightmap-widen-off-capture.log (untracked)",
    "k": null,
    "summary": {
@@ -369,10 +369,10 @@
   "seam-lightmap-widen-k2": {
    "exit": 0,
    "checks": 180,
-   "dll_sha256": "c77292af54e4658cf0bee7c8e49449d741ee3fb5d7f40484f1bd100bc201d585",
-   "exe_sha256": "851bbfec9ed69a6e66a164091f26d99bcd971635dddcab2876350c60ca54d8ea",
-   "trace_sha256": "11cd2e5fbb66bf95a8e9895ab772061d93744f45a3e09451430e4925eeb448c5",
-   "directory": "verification/probe/build/motion-output-seam-lightmap-widen-k2-20260922-061344-621881",
+   "dll_sha256": "f8ea65720de661c9c1a5d1d5508acaef8b415a7a7c3326ebfb625efbc361c7b2",
+   "exe_sha256": "7f07717c83f0429caf3b6f06d5fdf07647ec8018f5749fa2058857d9dfa7ac82",
+   "trace_sha256": "08d744face0fe3d76787b20ad9b4720b9f854932a465852ed9bff1d4c1739bfc",
+   "directory": "verification/probe/build/motion-output-seam-lightmap-widen-k2-20260922-063510-393656",
    "capture_log": "motion-output-seam-lightmap-widen-k2-capture.log (untracked)",
    "k": 2.0,
    "summary": {
@@ -726,10 +726,10 @@
   "seam-lightmap-widen-k3": {
    "exit": 0,
    "checks": 180,
-   "dll_sha256": "c77292af54e4658cf0bee7c8e49449d741ee3fb5d7f40484f1bd100bc201d585",
-   "exe_sha256": "851bbfec9ed69a6e66a164091f26d99bcd971635dddcab2876350c60ca54d8ea",
-   "trace_sha256": "afbea7725ba7cabb2a7adb79a328850a50f787b0696ab0f5f9cc851b2c48f20a",
-   "directory": "verification/probe/build/motion-output-seam-lightmap-widen-k3-20260922-061346-534730",
+   "dll_sha256": "f8ea65720de661c9c1a5d1d5508acaef8b415a7a7c3326ebfb625efbc361c7b2",
+   "exe_sha256": "7f07717c83f0429caf3b6f06d5fdf07647ec8018f5749fa2058857d9dfa7ac82",
+   "trace_sha256": "df05f11b85902f8995f6dff6dde7f1e16bed9417b4a577756c1e837ccab8e181",
+   "directory": "verification/probe/build/motion-output-seam-lightmap-widen-k3-20260922-063512-271221",
    "capture_log": "motion-output-seam-lightmap-widen-k3-capture.log (untracked)",
    "k": 3.0,
    "summary": {
@@ -1083,10 +1083,10 @@
   "seam-lightmap-widen-k4": {
    "exit": 0,
    "checks": 180,
-   "dll_sha256": "c77292af54e4658cf0bee7c8e49449d741ee3fb5d7f40484f1bd100bc201d585",
-   "exe_sha256": "851bbfec9ed69a6e66a164091f26d99bcd971635dddcab2876350c60ca54d8ea",
-   "trace_sha256": "2654cf6970cae8daa1a758c7c235f6abb8a46dd2bc797c6098963e9bca3a7477",
-   "directory": "verification/probe/build/motion-output-seam-lightmap-widen-k4-20260922-061348-309673",
+   "dll_sha256": "f8ea65720de661c9c1a5d1d5508acaef8b415a7a7c3326ebfb625efbc361c7b2",
+   "exe_sha256": "7f07717c83f0429caf3b6f06d5fdf07647ec8018f5749fa2058857d9dfa7ac82",
+   "trace_sha256": "70933f1c9d24eed2fb396f67cd3bd663743924811cf73afb6e6a8ddb4b41515e",
+   "directory": "verification/probe/build/motion-output-seam-lightmap-widen-k4-20260922-063514-068983",
    "capture_log": "motion-output-seam-lightmap-widen-k4-capture.log (untracked)",
    "k": 4.0,
    "summary": {
@@ -1440,10 +1440,10 @@
   "seam-lightmap-widen-programs": {
    "exit": 0,
    "checks": 99,
-   "dll_sha256": "c77292af54e4658cf0bee7c8e49449d741ee3fb5d7f40484f1bd100bc201d585",
-   "exe_sha256": "851bbfec9ed69a6e66a164091f26d99bcd971635dddcab2876350c60ca54d8ea",
-   "trace_sha256": "35b52f1dee2c886b93d36ff91dcca4ba913f31aab5e192e304455a8b4374af29",
-   "directory": "verification/probe/build/motion-output-seam-lightmap-widen-programs-20260922-061350-092014",
+   "dll_sha256": "f8ea65720de661c9c1a5d1d5508acaef8b415a7a7c3326ebfb625efbc361c7b2",
+   "exe_sha256": "7f07717c83f0429caf3b6f06d5fdf07647ec8018f5749fa2058857d9dfa7ac82",
+   "trace_sha256": "1fc8556d354026e8273f768290a81f3c29af3aaf22c9b097a7c485cc7ffbe352",
+   "directory": "verification/probe/build/motion-output-seam-lightmap-widen-programs-20260922-063515-977116",
    "capture_log": "motion-output-seam-lightmap-widen-programs-capture.log (untracked)",
    "disassembler": true,
    "programs": {

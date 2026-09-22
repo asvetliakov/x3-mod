@@ -1,4 +1,4 @@
-TIMING mode=direct snapshot_us=0.748 reads_per_call=12.00 queries_per_call=0.0237 record=853bfaca11e07f83
+TIMING mode=direct snapshot_us=0.766 reads_per_call=12.00 queries_per_call=0.0237 record=853bfaca11e07f83
 JOURNAL_CASE name=no_consumer result=PASS
 JOURNAL_CASE name=retire_in_order result=PASS
 JOURNAL_CASE name=partial_drain result=PASS
@@ -7,7 +7,7 @@ JOURNAL_CASE name=flush_load_epoch result=PASS
 JOURNAL_CASE name=flush_registry_destroy result=PASS
 JOURNAL_CASE name=flush_registry_rebind result=PASS
 JOURNAL_CASE name=overflow_and_recovery result=PASS
-JOURNAL capacity=2048 cycle_idle_us=1.2537 cycle_journal_us=1.2394 retirement_delta_us=-0.0143 empty_drain_us=0.0063 drained=40000
+JOURNAL capacity=2048 cycle_idle_us=1.2478 cycle_journal_us=1.2637 retirement_delta_us=0.0159 empty_drain_us=0.0063 drained=40000
 JOURNAL_CASE name=cost result=PASS
 JOURNAL_CASE name=reregistration_and_shutdown result=PASS
 JOURNAL_CASE name=flush_capacity_exhausted result=PASS
