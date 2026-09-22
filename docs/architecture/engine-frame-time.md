@@ -1383,3 +1383,85 @@ texture per `engine-state-filter.md`): render-state 1255502/1331110=94.3%
 redundant, sampler-state 745871/754571=98.8%, texture 213028/631261=33.7% —
 matching that note's baseline magnitudes (~94.9/99.3/40.2%), i.e. the
 redundancy profile at this stand is not itself unusual.
+
+## Run 245-247: lod-scale A/B at the stand (2026-09-22)
+
+Same stand as run240/242, Run66 DLL 1f9a85f5. `/tmp/x3-bottleX3-run245`
+(`--lod-scale 0.25`, session log `session-20260922-200550-212.log`, F8 burst
+frames 7843-7850), `/tmp/x3-bottleX3-run246` (`--lod-scale 0.5`, log
+`session-20260922-200918-212.log`, F8 frames 8975-8982),
+`/tmp/x3-bottleX3-run247` (no `--lod-scale`, log
+`session-20260922-201426-216.log`, F8 frames 12083-12090). None of the three
+launcher commands carries `--cull-census`; only `object_context` and
+`motion_input` are available, so per-node LOD/draw counts come from joining
+those two by `(frame, index)`, not from `cull_census` `s`/`d` as in run240/242.
+
+**(1) `lod_scale` line** (only two log lines per run, both before frame
+capture):
+
+| Run | requested | applied | proxy_value |
+|---|---|---|---|
+| 245 (0.25) | 0.25 | 0.25 | 4 |
+| 246 (0.5) | 0.5 | 0.5 | 2 |
+| 247 (none) | - | - (no `lod_scale` line) | - |
+
+**(2) Per-F8-frame draws/nodes/LOD** (sum or per-frame as noted; join
+`object_context`×`motion_input` on `(frame,index)`):
+
+| Run | draws/frame | nodes/frame | LOD0 draws (8fr) | LOD1 | LOD2 | LOD3 |
+|---|---|---|---|---|---|---|
+| 245 (0.25) | 277 | 59 | 1144 | 440 | 248 | 384 |
+| 246 (0.5) | 451 (459 last frame) | 64 (66 last) | 1960 | 1016 | 264 | 376 |
+| 247 (none) | 394 | 48 | 2784 | 0 | 360 | 8 |
+| 240 (ref, cull2, vanilla) | 448 | 58 | 400 | - | 46 | 2 |
+| 242 (ref, cull4) | 397 | 56 | 381 | - | 15 | 1 |
+
+Heavy nodes from run240 (matched by stable `model` id, not node handle, which
+is per-process): model `000053a0` (run240's 36-draw/26px node, node
+`31689c60`) and model `35ba45c3` (run240's 25-draw/2.4px node, node
+`50451d20`):
+
+| Run | model `000053a0` node | draws (8fr) | LOD | model `35ba45c3` node | draws (8fr) | LOD |
+|---|---|---|---|---|---|---|
+| 245 (0.25) | `316083c8` | 232 (29/fr) | **3** | not present in view | - | - |
+| 246 (0.5) | `31646630` | 232 (29/fr) | **3** | `3ac0a048` | 200 (25/fr) | **0** |
+| 247 (none) | `3662fc38` | 288 (36/fr) | **0** | not present in view | - | - |
+
+Primitive-count evidence (`motion_route primitives=`, model `000053a0`, 2
+matching F8 frames each): run245/246 (LOD3) sum **2550** over 58 draws (avg
+44 prims/draw); run247 (LOD0) sum **49724** over 72 draws (avg 691
+prims/draw) — a ~19x mesh-detail drop, i.e. this is a visibly coarser mesh,
+not just fewer draws.
+
+**(3) `frame_timing`/`frame_phases` nearest the F8 window:**
+
+| Run | frame window | dt_p50_us | draws_p50 | state_calls_p50 | view_submit_p50_us |
+|---|---|---|---|---|---|
+| 245 (0.25) | 8100 | 17383 | 277 | 17127 | 8832 |
+| 246 (0.5) | 9000 | 22164 | 426 | 25527 | 13058 |
+| 247 (none) | 12000 | 21661 | 394 | 25454 | 12985 |
+
+Extra ship in run246: models present in run246's F8 frames but absent from
+both 245 and 247: `00004f75` (768 draws/8fr, nodes `35d4d2b0` LOD1 512 +
+`39b15d98` LOD0 256), `00005531` (264 draws/8fr, LOD2), `35ba45c3` (200,
+above), plus 3 negligible models (24 draws total). Total extra-ship draws
+~157/frame in the F8 sample (1256/8). Corrected run246 draws_p50 estimate:
+426 − 157 ≈ **269**, close to run245's 277 (0.25) and well under run247's 394
+(vanilla) — consistent with 0.5 already coarsening the same heavy node as
+0.25 does, once the extra ship's draws are backed out.
+
+**(4) Conclusion:** model `000053a0` moved from LOD 0 (vanilla, 36 draws/fr,
+691 prims/draw) to LOD 3 (29 draws/fr, 44 prims/draw) at *both* 0.25 and 0.5
+— it has a reachable ladder and coarsens well before 0.25; this is a
+threshold issue, not a single-LOD-record body, and a factor around 0.5
+already lands it at the coarsest rung (no evidence here distinguishes 0.5
+from a smaller factor for this specific model — both give the same LOD3
+result). Model `35ba45c3` gives only one data point (run246, factor 0.5,
+still LOD 0): it is absent from run245's and run247's F8 view (different
+camera framing/extra-ship timing), so this evidence cannot say whether 0.25
+or 0.5 would move it off LOD 0 — a repeat capture with `35ba45c3` in view at
+both factors is the needed follow-up, not inferable from these three runs.
+The `draws_p50` comparison is confounded by (a) the extra ship in run246 and
+(b) the F8 8-frame sample not matching the 300-frame `frame_timing` window
+(same caveat as run242); the corrected estimate above removes (a) but not
+(b).
