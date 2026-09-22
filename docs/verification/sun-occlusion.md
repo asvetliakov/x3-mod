@@ -382,3 +382,49 @@ pixels, never the surrounding sky, so this is not a symmetric resolve difference
 1 px into the sky half the time, brightening never does. Net: the evidence fits a 1-pixel-wide reprojection/AA edge
 effect (or a 2x2-tap resolve filter) better than the described 7x7/radius-3 sentinel box; a radius-3 box is not
 supported by this distance histogram.
+
+## 2026-09-22: Jitter-stable clip and visibility (worktree, not installed, not flown)
+
+Cause confirmed in source: RT2 is rendered on the jittered raster (`apply_jitter`, +jx px right / +jy px down)
+and the lens bracket runs after `hook_scene_end`, where `scene_bound()` refuses, so the lens draws, the record's
+`u/v` and `lane_u/v` are unjittered. Two changes. (1) The visibility pass reads every tap at `p + (jx / W, jy / H)`
+(new `c2.xy` of `sun_visibility_ps.hlsl`, recompiled: 1675 words, bytecode sha256 `bd5a82ae…7472`;
+`core::jitter_uv`, zero when the jitter is off; the pass validates ±0.05 uv and records / restores c0..c2). (2) The
+clip's taps are texel-centred point taps (`floor(i + 0.5 + j) = i` for |j| < 0.5: an offset would be a no-op), and
+the clip's edge column is the jittered raster's silhouette column, which moves one texel between phases; so the
+kernel now bounds that step instead: the ±1/±2 cross (ninths; a one-texel shift moved a column by up to 5/9) is
+replaced by the fragment plus the eight knight moves (±2, ±1) / (±1, ±2), one ninth each (`cK.w = 1/9`,
+`cD = 2dx, dy, dx, 2dy`, `cW = −2dx, dy, −dx, 2dy`: every tap one signed swizzle from the fragment's uv, no tap
+depending on the one before; the half-texel rule kept). Every column, row and 45° diagonal of taps weighs at most
+2/9 = 0.222 (an exhaustive search of symmetric integer-offset kernels of ≤ 17 taps on a 1/64 grid finds no bound
+below 7/32, and the knight set is the only 9-tap shape reaching it), the profile across an edge is 1, 7/9, 5/9, 4/9,
+2/9, 0 over five columns. Slots: 40 arithmetic / 11 texture for the lens program, unchanged, one more `def` constant
+(four free constants needed, `resource_limit` otherwise); the pair cache, the 7 device calls per core draw and the
+pass's own program (1675 words, under 512 slots) are unchanged. Limitation: the c2 offset assumes every RT2 depth
+writer was jittered (`unjittered_depth_writers` in `motion_output_frame`; architecture note, "Jitter contract"). The `sun_visibility` line gains `jitter jitter_index jitter_x
+jitter_y`.
+
+| Check | Result |
+| --- | --- |
+| `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_sun_occlusion.py` | passed: hook 74 / 0, GPU **128 / 0**. New: an occluder rasterized into an R32F RT2 through the lens vertex program with `jitter_rows` under the temporal pass's eight offsets (`JITTER_PHASES` matches `run_motion_output.expected_jitter`). Vertical edge at texel x = 164.703: corrected `f_raw` = 0.56250 (18/32) in all 8 phases, bit-identical to the unjittered raster's (also `f_smoothed`, `f_used`); uncorrected (pre-fix read) = 0.53125 in phases 1, 3, 7 (jx = −0.25, −0.375, −0.4375), 0.56250 otherwise, exactly the CPU model. Horizontal edge at texel y = 82.153: corrected 0.37500 (12/32) in all 8, uncorrected 0.40625 in phase 7 (jy = +0.389): the y sign. Clip against the same jittered RT2: every phase's row equals the kernel model of that phase's silhouette column (`ceil(e − 0.5 + jx)`: 165 in phases 0, 2, 4, 5, 6; 164 in 1, 3, 7), monotone over columns b−4 .. b+3; per column, the largest \|Δ open\| between any two phases: **measured 0.2255** (8-bit readback of ONE/ONE), kernel model 0.2222, former cross model 0.5556; 5 columns move (each by ≤ 0.2255). Existing clip checks re-baselined to the kernel's ninths (edge columns 7/9, 5/9, 4/9, 2/9 of the source; `core_f` the same times f); 7 calls per core draw, Reset re-clips with no program created |
+| `/usr/bin/python3 verification/probe/run_host_suite.py --modules test_sun_occlusion` | 22 tests, 0 failing (new: `jitter_uv` sign / off / zero-size, CTAB of the compiled program `disc c0, control c1, jitter c2`, fixture phases = temporal pass sequence, the exact clip wrap words with the knight offsets and weights, the kernel's axis / diagonal bound and edge profile, four-constant refusal, check count 128) |
+| `/usr/bin/python3 verification/probe/run_host_suite.py` | 226 modules, 2244 tests, 0 failing (168.0 s wall, concurrent with the build) |
+| scratch build `build-sunjit` (MinGW i686 toolchain, RelWithDebInfo) + `check_no_x87.py` | exit 0, 0 warnings; PASS, 634 reachable functions, 0 violations; `d3d9.dll` sha256 `65da72a5…` (worktree build, not a candidate) |
+
+Second-review fixes (same day, in the numbers above): (1) the architecture note carries one soft-edge profile. (2)
+`scan_pixel` counts ps_2_0 instruction slots (lrp 2, crs 2, m3x2 2, m3x3 / m4x3 / nrm / pow 3, m3x4 / m4x4 4,
+sincos 8, dsx / dsy 2, if / ifc / loop / rep / breakc 3, endloop / endrep 2; texld / texkill 1, texldd 3) and refuses
+`resource_limit` when the original plus the wrap (clip 32 arithmetic + 10 texture, step 1 3 + 1, both counted from
+the emitted words) would exceed 64 / 32: wined3d does not enforce the limits, native D3D9 does. ps_2_x is held to
+the same floor. Host test at the boundary: 31 extra `mov` applied / 32 refused; 28 `mov` + `pow` (3) applied / 29
+refused; 21 extra `texld` applied / 22 refused; step 1: 60 / 61 `mov`, 30 / 31 `texld`. (3) Native parity of the
+wraps' `def` registers: no existing path restored constants (the blocks captured shaders, textures and sampler
+states only). The recorded blocks are now keyed by (fraction sampler, depth sampler, the wrap's `def` registers)
+and record `SetPixelShaderConstantF` for each of those registers, so the per-draw `Capture` reads the
+application's values and the `Apply` after the draw puts them back: 5 calls per ghost draw and 7 per clipped draw
+as before (the register saves ride in the existing capture / apply; one block pair per distinct layout, capacity
+8). Fixture: the state snapshot now compares c0..c31 with hostile garbage on c28..c31 (the clip wrap's registers)
+and every `_state_restored` check passes; `before_reset` releases 13 objects (the ps_2_0 and ps_3_0 ghost wraps
+have different `def` registers and therefore separate blocks). Under wined3d a `def` never touches the constant
+file, so the readback cannot show the native failure; the fixture proves the block records and restores the
+registers.

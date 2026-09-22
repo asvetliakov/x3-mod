@@ -355,32 +355,44 @@ class SunOcclusionHost(unittest.TestCase):
         self.assertEqual(out['result'], 'applied')
         self.assertEqual((out['sampler'], out['depth_sampler'], out['constant'], out['output'], out['fetch']), ('15', '14', '31', '11', '10'))
         self.assertEqual(words[:4], self.PS20[:4])
-        head = words[4:31]
-        self.assertEqual(head[:9], ['05000051', 'a00f001f', '3f000000', '3f000000', '00000000', '3f800000', '0200001f', '90000000', 'a00f080f'])
+        head = words[4:37]
+        le = lambda w: struct.unpack('<f', bytes.fromhex(w[6:8] + w[4:6] + w[2:4] + w[0:2]))[0]
+        f32 = lambda v: struct.unpack('<f', struct.pack('<f', v))[0]
+        self.assertEqual(head[:9], ['05000051', 'a00f001f', '3f000000', '3f000000', '00000000', '3de38e39', '0200001f', '90000000', 'a00f080f'])  # cK.w = 1/9, the tap weight
         self.assertEqual(head[9:13], ['05000051', 'a00f001e', '3f000000', 'bf000000'])
-        self.assertEqual([struct.unpack('<f', bytes.fromhex(w))[0] for w in (head[13][6:8] + head[13][4:6] + head[13][2:4] + head[13][0:2], head[14][6:8] + head[14][4:6] + head[14][2:4] + head[14][0:2])],
-                         [struct.unpack('<f', struct.pack('<f', .5 + .75 / 1280))[0], struct.unpack('<f', struct.pack('<f', .5 + .75 / 768))[0]])  # + half a texel: taps on texel centres
-        self.assertEqual(head[15:17], ['05000051', 'a00f001d']); self.assertEqual(head[19:21], ['3de38e39', '00000000'])   # dx, dy, 1/9, 0
-        self.assertEqual(head[21:27], ['0200001f', '90000000', 'a00f080e', '0200001f', '80000000', 'b00f0007'])
+        self.assertEqual([le(head[13]), le(head[14])], [f32(.5 + .75 / 1280), f32(.5 + .75 / 768)])                                  # + half a texel: taps on texel centres
+        self.assertEqual(head[15:17], ['05000051', 'a00f001d']); self.assertEqual([le(w) for w in head[17:21]], [f32(3 / 1280), f32(1.5 / 768), f32(1.5 / 1280), f32(3 / 768)])  # cD = 2dx, dy, dx, 2dy
+        self.assertEqual(head[21:23], ['05000051', 'a00f001c']); self.assertEqual([le(w) for w in head[23:27]], [f32(-3 / 1280), f32(1.5 / 768), f32(-1.5 / 1280), f32(3 / 768)])  # cW = -2dx, dy, -dx, 2dy
+        self.assertEqual(head[27:33], ['0200001f', '90000000', 'a00f080e', '0200001f', '80000000', 'b00f0007'])
         body = self.PS20[4:-1]; body[-2] = '800f000b'
-        self.assertEqual(words[31:31 + len(body)], body)
-        tail = words[31 + len(body):]
+        self.assertEqual(words[37:37 + len(body)], body)
+        tail = words[37 + len(body):]
         self.assertEqual(tail[:7], ['02000001', '800f000a', 'a0e4001f', '03000042', '800f000a', '80e4000a', 'a0e4080f'])          # f
         self.assertEqual(tail[7:19], ['02000006', '80080009', 'b0ff0007', '03000005', '800f0009', 'b0e40007', '80ff0009',
                                       '04000004', '800f0009', '80e40009', 'a0a4001e', 'a0ae001e'])                                 # uv = t.xy / t.w * cC.xyzz + cC.zwzz
-        self.assertEqual(tail[19:28], ['03000042', '800f0007', '80e40009', 'a0e4080e', '04000058', '800f0008', '80000007', 'a0aa001f', 'a0aa001d'])  # centre tap
-        offsets = ['a0fc001d', 'a1fc001d', 'a0f7001d', 'a1f7001d']                                  # +x, -x, +y, -y in one-pixel steps
-        tap = lambda source: ['03000042', '800f0007', source, 'a0e4080e', '04000058', '800f0007', '80000007', 'a0aa001f', 'a0aa001d', '03000002', '800f0008', '80e40008', '80e40007']
+        self.assertEqual(tail[19:28], ['03000042', '800f0007', '80e40009', 'a0e4080e', '04000058', '800f0008', '80000007', 'a0aa001f', 'a0ff001f'])  # centre tap: rS = 1/9 where .r < 0
+        # The eight knight moves, every one from the fragment's uv: +-(+2,+1) of cD.xy, +-(-2,+1) of cW.xy, +-(+1,+2) of cD.zw, +-(-1,+2) of cW.zw.
+        offsets = ['a044001d', 'a144001d', 'a044001c', 'a144001c', 'a0ee001d', 'a1ee001d', 'a0ee001c', 'a1ee001c']
         for i, offset in enumerate(offsets):
-            step = tail[28 + i * 34:28 + (i + 1) * 34]
-            self.assertEqual(step, ['03000002', '800f0006', '80e40009', offset] + tap('80e40006') + ['03000002', '800f0006', '80e40006', offset] + tap('80e40006'), offset)
+            want = ['03000002', '800f0006', '80e40009', offset, '03000042', '800f0007', '80e40006', 'a0e4080e',
+                    '04000058', '800f0007', '80000007', 'a0aa001f', 'a0ff001f', '03000002', '800f0008', '80e40008', '80e40007']
+            self.assertEqual(tail[28 + 17 * i:28 + 17 * (i + 1)], want, offset)
         self.assertEqual(tail[28 + 136:], ['02000001', '8002000a', '80000008', '03000005', '8007000b', '80e4000b', '8055000a', '02000001', '800f0800', '80e4000b', '0000ffff'])  # rT.y = open_px
         with_f = self.run_driver('clipvariant', 1, 7, 1.5 / 1280, 1.5 / 768, 1, *self.PS20)['words'].split(',')
         self.assertEqual(with_f[-12:-8], ['03000005', '8002000a', '8055000a', '80000008'])                                          # core_f: rT.y = f * open_px
+        # The kernel: a one-texel shift of a silhouette moves no pixel by more than 2/9 along an axis or a diagonal (the former cross: 5/9 / 2/9).
+        taps = {(0, 0): 1 / 9, **{(sx * a, sy * b): 1 / 9 for a, b in ((2, 1), (1, 2)) for sx in (1, -1) for sy in (1, -1)}}
+        self.assertAlmostEqual(sum(taps.values()), 1.)
+        for key in (lambda p: p[0], lambda p: p[1], lambda p: p[0] + p[1], lambda p: p[0] - p[1]):
+            lines = {}
+            for p_, w in taps.items(): lines[key(p_)] = lines.get(key(p_), 0) + w
+            self.assertLessEqual(max(lines.values()), 2 / 9 + 1e-9)
+        profile = [sum(w for (dx, _), w in taps.items() if x + dx < 0) for x in range(-3, 3)]
+        self.assertEqual([round(v, 5) for v in profile], [round(v, 5) for v in (1., 7 / 9, 5 / 9, 4 / 9, 2 / 9, 0.)])
         # ps_2_0 budget of the wrapped lens program: at most 64 arithmetic and 32 texture instructions, 12 temporaries.
         arithmetic = sum(1 for w in words[4:] if w[:2] in ('02', '03', '04') and w[-2:] not in ('42', '51', '1f') and w != '0000ffff')
         texture = sum(1 for w in words[4:] if w == '03000042')
-        self.assertLessEqual(arithmetic, 64); self.assertEqual(texture, 11)
+        self.assertEqual(arithmetic, 33); self.assertEqual(texture, 11)  # 32 added: 40 for the lens scene's 8-arithmetic program
         self.assertEqual(self.run_driver('clipvariant', 2, 7, 1.5 / 1280, 1.5 / 768, 0, *self.PS20)['words'].split(',')[-7], '8008000b')
         self.assertEqual(self.run_driver('clipvariant', 3, 7, 1.5 / 1280, 1.5 / 768, 0, *self.PS20)['words'].split(',')[-7], '800f000b')
 
@@ -398,15 +410,67 @@ class SunOcclusionHost(unittest.TestCase):
         self.assertEqual(refused(self.PS20, dy=.5), 'invalid_input')
         samplers = sum((['0200001f', '90000000', 'a00f08%02x' % i] for i in range(1, 15)), [])
         self.assertEqual(refused(self.PS20[:10] + samplers + self.PS20[10:]), 'resource_limit')     # one free sampler, two needed
+        constants = sum((['05000051', 'a00f00%02x' % i, '00000000', '00000000', '00000000', '00000000'] for i in range(0, 29)), [])
+        self.assertEqual(refused(self.PS20[:10] + constants + self.PS20[10:]), 'resource_limit')    # c0..c28 named: three free, four needed
+        self.assertEqual(self.run_driver('clipvariant', 1, 7, 1.5 / 1280, 1.5 / 768, 0, *(self.PS20[:10] + constants[:-6] + self.PS20[10:]))['result'], 'applied')  # c0..c27: exactly four (c28..c31)
         temporaries = sum((['02000001', '800f00%02x' % i, '80e40000'] for i in range(1, 7)), [])
         self.assertEqual(refused(self.PS20[:14] + temporaries + self.PS20[14:]), 'resource_limit')  # r0..r6 named: five free, six needed
         self.assertEqual(self.run_driver('clipvariant', 1, 7, 1.5 / 1280, 1.5 / 768, 0, *(self.PS20[:14] + temporaries[:-3] + self.PS20[14:]))['result'], 'applied')  # r0..r5: exactly six
         self.assertEqual(refused(['ffff0101', '0000ffff']), 'unsupported_version')
+        # The counted ps_2_0 budget (native D3D9 enforces 64 arithmetic / 32 texture slots, wined3d does not): the clip wrap adds 32 + 10.
+        mov = ['02000001', '800f0000', '80e40000']; texld = ['03000042', '800f0000', 'b0e40000', 'a0e40800']; pow_ = ['03000020', '800f0000', '80000000', '80550000']
+        pad = lambda extra: self.PS20[:14] + extra + self.PS20[14:]                                   # after the program's own texld (1 arithmetic, 1 texture in all)
+        applied = lambda words: self.run_driver('clipvariant', 1, 7, 1.5 / 1280, 1.5 / 768, 0, *words)['result']
+        self.assertEqual(applied(pad(mov * 31)), 'applied')                                            # 32 + 32 = 64
+        self.assertEqual(refused(pad(mov * 32)), 'resource_limit')                                    # 65
+        self.assertEqual(applied(pad(mov * 28 + pow_)), 'applied')                                     # pow counts 3: 1 + 28 + 3 = 32
+        self.assertEqual(refused(pad(mov * 29 + pow_)), 'resource_limit')                             # 33
+        self.assertEqual(applied(pad(texld * 21)), 'applied')                                          # 22 + 10 = 32 texture
+        self.assertEqual(refused(pad(texld * 22)), 'resource_limit')                                  # 33
+        ghost = lambda words: self.run_driver('variant', 1, *words)['result']                        # the step-1 wrap adds 3 + 1
+        self.assertEqual(ghost(pad(mov * 60)), 'applied'); self.assertEqual(ghost(pad(mov * 61)), 'resource_limit')
+        self.assertEqual(ghost(pad(texld * 30)), 'applied'); self.assertEqual(ghost(pad(texld * 31)), 'resource_limit')
+
+    def test_visibility_jitter_offset(self):
+        # RT2 is on the jittered raster (+jx px right, +jy px down); the pass reads it at the unjittered tap + (jx / W, jy / H). Zero when the jitter is off.
+        self.assertEqual(self.run_driver('jitter', 1, .375, -.4375, 1280, 768), {'u': '%.8f' % (.375 / 1280), 'v': '%.8f' % (-.4375 / 768)})
+        self.assertEqual(self.run_driver('jitter', 1, -.25, .1667, 320, 180), {'u': '%.8f' % (-.25 / 320), 'v': '%.8f' % (.1667 / 180)})
+        self.assertEqual(self.run_driver('jitter', 0, .375, -.4375, 1280, 768), {'u': '0.00000000', 'v': '0.00000000'})
+        self.assertEqual(self.run_driver('jitter', 1, .375, -.4375, 0, 768), {'u': '0.00000000', 'v': '0.00000000'})
+        # The compiled visibility program takes it on c2 (c0 the disc, c1 the smoothing), and the fixture's phases are the temporal pass's.
+        words = [int(w, 16) for w in re.findall(r'0x([0-9a-f]{8})u', (ROOT / 'src/renderer/sun_visibility_program_inc.h').read_text())]
+        self.assertEqual(constant_table(words), {'disc': (2, 0), 'control': (2, 1), 'jitter': (2, 2), 'sceneDepth': (3, 0), 'history': (3, 1)})
+        fixture = load('run_sun_occlusion', 'verification/probe/run_sun_occlusion.py')
+        motion = load('run_motion_output', 'verification/probe/run_motion_output.py')
+        self.assertEqual(fixture.expected_phases(), {i: (round(motion.expected_jitter(i)[1], 4), round(motion.expected_jitter(i)[2], 4)) for i in range(8)})
+        self.assertEqual(fixture.EXPECTED_GPU_CHECKS, 128)
 
     def test_site_constants(self):
         sites = self.run_driver('sites')
         self.assertEqual((sites['probe_site'], sites['probe_target'], sites['lens_site'], sites['lens_target']), ('0x471630', '0x488720', '0x472491', '0x47e6e0'))
         self.assertEqual((sites['gates'], sites['gates_length']), ('0xe5f40888a926996', '148'))
+
+
+def constant_table(words):
+    """{name: (register set, register index)} of a D3DX CTAB comment (2 = float constants, 3 = samplers)."""
+    at = 1
+    while at < len(words):
+        token = words[at]
+        if token & 0xffff == 0xfffe:
+            length = (token >> 16) & 0x7fff
+            blob = b''.join(struct.pack('<I', w) for w in words[at + 1:at + 1 + length])
+            if blob[:4] == b'CTAB':
+                table = blob[4:]
+                _, _, _, constants, info, _, _ = struct.unpack('<7I', table[:28])
+                out = {}
+                for k in range(constants):
+                    name, register_set, index, count, _, _, _ = struct.unpack('<IHHHHII', table[info + 20 * k:info + 20 * k + 20])
+                    out[table[name:table.index(b'\0', name)].decode()] = (register_set, index)
+                return out
+            at += 1 + length
+        else:
+            at += 1 + ((token >> 24) & 15)
+    return {}
 
 
 def load(name, path):

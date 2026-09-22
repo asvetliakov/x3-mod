@@ -34,6 +34,9 @@ struct SunOcclusionCaps {
 struct SunVisibilityFrame {
     IDirect3DTexture9* depth = nullptr;   // RT2 of this frame: R32F, G32R32F or A32B32G32R32F (.r = device depth, -1 sentinel)
     float u = .5f, v = .5f, radius_u = 0.f, radius_v = 0.f;
+    // This frame's TAA jitter in RT2 uv (+jx / width, +jy / height; sun_occlusion::core::jitter_uv): RT2 is on the
+    // jittered raster while u / v are unjittered, so every tap reads RT2 at its position + jitter. 0 when off.
+    float jitter_u = 0.f, jitter_v = 0.f;
     float alpha = 1.f;                    // sun_occlusion::core::smoothing_alpha
     float curve = 1.f;                    // use exponent, 0.25..4
     bool seed = false;                    // a new record: no smoothing against the history
@@ -68,7 +71,7 @@ struct LensState {
     unsigned depth_width = 0, depth_height = 0;
 };
 // What lens_begin changed, for lens_end. Trivially copyable; lives in the caller's draw record.
-struct LensDraw { bool applied = false, clipped = false; std::uint8_t sampler = 0, depth_sampler = 0; };
+struct LensDraw { bool applied = false, clipped = false; std::uint8_t sampler = 0, depth_sampler = 0, block = 0; };
 class SunOcclusionPass {
 public:
     SunOcclusionPass() = default;
@@ -113,7 +116,7 @@ public:
     unsigned pairs() const noexcept { return pair_count_; }
 private:
     struct SavedState;
-    struct Variant { std::uint64_t hash = 0; IDirect3DPixelShader9* shader[3]{}; std::uint8_t state[3]{}, sampler[3]{}; }; // state: 0 unbuilt, 1 ready, 2 refused
+    struct Variant { std::uint64_t hash = 0; IDirect3DPixelShader9* shader[3]{}; std::uint8_t state[3]{}, sampler[3]{}, constant[3]{}; }; // state: 0 unbuilt, 1 ready, 2 refused
     // Step 2: per vertex / pixel pair, the vertex wrap (one), the clip pixel wraps (per scale mode) and the
     // layout they share. `state`: 0 unbuilt, 1 ready, 2 refused (final for the pass). The soft-edge offsets
     // are baked for `width` x `height`; another RT2 size rebuilds the pixel wraps once.
@@ -121,12 +124,16 @@ private:
         std::uint64_t vertex_hash = 0, pixel_hash = 0;
         IDirect3DVertexShader9* vertex = nullptr;
         IDirect3DPixelShader9* pixel[3]{};
-        std::uint8_t state = 0, vertex_state = 0, pixel_state[3]{}, texcoord = 0, sampler[3]{}, depth_sampler[3]{}; // state: the scan; vertex_state: the created wrap
+        std::uint8_t state = 0, vertex_state = 0, pixel_state[3]{}, texcoord = 0, sampler[3]{}, depth_sampler[3]{}, constants[3][4]{}; // state: the scan; vertex_state: the created wrap
         bool origin_known = false, core_f = false;
         unsigned matrix_register = 0, width = 0, height = 0;
     };
-    static constexpr unsigned variant_capacity = 48, pair_capacity = 16, clip_block_capacity = 4;
-    struct ClipBlocks { std::uint8_t sampler = 0, depth_sampler = 0; IDirect3DStateBlock9* saved = nullptr; IDirect3DStateBlock9* ours = nullptr; };
+    static constexpr unsigned variant_capacity = 48, pair_capacity = 16, block_capacity = 8;
+    // The recorded pair of blocks a wrap needs, keyed by what it touches: the fraction sampler, the depth sampler (255 for
+    // the step-1 wrap) and the wrap's `def` registers (255 = none). `saved` is re-captured per draw: the application's pixel
+    // shader (and vertex shader for the clip), the samplers' textures and six states each, and the constant registers the
+    // wrap's `def`s overwrite on native D3D9 when the program is set; `ours` holds the six sampler states per sampler.
+    struct Blocks { std::uint8_t sampler = 255, depth_sampler = 255, constants[4] = {255, 255, 255, 255}; IDirect3DStateBlock9* saved = nullptr; IDirect3DStateBlock9* ours = nullptr; };
     template<class Fn> Fn call(unsigned slot) const noexcept {
         ++device_calls_;
         return reinterpret_cast<Fn>((vtable_ ? vtable_ : *reinterpret_cast<void* const* const*>(device_))[slot]);
@@ -135,8 +142,7 @@ private:
     template<class Sets> HRESULT record(IDirect3DStateBlock9** out, Sets&& sets) noexcept;
     HRESULT record_quad() noexcept;
     HRESULT ensure_blocks() noexcept;
-    HRESULT ensure_lens_blocks(unsigned sampler) noexcept;
-    HRESULT ensure_clip_blocks(unsigned sampler, unsigned depth_sampler, ClipBlocks** out) noexcept;
+    HRESULT ensure_blocks(unsigned sampler, unsigned depth_sampler, const std::uint8_t constants[4], unsigned* index) noexcept;
     Variant* find(std::uint64_t hash) noexcept;
     bool build(Variant&, unsigned mode, IDirect3DPixelShader9* original) noexcept;
     Pair* find_pair(std::uint64_t vertex_hash, std::uint64_t pixel_hash) noexcept;
@@ -149,8 +155,6 @@ private:
     SunOcclusionCaps caps_{};
     IDirect3DStateBlock9* normal_ = nullptr;  // the quad's state set with the quad's values
     IDirect3DStateBlock9* saved_ = nullptr;   // the same set, re-captured per frame
-    IDirect3DStateBlock9* lens_saved_[16]{};  // per wrap sampler: shader + texture + six states, re-captured per draw
-    IDirect3DStateBlock9* lens_ours_[16]{};   // per wrap sampler: the six states with our values
     mutable unsigned device_calls_ = 0;
     IDirect3DPixelShader9* program_ = nullptr;
     IDirect3DVertexShader9* quad_vs_ = nullptr;
@@ -162,7 +166,7 @@ private:
     unsigned variant_count_ = 0;
     Pair pair_[pair_capacity]{};
     unsigned pair_count_ = 0;
-    ClipBlocks clip_blocks_[clip_block_capacity]{};
+    Blocks blocks_[block_capacity]{};
     std::vector<std::uint32_t> words_, wrapped_, vertex_words_; // build scratch, reused
     const char* variant_refusal_ = "";
     UINT render_targets_ = 0, streams_ = 0;

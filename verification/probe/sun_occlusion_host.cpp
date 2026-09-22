@@ -152,6 +152,8 @@ int main(int argc, char** argv) {
         std::printf("usable=%s\n", out.c_str()); return 0;
     }
     if (command == "alpha" && argc == 3) { std::printf("alpha=%.7f\n", smoothing_alpha(std::atof(argv[2]))); return 0; }
+    // jitter <active> <jx_px> <jy_px> <width> <height>: the visibility pass's RT2 read offset in uv.
+    if (command == "jitter" && argc == 7) { const JitterUv j = jitter_uv(number(argv[2]) != 0, float(std::atof(argv[3])), float(std::atof(argv[4])), unsigned(number(argv[5])), unsigned(number(argv[6]))); std::printf("u=%.8f v=%.8f\n", j.u, j.v); return 0; }
     if (command == "sites") {
         std::printf("probe_site=0x%lx probe_target=0x%lx lens_site=0x%lx lens_target=0x%lx gates=0x%llx gates_length=%u\n", (unsigned long)probe_site_va,
                     (unsigned long)probe_target_va, (unsigned long)lens_site_va, (unsigned long)lens_target_va, (unsigned long long)probe_gates_fnv1a, probe_gates_length);

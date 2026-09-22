@@ -83,7 +83,7 @@ struct Snapshot {
             D3DRS_POINTSPRITEENABLE, D3DRS_DITHERENABLE, D3DRS_ANTIALIASEDLINEENABLE};
         for (auto s : states) { DWORD v = 0; check("snapshot rs", d->GetRenderState(s, &v)); add(v); }
         for (auto s : {D3DTSS_TEXCOORDINDEX, D3DTSS_TEXTURETRANSFORMFLAGS}) { DWORD v = 0; check("snapshot tss", d->GetTextureStageState(0, s, &v)); add(v); }
-        float c[16]{}; check("snapshot constants", d->GetPixelShaderConstantF(0, c, 4)); add(c);
+        float c[128]{}; check("snapshot constants", d->GetPixelShaderConstantF(0, c, 32)); add(c); // c0..c31: the wraps' def registers (c28..c31) included
     }
     bool operator==(const Snapshot& o) const { return bytes == o.bytes; }
 };
@@ -119,6 +119,7 @@ struct Bindings {
         }
         const float garbage[16] = {9, 8, 7, 6, 5, 4, 3, 2, 1, .5f, .25f, .125f, -1, -2, -3, -4};
         check("hostile constants", d->SetPixelShaderConstantF(0, garbage, 4));
+        check("hostile constants high", d->SetPixelShaderConstantF(28, garbage, 4)); // the registers the clip wrap's defs name on a program using c0 only
         check("hostile fvf", d->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE));
         check("hostile tss", d->SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, 2));
     }
@@ -272,14 +273,67 @@ struct ClipRig {
         check("clip draw", d->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, v, 16));
         check("clip end scene", d->EndScene());
     }
-    // Nine taps at the fragment and +-1, +-2 px along x and y: the fraction of taps left of the covered column `edge`
-    // for pixel column x (the four y taps share the fragment's column).
+    // The fragment and the eight knight moves (two taps in each of the columns x +- 1, x +- 2), one ninth each: the fraction of
+    // taps left of the covered column `edge` for pixel column x.
     static double open_fraction(int x, int edge) {
+        unsigned open = x < edge;
+        for (int dx : {-2, -1, 1, 2}) open += 2 * (x + dx < edge);
+        return open / 9.;
+    }
+    // The former +-1 / +-2 cross (ninths), for the before / after step comparison.
+    static double open_fraction_cross(int x, int edge) {
         unsigned open = 0;
         for (int t : {x, x + 1, x - 1, x + 2, x - 2, x, x, x, x}) open += t < edge;
         return open / 9.;
     }
 };
+// ---- RT2 on the jittered raster: an occluder quad drawn through the lens vertex program with the route's jittered rows ----
+// The temporal pass's eight offsets (motion_jitter_sample: Halton bases 2 / 3, 1-based index, minus one half, in pixels).
+float halton(unsigned index, unsigned base) { float fraction = 1.f, result = 0.f; while (index) { fraction /= float(base); result += fraction * float(index % base); index /= base; } return result; }
+struct Phase { unsigned index; float jx, jy; };
+std::array<Phase, 8> phases() { std::array<Phase, 8> out{}; for (unsigned i = 0; i < 8; ++i) out[i] = {i, halton(i + 1, 2) - .5f, halton(i + 1, 3) - .5f}; return out; }
+// MotionOutput::apply_jitter's arithmetic (fade_region::jitter_rows), bit for bit: rows[k] += jx_ndc * rows[12 + k], rows[4 + k] += jy_ndc * rows[12 + k]
+// with jx_ndc = 2 jx / W, jy_ndc = -2 jy / H: the raster image moves +jx px right and +jy px down.
+void jitter_rows(float rows[16], float jx_px, float jy_px, unsigned width, unsigned height) {
+    const float jx = 2.f * jx_px / float(width), jy = -2.f * jy_px / float(height);
+    for (unsigned k = 0; k < 4; ++k) { rows[k] += jx * rows[12 + k]; rows[4 + k] += jy * rows[12 + k]; }
+}
+struct Raster {
+    IDirect3DDevice9* d; unsigned w, h; IDirect3DVertexShader9* vs; IDirect3DVertexDeclaration9* declaration;
+    Com<IDirect3DTexture9> texture; Com<IDirect3DSurface9> surface; Com<IDirect3DPixelShader9> open_ps, cover_ps;
+    Raster(IDirect3DDevice9* device, unsigned width, unsigned height, IDirect3DVertexShader9* vertex, IDirect3DVertexDeclaration9* decl) : d(device), w(width), h(height), vs(vertex), declaration(decl) {
+        check("raster", d->CreateTexture(w, h, 1, D3DUSAGE_RENDERTARGET, D3DFMT_R32F, D3DPOOL_DEFAULT, &texture.p, nullptr)); check("raster surface", texture->GetSurfaceLevel(0, &surface.p));
+        DWORD words[sizeof ps20_words / sizeof ps20_words[0]]; std::memcpy(words, ps20_words, sizeof words);
+        for (auto [value, out] : {std::pair{-1.f, &open_ps}, std::pair{.5f, &cover_ps}}) { DWORD bits = 0; std::memcpy(&bits, &value, 4); for (unsigned i = 3; i < 7; ++i) words[i] = bits; check("raster ps", d->CreatePixelShader(words, &out->p)); }
+    }
+    // The whole target open (-1), then the occluder (device depth 0.5) covering NDC x >= x_edge and y <= y_edge, drawn with the jittered rows.
+    // RT0 stays bound to the raster afterwards; every rig re-binds RT0 before the texture is sampled.
+    void draw(float jx, float jy, float x_edge, float y_edge) {
+        for (UINT i = 1; i < 4; ++i) check("raster rt off", d->SetRenderTarget(i, nullptr));
+        check("raster rt", d->SetRenderTarget(0, surface.p)); check("raster depth", d->SetDepthStencilSurface(nullptr));
+        for (auto [s, v] : {std::pair{D3DRS_ALPHABLENDENABLE, DWORD(FALSE)}, std::pair{D3DRS_SCISSORTESTENABLE, DWORD(FALSE)}, std::pair{D3DRS_ZENABLE, DWORD(FALSE)}, std::pair{D3DRS_COLORWRITEENABLE, DWORD(15)},
+                            std::pair{D3DRS_CULLMODE, DWORD(D3DCULL_NONE)}, std::pair{D3DRS_FILLMODE, DWORD(D3DFILL_SOLID)}, std::pair{D3DRS_SRGBWRITEENABLE, DWORD(FALSE)}, std::pair{D3DRS_FOGENABLE, DWORD(FALSE)},
+                            std::pair{D3DRS_ALPHATESTENABLE, DWORD(FALSE)}, std::pair{D3DRS_STENCILENABLE, DWORD(FALSE)}, std::pair{D3DRS_MULTISAMPLEMASK, DWORD(0xffffffff)}, std::pair{D3DRS_CLIPPING, DWORD(FALSE)}})
+            check("raster rs", d->SetRenderState(s, v));
+        check("raster decl", d->SetVertexDeclaration(declaration)); check("raster vs", d->SetVertexShader(vs));
+        float rows[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+        jitter_rows(rows, jx, jy, w, h);
+        check("raster rows", d->SetVertexShaderConstantF(0, rows, 4));
+        check("raster begin", d->BeginScene());
+        const float open[4][4] = {{-1, -1, .5f, 1}, {1, -1, .5f, 1}, {-1, 1, .5f, 1}, {1, 1, .5f, 1}};
+        check("raster open ps", d->SetPixelShader(open_ps.p)); check("raster open", d->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, open, 16));
+        const float cover[4][4] = {{x_edge, -1, .5f, 1}, {1, -1, .5f, 1}, {x_edge, y_edge, .5f, 1}, {1, y_edge, .5f, 1}};
+        check("raster cover ps", d->SetPixelShader(cover_ps.p)); check("raster cover", d->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, cover, 16));
+        check("raster end", d->EndScene());
+    }
+};
+// An edge at texel coordinate e (covered from e on, along x or y): texel k of the jittered raster holds the coverage at k + 0.5 - j.
+// The tap at texel coordinate t reads texel floor(t + j) with the correction, floor(t) without.
+unsigned twin_open_jittered(const float* coordinates, unsigned count, double edge, double j, bool corrected) {
+    unsigned open = 0;
+    for (unsigned i = 0; i < count; ++i) { const double k = std::floor(double(coordinates[i]) + (corrected ? j : 0.)); open += (k + .5 - j) < edge; }
+    return open;
+}
 struct LensRig {
     IDirect3DDevice9* d; SunOcclusionPass& pass; Bindings& bindings; Canvas& canvas;
     Com<IDirect3DPixelShader9> ps20, ps30, ps11; Com<IDirect3DVertexShader9> quad_vs; Com<IDirect3DVertexDeclaration9> quad_decl;
@@ -501,7 +555,7 @@ int main() {
                 auto matches = [&](int x, double open) { double want[3]; expected_pixel(*law, body_f * open, want); for (unsigned c = 0; c < 3; ++c) if (!close_to(row[x][c], want[c], 2.5 / 255)) return false; return true; };
                 for (int x = 0; x < edge - 2; ++x) far_open = matches(x, 1.) && far_open;
                 for (int x = edge + 2; x < int(W); ++x) far_covered = matches(x, 0.) && far_covered;
-                // The soft edge: every tap sits on a texel centre, so columns edge-2 .. edge+1 are exact ninths (8, 7, 2, 1).
+                // The soft edge: every tap sits on a texel centre, so columns edge-2 .. edge+1 are exact ninths (7, 5, 4, 2).
                 for (int x = edge - 2; x <= edge + 1; ++x) { soft = matches(x, ClipRig::open_fraction(x, edge)) && soft; soft_count += !matches(x, 1.) && !matches(x, 0.); }
                 std::printf("CLIP %s%s f=%.4f verdict=%s clipped=%u samplers=%u/%u calls=%u open=%.4f,%.4f,%.4f edge=%.4f,%.4f,%.4f covered=%.4f,%.4f,%.4f model=%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n", law->name, pass_core_f ? "_core_f" : "", f, lens_verdict_name(verdict), clipped ? 1u : 0u,
                             unsigned(draw.sampler), unsigned(draw.depth_sampler), clip_calls, row[edge - 3][0], row[edge - 3][1], row[edge - 3][2], row[edge - 1][0], row[edge][0], row[edge + 1][0],
@@ -536,10 +590,93 @@ int main() {
               for (unsigned i = 0; i < 3; ++i) { clip.prepare(laws[2]); LensDraw draw; pass.lens_begin(clip.state(core::Body::Core), draw); clip.draw(); pass.lens_end(draw); }
               require("clip_no_per_draw_creation", faults.create_ps_calls == ps_created && faults.create_vs_calls == vs_created && pass.pairs() == 2);
               std::printf("CLIP_PAIRS pairs=%u vertex_shaders_created=%u\n", pass.pairs(), faults.create_vs_calls); }
+            // ---- jitter: RT2 on the jittered raster under the temporal pass's eight offsets, the disc and the clip fragments unjittered ----
+            // Vertical edge at texel x = 164.703 (every tap at least 0.70 texels from it, three taps within one texel: the uncorrected
+            // read flips in three phases; the corrected read equals the unjittered raster's in all eight), horizontal edge at texel
+            // y = 82.153 (the y sign; one phase flips uncorrected). Neither edge sits on a raster tie of any phase (k + 0.5 - j != e).
+            {
+                Raster raster(d, W, H, vs20.p, clip_decl.p);
+                const auto sequence = phases();
+                std::printf("JITTER_PHASES");
+                for (const Phase& ph : sequence) std::printf(" %u:%.4f,%.4f", ph.index, ph.jx, ph.jy);
+                std::printf("\n");
+                float tx[32], ty[32];
+                for (unsigned i = 0; i < 32; ++i) { tx[i] = (u + taps[i][0] * ru) * float(W); ty[i] = (v + taps[i][1] * rv) * float(H); }
+                struct Axis { const char* name; double edge; float x_edge, y_edge; const float* coordinates; unsigned expected_open; };
+                const double ex = 164.703, ey = 82.153;
+                const Axis axes[2] = {{"x", ex, float(2. * (ex - .5) / W - 1.), 1.f, tx, twin_open_jittered(tx, 32, ex, 0., true)},
+                                      {"y", ey, -1.f, float(1. - 2. * (ey - .5) / H), ty, twin_open_jittered(ty, 32, ey, 0., true)}};
+                for (const Axis& axis : axes) {
+                    raster.draw(0.f, 0.f, axis.x_edge, axis.y_edge);
+                    SunVisibilityFrame in = frame_of(depth, u, v, ru, rv, true); in.depth = raster.texture.p;
+                    bool restored = rig.run(in, out, hr); const Read unjittered = rig.read();
+                    bool ok = hr == S_OK && out.ran && restored && unjittered.ok && unjittered.f[3] == 1.f && close_to(unjittered.f[2], axis.expected_open / 32., 1e-6);
+                    bool corrected_invariant = true, corrected_twin = true; unsigned uncorrected_distinct = 0; float seen[8]{};
+                    for (const Phase& ph : sequence) {
+                        raster.draw(ph.jx, ph.jy, axis.x_edge, axis.y_edge);
+                        in.jitter_u = ph.jx / float(W); in.jitter_v = ph.jy / float(H);
+                        restored = rig.run(in, out, hr); const Read corrected = rig.read();
+                        in.jitter_u = in.jitter_v = 0.f;
+                        const bool restored2 = rig.run(in, out, hr); const Read uncorrected = rig.read();
+                        const double j = axis.name[0] == 'x' ? ph.jx : ph.jy;
+                        const unsigned twin_corrected = twin_open_jittered(axis.coordinates, 32, axis.edge, j, true), twin_uncorrected = twin_open_jittered(axis.coordinates, 32, axis.edge, j, false);
+                        std::printf("JITTER_PHASE axis=%s index=%u jx=%.4f jy=%.4f corrected=%.5f uncorrected=%.5f unjittered=%.5f twin_corrected=%u twin_uncorrected=%u valid=%.3f\n", axis.name, ph.index, ph.jx, ph.jy,
+                                    corrected.f[2], uncorrected.f[2], unjittered.f[2], twin_corrected, twin_uncorrected, corrected.f[3]);
+                        ok = ok && hr == S_OK && out.ran && restored && restored2 && corrected.ok && uncorrected.ok && corrected.f[3] == 1.f;
+                        corrected_invariant = corrected_invariant && corrected.f[2] == unjittered.f[2] && corrected.f[0] == unjittered.f[0] && corrected.f[1] == unjittered.f[1];
+                        corrected_twin = corrected_twin && close_to(corrected.f[2], twin_corrected / 32., 1e-6);
+                        bool fresh = true; for (unsigned k = 0; k < uncorrected_distinct; ++k) fresh = fresh && seen[k] != uncorrected.f[2];
+                        if (fresh) seen[uncorrected_distinct++] = uncorrected.f[2];
+                    }
+                    std::printf("JITTER_VISIBILITY axis=%s edge=%.3f unjittered=%.5f corrected_invariant=%u uncorrected_distinct=%u\n", axis.name, axis.edge, unjittered.f[2], corrected_invariant ? 1u : 0u, uncorrected_distinct);
+                    require((std::string("jitter_") + axis.name + "_corrected_invariant").c_str(), ok && corrected_invariant && corrected_twin);
+                    require((std::string("jitter_") + axis.name + "_uncorrected_varies").c_str(), uncorrected_distinct >= 2);
+                }
+                // The clip pair reads the jittered RT2 at the fragment's own texel (a texel-centred point tap: adding |j| < 0.5 texel would not change
+                // the texel), so its edge column follows the raster's silhouette column ceil(e - 0.5 + jx) in every phase: the per-frame wobble of
+                // a single jittered raster, which the resolve averages away for the scene but nothing averages for the disc. The kernel bounds
+                // what that one-texel shift does to a pixel: the largest |open(x) - open'(x)| between any two phases, measured per column from
+                // the readback (ONE/ONE: open = (out - background) / source) and from the models of this kernel and of the former cross.
+                {
+                    pass.set_core_fraction(false);
+                    bool model = true; unsigned distinct = 0; int edges[8]{};
+                    double lo[W], hi[W]; for (unsigned x = 0; x < W; ++x) { lo[x] = 2.; hi[x] = -1.; }
+                    for (const Phase& ph : sequence) {
+                        raster.draw(ph.jx, ph.jy, axes[0].x_edge, axes[0].y_edge);
+                        clip.prepare(laws[2]);
+                        LensState state = clip.state(core::Body::Core); state.depth = raster.texture.p;
+                        LensDraw draw; const LensVerdict verdict = pass.lens_begin(state, draw); const bool clipped = draw.clipped; clip.draw(); const HRESULT ended = pass.lens_end(draw);
+                        const auto row = sheet.row(d, H / 2);
+                        const int b = int(std::ceil(ex - .5 + double(ph.jx)));
+                        bool fresh = true; for (unsigned k = 0; k < distinct; ++k) fresh = fresh && edges[k] != b;
+                        if (fresh) edges[distinct++] = b;
+                        bool phase_ok = verdict == LensVerdict::Applied && clipped && SUCCEEDED(ended);
+                        for (int x = b - 4; x < b + 4; ++x) { double want[3]; expected_pixel(laws[2], ClipRig::open_fraction(x, b), want); for (unsigned c = 0; c < 3; ++c) phase_ok = phase_ok && close_to(row[x][c], want[c], 2.5 / 255); }
+                        for (int x = b - 4; x < b + 3; ++x) phase_ok = phase_ok && row[x][0] + 1.5 / 255 >= row[x + 1][0]; // monotone across the five soft columns
+                        for (unsigned x = 0; x < W; ++x) { const double open = (row[x][0] - background[0]) / source[0]; lo[x] = open < lo[x] ? open : lo[x]; hi[x] = open > hi[x] ? open : hi[x]; }
+                        std::printf("CLIP_JITTER_PHASE index=%u jx=%.4f silhouette=%d row=%.4f,%.4f,%.4f,%.4f,%.4f,%.4f model=%u\n", ph.index, ph.jx, b, row[b - 3][0], row[b - 2][0], row[b - 1][0], row[b][0], row[b + 1][0], row[b + 2][0], phase_ok ? 1u : 0u);
+                        model = model && phase_ok;
+                    }
+                    double measured = 0., kernel_model = 0., cross_model = 0.; unsigned columns_moving = 0;
+                    for (int x = int(ex) - 6; x < int(ex) + 6; ++x) {
+                        measured = hi[x] - lo[x] > measured ? hi[x] - lo[x] : measured; columns_moving += hi[x] - lo[x] > 1.5 / 255;
+                        double klo = 2., khi = -1., clo = 2., chi = -1.;
+                        for (unsigned k = 0; k < distinct; ++k) { const double kv = ClipRig::open_fraction(x, edges[k]), cv = ClipRig::open_fraction_cross(x, edges[k]);
+                            klo = kv < klo ? kv : klo; khi = kv > khi ? kv : khi; clo = cv < clo ? cv : clo; chi = cv > chi ? cv : chi; }
+                        kernel_model = khi - klo > kernel_model ? khi - klo : kernel_model; cross_model = chi - clo > cross_model ? chi - clo : cross_model;
+                    }
+                    // Monotone across the edge: the unjittered-phase profile falls without a rise over the five columns b-3 .. b+2.
+                    std::printf("CLIP_JITTER edge=%.3f silhouettes=%d,%d distinct=%u max_delta_measured=%.4f max_delta_kernel=%.4f max_delta_cross=%.4f columns_moving=%u\n", ex, edges[0], distinct > 1 ? edges[1] : edges[0], distinct,
+                                measured, kernel_model, cross_model, columns_moving);
+                    require("clip_jitter_follows_rt2_silhouette", model && distinct == 2);
+                    require("clip_jitter_step_bounded", measured <= 2. / 9 + 2.5 / 255 * 1.25 && kernel_model <= 2. / 9 + 1e-9 && cross_model > .5);
+                }
+                for (UINT i = 0; i < 16; ++i) d->SetTexture(i, nullptr);
+            }
             // ---- Reset: the DEFAULT-pool targets go, programs and wraps stay ----
             const unsigned held = pass.references();
             pass.before_reset();
-            require("before_reset_releases_targets", pass.reset_pending() && pass.references() == held - 11 && !pass.valid()); // two textures, two surfaces, the quad's two blocks, sampler 15's two lens blocks, the clip pair's two blocks, the diagnostic readback surface
+            require("before_reset_releases_targets", pass.reset_pending() && pass.references() == held - 13 && !pass.valid()); // two textures, two surfaces, the quad's two blocks, the ps_2_0 and ps_3_0 ghost wraps' two blocks each (one def register each, different), the clip pair's two blocks, the diagnostic readback surface
             std::printf("RESET held_before=%u held_after=%u\n", held, pass.references());
             { SunVisibilityResult refused; require("reset_pending_refused", pass.execute(frame_of(depth, u, v, ru, rv, true), &refused) == S_FALSE && std::string(refused.skipped_reason) == "reset_pending"); }
             for (UINT i = 0; i < 16; ++i) d->SetTexture(i, nullptr);

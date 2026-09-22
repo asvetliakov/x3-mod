@@ -348,14 +348,19 @@ draw is classified on the CPU and wrapped accordingly:
   multiplying by `f` as well would dim the visible half of a half-covered sun to half its strength, a double
   attenuation the physical picture does not have. The ghosts and streaks, which have no geometry of their own to
   clip against, carry `f` (their brightness follows the amount of unoccluded disc). `X3M_SUN_OCCLUSION_CORE_F=1`
-  (`--sun-occlusion-core-f`) restores the product for the flight comparison. The soft edge is four pixels wide
-  (8/9, 7/9, 2/9, 1/9 across a vertical edge, fixture-measured). The wrapped program stays **ps_2_0**: 40 arithmetic and 11 texture
+  (`--sun-occlusion-core-f`) restores the product for the flight comparison. The soft edge spans five columns
+  (1, 7/9, 5/9, 4/9, 2/9, 0 across a vertical edge, fixture-measured: the knight-move kernel of "Jitter contract").
+  The wrapped program stays **ps_2_0**: 40 arithmetic and 11 texture
   instructions, 9 temporaries, dependent-read depth 1 (limits 64 / 32 / 12 / 4), so no promotion; a vs_3_0 /
   ps_3_0 pair is refused for the clip (`unsupported_version`), as is a vertex program whose `oPos` is not the
   four-dp4 shape (the refusal blocks the override for the process, like every program-bound refusal). Seven
   device calls per core draw: capture of a recorded block (both shaders, both samplers' textures and six states
-  each), apply of ours, `SetTexture` x 2 (the 1x1 fraction and RT2), `SetPixelShader`, `SetVertexShader`,
-  and one apply of the capture after the draw. RT2 is referenced for the bracket (begin .. end, also in a held
+  each, and the four `def` registers of the wrap: on native D3D9 a `def` loads the device's constant file when
+  the program is set, so the block also carries the application's values of those registers back; the step-1
+  wrap's block does the same for its one), apply of ours, `SetTexture` x 2 (the 1x1 fraction and RT2),
+  `SetPixelShader`, `SetVertexShader`, and one apply of the capture after the draw. The wrap is refused
+  (`resource_limit`) when the original's counted ps_2_0 slots plus the wrap's (32 arithmetic + 10 texture; step 1:
+  3 + 1) would exceed 64 / 32: wined3d does not enforce the limits, native D3D9 does. RT2 is referenced for the bracket (begin .. end, also in a held
   frame, whose RT2 is complete) and released at the bracket's end, before a Reset and at teardown. The pixel
   wraps bake one pixel of RT2 in uv and are rebuilt once when RT2's size changes; programs survive Reset,
   the blocks are re-recorded.
@@ -381,3 +386,43 @@ and `body=other` for ship flares; the `lens_*.bgra8` picture against `radius_px`
 view with `+0x270 & 0x400000` owning a lens record (a second sun's background view, or a nebula regime that keeps
 its own record) makes two eligible records per frame and step 1 stays vanilla for that sector: watch
 `multi_record_frames` (the `sun_occlusion` counters) and `sun_visibility single=0`.
+
+## Jitter contract (2026-09-22)
+
+RT2 is on the frame's **jittered** raster: every scene draw whose program has a table row gets
+`MotionOutput::apply_jitter` (clip x += 2 jx / W · w, clip y += −2 jy / H · w: the image moves +jx px right,
++jy px down), while the lens bracket runs after `hook_scene_end`, where `scene_bound()` refuses and nothing is
+jittered: the disc's fragments, the engine's record position (`u/v`) and the sun lane (`lane_u/v`, from the
+unjittered `camera_scene_`) are all on the unjittered grid. The scene point at unjittered uv `p` therefore sits
+at `p + (jx / W, jy / H)` in RT2. The visibility pass takes that offset on `c2.xy` (`sun_occlusion::core::jitter_uv`,
+zero when the jitter is off; `SunVisibilityFrame::jitter_u/_v`, refused beyond ±0.05 uv) and reads each of the
+32 taps at `p + c2.xy`, the viewport test staying on `p`: a tap farther than half a texel from a silhouette now
+reads the same texel content in every phase (before, a tap within one texel of the edge on the wrong side flipped
+with the phase: run228's 0.4688 / 0.5000 alternation). The `sun_visibility` line logs `jitter=… jitter_index=…
+jitter_x=… jitter_y=…`. The clip pair is **not** offset: its nine taps are texel-centred point taps of the fragment's
+own texel, and `floor(i + 0.5 + j) = i` for every |j| < 0.5, so the offset would select the same texel. The
+clip's edge column is the jittered raster's silhouette column `ceil(e − 0.5 + jx)`, which moves by one texel
+between phases whenever the silhouette's sub-pixel position is not on a texel boundary; a single jittered raster
+holds one bit per texel and no per-frame reconstruction recovers the sub-texel edge (a de-jittered 2x2 coverage
+estimate reduces the per-column phase range only from 5/9 to 0.49 in a model of a vertical edge). The resolve
+averages that wobble away for the scene; nothing averages it for the disc. What the clip can do is bound the
+step: its kernel is the fragment plus the eight knight moves (±2, ±1) / (±1, ±2), one ninth each, so that
+every column, row and 45° diagonal of taps weighs at most 2/9 = 0.222, against 5/9 for the former ±1 / ±2
+cross (an exhaustive search over symmetric integer-offset kernels of ≤ 17 taps finds no bound below 7/32 on a
+1/64 weight grid, and the knight set is the only 9-tap shape reaching it; the uniform ninth keeps one weight in
+`cK.w` and every tap addressed from the fragment's uv by one signed swizzle of `cD = (2dx, dy, dx, 2dy)` or
+`cW = (−2dx, dy, −dx, 2dy)`, so no tap depends on the one before; 40 arithmetic / 11 texture as before, one more
+`def` constant). A one-texel silhouette shift therefore moves any pixel of the clipped disc by at most 0.22 of
+its value, spread over five columns (profile 1, 7/9, 5/9, 4/9, 2/9, 0), instead of 0.56 at one column. Removing
+the residual wobble altogether would need temporal accumulation of the clip (a disc-relative mask ping-pong like
+the 1x1 fraction).
+
+*Limitation of the c2 correction.* The offset assumes every RT2 depth writer was jittered. A scene draw whose
+program has a table row or is a reviewed prepass program but whose clip rows are in no shadowed window returns
+early from `apply_jitter` (`!shadow_.rows_known[window]`, motion_output.cpp) and rasterizes unjittered, as does
+any z-writing draw without a row at all; the latter are counted per frame in `unjittered_depth_writers` of the
+`motion_output_frame` line (`counters_.unjittered_depth_writers`, incremented beside the `apply_jitter` call). An
+unjittered silhouette in RT2 is then shifted by the offset by up to half a texel in the wrong direction: its taps
+flip in the phases that would otherwise have been stable, i.e. the pre-fix behaviour for that occluder, not
+worse. A flight that still sees `f_raw` alternating with `jitter_index` behind a specific occluder should read
+`unjittered_depth_writers` in the same frames first.

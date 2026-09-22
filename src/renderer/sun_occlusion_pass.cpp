@@ -2,6 +2,7 @@
 #include "ambient_occlusion_caps.h"
 #include "quad_vertex_program.h"
 #include <cmath>
+#include <cstring>
 #include <iterator>
 #include <new>
 #include <utility>
@@ -62,9 +63,11 @@ bool depth_format(D3DFORMAT f) noexcept { return f == D3DFMT_R32F || f == D3DFMT
 // returns its one texel under every other state; FP16 filtering is not assumed.
 constexpr D3DSAMPLERSTATETYPE lens_states[6] = {D3DSAMP_ADDRESSU, D3DSAMP_ADDRESSV, D3DSAMP_MAGFILTER, D3DSAMP_MINFILTER, D3DSAMP_MIPFILTER, D3DSAMP_SRGBTEXTURE};
 constexpr DWORD lens_values[6] = {D3DTADDRESS_CLAMP, D3DTADDRESS_CLAMP, D3DTEXF_POINT, D3DTEXF_POINT, D3DTEXF_NONE, FALSE};
-// Step 2: the core clip's tap step in RT2 pixels (taps at one and two steps along +-x / +-y, every one on a
-// texel centre: a soft edge four pixels wide in ninths).
+// Step 2: the core clip's tap step in RT2 pixels (the fragment and the eight knight moves (+-2, +-1) / (+-1, +-2) steps,
+// every one on a texel centre: lens_visibility_variant.h, "Clip pair").
 constexpr float soft_edge_pixels = 1.f;
+// The jitter offset is at most half an RT2 texel: a value beyond this in uv (a 10-texel-wide target) is a caller bug.
+constexpr float jitter_limit = .05f;
 template<class Resource> HRESULT same_device(IDirect3DDevice9* device, Resource* resource) noexcept {
     IDirect3DDevice9* owner = nullptr;
     HRESULT hr = resource->GetDevice(&owner);
@@ -136,15 +139,12 @@ unsigned SunOcclusionPass::references() const noexcept {
         n += p != nullptr;
     for (unsigned i = 0; i < variant_count_; ++i) for (auto* s : variant_[i].shader) n += s != nullptr;
     for (unsigned i = 0; i < pair_count_; ++i) { n += pair_[i].vertex != nullptr; for (auto* s : pair_[i].pixel) n += s != nullptr; }
-    for (unsigned i = 0; i < 16; ++i) n += (lens_saved_[i] != nullptr) + (lens_ours_[i] != nullptr);
-    for (const auto& b : clip_blocks_) n += (b.saved != nullptr) + (b.ours != nullptr);
+    for (const auto& b : blocks_) n += (b.saved != nullptr) + (b.ours != nullptr);
     return n;
 }
 void SunOcclusionPass::before_reset() noexcept {
     drop(normal_); drop(saved_); drop(readback_); // every state block is a DEFAULT-pool citizen: gone before Reset
-    for (auto& b : lens_saved_) drop(b);
-    for (auto& b : lens_ours_) drop(b);
-    for (auto& b : clip_blocks_) { drop(b.saved); drop(b.ours); b = ClipBlocks{}; }
+    for (auto& b : blocks_) { drop(b.saved); drop(b.ours); b = Blocks{}; }
     for (auto& s : surfaces_) drop(s);
     for (auto& t : textures_) drop(t);
     valid_ = false; reset_pending_ = device_ != nullptr;
@@ -253,8 +253,8 @@ HRESULT SunOcclusionPass::record_quad() noexcept {
         STEP(call<SetSamplerFn>(SetSamplerState)(d, i, D3DSAMP_SRGBTEXTURE, FALSE));
         STEP(call<SetSamplerFn>(SetSamplerState)(d, i, D3DSAMP_MAXMIPLEVEL, 0));
     }
-    const float zero[8]{};
-    STEP(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 0, zero, 2));
+    const float zero[12]{};
+    STEP(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 0, zero, 3));
     const D3DVIEWPORT9 viewport{0, 0, 1, 1, 0.f, 1.f};
     STEP(call<SetViewportFn>(SetViewport)(d, &viewport));
     const RECT scissor{0, 0, 1, 1};
@@ -277,9 +277,10 @@ HRESULT SunOcclusionPass::execute(const SunVisibilityFrame& in, SunVisibilityRes
     if (!device_ || !caps_.enabled) return skip("detached");
     if (reset_pending_) return skip("reset_pending");
     if (!in.depth || in.caller_stateblock_recording) return skip("input");
-    for (float v : {in.u, in.v, in.radius_u, in.radius_v, in.alpha, in.curve}) if (!std::isfinite(v)) return skip("params");
+    for (float v : {in.u, in.v, in.radius_u, in.radius_v, in.alpha, in.curve, in.jitter_u, in.jitter_v}) if (!std::isfinite(v)) return skip("params");
     if (!(in.radius_u > 0.f) || !(in.radius_v > 0.f) || in.radius_u > 1.f || in.radius_v > 1.f || in.alpha < 0.f || in.alpha > 1.f ||
-        in.curve < .25f || in.curve > 4.f || in.u < -4.f || in.u > 5.f || in.v < -4.f || in.v > 5.f) return skip("params");
+        in.curve < .25f || in.curve > 4.f || in.u < -4.f || in.u > 5.f || in.v < -4.f || in.v > 5.f ||
+        in.jitter_u < -jitter_limit || in.jitter_u > jitter_limit || in.jitter_v < -jitter_limit || in.jitter_v > jitter_limit) return skip("params");
     D3DSURFACE_DESC desc{};
     if (FAILED(in.depth->GetLevelDesc(0, &desc)) || !depth_format(desc.Format) || desc.MultiSampleType != D3DMULTISAMPLE_NONE) return skip("format");
     if (FAILED(same_device(device_, in.depth))) return skip("device");
@@ -304,8 +305,9 @@ HRESULT SunOcclusionPass::execute(const SunVisibilityFrame& in, SunVisibilityRes
     if (SUCCEEDED(hr)) hr = call<SetRtFn>(SetRenderTarget)(d, 0, surfaces_[next]);
     if (SUCCEEDED(hr)) { ++device_calls_; hr = normal_->Apply(); }
     if (SUCCEEDED(hr) && !in.caller_scene_open) own_scene = step(SunOcclusionStage::Scene, call<SceneFn>(BeginScene)(d));
-    const float block[2][4] = {{in.u, in.v, in.radius_u, in.radius_v}, {in.alpha, seed ? 1.f : 0.f, in.curve, 0.f}};
-    if (SUCCEEDED(hr)) step(SunOcclusionStage::Constants, call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 0, &block[0][0], 2));
+    // c0 the disc, c1 the smoothing, c2.xy the jitter (sun_visibility_ps.hlsl); the recorded set covers all three.
+    const float block[3][4] = {{in.u, in.v, in.radius_u, in.radius_v}, {in.alpha, seed ? 1.f : 0.f, in.curve, 0.f}, {in.jitter_u, in.jitter_v, 0.f, 0.f}};
+    if (SUCCEEDED(hr)) step(SunOcclusionStage::Constants, call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 0, &block[0][0], 3));
     if (SUCCEEDED(hr)) step(SunOcclusionStage::Draw, call<SetTextureFn>(SetTexture)(d, 0, in.depth));
     if (SUCCEEDED(hr)) step(SunOcclusionStage::Draw, call<SetTextureFn>(SetTexture)(d, 1, textures_[current_]));
     if (SUCCEEDED(hr)) {
@@ -351,7 +353,7 @@ bool SunOcclusionPass::build(Variant& v, unsigned mode, IDirect3DPixelShader9* o
     if (result != LensVisibilityResult::Applied) { variant_refusal_ = lens_visibility_result_name(result); return false; }
     IDirect3DPixelShader9* created = nullptr;
     if (FAILED(call<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(wrapped_.data()), &created)) || !created) { drop(created); variant_refusal_ = "create"; return false; }
-    v.shader[mode] = created; v.sampler[mode] = std::uint8_t(layout.sampler); v.state[mode] = 1;
+    v.shader[mode] = created; v.sampler[mode] = std::uint8_t(layout.sampler); v.constant[mode] = std::uint8_t(layout.constant); v.state[mode] = 1;
     return true;
 }
 SunOcclusionPass::Pair* SunOcclusionPass::find_pair(std::uint64_t vertex_hash, std::uint64_t pixel_hash) noexcept {
@@ -402,51 +404,45 @@ bool SunOcclusionPass::build_pair_pixel(Pair& p, unsigned mode, const LensState&
     IDirect3DPixelShader9* created = nullptr;
     if (FAILED(call<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(wrapped_.data()), &created)) || !created) { drop(created); variant_refusal_ = "create_clip"; return false; }
     p.pixel[mode] = created; p.sampler[mode] = std::uint8_t(layout.sampler); p.depth_sampler[mode] = std::uint8_t(layout.depth_sampler); p.pixel_state[mode] = 1;
+    for (unsigned i = 0; i < 4; ++i) p.constants[mode][i] = std::uint8_t(layout.constants[i]);
     return true;
 }
-// Per wrap sampler, recorded once: `lens_saved_` (re-captured per draw: the application's pixel
-// shader, the sampler's texture and six states, with references held by the block) and
-// `lens_ours_` (the six states a 1x1 FP16 fetch needs). No getter runs per draw: the blend,
-// alpha-test and fog state and the bound program come from the caller's shadow.
-HRESULT SunOcclusionPass::ensure_lens_blocks(unsigned sampler) noexcept {
-    if (lens_saved_[sampler] && lens_ours_[sampler]) return S_OK;
-    drop(lens_saved_[sampler]); drop(lens_ours_[sampler]);
-    D d = device_;
-    auto states = [&]() -> HRESULT {
-        for (unsigned i = 0; i < 6; ++i) { const HRESULT hr = call<SetSamplerFn>(SetSamplerState)(d, sampler, lens_states[i], lens_values[i]); if (FAILED(hr)) return hr; }
-        return S_OK;
-    };
-    HRESULT hr = record(&lens_ours_[sampler], states);
-    if (SUCCEEDED(hr)) hr = record(&lens_saved_[sampler], [&]() -> HRESULT {
-        HRESULT inner = call<SetPsFn>(SetPixelShader)(d, nullptr);
-        if (SUCCEEDED(inner)) inner = call<SetTextureFn>(SetTexture)(d, sampler, nullptr);
-        return SUCCEEDED(inner) ? states() : inner;
-    });
-    if (FAILED(hr)) { drop(lens_saved_[sampler]); drop(lens_ours_[sampler]); }
-    return hr;
-}
-// The clip pair's blocks, per (fraction sampler, depth sampler): as above plus the vertex shader and the
-// second sampler's texture and states.
-HRESULT SunOcclusionPass::ensure_clip_blocks(unsigned sampler, unsigned depth_sampler, ClipBlocks** out) noexcept {
-    ClipBlocks* slot = nullptr;
-    for (auto& b : clip_blocks_) { if (b.saved && b.ours && b.sampler == sampler && b.depth_sampler == depth_sampler) { *out = &b; return S_OK; } if (!slot && !b.saved && !b.ours) slot = &b; }
+// The blocks of one wrap layout, recorded once and found by key afterwards: `saved` (re-captured per draw: the
+// application's pixel shader, the vertex shader too for the clip pair, each wrap sampler's texture and six states,
+// and the wrap's `def` registers, which native D3D9 loads into the constant file when the program is set; the block
+// holds the references) and `ours` (the six states a point / clamp fetch needs, per sampler). No getter runs per
+// draw: the blend, alpha-test and fog state and the bound program come from the caller's shadow. Documented
+// state-block recording: SetPixelShaderConstantF is a recordable pixel state, Capture re-reads it.
+HRESULT SunOcclusionPass::ensure_blocks(unsigned sampler, unsigned depth_sampler, const std::uint8_t constants[4], unsigned* index) noexcept {
+    Blocks* slot = nullptr;
+    for (unsigned i = 0; i < block_capacity; ++i) {
+        Blocks& b = blocks_[i];
+        if (b.saved && b.ours && b.sampler == sampler && b.depth_sampler == depth_sampler && std::memcmp(b.constants, constants, 4) == 0) { *index = i; return S_OK; }
+        if (!slot && !b.saved && !b.ours) slot = &b;
+    }
     if (!slot) return E_OUTOFMEMORY;
+    const bool clip = depth_sampler < 16;
     D d = device_;
     auto states = [&]() -> HRESULT {
-        for (unsigned s : {sampler, depth_sampler}) for (unsigned i = 0; i < 6; ++i) { const HRESULT hr = call<SetSamplerFn>(SetSamplerState)(d, s, lens_states[i], lens_values[i]); if (FAILED(hr)) return hr; }
+        for (unsigned s : {sampler, depth_sampler}) {
+            if (s >= 16) continue;
+            for (unsigned i = 0; i < 6; ++i) { const HRESULT hr = call<SetSamplerFn>(SetSamplerState)(d, s, lens_states[i], lens_values[i]); if (FAILED(hr)) return hr; }
+        }
         return S_OK;
     };
     HRESULT hr = record(&slot->ours, states);
     if (SUCCEEDED(hr)) hr = record(&slot->saved, [&]() -> HRESULT {
         HRESULT inner = call<SetPsFn>(SetPixelShader)(d, nullptr);
-        if (SUCCEEDED(inner)) inner = call<SetVsFn>(SetVertexShader)(d, nullptr);
+        if (SUCCEEDED(inner) && clip) inner = call<SetVsFn>(SetVertexShader)(d, nullptr);
         if (SUCCEEDED(inner)) inner = call<SetTextureFn>(SetTexture)(d, sampler, nullptr);
-        if (SUCCEEDED(inner)) inner = call<SetTextureFn>(SetTexture)(d, depth_sampler, nullptr);
+        if (SUCCEEDED(inner) && clip) inner = call<SetTextureFn>(SetTexture)(d, depth_sampler, nullptr);
+        const float zero[4]{};
+        for (unsigned i = 0; i < 4 && SUCCEEDED(inner); ++i) if (constants[i] != 255) inner = call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, constants[i], zero, 1);
         return SUCCEEDED(inner) ? states() : inner;
     });
-    if (FAILED(hr)) { drop(slot->saved); drop(slot->ours); *slot = ClipBlocks{}; return hr; }
-    slot->sampler = std::uint8_t(sampler); slot->depth_sampler = std::uint8_t(depth_sampler);
-    *out = slot;
+    if (FAILED(hr)) { drop(slot->saved); drop(slot->ours); *slot = Blocks{}; return hr; }
+    slot->sampler = std::uint8_t(sampler); slot->depth_sampler = std::uint8_t(depth_sampler); std::memcpy(slot->constants, constants, 4);
+    *index = unsigned(slot - blocks_);
     return S_OK;
 }
 LensVerdict SunOcclusionPass::lens_prepare(const LensState& state, Prepared* out) noexcept {
@@ -482,12 +478,14 @@ LensVerdict SunOcclusionPass::lens_begin(const LensState& state, LensDraw& out) 
         if (v->state[mode] == 0) build(*v, mode, state.shader);
         if (v->state[mode] != 1) return LensVerdict::Variant;
         const unsigned sampler = v->sampler[mode];
-        if (FAILED(ensure_lens_blocks(sampler))) return LensVerdict::Device;
+        const std::uint8_t constants[4] = {v->constant[mode], 255, 255, 255};
+        unsigned block = 0;
+        if (FAILED(ensure_blocks(sampler, 255, constants, &block))) return LensVerdict::Device;
         device_calls_ = 1;
-        if (FAILED(lens_saved_[sampler]->Capture())) return LensVerdict::Device; // nothing changed yet
-        out.sampler = std::uint8_t(sampler); out.applied = true;
+        if (FAILED(blocks_[block].saved->Capture())) return LensVerdict::Device; // nothing changed yet
+        out.sampler = std::uint8_t(sampler); out.block = std::uint8_t(block); out.applied = true;
         ++device_calls_;
-        HRESULT hr = lens_ours_[sampler]->Apply();
+        HRESULT hr = blocks_[block].ours->Apply();
         if (SUCCEEDED(hr)) hr = call<SetTextureFn>(SetTexture)(d, sampler, textures_[current_]);
         if (SUCCEEDED(hr)) hr = call<SetPsFn>(SetPixelShader)(d, v->shader[mode]);
         if (FAILED(hr)) { lens_end(out); return LensVerdict::Device; } // everything back; the draw goes out unwrapped
@@ -504,13 +502,13 @@ LensVerdict SunOcclusionPass::lens_begin(const LensState& state, LensDraw& out) 
     if (p->pixel_state[mode] == 0 || p->width != state.depth_width || p->height != state.depth_height || p->core_f != core_f_) build_pair_pixel(*p, mode, state);
     if (p->pixel_state[mode] != 1) return LensVerdict::Variant;
     const unsigned sampler = p->sampler[mode], depth_sampler = p->depth_sampler[mode];
-    ClipBlocks* blocks = nullptr;
-    if (FAILED(ensure_clip_blocks(sampler, depth_sampler, &blocks))) return LensVerdict::Device;
+    unsigned block = 0;
+    if (FAILED(ensure_blocks(sampler, depth_sampler, p->constants[mode], &block))) return LensVerdict::Device;
     device_calls_ = 1;
-    if (FAILED(blocks->saved->Capture())) return LensVerdict::Device; // nothing changed yet
-    out.sampler = std::uint8_t(sampler); out.depth_sampler = std::uint8_t(depth_sampler); out.clipped = true; out.applied = true;
+    if (FAILED(blocks_[block].saved->Capture())) return LensVerdict::Device; // nothing changed yet
+    out.sampler = std::uint8_t(sampler); out.depth_sampler = std::uint8_t(depth_sampler); out.block = std::uint8_t(block); out.clipped = true; out.applied = true;
     ++device_calls_;
-    HRESULT hr = blocks->ours->Apply();
+    HRESULT hr = blocks_[block].ours->Apply();
     if (SUCCEEDED(hr)) hr = call<SetTextureFn>(SetTexture)(d, sampler, textures_[current_]);
     if (SUCCEEDED(hr)) hr = call<SetTextureFn>(SetTexture)(d, depth_sampler, state.depth);
     if (SUCCEEDED(hr)) hr = call<SetPsFn>(SetPixelShader)(d, p->pixel[mode]);
@@ -520,13 +518,11 @@ LensVerdict SunOcclusionPass::lens_begin(const LensState& state, LensDraw& out) 
 }
 HRESULT SunOcclusionPass::lens_end(LensDraw& draw) noexcept {
     if (!draw.applied) return S_OK;
-    const bool clipped = draw.clipped;
+    const unsigned block = draw.block;
     draw.applied = false; draw.clipped = false;
-    if (!device_ || draw.sampler >= 16 || draw.depth_sampler >= 16) return E_FAIL;
+    if (!device_ || block >= block_capacity || !blocks_[block].saved) return E_FAIL;
     ++device_calls_;
-    if (!clipped) return lens_saved_[draw.sampler] ? lens_saved_[draw.sampler]->Apply() : E_FAIL; // the application's shader, texture and sampler states, as captured for this draw
-    for (auto& b : clip_blocks_) if (b.saved && b.sampler == draw.sampler && b.depth_sampler == draw.depth_sampler) return b.saved->Apply();
-    return E_FAIL;
+    return blocks_[block].saved->Apply(); // the application's shaders, textures, sampler states and the wrap's def registers, as captured for this draw
 }
 HRESULT SunOcclusionPass::readback(float out[4]) noexcept {
     if (!out || !device_ || reset_pending_ || !valid_ || !surfaces_[current_]) return E_FAIL;

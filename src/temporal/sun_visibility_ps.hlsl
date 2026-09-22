@@ -8,6 +8,10 @@
 //   s1  the previous 1x1 result, point / clamp
 //   c0  xy the disc centre in back-buffer uv, zw its radius in u and in v
 //   c1  x the smoothing weight 1 - exp(-dt / tau), y 1 to seed (no history), z the use exponent
+//   c2  xy this frame's TAA jitter in RT2 uv (+jx / width, +jy / height; 0 when the jitter is off):
+//       RT2 is on the jittered raster (MotionOutput::apply_jitter moves the image +jx px right, +jy px
+//       down) while the disc centre is the engine's unjittered position, so the scene point at uv p is
+//       read at p + c2.xy. The viewport test stays on p: which taps count never depends on the phase.
 //
 //   .r  the smoothed fraction (the history)        .g  the fraction the lens draws multiply by:
 //   .b  this frame's raw fraction                       pow(saturate((r - 0.03) / 0.94), c1.z)
@@ -19,6 +23,7 @@ sampler2D sceneDepth : register(s0);
 sampler2D history : register(s1);
 float4 disc : register(c0);
 float4 control : register(c1);
+float4 jitter : register(c2);
 
 #define X3M_SUN_TAP(x, y) float2(x, y),
 static const float2 taps[32] = {
@@ -33,7 +38,7 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0
     {
         float2 p = disc.xy + taps[i] * disc.zw;
         float inside = (p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1) ? 1.0 : 0.0;
-        float depth = tex2Dlod(sceneDepth, float4(p, 0, 0)).r;
+        float depth = tex2Dlod(sceneDepth, float4(p + jitter.xy, 0, 0)).r;
         valid += inside;
         open += inside * (depth < -0.5 ? 1.0 : 0.0);
     }

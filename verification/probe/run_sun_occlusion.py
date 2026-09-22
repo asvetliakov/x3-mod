@@ -24,8 +24,26 @@ SOURCES = ('src/proxy/engine_memory.cpp', 'src/proxy/sun_occlusion.cpp', 'src/pr
            'verification/probe/sun_occlusion_hook_fixture.cpp', 'verification/probe/sun_occlusion_fixture.cpp', 'verification/probe/build_sun_occlusion.py',
            'verification/probe/run_sun_occlusion.py')
 EXPECTED_HOOK_CHECKS = 74   # a run that skips a section is not a pass
-EXPECTED_GPU_CHECKS = 122  # with both optional RT2 formats available; each SKIPPED format line takes one off
+EXPECTED_GPU_CHECKS = 128  # with both optional RT2 formats available; each SKIPPED format line takes one off
 SCENES = ('open', 'covered', 'half', 'three_quarter', 'quarter', 'screen_edge_open', 'screen_edge_covered')
+
+
+def halton(index, base):
+    fraction, result = 1.0, 0.0
+    while index:
+        fraction /= base
+        result += fraction * (index % base)
+        index //= base
+    return result
+
+
+def expected_phases():
+    """The temporal pass's eight jitter offsets in pixels (motion_jitter_sample: Halton 2 / 3, 1-based, minus one half), as the fixture prints them."""
+    return {i: (round(halton(i + 1, 2) - .5, 4), round(halton(i + 1, 3) - .5, 4)) for i in range(8)}
+
+
+def parse_phases(line):
+    return {int(index): (float(x), float(y)) for index, x, y in re.findall(r'(\d):(-?\d+\.\d+),(-?\d+\.\d+)', line)}
 
 
 def sha(path):
@@ -62,7 +80,12 @@ def parse_gpu(text):
             'lens_draws': [l.split()[1] for l in lines if l.startswith('LENS_DRAW ')], 'skipped': [l for l in lines if l.startswith('SKIPPED ')],
             'device_calls': next((fields(l) for l in lines if l.startswith('CALLS ')), None),
             'clip': {l.split()[1]: fields(l) for l in lines if l.startswith('CLIP ')},
-            'clip_reset': next((fields(l) for l in lines if l.startswith('CLIP_RESET ')), None)}
+            'clip_reset': next((fields(l) for l in lines if l.startswith('CLIP_RESET ')), None),
+            'jitter_phases': next((parse_phases(l) for l in lines if l.startswith('JITTER_PHASES')), None),
+            'jitter_visibility': {l.split()[1].split('=')[1]: fields(l) for l in lines if l.startswith('JITTER_VISIBILITY ')},
+            'jitter_phase': [fields(l) for l in lines if l.startswith('JITTER_PHASE ')],
+            'clip_jitter': next((fields(l) for l in lines if l.startswith('CLIP_JITTER ')), None),
+            'clip_jitter_phase': [fields(l) for l in lines if l.startswith('CLIP_JITTER_PHASE ')]}
 
 
 def accept_hook(record):
@@ -75,7 +98,11 @@ def accept_gpu(record):
             and record['result'].get('checks') == record['checks'] and set(record['scenes']) == set(SCENES) and len(record['steps']) == 8 and len(record['lens_draws']) == 10
             and record['attach'] and 0 < record['attach']['slots'] <= 512
             and set(record['clip']) == {'one_one', 'srcalpha_invsrcalpha', 'one_invsrcalpha', 'one_one_core_f'} and all(c.get('calls') == 7 and c.get('clipped') == 1 for c in record['clip'].values())
-            and record['clip_reset'] and record['clip_reset'].get('clipped') == 1)
+            and record['clip_reset'] and record['clip_reset'].get('clipped') == 1
+            and record['jitter_phases'] == expected_phases()                    # the fixture rasterized RT2 under the temporal pass's own offsets
+            and set(record['jitter_visibility']) == {'x', 'y'} and len(record['jitter_phase']) == 16 and len(record['clip_jitter_phase']) == 8
+            and all(v.get('corrected_invariant') == 1 and v.get('uncorrected_distinct', 0) >= 2 for v in record['jitter_visibility'].values())
+            and record['clip_jitter'] and record['clip_jitter'].get('distinct') == 2 and record['clip_jitter'].get('max_delta_measured', 1) <= .23)
 
 
 def main():
@@ -115,7 +142,10 @@ def main():
                           'scenes': {k: (v.get('twin_open'), v.get('twin_valid'), v.get('raw'), v.get('used')) for k, v in gpu['scenes'].items()},
                           'steps': [(s['n'], s['smoothed'], s['expected']) for s in gpu['steps']], 'rise': gpu['rise'], 'lens_fraction': gpu['lens_fraction'],
                           'lens_draws': len(gpu['lens_draws']), 'skipped': gpu['skipped'], 'device_calls': gpu['device_calls'],
-                          'clip': {k: (v.get('calls'), v.get('open'), v.get('edge'), v.get('covered')) for k, v in gpu['clip'].items()}, 'clip_reset': gpu['clip_reset']}
+                          'clip': {k: (v.get('calls'), v.get('open'), v.get('edge'), v.get('covered')) for k, v in gpu['clip'].items()}, 'clip_reset': gpu['clip_reset'],
+                          'jitter_visibility': {k: (v.get('unjittered'), v.get('corrected_invariant'), v.get('uncorrected_distinct')) for k, v in gpu['jitter_visibility'].items()},
+                          'jitter_uncorrected': {k: sorted({p['uncorrected'] for p in gpu['jitter_phase'] if p.get('axis') == k}) for k in gpu['jitter_visibility']},
+                          'clip_jitter': gpu['clip_jitter']}
     print(json.dumps(summary, indent=1))
     sys.exit(0 if record['passed'] else 1)
 

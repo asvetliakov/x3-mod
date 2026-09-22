@@ -80,6 +80,9 @@ void MotionOutput::sun_occlusion_begin() noexcept {
             QueryPerformanceCounter(&now); QueryPerformanceFrequency(&frequency);
             const double dt = lens_pass_qpc_ && frequency.QuadPart > 0 ? double(std::uint64_t(now.QuadPart) - lens_pass_qpc_) / double(frequency.QuadPart) : 0.;
             frame.depth = depth; frame.u = disc.u; frame.v = disc.v; frame.radius_u = disc.radius_u; frame.radius_v = disc.radius_v;
+            // RT2 is on this frame's jittered raster (apply_jitter; main_ is RT2's size); the disc is the engine's unjittered position.
+            const so::core::JitterUv jitter = so::core::jitter_uv(jitter_active_, jitter_[0], jitter_[1], main_.width, main_.height);
+            frame.jitter_u = jitter.u; frame.jitter_v = jitter.v;
             frame.alpha = so::core::smoothing_alpha(dt); frame.curve = sun_occlusion_.curve;
             frame.seed = !same || !sun_occlusion_pass_->valid() || dt <= 0. || dt > .5; // a new record, a Reset, a failed pass or a gap: no smoothing against a stale fraction
             frame.caller_scene_open = scene_open_; frame.caller_stateblock_recording = shadow_.recording;
@@ -118,13 +121,14 @@ void MotionOutput::sun_occlusion_begin() noexcept {
         if (ok) taa_call([&] { read = sun_occlusion_pass_->readback(f); }); // diagnostic only: a synchronous 1x1 GetRenderTargetData
         float lane_u = 0.f, lane_v = 0.f;
         const bool lane = sun_lane_uv(sun_latch_, camera_scene_, &lane_u, &lane_v);
-        log("sun_visibility device=%llu frame=%llu record=%08lx owner=%08lx owner_layer=%ld owner_flags270=%08lx single=%u answered=%u ran=%u skip=%s held=%u calls=%u seeded=%u acc=%ld size=%ld saturated=%u x=%ld y=%ld fov=%lu scale_x=%ld u=%.5f v=%.5f lane=%u lane_u=%.5f lane_v=%.5f radius_u=%.5f radius_v=%.5f radius_px=%.1f radius_derived_u=%.5f alpha=%.4f wrap=%u drop=%u readback=%08lx f_smoothed=%.4f f_used=%.4f f_raw=%.4f valid_taps=%.3f",
+        log("sun_visibility device=%llu frame=%llu record=%08lx owner=%08lx owner_layer=%ld owner_flags270=%08lx single=%u answered=%u ran=%u skip=%s held=%u calls=%u seeded=%u acc=%ld size=%ld saturated=%u x=%ld y=%ld fov=%lu scale_x=%ld u=%.5f v=%.5f lane=%u lane_u=%.5f lane_v=%.5f radius_u=%.5f radius_v=%.5f radius_px=%.1f radius_derived_u=%.5f alpha=%.4f jitter=%u jitter_index=%u jitter_x=%.4f jitter_y=%.4f wrap=%u drop=%u readback=%08lx f_smoothed=%.4f f_used=%.4f f_raw=%.4f valid_taps=%.3f",
             id_, frame_, static_cast<unsigned long>(in.latch.record), static_cast<unsigned long>(in.latch.owner), static_cast<long>(in.latch.owner_layer), static_cast<unsigned long>(in.latch.owner_flags),
             in.single ? 1u : 0u, in.answered ? 1u : 0u, ok ? 1u : 0u, skip ? skip : "none", usable && !ok ? lens_hold_.frames : 0u, out.device_calls, out.seeded ? 1u : 0u,
             static_cast<long>(in.latch.accumulator), static_cast<long>(in.latch.size), disc.saturated ? 1u : 0u, static_cast<long>(in.latch.x), static_cast<long>(in.latch.y),
             static_cast<unsigned long>(in.latch.fov), static_cast<long>(in.latch.scale_x), double(disc.u), double(disc.v), lane ? 1u : 0u, double(lane_u), double(lane_v),
             double(disc.radius_u), double(disc.radius_v), double(disc.radius_u * float(target_width_)), double(radius_derived_u),
-            double(frame.alpha), lens_frame_active_ ? 1u : 0u, lens_suppress_ ? 1u : 0u, read, double(f[0]), double(f[1]), double(f[2]), double(f[3]));
+            double(frame.alpha), jitter_active_ ? 1u : 0u, counters_.jitter_index, double(jitter_active_ ? jitter_[0] : 0.f), double(jitter_active_ ? jitter_[1] : 0.f),
+            lens_frame_active_ ? 1u : 0u, lens_suppress_ ? 1u : 0u, read, double(f[0]), double(f[1]), double(f[2]), double(f[3]));
     }
 }
 void MotionOutput::sun_occlusion_end() noexcept {

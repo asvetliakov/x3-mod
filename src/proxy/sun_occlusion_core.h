@@ -195,6 +195,17 @@ inline void apply_radius(Footprint& f, float radius_u, unsigned width, unsigned 
     const float r = radius_u < floor_u ? floor_u : (radius_u > radius_max_u ? radius_max_u : radius_u);
     f.radius_u = r; f.radius_v = height ? r * float(width) / float(height) : r;
 }
+// The visibility pass's RT2 read offset (SunVisibilityFrame::jitter_u / _v, c2.xy of sun_visibility_ps.hlsl): this
+// frame's TAA jitter in pixels of the main target (MotionOutput::apply_jitter, +jx right, +jy down on the raster)
+// as RT2 uv, so a tap at the unjittered uv p reads the texel where the scene point landed in the jittered RT2.
+// Zero when the jitter is off (the lens draws themselves are never jittered: they run after the scene end).
+struct JitterUv { float u = 0.f, v = 0.f; };
+inline JitterUv jitter_uv(bool active, float jx_px, float jy_px, unsigned width, unsigned height) noexcept {
+    JitterUv j;
+    if (!active || !width || !height) return j;
+    j.u = jx_px / float(width); j.v = jy_px / float(height);
+    return j;
+}
 // 1 - exp(-dt / tau), dt clamped to [0, 250 ms]; tau = 80 ms (design, "Visibility pass").
 constexpr float smoothing_tau_seconds = .080f;
 inline float smoothing_alpha(double dt_seconds) noexcept {

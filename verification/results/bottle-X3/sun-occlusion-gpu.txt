@@ -1,7 +1,7 @@
 CHECK twin_ps_2_0_refused PASS
 CHECK twin_ps_slots_refused PASS
 CHECK attach PASS
-ATTACH slots=469 ps30_slots=512
+ATTACH slots=389 ps30_slots=512
 SCENE open column=320 twin_open=32 twin_valid=32 raw=1.00000 smoothed=1.00000 used=1.00000 valid=1.00000
 CHECK open_ran_restored PASS
 CHECK open_twin PASS
@@ -118,25 +118,25 @@ CHECK clip_prepare_needs_vertex_shader PASS
 CHECK clip_prepare_needs_vertex_hash PASS
 CHECK clip_prepare_origin_unknown PASS
 CHECK clip_core_origin_unknown_refused PASS
-CLIP one_one f=0.5000 verdict=applied clipped=1 samplers=15/14 calls=7 open=1.0000,1.0000,1.0000 edge=0.8235,0.3765,0.2902 covered=0.2000,0.4000,0.6000 model=1.00,0.89,0.78,0.22,0.11,0.00
+CLIP one_one f=0.5000 verdict=applied clipped=1 samplers=15/14 calls=7 open=1.0000,1.0000,1.0000 edge=0.6431,0.5569,0.3765 covered=0.2000,0.4000,0.6000 model=1.00,0.78,0.56,0.44,0.22,0.00
 CHECK clip_core_one_one_applied PASS
 CHECK clip_core_one_one_open_half_unscaled PASS
 CHECK clip_core_one_one_covered_half_background PASS
 CHECK clip_core_one_one_soft_edge PASS
 CHECK clip_core_one_one_state_restored PASS
-CLIP srcalpha_invsrcalpha f=0.5000 verdict=applied clipped=1 samplers=15/14 calls=7 open=0.5020,0.5020,0.5020 edge=0.4353,0.2667,0.2353 covered=0.2000,0.4000,0.6000 model=1.00,0.89,0.78,0.22,0.11,0.00
+CLIP srcalpha_invsrcalpha f=0.5000 verdict=applied clipped=1 samplers=15/14 calls=7 open=0.5020,0.5020,0.5020 edge=0.3686,0.3333,0.2667 covered=0.2000,0.4000,0.6000 model=1.00,0.78,0.56,0.44,0.22,0.00
 CHECK clip_core_srcalpha_invsrcalpha_applied PASS
 CHECK clip_core_srcalpha_invsrcalpha_open_half_unscaled PASS
 CHECK clip_core_srcalpha_invsrcalpha_covered_half_background PASS
 CHECK clip_core_srcalpha_invsrcalpha_soft_edge PASS
 CHECK clip_core_srcalpha_invsrcalpha_state_restored PASS
-CLIP one_invsrcalpha f=0.5000 verdict=applied clipped=1 samplers=15/14 calls=7 open=0.9020,0.8000,0.7020 edge=0.7451,0.3569,0.2784 covered=0.2000,0.4000,0.6000 model=1.00,0.89,0.78,0.22,0.11,0.00
+CLIP one_invsrcalpha f=0.5000 verdict=applied clipped=1 samplers=15/14 calls=7 open=0.9020,0.8000,0.7020 edge=0.5882,0.5098,0.3569 covered=0.2000,0.4000,0.6000 model=1.00,0.78,0.56,0.44,0.22,0.00
 CHECK clip_core_one_invsrcalpha_applied PASS
 CHECK clip_core_one_invsrcalpha_open_half_unscaled PASS
 CHECK clip_core_one_invsrcalpha_covered_half_background PASS
 CHECK clip_core_one_invsrcalpha_soft_edge PASS
 CHECK clip_core_one_invsrcalpha_state_restored PASS
-CLIP one_one_core_f f=0.5000 verdict=applied clipped=1 samplers=15/14 calls=7 open=0.6000,0.7020,0.8000 edge=0.5098,0.2902,0.2431 covered=0.2000,0.4000,0.6000 model=1.00,0.89,0.78,0.22,0.11,0.00
+CLIP one_one_core_f f=0.5000 verdict=applied clipped=1 samplers=15/14 calls=7 open=0.6000,0.7020,0.8000 edge=0.4235,0.3765,0.2902 covered=0.2000,0.4000,0.6000 model=1.00,0.78,0.56,0.44,0.22,0.00
 CHECK clip_core_one_one_core_f_applied PASS
 CHECK clip_core_one_one_core_f_open_half_at_f PASS
 CHECK clip_core_one_one_core_f_covered_half_background PASS
@@ -149,12 +149,46 @@ CHECK clip_unknown_refused PASS
 CHECK clip_core_without_depth_refused PASS
 CHECK clip_no_per_draw_creation PASS
 CLIP_PAIRS pairs=2 vertex_shaders_created=1
+JITTER_PHASES 0:0.0000,-0.1667 1:-0.2500,0.1667 2:0.2500,-0.3889 3:-0.3750,-0.0556 4:0.1250,0.2778 5:-0.1250,-0.2778 6:0.3750,0.0556 7:-0.4375,0.3889
+JITTER_PHASE axis=x index=0 jx=0.0000 jy=-0.1667 corrected=0.56250 uncorrected=0.56250 unjittered=0.56250 twin_corrected=18 twin_uncorrected=18 valid=1.000
+JITTER_PHASE axis=x index=1 jx=-0.2500 jy=0.1667 corrected=0.56250 uncorrected=0.53125 unjittered=0.56250 twin_corrected=18 twin_uncorrected=17 valid=1.000
+JITTER_PHASE axis=x index=2 jx=0.2500 jy=-0.3889 corrected=0.56250 uncorrected=0.56250 unjittered=0.56250 twin_corrected=18 twin_uncorrected=18 valid=1.000
+JITTER_PHASE axis=x index=3 jx=-0.3750 jy=-0.0556 corrected=0.56250 uncorrected=0.53125 unjittered=0.56250 twin_corrected=18 twin_uncorrected=17 valid=1.000
+JITTER_PHASE axis=x index=4 jx=0.1250 jy=0.2778 corrected=0.56250 uncorrected=0.56250 unjittered=0.56250 twin_corrected=18 twin_uncorrected=18 valid=1.000
+JITTER_PHASE axis=x index=5 jx=-0.1250 jy=-0.2778 corrected=0.56250 uncorrected=0.56250 unjittered=0.56250 twin_corrected=18 twin_uncorrected=18 valid=1.000
+JITTER_PHASE axis=x index=6 jx=0.3750 jy=0.0556 corrected=0.56250 uncorrected=0.56250 unjittered=0.56250 twin_corrected=18 twin_uncorrected=18 valid=1.000
+JITTER_PHASE axis=x index=7 jx=-0.4375 jy=0.3889 corrected=0.56250 uncorrected=0.53125 unjittered=0.56250 twin_corrected=18 twin_uncorrected=17 valid=1.000
+JITTER_VISIBILITY axis=x edge=164.703 unjittered=0.56250 corrected_invariant=1 uncorrected_distinct=2
+CHECK jitter_x_corrected_invariant PASS
+CHECK jitter_x_uncorrected_varies PASS
+JITTER_PHASE axis=y index=0 jx=0.0000 jy=-0.1667 corrected=0.37500 uncorrected=0.37500 unjittered=0.37500 twin_corrected=12 twin_uncorrected=12 valid=1.000
+JITTER_PHASE axis=y index=1 jx=-0.2500 jy=0.1667 corrected=0.37500 uncorrected=0.37500 unjittered=0.37500 twin_corrected=12 twin_uncorrected=12 valid=1.000
+JITTER_PHASE axis=y index=2 jx=0.2500 jy=-0.3889 corrected=0.37500 uncorrected=0.37500 unjittered=0.37500 twin_corrected=12 twin_uncorrected=12 valid=1.000
+JITTER_PHASE axis=y index=3 jx=-0.3750 jy=-0.0556 corrected=0.37500 uncorrected=0.37500 unjittered=0.37500 twin_corrected=12 twin_uncorrected=12 valid=1.000
+JITTER_PHASE axis=y index=4 jx=0.1250 jy=0.2778 corrected=0.37500 uncorrected=0.37500 unjittered=0.37500 twin_corrected=12 twin_uncorrected=12 valid=1.000
+JITTER_PHASE axis=y index=5 jx=-0.1250 jy=-0.2778 corrected=0.37500 uncorrected=0.37500 unjittered=0.37500 twin_corrected=12 twin_uncorrected=12 valid=1.000
+JITTER_PHASE axis=y index=6 jx=0.3750 jy=0.0556 corrected=0.37500 uncorrected=0.37500 unjittered=0.37500 twin_corrected=12 twin_uncorrected=12 valid=1.000
+JITTER_PHASE axis=y index=7 jx=-0.4375 jy=0.3889 corrected=0.37500 uncorrected=0.40625 unjittered=0.37500 twin_corrected=12 twin_uncorrected=13 valid=1.000
+JITTER_VISIBILITY axis=y edge=82.153 unjittered=0.37500 corrected_invariant=1 uncorrected_distinct=2
+CHECK jitter_y_corrected_invariant PASS
+CHECK jitter_y_uncorrected_varies PASS
+CLIP_JITTER_PHASE index=0 jx=0.0000 silhouette=165 row=1.0000,0.8235,0.6431,0.5569,0.3765,0.2000 model=1
+CLIP_JITTER_PHASE index=1 jx=-0.2500 silhouette=164 row=1.0000,0.8235,0.6431,0.5569,0.3765,0.2000 model=1
+CLIP_JITTER_PHASE index=2 jx=0.2500 silhouette=165 row=1.0000,0.8235,0.6431,0.5569,0.3765,0.2000 model=1
+CLIP_JITTER_PHASE index=3 jx=-0.3750 silhouette=164 row=1.0000,0.8235,0.6431,0.5569,0.3765,0.2000 model=1
+CLIP_JITTER_PHASE index=4 jx=0.1250 silhouette=165 row=1.0000,0.8235,0.6431,0.5569,0.3765,0.2000 model=1
+CLIP_JITTER_PHASE index=5 jx=-0.1250 silhouette=165 row=1.0000,0.8235,0.6431,0.5569,0.3765,0.2000 model=1
+CLIP_JITTER_PHASE index=6 jx=0.3750 silhouette=165 row=1.0000,0.8235,0.6431,0.5569,0.3765,0.2000 model=1
+CLIP_JITTER_PHASE index=7 jx=-0.4375 silhouette=164 row=1.0000,0.8235,0.6431,0.5569,0.3765,0.2000 model=1
+CLIP_JITTER edge=164.703 silhouettes=165,164 distinct=2 max_delta_measured=0.2255 max_delta_kernel=0.2222 max_delta_cross=0.5556 columns_moving=5
+CHECK clip_jitter_follows_rt2_silhouette PASS
+CHECK clip_jitter_step_bounded PASS
 CHECK before_reset_releases_targets PASS
-RESET held_before=22 held_after=11
+RESET held_before=24 held_after=11
 CHECK reset_pending_refused PASS
 CHECK native_reset PASS
 CHECK after_reset_seeds_and_matches PASS
 CLIP_RESET verdict=applied clipped=1 f=0.5000 open=1.0000,1.0000,1.0000 covered=0.2000,0.4000,0.6000 ps_created=0 vs_created=0 pairs=2
 CHECK clip_after_reset PASS
 CHECK detach_releases_everything PASS
-RESULT PASS checks=122 failures=0
+RESULT PASS checks=128 failures=0

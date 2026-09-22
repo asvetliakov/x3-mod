@@ -18,8 +18,12 @@
 //
 //   Refused (output untouched): ps_1_x and any non-pixel or unknown version, broken framing,
 //   relative addressing, predicated instructions, call / callnz / ret / label, an oC0 write
-//   inside flow control, oC0 not written in full, no free register. A program the device then
-//   rejects (ps_2_0 instruction or dependent-read limits) is the caller's refusal.
+//   inside flow control, oC0 not written in full, no free register, and (ps_2_0 / ps_2_x, counted
+//   per the ps_2_0 slot table: lrp 2, pow / nrm 3, sincos 8, m3x3 3, m4x4 4, if / loop / rep 3 ...)
+//   a program whose slots plus the wrap's (step 1: 3 arithmetic + 1 texture; clip: 32 + 10) would
+//   exceed 64 arithmetic or 32 texture: wined3d does not enforce those limits, native D3D9 does,
+//   and the same program must be treated alike on both. ps_2_x is held to the ps_2_0 floor (the
+//   caps that raise it are not known here). A program the device still rejects is the caller's refusal.
 //
 // 2. Clip pair (step 2), vs_2_0 / vs_2_x with ps_2_0 / ps_2_x: the core bodies of the chain are clipped
 //    per pixel against the route's scene depth (RT2, -1 sentinel = open), with a soft edge.
@@ -32,11 +36,16 @@
 //   (sun_occlusion::core::classify_body). `matrix_register` returns K.
 //   pixel: the step-1 wrap plus, before the multiply,
 //     dcl tn                            ; the clip position
-//     def cC, 0.5, -0.5, 0.5 + dx/2, 0.5 + dy/2  /  def cD, dx, dy, 1/9, 0   ; dx, dy: one RT2 pixel in uv
+//     def cC, 0.5, -0.5, 0.5 + dx/2, 0.5 + dy/2   ; dx, dy: one RT2 pixel in uv
+//     def cD, 2dx, dy, dx, 2dy  /  def cW, -2dx, dy, -dx, 2dy   ; and cK.w = 1/9, the tap weight
 //     uv = (tn.xy / tn.w) * (0.5, -0.5) + (0.5 + dx/2, 0.5 + dy/2)   ; the clip-derived uv of a fragment is a texel
 //                                        edge under D3D9's pixel-centre rule; the half texel lands on the centre
-//     nine taps of sD (RT2) at uv and uv +- k (dx, 0), uv +- k (0, dy), k = 1, 2 (every tap on a texel
-//     centre): open_px = ninths with .r < 0, a soft edge four pixels wide
+//     nine taps of sD (RT2), every one on a texel centre and every offset one signed swizzle of cD / cW from the
+//     fragment's uv: the fragment and the eight knight moves uv + (+-2 dx, +-dy), uv + (+-dx, +-2 dy), one ninth
+//     each: open_px = ninths with .r < 0. The kernel is chosen so that a one-texel shift of a silhouette (RT2 is
+//     on the jittered raster) moves any pixel's open_px by at most 2/9 = 0.222 along an axis (each column / row
+//     of taps) and along a 45-degree diagonal (each dx + dy = const line), against 5/9 for the former +-1 / +-2
+//     cross; across a vertical edge the profile is 1, 7/9, 5/9, 4/9, 2/9, 0 over five columns.
 //     rO.<mask> *= open_px            (core_f: open_px * f)
 //   Counts for a program like the lens scene's (8 arithmetic, 1 texture): 40 arithmetic, 11 texture
 //   instructions, 9 temporaries, dependent-read depth 1: inside ps_2_0's limits (64 / 32 / 12 / 4), so
@@ -48,7 +57,9 @@
 namespace x3m::renderer {
 enum class LensVisibilityScale : std::uint8_t { Rgb = 1, Alpha = 2, Both = 3 }; // sun_occlusion::core::Scale values
 enum class LensVisibilityResult { Applied, InvalidInput, UnsupportedVersion, UnsupportedShader, NoOutput, ResourceLimit, AllocationFailure };
-struct LensVisibilityLayout { unsigned sampler = 0, constant = 0, output_temporary = 0, fetch_temporary = 0, depth_sampler = 0; };
+// `constants`: every `def` register the wrap adds (K for the step-1 wrap; K, C, D, W for the clip pair; ~0u = unused). On
+// native D3D9 a `def` writes the device's constant file when the program is set, so the caller records and restores them.
+struct LensVisibilityLayout { unsigned sampler = 0, constant = 0, output_temporary = 0, fetch_temporary = 0, depth_sampler = 0; unsigned constants[4] = {~0u, ~0u, ~0u, ~0u}; };
 const char* lens_visibility_result_name(LensVisibilityResult) noexcept;
 LensVisibilityResult lens_visibility_pixel_variant(const std::uint32_t* original, std::size_t words, LensVisibilityScale scale,
                                                    std::vector<std::uint32_t>& output, LensVisibilityLayout* layout) noexcept;

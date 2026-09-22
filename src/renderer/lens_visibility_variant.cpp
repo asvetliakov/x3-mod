@@ -10,6 +10,10 @@ enum Opcode : std::uint32_t { Nop = 0, Mov = 1, Add = 2, Mul = 5, Rcp = 6, Dp4 =
                               Def = 81, DefI = 82, DefB = 83, BreakP = 96 };
 enum Register : unsigned { Temp = 0, Const = 2, Texture = 3, RastOut = 4, TexCrdOut = 6, ColorOut = 8, Sampler = 10, Const2 = 11, Const3 = 12, Const4 = 13 };
 constexpr std::uint32_t predicated = 1u << 28, relative = 1u << 13;
+constexpr float clip_tap_weight = 1.f / 9.f; // lens_visibility_variant.h, "Clip pair": the fragment and the eight knight moves, one ninth each
+// What the wraps add, counted from the emitted words (host test): the step-1 wrap mov / texld / mul / mov, the clip pair the f fetch,
+// the three uv instructions, nine taps of texld + cmp (+ add for eight of them) and the three tail instructions.
+constexpr unsigned wrap_arithmetic_slots = 3, wrap_texture_slots = 1, clip_arithmetic_slots = 32, clip_texture_slots = 10;
 unsigned register_type(std::uint32_t token) noexcept { return ((token >> 28) & 7u) | ((token >> 8) & 0x18u); }
 unsigned register_number(std::uint32_t token) noexcept { return token & 0x7ffu; }
 std::uint32_t float_bits(float f) noexcept { std::uint32_t b = 0; std::memcpy(&b, &f, 4); return b; }
@@ -20,6 +24,25 @@ bool has_destination(std::uint32_t opcode) noexcept {
     default: return true;
     }
 }
+// ps_2_0 / ps_2_x instruction slots per opcode (the D3D9 ps_2_0 instruction table); texture instructions counted apart.
+// Opcodes outside the table (def, dcl, nop, comments) take none; opcodes this scan refuses are not reached.
+unsigned arithmetic_slots(std::uint32_t opcode) noexcept {
+    switch (opcode) {
+    case 18: return 2;                                  // lrp
+    case 33: return 2;                                  // crs
+    case 24: return 2;                                  // m3x2
+    case 23: case 21: return 3;                         // m3x3, m4x3
+    case 22: case 20: return 4;                         // m3x4, m4x4
+    case 36: case 32: return 3;                         // nrm, pow
+    case 37: return 8;                                  // sincos
+    case 86: case 87: return 2;                         // dsx, dsy
+    case If: case Ifc: case Loop: case Rep: case BreakC: return 3;
+    case EndLoop: case EndRep: return 2;
+    case Nop: case Dcl: case Def: case DefI: case DefB: case 47: case 48: case Label: return 0;
+    default: return 1;
+    }
+}
+unsigned texture_slots(std::uint32_t opcode) noexcept { return opcode == TexLd || opcode == 65 ? 1u : opcode == 93 ? 3u : 0u; } // texld / texldb / texldp, texkill, texldd
 // Highest index below `limit` whose bit is clear; `limit` when none.
 unsigned highest_free(const std::uint32_t* bits, unsigned limit, unsigned skip = ~0u, unsigned skip2 = ~0u) noexcept {
     for (unsigned i = limit; i-- > 0;) if (i != skip && i != skip2 && !(bits[i >> 5] >> (i & 31) & 1u)) return i;
@@ -29,6 +52,7 @@ unsigned highest_free(const std::uint32_t* bits, unsigned limit, unsigned skip =
 struct PixelScan {
     bool sm3 = false;
     unsigned temporaries = 12, constants = 32, samplers = 16;
+    unsigned arithmetic_slots = 0, texture_slots = 0; // ps_2_x: counted per the ps_2_0 instruction-slot table
     std::uint32_t used_temp[1]{}, used_sampler[1]{}, used_const[7]{}, used_texcoord[1]{};
     std::size_t body = 0, end = 0;
 };
@@ -72,6 +96,7 @@ LensVisibilityResult scan_pixel(const std::uint32_t* original, std::size_t words
         case DefI: case DefB: break; // integer / boolean registers: never chosen below
         case Dcl: if (length != 2 || !note(p[1])) return LensVisibilityResult::UnsupportedShader; break;
         default: {
+            if (texture_slots(opcode)) scan.texture_slots += texture_slots(opcode); else scan.arithmetic_slots += arithmetic_slots(opcode);
             for (std::size_t i = 0; i < length; ++i) if (!note(p[i])) return LensVisibilityResult::UnsupportedShader;
             if (length && has_destination(opcode) && register_type(p[0]) == ColorOut && register_number(p[0]) == 0) {
                 if (depth) return LensVisibilityResult::UnsupportedShader;
@@ -128,31 +153,43 @@ LensVisibilityResult build_pixel(const std::uint32_t* original, std::size_t word
     chosen.fetch_temporary = highest_free(scan.used_temp, scan.temporaries, chosen.output_temporary);
     if (chosen.sampler == scan.samplers || chosen.constant == scan.constants || chosen.output_temporary == scan.temporaries || chosen.fetch_temporary == scan.temporaries)
         return LensVisibilityResult::ResourceLimit;
-    // The clip's extra registers: RT2's sampler, two constants, four temporaries (uv, sum, tap, offset uv).
-    unsigned C = 0, Dc = 0, Q = 0, S = 0, T2 = 0, E = 0;
+    // The ps_2_0 budget the wrapped program must meet on native D3D9 (see the header): the wrap's own slots are fixed.
+    if (!scan.sm3 && (scan.arithmetic_slots + (clip ? clip_arithmetic_slots : wrap_arithmetic_slots) > 64 || scan.texture_slots + (clip ? clip_texture_slots : wrap_texture_slots) > 32))
+        return LensVisibilityResult::ResourceLimit;
+    chosen.constants[0] = chosen.constant;
+    // The clip's extra registers: RT2's sampler, three constants, four temporaries (uv, sums, tap, offset uv).
+    unsigned C = 0, Dc = 0, Wc = 0, Q = 0, S = 0, T2 = 0, E = 0;
     if (clip) {
         chosen.depth_sampler = highest_free(scan.used_sampler, scan.samplers, chosen.sampler);
         C = highest_free(scan.used_const, scan.constants, chosen.constant); Dc = highest_free(scan.used_const, scan.constants, chosen.constant, C);
+        std::uint32_t taken_const[7]; std::memcpy(taken_const, scan.used_const, sizeof taken_const);
+        for (unsigned c : {chosen.constant, C, Dc}) if (c < scan.constants) taken_const[c >> 5] |= 1u << (c & 31);
+        Wc = highest_free(taken_const, scan.constants);
         Q = highest_free(scan.used_temp, scan.temporaries, chosen.output_temporary, chosen.fetch_temporary);
         std::uint32_t taken[1] = {scan.used_temp[0] | (1u << chosen.output_temporary) | (1u << chosen.fetch_temporary) | (1u << Q)};
         S = highest_free(taken, scan.temporaries); if (S < scan.temporaries) taken[0] |= 1u << S;
         T2 = highest_free(taken, scan.temporaries); if (T2 < scan.temporaries) taken[0] |= 1u << T2;
         E = highest_free(taken, scan.temporaries);
-        if (chosen.depth_sampler == scan.samplers || C == scan.constants || Dc == scan.constants || Q == scan.temporaries || S == scan.temporaries || T2 == scan.temporaries || E == scan.temporaries)
+        if (chosen.depth_sampler == scan.samplers || C == scan.constants || Dc == scan.constants || Wc == scan.constants || Q == scan.temporaries || S == scan.temporaries || T2 == scan.temporaries || E == scan.temporaries)
             return LensVisibilityResult::ResourceLimit;
+        chosen.constants[1] = C; chosen.constants[2] = Dc; chosen.constants[3] = Wc;
     }
     const std::uint32_t K = chosen.constant, Sm = chosen.sampler, O = chosen.output_temporary, T = chosen.fetch_temporary;
     std::vector<std::uint32_t> result;
-    try { result.reserve(words + 9 + 15 + (clip ? 64 : 0)); } catch (const std::bad_alloc&) { return LensVisibilityResult::AllocationFailure; }
+    try { result.reserve(words + 9 + 15 + (clip ? 80 : 0)); } catch (const std::bad_alloc&) { return LensVisibilityResult::AllocationFailure; }
     result.insert(result.end(), original, original + scan.body);
     const std::uint32_t half = float_bits(.5f), one = float_bits(1.f);
-    for (std::uint32_t w : {0x05000051u, 0xa00f0000u | K, half, half, 0u, one, 0x0200001fu, 0x90000000u, 0xa00f0800u | Sm}) result.push_back(w);
+    // cK.w: 1 (unused) for the step-1 wrap, the clip's tap weight for the clip pair (cK.z = 0 is the cmp threshold).
+    for (std::uint32_t w : {0x05000051u, 0xa00f0000u | K, half, half, 0u, clip ? float_bits(clip_tap_weight) : one, 0x0200001fu, 0x90000000u, 0xa00f0800u | Sm}) result.push_back(w);
     if (clip) {
         // cC = (0.5, -0.5, 0.5 + dx / 2, 0.5 + dy / 2): the fragment's clip-derived uv is a texel EDGE under D3D9's pixel
         // centre convention (pixel i sits at NDC (i + 0.5) / W, so uv = i / W after the shift); the half texel puts the
         // centre tap on the texel centre on any implementation.
+        // cD = (2 dx, dy, dx, 2 dy) and cW = (-2 dx, dy, -dx, 2 dy): every knight-move offset is one signed swizzle of cD or cW, so every
+        // tap addresses from the fragment's uv directly (no tap depends on the one before).
         for (std::uint32_t w : {0x05000051u, 0xa00f0000u | C, half, float_bits(-.5f), float_bits(.5f + .5f * dx_u), float_bits(.5f + .5f * dy_v),
-                                0x05000051u, 0xa00f0000u | Dc, float_bits(dx_u), float_bits(dy_v), float_bits(1.f / 9.f), 0u,
+                                0x05000051u, 0xa00f0000u | Dc, float_bits(2.f * dx_u), float_bits(dy_v), float_bits(dx_u), float_bits(2.f * dy_v),
+                                0x05000051u, 0xa00f0000u | Wc, float_bits(-2.f * dx_u), float_bits(dy_v), float_bits(-dx_u), float_bits(2.f * dy_v),
                                 0x0200001fu, 0x90000000u, 0xa00f0800u | chosen.depth_sampler,
                                 0x0200001fu, 0x80000000u, 0xb00f0000u | texcoord}) result.push_back(w);
     }
@@ -164,22 +201,24 @@ LensVisibilityResult build_pixel(const std::uint32_t* original, std::size_t word
         for (std::uint32_t w : {0x02000006u, dst_temp(Q, 0x8), src_texcoord(texcoord, 0xff),
                                 0x03000005u, dst_temp(Q, 0xf), src_texcoord(texcoord), src_temp(Q, 0xff),
                                 0x04000004u, dst_temp(Q, 0xf), src_temp(Q), src_const(C, swz(0, 1, 2, 2)), src_const(C, swz(2, 3, 2, 2))}) result.push_back(w);
-        // Nine taps (the fragment, one and two steps along +-x and +-y; the step is a whole pixel, so every tap
-        // sits on a texel centre): open = 1/9 where .r < 0 (the sentinel), else 0; summed into rS.x.
-        const std::uint32_t zero = src_const(K, 0xaa), ninth = src_const(Dc, 0xaa);
-        auto tap = [&](std::uint32_t source, bool first) {
-            for (std::uint32_t w : {0x03000042u, dst_temp(T2, 0xf), source, src_sampler(chosen.depth_sampler),
-                                    0x04000058u, dst_temp(first ? S : T2, 0xf), src_temp(T2, 0x00), zero, ninth}) result.push_back(w);
-            if (!first) for (std::uint32_t w : {0x03000002u, dst_temp(S, 0xf), src_temp(S), src_temp(T2)}) result.push_back(w);
-        };
-        tap(src_temp(Q), true);
-        const unsigned dx0 = swz(0, 3, 3, 3), zdy = swz(3, 1, 3, 3);
-        for (auto [swizzle, negate] : {std::pair{dx0, false}, std::pair{dx0, true}, std::pair{zdy, false}, std::pair{zdy, true}}) {
-            for (std::uint32_t w : {0x03000002u, dst_temp(E, 0xf), src_temp(Q), src_const(Dc, swizzle, negate)}) result.push_back(w);
-            tap(src_temp(E), false);
-            for (std::uint32_t w : {0x03000002u, dst_temp(E, 0xf), src_temp(E), src_const(Dc, swizzle, negate)}) result.push_back(w);
-            tap(src_temp(E), false);
-        }
+        // Nine taps on texel centres: the fragment and the eight knight moves (+-2, +-1) / (+-1, +-2) pixels: open = 1/9 (cK.w) where
+        // .r < 0 (the sentinel), else 0; summed into rS.x.
+        const std::uint32_t zero = src_const(K, 0xaa), ninth = src_const(K, 0xff);
+        for (std::uint32_t w : {0x03000042u, dst_temp(T2, 0xf), src_temp(Q), src_sampler(chosen.depth_sampler), 0x04000058u, dst_temp(S, 0xf), src_temp(T2, 0x00), zero, ninth}) result.push_back(w);
+        struct Step { std::uint32_t constant; unsigned swizzle; bool negate; };
+        const Step steps[8] = {{Dc, swz(0, 1, 0, 1), false},   // (+2, +1)
+                               {Dc, swz(0, 1, 0, 1), true},    // (-2, -1)
+                               {Wc, swz(0, 1, 0, 1), false},   // (-2, +1)
+                               {Wc, swz(0, 1, 0, 1), true},    // (+2, -1)
+                               {Dc, swz(2, 3, 2, 3), false},   // (+1, +2)
+                               {Dc, swz(2, 3, 2, 3), true},    // (-1, -2)
+                               {Wc, swz(2, 3, 2, 3), false},   // (-1, +2)
+                               {Wc, swz(2, 3, 2, 3), true}};   // (+1, -2)
+        for (const Step& st : steps)
+            for (std::uint32_t w : {0x03000002u, dst_temp(E, 0xf), src_temp(Q), src_const(st.constant, st.swizzle, st.negate),
+                                    0x03000042u, dst_temp(T2, 0xf), src_temp(E), src_sampler(chosen.depth_sampler),
+                                    0x04000058u, dst_temp(T2, 0xf), src_temp(T2, 0x00), zero, ninth,
+                                    0x03000002u, dst_temp(S, 0xf), src_temp(S), src_temp(T2)}) result.push_back(w);
         // rT.y = open_px, or open_px * f when the caller asks for the product (X3M_SUN_OCCLUSION_CORE_F).
         if (core_f) for (std::uint32_t w : {0x03000005u, dst_temp(T, 0x2), src_temp(T, 0x55), src_temp(S, 0x00)}) result.push_back(w);
         else for (std::uint32_t w : {0x02000001u, dst_temp(T, 0x2), src_temp(S, 0x00)}) result.push_back(w);
