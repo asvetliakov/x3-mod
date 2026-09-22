@@ -1,0 +1,227 @@
+{
+ "date": "2026-09-22",
+ "flight": "/tmp/x3-bottleX3-run223",
+ "session_log": "session-20260922-040504-216.log",
+ "bottle": "X3",
+ "dll": "b0cde491 (Run63, commit 5112bb43)",
+ "flags": [
+  "--sun-occlusion",
+  "--sun-occlusion-log",
+  "--taa-debug",
+  "hdr",
+  "taa",
+  "sun shadow lane",
+  "X3M_MOTION_FRAME_LOG=1"
+ ],
+ "install": {
+  "patched": 1,
+  "reason": "ok",
+  "device_attached": 1,
+  "blocked_lines": 0,
+  "failed_lines": 0,
+  "foreign_thread_lines": 0
+ },
+ "line_counts": {
+  "sun_probe": 115019,
+  "sun_visibility": 35812,
+  "sun_lens_draw": 132796,
+  "sun_lens_bracket": 13152
+ },
+ "sun_records": {
+  "groups": {
+   "1": {
+    "owner": "2ac52318",
+    "frames": "1391-8029"
+   },
+   "5": {
+    "owner": "334fe888",
+    "frames": "8965-33088"
+   }
+  },
+  "owner_layer": 15,
+  "owner_flags270": "0x00400135",
+  "main_view": "334fe0f0",
+  "main_layer": 16,
+  "main_flags270": "0x0085492d",
+  "own_probes": 0,
+  "ready_probes": 0,
+  "hidden_verdicts_by_layer": {
+   "16": 1872,
+   "other": 0
+  },
+  "size_saturated_at_acc200": {
+   "frames": 86174,
+   "value": 65535
+  },
+  "size_at_acc100": 32767
+ },
+ "non_sun_records": {
+  "group": 25,
+  "owner": "main view",
+  "frames": "25798-34292",
+  "ready_probes": 49,
+  "answered_frames": 49,
+  "wrapped_frames": 25,
+  "dropped_bracket_frames": 24,
+  "verdict_applied_draws": 50,
+  "variants": 1
+ },
+ "bursts": {
+  "clear_18727-18758": {
+   "centre_px": [
+    595,
+    270
+   ],
+   "uv": [
+    0.4649,
+    0.3529
+   ],
+   "frames": 32,
+   "centre_open_frames": 32,
+   "open_r32_min": 1.0,
+   "open_r32_max": 1.0,
+   "open_r64_min": 0.979,
+   "open_r64_max": 0.992,
+   "acc": 200,
+   "vanilla_hidden": 0,
+   "draws": 10,
+   "wrapped": 0,
+   "skip": "record"
+  },
+  "half_19818-19849": {
+   "centre_px": [
+    585,
+    270
+   ],
+   "uv": [
+    0.4572,
+    0.3526
+   ],
+   "frames": 32,
+   "centre_open_frames": 32,
+   "open_r32_min": 0.589,
+   "open_r32_max": 0.618,
+   "open_r64_min": 0.559,
+   "open_r64_max": 0.573,
+   "acc": 200,
+   "vanilla_hidden": 0,
+   "draws": 10,
+   "wrapped": 0,
+   "skip": "record"
+  },
+  "covered_20558-20589": {
+   "centre_px": [
+    585,
+    270
+   ],
+   "uv": [
+    0.4572,
+    0.3526
+   ],
+   "frames": 32,
+   "centre_open_frames": 0,
+   "open_r32_min": 0.508,
+   "open_r32_max": 0.523,
+   "open_r64_min": 0.525,
+   "open_r64_max": 0.532,
+   "acc": 0,
+   "vanilla_hidden": 1,
+   "hidden_by": "layer 16 cross-view probe",
+   "draws": 0,
+   "wrapped": 0,
+   "skip": "record"
+  }
+ },
+ "sun_hidden_intervals": [
+  "8965-9202",
+  "12605-12909",
+  "13247-13374",
+  "20095-20260",
+  "20398-20773",
+  "21588-21689",
+  "21855-21940",
+  "24812-24817",
+  "32339-"
+ ],
+ "lens_draw_fingerprint_group5": {
+  "vs": "d5e1c75351ed3f04",
+  "ps": "8360f422de08b5bd",
+  "ps_model": "ps_2_0",
+  "blend": "ONE/ONE add",
+  "zenable": 0,
+  "zwrite": 0,
+  "alphatest": 0,
+  "fog": 0,
+  "colorwrite": "f",
+  "rt0": "1280x768 X8R8G8B8",
+  "draws": [
+   {
+    "i": 0,
+    "prims": 8,
+    "tex0": "5d01d640 1024 X8R8G8B8"
+   },
+   {
+    "i": 1,
+    "prims": 8,
+    "tex0": "5d01d640"
+   },
+   {
+    "i": 2,
+    "prims": 2,
+    "tex0": "5d01d780 1024 X8R8G8B8"
+   },
+   {
+    "i": 3,
+    "prims": 2,
+    "tex0": "5d01d780"
+   },
+   {
+    "i": 4,
+    "prims": 2,
+    "tex0": "5d01d6e0 1024 X8R8G8B8"
+   },
+   {
+    "i": 5,
+    "prims": 8,
+    "tex0": "5d01d500 1024 DXT1"
+   },
+   {
+    "i": 6,
+    "prims": 8,
+    "tex0": "5d01d640"
+   },
+   {
+    "i": 7,
+    "prims": 8,
+    "tex0": "5d01d500"
+   },
+   {
+    "i": 8,
+    "prims": 2,
+    "tex0": "5d01d5a0 512 DXT1"
+   },
+   {
+    "i": 9,
+    "prims": 8,
+    "tex0": "5d01d500"
+   }
+  ]
+ },
+ "hdr_at_record_uv": {
+  "frame": 18740,
+  "mean_r24": 0.075,
+  "sky_reference_mean": 0.222,
+  "body31_visible": false
+ },
+ "projection": {
+  "m00": 0.8,
+  "m11": 1.3333,
+  "fov": 16384,
+  "scale_x": 81920,
+  "uv_mapping_consistent": true,
+  "uv_checked_against_chain_picture": false
+ },
+ "dumps_contain_lens_chain": false,
+ "conclusion": "override never eligible for the sun record (owner is the layer-15 background view; the operative probe is the main view cross-view re-probe); both reported defects are vanilla; record+0x34 saturates for the sun so the derived radius is unusable",
+ "ledger": "docs/verification/sun-occlusion.md#2026-09-22-run-223-triage"
+}

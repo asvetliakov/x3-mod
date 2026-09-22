@@ -103,3 +103,94 @@ Still unverified: everything in flight, native Windows, the hold and drop paths 
 (they sit behind the route and have no fixture of their own; `core::Hold` and the pass are tested), cost
 in the game.
 
+
+## 2026-09-22: Run 223 triage (first flight, Run63 DLL b0cde491 from 5112bb43): the override never touched the sun
+
+Flight `/tmp/x3-bottleX3-run223`, session A with `--sun-occlusion --sun-occlusion-log --taa-debug`, HDR, TAA, sun
+shadow lane. Three F8 bursts: 18727-18758 (clear), 19818-19849 (about half covered), 20558-20589 ("just fully
+covered"). Compact record: `verification/results/run223-sun-occlusion-triage.json`. Diagnosis only; nothing changed.
+
+**A. The override was installed and never active for the sun (measured).** `sun_occlusion patched=1 reason=ok`,
+`sun_occlusion_device attached=1`, no `sun_occlusion_blocked`, `_failed` or `_foreign_thread` line in the session.
+All 115,019 `sun_probe` lines of the sun records (groups 1 and 5, 103,364 lines) carry `own=0 ready=0`: the sun
+record is owned by view `334fe888` (layer 15, `+0x270 = 0x00400135`, the `0x400000` background/nebula-star regime of
+camera-state-and-frame-routine.md), while the main view resolved through `cockpit+0x58` is `334fe0f0` (layer 16,
+`0x0085492d`). `decide()` requires `record_owner == view == main_view`, which the sun record never satisfies. Each
+frame the record is probed eight times (layers 15, 16, 20, 30, 61, 100, 195, 200); the **only probe that ever hid it
+is the main view's cross-view re-probe** (`layer=16 vanilla=1`: 1872 of 1872 sun hidden verdicts; the owner's own
+probe answered 0 in every frame, the later views always 0). RE note section 14 expected the rect test to reject
+cross-view probes; for the background view and the main view the rects and cameras coincide, so the cross probe is
+the operative one. Consequences in all 96 burst frames: `sun_visibility skip=record single=0 answered=0`, every
+`sun_lens_draw verdict=not_ready`, `sun_lens_bracket wrapped=0 dropped=0`. Both reported defects are therefore
+vanilla behaviour observed with the feature idle, not a fade artefact. `f_raw` for the sun does not exist (the
+pass never ran for it), so body-31 self-occlusion is unanswered by the log; the HDR dump has no emission at the
+record position (mean 0.08 over r = 24 px against a sky reference of 0.22), so in this sector no in-scene card is
+visible there and the "sun" the user sees is the lens chain alone.
+
+The override did answer later in the session (frames 25798-34292) for `group=25` records **owned by the main view**
+(non-TSuns lens sources, up to three per frame, sizes 5,779-18,594): 49 `ready=1` probes, 25 frames with `wrapped=2`
+(`verdict=applied`, ps `8360f422de08b5bd` ps_2_0, ONE/ONE -> rgb scale, one variant), and **24 frames with `drop=1`**
+where the first record was answered and a second record appeared later in the same frame (`skip=record`), so the
+whole lens bracket was dropped for that frame: a one-frame flicker of every lens flare on screen, the design's
+"second sun" case triggered by ordinary ship flares. Not reported by the user, real.
+
+**B. Where the chain vanished (measured from RT2 `depth_1_*.rgba32f` .r, sentinel -1 = open).** Record uv from
+`0.5 + x/65536, 0.5 - y/65536` (consistent with the frame's projection `m00 = 0.8 = cot/scale_x`, `m11 = 1.333`,
+`scale_x = 81920`, fov 16384; not checked against a picture of the chain, which no dump contains, see C). Burst 1:
+centre (595, 270), open fraction 1.000 within r = 32 px in all 32 frames. Burst 2: centre (585, 270) open in all 32
+frames, open fraction 0.589-0.618 within r = 32 (0.56 within r = 64); the vanilla probe answered visible, `acc=200`,
+10 draws at full strength. Burst 3: same record position (`x=-2802 y=9663`, the ship did not turn; the station edge
+moved), centre covered in all 32 frames, open fraction 0.508-0.523 within r = 32; `layer=16 vanilla=1`, `acc=0
+size=0`, no lens draws (chain destroyed by the ramp). Hidden intervals of the sun record over the session:
+8965-9202, 12605-12909, 13247-13374, 20095-20260, 20398-20773 (contains burst 3), 21588-21689, 21855-21940,
+24812-24817, 32339-. So the pop happens exactly when the swept probe at the disc centre hits (about 50 % of a
+32-64 px disc covered), as RE note section 4 describes; nothing else hid it (no rect refusal, no `0x8000000`, no
+readiness gap: the override was simply not eligible).
+
+**C. Why the chain draws over the station (measured fingerprint).** Group 5 issues 10 draws per frame, all
+`vs d5e1c75351ed3f04 / ps 8360f422de08b5bd` (ps_2_0), `ALPHABLENDENABLE=1 SRCBLEND=ONE DESTBLEND=ONE op=ADD`,
+**`ZENABLE=0`**, `ZWRITEENABLE=0`, alpha test off, fog off, colour write 0xf, RT0 the 1280x768 X8R8G8B8 back buffer:
+six octagon fans (8 triangles / 9 vertices; stage-0 textures `5d01d640` 1024^2 X8R8G8B8 at lens indices 0, 1, 6 and
+`5d01d500` 1024^2 DXT1 at 5, 7, 9) and four quads (2 triangles; `5d01d780` at 2, 3, `5d01d6e0` at 4, `5d01d5a0`
+512^2 DXT1 at 8). Additive, no depth test, drawn after the write-back: whatever the probe leaves alive paints over
+the station at full strength until the centre is covered. That is vanilla, and it is what the user saw; no draw was
+scaled in the bursts (`wrapped=0`), so "half strength" never happened and a brightness comparison at f = 0.5 is
+not possible from this flight. The `color_1` / `present_1` / `hdr_1` readbacks all precede the lens block
+(`0x004721b1` scene end, then write-back, then `0x00472491`), so no dump shows the chain; a Present-time back-buffer
+readback is needed before any look can be judged from files.
+
+**D. Recommendations.**
+
+1. *Step 1 fix, blocking:* the override must act on the **main view's probe of a record owned by a background-regime
+   view** (`view == main_view`, `record+0x8 != view`, `owner+0x270 & 0x400000`; log the owner's layer and flags),
+   and must leave records owned by the main view (group 25 and any other non-sun source) to the original
+   **without counting them** in `Ready::records`. This also removes the 24 dropped-bracket frames. The owner's own
+   probe and the later views' re-probes keep the original (all returned 0 in this flight; keep watching
+   `vanilla=1` at layers other than 16). Host test, hook fixture ("foreign record reaches the original" inverts for
+   this case) and the design note's "Main view only" paragraph change with it.
+2. *Step 1 fix, blocking:* `record+0x34` is **saturated at 0xffff x acc/200 for the sun** (86,174 of 86,174 frames
+   at acc 200, 32,767 at acc 100, both suns), so `core::footprint` would derive 0.4 u and clamp to the 0.25 u cap
+   (320 px half-width): `f` would fall long before the disc is touched. Treat `size >= 0xffff * acc / 200` as
+   unknown and use an explicit radius (`--sun-occlusion-radius` as an absolute fraction of the width, default
+   about 0.03-0.05 u, i.e. 40-60 px at 1280; calibrate from the Present-time readback of the next flight).
+3. *Diagnostic for the next flight:* a back-buffer readback at Present for burst frames (`lens_1_N.bgra8`) so the
+   chain is in the files; `sun_probe` with the owner's layer and flags; the sun lane's direction projected with the
+   scene camera beside the record uv.
+4. *Step 2, now that the draws are fingerprinted:* with one VS/PS pair for the whole chain and no `vPos` in ps_2_0,
+   per-pixel clipping needs a structural **vertex-shader wrap** too: redirect `oPos` to a temporary, then write it
+   to `oPos` and to a free output texcoord, and also emit the body's transformed origin (the sprite centre) in a
+   second free texcoord. The PS wrap then (a) computes the fragment's back-buffer uv from the first texcoord,
+   samples RT2 at 1-5 taps (soft edge over about 2 px) and forms `open_px`; (b) classifies the body from the second
+   texcoord against the latched sun uv: centre within about 2 px of the sun -> factor-1.0 body (core glow, rays,
+   streaks, cards): `out *= open_px * f`; centre collinear with the sun and the screen centre -> ghost: `out *= f`;
+   otherwise (another record's body) untouched, which also stops the sun's `f` from scaling ship flares. Ghosts
+   never clip. Cost: two texcoords per vertex on 10 draws of at most 9 vertices, at most 5 taps per fragment on the
+   factor-1 bodies, one more shader bind and one more texture bind per lens draw than today (5 -> 7 device calls),
+   variants built once per program pair. The engine's own depth-stencil is the cheaper alternative (force the
+   factor-1 bodies' depth to the far plane and enable `ZENABLE / LESS`), but it gives a hard edge and depends on the
+   depth buffer surviving the post-scene views; the RT2 path reuses what the visibility pass already binds. Body 31:
+   nothing for this sector (no in-scene emission at the record position); revisit only where a TPlanets sun scene
+   is present.
+
+Not verified here: the record -> uv mapping against a picture of the chain, any look of the fade (never engaged
+for the sun), cost of the lens bracket in the game.
