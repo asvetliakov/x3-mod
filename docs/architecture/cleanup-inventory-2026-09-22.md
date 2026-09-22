@@ -334,12 +334,22 @@ fixtures green on its own.
    test went with it and the native `tasklist` guard test was rewritten without
    it. Host suite after both batches: **229 modules / 2,259 tests green**,
    `--include-retired` 252 / 2,635 green.
-3. **Batch 3 — retired host tests** (G1, then G2): remove the 23 modules and
-   `retired_tests.py` itself, then the 11 retired-only probe assets. Check: full
-   host discovery; confirm `test_linear_emission_hull_gain`,
-   `test_linear_sun_share`, `test_linear_cutout_contract`,
-   `test_linear_emission_sm1_*` and `test_linear_emission_source_gain` still
-   pass, since they share the fixture harness. ~12,200 lines.
+3. **Batch 3 — retired host tests** (G1, G2 conservative pass) — **done
+   2026-09-22.** 28 files, **8,817 lines**: the 23 modules and
+   `retired_tests.py` (8,183) and four probe assets (634):
+   `linear_material_structure.cpp`, `linear_emission_structure.cpp`,
+   `material_exposure_structure.cpp`, `material_exposure_probe.cpp`. **Kept
+   against the inventory's list:** the three GPU/live runners, for the owner
+   to confirm; `run_linear_distance_fade.py` (imported by the kept
+   `run_linear_distance_fade_live.py`); `linear_distance_fade_structure.cpp` and
+   the probe copy of `linear_distance_fade_composite_inc.h` (built by
+   `build_linear_distance_fade.sh`); `material_exposure_reference.py` (imported
+   by the kept `test_xt_material_reference.py`). Two kept files depended on
+   deleted ones: `test_linear_emission_sm1_transformer.py` now carries its own
+   `f32`, and `run_linear_emission.py` no longer hashes the six deleted report
+   modules. `run_host_suite.py --include-retired` stays as a no-op; the 23
+   stale duration hints are gone. Host suite before and after: **233 modules /
+   2,311 tests green**; the seven harness-sharing modules 68 tests green.
 4. **Batch 4 — `--lod-scale`** (D). Check: `test_cull_small_parts*`,
    `verify_lod_scale_site.py` removal, one dry-run. ~550 lines.
 5. **Batch 5 — GTAO/SSAO chain** (C), keeping `ambient_occlusion_caps.h` under a

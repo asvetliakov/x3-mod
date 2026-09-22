@@ -1,0 +1,6 @@
+/tmp/x3-bottleX3-run244 3733+32: dark_sky=32505 d1-2=6767 (21%) d3-12=4775 (15%) d>=13=20963 (64%) mean_uncovered_frac=0.080
+/tmp/x3-bottleX3-run235 6967+32: dark_sky=56072 d1-2=18153 (32%) d3-12=10797 (19%) d>=13=27122 (48%) mean_uncovered_frac=0.199
+/tmp/x3-bottleX3-run249 3515+32: dark_sky=26056 d1-2=3320 (13%) d3-12=4155 (16%) d>=13=18581 (71%) mean_uncovered_frac=0.053
+/tmp/x3-bottleX3-run249 5538+32: dark_sky=26676 d1-2=1625 (6%) d3-12=4509 (17%) d>=13=20542 (77%) mean_uncovered_frac=0.008
+/tmp/x3-bottleX3-run249 4150+32: dark_sky=46872 d1-2=5842 (12%) d3-12=3165 (7%) d>=13=37865 (81%) mean_uncovered_frac=0.045
+/tmp/x3-bottleX3-run249 9267+32: dark_sky=38507 d1-2=2924 (8%) d3-12=1710 (4%) d>=13=33873 (88%) mean_uncovered_frac=0.031

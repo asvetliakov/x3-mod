@@ -1,0 +1,15 @@
+/tmp/x3-bottleX3-run244 3733: bin d1_sky cur_only% dark dark_cur_only
+  <2 116326 0.0 1682 0
+  2-3 15340 0.0 382 0
+  3-6 43339 0.1 391 0
+  >=6 55695 3.9 3443 0
+/tmp/x3-bottleX3-run249 3515: bin d1_sky cur_only% dark dark_cur_only
+  <2 123274 0.0 2025 0
+  2-3 22395 8.7 489 0
+  3-6 30810 90.6 38 0
+  >=6 57542 100.0 0 0
+/tmp/x3-bottleX3-run249 5538: bin d1_sky cur_only% dark dark_cur_only
+  <2 77790 0.0 290 0
+  2-3 16050 13.5 205 0
+  3-6 52003 96.6 39 0
+  >=6 133028 100.0 0 0

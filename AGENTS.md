@@ -78,8 +78,8 @@ settings.
   PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_*.py'
   ```
 
-  Both skip the retired feature modules; `--include-retired` runs them
-  ([host suite](docs/verification/host-suite.md)). Focused checks use the same
+  The retired feature modules were deleted on 2026-09-22 (cleanup batch 3);
+  `--include-retired` is a no-op ([host suite](docs/verification/host-suite.md)). Focused checks use the same
   `PYTHONPATH` with selected modules.
 
 ## Code rules

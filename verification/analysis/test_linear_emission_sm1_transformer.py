@@ -14,7 +14,14 @@ ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'tools/analysis'))
 import inspect_motion_output_profiles as shader
 from run_linear_emission import decode,sanitize
-from verification.analysis.test_linear_emission_transformer import f32
+
+
+def f32(value):
+    try:
+        return struct.unpack('<f', struct.pack('<f', value))[0]
+    except OverflowError:
+        return math.copysign(math.inf, value)
+
 
 SCALAR=('078494828322bcca','2ea025492d370c8e','a5c3495e27270b4a')
 BULLET=('84d3de8887c963c5','d4a26efb7c603931','ec1f5c4a2f4e1445')

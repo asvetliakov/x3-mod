@@ -1,0 +1,16 @@
+/tmp/x3-bottleX3-run249
+  f3520 geo=43508 edge=6795 med=0.90 p90=7.06
+  f3530 geo=44278 edge=7303 med=1.39 p90=14.39
+  f3540 geo=46772 edge=7294 med=1.85 p90=17.21
+/tmp/x3-bottleX3-run249
+  f4155 geo=94602 edge=11483 med=3.65 p90=7.83
+  f4165 geo=111209 edge=12615 med=4.81 p90=10.85
+  f4175 geo=128679 edge=11618 med=6.62 p90=12.54
+/tmp/x3-bottleX3-run249
+  f5543 geo=62293 edge=8141 med=3.72 p90=11.43
+  f5553 geo=98119 edge=11745 med=15.28 p90=35.74
+  f5563 geo=70009 edge=7374 med=5.22 p90=75.86
+/tmp/x3-bottleX3-run249
+  f9272 geo=39842 edge=4734 med=8.52 p90=10.25
+  f9282 geo=56968 edge=5210 med=10.01 p90=15.19
+  f9292 geo=59341 edge=5594 med=17.00 p90=21.20

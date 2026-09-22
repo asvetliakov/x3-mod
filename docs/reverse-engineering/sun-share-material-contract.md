@@ -208,7 +208,7 @@ without assuming exact reciprocal precision. Added instructions honor the
 Focused host acceptance command:
 
 ```sh
-PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_linear_sun_share verification.analysis.test_linear_material_fill
+PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_linear_sun_share verification.analysis.test_linear_material_fill (deleted in cleanup batch 3, 2026-09-22; historical command: test_linear_material_fill)
 ```
 
 Coverage: 108 originals / 152 sun MADs, both depth modes and fill 0/.06 produce

@@ -84,7 +84,7 @@ stateblock operation silently clears the latch.
 Focused host command:
 
 ```sh
-PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_motion_wrap_states verification.analysis.test_linear_material_live
+PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_motion_wrap_states verification.analysis.test_linear_material_live (deleted in cleanup batch 3, 2026-09-22; historical command: test_linear_material_live)
 ```
 
 Result: **10 tests pass**, including **34,611 assertions** executing unchanged
@@ -261,7 +261,7 @@ transaction to prove both combined-stage failures cancel the scalar remap.
 The independent malformed-contract checks execute before any API mutation.
 
 The single affected
-`verification.analysis.test_linear_material_live.LinearMaterialLiveTests.test_production_control_flow`
+`verification.analysis.test_linear_material_live.LinearMaterialLiveTests.test_production_control_flow` (module deleted in cleanup batch 3, 2026-09-22)
 test also passes. It retains the existing source-suppression and rollback
 witnesses and adds complete scalar-contract lifecycle checks: zero/one/two
 records, same-pointer re-registration, early-exit/exception invalidation before

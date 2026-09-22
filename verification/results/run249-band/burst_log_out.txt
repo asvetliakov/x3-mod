@@ -1,0 +1,8 @@
+armed 3215 -> 3515
+armed 3850 -> 4150
+armed 5238 -> 5538
+armed 8967 -> 9267
+burst 3515-3546: trans/frame min 36.2 med 862.5 max 862.5; rotation_deg 0.197..0.197; r00 0.677->0.677; cuts 0; gate6 sum 157; ums [(3532, '54'), (3534, '38'), (3535, '17'), (3541, '16')]
+burst 4150-4181: trans/frame min 22.3 med 172.0 max 172.7; rotation_deg 0.000..0.244; r00 0.642->0.638; cuts 0; gate6 sum 42; ums [(4155, '25'), (4180, '1'), (4181, '1')]
+burst 5538-5569: trans/frame min 108.7 med 862.5 max 862.5; rotation_deg 0.212..0.212; r00 0.735->0.735; cuts 0; gate6 sum 100; ums [(5554, '25')]
+burst 9267-9298: trans/frame min 10.7 med 96.6 max 501.7; rotation_deg 0.136..2.350; r00 0.632->0.378; cuts 0; gate6 sum 153; ums [(9268, '15'), (9269, '1'), (9292, '1')]

@@ -1,0 +1,24 @@
+/tmp/x3-bottleX3-run244 3733+32
+class sky_px cur_only% dark dark_routed% dark_cur_only% sky_routed%
+d1 230719 0.98 5898 0.0 0.0 0.00
+d2 204197 20.48 869 0.0 0.0 0.00
+d3-6 763821 14.40 2246 0.0 0.0 0.00
+d7-12 1130043 9.18 2529 0.0 0.0 0.00
+d>=13 26684020 6.31 20963 0.0 0.0 0.00
+dark d>=13 median color/present/diff luma over frames: 61.7 15.0 44.0
+/tmp/x3-bottleX3-run249 3515+32
+class sky_px cur_only% dark dark_routed% dark_cur_only% sky_routed%
+d1 234042 37.36 2552 0.0 0.0 0.00
+d2 210967 23.41 768 0.0 0.0 0.00
+d3-6 792529 17.38 2215 0.0 0.0 0.00
+d7-12 1164751 11.36 1940 0.0 0.0 0.00
+d>=13 26660497 6.51 18581 0.0 0.0 0.00
+dark d>=13 median color/present/diff luma over frames: 59.9 13.7 44.2
+/tmp/x3-bottleX3-run249 5538+32
+class sky_px cur_only% dark dark_routed% dark_cur_only% sky_routed%
+d1 279191 66.53 534 0.0 0.0 0.00
+d2 231212 32.36 1091 0.0 0.0 0.00
+d3-6 777104 21.15 2704 0.0 0.0 0.00
+d7-12 1063423 13.46 1805 0.0 0.0 0.00
+d>=13 25644018 11.60 20542 0.0 0.0 0.00
+dark d>=13 median color/present/diff luma over frames: 56.4 10.0 44.4

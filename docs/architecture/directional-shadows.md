@@ -723,7 +723,7 @@ checks use the required SSE2/four-byte incoming-stack flags.
 Owner acceptance commands (not executed under Wine by this agent):
 
 ```sh
-PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_sun_share_lane verification.analysis.test_motion_readback verification.analysis.test_linear_sun_share verification.analysis.test_linear_material_report
+PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_sun_share_lane verification.analysis.test_motion_readback verification.analysis.test_linear_sun_share verification.analysis.test_linear_material_report (deleted in cleanup batch 3, 2026-09-22; historical command: test_linear_material_report)
 sh verification/probe/build_linear_material.sh
 X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_linear_material.py --exe verification/probe/build/linear_material_fixture.exe --sun-share --raw-dir /tmp/x3-sun-share-material-gpu
 sh verification/probe/build_temporal_pass.sh

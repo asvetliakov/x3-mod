@@ -1,0 +1,6 @@
+/tmp/x3-bottleX3-run244 7961+32: dark_sky=44512 d1-2=16194 (36%) d3-12=3669 (8%) d>=13=24649 (55%) mean_uncovered_frac=0.185
+/tmp/x3-bottleX3-run244 3733: far_dark=20963 local_max=38.7% isolated=19.7% ring_luma_median=30.5
+/tmp/x3-bottleX3-run235 6967: far_dark=27122 local_max=36.3% isolated=16.1% ring_luma_median=36.8
+/tmp/x3-bottleX3-run249 3515: far_dark=18581 local_max=43.7% isolated=24.6% ring_luma_median=28.1
+/tmp/x3-bottleX3-run249 5538: far_dark=20542 local_max=34.0% isolated=16.6% ring_luma_median=27.5
+/tmp/x3-bottleX3-run249 4150: far_dark=37865 local_max=54.0% isolated=35.2% ring_luma_median=34.0

@@ -174,7 +174,7 @@ their byte-identical contract.
   emitted, and the whole converted corpus (1388 driver outputs across the hull,
   glass and XT structural drivers, both depth modes, gains 0/1/4/16) is byte
   identical to the fill-less build, verified by digest in
-  `verification/analysis/test_linear_material_fill.py`.
+  `verification/analysis/test_linear_material_fill.py` (deleted in cleanup batch 3, 2026-09-22).
 - At `k > 0` one `def c215, k, 0, 0, 0` and one
   `mad rSum.xyz, r12, c215.x, rSum` per converted pixel program; `r12` is the
   decoded, `g_direct`-scaled `LightDir_Color0` the transformer already builds.

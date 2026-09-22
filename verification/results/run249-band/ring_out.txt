@@ -1,0 +1,20 @@
+/tmp/x3-bottleX3-run235 6967: mean|dLuma| d1 3.46 d2 0.47 d3 0.34 far 0.02; d1 cur_only 0.5%
+/tmp/x3-bottleX3-run244 7961: mean|dLuma| d1 3.86 d2 0.49 d3 0.38 far 0.23; d1 cur_only 0.1%
+/tmp/x3-bottleX3-run244 9992: mean|dLuma| d1 18.00 d2 6.63 d3 6.02 far 4.51; d1 cur_only 0.9%
+/tmp/x3-bottleX3-run249 4150: mean|dLuma| d1 3.43 d2 0.58 d3 0.38 far 0.27; d1 cur_only 56.5%
+/tmp/x3-bottleX3-run249 9267: mean|dLuma| d1 9.23 d2 6.58 d3 6.14 far 7.17; d1 cur_only 33.0%
+/tmp/x3-bottleX3-run244 7961: bin d1_sky cur_only% dark dark_cur_only
+  <2 133144 0.1 1963 0
+  2-3 11380 0.0 57 0
+  3-6 2015 0.0 366 0
+  >=6 98161 0.0 12305 0
+/tmp/x3-bottleX3-run249 4150: bin d1_sky cur_only% dark dark_cur_only
+  <2 137326 0.0 2338 0
+  2-3 20494 16.7 2149 0
+  3-6 68974 96.8 276 0
+  >=6 133131 100.0 0 0
+/tmp/x3-bottleX3-run249 9267: bin d1_sky cur_only% dark dark_cur_only
+  <2 35449 99.6 0 0
+  2-3 8373 90.3 3 0
+  3-6 19789 34.9 321 0
+  >=6 111104 7.0 2425 0

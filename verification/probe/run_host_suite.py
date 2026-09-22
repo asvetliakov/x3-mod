@@ -13,11 +13,9 @@ directory on ``sys.path`` and the repository root is ``sys.path[0]`` of
 ``-m unittest``), and the interpreter is ``sys.executable`` -- run this script
 with the interpreter that has NumPy, ``/usr/bin/python3`` on the project Mac.
 
-Retired feature tests (``verification/analysis/retired_tests.py``, the linear
-material conversion and the rejected full-surface emission bracket) are skipped
-by default here and by the canonical discover command; ``--include-retired``
-runs them. The retire/keep decision per module is in
-``docs/verification/host-suite.md``.
+The retired feature modules (linear material conversion, full-surface emission
+bracket) were deleted on 2026-09-22; ``--include-retired`` is kept as a no-op so
+existing command lines still parse (``docs/verification/host-suite.md``).
 
 Exit code is non-zero if any module fails, errors, or runs zero tests.
 """
@@ -37,9 +35,6 @@ PROBE = ROOT / 'verification/probe'
 DURATIONS = PROBE / 'host_suite_durations.json'
 DEFAULT_DURATION = 10.0  # an unmeasured module is scheduled early, not last
 MAX_JOBS = 12  # compile-heavy modules; more workers only add scheduler and memory pressure
-
-sys.path.insert(0, str(ROOT))
-from verification.analysis.retired_tests import RETIRED  # noqa: E402
 
 # Modules that must not run concurrently with each other: every one of them runs
 # `tools/manage.py launch`, which takes the exclusive installer flock on the game
@@ -63,7 +58,6 @@ SERIAL_GROUP = frozenset({
     'test_launcher_stderr_tee',
     'test_linear_emission_hull_gain',
     'test_linear_emission_source_gain',
-    'test_linear_material_live',
     'test_lod_scale_launch',
     'test_media_package',
     'test_motion_cut_defaults',
@@ -83,23 +77,16 @@ SERIAL_GROUP = frozenset({
 RAN = re.compile(r'^Ran (\d+) tests? in ([0-9.]+)s', re.M)
 
 
-def modules(include_retired):
-    names = sorted(p.stem for p in ANALYSIS.glob('test_*.py'))
-    if include_retired:
-        return names
-    return [n for n in names if n not in RETIRED]
+def modules():
+    return sorted(p.stem for p in ANALYSIS.glob('test_*.py'))
 
 
-def environment(include_retired):
+def environment():
     env = dict(os.environ)
     parts = [str(PROBE), str(ANALYSIS)]
     if env.get('PYTHONPATH'):
         parts.append(env['PYTHONPATH'])
     env['PYTHONPATH'] = os.pathsep.join(parts)
-    if include_retired:
-        env['X3M_INCLUDE_RETIRED'] = '1'
-    else:
-        env.pop('X3M_INCLUDE_RETIRED', None)
     return env
 
 
@@ -126,14 +113,14 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument('--jobs', '-j', type=int, default=None, help='worker processes (default: CPU count capped at %d)' % MAX_JOBS)
     parser.add_argument('--serial', action='store_true', help='one module at a time, for a reference run')
-    parser.add_argument('--include-retired', action='store_true', help='also run the retired feature modules')
-    parser.add_argument('--modules', nargs='+', metavar='M', help='run only these modules (retired ones are allowed)')
+    parser.add_argument('--include-retired', action='store_true', help='no-op; the retired modules were deleted 2026-09-22')
+    parser.add_argument('--modules', nargs='+', metavar='M', help='run only these modules')
     parser.add_argument('--write-durations', action='store_true', help='update %s from this run' % DURATIONS.name)
     parser.add_argument('--list', action='store_true', help='print the selected modules and exit')
     parser.add_argument('--slowest', type=int, default=15, help='how many slow modules to report (default 15)')
     args = parser.parse_args(argv)
 
-    selected = args.modules if args.modules else modules(args.include_retired)
+    selected = args.modules if args.modules else modules()
     missing = [n for n in selected if not (ANALYSIS / (n + '.py')).exists()]
     if missing:
         parser.error('unknown module(s): ' + ', '.join(missing))
@@ -141,8 +128,7 @@ def main(argv=None):
         print('\n'.join(selected))
         return 0
 
-    include_retired = args.include_retired or bool(args.modules and set(args.modules) & RETIRED)
-    env = environment(include_retired)
+    env = environment()
     hints = {}
     if DURATIONS.exists():
         hints = json.loads(DURATIONS.read_text()).get('modules', {})
@@ -152,9 +138,8 @@ def main(argv=None):
     jobs = 1 if args.serial else (args.jobs or min(os.cpu_count() or 4, MAX_JOBS))
     jobs = max(1, min(jobs, len(order)))
 
-    print('host suite: %d modules, %d job%s, %s retired, %s'
-          % (len(order), jobs, '' if jobs == 1 else 's',
-             'with' if include_retired else 'without', sys.executable), flush=True)
+    print('host suite: %d modules, %d job%s, %s'
+          % (len(order), jobs, '' if jobs == 1 else 's', sys.executable), flush=True)
 
     results = []
     pending = list(order)
