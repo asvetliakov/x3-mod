@@ -1,14 +1,14 @@
 {
  "fixture": "build/verification/cull-census/cull_census_fixture.exe",
  "exit_status": 0,
- "elapsed_s": 5.6,
- "checks": 71,
+ "elapsed_s": 0.3,
+ "checks": 83,
  "failures": 0,
  "failure_lines": [],
  "bench_us": {
-  "native_pass": 0.2225,
-  "patched_disarmed": 0.2427,
-  "patched_armed": 0.3087
+  "native_pass": 0.2279,
+  "patched_disarmed": 0.249,
+  "patched_armed": 0.3204
  },
  "install_lines": [
   "cull_census requested=0 patched=0 reason=disabled measure_site=0x0047d258 exit_site=0x0047d528 write_measure=none write_exit=none stub_measure=0x00000000 stub_exit=0x00000000 ring=8192",
