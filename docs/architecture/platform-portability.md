@@ -400,7 +400,9 @@ concrete remaining gates, removal status and the separate depth-adapter gap.
 - **Cull census** (`--cull-census`, 2026-09-18): two read-only `engine_patch`
   trampolines on the cull/LOD pass, gated on the same EXE hash as the other
   patches; qualified by the site verifier and the CPU fixture under CrossOver
-  only. Native Windows: source-compatible, unverified.
+  only. Native Windows: source-compatible, unverified. The LOD-ladder fields
+  (2026-09-22) add only stack/register reads in the stub and Present-time reads
+  through `engine_memory::read` (documented `VirtualQuery`), no new dependency.
 
 ## 2026-09-19: `--taa-current-filter` exceeds the guaranteed ps_3_0 slot count
 

@@ -7,7 +7,11 @@ visible, occluded, partial (half the box covered), tiny, offscreen and the
 no_box remainder; the tiny draw's row carries `alpha_tested=1` and is counted
 in the header. Also checks the priorities (an occluded box below the tiny
 area stays occluded), the margin (a pixel at exactly zmin does not cover), the
-per-node table and the milliseconds taken from frame_timing. No Wine, no D3D.
+per-node table and the milliseconds taken from frame_timing. The `--ladder`
+report on a second synthetic log (cull_census rows with and without the LOD
+ladder fields, two views, a draw without a census row, another frame): per-model
+count, thresholds, selected LODs, draws and `s`, sorted by draws, with the
+`no_ladder`, `lod0_below_t1` and `unresolved` flags. No Wine, no D3D.
 """
 import array
 import contextlib
@@ -221,6 +225,100 @@ class DrawAccounting(unittest.TestCase):
         with contextlib.redirect_stderr(error):
             self.assertEqual(self.module.main([self.temporary.name]), 2)
         self.assertIn('size 8', error.getvalue())
+
+
+LADDER_FRAME = 5000
+
+
+def census_line(node, model, s, lod, verdict, ladder=None, view='34766bf8', frame=LADDER_FRAME):
+    return (f'cull_census device=1 frame={frame} view={view} node={node} model={model} s={s} measure={2 * s} d=100000 radius=500 '
+            f'thr_1dc=0 thr_1d8=0 limit=0 flags_in=00001002 flags_out={"00001002" if verdict == "kept" else "00001000"} lod={lod} verdict={verdict}'
+            + ('' if ladder is None else f' {ladder}'))
+
+
+def context_draw(index, node, model, lod=0, frame=LADDER_FRAME):
+    return [f'object_context device=1 frame={frame} index={index} scoped=1 valid=127 node={node} model={model} lod={lod:08x} flags12c=00001002',
+            f'draw device=1 frame={frame} index={index} kind=indexed topology=4 primitives=10 vs=0 ps=0']
+
+
+class LadderReport(unittest.TestCase):
+    """`--ladder`: no depth readback, one census view joined with the frame's draws."""
+
+    def setUp(self):
+        self.module = load_script()
+        self.temporary = tempfile.TemporaryDirectory(prefix='x3-draw-accounting-ladder-')
+        rows = [f'frame_begin device=1 frame={LADDER_FRAME}']
+        # A single-LOD body: three kept nodes at LOD 0, four draws.
+        rows += [census_line('3100000%d' % i, '000053a0', s, 0, 'kept', 'lods=1 thr=0') for i, s in ((1, 20), (2, 26), (3, 30))]
+        # A laddered body kept at LOD 0 with s below t1 (250): flagged; two draws.
+        rows.append(census_line('31000010', '00005470', 26, 0, 'kept', 'lods=4 thr=0,250,150,80'))
+        # A laddered body that switched normally (s 10 < t2 24): one draw, no flag.
+        rows.append(census_line('31000020', '00005480', 10, 2, 'kept', 'lods=3 thr=0,50,24'))
+        # A node culled before the model lookup (no ladder) and a pre-ladder row: unresolved, no draws.
+        rows.append(census_line('31000030', '00005490', 1, 0, 'culled_size', 'lods=- thr=-'))
+        rows.append(census_line('31000040', '000054a0', 40, 0, 'kept'))
+        # The env-map view and another frame must not enter the main-view table.
+        rows.append(census_line('31000001', '000053a0', 5, 0, 'kept', 'lods=1 thr=0', view='01000000'))
+        rows.append(census_line('31000050', '000054b0', 3, 0, 'kept', 'lods=1 thr=0', frame=1))
+        for index, (node, model) in enumerate([('31000001', '000053a0')] * 2 + [('31000002', '000053a0'), ('31000003', '000053a0'),
+                                               ('31000010', '00005470'), ('31000010', '00005470'), ('31000020', '00005480'),
+                                               ('3100ffff', '0000ffff'), ('31000060', '000053a0')], start=1):
+            rows += context_draw(index, node, model)
+        rows += context_draw(1, '31000050', '000054b0', frame=1)
+        self.log = Path(self.temporary.name) / 'session-20260922-130000-100.log'
+        self.log.write_text('\n'.join(rows) + '\n')
+
+    def tearDown(self):
+        self.temporary.cleanup()
+
+    def parsed(self):
+        with self.log.open() as stream:
+            return self.module.parse(stream, 1)
+
+    def test_models_sorted_by_draws_with_flags(self):
+        parsed = self.parsed()
+        self.assertEqual(self.module.ladder_frame(parsed), LADDER_FRAME)
+        result = self.module.ladder(parsed, LADDER_FRAME)
+        self.assertEqual(result['view'], '34766bf8')
+        # 9 draws: the 0000ffff draw has no census row, the 31000060 draw is a 000053a0 node without a main-view row.
+        self.assertEqual((result['draws_in_frame'], result['joined_draws']), (9, 7))
+        self.assertEqual([m['model'] for m in result['models']], ['000053a0', '00005470', '00005480', '00005490', '000054a0'])
+        body, stuck, normal, culled, old = result['models']
+        self.assertEqual((body['lods'], body['thr'], body['selected'], body['nodes'], body['kept'], body['draws'], body['s_min'], body['s_max']),
+                         (1, [0], {0: 3}, 3, 3, 4, 20, 30))
+        self.assertEqual(body['flags'], ['no_ladder'])
+        self.assertEqual((stuck['lods'], stuck['thr'], stuck['lod0_below_t1'], stuck['flags']), (4, [0, 250, 150, 80], 1, ['lod0_below_t1']))
+        self.assertEqual((normal['selected'], normal['flags']), ({2: 1}, []))
+        self.assertEqual((culled['lods'], culled['kept'], culled['draws'], culled['flags']), (None, 0, 0, ['unresolved']))
+        self.assertEqual((old['lods'], old['thr'], old['flags']), (None, [], ['unresolved']))
+        self.assertEqual((result['no_ladder'], result['no_ladder_draws'], result['lod0_below_t1'], result['unresolved']), (1, 4, 1, 2))
+        env = self.module.ladder(parsed, LADDER_FRAME, view='01000000')
+        # The env-map view has only node 31000001: its two draws, not the model's four main-view draws.
+        self.assertEqual([(m['model'], m['s_min'], m['draws']) for m in env['models']], [('000053a0', 5, 2)])
+        with self.assertRaises(self.module.MalformedInput):
+            self.module.ladder(parsed, LADDER_FRAME, view='0badf00d')
+
+    def test_cli_text_json_and_refusal(self):
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(self.module.main([self.temporary.name, '--ladder']), 0)
+        text = output.getvalue()
+        self.assertIn(f'ladder frame {LADDER_FRAME} view=34766bf8 models=5 draws=9 joined_draws=7 no_ladder=1 (4 draws) lod0_below_t1=1 unresolved=2', text)
+        lines = text.splitlines()
+        self.assertTrue(lines[2].startswith('000053a0') and lines[2].rstrip().endswith('no_ladder'), lines[2])
+        self.assertIn('0,250,150,80', lines[3])
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(self.module.main([self.temporary.name, '--ladder', '--json', '--view', '1000000']), 0)
+        self.assertEqual([m['model'] for m in json.loads(output.getvalue())['models']], ['000053a0'])
+        error = io.StringIO()
+        with contextlib.redirect_stderr(error):
+            self.assertEqual(self.module.main([self.temporary.name, '--ladder', '--frame', '7']), 2)
+        self.assertIn('no cull_census rows', error.getvalue())
+        error = io.StringIO()
+        with contextlib.redirect_stderr(error):
+            self.assertEqual(self.module.main([self.temporary.name, '--ladder', '--view', 'badf00d']), 2)
+        self.assertIn('no cull_census rows for view 0badf00d', error.getvalue())
 
 
 if __name__ == '__main__':

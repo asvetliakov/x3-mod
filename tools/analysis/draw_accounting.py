@@ -31,6 +31,23 @@ before the field existed count 0. `stale=1` after it marks a box that is an
 earlier buffer revision's (the draw's current vertices may lie elsewhere): the
 header's `stale=` counts them, so a bucket they land in can be discounted. Read-only; the log is streamed, the depth image is
 read once and sampled on a bounded stride.
+
+`--ladder` (no depth readback needed; `--cull-census` runs) instead joins the
+frame's `cull_census` rows of one view (default: the view with the most rows)
+with its `object_context` x `draw` rows and prints, per model sorted by draws,
+the LOD count `lods` (word model+0x10) and the record thresholds `thr`
+(record_i+0x34, i < min(lods, 8); `t0` is record 0's value, which the engine's
+loop never compares, `t1` is the LOD 0 -> 1 switch value), the LOD indices the
+engine selected (`lod:nodes`), the model's nodes and kept nodes, its draws and
+the `s` range of its kept nodes. A draw counts for a model only when its
+`object_context` node has a census row of that model in the chosen view, so
+nodes and draws come from the same view; `--view` naming a view without rows
+is refused. Flags: `no_ladder` (lods == 1: the threshold
+loop never runs), `lod0_below_t1` (a kept node at LOD 0 with s < t1, which the
+unscaled loop would have moved to LOD >= 1: a view-distance or --lod-scale
+bias, or the adaptive detail rescale), `unresolved` (no row of the model carried
+a ladder: every node culled before the model lookup, or rows written before the
+ladder fields existed).
 """
 import argparse
 import array
@@ -46,6 +63,8 @@ BOUNDS_RE = re.compile(r'\bobject_bounds device=(\d+) frame=(\d+) index=(\d+) no
 DRAW_RE = re.compile(r'\bdraw device=(\d+) frame=(\d+) index=(\d+) kind=\w+ topology=\d+ primitives=(\d+)')
 CONTEXT_RE = re.compile(r'\bobject_context device=(\d+) frame=(\d+) index=(\d+) .*?\bnode=([0-9a-fA-F]+) .*?\bmodel=([0-9a-fA-F]+) lod=([0-9a-fA-F]+)')
 DEPTH_RE = re.compile(r'\bmotion_output_depth_readback device=(\d+) frame=(\d+) file=(\S+) width=(\d+) height=(\d+) format=(\S+) result=([0-9a-fA-F]+)')
+CENSUS_RE = re.compile(r'\bcull_census device=(\d+) frame=(\d+) view=([0-9a-f]{8}) node=([0-9a-f]{8}) model=([0-9a-f]{8}) s=(-?\d+) '
+                       r'.*? lod=(-?\d+) verdict=(\w+)(?: scope=\w+)?(?: lods=(-?\d+|-) thr=(-?\d+(?:,-?\d+)*|-))?')
 TIMING_RE = re.compile(r'\bframe_timing qpc=\d+ frame=(\d+) frames=\d+ dt_p50_us=(\d+) .*?\bdraws_p50=(\d+)')
 SESSION_RE = re.compile(r'session-\d{8}-\d{6}-\d+\.log\Z')
 DEPTH_LANES = {'r32f_row_major': 1, 'rg32f_row_major': 2, 'rgba32f_row_major': 4}
@@ -75,8 +94,17 @@ def parse(lines, device=None):
     context = {}      # (frame, index) -> (node, model, lod)
     depth = {}        # frame -> readback fields
     timing = []       # (frame, us_per_draw)
+    census = defaultdict(list)   # frame -> cull_census rows (the --ladder join)
     for line in lines:
-        if 'object_bounds ' in line:
+        if 'cull_census device=' in line:
+            m = CENSUS_RE.search(line)
+            if m and (device is None or int(m.group(1)) == device):
+                lods, thr = m.group(9), m.group(10)
+                census[int(m.group(2))].append({
+                    'view': m.group(3), 'node': m.group(4), 'model': m.group(5), 's': int(m.group(6)), 'lod': int(m.group(7)),
+                    'verdict': m.group(8), 'lods': None if lods in (None, '-') else int(lods),
+                    'thr': [] if thr in (None, '-') else [int(v) for v in thr.split(',')]})
+        elif 'object_bounds ' in line:
             m = BOUNDS_RE.search(line)
             if m and (device is None or int(m.group(1)) == device):
                 frame, index = int(m.group(2)), int(m.group(3))
@@ -104,7 +132,7 @@ def parse(lines, device=None):
             m = TIMING_RE.search(line)
             if m and int(m.group(3)):
                 timing.append((int(m.group(1)), int(m.group(2)) / int(m.group(3))))
-    return {'bounds': bounds, 'primitives': primitives, 'context': context, 'depth': depth, 'timing': timing}
+    return {'bounds': bounds, 'primitives': primitives, 'context': context, 'depth': depth, 'timing': timing, 'census': census}
 
 
 def per_draw_us(timing, frame):
@@ -223,6 +251,81 @@ def account(parsed, frame, run_dir, margin=1e-5, tiny_px=16.0, max_samples=4096,
             'nodes': sorted(nodes.values(), key=lambda e: -e['draws']), 'rows': rows}
 
 
+def ladder(parsed, frame, view=None):
+    """Per-model LOD ladder of one census view joined with the frame's draws, sorted by draws."""
+    rows = parsed['census'].get(frame, [])
+    if not rows:
+        raise MalformedInput(f'frame {frame}: no cull_census rows (was the run flown with --cull-census?)')
+    views = defaultdict(int)
+    for row in rows:
+        views[row['view']] += 1
+    if view is not None and view not in views:
+        raise MalformedInput(f'frame {frame}: no cull_census rows for view {view} (views: {" ".join(sorted(views))})')
+    main_view = view if view is not None else max(sorted(views), key=lambda v: views[v])
+    # Draws of the same view as the nodes: a draw counts for a model only when its object_context
+    # node has a census row of that model in this view (draw rows carry no census view pointer).
+    view_nodes = {(row['node'], row['model']) for row in rows if row['view'] == main_view}
+    draws = defaultdict(int)
+    joined = 0
+    for (f, index) in parsed['primitives']:
+        ctx = parsed['context'].get((f, index)) if f == frame else None
+        if ctx and (ctx[0], ctx[1]) in view_nodes:
+            draws[ctx[1]] += 1
+    models = {}
+    for row in rows:
+        if row['view'] != main_view:
+            continue
+        entry = models.setdefault(row['model'], {'model': row['model'], 'lods': None, 'thr': [], 'selected': defaultdict(int),
+                                                 'nodes': 0, 'kept': 0, 's_min': None, 's_max': None, 'lod0_below_t1': 0})
+        entry['nodes'] += 1
+        if row['lods'] is not None and (entry['lods'] is None or len(row['thr']) > len(entry['thr'])):
+            entry['lods'], entry['thr'] = row['lods'], row['thr']
+        if row['verdict'] != 'kept':
+            continue
+        entry['kept'] += 1
+        entry['selected'][row['lod']] += 1
+        entry['s_min'] = row['s'] if entry['s_min'] is None else min(entry['s_min'], row['s'])
+        entry['s_max'] = row['s'] if entry['s_max'] is None else max(entry['s_max'], row['s'])
+    for row in rows:
+        entry = models.get(row['model'])
+        if row['view'] == main_view and row['verdict'] == 'kept' and row['lod'] == 0 and entry and len(entry['thr']) >= 2 and row['s'] < entry['thr'][1]:
+            entry['lod0_below_t1'] += 1
+    for entry in models.values():
+        entry['draws'] = draws.get(entry['model'], 0)
+        joined += entry['draws']
+        entry['selected'] = dict(sorted(entry['selected'].items()))
+        entry['flags'] = [name for name, hit in (('no_ladder', entry['lods'] == 1), ('lod0_below_t1', entry['lod0_below_t1'] > 0),
+                                                 ('unresolved', entry['lods'] is None)) if hit]
+    ordered = sorted(models.values(), key=lambda e: (-e['draws'], e['model']))
+    return {'frame': frame, 'view': main_view, 'views': dict(views), 'models': ordered,
+            'draws_in_frame': sum(1 for (f, _) in parsed['primitives'] if f == frame), 'joined_draws': joined,
+            'no_ladder': sum(1 for e in ordered if 'no_ladder' in e['flags']),
+            'no_ladder_draws': sum(e['draws'] for e in ordered if 'no_ladder' in e['flags']),
+            'lod0_below_t1': sum(1 for e in ordered if 'lod0_below_t1' in e['flags']),
+            'unresolved': sum(1 for e in ordered if 'unresolved' in e['flags'])}
+
+
+def ladder_frame(parsed):
+    if not parsed['census']:
+        raise MalformedInput('no cull_census rows: was the run flown with --cull-census?')
+    return max(sorted(parsed['census']), key=lambda f: len(parsed['census'][f]))
+
+
+def ladder_report(result, models=40):
+    out = [f'ladder frame {result["frame"]} view={result["view"]} models={len(result["models"])} draws={result["draws_in_frame"]} '
+           f'joined_draws={result["joined_draws"]} no_ladder={result["no_ladder"]} ({result["no_ladder_draws"]} draws) '
+           f'lod0_below_t1={result["lod0_below_t1"]} unresolved={result["unresolved"]}',
+           f'{"model":<10}{"lods":>5}  {"thr (t0,t1,...)":<28}{"lod:nodes":<14}{"nodes":>6}{"kept":>6}{"draws":>7}{"s_min":>8}{"s_max":>8}  flags']
+    for e in result['models'][:models]:
+        lods = '-' if e['lods'] is None else str(e['lods'])
+        thr = ','.join(map(str, e['thr'])) or '-'
+        selected = ' '.join(f'{lod}:{n}' for lod, n in e['selected'].items()) or '-'
+        s_min = '-' if e['s_min'] is None else str(e['s_min'])
+        s_max = '-' if e['s_max'] is None else str(e['s_max'])
+        out.append(f'{e["model"]:<10}{lods:>5}  {thr:<28}{selected:<14}{e["nodes"]:>6}{e["kept"]:>6}{e["draws"]:>7}{s_min:>8}{s_max:>8}  {" ".join(e["flags"])}')
+    return '\n'.join(out)
+
+
 def default_frame(parsed):
     counts = defaultdict(int)
     for (frame, _) in parsed['bounds']:
@@ -261,13 +364,21 @@ def main(argv=None):
     parser.add_argument('--tiny-px', type=float, default=16.0, help='box area below which a draw is tiny, square pixels (default 16)')
     parser.add_argument('--max-samples', type=int, default=4096, help='depth samples per box (default 4096)')
     parser.add_argument('--us-per-draw', type=float, default=None, help='override the per-draw cost taken from frame_timing')
-    parser.add_argument('--nodes', type=int, default=20, help='rows of the per-node table (default 20)')
+    parser.add_argument('--nodes', type=int, default=20, help='rows of the per-node table, or of the per-model table with --ladder (default 20)')
     parser.add_argument('--json', action='store_true', help='machine-readable output (without the per-draw rows)')
+    parser.add_argument('--ladder', action='store_true', help='per-model LOD ladder report from the cull_census rows instead of the depth buckets '
+                        '(frame default: the one with the most cull_census rows)')
+    parser.add_argument('--view', type=lambda text: int(text, 16), default=None, help='--ladder: census view pointer (hex, default: the view with the most rows)')
     args = parser.parse_args(argv)
     try:
         log = find_log(args.run_dir, args.log)
         with log.open('r', errors='replace') as stream:
             parsed = parse(stream, args.device)
+        if args.ladder:
+            frame = args.frame if args.frame is not None else ladder_frame(parsed)
+            result = ladder(parsed, frame, None if args.view is None else f'{args.view:08x}')
+            print(json.dumps(result, indent=1, sort_keys=True) if args.json else ladder_report(result, args.nodes))
+            return 0
         frame = args.frame if args.frame is not None else default_frame(parsed)
         result = account(parsed, frame, args.run_dir, margin=args.margin, tiny_px=args.tiny_px,
                          max_samples=args.max_samples, us_per_draw=args.us_per_draw)

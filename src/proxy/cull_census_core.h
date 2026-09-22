@@ -57,6 +57,16 @@ constexpr unsigned parent_offset = 0x18, radius_offset = 0xa0, flags12c_offset =
                    lod_offset = 0x14c, threshold_1d8_offset = 0x1d8, threshold_1dc_offset = 0x1dc;
 constexpr unsigned ring_size = 8192;
 constexpr std::uint32_t no_index = 0xffffffffu;
+// The model's LOD ladder (docs/architecture/merged-lod-feasibility.md 1):
+// 0x0047d2fd..0x0047d30e resolve node+0x140 through 0x004863c0 into EBX and
+// the frame slot [ESP+0x14]; 0x0047d321 `movsx ebp, word [ebx+0x10]` is the
+// LOD count; 0x0047d433/0x0047d440 index the record-pointer array at
+// model+0x0c; 0x0047d442 `fild [eax+0x34]` is record i's switch value.
+// [ESP+0x10] holds D (0x0047d1c8/0x0047d1eb). The exit stub passes EBX and
+// both slots; the handler keeps EBX only under exit_model_pointer(), and the
+// ladder itself is read at Present through the bounded engine reader.
+constexpr unsigned model_slot_offset = 0x14, d_slot_offset = 0x10;
+constexpr unsigned model_records_offset = 0x0c, model_lod_count_offset = 0x10, record_threshold_offset = 0x34, ladder_cap = 8;
 
 struct Entry {
     std::uint32_t node, model, view;
@@ -65,7 +75,49 @@ struct Entry {
     std::int32_t lod;
     std::uint32_t exited;
     std::uint32_t parent;   // node+0x18 at the measure site (0 = a parentless node: a body for cull_small_parts' scope)
+    std::uint32_t model_ptr; // the model pointer at the exit site (exit_model_pointer), 0 when the pass had none for this node
 };
+// At the exit site EBX is the model pointer only on the LOD path: after the
+// measure site EBX is written solely at 0x0047d2f6 (0: negative model id),
+// 0x0047d303 (the 0x004863c0 result, also stored to [ESP+0x14] at 0x0047d30a,
+// the slot's only writer) and by the threshold loop 0x0047d436/0x0047d45f,
+// which 0x0047d46e restores from the slot. A node culled at 0x0047d2e7 exits
+// with EBX still D, equal to [ESP+0x10] (verify_cull_census_sites.py pins the
+// writer sets). So EBX is taken when non-zero, equal to the model slot and not
+// equal to D; a model pointer numerically equal to D is dropped (no ladder for
+// that row), never misread. The Present-time reads are bounded regardless.
+inline std::uint32_t exit_model_pointer(std::uint32_t ebx, std::uint32_t model_slot, std::uint32_t d_slot) {
+    return ebx && ebx == model_slot && ebx != d_slot ? ebx : 0;
+}
+// The row suffix ` lods=<count> thr=<t0>,<t1>,...`: count is the signed word
+// at model+0x10 or `-` when the node had no model pointer or the model header
+// was unreadable; thr lists record i's +0x34 for i < min(count, ladder_cap),
+// or `-` when there is none (count <= 0) or any record read failed. Writes at
+// most `size` bytes including the terminator; returns false on truncation.
+inline bool format_ladder(char* out, unsigned size, bool known, std::int32_t count, unsigned thresholds, const std::int32_t* thr) {
+    unsigned at = 0;
+    auto put = [&](char c) { if (at + 1 < size) { out[at++] = c; return true; } return false; };
+    auto text = [&](const char* s) { bool ok = true; while (*s) ok = put(*s++) && ok; return ok; };
+    auto number = [&](std::int32_t v) {
+        char digits[12]; unsigned n = 0;
+        std::uint32_t u = v < 0 ? 0u - std::uint32_t(v) : std::uint32_t(v);
+        do { digits[n++] = char('0' + u % 10); u /= 10; } while (u);
+        bool ok = v < 0 ? put('-') : true;
+        while (n) ok = put(digits[--n]) && ok;
+        return ok;
+    };
+    if (!size) return false;
+    bool ok = text(" lods=");
+    ok = (known ? number(count) : put('-')) && ok;
+    ok = text(" thr=") && ok;
+    if (!known || !thresholds) ok = put('-') && ok;
+    for (unsigned i = 0; known && i < thresholds && i < ladder_cap; ++i) {
+        if (i) ok = put(',') && ok;
+        ok = number(thr[i]) && ok;
+    }
+    out[at] = 0;
+    return ok;
+}
 // The engine's effective size threshold: max(node+0x1d8, parent+0x1d8) when the
 // node has a parent, node+0x1d8 otherwise (0x0047d2a2..0x0047d2b9, signed).
 inline std::int32_t size_limit(std::int32_t own, bool has_parent, std::int32_t parent) {
@@ -125,24 +177,30 @@ inline void encode_measure_stub(std::uint32_t at, std::uint32_t enabled, std::ui
     out[34] = 0x5a; out[35] = 0x59; out[36] = 0x58;
     out[37] = 0xff; out[38] = 0x25; std::memcpy(out + 39, &next_slot, 4);
 }
-// Exit stub (30 bytes), same entry contract:
+// Exit stub (39 bytes), same entry contract:
 //    0  80 3d abs32 00   CMP  byte [enabled],0
-//    7  74 0f            JE   continue
+//    7  74 18            JE   continue
 //    9  50 51 52         PUSH EAX; PUSH ECX; PUSH EDX   (preserved: EAX/EDX reach the caller on a leaf's return path)
-//   12  57               PUSH EDI                   ; node
-//   13  e8 rel32         CALL handler(node)
-//   18  83 c4 04         ADD  ESP,4
-//   21  5a 59 58         POP  EDX; POP ECX; POP EAX
-//   24  ff 25 abs32      JMP  [next]                ; the tail: displaced MOV + CMP (flags regenerated), jump back to the JE
-constexpr unsigned exit_stub_length = 30, exit_stub_continue = 24;
+//   12  ff 74 24 1c      PUSH dword [ESP+0x1c]      ; D slot     = site [ESP+0x10]
+//   16  ff 74 24 24      PUSH dword [ESP+0x24]      ; model slot = site [ESP+0x14]
+//   20  53 57            PUSH EBX; PUSH EDI         ; model pointer candidate, node
+//   22  e8 rel32         CALL handler(node, ebx, model_slot, d_slot)   cdecl, integer only
+//   27  83 c4 10         ADD  ESP,16
+//   30  5a 59 58         POP  EDX; POP ECX; POP EAX
+//   33  ff 25 abs32      JMP  [next]                ; the tail: displaced MOV + CMP (flags regenerated), jump back to the JE
+// The two slot reads are stack loads inside the pass's own frame (sub esp,0x14
+// at 0x0047cfe0), valid on every path that reaches the site.
+constexpr unsigned exit_stub_length = 39, exit_stub_continue = 33;
 inline void encode_exit_stub(std::uint32_t at, std::uint32_t enabled, std::uint32_t handler, std::uint32_t next_slot, unsigned char out[exit_stub_length]) {
     out[0] = 0x80; out[1] = 0x3d; std::memcpy(out + 2, &enabled, 4); out[6] = 0x00;
     out[7] = 0x74; out[8] = static_cast<unsigned char>(exit_stub_continue - 9);
     out[9] = 0x50; out[10] = 0x51; out[11] = 0x52;
-    out[12] = 0x57;
-    out[13] = 0xe8; const std::uint32_t rel = handler - (at + 18); std::memcpy(out + 14, &rel, 4);
-    out[18] = 0x83; out[19] = 0xc4; out[20] = 0x04;
-    out[21] = 0x5a; out[22] = 0x59; out[23] = 0x58;
-    out[24] = 0xff; out[25] = 0x25; std::memcpy(out + 26, &next_slot, 4);
+    out[12] = 0xff; out[13] = 0x74; out[14] = 0x24; out[15] = static_cast<unsigned char>(d_slot_offset + 12);
+    out[16] = 0xff; out[17] = 0x74; out[18] = 0x24; out[19] = static_cast<unsigned char>(model_slot_offset + 16);
+    out[20] = 0x53; out[21] = 0x57;
+    out[22] = 0xe8; const std::uint32_t rel = handler - (at + 27); std::memcpy(out + 23, &rel, 4);
+    out[27] = 0x83; out[28] = 0xc4; out[29] = 0x10;
+    out[30] = 0x5a; out[31] = 0x59; out[32] = 0x58;
+    out[33] = 0xff; out[34] = 0x25; std::memcpy(out + 35, &next_slot, 4);
 }
 }

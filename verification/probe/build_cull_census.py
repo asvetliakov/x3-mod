@@ -47,7 +47,8 @@ def build():
     objects = []
     for source, stem, extra in [('verification/probe/cull_census_fixture.cpp', 'fixture', []),
                                 ('src/proxy/cull_census.cpp', 'module', NO_SSE),
-                                ('src/proxy/engine_patch.cpp', 'patch', [])]:
+                                ('src/proxy/engine_patch.cpp', 'patch', []),
+                                ('src/proxy/engine_memory.cpp', 'memory', NO_SSE)]:
         out = BUILD / (stem + '.o')
         subprocess.run(['i686-w64-mingw32-g++', *FLAGS, *extra, '-c', str(ROOT / source), '-o', str(out)], check=True, cwd=ROOT)
         objects.append(out)

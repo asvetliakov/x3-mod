@@ -13,7 +13,12 @@ consumer `je 0x0047d548`), that no direct branch anywhere in the function
 0x0047cfe0..0x0047d551 lands inside either displaced span, that the sites'
 incoming branches are exactly the documented ones, that the function ends in
 `ret 8`, and that src/proxy/cull_census_core.h carries the same constants and
-byte windows. Also the stub encoders and the `cull_census`,
+byte windows. The LOD-ladder fields rest on the pattern the exit stub reads
+EBX and the frame slots under (`LADDER_PATTERN`: D in EBX and [esp+0x10], the
+0x004863c0 model pointer in EBX and [esp+0x14], the count word at model+0x10,
+the record array at model+0x0c, the threshold at record+0x34) and on the exact
+writer sets of EBX and ESP between the two sites and of both slots in the
+whole function. Also the stub encoders and the `cull_census`,
 `cull_census_frame` and per-node row parsers the host test exercises. No
 Wine, no game launch.
 """
@@ -44,7 +49,24 @@ MEASURE_SOURCES = [0x47d231, 0x47d24e]
 EXIT_SOURCES = [0x47d085, 0x47d0a4, 0x47d0ea, 0x47d112, 0x47d1a2, 0x47d1af, 0x47d2e7, 0x47d51c]
 EXIT_JE_TARGET = 0x47d548
 RET_VA = 0x47d54f
-MEASURE_STUB_LENGTH, MEASURE_STUB_CONTINUE, EXIT_STUB_LENGTH, EXIT_STUB_CONTINUE = 43, 37, 30, 24
+MEASURE_STUB_LENGTH, MEASURE_STUB_CONTINUE, EXIT_STUB_LENGTH, EXIT_STUB_CONTINUE = 43, 37, 39, 33
+# The ladder pattern (docs/reverse-engineering/lod-selection.md, "Cull census sites", LOD ladder).
+LADDER_PATTERN = [
+    (0x47d1c0, '8bd8'),                                 # mov ebx,eax              ; D
+    (0x47d1c8, '895c2410'),                             # mov [esp+0x10],ebx       ; D slot
+    (0x47d1e9, '8bd8895c2410'),                         # mov ebx,eax; mov [esp+0x10],ebx (scaled D)
+    (0x47d2f6, '33dbe9da010000'),                       # xor ebx,ebx; jmp 0x47d4d7 (negative model id)
+    (0x47d2fd, '50e8bd9000008bd883c40485db895c2414'),   # push eax; call 0x4863c0; mov ebx,eax; add esp,4; test ebx,ebx; mov [esp+0x14],ebx
+    (0x47d321, '0fbf6b10'),                             # movsx ebp,word [ebx+0x10] ; LOD count
+    (0x47d42f, '8b4c24148b510c8d1caa8da424000000008b03db4034'),  # model slot -> [+0x0c] records -> [rec] -> fild [rec+0x34]
+    (0x47d45f, '83eb04'),                               # sub ebx,4 (loop cursor)
+    (0x47d46e, '8b5c2414'),                             # mov ebx,[esp+0x14]       ; restored after the loop
+]
+# Writers after the measure site and before the exit site (EBX, ESP), and in the whole function (the two slots).
+EBX_WRITERS = [0x47d2f6, 0x47d303, 0x47d436, 0x47d45f, 0x47d46e]
+ESP_WRITERS = [0x47d2fd, 0x47d305, 0x47d439]
+D_SLOT_WRITERS, MODEL_SLOT_WRITERS = [0x47d1c8, 0x47d1eb], [0x47d30a]
+_NO_DEST = ('cmp', 'test', 'bt', 'push', 'call', 'jmp', 'nop')
 LOG_RE = re.compile(r'\bcull_census requested=(?P<requested>[01]) patched=(?P<patched>[01]) reason=(?P<reason>\S+) measure_site=0x(?P<measure_site>[0-9a-f]{8}) '
                     r'exit_site=0x(?P<exit_site>[0-9a-f]{8}) write_measure=(?P<write_measure>none|atomic|plain) write_exit=(?P<write_exit>none|atomic|plain) '
                     r'stub_measure=0x(?P<stub_measure>[0-9a-f]{8}) stub_exit=0x(?P<stub_exit>[0-9a-f]{8}) ring=(?P<ring>\d+)')
@@ -52,7 +74,8 @@ FRAME_RE = re.compile(r'\bcull_census_frame device=(?P<device>\d+) frame=(?P<fra
                       r'unmeasured=(?P<unmeasured>\d+) exited=(?P<exited>\d+) ring=(?P<ring>\d+)')
 ROW_RE = re.compile(r'\bcull_census device=(?P<device>\d+) frame=(?P<frame>\d+) view=(?P<view>[0-9a-f]{8}) node=(?P<node>[0-9a-f]{8}) model=(?P<model>[0-9a-f]{8}) '
                     r's=(?P<s>-?\d+) measure=(?P<measure>-?\d+) d=(?P<d>-?\d+) radius=(?P<radius>-?\d+) thr_1dc=(?P<thr_1dc>-?\d+) thr_1d8=(?P<thr_1d8>-?\d+) '
-                    r'limit=(?P<limit>-?\d+) flags_in=(?P<flags_in>[0-9a-f]{8}) flags_out=(?P<flags_out>[0-9a-f]{8}) lod=(?P<lod>-?\d+) verdict=(?P<verdict>\w+)')
+                    r'limit=(?P<limit>-?\d+) flags_in=(?P<flags_in>[0-9a-f]{8}) flags_out=(?P<flags_out>[0-9a-f]{8}) lod=(?P<lod>-?\d+) verdict=(?P<verdict>\w+)'
+                    r'(?: scope=\w+)?(?: lods=(?P<lods>-?\d+|-) thr=(?P<thr>-?\d+(?:,-?\d+)*|-))?')
 VERDICTS = ('kept', 'culled_size', 'culled_min', 'culled_other', 'no_exit', 'culled_small')
 HEX_FIELDS = ('view', 'node', 'model', 'flags_in', 'flags_out')
 
@@ -72,12 +95,14 @@ def encode_measure_stub(at, enabled, handler, next_slot):
 
 
 def encode_exit_stub(at, enabled, handler, next_slot):
-    """cmp byte [enabled],0; je continue; push eax/ecx/edx; push edi; call handler; add esp,4; pop edx/ecx/eax; continue: jmp [next]."""
+    """cmp byte [enabled],0; je continue; push eax/ecx/edx; push [esp+0x1c] (D slot); push [esp+0x24] (model slot); push ebx; push edi;
+    call handler; add esp,16; pop edx/ecx/eax; continue: jmp [next]."""
     for value in (at, enabled, handler, next_slot):
         if not 0 <= value <= 0xffffffff:
             raise ValueError('addresses must be 32-bit VAs')
-    code = (b'\x80\x3d' + struct.pack('<I', enabled) + b'\x00' + b'\x74' + bytes([EXIT_STUB_CONTINUE - 9]) + b'\x50\x51\x52' + b'\x57'
-            + b'\xe8' + struct.pack('<I', (handler - (at + 18)) & 0xffffffff) + b'\x83\xc4\x04' + b'\x5a\x59\x58'
+    code = (b'\x80\x3d' + struct.pack('<I', enabled) + b'\x00' + b'\x74' + bytes([EXIT_STUB_CONTINUE - 9]) + b'\x50\x51\x52'
+            + b'\xff\x74\x24\x1c' + b'\xff\x74\x24\x24' + b'\x53\x57'
+            + b'\xe8' + struct.pack('<I', (handler - (at + 27)) & 0xffffffff) + b'\x83\xc4\x10' + b'\x5a\x59\x58'
             + b'\xff\x25' + struct.pack('<I', next_slot))
     assert len(code) == EXIT_STUB_LENGTH
     return code
@@ -106,12 +131,18 @@ def parse_frame_line(line):
 
 
 def parse_row(line):
-    """One per-node `cull_census` row -> dict, or None."""
+    """One per-node `cull_census` row -> dict, or None. Rows with the ladder fields also carry
+    `lods` (int, None for `-`) and `thr` (list of ints, empty for `-`); older rows carry neither key."""
     match = ROW_RE.search(line)
     if not match:
         return None
     row = match.groupdict()
-    return {k: (int(v, 16) if k in HEX_FIELDS else v if k == 'verdict' else int(v)) for k, v in row.items()}
+    lods, thr = row.pop('lods'), row.pop('thr')
+    out = {k: (int(v, 16) if k in HEX_FIELDS else v if k == 'verdict' else int(v)) for k, v in row.items()}
+    if lods is not None:
+        out['lods'] = None if lods == '-' else int(lods)
+        out['thr'] = [] if thr == '-' else [int(v) for v in thr.split(',')]
+    return out
 
 
 def source_constants(text):
@@ -126,7 +157,8 @@ def source_constants(text):
     names = ('function_va', 'function_end_va', 'measure_window_va', 'measure_site_va', 'measure_next_va', 'measure_window_length', 'measure_site_offset',
              'site_length', 'exit_window_va', 'exit_site_va', 'exit_next_va', 'exit_window_length', 'exit_site_offset', 'ret_pop',
              'parent_offset', 'radius_offset', 'flags12c_offset', 'model_offset', 'lod_offset', 'threshold_1d8_offset', 'threshold_1dc_offset',
-             'ring_size', 'measure_stub_length', 'measure_stub_continue', 'exit_stub_length', 'exit_stub_continue')
+             'ring_size', 'measure_stub_length', 'measure_stub_continue', 'exit_stub_length', 'exit_stub_continue',
+             'model_slot_offset', 'd_slot_offset', 'model_records_offset', 'model_lod_count_offset', 'record_threshold_offset', 'ladder_cap')
     return {name: value(name) for name in names} | {'measure_window': array('measure_window'), 'measure_site': array('measure_site'),
                                                      'exit_window': array('exit_window'), 'exit_site': array('exit_site')}
 
@@ -139,7 +171,33 @@ EXPECTED_CONSTANTS = {'function_va': FUNCTION[0], 'function_end_va': FUNCTION[1]
                       'threshold_1d8_offset': 0x1d8, 'threshold_1dc_offset': 0x1dc, 'ring_size': 8192,
                       'measure_stub_length': MEASURE_STUB_LENGTH, 'measure_stub_continue': MEASURE_STUB_CONTINUE,
                       'exit_stub_length': EXIT_STUB_LENGTH, 'exit_stub_continue': EXIT_STUB_CONTINUE,
+                      'model_slot_offset': 0x14, 'd_slot_offset': 0x10, 'model_records_offset': 0x0c, 'model_lod_count_offset': 0x10,
+                      'record_threshold_offset': 0x34, 'ladder_cap': 8,
                       'measure_window': MEASURE_WINDOW, 'measure_site': MEASURE_SITE, 'exit_window': EXIT_WINDOW, 'exit_site': EXIT_SITE}
+
+
+def _destination(instruction):
+    return instruction.operands.split(',')[0].strip()
+
+
+def writers(instructions, start, end):
+    """In [start, end): the VAs writing EBX (any part) or ESP, and every writer of the literal [esp+0x10]/[esp+0x14] dwords."""
+    ebx, esp, d_slot, model_slot = [], [], [], []
+    for i in instructions:
+        if not start <= i.va < end:
+            continue
+        dest = _destination(i)
+        writes = i.mnemonic not in _NO_DEST
+        if ((writes and re.fullmatch(r'e?bx|b[lh]', dest)) or (i.mnemonic == 'pop' and dest == 'ebx')
+                or i.mnemonic in ('popa', 'popad') or (i.mnemonic in ('xchg', 'xadd', 'cmpxchg') and re.search(r'\b(e?bx|b[lh])\b', i.operands))):
+            ebx.append(i.va)
+        if (i.mnemonic in ('push', 'pop', 'pusha', 'pushad', 'popa', 'popad', 'pushf', 'pushfd', 'popf', 'popfd', 'enter', 'leave')
+                or (writes and dest == 'esp')):
+            esp.append(i.va)
+        slot = re.fullmatch(r'(?:\w+ PTR )?\[esp\+0x(1[0-7])\]', dest)
+        if slot and writes:
+            (d_slot if int(slot.group(1), 16) < 0x14 else model_slot).append(i.va)
+    return ebx, esp, d_slot, model_slot
 
 
 def decode(exe):
@@ -158,6 +216,9 @@ def inspect(data, instructions, core_text):
     x_site, x_cmp, x_next = by_va.get(EXIT_SITE_VA), by_va.get(EXIT_SITE_VA + 3), by_va.get(EXIT_NEXT_VA)
     ret = by_va.get(RET_VA)
     constants = source_constants(core_text)
+    ebx_writers, esp_writers, _, _ = writers(instructions, MEASURE_SITE_VA + 6, EXIT_SITE_VA)
+    _, _, d_slot_writers, model_slot_writers = writers(instructions, *FUNCTION)
+    starts = {i.va for i in instructions}
     checks = {
         'exe_identity': hashlib.sha256(data).hexdigest() == common.EXPECTED_SHA256 and len(data) == common.EXPECTED_SIZE,
         'preferred_base': image.image_base == common.IMAGE_BASE,
@@ -179,6 +240,12 @@ def inspect(data, instructions, core_text):
         'exit_sources': sources(EXIT_SITE_VA) == EXIT_SOURCES,
         'function_ret': ret is not None and ret.mnemonic == 'ret' and ret.raw == bytes.fromhex('c20800') and ret.end == FUNCTION[1],
         'source_constants': constants == EXPECTED_CONSTANTS,
+        # The ladder fields: the pattern bytes, whole instructions, and the exact writer sets the exit guard relies on.
+        'ladder_pattern_bytes': all(image.read(va, len(bytes.fromhex(h))) == bytes.fromhex(h) for va, h in LADDER_PATTERN),
+        'ladder_pattern_whole_instructions': all(va in starts and va + len(bytes.fromhex(h)) in starts for va, h in LADDER_PATTERN),
+        'ebx_writers_between_sites': ebx_writers == EBX_WRITERS,
+        'esp_writers_between_sites': esp_writers == ESP_WRITERS,
+        'slot_writers': d_slot_writers == D_SLOT_WRITERS and model_slot_writers == MODEL_SLOT_WRITERS,
         'encoders': len(encode_measure_stub(0x10000000, 0x10002000, 0x10001000, 0x10000030)) == MEASURE_STUB_LENGTH
                     and len(encode_exit_stub(0x10000100, 0x10002000, 0x10001100, 0x10000120)) == EXIT_STUB_LENGTH,
     }
@@ -186,6 +253,8 @@ def inspect(data, instructions, core_text):
             'measure_site': hex(MEASURE_SITE_VA), 'exit_site': hex(EXIT_SITE_VA),
             'measure_sources': [hex(a) for a in sources(MEASURE_SITE_VA)], 'exit_sources': [hex(a) for a in sources(EXIT_SITE_VA)],
             'interior_branches': [(hex(a), hex(t)) for a, t in interior(MEASURE_SITE_VA) + interior(EXIT_SITE_VA)],
+            'ebx_writers': [hex(a) for a in ebx_writers], 'esp_writers': [hex(a) for a in esp_writers],
+            'd_slot_writers': [hex(a) for a in d_slot_writers], 'model_slot_writers': [hex(a) for a in model_slot_writers],
             'function_instructions': len(instructions), 'exe_sha256': hashlib.sha256(data).hexdigest()}
 
 

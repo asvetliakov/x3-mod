@@ -7,7 +7,10 @@
 // LOD index and flags as the unpatched pass and returns with the same
 // EAX/ECX/EDX/EFLAGS; callee-saved registers, ESP and the empty x87 stack are
 // preserved; the census rows carry the engine's own s, measure, thresholds,
-// limit, verdict and LOD; early-rejected nodes count as unmeasured; the ring
+// limit, verdict and LOD, and the model's LOD ladder (count and record
+// thresholds) only where the pass resolved a model pointer (not for nodes
+// culled with EBX still D, a null model, and never a fault for a count-0 model,
+// an unreadable record or a hostile EBX); early-rejected nodes count as unmeasured; the ring
 // never overflows silently (overflow= on the frame row); disarmed frames
 // record nothing; LastError preserved; exact rollback; option off untouched;
 // changed window bytes refused; late window refused. Diagnostic timings only;
@@ -15,6 +18,7 @@
 #include "../../src/proxy/cull_census.h"
 #include "../../src/proxy/cull_census_core.h"
 #include "../../src/proxy/engine_patch.h"
+#include "../../src/proxy/engine_memory.h"
 #include <windows.h>
 #include <cstdio>
 #include <cstring>
@@ -34,8 +38,11 @@ namespace census = x3m::cull_census;
 namespace core = x3m::cull_census::core;
 
 // ---- the synthetic pass: thiscall(ECX = node, view, flag) with the engine's frame layout ----
-// Node fields as the engine's (core.h offsets) plus a fixture-private ladder at
-// +0x1f0..+0x1fc (T1, T2, T3, LOD count); view fields: +0x5c W, +0x270 flags,
+// Node fields as the engine's (core.h offsets) plus a fixture-private model
+// pointer at +0x1f0 standing in for the 0x004863c0 lookup of +0x140; the model
+// is the engine's layout (records at +0x0c, signed word count at +0x10, record
+// threshold at +0x34) and the pass carries it in EBX and [ESP+0x14] exactly as
+// 0x0047d2fd..0x0047d46e do; view fields: +0x5c W, +0x270 flags,
 // +0x298 scale, +0x300 view-distance setting (the engine reads those from
 // globals; the copy keeps them in the view block). (a*b)/c is the engine's
 // 0x00469a30 contract (0 when c == 0).
@@ -158,21 +165,32 @@ sp_degenerate:
     mov dword ptr [edi+0x12c], eax
     jmp sp_exit_site
 sp_lod:
-    mov ebp, dword ptr [edi+0x1fc]
+    mov ebx, dword ptr [edi+0x1f0]
+    mov dword ptr [esp+0x14], ebx
+    test ebx, ebx
+    je sp_lod_select
+    movsx ebp, word ptr [ebx+0x10]
     sub ebp, 1
     mov esi, ebp
     test ebp, ebp
     jle sp_lod_adjust
+    mov ecx, dword ptr [esp+0x14]
+    mov edx, dword ptr [ecx+0xc]
+    lea ebx, [edx+ebp*4]
 sp_lod_loop:
-    mov eax, dword ptr [edi+0x1ec+esi*4]
+    mov eax, dword ptr [ebx]
+    mov eax, dword ptr [eax+0x34]
     cmp dword ptr [esp+0x2c], eax
     jl sp_lod_store
     sub esi, 1
+    sub ebx, 4
     test esi, esi
     jg sp_lod_loop
-    jmp sp_lod_adjust
+    jmp sp_lod_restore
 sp_lod_store:
     mov dword ptr [edi+0x14c], esi
+sp_lod_restore:
+    mov ebx, dword ptr [esp+0x14]
 sp_lod_adjust:
     mov edx, dword ptr [esp+0x28]
     test dword ptr [edx+0x270], 0x1000000
@@ -199,10 +217,11 @@ sp_lod_floor:
     sub edx, 1
     and eax, edx
     mov dword ptr [edi+0x14c], eax
+sp_lod_select:
     mov ecx, dword ptr [edi+0x14c]
     test ecx, ecx
     jle sp_renderable
-    mov eax, dword ptr [edi+0x1fc]
+    movsx eax, word ptr [ebx+0x10]
     sub eax, 1
     cmp ecx, eax
     jne sp_renderable
@@ -314,15 +333,33 @@ alignas(16) static std::uint32_t sentinel[4] = {0, 0, 0, 0};
 static std::uint32_t addr(const void* p) { return std::uint32_t(reinterpret_cast<std::uintptr_t>(p)); }
 static void put(void* base, unsigned off, std::uint32_t v) { std::memcpy(static_cast<unsigned char*>(base) + off, &v, 4); }
 static std::uint32_t get(const void* base, unsigned off) { std::uint32_t v; std::memcpy(&v, static_cast<const unsigned char*>(base) + off, 4); return v; }
-constexpr std::uint32_t ladder_offset = 0x1f0, ladder_count_offset = 0x1fc, d_offset = 0xf0, first_child_offset = 0xc, view_w = 0x5c, view_flags = 0x270, view_scale = 0x298, view_distance = 0x300;
+constexpr std::uint32_t model_pointer_offset = 0x1f0, d_offset = 0xf0, first_child_offset = 0xc, view_w = 0x5c, view_flags = 0x270, view_scale = 0x298, view_distance = 0x300;
+// Synthetic models in the engine's layout: +0x0c -> record pointers, +0x10 signed word count,
+// record +0x34 the switch value. Record 0 carries t0 = 1000 (the pass never reads it; the census does).
+struct alignas(16) Record { unsigned char bytes[0x40]; };
+struct alignas(16) Model { unsigned char bytes[0x20]; std::uint32_t pointers[4]; Record records[4]; std::int32_t lods, t1, t2, t3; };
+constexpr std::int32_t t0 = 1000;
+static Model models[16];
+static unsigned model_count = 0;
+static Model* model_for(unsigned lods, std::int32_t t1, std::int32_t t2, std::int32_t t3) {
+    for (unsigned i = 0; i < model_count; ++i)
+        if (models[i].lods == std::int32_t(lods) && models[i].t1 == t1 && models[i].t2 == t2 && models[i].t3 == t3) return &models[i];
+    if (model_count == sizeof models / sizeof models[0]) return nullptr;
+    Model& m = models[model_count++];
+    std::memset(&m, 0, sizeof m); m.lods = std::int32_t(lods); m.t1 = t1; m.t2 = t2; m.t3 = t3;
+    put(m.bytes, core::model_records_offset, addr(m.pointers));
+    const std::uint16_t count = std::uint16_t(lods); std::memcpy(m.bytes + core::model_lod_count_offset, &count, 2);
+    const std::int32_t thr[4] = {t0, t1, t2, t3};
+    for (unsigned i = 0; i < 4; ++i) { m.pointers[i] = addr(&m.records[i]); put(m.records[i].bytes, core::record_threshold_offset, std::uint32_t(thr[i])); }
+    return &m;
+}
 static void node_set(Node& n, Node* parent, std::int32_t radius, std::int32_t d, std::uint32_t flags, std::int32_t thr_1d8, std::int32_t thr_1dc, std::uint32_t model,
                      unsigned lods = 1, std::int32_t t1 = 0, std::int32_t t2 = 0, std::int32_t t3 = 0) {
     std::memset(n.bytes, 0, sizeof n.bytes);
     put(n.bytes, 0, addr(sentinel)); put(n.bytes, first_child_offset, addr(sentinel));
     put(n.bytes, core::parent_offset, parent ? addr(parent) : 0); put(n.bytes, core::radius_offset, std::uint32_t(radius)); put(n.bytes, d_offset, std::uint32_t(d));
     put(n.bytes, core::flags12c_offset, flags); put(n.bytes, core::threshold_1d8_offset, std::uint32_t(thr_1d8)); put(n.bytes, core::threshold_1dc_offset, std::uint32_t(thr_1dc));
-    put(n.bytes, core::model_offset, model); put(n.bytes, ladder_count_offset, lods);
-    put(n.bytes, ladder_offset, std::uint32_t(t1)); put(n.bytes, ladder_offset + 4, std::uint32_t(t2)); put(n.bytes, ladder_offset + 8, std::uint32_t(t3));
+    put(n.bytes, core::model_offset, model); put(n.bytes, model_pointer_offset, addr(model_for(lods, t1, t2, t3)));
 }
 // Links children[0..n) as the child list of parent (each child's +0 = the next, the last -> sentinel).
 static void link(Node& parent, Node* const* children, unsigned count) {
@@ -358,11 +395,14 @@ static Expected expected(const Node& n, const View& v, const Node* parent) {
     e.limit = core::size_limit(std::int32_t(get(n.bytes, core::threshold_1d8_offset)), parent != nullptr, parent ? std::int32_t(get(parent->bytes, core::threshold_1d8_offset)) : 0);
     return e;
 }
-struct Row { unsigned long device, frame, view, node, model, flags_in, flags_out; long s, measure, d, radius, thr_1dc, thr_1d8, limit, lod; char verdict[24]; };
+struct Row { unsigned long device, frame, view, node, model, flags_in, flags_out; long s, measure, d, radius, thr_1dc, thr_1d8, limit, lod; char verdict[24], lods[16], thr[128]; };
 static bool parse_row(const std::string& line, Row& r) {
+    const char* ladder = std::strstr(line.c_str(), " lods=");
     return std::sscanf(line.c_str(), "cull_census device=%lu frame=%lu view=%lx node=%lx model=%lx s=%ld measure=%ld d=%ld radius=%ld thr_1dc=%ld thr_1d8=%ld limit=%ld flags_in=%lx flags_out=%lx lod=%ld verdict=%23s",
-                       &r.device, &r.frame, &r.view, &r.node, &r.model, &r.s, &r.measure, &r.d, &r.radius, &r.thr_1dc, &r.thr_1d8, &r.limit, &r.flags_in, &r.flags_out, &r.lod, r.verdict) == 16;
+                       &r.device, &r.frame, &r.view, &r.node, &r.model, &r.s, &r.measure, &r.d, &r.radius, &r.thr_1dc, &r.thr_1d8, &r.limit, &r.flags_in, &r.flags_out, &r.lod, r.verdict) == 16
+        && ladder && std::sscanf(ladder, " lods=%15s thr=%127s", r.lods, r.thr) == 2;
 }
+static bool ladder_is(const Row* r, const char* lods, const char* thr) { return r && !std::strcmp(r->lods, lods) && !std::strcmp(r->thr, thr); }
 static const Row* row_of(const std::vector<Row>& rows, const Node& n) { for (const Row& r : rows) if (r.node == addr(&n)) return &r; return nullptr; }
 static bool row_matches(const Row* r, const Node& n, const Node& reference, const Expected& e, const char* verdict) {
     if (!r) return false;
@@ -414,6 +454,16 @@ int main() {
     node_set(J, &R, 800, 100000, 0x1002, 0, 0, 0x500b);                             // measure 10, s 5 -> kept; zeroed (< 20) in the env-map view -> culled_other there
     node_set(gA1, &A, 5000, 100000, 0x1002, 2, 0, 0x5009);                          // measure 64, own 2 < parent 4 -> limit 4 -> kept
     node_set(gA2, &A, 470, 100000, 0x1002, 8, 0, 0x500a);                           // measure 6, own 8 > parent 4 -> limit 8 -> culled_size
+    put(gA1.bytes, model_pointer_offset, 0);                                         // no model (0x0047d2f6 / 0x0047d30e): EBX 0, no ladder
+    put(J.bytes, model_pointer_offset, addr(model_for(0, 0, 0, 0)));                // LOD count 0: ebp -1, loop skipped, row "lods=0 thr=-"
+    // I's model: two records, record 0 on a no-access page. The pass reads only record 1
+    // (s saturated, not below 100); the census's bounded read of record 0 fails -> "lods=2 thr=-".
+    auto* noaccess = static_cast<unsigned char*>(VirtualAlloc(nullptr, 0x1000, MEM_COMMIT | MEM_RESERVE, PAGE_NOACCESS));
+    check(noaccess != nullptr, "no-access page");
+    static Model unreadable; unreadable = *model_for(2, 100, 0, 0); unreadable.lods = -1;
+    put(unreadable.bytes, core::model_records_offset, addr(unreadable.pointers));
+    unreadable.pointers[0] = addr(noaccess); unreadable.pointers[1] = addr(&unreadable.records[1]);
+    put(I.bytes, model_pointer_offset, addr(&unreadable));
     Node* r_children[] = {&A, &B, &C, &E, &F, &G, &H, &I, &J}; link(R, r_children, 9);
     Node* a_children[] = {&gA1, &gA2}; link(A, a_children, 2);
     static Node reference[all_count];
@@ -470,7 +520,9 @@ int main() {
     bool identical = true; for (unsigned i = 0; i < all_count; ++i) identical = identical && !std::memcmp(all[i]->bytes, reference[i].bytes, sizeof(Node));
     check(identical, "patched disarmed: every node as native");
     check(census::stats().entries == 0 && census::stats().unmeasured == 0, "patched disarmed: nothing recorded (dead branch)");
+    const std::uint64_t epoch_plain = x3m::engine_memory::stats().frame;
     census::present(7, 40, false);
+    check(x3m::engine_memory::stats().frame == epoch_plain, "present of a plain frame leaves the engine-memory epoch alone");
     check(frame_lines.empty() && entry_lines.empty(), "present of a plain frame logs nothing");
 
     // ---- patched, armed: identical nodes and outputs, the census rows ----
@@ -512,6 +564,13 @@ int main() {
         const Row* ra = row_of(rows, A); check(ra && ra->s == 1 && ra->measure == 1 && ra->limit == 4 && ra->thr_1d8 == 4, "A row values");
         const Row* rf = row_of(rows, F); check(rf && rf->s == 19 && rf->measure == 38 && rf->lod == 3 && rf->d == 100000 && rf->radius == 3000 && rf->model == 0x5005, "F row values");
         check(row_of(rows, G) == nullptr && row_of(rows, H) == nullptr, "early exits have no row");
+        // The LOD ladder: record 0's value (never read by the pass) first, then the switch values the loop compares s with.
+        check(ladder_is(row_of(rows, C), "3", "1000,100,50") && ladder_is(row_of(rows, E), "3", "1000,100,50"), "C and E rows: the three-record ladder (C culled by the fade on the LOD path)");
+        check(ladder_is(row_of(rows, R), "4", "1000,100,50,25") && ladder_is(row_of(rows, F), "4", "1000,100,50,25"), "R and F rows: the four-record ladder");
+        check(ladder_is(row_of(rows, A), "-", "-") && ladder_is(row_of(rows, B), "-", "-") && ladder_is(row_of(rows, gA2), "-", "-"), "nodes culled at 0x0047d2e7 (EBX still D): no ladder");
+        check(ladder_is(row_of(rows, gA1), "-", "-") && row_of(rows, gA1) && !std::strcmp(row_of(rows, gA1)->verdict, "kept"), "null model (EBX 0): no ladder, kept");
+        check(ladder_is(row_of(rows, J), "0", "-"), "count-0 model: count, no thresholds");
+        check(ladder_is(row_of(rows, I), "2", "-"), "unreadable record 0: count, no thresholds, no fault");
     }
     frame_lines.clear(); entry_lines.clear();
 
@@ -530,6 +589,7 @@ int main() {
         const Row* rj = row_of(rows, J); const Row* rr = row_of(rows, R);
         check(rj && !std::strcmp(rj->verdict, "culled_other") && !(rj->flags_out & 2) && rj->measure == 10 && rj->limit == 0, "env-map view: J culled_other (measure 10 zeroed below 20, not the size limit)");
         check(rr && !std::strcmp(rr->verdict, "kept") && rr->lod == 1, "env-map view: R kept with the +1 LOD step");
+        check(ladder_is(rr, "4", "1000,100,50,25") && ladder_is(rj, "-", "-"), "env-map view: R keeps its ladder; J, zeroed and culled with EBX still D, has none");
         frame_lines.clear(); entry_lines.clear();
     }
 
@@ -545,6 +605,27 @@ int main() {
         std::vector<Row> rows; for (const std::string& line : entry_lines) { Row r{}; if (parse_row(line, r)) rows.push_back(r); }
         const Row* rf = row_of(rows, F); const Row* rc = row_of(rows, C);
         check(rf && rf->lod == 0 && !std::strcmp(rf->verdict, "kept") && rc && rc->lod == 0 && !std::strcmp(rc->verdict, "kept"), "view distance 4: every LOD forced to 0, C no longer fades");
+        frame_lines.clear(); entry_lines.clear();
+    }
+
+    // ---- hostile exit arguments: a register that passes the guard but points at no-access memory, and EBX == D ----
+    {
+        static Node lone; node_set(lone, nullptr, 3000, 100000, 0x1002, 0, 0, 0x5100, 3, 100, 50);
+        census::begin_frame(true);
+        SetLastError(0x6160);
+        x3m_cull_census_measure(addr(&lone), 38, 19, 100000, addr(&view));
+        x3m_cull_census_exit(addr(&lone), addr(noaccess), addr(noaccess), 100000);
+        x3m_cull_census_measure(addr(&lone), 38, 19, 100000, addr(&view));
+        x3m_cull_census_exit(addr(&lone), 100000, 100000, 100000);
+        x3m_cull_census_measure(addr(&lone), 38, 19, 100000, addr(&view));
+        x3m_cull_census_exit(addr(&lone), 0x00000010u, 0x00000010u, 100000);   // the null page
+        const std::uint64_t epoch = x3m::engine_memory::stats().frame;
+        census::present(7, 48, true);
+        check(x3m::engine_memory::stats().frame == epoch + 1, "captured present advances the engine-memory epoch once before the ladder reads");
+        check(GetLastError() == 0x6160, "hostile exit arguments: LastError preserved across the Present-time reads");
+        std::vector<Row> rows; for (const std::string& line : entry_lines) { Row r{}; if (parse_row(line, r)) rows.push_back(r); }
+        check(rows.size() == 3 && ladder_is(&rows[0], "-", "-") && ladder_is(&rows[1], "-", "-") && ladder_is(&rows[2], "-", "-"),
+              "hostile exit arguments: no-access model, EBX equal to D and a null-page model all give lods=- thr=-, no fault");
         frame_lines.clear(); entry_lines.clear();
     }
 

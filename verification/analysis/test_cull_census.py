@@ -2,8 +2,10 @@
 
 The site verifier on a synthetic image (both windows, whole instructions, the
 flag writer/consumer next to each site, interior-branch, extra-source and
-changed-byte refusal), the source constants, the stub encoders, the install,
-frame and per-node row parsers, the core classification compiled with the
+changed-byte refusal, the LOD-ladder pattern and the EBX/ESP/slot writer
+sets), the source constants, the stub encoders, the install, frame and
+per-node row parsers (with and without the ladder fields), the core
+classification, the exit-site model-pointer guard and the ladder suffix compiled with the
 host compiler, the tools/analysis/cull_census.py bucket table on a synthetic
 log, and the --cull-census launcher gate (--dry-run only, never a launch). The
 installed executable is only read when present. No Wine, no game.
@@ -52,12 +54,27 @@ int main() {
     std::memcpy(&v, m + 27, 4); check(m[26] == 0xe8 && 0x1000001f + v == 0x30000000, "measure stub: call handler");
     std::memcpy(&v, m + 39, 4); check(!std::memcmp(m + 31, "\x83\xc4\x14\x5a\x59\x58\xff\x25", 8) && v == 0x1000002c, "measure stub: add esp,20; pops; jmp [next]");
     unsigned char x[exit_stub_length]; encode_exit_stub(0x10000100, 0x20000000, 0x30000100, 0x10000120, x);
-    std::memcpy(&v, x + 2, 4); check(x[0] == 0x80 && x[1] == 0x3d && v == 0x20000000 && x[7] == 0x74 && x[8] == exit_stub_continue - 9 && x[9] == 0x50 && x[12] == 0x57, "exit stub: test, je, pushes, push edi");
-    std::memcpy(&v, x + 14, 4); check(x[13] == 0xe8 && 0x10000112 + v == 0x30000100, "exit stub: call handler");
-    std::memcpy(&v, x + 26, 4); check(!std::memcmp(x + 18, "\x83\xc4\x04\x5a\x59\x58\xff\x25", 8) && v == 0x10000120, "exit stub: add esp,4; pops; jmp [next]");
+    std::memcpy(&v, x + 2, 4); check(x[0] == 0x80 && x[1] == 0x3d && v == 0x20000000 && x[7] == 0x74 && x[8] == exit_stub_continue - 9 && x[9] == 0x50 && x[11] == 0x52, "exit stub: test, je, pushes");
+    check(!std::memcmp(x + 12, "\xff\x74\x24\x1c\xff\x74\x24\x24\x53\x57", 10), "exit stub: pushes (d slot, model slot, ebx, node)");
+    std::memcpy(&v, x + 23, 4); check(x[22] == 0xe8 && 0x1000011b + v == 0x30000100, "exit stub: call handler");
+    std::memcpy(&v, x + 35, 4); check(!std::memcmp(x + 27, "\x83\xc4\x10\x5a\x59\x58\xff\x25", 8) && v == 0x10000120, "exit stub: add esp,16; pops; jmp [next]");
+    check(exit_model_pointer(0x0a000000, 0x0a000000, 100000) == 0x0a000000, "model pointer: EBX equal to the model slot, not D");
+    check(exit_model_pointer(100000, 0x0a000000, 100000) == 0 && exit_model_pointer(100000, 100000, 100000) == 0, "model pointer: EBX still D (culled at 0x0047d2e7) is refused");
+    check(exit_model_pointer(0, 0, 5) == 0 && exit_model_pointer(0x0a000000, 0x0b000000, 5) == 0, "model pointer: null EBX or a stale slot is refused");
+    char text[128];
+    const std::int32_t thr[ladder_cap] = {900, 100, 50, 25, -1, 7, 8, 9};
+    check(format_ladder(text, sizeof text, true, 3, 3, thr) && !std::strcmp(text, " lods=3 thr=900,100,50"), "ladder suffix: three records");
+    check(format_ladder(text, sizeof text, false, 3, 3, thr) && !std::strcmp(text, " lods=- thr=-"), "ladder suffix: no model pointer");
+    check(format_ladder(text, sizeof text, true, 0, 0, thr) && !std::strcmp(text, " lods=0 thr=-"), "ladder suffix: count 0 has no thresholds");
+    check(format_ladder(text, sizeof text, true, 4, 0, thr) && !std::strcmp(text, " lods=4 thr=-"), "ladder suffix: unreadable record keeps the count");
+    check(format_ladder(text, sizeof text, true, -2, 0, thr) && !std::strcmp(text, " lods=-2 thr=-"), "ladder suffix: a negative count word is shown as read");
+    check(format_ladder(text, sizeof text, true, 12, 8, thr) && !std::strcmp(text, " lods=12 thr=900,100,50,25,-1,7,8,9"), "ladder suffix: capped at eight records");
+    const std::int32_t extreme[ladder_cap] = {-2147483647 - 1, 2147483647, 0, 0, 0, 0, 0, 0};
+    check(format_ladder(text, sizeof text, true, 2, 2, extreme) && !std::strcmp(text, " lods=2 thr=-2147483648,2147483647"), "ladder suffix: int32 extremes");
+    check(!format_ladder(text, 10, true, 3, 3, thr) && std::strlen(text) == 9, "ladder suffix: truncation reported, terminated");
     check(std::memcmp(measure_window + measure_site_offset, measure_site, site_length) == 0 && std::memcmp(exit_window + exit_site_offset, exit_site, site_length) == 0, "site bytes inside the windows");
     check(measure_window_va + measure_site_offset == measure_site_va && measure_site_va + site_length == measure_next_va && exit_window_va + exit_site_offset == exit_site_va && exit_site_va + site_length == exit_next_va, "address relations");
-    check(sizeof(Entry) == 60 && ring_size == 8192, "entry size and ring bound (the parent link included)");
+    check(sizeof(Entry) == 64 && ring_size == 8192, "entry size and ring bound (the parent link and model pointer included)");
     std::printf("cull_census_core checks_failed=%u\n", failures);
     return failures ? 1 : 0;
 }
@@ -109,6 +126,7 @@ def image(*changes):
              rel32(0x47d112, b'\xe9', probe.EXIT_SITE_VA), rel32(0x47d1a2, b'\x0f\x8c', probe.EXIT_SITE_VA), rel32(0x47d1af, b'\x0f\x84', probe.EXIT_SITE_VA),
              rel32(0x47d2e7, b'\xe9', probe.EXIT_SITE_VA),
              (probe.RET_VA, b'\xc2\x08\x00'),
+             *((va, bytes.fromhex(h)) for va, h in probe.LADDER_PATTERN),
              *changes]
     return synthetic_image(extra=extra, text_size=0x100000)
 
@@ -136,9 +154,13 @@ class CullCensusSites(unittest.TestCase):
             'exit_window_bytes': (probe.EXIT_WINDOW_VA + 2, b'\x02'),                        # cmp ecx,2
             'exit_site_whole_instructions': (probe.EXIT_SITE_VA + 3, b'\x83\x3f\x01'),       # cmp [edi],1
             'exit_next_consumes_flags': (probe.EXIT_NEXT_VA, b'\xeb\x18'),                   # jmp instead of je
-            'no_interior_branch': (0x47d300, b'\xe9' + struct.pack('<i', probe.MEASURE_SITE_VA + 2 - (0x47d300 + 5))),
+            'no_interior_branch': (0x47d380, b'\xe9' + struct.pack('<i', probe.MEASURE_SITE_VA + 2 - (0x47d380 + 5))),
             'exit_sources': (0x47d400, b'\xe9' + struct.pack('<i', probe.EXIT_SITE_VA - (0x47d400 + 5))),
             'function_ret': (probe.RET_VA, b'\xc2\x04\x00'),
+            'ladder_pattern_bytes': (0x47d321, b'\x0f\xbf\x6b\x12'),                      # movsx ebp,word [ebx+0x12]
+            'ebx_writers_between_sites': (0x47d480, b'\x8b\xd8'),                          # an extra mov ebx,eax on the LOD path
+            'esp_writers_between_sites': (0x47d480, b'\x50'),                               # an unbalanced push between the sites
+            'slot_writers': (0x47d480, b'\x89\x44\x24\x14'),                              # mov [esp+0x14],eax
         }
         for failed, change in cases.items():
             with self.subTest(check=failed):
@@ -165,11 +187,11 @@ class CullCensusSites(unittest.TestCase):
         self.assertEqual(stub[31:39], b'\x83\xc4\x14\x5a\x59\x58\xff\x25')
         self.assertEqual(struct.unpack('<I', stub[39:43])[0], 0x1000002c)
         exit_stub = probe.encode_exit_stub(0x10000100, 0x20000000, 0x30000100, 0x10000120)
-        self.assertEqual(len(exit_stub), 30)
-        self.assertEqual(exit_stub[6:13], b'\x00\x74\x0f\x50\x51\x52\x57')
-        self.assertEqual(struct.unpack('<I', exit_stub[14:18])[0], (0x30000100 - 0x10000112) & 0xffffffff)
-        self.assertEqual(exit_stub[18:26], b'\x83\xc4\x04\x5a\x59\x58\xff\x25')
-        self.assertEqual(struct.unpack('<I', exit_stub[26:30])[0], 0x10000120)
+        self.assertEqual(len(exit_stub), 39)
+        self.assertEqual(exit_stub[6:22], b'\x00\x74\x18\x50\x51\x52\xff\x74\x24\x1c\xff\x74\x24\x24\x53\x57')
+        self.assertEqual(struct.unpack('<I', exit_stub[23:27])[0], (0x30000100 - 0x1000011b) & 0xffffffff)
+        self.assertEqual(exit_stub[27:35], b'\x83\xc4\x10\x5a\x59\x58\xff\x25')
+        self.assertEqual(struct.unpack('<I', exit_stub[35:39])[0], 0x10000120)
         with self.assertRaises(ValueError):
             probe.encode_measure_stub(1 << 32, 0, 0, 0)
 
@@ -186,6 +208,14 @@ class CullCensusSites(unittest.TestCase):
         node = probe.parse_row('cull_census device=1 frame=3494 view=34766bf8 node=34763100 model=000050eb s=1 measure=1 d=100000 radius=100 thr_1dc=0 thr_1d8=4 limit=4 flags_in=00001002 flags_out=00001000 lod=0 verdict=culled_size')
         self.assertEqual(node, {'device': 1, 'frame': 3494, 'view': 0x34766bf8, 'node': 0x34763100, 'model': 0x50eb, 's': 1, 'measure': 1, 'd': 100000, 'radius': 100,
                                 'thr_1dc': 0, 'thr_1d8': 4, 'limit': 4, 'flags_in': 0x1002, 'flags_out': 0x1000, 'lod': 0, 'verdict': 'culled_size'})
+        prefix = 'cull_census device=1 frame=3494 view=34766bf8 node=34763000 model=000050e9 s=3 measure=6 d=100000 radius=500 thr_1dc=0 thr_1d8=0 limit=0 flags_in=00001002 flags_out=00001002 lod=0 '
+        laddered = probe.parse_row(prefix + 'verdict=kept lods=3 thr=900,100,50')
+        self.assertEqual((laddered['verdict'], laddered['lods'], laddered['thr']), ('kept', 3, [900, 100, 50]))
+        self.assertEqual({k: probe.parse_row(prefix + 'verdict=kept lods=- thr=-')[k] for k in ('lods', 'thr')}, {'lods': None, 'thr': []})
+        self.assertEqual({k: probe.parse_row(prefix + 'verdict=kept lods=0 thr=-')[k] for k in ('lods', 'thr')}, {'lods': 0, 'thr': []})
+        scoped = probe.parse_row(prefix + 'verdict=culled_small scope=bodies lods=1 thr=-5')
+        self.assertEqual((scoped['verdict'], scoped['lods'], scoped['thr']), ('culled_small', 1, [-5]))
+        self.assertNotIn('lods', node)   # a row written before the ladder fields carries neither key
         self.assertIsNone(probe.parse_row('cull_census_frame device=1 frame=3494 entries=5 overflow=0 unmeasured=3 exited=5 ring=8192'))
         self.assertIsNone(probe.parse_row('cull_census requested=1 patched=1 reason=ok'))
 

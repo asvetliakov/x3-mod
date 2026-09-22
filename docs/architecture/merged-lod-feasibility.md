@@ -245,6 +245,29 @@ state are all per-node and cannot be baked.
    share (400 of 448). This is an upper bound: it assumes every one of those
    bodies is fixable and that a coarse level is visually acceptable at 2–90 `s`.
 
+### Ladder diagnostic (built 2026-09-22)
+
+Item 2 is built. The census rows end in ` lods=<n|-> thr=<t0,t1,…|->`: the
+count word `model+0x10` and `LODrec_i+0x34` for `i < min(lods, 8)`, where `t1`
+is the LOD 0 → 1 switch value and `t0` is never compared. The model pointer is
+not read at `0047d321`, which is not a census site. The exit stub passes EBX and
+the frame slots `[esp+0x14]`/`[esp+0x10]`, and the handler keeps EBX only when
+it equals the model slot and differs from D. The ladder is then read at Present
+through the bounded `engine_memory::read`. Rows the pass culled before the
+model lookup (`0047d2e7`) or that had no model carry `lods=- thr=-`. Details,
+the pinned writer sets and the verifier checks are in
+[lod-selection.md](../reverse-engineering/lod-selection.md), "LOD ladder
+fields". The per-model report is `python3 tools/analysis/draw_accounting.py
+<run dir> --ladder [--frame F] [--view V] [--json]` (no depth readback needed).
+It lists the models of one census view sorted by draws, each with `lods`,
+`thr`, the selected LODs `lod:nodes`, nodes, kept, draws and the kept nodes'
+`s` range. It flags `no_ladder` (lods == 1) and `lod0_below_t1` (a kept node at
+LOD 0 with `s < t1`: a view-distance or `--lod-scale` bias, or the adaptive
+rescale). A flight with `--cull-census` at the run240 stand therefore separates
+the two cases in "Unknown" below per model. Status: site verifier 21/21, host
+tests and the fixture build pass. The Wine CPU fixture and a flight have not
+run yet.
+
 ### Effort against existing machinery
 
 - Archive read/write: mostly present. `tools/analysis/inspect_x3.py`
@@ -318,6 +341,12 @@ python3 - <<'PY'
 import sys; sys.path.insert(0,'tools/analysis')
 from inspect_x3 import read_catalogue   # CAT directory; members are XOR 0x33 then gzip
 PY
+```
+
+Per-model LOD ladder joined with the draws (a `--cull-census` run, streamed):
+
+```sh
+python3 tools/analysis/draw_accounting.py <run dir> --ladder
 ```
 
 Per-node join on a session log (no file over 50 KB is read whole):

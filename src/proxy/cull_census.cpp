@@ -1,6 +1,7 @@
 #include "cull_census.h"
 #include "cull_census_core.h"
 #include "engine_patch.h"
+#include "engine_memory.h"
 #include "object_trace.h"
 #include "capture.h"
 #include <windows.h>
@@ -18,6 +19,7 @@ namespace {
 using namespace x3m::cull_census::core;
 namespace core = x3m::cull_census::core;
 namespace engine_patch = x3m::engine_patch;
+namespace engine_memory = x3m::engine_memory;
 bool patched_ = false;
 engine_patch::Site measure_site_{}, exit_site_{};
 std::uintptr_t measure_stub_ = 0, exit_stub_ = 0;
@@ -32,6 +34,40 @@ std::atomic<std::uint32_t> count_{0}, overflow_{0}, unmeasured_{0}, exited_{0};
 std::uint32_t pending_node_ = 0, pending_index_ = no_index;
 bool small_bodies_only_ = false;   // cull_small_parts' scope for the frame being recorded
 std::int32_t small_threshold_ = 0; // cull_small_parts' threshold for the frame being recorded (0 = none)
+// The LOD ladder of each model a captured frame's rows name, read at Present
+// (never inside the pass) through engine_memory::read, which validates every
+// span against committed readable memory, so a stale or wrong pointer yields
+// "unknown", never a fault. Direct-mapped by model pointer and cleared per
+// captured frame: a station's parts share a handful of models, so the reads
+// are one per distinct model, not one per row.
+struct Ladder { std::uint32_t model_ptr; bool known; std::int32_t count; unsigned thresholds; std::int32_t thr[ladder_cap]; };
+constexpr unsigned ladder_cache_size = 256;
+Ladder ladder_cache_[ladder_cache_size];
+
+Ladder read_ladder(std::uint32_t model) {
+    Ladder l{}; l.model_ptr = model;
+    unsigned char head[8];   // model+0x0c record-pointer array, model+0x10 the signed LOD count word
+    if (!model || !engine_memory::read(std::uintptr_t(model) + model_records_offset, head, sizeof head)) return l;
+    std::uint32_t records = 0; std::int16_t count = 0;
+    std::memcpy(&records, head, 4); std::memcpy(&count, head + (model_lod_count_offset - model_records_offset), 2);
+    l.known = true; l.count = count;
+    if (count <= 0 || !records) return l;
+    const unsigned n = unsigned(count) < ladder_cap ? unsigned(count) : ladder_cap;
+    std::uint32_t pointers[ladder_cap]{};
+    if (!engine_memory::read(records, pointers, n * 4)) return l;
+    std::int32_t thr[ladder_cap]{};
+    for (unsigned i = 0; i < n; ++i)
+        if (!pointers[i] || !engine_memory::read(std::uintptr_t(pointers[i]) + record_threshold_offset, &thr[i], 4)) return l;
+    std::memcpy(l.thr, thr, sizeof thr); l.thresholds = n;
+    return l;
+}
+const Ladder& ladder_of(std::uint32_t model) {
+    static const Ladder none{};   // rows without a model pointer: no read, no cache slot
+    if (!model) return none;
+    Ladder& slot = ladder_cache_[(model >> 4) % ladder_cache_size];
+    if (slot.model_ptr != model) slot = read_ladder(model);
+    return slot;
+}
 
 bool bytes_match(std::uintptr_t at, const unsigned char* expected, unsigned length) {
     unsigned char actual[measure_window_length]{};
@@ -98,11 +134,11 @@ extern "C" void x3m_cull_census_measure(std::uint32_t node, std::int32_t measure
     const std::uint32_t parent = n[parent_offset / 4];
     e.parent = parent;
     e.limit = size_limit(e.thr_1d8, parent != 0, parent ? std::int32_t(reinterpret_cast<const std::uint32_t*>(parent)[threshold_1d8_offset / 4]) : 0);
-    e.flags_in = n[flags12c_offset / 4]; e.flags_out = 0; e.lod = 0; e.exited = 0;
+    e.flags_in = n[flags12c_offset / 4]; e.flags_out = 0; e.lod = 0; e.exited = 0; e.model_ptr = 0;
     pending_index_ = index;
     count_.store(index + 1, std::memory_order_relaxed);
 }
-extern "C" void x3m_cull_census_exit(std::uint32_t node) {
+extern "C" void x3m_cull_census_exit(std::uint32_t node, std::uint32_t ebx, std::uint32_t model_slot, std::uint32_t d_slot) {
     if (pending_node_ != node) { unmeasured_.fetch_add(1, std::memory_order_relaxed); return; }
     pending_node_ = 0;
     const std::uint32_t index = pending_index_;
@@ -111,6 +147,7 @@ extern "C" void x3m_cull_census_exit(std::uint32_t node) {
     const auto* n = reinterpret_cast<const std::uint32_t*>(node);
     Entry& e = ring_[index];
     e.flags_out = n[flags12c_offset / 4]; e.lod = std::int32_t(n[lod_offset / 4]); e.exited = 1;
+    e.model_ptr = exit_model_pointer(ebx, model_slot, d_slot); // a register and two stack slots: no engine read here
     exited_.fetch_add(1, std::memory_order_relaxed);
 }
 
@@ -206,14 +243,22 @@ void present(unsigned long long device, unsigned long long frame, bool captured)
         const std::uint32_t entries = s.entries < ring_size ? s.entries : ring_size;
         log("cull_census_frame device=%llu frame=%llu entries=%lu overflow=%lu unmeasured=%lu exited=%lu ring=%u",
             device, frame, (unsigned long)entries, (unsigned long)s.overflow, (unsigned long)s.unmeasured, (unsigned long)s.exited, ring_size);
+        std::memset(ladder_cache_, 0, sizeof ladder_cache_);
+        // A fresh validation epoch for this frame's ladder reads: on a census-only run no motion
+        // route advances it, so region checks would otherwise be trusted for up to 100 ms.
+        engine_memory::next_frame();
         for (std::uint32_t i = 0; i < entries && ring_; ++i) {
             const Entry& e = ring_[i];
-            // A culled_small row names the scope that culled it (appended: the row parsers anchor on the fields before it).
+            // A culled_small row names the scope that culled it, then the model's LOD ladder
+            // (appended: the row parsers anchor on the fields before them).
             const Verdict verdict = classify(e, small_threshold_, small_bodies_only_);
-            log("cull_census device=%llu frame=%llu view=%08lx node=%08lx model=%08lx s=%ld measure=%ld d=%ld radius=%ld thr_1dc=%ld thr_1d8=%ld limit=%ld flags_in=%08lx flags_out=%08lx lod=%ld verdict=%s%s",
+            char ladder[8 + 12 + 5 + ladder_cap * 12 + 1];
+            const Ladder& l = ladder_of(e.model_ptr);
+            format_ladder(ladder, sizeof ladder, e.model_ptr && l.known, l.count, l.thresholds, l.thr);
+            log("cull_census device=%llu frame=%llu view=%08lx node=%08lx model=%08lx s=%ld measure=%ld d=%ld radius=%ld thr_1dc=%ld thr_1d8=%ld limit=%ld flags_in=%08lx flags_out=%08lx lod=%ld verdict=%s%s%s",
                 device, frame, (unsigned long)e.view, (unsigned long)e.node, (unsigned long)e.model, (long)e.s, (long)e.measure, (long)e.d, (long)e.radius,
                 (long)e.thr_1dc, (long)e.thr_1d8, (long)e.limit, (unsigned long)e.flags_in, (unsigned long)e.flags_out, (long)e.lod, verdict_name(verdict),
-                verdict == Verdict::culled_small ? (small_bodies_only_ ? " scope=bodies" : " scope=all") : "");
+                verdict == Verdict::culled_small ? (small_bodies_only_ ? " scope=bodies" : " scope=all") : "", ladder);
         }
     }
     count_.store(0, std::memory_order_relaxed); overflow_.store(0, std::memory_order_relaxed);

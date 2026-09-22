@@ -373,7 +373,8 @@ frustum, distance, hidden latch) is counted as `unmeasured`; a node measured
 when the ring is full is counted as `overflow`. Rows at Present, capture frames
 only: `cull_census_frame … entries= overflow= unmeasured= exited=` and one
 `cull_census … s= measure= d= radius= thr_1dc= thr_1d8= limit= flags_in=
-flags_out= lod= verdict=` per entry, `verdict` ∈ `kept` (bit 2 survives),
+flags_out= lod= verdict= [scope=] lods= thr=` per entry (the ladder fields
+below), `verdict` ∈ `kept` (bit 2 survives),
 `culled_size` (`measure < limit > 0`), `culled_min` (`measure < 1` without
 `0x4000000`), `culled_other` (cleared later: the env-map view's `< 20` test or
 the last-LOD fade), `no_exit`. Pixels: `px = s · m00 · width / 1280` (`s` is the
@@ -390,6 +391,44 @@ rows (order, values, verdicts), counts two early exits as unmeasured, keeps
 preserves LastError, restores both sites exactly and refuses changed window
 bytes and the closed window. Cost in the fixture harness: 0.234 µs per
 12-node pass native, 0.244 disarmed, 0.311 armed (Wine/FEX, not game FPS).
+
+**LOD ladder fields (2026-09-22).** Each row now ends in
+` lods=<n|-> thr=<t0,t1,…|->`: the model's LOD count (signed word
+`model+0x10`, the `movsx ebp,word [ebx+0x10]` at `0047d321`) and
+`LODrec_i+0x34` for `i < min(lods, 8)` (`model+0x0c` is the record-pointer
+array, `0047d433`/`0047d440`/`0047d442`). `t0` is record 0's value, which the
+loop `0047d440..0047d464` never compares; `t1` is the LOD 0 → 1 switch value.
+`0047d321` is not a census site, so the model pointer is taken at the exit
+site. The 39-byte exit stub also pushes EBX, `[ESP+0x14]` and `[ESP+0x10]`.
+The handler keeps EBX only when it is non-zero, equals `[ESP+0x14]` and
+differs from `[ESP+0x10]` (`core::exit_model_pointer`). This rests on the writer
+sets of the installed bytes, which the verifier pins. Between the two sites
+EBX is written only at `0047d2f6` (`xor ebx,ebx`, negative model id),
+`0047d303` (the `0x004863c0` result) and by the loop cursor at
+`0047d436`/`0047d45f`, which `0047d46e` restores from `[ESP+0x14]`. That slot's
+only writer is `0047d30a`. `[ESP+0x10]` (D) is written only at `0047d1c8`/`0047d1eb`,
+where EBX gets the same value. Between the sites ESP is written only by the
+balanced `push eax`/`add esp,4` around the `0x004863c0` call
+(`0047d2fd`/`0047d305`) and the alignment no-op `lea esp,[esp+0x0]` at
+`0047d439`. So a node culled at
+`0047d2e7` (`culled_size`/`culled_min` without `0x4000000`) exits with EBX == D,
+is refused, and carries `lods=- thr=-`. So do nodes with no model (EBX 0) and
+nodes in the env-map view zeroed below 20. A kept node, or one cleared by the
+last-LOD fade, carries its ladder. A model pointer that happens to equal D is
+dropped, never misread. The ladder is read at Present, not in the pass,
+through `engine_memory::read` (committed-readable span check). Present already
+saves and restores LastError. One read set per distinct model per captured
+frame: the model header (8 bytes), then up to 8 record pointers, then each
+record's `+0x34`. A count ≤ 0, a null array, a null or unreadable record, or an
+unreadable header yields the count (or `-`) with `thr=-`, never a fault. The
+disarmed path is unchanged: `cmp byte [enabled],0; je` → `jmp [next]`. Verifier
+additions: `ladder_pattern_bytes`, `ladder_pattern_whole_instructions`,
+`ebx_writers_between_sites`, `esp_writers_between_sites` and `slot_writers`;
+21/21 on the installed EXE. The CPU fixture's synthetic pass now carries the
+model in EBX/`[ESP+0x14]` with the engine's layout. It adds a three-record and
+a four-record ladder, a null model, a count-0 model, a record 0 on a
+`PAGE_NOACCESS` page, and direct hostile exit arguments. It has been built but
+not yet run under Wine. Report: `tools/analysis/draw_accounting.py <run> --ladder`.
 
 ## Cull small parts site (`--cull-small-parts <px>`, 2026-09-18)
 

@@ -8,14 +8,18 @@
 // node, its model id, the LOD metric s = r*640/D, the small-object measure
 // r*W/D, D, the radius, the two per-node thresholds and the effective limit;
 // the exit site 0x0047d528 completes the entry with the renderable bit and the
-// LOD index the pass selected. Bounded ring of 8,192 entries, no allocation
+// LOD index the pass selected, and keeps EBX when it is the model pointer the
+// pass resolved (core::exit_model_pointer); on a captured frame's Present the
+// rows gain the model's LOD count (word model+0x10) and up to eight record
+// thresholds (record+0x34), read through engine_memory::read, never inside the
+// pass. Bounded ring of 8,192 entries, no allocation
 // and no logging per node: outside capture frames each site costs the
 // trampoline round trip (site jmp, dispatcher jmp, a byte compare and
 // branch, jmp back and the displaced tail; measured 0.234 -> 0.244 us per
 // 12-node pass), and a compare-and-store through an integer-only cdecl
 // handler inside them. The rows are emitted at Present
 // (`cull_census_frame` with `overflow=`, then one `cull_census` row per
-// entry). Installed on the backend-load path inside the engine_patch install
+// entry, ending ` lods=<n|-> thr=<t0,t1,...|->`). Installed on the backend-load path inside the engine_patch install
 // window after the exact-executable and window-byte checks, with this module
 // pinned; a failed second claim rolls the first back.
 namespace x3m::cull_census {
@@ -43,6 +47,6 @@ void note_small_threshold(std::int32_t threshold, bool bodies_only = false);   /
 // The stubs' cdecl targets: integer only, no Win32 call, LastError untouched by
 // construction; EBX/ESI/EDI/EBP preserved by the ABI, the stubs save EAX/ECX/EDX.
 extern "C" void x3m_cull_census_measure(std::uint32_t node, std::int32_t measure, std::int32_t s, std::int32_t d, std::uint32_t view);
-extern "C" void x3m_cull_census_exit(std::uint32_t node);
+extern "C" void x3m_cull_census_exit(std::uint32_t node, std::uint32_t ebx, std::uint32_t model_slot, std::uint32_t d_slot);
 // The byte both stubs test: non-zero only while a capture frame is armed.
 extern "C" volatile unsigned char x3m_cull_census_enabled;

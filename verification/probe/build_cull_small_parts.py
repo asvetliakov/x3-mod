@@ -46,7 +46,8 @@ def build():
     for source, stem, extra in [('verification/probe/cull_small_parts_fixture.cpp', 'fixture', ['-I', str(BUILD)]),
                                 ('src/proxy/cull_small_parts.cpp', 'small_parts', []),
                                 ('src/proxy/cull_census.cpp', 'census', NO_SSE),
-                                ('src/proxy/engine_patch.cpp', 'patch', [])]:
+                                ('src/proxy/engine_patch.cpp', 'patch', []),
+                                ('src/proxy/engine_memory.cpp', 'memory', NO_SSE)]:
         out = BUILD / (stem + '.o')
         subprocess.run(['i686-w64-mingw32-g++', *FLAGS, *extra, '-c', str(ROOT / source), '-o', str(out)], check=True, cwd=ROOT)
         objects.append(out)
