@@ -188,6 +188,9 @@ bool volumetric_fog_requested = false, volumetric_fog_everywhere = false, volume
 // X3M_VOLUMETRIC_FOG_RANGE=legacy|stored (default legacy; fog-density-runtime-integration.md):
 // stored selects the two-level stored-density field with its 30-40 km horizon. Anything else is legacy.
 bool volumetric_fog_range_stored = false;
+// X3M_FOG_SHADOW_PASS=1 (docs/architecture/fog-shadow-pass.md; launcher --fog-shadow-pass on, default off): the stored
+// range's sun-shadow shaft visibility in its own quarter-resolution pass before the march. Stored range only.
+bool volumetric_fog_shadow_pass = false;
 // X3M_FOG_LOOK_<NAME>=<float> tuning of the single stored-range look (renderer::fog_look_fields;
 // X3M_FOG_LOOK_AMBIENT_SUN / _AWAY = r,g,b): read once here, stored range only. The preset selector
 // X3M_VOLUMETRIC_FOG_LOOK was retired with L0/L1/L3 on 2026-09-22 and is ignored with one log line.
@@ -2522,6 +2525,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_volumetric_fog(volumetric_fog_requested,volumetric_fog_strength,volumetric_fog_anisotropy,volumetric_fog_everywhere,volumetric_fog_timing,volumetric_fog_cards_replace);
     hooked.motion_output.configure_volumetric_fog_range(volumetric_fog_range_stored);
     hooked.motion_output.configure_volumetric_fog_look(volumetric_fog_look_tuning);
+    hooked.motion_output.configure_volumetric_fog_shadow_pass(volumetric_fog_shadow_pass);
     { LARGE_INTEGER frequency{};QueryPerformanceFrequency(&frequency); // the frame_end clock; one read per device
       hooked.fps_overlay.configure(fps_overlay_requested,frequency.QuadPart>0?uint64_t(frequency.QuadPart):1); }
     hooked.motion_output.configure_screen_emission_timing(screen_emission_timing_requested);
@@ -3212,6 +3216,7 @@ void initialize_log(HMODULE module) {
      volumetric_fog_timing=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_TIMING")==1 && setting[0]==L'1';
      volumetric_fog_cards_replace=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_CARDS")==7 && !wcscmp(setting,L"replace");
      volumetric_fog_range_stored=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_RANGE")==6 && !wcscmp(setting,L"stored");
+     volumetric_fog_shadow_pass=volumetric_fog_range_stored && fog_env(L"X3M_FOG_SHADOW_PASS")==1 && setting[0]==L'1';
      volumetric_fog_look_tuning={};
      // The retired preset selector: accepted from an older launcher or a stale environment, never acted on,
      // and reported whatever the fog state is (the variable says the caller expected a preset).
@@ -3239,6 +3244,8 @@ void initialize_log(HMODULE module) {
             used+=n;
         }
         log("volumetric_fog_look_mode look=single overrides=%u%s",overrides,values);
+        log("volumetric_fog_shadow_pass enabled=%u grid=quarter slices=64 tiles=4x4 format=A8R8G8B8 cascades=3 taps=4 penumbra=%g,%g,%g",unsigned(volumetric_fog_shadow_pass),
+            double(volumetric_fog_look_tuning.penumbra),double(volumetric_fog_look_tuning.penumbra_min),double(volumetric_fog_look_tuning.penumbra_max));
      }
      if(asked)log("volumetric_fog_range mode=%s atlas_bytes=%u levels=2 cpu_bytes=%u upload_budget_bytes=%u upload_rects=%u ramp_frames=%u worker_threads=%u",volumetric_fog_range_stored?"stored":"legacy",
         volumetric_fog_range_stored?unsigned(fog::kAtlasBytes):0u,volumetric_fog_range_stored?unsigned(4*fog::kAtlasBytes):0u,volumetric_fog_range_stored?unsigned(fog::kDefaultUploadBudget):0u,

@@ -382,6 +382,7 @@ def main():
     parser.add_argument('--volumetric-fog-range', choices=('legacy', 'stored'), default=None, help='Fog field behind --volumetric-fog: legacy (default) is the family atlas; stored is the experimental stored-density field, generated on one background thread, with clouds out to 30-40 km, drawn with the single shaped look (density remap, thicker cores, two-lobe phase, coloured ambient, tinted extinction, Beer-powder self-shadow; tuning by the X3M_FOG_LOOK_<NAME> environment variables, read once). A capability refusal logs one line and keeps legacy (X3M_VOLUMETRIC_FOG_RANGE; requires --volumetric-fog).')
     # Retired 2026-09-22 with the presets L0/L1/L3: registered only so that an old command line is refused by name.
     parser.add_argument('--volumetric-fog-look', nargs='?', const='', default=None, help=argparse.SUPPRESS)
+    parser.add_argument('--fog-shadow-pass', choices=('on', 'off'), default=None, help='Stored fog only: compute the sun-shadow shaft visibility in its own quarter-resolution pass before the march (three-cascade cross-fade, the finest cascade, a penumbra that widens with the blocker distance) instead of the march\'s per-step lookup; off (default) draws the accepted look unchanged, so the two can be A/B compared in one build (X3M_FOG_SHADOW_PASS; on requires --volumetric-fog-range stored). docs/architecture/fog-shadow-pass.md')
     parser.add_argument('--volumetric-fog-everywhere', action='store_true', help='Debug only: force bluewell when no known family is available, still requiring a valid view (X3M_VOLUMETRIC_FOG_EVERYWHERE=1; requires --volumetric-fog)')
     parser.add_argument('--volumetric-fog-timing', action='store_true', help='One volumetric_fog_frame log line per frame with the CPU wall time and device-call count of the pass (X3M_VOLUMETRIC_FOG_TIMING=1; requires --volumetric-fog)')
     parser.add_argument('--shimmer-trace', action='store_true', help='Diagnostic distant-shimmer trace (X3M_SHIMMER_TRACE=1; requires --motion-output --taa; default off): every frame logs one shimmer_frame line with the TAA state (history, skip, cut, jitter index) and the projection p00/p11 as integers scaled by 1e4, plus up to 32 shimmer_draw lines identifying that frame\'s Asteroid-class scene draws (node/model/lod, vertex, index and primitive counts, the distance-fade f in per mille when the draw was fade-admitted and its derived screen rectangle) with a truncated count beyond 32 (docs/architecture/linear-distance-fade-region.md, "Shimmer trace (diagnostic)")')
@@ -866,6 +867,8 @@ def main():
         parser.error('--volumetric-fog-look was removed on 2026-09-22: the stored fog range has a single look (the former L2) and the presets L0, L1 and L3 are retired. Drop the option; the tuning variables X3M_FOG_LOOK_<NAME> still apply.')
     if args.volumetric_fog_range == 'stored' and args.volumetric_fog == 0.0:
         parser.error('--volumetric-fog-range stored requires a positive --volumetric-fog strength (0 detaches the pass).')
+    if args.fog_shadow_pass == 'on' and args.volumetric_fog_range != 'stored':
+        parser.error('--fog-shadow-pass on requires --volumetric-fog-range stored.')
     if args.volumetric_fog is not None and not (math.isfinite(args.volumetric_fog) and 0.0 <= args.volumetric_fog <= 0.1):
         parser.error('--volumetric-fog must be within [0, 0.1].')
     if args.fade_witness is not None and not 1 <= args.fade_witness <= 100000:
@@ -1249,6 +1252,7 @@ def main():
         env['X3M_VOLUMETRIC_FOG_CARDS'] = args.volumetric_fog_cards or 'keep'
         env['X3M_VOLUMETRIC_FOG_RANGE'] = args.volumetric_fog_range or 'legacy'
         env.pop('X3M_VOLUMETRIC_FOG_LOOK', None)  # retired 2026-09-22: never inherited, never set (the DLL logs one ignore line)
+        env['X3M_FOG_SHADOW_PASS'] = '1' if args.fog_shadow_pass == 'on' else '0'
         env['X3M_VOLUMETRIC_FOG_EVERYWHERE'] = '1' if args.volumetric_fog_everywhere else '0'
         env['X3M_VOLUMETRIC_FOG_TIMING'] = '1' if args.volumetric_fog_timing else '0'
         env['X3M_EMISSION_GAIN'] = repr(args.emission_gain if args.emission_gain is not None else 1.0)

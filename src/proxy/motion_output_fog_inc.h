@@ -76,6 +76,9 @@ const char* MotionOutput::fog_frame_parameters(renderer::FogFrame& in, float wei
             !renderer::sun_shadow_apply_bias(sun_apply_bias_units_, sun_apply_clamp_texels_,
                 double(cascade.half_extent), cascade.depth_half(), depth_replay_->size(i), bias)) continue;
         k.map = depth_replay_->map_texture(i); k.bias = bias.constant; k.frame = kept->frame; k.valid = true;
+        // The visibility pass's penumbra: the map's world texel (2 E / N of the map actually bound) and its depth range.
+        const unsigned size = depth_replay_->size(i);
+        k.texel_world = size ? float(2. * double(cascade.half_extent) / double(size)) : 0.f; k.depth_range = float(cascade.depth_range());
     }
     if (!skip && !renderer::fog_valid_params(q)) skip = "parameters";
     return skip;
@@ -193,9 +196,14 @@ void MotionOutput::prepare_volumetric_fog_density(UINT width, UINT height) noexc
     }
     if (!fog_density_config_logged_) {
         fog_density_config_logged_ = true;
-        log("volumetric_fog_cache device=%llu frame=%llu event=config mode=stored result=%08lx profile=%u sigma=%.4g chroma=%.4f,%.4f,%.4f atlas_bytes=%u upload_budget_bytes=%u upload_rects=%u ramp_frames=%u",
+        log("volumetric_fog_cache device=%llu frame=%llu event=config mode=stored result=%08lx profile=%u sigma=%.4g chroma=%.4f,%.4f,%.4f atlas_bytes=%u upload_budget_bytes=%u upload_rects=%u ramp_frames=%u shadow_pass=%u",
             id_, frame_, hr, fog_sector_.profile, double(fog_density_config_.sigma), double(fog_density_config_.chroma[0]), double(fog_density_config_.chroma[1]), double(fog_density_config_.chroma[2]),
-            unsigned(fog::kAtlasBytes), unsigned(fog::kDefaultUploadBudget), fog::kDefaultUploadRects, fog::kReadinessRampFrames);
+            unsigned(fog::kAtlasBytes), unsigned(fog::kDefaultUploadBudget), fog::kDefaultUploadRects, fog::kReadinessRampFrames, unsigned(fog_density_config_.shadow_pass));
+    }
+    if (status.shadow_pass_refused && !fog_shadow_pass_refused_logged_) {
+        // The grid could not be built (or its column cap is unusable): the stored fog draws with the in-march programs.
+        fog_shadow_pass_refused_logged_ = true;
+        log("fog_shadow_pass_refused device=%llu frame=%llu reason=%s fallback=in_march_lookup", id_, frame_, status.shadow_pass_refused);
     }
     if (FAILED(hr)) return; // device loss or a transient failure: no fog this frame, retried at the next latch
     fog_density_prepared_ = true;

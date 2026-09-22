@@ -203,6 +203,17 @@ SHADERS = {
     'fog_density_repair_look': dict(source=ROOT / 'src/fog/fog_density_repair_look_ps.hlsl',
                               header=ROOT / 'src/renderer/fog_density_repair_look_program_inc.h',
                               provenance=ROOT / 'verification/results/fog-density-repair-look-program.json'),
+    # The sun-visibility slice grid (docs/architecture/fog-shadow-pass.md, X3M_FOG_SHADOW_PASS=1): the pass and the
+    # look's march and repair reading it (FOG_SHADOW_PASS) instead of the in-march lookup; the *_look pair stays the control.
+    'fog_density_visibility_grid': dict(source=ROOT / 'src/fog/fog_density_visibility_grid_ps.hlsl',
+                              header=ROOT / 'src/renderer/fog_density_visibility_grid_program_inc.h',
+                              provenance=ROOT / 'verification/results/fog-density-visibility-grid-program.json'),
+    'fog_density_march_grid': dict(source=ROOT / 'src/fog/fog_density_march_grid_ps.hlsl',
+                              header=ROOT / 'src/renderer/fog_density_march_grid_program_inc.h',
+                              provenance=ROOT / 'verification/results/fog-density-march-grid-program.json'),
+    'fog_density_repair_grid': dict(source=ROOT / 'src/fog/fog_density_repair_grid_ps.hlsl',
+                              header=ROOT / 'src/renderer/fog_density_repair_grid_program_inc.h',
+                              provenance=ROOT / 'verification/results/fog-density-repair-grid-program.json'),
     'fog_density_march_exact': dict(source=ROOT / 'verification/probe/fog_density_march_exact_ps.hlsl',
                                     header=ROOT / 'verification/probe/fog_density_march_exact_program_inc.h',
                                     provenance=ROOT / 'verification/results/fog-density-march-exact-program.json'),

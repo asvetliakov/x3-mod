@@ -76,7 +76,20 @@ constexpr DWORD density_composite_words[] = {
 constexpr DWORD density_repair_words[] = {
 #include "fog_density_repair_look_program_inc.h"
 };
+// The sun-visibility slice grid (docs/architecture/fog-shadow-pass.md, FogDensityConfig::shadow_pass): the pass over
+// the 4x4-tile RGBA8 atlas and the look's march/repair reading it (FOG_SHADOW_PASS). Created beside the look programs
+// when the pass is requested; the *_look pair above stays the control variant.
+constexpr DWORD density_visibility_words[] = {
+#include "fog_density_visibility_grid_program_inc.h"
+};
+constexpr DWORD density_march_grid_words[] = {
+#include "fog_density_march_grid_program_inc.h"
+};
+constexpr DWORD density_repair_grid_words[] = {
+#include "fog_density_repair_grid_program_inc.h"
+};
 constexpr unsigned density_required_slots=512;
+constexpr unsigned fog_constant_rows=fog_grid_first_register+fog_grid_rows; // c0..c41 of a stored-density frame
 // c0.zw of the full-resolution repair draw. FogParams::m20/m21 carry the raster offset plus
 // the full-resolution quad pixel-centre term (+1/W, -1/H): a program that forms
 // ndc = 2 uv - 1 from the centre uv of full texel P then looks through raster pixel P, the
@@ -151,12 +164,14 @@ struct FogPass::SavedState {
     }
 };
 FogPass::~FogPass(){detach();}
+void FogPass::release_grid() noexcept { drop(grid_surface_);drop(grid_);grid_width_=grid_height_=0; }
 void FogPass::release_targets() noexcept {
-    drop(lit_surface_);drop(scratch_surface_);drop(lit_);drop(scratch_);drop(block_);
+    drop(lit_surface_);drop(scratch_surface_);drop(lit_);drop(scratch_);drop(block_);release_grid();
     width_=height_=half_width_=half_height_=0;
 }
 void FogPass::release_density_default() noexcept {
     for(unsigned i=0;i<2;++i){drop(density_atlas_surface_[i]);drop(density_atlas_[i]);}
+    release_grid();
     if(density_)density_->gpu_reset();
     density_status_.ready_fine=density_status_.ready_far=0;
 }
@@ -183,8 +198,9 @@ void FogPass::detach() noexcept {
     release_density_default();
     for(unsigned i=0;i<2;++i){drop(density_staging_surface_[i]);drop(density_staging_[i]);}
     drop(density_march_);drop(density_composite_);drop(density_repair_);
+    drop(density_visibility_);drop(density_march_grid_);drop(density_repair_grid_);
     fog::DensityCache::retire(density_);density_=nullptr; // joins the worker; a cache it had to abandon is leaked, not freed
-    density_config_={};density_status_={};density_refused_=false;ps30_slots_=0;drop(march_);drop(composite_);drop(quad_vs_);drop(quad_declaration_);
+    density_config_={};density_status_={};density_refused_=false;grid_refused_=false;ps30_slots_=0;drop(march_);drop(composite_);drop(quad_vs_);drop(quad_declaration_);
     device_=nullptr;vtable_=nullptr;caps_={};reset_pending_=false;disarm_field();cached_profile_=fog_field::Profile::None;
     field_recipe_=0;base_sigma_=0;std::vector<std::uint16_t>().swap(atlas_bytes_);
     render_targets_=streams_=max_width_=max_height_=0;
@@ -197,6 +213,7 @@ unsigned FogPass::references() const noexcept {
     unsigned n=0;
     for(unsigned i=0;i<2;++i)n+=(density_staging_[i]!=nullptr)+(density_atlas_[i]!=nullptr)+(density_staging_surface_[i]!=nullptr)+(density_atlas_surface_[i]!=nullptr);
     n+=(density_march_!=nullptr)+(density_composite_!=nullptr)+(density_repair_!=nullptr);
+    n+=(density_visibility_!=nullptr)+(density_march_grid_!=nullptr)+(density_repair_grid_!=nullptr)+(grid_!=nullptr)+(grid_surface_!=nullptr);
     for(const void* p:{static_cast<void*>(atlas_),static_cast<void*>(lit_),static_cast<void*>(scratch_),static_cast<void*>(lit_surface_),static_cast<void*>(scratch_surface_),static_cast<void*>(march_),static_cast<void*>(composite_),static_cast<void*>(quad_vs_),static_cast<void*>(quad_declaration_),static_cast<void*>(block_)})n+=p!=nullptr;
     return n;
 }
@@ -222,7 +239,8 @@ HRESULT FogPass::attach(D d,void* const* native,const D3DCAPS9& caps,D3DFORMAT f
     const char* reason="format_query";
     if(SUCCEEDED(hr)){
         struct Query{DWORD usage;D3DFORMAT format;const char* name;};
-        for(auto q:{Query{0,D3DFMT_A32B32G32R32F,"rgba32f_texture"},Query{D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,"fp16_rt"},Query{D3DUSAGE_QUERY_FILTER,D3DFMT_A16B16G16R16F,"fp16_filter_query"}}){
+        // rgba8_rt: the visibility grid's A8R8G8B8 target (bilinear filtering of that format is baseline for every D3D9 device).
+        for(auto q:{Query{0,D3DFMT_A32B32G32R32F,"rgba32f_texture"},Query{D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,"fp16_rt"},Query{D3DUSAGE_QUERY_FILTER,D3DFMT_A16B16G16R16F,"fp16_filter_query"},Query{D3DUSAGE_RENDERTARGET,D3DFMT_A8R8G8B8,"rgba8_rt"}}){
             hr=api->CheckDeviceFormat(creation.AdapterOrdinal,creation.DeviceType,format,q.usage,D3DRTYPE_TEXTURE,q.format);
             if(hr!=D3D_OK){reason=q.name;hr=D3DERR_NOTAVAILABLE;break;}
         }
@@ -288,6 +306,39 @@ HRESULT FogPass::density_resources() noexcept {
         // retired presets gone there is no unshaped fallback, so the stored path stays off (legacy untouched).
         if(FAILED(hr)){drop(density_march_);drop(density_composite_);drop(density_repair_);if(lost(hr)){reset_pending_=true;return hr;}return refuse("density_program_create",hr);}
     }
+    // The visibility grid is optional: a failure to build it (not a lost device) falls back to the in-march programs
+    // for the rest of the attachment and says why in density_status().shadow_pass_refused; the stored fog stays.
+    auto refuse_grid=[&](const char* reason){grid_refused_=true;density_config_.shadow_pass=false;density_status_.shadow_pass_refused=reason;
+        drop(density_visibility_);drop(density_march_grid_);drop(density_repair_grid_);release_grid();};
+    if(density_config_.shadow_pass&&!density_visibility_){
+        // The visibility grid's three programs, the same per-program ceiling; created once, never on a draw path.
+        bool fits=true;
+        for(auto p:{std::pair{density_visibility_words,std::size(density_visibility_words)},std::pair{density_march_grid_words,std::size(density_march_grid_words)},std::pair{density_repair_grid_words,std::size(density_repair_grid_words)}}){
+            const unsigned slots=ambient_occlusion_program_slots(reinterpret_cast<const std::uint32_t*>(p.first),p.second);
+            fits=fits&&slots&&slots<density_required_slots;
+        }
+        if(!fits)refuse_grid("density_grid_compiled_slots");
+        else{
+            HRESULT hr=call<CreatePsFn>(CreatePixelShader)(device_,density_visibility_words,&density_visibility_);
+            if(SUCCEEDED(hr))hr=call<CreatePsFn>(CreatePixelShader)(device_,density_march_grid_words,&density_march_grid_);
+            if(SUCCEEDED(hr))hr=call<CreatePsFn>(CreatePixelShader)(device_,density_repair_grid_words,&density_repair_grid_);
+            if(lost(hr)){drop(density_visibility_);drop(density_march_grid_);drop(density_repair_grid_);reset_pending_=true;return hr;}
+            if(FAILED(hr))refuse_grid("density_grid_program_create");
+        }
+    }
+    if(density_config_.shadow_pass&&!grid_&&width_&&height_){
+        // The 4x4-tile RGBA8 atlas of the current targets: a quarter-resolution texel per 4x4 full pixels, four slices per
+        // texel. Sized with the targets (release_targets drops it: resize, before_reset, detach) and re-created here.
+        const UINT gw=fog_grid_extent(width_),gh=fog_grid_extent(height_),aw=gw*fog_grid_tiles,ah=gh*fog_grid_tiles;
+        if(aw>max_width_||ah>max_height_)refuse_grid("density_grid_extent");
+        else{
+            HRESULT hr=call<CreateTextureFn>(CreateTexture)(device_,aw,ah,1,D3DUSAGE_RENDERTARGET,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,&grid_,nullptr);
+            if(SUCCEEDED(hr))hr=grid_->GetSurfaceLevel(0,&grid_surface_);
+            if(lost(hr)){release_grid();reset_pending_=true;return hr;}
+            if(FAILED(hr))refuse_grid("density_grid_target");
+            else{grid_width_=aw;grid_height_=ah;++allocations_;}
+        }
+    }
     if(!density_){
         density_=new(std::nothrow) fog::DensityCache;
         if(!density_||!density_->start()){fog::DensityCache::retire(density_);density_=nullptr;return refuse("density_worker",E_OUTOFMEMORY);}
@@ -346,8 +397,9 @@ HRESULT FogPass::prepare_density(const FogDensityConfig& config,const double cam
     if(reset_pending_)return D3DERR_DEVICENOTRESET;
     for(unsigned i=0;i<3;++i)if(!std::isfinite(camera[i])||!std::isfinite(config.world_offset[i])||!std::isfinite(config.chroma[i])||config.chroma[i]<0||config.chroma[i]>16.f)return E_INVALIDARG;
     if(!std::isfinite(config.sigma)||config.sigma<=0||config.sigma>1.f)return E_INVALIDARG;
+    density_config_=config; // density_resources creates the variant the config asks for
+    if(grid_refused_)density_config_.shadow_pass=false; // a refused grid stays refused until detach: the in-march programs draw
     HRESULT hr=density_resources();if(FAILED(hr))return hr;
-    density_config_=config;
     fog::CacheIdentity identity;identity.sector_key=config.sector_key;identity.recipe=config.recipe;identity.offset={config.world_offset[0],config.world_offset[1],config.world_offset[2]};
     density_->configure(identity);
     const fog::FrameState state=density_->step(camera,frame);
@@ -426,7 +478,8 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
         if(!(ready_far>0)){r.operation=S_FALSE;return finish(S_FALSE);} // same zero-device-call path as off
         if(f.depth_share==density_atlas_[0]||f.depth_share==density_atlas_[1]||f.depth_share==density_staging_[0]||f.depth_share==density_staging_[1])return refuse(E_INVALIDARG);
     } else if(!resources_ready(f.width,f.height,f.profile,f.recipe_id,f.field_generation))return refuse(E_INVALIDARG);
-    if(f.depth_share==atlas_||f.depth_share==lit_||f.depth_share==scratch_||f.target==lit_surface_||f.target==scratch_surface_)return refuse(E_INVALIDARG);
+    if(f.depth_share==atlas_||f.depth_share==lit_||f.depth_share==scratch_||f.depth_share==grid_||f.target==lit_surface_||f.target==scratch_surface_||f.target==grid_surface_)return refuse(E_INVALIDARG);
+    const bool grid=density&&density_config_.shadow_pass;
     D3DSURFACE_DESC ds{},ss{};HRESULT hr=f.depth_share->GetLevelDesc(0,&ds);if(FAILED(hr))return refuse(hr);
     hr=f.target->GetDesc(&ss);if(FAILED(hr))return refuse(hr);
     if(ds.Width!=width_||ds.Height!=height_||ds.Format!=D3DFMT_A32B32G32R32F||ss.Width!=width_||ss.Height!=height_||ss.Format!=D3DFMT_A16B16G16R16F||
@@ -435,8 +488,8 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
     hr=same_device(device_,f.target);if(FAILED(hr))return refuse(hr);
     // All map references are borrowed for this serialized transaction. Validation
     // failure disables only that map; device loss still aborts before any write.
-    IDirect3DTexture9* shadow_maps[fog_cascade_max]{};
-    float constants[fog_look_first_register+fog_look_rows][4]{};
+    IDirect3DTexture9* shadow_maps[fog_cascade_max]{};FogGridCascade grid_cascades[fog_cascade_max]{};
+    float constants[fog_constant_rows][4]{};
     const auto& p=f.params;
     constants[0][0]=p.m00;constants[0][1]=p.m11;constants[0][2]=p.m20;constants[0][3]=p.m21;
     constants[1][0]=static_cast<float>(width_);constants[1][1]=static_cast<float>(height_);constants[1][2]=static_cast<float>(half_width_);constants[1][3]=static_cast<float>(half_height_);
@@ -452,12 +505,11 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
     fog_phase_constants(p.anisotropy,p.decode_exponent,p.sun_radiance,constants[7],constants[8]);
     // The look: rows c25..c35 and the sigma factor, bound by the stored path only. Nothing else changes.
     if(density)constants[2][3]*=fog_look_constants(density_config_.look,density_config_.chroma,constants[8],f.look_phase,constants+fog_look_first_register,f.look_resolved);
-    constexpr unsigned constant_rows=fog_look_first_register+fog_look_rows;
     constants[9][1]=.95f;constants[9][2]=.85f;constants[9][3]=10.f;
     for(unsigned i=0;i<std::min(f.count,fog_cascade_max);++i) {
         const auto& k=f.cascades[i];
         if(!k.valid||!k.map||!fog_shadow_current(f.frame,k.frame)||!fog_shadow_rows(k.rows,k.bias)||
-           k.map==f.depth_share||k.map==atlas_||k.map==lit_||k.map==scratch_||(density&&(k.map==density_atlas_[0]||k.map==density_atlas_[1])))continue;
+           k.map==f.depth_share||k.map==atlas_||k.map==lit_||k.map==scratch_||k.map==grid_||(density&&(k.map==density_atlas_[0]||k.map==density_atlas_[1])))continue;
         D3DSURFACE_DESC desc{};
         hr=k.map->GetLevelDesc(0,&desc);if(lost(hr))return refuse(hr);if(FAILED(hr))continue;
         if(desc.Format!=D3DFMT_R32F||desc.Width<64||desc.Width!=desc.Height||
@@ -467,8 +519,16 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
         for(unsigned j=0;j<12;++j)block[j/4][j%4]=k.rows[j];
         block[3][0]=float(desc.Width);block[3][1]=1.f/float(desc.Width);block[3][2]=k.bias;block[3][3]=1.f;
         shadow_maps[i]=k.map;++r.cascades_bound;
+        grid_cascades[i].texel_world=k.texel_world;grid_cascades[i].range_world=k.depth_range; // fog_grid_constants validates them
     }
-    if(density&&r.cascades_bound){
+    if(grid){
+        // The pass reads every admitted cascade, finest first, with the cross-fade: no remap to the two coarsest. A column
+        // cap the slice law cannot divide (not finite or below 12040) drops every cascade for the frame: lit fog, no grid read.
+        if(!fog_grid_constants(density_config_.look,constants[fog_look_first_register][3],width_,height_,grid_cascades,f.look_phase,f.look_resolved,constants+fog_grid_first_register)){
+            for(unsigned i=0;i<fog_cascade_max;++i){shadow_maps[i]=nullptr;std::memset(constants[10+4*i],0,sizeof(float)*16);}
+            r.cascades_bound=0;density_status_.shadow_pass_refused="grid_column_cap";
+        }
+    } else if(density&&r.cascades_bound){
         // The look program reads two cascades: the two coarsest admitted maps move to slots 0 and 1.
         unsigned kept[fog_cascade_max]{},n=0;
         for(unsigned i=0;i<fog_cascade_max;++i)if(shadow_maps[i])kept[n++]=i;
@@ -517,12 +577,26 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
         }
     }
     const UINT samplers=density?8u:7u;
-    if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,bind_target(lit_surface_,half_width_,half_height_,density?density_march_:march_,samplers));
-    if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetPsConstantsFn>(SetPixelShaderConstantF)(device_,0,&constants[0][0],density?constant_rows:22u));
+    // The visibility grid: one quad over the atlas with the maps at s4..s6 before the march, inside the same bracket
+    // (a failure fails the transaction like a failed march). No cascade: skipped, and shadow_select.x = 0 keeps the
+    // march from reading the grid at all (today's lit path). Constants are device state: uploaded once here.
+    const bool draw_grid=grid&&r.cascades_bound>0;bool constants_set=false;
+    if(draw_grid&&may_draw&&SUCCEEDED(r.operation))record(FogStage::Visibility,bind_target(grid_surface_,grid_width_,grid_height_,density_visibility_,samplers));
+    if(draw_grid&&may_draw&&SUCCEEDED(r.operation)){constants_set=record(FogStage::Visibility,call<SetPsConstantsFn>(SetPixelShaderConstantF)(device_,0,&constants[0][0],fog_constant_rows));}
+    for(unsigned i=0;i<fog_cascade_max&&draw_grid&&may_draw&&SUCCEEDED(r.operation);++i)
+        record(FogStage::Visibility,call<SetTextureFn>(SetTexture)(device_,4+i,shadow_maps[i]));
+    if(draw_grid&&may_draw&&SUCCEEDED(r.operation))r.grid=record(FogStage::Visibility,quad(grid_width_,grid_height_));
+    if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,bind_target(lit_surface_,half_width_,half_height_,density?(grid?density_march_grid_:density_march_):march_,samplers));
+    if(may_draw&&SUCCEEDED(r.operation)&&!constants_set)record(FogStage::March,call<SetPsConstantsFn>(SetPixelShaderConstantF)(device_,0,&constants[0][0],density?fog_constant_rows:22u));
     if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetTextureFn>(SetTexture)(device_,0,f.depth_share));
     if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetTextureFn>(SetTexture)(device_,1,density?density_atlas_[0]:atlas_));
     if(density&&may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetTextureFn>(SetTexture)(device_,7,density_atlas_[1]));
-    for(unsigned i=0;i<fog_cascade_max&&may_draw&&SUCCEEDED(r.operation);++i)
+    if(grid){
+        // The grid at s4, LINEAR (normalize left s4 POINT for the pass's map); the block bracket restores the sampler.
+        if(draw_grid&&may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetSamplerFn>(SetSamplerState)(device_,4,D3DSAMP_MINFILTER,D3DTEXF_LINEAR));
+        if(draw_grid&&may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetSamplerFn>(SetSamplerState)(device_,4,D3DSAMP_MAGFILTER,D3DTEXF_LINEAR));
+        if(draw_grid&&may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetTextureFn>(SetTexture)(device_,4,grid_));
+    } else for(unsigned i=0;i<fog_cascade_max&&may_draw&&SUCCEEDED(r.operation);++i)
         record(FogStage::March,call<SetTextureFn>(SetTexture)(device_,4+i,shadow_maps[i]));
     if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,quad(half_width_,half_height_));
     if(density&&may_draw&&SUCCEEDED(r.operation)){
@@ -531,10 +605,10 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
         IDirect3DTexture9* composite_inputs[]={f.depth_share,nullptr,scratch_,lit_};
         for(UINT i=0;i<4&&SUCCEEDED(r.operation);++i)if(composite_inputs[i])record(FogStage::Composite,call<SetTextureFn>(SetTexture)(device_,i,composite_inputs[i]));
         if(SUCCEEDED(r.operation)){r.scene_write_started=true;record(FogStage::Composite,quad(width_,height_));}
-        if(SUCCEEDED(r.operation))record(FogStage::Repair,bind_target(f.target,width_,height_,density_repair_,samplers));
+        if(SUCCEEDED(r.operation))record(FogStage::Repair,bind_target(f.target,width_,height_,grid?density_repair_grid_:density_repair_,samplers));
         float repair_c0[4];density_repair_projection(p,repair_c0);
         if(SUCCEEDED(r.operation))record(FogStage::Repair,call<SetPsConstantsFn>(SetPixelShaderConstantF)(device_,0,repair_c0,1));
-        IDirect3DTexture9* repair_inputs[]={f.depth_share,density_atlas_[0],scratch_,nullptr,shadow_maps[0],shadow_maps[1],shadow_maps[2],density_atlas_[1]};
+        IDirect3DTexture9* repair_inputs[]={f.depth_share,density_atlas_[0],scratch_,nullptr,grid?(draw_grid?grid_:nullptr):shadow_maps[0],grid?nullptr:shadow_maps[1],grid?nullptr:shadow_maps[2],density_atlas_[1]};
         for(UINT i=0;i<8&&SUCCEEDED(r.operation);++i)if(repair_inputs[i])record(FogStage::Repair,call<SetTextureFn>(SetTexture)(device_,i,repair_inputs[i]));
         if(SUCCEEDED(r.operation))r.applied=record(FogStage::Repair,quad(width_,height_));
     }

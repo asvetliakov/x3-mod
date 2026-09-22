@@ -35,31 +35,16 @@ float4 look_edge : register(c35);       // coverage variation amplitude / 3, tap
 #endif
 
 // Same slots in march and composite: the latter also repairs full-resolution
-// depth edges by marching. R32F is point sampled; comparisons are filtered here.
+// depth edges by marching. R32F is point sampled; comparisons are filtered here
+// (fog_shadow_grid_inc.h). Under FOG_SHADOW_PASS the maps are read by the visibility
+// pass instead and s4 holds its slice grid (LINEAR): one RGBA8 fetch per non-empty step.
+#include "fog_shadow_grid_inc.h"
+#ifdef FOG_SHADOW_PASS
+sampler2D visibility_atlas : register(s4);
+#else
 sampler2D shadow0 : register(s4);
 sampler2D shadow1 : register(s5);
 sampler2D shadow2 : register(s6);
-float4 shadow_select : register(c9); // enabled, margin, band start, reciprocal band
-float4 shadow_cascades[12] : register(c10); // 3 view->map rows, (N,1/N,bias,valid)
-
-float fog_pcf(sampler2D map, float3 p, float4 info) {
-    // D3D9 replay texel i stores screen i/N, sampled at (i+.5)/N.
-    // Interpolate the four comparisons around that point, not raw depths.
-    float2 texel = float2(p.x,-p.y)*0.5*info.x + 0.5*info.x;
-    float2 base = floor(texel), f = frac(texel);
-    float2 uv = (base+0.5)*info.y;
-    float reference = p.z-info.z;
-    float a = tex2Dlod(map,float4(uv,0,0)).r >= reference ? 1.0:0.0;
-    float b = tex2Dlod(map,float4(uv+float2(info.y,0),0,0)).r >= reference ? 1.0:0.0;
-    float c = tex2Dlod(map,float4(uv+float2(0,info.y),0,0)).r >= reference ? 1.0:0.0;
-    float d = tex2Dlod(map,float4(uv+info.yy,0,0)).r >= reference ? 1.0:0.0;
-    return lerp(lerp(a,b,f.x),lerp(c,d,f.x),f.y);
-}
-float shadow_weight(float3 p, float valid) {
-    float m = max(abs(p.x),abs(p.y));
-    return valid * ((m <= shadow_select.y && p.z >= 0.0 && p.z <= 1.0) ?
-        1.0-saturate((m-shadow_select.z)*shadow_select.w):0.0);
-}
 float fog_visibility(float3 view_position) {
     float4 p = float4(view_position,1.0);
     float3 p0 = float3(dot(p,shadow_cascades[0]),dot(p,shadow_cascades[1]),dot(p,shadow_cascades[2]));
@@ -74,8 +59,9 @@ float fog_visibility(float3 view_position) {
     [branch] if (w2 > 0.0) shade += w2*(1.0-fog_pcf(shadow2,p2,shadow_cascades[11]));
     return saturate(1.0-shade);
 }
+#endif
 
-#ifdef FOG_LOOK
+#if defined(FOG_LOOK) && !defined(FOG_SHADOW_PASS)
 // The look program: two cascades (FogPass binds the two coarsest current maps to slots 0 and 1; the finest map
 // spans a few fog bins only), the first that holds the point inside its blend-band start, one 2x2 comparison
 // of that map. The three-way cross-fade above costs 207 instruction slots, which would put the look programs
@@ -223,10 +209,16 @@ float4 march_depth(float2 uv, float4 depth) {
     // A bin-centre shaft lookup stamps one copy of an occluder silhouette per bin (a comb, run222); offsetting that
     // lookup alone per pixel and frame lets TAA integrate the shaft along the bin while cloud detail stays noise free.
     float4 offset = 0.5;
+#ifdef FOG_SHADOW_PASS
+    // The visibility grid replaces the lookup and its offset: the grid texel under this pixel (march uv (2p+.5)/full,
+    // repair uv (f+.5)/full, both a quarter of the full pixel), clamped inside a tile so bilinear never crosses one.
+    float2 grid_at = clamp(uv*sizes.xy*0.25,0.5,grid_layout.xy-0.5);
+#else
 #ifndef FOG_LOOK_NO_OFFSET // repair pixels (depth-class edges) keep the bin centres
     // The half-resolution pixel that covers this one (march: itself), so a repair pixel offsets like its neighbours.
     float2 cell = floor(uv*sizes.xy*0.5) + look_extinction.w; // march uv: (2p+.5)/full, repair uv: (f+.5)/full
     offset += (frac(52.9829189*frac(dot(cell,float2(0.06711056,0.00583715)))) - 0.5)*float4(look_self.zw,look_taps.zw);
+#endif
 #endif
     float3 sum = float3(0,0,1); // sun-lit, multiple-scatter lift, T
     [loop] for (int i=0; i<64; ++i) {
@@ -251,7 +243,15 @@ float4 march_depth(float2 uv, float4 depth) {
             float2 light = 1.0; // shaft visibility, sun-ward self-shadow
             [branch] if (rho > 0.0) {
 #ifndef FOG_DENSITY_NO_SHAFTS
+#ifdef FOG_SHADOW_PASS
+                // The slice holding the bin centre, its tile's texel under this pixel, the lane of the slice.
+                [branch] if (shadow_select.x > 0.0) {
+                    float3 tile = grid_tile(grid_slice(bin.y));
+                    light.x = dot(tex2Dlod(visibility_atlas,float4((tile.xy+grid_at)*grid_layout.zw,0,0)),saturate(1.0-abs(float4(0,1,2,3)-tile.z)));
+                }
+#else
                 [branch] if (shadow_select.x > 0.0) light.x = fog_look_visibility(view_direction*bin.z);
+#endif
 #endif
                 // One far-level tap toward the sun (shadowing is low frequency and the far window covers it)
                 // stands for the optical depth over look_taps.y units; a second tap needs an inner loop that

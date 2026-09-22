@@ -30,6 +30,9 @@ struct FogLookTuning {
     float tap_distance = 3000.f, tap_length = 9000.f;                 // one sun-ward tap and the path it stands for
     float shadow_jitter = 1.f;                                        // offset of the shaft lookup alone (bins) while TAA
                                                                       // resolves it; 0 = bin centres (also without a resolve).
+    // The visibility grid pass (fog_shadow_grid.h, X3M_FOG_SHADOW_PASS=1 only): penumbra kernel radius in texels of
+    // the sampled map = clamp(blocker distance x half sun angle x penumbra / texel, min, max); penumbra 0 fixes it at min.
+    float penumbra = 1.f, penumbra_min = 1.f, penumbra_max = 16.f;
 };
 struct FogLookField { const char* name; float FogLookTuning::* field; float minimum, maximum; };
 constexpr FogLookField fog_look_fields[] = {
@@ -47,6 +50,8 @@ constexpr FogLookField fog_look_fields[] = {
     {"WARP_CYCLES_NEAR", &FogLookTuning::warp_cycles_near, 1.f, 64.f}, {"WARP_NEAR", &FogLookTuning::warp_near, 0.f, 500.f},
     {"WARP_CYCLES_FAR", &FogLookTuning::warp_cycles_far, 1.f, 64.f}, {"WARP_FAR", &FogLookTuning::warp_far, 0.f, 1500.f},
     {"SHADOW_JITTER", &FogLookTuning::shadow_jitter, 0.f, 1.f},
+    {"PENUMBRA", &FogLookTuning::penumbra, 0.f, 4.f}, {"PENUMBRA_MIN", &FogLookTuning::penumbra_min, 0.f, 16.f},
+    {"PENUMBRA_MAX", &FogLookTuning::penumbra_max, 0.f, 64.f},
 };
 // A value outside its range (or NaN) keeps the default; true when it was taken.
 inline bool fog_look_set(FogLookTuning& tuning, const FogLookField& field, float value) noexcept {

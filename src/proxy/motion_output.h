@@ -983,6 +983,8 @@ public:
     void configure_volumetric_fog_look(const renderer::FogLookTuning& tuning) noexcept {
         fog_density_config_.look = tuning;
     }
+    // X3M_FOG_SHADOW_PASS=1 (fog-shadow-pass.md): the sun-visibility grid pass of the stored range, read once at init.
+    void configure_volumetric_fog_shadow_pass(bool on) noexcept { fog_density_config_.shadow_pass = on; }
     // DllMain DLL_PROCESS_DETACH only (FogPass::abandon_density_worker): no join, no lock, no log.
     void abandon_volumetric_fog_worker() noexcept { if (fog_) fog_->abandon_density_worker(); }
     // Ctrl+Alt+F9 toggles the pass, Ctrl+Alt+F10 steps the strength through
@@ -2227,7 +2229,7 @@ private:
     const char* fog_card_fault_reason_ = "none";
     // Stored-density range. The camera is the previous scene end's (read after the owner latch).
     bool fog_density_requested_ = false, fog_density_refused_ = false, fog_density_prepared_ = false, fog_density_camera_valid_ = false;
-    bool fog_density_config_logged_ = false, fog_density_ready_logged_[2]{};
+    bool fog_density_config_logged_ = false, fog_density_ready_logged_[2]{}, fog_shadow_pass_refused_logged_ = false;
     unsigned fog_density_logs_ = 0;
     std::uint64_t fog_density_sample_frame_ = ~std::uint64_t(0), fog_density_key_ = 0;
     long long fog_density_epoch_qpc_ = 0, fog_density_sample_qpc_ = 0;

@@ -284,6 +284,31 @@ class FogLauncherTests(unittest.TestCase):
         self.assertIn('fog_env(L"X3M_VOLUMETRIC_FOG_RANGE")==6 && !wcscmp(setting,L"stored")', capture)
         self.assertIn('volumetric_fog_range_stored=volumetric_fog_requested &&', capture)
 
+    def test_shadow_pass_option(self):
+        # --fog-shadow-pass {on,off} -> X3M_FOG_SHADOW_PASS, default off (the flight A/B keeps the accepted look), on only with the stored range.
+        stored = ('--volumetric-fog', '--volumetric-fog-range', 'stored')
+        status, output, error = self.launch(*self.BASE, *stored)
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_SHADOW_PASS": "0"', output)
+        status, output, error = self.launch(*self.BASE, *stored, '--fog-shadow-pass', 'on')
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_SHADOW_PASS": "1"', output)
+        status, output, error = self.launch(*self.BASE, *stored, '--fog-shadow-pass', 'off')
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_SHADOW_PASS": "0"', output)
+        status, output, error = self.launch(*self.BASE, '--volumetric-fog', '--fog-shadow-pass', 'off')
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_SHADOW_PASS": "0"', output)
+        status, _, error = self.launch(*self.BASE, '--volumetric-fog', '--fog-shadow-pass', 'on')
+        self.assertEqual(status, 2); self.assertIn('requires --volumetric-fog-range stored', error)
+        self.assertEqual(self.launch(*self.BASE, '--fog-shadow-pass', 'on')[0], 2)
+        self.assertEqual(self.launch(*self.BASE, *stored, '--fog-shadow-pass', 'auto')[0], 2)
+        # An inherited variable never turns the pass on; the DLL reads it for the stored range only.
+        status, output, error = self.launch(*self.BASE, *stored, environment={'X3M_FOG_SHADOW_PASS': '1'})
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_SHADOW_PASS": "0"', output)
+        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        self.assertIn('volumetric_fog_shadow_pass=volumetric_fog_range_stored && fog_env(L"X3M_FOG_SHADOW_PASS")==1 && setting[0]==L\'1\';', capture)
+        self.assertIn('hooked.motion_output.configure_volumetric_fog_shadow_pass(volumetric_fog_shadow_pass);', capture)
+        self.assertIn('fog_density_config_.shadow_pass = on;', (ROOT / 'src/proxy/motion_output.h').read_text())
+        fragment = (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
+        self.assertIn('k.texel_world = size ? float(2. * double(cascade.half_extent) / double(size)) : 0.f; k.depth_range = float(cascade.depth_range());', fragment)
+
     def test_look_option_and_variable_are_retired(self):
         # 2026-09-22: the presets L0/L1/L3 are gone, the former L2 is the only look, and there is no selector.
         stored = ('--volumetric-fog', '0.03', '--volumetric-fog-cards', 'replace', '--volumetric-fog-range', 'stored')
@@ -308,7 +333,7 @@ class FogLauncherTests(unittest.TestCase):
             self.assertNotIn(gone, look_math, gone)
         # Every tuning variable the look reads is still available, the L3-only ones are not.
         self.assertIn('X3M_FOG_LOOK_', capture)
-        for kept in ('COVERAGE', 'EXPONENT', 'SIGMA_SCALE', 'SELF_SHADOW', 'POWDER', 'TAP_DISTANCE', 'TAP_LENGTH', 'SHADOW_JITTER'):
+        for kept in ('COVERAGE', 'EXPONENT', 'SIGMA_SCALE', 'SELF_SHADOW', 'POWDER', 'TAP_DISTANCE', 'TAP_LENGTH', 'SHADOW_JITTER', 'PENUMBRA', 'PENUMBRA_MIN', 'PENUMBRA_MAX'):
             self.assertIn('"%s"' % kept, look_math, kept)
 
     def test_dependencies_and_ranges(self):

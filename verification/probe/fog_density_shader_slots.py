@@ -23,6 +23,10 @@ PROGRAMS = {
 LOOK_PROGRAMS = {name: ROOT / ('src/renderer/%s_program_inc.h' % name) for name in (
     'fog_density_march_look', 'fog_density_composite_look', 'fog_density_repair_look')}
 PROGRAMS.update(LOOK_PROGRAMS)
+# The sun-visibility slice grid (X3M_FOG_SHADOW_PASS=1): the pass and the look's march/repair reading it.
+GRID_PROGRAMS = {name: ROOT / ('src/renderer/%s_program_inc.h' % name) for name in (
+    'fog_density_visibility_grid', 'fog_density_march_grid', 'fog_density_repair_grid')}
+PROGRAMS.update(GRID_PROGRAMS)
 ZERO = {31, 48, 81, 47, 30}                    # dcl, defi, def, defb, label
 COST = {37: 8, 66: 6,                          # sincos, texldb
         # loop rep if ifc breakc callnz nrm pow texldd breakp

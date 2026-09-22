@@ -12,6 +12,11 @@ L0/L1/L3 were retired on 2026-09-22): `look_constants` mirrors fog_look_constant
 shaped law on the same 24+40 bins; look cases carry `look phase=K shadow=0|1|2` after the mode and value
 (1: a dark map, every sample shadowed; 2: the striped occluder of `stripe_visibility`, which exercises the
 offset shaft lookup), then optionally `resolved=0` (no temporal resolve: the lookup offset is dropped).
+
+The sun-visibility slice grid (docs/architecture/fog-shadow-pass.md, src/renderer/fog_shadow_grid.h): `grid_atlas` is the
+host twin of fog_density_visibility_grid_ps.hlsl over the fixture's synthetic cascades (`grid_cascades`: 2 the striped
+occluder, 3 the two-cascade seam, 4 the penumbra edge) and `grid_reader` the march's bilinear lane read of it. Grid
+cases carry `look grid phase=K shadow=N` (the fixture draws the pass, then the FOG_SHADOW_PASS march).
 """
 from __future__ import annotations
 import argparse, importlib.util, json, math
@@ -27,7 +32,8 @@ COVER_WAVES = ((1., -2., 1.), (2., 1., -1.), (-1., 1., 2.))  # coverage variatio
 TUNING = dict(coverage=.35, exponent=2., sigma_scale=8., coverage_variation=.12, warp_cycles_near=13., warp_near=500.,
               warp_cycles_far=5., warp_far=1400., forward_g=.75, forward_weight=.7, back_g=-.15, albedo_white=.5,
               ambient_gain=.35, extinction_tint=.6, scatter_lift=.5, lift_floor=.5, shadow_floor=.15, sky_cap=112500., taper_start=65000.,
-              self_shadow=3., powder=.5, tap_distance=3000., tap_length=9000., shadow_jitter=1.)
+              self_shadow=3., powder=.5, tap_distance=3000., tap_length=9000., shadow_jitter=1.,
+              penumbra=1., penumbra_min=1., penumbra_max=16.)  # the visibility grid pass (c41), not a look row
 
 
 def look_constants(chroma, radiance_over_pi=(1., 1., 1.), phase=0, tuning=None, resolved=True):
@@ -126,6 +132,152 @@ def look_march(origin, directions, limits, solid, chroma, store, sigma, phase=0,
 
 
 STRIPE_SPAN = 120000.  # view depth across the striped map of the shadow=2 fixture case
+# --- The sun-visibility slice grid (fog_shadow_grid.h twin) ---
+GRID_SLICES, GRID_NEAR, GRID_NEAR_WIDTH, GRID_TILES, GRID_PIXELS = 64, 24, 500., 4, 4
+GRID_SUN_ANGLE, GRID_GOLDEN = .0093, .618034
+GRID_STRIPE_TEXEL, GRID_STRIPE_RANGE = 36.6, 1000.       # shadow=2: the blocker sits 499 units off, the kernel stays at its minimum
+SEAM_DARK_ROW, SEAM_TEXEL_ROW = (21, (20.7, 20.2))       # shadow=3: rows >= 21 dark; cascade 0 / 1 sample between rows at .7 / .2
+PENUMBRA_TEXEL, PENUMBRA_RANGE, PENUMBRA_SLAB, PENUMBRA_Z0, PENUMBRA_DZ = 36.6, 200000., .1, .28, 1.7e-6  # shadow=4
+PENUMBRA_SLICE = 58                                       # far slice whose blocker distances span 5-66 km across the screen
+# Penumbra tuning per case kind: the seam case keeps no kernel at all (the disc would move its between-rows sample).
+GRID_PENUMBRA = {3: (0., 0., 0.)}
+
+
+def grid_tuning(kind):
+    k = GRID_PENUMBRA.get(kind)
+    return dict(TUNING, penumbra=k[0], penumbra_min=k[1], penumbra_max=k[2]) if k else TUNING
+
+
+def grid_extent(pixels): return (pixels + GRID_PIXELS - 1) // GRID_PIXELS
+def grid_far_width(cap): return (cap - 12000.) / (GRID_SLICES - GRID_NEAR)
+def grid_slice_start(j, cap): return np.where(j < GRID_NEAR, GRID_NEAR_WIDTH * j, 12000. + grid_far_width(cap) * (j - GRID_NEAR))
+def grid_slice_width(j, cap): return np.where(j < GRID_NEAR, GRID_NEAR_WIDTH, grid_far_width(cap))
+
+
+def grid_slice_of(s, cap):
+    """fog_grid_slice_of / grid_slice: the slice holding distance s (floor law, clamped 0..63)."""
+    s = np.asarray(s, np.float64)
+    j = np.where(s < 12000., np.floor(s * (1. / GRID_NEAR_WIDTH)), GRID_NEAR + np.floor((s - 12000.) * (1. / grid_far_width(cap))))
+    return np.clip(j, 0, GRID_SLICES - 1).astype(int)
+
+
+def grid_tile(j):
+    """Tile (x, y) and lane of slice j."""
+    j = np.asarray(j); t = j // GRID_TILES; return t % GRID_TILES, t // GRID_TILES, j % GRID_TILES
+
+
+def grid_blend(m, z, valid, margin=.95, band=.85, reciprocal=10.):
+    inside = (m <= margin) & (z >= 0) & (z <= 1)
+    return np.where(inside, valid * (1 - np.clip((m - band) * reciprocal, 0, 1)), 0.)
+
+
+def grid_constants(width, height, cascades, phase=0, resolved=True, tuning=None, cap=None):
+    """fog_grid_constants: rows c36..c41 (float32 like the header) from the full target size and the bound cascades."""
+    t = tuning or TUNING; f = np.float32; cap = f(cap if cap is not None else t['sky_cap'])
+    if not (np.isfinite(cap) and cap >= 12000. + 40.):
+        raise ValueError('grid column cap %r: the far slice width must be finite and at least one unit' % float(cap))
+    rows = np.zeros((6, 4), np.float32)
+    for i, c in enumerate(cascades[:3]):
+        known = c.get('texel', 0.) > 0 and c.get('range', 0.) > 0
+        rows[i, :3] = (f(c['texel']), f(c['range']), f(c['range']) / f(c['texel'])) if known else 0
+    far = (cap - f(12000)) / f(40)
+    rows[3] = (f(500), far, f(1) / f(500), f(1) / far)
+    gw, gh = f(grid_extent(width)), f(grid_extent(height))
+    rows[4] = (gw, gh, f(1) / (f(4) * gw), f(1) / (f(4) * gh))
+    turn = f(phase % 64) * f(GRID_GOLDEN)
+    rows[5] = (f(GRID_SUN_ANGLE) * f(t['penumbra']), f(t['penumbra_min']), max(f(t['penumbra_max']), f(t['penumbra_min'])), (turn - np.floor(turn)) if resolved else f(0))
+    return rows
+
+
+def grid_cascades(kind, span=STRIPE_SPAN, size=64):
+    """The fixture's synthetic cascades of a grid case: rows (3 x 4, view -> light), N, bias, the R32F map and the
+    penumbra texel / range. 2: the striped occluder along view depth (fog_density_shader_fixture.cpp constants());
+    3: the seam, one row-patterned map bound twice, cascade 0 handing over to cascade 1 at x0 = .85 (z = 85 km) with
+    the two sampling between different texel rows (v .3 against .8); 4: the penumbra edge, x from screen rows (with
+    a small column tilt for sub-texel diversity), the blocker distance from screen columns."""
+    if kind == 2:
+        stripes = np.tile(stripe_map(size), (size, 1)).astype(np.float32)
+        return [dict(rows=np.array([[0, 0, 2. / span, -1.], [0, 0, 0, 0], [0, 0, 0, .5]]), N=size, bias=.001, map=stripes, texel=GRID_STRIPE_TEXEL, range=GRID_STRIPE_RANGE)]
+    if kind == 3:
+        rows_map = np.where(np.arange(64)[:, None] >= SEAM_DARK_ROW, 0., 1.).astype(np.float32) * np.ones((1, 64), np.float32)
+        y = [1. - 2. * r / 64. for r in SEAM_TEXEL_ROW]
+        return [dict(rows=np.array([[0, 0, 1e-5, 0], [0, 0, 0, y[0]], [0, 0, 0, .5]]), N=64, bias=.001, map=rows_map, texel=0., range=0.),
+                dict(rows=np.array([[0, 0, 5e-6, 0], [0, 0, 0, y[1]], [0, 0, 0, .5]]), N=64, bias=.001, map=rows_map, texel=0., range=0.)]
+    if kind == 4:
+        edge = np.where(np.arange(64)[None, :] >= 32, PENUMBRA_SLAB, 1.).astype(np.float32) * np.ones((64, 1), np.float32)
+        return [dict(rows=np.array([[1e-6, 1e-5, 0, 0], [0, 0, 1e-9, 0], [PENUMBRA_DZ, 0, 0, PENUMBRA_Z0]]), N=64, bias=.001, map=edge, texel=PENUMBRA_TEXEL, range=PENUMBRA_RANGE)]
+    raise ValueError(kind)
+
+
+def grid_noise(px, py, swap=False):
+    """The pass's interleaved gradient noise of an atlas texel in float32 (swap: the transposed weights of the disc rotation)."""
+    f = np.float32; a, b = (f(0.00583715), f(0.06711056)) if swap else (f(0.06711056), f(0.00583715))
+    inner = np.asarray(px, np.float32) * a + np.asarray(py, np.float32) * b; inner = inner - np.floor(inner)
+    outer = f(52.9829189) * inner; return (outer - np.floor(outer)).astype(np.float64)
+
+
+def grid_pcf(c, p, disc_offset):
+    """fog_pcf's 2x2 comparison at light-space p (n x 3) plus a disc offset (n x 2, texels), and the reference minus the
+    nearest of the four depths. CLAMP addressing: texel indices clipped."""
+    N = c['N']; m = c['map']; x = p[:, 0] + disc_offset[:, 0] * 2. / N; y = p[:, 1] + disc_offset[:, 1] * 2. / N
+    tx = x * .5 * N + .5 * N; ty = -y * .5 * N + .5 * N; bx = np.floor(tx); by = np.floor(ty); fx = tx - bx; fy = ty - by
+    ix = np.clip(bx.astype(int), 0, N - 1); iy = np.clip(by.astype(int), 0, N - 1); jx = np.clip(ix + 1, 0, N - 1); jy = np.clip(iy + 1, 0, N - 1)
+    d = np.stack((m[iy, ix], m[iy, jx], m[jy, ix], m[jy, jx]), 1).astype(np.float64); reference = p[:, 2] - c['bias']
+    lit = (d >= reference[:, None]).astype(np.float64)
+    return (lit[:, 0] * (1 - fx) + lit[:, 1] * fx) * (1 - fy) + (lit[:, 2] * (1 - fx) + lit[:, 3] * fx) * fy, reference - d.min(1)
+
+
+def grid_atlas(hw, hh, cascades, phase=0, resolved=True, tuning=None, cap=None):
+    """Host twin of fog_density_visibility_grid_ps.hlsl at the fixture's half size (hw, hh): the RGBA8 atlas as a
+    uint8 array (atlas height, atlas width, 4 lanes) for the fixture's c0 (the host (x+.5)/half ray law), in view space
+    (the fixture's cascade rows map view positions)."""
+    t = tuning or TUNING; W, H = 2 * hw, 2 * hh; GW, GH = grid_extent(W), grid_extent(H); AW, AH = 4 * GW, 4 * GH
+    k = grid_constants(W, H, cascades, phase, resolved, t, cap).astype(np.float64)
+    m00, m11, m20, m21 = float(np.float32(hh / (hw * math.tan(math.radians(30))))), float(np.float32(1 / math.tan(math.radians(30)))), float(np.float32(-.5 / hw)), float(np.float32(.5 / hh))
+    out = np.zeros((AH, AW, 4), np.float64)
+    for tile_index in range(16):
+        tx, ty = tile_index % 4, tile_index // 4
+        px, py = np.meshgrid(np.arange(GW) + tx * GW, np.arange(GH) + ty * GH); px = px.ravel().astype(np.float64); py = py.ravel().astype(np.float64)
+        q = np.stack((px - tx * GW + .5, py - ty * GH + .5), 1); full = q * 4. / np.array([W, H])
+        view = np.stack(((2 * full[:, 0] - 1 - m20) / m00, (1 - 2 * full[:, 1] - m21) / m11, np.ones(len(px))), 1)
+        direction = view / np.linalg.norm(view, axis=1, keepdims=True)
+        xi = grid_noise(px, py) + k[5, 3]; xi -= np.floor(xi)
+        turn = grid_noise(px, py, swap=True) + k[5, 3]; turn -= np.floor(turn); angle = 2 * math.pi * turn
+        spin = np.stack((np.cos(angle), np.sin(angle)), 1); side = np.stack((-spin[:, 1], spin[:, 0]), 1)
+        a = [c['rows'][:, 3] for c in cascades]; b = [np.einsum('nj,ij->ni', direction, c['rows'][:, :3]) for c in cascades]
+        for lane in range(4):
+            j = 4 * tile_index + lane; column_cap = cap if cap is not None else t['sky_cap']; start = float(grid_slice_start(j, column_cap)); width = float(grid_slice_width(j, column_cap))
+            radius = [np.full(len(px), k[5, 1]) for _ in cascades]; lit = np.zeros(len(px))
+            for tap in range(4):
+                s = start + (tap + xi) * .25 * width
+                disc = np.zeros((len(px), 2)) if tap == 0 else spin if tap == 1 else -.5 * spin + 0.8660254 * side if tap == 2 else -.5 * spin - 0.8660254 * side
+                shade = np.zeros(len(px)); free = np.ones(len(px))
+                for i, c in enumerate(cascades):
+                    p = a[i][None, :] + s[:, None] * b[i]
+                    w = free * grid_blend(np.maximum(np.abs(p[:, 0]), np.abs(p[:, 1])), p[:, 2], 1.); free = free - w
+                    frac, gap = grid_pcf(c, p, disc * radius[i][:, None])
+                    if tap == 0:
+                        radius[i] = np.where(w > 0, np.clip(gap * k[i, 2] * k[5, 0], k[5, 1], k[5, 2]), radius[i])
+                    shade += w * (1 - frac)
+                lit += 1 - shade
+            out[py.astype(int), px.astype(int), lane] = .25 * lit
+    return np.clip(np.floor(out * 255. + .5), 0, 255).astype(np.uint8)
+
+
+def grid_reader(atlas, hw, hh, gx, gy, cap=None, tuning=None):
+    """The march's read of the grid for look_march: bilinear lane fetch at the ray's clamped in-tile coordinate (gx, gy)
+    (march: (2p+.5)/4 of the half pixel; repair: (P+.5)/4 of the full pixel) of the slice holding the bin centre."""
+    cap = cap if cap is not None else (tuning or TUNING)['sky_cap']; GW, GH = grid_extent(2 * hw), grid_extent(2 * hh); AH, AW = atlas.shape[:2]
+    gx = np.clip(np.asarray(gx, np.float64), .5, GW - .5); gy = np.clip(np.asarray(gy, np.float64), .5, GH - .5); a = atlas.astype(np.float64) / 255.
+
+    def visibility(points, rays, ds):
+        j = grid_slice_of(np.linalg.norm(points, axis=1), cap); tx, ty, lane = grid_tile(j)
+        x = tx * GW + gx[rays] - .5; y = ty * GH + gy[rays] - .5; bx = np.floor(x); by = np.floor(y); fx = x - bx; fy = y - by
+        ix = np.clip(bx.astype(int), 0, AW - 1); iy = np.clip(by.astype(int), 0, AH - 1); jx = np.clip(ix + 1, 0, AW - 1); jy = np.clip(iy + 1, 0, AH - 1)
+        return (a[iy, ix, lane] * (1 - fx) + a[iy, jx, lane] * fx) * (1 - fy) + (a[jy, ix, lane] * (1 - fx) + a[jy, jx, lane] * fx) * fy
+    return visibility
+
+
 def stripe_map(size=64):
     """64 columns: 0 (occluder at the light) in every other pair (3750 units of view depth, 1.5 far bins) between columns 8 and 55, 1 elsewhere, so
     the map is lit on both sides of the blend-band start (|x| = .85) and visibility is continuous along a ray."""
@@ -234,6 +386,33 @@ def run(asset_data, output):
                 arrays[f'{label}_centre_delta'] = np.abs(S - look_march(origin, allr[strat], np.full(len(strat), m.FAR), False, chroma, store, m.SIGMA, phase, (sx, sy),
                                                                          visibility=stripe_visibility(pose['forward']), tuning=dict(TUNING, shadow_jitter=0.))[0]).max(1)
                 arrays[f'{label}_noise_margin'] = look_noise(sx, sy, look_constants(chroma, phase=phase)[0][8, 3])[1] if not held else np.ones(len(sx))
+        # The visibility grid (X3M_FOG_SHADOW_PASS=1): the same rays through the FOG_SHADOW_PASS march reading the pass's
+        # atlas. No cascade: the fixture compares the GPU image with the in-march case byte for byte (no arrays here).
+        # Stripes: the host atlas (fixture gate 2/255) and the host march reading it; `A_look_stripes` is the in-march
+        # law the grid must measurably leave. Seam and penumbra: host atlases; the checker measures the GPU atlas.
+        grids = [(f'{name}_grid_sky', 'sky', None, 0)]
+        if name == 'A':
+            grids += [('A_grid_stripes', 'sky', None, 2), ('A_grid_stripes_held', 'sky', None, 2), ('A_grid_depth3', 'depth', float(m.DEPTHS[3]), 0),
+                      ('A_grid_seam', 'sky', None, 3), ('A_grid_penumbra', 'sky', None, 4)]
+        for label, mode, depth, shadow in grids:
+            phase = 5 if shadow == 2 else 0; held = label.endswith('_held')
+            pen = GRID_PENUMBRA.get(shadow)
+            case(label, origin, pose, mode, repr(depth) if depth else '0', f'look grid phase={phase} shadow={shadow}' + (' resolved=0' if held else '') + (' pen=%r,%r,%r' % pen if pen else ''))
+            if not shadow:
+                continue
+            cascades = grid_cascades(shadow); atlas = grid_atlas(m.W, m.H, cascades, phase, not held, grid_tuning(shadow))
+            arrays[f'{label}_atlas'] = atlas
+            if shadow == 2:
+                reader = grid_reader(atlas, m.W, m.H, (2 * sx + .5) / 4., (2 * sy + .5) / 4.)
+                S, T = look_march(origin, allr[strat], np.full(len(strat), m.FAR), False, chroma, store, m.SIGMA, phase, None, visibility=reader, tuning=dict(TUNING, shadow_jitter=0.))
+                arrays[f'{label}_S'] = S; arrays[f'{label}_T'] = T
+        if name == 'A':
+            # The grid repair: the repaired odd columns of the split test read the pass's atlas of the 1024-texel stripes.
+            cascades = grid_cascades(2, 24000., 1024); atlas = grid_atlas(m.W, m.H, cascades, 5, True)
+            arrays['A_repair_grid_atlas'] = atlas
+            reader = grid_reader(atlas, m.W, m.H, (fx + .5) / 4., (fy + .5) / 4.)
+            S, T = look_march(origin, d, 20000. * length, True, chroma, store, m.SIGMA, 5, None, visibility=reader, tuning=dict(TUNING, shadow_jitter=0.))
+            arrays['A_repair_grid_shafts_S'] = S; arrays['A_repair_grid_shafts_T'] = T
     (output / 'cases.txt').write_text('\n'.join(lines) + '\n')
     np.savez(output / 'reference.npz', **arrays)
     record = dict(schema=1, width=m.W, height=m.H, shifts=SHIFTS, depths=m.DEPTHS.tolist(),

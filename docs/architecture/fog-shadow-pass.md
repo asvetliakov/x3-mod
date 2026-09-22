@@ -1,7 +1,9 @@
 # Volumetric fog: the sun-shadow lookup in its own pass
 
 Design note, 2026-09-22, for the stored-density fog (L2 law only; the look presets are being
-collapsed to L2 concurrently). Nothing here is implemented. Owning ledger:
+collapsed to L2 concurrently). Built the same day behind `X3M_FOG_SHADOW_PASS=1` (launcher
+`--fog-shadow-pass on`, default off): the section "As built" at the end records what differs from
+the design below and the fixture numbers. Owning ledger:
 [../verification/volumetric-fog.md](../verification/volumetric-fog.md) (run222 diagnosis, "Shaft
 lookup offset in L1-L3", Run 63 verdict, Run 239, GPU timer). Cascade contract:
 [shadow-cascades.md](shadow-cascades.md). Units: 5 units = 1 m; the flight maps are 2048²
@@ -291,3 +293,84 @@ penumbra measurements 6 h; generator registration, Wine fixture runs, review fix
   confirms it and fixes the memory figure.
 - **Whether 4 strata per slice suffice at eighth resolution** if the A/B forces it: rerun item 3
   at 160×96 with 4 and 8 strata.
+
+## As built (2026-09-22)
+
+Source: `src/fog/fog_shadow_grid_inc.h` (rows, `fog_pcf`, `shadow_weight`, slice and tile laws, shared by
+every stored-density program), `src/fog/fog_density_visibility_grid_ps.hlsl` (the pass),
+`fog_density_{march,repair}_grid_ps.hlsl` (`FOG_LOOK` + `FOG_SHADOW_PASS`, the look with one bilinear grid
+fetch per non-empty step), `src/renderer/fog_shadow_grid.h` (d3d9-free twin: extents, slice distances, tile
+addressing, blend, penumbra radius, rows c36–c41, fetch counts), `FogPass` (`FogDensityConfig::shadow_pass`,
+`FogCascadeInput::texel_world/depth_range`, `FogStage::Visibility`, `FogResult::grid`), the proxy
+(`X3M_FOG_SHADOW_PASS`, `configure_volumetric_fog_shadow_pass`, texel/range per cascade) and the launcher
+(`--fog-shadow-pass {on,off}`, `on` requires `--volumetric-fog-range stored`). The seven existing programs keep
+their bytecode (`fog_pcf`/`shadow_weight` moved into the shared include without a word changing); with the toggle
+off the fixture's five accepted look images and the repair image hash exactly as in the look-collapse table.
+
+Deviations from the design above, all measured by the fixture:
+
+- **Penumbra radius = `0.0093 · d_b · k_pen / texel_world`** (the note's formula; `fog_grid_sun_angle`), not
+  half of it. The blocker search is tap 0's own 2×2, which meets the blocker only on the shadow side of an
+  edge, so the penumbra grows one-sided from the geometric edge into the shadow and its 10–90 % width is
+  about one radius: 3.4 / 6.5 / 9.8 texels at 2 / 6 / 12 km behind a slab of the 36.6-unit map against
+  0.0093 d = 2.5 / 7.6 / 15.2 (ratios 1.34 / .86 / .64, monotone; the far band's estimate is biased low by the
+  first-crossing measure on a noisy 8-column band). Inside the fog the half-width shift of the penumbra is
+  invisible; a wide blocker search would cost a second loop.
+- **Constants**: c36–c38 = (texel_world, range_world, range_world / texel_world, 0) per cascade (0 when the
+  caller gives no texel: the kernel stays at `r_min`); c39 = (500, (cap − 12000)/40, 1/500, 40/(cap − 12000));
+  c40 = (tile W, tile H, 1/atlas W, 1/atlas H); c41 = (0.0093 · k_pen, r_min, r_max, frame term) with the frame
+  term `frac(0.618034 · (phase mod 64))` while `look_resolved`, 0 otherwise (it advances both the stratum and the
+  disc rotation). Tunables `X3M_FOG_LOOK_PENUMBRA` (0–4, default 1), `_PENUMBRA_MIN` (0–16, 1), `_PENUMBRA_MAX`
+  (0–64, 16), read once with the look tuning. The march's c0–c35 are untouched; one upload of 42 rows serves the
+  pass, march, composite and repair. `look_taps.zw` are still uploaded and ignored by the grid programs.
+- **Strata and rotation** come from two interleaved-gradient noises of the *atlas* texel (not the grid texel), so
+  the 16 tiles of one screen position carry different strata along the ray; the seam fixture shows the price: a
+  slice step across a tile boundary can exceed the ramp increment by a quarter of it (measured .149 against the
+  .126 increment, bound .165).
+- **Sampler**: the pass reads the maps at s4–s6 (POINT, as `normalize` leaves them); march and repair bind the
+  atlas at s4 and the transaction sets s4 MIN/MAG LINEAR with two `SetSamplerState` calls (the block bracket
+  restores them). Extra device calls per frame: **19**, measured by the pass fixture as the pass-on frame with a
+  cascade against the pass-on frame with none (so it counts the `bind_target` of the visibility stage, its
+  constant upload, three map binds, the draw, the two sampler calls and the grid bind); the design's ≈ 14 above
+  was against the toggle-off frame, which also binds the three maps for the march. Against toggle-off the
+  difference is 19 − 3 = 16.
+- **Constants** are uploaded as 42 rows in both modes: with the pass off the six grid rows are zero and the look
+  programs never read c36–c41, which is why the off images stay byte-identical (the upload count is not the
+  identity; the programs are).
+- **Fallback**: a grid that cannot be built (`density_grid_compiled_slots`, `density_grid_program_create`,
+  `density_grid_target`, `density_grid_extent`) or a column cap the slice law cannot divide (`grid_column_cap`,
+  below 12040 or not finite) does **not** refuse the stored fog: the in-march programs draw, the reason sits in
+  `density_status().shadow_pass_refused` (sticky until detach) and the proxy logs one `fog_shadow_pass_refused`
+  line. The pass fixture injects an RGBA8 target failure and checks the split frame is byte-identical to the
+  in-march instance's.
+- **Lifetime**: the grid target is created in `density_resources` (from `prepare_density`, when the config asks
+  for the pass and the targets exist), not in `prepare_targets`, which does not know the config; it is released
+  with the targets (`release_targets`: resize, `before_reset`, `detach`) and by `release_density_default`, counted
+  in `references()` / `allocations()`. The three grid programs are created beside the look programs, once;
+  attach queries `rgba8_rt` (a device without an `A8R8G8B8` target refuses the fog as a whole).
+- **Loops**: the pass is two nested static loops (4 slices × 4 taps), 319 slots / 12 texture instructions;
+  march grid 352 / 8 (from 425 / 15), repair grid 453 / 13 (from 510 / 20); composite unchanged 210.
+- **Default off** in the launcher for the flight A/B; the DLL reads `X3M_FOG_SHADOW_PASS` only with the stored
+  range and logs `volumetric_fog_shadow_pass enabled=…` once.
+
+Fetches per frame (ceiling, fixed: the pass reads every slice of every grid texel): 1280×768 → 320×192 texels
+× 64 × 16 = **62.9 M** map fetches plus ≤ 15.7 M RGBA8 grid fetches by the march (one per non-empty step of
+245,760 rays), atlas 3.9 MB; 2560×1440 → 640×360 × 1024 = **235.9 M** plus ≤ 59.0 M, atlas 14.7 MB. Today's
+in-march law reads ≤ 62.9 M / 235.9 M map fetches (typically 40–50 % of that). GPU time is not measurable on
+bottle X3 (the fixture's slope timing reads 0.008–0.014 ms for a 1280×768 pass or march, below its own noise);
+the at-rest frame-time A/B with the toggle in one build decides, as planned.
+
+Fixture (`fog_density_shader_run.py`, bottle X3, arm64, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`): PASS,
+28 gates; shader fixture 30 checks, pass fixture 73 checks / 0 failures / 1099 state restorations (c0..c41 hostile). Item 1 atlas
+twin: max 1/255 on every texel of the stripes, held, seam, penumbra and repair atlases (139 / 157 / 135,978 / 142 /
+117 of 147,456 texels differ by that one step; the seam's .3 lands on a rounding tie). Item 2: GPU grid march
+against the host march reading the host atlas, 576 stratified rays, S max 2.2e-4 (FP32) / 3.1e-4 (FP16) under the
+5e-4 gate, T identical to the in-march program bit for bit, and the in-march offset law .0069 away on 11 pixels;
+grid repair S max 4.9e-4, the bin-centre repair law .0050 away. No cascade: grid march images byte-identical to
+the in-march ones (three cases, FP32 and FP16). Item 4 seam: centre ray .298 → .8 over slices 53–57, max step
+.149 against the hard switch's .5. Item 5 penumbra: above. Item 3 (the host transmittance study on the run222
+dumps) was not run: the fixture's items 1, 2 and 5 cover the same laws on synthetic maps; it remains the
+pre-flight check if the A/B raises a numeric doubt. Item 6: slots above; generator `--check` provenance for the
+ten programs; host modules `test_fog_shadow_grid`, `test_fog_density_shaders`, `test_fog_look_reference`,
+`test_volumetric_fog`, `test_shader_compiler_provenance`. Evidence and hashes:
+[../verification/volumetric-fog.md](../verification/volumetric-fog.md), "Sun-visibility grid pass built".

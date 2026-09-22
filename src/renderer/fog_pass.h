@@ -7,6 +7,7 @@
 #include <d3d9.h>
 #include "fog_pass_math.h"
 #include "fog_look_math.h"
+#include "fog_shadow_grid.h"
 #include "fog_volume_math.h"
 #include "fog_field_assets.h"
 namespace x3m::fog { class DensityCache; }
@@ -28,18 +29,28 @@ struct FogDensityConfig {
     float chroma[3]{1,1,1};     // family mean chroma
     unsigned upload_budget_bytes=0; // per prepare_density; 0 selects 8 tiles (1,065,024 B)
     FogLookTuning look{};       // the single look's tuning; read once at init by the caller
+    // X3M_FOG_SHADOW_PASS=1 (docs/architecture/fog-shadow-pass.md): the sun-visibility slice grid drawn before the
+    // march; march and repair read it instead of the in-march lookup. Programs and the RGBA8 grid target of the
+    // requested variant are created at prepare_density, never on a draw path; off keeps today's programs untouched.
+    bool shadow_pass=false;
 };
 struct FogDensityStatus {
     bool available=false; const char* reason="off";
     float ready_fine=0,ready_far=0;          // 90-frame ramps: lambda weight, density weight
     unsigned upload_bytes=0,upload_rects=0;  // last prepare_density
     std::uint64_t upload_bytes_total=0,upload_rects_total=0,nodes_generated=0,worker_busy_us=0,missed_locks=0;
+    // The visibility grid could not be built (program, target, extent) or its column cap is unusable: the stored fog
+    // keeps drawing with the in-march programs; sticky until detach. The proxy logs it once (fog_shadow_pass_refused).
+    const char* shadow_pass_refused=nullptr;
 };
 // Borrowed only during execute. Rows map current view coordinates to the exact
 // retained replay basis; frame stamps prohibit the surface lane's older far map.
 struct FogCascadeInput {
     IDirect3DTexture9* map=nullptr; float rows[12]{}; float bias=0; bool valid=false;
     std::uint64_t frame=~std::uint64_t(0);
+    // The visibility pass's penumbra: the map's world texel and its sun-space depth range in world units
+    // (0: unknown, the pass keeps its minimum kernel for that cascade).
+    float texel_world=0,depth_range=0;
 };
 constexpr unsigned fog_cascade_max=3;
 struct FogParams {
@@ -79,7 +90,7 @@ struct FogFrame {
 };
 enum class FogStage : unsigned {
     None,Validate,Targets,Block,Capture,Normalize,Scene,March,Copy,SkyLevel,SkyReduce,Composite,EndScene,Restore,
-    Field,CloseScene,ReopenScene,RecoverScene,Repair
+    Field,CloseScene,ReopenScene,RecoverScene,Repair,Visibility
 };
 struct FogResult {
     HRESULT operation=S_FALSE,restore=S_FALSE,scene_recovery=S_FALSE;
@@ -88,6 +99,7 @@ struct FogResult {
     bool scene_known=false,scene_open=false,scene_write_started=false;
     bool caller_state_restored=false,route_poisoned=false;
     bool sky_updated=false; unsigned cascades_bound=0; // actual current maps admitted
+    bool grid=false; // the visibility grid was drawn this frame (shadow pass on with a cascade bound)
     unsigned device_calls=0; // native methods + block Capture/Apply; excludes Releases/resource validation
     IDirect3DTexture9* lit=nullptr; // borrowed FP16 (S.rgb,T), invalidated by resize/Reset/detach
     UINT half_width=0,half_height=0;
@@ -140,7 +152,8 @@ public:
     }
     bool density_ready(UINT w,UINT h) const noexcept {
         return caps_.enabled&&!reset_pending_&&density_&&density_march_&&density_composite_&&density_repair_&&density_atlas_surface_[0]&&density_atlas_surface_[1]&&
-            block_&&w&&h&&w==width_&&h==height_&&lit_surface_&&scratch_surface_;
+            block_&&w&&h&&w==width_&&h==height_&&lit_surface_&&scratch_surface_&&
+            (!density_config_.shadow_pass||(density_visibility_&&density_march_grid_&&density_repair_grid_&&grid_surface_));
     }
     fog_field::Profile field_profile() const noexcept { return active_profile_; }
     std::uint32_t field_recipe() const noexcept { return active_profile_==fog_field::Profile::None?0:field_recipe_; }
@@ -155,6 +168,7 @@ public:
     IDirect3DSurface9* fixture_st() const noexcept { return lit_surface_; }
     std::size_t fixture_cpu_bytes() const noexcept { return atlas_bytes_.size()*sizeof(std::uint16_t); }
     IDirect3DTexture9* fixture_density_atlas(unsigned level) const noexcept { return density_atlas_[level]; }
+    IDirect3DTexture9* fixture_grid() const noexcept { return grid_; }
     const fog::DensityCache* fixture_density_cache() const noexcept { return density_; }
 #endif
 private:
@@ -164,6 +178,7 @@ private:
     HRESULT density_resources() noexcept;
     HRESULT density_uploads(unsigned budget) noexcept;
     void release_density_default() noexcept;
+    void release_grid() noexcept;
     HRESULT quad(UINT,UINT) noexcept;
     HRESULT bind_target(IDirect3DSurface9*,UINT,UINT,IDirect3DPixelShader9*,UINT samplers=7) noexcept;
     void release_targets() noexcept;
@@ -189,7 +204,11 @@ private:
     IDirect3DPixelShader9 *density_march_=nullptr,*density_composite_=nullptr,*density_repair_=nullptr;
     IDirect3DTexture9 *density_staging_[2]{},*density_atlas_[2]{};
     IDirect3DSurface9 *density_staging_surface_[2]{},*density_atlas_surface_[2]{};
+    // The visibility grid (FogDensityConfig::shadow_pass): its pass and reader programs, created once with the
+    // look programs, and the RGBA8 4x4-tile target, sized from the current targets and released with them.
+    IDirect3DPixelShader9 *density_visibility_=nullptr,*density_march_grid_=nullptr,*density_repair_grid_=nullptr;
+    IDirect3DTexture9* grid_=nullptr; IDirect3DSurface9* grid_surface_=nullptr; UINT grid_width_=0,grid_height_=0;
     FogDensityConfig density_config_{}; FogDensityStatus density_status_{};
-    unsigned ps30_slots_=0; bool density_refused_=false;
+    unsigned ps30_slots_=0; bool density_refused_=false,grid_refused_=false;
 };
 } // namespace x3m::renderer

@@ -11,7 +11,7 @@ sys.path.insert(0, str(ROOT / 'verification/probe'))
 import fog_density_shader_slots as slots  # noqa: E402
 
 BASE = ('fog_density_march', 'fog_density_composite', 'fog_density_repair', 'fog_density_march_exact')
-NAMES = BASE + tuple(slots.LOOK_PROGRAMS)  # the single look: FOG_LOOK variants of march, composite and repair
+NAMES = BASE + tuple(slots.LOOK_PROGRAMS) + tuple(slots.GRID_PROGRAMS)  # the single look (FOG_LOOK) and its visibility-grid variants
 
 
 def digest(path):
@@ -30,7 +30,7 @@ class FogDensityShaders(unittest.TestCase):
             r = record(name); header = slots.PROGRAMS[name]
             self.assertEqual(r['source_sha256'], digest(ROOT / r['source']), name)
             self.assertEqual(r['header_sha256'], digest(header), name)
-            self.assertIn('src/fog/fog_density_field_inc.h', r['includes'], name)
+            self.assertIn('src/fog/fog_shadow_grid_inc.h' if name == 'fog_density_visibility_grid' else 'src/fog/fog_density_field_inc.h', r['includes'], name)
             for path, value in r['includes'].items():
                 self.assertEqual(value, digest(ROOT / path), (name, path))
             words = slots.words_of(header)
@@ -53,8 +53,15 @@ class FogDensityShaders(unittest.TestCase):
         # The look: depth + 2x2 atlas fetches + 2 cascades x 4 shaft taps + the sun-ward tap's two far fetches (15);
         # composite 1+1+4+4; repair adds four footprint taps and the scene. The 64-bin march stays one loop.
         self.assertEqual([counts[n]['texture_instructions'] for n in slots.LOOK_PROGRAMS], [15, 10, 20])
+        # The visibility grid: the pass reads 3 cascades x 4 depths; its march and repair drop the shaft taps for one
+        # grid fetch (depth + 2x2 atlas + grid + 2 sun-ward = 8; repair adds four footprint taps and the scene).
+        self.assertEqual([counts[n]['texture_instructions'] for n in slots.GRID_PROGRAMS], [12, 8, 13])
+        self.assertEqual(counts['fog_density_visibility_grid']['loops'], 2)  # slices x taps, both static loops
         for name in NAMES:
+            if name in slots.GRID_PROGRAMS:
+                continue
             self.assertEqual(counts[name]['loops'], 0 if 'composite' in name else 1, name)
+        self.assertEqual([counts[n]['loops'] for n in ('fog_density_march_grid', 'fog_density_repair_grid')], [1, 1])
         with self.assertRaises(ValueError):
             slots.count([0xffff0300])  # no END token
 
@@ -70,23 +77,30 @@ class FogDensityShaders(unittest.TestCase):
         # fixture's parity reference (the presets L0/L1/L3 were retired on 2026-09-22, and no preset level remains).
         text = (ROOT / 'src/fog/fog_density_field_inc.h').read_text()
         guards = [line.split('//')[0].strip() for line in text.splitlines() if line.startswith(('#if', '#ifdef', '#ifndef')) and 'FOG_LOOK' in line]
-        self.assertEqual(sorted(guards), sorted(['#ifdef FOG_LOOK'] * 4 + ['#ifndef FOG_LOOK', '#ifndef FOG_LOOK_NO_OFFSET']))
+        self.assertEqual(sorted(guards), sorted(['#ifdef FOG_LOOK'] * 3 + ['#if defined(FOG_LOOK) && !defined(FOG_SHADOW_PASS)', '#ifndef FOG_LOOK', '#ifndef FOG_LOOK_NO_OFFSET']))
         self.assertNotIn('FOG_LOOK >=', text)
         for name in BASE:
             self.assertNotIn('FOG_LOOK', (ROOT / record(name)['source']).read_text(), name)
-        for name in slots.LOOK_PROGRAMS:
+        for name in list(slots.LOOK_PROGRAMS) + ['fog_density_march_grid', 'fog_density_repair_grid']:
             self.assertIn('#define FOG_LOOK\n', (ROOT / record(name)['source']).read_text(), name)
+        # The grid variants are the look plus FOG_SHADOW_PASS; the pass program is its own source over the shared include.
+        for name in ('fog_density_march_grid', 'fog_density_repair_grid'):
+            self.assertIn('#define FOG_SHADOW_PASS\n', (ROOT / record(name)['source']).read_text(), name)
+        self.assertIn('#define FOG_GRID_PASS\n', (ROOT / record('fog_density_visibility_grid')['source']).read_text())
+        self.assertIn('src/fog/fog_shadow_grid_inc.h', record('fog_density_visibility_grid')['includes'])
         # The unshaped parity programs and the look programs are unchanged by the retirement: pinned bytecode.
         for name, digest in (('fog_density_march', '4dacf7e4d3ffa909cbd8b8a75352b44d55a471d36ba3222d977662cf6afda60f'),
                              ('fog_density_march_look', '6a347ac2c07d4be702c8b267f704b1aad2cdde16cd729565a2f01a0acf83ed25'),
                              ('fog_density_composite_look', '6c6a78b9fb72c4086e0a169ac249940d8eb4821a2eb457381e4333588e8ef369'),
                              ('fog_density_repair_look', '155a82e2833141db22e2f0688eb11c4aef2a614f612127a348fc739a49b85056')):
             self.assertEqual(record(name)['bytecode_sha256'], digest, name)
-        # The renderer creates the three look programs and no unshaped one.
+        # The renderer creates the three look programs and no unshaped one; the grid variants beside them on request.
         pass_source = (ROOT / 'src/renderer/fog_pass.cpp').read_text()
         for name in ('march', 'composite', 'repair'):
             self.assertIn('#include "fog_density_%s_look_program_inc.h"' % name, pass_source)
             self.assertNotIn('#include "fog_density_%s_program_inc.h"' % name, pass_source)
+        for name in ('visibility', 'march', 'repair'):
+            self.assertIn('#include "fog_density_%s_grid_program_inc.h"' % name, pass_source)
 
     def test_recorded_fixture_summary_passes_the_gates(self):
         s = json.loads((ROOT / 'verification/results/fog-density-shader/summary.json').read_text())

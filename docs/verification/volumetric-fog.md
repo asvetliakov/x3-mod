@@ -2276,3 +2276,62 @@ exits 0 with no `X3M_VOLUMETRIC_FOG_LOOK` in the environment. The nine `bloom-*-
 restamped for the new `generate_rigid_motion_pixel.py` hash (one `tool_sources` line each, bytecode and
 headers untouched, as in commit `babe1547`); a native re-promotion cannot run from a worktree because
 `stage_bloom_programs.py` pins absolute main-checkout paths.
+
+## Sun-visibility grid pass built, default off (2026-09-22)
+
+The design of `docs/architecture/fog-shadow-pass.md` implemented behind `X3M_FOG_SHADOW_PASS=1`
+(`--fog-shadow-pass on`, default off; `on` requires `--volumetric-fog-range stored`); its "As built"
+section records the deviations (full-angle radius with a one-sided penumbra, atlas-texel strata, s4 with
+two sampler calls, the grid target created at `prepare_density`). [M] measured on bottle X3 (arm64,
+`FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`), fixture output `/tmp`-local (`fogshadow/build3`,
+reference `ref2`, the same baked packets), summary `verification/results/fog-density-shader/summary.json`.
+
+**Programs** [M] (`fog_density_shader_slots.py`, Microsoft table): unchanged bytecode for the seven existing
+programs (march `4dacf7e4`, composite `ec97163d`, repair `d40f9a07`, exact `a718e8e9`, look march `6a347ac2`
+425/15, look composite `6c6a78b9` 210/10, look repair `155a82e2` 510/20); new `fog_density_visibility_grid`
+`a9639c74` **319 slots / 12 fetches / 2 loops**, `fog_density_march_grid` `75e87bb7` **352 / 8 / 1**,
+`fog_density_repair_grid` `2a2f3b77` **453 / 13 / 1**. All ten under 512.
+
+**Acceptance** [M], `fog_density_shader_run.py build|run|check` (after the review fixes, `build4`): **PASS, 28 gates**,
+shader fixture 30 checks, pass fixture 73 checks / 0 failures / 1099 state restorations (c0..c41 hostile).
+
+1. Pass off: the five look images and `repair_shafts.full` hash exactly as in the look-collapse table above
+   (`5a6ce47b`/`8e3cbf87`, `84d78267`/`e4fa96f9`, `942e53e4`/`f137782a`, `297f4cdb`/`2d5d7161`, `88d6d328`);
+   gate `pass_off_bit_identical`.
+2. Pass on, no cascade: `A_grid_sky`, `A_grid_depth3`, `B_grid_sky` byte-identical to the in-march images
+   (FP32 and FP16). Stripes: GPU grid march against the host march reading the host atlas on 576 stratified
+   rays, S max **2.2e-4** (FP32) / **3.1e-4** (FP16), p99 6.0e-5 / 1.6e-4 (gate 5e-4); T max 3.6e-4 / 6.2e-4
+   against the host, **0.0** against the in-march program; the in-march offset law is .0069 away on 11 pixels.
+   Atlas twin: max 1 LSB on every texel (stripes 139, held 157, seam 135,978 (a .3 rounding tie), penumbra 142,
+   repair 117 of 147,456 texels differ by one step).
+3. Seam (`A_grid_seam`, cascade 0 x = 1e-5 z handing over at z = 85 km to cascade 1, one row map read at v .3
+   and .8): centre ray .298 on slices 0–52, .353 / .478 / .604 / .718 on 53–56, .8 from 57; max step between
+   consecutive slices .149 over all texels (ramp increment .126, bound .165 with the stratum term), against the
+   hard switch's .5.
+4. Penumbra (`A_grid_penumbra`, slab at depth .1, texel 36.6, range 200,000, slice 58 at 98.7 km): 10–90 %
+   width **3.4 / 6.5 / 9.8 texels** at blocker distances 10 / 30 / 60 thousand units, expected 0.0093 d / texel
+   = 2.5 / 7.6 / 15.2 (ratios 1.34 / .86 / .64, monotone); the in-march 2×2 law is 1 texel at every distance.
+5. Repair (`repair_grid_shafts.full`, 1024-texel stripes over the 20,000-unit columns): 576 odd pixels against
+   the host march of the repaired ray reading the host atlas, max **4.9e-4**; the bin-centre in-march repair law is
+   .0050 away (5 pixels beyond .003).
+6. Production `FogPass` with `shadow_pass`: grid target only after prepare, the pass drawn only with a cascade
+   (`FogResult::grid`), no-cascade frame byte-identical to the in-march instance, a fully lit map identical to no
+   map, split map: T bit-identical to the in-march programs and in-scatter moved on 770 of 1174 fogged pixels
+   (max .033), **19 extra device calls** against the pass-on no-cascade frame (16 against toggle-off, which binds
+   the three maps), repeated frames byte-identical with no new reference or allocation,
+   Reset releases the target and the next prepare re-creates it with a byte-identical frame, detach leaves
+   `references() == 0` and the device refcount balanced; every transaction under hostile caller state (c0..c41
+   set hostile since the review) restored. Review fix: an injected RGBA8 target failure leaves the stored path
+   available with `shadow_pass_refused=density_grid_target`, the split frame byte-identical to the in-march
+   instance's, sticky until detach (gate `grid_refused_falls_back_to_in_march`); a column cap below 12040 or
+   non-finite lights the frame (`grid_column_cap`) instead of dividing by a zero slice width (`test_fog_shadow_grid`).
+
+**Not measured**: GPU time (no timestamp queries on this bottle; the slope timing reads 0.008–0.014 ms per
+1280×768 pass or march, noise) — the flight's at-rest frame-time A/B decides; the run222 host transmittance
+study (design item 3) was not run. **Host**: `test_fog_shadow_grid` (7 tests: header against the Python twin),
+`test_fog_density_shaders`, `test_fog_look_reference`, `test_volumetric_fog` (`--fog-shadow-pass` mapping),
+`test_shader_compiler_provenance`; full host suite `run_host_suite.py`: 229 modules, 2272 tests, 2 modules failing (`test_sun_share_lane`, `test_launcher_stderr_tee`: both launch `manage.py`, which refused with "another installer or launcher is active" while the user's game session was running; not fog-related). The nine `bloom-*-program.json` records were restamped for the new `generate_rigid_motion_pixel.py` hash (one `tool_sources` line each, as before). Scratch build
+`build-fogshadow` (MinGW i686 RelWithDebInfo) `check_no_x87.py` PASS, 637 reachable functions, 0 violations;
+`tools/manage.py launch --dry-run --bottle X3` with the Run 65 session C options plus `--fog-shadow-pass on`
+exits 0 with `X3M_FOG_SHADOW_PASS=1`. Fetch ceilings per frame: 1280×768 62.9 M map + ≤ 15.7 M grid fetches
+(3.9 MB atlas); 2560×1440 235.9 M + ≤ 59.0 M (14.7 MB).

@@ -570,6 +570,18 @@ seeing the worker's exit (at worst a small per-thread leak; not verified); `std:
 execution of the whole path remains unverified
 ([fog ledger](../verification/volumetric-fog.md#stored-density-runtime-integration-checkpoint-4-proxy-wiring-launcher-option-lifetime-2026-09-21)).
 
+## 2026-09-22: stored fog sun-visibility grid pass (`--fog-shadow-pass`, default off)
+
+`X3M_FOG_SHADOW_PASS=1` ([fog-shadow-pass.md](fog-shadow-pass.md)) adds one `A8R8G8B8` render
+target (`CheckDeviceFormat` `rgba8_rt` at attach, `CreateTexture` at `prepare_density`, released
+with the other targets on Reset/resize/detach), one more `SetRenderTarget` / `SetPixelShader` /
+`DrawPrimitiveUP` and two `SetSamplerState` calls inside the existing `D3DSBT_ALL` bracket, and
+three ps_3_0 programs (`tex2Dlod` on R32F, static `rep` loops with `[branch]`, 319 / 352 / 453
+slots) compiled by the native `d3dx9_37` at generation time. Bilinear filtering of an
+`A8R8G8B8` texture is baseline D3D9. Cross-compiled with MinGW i686 / SSE2 and qualified on bottle
+X3 only ([fog ledger](../verification/volumetric-fog.md)); native Windows execution unverified,
+like the rest of the fog.
+
 ## 2026-09-22: partial sun occlusion, step 1 (`--sun-occlusion`, default off)
 
 D3D side, documented calls only: `CheckDeviceFormat` and `CreateTexture` for two 1x1

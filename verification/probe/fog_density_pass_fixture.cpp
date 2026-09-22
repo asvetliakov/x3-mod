@@ -39,6 +39,12 @@ double percentile(std::vector<double> v,double p){if(v.empty())return 0;std::sor
 void* table[119];
 using UpdateSurfaceFn=HRESULT(WINAPI*)(Device,IDirect3DSurface9*,const RECT*,IDirect3DSurface9*,const POINT*);
 UpdateSurfaceFn real_update=nullptr;unsigned update_calls=0,lose_updates=0;
+using CreateTextureFn=HRESULT(WINAPI*)(Device,UINT,UINT,UINT,DWORD,D3DFORMAT,D3DPOOL,IDirect3DTexture9**,HANDLE*);
+CreateTextureFn real_create_texture=nullptr;bool refuse_rgba8_targets=false; // the visibility grid's target: injected creation failure
+HRESULT WINAPI create_texture_stub(Device d,UINT w,UINT h,UINT levels,DWORD usage,D3DFORMAT format,D3DPOOL pool,IDirect3DTexture9** out,HANDLE* handle){
+    if(refuse_rgba8_targets&&format==D3DFMT_A8R8G8B8&&(usage&D3DUSAGE_RENDERTARGET)){SetLastError(0xbad23);return D3DERR_INVALIDCALL;}
+    return real_create_texture(d,w,h,levels,usage,format,pool,out,handle);
+}
 HRESULT WINAPI update_stub(Device d,IDirect3DSurface9* s,const RECT* r,IDirect3DSurface9* t,const POINT* p){
     ++update_calls;if(lose_updates){--lose_updates;SetLastError(0xbad19);return D3DERR_DEVICELOST;}return real_update(d,s,r,t,p);
 }
@@ -80,7 +86,7 @@ struct Snapshot{
         for(auto state:{D3DRS_ZENABLE,D3DRS_ZWRITEENABLE,D3DRS_ZFUNC,D3DRS_STENCILENABLE,D3DRS_ALPHATESTENABLE,D3DRS_ALPHABLENDENABLE,D3DRS_SEPARATEALPHABLENDENABLE,D3DRS_FOGENABLE,D3DRS_SRGBWRITEENABLE,D3DRS_SCISSORTESTENABLE,D3DRS_CLIPPLANEENABLE,D3DRS_CLIPPING,D3DRS_LIGHTING,D3DRS_INDEXEDVERTEXBLENDENABLE,D3DRS_POINTSPRITEENABLE,D3DRS_DITHERENABLE,D3DRS_ANTIALIASEDLINEENABLE,D3DRS_VERTEXBLEND,D3DRS_FILLMODE,D3DRS_CULLMODE,D3DRS_COLORWRITEENABLE,D3DRS_COLORWRITEENABLE1,D3DRS_MULTISAMPLEMASK,D3DRS_SRCBLEND,D3DRS_DESTBLEND,D3DRS_BLENDOP}){DWORD value=0;check(d->GetRenderState(state,&value),"state render");add(value);}
         for(UINT i=0;i<8;++i){DWORD value=0;check(d->GetRenderState(D3DRENDERSTATETYPE(D3DRS_WRAP0+i),&value),"state wrap");add(value);}
         for(UINT i=0;i<8;++i)for(auto state:{D3DTSS_TEXCOORDINDEX,D3DTSS_TEXTURETRANSFORMFLAGS}){DWORD value=0;check(d->GetTextureStageState(i,state,&value),"state stage");add(value);}
-        float pc[128]{},vc[32]{};check(d->GetPixelShaderConstantF(0,pc,32),"state ps constants");check(d->GetVertexShaderConstantF(0,vc,8),"state vs constants");add(pc);add(vc);
+        float pc[168]{},vc[32]{};check(d->GetPixelShaderConstantF(0,pc,42),"state ps constants");check(d->GetVertexShaderConstantF(0,vc,8),"state vs constants");add(pc);add(vc);
     }
     bool operator==(const Snapshot& o)const{return bytes==o.bytes;}
 };
@@ -117,7 +123,7 @@ struct Scene{
         d->SetIndices(nullptr);for(UINT i=0;i<caps.MaxStreams;++i){d->SetStreamSource(i,nullptr,0,0);d->SetStreamSourceFreq(i,1);}
         d->SetPixelShader(nullptr);d->SetVertexShader(nullptr);d->SetVertexDeclaration(nullptr);
     }
-    // Everything the pass touches (8 pixel samplers, c0..c24, targets, streams) set to values it must put back.
+    // Everything the pass touches (8 pixel samplers, c0..c41: the stored path uploads 42 rows, targets, streams) set to values it must put back.
     void hostile(){
         check(d->SetRenderTarget(0,target_surface.p),"hostile rt0");if(caps.NumSimultaneousRTs>1)check(d->SetRenderTarget(1,aux_surface.p),"hostile rt1");check(d->SetDepthStencilSurface(z.p),"hostile depth");
         for(UINT i=0;i<16;++i)check(d->SetTexture(i,spare.p),"hostile texture");for(UINT i=0;i<4;++i)check(d->SetTexture(D3DVERTEXTEXTURESAMPLER0+i,spare.p),"hostile vertex texture");
@@ -132,8 +138,8 @@ struct Scene{
             for(auto state:{D3DSAMP_MINFILTER,D3DSAMP_MAGFILTER,D3DSAMP_MIPFILTER})check(d->SetSamplerState(i,state,i==1||i==7?D3DTEXF_POINT:D3DTEXF_LINEAR),"hostile filter");
             float bias=-.75f;DWORD bits=0;std::memcpy(&bits,&bias,4);check(d->SetSamplerState(i,D3DSAMP_MIPMAPLODBIAS,bits),"hostile LOD");check(d->SetSamplerState(i,D3DSAMP_SRGBTEXTURE,TRUE),"hostile sRGB");check(d->SetSamplerState(i,D3DSAMP_MAXMIPLEVEL,2),"hostile maxmip");
         }
-        float constants[128];for(unsigned i=0;i<128;++i)constants[i]=float(i)*.25f-7;
-        check(d->SetPixelShaderConstantF(0,constants,32),"hostile ps constants");check(d->SetVertexShaderConstantF(0,constants,8),"hostile vs constants");
+        float constants[168];for(unsigned i=0;i<168;++i)constants[i]=float(i)*.25f-7;
+        check(d->SetPixelShaderConstantF(0,constants,42),"hostile ps constants");check(d->SetVertexShaderConstantF(0,constants,8),"hostile vs constants");
     }
 };
 FogFrame make_frame(const Case& c,Scene& s,std::uint64_t frame,bool density){
@@ -238,7 +244,9 @@ void run(const std::string& cases_file){
     Com<IDirect3DDevice9> device;check(api->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING,&pp,&device.p),"CreateDevice");Device d=device.p;
     D3DCAPS9 caps{};check(d->GetDeviceCaps(&caps),"caps");
     std::memcpy(table,*reinterpret_cast<void***>(d),sizeof table);real_update=reinterpret_cast<UpdateSurfaceFn>(table[30]);table[30]=reinterpret_cast<void*>(&update_stub);
+    real_create_texture=reinterpret_cast<CreateTextureFn>(table[23]);table[23]=reinterpret_cast<void*>(&create_texture_stub);
     auto device_references=[&]{d->AddRef();return unsigned(d->Release());};const unsigned references_before=device_references();
+    std::vector<std::uint8_t> off_none,off_split; // the in-march programs' no-map and split-map frames, for the visibility grid below
     {
         FogPass pass;check(pass.attach(d,table,caps,D3DFMT_X8R8G8B8),"attach");Harness hx(d,caps,pass,config);
         Scene scene(d,caps,128,72);scene.create();check(pass.prepare_targets(scene.w,scene.h),"targets");
@@ -356,6 +364,7 @@ void run(const std::string& cases_file){
                 FogResult r;if(hx.execute(A,scene,r,false,&f)!=S_OK||r.cascades_bound!=(map?1u:0u))throw std::runtime_error("shaft transaction");return surface_bytes(d,pass.fixture_st());
             };
             const auto none=shade(nullptr,0),all_lit=shade(lit_texture.p,1e-9f),all_dark=shade(dark_texture.p,1e-9f);const auto split_bytes=shade(split_texture.p,1e-5f);
+            off_none=none;off_split=split_bytes;
             require(all_lit==none,"shafts_fully_lit_map_is_bit_identical_to_no_map");
             // The look removes sun light only: a fully shadowed column keeps its transmittance bit for bit and keeps
             // coloured in-scatter (ambient plus the shaft and lift floors), dimmer than the unshadowed one.
@@ -476,6 +485,64 @@ void run(const std::string& cases_file){
         std::printf("PREPARE_CPU first_prepare_ms=%.2f upload_frames=%u median_us=%.1f p95_us=%.1f p99_us=%.1f max_us=%.1f us_per_update_surface=%.2f idle_frames=%u idle_median_us=%.2f idle_p95_us=%.2f idle_max_us=%.1f max_upload_bytes=%u max_update_surface_calls=%u budget_bytes=%u budget_rects=%u\n",hx.first_prepare_us/1e3,unsigned(hx.prepare_upload_us.size()),percentile(hx.prepare_upload_us,.5),percentile(hx.prepare_upload_us,.95),percentile(hx.prepare_upload_us,.99),percentile(hx.prepare_upload_us,1),
             hx.upload_calls?hx.upload_us_total/hx.upload_calls:0.,unsigned(hx.prepare_idle_us.size()),percentile(hx.prepare_idle_us,.5),percentile(hx.prepare_idle_us,.95),percentile(hx.prepare_idle_us,1),hx.max_upload_bytes,hx.max_upload_rects,unsigned(kDefaultUploadBudget),kDefaultUploadRects);
         std::printf("STATIC_GENERATION nodes=%llu seconds=%.3f nodes_per_second=%.0f\n",(unsigned long long)hx.static_nodes,hx.static_seconds,hx.static_seconds?hx.static_nodes/hx.static_seconds:0.);
+    }
+    // --- The visibility grid refused (an injected RGBA8 target failure): the stored fog keeps drawing with the in-march
+    // programs, byte-identical to the first instance's split frame, and says why once ---
+    {
+        FogDensityConfig gconfig=config;gconfig.shadow_pass=true;refuse_rgba8_targets=true;
+        FogPass pass;check(pass.attach(d,table,caps,D3DFMT_X8R8G8B8),"refused grid attach");Harness hx(d,caps,pass,gconfig);
+        Scene scene(d,caps,128,72);scene.create();check(pass.prepare_targets(scene.w,scene.h),"refused grid targets");
+        require(hx.settle(A.cam)&&!pass.fixture_grid()&&pass.density_status().available,"refused_grid_keeps_the_stored_path_available");
+        const char* reason=pass.density_status().shadow_pass_refused;
+        require(reason&&std::string(reason)=="density_grid_target","refused_grid_reports_density_grid_target");
+        const UINT N=64;std::vector<float> split_map(N*N);for(UINT y=0;y<N;++y)for(UINT x=0;x<N;++x)split_map[y*N+x]=x<N/2?1.f:0.f;
+        Com<IDirect3DTexture9> split_texture;upload(d,N,N,D3DFMT_R32F,4,split_map.data(),0,&split_texture.p);
+        check(hx.prepare(A.cam),"refused grid prepare");FogFrame f=make_frame(A,scene,hx.frame,true);
+        f.count=1;auto& k=f.cascades[0];k.map=split_texture.p;k.valid=true;k.frame=hx.frame;k.bias=0;k.rows[0]=1e-5f;k.rows[5]=1e-9f;k.rows[10]=1e-9f;k.rows[11]=.5f;k.texel_world=36.6f;k.depth_range=200000.f;
+        FogResult r;const HRESULT hr=hx.execute(A,scene,r,false,&f);
+        require(hr==S_OK&&r.applied&&!r.grid&&r.cascades_bound==1&&surface_bytes(d,pass.fixture_st())==off_split,"refused_grid_draws_the_in_march_split_frame_byte_identical");
+        refuse_rgba8_targets=false;check(hx.prepare(A.cam),"prepare after the injection ends");
+        require(!pass.fixture_grid()&&pass.density_status().shadow_pass_refused==reason,"refused_grid_stays_refused_until_detach");
+        split_texture.reset();scene.release();pass.detach();require(pass.references()==0,"refused_grid_detach_releases_everything");
+    }
+    // --- The visibility grid (FogDensityConfig::shadow_pass, docs/architecture/fog-shadow-pass.md): programs and the
+    // RGBA8 target at prepare, one quad before the march under hostile caller state, Reset, detach ---
+    {
+        FogDensityConfig gconfig=config;gconfig.shadow_pass=true;
+        FogPass pass;check(pass.attach(d,table,caps,D3DFMT_X8R8G8B8),"grid attach");Harness hx(d,caps,pass,gconfig);
+        Scene scene(d,caps,128,72);scene.create();check(pass.prepare_targets(scene.w,scene.h),"grid targets");
+        require(hx.settle(A.cam)&&pass.fixture_grid()!=nullptr,"grid_pose_settles_with_the_grid_target");
+        const UINT N=64;std::vector<float> lit_map(N*N,1.f),split_map(N*N);for(UINT y=0;y<N;++y)for(UINT x=0;x<N;++x)split_map[y*N+x]=x<N/2?1.f:0.f;
+        Com<IDirect3DTexture9> lit_texture,split_texture;upload(d,N,N,D3DFMT_R32F,4,lit_map.data(),0,&lit_texture.p);upload(d,N,N,D3DFMT_R32F,4,split_map.data(),0,&split_texture.p);
+        auto shade=[&](IDirect3DTexture9* map,float x_scale,FogResult& r){
+            check(hx.prepare(A.cam),"grid prepare");FogFrame f=make_frame(A,scene,hx.frame,true);
+            if(map){f.count=1;auto& k=f.cascades[0];k.map=map;k.valid=true;k.frame=hx.frame;k.bias=0;k.rows[0]=x_scale;k.rows[5]=1e-9f;k.rows[10]=1e-9f;k.rows[11]=.5f;k.texel_world=36.6f;k.depth_range=200000.f;}
+            if(hx.execute(A,scene,r,false,&f)!=S_OK||!r.applied||r.cascades_bound!=(map?1u:0u))throw std::runtime_error("grid transaction");return surface_bytes(d,pass.fixture_st());
+        };
+        FogResult r_none,r_lit,r_split;const auto none=shade(nullptr,0,r_none),all_lit=shade(lit_texture.p,1e-9f,r_lit);const auto split_bytes=shade(split_texture.p,1e-5f,r_split);
+        require(!r_none.grid&&r_lit.grid&&r_split.grid,"grid_pass_draws_only_with_a_cascade");
+        require(none==off_none,"grid_no_cascade_frame_identical_to_in_march_programs");
+        require(all_lit==none,"grid_fully_lit_map_is_bit_identical_to_no_map");
+        // Against the in-march programs' split frame: transmittance bit-identical (visibility touches sun light only),
+        // in-scatter moved where the fog is shadowed.
+        const auto split=half_image(split_bytes),off=half_image(off_split);double worst=0;bool t_same=true;unsigned differs=0,fogged=0;
+        for(std::size_t i=0;i<split.size();i+=4){t_same=t_same&&split[i+3]==off[i+3];if(!(split[i+3]<1.f))continue;++fogged;for(int c=0;c<3;++c)worst=std::max(worst,std::fabs(double(split[i+c])-off[i+c]));differs+=split[i+1]!=off[i+1];}
+        std::printf("GRID extra_device_calls=%d fogged_pixels=%u in_scatter_differs=%u worst_S_vs_in_march=%.6f\n",int(r_split.device_calls)-int(r_none.device_calls),fogged,differs,worst);
+        require(t_same&&fogged>0&&differs>0,"grid_transmittance_identical_in_scatter_moves");
+        const unsigned references=pass.references(),allocations=pass.allocations();
+        FogResult again;const auto repeat=shade(split_texture.p,1e-5f,again);
+        require(repeat==split_bytes&&pass.references()==references&&pass.allocations()==allocations,"grid_frames_byte_identical_create_and_allocate_nothing");
+        // Reset: the grid target goes with the other targets and returns at the next prepare; the frame is byte-identical.
+        // (The fixture's own DEFAULT maps are released first: a live DEFAULT resource makes Reset refuse.)
+        lit_texture.reset();split_texture.reset();
+        scene.release();pass.before_reset();const HRESULT reset=d->Reset(&pp);pass.after_reset(reset);check(reset,"grid Reset");scene.create();
+        require(!pass.fixture_grid()&&!pass.reset_pending(),"grid_reset_released_the_grid_target");
+        check(pass.prepare_targets(scene.w,scene.h),"grid targets after Reset");require(hx.settle(A.cam)&&pass.fixture_grid()!=nullptr,"grid_reset_recreates_the_target_at_prepare");
+        upload(d,N,N,D3DFMT_R32F,4,split_map.data(),0,&split_texture.p);
+        FogResult after;require(shade(split_texture.p,1e-5f,after)==split_bytes&&after.grid,"grid_after_reset_byte_identical_to_before");
+        split_texture.reset();
+        scene.release();pass.detach();require(pass.references()==0&&!pass.fixture_grid(),"grid_detach_releases_everything");
+        require(device_references()==references_before,"grid_device_refcount_balanced");
     }
     // --- Capability refusal: the legacy family path is bit-identical with and without a refused density request ---
     {
