@@ -1402,3 +1402,83 @@ for 8 frames, then a fade-band draw (RT1 alpha 1 with its depth target, RT2 mask
 | review fixes (same day) | strict restricted to unrouted pixels (alpha not 1; fixture row (e)); `X3M_TAA_SKY_HISTORY` read requires 0 < length < 32; the term costs `sge`, `mad`, `sge`, `mul` and is paid for by `nearest >= 1` replacing `all(dilate == 0)` in the fill-pair test and `saturate(2 - 0.5 speed)` replacing `1 - saturate((speed - 2) * 0.5)` in the thin soft clip (both exact for the finite operands); rerun: `passed: true`, 532 / 278 / 2, 402 samples, lattice 583 / 23, `SETA_FADE routed_px=256 strict_vs_loose_on_routed=0.000000 routed_px_with_history=18` |
 | scratch DLL (not a candidate) | `cmake -S . -B build-seta ... && cmake --build build-seta`; `check_no_x87.py` 0 violations; sha256 3b880ba5... |
 
+
+## Run 244: strict sky history in flight (2026-09-22)
+
+Run `/tmp/x3-bottleX3-run244` (Run66 candidate 1f9a85f5, `--taa-sky-history strict`,
+sun occlusion with core dimming, widening 4,4, emissive vote 1, `--capture-delay 300`).
+Log: `.../x3-modern-captures/session-20260922-195653-212.log`. `proxy_options` and
+`motion_output_mode` both confirm `X3M_TAA_SKY_HISTORY=strict` (sky_history=strict).
+
+**Bursts.** Three `capture_armed -> start_frame`: 3733, 7961, 9992 (32 frames each,
+1280x768). Camera-state `t` deltas identify burst 1 (3733-3764) as the SETA leg:
+constant translation ~862.5 units/frame on an unchanging heading (rotation_deg=0
+throughout) with a steadily growing station silhouette, edge speed -2 to -6 px/frame
+(cf. run235's -3 to -5 px/frame). Bursts 2 (7961-7992, ~172.5 u/frame, no heading
+change) and 3 (9992-10023, 133-296 u/frame with `rotation_deg` climbing 0.10->0.74,
+`r00` swinging 0.435->0.197) are non-SETA: burst 2 is a slow pan past a huge nearby
+silhouette, burst 3 an accelerating turn. No `camera_cut` fires in any burst.
+
+**Dark-sky pixels, SETA burst vs. run235 burst 2 (same method: dark = color-present
+luma > 40, sky = depth sentinel, Chebyshev distance to current silhouette, 9999 =
+distance >19):**
+
+| | run235 burst2 (loose) | run244 burst1 (strict) | change |
+| --- | --- | --- | --- |
+| dark-sky px, sum over 31 frames | 56067 | 32505 | -42% |
+| mean fraction in newly-uncovered band | 0.199 | 0.080 | lower |
+| dist=1-2 (AA-edge / dilated band) | 17992 (32%) | 6648 (20%) | -63% |
+| dist=3..12 | 10214 (18%) | 4202 (13%) | -59% |
+| dist>=13 (scattered, away from any edge) | 27861 (50%) | 21655 (67%) | -22% |
+
+Strict cuts the near-silhouette band hardest (-63%), matching the fixture's dilated-
+1px-band prediction, but the far, disconnected tail (>=13 px, H2/unmatched-static
+territory) drops only 22% and is now most of what remains (67% of dark-sky pixels).
+The residual is **not** concentrated at distance 1-2; it is the same far-scattered
+population documented in the run235 diagnosis, just smaller.
+
+**Decay.** 20 dark-sky pixels sampled at f3740, tracked 8 frames in `taa_` luma:
+most drift slowly (e.g. 0.0629->0.1181, 0.0245->0.0172) or even brighten further
+(0.127->0.2361 then flat, 0.0693->0.2523) — no pixel clears within 1-2 frames.
+Decay speed is unchanged from the loose-mode finding in the run235 section.
+
+**Blur.** Present/color normalized-gradient-energy ratio (unit-consistent, both
+bgra8) over the station bbox vs. a fixed sky patch (20:120,20:220):
+
+| burst | station present/color | sky present/color |
+| --- | --- | --- |
+| 1 (SETA) | 0.518 (0.497-0.551) | 0.930 (0.866-0.990) |
+| 2 (pan) | 0.487 (0.451-0.528) | 0.914 (0.855-0.949) |
+| 3 (turn) | 0.294 (0.281-0.308) | 0.436 (0.252-0.540) |
+
+The station consistently loses ~half its gradient energy relative to the
+non-resolved frame (history reprojection/bilinear softening at the 3.5-30 px/frame
+motion decoded below); the sky stays near 1.0 in the two lower-angular-rate bursts.
+Burst 3's sky also drops (0.44) alongside the station, consistent with broader
+softening under fast rotation rather than a station-only effect there. Blur is
+station-localized in bursts 1-2, more global in burst 3.
+
+**Motion vectors, SETA burst.** Decoded per the run235 ABI correction (`d = (p+0.5-j)
+- motion.xy*(W,H)`) on routed/alpha=1 station pixels: f3740 median 3.93, p99 30.08,
+max 31.15 px; f3750 median 3.54, p99 22.81, max 24.32 px; f3760 median 3.95, p99
+17.09, max 18.43 px — in the same 3-31 px range as the corrected run235 decode, not
+the old ~1.3 px undersized bug. `gate6` (disocclusion rejections) sums to 107 over
+the burst (max 38/frame) vs. 16 and 13 in the two non-SETA bursts; three
+`motion_unmatched_static_frame` lines fire in the SETA burst (3737 applied=38, 3740
+applied=17, 3753 applied=16) and one in burst 2 (7979 applied=2); none in burst 3.
+No `camera_cut` in any burst.
+
+**Non-SETA pan check.** Per-frame mean luma in a 1-3px dilated ring around the
+current silhouette vs. a fixed sky control patch, frame-to-frame std (flicker):
+burst 2 ring std 2.96 vs. sky-patch std 0.10 (~30x); burst 3 ring std 2.52 vs.
+sky-patch std 1.23 (~2x, burst 3's own sky is noisier from the turn). The ring is
+consistently noisier than a matched sky patch in both non-SETA bursts.
+
+**Outcome.** Strict removed 42% of SETA-burst dark-sky pixels, concentrated in the
+near-silhouette band it targets; user-visible "still a little smearing" is
+consistent with the untouched far-scattered tail (67% of what remains,
+-22% only), which the diagnosis already attributed to a separate mechanism
+(undersized/persistent-history path via `motion_unmatched_static`), not the
+hull-acceptance case strict fixes. "A little blurry" is consistent with the ~2x
+gradient-energy loss on the moving station from bilinear history reprojection at
+3.5-30 px/frame — present in all three bursts, not new to strict or to SETA.
