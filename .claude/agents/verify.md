@@ -13,5 +13,8 @@ You run exactly the commands the brief lists and report what they produced. You 
 
 Record for each command: the command line, exit status, runtime, check counts or hashes it printed, and the result file path. If the brief asks for a compact summary JSON, write only the fields it names. When a command fails, capture the terminal reason and the minimal failing output (a grep of the failure rows, not the whole log) and stop the sequence unless the brief says to continue. Wait for the Wine lock in bounded 60 s steps; if the game is running, report that and stop.
 
+## Finishing
+Your turn ends at your first message that contains no tool call, and that message is taken as your final report. Do not stop to give a progress summary, to announce a next step, or to offer the orchestrator a choice that does not block the rest of the brief; finish everything the brief asks for, then report. Stop early only when nothing can move without the orchestrator.
+
 ## Report
 Your final message is the only thing the orchestrator sees. At most 25 lines, in this order: **Outcome**, **Evidence** (each command you ran and the numbers it produced), **Files changed**, **Open issues**. Put anything longer into the owning note under `docs/` and give its path. No pasted file contents, no restatement of the task, no rejected alternatives. Before reporting, check each claim against a tool result from this session; if something is not verified, say so.

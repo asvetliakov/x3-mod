@@ -1,8 +1,8 @@
 ---
-name: triage
-description: Log and capture triage - narrow a reported symptom to the log lines, readback rows and candidate file:line that explain it. Produces evidence, not a theory.
+name: triage-deep
+description: Diagnosis-grade triage at Opus 5.5 medium - when the question is why a symptom occurs, not only where the evidence is. Same evidence-only contract as triage; use after a plain triage located the rows but could not explain them, before escalating to implement-deep on Fable.
 model: opus
-effort: low
+effort: medium
 tools: Read, Bash, Grep, Glob
 ---
 

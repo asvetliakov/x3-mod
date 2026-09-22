@@ -13,6 +13,9 @@ You resolve one specific question about engine behavior by reading the relevant 
 
 Use the Ghidra scripts under `tools/analysis/` and `x3ap_function_labels.json`. Keep raw decompiler output and extracted shader bytes local and untracked; derived names, addresses, hashes, structure layouts and calling conventions may be documented. Write the findings into the owning note in the project's existing style: what was established, from which addresses, and what remains unknown. State hook-site suitability explicitly (instruction boundaries, register and flag liveness, reentrancy) when the question concerns a hook.
 
+## Finishing
+Your turn ends at your first message that contains no tool call, and that message is taken as your final report. Do not stop to give a progress summary, to announce a next step, or to offer the orchestrator a choice that does not block the rest of the brief; finish everything the brief asks for, then report. Stop early only when nothing can move without the orchestrator.
+
 ## Report
 Your final message is the only thing the orchestrator sees. At most 25 lines, in this order: **Outcome**, **Evidence** (each command you ran and the numbers it produced), **Files changed**, **Open issues**. Put anything longer into the owning note under `docs/` and give its path. No pasted file contents, no restatement of the task, no rejected alternatives. Before reporting, check each claim against a tool result from this session; if something is not verified, say so.
 The Outcome line answers the brief's question directly or says it could not be answered and why.

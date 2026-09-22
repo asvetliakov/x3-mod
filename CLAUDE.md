@@ -24,26 +24,45 @@ Claude mapping below instead.
 
 ## Subagent routing
 
+Opus 5.5 (released 2026-09-22) replaces Opus 5 everywhere below. The agent
+definitions use the `opus` alias, which Claude Code resolves to the latest
+Opus (5.5 today); record the resolved model in a checkpoint's evidence when a
+routing comparison depends on it. Effort is set in each definition (Opus 5.5 defaults to medium, one level below
+Opus 5, and thinks more per turn at a given level, so levels do not carry over
+one to one). Prompting guide: platform.claude.com/docs/en/build-with-claude/
+prompt-engineering/prompting-claude-opus-5-5.
+
 | Task | Agent | Model / effort |
 | --- | --- | --- |
-| Hooks, ABI, lifetime, GPU transactions, anything that will be installed | `implement` with `model: "fable"` | Fable, medium |
-| Well-specified change with a fixture that proves it (defaults, tooling, launcher, docs, small patches) | `implement` | Opus 5, medium |
-| Independent review before a checkpoint commit | `review` | Opus 5, medium |
+| Hooks, ABI, lifetime, GPU transactions, install-bound change with established invariants | `implement-deep` | Opus 5.5, high |
+| Same, but the change must establish or validate an uncertain invariant | `implement-deep` with `model: "fable"` | Fable, medium |
+| Well-specified change with a fixture that proves it (defaults, tooling, launcher, docs, small patches) | `implement` | Opus 5.5, medium |
+| Independent review before a checkpoint commit | `review` | Opus 5.5, medium |
 | Run fixtures, host tests, hash checks; compare readbacks | `verify` | Sonnet 5, medium |
-| Log and capture triage: narrow a symptom to evidence | `triage` | Sonnet 5, medium |
-| Ghidra, bytecode, shader disassembly; RE documentation | `disassemble` | Opus 5, high |
+| Log and capture triage: narrow a symptom to evidence | `triage` | Opus 5.5, low (A/B 2026-09-22: matched Sonnet 5 medium on every number at ~0.4x the tokens; `docs/verification/model-routing.md`) |
+| Triage that must explain, not only locate (a "why" question, or a plain triage that found the rows but no cause) | `triage-deep` | Opus 5.5, medium |
+| Ghidra, bytecode, shader disassembly; RE documentation | `disassemble` | Opus 5.5, high |
 | Design note for a hard decision | `design` | Fable, high |
-| Locate code or facts across many files | built-in `Explore` | Sonnet |
+| Locate code or facts across many files | built-in `Explore` | Inherits the session model capped at Opus, so Opus 5.5 at session effort; pass `model: "sonnet"` for a broad, cheap sweep |
 
 Escalation: a `review` of hook or ABI code that finds nothing but the change is
 consequential gets a second `review` on Fable (pass `model: "fable"`). A `triage`
-that cannot explain the symptom hands its evidence to `implement` on Fable for
-diagnosis, never to another triage.
+that located the rows but cannot explain them goes once to `triage-deep`; if
+that also cannot explain the symptom, its evidence goes to `implement-deep` on
+Fable for diagnosis, never to a third triage.
 
-Fixture-verifiable retry policy: dispatch on `implement` (Opus). If the fixture
-fails, the task was misclassified: spawn a fresh `implement` with
-`model: "fable"`, the same brief and the failure output. Do not continue the
-failed agent.
+Fixture-verifiable retry policy: dispatch on `implement` (Opus 5.5 medium). If
+the fixture fails, the task was misclassified: spawn a fresh `implement-deep`
+(Opus 5.5 high) with the same brief and the failure output; if that fails too,
+spawn `implement-deep` with `model: "fable"`. Do not continue the failed agent.
+
+Parallel design (opt-in, for the hardest decisions only): spawn `design` twice,
+once on Fable high and once with `model: "opus"`, with the same brief
+but distinct note paths (`<note>-fable.md`, `<note>-opus.md`). Two independent
+designs surface different failure modes; the cost is two runs plus a merge.
+The main session reads both Outcome lines, picks one, and asks the winning
+agent (via `SendMessage`) to fold in what the other found; it does not merge
+prose itself. Not for routine design questions.
 
 ## Briefing subagents
 
@@ -62,7 +81,15 @@ failed agent.
   build or run fixtures work in the main checkout under the Wine queue owner;
   a worktree that runs fixtures accumulates gigabytes of untracked results.
 - Do not add "verify with a subagent" or "double-check" instructions to Opus
-  briefs; Opus 5 verifies on its own and such lines cause over-verification.
+  briefs; Opus verifies on its own and such lines cause over-verification. Do
+  not add "think carefully" lines either; effort is the control for thinking.
+- Every agent definition tells the agent that its first message without a tool
+  call ends its turn and counts as the report. Opus 5.5 otherwise tends to stop
+  after a milestone to report or offer a choice; if an agent still returns with
+  open items and no blocker, continue it with `SendMessage` naming the items,
+  at most twice, then treat it as stuck.
+- When elapsed time matters (a user is waiting on a launch cycle), say so in
+  the brief in one sentence; Opus 5.5 paces itself on time signals.
 
 ## Report contract
 
