@@ -417,3 +417,6 @@ empty-string/off-switch alias. Focused `verification.analysis.test_hull_lightmap
 reports 3 tests, 1 skipped (local shader corpus absent); malformed empty values
 are refused, while default/off/explicit/ineligible/inherited cases pass. No Wine
 run or new DLL is required for this launcher-only change.
+
+Medium-range strips (footprint about 13 units/px, below P0) are a different mechanism: see
+[thin-glow-lines.md](thin-glow-lines.md) (2026-09-22).
