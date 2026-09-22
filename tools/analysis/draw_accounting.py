@@ -24,7 +24,12 @@ Per bucket: draws, primitives and milliseconds at the frame's measured per-draw
 cost (`frame_timing` nearest the frame: `dt_p50_us / draws_p50`, overridable with
 `--us-per-draw`), plus a per-node table. A box straddling the eye plane (`near=1`)
 has an unbounded projection; its row carries the whole viewport, so it is only
-ever `partial` or `visible`. Read-only; the log is streamed, the depth image is
+ever `partial` or `visible`. A row marked `alpha_tested=1` (an alpha-tested
+routed draw, whose box is logged but never used for a caster verdict) is bucketed
+like any other; the header counts them as `alpha_tested=`, and logs written
+before the field existed count 0. `stale=1` after it marks a box that is an
+earlier buffer revision's (the draw's current vertices may lie elsewhere): the
+header's `stale=` counts them, so a bucket they land in can be discounted. Read-only; the log is streamed, the depth image is
 read once and sampled on a bounded stride.
 """
 import argparse
@@ -37,7 +42,7 @@ import sys
 
 BOUNDS_RE = re.compile(r'\bobject_bounds device=(\d+) frame=(\d+) index=(\d+) node=([0-9a-fA-F]+) model=([0-9a-fA-F]+) '
                        r'sx0=(-?[\d.]+) sy0=(-?[\d.]+) sx1=(-?[\d.]+) sy1=(-?[\d.]+) zmin=(-?[\d.eE+-]+) zmax=(-?[\d.eE+-]+) inside=(\d+)'
-                       r'(?P<offscreen> offscreen=1)?(?P<near> near=1)?')
+                       r'(?P<offscreen> offscreen=1)?(?P<near> near=1)?(?P<alpha> alpha_tested=1)?(?P<stale> stale=1)?')
 DRAW_RE = re.compile(r'\bdraw device=(\d+) frame=(\d+) index=(\d+) kind=\w+ topology=\d+ primitives=(\d+)')
 CONTEXT_RE = re.compile(r'\bobject_context device=(\d+) frame=(\d+) index=(\d+) .*?\bnode=([0-9a-fA-F]+) .*?\bmodel=([0-9a-fA-F]+) lod=([0-9a-fA-F]+)')
 DEPTH_RE = re.compile(r'\bmotion_output_depth_readback device=(\d+) frame=(\d+) file=(\S+) width=(\d+) height=(\d+) format=(\S+) result=([0-9a-fA-F]+)')
@@ -80,7 +85,8 @@ def parse(lines, device=None):
                     'node': m.group(4).lower(), 'model': m.group(5).lower(),
                     'x0': float(m.group(6)), 'y0': float(m.group(7)), 'x1': float(m.group(8)), 'y1': float(m.group(9)),
                     'zmin': float(m.group(10)), 'zmax': float(m.group(11)), 'inside': int(m.group(12)),
-                    'offscreen': m.group('offscreen') is not None, 'near': m.group('near') is not None}
+                    'offscreen': m.group('offscreen') is not None, 'near': m.group('near') is not None,
+                    'alpha_tested': m.group('alpha') is not None, 'stale': m.group('stale') is not None}
         elif 'object_context ' in line:
             m = CONTEXT_RE.search(line)
             if m and (device is None or int(m.group(1)) == device):
@@ -211,6 +217,8 @@ def account(parsed, frame, run_dir, margin=1e-5, tiny_px=16.0, max_samples=4096,
             'us_per_draw': cost, 'margin': margin, 'tiny_px': tiny_px,
             'draws_in_frame': sum(1 for (f, _) in parsed['primitives'] if f == frame),
             'draws_with_box': sum(1 for (f, _) in parsed['bounds'] if f == frame),
+            'alpha_tested_with_box': sum(1 for (f, _), row in parsed['bounds'].items() if f == frame and row['alpha_tested']),
+            'stale_with_box': sum(1 for (f, _), row in parsed['bounds'].items() if f == frame and row['stale']),
             'tiny_total': tiny_total, 'buckets': table,
             'nodes': sorted(nodes.values(), key=lambda e: -e['draws']), 'rows': rows}
 
@@ -227,7 +235,9 @@ def default_frame(parsed):
 def report(result, nodes=20):
     out = [f'frame {result["frame"]} {result["width"]}x{result["height"]} depth={result["depth_file"]} '
            f'us_per_draw={"n/a" if result["us_per_draw"] is None else format(result["us_per_draw"], ".2f")} '
-           f'draws={result["draws_in_frame"]} with_box={result["draws_with_box"]} tiny_on_screen={result["tiny_total"]}',
+           f'draws={result["draws_in_frame"]} with_box={result["draws_with_box"]} alpha_tested={result["alpha_tested_with_box"]} '
+           f'stale={result["stale_with_box"]} '
+           f'tiny_on_screen={result["tiny_total"]}',
            f'{"bucket":<10}{"draws":>7}{"prims":>10}{"ms":>8}{"covered":>9}']
     for name in BUCKETS:
         entry = result['buckets'][name]

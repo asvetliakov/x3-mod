@@ -4,7 +4,8 @@ A hand-written session log (object_bounds, draw, object_context, the depth
 readback record and a frame_timing window) plus a 16x16 R32F depth image whose
 written regions are placed so that every bucket is reached exactly once:
 visible, occluded, partial (half the box covered), tiny, offscreen and the
-no_box remainder. Also checks the priorities (an occluded box below the tiny
+no_box remainder; the tiny draw's row carries `alpha_tested=1` and is counted
+in the header. Also checks the priorities (an occluded box below the tiny
 area stays occluded), the margin (a pixel at exactly zmin does not cover), the
 per-node table and the milliseconds taken from frame_timing. No Wine, no D3D.
 """
@@ -30,11 +31,12 @@ def load_script():
     return module
 
 
-def bounds_line(index, node, model, box, zmin, zmax, inside, offscreen=False, near=False):
+def bounds_line(index, node, model, box, zmin, zmax, inside, offscreen=False, near=False, alpha_tested=False, stale=False):
     return (f'object_bounds device=1 frame={FRAME} index={index} node={node} model={model} '
             f'sx0={box[0]:.1f} sy0={box[1]:.1f} sx1={box[2]:.1f} sy1={box[3]:.1f} '
             f'zmin={zmin:.6f} zmax={zmax:.6f} inside={inside}'
-            + (' offscreen=1' if offscreen else '') + (' near=1' if near else ''))
+            + (' offscreen=1' if offscreen else '') + (' near=1' if near else '')
+            + (' alpha_tested=1' if alpha_tested else '') + (' stale=1' if stale else ''))
 
 
 class SyntheticRun:
@@ -73,7 +75,8 @@ class SyntheticRun:
             f'draw device=1 frame={FRAME} index=3 kind=indexed topology=4 primitives=300 vs=0 ps=0',
             bounds_line(4, '31000004', '00005004', (0.0, 8.0, 5.0, 13.0), 0.5, 0.6, 8),
             f'draw device=1 frame={FRAME} index=4 kind=indexed topology=4 primitives=400 vs=0 ps=0',
-            bounds_line(5, '31000005', '00005005', (8.0, 8.0, 11.0, 11.0), 0.5, 0.6, 8),
+            # The tiny draw is alpha-tested: bucketed like any other, counted in the header.
+            bounds_line(5, '31000005', '00005005', (8.0, 8.0, 11.0, 11.0), 0.5, 0.6, 8, alpha_tested=True),
             f'draw device=1 frame={FRAME} index=5 kind=indexed topology=4 primitives=500 vs=0 ps=0',
             bounds_line(6, '31000005', '00005005', (14.0, 14.0, 15.0, 15.0), 0.5, 0.6, 8),
             f'draw device=1 frame={FRAME} index=6 kind=indexed topology=4 primitives=600 vs=0 ps=0',
@@ -111,6 +114,7 @@ class DrawAccounting(unittest.TestCase):
         result = self.result()
         self.assertEqual(result['frame'], FRAME)
         self.assertEqual((result['draws_in_frame'], result['draws_with_box']), (7, 6))
+        self.assertEqual((result['alpha_tested_with_box'], result['stale_with_box']), (1, 0))
         self.assertAlmostEqual(result['us_per_draw'], 50.0)
         counts = {name: result['buckets'][name]['draws'] for name in self.module.BUCKETS}
         self.assertEqual(counts, {'offscreen': 1, 'occluded': 2, 'tiny': 1, 'partial': 1, 'visible': 1, 'no_box': 1})
@@ -143,11 +147,28 @@ class DrawAccounting(unittest.TestCase):
         result = self.result()
         by_index = {row['index']: row['bucket'] for row in result['rows']}
         self.assertEqual(by_index, {1: 'visible', 2: 'offscreen', 3: 'occluded', 4: 'partial', 5: 'tiny', 6: 'occluded'})
+        self.assertEqual([row['index'] for row in result['rows'] if row['alpha_tested']], [5])
+        # A row near=1 alpha_tested=1 keeps both flags (the field follows near=).
+        row = self.module.BOUNDS_RE.search(bounds_line(9, '1', '2', (0.0, 0.0, 16.0, 16.0), 0.0, 0.1, 4, near=True, alpha_tested=True))
+        self.assertEqual((row.group('near') is not None, row.group('alpha') is not None), (True, True))
         # Raising the threshold above the visible box's area moves it to tiny;
         # the occluded ones stay occluded (occlusion is decided first).
         raised = self.result(tiny_px=1000.0)
         self.assertEqual({row['index']: row['bucket'] for row in raised['rows']},
                          {1: 'tiny', 2: 'offscreen', 3: 'occluded', 4: 'tiny', 5: 'tiny', 6: 'occluded'})
+
+    def test_stale_alpha_tested_row_is_counted(self):
+        # An alpha-tested row whose box is an earlier revision's: bucketed as usual,
+        # flagged on the row and counted in the header.
+        with self.run.log.open('a') as stream:
+            stream.write(bounds_line(8, '31000008', '00005008', (0.0, 0.0, 5.0, 5.0), 0.5, 0.6, 8,
+                                     alpha_tested=True, stale=True) + '\n')
+            stream.write(f'draw device=1 frame={FRAME} index=8 kind=indexed topology=4 primitives=800 vs=0 ps=0\n')
+        result = self.result()
+        self.assertEqual((result['alpha_tested_with_box'], result['stale_with_box']), (2, 1))
+        row = next(row for row in result['rows'] if row['index'] == 8)
+        self.assertEqual((row['alpha_tested'], row['stale'], row['bucket']), (True, True, 'visible'))
+        self.assertEqual(result['buckets']['no_box']['draws'], 1)
 
     def test_per_node_table_joins_the_draws(self):
         result = self.result()
@@ -174,6 +195,7 @@ class DrawAccounting(unittest.TestCase):
         self.assertEqual(code, 0)
         text = output.getvalue()
         self.assertIn(f'frame {FRAME} {WIDTH}x{HEIGHT}', text)
+        self.assertIn('with_box=6 alpha_tested=1 stale=0 ', text)
         self.assertIn('occluded', text)
         self.assertIn('31000005', text)
         output = io.StringIO()

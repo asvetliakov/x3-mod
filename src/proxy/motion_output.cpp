@@ -7211,6 +7211,33 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
                 }
             }
         }
+    } else if (object_bounds_log_ && zwrite && shadow_ok && managed) {
+        // Object bounds log for an alpha-tested draw (the only draw that reaches
+        // here): the box only, never a verdict. A missing extent is collected
+        // (every frame, so it is known by the capture frame) and queued only
+        // after the frame's caster reads, into what they left
+        // (queue_object_bounds_alpha_reads). The row is marked alpha_tested=1,
+        // and stale=1 when the box is an earlier revision's. Nothing here runs
+        // with the option off.
+        ownership::BufferLockView alpha_vb{};
+        if (view(shadow_.stream0_identity, alpha_vb)) {
+            const auto& k = route.key;
+            shadow_replay::ExtentKey key{};
+            key.vb = k.vertex_buffer; key.revision = alpha_vb.revision; key.stream_offset = k.stream_offset; key.stride = k.stride;
+            key.position_offset = k.position_offset; key.position_type = k.position_type;
+            const std::int64_t first = k.indexed ? std::int64_t(k.base_vertex) + k.min_vertex : std::int64_t(k.first);
+            const std::uint32_t count = k.indexed ? k.vertex_count : shadow_replay::vertices_of(k.topology, k.primitives);
+            if (first >= 0 && first <= 0xFFFFFFFFll && count && k.stride && shadow_replay::extent_type_supported(k.position_type)
+                && k.position_offset + shadow_replay::extent_type_bytes(k.position_type) <= k.stride) {
+                key.first = std::uint32_t(first); key.count = count;
+                const shadow_replay::ExtentEntry* stale = nullptr;
+                const shadow_replay::ExtentEntry* e = candidate_extents_.find(key, &stale);
+                if (!e && !(stale && stale->abandoned())) note_object_bounds_alpha_read(key, shadow_.stream0_identity);
+                const bool old = !e && stale;
+                if (!e) e = stale;
+                if (capture_ && e && e->state == shadow_replay::ExtentState::Known) log_object_bounds(route, draw_rows(), e->lo, e->hi, true, old);
+            }
+        }
     }
     // Minimum light-space footprint (docs/architecture/shadow-cascades.md,
     // "Minimum caster footprint"): per cascade the draw's own lateral sun-space
@@ -7290,16 +7317,18 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
 // clipped to it, the box's device depth range and how many of its eight corners
 // are inside the frustum. `offscreen=1` replaces an empty clipped box; `near=1`
 // marks a box straddling the eye plane, whose screen box is the whole viewport
-// and whose zmin is pinned to 0. No line when the rows or the target size are
+// and whose zmin is pinned to 0; `alpha_tested=1` marks an alpha-tested draw
+// (its box is logged only, never used for a verdict), `stale=1` after it a box
+// that is an earlier buffer revision's (also one whose re-read was abandoned). No line when the rows or the target size are
 // unknown, or when a corner is nonfinite. Diagnostics only: the analysis is
 // tools/analysis/draw_accounting.py.
-void MotionOutput::log_object_bounds(const MotionRoute& route, const float* rows, const float* lo, const float* hi) noexcept {
+void MotionOutput::log_object_bounds(const MotionRoute& route, const float* rows, const float* lo, const float* hi, bool alpha_tested, bool stale) noexcept {
     renderer::ObjectScreenBox box{};
     if (!renderer::object_screen_box(rows, lo, hi, target_width_, target_height_, box)) return;
-    log("object_bounds device=%llu frame=%llu index=%lu node=%p model=%08lx sx0=%.1f sy0=%.1f sx1=%.1f sy1=%.1f zmin=%.6f zmax=%.6f inside=%u%s%s",
+    log("object_bounds device=%llu frame=%llu index=%lu node=%p model=%08lx sx0=%.1f sy0=%.1f sx1=%.1f sy1=%.1f zmin=%.6f zmax=%.6f inside=%u%s%s%s%s",
         id_, frame_, counters_.draws, reinterpret_cast<void*>(route.key.node), static_cast<unsigned long>(route.key.model),
         double(box.x0), double(box.y0), double(box.x1), double(box.y1), double(box.zmin), double(box.zmax), box.inside,
-        box.offscreen ? " offscreen=1" : "", box.crosses_near ? " near=1" : "");
+        box.offscreen ? " offscreen=1" : "", box.crosses_near ? " near=1" : "", alpha_tested ? " alpha_tested=1" : "", stale ? " stale=1" : "");
 }
 // The bound program's LightDir_Dir0 as the application last wrote it, fed to
 // the frame's latch. False without a register, before its first write, or
@@ -7463,6 +7492,43 @@ void MotionOutput::release_candidate_extents() noexcept {
         candidate_extent_reads_[i] = {};
     }
     candidate_extent_read_count_ = candidate_extent_priority_count_ = 0;
+    release_object_bounds_alpha_reads();
+}
+// X3M_OBJECT_BOUNDS_LOG only: an alpha-tested draw's missing extent, held (with
+// its own reference) until the caster reads of the frame are all queued. At
+// most extent_reads_per_frame distinct keys; the rest wait for a later frame.
+void MotionOutput::note_object_bounds_alpha_read(const shadow_replay::ExtentKey& key, std::uintptr_t identity) noexcept {
+    if (!identity || object_bounds_alpha_read_count_ >= shadow_replay::extent_reads_per_frame) return;
+    for (unsigned i = 0; i < object_bounds_alpha_read_count_; ++i) if (object_bounds_alpha_reads_[i].key == key) return;
+    auto& q = object_bounds_alpha_reads_[object_bounds_alpha_read_count_++];
+    q.key = key; q.identity = identity;
+    reinterpret_cast<IUnknown*>(identity)->AddRef();
+}
+// Just before the scene end's reads: the held alpha-tested keys go to the end of
+// the queue, into the slots the caster reads left (the byte budget is spent in
+// queue order, so they also get only the bytes left). A key the caster path
+// already queued, or one that no longer fits, is dropped (its reference with it);
+// a caster key is never displaced and its priority is never pre-empted.
+void MotionOutput::queue_object_bounds_alpha_reads() noexcept {
+    for (unsigned i = 0; i < object_bounds_alpha_read_count_; ++i) {
+        auto& a = object_bounds_alpha_reads_[i];
+        bool queued = false;
+        for (unsigned j = 0; j < candidate_extent_read_count_; ++j) if (candidate_extent_reads_[j].key == a.key) { queued = true; break; }
+        if (!queued && candidate_extent_read_count_ < shadow_replay::extent_reads_per_frame) {
+            candidate_extent_reads_[candidate_extent_read_count_++] = a; // the reference moves with it
+        } else if (a.identity) {
+            reinterpret_cast<IUnknown*>(a.identity)->Release();
+        }
+        a = {};
+    }
+    object_bounds_alpha_read_count_ = 0;
+}
+void MotionOutput::release_object_bounds_alpha_reads() noexcept {
+    for (unsigned i = 0; i < object_bounds_alpha_read_count_; ++i) {
+        if (object_bounds_alpha_reads_[i].identity) reinterpret_cast<IUnknown*>(object_bounds_alpha_reads_[i].identity)->Release();
+        object_bounds_alpha_reads_[i] = {};
+    }
+    object_bounds_alpha_read_count_ = 0;
 }
 void MotionOutput::publish_shadow_replay_candidates() noexcept {
     using shadow_replay::BufferVerdict;
@@ -7546,7 +7612,8 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
     // The queued extent reads, after every verdict above (a READONLY Lock
     // moves the attempt serial the next frame's records start from, never
     // this frame's comparison); the frame's sun carries to the next frame's
-    // early draws.
+    // early draws. Alpha-tested bounds-log reads join last, behind every caster read.
+    if (object_bounds_log_) queue_object_bounds_alpha_reads();
     read_candidate_extents();
     // The frame's sun verdict, once, before either replay consumes it; a
     // re-latched sun voids every retained cascade (their bases are the old sun's).

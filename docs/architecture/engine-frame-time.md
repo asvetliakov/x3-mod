@@ -1524,7 +1524,7 @@ occlusion culling) — needs per-draw bounds, which no log line carried. The
 default off) adds them on F8 capture frames only:
 
 ```
-object_bounds device= frame= index= node= model= sx0= sy0= sx1= sy1= zmin= zmax= inside= [offscreen=1] [near=1]
+object_bounds device= frame= index= node= model= sx0= sy0= sx1= sy1= zmin= zmax= inside= [offscreen=1] [near=1] [alpha_tested=1] [stale=1]
 ```
 
 One line per routed draw whose object box the caster-candidate route already
@@ -1540,14 +1540,28 @@ motion output latches — and reports
 * `inside`: how many of the eight corners are inside all six frustum planes;
 * `near=1`: the box straddles the eye plane, so its projection is unbounded —
   the row then carries the whole viewport and `zmin` 0.
+* `alpha_tested=1`: an alpha-tested routed draw. The candidate route never
+  computes a box for these (they are not casters), so on a diagnostic run their
+  missing extents are collected on every frame and queued only after the
+  frame's caster reads, into the slots (of 32) and bytes (of 1 MiB) the casters
+  left; a caster read is never displaced or demoted. These reads are counted in
+  the candidate summary's `reads=` and in `extent_refused`, so those counters
+  are not comparable with a run without the option. The box is logged on the
+  capture frame only and never feeds a verdict. An alpha-tested draw whose
+  extent was not read in time has no row and stays in `no_box`, so the census
+  must still account for alpha draws without a row. Rows written before this
+  field existed (run250 and earlier) have no alpha-tested rows.
+* `stale=1` (after `alpha_tested=1`): the box is an earlier buffer revision's
+  extent (also one whose re-read was abandoned), not the draw's current one.
 
 Prerequisites, enforced by the launcher and re-checked in the DLL (one
 `object_bounds_mode` line records both): `--object-trace`, because `node=` and
 `model=` are the verified submission scope's, and `--shadow-replay-candidates`
 or `--shadow-replay-depth`, because the object box is that route's. `index=` is
 the frame's draw index, joinable with `draw`, `object_context` and
-`motion_route`. Off, and on non-capture frames, the cost is one bool test on the
-box path; nothing is patched and no line is written.
+`motion_route`. Off, the cost is one bool test on the box path, one on
+the path of draws the candidate gate refuses and one per scene end; nothing is
+patched, queued or written.
 
 `tools/analysis/draw_accounting.py <run dir>` buckets one frame: it joins the
 `object_bounds`, `draw` and `object_context` rows with that frame's
@@ -1559,7 +1573,9 @@ milliseconds at the frame's measured per-draw cost (`frame_timing`
 than `zmin` by `--margin`), `tiny` (box area below `--tiny-px`, default 16 px²),
 `partial` (some pixels covered; the covered fraction is reported), `visible`,
 and `no_box` for the frame's remaining draws (unrouted, or routed without a
-known box) so the buckets sum to the frame's own draw count. Sampling is capped
+known box) so the buckets sum to the frame's own draw count. The header's
+`alpha_tested=` and `stale=` count the frame's rows carrying those marks; a
+stale box can put a draw in the wrong bucket. Sampling is capped
 at `--max-samples` per box. Host coverage:
 `verification/analysis/test_object_bounds_log.py` (projection core against known
 matrices, the wiring and the launcher gate) and

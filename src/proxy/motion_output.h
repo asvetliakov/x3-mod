@@ -1418,6 +1418,8 @@ private:
     shadow_replay::PendingExtent candidate_extent_reads_[shadow_replay::extent_reads_per_frame]{};
     unsigned candidate_extent_read_count_=0;
     unsigned candidate_extent_priority_count_=0; // the queue's first entries: re-reads of ranges answering stale (read first, never crowded out by new ranges)
+    shadow_replay::PendingExtent object_bounds_alpha_reads_[shadow_replay::extent_reads_per_frame]{}; // X3M_OBJECT_BOUNDS_LOG: alpha-tested extents, queued after the casters
+    unsigned object_bounds_alpha_read_count_=0;
     float candidate_bounds_rows_[12]{};
     renderer::ShadowCascadeBounds candidate_cascade_bounds_{}; // cascades on: every cascade's box for the one bounds pass
     int candidate_bounds_state_=0; // 0 not computed this frame, 1 valid, -1 unavailable
@@ -1456,7 +1458,10 @@ private:
     shadow_replay::PoolClass candidate_pool_of(std::uint64_t id, IDirect3DResource9* buffer, bool vertex) noexcept;
     void note_candidate_distance(MotionRoute& route, const float* rows) noexcept;
     void note_candidate_draw(const MotionRoute& route) noexcept;
-    void log_object_bounds(const MotionRoute& route, const float* rows, const float* lo, const float* hi) noexcept; // X3M_OBJECT_BOUNDS_LOG, capture frames only
+    void log_object_bounds(const MotionRoute& route, const float* rows, const float* lo, const float* hi, bool alpha_tested = false, bool stale = false) noexcept;
+    void note_object_bounds_alpha_read(const shadow_replay::ExtentKey& key, std::uintptr_t identity) noexcept; // X3M_OBJECT_BOUNDS_LOG: hold an alpha-tested draw's missing extent
+    void queue_object_bounds_alpha_reads() noexcept;   // ... queue the held keys behind the frame's caster reads
+    void release_object_bounds_alpha_reads() noexcept; // ... drop them (with release_candidate_extents)
     bool ensure_candidate_bounds_rows() noexcept;
     void queue_candidate_extent(const shadow_replay::ExtentKey& key, std::uintptr_t identity, bool priority) noexcept;
     void read_candidate_extents() noexcept;    // the scene end: Lock READONLY through the wrapper, scan, cache, release
