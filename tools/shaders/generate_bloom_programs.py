@@ -19,6 +19,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'verification/probe'))
+import bottle
 from bloom_shader_limits import check_bytecode
 
 GENERATOR = Path(__file__).with_name('generate_rigid_motion_pixel.py')
@@ -177,8 +178,8 @@ def main():
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--check', action='store_true')
     mode.add_argument('--promote-verified', action='store_true')
-    parser.add_argument('--d3dx', type=Path, default=Path.home() /
-        'Library/Application Support/CrossOver/Bottles/Steam/drive_c/X3/d3dx9_37.dll')
+    parser.add_argument('--d3dx', type=Path, default=bottle.game_dir('X3') / 'd3dx9_37.dll',
+        help='D3DX9 compiler DLL (default: %(default)s)')
     args = parser.parse_args()
     watched = {GENERATOR, native.COMPILER_SOURCE, Path(__file__).resolve(), args.d3dx.resolve(),
         ROOT / 'verification/probe/bloom_shader_limits.py',

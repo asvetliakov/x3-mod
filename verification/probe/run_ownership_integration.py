@@ -79,7 +79,8 @@ def main():
     # Clean CMake compilation and fresh fixture compilation prevent an old binary
     # from being paired with hashes of newer source files.
     commands = [
-        ['cmake', '-S', '.', '-B', 'build-ownership', '-DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake', '-DCMAKE_BUILD_TYPE=Release'],
+        ['cmake', '-S', '.', '-B', 'build-ownership', '-DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake', '-DCMAKE_BUILD_TYPE=Release',
+         '-DPython3_EXECUTABLE=/usr/bin/python3'],
         ['cmake', '--build', 'build-ownership', '--clean-first'],
         ['sh', 'verification/probe/build.sh'],
         ['sh', 'verification/probe/build_ownership_integration.sh'],

@@ -15,6 +15,7 @@ import tempfile
 import re
 import struct
 
+import bottle
 from bloom_shader_limits import check_bytecode, PROFILE_SOURCE, INDEX_SOURCE
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -32,8 +33,7 @@ def digest(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--d3dx', type=Path, default=Path.home() /
-        'Library/Application Support/CrossOver/Bottles/Steam/drive_c/X3/d3dx9_37.dll')
+    parser.add_argument('--d3dx', type=Path, default=bottle.game_dir('X3') / 'd3dx9_37.dll')
     parser.add_argument('--output-dir', type=Path)
     parser.add_argument('--summary', type=Path, default=ROOT / 'verification/results/bloom-filter-compile.json')
     args = parser.parse_args()

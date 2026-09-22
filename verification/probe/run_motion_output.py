@@ -5541,7 +5541,8 @@ def main(argv=None):
         assert all(sha(p) == h for p, h in RAW.items()), 'Local shader bytes differ from the reviewed pair'
         result['local_inputs'] = {str(p): h for p, h in RAW.items()}
         result['sources_before_build'] = sources()
-        commands = [['cmake', '-S', '.', '-B', 'build', '-DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake', '-DCMAKE_BUILD_TYPE=RelWithDebInfo'],
+        commands = [['cmake', '-S', '.', '-B', 'build', '-DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake', '-DCMAKE_BUILD_TYPE=RelWithDebInfo',
+                     '-DPython3_EXECUTABLE=/usr/bin/python3'],
                     ['cmake', '--build', 'build', '--clean-first', '-j4'],
                     ['i686-w64-mingw32-g++', '-std=c++17', '-Wall', '-Wextra', '-c', 'verification/probe/abi_check.cpp', '-o', 'verification/probe/build/abi_check.o'],
                     ['sh', 'verification/probe/build_motion_output.sh']] if not consume_only else []

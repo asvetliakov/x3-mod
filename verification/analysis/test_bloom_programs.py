@@ -12,7 +12,7 @@ spec = importlib.util.spec_from_file_location('production_bloom_generator',
 tool = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tool)
 import bottle
-COMPILER = bottle.game_dir() / 'd3dx9_37.dll'
+COMPILER = bottle.game_dir('X3') / 'd3dx9_37.dll'
 
 
 class BloomProgramsTests(unittest.TestCase):
