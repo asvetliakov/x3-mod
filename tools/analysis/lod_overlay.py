@@ -24,15 +24,35 @@ Faces of merged materials get the dominant material's textures over their own
 UVs (a look limit of the pilot).
 MAT3 bodies (no MAT5/MAT6 section) are refused unless --force-mat3: the loader
 gives every group of the coarsest record material 0x485 when such a body has
-more than 3 LODs (body-format-bob1.md section 4), which would hit the pad.
+more than 3 LODs (body-format-bob1.md section 4), which would hit the pad
+(compact writes exactly 3 records; the refusal is kept for every placement).
 
 Record placement (lod-selection.md, "What the selection really does, end to
 end"): the loop picks sel = highest i with s < trunc(T_i*f), else 0; at View
 Distance Very High (the X3 bottle) the tail draws clamp(sel - 1, 0, n-1), so the
 last record is never drawn in the main view and a two-record body always draws
 LOD 0. A plain append would never be seen there. The record at index k is drawn
-at Very High exactly when record k+1 is the first hit. Hence:
-  pad (default, every body; T_pad from --threshold or NAME=T, required): append
+at Very High exactly when record k+1 is the first hit. The engine also sets
+node+0x130 |= 0x100000 at a final index >= 3 (0047d51e; lod-child-hide.md section 4),
+which switches the node's materials from the BUMPMAP to the DEFAULT technique and
+drops a texture slot; whether DEFAULT samples the light map is unknown, so a
+coarse record at index >= 3 may lose the glow groups. Hence:
+  compact (default, every body; T_pad from --threshold or NAME=T, required):
+    rewrite the ladder as [record 0 (unchanged), C:T_1, pad:T_pad] with T_1 the
+    original record 1's threshold (T_pad on a single-LOD body) and the pad a copy
+    of C. C is index 1 and the pad index 2, so the final index never reaches 3 and
+    the index rule never sets 0x100000 (the < 20 px, 0x1000000-view and per-node
+    threshold sets at 0047d26b..0047d28e still apply). At Very High s < T_pad*f
+    hits the pad and the -1 draws C; s >= T_pad*f falls through C's T_1 (below
+    T_pad) to record 0. At Low..High the pad (same mesh) draws below T_pad*f and
+    record 0 above. The original records 1..n-1 are dropped: with T_pad above
+    their thresholds they are unreachable in the main view anyway (pad placement
+    keeps them as dead weight). T_1 must be below T_pad (refused otherwise unless
+    --force-threshold: T_pad*f <= s < T_1*f would then draw C at Low..High) and
+    T_pad >= 2. The collision mesh is built from the last record, now the pad,
+    which has the original coarsest record's points and faces, so it is
+    unchanged. The env-map view (0x1000000) draws record 1, now C, where s >= T_pad.
+  pad (kept for the record; T_pad from --threshold or NAME=T, required): append
     the coarse record C with T_last (T_pad on a single-LOD body), then a pad copy
     of C with T_pad: ladder [T_0 .. T_last, C:T_last, pad:T_pad]. Walking from the
     end, s < T_pad*f hits the pad first, and the Very High -1 draws C; s >= T_pad*f
@@ -64,7 +84,8 @@ final index is n-1. At Very High the final index never reaches n-1 in the main
 view, so the hide does not fire there at all; at Low..High it fires at the
 (new) last record, i.e. with pad for flagged nodes below T_pad*f. With
 append-pad on a single-LOD body it becomes reachable at Low..High for the first
-time (flagged nodes hide below (T-1)*f). The old --keep-coarsest-hidden option
+time (flagged nodes hide below (T-1)*f). With compact the last record is the pad
+(index 2), so flagged nodes hide below T_pad*f at Low..High, as with pad. The old --keep-coarsest-hidden option
 was removed: its premise (the last record is drawn) does not hold at Very High. The pilot flight
 must still check flagged nodes.
 
@@ -247,16 +268,20 @@ def coarse_record(coarsest, threshold, alpha=frozenset(), collapse='two', glow=f
     return lod
 
 
-PLACEMENTS = ('pad', 'before-last', 'append-pad')
+PLACEMENTS = ('compact', 'pad', 'before-last', 'append-pad')
 
 
 def default_placement(ladder):
-    return 'pad'
+    return 'compact'
 
 
 def place(ladder, coarse, placement, threshold, name='body', force_threshold=False):
     """Insert the coarse record (value set here); returns (new index, pad index or None).
 
+    compact: the ladder becomes [record 0, C, pad copy of C]: C at index 1 with T_1
+      (the original record 1's threshold; T_pad for a single-LOD body), the pad at
+      index 2 with T_pad; the original records 1..n-1 are dropped. T_pad required,
+      >= 2, and above T_1 unless force_threshold.
     pad: C at index n with T_last (T_pad for a single-LOD body), then a pad copy at
       n+1 with T_pad; T_pad required, >= 2, and above every original threshold of
       records 1..n-1 unless force_threshold.
@@ -265,6 +290,21 @@ def place(ladder, coarse, placement, threshold, name='body', force_threshold=Fal
     append-pad: new record at index n with T, then a pad copy at n+1 with T - 1;
       T is always required, 3 <= T, and T < T_last for a multi-LOD body."""
     n = len(ladder)
+    if placement == 'compact':
+        if threshold is None:
+            raise SystemExit(f'{name}: compact placement needs a pad threshold (--threshold T or NAME=T)')
+        t = threshold
+        if t < 2:
+            raise SystemExit(f'{name}: pad threshold {t} must be >= 2 (s >= 1, so a smaller one is never hit)')
+        t_c = ladder[1]['value'] if n >= 2 else t
+        if t_c > t and not force_threshold:
+            raise SystemExit(f'{name}: pad threshold {t} must not be below the record 1 threshold {t_c}'
+                             ' (C would draw at Low..High above T_pad); --force-threshold overrides')
+        coarse['value'] = t_c
+        pad = dict(coarse, value=t)
+        del ladder[1:]
+        ladder.extend([coarse, pad])
+        return 1, 2
     if placement == 'pad':
         if threshold is None:
             raise SystemExit(f'{name}: pad placement needs a pad threshold (--threshold T or NAME=T)')
@@ -369,7 +409,9 @@ def describe(plan, out=None):
            if plan['pad_index'] else '')
     th = [l['value'] for l in plan['before'][1:]]
     vh = bob1.drawable([l['value'] for l in plan['ladder'][1:]], 'very-high')
-    print(f'  {plan["placement"]}: new LOD{plan["new_index"]} threshold={plan["new"]["value"]}{pad}'
+    n = len(plan['before'])
+    dropped = (f' (original LOD1..{n - 1} dropped)' if plan['placement'] == 'compact' and n > 1 else '')
+    print(f'  {plan["placement"]}: new LOD{plan["new_index"]} threshold={plan["new"]["value"]}{pad}{dropped}'
           f' flags={plan["new"]["flags"]:#x} points={s_new["points"]} parts={s_new["parts"]}'
           f' groups/part {s_old["groups_per_part"]} -> {s_new["groups_per_part"]} draws {s_old["draws"]} ->'
           f' {s_new["draws"]} faces={s_new["faces"]} collapse={plan["collapse"]} groups={groups}'
@@ -390,12 +432,14 @@ def main(argv=None):
     ap.add_argument('bodies', nargs='+', help='body name as the scene references it, or member path;'
                                               ' NAME=T sets that body\'s threshold (overrides --threshold)')
     ap.add_argument('--threshold', type=int,
-                    help='pad: T_pad, required, above every original threshold of records 1..n-1;'
+                    help='compact: T_pad, required, not below the original record 1 threshold;'
+                         ' pad: T_pad, required, above every original threshold of records 1..n-1;'
                          ' before-last: T <= T_last, default T_last;'
                          ' append-pad: required, 3 <= T, below T_last for multi-LOD bodies')
     ap.add_argument('--force-threshold', action='store_true',
-                    help='pad: accept a T_pad that does not exceed every original threshold')
-    ap.add_argument('--placement', choices=PLACEMENTS, help='placement (default: pad)')
+                    help='compact: accept a T_pad below the record 1 threshold;'
+                         ' pad: accept a T_pad that does not exceed every original threshold')
+    ap.add_argument('--placement', choices=PLACEMENTS, help='placement (default: compact)')
     ap.add_argument('--collapse', choices=COLLAPSES, default='glow',
                     help='glow (default): bright-light-map materials keep their group, the rest as two;'
                          ' two: opaque + alpha-tested/blended group per part; one: a single group per part')
@@ -563,6 +607,8 @@ def write_overlay(a, game, plans, slot, before, written, replace_slot):
                     glow_luma=a.glow_luma, glow_share=a.glow_share, bodies=[
         dict(name=p['name'], source=p['source'], member=p['member'], placement=p['placement'], collapse=p['collapse'],
              glow=sorted(p['glow']), new_lod=p['new_index'], pad_lod=p['pad_index'],
+             source_thresholds=[l['value'] for l in p['before']],
+             thresholds=[l['value'] for l in p['ladder']],
              threshold=p['new']['value'],
              pad_threshold=p['ladder'][p['pad_index']]['value'] if p['pad_index'] else None,
              source_decoded_sha256=p['source_decoded_sha256'],

@@ -435,7 +435,40 @@ heavy bodies sit at `s` 21–95 (`verification/results/run255-census/`, measured
 The same census confirms the rule on every multi-LOD row with a finite `s`
 (`verification/results/lod-overlay-pilot/pilot_check.py`).
 
-`tools/analysis/lod_overlay.py` now uses the **pad** placement by default: append
+**Compact placement (default since 2026-09-23, after
+[lod-child-hide.md](lod-child-hide.md) §4).** `tools/analysis/lod_overlay.py`
+writes `[record 0, C:T_1, pad:T_pad]`: record 0 unchanged (byte for byte), the
+collapsed coarse record `C` at index 1 with the original record 1's threshold
+`T_1`, and a pad copy of `C` at index 2 with `T_pad`. The original records
+1..n-1 are dropped. At Very High `s < T_pad·f` hits the pad and the `-1` draws
+`C`; `s >= T_pad·f` falls through `C`'s `T_1` (below `T_pad`) to record 0. At
+Low..High the pad (same mesh) draws below `T_pad·f` and record 0 above. `T_pad`
+comes from `--threshold T` or `NAME=T`, must be `>= 2` and not below `T_1` (the
+tool refuses otherwise unless `--force-threshold`, since `T_pad·f <= s < T_1·f`
+would then draw `C` at Low..High); a single-LOD body gets `[T_0, C:T_pad,
+pad:T_pad]`. Why:
+
+- The engine sets `node+0x130 |= 0x100000` at a final index `>= 3` (`0047d51e`),
+  which switches the node's materials from `BUMPMAP` to the `DEFAULT` technique
+  and drops a texture slot ([lod-child-hide.md](lod-child-hide.md) §4). Under the
+  pad placement below, `C` sat at index 4 (ships) or 3 (outpost) and got the
+  flag; whether `DEFAULT` samples the light map is untraced, so the glow groups
+  could go dark. In the compact ladder the final index is at most 2 at every
+  setting, so the index rule never sets the flag. The other sets (projected size
+  against `node+0x1dc` at `0047d26b`, `| 0x180000` below 20 px or in a
+  `0x1000000` view at `0047d27c`/`0047d28e`) are unchanged.
+- Once `T_pad` exceeds every original threshold, the original records 1..n-1 are
+  never the first hit from the top, so they are unreachable in the main view at
+  every setting (below). Keeping them only costs file size and load time.
+
+The collision mesh is built from the last record, now the pad, which has the
+original coarsest record's points and faces (only the grouping differs), so
+collision is unchanged. The `0x1000000` env-map view (`+1`) draws record 1, now
+`C`, wherever `s >= T_pad·f`, where it drew the original record 1 before.
+Hide-at-coarsest (`0x8000`, final index `n-1` = 2) fires below `T_pad·f` at
+Low..High, as with pad, and never at Very High.
+
+**Pad placement** (the default before compact, still `--placement pad`): append
 the collapsed coarse record `C` with `T_last`, then a pad copy of `C` with
 `T_pad`, giving `[T_0 … T_last, C:T_last, pad:T_pad]` with the original records
 untouched. Walking from the end, `s < T_pad·f` hits the pad first and the Very
@@ -474,11 +507,11 @@ Two node-set side effects change at Very High (objdump of `0047cfe0..`,
 when its parent (`node+0x18`) is not renderable or has `+0x14c > 0`
 (`0047d055..0047d076`); with the pad placement the parent's final index is `> 0`
 below `T_pad` (before: below 15 px for these ladders), so attached children of
-the pilot bodies disappear at the stand and their draws count in the saving.
-And a final index `>= 3` sets `node+0x130 |= 0x100000` (`0047d519`,
-detail-reduction flag, effect unknown): `C` sits at index 4 (ships) or 3
-(outpost), so the flag is now set at Very High where these bodies never reached
-index 3 before.
+the pilot bodies disappear at the stand and their draws count in the saving
+(same with compact: `C` is index 1). And a final index `>= 3` sets
+`node+0x130 |= 0x100000` (`0047d519`, the `BUMPMAP` → `DEFAULT` switch): with pad
+`C` sits at index 4 (ships) or 3 (outpost), so the flag is set at Very High where
+these bodies never reached index 3 before; compact avoids it (above).
 
 Follow-up: [lod-child-hide.md](lod-child-hide.md) (2026-09-23): no EXE code sets `0x40000`, no flagged node in runs 255/257; `0x100000` selects the `DEFAULT` technique.
 

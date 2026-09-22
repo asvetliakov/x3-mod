@@ -308,8 +308,9 @@ really does, end to end"). Record `k` is drawn exactly when record `k+1` is the
 first hit. The first placement rule (coarse record before the last one with
 `T = T_last`) therefore drew the new record only below `T_last·f`: 5 px for
 `argon_TL`/`M2`/`M1` (ladder 30/15/5), 15 for `military_outpost_middleb`, never
-at the run240 stand (`s` 21–95, run255, measured). `lod_overlay.py` now defaults
-to **pad**: `[T_0 … T_last, C:T_last, pad:T_pad]`, where `C` is the collapsed
+at the run240 stand (`s` 21–95, run255, measured). `lod_overlay.py` then defaulted
+to **pad** (now `--placement pad`; the default is compact, below):
+`[T_0 … T_last, C:T_last, pad:T_pad]`, where `C` is the collapsed
 coarse record and the pad a copy of it that is never drawn at Very High. `s <
 T_pad·f` selects the pad and the `-1` draws `C`; `s >= T_pad·f` falls through
 every original threshold to record 0. `T_pad` comes from `--threshold T` or
@@ -328,6 +329,28 @@ before-last` and `--placement append-pad` (`C:T`, `pad:T-1`) remain for the
 record. The `--dry-run`/`--out` report prints, per body, the old and new ladder
 with record bytes, the drawable set per View Distance setting and the drawn
 record per `s` band before and after (`bob1.selection_bands`).
+
+**Compact placement (the default since 2026-09-23).** Under pad, `C` sits at
+index 4 (ships) or 3 (outpost), and a final index `>= 3` makes the engine set
+`node+0x130 |= 0x100000`, which switches the materials from `BUMPMAP` to the
+`DEFAULT` technique and drops a texture slot
+([lod-child-hide.md](../reverse-engineering/lod-child-hide.md) §4; whether
+`DEFAULT` samples the light map is untraced, so the glow groups were at risk).
+And the original records 1..n-1 are dead weight once `T_pad` exceeds their
+thresholds. `--placement compact` therefore writes `[record 0, C:T_1, pad:T_pad]`:
+record 0 unchanged, `C` at index 1 with the original record 1's threshold (never
+the first hit, since `T_1 < T_pad`), the pad a copy of `C` at index 2. The
+original records 1..n-1 are dropped. At Very High `C` draws below `T_pad·f` and
+record 0 above; at Low..High the pad does. The final index never exceeds 2, so
+the index rule never sets `0x100000` (the size- and view-based sets remain).
+`T_pad >= 2` and `T_pad >= T_1` are required (`--force-threshold` admits a
+smaller `T_pad`). The collision mesh is built from the last record, now the pad,
+with the original coarsest record's points and faces, so it is unchanged. The
+`0x1000000` env-map view draws record 1, now `C`, for `s >= T_pad·f` (before:
+the original record 1). The manifest records each body's `source_thresholds`
+and written `thresholds` besides `new_lod`/`pad_lod`. Details:
+[lod-selection.md](../reverse-engineering/lod-selection.md), "Overlay
+placement".
 
 **Collapse (rule e, `--collapse glow`, the default since 2026-09-23).** Run 69 A
 showed that the first collapse (`two`: everything opaque onto the dominant
@@ -391,13 +414,13 @@ pad.
 **Node side effects.** Two node-set side effects change at Very High (objdump of `0047cfe0..`,
 `/tmp/x3-lod/f47cfe0.s`). A child node flagged `node+0x12c & 0x40000` is hidden
 when its parent (`node+0x18`) is not renderable or has `+0x14c > 0`
-(`0047d055..0047d076`); with the pad placement the parent's final index is `> 0`
-below `T_pad` (before: below 15 px for these ladders), so attached children of
-the pilot bodies disappear at the stand and their draws count in the saving.
-And a final index `>= 3` sets `node+0x130 |= 0x100000` (`0047d519`,
-detail-reduction flag, effect unknown): `C` sits at index 4 (ships) or 3
-(outpost), so the flag is now set at Very High where these bodies never reached
-index 3 before.
+(`0047d055..0047d076`); with the pad or compact placement the parent's final
+index is `> 0` below `T_pad` (before: below 15 px for these ladders), so attached
+children of the pilot bodies disappear at the stand and their draws count in the
+saving. And a final index `>= 3` sets `node+0x130 |= 0x100000` (`0047d519`, the
+`BUMPMAP` → `DEFAULT` switch): with pad `C` sits at index 4 (ships) or 3
+(outpost), so the flag is set at Very High where these bodies never reached
+index 3 before; compact keeps `C` at index 1.
 
 Pilot overlay (written with `--out` to an untracked build directory, not
 installed; 2026-09-23): `argon_TL`, `argon_M2`, `argon_M1` with `T_pad = 50` and
@@ -434,6 +457,17 @@ the outpost (opaque + glow material 41 + alpha group under material 9). The buil
 `b3fbf984…`. The check is
 `verification/results/lod-overlay-pilot/pilot_check_glow_out.txt`.
 
+Compact rebuild (2026-09-23, `--replace --out <worktree>/build-overlay`, glow
+collapse, same four bodies and `T_pad`, not installed): each body has 3 records,
+`[T_0, 30, 50]` for the ships and `[T_0, 30, 100]` for the outpost; at Very High
+`s < T_pad` draws `C` (LOD1), at Low..High the pad (LOD2); the highest main-view
+final index is 2. `C`'s groups are unchanged from the glow build (5 / 5 / 5 / 3
+draws). Record 0 is byte-identical to the source, the pad is a copy of `C`, and
+the last record equals the source's coarsest in geometry. `05.cat` is 190 bytes,
+sha256 `cc9553c1…`, and `05.dat` 7 789 651 bytes (12 471 651 with pad), sha256
+`0833efa3…`. The check is
+`verification/results/lod-overlay-pilot/pilot_check_compact_out.txt`.
+
 `python3 tools/analysis/bob1.py audit [--summary] [--json OUT] [--view-distance
 {low,medium,high,very-high}] [--factor F]` reports each body's main-view drawable
 records at the chosen setting (default very-high) and classes
@@ -459,8 +493,8 @@ PYTHONPATH=verification/probe /usr/bin/python3 -m unittest verification.analysis
 
 Removing `addon/NN.cat`, `.dat` and `.x3m-lod.json` reverts the install. The
 pilot flight must show, at the run240 stand with `--cull-census`, the overlaid
-body's nodes reporting the new record's `lod` index (`n-2` of the new ladder,
-i.e. the old record count, for pad and append-pad) wherever `s < T_pad`, where
+body's nodes reporting the new record's `lod` index (1 for compact; `n-2` of the
+new ladder, i.e. the old record count, for pad and append-pad) wherever `s < T_pad`, where
 they reported LOD 0 before, and their per-node draw count dropping to the group
 count of that record (2 in the installed pilot; 5 for the ships and 3 for the
 outpost with `glow`), with `draws_p50` compared at the same stand. It must
@@ -472,7 +506,8 @@ shaders `5e0a10fe…`/`ca6b…`, with stage 3 bound to id 722 and no size logged
 (`verification/results/run257-pilot/tex_run257_3615.txt`), and whether that
 shader samples a light map at all is untraced. The flight must also check that the outpost's alpha group
 still renders as a cut-out rather than solid, and whether
-the `node+0x130 & 0x100000` flag now set on these nodes changes anything visible. A file that loads without a `lod` or
+the `node+0x130 & 0x100000` flag changes anything visible (with compact it must
+no longer be set by the index rule on these nodes at Very High). A file that loads without a `lod` or
 draw change is not acceptance. The run255 census names the heavy stand bodies,
 which the pilot overlay targets; the two earlier worked examples
 (`argon_L_solarpowerplant`, `argon_dock_center`) already end in a one-group LOD,
