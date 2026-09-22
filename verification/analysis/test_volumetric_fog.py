@@ -25,7 +25,7 @@ ROOT = Path(__file__).resolve().parents[2]
 PROGRAMS = ('march', 'composite', 'sky_level0', 'sky_reduce')
 DRIVER = r'''
 #include "fog_pass_math.h"
-#include "ambient_occlusion_caps.h"
+#include "ps3_program_slots.h"
 #include "fog_reference.h"
 #include <cstdio>
 using namespace x3m::renderer;
@@ -66,7 +66,7 @@ int main() {
     std::printf("latch_cut=%.3f,%.3f,%d view=%.3f\n", after_cut, w, gate.cards_recent(400), view.weight());
     FogSectorLatch jump; jump.card(5); jump.update(5, false); std::printf("latch_jump=%.3f\n", jump.update(5000, false)); // a long gap moves at most one ramp, toward off here
 #define SLOTS(name, file) { const std::uint32_t words[] = {
-#define SLOTS_END(name) }; std::printf("slots_" name "=%u words=%zu\n", ambient_occlusion_program_slots(words, sizeof words / sizeof words[0]), sizeof words / sizeof words[0]); }
+#define SLOTS_END(name) }; std::printf("slots_" name "=%u words=%zu\n", ps3_program_slots(words, sizeof words / sizeof words[0]), sizeof words / sizeof words[0]); }
     SLOTS("march", 0)
 #include "fog_march_program_inc.h"
     SLOTS_END("march")
@@ -336,6 +336,20 @@ class FogLauncherTests(unittest.TestCase):
         for kept in ('COVERAGE', 'EXPONENT', 'SIGMA_SCALE', 'SELF_SHADOW', 'POWDER', 'TAP_DISTANCE', 'TAP_LENGTH', 'SHADOW_JITTER', 'PENUMBRA', 'PENUMBRA_MIN', 'PENUMBRA_MAX'):
             self.assertIn('"%s"' % kept, look_math, kept)
 
+    def test_ambient_occlusion_options_are_removed(self):
+        # GTAO/SSAO left the source on 2026-09-22 (cleanup batch 5): argparse refuses every former
+        # option as unrecognized, and the dry-run JSON forwards no AO variable.
+        for removed in (('--ambient-occlusion',), ('--ao-radius', '3'), ('--ao-strength', '0.3'), ('--ao-debug',), ('--ao-timing',)):
+            with self.subTest(removed=removed):
+                status, _, error = self.launch(*self.BASE, *removed)
+                self.assertEqual(status, 2)
+                self.assertIn('unrecognized arguments', error)
+                self.assertIn(removed[0], error)
+        status, output, error = self.launch(*self.BASE)
+        self.assertEqual(status, 0, error)
+        self.assertNotIn('X3M_AMBIENT_OCCLUSION', output)
+        self.assertNotIn('X3M_AO_', output)
+
     def test_dependencies_and_ranges(self):
         for missing in ('--taa', '--hdr', '--shadow-replay-depth'):
             with self.subTest(missing=missing):
@@ -358,9 +372,9 @@ class FogWiringTests(unittest.TestCase):
         motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         fragment = (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
-        # Scene end: after AO, before the HDR resolve; the copy fallback too; both Reset edges; the card latch at the PS bind.
+        # Scene end: after the sun-shadow apply, before the HDR resolve; the copy fallback too; both Reset edges; the card latch at the PS bind.
         hook = motion[motion.index('void MotionOutput::scene_end_hook('):]
-        self.assertLess(hook.index('run_ambient_occlusion();'), hook.index('if (fog_requested_) run_volumetric_fog();'))
+        self.assertLess(hook.index('run_sun_shadow_apply();'), hook.index('if (fog_requested_) run_volumetric_fog();'))
         self.assertLess(hook.index('if (fog_requested_) run_volumetric_fog();'), hook.index('resolve_hdr(SceneEndSource::Hook);'))
         self.assertIn('if (bloom && fog_requested_) run_volumetric_fog();', motion)
         self.assertIn('if (fog_) taa_call([&] { fog_->before_reset(); });', motion)

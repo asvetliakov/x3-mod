@@ -32,7 +32,6 @@
 #include "../renderer/sun_share_frame.h"
 #include "../renderer/motion_row_history.h"
 #include "../renderer/camera_reprojection.h"
-#include "../renderer/ambient_occlusion_pass.h"
 #include "../renderer/fog_pass.h"
 #include "../renderer/sun_occlusion_pass.h"
 #include "fog_card_policy.h"
@@ -357,19 +356,6 @@ struct MotionFrameCounters {
     bool jitter_active = false;
     std::uint32_t jitter_index = 0;
     float jitter[2]{}, jitter_previous[2]{};
-    // Ambient occlusion at the scene-end hook (docs/architecture/ambient-occlusion.md,
-    // step 2): whether the chain was attempted, the attach verdict, whether
-    // it ran and applied, the reason it did not, the pass's results and the
-    // chain's CPU wall time (timing mode only).
-    struct {
-        bool attempted = false, attached = false, ran = false, applied = false, enabled = true;
-        const char* reason = "off";
-        const char* source = "none"; // hook | copy (the bloom-copy fallback)
-        HRESULT result = S_FALSE, restore = S_FALSE;
-        std::uint32_t failed_stage = 0, width = 0, height = 0;
-        float radius_px = 0;
-        std::uint64_t cpu_ticks = 0;
-    } ao;
     // Cut detector: median screen displacement of the matched draws' projected
     // origins against their previous rows, and the fraction of keyed routed
     // draws whose key the previous frame lacked; the resolve rejects history
@@ -528,7 +514,7 @@ public:
     // Scene-end sun-shadow application (docs/architecture/legacy-sun-application.md,
     // section 2; X3M_SUN_SHADOW_APPLY=1): one quad multiplying the FP16 scene
     // target by 1 - (1 - f) s after the depth replay of the same frame and
-    // before AO and the resolve. Requires the lane and the depth replay (the
+    // before the fog and the resolve. Requires the lane and the depth replay (the
     // caller enables all three); exponent 1 on original shading, 1 / 2.2 with
     // linear materials. Off: nothing.
     // bias_units: the constant compare bias in world units (X3M_SUN_SHADOW_BIAS_UNITS);
@@ -609,7 +595,7 @@ public:
     const renderer::ShadowCascadeSet& shadow_cascades() const noexcept { return depth_cascades_; }
     const renderer::ShadowReplayCascade& shadow_replay_cascade() const noexcept { return depth_cascade_; }
     bool sun_shadow_lane_enabled() const noexcept { return sun_lane_active_; }
-    // Diagnostic snapshot at scene end BEFORE AO/TAA; not a later color-owner lease.
+    // Diagnostic snapshot at scene end BEFORE the fog/TAA; not a later color-owner lease.
     const renderer::SunShareFrame& sun_shadow_frame() const noexcept { return sun_frame_; }
     // Borrowed same-frame exclusion M; valid only while sun_shadow_frame().available.
     IDirect3DSurface9* sun_shadow_coverage() const noexcept {
@@ -963,18 +949,8 @@ public:
     void configure_taa_flicker(float thin_clip, float adaptive_weight, float adaptive_lo, float adaptive_hi, bool alpha_history) noexcept {
         taa_thin_clip_ = thin_clip; taa_adaptive_weight_ = adaptive_weight; taa_adaptive_lo_ = adaptive_lo; taa_adaptive_hi_ = adaptive_hi; taa_alpha_history_ = alpha_history;
     }
-    // Ambient occlusion (X3M_AMBIENT_OCCLUSION=1; requires the route and the
-    // resolve): the half-resolution GTAO chain multiplies the owning scene
-    // target at the scene-end hook, before the resolve. `radius_metres` is the
-    // world radius (view units are 0.2 m), `strength` the s of the factor
-    // 1 - s (1 - ao); `debug` writes the factor as grayscale instead of
-    // multiplying; `timing` (or debug) logs one ambient_occlusion_frame line per
-    // frame with GPU timestamp and CPU wall time of the chain.
-    void configure_ambient_occlusion(bool requested, float radius_metres, float strength, bool debug, bool timing) noexcept {
-        ao_requested_ = requested; ao_radius_metres_ = radius_metres; ao_strength_ = strength; ao_debug_ = debug; ao_timing_ = timing || debug;
-    }
     // Volumetric sun fog (X3M_VOLUMETRIC_FOG=1; docs/architecture/volumetric-fog.md,
-    // spatial family implementation): after sun apply and AO, before resolve.
+    // spatial family implementation): after sun apply, before resolve.
     // `strength` is density tuning S/.02; `anisotropy` is Henyey-Greenstein g;
     // `everywhere` explicitly forces debug bluewell for unknown families; `timing`
     // logs one volumetric_fog_frame line per frame. Off: one branch per scene end
@@ -1007,10 +983,6 @@ public:
         return !fog_requested_ ? -1 : int(fog_enabled_) | int(fog_sector_.current(frame_) && !fog_cards_.fault) << 1 | int(fog_strength_ * 1000.f + .5f) << 2;
     }
     float volumetric_fog_strength() const noexcept { return fog_strength_; }
-    // Ctrl+Shift+F11 (comparison-hotkeys.md): flips the per-frame enable of
-    // the chain while --ambient-occlusion is on; the pass stays attached.
-    // Returns the new state, or -1 when the option is off.
-    int ambient_occlusion_toggle() noexcept;
     // Ctrl+Shift+F12 (comparison-hotkeys.md, "Sun shadows at rest"): the
     // at-rest A/B of the sun shadows. Off, the scene end runs neither the
     // cascade/single-map replay transaction (no map cleared or drawn, no
@@ -2216,12 +2188,6 @@ private:
     // copy-back presented it); at the limit the sharpen is no longer requested.
     unsigned taa_sharpen_failures_ = 0;
     static constexpr unsigned sharpen_failure_limit = 3;
-    // Ambient occlusion pass (attached lazily at the first eligible scene end
-    // for the owning target's format; re-attached when that format changes),
-    // its switches, the attach verdict and, in timing mode, two rotating sets
-    // of timestamp queries (TIMESTAMPDISJOINT / TIMESTAMPFREQ / two TIMESTAMP)
-    // polled without blocking one frame later. Every device object is created
-    // and released under taa_call (the same reference accounting as the resolve).
     // Spatial family fog. Copied current-frame engine values select a profile;
     // the native-card source latch is observational. Reset clears readiness and
     // replacement fault; no engine pointers survive as dereferenceable state.
@@ -2263,29 +2229,6 @@ private:
     void complete_volumetric_fog(const char* skip, HRESULT result, const renderer::FogResult& out) noexcept;
     void run_volumetric_fog() noexcept;
     void disable_volumetric_fog(const char* why, HRESULT result) noexcept;
-    std::unique_ptr<renderer::AmbientOcclusionPass> ao_;
-    bool ao_requested_ = false, ao_debug_ = false, ao_timing_ = false, ao_attach_failed_ = false, ao_enabled_ = true;
-    // Hysteresis: the frame of the last attach attempt (re-attach at most once per ao_reattach_frames);
-    // consecutive chain failures refuse the device after ao_failure_limit.
-    std::uint64_t ao_attach_frame_ = 0;
-    unsigned ao_attach_count_ = 0, ao_chain_failures_ = 0;
-    static constexpr unsigned ao_failure_limit = 3, ao_reattach_frames = 60;
-    float ao_radius_metres_ = 2.f, ao_strength_ = .5f;
-    D3DFORMAT ao_target_format_ = D3DFMT_UNKNOWN, ao_adapter_format_ = D3DFMT_UNKNOWN;
-    HRESULT ao_attach_result_ = S_FALSE;
-    unsigned ao_attach_logs_ = 0, ao_failure_logs_ = 0;
-    struct AoTimingSlot { IDirect3DQuery9 *disjoint = nullptr, *frequency = nullptr, *begin = nullptr, *end = nullptr; std::uint64_t frame = 0; bool issued = false; };
-    AoTimingSlot ao_timing_slots_[2]{};
-    unsigned ao_timing_cursor_ = 0;
-    bool ao_timing_failed_ = false, ao_timing_created_ = false, ao_timing_lost_ = false;
-    double ao_gpu_us_ = -1.;          // the most recent completed pair (microseconds; -1: none or disjoint)
-    std::uint64_t ao_gpu_frame_ = 0;  // the frame that pair measured
-    void run_ambient_occlusion() noexcept;
-    bool ensure_ambient_occlusion(D3DFORMAT target_format) noexcept;
-    bool ao_timing_create() noexcept;
-    void ao_timing_release() noexcept;
-    void ao_timing_poll(AoTimingSlot& slot) noexcept;
-    void log_ambient_occlusion_frame() noexcept;
     // The pass's resolved FP16 output (borrowed: valid until the pass's next
     // run, invalidate, before_reset or shutdown), published by the stage-3
     // resolve for the write-back of the same scene end and cleared with it.

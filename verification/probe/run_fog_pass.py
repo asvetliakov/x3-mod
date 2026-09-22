@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Detached volumetric fog pass: fresh fixture build, one Wine run, a compact record.
 
-Pattern of run_ambient_occlusion.py. Builds verification/probe/build_fog_pass.sh
+Builds verification/probe/build_fog_pass.sh
 (the production pass with its embedded programs), runs the fixture in the
 selected bottle with builtin D3D9, parses the CHECK / REFERENCE / ORACLE / SKY /
 APPLY / TIMING lines and writes <results>/fog-pass-gpu1.json (bottle, hashes,

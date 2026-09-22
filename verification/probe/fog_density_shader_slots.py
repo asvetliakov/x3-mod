@@ -3,7 +3,7 @@
 
 Microsoft's ps_3_0 table including flow control (loop/rep/if/ifc/breakc/callnz 3,
 endloop/endrep/call/texkill 2, texldl 2, texldd 3, texldb 6), which
-ambient_occlusion_program_slots charges one slot each. Static cost only.
+ps3_program_slots charges one slot each. Static cost only.
 https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx9-graphics-reference-asm-ps-instructions-ps-3-0
 """
 import json

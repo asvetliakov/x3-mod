@@ -19,7 +19,7 @@ using GetDisplayModeFn=HRESULT(WINAPI*)(IDirect3DDevice9*,UINT,D3DDISPLAYMODE*);
 using GetRenderTargetFn=HRESULT(WINAPI*)(IDirect3DDevice9*,DWORD,IDirect3DSurface9**);
 using GetStreamFreqFn=HRESULT(WINAPI*)(IDirect3DDevice9*,UINT,UINT*);
 using SetRenderStateFn=HRESULT(WINAPI*)(IDirect3DDevice9*,D3DRENDERSTATETYPE,DWORD);
-constexpr float ao_default_m22=1.00001f,ao_default_m32=-.100001f;
+constexpr float projection_default_m22=1.00001f,projection_default_m32=-.100001f;
 enum class TaaInvalidateSite {FogTransition,StateLost};enum class HdrState {Active,Off};
 struct MotionDrawCall {bool indexed=true,user_memory=false;D3DPRIMITIVETYPE topology=D3DPT_TRIANGLELIST;unsigned primitives=2,vertex_count=4;};
 struct MotionRoute {FogCardMask fog_card_mask{};HRESULT preparation_error=S_OK,submission_error=S_OK;bool submit=true;};

@@ -1,5 +1,5 @@
 #include "sun_shadow_apply_pass.h"
-#include "ambient_occlusion_caps.h"
+#include "ps3_program_slots.h"
 #include "quad_vertex_program.h"
 #include <cmath>
 #include <iterator>
@@ -8,7 +8,7 @@ namespace x3m::renderer {
 namespace {
 template<class T> void drop(T*& value) noexcept { if (value) { value->Release(); value = nullptr; } }
 bool lost(HRESULT hr) noexcept { return hr == D3DERR_DEVICELOST || hr == D3DERR_DEVICENOTRESET; }
-// IDirect3DDevice9 vtable slots (verification/probe/abi_check.cpp), as in AmbientOcclusionPass.
+// IDirect3DDevice9 vtable slots (verification/probe/abi_check.cpp).
 enum Slot : unsigned {
     GetDirect3D = 6, GetCreationParameters = 9, SetRenderTarget = 37, GetRenderTarget = 38,
     SetDepthStencilSurface = 39, GetDepthStencilSurface = 40, BeginScene = 41, EndScene = 42,
@@ -155,10 +155,10 @@ HRESULT SunShadowApplyPass::attach(IDirect3DDevice9* d, void* const* native, con
     device_ = d; vtable_ = native;
     auto refuse = [&](const char* reason, HRESULT hr) { caps_.reason = reason; device_ = nullptr; vtable_ = nullptr; return hr; };
     if ((caps.VertexShaderVersion & 0xffffu) < 0x0300u || (caps.PixelShaderVersion & 0xffffu) < 0x0300u) return refuse("shader_model", D3DERR_NOTAVAILABLE);
-    caps_.program_slots = ambient_occlusion_program_slots(reinterpret_cast<const std::uint32_t*>(apply_words), std::size(apply_words));
+    caps_.program_slots = ps3_program_slots(reinterpret_cast<const std::uint32_t*>(apply_words), std::size(apply_words));
     if (caps_.program_slots == 0 || caps.MaxPixelShader30InstructionSlots < caps_.program_slots) return refuse("ps_slots", D3DERR_NOTAVAILABLE);
     if (cascades) {
-        caps_.cascade_slots = ambient_occlusion_program_slots(reinterpret_cast<const std::uint32_t*>(cascade_apply_words), std::size(cascade_apply_words));
+        caps_.cascade_slots = ps3_program_slots(reinterpret_cast<const std::uint32_t*>(cascade_apply_words), std::size(cascade_apply_words));
         if (caps_.cascade_slots == 0 || caps.MaxPixelShader30InstructionSlots < caps_.cascade_slots) return refuse("cascade_ps_slots", D3DERR_NOTAVAILABLE);
     }
     if (!(caps.SrcBlendCaps & D3DPBLENDCAPS_ZERO) || !(caps.DestBlendCaps & D3DPBLENDCAPS_SRCCOLOR)) return refuse("blend_caps", D3DERR_NOTAVAILABLE);

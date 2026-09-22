@@ -20,7 +20,7 @@ const char* MotionOutput::fog_frame_parameters(renderer::FogFrame& in, float wei
     q.m00 = camera_scene_.m00; q.m11 = camera_scene_.m11;
     q.m20 = camera_scene_.m20 + jitter_x + (in.width ? renderer::quad_pixel_centre_m20(in.width) : 0.f);
     q.m21 = camera_scene_.m21 + jitter_y + (in.height ? renderer::quad_pixel_centre_m21(in.height) : 0.f);
-    q.m22 = ao_default_m22; q.m32 = ao_default_m32;
+    q.m22 = projection_default_m22; q.m32 = projection_default_m32;
     q.density_scale = fog_sector_.density_scale * weight; q.anisotropy = fog_anisotropy_; q.margin = renderer::shadow_cascade_select_margin;
     q.decode_exponent = hdr_config_.decode == x3::temporal::AgxDecode::none ? 1.f : 2.2f;
     unsigned slots[renderer::shadow_cascade_max]{};
@@ -365,7 +365,7 @@ void MotionOutput::disable_volumetric_fog(const char* why, HRESULT result) noexc
     fog_disabled_ = true;
     log("volumetric_fog_disabled device=%llu frame=%llu reason=%s result=%08lx session=1", id_, frame_, why, result);
 }
-// Once per owning scene/frame, after sun/AO and before TAA. The frozen engine
+// Once per owning scene/frame, after the sun-shadow apply and before TAA. The frozen engine
 // family is authoritative; the shader-source latch remains diagnostic only.
 // A late refusal after card suppression cannot recreate their colors and
 // therefore trips the existing Reset-only replacement fault latch.
@@ -399,7 +399,7 @@ void MotionOutput::run_volumetric_fog() noexcept {
     else if (fog_cards_replace_ && !fog_cards_.medium_allowed()) skip = "card_refused";
     else if (!fog_enabled_) skip = "toggled_off";
     else if (fog_disabled_) skip = "disabled";
-    else if (fog_attach_failed_) skip = "attach"; // until the next Reset, like the AO and sun-apply passes
+    else if (fog_attach_failed_) skip = "attach"; // until the next Reset, like the sun-apply pass
     else if (!fog_sector_.current(frame_)) skip = fog_sector_.frame == frame_ ? fog_sector_.reason : "sample_missing";
     else if (!(fog_strength_ * weight > 0.f)) skip = "strength";
     else if ((skip = fog_frame_prerequisite()) != nullptr) {}

@@ -9,7 +9,7 @@
 // (MotionOutput's scene-end hook) supplies RT2, the map, the replay frame's
 // view -> sun rows, the jittered projection latch and the target, and
 // serializes rendering, Reset and teardown. Documented D3D9 only; the format
-// gates are CheckDeviceFormat queries, as AmbientOcclusionPass.
+// gates are CheckDeviceFormat queries.
 #include <cstdint>
 #include <d3d9.h>
 #include "shadow_replay_projection.h"
@@ -23,7 +23,7 @@ struct SunShadowApplyCaps {
     unsigned cascade_slots = 0;
 };
 struct SunShadowApplyParams {
-    // The route's jittered projection latch (camera_reprojection.h; the AO
+    // The route's jittered projection latch (camera_reprojection.h; the reconstruction
     // law): view z = m32 / (d - m22), x = (ndc.x - m20) z / m00, y = (ndc.y - m21) z / m11.
     float m00 = 0, m11 = 0, m20 = 0, m21 = 0, m22 = 0, m32 = 0;
     float rows[12]{};                 // shadow_replay_view_rows of the replay's own frame

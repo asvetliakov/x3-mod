@@ -5,7 +5,7 @@ namespace x3m::renderer {
 namespace {
 template<class T> void drop(T*& value) noexcept { if (value) { value->Release(); value = nullptr; } }
 bool lost(HRESULT hr) noexcept { return hr == D3DERR_DEVICELOST || hr == D3DERR_DEVICENOTRESET; }
-// IDirect3DDevice9 vtable slots (verification/probe/abi_check.cpp), as in AmbientOcclusionPass.
+// IDirect3DDevice9 vtable slots (verification/probe/abi_check.cpp).
 enum Slot : unsigned {
     GetDirect3D = 6, GetCreationParameters = 9, CreateTexture = 23, CreateDepthStencilSurface = 29,
     SetRenderTarget = 37, GetRenderTarget = 38, SetDepthStencilSurface = 39, GetDepthStencilSurface = 40,

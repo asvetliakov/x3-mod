@@ -352,9 +352,28 @@ fixtures green on its own.
    2,311 tests green**; the seven harness-sharing modules 68 tests green.
 4. **Batch 4 — `--lod-scale`** (D). Check: `test_cull_small_parts*`,
    `verify_lod_scale_site.py` removal, one dry-run. ~550 lines.
-5. **Batch 5 — GTAO/SSAO chain** (C), keeping `ambient_occlusion_caps.h` under a
-   neutral name. Check: temporal-pass, fog and sun-shadow-apply fixtures plus
-   the scene-end order tests in `test_motion_output_*`. ~2,900 lines.
+5. **Batch 5 — GTAO/SSAO chain** (C) — **done 2026-09-22.**
+   24 files deleted: the pass, its four programs (HLSL and `*_inc.h`), the four
+   host test modules, the five probe files, the four program provenance JSONs and
+   `bottle-X3/ambient-occlusion-gpu1.txt`. Unwired: `--ambient-occlusion`,
+   `--ao-radius`, `--ao-strength`, `--ao-debug`, `--ao-timing` with their refusals
+   and `X3M_AMBIENT_OCCLUSION` / `X3M_AO_*` forwards (each option now fails with
+   argparse's `unrecognized arguments`), the DLL's AO environment reads and
+   `ambient_occlusion_mode` line, the Ctrl+Shift+F11 key and its fixture export,
+   the scene-end AO step at the hook and at the bloom-copy fallback with its
+   state, Reset and shutdown handling, and the fixture `aohook` script. The
+   scene-end order is otherwise unchanged: lane publication, replay candidates,
+   sun-shadow apply, fog, then the resolve (FP16 resolve and write-back, or the
+   8-bit resolve on RT0). The slot counter
+   is now `ps3_program_slots()` in `src/renderer/ps3_program_slots.h` (fog,
+   sun-shadow-apply and sun-occlusion passes); the AO capability gate went with
+   the pass. The shared projection constants are `projection_default_m22/m32`.
+   **Kept against the inventory's list:** `bottle-X3/ambient-occlusion-gpu1.json`,
+   cited by the AO ledger (`docs/verification/ambient-occlusion.md`).
+   **3,849 lines deleted, 132 re-added (net 3,717)**, 74 files outside `docs/`, including a
+   one-line tool-source digest refresh in the 19 bloom and stored-fog program
+   records that hash `generate_rigid_motion_pixel.py` (bytecode unchanged).
+   Wine fixtures (temporal-pass, fog, sun-shadow-apply) are pending.
 6. **Batch 6 — dead TAA resolve variants** (E1–E4), keeping the screen line
    mask, the age R32F target pair and every far/thin/box program. Check:
    `run_temporal_pass.py` gates, `test_taa_image_defaults.py`,

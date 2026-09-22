@@ -193,7 +193,7 @@ inline bool camera_translation_clip(const CameraState& current, const CameraStat
 // 1 / z from the device depth d and the current projection's depth law, z = m32 / (d - m22): out = (DX, DY, DW) / m32
 // and m22, so the consumer adds out.xyz * (d - out.w), forming d - m22 from the same float m22 the rasteriser's
 // projection held (an exact subtraction for d in [0.5, 1]). xyz = 0 is the far-plane path bit for bit. False (out
-// zeroed) without a valid pair or a plausible law (m22 > 1, m32 < 0, as the AO pass). m22 / m32 are per-submission
+// zeroed) without a valid pair or a plausible law (m22 > 1, m32 < 0). m22 / m32 are per-submission
 // scratch in the engine: a latch from a view with another near plane passes this check and mis-scales the term.
 inline bool camera_depth_parallax(const CameraState& current, const CameraState& previous, float out[4]) noexcept {
     if (!out) return false;

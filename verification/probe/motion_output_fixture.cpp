@@ -393,12 +393,6 @@ struct Fixture {
     bool routebench = false; unsigned routebench_draws = 400; // "routebench [draws]": per-routed-draw CPU cost (run_route_bench.py)
     float sharpen = 0.f;   // X3M_TAA_SHARPEN: the presented image is RCAS of the resolved one (the runner compares it against the Python reference)
     bool hook = false, wrap = false, burst_mask = false, state_shadow = true, hdr = false, hdrvalues = false, hdrfault = false;
-    // aohook script (ambient occlusion at the scene-end hook): the DLL's switches
-    // as the fixture reads them (X3M_AMBIENT_OCCLUSION, X3M_FIXTURE_AO_FAULT=attach,
-    // X3M_AO_DEBUG, X3M_AO_STRENGTH) decide the pixel law of the crease frames.
-    bool aohook = false, ao_env = false, ao_fault = false, ao_debug = false, ao_toggle_script = false;
-    float ao_strength = .5f;
-    int (*ao_toggle)(IDirect3DDevice9*) = nullptr; // x3m_ambient_occlusion_fixture_toggle: the Ctrl+Shift+F11 action
     int (*hull_toggle)(IDirect3DDevice9*,int) = nullptr; // x3m_hull_emission_fixture_toggle: the F4 (lightmap=1) and F6 (lightmap=0) hull actions
     bool hdrramp = false, hdrexposure = false, hdrtonemapfault = false; // stage-2 scripts
     bool emissions = false, emission_bench = false, emissions_enabled = false, emission_mask_valid = false;
@@ -1723,134 +1717,6 @@ struct Fixture {
             stub_call(false);
             require(hook_shutdown() == 1, "shutdown without a patch is a no-op");
         }
-        VirtualFree(hook_code, 0, MEM_RELEASE); hook_code = nullptr; hook_fixture = nullptr;
-    }
-    // ---- ambient occlusion at the scene-end hook (aohook) ---------------------
-    // One crease frame: object A drawn twice through the route with opposite
-    // perspective terms p = +-1.5 (vertex z 0.5, zo 0), so the device depth is
-    // d = 0.5 / (1 +- 1.5 ox) and the Z test keeps the nearer plane on each side
-    // of ox = 0: the visible surface is a concave crease (the crossing is the
-    // farthest line, both planes come towards the viewer away from it, slope
-    // about 1.2 in the reconstructed view), the columns beyond |ndc x| > 2/3
-    // stay sentinel. The hook runs the AO chain before the resolve. On a frame
-    // without history the presented image is the AO-multiplied scene (the FP16
-    // round trip is bit-identical), so the pixel law is checked against the
-    // 8-bit main target read before the hook: sentinel pixels unchanged, every
-    // channel in [floor(b * (1 - s)^(1/2.2)) - 1, b], darkening present and
-    // concentrated in the centre band; the debug view writes the grayscale
-    // factor instead (sentinel 255, gray, above the floor); with AO off or the
-    // attach refused the frame is bit-identical.
-    void ao_crease_frame(bool pixel_check) {
-        frame_begin(nullptr);
-        const bool matched = frames_since_reset > 0;
-        draw(a, 0, 1.5f, 0, true, true, matched); draw(a, 0, -1.5f, 0, true, true, false);
-        decide();
-        const auto before_image = color_image();
-        std::vector<float> depth_data(std::size_t(W) * H); unsigned w = 0, h = 0;
-        api(readback_depth(d.p, depth_data.data(), unsigned(depth_data.size()), &w, &h), "reference depth readback");
-        const Snapshot before = snapshot();
-        stub_call(true);
-        Snapshot after = snapshot();
-        require(after.depth == nullptr, "the compositor unbound the depth surface"); after.depth = before.depth;
-        compare(before, after, "hook");
-        const auto after_image = color_image();
-        require(color_image(bloom_surface.p) == after_image, "the bloom copy receives the main target as resolved");
-        unsigned changed = 0;
-        for (std::size_t i = 0; i < after_image.size(); ++i) changed += after_image[i] != before_image[i];
-        {   // Depth witness of the crease (RT2 as the route wrote it) and the raw images for offline analysis.
-            float dmin = 2.f, dmax = -2.f; double dsum = 0; unsigned covered = 0, crease_column = 0;
-            for (std::size_t i = 0; i < depth_data.size(); ++i) if (depth_data[i] >= 0.f) { ++covered; dsum += depth_data[i]; if (depth_data[i] < dmin) dmin = depth_data[i]; if (depth_data[i] > dmax) { dmax = depth_data[i]; crease_column = unsigned(i % W); } }
-            std::printf("AO_DEPTH frame=%llu covered=%u min=%.6f max=%.6f mean=%.6f max_column=%u\n", frame, covered, dmin, dmax, covered ? dsum / covered : 0., crease_column);
-            char name[64];
-            std::snprintf(name, sizeof name, "ao_before_%llu.bgra8", frame); if (FILE* f = std::fopen(name, "wb")) { std::fwrite(before_image.data(), 4, before_image.size(), f); std::fclose(f); }
-            std::snprintf(name, sizeof name, "ao_after_%llu.bgra8", frame); if (FILE* f = std::fopen(name, "wb")) { std::fwrite(after_image.data(), 4, after_image.size(), f); std::fclose(f); }
-            std::snprintf(name, sizeof name, "ao_depth_%llu.r32f", frame); if (FILE* f = std::fopen(name, "wb")) { std::fwrite(depth_data.data(), 4, depth_data.size(), f); std::fclose(f); }
-        }
-        const bool active = ao_env && !ao_fault;
-        const char* law = !active ? "identity" : ao_debug ? "debug" : "multiply";
-        if (pixel_check) {
-            const double floor_factor = std::pow(1. - double(ao_strength), 1. / 2.2);
-            const unsigned floor_code = unsigned(std::floor(255. * floor_factor));
-            unsigned darkened = 0, sentinel = 0, violations = 0, max_drop = 0, centre_n = 0, outer_n = 0;
-            double centre = 0, outer = 0;
-            for (std::size_t i = 0; i < after_image.size(); ++i) {
-                const DWORD b = before_image[i], v = after_image[i];
-                const bool sent = depth_data[i] < 0.f; sentinel += sent;
-                const unsigned x = unsigned(i % W);
-                unsigned drop = 0; bool bad = false;
-                if (!active) bad = v != b;
-                else if (ao_debug) {
-                    const unsigned r = (v >> 16) & 255u, g = (v >> 8) & 255u, bl = v & 255u;
-                    bad = r != g || g != bl || (sent && r != 255u) || r + 1u < floor_code;
-                    drop = 255u - r;
-                } else if (sent) bad = v != b;
-                else for (unsigned k = 0; k < 3; ++k) {
-                    const unsigned bc = (b >> (8 * k)) & 255u, ac = (v >> (8 * k)) & 255u;
-                    if (ac > bc || ac + 1u < unsigned(std::floor(double(bc) * floor_factor))) bad = true;
-                    if (ac < bc) drop += bc - ac;
-                }
-                if (bad && ++violations <= 4) std::printf("AO_VIOLATION frame=%llu x=%u y=%u before=%08lx after=%08lx sentinel=%u\n", frame, x, unsigned(i / W), b, v, sent);
-                if (drop) { ++darkened; if (drop > max_drop) max_drop = drop; }
-                if (!sent) {
-                    if (x + 8 > W / 2 && x < W / 2 + 8) { centre += drop; ++centre_n; }
-                    else if (x + 24 <= W / 2 || x >= W / 2 + 24) { outer += drop; ++outer_n; }
-                }
-            }
-            const double centre_mean = centre_n ? centre / centre_n : 0., outer_mean = outer_n ? outer / outer_n : 0.;
-            std::printf("AO_CREASE frame=%llu law=%s darkened=%u sentinel=%u violations=%u max_drop=%u centre_mean=%.3f outer_mean=%.3f changed=%u\n",
-                        frame, law, darkened, sentinel, violations, max_drop, centre_mean, outer_mean, changed);
-            require(!violations, "every crease pixel obeys the AO law (sentinel unchanged; channels within the strength floor; debug view gray)");
-            require(sentinel > 0, "the crease frame keeps sentinel columns");
-            if (active) require(darkened > 0 && centre_mean > outer_mean, "the crease darkens, most at its centre");
-            else require(!changed, "AO off or refused: the main target is bit-identical through the hook");
-        } else std::printf("AO_CREASE frame=%llu law=%s changed=%u pixel_check=0\n", frame, law, changed);
-        api(d->EndScene(), "EndScene");
-        const auto image = color_image();
-        std::printf("COLOR frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(image)));
-        write_presented(image);
-        api(d->SetDepthStencilSurface(depth.p), "SetDepthStencilSurface rebind");
-        api(d->Present(nullptr, nullptr, nullptr, nullptr), "Present");
-        ++frame; ++frames_since_reset;
-        ++taa_frames; history_valid = true; camera_history = camera_current;
-    }
-    // Script. Multiply/identity twins: f0-f2 flat hook frames (planes at
-    // constant device depth: the AO factor is the exact identity and the main
-    // target after the hook equals the reference resolve byte for byte, i.e.
-    // the AO-off image), Reset, f3 crease without history (pixel law), f4-f5
-    // crease with history, Reset, f6 crease without history (pixel law), f7 crease.
-    // Debug twin: crease frames only (the flat frames would present the white
-    // factor). HDR: the flat frames prove attach and identity on the FP16
-    // target; the crease frames run without the pixel law (the 8-bit main
-    // target holds the previous write-back, not the scene).
-    void run_ao_hook() {
-        require(enabled && seam && taa && camera && hook_install && hook_shutdown && hook_signals && hook_status, "aohook needs the seam, TAA, the fake camera and the scene-hook exports");
-        hook_create();
-        auto compositor = reinterpret_cast<void*>(&fixture_compositor);
-        require(hook_install(hook_site, compositor) == 1 && !std::strcmp(hook_status(), "active"), "install on the verified callsite");
-        hook_installed = true;
-        std::printf("HOOK installed=%u status=%s ao=%u fault=%u debug=%u strength=%.3f hdr=%u\n", hook_installed, hook_status(), ao_env, ao_fault, ao_debug, ao_strength, hdr);
-        const bool pixels = !hdr;
-        // f1 signals before the scene: the copy path is the scene end (the AO
-        // chain runs at the bloom copy under the same contract).
-        if (!ao_debug) { hook_frame(true, false); hook_frame(true, true); hook_frame(false, false); }
-        if (ao_toggle_script) {
-            // Ctrl+Shift+F11 twin: off for two flat frames after a Reset (byte-exact
-            // with the reference resolve, reason=disabled), on again for the crease.
-            require(ao_toggle != nullptr, "toggle export");
-            int state = ao_toggle(d.p); std::printf("AO_TOGGLE frame=%llu enabled=%d\n", frame, state); require(state == (ao_env ? 0 : -1), "toggle off");
-            reset(); history_valid = false;
-            hook_frame(true, false); hook_frame(true, false);
-            state = ao_toggle(d.p); std::printf("AO_TOGGLE frame=%llu enabled=%d\n", frame, state); require(state == (ao_env ? 1 : -1), "toggle on");
-            reset(); history_valid = false;
-            ao_crease_frame(pixels); ao_crease_frame(false);
-        } else {
-            if (!ao_debug) { reset(); history_valid = false; }
-            ao_crease_frame(pixels); ao_crease_frame(false); ao_crease_frame(false);
-            reset(); history_valid = false;
-            ao_crease_frame(pixels); ao_crease_frame(false);
-        }
-        require(hook_shutdown() == 1 && !std::strcmp(hook_status(), "restored"), "shutdown restores the callsite");
-        hook_installed = false;
         VirtualFree(hook_code, 0, MEM_RELEASE); hook_code = nullptr; hook_fixture = nullptr;
     }
     // ---- actual live linear-material route, sharing the original Argon VS ----
@@ -3186,7 +3052,7 @@ int main(int argc, char** argv) {
     HWND window = CreateWindowA(cls.lpszClassName, "Live motion route fixture", WS_OVERLAPPEDWINDOW, 0, 0, 96, 96, nullptr, nullptr, cls.hInstance, nullptr);
     HMODULE runtime = LoadLibraryA("d3d9.dll");
     try {
-        if ((argc != 4 && argc != 5 && argc != 6 && argc != 9) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|unmatchedstatic|bench|routebench|burst|mipbias|zonly|envmap|hook|aohook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials|materialwrap|materialxt|materialglass|sunlane|hullemission|lightmapfade|lightmapwiden|emissions|emissionsbench|distancefade|distancefadebench|screenemission|screenemissionbench|cutout|cutoutbench|faderoute|shadowreplay [WxH|draws|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
+        if ((argc != 4 && argc != 5 && argc != 6 && argc != 9) || !window || !runtime) throw std::runtime_error("usage: fixture <vs.bin> <ps.bin> production|seam|unmatchedstatic|bench|routebench|burst|mipbias|zonly|envmap|hook|hdrvalues|hdrfault|hdrramp|hdrexposure|hdrtonemapfault|msaa|linearmaterials|materialwrap|materialxt|materialglass|sunlane|hullemission|lightmapfade|lightmapwiden|emissions|emissionsbench|distancefade|distancefadebench|screenemission|screenemissionbench|cutout|cutoutbench|faderoute|shadowreplay [WxH|draws|shared-PS Split-PS BUMP-VS BUMP-PS BUMP-negative-PS]");
         Fixture f;
         f.runtime = runtime; f.window = window;
         const std::string mode = argv[3];
@@ -3198,7 +3064,6 @@ int main(int argc, char** argv) {
         f.zonly = mode == "zonly";
         f.envmap = mode == "envmap";
         f.hook = mode == "hook";
-        f.aohook = mode == "aohook";
         f.hdrvalues = mode == "hdrvalues";
         f.hdrfault = mode == "hdrfault";
         f.hdrramp = mode == "hdrramp"; f.hdrexposure = mode == "hdrexposure"; f.hdrtonemapfault = mode == "hdrtonemapfault";
@@ -3249,7 +3114,7 @@ int main(int argc, char** argv) {
         f.emission_fault = symbol<void (*)(IDirect3DDevice9*, unsigned, unsigned)>(runtime,"x3m_linear_emission_fixture_fault",false);
         f.emission_readback = symbol<HRESULT (*)(IDirect3DDevice9*, unsigned, float*, unsigned, unsigned*, unsigned*)>(runtime,"x3m_motion_output_fixture_readback_target",false);
         f.seam = f.configure && f.readback && f.readback_depth && f.last_pixel_abi && f.camera_install;
-        require(f.bench || f.routebench || f.burst || f.mipbias || f.zonly || f.envmap || f.hook || f.aohook || f.hdrvalues || f.hdrfault || f.hdrramp || f.hdrexposure || f.hdrtonemapfault || f.msaa || f.linearmaterials || f.materialxt || f.materialglass || f.sunlane || f.hullemission || f.emissions || mode == "shadowreplay" || mode == "shadowretention" || mode == "shadowpool" || mode == "sunapply" || f.seam == (mode == "seam" || mode == "unmatchedstatic"), "DLL seam presence matches the requested mode");
+        require(f.bench || f.routebench || f.burst || f.mipbias || f.zonly || f.envmap || f.hook || f.hdrvalues || f.hdrfault || f.hdrramp || f.hdrexposure || f.hdrtonemapfault || f.msaa || f.linearmaterials || f.materialxt || f.materialglass || f.sunlane || f.hullemission || f.emissions || mode == "shadowreplay" || mode == "shadowretention" || mode == "shadowpool" || mode == "sunapply" || f.seam == (mode == "seam" || mode == "unmatchedstatic"), "DLL seam presence matches the requested mode");
         char setting[8]{}; f.enabled = GetEnvironmentVariableA("X3M_MOTION_OUTPUT", setting, sizeof setting) == 1 && setting[0] == '1';
         f.materialwrap_depth = !(GetEnvironmentVariableA("X3M_FIXTURE_MOTION_DEPTH",setting,sizeof setting)==1&&setting[0]=='0');
         f.emissions_enabled = GetEnvironmentVariableA("X3M_LINEAR_EMISSIONS",setting,sizeof setting)==1&&setting[0]=='1';
@@ -3269,13 +3134,7 @@ int main(int argc, char** argv) {
         f.burst_mask = f.burst && GetEnvironmentVariableA("X3M_FIXTURE_BURST_MASK", setting, sizeof setting) == 1 && setting[0] == '1';
         if (f.wrap) std::printf("WRAP mode=hostile motion_texcoord=4 depth_texcoord=5 native_texcoord=0\n");
         f.hdr = f.enabled && GetEnvironmentVariableA("X3M_HDR", setting, sizeof setting) == 1 && setting[0] == '1';
-        f.ao_env = f.taa && GetEnvironmentVariableA("X3M_AMBIENT_OCCLUSION", setting, sizeof setting) == 1 && setting[0] == '1';
-        f.ao_fault = GetEnvironmentVariableA("X3M_FIXTURE_AO_FAULT", setting, sizeof setting) == 6 && !std::strcmp(setting, "attach");
-        f.ao_toggle_script = GetEnvironmentVariableA("X3M_FIXTURE_AO_TOGGLE", setting, sizeof setting) == 1 && setting[0] == '1';
-        f.ao_toggle = symbol<int (*)(IDirect3DDevice9*)>(runtime, "x3m_ambient_occlusion_fixture_toggle", false);
         f.hull_toggle = symbol<int (*)(IDirect3DDevice9*,int)>(runtime, "x3m_hull_emission_fixture_toggle", false);
-        f.ao_debug = f.ao_env && GetEnvironmentVariableA("X3M_AO_DEBUG", setting, sizeof setting) == 1 && setting[0] == '1';
-        { char strength[32]{}; if (GetEnvironmentVariableA("X3M_AO_STRENGTH", strength, sizeof strength) > 0) { char* end = nullptr; const float v = std::strtof(strength, &end); if (end != strength && *end == '\0' && v >= 0.f && v <= 1.f) f.ao_strength = v; } }
         f.hdr_agx = f.hdr && GetEnvironmentVariableA("X3M_HDR_TONEMAP", setting, sizeof setting) > 0 && (!std::strcmp(setting, "agx") || !std::strcmp(setting, "1"));
         if (f.taa && GetEnvironmentVariableA("X3M_TAA_SHARPEN", setting, sizeof setting) > 0) { const float v = float(std::atof(setting)); if (v > 0.f && v <= 1.f) f.sharpen = v; }
         // A caps/self-test fault must be queued before the device is created (attach).
@@ -3313,7 +3172,7 @@ int main(int argc, char** argv) {
         api(f.factory->CreateDevice(0, D3DDEVTYPE_HAL, window, D3DCREATE_HARDWARE_VERTEXPROCESSING, &f.pp, &f.d.p), "CreateDevice");
         f.create(mode == "production");
         if ((f.taa || f.cutout || f.faderoute) && f.enabled && f.seam && !f.bench && !f.emission_bench && !f.msaa) { f.reference.create(runtime, window, Fixture::W, Fixture::H); f.reference_ready = true; }
-        if (mode == "unmatchedstatic") run_unmatched_static(f); else if (f.sunlane) f.run_sun_lane(argv[1]); else if (f.lightmapfade) f.run_lightmap_fade(argv[1]); else if (f.lightmapwiden) f.run_lightmap_widen(argv[1]); else if (f.hullemission) f.run_hull_emission(argv[1]); else if (mode == "shadowreplay") run_shadow_replay_integration(f); else if (mode == "shadowretention") run_shadow_retention_integration(f); else if (mode == "shadowpool") run_shadow_pool_integration(f); else if (mode == "sunapply") { char cascades[4]{}; const bool scripted = GetEnvironmentVariableA("X3M_FIXTURE_SUNAPPLY_CASCADES", cascades, sizeof cascades) == 1; if (scripted && cascades[0] == '1') run_sun_apply_cascades(f, 3); else if (scripted && cascades[0] == '5') run_sun_apply_cascades(f, 5); else run_sun_apply_integration(f); } else if (f.cutout) run_cutout_integration(f,argv[1]); else if (f.faderoute) run_fade_route_integration(f,argv[1]); else if (f.screenemission) run_screen_emission_integration(f,argv[1]); else if (f.distancefade) run_distance_fade_integration(f,argv[1]); else if (f.materialglass) f.run_glass_materials(argv[1]); else if (f.materialxt) f.run_xt_materials(argv[1]); else if (f.emissions) run_emission_integration(f,argv[4],argv[5]); else if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.routebench) f.run_route_bench(12, f.routebench_draws); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.zonly) f.run_zonly(argv[1], 9); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook(); else if (f.aohook) f.run_ao_hook();
+        if (mode == "unmatchedstatic") run_unmatched_static(f); else if (f.sunlane) f.run_sun_lane(argv[1]); else if (f.lightmapfade) f.run_lightmap_fade(argv[1]); else if (f.lightmapwiden) f.run_lightmap_widen(argv[1]); else if (f.hullemission) f.run_hull_emission(argv[1]); else if (mode == "shadowreplay") run_shadow_replay_integration(f); else if (mode == "shadowretention") run_shadow_retention_integration(f); else if (mode == "shadowpool") run_shadow_pool_integration(f); else if (mode == "sunapply") { char cascades[4]{}; const bool scripted = GetEnvironmentVariableA("X3M_FIXTURE_SUNAPPLY_CASCADES", cascades, sizeof cascades) == 1; if (scripted && cascades[0] == '1') run_sun_apply_cascades(f, 3); else if (scripted && cascades[0] == '5') run_sun_apply_cascades(f, 5); else run_sun_apply_integration(f); } else if (f.cutout) run_cutout_integration(f,argv[1]); else if (f.faderoute) run_fade_route_integration(f,argv[1]); else if (f.screenemission) run_screen_emission_integration(f,argv[1]); else if (f.distancefade) run_distance_fade_integration(f,argv[1]); else if (f.materialglass) f.run_glass_materials(argv[1]); else if (f.materialxt) f.run_xt_materials(argv[1]); else if (f.emissions) run_emission_integration(f,argv[4],argv[5]); else if (f.linearmaterials) f.run_linear_materials(argv[4],argv[5],argv[6],argv[7],argv[8]); else if (f.bench) f.run_bench(24); else if (f.routebench) f.run_route_bench(12, f.routebench_draws); else if (f.burst) f.run_burst(9); else if (f.mipbias) f.run_mipbias(8); else if (f.zonly) f.run_zonly(argv[1], 9); else if (f.envmap) f.run_envmap(); else if (f.hook) f.run_hook();
         else if (f.hdrvalues) f.run_hdrvalues(); else if (f.hdrfault) f.run_hdrfault();
         else if (f.hdrramp) f.run_hdrramp(); else if (f.hdrexposure) f.run_hdrexposure(); else if (f.hdrtonemapfault) f.run_hdrtonemapfault(); else if (f.msaa) f.run_msaa(); else f.run();
         if (f.reference_ready) { f.reference.destroy(); f.reference_ready = false; }

@@ -94,7 +94,7 @@ int main(){
     // --sun-shadow-apply, so a held key here is a genuine press.
     x3m::ComparisonControls shadow;
     x3m::ComparisonKeys s{};s.foreground=true;s.control=s.shift=true;shadow.sample(s);
-    s.sun_shadow=true;{const auto a=shadow.sample(s);CHECK(a.sun_shadow&&!a.hull_gain&&!a.ambient_occlusion&&!a.exposure&&!a.bloom);}
+    s.sun_shadow=true;{const auto a=shadow.sample(s);CHECK(a.sun_shadow&&!a.hull_gain&&!a.exposure&&!a.bloom);}
     for(unsigned i=0;i<1000;++i)CHECK(!shadow.sample(s).sun_shadow); // held is not a second press
     s.sun_shadow=false;shadow.sample(s);s.sun_shadow=true;CHECK(shadow.sample(s).sun_shadow);
     s.foreground=false;CHECK(!shadow.sample(s).sun_shadow);
@@ -103,8 +103,7 @@ int main(){
     s.shift=false;s.sun_shadow=false;shadow.sample(s);s.shift=true;s.sun_shadow=true;
     CHECK(!shadow.sample(s).sun_shadow); // the chord must be armed in the previous sample
     s.sun_shadow=false;shadow.sample(s);s.sun_shadow=true;CHECK(shadow.sample(s).sun_shadow);
-    s.ambient_occlusion=true;{const auto a=shadow.sample(s);CHECK(a.ambient_occlusion&&!a.sun_shadow);} // its own edge, not the other key's
-    shadow.reset_focus();{const auto a=shadow.sample(s);CHECK(!a.sun_shadow&&!a.ambient_occlusion);}
+    shadow.reset_focus();{const auto a=shadow.sample(s);CHECK(!a.sun_shadow);}
     x3m::ComparisonControls startup; // a key held before the first foreground sample is not a press
     x3m::ComparisonKeys held{};held.foreground=true;held.control=held.shift=held.sun_shadow=true;
     CHECK(!startup.sample(held).sun_shadow);CHECK(!startup.sample(held).sun_shadow);
@@ -146,20 +145,17 @@ int main(){
     g.control=true;g.fog_toggle=false;fog.sample(g);g.foreground=false;g.fog_toggle=true;CHECK(!fog.sample(g).fog_toggle);
     g.foreground=true;CHECK(!fog.sample(g).fog_toggle); // held through alt-tab
     g.fog_toggle=false;fog.sample(g);g.fog_toggle=true;CHECK(fog.sample(g).fog_toggle);
-    // The stored fog look cycle (Ctrl+Alt+F11) was retired with the presets on 2026-09-22: F11 under Ctrl+Alt
-    // produces no fog action at all, and Ctrl+Shift+F11 remains ambient occlusion.
-    g.fog_toggle=false;fog.sample(g);g.ambient_occlusion=true;{const auto a=fog.sample(g);CHECK(!a.ambient_occlusion&&!a.fog_step&&!a.fog_toggle);}
-    g.ambient_occlusion=false;g.shift=true;g.alt=false;fog.sample(g);g.ambient_occlusion=true;{const auto a=fog.sample(g);CHECK(a.ambient_occlusion);} // Ctrl+Shift+F11 stays AO
-    g.ambient_occlusion=false;g.shift=false;g.alt=true;fog.sample(g);
+    // The stored fog look cycle (Ctrl+Alt+F11) was retired with the presets and Ctrl+Shift+F11 with ambient
+    // occlusion (both 2026-09-22): F11 has no key in the sampler.
     // A launch with only --fps-overlay: the caller leaves every other key
     // false (their polls are gated on their own options), so the overlay chord
     // is the only action the sampler can ever produce, edge after edge.
     {x3m::ComparisonControls alone;x3m::ComparisonKeys only{};only.foreground=true;alone.sample(only);
      for(unsigned i=0;i<50;++i){
         only.control=only.alt=true;only.shift=(i%5==0);only.fps_overlay=true;const auto a=alone.sample(only);
-        CHECK(a.fps_overlay==!only.shift&&!a.exposure&&!a.bloom&&!a.ambient_occlusion&&!a.screen_additive&&!a.source_gain&&!a.hull_gain&&!a.sun_shadow);
+        CHECK(a.fps_overlay==!only.shift&&!a.exposure&&!a.bloom&&!a.screen_additive&&!a.source_gain&&!a.hull_gain&&!a.sun_shadow);
         only.fps_overlay=false;const auto b=alone.sample(only);
-        CHECK(!b.fps_overlay&&!b.exposure&&!b.bloom&&!b.ambient_occlusion&&!b.screen_additive&&!b.source_gain&&!b.hull_gain&&!b.sun_shadow);
+        CHECK(!b.fps_overlay&&!b.exposure&&!b.bloom&&!b.screen_additive&&!b.source_gain&&!b.hull_gain&&!b.sun_shadow);
      }}
     x3m::ComparisonControls marker;x3m::ComparisonKeys m{};m.foreground=true;m.control=m.shift=m.fps_overlay=true;marker.sample(m);
     m.fps_overlay=false;marker.sample(m);m.fps_overlay=true;CHECK(!marker.sample(m).fps_overlay); // the marker chord alone, Alt up: never the overlay

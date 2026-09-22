@@ -10,7 +10,7 @@ namespace x3m {
 // boolean (the cascade replay and the apply quad), nothing per draw.
 struct ComparisonKeys {
     bool foreground = false, control = false, shift = false;
-    bool exposure = false, bloom = false, ambient_occlusion = false; // F9, F10, F11
+    bool exposure = false, bloom = false; // F9, F10
     bool screen_additive = false, source_gain = false; // F5, F6
     bool hull_gain = false; // F4
     bool sun_shadow = false; // F12
@@ -19,7 +19,7 @@ struct ComparisonKeys {
     bool fps_overlay = false; // F7 (with --fps-overlay): fires on Ctrl+Alt with Shift up, disjoint from the Ctrl+Shift+F7 telemetry marker
 };
 struct ComparisonActions {
-    bool exposure = false, bloom = false, ambient_occlusion = false;
+    bool exposure = false, bloom = false;
     bool screen_additive = false, source_gain = false;
     bool hull_gain = false;
     bool sun_shadow = false;
@@ -40,7 +40,6 @@ public:
         if (modifiers_down_ && keys.control && keys.shift) {
             result.exposure = keys.exposure && !exposure_down_;
             result.bloom = keys.bloom && !bloom_down_;
-            result.ambient_occlusion = keys.ambient_occlusion && !ambient_occlusion_down_;
             result.screen_additive = keys.screen_additive && !screen_additive_down_;
             result.source_gain = keys.source_gain && !source_gain_down_;
             result.hull_gain = keys.hull_gain && !hull_gain_down_;
@@ -60,12 +59,12 @@ public:
     bool bloom_requested = true;
 private:
     void latch(const ComparisonKeys& keys) noexcept {
-        exposure_down_ = keys.exposure; bloom_down_ = keys.bloom; ambient_occlusion_down_ = keys.ambient_occlusion;
+        exposure_down_ = keys.exposure; bloom_down_ = keys.bloom;
         screen_additive_down_ = keys.screen_additive; source_gain_down_ = keys.source_gain; hull_gain_down_ = keys.hull_gain;
         sun_shadow_down_ = keys.sun_shadow; fps_overlay_down_ = keys.fps_overlay; fog_toggle_down_ = keys.fog_toggle; fog_step_down_ = keys.fog_step;
         modifiers_down_ = keys.control && keys.shift;
     }
-    bool focused_ = false, exposure_down_ = false, bloom_down_ = false, ambient_occlusion_down_ = false, modifiers_down_ = false;
+    bool focused_ = false, exposure_down_ = false, bloom_down_ = false, modifiers_down_ = false;
     bool screen_additive_down_ = false, source_gain_down_ = false, hull_gain_down_ = false, sun_shadow_down_ = false;
     bool fps_overlay_down_ = false, fog_toggle_down_ = false, fog_step_down_ = false;
 };

@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 """Compile our original ps_3_0 fragments with a local native D3DX compiler.
 
-Fifteen authored programs are embedded (the four of the ambient occlusion
-chain, src/temporal/ao_*_ps.hlsl -> src/renderer/ambient_occlusion_*_program_inc.h,
-are listed in SHADERS only): the motion fragment
+Fifteen authored programs are embedded: the motion fragment
 (src/temporal/rigid_motion_ps.hlsl -> src/renderer/rigid_motion_pixel_program_inc.h),
 the current-depth fragment
 (src/temporal/current_depth_ps.hlsl -> src/renderer/current_depth_pixel_program_inc.h),
@@ -139,21 +137,6 @@ SHADERS = {
                         header=ROOT / 'src/renderer/quad_vertex_program_inc.h',
                         provenance=ROOT / 'verification/results/quad-vertex-program.json',
                         target='vs_3_0'),
-    # The ambient occlusion chain (docs/architecture/ambient-occlusion.md, step
-    # 1b): linearize, the GTAO horizon search, one 2D depth-aware blur and the
-    # bilateral upsample / multiply application.
-    'ao_linearize': dict(source=ROOT / 'src/temporal/ao_linearize_ps.hlsl',
-                         header=ROOT / 'src/renderer/ambient_occlusion_linearize_program_inc.h',
-                         provenance=ROOT / 'verification/results/ambient-occlusion-linearize-program.json'),
-    'ao_gtao': dict(source=ROOT / 'src/temporal/ao_gtao_ps.hlsl',
-                    header=ROOT / 'src/renderer/ambient_occlusion_gtao_program_inc.h',
-                    provenance=ROOT / 'verification/results/ambient-occlusion-gtao-program.json'),
-    'ao_blur': dict(source=ROOT / 'src/temporal/ao_blur_ps.hlsl',
-                    header=ROOT / 'src/renderer/ambient_occlusion_blur_program_inc.h',
-                    provenance=ROOT / 'verification/results/ambient-occlusion-blur-program.json'),
-    'ao_apply': dict(source=ROOT / 'src/temporal/ao_apply_ps.hlsl',
-                     header=ROOT / 'src/renderer/ambient_occlusion_apply_program_inc.h',
-                     provenance=ROOT / 'verification/results/ambient-occlusion-apply-program.json'),
     # The scene-end sun-shadow apply quad (docs/architecture/legacy-sun-application.md, section 2).
     'sun_shadow_apply': dict(source=ROOT / 'src/temporal/sun_shadow_apply_ps.hlsl',
                              header=ROOT / 'src/renderer/sun_shadow_apply_program_inc.h',

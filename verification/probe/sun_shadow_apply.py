@@ -787,7 +787,7 @@ def half_bytes(values):
 # ---- the twin on a run's F8 capture (docs/verification/directional-shadows.md,
 # "Run 36 session B (run106)"): the pass's inputs come from the session log, the
 # RT2, map and HDR dumps from the capture directory. No Wine, no game.
-PRODUCTION_M22, PRODUCTION_M32 = 1.000003, -6.0000184   # ao_default_m22/m32 (motion_output.cpp)
+PRODUCTION_M22, PRODUCTION_M32 = 1.000003, -6.0000184   # projection_default_m22/m32 (motion_output.cpp)
 PRODUCTION_BIAS = dict(bias_constant=.001, bias_max=.01, planar_step=.05)  # SunShadowApplyParams defaults (= the resolved default below at 250 / 512 / 1024)
 LINE_FIELDS = __import__('re').compile(r'(\w+)=([^\s]+)')
 # The world-unit bias (sun_shadow_apply_pass.h, sun_shadow_apply_bias): the

@@ -1,5 +1,5 @@
 #include "sun_occlusion_pass.h"
-#include "ambient_occlusion_caps.h"
+#include "ps3_program_slots.h"
 #include "quad_vertex_program.h"
 #include <cmath>
 #include <cstring>
@@ -165,7 +165,7 @@ HRESULT SunOcclusionPass::attach(IDirect3DDevice9* d, void* const* native, const
     device_ = d; vtable_ = native;
     auto refuse = [&](const char* reason, HRESULT hr) { caps_.reason = reason; device_ = nullptr; vtable_ = nullptr; return hr; };
     if ((caps.VertexShaderVersion & 0xffffu) < 0x0300u || (caps.PixelShaderVersion & 0xffffu) < 0x0300u) return refuse("shader_model", D3DERR_NOTAVAILABLE);
-    caps_.program_slots = ambient_occlusion_program_slots(reinterpret_cast<const std::uint32_t*>(visibility_words), std::size(visibility_words));
+    caps_.program_slots = ps3_program_slots(reinterpret_cast<const std::uint32_t*>(visibility_words), std::size(visibility_words));
     if (caps_.program_slots == 0 || caps.MaxPixelShader30InstructionSlots < caps_.program_slots) return refuse("ps_slots", D3DERR_NOTAVAILABLE);
     IDirect3D9* api = nullptr;
     D3DDEVICE_CREATION_PARAMETERS creation{};

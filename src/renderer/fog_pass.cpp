@@ -1,6 +1,6 @@
 #include "fog_pass.h"
 #include "../fog/fog_density_cache.h"
-#include "ambient_occlusion_caps.h"
+#include "ps3_program_slots.h"
 #include "quad_vertex_program.h"
 #include "../proxy/cpu_state.h"
 #include <algorithm>
@@ -13,7 +13,7 @@ namespace x3m::renderer {
 namespace {
 template<class T> void drop(T*& value) noexcept { if (value) { value->Release(); value = nullptr; } }
 bool lost(HRESULT hr) noexcept { return hr == D3DERR_DEVICELOST || hr == D3DERR_DEVICENOTRESET; }
-// IDirect3DDevice9 vtable slots (verification/probe/abi_check.cpp), as in AmbientOcclusionPass.
+// IDirect3DDevice9 vtable slots (verification/probe/abi_check.cpp).
 enum Slot : unsigned {
     GetDirect3D = 6, GetCreationParameters = 9, CreateTexture = 23, UpdateSurface = 30, UpdateTexture = 31, StretchRect = 34, SetRenderTarget = 37, GetRenderTarget = 38,
     SetDepthStencilSurface = 39, GetDepthStencilSurface = 40, BeginScene = 41, EndScene = 42,
@@ -223,7 +223,7 @@ HRESULT FogPass::attach(D d,void* const* native,const D3DCAPS9& caps,D3DFORMAT f
     if(!d||!native)return refuse("device_native_table",E_INVALIDARG);
     if(caps.PixelShaderVersion<D3DPS_VERSION(3,0)||caps.VertexShaderVersion<D3DVS_VERSION(3,0))return refuse("shader_model3");
     for(auto p:{std::pair{march_words,std::size(march_words)},std::pair{composite_words,std::size(composite_words)}}){
-        const unsigned slots=ambient_occlusion_program_slots(reinterpret_cast<const std::uint32_t*>(p.first),p.second);
+        const unsigned slots=ps3_program_slots(reinterpret_cast<const std::uint32_t*>(p.first),p.second);
         if(!slots||slots>caps.MaxPixelShader30InstructionSlots)return refuse("compiled_slots");
         caps_.largest_program_slots=std::max(caps_.largest_program_slots,slots);
     }
@@ -296,7 +296,7 @@ HRESULT FogPass::density_resources() noexcept {
         // Per program, not only the device's ps_3_0 count: repair sits at 510 of the 512 slots a ps_3_0
         // device has to offer, so a program that grew past the ceiling must refuse before it is created.
         for(auto p:{std::pair{density_march_words,std::size(density_march_words)},std::pair{density_composite_words,std::size(density_composite_words)},std::pair{density_repair_words,std::size(density_repair_words)}}){
-            const unsigned slots=ambient_occlusion_program_slots(reinterpret_cast<const std::uint32_t*>(p.first),p.second);
+            const unsigned slots=ps3_program_slots(reinterpret_cast<const std::uint32_t*>(p.first),p.second);
             if(!slots||slots>=density_required_slots)return refuse("density_compiled_slots",D3DERR_NOTAVAILABLE);
         }
         HRESULT hr=call<CreatePsFn>(CreatePixelShader)(device_,density_march_words,&density_march_);
@@ -314,7 +314,7 @@ HRESULT FogPass::density_resources() noexcept {
         // The visibility grid's three programs, the same per-program ceiling; created once, never on a draw path.
         bool fits=true;
         for(auto p:{std::pair{density_visibility_words,std::size(density_visibility_words)},std::pair{density_march_grid_words,std::size(density_march_grid_words)},std::pair{density_repair_grid_words,std::size(density_repair_grid_words)}}){
-            const unsigned slots=ambient_occlusion_program_slots(reinterpret_cast<const std::uint32_t*>(p.first),p.second);
+            const unsigned slots=ps3_program_slots(reinterpret_cast<const std::uint32_t*>(p.first),p.second);
             fits=fits&&slots&&slots<density_required_slots;
         }
         if(!fits)refuse_grid("density_grid_compiled_slots");

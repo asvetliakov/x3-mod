@@ -383,7 +383,7 @@ concrete remaining gates, removal status and the separate depth-adapter gap.
   fixture's `FP16_STORE` probe shows the Preview backend truncates FP16 render-target stores; the
   multiply law matches the CPU law within one FP16 ulp (bit-exact wherever the factor is 1), and the
   term stores occlusion so an unoccluded pixel is exactly 0 under either rounding mode. Step 2 (the
-  scene-end hook, `--ambient-occlusion`) adds `GetRenderTarget`/`GetContainer` on the owning target and,
+  scene-end hook, `--ambient-occlusion`; the chain was removed from source on 2026-09-22, cleanup batch 5, so this is historical) adds `GetRenderTarget`/`GetContainer` on the owning target and,
   in timing mode only, `CreateQuery` for `TIMESTAMPDISJOINT`/`TIMESTAMPFREQ`/`TIMESTAMP` polled with
   `D3DGETDATA_FLUSH`; a refused query type falls back to CPU wall time (the Preview backend refuses
   them; native drivers generally provide them, unverified here).

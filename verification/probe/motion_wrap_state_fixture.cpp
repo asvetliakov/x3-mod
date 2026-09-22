@@ -99,7 +99,6 @@ public:
  HRESULT motion_state_error_=D3DERR_INVALIDCALL;
  unsigned id_=1,generation_=0,frame_=0,taa_references_=0,logged_failures_=0,taa_invalidations=0,frames=0;
  Pass*taa_=nullptr;
- Pass*ao_=nullptr; // AO step 2 (8b0a7c1): after_reset forwards to the ambient-occlusion pass when one is attached
  Pass*depth_replay_=nullptr; // cascade-0 depth replay: after_reset forwards to the pass when one is attached
  Pass*sun_apply_=nullptr; // scene-end sun-shadow apply: after_reset forwards to the pass when one is attached
  Pass*sun_occlusion_pass_=nullptr; // partial sun occlusion (855fc1bc): after_reset forwards to the visibility pass when one is attached

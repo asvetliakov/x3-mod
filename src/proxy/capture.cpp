@@ -160,13 +160,6 @@ float screen_emission_additive_alpha = 1.f;      // K, finite 0..1; absent or in
 unsigned fade_witness_frames = 0; // X3M_FADE_WITNESS=<k>, 0 = off
 unsigned fade_route_threshold = 500; // X3M_FADE_ROUTE=<permille>|off: fade-band motion arm threshold (fade_route_core.h), default 500
 bool shimmer_trace_requested = false; // X3M_SHIMMER_TRACE=1, needs the route and TAA
-// X3M_AMBIENT_OCCLUSION=1 (default off; requires X3M_MOTION_OUTPUT=1 and
-// X3M_TAA=1): the half-resolution GTAO chain at the scene-end hook before the
-// resolve (docs/architecture/ambient-occlusion.md, step 2). X3M_AO_RADIUS=<m>
-// (0.1..100, default 2), X3M_AO_STRENGTH=<s> (0..1, default 0.5),
-// X3M_AO_DEBUG=1 (factor written as grayscale; implies timing),
-// X3M_AO_TIMING=1 (one ambient_occlusion_frame line per frame).
-bool ambient_occlusion_requested = false, ambient_occlusion_debug = false, ambient_occlusion_timing = false;
 // Ctrl+Shift+F12 (comparison-hotkeys.md, "Sun shadows at rest"): true once a
 // device enabled the scene-end sun-shadow application, so the A/B key is
 // polled only then; without --sun-shadow-apply the press is ignored.
@@ -175,7 +168,6 @@ bool sun_shadow_apply_requested = false;
 // frame-rate line on the presented image, Ctrl+Alt+F7 hides and shows it.
 // Off, the Present path pays one branch and polls no key.
 bool fps_overlay_requested = false;
-float ambient_occlusion_radius = 2.f, ambient_occlusion_strength = .5f;
 // X3M_VOLUMETRIC_FOG=1 (default off; docs/architecture/volumetric-fog.md, "Stage 1
 // implementation"): X3M_VOLUMETRIC_FOG_STRENGTH=<tau_max> (0..0.1, default 0.02),
 // X3M_VOLUMETRIC_FOG_ANISOTROPY=<g> (0..0.9, default 0.3),
@@ -1224,8 +1216,6 @@ void comparison_emitter(Device& ctx,const char* key,const char* label,int state,
 void comparison_begin_frame(Device& ctx) noexcept {
     // Ordinary launches pay no comparison input/foreground polling. A
     // requested-but-refused capability still accepts the UNAVAILABLE notice.
-    // Ctrl+Shift+F11 (ambient occlusion on/off) polls with the same sampler
-    // when --ambient-occlusion is on; it has no notice and no report.
     const bool hdr_compare=hdr_requested && hdr_config.tonemap==renderer::HdrTonemap::Agx;
     // Emitter A/B keys (comparison-hotkeys.md): Ctrl+Shift+F4 the hull
     // light-map gain, F5 the additive bullets, F6 the emission source gain
@@ -1235,14 +1225,13 @@ void comparison_begin_frame(Device& ctx) noexcept {
     // unconditionally inside it so an unrequested option answers with a
     // logged refusal.
     const bool emitter_compare=screen_emission_additive_requested || emission_source_gain!=1.f || hull_emission_gain!=1.f || hull_lightmap_gain!=1.f;
-    if(!hdr_compare && !ambient_occlusion_requested && !volumetric_fog_requested && !emitter_compare && !sun_shadow_apply_requested && !fps_overlay_requested)return;
+    if(!hdr_compare && !volumetric_fog_requested && !emitter_compare && !sun_shadow_apply_requested && !fps_overlay_requested)return;
     ComparisonKeys keys{};
     keys.foreground=comparison_foreground();
     keys.control=(GetAsyncKeyState(VK_CONTROL)&0x8000)!=0;
     keys.shift=(GetAsyncKeyState(VK_SHIFT)&0x8000)!=0;
     keys.exposure=hdr_compare && (GetAsyncKeyState(VK_F9)&0x8000)!=0;
     keys.bloom=hdr_compare && (GetAsyncKeyState(VK_F10)&0x8000)!=0;
-    keys.ambient_occlusion=ambient_occlusion_requested && (GetAsyncKeyState(VK_F11)&0x8000)!=0;
     // The emitter keys are polled with any emitter option on (an unrequested
     // one of the three still answers with a logged refusal); a launch with
     // only --fps-overlay polls its own chord and nothing else.
@@ -1265,7 +1254,6 @@ void comparison_begin_frame(Device& ctx) noexcept {
     keys.alt=(fps_overlay_requested || volumetric_fog_requested) && (GetAsyncKeyState(VK_MENU)&0x8000)!=0;
     keys.fps_overlay=fps_overlay_requested && (GetAsyncKeyState(VK_F7)&0x8000)!=0;
     const auto action=ctx.comparison.sample(keys);
-    if(action.ambient_occlusion)ctx.motion_output.ambient_occlusion_toggle();
     if(action.sun_shadow)ctx.motion_output.sun_shadow_toggle();
     if(action.fog_toggle)ctx.motion_output.volumetric_fog_toggle();
     if(action.fog_step)ctx.motion_output.volumetric_fog_step();
@@ -2539,7 +2527,6 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         if(apply_asked)log("sun_shadow_apply_mode requested=1 enabled=%u lane=%u replay=%u linear_materials=%u bias_units=%.9g clamp_texels=%.9g slope_texels=%.9g",apply_enabled,sun_lane_enabled,depth_asked&&enabled,linear_material_requested,bias_units,clamp_texels,slope_texels);
         sun_shadow_apply_requested=sun_shadow_apply_requested||apply_enabled; // opens the Ctrl+Shift+F12 sampler
         hooked.motion_output.configure_sun_shadow_apply(apply_enabled,bias_units,clamp_texels,slope_texels); } }
-    hooked.motion_output.configure_ambient_occlusion(ambient_occlusion_requested,ambient_occlusion_radius,ambient_occlusion_strength,ambient_occlusion_debug,ambient_occlusion_timing);
     hooked.motion_output.configure_volumetric_fog(volumetric_fog_requested,volumetric_fog_strength,volumetric_fog_anisotropy,volumetric_fog_everywhere,volumetric_fog_timing,volumetric_fog_cards_replace);
     hooked.motion_output.configure_volumetric_fog_range(volumetric_fog_range_stored);
     hooked.motion_output.configure_volumetric_fog_look(volumetric_fog_look_tuning);
@@ -3202,20 +3189,6 @@ void initialize_log(HMODULE module) {
      log("bloom_source_clamp_mode requested=%u enabled=%u clamp=%g clamp_valid=%u bloom=%u",
          unsigned(present),unsigned(bloom_source_clamp<x3::temporal::kAgxClampOff),
          double(value),unsigned(valid),unsigned(bloom_requested));}
-    // X3M_AMBIENT_OCCLUSION=1: the AO chain at the scene end (needs the route
-    // and the resolve, which integrates the rotated noise). The whole radius and
-    // strength strings must parse; out of range keeps the default.
-    // A value that does not fit the buffer (GetEnvironmentVariableW returns the
-    // required size, >= 32) is invalid for every AO variable.
-    {const auto ao_env=[&](const wchar_t* name){const DWORD n=GetEnvironmentVariableW(name,setting,32);return n>0&&n<32?n:0ul;};
-     const bool asked=ao_env(L"X3M_AMBIENT_OCCLUSION")==1 && setting[0]==L'1';
-     ambient_occlusion_requested=asked && motion_output_requested && taa_requested;
-     ambient_occlusion_radius=2.f;ambient_occlusion_strength=.5f;
-     if(ao_env(L"X3M_AO_RADIUS")){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=.1f&&v<=100.f)ambient_occlusion_radius=v;}
-     if(ao_env(L"X3M_AO_STRENGTH")){wchar_t* end=nullptr;const float v=wcstof(setting,&end);if(end!=setting&&*end==L'\0'&&v>=0.f&&v<=1.f)ambient_occlusion_strength=v;}
-     ambient_occlusion_debug=ambient_occlusion_requested && ao_env(L"X3M_AO_DEBUG")==1 && setting[0]==L'1';
-     ambient_occlusion_timing=ambient_occlusion_requested && (ambient_occlusion_debug || (ao_env(L"X3M_AO_TIMING")==1 && setting[0]==L'1'));
-     if(asked)log("ambient_occlusion_mode requested=1 enabled=%u motion_output=%u taa=%u radius_m=%g strength=%g debug=%u timing=%u",ambient_occlusion_requested,motion_output_requested,taa_requested,double(ambient_occlusion_radius),double(ambient_occlusion_strength),ambient_occlusion_debug,ambient_occlusion_timing);}
     sector_background_requested=GetEnvironmentVariableW(L"X3M_SECTOR_BACKGROUND",setting,32)==1 && setting[0]==L'1';
     // X3M_VOLUMETRIC_FOG=1: the sun-lit medium at the scene end (needs the route and
     // the resolve, which accumulates the jittered march). Whole strings must
@@ -3592,13 +3565,6 @@ extern "C" __declspec(dllexport) HRESULT x3m_hdr_fixture_exposure(IDirect3DDevic
     const auto it=x3m::devices.find(device);
     if(it==x3m::devices.end()) return D3DERR_INVALIDCALL;
     return it->second->motion_output.fixture_hdr_exposure(out,floats);
-}
-// The Ctrl+Shift+F11 action without the key: the same toggle the sampler calls.
-extern "C" __declspec(dllexport) int x3m_ambient_occlusion_fixture_toggle(IDirect3DDevice9* device) {
-    x3m::CaptureLock lock;
-    const auto it=x3m::devices.find(device);
-    if(it==x3m::devices.end()) return -2;
-    return it->second->motion_output.ambient_occlusion_toggle();
 }
 // The two hull-family actions without their keys: the same toggle the sampler
 // calls, lightmap!=0 for Ctrl+Shift+F4 (the light-map gain), 0 for the guide

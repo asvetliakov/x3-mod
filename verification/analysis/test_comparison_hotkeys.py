@@ -62,8 +62,7 @@ class ComparisonHotkeys(unittest.TestCase):
         self.assertIn('sun_shadow_enabled_ = !sun_shadow_enabled_;', toggle)
         self.assertIn('if (depth_replay_) depth_replay_->invalidate_retained();', toggle)
         self.assertIn('sun_shadow_toggle device=%llu state=%u frame=%llu', toggle)
-        # A device with neither the replay nor the apply: a logged no-op, as an
-        # unrequested ambient-occlusion press is.
+        # A device with neither the replay nor the apply: a logged no-op.
         self.assertIn('if (!sun_apply_requested_ && !depth_replay_requested_) {', toggle)
         self.assertIn('return -1;', toggle)
         self.assertLess(toggle.index('return -1;'), toggle.index('sun_shadow_enabled_ = !sun_shadow_enabled_;'))
@@ -194,12 +193,13 @@ class ComparisonHotkeys(unittest.TestCase):
         self.assertIn('ctx.comparison_notice.visible(GetTickCount64()) && comparison_foreground()', present)
         motion_source = (ROOT / 'src/proxy/motion_output.cpp').read_text()
         polling = extract_function(capture, 'void comparison_begin_frame(')
-        # Ordinary launches (no HDR AgX, no ambient occlusion) return before any key or foreground query.
-        self.assertLess(polling.index('if(!hdr_compare && !ambient_occlusion_requested && !volumetric_fog_requested && !emitter_compare && !sun_shadow_apply_requested && !fps_overlay_requested)return;'),
+        # Ordinary launches (no HDR AgX, no fog, emitter or shadow option) return before any key or foreground query.
+        self.assertLess(polling.index('if(!hdr_compare && !volumetric_fog_requested && !emitter_compare && !sun_shadow_apply_requested && !fps_overlay_requested)return;'),
                         polling.index('comparison_foreground()'))
         self.assertIn('const bool hdr_compare=hdr_requested && hdr_config.tonemap==renderer::HdrTonemap::Agx;', polling)
-        self.assertLess(polling.index('if(action.ambient_occlusion)ctx.motion_output.ambient_occlusion_toggle();'),
+        self.assertLess(polling.index('if(action.sun_shadow)ctx.motion_output.sun_shadow_toggle();'),
                         polling.index('if(!action.exposure && !action.bloom)return;'))
+        self.assertNotIn('ambient_occlusion', capture)  # Ctrl+Shift+F11 went with the AO chain (cleanup batch 5)
         # Emitter A/B keys: F4 the hull light-map gain alone (its own flag), F5
         # additive, F6 the effects group: the twenty emission-source pairs and
         # the ONE/ONE guide lights, which take the same gain (F7 is the

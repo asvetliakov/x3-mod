@@ -75,13 +75,14 @@ class SunShareLane(unittest.TestCase):
         capture = (ROOT/'src/proxy/capture.cpp').read_text()
         self.assertIn('sun_lane_enabled=asked&&motion_output_requested&&taa_requested&&hdr_requested;', capture)
         self.assertIn('apply_asked&&sun_lane_enabled&&depth_asked&&enabled', capture)
-        # Scene-end order at both sites: lane publication, replay, apply, then AO.
+        # Scene-end order at both sites: lane publication, replay, apply, then fog (AO removed, batch 5).
         hook = motion[motion.index('void MotionOutput::scene_end_hook'):]
         self.assertLess(hook.index('publish_shadow_replay_candidates();'), hook.index('run_sun_shadow_apply();'))
-        self.assertLess(hook.index('run_sun_shadow_apply();'), hook.index('run_ambient_occlusion();'))
+        self.assertLess(hook.index('run_sun_shadow_apply();'), hook.index('run_volumetric_fog();'))
         copy = motion[motion.index('publish_sun_lane("copy")'):]
         self.assertLess(copy.index('publish_shadow_replay_candidates();'), copy.index('run_sun_shadow_apply();'))
-        self.assertLess(copy.index('run_sun_shadow_apply();'), copy.index('run_ambient_occlusion();'))
+        self.assertLess(copy.index('run_sun_shadow_apply();'), copy.index('run_volumetric_fog();'))
+        self.assertNotIn('ambient_occlusion', motion)
 
     def test_publication_and_coverage(self):
         from tools.analysis.analyze_sun_share_lane import analyze

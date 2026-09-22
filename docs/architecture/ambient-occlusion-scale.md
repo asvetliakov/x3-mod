@@ -1,5 +1,7 @@
 # Ambient occlusion at X3's scale: keep, drop or opt-in
 
+**Historical.** The GTAO/SSAO chain was removed from source on 2026-09-22 (cleanup batch 5, `docs/architecture/cleanup-inventory-2026-09-22.md`); this note is kept as a record.
+
 Design note for goal 7, written 2026-09-15 after runs 19 and 20, for ratification by the main
 session. Owning implementation note: `ambient-occlusion.md` (steps 1, 1b, 2); ledger:
 `../verification/ambient-occlusion.md`. Nothing here is implemented.

@@ -459,9 +459,6 @@ public:
  bool releasing_=false,taa_busy_=false,hdr_enabled_=true,fill_pending_=false;
  bool hdr_target_failed_=false,hdr_blocked_=false,target_failed_=false,pending_valid_=false,main_msaa_=false,msaa_logged_=false;unsigned hdr_blocked_latches_=0,main_msaa_samples_=0;Surface main_,main_depth_;History selector_;renderer::CameraState camera_previous_;
  unsigned taa_references_=0;std::unique_ptr<Pass>hdr_=std::make_unique<Pass>(),taa_;History history_;
- // Ambient occlusion pass and its timestamp queries (step 2): lifetime seams only.
- std::unique_ptr<Pass>ao_;bool ao_timing_created_=false,ao_timing_failed_=false,ao_timing_lost_=false,ao_attach_failed_=false;unsigned ao_timing_releases_=0,ao_chain_failures_=0,ao_attach_count_=0;std::uint64_t ao_attach_frame_=0;D3DFORMAT ao_adapter_format_=D3DFMT_UNKNOWN,ao_target_format_=D3DFMT_UNKNOWN;
- void ao_timing_release()noexcept{++ao_timing_releases_;ao_timing_created_=false;}
  // Cascade-0 depth replay (default off): only the lifetime seams the extracted
  // control flow touches - lease release, detach, Reset and re-attach state.
  bool depth_replay_requested_=false,depth_replay_attach_failed_=false;std::unique_ptr<Pass>depth_replay_;unsigned depth_lease_releases_=0;

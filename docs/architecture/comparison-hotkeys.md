@@ -22,10 +22,9 @@ policy option. Direct environment configuration accepts `auto`, `manual` or
 falls back to fixed.
 
 Hold **Ctrl+Shift**, then press **F9** for AUTO ↔ fixed EV 0 or **F10** for bloom
-ON ↔ OFF (**F11** toggles the ambient occlusion chain when `--ambient-occlusion` is on; no
-notice, one `ambient_occlusion_toggle` log line per press, `docs/architecture/ambient-occlusion.md`
-"Step 2"; **F12** switches the sun shadows off and on with `--sun-shadow-apply`,
-"Sun shadows at rest" below). Three more keys switch one emitter gain between its configured
+ON ↔ OFF (**F12** switches the sun shadows off and on with `--sun-shadow-apply`,
+"Sun shadows at rest" below; Ctrl+Shift+F11, the former ambient-occlusion toggle, was
+removed with the GTAO/SSAO chain on 2026-09-22 and F11 now has no action). Three more keys switch one emitter gain between its configured
 gain and native, without recreating anything: **F4** the hull light-map gain
 alone (`--hull-lightmap-gain G`, the self-illumination term of the 100 opaque
 hull programs, `linear-emission-cost.md` "Hull light-map gain"), **F5** the
@@ -108,14 +107,13 @@ releases the maps and no transaction recreates them until the toggle comes back.
 
 Each press logs `sun_shadow_toggle device= state= frame= accepted=`; a device
 with neither the replay nor the apply requested answers `accepted=0` and
-changes nothing, as an unrequested ambient-occlusion press does. There is no
-notice line and no `renderer_comparison` record, as with F11. `shadow_toggle=`
+changes nothing. There is no notice line and no `renderer_comparison` record. `shadow_toggle=`
 on the `shadow_replay_depth` line is printed on enabled frames only — a frame
 toggled off writes no such line at all. A triage therefore splits `frame_end`
 medians by the `sun_shadow_toggle` events, which bound the intervals, and by
 the absence of the shadow line inside an off interval; `shadow_toggle=` states
 what each written line ran under. The key follows the same edge, chord and
-focus rules as F4-F6 and F9-F11; a held key, a modifier change or a focus loss
+focus rules as F4-F6, F9 and F10; a held key, a modifier change or a focus loss
 is not a press.
 
 A dark two-line top-left panel lasts three seconds. It shows AUTO/fixed effective
@@ -212,8 +210,8 @@ key is polled. In-game behavior is unverified.
 The stored fog's look-preset cycle (**Ctrl+Alt+F11**) and the overlay's `L0..L3`
 readout were retired on 2026-09-22 with the presets themselves: the stored range
 has one look (`fog-density-runtime-integration.md`, "The look"), F11 under
-Ctrl+Alt produces no fog action, and Ctrl+Shift+F11 remains the ambient
-occlusion toggle. The overlay's fog part reads `FOG 1.50x`.
+Ctrl+Alt produces no fog action (Ctrl+Shift+F11 went with ambient occlusion
+the same day). The overlay's fog part reads `FOG 1.50x`.
 
 ## Exposure handoff and capability preparation
 
