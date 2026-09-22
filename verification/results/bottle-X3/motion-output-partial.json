@@ -29,250 +29,6 @@
   },
   "consume_only": false,
   "selected_cases": [
-    "seam-ownership-shadow-replay-cascades",
-    "seam-ownership-shadow-replay-cascades-casters-20",
-    "seam-ownership-shadow-replay-cascades-toggle"
-  ],
-  "cases": {
-    "seam-ownership-shadow-replay-cascades": {
-      "checks": 278,
-      "toggle": null,
-      "sun_point": {
-        "mode": "no_seam",
-        "reasons": {
-          "unavailable": 8
-        },
-        "poll_statuses": {
-          "executable_mismatch": 8
-        },
-        "rederivation_grid_phase_texels": null,
-        "events": [
-          [
-            0,
-            "latch",
-            "unavailable"
-          ]
-        ],
-        "worst_agreement_deg": 0.0,
-        "rederivations": 0,
-        "poll_us_median": 0.0,
-        "poll_us_max": 0.0
-      },
-      "depth": true,
-      "taa": false,
-      "casters": 2,
-      "cascades": 2,
-      "extents": [
-        8.0,
-        400.0
-      ],
-      "sizes": [
-        256,
-        256
-      ],
-      "caps": [
-        2,
-        8
-      ],
-      "budget": 5,
-      "frames": 8,
-      "per_frame": {
-        "0": {
-          "records": [
-            2,
-            4
-          ],
-          "capped": [
-            0,
-            0
-          ],
-          "dropped": 0,
-          "issues": 6,
-          "draws": [
-            2,
-            4
-          ],
-          "far_replayed": 1,
-          "far_frame": 0,
-          "toggle": 1
-        },
-        "1": {
-          "records": [
-            2,
-            4
-          ],
-          "capped": [
-            1,
-            0
-          ],
-          "dropped": 0,
-          "issues": 6,
-          "draws": [
-            2,
-            0
-          ],
-          "far_replayed": 0,
-          "far_frame": 0,
-          "toggle": 1
-        },
-        "2": {
-          "records": [
-            2,
-            4
-          ],
-          "capped": [
-            1,
-            0
-          ],
-          "dropped": 0,
-          "issues": 6,
-          "draws": [
-            0,
-            0
-          ],
-          "far_replayed": 0,
-          "far_frame": -1,
-          "toggle": 1
-        },
-        "3": {
-          "records": [
-            2,
-            4
-          ],
-          "capped": [
-            1,
-            0
-          ],
-          "dropped": 0,
-          "issues": 6,
-          "draws": [
-            2,
-            0
-          ],
-          "far_replayed": 0,
-          "far_frame": -1,
-          "toggle": 1
-        },
-        "4": {
-          "records": [
-            2,
-            4
-          ],
-          "capped": [
-            1,
-            0
-          ],
-          "dropped": 0,
-          "issues": 6,
-          "draws": [
-            2,
-            4
-          ],
-          "far_replayed": 1,
-          "far_frame": 4,
-          "toggle": 1
-        },
-        "5": {
-          "records": [
-            2,
-            4
-          ],
-          "capped": [
-            1,
-            0
-          ],
-          "dropped": 0,
-          "issues": 6,
-          "draws": [
-            0,
-            0
-          ],
-          "far_replayed": 0,
-          "far_frame": -1,
-          "toggle": 1
-        },
-        "6": {
-          "records": [
-            2,
-            4
-          ],
-          "capped": [
-            1,
-            0
-          ],
-          "dropped": 0,
-          "issues": 6,
-          "draws": [
-            2,
-            4
-          ],
-          "far_replayed": 1,
-          "far_frame": 6,
-          "toggle": 1
-        },
-        "7": {
-          "records": [
-            2,
-            4
-          ],
-          "capped": [
-            1,
-            0
-          ],
-          "dropped": 0,
-          "issues": 6,
-          "draws": [
-            0,
-            0
-          ],
-          "far_replayed": 0,
-          "far_frame": -1,
-          "toggle": 1
-        }
-      },
-      "refusals": [
-        {
-          "device": "1",
-          "frame": "2",
-          "reason": "lease",
-          "detail": "bookends",
-          "result": "00000000",
-          "stage": "0"
-        },
-        {
-          "device": "1",
-          "frame": "5",
-          "reason": "state",
-          "detail": "sun_changing",
-          "result": "00000000",
-          "stage": "0"
-        },
-        {
-          "device": "1",
-          "frame": "7",
-          "reason": "state",
-          "detail": "multistream",
-          "result": "00000000",
-          "stage": "0"
-        }
-      ],
-      "targets": [
-        {
-          "device": 1,
-          "frame": 0,
-          "size": 256,
-          "map_format": 114,
-          "depth_format": 77,
-          "allocations": 1
-        },
-        {
-          "device": 1,
-          "frame": 4,
-          "size": 256,
-          "map_format": 114,
-          "depth_format": 77,
-          "allocations": 2
-
     "seam-ownership-shadow-pool-footprint-off",
     "seam-ownership-shadow-pool-footprint-px24",
     "seam-ownership-shadow-pool-footprint-px8",
@@ -1190,995 +946,8 @@
             1
           ]
         }
-      ],
-      "sun": {
-        "frames": 8,
-        "register": 4,
-        "program": "8759c7838bbc86c2",
-        "changing_frame": 5,
-        "samples_per_frame": 4
       },
       "map": {
-        "frames": {
-          "0/0": {
-            "size": 256,
-            "covered_cpu": 659,
-            "covered_gpu": 659,
-            "ambiguous": 69,
-            "compared": 630,
-            "coverage_disagreements": 0,
-            "max_depth_error": 3.7804511665573415e-07,
-            "max_depth_error_codes16": 0.024775564765150193,
-            "tolerance": 0.0001,
-            "finite": true,
-            "ok": true
-          },
-          "0/1": {
-            "size": 256,
-            "covered_cpu": 3,
-            "covered_gpu": 3,
-            "ambiguous": 4,
-            "compared": 2,
-            "coverage_disagreements": 0,
-            "max_depth_error": 1.825975517455447e-06,
-            "max_depth_error_codes16": 0.11966713151196018,
-            "tolerance": 0.0001,
-            "finite": true,
-            "ok": true
-          },
-          "1/0": {
-            "size": 256,
-            "covered_cpu": 10583,
-            "covered_gpu": 10583,
-            "ambiguous": 97,
-            "compared": 10528,
-            "coverage_disagreements": 0,
-            "max_depth_error": 6.326856818450466e-07,
-            "max_depth_error_codes16": 0.04146368884539697,
-            "tolerance": 0.0001,
-            "finite": true,
-            "ok": true
-          },
-          "1/1": {
-            "unchanged": true,
-            "valid": true
-          },
-          "2/0": {
-            "unchanged": true,
-            "valid": false
-          },
-          "2/1": {
-            "unchanged": true,
-            "valid": false
-          },
-          "3/0": {
-            "size": 256,
-            "covered_cpu": 10129,
-            "covered_gpu": 10131,
-            "ambiguous": 101,
-            "compared": 10076,
-            "coverage_disagreements": 0,
-            "max_depth_error": 5.935134732570901e-07,
-            "max_depth_error_codes16": 0.03889649898337666,
-            "tolerance": 0.0001,
-            "finite": true,
-            "ok": true
-          },
-          "3/1": {
-            "unchanged": true,
-            "valid": false
-          },
-          "4/0": {
-            "size": 256,
-            "covered_cpu": 9894,
-            "covered_gpu": 9894,
-            "ambiguous": 118,
-            "compared": 9820,
-            "coverage_disagreements": 0,
-            "max_depth_error": 5.166222021291134e-07,
-            "max_depth_error_codes16": 0.03385735263873357,
-            "tolerance": 0.0001,
-            "finite": true,
-            "ok": true
-          },
-          "4/1": {
-            "size": 256,
-            "covered_cpu": 4,
-            "covered_gpu": 4,
-            "ambiguous": 7,
-            "compared": 3,
-            "coverage_disagreements": 0,
-            "max_depth_error": 4.193166540655824e-06,
-            "max_depth_error_codes16": 0.27480336240842007,
-            "tolerance": 0.0001,
-            "finite": true,
-            "ok": true
-          },
-          "5/0": {
-            "unchanged": true,
-            "valid": false
-          },
-          "5/1": {
-            "unchanged": true,
-            "valid": false
-          },
-          "6/0": {
-            "size": 256,
-            "covered_cpu": 9415,
-            "covered_gpu": 9415,
-            "ambiguous": 97,
-            "compared": 9364,
-            "coverage_disagreements": 0,
-            "max_depth_error": 4.2283421308741964e-07,
-            "max_depth_error_codes16": 0.027710862988897134,
-            "tolerance": 0.0001,
-            "finite": true,
-            "ok": true
-          },
-          "6/1": {
-            "size": 256,
-            "covered_cpu": 5,
-            "covered_gpu": 5,
-            "ambiguous": 7,
-            "compared": 1,
-            "coverage_disagreements": 0,
-            "max_depth_error": 7.044989285276415e-07,
-            "max_depth_error_codes16": 0.046170041779987514,
-            "tolerance": 0.0001,
-            "finite": true,
-            "ok": true
-          },
-          "7/0": {
-            "unchanged": true,
-            "valid": false
-          },
-          "7/1": {
-            "unchanged": true,
-            "valid": false
-          }
-        },
-        "max_depth_error": 4.193166540655824e-06,
-        "covered_texels": 40694
-      },
-      "us": {
-        "frames": 5,
-        "min": 48.1,
-        "median": 56.3,
-        "max": 1718.4,
-        "per_issue_median": 9.383333333333333,
-        "issues_per_frame": [
-          6,
-          2,
-          2,
-          6,
-          6
-        ]
-      },
-      "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-ownership-shadow-replay-cascades-20260922-193312-179042",
-      "trace_sha256": "2df17aa6baf8552da2529402d1588b2f213bcee42d8b9db3be51a9c1910bcb01",
-      "dll_sha256": "a0fd102da404dc83b8ff2d7b6f141a7f12549cfc8332e1447b945a985e128ac7",
-      "exe_sha256": "30591f64dbe6a302892a9aacecdcfcbb1190c5622c732dcd239a1ed2cb91f4d2"
-    },
-    "seam-ownership-shadow-replay-cascades-casters-20": {
-      "checks": 278,
-      "toggle": null,
-      "sun_point": {
-        "mode": "no_seam",
-        "reasons": {
-          "unavailable": 8
-        },
-        "poll_statuses": {
-          "executable_mismatch": 8
-        },
-        "rederivation_grid_phase_texels": null,
-        "events": [
-          [
-            0,
-            "latch",
-            "unavailable"
-          ]
-        ],
-        "worst_agreement_deg": 0.0,
-        "rederivations": 0,
-        "poll_us_median": 0.0,
-        "poll_us_max": 0.0
-      },
-      "depth": true,
-      "taa": false,
-      "casters": 20,
-      "cascades": 2,
-      "extents": [
-        8.0,
-        400.0
-      ],
-      "sizes": [
-        1024,
-        1024
-      ],
-      "caps": [
-        32,
-        32
-      ],
-      "budget": 640,
-      "frames": 8,
-      "per_frame": {
-        "0": {
-          "records": [
-            20,
-            22
-          ],
-          "capped": [
-            0,
-            0
-          ],
-          "dropped": 0,
-          "issues": 42,
-          "draws": [
-            20,
-            22
-          ],
-          "far_replayed": 1,
-          "far_frame": 0,
-          "toggle": 1
-        },
-        "1": {
-          "records": [
-            21,
-            22
-          ],
-          "capped": [
-            0,
-            0
-          ],
-          "dropped": 0,
-          "issues": 43,
-          "draws": [
-            21,
-            22
-          ],
-          "far_replayed": 1,
-          "far_frame": 1,
-          "toggle": 1
-        },
-        "2": {
-          "records": [
-            21,
-            22
-          ],
-          "capped": [
-            0,
-            0
-          ],
-          "dropped": 0,
-          "issues": 43,
-          "draws": [
-            0,
-            0
-          ],
-          "far_replayed": 0,
-          "far_frame": -1,
-          "toggle": 1
-        },
-        "3": {
-          "records": [
-            21,
-            22
-          ],
-          "capped": [
-            0,
-            0
-          ],
-          "dropped": 0,
-          "issues": 43,
-          "draws": [
-            21,
-            22
-          ],
-          "far_replayed": 1,
-          "far_frame": 3,
-          "toggle": 1
-        },
-        "4": {
-          "records": [
-            21,
-            22
-          ],
-          "capped": [
-            0,
-            0
-          ],
-          "dropped": 0,
-          "issues": 43,
-          "draws": [
-            21,
-            22
-          ],
-          "far_replayed": 1,
-          "far_frame": 4,
-          "toggle": 1
-        },
-        "5": {
-          "records": [
-            21,
-            22
-          ],
-          "capped": [
-            0,
-            0
-          ],
-          "dropped": 0,
-          "issues": 43,
-          "draws": [
-            0,
-            0
-          ],
-          "far_replayed": 0,
-          "far_frame": -1,
-          "toggle": 1
-        },
-        "6": {
-          "records": [
-            21,
-            22
-          ],
-          "capped": [
-            0,
-            0
-          ],
-          "dropped": 0,
-          "issues": 43,
-          "draws": [
-            21,
-            22
-          ],
-          "far_replayed": 1,
-          "far_frame": 6,
-          "toggle": 1
-        },
-        "7": {
-          "records": [
-            21,
-            22
-          ],
-          "capped": [
-            0,
-            0
-          ],
-          "dropped": 0,
-          "issues": 43,
-          "draws": [
-            0,
-            0
-          ],
-          "far_replayed": 0,
-          "far_frame": -1,
-          "toggle": 1
-        }
-      },
-      "refusals": [
-        {
-          "device": "1",
-          "frame": "2",
-          "reason": "lease",
-          "detail": "bookends",
-          "result": "00000000",
-          "stage": "0"
-        },
-        {
-          "device": "1",
-          "frame": "5",
-          "reason": "state",
-          "detail": "sun_changing",
-          "result": "00000000",
-          "stage": "0"
-        },
-        {
-          "device": "1",
-          "frame": "7",
-          "reason": "state",
-          "detail": "multistream",
-          "result": "00000000",
-          "stage": "0"
-        }
-      ],
-      "targets": [
-        {
-          "device": 1,
-          "frame": 0,
-          "size": 1024,
-          "map_format": 114,
-          "depth_format": 77,
-          "allocations": 1
-        },
-        {
-          "device": 1,
-          "frame": 4,
-          "size": 1024,
-          "map_format": 114,
-          "depth_format": 77,
-          "allocations": 2
-        }
-      ],
-      "sun": {
-        "frames": 8,
-        "register": 4,
-        "program": "8759c7838bbc86c2",
-        "changing_frame": 5,
-        "samples_per_frame": 22
-      },
-      "map": {
-        "frames": {
-          "0/0": {
-            "size": 1024,
-            "covered_cpu": 17024,
-            "covered_gpu": 17025,
-            "ambiguous": 901,
-            "compared": 16219,
-            "coverage_disagreements": 0,
-            "max_depth_error": 1.9239704740492414e-07,
-            "max_depth_error_codes16": 0.012608932898729108,
-            "tolerance": 0.0001,
-            "finite": true,
-            "ok": true
-          },
-          "0/1": {
-            "size": 1024,
-            "covered_cpu": 83,
-            "covered_gpu": 83,
-            "ambiguous": 23,
-            "compared": 67,
-            "coverage_disagreements": 0,
-            "max_depth_error": 2.576256342090577e-06,
-            "max_depth_error_codes16": 0.16883753563524806,
-            "tolerance": 0.0001,
-            "finite": true,
-            "ok": true
-          },
-          "1/0": {
-            "size": 1024,
-            "covered_cpu": 171201,
-            "covered_gpu": 171203,
-            "ambiguous": 1378,
-            "compared": 170032,
-            "coverage_disagreements": 0,
-            "max_depth_error": 2.534217737881761e-07,
-            "max_depth_error_codes16": 0.01660824936698191,
-            "tolerance": 0.0001,
-            "finite": true,
-            "ok": true
-          },
-          "1/1": {
-            "size": 1024,
-            "covered_cpu": 76,
-            "covered_gpu": 76,
-            "ambiguous": 46,
-            "compared": 67,
-            "coverage_disagreements": 0,
-            "max_depth_error": 2.747054033302998e-06,
-            "max_depth_error_codes16": 0.18003093312654528,
-            "tolerance": 0.0001,
-            "finite": true,
-            "ok": true
-          },
-          "2/0": {
-            "unchanged": true,
-            "valid": false
-          },
-          "2/1": {
-            "unchanged": true,
-            "valid": false
-          },
-          "3/0": {
-            "size": 1024,
-            "covered_cpu": 163929,
-            "covered_gpu": 163930,
-            "ambiguous": 1403,
-            "compared": 162746,
-            "coverage_disagreements": 0,
-            "max_depth_error": 2.439596689107759e-07,
-            "max_depth_error_codes16": 0.01598814086173661,
-            "tolerance": 0.0001,
-            "finite": true,
-            "ok": true
-          },
-          "3/1": {
-            "size": 1024,
-            "covered_cpu": 78,
-            "covered_gpu": 78,
-            "ambiguous": 22,
-            "compared": 65,
-            "coverage_disagreements": 0,
-            "max_depth_error": 3.348890236343216e-06,
-            "max_depth_error_codes16": 0.219472870528989,
-            "tolerance": 0.0001,
-            "finite": true,
-            "ok": true
-          },
-          "4/0": {
-            "size": 1024,
-            "covered_cpu": 160223,
-            "covered_gpu": 160227,
-            "ambiguous": 1614,
-            "compared": 158861,
-            "coverage_disagreements": 0,
-            "max_depth_error": 2.706857281653541e-07,
-            "max_depth_error_codes16": 0.017739659881044645,
-            "tolerance": 0.0001,
-            "finite": true,
-            "ok": true
-          },
-          "4/1": {
-            "size": 1024,
-            "covered_cpu": 76,
-            "covered_gpu": 76,
-            "ambiguous": 48,
-            "compared": 58,
-            "coverage_disagreements": 0,
-            "max_depth_error": 3.334891974016152e-06,
-            "max_depth_error_codes16": 0.21855548040912254,
-            "tolerance": 0.0001,
-            "finite": true,
-            "ok": true
-          },
-          "5/0": {
-            "unchanged": true,
-            "valid": false
-          },
-          "5/1": {
-            "unchanged": true,
-            "valid": false
-          },
-          "6/0": {
-            "size": 1024,
-            "covered_cpu": 152495,
-            "covered_gpu": 152497,
-            "ambiguous": 1136,
-            "compared": 151547,
-            "coverage_disagreements": 0,
-            "max_depth_error": 1.9831130093628246e-07,
-            "max_depth_error_codes16": 0.012996529418160208,
-            "tolerance": 0.0001,
-            "finite": true,
-            "ok": true
-          },
-          "6/1": {
-            "size": 1024,
-            "covered_cpu": 71,
-            "covered_gpu": 71,
-            "ambiguous": 27,
-            "compared": 58,
-            "coverage_disagreements": 0,
-            "max_depth_error": 1.95934914393181e-06,
-            "max_depth_error_codes16": 0.1284079054967151,
-            "tolerance": 0.0001,
-            "finite": true,
-            "ok": true
-          },
-          "7/0": {
-            "unchanged": true,
-            "valid": false
-          },
-          "7/1": {
-            "unchanged": true,
-            "valid": false
-          }
-        },
-        "max_depth_error": 3.348890236343216e-06,
-        "covered_texels": 665266
-      },
-      "us": {
-        "frames": 5,
-        "min": 97.4,
-        "median": 111.4,
-        "max": 1710.6,
-        "per_issue_median": 2.590697674418605,
-        "issues_per_frame": [
-          42,
-          43,
-          43,
-          43,
-          43
-        ]
-      },
-      "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-ownership-shadow-replay-cascades-casters-20-20260922-193318-614385",
-      "trace_sha256": "bc4c1d5d840cb94a496d6ac3bc5550c05787df8cdf071b98f75980e0d992b454",
-      "dll_sha256": "a0fd102da404dc83b8ff2d7b6f141a7f12549cfc8332e1447b945a985e128ac7",
-      "exe_sha256": "30591f64dbe6a302892a9aacecdcfcbb1190c5622c732dcd239a1ed2cb91f4d2"
-    },
-    "seam-ownership-shadow-replay-cascades-toggle": {
-      "checks": 283,
-      "toggle": {
-        "off_frames": [
-          1,
-          2,
-          4,
-          5
-        ],
-        "on_frames": [
-          3,
-          6
-        ]
-      },
-      "sun_point": {
-        "mode": "no_seam",
-        "reasons": {
-          "unavailable": 8
-        },
-        "poll_statuses": {
-          "executable_mismatch": 8
-        },
-        "rederivation_grid_phase_texels": null,
-        "events": [
-          [
-            0,
-            "latch",
-            "unavailable"
-          ]
-        ],
-        "worst_agreement_deg": 0.0,
-        "rederivations": 0,
-        "poll_us_median": 0.0,
-        "poll_us_max": 0.0
-      },
-      "depth": true,
-      "taa": false,
-      "casters": 2,
-      "cascades": 2,
-      "extents": [
-        8.0,
-        400.0
-      ],
-      "sizes": [
-        256,
-        256
-      ],
-      "caps": [
-        2,
-        8
-      ],
-      "budget": 5,
-      "frames": 8,
-      "per_frame": {
-        "0": {
-          "records": [
-            2,
-            4
-          ],
-          "capped": [
-            0,
-            0
-          ],
-          "dropped": 0,
-          "issues": 6,
-          "draws": [
-            2,
-            4
-          ],
-          "far_replayed": 1,
-          "far_frame": 0,
-          "toggle": 1
-        },
-        "1": {
-          "records": [
-            2,
-            4
-          ],
-          "capped": [
-            1,
-            0
-          ],
-          "dropped": 0,
-          "issues": 6,
-          "draws": [
-            0,
-            0
-          ],
-          "far_replayed": 0,
-          "far_frame": -1,
-          "toggle": 0
-        },
-        "2": {
-          "records": [
-            2,
-            4
-          ],
-          "capped": [
-            1,
-            0
-          ],
-          "dropped": 0,
-          "issues": 6,
-          "draws": [
-            0,
-            0
-          ],
-          "far_replayed": 0,
-          "far_frame": -1,
-          "toggle": 0
-        },
-        "3": {
-          "records": [
-            2,
-            4
-          ],
-          "capped": [
-            1,
-            0
-          ],
-          "dropped": 0,
-          "issues": 6,
-          "draws": [
-            2,
-            4
-          ],
-          "far_replayed": 1,
-          "far_frame": 3,
-          "toggle": 1
-        },
-        "4": {
-          "records": [
-            2,
-            4
-          ],
-          "capped": [
-            1,
-            0
-          ],
-          "dropped": 0,
-          "issues": 6,
-          "draws": [
-            0,
-            0
-          ],
-          "far_replayed": 0,
-          "far_frame": -1,
-          "toggle": 0
-        },
-        "5": {
-          "records": [
-            2,
-            4
-          ],
-          "capped": [
-            1,
-            0
-          ],
-          "dropped": 0,
-          "issues": 6,
-          "draws": [
-            0,
-            0
-          ],
-          "far_replayed": 0,
-          "far_frame": -1,
-          "toggle": 0
-        },
-        "6": {
-          "records": [
-            2,
-            4
-          ],
-          "capped": [
-            1,
-            0
-          ],
-          "dropped": 0,
-          "issues": 6,
-          "draws": [
-            2,
-            4
-          ],
-          "far_replayed": 1,
-          "far_frame": 6,
-          "toggle": 1
-        },
-        "7": {
-          "records": [
-            2,
-            4
-          ],
-          "capped": [
-            1,
-            0
-          ],
-          "dropped": 0,
-          "issues": 6,
-          "draws": [
-            0,
-            0
-          ],
-          "far_replayed": 0,
-          "far_frame": -1,
-          "toggle": 1
-        }
-      },
-      "refusals": [
-        {
-          "device": "1",
-          "frame": "7",
-          "reason": "state",
-          "detail": "multistream",
-          "result": "00000000",
-          "stage": "0"
-        }
-      ],
-      "targets": [
-        {
-          "device": 1,
-          "frame": 0,
-          "size": 256,
-          "map_format": 114,
-          "depth_format": 77,
-          "allocations": 1
-        },
-        {
-          "device": 1,
-          "frame": 6,
-          "size": 256,
-          "map_format": 114,
-          "depth_format": 77,
-          "allocations": 2
-        }
-      ],
-      "sun": {
-        "frames": 8,
-        "register": 4,
-        "program": "8759c7838bbc86c2",
-        "changing_frame": 5,
-        "samples_per_frame": 4
-      },
-      "map": {
-        "frames": {
-          "0/0": {
-            "size": 256,
-            "covered_cpu": 659,
-            "covered_gpu": 659,
-            "ambiguous": 69,
-            "compared": 630,
-            "coverage_disagreements": 0,
-            "max_depth_error": 3.7804511665573415e-07,
-            "max_depth_error_codes16": 0.024775564765150193,
-            "tolerance": 0.0001,
-            "finite": true,
-            "ok": true
-          },
-          "0/1": {
-            "size": 256,
-            "covered_cpu": 3,
-            "covered_gpu": 3,
-            "ambiguous": 4,
-            "compared": 2,
-            "coverage_disagreements": 0,
-            "max_depth_error": 1.825975517455447e-06,
-            "max_depth_error_codes16": 0.11966713151196018,
-            "tolerance": 0.0001,
-            "finite": true,
-            "ok": true
-          },
-          "1/0": {
-            "toggled_off": true,
-            "valid": false,
-            "available": true
-          },
-          "1/1": {
-            "toggled_off": true,
-            "valid": false,
-            "available": true
-          },
-          "2/0": {
-            "toggled_off": true,
-            "valid": false,
-            "available": true
-          },
-          "2/1": {
-            "toggled_off": true,
-            "valid": false,
-            "available": true
-          },
-          "3/0": {
-            "size": 256,
-            "covered_cpu": 10129,
-            "covered_gpu": 10131,
-            "ambiguous": 101,
-            "compared": 10076,
-            "coverage_disagreements": 0,
-            "max_depth_error": 5.935134732570901e-07,
-            "max_depth_error_codes16": 0.03889649898337666,
-            "tolerance": 0.0001,
-            "finite": true,
-            "ok": true
-          },
-          "3/1": {
-            "size": 256,
-            "covered_cpu": 6,
-            "covered_gpu": 6,
-            "ambiguous": 3,
-            "compared": 4,
-            "coverage_disagreements": 0,
-            "max_depth_error": 5.714230874975801e-06,
-            "max_depth_error_codes16": 0.3744878346224141,
-            "tolerance": 0.0001,
-            "finite": true,
-            "ok": true
-          },
-          "4/0": {
-            "toggled_off": true,
-            "valid": false,
-            "available": false
-          },
-          "4/1": {
-            "toggled_off": true,
-            "valid": false,
-            "available": false
-          },
-          "5/0": {
-            "toggled_off": true,
-            "valid": false,
-            "available": false
-          },
-          "5/1": {
-            "toggled_off": true,
-            "valid": false,
-            "available": false
-          },
-          "6/0": {
-            "size": 256,
-            "covered_cpu": 9415,
-            "covered_gpu": 9415,
-            "ambiguous": 97,
-            "compared": 9364,
-            "coverage_disagreements": 0,
-            "max_depth_error": 4.2283421308741964e-07,
-            "max_depth_error_codes16": 0.027710862988897134,
-            "tolerance": 0.0001,
-            "finite": true,
-            "ok": true
-          },
-          "6/1": {
-            "size": 256,
-            "covered_cpu": 5,
-            "covered_gpu": 5,
-            "ambiguous": 7,
-            "compared": 1,
-            "coverage_disagreements": 0,
-            "max_depth_error": 7.044989285276415e-07,
-            "max_depth_error_codes16": 0.046170041779987514,
-            "tolerance": 0.0001,
-            "finite": true,
-            "ok": true
-          },
-          "7/0": {
-            "unchanged": true,
-            "valid": false
-          },
-          "7/1": {
-            "unchanged": true,
-            "valid": false
-          }
-        },
-        "max_depth_error": 5.714230874975801e-06,
-        "covered_texels": 20219
-      },
-      "us": {
-        "frames": 3,
-        "min": 53.2,
-        "median": 60.3,
-        "max": 1504.2,
-        "per_issue_median": 10.049999999999999,
-        "issues_per_frame": [
-          6,
-          6,
-          6
-        ]
-      },
-      "exit": 0,
-      "directory": "verification/probe/build/motion-output-seam-ownership-shadow-replay-cascades-toggle-20260922-193321-866153",
-      "trace_sha256": "acf371b8e3477ac83e89cb909ed2f1cd8b4acc8054bc7655a5a632f8fd8b35d3",
-      "dll_sha256": "a0fd102da404dc83b8ff2d7b6f141a7f12549cfc8332e1447b945a985e128ac7",
-      "exe_sha256": "30591f64dbe6a302892a9aacecdcfcbb1190c5622c732dcd239a1ed2cb91f4d2"
-
         "max_depth_error": 4.111684320023956e-05,
         "covered_texels": 44963,
         "coverage_disagreements": 0,
@@ -3200,8 +1969,6 @@
     "src/ownership/surface_lock_observation.h": "810e3931317548565aeb5727e0158e4dbb2cf7f33feb402a8973dee58e304c0f",
     "src/proxy/camera_state.cpp": "bdbb78395368ea270c156fc61c90834c536b3ce26e846acbba7f2e7777285969",
     "src/proxy/camera_state.h": "7b3b6de807488c6785d1676eb6df274a3ed2b07a5e7c9da52397a4762306a742",
-    "src/proxy/capture.cpp": "f7df6f71fe5e0e0dd46a53585bfda1542fc6a95f2dedb13f31d59dda3ee8262b",
-
     "src/proxy/capture.cpp": "356c1c5871b4c9c1a92fb1cad7a4d202bca4e71ed65ab648b49231102db493d9",
     "src/proxy/capture.h": "e2d6b0dfad5239845f9fd668e1a468c335c7697642063736494dd0b449bcc5af",
     "src/proxy/capture_arm_core.h": "1e8f3e536b4ceefe385a1583f694ea134c90935086842f34c68921c54ffc28ac",
@@ -3239,7 +2006,7 @@
     "src/proxy/collide_sat_sse2.cpp": "2029417b0ff84d5a3ce40689f73d9032f152a09e887d802c6d7420b57b6397bd",
     "src/proxy/collide_sat_sse2.h": "0accafedbaa987da45b6690d6e9eea3518373592b134770198a5c552e7d58cf6",
     "src/proxy/collide_sat_sse2_core.h": "8f2d23b79c1225be3cad41fa4ab18f9d8603f9df4acbe19fc3e82c45c1f9f410",
-    "src/proxy/comparison_controls.h": "73fe6234d66a8c6710472a9aae167fda19056a72bd4b3982384b1d75f4d4a96b",
+    "src/proxy/comparison_controls.h": "5d9de47d9abf2c734295b319e9ee58c196d8cb7629b817b0826104594057fb0a",
     "src/proxy/comparison_notice.cpp": "e5ed3c9375c44ce16dea47b0afa822477d633052490bb23a1e165baa36b59ab4",
     "src/proxy/comparison_notice.h": "678af3492c74d59fb9d2d2c33a7e6d5acb6da06a6dbd9508cc2afa99afc7fed5",
     "src/proxy/compositor_bridge.h": "fd49b6ff51344bc5a770639cab52d0208c1bffecc0e1bf9e41b4f1b9e46d73cd",
@@ -3301,7 +2068,7 @@
     "src/proxy/locked_prefix_core.h": "0b6ec59e1e02adbb7d58be21b676aefd5475d28ff506150d5d5783cb38f60622",
     "src/proxy/lod_scale.cpp": "836449ad6be5ecabe777760a2cd0e1bcbd39a874347c833c6aa21a1702a23773",
     "src/proxy/lod_scale.h": "09ae11a5849a8e4f937e86facecdfb86ad7d424f35f5b46be04136c30267ba66",
-    "src/proxy/lod_scale_core.h": "0de8d87aad6c75d9027e022dd02ead2d0ca7b1076b6ff376c84d1702e01abbd8",
+    "src/proxy/lod_scale_core.h": "568dfda3578b785f95d980d2b64fe3db5b47aa73a4cce785f17fe90ba40b8013",
     "src/proxy/loop_phase_sites.h": "f525b9fc279a5c614a0d79b1226c160b0e32e48ee05a273c2f1c93d44c5ca233",
     "src/proxy/loop_phases.cpp": "b9bb3ebf3359acc463b59bc536afe50a9ecab7285ba08730e893a314bb7c4578",
     "src/proxy/loop_phases.h": "6d06becff01da9a76d13fb366a278d036c4cace0e22d4ddc9766e90747c53a28",
@@ -3316,13 +2083,6 @@
     "src/proxy/mesh_adjacency_fast.h": "f3476d5343e30eebddf8053b16c119b31629b736d000e1ec59746bc2e604891f",
     "src/proxy/motion_capture.cpp": "67965ce4f647f9068a808e328433052b0cdafd76a5ad3497a015ed9dc203f5e7",
     "src/proxy/motion_capture.h": "7b4504dde21d61a64d92e94dea5c48e2d7367d694efa25b1706f6b09982504df",
-    "src/proxy/motion_output.cpp": "92a7de402d0317ad15ce6c6a4bf1b7d75706a7b582576c1ecaa9c1e2bac9d992",
-    "src/proxy/motion_output.h": "dc5319f7f0d98b74748b36e7e4fa452d367b59819c1441aaff915d9e273f1c68",
-    "src/proxy/motion_output_fog_inc.h": "9bafb05f1cb595183d30078e253934cd1d2e5bd900c4e2048ce7294bc895eebc",
-    "src/proxy/motion_output_shadow_adaptive_inc.h": "04e67702f19d1a4372e7cddb3d26cfa09af8295eee8b9c27038c497e1f5a3b66",
-    "src/proxy/motion_output_shadow_replay_inc.h": "668d0cfed0b2821dc2f30803f60654023160e0e454edd804059cd68985951056",
-    "src/proxy/motion_output_shadow_retention_inc.h": "953cec681e9ad62a42dee47f972a956034c83ae509576bf509eb83c37f686add",
-
     "src/proxy/motion_output.cpp": "a6b71d5dcf25b05271de5c3d74292afc4f212c55a2b100b4aa39e77af5452d3b",
     "src/proxy/motion_output.h": "ffecb62daaca3d22effcc1211d6b4ba3f11ec5db3f5f92f2e27b8c8cb1f97b19",
     "src/proxy/motion_output_fog_inc.h": "56549b0589053885335024929e2f844a478c9c0e0f8dffd1057fe3b8973a10e6",
@@ -3413,17 +2173,19 @@
     "src/renderer/fog_composite_program_inc.h": "b100f49eb24846ab0694f9bec80b993289b48d55d83c270b20df11440209c978",
     "src/renderer/fog_density_composite_look_program_inc.h": "b9588b3a4f260da1b7fc3a8b132f878cc65a4243c0632e0037ff775aa2b21bc4",
     "src/renderer/fog_density_composite_program_inc.h": "a5fb4481749007eed92bc8ae22fe0a6e9188f4e9199b31f6e2cb0767f8b73bb9",
-    "src/renderer/fog_density_march_look_program_inc.h": "d5b9404cc05e0e1515cb29039f9765d4a1899e6858944b951d6d91128e8890d9",
+    "src/renderer/fog_density_march_look1_program_inc.h": "6b0d76e634c4944a6b19ffe63c162c8318d8d19539f075d579b446ce940344be",
+    "src/renderer/fog_density_march_look2_program_inc.h": "5172d66fc68d370a92d3831056912eefbb710301159015ff8b19ade583697d71",
     "src/renderer/fog_density_march_program_inc.h": "7a5ad72830d5a6ff4dd3f77e9e98187afcf191c2c0e1628b3b3f64cdea5154bf",
-    "src/renderer/fog_density_repair_look_program_inc.h": "965b9f8ab616df8de156deb6af4d17cfb839282c65aa9c6d58da145ca6b58481",
+    "src/renderer/fog_density_repair_look1_program_inc.h": "afef206245608a87c1328373c4ba1f7d64008f771e99b387e7066ff9fa9477ba",
+    "src/renderer/fog_density_repair_look2_program_inc.h": "7a9601446366ff7d7ce9b15a61948106f70efc09219d2043015cdcc7a7b7530c",
     "src/renderer/fog_density_repair_program_inc.h": "c1a59bdf0a8dd2d5b4a5bb206b9d97cba895a55e07cef0f1ab984076ab963e3a",
     "src/renderer/fog_family_chroma_inc.h": "210c7f54c7834a8b17bddf6d63e4cb01f7ee7bda745d6e960c92b68304c66cbd",
     "src/renderer/fog_field_assets.cpp": "c18fe5a39aac2fc0e1060e12a52d592df21b2718bb0f0c9b48e4b131ec006b45",
     "src/renderer/fog_field_assets.h": "19768c0b1c105779f757a458b3a2bb9205f9660cf03a270c6ed1fc26510dbdfd",
-    "src/renderer/fog_look_math.h": "a9a5e18ae24e278607b22244cc7f0d6256ba7924ae02520324b6cffb8b5a37d6",
+    "src/renderer/fog_look_math.h": "fc5368e69cc3704fe63aaace04bc3bba021a405604c21fd59b833a67579374fe",
     "src/renderer/fog_march_program_inc.h": "610d0a2243b5619346309205563e06acea8b8e0b87a2758f80a12b32f90d0f30",
-    "src/renderer/fog_pass.cpp": "63077fe459cfb23bf4bcb23ac8d85f221d0f2ef4c7fcfe3bdaa90aed071f9327",
-    "src/renderer/fog_pass.h": "c94efcf8d02d70c8ff9beb91fad3c5c2c4fa5aab8aa572c6d36cc50d0f961680",
+    "src/renderer/fog_pass.cpp": "80d201a3bcf15de441d78d2cae9874a3c95a38ba7eb94e8f7e191faa877d5d5f",
+    "src/renderer/fog_pass.h": "44eefaf1208c624ba7051aa79cb78790bee94866de9ff00264a83020deae0530",
     "src/renderer/fog_pass_math.h": "42266351dbf2b20aea46de3c7de2182d4f7ebe7256ef0b6c358ee210181b28c0",
     "src/renderer/fog_sky_level0_program_inc.h": "9a55f341a3884b37779df4d766e36919228f9939db4f0bd2dbd2b5f150c43b57",
     "src/renderer/fog_sky_reduce_program_inc.h": "c86e585c6da04d508b14faccd343882fe2f86aa0c0cf7d700795e23ef3feb213",
@@ -3489,10 +2251,6 @@
     "src/renderer/shader_constant_register.h": "7cf55bb515652cb7e598c6c12df6bdc2b01ba6ba11488cc71cf83c4483d69d83",
     "src/renderer/shader_population.cpp": "9a6b247044dc40b61c9ab6c167475a79456990e8566dee62bbd327447dc5820c",
     "src/renderer/shader_population.h": "530d4c9734b3e7fb6f024e2beb3ba8963941feb36c731897734d59010cdea6d5",
-    "src/renderer/shadow_replay_pass.cpp": "d0248c8fa062bc977ca1b19c8489d7eea6d91654c9e0f7a794ed27dd16cee49d",
-    "src/renderer/shadow_replay_pass.h": "7adc317cbd7cb52d736e625ec3fb7f985775f3802ca7d69d54df62dafb8991a1",
-    "src/renderer/shadow_replay_projection.h": "977e1a6c621d3d2a67a57f2d5c549a1b039feec308bbd89e3cdb493882facee1",
-
     "src/renderer/shadow_cascade_footprint_core.h": "642632f5a830952aecdad2ab1685b10761f4f2d8e4d44e656c9e327bfd0a4a2e",
     "src/renderer/shadow_replay_pass.cpp": "d0248c8fa062bc977ca1b19c8489d7eea6d91654c9e0f7a794ed27dd16cee49d",
     "src/renderer/shadow_replay_pass.h": "7adc317cbd7cb52d736e625ec3fb7f985775f3802ca7d69d54df62dafb8991a1",
@@ -3594,8 +2352,6 @@
     "verification/probe/motion_output_shadow_retention_inc.h": "964649030f34c9aa07ce85ea774e7f8c75d7ea2edfce1f08a56243a0f78d1339",
     "verification/probe/motion_output_sun_apply_cascades_inc.h": "8b6b027527954ad59fd5780c6926fe30d8dcdb4d46690aa7f5bdd1694c1da50f",
     "verification/probe/motion_output_sun_apply_inc.h": "c1556a1c87ac7126d3396cc3e5437623d9c998101f4a834952d96b1a3db61453",
-    "verification/probe/run_motion_output.py": "ec74344e8ccb19541f5ab792c4a1b2bf710662a31b7d9a8be0923be8e49157a2",
-
     "verification/probe/run_motion_output.py": "c366ba324218212be6a3d60cf38bf0f18e14a9d362814bd3111337aff3bffa88",
     "verification/probe/run_ownership_integration.py": "8089b7ab5e4d8313640548b0a9d776688201cb92b4dddc2e7f6d3644d1770c56",
     "verification/probe/shadow_replay_depth.py": "c3c4f3e7cded46e54ac4a7c4f72e647a6f672821d77482d996a94d2616c2b8c7",
@@ -3637,10 +2393,6 @@
     ]
   ],
   "binaries": {
-    "/private/tmp/x3-run66-candidate/binaries/motion_output_fixture.exe": "30591f64dbe6a302892a9aacecdcfcbb1190c5622c732dcd239a1ed2cb91f4d2",
-    "/private/tmp/x3-run66-candidate/binaries/motion-output-seam/d3d9.dll": "a0fd102da404dc83b8ff2d7b6f141a7f12549cfc8332e1447b945a985e128ac7",
-    "/private/tmp/x3-run66-candidate/build/d3d9.dll": "1f9a85f53f6612803466a1ba8be2b5a1f9de4ecc9f188e4e840a0c50e1c952ca"
-
     "verification/probe/build/motion_output_fixture.exe": "1b8f9b9471d24f7523a0ad9560875f9f68cbae3b1d9ab7c25f0c46a005d0a3e4",
     "verification/probe/build/motion-output-seam/d3d9.dll": "bb1240632df5538cf87c2f34e08547086b4d9f3b6f2d7d525d413733bab14435",
     "build/d3d9.dll": "a319b3f77fe93197df7b8f2078e166b69f48998e833bb648bb3c9e4c1522bd70"
@@ -3675,8 +2427,6 @@
     "src/ownership/surface_lock_observation.h": "810e3931317548565aeb5727e0158e4dbb2cf7f33feb402a8973dee58e304c0f",
     "src/proxy/camera_state.cpp": "bdbb78395368ea270c156fc61c90834c536b3ce26e846acbba7f2e7777285969",
     "src/proxy/camera_state.h": "7b3b6de807488c6785d1676eb6df274a3ed2b07a5e7c9da52397a4762306a742",
-    "src/proxy/capture.cpp": "f7df6f71fe5e0e0dd46a53585bfda1542fc6a95f2dedb13f31d59dda3ee8262b",
-
     "src/proxy/capture.cpp": "356c1c5871b4c9c1a92fb1cad7a4d202bca4e71ed65ab648b49231102db493d9",
     "src/proxy/capture.h": "e2d6b0dfad5239845f9fd668e1a468c335c7697642063736494dd0b449bcc5af",
     "src/proxy/capture_arm_core.h": "1e8f3e536b4ceefe385a1583f694ea134c90935086842f34c68921c54ffc28ac",
@@ -3714,7 +2464,7 @@
     "src/proxy/collide_sat_sse2.cpp": "2029417b0ff84d5a3ce40689f73d9032f152a09e887d802c6d7420b57b6397bd",
     "src/proxy/collide_sat_sse2.h": "0accafedbaa987da45b6690d6e9eea3518373592b134770198a5c552e7d58cf6",
     "src/proxy/collide_sat_sse2_core.h": "8f2d23b79c1225be3cad41fa4ab18f9d8603f9df4acbe19fc3e82c45c1f9f410",
-    "src/proxy/comparison_controls.h": "73fe6234d66a8c6710472a9aae167fda19056a72bd4b3982384b1d75f4d4a96b",
+    "src/proxy/comparison_controls.h": "5d9de47d9abf2c734295b319e9ee58c196d8cb7629b817b0826104594057fb0a",
     "src/proxy/comparison_notice.cpp": "e5ed3c9375c44ce16dea47b0afa822477d633052490bb23a1e165baa36b59ab4",
     "src/proxy/comparison_notice.h": "678af3492c74d59fb9d2d2c33a7e6d5acb6da06a6dbd9508cc2afa99afc7fed5",
     "src/proxy/compositor_bridge.h": "fd49b6ff51344bc5a770639cab52d0208c1bffecc0e1bf9e41b4f1b9e46d73cd",
@@ -3776,7 +2526,7 @@
     "src/proxy/locked_prefix_core.h": "0b6ec59e1e02adbb7d58be21b676aefd5475d28ff506150d5d5783cb38f60622",
     "src/proxy/lod_scale.cpp": "836449ad6be5ecabe777760a2cd0e1bcbd39a874347c833c6aa21a1702a23773",
     "src/proxy/lod_scale.h": "09ae11a5849a8e4f937e86facecdfb86ad7d424f35f5b46be04136c30267ba66",
-    "src/proxy/lod_scale_core.h": "0de8d87aad6c75d9027e022dd02ead2d0ca7b1076b6ff376c84d1702e01abbd8",
+    "src/proxy/lod_scale_core.h": "568dfda3578b785f95d980d2b64fe3db5b47aa73a4cce785f17fe90ba40b8013",
     "src/proxy/loop_phase_sites.h": "f525b9fc279a5c614a0d79b1226c160b0e32e48ee05a273c2f1c93d44c5ca233",
     "src/proxy/loop_phases.cpp": "b9bb3ebf3359acc463b59bc536afe50a9ecab7285ba08730e893a314bb7c4578",
     "src/proxy/loop_phases.h": "6d06becff01da9a76d13fb366a278d036c4cace0e22d4ddc9766e90747c53a28",
@@ -3791,13 +2541,6 @@
     "src/proxy/mesh_adjacency_fast.h": "f3476d5343e30eebddf8053b16c119b31629b736d000e1ec59746bc2e604891f",
     "src/proxy/motion_capture.cpp": "67965ce4f647f9068a808e328433052b0cdafd76a5ad3497a015ed9dc203f5e7",
     "src/proxy/motion_capture.h": "7b4504dde21d61a64d92e94dea5c48e2d7367d694efa25b1706f6b09982504df",
-    "src/proxy/motion_output.cpp": "92a7de402d0317ad15ce6c6a4bf1b7d75706a7b582576c1ecaa9c1e2bac9d992",
-    "src/proxy/motion_output.h": "dc5319f7f0d98b74748b36e7e4fa452d367b59819c1441aaff915d9e273f1c68",
-    "src/proxy/motion_output_fog_inc.h": "9bafb05f1cb595183d30078e253934cd1d2e5bd900c4e2048ce7294bc895eebc",
-    "src/proxy/motion_output_shadow_adaptive_inc.h": "04e67702f19d1a4372e7cddb3d26cfa09af8295eee8b9c27038c497e1f5a3b66",
-    "src/proxy/motion_output_shadow_replay_inc.h": "668d0cfed0b2821dc2f30803f60654023160e0e454edd804059cd68985951056",
-    "src/proxy/motion_output_shadow_retention_inc.h": "953cec681e9ad62a42dee47f972a956034c83ae509576bf509eb83c37f686add",
-
     "src/proxy/motion_output.cpp": "a6b71d5dcf25b05271de5c3d74292afc4f212c55a2b100b4aa39e77af5452d3b",
     "src/proxy/motion_output.h": "ffecb62daaca3d22effcc1211d6b4ba3f11ec5db3f5f92f2e27b8c8cb1f97b19",
     "src/proxy/motion_output_fog_inc.h": "56549b0589053885335024929e2f844a478c9c0e0f8dffd1057fe3b8973a10e6",
@@ -3888,17 +2631,19 @@
     "src/renderer/fog_composite_program_inc.h": "b100f49eb24846ab0694f9bec80b993289b48d55d83c270b20df11440209c978",
     "src/renderer/fog_density_composite_look_program_inc.h": "b9588b3a4f260da1b7fc3a8b132f878cc65a4243c0632e0037ff775aa2b21bc4",
     "src/renderer/fog_density_composite_program_inc.h": "a5fb4481749007eed92bc8ae22fe0a6e9188f4e9199b31f6e2cb0767f8b73bb9",
-    "src/renderer/fog_density_march_look_program_inc.h": "d5b9404cc05e0e1515cb29039f9765d4a1899e6858944b951d6d91128e8890d9",
+    "src/renderer/fog_density_march_look1_program_inc.h": "6b0d76e634c4944a6b19ffe63c162c8318d8d19539f075d579b446ce940344be",
+    "src/renderer/fog_density_march_look2_program_inc.h": "5172d66fc68d370a92d3831056912eefbb710301159015ff8b19ade583697d71",
     "src/renderer/fog_density_march_program_inc.h": "7a5ad72830d5a6ff4dd3f77e9e98187afcf191c2c0e1628b3b3f64cdea5154bf",
-    "src/renderer/fog_density_repair_look_program_inc.h": "965b9f8ab616df8de156deb6af4d17cfb839282c65aa9c6d58da145ca6b58481",
+    "src/renderer/fog_density_repair_look1_program_inc.h": "afef206245608a87c1328373c4ba1f7d64008f771e99b387e7066ff9fa9477ba",
+    "src/renderer/fog_density_repair_look2_program_inc.h": "7a9601446366ff7d7ce9b15a61948106f70efc09219d2043015cdcc7a7b7530c",
     "src/renderer/fog_density_repair_program_inc.h": "c1a59bdf0a8dd2d5b4a5bb206b9d97cba895a55e07cef0f1ab984076ab963e3a",
     "src/renderer/fog_family_chroma_inc.h": "210c7f54c7834a8b17bddf6d63e4cb01f7ee7bda745d6e960c92b68304c66cbd",
     "src/renderer/fog_field_assets.cpp": "c18fe5a39aac2fc0e1060e12a52d592df21b2718bb0f0c9b48e4b131ec006b45",
     "src/renderer/fog_field_assets.h": "19768c0b1c105779f757a458b3a2bb9205f9660cf03a270c6ed1fc26510dbdfd",
-    "src/renderer/fog_look_math.h": "a9a5e18ae24e278607b22244cc7f0d6256ba7924ae02520324b6cffb8b5a37d6",
+    "src/renderer/fog_look_math.h": "fc5368e69cc3704fe63aaace04bc3bba021a405604c21fd59b833a67579374fe",
     "src/renderer/fog_march_program_inc.h": "610d0a2243b5619346309205563e06acea8b8e0b87a2758f80a12b32f90d0f30",
-    "src/renderer/fog_pass.cpp": "63077fe459cfb23bf4bcb23ac8d85f221d0f2ef4c7fcfe3bdaa90aed071f9327",
-    "src/renderer/fog_pass.h": "c94efcf8d02d70c8ff9beb91fad3c5c2c4fa5aab8aa572c6d36cc50d0f961680",
+    "src/renderer/fog_pass.cpp": "80d201a3bcf15de441d78d2cae9874a3c95a38ba7eb94e8f7e191faa877d5d5f",
+    "src/renderer/fog_pass.h": "44eefaf1208c624ba7051aa79cb78790bee94866de9ff00264a83020deae0530",
     "src/renderer/fog_pass_math.h": "42266351dbf2b20aea46de3c7de2182d4f7ebe7256ef0b6c358ee210181b28c0",
     "src/renderer/fog_sky_level0_program_inc.h": "9a55f341a3884b37779df4d766e36919228f9939db4f0bd2dbd2b5f150c43b57",
     "src/renderer/fog_sky_reduce_program_inc.h": "c86e585c6da04d508b14faccd343882fe2f86aa0c0cf7d700795e23ef3feb213",
@@ -3964,10 +2709,6 @@
     "src/renderer/shader_constant_register.h": "7cf55bb515652cb7e598c6c12df6bdc2b01ba6ba11488cc71cf83c4483d69d83",
     "src/renderer/shader_population.cpp": "9a6b247044dc40b61c9ab6c167475a79456990e8566dee62bbd327447dc5820c",
     "src/renderer/shader_population.h": "530d4c9734b3e7fb6f024e2beb3ba8963941feb36c731897734d59010cdea6d5",
-    "src/renderer/shadow_replay_pass.cpp": "d0248c8fa062bc977ca1b19c8489d7eea6d91654c9e0f7a794ed27dd16cee49d",
-    "src/renderer/shadow_replay_pass.h": "7adc317cbd7cb52d736e625ec3fb7f985775f3802ca7d69d54df62dafb8991a1",
-    "src/renderer/shadow_replay_projection.h": "977e1a6c621d3d2a67a57f2d5c549a1b039feec308bbd89e3cdb493882facee1",
-
     "src/renderer/shadow_cascade_footprint_core.h": "642632f5a830952aecdad2ab1685b10761f4f2d8e4d44e656c9e327bfd0a4a2e",
     "src/renderer/shadow_replay_pass.cpp": "d0248c8fa062bc977ca1b19c8489d7eea6d91654c9e0f7a794ed27dd16cee49d",
     "src/renderer/shadow_replay_pass.h": "7adc317cbd7cb52d736e625ec3fb7f985775f3802ca7d69d54df62dafb8991a1",
@@ -4069,8 +2810,6 @@
     "verification/probe/motion_output_shadow_retention_inc.h": "964649030f34c9aa07ce85ea774e7f8c75d7ea2edfce1f08a56243a0f78d1339",
     "verification/probe/motion_output_sun_apply_cascades_inc.h": "8b6b027527954ad59fd5780c6926fe30d8dcdb4d46690aa7f5bdd1694c1da50f",
     "verification/probe/motion_output_sun_apply_inc.h": "c1556a1c87ac7126d3396cc3e5437623d9c998101f4a834952d96b1a3db61453",
-    "verification/probe/run_motion_output.py": "ec74344e8ccb19541f5ab792c4a1b2bf710662a31b7d9a8be0923be8e49157a2",
-
     "verification/probe/run_motion_output.py": "c366ba324218212be6a3d60cf38bf0f18e14a9d362814bd3111337aff3bffa88",
     "verification/probe/run_ownership_integration.py": "8089b7ab5e4d8313640548b0a9d776688201cb92b4dddc2e7f6d3644d1770c56",
     "verification/probe/shadow_replay_depth.py": "c3c4f3e7cded46e54ac4a7c4f72e647a6f672821d77482d996a94d2616c2b8c7",
