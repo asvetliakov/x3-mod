@@ -6,6 +6,7 @@ checks run only when the X3 bottle is present and never write into it.
 import contextlib
 import gzip
 import io
+import json
 from pathlib import Path
 import struct
 import sys
@@ -15,6 +16,7 @@ import unittest.mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools' / 'analysis'))
 import bob1
+import body_materials
 import lod_overlay
 from inspect_x3 import read_catalogue
 from sector_fog_census import Assets, unpack, write_catalogue
@@ -220,12 +222,14 @@ class Overlay(unittest.TestCase):
         self.assertNotIn('extra', new['parts'][1]['groups'][0])
 
     def test_collapse_two(self):
-        def mat(alpha):
+        def mat(test, blend, alpha=b'NULL'):
             return {'index': 99, 'flags': 0x02000000, 'technique': 1, 'effect': b'argon.fx',
-                    'params': [(b'g_AlphaValue', 2, [65536]), (b't_AlphaTexture', 8, alpha)]}
-        mats = [mat(b'NULL'), mat(b'metals\\argon\\grid_alpha.tga'), mat(b'C:\\Maps\\NONE_WHITE.dds'),
-                {'index': 3, 'flags': 0x10, 'texture': b'plain.tga'}, mat(b'')]
-        self.assertEqual(lod_overlay.alpha_materials(mats), {1})   # positions; NULL/NONE_*/empty/classic opaque
+                    'params': [(b'g_AlphaBlendEnable', 0, [blend]), (b'g_ALPHATESTENABLE', 0, [test]),
+                               (b'g_AlphaValue', 2, [65536]), (b't_AlphaTexture', 8, alpha)]}
+        mats = [mat(0, 0, b'metals\\argon\\grid_alpha.tga'), mat(1, 0), mat(0, 1),
+                {'index': 3, 'flags': 0x10, 'texture': b'plain.tga'}, mat(0, 0)]
+        # positions; an alpha texture with test and blend off (the pilot ships' lattices) is opaque
+        self.assertEqual(lod_overlay.alpha_materials(mats), {1, 2})
         coarse = bob1.lods(bob1.parse(body_bytes()))[-1]
         # part 0: materials 1 (2 faces), 0 (3 faces); part 1: 0 (1), 1 (1), 0 (2)
         new = lod_overlay.coarse_record(coarse, 7, {1})
@@ -240,6 +244,23 @@ class Overlay(unittest.TestCase):
                          lod_overlay.coarse_record(coarse, 7, set(), 'one'))
         with self.assertRaises(ValueError):
             lod_overlay.coarse_record(coarse, 7, set(), 'three')
+
+    def test_collapse_glow(self):
+        coarse = bob1.lods(bob1.parse(body_bytes()))[-1]
+        # part 0: materials 1 (2 faces), 0 (3 faces); part 1: 0 (1), 1 (1), 0 (2)
+        shape = lambda lod: [[(g['material'], len(g['faces'])) for g in p['groups']] for p in lod['parts']]
+        self.assertEqual(shape(lod_overlay.coarse_record(coarse, 7, set(), 'glow', {1})),
+                         [[(0, 3), (1, 2)], [(0, 3), (1, 1)]])
+        # glow groups keep their material (same-material groups of a part merge), alpha group last
+        new = lod_overlay.coarse_record(coarse, 7, {1}, 'glow', {0})
+        self.assertEqual(shape(new), [[(0, 3), (1, 2)], [(0, 3), (1, 1)]])
+        self.assertEqual(shape(lod_overlay.coarse_record(coarse, 7, {0}, 'glow', {1})),
+                         [[(1, 2), (0, 3)], [(1, 1), (0, 3)]])
+        self.assertEqual([len(g['extra']) for g in new['parts'][0]['groups']], [4, 3])
+        self.assertEqual(lod_overlay.coarse_record(coarse, 7, {1}, 'glow', set()),
+                         lod_overlay.coarse_record(coarse, 7, {1}, 'two'))
+        self.assertEqual(lod_overlay.coarse_record(coarse, 7, set(), 'one', {1}),     # one ignores glow
+                         lod_overlay.coarse_record(coarse, 7, set(), 'one'))
 
     def placed(self, ladder, placement, threshold=None):
         tree = ladder_tree(ladder)
@@ -358,7 +379,7 @@ class Overlay(unittest.TestCase):
             text = run(base + ['--threshold', '200', '--force-threshold', 'stations/test/body'])
             self.assertIn('pad: new LOD2 threshold=250 + pad copy LOD3 threshold=200', text)
             text = run(base + ['--threshold', '999', 'stations/test/body=300'])  # NAME=T wins
-            self.assertIn("collapse=two groups=['opaque:mat0:5f', 'opaque:mat0:4f']", text)
+            self.assertIn("collapse=glow groups=['opaque:mat0:5f', 'opaque:mat0:4f']", text)
             self.assertIn('collapse=one', run(base + ['--collapse', 'one', 'stations/test/body=300']))
             self.assertIn('pad: new LOD2 threshold=250 + pad copy LOD3 threshold=300', text)
             self.assertIn('very-high drawable [0, 2] by s: before s>=1:LOD0 | after s<300:LOD2 s>=300:LOD0', text)
@@ -388,7 +409,8 @@ class Overlay(unittest.TestCase):
             self.assertEqual(len(err.getvalue().splitlines()), 3)
             self.assertTrue(all(l.startswith('error: ') for l in err.getvalue().splitlines()))
 
-    def test_overlay_files(self):
+    @unittest.mock.patch.object(lod_overlay, 'running_game', return_value=[])
+    def test_overlay_files(self, _running):
         body = body_bytes()
         source = bob1.lods(bob1.parse(body))
         with tempfile.TemporaryDirectory() as folder:
@@ -417,13 +439,14 @@ class Overlay(unittest.TestCase):
             self.assertEqual([len(p['groups']) for p in ladder[2]['parts']], [1, 1])
             self.assertEqual(ladder[2]['parts'], ladder[3]['parts'])
             self.assertEqual(ladder[:2], source)
-            import json
             (body_rec,) = json.loads((out / 'addon/03.x3m-lod.json').read_text())['bodies']
             self.assertEqual((body_rec['placement'], body_rec['new_lod'], body_rec['pad_lod'],
                               body_rec['threshold'], body_rec['pad_threshold']), ('pad', 2, 3, 250, 300))
             self.assertEqual(lod_overlay.hash_files(originals), before)
 
             # --install targets the game directory; the new slot wins under the resolver's precedence
+            with self.assertRaises(SystemExit):          # --replace with nothing installed
+                run(['--game', str(game), '--dry-run', '--replace', 'stations/test/body=300'])
             run(['--game', str(game), '--install', 'stations/test/body=300'])
             self.assertEqual(lod_overlay.hash_files(originals), before)
             data, src = Assets(game).get('objects/stations/test/body.pbb')
@@ -431,6 +454,171 @@ class Overlay(unittest.TestCase):
             self.assertEqual(len(bob1.lods(bob1.parse(data))), 4)
             with self.assertRaises(SystemExit):          # installed marker: refuse to stack
                 run(['--game', str(game), '--out', str(Path(folder) / 'out2'), 'stations/test/body=300'])
+
+            # --replace: a failed write restores the installed overlay byte for byte
+            files = lambda: {p.name: p.read_bytes() for p in (game / 'addon').glob('03.*')}
+            old = files()
+            self.assertEqual(sorted(old), ['03.cat', '03.dat', '03.x3m-lod.json'])
+            with unittest.mock.patch.object(lod_overlay, 'write_catalogue', side_effect=OSError('disk full')), \
+                    self.assertRaises(OSError):
+                run(['--game', str(game), '--install', '--replace', 'stations/test/body=400'])
+            self.assertEqual(files(), old)
+            with self.assertRaises(SystemExit):          # --slot must be the installed slot
+                run(['--game', str(game), '--dry-run', '--replace', '--slot', '4', '--force-slot', 'stations/test/body=400'])
+            # --out --replace builds the replacement for the installed slot from the original body
+            out3 = Path(folder) / 'out3'
+            self.assertIn('target addon/03.cat', run(['--game', str(game), '--out', str(out3), '--replace',
+                                                      'stations/test/body=400']))
+            built = (out3 / 'addon/03.dat').read_bytes()
+            self.assertEqual(files(), old)
+            text = run(['--game', str(game), '--install', '--replace', 'stations/test/body=400'])
+            self.assertIn('replaced the installed addon/03 overlay', text)
+            self.assertEqual(sorted(files()), ['03.cat', '03.dat', '03.x3m-lod.json'])
+            self.assertEqual((game / 'addon/03.dat').read_bytes(), built)
+            data, src = Assets(game).get('objects/stations/test/body.pbb')
+            self.assertEqual([l['value'] for l in bob1.lods(bob1.parse(data))], [12345, 250, 250, 400])
+            self.assertEqual(json.loads((game / 'addon/03.x3m-lod.json').read_text())['collapse'], 'glow')
+            self.assertEqual(lod_overlay.hash_files(originals), before)
+            # partial move-aside: the second rename fails -> the first file goes back, nothing is deleted
+            old = files()
+            real_rename = Path.rename
+            calls = []
+
+            def flaky_rename(path, target):
+                calls.append(path.name)
+                if len(calls) == 2:
+                    raise OSError('sharing violation')
+                return real_rename(path, target)
+            with unittest.mock.patch.object(Path, 'rename', flaky_rename), self.assertRaises(OSError):
+                run(['--game', str(game), '--install', '--replace', 'stations/test/body=500'])
+            self.assertEqual(calls, ['03.cat', '03.dat'])
+            self.assertEqual(files(), old)
+            self.assertEqual(sorted((game / 'addon').glob('*.x3m-replaced')), [])
+            # an aside that cannot be deleted after success is a warning, not a rollback
+            real_unlink = Path.unlink
+
+            def stuck_unlink(path, missing_ok=False):
+                if path.name == '03.dat.x3m-replaced':
+                    raise OSError('busy')
+                return real_unlink(path, missing_ok=missing_ok)
+            err = io.StringIO()
+            with unittest.mock.patch.object(Path, 'unlink', stuck_unlink), contextlib.redirect_stderr(err):
+                run(['--game', str(game), '--install', '--replace', 'stations/test/body=500'])
+            self.assertIn('could not be removed', err.getvalue())
+            self.assertEqual([p.name for p in (game / 'addon').glob('*.x3m-replaced')], ['03.dat.x3m-replaced'])
+            self.assertEqual(json.loads((game / 'addon/03.x3m-lod.json').read_text())['bodies'][0]['pad_threshold'], 500)
+            with self.assertRaises(SystemExit):          # a leftover aside blocks the next --replace
+                run(['--game', str(game), '--install', '--replace', 'stations/test/body=400'])
+            (game / 'addon/03.dat.x3m-replaced').unlink()
+            with (game / '01.dat').open('ab') as f:    # originals changed since the install: refuse
+                f.write(b'x')
+            with self.assertRaises(SystemExit):
+                run(['--game', str(game), '--dry-run', '--replace', 'stations/test/body=400'])
+            self.assertEqual(sorted(files()), ['03.cat', '03.dat', '03.x3m-lod.json'])
+
+    def test_install_refused_while_game_runs(self):
+        body = body_bytes()
+        with tempfile.TemporaryDirectory() as folder:
+            game = game_dir(Path(folder) / 'game', body)
+            argv = ['--game', str(game), '--install', 'stations/test/body=300']
+            with unittest.mock.patch.object(lod_overlay, 'running_game', return_value=['123 C:\\X3\\X3AP.exe']):
+                with self.assertRaises(SystemExit):
+                    run(argv)
+                self.assertFalse((game / 'addon/03.cat').exists())
+                run(['--game', str(game), '--out', str(Path(folder) / 'out'), 'stations/test/body=300'])  # --out ok
+            with unittest.mock.patch.object(lod_overlay, 'running_game', side_effect=RuntimeError('no ps')):
+                with self.assertRaises(SystemExit):     # unknown state refuses too
+                    run(argv)
+                run(argv + ['--force-running'])
+            self.assertTrue((game / 'addon/03.cat').exists())
+
+
+def material_tree():
+    def mat(diff, light, alpha=b'NULL'):
+        return {'index': 0, 'flags': 0x02000000, 'technique': 1, 'effect': b'argon.fx',
+                'params': [(b'g_ALPHATESTENABLE', 0, [int(alpha != b'NULL')]), (b't_DiffuseTexture', 8, diff),
+                           (b't_AlphaTexture', 8, alpha), (b't_LightMapTexture', 8, light)]}
+    mats = [mat(b'a_diff.tga', b'NULL'), mat(b'a_diff.tga', b'm\\l1_light.tga'), mat(b'b_diff.tga', b'm\\l1_light.tga'),
+            mat(b'a_diff.tga', b'NULL', b'grid_alpha.tga'), mat(b'metal_exhaust_diff.tga', b'NULL'),
+            mat(b'a_diff.tga', b'NULL')]                      # 5 = same full texture tuple as 0
+    pts = [(1, 0, 0, 0), (1, 10, 0, 0), (1, 0, 10, 0), (1, 0, 0, 20)]
+    f50, f100 = (0, 1, 2, 1), (0, 1, 3, 1)                     # triangle areas 50 and 100
+    g = lambda m, *faces: {'material': m, 'faces': list(faces)}
+    coarse = {'value': 5, 'flags': 0, 'points': pts, 'parts': [
+        {'flags': 1, 'groups': [g(0, f50, f100), g(1, f50), g(2, f50), g(3, f50), g(5, f50), g(4, f50)]},
+        {'flags': 1, 'groups': [g(1, f50), g(0, f50)]}]}
+    lod0 = {'value': 100, 'flags': 0, 'points': pts, 'parts': [{'flags': 1, 'groups': [g(0, f50)]}]}
+    return {'sections': [('MAT6', mats), ('BODY', [lod0, coarse])]}
+
+
+def dds_dxt1_white(colour=0xffff):
+    d = bytearray(128)
+    d[:4] = b'DDS '
+    struct.pack_into('<IIII', d, 8, 0, 4, 4, 0)             # height, width at 12, 16
+    struct.pack_into('<I', d, 28, 1)
+    struct.pack_into('<I4s', d, 80, 4, b'DXT1')
+    return bytes(d) + struct.pack('<HHI', colour, 0, 0)       # one block, all texels colour 0 (white)
+
+
+class MaterialCensus(unittest.TestCase):
+    def test_census_and_rules_without_assets(self):
+        tree = bob1.parse(bob1.serialise(material_tree()))
+        c = body_materials.census(tree)
+        self.assertEqual((c['lod'], c['draws'], c['total_area']), (1, 8, 500.0))
+        m = c['materials']
+        self.assertEqual([m[i]['light'] for i in range(6)],
+                         ['placeholder', 'real', 'real', 'placeholder', 'placeholder', 'placeholder'])
+        self.assertEqual((m[0]['faces'], m[0]['groups'], m[0]['share'], m[1]['share']), (3, 2, 0.4, 0.2))
+        self.assertTrue(m[3]['alpha'] and not m[0]['alpha'])
+        self.assertEqual([i for i in range(6) if m[i]['glow_name']], [4])
+        self.assertEqual(c['real_light'], {1, 2})
+        r = c['rules']
+        self.assertEqual({k: r[k] for k in ('a', 'b', 'c', 'd', 'db', 'e')},
+                         dict(a=7, b=6, c=3, d=6, db=6, e=3))
+        self.assertEqual((r['b_mixes_alpha'], r['a_param_diffs']), (1, 0))
+        self.assertEqual(body_materials.census(tree, 0)['draws'], 1)
+        out = io.StringIO()
+        body_materials.format_census(c, 'x', out)
+        self.assertIn('draws per rule: a=7  b=6  c=3  d=6  db=6  e=3', out.getvalue())
+
+    def test_original_assets_skip_overlay_and_light_stats(self):
+        body = bob1.serialise(material_tree())
+        tree = material_tree()
+        bob1.lods(tree)[1]['parts'] = bob1.lods(tree)[1]['parts'][:1]
+        with tempfile.TemporaryDirectory() as folder:
+            game = Path(folder)
+            write_catalogue(game / '01.cat', [('dds/l1_light.pck', gzip.compress(dds_dxt1_white(), mtime=0)),
+                                              ('dds/dark_light.pck', gzip.compress(dds_dxt1_white(0x0841), mtime=0)),
+                                              ('dds/NONE_WHITE.pck', gzip.compress(dds_dxt1_white(), mtime=0)),
+                                              ('dds/amb_light.pck', gzip.compress(dds_dxt1_white(), mtime=0)),
+                                              ('dds/amb_light.tga', b'tga')])
+            write_catalogue(game / '02.cat', [('objects/ships/x/b.pbb', gzip.compress(body, mtime=0))])
+            write_catalogue(game / 'addon/01.cat', [('objects/ships/x/b.pbb',
+                                                     gzip.compress(bob1.serialise(tree), mtime=0))])
+            self.assertEqual(bob1.lods(bob1.parse(Assets(game).get('objects/ships/x/b.pbb')[0]))[1]['parts'][1:], [])
+            (game / 'addon/01.x3m-lod.json').write_text('{}')
+            assets, skipped = body_materials.original_assets(game)
+            self.assertEqual(skipped, ['addon/01.cat'])
+            c = body_materials.census(bob1.parse(assets.read_entry(bob1.resolve_body(assets, 'ships/x/b'))), None, assets)
+            self.assertEqual(c['draws'], 8)                      # the original, not the overlay
+            li = c['materials'][1]['light_info']
+            self.assertEqual((li['size'], li['luma'], li['bright']), ((4, 4), 1.0, 1.0))
+            self.assertTrue(c['materials'][2]['glow_bright'])
+            self.assertEqual(c['rules']['e'], c['rules']['d'])   # both real light maps are bright
+            mats = bob1.materials(material_tree())
+            dark = dict(mats[1], params=[(n, t, b'dark_light.tga' if n == b't_LightMapTexture' else v)
+                                         for n, t, v in mats[1]['params']])
+            self.assertEqual(lod_overlay.glow_materials(assets, mats + [dark]), {1, 2})
+            self.assertEqual(lod_overlay.glow_materials(assets, mats, [0, 1]), {1})
+            light = lambda name: dict(mats[0], params=[(n, t, name if n == b't_LightMapTexture' else v)
+                                                       for n, t, v in mats[0]['params']])
+            stock, amb = light(b'C:\\3ds Max 9\\Maps\\NONE_WHITE.dds'), light(b'm\\amb_light.tga')
+            self.assertEqual(lod_overlay.glow_materials(assets, [stock, amb]), {0})   # NONE_WHITE is all bright
+            info = body_materials.texture_info(assets, b'm\\amb_light.tga', {})
+            self.assertEqual(info['status'], 'error')
+            self.assertEqual(body_materials.light_status(info), 'error')
+            self.assertEqual(body_materials.light_status(
+                body_materials.texture_info(assets, b'x\\NONE_WHITE.dds', {})), 'stock')
 
 
 @unittest.skipUnless(bob1.DEFAULT_GAME.joinpath('X3AP.exe').is_file(), 'X3 bottle not present')

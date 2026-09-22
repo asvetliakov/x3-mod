@@ -455,15 +455,16 @@ outpost 30–33 (measured, `bob1.py info`), which is what the collapsed `C`
 replaces. Hide-at-coarsest (`0x8000`, final index `n-1`) still never fires at
 Very High; at Low..High it now fires below `T_pad·f` for flagged nodes.
 
-`C` is at most **2 draws** per part (`--collapse two`, the default): faces
-whose source material has an alpha texture (`t_AlphaTexture` set, not `NULL` and
-not a `NONE_*` placeholder) form a second group with the dominant alpha material
-by face count, the rest one group with the dominant opaque material. Faces of
-other materials are drawn with the dominant material's textures over their own
-UVs, a look limit of the pilot. `--collapse one` (one group, alpha faces turn
-solid) stays selectable. The pilot bodies' coarsest records carry 12 / 34 / 20
-alpha faces (argon_TL / M2 / M1) and 252 (outpost), lattice grids and antenna
-cards (measured, `verification/results/lod-overlay-pilot/alpha_faces_out.txt`).
+`C`'s grouping is `--collapse glow` (the default since 2026-09-23). Per part,
+materials whose light map is mostly bright keep their own group: these carry
+the engine glows. Everything else collapses onto the dominant opaque material,
+plus one alpha group for materials that alpha-test or alpha-blend
+(`g_AlphaTestEnable`/`g_AlphaBlendEnable`). An alpha texture alone does not
+count. Result: 5 draws for the pilot ships and 3 for the outpost.
+`--collapse two` (opaque + alpha, the first pilot) and `one` stay selectable.
+The light-map census, the alpha rule's evidence and the per-rule draw counts are
+in [merged-lod-feasibility.md](../architecture/merged-lod-feasibility.md),
+"Overlay tooling".
 MAT3 bodies are refused unless `--force-mat3`: the loader gives the coarsest
 record of such a body with more than 3 LODs material `0x485`, which would be the
 pad.

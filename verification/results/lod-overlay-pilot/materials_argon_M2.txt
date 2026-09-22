@@ -1,0 +1,38 @@
+skipped overlay catalogues: ['addon/05.cat']
+02.cat:objects/ships/argon/argon_M2.pbb  record LOD3 of 4 (value=5)  draws=25  materials=25  total_area=8.838e+09
+mat  rec  effect/tech  alpha  light-map-status  faces  groups  area_share  glow  textures
+ 17    17  argon.fx/1  -  placeholder  288  1  0.454  -  diffuse=metal_argon_simple_plating_v2_diff.tga alpha=NULL bump=metal_argon_simple_plating_bump.tga specular=metal_argon_simple_plating_spec.tga light=NULL cube=envmap_test.dds
+ 16    16  argon.fx/1  -  placeholder  76  1  0.102  -  diffuse=metal_argon_simple_plating_diff.tga alpha=NULL bump=metal_argon_simple_plating_bump.tga specular=metal_argon_simple_plating_spec.tga light=NULL cube=envmap_test.dds
+ 14    14  argon.fx/1  -  real 512x512 luma=0.00 bright=0.00 p99=0.09  67  1  0.086  -  diffuse=metal_argon_misc_tech_v2_diff.tga alpha=NULL bump=metal_argon_misc_tech_bump.tga specular=metal_argon_misc_tech_spec.tga light=metal_argon_misc_tech_light.tga cube=envmap_test.dds
+ 35    35  argon.fx/1  -  real 1024x128 luma=0.00 bright=0.00 p99=0.03  62  1  0.083  -  diffuse=metal_argon_trims_09_diff.tga alpha=NULL bump=metal_argon_trims_09_bump.tga specular=metal_argon_trims_09_spec.tga light=metal_argon_trims_09_light.tga cube=envmap_test.dds
+  7     7  argon.fx/1  -  placeholder  56  1  0.061  -  diffuse=metal_argon_base_metal_plating_diff.tga alpha=NULL bump=metal_argon_base_metal_plating_bump.tga specular=metal_argon_base_metal_plating_spec.tga light=NULL cube=envmap_test.dds
+  8     8  argon.fx/1  -  placeholder  41  1  0.039  -  diffuse=metal_argon_base_metal_plating_v2_diff.tga alpha=NULL bump=metal_argon_base_metal_plating_bump.tga specular=metal_argon_base_metal_plating_spec.tga light=NULL cube=envmap_test.dds
+ 22    22  argon.fx/1  -  real 1024x128 luma=0.00 bright=0.00 p99=0.11  34  1  0.034  -  diffuse=metal_argon_trims_02_diff.tga alpha=NULL bump=metal_argon_trims_02_bump.tga specular=metal_argon_trims_02_spec.tga light=metal_argon_trims_02_light.tga cube=envmap_test.dds
+ 18    18  argon.fx/1  -  placeholder  18  1  0.032  -  diffuse=metal_argon_simple_plating_v3_diff.tga alpha=NULL bump=metal_argon_simple_plating_bump.tga specular=metal_argon_simple_plating_spec.tga light=NULL cube=envmap_test.dds
+ 23    23  argon.fx/1  -  real 1024x128 luma=0.01 bright=0.00 p99=0.16  20  1  0.027  -  diffuse=metal_argon_trims_03_diff.tga alpha=NULL bump=metal_argon_trims_03_bump.tga specular=metal_argon_trims_03_spec.tga light=metal_argon_trims_03_light.tga cube=envmap_test.dds
+ 15    15  argon.fx/1  -  real 1024x1024 luma=0.01 bright=0.01 p99=0.45  15  1  0.014  -  diffuse=metal_argon_pipes_tech_diff.tga alpha=NULL bump=metal_argon_pipes_tech_bump.tga specular=metal_argon_pipes_tech_spec.tga light=metal_argon_pipes_tech_light.tga cube=envmap_test.dds
+ 19    19  argon.fx/1  -  placeholder  6  1  0.013  -  diffuse=metal_argon_simple_plating_v4_diff.tga alpha=NULL bump=metal_argon_simple_plating_bump.tga specular=metal_argon_simple_plating_spec.tga light=NULL cube=envmap_test.dds
+ 21    21  argon.fx/1  -  real 1024x128 luma=0.00 bright=0.00 p99=0.05  2  1  0.009  -  diffuse=metal_argon_trims_01_diff.tga alpha=NULL bump=metal_argon_trims_01_bump.tga specular=metal_argon_trims_01_spec.tga light=metal_argon_trims_01_light.tga cube=envmap_test.dds
+ 30    30  argon.fx/1  -  real 1024x1024 luma=0.00 bright=0.00 p99=0.07  11  1  0.009  -  diffuse=metal_argon_circular_diff.tga alpha=metal_argon_antennas-B_03_alpha.tga bump=metal_argon_circular_bump.tga specular=metal_argon_circular_spec.tga light=metal_argon_circular_light.tga cube=envmap_test.dds
+ 38    38  argon.fx/1  -  real 256x256 luma=0.65 bright=0.70 p99=1.00  6  1  0.007  name,bright  diffuse=metal_argon_exhaust_source_02_diff.tga alpha=metal_argon_lattice_grid_alpha.tga bump=metal_argon_exhaust_source_02_bump.tga specular=metal_argon_exhaust_source_02_spec.tga light=metal_argon_exhaust_source_02_light.tga cube=envmap_test.dds
+ 31    31  argon.fx/1  -  real 256x256 luma=0.00 bright=0.00 p99=0.02  14  1  0.007  -  diffuse=argon_solar_panels_01_diff.tga alpha=metal_argon_antennas-B_03_alpha.tga bump=argon_solar_panels_01_bump.tga specular=argon_solar_panels_01_spec.tga light=argon_solar_panels_01_light.tga cube=envmap_test.dds
+  6     6  argon.fx/1  -  real 1024x1024 luma=0.11 bright=0.08 p99=0.80  3  1  0.005  -  diffuse=metal_argon_apartments_labs_diff.tga alpha=NULL bump=metal_argon_apartments_labs_bump.tga specular=metal_argon_apartments_labs_spec.tga light=metal_argon_apartments_labs_v2_light.tga cube=envmap_test.dds
+ 28    28  argon.fx/1  -  real 1024x128 luma=0.02 bright=0.02 p99=0.68  3  1  0.004  -  diffuse=metal_argon_trims_08_diff.tga alpha=NULL bump=metal_argon_trims_08_bump.tga specular=metal_argon_trims_08_spec.tga light=metal_argon_trims_08_light.tga cube=envmap_test.dds
+ 40    40  argon.fx/1  -  real 512x128 luma=0.41 bright=0.43 p99=0.81  6  1  0.004  name,bright  diffuse=metal_argon_exhaust_trims_02_diff.tga alpha=NULL bump=metal_argon_exhaust_trims_02_bump.tga specular=metal_argon_exhaust_trims_02_spec.tga light=metal_argon_exhaust_trims_02_light.tga cube=envmap_test.dds
+ 20    20  argon.fx/1  -  placeholder  10  1  0.003  -  diffuse=metal_argon_simple_plating_v5_diff.tga alpha=NULL bump=metal_argon_simple_plating_bump.tga specular=metal_argon_simple_plating_spec.tga light=NULL cube=envmap_test.dds
+ 26    26  argon.fx/1  -  real 1024x128 luma=0.00 bright=0.00 p99=0.04  3  1  0.002  -  diffuse=metal_argon_trims_06_diff.tga alpha=NULL bump=metal_argon_trims_06_bump.tga specular=metal_argon_trims_06_spec.tga light=metal_argon_trims_06_light.tga cube=envmap_test.dds
+ 39    39  argon.fx/1  -  placeholder  4  1  0.001  name  diffuse=metal_argon_exhaust_trims_01_diff.tga alpha=NULL bump=metal_argon_exhaust_trims_01_bump.tga specular=metal_argon_exhaust_trims_01_spec.tga light=NULL cube=envmap_test.dds
+ 25    25  argon.fx/1  -  real 1024x128 luma=0.00 bright=0.00 p99=0.05  3  1  0.001  -  diffuse=metal_argon_trims_05_diff.tga alpha=NULL bump=metal_argon_trims_05_bump.tga specular=metal_argon_trims_05_spec.tga light=metal_argon_trims_05_light.tga cube=envmap_test.dds
+ 43    43  argon.fx/1  -  placeholder  2  1  0.001  -  diffuse=metal_argon_vent_diff.tga alpha=NULL bump=metal_argon_vent_bump.tga specular=metal_argon_vent_spec.tga light=NULL cube=envmap_test.dds
+ 41    41  argon.fx/1  -  real 512x128 luma=0.41 bright=0.42 p99=0.83  3  1  0.001  name,bright  diffuse=metal_argon_exhaust_trims_03_diff.tga alpha=NULL bump=metal_argon_exhaust_trims_03_bump.tga specular=metal_argon_exhaust_trims_03_spec.tga light=metal_argon_exhaust_trims_03_light.tga cube=envmap_test.dds
+ 37    37  argon.fx/1  -  real 256x256 luma=0.37 bright=0.39 p99=1.00  3  1  0.001  name,bright  diffuse=metal_argon_exhaust_source_01_diff.tga alpha=metal_argon_lattice_grid_alpha.tga bump=metal_argon_exhaust_source_01_bump.tga specular=metal_argon_exhaust_source_01_spec.tga light=metal_argon_exhaust_source_01_light.tga cube=envmap_test.dds
+real light maps: 16 materials, area share 0.293; placeholder/null: 9 materials; stock NONE_*: 0; missing/error: 0
+glow candidates: [37, 38, 39, 40, 41] area share 0.014 (name match: [37, 38, 39, 40, 41], light map bright share >= 0.25: [37, 38, 40, 41])
+draws per rule: a=25  b=25  c=1  d=17  db=17  e=5  (original record 25)
+  a: full texture tuple
+  b: (diffuse, light map) pair
+  c: pilot two-group collapse
+  d: keep real light maps, rest -> dominant
+  db: d, kept groups merged by (diffuse, light)
+  e: keep only mostly-bright (glow) light maps, rest -> dominant
+  diagnostics: b merges mixing alpha and opaque 0; a merges whose non-texture params differ 0

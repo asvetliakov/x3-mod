@@ -329,15 +329,61 @@ record. The `--dry-run`/`--out` report prints, per body, the old and new ladder
 with record bytes, the drawable set per View Distance setting and the drawn
 record per `s` band before and after (`bob1.selection_bands`).
 
-**Collapse.** `C` is at most **2 draws** per part (`--collapse two`, the default): faces
-whose source material has an alpha texture (`t_AlphaTexture` set, not `NULL` and
-not a `NONE_*` placeholder) form a second group with the dominant alpha material
-by face count, the rest one group with the dominant opaque material. Faces of
-other materials are drawn with the dominant material's textures over their own
-UVs, a look limit of the pilot. `--collapse one` (one group, alpha faces turn
-solid) stays selectable. The pilot bodies' coarsest records carry 12 / 34 / 20
-alpha faces (argon_TL / M2 / M1) and 252 (outpost), lattice grids and antenna
-cards (measured, `verification/results/lod-overlay-pilot/alpha_faces_out.txt`).
+**Collapse (rule e, `--collapse glow`, the default since 2026-09-23).** Run 69 A
+showed that the first collapse (`two`: everything opaque onto the dominant
+material) drops every other material's light map (texture stage 3, the emissive
+map), so the ships lost their engine glow below `T_pad`. The material census
+(`tools/analysis/body_materials.py`, output
+`verification/results/lod-overlay-pilot/materials_<body>.txt`) found:
+
+- A NULL `t_LightMapTexture` is the engine's 32x32 placeholder (id 196). argon_TL
+  LOD 0 part 0 has 31 groups, 22 with a real light map and 9 NULL. That is the
+  same split as run255's stage-3 textures (22 real, 9 × id 196 32x32; measured,
+  `verification/results/run257-pilot/tex_run255_3351_TL.txt`). `NONE_*` names
+  (`NONE_BLACK`, `NONE_WHITE`) are shipped 32x32 textures in `dds/`. The census
+  resolves them like any texture: a `NONE_WHITE` light map counts as all bright
+  (glow) and `NONE_BLACK` as dark. Rule d below does not keep them.
+- The engine glows are the light maps of the `exhaust` materials
+  (`metal_argon_exhaust_source_01/02`, `exhaust_trims_02/03`). For each, at least
+  39 % of texels are above luma 0.5 (mean luma 0.37–0.65). Their faces are
+  1–3 % of the ships' coarse-record area and 0.5 % of the outpost's (material 41).
+  `exhaust_trims_01` has no bright light map (NULL on the ships, `NONE_BLACK` on the outpost) and does not glow.
+- Every other real light map is mostly dark. Window lights are sparse spots on
+  trim and apartment maps (99th-percentile luma up to 0.83, bright share
+  0–10 %, the top being the outpost's material 5 at 0.10), and 7–17 of the 14–21 real maps per body have a 99th-percentile luma
+  below 0.2.
+
+Per part, `glow` keeps every material whose light map is mostly bright (share of
+texels with Rec.601 luma above `--glow-luma`, default 0.5, at least
+`--glow-share`, default 0.25; measured on the smallest mip with a side of 64 or
+more) as its own group. Everything else collapses onto the dominant opaque
+material, plus one alpha group when alpha faces remain. Window lights on
+near-black maps are dropped.
+
+**Alpha rule (2026-09-23).** A material is alpha when it alpha-tests or
+alpha-blends (`g_AlphaTestEnable` or `g_AlphaBlendEnable` non-zero). An alpha
+texture alone no longer counts: the ships' lattice materials carry
+`t_AlphaTexture` with both flags off, so they merge. In run257 the ships'
+coarse alpha-group draws (20 / 34 / 12 primitives for M1 / M2 / TL) logged
+`alpha_tested=0` (measured, `verification/results/run257-pilot/ship_draws_run257_3615.txt`).
+The outpost's alpha materials 9, 36 and 11 (124 / 83 / 45 faces, test and blend
+on) keep one alpha group of 252 faces under the dominant material 9.
+
+Faces of merged materials are drawn with the dominant material's textures over
+their own UVs, a look limit of the pilot. `--collapse two` (opaque + alpha) and
+`--collapse one` (one group, alpha faces turn solid) stay selectable. Draws of
+one coarse record by rule (measured, `materials_<body>.txt`, current alpha rule):
+
+| body (record) | original | two (c) | keep real light maps (d) | glow (e) |
+|---|---|---|---|---|
+| argon_TL (LOD3) | 23 | 1 | 15 | 5 |
+| argon_M2 (LOD3) | 25 | 1 | 17 | 5 |
+| argon_M1 (LOD3) | 24 | 1 | 16 | 5 |
+| military_outpost_middleb (LOD2) | 30 | 2 | 22 | 3 |
+
+At the run257 stand (one TL, one M2, two M1 and one outpost in `C`, from the
+ladder accounting) that comes to 23 draws for `glow`, 86 for d and 6 for `two`
+under the current alpha rule; the installed pilot (old alpha rule) draws 10.
 MAT3 bodies are refused unless `--force-mat3`: the loader gives the coarsest
 record of such a body with more than 3 LODs material `0x485`, which would be the
 pad.
@@ -361,8 +407,32 @@ round-trip check are in `verification/results/lod-overlay-pilot/`.
 
 Every installed CAT/DAT is hashed before and
 after a real run (outputs are removed if any changed), and an
-`addon/NN.x3m-lod.json` manifest records the source and overlay hashes; the
-tool refuses to run while such a manifest is installed.
+`addon/NN.x3m-lod.json` manifest records the source and overlay hashes (and,
+since rule e, the collapse, glow thresholds and per-body glow materials). Source
+bodies are always read with every marker-carrying catalogue skipped. While a
+manifest is installed the tool refuses unless `--replace`. With `--replace`, the
+manifest's originals hash must match the installed archives other than its slot,
+and the new overlay takes that slot. `--replace --install` moves the old three
+files aside (`*.x3m-replaced`), writes the new ones and deletes the asides
+last. If moving aside, writing or the originals check fails, every file that was
+actually moved goes back over any new output at its path. The remaining new
+outputs are removed only once all of them are back. A file that cannot be put
+back stays as `*.x3m-replaced` and is reported, and a leftover aside blocks the
+next `--replace`. A failure to delete an aside after success is only a warning:
+the new overlay stays installed. `--replace --out` only builds the replacement.
+`--install` refuses while `X3AP.exe` runs, or while the process table cannot be
+read (`verification/probe/game_guard.py`), unless `--force-running`: the running
+game keeps the old CAT/DAT open with the catalogue index in memory. On native
+Windows the check has no `ps` and so refuses. Renaming a CAT/DAT that the game
+has open fails there unless it was opened with `FILE_SHARE_DELETE`, and the
+restore path then runs.
+
+Rule-e rebuild (2026-09-23, `--replace --out <worktree>/build-overlay`, not
+installed): `C` is 5 draws for argon_TL, M2 and M1 (opaque + 4 glow) and 3 for
+the outpost (opaque + glow material 41 + alpha group under material 9). The build gives
+`05.cat` 191 bytes, sha256 `def76feb…`, and `05.dat` 12 471 651 bytes, sha256
+`b3fbf984…`. The check is
+`verification/results/lod-overlay-pilot/pilot_check_glow_out.txt`.
 
 `python3 tools/analysis/bob1.py audit [--summary] [--json OUT] [--view-distance
 {low,medium,high,very-high}] [--factor F]` reports each body's main-view drawable
@@ -382,6 +452,8 @@ python3 tools/analysis/bob1.py audit --summary [--view-distance very-high] [--fa
 python3 tools/analysis/lod_overlay.py --dry-run <body>[=T_pad] ... [--threshold T] [--placement P]
 python3 tools/analysis/lod_overlay.py --out <scratch dir> <body>[=T_pad] ... [--threshold T] [--placement P]
 python3 tools/analysis/lod_overlay.py --install <body>[=T_pad] ... [--threshold T] [--placement P]   # game dir; never overwrites
+python3 tools/analysis/lod_overlay.py --install --replace <body>[=T_pad] ...   # swap the installed overlay (originals hash checked)
+python3 tools/analysis/body_materials.py <body> [--lod N]   # material census and draws per collapse rule
 PYTHONPATH=verification/probe /usr/bin/python3 -m unittest verification.analysis.test_bob1
 ```
 
@@ -390,10 +462,16 @@ pilot flight must show, at the run240 stand with `--cull-census`, the overlaid
 body's nodes reporting the new record's `lod` index (`n-2` of the new ladder,
 i.e. the old record count, for pad and append-pad) wherever `s < T_pad`, where
 they reported LOD 0 before, and their per-node draw count dropping to the group
-count of that record (2), with `draws_p50` compared at the same stand. It must
+count of that record (2 in the installed pilot; 5 for the ships and 3 for the
+outpost with `glow`), with `draws_p50` compared at the same stand. It must
 also check that the bodies' `0x40000` children vanish below `T_pad` (their draws
 belong to the saving; any child that should stay visible is a regression), that
-the alpha group still renders as a cut-out lattice rather than solid, and whether
+the engine glows stay lit below `T_pad` (`glow`). This is not a given: in run257
+the ships' coarse draws ran pixel shader `8759c7838bbc86c2`, not the LOD 0
+shaders `5e0a10fe…`/`ca6b…`, with stage 3 bound to id 722 and no size logged
+(`verification/results/run257-pilot/tex_run257_3615.txt`), and whether that
+shader samples a light map at all is untraced. The flight must also check that the outpost's alpha group
+still renders as a cut-out rather than solid, and whether
 the `node+0x130 & 0x100000` flag now set on these nodes changes anything visible. A file that loads without a `lod` or
 draw change is not acceptance. The run255 census names the heavy stand bodies,
 which the pilot overlay targets; the two earlier worked examples

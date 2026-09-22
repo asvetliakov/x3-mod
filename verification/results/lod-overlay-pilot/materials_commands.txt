@@ -1,0 +1,9 @@
+# Material census of the original coarsest record (overlay catalogue addon/05.cat skipped by its marker)
+for b in ships/argon/argon_TL ships/argon/argon_M2 ships/argon/argon_M1 Stations/others/military_outpost_middleb; do
+  python3 tools/analysis/body_materials.py $b > verification/results/lod-overlay-pilot/materials_$(basename $b).txt
+done
+# LOD0 check against run255 stage-3 evidence (TL LOD0 part 0: 31 groups, 22 real light maps, 9 NULL -> id 196 32x32)
+python3 tools/analysis/body_materials.py --lod 0 ships/argon/argon_TL
+# Rule e as --collapse glow (default), rebuilt against the installed 05 overlay's originals (2026-09-23)
+python3 tools/analysis/lod_overlay.py --replace --out <worktree>/build-overlay ships/argon/argon_TL=50 ships/argon/argon_M2=50 ships/argon/argon_M1=50 Stations/others/military_outpost_middleb=100
+python3 verification/results/lod-overlay-pilot/pilot_check.py verification/results/run255-census/node_census_out.txt <worktree>/build-overlay > verification/results/lod-overlay-pilot/pilot_check_glow_out.txt
