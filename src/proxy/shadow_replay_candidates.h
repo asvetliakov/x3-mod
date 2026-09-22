@@ -27,6 +27,9 @@ constexpr unsigned extent_read_attempts = 8;                  // scene ends a ra
 // its centre (a re-uploaded or animated mesh of the same vertex range stays
 // inside that) and the verdict is reported as `inflated`.
 constexpr unsigned extent_stale_frames = 8;
+// Diagnostic lines the minimum-footprint gate may write per device: one per
+// distinct resolved law (the set's ladder commits, an FOV change, a Reset).
+constexpr unsigned footprint_line_max = 16;
 
 // The identity of one caster draw across frames: the node's lifetime serial
 // and the draw's vertex range (a node's parts carry their own rows). Never 0.
@@ -82,6 +85,12 @@ struct FrameCounts {
     // and how the frame's classifications were decided (shadow_caster_class.h).
     std::uint32_t static_only_refused[cascade_capacity]{};
     std::uint32_t large_admitted[cascade_capacity]{}; // ... and moving draws admitted to cascade i by their extent (X3M_SHADOW_CASCADE_LARGE_MIN)
+    // Minimum light-space footprint (X3M_SHADOW_CASCADE_MIN_FOOTPRINT;
+    // renderer/shadow_cascade_footprint_core.h): live draws whose cascade i was
+    // dropped because their lateral sun-space footprint is below that cascade's
+    // threshold (footprint_refused<i>=), and the same for the retention store's
+    // re-issued records (footprint_aged<i>=, copied from the store's frame stats).
+    std::uint32_t footprint_refused[cascade_capacity]{};
     std::uint32_t class_store = 0, class_ring = 0; // draws classified by the retention store's verdict; by the ring's anchor
     std::uint32_t class_miss[cascade_capacity]{}; // draws refused from cascade i with no anchor at all (first sighting, evicted, no serial or rows): the ring's limit, per cascade
     // Importance drop order (X3M_SHADOW_CASCADE_DROP_ORDER=importance): per cascade the

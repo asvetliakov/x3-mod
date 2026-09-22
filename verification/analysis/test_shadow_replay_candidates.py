@@ -191,6 +191,27 @@ class CascadeFields(unittest.TestCase):
             with self.assertRaises(counter.MalformedLine, msg=bad):
                 counter.parse_text(cascade_frame(4) + bad + '\n')
 
+    def test_footprint_tail(self):
+        """The minimum-footprint group (--shadow-cascade-min-footprint;
+        shadow-cascades.md, "Minimum caster footprint"): footprint_refused<i> then
+        footprint_aged<i>, between the static-only and importance groups, absent
+        while the option is off."""
+        static = ' static_only_refused0=0 static_only_refused1=1 static_only_refused2=2 large_admitted0=0 large_admitted1=1 large_admitted2=0 class_miss0=0 class_miss1=1 class_miss2=1 class_store=2 class_ring=3'
+        importance = ' dropped_min_size0=0 dropped_min_size1=0.3125 dropped_min_size2=1.5e-05 select_us=12.5'
+        footprint = ' footprint_refused0=0 footprint_refused1=4 footprint_refused2=7 footprint_aged0=0 footprint_aged1=1 footprint_aged2=3'
+        rows, _ = counter.parse_text(cascade_frame(1) + footprint + '\n' + cascade_frame(2) + static + footprint + importance + '\n' + cascade_frame(3) + '\n')
+        self.assertEqual(rows[0]['cascades'], {'count': 3, 'records': [3, 5, 5], 'capped': [2, 0, 0], 'footprint_refused': [0, 4, 7], 'footprint_aged': [0, 1, 3]})
+        self.assertEqual((rows[1]['cascades']['footprint_refused'], rows[1]['cascades']['class_miss'], rows[1]['cascades']['select_us']), ([0, 4, 7], [0, 1, 1], 12.5))
+        self.assertNotIn('footprint_refused', rows[2]['cascades'])  # the option off: the log parses as before
+        summary = counter.summarize(rows, [])['cascades']
+        self.assertEqual((summary['footprint_refused_total'], summary['footprint_aged_total']), ([0, 8, 14], [0, 2, 6]))
+        self.assertNotIn('footprint_refused_total', counter.summarize(rows[2:], [])['cascades'])
+        for bad in (footprint.replace(' footprint_refused1=4', ''), footprint.replace(' footprint_aged2=3', ''),
+                    footprint.replace('footprint_refused1=4', 'footprint_refused1=-1'), footprint.replace('footprint_aged0=0', 'footprint_aged0=x'),
+                    importance + footprint, footprint + static):
+            with self.assertRaises(counter.MalformedLine, msg=bad):
+                counter.parse_text(cascade_frame(4) + bad + '\n')
+
     def test_flip_tail(self):
         """Cascade-membership flips (shadow-caster-retention.md, "Membership flips"):
         flip_c<i> then period2_c<i>, at the end of the line, alone and after the

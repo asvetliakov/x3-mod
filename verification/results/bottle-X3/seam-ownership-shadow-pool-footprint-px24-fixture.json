@@ -1,0 +1,277 @@
+{
+ "case": "seam-ownership-shadow-pool-footprint-px24",
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "binaries": {
+  "verification/probe/build/motion_output_fixture.exe": "1b8f9b9471d24f7523a0ad9560875f9f68cbae3b1d9ab7c25f0c46a005d0a3e4",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "bb1240632df5538cf87c2f34e08547086b4d9f3b6f2d7d525d413733bab14435",
+  "build/d3d9.dll": "a319b3f77fe93197df7b8f2078e166b69f48998e833bb648bb3c9e4c1522bd70"
+ },
+ "script": "footprint",
+ "store": 0,
+ "frames": 6,
+ "checks": 78,
+ "compared_frames": 6,
+ "absent_maps": 0,
+ "color_sha256": "33d7f02fc3403da905ec7435ee489617d79961e35f5b3fcc63b6cdd3899e9fc5",
+ "per_frame": {
+  "0": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     5
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "footprint_refused": [
+     0,
+     0
+    ],
+    "footprint_aged": [
+     0,
+     0
+    ],
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 1
+   },
+   "draws": [
+    3,
+    5
+   ]
+  },
+  "1": {
+   "c": {
+    "count": 2,
+    "records": [
+     5,
+     1
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "footprint_refused": [
+     0,
+     4
+    ],
+    "footprint_aged": [
+     0,
+     0
+    ],
+    "flip": [
+     2,
+     4
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
+   },
+   "draws": [
+    5,
+    1
+   ]
+  },
+  "2": {
+   "c": {
+    "count": 2,
+    "records": [
+     5,
+     1
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "footprint_refused": [
+     0,
+     4
+    ],
+    "footprint_aged": [
+     0,
+     0
+    ],
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
+   },
+   "draws": [
+    5,
+    1
+   ]
+  },
+  "3": {
+   "c": {
+    "count": 2,
+    "records": [
+     5,
+     1
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "footprint_refused": [
+     0,
+     4
+    ],
+    "footprint_aged": [
+     0,
+     0
+    ],
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
+   },
+   "draws": [
+    5,
+    1
+   ]
+  },
+  "4": {
+   "c": {
+    "count": 2,
+    "records": [
+     5,
+     1
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "footprint_refused": [
+     0,
+     4
+    ],
+    "footprint_aged": [
+     0,
+     0
+    ],
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
+   },
+   "draws": [
+    5,
+    1
+   ]
+  },
+  "5": {
+   "c": {
+    "count": 2,
+    "records": [
+     5,
+     1
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "footprint_refused": [
+     0,
+     4
+    ],
+    "footprint_aged": [
+     0,
+     0
+    ],
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
+   },
+   "draws": [
+    5,
+    1
+   ]
+  }
+ },
+ "map": {
+  "max_depth_error": 4.111684320023956e-05,
+  "covered_texels": 44963,
+  "coverage_disagreements": 0,
+  "maps": 12
+ },
+ "us": {
+  "frames": 6,
+  "min": 39.8,
+  "median": 45.599999999999994,
+  "max": 1743.8
+ },
+ "footprint": {
+  "px": 24.0,
+  "retained_script": false,
+  "min": [
+   0.1875,
+   7.125
+  ],
+  "refused_total": [
+   0,
+   20
+  ],
+  "aged_total": [
+   0,
+   0
+  ],
+  "draws_total": [
+   28,
+   10
+  ]
+ },
+ "exit": 0,
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-footprint-px24-20260922-194736-843126",
+ "trace_sha256": "a180a61f3c1a9dd0f243c8b06e60cad02e2280bf4123fb8a102ea419720507ac",
+ "dll_sha256": "bb1240632df5538cf87c2f34e08547086b4d9f3b6f2d7d525d413733bab14435",
+ "exe_sha256": "1b8f9b9471d24f7523a0ad9560875f9f68cbae3b1d9ab7c25f0c46a005d0a3e4",
+ "presented_identical_to": [
+  "seam-ownership-shadow-pool-footprint-off",
+  "seam-ownership-shadow-pool-footprint-px8"
+ ]
+}

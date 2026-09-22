@@ -325,3 +325,66 @@ no launcher option, no environment variable, no consumer in the proxy. The retai
 would need is already the far cascade's (`ShadowReplayPass::retain`, the apply's `kept->basis`, the
 `valid` / `map_frame<k>` fields), and the two consumers to relax are the apply's
 `kept->frame == frame_ || far && kept->frame + 1 == frame_` and the fog's `fog_shadow_current`.
+
+### Minimum caster footprint (2026-09-22, default off)
+
+Recommendation (a) of [shadow-cascade-cost-policy.md](shadow-cascade-cost-policy.md), with its cap
+ceiling (c). A caster **part** leaves cascade k when the largest LATERAL side of its sun-space box
+is below
+
+    min_k = max(P x 0.95 x E_{k-1} x 2 / (m00 x width), 3 x texel_k)
+
+world units. Why it is lossless by construction: a pixel is sampled from cascade k only outside
+cascade k-1's box (the apply quad's `select_margin` 0.95), and a receiver pixel's sun-space lateral
+distance is a lower bound on its distance from the camera, so every receiver cascade k serves is at
+least 0.95 x E_{k-1} away; under a parallel light the shadow there is the caster's silhouette, so a
+part under `min_k` can darken at most P pixels of any of them. The second term is the map's own
+resolution floor. E_{k-1} is the nearest **active** cascade below k (the adaptive ladder drops
+cascades), so cascade 0 keeps the texel floor alone; `m00` and the back-buffer width are read per
+frame from the camera latch and the route's target, as `--cull-small-parts-px` reads them, so the
+law is never configured in units. The measure is the two lateral sides, never the largest of three:
+a 1,000 x 50 u strut and any depth-long sliver keep their bits.
+
+Resolved thresholds of the 250 / 1,500 / 7,500 / 37,500 / 150,000 set at 4,096 texels, m00 = 0.8 and
+1,280 px (the run239 latch), P = 8: **0.37 / 3.7 / 22.3 / 111.3 / 556.6 u** (c0-c2 are the texel
+floor or below an M5's 100 u: nothing binding; c3 and c4 are the note's 111 and 557). At 1,920 wide
+the screen term scales by 1280/1920. At the run239 stand this removes 42 of 571 issues; the
+population it is for (fighters 100-250 u, turrets and antennae 100-610 u) replays into c4 at 1-4
+texels today.
+
+- Launcher `--shadow-cascade-min-footprint P` (env `X3M_SHADOW_CASCADE_MIN_FOOTPRINT`, 0 < P <= 64,
+  **default absent = off and bit-identical**: the law is cleared, the box test is not asked for a
+  measure and no field is emitted). An explicit zero or any non-positive value ("0", "0.0", "-1")
+  is off too: a zero footprint never disables the cascades. Malformed text, a value above the band
+  and a truncated variable leave the cascades off (`shadow_cascades_mode reason=min_footprint`),
+  never a silent no-op.
+- Where: the law is `src/renderer/shadow_cascade_footprint_core.h` (header-only, no Windows and no
+  renderer type), resolved once per frame beside the bounds latch
+  (`MotionOutput::refresh_footprint_law`, also at the retention scene end for a frame whose draws
+  never needed the latch). The measure is the `lateral` output of
+  `renderer::shadow_cascade_bounds_mask` (per cascade under per-cascade suns), so the gate is two
+  float compares per met cascade per z-writing draw on data already in hand: no allocation, no
+  device call, no extra transform. Retained casters take the same gate in the store's unseen walk
+  (`shadow_retention_core.h`, `walk_unseen`, `sun_side`), measured on exactly the live path's
+  quantity: the side of the sun-space AABB of the record's OBJECT box (its stored object extent
+  through its stored object -> world rows), not the support of the store's world AABB, which is up
+  to sqrt(3) larger for a turned object and would gate more than the live path does; it is computed
+  once per axes group per record and only while the option is on. A draw without a known extent has no measure and keeps every bit; a draw the gate
+  refuses from every cascade is still fed to the store as a sighting (run116 cause 1).
+- Diagnostics: one `shadow_cascade_footprint device= frame= px= m00= width= cascades= active=
+  min0..min4=` line per distinct resolved law (bounded, 16 per device), `min_footprint=` on
+  `shadow_cascades_mode`, and per cascade `footprint_refused<i>=` (live draws) and
+  `footprint_aged<i>=` (retained records) on `shadow_replay_candidates`, parsed by
+  `tools/analysis/shadow_replay_candidates.py`.
+- Evidence: host law and gate `verification/analysis/test_shadow_cascade_footprint.py`; the retained
+  gate in `test_shadow_retention.py`'s store driver; the launcher option in
+  `test_shadow_cascades.py`; the DLL integration in the fixture cases
+  `seam-ownership-shadow-pool-footprint-{off,px8,px24}` and, for the retained half,
+  `seam-ownership-shadow-pool-footprint-retained-{off,px8}`
+  ([../verification/directional-shadows.md](../verification/directional-shadows.md), "Minimum caster
+  footprint").
+- The note's cap ceiling (c) needs no code: `--shadow-cascade-caps 128,512,1024,512,384` bounds a
+  big-complex frame at about 1.2 ms of replay instead of 2.7. The default stays
+  128,512,1024,1024,1024.
+- Not in this change: the farthest cascade's extent. The user verdict of 2026-09-22 keeps it, and
+  any A/B of it uses 100 km (500,000 u), not the note's 22.5 or 75 km.

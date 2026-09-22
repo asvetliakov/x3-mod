@@ -64,6 +64,21 @@
 // the map must show) and POOL_EXPECT (the counter line's values).
 namespace {
 constexpr unsigned pool_static_frames = 14, pool_importance_frames = 8, pool_records_frames = 6, pool_cycle_frames = 12, pool_jitter_frames = 12, pool_hull_frames = 6;
+constexpr unsigned pool_footprint_frames = 6, pool_footprint_nodes = 4;
+// Under a live store the script runs longer and stops drawing one sub-threshold caster once it is
+// promoted (shadow_retention::static_sightings = 8 verified sightings: static from frame 9), so the
+// store retains it and re-issues it: the gate refuses it from cascade 1 on every retained frame
+// (footprint_aged1) while cascade 0 keeps it. Those frames compare no map (a retained record is not
+// in the frame's draw list; the retention script owns that twin).
+constexpr unsigned pool_footprint_retained_frames = 14, pool_footprint_retain_from = 10, pool_footprint_retained_id = 2;
+constexpr float pool_footprint_scales[pool_footprint_nodes] = {1.f, 3.f, 10.f, 30.f};
+// The largest LATERAL side of one caster's sun-space box, per unit of scale: the scaled B
+// triangle's object AABB (x over 0.6 x scale, y over 0.6 x scale, z constant) through the
+// script's rows (t, p = 0.125) and the scripted camera (yaw 0, m00 0.8, m11 4/3, the run111
+// eye) into the fixture sun's basis gives sides 0.5834 and 0.6236 per unit of scale, so the
+// measure is 0.6236 x scale units; every caster sits at t = its scale, which keeps its box
+// inside both cascade boxes (x within +-19, y within +-14 of the snapped centres).
+constexpr float pool_footprint_lateral_per_scale = .6236f;
 constexpr float pool_jitter_step = .125f;  // dyadic row units, 0.156 world units (/ m00 0.8): beyond eps 0.05, within cascade 1's texel / 8 at extent 200 (0.195)
 constexpr float pool_hull_w0 = -2.f;       // the sliver's origin 2 units behind the camera plane (fade_route::origin_distance fails: d = -1)
 constexpr unsigned pool_store_static_frame = 9; // shadow_retention::static_sightings = 8 verified sightings: promoted at the scene end of frame 8
@@ -86,7 +101,8 @@ struct PoolScript {
     const char* name = "";
     // One frame: the anchor, then `listed` in that order. `kept[c]`: the ids the map of cascade c must show.
     // `leased`: the counter line's leased= when it differs from the draws (a draw refused from every cascade; -1: every draw).
-    void frame(const std::vector<RetentionNode*>& listed, const std::vector<std::vector<unsigned>>& kept, unsigned c0, unsigned c1, unsigned capped1, unsigned refused1, bool compare, unsigned large1 = 0, int leased = -1) {
+    void frame(const std::vector<RetentionNode*>& listed, const std::vector<std::vector<unsigned>>& kept, unsigned c0, unsigned c1, unsigned capped1, unsigned refused1, bool compare, unsigned large1 = 0, int leased = -1,
+               unsigned footprint0 = 0, unsigned footprint1 = 0, unsigned aged1 = 0) {
         std::vector<RetentionNode*> drawn{s.anchor}; drawn.insert(drawn.end(), listed.begin(), listed.end());
         f.camera_scripted = true;
         f.frame_begin();
@@ -109,7 +125,8 @@ struct PoolScript {
             n->last_drawn = static_cast<long long>(now);
         }
         std::printf("POOL_FRAME frame=%llu case=%s drawn=%u compare=%u\n", now, name, unsigned(drawn.size()), unsigned(compare));
-        std::printf("POOL_EXPECT frame=%llu c0=%u c1=%u capped1=%u static_only_refused1=%u large_admitted1=%u leased=%d\n", now, c0, c1, capped1, refused1, large1, leased);
+        std::printf("POOL_EXPECT frame=%llu c0=%u c1=%u capped1=%u static_only_refused1=%u large_admitted1=%u leased=%d footprint_refused0=%u footprint_refused1=%u footprint_aged1=%u\n",
+                    now, c0, c1, capped1, refused1, large1, leased, footprint0, footprint1, aged1);
         if (compare) for (unsigned c = 0; c < kept.size(); ++c) {
             std::string ids;
             for (unsigned id : kept[c]) { if (!ids.empty()) ids += ','; ids += std::to_string(id); }
@@ -140,7 +157,8 @@ void run_shadow_pool_integration(Fixture& f) {
     require(GetEnvironmentVariableA("X3M_FIXTURE_SHADOW_POOL", script, sizeof script) > 0, "X3M_FIXTURE_SHADOW_POOL names the script");
     const bool is_static = !std::strcmp(script, "static"), is_importance = !std::strcmp(script, "importance"), is_records = !std::strcmp(script, "records");
     const bool is_cycle = !std::strcmp(script, "cycle"), is_jitter = !std::strcmp(script, "jitter"), is_hull = !std::strcmp(script, "hull");
-    require(is_static || is_importance || is_records || is_cycle || is_jitter || is_hull, "X3M_FIXTURE_SHADOW_POOL is static, importance, records, cycle, jitter or hull");
+    const bool is_footprint = !std::strcmp(script, "footprint");
+    require(is_static || is_importance || is_records || is_cycle || is_jitter || is_hull || is_footprint, "X3M_FIXTURE_SHADOW_POOL is static, importance, records, cycle, jitter, hull or footprint");
     std::printf("POOL_MODE script=%s store=%u\n", script, s.mode);
     s.lifetime(7, 0, 0); s.lifetime(3, f.b.scope.load_epoch, f.b.scope.registry_epoch);
     std::memcpy(f.camera_position, retention_eye, sizeof retention_eye); f.camera_yaw = 0;
@@ -236,6 +254,74 @@ void run_shadow_pool_integration(Fixture& f) {
             for (unsigned i = 1; i <= pool_importance_nodes; ++i) all.push_back(i);
             if (frame == 0) far_ids = {0, 1, 2, 3}; else far_ids = {3, 5, 6, 7}; // sizes unknown: the lowest serials; known: the largest scales, 3 held at the boundary
             p.frame(order, {all, far_ids}, 1 + pool_importance_nodes, 4, 1 + pool_importance_nodes - 4, 0, true);
+        }
+        for (auto& m : meshes) m.reset();
+    } else if (is_footprint) {
+        // Minimum light-space footprint (docs/architecture/shadow-cascades.md, "Minimum caster
+        // footprint"): four casters of the B shape at scales 1, 3, 10 and 30 plus the anchor
+        // (scale 1), measured 0.62 / 1.87 / 6.24 / 18.71 units across in light space
+        // (pool_footprint_lateral_per_scale). The thresholds of the two cascades at extents
+        // 8 / 40, 256-texel maps, m00 0.8 and the fixture's 64-pixel back buffer (Fixture::W)
+        // are 3 texels = 0.1875 u on cascade 0 (no cascade below it, so the texel floor alone)
+        // and max(P x 0.95 x 8 x 2 / (0.8 x 64), 0.9375) u on cascade 1: 2.375 u at P = 8 (the
+        // anchor and the two smallest casters, 0.62 and 1.87 u, leave cascade 1) and 7.125 u at
+        // P = 24 (the 6.24-u one as well). Nothing ever leaves cascade 0, and frame 0 has no
+        // extent read yet, so it has no measure at all: every draw keeps the cascades the origin
+        // rule gave it.
+        char cascades[32]{};
+        require(GetEnvironmentVariableA("X3M_FIXTURE_SHADOW_CASCADES", cascades, sizeof cascades) > 0 && !std::strcmp(cascades, "8,40"),
+                "the footprint script runs on the 8 / 40 cascade pair");
+        float px = 0.f;
+        if (GetEnvironmentVariableA("X3M_SHADOW_CASCADE_MIN_FOOTPRINT", setting, sizeof setting) > 0) px = std::strtof(setting, nullptr);
+        const float min0 = 3.f * 2.f * 8.f / 256.f;
+        const float screen = px * .95f * 8.f * 2.f / (.8f * float(Fixture::W)), texel1 = 3.f * 2.f * 40.f / 256.f;
+        const float min1 = px > 0.f ? (screen > texel1 ? screen : texel1) : 0.f;
+        std::printf("POOL_FOOTPRINT px=%.9g width=%u min0=%.9g min1=%.9g\n", double(px), unsigned(Fixture::W), double(min0), double(min1));
+        std::vector<RetentionNode*> listed;
+        std::vector<Com<IDirect3DVertexBuffer9>> meshes(pool_footprint_nodes);
+        for (unsigned i = 0; i < pool_footprint_nodes; ++i) {
+            const float scale = pool_footprint_scales[i];
+            api(f.d->CreateVertexBuffer(24 * 3, 0, 0, D3DPOOL_MANAGED, &meshes[i].p, nullptr), "CreateVertexBuffer footprint node");
+            pool_fill_scaled(meshes[i].p, shadow_tri_b, scale);
+            listed.push_back(&s.make(1 + i, 'B', scale, .05f, meshes[i].p));
+            p.scale_of[1 + i] = scale;
+        }
+        const auto lateral = [](float scale) { return pool_footprint_lateral_per_scale * scale; };
+        const bool retains = s.on() && s.mode == 2; // a live store retains the withdrawn caster
+        const unsigned frames = retains ? pool_footprint_retained_frames : pool_footprint_frames;
+        std::printf("POOL_FOOTPRINT_RETAIN retains=%u from=%u id=%u\n", unsigned(retains), pool_footprint_retain_from, pool_footprint_retained_id);
+        // Frame 0 has no extent read yet, so the origin rule alone decides: a draw whose object
+        // origin (view x = t / m00) is within a cascade's half-extent meets it. The anchor (t 1.5)
+        // and the casters at t 1 and 3 are within 8; every one of them is within 40. From frame 1
+        // the box test admits all five to both cascades (each box straddles both) and the gate
+        // decides cascade 1 alone.
+        for (unsigned frame = 0; frame < frames; ++frame) {
+            const bool measured = frame >= 1;
+            const bool withdrawn = retains && frame >= pool_footprint_retain_from; // the retained caster is not submitted
+            const auto origin = [](float t) { return t / .8f; };
+            std::vector<unsigned> near_ids, far_ids;
+            const float ts[1 + pool_footprint_nodes] = {1.5f, pool_footprint_scales[0], pool_footprint_scales[1], pool_footprint_scales[2], pool_footprint_scales[3]};
+            const float scales[1 + pool_footprint_nodes] = {1.f, pool_footprint_scales[0], pool_footprint_scales[1], pool_footprint_scales[2], pool_footprint_scales[3]};
+            std::vector<RetentionNode*> drawn;
+            for (unsigned i = 0; i < pool_footprint_nodes; ++i) if (!withdrawn || 1 + i != pool_footprint_retained_id) drawn.push_back(listed[i]);
+            unsigned live = 0, refused1 = 0;
+            for (unsigned i = 0; i < 1 + pool_footprint_nodes; ++i) {
+                if (withdrawn && i == pool_footprint_retained_id) continue; // not submitted: no live record
+                ++live;
+                if (measured || origin(ts[i]) <= 8.f) near_ids.push_back(i);
+                const bool met = measured || origin(ts[i]) <= 40.f;
+                if (met && (!measured || lateral(scales[i]) >= min1)) far_ids.push_back(i);
+            }
+            if (measured) refused1 = live - unsigned(far_ids.size());
+            // The retained record takes the same gate on re-issue: refused from cascade 1 exactly
+            // while the option is on (its measure is 1.87 u, below every threshold this case uses).
+            const unsigned aged1 = withdrawn && min1 > 0.f && lateral(pool_footprint_scales[pool_footprint_retained_id - 1]) < min1 ? 1u : 0u;
+            p.frame(drawn, {near_ids, far_ids}, unsigned(near_ids.size()), unsigned(far_ids.size()), 0, 0, !withdrawn, 0, -1, 0, refused1, aged1);
+        }
+        if (retains) {
+            s.read();
+            s.expect(RsNodes, pool_footprint_nodes, "the four casters are the store's nodes (the anchor's class is excluded)");
+            s.expect(RsMovingDropped, 0, "no node is dropped as moving: nothing moves in this script");
         }
         for (auto& m : meshes) m.reset();
     } else {

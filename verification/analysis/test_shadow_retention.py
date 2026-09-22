@@ -15,7 +15,9 @@
   camera (run222): a 16.16-quantised, non-renormalised rotation stepping at least
   one LSB every frame 33 km and 81 km out keeps the recovered placement within
   eps, promotes on sighting 9, holds the node for 600 unseen frames, and the
-  retained rows stay within a cascade-0 texel of the live ones;
+  retained rows stay within a cascade-0 texel of the live ones; and the
+  minimum-footprint gate on a re-issued record (per cascade, counted, never a
+  node drop; shadow-cascades.md, "Minimum caster footprint");
 * tools/analysis/shadow_retention.py: the frame and resight line parsers, their
   identities and the census summary;
 * verification/probe/shadow_replay_depth.py: the replayed_live / replayed_retained tail;
@@ -82,6 +84,7 @@ struct Rig {
     std::uint64_t frame = 1;
     unsigned room[4] = {1024, 1024, 1024, 1024};
     std::uint32_t age_cap = sr::age_cap_default;
+    renderer::ShadowCascadeFootprintLaw footprint{}; // the minimum-footprint gate of the frame (off by default)
     std::uint64_t changed_vb = 0; // the view callback reports this allocation as rewritten
     unsigned views = 0;           // registry lookups the view callback answered
     const float* outer_sun = nullptr; // the positional sun: cascade 1 holds another direction than cascade 0
@@ -99,7 +102,7 @@ struct Rig {
         return result;
     }
     void end() {
-        sr::FrameInput in; in.frame = frame; in.camera = camera(pose); in.set = set; in.age_cap = age_cap; in.eps_cascade[1] = eps_cascade1;
+        sr::FrameInput in; in.frame = frame; in.camera = camera(pose); in.set = set; in.age_cap = age_cap; in.eps_cascade[1] = eps_cascade1; in.footprint = footprint;
         in.bases_valid = true;
         for (unsigned c = 0; c < set.count; ++c) in.bases_valid = in.bases_valid && renderer::shadow_replay_basis(in.camera, c && outer_sun ? outer_sun : sun, set.cascades[c], in.bases[c]);
         for (unsigned c = 0; c < 4; ++c) in.room[c] = room[c];
@@ -128,6 +131,27 @@ int main() {
         r.pose.pos[0] = 600; r.end(); CHECK(r.store->admitted_count == 1 && r.store->draws[r.store->admitted[0]].cascades == 2); f = r.next(); CHECK(f.would[0] == 0 && f.would[1] == 1);
         CHECK(r.held() == 3 && r.store->references() == 3);
         r.pose.pos[0] = 20000; r.end(); f = r.next(); CHECK(f.box_exit == 1 && r.store->nodes_used == 0 && r.held() == 0); // beyond 2 x the outermost box
+    }
+    { // the minimum-footprint gate on a retained record (renderer/shadow_cascade_footprint_core.h):
+      // the same law as the live draw path, measured on the box this walk forms, counted per cascade
+      // and never a node drop (a record gated out of every cascade simply issues nowhere this frame).
+        Rig r; place(w, 20, 0, 60); r.settle(4, w);
+        r.pose.yaw = 2.5; r.end();
+        CHECK(r.store->admitted_count == 1 && r.store->draws[r.store->admitted[0]].cascades == 3);
+        auto f = r.next(); CHECK(f.footprint_refused[0] == 0 && f.footprint_refused[1] == 0);
+        // The node's object box is 20 units per side: a one-unit bound keeps it, a 1,000-unit bound does not.
+        r.footprint.count = 2; r.footprint.px = 8.f; r.footprint.min_units[0] = 1.f; r.footprint.min_units[1] = 1.f;
+        r.end(); CHECK(r.store->admitted_count == 1 && r.store->draws[r.store->admitted[0]].cascades == 3);
+        f = r.next(); CHECK(f.footprint_refused[0] == 0 && f.footprint_refused[1] == 0 && f.would[0] == 1 && f.would[1] == 1);
+        r.footprint.min_units[1] = 1000.f;
+        r.end(); CHECK(r.store->admitted_count == 1 && r.store->draws[r.store->admitted[0]].cascades == 1);
+        f = r.next(); CHECK(f.footprint_refused[0] == 0 && f.footprint_refused[1] == 1 && f.would[0] == 1 && f.would[1] == 0);
+        r.footprint.min_units[0] = 1000.f;
+        r.end(); CHECK(r.store->admitted_count == 0 && r.store->nodes_used == 1); // nothing issued, the node stays
+        f = r.next(); CHECK(f.footprint_refused[0] == 1 && f.footprint_refused[1] == 1 && f.nodes_unseen == 1 && f.would[0] == 0 && f.box_exit == 0 && f.moving_dropped == 0);
+        r.footprint = renderer::ShadowCascadeFootprintLaw{};
+        r.end(); CHECK(r.store->admitted_count == 1 && r.store->draws[r.store->admitted[0]].cascades == 3); // the option off again: the record returns
+        f = r.next(); CHECK(f.footprint_refused[0] == 0 && f.footprint_refused[1] == 0);
     }
     { // a moving node leaves on its first unseen frame
         Rig r;

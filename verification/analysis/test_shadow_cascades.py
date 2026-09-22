@@ -890,7 +890,8 @@ class CandidatesLineTail(unittest.TestCase):
         bound = re.search(r'constexpr std::size_t cascade_fields_bound = renderer::shadow_cascade_max \* \((.*?)\) \+ ([\d +]+) \+ 1;', source)
         self.assertIsNotNone(bound)
         total = cascades * eval(bound.group(1)) + eval(bound.group(2)) + 1
-        per_cascade = [' c%u=%u', ' capped%u=%u', ' static_only_refused%u=%u', ' large_admitted%u=%u', ' class_miss%u=%u', ' flip_c%u=%u', ' period2_c%u=%u']
+        per_cascade = [' c%u=%u', ' capped%u=%u', ' static_only_refused%u=%u', ' large_admitted%u=%u', ' class_miss%u=%u',
+                       ' footprint_refused%u=%u', ' footprint_aged%u=%u', ' flip_c%u=%u', ' period2_c%u=%u']
         for fmt in per_cascade:
             self.assertIn(fmt, source)
         tail = ''.join(fmt.replace('%u', '%d') % (cascades - 1, 4294967295) for fmt in per_cascade) * cascades
@@ -1012,6 +1013,22 @@ class LauncherOptions(unittest.TestCase):
             code, output, error = launch(directory, *self.BASE, '--shadow-cascades', 'default', '--shadow-cascade-records', '4096', '--shadow-cascade-drop-order', 'submission')
             self.assertEqual(code, 0, error); env = json.loads(output)['env']
             self.assertEqual((env['X3M_SHADOW_CASCADE_RECORDS'], env['X3M_SHADOW_CASCADE_DROP_ORDER']), ('4096', 'submission')); self.assertNotIn('X3M_SHADOW_CASCADE_STATIC_FROM', env)
+
+    def test_min_footprint_option(self):
+        """--shadow-cascade-min-footprint (shadow-cascade-cost-policy.md, option (a)):
+        absent by default, an inherited value cannot leak, the value passes through
+        and the band (0, 64] is enforced."""
+        with tempfile.TemporaryDirectory() as directory:
+            code, output, error = launch(directory, *self.BASE, '--shadow-cascades', 'default', inherited={'X3M_SHADOW_CASCADE_MIN_FOOTPRINT': '8'})
+            self.assertEqual(code, 0, error); self.assertNotIn('X3M_SHADOW_CASCADE_MIN_FOOTPRINT', json.loads(output)['env'])
+            for value, expected in (('8', '8.0'), ('0.5', '0.5'), ('64', '64.0')):
+                code, output, error = launch(directory, *self.BASE, '--shadow-cascades', 'default', '--shadow-cascade-min-footprint', value)
+                self.assertEqual(code, 0, error); self.assertEqual(json.loads(output)['env']['X3M_SHADOW_CASCADE_MIN_FOOTPRINT'], expected)
+            for value in ('0', '-1', '64.5', 'nan'):
+                code, _, error = launch(directory, *self.BASE, '--shadow-cascades', 'default', '--shadow-cascade-min-footprint', value)
+                self.assertNotEqual(code, 0, value); self.assertIn('--shadow-cascade-min-footprint must be within (0, 64]', error)
+            code, _, error = launch(directory, *self.BASE, '--shadow-cascade-min-footprint', '8')
+            self.assertNotEqual(code, 0); self.assertIn('--shadow-cascade-min-footprint requires --shadow-cascades', error)
 
     def test_backface_option(self):
         """--shadow-cascade-backface-from (run 40 A, cause 2): absent by default (the DLL's texel law), an inherited value cannot leak, K in 0..cascades-1 or none pass, the rest are refused."""

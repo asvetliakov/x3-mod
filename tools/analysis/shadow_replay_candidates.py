@@ -22,6 +22,12 @@ per cascade then `class_store= class_ring=` (--shadow-cascade-static-from), and
 `dropped_min_size<i>=` (a float) per cascade then `select_us=`
 (--shadow-cascade-drop-order importance); parsed into the `cascades` dict as
 `static_only_refused`, `large_admitted`, `class_miss`, `classified`, `dropped_min_size` and `select_us`.
+Between the two groups sits the minimum-footprint group
+(--shadow-cascade-min-footprint; docs/architecture/shadow-cascades.md, "Minimum
+caster footprint"): `footprint_refused<i>=` per cascade (live draws the gate
+dropped from cascade i) then `footprint_aged<i>=` per cascade (retained records
+the same gate dropped in the store's unseen walk), parsed as
+`footprint_refused` and `footprint_aged`.
 The line then ends with the cascade-membership flip counters
 (docs/architecture/shadow-caster-retention.md, "Membership flips"):
 `flip_c<i>=` per cascade, the casters whose cascade-i bit entered or left since
@@ -98,6 +104,14 @@ def _cascade_suffix(line, pairs):
         row['class_miss'] = values[2 * count:3 * count]
         row['classified'] = dict(zip(CLASS_FIELDS, values[3 * count:]))
         rest = rest[len(static_keys):]
+    footprint_keys = [f'footprint_refused{j}' for j in range(count)] + [f'footprint_aged{j}' for j in range(count)]
+    if rest and rest[0][0] == footprint_keys[0]:
+        if [k for k, _ in rest[:len(footprint_keys)]] != footprint_keys:
+            raise MalformedLine(line.rstrip('\n'))
+        values = integers(v for _, v in rest[:len(footprint_keys)])
+        row['footprint_refused'] = values[:count]
+        row['footprint_aged'] = values[count:]
+        rest = rest[len(footprint_keys):]
     size_keys = [f'dropped_min_size{j}' for j in range(count)] + ['select_us']
     if rest and rest[0][0] == size_keys[0]:
         if [k for k, _ in rest[:len(size_keys)]] != size_keys:
@@ -298,6 +312,10 @@ def summarize(frames, witnesses):
             summary['cascades']['period2_frames'] = [sum(1 for c in flip_rows if i < c['count'] and c['period2'][i]) for i in range(count)]
             summary['cascades']['flip_untracked_total'] = sum(c['flip_untracked'] for c in flip_rows)
             summary['cascades']['flip_reset_frames'] = sum(c['flip_reset'] for c in flip_rows)
+        footprint_rows = [c for c in cascade_rows if 'footprint_refused' in c]
+        if footprint_rows:
+            summary['cascades']['footprint_refused_total'] = [sum(c['footprint_refused'][i] for c in footprint_rows if i < c['count']) for i in range(count)]
+            summary['cascades']['footprint_aged_total'] = [sum(c['footprint_aged'][i] for c in footprint_rows if i < c['count']) for i in range(count)]
         size_rows = [c for c in cascade_rows if 'dropped_min_size' in c]
         if size_rows:
             summary['cascades']['dropped_min_size_max'] = [max((c['dropped_min_size'][i] for c in size_rows if i < c['count']), default=0.0) for i in range(count)]

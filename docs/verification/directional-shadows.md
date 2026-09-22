@@ -3594,3 +3594,92 @@ Change landed with this diagnosis: `shadow_replay_depth` gains `state_calls<k>=`
 `ShadowReplayResult::state_calls_map`, the parser group `row['state_calls']` with the identity
 enforced (`test_shadow_replay_depth`, 15 tests), the per-frame assertion in
 `seam-ownership-shadow-replay-cascades*`, and `test_shadow_cascade_refresh` for the unwired core.
+
+### Minimum caster footprint (option (a)), 2026-09-22
+
+`--shadow-cascade-min-footprint P` (`X3M_SHADOW_CASCADE_MIN_FOOTPRINT`, default absent = off),
+recommendation (a) of [../architecture/shadow-cascade-cost-policy.md](../architecture/shadow-cascade-cost-policy.md);
+law, plumbing and diagnostics in [../architecture/shadow-cascades.md](../architecture/shadow-cascades.md),
+"Minimum caster footprint". The farthest cascade's extent is untouched (user verdict 2026-09-22),
+and the note's cap ceiling `--shadow-cascade-caps 128,512,1024,512,384` needs no code.
+
+Host (all on `/usr/bin/python3 verification/probe/run_host_suite.py`: **229 modules, 2269 tests,
+0 failing**):
+
+- `test_shadow_cascade_footprint` (new): the resolved table of the production set at 4,096 texels,
+  m00 0.8, 1,280 px, P = 8 is `0.3662 / 3.7109 / 22.2656 / 111.3281 / 556.6406` u (the note's 22 /
+  111 / 557); the screen term scales by 1280/1920 at 1,920 wide; P = 1 falls back to the three-texel
+  floor on every cascade; a ladder-dropped c3 leaves c3 ungated and moves c4's screen term onto c2's
+  extent (below c4's own floor, so the floor binds: the gate loosens with the ladder); the option off
+  and an unusable latch drop nothing / keep the floor; one unit under the bound drops, at and above
+  it keeps, 0 and NaN keep; the census sizes 50 / 200 / 600 / 5,000 u refuse exactly `c3+c4` / `c4` /
+  nothing / nothing; a 1,000 × 50 u strut passes on its lateral side while a 2 u depth-long sliver is
+  gated; `shadow_cascade_bounds_mask`'s `lateral` output (shared and per-cascade suns, zeroed with an
+  unknown mask); the option band on `shadow_cascade_pool` (0 = off, 64 max, NaN refused) and the
+  adaptive ladder carrying it.
+- `test_shadow_retention`: the gate on a re-issued retained record — counted per cascade, the record
+  keeps the cascades whose bound it clears, a record gated out of every cascade issues nowhere and
+  the node is **not** dropped (no box exit, no moving drop), and the option off restores it. The
+  retained measure is `sun_side` (the sun-space AABB side of the record's object box through its
+  stored rows), the same quantity the live path measures, not the store's world-AABB support.
+- `test_shadow_replay_candidates`: the `footprint_refused<i>` / `footprint_aged<i>` group between the
+  static-only and importance groups, its summary totals and six malformed forms.
+- `test_shadow_cascades`: `--shadow-cascade-min-footprint` (absent by default, an inherited value
+  cannot leak, 0.5 / 8 / 64 pass, `0`, `-1`, `64.5`, `nan` refused, requires `--shadow-cascades`) and
+  the candidates-tail worst case including the two new field groups.
+- `test_shadow_cascade_footprint` (environment): the DLL's own read accepts an explicit zero or any
+  non-positive value as off (a zero footprint never disables the cascades) and refuses a truncated
+  variable, NaN and an out-of-band value with `reason=min_footprint`.
+
+Fixture, bottle X3 (`X3M_FIXTURE_BOTTLE=X3 … run_motion_output.py <cases>`), new cases
+`seam-ownership-shadow-pool-footprint-{off,px8,px24}` (the "footprint" pool script: five casters
+measuring 0.62 / 0.62 / 1.87 / 6.24 / 18.71 u across in light space on the 8 / 40 cascade pair,
+256-texel maps, m00 0.8, 64 px wide, so the thresholds are 0.1875 u on c0 and 2.375 u at P = 8 /
+7.125 u at P = 24 on c1; the runner recomputes both from the law and compares them with the DLL's
+`shadow_cascade_footprint` line and the script's own arithmetic):
+
+| case | c0 / c1 records per frame (1-5) | `footprint_refused` total | `draws1` total | c1 map texels | max map error |
+|---|---|---|---|---|---|
+| off | 5 / 5 | field absent | 30 | 44,993 | 4.1117e-05 |
+| px8 | 5 / 2 | 0, 15 | 15 | 44,993 | 4.1117e-05 |
+| px24 | 5 / 1 | 0, 20 | 10 | 44,963 | 4.1117e-05 |
+
+Retained half, `seam-ownership-shadow-pool-footprint-retained-{off,px8}` (the same script under a
+live store: 14 frames, the 1.87-unit caster withdrawn from frame 10 once the store promoted it, so
+it is retained and re-issued while cascade 0 keeps it):
+
+| case | frames 10-13: c0 / c1 live | `would_c0` / `would_c1` | `draws0` / `draws1` | `footprint_aged1` |
+|---|---|---|---|---|
+| retained-off | 4 / 4 | 1 / 1 | 5 / 5 | field absent |
+| retained-px8 | 4 / 2 | 1 / 0 | 5 / 2 | 1 per retained frame (4 total; `footprint_refused` 0, 35 over the run) |
+
+So the gate refuses the retained record from cascade 1 exactly while the option is on and the same
+record is re-admitted to both cascades with the option off; in both cases the node stays
+(`records_unseen = 1`, `nodes_unseen = 1`, no box exit, no moving drop) and the presented frames of
+the two cases are byte-identical.
+
+Exactly the sub-threshold casters leave cascade 1 (3 of 5 at P = 8, 4 of 5 at P = 24), the large ones
+stay, cascade 0 is never gated (`footprint_refused0 = 0` on every frame, 28 c0 issues in all three
+cases), frame 0 has no extent read yet so nothing is gated there, and `footprint_aged` stays 0 (this
+script retains nothing). Receiver side: every replayed map still matches the CPU twin of its kept
+casters with 0 coverage disagreements and the same 4.1117e-05 maximum depth error in all three cases;
+the covered-texel count is **identical** at P = 8 (the removed casters' shadows lie inside the kept
+18.71 u caster's) and 30 texels smaller at P = 24, and the presented frames are byte-identical
+(`color_sha256 33d7f02f…` in all three).
+
+Off path unchanged with the option absent, same checks and the same maximum errors as before the
+change: `seam-ownership-shadow-replay-on` (203 checks, 1.520961289142031e-05),
+`-shadow-replay-cascades` (278, 4.193166540655824e-06), `-cascades-casters-20` (278,
+3.348890236343216e-06), `-shadow-replay-ladder-corvette-static` (373 checks; maximum map error 6.156232292831021e-07 against
+the 5.997454037842687e-07 of the record of 2026-09-18, which was taken with a different DLL and
+fixture binary — every commit since then lies between them; the value reproduced identically in two
+runs of this worktree, so it is not run noise, and it is three orders of magnitude below the
+comparison tolerance; the gate is off in that case and asks the box test for no measure),
+`-shadow-retention-live` (9,743 checks, 1,535 frames, 5.541019532318003e-06),
+`-shadow-pool-static-live` (182, 4.412964153133192e-05), `-shadow-pool-importance` (99,
+3.6239815189575975e-05).
+
+Build: scratch `build-footprint` (MinGW i686, RelWithDebInfo), `check_no_x87.py` **0 violations over
+638 reachable functions**, DLL `42b5544d…`. `tools/manage.py launch --dry-run --bottle X3` with the
+Run 65 session C options plus `--shadow-cascade-min-footprint 8` passes
+(`X3M_SHADOW_CASCADE_MIN_FOOTPRINT=8.0`). Not installed, not measured in flight.

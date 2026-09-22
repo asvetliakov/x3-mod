@@ -10,6 +10,7 @@
 #include <emmintrin.h>
 #endif
 #include "camera_reprojection.h"
+#include "shadow_cascade_footprint_core.h"
 
 namespace x3m::renderer {
 // The own-ship cascade: centred on the camera position plus forward x
@@ -230,6 +231,7 @@ inline int shadow_replay_bounds_verdict(const CameraState& camera, const float r
 // one; the fifth slot is for a 150,000-unit reach (250 / 1,500 / 7,500 / 37,500
 // / 150,000: docs/architecture/shadow-cascade-extents.md, section 3).
 constexpr unsigned shadow_cascade_max = 5;
+static_assert(shadow_cascade_footprint_max_cascades == shadow_cascade_max, "the footprint law's array bound is the cascade count");
 constexpr unsigned shadow_cascade_default_count = 4;
 constexpr float shadow_cascade_extent_defaults[shadow_cascade_default_count] = {250.f, 1500.f, 7500.f, 25000.f}; // the intended set
 constexpr float shadow_cascade_extent_min = 50.f, shadow_cascade_extent_max = 150000.f;
@@ -265,6 +267,7 @@ struct ShadowCascadeSet {
     unsigned static_from = shadow_cascade_static_from_none; // cascades i >= static_from admit static casters only
     bool importance = false;                                // a cascade over its cap keeps the largest projected casters, not the first submitted
     float large_min = 0.f;                                  // a static-only cascade also admits a moving caster whose world AABB extent is >= this (0: never)
+    float min_footprint_px = 0.f;                           // per-part minimum light-space footprint in screen pixels (shadow_cascade_footprint_core.h; 0: off, bit-identical)
     unsigned backface_from = shadow_cascade_backface_from_texel; // cascades i >= this replay back faces; the texel law by default (shadow_cascade_backface_texel_default)
     // The issues cascade i can carry: its cap bounded by its records (the storage the issue list was sized with).
     unsigned bound(unsigned i) const noexcept { return i < shadow_cascade_max ? (caps[i] < records[i] ? caps[i] : records[i]) : 0u; }
@@ -293,10 +296,11 @@ struct ShadowCascadeSet {
 // default; shadow_cascade_static_from_none = no cascade; 0..count-1 = that cascade and beyond).
 // False on an out-of-range value; `out` is untouched then.
 inline bool shadow_cascade_pool(ShadowCascadeSet& out, const unsigned* records, unsigned static_from, bool importance, float large_min = 0.f,
-                                unsigned backface_from = shadow_cascade_backface_from_texel) noexcept {
+                                unsigned backface_from = shadow_cascade_backface_from_texel, float min_footprint_px = 0.f) noexcept {
     if (!out.count) return false;
     if (static_from != shadow_cascade_static_from_none && (static_from < 1 || static_from >= out.count)) return false; // cascade 0 always admits movers; == count would be a no-op
     if (!(large_min >= 0.f) || large_min > shadow_cascade_large_min_max) return false; // NaN refused
+    if (min_footprint_px != 0.f && !shadow_cascade_min_footprint_valid(double(min_footprint_px))) return false; // 0 = off; NaN and out of band refused
     if (backface_from != shadow_cascade_backface_from_texel && backface_from != shadow_cascade_static_from_none && backface_from >= out.count) return false; // == count would be a silent no-op
     for (unsigned i = 0; records && i < out.count; ++i) if (records[i] < shadow_cascade_records_min || records[i] > shadow_cascade_records_max) return false;
     for (unsigned i = 0; records && i < out.count; ++i) out.records[i] = records[i];
@@ -304,6 +308,7 @@ inline bool shadow_cascade_pool(ShadowCascadeSet& out, const unsigned* records, 
     out.importance = importance;
     out.large_min = large_min;
     out.backface_from = backface_from;
+    out.min_footprint_px = min_footprint_px;
     return true;
 }
 inline bool shadow_cascade_active(const ShadowCascadeSet& set, unsigned cascade) noexcept { return cascade < set.count && (set.active >> cascade & 1u) != 0; }
@@ -641,15 +646,21 @@ inline float shadow_cascade_projected_size(const float smin[3], const float smax
 // (-1), whichever corner or cascade made it unknown.
 // `extent`: likewise the largest side of the draw's sun-space AABB, a rigid
 // quantity of the world-space box (the large-caster admission's measure).
+// `lateral` (non-null: shadow_cascade_max floats): per cascade the largest of
+// the two LATERAL sides of the draw's box in THAT cascade's sun space (the
+// minimum-footprint gate's measure; with one shared sun every cascade gets the
+// same value, as the box is the same). Zero with an unknown mask (-1).
 inline float shadow_cascade_box_extent(const float smin[3], const float smax[3]) noexcept {
     float e = 0.f;
     for (unsigned a = 0; a < 3; ++a) if (smax[a] - smin[a] > e) e = smax[a] - smin[a];
     return std::isfinite(e) ? e : 0.f;
 }
 inline int shadow_cascade_bounds_mask(const CameraState& camera, const float rows[16], const ShadowCascadeBounds& bounds,
-                                      const float lo[3], const float hi[3], float* projected = nullptr, float* extent = nullptr) noexcept {
+                                      const float lo[3], const float hi[3], float* projected = nullptr, float* extent = nullptr,
+                                      float* lateral = nullptr) noexcept {
     if (projected) *projected = 0.f;
     if (extent) *extent = 0.f;
+    if (lateral) for (unsigned c = 0; c < shadow_cascade_max; ++c) lateral[c] = 0.f;
     if (!camera.valid || !rows || !lo || !hi || !bounds.count || !(camera.m00 > 0.f) || !(camera.m11 > 0.f)) return -1;
     float size = 0.f, box = 0.f; // written to the outputs only with a known mask
     float smin[3] = {3.4028235e38f, 3.4028235e38f, 3.4028235e38f}, smax[3] = {-3.4028235e38f, -3.4028235e38f, -3.4028235e38f};
@@ -672,6 +683,7 @@ inline int shadow_cascade_bounds_mask(const CameraState& camera, const float row
                 if (s > cmax[a]) cmax[a] = s;
             }
             if (c == 0) { size = shadow_cascade_projected_size(cmin, cmax); box = shadow_cascade_box_extent(cmin, cmax); }
+            if (lateral) lateral[c] = shadow_cascade_footprint_lateral(cmin, cmax);
             const float* l = bounds.lo[c]; const float* h = bounds.hi[c];
             if (cmax[0] >= l[0] && cmin[0] <= h[0] && cmax[1] >= l[1] && cmin[1] <= h[1] && cmin[2] <= h[2]) mask |= 1 << c; // the light side is open (pancaked)
         }
@@ -692,6 +704,7 @@ inline int shadow_cascade_bounds_mask(const CameraState& camera, const float row
     }
     if (projected) *projected = shadow_cascade_projected_size(smin, smax);
     if (extent) *extent = shadow_cascade_box_extent(smin, smax);
+    if (lateral) { const float side = shadow_cascade_footprint_lateral(smin, smax); for (unsigned c = 0; c < shadow_cascade_max; ++c) lateral[c] = side; }
     int mask = 0; // every corner was finite: the outputs above stand
     for (unsigned c = 0; c < bounds.count; ++c) {
         const float* l = bounds.lo[c]; const float* h = bounds.hi[c];

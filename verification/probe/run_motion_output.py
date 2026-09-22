@@ -452,6 +452,26 @@ SHADOW_POOL_RUN116_CASES = {'seam-ownership-shadow-pool-cycle-census': dict(X3M_
                             'seam-ownership-shadow-pool-jitter-live': dict(X3M_FIXTURE_SHADOW_POOL='jitter', X3M_SHADOW_CASCADE_STATIC_FROM='1', X3M_FIXTURE_SHADOW_CASCADES='8,200', X3M_SHADOW_CASTER_RETENTION='1'),
                             'seam-ownership-shadow-pool-hull': dict(X3M_FIXTURE_SHADOW_POOL='hull')}
 CASES += [case(name, 'shadowpool', 'ownership', camera=True, hdr_env=dict(SHADOW_POOL_ENV, X3M_SHADOW_CASCADE_CAPS='1024', **extra)) for name, extra in SHADOW_POOL_RUN116_CASES.items()]
+# The minimum light-space footprint (docs/architecture/shadow-cascades.md, "Minimum caster
+# footprint"; the cost policy note's option (a)): the "footprint" script's five casters
+# (0.62 / 0.62 / 1.87 / 6.24 / 18.71 units across in light space) on the 8 / 40 pair.
+# off: the option absent, every caster in both cascades and no footprint field on the
+# counter line; px8: cascade 1's threshold 3.17 u, the three smallest casters leave it;
+# px24: 9.5 u, the 6.24-unit one as well. Cascade 0's threshold is its three texels
+# (0.1875 u): nothing ever leaves it, so no receiver of cascade 0 changes.
+SHADOW_POOL_FOOTPRINT_CASES = {'seam-ownership-shadow-pool-footprint-off': {},
+                               'seam-ownership-shadow-pool-footprint-px8': dict(X3M_SHADOW_CASCADE_MIN_FOOTPRINT='8'),
+                               'seam-ownership-shadow-pool-footprint-px24': dict(X3M_SHADOW_CASCADE_MIN_FOOTPRINT='24')}
+CASES += [case(name, 'shadowpool', 'ownership', camera=True, hdr_env=dict(SHADOW_POOL_ENV, X3M_FIXTURE_SHADOW_POOL='footprint', X3M_SHADOW_CASCADE_CAPS='1024', **extra))
+          for name, extra in SHADOW_POOL_FOOTPRINT_CASES.items()]
+# The retained half of the gate: under a live store the same script runs 14 frames and stops
+# submitting the 1.87-unit caster from frame 10, once the store has promoted it. The store re-issues
+# it every frame after that; the gate refuses it from cascade 1 (footprint_aged1=1 per frame) while
+# cascade 0 keeps it, and with the option off the same record is re-admitted to both cascades.
+SHADOW_POOL_FOOTPRINT_RETAINED_CASES = {'seam-ownership-shadow-pool-footprint-retained-off': dict(X3M_SHADOW_CASTER_RETENTION='1'),
+                                        'seam-ownership-shadow-pool-footprint-retained-px8': dict(X3M_SHADOW_CASTER_RETENTION='1', X3M_SHADOW_CASCADE_MIN_FOOTPRINT='8')}
+CASES += [case(name, 'shadowpool', 'ownership', camera=True, hdr_env=dict(SHADOW_POOL_ENV, X3M_FIXTURE_SHADOW_POOL='footprint', X3M_SHADOW_CASCADE_CAPS='1024', **extra))
+          for name, extra in SHADOW_POOL_FOOTPRINT_RETAINED_CASES.items()]
 CASES += [case('seam-ownership-shadow-pool-importance', 'shadowpool', 'ownership', camera=True,
                hdr_env=dict(SHADOW_POOL_ENV, X3M_FIXTURE_SHADOW_POOL='importance', X3M_SHADOW_CASCADE_CAPS='16,4', X3M_SHADOW_CASCADE_DROP_ORDER='importance')),
           case('seam-ownership-shadow-pool-records', 'shadowpool', 'ownership', camera=True,
@@ -2625,7 +2645,8 @@ def validate_shadow_pool(name, text, trace, directory, env):
     static_only_refused<i> and leased against POOL_EXPECT, the depth line's
     draws<i> / far cadence against the kept counts and the budget, every
     compared cascade map against the CPU twin of POOL_KEPT (the casters the
-    policy must keep, with their scales); importance: dropped_min_size1 > 0
+    policy must keep, with their scales); footprint: the resolved thresholds
+    against the law recomputed here and the per-cascade drops; importance: dropped_min_size1 > 0
     and identical on every sized frame, the kept set identical across the
     rotated orders; records: 4,096 records per frame with no overflow."""
     assert 'RESULT PASS' in text, f'{name}: fixture failed'
@@ -2652,6 +2673,36 @@ def validate_shadow_pool(name, text, trace, directory, env):
     depth_by_frame = {r['frame']: r for r in depth_rows}
     assert sorted(by_frame) == sorted(depth_by_frame) == sorted(frames) and not refused, (name, sorted(by_frame), refused)
     static_on, importance = env.get('X3M_SHADOW_CASCADE_STATIC_FROM') is not None, env.get('X3M_SHADOW_CASCADE_DROP_ORDER') == 'importance'
+    # The footprint script under a live store withdraws one caster from frame 10: those frames carry
+    # retained issues (draws<k> = c<k> + would_c<k>) and compare no map, so their depth line is
+    # checked against the retention line instead of against the live records alone.
+    retained_script = script == 'footprint' and env.get('X3M_SHADOW_CASTER_RETENTION') == '1'
+    retention_by_frame = {r['frame']: r for r in (retention_analysis.parse_frame_line(l) for l in tl if l.startswith('shadow_retention_frame '))} if retained_script else {}
+    # The minimum-footprint gate: the mode line's value, the DLL's resolved thresholds
+    # (shadow_cascade_footprint) against the law recomputed here from P, the camera latch's m00,
+    # the fixture's back-buffer width and the live extents and sizes, and the per-cascade drops.
+    footprint_px = float(env.get('X3M_SHADOW_CASCADE_MIN_FOOTPRINT', '0'))
+    assert float(mode[0]['min_footprint']) == footprint_px, (name, mode[0]['min_footprint'], footprint_px)
+    footprint_lines = [fields(l) for l in tl if l.startswith('shadow_cascade_footprint ')]
+    script_footprint = fields(next((l for l in lines if l.startswith('POOL_FOOTPRINT ')), 'POOL_FOOTPRINT px=0 width=0 min0=0 min1=0'))
+    if footprint_px:
+        assert len(footprint_lines) == 1, (name, footprint_lines)
+        row = footprint_lines[0]
+        width = int(script_footprint['width'])
+        m00 = float(row['m00'])
+        assert float(row['px']) == footprint_px and int(row['width']) == width and int(row['cascades']) == count, (name, row)
+        expected_min = []
+        previous = 0.0
+        for i in range(count):
+            screen = footprint_px * 0.95 * previous * 2.0 / (m00 * width)
+            texel = 3.0 * 2.0 * extents[i] / sizes[i]
+            expected_min.append(max(screen, texel)); previous = extents[i]
+        for i in range(count):
+            assert abs(float(row[f'min{i}']) - expected_min[i]) <= 1e-4 * max(1.0, expected_min[i]), (name, i, row, expected_min)
+        # ... and the script's own arithmetic agrees with the DLL's.
+        assert abs(expected_min[0] - float(script_footprint['min0'])) <= 1e-5 and abs(expected_min[1] - float(script_footprint['min1'])) <= 1e-5, (name, row, script_footprint)
+    else:
+        assert not footprint_lines, (name, footprint_lines)
     far_frame, dropped_sizes = -1, []
     for frame in sorted(frames):
         e, c_row, d_row = expect[frame], by_frame[frame], depth_by_frame[frame]
@@ -2667,6 +2718,26 @@ def validate_shadow_pool(name, text, trace, directory, env):
             expected_leased = int(frames[frame]['drawn']) - c_row['capped']
         assert c_row['leased'] == expected_leased and c_row['overflow'] == 0 and c_row['capped'] == (capped[1] if script == 'records' else 0), (name, frame, c_row, expected_leased)
         assert ('static_only_refused' in cascades) == static_on and ('dropped_min_size' in cascades) == importance, (name, frame, cascades)
+        # The gate's fields exist exactly while the option is on; the drops are the script's
+        # (frame 0 has no extent read yet, so no draw carries a measure and nothing is gated),
+        # and cascade 0's three-texel floor never drops anything. No record is retained in this
+        # script (every caster is drawn every frame), so the aged counts stay zero.
+        assert ('footprint_refused' in cascades) == bool(footprint_px), (name, frame, cascades)
+        if footprint_px:
+            assert cascades['footprint_refused'] == [int(e['footprint_refused0']), int(e['footprint_refused1'])], (name, frame, cascades, e)
+            # Cascade 0's three-texel floor never drops anything; the aged counts are the retained
+            # records the same gate refused in the store's unseen walk (0 unless a caster was withdrawn).
+            assert cascades['footprint_refused'][0] == 0, (name, frame, cascades)
+            assert cascades['footprint_aged'] == [0, int(e.get('footprint_aged1', 0))], (name, frame, cascades, e)
+        retained_frame = retained_script and frames[frame]['compare'] == '0'
+        if retained_frame:
+            r = retention_by_frame[frame]
+            would = [r[f'would_c{i}'] for i in range(count)]
+            # The withdrawn caster is retained (one unseen record) and re-issued into cascade 0; the
+            # gate decides cascade 1: refused while the option is on, re-admitted when it is off.
+            assert r['records_unseen'] == 1 and r['nodes_unseen'] == 1 and r['box_exit'] == 0 and r['moving_dropped'] == 0, (name, frame, r)
+            assert would == [1, 0 if footprint_px else 1], (name, frame, would)
+            assert d_row['cascades']['draws'] == [records[0] + would[0], records[1] + would[1]], (name, frame, d_row, records, would)
         if static_on:
             assert cascades['static_only_refused'] == [0, int(e['static_only_refused1'])] and cascades['large_admitted'] == [0, int(e['large_admitted1'])], (name, frame, cascades, e)
             classified, drawn = cascades['classified'], int(frames[frame]['drawn'])
@@ -2697,6 +2768,9 @@ def validate_shadow_pool(name, text, trace, directory, env):
         if far_replays:
             far_frame = frame
         draws = [records[0], records[1] if far_replays else 0]
+        if retained_frame:  # the retained issues ride along: asserted against the retention line above
+            assert d_row['cascades']['far_replayed'] == int(far_replays) and d_row['cascades']['count'] == count, (name, frame, d_row)
+            continue
         assert d_row['cascades'] == {'count': count, 'draws': draws, 'far_replayed': int(far_replays), 'far_frame': far_frame, 'issues': issues, 'budget': budget}, (name, frame, d_row, records)
         assert d_row['draws'] == c_row['leased'] and d_row['replayed'] == d_row['draws'], (name, frame, d_row)
     if importance:
@@ -2742,7 +2816,9 @@ def validate_shadow_pool(name, text, trace, directory, env):
             comparison = depth_replay.compare_map(struct.unpack(f'<{sizes[c] * sizes[c]}f', data), expected, camera, basis, sizes[c])
             assert comparison['ok'] and comparison['covered_cpu'] >= 1, (name, frame, c, frames[frame]['case'], comparison)
             comparisons[f'{frame}/{c}'] = {k: comparison[k] for k in ('covered_cpu', 'covered_gpu', 'coverage_disagreements', 'max_depth_error')}
-    if script != 'records':
+    if script == 'footprint' and retained_script:
+        assert len(compared) == len(frames) - (len(frames) - 10) and len(comparisons) >= len(compared), (name, len(compared), len(comparisons))
+    elif script != 'records':
         assert len(compared) == len(frames) and len(comparisons) >= len(frames), (name, len(compared), len(comparisons))
     colors = [l for l in lines if l.startswith('COLOR ')]
     assert len(colors) == len(frames), (name, len(colors))
@@ -2751,6 +2827,11 @@ def validate_shadow_pool(name, text, trace, directory, env):
             'map': {'max_depth_error': max((v.get('max_depth_error', 0.0) for v in comparisons.values()), default=0.0), 'covered_texels': sum(v.get('covered_gpu', 0) for v in comparisons.values()),
                     'coverage_disagreements': sum(v.get('coverage_disagreements', 0) for v in comparisons.values()), 'maps': len(comparisons)},
             'us': depth_replay.us_summary(depth_rows)}
+    if footprint_px:
+        case['footprint'] = {'px': footprint_px, 'retained_script': retained_script, 'min': [float(footprint_lines[0][f'min{i}']) for i in range(count)],
+                             'refused_total': [sum(by_frame[f]['cascades']['footprint_refused'][i] for f in sorted(frames)) for i in range(count)],
+                             'aged_total': [sum(by_frame[f]['cascades']['footprint_aged'][i] for f in sorted(frames)) for i in range(count)],
+                             'draws_total': [sum(depth_by_frame[f]['cascades']['draws'][i] for f in sorted(frames)) for i in range(count)]}
     if importance:
         case['dropped_min_size1'] = dropped_sizes[0]
         case['select_us'] = {'median': sorted(r['cascades']['select_us'] for r in candidate_rows)[len(candidate_rows) // 2], 'max': max(r['cascades']['select_us'] for r in candidate_rows)}
@@ -5655,11 +5736,14 @@ def main(argv=None):
                 case = validate_shadow_pool(name, text, trace, directory, hdr_env)
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
                             dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
-                # The three store settings of the static script present byte-identical frames.
-                for sibling in SHADOW_POOL_STATIC_CASES:
-                    if name in SHADOW_POOL_STATIC_CASES and sibling != name and sibling in result['cases']:
-                        assert result['cases'][sibling]['color_sha256'] == case['color_sha256'], f'{name}: presented frames differ from {sibling}'
-                        case.setdefault('presented_identical_to', []).append(sibling)
+                # The three store settings of the static script present byte-identical frames, and so do
+                # the three minimum-footprint settings: the gate changes the cascade maps alone, never
+                # the presented frame (the pool script does not apply the shadows to colour).
+                for group in (SHADOW_POOL_STATIC_CASES, SHADOW_POOL_FOOTPRINT_CASES, SHADOW_POOL_FOOTPRINT_RETAINED_CASES):
+                    for sibling in group:
+                        if name in group and sibling != name and sibling in result['cases']:
+                            assert result['cases'][sibling]['color_sha256'] == case['color_sha256'], f'{name}: presented frames differ from {sibling}'
+                            case.setdefault('presented_identical_to', []).append(sibling)
                 result['cases'][name] = case
                 (RESULTS / f'{name}-fixture.json').write_text(json.dumps({'case': name, 'bottle': result['bottle'], 'binaries': result['binaries'], **case}, indent=1) + '\n')
                 save()

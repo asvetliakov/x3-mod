@@ -13,6 +13,10 @@
   "/private/tmp/x3-run66-candidate/binaries/motion_output_fixture.exe": "30591f64dbe6a302892a9aacecdcfcbb1190c5622c732dcd239a1ed2cb91f4d2",
   "/private/tmp/x3-run66-candidate/binaries/motion-output-seam/d3d9.dll": "a0fd102da404dc83b8ff2d7b6f141a7f12549cfc8332e1447b945a985e128ac7",
   "/private/tmp/x3-run66-candidate/build/d3d9.dll": "1f9a85f53f6612803466a1ba8be2b5a1f9de4ecc9f188e4e840a0c50e1c952ca"
+
+  "verification/probe/build/motion_output_fixture.exe": "1b8f9b9471d24f7523a0ad9560875f9f68cbae3b1d9ab7c25f0c46a005d0a3e4",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "bb1240632df5538cf87c2f34e08547086b4d9f3b6f2d7d525d413733bab14435",
+  "build/d3d9.dll": "a319b3f77fe93197df7b8f2078e166b69f48998e833bb648bb3c9e4c1522bd70"
  },
  "mode": "live",
  "frames": 1535,
@@ -149,6 +153,13 @@
    "draw_us_per_call": {
     "median": 0.2,
     "max": 2.3000000000000003
+
+    "max": 471.4,
+    "p99": 47.1
+   },
+   "draw_us_per_call": {
+    "median": 0.15,
+    "max": 1.85
    },
    "moving_share_median": 0.0,
    "resight": {
@@ -214,6 +225,14 @@
    "retired": 591,
    "us": 63.2,
    "journal_us": 37.8
+
+  "full_store_us_median": 48.1,
+  "full_store_walk_us_max": 92.7,
+  "overflow_frame_us": 179.2,
+  "burst_frame": {
+   "retired": 591,
+   "us": 67.7,
+   "journal_us": 40.7
   }
  },
  "failed_reset": "8876086c",
@@ -251,4 +270,19 @@
  "trace_sha256": "b247bb8945c2d433985902cc4a5dce8a9dcfcfe1bbcc6c4b690ffa8be997b208",
  "dll_sha256": "a0fd102da404dc83b8ff2d7b6f141a7f12549cfc8332e1447b945a985e128ac7",
  "exe_sha256": "30591f64dbe6a302892a9aacecdcfcbb1190c5622c732dcd239a1ed2cb91f4d2"
+
+  "min": 20.6,
+  "median": 27.6,
+  "max": 2295.0,
+  "bulk": {
+   "frames": 16,
+   "issues_median": 1450,
+   "us_median": 1655.2
+  }
+ },
+ "exit": 0,
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-retention-live-20260922-194726-323693",
+ "trace_sha256": "3f3188f389d94cba4d362856d43e4e310d9880a9987c725fb38fa8be1b9c6b94",
+ "dll_sha256": "bb1240632df5538cf87c2f34e08547086b4d9f3b6f2d7d525d413733bab14435",
+ "exe_sha256": "1b8f9b9471d24f7523a0ad9560875f9f68cbae3b1d9ab7c25f0c46a005d0a3e4"
 }

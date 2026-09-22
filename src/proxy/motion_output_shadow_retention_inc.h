@@ -290,6 +290,12 @@ void MotionOutput::retention_scene_end(bool sun_source_switched) noexcept {
     shadow_retention::FrameInput in;
     in.frame = frame_; in.camera = camera_scene_; in.set = depth_cascades_; in.eps = retention_eps_; in.age_cap = retention_age_cap_;
     for (unsigned c = 0; c < renderer::shadow_cascade_max; ++c) in.eps_cascade[c] = depth_cascade_class_eps_[c]; // the per-cascade tiers (refresh_cascade_policy)
+    // The frame's resolved minimum-footprint thresholds: a retained record takes the live gate.
+    // Resolved here too, because a frame whose draws never needed the bounds latch (no extent known
+    // yet) leaves the draw path's law untouched; the inputs are the same latch and width, so a frame
+    // that did resolve it gets the identical law (and no second diagnostic line).
+    refresh_footprint_law();
+    in.footprint = candidate_footprint_law_;
     const float* sun = shadow_replay::sun_verdict_usable(sun_verdict_) ? sun_latch_.frame_sun() : nullptr;
     in.bases_valid = sun && camera_scene_.valid && depth_cascades_.count != 0;
     // Each cascade's own current basis, exactly as the transaction builds it (its own sun and grid anchor).

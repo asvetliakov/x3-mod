@@ -1438,6 +1438,17 @@ private:
     float candidate_bounds_rows_[12]{};
     renderer::ShadowCascadeBounds candidate_cascade_bounds_{}; // cascades on: every cascade's box for the one bounds pass
     int candidate_bounds_state_=0; // 0 not computed this frame, 1 valid, -1 unavailable
+    // Minimum light-space footprint (X3M_SHADOW_CASCADE_MIN_FOOTPRINT;
+    // renderer/shadow_cascade_footprint_core.h): the frame's resolved thresholds
+    // (recomputed with the bounds latch, so a ladder commit, an FOV change or a
+    // Reset re-resolves them) and the per-cascade measure of the draw in hand.
+    // Off: the law is cleared, the mask test passes no measure array at all and
+    // the draw path is byte-identical.
+    renderer::ShadowCascadeFootprintLaw candidate_footprint_law_{};
+    renderer::ShadowCascadeFootprintLaw candidate_footprint_logged_{}; // the last law the shadow_cascade_footprint line reported
+    unsigned candidate_footprint_lines_=0;                             // bounded diagnostics (footprint_line_max)
+    float candidate_footprint_[renderer::shadow_cascade_max]{};        // the draw's lateral sun-space footprint per cascade
+    void refresh_footprint_law() noexcept;                             // the law from the live set, the camera latch and the target width
     // The frame's one validated sun (shadow_replay_sun.h): pixel float
     // registers c0..c31 shadowed as the application writes them, sampled at
     // every routed z-writing draw from the bound program's own LightDir_Dir0

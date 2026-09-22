@@ -2440,7 +2440,22 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
                 if(!reason&&GetEnvironmentVariableW(L"X3M_SHADOW_CASCADE_BACKFACE_FROM",list,128)>0){
                     if(!wcscmp(list,L"none"))backface_from=renderer::shadow_cascade_static_from_none;
                     else { wchar_t* end=nullptr; const unsigned long v=wcstoul(list,&end,10); if(end==list||*end!=L'\0'||v>=count)reason="backface_from"; else backface_from=unsigned(v); } }
-                if(!reason&&!renderer::shadow_cascade_pool(set,records,static_from,importance,large_min,backface_from))reason="pool";
+                // Per-part minimum light-space footprint (shadow-cascades.md, "Minimum caster
+                // footprint"): X3M_SHADOW_CASCADE_MIN_FOOTPRINT = P screen pixels within
+                // (0, 64]. Absent, or any parsed value at or below zero ("0", "0.0", "-1"), is
+                // off (bit-identical): a zero footprint never disables the cascades. Malformed
+                // text, a value above the band and a truncated variable (128 wide characters or
+                // more: `list` would hold no usable value) leave the cascades off, never a silent
+                // no-op.
+                float min_footprint=0.f;
+                if(!reason){ const DWORD n=GetEnvironmentVariableW(L"X3M_SHADOW_CASCADE_MIN_FOOTPRINT",list,128);
+                    if(n>=128)reason="min_footprint";
+                    else if(n>0){ wchar_t* end=nullptr; const double v=wcstod(list,&end);
+                        if(end==list||*end!=L'\0'||!(v==v))reason="min_footprint";                       // malformed text, or NaN
+                        else if(v<=0.)min_footprint=0.f;                                                 // explicit off
+                        else if(!renderer::shadow_cascade_min_footprint_valid(v))reason="min_footprint";  // above the band
+                        else min_footprint=float(v); } }
+                if(!reason&&!renderer::shadow_cascade_pool(set,records,static_from,importance,large_min,backface_from,min_footprint))reason="pool";
                 if(reason||!enabled)set=renderer::ShadowCascadeSet{};
                 // Own-ship-adaptive cascade 0 (shadow-cascade-extents.md, section 5):
                 // X3M_SHADOW_CASCADE_ADAPTIVE_C0 = k within [0.5, 8] (E0 = max(E0, k x
@@ -2456,11 +2471,11 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
                 const auto ext=[&](unsigned i){ return double(set.count>i?set.cascades[i].half_extent:0.f); };
                 const auto sz=[&](unsigned i){ return set.count>i?set.cascades[i].size:0u; };
                 char backface_text[12]; std::snprintf(backface_text,sizeof backface_text,"%u",set.backface_from<set.count?set.backface_from:0u);
-                log("shadow_cascades_mode requested=1 enabled=%u reason=%s cascades=%u extents=%.9g,%.9g,%.9g,%.9g,%.9g sizes=%u,%u,%u,%u,%u caps=%u,%u,%u,%u,%u budget=%u depth_light=%.9g records=%u,%u,%u,%u,%u static_from=%s drop_order=%s large_min=%.9g adaptive_c0=%.9g ladder_ratio=%.9g backface_from=%s backface_mask=%u",
+                log("shadow_cascades_mode requested=1 enabled=%u reason=%s cascades=%u extents=%.9g,%.9g,%.9g,%.9g,%.9g sizes=%u,%u,%u,%u,%u caps=%u,%u,%u,%u,%u budget=%u depth_light=%.9g records=%u,%u,%u,%u,%u static_from=%s drop_order=%s large_min=%.9g adaptive_c0=%.9g ladder_ratio=%.9g backface_from=%s backface_mask=%u min_footprint=%.9g",
                     set.count!=0,reason?reason:enabled?"ok":"replay",set.count,ext(0),ext(1),ext(2),ext(3),ext(4),sz(0),sz(1),sz(2),sz(3),sz(4),
                     set.caps[0],set.caps[1],set.caps[2],set.caps[3],set.caps[4],set.budget,double(set.count?set.cascades[0].depth_toward_light:0.f),
                     set.records[0],set.records[1],set.records[2],set.records[3],set.records[4],set.static_from<set.count?static_text:"none",set.importance?"importance":"submission",double(set.large_min),double(adaptive_k),double(ladder_ratio),
-                    !set.count?"none":set.backface_from==renderer::shadow_cascade_backface_from_texel?"texel":set.backface_from<set.count?backface_text:"none",unsigned(set.count?set.backface_mask():0u));
+                    !set.count?"none":set.backface_from==renderer::shadow_cascade_backface_from_texel?"texel":set.backface_from<set.count?backface_text:"none",unsigned(set.count?set.backface_mask():0u),double(set.min_footprint_px));
                 hooked.motion_output.configure_shadow_cascades(set);
                 hooked.motion_output.configure_shadow_cascade_adaptive(adaptive_k,ladder_ratio);
                 // Per-frame sun trace (X3M_SHADOW_SUN_TRACE=1, default off): one

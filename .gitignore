@@ -60,3 +60,6 @@ verification/results/ambient-occlusion-gpu1.json
 verification/results/ambient-occlusion-gpu1.txt
 verification/results/bottle-*/effect-technique-lookup-wine.log
 verification/results/bottle-*/fog-pass-gpu1-wine.log
+
+# Per-agent scratch builds (build-footprint, build-<topic>): local, never committed
+/build-*/

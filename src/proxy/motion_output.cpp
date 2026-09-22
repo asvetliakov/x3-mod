@@ -2519,7 +2519,11 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
           for (unsigned i = 0; i < renderer::shadow_cascade_max; ++i) sizes[i] = depth_cascades_.cascades[i < depth_cascades_.count ? i : 0].size;
           renderer::ShadowCascadeSet narrowed{};
           if (count == depth_cascades_.count && renderer::shadow_cascade_set(extents, count, sizes, depth_cascades_.caps, depth_cascades_.budget, narrowed, false)
-              && renderer::shadow_cascade_pool(narrowed, depth_cascades_.records, depth_cascades_.static_from, depth_cascades_.importance, depth_cascades_.large_min)) depth_cascades_ = narrowed; // the pool policy stays the configured one
+              // The minimum-footprint pixels ride along (a policy in screen pixels, independent of the
+              // extents); the back-face selector keeps the narrowing's long-standing behaviour (the
+              // texel law re-evaluated on the narrowed extents, not the configured index).
+              && renderer::shadow_cascade_pool(narrowed, depth_cascades_.records, depth_cascades_.static_from, depth_cascades_.importance, depth_cascades_.large_min,
+                                               renderer::shadow_cascade_backface_from_texel, depth_cascades_.min_footprint_px)) depth_cascades_ = narrowed; // the pool policy stays the configured one
       } }
 #endif
     // The record list's storage for the set's records (the inline arrays
@@ -7461,7 +7465,8 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
                         const float* rows = draw_rows();
                         if (cascades) {
                             const int mask = rows ? renderer::shadow_cascade_bounds_mask(camera_scene_, rows, candidate_cascade_bounds_, e->lo, e->hi, depth_cascades_.importance ? &projected : nullptr,
-                                                                                            depth_cascade_static_mask_ && depth_cascades_.large_min > 0.f ? &box_extent : nullptr) : -1;
+                                                                                            depth_cascade_static_mask_ && depth_cascades_.large_min > 0.f ? &box_extent : nullptr,
+                                                                                            candidate_footprint_law_.count ? candidate_footprint_ : nullptr) : -1;
                             if (mask >= 0) { by_bounds = true; cascade_mask = bounds_near_ok ? std::uint8_t(mask) : std::uint8_t(0); admitted = cascade_mask != 0; class_lo = e->lo; class_hi = e->hi; }
                         } else {
                             const int verdict = rows ? renderer::shadow_replay_bounds_verdict(camera_scene_, rows, candidate_bounds_rows_, e->lo, e->hi) : -1;
@@ -7471,6 +7476,25 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
                     }
                 }
             }
+        }
+    }
+    // Minimum light-space footprint (docs/architecture/shadow-cascades.md,
+    // "Minimum caster footprint"): per cascade the draw's own lateral sun-space
+    // box side (the bounds test above formed it) against that cascade's
+    // threshold. Two float compares per met cascade, no allocation and no device
+    // call; a draw without a known extent (`by_bounds` false) has no measure and
+    // keeps every bit. A draw the gate refuses from every cascade it met is no
+    // candidate, so it is still fed to the store as a sighting, exactly as the
+    // static gate's refusal is (run116 cause 1).
+    if (cascades && cascade_mask && by_bounds && candidate_footprint_law_.count) {
+        unsigned refused = 0;
+        const unsigned kept = renderer::shadow_cascade_footprint_gate(candidate_footprint_law_, cascade_mask, candidate_footprint_, &refused);
+        if (refused) {
+            for (unsigned i = 0; i < renderer::shadow_cascade_max; ++i) if (refused & (1u << i)) ++candidates_.counts.footprint_refused[i];
+            cascade_mask = std::uint8_t(kept);
+            const bool was_admitted = admitted;
+            admitted = cascade_mask != 0;
+            if (was_admitted && !admitted && retention_ && depth_replay_requested_ && candidates_published_frame_ != frame_ && vb_known) note_refused_sighting(route, vb, exact_extent);
         }
     }
     // Static-only cascades (shadow-cascade-extents.md, "Caster pool control"): a
@@ -7589,7 +7613,30 @@ bool MotionOutput::ensure_candidate_bounds_rows() noexcept {
         : renderer::shadow_replay_basis(camera_scene_, sun, depth_cascade_, basis)
           && renderer::shadow_replay_view_rows(camera_scene_, basis, depth_cascade_, candidate_bounds_rows_));
     candidate_bounds_state_ = ok ? 1 : -1;
+    if (ok) refresh_footprint_law(); else candidate_footprint_law_ = renderer::ShadowCascadeFootprintLaw{};
     return ok;
+}
+// The frame's minimum-footprint thresholds (shadow_cascade_footprint_core.h),
+// resolved once per frame beside the bounds latch: the live cascade extents,
+// sizes and active mask with the camera latch's m00 and the back buffer's
+// width (the small-parts cull's pixel scale). The option off leaves the law
+// cleared, which drops nothing. One line per distinct resolved law, bounded.
+void MotionOutput::refresh_footprint_law() noexcept {
+    const auto& set = depth_cascades_;
+    if (!set.count || !(set.min_footprint_px > 0.f)) { candidate_footprint_law_ = renderer::ShadowCascadeFootprintLaw{}; return; }
+    float extents[renderer::shadow_cascade_max]{}; unsigned sizes[renderer::shadow_cascade_max]{};
+    for (unsigned i = 0; i < set.count && i < renderer::shadow_cascade_max; ++i) { extents[i] = set.cascades[i].half_extent; sizes[i] = set.cascades[i].size; }
+    const unsigned active = set.active;
+    renderer::shadow_cascade_footprint_law(set.min_footprint_px, camera_scene_.m00, target_width_, extents, sizes, &active, set.count, candidate_footprint_law_);
+    if (candidate_footprint_law_ != candidate_footprint_logged_ && candidate_footprint_lines_ < shadow_replay::footprint_line_max) {
+        ++candidate_footprint_lines_;
+        candidate_footprint_logged_ = candidate_footprint_law_;
+        static_assert(renderer::shadow_cascade_max == 5, "the footprint line lists five cascades");
+        const auto min_of = [&](unsigned i) { return double(i < renderer::shadow_cascade_max ? candidate_footprint_law_.min_units[i] : 0.f); };
+        log("shadow_cascade_footprint device=%llu frame=%llu px=%.9g m00=%.9g width=%u cascades=%u active=%u min0=%.9g min1=%.9g min2=%.9g min3=%.9g min4=%.9g",
+            id_, frame_, double(set.min_footprint_px), double(camera_scene_.m00), target_width_, candidate_footprint_law_.count, active,
+            min_of(0), min_of(1), min_of(2), min_of(3), min_of(4));
+    }
 }
 // Queues one extent read for the scene end (deduplicated; at most
 // extent_reads_per_frame per frame). The wrapper is retained by AddRef so the
@@ -7877,7 +7924,7 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
     // line stays well formed), counted in candidates_line_truncated_ and
     // reported on its own line, never blanked silently.
     static_assert(renderer::shadow_cascade_max <= 10, "the bound assumes one-digit cascade indices");
-    constexpr std::size_t cascade_fields_bound = renderer::shadow_cascade_max * (14 + 20 + 33 + 28 + 24 + 31 + 19 + 22) + 45 + 32 + 42 + 1;
+    constexpr std::size_t cascade_fields_bound = renderer::shadow_cascade_max * (14 + 20 + 33 + 28 + 24 + 31 + 19 + 22 + 31 + 29) + 45 + 32 + 42 + 1;
     char cascade_fields[cascade_fields_bound]; cascade_fields[0] = 0;
     if (depth_cascades_on()) {
         std::size_t used = 0; bool truncated = false;
@@ -7892,6 +7939,14 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
             for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" large_admitted%u=%u", i, c.large_admitted[i]);
             for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" class_miss%u=%u", i, c.class_miss[i]);
             put(" class_store=%u class_ring=%u", c.class_store, c.class_ring);
+        }
+        // Minimum light-space footprint on (--shadow-cascade-min-footprint): per cascade the live
+        // draws the gate dropped (footprint_refused<i>) and the retained records it dropped in the
+        // store's unseen walk (footprint_aged<i>; the walk ran before this line, its counts are reset
+        // after it). Absent while the option is off, so a log of the off path parses as before.
+        if (depth_cascades_.min_footprint_px > 0.f) { // configured, not merely resolved: a frame that read no extent yet reports zeros
+            for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" footprint_refused%u=%u", i, c.footprint_refused[i]);
+            for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" footprint_aged%u=%u", i, retention_ ? retention_->store.frame.footprint_refused[i] : 0u);
         }
         if (depth_cascades_.importance) {
             for (unsigned i = 0; i < depth_cascades_.count; ++i) put(" dropped_min_size%u=%.4g", i, double(c.dropped_size[i]));

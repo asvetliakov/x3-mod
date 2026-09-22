@@ -188,6 +188,7 @@ struct FrameStats {
     std::uint64_t age_max = 0;
     std::uint32_t reclassified_cascade[renderer::shadow_cascade_max]{}; // nodes static at cascade c's eps that moved beyond it this sighting (reclassified= is the base tier)
     std::uint32_t gate_sightings = 0;                                     // sightings the owner fed for draws the static gate refused from every cascade (no record, no lease)
+    std::uint32_t footprint_refused[renderer::shadow_cascade_max]{};      // retained records cascade c's minimum-footprint gate dropped this frame (the live counterpart is FrameCounts::footprint_refused)
 };
 // Cumulative since attach: the shadow_retention_resight line and the fixture's checks.
 struct Totals {
@@ -208,6 +209,11 @@ struct FrameInput {
     double eps = eps_default;
     double eps_cascade[renderer::shadow_cascade_max] = {eps_default, eps_default, eps_default, eps_default, eps_default}; // per cascade (renderer::shadow_cascade_class_eps); never below eps
     std::uint32_t age_cap = age_cap_default;
+    // The frame's resolved minimum-footprint thresholds (the owner computes them
+    // from the live set, the camera latch and the back-buffer width): a retained
+    // record re-issued into cascade c takes the same gate as a live draw. A
+    // cleared law (the option off) drops nothing.
+    renderer::ShadowCascadeFootprintLaw footprint{};
 };
 
 // Object -> world rows (W . A) of a draw: clip = rows . pos; view = (clip.x / m00,
@@ -673,6 +679,22 @@ private:
         mid = radius = 0;
         for (unsigned j = 0; j < 3; ++j) { mid += basis.axes[a][j] * centre[j]; radius += abs_d(basis.axes[a][j]) * double(half[j]); }
     }
+    // The side of the sun-space AABB of a draw's OBJECT box along axis `a`: the
+    // measure the minimum-footprint gate needs, identical to the live draw path's
+    // (renderer::shadow_cascade_bounds_mask maps the object AABB's corners and takes
+    // the lateral spans; for an affine map the span is sum_j |axis . column_j| x
+    // extent_j). The store's own world AABB (centre/half) is not that box: its
+    // support along an axis is up to sqrt(3) larger for a turned object, which would
+    // gate more than the live path does.
+    static double sun_side(const renderer::ShadowReplayBasis& basis, unsigned a, const double world[12], const float lo[3], const float hi[3]) noexcept {
+        double side = 0;
+        for (unsigned j = 0; j < 3; ++j) {
+            double m = 0;
+            for (unsigned i = 0; i < 3; ++i) m += basis.axes[a][i] * world[i * 4 + j];
+            side += abs_d(m) * (double(hi[j]) - double(lo[j]));
+        }
+        return side;
+    }
 public:
     // The world AABB wholly inside the view frustum (its bounding sphere against the four side planes and the eye plane).
     static bool inside_frustum(const renderer::CameraState& c, const double centre[3], const float half[3]) noexcept {
@@ -737,16 +759,29 @@ private:
                 if (!d.complete()) continue;
                 // Each cascade against its own current basis: the cascades share their axes under the
                 // latched sun and may each hold another direction under the positional sun.
-                double mid[3], radius[3];
-                int computed = -1; // the cascade whose axes mid/radius hold (0 for every cascade sharing cascade 0's)
+                double mid[3], radius[3], sides[2]{};
+                int computed = -1; // the cascade whose axes mid/radius (and, with the gate on, sides) hold (0 for every cascade sharing cascade 0's)
                 for (unsigned c = 0; c < cascades; ++c) {
                     if (!renderer::shadow_cascade_active(in.set, c)) continue; // dropped by the ladder: no record carries it
                     const int want = !c || !shared_axes[c] ? int(c) : 0;
-                    if (want != computed) { for (unsigned a = 0; a < 3; ++a) sun_interval(in.bases[want], a, d.centre, d.half, mid[a], radius[a]); computed = want; }
+                    if (want != computed) {
+                        for (unsigned a = 0; a < 3; ++a) sun_interval(in.bases[want], a, d.centre, d.half, mid[a], radius[a]);
+                        // The gate's measure, once per axes group and only while the option is on.
+                        if (in.footprint.count) for (unsigned a = 0; a < 2; ++a) sides[a] = sun_side(in.bases[want], a, d.world, d.lo, d.hi);
+                        computed = want;
+                    }
                     const auto& box = in.set.cascades[c];
                     const double e = double(box.half_extent), x = mid[0] - centre_sun[c][0], y = mid[1] - centre_sun[c][1], z = mid[2] - centre_sun[c][2];
                     // As the draw-time mask: the light side is open (a caster nearer the light is pancaked).
-                    if (x + radius[0] >= -e && x - radius[0] <= e && y + radius[1] >= -e && y - radius[1] <= e && z - radius[2] <= double(box.depth_behind)) { d.cascades |= std::uint8_t(1u << c); ++frame.would[c]; }
+                    if (x + radius[0] >= -e && x - radius[0] <= e && y + radius[1] >= -e && y - radius[1] <= e && z - radius[2] <= double(box.depth_behind)) {
+                        // The minimum-footprint gate on exactly the live path's measure: the larger
+                        // of the two LATERAL sides of the sun-space AABB of this draw's object box
+                        // (sun_side, not the world AABB's support). Counted per cascade, never a node
+                        // drop: a record gated out of every cascade simply issues nowhere this frame.
+                        const float side = float(sides[0] > sides[1] ? sides[0] : sides[1]);
+                        if (renderer::shadow_cascade_footprint_drops(in.footprint, c, side)) { ++frame.footprint_refused[c]; continue; }
+                        d.cascades |= std::uint8_t(1u << c); ++frame.would[c];
+                    }
                 }
                 if (d.cascades && admitted_count < draw_capacity) admitted[admitted_count++] = i;
             }

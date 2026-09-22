@@ -1,0 +1,421 @@
+{
+ "case": "seam-ownership-shadow-pool-footprint-retained-off",
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "binaries": {
+  "verification/probe/build/motion_output_fixture.exe": "1b8f9b9471d24f7523a0ad9560875f9f68cbae3b1d9ab7c25f0c46a005d0a3e4",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "bb1240632df5538cf87c2f34e08547086b4d9f3b6f2d7d525d413733bab14435",
+  "build/d3d9.dll": "a319b3f77fe93197df7b8f2078e166b69f48998e833bb648bb3c9e4c1522bd70"
+ },
+ "script": "footprint",
+ "store": 2,
+ "frames": 14,
+ "checks": 166,
+ "compared_frames": 10,
+ "absent_maps": 0,
+ "color_sha256": "c836190e273e67896637a7baeed1fc7034dabec62af96006ebd6371ac31460ee",
+ "per_frame": {
+  "0": {
+   "c": {
+    "count": 2,
+    "records": [
+     3,
+     5
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 1
+   },
+   "draws": [
+    3,
+    5
+   ]
+  },
+  "1": {
+   "c": {
+    "count": 2,
+    "records": [
+     5,
+     5
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "flip": [
+     2,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
+   },
+   "draws": [
+    5,
+    5
+   ]
+  },
+  "2": {
+   "c": {
+    "count": 2,
+    "records": [
+     5,
+     5
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
+   },
+   "draws": [
+    5,
+    5
+   ]
+  },
+  "3": {
+   "c": {
+    "count": 2,
+    "records": [
+     5,
+     5
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
+   },
+   "draws": [
+    5,
+    5
+   ]
+  },
+  "4": {
+   "c": {
+    "count": 2,
+    "records": [
+     5,
+     5
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
+   },
+   "draws": [
+    5,
+    5
+   ]
+  },
+  "5": {
+   "c": {
+    "count": 2,
+    "records": [
+     5,
+     5
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
+   },
+   "draws": [
+    5,
+    5
+   ]
+  },
+  "6": {
+   "c": {
+    "count": 2,
+    "records": [
+     5,
+     5
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
+   },
+   "draws": [
+    5,
+    5
+   ]
+  },
+  "7": {
+   "c": {
+    "count": 2,
+    "records": [
+     5,
+     5
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
+   },
+   "draws": [
+    5,
+    5
+   ]
+  },
+  "8": {
+   "c": {
+    "count": 2,
+    "records": [
+     5,
+     5
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
+   },
+   "draws": [
+    5,
+    5
+   ]
+  },
+  "9": {
+   "c": {
+    "count": 2,
+    "records": [
+     5,
+     5
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
+   },
+   "draws": [
+    5,
+    5
+   ]
+  },
+  "10": {
+   "c": {
+    "count": 2,
+    "records": [
+     4,
+     4
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "flip": [
+     1,
+     1
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
+   },
+   "draws": [
+    5,
+    5
+   ]
+  },
+  "11": {
+   "c": {
+    "count": 2,
+    "records": [
+     4,
+     4
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
+   },
+   "draws": [
+    5,
+    5
+   ]
+  },
+  "12": {
+   "c": {
+    "count": 2,
+    "records": [
+     4,
+     4
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
+   },
+   "draws": [
+    5,
+    5
+   ]
+  },
+  "13": {
+   "c": {
+    "count": 2,
+    "records": [
+     4,
+     4
+    ],
+    "capped": [
+     0,
+     0
+    ],
+    "flip": [
+     0,
+     0
+    ],
+    "period2": [
+     0,
+     0
+    ],
+    "flip_untracked": 0,
+    "flip_reset": 0
+   },
+   "draws": [
+    5,
+    5
+   ]
+  }
+ },
+ "map": {
+  "max_depth_error": 4.111684320023956e-05,
+  "covered_texels": 80461,
+  "coverage_disagreements": 0,
+  "maps": 20
+ },
+ "us": {
+  "frames": 14,
+  "min": 37.8,
+  "median": 47.400000000000006,
+  "max": 1754.1
+ },
+ "exit": 0,
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-footprint-retained-off-20260922-194738-290267",
+ "trace_sha256": "e29a16ce7ab600946f7fa387eb5402bd5897a12cb3d1be5276b382ca555895c9",
+ "dll_sha256": "bb1240632df5538cf87c2f34e08547086b4d9f3b6f2d7d525d413733bab14435",
+ "exe_sha256": "1b8f9b9471d24f7523a0ad9560875f9f68cbae3b1d9ab7c25f0c46a005d0a3e4"
+}

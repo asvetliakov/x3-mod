@@ -27,7 +27,7 @@
       "X3M_ADMISSION": "1"
     }
   },
-  "consume_only": true,
+  "consume_only": false,
   "selected_cases": [
     "seam-ownership-shadow-replay-cascades",
     "seam-ownership-shadow-replay-cascades-casters-20",
@@ -272,6 +272,923 @@
           "map_format": 114,
           "depth_format": 77,
           "allocations": 2
+
+    "seam-ownership-shadow-pool-footprint-off",
+    "seam-ownership-shadow-pool-footprint-px24",
+    "seam-ownership-shadow-pool-footprint-px8",
+    "seam-ownership-shadow-pool-footprint-retained-off",
+    "seam-ownership-shadow-pool-footprint-retained-px8",
+    "seam-ownership-shadow-retention-live"
+  ],
+  "cases": {
+    "seam-ownership-shadow-retention-live": {
+      "mode": "live",
+      "frames": 1535,
+      "cases": [
+        "a_turn_away",
+        "b_moving",
+        "c_retired",
+        "d_lod_swap",
+        "e_shared_mesh",
+        "f_buffer_lock",
+        "g_release_first",
+        "h_reset",
+        "m_observer",
+        "j_excluded",
+        "i_capacity",
+        "k_age_and_sun",
+        "teardown"
+      ],
+      "retention": {
+        "summary": {
+          "frames": 1535,
+          "modes": [
+            "live"
+          ],
+          "known_frames": 1534,
+          "levels": {
+            "nodes_live": 724,
+            "nodes_unseen": 716,
+            "records": 1016,
+            "records_unseen": 716,
+            "static": 1016,
+            "moving": 724,
+            "refs_held": 3,
+            "age_max": 640
+          },
+          "would_peak": [
+            716,
+            716,
+            0,
+            0,
+            0
+          ],
+          "capped_peak": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "capped_total": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "capped_frames": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "live_peak": [
+            725,
+            725,
+            0,
+            0,
+            0
+          ],
+          "totals": {
+            "excluded_class": 1585,
+            "unscoped": 10,
+            "new_nodes": 1063,
+            "first_seen_in_range": 318,
+            "promoted": 1061,
+            "superseded": 2,
+            "lod_replaced": 1,
+            "model_replaced": 1,
+            "reclassified": 1,
+            "retired": 1030,
+            "journal_overflow": 3,
+            "revalidated": 430,
+            "mutation_delta": 8246,
+            "buffer_changed": 1,
+            "buffer_gone": 0,
+            "buffer_orphaned": 1,
+            "box_exit": 0,
+            "age": 1,
+            "evicted": 9,
+            "sun_relatch": 1,
+            "cam_jump": 0,
+            "transit_survivors": 0,
+            "refused": 0,
+            "moving_dropped": 1,
+            "abandoned": 0,
+            "deferred": 1,
+            "far_alternate_due_to_retained": 6,
+            "revalidate_context_lost": 4,
+            "release_queue_full": 0,
+            "reclassified_after_unseen": 1,
+            "admitted_checked": 9877,
+            "buffer_views": 1891,
+            "reclassified_c0": 1,
+            "reclassified_c1": 1,
+            "reclassified_c2": 0,
+            "reclassified_c3": 0,
+            "reclassified_c4": 0,
+            "gate_sightings": 0
+          },
+          "flushes": {
+            "epoch": 2,
+            "reset": 2,
+            "device": 1,
+            "teardown": 0,
+            "sun": 1,
+            "observer": 2,
+            "idle": 0
+          },
+          "retired_burst_peak": 591,
+          "drift": {
+            "frames": 709,
+            "samples": 2348,
+            "max": 0.748696,
+            "p99_median": 0.00184142,
+            "eps": 0.05,
+            "frames_over_eps": 1
+          },
+          "us": {
+            "median": 3.5,
+            "max": 471.4,
+            "p99": 47.1
+          },
+          "draw_us_per_call": {
+            "median": 0.15,
+            "max": 1.85
+          },
+          "moving_share_median": 0.0,
+          "resight": {
+            "frame": 1500,
+            "buckets": {
+              "<60": {
+                "same": 0,
+                "moved": 1,
+                "changed": 0
+              },
+              "<600": {
+                "same": 0,
+                "moved": 0,
+                "changed": 0
+              },
+              "<3600": {
+                "same": 0,
+                "moved": 0,
+                "changed": 0
+              },
+              "<14400": {
+                "same": 0,
+                "moved": 0,
+                "changed": 0
+              },
+              ">=14400": {
+                "same": 0,
+                "moved": 0,
+                "changed": 0
+              }
+            },
+            "expired": {
+              "retired": [
+                1025,
+                0,
+                2,
+                0,
+                0
+              ],
+              "box": [
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "gone": [
+                2,
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            "age_cap_below_bucket": "<60"
+          }
+        },
+        "full_store_frames": 11,
+        "full_store_us_median": 48.1,
+        "full_store_walk_us_max": 92.7,
+        "overflow_frame_us": 179.2,
+        "burst_frame": {
+          "retired": 591,
+          "us": 67.7,
+          "journal_us": 40.7
+        }
+      },
+      "failed_reset": "8876086c",
+      "lock_drop_frames": 1,
+      "orphan_drop_frames": 4,
+      "orphan_probe": 1,
+      "checks": 9743,
+      "compared_frames": 39,
+      "retained_compared_frames": 28,
+      "absent_maps": 0,
+      "color_sha256": "4b6e674803dc98b783ef13a1abac7d48aaeb979a2209e2e0b62822e487b4c237",
+      "map": {
+        "max_depth_error": 5.541019532318003e-06,
+        "covered_texels": 1406,
+        "coverage_disagreements": 0,
+        "maps": 78,
+        "edges_only_maps": 1,
+        "edges_only_ambiguous_texels": 12,
+        "edges_only_max_count_difference": 2,
+        "ambiguous_texels": 486
+      },
+      "us": {
+        "frames": 1527,
+        "min": 20.6,
+        "median": 27.6,
+        "max": 2295.0,
+        "bulk": {
+          "frames": 16,
+          "issues_median": 1450,
+          "us_median": 1655.2
+        }
+      },
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-ownership-shadow-retention-live-20260922-194726-323693",
+      "trace_sha256": "3f3188f389d94cba4d362856d43e4e310d9880a9987c725fb38fa8be1b9c6b94",
+      "dll_sha256": "bb1240632df5538cf87c2f34e08547086b4d9f3b6f2d7d525d413733bab14435",
+      "exe_sha256": "1b8f9b9471d24f7523a0ad9560875f9f68cbae3b1d9ab7c25f0c46a005d0a3e4"
+    },
+    "seam-ownership-shadow-pool-footprint-off": {
+      "script": "footprint",
+      "store": 0,
+      "frames": 6,
+      "checks": 78,
+      "compared_frames": 6,
+      "absent_maps": 0,
+      "color_sha256": "33d7f02fc3403da905ec7435ee489617d79961e35f5b3fcc63b6cdd3899e9fc5",
+      "per_frame": {
+        "0": {
+          "c": {
+            "count": 2,
+            "records": [
+              3,
+              5
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 1
+          },
+          "draws": [
+            3,
+            5
+          ]
+        },
+        "1": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              5
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "flip": [
+              2,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            5
+          ]
+        },
+        "2": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              5
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            5
+          ]
+        },
+        "3": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              5
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            5
+          ]
+        },
+        "4": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              5
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            5
+          ]
+        },
+        "5": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              5
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            5
+          ]
+        }
+      },
+      "map": {
+        "max_depth_error": 4.111684320023956e-05,
+        "covered_texels": 44993,
+        "coverage_disagreements": 0,
+        "maps": 12
+      },
+      "us": {
+        "frames": 6,
+        "min": 42.8,
+        "median": 49.9,
+        "max": 1725.9
+      },
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-footprint-off-20260922-194733-907907",
+      "trace_sha256": "3051d0729fb4f9f4af1069f22341dfa260e9bdbf6fa71dd8790eaef564391933",
+      "dll_sha256": "bb1240632df5538cf87c2f34e08547086b4d9f3b6f2d7d525d413733bab14435",
+      "exe_sha256": "1b8f9b9471d24f7523a0ad9560875f9f68cbae3b1d9ab7c25f0c46a005d0a3e4"
+    },
+    "seam-ownership-shadow-pool-footprint-px8": {
+      "script": "footprint",
+      "store": 0,
+      "frames": 6,
+      "checks": 78,
+      "compared_frames": 6,
+      "absent_maps": 0,
+      "color_sha256": "33d7f02fc3403da905ec7435ee489617d79961e35f5b3fcc63b6cdd3899e9fc5",
+      "per_frame": {
+        "0": {
+          "c": {
+            "count": 2,
+            "records": [
+              3,
+              5
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "footprint_refused": [
+              0,
+              0
+            ],
+            "footprint_aged": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 1
+          },
+          "draws": [
+            3,
+            5
+          ]
+        },
+        "1": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              2
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "footprint_refused": [
+              0,
+              3
+            ],
+            "footprint_aged": [
+              0,
+              0
+            ],
+            "flip": [
+              2,
+              3
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            2
+          ]
+        },
+        "2": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              2
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "footprint_refused": [
+              0,
+              3
+            ],
+            "footprint_aged": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            2
+          ]
+        },
+        "3": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              2
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "footprint_refused": [
+              0,
+              3
+            ],
+            "footprint_aged": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            2
+          ]
+        },
+        "4": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              2
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "footprint_refused": [
+              0,
+              3
+            ],
+            "footprint_aged": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            2
+          ]
+        },
+        "5": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              2
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "footprint_refused": [
+              0,
+              3
+            ],
+            "footprint_aged": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            2
+          ]
+        }
+      },
+      "map": {
+        "max_depth_error": 4.111684320023956e-05,
+        "covered_texels": 44993,
+        "coverage_disagreements": 0,
+        "maps": 12
+      },
+      "us": {
+        "frames": 6,
+        "min": 44.2,
+        "median": 49.1,
+        "max": 1862.4
+      },
+      "footprint": {
+        "px": 8.0,
+        "retained_script": false,
+        "min": [
+          0.1875,
+          2.375
+        ],
+        "refused_total": [
+          0,
+          15
+        ],
+        "aged_total": [
+          0,
+          0
+        ],
+        "draws_total": [
+          28,
+          15
+        ]
+      },
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-footprint-px8-20260922-194735-392500",
+      "trace_sha256": "25f5236af5c8bbf56b6f174f842fb7595069a2ade040f452743d6004d8daa092",
+      "dll_sha256": "bb1240632df5538cf87c2f34e08547086b4d9f3b6f2d7d525d413733bab14435",
+      "exe_sha256": "1b8f9b9471d24f7523a0ad9560875f9f68cbae3b1d9ab7c25f0c46a005d0a3e4",
+      "presented_identical_to": [
+        "seam-ownership-shadow-pool-footprint-off"
+      ]
+    },
+    "seam-ownership-shadow-pool-footprint-px24": {
+      "script": "footprint",
+      "store": 0,
+      "frames": 6,
+      "checks": 78,
+      "compared_frames": 6,
+      "absent_maps": 0,
+      "color_sha256": "33d7f02fc3403da905ec7435ee489617d79961e35f5b3fcc63b6cdd3899e9fc5",
+      "per_frame": {
+        "0": {
+          "c": {
+            "count": 2,
+            "records": [
+              3,
+              5
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "footprint_refused": [
+              0,
+              0
+            ],
+            "footprint_aged": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 1
+          },
+          "draws": [
+            3,
+            5
+          ]
+        },
+        "1": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              1
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "footprint_refused": [
+              0,
+              4
+            ],
+            "footprint_aged": [
+              0,
+              0
+            ],
+            "flip": [
+              2,
+              4
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            1
+          ]
+        },
+        "2": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              1
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "footprint_refused": [
+              0,
+              4
+            ],
+            "footprint_aged": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            1
+          ]
+        },
+        "3": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              1
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "footprint_refused": [
+              0,
+              4
+            ],
+            "footprint_aged": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            1
+          ]
+        },
+        "4": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              1
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "footprint_refused": [
+              0,
+              4
+            ],
+            "footprint_aged": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            1
+          ]
+        },
+        "5": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              1
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "footprint_refused": [
+              0,
+              4
+            ],
+            "footprint_aged": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            1
+          ]
         }
       ],
       "sun": {
@@ -1261,6 +2178,994 @@
       "trace_sha256": "acf371b8e3477ac83e89cb909ed2f1cd8b4acc8054bc7655a5a632f8fd8b35d3",
       "dll_sha256": "a0fd102da404dc83b8ff2d7b6f141a7f12549cfc8332e1447b945a985e128ac7",
       "exe_sha256": "30591f64dbe6a302892a9aacecdcfcbb1190c5622c732dcd239a1ed2cb91f4d2"
+
+        "max_depth_error": 4.111684320023956e-05,
+        "covered_texels": 44963,
+        "coverage_disagreements": 0,
+        "maps": 12
+      },
+      "us": {
+        "frames": 6,
+        "min": 39.8,
+        "median": 45.599999999999994,
+        "max": 1743.8
+      },
+      "footprint": {
+        "px": 24.0,
+        "retained_script": false,
+        "min": [
+          0.1875,
+          7.125
+        ],
+        "refused_total": [
+          0,
+          20
+        ],
+        "aged_total": [
+          0,
+          0
+        ],
+        "draws_total": [
+          28,
+          10
+        ]
+      },
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-footprint-px24-20260922-194736-843126",
+      "trace_sha256": "a180a61f3c1a9dd0f243c8b06e60cad02e2280bf4123fb8a102ea419720507ac",
+      "dll_sha256": "bb1240632df5538cf87c2f34e08547086b4d9f3b6f2d7d525d413733bab14435",
+      "exe_sha256": "1b8f9b9471d24f7523a0ad9560875f9f68cbae3b1d9ab7c25f0c46a005d0a3e4",
+      "presented_identical_to": [
+        "seam-ownership-shadow-pool-footprint-off",
+        "seam-ownership-shadow-pool-footprint-px8"
+      ]
+    },
+    "seam-ownership-shadow-pool-footprint-retained-off": {
+      "script": "footprint",
+      "store": 2,
+      "frames": 14,
+      "checks": 166,
+      "compared_frames": 10,
+      "absent_maps": 0,
+      "color_sha256": "c836190e273e67896637a7baeed1fc7034dabec62af96006ebd6371ac31460ee",
+      "per_frame": {
+        "0": {
+          "c": {
+            "count": 2,
+            "records": [
+              3,
+              5
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 1
+          },
+          "draws": [
+            3,
+            5
+          ]
+        },
+        "1": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              5
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "flip": [
+              2,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            5
+          ]
+        },
+        "2": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              5
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            5
+          ]
+        },
+        "3": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              5
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            5
+          ]
+        },
+        "4": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              5
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            5
+          ]
+        },
+        "5": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              5
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            5
+          ]
+        },
+        "6": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              5
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            5
+          ]
+        },
+        "7": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              5
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            5
+          ]
+        },
+        "8": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              5
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            5
+          ]
+        },
+        "9": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              5
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            5
+          ]
+        },
+        "10": {
+          "c": {
+            "count": 2,
+            "records": [
+              4,
+              4
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "flip": [
+              1,
+              1
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            5
+          ]
+        },
+        "11": {
+          "c": {
+            "count": 2,
+            "records": [
+              4,
+              4
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            5
+          ]
+        },
+        "12": {
+          "c": {
+            "count": 2,
+            "records": [
+              4,
+              4
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            5
+          ]
+        },
+        "13": {
+          "c": {
+            "count": 2,
+            "records": [
+              4,
+              4
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            5
+          ]
+        }
+      },
+      "map": {
+        "max_depth_error": 4.111684320023956e-05,
+        "covered_texels": 80461,
+        "coverage_disagreements": 0,
+        "maps": 20
+      },
+      "us": {
+        "frames": 14,
+        "min": 37.8,
+        "median": 47.400000000000006,
+        "max": 1754.1
+      },
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-footprint-retained-off-20260922-194738-290267",
+      "trace_sha256": "e29a16ce7ab600946f7fa387eb5402bd5897a12cb3d1be5276b382ca555895c9",
+      "dll_sha256": "bb1240632df5538cf87c2f34e08547086b4d9f3b6f2d7d525d413733bab14435",
+      "exe_sha256": "1b8f9b9471d24f7523a0ad9560875f9f68cbae3b1d9ab7c25f0c46a005d0a3e4"
+    },
+    "seam-ownership-shadow-pool-footprint-retained-px8": {
+      "script": "footprint",
+      "store": 2,
+      "frames": 14,
+      "checks": 166,
+      "compared_frames": 10,
+      "absent_maps": 0,
+      "color_sha256": "c836190e273e67896637a7baeed1fc7034dabec62af96006ebd6371ac31460ee",
+      "per_frame": {
+        "0": {
+          "c": {
+            "count": 2,
+            "records": [
+              3,
+              5
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "footprint_refused": [
+              0,
+              0
+            ],
+            "footprint_aged": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 1
+          },
+          "draws": [
+            3,
+            5
+          ]
+        },
+        "1": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              2
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "footprint_refused": [
+              0,
+              3
+            ],
+            "footprint_aged": [
+              0,
+              0
+            ],
+            "flip": [
+              2,
+              3
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            2
+          ]
+        },
+        "2": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              2
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "footprint_refused": [
+              0,
+              3
+            ],
+            "footprint_aged": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            2
+          ]
+        },
+        "3": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              2
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "footprint_refused": [
+              0,
+              3
+            ],
+            "footprint_aged": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            2
+          ]
+        },
+        "4": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              2
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "footprint_refused": [
+              0,
+              3
+            ],
+            "footprint_aged": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            2
+          ]
+        },
+        "5": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              2
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "footprint_refused": [
+              0,
+              3
+            ],
+            "footprint_aged": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            2
+          ]
+        },
+        "6": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              2
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "footprint_refused": [
+              0,
+              3
+            ],
+            "footprint_aged": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            2
+          ]
+        },
+        "7": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              2
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "footprint_refused": [
+              0,
+              3
+            ],
+            "footprint_aged": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            2
+          ]
+        },
+        "8": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              2
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "footprint_refused": [
+              0,
+              3
+            ],
+            "footprint_aged": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            2
+          ]
+        },
+        "9": {
+          "c": {
+            "count": 2,
+            "records": [
+              5,
+              2
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "footprint_refused": [
+              0,
+              3
+            ],
+            "footprint_aged": [
+              0,
+              0
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            2
+          ]
+        },
+        "10": {
+          "c": {
+            "count": 2,
+            "records": [
+              4,
+              2
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "footprint_refused": [
+              0,
+              2
+            ],
+            "footprint_aged": [
+              0,
+              1
+            ],
+            "flip": [
+              1,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            2
+          ]
+        },
+        "11": {
+          "c": {
+            "count": 2,
+            "records": [
+              4,
+              2
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "footprint_refused": [
+              0,
+              2
+            ],
+            "footprint_aged": [
+              0,
+              1
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            2
+          ]
+        },
+        "12": {
+          "c": {
+            "count": 2,
+            "records": [
+              4,
+              2
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "footprint_refused": [
+              0,
+              2
+            ],
+            "footprint_aged": [
+              0,
+              1
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            2
+          ]
+        },
+        "13": {
+          "c": {
+            "count": 2,
+            "records": [
+              4,
+              2
+            ],
+            "capped": [
+              0,
+              0
+            ],
+            "footprint_refused": [
+              0,
+              2
+            ],
+            "footprint_aged": [
+              0,
+              1
+            ],
+            "flip": [
+              0,
+              0
+            ],
+            "period2": [
+              0,
+              0
+            ],
+            "flip_untracked": 0,
+            "flip_reset": 0
+          },
+          "draws": [
+            5,
+            2
+          ]
+        }
+      },
+      "map": {
+        "max_depth_error": 4.111684320023956e-05,
+        "covered_texels": 80461,
+        "coverage_disagreements": 0,
+        "maps": 20
+      },
+      "us": {
+        "frames": 14,
+        "min": 31.2,
+        "median": 42.45,
+        "max": 1492.9
+      },
+      "footprint": {
+        "px": 8.0,
+        "retained_script": true,
+        "min": [
+          0.1875,
+          2.375
+        ],
+        "refused_total": [
+          0,
+          35
+        ],
+        "aged_total": [
+          0,
+          4
+        ],
+        "draws_total": [
+          68,
+          31
+        ]
+      },
+      "exit": 0,
+      "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-footprint-retained-px8-20260922-194740-030525",
+      "trace_sha256": "6ae74402af38e44fa37d7e433de61f62ab7cf94c3150731a2c159024efffcbd5",
+      "dll_sha256": "bb1240632df5538cf87c2f34e08547086b4d9f3b6f2d7d525d413733bab14435",
+      "exe_sha256": "1b8f9b9471d24f7523a0ad9560875f9f68cbae3b1d9ab7c25f0c46a005d0a3e4",
+      "presented_identical_to": [
+        "seam-ownership-shadow-pool-footprint-retained-off"
+      ]
     }
   },
   "local_inputs": {
@@ -1296,6 +3201,8 @@
     "src/proxy/camera_state.cpp": "bdbb78395368ea270c156fc61c90834c536b3ce26e846acbba7f2e7777285969",
     "src/proxy/camera_state.h": "7b3b6de807488c6785d1676eb6df274a3ed2b07a5e7c9da52397a4762306a742",
     "src/proxy/capture.cpp": "f7df6f71fe5e0e0dd46a53585bfda1542fc6a95f2dedb13f31d59dda3ee8262b",
+
+    "src/proxy/capture.cpp": "356c1c5871b4c9c1a92fb1cad7a4d202bca4e71ed65ab648b49231102db493d9",
     "src/proxy/capture.h": "e2d6b0dfad5239845f9fd668e1a468c335c7697642063736494dd0b449bcc5af",
     "src/proxy/capture_arm_core.h": "1e8f3e536b4ceefe385a1583f694ea134c90935086842f34c68921c54ffc28ac",
     "src/proxy/capture_state.cpp": "7ac6bd3f6a926b8ad549d4d23d3d81ed1ab9399fdcc97a126960a3e7a1af7d0a",
@@ -1415,6 +3322,13 @@
     "src/proxy/motion_output_shadow_adaptive_inc.h": "04e67702f19d1a4372e7cddb3d26cfa09af8295eee8b9c27038c497e1f5a3b66",
     "src/proxy/motion_output_shadow_replay_inc.h": "668d0cfed0b2821dc2f30803f60654023160e0e454edd804059cd68985951056",
     "src/proxy/motion_output_shadow_retention_inc.h": "953cec681e9ad62a42dee47f972a956034c83ae509576bf509eb83c37f686add",
+
+    "src/proxy/motion_output.cpp": "a6b71d5dcf25b05271de5c3d74292afc4f212c55a2b100b4aa39e77af5452d3b",
+    "src/proxy/motion_output.h": "ffecb62daaca3d22effcc1211d6b4ba3f11ec5db3f5f92f2e27b8c8cb1f97b19",
+    "src/proxy/motion_output_fog_inc.h": "56549b0589053885335024929e2f844a478c9c0e0f8dffd1057fe3b8973a10e6",
+    "src/proxy/motion_output_shadow_adaptive_inc.h": "04e67702f19d1a4372e7cddb3d26cfa09af8295eee8b9c27038c497e1f5a3b66",
+    "src/proxy/motion_output_shadow_replay_inc.h": "668d0cfed0b2821dc2f30803f60654023160e0e454edd804059cd68985951056",
+    "src/proxy/motion_output_shadow_retention_inc.h": "ea1147821c3a41ff42ee9488c7d41ba984b64bed786386d894d971c3c374ec65",
     "src/proxy/motion_output_sun_occlusion_inc.h": "e2eff8beac0ceac6b5e5f4501455fd8317fff42e9b8873e702e785ccaf84fddd",
     "src/proxy/object_capture.h": "c415f0ebfa83ad6dd59bc6b984dadede2008e34148402a20f52dd293c94610f3",
     "src/proxy/object_lifetime.cpp": "94c0ed5c3c07145c51c2aca1dcda1b06eb692e0cd428d35d025f4f16cf32dae9",
@@ -1447,12 +3361,12 @@
     "src/proxy/screen_emission_admission.h": "8c258ad089a7a4e89eb89ea5bc140030bc71551096604f3d2f05024069fecd50",
     "src/proxy/sector_background.h": "7f11a04df69671f34e5bcf259fcba3df364dd04eafc56f4e9e2fcdebd849d776",
     "src/proxy/shadow_caster_class.h": "b1990d86c29ca3b112def2afd627ba83730fd2cdca6969b2b0cbe5e662918a79",
-    "src/proxy/shadow_replay_candidates.h": "71c508e19ffc824984bf32a821f707eaabf2c216e0877730611955c466d75d68",
+    "src/proxy/shadow_replay_candidates.h": "d4e0c906aebd14196340065e0bcb3635b806a76601617bd5ced75c0ded2d6dc5",
     "src/proxy/shadow_replay_depth.h": "af904018f83fa8ebf254a4f92d3090a4cffcfbb9701078d03cdb92b89bb174da",
     "src/proxy/shadow_replay_sun.h": "2ef11faac5a7e13b065456261a7a1241be30c37f795d1ac9e9b606424ab3d2c0",
     "src/proxy/shadow_replay_sun_point.h": "e407dc534ad2f8d298020eb2916fcf0c690a2775075c3fabb07ff88ef8ef8a9e",
     "src/proxy/shadow_retention.h": "a57850d266f56a7074dddea1babcf3ff681f7570658f16d6179e01b9df0853c2",
-    "src/proxy/shadow_retention_core.h": "2716421acf5c474fefae5f74e354502892bba5fe01961bd8f0fd22d11fafa2ca",
+    "src/proxy/shadow_retention_core.h": "757e15af4d28e2b81fb30c4cc5101e21d6ea84eb701ae27ab0f816a491a1800f",
     "src/proxy/sse_scalar.h": "6a9dd49446568c6d03165d219c564236796668cc69c0e466d53b0ee9e08233e3",
     "src/proxy/stamp_core.h": "aee2dc2499d6d8dae847916991b3e48770f6e056261b8acea9e57b49fea0eb02",
     "src/proxy/stamp_install.h": "0358995939a3308317ee5e9847b14c353b836454f794b02a68cd8f9c22332167",
@@ -1578,6 +3492,11 @@
     "src/renderer/shadow_replay_pass.cpp": "d0248c8fa062bc977ca1b19c8489d7eea6d91654c9e0f7a794ed27dd16cee49d",
     "src/renderer/shadow_replay_pass.h": "7adc317cbd7cb52d736e625ec3fb7f985775f3802ca7d69d54df62dafb8991a1",
     "src/renderer/shadow_replay_projection.h": "977e1a6c621d3d2a67a57f2d5c549a1b039feec308bbd89e3cdb493882facee1",
+
+    "src/renderer/shadow_cascade_footprint_core.h": "642632f5a830952aecdad2ab1685b10761f4f2d8e4d44e656c9e327bfd0a4a2e",
+    "src/renderer/shadow_replay_pass.cpp": "d0248c8fa062bc977ca1b19c8489d7eea6d91654c9e0f7a794ed27dd16cee49d",
+    "src/renderer/shadow_replay_pass.h": "7adc317cbd7cb52d736e625ec3fb7f985775f3802ca7d69d54df62dafb8991a1",
+    "src/renderer/shadow_replay_projection.h": "fd1588fb33a7fa7ebfb80ae79880d2337d1a4d0105c00c05924ebd85801db1fd",
     "src/renderer/static_previous_rows.h": "5e9669e1e8af2cadb97ac4880c1b680fbda9bdca62a13fdfb09f50d6ecbd7533",
     "src/renderer/sun_occlusion_pass.cpp": "d04fc0a166a2dad4c39b5d559372bdf21b4f3bdbda4bed5b2c747fa2a9b96cfe",
     "src/renderer/sun_occlusion_pass.h": "c4067010caef8bd5210450ceefbc8cf12775382fd42e55c98c1c2d2dd5fac1ba",
@@ -1671,11 +3590,13 @@
     "verification/probe/game_guard.py": "7a2201deacb72be844de6e11be1eaf9128e0bbebfac4ba57beb12dc312bf93db",
     "verification/probe/motion_output_fixture.cpp": "c2bfca2962520a29de8cfa25f0c21b73b8e1cea855de1136cb2353a44948bc6d",
     "verification/probe/motion_output_lightmap_fade_inc.h": "308cba630eb4e4d07dee31ab520e8dcb12486142d29fa62738f7c5efc5260ad9",
-    "verification/probe/motion_output_shadow_pool_inc.h": "269850484c7c3c43ca07d16425850d8b874dbf32101f57d061fbf8cd608f1d56",
+    "verification/probe/motion_output_shadow_pool_inc.h": "5f1b88277880158dd454794ab6aa9f99fb0c75299dd699645f8312b942759f4b",
     "verification/probe/motion_output_shadow_retention_inc.h": "964649030f34c9aa07ce85ea774e7f8c75d7ea2edfce1f08a56243a0f78d1339",
     "verification/probe/motion_output_sun_apply_cascades_inc.h": "8b6b027527954ad59fd5780c6926fe30d8dcdb4d46690aa7f5bdd1694c1da50f",
     "verification/probe/motion_output_sun_apply_inc.h": "c1556a1c87ac7126d3396cc3e5437623d9c998101f4a834952d96b1a3db61453",
     "verification/probe/run_motion_output.py": "ec74344e8ccb19541f5ab792c4a1b2bf710662a31b7d9a8be0923be8e49157a2",
+
+    "verification/probe/run_motion_output.py": "c366ba324218212be6a3d60cf38bf0f18e14a9d362814bd3111337aff3bffa88",
     "verification/probe/run_ownership_integration.py": "8089b7ab5e4d8313640548b0a9d776688201cb92b4dddc2e7f6d3644d1770c56",
     "verification/probe/shadow_replay_depth.py": "c3c4f3e7cded46e54ac4a7c4f72e647a6f672821d77482d996a94d2616c2b8c7",
     "verification/probe/sun_shadow_apply.py": "ef90d4a53ae7e1b15c38b170946360ea8021462b1c0058eacf9addc0da948abc",
@@ -1683,11 +3604,46 @@
     "verification/probe/verify_ownership_integration.py": "d9d18f4f5ce36c570e095a6ead68ce38a278a1418caa06dfdf5369abdd930cf3",
     "verification/probe/wine_lock.py": "7406105cb53b0aecea4ce04dee5070b39df6befa2f35929019a6ed5b8fe2c484"
   },
-  "build_commands": [],
+  "build_commands": [
+    [
+      "cmake",
+      "-S",
+      ".",
+      "-B",
+      "build",
+      "-DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake",
+      "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
+    ],
+    [
+      "cmake",
+      "--build",
+      "build",
+      "--clean-first",
+      "-j4"
+    ],
+    [
+      "i686-w64-mingw32-g++",
+      "-std=c++17",
+      "-Wall",
+      "-Wextra",
+      "-c",
+      "verification/probe/abi_check.cpp",
+      "-o",
+      "verification/probe/build/abi_check.o"
+    ],
+    [
+      "sh",
+      "verification/probe/build_motion_output.sh"
+    ]
+  ],
   "binaries": {
     "/private/tmp/x3-run66-candidate/binaries/motion_output_fixture.exe": "30591f64dbe6a302892a9aacecdcfcbb1190c5622c732dcd239a1ed2cb91f4d2",
     "/private/tmp/x3-run66-candidate/binaries/motion-output-seam/d3d9.dll": "a0fd102da404dc83b8ff2d7b6f141a7f12549cfc8332e1447b945a985e128ac7",
     "/private/tmp/x3-run66-candidate/build/d3d9.dll": "1f9a85f53f6612803466a1ba8be2b5a1f9de4ecc9f188e4e840a0c50e1c952ca"
+
+    "verification/probe/build/motion_output_fixture.exe": "1b8f9b9471d24f7523a0ad9560875f9f68cbae3b1d9ab7c25f0c46a005d0a3e4",
+    "verification/probe/build/motion-output-seam/d3d9.dll": "bb1240632df5538cf87c2f34e08547086b4d9f3b6f2d7d525d413733bab14435",
+    "build/d3d9.dll": "a319b3f77fe93197df7b8f2078e166b69f48998e833bb648bb3c9e4c1522bd70"
   },
   "bench": {},
   "shadow_replay_twins": {},
@@ -1720,6 +3676,8 @@
     "src/proxy/camera_state.cpp": "bdbb78395368ea270c156fc61c90834c536b3ce26e846acbba7f2e7777285969",
     "src/proxy/camera_state.h": "7b3b6de807488c6785d1676eb6df274a3ed2b07a5e7c9da52397a4762306a742",
     "src/proxy/capture.cpp": "f7df6f71fe5e0e0dd46a53585bfda1542fc6a95f2dedb13f31d59dda3ee8262b",
+
+    "src/proxy/capture.cpp": "356c1c5871b4c9c1a92fb1cad7a4d202bca4e71ed65ab648b49231102db493d9",
     "src/proxy/capture.h": "e2d6b0dfad5239845f9fd668e1a468c335c7697642063736494dd0b449bcc5af",
     "src/proxy/capture_arm_core.h": "1e8f3e536b4ceefe385a1583f694ea134c90935086842f34c68921c54ffc28ac",
     "src/proxy/capture_state.cpp": "7ac6bd3f6a926b8ad549d4d23d3d81ed1ab9399fdcc97a126960a3e7a1af7d0a",
@@ -1839,6 +3797,13 @@
     "src/proxy/motion_output_shadow_adaptive_inc.h": "04e67702f19d1a4372e7cddb3d26cfa09af8295eee8b9c27038c497e1f5a3b66",
     "src/proxy/motion_output_shadow_replay_inc.h": "668d0cfed0b2821dc2f30803f60654023160e0e454edd804059cd68985951056",
     "src/proxy/motion_output_shadow_retention_inc.h": "953cec681e9ad62a42dee47f972a956034c83ae509576bf509eb83c37f686add",
+
+    "src/proxy/motion_output.cpp": "a6b71d5dcf25b05271de5c3d74292afc4f212c55a2b100b4aa39e77af5452d3b",
+    "src/proxy/motion_output.h": "ffecb62daaca3d22effcc1211d6b4ba3f11ec5db3f5f92f2e27b8c8cb1f97b19",
+    "src/proxy/motion_output_fog_inc.h": "56549b0589053885335024929e2f844a478c9c0e0f8dffd1057fe3b8973a10e6",
+    "src/proxy/motion_output_shadow_adaptive_inc.h": "04e67702f19d1a4372e7cddb3d26cfa09af8295eee8b9c27038c497e1f5a3b66",
+    "src/proxy/motion_output_shadow_replay_inc.h": "668d0cfed0b2821dc2f30803f60654023160e0e454edd804059cd68985951056",
+    "src/proxy/motion_output_shadow_retention_inc.h": "ea1147821c3a41ff42ee9488c7d41ba984b64bed786386d894d971c3c374ec65",
     "src/proxy/motion_output_sun_occlusion_inc.h": "e2eff8beac0ceac6b5e5f4501455fd8317fff42e9b8873e702e785ccaf84fddd",
     "src/proxy/object_capture.h": "c415f0ebfa83ad6dd59bc6b984dadede2008e34148402a20f52dd293c94610f3",
     "src/proxy/object_lifetime.cpp": "94c0ed5c3c07145c51c2aca1dcda1b06eb692e0cd428d35d025f4f16cf32dae9",
@@ -1871,12 +3836,12 @@
     "src/proxy/screen_emission_admission.h": "8c258ad089a7a4e89eb89ea5bc140030bc71551096604f3d2f05024069fecd50",
     "src/proxy/sector_background.h": "7f11a04df69671f34e5bcf259fcba3df364dd04eafc56f4e9e2fcdebd849d776",
     "src/proxy/shadow_caster_class.h": "b1990d86c29ca3b112def2afd627ba83730fd2cdca6969b2b0cbe5e662918a79",
-    "src/proxy/shadow_replay_candidates.h": "71c508e19ffc824984bf32a821f707eaabf2c216e0877730611955c466d75d68",
+    "src/proxy/shadow_replay_candidates.h": "d4e0c906aebd14196340065e0bcb3635b806a76601617bd5ced75c0ded2d6dc5",
     "src/proxy/shadow_replay_depth.h": "af904018f83fa8ebf254a4f92d3090a4cffcfbb9701078d03cdb92b89bb174da",
     "src/proxy/shadow_replay_sun.h": "2ef11faac5a7e13b065456261a7a1241be30c37f795d1ac9e9b606424ab3d2c0",
     "src/proxy/shadow_replay_sun_point.h": "e407dc534ad2f8d298020eb2916fcf0c690a2775075c3fabb07ff88ef8ef8a9e",
     "src/proxy/shadow_retention.h": "a57850d266f56a7074dddea1babcf3ff681f7570658f16d6179e01b9df0853c2",
-    "src/proxy/shadow_retention_core.h": "2716421acf5c474fefae5f74e354502892bba5fe01961bd8f0fd22d11fafa2ca",
+    "src/proxy/shadow_retention_core.h": "757e15af4d28e2b81fb30c4cc5101e21d6ea84eb701ae27ab0f816a491a1800f",
     "src/proxy/sse_scalar.h": "6a9dd49446568c6d03165d219c564236796668cc69c0e466d53b0ee9e08233e3",
     "src/proxy/stamp_core.h": "aee2dc2499d6d8dae847916991b3e48770f6e056261b8acea9e57b49fea0eb02",
     "src/proxy/stamp_install.h": "0358995939a3308317ee5e9847b14c353b836454f794b02a68cd8f9c22332167",
@@ -2002,6 +3967,11 @@
     "src/renderer/shadow_replay_pass.cpp": "d0248c8fa062bc977ca1b19c8489d7eea6d91654c9e0f7a794ed27dd16cee49d",
     "src/renderer/shadow_replay_pass.h": "7adc317cbd7cb52d736e625ec3fb7f985775f3802ca7d69d54df62dafb8991a1",
     "src/renderer/shadow_replay_projection.h": "977e1a6c621d3d2a67a57f2d5c549a1b039feec308bbd89e3cdb493882facee1",
+
+    "src/renderer/shadow_cascade_footprint_core.h": "642632f5a830952aecdad2ab1685b10761f4f2d8e4d44e656c9e327bfd0a4a2e",
+    "src/renderer/shadow_replay_pass.cpp": "d0248c8fa062bc977ca1b19c8489d7eea6d91654c9e0f7a794ed27dd16cee49d",
+    "src/renderer/shadow_replay_pass.h": "7adc317cbd7cb52d736e625ec3fb7f985775f3802ca7d69d54df62dafb8991a1",
+    "src/renderer/shadow_replay_projection.h": "fd1588fb33a7fa7ebfb80ae79880d2337d1a4d0105c00c05924ebd85801db1fd",
     "src/renderer/static_previous_rows.h": "5e9669e1e8af2cadb97ac4880c1b680fbda9bdca62a13fdfb09f50d6ecbd7533",
     "src/renderer/sun_occlusion_pass.cpp": "d04fc0a166a2dad4c39b5d559372bdf21b4f3bdbda4bed5b2c747fa2a9b96cfe",
     "src/renderer/sun_occlusion_pass.h": "c4067010caef8bd5210450ceefbc8cf12775382fd42e55c98c1c2d2dd5fac1ba",
@@ -2095,11 +4065,13 @@
     "verification/probe/game_guard.py": "7a2201deacb72be844de6e11be1eaf9128e0bbebfac4ba57beb12dc312bf93db",
     "verification/probe/motion_output_fixture.cpp": "c2bfca2962520a29de8cfa25f0c21b73b8e1cea855de1136cb2353a44948bc6d",
     "verification/probe/motion_output_lightmap_fade_inc.h": "308cba630eb4e4d07dee31ab520e8dcb12486142d29fa62738f7c5efc5260ad9",
-    "verification/probe/motion_output_shadow_pool_inc.h": "269850484c7c3c43ca07d16425850d8b874dbf32101f57d061fbf8cd608f1d56",
+    "verification/probe/motion_output_shadow_pool_inc.h": "5f1b88277880158dd454794ab6aa9f99fb0c75299dd699645f8312b942759f4b",
     "verification/probe/motion_output_shadow_retention_inc.h": "964649030f34c9aa07ce85ea774e7f8c75d7ea2edfce1f08a56243a0f78d1339",
     "verification/probe/motion_output_sun_apply_cascades_inc.h": "8b6b027527954ad59fd5780c6926fe30d8dcdb4d46690aa7f5bdd1694c1da50f",
     "verification/probe/motion_output_sun_apply_inc.h": "c1556a1c87ac7126d3396cc3e5437623d9c998101f4a834952d96b1a3db61453",
     "verification/probe/run_motion_output.py": "ec74344e8ccb19541f5ab792c4a1b2bf710662a31b7d9a8be0923be8e49157a2",
+
+    "verification/probe/run_motion_output.py": "c366ba324218212be6a3d60cf38bf0f18e14a9d362814bd3111337aff3bffa88",
     "verification/probe/run_ownership_integration.py": "8089b7ab5e4d8313640548b0a9d776688201cb92b4dddc2e7f6d3644d1770c56",
     "verification/probe/shadow_replay_depth.py": "c3c4f3e7cded46e54ac4a7c4f72e647a6f672821d77482d996a94d2616c2b8c7",
     "verification/probe/sun_shadow_apply.py": "ef90d4a53ae7e1b15c38b170946360ea8021462b1c0058eacf9addc0da948abc",
