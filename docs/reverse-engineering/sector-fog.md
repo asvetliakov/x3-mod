@@ -463,6 +463,10 @@ Validation from one flight:
   from the active-control cockpit's; only the active-control walk was traced.
 - Which other `FUN_0042d340` cases besides `0xb` can write `cockpit+0x54` (only the
   `0xb` write site was enumerated, from the single decompile).
+  *Answered 2026-09-23 in [sector-transit-order.md](sector-transit-order.md):* the story script
+  calls `INS_CockpitSetSectorSpace` from one site (`606::StartMonitor`), after every destination
+  load of a transit; the save-load cockpit restore writes `+0x54` at `0x004196f0`. The destination
+  sector is readable earlier through the engine's global object list.
 - The first frame after a savegame load at which `*0x00606fc0` is settled; the table
   rebuild window was not timed.
 - Whether any shipped or addon script actually calls `SA_SetBgTypeData` at runtime; the

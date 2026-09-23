@@ -1,0 +1,9 @@
+exe sha256 ok
+0043f93b ok       object ctor 0x0043f900: AddTail to the global list at [0x0060850c]+8 (lh_TailPred at +0x10, node prev at +4)
+00442c31 ok       save-load post-pass 0x00442c00: parentless object (sector) AddTail to the same list
+004495e5 ok       SA_StartObjectInSpace 0x00449510: link into sector child list, [obj+0x54]=sector before scene attach
+0043fc0b ok       object free tail 0x0043f990: Remove from list, +0x9c = 0xefac (alive marker 0xcafe)
+004524f0 ok       sector ctor 0x004524d0: +0x148 flags, +0x13c index = 0
+004644a0 ok       SA_SetSectorBackgroundType (0x00460630 case 0x133): [sector+0x13c] = arg
+0042d66e ok       INS_CockpitSetSectorSpace (0x0042d340 case 0xb): [cockpit+0x54] = sector; call 0x00420360
+0043f8be ok       universe restore 0x0043f420: [M+0x38] = player ship

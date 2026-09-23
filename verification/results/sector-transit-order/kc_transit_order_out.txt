@@ -1,0 +1,222 @@
+x3story.obj sha256 ed5786a0c603802d5735fb36e0332d7c732b981d2b64dcee4174890284faff7a CODE 1812069 methods 6818
+
+== 150::WarpToSector critical section  entry 1635e
+  16605 call     150::StartFade
+  1660d native   TI_Delay
+  16617 call     605::StopAllMonitors
+  1662c dyncall  LeaveSector
+  16665 call     150::LeaveSector
+  1666c native   SA_CleanUpObjects
+  16673 native   SA_FreeAllBodies
+  16688 call     150::EnterSector
+  166c3 dyncall  EnterSector
+  166f2 dyncall  SetPos
+  16715 dyncall  WarpEnterSector
+  1671f call     605::RestartAllMonitors
+  1672c call     150::ShowWarpOutScene
+
+== 150::QuickWarp  entry 16bd4
+  16bdb call     150::StopFastForward
+  16be6 call     503::KillMenus
+  16bf0 dyncall  GetSectorX
+  16bf9 dyncall  GetSectorY
+  16c02 call     605::StopAllMonitors
+  16c3b dyncall  LeaveSector
+  16c50 call     150::LeaveSector
+  16c57 native   SA_CleanUpObjects
+  16c5e native   SA_FreeAllBodies
+  16c73 call     150::EnterSector
+  16c88 dyncall  EnterSector
+  16c92 call     605::RestartAllMonitors
+  16ca2 call     150::SetWarpSector
+
+== 2001::Activate (sector)  entry 8aa16
+  8aa38 native   SA_AllocObject
+  8aa46 native   SA_SetEventObject
+  8aa53 native   SA_SetSectorBackgroundType
+  8aa60 native   SA_SetSectorBackgroundStarsIndex
+  8aa6d native   SA_SetSectorBackgroundNebulasIndex
+  8aa7d dyncall  CreateAlloc
+  8aa8a dyncall  GetScene3D
+  8aa93 native   SA_SetSpaceScene
+  8aaa0 native   SA_SetSectorSize
+  8aab0 dyncall  CreateAlloc
+  8aabd dyncall  GetScene3D
+  8aac3 native   B3D_SceneGetFlags
+  8aacf dyncall  GetScene3D
+  8aad5 native   B3D_SceneSetFlags
+  8aae8 dyncall  GetScene3D
+  8aaee native   B3D_SceneSetSystemScale
+  8aaf8 dyncall  GetScene3D
+  8ab01 native   SA_SetSpaceGalaxyScene
+  8ab3b dyncall  Activate
+  8ab79 dyncall  Activate
+  8abb7 dyncall  Activate
+  8abf6 dyncall  Activate2
+  8ac35 dyncall  Activate2
+  8ac74 dyncall  Activate2
+  8acb3 dyncall  Activate2
+  8acf1 dyncall  Activate
+  8ad31 dyncall  NoSafePosOnActivate
+  8ad3f dyncall  Activate
+  8ad7d dyncall  Activate
+  8adbc dyncall  Activate2
+  8adfc dyncall  NoSafePosOnActivate
+  8ae0b dyncall  Activate
+  8ae4a dyncall  Activate2
+  8ae89 dyncall  Activate2
+  8aec8 dyncall  Activate2
+  8af06 dyncall  Activate
+  8af30 dyncall  ActivateStartTasks
+  8af4c dyncall  GetShips
+  8af6b dyncall  ActivateStartTasks
+  8afaf dyncall  ActivateConnections
+  8afba dyncall  GetShips
+  8afd9 dyncall  ActivateStartTasks
+  8b09b dyncall  CreateSwarm
+  8b0b0 dyncall  SetState
+  8b0bf dyncall  SetState
+  8b0c5 fork     
+  8b0cc call     2001::DoGalaxyTake
+  8b0d2 endfork  
+  8b0dd dyncall  CreateAlloc
+  8b0ea dyncall  GetScene3D
+  8b0f3 native   SA_SetSpaceDustScene
+  8b0fd dyncall  GetScene3D
+
+== 2001::Deactivate (sector)  entry 8b148
+  8b187 fork     
+  8b191 dyncall  CreateDebris
+  8b197 endfork  
+  8b1c6 fork     
+  8b1d0 dyncall  CreateWreck
+  8b1d6 endfork  
+  8b217 dyncall  Deactivate
+  8b255 dyncall  Deactivate
+  8b293 dyncall  Deactivate
+  8b2d1 dyncall  Deactivate
+  8b30f dyncall  Deactivate
+  8b34d dyncall  Deactivate
+  8b38b dyncall  Deactivate
+  8b3c9 dyncall  Deactivate
+  8b407 dyncall  Deactivate
+  8b42c dyncall  Deactivate
+  8b473 fork     
+  8b480 dyncall  SelfDestruct
+  8b486 endfork  
+  8b4c0 dyncall  Deactivate
+  8b4cc call     2001::StopGalaxyTake
+  8b4db dyncall  SetState
+  8b4f2 dyncall  SetState
+  8b509 dyncall  SetState
+  8b513 native   SA_FreeObject
+  8b51d dyncall  GetScene3D
+  8b523 native   B3D_SceneFree
+  8b53f dyncall  GetScene3D
+  8b545 native   B3D_SceneFree
+  8b561 dyncall  GetScene3D
+  8b567 native   B3D_SceneFree
+  8b578 native   SA_DumpSectorScene
+
+== 402::EnterSector  entry e3d7d
+  e3d92 dyncall  GetX
+  e3d9f dyncall  GetY
+  e3dad dyncall  SetVisited
+  e3dba call     300::GetTemporarySector
+  e3dcd dyncall  IncStatCounter
+  e3dda dyncall  AddTo
+  e3de4 dyncall  GetOwner
+  e3dea call     402::SetVisited
+  e3df4 call     150::GetClientState
+  e3e03 fork     
+  e3e0d native   TI_Delay
+  e3e17 call     150::IsAlert
+  e3e25 call     200::ChangeTrackToCombatMusic
+  e3e34 call     200::ChangeTrackToSectorMusic
+  e3e3a endfork  
+  e3e3f call     3001::TestQuests
+
+== 402::WarpEnterSector  entry e3e47
+  e3e5c dyncall  GetX
+  e3e69 dyncall  GetY
+  e3e77 dyncall  SetVisited
+  e3e84 dyncall  __LeaveHyperspace
+  e3e8e dyncall  GetOwner
+  e3e94 call     402::SetVisited
+  e3e9a fork     
+  e3ea4 native   TI_Delay
+  e3eae call     150::IsAlert
+  e3ebc call     200::ChangeTrackToCombatMusic
+  e3ecb call     200::ChangeTrackToSectorMusic
+  e3ed1 endfork  
+  e3ed6 call     3001::TestQuests
+
+== 605::RestartAllMonitors  entry edc1f
+  edc2f dyncall  ControlSameAs
+  edc43 dyncall  SetActiveControl
+  edc5b dyncall  HasActiveControl
+  edc7a dyncall  SetActiveControl
+  edc8c dyncall  SelectMode
+  edc93 call     605::OpenLayout
+  edca0 dyncall  SetActiveControl
+  edca7 call     605::SwitchMonitorViewRelObjs
+  edcbc native   TI_Interrupt
+  edcc8 dyncall  RestartGrid
+
+== 606::StartMonitor (cockpit alloc/sector space)  entry f00ee
+  f0108 call     605::GetMonitor
+  f010d dyncall  GetTrackingObject
+  f0113 call     606::SetRefObject
+  f011b call     606::SetCockpitNumber
+  f012d native   SE_ObjectExists
+  f0147 dyncall  GetObjectID
+  f015c native   SA_GetEnvironment
+  f0171 native   SA_GetMainType
+  f018d native   SA_GetEnvironment
+  f01a6 native   SA_GetMainType
+  f01c5 native   INS_CockpitAlloc
+  f01d2 native   INS_CockpitGetScene
+  f01dc dyncall  Create
+  f01f9 native   INS_CockpitSetMonitorNumber
+  f0206 native   INS_CockpitSetSectorSpace
+  f0210 native   INS_CockpitGetCamera
+
+sites INS_CockpitSetSectorSpace ['f0206 in 606::StartMonitor']
+sites INS_CockpitAlloc ['f01c5 in 606::StartMonitor']
+sites INS_SetActiveControlCockpit ['efd52 in 606::SetActiveControl', 'efd5f in 606::SetActiveControl']
+sites SA_SetSectorBackgroundType ['0f386 in 621::PlayThread', '8973f in 2001::SetBackgroundType', '8aa53 in 2001::Activate']
+sites SA_SetSpaceScene ['0eb3e in 621::Create', '8aa93 in 2001::Activate']
+sites SA_FreeAllBodies ['16673 in 150::WarpToSector', '16c5e in 150::QuickWarp']
+sites SA_CleanUpObjects ['1666c in 150::WarpToSector', '16c57 in 150::QuickWarp']
+callers 150::WarpToSector ['16144 in 150::StartGateWarp', '161f5 in 150::StartSectorWarp']
+callers 150::QuickWarp ['13c1ff in 2228::Input', '191bf4 in 308::DoWarpPlayer']
+callers 150::StartGateWarp ['b7318 in 2004::__FlyToNextSector', 'bd9ec in 2004::JumpToSector', 'bdc3a in 2004::JumpToSector', 'c7192 in 2004::CanWarp']
+callers 150::StartSectorWarp ['af482 in 2004::MovePlayerTo', 'bda2f in 2004::JumpToSector', 'bda4d in 2004::JumpToSector', 'bdc7d in 2004::JumpToSector', 'bdc9b in 2004::JumpToSector']
+SA_AllocObject 0eb20 in 621::Create main=1 sub=member14
+SA_AllocObject 0ef47 in 621::CopyObjects main=local3 sub=expr
+SA_AllocObject 0fff0 in 621::HandleEvent main=8 sub=expr
+SA_AllocObject 100cf in 621::HandleEvent main=8 sub=local1
+SA_AllocObject 10102 in 621::HandleEvent main=9 sub=expr
+SA_AllocObject 8aa38 in 2001::Activate main=1 sub=0
+SA_AllocObject 8f095 in 2002::Activate main=4 sub=member6
+SA_AllocObject 8f2a7 in 2008::Activate main=3 sub=member7
+SA_AllocObject 8f7bf in 2043::Activate main=21 sub=0
+SA_AllocObject 902dd in 2012::Activate2 main=17 sub=member7
+SA_AllocObject 91914 in 2014::Activate2 main=18 sub=member6
+SA_AllocObject 919ba in 2014::Activate2 main=9 sub=3
+SA_AllocObject 92258 in 1001::Activate main=20 sub=member6
+SA_AllocObject 92ab1 in 2084::Activate main=member7 sub=member8
+SA_AllocObject 933e4 in 2085::Activate main=10 sub=member6
+SA_AllocObject 9402c in 1650::Activate2 main=28 sub=member6
+SA_AllocObject 94b4d in 1652::Activate main=member6 sub=member7
+SA_AllocObject 9651a in 2016::Activate2 main=member12 sub=member13
+SA_AllocObject 9679a in 2016::Activate2 main=9 sub=local3
+SA_AllocObject 969c7 in 2016::AddShield main=9 sub=local4
+SA_AllocObject a2083 in 2044::ActivateConnections main=20 sub=expr
+SA_AllocObject aeb2f in 2004::Activate main=7 sub=member14
+SA_AllocObject aeca6 in 2004::Activate main=9 sub=expr
+SA_AllocObject aed46 in 2004::Activate main=8 sub=expr
+SA_AllocObject b0af7 in 2004::AddShield main=9 sub=local2
+SA_AllocObject b2232 in 2004::InstallLaserInTurret main=8 sub=local8
+SA_AllocObject 132599 in 2216::___sectorCamOn main=19 sub=0
+SA_AllocObject 136d10 in 2216::SpecialUpdate main=expr sub=expr
