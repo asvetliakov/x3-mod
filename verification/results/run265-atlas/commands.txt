@@ -1,0 +1,13 @@
+# Run 70 C triage (2026-09-23). C=/tmp/x3-bottleX3-run265, L=$C/session-20260923-052034-212.log; DLL 70abe438; overlay 05.cat f3f607fa / 05.dat 54acfc47 (shasum of installed files, matched).
+# Bursts: 5354-5361 outpost coarse (s149, LOD1, 2 draws), 6300-6307 outpost fine (s151, LOD0, 34), 8655-8662 Titan (argon_M2 node 32887af0) coarse (s73, LOD1, 1 draw), 9898-9905 Titan fine (s90, LOD0, 32).
+# Camera rotation identical within each pair; Titan pair: camera moved ~11.5 km and the ship basis rotated ~9-12 deg (object_basis), so its pixel pair is approximate.
+python3 ../run257-pilot/node_census.py $L 5354 6300 8655 9898 > census_run265_out.txt
+python3 ../run259-lighting/draw_state.py $L 000053b8,00004f72,00004f75,00004f76 5354 6300 8655 9898 > state_run265_out.txt
+(inline python, first texture/texture_desc pair per identity for the coarse ids) > coarse_tex_formats_out.txt   # atlases DXT1 diffuse / DXT5 bump / DXT5 light, full mip chains; stage 2 = id 537 32x32 DXT1 1 level
+(inline python: stage-2 id 537 by model/lod) -> 000053b8/4f72/4f75/4f76 LOD1 and argon_spacedock 00005411 LOD0 (shipped NULL-specular precedent)
+python3 ../run259-lighting/outpost_pair.py $C $L 18f54688 5354 6300 > outpost_pair_out.txt
+python3 ../run259-lighting/outpost_pair.py $C $L 32887af0 8655 9898 > titan_pair_out.txt
+python3 pair_diff.py $C $L 18f54688 5354 6300 > pair_diff_outpost_out.txt ; python3 pair_diff.py $C $L 32887af0 8655 9898 > pair_diff_titan_out.txt
+grep '^cull_census_frame' $L -> overflow=0 in 32 frames; grep -oE 'stale[a-z_]*=[^ ]*' $L -> stale=0 only (9821)
+grep '^resource_reader_metric' $L | tail -1 -> calls 4078 handled 3960 fallbacks 118 (all fallback_not_gzip); no row names a file (no x3m_lod match in the log)
+User screenshots: /Users/asvetl/x3-mod/screenshots/station-lod1.png (05:23:32, HUD 265 draws = fine) and station-lod2.png (05:23:42, 233 draws = coarse), untracked (.gitignore /screenshots/)

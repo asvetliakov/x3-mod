@@ -1,0 +1,359 @@
+== frame 5354 node_draws=232 alpha_tested=30
+N 2a9093e8 00005434   38  10 [0] 22,0,kept 4 100000,30,15,5 stations\station_scenes\tech\argon_tech_L_laser_bb
+N 16671310 00005411   35   6 [0] 639,0,kept 5 100000,250,150,80,30 stations\station_scenes\others\argon_spacedock
+N 194f1cd0 35ba45c3   25   4 [0] 6,0,kept 1 10000 -
+N 19115b18 00005530   20   3 [0] 75,0,kept 4 100000,30,15,5 ships\owp\owp_large
+N 16073fe8 000056a0   16   2 [0] 34,0,kept 5 100000,30,20,10,30 others\argon_gate
+N 194f1050 00005529   16   2 [0] 70,0,kept 4 100000,30,15,5 ships\M7\Argon_M7
+N 33e62370 00005529   16   2 [0] 26,0,kept 4 100000,30,15,5 ships\M7\Argon_M7
+N 00000000 00000000    7   0 [0] - - - -
+N 33f71940 000050e9    4   0 [0] 117440512,0,kept 1 100000 environments\nebulae\greenvoid\nebula_greenvoid_background_01
+N 1666ed90 00004fea    2   0 [0] 218,0,kept 4 100000,30,15,5 ships\argon\argon_M3_var2
+N 18f54688 000053b8    2   1 [1] 149,1,kept 3 100000,30,150 Stations\others\military_outpost_middleb
+N 160744e8 000056a1    2   0 [0] 24,0,kept 1 100000 others\argon_gate_effect
+N 16072468 00005696    2   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_radar_2d
+N 33f716c0 000050e8    1   0 [0] 117440512,0,kept 1 100000 environments\nebulae\greenvoid\nebula_greenvoid_stars_01
+N 1666a778 00004a88    1   0 [0] 62,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 1666a9f8 00004a88    1   0 [0] 62,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 1666ac78 00004a88    1   0 [0] 60,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 1666b3f8 00004a88    1   0 [0] 62,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 1666b678 00004a88    1   0 [0] 53,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 1666b8f8 00004a88    1   0 [0] 53,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 21fc1b50 0000542a    1   0 [3] 27,3,kept 5 100000,250,150,80,30 stations\station_scenes\tech\argon_tech_S_laser_E
+N 29072a30 00005421    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 29072cb0 00005421    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 29072f30 00005422    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB_
+N 290731b0 00005421    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 29073430 00005421    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 2965f9f0 00005422    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB_
+N 2965fc70 00005421    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 2965fef0 00005422    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB_
+N 29660170 00005421    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 296603f0 00005421    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 29660670 00005421    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 296608f0 00005422    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB_
+N 29665b88 0000542b    1   0 [3] 25,3,kept 5 100000,250,150,80,30 stations\station_scenes\tech\argon_tech_M_laser_G
+N 2a909668 00005432    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2a909b68 00005432    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2a909de8 00005432    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2a90a2e8 00005432    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2a90a568 00005432    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2a90a7e8 00005433    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB
+N 2a90aa68 00005432    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2731eae0 00005432    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2731efe0 00005432    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2731f260 00005432    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2731f760 00005432    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2731fc60 00005432    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2731fee0 00005432    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 30663210 00004f75    1   0 [1] 42,1,kept 3 100000,30,80 ships\argon\argon_M1
+N 32873918 00004f75    1   0 [1] 34,1,kept 3 100000,30,80 ships\argon\argon_M1
+N 32887af0 00004f76    1   0 [1] 43,1,kept 3 100000,30,80 ships\argon\argon_M2
+N 33cae910 00004f72    1   0 [1] 42,1,kept 3 100000,30,80 ships\argon\argon_TL
+N 1666c078 00004e86    1   0 [0] 263,0,kept 1 100000 effects\engines\fx_engine_argon_M3
+N 16069338 0000568e    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/GUI/gui_master
+N 1606d438 00005691    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_target_text
+N 1606d6d0 00005691    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_target_text
+N 1606d950 00005691    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_target_text
+N 160726e8 00005697    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_info_2d
+N 16072968 00005698    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_weapons_2d
+N 33fc7888 0000569a    1   0 [0] 640,0,kept 1 10000 effects/menugfx/GUI/sidebar
+N 33fc7608 0000568d    1   0 [0] 117440512,0,kept 1 10000 effects\menugfx\GUI\gui_master
+B   38  10   1 00005434 stations\station_scenes\tech\argon_tech_L_laser_bb
+B   35   6   1 00005411 stations\station_scenes\others\argon_spacedock
+B   32   4   2 00005529 ships\M7\Argon_M7
+B   25   4   1 35ba45c3 -
+B   20   3   1 00005530 ships\owp\owp_large
+B   16   2   1 000056a0 others\argon_gate
+B   12   0  12 00005432 stations\connections\connect_argon_pipe_huge_cargoanimA
+B    8   0   8 00005421 stations\connections\connect_argon_pipe_huge_cargoanimA_
+B    7   0   1 00000000 -
+B    6   0   6 00004a88 ships\props\weapondummy
+B    4   0   1 000050e9 environments\nebulae\greenvoid\nebula_greenvoid_background_01
+B    4   0   4 00005422 stations\connections\connect_argon_pipe_huge_cargoanimB_
+B    3   0   3 00005691 effects/menugfx/hud_target_text
+B    2   0   1 00004fea ships\argon\argon_M3_var2
+B    2   1   1 000053b8 Stations\others\military_outpost_middleb
+B    2   0   1 000056a1 others\argon_gate_effect
+B    2   0   1 00005696 effects/menugfx/hud_radar_2d
+B    2   0   2 00004f75 ships\argon\argon_M1
+B    1   0   1 000050e8 environments\nebulae\greenvoid\nebula_greenvoid_stars_01
+B    1   0   1 0000542a stations\station_scenes\tech\argon_tech_S_laser_E
+B    1   0   1 0000542b stations\station_scenes\tech\argon_tech_M_laser_G
+B    1   0   1 00005433 stations\connections\connect_argon_pipe_huge_cargoanimB
+B    1   0   1 00004f76 ships\argon\argon_M2
+B    1   0   1 00004f72 ships\argon\argon_TL
+B    1   0   1 00004e86 effects\engines\fx_engine_argon_M3
+B    1   0   1 0000568e effects/menugfx/GUI/gui_master
+B    1   0   1 00005697 effects/menugfx/hud_info_2d
+B    1   0   1 00005698 effects/menugfx/hud_weapons_2d
+B    1   0   1 0000569a effects/menugfx/GUI/sidebar
+B    1   0   1 0000568d effects\menugfx\GUI\gui_master
+== frame 6300 node_draws=265 alpha_tested=35
+N 2a9093e8 00005434   38  10 [0] 22,0,kept 4 100000,30,15,5 stations\station_scenes\tech\argon_tech_L_laser_bb
+N 16671310 00005411   35   6 [0] 639,0,kept 5 100000,250,150,80,30 stations\station_scenes\others\argon_spacedock
+N 18f54688 000053b8   34   6 [0] 151,0,kept 3 100000,30,150 Stations\others\military_outpost_middleb
+N 194f1cd0 35ba45c3   25   4 [0] 7,0,kept 1 10000 -
+N 19115b18 00005530   20   3 [0] 78,0,kept 4 100000,30,15,5 ships\owp\owp_large
+N 16073fe8 000056a0   16   2 [0] 34,0,kept 5 100000,30,20,10,30 others\argon_gate
+N 194f1050 00005529   16   2 [0] 73,0,kept 4 100000,30,15,5 ships\M7\Argon_M7
+N 33e62370 00005529   16   2 [0] 26,0,kept 4 100000,30,15,5 ships\M7\Argon_M7
+N 00000000 00000000    7   0 [0] - - - -
+N 33f71940 000050e9    4   0 [0] 117440512,0,kept 1 100000 environments\nebulae\greenvoid\nebula_greenvoid_background_01
+N 1666ed90 00004fea    2   0 [0] 218,0,kept 4 100000,30,15,5 ships\argon\argon_M3_var2
+N 160744e8 000056a1    2   0 [0] 24,0,kept 1 100000 others\argon_gate_effect
+N 16072468 00005696    2   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_radar_2d
+N 33f716c0 000050e8    1   0 [0] 117440512,0,kept 1 100000 environments\nebulae\greenvoid\nebula_greenvoid_stars_01
+N 1666a778 00004a88    1   0 [0] 62,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 1666a9f8 00004a88    1   0 [0] 62,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 1666ac78 00004a88    1   0 [0] 60,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 1666b3f8 00004a88    1   0 [0] 62,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 1666b678 00004a88    1   0 [0] 53,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 1666b8f8 00004a88    1   0 [0] 53,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 21fc1b50 0000542a    1   0 [3] 28,3,kept 5 100000,250,150,80,30 stations\station_scenes\tech\argon_tech_S_laser_E
+N 29072a30 00005421    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 29072cb0 00005421    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 29072f30 00005422    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB_
+N 290731b0 00005421    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 29073430 00005421    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 2965f9f0 00005422    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB_
+N 2965fc70 00005421    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 2965fef0 00005422    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB_
+N 29660170 00005421    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 296603f0 00005421    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 29660670 00005421    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 296608f0 00005422    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB_
+N 29665b88 0000542b    1   0 [3] 25,3,kept 5 100000,250,150,80,30 stations\station_scenes\tech\argon_tech_M_laser_G
+N 2a909668 00005432    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2a9098e8 00005433    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB
+N 2a909b68 00005432    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2a909de8 00005432    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2a90a2e8 00005432    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2a90a568 00005432    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2a90a7e8 00005433    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB
+N 2a90aa68 00005432    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2731eae0 00005432    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2731efe0 00005432    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2731f260 00005432    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2731f760 00005432    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2731fc60 00005432    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2731fee0 00005432    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 30663210 00004f75    1   0 [1] 43,1,kept 3 100000,30,80 ships\argon\argon_M1
+N 32873918 00004f75    1   0 [1] 34,1,kept 3 100000,30,80 ships\argon\argon_M1
+N 32887af0 00004f76    1   0 [1] 46,1,kept 3 100000,30,80 ships\argon\argon_M2
+N 33cae910 00004f72    1   0 [1] 41,1,kept 3 100000,30,80 ships\argon\argon_TL
+N 1666c078 00004e86    1   0 [0] 263,0,kept 1 100000 effects\engines\fx_engine_argon_M3
+N 16069338 0000568e    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/GUI/gui_master
+N 1606d438 00005691    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_target_text
+N 1606d6d0 00005691    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_target_text
+N 1606d950 00005691    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_target_text
+N 160726e8 00005697    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_info_2d
+N 16072968 00005698    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_weapons_2d
+N 33fc7888 0000569a    1   0 [0] 640,0,kept 1 10000 effects/menugfx/GUI/sidebar
+N 33fc7608 0000568d    1   0 [0] 117440512,0,kept 1 10000 effects\menugfx\GUI\gui_master
+B   38  10   1 00005434 stations\station_scenes\tech\argon_tech_L_laser_bb
+B   35   6   1 00005411 stations\station_scenes\others\argon_spacedock
+B   34   6   1 000053b8 Stations\others\military_outpost_middleb
+B   32   4   2 00005529 ships\M7\Argon_M7
+B   25   4   1 35ba45c3 -
+B   20   3   1 00005530 ships\owp\owp_large
+B   16   2   1 000056a0 others\argon_gate
+B   12   0  12 00005432 stations\connections\connect_argon_pipe_huge_cargoanimA
+B    8   0   8 00005421 stations\connections\connect_argon_pipe_huge_cargoanimA_
+B    7   0   1 00000000 -
+B    6   0   6 00004a88 ships\props\weapondummy
+B    4   0   1 000050e9 environments\nebulae\greenvoid\nebula_greenvoid_background_01
+B    4   0   4 00005422 stations\connections\connect_argon_pipe_huge_cargoanimB_
+B    3   0   3 00005691 effects/menugfx/hud_target_text
+B    2   0   1 00004fea ships\argon\argon_M3_var2
+B    2   0   1 000056a1 others\argon_gate_effect
+B    2   0   1 00005696 effects/menugfx/hud_radar_2d
+B    2   0   2 00005433 stations\connections\connect_argon_pipe_huge_cargoanimB
+B    2   0   2 00004f75 ships\argon\argon_M1
+B    1   0   1 000050e8 environments\nebulae\greenvoid\nebula_greenvoid_stars_01
+B    1   0   1 0000542a stations\station_scenes\tech\argon_tech_S_laser_E
+B    1   0   1 0000542b stations\station_scenes\tech\argon_tech_M_laser_G
+B    1   0   1 00004f76 ships\argon\argon_M2
+B    1   0   1 00004f72 ships\argon\argon_TL
+B    1   0   1 00004e86 effects\engines\fx_engine_argon_M3
+B    1   0   1 0000568e effects/menugfx/GUI/gui_master
+B    1   0   1 00005697 effects/menugfx/hud_info_2d
+B    1   0   1 00005698 effects/menugfx/hud_weapons_2d
+B    1   0   1 0000569a effects/menugfx/GUI/sidebar
+B    1   0   1 0000568d effects\menugfx\GUI\gui_master
+== frame 8655 node_draws=168 alpha_tested=26
+N 2a9093e8 00005434   38  10 [0] 33,0,kept 4 100000,30,15,5 stations\station_scenes\tech\argon_tech_L_laser_bb
+N 18f54688 000053b8   34   6 [0] 216,0,kept 3 100000,30,150 Stations\others\military_outpost_middleb
+N 33e62370 00005529   16   2 [0] 34,0,kept 4 100000,30,15,5 ships\M7\Argon_M7
+N 21fc1b50 0000542a   15   8 [2] 32,2,kept 5 100000,250,150,80,30 stations\station_scenes\tech\argon_tech_S_laser_E
+N 00000000 00000000    8   0 [0] - - - -
+N 33f71940 000050e9    4   0 [0] 117440512,0,kept 1 100000 environments\nebulae\greenvoid\nebula_greenvoid_background_01
+N 1666ed90 00004fea    2   0 [0] 218,0,kept 4 100000,30,15,5 ships\argon\argon_M3_var2
+N 16072468 00005696    2   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_radar_2d
+N 33f716c0 000050e8    1   0 [0] 117440512,0,kept 1 100000 environments\nebulae\greenvoid\nebula_greenvoid_stars_01
+N 16073368 00004fee    1   0 [0] 67,0,kept 3 100000,20,5 environments\asteroids\asteroid_A_ClassMine
+N 1666a778 00004a88    1   0 [0] 62,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 1666a9f8 00004a88    1   0 [0] 62,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 1666ac78 00004a88    1   0 [0] 60,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 1666b3f8 00004a88    1   0 [0] 62,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 1666b678 00004a88    1   0 [0] 53,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 1666b8f8 00004a88    1   0 [0] 53,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 29072a30 00005421    1   0 [0] 7,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 29072cb0 00005421    1   0 [0] 7,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 29072f30 00005422    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB_
+N 290731b0 00005421    1   0 [0] 7,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 29073430 00005421    1   0 [0] 7,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 2965f9f0 00005422    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB_
+N 2965fc70 00005421    1   0 [0] 7,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 2965fef0 00005422    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB_
+N 29660170 00005421    1   0 [0] 7,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 296603f0 00005421    1   0 [0] 7,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 29660670 00005421    1   0 [0] 7,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 296608f0 00005422    1   0 [0] 6,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB_
+N 29665b88 0000542b    1   0 [3] 27,3,kept 5 100000,250,150,80,30 stations\station_scenes\tech\argon_tech_M_laser_G
+N 2a909668 00005432    1   0 [0] 9,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2a9098e8 00005433    1   0 [0] 9,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB
+N 2a909b68 00005432    1   0 [0] 9,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2a909de8 00005432    1   0 [0] 9,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2a90a068 00005433    1   0 [0] 8,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB
+N 2a90a2e8 00005432    1   0 [0] 9,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2a90a568 00005432    1   0 [0] 9,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2a90a7e8 00005433    1   0 [0] 8,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB
+N 2a90aa68 00005432    1   0 [0] 9,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2731eae0 00005432    1   0 [0] 9,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2731ed60 00005433    1   0 [0] 8,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB
+N 2731efe0 00005432    1   0 [0] 9,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2731f260 00005432    1   0 [0] 9,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2731f4e0 00005433    1   0 [0] 8,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB
+N 2731f760 00005432    1   0 [0] 9,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2731f9e0 00005433    1   0 [0] 8,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB
+N 2731fc60 00005432    1   0 [0] 9,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2731fee0 00005432    1   0 [0] 9,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 32873918 00004f75    1   0 [1] 41,1,kept 3 100000,30,80 ships\argon\argon_M1
+N 32887af0 00004f76    1   0 [1] 73,1,kept 3 100000,30,80 ships\argon\argon_M2
+N 1666c078 00004e86    1   0 [0] 263,0,kept 1 100000 effects\engines\fx_engine_argon_M3
+N 1606d438 00005691    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_target_text
+N 1606d6d0 00005691    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_target_text
+N 1606d950 00005691    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_target_text
+N 160726e8 00005697    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_info_2d
+N 16072968 00005698    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_weapons_2d
+N 33fc7888 0000569a    1   0 [0] 640,0,kept 1 10000 effects/menugfx/GUI/sidebar
+N 33fc7608 0000568d    1   0 [0] 511,0,kept 1 10000 effects\menugfx\GUI\gui_master
+B   38  10   1 00005434 stations\station_scenes\tech\argon_tech_L_laser_bb
+B   34   6   1 000053b8 Stations\others\military_outpost_middleb
+B   16   2   1 00005529 ships\M7\Argon_M7
+B   15   8   1 0000542a stations\station_scenes\tech\argon_tech_S_laser_E
+B   12   0  12 00005432 stations\connections\connect_argon_pipe_huge_cargoanimA
+B    8   0   1 00000000 -
+B    8   0   8 00005421 stations\connections\connect_argon_pipe_huge_cargoanimA_
+B    6   0   6 00004a88 ships\props\weapondummy
+B    6   0   6 00005433 stations\connections\connect_argon_pipe_huge_cargoanimB
+B    4   0   1 000050e9 environments\nebulae\greenvoid\nebula_greenvoid_background_01
+B    4   0   4 00005422 stations\connections\connect_argon_pipe_huge_cargoanimB_
+B    3   0   3 00005691 effects/menugfx/hud_target_text
+B    2   0   1 00004fea ships\argon\argon_M3_var2
+B    2   0   1 00005696 effects/menugfx/hud_radar_2d
+B    1   0   1 000050e8 environments\nebulae\greenvoid\nebula_greenvoid_stars_01
+B    1   0   1 00004fee environments\asteroids\asteroid_A_ClassMine
+B    1   0   1 0000542b stations\station_scenes\tech\argon_tech_M_laser_G
+B    1   0   1 00004f75 ships\argon\argon_M1
+B    1   0   1 00004f76 ships\argon\argon_M2
+B    1   0   1 00004e86 effects\engines\fx_engine_argon_M3
+B    1   0   1 00005697 effects/menugfx/hud_info_2d
+B    1   0   1 00005698 effects/menugfx/hud_weapons_2d
+B    1   0   1 0000569a effects/menugfx/GUI/sidebar
+B    1   0   1 0000568d effects\menugfx\GUI\gui_master
+== frame 9898 node_draws=209 alpha_tested=38
+N 2a9093e8 00005434   38  10 [0] 38,0,kept 4 100000,30,15,5 stations\station_scenes\tech\argon_tech_L_laser_bb
+N 18f54688 000053b8   34   6 [0] 261,0,kept 3 100000,30,150 Stations\others\military_outpost_middleb
+N 32887af0 00004f76   32   4 [0] 90,0,kept 3 100000,30,80 ships\argon\argon_M2
+N 33e62370 00005529   16   2 [0] 40,0,kept 4 100000,30,15,5 ships\M7\Argon_M7
+N 21fc1b50 0000542a   15   8 [2] 35,2,kept 5 100000,250,150,80,30 stations\station_scenes\tech\argon_tech_S_laser_E
+N 29665b88 0000542b   15   8 [2] 30,2,kept 5 100000,250,150,80,30 stations\station_scenes\tech\argon_tech_M_laser_G
+N 00000000 00000000    8   0 [0] - - - -
+N 33f71940 000050e9    4   0 [0] 117440512,0,kept 1 100000 environments\nebulae\greenvoid\nebula_greenvoid_background_01
+N 1666ed90 00004fea    2   0 [0] 218,0,kept 4 100000,30,15,5 ships\argon\argon_M3_var2
+N 16072468 00005696    2   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_radar_2d
+N 33f716c0 000050e8    1   0 [0] 117440512,0,kept 1 100000 environments\nebulae\greenvoid\nebula_greenvoid_stars_01
+N 1666a778 00004a88    1   0 [0] 62,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 1666a9f8 00004a88    1   0 [0] 62,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 1666ac78 00004a88    1   0 [0] 60,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 1666b3f8 00004a88    1   0 [0] 62,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 1666b678 00004a88    1   0 [0] 53,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 1666b8f8 00004a88    1   0 [0] 53,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 29072a30 00005421    1   0 [0] 7,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 29072cb0 00005421    1   0 [0] 7,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 29072f30 00005422    1   0 [0] 7,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB_
+N 290731b0 00005421    1   0 [0] 8,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 29073430 00005421    1   0 [0] 8,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 2965f9f0 00005422    1   0 [0] 7,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB_
+N 2965fc70 00005421    1   0 [0] 7,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 2965fef0 00005422    1   0 [0] 7,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB_
+N 29660170 00005421    1   0 [0] 7,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 296603f0 00005421    1   0 [0] 7,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 29660670 00005421    1   0 [0] 7,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA_
+N 296608f0 00005422    1   0 [0] 7,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB_
+N 2a909de8 00005432    1   0 [0] 10,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2a90a068 00005433    1   0 [0] 10,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB
+N 2a90a2e8 00005432    1   0 [0] 10,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2a90a568 00005432    1   0 [0] 10,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2a90a7e8 00005433    1   0 [0] 10,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB
+N 2a90aa68 00005432    1   0 [0] 10,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2731eae0 00005432    1   0 [0] 10,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2731ed60 00005433    1   0 [0] 9,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB
+N 2731efe0 00005432    1   0 [0] 10,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2731f260 00005432    1   0 [0] 10,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2731f4e0 00005433    1   0 [0] 9,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB
+N 2731f760 00005432    1   0 [0] 10,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2731f9e0 00005433    1   0 [0] 9,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimB
+N 2731fc60 00005432    1   0 [0] 10,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 2731fee0 00005432    1   0 [0] 10,0,kept 1 100000 stations\connections\connect_argon_pipe_huge_cargoanimA
+N 32873918 00004f75    1   0 [1] 48,1,kept 3 100000,30,80 ships\argon\argon_M1
+N 1666c078 00004e86    1   0 [0] 467,0,kept 1 100000 effects\engines\fx_engine_argon_M3
+N 1606d438 00005691    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_target_text
+N 1606d6d0 00005691    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_target_text
+N 1606d950 00005691    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_target_text
+N 160726e8 00005697    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_info_2d
+N 16072968 00005698    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_weapons_2d
+N 33fc7888 0000569a    1   0 [0] 640,0,kept 1 10000 effects/menugfx/GUI/sidebar
+N 33fc7608 0000568d    1   0 [0] 474,0,kept 1 10000 effects\menugfx\GUI\gui_master
+B   38  10   1 00005434 stations\station_scenes\tech\argon_tech_L_laser_bb
+B   34   6   1 000053b8 Stations\others\military_outpost_middleb
+B   32   4   1 00004f76 ships\argon\argon_M2
+B   16   2   1 00005529 ships\M7\Argon_M7
+B   15   8   1 0000542a stations\station_scenes\tech\argon_tech_S_laser_E
+B   15   8   1 0000542b stations\station_scenes\tech\argon_tech_M_laser_G
+B   10   0  10 00005432 stations\connections\connect_argon_pipe_huge_cargoanimA
+B    8   0   1 00000000 -
+B    8   0   8 00005421 stations\connections\connect_argon_pipe_huge_cargoanimA_
+B    6   0   6 00004a88 ships\props\weapondummy
+B    5   0   5 00005433 stations\connections\connect_argon_pipe_huge_cargoanimB
+B    4   0   1 000050e9 environments\nebulae\greenvoid\nebula_greenvoid_background_01
+B    4   0   4 00005422 stations\connections\connect_argon_pipe_huge_cargoanimB_
+B    3   0   3 00005691 effects/menugfx/hud_target_text
+B    2   0   1 00004fea ships\argon\argon_M3_var2
+B    2   0   1 00005696 effects/menugfx/hud_radar_2d
+B    1   0   1 000050e8 environments\nebulae\greenvoid\nebula_greenvoid_stars_01
+B    1   0   1 00004f75 ships\argon\argon_M1
+B    1   0   1 00004e86 effects\engines\fx_engine_argon_M3
+B    1   0   1 00005697 effects/menugfx/hud_info_2d
+B    1   0   1 00005698 effects/menugfx/hud_weapons_2d
+B    1   0   1 0000569a effects/menugfx/GUI/sidebar
+B    1   0   1 0000568d effects\menugfx\GUI\gui_master
+== frame_timing
+(4800, 20932, 233)
+(5100, 18907, 232)
+(5400, 19375, 232)
+(5700, 19376, 233)
+(6000, 20359, 265)
+(6300, 20199, 265)
+(6600, 20652, 265)
+(6900, 21150, 265)
+(8100, 18199, 188)
+(8400, 16762, 168)
+(8700, 16307, 168)
+(9000, 15867, 167)
+(9300, 15555, 167)
+(9600, 16004, 167)
+(9900, 16239, 198)
+(10200, 16185, 207)

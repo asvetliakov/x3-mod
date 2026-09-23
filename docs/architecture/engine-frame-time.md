@@ -1748,3 +1748,25 @@ the switch is "less visible now".
   baked diffuse and light-map atlases, [merged-lod-feasibility.md](merged-lod-feasibility.md)).
 - Frame time 20.0 ms at 310 draws vs run259's 18.5 ms at 262 draws is a different scene, not
   an A/B (inferred).
+
+## Run 265: atlas overlay in flight (2026-09-23)
+
+Run 70 C (`/tmp/x3-bottleX3-run265`, Run69 DLL, atlas overlay `f3f607fa…` installed 05:08 with
+the game closed, session 05:20). Outputs: `verification/results/run265-atlas/`. All measured
+unless marked. The user: still sees a transition at the switch; asks whether the atlas was in.
+
+- **In effect:** outpost at s 149 LOD 1 with 2 draws (atlas + alpha), at 151 LOD 0 with 34;
+  Titan (M2) at s 73 LOD 1 with 1 draw, at 90 LOD 0 with 32; TL and M1 ×2 at LOD 1 with 1 draw.
+  Coarse draws bind s0 diffuse DXT1, s1 bump DXT5, s3 light DXT5 at 2048² (TL, outpost) or
+  1024² (M2, M1) with full mip chains; s2 (specular) is id 537, the engine's 32×32 NULL-specular
+  stand-in (also bound by argon_spacedock LOD 0). No texture failure or mip rows. The resource
+  reader logs no file names, so the bindings are the proof.
+- **Outpost pair, same view:** sun part 0.111 vs 0.111 (100 %; run261 94 %), non-sun 0.0206 vs
+  0.0220 (94 %; run261 73 %), mean luminance 0.132 vs 0.133. Per-pixel: median ratio 0.999;
+  79 % of the difference energy is fine-scale; highlights (6 % of pixels) carry 20 % of it at
+  ×1.22; plating ×0.95; windows/exhausts ×0.94; specular-zone luminance ratio 2.52 vs 2.08.
+  Titan pair (unequal views, camera moved ~11.5 km): mean ×1.77, highlights ×2.87, specular
+  zone 2.35 vs 1.92. Pixel-shader constants match (c9 2.84 vs 2.90, c12 0.524 vs 0.562), so the
+  shine comes from the s2 placeholder (inferred, its texels are not logged).
+- **Next (C2):** the overlay rebuilt with `--atlas-specular` (DXT5 specular atlas per body;
+  16 textures, 19.3 MB) and installed.
