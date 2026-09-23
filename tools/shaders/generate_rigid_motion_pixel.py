@@ -163,6 +163,13 @@ SHADERS = {
     'fog_density_repair_look': dict(source=ROOT / 'src/fog/fog_density_repair_look_ps.hlsl',
                               header=ROOT / 'src/renderer/fog_density_repair_look_program_inc.h',
                               provenance=ROOT / 'verification/results/fog-density-repair-look-program.json'),
+    # Step B of docs/architecture/fog-gpu-cost.md (--fog-far-bins 24): the look's march and repair with 24 far bins.
+    'fog_density_march_look_far24': dict(source=ROOT / 'src/fog/fog_density_march_look_far24_ps.hlsl',
+                              header=ROOT / 'src/renderer/fog_density_march_look_far24_program_inc.h',
+                              provenance=ROOT / 'verification/results/fog-density-march-look-far24-program.json'),
+    'fog_density_repair_look_far24': dict(source=ROOT / 'src/fog/fog_density_repair_look_far24_ps.hlsl',
+                              header=ROOT / 'src/renderer/fog_density_repair_look_far24_program_inc.h',
+                              provenance=ROOT / 'verification/results/fog-density-repair-look-far24-program.json'),
     # The sun-visibility slice grid (docs/architecture/fog-shadow-pass.md, X3M_FOG_SHADOW_PASS=1): the pass and the
     # look's march and repair reading it (FOG_SHADOW_PASS) instead of the in-march lookup; the *_look pair stays the control.
     'fog_density_visibility_grid': dict(source=ROOT / 'src/fog/fog_density_visibility_grid_ps.hlsl',

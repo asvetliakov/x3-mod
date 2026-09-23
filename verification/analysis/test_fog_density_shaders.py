@@ -11,7 +11,7 @@ sys.path.insert(0, str(ROOT / 'verification/probe'))
 import fog_density_shader_slots as slots  # noqa: E402
 
 BASE = ('fog_density_march', 'fog_density_composite', 'fog_density_repair', 'fog_density_march_exact')
-NAMES = BASE + tuple(slots.LOOK_PROGRAMS) + tuple(slots.GRID_PROGRAMS)  # the single look (FOG_LOOK) and its visibility-grid variants
+NAMES = BASE + tuple(slots.LOOK_PROGRAMS) + tuple(slots.FAR24_PROGRAMS) + tuple(slots.GRID_PROGRAMS)  # the single look (FOG_LOOK), its 24-far-bin and visibility-grid variants
 
 
 def digest(path):
@@ -53,6 +53,10 @@ class FogDensityShaders(unittest.TestCase):
         # The look: depth + 2x2 atlas fetches + 2 cascades x 4 shaft taps + the sun-ward tap's two far fetches (15);
         # composite 1+1+4+4; repair adds four footprint taps and the scene. The 64-bin march stays one loop.
         self.assertEqual([counts[n]['texture_instructions'] for n in slots.LOOK_PROGRAMS], [15, 10, 20])
+        # Step B (fog-gpu-cost.md): 24 far bins change the loop count only; the same fetches, one loop, slots within a few.
+        self.assertEqual([counts[n]['texture_instructions'] for n in slots.FAR24_PROGRAMS], [15, 20])
+        for name in slots.FAR24_PROGRAMS:
+            self.assertLessEqual(abs(counts[name]['slots'] - counts[name.replace('_far24', '')]['slots']), 4, name)
         # The visibility grid: the pass reads 3 cascades x 4 depths; its march and repair drop the shaft taps for one
         # grid fetch (depth + 2x2 atlas + grid + 2 sun-ward = 8; repair adds four footprint taps and the scene).
         self.assertEqual([counts[n]['texture_instructions'] for n in slots.GRID_PROGRAMS], [12, 8, 13])
@@ -112,6 +116,14 @@ class FogDensityShaders(unittest.TestCase):
             self.assertNotIn('FOG_LOOK', (ROOT / record(name)['source']).read_text(), name)
         for name in list(slots.LOOK_PROGRAMS) + ['fog_density_march_grid', 'fog_density_repair_grid']:
             self.assertIn('#define FOG_LOOK\n', (ROOT / record(name)['source']).read_text(), name)
+        # The 24-far-bin variants are the look sources with FOG_FAR_BINS 24 (default 40 in the include, look law only).
+        for name in slots.FAR24_PROGRAMS:
+            source = (ROOT / record(name)['source']).read_text()
+            self.assertIn('#define FOG_FAR_BINS 24\n', source, name)
+            self.assertIn('#include "%s_ps.hlsl"' % name.replace('_far24', ''), source, name)
+        self.assertIn('#ifndef FOG_FAR_BINS\n#define FOG_FAR_BINS 40\n#endif', text)
+        self.assertIn('[loop] for (int i=0; i<24+FOG_FAR_BINS; ++i) {', text)
+        self.assertIn('max(distance-12000.0,0.0)/float(FOG_FAR_BINS)', text)
         # The grid variants are the look plus FOG_SHADOW_PASS; the pass program is its own source over the shared include.
         for name in ('fog_density_march_grid', 'fog_density_repair_grid'):
             self.assertIn('#define FOG_SHADOW_PASS\n', (ROOT / record(name)['source']).read_text(), name)
@@ -130,6 +142,8 @@ class FogDensityShaders(unittest.TestCase):
             self.assertNotIn('#include "fog_density_%s_program_inc.h"' % name, pass_source)
         for name in ('visibility', 'march', 'repair'):
             self.assertIn('#include "fog_density_%s_grid_program_inc.h"' % name, pass_source)
+        for name in ('march', 'repair'):
+            self.assertIn('#include "fog_density_%s_look_far24_program_inc.h"' % name, pass_source)
 
     def test_recorded_fixture_summary_passes_the_gates(self):
         s = json.loads((ROOT / 'verification/results/fog-density-shader/summary.json').read_text())
@@ -166,6 +180,18 @@ class FogDensityShaders(unittest.TestCase):
         self.assertEqual(p['fill']['nodes'], 2 * 128 ** 3)
         self.assertEqual(p['reset_reupload']['regenerated_nodes'], 0)
         self.assertGreater(p['repair']['half_pixel_shift_control'], 3 * p['repair']['worst_vs_cpu'])
+        # Step B (fog-gpu-cost.md): the 24-far-bin variant's record beside the summary, which stays under 50 KB.
+        self.assertLess((ROOT / 'verification/results/fog-density-shader/summary.json').stat().st_size, 50_000)
+        self.assertEqual(s['far_bins_variant_file'], 'far24.json')
+        f = json.loads((ROOT / 'verification/results/fog-density-shader/far24.json').read_text())
+        self.assertEqual(f['result'], 'PASS'); self.assertEqual(f['bottle']['name'], 'X3')
+        self.assertEqual(f['gates'], {k: v for k, v in s['gates'].items() if k.startswith('far24_')}); self.assertEqual(len(f['gates']), 7)
+        self.assertEqual(f['reference']['far_bins'], 24)
+        self.assertEqual(sorted(f['deviation_from_40_bins']), sorted(looks))
+        for label, row in f['look_versus_host'].items():
+            for variant in ('bilinear32', 'bilinear16'):
+                self.assertLessEqual(row[variant]['T']['max'], .003, label); self.assertLessEqual(row[variant]['S']['max'], .003, label)
+        self.assertGreaterEqual(len(f['pass_fixture_checks']), 16); self.assertTrue(all(v == 'PASS' for v in f['pass_fixture_checks'].values()))
 
 
 if __name__ == '__main__':

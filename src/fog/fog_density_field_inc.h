@@ -188,7 +188,14 @@ float look_density(float rho, float cover) {
 }
 // Parabolic sine of period 1, range [-1,1].
 float3 look_wave(float3 x) { float3 t = frac(x)-0.5; return t*(8.0-16.0*abs(t)); }
-// The shaped law on the same 24+40 bins. Per pixel: two-lobe phase, two-colour ambient, sky column cap and the
+// Far bins over [12000, L] (docs/architecture/fog-gpu-cost.md, step B). 40 is the accepted look: ds = 2512.5 units at the
+// 112,500 column cap. fog_density_{march,repair}_look_far24_ps.hlsl define 24 (launcher --fog-far-bins 24): ds = 4187.5,
+// about one sample per 4096-unit far node, the near law's ratio (500-unit bins on 512-unit nodes); the far range, the
+// cap and the taper are unchanged. The grid variants (FOG_SHADOW_PASS) and the unshaped reference keep 40.
+#ifndef FOG_FAR_BINS
+#define FOG_FAR_BINS 40
+#endif
+// The shaped law on the same 24+FOG_FAR_BINS bins. Per pixel: two-lobe phase, two-colour ambient, sky column cap and the
 // interleaved-gradient offset of the shadow-shaft lookup. Per sample: density remap, shaft visibility floor,
 // the half-extinction isotropic octave, and one far-level tap toward the sun (Beer-powder self-shadow).
 float4 march_depth(float2 uv, float4 depth) {
@@ -202,7 +209,7 @@ float4 march_depth(float2 uv, float4 depth) {
     float3 view_direction = normalize(view);
     // Scalars that live across the loop share registers (ps_3_0 has 32 temporaries and the compiler gives
     // every live scalar its own): steps = near step, far step.
-    float2 steps = float2(min(distance,12000.0)/24.0,max(distance-12000.0,0.0)/40.0);
+    float2 steps = float2(min(distance,12000.0)/24.0,max(distance-12000.0,0.0)/float(FOG_FAR_BINS));
     // Sample offsets in bins: zw the shaft lookup (look_taps.zw; zero without a temporal resolve, so cascade
     // selection is then the bin centre's as well), xy the density and lighting offset (look_self.zw, always zero
     // since the retirement of L3; the rows keep their layout).
@@ -221,7 +228,7 @@ float4 march_depth(float2 uv, float4 depth) {
 #endif
 #endif
     float3 sum = float3(0,0,1); // sun-lit, multiple-scatter lift, T
-    [loop] for (int i=0; i<64; ++i) {
+    [loop] for (int i=0; i<24+FOG_FAR_BINS; ++i) {
         float3 bin = i < 24 ? float3(steps.x,steps.x*(i+offset.xz)) : float3(steps.y,12000.0+steps.y*(i-24+offset.yw)); // ds, s, shaft s
         [branch] if (bin.x > 0.0) {
             float t = saturate((bin.y-20000.0)/10000.0);

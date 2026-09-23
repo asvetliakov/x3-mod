@@ -210,14 +210,20 @@ void MotionOutput::prepare_volumetric_fog_density(UINT width, UINT height) noexc
     }
     if (!fog_density_config_logged_) {
         fog_density_config_logged_ = true;
-        log("volumetric_fog_cache device=%llu frame=%llu event=config mode=stored result=%08lx profile=%u sigma=%.4g chroma=%.4f,%.4f,%.4f atlas_bytes=%u upload_budget_bytes=%u upload_rects=%u ramp_frames=%u shadow_pass=%u",
+        log("volumetric_fog_cache device=%llu frame=%llu event=config mode=stored result=%08lx profile=%u sigma=%.4g chroma=%.4f,%.4f,%.4f atlas_bytes=%u upload_budget_bytes=%u upload_rects=%u ramp_frames=%u shadow_pass=%u far_bins=%u",
             id_, frame_, hr, fog_sector_.profile, double(fog_density_config_.sigma), double(fog_density_config_.chroma[0]), double(fog_density_config_.chroma[1]), double(fog_density_config_.chroma[2]),
-            unsigned(fog::kAtlasBytes), unsigned(fog::kDefaultUploadBudget), fog::kDefaultUploadRects, fog::kReadinessRampFrames, unsigned(fog_density_config_.shadow_pass));
+            unsigned(fog::kAtlasBytes), unsigned(fog::kDefaultUploadBudget), fog::kDefaultUploadRects, fog::kReadinessRampFrames, unsigned(fog_density_config_.shadow_pass), fog_density_config_.far_bins);
     }
     if (status.shadow_pass_refused && !fog_shadow_pass_refused_logged_) {
         // The grid could not be built (or its column cap is unusable): the stored fog draws with the in-march programs.
         fog_shadow_pass_refused_logged_ = true;
         log("fog_shadow_pass_refused device=%llu frame=%llu reason=%s fallback=in_march_lookup", id_, frame_, status.shadow_pass_refused);
+    }
+    if (status.far_bins_refused && !fog_far_bins_refused_logged_) {
+        // 24 far bins were asked but 40 draw (shadow pass, column cap, or the pair could not be built; fog-gpu-cost.md step B).
+        fog_far_bins_refused_logged_ = true;
+        log("fog_far_bins_refused device=%llu frame=%llu reason=%s requested=%u drawn=%u", id_, frame_, status.far_bins_refused,
+            fog_density_config_.far_bins, fog_ ? fog_->density_far_bins() : 0u);
     }
     if (status.motes_refused && !fog_motes_refused_logged_) {
         // The mote stage could not be built or drew once without success (not a lost device): the fog draws without it.

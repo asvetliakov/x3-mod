@@ -31,7 +31,14 @@
     "grid_refused_falls_back_to_in_march": true,
     "grid_pass_fixture": true,
     "motes_cases": true,
-    "motes_programs_below_512": true
+    "motes_programs_below_512": true,
+    "far24_look_cases": true,
+    "far24_look_shaft_offset_exercised": true,
+    "far24_look_shadowed_coloured": true,
+    "far24_repair_shaft_lookup": true,
+    "far24_programs": true,
+    "far24_moves_the_look": true,
+    "far24_pass_fixture": true
   },
   "reported_not_gated": {
     "parity_S_bilinear_max": 5.618482828140259e-05,
@@ -169,43 +176,52 @@
     "max": 0.001861572265625
   },
   "pass_fixture": {
-    "checks": 123,
+    "checks": 142,
     "failed": [],
-    "state_restorations": 1125,
+    "state_restorations": 1149,
     "atlas_comparisons": 16,
     "atlas_differing_bytes": 0,
-    "executable_sha256": "a8f9964225a000ea28927d0fa73d258fa14efe76742f45d3eab71b7d86b31d76",
-    "seconds": 46.844216167000006,
+    "executable_sha256": "950097553f6ae17e1abe026b0d3543cec13435e03caa4dc5a1dbf13403bbb4fb",
+    "seconds": 53.869116875,
     "fill": {
-      "far_first_fog_ms": 590.6,
-      "fine_first_ms": 1560.1,
-      "total_ms": 2175.0,
-      "frames": 1064,
-      "no_fog_frames": 444,
-      "drawn_frames": 619,
+      "far_first_fog_ms": 587.6,
+      "fine_first_ms": 1555.6,
+      "total_ms": 2173.6,
+      "frames": 1079,
+      "no_fog_frames": 445,
+      "drawn_frames": 633,
       "tau_max": 1.2573,
       "worst_T_step": 0.01416,
       "first_T_step": 0.01416,
       "bound": 0.021935,
       "nodes": 4194304,
-      "worker_busy_ms": 2156.3,
-      "nodes_per_second": 1945120
+      "worker_busy_ms": 2156.8,
+      "nodes_per_second": 1944705
     },
     "pass_vs_cpu": {
       "sky_pixels": 35,
       "worst_T": 0.000542,
       "worst_S": 0.000204
     },
+    "far24": {
+      "sky_pixels": 35,
+      "worst_T": 0.000537,
+      "worst_S": 0.000112,
+      "vs_40_bin_twin_T": 0.008354,
+      "vs_40_bin_twin_S": 0.004678,
+      "split_differs": 712,
+      "device_calls": 322
+    },
     "steady": {
-      "prepare_density_ns": 488,
+      "prepare_density_ns": 485,
       "frames": 20000,
       "update_surface_calls": 0
     },
     "recentre": {
       "origin_x": "123->125",
       "nodes": 96776,
-      "upload_bytes": 338224,
-      "seconds": 0.052
+      "upload_bytes": 341624,
+      "seconds": 0.053
     },
     "seam": {
       "fine_xy_seam": 12,
@@ -231,24 +247,24 @@
       "composite_worst": 0.000486
     },
     "detach": {
-      "mid_fill_join_ms": 2.59
+      "mid_fill_join_ms": 5.43
     },
     "device_references": {
       "before_attach": 1,
       "after_detach": 1
     },
     "prepare_cpu": {
-      "first_prepare_ms": 4.55,
-      "upload_frames": 7261,
-      "median_us": 21.3,
-      "p95_us": 62.7,
-      "p99_us": 133.3,
-      "max_us": 9193.5,
-      "us_per_update_surface": 10.06,
-      "idle_frames": 2759,
-      "idle_median_us": 1.0,
-      "idle_p95_us": 2.7,
-      "idle_max_us": 184.9,
+      "first_prepare_ms": 3.64,
+      "upload_frames": 7386,
+      "median_us": 22.4,
+      "p95_us": 84.9,
+      "p99_us": 151.5,
+      "max_us": 7994.2,
+      "us_per_update_surface": 10.71,
+      "idle_frames": 2977,
+      "idle_median_us": 1.1,
+      "idle_p95_us": 4.1,
+      "idle_max_us": 80.6,
       "max_upload_bytes": 1065024,
       "max_update_surface_calls": 64,
       "budget_bytes": 1065024,
@@ -256,21 +272,21 @@
     },
     "static_generation": {
       "nodes": 14680064,
-      "seconds": 7.51,
-      "nodes_per_second": 1954607
+      "seconds": 7.543,
+      "nodes_per_second": 1946241
     },
     "handover": {
-      "frames": 461,
+      "frames": 500,
       "oversize": 1,
       "whole": 1,
       "early": 0,
       "latches": 1,
       "upload_bytes": 4260096,
-      "ready_ms": 576.4,
-      "drawable_ms": 576.4,
-      "fill_ms": 574.5,
-      "fill_busy_ms": 573.1,
-      "fill_cpu_ms": 590.0
+      "ready_ms": 621.4,
+      "drawable_ms": 621.4,
+      "fill_ms": 618.7,
+      "fill_busy_ms": 616.7,
+      "fill_cpu_ms": 610.0
     },
     "refusal": {
       "reason": "density_ps30_slots",
@@ -395,13 +411,13 @@
         "move": 0,
         "origin_storage": 0,
         "nodes": 96776,
-        "upload_bytes": 264712
+        "upload_bytes": 264968
       },
       {
         "move": 1,
         "origin_storage": 2,
         "nodes": 96776,
-        "upload_bytes": 372536
+        "upload_bytes": 369976
       },
       {
         "move": 2,
@@ -998,6 +1014,20 @@
       "words": 2164,
       "loops": 1
     },
+    "fog-density-march-look-far24": {
+      "bytecode_sha256": "49063184d00dbf482dc6e844e878cc5df5cdf575c491288de9a7c3662b044680",
+      "slots": 425,
+      "texture_instructions": 15,
+      "words": 1850,
+      "loops": 1
+    },
+    "fog-density-repair-look-far24": {
+      "bytecode_sha256": "dfe1bf8c3ed1020a79fca0f18f3f0a43db88c15784cc4f5cbd0803cd49d526c3",
+      "slots": 510,
+      "texture_instructions": 20,
+      "words": 2164,
+      "loops": 1
+    },
     "fog-density-visibility-grid": {
       "bytecode_sha256": "a9639c74adf5bc5e85a763c25aaaf895ed06ca9b8f94747dfb8eb06827e6403c",
       "slots": 319,
@@ -1041,78 +1071,89 @@
       "loops": 0
     }
   },
-  "fixture_checks": 30,
+  "fixture_checks": 35,
   "fixture_timing_not_game_fps": {
     "march_sky_132_reads": {
-      "completed_median_ms": 0.78,
-      "completed_p95_ms": 0.8092,
-      "submit_median_ms": 0.0163,
-      "submit_p95_ms": 0.0269
+      "completed_median_ms": 0.7809,
+      "completed_p95_ms": 0.7921,
+      "submit_median_ms": 0.0152,
+      "submit_p95_ms": 0.0219
     },
     "march_depth29300_172_reads": {
-      "completed_median_ms": 0.8918,
-      "completed_p95_ms": 1.0106,
-      "submit_median_ms": 0.0171,
-      "submit_p95_ms": 0.0359
+      "completed_median_ms": 0.8942,
+      "completed_p95_ms": 0.9192,
+      "submit_median_ms": 0.0146,
+      "submit_p95_ms": 0.0204
     },
     "transaction_sky_march_composite_repair": {
-      "completed_median_ms": 0.8498,
-      "completed_p95_ms": 0.9748,
-      "submit_median_ms": 0.0625,
-      "submit_p95_ms": 0.0837
+      "completed_median_ms": 0.9381,
+      "completed_p95_ms": 0.9568,
+      "submit_median_ms": 0.0583,
+      "submit_p95_ms": 0.0654
     }
   },
   "fixture_readback_synchronised_timing_not_game_fps": {
     "march_sky_132_reads": {
-      "readback_median_ms": 1.3757,
-      "baseline_clear_readback_median_ms": 0.3689,
-      "net_median_ms": 1.0068
+      "readback_median_ms": 1.3442,
+      "baseline_clear_readback_median_ms": 0.3474,
+      "net_median_ms": 0.9969
     },
     "march_depth29300_172_reads": {
-      "readback_median_ms": 1.1221,
-      "baseline_clear_readback_median_ms": 0.3135,
-      "net_median_ms": 0.8086
+      "readback_median_ms": 1.0402,
+      "baseline_clear_readback_median_ms": 0.2724,
+      "net_median_ms": 0.7678
     },
     "transaction_sky_march_composite_repair": {
-      "readback_median_ms": 1.5604,
-      "baseline_clear_readback_median_ms": 0.8545,
-      "net_median_ms": 0.706
+      "readback_median_ms": 1.4415,
+      "baseline_clear_readback_median_ms": 0.7829,
+      "net_median_ms": 0.6586
     }
   },
   "fixture_march_slope_timing_not_game_fps": {
     "march_sky_132_reads": {
-      "one_march_ms": 0.8793,
-      "ten_marches_ms": 0.9413,
-      "per_march_slope_ms": 0.0069
+      "one_march_ms": 0.8063,
+      "ten_marches_ms": 0.8981,
+      "per_march_slope_ms": 0.0102
     },
     "march_depth29300_172_reads": {
-      "one_march_ms": 0.9462,
-      "ten_marches_ms": 1.0264,
-      "per_march_slope_ms": 0.0089
+      "one_march_ms": 0.9158,
+      "ten_marches_ms": 1.008,
+      "per_march_slope_ms": 0.0102
     },
     "march_sky_look": {
-      "one_march_ms": 1.8752,
-      "ten_marches_ms": 1.3695
+      "one_march_ms": 1.1157,
+      "ten_marches_ms": 1.2056,
+      "per_march_slope_ms": 0.01
+    },
+    "march_sky_look_far24": {
+      "one_march_ms": 0.9018,
+      "ten_marches_ms": 1.0052,
+      "per_march_slope_ms": 0.0115
     },
     "march_depth29300_look": {
-      "one_march_ms": 1.2523,
-      "ten_marches_ms": 1.4029,
-      "per_march_slope_ms": 0.0167
+      "one_march_ms": 1.2149,
+      "ten_marches_ms": 1.3165,
+      "per_march_slope_ms": 0.0113
+    },
+    "march_depth29300_look_far24": {
+      "one_march_ms": 0.9685,
+      "ten_marches_ms": 1.0631,
+      "per_march_slope_ms": 0.0105
     },
     "visibility_grid_320x192": {
-      "one_march_ms": 1.2896,
-      "ten_marches_ms": 1.4665,
-      "per_march_slope_ms": 0.0197
+      "one_march_ms": 1.3112,
+      "ten_marches_ms": 1.4112,
+      "per_march_slope_ms": 0.0111
     },
     "march_sky_grid": {
-      "one_march_ms": 1.1662,
-      "ten_marches_ms": 1.2807,
-      "per_march_slope_ms": 0.0127
+      "one_march_ms": 1.185,
+      "ten_marches_ms": 1.2723,
+      "per_march_slope_ms": 0.0097
     },
     "march_depth29300_grid": {
-      "one_march_ms": 1.2923,
-      "ten_marches_ms": 1.3796,
-      "per_march_slope_ms": 0.0097
+      "one_march_ms": 1.2772,
+      "ten_marches_ms": 1.3585,
+      "per_march_slope_ms": 0.009
     }
   },
   "repair": {
@@ -1122,11 +1163,11 @@
     "worst_vs_full_march": 0.000488249101
   },
   "generation": {
-    "atlases": 28,
-    "seconds": 30.119924,
-    "nodes_per_second": 1949549.0
+    "atlases": 32,
+    "seconds": 34.259841,
+    "nodes_per_second": 1958820.0
   },
-  "executable_sha256": "3a6a2a0f38fe437c2ea0f72a2892a4eb973fd77511e73f5e283b3f99600b86ba",
+  "executable_sha256": "3cedf4b0a0d0c52560564a281e82ff91f48f8d4545e9b7c4aaf6f1fb3ec38c01",
   "bottle": {
     "name": "X3",
     "wine_arch": "arm64",
@@ -1136,7 +1177,7 @@
     },
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
-  "run_seconds": 48.791306708,
+  "run_seconds": 55.092992208,
   "reference": {
     "schema": 1,
     "width": 128,
@@ -1165,5 +1206,6 @@
     "reference_sha256": "902a8b1240a5915f040f2cfd593467c754f353b096625b85b51d70e0cf0ab4bf",
     "manifest_sha256": "db0a8dd1db2d538872b1930f2a8dcd7ca763760a70c3d72c8b3cd4b2c1500a30",
     "packet_sha256": "014d586109e5968dbd0358969ab7082e7fc3e670335a59d889f6e2ba649d87f8"
-  }
+  },
+  "far_bins_variant_file": "far24.json"
 }

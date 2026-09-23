@@ -2785,3 +2785,43 @@ from db13d929); rows and counts by
   agents' runs. Tracked `verification/results/bottle-X3/` unchanged.
 - Not verified: the refused vector in flight (the next docked load's `volumetric_fog_card_states` row) and native
   Windows.
+
+## 2026-09-23: fog route step B: 24 far bins behind `--fog-far-bins` (uncommitted worktree, default 40, not installed)
+
+Design and numbers: [fog-gpu-cost.md](../architecture/fog-gpu-cost.md), "Step B implemented". [M] unless marked.
+
+- Law: `FOG_FAR_BINS` in the look law (default 40), far step (L - 12000) / 24 = 4187.5 at the 112,500 cap (1.02 far
+  nodes), loop 48; range, cap and taper unchanged. Programs `fog_density_{march,repair}_look_far24` 425 / 510 slots,
+  15 / 20 texture instructions, rep 48; all 12 default fog programs byte-identical to b4e2fcff
+  ([step_b_programs_out.txt](../../verification/results/fog-gpu-cost/step_b_programs_out.txt)).
+- Switch: launcher `--fog-far-bins {40,24}` → `X3M_FOG_FAR_BINS` (always written; 24 only with the stored range, refused
+  with `--fog-shadow-pass on`); `FogDensityConfig::far_bins` picks the march/repair pair at `prepare_density`, any other
+  count `E_INVALIDARG`; one `volumetric_fog_far_bins … requested=<value> refused=none|shadow_pass|cap|invalid` init row
+  and `far_bins=` on the cache config row.
+- Review fixes (same day): a count change builds the new pair before dropping the old and keeps the working pair on
+  failure (sticky `far_bins_refused=program`, composite not re-created); FogPass clamps 24 to 40 itself from the first
+  shadow-pass prepare until detach and above a 120,000 column cap (`fog_far_bins_refused` logged once); a hand-set
+  value other than 40/24 is echoed as invalid. The variant's record moved to `fog-density-shader/far24.json`
+  (summary 32.7 KB).
+- Fixture after the review fixes (bottle X3, `wine_lock.py`, child 109 s): PASS 37/37, pass fixture 142 checks of which
+  19 far-bin; identity against b4e2fcff and the deviation table unchanged from the first run below. Route bridge
+  (`fog_route_bridge_build.py` build + `--baseline` from an archive of 6f16dbf6, `build-exit`, `run --cases
+  /tmp/x3-fog-family-gpu-inputs-final/cases.txt`, child 81 s, `check`): PASS 37,155 checks, 110 names, exit 4 checks,
+  `legacy_bit_identical_to_baseline` true (`verification/results/fog-density-route/summary.json`).
+- First fixture run (bottle X3, `wine_lock.py`, lock wait 337 s, child 95 s; shader 51 s, pass 43 s):
+  `fog_density_shader_run.py build/run/check --reference /tmp/x3-run67-fog-ref --variant-reference
+  /tmp/x3-run76-fog-ref-far24` PASS 37/37: the 30 default gates incl. `pass_off_bit_identical` (11/11 hashes), 0 of 662
+  default figures differ from b4e2fcff's summary
+  ([step_b_fixture_identity_out.txt](../../verification/results/fog-gpu-cost/step_b_fixture_identity_out.txt)); the 7
+  `far24_*` gates against the variant's own host reference (T max .00073, S max .00045; repair .00051); pass fixture 136
+  checks incl. 13 far-bin checks (CPU twin at 24 bins T .00054 / S .00011, back at 40 byte-identical, same 322 device
+  calls, count 32 refused, Reset, detach). The exporter at 40 bins reproduces all 37 look/repair/grid arrays of run67.
+- Look move, far24 against 40 on the GPU (RGBA16F, fogged pixels): T max .010-.030, mean .0014-.0046; S max .007-.013,
+  mean .0004-.0008; 12-48 % of fogged pixels past .003; signed mean T within ±.0006 (unbiased resampling)
+  ([step_b_deviation_out.txt](../../verification/results/fog-gpu-cost/step_b_deviation_out.txt)).
+- Build: scratch MinGW i686 RelWithDebInfo 0 warnings, `check_no_x87.py` PASS 673 reachable, no violations. Host:
+  `test_fog_density_shaders`, `test_volumetric_fog` (new `test_far_bins_option`), `test_fog_route_bridge`,
+  `test_fog_look_reference`, `test_fog_shadow_grid` 45 OK; `test_comparison_hotkeys`, `test_fog_cards`,
+  `test_fog_field_assets`, `test_fog_family_file`, `test_fog_handover`, `test_gpu_sync_timing`,
+  `test_sector_background` 48 OK; after the review fixes the twelve modules together: 93 tests OK.
+- Open: the flight (same stand, `--gpu-sync-timing`, `--fog-far-bins 40` then `24`; `fog_march` and the look).

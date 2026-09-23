@@ -23,6 +23,7 @@ struct Setup {
     // Null selects the unshaped law, which only the shader fixture's parity programs still draw. The look rows
     // must come from `resolved=false` constants: this twin samples bin centres and carries no pixel noise.
     const float (*look)[4] = nullptr;
+    unsigned far_bins = 40; // the look's far bins (FogDensityConfig::far_bins: 40 or 24); the unshaped law keeps 40
     std::function<double(const double view_position[3])> visibility; // empty: 1
     mutable unsigned seam_xy_samples[kLevelCount]{}, lane_wrap_samples[kLevelCount]{}; // base node at storage 127
 };
@@ -100,9 +101,9 @@ inline Result look_march(const Setup& s, const double view[3], double geometry_d
     // c22.xyz of the pass: the camera modulo the fine window (65536 units), centred, in float32.
     double local[3];
     for (int a = 0; a < 3; ++a) local[a] = double(float(s.camera[a] - 65536. * std::floor(s.camera[a] / 65536. + .5)));
-    const double near_step = std::min(distance, 12000.) / 24, far_step = std::max(distance - 12000., 0.) / 40;
+    const double near_step = std::min(distance, 12000.) / 24, far_step = std::max(distance - 12000., 0.) / s.far_bins;
     double sun_lit = 0, lift = 0, T = 1;
-    for (int i = 0; i < 64; ++i) {
+    for (int i = 0; i < 24 + int(s.far_bins); ++i) {
         const double ds = i < 24 ? near_step : far_step;
         if (!(ds > 0)) continue;
         const double at = (i < 24 ? near_step * i : 12000. + far_step * (i - 24)) + .5 * ds;

@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "source": "src/fog/fog_dust_motes_look_ps.hlsl",
-  "source_sha256": "2737c682cb0b450c8308c7fb6d82222b47d56aa390236be99a5b5243f8007275",
+  "source": "src/fog/fog_density_march_look_far24_ps.hlsl",
+  "source_sha256": "4dfb265f6721158e99f26dc543abaa41ce28c75fc931b283e59fdcd050f2d9ae",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
   "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",
@@ -10,13 +10,14 @@
   "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
   "defines": null,
   "includes": {
-    "src/fog/fog_dust_motes_ps.hlsl": "0eb8b74fce44700ad9896c204297ad897de096af1b25c8a05f7c0aff74789ce5",
+    "src/fog/fog_density_march_look_ps.hlsl": "4534cb1031c1a86839cebdd00dc001dd85152969edbca4c318e714f521d7bf86",
+    "src/fog/fog_density_march_ps.hlsl": "a6c27430a3c9f19e3456e7290dd4e96de2e1ce66cbb1ef9f48c2c16954674600",
     "src/fog/fog_density_field_inc.h": "840f5449e1c0ff9e13dd7a9812330c33364fa2af2120aaba23d51bc72cac01f8",
     "src/fog/fog_shadow_grid_inc.h": "fae5df8acfe6e4c969678093fa9d5fe750180f22a572df017d59cebe0f927f96"
   },
-  "word_count": 1346,
-  "bytecode_sha256": "b20ae4581993a67cf32616fe7c63a268c1b80f5f2171fbd46e9e1d2a70813a1f",
-  "header_sha256": "5261468a077ba55071c7a299346a6f06070cd229d2ed85b3779944146eb146f2",
+  "word_count": 1850,
+  "bytecode_sha256": "49063184d00dbf482dc6e844e878cc5df5cdf575c491288de9a7c3662b044680",
+  "header_sha256": "4b7fed45aa9860d345ef39fda8fc219f04010151259b6d8436fceb841b8a5e7c",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "d1850b4e53ab5647f9b3986fadd39d12d7545039f48636aa49158d58adcf1003",
     "tools/shaders/generate_rigid_motion_pixel.py": "08be7fb1e3c84b39867fc4b0693de54e6a8c70fd2355ee2ac773bdfca593049d"

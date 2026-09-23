@@ -1002,6 +1002,9 @@ public:
     }
     // X3M_FOG_SHADOW_PASS=1 (fog-shadow-pass.md): the sun-visibility grid pass of the stored range, read once at init.
     void configure_volumetric_fog_shadow_pass(bool on) noexcept { fog_shadow_pass_launch_ = on; fog_density_config_.shadow_pass = on; }
+    // X3M_FOG_FAR_BINS (fog-gpu-cost.md step B): 40 or 24 far march bins of the stored look, read once at init; FogPass
+    // creates the matching march/repair pair at prepare_density and refuses any other count.
+    void configure_volumetric_fog_far_bins(unsigned bins) noexcept { fog_density_config_.far_bins = bins; }
     // Ctrl+Shift+F11 (comparison-hotkeys.md; launched with the pass only): flips the grid variant the next owner latch
     // hands to FogPass::prepare_density, so every frame draws one variant and off is the launch-off in-march path (the
     // grid target stays allocated). One fog_shadow_pass_toggle line per press; returns the new state, -1 without the pass.
@@ -2313,7 +2316,7 @@ private:
     const char* fog_card_fault_reason_ = "none";
     // Stored-density range. The camera is the previous scene end's (read after the owner latch).
     bool fog_density_requested_ = false, fog_density_refused_ = false, fog_density_prepared_ = false, fog_density_camera_valid_ = false;
-    bool fog_density_config_logged_ = false, fog_density_ready_logged_[2]{}, fog_shadow_pass_refused_logged_ = false;
+    bool fog_density_config_logged_ = false, fog_density_ready_logged_[2]{}, fog_shadow_pass_refused_logged_ = false, fog_far_bins_refused_logged_ = false;
     bool fog_shadow_pass_launch_ = false; // X3M_FOG_SHADOW_PASS=1 at launch: arms the F11 toggle and the grid fields of volumetric_fog_frame
     const char* fog_grid_last_march_ = "none"; // the march variant the last frame row printed (a change forces a throttled row)
     std::uint64_t fog_grid_logged_frame_ = 0; // the last change-driven frame row

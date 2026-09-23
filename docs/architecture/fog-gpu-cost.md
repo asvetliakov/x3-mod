@@ -2,7 +2,8 @@
 
 Question: how to cut the GPU cost of the stored-density fog route without changing the accepted look
 (L2 law, density scale 1.0x, 22.5 km fade, dust motes 1300,3 / MAX_PX 8, shadow pass off). Plan for
-ratification; step A is implemented (last section), B and C are not. [M] measured, [I] inferred.
+ratification; steps A and B are implemented (sections "Step A implemented", "Step B implemented"), step C is assessed
+there, not built. [M] measured, [I] inferred.
 
 Measured (Run 73 C, run274, `--gpu-sync-timing`, stand window W4, 300 frames all `reason=ok`,
 `verification/results/run274-gpu-sync/windows.txt`): `fog_route` 4.43 ms median / 5.15 p90, W5-W6
@@ -203,3 +204,116 @@ How to read the next `--gpu-sync-timing` flight (a fogged stand window, all 300 
   an upper bound on the per-pixel march cost because the 5-tap prologue of every pixel is in it. Step C multiplies the
   pixel count at 4-px spacing by that cost; the census alone does not give the 4-px count.
 - The early-out is off in this build, so `fog_march` carries no break; see above for the dense-look experiment.
+
+## Step B implemented (2026-09-23)
+
+Uncommitted worktree on b4e2fcff, not installed; default off. Ledger: [volumetric-fog.md](../verification/volumetric-fog.md),
+same date. Evidence scripts: `verification/results/fog-gpu-cost/step_b_*.py` with their `_out.txt`.
+
+**The law.** `FOG_FAR_BINS` in `fog_density_field_inc.h` (look law only; default 40): far step
+`(L - 12000) / FOG_FAR_BINS`, loop `24 + FOG_FAR_BINS`. At 24 and the 112,500 column cap: ds 4187.5 units = 1.02 far
+nodes (4096) per sample, the near law's ratio (500 on 512); the far range is unchanged, [12000, L], so the last far
+sample sits at 110,406 (22.1 km; 111,244 at 40) and the smoothstep taper 65,000-112,500 still reaches zero at the cap
+(22.5 km), sampled by 11 bins instead of 19. The LOD blend 20,000-30,000 gets 2 samples (4 at 40). **Cap rule:** 24 bins
+hold one sample per far node only near the default cap; at the 200,000 override (`X3M_FOG_LOOK_SKY_CAP`) ds would be
+7833 (1.9 nodes) and alias, so the variant is refused above a 120,000 cap (`fog_far_bins_coarse_cap_max`, ds <= 4500,
+1.1 nodes) and 40 draws; with only the 40 and 24 pairs compiled, a count scaled to the cap is not available. Nothing
+else moves: near law, cap, taper start, coverage/warp/lobes, shaft law, repair
+footprint, composite; the unshaped reference law and the grid variants (`FOG_SHADOW_PASS`) keep 40 [M: 12 default
+programs byte-identical to b4e2fcff, `step_b_programs_out.txt`].
+
+**Variant mechanism: a runtime switch over two compiled program pairs.** `fog_density_{march,repair}_look_far24_ps.hlsl`
+(`#define FOG_FAR_BINS 24` + the look source) compile to `*_look_far24_program_inc.h`; composite never marches and is
+shared. `FogDensityConfig::far_bins` (40 or 24; `prepare_density` refuses any other count with `E_INVALIDARG`) selects
+the pair `density_resources` creates at prepare, never on a draw path. A different count on a live pass (the proxy never
+does this: the count is launch-fixed) builds and slot-checks the new march/repair pair first and swaps it in only when
+complete; the shared composite stays. A pair that cannot be built leaves the working pair drawing and that count
+refused until detach (`far_bins_refused=program`, no retries); a first creation whose 24-bin pair fails falls back to
+40 instead of refusing the stored path. FogPass itself clamps 24 to 40 (`FogDensityStatus::far_bins_refused`, logged
+once by the proxy as `fog_far_bins_refused reason= requested= drawn=`): `shadow_pass` from the first prepare that asks
+for the grid until detach, so a grid frame and its toggled-off frame draw one far law; `cap` above 120,000. Launcher
+`--fog-far-bins {40,24}` → `X3M_FOG_FAR_BINS` (always written, `24` only with `--volumetric-fog-range stored`, refused
+with `--fog-shadow-pass on`); the DLL takes exactly `24` (or `40`) under the stored range, applies the shadow-pass and
+cap rules, and logs `volumetric_fog_far_bins bins= requested=<value> refused=none|shadow_pass|cap|invalid sky_cap=`
+once at init (any other value is echoed, characters outside `[0-9A-Za-z._+-]` as `?`); `far_bins=` is on the
+`volumetric_fog_cache … event=config` row. Per frame: the same device calls as 40 [M, pass
+fixture], no added CPU work.
+
+**Counts per variant** [M: `step_b_programs_out.txt`; I: `step_b_bin_law_out.txt`, static per-ray counts]:
+
+| Program | ps_3_0 slots | texture instructions | rep | Sky ray to the cap: iterations / atlas fetches empty / all bins fogged |
+| --- | --- | --- | --- | --- |
+| march look (40) | 425 | 15 | 64 | 64 / 137 / 521 |
+| march look far24 | 425 | 15 | 48 | 48 / 101 / 389 |
+| repair look (40) | 510 | 20 | 64 | (same per repaired pixel) |
+| repair look far24 | 510 | 20 | 48 | |
+
+Geometry rays with L <= 12,000 keep their 24 near samples (49 fetches); they only skip 24 instead of 40 empty
+far iterations. Expected march saving [I]: at most the removed quarter of the iterations on rays past 12 km, 0.8-1.15 ms
+of the measured 4.5-4.7 ms net `fog_march` (run280) on a sky-dominated view, less on a hull-filled one.
+
+**Fixture** (bottle X3, `wine_lock.py`, one run of both references: `fog_density_shader_run.py build/run/check --reference
+/tmp/x3-run67-fog-ref --variant-reference /tmp/x3-run76-fog-ref-far24`; the variant reference is generated once by `build`
+with the exporter's `--far-bins 24` from the same packets, 3 s on the host) [M]:
+
+- Default unchanged: 30/30 default gates incl. `pass_off_bit_identical` (11/11 accepted look hashes); against b4e2fcff's
+  committed summary 662 figures compared, 0 differ in the default path (the 2 that change are counts the variant adds to
+  the same run: fixture checks 30 → 35, generated atlases 28 → 32; `step_b_fixture_identity_out.txt`). The exporter at 40
+  bins reproduces all 37 look/repair/grid arrays of the run67 reference bit for bit.
+- Variant PASS against its own reference: 7 `far24_*` gates, 37/37 in all. Look cases GPU against host T max .00073,
+  S max .00045 (gates .003); repair split with the far24 programs .00051 from its host, .0105 from the offset-lookup
+  law; pass fixture 19 far-bin checks of 142 (programs at prepare, CPU twin at 24 bins worst T .00054 / S .00011 against
+  .0084 / .0047 from the 40-bin twin, the same pass back at 40 byte-identical to the default frames, a swap creating
+  exactly the two programs, equal device calls 322, count 32 refused, Reset, cap 150,000 refused and 112,500 back, an
+  injected 24-bin creation failure keeping the 40 pair with no retries, the shadow pass clamping to 40 also toggled
+  off, detach, refcount). The variant's record is `verification/results/fog-density-shader/far24.json`. One gate differs in form: the stripes case's offset lookup moves S by
+  .0053 at 24 bins (.0076 at 40), under the default 2x-gate margin; the variant gate requires the move minus the case's
+  GPU error (.00033) to exceed the .003 gate, which still makes a dropped offset fail the look gate.
+- How far the look moves (`step_b_deviation_out.txt`; GPU RGBA16F far24 against 40 over each 128x72 case, fogged pixels
+  3540-4740 of 9216; host law against host law on 576 rays):
+
+| Case | T max | T mean (fogged) | S max | S mean (fogged) | Pixels past .003 | Host T / S max |
+| --- | --- | --- | --- | --- | --- | --- |
+| A sky (= A depth3) | .0190 | .0023 | .0134 | .0007 | 1353 / 4740 | .0171 / .0134 |
+| A depth 90000 | .0100 | .0014 | .0073 | .0004 | 553 / 4690 | .0072 / .0048 |
+| A stripes / held | .0190 | .0023 | .0120 / .0115 | .0007 | 1438 / 1419 | .0171 / .0118 |
+| A shadowed | .0190 | .0023 | .0076 | .0004 | 1333 / 4740 | .0171 / .0072 |
+| B sky | .0298 | .0046 | .0079 | .0008 | 1715 / 3540 | .0261 / .0071 |
+
+  Unbiased: signed mean T(24) - T(40) over fogged pixels +.0003 (A sky), -.0004 (A depth 90000), +.0006 (B sky), half
+  the pixels up and half down: a resampling of the far clouds, not a thinner or denser fog. 12-48 % of fogged pixels move
+  past the .003 gate, up to 3 % in T; whether that is visible (edges of far patches, the taper) is the flight's question.
+  The fixture's march slope timings do not scale with the work (as in step A) and price nothing.
+
+**Flight plan (one user flight, `--gpu-sync-timing`).** Same save and stand as Run 75 C (run280, fogged sector idx 2),
+two launches with everything else equal: `--fog-far-bins 40`, then `--fog-far-bins 24`. Hold a still view for two
+300-frame windows, then turn in place for two; host idle, nothing else on the GPU. Read `fog_march` median and p90
+per window (target [I] 3.4-3.8 ms from 4.79-5.01 including the 0.264 floor), `fog_repair` and `fog_composite`
+unchanged (controls), `taa`/`engine` controls, and `volumetric_fog_far_bins bins=24` in the second log. Look check,
+same stand, both launches: far cloud edges and the taper toward 22 km (banding or stepping of the far fog), shafts
+beyond 12 km (coarser stamps of an occluder's edge before TAA settles, visible while turning), dense patches
+(per-bin alpha steps). Accept B when the user sees no difference at the stand and while turning and `fog_march`
+drops by at least 0.5 ms; then the default flips to 24 in a later candidate, with the accepted-look hashes re-pinned.
+
+**Step C assessment (quarter-resolution march), from the measured split** [I unless marked]:
+
+- Today (run280 fogged, [M]): march 4.5-4.7 ms net over 518,400 half-res pixels (~8.9 ns per marched pixel),
+  composite ~0.3, repair ~0.3 net while it writes only 30-104 ppm (62-216 pixels per frame): the repair's cost is its
+  full-screen 5-tap prologue, not its marches.
+- Quarter (480x270 = 129,600 marched pixels): march ~1.15 ms at 40 bins, ~0.85 ms on top of B. Composite: the same 4 +
+  4 + 2 fetches per full pixel, ~0.3 ms unchanged; repair prologue unchanged, ~0.3 ms. Repair marches at 4-px spacing:
+  the edge band doubles and features 2-4 px wide lose every class-compatible sample, so plausibly 2-4x today's count
+  (120-860 pixels); at a worst case of one 32-lane SIMD group per scattered repaired pixel (~0.28 us each) that is
+  0.03-0.25 ms. Net saving ~3.2-3.4 ms at 40 bins (~2.6-2.7 ms more after B). The repair fraction no longer threatens C;
+  its risks are the look: fog detail and shaft edges at 4-px spacing (bilinear between samples 4 px apart; TAA
+  integrates only the sub-pixel jitter, not the 4x4 cell) and 4x coarser cells of the shaft-lookup noise.
+- What the depth-class upsample needs: `lit_` at ((w+3)/4, (h+3)/4) and `sizes.zw` of that; one fixed full pixel per
+  cell for the march ray and its class (uv (4p+1.5)/full, nearer the cell centre than 4p), read identically by
+  composite and repair; `footprint_weight` / `needs_repair` with `hp = pixel*0.25` and the sample uv `(4q+1.5)/full`
+  (same class law, same relative-depth weight, same 2x2 footprint and fetch count); the shaft-lookup cell
+  `floor(uv*sizes.xy*0.25)`; the grid pass is already quarter-resolution and needs nothing. A new reference for every
+  look case and the composite/repair split (half 128x72 → quarter 64x36 of the 256x144 fixture target), and the pass
+  fixture's 64x36 images → 32x18. Before building: count the 4-px repair set in flight with the existing census
+  mechanism, one more occlusion-counted quad whose program clips unless `needs_repair` at 4-px spacing (colour writes
+  off, diagnostic only), beside today's count.
+

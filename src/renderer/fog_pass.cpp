@@ -80,6 +80,14 @@ constexpr DWORD density_composite_words[] = {
 constexpr DWORD density_repair_words[] = {
 #include "fog_density_repair_look_program_inc.h"
 };
+// The same look with 24 far bins (FogDensityConfig::far_bins, fog-gpu-cost.md step B): created instead of the march/repair
+// pair above when asked; composite never marches and is shared.
+constexpr DWORD density_march_far24_words[] = {
+#include "fog_density_march_look_far24_program_inc.h"
+};
+constexpr DWORD density_repair_far24_words[] = {
+#include "fog_density_repair_look_far24_program_inc.h"
+};
 // The sun-visibility slice grid (docs/architecture/fog-shadow-pass.md, FogDensityConfig::shadow_pass): the pass over
 // the 4x4-tile RGBA8 atlas and the look's march/repair reading it (FOG_SHADOW_PASS). Created beside the look programs
 // when the pass is requested; the *_look pair above stays the control variant.
@@ -243,7 +251,7 @@ void FogPass::detach() noexcept {
     PreserveCpuState guard;release_targets();drop(atlas_);
     release_density_default();
     for(unsigned i=0;i<2;++i){drop(density_staging_surface_[i]);drop(density_staging_[i]);}
-    drop(density_march_);drop(density_composite_);drop(density_repair_);
+    drop(density_march_);drop(density_composite_);drop(density_repair_);density_far_bins_=0;far_bins_shadow_clamp_=false;far_bins_unbuildable_=0;
     drop(density_visibility_);drop(density_march_grid_);drop(density_repair_grid_);
     drop(mote_vs_);drop(mote_declaration_);drop(mote_ps_);drop(mote_ps_grid_);
     mote_caps_=motes_refused_=false;mote_max_index_=mote_max_primitives_=0;adapter_format_=D3DFMT_UNKNOWN;mote_report_={};
@@ -357,21 +365,49 @@ HRESULT FogPass::prepare_field(void* module,fog_field::Profile profile) noexcept
 }
 HRESULT FogPass::density_resources() noexcept {
     auto refuse=[&](const char* reason,HRESULT hr){density_refused_=true;density_status_.available=false;density_status_.reason=reason;return hr;};
+    // The march/repair pair of one far-bin count (fog-gpu-cost.md step B): slot-checked, then created into m/r; nothing
+    // existing is touched. `why` names a failure that is not a lost device.
+    auto make_pair=[&](unsigned bins,IDirect3DPixelShader9** m,IDirect3DPixelShader9** r,const char** why)->HRESULT{
+        const bool coarse=bins==fog_far_bins_coarse;
+        const std::pair<const DWORD*,std::size_t> march=coarse?std::pair{density_march_far24_words,std::size(density_march_far24_words)}:std::pair{density_march_words,std::size(density_march_words)};
+        const std::pair<const DWORD*,std::size_t> repair=coarse?std::pair{density_repair_far24_words,std::size(density_repair_far24_words)}:std::pair{density_repair_words,std::size(density_repair_words)};
+        // Per program, not only the device's ps_3_0 count: repair sits at 510 of the 512 slots a ps_3_0
+        // device has to offer, so a program that grew past the ceiling must refuse before it is created.
+        for(auto p:{march,repair}){
+            const unsigned slots=ps3_program_slots(reinterpret_cast<const std::uint32_t*>(p.first),p.second);
+            if(!slots||slots>=density_required_slots){*why="density_compiled_slots";return D3DERR_NOTAVAILABLE;}
+        }
+        HRESULT hr=call<CreatePsFn>(CreatePixelShader)(device_,march.first,m);
+        if(SUCCEEDED(hr))hr=call<CreatePsFn>(CreatePixelShader)(device_,repair.first,r);
+        if(FAILED(hr)){drop(*m);drop(*r);*why="density_program_create";}
+        return hr;
+    };
     if(!density_march_){
         // attach already proved ps_3_0, unrestricted NPOT >= 1560x1430, FP16 linear filtering and FP16 targets.
         if(ps30_slots_<density_required_slots)return refuse("density_ps30_slots",D3DERR_NOTAVAILABLE);
-        // Per program, not only the device's ps_3_0 count: repair sits at 510 of the 512 slots a ps_3_0
-        // device has to offer, so a program that grew past the ceiling must refuse before it is created.
-        for(auto p:{std::pair{density_march_words,std::size(density_march_words)},std::pair{density_composite_words,std::size(density_composite_words)},std::pair{density_repair_words,std::size(density_repair_words)}}){
-            const unsigned slots=ps3_program_slots(reinterpret_cast<const std::uint32_t*>(p.first),p.second);
-            if(!slots||slots>=density_required_slots)return refuse("density_compiled_slots",D3DERR_NOTAVAILABLE);
+        const unsigned composite_slots=ps3_program_slots(reinterpret_cast<const std::uint32_t*>(density_composite_words),std::size(density_composite_words));
+        if(!composite_slots||composite_slots>=density_required_slots)return refuse("density_compiled_slots",D3DERR_NOTAVAILABLE);
+        const char* why="density_program_create";
+        HRESULT hr=call<CreatePsFn>(CreatePixelShader)(device_,density_composite_words,&density_composite_);
+        if(SUCCEEDED(hr))hr=make_pair(density_config_.far_bins,&density_march_,&density_repair_,&why);
+        if(FAILED(hr)&&!lost(hr)&&density_composite_&&density_config_.far_bins!=fog_far_bins_default){
+            // The 24-bin pair could not be built: the accepted 40-bin pair draws, and 24 stays refused until detach.
+            far_bins_unbuildable_=density_config_.far_bins;density_status_.far_bins_refused="program";density_config_.far_bins=fog_far_bins_default;
+            hr=make_pair(fog_far_bins_default,&density_march_,&density_repair_,&why);
         }
-        HRESULT hr=call<CreatePsFn>(CreatePixelShader)(device_,density_march_words,&density_march_);
-        if(SUCCEEDED(hr))hr=call<CreatePsFn>(CreatePixelShader)(device_,density_composite_words,&density_composite_);
-        if(SUCCEEDED(hr))hr=call<CreatePsFn>(CreatePixelShader)(device_,density_repair_words,&density_repair_);
         // Pixel shaders survive Reset; nothing is created on a draw path. A refusal is final: with the
         // retired presets gone there is no unshaped fallback, so the stored path stays off (legacy untouched).
-        if(FAILED(hr)){drop(density_march_);drop(density_composite_);drop(density_repair_);if(lost(hr)){reset_pending_=true;return hr;}return refuse("density_program_create",hr);}
+        if(FAILED(hr)){drop(density_march_);drop(density_composite_);drop(density_repair_);if(lost(hr)){reset_pending_=true;return hr;}return refuse(why,hr);}
+        density_far_bins_=density_config_.far_bins;
+    } else if(density_far_bins_!=density_config_.far_bins){
+        // Another count than the drawing pair (only a caller that changes FogDensityConfig::far_bins; the proxy fixes it at
+        // launch): the new pair is built first and replaces the old only when complete. The shared composite stays. A pair
+        // that cannot be built leaves the working one drawing and that count refused until detach.
+        IDirect3DPixelShader9 *march=nullptr,*repair=nullptr;const char* why=nullptr;
+        const HRESULT hr=make_pair(density_config_.far_bins,&march,&repair,&why);
+        if(lost(hr)){reset_pending_=true;return hr;}
+        if(FAILED(hr)){far_bins_unbuildable_=density_config_.far_bins;density_status_.far_bins_refused="program";density_config_.far_bins=density_far_bins_;}
+        else{drop(density_march_);drop(density_repair_);density_march_=march;density_repair_=repair;density_far_bins_=density_config_.far_bins;}
     }
     // The visibility grid is optional: a failure to build it (not a lost device) falls back to the in-march programs
     // for the rest of the attachment and says why in density_status().shadow_pass_refused; the stored fog stays.
@@ -586,7 +622,19 @@ HRESULT FogPass::prepare_density(const FogDensityConfig& config,const double cam
     if(reset_pending_)return D3DERR_DEVICENOTRESET;
     for(unsigned i=0;i<3;++i)if(!std::isfinite(camera[i])||!std::isfinite(config.world_offset[i])||!std::isfinite(config.chroma[i])||config.chroma[i]<0||config.chroma[i]>16.f)return E_INVALIDARG;
     if(!std::isfinite(config.sigma)||config.sigma<=0||config.sigma>1.f)return E_INVALIDARG;
+    if(!fog_far_bins_valid(config.far_bins))return E_INVALIDARG; // only 40 and 24 have programs
     density_config_=config; // density_resources creates the variant the config asks for
+    {   // Far bins (fog-gpu-cost.md step B): 24 never with the shadow pass (sticky once asked, so a grid frame and its
+        // toggled-off frame draw one law), never above the aliasing cap, never after its programs failed; 40 draws instead.
+        const char* why=nullptr;
+        if(config.far_bins==fog_far_bins_coarse){
+            far_bins_shadow_clamp_=far_bins_shadow_clamp_||config.shadow_pass;
+            why=far_bins_shadow_clamp_?"shadow_pass":!(config.look.sky_cap<=fog_far_bins_coarse_cap_max)?"cap":nullptr;
+            if(why)density_config_.far_bins=fog_far_bins_default;
+        }
+        if(!why&&density_config_.far_bins==far_bins_unbuildable_&&density_far_bins_){why="program";density_config_.far_bins=density_far_bins_;}
+        density_status_.far_bins_refused=why;
+    }
     if(grid_refused_)density_config_.shadow_pass=false; // a refused grid stays refused until detach: the in-march programs draw
     if(motes_refused_||density_config_.motes.count==0)density_config_.dust_motes=false; // refused motes stay refused; no option, no stage
     prefill_refused_=false; // a stored frame ran: the next stall may try the worker again (density_resources refuses for good)

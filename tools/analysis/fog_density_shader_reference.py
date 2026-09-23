@@ -13,6 +13,11 @@ shaped law on the same 24+40 bins; look cases carry `look phase=K shadow=0|1|2` 
 (1: a dark map, every sample shadowed; 2: the striped occluder of `stripe_visibility`, which exercises the
 offset shaft lookup), then optionally `resolved=0` (no temporal resolve: the lookup offset is dropped).
 
+`--far-bins 24` (docs/architecture/fog-gpu-cost.md, step B): the variant reference of the look with 24 far bins over the
+same [12000, cap]. It holds only what the *_look_far24 march/repair programs draw: the look cases (option `far=24`) with
+their stripes arrays, and the look repair split (`A_repair_shafts`, `_other`); the unshaped, invalid, empty and grid cases
+belong to the default 40-bin reference, which this mode never touches.
+
 The sun-visibility slice grid (docs/architecture/fog-shadow-pass.md, src/renderer/fog_shadow_grid.h): `grid_atlas` is the
 host twin of fog_density_visibility_grid_ps.hlsl over the fixture's synthetic cascades (`grid_cascades`: 2 the striped
 occluder, 3 the two-cascade seam, 4 the penumbra edge) and `grid_reader` the march's bilinear lane read of it. Grid
@@ -70,19 +75,19 @@ def look_noise(px, py, shift):
     return n.astype(np.float64), margin.astype(np.float64)
 
 
-def look_march(origin, directions, limits, solid, chroma, store, sigma, phase=0, pixels=None, shadowed=False, sun=(1., 0., 0.), visibility=None, tuning=None, resolved=True):
+def look_march(origin, directions, limits, solid, chroma, store, sigma, phase=0, pixels=None, shadowed=False, sun=(1., 0., 0.), visibility=None, tuning=None, resolved=True, far_bins=40):
     """(S, T) of the FOG_LOOK law. `limits` is the geometry distance (ignored for sky rays; both end at the cap), `pixels` the
     half-resolution (x, y) of each ray for the shaft lookup offset while `resolved`
     (a repair pixel passes None: the repair law keeps the bin centres), `shadowed` a shaft visibility of 0 on every sample, `visibility(points, rays, ds)` the
     shaft visibility at camera-relative world `points` of ray indices `rays` in bins of length `ds` (the shaft lookup
-    position, which is not the density position when only the lookup is offset)."""
+    position, which is not the density position when only the lookup is offset). `far_bins`: FOG_FAR_BINS, 40 or 24."""
     k, scale = look_constants(chroma, phase=phase, tuning=tuning, resolved=resolved); k = k.astype(np.float64); sigma = float(np.float32(sigma * scale))
     d = np.asarray(directions, np.float64); n = len(d); sun = np.asarray(sun, np.float64); origin = np.asarray(origin, np.float64)
     solid = np.broadcast_to(np.asarray(solid, bool), (n,))
     # Every ray ends at the column cap, sky and geometry alike (no silhouette rim around distant hulls).
     L = np.minimum(np.where(solid, np.asarray(limits, np.float64), m.FAR), min(m.FAR, k[0, 3]))
     taper_start = np.full(n, k[10, 1]); taper_recip = np.full(n, k[10, 2])
-    near = np.minimum(L, 12000.) / 24; far = np.maximum(L - 12000., 0) / 40
+    near = np.minimum(L, 12000.) / 24; far = np.maximum(L - 12000., 0) / far_bins
     offset = np.full((n, 4), .5)  # bins: near and far of the density sample, near and far of the shaft lookup
     if pixels is not None:
         noise, _ = look_noise(pixels[0], pixels[1], k[8, 3]); offset += (noise - .5)[:, None] * np.concatenate((k[6, 2:], k[7, 2:]))[None, :]
@@ -96,7 +101,7 @@ def look_march(origin, directions, limits, solid, chroma, store, sigma, phase=0,
     local = (origin - 65536. * np.floor(origin / 65536. + .5)).astype(np.float32).astype(np.float64)
     lit = np.zeros(n); lift = np.zeros(n); T = np.ones(n)
     rays = np.arange(n)
-    for i in range(64):
+    for i in range(24 + far_bins):
         ds = near if i < 24 else far
         s = near * (i + offset[:, 0]) if i < 24 else 12000. + far * (i - 24 + offset[:, 1])
         active = ds > 0
@@ -309,7 +314,7 @@ def both(origin, directions, limits, chroma, store):
     return {'candidate_S': cand['S'], 'candidate_T': cand['T'], 'dense64_S': dense['S'], 'dense64_T': dense['T']}
 
 
-def run(asset_data, output):
+def run(asset_data, output, far_bins=40):
     if output.exists():
         raise ValueError(f'output directory already exists: {output}')
     output.mkdir(parents=True)
@@ -319,7 +324,9 @@ def run(asset_data, output):
         raise ValueError('sigma')
     volume = m.fog.decode_packet(asset_data / 'foggreenoutlands.fogbin', manifest)
     chroma = (volume[..., :3].sum((0, 1, 2), dtype=np.float64) / volume[..., 3].sum(dtype=np.float64)).astype(m.F)
-    store = m.LazyStore(); arrays = {}; pops = m.populations()
+    store = m.LazyStore(); arrays = {}; pops = m.populations(); variant = far_bins != 40
+    march = lambda *args, **kw: look_march(*args, far_bins=far_bins, **kw)  # noqa: E731  the look law at this reference's far bins
+    far_option = ' far=%d' % far_bins if variant else ''
     lines = ['sigma %r' % float(m.SIGMA), 'chroma %r %r %r' % tuple(float(np.float32(c)) for c in chroma)]
 
     def case(name, origin, pose, mode, value, extra=''):
@@ -330,25 +337,26 @@ def run(asset_data, output):
         name = pose['name']; origin = np.asarray(pose['origin'], np.float64); allr = m.rays(pose)
         combined = np.unique(np.concatenate([y * m.W + x for x, y in pops.values()]))
         sx, sy = pops['stratified']; wi = np.array([j * 32 + i for i, j in m.WITNESS]); wpix = sy[wi] * m.W + sx[wi]
-        case(f'{name}_sky', origin, pose, 'sky', '0')
-        arrays[f'{name}_sky_pixels'] = combined
-        for k, v in both(origin, allr[combined], np.full(len(combined), m.FAR, m.F), chroma, store).items():
-            arrays[f'{name}_sky_{k}'] = v
         t = math.tan(math.radians(30))
-        vl = np.linalg.norm(np.stack(((2 * (sx[wi] + .5) / m.W - 1) * (m.W / m.H) * t, (1 - 2 * (sy[wi] + .5) / m.H) * t, np.ones(5)), 1), axis=1)
-        arrays[f'{name}_witness_pixels'] = wpix
-        for index, depth in enumerate(m.DEPTHS):
-            limits = np.minimum((depth / vl) * vl, m.FAR).astype(m.F)
-            case(f'{name}_depth{index}', origin, pose, 'depth', repr(float(depth)))
-            for k, v in both(origin, allr[wpix], limits, chroma, store).items():
-                arrays[f'{name}_depth{index}_{k}'] = v
-        for index, shift in enumerate(SHIFTS):
-            if shift == 0.:
-                continue
-            moved = origin + shift * np.asarray(pose['forward'], np.float64)
-            case(f'{name}_shift{index}', moved, pose, 'sky', '0')
-            for k, v in both(moved, allr[wpix], np.full(5, m.FAR, m.F), chroma, store).items():
-                arrays[f'{name}_shift{index}_{k}'] = v
+        if not variant:  # the unshaped parity cases: the default reference only
+            case(f'{name}_sky', origin, pose, 'sky', '0')
+            arrays[f'{name}_sky_pixels'] = combined
+            for k, v in both(origin, allr[combined], np.full(len(combined), m.FAR, m.F), chroma, store).items():
+                arrays[f'{name}_sky_{k}'] = v
+            vl = np.linalg.norm(np.stack(((2 * (sx[wi] + .5) / m.W - 1) * (m.W / m.H) * t, (1 - 2 * (sy[wi] + .5) / m.H) * t, np.ones(5)), 1), axis=1)
+            arrays[f'{name}_witness_pixels'] = wpix
+            for index, depth in enumerate(m.DEPTHS):
+                limits = np.minimum((depth / vl) * vl, m.FAR).astype(m.F)
+                case(f'{name}_depth{index}', origin, pose, 'depth', repr(float(depth)))
+                for k, v in both(origin, allr[wpix], limits, chroma, store).items():
+                    arrays[f'{name}_depth{index}_{k}'] = v
+            for index, shift in enumerate(SHIFTS):
+                if shift == 0.:
+                    continue
+                moved = origin + shift * np.asarray(pose['forward'], np.float64)
+                case(f'{name}_shift{index}', moved, pose, 'sky', '0')
+                for k, v in both(moved, allr[wpix], np.full(5, m.FAR, m.F), chroma, store).items():
+                    arrays[f'{name}_shift{index}_{k}'] = v
         if name == 'A':
             # The fixture's composite/repair split with the 1024-texel striped occluder (24000-unit span: 47-unit pairs against
             # the 200-unit far bins of these columns; phase 5): odd full-resolution
@@ -360,12 +368,13 @@ def run(asset_data, output):
             r, u, f = basis(pose); length = np.linalg.norm(local, axis=1); d = (local[:, :1] * r + local[:, 1:2] * u + local[:, 2:] * f) / length[:, None]
             arrays['A_repair_pixels'] = fy * 2 * m.W + fx; stripes = stripe_visibility(pose['forward'], 24000., 1024)
             for key, pixels in (('', None), ('_other', (fx // 2, fy // 2))):
-                S, T = look_march(origin, d, 20000. * length, True, chroma, store, m.SIGMA, 5, pixels, visibility=stripes)
+                S, T = march(origin, d, 20000. * length, True, chroma, store, m.SIGMA, 5, pixels, visibility=stripes)
                 arrays[f'A_repair_shafts{key}_S'] = S; arrays[f'A_repair_shafts{key}_T'] = T
             arrays['A_repair_extinction'] = look_constants(chroma)[0][8, :3]
-        for index, kind in enumerate(('zero', 'nan', 'inf')):
+        for index, kind in enumerate(() if variant else ('zero', 'nan', 'inf')):
             case(f'{name}_invalid{index}', origin, pose, 'invalid', kind)
-        case(f'{name}_empty', origin, pose, 'empty', '0')
+        if not variant:
+            case(f'{name}_empty', origin, pose, 'empty', '0')
         # The look on the stratified rays (half-resolution pixel = ray index): sky, two geometry depths across
         # the taper, the striped occluder with and without a temporal resolve, and the fully shadowed sky (coloured).
         strat = sy * m.W + sx; arrays[f'{name}_look_pixels'] = strat
@@ -378,20 +387,20 @@ def run(asset_data, output):
         for label, mode, depth, shadowed in looks:
             phase = 5 if shadowed == 2 else 0
             held = label.endswith('_held')
-            case(label, origin, pose, mode, repr(depth) if depth else '0', f'look phase={phase} shadow={int(shadowed)}' + (' resolved=0' if held else ''))
-            S, T = look_march(origin, allr[strat], np.full(len(strat), depth or m.FAR), depth is not None, chroma, store, m.SIGMA, phase, (sx, sy), shadowed is True,
+            case(label, origin, pose, mode, repr(depth) if depth else '0', f'look phase={phase} shadow={int(shadowed)}' + (' resolved=0' if held else '') + far_option)
+            S, T = march(origin, allr[strat], np.full(len(strat), depth or m.FAR), depth is not None, chroma, store, m.SIGMA, phase, (sx, sy), shadowed is True,
                               visibility=stripe_visibility(pose['forward']) if shadowed == 2 else None, resolved=not held)
             arrays[f'{label}_S'] = S; arrays[f'{label}_T'] = T
             if shadowed == 2:  # what the offset lookup moves: the same case marched with the lookup at bin centres
-                arrays[f'{label}_centre_delta'] = np.abs(S - look_march(origin, allr[strat], np.full(len(strat), m.FAR), False, chroma, store, m.SIGMA, phase, (sx, sy),
+                arrays[f'{label}_centre_delta'] = np.abs(S - march(origin, allr[strat], np.full(len(strat), m.FAR), False, chroma, store, m.SIGMA, phase, (sx, sy),
                                                                          visibility=stripe_visibility(pose['forward']), tuning=dict(TUNING, shadow_jitter=0.))[0]).max(1)
                 arrays[f'{label}_noise_margin'] = look_noise(sx, sy, look_constants(chroma, phase=phase)[0][8, 3])[1] if not held else np.ones(len(sx))
         # The visibility grid (X3M_FOG_SHADOW_PASS=1): the same rays through the FOG_SHADOW_PASS march reading the pass's
         # atlas. No cascade: the fixture compares the GPU image with the in-march case byte for byte (no arrays here).
         # Stripes: the host atlas (fixture gate 2/255) and the host march reading it; `A_look_stripes` is the in-march
         # law the grid must measurably leave. Seam and penumbra: host atlases; the checker measures the GPU atlas.
-        grids = [(f'{name}_grid_sky', 'sky', None, 0)]
-        if name == 'A':
+        grids = [] if variant else [(f'{name}_grid_sky', 'sky', None, 0)]  # the grid programs keep 40 far bins
+        if name == 'A' and not variant:
             grids += [('A_grid_stripes', 'sky', None, 2), ('A_grid_stripes_held', 'sky', None, 2), ('A_grid_depth3', 'depth', float(m.DEPTHS[3]), 0),
                       ('A_grid_seam', 'sky', None, 3), ('A_grid_penumbra', 'sky', None, 4)]
         for label, mode, depth, shadow in grids:
@@ -406,7 +415,7 @@ def run(asset_data, output):
                 reader = grid_reader(atlas, m.W, m.H, (2 * sx + .5) / 4., (2 * sy + .5) / 4.)
                 S, T = look_march(origin, allr[strat], np.full(len(strat), m.FAR), False, chroma, store, m.SIGMA, phase, None, visibility=reader, tuning=dict(TUNING, shadow_jitter=0.))
                 arrays[f'{label}_S'] = S; arrays[f'{label}_T'] = T
-        if name == 'A':
+        if name == 'A' and not variant:
             # The grid repair: the repaired odd columns of the split test read the pass's atlas of the 1024-texel stripes.
             cascades = grid_cascades(2, 24000., 1024); atlas = grid_atlas(m.W, m.H, cascades, 5, True)
             arrays['A_repair_grid_atlas'] = atlas
@@ -419,6 +428,8 @@ def run(asset_data, output):
                   screen_sha256=m.digest(HERE / 'fog_density_runtime_screen.py'), exporter_sha256=m.digest(__file__),
                   cases_sha256=m.digest(output / 'cases.txt'), reference_sha256=m.digest(output / 'reference.npz'),
                   manifest_sha256=m.digest(asset_data / 'manifest.json'), packet_sha256=m.digest(asset_data / 'foggreenoutlands.fogbin'))
+    if variant:
+        record['far_bins'] = far_bins
     (output / 'reference.json').write_text(json.dumps(record, indent=2) + '\n')
     return record
 
@@ -426,7 +437,8 @@ def run(asset_data, output):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--asset-data', type=Path, required=True); p.add_argument('--output', type=Path, required=True)
-    a = p.parse_args(); print(json.dumps(run(a.asset_data, a.output)))
+    p.add_argument('--far-bins', type=int, choices=(40, 24), default=40, help='look far bins: 40 the default reference, 24 the step B variant')
+    a = p.parse_args(); print(json.dumps(run(a.asset_data, a.output, a.far_bins)))
 
 
 if __name__ == '__main__':

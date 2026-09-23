@@ -188,6 +188,11 @@ bool volumetric_fog_range_stored = false;
 // X3M_FOG_SHADOW_PASS=1 (docs/architecture/fog-shadow-pass.md; launcher --fog-shadow-pass on, default off): the stored
 // range's sun-shadow shaft visibility in its own quarter-resolution pass before the march. Stored range only.
 bool volumetric_fog_shadow_pass = false;
+// X3M_FOG_FAR_BINS=24|40 (docs/architecture/fog-gpu-cost.md, step B; launcher --fog-far-bins, default 40): the stored
+// look's far march bins. Exactly "24" selects the 24-bin programs; "40", absent, the legacy range, the shadow pass (its
+// grid programs have no 24-bin variant) or a column cap above fog_far_bins_coarse_cap_max keep the accepted 40, and any
+// other value is logged as invalid and keeps 40.
+unsigned volumetric_fog_far_bins = x3m::renderer::fog_far_bins_default;
 // X3M_FOG_HANDOVER_STEP / X3M_FOG_HANDOVER_COLDFILL (docs/architecture/fog-handover.md, "Implementation"; launcher
 // --fog-handover-step / --fog-handover-coldfill, default on, exactly "0" is off): the stored range's cold-start
 // readiness step and cold fill. Stored range only.
@@ -2714,6 +2719,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_volumetric_fog_range(volumetric_fog_range_stored);
     hooked.motion_output.configure_volumetric_fog_look(volumetric_fog_look_tuning);
     hooked.motion_output.configure_volumetric_fog_shadow_pass(volumetric_fog_shadow_pass);
+    hooked.motion_output.configure_volumetric_fog_far_bins(volumetric_fog_far_bins);
     hooked.motion_output.configure_volumetric_fog_dust_motes(volumetric_fog_motes);
     hooked.motion_output.configure_volumetric_fog_handover(volumetric_fog_handover_step,volumetric_fog_handover_coldfill);
     hooked.motion_output.configure_volumetric_fog_prefill(volumetric_fog_prefill);
@@ -3412,6 +3418,7 @@ void initialize_log(HMODULE module) {
      volumetric_fog_cards_replace=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_CARDS")==7 && !wcscmp(setting,L"replace");
      volumetric_fog_range_stored=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_RANGE")==6 && !wcscmp(setting,L"stored");
      volumetric_fog_shadow_pass=volumetric_fog_range_stored && fog_env(L"X3M_FOG_SHADOW_PASS")==1 && setting[0]==L'1';
+     volumetric_fog_far_bins=renderer::fog_far_bins_default;
      // Default on: absent or anything but exactly "0" keeps the switch (fog-handover.md, "Implementation").
      const auto fog_default_on=[&](const wchar_t* name){return !(fog_env(name)==1 && setting[0]==L'0');};
      volumetric_fog_handover_step=volumetric_fog_range_stored && fog_default_on(L"X3M_FOG_HANDOVER_STEP");
@@ -3449,6 +3456,22 @@ void initialize_log(HMODULE module) {
         log("volumetric_fog_look_mode look=single overrides=%u%s",overrides,values);
         log("volumetric_fog_shadow_pass enabled=%u grid=quarter slices=64 tiles=4x4 format=A8R8G8B8 cascades=3 taps=4 penumbra=%g,%g,%g",unsigned(volumetric_fog_shadow_pass),
             double(volumetric_fog_look_tuning.penumbra),double(volumetric_fog_look_tuning.penumbra_min),double(volumetric_fog_look_tuning.penumbra_max));
+        // X3M_FOG_FAR_BINS after the look tuning (the cap rule reads sky_cap). The value is echoed with anything outside
+        // [0-9A-Za-z._+-] as '?', so a hand-set string cannot break the row.
+        char far_bins_value[40]="40";const char* far_bins_refusal="none";bool far_bins_asked=false;
+        const DWORD far_bins_length=GetEnvironmentVariableW(L"X3M_FOG_FAR_BINS",setting,32);
+        if(far_bins_length>=32){std::snprintf(far_bins_value,sizeof far_bins_value,"overlong_%lu",static_cast<unsigned long>(far_bins_length));far_bins_refusal="invalid";}
+        else if(far_bins_length>0){
+            for(DWORD i=0;i<far_bins_length;++i){const wchar_t c=setting[i];
+                far_bins_value[i]=(c>=L'0'&&c<=L'9')||(c>=L'A'&&c<=L'Z')||(c>=L'a'&&c<=L'z')||c==L'.'||c==L'_'||c==L'+'||c==L'-'?char(c):'?';}
+            far_bins_value[far_bins_length]='\0';
+            far_bins_asked=!wcscmp(setting,L"24");
+            if(!far_bins_asked&&wcscmp(setting,L"40"))far_bins_refusal="invalid";
+        }
+        if(far_bins_asked)far_bins_refusal=volumetric_fog_shadow_pass?"shadow_pass":
+            !(volumetric_fog_look_tuning.sky_cap<=renderer::fog_far_bins_coarse_cap_max)?"cap":"none";
+        if(far_bins_asked&&!std::strcmp(far_bins_refusal,"none"))volumetric_fog_far_bins=renderer::fog_far_bins_coarse;
+        log("volumetric_fog_far_bins bins=%u requested=%s refused=%s sky_cap=%g",volumetric_fog_far_bins,far_bins_value,far_bins_refusal,double(volumetric_fog_look_tuning.sky_cap));
      }
      // X3M_FOG_DUST_MOTES=N,SIZE,STREAK: the whole string must parse (N 0 or 64..8192, SIZE 2..16, STREAK 0..512), anything
      // else keeps the motes off; the tunables are read only with the option on (one volumetric_fog_motes_mode line). A

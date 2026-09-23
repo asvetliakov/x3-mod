@@ -11,6 +11,13 @@ constexpr unsigned fog_look_first_register = 25; // c25..c35
 constexpr unsigned fog_look_rows = 11;
 // Shaft cascades the look program reads (the two coarsest current maps; the unshaped reference law reads three).
 constexpr unsigned fog_look_cascades = 2;
+// Far march bins over [12000, cap] (FOG_FAR_BINS; docs/architecture/fog-gpu-cost.md, step B): the accepted 40, or 24 with
+// the separately compiled *_look_far24 march/repair (X3M_FOG_FAR_BINS=24). No other count has programs.
+constexpr unsigned fog_far_bins_default = 40, fog_far_bins_coarse = 24;
+constexpr bool fog_far_bins_valid(unsigned bins) { return bins == fog_far_bins_default || bins == fog_far_bins_coarse; }
+// 24 bins is one sample per 4096-unit far node at the 112,500 cap (ds 4187.5); a larger column cap (X3M_FOG_LOOK_SKY_CAP up
+// to 200,000: ds 7833, 1.9 nodes) would skip nodes and alias, so the 24-bin variant is refused above this cap.
+constexpr float fog_far_bins_coarse_cap_max = 120000.f;
 // Every scalar has an environment override X3M_FOG_LOOK_<NAME> read once at init (fog_look_fields).
 struct FogLookTuning {
     float coverage = .35f, exponent = 2.f, sigma_scale = 8.f;         // rho' = saturate((rho-c)/(1-c))^p: soft zero-slope toe

@@ -23,6 +23,11 @@ PROGRAMS = {
 LOOK_PROGRAMS = {name: ROOT / ('src/renderer/%s_program_inc.h' % name) for name in (
     'fog_density_march_look', 'fog_density_composite_look', 'fog_density_repair_look')}
 PROGRAMS.update(LOOK_PROGRAMS)
+# The look with 24 far bins (docs/architecture/fog-gpu-cost.md step B, --fog-far-bins 24): march and repair only
+# (composite never marches); the renderer creates this pair instead of the default one when asked.
+FAR24_PROGRAMS = {name: ROOT / ('src/renderer/%s_program_inc.h' % name) for name in (
+    'fog_density_march_look_far24', 'fog_density_repair_look_far24')}
+PROGRAMS.update(FAR24_PROGRAMS)
 # The sun-visibility slice grid (X3M_FOG_SHADOW_PASS=1): the pass and the look's march/repair reading it.
 GRID_PROGRAMS = {name: ROOT / ('src/renderer/%s_program_inc.h' % name) for name in (
     'fog_density_visibility_grid', 'fog_density_march_grid', 'fog_density_repair_grid')}

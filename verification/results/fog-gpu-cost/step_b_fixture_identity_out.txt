@@ -1,0 +1,22 @@
+DIFF fixture_checks: 30 -> 35
+ADDED gates.far24_look_cases: True
+ADDED gates.far24_look_shadowed_coloured: True
+ADDED gates.far24_look_shaft_offset_exercised: True
+ADDED gates.far24_moves_the_look: True
+ADDED gates.far24_pass_fixture: True
+ADDED gates.far24_programs: True
+ADDED gates.far24_repair_shaft_lookup: True
+DIFF generation.atlases: 28 -> 32
+VARIES pass_fixture.checks: 123 -> 142
+VARIES pass_fixture.fill.drawn_frames: 619 -> 633
+VARIES pass_fixture.fill.frames: 1064 -> 1079
+VARIES pass_fixture.fill.no_fog_frames: 444 -> 445
+VARIES pass_fixture.handover.frames: 461 -> 500
+VARIES pass_fixture.prepare_cpu.idle_frames: 2759 -> 2977
+VARIES pass_fixture.prepare_cpu.upload_frames: 7261 -> 7386
+VARIES pass_fixture.prepare_cpu.us_per_update_surface: 10.06 -> 10.71
+VARIES pass_fixture.recentre.upload_bytes: 338224 -> 341624
+VARIES pass_fixture.seam_recentres[0].upload_bytes: 264712 -> 264968
+VARIES pass_fixture.seam_recentres[1].upload_bytes: 372536 -> 369976
+VARIES pass_fixture.state_restorations: 1125 -> 1149
+compared=662 differing=2 added=23 scheduling=34 pass_off_hashes_equal=True n_hashes=11 result=PASS gates=37/37 pass_fixture_checks 123 -> 142

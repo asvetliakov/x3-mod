@@ -45,6 +45,13 @@ struct FogDensityConfig {
     // X3M_FOG_HANDOVER_COLDFILL, launcher default on): the far readiness steps to 1 when the far need box is
     // resident, and the far level fills its need box first and goes up in one whole-atlas latch. Off: legacy.
     bool handover_step=false,handover_coldfill=false;
+    // X3M_FOG_FAR_BINS (docs/architecture/fog-gpu-cost.md, step B; launcher --fog-far-bins, default 40): the look's far
+    // march bins over [12000, cap], 40 (the accepted look) or 24 (one sample per 4096-unit far node). prepare_density
+    // refuses any other value; the march/repair pair of the requested variant is created there, never on a draw path.
+    // 24 falls back to 40 (FogDensityStatus::far_bins_refused) when the shadow pass was ever requested on this attachment
+    // (its grid programs have no 24-bin variant, so grid and toggled-off frames must agree), when look.sky_cap exceeds
+    // fog_far_bins_coarse_cap_max, or when its programs could not be built; the launcher refuses the first two as well.
+    unsigned far_bins=fog_far_bins_default;
 };
 struct FogDensityStatus {
     bool available=false; const char* reason="off";
@@ -57,6 +64,10 @@ struct FogDensityStatus {
     // The mote stage could not be built or drawn (capability, program, buffer, a failed draw): the fog keeps drawing
     // without it; sticky until detach. The proxy logs it once (fog_dust_motes_refused).
     const char* motes_refused=nullptr;
+    // FogDensityConfig::far_bins 24 was asked but 40 draws: "shadow_pass" (sticky until detach), "cap" (column cap above
+    // fog_far_bins_coarse_cap_max) or "program" (the pair could not be built; the working pair keeps drawing, sticky).
+    // Null when the requested count draws. The proxy logs it once (fog_far_bins_refused).
+    const char* far_bins_refused=nullptr;
     // The last completed cold start, due in the successful prepare_density of the frame it completed (logged once).
     fog::HandoverReport handover{};
 };
@@ -195,6 +206,7 @@ public:
     const FogGridReport& grid_report() const noexcept { return grid_report_; }
     bool grid_refused() const noexcept { return grid_refused_; } // sticky until detach; the in-march programs draw
     bool grid_variant() const noexcept { return density_config_.shadow_pass; } // the variant the last prepare_density latched
+    unsigned density_far_bins() const noexcept { return density_far_bins_; } // far bins of the created march/repair pair (0: none)
     const FogMoteReport& mote_report() const noexcept { return mote_report_; }
     bool motes_refused() const noexcept { return motes_refused_; } // sticky until detach; the fog draws without motes
     bool motes_variant() const noexcept { return density_config_.dust_motes; } // the mote toggle the last prepare_density latched
@@ -282,6 +294,8 @@ private:
     fog::DensityCache* density_=nullptr;
     // The single look's programs (FOG_LOOK); created once, never on a draw path.
     IDirect3DPixelShader9 *density_march_=nullptr,*density_composite_=nullptr,*density_repair_=nullptr;
+    unsigned density_far_bins_=0; // FogDensityConfig::far_bins of the pair above (0: not created)
+    bool far_bins_shadow_clamp_=false; unsigned far_bins_unbuildable_=0; // sticky far-bin refusals until detach
     IDirect3DTexture9 *density_staging_[2]{},*density_atlas_[2]{};
     IDirect3DSurface9 *density_staging_surface_[2]{},*density_atlas_surface_[2]{};
     // The visibility grid (FogDensityConfig::shadow_pass): its pass and reader programs, created once with the

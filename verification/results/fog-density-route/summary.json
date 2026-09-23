@@ -8,17 +8,17 @@
     "name": "X3",
     "wine_arch": "arm64"
   },
-  "bridge_checks": 30476,
+  "bridge_checks": 37155,
   "density": {
     "abandon": {
-      "ms": 0.85
+      "ms": 1.01
     },
     "first_fill": {
-      "far_ready_ms": 859.3,
-      "filling_frames": 272.0,
-      "fine_ready_ms": 1797.0,
-      "frames": 731.0,
-      "nodes": 3451840.0
+      "far_ready_ms": 882.6,
+      "filling_frames": 321.0,
+      "fine_ready_ms": 1838.1,
+      "frames": 820.0,
+      "nodes": 3394816.0
     },
     "images": {
       "legacy_after_reset": "7378a9f6148776ad",
@@ -32,18 +32,18 @@
     },
     "legacy_bit_identical_to_baseline": true,
     "prepare_cost_us": {
-      "steady_frames": 160.0,
-      "steady_us_median": 1.5,
-      "steady_us_p99": 19.7,
-      "upload_frames": 3759.0,
-      "upload_us_max": 2335.2,
-      "upload_us_median": 23.5,
-      "upload_us_p99": 123.3
+      "steady_frames": 219.0,
+      "steady_us_median": 1.9,
+      "steady_us_p99": 18.8,
+      "upload_frames": 3912.0,
+      "upload_us_max": 4189.6,
+      "upload_us_median": 25.3,
+      "upload_us_p99": 127.0
     },
     "release": {
       "device_refs": 13.0,
       "expected": 13.0,
-      "join_ms": 2.98,
+      "join_ms": 3.77,
       "live_worker": 1.0
     },
     "reset": {
@@ -52,11 +52,11 @@
       "reuploaded_bytes": 8520192.0
     },
     "sector_change_fill": {
-      "far_ready_ms": 806.7,
-      "filling_frames": 306.0,
-      "fine_ready_ms": 1792.9,
-      "frames": 773.0,
-      "nodes": 6930560.0
+      "far_ready_ms": 827.5,
+      "filling_frames": 313.0,
+      "fine_ready_ms": 1858.5,
+      "frames": 783.0,
+      "nodes": 6872192.0
     }
   },
   "exit_cases": [
@@ -64,12 +64,12 @@
       "abandon": "1",
       "case": "idle",
       "code": "0",
-      "exit_ms": "1",
+      "exit_ms": "2",
       "exited": "1",
       "midfill": "0",
       "order": "worker_parked,ready,dllmain_detach_process_exit,dllmain_detach_end,static_destructor_begin,static_destructor_end",
       "started": "1",
-      "wait_ms": "2269"
+      "wait_ms": "2273"
     },
     {
       "abandon": "1",
@@ -80,18 +80,18 @@
       "midfill": "1",
       "order": "worker_generating,ready,dllmain_detach_process_exit,dllmain_detach_end,static_destructor_begin,static_destructor_end",
       "started": "1",
-      "wait_ms": "290"
+      "wait_ms": "298"
     },
     {
       "abandon": "0",
       "case": "control-idle",
       "code": "0",
-      "exit_ms": "37745",
+      "exit_ms": "37747",
       "exited": "0",
       "midfill": "0",
       "order": "worker_parked,ready,dllmain_detach_process_exit,dllmain_detach_end,static_destructor_begin",
       "started": "1",
-      "wait_ms": "39991"
+      "wait_ms": "40000"
     },
     {
       "abandon": "0",
@@ -102,7 +102,7 @@
       "midfill": "1",
       "order": "worker_generating,ready,dllmain_detach_process_exit,dllmain_detach_end,static_destructor_begin,static_destructor_end",
       "started": "1",
-      "wait_ms": "309"
+      "wait_ms": "326"
     }
   ],
   "exit_checks": 4,
@@ -132,25 +132,25 @@
   "schema": 1,
   "steps": [
     {
-      "executable_sha256": "68ec724d8c76b53e7bc0bb51b893bc9322f8df668cec615d9e5885df4ba4eab3",
-      "log_sha256": "c0f17aee5ac683cd735fb886c0a0aa85db76d1976f1784aff01f5e675d8655ea",
+      "executable_sha256": "aff4b212e845998565554eb644202222d7d5fea451f6ee95f7527158306debcf",
+      "log_sha256": "96190307462775032199292041a0438636267d6fdb0209ca49d28f84b581b9bc",
       "name": "baseline",
       "returncode": 0,
-      "seconds": 8.333959166
+      "seconds": 8.554780082999999
     },
     {
-      "executable_sha256": "f7224c0d5d4e9c752b3f303bbf59b70b63a201c61ffa3372f0c8e9040c002054",
-      "log_sha256": "0c014adb31c3c4555cbc61c410a137861537813376d2fe4ca0559d342fd740c8",
+      "executable_sha256": "dc1663dfffa0c7663091269d5bded84a222541867244c523ed6d7b359cc662a6",
+      "log_sha256": "d27c86115081a94ad3295cbe4a9a4933c1e80936f3c3c18196bcc56736652c3e",
       "name": "bridge",
       "returncode": 0,
-      "seconds": 20.89850225
+      "seconds": 24.031398208
     },
     {
-      "executable_sha256": "e44fc0fa19d11f22b65570b618a9ca340d30915970fdff5c64e999323c5e2f8d",
-      "log_sha256": "a74b3600d6222195ba1a3bc0549a8d76f6db6374dff045a6e0dcbd47550de327",
+      "executable_sha256": "6a1428299ab9abc38079085d8c762304f5bfced12c67bebbeaa0da9257133a7e",
+      "log_sha256": "be908c4083eb398764b6c70513298f11333621bb7111247b461c14dedfd757ea",
       "name": "exit",
       "returncode": 0,
-      "seconds": 48.201285208
+      "seconds": 48.163197042
     }
   ]
 }

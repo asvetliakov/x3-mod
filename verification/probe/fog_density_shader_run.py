@@ -9,6 +9,11 @@ FogPass fixture (checkpoint 3: cache manager, worker, slab uploads, ramps, Reset
                                           into DIR/fog_field by tools/build/bake_fog_fields.py
   run    --output DIR --reference REFDIR  only under X3M_FIXTURE_BOTTLE=X3 wine_lock.py (both executables, in turn)
   check  --output DIR --reference REFDIR  GPU readbacks versus tools/analysis/fog_density_shader_reference.py
+
+--variant-reference VDIR (all three steps; docs/architecture/fog-gpu-cost.md step B): the 24-far-bin look. `build`
+generates VDIR once with the exporter's --far-bins 24 from the same baked packets (an existing VDIR is kept and
+must be a far_bins=24 reference of the same packets); `run` draws its cases with the *_look_far24 programs; `check`
+gates them against VDIR and reports how far they move from the 40-bin images. The default gates are unchanged.
 """
 import argparse
 import hashlib
@@ -27,6 +32,7 @@ import fog_density_shader_slots as slots
 ROOT = Path(__file__).resolve().parents[2]
 PROGRAMS = ('fog-density-march', 'fog-density-composite', 'fog-density-repair', 'fog-density-march-exact')
 LOOK_PROGRAMS = tuple(name.replace('_', '-') for name in slots.LOOK_PROGRAMS)
+FAR24_PROGRAMS = tuple(name.replace('_', '-') for name in slots.FAR24_PROGRAMS)  # step B: the look with 24 far bins
 GRID_PROGRAMS = tuple(name.replace('_', '-') for name in slots.GRID_PROGRAMS)  # the sun-visibility slice grid (X3M_FOG_SHADOW_PASS=1)
 NOISE_MARGIN = 2e-3  # shaft lookup offset: pixels whose interleaved-gradient frac() argument is this close to a wrap are not compared
 SOURCES = [ROOT / 'verification/probe/fog_density_shader_fixture.cpp', ROOT / 'src/fog/fog_density_generator.cpp']
@@ -65,7 +71,7 @@ def digest(path):
 def shaders_current():
     """The provenance record of each fragment must match the sources, includes and header on disk."""
     records = {}
-    for name in PROGRAMS + LOOK_PROGRAMS + GRID_PROGRAMS + MOTE_PROGRAMS:
+    for name in PROGRAMS + LOOK_PROGRAMS + FAR24_PROGRAMS + GRID_PROGRAMS + MOTE_PROGRAMS:
         record = json.loads((ROOT / f'verification/results/{name}-program.json').read_text())
         key = name.replace('-', '_'); header = slots.PROGRAMS.get(key) or slots.MOTE_VERTEX[key]
         if record['source_sha256'] != digest(ROOT / record['source']) or record['header_sha256'] != digest(header):
@@ -76,7 +82,22 @@ def shaders_current():
     return records
 
 
-def build(out, assets=None):
+def variant_reference(data, variant):
+    """The 24-far-bin reference: generated once by the exporter (host only, never under Wine), then kept."""
+    if not (variant / 'reference.json').exists():
+        if variant.exists():
+            raise ValueError(f'{variant}: exists without reference.json; remove it or choose another directory')
+        subprocess.run([sys.executable, str(ROOT / 'tools/analysis/fog_density_shader_reference.py'), '--asset-data', str(data), '--output', str(variant), '--far-bins', '24'],
+                       check=True, stdout=subprocess.DEVNULL)
+    record = json.loads((variant / 'reference.json').read_text())
+    if record.get('far_bins') != 24 or digest(variant / 'reference.npz') != record['reference_sha256'] or digest(variant / 'cases.txt') != record['cases_sha256']:
+        raise ValueError(f'{variant}: not an intact far_bins=24 reference')
+    if record['packet_sha256'] != digest(data / 'foggreenoutlands.fogbin') or record['manifest_sha256'] != digest(data / 'manifest.json'):
+        raise ValueError(f'{variant}: made from other fog packets than this build')
+    return record
+
+
+def build(out, assets=None, variant=None):
     out.mkdir(parents=True, exist_ok=True)
     exe = out / 'fog_density_shader_fixture.exe'
     if exe.exists():
@@ -99,7 +120,8 @@ def build(out, assets=None):
                     str(out / 'fog-fields.o'), '-o', str(pass_exe), '-ld3d9', '-luser32']
     subprocess.run(pass_command, check=True)
     inputs += PASS_SOURCES + [ROOT / p for p in PASS_INPUTS]
-    record = dict(executable_sha256=digest(exe), pass_executable_sha256=digest(pass_exe), command=command, pass_command=pass_command, shaders=shaders,
+    variant_record = variant_reference(data, variant) if variant else None
+    record = dict(executable_sha256=digest(exe), pass_executable_sha256=digest(pass_exe), command=command, pass_command=pass_command, shaders=shaders, variant_reference=variant_record,
                   legacy_packets={name: digest(data / (name + '.fogbin')) for name in ('bluewell', 'foggreenoutlands')},
                   inputs={str(p.relative_to(ROOT)): digest(p) for p in dict.fromkeys(inputs)})
     (out / 'build.json').write_text(json.dumps(record, indent=2) + '\n')
@@ -110,7 +132,7 @@ def windows(path):
     return 'Z:' + str(Path(path).resolve()).replace('/', '\\')
 
 
-def run(out, reference):
+def run(out, reference, variant=None):
     if os.environ.get('X3M_FIXTURE_BOTTLE') != 'X3':
         raise ValueError('fixture requires X3M_FIXTURE_BOTTLE=X3')
     exe = out / 'fog_density_shader_fixture.exe'
@@ -118,7 +140,7 @@ def run(out, reference):
     if digest(exe) != built['executable_sha256'] or (out / 'stdout.txt').exists():
         raise ValueError('executable changed since build, or this output already holds a run')
     images = out / 'images'; images.mkdir()
-    command = [bottle.WINE, *bottle.wine_args(), str(exe), windows(reference / 'cases.txt'), windows(images)]
+    command = [bottle.WINE, *bottle.wine_args(), str(exe), windows(reference / 'cases.txt'), windows(images), *([windows(variant / 'cases.txt')] if variant else [])]
     start = time.monotonic()
     done = subprocess.run(command, capture_output=True, timeout=540, env=dict(os.environ, WINEDLLOVERRIDES='d3d9=b'))
     (out / 'stdout.txt').write_bytes(done.stdout); (out / 'stderr.txt').write_bytes(done.stderr)
@@ -132,7 +154,8 @@ def run(out, reference):
     (out / 'pass_stdout.txt').write_bytes(passed.stdout); (out / 'pass_stderr.txt').write_bytes(passed.stderr)
     record = dict(command=command, returncode=done.returncode or passed.returncode, shader_returncode=done.returncode, pass_returncode=passed.returncode,
                   seconds=seconds, pass_seconds=time.monotonic() - start, pass_command=pass_command, bottle=bottle.describe(),
-                  executable_sha256=built['executable_sha256'], pass_executable_sha256=built['pass_executable_sha256'], cases_sha256=digest(reference / 'cases.txt'))
+                  executable_sha256=built['executable_sha256'], pass_executable_sha256=built['pass_executable_sha256'], cases_sha256=digest(reference / 'cases.txt'),
+                  variant_cases_sha256=digest(variant / 'cases.txt') if variant else None)
     (out / 'execution.json').write_text(json.dumps(record, indent=2) + '\n')
     return record
 
@@ -238,6 +261,73 @@ def grid_report(out, ref, execution_text):
     return rows
 
 
+def far24_report(out, ref, variant, text, shaders):
+    """Step B (fog-gpu-cost.md): the 24-far-bin look against its own host reference under the default look gates, the
+    repair split with its programs, and how far it moves from the 40-bin look: GPU far24 against GPU 40-bin images over
+    every pixel of each 128x72 look case (both targets), and host far24 against host 40-bin law on the reference rays."""
+    record = json.loads((variant / 'reference.json').read_text())
+    if record.get('far_bins') != 24 or digest(variant / 'reference.npz') != record['reference_sha256']:
+        raise ValueError('variant reference changed since the run')
+    vref = np.load(variant / 'reference.npz')
+    looks, deviation = {}, {}
+
+    def moved(a, b):  # (N,4) S.rgb,T of two images: abs deltas over all pixels and over pixels fogged in either
+        dT = np.abs(a[:, 3].astype(np.float64) - b[:, 3]); dS = np.abs(a[:, :3].astype(np.float64) - b[:, :3]); fog = (a[:, 3] < 1) | (b[:, 3] < 1)
+        return dict(pixels=int(len(a)), fogged=int(fog.sum()), T_max=float(dT.max()), T_mean=float(dT.mean()), S_max=float(dS.max()), S_mean=float(dS.mean()),
+                    T_mean_fogged=float(dT[fog].mean()) if fog.any() else 0., S_mean_fogged=float(dS[fog].mean()) if fog.any() else 0.,
+                    pixels_past_gate=int(((dT > GATE['T_max']) | (dS.max(1) > GATE['S_max'])).sum()))
+    for label in sorted(k[:-2] for k in vref.files if '_look' in k and k.endswith('_S')):
+        pixels = vref[label[0] + '_look_pixels']; keep = np.ones(len(pixels), bool)
+        if label + '_noise_margin' in vref.files:
+            keep = vref[label + '_noise_margin'] > NOISE_MARGIN
+        row = dict(compared=int(keep.sum()), left_out_near_noise_wrap=int((~keep).sum()), fogged=int((vref[label + '_T'][keep] < 1).sum()),
+                   reference_min_T=float(vref[label + '_T'].min()), reference_max_S=float(vref[label + '_S'].max()))
+        for name in ('bilinear32', 'bilinear16'):
+            gpu = image(out, label, 'far24_' + name)[pixels][keep]
+            row[name] = dict(T=metric(gpu[:, 3] - vref[label + '_T'][keep]), S=metric(gpu[:, :3] - vref[label + '_S'][keep]))
+        if label.endswith('_shadowed'):
+            gpu = image(out, label, 'far24_bilinear32')[pixels]; fog = gpu[:, 3] < 1
+            row['shadowed_fogged_pixels'] = int(fog.sum()); row['shadowed_min_S'] = float(gpu[fog, :3].min()) if fog.any() else 0.
+        if label + '_centre_delta' in vref.files:
+            row['shaft_offset_moves_S_max'] = float(vref[label + '_centre_delta'][keep].max()); row['shaft_offset_moves_S_pixels'] = int((vref[label + '_centre_delta'][keep] > GATE['S_max']).sum())
+        looks[label] = row
+        same_rays = label + '_S' in ref.files and np.array_equal(ref[label[0] + '_look_pixels'], pixels)
+        deviation[label] = dict(gpu_bilinear16=moved(image(out, label, 'far24_bilinear16'), image(out, label, 'bilinear16')),
+                                gpu_bilinear32=moved(image(out, label, 'far24_bilinear32'), image(out, label, 'bilinear32')),
+                                host=moved(np.column_stack((vref[label + '_S'], vref[label + '_T'])), np.column_stack((ref[label + '_S'], ref[label + '_T']))) if same_rays else None)
+    repair = {}; scene = np.array([.25, .5, .75])
+    found = re.search(r'^REPAIR_SHAFTS_FAR24 odd_pixels=(\d+) fogged=(\d+) changed=(\d+) worst_vs_bin_centre_march=(\S+)', text, re.M)
+    if found:
+        rp = vref['A_repair_pixels']; gpu = np.fromfile(out / 'images' / 'repair_shafts_far24.full.f32', '<f4').reshape(-1, 4)[rp][:, :3]
+        expect = {key: scene * vref['A_repair_shafts' + key + '_T'][:, None].astype(np.float64) ** vref['A_repair_extinction'][None, :] + vref['A_repair_shafts' + key + '_S'] for key in ('', '_other')}
+        forty = np.fromfile(out / 'images' / 'repair_shafts.full.f32', '<f4').reshape(-1, 4)[ref['A_repair_pixels']][:, :3]
+        repair = dict(odd_pixels=int(found.group(1)), fogged=int(found.group(2)), changed=int(found.group(3)), worst_vs_bin_centre_march=float(found.group(4)),
+                      reference_fogged=int((vref['A_repair_shafts_T'] < 1).sum()), versus_host=metric(gpu - expect['']), other_law=metric(gpu - expect['_other']),
+                      moved_from_40_bins=metric(gpu - forty) if np.array_equal(rp, ref['A_repair_pixels']) else None)
+    programs = {name: shaders[name] for name in FAR24_PROGRAMS}
+    defaults = {name: shaders[name.replace('-far24', '')] for name in FAR24_PROGRAMS}
+    pass_text = (out / 'pass_stdout.txt').read_text(errors='replace')
+    pass_checks = dict(re.findall(r'^CHECK ((?:far24|far_bins)_\S+) (PASS|FAIL)\s*$', pass_text, re.M))
+    shadowed = looks.get('A_look_shadowed', {}); stripes = looks.get('A_look_stripes', {})
+
+    def within(row, channel):
+        return row['p99'] <= GATE[channel + '_p99'] and row['max'] <= GATE[channel + '_max']
+    gates = dict(
+        far24_look_cases=len(looks) >= 6 and all(r['fogged'] > 50 and within(r[v]['T'], 'T') and within(r[v]['S'], 'S') for r in looks.values() for v in ('bilinear32', 'bilinear16')),
+        # The offset lookup must be visible to the look gate: dropping it would move S by more than the gate plus this case's
+        # GPU error (the default gate asks 2x the gate: the offset moves S by .0076 at 40 bins, by .0053 at 24).
+        far24_look_shaft_offset_exercised=stripes.get('shaft_offset_moves_S_pixels', 0) >= 5 and bool(stripes)
+        and stripes['shaft_offset_moves_S_max'] - max(stripes[v]['S']['max'] for v in ('bilinear32', 'bilinear16')) > GATE['S_max'],
+        far24_look_shadowed_coloured=shadowed.get('shadowed_fogged_pixels', 0) > 50 and shadowed.get('shadowed_min_S', 0) > 0,
+        far24_repair_shaft_lookup=bool(repair) and repair['reference_fogged'] > 50 and repair['versus_host']['max'] <= GATE['S_max'] and repair['other_law']['max'] > 2 * GATE['S_max'],
+        far24_programs=all(r['slots'] < 512 and r['loops'] == 1 for r in programs.values())
+        and [r['texture_instructions'] for r in programs.values()] == [r['texture_instructions'] for r in defaults.values()],
+        far24_moves_the_look=any(d['gpu_bilinear32']['T_max'] > 0 for d in deviation.values()),
+        far24_pass_fixture=len(pass_checks) >= 10 and all(s == 'PASS' for s in pass_checks.values()))
+    return gates, dict(reference=record, look_versus_host=looks, deviation_from_40_bins=deviation, repair_with_shafts=repair, programs=programs,
+                       default_programs=defaults, pass_fixture_checks=pass_checks)
+
+
 def numbers(line):
     out = {}
     for key, value in re.findall(r'(\w+)=(\S+)', line):
@@ -254,7 +344,7 @@ def pass_report(out, execution):
     fixture_checks = re.findall(r'^CHECK (.+?) (PASS|FAIL)\s*$', text, re.M)  # a few labels contain spaces
     result = re.search(r'^RESULT PASS checks=(\d+) failures=0 state_restorations=(\d+)', text, re.M)
     rows = {}
-    for tag in ('FILL', 'PASS_VS_CPU', 'STEADY', 'RECENTRE', 'SEAM', 'SHAFTS', 'RESET_REUPLOAD', 'REPAIR', 'DETACH', 'DEVICE_REFERENCES', 'PREPARE_CPU', 'STATIC_GENERATION', 'HANDOVER', 'REFUSAL', 'GRID', 'GRID_REPORT', 'GRID_TOGGLE',
+    for tag in ('FILL', 'PASS_VS_CPU', 'FAR24', 'STEADY', 'RECENTRE', 'SEAM', 'SHAFTS', 'RESET_REUPLOAD', 'REPAIR', 'DETACH', 'DEVICE_REFERENCES', 'PREPARE_CPU', 'STATIC_GENERATION', 'HANDOVER', 'REFUSAL', 'GRID', 'GRID_REPORT', 'GRID_TOGGLE',
                 'MOTES_POSES', 'MOTES_RESOURCES', 'MOTES_CALLS', 'MOTES_SKY', 'MOTES_STREAK', 'MOTES_CUT', 'MOTES_DEPTH', 'MOTES_WRAP', 'MOTES_RESET', 'MOTES_REFUSAL'):
         found = re.search(r'^%s (.*)$' % tag, text, re.M)
         rows[tag.lower()] = numbers(found.group(1)) if found else None
@@ -271,11 +361,13 @@ def pass_report(out, execution):
                         seconds=execution.get('pass_seconds'), **rows)
 
 
-def check(out, reference):
+def check(out, reference, far24_reference=None):
     record = json.loads((reference / 'reference.json').read_text())
     execution = json.loads((out / 'execution.json').read_text())
     if digest(reference / 'reference.npz') != record['reference_sha256'] or execution['cases_sha256'] != record['cases_sha256']:
         raise ValueError('reference changed since the run')
+    if (execution.get('variant_cases_sha256') is not None) != bool(far24_reference) or (far24_reference and execution['variant_cases_sha256'] != digest(far24_reference / 'cases.txt')):
+        raise ValueError('the run and --variant-reference disagree')
     text = (out / 'stdout.txt').read_text(errors='replace')
     ref = np.load(reference / 'reference.npz')
     groups = {}
@@ -390,6 +482,10 @@ def check(out, reference):
         # The dust motes (fog-dust-motes.md section 5): every M_motes_* case against the twin, the off path the accepted frame.
         motes_cases=(pass_summary.get('motes_checks') or {}).get('count', 0) >= 29 and not pass_summary['motes_checks']['failed'],
         motes_programs_below_512=all(shaders[name]['slots'] < 512 for name in MOTE_PROGRAMS))
+    far_bins_variant = None
+    if far24_reference:
+        far_gates, far_bins_variant = far24_report(out, ref, far24_reference, text, shaders)
+        gates.update(far_gates)
     reported = dict(parity_S_bilinear_max=b['cand_S']['max'], parity_S_texel_exact_max=e['cand_S']['max'])  # not gated
     summary = dict(schema=2, result='PASS' if all(gates.values()) else 'FAIL', gates=gates, reported_not_gated=reported, host_candidate_vs_dense64=host, gate_values=GATE, versus_host=rows,
                    fp16_bilinear_vs_texel_exact=dict(T=filtering, S=filtering_S), temporal_residual_vs_dense64=temporal, production_rgba16f_temporal_residual_vs_dense64=temporal16,
@@ -397,8 +493,12 @@ def check(out, reference):
                    shaders=shaders, fixture_checks=len(fixture_checks), fixture_timing_not_game_fps=timing, fixture_readback_synchronised_timing_not_game_fps=synced, fixture_march_slope_timing_not_game_fps=slope,
                    repair=dict(zip(('odd_pixels', 'fogged', 'changed'), map(int, repair.groups()[:3])), worst_vs_full_march=float(repair.group(4))) if repair else None,
                    generation=dict(atlases=int(generation.group(1)), seconds=float(generation.group(2)), nodes_per_second=float(generation.group(3))) if generation else None,
-                   executable_sha256=execution['executable_sha256'], bottle=execution['bottle'], run_seconds=execution['seconds'], reference=record)
+                   executable_sha256=execution['executable_sha256'], bottle=execution['bottle'], run_seconds=execution['seconds'], reference=record,
+                   **({'far_bins_variant_file': 'far24.json'} if far_bins_variant else {}))
     (out / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
+    if far_bins_variant:  # its own file, so summary.json stays a small tracked record; the far24_* gates are in both
+        far = dict(result=summary['result'], gates={k: v for k, v in gates.items() if k.startswith('far24_')}, bottle=execution['bottle'], **far_bins_variant)
+        (out / 'far24.json').write_text(json.dumps(far, indent=2) + '\n')
     return summary
 
 
@@ -407,10 +507,12 @@ def main():
     parser.add_argument('step', choices=('build', 'run', 'check'))
     parser.add_argument('--output', type=Path, required=True); parser.add_argument('--reference', type=Path)
     parser.add_argument('--asset-data', type=Path, help='baked legacy fog packets (CMake generated/fog_field); baked on demand when absent')
+    parser.add_argument('--variant-reference', type=Path, help='the 24-far-bin reference (fog-gpu-cost.md step B); build generates it once when absent')
     a = parser.parse_args()
     if a.step != 'build' and not a.reference:
         parser.error('--reference is required')
-    result = build(a.output, a.asset_data) if a.step == 'build' else run(a.output, a.reference) if a.step == 'run' else check(a.output, a.reference)
+    v = a.variant_reference
+    result = build(a.output, a.asset_data, v) if a.step == 'build' else run(a.output, a.reference, v) if a.step == 'run' else check(a.output, a.reference, v)
     print(json.dumps({k: result[k] for k in ('executable_sha256', 'pass_executable_sha256', 'returncode', 'seconds', 'pass_seconds', 'result', 'gates') if k in result}))
     return 0 if result.get('returncode', 0) == 0 and result.get('result', 'PASS') == 'PASS' else 1
 

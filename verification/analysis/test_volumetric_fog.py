@@ -311,6 +311,44 @@ class FogLauncherTests(unittest.TestCase):
         fragment = (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
         self.assertIn('k.texel_world = size ? float(2. * double(cascade.half_extent) / double(size)) : 0.f; k.depth_range = float(cascade.depth_range());', fragment)
 
+    def test_far_bins_option(self):
+        # --fog-far-bins {40,24} -> X3M_FOG_FAR_BINS (fog-gpu-cost.md step B), default 40 (the accepted look), 24 only with the
+        # stored range and never with the shadow pass (its grid programs keep 40); an inherited value never picks the variant.
+        stored = ('--volumetric-fog', '--volumetric-fog-range', 'stored')
+        status, output, error = self.launch(*self.BASE, *stored)
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_FAR_BINS": "40"', output)
+        status, output, error = self.launch(*self.BASE, *stored, '--fog-far-bins', '24')
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_FAR_BINS": "24"', output)
+        status, output, error = self.launch(*self.BASE, *stored, '--fog-far-bins', '40')
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_FAR_BINS": "40"', output)
+        status, output, error = self.launch(*self.BASE, '--volumetric-fog', '--fog-far-bins', '40')
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_FAR_BINS": "40"', output)
+        status, _, error = self.launch(*self.BASE, '--volumetric-fog', '--fog-far-bins', '24')
+        self.assertEqual(status, 2); self.assertIn('--fog-far-bins 24 requires --volumetric-fog-range stored', error)
+        status, _, error = self.launch(*self.BASE, *stored, '--fog-far-bins', '24', '--fog-shadow-pass', 'on')
+        self.assertEqual(status, 2); self.assertIn('cannot be combined with --fog-shadow-pass on', error)
+        self.assertEqual(self.launch(*self.BASE, *stored, '--fog-far-bins', '32')[0], 2)
+        status, output, error = self.launch(*self.BASE, *stored, environment={'X3M_FOG_FAR_BINS': '24'})
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_FAR_BINS": "40"', output)
+        # The DLL: exactly "24" under the stored range, without the shadow pass and at a cap <= 120,000; any other value is
+        # echoed as invalid (review 2026-09-23); FogPass refuses a count other than 40/24 and clamps 24 itself as well.
+        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        self.assertIn('far_bins_asked=!wcscmp(setting,L"24");', capture)
+        self.assertIn('if(!far_bins_asked&&wcscmp(setting,L"40"))far_bins_refusal="invalid";', capture)
+        self.assertIn('if(far_bins_asked)far_bins_refusal=volumetric_fog_shadow_pass?"shadow_pass":', capture)
+        self.assertIn('!(volumetric_fog_look_tuning.sky_cap<=renderer::fog_far_bins_coarse_cap_max)?"cap":"none";', capture)
+        self.assertIn('log("volumetric_fog_far_bins bins=%u requested=%s refused=%s sky_cap=%g"', capture)
+        self.assertLess(capture.index('volumetric_fog_look_tuning={};'), capture.index('far_bins_asked=!wcscmp(setting,L"24");'))
+        self.assertIn('hooked.motion_output.configure_volumetric_fog_far_bins(volumetric_fog_far_bins);', capture)
+        self.assertIn('fog_density_config_.far_bins = bins;', (ROOT / 'src/proxy/motion_output.h').read_text())
+        self.assertIn('log("fog_far_bins_refused device=%llu frame=%llu reason=%s requested=%u drawn=%u"', (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text())
+        fog_pass = (ROOT / 'src/renderer/fog_pass.cpp').read_text()
+        self.assertIn('if(!fog_far_bins_valid(config.far_bins))return E_INVALIDARG;', fog_pass)
+        self.assertIn('far_bins_shadow_clamp_=far_bins_shadow_clamp_||config.shadow_pass;', fog_pass)
+        self.assertIn('!(config.look.sky_cap<=fog_far_bins_coarse_cap_max)?"cap":nullptr;', fog_pass)
+        for name in ('march', 'repair'):
+            self.assertIn('#include "fog_density_%s_look_far24_program_inc.h"' % name, fog_pass)
+
     def test_shadow_pass_ab_toggle_and_frame_row(self):
         # fog-shadow-pass.md "A/B toggle and log row": toggled off, FogPass latches shadow_pass=false at prepare_density
         # and draws the launch-off in-march path; the grid stays allocated (only refuse_grid and release_targets drop it).

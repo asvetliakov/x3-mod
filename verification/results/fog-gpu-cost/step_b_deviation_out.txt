@@ -1,0 +1,18 @@
+result=PASS gates=37/37 far24_gates=far24_look_cases=True,far24_look_shaft_offset_exercised=True,far24_look_shadowed_coloured=True,far24_repair_shaft_lookup=True,far24_programs=True,far24_moves_the_look=True,far24_pass_fixture=True
+case                 | GPU RGBA16F: T max  T mean(fog) S max  S mean(fog) past.003/fogged | host: T max  S max  past.003/rays | vs own ref: T max S max (bilinear16)
+A_look_depth3        | 0.0190 0.00231 0.0134 0.00069  1353/ 4740 | 0.0171 0.0134   91/ 576 | 0.00067 0.00034
+A_look_depth90000    | 0.0100 0.00135 0.0073 0.00040   553/ 4690 | 0.0072 0.0048   39/ 576 | 0.00060 0.00045
+A_look_shadowed      | 0.0190 0.00231 0.0076 0.00038  1333/ 4740 | 0.0171 0.0072   89/ 576 | 0.00067 0.00024
+A_look_sky           | 0.0190 0.00231 0.0134 0.00069  1353/ 4740 | 0.0171 0.0134   91/ 576 | 0.00067 0.00034
+A_look_stripes       | 0.0190 0.00231 0.0120 0.00073  1438/ 4740 | 0.0171 0.0118   94/ 576 | 0.00067 0.00033
+A_look_stripes_held  | 0.0190 0.00231 0.0115 0.00071  1419/ 4740 | 0.0171 0.0112   97/ 576 | 0.00067 0.00029
+B_look_sky           | 0.0298 0.00458 0.0079 0.00078  1715/ 3540 | 0.0261 0.0071  107/ 576 | 0.00073 0.00015
+repair_shafts_far24: fogged=6076 versus_host_max=0.00051 other_law_max=0.0105 moved_from_40_bins max=0.0017 p99=0.0007
+fog-density-march-look-far24: slots=425 texture_instructions=15 loops=1
+fog-density-repair-look-far24: slots=510 texture_instructions=20 loops=1
+pass fixture far24 checks: 19 failed: []
+pass fixture FAR24 row: sky_pixels=35 worst_T=0.000537 worst_S=0.000112 vs_40_bin_twin_T=0.008354 vs_40_bin_twin_S=0.004678 split_differs=712 device_calls=322
+fixture slope march_sky_look: per_march_slope_ms=0.01 (fixture GPU time, not game FPS)
+fixture slope march_sky_look_far24: per_march_slope_ms=0.0115 (fixture GPU time, not game FPS)
+fixture slope march_depth29300_look: per_march_slope_ms=0.0113 (fixture GPU time, not game FPS)
+fixture slope march_depth29300_look_far24: per_march_slope_ms=0.0105 (fixture GPU time, not game FPS)
