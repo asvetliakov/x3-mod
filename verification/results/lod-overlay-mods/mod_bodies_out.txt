@@ -1,0 +1,26 @@
+winning pbb stems 3043 from mod cats (any kind) 1441 CUT1 0 BOB1 1438
+mod BOB1 by catalogue {'addon/06.cat': 1105, 'addon/10.cat': 2, 'addon/11.cat': 168, 'addon/12.cat': 163}
+Q1 category {'other': 653, 'station': 45, 'ship': 740} not in census 0
+Q1 new/override {('other', 'new'): 606, ('other', 'override'): 47, ('ship', 'new'): 706, ('ship', 'override'): 34, ('station', 'new'): 36, ('station', 'override'): 9}
+Q1 by catalogue x category {('addon/06.cat', 'other'): 479, ('addon/06.cat', 'ship'): 610, ('addon/06.cat', 'station'): 16, ('addon/10.cat', 'other'): 2, ('addon/11.cat', 'other'): 167, ('addon/11.cat', 'station'): 1, ('addon/12.cat', 'other'): 5, ('addon/12.cat', 'ship'): 130, ('addon/12.cat', 'station'): 28}
+types winners {'TShips': 'addon/12.cat', 'TDocks': 'addon/12.cat', 'TFactories': 'addon/12.cat', 'TSpecial': 'addon/01.cat', 'TShields': 'addon/12.cat', 'TGates': 'addon/12.cat', 'TPlanets': 'addon/07.cat', 'TAsteroids': 'addon/07.cat', 'TLaser': 'addon/12.cat', 'TMissiles': 'addon/12.cat', 'TWareT': 'addon/12.cat', 'TBackgrounds': 'loose', 'TCockpits': 'addon/12.cat'} path fields {'TShips': 9473, 'TDocks': 75, 'TFactories': 890, 'TSpecial': 64, 'TGates': 26, 'TPlanets': 279, 'TAsteroids': 19, 'TMissiles': 72}
+Q2 mod BOB1 referenced 634 unreferenced 804 by cat {'ship': 610, 'station': 16, 'other': 8}
+Q2 unreferenced by cat {'ship': 130, 'other': 645, 'station': 29}
+Q2 bodies reached (any source) 1211 of which mod-catalogue winners 726 text bodies (not censusable) 96
+Q2 referenced names with no pbb/pbd anywhere 111 ['a/vjtechnique', 'c/b', 'christian/highwayconstructionsite/highwayconstructionsite_curve_v2b', 'christian/highwayconstructionsite/highwayconstructionsite_v1b', 'dateien/3dsmax/sceneassets/planetmaps/finalmaps/sun_diff', 'effects/engines/fx_engine_emitter01', 'effects/engines/fx_engine_emitter02', 'effects/engines/fx_engine_paranid_m6_axeface', 'effects/engines/fx_engine_xtraotas_ts1', 'effects/engines/fx_engine_xtraotas_ts3', 'einstellungen/markus/eigene', 'environments/planets/x3tc/sun_detail_diff', 'environments/planets/x3tc/sun_flare_v2_light', 'er/dds/envmap_test', 'files/autodesk/3ds']
+Q3 record counts {1: 828, 2: 1, 3: 14, 4: 499, 5: 2} single 828 r0_points>60000 48
+Q3 T1 distribution {'-': 828, '30': 269, '45': 31, '46': 26, '52': 25, '53': 24, '49': 20, '43': 19, '44': 17, '48': 13, '47': 10, '42': 10, '50': 7, '100': 7, '60': 4, '51': 4, '25': 3, '41': 3, '33': 2, '72': 2, '64': 2, '59': 2, '54': 2, '69': 2, '74': 1, '35': 1, '14': 1, '250': 1, '79': 1, '38': 1, '37': 1, '67': 1, '55': 1, '57': 1, '62': 1, '56': 1}
+Q3 census parse failures among mod bodies 94 {'parse_error': 94}
+Q4 eligible 82 {'station': 9, 'ship': 73}
+Q4 refusals {'batch_stem_collision': 369, 'mixed_effects': 131, 'texture_unresolved': 106, 'non_effect_material': 106, 'parse_error': 94, 'no_opaque': 91, 'dominant_slot_missing': 43, 'no_diffuse': 11, 'uv2': 3, 't_pad_below_t1': 1}
+Q4 refusals ship/station {('ship', 'batch_stem_collision'): 369, ('ship', 'mixed_effects'): 126, ('ship', 'no_diffuse'): 11, ('ship', 'no_opaque'): 10, ('ship', 'non_effect_material'): 55, ('ship', 'parse_error'): 94, ('ship', 't_pad_below_t1'): 1, ('ship', 'texture_unresolved'): 96, ('ship', 'uv2'): 3, ('station', 'mixed_effects'): 1, ('station', 'no_opaque'): 4, ('station', 'non_effect_material'): 19, ('station', 'texture_unresolved'): 9}
+Q4 material kinds {'MAT6': 1317, None: 94, 'MAT5': 27}
+Q4 atlas_other/exception texts {'?': 94, 'dominant material X has no t_lightmaptexture parameter': 43}
+Q4 texture name extensions in mod-body materials {'.dds': 37795, '.tga': 1308, '.jpg': 138, '(none)': 102, '.txt': 36, '.pck': 8}
+Q4 texture refs unreadable by lod_atlas lookup by ext {'.tga': 522, '.dds': 406, '.jpg': 126} materials with >=1 unreadable 926 of 7163
+Q4 texture-ish members winning from mod cats (top dir, ext) {('dds', '.pck'): 1995, ('dds', '.dds'): 150, ('tex', '.jpg'): 33, ('l', '.jpg'): 4, ('tex', '.tga'): 3, ('l', '.tga'): 1}
+Q5 mod members matching x3m_lod 0 addon/mods paths 0
+Q6 mod eligible atlas@1280 929.46 MB, capped-2048 ~635.87 MB (inferred /4 per step), sizes {4096: 5, 1024: 66, 2048: 11}
+vanilla summary: bodies 1635 (winning .pbb BOB1/non-CUT1 resources; overlay sources skipped: ['addon/05.cat'])
+vanilla summary: eligible 339 (no refusal, draws saved >= 1): ship 220, station 119, other 0
+vanilla summary: eligible totals at 1280 wide: atlases 7149.40 MB (cap 2048: 3567.46 MB), sizes {1024: 209, 2048: 69, 4096: 61}, ratio < 2 62 (at cap 2048: 78)

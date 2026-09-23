@@ -1,0 +1,66 @@
+bodies 1716 (winning .pbb BOB1/non-CUT1 resources; overlay sources skipped: none)
+rule: ships T_pad = min(200, max(80, 2.5 x T_1)); stations/others 150 (cap 200); other top dirs excluded; source record 0, compact; sizes [1024, 2048, 4096]
+eligible 335 (no refusal, draws saved >= 1): ship 221, station 114, other 0
+  eligible totals at 1280 wide: atlases 7467.46 MB (cap 2048: 3650.65 MB), sizes {1024: 198, 2048: 72, 4096: 65}, ratio < 2 67 (at cap 2048: 85)
+  eligible totals at 2560 wide: atlases 11827.44 MB (cap 2048: 4898.45 MB), sizes {1024: 113, 2048: 104, 4096: 118}, ratio < 2 92 (at cap 2048: 142)
+  eligible body members ~1360.77 MB (record 0 x 1.2); draws saved at the switch per instance 4355 summed over bodies
+refusals (a body counts once per reason; first reason in brackets):
+  no_opaque: 314 [293]
+  mixed_effects: 231 [181]
+  exception: 155 [155]
+  uv2: 144 [127]
+  t_pad_below_t1: 139 [139]
+  atlas_other: 122 [119]
+  non_effect_material: 49 [48]
+  batch_stem_collision: 18 [14]
+  no_diffuse: 17 [2]
+  texture_unresolved: 13 [10]
+  parse_error: 1 [1]
+filters on otherwise accepted bodies: category_other 214, no_draw_gain 248
+refusals among bodies with r0_drawn >= 10: t_pad_below_t1 105, mixed_effects 81, uv2 26, no_diffuse 16, no_opaque 11, batch_stem_collision 8, non_effect_material 2
+top 40 by record 0 drawn groups:
+   44 stations/others/argon_player_headquarter (station, thr [250, 150, 80], T_pad 150) C_drawn=5 @1280=4096 @2560=4096 refuse=t_pad_below_t1,mixed_effects
+   41 ships/TM/Pirate_TM (ship, thr [30, 15, 5], T_pad 80) C_drawn=2 @1280=2048 @2560=4096 ELIGIBLE
+   41 ships/others/pirate_TL_var2 (ship, thr [30, 15, 5], T_pad 80) C_drawn=2 @1280=4096 @2560=4096 refuse=mixed_effects
+   41 stations/station_scenes/farm/argon_farm_M_factory_G (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=3 @1280=1024 @2560=1024 refuse=t_pad_below_t1
+   40 ships/others/pirate_TL_var1 (ship, thr [30, 15, 5], T_pad 80) C_drawn=2 @1280=4096 @2560=4096 refuse=mixed_effects,batch_stem_collision
+   40 stations/station_scenes/farm/argon_farm_M_factory_B (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=3 @1280=1024 @2560=2048 refuse=t_pad_below_t1
+   40 stations/station_scenes/pirate_TL_var1 (station, thr [30, 15, 5], T_pad 150) C_drawn=2 @1280=4096 @2560=4096 refuse=mixed_effects,batch_stem_collision
+   40 stations/station_scenes/tech/argon_tech_L_missile_h (station, thr [30, 15, 5], T_pad 150) C_drawn=4 @1280=2048 @2560=4096 ELIGIBLE
+   39 stations/station_scenes/farm/argon_farm_S_factory_B (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=3 @1280=1024 @2560=2048 refuse=t_pad_below_t1
+   39 stations/station_scenes/food/argon_food_S_factory_A (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=3 @1280=1024 @2560=2048 refuse=t_pad_below_t1
+   39 stations/station_scenes/others/argon_mineA_silicon_S (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=4 @1280=1024 @2560=1024 refuse=t_pad_below_t1
+   39 stations/station_scenes/others/argon_mineB_silicon_S (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=4 @1280=1024 @2560=1024 refuse=t_pad_below_t1
+   39 stations/station_scenes/tech/argon_tech_L_missile_B (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=3 @1280=2048 @2560=4096 refuse=t_pad_below_t1
+   39 stations/station_scenes/tech/argon_tech_L_missile_D (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=4 @1280=1024 @2560=2048 refuse=t_pad_below_t1
+   39 stations/station_scenes/tech/argon_tech_L_missile_E (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=4 @1280=2048 @2560=4096 refuse=t_pad_below_t1
+   39 stations/station_scenes/tech/argon_tech_L_missile_g (station, thr [30, 15, 5], T_pad 150) C_drawn=4 @1280=1024 @2560=1024 ELIGIBLE
+   39 stations/station_scenes/tech/argon_tech_L_shield_C (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=4 @1280=1024 @2560=2048 refuse=t_pad_below_t1,mixed_effects
+   39 stations/station_scenes/tech/argon_tech_L_shield_I (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=3 @1280=1024 @2560=2048 refuse=t_pad_below_t1,mixed_effects
+   39 stations/station_scenes/tech/argon_tech_S_factory_F (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=3 @1280=1024 @2560=2048 refuse=t_pad_below_t1
+   39 stations/station_scenes/tech/argon_tech_S_laser_G (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=3 @1280=1024 @2560=2048 refuse=t_pad_below_t1
+   39 stations/station_scenes/tech/argon_tech_S_missile_Q (station, thr [30, 15, 5], T_pad 150) C_drawn=4 @1280=1024 @2560=2048 ELIGIBLE
+   39 stations/station_scenes/tech/argon_tech_S_missile_h (station, thr [30, 15, 5], T_pad 150) C_drawn=4 @1280=1024 @2560=2048 ELIGIBLE
+   39 stations/station_scenes/tech/argon_tech_S_missile_l (station, thr [30, 15, 5], T_pad 150) C_drawn=4 @1280=1024 @2560=2048 ELIGIBLE
+   39 stations/station_scenes/tech/argon_tech_S_missile_m (station, thr [30, 15, 5], T_pad 150) C_drawn=5 @1280=1024 @2560=2048 ELIGIBLE
+   39 stations/station_scenes/tech/argon_tech_S_shield_A (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=3 @1280=1024 @2560=2048 refuse=t_pad_below_t1,mixed_effects
+   39 stations/station_scenes/tech/terraformer_hub_A (station, thr [], T_pad 150) C_drawn=7 @1280=1024 @2560=2048 refuse=uv2
+   38 ships/M7/Argon_m7m (ship, thr [30, 15, 5], T_pad 80) C_drawn=2 @1280=1024 @2560=1024 refuse=uv2
+   38 ships/terraformer/cpuship_destr_a (ship, thr [30, 15, 5], T_pad 80) C_drawn=38 @1280=1024 @2560=1024 refuse=no_draw_gain
+   38 ships/yaki/yaki_m2 (ship, thr [30, 15, 5], T_pad 80) C_drawn=3 @1280=2048 @2560=4096 ELIGIBLE
+   38 stations/station_scenes/farm/argon_farm_M_factory_F (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=4 @1280=1024 @2560=1024 refuse=t_pad_below_t1
+   38 stations/station_scenes/farm/argon_farm_S_factory_F (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=3 @1280=1024 @2560=1024 refuse=t_pad_below_t1
+   38 stations/station_scenes/food/argon_food_M_factory_A (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=3 @1280=1024 @2560=1024 refuse=t_pad_below_t1
+   38 stations/station_scenes/lost_colony/lostcolony_energy (station, thr [30, 15], T_pad 150) C_drawn=2 @1280=2048 @2560=4096 refuse=mixed_effects
+   38 stations/station_scenes/others/argon_mineA_ore_L (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=5 @1280=1024 @2560=1024 refuse=t_pad_below_t1
+   38 stations/station_scenes/others/argon_mineA_ore_S (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=4 @1280=1024 @2560=1024 refuse=t_pad_below_t1,mixed_effects
+   38 stations/station_scenes/others/argon_mineA_silicon_L (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=5 @1280=1024 @2560=1024 refuse=t_pad_below_t1
+   38 stations/station_scenes/others/argon_mineB_ore_L (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=5 @1280=1024 @2560=1024 refuse=t_pad_below_t1
+   38 stations/station_scenes/others/argon_mineB_ore_S (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=4 @1280=1024 @2560=1024 refuse=t_pad_below_t1,mixed_effects
+   38 stations/station_scenes/others/argon_mineB_silicon_L (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=5 @1280=1024 @2560=1024 refuse=t_pad_below_t1
+   38 stations/station_scenes/tech/argon_tech_L_laser_bb (station, thr [30, 15, 5], T_pad 150) C_drawn=6 @1280=4096 @2560=4096 ELIGIBLE
+flown sectors:
+  run255_burst2: eligible 9; 1280 wide 161.49 MB (cap 2048 102.77 MB); 2560 wide 352.33 MB (cap 2048 117.45 MB)
+  run257_burst1: eligible 9; 1280 wide 220.21 MB (cap 2048 102.77 MB); 2560 wide 337.65 MB (cap 2048 102.77 MB)
+  run260: eligible 7; 1280 wide 151.70 MB (cap 2048 92.98 MB); 2560 wide 342.54 MB (cap 2048 107.66 MB)
+elapsed 171 s, jobs 4

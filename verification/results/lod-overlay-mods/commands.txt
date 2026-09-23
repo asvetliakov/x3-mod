@@ -1,0 +1,9 @@
+# Merged-LOD overlay: mod-support evidence (2026-09-23). Read-only; no Wine, no builds. Run from the main checkout.
+# M=scratchpad/modroot: symlinks to bottle X3 root 01..13.cat/.dat, bottle addon/01..04, /tmp/x3-mod1 addon/05..11, /tmp/x3-mod2 addon/12 (replaces mod1 12);
+#   loose: bottle t/ and addon/t + mod1 addon/t + mod2 addon/t (later wins), mod1 addon/types, addon/maps, objects/cut/00749.bod; no 05.x3m-lod.json.
+# V=scratchpad/vanroot: bottle root 01..13 + addon/01..04 (overlay 05 excluded). C=.claude/worktrees/agent-af6a3758990f2ab5f/tools/analysis (uncommitted census, read only).
+python3 $C/lod_batch_census.py --game $M --out $S/census --jobs 4          # 2:51 wall; summary_pbb_only.txt, eligible_pbb_only.txt: 1716 bodies, 335 eligible
+python3 census_with_bob.py $C -- --game $M --out $S/census_bob --jobs 4  # 3:59 wall; census also over winning unpacked .bob members: summary_with_bob.txt, eligible_with_bob.txt: 2990 bodies, 403 eligible
+PYTHONPATH=tools/analysis python3 mod_bodies.py $M $V $S/census_bob/census.txt $C/../../verification/results/lod-overlay-batch/summary.txt > mod_bodies_out.txt   # Q1-Q6
+PYTHONPATH=tools/analysis python3 mod_pbd.py $M $V $S/census/eligible_bodies.txt $C/../../verification/results/lod-overlay-batch/eligible_bodies.txt > mod_pbd_out.txt  # text .pbd members, .pbd shadowing .pbb, eligible diff (pbb-only census)
+# vanilla summary is a snapshot of the concurrently running vanilla census at 07:00 (+04); it changed between two reads (7535.98 -> 7149.40 MB).
