@@ -1,0 +1,1 @@
+{'shared_bake_s': 3.87, 'family_density_s': 0.02, 'colour_atlas_s': 0.15, 'packetize_s': 1.51, 'packet_bytes': 2281060, 'decoded_bytes': 17846400, 'nonzero_texels': 258371, 'sha_ok': True}

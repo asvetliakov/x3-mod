@@ -1,0 +1,40 @@
+tree: /tmp/x3-mod1
+cats: ['05.cat', '06.cat', '07.cat', '08.cat', '09.cat', '10.cat', '11.cat', '12.cat']
+tbackgrounds: /tmp/x3-mod1/addon/07.cat
+records: 250
+positive_records: 56
+positive_families: 56
+not_compiled: 56 ['litcube0', 'litcube1', 'litcube104', 'litcube11', 'litcube140', 'litcube145']...
+name_length: [8, 10]
+rate_vectors: [((1, 1, 1, 1, 1, 1, 1, 1), 40), ((5, 5, 5, 1, 1, 1, 1, 1), 3), ((4, 4, 4, 1, 1, 1, 1, 1), 3)]
+dust_parts_per_family: {8: 56}
+texture_status: {'resolved': 448}
+effects: {'nebulafog.fx': 448}
+distinct_textures: 384
+distinct_textures_per_family: {8: 56}
+texture_formats: {'uncompressed-24bit 1024x1024': 448}
+map: /tmp/x3-mod1/addon/07.cat
+sectors: 256
+fog_sectors: 56
+fog_families_mapped: 56
+
+tree: /tmp/x3-mod2
+cats: ['12.cat']
+tbackgrounds: addon/03.cat
+records: 83
+positive_records: 23
+positive_families: 16
+not_compiled: 2 ['earth', 'xtmgreenring']
+name_length: [5, 16]
+rate_vectors: [((25, 25, 25, 25, 25, 25, 0, 0), 16), ((15, 10, 5, 4, 8, 1, 7, 6), 3), ((25, 21, 6, 30, 14, 23, 23, 25), 2)]
+dust_parts_per_family: {6: 15, 0: 1}
+texture_status: {'resolved': 84, 'missing': 6}
+effects: {'nebulafog.fx': 90}
+distinct_textures: 12
+distinct_textures_per_family: {1: 14, 0: 2}
+texture_formats: {'DXT1 512x512': 6, 'DXT1 2048x2048': 54, 'DXT1 1024x1024': 24}
+map: addon/02.cat
+sectors: 239
+fog_sectors: 35
+fog_families_mapped: 11
+
