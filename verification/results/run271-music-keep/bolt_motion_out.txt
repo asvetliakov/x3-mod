@@ -1,0 +1,7 @@
+frames 2116->2117 components 35->34 within_1px 10 within_3px 13 nearest_px median 4.1 p10 0.0
+frames 2117->2118 components 34->32 within_1px 9 within_3px 12 nearest_px median 4.1 p10 0.0
+frames 2118->2119 components 32->34 within_1px 7 within_3px 11 nearest_px median 4.6 p10 0.0
+frames 2119->2120 components 34->31 within_1px 7 within_3px 15 nearest_px median 3.8 p10 0.0
+frames 2120->2121 components 31->36 within_1px 9 within_3px 16 nearest_px median 4.5 p10 0.0
+frames 2121->2122 components 36->33 within_1px 9 within_3px 12 nearest_px median 4.1 p10 0.0
+frames 2122->2123 components 33->34 within_1px 9 within_3px 13 nearest_px median 4.1 p10 0.0

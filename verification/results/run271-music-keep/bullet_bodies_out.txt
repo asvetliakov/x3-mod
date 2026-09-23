@@ -1,0 +1,21 @@
+objects/effects/weapons/bullet_ElectroSpike.pbb points 42 faces 30 vertices_per_instance 90
+objects/effects/weapons/bullet_EnergyBolt.pbb points 38 faces 28 vertices_per_instance 84
+objects/effects/weapons/bullet_FireBomb.pbb points 46 faces 36 vertices_per_instance 108
+objects/effects/weapons/bullet_flamethrower.pbb points 48 faces 24 vertices_per_instance 72
+objects/effects/weapons/bullet_FragBomb.pbb points 42 faces 30 vertices_per_instance 90
+objects/effects/weapons/bullet_FragBomb_Fragment.pbb points 42 faces 30 vertices_per_instance 90
+objects/effects/weapons/bullet_GaussCannon.pbb points 34 faces 28 vertices_per_instance 84
+objects/effects/weapons/bullet_IonCannon.pbb points 32 faces 22 vertices_per_instance 66
+objects/effects/weapons/bullet_IonPulse.pbb points 39 faces 28 vertices_per_instance 84
+objects/effects/weapons/bullet_LS_alpha.pbb points 44 faces 22 vertices_per_instance 66
+objects/effects/weapons/bullet_LS_beta.pbb points 44 faces 22 vertices_per_instance 66
+objects/effects/weapons/bullet_MAM.pbb points 24 faces 12 vertices_per_instance 36
+objects/effects/weapons/bullet_PlasmaBeam.pbb points 32 faces 24 vertices_per_instance 72
+objects/effects/weapons/bullet_PL_alpha.pbb points 44 faces 22 vertices_per_instance 66
+objects/effects/weapons/bullet_PL_beta.pbb points 44 faces 22 vertices_per_instance 66
+objects/effects/weapons/bullet_PointSing.pbb points 16 faces 8 vertices_per_instance 24
+objects/effects/weapons/bullet_PR_alpha.pbb points 36 faces 18 vertices_per_instance 54
+objects/effects/weapons/bullet_PR_beta.pbb points 36 faces 18 vertices_per_instance 54
+objects/effects/weapons/bullet_Repair.pbb points 34 faces 24 vertices_per_instance 72
+objects/effects/weapons/bullet_Repeat.pbb points 102 faces 78 vertices_per_instance 234
+bodies 20 faces min 8 max 78; observed draw primitives 144,168 (first person) and 792,840 (third person): 168=28x6, 840=28x30, 144=24x6, 792=24x33
