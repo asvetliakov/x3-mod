@@ -521,7 +521,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
                (!emissive_vote||step(call<SetTextureFn>(SetTexture)(d,0,pass==0?(in.color?in.color:scratch_):nullptr)))&&
                (!camera||(step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,8,parallax_constants,1))&&step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,9,lane_constants,1))&&
                           step(call<SetTextureFn>(SetTexture)(d,5,lane&&pass==0?in.current_depth:nullptr))))&& // s0..s6 are point / clamp already; the resolve rebinds s5
-               (!stabilise||step(call<SetTextureFn>(SetTexture)(d,6,pass==2?depths_[next]:nullptr)))&& // sentinel stabiliser: the composition reads the pixel's own depth; the resolve rebinds s6
+               (!stabilise||step(call<SetTextureFn>(SetTexture)(d,6,pass==2?depths_[next]:nullptr)))&& // sentinel stabiliser: s6 serves only the fallback path (thin region off); with the thin region on the tests draw carries the class; the resolve rebinds s6
                step(call<SetTextureFn>(SetTexture)(d,4,in.motion_policy==MotionPolicy::PerPixel?in.motion:nullptr))&&
                step(call<SetTextureFn>(SetTexture)(d,1,source)))hr=quad(in.width,in.height);
         }

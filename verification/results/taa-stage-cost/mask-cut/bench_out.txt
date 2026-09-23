@@ -1,0 +1,166 @@
+# mask_bench.cpp outputs, bottle X3 (CrossOver Preview), 2026-09-24; old = HEAD cc34f2f1 shaders, final = this change.
+## identity sweep, old vs final: 4 scenes (sky, hull, hostile, hull bright) x 11 constant sets x 2 programs x 3 draws
+ADAPTER NVIDIA GeForce 8800 GTX
+PROGRAM old/camera#0 words=1385 slots=372 fnv=f6b26ebedf05da54
+PROGRAM old/plain#0 words=1494 slots=399 fnv=3f693b8bbff71a76
+PROGRAM final/camera#1 words=1579 slots=427 fnv=4a18b71b357c1718
+PROGRAM final/plain#1 words=1574 slots=428 fnv=fe123f4a12f7fc98
+RESULT mismatches=84432174
+final_target_rows_identical=88 of 88
+plain_program_rows_differing=0 of 132
+camera_intermediate_rows=88 differing_beyond_one_b_code=0 (the intermediate b carries the class code by design; RESULT counts those bytes)
+CONTENT scene=sky config=flown program=old/camera#0 pass0_b_pixels=0 final_b_pixels=2073600 of 2073600
+CONTENT scene=hull config=flown program=old/camera#0 pass0_b_pixels=303133 final_b_pixels=1228154 of 2073600
+CONTENT scene=hostile config=flown program=old/camera#0 pass0_b_pixels=1908644 final_b_pixels=0 of 2073600
+CONTENT scene=hullbright config=flown program=old/camera#0 pass0_b_pixels=307180 final_b_pixels=1246484 of 2073600
+## timing, flown constants: chain = 3 draws back to back, *_alt = one draw repeated alternating targets; N=30, R=15; ms
+sky old/camera#0 chain min 0.4321 median 0.4435
+sky final/camera#1 chain min 0.4061 median 0.4235
+sky null chain min 0.0764 median 0.0862
+sky old/camera#0 tests_alt min 0.2601 median 0.2750
+sky final/camera#1 tests_alt min 0.2631 median 0.2683
+sky null tests_alt min 0.0335 median 0.0367
+sky old/camera#0 x_alt min 0.1507 median 0.1548
+sky final/camera#1 x_alt min 0.1308 median 0.1351
+sky null x_alt min 0.0354 median 0.0409
+sky old/camera#0 y_compose_alt min 0.2362 median 0.2463
+sky final/camera#1 y_compose_alt min 0.1037 median 0.1084
+sky null y_compose_alt min 0.0352 median 0.0387
+hull old/camera#0 chain min 0.5302 median 0.5413
+hull final/camera#1 chain min 0.5056 median 0.5189
+hull null chain min 0.0744 median 0.0876
+hull old/camera#0 tests_alt min 0.3422 median 0.3514
+hull final/camera#1 tests_alt min 0.3341 median 0.3519
+hull null tests_alt min 0.0341 median 0.0403
+hull old/camera#0 x_alt min 0.1498 median 0.1555
+hull final/camera#1 x_alt min 0.1302 median 0.1355
+hull null x_alt min 0.0378 median 0.0408
+hull old/camera#0 y_compose_alt min 0.2382 median 0.2452
+hull final/camera#1 y_compose_alt min 0.1122 median 0.1165
+hull null y_compose_alt min 0.0341 median 0.0400
+hullbright old/camera#0 chain min 0.5451 median 0.5541
+hullbright final/camera#1 chain min 0.5140 median 0.5268
+hullbright null chain min 0.0720 median 0.0793
+hullbright old/camera#0 tests_alt min 0.3522 median 0.3637
+hullbright final/camera#1 tests_alt min 0.3436 median 0.3580
+hullbright null tests_alt min 0.0333 median 0.0376
+hullbright old/camera#0 x_alt min 0.1500 median 0.1526
+hullbright final/camera#1 x_alt min 0.1304 median 0.1346
+hullbright null x_alt min 0.0336 median 0.0374
+hullbright old/camera#0 y_compose_alt min 0.2390 median 0.2479
+hullbright final/camera#1 y_compose_alt min 0.1118 median 0.1152
+hullbright null y_compose_alt min 0.0339 median 0.0375
+## timing, one chain / one draw per event wait (the in-game bracketing), 301 rounds, 5%-trimmed means, floor subtracted; ms
+## (single draws are quantised in ~0.115 ms steps by the event polling; the chain row and the *_alt rows are the stable ones)
+SINGLE scene=sky program=old/camera#0 R=301 floor_ms=0.0211 chain_ms=0.9606 tests_ms=0.4765 x_ms=0.3555 y_compose_ms=0.4446
+SINGLE scene=sky program=final/camera#1 R=301 floor_ms=0.0211 chain_ms=0.7653 tests_ms=0.5261 x_ms=0.3177 y_compose_ms=0.3142
+SINGLE scene=hull program=old/camera#0 R=301 floor_ms=0.0178 chain_ms=1.0295 tests_ms=0.5452 x_ms=0.3375 y_compose_ms=0.4350
+SINGLE scene=hull program=final/camera#1 R=301 floor_ms=0.0178 chain_ms=0.8369 tests_ms=0.5714 x_ms=0.3103 y_compose_ms=0.2974
+SINGLE scene=hullbright program=old/camera#0 R=301 floor_ms=0.0181 chain_ms=1.0616 tests_ms=0.5560 x_ms=0.3421 y_compose_ms=0.4437
+SINGLE scene=hullbright program=final/camera#1 R=301 floor_ms=0.0181 chain_ms=0.8439 tests_ms=0.6004 x_ms=0.3080 y_compose_ms=0.2993
+## profile, cost only (median ms, alternating targets; cur = an intermediate state of the shader, see make_profile.py);
+## valid rows: tests_alt for tst/nofrag/nogate/noemis/nomotion, x_alt / y_compose_alt for sep/unr/sepunr/noclassfetch/depthonly
+timing5.txt sky cur/camera#0 chain 0.4145
+timing5.txt sky sep/camera#1 chain 0.2779
+timing5.txt sky tst/camera#2 chain 0.5186
+timing5.txt sky unr/camera#3 chain 0.4260
+timing5.txt sky sepunr/camera#4 chain 0.2805
+timing5.txt sky nofrag/camera#5 chain 0.4542
+timing5.txt sky nogate/camera#6 chain 0.4951
+timing5.txt sky noemis/camera#7 chain 0.5164
+timing5.txt sky cur/camera#0 tests_alt 0.2509
+timing5.txt sky sep/camera#1 tests_alt 0.1382
+timing5.txt sky tst/camera#2 tests_alt 0.2564
+timing5.txt sky unr/camera#3 tests_alt 0.2665
+timing5.txt sky sepunr/camera#4 tests_alt 0.1393
+timing5.txt sky nofrag/camera#5 tests_alt 0.2248
+timing5.txt sky nogate/camera#6 tests_alt 0.2541
+timing5.txt sky noemis/camera#7 tests_alt 0.2612
+timing5.txt sky cur/camera#0 x_alt 0.1394
+timing5.txt sky sep/camera#1 x_alt 0.1420
+timing5.txt sky tst/camera#2 x_alt 0.2698
+timing5.txt sky unr/camera#3 x_alt 0.1395
+timing5.txt sky sepunr/camera#4 x_alt 0.1593
+timing5.txt sky nofrag/camera#5 x_alt 0.2309
+timing5.txt sky nogate/camera#6 x_alt 0.2399
+timing5.txt sky noemis/camera#7 x_alt 0.2538
+timing5.txt sky cur/camera#0 y_compose_alt 0.2462
+timing5.txt sky sep/camera#1 y_compose_alt 0.2450
+timing5.txt sky tst/camera#2 y_compose_alt 0.2508
+timing5.txt sky unr/camera#3 y_compose_alt 0.2471
+timing5.txt sky sepunr/camera#4 y_compose_alt 0.2463
+timing5.txt sky nofrag/camera#5 y_compose_alt 0.2182
+timing5.txt sky nogate/camera#6 y_compose_alt 0.2334
+timing5.txt sky noemis/camera#7 y_compose_alt 0.2550
+timing5.txt hull cur/camera#0 chain 0.5117
+timing5.txt hull sep/camera#1 chain 0.2724
+timing5.txt hull tst/camera#2 chain 0.6132
+timing5.txt hull unr/camera#3 chain 0.5132
+timing5.txt hull sepunr/camera#4 chain 0.2729
+timing5.txt hull nofrag/camera#5 chain 0.5677
+timing5.txt hull nogate/camera#6 chain 0.5103
+timing5.txt hull noemis/camera#7 chain 0.5885
+timing5.txt hull cur/camera#0 tests_alt 0.3671
+timing5.txt hull sep/camera#1 tests_alt 0.1378
+timing5.txt hull tst/camera#2 tests_alt 0.3508
+timing5.txt hull unr/camera#3 tests_alt 0.3410
+timing5.txt hull sepunr/camera#4 tests_alt 0.1358
+timing5.txt hull nofrag/camera#5 tests_alt 0.3469
+timing5.txt hull nogate/camera#6 tests_alt 0.2619
+timing5.txt hull noemis/camera#7 tests_alt 0.3099
+timing5.txt hull cur/camera#0 x_alt 0.1368
+timing5.txt hull sep/camera#1 x_alt 0.1338
+timing5.txt hull tst/camera#2 x_alt 0.2545
+timing5.txt hull unr/camera#3 x_alt 0.1344
+timing5.txt hull sepunr/camera#4 x_alt 0.1337
+timing5.txt hull nofrag/camera#5 x_alt 0.2171
+timing5.txt hull nogate/camera#6 x_alt 0.2361
+timing5.txt hull noemis/camera#7 x_alt 0.2512
+timing5.txt hull cur/camera#0 y_compose_alt 0.1793
+timing5.txt hull sep/camera#1 y_compose_alt 0.1771
+timing5.txt hull tst/camera#2 y_compose_alt 0.2524
+timing5.txt hull unr/camera#3 y_compose_alt 0.1698
+timing5.txt hull sepunr/camera#4 y_compose_alt 0.1677
+timing5.txt hull nofrag/camera#5 y_compose_alt 0.2129
+timing5.txt hull nogate/camera#6 y_compose_alt 0.2437
+timing5.txt hull noemis/camera#7 y_compose_alt 0.2547
+timing6.txt sky old/camera#0 chain 0.4410
+timing6.txt sky cur/camera#1 chain 0.4060
+timing6.txt sky nomotion/camera#2 chain 0.3614
+timing6.txt sky noclassfetch/camera#3 chain 0.4058
+timing6.txt sky depthonly/camera#4 chain 0.4044
+timing6.txt sky old/camera#0 tests_alt 0.2674
+timing6.txt sky cur/camera#1 tests_alt 0.2475
+timing6.txt sky nomotion/camera#2 tests_alt 0.2161
+timing6.txt sky noclassfetch/camera#3 tests_alt 0.2472
+timing6.txt sky depthonly/camera#4 tests_alt 0.2496
+timing6.txt sky old/camera#0 x_alt 0.1544
+timing6.txt sky cur/camera#1 x_alt 0.1357
+timing6.txt sky nomotion/camera#2 x_alt 0.1339
+timing6.txt sky noclassfetch/camera#3 x_alt 0.1343
+timing6.txt sky depthonly/camera#4 x_alt 0.1321
+timing6.txt sky old/camera#0 y_compose_alt 0.2435
+timing6.txt sky cur/camera#1 y_compose_alt 0.2439
+timing6.txt sky nomotion/camera#2 y_compose_alt 0.2454
+timing6.txt sky noclassfetch/camera#3 y_compose_alt 0.1336
+timing6.txt sky depthonly/camera#4 y_compose_alt 0.1452
+timing6.txt hull old/camera#0 chain 0.5427
+timing6.txt hull cur/camera#1 chain 0.5097
+timing6.txt hull nomotion/camera#2 chain 0.3993
+timing6.txt hull noclassfetch/camera#3 chain 0.5072
+timing6.txt hull depthonly/camera#4 chain 0.5052
+timing6.txt hull old/camera#0 tests_alt 0.3499
+timing6.txt hull cur/camera#1 tests_alt 0.3388
+timing6.txt hull nomotion/camera#2 tests_alt 0.2413
+timing6.txt hull noclassfetch/camera#3 tests_alt 0.3513
+timing6.txt hull depthonly/camera#4 tests_alt 0.3464
+timing6.txt hull old/camera#0 x_alt 0.1543
+timing6.txt hull cur/camera#1 x_alt 0.1327
+timing6.txt hull nomotion/camera#2 x_alt 0.1352
+timing6.txt hull noclassfetch/camera#3 x_alt 0.1341
+timing6.txt hull depthonly/camera#4 x_alt 0.1339
+timing6.txt hull old/camera#0 y_compose_alt 0.2438
+timing6.txt hull cur/camera#1 y_compose_alt 0.1665
+timing6.txt hull nomotion/camera#2 y_compose_alt 0.1756
+timing6.txt hull noclassfetch/camera#3 y_compose_alt 0.1359
+timing6.txt hull depthonly/camera#4 y_compose_alt 0.1333

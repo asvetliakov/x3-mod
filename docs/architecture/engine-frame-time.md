@@ -1984,3 +1984,113 @@ line_mask 368 → 399, line_mask_camera 344 → 372, thin_box_rows 35 → 77 (me
 `taa_display` inside `taa` (`TemporalPass::configure_sync_timing`, set before every run; null otherwise). Each
 pair adds about 0.26 ms to `taa` and to the serialised frame; `taa` minus the sub-passes is the CPU work plus five
 floors. Ledger: [gpu-sync-timing.md](../verification/gpu-sync-timing.md).
+
+### Mask draws (2026-09-24)
+
+`taa_mask` was the largest TAA sub-pass in Run 75 C (run280, [gpu-sync-timing.md](../verification/gpu-sync-timing.md)
+"Run 280"): 2.13 ms busy clear sector, 1.23 ms fogged, each with the 0.26 ms floor. Evidence for this section:
+`verification/results/taa-stage-cost/mask-cut/` (bench source, profile scripts, `bench_out.txt`, `acceptance_out.txt`).
+
+**What the three draws are** (`temporal_pass.cpp:508–526`). One program, `line_mask_camera_ps.hlsl` on the flown
+path (`line_mask_ps.hlsl` with `X3M_CAMERA_GATE`), drawn three times at full resolution into the two owned A8R8G8B8
+targets. `c7.z` selects the mode:
+
+| draw | reads | writes | per pixel |
+| --- | --- | --- | --- |
+| tests (`c7.z = 0`, `:281`) | s1 R32F depth; s4 motion, A32B32G32R32F (16 B), every pixel; s5 lane (16 B), valid depth only (`:184`); s0 FP16 scene, routed valid depth only (`:133`) | target 0: r = screen openness, g = far weight, b = flag (fragmented or emissive vote), a = camera openness | 28 depth taps on four 7-tap lines, stopping at the first fragmented line (`:293`); the gate's reprojection and two lengths; the emissive vote's centre tap plus 8 above E |
+| x (`c7.z = 1`, `:212`) | target 0 | target 1 | 16 RGBA8 taps: 17-tap minimum of a and r, 11-tap maximum of b |
+| y + composition (`c7.z = 3`) | target 1 (before this change also s6 depth and s4 motion when S > 0) | target 0, the final mask | 16 taps, composition, sentinel term |
+
+The draws cannot be merged. Each one reads the previous draw's output at up to 8 pixels away (the x window, then the
+y window), so fusing two needs that neighbourhood recomputed per pixel, not an extra MRT output. The camera variant
+carries the gates as openness under a minimum, and its composition writes both the camera-gated and the screen-gated
+strength. Instruction slots of 512 (measured): `line_mask_camera` 372 → 427, `line_mask` 399 → 428.
+
+**What it costs and why it grows with hull coverage.** Measured on a Wine bench (`mask_bench.cpp`) at 1920×1080 on this
+machine with synthetic sky, hull (60 % coverage, panels, lattices, routed motion, lane view z), bright-hull (luma above
+E = 1) and hostile inputs, using the flown constants. Rows are medians of single draws repeated into alternating targets:
+
+| item | cost, ms per draw |
+| --- | --- |
+| a draw's fixed cost (constant-output program, same bindings) | 0.035–0.04 |
+| tests draw: sky / hull / bright hull | 0.27 / 0.35 / 0.36 |
+| … of which the camera gate on valid depth (lane fetch and math; `nogate` profile) | 0.09 on hull, ~0 on sky |
+| … the 16-byte motion texel (`nomotion`, confounded with the unrouted path) | 0.03 sky, 0.10 hull |
+| … the emissive vote (`noemis`); bright hull adds 0.005 | 0.04 hull, ~0 sky |
+| … the fragmentation search (`nofrag`) | 0.03 sky, ~0 hull |
+| x draw | 0.15 |
+| y + composition before this change: the class fetches (`noclassfetch`) | 0.11 of 0.24 on sky, 0.03 on hull |
+
+The texture fetch count does not drive the cost. The 28 R32F depth taps of the fragmentation search cost at most 0.03 ms.
+Every full-screen 16-byte read costs about 0.1 ms per 2 Mpx on this machine (33 MB, bandwidth-bound). Hull pixels add
+the lane read and the gate arithmetic in the tests draw. Before this change, sky pixels paid the motion texel a second
+time in the composition. Splitting the multi-mode program by draw (register pressure) and unrolling the tap loops
+changed nothing measurable.
+
+The bench's old chain, one chain per event wait as the in-game split brackets it, measured 0.92 ms on sky and 0.97–1.06
+ms on hull. That matches the fogged sector's 0.97 ms net, but not the busy sector's 1.87 ms net. Bright hulls (emissive
+vote) do not explain the gap. Which draw carries the in-game excess is not measured.
+
+**Cuts (shipped, output bit-identical).** Shader-only; `temporal_pass.cpp`, its bindings, the resolve and the box
+passes are unchanged.
+
+| cut | where | bench saving, measured (alternating targets) |
+| --- | --- | --- |
+| The composition's sentinel class travels from the tests draw, which already holds this pixel's depth and motion texel. The intermediate b carries codes 0, 1/255, 254/255, 1 (flag × 254/255 + class × 1/255). The x draw passes the pixel's own class on (`:279`). The composition reads it from its centre tap: no s6 depth and no 16-byte s4 fetch while `c6.y > 0.5`, the old fetch path otherwise (`:224`). Maxima over codes exceed 0.5 exactly where a tap is flagged (`:245`), so the flag and the final target are unchanged. | `line_mask_ps.hlsl:116, :303, :279, :224` | y draw 0.25 → 0.11 (sky), 0.25 → 0.12 (hull) |
+| The composition skips the six outer taps (\|k\| = 6..8) where `fragmented = b · c6.y` is exactly 0 and the pixel is outside the sentinel class. Every product with the 17-tap minima is then 0 whatever those finite UNORM8 taps hold. | `:256` | part of the row above; 0.26 → 0.17 on hull before the class carriage |
+| The tap loops split into \|k\| ≤ 5 (which completes b) and \|k\| = 6..8, dropping the per-tap `abs(k)` tests | `:233, :256` | x draw 0.155 → 0.135 |
+
+Chain, one per event wait, 301-round 5 %-trimmed means (measured): sky 0.961 → 0.765, hull 1.030 → 0.837, bright hull
+1.062 → 0.844 ms, i.e. −0.19 to −0.22 ms. Back-to-back chains (throughput) change −0.02 to −0.03 ms. Expected in game
+(inferred): about 0.2 ms off `taa_mask` in a sky-heavy or hull-heavy 1080p frame, below the ~0.3 ms target. A flight
+with the split confirms it or does not.
+
+**Identity proof** (bottle X3, measured). The bench swept 4 scenes and 11 constant sets: S = 0, E = 0, per-pixel motion
+off, lane off, `c6.y` 0 / ∞ / −1, and the plain line filter 1 and 2. The hostile scene holds NaN, ±∞, −0, 2, −0.3,
+−1e31, denormal lane depths and alphas of ±1.0000001, NaN and ∞. Results:
+- the final target is byte-identical in 88 of 88 cases (both programs);
+- every draw of the plain program is identical (132 of 132);
+- the camera intermediates differ only in b, by one code;
+- the generated bytecode equals the benched bytes;
+- `run_temporal_pass.py` PASS: 744 / 278 / 546 with `temporal-pass.txt` byte-identical (sha256 `58d85cde…`), and the
+  lattice report identical except the CPU timing rows and slot rows.
+
+The committed lattice report's slot rows predate ba403af8.
+
+**Rejected.**
+- Merging draws, or an MRT pass: the spatial dependency above.
+- Gathers: D3D9 has none (FETCH4 is a vendor extension).
+- Split programs, unrolled loops: measured 0.
+- A per-tap class precompute and centre reuse in the fragmentation search. Measured gain was within noise. fxc
+  compiles the old margin test as `mad((1 − a), 1.1, −(1 − b))` with a sign test, and a precomputed `(1 − a) · 1.1`
+  rounds separately. On a backend that fuses `mad`, the two can disagree at the margin by one ulp.
+- An unrolled 6-tap line loop: it changed the untouched gate openness by 1 LSB on 1.6 % of sky pixels. The gate's
+  bytecode was instruction-identical; the backend compiles the program as a whole. Identity has to be shown on the
+  backend for each change, not argued from the HLSL.
+- Skipping the lane fetch where the routed screen gate is already open: with a NaN lane, `max(1, NaN)` is 1 on this
+  backend but NaN, written as 0 (closed), under D3D9 `max` semantics. That weakens fail-closed on native.
+- A view-z R32F written by the depth copy as a second MRT (4 B instead of 16 B in the gate): about 0.05 ms saved
+  against an 8 MB extra write, inferred net ≤ 0.03 ms.
+
+**Output-changing alternative (described, not shipped): half-resolution dilations.** The tests draw stays full
+resolution (1-pixel struts need the full-resolution depth star). The x draw writes a W/2 × H/2 target, and each texel
+reduces its 2×2 block over the window conservatively:
+- b is the maximum over a 2 × 12-texel footprint, 2 pixels wider than 11;
+- a and r are the minimum over 2 × 18 pixels, one texel wider than 17.
+
+The y draw runs at half resolution over 9 texels. A new full-resolution composition draw reads the half-resolution
+result (1 tap) and the pixel's own tests texel (far weight and class code, 1 tap) and writes the final mask as now.
+
+Output change: the thin region grows by at most 2 pixels, and the speed gates close up to 1 pixel earlier at the window
+edge, both on the conservative side. Expected saving (inferred from the bench rows): x 0.135 → about 0.065, y 0.11 →
+about 0.02, plus a composition draw at about 0.045. That is about 0.12 ms on the bench, again below 0.3 ms.
+
+Procedure if adopted:
+1. Update the fixture's CPU oracle for the thin region (`thin_region_cases`) to the half-resolution windows and commit
+   a new `temporal-pass.txt` and lattice report as the reference.
+2. Keep the full-resolution chain behind an option for A/B.
+3. Fly the lattice-crawl stand, a pan (camera gate) and distant stations over sky (sentinel stabiliser) with both,
+   comparing crawl, ghosting and `--gpu-sync-timing`.
+
+Before any output change, the next step is to split `taa_mask` into its three draws in the diagnostic build. The
+busy-sector excess over the bench, 0.9 ms, is the only cost left that is large enough to matter.

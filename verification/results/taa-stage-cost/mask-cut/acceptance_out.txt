@@ -1,0 +1,29 @@
+# Mask draw cuts, acceptance (bottle X3, worktree on cc34f2f1 + the change, 2026-09-24; no game running, ps count 0 before each Wine step)
+# Programs regenerated: X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 tools/shaders/generate_rigid_motion_pixel.py \
+#   --shader temporal_line_mask --shader temporal_line_mask_camera -> PASS
+#   temporal_line_mask word_count=1574 bytecode_sha256=802ff929a19f234b3e642146ccc4276b4afb9d06feb2579194b58bc695d5ad37 (slots 428, was 399)
+#   temporal_line_mask_camera word_count=1579 bytecode_sha256=332fa59537d91f63fba13aef002a2107911ca3cb677441630902474b7b823bef (slots 427, was 372)
+#   Both equal the bytes mask_bench.exe compiled and compared (shasum of final/plain.asm.bin, final/camera.asm.bin).
+# Scratch build: cmake -S . -B <scratch> -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo && cmake --build <scratch> -j8 --target d3d9
+#   -> exit 0, 0 warnings; python3 verification/probe/check_no_x87.py <scratch>/d3d9.dll -> PASS, 673 reachable, 0 violations; sha256 2a181956844e994d... (provenance only)
+# Temporal pass fixture: X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_temporal_pass.py
+#   -> exit 0, 187.8 s child, 0 s lock wait; summary passed=True; temporal-pass.txt sha256 58d85cde92764d58d52c7cb64ca0890285bef85006492eea18b59772271fcd17
+#   (byte-identical to the committed report; git shows it unmodified); RESULT PASS numerical=744 state_restorations=278 generations=2; 546 SAMPLE PASS.
+#   Lattice report: RESULT PASS numerical=500 state_restorations=12 lattice=1; vs the committed report:
+#   python3 verification/results/taa-stage-cost/fixture_identity.py <committed temporal-lattice.txt> <new temporal-lattice.txt>
+lattice committed vs new: lines=4184/4184 differing kinds=['LINE_TIMING', 'LINE_TIMING_CAMERA', 'LINE_TIMING_CAMERA_LANE', 'LINE_TIMING_SENTINEL', 'RESOLVE_BUDGET variant=embedded_line_mask', 'RESOLVE_BUDGET variant=embedded_line_mask_camera', 'RESOLVE_BUDGET variant=embedded_thin_box_rows']
+#   The thin_box_rows row is stale in the committed report (35 slots, pre-ba403af8; 77 in ba403af8 and now), not this change.
+#   New slot rows: embedded_line_mask dwords=1574 slots=428 headroom=84; embedded_line_mask_camera dwords=1579 slots=427 headroom=85.
+#   LINE_TIMING rows (1280x768 CPU wall with event drain, one run each, other agents' runs on the machine): plain 1.64, thin region 3.03,
+#   camera no-region 4.86 ms; not a GPU measurement and not comparable run to run (the first run of an intermediate state read 0.61 / 1.27 / 1.45).
+#   Tracked bottle-X3 results restored with git checkout.
+# Motion output fixture not run: its runner never sets X3M_TAA_FAR_STABILISER or X3M_TAA_THIN_REGION, so neither line-mask program
+#   is created or drawn, and no shared source (temporal_pass.*, resolve*) changed.
+# Host modules: PYTHONPATH=verification/probe /usr/bin/python3 -m unittest verification.analysis.test_shader_compiler_provenance
+#   verification.analysis.test_gpu_sync_timing verification.analysis.test_linear_cutout_contract verification.analysis.test_taa_image_defaults -> Ran 32 tests OK
+# Flow: python3 verification/results/taa-stage-cost/sm3_flow.py temporal_line_mask_camera temporal_line_mask (HEAD vs tree)
+temporal_line_mask_camera HEAD texldl=14 flow: ifc texldl else ifc rep rep texldl endrep endrep texldl else ifc texldl rep texldl endrep ifc ifc texldl texldl else endif else endif else texldl ifc rep texldl rep texldl endrep ifc breakc endif endrep texldl ifc ifc texldl endif else endif ifc ifc ifc texldl ifc rep rep texldl endrep endrep else endif else endif else endif endif else endif endif endif endif
+temporal_line_mask_camera tree texldl=15 flow: ifc texldl else ifc rep rep texldl endrep endrep texldl else ifc texldl ifc ifc else texldl ifc texldl else endif endif else endif rep texldl endrep ifc rep texldl endrep endif else texldl ifc rep texldl rep texldl endrep ifc breakc endif endrep texldl ifc ifc ifc texldl ifc rep rep texldl endrep endrep else endif else endif else endif endif ifc ifc texldl endif else endif else endif endif endif endif
+temporal_line_mask HEAD texldl=15 flow: ifc texldl else ifc rep rep texldl endrep endrep texldl else ifc texldl rep texldl endrep else texldl ifc rep texldl rep texldl endrep ifc breakc endif endrep texldl ifc ifc ifc texldl ifc rep rep texldl endrep endrep else endif else endif else endif else endif else endif ifc rep texldl texldl ifc texldl texldl endif endrep else endif endif endif endif
+temporal_line_mask tree texldl=16 flow: ifc texldl else ifc rep rep texldl endrep endrep texldl else ifc texldl rep texldl endrep ifc rep texldl endrep endif else texldl ifc rep texldl rep texldl endrep ifc breakc endif endrep texldl ifc ifc ifc texldl ifc rep rep texldl endrep endrep else endif else endif else endif else endif else endif ifc rep texldl texldl ifc texldl texldl endif endrep else endif endif endif endif
+#   Composition (camera): the class fallback fetches sit under ifc (thinGate.y <= 0.5 only), the six outer taps under "ifc rep texldl endrep endif".
