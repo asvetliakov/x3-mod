@@ -215,11 +215,14 @@ None of these functions touches `node+0x14c` (§1.1: no `+0x14c` access lies in
 One non-render consumer of a LOD record exists: the collision tree of a scene part is built at
 creation from record `n-1` (`0x0043d8dd..0x0043d8e6` → `0x0047eb90(node, n-1)`, or record 1 for
 the type-5 / `0x0043fd00` case; `0x0047eb90` indexes `model+0x0c[idx]` at `0x0047ec12` and
-stores `idx` in `model+0x60`). With the pad placement `n-1` is the pad, a copy of `C`. `C` and
-the pad keep the point and face counts of the original coarsest record (TL 1313/553,
-M1 1584/658, M2 1865/756, outpost 17468/9453; `bob1.py info`, measured), so the hit geometry
-is the same set of triangles if `lod_overlay.py` copies the faces unchanged (inferred; the
-tool regroups faces, it does not re-mesh). The override at `0x0047ebe8..0x0047ebff`
+stores `idx` in `model+0x60`). With the pad placement `n-1` is the pad, a copy of `C`; when `C` is built
+from a finer record (`lod_overlay.py --source-record` / `NAME=T@N`), the pad is instead a byte copy of
+the original coarsest record, so the collision tree keeps vanilla's geometry exactly. With the
+default source (the coarsest record) `C` and the pad keep the point and face counts of the
+original coarsest record (TL 1313/553, M1 1584/658, M2 1865/756, outpost 17468/9453; `bob1.py
+info`, measured; the atlas collapse adds duplicated points), so the hit geometry is the same set
+of triangles (inferred; the tool regroups faces, it does not re-mesh). With `--source-record N`
+`C` has record N's geometry and the pad is the original coarsest record byte for byte. The override at `0x0047ebe8..0x0047ebff`
 (`0x0046ed60`) was not examined.
 
 ## 4. `node+0x130 & 0x100000`

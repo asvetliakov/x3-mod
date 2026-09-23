@@ -3,7 +3,7 @@
 
 Merged-LOD pilot mechanism (docs/architecture/merged-lod-feasibility.md section 6,
 docs/reverse-engineering/body-format-bob1.md): for each named body, copy its
-coarsest existing LOD (points, part flags, per-group 7-int records and the 10
+coarsest existing LOD (or record --source-record N; points, part flags, per-group 7-int records and the 10
 part ints are copied, nothing is recomputed; a merged group lists its records in the
 order its faces first use the points, as every shipped group does), collapse every part's groups and
 add the result as a new LOD record. No decimation. Alpha materials are those
@@ -115,6 +115,21 @@ time (flagged nodes hide below (T-1)*f). With compact the last record is the pad
 (index 2), so flagged nodes hide below T_pad*f at Low..High, as with pad. The old --keep-coarsest-hidden option
 was removed: its premise (the last record is drawn) does not hold at Very High. The pilot flight
 must still check flagged nodes.
+
+Source record (--source-record N, default the coarsest record n-1): C is built from
+record N's geometry (points, part flags and part ints, groups, 7-int records) and every
+collapse, including the glow/area material selection and the synthesized materials, reads
+that record. N = 0 gives C the fine silhouette, so only the texture resampling changes at
+the switch (with --collapse atlas). NAME=T@N (or NAME=T,N) sets N per body. When N is not the
+coarsest record, the pad (never drawn at Very High; the collision tree is built from the
+last record at creation, lod-child-hide.md section 3) is a byte copy of the original coarsest
+record with threshold T_pad instead of a copy of C, so the collision geometry stays vanilla's;
+its material indices index the original table, a prefix of the written one. At Low..High the
+pad is what draws below T_pad*f, so there the body shows the original coarsest record. A group of C referencing more
+than MAX_POINTS (60,000, headroom for D3DXCleanMesh bowtie splits) distinct points is refused (the engine clones a subgroup of more
+than 65,535 vertices with a 32-bit index buffer, 0x004bcb60, a path not qualified here,
+mesh-buffer-rewrite.md); --collapse atlas splits every group above lod_atlas.MAX_GROUP_POINTS
+(60,000, headroom for the bowtie vertices D3DXCleanMesh adds at load) instead.
 
 Placement: addon/NN.cat/.dat with NN the next contiguous free addon slot. The
 engine resolver (body-format-bob1.md section 7, 0x004e7590) takes a loose file
@@ -460,8 +475,11 @@ def place(ladder, coarse, placement, threshold, name='body', force_threshold=Fal
     return n, n + 1
 
 
+MAX_POINTS = 60000         # refusal limit for a merged group (non-atlas collapses; as lod_atlas.MAX_GROUP_POINTS)
+
+
 ATLAS_DEFAULTS = dict(sizes=(1024, 2048), fmt='dxt', specular=False, bump=True, force_uv2=False,
-                      force_mixed_effects=False)
+                      force_mixed_effects=False, screen_width=1280)
 
 
 def atlas_collapse(assets, name, entry, mats, record, alpha, threshold, synth, opts):
@@ -471,7 +489,7 @@ def atlas_collapse(assets, name, entry, mats, record, alpha, threshold, synth, o
         raise SystemExit(f'{name}: --collapse atlas sizes the atlas for the switch size; pass NAME=T or --threshold')
     body = Path(entry['path'].replace('\\', '/')).stem
     try:
-        res = lod_atlas.build(assets, body, mats, record, alpha, threshold, opts['sizes'], opts['fmt'],
+        res = lod_atlas.build(assets, body, mats, record, alpha, threshold * opts['screen_width'] / 1280, opts['sizes'], opts['fmt'],
                               opts['specular'], synth, opts['bump'], opts['force_uv2'], opts['force_mixed_effects'])
     except lod_atlas.AtlasError as exc:
         raise SystemExit(f'{name}: {exc}') from None
@@ -486,7 +504,8 @@ def atlas_collapse(assets, name, entry, mats, record, alpha, threshold, synth, o
 
 
 def plan_body(assets, name, threshold, placement=None, force_threshold=False, collapse='glow', force_mat3=False,
-              glow_luma=GLOW_LUMA, glow_share=GLOW_SHARE, area_percent=None, synth=True, atlas_opts=None):
+              glow_luma=GLOW_LUMA, glow_share=GLOW_SHARE, area_percent=None, synth=True, atlas_opts=None,
+              source_record=None):
     entry = bob1.resolve_body(assets, name)
     if 'loose' in entry:
         raise SystemExit(f'{name}: winning resource is loose file {entry["path"]}; a catalogue cannot override it')
@@ -502,25 +521,41 @@ def plan_body(assets, name, threshold, placement=None, force_threshold=False, co
     ladder = bob1.lods(tree)
     before = list(ladder)
     placement = placement or default_placement(ladder)
+    src_index = len(ladder) - 1 if source_record is None else source_record
+    if not 0 <= src_index < len(ladder):
+        raise SystemExit(f'{name}: --source-record {source_record} outside the body\'s records 0..{len(ladder) - 1}')
+    source = ladder[src_index]
     mats = bob1.materials(tree)
     alpha = alpha_materials(mats)
-    used = sorted({g['material'] for p in ladder[-1]['parts'] for g in p['groups']})
+    used = sorted({g['material'] for p in source['parts'] for g in p['groups']})
     glow = glow_materials(assets, mats, used, glow_luma, glow_share) if collapse in KEEPING else set()
     area_kept, area = set(), None
     if collapse == 'glow-area':
-        area_kept, covered, total = light_area_materials(assets, mats, ladder[-1], glow, area_percent)
+        area_kept, covered, total = light_area_materials(assets, mats, source, glow, area_percent)
         area = dict(percent=area_percent, covered=covered, total=total,
-                    record_area=sum(group_area(ladder[-1], g) for p in ladder[-1]['parts'] for g in p['groups']))
+                    record_area=sum(group_area(source, g) for p in source['parts'] for g in p['groups']))
     kept = glow | area_kept
     n_mats = len(mats)
     atlas, extra = None, []
     if collapse == 'atlas':
-        new, synth_report, atlas, extra = atlas_collapse(assets, name, entry, mats, ladder[-1], alpha, threshold,
+        new, synth_report, atlas, extra = atlas_collapse(assets, name, entry, mats, source, alpha, threshold,
                                                          synth, dict(ATLAS_DEFAULTS, **(atlas_opts or {})))
     else:
-        remap, synth_report = synth_materials(mats, ladder[-1], alpha, collapse, kept) if synth else ({}, [])
-        new = coarse_record(ladder[-1], None, alpha, collapse, kept, remap)
+        remap, synth_report = synth_materials(mats, source, alpha, collapse, kept) if synth else ({}, [])
+        new = coarse_record(source, None, alpha, collapse, kept, remap)
+    widest = max((len({i for f in g['faces'] for i in f[:3]}) for p in new['parts'] for g in p['groups']),
+                 default=0)
+    if widest > MAX_POINTS:
+        raise SystemExit(f'{name}: a group of C built from record {src_index} references {widest} points, above'
+                         f' {MAX_POINTS} (65,535 less headroom for D3DXCleanMesh): a larger subgroup needs the unqualified 32-bit'
+                         ' index path; use --collapse atlas (which splits such groups) or a coarser source record')
     new_index, pad_index = place(ladder, new, placement, threshold, name, force_threshold)
+    pad_source = None
+    if pad_index is not None and src_index != len(before) - 1:
+        # the pad only feeds the collision tree (built from the last record at creation,
+        # lod-child-hide.md section 3): keep the original coarsest record there
+        ladder[pad_index] = dict(before[-1], value=ladder[pad_index]['value'])
+        pad_source = len(before) - 1
     out = bob1.serialise(tree)
     back = bob1.parse(out)
     check = bob1.lods(back)
@@ -541,6 +576,7 @@ def plan_body(assets, name, threshold, placement=None, force_threshold=False, co
                 new=new, new_index=new_index, collapse=collapse, alpha=alpha_materials(mats), glow=glow,
                 area_kept=area_kept, area=area, synth=synth_report, source_materials=n_mats,
                 pad_index=pad_index, placement=placement, atlas_build=atlas, extra_members=extra,
+                source_record=src_index, pad_source=pad_source,
                 atlas=atlas and atlas['summary'],
                 source_decoded_sha256=hashlib.sha256(data).hexdigest(),
                 overlay_decoded_sha256=hashlib.sha256(out).hexdigest(),
@@ -579,18 +615,22 @@ def group_label(plan, g):
 
 def describe(plan, out=None):
     out = out or sys.stdout
-    s_old, s_new = bob1.lod_summary(plan['before'][-1]), bob1.lod_summary(plan['new'])
+    sr = plan.get('source_record', len(plan['before']) - 1)
+    s_old, s_new = bob1.lod_summary(plan['before'][sr]), bob1.lod_summary(plan['new'])
     print(f'{plan["name"]}: {plan["source"]}:{plan["member"]}', file=out)
     print(f'  ladder before: {ladder_text(plan["before"])}', file=out)
     print(f'  ladder after:  {ladder_text(plan["ladder"])}', file=out)
     groups = [group_label(plan, g) for p in plan['new']['parts'] for g in p['groups']]
-    pad = (f' + pad copy LOD{plan["pad_index"]} threshold={plan["ladder"][plan["pad_index"]]["value"]}'
+    pad_of = ('' if plan.get('pad_source') is None else f' of original LOD{plan["pad_source"]}'
+              f' ({len(plan["ladder"][plan["pad_index"]]["points"]) if plan["pad_index"] else 0} points)')
+    pad = (f' + pad copy{pad_of} LOD{plan["pad_index"]} threshold={plan["ladder"][plan["pad_index"]]["value"]}'
            if plan['pad_index'] else '')
     th = [l['value'] for l in plan['before'][1:]]
     vh = bob1.drawable([l['value'] for l in plan['ladder'][1:]], 'very-high')
     n = len(plan['before'])
     dropped = (f' (original LOD1..{n - 1} dropped)' if plan['placement'] == 'compact' and n > 1 else '')
     print(f'  {plan["placement"]}: new LOD{plan["new_index"]} threshold={plan["new"]["value"]}{pad}{dropped}'
+          f' from source LOD{sr} (points {s_old["points"]}, faces {s_old["faces"]})'
           f' flags={plan["new"]["flags"]:#x} points={s_new["points"]} parts={s_new["parts"]}'
           f' groups/part {s_old["groups_per_part"]} -> {s_new["groups_per_part"]} draws {s_old["draws"]} ->'
           f' {s_new["draws"]} faces={s_new["faces"]} collapse={plan["collapse"]} groups={groups}'
@@ -678,6 +718,10 @@ def main(argv=None):
     ap.add_argument('--atlas-max-size', type=int, default=2048,
                     help='atlas: largest side tried when the smaller one leaves < 2 atlas texels per screen'
                          ' pixel at the switch size (default 2048)')
+    ap.add_argument('--screen-width', type=int, default=1280,
+                    help='atlas: display width in pixels for the >= 2 texels per pixel rule (default 1280). T is'
+                         ' in the 1280-wide reference (real px = s * m00 * width / 1280), so the rule is applied'
+                         ' at T * W / 1280 and a wider display gets the larger atlas')
     ap.add_argument('--atlas-format', choices=('dxt', 'a8r8g8b8'), default='dxt',
                     help='atlas: dxt (default; DXT1, DXT5 for a slot with alpha) or a8r8g8b8 (uncompressed)')
     ap.add_argument('--atlas-bump', action=argparse.BooleanOptionalAction, default=True,
@@ -692,6 +736,10 @@ def main(argv=None):
                     help='atlas: also bake a specular atlas (default: t_SpecularTexture NULL)')
     ap.add_argument('--atlas-preview', type=Path,
                     help='atlas: write atlas_preview_<body>_<slot>.png (<= 512 px, tile outlines) into DIR')
+    ap.add_argument('--source-record', type=int, metavar='N',
+                    help='build C from record N\'s geometry (default: the coarsest record; 0 = LOD 0, the fine'
+                         ' mesh); NAME=T@N (or NAME=T,N) sets it per body. A C group above 60,000 points is refused'
+                         ' (atlas: split). When N is not the coarsest record the pad is the original coarsest record')
     ap.add_argument('--no-synth-material', action='store_true',
                     help='merged groups keep the dominant material itself (no area-weighted g_Mat* copy)')
     ap.add_argument('--glow-luma', type=float, default=GLOW_LUMA,
@@ -716,6 +764,8 @@ def main(argv=None):
     a.collapse, a.area_percent = a.collapse
     if a.force_slot and a.slot is None:
         ap.error('--force-slot needs --slot')
+    if a.source_record is not None and a.source_record < 0:
+        ap.error('--source-record must be >= 0')
     if not (0 <= a.glow_luma < 1 and 0 < a.glow_share <= 1):
         ap.error('--glow-luma must be in [0, 1) and --glow-share in (0, 1]')
     pow2 = lambda v: v >= 64 and not v & (v - 1)
@@ -727,7 +777,7 @@ def main(argv=None):
         n *= 2
     atlas_opts = a.atlas_opts = dict(sizes=tuple(sizes), fmt=a.atlas_format, specular=a.atlas_specular,
                                          bump=a.atlas_bump, force_uv2=a.force_uv2,
-                                         force_mixed_effects=a.force_mixed_effects)
+                                         force_mixed_effects=a.force_mixed_effects, screen_width=a.screen_width)
     game = a.game.resolve()
     markers = sorted((game / 'addon').glob('*' + MARKER_SUFFIX))
     replace_slot = None
@@ -788,12 +838,17 @@ def main(argv=None):
     plans = []
     for arg in a.bodies:
         name, sep, t = arg.partition('=')
+        t, sep_n, n = t.replace(',', '@').partition('@')
         try:
-            threshold = int(t) if sep else a.threshold
+            threshold = int(t) if sep and t else a.threshold
+            source_record = int(n) if sep_n else a.source_record
         except ValueError:
-            raise SystemExit(f'{arg}: NAME=T needs an integer threshold') from None
+            raise SystemExit(f'{arg}: NAME=T[@N] needs an integer threshold and source record') from None
+        if source_record is not None and source_record < 0:
+            raise SystemExit(f'{arg}: the source record must be >= 0')
         plans.append(plan_body(assets, name, threshold, a.placement, a.force_threshold, a.collapse, a.force_mat3,
-                               a.glow_luma, a.glow_share, a.area_percent, not a.no_synth_material, atlas_opts))
+                               a.glow_luma, a.glow_share, a.area_percent, not a.no_synth_material, atlas_opts,
+                               source_record))
     members = [p['member'] for p in plans]
     if len({m.lower() for m in members}) != len(members):
         raise SystemExit('the same body was named twice')
@@ -886,7 +941,8 @@ def write_overlay(a, game, plans, slot, before, written, replace_slot):
                        if a.collapse == 'atlas' else {}), bodies=[
         dict(name=p['name'], source=p['source'], member=p['member'], placement=p['placement'], collapse=p['collapse'],
              glow=sorted(p['glow']), area_kept=sorted(p['area_kept']), new_lod=p['new_index'], pad_lod=p['pad_index'],
-             source_materials=p['source_materials'],
+             source_materials=p['source_materials'], source_record=p['source_record'],
+             pad_source=p['pad_source'],
              synth=[dict(index=s['index'], dominant=s['dominant'], absorbed=s['absorbed'],
                          params=[dict(name=n, dominant=d, mean=round(m, 1), written=w) for n, d, m, w in s['params']],
                          **({'atlas': True} if s.get('atlas') else {}))

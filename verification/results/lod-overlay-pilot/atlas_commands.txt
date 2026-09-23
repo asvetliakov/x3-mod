@@ -19,3 +19,18 @@ python3 verification/results/lod-overlay-pilot/null_slots.py > verification/resu
 python3 verification/results/lod-overlay-pilot/bump_maps.py ships/argon/argon_TL ships/argon/argon_M2 ships/argon/argon_M1 Stations/others/military_outpost_middleb > verification/results/lod-overlay-pilot/bump_maps_out.txt
 # Record order (review F1): shipped first-use convention; collapse records old vs new rule; atlas C records vs the previous build (kept in the session scratchpad)
 python3 verification/results/lod-overlay-pilot/record_order.py ships/argon/argon_TL ships/argon/argon_M2 ships/argon/argon_M1 Stations/others/military_outpost_middleb --new <worktree>/build-overlay --old <previous build root> > verification/results/lod-overlay-pilot/record_order_out.txt
+# Source record 0 + tile-aware mips (2026-09-23): C from record 0 (per body NAME=T@N), specular atlas, 8-texel gutter
+rm -rf <worktree>/build-overlay
+python3 tools/analysis/lod_overlay.py --replace --collapse atlas --atlas-specular --out <worktree>/build-overlay ships/argon/argon_TL=80@0 ships/argon/argon_M2=80@0 ships/argon/argon_M1=80@0 Stations/others/military_outpost_middleb=150@0 > verification/results/lod-overlay-pilot/build_atlas_lod0_out.txt
+# (pad = original coarsest record; the outpost's atlas group is split into 2 groups <= 65,535 points)
+python3 verification/results/lod-overlay-pilot/outpost_groups.py > verification/results/lod-overlay-pilot/outpost_groups_out.txt
+python3 verification/results/lod-overlay-pilot/pilot_check.py verification/results/run255-census/node_census_out.txt <worktree>/build-overlay > verification/results/lod-overlay-pilot/pilot_check_atlas_lod0_out.txt
+python3 verification/results/lod-overlay-pilot/dat_members.py <game>/addon/05.cat <worktree>/build-overlay/addon/05.cat > verification/results/lod-overlay-pilot/dat_members_atlas_lod0_out.txt
+# Mip bleed before/after: before = installed overlay (coarsest source) + build_box_mips.py (old chain, source 0); after = new code, coarsest source (scratch) + the pilot above
+python3 verification/results/lod-overlay-pilot/build_box_mips.py --replace --collapse atlas --atlas-specular --source-record 0 --out <scratch>/build-box-src0 ships/argon/argon_TL=80 ships/argon/argon_M2=80 ships/argon/argon_M1=80
+python3 tools/analysis/lod_overlay.py --replace --collapse atlas --atlas-specular --out <scratch>/build-last ships/argon/argon_TL=80 ships/argon/argon_M2=80 ships/argon/argon_M1=80 Stations/others/military_outpost_middleb=150
+python3 -W ignore verification/results/lod-overlay-pilot/atlas_mip_bleed.py <game> <scratch>/build-box-src0 > verification/results/lod-overlay-pilot/atlas_mip_bleed_before_out.txt
+python3 -W ignore verification/results/lod-overlay-pilot/atlas_mip_bleed.py <scratch>/build-last <worktree>/build-overlay > verification/results/lod-overlay-pilot/atlas_mip_bleed_after_out.txt
+python3 verification/results/lod-overlay-pilot/atlas_mip_bleed_compare.py verification/results/lod-overlay-pilot/atlas_mip_bleed_before_out.txt verification/results/lod-overlay-pilot/atlas_mip_bleed_after_out.txt > verification/results/lod-overlay-pilot/atlas_mip_bleed_compare_out.txt
+# D3DXCleanMesh headroom (split limit 60,000): per-group bowtie/backface estimate of C (and the shipped source records)
+python3 verification/results/lod-overlay-pilot/fan_estimate.py <worktree>/build-overlay --source > verification/results/lod-overlay-pilot/fan_estimate_out.txt

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Texture-atlas collapse of a merged-LOD coarse record (lod_overlay.py --collapse atlas).
 
-The coarse record C (a copy of the body's coarsest record) is drawn with ONE opaque
+The coarse record C (a copy of the body's coarsest record, or of the lod_overlay.py
+--source-record) is drawn with ONE opaque
 material per body whose diffuse and light-map textures are atlases baked from the
 materials it replaces; alpha-tested/blended materials keep one merged group per part
 as in --collapse two. Layout (docs/architecture/merged-lod-feasibility.md, "Overlay
@@ -15,11 +16,12 @@ tooling"; census: tools/analysis/atlas_census.py):
   different tiles, or an alpha face) is duplicated; the first use keeps the index.
 - Tile content = source texels over the span (max of the slot textures' sizes per
   axis; NULL / NONE_* do not count) times one uniform scale <= 1, rounded up to 4
-  texels, plus a 4-texel gutter per side; shelf packing (tallest first) into N x N
+  texels, plus a GUTTER (8) texel gutter per side; shelf packing (tallest first) into N x N
   finds the largest scale that fits. N is the first of --atlas-size, 2x, ... up to
   --atlas-max-size that fits at full source density (scale 1) or whose minimum
   atlas-texels-per-screen-pixel over the tiles is
-  >= MIN_RATIO (2) at the switch size px = T_pad (inferred need per tile:
+  >= MIN_RATIO (2) at the switch size px = T_pad * screen_width / 1280 (T is in the 1280-wide
+  reference: real px = s * m00 * width / 1280; lod_overlay.py --screen-width) (inferred need per tile:
   sqrt(face area / UV area) * px / radius, radius = max |position|; as atlas_census).
 - UVs: u' = (cx + (u - shift_u - lo_u) * cw / span_u) / N (v likewise; texel edges,
   16.16 rounded). The mapping is a positive per-axis affine map, so the tangent and
@@ -33,17 +35,37 @@ tooling"; census: tools/analysis/atlas_census.py):
   a clamped edge), NULL light/specular maps are constant black (the engine's 32x32
   placeholder is black: hull-self-illumination.md; alpha 0 as NONE_BLACK, since the
   shipped light maps carry an alpha that follows their RGB), NONE_* maps are resampled
-  like any texture. Unused atlas area is black (diffuse alpha 255, light/specular 0; bump flat). Box
-  mip chain to 1x1.
+  like any texture. Unused atlas area is black (diffuse alpha 255, light/specular 0; bump flat).
+- Mip chain (to 1x1), tile-aware: every level is baked the same way at its own density,
+  each tile's footprint (content + gutter, rounded out to whole level texels) area-resampled
+  from the tile's own repeating source, the texels overlapping a tile's content written
+  last, the unused area kept at the background. A box filter of the whole atlas would mix
+  neighbouring tiles (and the unused area) into tile borders once the gutter is below one
+  texel (from mip 3 at a 4-texel gutter); here the gutter stays the tile's own repeat at every
+  level and bright tiles cannot bleed into neighbours. With the 8-texel gutter a whole
+  gutter texel survives to mip 3; contents of adjacent tiles share texels only from the
+  level where the 16-texel gap between them falls below one texel.
 - Bump: the shipped bump maps are swizzled tangent-space normal maps (DXT5, x in alpha,
   y in R = G = B, z implied; bump_maps_out.txt). They are decoded to unit vectors,
-  resampled as vectors and renormalised, and every mip level is the box filter of the
-  previous one renormalised; a NULL bump is the flat normal (0, 0, 1). Re-encoded in
+  resampled as vectors and renormalised at every mip level (tile-aware, above); a NULL
+  bump is the flat normal (0, 0, 1). Re-encoded in
   the same swizzle, so the bump atlas is DXT5 like its sources.
 - Output format (--atlas-format): dxt (default) = DXT1, or DXT5 when a slot's baked
   alpha is not uniformly 255; per 4x4 block, endpoints from the min/max projection on
   the principal RGB axis, RGB565, 4-colour palette, nearest index (DXT5 alpha: min/max,
   8-value palette, nearest index). a8r8g8b8 = uncompressed (debugging).
+- Group size: an output group referencing more than MAX_GROUP_POINTS (60,000) distinct points
+  is split into groups of the same material, each within the limit: whole source groups are
+  packed first-fit in decreasing size (a source group above the limit is cut in face order);
+  a point used by an earlier split group is duplicated with its tangent record, so split
+  groups share no point (the engine builds one mesh per group; the shipped outpost record 0
+  has 125,867 points over 34 groups). The limit leaves room below 65,535 for the bowtie
+  vertices D3DXCleanMesh adds at load (0x004bc680).
+- Hidden parts: a part whose flags carry HIDDEN_PART (0x8000; stored at part +0x60, and the
+  collection helper 0x0047d9c0 skips such a part, emission-draw-order.md) is not atlased:
+  its groups are copied with their own materials and UVs (points shared with atlased faces
+  are duplicated), and its materials take no part in the tiles, the effect check or the
+  g_Mat* mean. Record 0 of argon_TL / M2 / M1 has one (a 24-point box).
 - Refusals: a record with a second UV set (point flag 0x04; only the first pair is
   rewritten) unless force_uv2, and opaque materials of more than one effect file unless
   force_mixed_effects.
@@ -74,9 +96,13 @@ import body_materials
 
 EPS = 0.01                 # UV slack for the integer shift (atlas_census.EPS)
 BLOCK = 4
-GUTTER = 4
+GUTTER = 8                 # texels per side; a whole gutter texel survives to mip 3
 UV_ONE = 65536.0
 MIN_RATIO = 2.0
+MAX_GROUP_POINTS = 60000   # distinct points per output group: 16-bit indices per subgroup, with headroom
+                           # for D3DXCleanMesh (0x004bc680, flags 3) splitting bowtie vertices before
+                           # the vertex count is taken (fan_estimate.py)
+HIDDEN_PART = 0x8000       # part flag: skipped by the collection helper 0x0047d9c0 (never atlased)
 SLOT_NAMES = {'diffuse': b't_diffusetexture', 'light': b't_lightmaptexture', 'bump': b't_bumptexture',
               'specular': b't_speculartexture'}
 NULL_TEXEL = (0.0, 0.0, 0.0, 0.0)   # NULL light/specular map: black placeholder; alpha 0 like NONE_BLACK
@@ -452,6 +478,8 @@ def plan_layout(record, mats, alpha, textures, px, sizes=(1024, 2048), gutter=GU
     radius = max((math.sqrt(p[1] ** 2 + p[2] ** 2 + p[3] ** 2) for p in pts if p[0] & 1), default=0.0)
     tiles, tile_of, face_keys = [], {}, {}
     for pi, part in enumerate(record['parts']):
+        if part['flags'] & HIDDEN_PART:
+            continue
         for gi, g in enumerate(part['groups']):
             mi = g['material']
             if mi in alpha:
@@ -557,8 +585,59 @@ def _regen_extra(src_groups, out_faces, origin, ref_group):
     return out, missing
 
 
-def rewrite_record(record, layout, atlas_index, alpha, alpha_remap=None):
-    """C with rewritten UVs, duplicated points and regrouped parts; returns (lod, info)."""
+def _greedy(faces, limit):
+    chunks, cur, used = [], [], set()
+    for f in faces:
+        new = set(f[:3]) - used
+        if cur and len(used) + len(new) > limit:
+            chunks.append(cur)
+            cur, used = [], set()
+            new = set(f[:3])
+        cur.append(f)
+        used |= new
+    return chunks + [cur] if cur else chunks
+
+
+def split_faces(faces, limit, blocks=None):
+    """Split a face list into chunks referencing at most `limit` distinct points each. With
+    `blocks` (a block id per face, e.g. the source group), whole blocks are packed first-fit
+    in decreasing size (a block larger than the limit is first split greedily in face order),
+    so a source group stays in one chunk and few points are shared between chunks; face order
+    is kept inside a chunk. Without blocks: greedy in face order, a new chunk opening when the
+    next face would push past the limit."""
+    if len({i for f in faces for i in f[:3]}) <= limit:
+        return [list(faces)] if faces else []
+    if blocks is None:
+        return _greedy(faces, limit)
+    by = {}
+    for k, (f, b) in enumerate(zip(faces, blocks)):
+        by.setdefault(b, []).append((k, f))
+    pieces = []
+    for items in by.values():
+        if len({i for _, f in items for i in f[:3]}) <= limit:
+            pieces.append(items)
+        else:
+            pos = {id(f): k for k, f in items}
+            pieces += [[(pos[id(f)], f) for f in c] for c in _greedy([f for _, f in items], limit)]
+    pieces.sort(key=lambda it: (-len({i for _, f in it for i in f[:3]}), it[0][0]))
+    bins = []                                     # [items, point set]
+    for it in pieces:
+        pts = {i for _, f in it for i in f[:3]}
+        for bn in bins:
+            if len(bn[1] | pts) <= limit:
+                bn[0].extend(it)
+                bn[1] |= pts
+                break
+        else:
+            bins.append([list(it), set(pts)])
+    return [[f for _, f in sorted(bn[0], key=lambda x: x[0])] for bn in sorted(bins, key=lambda bn: min(bn[0])[0])]
+
+
+def rewrite_record(record, layout, atlas_index, alpha, alpha_remap=None, max_group_points=None):
+    """C with rewritten UVs, duplicated points and regrouped parts; returns (lod, info). An output
+    group referencing more than max_group_points distinct points is split (split_faces: whole
+    source groups packed first-fit) into groups of the same material; a point used by an earlier split group is
+    duplicated (with its tangent record) so that the split groups share no point."""
     pts = record['points']
     new_pts, origin, owner, index, copies_of = list(pts), list(range(len(pts))), {}, {}, {}
 
@@ -572,35 +651,35 @@ def rewrite_record(record, layout, atlas_index, alpha, alpha_remap=None):
                 new_pts.append(pts[i]); origin.append(i); copies_of[i].append(index[k])
         return index[k]
 
-    parts, faces_map, missing = [], [], 0
+    parts, faces_map, pending = [], [], []
     n = layout['size'] if layout else 0
     for pi, part in enumerate(record['parts']):
         new = {'flags': part['flags'], 'groups': []}
         groups = part['groups']
         pre = part['flags'] & bob1.PART_PRECOMPUTED
-        op = [(gi, g) for gi, g in enumerate(groups) if g['material'] not in alpha]
-        al = [(gi, g) for gi, g in enumerate(groups) if g['material'] in alpha]
-        for cls, material in ((op, atlas_index), (al, None)):
+        if part['flags'] & HIDDEN_PART:                   # copied group by group, original UVs
+            classes = [([(gi, g)], g['material'], False) for gi, g in enumerate(groups)]
+        else:
+            classes = [([(gi, g) for gi, g in enumerate(groups) if g['material'] not in alpha], atlas_index, True),
+                       ([(gi, g) for gi, g in enumerate(groups) if g['material'] in alpha], None, False)]
+        for cls, material, atlased in classes:
             if not cls:
                 continue
             if material is None:
                 d = dominant([g for _, g in cls])
                 material = (alpha_remap or {}).get(d, d)
-            faces, ref_group = [], {}
+            faces, ref_group, blocks = [], {}, []
             for gi, g in cls:
                 for fi, f in enumerate(g['faces']):
-                    key = layout['face_keys'][pi, gi, fi] if cls is op else None
+                    key = layout['face_keys'][pi, gi, fi] if atlased else None
                     out = (idx(f[0], key), idx(f[1], key), idx(f[2], key), f[3])
                     faces.append(out)
+                    blocks.append(gi)
                     for j in out[:3]:
                         ref_group.setdefault(j, gi)
                     if key is not None:
                         faces_map.append((pi, f, out, g['material'], key[0]))
-            grp = {'material': material, 'faces': faces}
-            if pre:
-                grp['extra'], miss = _regen_extra(cls, faces, origin, ref_group)
-                missing += miss
-            new['groups'].append(grp)
+            pending.append((new, pi, cls, material, faces, ref_group, pre, blocks))
         if 'bounds' in part:
             new['bounds'] = list(part['bounds'])
         parts.append(new)
@@ -610,6 +689,29 @@ def rewrite_record(record, layout, atlas_index, alpha, alpha_remap=None):
             u, v = point_uv(pts[i])
             au, av = atlas_uv(t, n, u, v, key[1], key[2])
             new_pts[j] = with_uv(pts[i], int(round(au * UV_ONE)), int(round(av * UV_ONE)))
+    missing, split = 0, []
+    for new, pi, cls, material, faces, ref_group, pre, blocks in pending:
+        chunks = split_faces(faces, max_group_points or MAX_GROUP_POINTS, blocks)
+        if len(chunks) > 1:
+            split.append(dict(part=pi, material=material, faces=len(faces),
+                              points=[len({j for f in c for j in f[:3]}) for c in chunks]))
+        seen = set()
+        for k, chunk in enumerate(chunks):
+            if k:                                         # points of earlier chunks: own copies
+                dup = {}
+                for j in dict.fromkeys(j for f in chunk for j in f[:3]):
+                    if j in seen:
+                        dup[j] = len(new_pts)
+                        new_pts.append(new_pts[j]); origin.append(origin[j])
+                        copies_of[origin[j]].append(dup[j])
+                        ref_group[dup[j]] = ref_group[j]
+                chunk = [tuple(dup.get(j, j) for j in f[:3]) + (f[3],) for f in chunk]
+            seen |= {j for f in chunk for j in f[:3]}
+            grp = {'material': material, 'faces': chunk}
+            if pre:
+                grp['extra'], miss = _regen_extra(cls, chunk, origin, ref_group)
+                missing += miss
+            new['groups'].append(grp)
     lod = {'value': None, 'flags': record['flags']}
     if 'bones' in record:
         lod['bones'] = list(record['bones'])
@@ -618,7 +720,7 @@ def rewrite_record(record, layout, atlas_index, alpha, alpha_remap=None):
         lod['weights'] = [record['weights'][o] for o in origin]
     lod['parts'] = parts
     return lod, dict(origin=origin, duplicated=len(new_pts) - len(pts), faces=faces_map,
-                     missing_records=missing, copies_of=copies_of)
+                     missing_records=missing, copies_of=copies_of, split=split)
 
 
 def atlas_material(mats, dom, names, areas, synth=True):
@@ -658,13 +760,15 @@ def texture_names(body, slots):
 
 def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular=False, synth=True,
              gutter=GUTTER, min_ratio=MIN_RATIO, textures=None, bump=True, force_uv2=False,
-             force_mixed_effects=False):
+             force_mixed_effects=False, max_group_points=None):
     """Atlas collapse of `record`: appends the atlas material (then any synthesized alpha material)
     to `mats` in place. Returns dict(record, layout, atlas_index, names, members, synth, ...)."""
     import lod_overlay
     textures = textures or Textures(assets)
     areas, opaque = {}, []
     for part in record['parts']:
+        if part['flags'] & HIDDEN_PART:
+            continue
         for g in part['groups']:
             if g['material'] not in alpha:
                 opaque.append(g)
@@ -694,10 +798,10 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
     if synth:
         alpha_only = {'points': record['points'], 'parts': [
             {'flags': p['flags'], 'groups': [g for g in p['groups'] if g['material'] in alpha]}
-            for p in record['parts']]}
+            for p in record['parts'] if not p['flags'] & HIDDEN_PART]}
         remap, more = lod_overlay.synth_materials(mats, alpha_only, alpha, 'two', frozenset())
         report += more
-    lod, info = rewrite_record(record, layout, atlas_index, alpha, remap)
+    lod, info = rewrite_record(record, layout, atlas_index, alpha, remap, max_group_points)
     effects = sorted({(mats[m].get('effect', b'').decode('latin1'), mats[m].get('technique')) for m in areas})
     return dict(record=lod, layout=layout, atlas_index=atlas_index, dominant=dom, names=names, members=members,
                 slots=slots, synth=report, info=info, effects=effects, textures=textures)
@@ -705,50 +809,101 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
 
 # --- baking -------------------------------------------------------------------------------
 
-def axis_weights(n_out, gutter, lo, span, src_n):
-    """(n_out + 2 gutter, src_n) area-resampling matrix: target texel k covers
-    [lo + (k - gutter) * span / n_out, + span / n_out) periods of a repeating source."""
-    m = np.zeros((n_out + 2 * gutter, src_n), np.float32)
-    step = span / n_out * src_n
-    for k in range(n_out + 2 * gutter):
-        a = (lo * src_n) + (k - gutter) * step
+def level_weights(k0, k1, scale, origin, content, lo, span, src_n):
+    """(k1 - k0, src_n) area-resampling matrix for one axis of a tile at one mip level: level
+    texel k covers level-0 atlas texels [k * scale, (k + 1) * scale), which map to the source
+    periods lo + (x - origin) * span / content of a repeating source (origin / content: the
+    tile's content origin and size in level-0 texels)."""
+    m = np.zeros((k1 - k0, src_n), np.float32)
+    step = scale * span / content * src_n
+    for r, k in enumerate(range(k0, k1)):
+        a = (lo + (k * scale - origin) * span / content) * src_n
         b = a + step
         j = math.floor(a)
         while j < b:
             cov = min(b, j + 1) - max(a, j)
             if cov > 0:
-                m[k, j % src_n] += cov
+                m[r, j % src_n] += cov
             j += 1
-        m[k] /= step
+        m[r] /= step
     return m
 
 
-def bake(layout, textures):
-    """{slot: float32 (n, n, 4) atlas image; bump: (n, n, 3) unit vectors}."""
+def axis_weights(n_out, gutter, lo, span, src_n):
+    """(n_out + 2 gutter, src_n) area-resampling matrix: target texel k covers
+    [lo + (k - gutter) * span / n_out, + span / n_out) periods of a repeating source."""
+    return level_weights(-gutter, n_out + gutter, 1, 0, n_out, lo, span, src_n)
+
+
+def tile_boxes(t, gutter, level):
+    """Level-`level` texel boxes (x0, x1, y0, y1) of a tile: its footprint (content and gutter,
+    rounded outwards) and the texels that overlap its content."""
+    s = 1 << level
+    (cx, cy), (cw, ch) = t['origin'], t['content']
+    return ((cx - gutter) // s, -(-(cx + cw + gutter) // s), (cy - gutter) // s, -(-(cy + ch + gutter) // s)), \
+           (cx // s, -(-(cx + cw) // s), cy // s, -(-(cy + ch) // s))
+
+
+def bake_level(layout, sources, slot, level=0):
+    """One mip level of a slot's atlas, tile-aware: every tile's footprint is area-resampled
+    from its own repeating source at this level's density (so the gutter is the tile's own
+    repeat continuation at every level, never a neighbour's texels), the texels overlapping a
+    tile's content are written last (content beats a neighbour's gutter), and the unused area
+    keeps the background (diffuse black opaque, light/specular black alpha 0, bump flat).
+    Float32 (n >> level, n >> level, 4) RGBA; bump: (.., 3) unit vectors. `sources`: per
+    tile index the float32 source (bump: vectors) or None (NULL)."""
     n, g = layout['size'], layout['gutter']
+    nl, s = max(1, n >> level), 1 << level
+    bump = slot == 'bump'
+    img = np.zeros((nl, nl, 3 if bump else 4), np.float32)
+    img[:, :, -1] = 1 if bump else 255 if slot == 'diffuse' else 0     # flat normal / opaque / black
+    null = np.array((0, 0, 1) if bump else NULL_TEXEL, np.float32)
+    inner = []
+    for t, src in zip(layout['tiles'], sources):
+        (x0, x1, y0, y1), over = tile_boxes(t, g, level)
+        (cx, cy), (cw, ch) = t['origin'], t['content']
+        if src is None:
+            block = np.broadcast_to(null, (y1 - y0, x1 - x0, len(null)))
+        else:
+            H, W = src.shape[:2]
+            my = level_weights(y0, y1, s, cy, ch, t['lo'][1], t['span'][1], H)
+            mx = level_weights(x0, x1, s, cx, cw, t['lo'][0], t['span'][0], W)
+            tmp = np.tensordot(my, src, axes=(1, 0))                                   # (ty, W, c)
+            block = np.tensordot(tmp, mx, axes=(1, 1)).transpose(0, 2, 1)             # (ty, tx, c)
+            if bump:
+                block = normalize(block)
+        img[y0:y1, x0:x1] = block
+        inner.append((over, (x0, y0), block))
+    for (ox0, ox1, oy0, oy1), (x0, y0), block in inner:
+        img[oy0:oy1, ox0:ox1] = block[oy0 - y0:oy1 - y0, ox0 - x0:ox1 - x0]
+    return img
+
+
+def tile_sources(layout, textures, slot):
+    out = []
+    for t in layout['tiles']:
+        src = textures.get(t['names'][slot])
+        out.append(None if src is None else (to_normals(src) if slot == 'bump' else src).astype(np.float32))
+    return out
+
+
+def bake(layout, textures, levels=None):
+    """{slot: [float32 level images, level 0 first]} (see bake_level); `levels` defaults to
+    the full chain down to 1x1."""
+    count = layout['size'].bit_length() if levels is None else levels
     out = {}
     for slot in layout['slots']:
-        bump = slot == 'bump'
-        img = np.zeros((n, n, 3 if bump else 4), np.float32)
-        img[:, :, -1] = 1 if bump else 255 if slot == 'diffuse' else 0     # flat normal / opaque / black
-        null = np.array((0, 0, 1) if bump else NULL_TEXEL, np.float32)
-        for t in layout['tiles']:
-            (cx, cy), (cw, ch) = t['origin'], t['content']
-            src = textures.get(t['names'][slot])
-            if src is None:
-                block = np.broadcast_to(null, (ch + 2 * g, cw + 2 * g, len(null)))
-            else:
-                src = to_normals(src) if bump else src
-                H, W = src.shape[:2]
-                my = axis_weights(ch, g, t['lo'][1], t['span'][1], H)
-                mx = axis_weights(cw, g, t['lo'][0], t['span'][0], W)
-                tmp = np.tensordot(my, src.astype(np.float32), axes=(1, 0))          # (ty, W, c)
-                block = np.tensordot(tmp, mx, axes=(1, 1)).transpose(0, 2, 1)       # (ty, tx, c)
-                if bump:
-                    block = normalize(block)
-            img[cy - g:cy + ch + g, cx - g:cx + cw + g] = block
-        out[slot] = img
+        sources = tile_sources(layout, textures, slot)
+        out[slot] = [bake_level(layout, sources, slot, lv) for lv in range(count)]
     return out
+
+
+def to_levels(slot, images):
+    """Float level images -> rounded uint8 RGBA levels (bump: unit vectors -> swizzled)."""
+    if slot == 'bump':
+        return [np.clip(np.rint(from_normals(normalize(v.astype(np.float64)))), 0, 255).astype(np.uint8)
+                for v in images]
+    return [np.clip(np.rint(v.astype(np.float64)), 0, 255).astype(np.uint8) for v in images]
 
 
 def used_mask(layout):
@@ -766,8 +921,8 @@ def encode(images, layout, fmt='dxt'):
         raise AtlasError(f'unknown atlas format {fmt!r}')
     mask = used_mask(layout)
     out = {}
-    for slot, img in images.items():
-        levels = normal_mip_chain(img) if slot == 'bump' else mip_chain(img)
+    for slot, images_ in images.items():
+        levels = to_levels(slot, images_)
         if fmt == 'a8r8g8b8':
             f = 'A8R8G8B8'
         else:
@@ -932,10 +1087,10 @@ def preview(dds, layout, path, limit=512):
 # --- lod_overlay entry --------------------------------------------------------------------
 
 def build(assets, body, mats, record, alpha, px, sizes=(1024, 2048), fmt='dxt', specular=False, synth=True,
-          bump=True, force_uv2=False, force_mixed_effects=False):
+          bump=True, force_uv2=False, force_mixed_effects=False, max_group_points=None):
     """collapse + bake + encode + check; the result carries the encoded DDS per slot and the checks."""
     res = collapse(assets, body, mats, record, alpha, px, sizes, specular, synth, bump=bump, force_uv2=force_uv2,
-                   force_mixed_effects=force_mixed_effects)
+                   force_mixed_effects=force_mixed_effects, max_group_points=max_group_points)
     images = bake(res['layout'], res['textures'])
     res['encoded'] = encode(images, res['layout'], fmt)
     res['check'] = check(record, res['record'], res, {s: e['decoded'] for s, e in res['encoded'].items()}, mats)
@@ -954,6 +1109,7 @@ def summary(res):
         gutter=L['gutter'], px=L['px'], min_texels_per_px=_num(L['min_ratio']), ratio_ok=bool(L['ratio_ok']),
         tried=[dict(size=n, scale=_num(s), min_texels_per_px=_num(m)) for n, s, m in L['tried']],
         duplicated_points=res['info']['duplicated'], points=len(res['record']['points']),
+        split_groups=res['info']['split'],
         missing_tangent_records=res['info']['missing_records'], effects=[list(e) for e in res['effects']],
         tiles=[dict(mats=t['mats'], names={k: (v.decode('latin1') if v else None) for k, v in t['names'].items()},
                     lo=[_num(x) for x in t['lo']], span=[_num(x) for x in t['span']], base=list(t['base']),
@@ -971,11 +1127,14 @@ def summary(res):
 def format_summary(s):
     """Report lines for lod_overlay.describe."""
     tried = ', '.join(f'{t["size"]}: {t["min_texels_per_px"]:.3f}' for t in s['tried'])
-    lines = [f'atlas {s["size"]}x{s["size"]} (min atlas texels per screen pixel at T={s["px"]}: {tried}; '
+    lines = [f'atlas {s["size"]}x{s["size"]} (min atlas texels per screen pixel at px={s["px"]:g}: {tried}; '
              f'>= 2: {"yes" if s["ratio_ok"] else "NO"}) scale {s["scale"]:.4f} tiles {len(s["tiles"])} gutter '
              f'{s["gutter"]} duplicated points {s["duplicated_points"]} -> {s["points"]} points, tangent records'
              f' missing {s["missing_tangent_records"]}; material mat{s["material"]} = copy of mat{s["dominant"]};'
              f' effects {s["effects"]}']
+    for sp in s.get('split_groups', ()):
+        lines.append(f'atlas split: part {sp["part"]} mat{sp["material"]} {sp["faces"]} faces -> {len(sp["points"])}'
+                     f' groups of {sp["points"]} points (<= MAX_GROUP_POINTS each; shared points duplicated)')
     for t in s['textures']:
         err = ' '.join(f'{c}={m:.2f}/{p:.0f}' for c, (m, p) in zip('RGBA', t['compression_error_rgba']))
         lines.append(f'atlas {t["slot"]}: {t["member"]} ({t["name"]}) {t["format"]} {t["dds_bytes"]} bytes'

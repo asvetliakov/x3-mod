@@ -518,8 +518,10 @@ faces keep one group per part, as with `two`.
   Opaque materials from more than one `.fx` file are refused unless
   `--force-mixed-effects`. The pilot bodies have neither (all points `0x1b`; one
   effect per body).
-- **Size.** Tile content is source texels over the span times one uniform
-  scale ≤ 1, rounded to 4 texels, with a 4-texel gutter. Shelf packing picks the
+- **Size.** (`T` is in the 1280-wide reference; `--screen-width`, below.) Tile content
+  is source texels over the span times one uniform
+  scale ≤ 1, rounded to 4 texels, with an 8-texel gutter (4 before 2026-09-23,
+  see "Tile-aware mips" below). Shelf packing picks the
   largest scale that fits. The atlas side is the first of `--atlas-size` (1024),
   2×, … up to `--atlas-max-size` (2048) that gives at least 2 atlas texels per
   screen pixel on every tile at the switch size `T`. `T` is the `NAME=T` value,
@@ -527,7 +529,8 @@ faces keep one group per part, as with `two`.
 - **Baking.** The tile, gutter included, is area-resampled from the repeating
   source (DXT1/3/5 or uncompressed), so the gutter holds the true neighbouring
   texels. A NULL light map becomes constant black with alpha 0. `NONE_*` maps are
-  resampled. There is a box mip chain to 1×1, and each level is encoded as DXT1,
+  resampled. There is a tile-aware mip chain to 1×1 (below; a box filter of the
+  whole atlas before 2026-09-23), and each level is encoded as DXT1,
   or DXT5 when the slot's alpha is not uniformly 255 (`--atlas-format a8r8g8b8`
   for debugging). The shipped light maps carry an alpha that follows their RGB
   (correlation with RGB 0.2–0.99, at least 0.81 on all but two of the 24 light
@@ -539,8 +542,8 @@ faces keep one group per part, as with `two`.
   on ≥ 99.94 % of texels, and the mean is about (128, 128, 128, 108–129)
   (`bump_maps.py`, `bump_maps_out.txt`; measured). Which channels the shaders
   read is inferred from this layout, not traced. The bump atlas decodes them to unit vectors
-  (z = √(1 − x² − y²)), resamples vectors, renormalises, and renormalises again
-  after the box filter of every mip level. A NULL bump becomes the flat normal.
+  (z = √(1 − x² − y²)), resamples vectors and renormalises, at every mip level.
+  A NULL bump becomes the flat normal.
   It is re-encoded in the same swizzle, so it is DXT5. The UV map scales u and v
   by positive factors, so the tangent-space vectors stay valid in the unchanged
   tangent frames.
@@ -602,11 +605,173 @@ What is dropped:
 
 - Specular maps (slot NULL, precedented on `argon.fx`, not on
   `XT_standard_lighting.fx`: 0 of 8839).
-- Known limit, coarse-mip bleed: the 4-texel gutter halves per mip level, so
-  from level 3 on neighbouring tiles and the unused area mix into tile borders
-  (the unused area is black for diffuse and light, flat for bump). Where that
-  shows depends on the screen size at which those mips are sampled.
+- Coarse-mip bleed (fixed 2026-09-23, "Tile-aware mips" below): with the 4-texel
+  gutter and a box-filtered chain, neighbouring tiles and the unused area mixed
+  into tile borders from mip 3 on.
+- Known limits of the tile-aware chain and its check:
+  - The DXT1/DXT5 choice per slot is made from the level-0 alpha only.
+  - Where two tiles' footprints share a texel at a coarse level, the later tile's gutter
+    wins. From about mip 5, where the 16-texel gap between contents falls below one texel,
+    this can also affect the contents themselves.
+  - `atlas_mip_bleed.py` compares the atlas against its own definition of the correct
+    level (the tiles' maps resampled per level texel), which is the definition the new
+    chain implements. It skips texels covered by two footprints.
 - The alpha materials' own textures beyond their dominant, as in `two`.
+
+**Source record, `--source-record N` or `NAME=T@N` (2026-09-23).** `C` is built from
+record `N`'s geometry (points, part flags and part ints, groups, 7-int records) instead of
+the coarsest record, which stays the default. `--source-record` sets it for every body, and
+`NAME=T@N` (or `NAME=T,N`) sets it for one. Every collapse, including the glow and area
+selections and the synthesized materials, reads that record. `N = 0` gives `C` the fine
+silhouette. With `--collapse atlas`, the switch at `T_pad` then changes only the texture
+resampling (atlas instead of the source maps) and the material constants. There is no
+geometric transition.
+
+The trade: `C` has one atlas draw per part (more if the group is split, below), plus the
+alpha group when record 0 has alpha faces. It keeps the full silhouette, and its vertex
+data is record 0's plus the duplicated points: 2.2–2.9 MB per record in the file for the
+ships and 9.9 MB for the outpost, against 0.10–1.3 MB from the coarsest record.
+
+**The pad.** When `N` is not the coarsest record, the pad is a byte copy of the original
+coarsest record (its own points, faces, groups and materials, threshold `T_pad`), not a
+copy of `C`. At Very High the pad is never drawn. The collision tree is built at creation
+from the last record ([lod-child-hide.md](../reverse-engineering/lod-child-hide.md) §3),
+so the collision geometry stays vanilla's exactly (1 313 / 1 865 / 1 584 / 17 468
+points). Its material indices point into the original table, which is a prefix of the
+written one, and `plan_body` and `pilot_check` (`indices_in_table`) check every group
+index of every record against the written table. At Low..High the pad is what draws
+below `T_pad·f`. There the body shows the original coarsest record (23–30 draws), not `C`.
+This bottle runs at Very High. With `N` equal to the coarsest record, the pad is a copy of
+`C` as before.
+
+**Group size.** An output group referencing more than 60 000 distinct points
+(`lod_atlas.MAX_GROUP_POINTS`) is split. The engine clones a subgroup above 65 535
+vertices with a 32-bit index buffer (`0x004bcb60`,
+[mesh-buffer-rewrite.md](../reverse-engineering/mesh-buffer-rewrite.md)), a path not
+qualified here, and it indexes per group. The shipped outpost record 0 has 125 867 points
+over 34 groups of at most 35 210 (measured). The limit leaves headroom for
+D3DXCleanMesh: `0x004bc680` welds adjacency at ε ≈ 1e-6 and cleans with flags 3
+(back-facing and bowtie), and each extra fan around a vertex or back-facing twin adds a
+vertex before the mesh is cloned
+([loading-observations.md](../reverse-engineering/loading-observations.md)).
+
+`fan_estimate.py` (`fan_estimate_out.txt`) estimates those additions per group. It is my
+reconstruction of the reviewer's method, not a copy of their script, and D3DX's exact
+rules are not traced.
+
+| split | groups (points + estimated additions) |
+|---|---|
+| earlier 65 535 split | 63 993 + 147 and 65 524 + 79 = **65 603**, above 65 535 |
+| 60 000 split (current) | 9 530 + 35, 59 993 + 117 and 59 994 + 74 |
+| ships (unsplit) | + 45 / 46 / 45 |
+
+`lod_atlas.split_faces` packs whole source groups first-fit in decreasing size into groups
+of the same material, and cuts a source group above the limit in face order. A point used
+by an earlier split group is duplicated with its tangent record, so the split groups share
+no point. For the outpost the packing needs no duplicates. The other collapses refuse a
+group above the same 60 000. A greedy split in plain face order (at 65 535) gave one group
+more than the packing, because the face order interleaves source groups. Record 1 of the
+outpost would split to [6 548, 59 963] (`outpost_groups_out.txt`).
+
+Record 0 of all three ships has a second part with flags `0x30008001`, which the
+coarse records do not have. It is a 24-point, 12-face axis-aligned box (6 quads)
+behind the hull, for example at z 43 295–43 798 on argon_TL, and covers about 0.01 % of the record's face area. On argon_TL and
+M2 each quad has its own material (0–5: lattice and antenna alpha materials and
+`apartments_labs`). On M1 it is one group with material 32, a classic material
+without an effect or textures (measured, `bob1.materials`). Its `0x8000` bit is not the
+hide-at-final-index rule of [lod-selection.md](../reverse-engineering/lod-selection.md).
+That rule tests the node word `node+0x12c & 0x8000`. The part flags are stored at part
+`+0x60` ([body-format-bob1.md](../reverse-engineering/body-format-bob1.md) §3), and
+the collection helper `0x0047d9c0` skips a submesh with `[+0x60] & 0x8000`
+([emission-draw-order.md](../reverse-engineering/emission-draw-order.md)). So the part
+is never collected for drawing, whatever the LOD index (from those notes; not
+re-traced here). The atlas collapse therefore does not atlas such a part
+(`lod_atlas.HIDDEN_PART`). It copies the part's groups with their own materials and UVs
+and leaves its materials out of the tiles, the effect check and the `g_Mat*` mean.
+Without that, M1's material 32 could not be atlased.
+
+Pilot build (`--replace --collapse atlas --atlas-specular`, `ships/argon/argon_TL=80@0`,
+`argon_M2=80@0`, `argon_M1=80@0`, `military_outpost_middleb=150@0`, compact, tile-aware
+mips with an 8-texel gutter, not installed; measured, `build_atlas_lod0_out.txt`,
+`pilot_check_atlas_lod0_out.txt`). "Groups" counts `C`'s groups, with the ones the
+collection draws in brackets. The errors are defined as in the atlas table above; "spec"
+is the specular atlas against source mip 0 and prefiltered.
+
+| body | source faces / points | `C` points (dup.) | pad points | atlas (scale) | min texels/px at `T_pad` | tiles | groups (drawn) | `C` bytes | diffuse vs mip 0 / prefiltered, mean / p95 | light RGB / A mean | bump angle vs mip 0 / prefiltered, mean / p95 (°) | spec vs mip 0 / prefiltered, mean |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| argon_TL | 15 296 / 28 982 | 30 064 (1 082) | 1 313 | 1024² (0.115) | 6.21 | 27 | 8 (2) | 2 229 180 | 4.19 / 16.3, 2.17 / 6.4 | 1.52 / 1.91 | 5.14 / 26.2, 2.09 / 7.5 | 11.4 / 4.5 |
+| argon_M2 | 21 780 / 37 706 | 39 226 (1 520) | 1 865 | 1024² (0.117) | 7.27 | 28 | 8 (2) | 2 937 616 | 3.87 / 15.1, 2.04 / 6.0 | 1.19 / 1.51 | 5.02 / 25.9, 2.08 / 7.6 | 11.2 / 4.4 |
+| argon_M1 | 18 087 / 32 878 | 34 148 (1 270) | 1 584 | 1024² (0.122) | 7.01 | 28 | 3 (2) | 2 543 320 | 3.96 / 15.4, 2.09 / 6.1 | 1.36 / 1.68 | 5.00 / 25.7, 2.12 / 8.0 | 11.0 / 4.3 |
+| outpost | 73 749 / 125 867 | 131 787 (5 920) | 17 468 | 2048² (0.099) | 2.08 (1024²: 1.13) | 28 | 4 (4) | 9 878 052 | 4.29 / 16.8, 2.22 / 6.4 | 0.87 / 1.31 | 6.53 / 31.0, 2.57 / 9.0 | 12.0 / 4.5 |
+
+On the ships the drawn groups are the atlas group (15 156 / 21 610 / 17 937 faces) and one
+alpha group (128 / 158 / 138 faces), because record 0 has alpha-tested faces that the
+coarsest records lack. So `C` draws 2 per ship, where the coarsest-source atlas drew 1.
+The outpost draws 4 against 34 at record 0: three atlas groups (6 232, 35 811 and 30 282
+faces; 9 530 / 59 993 / 59 994 points) and the alpha group (1 424 faces, synthesized material
+52 over material 11).
+
+Record 0's material UV spans are larger (tile span areas up to 19.6 periods²), so the
+tiles are stored at 10–12 % of source density. The ≥ 2 texels/px rule at `T_pad` is met at
+1024² on the ships (6.2–7.3). The inferred reason is that record 0's faces carry more UV
+area per unit of surface, which lowers the per-tile need. The outpost needs 2048².
+
+`T` is in the 1280-wide reference: real px = s · m00 · width / 1280. The rule therefore
+holds at 1280 pixels wide. At 2560 wide the outpost's 2.08 becomes about 1.04 and the
+ships' 6.2–7.3 about 3.1–3.6 (inferred, linear in width). `--screen-width W` (default 1280)
+applies the rule at `T · W / 1280`, so a wider display gets the larger atlas, up to
+`--atlas-max-size`. The outpost at 2560 wide would need 4096² with `--atlas-max-size 4096`
+(not built).
+
+Every vertex UV lies inside its tile, and the inverse-map error is ≤ 0.153 source texels.
+Every `pilot_check` field is true except `C_equals_source_record`, which is expected false
+because the UVs are rewritten. `C_positions_equal` (against record `N`),
+`pad_equals_source_LOD<n>`, `last_equals_source_last` and `last_positions_equal` are true,
+so the collision source is vanilla's.
+
+`05.cat` is 876 B, sha256 `d29b0c88…`. `05.dat` is 19 466 361 B, sha256 `5fd877c1…`,
+against 19 321 288 B for the installed four-body build. Per body (body member / textures,
+`dat_members_atlas_lod0_out.txt`): TL 1.73 / 1.28 MB, M2 2.34 / 1.35, M1 1.86 / 1.24,
+outpost 7.77 / 1.90. The installed build had TL 0.93 / 4.30, M2 1.26 / 1.34, M1 1.00 / 1.18
+and outpost 4.69 / 4.62.
+
+**Tile-aware mips (2026-09-23, after the Run 268 triage).** The mip chain was a box
+filter of the whole level-0 atlas with a 4-texel gutter. Every level is now baked
+like level 0 at its own density. Each tile's footprint (content and gutter, rounded
+out to whole level texels) is area-resampled from the tile's own repeating source. The
+texels that overlap a tile's content are written last, so content beats a neighbour's
+gutter, and the unused area keeps its background at every level. The gutter is now 8
+texels, so a whole gutter texel survives to mip 3. All four atlases use it (the bump
+atlas renormalises at every level). Build time for the three ships is 29 s (24 s before;
+measured). `atlas_mip_bleed.py` compares the light atlas at mips 0–4 with a reference
+built independently: every tile's own light map resampled to the same density, and
+black elsewhere. `build_box_mips.py` rebuilds the old chain byte for byte (`05.dat`
+sha256 `4151f925…`, equal to the earlier source-0 build) for the "before". Before and
+after on the same bodies and source record (`atlas_mip_bleed_compare_out.txt`; measured):
+
+- Exhaust tiles' edge and gutter texels (the texels bilinear reads at the content
+  edge): at mip 3, mean / max error 8.6–34 / 82–146 → 7.5–13 / 29–35; at mip 4,
+  12–35 / 59–173 → 4.6–10.5 / 14–32. Mips 0–2 are unchanged (4–13 / 27–58, the DXT5
+  error).
+- Exhaust content: the mean error is 5–14 at every level, mip 0 included, so it is
+  DXT5 encoding of the high-contrast exhaust maps, not a mip effect. The tile's mean
+  brightness equals the reference within about 1 % (installed argon_TL build, exhaust tiles
+  17 and 18, mips 0–3).
+- The neighbours' content and the unused ring around the exhaust tiles show a mean
+  luma excess of |≤ 0.9| before and after. Their maxima (up to 42) are already present
+  at mip 0, so they are DXT error.
+
+So the box chain did bleed, but only into tile borders from mip 3 on. This offline
+measurement does not reproduce a ×1.5 brightness over a ×1.56 area: the measured
+exhaust tiles hold the same mean light as their maps at mips 0–3. The Run 268 step
+may have another cause (inferred, untested). The installed build draws the coarsest
+record's exhaust geometry, which a `--source-record 0` build replaces with record 0's.
+The exhaust materials' `g_Mat*` values equal the dominant's (M2: measured), so the
+atlas material does not change their constants. The test `TileAwareMips` in `test_bob1.py`
+checks the property: a bright tile beside a black one, with the gutter off the
+coarse texel grid, stays black outside its footprint at every level. The black tile's
+content stays black wherever the two contents share no texel. The old box chain fails
+it at mip 4.
 
 **Node side effects.** Two node-set side effects change at Very High (objdump of `0047cfe0..`,
 `/tmp/x3-lod/f47cfe0.s`). A child node flagged `node+0x12c & 0x40000` is hidden
@@ -686,7 +851,8 @@ python3 tools/analysis/lod_overlay.py --install <body>[=T_pad] ... [--threshold 
 python3 tools/analysis/lod_overlay.py --install --replace <body>[=T_pad] ...   # swap the installed overlay (originals hash checked)
 python3 tools/analysis/body_materials.py <body> [--lod N] [--area-percent 50,70,90,100]   # census, draws per rule, rule f, diffuse substitution
 python3 tools/analysis/lod_overlay.py --out <scratch dir> --collapse glow-area 70 [--no-synth-material] <body>[=T_pad] ...
-python3 tools/analysis/lod_overlay.py --out <scratch dir> --collapse atlas [--atlas-size 1024] [--atlas-max-size 2048] [--atlas-format dxt|a8r8g8b8] [--atlas-specular] [--atlas-preview DIR] <body>=T_pad ...
+python3 tools/analysis/lod_overlay.py --out <scratch dir> --collapse atlas [--atlas-size 1024] [--atlas-max-size 2048] [--atlas-format dxt|a8r8g8b8] [--atlas-specular] [--atlas-preview DIR] [--source-record N] <body>=T_pad[@N] ...
+python3 verification/results/lod-overlay-pilot/atlas_mip_bleed.py <overlay root> ...   # light-atlas mips 0-4 against the tiles' own maps
 PYTHONPATH=verification/probe /usr/bin/python3 -m unittest verification.analysis.test_bob1
 ```
 

@@ -1,0 +1,2 @@
+record 0: points 125867, max distinct points per source group 35210; C points 131787 (dup 5920); C groups (material, faces, distinct points) [(51, 6232, 9530), (51, 35811, 59993), (51, 30282, 59994), (52, 1424, 2270)]; atlas 2048 min texels/px 2.083
+record 1: points 62989, max distinct points per source group 13026; C points 67415 (dup 4426); C groups (material, faces, distinct points) [(51, 3810, 6548), (51, 31205, 59963), (52, 556, 904)]; atlas 2048 min texels/px 3.453

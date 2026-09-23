@@ -38,6 +38,14 @@ B. The produced overlay: per member, parse + serialise byte-identical, original
    dds/ in the overlay root; the sampling and UV checks (lod_atlas.check) are re-run on
    the written C and the written, decoded atlases (bump: also the normal angle error).
    Slots without an atlas (alpha; specular without --atlas-specular) must be NULL.
+   --source-record N (manifest source_record; default the last record): every "source's
+   last record" above that concerns C (C_equals_source_record, C_positions_equal, the
+   recomputations, the kept sets, the shape check) reads record N instead; the
+   last_* fields still compare with the source's last record (the collision source
+   before the overlay). When the manifest names a pad_source (the source record is not the
+   coarsest), the pad must equal that original record (pad_equals_source_LOD<n>) instead of
+   being a copy of C (pad_is_copy). A part flagged 0x8000 (lod_atlas.HIDDEN_PART, copied group by
+   group by the atlas collapse) is left out of the shape check.
 
   python3 verification/results/lod-overlay-pilot/pilot_check.py \
       <node_census_out.txt> <overlay root containing addon/NN.cat>
@@ -120,13 +128,13 @@ def textures_only(m, dom, names):
             and all(got.get(k) == v for k, v in names.items()))
 
 
-def atlas_checks(root, entries, raw, rec, marker, assets, mats, omats, source, ladder, c, src_alpha):
+def atlas_checks(root, entries, raw, rec, marker, assets, mats, omats, srec, ladder, c, src_alpha):
     """(recomputed materials, recomputed C, text) for a --collapse atlas member."""
     at = rec['atlas']
     opts = marker.get('atlas_options', {})
     recomputed = list(mats)
     body = Path(rec['member']).stem
-    res = lod_atlas.collapse(assets, body, recomputed, source[-1], src_alpha, at['px'],
+    res = lod_atlas.collapse(assets, body, recomputed, srec, src_alpha, at['px'],  # px incl. --screen-width
                              tuple(opts.get('sizes', (1024, 2048))), opts.get('specular', False),
                              marker.get('synth_material', True), bump=opts.get('bump', True),
                              force_uv2=opts.get('force_uv2', False),
@@ -148,7 +156,7 @@ def atlas_checks(root, entries, raw, rec, marker, assets, mats, omats, source, l
                    and mips == at['size'].bit_length() and fmt == t['format'] and resolved == dds)
         decoded[t['slot']] = lod_atlas.decode_dds(dds)
     tex_ok &= textures_only(omats[at['material']], mats[at['dominant']], names)
-    chk = lod_atlas.check(source[-1], ladder[c], res, decoded, omats)
+    chk = lod_atlas.check(srec, ladder[c], res, decoded, omats)
     s = ' '.join(f'{slot}: vs_source_rgb {"/".join(f"{x:.2f}" for x in d["src_rgb"])} vs_prefiltered_rgb'
                  f' {"/".join(f"{x:.2f}" for x in d["box_rgb"])} vs_source_a {"/".join(f"{x:.2f}" for x in d["src_a"])}'
                  + (f' vs_source_angle_deg {"/".join(f"{x:.2f}" for x in d["src_angle"])} vs_prefiltered_angle_deg'
@@ -194,6 +202,8 @@ def overlay(root):
         src_tree = bob1.parse(src_data)
         source = bob1.lods(src_tree)
         n = len(source)
+        sr = body_of[e['path']].get('source_record', n - 1)
+        srec = source[sr]
         mats = bob1.materials(src_tree)
         omats = bob1.materials(tree)
         src_alpha = lod_overlay.alpha_materials(mats)
@@ -201,11 +211,11 @@ def overlay(root):
         glow = glow_of[e['path']]
         rec = body_of[e['path']]
         collapse = rec.get('collapse', marker.get('collapse'))
-        used = sorted({g['material'] for p in source[-1]['parts'] for g in p['groups']})
+        used = sorted({g['material'] for p in srec['parts'] for g in p['groups']})
         glow_ok = glow == (lod_overlay.glow_materials(assets, mats, used, marker['glow_luma'], marker['glow_share'])
                            if collapse in lod_overlay.KEEPING else set())
         area_kept = set(rec.get('area_kept', ()))
-        area_ok = (area_kept == lod_overlay.light_area_materials(assets, mats, source[-1], glow,
+        area_ok = (area_kept == lod_overlay.light_area_materials(assets, mats, srec, glow,
                                                                  marker['area_percent'])[0]
                    if collapse == 'glow-area' else not area_kept)
         kept = glow | area_kept
@@ -227,12 +237,12 @@ def overlay(root):
         atlas_text = ''
         if collapse == 'atlas':
             recomputed, c_recomputed, atlas_text = atlas_checks(root, entries, raw, rec, marker, assets, mats, omats,
-                                                                source, ladder, c, src_alpha)
+                                                                srec, ladder, c, src_alpha)
         else:
             recomputed = list(mats)
-            remap, _ = (lod_overlay.synth_materials(recomputed, source[-1], src_alpha, collapse, kept)
+            remap, _ = (lod_overlay.synth_materials(recomputed, srec, src_alpha, collapse, kept)
                         if marker.get('synth_material') else ({}, []))
-            c_recomputed = lod_overlay.coarse_record(source[-1], None, src_alpha, collapse, kept, remap)
+            c_recomputed = lod_overlay.coarse_record(srec, None, src_alpha, collapse, kept, remap)
         synth_ok = recomputed == omats
         if placement == 'compact':
             r0 = _record(source[0])                     # source round-trips, so these are its record 0 bytes
@@ -247,10 +257,18 @@ def overlay(root):
         else:
             originals = ladder[:n] == source
         shape_ok = True
-        for cp, sp in zip(ladder[c]['parts'], source[-1]['parts']):
+        splits = {(sp['part'], sp['material']): len(sp['points'])
+                  for sp in (rec.get('atlas') or {}).get('split_groups', ())}
+        for pi, (cp, sp) in enumerate(zip(ladder[c]['parts'], srec['parts'])):
+            if collapse == 'atlas' and cp['flags'] & lod_atlas.HIDDEN_PART:
+                continue
             kinds = [kind(g['material']) for g in cp['groups']]
             kept_groups = sorted(g['material'] for g in cp['groups'] if g['material'] in kept)
-            shape_ok &= (kinds.count('opaque') + kinds.count('atlas') <= 1 and kinds.count('alpha') <= 1
+            allowed = lambda k: max([1] + [splits.get((pi, g['material']), 1) for g in cp['groups']
+                                           if kind(g['material']) in k])         # atlas split into groups
+            shape_ok &= (kinds.count('opaque') + kinds.count('atlas') <= allowed(('opaque', 'atlas'))
+                         and kinds.count('alpha') <= allowed(('alpha',))
+                         and all(len({i for f in g['faces'] for i in f[:3]}) <= 0xffff for g in cp['groups'])
                          and kept_groups == sorted({g['material'] for g in sp['groups']} & kept))
         c_groups = [(kind(g['material']), g['material'], len(g['faces'])) for p in ladder[c]['parts'] for g in p['groups']]
         c_recomputed['value'] = ladder[c]['value']
@@ -259,17 +277,24 @@ def overlay(root):
             f'{q["name"]}={q["dominant"] / 65536:.4g}->{q["written"] / 65536:.4g}' for q in s['params']
             if q['dominant'] != q['written']) for s in rec.get('synth', ())) or 'none'
         th = [l['value'] for l in ladder[1:]]
-        copy = (pad is not None and ladder[c]['parts'] == ladder[pad]['parts']
-                and ladder[c]['points'] == ladder[pad]['points'] and ladder[c]['flags'] == ladder[pad]['flags'])
+        pad_src = rec.get('pad_source')
+        pad_ref = source[pad_src] if pad_src is not None else ladder[c]
+        copy = (pad is not None and pad_ref['parts'] == ladder[pad]['parts']
+                and pad_ref['points'] == ladder[pad]['points'] and pad_ref['flags'] == ladder[pad]['flags'])
+        pad_name = 'pad_is_copy' if pad_src is None else f'pad_equals_source_LOD{pad_src}'
         max_final = max(max(bob1.drawable(th, v)) for v in bob1.VIEW_DISTANCE)
         print(f'B {e["path"]}: source {src["source"]} stored {e["size"]} decoded {len(data)}'
               f' roundtrip_equal={bob1.serialise(tree) == data} placement {placement} C_index {c} pad_index {pad}'
               f' originals_identical={originals} lods {n}->{len(ladder)} thresholds {th}'
               f' source thresholds {[l["value"] for l in source[1:]]}'
               f' C/pad groups {[sum(len(p["groups"]) for p in ladder[i]["parts"]) for i in (c, pad) if i is not None]}'
-              f' pad_is_copy={copy} C_equals_source_last={same_geometry(ladder[c], source[-1])}'
+              f' source_record {sr} source_points {len(srec["points"])} source_faces'
+              f' {sum(len(g["faces"]) for p in srec["parts"] for g in p["groups"])} C_points {len(ladder[c]["points"])}'
+              f' C_part_flags {[hex(p["flags"]) for p in ladder[c]["parts"]]}'
+              f' pad_points {len(ladder[pad]["points"]) if pad is not None else None}'
+              f' {pad_name}={copy} C_equals_source_record={same_geometry(ladder[c], srec)}'
               f' last_equals_source_last={same_geometry(ladder[-1], source[-1])}'
-              f' C_positions_equal={same_positions(ladder[c], source[-1])}'
+              f' C_positions_equal={same_positions(ladder[c], srec)}'
               f' last_positions_equal={same_positions(ladder[-1], source[-1])}'
               f' max_main_view_final_index={max_final}'
               f' glow_recomputed_equal={glow_ok} area_kept_recomputed_equal={area_ok} C_shape_ok={shape_ok}'

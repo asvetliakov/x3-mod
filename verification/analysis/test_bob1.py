@@ -983,7 +983,8 @@ class LodAtlas(unittest.TestCase):
             assets, _ = lod_overlay.original_assets(self.game(folder))
             tree = bob1.parse(bob1.serialise(atlas_tree_pre()))
             coarse, mats = bob1.lods(tree)[1], bob1.materials(tree)
-            lay = lod_atlas.plan_layout(coarse, mats, set(), lod_atlas.Textures(assets), 8, (32, 64, 128))
+            lay = lod_atlas.plan_layout(coarse, mats, set(), lod_atlas.Textures(assets), 8, (32, 64, 128),
+                                        gutter=4)                           # 32 fits only below scale 1
             self.assertEqual([(n, s == 1.0) for n, s, _ in lay['tried']], [(32, False), (64, True)])
             self.assertEqual((lay['size'], [t['mats'] for t in lay['tiles']]), (64, [[0], [1]]))
             self.assertEqual([t['content'] for t in lay['tiles']], [(32, 16), (20, 16)])   # 16 x (2, 1), 16 x (1.2, 1)
@@ -1076,6 +1077,204 @@ class LodAtlas(unittest.TestCase):
         g2 = {'material': 1, 'faces': [(3, 1, 4, 1)], 'extra': [rec(4), rec(1), rec(3), rec(9)]}  # 1 shared, 9 unused
         m = lod_overlay.merged_group([g1, g2], True)
         self.assertEqual([e[0] for e in m['extra']], [2, 0, 1, 3, 4, 9])
+
+
+def atlas_tree_lod0():
+    """atlas_tree_pre with a fine record 0: the coarse points at twice the size plus a 3-point
+    face, part 0 (precomputed) with the coarse groups, part 1 flagged 0x8000 (hidden, like the
+    box of argon_TL / M1 record 0) with a classic non-effect material 2 on the new face."""
+    tree = atlas_tree_pre()
+    mats, (lod0, coarse) = bob1.materials(tree), bob1.lods(tree)
+    mats.append({'index': 2, 'flags': 0, 'texture': b'', 'colors': [0, 0, 0, 255] + [255] * 5 + [0] * 3,
+                 'w24': 10, 'w26': 0, 'w2c': 0, 'maps': [(b'', 0)] * 3, 'extra': [(b'', 0)] * 2})
+    q = lambda x: int(round(x * 65536))
+    pts = [(p[0], 2 * p[1], 2 * p[2], 2 * p[3]) + p[4:] for p in coarse['points']]
+    pts += [(0x1b, 90, 0, 0, 0, 0, 0, 0, 65536, 1), (0x1b, 99, 0, 0, q(1), 0, 0, 0, 65536, 1),
+            (0x1b, 90, 9, 0, 0, q(1), 0, 0, 65536, 1)]
+    rec = lambda i, m: (i, 5000 + 1000 * m + i, 0, 65536, 0, 65536, 0)
+    part0 = {'flags': 0x30000001, 'bounds': list(range(10)), 'groups': []}
+    for g in coarse['parts'][0]['groups']:
+        used = dict.fromkeys(i for f in g['faces'] for i in f[:3])
+        part0['groups'].append({'material': g['material'], 'faces': list(g['faces']),
+                                'extra': [rec(i, g['material']) for i in reversed(used)]})   # stored out of order
+    part1 = {'flags': 0x30008001, 'bounds': list(range(10, 20)),
+             'groups': [{'material': 2, 'faces': [(13, 12, 14, 1)], 'extra': [rec(i, 2) for i in (12, 13, 14)]}]}
+    lod0.clear()
+    lod0.update({'value': 100, 'flags': 0, 'points': pts, 'parts': [part0, part1]})
+    return tree
+
+
+class SourceRecord(unittest.TestCase):
+    def game(self, folder):
+        game = Path(folder) / 'game'
+        write_catalogue(game / '01.cat', atlas_textures())
+        write_catalogue(game / '02.cat', [('objects/ships/x/b.pbb',
+                                           gzip.compress(bob1.serialise(atlas_tree_lod0()), mtime=0))])
+        return game
+
+    def written(self, out):
+        entries = {e['path']: e for e in read_catalogue(out / 'addon/01.cat')}
+        raw = bytes(v ^ 0x33 for v in (out / 'addon/01.dat').read_bytes())
+        e = entries['objects/ships/x/b.pbb']
+        tree = bob1.parse(unpack(raw[e['offset']:e['offset'] + e['size']]))
+        manifest = json.loads((out / 'addon/01.x3m-lod.json').read_text())
+        return bob1.lods(tree), bob1.materials(tree), manifest['bodies'][0]
+
+    @unittest.mock.patch.object(lod_overlay, 'running_game', return_value=[])
+    def test_atlas_from_record_0(self, _running):
+        src = bob1.lods(bob1.parse(bob1.serialise(atlas_tree_lod0())))
+        strip = lambda pt: pt[:4] + pt[6:]                                  # position etc., UV dropped
+        with tempfile.TemporaryDirectory() as folder:
+            game, out = self.game(folder), Path(folder) / 'out'
+            text = run(['--game', str(game), '--out', str(out), '--collapse', 'atlas', '--atlas-size', '64',
+                        '--atlas-max-size', '128', '--source-record', '0', 'ships/x/b=8'])
+            self.assertIn('from source LOD0 (points 15, faces 7)', text)
+            ladder, mats, body = self.written(out)
+            self.assertEqual((body['source_record'], body['new_lod'], body['pad_lod']), (0, 1, 2))
+            self.assertEqual([l['value'] for l in ladder], [100, 5, 8])
+            self.assertEqual(ladder[0], src[0])
+            c = ladder[1]
+            self.assertEqual((len(c['points']), body['atlas']['points']), (17, 17))   # 15 + 2 duplicated
+            for cp, sp in zip(c['parts'], src[0]['parts']):                 # record 0 geometry, UVs aside
+                self.assertEqual((cp['flags'], cp['bounds']), (sp['flags'], sp['bounds']))
+                face = lambda pts, f: tuple(strip(pts[i]) for i in f[:3]) + (f[3],)
+                self.assertEqual(sorted(face(c['points'], f) for g in cp['groups'] for f in g['faces']),
+                                 sorted(face(src[0]['points'], f) for g in sp['groups'] for f in g['faces']))
+            self.assertEqual(c['points'][12:15], src[0]['points'][12:15])   # hidden part: UVs untouched
+            (atlas,), (hidden,) = c['parts'][0]['groups'], c['parts'][1]['groups']
+            self.assertEqual((atlas['material'], len(atlas['faces'])), (3, 6))        # one atlas group, part 0
+            self.assertEqual((hidden['material'], hidden['faces']), (2, [(13, 12, 14, 1)]))   # copied
+            for g in (atlas, hidden):                                       # tangent records: first-use order
+                self.assertEqual([e[0] for e in g['extra']],
+                                 list(dict.fromkeys(i for f in g['faces'] for i in f[:3])))
+            self.assertEqual([e[1] for e in hidden['extra']], [7013, 7012, 7014])
+            by_pos = {strip(p): i for i, p in enumerate(src[0]['points'])}
+            for e in atlas['extra']:                                        # each copy keeps its point's record
+                self.assertEqual(e[1] % 1000, by_pos[strip(c['points'][e[0]])])
+            self.assertEqual(ladder[2], dict(src[1], value=8))            # pad: the original coarsest record
+            self.assertEqual(body['pad_source'], 1)                         # (collision geometry unchanged)
+            self.assertTrue(all(g['material'] < len(mats) for p in ladder[2]['parts'] for g in p['groups']))
+            self.assertEqual((len(mats), mats[3]['index']), (4, 3))
+            self.assertEqual([t['mats'] for t in body['atlas']['tiles']], [[0], [1]])   # material 2 not atlased
+
+    @unittest.mock.patch.object(lod_overlay, 'running_game', return_value=[])
+    def test_other_collapses_and_refusals(self, _running):
+        src = bob1.lods(bob1.parse(bob1.serialise(atlas_tree_lod0())))
+        with tempfile.TemporaryDirectory() as folder:
+            game, out = self.game(folder), Path(folder) / 'out'
+            run(['--game', str(game), '--out', str(out), '--collapse', 'two', '--source-record', '0', 'ships/x/b=8'])
+            ladder, _, body = self.written(out)
+            c = ladder[1]
+            self.assertEqual((body['source_record'], c['points'], c['flags']), (0, src[0]['points'], 0))
+            self.assertEqual([len(p['groups']) for p in c['parts']], [1, 1])
+            (merged,) = c['parts'][0]['groups']
+            self.assertEqual([e[0] for e in merged['extra']],
+                             list(dict.fromkeys(i for f in merged['faces'] for i in f[:3])))
+            self.assertEqual(ladder[2], dict(src[1], value=8))
+            text = run(['--game', str(game), '--dry-run', '--collapse', 'two', 'ships/x/b=8'])
+            self.assertIn('from source LOD1 (points 12, faces 6)', text)       # default: the coarsest record
+            self.assertIn('pad copy LOD2', text)                               # source = coarsest: pad copies C
+            for arg in ('ships/x/b=8@0', 'ships/x/b=8,0'):                    # per-body source record
+                text = run(['--game', str(game), '--dry-run', '--collapse', 'two', '--source-record', '1', arg])
+                self.assertIn('from source LOD0 (points 15, faces 7)', text)
+                self.assertIn('pad copy of original LOD1 (12 points) LOD2', text)
+            with self.assertRaisesRegex(SystemExit, 'integer threshold and source record'):
+                run(['--game', str(game), '--dry-run', 'ships/x/b=8@x'])
+            with self.assertRaisesRegex(SystemExit, "outside the body's records 0..1"):
+                run(['--game', str(game), '--dry-run', '--source-record', '2', 'ships/x/b=8'])
+            with unittest.mock.patch.object(lod_overlay, 'MAX_POINTS', 8), \
+                    self.assertRaisesRegex(SystemExit, 'references 12 points, above 8'):
+                run(['--game', str(game), '--dry-run', '--collapse', 'two', 'ships/x/b=8@0'])
+
+    def test_split_faces_packing(self):
+        a = [(0, 1, 2, 1), (1, 2, 3, 1), (2, 3, 4, 1)]                    # 5 points
+        b = [(5, 6, 7, 1), (6, 7, 8, 1)]                                   # 4 points
+        c = [(9, 10, 11, 1)]                                               # 3 points
+        faces, blocks = a + b + c, [0] * 3 + [1] * 2 + [2]
+        self.assertEqual(lod_atlas.split_faces(faces, 12, blocks), [faces])           # within the limit
+        self.assertEqual(lod_atlas.split_faces(faces, 8, blocks), [a + c, b])          # first fit, decreasing
+        self.assertEqual(lod_atlas.split_faces(faces, 9, blocks), [a + b, c])
+        order = [c[0], b[0], a[0], b[1], a[1], a[2]]                        # face order kept inside a chunk
+        got = lod_atlas.split_faces(order, 8, [2, 1, 0, 1, 0, 0])
+        self.assertEqual(sorted(map(sorted, got)), sorted(map(sorted, [a + c, b])))
+        self.assertEqual(got[0], [c[0], a[0], a[1], a[2]])
+        self.assertEqual(lod_atlas.split_faces(a, 4, [0, 0, 0]), [a[:2], a[2:]])       # oversized block: face order
+        self.assertEqual(lod_atlas.split_faces(a, 4), [a[:2], a[2:]])                  # no blocks: greedy
+        for chunk in lod_atlas.split_faces(faces, 4, blocks):
+            self.assertLessEqual(len({i for f in chunk for i in f[:3]}), 4)
+
+    @unittest.mock.patch.object(lod_overlay, 'running_game', return_value=[])
+    def test_pad_and_append_pad_placements(self, _running):
+        src = bob1.lods(bob1.parse(bob1.serialise(atlas_tree_lod0())))
+        for placement, arg, values in (('pad', 'ships/x/b=8@0', [100, 5, 5, 8]),
+                                       ('append-pad', 'ships/x/b=3@0', [100, 5, 3, 2])):
+            with self.subTest(placement), tempfile.TemporaryDirectory() as folder:
+                game, out = self.game(folder), Path(folder) / 'out'
+                run(['--game', str(game), '--out', str(out), '--collapse', 'two', '--placement', placement, arg])
+                ladder, _, body = self.written(out)
+                self.assertEqual([l['value'] for l in ladder], values)
+                self.assertEqual((body['new_lod'], body['pad_lod'], body['source_record'], body['pad_source']),
+                                 (2, 3, 0, 1))
+                self.assertEqual(ladder[:2], src)                                # originals kept
+                self.assertEqual(ladder[2]['points'], src[0]['points'])          # C from record 0
+                self.assertEqual(ladder[3], dict(src[1], value=values[3]))       # pad: original coarsest
+
+    @unittest.mock.patch.object(lod_overlay, 'running_game', return_value=[])
+    def test_atlas_group_split(self, _running):
+        with tempfile.TemporaryDirectory() as folder:
+            game, out = self.game(folder), Path(folder) / 'out'
+            with unittest.mock.patch.object(lod_atlas, 'MAX_GROUP_POINTS', 3):
+                text = run(['--game', str(game), '--out', str(out), '--collapse', 'atlas', '--atlas-size', '64',
+                            'ships/x/b=8@0'])
+            ladder, mats, body = self.written(out)
+            groups = ladder[1]['parts'][0]['groups']
+            self.assertTrue(len(groups) >= 2 and all(g['material'] == 3 for g in groups))   # one atlas material
+            used = [set(i for f in g['faces'] for i in f[:3]) for g in groups]
+            self.assertTrue(all(len(u) <= 3 for u in used))
+            self.assertFalse(any(used[i] & used[j] for i in range(len(used)) for j in range(i)))   # no shared point
+            self.assertEqual(sum(len(g['faces']) for g in groups), 6)
+            (split,) = body['atlas']['split_groups']
+            self.assertEqual((split['part'], split['material'], split['faces'], split['points']),
+                             (0, 3, 6, [len(u) for u in used]))
+            self.assertIn(f'-> {len(groups)} groups of {split["points"]} points', text)
+            for g in groups:                                                  # records in first-use order
+                self.assertEqual([e[0] for e in g['extra']], list(dict.fromkeys(i for f in g['faces'] for i in f[:3])))
+            copies = sorted(j for u in used[1:] for j in u if j >= 17)        # 17 = points before the split
+            self.assertTrue(copies)
+            self.assertEqual(len(ladder[1]['points']), 17 + len(copies))
+            rec = {e[0]: e[1:] for g in groups for e in g['extra']}
+            for dup in copies:                                                # duplicated with its tangent record
+                twins = [j for j in range(17) if ladder[1]['points'][j] == ladder[1]['points'][dup] and j in rec]
+                self.assertTrue(any(rec[j] == rec[dup] for j in twins))
+            self.assertEqual(ladder[2], dict(bob1.lods(bob1.parse(bob1.serialise(atlas_tree_lod0())))[1], value=8))
+
+
+class TileAwareMips(unittest.TestCase):
+    def test_bright_tile_never_bleeds(self):
+        """A bright tile (A) beside a black one (B), B's gutter not aligned to the coarse texels:
+        at every level every texel outside A's footprint stays black, B's content stays black
+        wherever it shares no texel with A's content, and A's content stays bright."""
+        class Tex:
+            def get(self, name):
+                return {b'bright': np.full((8, 8, 4), 255, np.uint8), b'black': np.zeros((8, 8, 4), np.uint8)}[name]
+        tile = lambda x, w, name: dict(origin=(x, 8), content=(w, 16), lo=(0.0, 0.0), span=(1.0, 1.0),
+                                       names={'light': name})
+        layout = dict(size=128, gutter=8, slots=('light',), tiles=[tile(8, 20, b'bright'), tile(44, 16, b'black')])
+        levels = lod_atlas.to_levels('light', lod_atlas.bake(layout, Tex())['light'])
+        self.assertEqual([lv.shape[0] for lv in levels], [128, 64, 32, 16, 8, 4, 2, 1])
+        box = lod_atlas.mip_chain(lod_atlas.bake(layout, Tex(), levels=1)['light'][0])
+        for level, lv in enumerate(levels):
+            fp, a_in = lod_atlas.tile_boxes(layout['tiles'][0], 8, level)
+            _, b_in = lod_atlas.tile_boxes(layout['tiles'][1], 8, level)
+            outside = np.ones(lv.shape[:2], bool)
+            outside[fp[2]:fp[3], fp[0]:fp[1]] = False
+            self.assertEqual(int(lv[outside].max(initial=0)), 0, f'level {level}: light outside the bright tile')
+            if a_in[1] <= b_in[0]:                                         # contents share no texel (levels 0-5)
+                self.assertTrue((lv[a_in[2]:a_in[3], a_in[0]:a_in[1]] == 255).all(), f'level {level}')
+                self.assertEqual(int(lv[b_in[2]:b_in[3], b_in[0]:b_in[1]].max()), 0, f'level {level}')
+        _, b_in = lod_atlas.tile_boxes(layout['tiles'][1], 8, 4)
+        self.assertGreater(int(box[4][b_in[2]:b_in[3], b_in[0]:b_in[1]].max()), 0)   # a whole-atlas box chain bleeds
+        self.assertEqual(lod_atlas.GUTTER, 8)
 
 
 @unittest.skipUnless(bob1.DEFAULT_GAME.joinpath('X3AP.exe').is_file(), 'X3 bottle not present')

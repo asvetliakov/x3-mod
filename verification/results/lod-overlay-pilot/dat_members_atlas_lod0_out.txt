@@ -1,0 +1,10 @@
+/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/addon/05.cat: dat 19321288 bytes, members total 19321288
+  argon_M1: body 1004082 textures 1178563 total 2182645
+  argon_M2: body 1255382 textures 1341007 total 2596389
+  argon_TL: body 929869 textures 4298721 total 5228590
+  military_outpost_middleb: body 4690104 textures 4623560 total 9313664
+build-overlay/addon/05.cat: dat 19466361 bytes, members total 19466361
+  argon_M1: body 1860397 textures 1236254 total 3096651
+  argon_M2: body 2343667 textures 1349220 total 3692887
+  argon_TL: body 1734851 textures 1278730 total 3013581
+  military_outpost_middleb: body 7766624 textures 1896618 total 9663242
