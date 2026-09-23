@@ -1,0 +1,13 @@
+# Reviewer probe (review round 1, G1): row 0 "zza" disabled (sigma 1e-3), row 1 "zza" valid, same id.
+# dup.py REPO writes dup.bin and prints the Python validator; probe.cpp (host build of
+# src/renderer/fog_field_assets.cpp with a one-row metadata stub) loads it with the DLL loader.
+#   /usr/bin/python3 dup.py REPO && clang++ -std=c++17 -O2 -I REPO/src/renderer -I STUB REPO/src/renderer/fog_field_assets.cpp probe.cpp -o probe && ./probe dup.bin
+
+## Before the fix (the reviewer's binary, loader at the first report)
+status=3 families=2 disabled=1
+find=row1 row(profile)=row0 row_disabled=sigma family_profile_info=0
+
+## After the fix (duplicates checked against every earlier row; row() prefers an enabled row)
+python: loaded ok [('zza', 'sigma'), ('zza', 'name_duplicate')]
+status=3 families=2 disabled=2
+find=row-1 row(profile)=row-1 row_disabled=- family_profile_info=0

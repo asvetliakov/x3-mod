@@ -2216,6 +2216,7 @@ private:
     std::unique_ptr<renderer::FogPass> fog_;
     renderer::FogSectorLatch fog_latch_{}; // observational only
     FogSectorFrame fog_sector_{};
+    bool fog_families_checked_ = false; // the process-wide x3m/fog-families.bin load was requested by this device
     bool fog_requested_ = false, fog_enabled_ = true, fog_everywhere_ = false, fog_timing_ = false, fog_disabled_ = false, fog_attach_failed_ = false, fog_sun_fallback_logged_ = false;
     float fog_strength_ = renderer::fog_strength_default, fog_anisotropy_ = renderer::fog_anisotropy_default;
     unsigned fog_failures_ = 0, fog_logs_ = 0;

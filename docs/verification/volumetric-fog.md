@@ -2476,3 +2476,47 @@ motes on by default under the stored range at `1300,3,128` with `MAX_PX 8` (`--f
 opts out). The Run 264 entry's "size 3 is the floor" was a working limit; the note's derived
 minimum is 4 px, and 3 is the user's accepted trade. Reproducing Run 264 (2048,4 at MAX_PX 12)
 now needs `X3M_FOG_MOTES_MAX_PX=12`.
+
+## Data-driven fog families: tool, loader and host cases (2026-09-23)
+
+[fog-family-data.md](../architecture/fog-family-data.md), "Implementation" (option C): `tools/analysis/fog_families.py`
+writes `<game>/x3m/fog-families.bin`; the DLL loads it once at the first fog sector sample and decodes one packet per
+family switch; compiled names first; any failure falls back to the 14 compiled profiles (header) or disables the row.
+Worktree on main `70cd9d92`, not committed at the time of the runs; host only, no Wine run. All measured.
+
+- Palette convention settled: the 12 provisional stock palettes are reproduced bit for bit from the installed `01.cat`
+  (floor-565 DXT decode with truncating interpolation, `numpy.percentile` linear, bands inclusive at both ends, stops
+  rounded to 9 decimals); `lod_atlas.decode_dds` or half-open bands miss by up to 0.09.
+- Tool evidence: [tool-dryrun/summary.txt](../../verification/results/fog-family-data/tool-dryrun/summary.txt)
+  (`run_tool_evidence.py`, root from `make_mod_root.py`). Stock X3: 16 positive families, 14 `covered_by_build`
+  (12 / 12 match), `earth` `texture_missing`, `xtmgreenring` `no_dust_bodies`, 1.3 s; with
+  `--background-palette earth xtmgreenring` one family (`earth`, 2,281,316 bytes), `xtmgreenring`
+  `background_missing`. Vanilla + Mayhem 3 + Renegades root: 56 families, 50 packets, 114,063,336 bytes, `--jobs 1`
+  114.1 s, `--jobs 4` 39.0 s, byte-identical; `--check` PASS; the host build of the loader decodes all 56 rows.
+- Host: `PYTHONPATH=verification/probe /usr/bin/python3 -m unittest` over `test_fog_families`, `test_fog_family_file`
+  and the ten fog modules (`test_comparison_hotkeys`, `test_fog_cards` (mock extended), `test_fog_family_gpu`,
+  `test_fog_field_assets` (pinned packet hashes unchanged), `test_fog_route_bridge`, `test_fog_sector_policy` (file
+  table cases added), `test_fps_overlay`, `test_sector_background`, `test_sun_share_lane`, `test_volumetric_fog`):
+  84 tests OK, 116 s. The loader fixture (`fog_family_file_fixture.cpp`, host build): 62 cases (valid and shared-packet
+  loads, absent, directory, 18 header rejections, 31 row / packet-row disables, 9 switch-time decoder failures that
+  disable only their packet's rows);
+  Python validator and DLL loader agree on 13 corruptions; `X3M_FOG_FAMILIES` `0` / `none` disable.
+- Build: `cmake -S . -B build-fogfam-9107 -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo
+  -DPython3_EXECUTABLE=/usr/bin/python3`, `cmake --build build-fogfam-9107 -j8`: 0 warnings, `d3d9.dll` `72b78821…`
+  and the new target `fog_family_file_fixture.exe` `c44688db…`; `check_no_x87.py`: 639 reachable, PASS;
+  `fog_field_assets.cpp.obj` 0 x87 instructions, `fog_pass.cpp.obj` 11 as at `70cd9d92` (float returns).
+- Wine (orchestrator, bottle X3): the i686 fixture's `--self-test` PASS, `cases=62 compiled=14`
+  (`verification/results/fog-family-data/fixture-wine/`). Not run: the GPU family fixture with a file family
+  (note §5), a flight.
+- Review round 1 (two reviewers): names with `"` / `\` refused; `--install --replace` restores the `.previous` pair
+  on a failed write or validation and re-checks for a running game before moving anything; duplicates checked against
+  every earlier row (a disabled first row left `find()` and `row()` on different rows: `field_row_disabled` every
+  frame, reviewer probe in [dup-probe/](../../verification/results/fog-family-data/dup-probe/)); a packet header may
+  not carry a compiled id; `family_table()` is null until loaded; a first allocation failure at a switch is retried;
+  switch-time log lines at most once per row; families sharing a packet share the decoded field; the launcher prints
+  a `fog families:` line. Fixture 67 cases (host).
+- Incident: building the first synthetic root wrote through two pre-existing directory symlinks of an older
+  scratch root and replaced five loose files of `/tmp/x3-mod1` (`addon/types/{Jobs.txt,TBackgrounds.txt,gamestarts.xml}`,
+  `addon/maps/{WareTemplate.xml,x3_universe.xml}`) with self-referencing links; the tree needs re-extraction before
+  it is used again. The evidence above reads TBackgrounds and the map from `addon/07.cat` (as the census did);
+  `make_mod_root.py` now refuses an existing destination and symlinked parents.

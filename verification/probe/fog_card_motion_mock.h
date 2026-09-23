@@ -61,7 +61,14 @@ using GetStreamFreqFn=HRESULT(*)(Device*,UINT,UINT*);
 using SetRenderStateFn=HRESULT(*)(Device*,unsigned,DWORD);
 template<class F> void call_preserved(F&& fn) { fn(); }
 template<class... T> void log(const char*,T...) {}
+namespace x3m::renderer::fog_field {
+// No x3m/fog-families.bin in this host witness: the loader reports nothing, the table stays empty.
+bool load_family_table() noexcept { return false; }
+const FamilyTable* family_table() noexcept { return nullptr; }
+const char* family_table_path() noexcept { return ""; }
+}
 namespace x3m::renderer {
+struct FogPass { static constexpr HRESULT field_row_disabled=HRESULT(-2147217587); }; // 0x80040f4d, fog_pass.h
 enum class FogStage {None,Targets};
 struct FogFrame {
  unsigned width=0,height=0;bool caller_scene_open=true;
@@ -118,7 +125,7 @@ struct MotionOutput {
  bool fog_dust_motes_launch_=false,fog_motes_drawn_=false;long long fog_motes_epoch_qpc_=0; // the dust motes are off in this host witness
  bool fog_density_active()const noexcept{return fog_density_requested_&&!fog_density_refused_;}
  void fog_density_epoch(const char*)noexcept{}
- FogCardPolicy fog_cards_{}; FogSectorFrame fog_sector_{};
+ FogCardPolicy fog_cards_{}; FogSectorFrame fog_sector_{}; bool fog_families_checked_=false;
  bool fog_everywhere_=false;std::uint64_t generation_=0,fog_transition_frame_=~std::uint64_t(0);
  struct SunFrame {bool failed=false,published=true;}sun_frame_;bool sun_lane_failed_=false;
  bool scene_open_=true,cut_finished_=false,fog_timing_=false;

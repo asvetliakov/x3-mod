@@ -234,9 +234,123 @@ but the default must not invent fog silently.
   unchanged stock appearance. Mayhem's cats are numbered 05–12 and the installed `addon/05` is
   the LOD overlay, so the install order is a separate decision for the orchestrator.
 
+## Implementation (2026-09-23)
+
+Option C as built. Where it differs from §2–§4 above, this section is the contract.
+
+**Palette convention, settled (amends §3 steps 3–5).** The 12 provisional stock palettes of
+`fog_field_recipe.py` reproduce bit for bit (float32 of the recipe values) only with: DXT colour
+blocks decoded with RGB565 endpoints expanded by integer floor (`c * 255 // 31`, `g * 255 // 63`)
+and truncating palette interpolation (`(2a + b) // 3`, `(a + 2b) // 3`, 3-colour `(a + b) // 2`),
+not `lod_atlas.decode_dds` (bit replication, rounded interpolation: stops off by up to 0.09,
+band counts off by about 2,000 texels); percentile edges by `numpy.percentile` (linear); bands
+inclusive at both ends, `edge_k <= Y <= edge_k+1` (not half-open); stops rounded to 9 decimals,
+then float32. Uncompressed 24/32-bit textures use their exact 8-bit channels. With uniform pixel
+weights (one texture, every stock family) that is the whole rule; with non-uniform weights the
+edges are interpolated at the plotting positions `(S_k - w_k) / (S_n - w_n)` of the Y-sorted
+texels (numpy's linear rule for equal weights) and band means are weighted. `bluewell` and
+`foggreenoutlands` do not reproduce (hand-tuned before the rule, as the proposal records). Test:
+`test_fog_families.StockPaletteRegression` (skipped without the installed game).
+
+**Tool** `tools/analysis/fog_families.py`; its docstring is the usage and rule reference. Options as
+§4 plus `--force-running`; `--install` checks for a running game before the bake and again just
+before it moves anything, and a failed write or post-write validation restores the moved
+`.previous` pair; `--jobs N` runs palette + bake per family in spawn worker processes (the
+shared field is baked once in the parent and handed to the workers; texture bytes are read at
+submission, at most 2N families in flight); output is byte-identical for any N. Families sort by
+name; identical decoded atlases share one packet whose X3FOGPK header carries the first family's
+id. Refusals as §3 plus `no_nebulafog_material`, `name_invalid`, `profile_id_collision`,
+`table_full` and `background_missing`. `--background-palette` as built: the note's
+`nebula_<f>_background_part_0N_diff` textures exist for neither stock exception, so the fallback is
+the diffuse textures of `nebula_<f>_background_01`'s materials (`nebula.fx` ones, else all real
+diffuse maps; equal weights): `earth` gets a palette from its 7 sky textures (solar-system
+quadrants, planet, clouds, haze), `xtmgreenring` refuses `background_missing` (no body folder).
+`--check` re-reads the file with the loader's rules (`read_file`) and compares the TBackgrounds,
+body and texture hashes and the baker/recipe hashes with the record. Without the game the stock
+regression is skipped; everything else runs on synthetic catalogues.
+
+**File as built.** Little endian. Header 64: `X3FOGFAM`, version 1, header bytes 64, recipe id 1,
+family count 1..256, packet count 1..families, family row bytes 112, packet row bytes 80, table
+offset 64, table bytes, reserved 0, FNV-1a 64 of the table, file size. Family row 112: name[32]
+NUL-padded, profile id, packet index, `base_sigma`, occupancy, chroma[3], colours[4][3], flags
+(1 background palette, 2 `--profile` override). Packet row 80: offset, size (u64), width 1560,
+height 1430, texel bytes 8, decoded bytes 17,846,400, decoded FNV-1a 64, the packet's header
+profile id, reserved 0, decoded SHA-256. Then the packets. Profile id = FNV-1a 32 of the name with
+bit 16 set (31 bits of hash, never 1..14); the loader recomputes it from the name. Table at most
+49,152 bytes.
+
+**Validation as built (differs from §2: row-level, not whole-file).** Header and table failures
+reject the file: `truncated_header`, `oversized` (above 64 + 49,152 + 256 × (56 + 17,846,400)
+bytes), `bad_magic`, `version`, `header_size`, `recipe`, `family_count`, `packet_count`,
+`row_size`, `table_offset`, `table_bytes`, `reserved`, `file_size` (header vs actual),
+`table_past_eof`, `table_checksum`, `open_failed`, `read_failed`. Row failures disable that row
+only: `name` (1..31 printable ASCII, NUL-terminated and padded), `name_compiled` (a compiled name
+never loads, so the file cannot re-tune a pinned family: compiled first, as §2 says),
+`profile_id`, `packet_index`, `sigma` (finite, (0, 1e-4]), `occupancy` ([0.01, 0.5]), `chroma`,
+`colour` (finite, [0, 1]), `flags`, `name_duplicate`, `profile_id_duplicate` (checked against every
+earlier row, disabled or not, so `find()` and `row()` never resolve one family to two rows). Names
+with `"` or `\` are refused (tool `name_invalid`, loader `name`): the sampler escapes them in the
+name it compares, so such a row could never match. Packet-row failures
+disable every row using the packet: `packet_dimensions`, `packet_checksum_zero`, `packet_profile`
+(must be a referencing row's id and a file id, never a compiled one), `packet_size` ((56, 56 + decoded]), `packet_offset` (after the
+table, inside the file), and `packet_header` (the packet's own 56-byte header, read at load, must
+agree with its row). The run data and decoded checksum are the unchanged decoder's at the switch:
+any failure there (its statuses, `read_failed`, the file's size changed since load) disables the
+rows of that packet, except that a first `allocation` failure is retried at the next latch (a
+second one disables); `FogPass::prepare_field` returns `field_row_disabled` (0x80040F4D) and the
+proxy logs it and does not call `fault_fog_cards`; the next sample's scan leaves native cards.
+
+**Loader placement.** `fog_field::load_family_table()` (`src/renderer/fog_field_assets.cpp`) runs
+once per process from the first `MotionOutput::volumetric_fog_sector_sample` (render thread, inside
+the BeginScene reader's CPU boundary and LastError restore; the loader also restores LastError),
+before the first `fog_sector_frame`, which now takes the table (`family_table()`, nullptr until the
+load has completed) and scans it only after the 14 compiled names miss. Path: `X3M_FOG_FAMILIES` verbatim, else `GetModuleFileNameW(nullptr)`'s
+directory + `x3m\fog-families.bin`; `0` or `none` disables. The table lives in static
+storage (`FamilyTable`, 256 rows; header and table read into a static buffer), never freed:
+`FogSectorFrame::reason` points at a row name. One `CreateFileW` per load and per switch, closed at
+once. A switch reads one packet into a buffer bounded by the validated size and frees it before
+the upload. Transient memory per file-family switch: the read buffer (the packet, at most
+56 + 17,846,400 bytes, 2.28 MB for every Mayhem family) plus the decoded atlas (17,846,400 bytes,
+the same cached field a compiled family decodes into), so up to about 36 MB at the peak, before
+the existing SYSTEMMEM upload texture. Families sharing one packet (same decoded atlas) share the
+decoded field and the GPU atlas: `FogPass` keys its cache on the packet's own id and only swaps
+the row constants. Per frame: one branch; per sample: up to 256 `strcmp` only when no compiled name
+matched. Stored range: `FogPass::field_family` returns the row's chroma for a file family; the
+placement key hashes the name-derived id, so it survives regeneration. The launcher is unchanged
+(the variable passes through the environment) except for one report line: `manage.py launch`
+prints `fog families: <path> present bytes=… families=… packets=…` (or `absent`, `disabled
+(X3M_FOG_FAMILIES)`, `header invalid`) from the file's 64-byte header, also as `fog_families` in the
+`--dry-run` JSON.
+
+**Log lines.** Once per process:
+`volumetric_fog_families device=… frame=… event=absent|disabled|loaded|rejected families=N packets=P rows_disabled=D bytes=B reason=<ok|header reason|env_disabled|absent> fallback=compiled_first|compiled_only path="…"`,
+then up to 8 `volumetric_fog_family … event=row_disabled row=i name="…" profile=… reason=…`; per
+switch-time failure one `volumetric_fog_family … event=row_disabled name="…" profile=… reason=packet_… fallback=native_cards`
+or, for a first allocation failure, `event=switch_retry … reason=allocation`; each at most once per row.
+`volumetric_fog_prepare profile=` prints a file id in decimal.
+
+**Measured (host, 2026-09-23;
+[summary](../../verification/results/fog-family-data/tool-dryrun/summary.txt), produced by
+`run_tool_evidence.py` beside it).** Stock bottle X3: 16 positive families, 14 `covered_by_build`
+(12 / 12 provisional palettes match the build), `earth` `texture_missing`, `xtmgreenring`
+`no_dust_bodies`; dry run 1.3 s. With `--background-palette earth xtmgreenring`: one file family
+(`earth`), 2,281,316 bytes, 8.9 s. Synthetic vanilla + Mayhem 3 + Renegades root
+(`make_mod_root.py`, the lod-overlay-mods recipe): 56 `ok` (TBackgrounds from `addon/07.cat`), all
+on the weighted path; dry run 11.9 s (jobs 4); `--out` 114,063,336 bytes, 56 families, 50 packets
+(two groups of 5 and 3 families share an atlas), 114.1 s with `--jobs 1`, 39.0 s with `--jobs 4`,
+files byte-identical; `--check` PASS; the host build of the DLL loader loads it and decodes all 56
+rows (`decoded_ok=56`). Per family: palette 0.55 s, palette + bake 2.16 s (medians).
+
+**Native Windows.** The same documented Win32 calls and the same location next to `X3AP.exe`
+([platform-portability.md](platform-portability.md)); cross-compiled (MinGW i686, SSE2); the i686
+`fog_family_file_fixture.exe` (CMake target; `--self-test DIR`, `--probe` with `X3M_FOG_FAMILIES`)
+passed its self-test under Wine on bottle X3 (62 cases, the build before review round 1; evidence
+`verification/results/fog-family-data/fixture-wine/`); not run natively.
+
 ## Unknowns
 
-- The exact percentile convention of the stock palette derivation (host test settles it).
+- ~~The exact percentile convention of the stock palette derivation~~: settled, see
+  "Implementation".
 - What the engine draws for `earth` (texture-miss path; disassembly or a remapped flight).
 - Whether 24-bit uncompressed textures change anything about how Mayhem's cards blend (they do
   not affect the palette rule; a flight will show the cards before suppression).

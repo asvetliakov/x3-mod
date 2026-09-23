@@ -613,6 +613,19 @@ a refusal drops the motes only (`fog_dust_motes_refused`). No point sprites, ins
 or Wine export. Cross-compiled with MinGW i686 / SSE2 and qualified on bottle X3 only (fog ledger,
 "Dust motes"); native Windows execution unverified, like the rest of the fog.
 
+## 2026-09-23: data-driven fog families (`<game>/x3m/fog-families.bin`)
+
+The fog family table ([fog-family-data.md](fog-family-data.md), "Implementation") is read with
+documented Win32 file APIs only: `GetEnvironmentVariableW` (`X3M_FOG_FAMILIES`), `GetModuleFileNameW(nullptr)`
+for the directory of `X3AP.exe`, `lstrcmpW` / `lstrcmpiW` (the `0` / `none` switch), `CreateFileW` (`GENERIC_READ`, share read/delete, `OPEN_EXISTING`),
+`GetFileType`, `GetFileSizeEx`, `SetFilePointerEx`, `ReadFile`, `CloseHandle`, `WideCharToMultiByte` for the
+log path; the file sits next to the game (`x3m\fog-families.bin`) on both targets, with no bottle path, drive
+mapping or Wine export. Every field is validated before use; any failure leaves the 14 compiled profiles in
+force. No new D3D call: a file family feeds the unchanged packet decoder and atlas upload. Cross-compiled with
+MinGW i686 / SSE2 (`fog_family_file_fixture.exe` built by CMake); the host build of the same loader passes the
+file cases, and the i686 fixture's self-test passed under Wine on bottle X3 (62 cases, before review
+round 1); native Windows execution unverified.
+
 ## 2026-09-22: partial sun occlusion, step 1 (`--sun-occlusion`, default off)
 
 D3D side, documented calls only: `CheckDeviceFormat` and `CreateTexture` for two 1x1

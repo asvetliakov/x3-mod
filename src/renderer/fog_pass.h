@@ -150,6 +150,10 @@ public:
     const FogCaps& caps() const noexcept { return caps_; }
     // Preparation must run outside any draw/suppression bracket. One decoded CPU
     // cache slot; publication happens only after upload. None disarms immediately.
+    // A file family (fog_field::is_file_profile) whose packet cannot be read or decoded returns
+    // field_row_disabled: the row is disabled, the next sector scan leaves native cards, and the
+    // caller must not fault the session (a compiled resource failure still does).
+    static constexpr HRESULT field_row_disabled=static_cast<HRESULT>(0x80040f4dL);
     HRESULT prepare_field(void* module,fog_field::Profile) noexcept;
     HRESULT prepare_targets(UINT width,UINT height) noexcept;
     HRESULT prepare(UINT width,UINT height) noexcept { return prepare_targets(width,height); }
@@ -163,8 +167,9 @@ public:
     // above zero and the far need box resident. Pure CPU, no lock, no device call.
     bool density_drawable(const double camera[3]) const noexcept;
     // Extinction and mean chroma of the prepared family: tracked offline constants
-    // (fog_family_chroma_inc.h, sum rgb / sum density of the pinned packet). False without a
-    // decoded field or for a profile the table does not know.
+    // (fog_family_chroma_inc.h, sum rgb / sum density of the pinned packet), or the file row's
+    // chroma for a file family (same definition, computed by tools/analysis/fog_families.py).
+    // False without a decoded field or for a profile neither table knows.
     bool field_family(float chroma[3],float* sigma) const noexcept;
     const FogDensityStatus& density_status() const noexcept { return density_status_; }
     const FogGridReport& grid_report() const noexcept { return grid_report_; }
@@ -242,6 +247,7 @@ private:
     IDirect3DSurface9 *lit_surface_=nullptr,*scratch_surface_=nullptr;
     std::vector<std::uint16_t> atlas_bytes_;
     fog_field::Profile cached_profile_=fog_field::Profile::None,active_profile_=fog_field::Profile::None;
+    std::uint32_t cached_packet_=0; // file families: the decoded packet's own id (0: compiled or none)
     std::uint32_t field_recipe_=0; std::uint64_t field_generation_=0;
     float base_sigma_=0;
     UINT width_=0,height_=0,half_width_=0,half_height_=0,render_targets_=0,streams_=0,max_width_=0,max_height_=0;

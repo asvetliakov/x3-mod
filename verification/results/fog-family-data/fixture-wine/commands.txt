@@ -1,0 +1,4 @@
+# fog_family_file_fixture.exe --self-test under Wine (2026-09-23), X3 bottle (CrossOver Preview, arm64 Wine + FEX), built in worktree agent-a30fc8c22ec320ed0 scratch build (not a candidate).
+X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine" --bottle X3 --dll d3d9=b --workdir <dir> fog_family_file_fixture.exe --self-test <dir>   # PASS fog_family_file cases=62 compiled=14; the Wine fixme/err lines are stripped from self_test_out.txt
+c44688dbacb998e2
+# Rerun on the merged main tree (post-review fixture, 67 cases) from the gate scratch build: PASS fog_family_file cases=67 compiled=14; fixture sha256 b87099daec4678f5…

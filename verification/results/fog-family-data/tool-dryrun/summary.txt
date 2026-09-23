@@ -1,0 +1,8 @@
+stock bottle X3 --dry-run --jobs 4: families=16 counts={'covered_by_build': 14, 'refused:no_dust_bodies': 1, 'refused:texture_missing': 1} provisional palettes matching the build=12/12 tool_wall_s=1.32 process_wall_s=1.5
+stock bottle X3 --out --background-palette earth xtmgreenring --jobs 4: counts={'covered_by_build': 14, 'ok': 1, 'refused:background_missing': 1} file_bytes=2281316 packets=1 tool_wall_s=8.93
+mod root --dry-run --jobs 4: families=56 counts={'ok': 56} tbackgrounds=addon/07.cat tool_wall_s=11.88 process_wall_s=12.0
+mod root --out --jobs 1: counts={'ok': 56} file_bytes=114063336 packets=50 tool_wall_s=114.13 process_wall_s=114.3
+mod root --out --jobs 4: counts={'ok': 56} file_bytes=114063336 packets=50 tool_wall_s=38.98 process_wall_s=39.1
+jobs 1 and jobs 4 files byte-identical: True
+--check on the jobs-4 file: exit 0 PASS /private/tmp/claude-501/-Users-asvetl-x3-mod/ec1d2a17-c1f5-4762-8f3d-98edd9
+host loader probe (X3M_FOG_FAMILIES): exit 0 status=loaded reason=ok families=56 packets=50 rows_disabled=0 decoded_ok=56

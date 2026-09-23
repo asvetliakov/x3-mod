@@ -215,7 +215,13 @@ bool FogPass::field_family(float chroma[3],float* sigma) const noexcept {
         for(unsigned c=0;c<3;++c)chroma[c]=row.chroma[c];
         *sigma=base_sigma_;return true;
     }
-    return false;
+    if(!fog_field::is_file_profile(cached_profile_))return false;
+    // A later packet failure may disable the row; its constants stay those of the decoded field.
+    const auto* table=fog_field::family_table();
+    const auto* file_row=table?table->row(cached_profile_):nullptr;
+    if(!file_row)return false;
+    for(unsigned c=0;c<3;++c)chroma[c]=file_row->chroma[c];
+    *sigma=base_sigma_;return true;
 }
 void FogPass::detach() noexcept {
     PreserveCpuState guard;release_targets();drop(atlas_);
@@ -227,7 +233,7 @@ void FogPass::detach() noexcept {
     mote_caps_=motes_refused_=false;mote_max_index_=mote_max_primitives_=0;adapter_format_=D3DFMT_UNKNOWN;mote_report_={};
     fog::DensityCache::retire(density_);density_=nullptr; // joins the worker; a cache it had to abandon is leaked, not freed
     density_config_={};density_status_={};density_refused_=false;grid_refused_=false;ps30_slots_=0;drop(march_);drop(composite_);drop(quad_vs_);drop(quad_declaration_);
-    device_=nullptr;vtable_=nullptr;caps_={};reset_pending_=false;disarm_field();cached_profile_=fog_field::Profile::None;
+    device_=nullptr;vtable_=nullptr;caps_={};reset_pending_=false;disarm_field();cached_profile_=fog_field::Profile::None;cached_packet_=0;
     field_recipe_=0;base_sigma_=0;std::vector<std::uint16_t>().swap(atlas_bytes_);
     render_targets_=streams_=max_width_=max_height_=0;
 }
@@ -293,12 +299,21 @@ HRESULT FogPass::prepare_field(void* module,fog_field::Profile profile) noexcept
     if(reset_pending_){disarm_field();return D3DERR_DEVICENOTRESET;}
     if(profile==active_profile_&&atlas_)return S_OK;
     disarm_field();
-    const auto* info=fog_field::profile_info(profile);if(!info)return E_INVALIDARG;
+    // Compiled profiles first (unchanged path); a file family's info comes from its table row.
+    fog_field::ProfileInfo file_info{};
+    const bool file_family=fog_field::is_file_profile(profile);
+    const auto* info=file_family?(fog_field::family_info(profile,file_info)?&file_info:nullptr):fog_field::profile_info(profile);
+    if(!info)return file_family?field_row_disabled:E_INVALIDARG;
+    // File families sharing one packet (info->profile is the packet's own id) share the decoded
+    // field and the atlas: only the row constants change.
+    const bool same_packet=file_family&&cached_packet_!=0&&cached_packet_==static_cast<std::uint32_t>(info->profile);
+    if(cached_profile_!=profile&&same_packet){cached_profile_=profile;base_sigma_=info->base_sigma;}
     if(cached_profile_!=profile){
-        drop(atlas_);cached_profile_=fog_field::Profile::None;field_recipe_=0;base_sigma_=0;
-        const auto decoded=fog_field::decode_from_resource(module,profile,atlas_bytes_);
-        if(!decoded)return static_cast<HRESULT>(decoded.hresult);
+        drop(atlas_);cached_profile_=fog_field::Profile::None;cached_packet_=0;field_recipe_=0;base_sigma_=0;
+        const auto decoded=file_family?fog_field::decode_family(profile,atlas_bytes_):fog_field::decode_from_resource(module,profile,atlas_bytes_);
+        if(!decoded)return file_family?field_row_disabled:static_cast<HRESULT>(decoded.hresult);
         cached_profile_=profile;field_recipe_=info->recipe_id;base_sigma_=info->base_sigma;
+        cached_packet_=file_family?static_cast<std::uint32_t>(info->profile):0;
     }
     if(!atlas_){
         IDirect3DTexture9* upload=nullptr;

@@ -147,6 +147,19 @@ void MotionOutput::prepare_volumetric_fog_targets(UINT width, UINT height) noexc
             fog_sector_.field_generation = fog_->field_generation();
             fog_cards_.armed = false; fog_cards_.warmup = fog_cards_.active;
         }
+    } else if (prepared == renderer::FogPass::field_row_disabled) {
+        // A file family's packet failed: that row is disabled and the next scan leaves native
+        // cards (family_unsupported), or a first allocation failure is retried at the next latch.
+        // Not a session fault; at most one line per row for each outcome.
+        const auto* table = renderer::fog_field::family_table();
+        const auto* row = table ? table->row(profile) : nullptr;
+        const char* why = row ? row->disabled.load(std::memory_order_relaxed) : nullptr;
+        if (row && why && !row->reported.exchange(true, std::memory_order_relaxed))
+            log("volumetric_fog_family device=%llu frame=%llu event=row_disabled name=\"%s\" profile=%u reason=%s fallback=native_cards",
+                id_, frame_, row->name, fog_sector_.profile, why);
+        else if (row && !why && !row->retry_reported.exchange(true, std::memory_order_relaxed))
+            log("volumetric_fog_family device=%llu frame=%llu event=switch_retry name=\"%s\" profile=%u reason=allocation",
+                id_, frame_, row->name, fog_sector_.profile);
     } else if (prepared != D3DERR_DEVICELOST && prepared != D3DERR_DEVICENOTRESET) fault_fog_cards("prepare");
 }
 // Stored-density range: a new readiness epoch (enable, sector re-key, load gap, residency loss).
@@ -228,7 +241,27 @@ void MotionOutput::prepare_volumetric_fog_density(UINT width, UINT height) noexc
 }
 void MotionOutput::volumetric_fog_sector_sample(std::uint64_t frame, const sector_background::Sample& sample) noexcept {
     if (!fog_requested_ || frame != frame_ || fog_sector_.frame == frame) return;
-    auto next = fog_sector_frame(sample, frame, generation_, fog_strength_, fog_enabled_ && !fog_disabled_, fog_everywhere_);
+    if (!fog_families_checked_) {
+        // Once per process, before the first name scan (fog-family-data.md, "Implementation"): the
+        // caller's CPU boundary and LastError restore cover the file read; nothing per frame after.
+        fog_families_checked_ = true;
+        if (renderer::fog_field::load_family_table()) {
+            const auto& t = *renderer::fog_field::family_table(); // loaded: never null here
+            static const char* const names[] = {"not_loaded", "absent", "disabled", "loaded", "rejected"};
+            log("volumetric_fog_families device=%llu frame=%llu event=%s families=%u packets=%u rows_disabled=%u bytes=%llu reason=%s fallback=%s path=\"%s\"",
+                id_, frame_, names[unsigned(t.status) < 5 ? unsigned(t.status) : 0], t.families, t.packets, t.rows_disabled,
+                static_cast<unsigned long long>(t.file_bytes), t.reason, t.families > t.rows_disabled ? "compiled_first" : "compiled_only",
+                renderer::fog_field::family_table_path());
+            for (std::uint32_t i = 0, shown = 0; i < t.families && shown < 8; ++i)
+                if (const char* why = t.rows[i].disabled.load(std::memory_order_relaxed)) {
+                    ++shown; t.rows[i].reported.store(true, std::memory_order_relaxed);
+                    log("volumetric_fog_family device=%llu frame=%llu event=row_disabled row=%u name=\"%s\" profile=%u reason=%s",
+                        id_, frame_, i, t.rows[i].name, t.rows[i].profile, why);
+                }
+        }
+    }
+    auto next = fog_sector_frame(sample, frame, generation_, fog_strength_, fog_enabled_ && !fog_disabled_, fog_everywhere_,
+                                 renderer::fog_field::family_table()); // nullptr until loaded
     if (fog_density_requested_) {
         // A gap in scene samples longer than fog_density_gap_ms of wall clock is a load or a sector
         // transit: refill and ramp instead of popping in. A shorter gap (a stutter, a skipped sample)

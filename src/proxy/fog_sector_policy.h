@@ -44,8 +44,11 @@ inline FogSectorPlacement fog_sector_placement(const FogSectorFrame& f) noexcept
     }
     return out;
 }
+// `families` (fog-family-data.md): the loaded <game>/x3m/fog-families.bin rows, scanned only
+// after the 14 compiled names miss, so a compiled name always wins; disabled rows never match.
 inline FogSectorFrame fog_sector_frame(const sector_background::Sample& s, std::uint64_t frame,
-                                     std::uint64_t generation, float strength, bool enabled, bool everywhere) noexcept {
+                                     std::uint64_t generation, float strength, bool enabled, bool everywhere,
+                                     const renderer::fog_field::FamilyTable* families = nullptr) noexcept {
     FogSectorFrame out;
     out.frame = frame; out.generation = generation; out.sector = s.sector; out.table = s.table;
     out.record = s.record; out.index = s.index; out.status = s.status;
@@ -64,6 +67,9 @@ inline FogSectorFrame fog_sector_frame(const sector_background::Sample& s, std::
                 out.reason = family.family;
                 break;
             }
+        }
+        if (!out.profile && families) {
+            if (const auto* row = families->find(s.family)) { out.profile = row->profile; out.reason = row->name; }
         }
     }
     // Explicit debug forcing still needs a valid view at card/pass admission.

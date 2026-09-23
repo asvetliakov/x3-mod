@@ -134,3 +134,12 @@ target_link_options(d3d9 PRIVATE -static -static-libgcc -static-libstdc++ -Wl,--
 # which can silently redirect the existing UCRT imports.
 target_link_libraries(d3d9 PRIVATE "${X3M_COMPOSITOR_RUNTIME}" dxguid advapi32)
 set_target_properties(d3d9 PROPERTIES PREFIX "" OUTPUT_NAME "d3d9")
+# Verification fixture (built, run by the Wine queue owner): the Win32 read path of the
+# data-driven fog family file, same source and flags as the DLL's loader.
+add_executable(fog_family_file_fixture verification/probe/fog_family_file_fixture.cpp src/renderer/fog_field_assets.cpp)
+target_compile_features(fog_family_file_fixture PRIVATE cxx_std_17)
+target_include_directories(fog_family_file_fixture PRIVATE src/renderer "${CMAKE_CURRENT_BINARY_DIR}/generated/fog_field")
+target_compile_definitions(fog_family_file_fixture PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_compile_options(fog_family_file_fixture PRIVATE -Wall -Wextra -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2)
+target_link_options(fog_family_file_fixture PRIVATE -static -static-libgcc -static-libstdc++)
+add_dependencies(fog_family_file_fixture x3m_fog_field_assets)

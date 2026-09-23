@@ -1,0 +1,17 @@
+bluewell           records=1  parts=6 textures=1 status=covered_by_build id=- source=dust stops=(0.000,0.529,1.000) (0.201,0.400,1.000) (0.277,0.480,1.000) (0.260,0.586,1.000) matches_build=0
+earth              records=1  parts=6 textures=0 status=refused/texture_missing id=- source=dust stops=-
+fogblue            records=1  parts=5 textures=1 status=covered_by_build id=- source=dust stops=(0.000,1.000,0.014) (0.000,1.000,0.059) (0.008,1.000,0.267) (0.036,1.000,0.337) matches_build=1
+fogbluedistance    records=2  parts=6 textures=1 status=covered_by_build id=- source=dust stops=(0.532,0.792,1.000) (0.615,0.820,1.000) (0.493,0.754,1.000) (0.479,0.797,1.000) matches_build=1
+fogcyancorner      records=1  parts=6 textures=1 status=covered_by_build id=- source=dust stops=(0.346,1.000,0.736) (0.512,1.000,0.805) (0.500,1.000,0.826) (0.425,1.000,0.808) matches_build=1
+fogdeepred         records=3  parts=6 textures=1 status=covered_by_build id=- source=dust stops=(1.000,0.146,0.057) (1.000,0.150,0.214) (1.000,0.113,0.158) (1.000,0.159,0.169) matches_build=1
+foggreeneye        records=2  parts=6 textures=1 status=covered_by_build id=- source=dust stops=(0.005,1.000,0.002) (0.210,1.000,0.000) (0.451,1.000,0.008) (0.597,1.000,0.097) matches_build=1
+foggreenoutlands   records=2  parts=6 textures=1 status=covered_by_build id=- source=dust stops=(0.176,1.000,0.031) (0.318,1.000,0.114) (0.386,1.000,0.257) (0.416,1.000,0.325) matches_build=0
+fogkhaak           records=2  parts=6 textures=1 status=covered_by_build id=- source=dust stops=(0.000,0.000,1.000) (0.006,0.000,1.000) (0.101,0.000,1.000) (0.225,0.000,1.000) matches_build=1
+fogparanid         records=1  parts=6 textures=1 status=covered_by_build id=- source=dust stops=(1.000,0.456,0.198) (1.000,0.465,0.332) (1.000,0.444,0.322) (1.000,0.394,0.256) matches_build=1
+fogred             records=2  parts=6 textures=1 status=covered_by_build id=- source=dust stops=(1.000,0.358,0.600) (1.000,0.343,0.552) (1.000,0.379,0.561) (1.000,0.337,0.504) matches_build=1
+khaakhive          records=1  parts=6 textures=1 status=covered_by_build id=- source=dust stops=(0.000,0.000,1.000) (0.006,0.000,1.000) (0.101,0.000,1.000) (0.225,0.000,1.000) matches_build=1
+uranus             records=1  parts=6 textures=1 status=covered_by_build id=- source=dust stops=(0.003,1.000,0.804) (0.029,1.000,1.000) (0.035,1.000,0.976) (0.024,0.915,1.000) matches_build=1
+uranus3            records=1  parts=6 textures=1 status=covered_by_build id=- source=dust stops=(0.003,1.000,0.804) (0.029,1.000,1.000) (0.035,1.000,0.976) (0.024,0.915,1.000) matches_build=1
+whitenexus         records=1  parts=6 textures=1 status=covered_by_build id=- source=dust stops=(1.000,0.269,0.125) (1.000,0.303,0.192) (1.000,0.322,0.220) (1.000,0.327,0.216) matches_build=1
+xtmgreenring       records=1  parts=0 textures=0 status=refused/no_dust_bodies id=- source=dust stops=-
+{"counts": {"covered_by_build": 14, "refused:no_dust_bodies": 1, "refused:texture_missing": 1}, "families": 16, "file_bytes": null, "jobs": 4, "packets": null, "tbackgrounds": "addon/03.cat", "wall_seconds": 1.32}

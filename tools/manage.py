@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import threading
@@ -95,6 +96,30 @@ VOICE_DECODER_GAME_SUBDIR = Path('x3m/voice-decoder')  # drop-in location under 
 # removes the candidate. It is consumed by the launcher and never forwarded.
 VOICE_DECODER_REPO = ROOT / 'tools/voice-decoder/v4'
 VOICE_DECODER_REPO_ENV = 'X3M_VOICE_DECODER_REPO'
+
+
+FOG_FAMILIES_GAME_FILE = Path('x3m/fog-families.bin')  # tools/analysis/fog_families.py --install
+
+
+def fog_families_line(game, environ):
+    """One report line on the data-driven fog family file the proxy reads at the first fog sector
+    sample (docs/architecture/fog-family-data.md, "Implementation"): the 64-byte header only."""
+    override = environ.get('X3M_FOG_FAMILIES')
+    if override is not None and override.strip().lower() in ('0', 'none'):
+        return 'fog families: disabled (X3M_FOG_FAMILIES)'
+    path = Path(override) if override else game / FOG_FAMILIES_GAME_FILE
+    if not path.is_file():
+        return f'fog families: absent ({path}); the 14 compiled profiles only'
+    size = path.stat().st_size
+    with path.open('rb') as stream:
+        head = stream.read(64)
+    if len(head) < 64:
+        return f'fog families: {path} present bytes={size}; header truncated (the proxy will reject it)'
+    magic, version, header, _, families, packets = struct.unpack_from('<8s5I', head)
+    file_size = struct.unpack_from('<Q', head, 56)[0]
+    if magic != b'X3FOGFAM' or version != 1 or header != 64 or file_size != size:
+        return f'fog families: {path} present bytes={size}; header invalid (the proxy will reject it)'
+    return f'fog families: {path} present bytes={size} families={families} packets={packets}'
 
 
 def voice_decoder_problem(root, *, create_registry, dry_run=False):
@@ -1617,6 +1642,8 @@ def main():
                 parser.error(f'--voice-decoder: {problem}')
         voice_line = f'voice decoder: {voice_root} ({voice_reason})' if voice_root else f'voice decoder: none ({voice_reason})'
         print(voice_line, file=sys.stderr)
+        fog_families = fog_families_line(game, env)
+        print(fog_families, file=sys.stderr)
         if voice_root is not None:
             plugins, registry = voice_root / 'runtime/plugins', voice_root / 'registry'
             voice_env = {'GST_PLUGIN_PATH_1_0': str(plugins), 'GST_REGISTRY_1_0': str(registry / 'x3-arm64.bin'),
@@ -1659,6 +1686,7 @@ def main():
                                       'overrides': overrides,
                                       'executable': executable_record(game / 'X3AP.exe'),
                                       'voice_decoder': voice_line,
+                                      'fog_families': fog_families,
                                       'env': {**{k: env[k] for k in sorted(env) if k.startswith('X3M_')},
                                               **voice_env}}, indent=2))
                     return

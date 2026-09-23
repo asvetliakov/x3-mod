@@ -1,0 +1,65 @@
+msync: bootstrapped mach port on wine-2505746-msync.
+msync: up and running.
+CASE valid status=loaded families=2 packets=2
+CASE shared_packet status=loaded
+CASE absent status=absent
+CASE directory status=rejected reason=open_failed
+CASE zero_length status=rejected reason=truncated_header
+CASE truncated_header status=rejected reason=truncated_header
+CASE bad_magic status=rejected reason=bad_magic
+CASE version_2 status=rejected reason=version
+CASE header_size_0 status=rejected reason=header_size
+CASE recipe_2 status=rejected reason=recipe
+CASE families_0 status=rejected reason=family_count
+CASE families_257 status=rejected reason=family_count
+CASE packets_0 status=rejected reason=packet_count
+CASE packets_3 status=rejected reason=packet_count
+CASE row_size status=rejected reason=row_size
+CASE table_offset status=rejected reason=table_offset
+CASE table_bytes status=rejected reason=table_bytes
+CASE reserved status=rejected reason=reserved
+CASE trailing_byte status=rejected reason=file_size
+CASE file_size_field status=rejected reason=file_size
+CASE table_past_eof status=rejected reason=table_past_eof
+CASE table_checksum status=rejected reason=table_checksum
+CASE shared_owner_disabled status=loaded row=0 reason=sigma
+CASE name_duplicate status=loaded row=1 reason=name_duplicate
+CASE name_compiled status=loaded row=0 reason=name_compiled
+CASE name_32_bytes status=loaded row=0 reason=name
+CASE name_control status=loaded row=0 reason=name
+CASE name_empty status=loaded row=0 reason=name
+CASE name_padding status=loaded row=0 reason=name
+CASE id_3 status=loaded row=0 reason=profile_id
+CASE id_other_name status=loaded row=1 reason=profile_id
+CASE packet_index status=loaded row=0 reason=packet_index
+CASE sigma_0 status=loaded row=0 reason=sigma
+CASE sigma_nan status=loaded row=0 reason=sigma
+CASE sigma_1e-3 status=loaded row=0 reason=sigma
+CASE occupancy_0.6 status=loaded row=0 reason=occupancy
+CASE occupancy_0 status=loaded row=0 reason=occupancy
+CASE chroma_1.5 status=loaded row=0 reason=chroma
+CASE colour_1.5 status=loaded row=0 reason=colour
+CASE colour_negative status=loaded row=0 reason=colour
+CASE flags status=loaded row=0 reason=flags
+CASE packet_width status=loaded row=0 reason=packet_dimensions
+CASE packet_decoded status=loaded row=0 reason=packet_dimensions
+CASE packet_checksum_zero status=loaded row=0 reason=packet_checksum_zero
+CASE packet_profile status=loaded row=0 reason=packet_profile
+CASE packet_size_0 status=loaded row=0 reason=packet_size
+CASE packet_size_huge status=loaded row=0 reason=packet_size
+CASE packet_offset_eof status=loaded row=0 reason=packet_offset
+CASE packet_offset_table status=loaded row=0 reason=packet_offset
+CASE packet_offset_wrap status=loaded row=0 reason=packet_offset
+CASE packet_header_version status=loaded row=0 reason=packet_header
+CASE packet_header_width status=loaded row=0 reason=packet_header
+CASE packet_header_checksum status=loaded row=0 reason=packet_header
+CASE decode_run_past_end status=decode_failed reason=packet_run
+CASE decode_short_packet status=decode_failed reason=packet_truncated
+CASE decode_zero_run status=decode_failed reason=packet_run
+CASE decode_overflow_run status=decode_failed reason=packet_run
+CASE decode_nonfinite_half status=decode_failed reason=packet_half
+CASE decode_negative_half status=decode_failed reason=packet_half
+CASE decode_checksum status=decode_failed reason=packet_checksum
+CASE decode_trailing status=decode_failed reason=packet_trailing_bytes
+CASE decode_file_swapped status=decode_failed reason=read_failed
+PASS fog_family_file cases=62 compiled=14

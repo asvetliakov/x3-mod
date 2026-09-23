@@ -73,6 +73,22 @@ int main() {
     }
     assert(distinct==63);
     auto other=blue;other.profile=2;assert(fog_sector_placement(other).key!=place.key);other=blue;++other.recipe;assert(fog_sector_placement(other).key!=place.key);
+    // File families (fog-family-data.md): scanned only after the compiled 14 miss, disabled rows never match.
+    using renderer::fog_field::family_name_id;
+    static renderer::fog_field::FamilyTable families;
+    families.families=3;
+    std::strcpy(families.rows[0].name,"litcube0");families.rows[0].profile=family_name_id("litcube0");
+    std::strcpy(families.rows[1].name,"bluewell");families.rows[1].profile=family_name_id("bluewell");
+    std::strcpy(families.rows[2].name,"litcube1");families.rows[2].profile=family_name_id("litcube1");families.rows[2].disabled.store("packet_checksum");
+    auto with=[&](const char* name,bool force=false){std::strcpy(sample.family,name);return fog_sector_frame(sample,42,7,.02f,true,force,&families);};
+    sample.dust=50;
+    auto lit=with("litcube0");assert(lit.enabled&&lit.profile==family_name_id("litcube0")&&lit.profile>=0x10000u&&lit.reason==families.rows[0].name&&!lit.forced);
+    assert(with("bluewell").profile==1&&!std::strcmp(with("bluewell").reason,"bluewell"));
+    auto off=with("litcube1");assert(!off.enabled&&off.profile==0&&!std::strcmp(off.reason,"family_unsupported"));
+    assert(!with("unknown").enabled&&with("litcube1",true).profile==1&&with("litcube1",true).forced);
+    std::strcpy(sample.family,"litcube0");assert(fog_sector_frame(sample,42,7,.02f,true,false).profile==0); // no table: the legacy scan
+    sample.dust=0;assert(!with("litcube0").enabled&&!std::strcmp(with("litcube0").reason,"clear"));sample.dust=8;
+    assert(!lit.same_key(blue)&&fog_sector_placement(lit).key!=place.key);
 }
 '''
 class FogSectorPolicyTests(unittest.TestCase):
