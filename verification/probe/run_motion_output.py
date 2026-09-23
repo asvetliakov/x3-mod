@@ -5588,6 +5588,7 @@ def main(argv=None):
                        # results model the loose sky history, so the runner pins loose with the reset off; the
                        # fixture's mirror of the parse reads the same variable.
                        X3M_TAA_SKY_HISTORY='loose', X3M_TAA_SKY_HISTORY_EXIT_PX='0',
+                       X3M_TAA_MOTION_WEIGHT='0',  # DLL default 0.7,2,8 under an age program since Run 70 A; no case here runs one, pinned off so a shell value cannot reach the DLL
                        X3M_TAA_SENTINEL_STABILISER='0',
                        X3M_TELEMETRY_DRAW='1',  # per-draw metrics (gate_us, route_draw_us, ...) are gated behind this switch since a8d4309; the validators require them
                        X3M_FIXTURE_CAMERA='rotate' if camera else 'none', X3M_TAA_SENTINEL=sentinel or 'auto', X3M_FIXTURE_WRAP='0',

@@ -246,7 +246,8 @@ float taa_sky_history_band_px = 3.f;
 // program (far stabiliser or thin region), which motion_output judges.
 float taa_sky_history_exit_px = 0.f;
 // X3M_TAA_MOTION_WEIGHT=F[,V0,V1] (F 0 off, else 0.5..0.99; 0 <= V0 < V1 <= 64 px/frame, default 2,8;
-// default off; docs/architecture/taa-motion-history-weight.md): the age programs cap the history
+// absent: 0.7,2,8 since 2026-09-23 after Run 70 A with the TAA route, an age program and X3M_TAA_SENTINEL other
+// than 1, else off; invalid or oversized: off, logged; docs/architecture/taa-motion-history-weight.md): the age programs cap the history
 // keep weight at F for a pixel whose correspondence moves V1 px/frame or more of translation
 // parallax against the rotation-only camera path (1 at or below V0, a quadratic ramp between), so
 // a hull under SETA accumulates a shorter history; the gate is the smaller of that parallax and the
@@ -3328,6 +3329,8 @@ void initialize_log(HMODULE module) {
         ok=ok&&(count==1||count==3)&&x3::temporal::valid_motion_weight(v[0],v[1],v[2]);
         if(ok)for(unsigned i=0;i<3;++i)taa_motion_weight[i]=v[i];else log("taa_motion_weight_setting invalid=1");
     }
+    else if(taa_requested&&taa_sentinel_mode!=x3m::renderer::SentinelMode::CurrentOnly&&(taa_far[0]>0.f||taa_far[1]>0.f||taa_thin_region[0]>0.f))
+        taa_motion_weight[0]=.7f; // Run 70 A (2026-09-23, run262/run263): 0.7,2,8 with an age program under a policy that can reach 2 (0 is the opt-out)
     if(GetEnvironmentVariableW(L"X3M_CAMERA_CUT_DEG",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=180)camera_cut_degrees=v;}
     if(GetEnvironmentVariableW(L"X3M_CAMERA_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=1000000)camera_log_frames=unsigned(n);}
     log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s unmatched_static=%u sentinel_stabiliser=%.3f sentinel_emitter=%.3f sky_history=%s sky_history_band_px=%.2f sky_history_exit_px=%.3f motion_weight=%.3f,%g,%g camera_cut_deg=%.2f camera_log=%u state_shadow=%s scene_hook=%u hdr=%u taa_k=%.5f mip_bias=%g taa_sharpen=%.3f taa_history_weight=%.3f",

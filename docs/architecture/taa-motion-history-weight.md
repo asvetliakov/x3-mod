@@ -1,12 +1,9 @@
 # Moving-hull softening under SETA: a parallax-gated history weight
 
-<<<<<<< HEAD
-Design note, 2026-09-23 (Fable). Not implemented. Numbers marked [M] are Run 68 A measurements
-=======
-Design note, 2026-09-23 (Fable). **Implemented 2026-09-23 (fixture-proven, awaiting review and commit; section 9 is
-the as-built record, `docs/verification/temporal-resolve.md` "2026-09-23 motion history weight"), default off until
-flown.** Numbers marked [M] are Run 68 A measurements
->>>>>>> 66ee715d (WIP motion weight)
+Design note, 2026-09-23 (Fable). **Implemented 2026-09-23 (section 9 is the as-built record,
+`docs/verification/temporal-resolve.md` "2026-09-23 motion history weight"); default 0.7,2,8 since 2026-09-23 after
+Run 70 A, run262/run263** (launcher and DLL fallback, with an age program and a camera policy other than
+`--taa-sentinel 1`; `--taa-motion-weight 0` opts out). Numbers marked [M] are Run 68 A measurements
 (`verification/results/run254-exit/hull_sharp.py`, `hull_blurfit.py`, `hull_region_split.py`
 and their `*_out*.txt`; ledger `docs/verification/temporal-resolve.md`, "Run 254"); [E] are estimates
 from the model in section 3.
@@ -26,7 +23,7 @@ keep = min(keep, cap)                              // never raises a young pixel
 `cap` is 1 at or below V0 px/frame of parallax, F at or above V1, quadratic in px between (linear in
 px^2: no sqrt). Launcher `--taa-motion-weight F[,V0,V1]` (`X3M_TAA_MOTION_WEIGHT`; requires `--taa`
 and an age program, the exit reset's capability rule; 0 off; else 0.5 <= F < 1, 0 <= V0 < V1 <= 64).
-**Default off for the first flight; the flown candidate is `0.8,2,8`.** Off uploads A = 0, B = 1,
+**Default `0.7,2,8` since 2026-09-23 (Run 70 A: run262 at 0.8, run263 at 0.7; the user prefers 0.7).** Off uploads A = 0, B = 1,
 F = 1: `cap` is 1 on every pixel and `min(keep, 1)` is `keep` bit for bit.
 
 Why this discriminator: the mask's thin-region gate runs on `min(screen speed, camera-relative
@@ -176,8 +173,6 @@ witness). Asserted:
    row (camera yaw 12.5 px/frame, hull screen-static) is bit-identical to off; the min also bounds the
    gate for every input (the screen term is at most W^2 + H^2 px^2 inside the texture), so an overflowing
    parallax cannot reach the off path's `0 * p2 + 1`.
-<<<<<<< HEAD
-=======
 
 ## 9. As built (2026-09-23)
 
@@ -192,7 +187,9 @@ age target identical to off on every row). Plumbing as the exit reset's: `FrameI
 `motion_output_mode`, dropped per device without an age program (`motion_output_taa_motion_weight ... unavailable=1
 reason=no_age_program`), and handed to the pass only under camera policy 2 (`relative` is the translation parallax against
 the far-plane path there and the screen motion otherwise, i.e. a pan would be capped without the camera path).
-`--taa-motion-weight F[,V0,V1]` (requires `--taa`; F > 0 requires an age program; 0 the explicit off).
+`--taa-motion-weight F[,V0,V1]` (requires `--taa`; F > 0 requires an age program; 0 the explicit off; omitted: 0.7,2,8 with an
+age program under a policy other than `--taa-sentinel 1`, else 0, always forwarded; the DLL's fallback for an absent variable
+matches, an invalid or oversized value stays off, logged).
 
 **Slots (measured, D3DXDisassembleShader through the generator and the fixture's `RESOLVE_BUDGET`).** The term as written
 costs 4 slots on the far variants (a fresh `dp2add` for `parallax2`, `mad`, `max_sat`, `min`) and 6 / 6 / 9 on age /
@@ -255,4 +252,3 @@ The section 3 model said sigma 1.0 -> 0.8 (E x2.5) and alias x1.45 for 0.9 -> 0.
 two-frame ripple x2.06 at the half-texel resample, so the fixture's ripple bound is 2.5x (the first run's number, as
 section 6 asked). Only the flight rates that trade (section 8, item 2). Everything below V0 and every pan is bit-identical
 on both targets, and the age target never differs: the cap changes the weight, never the count.
->>>>>>> 66ee715d (WIP motion weight)

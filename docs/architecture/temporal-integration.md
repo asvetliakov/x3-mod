@@ -674,6 +674,14 @@ turns it on); the DLL falls back to strict with TAA on and 0.25 under strict whe
 variables are absent. `--taa-sky-history loose` and `--taa-sky-history-exit-px 0` opt
 out ([seta-sky-hull-share-decay.md](seta-sky-hull-share-decay.md)).
 
+**Motion history weight default (2026-09-23, Run 70 A, run262/run263).** With `--taa` the
+launcher resolves `X3M_TAA_MOTION_WEIGHT=0.7,2,8` when an age program is in effect
+(`--taa-far-stabiliser` or `--taa-thin-region`) and the camera policy is not forced to 1
+(`--taa-sentinel 1`, where the cap is inert), else 0, and always forwards it; the DLL falls
+back to 0.7,2,8 under the same conditions when the variable is absent (an invalid or
+oversized value stays off and is logged). `--taa-motion-weight 0` opts out
+([taa-motion-history-weight.md](taa-motion-history-weight.md)).
+
 ## Stage 3 of the HDR scene path: TAA on HDR (2026-09-12)
 
 Implemented per [hdr-scene-path.md](hdr-scene-path.md) §3 ("TAA on HDR")

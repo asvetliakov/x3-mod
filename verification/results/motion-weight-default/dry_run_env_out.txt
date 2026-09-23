@@ -1,0 +1,4 @@
+taa_age_default {'X3M_TAA': '1', 'X3M_TAA_SENTINEL': 'auto', 'X3M_TAA_MOTION_WEIGHT': '0.7,2,8'}
+taa_age_optout {'X3M_TAA': '1', 'X3M_TAA_SENTINEL': 'auto', 'X3M_TAA_MOTION_WEIGHT': '0,2,8'}
+taa_age_sentinel1 {'X3M_TAA': '1', 'X3M_TAA_SENTINEL': '1', 'X3M_TAA_MOTION_WEIGHT': '0'}
+taa_no_age_default {'X3M_TAA': '1', 'X3M_TAA_SENTINEL': 'auto', 'X3M_TAA_MOTION_WEIGHT': '0'}

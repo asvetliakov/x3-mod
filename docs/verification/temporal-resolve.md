@@ -1931,3 +1931,12 @@ small counts); ripple ratio at 8–16 ×1.66 / ×1.06, at ≥16 ×1.39 / ×0.89 
 variance in both directions); below 2 px/frame and the far sky within run262's spread. The
 scenes differ, so every cross-run number mixes the weight with the scene; a replayed path at 0.8
 and 0.7 would be the clean A/B. **Decision (user, 2026-09-23): the default is `0.7,2,8`.**
+
+**Motion weight default merged (2026-09-23):** `--taa-motion-weight 0.7,2,8` is the launcher and DLL
+default under `--taa` with an age program (`--taa-far-stabiliser` or `--taa-thin-region`) and
+camera policy not forced to 1 (`--taa-sentinel 1`); `0` opts out and is forwarded as `0,2,8`;
+invalid or oversized values stay off and log. Evidence:
+`verification/results/motion-weight-default/dry_run_env_out.txt` (four cases); the motion-output
+runner pins `X3M_TAA_MOTION_WEIGHT=0` (none of its cases runs an age program, so its committed
+results cannot change); one review (Opus). The temporal fixture's current counts are 744 / 278 /
+546 (after the dust-motes merge). Post-merge gate recorded in the commit.
