@@ -1,0 +1,294 @@
+# X3 bottle, WineArch=arm64, FEX_X87REDUCEDPRECISION=1 WINEMSYNC=1
+# d3d9=/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/dxvk/i386-windows/d3d9.dll sha256=78a5f2104bbaecc563949b795b91006d5cce5d88593ee95e7fde3e2da3bdf5da overrides=d3d9=b;d3dx9_37=n
+# command: '/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine' --bottle X3 --no-update --dll 'd3d9=b;d3dx9_37=n' --workdir /Users/asvetl/x3-mod/.claude/worktrees/agent-aa4e52a826d7504fc/build-d3d9smoke --env CX_GRAPHICS_BACKEND=dxvk /Users/asvetl/x3-mod/.claude/worktrees/agent-aa4e52a826d7504fc/build-d3d9smoke/d3d9_backend_smoke_fixture.exe 'Z:\Applications\CrossOver Preview.app\Contents\SharedSupport\CrossOver\lib\dxvk\i386-windows\d3d9.dll' 'Z:\Users\asvetl\Library\Application Support\CrossOver\Bottles\X3\drive_c\X3\d3dx9_37.dll' 'Z:\Users\asvetl\x3-mod\.claude\worktrees\agent-aa4e52a826d7504fc\build-d3d9smoke\d3d9-backend-smoke-programs.txt'
+# exit=0 elapsed_s=30.2
+
+ENV name=X3M_ENV_PROBE present=0 value=-
+ENV name=DYLD_LIBRARY_PATH present=0 value=-
+ENV name=DYLD_FALLBACK_LIBRARY_PATH present=0 value=-
+ENV name=DXVK_LOG_LEVEL present=1 value=info
+ENV name=MVK_CONFIG_LOG_LEVEL present=1 value=2
+STEP load_d3d9 status=ok error=0
+MODULE role=d3d9 path=Z:\Applications\CrossOver_Preview.app\Contents\SharedSupport\CrossOver\lib\dxvk\i386-windows\d3d9.dll wine_builtin=1
+STEP load_d3dx status=ok error=0
+MODULE role=d3dx9_37 path=Z:\Users\asvetl\Library\Application_Support\CrossOver\Bottles\X3\drive_c\X3\d3dx9_37.dll wine_builtin=0
+STEP direct3dcreate9 status=ok
+MODULE role=winevulkan.dll path=C:\windows\system32\winevulkan.dll wine_builtin=1
+MODULE role=vulkan-1.dll path=C:\windows\system32\vulkan-1.dll wine_builtin=1
+ADAPTER hr=00000000 driver=nvd3dum.dll description=Apple_M5_Pro device_name=\\.\DISPLAY1 vendor=106b device=1a0603f1 driver_version=32767.65535.65535.65535
+CAPS hr=00000000 vs=0300 ps=0300 max_textures=8 rts=4 vs_consts=256 max_tex=16384x16384
+FORMAT name=RESZ hr=00000000
+FORMAT name=INTZ hr=00000000
+FORMAT name=D24X8_texture hr=00000000
+FORMAT name=A16B16G16R16F_rt hr=00000000
+FORMAT name=A32B32G32R32F_rt hr=00000000
+FORMAT name=R32F_rt hr=00000000
+FORMAT name=G32R32F_rt hr=00000000
+FORMAT name=NULL_rt hr=00000000
+DEVICE hr=00000000 behavior=00000052 create_ms=141.7
+CHECK device_create PASS
+CHECK managed_textures PASS
+CHECK managed_cube PASS
+CHECK resources PASS
+SHADER name=vs30 hr=00000000
+SHADER name=vs11 hr=00000000
+SHADER name=vs30_generic hr=00000000
+SHADER name=vs20_generic hr=00000000
+SHADER name=ps30_tex hr=00000000
+SHADER name=ps30_tex_cube hr=00000000
+SHADER name=ps11_two hr=00000000
+SHADER name=ps30_depth hr=00000000
+SHADER name=ps30_const hr=00000000
+SHADER name=ps20_const hr=00000000
+DRAW name=quad_vs30_ps30 draw_hr=00000000 read_hr=00000000 mean_r=0.0 mean_g=0.0 mean_b=0.0 coverage=0.000 expect_r=200 expect_g=40 expect_b=40 expect_coverage=1.00
+CHECK quad_vs30_ps30 FAIL
+DRAW name=alpha_test draw_hr=00000000 read_hr=00000000 mean_r=0.0 mean_g=0.0 mean_b=0.0 coverage=0.000 expect_r=100 expect_g=20 expect_b=20 expect_coverage=0.50
+CHECK alpha_test FAIL
+DRAW name=two_samplers_ps11 draw_hr=00000000 read_hr=00000000 mean_r=0.0 mean_g=0.0 mean_b=0.0 coverage=0.000 expect_r=240 expect_g=80 expect_b=240 expect_coverage=1.00
+CHECK two_samplers_ps11 FAIL
+DRAW name=two_samplers_ps30_2d_cube draw_hr=00000000 read_hr=00000000 mean_r=0.0 mean_g=0.0 mean_b=0.0 coverage=0.000 expect_r=240 expect_g=80 expect_b=240 expect_coverage=1.00
+CHECK two_samplers_ps30_2d_cube FAIL
+DRAW name=two_stage_fixed_function draw_hr=00000000 read_hr=00000000 mean_r=0.0 mean_g=0.0 mean_b=0.0 coverage=0.000 expect_r=240 expect_g=80 expect_b=240 expect_coverage=1.00
+CHECK two_stage_fixed_function FAIL
+DRAW name=managed_relock draw_hr=00000000 read_hr=00000000 mean_r=0.0 mean_g=0.0 mean_b=0.0 coverage=0.000 expect_r=40 expect_g=200 expect_b=40 expect_coverage=1.00
+CHECK managed_relock FAIL
+DRAW name=stretch_source draw_hr=00000000 read_hr=00000000 mean_r=0.0 mean_g=0.0 mean_b=0.0 coverage=0.000 expect_r=40 expect_g=40 expect_b=200 expect_coverage=1.00
+CHECK stretch_source FAIL
+DRAW name=stretchrect_rt_scaled draw_hr=00000000 read_hr=00000000 mean_r=0.0 mean_g=0.0 mean_b=0.0 coverage=0.000 expect_r=10 expect_g=10 expect_b=50 expect_coverage=0.25
+CHECK stretchrect_rt_scaled FAIL
+DRAW name=stretchrect_backbuffer draw_hr=00000000 read_hr=00000000 mean_r=10.0 mean_g=200.0 mean_b=10.0 coverage=1.000 expect_r=10 expect_g=200 expect_b=10 expect_coverage=1.00
+CHECK stretchrect_backbuffer PASS
+STRETCHDEPTH hr=00000000
+CHECK stretchrect_depth PASS
+QUERY type=event ok=1 ms=1.16
+CHECK event_query PASS
+QUERY type=occlusion hr=00000000 pixels=0 expect=65536
+CHECK occlusion_query FAIL
+QUERY type=10 supported_hr=00000000
+QUERY type=11 supported_hr=00000000
+QUERY type=12 supported_hr=00000000
+RESZ format=D24X8 create_hr=00000000 resz_hr=00000000 reference=0.25 draw_hr=00000000 read_hr=00000000 mean_r=0.0
+RESZ format=D24X8 create_hr=00000000 resz_hr=00000000 reference=0.75 draw_hr=00000000 read_hr=00000000 mean_r=0.0
+RESZ format=INTZ create_hr=00000000 resz_hr=00000000 reference=0.25 draw_hr=00000000 read_hr=00000000 mean_r=0.0
+RESZ format=INTZ create_hr=00000000 resz_hr=00000000 reference=0.75 draw_hr=00000000 read_hr=00000000 mean_r=0.0
+EFFECT create_hr=00000000 error=-
+DRAW name=d3dx_effect draw_hr=00000000 read_hr=00000000 mean_r=64.0 mean_g=128.0 mean_b=191.0 coverage=1.000 expect_r=64 expect_g=128 expect_b=191 expect_coverage=1.00
+CHECK d3dx_effect PASS
+PRESENT hr=00000000
+CHECK present_hidden_window PASS
+SWEEPSUMMARY programs=211 created=211 create_failed=0 vs_created=67 vs_failed=0 ps_created=144 ps_failed=0 drawn=211 draw_failed=0 wait_failed=0 first_create_failure=-
+RESULT checks=18 failed=9 FAIL
+
+--- stderr outside the sweep: 222 relevant of 317 lines (first 150) ---
+info:  Game: d3d9_backend_smoke_fixture.exe
+info:  DXVK: cxaddon-1.10.3-1-25-g737aacd
+info:  Built-in extension providers:
+info:    Win32 WSI
+info:    OpenVR
+info:    OpenXR
+info:  OpenVR: could not open registry key, status 2
+info:  OpenVR: Failed to locate module
+info:  Enabled instance extensions:
+info:    VK_KHR_get_surface_capabilities2
+info:    VK_KHR_surface
+info:    VK_KHR_win32_surface
+info:  D3D9: VK_FORMAT_D24_UNORM_S8_UINT -> VK_FORMAT_D32_SFLOAT_S8_UINT
+info:  D3D9: VK_FORMAT_D16_UNORM_S8_UINT -> VK_FORMAT_D32_SFLOAT_S8_UINT
+info:  Apple M5 Pro:
+info:    Driver: 0.2.2018
+info:    Vulkan: 1.2.290
+info:    Memory Heap[0]:
+info:      Size: 24576 MiB
+info:      Flags: 0x1
+info:      Memory Type[0]: Property Flags = 0x1
+info:      Memory Type[1]: Property Flags = 0xf
+info:      Memory Type[2]: Property Flags = 0x11
+info:  D3D9: VK_FORMAT_D24_UNORM_S8_UINT -> VK_FORMAT_D32_SFLOAT_S8_UINT
+info:  D3D9: VK_FORMAT_D16_UNORM_S8_UINT -> VK_FORMAT_D32_SFLOAT_S8_UINT
+info:  Apple M5 Pro:
+info:    Driver: 0.2.2018
+info:    Vulkan: 1.2.290
+info:    Memory Heap[0]:
+info:      Size: 24576 MiB
+info:      Flags: 0x1
+info:      Memory Type[0]: Property Flags = 0x1
+info:      Memory Type[1]: Property Flags = 0xf
+info:      Memory Type[2]: Property Flags = 0x11
+info:  Process set as DPI aware
+info:  Device properties:
+info:    Device name:     : Apple M5 Pro
+info:    Driver version   : 0.2.2018
+info:  Enabled device extensions:
+info:    VK_EXT_4444_formats
+info:    VK_EXT_extended_dynamic_state
+info:    VK_EXT_host_query_reset
+info:    VK_EXT_robustness2
+info:    VK_EXT_shader_demote_to_helper_invocation
+info:    VK_EXT_shader_stencil_export
+info:    VK_EXT_shader_viewport_index_layer
+info:    VK_EXT_transform_feedback
+info:    VK_EXT_vertex_attribute_divisor
+info:    VK_KHR_create_renderpass2
+info:    VK_KHR_depth_stencil_resolve
+info:    VK_KHR_driver_properties
+info:    VK_KHR_image_format_list
+info:    VK_KHR_sampler_mirror_clamp_to_edge
+info:    VK_KHR_shader_float_controls
+info:    VK_KHR_swapchain
+info:    VK_KHR_timeline_semaphore
+info:  Device features:
+info:    robustBufferAccess                     : 1
+info:    fullDrawIndexUint32                    : 1
+info:    imageCubeArray                         : 1
+info:    independentBlend                       : 1
+info:    geometryShader                         : 1
+info:    tessellationShader                     : 0
+info:    sampleRateShading                      : 1
+info:    dualSrcBlend                           : 0
+info:    logicOp                                : 0
+info:    multiDrawIndirect                      : 0
+info:    drawIndirectFirstInstance              : 0
+info:    depthClamp                             : 1
+info:    depthBiasClamp                         : 1
+info:    fillModeNonSolid                       : 1
+info:    depthBounds                            : 0
+info:    multiViewport                          : 1
+info:    samplerAnisotropy                      : 1
+info:    textureCompressionBC                   : 1
+info:    occlusionQueryPrecise                  : 1
+info:    pipelineStatisticsQuery                : 1
+info:    vertexPipelineStoresAndAtomics         : 1
+info:    fragmentStoresAndAtomics               : 0
+info:    shaderImageGatherExtended              : 0
+info:    shaderStorageImageExtendedFormats      : 0
+info:    shaderStorageImageReadWithoutFormat    : 0
+info:    shaderStorageImageWriteWithoutFormat   : 1
+info:    shaderClipDistance                     : 1
+info:    shaderCullDistance                     : 1
+info:    shaderFloat64                          : 0
+info:    shaderInt64                            : 0
+info:    variableMultisampleRate                : 0
+info:  VK_EXT_4444_formats
+info:    formatA4R4G4B4                         : 1
+info:    formatA4B4G4R4                         : 1
+info:  VK_EXT_custom_border_color
+info:    customBorderColors                     : 0
+info:    customBorderColorWithoutFormat         : 0
+info:  VK_EXT_depth_clip_enable
+info:    depthClipEnable                        : 0
+info:  VK_EXT_extended_dynamic_state
+info:    extendedDynamicState                   : 1
+info:  VK_EXT_host_query_reset
+info:    hostQueryReset                         : 1
+info:  VK_EXT_memory_priority
+info:    memoryPriority                         : 0
+info:  VK_EXT_non_seamless_cube_map
+info:    nonSeamlessCubeMap                     : 0
+info:  VK_EXT_robustness2
+info:    robustBufferAccess2                    : 0
+info:    robustImageAccess2                     : 0
+info:    nullDescriptor                         : 0
+info:  VK_EXT_shader_demote_to_helper_invocation
+info:    shaderDemoteToHelperInvocation         : 1
+info:  VK_EXT_transform_feedback
+info:    transformFeedback                      : 0
+info:    geometryStreams                        : 0
+info:  VK_EXT_vertex_attribute_divisor
+info:    vertexAttributeInstanceRateDivisor     : 1
+info:    vertexAttributeInstanceRateZeroDivisor : 1
+info:  VK_KHR_buffer_device_address
+info:    bufferDeviceAddress                    : 0
+info:  VK_KHR_timeline_semaphore
+info:    timelineSemaphore                      : 0
+info:  Queue families:
+info:    Graphics : 0
+info:    Transfer : 0
+warn:  DXVK: No state cache file found
+warn:  DXVK: No state cache file found
+warn:  DXVK: Creating new state cache file
+info:  D3D9DeviceEx::ResetSwapChain:
+info:    Requested Presentation Parameters
+info:      - Width:              256
+info:      - Height:             256
+info:      - Format:             D3D9Format::A8R8G8B8
+info:      - Auto Depth Stencil: true
+info:                  ^ Format: D3D9Format::D24S8
+info:      - Windowed:           true
+info:  Presenter: Actual swap chain properties:
+info:    Format:       VK_FORMAT_B8G8R8A8_UNORM
+info:    Present mode: VK_PRESENT_MODE_IMMEDIATE_KHR
+info:    Buffer size:  248x222
+info:    Image count:  2
+info:    Exclusive FS: 0
+warn:  No attachments, trimming render area to viewport
+[mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+[mvk-error] VK_ERROR_INVALID_SHADER_NV: Fragment shader function could not be compiled into pipeline. See previous logged error.
+err:   DxvkGraphicsPipeline: Failed to compile pipeline
+err:     vs  : VS_8472b1b8a45ee658b5244337adff58951598aed1
+err:     fs  : FS_55ee39831139138436522be634d2a43dd50ae895
+err:     attr 0 : location 0, binding 0, format VK_FORMAT_R32G32B32A32_SFLOAT, offset 0
+err:     attr 1 : location 1, binding 0, format VK_FORMAT_R32G32_SFLOAT, offset 16
+err:     binding 0 : binding 0, stride 24, rate 0, divisor 0
+[mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+
+--- stderr error lines inside the sweep: 144 programs (first 60, first line each) ---
+0 ps_00fcc903c7f085d5.bin lines=13 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+1 ps_02606104fa59fb29.bin lines=16 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+2 ps_03a16e5c63daa6e8.bin lines=11 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+3 ps_042c9ae16f41feff.bin lines=18 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+4 ps_0a523f33ac47ae05.bin lines=16 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+5 ps_0c1f3f0f440e4a0c.bin lines=18 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+6 ps_128b987483a23771.bin lines=11 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+7 ps_188c5ab9dbb98393.bin lines=18 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+8 ps_18d372968af4a480.bin lines=18 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+9 ps_1c90e79667bdaddf.bin lines=10 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+10 ps_1d638938d93421b3.bin lines=16 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+11 ps_1de3d2dde345a7e3.bin lines=22 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+12 ps_1ed1bf0fdec00e1a.bin lines=18 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+13 ps_1f26d41bcb7dac1e.bin lines=18 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+14 ps_214fc10d3672ab92.bin lines=17 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+15 ps_222bee0defcb1852.bin lines=17 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+16 ps_22cc5b05a55ef61e.bin lines=18 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+17 ps_23a685807d676195.bin lines=10 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+18 ps_241c3fa33270f58e.bin lines=10 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+19 ps_2b04461d0dae038b.bin lines=18 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+20 ps_3006f8030a467739.bin lines=18 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+21 ps_31445adb0a62d134.bin lines=22 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+22 ps_3602b05ce11ca6ff.bin lines=18 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+23 ps_3755809bd40afc13.bin lines=16 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+24 ps_39eb3c2258a516e1.bin lines=16 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+25 ps_3b94320087e81945.bin lines=16 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+26 ps_43c9405568d2226f.bin lines=18 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+27 ps_462342e3e5781384.bin lines=16 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+28 ps_496049cec2066ed3.bin lines=22 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+29 ps_4f052209611387f0.bin lines=18 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+30 ps_4f837419582f9785.bin lines=16 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+31 ps_517540ae6d5e5410.bin lines=14 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+32 ps_550c2a4d4d3ed70f.bin lines=16 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+33 ps_55826dc176afe464.bin lines=16 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+34 ps_5637a1cf3f747286.bin lines=13 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+35 ps_57acf59d19c73791.bin lines=16 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+36 ps_593e5dea9b3457d5.bin lines=16 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+37 ps_5c823b8507fa1442.bin lines=18 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+38 ps_5e056627e9ff3a8d.bin lines=18 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+39 ps_5e0a10fe752b6140.bin lines=18 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+40 ps_5f82ecacd39529cd.bin lines=22 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+41 ps_6103491c75c6f502.bin lines=10 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+42 ps_6109cf64c03529dd.bin lines=17 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+43 ps_61418505e5d8f998.bin lines=16 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+44 ps_62c180abe017e239.bin lines=18 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+45 ps_63379470db8d2a86.bin lines=18 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+46 ps_63f96eba9eea7880.bin lines=16 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+47 ps_64bac8bb307eb896.bin lines=18 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+48 ps_652a7c5d1e9909a0.bin lines=16 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+49 ps_6733b119142c8d42.bin lines=22 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+50 ps_675f9077d8fd21c4.bin lines=16 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+51 ps_68915563dd0aac9a.bin lines=18 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+52 ps_68f0dd6791fd7d3d.bin lines=18 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+53 ps_6aaaa2cb27e92cc8.bin lines=16 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+54 ps_75fb9c6b05e28ea2.bin lines=22 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+55 ps_769c3814fc0efba8.bin lines=18 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+56 ps_77a5b2d62fb3be48.bin lines=16 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+57 ps_789449ffd931d23e.bin lines=18 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+58 ps_78963cdc7c710e04.bin lines=18 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):
+59 ps_7a0bb00a8070496a.bin lines=16 [mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3):

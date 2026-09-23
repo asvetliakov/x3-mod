@@ -1,0 +1,427 @@
+{
+ "passed": false,
+ "game_launched": false,
+ "name": "dxvk-macos-3.1.1-mvk1.4.2",
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "sources": {
+  "verification/probe/d3d9_backend_smoke_fixture.cpp": "0686b9eb3395cc43d2661947610bed41b6266cfd2bc58385abf762be20a5161f",
+  "verification/probe/run_d3d9_backend_smoke.py": "d50701d08a57f192ad5c1aa9f8ecd9d1b0af4f5f67e7b6ef283257546c1a74de"
+ },
+ "executable": "/Users/asvetl/x3-mod/.claude/worktrees/agent-aa4e52a826d7504fc/build-d3d9smoke/d3d9_backend_smoke_fixture.exe",
+ "executable_sha256": "4a9cd10bf3431cb84ff92b5dc9866e997da83f1a778c368aeafcc1a6f69917b2",
+ "d3d9": "/private/tmp/claude-501/-Users-asvetl-x3-mod/ec1d2a17-c1f5-4762-8f3d-98edd98ef126/scratchpad/dxvk-macos/stage/i386/bin/d3d9.dll",
+ "d3d9_sha256": "2693927f27815856cc797bc0e468f9aff8a2bdcc2f3154165e374ab82ab3651e",
+ "d3d9_bytes": 20052568,
+ "d3dx9_37": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3dx9_37.dll",
+ "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+ "dll_overrides": "d3d9=n;d3dx9_37=n",
+ "env": {
+  "DXVK_LOG_LEVEL": "info",
+  "MVK_CONFIG_LOG_LEVEL": "2"
+ },
+ "extra_env": [],
+ "wine_env": [],
+ "sweep_programs": 211,
+ "sweep_skipped": null,
+ "wine": "/private/tmp/claude-501/-Users-asvetl-x3-mod/ec1d2a17-c1f5-4762-8f3d-98edd98ef126/scratchpad/cxroot/CrossOver/bin/wine",
+ "moltenvk": {
+  "path": "/private/tmp/claude-501/-Users-asvetl-x3-mod/ec1d2a17-c1f5-4762-8f3d-98edd98ef126/scratchpad/cxroot/CrossOver/lib/aarch64/libMoltenVK.dylib",
+  "bytes": 10925552,
+  "sha256": "aef00b13bcc808adf15b85bef9ae67393d92be7ed5dfe41cad16fa809e4a4c5f"
+ },
+ "command": [
+  "/private/tmp/claude-501/-Users-asvetl-x3-mod/ec1d2a17-c1f5-4762-8f3d-98edd98ef126/scratchpad/cxroot/CrossOver/bin/wine",
+  "--bottle",
+  "X3",
+  "--no-update",
+  "--dll",
+  "d3d9=n;d3dx9_37=n",
+  "--workdir",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-aa4e52a826d7504fc/build-d3d9smoke",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-aa4e52a826d7504fc/build-d3d9smoke/d3d9_backend_smoke_fixture.exe",
+  "Z:\\private\\tmp\\claude-501\\-Users-asvetl-x3-mod\\ec1d2a17-c1f5-4762-8f3d-98edd98ef126\\scratchpad\\dxvk-macos\\stage\\i386\\bin\\d3d9.dll",
+  "Z:\\Users\\asvetl\\Library\\Application Support\\CrossOver\\Bottles\\X3\\drive_c\\X3\\d3dx9_37.dll",
+  "Z:\\Users\\asvetl\\x3-mod\\.claude\\worktrees\\agent-aa4e52a826d7504fc\\build-d3d9smoke\\d3d9-backend-smoke-programs.txt"
+ ],
+ "exit_code": 1,
+ "elapsed_s": 23.3,
+ "full_log": "/Users/asvetl/x3-mod/.claude/worktrees/agent-aa4e52a826d7504fc/build-d3d9smoke/d3d9-backend-smoke-dxvk-macos-3.1.1-mvk1.4.2.full.txt",
+ "report": {
+  "modules": [
+   {
+    "role": "d3d9",
+    "path": "Z:\\private\\tmp\\claude-501\\-Users-asvetl-x3-mod\\ec1d2a17-c1f5-4762-8f3d-98edd98ef126\\scratchpad\\dxvk-macos\\stage\\i386\\bin\\d3d9.dll",
+    "wine_builtin": 0
+   },
+   {
+    "role": "d3dx9_37",
+    "path": "Z:\\Users\\asvetl\\Library\\Application_Support\\CrossOver\\Bottles\\X3\\drive_c\\X3\\d3dx9_37.dll",
+    "wine_builtin": 0
+   },
+   {
+    "role": "winevulkan.dll",
+    "path": "C:\\windows\\system32\\winevulkan.dll",
+    "wine_builtin": 1
+   }
+  ],
+  "steps": [
+   {
+    "status": "ok",
+    "error": 0,
+    "name": "load_d3d9"
+   },
+   {
+    "status": "ok",
+    "error": 0,
+    "name": "load_d3dx"
+   },
+   {
+    "status": "ok",
+    "name": "direct3dcreate9"
+   }
+  ],
+  "formats": [
+   {
+    "name": "RESZ",
+    "hr": "00000000"
+   },
+   {
+    "name": "INTZ",
+    "hr": "00000000"
+   },
+   {
+    "name": "D24X8_texture",
+    "hr": "00000000"
+   },
+   {
+    "name": "A16B16G16R16F_rt",
+    "hr": "00000000"
+   },
+   {
+    "name": "A32B32G32R32F_rt",
+    "hr": "00000000"
+   },
+   {
+    "name": "R32F_rt",
+    "hr": "00000000"
+   },
+   {
+    "name": "G32R32F_rt",
+    "hr": "00000000"
+   },
+   {
+    "name": "NULL_rt",
+    "hr": "00000000"
+   }
+  ],
+  "shaders": [
+   {
+    "name": "vs30",
+    "hr": "00000000"
+   },
+   {
+    "name": "vs11",
+    "hr": "00000000"
+   },
+   {
+    "name": "vs30_generic",
+    "hr": "00000000"
+   },
+   {
+    "name": "vs20_generic",
+    "hr": "00000000"
+   },
+   {
+    "name": "ps30_tex",
+    "hr": "00000000"
+   },
+   {
+    "name": "ps30_tex_cube",
+    "hr": "00000000"
+   },
+   {
+    "name": "ps11_two",
+    "hr": "00000000"
+   },
+   {
+    "name": "ps30_depth",
+    "hr": "00000000"
+   },
+   {
+    "name": "ps30_const",
+    "hr": "00000000"
+   },
+   {
+    "name": "ps20_const",
+    "hr": "00000000"
+   }
+  ],
+  "draws": [
+   {
+    "name": "quad_vs30_ps30",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "200.0",
+    "mean_g": "200.0",
+    "mean_b": "200.0",
+    "coverage": "1.000",
+    "expect_r": 200,
+    "expect_g": 40,
+    "expect_b": 40,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "alpha_test",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "200.0",
+    "mean_g": "200.0",
+    "mean_b": "200.0",
+    "coverage": "1.000",
+    "expect_r": 100,
+    "expect_g": 20,
+    "expect_b": 20,
+    "expect_coverage": "0.50"
+   },
+   {
+    "name": "two_samplers_ps11",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "240.0",
+    "mean_g": "240.0",
+    "mean_b": "240.0",
+    "coverage": "1.000",
+    "expect_r": 240,
+    "expect_g": 80,
+    "expect_b": 240,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "two_samplers_ps30_2d_cube",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "240.0",
+    "mean_g": "240.0",
+    "mean_b": "240.0",
+    "coverage": "1.000",
+    "expect_r": 240,
+    "expect_g": 80,
+    "expect_b": 240,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "two_stage_fixed_function",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "0.0",
+    "mean_g": "0.0",
+    "mean_b": "0.0",
+    "coverage": "0.000",
+    "expect_r": 240,
+    "expect_g": 80,
+    "expect_b": 240,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "managed_relock",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "40.0",
+    "mean_g": "40.0",
+    "mean_b": "40.0",
+    "coverage": "1.000",
+    "expect_r": 40,
+    "expect_g": 200,
+    "expect_b": 40,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "stretch_source",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "40.0",
+    "mean_g": "40.0",
+    "mean_b": "40.0",
+    "coverage": "1.000",
+    "expect_r": 40,
+    "expect_g": 40,
+    "expect_b": 200,
+    "expect_coverage": "1.00"
+   },
+   {
+    "name": "stretchrect_rt_scaled",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "10.0",
+    "mean_g": "10.0",
+    "mean_b": "10.0",
+    "coverage": "0.250",
+    "expect_r": 10,
+    "expect_g": 10,
+    "expect_b": 50,
+    "expect_coverage": "0.25"
+   },
+   {
+    "name": "stretchrect_backbuffer",
+    "draw_hr": "00000000",
+    "read_hr": "00000000",
+    "mean_r": "10.0",
+    "mean_g": "200.0",
+    "mean_b": "10.0",
+    "coverage": "1.000",
+    "expect_r": 10,
+    "expect_g": 200,
+    "expect_b": 10,
+    "expect_coverage": "1.00"
+   }
+  ],
+  "queries": [
+   {
+    "type": "event",
+    "ok": 1,
+    "ms": "4.59"
+   },
+   {
+    "type": "occlusion",
+    "hr": "00000000",
+    "pixels": 65536,
+    "expect": 65536
+   },
+   {
+    "type": 10,
+    "supported_hr": "00000000"
+   },
+   {
+    "type": 11,
+    "supported_hr": "00000000"
+   },
+   {
+    "type": 12,
+    "supported_hr": "00000000"
+   }
+  ],
+  "resz": [],
+  "checks": [
+   [
+    "device_create",
+    true
+   ],
+   [
+    "managed_textures",
+    true
+   ],
+   [
+    "managed_cube",
+    true
+   ],
+   [
+    "resources",
+    true
+   ],
+   [
+    "quad_vs30_ps30",
+    false
+   ],
+   [
+    "alpha_test",
+    false
+   ],
+   [
+    "two_samplers_ps11",
+    false
+   ],
+   [
+    "two_samplers_ps30_2d_cube",
+    false
+   ],
+   [
+    "two_stage_fixed_function",
+    false
+   ],
+   [
+    "managed_relock",
+    false
+   ],
+   [
+    "stretch_source",
+    false
+   ],
+   [
+    "stretchrect_rt_scaled",
+    false
+   ],
+   [
+    "stretchrect_backbuffer",
+    true
+   ],
+   [
+    "stretchrect_depth",
+    true
+   ],
+   [
+    "event_query",
+    true
+   ],
+   [
+    "occlusion_query",
+    true
+   ]
+  ],
+  "sweep": [],
+  "other": [],
+  "adapter": {
+   "hr": "00000000",
+   "driver": "aticfx32.dll",
+   "description": "AMD_Radeon_RX_6700_XT",
+   "device_name": "\\\\.\\DISPLAY1",
+   "vendor": 1002,
+   "device": "73df",
+   "driver_version": "32767.65535.65535.65535"
+  },
+  "caps": {
+   "hr": "00000000",
+   "vs": 300,
+   "ps": 300,
+   "max_textures": 8,
+   "rts": 4,
+   "vs_consts": 256,
+   "max_tex": "16384x16384"
+  },
+  "device": {
+   "hr": "00000000",
+   "behavior": 52,
+   "create_ms": "1095.7"
+  },
+  "stretchdepth": {
+   "hr": "00000000"
+  },
+  "failed_checks": [
+   "quad_vs30_ps30",
+   "alpha_test",
+   "two_samplers_ps11",
+   "two_samplers_ps30_2d_cube",
+   "two_stage_fixed_function",
+   "managed_relock",
+   "stretch_source",
+   "stretchrect_rt_scaled"
+  ],
+  "sweep_error_programs": 0,
+  "sweep_errors": [],
+  "stderr_errors_outside_sweep": 7,
+  "first_error": "info:  OpenVR: Failed to locate module",
+  "moltenvk_lines": [
+   "[mvk-warn] VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart.",
+   "info:    Driver   : MoltenVK 0.2.2210",
+   "info:  Found device: Apple M5 Pro (MoltenVK 0.2.2210)"
+  ]
+ },
+ "report_sha256": "04dc24522cbd00f1e761876b46963f6d2996de10d32e37a20b20e4f3335ff0d3"
+}

@@ -443,6 +443,113 @@ the D3D11 case has a number; and treat HDR output as its own design question
 later, because it is the one thing D3D9 on wined3d cannot do at all and the
 one thing that would justify a D3D11 presentation path on its own terms.
 
+## DXVK D3D9 over MoltenVK: smoke test
+
+2026-09-24, bottle X3 (CrossOver Preview, WineArch arm64, `FEX_X87REDUCEDPRECISION=1`,
+`WINEMSYNC=1`, bottle `CX_GRAPHICS_BACKEND=dxmt`). Question: can a current DXVK D3D9 replace
+wined3d as the backend the proxy forwards to? The game was not launched. Probe
+`verification/probe/d3d9_backend_smoke_fixture.cpp` (CMake target `d3d9_backend_smoke_fixture`) with
+runner `verification/probe/run_d3d9_backend_smoke.py`; records and the figure-printing script in
+`verification/results/bottle-X3/d3d9-backend-smoke/` (`python3 summary.py` there). The fixture loads a
+given `d3d9.dll`, creates the game's device shape (HWVP | PUREDEVICE | FPU_PRESERVE = 0x52, windowed,
+A8R8G8B8 back buffer as the game's capture reports, D24S8, hidden window), draws readback cases into a
+256x256 A8R8G8B8 target, then creates and draws each of the 211 live game programs (`3_0` directories;
+local extraction `/tmp/x3-shader-sweep/programs`) with a generic partner shader and an event-query wait,
+so pipeline compilation errors land between per-program stderr markers. Runs, one at a time:
+`X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_d3d9_backend_smoke.py
+--d3d9 builtin` (wined3d); `--d3d9 <fork d3d9.dll>` (loaded as native); CrossOver's DXVK with
+`--d3d9 <lib/dxvk/i386-windows/d3d9.dll> --d3d9-order b --wine-env CX_GRAPHICS_BACKEND=dxvk`, since that
+file is Wine-builtin-marked and a path load alone maps to wined3d (M); the bottle configuration was not
+touched.
+
+**Result: neither DXVK renders on this bottle as shipped.** The metalsharp fork cannot start on the
+bundled MoltenVK 1.2.10 (Vulkan 1.2), and CrossOver's own DXVK 1.10.3 fails every textured draw on the
+aliased texture binding, as on 2026-09-17. A newer MoltenVK cannot be selected per process; it needs a
+file changed inside the CrossOver Preview app bundle, which is the user's decision. wined3d stays the
+backend.
+
+**Fork build (M).** `metalsharp/DXVK-MacOS` commit `8d348236e14a3db25ffbe528a83010b3dd69a3ef` (main, tag
+`d3d9-rc1`; DXVK 3.1.1, version string `v3.1-macos1.0-48-g8d348236+`, the `+` being the applied
+`patches/dxbc-spirv-moltenvk.patch`), submodule `dxbc-spirv` at `bf14419e5fa7eacb817b7b632f03cb61d61bbad7`.
+Built for i386 with the repository's cross file `build-win32.txt`, `meson setup --buildtype release`
+(meson 1.11.2 in a scratch venv, Homebrew ninja, glslang 16.6.0 release binary, Homebrew
+`i686-w64-mingw32-g++` 16.2.0; DXVK's own flags `-std=c++17 -O3 -msse -msse2 -msse3 -mfpmath=sse
+-mpreferred-stack-boundary=2`). No system package installed. `d3d9.dll` 20,052,568 B, sha256
+`2693927f…ab3651e`; build products stay in the scratch clone.
+
+| Backend (bundled MoltenVK 1.2.10) | Device | Textured quad (means R,G,B; coverage) | Game programs: create / draw-time backend errors | First error line |
+| --- | --- | --- | --- | --- |
+| wined3d (bottle `d3d9`, builtin) | S_OK, 7.4 ms | 200,40,40; 1.000 (expected 200,40,40; 1.0) | 211 of 211 / 0 | none |
+| CrossOver DXVK `cxaddon-1.10.3-1-25-g737aacd` (`lib/dxvk/i386-windows/d3d9.dll`, 3,329,616 B, sha256 `78a5f210…bdf5da`) | S_OK, 141.7 ms | 0,0,0; 0.000 | 211 of 211 / 144 of 144 pixel shaders, 0 of 67 vertex shaders | `[mvk-error] VK_ERROR_INITIALIZATION_FAILED: Shader library compile failed (Error code 3)`, then `error: cannot reserve 'texture' resource location at index 0` (a `texture2d s0_2d` and a `depth2d s0_2d_shadow` both at `[[texture(0)]]`) |
+| metalsharp DXVK 3.1.1 (built above) | none: `Direct3DCreate9` throws, process exit 3 | not reached | not reached | `info: Skipping: Device does not support Vulkan 1.3`, `warn: DXVK: No adapters found`, `terminate called after throwing an instance of 'dxvk::DxvkError'` |
+
+All figures above are measured. On CrossOver's DXVK every case that samples a texture reads back black
+(alpha test, `ps_1_1` two samplers, `ps_3_0` 2D + cube, the two-stage fixed-function draw, MANAGED
+re-lock, the StretchRect source). Of the run's 151 MoltenVK compile failures, 150 are Metal refusing two
+resources on one texture/sampler index (the aliased `texture2d`/`depth2d` pair; 14 of them also collide
+on buffer index 0) and 1 is a buffer-index collision alone (M, `compile_errors.py` beside the records on
+the local full log): the failure is DXVK 1.10's aliased binding, which the fork's
+`d3d9.deAliasedSamplers` exists to avoid. That fork path could not be exercised here: DXVK 3.x
+requires Vulkan 1.3 and MoltenVK 1.2.10 reports Vulkan 1.2.290 (M, DXVK's device log). The Vulkan
+portability requirement in the fork's README is already met by this CrossOver (`win32u.so` carries
+`VK_KHR_portability_enumeration`, and both DXVKs enumerate the Apple M5 Pro, M).
+
+**Adapter strings (M).** wined3d: `NVIDIA GeForce 8800 GTX`, driver `nvd3dum.dll`, vendor 0x10de, device
+0x0191, version 9.16.13.4052 (wined3d's emulated card). CrossOver DXVK: `Apple M5 Pro`, driver
+`nvd3dum.dll`, vendor 0x106b, device 0x1a0603f1, version 32767.65535.65535.65535; its log: Vulkan
+1.2.290, driver version 0.2.2018 (MoltenVK 1.2.10 encoded). The fork reports no adapter.
+
+**How MoltenVK is found, and what a newer one needs.** `lib/wine/aarch64-unix/win32u.so` dlopens the
+leaf name `libMoltenVK.dylib` (string, M) and carries `LC_RPATH @loader_path/../../../lib/aarch64`, i.e.
+`CrossOver/lib/aarch64/libMoltenVK.dylib` (M, otool); there is no Vulkan loader on the Unix side, so
+`VK_ICD_FILENAMES` does not apply (I). The Wine loader `wine.app` is signed with the hardened runtime
+(flags 0x10000) and lacks `com.apple.security.cs.allow-dyld-environment-variables` (M), so dyld drops
+`DYLD_*`: `DYLD_LIBRARY_PATH` passed through `wine --env` never reached the process while a control
+variable did, and the driver stayed 0.2.2018; a copy of the new dylib in the working directory did not
+load either (M, the two `select-mvk1.4.2-*-attempt` records). The only route is replacing the file
+inside `/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/aarch64/`:
+
+| MoltenVK | Bytes | Architectures | sha256 |
+| --- | --- | --- | --- |
+| Bundled 1.2.10 | 5,604,480 | arm64 | `e7a886378216ca48dfb87a63ebe2856d58b72e6081d98e202710be09885bfbfd` |
+| KhronosGroup release v1.4.2 (`MoltenVK-macos.tar`, `dynamic/dylib/macOS`) | 10,925,552 | x86_64 + arm64 | `aef00b13bcc808adf15b85bef9ae67393d92be7ed5dfe41cad16fa809e4a4c5f` |
+
+That edit breaks the app bundle's code seal, which Gatekeeper reports as a damaged app, and a CrossOver
+update would restore the old file (I). Running Wine from a copied runtime is not an option: a copy
+carrying the quarantine attribute and a modified bundle made Gatekeeper show the same dialog.
+
+**Other game-relevant features (M, bundled MoltenVK).** Both backends that created a device accept
+PUREDEVICE, MANAGED 2D and cube textures (creation and lock), `CheckDeviceFormat` for RESZ, INTZ, D24X8
+textures, FP16/FP32/R32F/G32R32F render targets and NULL, depth-to-depth `StretchRect`, back buffer to
+render-target `StretchRect` (10,200,10 read back on both), event queries, `Present` to the hidden window,
+and `D3DXCreateEffect` with the game's own native `d3dx9_37.dll` (compile, `Begin`/`BeginPass`, a
+texture-free draw read back 64,128,191 on both). Differences: timestamp queries are refused by wined3d
+(D3DERR_NOTAVAILABLE) and supported by DXVK; the occlusion query counts 65,536 pixels on wined3d and 0 on
+CrossOver's DXVK (its draw produced nothing). RESZ into INTZ reads back raw depth 0.5 (mean 128) on
+wined3d; on CrossOver's DXVK every RESZ read is black like the other textured draws, so RESZ is not
+assessed there. The D24X8 RESZ read through `texldp` with references 0.25 and 0.75 gave 0 on wined3d for
+both (the proxy uses `depth_decode.hlsl` for that path, not this read). Nothing on the fork is assessed.
+
+**What would settle the fork (not run).** The same runner against the fork with MoltenVK 1.4.x in place,
+which requires the user to accept the app-bundle change above (or a CrossOver release that ships
+MoltenVK 1.4); then the per-draw submission cost against the GPU backend A/B numbers above.
+
+### Fork on MoltenVK 1.4.2 (one run on a copied runtime, 2026-09-24; not repeatable without an app-bundle change)
+
+Before the copied-runtime approach was stopped (it triggers macOS Gatekeeper's "damaged" dialog for the user), one
+fixture run of the fork completed against MoltenVK 1.4.2 placed in a scratch copy of the CrossOver runtime
+(`verification/results/bottle-X3/d3d9-backend-smoke/dxvk-macos-3.1.1-mvk1.4.2.json`, M): the device is created
+(1,096 ms, adapter spoofed as an AMD RX 6700 XT by DXVK's config), all 10 fixture shaders create, every draw
+returns S_OK with full coverage, and the sampler collision of the 1.10.3 build is gone. But every textured draw
+reads back the red channel replicated into all three (200,200,200 for an expected 200,40,40; 240,240,240 for
+240,80,240; 40,40,40 for 40,200,40), the two-stage fixed-function draw is black, and the scaled StretchRect keeps
+only red too, while the untextured back-buffer StretchRect is exact (10,200,10). So the current fork over a current
+MoltenVK gets past the shader compiler and fails one step later, on texture sampling (a format or swizzle mapping,
+I; not diagnosed). One MoltenVK warning: `Metal does not support disabling primitive restart`. Continuing needs
+either the user replacing `lib/aarch64/libMoltenVK.dylib` inside CrossOver Preview.app (bundled 5,604,480 B
+`e7a88637…`, 1.4.2 10,925,552 B `aef00b13…`) or a scratch copy of the runtime with its quarantine attribute
+removed so Gatekeeper does not assess it; both are the user's call.
+
 ## Alternatives considered and why they lose
 
 - **Write the 9-on-11 translator (the question as asked).** Loses on the

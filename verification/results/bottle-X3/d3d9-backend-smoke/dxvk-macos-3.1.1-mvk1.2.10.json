@@ -1,0 +1,99 @@
+{
+ "passed": false,
+ "game_launched": false,
+ "name": "dxvk-macos-3.1.1-mvk1.2.10",
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "sources": {
+  "verification/probe/d3d9_backend_smoke_fixture.cpp": "0686b9eb3395cc43d2661947610bed41b6266cfd2bc58385abf762be20a5161f",
+  "verification/probe/run_d3d9_backend_smoke.py": "e3fa2f71e0ffa8d33843138bc19ebe99daa377b28620dba8d3c702f5baf69aad"
+ },
+ "executable": "/Users/asvetl/x3-mod/.claude/worktrees/agent-aa4e52a826d7504fc/build-d3d9smoke/d3d9_backend_smoke_fixture.exe",
+ "executable_sha256": "4a9cd10bf3431cb84ff92b5dc9866e997da83f1a778c368aeafcc1a6f69917b2",
+ "d3d9": "/private/tmp/claude-501/-Users-asvetl-x3-mod/ec1d2a17-c1f5-4762-8f3d-98edd98ef126/scratchpad/dxvk-macos/stage/i386/bin/d3d9.dll",
+ "d3d9_sha256": "2693927f27815856cc797bc0e468f9aff8a2bdcc2f3154165e374ab82ab3651e",
+ "d3d9_bytes": 20052568,
+ "d3dx9_37": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3dx9_37.dll",
+ "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+ "dll_overrides": "d3d9=n;d3dx9_37=n",
+ "env": {
+  "DXVK_LOG_LEVEL": "info",
+  "MVK_CONFIG_LOG_LEVEL": "2"
+ },
+ "extra_env": [],
+ "wine_env": [],
+ "sweep_programs": 211,
+ "sweep_skipped": null,
+ "moltenvk": {
+  "path": "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/aarch64/libMoltenVK.dylib",
+  "bytes": 5604480,
+  "sha256": "e7a886378216ca48dfb87a63ebe2856d58b72e6081d98e202710be09885bfbfd"
+ },
+ "command": [
+  "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+  "--bottle",
+  "X3",
+  "--no-update",
+  "--dll",
+  "d3d9=n;d3dx9_37=n",
+  "--workdir",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-aa4e52a826d7504fc/build-d3d9smoke",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-aa4e52a826d7504fc/build-d3d9smoke/d3d9_backend_smoke_fixture.exe",
+  "Z:\\private\\tmp\\claude-501\\-Users-asvetl-x3-mod\\ec1d2a17-c1f5-4762-8f3d-98edd98ef126\\scratchpad\\dxvk-macos\\stage\\i386\\bin\\d3d9.dll",
+  "Z:\\Users\\asvetl\\Library\\Application Support\\CrossOver\\Bottles\\X3\\drive_c\\X3\\d3dx9_37.dll",
+  "Z:\\Users\\asvetl\\x3-mod\\.claude\\worktrees\\agent-aa4e52a826d7504fc\\build-d3d9smoke\\d3d9-backend-smoke-programs.txt"
+ ],
+ "killed": null,
+ "exit_code": 3,
+ "elapsed_s": 4.0,
+ "full_log": "/Users/asvetl/x3-mod/.claude/worktrees/agent-aa4e52a826d7504fc/build-d3d9smoke/d3d9-backend-smoke-dxvk-macos-3.1.1-mvk1.2.10.full.txt",
+ "report": {
+  "modules": [
+   {
+    "role": "d3d9",
+    "path": "Z:\\private\\tmp\\claude-501\\-Users-asvetl-x3-mod\\ec1d2a17-c1f5-4762-8f3d-98edd98ef126\\scratchpad\\dxvk-macos\\stage\\i386\\bin\\d3d9.dll",
+    "wine_builtin": 0
+   },
+   {
+    "role": "d3dx9_37",
+    "path": "Z:\\Users\\asvetl\\Library\\Application_Support\\CrossOver\\Bottles\\X3\\drive_c\\X3\\d3dx9_37.dll",
+    "wine_builtin": 0
+   }
+  ],
+  "steps": [
+   {
+    "status": "ok",
+    "error": 0,
+    "name": "load_d3d9"
+   },
+   {
+    "status": "ok",
+    "error": 0,
+    "name": "load_d3dx"
+   }
+  ],
+  "formats": [],
+  "shaders": [],
+  "draws": [],
+  "queries": [],
+  "resz": [],
+  "checks": [],
+  "sweep": [],
+  "other": [],
+  "failed_checks": [],
+  "sweep_error_programs": 0,
+  "sweep_errors": [],
+  "stderr_errors_outside_sweep": 1,
+  "first_error": "info:  OpenVR: Failed to locate module",
+  "moltenvk_lines": []
+ },
+ "report_sha256": "07eecec5daf0ee405710409baf5af30f6ede26057c1c12c0c44a9eb823e9408d",
+ "report_reparsed_by_runner_sha256": "640e591a55e647f0f2a165cb894be5087cd9e7a1b5c2e35daad6272ad5075b92"
+}

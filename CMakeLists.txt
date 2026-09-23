@@ -172,3 +172,12 @@ target_compile_definitions(gpu_backend_ab_fixture PRIVATE WIN32_LEAN_AND_MEAN NO
 target_compile_options(gpu_backend_ab_fixture PRIVATE -Wall -Wextra -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2)
 target_link_options(gpu_backend_ab_fixture PRIVATE -static -static-libgcc -static-libstdc++)
 target_link_libraries(gpu_backend_ab_fixture PRIVATE user32 version advapi32)
+# D3D9 backend smoke probe (run by the Wine queue owner through verification/probe/run_d3d9_backend_smoke.py):
+# loads a given d3d9.dll (wined3d, CrossOver's DXVK, a DXVK-over-MoltenVK build) and d3dx9_37 at run
+# time, draws readback cases in the game's device shape and sweeps the game's shader programs.
+add_executable(d3d9_backend_smoke_fixture verification/probe/d3d9_backend_smoke_fixture.cpp)
+target_compile_features(d3d9_backend_smoke_fixture PRIVATE cxx_std_17)
+target_compile_definitions(d3d9_backend_smoke_fixture PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_compile_options(d3d9_backend_smoke_fixture PRIVATE -Wall -Wextra -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2)
+target_link_options(d3d9_backend_smoke_fixture PRIVATE -static -static-libgcc -static-libstdc++)
+target_link_libraries(d3d9_backend_smoke_fixture PRIVATE user32)

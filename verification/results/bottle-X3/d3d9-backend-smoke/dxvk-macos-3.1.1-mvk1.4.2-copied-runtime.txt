@@ -1,0 +1,222 @@
+# X3 bottle, WineArch=arm64, FEX_X87REDUCEDPRECISION=1 WINEMSYNC=1
+# d3d9=/private/tmp/claude-501/-Users-asvetl-x3-mod/ec1d2a17-c1f5-4762-8f3d-98edd98ef126/scratchpad/dxvk-macos/stage/i386/bin/d3d9.dll sha256=2693927f27815856cc797bc0e468f9aff8a2bdcc2f3154165e374ab82ab3651e overrides=d3d9=n;d3dx9_37=n
+# command: /private/tmp/claude-501/-Users-asvetl-x3-mod/ec1d2a17-c1f5-4762-8f3d-98edd98ef126/scratchpad/cxroot/CrossOver/bin/wine --bottle X3 --no-update --dll 'd3d9=n;d3dx9_37=n' --workdir /Users/asvetl/x3-mod/.claude/worktrees/agent-aa4e52a826d7504fc/build-d3d9smoke /Users/asvetl/x3-mod/.claude/worktrees/agent-aa4e52a826d7504fc/build-d3d9smoke/d3d9_backend_smoke_fixture.exe 'Z:\private\tmp\claude-501\-Users-asvetl-x3-mod\ec1d2a17-c1f5-4762-8f3d-98edd98ef126\scratchpad\dxvk-macos\stage\i386\bin\d3d9.dll' 'Z:\Users\asvetl\Library\Application Support\CrossOver\Bottles\X3\drive_c\X3\d3dx9_37.dll' 'Z:\Users\asvetl\x3-mod\.claude\worktrees\agent-aa4e52a826d7504fc\build-d3d9smoke\d3d9-backend-smoke-programs.txt'
+# exit=1 elapsed_s=23.3
+
+ENV name=X3M_ENV_PROBE present=0 value=-
+ENV name=DYLD_LIBRARY_PATH present=0 value=-
+ENV name=DYLD_FALLBACK_LIBRARY_PATH present=0 value=-
+ENV name=DXVK_LOG_LEVEL present=1 value=info
+ENV name=MVK_CONFIG_LOG_LEVEL present=1 value=2
+STEP load_d3d9 status=ok error=0
+MODULE role=d3d9 path=Z:\private\tmp\claude-501\-Users-asvetl-x3-mod\ec1d2a17-c1f5-4762-8f3d-98edd98ef126\scratchpad\dxvk-macos\stage\i386\bin\d3d9.dll wine_builtin=0
+STEP load_d3dx status=ok error=0
+MODULE role=d3dx9_37 path=Z:\Users\asvetl\Library\Application_Support\CrossOver\Bottles\X3\drive_c\X3\d3dx9_37.dll wine_builtin=0
+STEP direct3dcreate9 status=ok
+MODULE role=winevulkan.dll path=C:\windows\system32\winevulkan.dll wine_builtin=1
+ADAPTER hr=00000000 driver=aticfx32.dll description=AMD_Radeon_RX_6700_XT device_name=\\.\DISPLAY1 vendor=1002 device=73df driver_version=32767.65535.65535.65535
+CAPS hr=00000000 vs=0300 ps=0300 max_textures=8 rts=4 vs_consts=256 max_tex=16384x16384
+FORMAT name=RESZ hr=00000000
+FORMAT name=INTZ hr=00000000
+FORMAT name=D24X8_texture hr=00000000
+FORMAT name=A16B16G16R16F_rt hr=00000000
+FORMAT name=A32B32G32R32F_rt hr=00000000
+FORMAT name=R32F_rt hr=00000000
+FORMAT name=G32R32F_rt hr=00000000
+FORMAT name=NULL_rt hr=00000000
+DEVICE hr=00000000 behavior=00000052 create_ms=1095.7
+CHECK device_create PASS
+CHECK managed_textures PASS
+CHECK managed_cube PASS
+CHECK resources PASS
+SHADER name=vs30 hr=00000000
+SHADER name=vs11 hr=00000000
+SHADER name=vs30_generic hr=00000000
+SHADER name=vs20_generic hr=00000000
+SHADER name=ps30_tex hr=00000000
+SHADER name=ps30_tex_cube hr=00000000
+SHADER name=ps11_two hr=00000000
+SHADER name=ps30_depth hr=00000000
+SHADER name=ps30_const hr=00000000
+SHADER name=ps20_const hr=00000000
+DRAW name=quad_vs30_ps30 draw_hr=00000000 read_hr=00000000 mean_r=200.0 mean_g=200.0 mean_b=200.0 coverage=1.000 expect_r=200 expect_g=40 expect_b=40 expect_coverage=1.00
+CHECK quad_vs30_ps30 FAIL
+DRAW name=alpha_test draw_hr=00000000 read_hr=00000000 mean_r=200.0 mean_g=200.0 mean_b=200.0 coverage=1.000 expect_r=100 expect_g=20 expect_b=20 expect_coverage=0.50
+CHECK alpha_test FAIL
+DRAW name=two_samplers_ps11 draw_hr=00000000 read_hr=00000000 mean_r=240.0 mean_g=240.0 mean_b=240.0 coverage=1.000 expect_r=240 expect_g=80 expect_b=240 expect_coverage=1.00
+CHECK two_samplers_ps11 FAIL
+DRAW name=two_samplers_ps30_2d_cube draw_hr=00000000 read_hr=00000000 mean_r=240.0 mean_g=240.0 mean_b=240.0 coverage=1.000 expect_r=240 expect_g=80 expect_b=240 expect_coverage=1.00
+CHECK two_samplers_ps30_2d_cube FAIL
+DRAW name=two_stage_fixed_function draw_hr=00000000 read_hr=00000000 mean_r=0.0 mean_g=0.0 mean_b=0.0 coverage=0.000 expect_r=240 expect_g=80 expect_b=240 expect_coverage=1.00
+CHECK two_stage_fixed_function FAIL
+DRAW name=managed_relock draw_hr=00000000 read_hr=00000000 mean_r=40.0 mean_g=40.0 mean_b=40.0 coverage=1.000 expect_r=40 expect_g=200 expect_b=40 expect_coverage=1.00
+CHECK managed_relock FAIL
+DRAW name=stretch_source draw_hr=00000000 read_hr=00000000 mean_r=40.0 mean_g=40.0 mean_b=40.0 coverage=1.000 expect_r=40 expect_g=40 expect_b=200 expect_coverage=1.00
+CHECK stretch_source FAIL
+DRAW name=stretchrect_rt_scaled draw_hr=00000000 read_hr=00000000 mean_r=10.0 mean_g=10.0 mean_b=10.0 coverage=0.250 expect_r=10 expect_g=10 expect_b=50 expect_coverage=0.25
+CHECK stretchrect_rt_scaled FAIL
+DRAW name=stretchrect_backbuffer draw_hr=00000000 read_hr=00000000 mean_r=10.0 mean_g=200.0 mean_b=10.0 coverage=1.000 expect_r=10 expect_g=200 expect_b=10 expect_coverage=1.00
+CHECK stretchrect_backbuffer PASS
+STRETCHDEPTH hr=00000000
+CHECK stretchrect_depth PASS
+QUERY type=event ok=1 ms=4.59
+CHECK event_query PASS
+QUERY type=occlusion hr=00000000 pixels=65536 expect=65536
+CHECK occlusion_query PASS
+QUERY type=10 supported_hr=00000000
+QUERY type=11 supported_hr=00000000
+QUERY type=12 supported_hr=00000000
+
+--- stderr outside the sweep: 318 relevant of 324 lines (first 150) ---
+info:  Game: d3d9_backend_smoke_fixture.exe
+info:  DXVK: v3.1-macos1.0-48-g8d348236+
+info:  Build: x86 gcc 16.2.0
+info:  Vulkan: Found vkGetInstanceProcAddr in winevulkan.dll @ 0x7a0b3390
+info:  Extension providers:
+info:    Platform WSI
+info:    OpenVR
+info:  OpenVR: could not open registry key, status 2
+info:  OpenVR: Failed to locate module
+info:    OpenXR
+info:  Enabled instance extensions:
+info:    VK_KHR_get_surface_capabilities2
+info:    VK_KHR_surface
+info:    VK_KHR_surface_maintenance1
+info:    VK_KHR_win32_surface
+info:  Found device: Apple M5 Pro (MoltenVK 0.2.2210)
+info:  D3D9: Detected nonclassical vendor ID: 0x106b
+info:  D3D9: Hiding actual GPU, reporting:
+info:    vendor ID: 0x1002
+info:    device ID: 0x73df
+info:    device description: AMD Radeon RX 6700 XT
+info:  D3D9: VK_FORMAT_D24_UNORM_S8_UINT -> VK_FORMAT_D32_SFLOAT_S8_UINT
+info:  D3D9: VK_FORMAT_D16_UNORM_S8_UINT -> VK_FORMAT_D32_SFLOAT_S8_UINT
+info:  D3D9: Detected nonclassical vendor ID: 0x106b
+info:  D3D9: Hiding actual GPU, reporting:
+info:    vendor ID: 0x1002
+info:    device ID: 0x73df
+info:    device description: AMD Radeon RX 6700 XT
+info:  D3D9: VK_FORMAT_D24_UNORM_S8_UINT -> VK_FORMAT_D32_SFLOAT_S8_UINT
+info:  D3D9: VK_FORMAT_D16_UNORM_S8_UINT -> VK_FORMAT_D32_SFLOAT_S8_UINT
+info:  Process set as DPI aware
+info:  Creating device:
+info:  Apple M5 Pro:
+info:    Driver   : MoltenVK 0.2.2210
+info:  Queues:
+info:    Graphics : (0, 0)
+info:    Transfer : (0, 0)
+info:    Sparse   : (4294967295, 0)
+info:  Memory:
+info:    Heap 0: 24.0 GiB (DEVICE_LOCAL)
+info:    Budget: 17.76 GiB
+info:      Type  0: DEVICE_LOCAL
+info:      Type  1: DEVICE_LOCAL | HOST_VISIBLE | HOST_COHERENT | HOST_CACHED
+info:      Type  2: DEVICE_LOCAL | LAZILY_ALLOCATED
+info:  Enabled extensions:
+info:    VK_EXT_extended_dynamic_state3
+info:    VK_EXT_fragment_shader_interlock
+info:    VK_EXT_hdr_metadata
+info:    VK_EXT_robustness2
+info:    VK_EXT_sample_locations
+info:    VK_EXT_shader_stencil_export
+info:    VK_EXT_vertex_attribute_divisor
+info:    VK_KHR_calibrated_timestamps
+info:    VK_KHR_dynamic_rendering_local_read
+info:    VK_KHR_incremental_present
+info:    VK_KHR_load_store_op_none
+info:    VK_KHR_maintenance5
+info:    VK_KHR_maintenance6
+info:    VK_KHR_maintenance7
+info:    VK_KHR_maintenance8
+info:    VK_KHR_maintenance9
+info:    VK_KHR_present_id
+info:    VK_KHR_present_wait
+info:    VK_KHR_shader_float_controls2
+info:    VK_KHR_shader_subgroup_uniform_control_flow
+info:    VK_KHR_swapchain
+info:    VK_KHR_swapchain_maintenance1
+info:    VK_KHR_swapchain_mutable_format
+info:  Enabled features:
+info:    depthBiasClamp                 : 1
+info:    depthBounds                    : 1
+info:    depthClamp                     : 1
+info:    drawIndirectFirstInstance      : 1
+info:    dualSrcBlend                   : 1
+info:    fillModeNonSolid               : 1
+info:    fragmentStoresAndAtomics       : 1
+info:    fullDrawIndexUint32            : 1
+info:    geometryShader                 : 0
+info:    imageCubeArray                 : 1
+info:    independentBlend               : 1
+info:    largePoints                    : 1
+info:    logicOp                        : 0
+info:    multiDrawIndirect              : 1
+info:    multiViewport                  : 1
+info:    occlusionQueryPrecise          : 1
+info:    pipelineStatisticsQuery        : 0
+info:    robustBufferAccess             : 1
+info:    sampleRateShading              : 1
+info:    samplerAnisotropy              : 1
+info:    shaderClipDistance             : 1
+info:    shaderCullDistance             : 0
+info:    shaderFloat64                  : 0
+info:    shaderImageGatherExtended      : 1
+info:    shaderInt16                    : 1
+info:    shaderInt64                    : 1
+info:    shaderUniformBufferArrayDynamicIndexing : 1
+info:    shaderSampledImageArrayDynamicIndexing : 1
+info:    shaderStorageBufferArrayDynamicIndexing : 1
+info:    shaderStorageImageArrayDynamicIndexing : 1
+info:    sparseBinding                  : 0
+info:    sparseResidencyBuffer          : 0
+info:    sparseResidencyImage2D         : 0
+info:    sparseResidencyImage3D         : 0
+info:    sparseResidency2Samples        : 0
+info:    sparseResidency4Samples        : 0
+info:    sparseResidency8Samples        : 0
+info:    sparseResidency16Samples       : 0
+info:    sparseResidencyAliased         : 0
+info:    shaderResourceResidency        : 0
+info:    shaderResourceMinLod           : 1
+info:    tessellationShader             : 1
+info:    textureCompressionBC           : 1
+info:    variableMultisampleRate        : 0
+info:    vertexPipelineStoresAndAtomics : 1
+info:    wideLines                      : 0
+info:    shaderDrawParameters           : 1
+info:    storageBuffer16BitAccess       : 1
+info:    storagePushConstant16          : 1
+info:    bufferDeviceAddress            : 1
+info:    descriptorIndexing             : 1
+info:    storageBuffer8BitAccess        : 1
+info:    storagePushConstant8           : 1
+info:    shaderUniformTexelBufferArrayDynamicIndexing : 1
+info:    shaderStorageTexelBufferArrayDynamicIndexing : 1
+info:    shaderUniformBufferArrayNonUniformIndexing : 1
+info:    shaderSampledImageArrayNonUniformIndexing : 1
+info:    shaderStorageBufferArrayNonUniformIndexing : 1
+info:    shaderStorageImageArrayNonUniformIndexing : 1
+info:    shaderUniformTexelBufferArrayNonUniformIndexing : 1
+info:    shaderStorageTexelBufferArrayNonUniformIndexing : 1
+info:    descriptorBindingSampledImageUpdateAfterBind : 1
+info:    descriptorBindingUpdateUnusedWhilePending : 1
+info:    descriptorBindingPartiallyBound : 1
+info:    drawIndirectCount              : 0
+info:    hostQueryReset                 : 1
+info:    runtimeDescriptorArray         : 1
+info:    samplerFilterMinmax            : 1
+info:    samplerMirrorClampToEdge       : 1
+info:    scalarBlockLayout              : 1
+info:    shaderFloat16                  : 1
+info:    shaderInt8                     : 1
+info:    shaderOutputViewportIndex      : 1
+info:    shaderOutputLayer              : 1
+info:    timelineSemaphore              : 1
+info:    uniformBufferStandardLayout    : 1
+info:    vulkanMemoryModel              : 1
+info:    inlineUniformBlock             : 1
+info:    computeFullSubgroups           : 1
+info:    dynamicRendering               : 1
+info:    maintenance4                   : 1
+
+--- stderr error lines inside the sweep: 0 programs (first 60, first line each) ---
