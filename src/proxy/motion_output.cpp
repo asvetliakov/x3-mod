@@ -97,7 +97,7 @@ static_assert(prepass_rows_match_shadow(), "every depth-prepass row must name a 
 // by verification/probe/abi_check.cpp (compile-time offsetof assertions).
 enum Slot : unsigned {
     AddRef = 1, Release = 2, GetDirect3D = 6, GetDisplayMode = 8, GetCreationParameters = 9,
-    CreateTexture = 23, CreateRenderTarget = 28, GetRenderTargetData = 32, StretchRect = 34, ColorFill = 35,
+    CreateTexture = 23, CreateVertexBuffer = 26, CreateRenderTarget = 28, GetRenderTargetData = 32, StretchRect = 34, ColorFill = 35,
     CreateOffscreenPlainSurface = 36, SetRenderTarget = 37, GetRenderTarget = 38,
     SetDepthStencilSurface = 39, GetDepthStencilSurface = 40, BeginScene = 41, EndScene = 42,
     SetViewport = 47, GetViewport = 48, SetRenderState = 57, GetRenderState = 58,
@@ -141,6 +141,7 @@ using GetConstantsIFn = HRESULT(WINAPI*)(D, UINT, int*, UINT);
 using GetConstantsBFn = HRESULT(WINAPI*)(D, UINT, BOOL*, UINT);
 using SetStreamFn = HRESULT(WINAPI*)(D, UINT, IDirect3DVertexBuffer9*, UINT, UINT);
 using GetStreamFn = HRESULT(WINAPI*)(D, UINT, IDirect3DVertexBuffer9**, UINT*, UINT*);
+using CreateVbFn = HRESULT(WINAPI*)(D, UINT, DWORD, DWORD, D3DPOOL, IDirect3DVertexBuffer9**, HANDLE*);
 using GetStreamFreqFn = HRESULT(WINAPI*)(D, UINT, UINT*);
 using GetIndicesFn = HRESULT(WINAPI*)(D, IDirect3DIndexBuffer9**);
 using CreatePsFn = HRESULT(WINAPI*)(D, const DWORD*, IDirect3DPixelShader9**);
@@ -397,7 +398,7 @@ void MotionOutput::release_resources() noexcept {
     drop_redirect();
     if (composition_) { composition_->detach(); composition_.reset(); }
     fade_bounds_.clear();
-    release_fade_witness(); release_packed_sample();
+    release_fade_witness(); release_packed_sample(); release_bolt_buffer();
     release_target();
     // The passes are destroyed with their objects: the destructor's second call
     // of this function must not probe a device that no longer exists.
@@ -699,6 +700,19 @@ void MotionOutput::configure_screen_emission_additive(bool requested, float gain
     screen_additive_alpha_constant_ = screen_additive_alpha_requested_ && screen_additive_alpha_ > 0.f && screen_additive_alpha_ < 1.f;
     const DWORD quantised = DWORD(screen_additive_alpha_ * 255.f + .5f);
     screen_additive_alpha_factor_ = (quantised << 24) | (quantised << 16) | (quantised << 8) | quantised;
+}
+
+// Bolt footprint (bolt-footprint.md option A'): process-start configuration.
+// The plans array (one per instance, at most max_instances) is the only
+// allocation; the substitute buffer follows the first draw that needs it.
+void MotionOutput::configure_bolt_footprint(bool requested, float r_px, float g_px) noexcept {
+    if (device_) return; // Process-start configuration only.
+    bolt_footprint_requested_ = false;
+    if (!requested || !screen_additive_requested_ || !bolt_footprint::valid_parameters(r_px, g_px)) return;
+    if (!bolt_plans_) bolt_plans_.reset(new (std::nothrow) bolt_footprint::Plan[bolt_footprint::max_instances]);
+    if (!bolt_plans_) return;
+    bolt_footprint_r_ = r_px; bolt_footprint_g_ = g_px;
+    bolt_footprint_requested_ = true;
 }
 void MotionOutput::configure_fade_route(unsigned threshold_permille) noexcept {
     if (device_) return; // Process-start configuration only.
@@ -2779,6 +2793,7 @@ void MotionOutput::before_reset() noexcept {
     fade_hysteresis_.clear(); // the arm starts again at the threshold after Reset
     last_routed_node_ = last_routed_lifetime_ = 0; last_routed_frame_ = ~std::uint64_t{0}; last_routed_draw_ = 0; // no overlay witness survives Reset
     release_fade_witness(); release_packed_sample(); // the M target is recreated after Reset; the copies follow its size
+    release_bolt_buffer(); // DEFAULT pool: goes before Reset, recreated by the next draw that needs it
     composition_state_lost_ = false; composition_frame_stopped_ = false; composition_attach_attempted_ = false;
     composition_adapter_format_ = D3DFMT_UNKNOWN; // Reset may change the adapter display format.
     if (hdr_) hdr_->before_reset();
@@ -4406,6 +4421,9 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
     ++screen_additive_admitted_; ++screen_additive_frame_admitted_;
     if (shadow_.screen_additive_index < screen_emission::pair_count)
         screen_additive_frame_pairs_ |= 1u << shadow_.screen_additive_index;
+    // Bolt footprint: one bool test unless requested; it never changes the
+    // admission above and unwinds nothing but its own binding.
+    if (bolt_footprint_requested_) prepare_bolt_footprint(call, route);
 }
 // The attenuation's render states in apply order. SEPARATEALPHABLENDENABLE is
 // last so the alpha triple is already in place when it starts to matter, and
@@ -4453,6 +4471,7 @@ HRESULT MotionOutput::restore_screen_additive_alpha() noexcept {
     return first;
 }
 void MotionOutput::finish_screen_additive(MotionRoute& route) noexcept {
+    if (route.bolt_footprint) finish_bolt_footprint(route); // the substitute stream first: the draw is over
     HRESULT first = S_OK;
     if (route.screen_additive_alpha) { const HRESULT hr = restore_screen_additive_alpha(); if (FAILED(hr)) first = hr; route.screen_additive_alpha = false; }
     if (route.screen_additive_ps) { const HRESULT hr = native<SetPsFn>(SetPixelShader)(device_, route.restore_ps); if (FAILED(hr)) first = hr; }
@@ -4464,6 +4483,159 @@ void MotionOutput::finish_screen_additive(MotionRoute& route) noexcept {
         if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = first; }
         ++counters_.restore_failures; invalidate_render_states(); invalidate_taa(TaaInvalidateSite::RestoreFailed);
     }
+}
+
+// Bolt footprint (docs/architecture/bolt-footprint.md, option A'): after the
+// additive admission, the drawn prefix of the bullet buffer (positions and
+// UV/colour words the ownership layer copied at its DISCARD Unlock) is grouped
+// into instances by the UV period, each instance projected through the
+// shadowed c0-3 rows and viewport, and every instance whose major half-extent
+// is below the gate is expanded about its centroid in the camera plane (clip
+// z and w unchanged); the whole prefix is then written into the proxy's
+// dynamic buffer under one DISCARD lock and bound at stream 0 for this draw,
+// the application's binding owned through GetStreamSource and put back by
+// finish_bolt_footprint. Any doubt (shape, rows, viewport, no published scan,
+// no period, a lock under the copy, a failed call) leaves the draw exactly as
+// the additive route left it: native size. Frames without an admitted bullet
+// draw never reach this function (the additive route's pair test and one bool
+// are the per-draw cost; the per-Present window counter and the Unlock scans
+// of the marked bullet buffers still run); per admitted bullet draw the cost
+// is the registry lookup, GetStreamSourceFreq and the projection of its
+// vertices, and on the written path the second projection, the copy and
+// four more documented calls (Lock, Unlock, GetStreamSource, SetStreamSource
+// twice with the restore). No allocation after the buffer and the plans
+// exist. LastError is preserved by the ownership accessors and the draw
+// hook's boundary.
+namespace {
+struct BoltTiming {
+    LARGE_INTEGER begin{};
+    std::uint64_t* sink;
+    BoltTiming(bool on, std::uint64_t& s) noexcept : sink(on ? &s : nullptr) { if (sink) QueryPerformanceCounter(&begin); }
+    ~BoltTiming() { if (sink) { LARGE_INTEGER end{}; QueryPerformanceCounter(&end); *sink += std::uint64_t(end.QuadPart - begin.QuadPart); } }
+};
+}
+void MotionOutput::prepare_bolt_footprint(const MotionDrawCall& call, MotionRoute& route) noexcept {
+    using namespace bolt_footprint;
+    // The bullet producers only (screen_emission_admission.h, the guard step D
+    // uses): six of the nine additive pairs are other SM1 screen emitters that
+    // transform through their own matrices, never c0-3 world positions.
+    if (!screen_emission::admitted_vertex_shader(shadow_.vs_hash)) return;
+    static constexpr const char* reasons[] = {"shape", "rows", "viewport", "nonfinite", "degenerate", "not_perspective", "buffer", "instanced", "period", "recheck", "binding"};
+    constexpr unsigned reason_count = sizeof reasons / sizeof reasons[0];
+    auto& c = bolt_window_;
+    ++c.draws;
+    // The two QPC calls only with telemetry on or on the frame whose Present
+    // logs the window (a sample of that frame's draws otherwise).
+    const bool timed = telemetry_ || bolt_window_frames_ + 1u >= 300u;
+    if (timed) ++c.timed;
+    BoltTiming timing{timed, c.ticks};
+    const auto refuse_once = [&](unsigned reason, unsigned detail) {
+        if (reason < reason_count && !(bolt_refusal_logged_ & (1u << reason))) {
+            bolt_refusal_logged_ |= 1u << reason;
+            log("bolt_footprint_refused device=%llu frame=%llu index=%lu reason=%s detail=%u", id_, frame_, counters_.draws, reasons[reason], detail);
+        }
+    };
+    // The bullet writer's draw shape (derive_prefix_region's tests): a
+    // non-indexed TRIANGLELIST from StartVertex 0 of a stride-24 stream with
+    // POSITION FLOAT3 at 0, at most the scan bound.
+    if (call.topology != D3DPT_TRIANGLELIST || call.first != 0 || call.primitives > max_vertices / 3u
+        || !shadow_.stream0 || !shadow_.stream0_identity || shadow_.stream0_stride != stride || shadow_.stream0_offset != 0
+        || !shadow_.declaration || shadow_.position_offset != 0 || shadow_.position_type != D3DDECLTYPE_FLOAT3) { ++c.refused_shape; refuse_once(0, 0); return; }
+    const std::uint32_t count = call.primitives * 3u;
+    // The rows the bullet VS uses (c0-3, window 0) and the viewport, as shadowed.
+    const std::size_t window = window_of(0u);
+    const auto& v = shadow_.viewport;
+    if (window >= motion_matrix_windows_max || !shadow_.rows_known[window]) { ++c.refused_rows; refuse_once(1, 0); return; }
+    if (!v.known || !v.width || !v.height) { ++c.refused_rows; refuse_once(2, 0); return; }
+    Frame frame;
+    const FrameReason fr = prepare_frame(shadow_.rows[window], v.x, v.y, v.width, v.height, &frame);
+    if (fr != FrameReason::Ok) { ++c.refused_rows; refuse_once(1u + unsigned(fr), 0); return; }
+    // The scanned vertices (marks the buffer: the first draw of a buffer is refused by design).
+    const fade_region::Query query{shadow_.stream0, shadow_.indices, shadow_.stream0_identity, shadow_.indices_identity};
+    const float* positions = nullptr; const std::uint32_t* extras = nullptr; std::uint64_t revision = 0; unsigned refusal = 0;
+    if (!fade_region::locked_prefix_vertices(query, count, &positions, &extras, &revision, &refusal)) { ++c.refused_buffer; refuse_once(6, refusal); return; }
+    // Instanced geometry draws more than the prefix: one documented Get.
+    UINT frequency = 0;
+    if (FAILED(direct_call<GetStreamFreqFn>(GetStreamSourceFreq, 0, &frequency)) || frequency != 1) { ++c.refused_shape; refuse_once(7, frequency); return; }
+    DrawStats stats;
+    if (!plan_draw(frame, positions, extras, count, bolt_footprint_r_, bolt_footprint_g_, bolt_plans_.get(), max_instances, &stats)) {
+        ++c.refused_period; refuse_once(8, count); return;
+    }
+    c.instances += stats.instances; c.refused_w += stats.refused_w;
+    if (!stats.expanded) { ++c.untouched; return; } // every instance is large enough (or refused): the game's bytes draw
+    const UINT bytes = count * stride;
+    if (!ensure_bolt_buffer(bytes)) { ++c.failures; return; }
+    void* mapping = nullptr;
+    HRESULT hr = bolt_vb_->Lock(0, bytes, &mapping, D3DLOCK_DISCARD);
+    if (FAILED(hr) || !mapping) { ++c.failures; if (SUCCEEDED(hr)) bolt_vb_->Unlock(); return; }
+    ++c.locks;
+    const std::uint32_t expanded = write_draw(frame, positions, extras, count, stats.period, bolt_plans_.get(), static_cast<unsigned char*>(mapping));
+    hr = bolt_vb_->Unlock();
+    if (FAILED(hr)) { ++c.failures; return; }
+    // The storage was read without the registry mutex: the record must still
+    // be published at the revision the lookup saw (a Lock on another thread
+    // in between rewrites it under the copy).
+    if (!fade_region::recheck_locked_prefix(query, count, revision)) { ++c.refused_recheck; refuse_once(9, 0); return; }
+    if (!expanded) { ++c.untouched; return; }
+    // Own the application's binding for the restore; it must be the buffer
+    // the shadow saw, else the shadow is stale and the draw is left alone.
+    IDirect3DVertexBuffer9* stream = nullptr; UINT offset = 0, bound_stride = 0;
+    hr = native<GetStreamFn>(GetStreamSource)(device_, 0, &stream, &offset, &bound_stride);
+    if (FAILED(hr)) { ++c.failures; return; }
+    if (!stream || reinterpret_cast<std::uintptr_t>(stream) != shadow_.stream0_identity || offset != 0 || bound_stride != stride) {
+        release(stream); ++c.refused_shape; refuse_once(10, bound_stride); return;
+    }
+    hr = native<SetStreamFn>(SetStreamSource)(device_, 0, bolt_vb_, 0, stride);
+    if (FAILED(hr)) { release(stream); ++c.failures; return; }
+    route.bolt_footprint = true; route.bolt_restore_stream = stream; route.bolt_restore_offset = offset; route.bolt_restore_stride = bound_stride;
+    ++c.written; c.expanded += expanded;
+}
+// After the draw, before the additive route's own restores: the
+// application's stream 0 back, the owned reference released.
+void MotionOutput::finish_bolt_footprint(MotionRoute& route) noexcept {
+    const HRESULT hr = native<SetStreamFn>(SetStreamSource)(device_, 0, route.bolt_restore_stream, route.bolt_restore_offset, route.bolt_restore_stride);
+    release(route.bolt_restore_stream);
+    route.bolt_footprint = false; route.bolt_restore_offset = route.bolt_restore_stride = 0;
+    if (FAILED(hr)) {
+        ++bolt_window_.failures;
+        if (!motion_state_lost_) { motion_state_lost_ = true; motion_state_error_ = hr; }
+        ++counters_.restore_failures; invalidate_render_states(); invalidate_taa(TaaInvalidateSite::RestoreFailed);
+    }
+}
+// The substitute buffer: DYNAMIC | WRITEONLY in the DEFAULT pool, created
+// once per device epoch at the scan bound (147 456 bytes, the game's own
+// buffer size: every drawable prefix fits, nothing is regrown on the render
+// thread); a creation failure is final until Reset.
+bool MotionOutput::ensure_bolt_buffer(UINT bytes) noexcept {
+    if (bolt_vb_) return bolt_vb_bytes_ >= bytes;
+    if (bolt_vb_failed_) return false;
+    const UINT size = UINT(fade_region::prefix::max_bytes);
+    if (size < bytes) return false;
+    const HRESULT hr = native<CreateVbFn>(CreateVertexBuffer)(device_, size, D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY, 0, D3DPOOL_DEFAULT, &bolt_vb_, nullptr);
+    if (FAILED(hr) || !bolt_vb_) { bolt_vb_ = nullptr; bolt_vb_failed_ = true; }
+    else bolt_vb_bytes_ = size;
+    log("bolt_footprint_buffer device=%llu frame=%llu bytes=%lu hr=%08lx", id_, frame_, static_cast<unsigned long>(size), static_cast<unsigned long>(hr));
+    return bolt_vb_ != nullptr;
+}
+void MotionOutput::release_bolt_buffer() noexcept {
+    release(bolt_vb_); bolt_vb_bytes_ = 0; bolt_vb_failed_ = false;
+}
+// One line per 300 frames: this window's draws and instances, then the
+// session totals accumulate. `us` is the CPU time of prepare_bolt_footprint
+// over the `timed_draws` draws that were timed (all of them with telemetry
+// on, else those of the window's last frame), refused draws included.
+void MotionOutput::log_bolt_footprint_window() noexcept {
+    auto& w = bolt_window_; auto& s = bolt_session_;
+    LARGE_INTEGER frequency{}; QueryPerformanceFrequency(&frequency);
+    const double us = frequency.QuadPart ? double(w.ticks) * 1e6 / double(frequency.QuadPart) : 0.0;
+    s.draws += w.draws; s.written += w.written; s.untouched += w.untouched; s.instances += w.instances; s.expanded += w.expanded;
+    s.refused_shape += w.refused_shape; s.refused_rows += w.refused_rows; s.refused_buffer += w.refused_buffer; s.refused_period += w.refused_period;
+    s.refused_w += w.refused_w; s.refused_recheck += w.refused_recheck; s.failures += w.failures; s.locks += w.locks; s.ticks += w.ticks; s.timed += w.timed;
+    ++bolt_windows_;
+    log("bolt_footprint device=%llu frame=%llu frames=%u draws=%u written=%u untouched=%u instances=%u expanded=%u refused_period=%u refused_w=%u refused_buffer=%u refused_rows=%u refused_shape=%u refused_recheck=%u failures=%u locks=%u timed_draws=%u us=%.1f session_draws=%u session_written=%u session_expanded=%u buffer_bytes=%lu",
+        id_, frame_, bolt_window_frames_, w.draws, w.written, w.untouched, w.instances, w.expanded, w.refused_period, w.refused_w, w.refused_buffer, w.refused_rows, w.refused_shape, w.refused_recheck,
+        w.failures, w.locks, w.timed, us, s.draws, s.written, s.expanded, static_cast<unsigned long>(bolt_vb_bytes_));
+    w = BoltCounters{}; bolt_window_frames_ = 0;
 }
 bool MotionOutput::publish_composition() noexcept {
     auto** slot = composition_->owning_candidate();
@@ -6609,6 +6781,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
         if (telemetry_) log_screen_additive_frame();
         screen_additive_frame_admitted_ = screen_additive_frame_refused_ = screen_additive_frame_pairs_ = 0; // this frame only
     }
+    if (bolt_footprint_requested_ && ++bolt_window_frames_ >= 300u) log_bolt_footprint_window();
     if (fade_refused_count_) log_fade_refused();
     if (emission_source_gain_requested_) {
         // One line per frame that saw at least one candidate draw (an eligible

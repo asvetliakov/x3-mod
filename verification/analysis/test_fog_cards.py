@@ -83,7 +83,7 @@ class FogCardPolicyTests(unittest.TestCase):
 
     def test_actual_motion_output_methods(self):
         fragment = (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
-        names = ('fog_transition_invalidate', 'volumetric_fog_sector_sample', 'fog_card_transition', 'fault_fog_cards', 'prepare_volumetric_fog_targets', 'reconcile_volumetric_fog', 'complete_volumetric_fog', 'volumetric_fog_begin_frame',
+        names = ('fog_transition_invalidate', 'volumetric_fog_sector_sample', 'fog_prefill_confirm', 'fog_card_transition', 'fault_fog_cards', 'prepare_volumetric_fog_targets', 'reconcile_volumetric_fog', 'complete_volumetric_fog', 'volumetric_fog_begin_frame',
                  'prepare_fog_card', 'finish_fog_card', 'volumetric_fog_toggle', 'volumetric_fog_step',
                  'run_volumetric_fog', 'disable_volumetric_fog')
         methods = []
@@ -116,6 +116,7 @@ class FogCardPolicyTests(unittest.TestCase):
             self.assertIn('actual MotionOutput card methods PASS', result.stdout)
             self.assertIn('cut_sequence frames=32 cuts=11 warmup=0 suppressed=192 applied=32 PASS', result.stdout)
             self.assertIn('cut_recovery scenarios=8 PASS', result.stdout)
+            self.assertIn('prefill_gap confirmed=1 discarded=1 later_gap=1 PASS', result.stdout)  # R3 gap hold and decision
             for cards in (6, 8):
                 self.assertIn(f'card_native_calls cards={cards} rs_get={12*cards} freq_get={cards} mask_set={2*cards} total={15*cards}', result.stdout)
 

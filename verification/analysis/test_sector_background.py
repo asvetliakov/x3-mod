@@ -34,7 +34,7 @@ class SectorBackgroundTests(unittest.TestCase):
         self.assertRegex(self.compile_run('sector_background_host.cpp'), r'checks=\d+ failures=0 sample_bytes=\d+ reads_ready=\d+')
 
     def test_actual_wrapper_error_cadence_gate_and_zero_work_off(self):
-        self.assertIn('checks=19 failures=0', self.compile_run('sector_background_context_host.cpp', fragment=True))
+        self.assertIn('checks=22 failures=0', self.compile_run('sector_background_context_host.cpp', fragment=True))  # 19 + the --fog-docked span (3)
 
     def test_scene_boundary_standalone_and_reset_wiring(self):
         source = (ROOT / 'src/proxy/capture.cpp').read_text()

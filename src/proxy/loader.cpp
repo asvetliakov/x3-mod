@@ -59,11 +59,16 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     // Step C (X3M_SCREEN_EMISSION=1 with the route's prerequisites, the gate
     // initialize_log computed above) needs the bound and implies it; the
     // launcher sets both variables, the DLL accepts either.
-    const bool prefix_requested = (GetEnvironmentVariableW(L"X3M_SCREEN_EMISSION_BOUND", setting, 8) == 1 && setting[0] == L'1')
+    // The bolt footprint (X3M_BOLT_FOOTPRINT, bolt-footprint.md) reads the
+    // same scan's vertices and enables it through its own gate.
+    const bool bound_requested = (GetEnvironmentVariableW(L"X3M_SCREEN_EMISSION_BOUND", setting, 8) == 1 && setting[0] == L'1')
         || x3m::screen_emission_route_enabled();
+    const bool footprint_requested = x3m::bolt_footprint_requested_gate();
+    const bool prefix_requested = bound_requested || footprint_requested;
     locked_prefix_enabled = ownership_enabled && prefix_requested;
     if (prefix_requested)
-        x3m::log("screen_emission_bound requested=1 enabled=%u scope=discard_locked_vertex_buffers payload_retained=0", locked_prefix_enabled);
+        x3m::log("screen_emission_bound requested=1 enabled=%u scope=discard_locked_vertex_buffers payload_retained=0 source=%s", locked_prefix_enabled,
+                 bound_requested && footprint_requested ? "bound+bolt_footprint" : footprint_requested ? "bolt_footprint_only" : "bound");
     if (ownership_enabled || depth_requested)
         x3m::log("ownership_mode requested=%u depth_copy_requested=%u depth_copy_enabled=%u scope=normal9 fallback=native", ownership_enabled, depth_requested, depth_copy_enabled);
     if (finite_requested)

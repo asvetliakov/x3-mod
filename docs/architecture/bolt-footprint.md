@@ -238,3 +238,143 @@ so the halo appears without any clamp exception.
 - **Which bullet pairs.** Only `5e484a06`/`ec1f5c4a` has live evidence; the
   other two bullet VS of `screen_emission_admission.h` share the body class
   and the rule applies to them unchanged if they ever draw.
+
+## Implementation (2026-09-23, option A′ as built)
+
+Code: `src/proxy/bolt_footprint_core.h` (the rule, header-only, no Windows/D3D,
+single-precision SSE only), `MotionOutput::prepare_bolt_footprint` /
+`finish_bolt_footprint` / `ensure_bolt_buffer` in `src/proxy/motion_output.cpp`,
+the `X3M_BOLT_FOOTPRINT` gate in `src/proxy/capture.cpp`, the scan enable in
+`src/proxy/loader.cpp`, `--bolt-footprint` in `tools/manage.py`. Ledger:
+`docs/verification/bolt-footprint.md`.
+
+**What is read.** The locked system copy the step-D machinery keeps
+(`locked_prefix_core.h`), not the pre-draw hook's cached copy: the Table's
+Unlock scan already touches every written vertex, so keeping the other 12 bytes
+(TEXCOORD FLOAT2 at 12, D3DCOLOR at 20; `extras`, 3 words per vertex, 72 KB
+more per slot, allocated at mark) costs one extra `memcpy` per vertex on the
+Unlock path and nothing at the draw, and the copy comes with the revision
+recheck and the sentinel-exact count the draw side already relies on. The
+hook-site copy (`[rec+0x04]`, §5) would add an engine-layout dependency for
+the same bytes. The option enables the scan itself (`loader.cpp`:
+`locked_prefix_enabled` when `X3M_OWNERSHIP=1` and
+`bolt_footprint_requested_gate()`), without `X3M_SCREEN_EMISSION_BOUND`, so
+`derive_prefix_region` (the hull projection) does not run for it; the footprint
+does its own lookup (`fade_region::locked_prefix_vertices`, marks the buffer)
+and `recheck_locked_prefix` after the copy.
+
+**Where.** At the end of `prepare_screen_additive`, after the additive
+admission (DESTBLEND ONE, the PS variant, the alpha law applied), one bool
+test, then the bullet-producer gate `screen_emission::admitted_vertex_shader`
+(the guard step D's `derive_prefix_region` opens with: six of the nine
+additive pairs are other SM1 screen emitters transforming through their own
+matrices, never c0–3 world positions, and are left alone before any counter);
+`finish_screen_additive` restores the stream first. A frame without an
+admitted bullet draw pays the additive route's pair test and one bool per
+admitted additive draw; what still runs every frame is the per-Present window
+counter and, once a bullet buffer is marked, the Unlock sentinel and scan of
+that buffer's DISCARD locks (the step-D cost, now with 24 bytes copied per
+written vertex instead of 12).
+
+**Grouping rule as implemented.** `detect_period`: p is the smallest multiple
+of 3 in [24, 234] that divides the drawn count with `uv[i] == uv[i − p]`
+(exact word equality) for every i ≥ p. 234 is the largest stock body
+(`bullet_Repeat`, 78 faces): p = count is a period too (one bolt in flight),
+so a remapped stream of several bodies exceeds the cap and is refused, while
+one of at most 234 vertices is indistinguishable from a single body and
+treated as one instance. Stock bodies whose own UVs repeat (measured,
+`verification/results/bolt-footprint/bullet_uv_periods.py`, 20 bodies in the
+writer's face-expanded order): PlasmaBeam and Repair (72 = 3 × 24; the thirds
+are crossed-card groups whose centroids sit within 0.06 of the body's 1.0
+half-extent and share its axis half-extent, so each third gets the verdict
+the whole body would: the split is harmless by the numbers) and Repeat
+(234 = 3 × 78 collinear segments, centroid offsets 0.64 of a 1.05
+half-extent, segment half-extent 0.41: a split would change verdicts in the
+16–24 px range). 78 is no stock body length, so a found period that is not a
+stock length (`stock_body_lengths`: 24, 36, 54, 66, 72, 84, 90, 108, 234) is
+promoted to the smallest stock length it divides that also divides the count
+(78 → 234); a non-stock body that shares no such multiple keeps its own
+period, and a mod body with a stock-length sub-period would split (inferred
+harmless only where its segments share the centroid, as the two stock cases
+do). Refused: count < 24, count not a multiple of 3, no candidate divides,
+more than 256 instances (impossible under the 6144-vertex scan bound).
+
+**Expansion as implemented** (`prepare_frame`, `plan_instance`,
+`write_instance`). Rows = the shadowed c0–3 (window 0), viewport = the
+shadowed application viewport. Per draw: n = rows[12..14] (the w row's world
+direction); the z row must be parallel to it (|z × n| ≤ 10⁻⁴ |z||n|, else
+`not_perspective`, draw refused); (r, u) = an orthonormal basis ⊥ n seeded by
+the axis least aligned with n; a_r = (row0·r, row1·r), a_u = (row0·u, row1·u),
+det ≠ 0. Per instance: q_i = (X + (cx/w + 1) half_w, Y + (1 − cy/w) half_h),
+any w ≤ 10⁻³ refuses the instance; centroid q_c, covariance, major
+eigenvector e1, e2 = e1⊥, A = max|d·e1|, B = max|d·e2|;
+t = saturate((A − R)/(G − R)), A* = R, B* = R(1 − t),
+s1 = max(1, A*/max(A, 0.05)), s2 = max(1, B*/max(B, 0.05)); s1 = s2 = 1 →
+untouched (bytes copied verbatim, and when no instance of the draw needs
+writing nothing is locked or bound). The 0.05 px floor caps the scale at
+R/0.05 = 60, so an instance whose half-extent is below 0.05 px (a bolt seen
+exactly end-on at extreme range, or a degenerate one) stays under R; the
+measured third-person bolts (1–2 px area, note §1) sit well above the floor.
+Else per vertex
+δ = (s1 − 1)(d·e1) e1 + (s2 − 1)(d·e2) e2 px, Δclip = (δx w/half_w,
+−δy w/half_h), [a_r a_u](α, β)ᵀ = Δclip, p′ = p + α r + β u. Depth: the
+host oracle holds clip w and clip z within 2·10⁻⁴ relative per vertex at
+sector coordinates (fp32 rounding of p + Δ at |p| ≈ 10⁵ is the residue).
+A non-finite result demotes the instance to a verbatim copy.
+
+**Substitute buffer.** `CreateVertexBuffer(147 456, D3DUSAGE_DYNAMIC |
+D3DUSAGE_WRITEONLY, 0, D3DPOOL_DEFAULT)` once per device epoch at the scan
+bound (the game's own buffer size, so every drawable prefix fits and nothing
+is regrown on the render thread); one
+`Lock(0, count·24, D3DLOCK_DISCARD)` per written draw, the whole prefix
+written in vertex order (positions patched, UV/colour words verbatim),
+`Unlock`, the revision recheck, then `GetStreamSource(0)` (the application's
+buffer must be the shadow's identity at offset 0, stride 24, else refused)
+and `SetStreamSource(0, proxy, 0, 24)`; after the draw the owned binding is
+put back and released. Released before Reset and at detach, recreated by the
+next draw; a creation failure is final until Reset. Any failure on the way
+leaves the draw as the additive route left it.
+
+**Telemetry.** `bolt_footprint_mode requested=1 enabled= r= g= valid=
+additive= ownership=` at start; `bolt_footprint_buffer bytes= hr=` per
+creation; `bolt_footprint_refused reason= detail=` once per reason per device
+(shape, rows, viewport, nonfinite, degenerate, not_perspective, buffer with
+the prefix lookup reason, instanced, period, recheck, binding); one
+`bolt_footprint … draws= written= untouched= instances= expanded=
+refused_period= refused_w= refused_buffer= refused_rows= refused_shape=
+refused_recheck= failures= locks= timed_draws= us= session_*` line per 300
+frames (`us` is QPC time inside `prepare_bolt_footprint` over the
+`timed_draws` draws that were timed: every bullet draw with `--telemetry`,
+otherwise only those of the window's last frame, so the two QPC calls are
+not a per-draw cost on a plain launch; refusals included). The loader's
+`screen_emission_bound … source=` field says who enabled the scan
+(`bound`, `bolt_footprint_only` or both). A 31+-character
+`X3M_BOLT_FOOTPRINT` value is refused with the mode line, never silently
+off.
+
+**Cost** (inferred from step D's figures; the harness is a correctness
+oracle, nothing is host-timed). Every frame: the per-Present window counter,
+and for each marked bullet buffer the Unlock sentinel and scan, which now
+reads and copies 24 bytes per written vertex instead of 12 (on native Windows
+the mapping is write-combined memory: the uncached read the step-D note
+carries as unmeasured is doubled for step C/D too whenever the footprint or
+the bound is on). Per admitted bullet draw: the registry lookup (one
+`registry_mutex` take, one table probe), `GetStreamSourceFreq`, and the
+projection of each vertex in fp32 with one divide; that is the whole cost on
+the untouched path (first person: every instance A ≥ G). On the written path
+add the second projection, a 24-byte copy per vertex into the mapping and
+six documented calls in all: `GetStreamSourceFreq`, `Lock`, `Unlock`,
+`GetStreamSource`, `SetStreamSource` for the substitute and `SetStreamSource`
+for the restore. The 300-frame `us` field measures the draw side in game.
+
+**Option.** `--bolt-footprint [R[,G]]`: launcher default `3,8` on every modded
+launch (forwarded as `X3M_BOLT_FOOTPRINT=3,8`), `--bolt-footprint 0` off,
+nothing under `--vanilla` (an explicit value there is refused). The DLL enables
+it only with the additive route (`--screen-emission-additive`, i.e.
+`--motion-output --hdr`) and `--ownership`; otherwise `bolt_footprint_mode
+enabled=0` and nothing runs. An explicit non-zero value implies
+`--screen-emission-additive 1` when that option is absent and requires
+`--motion-output --hdr --ownership`; the default never implies the additive
+route, so a plain launch keeps its native bullet blend (assumption: the
+ratified "implies" applies to the option as typed, not to the launcher
+default, which would otherwise change every `--hdr` launch's blend law).

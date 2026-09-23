@@ -12,6 +12,10 @@ namespace x3m {
 // TAA); computed once in initialize_log. The loader enables the step B
 // Unlock scan through this gate, not through the raw variable.
 bool screen_emission_route_enabled() noexcept;
+// Bolt footprint requested with its prerequisites (the additive route and
+// X3M_OWNERSHIP=1); computed once in initialize_log. The loader enables the
+// step D Unlock scan for it as well: the footprint reads the scanned vertices.
+bool bolt_footprint_requested_gate() noexcept;
 void initialize_log(HMODULE module);
 void log(const char* format, ...);
 // The session log's OS handle (INVALID_HANDLE_VALUE when there is none): for a

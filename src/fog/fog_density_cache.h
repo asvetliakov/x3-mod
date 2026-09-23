@@ -15,6 +15,7 @@
 // region committed for it has been handed out and confirmed uploaded.
 #pragma once
 #include "fog_density_generator.h"
+#include "fog_handover.h"
 #include <atomic>
 #include <condition_variable>
 #include <cstddef>
@@ -145,8 +146,21 @@ public:
     std::mutex& test_mutex() noexcept { return sync().mutex; }
 #endif
 
-    // Render thread. A changed identity is an invalidation.
+    // Render thread. The cold-start switches (docs/architecture/fog-handover.md, "Implementation"),
+    // read at the next cold start (configure with a new identity, or invalidate); both off is the
+    // legacy behaviour. step: the far readiness steps to 1 in the frame the far need box becomes
+    // resident instead of ramping over kReadinessRampFrames (warm refills keep the ramp).
+    // cold_fill: the worker fills only the far need box, the far level goes up in one whole-atlas
+    // latch past the byte budget, then the fine level and the growth continue under the budget.
+    void set_handover(bool step, bool cold_fill) noexcept { handover_step_ = step; handover_cold_fill_ = cold_fill; }
+    // The report of the last completed cold start, once (due), then cleared.
+    HandoverReport take_handover() noexcept { HandoverReport r = report_; report_.due = false; return r; }
+    // A changed identity is an invalidation.
     void configure(const CacheIdentity& identity) noexcept;
+    // R3 prefill (fog-handover.md, "R3 implementation"): configure(identity), then post `camera` to the worker
+    // without advancing readiness or uploading. Never waits. True when the camera reached the worker; false (not
+    // running, camera refused, or a missed lock) leaves the caller to retry at its next poll.
+    bool prefill(const CacheIdentity& identity, const double camera[3]) noexcept;
     void invalidate() noexcept; // sector change or load: drop everything, refill, ramp
     FrameState step(const double camera[3], std::uint64_t frame) noexcept;
     // Need box of `camera` resident on the GPU (the execute-time guard).
@@ -160,7 +174,11 @@ public:
     // left to generate, and everything it committed is uploaded and confirmed. has_work()
     // alone is false while the worker is still generating its next slab.
     bool idle() const noexcept;
-    bool level_dirty(int level) const noexcept { return dirty_tiles_[level].load(std::memory_order_relaxed) != 0 || reupload_[level]; }
+    // During a cold fill the far level has nothing to hand out until a box is published (no staging lock per frame).
+    bool level_dirty(int level) const noexcept {
+        if (level == 1 && cold_latch_ && !publication_pending_.load(std::memory_order_relaxed)) return false;
+        return dirty_tiles_[level].load(std::memory_order_relaxed) != 0 || reupload_[level];
+    }
     unsigned take_uploads(const StagingView views[kLevelCount], std::size_t byte_budget, TileRect* out, unsigned capacity) noexcept;
     void confirm_uploads(bool succeeded) noexcept;
     // The DEFAULT atlases were lost or recreated: nothing is resident until every
@@ -212,9 +230,12 @@ private:
     static std::atomic<bool> test_fail_thread_;
 #endif
     // Shared, guarded by sync().mutex.
-    struct Request { std::uint64_t epoch = 0, serial = 0; WorldOffset offset = kNoOffset; double camera[3]{}; bool camera_valid = false, stop = false; } request_;
+    // cold_hold: a cold fill in progress; the worker generates the far need box only.
+    struct Request { std::uint64_t epoch = 0, serial = 0; WorldOffset offset = kNoOffset; double camera[3]{}; bool camera_valid = false, stop = false, cold_hold = false; } request_;
     SharedLevel shared_[kLevelCount];
     std::uint8_t* cache_[kLevelCount]{};
+    // The epoch's far need box publication (steady-clock us) and the worker's busy / CPU time until then; -1 until.
+    std::int64_t far_published_us_ = -1, far_fill_busy_us_ = -1, far_fill_cpu_us_ = -1;
 
     // Worker-owned.
     WorkerLevel worker_[kLevelCount];
@@ -222,6 +243,8 @@ private:
     Job* jobs_ = nullptr;
     std::uint64_t worker_serial_ = 0;
     std::uint16_t* scratch_ = nullptr;
+    bool worker_far_published_ = false;
+    std::int64_t worker_busy_base_ = 0, worker_cpu_base_ = -1;
 
     // Render-thread-owned.
     CacheIdentity identity_{};
@@ -234,6 +257,11 @@ private:
     std::uint64_t last_frame_ = 0, posted_serial_ = 0;
     float ready_[kLevelCount]{};
     unsigned reload_left_[kLevelCount]{};
+    // Cold start: cold_ from configure/invalidate until the far readiness reaches 1; cold_latch_ until the
+    // whole-atlas latch (cold_fill only). pending_ is the report in progress, report_ the last completed one.
+    bool handover_step_ = false, handover_cold_fill_ = false, cold_ = false, cold_step_ = false, cold_latch_ = false, cold_frame_pending_ = false, whole_in_flight_ = false;
+    std::int64_t cold_at_us_ = 0, cold_busy_base_ = 0;
+    HandoverReport pending_{}, report_{};
 
     // Cross-thread counters.
     std::atomic<unsigned> dirty_tiles_[kLevelCount];

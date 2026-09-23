@@ -1,0 +1,9 @@
+acceptance modules:
+Ran 37 tests in 2.359s
+OK
+modules naming the bullet route or the launcher baseline:
+Ran 61 tests in 41.103s
+OK
+build_exit=0 warnings=0
+x87 PASS reachable 668 violations 0
+sha256_prefix=3567ca120325eb00

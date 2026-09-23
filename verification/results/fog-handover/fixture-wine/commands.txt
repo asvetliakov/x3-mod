@@ -1,0 +1,6 @@
+# fog density pass fixture with the cold hand-over case, merged main tree (fog hand-over staged), X3 bottle, 2026-09-23
+python3 verification/probe/fog_density_shader_run.py build --output <dir> --asset-data /tmp/x3-run72-candidate/build/generated/fog_field
+X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/fog_density_shader_run.py run --output <dir> --reference /tmp/x3-run67-fog-ref
+python3 verification/probe/fog_density_shader_run.py check --output <dir> --reference /tmp/x3-run67-fog-ref   # result PASS, all gates true
+grep -E '^HANDOVER|^RESULT|^ATLAS cold_handover|^CHECK cold_(handover|fill)' <dir>/pass_stdout.txt > handover_rows.txt   # pass exe 89c069f0..., built on the merged tree (fog_pass.cpp/fog_density_cache.cpp as staged at the run), hence not d56281998c73 of the worktree scratch build
+# Rerun on the merged tree with R3, the round-2 fixes and the bolt footprint (gate build): result PASS, all gates true; pass exe 3a748f3c57fd9b66…; HANDOVER row in handover_row_r3.txt

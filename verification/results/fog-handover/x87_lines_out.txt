@@ -1,0 +1,13 @@
+# build=build-fh-r3 object=fog_density_cache.cpp.obj filters=DensityCache functions=29 x87=2
+x3m::fog::DensityCache::step(double const*, unsigned long lo fog_density_cache.cpp:571 4738:	fildll -0x11c(%ebp)
+x3m::fog::DensityCache::step(double const*, unsigned long lo fog_density_cache.cpp:571 473e:	fstps  -0x138(%ebp)
+# build=build-fh-r3 object=capture.cpp.obj filters=sector_background_context,fog_prefill_poll,walk_anchor,fog_prefill::walk,create_texture,create_vb functions=6 x87=0
+# build=build-fh-r3 object=fog_pass.cpp.obj filters=prepare_density,prefill_density functions=2 x87=0
+# build=build-fh-r3 object=motion_output.cpp.obj filters=prepare_volumetric_fog_density,volumetric_fog_prefill,fog_prefill_confirm,volumetric_fog_sector_sample functions=5 x87=7
+x3m::MotionOutput::prepare_volumetric_fog_density(unsigned i motion_output_fog_inc.h:238 4240b:	fildll 0x218(%edx)
+x3m::MotionOutput::prepare_volumetric_fog_density(unsigned i motion_output_fog_inc.h:238 4243e:	fadds  0xb230
+x3m::MotionOutput::prepare_volumetric_fog_density(unsigned i motion_output_fog_inc.h:238 42450:	fstpl  -0x100(%ebp)
+x3m::MotionOutput::prepare_volumetric_fog_density(unsigned i motion_output_fog_inc.h:238 424ca:	fildll -0xd4(%ebp)
+x3m::MotionOutput::prepare_volumetric_fog_density(unsigned i motion_output_fog_inc.h:238 424dc:	fstpl  -0x110(%ebp)
+x3m::MotionOutput::prepare_volumetric_fog_density(unsigned i motion_output_fog_inc.h:238 424e2:	fildll -0xd4(%ebp)
+x3m::MotionOutput::prepare_volumetric_fog_density(unsigned i motion_output_fog_inc.h:238 424f8:	fstpl  -0x108(%ebp)

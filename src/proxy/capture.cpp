@@ -153,6 +153,8 @@ float hull_emissive_widening[2] = {1.f, 1.f};
 float hull_lightmap_gain = 1.f;        // X3M_HULL_LIGHTMAP_GAIN: gain on the light-map (self-illumination) term inside the original hull pixel programs, finite 1..8, 1 = off (requires X3M_HDR=1, excludes X3M_LINEAR_MATERIALS=1; Ctrl+Shift+F4 switches it alone)
 bool screen_emission_additive_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE=G: in-place ADD/ONE/ONE bullets with a colour gain (screen-emission-region.md, "Additive option")
 float screen_emission_additive_gain = 1.f;       // G, finite 1..8; anything else refuses the option
+bool bolt_footprint_requested = false; // X3M_BOLT_FOOTPRINT=R[,G]: minimum on-screen bolt footprint on the additive draws (bolt-footprint.md, option A')
+float bolt_footprint_r = 3.f, bolt_footprint_g = 8.f;
 bool screen_emission_additive_alpha_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE_ALPHA=K: per-source bloom attenuation of the additive draw (bloom-per-source-attenuation.md, option 1)
 float screen_emission_additive_alpha = 1.f;      // K, finite 0..1; absent or invalid keeps the native alpha law a + D.a
 unsigned fade_witness_frames = 0; // X3M_FADE_WITNESS=<k>, 0 = off
@@ -186,6 +188,17 @@ bool volumetric_fog_range_stored = false;
 // X3M_FOG_SHADOW_PASS=1 (docs/architecture/fog-shadow-pass.md; launcher --fog-shadow-pass on, default off): the stored
 // range's sun-shadow shaft visibility in its own quarter-resolution pass before the march. Stored range only.
 bool volumetric_fog_shadow_pass = false;
+// X3M_FOG_HANDOVER_STEP / X3M_FOG_HANDOVER_COLDFILL (docs/architecture/fog-handover.md, "Implementation"; launcher
+// --fog-handover-step / --fog-handover-coldfill, default on, exactly "0" is off): the stored range's cold-start
+// readiness step and cold fill. Stored range only.
+bool volumetric_fog_handover_step = false, volumetric_fog_handover_coldfill = false;
+// X3M_FOG_DOCKED (launcher --fog-docked, default on, exactly "0" is off): the fog's sector sample accepts a ref
+// object whose parent is not the sector when a bounded parent walk (sector_background::anchor_walk_limit) reaches it.
+bool volumetric_fog_docked = false;
+// X3M_FOG_HANDOVER_PREFILL (fog-handover.md, "R3 implementation"; launcher --fog-handover-prefill, default on, exactly
+// "0" is off): during a transit stall the CreateTexture/CreateVertexBuffer hooks walk the engine's global object list
+// tail (fog_prefill.h) at most once per 250 ms and start the far fill of the destination sector. Stored range only.
+bool volumetric_fog_prefill = false;
 // X3M_FOG_DUST_MOTES=N,SIZE,STREAK (docs/architecture/fog-dust-motes.md; launcher --fog-dust-motes; absent under the
 // stored range: 1300,3,128 with MAX_PX 8 since 2026-09-23 after Run 70 B/B2, else off; 0 is the opt-out): the stored range's
 // near-camera dust motes, drawn after the repair; tunables X3M_FOG_MOTES_<NAME>. Stored range only.
@@ -355,6 +368,13 @@ struct Device : Hooks {
     unsigned remaining = 0;
     bool capture = false;
     sector_background::Diagnostic sector_background_evidence;
+    sector_background::AnchorSpan fog_docked_span; // --fog-docked: one volumetric_fog_docked line per walked span
+    unsigned fog_docked_logs = 0;
+    // --fog-handover-prefill: the stall gate (Present time), the render thread, and the last Ready sector with its id.
+    fog_prefill::Gate fog_prefill_gate;
+    DWORD fog_prefill_thread = 0;
+    std::uint32_t fog_ready_sector = 0, fog_ready_sector_id = 0;
+    std::uint64_t fog_ready_frame = 0;
     object_capture::Cache object_evidence; // capture-only; existing HookGuard owns it
     bool key_down = false;
     capture_arm::core::Pending capture_pending; // X3M_CAPTURE_DELAY only; cleared on Reset
@@ -695,13 +715,46 @@ void sector_background_context(Device& ctx, bool scene_authority = false) {
         // Even without the motion route, revalidate pages after a load/realloc.
         engine_memory::next_frame();
         auto read=[](std::uintptr_t p,void* out,std::size_t n){return engine_memory::read(p,out,n);};
-        value=sector_background::sample(read);
+        value=sector_background::sample(read,volumetric_fog_docked?sector_background::anchor_walk_limit:0u);
+        // R3: the Ready sector's id [sector+8], read once per sector and again after any break in Ready samples
+        // (a transit), for the prefill walk's id check and its confirmation.
+        if(volumetric_fog_prefill && scene_authority && value.status==sector_background::Status::Ready) {
+            if(value.sector!=ctx.fog_ready_sector || ctx.frame!=ctx.fog_ready_frame+1) {
+                std::uint32_t id=0;
+                if(engine_memory::read(std::uintptr_t(value.sector)+8,&id,sizeof id)){ctx.fog_ready_sector=value.sector;ctx.fog_ready_sector_id=id;}
+                else ctx.fog_ready_sector=ctx.fog_ready_sector_id=0;
+            }
+            ctx.fog_ready_frame=ctx.frame;
+            value.sector_id=value.sector==ctx.fog_ready_sector?ctx.fog_ready_sector_id:0;
+        }
     } else value.status=sector_background::Status::ForeignExecutable;
-    if(scene_authority && volumetric_fog_requested)ctx.motion_output.volumetric_fog_sector_sample(ctx.frame,value);
+    if(scene_authority && volumetric_fog_requested){
+        // Docked view: one line when a walked span starts (or its outcome changes); a failed walk keeps anchor_mismatch (native cards).
+        if(volumetric_fog_docked && ctx.fog_docked_span.update(value) && ctx.fog_docked_logs<256u && ++ctx.fog_docked_logs)
+            log("volumetric_fog_docked device=%llu frame=%llu walk=%s depth=%u ref_object=%08x ref_parent=%08x last=%08x sector=%08x anchor_check=%s fallback=%s",
+                ctx.id,ctx.frame,sector_background::name(value.anchor_walk),value.anchor_depth,value.ref_object,value.ref_sector,value.anchor_last,value.sector,
+                sector_background::name(value.anchor_check),value.anchor_walk==sector_background::AnchorWalk::Found?"none":"native_cards");
+        ctx.motion_output.volumetric_fog_sector_sample(ctx.frame,value);
+    }
     if(!sector_background_requested || !ctx.sector_background_evidence.emit(value,GetTickCount64()))return;
     log("sector_background device=%llu frame=%llu status=%s registry=%08x active_handle=%u cockpit=%08x sector=%08x class48=%d index=%d count=%d table=%08x R=%08x row_valid=%u name_ptr=%08x name_valid=%u name=\"%s\" dust=%d near=%d far=%d stardust=%d rate0=%d rate1=%d rate2=%d rate3=%d rate4=%d rate5=%d rate6=%d rate7=%d neb=%08x stars=%08x camera=%08x camera_valid=%u cam_near=%d cam_far=%d flags270=%08x camera_check=%s config_valid=%u config768=%d far_floor=%d effective_far=%d ref_object=%08x ref_sector=%08x anchor_check=%s",
         ctx.id,ctx.frame,sector_background::name(value.status),value.registry,value.handle,value.cockpit,value.sector,int(value.class48),value.index,value.count,value.table,value.record,unsigned(value.row_valid),value.name_pointer,unsigned(value.name_valid),value.family,
         value.dust,value.fog_near,value.fog_far,value.stardust,value.rates[0],value.rates[1],value.rates[2],value.rates[3],value.rates[4],value.rates[5],value.rates[6],value.rates[7],value.neb,value.stars,value.camera,unsigned(value.camera_valid),value.cam_near,value.cam_far,value.flags270,sector_background::name(value.camera_check),unsigned(value.config_valid),value.config,value.far_floor,value.effective_far,value.ref_object,value.ref_sector,sector_background::name(value.anchor_check));
+}
+// R3 (fog-handover.md, "R3 implementation"): from the resource-creation hooks. Outside a stall the cost is one
+// GetTickCount64 and one compare; inside, at most one bounded walk (<= 25 validated reads) per 250 ms on the
+// render thread, LastError preserved. Never allocates, never waits, keeps no engine pointer.
+void fog_prefill_poll(Device& ctx) {
+    const std::uint64_t now=GetTickCount64();
+    if(!ctx.fog_prefill_gate.stalled(now))return;
+    if(GetCurrentThreadId()!=ctx.fog_prefill_thread || !ctx.fog_prefill_gate.take(now))return; // another thread never uses the slot
+    const DWORD saved_error=GetLastError();
+    struct RestoreError { DWORD value; ~RestoreError(){SetLastError(value);} } restore_error{saved_error};
+    if(!object_trace::executable_verified())return;
+    engine_memory::next_frame(); // the stall reallocates: revalidate pages
+    auto read=[](std::uintptr_t p,void* out,std::size_t n){return engine_memory::read(p,out,n);};
+    const fog_prefill::Result result=fog_prefill::walk(read,ctx.fog_ready_sector_id);
+    ctx.motion_output.volumetric_fog_prefill(result,now-ctx.fog_prefill_gate.present_ms);
 }
 void object_context(Device& ctx) {
     // Capture-only checked reads and logging must not leak a Windows error.
@@ -1430,6 +1483,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     auto& ctx=*owner;
     auto fn=ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,const RECT*,const RECT*,HWND,const RGNDATA*)>(17);
     gpu_sync_mark(ctx,gpu_sync_timing::Present,true); // --gpu-sync-timing only: the proxy's Present work and the native Present
+    if(volumetric_fog_prefill){ctx.fog_prefill_gate.present(GetTickCount64());ctx.fog_prefill_thread=GetCurrentThreadId();} // R3 stall gate
     if(sector_background_requested || volumetric_fog_requested)sector_background_context(ctx); // menus/loading without BeginScene
     ctx.motion_output.before_present();
     if(ctx.comparison_report_pending){comparison_log(ctx,"frame","none",true);ctx.comparison_report_pending=false;}
@@ -2051,6 +2105,7 @@ HRESULT WINAPI create_texture(IDirect3DDevice9* d,UINT w,UINT h,UINT levels,DWOR
     HookGuard lock;auto& ctx=*devices.at(d);const auto begin=telemetry::now();
     cpu.before_original();
     const auto result=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,UINT,UINT,UINT,DWORD,D3DFORMAT,D3DPOOL,IDirect3DTexture9**,HANDLE*)>(23)(d,w,h,levels,usage,format,pool,out,shared);cpu.after_original();
+    if(volumetric_fog_prefill)fog_prefill_poll(ctx); // R3: one compare outside a stall
     telemetry::record(ctx.stats,telemetry::Metric::Texture,telemetry::now()-begin,FAILED(result));return result;
 }
 HRESULT WINAPI create_volume(IDirect3DDevice9* d,UINT w,UINT h,UINT depth,UINT levels,DWORD usage,D3DFORMAT format,D3DPOOL pool,IDirect3DVolumeTexture9** out,HANDLE* shared){
@@ -2075,6 +2130,7 @@ HRESULT WINAPI create_vb(IDirect3DDevice9* d,UINT length,DWORD usage,DWORD fvf,D
     HookGuard lock;auto& ctx=*devices.at(d);const auto begin=telemetry::now();
     cpu.before_original();
     const auto result=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*,UINT,DWORD,DWORD,D3DPOOL,IDirect3DVertexBuffer9**,HANDLE*)>(26)(d,length,usage,fvf,pool,out,shared);cpu.after_original();
+    if(volumetric_fog_prefill)fog_prefill_poll(ctx); // R3: one compare outside a stall
     telemetry::record(ctx.stats,telemetry::Metric::VertexBuffer,telemetry::now()-begin,FAILED(result),SUCCEEDED(result)?length:0);return result;
 }
 HRESULT WINAPI create_ib(IDirect3DDevice9* d,UINT length,DWORD usage,D3DFORMAT format,D3DPOOL pool,IDirect3DIndexBuffer9** out,HANDLE* shared){
@@ -2390,6 +2446,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         ctx->set(23,create_texture);ctx->set(24,create_volume);ctx->set(25,create_cube);
         ctx->set(26,create_vb);ctx->set(27,create_ib);ctx->set(28,create_rt);ctx->set(29,create_depth);
     }
+    if(volumetric_fog_prefill && !telemetry::enabled()){ctx->set(23,create_texture);ctx->set(26,create_vb);} // R3 poll sites
     ctx->set(81,draw_primitive); ctx->set(82,draw_indexed); ctx->set(83,draw_up); ctx->set(84,draw_indexed_up);
     ctx->set(91,create_vs); ctx->set(106,create_ps);
     // Publish only after the owning map allocation succeeds.
@@ -2459,6 +2516,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         log("hull_emissive_widening_configured accepted=%u k=%g b=%g",unsigned(accepted),double(hull_emissive_widening[0]),double(hull_emissive_widening[1]));
     }
     hooked.motion_output.configure_screen_emission_additive(screen_emission_additive_requested,screen_emission_additive_gain,screen_emission_additive_alpha_requested,screen_emission_additive_alpha);
+    hooked.motion_output.configure_bolt_footprint(bolt_footprint_requested,bolt_footprint_r,bolt_footprint_g);
     hooked.motion_output.configure_fade_witness(fade_witness_frames);
     hooked.motion_output.configure_fade_route(fade_route_threshold);
     hooked.motion_output.configure_shimmer_trace(shimmer_trace_requested);
@@ -2649,6 +2707,8 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_volumetric_fog_look(volumetric_fog_look_tuning);
     hooked.motion_output.configure_volumetric_fog_shadow_pass(volumetric_fog_shadow_pass);
     hooked.motion_output.configure_volumetric_fog_dust_motes(volumetric_fog_motes);
+    hooked.motion_output.configure_volumetric_fog_handover(volumetric_fog_handover_step,volumetric_fog_handover_coldfill);
+    hooked.motion_output.configure_volumetric_fog_prefill(volumetric_fog_prefill);
     { LARGE_INTEGER frequency{};QueryPerformanceFrequency(&frequency); // the frame_end clock; one read per device
       hooked.fps_overlay.configure(fps_overlay_requested,frequency.QuadPart>0?uint64_t(frequency.QuadPart):1); }
     hooked.motion_output.configure_screen_emission_timing(screen_emission_timing_requested);
@@ -2751,6 +2811,7 @@ HRESULT WINAPI create_device(IDirect3D9* d,UINT adapter,D3DDEVTYPE type,HWND win
 }
 }
 bool screen_emission_route_enabled() noexcept { return screen_emission_requested; } // the one gate the loader's scan enable shares
+bool bolt_footprint_requested_gate() noexcept { return bolt_footprint_requested; } // the second consumer of the loader's scan enable
 // The lens bracket's listener (src/proxy/sun_occlusion.h): the engine's render thread, inside its
 // `call 0x0047e6e0` for the lens scene, under the thunk's full CPU-state boundary.
 void sun_lens_begin() { CaptureLock lock; for(auto& entry:devices) entry.second->motion_output.sun_occlusion_begin(); }
@@ -3259,6 +3320,32 @@ void initialize_log(HMODULE module) {
          log("screen_emission_additive_mode requested=1 enabled=%u gain=%g gain_valid=%u motion=%u hdr=%u packed_conflict=%u alpha=%s alpha_requested=%u alpha_valid=%u",
              screen_emission_additive_requested,double(screen_emission_additive_gain),unsigned(valid),motion_output_requested,hdr_requested,unsigned(conflict),
              alpha_text,unsigned(alpha_present),unsigned(alpha_valid));}}
+    // X3M_BOLT_FOOTPRINT=R[,G] (px; finite, 0 < R <= 64, R < G <= 256; unset,
+    // "0" or invalid = off): the bolt footprint of docs/architecture/
+    // bolt-footprint.md (option A'), a minimum on-screen half-extent R for
+    // every bullet instance of an admitted additive draw whose projected
+    // half-extent is below the gate G. Needs the additive route (enabled just
+    // above: motion output and X3M_HDR=1) and the ownership Unlock scan
+    // (X3M_OWNERSHIP=1: the loader enables the locked-prefix scan through
+    // bolt_footprint_requested()).
+    {bolt_footprint_requested=false;bolt_footprint_r=3.f;bolt_footprint_g=8.f;
+     SetLastError(ERROR_SUCCESS);
+     const DWORD length=GetEnvironmentVariableW(L"X3M_BOLT_FOOTPRINT",setting,32);
+     const bool fits=length&&length<32; // a value of 31+ characters is not parsed: refused below, never silently off
+     wchar_t* end=nullptr;const float r=fits?wcstof(setting,&end):0.f;
+     const bool r_parsed=fits&&end!=setting;
+     float g=8.f;bool g_parsed=true;
+     if(r_parsed&&*end==L','){wchar_t* g_end=nullptr;g=wcstof(end+1,&g_end);g_parsed=g_end!=end+1&&!*g_end;}
+     else if(r_parsed&&*end)g_parsed=false;
+     const bool parsed=r_parsed&&g_parsed;
+     if(length&&!(parsed&&r==0.f)){ // "0" is the explicit off value: silent
+         const bool valid=parsed&&std::isfinite(r)&&std::isfinite(g)&&r>0.f&&r<=64.f&&g>r&&g<=256.f;
+         const bool ownership=GetEnvironmentVariableW(L"X3M_OWNERSHIP",setting,32)==1&&setting[0]==L'1';
+         bolt_footprint_requested=valid&&screen_emission_additive_requested&&ownership;
+         if(valid){bolt_footprint_r=r;bolt_footprint_g=g;}
+         log("bolt_footprint_mode requested=1 enabled=%u r=%g g=%g valid=%u additive=%u ownership=%u",
+             unsigned(bolt_footprint_requested),double(bolt_footprint_r),double(bolt_footprint_g),unsigned(valid),
+             unsigned(screen_emission_additive_requested),unsigned(ownership));}}
     // X3M_SCREEN_EMISSION_TIMING=1: the option's opt-in per-frame timing
     // diagnostic (one screen_emission_frame line per Present). Needs the
     // enabled option; the option itself stays free of per-frame logging.
@@ -3315,6 +3402,14 @@ void initialize_log(HMODULE module) {
      volumetric_fog_cards_replace=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_CARDS")==7 && !wcscmp(setting,L"replace");
      volumetric_fog_range_stored=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_RANGE")==6 && !wcscmp(setting,L"stored");
      volumetric_fog_shadow_pass=volumetric_fog_range_stored && fog_env(L"X3M_FOG_SHADOW_PASS")==1 && setting[0]==L'1';
+     // Default on: absent or anything but exactly "0" keeps the switch (fog-handover.md, "Implementation").
+     const auto fog_default_on=[&](const wchar_t* name){return !(fog_env(name)==1 && setting[0]==L'0');};
+     volumetric_fog_handover_step=volumetric_fog_range_stored && fog_default_on(L"X3M_FOG_HANDOVER_STEP");
+     volumetric_fog_handover_coldfill=volumetric_fog_range_stored && fog_default_on(L"X3M_FOG_HANDOVER_COLDFILL");
+     volumetric_fog_docked=volumetric_fog_requested && fog_default_on(L"X3M_FOG_DOCKED");
+     volumetric_fog_prefill=volumetric_fog_range_stored && fog_default_on(L"X3M_FOG_HANDOVER_PREFILL");
+     if(asked)log("volumetric_fog_handover_mode step=%u coldfill=%u prefill=%u docked=%u walk_limit=%u stored=%u",unsigned(volumetric_fog_handover_step),
+        unsigned(volumetric_fog_handover_coldfill),unsigned(volumetric_fog_prefill),unsigned(volumetric_fog_docked),sector_background::anchor_walk_limit,unsigned(volumetric_fog_range_stored));
      volumetric_fog_look_tuning={};
      // The retired preset selector: accepted from an older launcher or a stale environment, never acted on,
      // and reported whatever the fog state is (the variable says the caller expected a preset).

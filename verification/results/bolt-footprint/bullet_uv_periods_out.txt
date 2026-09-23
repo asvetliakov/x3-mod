@@ -1,0 +1,26 @@
+objects/effects/weapons/bullet_ElectroSpike.pbb vertices 90 uv_words 1 distinct_uv 10 sub_periods none
+objects/effects/weapons/bullet_EnergyBolt.pbb vertices 84 uv_words 1 distinct_uv 10 sub_periods none
+objects/effects/weapons/bullet_FireBomb.pbb vertices 108 uv_words 1 distinct_uv 10 sub_periods none
+objects/effects/weapons/bullet_flamethrower.pbb vertices 72 uv_words 1 distinct_uv 4 sub_periods none
+objects/effects/weapons/bullet_FragBomb.pbb vertices 90 uv_words 1 distinct_uv 10 sub_periods none
+objects/effects/weapons/bullet_FragBomb_Fragment.pbb vertices 90 uv_words 1 distinct_uv 10 sub_periods none
+objects/effects/weapons/bullet_GaussCannon.pbb vertices 84 uv_words 1 distinct_uv 14 sub_periods none
+objects/effects/weapons/bullet_IonCannon.pbb vertices 66 uv_words 1 distinct_uv 10 sub_periods none
+objects/effects/weapons/bullet_IonPulse.pbb vertices 84 uv_words 1 distinct_uv 10 sub_periods none
+objects/effects/weapons/bullet_LS_alpha.pbb vertices 66 uv_words 1 distinct_uv 8 sub_periods none
+objects/effects/weapons/bullet_LS_beta.pbb vertices 66 uv_words 1 distinct_uv 8 sub_periods none
+objects/effects/weapons/bullet_MAM.pbb vertices 36 uv_words 1 distinct_uv 4 sub_periods none
+objects/effects/weapons/bullet_PlasmaBeam.pbb vertices 72 uv_words 1 distinct_uv 6 sub_periods 24,36
+  sub_period 24 whole_half_extent 1.0000 segments off=0.0492,half=1.0000 off=0.0617,half=1.0000 off=0.0479,half=1.0000
+  sub_period 36 whole_half_extent 1.0000 segments off=0.0299,half=1.0000 off=0.0299,half=1.0000
+objects/effects/weapons/bullet_PL_alpha.pbb vertices 66 uv_words 1 distinct_uv 8 sub_periods none
+objects/effects/weapons/bullet_PL_beta.pbb vertices 66 uv_words 1 distinct_uv 8 sub_periods none
+objects/effects/weapons/bullet_PointSing.pbb vertices 24 uv_words 1 distinct_uv 4 sub_periods none
+objects/effects/weapons/bullet_PR_alpha.pbb vertices 54 uv_words 1 distinct_uv 8 sub_periods none
+objects/effects/weapons/bullet_PR_beta.pbb vertices 54 uv_words 1 distinct_uv 8 sub_periods none
+objects/effects/weapons/bullet_Repair.pbb vertices 72 uv_words 1 distinct_uv 6 sub_periods 24,36
+  sub_period 24 whole_half_extent 1.0000 segments off=0.0011,half=1.0000 off=0.0019,half=1.0000 off=0.0015,half=1.0000
+  sub_period 36 whole_half_extent 1.0000 segments off=0.0010,half=1.0000 off=0.0010,half=1.0000
+objects/effects/weapons/bullet_Repeat.pbb vertices 234 uv_words 1 distinct_uv 10 sub_periods 78
+  sub_period 78 whole_half_extent 1.0490 segments off=0.6379,half=0.4070 off=0.0529,half=0.4070 off=0.6420,half=0.4070
+bodies 20 with_sub_period 3 without_uv 0 max_segment_centroid_offset 0.6420

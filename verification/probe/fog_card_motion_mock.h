@@ -2,6 +2,7 @@
 // test appends their unmodified production definitions at compile time.
 #include "fog_card_policy.h"
 #include "fog_sector_policy.h"
+#include "fog_prefill.h"
 #include "fog_card_mask.h"
 #include "fog_card_match.h"
 #include "fog_pass_math.h"
@@ -126,6 +127,8 @@ struct MotionOutput {
  bool fog_dust_motes_launch_=false,fog_motes_drawn_=false;long long fog_motes_epoch_qpc_=0; // the dust motes are off in this host witness
  bool fog_density_active()const noexcept{return fog_density_requested_&&!fog_density_refused_;}
  void fog_density_epoch(const char*)noexcept{}
+ fog_prefill::Record fog_prefill_{}; unsigned fog_prefill_logs_=0; std::uint64_t fog_density_key_=0; // R3: the production decision is appended by the test
+ fog_prefill::Decision fog_prefill_confirm(const FogSectorFrame&,const sector_background::Sample&)noexcept;
  FogCardPolicy fog_cards_{}; FogSectorFrame fog_sector_{}; bool fog_families_checked_=false;
  bool fog_everywhere_=false;std::uint64_t generation_=0,fog_transition_frame_=~std::uint64_t(0);
  struct SunFrame {bool failed=false,published=true;}sun_frame_;bool sun_lane_failed_=false;

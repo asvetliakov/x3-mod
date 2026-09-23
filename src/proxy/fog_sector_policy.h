@@ -56,7 +56,7 @@ inline FogSectorFrame fog_sector_frame(const sector_background::Sample& s, std::
     if (s.status != sector_background::Status::Ready) out.reason = sector_background::name(s.status);
     else if (!s.row_valid) out.reason = "row_invalid";
     else if (!s.name_valid) out.reason = "name_invalid";
-    else if (s.camera_check == sector_background::Check::Mismatch || s.anchor_check == sector_background::Check::Mismatch) out.reason = "sample_mismatch";
+    else if (s.camera_check == sector_background::Check::Mismatch || sector_background::anchor_refused(s)) out.reason = "sample_mismatch";
     else if (s.dust == 0) out.reason = "clear";
     else if (s.dust < 0) out.reason = "dust_invalid";
     else {

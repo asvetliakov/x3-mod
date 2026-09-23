@@ -201,6 +201,13 @@ void FogPass::release_density_default() noexcept {
 }
 void FogPass::abandon_density_worker() noexcept { if(density_){density_->abandon();density_=nullptr;} }
 void FogPass::invalidate_density() noexcept { PreserveCpuState guard;if(density_)density_->invalidate();density_status_.ready_fine=density_status_.ready_far=0; }
+bool FogPass::prefill_density(std::uint64_t sector_key,std::uint32_t recipe,const double world_offset[3],const double camera[3]) noexcept {
+    if(!density_||density_refused_||reset_pending_||!density_config_.enabled||!world_offset||!camera)return false;
+    PreserveCpuState guard;
+    fog::CacheIdentity identity;identity.sector_key=sector_key;identity.recipe=recipe;identity.offset={world_offset[0],world_offset[1],world_offset[2]};
+    density_->set_handover(density_config_.handover_step,density_config_.handover_coldfill);
+    return density_->prefill(identity,camera); // false: not posted (missed lock); the caller's next poll retries
+}
 bool FogPass::density_drawable(const double camera[3]) const noexcept {
     return density_&&camera&&density_status_.available&&density_status_.ready_far>0&&density_->covers(1,camera);
 }
@@ -559,7 +566,7 @@ HRESULT FogPass::prepare_density(const FogDensityConfig& config,const double cam
     }
     PreserveCpuState guard;
     // Every failure below leaves the path unavailable for this frame: execute refuses a density frame.
-    density_status_.available=false;density_status_.ready_fine=density_status_.ready_far=0;
+    density_status_.available=false;density_status_.ready_fine=density_status_.ready_far=0;density_status_.handover.due=false;
     if(!device_||!caps_.enabled||!camera)return E_INVALIDARG;
     if(density_refused_)return D3DERR_NOTAVAILABLE;
     if(reset_pending_)return D3DERR_DEVICENOTRESET;
@@ -570,6 +577,7 @@ HRESULT FogPass::prepare_density(const FogDensityConfig& config,const double cam
     if(motes_refused_||density_config_.motes.count==0)density_config_.dust_motes=false; // refused motes stay refused; no option, no stage
     HRESULT hr=density_resources();if(FAILED(hr))return hr;
     fog::CacheIdentity identity;identity.sector_key=config.sector_key;identity.recipe=config.recipe;identity.offset={config.world_offset[0],config.world_offset[1],config.world_offset[2]};
+    density_->set_handover(config.handover_step,config.handover_coldfill); // read at the next cold start
     density_->configure(identity);
     const fog::FrameState state=density_->step(camera,frame);
     hr=density_uploads(config.upload_budget_bytes?config.upload_budget_bytes:unsigned(fog::kDefaultUploadBudget));
@@ -577,6 +585,7 @@ HRESULT FogPass::prepare_density(const FogDensityConfig& config,const double cam
     density_status_.available=true;density_status_.reason="";density_status_.ready_fine=state.ready[0];density_status_.ready_far=state.ready[1];
     const fog::CacheStats stats=density_->stats();
     density_status_.nodes_generated=stats.nodes_generated;density_status_.worker_busy_us=stats.worker_busy_us;density_status_.missed_locks=stats.missed_locks;
+    density_status_.handover=density_->take_handover(); // due once, in the frame the far readiness reached 1
     return S_OK;
 }
 HRESULT FogPass::prepare_targets(UINT w,UINT h) noexcept {

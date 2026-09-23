@@ -30,8 +30,9 @@
 // stale tail that is not sentinel (memory recycled by the driver) only lengthens
 // the scan; the draw count is exact regardless. Free of Windows and D3D: the
 // ownership layer binds the table to its Lock/Unlock observation, the host test
-// and the detached fixture drive it directly. Storage: max_vertices*12 bytes per
-// slot, allocated when a slot is first marked and pooled for the table's
+// and the detached fixture drive it directly. Storage: max_vertices*24 bytes per
+// slot (12 of positions, 12 of UV/colour words for the bolt footprint),
+// allocated when a slot is first marked and pooled for the table's
 // lifetime, so erase/clear never free memory a draw may still be reading and
 // no draw or lock allocates.
 namespace x3m::fade_region::prefix {
@@ -40,6 +41,10 @@ constexpr unsigned stride = 24;
 constexpr unsigned max_vertices = 6144; // 1024 bullets x 6: the captured 147456-byte buffer
 constexpr std::size_t max_bytes = std::size_t(max_vertices) * stride;
 constexpr std::size_t storage_floats = std::size_t(max_vertices) * 3;
+// The other 12 bytes of each vertex (TEXCOORD FLOAT2 at 12, D3DCOLOR at 20),
+// copied beside the positions for the bolt footprint (bolt_footprint_core.h:
+// the UV period rule and the verbatim rewrite); 3 words per vertex.
+constexpr std::size_t storage_words = std::size_t(max_vertices) * 3;
 // World-size sanity limit: |component| <= 2^24 (integer-exact float range);
 // X3 sector coordinates are metres within a few hundred kilometres of the
 // origin, so anything beyond is stale memory, never geometry.
@@ -66,10 +71,11 @@ inline std::size_t write_sentinel(void* bytes, std::size_t length, std::uint32_t
 
 // One pass over min(length / 24, max_vertices) vertices, stopping at the
 // first sentinel; positions receives 3 floats per scanned vertex (capacity
-// storage_floats). Integer and SSE scalar float only (compiled with
+// storage_floats) and, when given, extras the vertex's remaining 3 words
+// (capacity storage_words). Integer and SSE scalar float only (compiled with
 // -mfpmath=sse): no x87 on the Unlock path. Cost proportional to the vertices
-// written: ~12 bytes read and 12 written per vertex.
-inline std::uint32_t scan(const void* bytes, std::size_t length, float* positions, Scan* out) noexcept {
+// written: ~12 (24 with extras) bytes read and as many written per vertex.
+inline std::uint32_t scan(const void* bytes, std::size_t length, float* positions, Scan* out, std::uint32_t* extras = nullptr) noexcept {
     *out = Scan{};
     if (!bytes || !positions) return 0;
     const std::size_t count_size = length / stride;
@@ -77,11 +83,12 @@ inline std::uint32_t scan(const void* bytes, std::size_t length, float* position
     const unsigned char* p = static_cast<const unsigned char*>(bytes);
     std::uint32_t i = 0;
     for (; i < window; ++i) {
-        std::uint32_t words[3];
+        std::uint32_t words[6];
         std::memcpy(words, p + std::size_t(i) * stride, sizeof words);
         if (words[0] == sentinel_word && words[1] == sentinel_word && words[2] == sentinel_word) break;
+        if (extras) std::memcpy(extras + std::size_t(i) * 3, words + 3, 12);
         float v[3];
-        std::memcpy(v, words, sizeof v);
+        std::memcpy(v, words, 3 * sizeof(float));
         for (unsigned a = 0; a < 3; ++a) {
             const float x = v[a];
             const float m = x < 0 ? -x : x;
@@ -133,9 +140,10 @@ public:
         const unsigned index = slot_for(key);
         Entry& e = entries_[index];
         if (!storage_[index]) storage_[index].reset(new (std::nothrow) float[storage_floats]);
-        if (!storage_[index]) { e = Entry{}; return false; }
+        if (!extras_[index]) extras_[index].reset(new (std::nothrow) std::uint32_t[storage_words]);
+        if (!storage_[index] || !extras_[index]) { e = Entry{}; return false; }
         e.key = key; e.stamp = ++clock_; e.state = State::Marked;
-        e.positions = storage_[index].get(); e.sentinel_vertices = max_vertices;
+        e.positions = storage_[index].get(); e.extras = extras_[index].get(); e.sentinel_vertices = max_vertices;
         return true;
     }
     // A successful Lock of a marked buffer (unmarked buffers are ignored:
@@ -162,7 +170,7 @@ public:
         Entry* e = find(key);
         if (!e) return 0;
         if (e->state != State::Pending || e->thread != thread) { e->state = State::Invalid; return 0; }
-        const std::uint32_t vertices = scan(e->mapping, e->length, e->positions, &e->scan);
+        const std::uint32_t vertices = scan(e->mapping, e->length, e->positions, &e->scan, e->extras);
         e->mapping = nullptr; e->length = 0;
         // Next lock: sentinel exactly the slots this prefix used (the scan
         // overshoot included, so a recycled non-sentinel tail is covered once).
@@ -180,11 +188,12 @@ public:
     void clear() noexcept { for (auto& e : entries_) e = Entry{}; }
     // Per draw: one linear probe of the fixed table; no allocation, no scan.
     // Bound hands out the record's positions (3 floats per vertex, at least
-    // vertex_count of them) and its revision; the caller projects them and
-    // rechecks the revision afterwards (a Lock on another thread in between
-    // advances it). revision reports the record's revision when present;
-    // scanned the published count.
-    Lookup lookup(std::uintptr_t key, std::uint32_t vertex_count, const float** positions, std::uint64_t* revision, std::uint32_t* scanned) const noexcept {
+    // vertex_count of them), on request the vertices' other 3 words (extras),
+    // and its revision; the caller projects them and rechecks the revision
+    // afterwards (a Lock on another thread in between advances it). revision
+    // reports the record's revision when present; scanned the published count.
+    Lookup lookup(std::uintptr_t key, std::uint32_t vertex_count, const float** positions, std::uint64_t* revision, std::uint32_t* scanned,
+                  const std::uint32_t** extras = nullptr) const noexcept {
         const Entry* e = find(key);
         if (!e || e->state == State::Marked) return Lookup::Unknown;
         if (revision) *revision = e->revision;
@@ -195,6 +204,7 @@ public:
         if (vertex_count > e->scan.vertices) return Lookup::Beyond;
         if (vertex_count > e->scan.bad_from) return Lookup::NonFinite;
         if (positions) *positions = e->positions;
+        if (extras) *extras = e->extras;
         return Lookup::Bound;
     }
     unsigned used() const noexcept { unsigned n = 0; for (const auto& e : entries_) n += e.state != State::Free; return n; }
@@ -214,6 +224,7 @@ private:
         std::uint32_t sentinel_vertices = max_vertices; // slots to sentinel at the next fresh lock
         State state = State::Free;
         float* positions = nullptr; // the slot's pooled storage
+        std::uint32_t* extras = nullptr; // the slot's pooled UV/colour words
         Scan scan{};
     };
     Entry* find(std::uintptr_t key) noexcept {
@@ -235,6 +246,7 @@ private:
     }
     Entry entries_[capacity]{};
     std::unique_ptr<float[]> storage_[capacity];
+    std::unique_ptr<std::uint32_t[]> extras_[capacity];
     std::uint64_t clock_ = 0, evictions_ = 0, publications_ = 0, scanned_vertices_ = 0, sentinel_bytes_ = 0, window_end_scans_ = 0;
 };
 

@@ -151,7 +151,9 @@ HRESULT get_buffer_lock_view_light(IDirect3DResource9* application, BufferLockVi
 // pooled storage and are valid while the revision holds: project them, then
 // call again with mark false and compare the revision. Never locks, reads
 // back or dereferences the wrapper; one registry find and one fixed-table
-// probe under the registry mutex.
+// probe under the registry mutex. extras (3 words per vertex: the UV and
+// colour words beside the positions) serve the bolt footprint's period rule
+// and verbatim rewrite; same lifetime as positions.
 struct LockedPrefixView {
     HRESULT status = S_FALSE;
     bool requested = false, known = false;
@@ -159,6 +161,7 @@ struct LockedPrefixView {
     std::uint64_t revision = 0;
     std::uint32_t scanned = 0;          // vertices the Unlock scan published
     const float* positions = nullptr;   // known only
+    const std::uint32_t* extras = nullptr; // known only
 };
 HRESULT get_locked_prefix_view(IDirect3DResource9* application, std::uint32_t vertex_count, bool mark, LockedPrefixView* out) noexcept;
 struct LockedPrefixStatistics {

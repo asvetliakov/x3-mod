@@ -38,6 +38,7 @@
 #include "../renderer/sun_occlusion_pass.h"
 #include "fog_card_policy.h"
 #include "fog_sector_policy.h"
+#include "fog_prefill.h"
 #include "fog_card_mask.h"
 #include "fog_card_match.h"
 #include "../renderer/hdr_pass.h"
@@ -48,6 +49,7 @@
 #include "../renderer/linear_emission_pass.h"
 #include "../renderer/linear_distance_fade.h"
 #include "fade_region.h"
+#include "bolt_footprint_core.h"
 #include "fade_route_core.h"
 #include "shadow_replay_candidates.h"
 #include "shadow_replay_depth.h"
@@ -207,6 +209,13 @@ struct MotionRoute {
     // Additive option: DESTBLEND ONE applied for this draw (restored to the
     // shadowed INVSRCCOLOR after it) and, with gain != 1, the gained PS bound.
     bool screen_additive = false, screen_additive_ps = false, screen_additive_alpha = false;
+    // Bolt footprint (bolt_footprint_core.h): the proxy's substitute vertex
+    // buffer bound at stream 0 for this admitted additive draw; the
+    // application's own binding (owned through GetStreamSource) is put back
+    // by finish_bolt_footprint after the draw.
+    bool bolt_footprint = false;
+    IDirect3DVertexBuffer9* bolt_restore_stream = nullptr;
+    UINT bolt_restore_offset = 0, bolt_restore_stride = 0;
     // Origin distance of the draw's rows (fade_route_core.h origin_distance) for
     // the caster-candidate counter; negative when the camera latch or rows refuse.
     float candidate_distance = -1.f;
@@ -845,6 +854,15 @@ public:
     // against the union of that frame's derived rectangles. Off (0) costs
     // nothing per draw or per frame.
     void configure_fade_witness(unsigned frames) noexcept;
+    // Bolt footprint (docs/architecture/bolt-footprint.md, option A';
+    // X3M_BOLT_FOOTPRINT=R[,G]): a minimum on-screen half-extent of R px for
+    // every bullet instance of an admitted additive draw whose projected
+    // major half-extent is below the gate G, through a proxy-owned dynamic
+    // vertex buffer bound for that draw only. Process-start configuration;
+    // the caller has already required the additive route and the ownership
+    // Unlock scan. Invalid R/G leave the option off.
+    void configure_bolt_footprint(bool requested, float r_px, float g_px) noexcept;
+    bool bolt_footprint_requested() const noexcept { return bolt_footprint_requested_; }
     // Fade-band motion arm threshold (X3M_FADE_ROUTE=<permille>, default
     // 500; fade_route::threshold_off disables the arm): a reviewed pair drawn
     // in the exact fade-band state routes (own RT1 motion, RT2 masked, no
@@ -989,6 +1007,11 @@ public:
     void configure_volumetric_fog_dust_motes(const renderer::FogMoteTuning& motes) noexcept {
         fog_dust_motes_launch_ = motes.count > 0; fog_density_config_.motes = motes; fog_density_config_.dust_motes = motes.count > 0;
     }
+    // X3M_FOG_HANDOVER_STEP / X3M_FOG_HANDOVER_COLDFILL (docs/architecture/fog-handover.md, "Implementation"; launcher
+    // default on): the stored range's cold-start step and cold fill. One volumetric_fog_handover line per cold start.
+    void configure_volumetric_fog_handover(bool step, bool coldfill) noexcept {
+        fog_density_config_.handover_step = step; fog_density_config_.handover_coldfill = coldfill;
+    }
     // Ctrl+Alt+F11 (comparison-hotkeys.md; launched with the motes only): flips the mote stage the next owner latch hands
     // to FogPass::prepare_density; off keeps the mote programs and buffers. One fog_dust_motes_toggle line per press;
     // returns the new state, -1 without the option.
@@ -1000,6 +1023,11 @@ public:
     // renderer::fog_strength_steps (comparison-hotkeys.md). One
     // volumetric_fog_toggle / volumetric_fog_strength line per press. -1: option off.
     void volumetric_fog_sector_sample(std::uint64_t frame, const sector_background::Sample&) noexcept;
+    // R3 (fog-handover.md, "R3 implementation"): one walk result from a stalled frame's resource-creation hook
+    // (capture.cpp, at most one per 250 ms); starts the far fill of a found fog sector, never authority. One
+    // volumetric_fog_prefill line per poll (bounded).
+    void configure_volumetric_fog_prefill(bool on) noexcept { fog_prefill_launch_ = on; }
+    void volumetric_fog_prefill(const fog_prefill::Result&, std::uint64_t stall_ms) noexcept;
     void volumetric_fog_begin_frame() noexcept; // after comparison hotkeys
     int volumetric_fog_toggle() noexcept;
     int volumetric_fog_step() noexcept;
@@ -1650,6 +1678,11 @@ private:
     HRESULT apply_screen_additive_alpha() noexcept;
     HRESULT restore_screen_additive_alpha() noexcept;
     void finish_screen_additive(MotionRoute&) noexcept;
+    void prepare_bolt_footprint(const MotionDrawCall&, MotionRoute&) noexcept;
+    void finish_bolt_footprint(MotionRoute&) noexcept;
+    bool ensure_bolt_buffer(UINT bytes) noexcept;
+    void release_bolt_buffer() noexcept;
+    void log_bolt_footprint_window() noexcept;
     void log_screen_additive_frame() noexcept;
     void derive_fade_region(MotionRoute&) noexcept;
     // Step-1 rectangle of the bound draw (resolve, rows, jitter, viewport,
@@ -1899,6 +1932,25 @@ private:
     bool lightmap_widen_summary_logged_ = false;
     std::uint32_t sun_original_lightmap_variants_ = 0; // gained share variants created (fixture counter)
     bool screen_additive_requested_ = false; // X3M_SCREEN_EMISSION_ADDITIVE=G (finite 1..8), exclusive with the packed route
+    // Bolt footprint (bolt_footprint_core.h). The plans (one per instance,
+    // max_instances) are allocated once at configure; the substitute buffer
+    // (D3DUSAGE_DYNAMIC | WRITEONLY, DEFAULT pool, the scan bound of 147 456
+    // bytes) is created once at the first draw that needs it, released before
+    // Reset and at detach, recreated after. A creation failure is final
+    // until Reset. Counters: the 300-frame window line and the session.
+    bool bolt_footprint_requested_ = false;
+    float bolt_footprint_r_ = bolt_footprint::default_half_extent, bolt_footprint_g_ = bolt_footprint::default_gate;
+    std::unique_ptr<bolt_footprint::Plan[]> bolt_plans_;
+    IDirect3DVertexBuffer9* bolt_vb_ = nullptr;
+    UINT bolt_vb_bytes_ = 0;
+    bool bolt_vb_failed_ = false;
+    struct BoltCounters {
+        std::uint32_t draws = 0, written = 0, untouched = 0, instances = 0, expanded = 0;
+        std::uint32_t refused_shape = 0, refused_rows = 0, refused_buffer = 0, refused_period = 0, refused_w = 0, refused_recheck = 0, failures = 0, locks = 0, timed = 0;
+        std::uint64_t ticks = 0;
+    } bolt_window_{}, bolt_session_{};
+    unsigned bolt_window_frames_ = 0, bolt_windows_ = 0;
+    unsigned bolt_refusal_logged_ = 0; // bit per refusal reason already logged (one line each per device)
     float screen_additive_gain_ = 1.f;
     bool screen_additive_enabled_ = true; // Ctrl+Shift+F5 runtime A/B; the variant stays created
     // Per-source bloom attenuation of the additive draw (option 1): the scene
@@ -2246,7 +2298,11 @@ private:
     // X3M_FOG_DUST_MOTES at launch: arms the Ctrl+Alt+F11 toggle and the mote fields of volumetric_fog_frame.
     bool fog_dust_motes_launch_ = false, fog_motes_refused_logged_ = false, fog_motes_drawn_ = false;
     long long fog_motes_epoch_qpc_ = 0; // the drift clock's origin (first mote frame)
-    unsigned fog_density_logs_ = 0;
+    unsigned fog_density_logs_ = 0, fog_handover_logs_ = 0;
+    bool fog_prefill_launch_ = false;       // X3M_FOG_HANDOVER_PREFILL under the stored range
+    fog_prefill::Record fog_prefill_{};     // the started prefill until the detector's first Ready sample
+    unsigned fog_prefill_logs_ = 0;
+    fog_prefill::Decision fog_prefill_confirm(const FogSectorFrame& next, const sector_background::Sample& sample) noexcept;
     std::uint64_t fog_density_sample_frame_ = ~std::uint64_t(0), fog_density_key_ = 0;
     long long fog_density_epoch_qpc_ = 0, fog_density_sample_qpc_ = 0;
     static constexpr unsigned fog_density_gap_ms = 500; // a longer gap in scene samples is a load

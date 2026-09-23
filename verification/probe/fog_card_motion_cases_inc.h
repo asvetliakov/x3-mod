@@ -200,5 +200,21 @@ int main() {
    m.fog_storage.density.ready_far=1.f;m.next();assert(!m.fog_cards_.warmup);m.draw();assert(m.fog_cards_.suppressed==1);m.run_volumetric_fog();assert(!m.fog_cards_.fault);
    m.fog_storage.density.ready_far=.5f;m.next();assert(m.fog_cards_.warmup);m.draw();assert(!m.fog_cards_.suppressed);m.run_volumetric_fog();assert(!m.fog_cards_.fault);
  }
+ { // R3: a pending prefill holds the transit's gap; the first Ready sample decides once; the record ends there.
+   MotionOutput m;m.warm();m.fog_density_requested_=true;m.fog_density_config_.enabled=true;++m.frame_;m.sample();
+   const std::uint64_t key=fog_sector_placement(m.fog_sector_).key;
+   auto transit=[&](std::uint64_t prefill_key){
+     m.fog_prefill_={true,0x1000,7,m.fog_sector_.index,m.fog_sector_.profile,m.fog_sector_.recipe,prefill_key,mock_qpc};
+     m.frame_+=5;mock_qpc+=10;sector_background::Sample s;s.status=sector_background::Status::NoCockpit; // the stall, then no_cockpit
+     m.volumetric_fog_sector_sample(m.frame_,s);
+     const bool held=m.fog_prefill_.pending;++m.frame_;m.sample();return held&&!m.fog_prefill_.pending;
+   };
+   const unsigned before=m.fog_storage.density_calls;
+   const bool confirmed=transit(key)&&m.fog_storage.density_calls==before;          // same key: the fill is kept, no invalidation
+   const bool discarded=transit(key+1)&&m.fog_storage.density_calls==before+1;      // another key: one invalidation, not two
+   m.frame_+=5;mock_qpc+=10;m.sample();const bool later=m.fog_storage.density_calls==before+2; // no record left: a later gap invalidates as before
+   assert(confirmed&&discarded&&later&&m.fog_prefill_logs_==2);
+   std::printf("prefill_gap confirmed=%u discarded=%u later_gap=%u PASS\n",unsigned(confirmed),unsigned(discarded),unsigned(later));
+ }
  std::puts("actual MotionOutput card methods PASS");
 }

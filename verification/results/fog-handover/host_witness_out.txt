@@ -1,0 +1,29 @@
+COLD_STEP resident_frame=6 ready_frame=6 arm_frame=1 latches=4 upload_bytes=4260096 drawable_us=830452 fill_us=302458 fill_busy_us=301424 fill_cpu_us=302243
+ATLAS cold_step level=0 differing_bytes=0
+ATLAS cold_step level=1 differing_bytes=0
+WARM_RAMP resident_frame=109 ready_frame=198 frames=89 largest_step=0.011111
+COLD_RAMP resident_frame=6 ready_frame=95 frames=89 far_latches=4 max_latch_bytes=1065024 report_latches=4
+COLD_FILL far_first_nodes=1124864 generated=1124864 held=1
+COLD_FILL_LATCH far_rects=1 far_bytes=4260096 whole=1 fine_rects=0 budget=1065024
+COLD_FILL_REPORT ready=1.000 frames=2 latches=1 upload_bytes=4260096 whole=1 fill_us=299514 fill_busy_us=298549 fill_cpu_us=299288 drawable_us=802208 busy_us=799379
+ATLAS cold_fill level=0 differing_bytes=0
+ATLAS cold_fill level=1 differing_bytes=0
+ATLAS cold_fill_off level=0 differing_bytes=0
+ATLAS cold_fill_off level=1 differing_bytes=0
+WALK depth=1 reads_walk=25 reads_legacy=22
+WALK depth=2 reads_walk=27 reads_legacy=22
+WALK depth=3 reads_walk=29 reads_legacy=22
+ATLAS hold_invalidate level=0 differing_bytes=0
+ATLAS hold_invalidate level=1 differing_bytes=0
+LOST_WHOLE wholes=2 latches=2 whole=1
+THREADED_COLD_FILL frames=450 wholes=1 far_views_before_latch=0 resident=122 ready=122 idle=1 seconds=1.12
+ATLAS threaded_cold_fill level=0 differing_bytes=0
+ATLAS threaded_cold_fill level=1 differing_bytes=0
+PREFILL ready_frame=5 wholes=1 arm_frame=1 latches=1
+ATLAS prefill level=0 differing_bytes=0
+ATLAS prefill level=1 differing_bytes=0
+PREFILL_WALK case=tail status=found steps=1 reads=10 family=bluewell
+PREFILL_WALK case=eighth status=found steps=8 reads=24
+PREFILL_WALK case=ninth status=bound steps=8 reads=17
+PREFILL_WALK worst_reads=24 budget=25
+RESULT PASS checks=85 failures=0

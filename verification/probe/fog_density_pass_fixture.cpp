@@ -698,6 +698,29 @@ void run(const std::string& cases_file){
             pass.before_reset();pass.after_reset(S_OK);check(pass.prepare_targets(scene.w,scene.h),"targets after loss");
             require(hx.settle(cam)&&hx.atlases_equal_static(scene,"injected_loss"),"injected_loss_recovers_bit_for_bit");
         }
+        // --- Cold hand-over (fog-handover.md, "Implementation"): with step and cold fill a cold start uploads the far level in
+        // one whole-atlas latch past the budget, then draws at full far readiness in the resident frame; switches off after ---
+        {
+            const unsigned budget_max=hx.max_upload_bytes; // the case's one oversize latch stays out of the PREPARE_CPU budget row
+            hx.config.handover_step=hx.config.handover_coldfill=true;check(hx.prepare(A.cam),"handover prepare");pass.invalidate_density();
+            unsigned oversize=0,whole=0,early=0,frames=0;float before=0;bool stepped=false;const LONGLONG start=ticks();
+            while(seconds(start)<60){
+                const HRESULT hr=hx.prepare(A.cam);if(FAILED(hr))break;++frames;const auto& st=pass.density_status();
+                if(st.upload_bytes>kDefaultUploadBudget){++oversize;whole+=st.upload_bytes==kAtlasBytes&&st.upload_rects==1;}
+                else if(st.upload_bytes&&!oversize)++early; // anything before the whole-atlas latch
+                if(st.ready_far>0){stepped=before==0&&st.ready_far==1;break;}
+                before=st.ready_far;Sleep(1);
+            }
+            const auto h=pass.density_status().handover;
+            std::printf("HANDOVER frames=%u oversize=%u whole=%u early=%u latches=%u upload_bytes=%llu ready_ms=%.1f drawable_ms=%.1f fill_ms=%.1f fill_busy_ms=%.1f fill_cpu_ms=%.1f\n",frames,oversize,whole,early,h.latches,
+                (unsigned long long)h.upload_bytes,double(std::int32_t(h.ready_us/100))*.1,double(std::int32_t(h.drawable_us/100))*.1,double(std::int32_t(h.fill_us/100))*.1,double(std::int32_t(h.fill_busy_us/100))*.1,double(std::int32_t(h.fill_cpu_us/100))*.1);
+            require(stepped,"cold_handover_far_readiness_steps_from_0_to_1");
+            require(oversize==1&&whole==1&&early==0,"cold_fill_one_whole_atlas_latch_past_the_budget");
+            require(h.due&&h.step&&h.cold_fill&&h.whole_atlas&&h.latches==1&&h.upload_bytes==kAtlasBytes&&h.ready_frame==h.drawable_frame,"cold_handover_report_in_the_resident_frame");
+            FogResult r;require(hx.execute(A,scene,r)==S_OK&&r.applied,"cold_handover_draws_in_the_resident_frame");
+            require(hx.settle(A.cam)&&hx.atlases_equal_static(scene,"cold_handover"),"cold_handover_settles_bit_for_bit");
+            hx.config.handover_step=hx.config.handover_coldfill=false;hx.max_upload_bytes=budget_max;
+        }
 
         // --- Odd target, repair and composite against CPU references ---
         {

@@ -12,6 +12,7 @@
 #include "fog_volume_math.h"
 #include "fog_field_assets.h"
 #include "gpu_sync_timing_core.h"
+#include "../fog/fog_handover.h"
 namespace x3m::fog { class DensityCache; }
 namespace x3m::renderer {
 struct FogCaps {
@@ -40,6 +41,10 @@ struct FogDensityConfig {
     // prepare_density while it is on, never on a draw path; count 0 creates, queries and draws nothing.
     FogMoteTuning motes{};
     bool dust_motes=false;
+    // Cold-start hand-over (docs/architecture/fog-handover.md, "Implementation"; X3M_FOG_HANDOVER_STEP /
+    // X3M_FOG_HANDOVER_COLDFILL, launcher default on): the far readiness steps to 1 when the far need box is
+    // resident, and the far level fills its need box first and goes up in one whole-atlas latch. Off: legacy.
+    bool handover_step=false,handover_coldfill=false;
 };
 struct FogDensityStatus {
     bool available=false; const char* reason="off";
@@ -52,6 +57,8 @@ struct FogDensityStatus {
     // The mote stage could not be built or drawn (capability, program, buffer, a failed draw): the fog keeps drawing
     // without it; sticky until detach. The proxy logs it once (fog_dust_motes_refused).
     const char* motes_refused=nullptr;
+    // The last completed cold start, due in the successful prepare_density of the frame it completed (logged once).
+    fog::HandoverReport handover{};
 };
 // Borrowed only during execute. Rows map current view coordinates to the exact
 // retained replay basis; frame stamps prohibit the surface lane's older far map.
@@ -164,6 +171,11 @@ public:
     // Never waits for the worker. S_FALSE when disabled, D3DERR_NOTAVAILABLE when refused.
     HRESULT prepare_density(const FogDensityConfig&,const double camera_world[3],std::uint64_t frame) noexcept;
     void invalidate_density() noexcept; // load or sector change without a key change
+    // R3 (fog-handover.md, "R3 implementation"): start the far fill of an identity found during a transit stall,
+    // with the switches of the last prepare_density. No device call, no allocation, never waits. False: no worker
+    // yet (the first stored frame creates it), the path is refused, a Reset is pending, or the camera was not
+    // posted (a missed lock); the caller retries at its next poll.
+    bool prefill_density(std::uint64_t sector_key,std::uint32_t recipe,const double world_offset[3],const double camera[3]) noexcept;
     // This frame's prepare_density succeeded and a ray from `camera` may be drawn: far ramp
     // above zero and the far need box resident. Pure CPU, no lock, no device call.
     bool density_drawable(const double camera[3]) const noexcept;

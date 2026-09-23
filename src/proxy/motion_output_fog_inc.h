@@ -239,6 +239,22 @@ void MotionOutput::prepare_volumetric_fog_density(UINT width, UINT height) noexc
             }
         } else if (i == 0 && ready[0] == 0.f && fog_density_ready_logged_[0]) fog_density_epoch("residency"); // cut, jump or Reset: far refills and ramps again
     }
+    // One line per cold start (sector re-key, load gap), in the frame the far readiness reached 1 (fog-handover.md,
+    // "Implementation"): the hand-over and its parts, so a flight settles fill versus upload cadence versus starvation.
+    const auto& h = status.handover;
+    // The cold step lands in this frame: arm the cards now (before this frame's cards) so they are masked in the
+    // same frame the medium reaches full density, instead of after one warm-up frame of cards over the full medium.
+    if (h.due && h.step && fog_cards_replace_ && status.ready_far >= 1.f) fog_cards_.arm_on_cold_step();
+    if (h.due && fog_handover_logs_ < 256u) {
+        ++fog_handover_logs_;
+        // Integer microseconds to ms through an int32 convert, in place: no int64 or returned double (x87 on i686).
+        const std::int64_t us[6] = {h.ready_us, h.drawable_us, h.fill_us, h.fill_busy_us, h.fill_cpu_us, h.busy_us};
+        double ms[6];
+        for (unsigned i = 0; i < 6; ++i) ms[i] = us[i] < 0 ? -1. : double(std::int32_t(std::min<std::int64_t>(us[i] / 100, 0x7fffffff))) * .1;
+        log("volumetric_fog_handover device=%llu frame=%llu step=%u coldfill=%u whole_atlas=%u arm_frame=%llu frames=%llu ms=%.1f drawable_frame=%llu drawable_ms=%.1f fill_ms=%.1f fill_busy_ms=%.1f fill_cpu_ms=%.1f busy_ms=%.1f latches=%u upload_bytes=%llu",
+            id_, frame_, unsigned(h.step), unsigned(h.cold_fill), unsigned(h.whole_atlas), h.arm_frame, h.ready_frame - h.arm_frame, ms[0], h.drawable_frame, ms[1],
+            ms[2], ms[3], ms[4], ms[5], h.latches, h.upload_bytes);
+    }
 }
 void MotionOutput::volumetric_fog_sector_sample(std::uint64_t frame, const sector_background::Sample& sample) noexcept {
     if (!fog_requested_ || frame != frame_ || fog_sector_.frame == frame) return;
@@ -272,7 +288,9 @@ void MotionOutput::volumetric_fog_sector_sample(std::uint64_t frame, const secto
         const bool gap = fog_density_sample_frame_ != ~std::uint64_t(0) && fog_density_sample_frame_ + 1 < frame && f.QuadPart > 0 &&
             (now.QuadPart - fog_density_sample_qpc_) * 1000 > static_cast<long long>(fog_density_gap_ms) * f.QuadPart;
         fog_density_sample_frame_ = frame; fog_density_sample_qpc_ = now.QuadPart;
-        if (gap && fog_ && fog_density_config_.enabled && !fog_density_refused_) { fog_->invalidate_density(); fog_density_epoch("sample_gap"); }
+        // R3: a pending prefill owns the transit's gap until the first Ready sample decides it (confirmed keeps the fill).
+        const auto prefill = fog_prefill_confirm(next, sample);
+        if (gap && prefill == fog_prefill::Decision::None && !fog_prefill_.pending && fog_ && fog_density_config_.enabled && !fog_density_refused_) { fog_->invalidate_density(); fog_density_epoch("sample_gap"); }
     }
     // Atlas generation remains usable across same-family sectors, but their
     // replacement warm-up/history key must still change.
@@ -287,6 +305,59 @@ void MotionOutput::volumetric_fog_sector_sample(std::uint64_t frame, const secto
     fog_cards_.active = next.enabled && !fog_cards_.fault;
     fog_cards_.warmup = fog_cards_.active && !fog_cards_.armed;
     if (!fog_cards_.active) fog_card_transition(fog_cards_.fault ? 3u : 0u);
+}
+// R3 (fog-handover.md, "R3 implementation"): a walk result from a stalled frame's resource-creation hook. A found
+// fog sector starts the far fill of its placement identity centred at the sector origin (the arrival position is
+// written last), recorded as prefilled and unconfirmed; nothing draws before the detector's first Ready sample.
+void MotionOutput::volumetric_fog_prefill(const fog_prefill::Result& w, std::uint64_t stall_ms) noexcept {
+    if (!fog_prefill_launch_ || !fog_density_active() || !fog_enabled_ || fog_disabled_) return;
+    const char* action = "none";
+    std::uint64_t key = 0;
+    if (w.status == fog_prefill::Walk::Found) {
+        const FogSectorFrame f = fog_sector_frame(w.sample, frame_, generation_, fog_strength_, true, fog_everywhere_, renderer::fog_field::family_table());
+        if (!f.profile) action = f.reason; // clear, unsupported family, invalid name: nothing to fill
+        else {
+            const FogSectorPlacement placement = fog_sector_placement(f);
+            key = placement.key;
+            static constexpr double origin[3] = {0., 0., 0.};
+            if (fog_prefill_.pending && fog_prefill_.key == key && fog_prefill_.recipe == f.recipe) action = "already_started";
+            else if (fog_density_config_.enabled && key == fog_density_key_) action = "current_key"; // the resident field already is this key
+            else if (!fog_ || !fog_->prefill_density(key, f.recipe, placement.offset, origin)) action = "not_posted"; // retried at the next poll
+            else {
+                LARGE_INTEGER now{}; QueryPerformanceCounter(&now);
+                fog_prefill_ = {true, w.node, w.id, w.sample.index, f.profile, f.recipe, key, now.QuadPart};
+                action = "started";
+            }
+        }
+    }
+    if (fog_prefill_logs_ < 512u) {
+        ++fog_prefill_logs_;
+        log("volumetric_fog_prefill device=%llu frame=%llu event=poll walk=%s steps=%u reads=%u node=%08x id=%u index=%d family=\"%s\" stall_ms=%llu action=%s key=%016llx",
+            id_, frame_, fog_prefill::name(w.status), w.steps, w.reads, w.node, w.id, w.sample.index, w.sample.name_valid ? w.sample.family : "",
+            static_cast<unsigned long long>(stall_ms), action, static_cast<unsigned long long>(key));
+    }
+}
+// The detector's first Ready sample after a prefill: the same placement key keeps the fill (its configure is then a
+// no-op), anything else invalidates as a load gap does. The sector pointer and id are reported, not required.
+fog_prefill::Decision MotionOutput::fog_prefill_confirm(const FogSectorFrame& next, const sector_background::Sample& sample) noexcept {
+    if (!fog_prefill_.pending || sample.status != sector_background::Status::Ready) return fog_prefill::Decision::None;
+    const bool usable = next.profile != 0;
+    const std::uint64_t key = usable ? fog_sector_placement(next).key : 0;
+    const auto decision = fog_prefill::decide(fog_prefill_, usable, key, next.recipe);
+    fog_prefill_.pending = false;
+    LARGE_INTEGER now{}, f{}; QueryPerformanceCounter(&now); QueryPerformanceFrequency(&f);
+    const long long tenths = f.QuadPart > 0 ? (now.QuadPart - fog_prefill_.qpc) * 10000 / f.QuadPart : -10; // 0.1 ms, integer (no x87)
+    const double lead_ms = double(std::int32_t(tenths > 0x7fffffffLL ? 0x7fffffffLL : tenths)) * .1;
+    if (fog_prefill_logs_ < 512u) {
+        ++fog_prefill_logs_;
+        log("volumetric_fog_prefill device=%llu frame=%llu event=%s lead_ms=%.1f same_sector=%u same_id=%u key=%016llx prefill_key=%016llx index=%d prefill_index=%d profile=%u",
+            id_, frame_, fog_prefill::name(decision), lead_ms, unsigned(sample.sector == fog_prefill_.sector), unsigned(sample.sector_id != 0 && sample.sector_id == fog_prefill_.id),
+            static_cast<unsigned long long>(key), static_cast<unsigned long long>(fog_prefill_.key), sample.index, fog_prefill_.index, next.profile);
+    }
+    if (decision == fog_prefill::Decision::Discarded && fog_ && fog_density_config_.enabled && !fog_density_refused_) {
+        fog_->invalidate_density(); fog_density_epoch("prefill_discarded");
+    }
+    return decision;
 }
 void MotionOutput::reconcile_volumetric_fog(const renderer::FogFrame& in, const renderer::FogResult& out, HRESULT hr) noexcept {
     if (out.scene_known) scene_open_ = out.scene_open;

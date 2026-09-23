@@ -17,8 +17,9 @@ bool read(std::uintptr_t p,void* out,std::size_t n){++error;return memory(p,out,
 }
 std::vector<std::string> logs;
 void log(const char* fmt,...){++error;char line[4096];va_list args;va_start(args,fmt);std::vsnprintf(line,sizeof line,fmt,args);va_end(args);logs.emplace_back(line);}
-bool sector_background_requested=false,volumetric_fog_requested=false;
-struct Device {std::uint64_t id=1,frame=0;sector_background::Diagnostic sector_background_evidence;
+bool sector_background_requested=false,volumetric_fog_requested=false,volumetric_fog_docked=false,volumetric_fog_prefill=false;
+struct Device {std::uint64_t id=1,frame=0;sector_background::Diagnostic sector_background_evidence;sector_background::AnchorSpan fog_docked_span;unsigned fog_docked_logs=0;
+    std::uint32_t fog_ready_sector=0,fog_ready_sector_id=0;std::uint64_t fog_ready_frame=0;
     struct Motion { unsigned samples=0;std::uint64_t frame=0;sector_background::Sample value;
       void volumetric_fog_sector_sample(std::uint64_t f,const sector_background::Sample& s){++error;++samples;frame=f;value=s;}
     } motion_output;
@@ -60,5 +61,14 @@ int main(){
     ++d.frame;sector_background_requested=true;sector_background_context(d,true);
     const auto logged=logs.size();++d.frame;sector_background_context(d,true);
     check(d.motion_output.samples==3&&d.motion_output.frame==d.frame&&error==123&&logs.size()==logged);
+    // --fog-docked: ship -> station (class 2) -> sector; one line per walked span, LastError kept; off keeps the mismatch.
+    memory=setup();memory.word(0x500c,0x8000);memory.word(0x8054,0x9000);memory.word(0x9048,2);memory.word(0x9054,0x7000);
+    sector_background_requested=false;volumetric_fog_docked=true;++d.frame;const auto undocked=logs.size();sector_background_context(d,true);
+    const auto& docked=d.motion_output.value;
+    check(error==123&&docked.status==sb::Status::Ready&&docked.anchor_walk==sb::AnchorWalk::Found&&docked.anchor_depth==1&&logs.size()==undocked+1&&
+          logs.back().find("volumetric_fog_docked device=1")!=std::string::npos&&logs.back().find("walk=found depth=1 ref_object=00008000 ref_parent=00009000 last=00007000 sector=00007000")!=std::string::npos);
+    ++d.frame;sector_background_context(d,true);check(error==123&&logs.size()==undocked+1&&d.motion_output.value.status==sb::Status::Ready);
+    volumetric_fog_docked=false;++d.frame;sector_background_context(d,true);
+    check(error==123&&logs.size()==undocked+1&&d.motion_output.value.status==sb::Status::AnchorMismatch&&d.motion_output.value.anchor_walk==sb::AnchorWalk::None);
     std::printf("sector_background_context_host checks=%u failures=0\n",checks);
 }

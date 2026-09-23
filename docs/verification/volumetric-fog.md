@@ -2532,3 +2532,92 @@ authority but the sector detector refuses with `anchor_mismatch` (the ship's par
 `sector_background.h` cross-check), so profile 0 and the native cards (7 observed, 0 suppressed). Unexplained: 37
 frames of card refusal after the second undock. Next: a design note on starting the fill from the sector-change
 event and masking the cards earlier; accept the docked anchor when the parent's parent is the cockpit sector.
+
+## Fog hand-over R1+R2 and docked walk: implementation, host and build (2026-09-23)
+
+[fog-handover.md](../architecture/fog-handover.md), "Implementation": cold-start readiness step
+(`--fog-handover-step`), cold fill with one whole-atlas latch (`--fog-handover-coldfill`), docked parent
+walk (`--fog-docked`), all default on, all off = the previous behaviour. Worktree on `3b757320`, not
+committed at the time; no Wine run, no flight. All figures measured unless marked.
+
+- Host witness `fog_handover_host.cpp` (`PYTHONPATH=verification/probe:verification/analysis /usr/bin/python3
+  -m unittest verification.analysis.test_fog_handover`: 6 tests OK, 48 checks;
+  [host_witness_out.txt](../../verification/results/fog-handover/host_witness_out.txt)). Stepped cache, one slab
+  per frame: cold step resident frame 6 = ready frame 6; switches off ramp 89 frames after the resident frame
+  with the far level in 4 budgeted latches (max 1,065,024 B); warm jump with the step on ramps 89 frames
+  (largest step 1/90) and reports nothing; cold fill generates exactly the far first-fill box (1,124,864 nodes),
+  holds the worker, then one latch of one rectangle of 4,260,096 B (whole far atlas, fine 0 rects), resident
+  and stepped two frames after the cold start; settled atlases equal a from-scratch fill (0 differing bytes)
+  in every case. Walk: depth 0 reads = legacy reads; depths 1/2/3 found with 3/5/7 extra reads; depth 4,
+  another sector, null / misaligned / unreadable parent refused; a parent cycle stops after 7 reads. The
+  host millisecond fields are not flight timings (the stepped worker runs inside the frame loop).
+- Fog and related host modules: every `test_fog_*`, `test_volumetric_*` and `test_sector_background`
+  (29 modules, 246 tests) and the 93 other modules that read `manage.py`, `capture.cpp`, `motion_output`,
+  `fog_pass` or `sector_background` (1,136 tests), all green via `run_host_suite.py --modules`.
+  `test_sector_background`'s wrapper host now counts 22 checks (the docked span adds 3).
+- Build: `cmake -S . -B build-fh-5823 -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo
+  -DPython3_EXECUTABLE=/usr/bin/python3`, `cmake --build build-fh-5823 -j8` (scratch directory outside the
+  repository): 0 warnings, `d3d9.dll` `144634cad51e7e72…`; `check_no_x87.py` PASS, 660 reachable. The new code
+  adds no x87 instruction ([x87_lines.py](../../verification/results/fog-handover/x87_lines.py),
+  [x87_lines_out.txt](../../verification/results/fog-handover/x87_lines_out.txt): the only x87 sites in the
+  touched functions are the existing `float(elapsed)` in `DensityCache::step` and the existing `far_ready` log
+  line). `fog_density_shader_run.py build`: 0 warnings, `fog_density_pass_fixture.exe` `d56281998c73…` with the
+  new cold hand-over case (`HANDOVER` row, 5 checks), not run.
+- Open: the Wine run of the density pass fixture (the accepted look hashes are unaffected by construction:
+  no shader or look change, the switches default off in `FogDensityConfig`); a flight with two gate
+  transits into fogged sectors and one docking (station and carrier) for the `volumetric_fog_handover` and
+  `volumetric_fog_docked` lines.
+
+## Fog hand-over R3 and review fixes (2026-09-23)
+
+[fog-handover.md](../architecture/fog-handover.md), "R3 implementation" and the revised "Implementation".
+Worktree on `c704cc12` (main, rebased onto it), not committed at the time; no flight. All figures measured
+unless marked.
+
+- Wine run of the pass fixture with the cold hand-over case (orchestrator, bottle X3, merged tree before the
+  review fixes below): `RESULT PASS checks=122`, `HANDOVER frames=460 oversize=1 whole=1 early=0 latches=1
+  upload_bytes=4260096 ready_ms=579.2 drawable_ms=579.2 fill_ms=576.4 fill_busy_ms=575.0 fill_cpu_ms=580.0`,
+  both `cold_handover` atlases 0 differing bytes, check PASS with every gate true
+  ([fixture-wine/](../../verification/results/fog-handover/fixture-wine/): `handover_rows.txt`, `run_tail.txt`,
+  `check_out.json`, `commands.txt`). Pass executable `89c069f0…`: rebuilt on the merged tree, so not the
+  worktree scratch build's `d56281998c73…` of the previous entry. The fixture was not rerun after the fixes
+  below (the rebuilt executable `af8b6d79…` compiles, 0 warnings).
+- R3: `--fog-handover-prefill` (default on). The CreateTexture/CreateVertexBuffer hooks poll at most once per
+  250 ms while no Present has come for over 250 ms, walk the global object list tail (≤ 8 nodes, ≤ 24 reads)
+  and start the far fill of a found fog sector at the sector origin; the first Ready sample confirms (same
+  key) or discards; the transit's gap invalidation waits for that decision.
+- Review fixes: the cards are armed in the cold-step frame (`FogCardPolicy::arm_on_cold_step`, after the
+  density latch), so they are masked in the frame the medium reaches full density; the whole-atlas latch
+  waits for a published box holding the need box plus the readiness guard, and the held worker extends
+  toward it; `level_dirty(1)` is false during the fill until a box is published; a lost whole latch is taken
+  again; the shared sample keeps the raw `anchor_check` (walk in `anchor_walk`, `anchor_refused()`); the
+  `volumetric_fog_docked` line is capped at 256.
+- Host witness `fog_handover_host.cpp` (`test_fog_handover`, 9 tests OK; 85 checks after the last round;
+  [host_witness_out.txt](../../verification/results/fog-handover/host_witness_out.txt)): a new identity during
+  the hold gets one whole latch of its own field; a lost latch is retaken (2 whole latches); the latch waits
+  for a camera that moved 20 far nodes; the real worker thread parks and is woken (1 whole latch, far staging
+  offered 0 times before it, resident = ready frame, settled, 1.1 s); the prefill hands over at frame 5 after
+  three extension slabs and one latch and settles to the destination field; the walk accepts the tail (10
+  reads) and the eighth node (24 reads), is cut at eight (17 reads), refuses every listed condition; the gate
+  and the decision as specified; the card arming arms, faults on a failed frame, respects refusal.
+- Host modules: the 29 fog/volumetric/sector modules (249 tests) and the 93 modules that read the touched
+  files (1,136 tests), green via `run_host_suite.py --modules`.
+- Build: game guard `[]`; `cmake` scratch build `build-fh-r3`: 0 warnings, `d3d9.dll` `77cad0d566b66b79…`;
+  `check_no_x87.py` PASS, 663 reachable (as on main). Touched functions carry only the two existing x87
+  sites (`float(elapsed)` in `DensityCache::step`, the `far_ready` log line;
+  [x87_lines_out.txt](../../verification/results/fog-handover/x87_lines_out.txt) with the build, objects and
+  filters in its header lines); the audit is redone at the gate on the then-current base.
+- Fixture rerun on the R3 tree (orchestrator, bottle X3, gate build): `RESULT PASS checks=122`, `HANDOVER frames=651
+  oversize=1 whole=1 early=0 latches=1 upload_bytes=4260096 ready_ms=815.8 drawable_ms=815.8 fill_ms=814.2
+  fill_busy_ms=812.1 fill_cpu_ms=800.0`, check PASS; pass executable `3a748f3c57fd…`, shader fixture `27457bf3aa01…`
+  (`fixture-wine/`: `handover_row_r3.txt`, `check_out_r3.json`, `run_tail_r3.txt`).
+- Last review round (R3): the thread is checked before the 250 ms slot is taken; `DensityCache::prefill`
+  returns whether the camera was posted and the poll logs `started` only then (else `not_posted`, retried);
+  the resident field's key is skipped (`current_key`); the walk's worst case is a `static_assert` against the
+  25-read budget; a MotionOutput-level case in `test_fog_cards` runs the production `fog_prefill_confirm` in
+  `volumetric_fog_sector_sample` (gap held while pending, confirmed keeps, discarded invalidates once, a later
+  gap invalidates as before); the note states the creation-hook envelope paid without telemetry.
+- Open: a flight with two gate transits into fogged sectors (the lead time: `stall_ms` of the first `found`
+  poll against the stall length; confirmed/discarded; the hand-over line), one docking at a station and in
+  a carrier; creations per frame for the hook envelope's cost; the whole-atlas frame's cost under `--gpu-sync-timing`
+  (`FogFill`, estimated 0.5–2 ms copy plus 1–3 ms upload by the reviewer, not measured).

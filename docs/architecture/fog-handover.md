@@ -1,7 +1,8 @@
 # Fog hand-over after a sector change
 
-Design note (2026-09-23), for ratification. No code, build, Wine or game work is authorized by
-this note. Owning notes: [volumetric-fog.md](volumetric-fog.md) (stored-density range option,
+Design note (2026-09-23). R1, R2 (a)+(b), the docked walk ([Implementation](#implementation-2026-09-23))
+and R3 ([R3 implementation](#r3-implementation-2026-09-23), on the read side established in
+[sector-transit-order.md](../reverse-engineering/sector-transit-order.md)) are implemented; R2 (c) is not. Owning notes: [volumetric-fog.md](volumetric-fog.md) (stored-density range option,
 card replacement), [fog-density-runtime-integration.md](fog-density-runtime-integration.md)
 (levels, ramps, worker), [sector-fog.md](../reverse-engineering/sector-fog.md) §11 (detector).
 Evidence: `verification/results/run271-music-keep/fog_entry_timeline_out.txt` (+ `.py`) and
@@ -9,8 +10,8 @@ Evidence: `verification/results/run271-music-keep/fog_entry_timeline_out.txt` (+
 
 **Outcome.** Cut the visible vanilla-fog time from 3.5–4.6 s to an estimated 0.3–0.6 s with two
 proxy-only changes, then to about two frames with a third: (R1) at a cold start the far
-readiness steps to 1 instead of ramping over 90 frames, so the cards are masked in the frame the
-far need box becomes resident (removes the measured 2.1–2.9 s ramp, which is 56–64 % of the
+readiness steps to 1 instead of ramping over 90 frames, so the cards can be masked in the first
+frame the far need box is resident, the same frame the medium reaches full density (removes the measured 2.1–2.9 s ramp, which is 56–64 % of the
 hand-over); (R2) a cold-fill path in the density cache: far need box only, whole-atlas upload in
 the first latch, optionally a coarse-first far pass (removes most of the measured 1.3–1.9 s fill);
 (R3, option A) prefill the far level during the transit stall frame (measured 4.4–6.2 s for the two gate
@@ -293,3 +294,184 @@ flight that docks at a station and inside a carrier; then the change plus a host
   90 frames; rejected.
 - **A shipped per-sector far bake:** already rejected in the runtime-integration note (world-anchored
   field, camera-following window); the stall-time prefill gets the same effect from the worker.
+
+## Implementation (2026-09-23)
+
+R1, R2 (a)+(b) and the docked walk (§4), each behind its own switch; R2 (c) (coarse-first) is not
+built; R3 has its own section below. With the switches off, the atlas contents, the uploads and the
+readiness are the previous ones byte for byte (`FogDensityConfig::handover_*` default false,
+`sample(read)` without a walk argument reads exactly the legacy reads); the hand-over
+instrumentation still runs with them off (two steady-clock reads per cold start and per hand-over,
+one `GetThreadTimes` per worker epoch and one per far publication, the `volumetric_fog_handover`
+line), so the A/B flight gets the same numbers from both sides.
+
+| Switch | Environment | Launcher (default) | Scope |
+| --- | --- | --- | --- |
+| R1 cold-start step | `X3M_FOG_HANDOVER_STEP` | `--fog-handover-step` / `--no-fog-handover-step` (on) | stored range |
+| R2 cold fill | `X3M_FOG_HANDOVER_COLDFILL` | `--fog-handover-coldfill` / `--no-fog-handover-coldfill` (on) | stored range |
+| R3 prefill | `X3M_FOG_HANDOVER_PREFILL` | `--fog-handover-prefill` / `--no-fog-handover-prefill` (on) | stored range |
+| Docked walk | `X3M_FOG_DOCKED` | `--fog-docked` / `--no-fog-docked` (on) | `--volumetric-fog`, either range |
+
+The launcher always writes all four (`1` unless the `--no-` form is given); the DLL treats an
+absent variable or anything but exactly `0` as on, and logs one `volumetric_fog_handover_mode`
+line at init. A `--fog-handover-*` form without `--volumetric-fog-range stored`, or a `--fog-docked`
+form without `--volumetric-fog`, is a launcher error.
+
+**Cold start.** `DensityCache::invalidate()` is the cold start: `configure` with a new identity
+(the proxy's sector re-key), `FogPass::invalidate_density` (the `sample_gap` load epoch) and the R3
+prefill. The switches in force at that moment (`set_handover`, latched by
+`FogPass::prepare_density` before `configure`) decide the whole fill, until the far readiness
+reaches 1. Warm refills (the `residency` epoch: a jump or cut that loses the resident box in the
+same identity) keep the 90-frame ramp and the budgeted uploads. A `gpu_reset` (device Reset, a
+failed upload) keeps the ramp only after the hand-over; one during a cold start is part of that
+cold start and still steps. This narrows §2 R1, which proposed the step for Reset and the
+residency epoch too.
+
+**R1.** In `step`, the far level's soft branch sets `ready_[1] = 1` instead of adding the ramp while
+the cold start is pending; the fine ramp and the ramp-down are unchanged. The cold start ends when
+the far readiness reaches 1. The card mask condition is untouched (`ready_far >= 1` and
+`density_drawable`). **Same-frame masking:** the card policy decides warm-up at frame start from the
+previous frame's readiness, so without more the step frame would draw the full medium over
+unmasked cards for one frame (the legacy ramp had the same frame at its end). In the step frame,
+`prepare_volumetric_fog_density` (at the HDR redirect latch, which precedes the scene's draws; a card
+drawn before it in the frame is refused, never masked) calls
+`FogCardPolicy::arm_on_cold_step()` when the report is due with the step and `ready_far >= 1`: the
+cards are armed at once and masked in the frame the medium reaches full density. The frame's own
+transaction is the proof: a masked card in a frame whose fog pass fails faults the replacement
+until Reset, as before; a refused card, an inactive or faulted policy is not armed.
+
+**R2.** At a cold start with the cold fill the request carries `cold_hold`: the worker generates the
+far first-fill slab (need box plus `kFirstFillSlack`) and extends the far box until it holds the
+need box grown by the readiness guard (a prefill centred elsewhere, a moving camera), then parks on
+the condition variable, so no fine slab or window growth competes (§2 R2 (b)). `level_dirty(1)` is
+false while nothing is published, so the far staging is not locked during the fill.
+`take_uploads` hands out nothing of the far level until a published box holds the posted camera's
+need box plus the guard (so the latched level is steppable at once), then one rectangle covering
+the whole far atlas (4,260,096 B, one `UpdateSurface`, past the per-latch budget), clears every far
+tile's dirty and reload state, marks the budget spent so the fine level waits for the next latch,
+and releases the hold (serial bump and notify). A `gpu_reset` before the latch is covered by the
+same whole-atlas copy; a latch lost to `confirm_uploads(false)` is taken again (and the report
+counts both); switching the cold fill off during a fill releases the hold at the next latch and
+the budgeted path continues; a new identity during the hold starts over with its own single latch.
+Cost: one 4.26 MB `memcpy` on the render thread and one 4.26 MB `UpdateSurface` per cold start,
+estimated 0.5–2 ms for the copy plus 1–3 ms for the upload in that one frame (review estimate, not
+measured; `--gpu-sync-timing` brackets `prepare_volumetric_fog_density` as `FogFill`, which measures
+it); nothing per frame otherwise (one branch in `step`, two in `take_uploads`, one in `level_dirty`).
+
+**Hand-over line.** One `volumetric_fog_handover` line per cold start (at most 256 a session), in the
+frame the far readiness reaches 1, with or without the switches: `step`, `coldfill`, `whole_atlas`,
+`arm_frame`, `frames` and `ms` (cold start to hand-over), `drawable_frame` / `drawable_ms` (far need
+box resident on the GPU), `fill_ms` (the worker published the far need box), `fill_busy_ms` (worker
+generation wall time until then), `fill_cpu_ms` (worker thread CPU time until then:
+`GetThreadTimes`, scheduler-tick resolution), `busy_ms` (worker generation wall time to drawable),
+`latches` and `upload_bytes` (upload latches to drawable). Reading it for §6 item 2:
+`drawable_ms - fill_ms` with `latches` is the upload cadence; `fill_busy_ms` well above
+`fill_cpu_ms` is starvation of the worker thread; `fill_ms` well above `fill_busy_ms` is the worker
+waiting (wake or lock), not generating. After an R3 prefill the cold start is the prefill, so `ms`
+includes the rest of the stall.
+
+**Docked walk.** `sector_background::sample(read, anchor_walk_limit)` (3): when
+`[ref_object+0x54] != cockpit+0x54`, `walk_anchor` reads the class word `[obj+0x48]` and follows
+`[obj+0x54]` for at most 3 hops (up to four objects examined: `[ref_object+0x54]` and three
+parents; depth counts hops), each an aligned read through `engine_memory::read`; the first class-1
+object decides (`found` if it is the cockpit's sector, else `other_sector`); `bound`, a null or
+misaligned parent, or a failed read refuse. The shared sample keeps the raw `anchor_check`
+(`mismatch` stays visible on the `sector_background` diagnostic line) and reports the walk in
+`anchor_walk`; `anchor_refused()` (a raw mismatch the walk did not resolve) gives `anchor_mismatch`
+and the fog's `sample_mismatch` (native cards). The identity still comes from `cockpit+0x54`; a
+direct match reads exactly the legacy reads. Cost while docked: two reads per hop plus one (host
+witness). One `volumetric_fog_docked` line (walk, depth, ref object, its parent, the last object,
+the sector, `fallback=none|native_cards`), at most 256 a session, when a walked span starts or its
+outcome changes. The `sector_background` diagnostic alone (without the fog) never walks.
+
+**Verification.** `verification/analysis/test_fog_handover.py` over
+`verification/probe/fog_handover_host.cpp` (85 checks with R3: cold step vs warm ramp vs legacy
+ramp; the single whole-atlas latch with the GPU copy equal to the CPU cache and a settled field
+equal to a from-scratch fill; the hold, switch-off, Reset and a lost latch during the cold fill; a
+new identity during the hold; the latch waiting for the need box; the real worker thread parked and
+woken, the far staging never offered while unpublished; the same-frame card arming; walk depths 0
+to 3, bound, other sector, null/misaligned/unreadable parent, cycle, span reporting; launcher and
+wiring checks); `sector_background_context_host.cpp` gains the docked span (22 checks);
+`fog_density_pass_fixture.cpp` gains the cold hand-over case, run under Wine on the merged tree
+(`HANDOVER` row, `verification/results/fog-handover/fixture-wine/`). Ledger:
+[volumetric-fog.md](../verification/volumetric-fog.md), "Fog hand-over R1+R2 and docked walk" and
+"Fog hand-over R3 and review fixes". Native Windows: documented `UpdateSurface`, `GetThreadTimes`,
+`GetTickCount64` and engine reads only; no Wine-specific path.
+
+## R3 implementation (2026-09-23)
+
+The read side of [sector-transit-order.md](../reverse-engineering/sector-transit-order.md) §5,
+without a trampoline; option A of §3.A with the global object list in place of the cockpit route
+(the cockpit is freed at the start of the stall and `+0x54` is written last).
+
+**Stall gate and poll sites.** Present stamps `GetTickCount64()` and the render thread
+(`fog_prefill::Gate::present`). The `CreateTexture` and `CreateVertexBuffer` hooks (installed for the
+prefill even without CPU telemetry) call `fog_prefill_poll` after the native call: outside a stall
+the poll's own cost is one `GetTickCount64` and one compare (`now - present_ms <= 250`); in a stall
+the thread is checked before the 250 ms slot is taken (another thread never spends it), then at most
+one poll per 250 ms on the render thread, with `GetLastError` saved and restored, after the
+executable identity check and an `engine_memory::next_frame()` (the stall reallocates).
+**The hook envelope is new cost without telemetry:** every `CreateTexture` and `CreateVertexBuffer`
+now pays the full existing hook envelope (`CpuCallBoundary` with its FNSAVE/FRSTOR, the recursive
+hook mutex of `HookGuard`, the ownership admission bookkeeping, the `frame_timing` scope), in loads
+and in flight alike. Not measured; the next flight counts creations per frame (CPU telemetry on: its
+Texture and VertexBuffer counters) to size it. `--no-fog-handover-prefill` leaves the two hooks to CPU telemetry alone.
+
+**Walk** (`src/proxy/fog_prefill.h`, `fog_prefill::walk`). `M = *0x0060850c`; `node = [M+0x10]`
+(tailpred); backward through `[node+4]` for at most 8 nodes, stopping at 0 or the head `M+8`; the
+first node whose type word `[node+0x48]` is class 1 subtype 0 (`0x00000001`; cut-scene spaces have a
+non-zero subtype and are walked past) is the candidate, then: `[node+0x9c]` (u16) `== 0xcafe`, one
+32-byte read at `+0x130` with the scene `+0x130 != 0` (the index `+0x13c` is taken from it), the id
+`[node+8] !=` the last Ready sector's id; then the §11.4 record recipe shared with the detector
+(`sector_background::read_record`: count, table, one row, one name). Every read is aligned and
+validated through `engine_memory::read`; at most 24 reads (bounded at 25; host witness). Outcomes:
+`found`, `head`, `bound`, `dead`, `no_scene`, `same_id`, `no_manager`, `malformed`, `read_failure`,
+`loading`, `bad_count`, `bad_index`, `bad_record`. The last Ready id is read once per sector and
+again at the first Ready sample after any break (one read per transit), not per frame.
+
+**Start.** A found sector with a fog profile gives the placement identity exactly as the first Ready
+frame will (`fog_sector_frame` → `fog_sector_placement`: key, recipe, offset) and
+`FogPass::prefill_density` → `DensityCache::prefill`: `configure(identity)` (a cold start with the
+switches of the last stored frame) and the camera posted at the sector origin; no device call, no
+allocation, never waits. With the cold fill the worker fills the far need box around the origin and
+parks; after the stall the real camera is posted and the held worker extends the far box to the
+arrival's need box before the whole-atlas latch. The start is recorded as prefilled and unconfirmed
+(`fog_prefill::Record`) only when the camera reached the worker (`DensityCache::prefill` returns
+true); a missed lock logs `action=not_posted` and the next poll retries. A repeated poll finding the
+same pending key does nothing (`already_started`); a found sector whose key is the resident field's
+(`fog_density_key_`, the same sector or one sharing its background record) is skipped
+(`current_key`). Nothing is drawn from it:
+drawing stays gated by `fog_sector_.current(frame_)`, set only by the detector. Without a density
+worker yet (no stored frame since attach), a refused path or a pending Reset the poll logs
+`action=no_cache` and does nothing.
+
+**Confirmation.** While a prefill is pending, the transit's `sample_gap` invalidation is deferred.
+At the detector's first Ready sample, `fog_prefill::decide`: the same placement key and recipe keep
+the fill (`volumetric_fog_prefill event=confirmed lead_ms=… same_sector=… same_id=…`; the frame's
+`configure` is then a no-op and R1/R2 finish it); a different key, or a sample without a fog profile,
+invalidates as a load gap does (`event=discarded`, epoch `prefill_discarded`). The sector pointer and
+id are reported, not required (the key owns the field).
+
+**Logs.** One `volumetric_fog_prefill event=poll` line per poll (walk status, steps, reads, node, id,
+index, family, `stall_ms` into the stall, action, key) and one per decision, at most 512 a session.
+
+**Cost and risk.** In a stall: at most 24 validated reads per 250 ms and one far need box of worker
+time (about 0.55 s of one core at the measured rate, fog-handover §1, inferred) during a load the
+engine spends anyway; on few cores it competes with the load (not measured). A wrong read costs one
+fill and is discarded at Ready; it cannot draw. Save loads expose the sector only at the end of the
+stall (sector-transit-order §3), so R3 gains nothing there; R1+R2 still apply. A hitch of more than
+250 ms without Present in ordinary flight (not a transit) also opens the gate: the walk then finds
+the flown sector (`same_id`, or `current_key` if its id was not yet read) or no candidate, and starts
+nothing; a started prefill in such a hitch would be confirmed or discarded at the next Ready sample
+like any other. The lead time per
+transit is what the `stall_ms` of the first `found` poll against the stall length measures in a
+flight. Native Windows: the same EXE offsets and documented calls.
+
+**Tests.** `fog_handover_host.cpp`: walk on synthetic list layouts (tail, eighth node within 24 reads,
+cut at eight, head, empty list, cut-scene subtype walked past, freed marker, no scene, last Ready id,
+no/unreadable manager, misaligned node, unreadable link, table loading, index out of range, bad
+record), the stall gate (nothing before the first Present or within 250 ms of it, one poll per
+250 ms), the decision (confirm on the same key and recipe, discard otherwise), and the cache prefill
+(far need box at the origin, held, the Ready `configure` keeps it, hand-over after the extension
+and one latch, settled field equal to the destination's, a different key starts over). The poll's
+wiring, the deferred gap and the poll sites are source checks in `test_fog_handover.py`.

@@ -68,5 +68,18 @@ bool recheck_locked_prefix(const Query& query, std::uint32_t vertex_count, std::
     SetLastError(error);
     return SUCCEEDED(hr) && view.requested && view.known && view.revision == revision;
 }
+bool locked_prefix_vertices(const Query& query, std::uint32_t vertex_count, const float** positions, const std::uint32_t** extras,
+                            std::uint64_t* revision, unsigned* refusal) noexcept {
+    *positions = nullptr; *extras = nullptr; *revision = 0; *refusal = unsigned(prefix::Lookup::Unknown);
+    if (!query.vb_id || !query.vb || !vertex_count) return false;
+    const DWORD error = GetLastError();
+    ownership::LockedPrefixView view{};
+    const HRESULT hr = ownership::get_locked_prefix_view(reinterpret_cast<IDirect3DResource9*>(query.vb), vertex_count, true, &view);
+    SetLastError(error);
+    *refusal = view.reason; *revision = view.revision;
+    if (FAILED(hr) || !view.requested || !view.known || !view.positions || !view.extras) return false;
+    *positions = view.positions; *extras = view.extras;
+    return true;
+}
 
 } // namespace x3m::fade_region

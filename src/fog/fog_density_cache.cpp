@@ -16,6 +16,8 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
+#else
+#include <time.h>
 #endif
 
 namespace x3m {
@@ -33,6 +35,23 @@ inline bool admitted(const double camera[3]) noexcept {
     return true;
 }
 inline std::int64_t key_axis(const NodeKey& k, int a) noexcept { return a == 0 ? k.x : a == 1 ? k.y : k.z; }
+// Hand-over instrumentation, integer microseconds only (no x87 on i686).
+inline std::int64_t now_us() noexcept {
+    return std::int64_t(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
+}
+// The calling thread's CPU time (kernel + user); -1 when the platform does not report it.
+std::int64_t thread_cpu_us() noexcept {
+#ifdef _WIN32
+    FILETIME created, exited, kernel, user;
+    if (!GetThreadTimes(GetCurrentThread(), &created, &exited, &kernel, &user)) return -1;
+    const std::uint64_t k = std::uint64_t(kernel.dwHighDateTime) << 32 | kernel.dwLowDateTime, u = std::uint64_t(user.dwHighDateTime) << 32 | user.dwLowDateTime;
+    return std::int64_t((k + u) / 10);
+#else
+    timespec t{};
+    if (clock_gettime(CLOCK_THREAD_CPUTIME_ID, &t)) return -1;
+    return std::int64_t(t.tv_sec) * 1000000 + std::int64_t(t.tv_nsec) / 1000;
+#endif
+}
 }  // namespace
 
 // --- Boxes ---------------------------------------------------------------
@@ -372,6 +391,9 @@ bool DensityCache::work_once(bool& idle) noexcept {
     if (request.epoch != worker_epoch_) {
         worker_epoch_ = request.epoch;
         for (auto& level : worker_) level.box = empty_box();
+        worker_far_published_ = false;
+        worker_busy_base_ = std::int64_t(busy_us_.load(std::memory_order_relaxed));
+        worker_cpu_base_ = thread_cpu_us();
     }
     if (!request.camera_valid) { idle_serial_.store(request.serial, std::memory_order_relaxed); return true; }
     // Far need first (it gates drawing), then fine need, then the background growth
@@ -379,11 +401,15 @@ bool DensityCache::work_once(bool& idle) noexcept {
     int level = -1;
     NodeBox need[kLevelCount];
     for (int l = 0; l < kLevelCount; ++l) need[l] = need_box(l, request.camera);
-    for (int l : {1, 0})
-        if (level < 0 && !worker_[l].box.contains(need[l])) level = l;
+    // Cold fill: the far box must hold the need box with the readiness guard before the whole-atlas latch, so the
+    // latched level is steppable at once (a prefill centred elsewhere extends toward it under the hold).
+    const NodeBox far_target = request.cold_hold ? grow(need[1], kReadinessGuard) : need[1];
+    if (!worker_[1].box.contains(far_target)) level = 1;
+    else if (!worker_[0].box.contains(need[0])) level = 0;
     for (int l : {0, 1})
         if (level < 0 && (retarget_needed(l, worker_[l].origin, request.camera) || !(worker_[l].box == window_box(worker_[l].origin)))) level = l;
-    if (level < 0) { idle_serial_.store(request.serial, std::memory_order_relaxed); return true; }
+    // Cold fill: only the far need box until the render thread has latched it (whole atlas).
+    if (level < 0 || (request.cold_hold && !(level == 1 && !worker_[1].box.contains(far_target)))) { idle_serial_.store(request.serial, std::memory_order_relaxed); return true; }
     idle = false;
     WorkerLevel& state = worker_[level];
     const bool first = state.box.empty();
@@ -410,7 +436,7 @@ bool DensityCache::work_once(bool& idle) noexcept {
         slab = grown = intersect(window, grow(need[level], kFirstFillSlack[level]));
         first_fills_.fetch_add(1, std::memory_order_relaxed);
     } else {
-        if (!next_slab(state.box, window, need[level], slab)) return true;
+        if (!next_slab(state.box, window, level == 1 ? far_target : need[level], slab)) return true;
         grown = state.box;
         for (int a = 0; a < 3; ++a) {
             grown.lo[a] = std::min(grown.lo[a], slab.lo[a]);
@@ -419,6 +445,15 @@ bool DensityCache::work_once(bool& idle) noexcept {
     }
     if (slab.empty() || slab.nodes() > std::uint64_t(kWindowNodes) * kWindowNodes * kWindowNodes) { idle = true; return true; } // unreachable by construction
     if (!fill_slab(level, slab, worker_epoch_, request.offset, request.camera)) return !stop_flag_.load(std::memory_order_relaxed);
+    // The epoch's first far box holding the need box: when, and the worker's busy and CPU time until then.
+    const bool far_need = level == 1 && !worker_far_published_ && grown.contains(need[1]);
+    std::int64_t far_at = -1, far_busy = -1, far_cpu = -1;
+    if (far_need) {
+        far_at = now_us();
+        far_busy = std::int64_t(busy_us_.load(std::memory_order_relaxed)) - worker_busy_base_;
+        const std::int64_t cpu = worker_cpu_base_ < 0 ? -1 : thread_cpu_us();
+        far_cpu = cpu < 0 ? -1 : cpu - worker_cpu_base_;
+    }
     {
         std::lock_guard<std::mutex> lock(sync().mutex);
         if (request_.stop) return false;
@@ -426,7 +461,9 @@ bool DensityCache::work_once(bool& idle) noexcept {
         shared_[level].box = grown;
         shared_[level].box_seq = shared_[level].commit_seq;
         publication_pending_.store(true, std::memory_order_relaxed);
+        if (far_need) { far_published_us_ = far_at; far_fill_busy_us_ = far_busy; far_fill_cpu_us_ = far_cpu; }
     }
+    if (far_need) worker_far_published_ = true;
     state.box = grown;
     slabs_done_.fetch_add(1, std::memory_order_relaxed);
     return true;
@@ -438,6 +475,8 @@ void DensityCache::apply_invalidate_locked() noexcept {
     ++request_.epoch;
     ++request_.serial;
     request_.offset = identity_.offset;
+    request_.cold_hold = cold_latch_;
+    far_published_us_ = far_fill_busy_us_ = far_fill_cpu_us_ = -1;
     for (int l = 0; l < kLevelCount; ++l) {
         SharedLevel& s = shared_[l];
         s.box = empty_box();
@@ -471,12 +510,34 @@ void DensityCache::invalidate() noexcept {
         candidate_seq_[l] = transferred_seq_[l] = 0;
         ready_[l] = 0;
     }
+    // A cold start: the switches in force now decide this fill; the report restarts.
+    cold_ = cold_frame_pending_ = true;
+    cold_step_ = handover_step_;
+    cold_latch_ = handover_cold_fill_;
+    cold_at_us_ = now_us();
+    cold_busy_base_ = std::int64_t(busy_us_.load(std::memory_order_relaxed));
+    pending_ = HandoverReport{};
+    pending_.step = handover_step_;
+    pending_.cold_fill = handover_cold_fill_;
     pending_invalidate_ = true;
     std::unique_lock<std::mutex> lock(sync().mutex, std::try_to_lock);
     if (!lock.owns_lock()) { ++missed_locks_; return; }
     post_locked();
     lock.unlock();
     sync().wake.notify_one();
+}
+bool DensityCache::prefill(const CacheIdentity& identity, const double camera[3]) noexcept {
+    if (!(running_ || stepped_) || !admitted(camera)) return false;
+    configure(identity);
+    for (int a = 0; a < 3; ++a) camera_[a] = camera[a];
+    pending_camera_ = true;
+    std::unique_lock<std::mutex> lock(sync().mutex, std::try_to_lock);
+    if (!lock.owns_lock()) { ++missed_locks_; return false; }
+    post_locked();
+    lock.unlock();
+    sync().wake.notify_one();
+    for (int l = 0; l < kLevelCount; ++l) posted_need_[l] = need_box(l, camera_);
+    return true;
 }
 bool DensityCache::covers(int level, const double camera[3]) const noexcept {
     return admitted(camera) && resident_[level] && gpu_box_[level].contains(need_box(level, camera));
@@ -509,15 +570,30 @@ FrameState DensityCache::step(const double camera[3], std::uint64_t frame) noexc
     std::uint64_t elapsed = !frame_primed_ ? 1 : frame > last_frame_ ? frame - last_frame_ : 0;
     if (elapsed > kReadinessRampFrames) elapsed = kReadinessRampFrames;
     const float ramp = float(elapsed) / float(kReadinessRampFrames);
+    if (cold_frame_pending_) { pending_.arm_frame = frame; cold_frame_pending_ = false; }
     for (int l = 0; l < kLevelCount; ++l) {
         const bool hard = resident_[l] && gpu_box_[l].contains(need[l]);
         const bool soft = hard && gpu_box_[l].contains(grow(need[l], kReadinessGuard));
         if (!hard) ready_[l] = 0;
-        else if (soft) ready_[l] = std::min(1.f, ready_[l] + ramp);
+        else if (soft) ready_[l] = l == 1 && cold_step_ ? 1.f : std::min(1.f, ready_[l] + ramp); // cold start: step, not ramp
         else ready_[l] = std::max(0.f, ready_[l] - ramp);
         out.ready[l] = ready_[l];
         out.resident[l] = hard;
         camera_local(l, camera, out.local[l]);
+    }
+    if (cold_) {
+        if (out.resident[1] && pending_.drawable_us < 0) {
+            pending_.drawable_frame = frame;
+            pending_.drawable_us = now_us() - cold_at_us_;
+            pending_.busy_us = std::int64_t(busy_us_.load(std::memory_order_relaxed)) - cold_busy_base_;
+        }
+        if (ready_[1] >= 1.f) { // the hand-over: one report, then warm until the next cold start
+            pending_.ready_frame = frame;
+            pending_.ready_us = now_us() - cold_at_us_;
+            pending_.due = true;
+            report_ = pending_;
+            cold_ = cold_step_ = false;
+        }
     }
     last_frame_ = frame;
     frame_primed_ = true;
@@ -543,12 +619,25 @@ void DensityCache::gpu_reset() noexcept {
 unsigned DensityCache::take_uploads(const StagingView views[kLevelCount], std::size_t byte_budget, TileRect* out, unsigned capacity) noexcept {
     std::unique_lock<std::mutex> lock(sync().mutex, std::try_to_lock);
     if (!lock.owns_lock()) { ++missed_locks_; return 0; }
-    const bool wake = pending_invalidate_ || pending_camera_;
+    bool wake = pending_invalidate_ || pending_camera_;
     post_locked();
     unsigned count = 0;
     std::size_t bytes = 0;
     byte_budget = std::max(byte_budget, kTileBytes);
     bool full = false, unpublished = false;
+    auto release_hold = [&] { // the worker continues with the fine level and the growth
+        cold_latch_ = false;
+        request_.cold_hold = false;
+        ++request_.serial;
+        posted_serial_ = request_.serial;
+        wake = true;
+    };
+    if (cold_latch_ && !handover_cold_fill_) release_hold(); // switched off during the fill
+    if (cold_ && pending_.fill_us < 0 && far_published_us_ >= 0) {
+        pending_.fill_us = far_published_us_ - cold_at_us_;
+        pending_.fill_busy_us = far_fill_busy_us_;
+        pending_.fill_cpu_us = far_fill_cpu_us_;
+    }
     for (int l : {1, 0}) {
         SharedLevel& s = shared_[l];
         gpu_box_[l] = intersect(gpu_box_[l], s.shrink);
@@ -574,7 +663,26 @@ unsigned DensityCache::take_uploads(const StagingView views[kLevelCount], std::s
         }
         std::uint64_t flushed = s.commit_seq;
         unsigned reload_left = 0;
-        for (int g = 0; g < kTileCount; ++g) {
+        const bool cold = l == 1 && cold_latch_;
+        if (cold && (s.box_seq == 0 || !views[l].bits || count == capacity || !s.box.contains(grow(need_box(l, camera_), kReadinessGuard)))) {
+            // Cold fill: nothing of the far level goes up before a box holding the posted camera's need box is published.
+            reload_left_[l] = 1; // not resident before the whole-atlas latch
+            unpublished = unpublished || s.box_seq != transferred_seq_[l];
+            continue;
+        }
+        if (cold) {
+            // The whole far atlas in one rectangle, past the byte budget, once per cold start; the
+            // fine level waits for the next latch. Dirty and reload state of every tile is covered.
+            for (int y = 0; y < kAtlasHeight; ++y)
+                std::memcpy(views[l].bits + std::size_t(y) * views[l].pitch, cache_[l] + std::size_t(y) * kAtlasPitch, kAtlasPitch);
+            out[count++] = TileRect{l, 0, 0, 0, kAtlasWidth, kAtlasHeight};
+            bytes += kAtlasBytes;
+            for (auto& tile : s.tiles) tile = {};
+            dirty_tiles_[l].store(0, std::memory_order_relaxed);
+            full = true;
+            pending_.whole_atlas = whole_in_flight_ = true;
+            release_hold();
+        } else for (int g = 0; g < kTileCount; ++g) {
             TileDirty& tile = s.tiles[g];
             if (!tile.dirty) continue;
             bool remaining = false;
@@ -614,14 +722,19 @@ unsigned DensityCache::take_uploads(const StagingView views[kLevelCount], std::s
     if (wake) sync().wake.notify_one();
     upload_bytes_ += bytes;
     upload_rects_ += count;
+    if (cold_ && count && pending_.drawable_us < 0) { ++pending_.latches; pending_.upload_bytes += bytes; }
     return count;
 }
 void DensityCache::confirm_uploads(bool succeeded) noexcept {
     if (!succeeded) {
-        // The copies handed out may not have reached the GPU: upload everything again.
+        // The copies handed out may not have reached the GPU: upload everything again. A lost whole-atlas latch
+        // is taken again (the report counts the latch that reached the GPU).
+        if (whole_in_flight_ && cold_) { cold_latch_ = handover_cold_fill_; pending_.whole_atlas = false; }
+        whole_in_flight_ = false;
         gpu_reset();
         return;
     }
+    whole_in_flight_ = false;
     for (int l = 0; l < kLevelCount; ++l) {
         if (candidate_valid_[l]) {
             gpu_box_[l] = candidate_box_[l];

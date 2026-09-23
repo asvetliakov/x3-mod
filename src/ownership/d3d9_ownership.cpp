@@ -1919,12 +1919,12 @@ HRESULT get_locked_prefix_view(IDirect3DResource9* application, std::uint32_t ve
     ++prefix_stats.lookups;
     const auto key = reinterpret_cast<std::uintptr_t>(node);
     if (mark && !prefix_table.marked(key)) { prefix_table.mark(key); ++prefix_stats.marks; }
-    const float* positions = nullptr;
-    const auto reason = prefix_table.lookup(key, vertex_count, &positions, &out->revision, &out->scanned);
+    const float* positions = nullptr; const std::uint32_t* extras = nullptr;
+    const auto reason = prefix_table.lookup(key, vertex_count, &positions, &out->revision, &out->scanned, &extras);
     out->reason = unsigned(reason);
     out->known = reason == fade_region::prefix::Lookup::Bound && positions;
     out->status = out->known ? S_OK : S_FALSE;
-    if (out->known) { ++prefix_stats.bounds; out->positions = positions; }
+    if (out->known) { ++prefix_stats.bounds; out->positions = positions; out->extras = extras; }
     return S_OK;
 }
 void get_locked_prefix_statistics(LockedPrefixStatistics* out) noexcept {

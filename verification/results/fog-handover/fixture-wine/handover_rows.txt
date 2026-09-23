@@ -1,0 +1,9 @@
+HANDOVER frames=460 oversize=1 whole=1 early=0 latches=1 upload_bytes=4260096 ready_ms=579.2 drawable_ms=579.2 fill_ms=576.4 fill_busy_ms=575.0 fill_cpu_ms=580.0
+CHECK cold_handover_far_readiness_steps_from_0_to_1 PASS
+CHECK cold_fill_one_whole_atlas_latch_past_the_budget PASS
+CHECK cold_handover_report_in_the_resident_frame PASS
+CHECK cold_handover_draws_in_the_resident_frame PASS
+ATLAS cold_handover level=0 differing_bytes=0
+ATLAS cold_handover level=1 differing_bytes=0
+CHECK cold_handover_settles_bit_for_bit PASS
+RESULT PASS checks=122 failures=0 state_restorations=1127

@@ -90,6 +90,51 @@ def collide_default(explicit, args):
     return explicit if explicit is not None else not args.vanilla
 
 
+# Bolt footprint (docs/architecture/bolt-footprint.md, option A'): forwarded on
+# every modded launch as X3M_BOLT_FOOTPRINT=3,8 (3 px minimum half-extent, 8 px
+# gate); --bolt-footprint 0 turns it off, --bolt-footprint R[,G] chooses the
+# pixels, and a --vanilla launch forwards nothing. The DLL enables it only with
+# the additive bullets (--screen-emission-additive: --motion-output --hdr) and
+# the ownership Unlock scan (--ownership); otherwise it logs bolt_footprint_mode
+# enabled=0 and nothing runs.
+BOLT_FOOTPRINT_DEFAULT = '3,8'
+BOLT_FOOTPRINT_DEFAULT_G = 8.0
+
+
+def bolt_footprint_values(text):
+    """R or R,G in pixels: (0.0, 0.0) for the explicit off value, (R, G) when
+    finite with 0 < R <= 64 and R < G <= 256, None when malformed."""
+    parts = text.split(',')
+    if len(parts) > 2 or any(not p.strip() for p in parts):
+        return None
+    try:
+        values = [float(p) for p in parts]
+    except ValueError:
+        return None
+    if len(values) == 1:
+        if values[0] == 0.0:
+            return (0.0, 0.0)
+        values.append(BOLT_FOOTPRINT_DEFAULT_G)
+    r, g = values
+    if not (math.isfinite(r) and math.isfinite(g) and 0.0 < r <= 64.0 and r < g <= 256.0):
+        return None
+    return (r, g)
+
+
+def bolt_footprint_env(args):
+    """The X3M_BOLT_FOOTPRINT value the launcher forwards, or None for nothing:
+    the launcher default on a modded launch, the explicit value or off, nothing
+    under --vanilla."""
+    if args.vanilla:
+        return None
+    if args.bolt_footprint is None:
+        return BOLT_FOOTPRINT_DEFAULT
+    values = bolt_footprint_values(args.bolt_footprint)
+    if values is None or values == (0.0, 0.0):
+        return '0'
+    return f'{values[0]:g},{values[1]:g}'
+
+
 VOICE_DECODER_GAME_SUBDIR = Path('x3m/voice-decoder')  # drop-in location under the game directory
 # Shipped copy (tools/voice-decoder/v4/README.md). X3M_VOICE_DECODER_REPO
 # overrides it for tests that run the launcher as a subprocess; an empty value
@@ -544,11 +589,21 @@ def main():
     parser.add_argument('--volumetric-fog-look', nargs='?', const='', default=None, help=argparse.SUPPRESS)
     parser.add_argument('--fog-shadow-pass', choices=('on', 'off'), default=None, help='Stored fog only: compute the sun-shadow shaft visibility in its own quarter-resolution pass before the march (three-cascade cross-fade, the finest cascade, a penumbra that widens with the blocker distance) instead of the march\'s per-step lookup; off (default) draws the accepted look unchanged, so the two can be A/B compared in one build (X3M_FOG_SHADOW_PASS; on requires --volumetric-fog-range stored). docs/architecture/fog-shadow-pass.md')
     parser.add_argument('--fog-dust-motes', default=None, metavar='N[,SIZE[,STREAK]]', help='Stored fog only: N near-camera dust motes (0 off, 64..8192; 2048 gives ~120 on screen) in a 400 m world-anchored window, drawn after the fog with the fog\'s own density, colour and shafts, SIZE the minimum width in pixels (2..16, default 4 when N is given alone), STREAK the velocity streak cap in pixels (0..512, default 128); Ctrl+Alt+F11 toggles them (X3M_FOG_DUST_MOTES; tuning by X3M_FOG_MOTES_<NAME>; a value above 0 requires --volumetric-fog-range stored). Default when omitted under --volumetric-fog-range stored = 1300,3,128 with X3M_FOG_MOTES_MAX_PX=8 unless that is set (accepted in Run 70 B/B2, 2026-09-23), else off; 0 is the explicit off and the opt-out. docs/architecture/fog-dust-motes.md')
+    # Hand-over after a sector change (docs/architecture/fog-handover.md, "Implementation"): default on, --no-... opts out.
+    parser.add_argument('--fog-handover-step', dest='fog_handover_step', action='store_true', default=None, help='Stored fog only, default on: at a cold start (a new sector identity or a load gap) the far density readiness steps to 1 in the frame the far need box is resident, so the vanilla cards are masked at once instead of after a 90-frame ramp; warm refills (a jump inside the same sector) keep the ramp. --no-fog-handover-step keeps the ramp everywhere (X3M_FOG_HANDOVER_STEP; requires --volumetric-fog-range stored when given). One volumetric_fog_handover log line per cold start either way.')
+    parser.add_argument('--no-fog-handover-step', dest='fog_handover_step', action='store_false', help='Keep the 90-frame far readiness ramp at a cold start (X3M_FOG_HANDOVER_STEP=0).')
+    parser.add_argument('--fog-handover-coldfill', dest='fog_handover_coldfill', action='store_true', default=None, help='Stored fog only, default on: at a cold start the worker fills only the far need box, the far level goes up in one whole-atlas latch (4,260,096 B, past the 1,065,024 B per-frame budget once), then the fine level and the window growth continue under the budget. --no-fog-handover-coldfill keeps the budgeted fill (X3M_FOG_HANDOVER_COLDFILL; requires --volumetric-fog-range stored when given).')
+    parser.add_argument('--no-fog-handover-coldfill', dest='fog_handover_coldfill', action='store_false', help='Keep the budgeted far fill at a cold start (X3M_FOG_HANDOVER_COLDFILL=0).')
+    parser.add_argument('--fog-handover-prefill', dest='fog_handover_prefill', action='store_true', default=None, help='Stored fog only, default on: during a gate, jumpdrive or QuickWarp stall the proxy reads the destination sector from the engine\'s object list (at most once per 250 ms, from its texture and vertex-buffer creation hooks, no trampoline) and starts its far density fill centred at the sector origin; the first sector frame confirms it (same placement key: kept) or discards it; nothing is drawn from it before that. --no-fog-handover-prefill waits for the first sector frame (X3M_FOG_HANDOVER_PREFILL; requires --volumetric-fog-range stored when given). One volumetric_fog_prefill log line per poll and per decision.')
+    parser.add_argument('--no-fog-handover-prefill', dest='fog_handover_prefill', action='store_false', help='Start the fill only at the first sector frame after a transit (X3M_FOG_HANDOVER_PREFILL=0).')
+    parser.add_argument('--fog-docked', dest='fog_docked', action='store_true', default=None, help='Default on with --volumetric-fog: docked at a station or inside a carrier, the fog sector detector accepts the ship when a walk of at most 3 parent objects reaches the cockpit sector, so the medium keeps drawing and the cards stay replaced; a failed walk keeps the native cards. --no-fog-docked keeps the direct parent check (X3M_FOG_DOCKED; requires --volumetric-fog when given). One volumetric_fog_docked log line per docked span.')
+    parser.add_argument('--no-fog-docked', dest='fog_docked', action='store_false', help='Keep the direct parent check: docked views draw the native cards (X3M_FOG_DOCKED=0).')
     parser.add_argument('--volumetric-fog-everywhere', action='store_true', help='Debug only: force bluewell when no known family is available, still requiring a valid view (X3M_VOLUMETRIC_FOG_EVERYWHERE=1; requires --volumetric-fog)')
     parser.add_argument('--volumetric-fog-timing', action='store_true', help='One volumetric_fog_frame log line per frame with the CPU wall time and device-call count of the pass (X3M_VOLUMETRIC_FOG_TIMING=1; requires --volumetric-fog)')
     parser.add_argument('--shimmer-trace', action='store_true', help='Diagnostic distant-shimmer trace (X3M_SHIMMER_TRACE=1; requires --motion-output --taa; default off): every frame logs one shimmer_frame line with the TAA state (history, skip, cut, jitter index) and the projection p00/p11 as integers scaled by 1e4, plus up to 32 shimmer_draw lines identifying that frame\'s Asteroid-class scene draws (node/model/lod, vertex, index and primitive counts, the distance-fade f in per mille when the draw was fade-admitted and its derived screen rectangle) with a truncated count beyond 32 (docs/architecture/linear-distance-fade-region.md, "Shimmer trace (diagnostic)")')
     parser.add_argument('--screen-emission', action='store_true', help='Packed screen emission of the bullet draws inside the region bracket (X3M_SCREEN_EMISSION=1, which also sets X3M_SCREEN_EMISSION_BOUND=1; requires --taa --motion-output --ownership --hdr --hdr-tonemap and gamma2.2 decode, with or without --linear-materials; default off): the nine SM1 screen pairs drawn in the native ONE/INVSRCCOLOR state with a locked-prefix bound compose through policy 8 in place; unbounded, unknown-state, capability-refused or otherwise refused draws stay native (docs/architecture/screen-emission-region.md, step C)')
     parser.add_argument('--screen-emission-additive', type=float, default=None, metavar='G', help='Additive bullets (X3M_SCREEN_EMISSION_ADDITIVE=G, finite 1..8; requires --motion-output --hdr; mutually exclusive with --screen-emission; default off): the nine SM1 screen pairs drawn in the native ONE/INVSRCCOLOR state draw in place with DESTBLEND ONE and their colour multiplied by G (G=1 binds the original shader), so the FP16 scene accumulates G*q + D above 1.0 for exposure and bloom; no bracket, bound, copies or temporal work; the blend law changes and native parity is not kept (docs/architecture/screen-emission-region.md, "Additive option"). Ctrl+Shift+F5 switches these draws between G and native during play (no shader is recreated; one screen_emission_additive_toggle line per press). With --telemetry, one screen_emission_additive_frame line per Present reports the admitted and refused draws of that frame and the hex mask of the nine pairs admitted')
+    parser.add_argument('--bolt-footprint', nargs='?', const=BOLT_FOOTPRINT_DEFAULT, default=None, metavar='R[,G]', help='[launcher default on modded launches: 3,8; --bolt-footprint 0 = off; not forwarded under --vanilla, where an explicit value is refused] Minimum on-screen footprint of the weapon bolts (X3M_BOLT_FOOTPRINT=R[,G], pixels, finite 0 < R <= 64 and R < G <= 256, G defaults to 8; needs the additive bullets, --screen-emission-additive with --motion-output --hdr, and --ownership for the Unlock scan; an explicit non-zero value implies --screen-emission-additive 1 when that option is absent, the default never does): every bullet instance of an admitted additive draw whose projected major half-extent is below G px is expanded on the CPU about its own projected centroid, in the camera plane, so its half-extent reaches R px along both principal axes (the minor target fades to zero at G, so a bolt of 2G px or more, every first-person player bolt, keeps its bytes untouched); the expanded prefix is drawn from a proxy-owned dynamic vertex buffer bound for that draw only under the game\'s own shaders, blend and depth (clip z and w unchanged). Instances are found by the UV period of the drawn prefix; a stream without one, a draw without a published Unlock scan or an instance behind the camera plane stays native. One bolt_footprint line per 300 frames (draws, written, instances, expanded, refusals, CPU us) and a bolt_footprint_mode line at start (docs/architecture/bolt-footprint.md, Implementation)')
     parser.add_argument('--screen-emission-additive-alpha', type=float, default=None, metavar='K', help='Per-source bloom attenuation of the additive bullets (X3M_SCREEN_EMISSION_ADDITIVE_ALPHA=K, finite 0..1; requires --screen-emission-additive; absent keeps the native alpha law): the admitted additive draw writes K*a + D.a to the scene alpha the bloom extract uses as its per-pixel authored weight, through separate-alpha blending (DESTBLENDALPHA ONE with SRCBLENDALPHA ZERO at K=0, ONE at K=1, else BLENDFACTOR with K in every lane; the colour law stays ONE/ONE/ADD and reads no blend factor). K=0 makes the bolts bloom only through the thresholded highlight term while engines, sun and every other alpha-authored emitter keep their channel; their presented brightness is unchanged because the colour law is untouched. A device without D3DPMISCCAPS_SEPARATEALPHABLEND, or without D3DPBLENDCAPS_BLENDFACTOR for a K strictly between 0 and 1, refuses the draw to the native path with screen_emission_additive_refused reason=alpha_caps. Ctrl+Shift+F5 turns it off with the rest of the option (docs/architecture/bloom-per-source-attenuation.md, option 1)')
     parser.add_argument('--screen-emission-timing', action='store_true', help='Per-frame timing diagnostic of the screen-emission option (X3M_SCREEN_EMISSION_TIMING=1; requires --screen-emission; default off): one screen_emission_frame line per Present with that frame\'s packed_admitted, brackets_px and cpu_us (the wall-clock QueryPerformanceCounter delta since the previous Present). The option itself logs nothing per frame (docs/architecture/screen-emission-region.md, step C)')
     parser.add_argument('--screen-emission-gain', type=float, default=None, metavar='G', help='Step E gain of the packed screen composition, finite 0.5..8, default 1 (X3M_SCREEN_EMISSION_GAIN; requires --screen-emission): the composed bullet is decode(native after) - decode(native before) scaled by G on the decoded scene, so 1 presents the native bolt exactly and larger values lift it into HDR for bloom and exposure (docs/architecture/screen-emission-region.md, step E)')
@@ -1040,6 +1095,10 @@ def main():
         parser.error('--volumetric-fog-range stored requires a positive --volumetric-fog strength (0 detaches the pass).')
     if args.fog_shadow_pass == 'on' and args.volumetric_fog_range != 'stored':
         parser.error('--fog-shadow-pass on requires --volumetric-fog-range stored.')
+    if (args.fog_handover_step is not None or args.fog_handover_coldfill is not None or args.fog_handover_prefill is not None) and args.volumetric_fog_range != 'stored':
+        parser.error('--fog-handover-step, --fog-handover-coldfill and --fog-handover-prefill (and their --no- forms) require --volumetric-fog-range stored.')
+    if args.fog_docked is not None and args.volumetric_fog is None:
+        parser.error('--fog-docked and --no-fog-docked require --volumetric-fog.')
     if args.fog_dust_motes is not None:
         args.fog_dust_motes = fog_dust_motes_value(parser, args.fog_dust_motes)
         if args.fog_dust_motes[0] and args.volumetric_fog_range != 'stored':
@@ -1065,6 +1124,16 @@ def main():
         parser.error('--screen-emission-additive-alpha requires --screen-emission-additive.')
     if args.screen_emission_additive_alpha is not None and not (math.isfinite(args.screen_emission_additive_alpha) and 0.0 <= args.screen_emission_additive_alpha <= 1.0):
         parser.error('--screen-emission-additive-alpha must be finite and within [0, 1].')
+    bolt_footprint = bolt_footprint_values(args.bolt_footprint) if args.bolt_footprint is not None else None
+    if args.bolt_footprint is not None and bolt_footprint is None:
+        parser.error('--bolt-footprint expects R or R,G in pixels: 0 (off), or finite 0 < R <= 64 and R < G <= 256.')
+    if args.vanilla and bolt_footprint not in (None, (0.0, 0.0)):
+        parser.error('--bolt-footprint cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that draws the expanded bolts is not loaded.')
+    if bolt_footprint not in (None, (0.0, 0.0)):
+        if args.screen_emission:
+            parser.error('--bolt-footprint needs the additive bullets (--screen-emission-additive), which are mutually exclusive with --screen-emission.')
+        if not (args.motion_output and args.hdr and args.ownership):
+            parser.error('--bolt-footprint requires --motion-output --hdr --ownership (the additive bullet route and the ownership Unlock scan).')
     if args.screen_emission_gain is not None and not args.screen_emission:
         parser.error('--screen-emission-gain requires --screen-emission.')
     if args.screen_emission_gain is not None and not (math.isfinite(args.screen_emission_gain) and 0.5 <= args.screen_emission_gain <= 8.0):
@@ -1396,6 +1465,18 @@ def main():
             env['X3M_SCREEN_EMISSION_ADDITIVE_ALPHA'] = repr(args.screen_emission_additive_alpha)
         else:
             env.pop('X3M_SCREEN_EMISSION_ADDITIVE_ALPHA', None)
+        # Bolt footprint: the launcher default on a modded launch (3,8), the
+        # explicit value, the explicit off value, nothing under --vanilla; an
+        # explicit non-zero value implies the additive bullets at gain 1 when
+        # --screen-emission-additive is absent (the default never does, so a
+        # plain launch keeps its native bullet blend).
+        footprint = bolt_footprint_env(args)
+        if footprint is None:
+            env.pop('X3M_BOLT_FOOTPRINT', None)
+        else:
+            env['X3M_BOLT_FOOTPRINT'] = footprint
+            if args.bolt_footprint is not None and footprint != '0' and args.screen_emission_additive is None:
+                env['X3M_SCREEN_EMISSION_ADDITIVE'] = repr(1.0)
         if args.fade_witness is not None:
             env['X3M_FADE_WITNESS'] = str(args.fade_witness)
         if args.shimmer_trace:
@@ -1438,6 +1519,12 @@ def main():
         env['X3M_VOLUMETRIC_FOG_RANGE'] = args.volumetric_fog_range or 'legacy'
         env.pop('X3M_VOLUMETRIC_FOG_LOOK', None)  # retired 2026-09-22: never inherited, never set (the DLL logs one ignore line)
         env['X3M_FOG_SHADOW_PASS'] = '1' if args.fog_shadow_pass == 'on' else '0'
+        # Hand-over and docked view (fog-handover.md, "Implementation"): default on, always explicit so an inherited
+        # value cannot decide them; the DLL reads them only under the stored range (hand-over) or the fog (docked).
+        env['X3M_FOG_HANDOVER_STEP'] = '0' if args.fog_handover_step is False else '1'
+        env['X3M_FOG_HANDOVER_COLDFILL'] = '0' if args.fog_handover_coldfill is False else '1'
+        env['X3M_FOG_HANDOVER_PREFILL'] = '0' if args.fog_handover_prefill is False else '1'
+        env['X3M_FOG_DOCKED'] = '0' if args.fog_docked is False else '1'
         # The dust motes: always explicit ('0,4,128' is off) so an inherited value cannot decide them; the DLL reads at most
         # 31 characters, which '%.6g' keeps the triple well inside. Omitted under the stored range: the user-accepted Run 70
         # B/B2 default 1300,3,128 (2026-09-23, docs/architecture/fog-dust-motes.md) with MAX_PX 8 unless the user set it;
