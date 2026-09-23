@@ -49,3 +49,17 @@ the gained plain variant and the same 23 the gained share variant, 3 refused (un
 gain-off readback pair is confounded by camera motion between and within the bursts (camera_state
 differs), so no pixel-level isolation; acceptance is the user's verdict. Follow-up accepted by the user:
 guide lights move to the effects key and take `--emission-source-gain` (2), hull light maps stay at 4.
+
+## Run 270 (Run 72 A, 2026-09-23): bolt visibility in third person, open
+
+The user reports the M6's projectiles ("small white balls") hard to see in third person. Evidence
+(`verification/results/run270-defaults/`, measured unless marked): the bolt draws are the bullet pair VS 5e484a06 /
+PS ec1f5c4a, two draws per frame; the screen-emission-additive route admits them in third person (2 admitted, 0
+refused in the two bolt frames; across the flight 3,272 admitted / 1,680 refused, the sampled reason `state`; in first
+person one of the two draws is refused every frame). In the third-person burst the pair was drawn in 2 of 8 frames
+with 48 primitives, against 8 of 8 frames with 144–168 primitives in first person. Exposure sits at +1.30 EV in
+third person (−0.29 in first), so the tonemapper is not the limit; bloom_source_clamp 1.0 caps their bloom input
+to a hull highlight's. The readbacks could not isolate the bolt pixels (a bolt-free neighbour frame had as many
+candidate pixels). Most likely limit (inferred): fewer/shorter bolt primitives on screen at the chase distance,
+not the emission route. Next: Run 72 B holds fire in third person for a burst, once with `--cull-small-parts 0`
+to rule out the small-part cull, and a per-draw bolt rectangle/luminance diagnostic if that does not settle it.

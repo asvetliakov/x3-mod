@@ -35,3 +35,14 @@ verifies; the launcher default is off this round (the same-id replay after the s
   cross-thread session would show as interleaved `seq=` values, never a crash path.
 - No Wine fixture exercises the stubs; the evidence is the byte model, the host decision tests, the DLL disassembly and
   the flight.
+
+## Run 72 A trace flight (run270, 2026-09-23)
+
+`--music-trace` only (keep off). 41 lines, cap not hit (measured; `verification/results/run270-defaults/`).
+Stop-all callers: session_start 7, load 2, alt-tab 12, pause 3, save 0. Alt-tab: 7 of 7 candidate pairs show
+stop-all(0x004d36c2 return) followed by a play of the same id at start 0 in the same frame (3–7 ms later); the
+other 5 alt-tab stops happened inside a paused state and had no replay. Pause: 1 of 3 replayed the same id
+(17 ms later), 2 had no replay. Save: no stop-all row with the save caller exists (either no save was made
+while armed or the save path does not reach the hook). Sector change: a new id starts without a stop/replay pair.
+Verdict: the same-id replay assumption holds for alt-tab; `--music-keep` may fly (Run 72 B) with the trace
+kept on; the save case remains to be traced (the user saves at a known time).

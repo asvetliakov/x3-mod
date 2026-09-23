@@ -67,3 +67,9 @@ python3 tools/manage.py launch --dry-run --direct --camera chase                
 python3 tools/manage.py launch --dry-run --direct --camera chase --chase-hud-anchor centre  # X3M_CHASE_HUD_ANCHOR=centre
 python3 tools/manage.py launch --dry-run --direct --camera vanilla                        # X3M_CHASE_HUD_ANCHOR=centre
 ```
+
+## Run 72 A (run270, 2026-09-23): forward anchor and 1.05 boom accepted
+
+`X3M_CHASE_HUD_ANCHOR=forward`, `distance_scale=1.050`, chase_camera status=active (measured). The user:
+"reticle is fine, camera is fine" (the corvette fits). Open from this flight: the corvette's weapon bolts read as
+faint dots in third person; see [screen-emission.md](screen-emission.md) "Run 270".

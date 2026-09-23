@@ -33,3 +33,9 @@ engine path.
   loop comes from the flight.
 - The counters assume the collision pass and Present share a thread (as `loop_phases` observes); otherwise a count
   could be torn, never a verdict.
+
+## Run 72 A (run270, 2026-09-23): default on, first flight with memo and SAT together
+
+All three collide patches report `patched=1 reason=ok`. Census: 49.6 M pairs, 39.9 M rejected by phase 1,
+phase-2 candidates 0 (P2 still unexercised in flight); memo 2.54 M queries, 41.4 % hits, 0 verify mismatches,
+0 stuck_busy (measured, `verification/results/run270-defaults/`). No collision oddity reported by the user.

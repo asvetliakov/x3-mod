@@ -1791,3 +1791,14 @@ marked. The user: "better now?", still some visible transition, acceptable if no
   2–4 texels/px). Fix in progress: tile-aware mips and an 8-texel gutter, plus the LOD 0
   geometry as the coarse record's source ([merged-lod-feasibility.md](merged-lod-feasibility.md)).
 - No anomalies (census overflow 0, stale 0, no texture failures).
+
+## Run 270: first flight at 1920×1080 (Run 72 A, 2026-09-23)
+
+Backbuffer 1920×1080 (create_device; run269 was 1280×768). Only the first ~100 s (windows 900–2700) are free of a
+background atlas bake that started at 09:06; the rest shows the run257 contention signature (hdr_wb, meter and
+TAA rising ×1.6–1.9 together while draws stay flat). Clean window, CPU submission medians (µs):
+dt 22 ms at 421 draws; shadow depth 319, sun apply 64, retention 66, HDR write-back 114 (run269: 109), meter 62 (59),
+HDR readback 222 (146), TAA 561 (737), density fill 54 (50), fog off in that window; proxy sum 1.49 ms = 6.8 % of the
+frame. None of the full-screen passes scaled with the ×2.2 pixel count on the CPU side; present p50 6–8 µs, so the
+frame is CPU-bound by draw count (inferred). GPU per-pass cost at 1080p is unmeasured (needs the GPU timer branch or a
+quiet rerun); fog measured only under contention: 675 µs p50 / 1,009 µs p90. Evidence: `verification/results/run270-defaults/`.

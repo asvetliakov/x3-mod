@@ -1,0 +1,2 @@
+900:4500 windows 13 dt_ms=18 draws=247 sel_us=12 sdepth=616 sunapp=65 retain=257 hdr_wb=109 meter=59 hdr_rb=146 taa=737 fill=50 fog=0 proxy_sum_ms=2.07
+900:6000 windows 18 dt_ms=19 draws=218.5 sel_us=12 sdepth=626.5 sunapp=65 retain=300 hdr_wb=111 meter=61.5 hdr_rb=150 taa=753.5 fill=51 fog=0 proxy_sum_ms=2.13

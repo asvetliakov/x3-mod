@@ -1,0 +1,13 @@
+# Run 72 A triage (2026-09-23). C=/tmp/x3-bottleX3-run270, L=$C/session-20260923-090421-212.log (306 MB, never read whole); Run72 DLL c17792a9 (proxy_identity sha256 c17792a9..., source_commit dcf3728b), 1920x1080 (create_device), run269 = 1280x768.
+# Bursts: capture_armed start_frame 5356 (third person, firing) and 9010 (first person). Host atlas bake from 09:06:01 local = frame 2862 (elapsed 99.4 s): windows after ~3000 contaminated.
+grep -E '^(proxy_identity|collide_box_cull|collide_memo requested|collide_sat_sse2|pause_key_only|music_trace |chase_camera requested|voice_dmo_fallback)' $L ; grep -c bytes_mismatch $L -> 0 ; grep -c '^music_keep' $L -> 0
+grep '^music_trace_' $L -> 41 lines (stop 24, play 14, stop_movie 3; cap 1000 not reached); names: session_start 7, load 2, alt_tab 12, pause 3, save 0
+warning/error/fail first-token classes vs run269 with comm -3 -> no difference
+python3 timing_summary.py $L 5356,9010 > timing_summary_out.txt
+awk screen_emission_additive_frame sums -> flight admitted 3272 refused 1680 in 2285 frames; burst 5356-5363: admitted 2 at 5357,5360 only; 9010-9017: admitted 1 refused 1 every frame
+bullet pair (VS 5e484a06 / PS ec1f5c4a): third person 48 primitives x2 draws in 2/8 frames; first person 144-168 x2 draws in 8/8 frames; no object_bounds (node 0)
+python3 bolt_blobs.py $C 5357 5356 1.3 ; python3 bolt_blobs.py $C 9010 - -0.2866   (hdr readback components; hull median lum)
+python3 bolt_diff.py $C 5357 5356 5358 1.3 ; control: python3 bolt_diff.py $C 5358 5356 5359 1.3 -> same px count class (1391 vs 1542): diff cannot isolate bolts
+python3 ../run257-pilot/phase_windows.py $L > phase_windows_run270_out.txt ; same for run269 > phase_windows_run269_out.txt
+python3 window_split.py phase_windows_run270_out.txt 900:2700 3000:32400 13800:32400 > window_split_run270_out.txt ; run269 900:4500 900:6000 > window_split_run269_out.txt
+volumetric_fog_frame applied=1: 18654 frames, cpu_us p50 675 p90 1009

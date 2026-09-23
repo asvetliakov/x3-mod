@@ -1,0 +1,8 @@
+frame_timing windows 108 flight(draws_p50>100) 70
+median dt_p50_us 17852.5 dt_p95_us 23831.5 draws_p50 243.0
+window 5400 dt_p50 16704 dt_p95 24658 draws_p50 101
+burst 5356 [('578', '99'), ('524', '100'), ('492', '98'), ('474', '99'), ('452', '100'), ('474', '99'), ('423', '99'), ('495', '99')]
+window 9300 dt_p50 11264 dt_p95 16007 draws_p50 61
+burst 9010 [('344', '61'), ('322', '61'), ('295', '61'), ('303', '61'), ('317', '61'), ('390', '106'), ('315', '61'), ('312', '61')]
+collide p1_pairs_sum 49612736 p1_rejected_sum 39857263 p2_cands_sum 0
+memo windows 108 queries 2542986 hits 1053296 hit_rate 0.414 verify_mismatches 0 stuck_busy 0

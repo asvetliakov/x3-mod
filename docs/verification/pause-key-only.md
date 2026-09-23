@@ -31,3 +31,9 @@ unless the variable is exactly `1`, the key parses, the executable hash matches,
 - Native Windows: documented Win32 only (`VirtualProtect`, `FlushInstructionCache`, `ReadProcessMemory`,
   `GetEnvironmentVariableW`) and an EXE byte patch keyed to the hash; source and cross-compilation only, not verified
   natively.
+
+## Run 72 A (run270, 2026-09-23): accepted in flight
+
+`pause_key_only patched=1 key=0x1b5 reason=ok`. The user: "pause works fine, keys don't unpause it anymore"
+(ordinary keys and alt-tab left the box up; the Pause key or a click ended it). No new warning/error line classes
+versus run269 (measured, `verification/results/run270-defaults/`).
