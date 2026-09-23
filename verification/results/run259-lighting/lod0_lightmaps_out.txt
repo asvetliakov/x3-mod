@@ -1,0 +1,15 @@
+02.cat:objects/ships/argon/argon_M1.pbb  record LOD0 of 4 (value=511093)  draws=33  materials=33  total_area=1.163e+10
+real light maps: 23 materials, area share 0.389; placeholder/null: 9 materials; stock NONE_*: 0; missing/error: 0
+glow candidates: [26, 27, 28, 29, 30] area share 0.043 (name match: [26, 27, 28, 29, 30], light map bright share >= 0.25: [26, 27, 29, 30])
+draws per rule: a=33  b=33  c=3  d=25  db=25  e=7  (original record 33)
+  d: keep real light maps, rest -> dominant
+02.cat:objects/ships/argon/argon_M2.pbb  record LOD0 of 4 (value=528422)  draws=38  materials=34  total_area=1.195e+10
+real light maps: 24 materials, area share 0.378; placeholder/null: 10 materials; stock NONE_*: 0; missing/error: 0
+glow candidates: [37, 38, 39, 40, 41] area share 0.039 (name match: [37, 38, 39, 40, 41], light map bright share >= 0.25: [37, 38, 40, 41])
+draws per rule: a=38  b=38  c=4  d=30  db=30  e=8  (original record 38)
+  d: keep real light maps, rest -> dominant
+02.cat:objects/ships/argon/argon_TL.pbb  record LOD0 of 4 (value=606393)  draws=37  materials=33  total_area=1.031e+10
+real light maps: 23 materials, area share 0.402; placeholder/null: 10 materials; stock NONE_*: 0; missing/error: 0
+glow candidates: [37, 38, 39, 40, 41] area share 0.057 (name match: [37, 38, 39, 40, 41], light map bright share >= 0.25: [37, 38, 40, 41])
+draws per rule: a=37  b=37  c=4  d=29  db=29  e=8  (original record 37)
+  d: keep real light maps, rest -> dominant

@@ -1,0 +1,8 @@
+== outpost 18eecaf8 coarse (9286, 3 draws)
+draw 65 model=000053b8 px=6237 s_mean=0.931 cascade=4 lit=0.788 empty_texels=0.080 texels=4749 lum p50/p90/p99=0.057/0.212/0.418 sun=lum*s p50/p90/p99=0.051/0.198/0.393 rest=lum*(1-s) p50/p90=0.000/0.019 dz_units p10/50/90=-10379/-846/4505 bias_m=147
+== outpost 18eecaf8 fine LOD0 (10058; bbox of largest draw)
+draw 67 model=000053b8 px=7425 s_mean=0.887 cascade=4 lit=0.728 empty_texels=0.036 texels=5170 lum p50/p90/p99=0.080/0.301/0.576 sun=lum*s p50/p90/p99=0.067/0.259/0.497 rest=lum*(1-s) p50/p90=0.001/0.047 dz_units p10/50/90=-3481/-326/4996 bias_m=147
+draw 72 model=000053b8 px=3180 s_mean=0.893 cascade=4 lit=0.827 empty_texels=0.029 texels=2521 lum p50/p90/p99=0.097/0.303/0.556 sun=lum*s p50/p90/p99=0.083/0.256/0.496 rest=lum*(1-s) p50/p90=0.001/0.069 dz_units p10/50/90=-4601/-679/1800 bias_m=147
+draw 79 model=000053b8 px=3339 s_mean=0.881 cascade=4 lit=0.881 empty_texels=0.034 texels=2626 lum p50/p90/p99=0.113/0.317/0.586 sun=lum*s p50/p90/p99=0.094/0.273/0.542 rest=lum*(1-s) p50/p90=0.001/0.089 dz_units p10/50/90=-4499/-778/344 bias_m=147
+== outpost 18eecaf8 coarse (3053)
+draw 100 model=000053b8 px=2274 s_mean=0.924 cascade=4 lit=0.783 empty_texels=0.061 texels=2123 lum p50/p90/p99=0.062/0.204/0.379 sun=lum*s p50/p90/p99=0.055/0.185/0.365 rest=lum*(1-s) p50/p90=0.000/0.018 dz_units p10/50/90=-8124/-831/3329 bias_m=147

@@ -1,0 +1,137 @@
+== 3053
+draw 22 000053b8 no pixels
+draw 23 model=000053b8 px=48204 s_mean=0.581 cascade=2 lit=0.964 empty_texels=0.155 texels=19886 lum p50/p90/p99=0.140/0.575/4.495 dz_units p10/50/90=-14869/-3/3 bias_m=8
+draw 24 model=000053b8 px=48204 s_mean=0.581 cascade=2 lit=0.964 empty_texels=0.155 texels=19886 lum p50/p90/p99=0.140/0.575/4.495 dz_units p10/50/90=-14869/-3/3 bias_m=8
+draw 25 model=000053b8 px=48204 s_mean=0.581 cascade=2 lit=0.964 empty_texels=0.155 texels=19886 lum p50/p90/p99=0.140/0.575/4.495 dz_units p10/50/90=-14869/-3/3 bias_m=8
+draw 26 model=000053b8 px=48204 s_mean=0.581 cascade=2 lit=0.964 empty_texels=0.155 texels=19886 lum p50/p90/p99=0.140/0.575/4.495 dz_units p10/50/90=-14869/-3/3 bias_m=8
+draw 27 000053b8 no pixels
+draw 28 model=000053b8 px=48204 s_mean=0.581 cascade=2 lit=0.964 empty_texels=0.155 texels=19886 lum p50/p90/p99=0.140/0.575/4.495 dz_units p10/50/90=-14869/-3/3 bias_m=8
+draw 29 model=000053b8 px=23641 s_mean=0.477 cascade=0 lit=0.792 empty_texels=0.008 texels=14257 lum p50/p90/p99=0.182/0.816/4.539 dz_units p10/50/90=-0/0/18 bias_m=1
+draw 30 000053b8 no pixels
+draw 31 000053b8 no pixels
+draw 32 000053b8 no pixels
+draw 33 model=000053b8 px=48204 s_mean=0.581 cascade=2 lit=0.964 empty_texels=0.155 texels=19886 lum p50/p90/p99=0.140/0.575/4.495 dz_units p10/50/90=-14869/-3/3 bias_m=8
+draw 34 000053b8 no pixels
+draw 35 model=000053b8 px=48204 s_mean=0.581 cascade=2 lit=0.964 empty_texels=0.155 texels=19886 lum p50/p90/p99=0.140/0.575/4.495 dz_units p10/50/90=-14869/-3/3 bias_m=8
+draw 36 model=000053b8 px=48204 s_mean=0.581 cascade=2 lit=0.964 empty_texels=0.155 texels=19886 lum p50/p90/p99=0.140/0.575/4.495 dz_units p10/50/90=-14869/-3/3 bias_m=8
+draw 37 model=000053b8 px=48204 s_mean=0.581 cascade=2 lit=0.964 empty_texels=0.155 texels=19886 lum p50/p90/p99=0.140/0.575/4.495 dz_units p10/50/90=-14869/-3/3 bias_m=8
+draw 38 model=000053b8 px=23641 s_mean=0.477 cascade=0 lit=0.792 empty_texels=0.008 texels=14257 lum p50/p90/p99=0.182/0.816/4.539 dz_units p10/50/90=-0/0/18 bias_m=1
+draw 39 000053b8 no pixels
+draw 40 model=000053b8 px=48204 s_mean=0.581 cascade=2 lit=0.964 empty_texels=0.155 texels=19886 lum p50/p90/p99=0.140/0.575/4.495 dz_units p10/50/90=-14869/-3/3 bias_m=8
+draw 41 model=000053b8 px=48204 s_mean=0.581 cascade=2 lit=0.964 empty_texels=0.155 texels=19886 lum p50/p90/p99=0.140/0.575/4.495 dz_units p10/50/90=-14869/-3/3 bias_m=8
+draw 42 000053b8 no pixels
+draw 43 000053b8 no pixels
+draw 44 model=000053b8 px=48204 s_mean=0.581 cascade=2 lit=0.964 empty_texels=0.155 texels=19886 lum p50/p90/p99=0.140/0.575/4.495 dz_units p10/50/90=-14869/-3/3 bias_m=8
+draw 45 000053b8 no pixels
+draw 46 model=000053b8 px=48204 s_mean=0.581 cascade=2 lit=0.964 empty_texels=0.155 texels=19886 lum p50/p90/p99=0.140/0.575/4.495 dz_units p10/50/90=-14869/-3/3 bias_m=8
+draw 47 000053b8 no pixels
+draw 48 000053b8 no pixels
+draw 49 model=000053b8 px=48204 s_mean=0.581 cascade=2 lit=0.964 empty_texels=0.155 texels=19886 lum p50/p90/p99=0.140/0.575/4.495 dz_units p10/50/90=-14869/-3/3 bias_m=8
+draw 50 model=000053b8 px=48204 s_mean=0.581 cascade=2 lit=0.964 empty_texels=0.155 texels=19886 lum p50/p90/p99=0.140/0.575/4.495 dz_units p10/50/90=-14869/-3/3 bias_m=8
+draw 51 model=000053b8 px=48204 s_mean=0.581 cascade=2 lit=0.964 empty_texels=0.155 texels=19886 lum p50/p90/p99=0.140/0.575/4.495 dz_units p10/50/90=-14869/-3/3 bias_m=8
+draw 52 model=000053b8 px=48204 s_mean=0.581 cascade=2 lit=0.964 empty_texels=0.155 texels=19886 lum p50/p90/p99=0.140/0.575/4.495 dz_units p10/50/90=-14869/-3/3 bias_m=8
+draw 53 000053b8 no pixels
+draw 54 000053b8 no pixels
+draw 55 000053b8 no pixels
+draw 100 model=000053b8 px=2274 s_mean=0.924 cascade=4 lit=0.783 empty_texels=0.061 texels=2123 lum p50/p90/p99=0.062/0.204/0.379 dz_units p10/50/90=-8124/-831/3329 bias_m=147
+draw 101 model=000053b8 px=1801 s_mean=0.928 cascade=4 lit=0.786 empty_texels=0.067 texels=1683 lum p50/p90/p99=0.066/0.212/0.384 dz_units p10/50/90=-9426/-990/5646 bias_m=147
+draw 102 model=000053b8 px=1977 s_mean=0.927 cascade=4 lit=0.798 empty_texels=0.061 texels=1853 lum p50/p90/p99=0.065/0.213/0.385 dz_units p10/50/90=-8357/-993/4866 bias_m=147
+draw 250 model=00004f75 px=127 s_mean=0.911 cascade=4 lit=0.961 empty_texels=0.165 texels=120 lum p50/p90/p99=0.044/0.159/0.304 dz_units p10/50/90=-159265/-1305/-246 bias_m=147
+draw 251 model=00004f75 px=6 s_mean=0.870 cascade=4 lit=1.000 empty_texels=0.167 texels=6 lum p50/p90/p99=0.120/0.147/0.166 dz_units p10/50/90=-80279/-1311/-1089 bias_m=147
+draw 252 model=00004f75 px=26 s_mean=0.892 cascade=4 lit=1.000 empty_texels=0.192 texels=26 lum p50/p90/p99=0.100/0.168/0.223 dz_units p10/50/90=-158722/-1251/-342 bias_m=147
+draw 253 model=00004f75 px=10 s_mean=0.853 cascade=4 lit=1.000 empty_texels=0.100 texels=10 lum p50/p90/p99=0.088/0.176/0.238 dz_units p10/50/90=-17228/-967/-356 bias_m=147
+draw 254 model=00004f75 px=6 s_mean=0.930 cascade=4 lit=1.000 empty_texels=0.000 texels=6 lum p50/p90/p99=0.088/0.137/0.165 dz_units p10/50/90=-1487/-1089/-939 bias_m=147
+draw 292 model=00004f75 px=27 s_mean=0.749 cascade=4 lit=0.926 empty_texels=0.148 texels=27 lum p50/p90/p99=0.086/0.542/0.947 dz_units p10/50/90=-192006/-1033/-73 bias_m=147
+draw 293 model=00004f75 px=6 s_mean=0.557 cascade=4 lit=1.000 empty_texels=0.167 texels=6 lum p50/p90/p99=0.586/0.938/0.954 dz_units p10/50/90=-99029/-1174/-822 bias_m=147
+draw 294 model=00004f75 px=13 s_mean=0.665 cascade=4 lit=1.000 empty_texels=0.154 texels=13 lum p50/p90/p99=0.076/0.921/0.951 dz_units p10/50/90=-157466/-1033/-267 bias_m=147
+draw 295 model=00004f75 px=13 s_mean=0.720 cascade=4 lit=1.000 empty_texels=0.077 texels=13 lum p50/p90/p99=0.123/0.921/0.951 dz_units p10/50/90=-2199/-1173/-605 bias_m=147
+draw 296 model=00004f75 px=11 s_mean=0.714 cascade=4 lit=1.000 empty_texels=0.091 texels=11 lum p50/p90/p99=0.241/0.922/0.952 dz_units p10/50/90=-2292/-1315/-729 bias_m=147
+draw 297 model=00004f76 px=410 s_mean=0.759 cascade=3 lit=0.073 empty_texels=1.000 texels=410 lum p50/p90/p99=0.077/0.237/1.581 dz_units p10/50/90=169/2178/3857 bias_m=37
+draw 298 model=00004f76 px=31 s_mean=0.531 cascade=3 lit=0.323 empty_texels=1.000 texels=31 lum p50/p90/p99=0.163/1.581/1.585 dz_units p10/50/90=-69/189/696 bias_m=37
+draw 299 model=00004f76 px=319 s_mean=0.723 cascade=3 lit=0.085 empty_texels=1.000 texels=319 lum p50/p90/p99=0.088/0.249/1.581 dz_units p10/50/90=107/1676/3158 bias_m=37
+draw 300 model=00004f76 px=40 s_mean=0.549 cascade=3 lit=0.400 empty_texels=1.000 texels=40 lum p50/p90/p99=0.100/1.581/1.584 dz_units p10/50/90=-87/128/659 bias_m=37
+draw 301 model=00004f76 px=31 s_mean=0.531 cascade=3 lit=0.323 empty_texels=1.000 texels=31 lum p50/p90/p99=0.163/1.581/1.585 dz_units p10/50/90=-69/189/696 bias_m=37
+draw 302 not inside one cascade
+draw 303 not inside one cascade
+draw 304 not inside one cascade
+draw 305 not inside one cascade
+draw 306 not inside one cascade
+== 9286
+draw 65 model=000053b8 px=6237 s_mean=0.931 cascade=4 lit=0.788 empty_texels=0.080 texels=4749 lum p50/p90/p99=0.057/0.212/0.418 dz_units p10/50/90=-10379/-846/4505 bias_m=147
+draw 66 model=000053b8 px=4182 s_mean=0.938 cascade=4 lit=0.755 empty_texels=0.096 texels=3084 lum p50/p90/p99=0.052/0.227/0.434 dz_units p10/50/90=-13530/-731/6300 bias_m=147
+draw 67 model=000053b8 px=5110 s_mean=0.935 cascade=4 lit=0.792 empty_texels=0.081 texels=3867 lum p50/p90/p99=0.057/0.216/0.417 dz_units p10/50/90=-10703/-932/5642 bias_m=147
+draw 207 model=00004f75 px=884 s_mean=0.940 cascade=4 lit=0.888 empty_texels=0.129 texels=364 lum p50/p90/p99=0.040/0.299/0.512 dz_units p10/50/90=-223905/-972/234 bias_m=147
+draw 208 model=00004f75 px=13 s_mean=0.716 cascade=4 lit=0.923 empty_texels=0.077 texels=12 lum p50/p90/p99=0.078/0.214/0.235 dz_units p10/50/90=-799/-409/107 bias_m=147
+draw 209 model=00004f75 px=90 s_mean=0.889 cascade=4 lit=0.867 empty_texels=0.100 texels=59 lum p50/p90/p99=0.078/0.365/0.448 dz_units p10/50/90=-23535/-517/297 bias_m=147
+draw 210 model=00004f75 px=14 s_mean=0.680 cascade=4 lit=1.000 empty_texels=0.000 texels=12 lum p50/p90/p99=0.081/0.157/1.068 dz_units p10/50/90=-456/-349/55 bias_m=147
+draw 211 model=00004f75 px=8 s_mean=0.636 cascade=4 lit=1.000 empty_texels=0.000 texels=7 lum p50/p90/p99=0.046/0.155/0.158 dz_units p10/50/90=-447/-398/82 bias_m=147
+draw 212 model=00004f75 px=67 s_mean=0.685 cascade=4 lit=0.806 empty_texels=0.284 texels=54 lum p50/p90/p99=0.080/1.471/1.549 dz_units p10/50/90=-244557/-929/618 bias_m=147
+draw 213 model=00004f75 px=15 s_mean=0.627 cascade=4 lit=1.000 empty_texels=0.067 texels=13 lum p50/p90/p99=0.377/1.504/1.516 dz_units p10/50/90=-1946/-1118/-657 bias_m=147
+draw 214 model=00004f75 px=39 s_mean=0.598 cascade=4 lit=0.872 empty_texels=0.256 texels=31 lum p50/p90/p99=0.115/1.492/1.575 dz_units p10/50/90=-244666/-933/226 bias_m=147
+draw 215 model=00004f75 px=25 s_mean=0.561 cascade=4 lit=1.000 empty_texels=0.040 texels=20 lum p50/p90/p99=0.313/1.501/1.588 dz_units p10/50/90=-1816/-929/-365 bias_m=147
+draw 216 model=00004f75 px=21 s_mean=0.567 cascade=4 lit=1.000 empty_texels=0.048 texels=18 lum p50/p90/p99=0.410/1.508/1.591 dz_units p10/50/90=-1886/-933/-381 bias_m=147
+draw 217 model=00004f76 px=488 s_mean=0.840 cascade=4 lit=0.973 empty_texels=0.111 texels=374 lum p50/p90/p99=0.097/0.359/0.515 dz_units p10/50/90=-239902/-1007/-42 bias_m=147
+draw 218 model=00004f76 px=40 s_mean=0.879 cascade=4 lit=1.000 empty_texels=0.050 texels=36 lum p50/p90/p99=0.159/0.329/0.362 dz_units p10/50/90=-1167/-881/-47 bias_m=147
+draw 219 model=00004f76 px=419 s_mean=0.846 cascade=4 lit=0.979 empty_texels=0.084 texels=326 lum p50/p90/p99=0.109/0.358/0.515 dz_units p10/50/90=-1865/-983/-43 bias_m=147
+draw 220 model=00004f76 px=33 s_mean=0.866 cascade=4 lit=1.000 empty_texels=0.061 texels=30 lum p50/p90/p99=0.154/0.325/0.363 dz_units p10/50/90=-1159/-844/-120 bias_m=147
+draw 221 model=00004f76 px=32 s_mean=0.868 cascade=4 lit=1.000 empty_texels=0.062 texels=29 lum p50/p90/p99=0.146/0.326/0.363 dz_units p10/50/90=-1160/-861/-116 bias_m=147
+draw 222 model=00004f72 px=388 s_mean=0.929 cascade=4 lit=0.938 empty_texels=0.180 texels=218 lum p50/p90/p99=0.035/0.095/0.482 dz_units p10/50/90=-272117/-1517/-163 bias_m=147
+draw 223 model=00004f72 px=8 s_mean=0.923 cascade=4 lit=1.000 empty_texels=0.125 texels=8 lum p50/p90/p99=0.082/0.373/0.439 dz_units p10/50/90=-84531/-1060/-352 bias_m=147
+draw 224 model=00004f72 px=320 s_mean=0.921 cascade=4 lit=0.925 empty_texels=0.159 texels=179 lum p50/p90/p99=0.036/0.089/0.489 dz_units p10/50/90=-274518/-1619/-104 bias_m=147
+draw 225 model=00004f72 px=23 s_mean=0.874 cascade=4 lit=1.000 empty_texels=0.043 texels=23 lum p50/p90/p99=0.077/0.461/0.964 dz_units p10/50/90=-2556/-1796/-126 bias_m=147
+draw 226 model=00004f72 px=17 s_mean=0.836 cascade=4 lit=1.000 empty_texels=0.059 texels=17 lum p50/p90/p99=0.077/0.489/0.997 dz_units p10/50/90=-2656/-1629/-331 bias_m=147
+== 10058
+draw 65 model=000053b8 px=237 s_mean=0.921 cascade=4 lit=0.878 empty_texels=0.021 texels=204 lum p50/p90/p99=0.086/0.256/0.328 dz_units p10/50/90=-3987/-2187/646 bias_m=147
+draw 66 model=000053b8 px=7160 s_mean=0.893 cascade=4 lit=0.729 empty_texels=0.034 texels=4993 lum p50/p90/p99=0.079/0.300/0.576 dz_units p10/50/90=-3483/-321/5231 bias_m=147
+draw 67 model=000053b8 px=7425 s_mean=0.887 cascade=4 lit=0.728 empty_texels=0.036 texels=5170 lum p50/p90/p99=0.080/0.301/0.576 dz_units p10/50/90=-3481/-326/4996 bias_m=147
+draw 68 model=000053b8 px=7105 s_mean=0.894 cascade=4 lit=0.723 empty_texels=0.031 texels=4940 lum p50/p90/p99=0.078/0.298/0.561 dz_units p10/50/90=-3449/-309/5255 bias_m=147
+draw 69 model=000053b8 px=7425 s_mean=0.887 cascade=4 lit=0.728 empty_texels=0.036 texels=5170 lum p50/p90/p99=0.080/0.301/0.576 dz_units p10/50/90=-3481/-326/4996 bias_m=147
+draw 70 model=000053b8 px=1086 s_mean=0.853 cascade=4 lit=0.673 empty_texels=0.046 texels=711 lum p50/p90/p99=0.064/0.239/0.489 dz_units p10/50/90=-2181/-435/1497 bias_m=147
+draw 71 model=000053b8 px=4841 s_mean=0.892 cascade=4 lit=0.754 empty_texels=0.028 texels=3569 lum p50/p90/p99=0.087/0.309/0.594 dz_units p10/50/90=-3719/-412/6009 bias_m=147
+draw 72 model=000053b8 px=3180 s_mean=0.893 cascade=4 lit=0.827 empty_texels=0.029 texels=2521 lum p50/p90/p99=0.097/0.303/0.556 dz_units p10/50/90=-4601/-679/1800 bias_m=147
+draw 73 model=000053b8 px=9 s_mean=0.652 cascade=4 lit=0.667 empty_texels=0.222 texels=6 lum p50/p90/p99=0.018/0.024/0.025 dz_units p10/50/90=-241640/-332/411 bias_m=147
+draw 74 model=000053b8 px=278 s_mean=0.829 cascade=4 lit=0.687 empty_texels=0.050 texels=187 lum p50/p90/p99=0.061/0.201/0.395 dz_units p10/50/90=-2276/-506/965 bias_m=147
+draw 75 model=000053b8 px=5954 s_mean=0.885 cascade=4 lit=0.697 empty_texels=0.034 texels=4214 lum p50/p90/p99=0.077/0.282/0.555 dz_units p10/50/90=-3772/-249/5769 bias_m=147
+draw 76 model=000053b8 px=7425 s_mean=0.887 cascade=4 lit=0.728 empty_texels=0.036 texels=5170 lum p50/p90/p99=0.080/0.301/0.576 dz_units p10/50/90=-3481/-326/4996 bias_m=147
+draw 77 model=000053b8 px=3779 s_mean=0.887 cascade=4 lit=0.652 empty_texels=0.035 texels=2722 lum p50/p90/p99=0.067/0.256/0.537 dz_units p10/50/90=-3381/-51/5294 bias_m=147
+draw 78 model=000053b8 px=7254 s_mean=0.888 cascade=4 lit=0.726 empty_texels=0.033 texels=5044 lum p50/p90/p99=0.079/0.300/0.566 dz_units p10/50/90=-3466/-320/5135 bias_m=147
+draw 79 model=000053b8 px=3339 s_mean=0.881 cascade=4 lit=0.881 empty_texels=0.034 texels=2626 lum p50/p90/p99=0.113/0.317/0.586 dz_units p10/50/90=-4499/-778/344 bias_m=147
+draw 80 model=000053b8 px=7254 s_mean=0.888 cascade=4 lit=0.726 empty_texels=0.033 texels=5044 lum p50/p90/p99=0.079/0.300/0.566 dz_units p10/50/90=-3466/-320/5135 bias_m=147
+draw 81 model=000053b8 px=3261 s_mean=0.894 cascade=4 lit=0.814 empty_texels=0.029 texels=2576 lum p50/p90/p99=0.095/0.302/0.554 dz_units p10/50/90=-4572/-655/2355 bias_m=147
+draw 82 model=000053b8 px=4521 s_mean=0.896 cascade=4 lit=0.697 empty_texels=0.024 texels=3277 lum p50/p90/p99=0.078/0.295/0.581 dz_units p10/50/90=-3719/-214/6727 bias_m=147
+draw 83 model=000053b8 px=7425 s_mean=0.887 cascade=4 lit=0.728 empty_texels=0.036 texels=5170 lum p50/p90/p99=0.080/0.301/0.576 dz_units p10/50/90=-3481/-326/4996 bias_m=147
+draw 84 model=000053b8 px=7425 s_mean=0.887 cascade=4 lit=0.728 empty_texels=0.036 texels=5170 lum p50/p90/p99=0.080/0.301/0.576 dz_units p10/50/90=-3481/-326/4996 bias_m=147
+draw 85 model=000053b8 px=3137 s_mean=0.894 cascade=4 lit=0.717 empty_texels=0.022 texels=2484 lum p50/p90/p99=0.085/0.303/0.585 dz_units p10/50/90=-4168/-290/6675 bias_m=147
+draw 86 model=000053b8 px=622 s_mean=0.907 cascade=4 lit=0.542 empty_texels=0.047 texels=375 lum p50/p90/p99=0.038/0.160/0.337 dz_units p10/50/90=-462/96/3991 bias_m=147
+draw 87 model=000053b8 px=7002 s_mean=0.888 cascade=4 lit=0.719 empty_texels=0.035 texels=4849 lum p50/p90/p99=0.080/0.301/0.574 dz_units p10/50/90=-3456/-317/5329 bias_m=147
+draw 88 model=000053b8 px=88 s_mean=0.565 cascade=4 lit=0.932 empty_texels=0.159 texels=67 lum p50/p90/p99=0.228/0.403/1.046 dz_units p10/50/90=-228242/-1365/64 bias_m=147
+draw 89 model=000053b8 px=7425 s_mean=0.887 cascade=4 lit=0.728 empty_texels=0.036 texels=5170 lum p50/p90/p99=0.080/0.301/0.576 dz_units p10/50/90=-3481/-326/4996 bias_m=147
+draw 90 model=000053b8 px=16 s_mean=0.657 cascade=4 lit=0.812 empty_texels=0.312 texels=9 lum p50/p90/p99=0.017/0.044/0.103 dz_units p10/50/90=-241845/-378/356 bias_m=147
+draw 91 model=000053b8 px=16 s_mean=0.657 cascade=4 lit=0.812 empty_texels=0.312 texels=9 lum p50/p90/p99=0.017/0.044/0.103 dz_units p10/50/90=-241845/-378/356 bias_m=147
+draw 92 model=000053b8 px=7425 s_mean=0.887 cascade=4 lit=0.728 empty_texels=0.036 texels=5170 lum p50/p90/p99=0.080/0.301/0.576 dz_units p10/50/90=-3481/-326/4996 bias_m=147
+draw 93 model=000053b8 px=5886 s_mean=0.898 cascade=4 lit=0.726 empty_texels=0.029 texels=4139 lum p50/p90/p99=0.083/0.308/0.581 dz_units p10/50/90=-3633/-269/6056 bias_m=147
+draw 94 model=000053b8 px=7425 s_mean=0.887 cascade=4 lit=0.728 empty_texels=0.036 texels=5170 lum p50/p90/p99=0.080/0.301/0.576 dz_units p10/50/90=-3481/-326/4996 bias_m=147
+draw 95 model=000053b8 px=5324 s_mean=0.907 cascade=4 lit=0.697 empty_texels=0.032 texels=3665 lum p50/p90/p99=0.078/0.311/0.589 dz_units p10/50/90=-2511/-186/6335 bias_m=147
+draw 96 model=000053b8 px=246 s_mean=0.884 cascade=4 lit=0.256 empty_texels=0.008 texels=155 lum p50/p90/p99=0.025/0.160/0.290 dz_units p10/50/90=-494/767/1792 bias_m=147
+draw 97 model=000053b8 px=69 s_mean=0.946 cascade=4 lit=0.812 empty_texels=0.116 texels=56 lum p50/p90/p99=0.073/0.099/0.190 dz_units p10/50/90=-231841/-647/385 bias_m=147
+draw 98 model=000053b8 px=559 s_mean=0.883 cascade=4 lit=0.612 empty_texels=0.023 texels=384 lum p50/p90/p99=0.059/0.237/0.490 dz_units p10/50/90=-1838/-371/2176 bias_m=147
+draw 230 model=00004f75 px=1069 s_mean=0.948 cascade=4 lit=0.840 empty_texels=0.029 texels=324 lum p50/p90/p99=0.042/0.347/0.518 dz_units p10/50/90=-1773/-610/326 bias_m=147
+draw 231 model=00004f75 px=12 s_mean=0.714 cascade=4 lit=1.000 empty_texels=0.000 texels=6 lum p50/p90/p99=0.109/0.146/0.213 dz_units p10/50/90=-662/-317/-45 bias_m=147
+draw 232 model=00004f75 px=101 s_mean=0.901 cascade=4 lit=0.802 empty_texels=0.030 texels=52 lum p50/p90/p99=0.092/0.397/0.468 dz_units p10/50/90=-1143/-610/311 bias_m=147
+draw 233 model=00004f75 px=14 s_mean=0.796 cascade=4 lit=1.000 empty_texels=0.000 texels=8 lum p50/p90/p99=0.088/0.142/1.138 dz_units p10/50/90=-452/-211/47 bias_m=147
+draw 234 model=00004f75 px=9 s_mean=0.797 cascade=4 lit=1.000 empty_texels=0.000 texels=5 lum p50/p90/p99=0.077/0.135/0.145 dz_units p10/50/90=-344/-146/94 bias_m=147
+draw 235 00004f75 no pixels
+draw 236 00004f75 no pixels
+draw 237 00004f75 no pixels
+draw 238 00004f75 no pixels
+draw 239 00004f75 no pixels
+draw 240 model=00004f76 px=650 s_mean=0.862 cascade=3 lit=0.945 empty_texels=0.015 texels=649 lum p50/p90/p99=0.099/0.418/0.536 dz_units p10/50/90=-1689/-819/-15 bias_m=37
+draw 241 model=00004f76 px=48 s_mean=0.903 cascade=3 lit=0.938 empty_texels=0.000 texels=48 lum p50/p90/p99=0.199/0.453/1.013 dz_units p10/50/90=-1145/-899/-8 bias_m=37
+draw 242 model=00004f76 px=551 s_mean=0.871 cascade=3 lit=0.955 empty_texels=0.005 texels=550 lum p50/p90/p99=0.114/0.444/0.542 dz_units p10/50/90=-1699/-822/-19 bias_m=37
+draw 243 model=00004f76 px=40 s_mean=0.879 cascade=3 lit=0.950 empty_texels=0.000 texels=40 lum p50/p90/p99=0.173/0.445/1.082 dz_units p10/50/90=-1135/-859/-174 bias_m=37
+draw 244 model=00004f76 px=42 s_mean=0.887 cascade=3 lit=0.929 empty_texels=0.000 texels=42 lum p50/p90/p99=0.141/0.441/1.063 dz_units p10/50/90=-1131/-828/-25 bias_m=37
+draw 245 model=00004f72 px=425 s_mean=0.928 cascade=4 lit=0.932 empty_texels=0.127 texels=215 lum p50/p90/p99=0.035/0.089/0.474 dz_units p10/50/90=-272784/-1284/-67 bias_m=147
+draw 246 model=00004f72 px=7 s_mean=0.802 cascade=4 lit=1.000 empty_texels=0.000 texels=6 lum p50/p90/p99=0.199/0.735/1.145 dz_units p10/50/90=-1991/-667/-193 bias_m=147
+draw 247 model=00004f72 px=342 s_mean=0.921 cascade=4 lit=0.915 empty_texels=0.102 texels=176 lum p50/p90/p99=0.035/0.080/0.480 dz_units p10/50/90=-246292/-1458/67 bias_m=147
+draw 248 model=00004f72 px=26 s_mean=0.829 cascade=4 lit=1.000 empty_texels=0.000 texels=23 lum p50/p90/p99=0.086/0.480/1.072 dz_units p10/50/90=-2647/-2027/-190 bias_m=147
+draw 249 model=00004f72 px=18 s_mean=0.784 cascade=4 lit=1.000 empty_texels=0.000 texels=17 lum p50/p90/p99=0.114/0.553/1.110 dz_units p10/50/90=-2763/-1789/-196 bias_m=147

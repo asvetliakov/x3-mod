@@ -1,0 +1,21 @@
+/Users/asvetl/x3-mod/verification/results/run259-lighting/outpost_pair.py:45: RuntimeWarning: divide by zero encountered in matmul
+  s = rt[..., 1]; nl = (n @ L)
+/Users/asvetl/x3-mod/verification/results/run259-lighting/outpost_pair.py:45: RuntimeWarning: overflow encountered in matmul
+  s = rt[..., 1]; nl = (n @ L)
+/Users/asvetl/x3-mod/verification/results/run259-lighting/outpost_pair.py:45: RuntimeWarning: invalid value encountered in matmul
+  s = rt[..., 1]; nl = (n @ L)
+== frame 9286 node 18eecaf8 box=(582,267)-(808,480) pixels=4767 draws_bounded=3 L_view=[0.448, 0.404, -0.798]
+  all                  px=  4767 lum mean/p50/p90=0.088/0.060/0.216 s mean=0.944 sun(lum*s) mean/p50=0.082/0.056 rest mean=0.0060
+  sun-facing n.l>0.2   px=  4266 lum mean/p50/p90=0.092/0.067/0.224 s mean=0.943 sun(lum*s) mean/p50=0.086/0.062 rest mean=0.0064
+  averted n.l<-0.2     px=    82 lum mean/p50/p90=0.031/0.019/0.069 s mean=0.972 sun(lum*s) mean/p50=0.029/0.019 rest mean=0.0014
+  corr(max(n.l,0), lum*s)=0.391  facing/averted lum ratio=3.00  share facing=0.89
+== frame 10058 node 18eecaf8 box=(578,255)-(820,490) pixels=5712 draws_bounded=34 L_view=[0.448, 0.404, -0.798]
+  all                  px=  5712 lum mean/p50/p90=0.129/0.084/0.305 s mean=0.897 sun(lum*s) mean/p50=0.107/0.075 rest mean=0.0213
+  sun-facing n.l>0.2   px=  5034 lum mean/p50/p90=0.136/0.093/0.313 s mean=0.897 sun(lum*s) mean/p50=0.114/0.080 rest mean=0.0221
+  averted n.l<-0.2     px=   155 lum mean/p50/p90=0.075/0.040/0.189 s mean=0.935 sun(lum*s) mean/p50=0.065/0.038 rest mean=0.0097
+  corr(max(n.l,0), lum*s)=0.373  facing/averted lum ratio=1.82  share facing=0.88
+== frame 3053 node 18eecaf8 box=(558,302)-(711,431) pixels=1552 draws_bounded=3 L_view=[0.521, 0.321, -0.791]
+  all                  px=  1552 lum mean/p50/p90=0.089/0.071/0.208 s mean=0.942 sun(lum*s) mean/p50=0.083/0.066 rest mean=0.0065
+  sun-facing n.l>0.2   px=  1342 lum mean/p50/p90=0.094/0.076/0.210 s mean=0.941 sun(lum*s) mean/p50=0.087/0.072 rest mean=0.0069
+  averted n.l<-0.2     px=    64 lum mean/p50/p90=0.064/0.018/0.221 s mean=0.972 sun(lum*s) mean/p50=0.062/0.018 rest mean=0.0017
+  corr(max(n.l,0), lum*s)=0.321  facing/averted lum ratio=1.47  share facing=0.86

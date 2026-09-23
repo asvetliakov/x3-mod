@@ -1695,10 +1695,37 @@ The user: "I see glow now"; asks for 80 / 150.
   M2 (s 30), M1 ×2 (s 25, 21), TL (s 24) at LOD 4 with 5 draws each; outpost (s 96) at LOD 3
   with 3 draws, its lattice draw alpha-tested. The glow draws bind the same texture sets as
   the same materials' LOD 0 draws (M2 5/5, M1 9/10 matched by `stage_match.py`), on the
-  DEFAULT-technique shader `8759c7838bbc86c2` with the stages shifted down by one (light
-  map on s2), so the DEFAULT technique samples the light map. Timeline flat 16.8–20.8 ms.
+  DEFAULT-technique shader `8759c7838bbc86c2` (its normal sampler layout: diffuse, specular,
+  light map on s2, cube; the run258 triage's "stages shifted" reading was an off-by-one draw
+  in its script, corrected in `run259-lighting/draw_state.py`), so the DEFAULT technique
+  samples the light map. Timeline flat 16.8–20.8 ms.
 - Burst 2 had the M2 at s 183 and the M1 at 63, both LOD 0 (32 draws), so only burst 1 tests
   the overlay. No census overflow, no stale rows, no device rows.
 - **Installed next (compact placement, 80 / 150):** the coarse record is LOD 1, the pad LOD 2,
   the original records 1–3 dropped (unreachable below T_pad); the 0x100000 flag is never set,
   so the bump-mapped technique applies. Run 69 C.
+
+## Run 259 / 260: compact placement at 80 / 150 px, the lighting question (2026-09-23)
+
+Run 69 C (`/tmp/x3-bottleX3-run259` fighter view with a paired outpost capture across the
+switch, `/tmp/x3-bottleX3-run260` Argon Prime; Run68 DLL; overlay `cf6fd61e…`, compact
+placement, glow collapse). Outputs: `verification/results/run259-lighting/`. All measured
+unless marked. The user: 80 / 150 px acceptable, but the coarse model "stops receiving sun
+lighting" (also true of Run 69 B, unreported then).
+
+- The coarse draws now run the BUMPMAP technique (`4944d81d` / `ca6bfa4a`, flags130 0x40),
+  run258's the DEFAULT one; both were judged unlit, so the technique is not the cause. Every
+  record carries 38-byte points with unit normals plus per-point tangent/binormal records
+  (declaration `96b83ce5`, stride 40, same at both levels); sun constants (c4/c5) identical
+  to the fine draws; the sun-shadow lane and the light-map gain cover all five programs.
+- **Outpost pair, same view:** the sun part follows the normal on both models (correlation
+  0.39 vs 0.37 with max(n·l,0)) but is 23 % weaker on the coarse one (0.082 vs 0.107), and the
+  non-sun part (light-map self-illumination, ×4 by the gain) drops 72 % (0.0060 vs 0.0213).
+  Cause: the collapse paints every non-exhaust face with the dominant material, which has no
+  light map and the lowest diffuse strength (`g_MatDiffuseStrength` 0.40 vs a triangle-
+  weighted 0.56; the −29 % it predicts matches the −23 %, inferred). At level 0 about 39 % of
+  a ship's hull area has a real light map; in C only the exhausts (1.6–5.7 %).
+- **Next:** an area-ranked light-map rule (keep the largest lit materials up to P % of the
+  lit area) and a synthesized dominant material with area-weighted lighting scalars
+  ([merged-lod-feasibility.md](merged-lod-feasibility.md)); Run 69 B's `stage_match` texture
+  rows were one draw off (corrected by `draw_state.py`), the glow-group match still holds.

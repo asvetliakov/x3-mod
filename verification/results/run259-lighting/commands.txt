@@ -1,0 +1,20 @@
+# Run 69 C lighting triage (2026-09-23). L9=/tmp/x3-bottleX3-run259/session-20260923-033540-472.log, C9=/tmp/x3-bottleX3-run259
+# L8=/tmp/x3-bottleX3-run258/session-20260923-032555-708.log, L0=/tmp/x3-bottleX3-run260/session-20260923-034233-312.log
+# NOTE: in these logs the per-draw state block (VB, textures, samplers, constants) FOLLOWS its 'draw' row.
+#       run258-glow/ship_textures.py and run257-pilot/ship_textures.py assign the PRECEDING block (one draw off);
+#       draw_state.py here uses the following block.
+python3 ../run257-pilot/node_census.py $L9 3053 9286 10058 > census_run259_out.txt
+python3 draw_decl.py $L9 00004f72,00004f75,00004f76,000053b8 3053 9286 10058 > decl_run259_out.txt   # vs/ps/declaration/stride per draw
+python3 draw_decl.py $L8 <same models> 6814 8516 > decl_run258_out.txt ; python3 draw_decl.py $L0 <same> 9868 9871 9875 > decl_run260_out.txt
+python3 draw_state.py $L9 <models> 3053 9286 10058 > state_run259_out.txt ; python3 draw_state.py $L8 <models> 6814 8516 > state_run258_out.txt
+python3 point_attrs.py ships/argon/argon_M1 ships/argon/argon_M2 ships/argon/argon_TL Stations/others/military_outpost_middleb > point_attrs_out.txt
+python3 extra_mapping.py ships/argon/argon_M1 3 orig; ... 1 inst; ... 0 orig | head -8   > extra_mapping_M1_out.txt
+python3 normal_agreement.py <body> orig ; python3 normal_agreement.py <body> inst | sed -n 2p   > normal_agreement_out.txt
+python3 tools/analysis/body_materials.py --lod 0 <ship> | grep ...   > lod0_lightmaps_out.txt
+python3 shadow_visibility.py $C9 $L9 <frame> <draw indices from decl_run259_out.txt>   > shadow_visibility_run259_out.txt (and run258)
+python3 shadow_visibility.py (selected draws)   > sun_part_compare_out.txt, station_sun_compare_out.txt
+grep '^shadow_replay_caster device=1 frame=9286 ' $L9 | (vb of the coarse draws) -> sun_register=4 (ca6bfa4a) / 5 (5f82), sun_agrees=1, cascades=16|24
+grep -E '^(sun_shadow_original_variant|sun_shadow_original_lightmap_variant|hull_lightmap_variant) .*original=(ca6bfa4a...|8759c783...|5f82ecac...|f1b0e820...)' $L9 -> share_applied=1, gain=4 gain_applied=1 for all
+tools/analysis/shader_constants.py --output <scratch>/ctab.json <dir with ps_ca6bfa4a/ps_8759c783/ps_5f82ecac/ps_f1b0e820/vs_4944d81d/vs_53a0a641 from $C9>
+grep -E '^R 10058 [0-9]+ 000053b8 0 ' state_run259_out.txt | (prim-weighted c12) > diffuse_strength_out.txt   # fine 0.562 vs coarse dominant 0.400
+python3 outpost_pair.py $C9 $L9 18eecaf8 9286 10058 3053 > outpost_pair_out.txt   # same-node coarse/fine pixel pair, sun-facing vs averted halves

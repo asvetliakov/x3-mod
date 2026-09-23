@@ -1,0 +1,1 @@
+fine LOD0 prim-weighted g_MatDiffuseStrength(c12)=0.562 over 73749 prims; coarse dominant (9149 of 9453 prims)=0.400
