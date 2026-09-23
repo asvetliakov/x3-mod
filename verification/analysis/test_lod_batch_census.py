@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools' / 'analysis
 import bob1
 import lod_batch_census as census
 from sector_fog_census import write_catalogue
-from test_bob1 import atlas_textures, atlas_tree, atlas_tree_lod0, no_bump, text_body
+from test_bob1 import atlas_textures, atlas_tree, atlas_tree_lod0, text_body
 
 
 def packed(tree):
@@ -126,19 +126,20 @@ class BatchCensus(unittest.TestCase):
             game = Path(folder) / 'game'
             write_catalogue(game / '01.cat', atlas_textures())
             write_catalogue(game / '02.cat', [
-                ('objects/ships/x/good.pbb', packed(no_bump(atlas_tree_lod0()))),
-                ('objects/ships/t/good.pbd', gzip.compress(text_body(no_bump(atlas_tree_lod0())), mtime=0)),
-                ('objects/stations/t/plain.bod', text_body(no_bump(atlas_tree_lod0()))),   # unpacked text member
-                ('objects/ships/t/bump.pbd', text_body(atlas_tree_lod0())),        # bump map: no tangent records
+                ('objects/ships/x/good.pbb', packed(atlas_tree_lod0())),
+                ('objects/ships/t/good.pbd', gzip.compress(text_body(atlas_tree_lod0()), mtime=0)),   # bump-mapped
+                ('objects/stations/t/plain.bod', text_body(atlas_tree_lod0())),      # unpacked text member
+                ('objects/ships/t/mat3.pbd', b'MATERIAL3: 1; 71; 1;2;3; 4;5;6; 7;8;9; 1; 100; 25; 5; 0;0;1; 100;'
+                                             b' 3;4; 5;6;\n1;\n0; 0; 1;\n-1; -1; -1;\n1; 0; 0; 0; -1;\n-99; 1;\n-99; 0;\n'),
                 ('objects/ships/t/bad.pbd', b'BODY 0\n'),
                 ('objects/ships/t/binary.pbd', packed(atlas_tree_lod0())),          # BOB1 bytes under a text name
                 ('objects/ships/t/scene.pbd', b'VER: 3;\nP 0; B ships\\x\\good; b\n')])
             rows, _ = census.run(game, opts, include_text=True)
             binary_only, _ = census.run(game, opts)
         by = {r['name']: r for r in rows}
-        self.assertEqual(sorted(by), ['ships/t/bad', 'ships/t/binary', 'ships/t/bump', 'ships/t/good', 'ships/x/good',
+        self.assertEqual(sorted(by), ['ships/t/bad', 'ships/t/binary', 'ships/t/good', 'ships/t/mat3', 'ships/x/good',
                                       'stations/t/plain'])                        # the text scene is skipped
-        self.assertEqual(by['ships/t/bump']['refuse'], ['text_no_tangents'])
+        self.assertEqual(by['ships/t/mat3']['refuse'], ['mat3'])                   # global-material text body
         self.assertEqual([r['name'] for r in binary_only], ['ships/x/good'])
         text, binary = by['ships/t/good'], by['ships/x/good']
         self.assertTrue(text['eligible'] and text['text'] and 'text' not in binary)

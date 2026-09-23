@@ -3,30 +3,167 @@ faces {'effects': 11365, 'environments': 37430, 'interface': 2912, 'others': 124
 faces with an N block {'effects': 6756, 'environments': 34688, 'interface': 0, 'others': 96, 'patch20': 9076, 'ships': 192882, 'special': 0, 'stations': 215825, 'v': 1200}
 bodies with faces lacking an N block {'effects': 101, 'environments': 1015, 'interface': 3, 'others': 4, 'patch20': 0, 'ships': 17, 'special': 1, 'stations': 10, 'v': 282}
 /! block kinds {'N': 460523, 'COLLISION_BOX': 160, 'PART_VALUES_RAW': 65} face flag values {'-25': 543096, '-9': 69436, '-1': 2, '-17': 10}
-parse_text: 1659 compiled, 24 text_parse_error; material tags {'MAT6': 1405, 'MAT3': 151, 'MAT5': 98, '-': 5}
-lod_overlay.text_refusals of the compiled bodies by (top directory, reasons) {('effects', 'none'): 1, ('effects', 'text_collision_box'): 123, ('effects', 'text_normals_inferred'): 100, ('environments', 'text_collision_box'): 4, ('environments', 'text_no_tangents,text_collision_box'): 1, ('environments', 'text_no_tangents,text_normals_inferred'): 1, ('environments', 'text_normals_inferred'): 1014, ('interface', 'text_normals_inferred'): 3, ('others', 'none'): 1, ('others', 'text_no_tangents,text_normals_inferred'): 1, ('others', 'text_normals_inferred'): 3, ('patch20', 'text_no_tangents'): 4, ('ships', 'none'): 34, ('ships', 'text_collision_box'): 4, ('ships', 'text_no_tangents'): 19, ('ships', 'text_no_tangents,text_collision_box'): 2, ('ships', 'text_no_tangents,text_normals_inferred'): 5, ('ships', 'text_normals_inferred'): 8, ('special', 'text_normals_inferred'): 1, ('stations', 'none'): 2, ('stations', 'text_no_tangents,text_collision_box'): 4, ('stations', 'text_no_tangents,text_normals_inferred'): 6, ('stations', 'text_normals_inferred'): 4, ('v', 'none'): 23, ('v', 'text_collision_box'): 16, ('v', 'text_no_tangents,text_normals_inferred'): 31, ('v', 'text_normals_inferred'): 244}
+parse_text: 1521 compiled, 162 text_parse_error; material tags {'MAT6': 1405, 'MAT5': 98, '-': 18}
+  refused addon/01.cat:objects/effects/menugfx/galaxy_map_sector_0.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to th
+  refused 01.cat:objects/effects/menugfx/galaxy_map_sector_1.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the near
+  refused addon/01.cat:objects/effects/menugfx/galaxy_map_sector_2.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to th
+  refused 01.cat:objects/effects/menugfx/galaxy_map_sector_3.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the near
+  refused 01.cat:objects/effects/menugfx/galaxy_map_sector_4.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the near
+  refused 01.cat:objects/effects/menugfx/galaxy_map_sector_5.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the near
+  refused addon/01.cat:objects/effects/menugfx/galaxy_map_sector_6.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to th
+  refused 01.cat:objects/effects/menugfx/menu_bigtext_background.pbd: text line 8: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the 
+  refused 01.cat:objects/effects/menugfx/menu_bigtext_text.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the neares
   refused 01.cat:objects/effects/menugfx/menu_dialog_text.pbd: text line 5: unsupported material record 'MATERIAL'
-  refused 01.cat:objects/effects/menugfx/menu_dialog_text2.pbd: text line 10: unsupported face flags 1
+  refused 01.cat:objects/effects/menugfx/menu_galaxy_text.pbd: text line 1: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest
+  refused 01.cat:objects/effects/menugfx/menu_id_background_x.pbd: text line 8: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nea
+  refused 01.cat:objects/effects/menugfx/menu_id_text.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest glo
+  refused 01.cat:objects/environments/others/dust_old.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest glo
   refused addon/11.cat:objects/others/argon_gate.pbd: text body has no body record
   refused addon/06.cat:objects/ships/props/extern_BIG_dock.pbd: text line 7: MATERIAL6 with a numeric texture (MATERIAL3 layout) is not supported
   refused addon/06.cat:objects/ships/props/extern_M4_dock.pbd: text line 7: MATERIAL6 with a numeric texture (MATERIAL3 layout) is not supported
   refused addon/06.cat:objects/ships/props/extern_small_dock.pbd: text line 7: MATERIAL6 with a numeric texture (MATERIAL3 layout) is not supported
   refused addon/06.cat:objects/ships/props/extern_small_dock2.pbd: text line 7: MATERIAL6 with a numeric texture (MATERIAL3 layout) is not supported
-  refused 01.cat:objects/v/00008.pbd: text line 12: unsupported face flags 1
-  refused 01.cat:objects/v/00012.pbd: text line 16: unsupported face flags 4
-  refused 01.cat:objects/v/00030.pbd: text line 15: unsupported face flags 4
+  refused 01.cat:objects/v/00000.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00001.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00002.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00004.pbd: text line 6: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00005.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00009.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00010.pbd: text line 4: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00011.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00025.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00026.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00028.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
   refused 01.cat:objects/v/00031.pbd: text line 5: unsupported material record 'MATERIAL'
   refused 01.cat:objects/v/00034.pbd: text line 5: unsupported material record 'MATERIAL'
-  refused 01.cat:objects/v/00094.pbd: text line 14: unsupported face flags 4
-  refused 01.cat:objects/v/00096.pbd: text line 14: unsupported face flags 4
+  refused 01.cat:objects/v/00042.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00052.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00061.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00065.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00079.pbd: text line 8: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00080.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00083.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00084.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00087.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00097.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
   refused 01.cat:objects/v/00098.pbd: text line 4: unsupported material record 'MATERIAL'
-  refused 01.cat:objects/v/00109.pbd: text line 12: unsupported face flags 1
-  refused 01.cat:objects/v/00116.pbd: text line 15: unsupported face flags 4
-  refused 01.cat:objects/v/00200.pbd: text line 15: unsupported face flags 4
-  refused 01.cat:objects/v/00214.pbd: text line 15: unsupported face flags 4
+  refused 01.cat:objects/v/00102.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00105.pbd: text line 8: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00114.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00127.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00132.pbd: text line 4: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00136.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00143.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00180.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00182.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00183.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00184.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00193.pbd: text line 4: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00201.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00209.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00213.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
   refused 01.cat:objects/v/00224.pbd: text line 5: unsupported material record 'MATERIAL'
   refused 01.cat:objects/v/00234.pbd: text line 5: unsupported material record 'MATERIAL'
-  refused 01.cat:objects/v/00265.pbd: text line 15: unsupported face flags 4
-  refused 01.cat:objects/v/00357.pbd: text line 9: unsupported face flags 1
-  refused 01.cat:objects/v/00359.pbd: text line 9: unsupported face flags 1
-elapsed 13 s
+  refused 01.cat:objects/v/00237.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00273.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00300.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00314.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00326.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00327.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00328.pbd: text line 4: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00330.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00331.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00333.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00335.pbd: text line 4: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00336.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00364.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00374.pbd: text line 4: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00377.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00379.pbd: text line 4: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00391.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00430.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00431.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00432.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00433.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00437.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00438.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00444.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00445.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00446.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00447.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00450.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00451.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00462.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00464.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00466.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00468.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00469.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00470.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00471.pbd: text line 4: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00481.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00503.pbd: text line 8: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00516.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00525.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00526.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00527.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00535.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00548.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00549.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00550.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00551.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00564.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00582.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00587.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00589.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00707.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00719.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00720.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00721.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00722.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00735.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00739.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00740.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00741.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00744.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00745.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00751.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00752.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00753.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00754.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00760.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00761.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00762.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00763.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00764.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00766.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00770.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00775.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00778.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00779.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00781.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00822.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00829.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00830.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00831.pbd: text line 8: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00834.pbd: text line 4: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/00940.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/10433.pbd: text line 8: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/10436.pbd: text line 10: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f
+  refused 01.cat:objects/v/10494.pbd: text line 4: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/10544.pbd: text line 5: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/10678.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/11012.pbd: text line 3: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/11013.pbd: text line 3: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/11014.pbd: text line 4: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused 01.cat:objects/v/11015.pbd: text line 3: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f7
+  refused addon/06.cat:objects/v/12012.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0
+  refused addon/06.cat:objects/v/12013.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0
+  refused addon/06.cat:objects/v/12015.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0
+  refused addon/06.cat:objects/v/12016.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0
+  refused addon/06.cat:objects/v/12017.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0
+  refused addon/06.cat:objects/v/12018.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0
+  refused addon/06.cat:objects/v/12019.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0
+  refused addon/06.cat:objects/v/12024.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0
+  refused addon/06.cat:objects/v/12026.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0
+  refused addon/06.cat:objects/v/17012.pbd: text line 7: unsupported material record 'MATERIAL3' (MATERIAL3: the engine maps each record to the nearest global material, 0
+elapsed 19 s

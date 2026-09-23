@@ -8,6 +8,7 @@ import gzip
 import io
 import json
 from pathlib import Path
+import re
 import struct
 import sys
 import tempfile
@@ -137,12 +138,21 @@ class Bob1Format(unittest.TestCase):
 
 
 SPTYPE = {v: k for k, v in bob1.SPTYPE_NAMES.items()}
+ORACLE_DIR = Path(__file__).resolve().parents[1] / 'results' / 'lod-overlay-batch' / 'text-bodies'
+
+
+def oracle():
+    """engine_oracle (compares parse_text with the engine reference text_loader_reference.py)."""
+    if str(ORACLE_DIR) not in sys.path:
+        sys.path.insert(0, str(ORACLE_DIR))
+    import engine_oracle
+    return engine_oracle
 
 
 def text_body(tree):
-    """Text form (.bod) of a tree in the grammar of body-format-bob1.md "Text form": one vertex per
-    point (BOD units, x2bc scale), one smoothing group per face, a 9-value N block per face,
-    PART_VALUES_RAW for precomputed parts. parse_text of it gives first_use(tree) back."""
+    """Text form (.bod) of a tree: one vertex per point (positions as written), one smoothing group
+    per face (the point's u32), a 9-value N block per face and PART_VALUES_RAW for precomputed parts
+    (both ignored by the engine), classic materials in the MATERIAL5/6 field order."""
     fx = lambda v: f'{v / 65536:.6f}'
     out = ['// synthetic text body']
     for t, v in tree['sections']:
@@ -164,17 +174,16 @@ def text_body(tree):
                 else:
                     row.append(str(m['texture']))
                 c = m['colors']
-                row += [str(x) for x in c[:9]] + [str(c[9] << 16 | c[10]), str(c[11]), str(m['w24']), str(m['w26'])]
+                row += [str(x) for x in c[:9]] + [str(c[10]), str(c[11]), str(m['w24']), str(m['w26'])]
                 bits = m['flags'] if t == 'MAT6' else m['flagword']
                 row += [str(int(bool(bits & b))) for b in (0x2, 0x10, 0x8)] + [str(m['w2c'])]
-                pairs = m['maps'] + m['extra'] if t == 'MAT6' else m['maps'][:2 if t == 'MAT3' else 3]
+                pairs = m['maps'] + m['extra'] if t == 'MAT6' else m['maps']
                 row += [x for n, val in pairs for x in ((n.decode() or 'NULL') if t == 'MAT6' else str(n), str(val))]
                 out.append('; '.join(row) + ';  / classic')
         elif t == 'BODY':
             for lod in v:
                 out.append(f'{lod["value"]}; // body size')
-                out += ['; '.join(str(round(c * bob1.TEXT_POS_DIVISOR)) for c in p[1:4]) + f'; // {i}'
-                        for i, p in enumerate(lod['points'])]
+                out += ['; '.join(str(c) for c in p[1:4]) + f'; // {i}' for i, p in enumerate(lod['points'])]
                 out.append('-1; -1; -1; // end of verts')
                 for part in lod['parts']:
                     out.append('// ----- part -----')
@@ -192,120 +201,97 @@ def text_body(tree):
     return ('\r\n'.join(out) + '\r\n').encode('latin1')
 
 
-def first_use(tree):
-    """tree with every record's points renumbered in first-use order over its faces and the
-    precomputed groups' 7-int records dropped (the text form carries none)."""
-    import copy
-    tree = copy.deepcopy(tree)
-    for lod in bob1.lods(tree):
-        order = list(dict.fromkeys(i for p in lod['parts'] for g in p['groups'] for f in g['faces'] for i in f[:3]))
-        new = {old: k for k, old in enumerate(order)}
-        lod['points'] = [lod['points'][i] for i in order]
-        for p in lod['parts']:
-            for g in p['groups']:
-                g['faces'] = [tuple(new[i] for i in f[:3]) + (f[3],) for f in g['faces']]
-                if 'extra' in g:
-                    g['extra'] = []
-    return tree
-
-
 def text_tree():
     """Every text feature the parser maps: INFO, effect parameters of each numeric type, a classic
-    MAT6 material, two records, a precomputed part (flag 0x20000000 kept), a hidden part."""
+    MAT6 material, two records, a precomputed part (its PART_VALUES_RAW ignored), a hidden part."""
     tree = atlas_tree_lod0()
     mats = bob1.materials(tree)
     mats[0]['params'] += [(b'g_long', 0, [-3]), (b'g_bool', 1, [1]), (b'g_f4', 5, [65536, -32768, 0, 1])]
-    mats[2].update(flags=0x12, texture=b'plain.tga', colors=list(range(9)) + [1, 2, 100],
+    mats[2].update(flags=0x12, texture=b'plain.tga', colors=list(range(9)) + [0xffff, 2, 100],
                    maps=[(b'', 0), (b'b.tga', 1), (b'', 100)], extra=[(b'd', 3), (b'', 4)])
     tree['sections'].insert(0, ('INFO', b'$PATH: synthetic$'))
-    return tree
-
-
-def no_bump(tree):
-    """tree with every t_BumpTexture parameter set to NULL (a text body lod_overlay may overlay)."""
-    import copy
-    tree = copy.deepcopy(tree)
-    for m in bob1.materials(tree):
-        if 'params' in m:
-            m['params'] = [(n, t, b'NULL' if n == b't_BumpTexture' else v) for n, t, v in m['params']]
     return tree
 
 
 TEXT_HEAD = '/ header comment\nMATERIAL6: 0; 0x2000000; 1; argon.fx; 1; t_DiffuseTexture;SPTYPE_STRING;a_diff.tga;\n'
 
 
+def engine_diffs(data, tree):
+    """Differences between parse_text's tree and the engine reference for one text body."""
+    import collections
+    S = collections.Counter()
+    oracle().compare_body(data, tree, S)
+    return {k: v for k, v in S.items() if k not in ('records', 'points', 'faces', 'normal_d0') and v}, S
+
+
 class TextForm(unittest.TestCase):
-    def test_synthetic_round_trip(self):
-        tree = text_tree()
-        data = text_body(tree)
+    def test_synthetic_body_matches_engine_reference(self):
+        data = text_body(text_tree())
         got = bob1.parse(data)                                       # dispatch: not 'BOB' -> parse_text
-        self.assertEqual(got['sections'], first_use(tree)['sections'])
-        self.assertEqual(got['text'], {'inferred_normals': 0, 'collision_boxes': 0})
-        self.assertEqual(bob1.parse_binary(bob1.serialise(got))['sections'], got['sections'])
+        diffs, S = engine_diffs(data, got)
+        self.assertEqual(diffs, {})
+        self.assertEqual((S['records'], S['points'], S['faces']), (2, 27, 13))
         self.assertTrue(lod_overlay.text_compiles(got))
-        self.assertEqual(lod_overlay.text_refusals(got), ['text_no_tangents'])      # material 0 names a bump map
-        self.assertEqual(lod_overlay.text_refusals(bob1.parse(text_body(no_bump(tree)))), [])
-        part0 = bob1.lods(got)[0]['parts'][0]
-        self.assertEqual((part0['flags'], part0['bounds'], part0['groups'][0]['extra']),
-                         (0x30000001, list(range(10)), []))
-        self.assertEqual(bob1.lods(got)[0]['parts'][1]['flags'], 0x30008001)
+        r0 = bob1.lods(got)[0]
+        self.assertEqual([p['flags'] for p in r0['parts']], [0x20000001, 0x20008001])   # PART_VALUES_RAW ignored
+        self.assertNotIn('extra', r0['parts'][0]['groups'][0])                       # no tangent records
+        self.assertEqual({f[3] for p in r0['parts'] for g in p['groups'] for f in g['faces']}, {24})
+        self.assertEqual(max(abs(c) for p in r0['points'] for c in p[1:4]), 65536)   # record normalised
+        mats = bob1.materials(got)
+        self.assertEqual(mats[0]['params'][-3:], [(b'g_long', 0, [-3]), (b'g_bool', 1, [1]),
+                                                  (b'g_f4', 5, [65536, -32768, 0, 0])])      # 1/65536 truncates to 0
+        self.assertEqual((mats[2]['flags'], mats[2]['colors'][9:]), (0x12, [0xffff, 2, 100]))
         self.assertEqual(bob1.text_kind(data), 'body')
 
-    def test_points_normals_and_units(self):
+    def test_engine_rules(self):
         text = TEXT_HEAD + (
-            '1000; // body size\n100000; 0; 0;\n0; 100000; 0;\n0; 0; 0;\n0; 0; -100000; // 3\n-1; -1; -1;\n'
-            # two smoothed faces share vertex 2 with one uv: one point, the first corner's normal
-            '0; 0; 1; 2; -25; 1; 0.5; 0.25; 1.0; 0.0; 0.0; 0.0; /! N: { 0; 0; 1; } !/\n'
-            '0; 2; 1; 3; -25; -2147483648; 0.0; 0.0; 1.0; 0.0; 0.5; 0.5; /! N: 1; 0; 0; 0; 1; 0; 0; 0; 1; !/\n'
-            # no N block, smoothing 0: the face normal cross(b - a, c - a) on every corner, own points
-            '0; 0; 1; 2; -9; 0.5; 0.25; 1.0; 0.0; 0.0; 0.0;\n'
+            '1000; // body size\n7; 0; 0;\n0; 7; 0;\n0; 0; 0;\n0; 0; -7; // 3\n3; 3; 0;\n-1; -1; -1;\n'
+            # flat face (-9): three new points, its own normal; the N block is ignored
+            '0; 0; 1; 2; -9; 0.00001; 0.25; 1.0; 0.0; 0.0; 0.0; /! N: { 1; 0; 0; } !/\n'
+            # the same corners again, flat: three more points
+            '0; 0; 1; 2; -9; 0.00001; 0.25; 1.0; 0.0; 0.0; 0.0;\n'
+            # smoothed quad (0, 1, 4, 2 in the xy plane): fan of two triangles, shared points by position+uv
+            '0; 0; 1; 4; 2; -25; 5; 0; 0; 0; 0; 0; 0; 0; 0;\n'
+            '0; 2; 1; 3; -25; 5; 0; 0; 0; 0; 0; 0;\n'
+            '/! COLLISION_BOX: 0.5; 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; !/\n'
             '-99; 00000000000000000001;\n-99; 0000000001000000;\n')
-        (lod,) = bob1.lods(bob1.parse_text(text.encode()))
+        data = text.encode()
+        tree = bob1.parse_text(data)
+        self.assertEqual(engine_diffs(data, tree)[0], {})
+        (lod,) = bob1.lods(tree)
         self.assertEqual((lod['value'], lod['flags']), (1000, 0x40))
         pts = lod['points']
-        self.assertEqual(pts[0], (0x1b, 65536, 0, 0, 32768, 16384, 0, 0, 65536, 1))     # 100000 -> 65536
-        self.assertEqual(len(pts), 3 + 3 + 3)                                           # smoothing groups differ
-        self.assertEqual(pts[3][1:4] + pts[3][9:], (0, 0, 0, 0x80000000))               # vertex 2 again: other smoothing group
-        self.assertEqual((pts[3][6:9], pts[5][1:4]), ((65536, 0, 0), (0, 0, -65536)))
-        n = (0, 0, 65536)                                                               # (-1,1,0) x (-1,0,0)
-        self.assertEqual([f[:3] for f in lod['parts'][0]['groups'][0]['faces']], [(0, 1, 2), (3, 4, 5), (6, 7, 8)])
-        self.assertEqual(pts[6:8], [(0x1b, 65536, 0, 0, 32768, 16384) + n + (0,), (0x1b, 0, 65536, 0, 65536, 0) + n + (0,)])
-        self.assertEqual(lod['parts'][0]['flags'], 1)                                   # no PART_VALUES_RAW: no 0x10000000
-
-    def test_smoothed_normals_without_blocks(self):
-        text = TEXT_HEAD + ('500;\n0; 0; 0;\n1000; 0; 0;\n0; 1000; 0;\n0; 0; 1000;\n-1; -1; -1;\n'
-                            '0; 0; 1; 2; -17; 3;\n0; 0; 3; 1; -17; 2;\n0; 0; 2; 3; -17; 4;\n'
-                            '-99; 00000000000000000001;\n-99; 0000000000000000;\n')
-        tree = bob1.parse_text(text.encode())
-        (lod,) = bob1.lods(tree)
-        self.assertEqual(tree['text']['inferred_normals'], 3)
-        self.assertEqual(lod_overlay.text_refusals(tree), ['text_normals_inferred'])
-        pts = lod['points']
-        self.assertEqual(pts[0][0], 0x19)                               # no uv
-        # vertex 0: faces 0 (group 3) and 1 (group 2) share a bit, face 2 (group 4) shares none
-        self.assertEqual([pts[i][4:8] for i in (0, 3, 6)], [(0, 46341, 46341, 3), (0, 46341, 46341, 2),
-                                                            (65536, 0, 0, 4)])
+        self.assertEqual(pts[0][1:6], (65536, 0, 0, 0, 16384))            # 7 -> 65536; u 0.00001 truncates to 0
+        self.assertEqual(pts[5][1:4], (0, 0, 0))
+        self.assertEqual(len(pts), 3 + 3 + 4 + 1)                         # flat corners never shared
+        self.assertEqual(pts[0][6:9], (0, 0, 65536))                      # engine face normal, not the N block
+        self.assertEqual(pts[8][1:4], (28086, 28086, 0))                  # 3 << 16 / 7, truncated
+        self.assertEqual(pts[7][6:9], (-64491, 0, 11651))                 # shared by both smoothed faces: angle-weighted
+        faces = [f for p in lod['parts'] for g in p['groups'] for f in g['faces']]
+        self.assertEqual([f[:3] for f in faces], [(0, 1, 2), (3, 4, 5), (6, 7, 8), (6, 8, 9), (9, 7, 10)])
+        self.assertEqual([f[3] for f in faces], [8, 8, 24, 24, 24])       # face word = flags & ~1
+        self.assertEqual(bob1.parse_text(re.sub(rb'/![^\n]*', b'', data)), tree)   # /! blocks change nothing
 
     def test_classic_materials(self):
-        mat5 = 'MATERIAL5: 0; 1047; 1;2;3; 4;5;6; 7;8;9; 65537; 100; 10; 0; 1;1;0; 100; 5;6; 7;8; 9;10;\n'
+        mat5 = 'MATERIAL5: 0; 1047; 1;2;3; 4;5;6; 7;8;9; 12; 100; 10; 0; 1;1;0; 100; 5;6; 7;8; 9;10;\n'
         mat3 = 'MATERIAL3: 1; 71; 1;2;3; 4;5;6; 7;8;9; 1; 100; 25; 5; 0;0;1; 100; 3;4; 5;6;\n'
-        tail = '1;\n0; 0; 0;\n-1; -1; -1;\n0; 0; 0; 0; -1;\n-99; 1;\n-99; 0;\n'
+        tail = '1;\n0; 0; 1;\n-1; -1; -1;\n0; 0; 0; 0; -1;\n-99; 1;\n-99; 0;\n'
         m = bob1.materials(bob1.parse_text((mat5 + tail).encode()))[0]
-        self.assertEqual(m, {'index': 0, 'texture': 1047, 'colors': [1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 1, 100],
+        self.assertEqual(m, {'index': 0, 'texture': 1047, 'colors': [1, 2, 3, 4, 5, 6, 7, 8, 9, 0xffff, 12, 100],
                              'w24': 10, 'w26': 0, 'flagword': 0x12, 'w2c': 100, 'maps': [(5, 6), (7, 8), (9, 10)]})
-        t3 = bob1.parse_text((mat3 + tail).encode())
-        self.assertEqual([s for s, _ in t3['sections']], ['MAT3', 'BODY'])
-        self.assertEqual((bob1.materials(t3)[0]['flagword'], bob1.materials(t3)[0]['maps']),
-                         (0x8, [(3, 4), (5, 6), (0, 0)]))
+        with self.assertRaisesRegex(bob1.FormatError, 'MATERIAL3'):
+            bob1.parse_text((mat3 + tail).encode())
 
     def test_rejections(self):
-        body = '1;\n0; 0; 0;\n-1; -1; -1;\n0; 0; 0; 0; -1;\n-99; 1;\n-99; 0;\n'
+        body = '1;\n0; 0; 1;\n-1; -1; -1;\n0; 0; 0; 0; -1;\n-99; 1;\n-99; 0;\n'
         cases = {
             'scene': 'VER: 3;\nP 0; B x; N y; b\n',
             'MAT1 material': 'MATERIAL: 0;62; 1;2;3; 4;5;6; 7;8;9;\n' + body,
-            'quad face': TEXT_HEAD + body.replace('0; 0; 0; 0; -1;', '0; 0; 0; 0; 0; -9;'),
+            'five-vertex face': TEXT_HEAD + body.replace('0; 0; 0; 0; -1;', '0; 0; 0; 0; 0; 0; -9;'),
             'vertex out of range': TEXT_HEAD + body.replace('0; 0; 0; 0; -1;', '0; 0; 0; 1; -1;'),
-            'unknown block': TEXT_HEAD + body.replace('-99; 1;', '/! XYZ: 1; !/\n-99; 1;'),
+            'all-zero record': TEXT_HEAD + body.replace('0; 0; 1;', '0; 0; 0;'),
+            'pivot part flag': TEXT_HEAD + body.replace('-99; 1;', '-99; 101; 0;'),
+            'weights': TEXT_HEAD + body.replace('-1; -1; -1;', '-1; -1; -1;\nWEIGHTS: 0; 1; -1;'),
             'unterminated': TEXT_HEAD + body + '5',
             'truncated': TEXT_HEAD + body[:-10],
             'comment only': '//NoAdsign\n',
@@ -314,16 +300,13 @@ class TextForm(unittest.TestCase):
             'unknown parameter type': TEXT_HEAD.replace('SPTYPE_STRING', 'SPTYPE_QUAT') + body,
             'flags over 32 bits': TEXT_HEAD + body.replace('-99; 1;', '-99; 1' + '0' * 32 + ';'),
             'unclosed block': TEXT_HEAD + body.replace('-99; 1;', '/! N: 1; 0; 0;\n-99; 1;'),
-            'underscore digits': TEXT_HEAD + body.replace('1;\n0; 0; 0;', '1_000;\n0; 0; 0;'),
-            'plus sign': TEXT_HEAD + body.replace('1;\n0; 0; 0;', '+5;\n0; 0; 0;'),
-            'vertex over 32 bits': TEXT_HEAD + body.replace('1;\n0; 0; 0;', '1;\n0; 0; 2147483648;'),
-            'face flag without bit 1': TEXT_HEAD + body.replace('0; 0; 0; 0; -1;', '0; 0; 0; 0; -8; 0;0; 0;0; 0;0;'),
-            'face flag -100': TEXT_HEAD + body.replace('0; 0; 0; 0; -1;', '0; 0; 0; 0; -100;'),
+            'underscore digits': TEXT_HEAD + body.replace('1;\n0; 0; 1;', '1_000;\n0; 0; 1;'),
+            'plus sign': TEXT_HEAD + body.replace('1;\n0; 0; 1;', '+5;\n0; 0; 1;'),
+            'vertex over 32 bits': TEXT_HEAD + body.replace('1;\n0; 0; 1;', '1;\n0; 0; 2147483648;'),
             'nan uv': TEXT_HEAD + body.replace('0; 0; 0; 0; -1;', '0; 0; 0; 0; -9; nan; 0; 0; 0; 0; 0;'),
-            'inf uv': TEXT_HEAD + body.replace('0; 0; 0; 0; -1;', '0; 0; 0; 0; -9; 1e999; 0; 0; 0; 0; 0;'),
+            'exponent uv': TEXT_HEAD + body.replace('0; 0; 0; 0; -1;', '0; 0; 0; 0; -9; 1e0; 0; 0; 0; 0; 0;'),
             'uv outside 16.16': TEXT_HEAD + body.replace('0; 0; 0; 0; -1;', '0; 0; 0; 0; -9; 40000.0; 0; 0; 0; 0; 0;'),
             'material index over 16 bits': TEXT_HEAD.replace('MATERIAL6: 0;', 'MATERIAL6: 70000;') + body,
-            'block as a string': TEXT_HEAD.replace('a_diff.tga;', '/! N: 0; !/') + body,
             'long parameter over 32 bits': TEXT_HEAD.replace('t_DiffuseTexture;SPTYPE_STRING;a_diff.tga;',
                                                              'n;SPTYPE_LONG;4294967296;') + body,
         }
@@ -331,16 +314,11 @@ class TextForm(unittest.TestCase):
             with self.subTest(name), self.assertRaises(bob1.FormatError):
                 bob1.parse_text(text.encode())
         self.assertEqual(bob1.text_kind(b'VER: 3;\n'), 'scene')
-        self.assertIsNotNone(bob1.parse_text((TEXT_HEAD + body).encode()))
-        self.assertEqual(bob1.parse_text((TEXT_HEAD + body.replace('0; 0; 0; 0; -1;', '0; 0; 0; 0; -9; 1e0; .5;'
-                                                                   ' 0.; 0; 0; 0;')).encode())['text']['inferred_normals'], 0)
-
-    def test_collision_box_is_counted_and_refused(self):
-        body = ('1;\n0; 0; 0;\n1; 0; 0;\n0; 1; 0;\n-1; -1; -1;\n0; 0; 1; 2; -1;\n'
-                '/! COLLISION_BOX: 0.5; 0.1; 0.2; 0.3; 0.4; 0.5; 0.6; !/\n-99; 1;\n-99; 0;\n')
-        tree = bob1.parse_text((TEXT_HEAD + body).encode())
-        self.assertEqual(tree['text']['collision_boxes'], 1)
-        self.assertEqual(lod_overlay.text_refusals(tree), ['text_collision_box'])
+        ok = bob1.parse_text((TEXT_HEAD + body.replace('0; 0; 0; 0; -1;', '0; 0; 0; 0; -9; .5; 0.; 0; 0; 0; 0;'))
+                             .encode())
+        self.assertEqual(bob1.lods(ok)[0]['points'][0][4:6], (32768, 0))
+        self.assertEqual(bob1.lods(bob1.parse_text((TEXT_HEAD + body.replace('1;\n0; 0; 1;', '0x10;\n0; 0; %1;'))
+                                                   .encode()))[0]['value'], 16)             # 0x hex and %binary ints
 
 
 def ladder_tree(ladder):
@@ -1511,28 +1489,18 @@ class Installed(unittest.TestCase):
                 break
         self.assertEqual(done, 20)
 
-    def test_text_twins_structurally_equal(self):
-        """Vanilla stems shipped as a .pbd (01.cat) and a dbox2-compiled .pbb (addon/01.cat): the text
-        parse equals the game's binary in every record's threshold, flags, points (normals within 4
-        units of 16.16), faces and group materials, and in the material table where the compiler did
-        not add parameters (verification/results/lod-overlay-batch/text-bodies/text_pairs_out.txt)."""
-        assets = Assets(bob1.DEFAULT_GAME)
-        for stem, same_materials in (('v/00390', True), ('v/00773', True), ('v/11994', True), ('v/11999', True),
-                                     ('v/12000', False), ('v/11014', False)):
-            with self.subTest(stem):
-                (text,) = assets.candidates(f'objects/{stem}.pbd')
-                tree = bob1.parse(assets.read_entry(text))
-                ref = bob1.parse(assets.read_entry(assets.candidates(f'objects/{stem}.pbb')[-1]))
-                self.assertEqual(len(bob1.lods(tree)), len(bob1.lods(ref)))
-                for x, y in zip(bob1.lods(tree), bob1.lods(ref)):
-                    self.assertEqual((x['value'], x['flags'], len(x['points'])), (y['value'], y['flags'], len(y['points'])))
-                    for p, q in zip(x['points'], y['points']):
-                        self.assertEqual(p[:6] + p[9:], q[:6] + q[9:])
-                        self.assertLessEqual(max(abs(a - b) for a, b in zip(p[6:9], q[6:9])), 4)
-                    self.assertEqual([[(g['material'], g['faces']) for g in p['groups']] for p in x['parts']],
-                                     [[(g['material'], g['faces']) for g in p['groups']] for p in y['parts']])
-                if same_materials:
-                    self.assertEqual(bob1.materials(tree), bob1.materials(ref))
+    def test_text_bodies_match_engine_reference(self):
+        """Every winning text body of the bottle that parse_text accepts equals the engine reference
+        (verification/results/bob1-format/text_loader_reference.py, the port of 0x00483f20): same point
+        count, positions, uv and smoothing, normals within 4 int16 units, faces, group materials and part
+        flags (verification/results/lod-overlay-batch/text-bodies/engine_oracle_out.txt)."""
+        S = oracle().compare_game(bob1.DEFAULT_GAME)
+        self.assertGreaterEqual(S['compared'], 700)
+        for k in ('record_count_diff', 'record_point_count_diff', 'record_position_diff', 'point_position_diff',
+                  'point_uv_diff', 'point_smoothing_diff', 'normal_over_tol', 'face_diff', 'group_material_diff',
+                  'part_flag_diff', 'value_diff', 'reference_body_start_mismatch'):
+            self.assertEqual(S[k], 0, k)
+        self.assertEqual(S['points'], S['normal_d0'] + S['normal_d1_4'])
 
     def test_overlay_on_installed_body(self):
         if sorted((bob1.DEFAULT_GAME / 'addon').glob('*' + lod_overlay.MARKER_SUFFIX)):

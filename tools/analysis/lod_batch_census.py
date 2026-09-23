@@ -14,9 +14,9 @@ Nothing is baked, built or written into the game directory: the atlas checks run
 lod_atlas.collapse (effect classes, occlusion check, layout, UV rewrite and group split; no
 baking) on a copy of the material table. With include_text (the batch), winning text bodies
 (.pbd/.bod without a binary twin) are compiled by bob1.parse_text and censused like binary ones
-(column text; a text scene is skipped like CUT1, a body outside the grammar or whose compile does
-not re-parse equal is text_parse_error, and lod_overlay.text_refusals adds text_no_tangents,
-text_normals_inferred and text_collision_box); a stem with both a binary
+(column text; the compile follows the engine's text loader 0x00483f20; a text scene is skipped
+like CUT1, a MATERIAL3 text body is mat3, any other body outside the grammar or whose compile does
+not re-parse equal is text_parse_error); a stem with both a binary
 and a text member is ambiguous_body_ext (bob1.resolve_body). Bodies with up to
 lod_overlay.MAX_TRAILING stray bytes after /BOB parse with a warning column (trailing); more
 is trailing_bytes. Each row carries inputs_sha256 (the decoded body plus every texture the
@@ -140,14 +140,13 @@ def census_body(assets, textures, entry, opts):
                 raise bob1.FormatError(f'text member holding binary data (magic {bytes(data[:4])!r})')
             tree = bob1.parse_text(data)
         except bob1.FormatError as exc:
-            row['refuse'].append('text_parse_error')
+            row['refuse'].append('mat3' if 'MATERIAL3' in str(exc) else 'text_parse_error')
             row['atlas_error'] = str(exc)[:160]
             return row
         if not lod_overlay.text_compiles(tree):
             row['refuse'].append('text_parse_error')
             row['atlas_error'] = 'the compiled text body does not serialise and parse back'
             return row
-        row['refuse'] += lod_overlay.text_refusals(tree)     # policy while 0x00483f20 is untraced
     elif k == 'CUT1':
         return dict(row, skip='CUT1')
     elif k != 'BOB1':

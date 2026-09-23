@@ -1,0 +1,17 @@
+bodies 865
+compared 712
+face_diff 0
+faces 274019
+group_material_diff 0
+normal_d0 470816
+part_flag_diff 0
+point_position_diff 0
+point_smoothing_diff 0
+point_uv_diff 0
+points 470816
+record_count_diff 0
+record_position_diff 0
+records 758
+refused: MATERIAL (MAT1) 6
+refused: MATERIAL3 147
+value_diff 0

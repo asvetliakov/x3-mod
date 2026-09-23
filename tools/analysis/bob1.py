@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-"""BOB1 binary body (.pbb/.bob) reader and writer.
+"""BOB1 binary body (.pbb/.bob) reader and writer, and the text body (.bod/.pbd) reader.
 
 Layout from the engine parser X3AP.exe 0x00481aa0, tag table 0x0054ed50
 (docs/reverse-engineering/body-format-bob1.md). All values are big-endian.
-parse() returns a plain tree; serialise() writes it back byte for byte. Every
-opaque field (material words, point u32, face word, per-group 7-int records,
-the 10 part ints) is kept as read.
+parse() dispatches on the magic like 0x004863c0: parse_binary() returns a plain
+tree and serialise() writes it back byte for byte (every opaque field -- material
+words, point u32, face word, per-group 7-int records, the 10 part ints -- is kept
+as read); parse_text() builds the same tree by the rules of the engine's text
+loader 0x00483f20 (body-format-bob1.md section 8, body-text-loader.md), so
+serialise() writes a BOB1 body that loads into the model the game builds from
+the text. text_kind() tells a text scene (not a body) from a text body.
 
 Tree:
   {'sections': [(tag, value), ...]}   tags in file order:
@@ -323,18 +327,17 @@ def serialise(tree):
 
 
 # --- text form (.bod / .pbd) --------------------------------------------------------------
-# Grammar derived from the shipped text bodies and their compiled twins
-# (body-format-bob1.md section 8, "Text form"); the engine's text parser 0x00483f20 is not decompiled.
+# The engine's own text loader 0x00483f20 (docs/reverse-engineering/body-text-loader.md; body-format-bob1.md
+# section 8): parse_text builds the tree the binary parser would have to read to end up with the model
+# the engine builds from the same text. Oracle: verification/results/bob1-format/text_loader_reference.py.
 
-TEXT_POS_DIVISOR = 1.52587890625        # BOD position unit = BOB unit * 100000/65536 (x2bc)
 SPTYPE_NAMES = {'SPTYPE_LONG': 0, 'SPTYPE_BOOL': 1, 'SPTYPE_FLOAT': 2, 'SPTYPE_FLOAT2': 3, 'SPTYPE_FLOAT3': 4,
                 'SPTYPE_FLOAT4': 5, 'SPTYPE_MATRIX3': 6, 'SPTYPE_MATRIX4': 7, 'SPTYPE_STRING': 8}
-FACE_BASE, FACE_UV, FACE_SMOOTH = 1, 8, 16          # face flag = -(bits)
-TEXT_MATERIALS = {'MATERIAL3': 'MAT3', 'MATERIAL5': 'MAT5', 'MATERIAL6': 'MAT6'}
-_TEXT_LEX = re.compile(r'/!([^\n]*?)!/|/[^\n]*')      # /! block !/ on one line, else '/' comment to end of line
-_TEXT_INT = re.compile(r'-?[0-9]+')
-_TEXT_HEX = re.compile(r'0[xX][0-9a-fA-F]+')
-_TEXT_NUM = re.compile(r'-?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][-+]?[0-9]+)?')
+FACE_UV, FACE_SMOOTH, FACE_UV2 = 0x08, 0x10, 0x80      # face flag = -(bits); other bits only reach the face word
+TEXT_MATERIALS = {'MATERIAL5': 'MAT5', 'MATERIAL6': 'MAT6'}
+TEXT_LIMITS = dict(materials=100, parts=200, faces=200000, face_vertices=4)   # 0x00483f20 errors beyond these
+_TEXT_INT = re.compile(r'-?(?:%[01]+|0[xX][0-9a-fA-F]+|[0-9]+)')              # 0x004eb930: -, %binary, 0x hex, decimal
+_TEXT_NUM = re.compile(r'-?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)')                # 0x004ec490: decimal only
 I32, U32 = (-0x80000000, 0x7fffffff), (0, 0xffffffff)
 _SCENE_LINE = re.compile(rb'^[ \t]*(VER[ \t]*:|P[ \t]+-?\d+[ \t]*;)', re.M)
 
@@ -344,39 +347,48 @@ def text_kind(data):
     return 'scene' if _SCENE_LINE.search(bytes(data[:65536])) else 'body'
 
 
+def _int_value(v):
+    neg = v.startswith('-')
+    t = v[1:] if neg else v
+    n = int(t[1:], 2) if t.startswith('%') else int(t, 16) if t[:2].lower() == '0x' else int(t)
+    return -n if neg else n
+
+
 class TextReader:
-    """Field stream of a text body: ';'-separated values with '//' and '/' comments removed;
-    a /! ... !/ block is one magic field ('\\0', content). Tracks the line for errors."""
+    """Field stream of a text body as the engine lexes it (0x004e98a0): ';'-separated values, and
+    '/' starts a comment to the end of the line, so every /! ... !/ block (N:, PART_VALUES_RAW,
+    COLLISION_BOX) and anything after it on its line is ignored. A /! without !/ on its line is
+    refused (the engine would read the block's later lines as data). fields = [(value, line)]."""
 
     def __init__(self, data):
         data = bytes(data)
         text = (data[3:] if data.startswith(b'\xef\xbb\xbf') else data).decode('latin1')
-        self.magic, self.info = [], None
-
-        def lex(m):
-            if m.group(1) is not None:
-                self.magic.append(m.group(1))
-                return f'\0{len(self.magic) - 1};'
-            if m.group(0).startswith('/!'):
-                raise FormatError(f'text line {text.count(chr(10), 0, m.start()) + 1}: unclosed /! block')
-            if self.info is None and m.group(0).startswith('/#'):
-                self.info = m.group(0)[2:].strip()
-            return ''
-        self.fields = self._split(_TEXT_LEX.sub(lex, text))
+        self.info = None
+        lines = text.split('\n')
+        for n, line in enumerate(lines):
+            cut = line.find('/')
+            if cut < 0:
+                continue
+            rest = line[cut:]
+            if rest.startswith('/!') and '!/' not in rest[2:]:
+                raise FormatError(f'text line {n + 1}: unclosed /! block')
+            if self.info is None and rest.startswith('/#'):
+                self.info = rest[2:].strip()
+            lines[n] = line[:cut]
+        self.fields = self._split(lines)
         self.i = 0
 
     @staticmethod
-    def _split(code):
-        out, pending, line = [], '', 1
-        for n, chunk in enumerate(code.split('\n'), 1):
+    def _split(lines):
+        out, pending = [], ''
+        for n, chunk in enumerate(lines, 1):
             parts = chunk.split(';')
             parts[0] = pending + '\n' + parts[0] if pending.strip() else parts[0]
             for p in parts[:-1]:
                 out.append((p.strip(), n))
             pending = parts[-1]
-            line = n
         if pending.strip():
-            raise FormatError(f'text: unterminated value {pending.strip()[:40]!r} at line {line}')
+            raise FormatError(f'text: unterminated value {pending.strip()[:40]!r} at line {len(lines)}')
         return out
 
     def error(self, msg):
@@ -395,45 +407,31 @@ class TextReader:
         v = self.fields[self.i][0]; self.i += 1
         return v
 
-    def is_magic(self):
-        v = self.peek()
-        return v is not None and v.startswith('\0')
-
-    def peek_magic(self):
-        v = self.peek()
-        return self.magic[int(v[1:])] if v is not None and v.startswith('\0') else None
-
-    def magic_field(self):
-        v = self.next()
-        if not v.startswith('\0'):
-            self.i -= 1
-            raise self.error(f'expected a /! !/ block, got {v[:40]!r}')
-        return self.magic[int(v[1:])]
-
     def int(self, what='integer', span=I32):
         v = self.next()
         if not _TEXT_INT.fullmatch(v):
             self.i -= 1
             raise self.error(f'expected {what}, got {v[:40]!r}')
-        n = int(v)
+        n = _int_value(v)
         if not span[0] <= n <= span[1]:
             self.i -= 1
             raise self.error(f'{what} {v[:40]} outside {span[0]}..{span[1]}')
         return n
 
-    def num(self, what='number'):
+    def fixed(self, what='number'):
+        """16.16 value as 0x004ec490 + _ftol read it: decimal, times 65536.0, truncated."""
         v = self.next()
-        n = float(v) if _TEXT_NUM.fullmatch(v) else math.nan
-        if not math.isfinite(n):
+        n = int(float(v) * 65536.0) if _TEXT_NUM.fullmatch(v) else None
+        if n is None or not I32[0] <= n <= I32[1]:
             self.i -= 1
-            raise self.error(f'expected a finite {what}, got {v[:40]!r}')
+            raise self.error(f'expected a 16.16 {what}, got {v[:40]!r}')
         return n
 
     def string(self, what='string'):
         v = self.next()
-        if '\0' in v:
+        if not v:
             self.i -= 1
-            raise self.error(f'expected {what}, got a /! block')
+            raise self.error(f'expected {what}, got an empty value')
         return v.encode('latin1')
 
     def bits(self, what):
@@ -445,33 +443,7 @@ class TextReader:
         return int(v, 2)
 
     def word(self, what='16-bit value'):
-        v = self.int(what)
-        if not 0 <= v <= 0xffff:
-            self.i -= 1
-            raise self.error(f'{what} {v} outside 0..65535')
-        return v
-
-
-def _fixed(v):
-    """16.16 fixed point, rounded to nearest (x2bc); must fit a signed 32-bit int."""
-    if not math.isfinite(v):
-        raise FormatError(f'text: {v} is not finite')
-    n = int(math.floor(v * 65536.0 + 0.5))
-    if not I32[0] <= n <= I32[1]:
-        raise FormatError(f'text: {v} outside the 16.16 range')
-    return n
-
-
-def _text_int(text, what, span=I32):
-    if _TEXT_HEX.fullmatch(text):
-        n = int(text, 16)
-    elif _TEXT_INT.fullmatch(text):
-        n = int(text)
-    else:
-        raise FormatError(f'text: bad {what} {text[:40]!r}')
-    if not span[0] <= n <= span[1]:
-        raise FormatError(f'text: {what} {text[:40]} outside {span[0]}..{span[1]}')
-    return n
+        return self.int(what, (0, 0xffff))
 
 
 def _text_name(v):
@@ -479,11 +451,21 @@ def _text_name(v):
 
 
 def _read_text_material(r, key, first):
-    """One MATERIALn record; `first` is the value after 'MATERIALn:' (the index)."""
+    """One MATERIAL5/MATERIAL6 record as 0x0048447c..0x00484a30 reads it; `first` is the value after
+    'MATERIALn:' (the index). The 12 colour words are rgb x3, then +0x16 = -1 (MAT5/6), the
+    transparency word (+0x18) and self-illumination (+0x1a); the blend/two-sided/wire switches
+    are OR-ed into the flags as 0x2/0x10/0x8 (MAT5 flag word; MAT6 flags, which the engine then
+    overwrites with the texture's table flags when the texture resolves, before the OR)."""
+    if key not in TEXT_MATERIALS:
+        raise r.error(f'unsupported material record {key!r}' + (
+            ' (MATERIAL3: the engine maps each record to the nearest global material, 0x004f71f0,'
+            ' which needs the running game)' if key == 'MATERIAL3' else ''))
     ver = MATVER[TEXT_MATERIALS[key]]
-    m = {'index': _text_int(first, 'material index', (0, 0xffff))}
+    if not _TEXT_INT.fullmatch(first) or not 0 <= _int_value(first) <= 0xffff:
+        raise r.error(f'bad material index {first[:40]!r}')
+    m = {'index': _int_value(first)}
     if ver >= 6:
-        m['flags'] = _text_int(r.next(), 'material flags', U32)
+        m['flags'] = r.int('material flags', U32)
         if m['flags'] & EFFECT_MATERIAL:
             m['technique'] = r.word('technique')
             m['effect'] = r.string('effect file')
@@ -499,7 +481,7 @@ def _read_text_material(r, key, first):
                 elif typ in (0, 1):
                     val = [r.int('parameter value')]
                 else:
-                    val = [_fixed(r.num('parameter value')) for _ in range(SPTYPE_WORDS[typ])]
+                    val = [r.fixed('parameter value') for _ in range(SPTYPE_WORDS[typ])]
                 params.append((name, typ, val))
             m['params'] = params
             return m
@@ -509,199 +491,238 @@ def _read_text_material(r, key, first):
         m['texture'] = _text_name(tex)
     else:
         m['texture'] = r.word('texture id')
-    colors = [r.word('colour') for _ in range(9)]
-    transparency = r.int('transparency', (I32[0], U32[1])) & 0xffffffff
-    m['colors'] = colors + [transparency >> 16, transparency & 0xffff, r.word('self illumination')]
+    rgb = [r.word('colour') for _ in range(9)]
+    m['colors'] = rgb + [0xffff, r.word('transparency'), r.word('self illumination')]
     m['w24'] = r.word('shininess'); m['w26'] = r.word('shininess strength')
-    blend, two_sided, wire = (r.int('material switch') for _ in range(3))
-    if ver < 6:       # MAT6 carries the same bits in its flags word (MAT6 text: flags 2 <-> 1;0;0)
-        m['flagword'] = (0x2 if blend else 0) | (0x10 if two_sided else 0) | (0x8 if wire else 0)
+    switches = sum(bit for bit in (0x2, 0x10, 0x8) if r.int('material switch'))
+    if ver >= 6:
+        m['flags'] |= switches
+    else:
+        m['flagword'] = switches
     m['w2c'] = r.word('texture value')
     if ver >= 6:
         m['maps'] = [(_text_name(r.string('map')), r.word('map value')) for _ in range(3)]
         m['extra'] = [(_text_name(r.string('map')), r.word('map value')) for _ in range(2)]
     else:
-        n = 2 if ver == 3 else 3
-        m['maps'] = [(r.word('map id'), r.word('map value')) for _ in range(n)]
-        m['maps'] += [(0, 0)] * (3 - n)          # the binary layout (bob1.read_material) reads 3 pairs
+        m['maps'] = [(r.word('map id'), r.word('map value')) for _ in range(3)]
     return m
 
 
-def _read_text_normals(block):
-    body = block.strip()[2:] if block.strip().startswith('N:') else None
-    if body is None:
-        return None
-    vals = [v for v in re.split(r'[;{}\s]+', body) if v]
-    try:
-        vals = [float(v) for v in vals]
-    except ValueError:
-        raise FormatError(f'text: bad normal block {block[:60]!r}') from None
-    if len(vals) == 3:
-        return [tuple(vals)] * 3
-    if len(vals) == 9:
-        return [tuple(vals[0:3]), tuple(vals[3:6]), tuple(vals[6:9])]
-    raise FormatError(f'text: normal block with {len(vals)} values')
+# fixed-point helpers of 0x00480830 / 0x00469c20 / 0x00469a50 (body-text-loader.md section 5)
+
+def _i32(v):
+    v &= 0xffffffff
+    return v - 0x100000000 if v & 0x80000000 else v
 
 
-def _face_normals(verts, raw):
-    """Normals for the faces without an N block, as the compiled twins carry them: a face with
-    smoothing group 0 gets its own normal cross(b - a, c - a) on every corner; otherwise a corner
-    gets the normalised sum of the (area-weighted) normals of the record's faces that use the same
-    vertex and share a smoothing bit with it."""
-    fn = []
-    for f in raw:
-        (ax, ay, az), (bx, by, bz), (cx, cy, cz) = (verts[i] for i in f['abc'])
-        ux, uy, uz, vx, vy, vz = bx - ax, by - ay, bz - az, cx - ax, cy - ay, cz - az
-        fn.append((uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx))
-    around = {vi: [] for f in raw if f['normals'] is None and f['smooth'] for vi in f['abc']}
-    for k, f in enumerate(raw):
-        for vi in f['abc']:
-            if vi in around:
-                around[vi].append(k)
-
-    def unit(v):
-        n = math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2])
-        return (v[0] / n, v[1] / n, v[2] / n) if n else (0.0, 0.0, 0.0)
-    for k, f in enumerate(raw):
-        if f['normals'] is not None:
-            continue
-        if not f['smooth']:
-            f['normals'] = [unit(fn[k])] * 3
-            continue
-        out = []
-        for vi in f['abc']:
-            sx = sy = sz = 0.0
-            for j in around[vi]:
-                if j == k or raw[j]['smooth'] & f['smooth']:
-                    sx += fn[j][0]; sy += fn[j][1]; sz += fn[j][2]
-            out.append(unit((sx, sy, sz)))
-        f['normals'] = out
+def _fm(a, b):                      # imul; add 0x8000; adc; shrd 16 (low 32 bits)
+    return _i32((a * b + 0x8000) >> 16)
 
 
-def _read_text_lod(r, value, info):
+def _cdiv(a, b):                    # idiv: truncation toward zero
+    q = abs(a) // abs(b)
+    return q if (a >= 0) == (b > 0) else -q
+
+
+def _sqrtfix(v):                    # 0x00469a50, bit for bit
+    v &= 0xffffffff
+    root, bit, rem = 0, 0x40000000, v
+    while bit:
+        if rem >= bit and rem - bit >= root:
+            rem -= bit + root
+            root = (root >> 1) | bit
+        else:
+            root >>= 1
+        bit >>= 2
+    bit, root, rem = 0x4000, (root << 16) & 0xffffffff, (rem << 16) & 0xffffffff
+    while bit:
+        if rem >= bit and rem - bit >= root:
+            rem -= bit + root
+            root = (root >> 1) | bit
+        else:
+            root >>= 1
+        bit >>= 2
+    return root
+
+
+def _normalise(x, y, z):            # 0x00469c20
+    if x == 0 and y == 0 and z == 0:
+        return 0, 0, 0
+    while not (abs(x) < 0x600000 and abs(y) < 0x600000 and abs(z) < 0x600000):
+        x, y, z = _cdiv(x, 4), _cdiv(y, 4), _cdiv(z, 4)
+    while abs(x) <= 0x17ffff and abs(y) <= 0x17ffff and abs(z) <= 0x17ffff:
+        x, y, z = x * 4, y * 4, z * 4
+    n = _sqrtfix(_fm(x, x) + _fm(y, y) + _fm(z, z))
+    if n == 0:
+        return 0, 0, 0
+    return _i32(_cdiv(x << 16, n)), _i32(_cdiv(y << 16, n)), _i32(_cdiv(z << 16, n))
+
+
+_ASIN = None
+
+
+def _asin_table():                  # 0x004f0110: T[i] = trunc(asin(i/65536) / (4 asin 1) * 65536)
+    global _ASIN
+    if _ASIN is None:
+        quarter = 4 * math.asin(1.0)
+        _ASIN = [int(math.asin(i / 65536.0) / quarter * 65536.0) for i in range(0x10001)]
+    return _ASIN
+
+
+_F32 = struct.Struct('<f')
+
+
+def _corner_weight(p, q, r, table):  # 0x00480d65..0x00480f60: angle at p in 1/65536 turns
+    d1 = (p[0] - q[0], p[1] - q[1], p[2] - q[2])
+    d2 = (p[0] - r[0], p[1] - r[1], p[2] - r[2])
+    l1 = int(math.sqrt(_F32.unpack(_F32.pack(float(d1[0] * d1[0] + d1[1] * d1[1] + d1[2] * d1[2])))[0]))
+    l2 = int(math.sqrt(_F32.unpack(_F32.pack(float(d2[0] * d2[0] + d2[1] * d2[1] + d2[2] * d2[2])))[0]))
+    dot = _i32(_fm(d1[0], d2[0]) + _fm(d1[1], d2[1]) + _fm(d1[2], d2[2]))
+    den = _fm(l1, l2)
+    c = 0 if den == 0 else _i32(_cdiv(dot << 16, den))
+    if c < 0:
+        return (table[-c] if -c <= 0x10000 else 0x4000) + 0x4000
+    return 0x4000 - table[c] if c <= 0x10000 else 0
+
+
+def _read_text_lod(r, value):
+    """One record (0x00483f20 record loop, 0x00480830 per face, section 4-5 of the loader note)."""
     verts = []
     while True:
         x, y, z = r.int('vertex x'), r.int('vertex y'), r.int('vertex z')
         if (x, y, z) == (-1, -1, -1):
             break
         verts.append((x, y, z))
-    pos = [tuple(int(math.floor(c / TEXT_POS_DIVISOR + 0.5)) for c in v) for v in verts]
-    raw, parts = [], []
-    while True:
-        if r.peek() == '-99' and parts:
-            r.next()
-            flags = r.bits('body flags')
-            break
-        part, bounds = {'faces': []}, None
-        while True:
-            if r.is_magic():
-                block = r.magic_field().strip()
-                if block.startswith('PART_VALUES_RAW:'):
-                    vals = [v for v in re.split(r'[;\s]+', block[16:]) if v]
-                    if len(vals) != 10:
-                        raise r.error('PART_VALUES_RAW needs 10 values')
-                    bounds = [_text_int(v, 'part value') for v in vals]
-                elif block.startswith('COLLISION_BOX:'):
-                    info['collision_boxes'] += 1       # not mapped: census/overlay refuse text_collision_box
-                else:
-                    raise r.error(f'unknown /! block {block[:40]!r}')
-                continue
+    if r.peek() is not None and r.peek().upper().startswith('WEIGHTS'):
+        raise r.error('WEIGHTS: records are not supported')
+    m = max((max(abs(c) for c in v) for v in verts), default=0)
+    if m == 0:
+        raise r.error('record without a non-zero vertex (the engine returns no model)')
+    norm = [(_cdiv(v[0] << 16, m), _cdiv(v[1] << 16, m), _cdiv(v[2] << 16, m)) for v in verts]
+    table = _asin_table()
+    pts, pos, uvs, smooths, normals = [], [], [], [], []      # point attributes, parallel lists
+    shared = {}                                               # (s, position) -> [point]
+    parts, uv2_seen, negative = [], False, False
+    first = r.int('face material')
+    while first != -99:
+        if len(parts) == TEXT_LIMITS['parts']:
+            raise r.error(f'more than {TEXT_LIMITS["parts"]} parts in a record')
+        faces, mat = [], first
+        while mat != -99:
+            idx = []
+            x = r.int('face vertex')
+            while x >= 0:
+                if x >= len(verts):
+                    raise r.error(f'face vertex {x} outside 0..{len(verts) - 1}')
+                idx.append(x)
+                x = r.int('face vertex')
+            if len(idx) > TEXT_LIMITS['face_vertices']:
+                raise r.error(f'face with {len(idx)} vertices (the engine takes at most 4)')
+            bits = -x
+            smooth, uv, uv2 = 0, [(0, 0)] * len(idx), None
+            if len(idx) > 2:
+                if bits & FACE_SMOOTH:
+                    smooth = r.int('smoothing group', (I32[0], U32[1])) & 0xffffffff
+                if bits & FACE_UV:
+                    uv = [(r.fixed('u'), r.fixed('v')) for _ in idx]
+                if bits & FACE_UV2:
+                    uv2 = [(r.fixed('u2'), r.fixed('v2')) for _ in idx]
+                    uv2_seen = True
+            faces.append((mat, idx, uv, uv2 or uv, bits & ~1, smooth))
+            negative |= mat < 0
+            if len(faces) >= TEXT_LIMITS['faces']:
+                raise r.error(f'{TEXT_LIMITS["faces"]} faces or more in a part')
             mat = r.int('face material')
-            if mat == -99:
-                pflags = r.bits('part flags')
-                break
-            abc = (r.int('face vertex'), r.int('face vertex'), r.int('face vertex'))
-            for vi in abc:
-                if not 0 <= vi < len(verts):
-                    raise r.error(f'face vertex {vi} outside 0..{len(verts) - 1}')
-            fflag = r.int('face flags')
-            if fflag >= 0 or not -fflag & FACE_BASE or -fflag & ~(FACE_BASE | FACE_UV | FACE_SMOOTH):
-                raise r.error(f'unsupported face flags {fflag}')
-            bits = -fflag
-            smooth = r.int('smoothing group', (I32[0], U32[1])) if bits & FACE_SMOOTH else 0
-            uvs = [(r.num('u'), r.num('v')) for _ in range(3)] if bits & FACE_UV else None
-            block = r.peek_magic()
-            normals = _read_text_normals(r.magic_field()) if block is not None and block.strip().startswith('N:') else None
-            f = {'mat': mat, 'abc': abc, 'smooth': smooth & 0xffffffff, 'uvs': uvs, 'normals': normals}
-            if normals is None and f['smooth']:
-                info['inferred_normals'] += 1           # smoothed normal derived by _face_normals (no twin)
-            raw.append(f)
-            part['faces'].append(f)
-        part['flags'] = pflags
-        part['bounds'] = bounds
-        parts.append(part)
-    if any(f['normals'] is None for f in raw):
-        _face_normals(verts, raw)
-    # Points of the compiled twins: one point per distinct (vertex, uv, smoothing group) corner,
-    # plus the normal when the group is 0 (flat faces), in order of first use over the faces of
-    # every part of the record; a smoothed point takes the normal of its first corner.
-    points, index, out = [], {}, []
-    for part in parts:
+        pflags = r.bits('part flags')
+        if pflags & 4:
+            raise r.error('part flag 4 (pivot vertex) cannot be written to BOB1')
         groups, order = {}, []
-        for f in part['faces']:
-            face = []
-            for k, vi in enumerate(f['abc']):
-                pflags = 0x19
-                vals = list(pos[vi])
-                if f['uvs']:
-                    pflags |= 2
-                    vals += [_fixed(f['uvs'][k][0]), _fixed(f['uvs'][k][1])]
-                n = tuple(_fixed(c) for c in f['normals'][k])
-                key = (vi, pflags, tuple(vals[3:]), f['smooth'], n if not f['smooth'] else None)
-                j = index.get(key)
+        for mat, idx, uv, uv2, word, smooth in faces:
+            corner = []
+            for k, vi in enumerate(idx):
+                u, v = uv[k]
+                if pflags & 2:
+                    u, v = u & 0xffff, v & 0xffff
+                u2, v2 = uv2[k]
+                p = norm[vi]
+                j = None
+                if smooth:
+                    for c in shared.get((smooth, p), ()):
+                        pu, pv, pu2, pv2 = uvs[c]
+                        if abs(pu - u) < 2 and abs(pv - v) < 2 and abs(pu2 - u2) < 2 and abs(pv2 - v2) < 2:
+                            j = c
+                            break
                 if j is None:
-                    j = index[key] = len(points)
-                    points.append((pflags,) + tuple(vals) + n + (f['smooth'],))
-                face.append(j)
-            if f['mat'] not in groups:
-                groups[f['mat']] = []
-                order.append(f['mat'])
-            groups[f['mat']].append((face[0], face[1], face[2], 1))
-        new = {'flags': part['flags'] & ~PART_PRECOMPUTED,
-               'groups': [{'material': m, 'faces': groups[m]} for m in order]}
-        if part['bounds'] is not None:
-            new['flags'] |= PART_PRECOMPUTED
-            new['bounds'] = part['bounds']
-            for g in new['groups']:
-                g['extra'] = []
-        out.append(new)
-    return {'value': value, 'flags': flags, 'points': points, 'parts': out}
+                    j = len(pos)
+                    pos.append(p); uvs.append((u, v, u2, v2)); smooths.append(smooth); normals.append([0, 0, 0])
+                    if smooth:
+                        shared.setdefault((smooth, p), []).append(j)
+                corner.append(j)
+            if mat not in groups:
+                groups[mat] = []
+                order.append(mat)
+            for t in range(2, len(corner)):
+                tri = (corner[0], corner[t - 1], corner[t])
+                groups[mat].append(tri + (word,))
+                a, b, c = pos[tri[0]], pos[tri[1]], pos[tri[2]]
+                bx, by, bz = b[0] - a[0], b[1] - a[1], b[2] - a[2]
+                cx, cy, cz = c[0] - a[0], c[1] - a[1], c[2] - a[2]
+                n = _normalise(_fm(by, cz) - _fm(bz, cy), _fm(bz, cx) - _fm(bx, cz), _fm(bx, cy) - _fm(by, cx))
+                if smooth == 0:
+                    for i in tri:
+                        normals[i] = list(n)
+                else:
+                    for p_, q_, r_ in ((tri[0], tri[1], tri[2]), (tri[1], tri[2], tri[0]), (tri[2], tri[0], tri[1])):
+                        w = _corner_weight(pos[p_], pos[q_], pos[r_], table)
+                        acc = normals[p_]
+                        normals[p_] = [_i32(acc[k] + _fm(n[k], w)) for k in range(3)]
+        parts.append({'flags': pflags, 'groups': [{'material': m_, 'faces': groups[m_]} for m_ in order]})
+        first = r.int('face material')
+    lodflags = r.bits('body flags') | (1 if negative else 0) | (0x20 if uv2_seen else 0)
+    pflag = 0x1f if uv2_seen else 0x1b
+    points = []
+    for p, (u, v, u2, v2), s, n in zip(pos, uvs, smooths, normals):
+        n = _normalise(*n)
+        points.append((pflag,) + p + ((u, v, u2, v2) if uv2_seen else (u, v)) + n + (s,))
+    return {'value': value, 'flags': lodflags, 'points': points, 'parts': parts}
 
 
 def parse_text(data):
-    """Parse a decoded text body (.bod/.pbd) into the tree parse_binary returns, so serialise()
-    writes the compiled BOB1 form. Raises FormatError on anything outside the established
-    grammar (body-format-bob1.md section 8); a text scene is refused. The tree also carries
-    'text': {'inferred_normals': faces with a smoothing group and no N: block (normal derived,
-    rule not validated by a twin), 'collision_boxes': COLLISION_BOX blocks (read, not mapped)};
-    serialise() ignores it."""
+    """Parse a decoded text body (.bod/.pbd) the way the engine's text loader 0x00483f20 does and
+    return the tree parse_binary returns, so serialise() writes a BOB1 body that loads into the
+    same model (body-format-bob1.md section 8, body-text-loader.md): /! blocks ignored, each
+    record normalised to max |coordinate| 65536 with truncation, 16.16 values truncated, points
+    and normals built by the engine rule, face word = flags & ~1, no tangent records, effect
+    parameters as written. Raises FormatError on anything outside that grammar, on MATERIAL3
+    and MATERIAL (global-material bodies) and on a text scene."""
     if text_kind(data) == 'scene':
         raise FormatError('text scene (VER:/P lines), not a body')
     r = TextReader(data)
     sections, mats, mat_tag = [], [], None
-    while not r.done() and r.peek().startswith('MATERIAL'):
+    while not r.done() and r.peek().upper().startswith('MATERIAL'):
         key, _, first = r.next().partition(':')
         key = key.strip().upper()
-        if key not in TEXT_MATERIALS:
-            raise r.error(f'unsupported material record {key!r}')
-        tag = TEXT_MATERIALS[key]
+        tag = TEXT_MATERIALS.get(key)
         if mat_tag not in (None, tag):
-            raise r.error(f'mixed material records {mat_tag} and {tag}')
+            raise r.error(f'mixed material records {mat_tag} and {key}')
+        mat = _read_text_material(r, key, first.strip())
         mat_tag = tag
-        mats.append(_read_text_material(r, key, first.strip()))
+        mats.append(mat)
+        if len(mats) > TEXT_LIMITS['materials']:
+            raise r.error(f'more than {TEXT_LIMITS["materials"]} materials')
     if r.info is not None:
         sections.append(('INFO', r.info.encode('latin1')))
     if mat_tag:
         sections.append((mat_tag, mats))
-    ladder, info = [], {'inferred_normals': 0, 'collision_boxes': 0}
+    ladder = []
     while not r.done():
-        ladder.append(_read_text_lod(r, r.int('body size'), info))
+        ladder.append(_read_text_lod(r, r.int('body size')))
     if not ladder:
         raise FormatError('text body has no body record')
     if len(ladder) > 0xffff:
         raise FormatError('too many LOD records')
     sections.append(('BODY', ladder))
-    return {'sections': sections, 'text': info}
+    return {'sections': sections}
 
 
 def lods(tree):

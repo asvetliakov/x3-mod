@@ -1,11 +1,11 @@
 batch: game /private/tmp/claude-501/-Users-asvetl-x3-mod/ec1d2a17-c1f5-4762-8f3d-98edd98ef126/scratchpad/textbody/modroot; display 1920x1080 -> reference width 1800; rule ships T_pad = min(200, max(80, 2.5 x T_1)), stations/others 150; source record 0, compact (T_1 guard waived: 0 bodies); atlas sizes [1024, 2048], dxt, specular on
-bodies enumerated 5 (--only verification/results/lod-overlay-batch/text-bodies/only_text.txt): station 3, ship 2; eligible 0; built 0 + reused 0 = 0 overlay bodies
-refused by reason (a body counts once per reason): text_no_tangents 5, text_collision_box 3, text_normals_inferred 2
+bodies enumerated 5 (--only verification/results/lod-overlay-batch/text-bodies/only_text.txt): station 3, ship 2; eligible 5; built 5 + reused 0 = 5 overlay bodies
+refused by reason (a body counts once per reason): none
 filtered: none
-atlas sizes {}; atlas bytes 0.00 MB (stored, gzip DDS); body members 0.00 MB; dat bytes 0
-texels per px at 1800 wide: below 1.0 0, below 2.0 0, of 0 built; refused texel_floor (< 0.5) 0
-draws below T_pad per instance, summed over the overlay bodies: 0 -> 0 (drawn groups of record 0 -> of C, hidden parts excluded, alpha groups included); bodies with one atlas material per effect (0): ; second UV set passed through (0): ; stray trailing bytes tolerated: 0
-timing: census 1.5 s, baking 0.1 s for 0 bodies with 2 jobs (0.00 s per body wall); extrapolated full set: 0 s (this run x 5 enumerated / 0 built; upper bound, every candidate baked); total 1.6 s
+atlas sizes {1024: 3, 2048: 2}; atlas bytes 11.21 MB (stored, gzip DDS); body members 0.85 MB; dat bytes 12060822
+texels per px at 1800 wide: below 1.0 1 (stations/others/HQexitramp), below 2.0 2, of 5 built; refused texel_floor (< 0.5) 0
+draws below T_pad per instance, summed over the overlay bodies: 41 -> 7 (drawn groups of record 0 -> of C, hidden parts excluded, alpha groups included); bodies with one atlas material per effect (0): ; second UV set passed through (0): ; stray trailing bytes tolerated: 0
+timing: census 1.7 s, baking 12.9 s for 5 bodies with 2 jobs (2.59 s per body wall); extrapolated full set: 13 s (this run x 5 enumerated / 5 built; upper bound, every candidate baked); total 14.7 s
 target addon/13.cat + .dat
 == run255_burst2 (verification/results/run255-census/node_census_out.txt frame 14286): 20 bodies drawn
     62 draws objects/ships/argon/argon_tl (no binary body in the catalogues)

@@ -25,7 +25,7 @@ import lod_overlay
 import numpy as np
 from inspect_x3 import read_catalogue
 from sector_fog_census import unpack, write_catalogue
-from test_bob1 import atlas_textures, atlas_tree_lod0, first_use, no_bump, text_body
+from test_bob1 import atlas_textures, atlas_tree_lod0, text_body
 
 
 def packed(tree, trailing=b''):
@@ -90,8 +90,7 @@ def make_game(folder):
     write_catalogue(game / '02.cat', [
         ('objects/ships/x/good.pbb', packed(atlas_tree_lod0())),
         ('objects/ships/x/bobby.bob', body),                                   # unpacked .bob member
-        ('objects/ships/x/text.pbd', gzip.compress(text_body(no_bump(atlas_tree_lod0())), mtime=0)),   # packed text body
-        ('objects/ships/x/bumptext.pbd', gzip.compress(text_body(atlas_tree_lod0()), mtime=0)),   # bump map: refused
+        ('objects/ships/x/text.pbd', gzip.compress(text_body(atlas_tree_lod0()), mtime=0)),   # packed text body
         ('objects/ships/x/badtext.pbd', b'BODY 0\n'),                         # text outside the grammar
         ('objects/ships/x/scene.pbd', b'VER: 3;\nP 0; B ships\\x\\good; b\n'),      # text scene: skipped
         ('objects/ships/x/amb.pbb', packed(atlas_tree_lod0())),
@@ -133,7 +132,7 @@ class Enumeration(unittest.TestCase):
             rows, skipped = census.run(game, opts, include_text=True)
         by = {r['name']: r for r in rows}
         self.assertEqual(skipped, [])
-        self.assertEqual(sorted(by), ['ships/x/amb', 'ships/x/badtext', 'ships/x/bobby', 'ships/x/bumptext',
+        self.assertEqual(sorted(by), ['ships/x/amb', 'ships/x/badtext', 'ships/x/bobby',
                                       'ships/x/good', 'ships/x/jpg',
                                       'ships/x/mixed', 'ships/x/modship', 'ships/x/oob', 'ships/x/text',
                                       'ships/x/trail2', 'ships/x/trail9', 'ships/x/uv', 'ships/x/uvbad',
@@ -145,7 +144,6 @@ class Enumeration(unittest.TestCase):
                          {k: by['ships/x/good'][k] for k in ('r0_drawn', 'c_drawn', 'mat', 'lods')})
         self.assertIn(' text ', census.format_row(by['ships/x/text']))
         self.assertEqual(by['ships/x/badtext']['refuse'], ['text_parse_error'])
-        self.assertEqual(by['ships/x/bumptext']['refuse'], ['text_no_tangents'])
         self.assertEqual(by['ships/x/amb']['refuse'], ['ambiguous_body_ext'])
         self.assertEqual((by['ships/x/trail2']['trailing'], by['ships/x/trail2']['eligible']), (2, True))
         self.assertEqual(by['ships/x/trail9']['refuse'], ['trailing_bytes'])
@@ -177,12 +175,11 @@ class Enumeration(unittest.TestCase):
                 lod_overlay.plan_body(assets, 'ships/x/oob', 8, 'compact', collapse='two', source_record=0)
             with self.assertRaisesRegex(SystemExit, 'text_parse_error'):
                 lod_overlay.plan_body(assets, 'ships/x/badtext', 8, 'compact', collapse='two')
-            with self.assertRaisesRegex(SystemExit, 'text_no_tangents'):
-                lod_overlay.plan_body(assets, 'ships/x/bumptext', 8, 'compact', collapse='two', source_record=0)
             t = lod_overlay.plan_body(assets, 'ships/x/text', 8, 'compact', collapse='two', source_record=0)
             self.assertEqual((t['member'], t['source_member']), ('objects/ships/x/text.pbb', 'objects/ships/x/text.pbd'))
             written = bob1.parse(unpack(t['stored']))                          # gzip-packed BOB1 under the .pbb name
-            self.assertEqual(bob1.lods(written)[0], bob1.lods(first_use(atlas_tree_lod0()))[0])
+            self.assertEqual(bob1.lods(written)[0], bob1.lods(bob1.parse(text_body(atlas_tree_lod0())))[0])
+            self.assertNotIn('extra', bob1.lods(written)[0]['parts'][0]['groups'][0])   # no tangent records, as in vanilla
             self.assertEqual(lod_overlay.body_manifest(dict(t, members=[]))['source_member'], 'objects/ships/x/text.pbd')
             good = lod_overlay.plan_body(assets, 'stations/y/good', 8, 'compact', collapse='two', source_record=0)
             self.assertTrue(good['guard_waived'])                              # T_1 160 > T_pad 8, source record 0
@@ -214,10 +211,10 @@ class BatchRun(unittest.TestCase):
             record = json.loads((out / 'x3m-lod-batch.json').read_text())
             by = {b['name']: b for b in record['bodies']}
             self.assertEqual(record['settings']['screen_width'], 1800)                # 1080 * 1280 / 768
-            self.assertEqual((record['slot'], record['retired_slot'], record['counts']['enumerated']), (2, None, 15))
+            self.assertEqual((record['slot'], record['retired_slot'], record['counts']['enumerated']), (2, None, 14))
             self.assertEqual(record['counts']['overlay_bodies'], 9)
             self.assertEqual(record['refused'], {'ambiguous_body_ext': 1, 'material_outside_table': 1,
-                                                 'occlusion_mismatch': 1, 'text_no_tangents': 1, 'text_parse_error': 1,
+                                                 'occlusion_mismatch': 1, 'text_parse_error': 1,
                                                  'trailing_bytes': 1})
             self.assertFalse(record['binary_only'])
             self.assertEqual(by['ships/x/text']['member'], '02.cat:objects/ships/x/text.pbd')   # census source member
@@ -234,7 +231,7 @@ class BatchRun(unittest.TestCase):
             bodies = (out / 'x3m-lod-batch-bodies.txt').read_text()
             self.assertIn('compact guard waived', bodies)
             self.assertIn('non-dds sources diffuse=01.cat:tex/j_diff.jpg', bodies)
-            self.assertIn('bodies enumerated 15', text)
+            self.assertIn('bodies enumerated 14', text)
             self.assertIn('dry run: nothing written', text)
             only = Path(folder) / 'only.txt'
             only.write_text('ships/x/good=80@0\nships/x/text\n')
@@ -248,8 +245,8 @@ class BatchRun(unittest.TestCase):
                                       '--record', str(Path(folder) / 'b.json')])
             record = json.loads((Path(folder) / 'b.json').read_text())
             self.assertEqual((record['binary_only'], record['counts']['enumerated'], record['counts']['overlay_bodies']),
-                             (True, 12, 8))                                   # text, badtext, bumptext left out
-            self.assertNotIn('text_no_tangents', record['refused'])
+                             (True, 12, 8))                                   # text, badtext left out
+            self.assertNotIn('text_parse_error', record['refused'])
 
     @unittest.mock.patch.object(lod_overlay, 'running_game', return_value=[])
     def test_write_markers_sync_and_retire(self, _running):

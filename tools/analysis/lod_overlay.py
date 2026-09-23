@@ -186,12 +186,11 @@ the Low..High band T_pad*f <= s < T_1*f (where the guard would otherwise refuse)
 the guard stays for decimated sources (a coarser source record). A text winner (.pbd/.bod) is
 compiled by bob1.parse_text and written as the binary member of the same stem (.pbb/.bob; the
 overlay slot is the highest catalogue and binary beats text inside a layer); the marker records
-its source_member; --binary-only leaves text bodies out. Until the engine text loader 0x00483f20
-is traced a text body is refused as text_no_tangents (a used material names a t_BumpTexture;
-the compile writes no tangent records), text_normals_inferred (a smoothed face without an N:
-block) or text_collision_box (a COLLISION_BOX block, not mapped). Refusal reasons:
-text_parse_error (a text body outside the established grammar, body-format-bob1.md section 8),
-ambiguous_body_ext (both a binary and a text member), trailing_bytes
+its source_member; --binary-only leaves text bodies out. parse_text follows the engine's text
+loader 0x00483f20 (body-text-loader.md), so the member loads into the model the game builds from
+the text: engine normals, per-record position scale, no tangent records (a bump-mapped text body
+draws with a zero tangent basis in vanilla too). Refusal reasons: text_parse_error (a text body
+outside that grammar; a MATERIAL3 text body is mat3), ambiguous_body_ext (both a binary and a text member), trailing_bytes
 (more than MAX_TRAILING stray bytes after /BOB; up to MAX_TRAILING are tolerated with a
 warning, the parser 0x00481aa0 returns at /BOB and never reads them), material_outside_table
 (a negative group material index, the ad signs), occlusion_mismatch (second UV set with
@@ -256,25 +255,6 @@ from sector_fog_census import Assets, unpack, write_catalogue  # noqa: E402
 MARKER_SUFFIX = '.x3m-lod.json'
 REPLACED_SUFFIX = '.x3m-replaced'
 TEXT_BODY_EXTENSIONS = ('.pbd', '.bod')     # text bodies: compiled with bob1.parse_text, written as .pbb/.bob
-NULL_TEXTURES = (b'', b'null')
-
-
-def text_refusals(tree):
-    """Reasons a compiled text body is not overlaid while the engine's text loader 0x00483f20 is
-    untraced (the overlay replaces every record of the body with this compile):
-    text_no_tangents   a material a group uses names a t_BumpTexture: the compile writes no
-                       per-group tangent records (the game's compiles do);
-    text_normals_inferred  a face with a smoothing group and no N: block: its normal is derived
-                       by a rule no compiled twin validates;
-    text_collision_box a COLLISION_BOX block: read but not mapped to the model."""
-    info = tree.get('text', {})
-    mats = bob1.materials(tree)
-    used = {g['material'] for lod in bob1.lods(tree) for p in lod['parts'] for g in p['groups']}
-    bump = any(n.lower() == b't_bumptexture' and t == 8 and v.strip().lower() not in NULL_TEXTURES
-               for i in used if 0 <= i < len(mats) for n, t, v in mats[i].get('params', ()))
-    return ((['text_no_tangents'] if bump else [])
-            + (['text_normals_inferred'] if info.get('inferred_normals') else [])
-            + (['text_collision_box'] if info.get('collision_boxes') else []))
 
 
 def text_compiles(tree):
@@ -283,6 +263,8 @@ def text_compiles(tree):
         return bob1.parse_binary(bob1.serialise(tree))['sections'] == tree['sections']
     except (bob1.FormatError, struct.error, OverflowError):
         return False
+
+
 MAX_TRAILING = 8            # stray bytes after /BOB tolerated with a warning (86 of 94 failing mod bodies carry 1-2)
 DISPLAY = (1920, 1080)
 REFERENCE = (1280, 768)     # lod-selection.md reference frame of the threshold metric
@@ -766,10 +748,6 @@ def plan_body(assets, name, threshold, placement=None, force_threshold=False, co
             tree = bob1.parse_text(data)
         except bob1.FormatError as exc:
             raise SystemExit(f'{name}: text_parse_error: {exc}') from None
-        reasons = text_refusals(tree)
-        if reasons:
-            raise SystemExit(f'{name}: {", ".join(reasons)}: text body refused until the engine text loader'
-                             ' 0x00483f20 is traced (lod_overlay.text_refusals)')
         member = entry['path'][:-4] + {'.pbd': '.pbb', '.bod': '.bob'}[entry['path'][-4:].lower()]
         if not text_compiles(tree):
             raise SystemExit(f'{name}: text_parse_error: the compiled text body does not serialise and parse back')
@@ -1455,8 +1433,6 @@ def _bake_work(row):
 
 
 BAKE_REASONS = (('texel_floor', 'texel_floor'), ('trailing bytes', 'trailing_bytes'), ('text_parse_error', 'text_parse_error'),
-                ('text_no_tangents', 'text_no_tangents'), ('text_normals_inferred', 'text_normals_inferred'),
-                ('text_collision_box', 'text_collision_box'),
                 ('writer does not reproduce', 'writer_mismatch'), ('MAT3 body', 'mat3'),
                 ('outside the material table', 'material_outside_table'), ('loose file', 'loose_winner'),
                 ('already exists in', 'atlas_name_taken'), ('references', 'group_too_large'),
