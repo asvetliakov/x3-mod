@@ -148,3 +148,71 @@ about 1.5 ms above Run 274 (possibly a different fogged sector; open). The final
 `gpu_sync_timing_summary` rows are again missing at shutdown (open). Consequences for the plan: TAA → merge or
 cheapen the mask passes before touching the history filter; fog → step B (far bins) and step C (quarter-resolution
 march, the repair fraction is tiny) are the levers.
+
+## GPU backend A/B fixture (2026-09-24, bottle X3)
+
+Question: does the same GPU work cost less on D3D11 (DXMT over Metal) than on D3D9 (Wine 11.15
+wined3d; no `renderer` value under `HKCU\Software\Wine\Direct3D`, so its default OpenGL backend)?
+Input to the revised ratification of [d3d9-to-d3d11-translation.md](../architecture/d3d9-to-d3d11-translation.md).
+
+- Fixture `verification/probe/gpu_backend_ab_fixture.cpp` (CMake target `gpu_backend_ab_fixture`,
+  MinGW i686, SSE2, four-byte incoming stack), runner `verification/probe/run_gpu_backend_ab.py`,
+  host test `verification/analysis/test_gpu_backend_ab.py` (4 tests OK, measured). Command:
+  `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_gpu_backend_ab.py`;
+  exit 0, 25/25 checks, 18.3 s, exe `218ff4486374…` (measured). Bottle X3, WineArch arm64,
+  `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`; modules d3d9 Wine 11.15 builtin (wined3d),
+  d3d11/dxgi DXMT (winemetal), d3dcompiler_47 Wine 11.15 (vkd3d). Summary
+  `verification/results/bottle-X3/gpu-backend-ab/summary.json`; tables printed by
+  `python3 verification/results/bottle-X3/gpu-backend-ab/table.py`; raw `fixture.txt` stays local.
+- Workloads, same vertex data and HLSL on both APIs (vs_3_0/ps_3_0 and vs_4_0/ps_4_0): a full-screen
+  pass (4 bilinear taps of an FP16 source, 3x3 ALU loop) into A16B16G16R16F; a 460-draw scene
+  (1,012 triangles per draw from 16 VB+IB INDEX16 meshes, D3D9 MANAGED / D3D11 IMMUTABLE, 4 rotated
+  A8R8G8B8 mip-mapped textures, X8R8G8B8 + D24S8, depth on, alpha test one draw in five, per draw
+  32 SetRenderState + 27 SetSamplerState with 1.30 value changes, 4.5 SetTexture, VS/PS, 47 + 36
+  float4 constants; D3D11 side as a translator issues it: shadow compare, pre-created state objects
+  on change, one cbuffer `Map` WRITE_DISCARD per draw, a `clip()` ps variant for alpha test); the
+  same scene at 2 triangles per draw (`scene_460_cpu`, submission only).
+- Pixel work (measured): the pass covers 100.00 % of the target (cleared to zero first) with channel
+  means 0.69/0.61/0.72 at both sizes, identical on both APIs. The scene covers 97.4 % (1920x1080)
+  and 97.3 % (5120x1440); the 460 quads rasterise 4.52 screens (from the geometry), and 2.11 / 2.09
+  screens of samples pass depth and alpha test (occlusion query, same on both APIs within 0.02 %).
+  The runner now refuses a readback below absolute floors (pass coverage 0.999, scene 0.9) as well
+  as a disagreement above 5 % between the APIs.
+- Timing: per iteration, event bracket (CPU time, work, event query, spin; D3D11 `End` + `Flush`)
+  with a D3D11 timestamp-disjoint pair around the same work, 30 warm-up + 300 measured, medians;
+  then **pipelined**: the same work 300 times back to back with a Present-like flush per iteration
+  and one drain, total / 300 (throughput with no idle gaps). D3D9 timestamps are refused
+  (`CreateQuery` TIMESTAMP / TIMESTAMPDISJOINT / TIMESTAMPFREQ = `D3DERR_NOTAVAILABLE`), so D3D9
+  has no GPU-only figure. Empty bracket 14.8 us D3D9, 19.6 us D3D11.
+
+Medians in us, all measured (p90 in `summary.json`):
+
+| workload | size | D3D9 event | D3D11 event | D3D11 timestamp | event ratio D3D9/D3D11 | D3D9 submit | D3D11 submit | submit ratio | pipelined D3D9 / D3D11 | pipelined ratio |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| full-screen pass | 1920x1080 | 526.4 | 419.7 | 356.0 | 1.25 | 1.6 | 2.3 | 0.70 | 128.8 / 127.0 | 1.01 |
+| full-screen pass | 5120x1440 | 655.0 | 585.6 | 521.9 | 1.12 | 1.8 | 2.4 | 0.75 | 465.8 / 416.3 | 1.12 |
+| scene, 460 draws | 1920x1080 | 3,691.9 | 1,276.6 | 1,215.4 | 2.89 | 871.5 | 154.6 | 5.64 | 2,204.8 / 358.6 | 6.15 |
+| scene, 460 draws | 5120x1440 | 4,708.4 | 1,145.4 | 1,083.0 | 4.11 | 866.4 | 162.0 | 5.35 | 2,213.1 / 377.6 | 5.86 |
+| scene, 2 triangles per draw | 1920x1080 | 2,673.0 | 711.2 | 655.0 | 3.76 | 873.7 | 161.9 | 5.40 | 2,127.2 / 334.8 | 6.35 |
+
+Reading:
+- Fill-bound GPU work costs about the same on both backends: the pipelined full-screen pass differs
+  by 1.4 % at 1920x1080 and 12 % at 5120x1440 (the previous run: 1.5 % and 5 %) (measured). The
+  single-pass event brackets (1.25x, 1.12x) carry a fixed per-bracket cost the pipelined run does not
+  have (the D3D11 timestamp span of one pass is 356 us against 127 us of throughput; inferred: GPU
+  wake-up after each drain).
+- The scene is not GPU-bound on either backend. D3D9 pipelined is 2.13-2.21 ms per frame at both
+  sizes and with 2 triangles per draw, so the wined3d/OpenGL submission path (about 4.8 us per draw
+  end to end) is the limit; D3D11 is 0.33-0.38 ms (measured). The submitting thread spends 0.87 ms on
+  D3D9 and 0.15-0.16 ms on the translator-shaped D3D11 sequence (measured); the rest of the D3D9 frame
+  runs on wined3d's CS thread, which the fixture cannot time in-process (Wine's `GetProcessTimes`
+  equals `GetThreadTimes` and ticks at 10 ms; raw values only in `fixture.txt`).
+- The D3D11 event and timestamp brackets agree within 10 % for the scene (5.0-8.6 %) but not for
+  the 1080p pass (18 %; 12 % at 5120x1440; 12 % and 8 % net of the empty bracket) (measured). Both
+  include DXMT's encode-to-GPU latency: the scene timestamp span (1,215 us) is 3.4x the pipelined
+  frame (359 us), so DXMT timestamps are latency spans, not GPU busy time (inferred).
+- Run-to-run spread over three runs of the same workloads (measured): D3D11 scene event at
+  1920x1080 1,282 / 977 / 1,277 us, so the 1080p event ratio ranges 2.9-3.8x; at 5120x1440 it
+  ranges 2.5-4.1x; the pipelined scene ratio 5.6-6.2x and the submit ratio 5.2-5.6x are stable.
+- Not measured: the game's own frame (this replays the census pattern, not the engine), a real
+  translator's per-call cost beyond the shadow compare and `Map`, native Windows.

@@ -1,0 +1,573 @@
+{
+ "passed": true,
+ "game_launched": false,
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "sources": {
+  "verification/probe/gpu_backend_ab_fixture.cpp": "6ed36485e5eeaef7510f7b44f65b2953e011fa20fc0fb6e62463aaa49460b1e4",
+  "verification/probe/run_gpu_backend_ab.py": "98cdeed871cc85e1e1c2727600de1eaa26d9ad6c56d9177e9d7685f36752cd8a"
+ },
+ "executable_sha256": "218ff4486374e8b4b12a73dff0012c6d0d88216a296ded86ccf87b22124cc837",
+ "dll_overrides": "d3d9=b",
+ "frames": 300,
+ "warmup": 30,
+ "command_line": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_gpu_backend_ab.py",
+ "method": "per iteration: CPU time, work (submit ends), event query (D3D11 End+Flush), spin GetData (D3D9 FLUSH); timestamp-disjoint pair around the same work; 30 warm-up + 300 measured; medians and p90. pipelined: the same work 300 times back to back with a Present-like flush per iteration (D3D9 event Issue + one GetData FLUSH poll, D3D11 Flush) and one drain; total / 300",
+ "elapsed_s": 18.3,
+ "exit_code": 0,
+ "killed": null,
+ "renderer_registry": {
+  "key_open": 0,
+  "renderer": "absent"
+ },
+ "modules": [
+  {
+   "name": "d3d9.dll",
+   "loaded": 1,
+   "path": "C:\\windows\\system32\\d3d9.dll",
+   "image_size": 180224,
+   "version": "5.3.1.904",
+   "product": "Wine_11.15",
+   "builtin": 1,
+   "markers": "wined3d"
+  },
+  {
+   "name": "d3d11.dll",
+   "loaded": 1,
+   "path": "C:\\windows\\system32\\d3d11.dll",
+   "image_size": 3170304,
+   "version": "10.0.17763.1",
+   "product": "DXMT",
+   "builtin": 1,
+   "markers": "DXMT,winemetal"
+  },
+  {
+   "name": "dxgi.dll",
+   "loaded": 1,
+   "path": "C:\\windows\\system32\\DXGI.DLL",
+   "image_size": 1060864,
+   "version": "10.0.17763.1",
+   "product": "DXMT",
+   "builtin": 1,
+   "markers": "DXMT,winemetal"
+  },
+  {
+   "name": "d3dcompiler_47.dll",
+   "loaded": 1,
+   "path": "C:\\windows\\system32\\d3dcompiler_47.dll",
+   "image_size": 184320,
+   "version": "6.3.9600.16984",
+   "product": "Wine_11.15",
+   "builtin": 1,
+   "markers": "wined3d,vkd3d"
+  }
+ ],
+ "devices": [
+  {
+   "api": "d3d9",
+   "hr": "00000000",
+   "adapter": "NVIDIA_GeForce_8800_GTX",
+   "driver": "nvd3dum.dll",
+   "vendor": "10de",
+   "device": 191
+  },
+  {
+   "api": "d3d11",
+   "hr": "00000000",
+   "feature_level": "b100"
+  }
+ ],
+ "adapter": {
+  "api": "d3d11",
+  "description": "Apple_M5_Pro",
+  "vendor": "106b",
+  "device": 0
+ },
+ "queries": [
+  {
+   "api": "d3d9",
+   "event": 1,
+   "timestamp_disjoint_hr": "8876086a",
+   "timestamp_hr": "8876086a",
+   "timestamp_freq_hr": "8876086a",
+   "timestamps": 0
+  },
+  {
+   "api": "d3d11",
+   "event": 1,
+   "timestamp_disjoint_hr": "00000000",
+   "timestamp_hr": "00000000",
+   "timestamps": 1
+  }
+ ],
+ "formats": [
+  {
+   "api": "d3d9",
+   "name": "A16B16G16R16F",
+   "render_target_hr": "00000000",
+   "filter_hr": "00000000"
+  },
+  {
+   "api": "d3d9",
+   "name": "X8R8G8B8",
+   "render_target_hr": "00000000",
+   "filter_hr": "00000000"
+  },
+  {
+   "api": "d3d11",
+   "name": "R16G16B16A16_FLOAT",
+   "hr": "00000000",
+   "render_target": 1,
+   "sample": 1,
+   "depth_stencil": 0
+  },
+  {
+   "api": "d3d11",
+   "name": "B8G8R8X8_UNORM",
+   "hr": "00000000",
+   "render_target": 1,
+   "sample": 1,
+   "depth_stencil": 0
+  },
+  {
+   "api": "d3d11",
+   "name": "B8G8R8A8_UNORM",
+   "hr": "00000000",
+   "render_target": 1,
+   "sample": 1,
+   "depth_stencil": 0
+  },
+  {
+   "api": "d3d11",
+   "name": "D24_UNORM_S8_UINT",
+   "hr": "00000000",
+   "render_target": 0,
+   "sample": 1,
+   "depth_stencil": 1
+  }
+ ],
+ "notes": [],
+ "scene": {
+  "draws": 460,
+  "triangles_per_draw": 1012,
+  "meshes": 16,
+  "textures": 4,
+  "state_calls_per_draw": 59,
+  "value_changes_per_draw": 1.3,
+  "set_texture_per_draw": 4.5,
+  "vs_constants": 47,
+  "ps_constants": 36,
+  "alpha_test_draws": 92,
+  "raster_overdraw": 4.523
+ },
+ "shaders": [
+  {
+   "name": "post_vs3",
+   "target": "vs_3_0",
+   "hr": "00000000",
+   "bytes": 252
+  },
+  {
+   "name": "fill_ps3",
+   "target": "ps_3_0",
+   "hr": "00000000",
+   "bytes": 428
+  },
+  {
+   "name": "post_ps3",
+   "target": "ps_3_0",
+   "hr": "00000000",
+   "bytes": 2316
+  },
+  {
+   "name": "scene_vs3",
+   "target": "vs_3_0",
+   "hr": "00000000",
+   "bytes": 580
+  },
+  {
+   "name": "scene_ps3",
+   "target": "ps_3_0",
+   "hr": "00000000",
+   "bytes": 344
+  },
+  {
+   "name": "post_vs4",
+   "target": "vs_4_0",
+   "hr": "00000000",
+   "bytes": 800
+  },
+  {
+   "name": "fill_ps4",
+   "target": "ps_4_0",
+   "hr": "00000000",
+   "bytes": 1012
+  },
+  {
+   "name": "post_ps4",
+   "target": "ps_4_0",
+   "hr": "00000000",
+   "bytes": 3872
+  },
+  {
+   "name": "scene_vs4",
+   "target": "vs_4_0",
+   "hr": "00000000",
+   "bytes": 1424
+  },
+  {
+   "name": "scene_ps4",
+   "target": "ps_4_0",
+   "hr": "00000000",
+   "bytes": 1064
+  },
+  {
+   "name": "scene_alpha_ps4",
+   "target": "ps_4_0",
+   "hr": "00000000",
+   "bytes": 1140
+  }
+ ],
+ "checks": 25,
+ "failed_checks": [],
+ "result": {
+  "checks": 25,
+  "failures": 0,
+  "verdict": "PASS"
+ },
+ "empty_bracket_us": {
+  "d3d9": 14.8,
+  "d3d11": 19.6
+ },
+ "workloads": {
+  "fullscreen_pass": {
+   "1920x1080": {
+    "d3d9_event_us": 526.4,
+    "d3d9_event_p90_us": 547.7,
+    "d3d11_event_us": 419.7,
+    "d3d11_event_p90_us": 448.6,
+    "d3d11_timestamp_us": 356.0,
+    "d3d11_timestamp_p90_us": 380.0,
+    "d3d9_timestamp_us": null,
+    "d3d9_timestamp_p90_us": null,
+    "cpu_submit_us": {
+     "d3d9": 1.6,
+     "d3d11": 2.3
+    },
+    "cpu_submit_p90_us": {
+     "d3d9": 3.0,
+     "d3d11": 4.0
+    },
+    "pipelined_us": {
+     "d3d9": 128.8,
+     "d3d11": 127.0
+    },
+    "pipelined_submit_us": {
+     "d3d9": 0.7,
+     "d3d11": 114.7
+    },
+    "ratio_d3d9_over_d3d11": 1.254,
+    "ratio_pipelined": 1.014,
+    "ratio_net_of_empty_bracket": 1.279,
+    "ratio_cpu_submit": 0.696,
+    "d3d11_event_over_timestamp": 1.179,
+    "d3d11_event_net_over_timestamp": 1.124,
+    "readback": {
+     "d3d9": {
+      "coverage": 1.0,
+      "mean_r": 0.690076,
+      "mean_g": 0.608895,
+      "mean_b": 0.716813
+     },
+     "d3d11": {
+      "coverage": 1.0,
+      "mean_r": 0.690076,
+      "mean_g": 0.608895,
+      "mean_b": 0.716813
+     },
+     "relative_difference": {
+      "coverage": 0.0,
+      "mean_r": 0.0,
+      "mean_g": 0.0,
+      "mean_b": 0.0
+     }
+    },
+    "overdraw": {
+     "raster_from_geometry": null,
+     "depth_passing": {
+      "d3d9": null,
+      "d3d11": null
+     }
+    },
+    "timeouts": {
+     "d3d9": 0,
+     "d3d11": 0
+    }
+   },
+   "5120x1440": {
+    "d3d9_event_us": 655.0,
+    "d3d9_event_p90_us": 775.4,
+    "d3d11_event_us": 585.6,
+    "d3d11_event_p90_us": 608.4,
+    "d3d11_timestamp_us": 521.9,
+    "d3d11_timestamp_p90_us": 543.1,
+    "d3d9_timestamp_us": null,
+    "d3d9_timestamp_p90_us": null,
+    "cpu_submit_us": {
+     "d3d9": 1.8,
+     "d3d11": 2.4
+    },
+    "cpu_submit_p90_us": {
+     "d3d9": 6.2,
+     "d3d11": 3.5
+    },
+    "pipelined_us": {
+     "d3d9": 465.8,
+     "d3d11": 416.3
+    },
+    "pipelined_submit_us": {
+     "d3d9": 1.6,
+     "d3d11": 373.5
+    },
+    "ratio_d3d9_over_d3d11": 1.119,
+    "ratio_pipelined": 1.119,
+    "ratio_net_of_empty_bracket": 1.131,
+    "ratio_cpu_submit": 0.75,
+    "d3d11_event_over_timestamp": 1.122,
+    "d3d11_event_net_over_timestamp": 1.084,
+    "readback": {
+     "d3d9": {
+      "coverage": 1.0,
+      "mean_r": 0.688144,
+      "mean_g": 0.609906,
+      "mean_b": 0.716412
+     },
+     "d3d11": {
+      "coverage": 1.0,
+      "mean_r": 0.688144,
+      "mean_g": 0.609906,
+      "mean_b": 0.716412
+     },
+     "relative_difference": {
+      "coverage": 0.0,
+      "mean_r": 0.0,
+      "mean_g": 0.0,
+      "mean_b": 0.0
+     }
+    },
+    "overdraw": {
+     "raster_from_geometry": null,
+     "depth_passing": {
+      "d3d9": null,
+      "d3d11": null
+     }
+    },
+    "timeouts": {
+     "d3d9": 0,
+     "d3d11": 0
+    }
+   }
+  },
+  "scene_460": {
+   "1920x1080": {
+    "d3d9_event_us": 3691.9,
+    "d3d9_event_p90_us": 4152.6,
+    "d3d11_event_us": 1276.6,
+    "d3d11_event_p90_us": 1322.4,
+    "d3d11_timestamp_us": 1215.4,
+    "d3d11_timestamp_p90_us": 1253.3,
+    "d3d9_timestamp_us": null,
+    "d3d9_timestamp_p90_us": null,
+    "cpu_submit_us": {
+     "d3d9": 871.5,
+     "d3d11": 154.6
+    },
+    "cpu_submit_p90_us": {
+     "d3d9": 883.7,
+     "d3d11": 171.8
+    },
+    "pipelined_us": {
+     "d3d9": 2204.8,
+     "d3d11": 358.6
+    },
+    "pipelined_submit_us": {
+     "d3d9": 2018.6,
+     "d3d11": 323.8
+    },
+    "ratio_d3d9_over_d3d11": 2.892,
+    "ratio_pipelined": 6.148,
+    "ratio_net_of_empty_bracket": 2.925,
+    "ratio_cpu_submit": 5.637,
+    "d3d11_event_over_timestamp": 1.05,
+    "d3d11_event_net_over_timestamp": 1.034,
+    "readback": {
+     "d3d9": {
+      "coverage": 0.973909,
+      "mean_r": 0.296055,
+      "mean_g": 0.289382,
+      "mean_b": 0.297796
+     },
+     "d3d11": {
+      "coverage": 0.973976,
+      "mean_r": 0.296187,
+      "mean_g": 0.289059,
+      "mean_b": 0.29801
+     },
+     "relative_difference": {
+      "coverage": 0.0001,
+      "mean_r": 0.0004,
+      "mean_g": 0.0011,
+      "mean_b": 0.0007
+     }
+    },
+    "overdraw": {
+     "raster_from_geometry": 4.523,
+     "depth_passing": {
+      "d3d9": 2.1109,
+      "d3d11": 2.1105
+     }
+    },
+    "timeouts": {
+     "d3d9": 0,
+     "d3d11": 0
+    }
+   },
+   "5120x1440": {
+    "d3d9_event_us": 4708.4,
+    "d3d9_event_p90_us": 5029.9,
+    "d3d11_event_us": 1145.4,
+    "d3d11_event_p90_us": 1183.3,
+    "d3d11_timestamp_us": 1083.0,
+    "d3d11_timestamp_p90_us": 1116.9,
+    "d3d9_timestamp_us": null,
+    "d3d9_timestamp_p90_us": null,
+    "cpu_submit_us": {
+     "d3d9": 866.4,
+     "d3d11": 162.0
+    },
+    "cpu_submit_p90_us": {
+     "d3d9": 877.5,
+     "d3d11": 167.8
+    },
+    "pipelined_us": {
+     "d3d9": 2213.1,
+     "d3d11": 377.6
+    },
+    "pipelined_submit_us": {
+     "d3d9": 2022.3,
+     "d3d11": 341.0
+    },
+    "ratio_d3d9_over_d3d11": 4.111,
+    "ratio_pipelined": 5.861,
+    "ratio_net_of_empty_bracket": 4.169,
+    "ratio_cpu_submit": 5.348,
+    "d3d11_event_over_timestamp": 1.058,
+    "d3d11_event_net_over_timestamp": 1.04,
+    "readback": {
+     "d3d9": {
+      "coverage": 0.972895,
+      "mean_r": 0.296227,
+      "mean_g": 0.291671,
+      "mean_b": 0.299825
+     },
+     "d3d11": {
+      "coverage": 0.972968,
+      "mean_r": 0.296256,
+      "mean_g": 0.29167,
+      "mean_b": 0.299856
+     },
+     "relative_difference": {
+      "coverage": 0.0001,
+      "mean_r": 0.0001,
+      "mean_g": 0.0,
+      "mean_b": 0.0001
+     }
+    },
+    "overdraw": {
+     "raster_from_geometry": 4.523,
+     "depth_passing": {
+      "d3d9": 2.0925,
+      "d3d11": 2.0922
+     }
+    },
+    "timeouts": {
+     "d3d9": 0,
+     "d3d11": 0
+    }
+   }
+  },
+  "scene_460_cpu": {
+   "1920x1080": {
+    "d3d9_event_us": 2673.0,
+    "d3d9_event_p90_us": 2787.4,
+    "d3d11_event_us": 711.2,
+    "d3d11_event_p90_us": 740.2,
+    "d3d11_timestamp_us": 655.0,
+    "d3d11_timestamp_p90_us": 679.6,
+    "d3d9_timestamp_us": null,
+    "d3d9_timestamp_p90_us": null,
+    "cpu_submit_us": {
+     "d3d9": 873.7,
+     "d3d11": 161.9
+    },
+    "cpu_submit_p90_us": {
+     "d3d9": 893.3,
+     "d3d11": 166.9
+    },
+    "pipelined_us": {
+     "d3d9": 2127.2,
+     "d3d11": 334.8
+    },
+    "pipelined_submit_us": {
+     "d3d9": 1947.1,
+     "d3d11": 303.5
+    },
+    "ratio_d3d9_over_d3d11": 3.758,
+    "ratio_pipelined": 6.354,
+    "ratio_net_of_empty_bracket": 3.844,
+    "ratio_cpu_submit": 5.397,
+    "d3d11_event_over_timestamp": 1.086,
+    "d3d11_event_net_over_timestamp": 1.056,
+    "readback": {
+     "d3d9": {
+      "coverage": 0.008002,
+      "mean_r": 0.126507,
+      "mean_g": 0.188939,
+      "mean_b": 0.251552
+     },
+     "d3d11": {
+      "coverage": 0.007923,
+      "mean_r": 0.126489,
+      "mean_g": 0.188929,
+      "mean_b": 0.251531
+     },
+     "relative_difference": {
+      "coverage": 0.0099,
+      "mean_r": 0.0001,
+      "mean_g": 0.0001,
+      "mean_b": 0.0001
+     }
+    },
+    "overdraw": {
+     "raster_from_geometry": null,
+     "depth_passing": {
+      "d3d9": 0.008,
+      "d3d11": 0.0079
+     }
+    },
+    "timeouts": {
+     "d3d9": 0,
+     "d3d11": 0
+    }
+   }
+  }
+ },
+ "thread_times": "not summarised: on Wine GetProcessTimes equals GetThreadTimes and ticks at 10 ms, so other-thread CPU (wined3d CS thread, DXMT encoder) is not measurable in-process; raw values stay in fixture.txt"
+}

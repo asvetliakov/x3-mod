@@ -61,6 +61,29 @@ engine-like scene or the full-screen pass reopens the translator with the effort
 repository's throughput; below 1.2x the no-go stands with the numbers above corrected. The section 5 CPU
 microbenchmark is a secondary item of the same fixture.
 
+**Fixture result and closing decision 2026-09-24 (main session):** the GPU backend A/B fixture
+(`verification/probe/run_gpu_backend_ab.py`, results `verification/results/bottle-X3/gpu-backend-ab/`,
+ledger [gpu-sync-timing.md](../verification/gpu-sync-timing.md#gpu-backend-ab-fixture-2026-09-24-bottle-x3))
+measured, on this bottle, wined3d-D3D9 against DXMT-D3D11 for the same work:
+
+- *Fill-bound work is the same on both backends.* The post-chain-like full-screen pass at 1920x1080 and
+  5120x1440 costs 1.01-1.12x on D3D9 back to back (1.12-1.25x in the single-pass bracket, M). The
+  "OpenGL versus Metal" concern above does not show up in fill; the GPU case for a translator is closed.
+- *Draw submission is 5-6x cheaper on D3D11.* The 460-draw scene (97 % coverage, 2.1x overdraw) takes about
+  2.2 ms per frame on D3D9 at both sizes and with 2 triangles per draw, so wined3d's submission path is the
+  limit at about 4.8 us per draw; DXMT takes 0.36-0.39 ms (M). The submitting thread sees 0.87 vs 0.16 ms (M).
+- *What that is worth in the game:* the stand frame's 460 draws cost the app thread 1.5 ms native draw plus
+  0.3 ms state calls today (M, section 7); a translator could take that to about 0.3-0.4 ms, a gain of
+  1.5-1.9 ms of the 21.9 ms CPU-bound frame, scaling with the draw count (a 1,000-draw sector before the
+  overlay: about 3.5-4 ms, I). Nothing on the GPU side.
+
+Decision: **no-go on a translator of our own stands, now on measured numbers**: its whole value is the
+submission gain, 7-9 % of the frame at the stand. The uncalibrated effort figure is withdrawn rather than
+corrected; it no longer decides anything. The same submission gain is available for far less work if a
+current DXVK D3D9 renders over MoltenVK on this bottle (metalsharp DXVK-MacOS on DXVK 3.1 with de-aliased
+samplers; the CodeWeavers 1.10.3 build rendered black in run102), which the smoke test below settles;
+that path also carries DXVK's Vulkan interop for HDR output.
+
 ## 1. API surface census
 
 Sources: the proxy's session log of run286 (`/tmp/x3-bottleX3-run286/session-20260924-004522-216.log`,

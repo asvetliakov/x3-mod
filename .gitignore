@@ -69,3 +69,6 @@ verification/results/lod-overlay-pilot/atlas_preview_*.png
 
 # Voice decoder: the GStreamer registry cache (and its temp files) is rebuilt on first launch; never tracked.
 tools/voice-decoder/v4/registry/
+
+# GPU backend A/B fixture: summary.json and table.py are tracked; the raw fixture transcript stays local.
+verification/results/bottle-*/gpu-backend-ab/fixture.txt

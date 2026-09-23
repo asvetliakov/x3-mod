@@ -163,3 +163,12 @@ target_compile_definitions(d3d11_interop_fixture PRIVATE WIN32_LEAN_AND_MEAN NOM
 target_compile_options(d3d11_interop_fixture PRIVATE -Wall -Wextra -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2)
 target_link_options(d3d11_interop_fixture PRIVATE -static -static-libgcc -static-libstdc++)
 target_link_libraries(d3d11_interop_fixture PRIVATE user32 version)
+# GPU backend A/B fixture (run by the Wine queue owner through verification/probe/run_gpu_backend_ab.py):
+# the same full-screen pass and 460-draw scene on D3D9 and on D3D11, event-query and timestamp
+# brackets (docs/architecture/d3d9-to-d3d11-translation.md). Graphics APIs loaded at run time.
+add_executable(gpu_backend_ab_fixture verification/probe/gpu_backend_ab_fixture.cpp)
+target_compile_features(gpu_backend_ab_fixture PRIVATE cxx_std_17)
+target_compile_definitions(gpu_backend_ab_fixture PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_compile_options(gpu_backend_ab_fixture PRIVATE -Wall -Wextra -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2)
+target_link_options(gpu_backend_ab_fixture PRIVATE -static -static-libgcc -static-libstdc++)
+target_link_libraries(gpu_backend_ab_fixture PRIVATE user32 version advapi32)
