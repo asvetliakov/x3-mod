@@ -271,6 +271,15 @@ def fallback_text(fb):
                     f' (last T {fb["steps"][-1]["t"]} weighted {f(fb["steps"][-1]["weighted"])}; steps {steps})'))
 
 
+def bleed_text(r):
+    """' light_bleed=<flagged tiles> kept=<kept materials>' of a baked batch row (lod_overlay.bleed_fields);
+    '' for a census-only row (the census does not bake, so it cannot run the check)."""
+    b = r.get('baked') or {}
+    if 'light_bleed' not in b:
+        return ''
+    return f' light_bleed={b["light_bleed"]} kept={len(b["kept_light_bleed"])}'
+
+
 def aspect_text(r):
     d = '-' if r.get('switch_km') is None else f'{r["switch_km_class"]:.2f}->{r["switch_km"]:.2f}'
     fb = r.get('texel_fallback') or {}
@@ -523,6 +532,7 @@ def format_row(r):
         s += ' text'
     if r.get('atlas_materials', 1) > 1:
         s += f' atlas_materials={r["atlas_materials"]}'
+    s += bleed_text(r)
     s += f' refuse={",".join(r["refuse"]) or "-"} filter={",".join(r["filter"]) or "-"}'
     s += ' ELIGIBLE' if r['eligible'] else ''
     if r.get('taken'):

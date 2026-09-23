@@ -1183,7 +1183,8 @@ class LodAtlas(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             game, out, prev = self.game(folder), Path(folder) / 'out', Path(folder) / 'prev'
             text = run(['--game', str(game), '--out', str(out), '--collapse', 'atlas', '--atlas-size', '64',
-                        '--atlas-max-size', '128', '--atlas-preview', str(prev), 'ships/x/b=8'])
+                        '--atlas-max-size', '128', '--atlas-preview', str(prev), '--light-bleed-max', '0',
+                        'ships/x/b=8'])     # guard off: both tiles atlased (LightBleed covers the guard)
             self.assertIn("groups=['atlas:mat2~0:6f']", text)
             self.assertIn('atlas 64x64', text)
             entries = {e['path']: e for e in read_catalogue(out / 'addon/01.cat')}
@@ -1324,7 +1325,7 @@ class SourceRecord(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             game, out = self.game(folder), Path(folder) / 'out'
             text = run(['--game', str(game), '--out', str(out), '--collapse', 'atlas', '--atlas-size', '64',
-                        '--atlas-max-size', '128', '--source-record', '0', 'ships/x/b=8'])
+                        '--atlas-max-size', '128', '--source-record', '0', '--light-bleed-max', '0', 'ships/x/b=8'])
             self.assertIn('from source LOD0 (points 15, faces 7)', text)
             ladder, mats, body = self.written(out)
             self.assertEqual((body['source_record'], body['new_lod'], body['pad_lod']), (0, 1, 2))
@@ -1422,7 +1423,7 @@ class SourceRecord(unittest.TestCase):
             game, out = self.game(folder), Path(folder) / 'out'
             with unittest.mock.patch.object(lod_atlas, 'MAX_GROUP_POINTS', 3):
                 text = run(['--game', str(game), '--out', str(out), '--collapse', 'atlas', '--atlas-size', '64',
-                            'ships/x/b=8@0'])
+                            '--light-bleed-max', '0', 'ships/x/b=8@0'])
             ladder, mats, body = self.written(out)
             groups = ladder[1]['parts'][0]['groups']
             self.assertTrue(len(groups) >= 2 and all(g['material'] == 3 for g in groups))   # one atlas material

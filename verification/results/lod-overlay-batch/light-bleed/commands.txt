@@ -1,0 +1,12 @@
+Light-atlas bleed guard (lod_atlas.guard_bleed), 2026-09-23, dry runs only (no --install, no Wine; game dir read-only).
+Base commit cc34f2f1 (baker files identical to 2b36c0db) plus the uncommitted guard change.
+laser_E (the --only file holds the one body name):
+  python3 tools/analysis/lod_overlay.py --batch --only <only file> --dry-run --display 1920x1080 --jobs 1 --out <scratch>/laserE
+  -> laser_E_out.txt (the body's plan and guard lines, the batch totals)
+22 installed bodies (the Run 74 set: --only verification/results/lod-overlay-batch/sectors.txt, 22 eligible):
+  python3 tools/analysis/lod_overlay.py --batch --only verification/results/lod-overlay-batch/sectors.txt --dry-run --display 1920x1080 --jobs 2 --light-bleed-max 0 --out <scratch>/b22off
+  python3 tools/analysis/lod_overlay.py --batch --only verification/results/lod-overlay-batch/sectors.txt --dry-run --display 1920x1080 --jobs 2 --out <scratch>/b22on
+  python3 compare_light_bleed.py <scratch>/b22off <scratch>/b22on > light_bleed_22_out.txt
+  the two runs' summary lines (atlas sizes, draws, light_bleed, timing) -> batch_totals_out.txt
+Default --light-bleed-scale-loss 0.15 in the ON runs. Wall time (time): off 1:45.9, on 2:05.2; baking 92.0 s -> 108.5 s with 2 jobs (on run shared the host with another agent's tool run).
+The off run's dat bytes (127,449,546) equal the installed Run 74 overlay's (install-run74/install.json).

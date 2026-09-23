@@ -61,6 +61,28 @@ tooling"; census: tools/analysis/atlas_census.py):
   level and bright tiles cannot bleed into neighbours. With the 8-texel gutter a whole
   gutter texel survives to mip 3; contents of adjacent tiles share texels only from the
   level where the 16-texel gap between them falls below one texel.
+- Light bleed guard (build -> guard_bleed; Run 74 A, run277: argon_tech_S_laser_E's 20x20 solar-panel
+  light tile 16 texels from the 44x12 exhaust tile came out 1.67x brighter and orange). The proxy widens
+  the hull light-map fetch by K = 4 (tools/manage.py HULL_EMISSIVE_WIDENING_DEFAULT; the texldd raises the
+  level by log2 K = WIDEN_LEVELS = 2, docs/architecture/hull-emissive-widening.md), so at the switch size a
+  tile is read at L = ceil(log2(its atlas texels per pixel)) + 2, where the 8-texel gutter is below one
+  texel and bilinear plus the widened footprint reach the neighbour. After the layout, light_bleed samples
+  every tile's faces (7 barycentric points each) in the tile-aware light atlas level L with a +-1 texel
+  box and against the same texels resampled from the tile's own light map alone; a tile whose
+  face-area-weighted mean added Rec.709 luminance exceeds LIGHT_BLEED_MAX (4/255, absolute: the dark tiles
+  at risk hold 0-1/255 of their own light, so a relative rule would flag DXT noise; laser_E's panel took
+  +21.8) is flagged light_bleed. Remedies in order: (1) repack_layout, the emitter tiles (own mean light
+  above EMITTER_LUMA 16/255, not flagged) packed first in their own shelves with an empty margin of
+  2^(L+1) texels (L = the highest flagged level; halved until the pack keeps the minimum texel ratio >=
+  min(MIN_RATIO, the plan's own) and the atlas scale within LIGHT_BLEED_SCALE_LOSS (15 %, --light-bleed-
+  scale-loss) of the plan's; the plan's scale is the largest that packs, so the regions need a lower
+  uniform scale at the same atlas size), taken when it leaves fewer tiles flagged; (2) every tile still
+  flagged keeps its materials as their own groups (their own material, textures and UVs; one extra draw per
+  part and material, after the atlas groups, like the glow collapse) at the current pack (prune_layout: the
+  other tiles keep their places), up to LIGHT_BLEED_ROUNDS times; a tile still flagged then is accepted
+  and reported as residual. The
+  summary carries light_bleed (flagged, remedy, repack, kept, residual, after) and kept_light_bleed.
+  light_bleed_max 0 (lod_overlay --light-bleed-max 0) turns the guard off.
 - Bump: the shipped bump maps are swizzled tangent-space normal maps (DXT5, x in alpha,
   y in R = G = B, z implied; bump_maps_out.txt). They are decoded to unit vectors,
   resampled as vectors and renormalised at every mip level (tile-aware, above); a NULL
@@ -134,6 +156,18 @@ import body_materials
 EPS = 0.01                 # UV slack for the integer shift (atlas_census.EPS)
 BLOCK = 4
 GUTTER = 8                 # texels per side; a whole gutter texel survives to mip 3
+HULL_WIDENING_K = 4        # the proxy's light-map widening factor: tools/manage.py HULL_EMISSIVE_WIDENING_DEFAULT
+                           # ('4', the launcher default wherever the light-map gain is active); its texldd scales the
+                           # gradients by k = clamp(K x light-map texels per pixel, 1, K), so at >= 1 texel/px the fetch
+                           # rises log2 K levels (docs/architecture/hull-emissive-widening.md section 0)
+WIDEN_LEVELS = 2           # log2(HULL_WIDENING_K)
+LIGHT_BLEED_MAX = 4.0      # light_bleed: mean added Rec.709 luminance (0..255) a tile may take from its neighbours
+EMITTER_LUMA = 16.0        # light_bleed repack: a tile whose own mean light luminance (0..255) exceeds this is an emitter
+LIGHT_BLEED_ROUNDS = 3     # light_bleed: keep rounds
+LIGHT_BLEED_SCALE_LOSS = 0.15   # light_bleed repack: the largest relative drop of the atlas scale a repack may cost
+LUMA_709 = np.array((0.2126, 0.7152, 0.0722))
+BARY7 = np.array([(1 / 3, 1 / 3, 1 / 3), (.6, .2, .2), (.2, .6, .2), (.2, .2, .6), (.8, .1, .1), (.1, .8, .1),
+                  (.1, .1, .8)])   # light_bleed sample points per face (barycentric)
 UV_ONE = 65536.0
 MIN_RATIO = 2.0
 OUTLIER_SPAN = 256.0       # clamped layout: a face repeating its texture over more periods than this is span-clamped
@@ -555,15 +589,16 @@ def _side(full, scale):
     return max(BLOCK, BLOCK * math.ceil(full * scale / BLOCK - 1e-9))
 
 
-def shelf_pack(rects, n):
-    """Shelf packing, tallest first (ties: wider, then index), into n x n: [(x, y)] or None."""
-    order = sorted(range(len(rects)), key=lambda i: (-rects[i][1], -rects[i][0], i))
+def shelf_pack(rects, n, first=()):
+    """Shelf packing, tallest first (ties: wider, then index), into n x n: [(x, y)] or None. With `first`
+    (indices), those rects are packed first and the rest start on a new shelf (two regions)."""
+    order = sorted(range(len(rects)), key=lambda i: (i not in first, -rects[i][1], -rects[i][0], i))
     pos, x, y, shelf = [None] * len(rects), 0, 0, 0
-    for i in order:
+    for k, i in enumerate(order):
         w, h = rects[i]
         if w > n or h > n:
             return None
-        if x + w > n:
+        if x + w > n or (k and first and order[k - 1] in first and i not in first):
             y, x, shelf = y + shelf, 0, 0
         if y + h > n:
             return None
@@ -638,14 +673,15 @@ def _tile_stats(base, limit, px, radius, min_ratio):
 
 
 def plan_layout(record, mats, alpha, textures, px, sizes=(1024, 2048), gutter=GUTTER, slots=('diffuse', 'light'),
-                min_ratio=MIN_RATIO, outlier_span=OUTLIER_SPAN):
+                min_ratio=MIN_RATIO, outlier_span=OUTLIER_SPAN, keep=frozenset()):
     """Tiles, per-face keys and the chosen atlas size for the opaque faces of `record`.
 
     Per size: the uniform layout (one scale for every tile) is taken when its minimum tile ratio reaches
     min_ratio or its scale is 1. Otherwise the clamped layout is tried at the same size (span-clamped
     faces and capped tiles, _tile_stats) and taken when it reaches min_ratio or scale 1; at the largest
     size the clamped layout is taken. Every tile carries 'share' (its faces' mesh-space area over the
-    atlased area), 'clamped_share' (the span-clamped faces' share) and 'ratio'."""
+    atlased area), 'clamped_share' (the span-clamped faces' share) and 'ratio'. Materials in `keep`
+    (light_bleed) are left out like the alpha materials."""
     pts = record['points']
     radius = max((math.sqrt(p[1] ** 2 + p[2] ** 2 + p[3] ** 2) for p in pts if p[0] & 1), default=0.0)
     tiles, tile_of = [], {}
@@ -654,7 +690,7 @@ def plan_layout(record, mats, alpha, textures, px, sizes=(1024, 2048), gutter=GU
             continue
         for gi, g in enumerate(part['groups']):
             mi = g['material']
-            if mi in alpha:
+            if mi in alpha or mi in keep:
                 continue
             if mi not in tile_of:
                 if not 0 <= mi < len(mats) or 'params' not in mats[mi]:
@@ -815,13 +851,15 @@ def split_faces(faces, limit, blocks=None):
     return [[f for _, f in sorted(bn[0], key=lambda x: x[0])] for bn in sorted(bins, key=lambda bn: min(bn[0])[0])]
 
 
-def rewrite_record(record, layout, atlas_index, alpha, alpha_remap=None, max_group_points=None):
+def rewrite_record(record, layout, atlas_index, alpha, alpha_remap=None, max_group_points=None, keep=frozenset()):
     """C with rewritten UVs, duplicated points and regrouped parts; returns (lod, info). An output
     group referencing more than max_group_points distinct points is split (split_faces: whole
     source groups packed first-fit) into groups of the same material; a point used by an earlier split group is
     duplicated (with its tangent record) so that the split groups share no point. atlas_index is
     one atlas material index for every opaque group, or {source material: atlas material} (one
-    output class per distinct atlas material per part, in first-use order)."""
+    output class per distinct atlas material per part, in first-use order). A material in `keep`
+    (light_bleed) keeps its own material and UVs, one group per part after the atlas groups and before
+    the alpha group, like the glow collapse's kept materials."""
     atlas_of = (lambda m: atlas_index) if isinstance(atlas_index, int) else atlas_index.__getitem__
     pts = record['points']
     new_pts, origin, owner, index, copies_of = list(pts), list(range(len(pts))), {}, {}, {}
@@ -847,7 +885,7 @@ def rewrite_record(record, layout, atlas_index, alpha, alpha_remap=None, max_gro
         else:
             classes = []
             for gi, g in enumerate(groups):
-                if g['material'] in alpha:
+                if g['material'] in alpha or g['material'] in keep:
                     continue
                 ai = atlas_of(g['material'])
                 cls = next((c for c in classes if c[1] == ai), None)
@@ -855,6 +893,8 @@ def rewrite_record(record, layout, atlas_index, alpha, alpha_remap=None, max_gro
                     cls = ([], ai, True)
                     classes.append(cls)
                 cls[0].append((gi, g))
+            for m in dict.fromkeys(g['material'] for g in groups if g['material'] in keep):
+                classes.append(([(gi, g) for gi, g in enumerate(groups) if g['material'] == m], m, False))
             classes.append(([(gi, g) for gi, g in enumerate(groups) if g['material'] in alpha], None, False))
         for cls, material, atlased in classes:
             if not cls:
@@ -987,10 +1027,14 @@ def effect_classes(mats, opaque):
 
 
 def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular=False, synth=True,
-             gutter=GUTTER, min_ratio=MIN_RATIO, textures=None, bump=True, max_group_points=None):
+             gutter=GUTTER, min_ratio=MIN_RATIO, textures=None, bump=True, max_group_points=None, keep=frozenset(),
+             layout=None):
     """Atlas collapse of `record`: appends one atlas material per opaque effect file (then any
     synthesized alpha material) to `mats` in place. Returns dict(record, layout, atlas_index (the
-    largest effect's), atlas_indices, atlas_of, names, members, synth, uv2, occlusion, ...)."""
+    largest effect's), atlas_indices, atlas_of, names, members, synth, uv2, occlusion, kept, ...).
+    Materials in `keep` (light_bleed) are not atlased: they keep their own groups, textures and UVs and
+    take no part in the effect classes, the occlusion check or the g_Mat* means. `layout` (light_bleed's
+    repack) replaces plan_layout; it must have been planned with the same keep set."""
     import lod_overlay
     textures = textures or Textures(assets)
     areas, opaque = {}, []
@@ -998,7 +1042,7 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
         if part['flags'] & HIDDEN_PART:
             continue
         for g in part['groups']:
-            if g['material'] not in alpha:
+            if g['material'] not in alpha and g['material'] not in keep:
                 opaque.append(g)
                 areas[g['material']] = areas.get(g['material'], 0.0) + sum(
                     body_materials.face_area(record['points'], f) for f in g['faces'])
@@ -1019,7 +1063,9 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
     has_spec = any(t == 8 and n.lower() == SLOT_NAMES['specular'] for m in areas for n, t, _ in mats[m].get('params', ()))
     slots = (('diffuse', 'light') + (('bump',) if bump and has_bump else ())
              + (('specular',) if specular and has_spec else ()))
-    layout = plan_layout(record, mats, alpha, textures, px, sizes, gutter, slots, min_ratio)
+    if layout is not None and tuple(layout['slots']) != tuple(slots):
+        layout = None                      # keeping changed the slot set (dominant's bump, specular): re-plan
+    layout = layout or plan_layout(record, mats, alpha, textures, px, sizes, gutter, slots, min_ratio, keep=keep)
     names, members = texture_names(body, slots)
     atlas_of, indices, report = {}, [], []
     for eff, mis in classes:
@@ -1040,11 +1086,11 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
             for p in record['parts'] if not p['flags'] & HIDDEN_PART]}
         remap, more = lod_overlay.synth_materials(mats, alpha_only, alpha, 'two', frozenset())
         report += more
-    lod, info = rewrite_record(record, layout, atlas_of, alpha, remap, max_group_points)
+    lod, info = rewrite_record(record, layout, atlas_of, alpha, remap, max_group_points, keep)
     effects = sorted({(mats[m].get('effect', b'').decode('latin1'), mats[m].get('technique')) for m in areas})
     return dict(record=lod, layout=layout, atlas_index=atlas_index, atlas_indices=indices, atlas_of=atlas_of,
                 dominant=dom, names=names, members=members, slots=slots, synth=report, info=info,
-                effects=effects, textures=textures, uv2=uv2, occlusion=occlusion)
+                effects=effects, textures=textures, uv2=uv2, occlusion=occlusion, kept=sorted(keep))
 
 
 # --- baking -------------------------------------------------------------------------------
@@ -1188,6 +1234,126 @@ def encode(images, layout, fmt='dxt'):
 
 def stored(dds):
     return gzip.compress(dds, mtime=0)
+
+
+# --- light bleed --------------------------------------------------------------------------
+
+def light_level(ratio, size, widen_levels=WIDEN_LEVELS):
+    """Mip level the widened light-map fetch reads a tile at the switch size: ceil(log2(atlas texels per
+    screen pixel)) (at least 0) + widen_levels, at most the atlas's 1x1 level; None without a ratio."""
+    if ratio is None or not ratio > 0:
+        return None
+    return int(min(size.bit_length() - 1, max(0, math.ceil(math.log2(ratio) - 1e-9)) + widen_levels))
+
+
+def _box3(img):
+    """3x3 box mean of a 2-D array (edge texels repeated)."""
+    h, w = img.shape
+    q = np.pad(img, 1, mode='edge')
+    return sum(q[dy:dy + h, dx:dx + w] for dy in range(3) for dx in range(3)) / 9.0
+
+
+def light_bleed(layout, record, info, sources, bleed_max=LIGHT_BLEED_MAX, widen_levels=WIDEN_LEVELS):
+    """Per tile of `layout` (rewritten `record`, its rewrite info, per-tile float light sources as
+    tile_sources): at L = light_level(tile ratio), the Rec.709 luminance (0..255) of the tile-aware light
+    atlas level L (bake_level) around 7 barycentric samples per face (the level-L texel holding the sample
+    and a +-1 texel box, the GPU's bilinear and widened footprint) against the same texels resampled from
+    the tile's own repeating light map alone (the source at the equivalent level, no neighbour). 'added'
+    = face-area-weighted mean of max(0, atlas box - own box); 'own' = mean of the own box (the tile's
+    light); flagged when added > bleed_max. Tiles without a ratio or faces are not checked (level None)."""
+    n, g = layout['size'], layout['gutter']
+    pts = record['points']
+    uv_of = lambda j: point_uv(pts[j])
+    by_tile = {}
+    for _, _, of, _, ti in info['faces']:
+        by_tile.setdefault(ti, []).append(of)
+    atlas_lum, rows = {}, []
+    for ti, (t, src) in enumerate(zip(layout['tiles'], sources)):
+        L, faces = light_level(t.get('ratio'), n, widen_levels), by_tile.get(ti)
+        row = dict(tile=ti, mats=list(t['mats']), name=(t['names'].get('diffuse') or b'').decode('latin1'),
+                   light=(t['names'].get('light') or b'').decode('latin1'), level=L, own=None, added=None,
+                   flagged=False)
+        rows.append(row)
+        if L is None or not faces:
+            row['level'] = None
+            continue
+        if L not in atlas_lum:
+            with np.errstate(divide='ignore', over='ignore', invalid='ignore'):
+                atlas_lum[L] = _box3(bake_level(layout, sources, 'light', L)[..., :3].astype(np.float64) @ LUMA_709)
+        nl, s = max(1, n >> L), 1 << L
+        uv = np.array([[uv_of(j) for j in f[:3]] for f in faces], np.float64)          # (F, 3, 2)
+        area = np.array([body_materials.face_area(pts, f) for f in faces], np.float64)
+        if not area.sum() > 0:
+            area = np.ones(len(faces))
+        smp = np.einsum('kj,fjc->fkc', BARY7, uv)                                      # (F, 7, 2)
+        ix = np.clip(np.floor(smp[..., 0] * nl).astype(np.int64), 0, nl - 1)
+        iy = np.clip(np.floor(smp[..., 1] * nl).astype(np.int64), 0, nl - 1)
+        got = atlas_lum[L][iy, ix]
+        x0, x1, y0, y1 = int(ix.min()) - 1, int(ix.max()) + 2, int(iy.min()) - 1, int(iy.max()) + 2
+        if src is None:
+            own = np.zeros(got.shape)
+        else:
+            (cx, cy), (cw, ch) = t['origin'], t['content']
+            with np.errstate(divide='ignore', over='ignore', invalid='ignore'):
+                lum = src[..., :3].astype(np.float64) @ LUMA_709                       # linear: resample luminance
+            my = level_weights(y0, y1, s, cy, ch, t['lo'][1], t['span'][1], lum.shape[0]).astype(np.float64)
+            mx = level_weights(x0, x1, s, cx, cw, t['lo'][0], t['span'][0], lum.shape[1]).astype(np.float64)
+            with np.errstate(divide='ignore', over='ignore', invalid='ignore'):   # spurious on macOS Accelerate
+                own = _box3(my @ lum @ mx.T)[iy - y0, ix - x0]
+            if not np.isfinite(own).all():
+                raise AtlasError(f'light_bleed: non-finite own light in tile {ti}')
+        w = area / area.sum()
+        row['own'] = round(float((own.mean(1) * w).sum()), 3)
+        row['added'] = round(float((np.maximum(0.0, got - own).mean(1) * w).sum()), 3)
+        row['flagged'] = row['added'] > bleed_max
+    return dict(tiles=rows, flagged=[r['tile'] for r in rows if r['flagged']], max=bleed_max,
+                widen_levels=widen_levels)
+
+
+def repack_layout(layout, emit, pad, min_ratio=MIN_RATIO, max_loss=LIGHT_BLEED_SCALE_LOSS):
+    """Copy of `layout` with the tiles in `emit` shelf-packed first (their own region) with an empty
+    margin of `pad` texels around each (background, not gutter: the gutter holds the tile's own repeat),
+    then the other tiles from a new shelf; same atlas size and face keys. plan_layout's scale is the
+    largest that packs, so the regions and margins usually need a lower one: the largest uniform scale
+    <= the layout's that packs is searched (fit), and it is taken only while the scale drops by at most
+    max_loss relative to the layout's and the minimum tile ratio stays >= min(min_ratio, the layout's own
+    minimum). The margin halves until both hold (down to 0, the regions alone); None when nothing does."""
+    n, g = layout['size'], layout['gutter']
+    tiles = layout['tiles']
+    emit = set(emit)
+    floor = min(min_ratio, layout['min_ratio']) - 1e-9
+    top = layout['scale']
+
+    def attempt(sc, m):
+        cont = [(_side(t['full'][0], min(sc, t.get('cap', 1.0))), _side(t['full'][1], min(sc, t.get('cap', 1.0))))
+                for t in tiles]
+        rects = [(w + 2 * g + 2 * (m if i in emit else 0), h + 2 * g + 2 * (m if i in emit else 0))
+                 for i, (w, h) in enumerate(cont)]
+        return cont, shelf_pack(rects, n, emit)
+    while True:
+        cont, pos = attempt(top, pad)
+        sc = top
+        if pos is None:
+            lo, hi = 0.0, top
+            for _ in range(40):
+                mid = (lo + hi) / 2
+                lo, hi = (mid, hi) if attempt(mid, pad)[1] is not None else (lo, mid)
+            sc = lo
+            cont, pos = attempt(sc, pad)
+        if pos is not None:
+            ratios = [_tile_ratio(t, c) for t, c in zip(tiles, cont)]
+            low = min((r for r in ratios if r is not None), default=math.inf)
+            if low >= floor and sc >= top * (1.0 - max_loss) - 1e-12:
+                break
+        if pad == 0:
+            return None
+        pad //= 2
+    m = lambda i: pad if i in emit else 0
+    new = [dict(t, content=c, ratio=r, origin=(x + g + m(i), y + g + m(i)))
+           for i, (t, c, r, (x, y)) in enumerate(zip(tiles, cont, ratios, pos))]
+    return dict(layout, tiles=new, scale=sc, min_ratio=low, ratio_ok=low >= min_ratio,
+                repacked=dict(emitters=sorted(emit), pad=pad, scale_before=layout['scale'], scale=sc,
+                              min_ratio_before=layout['min_ratio'], min_ratio=low))
 
 
 # --- checks -------------------------------------------------------------------------------
@@ -1370,11 +1536,94 @@ def preview(dds, layout, path, limit=512):
 
 # --- lod_overlay entry --------------------------------------------------------------------
 
+def prune_layout(layout, keep):
+    """Copy of `layout` without the tiles of the materials in `keep` (light_bleed's kept groups): every
+    other tile keeps its position and content (the freed area turns background), face keys are renumbered,
+    shares and the minimum ratio recomputed. Removing tiles only removes light next to the others."""
+    tiles = [t for t in layout['tiles'] if not set(t['mats']) & set(keep)]
+    index = {id(t): k for k, t in enumerate(tiles)}
+    old = {k: index.get(id(t)) for k, t in enumerate(layout['tiles'])}
+    total = sum(t.get('area', 0.0) for t in tiles)
+    tiles = [dict(t, share=t.get('area', 0.0) / total if total > 0 else 1.0 / len(tiles)) for t in tiles]
+    keys = {f: (old[k[0]],) + tuple(k[1:]) for f, k in layout['face_keys'].items() if old[k[0]] is not None}
+    ratios = [t['ratio'] for t in tiles if t.get('ratio') is not None]
+    low = min(ratios) if ratios else math.inf
+    return dict(layout, tiles=tiles, face_keys=keys, min_ratio=low, ratio_ok=low >= MIN_RATIO,
+                pruned=sorted(keep))
+
+
+def guard_bleed(assets, body, mats, record, alpha, px, sizes, specular, synth, bump, max_group_points, textures,
+                bleed_max=LIGHT_BLEED_MAX, widen_levels=WIDEN_LEVELS, emitter_luma=EMITTER_LUMA,
+                rounds=LIGHT_BLEED_ROUNDS, scale_loss=LIGHT_BLEED_SCALE_LOSS):
+    """collapse with the light-atlas bleed guard: (result, report). After the layout, light_bleed checks
+    every tile; flagged tiles are remedied in this order of cost: (1) repack_layout with the emitter tiles
+    (own light above emitter_luma, not flagged) in their own region and a 2^(L+1)-texel empty margin (L =
+    the highest flagged level; halved as needed), accepted only when the atlas scale drops by at most
+    scale_loss and fewer tiles are flagged afterwards; (2) every tile still flagged keeps its materials as
+    their own groups (collapse keep: one extra draw per part and material) at the current pack
+    (prune_layout: the other tiles keep their places). Repeated up to `rounds` times; a tile still flagged
+    then is accepted and reported as residual. The atlas and alpha materials collapse appends depend on
+    the keep set only, not on the layout, so `mats` matches whichever attempt is taken."""
+    n_mats = len(mats)
+    keep, repack = set(), None
+
+    def run(layout=None):
+        del mats[n_mats:]
+        r = collapse(assets, body, mats, record, alpha, px, sizes, specular, synth, bump=bump,
+                     max_group_points=max_group_points, textures=textures, keep=frozenset(keep), layout=layout)
+        if 'light' not in r['slots']:
+            return r, None
+        return r, light_bleed(r['layout'], r['record'], r['info'], tile_sources(r['layout'], r['textures'], 'light'),
+                              bleed_max, widen_levels)
+    res, chk = run()
+    first = chk
+    for rnd in range(rounds + 1):
+        if chk is None or not chk['flagged']:
+            break
+        rows = chk['tiles']
+        emit = [r['tile'] for r in rows if r['own'] is not None and r['own'] > emitter_luma and not r['flagged']]
+        if emit:
+            top = max(rows[i]['level'] for i in chk['flagged'])
+            lay = repack_layout(res['layout'], emit, min(1 << (top + 1), res['layout']['size']), max_loss=scale_loss)
+            if lay is not None:
+                res2, chk2 = run(lay)
+                if len(chk2['flagged']) < len(chk['flagged']):
+                    repack = dict(lay['repacked'], emitters=sorted(m for i in emit for m in rows[i]['mats']),
+                                  level=top)
+                    res, chk = res2, chk2
+                    if not chk['flagged']:
+                        break
+        add = {m for i in chk['flagged'] for m in chk['tiles'][i]['mats']}
+        atlased = {m for t in res['layout']['tiles'] for m in t['mats']}
+        if rnd == rounds or atlased <= add:            # nothing left to keep: accepted, reported as residual
+            break
+        keep |= add
+        res, chk = run(prune_layout(res['layout'], keep))
+    flagged = [r for r in first['tiles'] if r['flagged']] if first else []
+    remedy = (None if not flagged else 'residual' if chk['flagged'] else
+              'keep+repack' if keep and repack else 'keep' if keep else 'repack')
+    report = dict(max=bleed_max, widen_levels=widen_levels, emitter_luma=emitter_luma, scale_loss=scale_loss,
+                  checked=sum(1 for r in first['tiles'] if r['level'] is not None) if first else 0,
+                  flagged=flagged, remedy=remedy, repack=repack, kept=sorted(keep),
+                  residual=[r for r in chk['tiles'] if r['flagged']] if chk else [],
+                  tiles=chk['tiles'] if chk else [])
+    return res, report
+
+
 def build(assets, body, mats, record, alpha, px, sizes=(1024, 2048), fmt='dxt', specular=False, synth=True,
-          bump=True, max_group_points=None, textures=None):
-    """collapse + bake + encode + check; the result carries the encoded DDS per slot and the checks."""
-    res = collapse(assets, body, mats, record, alpha, px, sizes, specular, synth, bump=bump,
-                   max_group_points=max_group_points, textures=textures)
+          bump=True, max_group_points=None, textures=None, light_bleed_max=LIGHT_BLEED_MAX,
+          widen_levels=WIDEN_LEVELS, light_bleed_scale_loss=LIGHT_BLEED_SCALE_LOSS):
+    """collapse (with the light-bleed guard unless light_bleed_max is falsy) + bake + encode + check; the
+    result carries the encoded DDS per slot, the checks and 'light_bleed' (guard_bleed's report)."""
+    textures = textures or Textures(assets)
+    if light_bleed_max:
+        res, bleed = guard_bleed(assets, body, mats, record, alpha, px, sizes, specular, synth, bump,
+                                 max_group_points, textures, light_bleed_max, widen_levels,
+                                 scale_loss=light_bleed_scale_loss)
+    else:
+        res, bleed = collapse(assets, body, mats, record, alpha, px, sizes, specular, synth, bump=bump,
+                              max_group_points=max_group_points, textures=textures), None
+    res['light_bleed'] = bleed
     images = bake(res['layout'], res['textures'])
     res['encoded'] = encode(images, res['layout'], fmt)
     res['check'] = check(record, res['record'], res, {s: e['decoded'] for s, e in res['encoded'].items()}, mats)
@@ -1441,6 +1690,20 @@ def texel_floor(rows, min_texels, floor_share):
                 texel_clamped=sorted(clamped.values(), key=lambda e: -e['starved_share']))
 
 
+def bleed_summary(b):
+    """JSON-ready light_bleed report (guard_bleed): the flagged tiles of the first check, the remedy, the
+    kept materials, the residual tiles and the final check's rows of the flagged tiles' materials ('after');
+    None when the guard was off."""
+    if b is None:
+        return None
+    row = lambda r: {k: r[k] for k in ('tile', 'mats', 'name', 'light', 'level', 'own', 'added')}
+    hit = {m for f in b['flagged'] for m in f['mats']}
+    return dict(max=b['max'], widen_levels=b['widen_levels'], emitter_luma=b['emitter_luma'], checked=b['checked'],
+                scale_loss=b.get('scale_loss'),
+                flagged=[row(r) for r in b['flagged']], remedy=b['remedy'], repack=b['repack'], kept=b['kept'],
+                residual=[row(r) for r in b['residual']], after=[row(r) for r in b['tiles'] if set(r['mats']) & hit])
+
+
 def summary(res):
     """JSON-ready description of an atlas build (manifest)."""
     L, c = res['layout'], res['check']
@@ -1455,6 +1718,8 @@ def summary(res):
         split_groups=res['info']['split'],
         missing_tangent_records=res['info']['missing_records'], effects=[list(e) for e in res['effects']],
         uv2_points=res.get('uv2', 0), occlusion=res.get('occlusion', {}),
+        kept_light_bleed=list(res.get('kept', [])),
+        light_bleed=bleed_summary(res.get('light_bleed')),
         tiles=[dict(mats=t['mats'], names={k: (v.decode('latin1') if v else None) for k, v in t['names'].items()},
                     sources=dict(t.get('sources', {})),
                     lo=[_num(x) for x in t['lo']], span=[_num(x) for x in t['span']], base=list(t['base']),
@@ -1487,6 +1752,23 @@ def format_summary(s):
              f' = copy of mat{s["dominant"]}); effects {s["effects"]}'
              + (f'; second UV set on {s["uv2_points"]} points passed through, occlusion {s["occlusion"]}'
                 if s.get('uv2_points') else '')]
+    b = s.get('light_bleed')
+    if b:
+        mats_ = lambda r: 'mat' + '/'.join(str(m) for m in r['mats'])
+        rp = b.get('repack')
+        lines.append(f'atlas light_bleed={len(b["flagged"])} kept={len(b["kept"])}: {b["checked"]} tiles checked at'
+                     f' L = ceil(log2 texels/px) + {b["widen_levels"]}, flagged above {b["max"]:g}/255 mean added'
+                     ' luminance'
+                     + ('; flagged ' + ', '.join(f'{mats_(r)} L{r["level"]} own {r["own"]:.1f} +{r["added"]:.1f}'
+                                                 for r in b['flagged']) + f'; remedy {b["remedy"]}'
+                        if b['flagged'] else '')
+                     + (f' (emitters mat{rp["emitters"]} in their own region, margin {rp["pad"]} texels, L'
+                        f' {rp["level"]}, scale {rp["scale_before"]:.4f} -> {rp["scale"]:.4f}, min texels/px'
+                        f' {rp["min_ratio_before"]:.3f} -> {rp["min_ratio"]:.3f})' if rp else '')
+                     + (f'; kept as own groups {["mat%d" % m for m in b["kept"]]}' if b['kept'] else '')
+                     + ('; after ' + ', '.join(f'{mats_(r)} +{r["added"]:.1f}' for r in b['after'])
+                        if b.get('after') else '')
+                     + (f'; RESIDUAL {len(b["residual"])} tiles' if b['residual'] else ''))
     x = s.get('texel')
     if x:
         w = x['weighted_texels_per_px']

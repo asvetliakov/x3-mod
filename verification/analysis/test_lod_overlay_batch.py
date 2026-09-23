@@ -443,11 +443,11 @@ class BatchRun(unittest.TestCase):
             assets, _ = lod_overlay.original_assets(game)
             tree = bob1.parse(bob1.serialise(atlas_tree_lod0()))
             mats, r0 = bob1.materials(tree), bob1.lods(tree)[0]
-            res = lod_atlas.build(assets, 'b', list(mats), r0, set(), 8, (64, 128), specular=True)
+            res = lod_atlas.build(assets, 'b', list(mats), r0, set(), 8, (64, 128), specular=True, light_bleed_max=0)
             self.assertEqual(res['slots'], ('diffuse', 'light', 'bump'))                  # no t_SpecularTexture
             spec = [dict(m, params=m['params'] + [(b't_SpecularTexture', 8, b'a_diff.tga')]) if i == 0 else m
                     for i, m in enumerate(mats)]
-            res = lod_atlas.build(assets, 'b', list(spec), r0, set(), 8, (64, 128), specular=True)
+            res = lod_atlas.build(assets, 'b', list(spec), r0, set(), 8, (64, 128), specular=True, light_bleed_max=0)
             self.assertEqual(res['slots'], ('diffuse', 'light', 'bump', 'specular'))
             good = dict(res['check'])
             with unittest.mock.patch.object(lod_atlas, 'check', return_value=dict(good, inside=good['vertices'] - 1)), \
@@ -742,6 +742,163 @@ class TexelFloorShare(unittest.TestCase):
                           text)
             self.assertIn('eligible with texel_clamped tiles (starved share <= 0.1) 1 (ships/x/small)', text)
             self.assertIn('atlas texel_clamped: a_diff.tga', (out / 'x3m-lod-batch-bodies.txt').read_text())
+
+
+class LightBleed(unittest.TestCase):
+    """Light-atlas bleed guard (lod_atlas.guard_bleed, Run 74 A: argon_tech_S_laser_E's solar panel tile 16
+    texels from an exhaust tile). Synthetic 128 atlas, 4 atlas texels per pixel, so the check reads level
+    ceil(log2 4) + WIDEN_LEVELS = 4 (16-texel texels): a black tile A whose content ends 16 texels before a
+    white tile B's shares a +-1 texel box with B's content at that level."""
+    q = staticmethod(lambda x: int(round(x * 65536)))
+
+    def layout(self, gap=16):
+        tile = lambda ti, x, name: dict(mats=[ti], names={'diffuse': b'd%d' % ti, 'light': name}, origin=(x, 8),
+                                        content=(16, 16), lo=[0.0, 0.0], span=(1.0, 1.0), full=(16.0, 16.0),
+                                        need=4.0, ratio=4.0, base=(8, 8))
+        return dict(size=128, gutter=8, scale=1.0, min_ratio=4.0, slots=('diffuse', 'light'),
+                    tiles=[tile(0, 8, b'black'), tile(1, 24 + gap, b'white')])
+
+    def faces(self, layout):
+        """One quad (two faces) over each tile's whole content, UVs rewritten into the atlas."""
+        pts, faces = [], []
+        for ti, t in enumerate(layout['tiles']):
+            i = len(pts)
+            for x, y in ((0, 0), (1, 0), (0, 1), (1, 1)):
+                au, av = lod_atlas.atlas_uv(t, layout['size'], x, y, 0, 0)
+                pts.append((0x1b, 10 * x, 10 * y, ti, self.q(au), self.q(av), 0, 0, 65536, 1))
+            for f in ((i, i + 1, i + 2, 1), (i + 1, i + 3, i + 2, 1)):
+                faces.append((0, f, f, ti, ti))
+        return {'points': pts}, dict(faces=faces)
+
+    sources = [np.zeros((8, 8, 4), np.float32), np.full((8, 8, 4), 255, np.float32)]
+
+    def test_level_and_widening_default(self):
+        self.assertEqual((lod_atlas.HULL_WIDENING_K, lod_atlas.WIDEN_LEVELS), (4, 2))
+        manage = (Path(__file__).resolve().parents[2] / 'tools' / 'manage.py').read_text()
+        self.assertIn(f"HULL_EMISSIVE_WIDENING_DEFAULT = '{lod_atlas.HULL_WIDENING_K}'", manage)   # the launcher's K
+        self.assertEqual(2 ** lod_atlas.WIDEN_LEVELS, lod_atlas.HULL_WIDENING_K)
+        self.assertEqual(lod_overlay.LIGHT_BLEED_MAX, lod_atlas.LIGHT_BLEED_MAX)     # the CLI default
+        self.assertEqual([lod_atlas.light_level(r, 1024) for r in (None, 0.4, 1.0, 2.0, 3.16, 9.4, 1e6)],
+                         [None, 2, 2, 3, 4, 6, 10])                      # laser_E: mat31 3.16 -> 4, mat21 9.39 -> 6
+
+    def test_dark_tile_beside_emitter_flagged_and_repack_clears(self):
+        lay = self.layout()
+        rec, info = self.faces(lay)
+        chk = lod_atlas.light_bleed(lay, rec, info, self.sources)
+        a, b = chk['tiles']
+        self.assertEqual((a['level'], b['level']), (4, 4))
+        self.assertEqual(a['own'], 0.0)
+        self.assertGreater(a['added'], lod_atlas.LIGHT_BLEED_MAX)       # B's white inside A's +-1 box
+        self.assertEqual((chk['flagged'], b['added'], b['own']), ([0], 0.0, 255.0))
+        far = self.layout(gap=64)                                        # 4 level-4 texels apart: clean
+        self.assertEqual(lod_atlas.light_bleed(far, *self.faces(far), self.sources)['flagged'], [])
+        new = lod_atlas.repack_layout(lay, [1], 1 << (4 + 1))
+        self.assertEqual(new['repacked']['pad'], 32)                     # 2^(L+1) fits the 128 atlas at scale 1
+        self.assertEqual((new['scale'], new['size'], [t['content'] for t in new['tiles']]), (1.0, 128, [(16, 16)] * 2))
+        ta, tb = new['tiles']
+        self.assertEqual(tb['origin'], (8 + 32, 8 + 32))                  # the emitter's region, margin 32
+        self.assertGreaterEqual(ta['origin'][1] - 8, tb['origin'][1] + 16 + 8 + 32)   # A on a new shelf below it
+        chk = lod_atlas.light_bleed(new, *self.faces(new), self.sources)
+        self.assertEqual((chk['flagged'], chk['tiles'][0]['added']), ([], 0.0))
+        self.assertIsNone(lod_atlas.repack_layout(dict(lay, size=32), [1], 32))   # does not fit at any margin
+        self.assertEqual(lod_atlas.shelf_pack([(8, 8), (8, 8)], 32), [(0, 0), (8, 0)])
+        self.assertEqual(lod_atlas.shelf_pack([(8, 8), (8, 8)], 32, {1}), [(0, 8), (0, 0)])   # regions: new shelf
+
+    def test_repack_scale_loss_cap_and_prune(self):
+        """Four 16-texel tiles filling a 64 atlas 2x2: the emitter's own region leaves the dark tiles three
+        footprints for one shelf, so any repack needs a lower scale (0.25-ish): refused at the default 15 %
+        cap, taken with a looser one. prune_layout drops a kept tile and leaves the others in place."""
+        tile = lambda ti, x, y: dict(mats=[ti], names={'light': b'l'}, origin=(x, y), content=(16, 16), lo=[0.0, 0.0],
+                                     span=(1.0, 1.0), full=(16.0, 16.0), need=1.0, ratio=16.0, area=1.0 + ti)
+        lay = dict(size=64, gutter=8, scale=1.0, min_ratio=16.0, slots=('light',),
+                   tiles=[tile(0, 8, 8), tile(1, 40, 8), tile(2, 8, 40), tile(3, 40, 40)],
+                   face_keys={(0, 0, k): (k, 0, 0) for k in range(4)})
+        self.assertEqual(lod_atlas.LIGHT_BLEED_SCALE_LOSS, lod_overlay.LIGHT_BLEED_SCALE_LOSS)
+        self.assertIsNone(lod_atlas.repack_layout(lay, [1], 32))                       # default cap 0.15
+        loose = lod_atlas.repack_layout(lay, [1], 32, max_loss=0.9)
+        self.assertLess(loose['scale'], 0.85)
+        self.assertEqual(loose['repacked']['scale_before'], 1.0)
+        pr = lod_atlas.prune_layout(lay, {1})
+        self.assertEqual([t['mats'] for t in pr['tiles']], [[0], [2], [3]])
+        self.assertEqual([t['origin'] for t in pr['tiles']], [(8, 8), (8, 40), (40, 40)])   # unmoved
+        self.assertEqual(pr['face_keys'], {(0, 0, 0): (0, 0, 0), (0, 0, 2): (1, 0, 0), (0, 0, 3): (2, 0, 0)})
+        self.assertAlmostEqual(sum(t['share'] for t in pr['tiles']), 1.0)
+
+    def test_still_bleeding_tile_kept_as_own_group(self):
+        """atlas_tree_lod0 record 0 at a 64 atlas: material 0's NULL light tile shares the level-4 box with
+        material 1's b_light tile; a repack that keeps the texel ratio does not fit, so material 0 keeps its
+        own group (one extra draw) with its own material and UVs."""
+        with tempfile.TemporaryDirectory() as folder:
+            game = make_game(folder)
+            assets, _ = lod_overlay.original_assets(game)
+            tree = bob1.parse(bob1.serialise(atlas_tree_lod0()))
+            mats, r0 = bob1.materials(tree), bob1.lods(tree)[0]
+            off = lod_atlas.build(assets, 'b', list(mats), r0, set(), 8, (64,), light_bleed_max=0)
+            m = list(mats)
+            res = lod_atlas.build(assets, 'b', m, r0, set(), 8, (64,))
+            b = res['light_bleed']
+            self.assertEqual(([f['mats'] for f in b['flagged']], b['remedy'], b['kept'], b['residual']),
+                             ([[0]], 'keep', [0], []))
+            self.assertIsNone(off['light_bleed'])
+            groups = lambda r: [g['material'] for g in r['record']['parts'][0]['groups']]
+            self.assertEqual((groups(off), groups(res)), ([3], [3, 0]))    # the atlas group + the kept material
+            self.assertEqual([t['mats'] for t in res['layout']['tiles']], [[1]])
+            kept = res['record']['parts'][0]['groups'][1]
+            src = {tuple(f[:3]) for g in r0['parts'][0]['groups'] if g['material'] == 0 for f in g['faces']}
+            pts = res['record']['points']
+            uv = lambda P, f: sorted(lod_atlas.point_uv(P[i]) for i in f[:3])
+            src_uv = sorted(uv(r0['points'], f) for f in src)
+            self.assertEqual(sorted(uv(pts, f) for f in kept['faces']), src_uv)   # original UVs
+            self.assertEqual(len(kept['extra']), len({i for f in kept['faces'] for i in f[:3]}))   # tangent records
+            s = lod_atlas.summary(res)
+            self.assertEqual((s['kept_light_bleed'], s['light_bleed']['remedy']), ([0], 'keep'))
+            self.assertIn('atlas light_bleed=1 kept=1', '\n'.join(lod_atlas.format_summary(s)))
+            self.assertEqual(len(m), len(mats) + 1)                      # one atlas material (tile 1 only)
+
+    def test_body_without_emitter_unchanged(self):
+        with tempfile.TemporaryDirectory() as folder:
+            game = make_game(folder)
+            assets, _ = lod_overlay.original_assets(game)
+            tree = bob1.parse(bob1.serialise(atlas_tree_lod0()))
+            mats, r0 = bob1.materials(tree), bob1.lods(tree)[0]
+            for mt in mats[:2]:                                          # no light map anywhere
+                mt['params'] = [(n, t, b'NULL' if n == b't_LightMapTexture' else v) for n, t, v in mt['params']]
+            off = lod_atlas.build(assets, 'b', list(mats), r0, set(), 8, (64,), light_bleed_max=0)
+            on = lod_atlas.build(assets, 'b', list(mats), r0, set(), 8, (64,))
+            b = on['light_bleed']
+            self.assertEqual((b['flagged'], b['remedy'], b['kept'], b['checked']), ([], None, [], 2))
+            self.assertEqual(on['record'], off['record'])
+            self.assertEqual({k: e['sha256'] for k, e in on['encoded'].items()},
+                             {k: e['sha256'] for k, e in off['encoded'].items()})
+
+    def test_batch_rows_and_record(self):
+        with tempfile.TemporaryDirectory() as folder:
+            game, out = make_game(folder), Path(folder) / 'out'
+            only = Path(folder) / 'only.txt'
+            only.write_text('ships/x/good\nships/x/mixed\n')
+            args = BATCH + ['--dry-run', '--game', str(game), '--only', str(only), '--atlas-max-size', '64']
+            code, text = run(args + ['--out', str(out), '--screen-width', '320'])
+            self.assertEqual(code, 0)
+            record = json.loads((out / 'x3m-lod-batch.json').read_text())
+            by = {b['name']: b for b in record['bodies']}
+            self.assertEqual({n: (by[n]['light_bleed'], by[n]['kept_light_bleed'], by[n]['draws'])
+                              for n in ('ships/x/good', 'ships/x/mixed')},
+                             {'ships/x/good': (1, [0], 2), 'ships/x/mixed': (1, [0], 2)})   # mixed: mat0 was its effect's only material
+            self.assertEqual(sorted(record['light_bleed']['bodies']), ['ships/x/good', 'ships/x/mixed'])
+            self.assertEqual(record['light_bleed']['max'], lod_atlas.LIGHT_BLEED_MAX)
+            self.assertIn('light_bleed (--light-bleed-max 4: ', text)
+            self.assertIn('bodies 2, tiles 2, kept groups 2', text)
+            self.assertRegex(text, r'ships/x/good .* ELIGIBLE light_bleed=1 kept=1')
+            self.assertIn("'kept:mat0:", (out / 'x3m-lod-batch-bodies.txt').read_text())
+            row = dict(baked=by['ships/x/good'])
+            self.assertEqual(census.bleed_text(row), ' light_bleed=1 kept=1')
+            self.assertEqual(census.bleed_text({}), '')                  # a census-only row: nothing baked
+            code, text = run(args + ['--out', str(Path(folder) / 'off'), '--screen-width', '320',
+                                     '--light-bleed-max', '0'])
+            record = json.loads((Path(folder) / 'off' / 'x3m-lod-batch.json').read_text())
+            self.assertIn('light_bleed off (--light-bleed-max 0)', text)
+            self.assertEqual([b.get('light_bleed') for b in record['bodies'] if b['eligible']], [None, None])
+            self.assertEqual(record['settings']['atlas']['light_bleed_max'], 0)   # --sync rebuilds on a change
 
 
 if __name__ == '__main__':

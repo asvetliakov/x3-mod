@@ -40,6 +40,12 @@ ships' lattice materials have both off and draw opaque, run257). Collapse
     texture over more than lod_atlas.OUTLIER_SPAN periods are span-clamped, and no
     tile holds more than 2 texels per pixel). The atlases are added to the same
     catalogue as dds/x3m_lod_<body>_<slot>.pck (new names; nothing is shadowed).
+    Light bleed guard (--light-bleed-max Y, default 4, 0 = off; lod_atlas.guard_bleed): a tile
+    whose light, read at the level the widened light-map fetch uses at T, gains a mean luminance
+    above Y/255 from a neighbour is flagged light_bleed; the atlas is repacked with the emitter
+    tiles in their own region when that costs at most --light-bleed-scale-loss (default 0.15) of
+    the atlas scale, else the flagged materials keep their own groups (kept_light_bleed, one extra
+    draw each; group label kept:matN).
 Faces of merged materials get the dominant material's textures over their own
 UVs (a look limit of the pilot; not with atlas).
 Synthesized material (default; --no-synth-material turns it off): for each
@@ -257,7 +263,9 @@ The batch writes a record JSON (--record, default x3m-lod-batch.json under --out
 working directory) with the counts by reason, atlas sizes and bytes, the texels/px ratio per
 body, the per-sector resident estimate (lod_batch_census.sector_report over its census files;
 --budget-mb N, default 512, warns when a sector exceeds N), per-body timings and the
-extrapolated full-set wall time, and a *-bodies.txt log with every body's plan.
+extrapolated full-set wall time, the light-bleed guard per body (light_bleed = flagged tiles,
+kept_light_bleed, remedy; the per-body rows print light_bleed=<tiles> kept=<materials>, the summary lists
+the affected bodies, the record's light_bleed.bodies), and a *-bodies.txt log with every body's plan.
 
   python3 tools/analysis/lod_overlay.py --dry-run --threshold 50 ships/argon/argon_TL
   python3 tools/analysis/lod_overlay.py --out /tmp/x3m-lod ships/argon/argon_TL=50 stations/others/military_outpost_middleb=100
@@ -716,8 +724,11 @@ TEXEL_FLOOR_SHARE = 0.10    # texel_floor refusal: starved tiles cover more than
 TEXEL_FALLBACK = 1.0        # batch: a texel_floor body gets a lower T so its weighted ratio reaches this (0: refuse)
 MAX_DEFAULT_JOBS = 6        # a worker on the biggest stations reaches ~7 GB RSS (2026-09-23 dry run)
 WORKER_BYTES = 7 << 30      # RAM budget per baking worker (that peak); the default keeps one budget spare
+LIGHT_BLEED_MAX = 4.0       # lod_atlas.LIGHT_BLEED_MAX: mean added light luminance (0..255) that flags a tile
+LIGHT_BLEED_SCALE_LOSS = 0.15   # lod_atlas.LIGHT_BLEED_SCALE_LOSS: the largest atlas scale drop a repack may cost
 ATLAS_DEFAULTS = dict(sizes=(1024, 2048), fmt='dxt', specular=False, bump=True, screen_width=effective_width(),
-                      min_texels=MIN_TEXELS, texel_floor_share=TEXEL_FLOOR_SHARE, texel_fallback=TEXEL_FALLBACK)
+                      min_texels=MIN_TEXELS, texel_floor_share=TEXEL_FLOOR_SHARE, texel_fallback=TEXEL_FALLBACK,
+                      light_bleed_max=LIGHT_BLEED_MAX, light_bleed_scale_loss=LIGHT_BLEED_SCALE_LOSS)
 
 
 def host_memory_bytes():
@@ -745,7 +756,9 @@ def atlas_collapse(assets, name, entry, mats, record, alpha, threshold, synth, o
     body = qualified_stem(entry['path'])
     try:
         res = lod_atlas.build(assets, body, mats, record, alpha, threshold * opts['screen_width'] / 1280, opts['sizes'],
-                              opts['fmt'], opts['specular'], synth, opts['bump'])
+                              opts['fmt'], opts['specular'], synth, opts['bump'],
+                              light_bleed_max=opts.get('light_bleed_max', LIGHT_BLEED_MAX),
+                              light_bleed_scale_loss=opts.get('light_bleed_scale_loss', LIGHT_BLEED_SCALE_LOSS))
     except lod_atlas.AtlasError as exc:
         raise SystemExit(f'{name}: {exc}') from None
     low = res['layout']['min_ratio']
@@ -764,6 +777,9 @@ def atlas_collapse(assets, name, entry, mats, record, alpha, threshold, synth, o
     extra = [(res['members'][s], lod_atlas.stored(e['dds'])) for s, e in res['encoded'].items()]
     res['summary'] = lod_atlas.summary(res)
     res['summary']['texel'] = texel
+    kept = set(res.get('kept', ()))
+    res['summary']['kept_light_bleed_draws'] = sum(1 for p in res['record']['parts'] if not p['flags'] & lod_atlas.HIDDEN_PART
+                                                   for g in p['groups'] if g['material'] in kept)
     return res['record'], res['synth'], res, extra
 
 
@@ -897,6 +913,7 @@ def ladder_text(ladder):
 
 def group_kind(plan, g):
     return ('atlas' if plan.get('atlas') and g['material'] in plan['atlas'].get('materials', [plan['atlas']['material']]) else
+            'kept' if plan.get('atlas') and g['material'] in plan['atlas'].get('kept_light_bleed', ()) else
             'glow' if g['material'] in plan.get('glow', ()) else
             'light' if g['material'] in plan.get('area_kept', ()) else
             'alpha' if g['material'] in plan['alpha'] else 'opaque')
@@ -1102,6 +1119,17 @@ def build_parser():
                         ' T_fb = round(T_pad * weighted / W) (rebuilt up to 3 times until the area-weighted ratio'
                         ' reaches W texels/px), T_fb >= max(T_1, T_pad/4, 2), else refused texel_floor (default'
                         f' {TEXEL_FALLBACK:g}; 0 disables)')
+    b.add_argument('--light-bleed-max', type=float, default=LIGHT_BLEED_MAX, metavar='Y',
+                   help='atlas / batch: light-atlas bleed guard (lod_atlas.guard_bleed): a tile whose light, sampled'
+                        ' at the level the widened light-map fetch reads at the switch size (ceil(log2 texels/px) +'
+                        ' log2 of the hull light-map widening 4) with a +-1 texel box, gains a mean luminance above'
+                        f' Y/255 over its own light map is flagged light_bleed; the atlas is repacked with the emitter'
+                        ' tiles in their own region, else the flagged materials keep their own groups (one extra draw'
+                        f' each, kept_light_bleed) (default {LIGHT_BLEED_MAX:g}; 0 disables)')
+    b.add_argument('--light-bleed-scale-loss', type=float, default=LIGHT_BLEED_SCALE_LOSS, metavar='F',
+                   help='atlas / batch: a light-bleed repack is accepted only when the atlas scale drops by at most'
+                        ' F (0..1) relative to the original pack; otherwise the flagged tiles keep their own groups'
+                        f' (default {LIGHT_BLEED_SCALE_LOSS:g}; 0 allows only a repack at the same scale)')
     b.add_argument('--aspect-cap', type=aspect_cap,
                    default=(1.5, 2.0), metavar='SHIPS,STATIONS',
                    help='batch: K_max of the aspect factor, T_pad = round(T_class * clamp(k, 1, K_max))'
@@ -1150,9 +1178,14 @@ def main(argv=None):
         ap.error('--texel-floor-share must be in [0, 1)')
     if a.texel_fallback < 0:
         ap.error('--texel-fallback must be >= 0')
+    if not a.light_bleed_max >= 0:
+        ap.error('--light-bleed-max must be >= 0')
+    if not 0 <= a.light_bleed_scale_loss < 1:
+        ap.error('--light-bleed-scale-loss must be in [0, 1)')
     a.atlas_opts = dict(sizes=tuple(sizes), fmt=a.atlas_format, specular=a.atlas_specular or a.batch,
                         bump=a.atlas_bump, screen_width=width, min_texels=a.min_texels,
-                        texel_floor_share=a.texel_floor_share, texel_fallback=a.texel_fallback)
+                        texel_floor_share=a.texel_floor_share, texel_fallback=a.texel_fallback,
+                        light_bleed_max=a.light_bleed_max, light_bleed_scale_loss=a.light_bleed_scale_loss)
     a.hash_mode = 'sha256' if a.hash_archives else 'fingerprint'
     game = a.game.resolve()
     root = None
@@ -1479,6 +1512,17 @@ def bake_body(assets, row, atlas_opts):
                 seconds=time.time() - t0)
 
 
+def bleed_fields(atlas):
+    """Batch row fields of an atlas summary's light-bleed guard: light_bleed (flagged tiles), kept_light_bleed
+    (materials kept as their own groups), kept_light_bleed_draws (their groups in C), light_bleed_remedy;
+    {} when the guard was off or the summary predates it."""
+    b = (atlas or {}).get('light_bleed')
+    if not b:
+        return {}
+    return dict(light_bleed=len(b['flagged']), kept_light_bleed=list(b['kept']),
+                kept_light_bleed_draws=(atlas or {}).get('kept_light_bleed_draws', 0), light_bleed_remedy=b['remedy'])
+
+
 _BAKE = {}
 
 
@@ -1653,7 +1697,8 @@ def batch(a, game, root, markers):
                             ratio=(p['atlas'] or {}).get('min_texels_per_px'), atlas_bytes=atlas_bytes,
                             member_bytes=len(p['members'][0][1]), seconds=round(p['seconds'], 2),
                             guard_waived=p['guard_waived'],
-                            atlas_materials=len((p['atlas'] or {}).get('materials', [0])))
+                            atlas_materials=len((p['atlas'] or {}).get('materials', [0])),
+                            **bleed_fields(p['atlas']))
         if 'atlas' in row and width in row['atlas']:
             row['atlas'][width]['bytes'] = row['atlas'][width]['bytes_cap2048'] = atlas_bytes
     built = [p for p in plans if not p['reused']]
@@ -1720,6 +1765,8 @@ def batch(a, game, root, markers):
         f'; {r["name"]} {census.fallback_text(r["texel_fallback"])}'
         + (f' REFUSED at bake ({",".join(r["refuse"])})' if bake else '') for r in rs)
     clamped_bodies = [r['name'] for r in rows if r['eligible'] and (r.get('texel') or {}).get('texel_clamped')]
+    bleed_rows = [(p['name'], bleed_fields(p['atlas'])) for p in plans if bleed_fields(p['atlas']).get('light_bleed')]
+    bleed_off = not a.light_bleed_max
     texel_lines = [f'texel rule per body at {width} wide (k = aspect factor, T = T_pad, r_body = layout radius in'
                    f' body units, r_world = flown radius, D = r_world*640/T in km at T_class->T_pad ({census.UNITS_PER_M:g}'
                    f' units/m, inferred); ratios in atlas texels per screen pixel at the switch size; weighted = ratio'
@@ -1737,6 +1784,7 @@ def batch(a, game, root, markers):
             f' starved={100 * x["starved_share"]:.2f}% clamped={len(x["texel_clamped"])}'
             f'{" layout=clamped" if est.get("clamped") else ""}'
             f' {"ELIGIBLE" if r["eligible"] else "refuse=" + ",".join(r["refuse"] + r["filter"])}'
+            + census.bleed_text(r)
             + (f' texel_fallback="{census.fallback_text(r["texel_fallback"])}"' if r.get('texel_fallback') else ''))
     summary = [
         f'batch: game {game}; display {a.display[0]}x{a.display[1]} -> reference width {width}; rule ships'
@@ -1776,6 +1824,12 @@ def batch(a, game, root, markers):
         f' material per effect ({len(multi)}):'
         f' {", ".join(multi[:12])}{", ..." if len(multi) > 12 else ""}; second UV set passed through ({len(uv2)}):'
         f' {", ".join(uv2[:12])}{", ..." if len(uv2) > 12 else ""}; stray trailing bytes tolerated: {trailing}',
+        ('light_bleed off (--light-bleed-max 0)' if bleed_off else
+         f'light_bleed (--light-bleed-max {a.light_bleed_max:g}: mean added light luminance at L = ceil(log2 texels/px)'
+         f' + {lod_atlas.WIDEN_LEVELS}): bodies {len(bleed_rows)}, tiles {sum(b["light_bleed"] for _, b in bleed_rows)},'
+         f' kept groups {sum(b["kept_light_bleed_draws"] for _, b in bleed_rows)}'
+         + ''.join(f'; {n} light_bleed={b["light_bleed"]} kept={len(b["kept_light_bleed"])} remedy={b["light_bleed_remedy"]}'
+                   for n, b in bleed_rows)),
         f'timing: census {census_s:.1f} s, baking {bake_s:.1f} s for {len(built)} bodies with {a.jobs} jobs'
         f' ({per_body:.2f} s per body wall); extrapolated full set: {full_est:.0f} s'
         + (f' (this run x {len(rows)} enumerated / {len(built)} built; upper bound, every candidate baked)'
@@ -1814,6 +1868,8 @@ def batch(a, game, root, markers):
                    texel_fallback_guard={r['name']: r['texel_fallback']['guard'] for r in fb_guard},
                    texel_fallback_not_reached=[r['name'] for r in fb_short]),
         draws=dict(record0=draws_before, overlay=draws_after), mixed_effect_bodies=multi, uv2_bodies=uv2,
+        light_bleed=dict(max=a.light_bleed_max, widen_levels=lod_atlas.WIDEN_LEVELS,
+                         bodies={n: b for n, b in bleed_rows}),
         timing=dict(census_s=round(census_s, 2), bake_s=round(bake_s, 2), per_body_s=round(per_body, 3),
                     extrapolated_full_s=round(full_est, 1), total_s=round(time.time() - t_start, 2)),
         sectors=sectors, budget_mb=a.budget_mb, budget_warnings=budget, notes=notes + mod_notes,

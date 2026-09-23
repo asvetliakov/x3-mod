@@ -775,6 +775,67 @@ coarse texel grid, stays black outside its footprint at every level. The black t
 content stays black wherever the two contents share no texel. The old box chain fails
 it at mip 4.
 
+**Light-atlas bleed guard (2026-09-23, after the Run 74 A triage).** Tile-aware mips keep
+each tile's footprint its own, but the game does not read the atlas at mip 0–3. On
+`stations/station_scenes/tech/argon_tech_S_laser_E` the solar-panel material mat31 has a
+20×20 light tile at [428,984], 16 texels from the 44×12 exhaust-glow tile mat40 at [464,984]
+(`verification/results/run277-overlay-busy/atlas_tiles_laser_E.txt`). The proxy widens the
+hull light-map fetch by K = 4: `tools/manage.py` `HULL_EMISSIVE_WIDENING_DEFAULT = '4'`, the
+launcher default wherever the light-map gain is active. The `texldd` raises the level by
+log2 K = 2 ([hull-emissive-widening.md](hull-emissive-widening.md) §0). At the switch size
+(3.16 atlas texels/px) the GPU therefore fetches about level 3.6. There a ±1-texel box around
+the panel faces holds an emitter texel (luminance > 32) for 0.86 of the samples at level 4
+and for 1.00 at level 5 (`panel_light_mips_mat31.txt`). In game the panels came out 1.67×
+brighter and orange (0.157 against 0.093 luminance); control materials moved by less than
+8 % (run277, measured). Geometry, alpha routing, span clamp, uv2 and part flags were ruled
+out.
+
+Rule (`lod_atlas.guard_bleed`, run by `build`; `--light-bleed-max Y`, default 4, 0 = off):
+
+- Each tile is checked at L = ceil(log2 of its atlas texels per pixel at the switch size) +
+  `WIDEN_LEVELS` (2 = log2 K). Seven barycentric samples per face are taken in the tile-aware
+  light atlas level L, each with a ±1-texel box, and compared with the same texels resampled
+  from the tile's own light map alone (the source at the equivalent level).
+- A tile is flagged `light_bleed` when its face-area-weighted mean added Rec.709 luminance
+  exceeds Y/255. The threshold is absolute: the tiles at risk hold 0–1/255 of their own light,
+  so a relative rule would flag DXT noise.
+- Remedy 1, repack: the emitter tiles (own mean light above 16/255, not flagged) are packed
+  first in their own shelves. Each gets an empty margin of 2^(L+1) texels, with L the highest
+  flagged level. The margin is background, not gutter, because the gutter repeats the emitter.
+  The plan's scale is the largest that packs, so the regions need a lower uniform scale at the
+  same atlas size. The margin halves until two conditions hold: the scale drops by at most
+  `--light-bleed-scale-loss` (default 0.15) relative to the pack being repacked, and the minimum
+  texel ratio stays at or above min(2, the plan's own minimum). The repack is taken when it
+  leaves fewer tiles flagged.
+- Remedy 2, keep: every tile still flagged keeps its materials as their own groups, with their
+  own material, textures and UVs. That costs one draw per part and material (`kept_light_bleed`),
+  the same way the glow collapse keeps a material. The other tiles keep their places in the
+  current pack (`prune_layout`; the freed area turns background), so no tile gains a new
+  neighbour. This repeats for up to 3 rounds; a tile still flagged after that is accepted and
+  reported as residual. Remedy 1 is preferred over remedy 2 per flagged tile.
+- Output: the batch rows print `light_bleed=<tiles> kept=<materials>`. The summary lists the
+  affected bodies, and the record carries `light_bleed.bodies` and per-body `light_bleed`,
+  `kept_light_bleed`, `kept_light_bleed_draws` and `light_bleed_remedy`. The census does not
+  bake, so its own rows carry no guard columns.
+
+Dry runs over the Run 74 set (`--only verification/results/lod-overlay-batch/sectors.txt`,
+1920×1080, measured; `verification/results/lod-overlay-batch/light-bleed/`):
+
+- laser_E: flagged mat31 at L4 (own 0.6, +21.8), mat26 at L5 (+8.6) and mat21 at L6 (+6.1).
+  The repack cleared all three within the cap (after: mat31 +0.2, mat26 +0.0, mat21 +1.9). It
+  used emitters mat5 and mat40 and a margin of 4 texels, halved from 128. Scale went from 0.0777
+  to 0.0661 (−14.9 %) and the minimum texel ratio from 2.61 to 2.18. No group was kept, so draws
+  stayed at 3 and the atlas at 1024².
+- The 22 bodies: 16 flagged, 53 tiles, no residual. 10 bodies were cleared by the repack alone,
+  and 6 ships needed repack plus kept groups: `argon_M1` mat30, `argon_M2` mat19 and mat37,
+  `argon_TL` mat41, `Argon_M7` mat21 and mat24, `Argon_m7m` mat34, `owp_large` mat43 and mat45.
+  That is 9 kept groups, and draws below the switch went from 67 to 76. The largest scale loss
+  was 14.9 % (laser_E), and 7 bodies lost scale at all. Their minimum texel ratio fell: M1 3.32 → 3.10, M2 3.69 → 2.79, TL 2.94 → 2.76, M7
+  4.56 → 3.91, m7m 3.54 → 3.04, Split_M7M 2.86 → 2.68, laser_E 2.61 → 2.18. All atlases stayed
+  at 1024². Stored atlas bytes went from 14.86 to 12.67 MB and dat bytes from 127,449,546 to
+  125,263,525. Baking took 92.0 s before and 108.5 s after (2 jobs, host shared with another
+  agent's run). With the guard off, the dat bytes equal the installed Run 74 overlay's.
+
 **Fleet batch census (2026-09-23; `tools/analysis/lod_batch_census.py`, read-only).** Over
 all 1635 winning `BOB1` bodies (installed `addon/05` skipped) it runs the atlas collapse's own
 checks and layout on record 0 without baking (`verification/results/lod-overlay-batch/`:
