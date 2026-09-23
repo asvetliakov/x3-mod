@@ -1,0 +1,86 @@
+{
+ "installed_at": "2026-09-24T02:43+04:00",
+ "command": "python3 tools/analysis/lod_overlay.py --batch --sync --install --replace --jobs 2",
+ "commit": "ec7cf904 (baker split) on main d1b7924c",
+ "slots": [
+  5,
+  6
+ ],
+ "display": "1920x1080 (reference width 1800)",
+ "rule": "ships T_class=min(200,max(80,2.5*T_1)), stations 150; aspect k capped 1.5/2.0; texel floor 0.5 area-weighted, share 0.10; light-bleed guard (max 4/255 at L = ceil(log2 texels/px) + 2, repack within 15 % scale loss else kept group); surface-share gate 0.02",
+ "files": {
+  "addon/05.cat": {
+   "sha256": "0ada55be7d7f901b154f7759dafa2d21bb0f9e67f7cb2d260ebfab2b9210bd56",
+   "bytes": 129356
+  },
+  "addon/05.dat": {
+   "sha256": "66b3b0ac82ad50872be8305053669c57f8474f287401a0ef738d57642bf91913",
+   "bytes": 1990980307
+  },
+  "addon/05.x3m-lod.json": {
+   "sha256": "bb67535142f6ce4796a5954d55ccdf8c9189adabefdebc279f3c47eb0b17629d",
+   "bytes": 11997054
+  },
+  "addon/06.cat": {
+   "sha256": "aeceac1fe4dec34f7d8797ffc448e1d39fbe2c46f1abbf43188945b912a39253",
+   "bytes": 33577
+  },
+  "addon/06.dat": {
+   "sha256": "922ecd95bb3406cd256199cdfa155f0ade30b68f1006aca5a13e5d326332e998",
+   "bytes": 669679714
+  },
+  "addon/06.x3m-lod.json": {
+   "sha256": "f92b9e9d39e52bef7c1c3ab0371daee3d082649a0a75c9e4e8f5ea43c7bdf378",
+   "bytes": 1716332
+  },
+  "addon/x3m-lod-batch.json": {
+   "sha256": "796f0144ae01d4204eee1b05d8e28c9547900c5aa93a0cd41c6d20d59f87f3af",
+   "bytes": 3609186
+  }
+ },
+ "summary": {
+  "enumerated": 2453,
+  "eligible": 591,
+  "installed": 591,
+  "slot_05": {
+   "bodies": 476,
+   "members": 2380,
+   "bytes": 1990980307
+  },
+  "slot_06": {
+   "bodies": 115,
+   "members": 575,
+   "bytes": 669679714
+  },
+  "dat_cap": 2000000000,
+  "members_beyond_2_31": 0,
+  "draws_below_switch": "9819 -> 1469",
+  "atlas_bytes_stored": "520.67 MB",
+  "bake_seconds": 2586.0,
+  "reused": 0,
+  "note": "every body rebuilt (tool hash changed); first overlay with two addon slots, engine acceptance of a second slot needs the Run 77 A launch"
+ },
+ "record_copies": "verification/results/lod-overlay-batch/install-fleet-split/",
+ "game_running_at_install": false,
+ "replaces": {
+  "installed": "2026-09-24T01:44+04:00",
+  "files": {
+   "addon/05.cat": {
+    "sha256": "2a76277671e67e8a04d83d33467bed66ade225bc49cdbe7bf197d567c67d3635",
+    "bytes": 132332
+   },
+   "addon/05.dat": {
+    "sha256": "e1beef5414e6bb7327e70de57313d2e6f90d9fd2d9391e676d31413e4df3a511",
+    "bytes": 1949149427
+   },
+   "addon/05.x3m-lod.json": {
+    "sha256": "e57b5c2bccd087d82186414cad88829a6e10376dd1036782c58c21f95c7df158",
+    "bytes": 12259513
+   },
+   "addon/x3m-lod-batch.json": {
+    "sha256": "6a5d43a30b48cc84a4bd894f58cbd6b890f6ed6e7d44c811af4aaeb48c052970",
+    "bytes": 2042081
+   }
+  }
+ }
+}

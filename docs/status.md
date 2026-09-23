@@ -20,9 +20,9 @@ the fog card gate admits the docked-scene card's z-test/cull variant and names t
 (`volumetric_fog_card_states`; [note](architecture/fog-handover.md), case C); `--fog-far-bins 40|24` runtime variant
 (default 40, byte-identical; 24 for the Run 76 D A/B; [note](architecture/fog-gpu-cost.md), step B); fog route
 sub-boundaries and the repair census for `--gpu-sync-timing` (step A). Not in this build: the TAA mask cut
-(c694e6df, next candidate). Game data: `addon/05` fleet overlay, 485 bodies (286 ships, 199 stations) at 1.95 GB, the 22 flown-sector bodies
-reused unchanged; 106 stations wait for the two-slot split (2 GB fseek limit)
-([record](../verification/results/lod-overlay-batch/install-fleet/install.json)); fog families file absent.
+(c694e6df, next candidate). Game data: fleet overlay across `addon/05` (476 bodies, 1.99 GB) and `addon/06` (115 bodies, 670 MB), all 591
+eligible vanilla bodies, split by the baker at the 2 GB fseek limit; engine acceptance of the second slot unflown
+([record](../verification/results/lod-overlay-batch/install-fleet-split/install.json)); fog families file absent.
 
 [Qualification](../verification/results/run76-candidate-qualification.json): x87 116 roots / 673 reachable / zero
 violations; imports/exports unchanged vs Run75; temporal pass RESULT PASS 744 / 278, 546 samples (report byte-identical);
