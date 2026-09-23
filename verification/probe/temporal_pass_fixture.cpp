@@ -754,10 +754,12 @@ struct EdgeRun { std::vector<std::vector<float>> current,output,depth,motion,age
 // adaptive > 0: the age programs (thin clip 0.7, WMAX = adaptive; the age target is read into run.age); exitPx: FrameInputs::sky_history_exit_px.
 // farProgram 1: the far stabiliser program (W_FAR 0.985 under the far cases' gate d0 0.9995 .. 0.9999, the default speed gate); 2: the
 // far-camera program on top (thin region 0.97, camera gate): the flown configuration. Both write the age target too.
-template<class Objects> EdgeRun edge_sequence(EdgeScene& s,const DWORD* decoder,const DWORD* resolver,Objects objects,const EdgeBackground& bg,unsigned frames,bool sentinelCamera,bool perPixel,const char* label,bool strictSky=false,const float* clipToPrevious=nullptr,float adaptive=0,float exitPx=0,unsigned farProgram=0){
+// sentinel > 0 (farProgram 2 only): the sentinel stabiliser at that strength (configure_sentinel(); the flown configuration).
+template<class Objects> EdgeRun edge_sequence(EdgeScene& s,const DWORD* decoder,const DWORD* resolver,Objects objects,const EdgeBackground& bg,unsigned frames,bool sentinelCamera,bool perPixel,const char* label,bool strictSky=false,const float* clipToPrevious=nullptr,float adaptive=0,float exitPx=0,unsigned farProgram=0,float sentinel=0){
     constexpr UINT S=EdgeScene::S,P=EdgeScene::P;TemporalPass pass;check("edge initialize",pass.initialize(s.d,decoder,resolver));EdgeRun run;
     if(adaptive>0){check("edge configure flicker",pass.configure_flicker());require(pass.age_available(),"edge age programs available");}
     if(farProgram){check("edge configure far",pass.configure_far());require(pass.far_available()&&(farProgram<2||pass.camera_gate_available()),"edge far programs available");}
+    if(sentinel>0){check("edge configure sentinel",pass.configure_sentinel());require(farProgram>1&&pass.sentinel_available(),"edge sentinel stabiliser available");}
     for(unsigned n=0;n<frames;++n){
         const unsigned index=n%P+1;const double jx=halton(index,2)-.5,jy=halton(index,3)-.5;const auto scene=objects(n);
         s.render(scene,bg,jx,jy);run.current.push_back(s.read(s.color.p));run.depth.push_back(s.read(s.depth32.p));run.motion.push_back(s.read(s.motion.p));run.jx.push_back(jx);run.jy.push_back(jy);
@@ -770,7 +772,7 @@ template<class Objects> EdgeRun edge_sequence(EdgeScene& s,const DWORD* decoder,
         in.reactive_policy=ReactivePolicy::DerivedFromDepthSentinel;in.sentinel_camera=sentinelCamera;in.sentinel_strict_sky=strictSky;in.history_allowed=true;in.caller_queries_idle=true;in.caller_scene_open=true;
         if(adaptive>0){in.thin_clip=.7f;in.adaptive_weight=adaptive;}in.sky_history_exit_px=exitPx;
         if(farProgram){in.far_weight=.985f;in.far_d0=.9995f;in.far_inv=1.f/(.9999f-.9995f);in.far_speed_lo=x3::temporal::kFarSpeedLo;in.far_speed_hi=x3::temporal::kFarSpeedHi;
-            if(farProgram>1){in.thin_region_weight=.97f;in.thin_region_relax=1;in.thin_region_camera_gate=true;}}
+            if(farProgram>1){in.thin_region_weight=.97f;in.thin_region_relax=1;in.thin_region_camera_gate=true;in.sentinel_strength=sentinel;}}
         Output out;check("edge Begin resolve",s.d->BeginScene());check(label,pass.run(in,&out));check("edge End resolve",s.d->EndScene());
         require(out.color&&pass.diagnostics().history_valid&&out.used_history==(n>0),"edge history follows the sequence");
         run.output.push_back(s.read(out.color));if(out.age)run.age.push_back(s.read(out.age));
@@ -1125,7 +1127,61 @@ void edge_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,const
       // Loose with the floor uploaded: the pass forces the off value; both targets bit-identical to loose without it.
       const ExitRun looseOff=exitSequence(1.37,.5,0,false,0,"loose_off"),looseOn=exitSequence(1.37,.5,0,false,.25f,"loose_on");
       const ExitNumbers mLoose=exitNumbers(looseOn,&looseOff);
-      metric("exit reset: loose with the floor uploaded is bit-identical to loose without it on both targets, no negative age",mLoose.diff+mLoose.ageDiff+double(mLoose.negTotal),0,0);}}
+      metric("exit reset: loose with the floor uploaded is bit-identical to loose without it on both targets, no negative age",mLoose.diff+mLoose.ageDiff+double(mLoose.negTotal),0,0);
+      // (m) Streak over sky (docs/architecture/fog-dust-motes.md section 5.4): a dust mote's capsule is unrouted (drawn colour-only
+      // after the fog: no motion, no depth), 5 px across and 24 px long, advancing 8 px/frame, on the flown configuration
+      // (far_camera, strict sky, exit 0.25, sentinel stabiliser 0.7), over (l)'s flickering sky and over a dark uniform sky.
+      // Asserted: no negative age anywhere; the sky 8+ rows from the streak identical to the run without it; on the dark sky no
+      // trail beyond 3 px behind the tail (|out - control| <= .05 M). Second row: the streak across (l)'s moving hull and its
+      // band writes no mark of its own (negative ages equal to the run without the streak). Reported (not gated): the trail
+      // on the flickering sky and output/current on the overlapped and leading segments.
+      // M 2 lies above the stabiliser's emitter bound (E 1: the box shrinks to the inner 3x3 beside it); M 0.8 below it.
+      {const unsigned streakFrames=34;const double streakLen=24,streakStep=8;
+       auto streakAt=[=](unsigned n,unsigned enter){return -streakLen+streakStep*(double(n)-double(enter));}; // left edge
+       auto streakScene=[=](bool flicker,bool streak,bool hull,double top,unsigned enter,float M){return [=](unsigned n){
+           EdgeObject sky{0,0,S,S,flicker?0.f:.02f,-1.f,0,0,false,0,true};sky.pattern=flicker;sky.phase=float(n);
+           std::vector<EdgeObject> out{sky};
+           // The sequence's motion contract needs a routed object: a static corner square, or (l)'s hull moving 0.5 px/frame.
+           if(hull){const double l=1.37+.5*(n>=exitMove?n-exitMove+1:0);EdgeObject sq{l,st2,l+8,st2+8,0,squareDepth,(n>=exitMove?.5:0.),0};sq.valueB=.5f;out.push_back(sq);}
+           else out.push_back(EdgeObject{1,1,3,3,.5f,squareDepth,0,0});
+           const double l=streakAt(n,enter);
+           if(streak&&l<S&&l+streakLen>0)out.push_back(EdgeObject{std::max(l,0.),top,std::min(l+streakLen,double(S)),top+5,M,-1.f,0,0,false,0,true});
+           return out;};};
+       auto streakRun=[&](bool flicker,bool streak,bool hull,double top,unsigned enter,float M=2.f){
+           return edge_sequence(s,decoder,resolver,streakScene(flicker,streak,hull,top,enter,M),sentinelFill,streakFrames,true,true,"mote streak",true,nullptr,0.f,.25f,2,.7f);};
+       struct StreakNumbers{unsigned negative=0,trailPx=0,overlapN=0,leadingN=0;double control=0,trail=0,overlap=0,leading=0;};
+       auto streakNumbers=[&](const EdgeRun& on,const EdgeRun& off,double top,unsigned enter,const char* name,float M=2.f){StreakNumbers m;
+           require(on.age.size()==streakFrames&&off.age.size()==streakFrames,"mote streak: the age target is read every frame");
+           for(unsigned n=0;n<streakFrames;++n){const double l=streakAt(n,enter),lp=streakAt(n-1,enter);
+               for(UINT i=0;i<S*S;++i)m.negative+=on.age[n][i*4]<0;
+               for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x){const double d=std::fabs(px(on.output[n],x,y)-px(off.output[n],x,y)),behind=l-(x+.5);
+                   if(y+8<top||y>=top+5+8)m.control=std::max(m.control,d);
+                   if(y>=top&&y<top+5&&n>=enter&&behind>3){m.trail=std::max(m.trail,d);if(d>.05*M)m.trailPx=std::max(m.trailPx,unsigned(std::ceil(behind)));}}
+               // Output over current on the centre row once the streak is wholly on screen: the overlapped segment [l, lp + 24) was
+               // streak last frame too, the leading one [lp + 24, l + 24) was sky (history from the sky, pulled up by the clip).
+               if(n>0&&l>=0&&l+streakLen<=S&&lp>=-streakLen)for(UINT x=0;x<S;++x){const double c=x+.5;const UINT y=UINT(top)+2;const double r=px(on.output[n],x,y)/px(on.current[n],x,y);
+                   if(c>l+1&&c<lp+streakLen-1){m.overlap+=r;++m.overlapN;}else if(c>lp+streakLen+1&&c<l+streakLen-1){m.leading+=r;++m.leadingN;}}}
+           m.overlap/=std::max(m.overlapN,1u);m.leading/=std::max(m.leadingN,1u);
+           std::printf("MOTE_STREAK sky=%s value=%.2f frames=%u negative_px=%u control_diff=%.6f trail_beyond_3px_max=%.6f trail_px=%u overlap_output_over_current=%.4f overlap_px=%u leading_output_over_current=%.4f leading_px=%u\n",
+                       name,double(M),streakFrames,m.negative,m.control,m.trail,m.trailPx,m.overlap,m.overlapN,m.leading,m.leadingN);
+           return m;};
+       const EdgeRun flickerSky=streakRun(true,false,false,13,12),darkSky=streakRun(false,false,false,13,12);
+       const StreakNumbers flick=streakNumbers(streakRun(true,true,false,13,12),flickerSky,13,12,"flicker");
+       const StreakNumbers dark=streakNumbers(streakRun(false,true,false,13,12),darkSky,13,12,"dark");
+       const StreakNumbers dim=streakNumbers(streakRun(false,true,false,13,12,.8f),darkSky,13,12,"dark",.8f);
+       metric("mote streak over the flickering sky: no negative age (the unrouted streak writes no exit mark)",double(flick.negative),0,0);
+       metric("mote streak over the flickering sky: the sky 8+ rows from the streak identical to the run without it",flick.control,0,0);
+       for(const StreakNumbers* m:{&dark,&dim}){const std::string prefix=std::string("mote streak (value ")+(m==&dark?"2, above":"0.8, below")+" the emitter bound) over a dark sky: ";
+           metric((prefix+"no negative age").c_str(),double(m->negative),0,0);
+           metric((prefix+"the sky 8+ rows from the streak identical to the run without it").c_str(),m->control,0,0);
+           metric((prefix+"no trail beyond 3 px behind the tail (max |out - control| over 0.05 M)").c_str(),m->trail/(.05*(m==&dark?2.:.8)),0,1);}
+       // The hull row: the streak crosses (l)'s band while the hull moves 0.5 px/frame (frames 16..33); it enters at 18.
+       const EdgeRun hullAlone=streakRun(true,false,true,st2+2,18);
+       const StreakNumbers hull=streakNumbers(streakRun(true,true,true,st2+2,18),hullAlone,st2+2,18,"flicker_hull");
+       unsigned alone=0;for(const auto& age:hullAlone.age)for(UINT i=0;i<S*S;++i)alone+=age[i*4]<0;
+       std::printf("MOTE_STREAK_HULL marks_with_streak=%u marks_without=%u\n",hull.negative,alone);
+       metric("mote streak across a moving hull's band: the hull's marks equal the run without the streak",double(hull.negative)-double(alone),0,0);
+       require(alone>=20,"mote streak hull row: the moving hull writes its band marks");}}}
     if(!deferredFailures.empty())throw std::runtime_error(deferredFailures.front());
 }
 // ---- run 139: 1-px jittered lattice and the history weight ----

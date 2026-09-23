@@ -1,0 +1,386 @@
+{
+ "pass_fixture": {
+  "accepted_look_hashes_equal": true,
+  "bottle": {
+   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf",
+   "environment": {
+    "FEX_X87REDUCEDPRECISION": "1",
+    "WINEMSYNC": "1"
+   },
+   "name": "X3",
+   "wine_arch": "arm64"
+  },
+  "checks": 117,
+  "executable_sha256": "69d0d3f844af2661acd37ad8e082f3c11ee2b8ecf801ec1c3146f6b2f1cecd39",
+  "failed": [],
+  "gates": 30,
+  "gates_passed": 30,
+  "grid_report": {
+   "bind": 0,
+   "calls": 20,
+   "cascades": 1,
+   "drawn": 1,
+   "far_width": 2512.5,
+   "frame_current": 1,
+   "frame_term": 0.0,
+   "kernel": "5464,0,0",
+   "net_calls": 15,
+   "unshadowed": "none"
+  },
+  "grid_toggle": {
+   "difference": 15,
+   "off_calls": 323,
+   "on_calls": 338
+  },
+  "motes_calls": {
+   "off": 322,
+   "on": 334,
+   "shadow": "none",
+   "stage": 12
+  },
+  "motes_cut": {
+   "control_streak": 1,
+   "cut_streak": 0,
+   "lit_pixels": 2800,
+   "shift_px": 1.8706,
+   "worst_vs_still_twin": 0.3753
+  },
+  "motes_depth": {
+   "behind": 26,
+   "front": 4,
+   "plane": 90,
+   "worst_vs_twin": 0.2513
+  },
+  "motes_named_checks": {
+   "count": 29,
+   "failed": []
+  },
+  "motes_poses": {
+   "dense_filled": 34,
+   "dense_offset": "-12000,3000,-18000",
+   "void_found": 1,
+   "void_offset": "-18000,-18000,-18000"
+  },
+  "motes_refusal": {
+   "calls": 322,
+   "plain_calls": 322,
+   "reason": "mote_blend_caps"
+  },
+  "motes_reset": {
+   "after": 10,
+   "allocations_before": 6
+  },
+  "motes_resources": {
+   "count": 512,
+   "default_ib_bytes_2048": 24576,
+   "default_vb_bytes_2048": 163840,
+   "ib_bytes": 6144,
+   "vb_bytes": 40960
+  },
+  "motes_shafts": [
+   {
+    "energy_ratio": 0.2672,
+    "shadow": "in_march",
+    "variant": "in_march",
+    "worst_vs_twin": 0.2533
+   },
+   {
+    "dark_shadow": "grid",
+    "dark_worst_vs_twin": 0.2533,
+    "grid_drawn": 1,
+    "lit_shadow": "none",
+    "lit_worst_vs_twin": 0.4119,
+    "variant": "grid"
+   }
+  ],
+  "motes_sky": {
+   "drawn": 142,
+   "isolated": 5,
+   "lit_pixels": 2747,
+   "visible_in_fog": 34,
+   "worst_abs": 0.000926,
+   "worst_centroid_px": 0.0291,
+   "worst_centroid_vs_twin_px": 0.0046,
+   "worst_energy": 0.01441,
+   "worst_vs_twin": 0.4119
+  },
+  "motes_streak": {
+   "clamped": 0,
+   "clamped_visible": 8,
+   "expected": 3.7412,
+   "isolated": 2,
+   "long": 2,
+   "report_streak": 1,
+   "shift_px": 3.7412,
+   "still_report_streak": 0,
+   "still_worst_vs_twin": 0.3148,
+   "worst_length_px": 0.036,
+   "worst_vs_twin": 0.373
+  },
+  "motes_wrap": {
+   "axes_same": 1,
+   "compared": 13,
+   "half_side_same": 0,
+   "worst_centroid_shift_px": 0.0038
+  },
+  "new_checks": 39,
+  "pre_existing_checks": 78,
+  "result": "PASS",
+  "slots": {
+   "fog-dust-motes-grid": 257,
+   "fog-dust-motes-look": 311,
+   "fog-dust-motes-vertex": 101
+  },
+  "state_restorations": 1141
+ },
+ "route_bridge": {
+  "exit_checks": 4,
+  "legacy_bit_identical_to_baseline": true,
+  "motes_ab_names": [
+   "motes_ab_after_reset_draws",
+   "motes_ab_alternating_creates_nothing",
+   "motes_ab_alternating_frames_applied",
+   "motes_ab_launch_on_creates_at_prepare_and_draws",
+   "motes_ab_launch_on_row_fields",
+   "motes_ab_option_absent_creates_nothing_rows_absent",
+   "motes_ab_reset_recreates_the_buffers_once",
+   "motes_ab_reset_releases_the_buffers",
+   "motes_ab_toggle_off_logs_one_row",
+   "motes_ab_toggle_on_before_reset",
+   "motes_ab_toggled_off_frame_is_the_launch_off_frame",
+   "motes_ab_toggled_off_keeps_the_buffers",
+   "motes_ab_toggled_off_row_fields"
+  ],
+  "motes_ab_rows": [
+   "alternating_frames=20 toggle_rows=20 allocations=7,7",
+   "reset_allocations=7,12,12 released=1 regrown=1"
+  ],
+  "result": [
+   "36333",
+   "PASS"
+  ],
+  "shadow_ab_names": 15,
+  "steps": [
+   {
+    "executable_sha256": "c2d5c1131e7f9e3843064ebddc6d563863b347a8b2a5c3e92ed1987498db539a",
+    "log_sha256": "a9480468b48b352078387d633ec1fa1e317e6df67e3ce9185eba0446101886e6",
+    "name": "baseline",
+    "returncode": 0,
+    "seconds": 8.226954459
+   },
+   {
+    "executable_sha256": "6f5ebcd61658316ae9df38efce58d486fba8bc4da2949669b1ee62f30600234e",
+    "log_sha256": "9c822d40ea776feeb0cd23ea9af958f2e60a4c076447474bc7d85f0ab62e4c19",
+    "name": "bridge",
+    "returncode": 0,
+    "seconds": 22.703629874999997
+   },
+   {
+    "executable_sha256": "6035bd907e4c577b980ff64c470aea6fa224ef09598e141e82c925c88ebb9176",
+    "log_sha256": "b97f2b7a853a38f0e680d0fa42ac73115fa15e120ccf6fc44293a936c7077379",
+    "name": "exit",
+    "returncode": 0,
+    "seconds": 48.139656083000006
+   }
+  ]
+ },
+ "schema": 1,
+ "temporal_streak": {
+  "hull": [
+   {
+    "marks_with_streak": 648,
+    "marks_without": 648
+   },
+   {
+    "marks_with_streak": 648,
+    "marks_without": 648
+   }
+  ],
+  "result": [
+   "PASS",
+   "744",
+   "278",
+   "2"
+  ],
+  "rows": [
+   {
+    "control_diff": 0.0,
+    "frames": 34,
+    "leading_output_over_current": 1.0,
+    "leading_px": 12,
+    "negative_px": 0,
+    "overlap_output_over_current": 1.0,
+    "overlap_px": 28,
+    "sky": "flicker",
+    "trail_beyond_3px_max": 0.688477,
+    "trail_px": 144,
+    "value": 2.0
+   },
+   {
+    "control_diff": 0.0,
+    "frames": 34,
+    "leading_output_over_current": 1.0,
+    "leading_px": 12,
+    "negative_px": 0,
+    "overlap_output_over_current": 1.0,
+    "overlap_px": 28,
+    "sky": "dark",
+    "trail_beyond_3px_max": 0.0,
+    "trail_px": 0,
+    "value": 2.0
+   },
+   {
+    "control_diff": 0.0,
+    "frames": 34,
+    "leading_output_over_current": 0.3686,
+    "leading_px": 12,
+    "negative_px": 0,
+    "overlap_output_over_current": 0.6574,
+    "overlap_px": 28,
+    "sky": "dark",
+    "trail_beyond_3px_max": 0.0,
+    "trail_px": 0,
+    "value": 0.8
+   },
+   {
+    "control_diff": 0.0,
+    "frames": 34,
+    "leading_output_over_current": 1.0,
+    "leading_px": 12,
+    "negative_px": 648,
+    "overlap_output_over_current": 1.0,
+    "overlap_px": 28,
+    "sky": "flicker_hull",
+    "trail_beyond_3px_max": 0.8302,
+    "trail_px": 96,
+    "value": 2.0
+   },
+   {
+    "control_diff": 0.0,
+    "frames": 34,
+    "leading_output_over_current": 1.0,
+    "leading_px": 12,
+    "negative_px": 0,
+    "overlap_output_over_current": 1.0,
+    "overlap_px": 28,
+    "sky": "flicker",
+    "trail_beyond_3px_max": 0.688477,
+    "trail_px": 144,
+    "value": 2.0
+   },
+   {
+    "control_diff": 0.0,
+    "frames": 34,
+    "leading_output_over_current": 1.0,
+    "leading_px": 12,
+    "negative_px": 0,
+    "overlap_output_over_current": 1.0,
+    "overlap_px": 28,
+    "sky": "dark",
+    "trail_beyond_3px_max": 0.0,
+    "trail_px": 0,
+    "value": 2.0
+   },
+   {
+    "control_diff": 0.0,
+    "frames": 34,
+    "leading_output_over_current": 0.3686,
+    "leading_px": 12,
+    "negative_px": 0,
+    "overlap_output_over_current": 0.6574,
+    "overlap_px": 28,
+    "sky": "dark",
+    "trail_beyond_3px_max": 0.0,
+    "trail_px": 0,
+    "value": 0.8
+   },
+   {
+    "control_diff": 0.0,
+    "frames": 34,
+    "leading_output_over_current": 1.0,
+    "leading_px": 12,
+    "negative_px": 648,
+    "overlap_output_over_current": 1.0,
+    "overlap_px": 28,
+    "sky": "flicker_hull",
+    "trail_beyond_3px_max": 0.8302,
+    "trail_px": 96,
+    "value": 2.0
+   }
+  ],
+  "samples": [
+   [
+    "mote streak over the flickering sky: no negative age (the unrouted streak writes no exit mark)",
+    "PASS"
+   ],
+   [
+    "mote streak over the flickering sky: the sky 8+ rows from the streak identical to the run without it",
+    "PASS"
+   ],
+   [
+    "mote streak (value 2, above the emitter bound) over a dark sky: no negative age",
+    "PASS"
+   ],
+   [
+    "mote streak (value 2, above the emitter bound) over a dark sky: the sky 8+ rows from the streak identical to the run without it",
+    "PASS"
+   ],
+   [
+    "mote streak (value 2, above the emitter bound) over a dark sky: no trail beyond 3 px behind the tail (max |out - control| over 0.05 M)",
+    "PASS"
+   ],
+   [
+    "mote streak (value 0.8, below the emitter bound) over a dark sky: no negative age",
+    "PASS"
+   ],
+   [
+    "mote streak (value 0.8, below the emitter bound) over a dark sky: the sky 8+ rows from the streak identical to the run without it",
+    "PASS"
+   ],
+   [
+    "mote streak (value 0.8, below the emitter bound) over a dark sky: no trail beyond 3 px behind the tail (max |out - control| over 0.05 M)",
+    "PASS"
+   ],
+   [
+    "mote streak across a moving hull's band: the hull's marks equal the run without the streak",
+    "PASS"
+   ],
+   [
+    "mote streak over the flickering sky: no negative age (the unrouted streak writes no exit mark)",
+    "PASS"
+   ],
+   [
+    "mote streak over the flickering sky: the sky 8+ rows from the streak identical to the run without it",
+    "PASS"
+   ],
+   [
+    "mote streak (value 2, above the emitter bound) over a dark sky: no negative age",
+    "PASS"
+   ],
+   [
+    "mote streak (value 2, above the emitter bound) over a dark sky: the sky 8+ rows from the streak identical to the run without it",
+    "PASS"
+   ],
+   [
+    "mote streak (value 2, above the emitter bound) over a dark sky: no trail beyond 3 px behind the tail (max |out - control| over 0.05 M)",
+    "PASS"
+   ],
+   [
+    "mote streak (value 0.8, below the emitter bound) over a dark sky: no negative age",
+    "PASS"
+   ],
+   [
+    "mote streak (value 0.8, below the emitter bound) over a dark sky: the sky 8+ rows from the streak identical to the run without it",
+    "PASS"
+   ],
+   [
+    "mote streak (value 0.8, below the emitter bound) over a dark sky: no trail beyond 3 px behind the tail (max |out - control| over 0.05 M)",
+    "PASS"
+   ],
+   [
+    "mote streak across a moving hull's band: the hull's marks equal the run without the streak",
+    "PASS"
+   ]
+  ]
+ }
+}

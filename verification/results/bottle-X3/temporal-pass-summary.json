@@ -35,9 +35,9 @@
     "src/temporal/sharpen.h": "7929b76d44483ec76a5e939f7fd1245d981a88fe7eb6a32a73bae43fe81b771f",
     "src/temporal/rcas.hlsl": "50ce16e50069b2d6bf599575aa82828158b233e46723c1b7c277bcae7aacc152",
     "src/temporal/taa_sharpen_ps.hlsl": "af6a6734bcc506afaf990de01add0bcb2d7e57617c738ba08fa6ab2e7167d9a8",
-    "verification/probe/temporal_pass_fixture.cpp": "32f39b9855e988410c6225008d4ba9f0aeb28acdfb633e44602530df49750587",
+    "verification/probe/temporal_pass_fixture.cpp": "43da1c2e8a20751179c95cf6b9a44d0d840529249b3dff86d9c79c333eb32415",
     "verification/probe/build_temporal_pass.sh": "a59f6e17764411adad516db293587561c0f30a63ebc8a58a663e067f4e49f6e9",
-    "verification/probe/run_temporal_pass.py": "36dc0af4c624c0152cac31f3b7e09fdff7b40c34aa854e567b8fc12175f4fa4a"
+    "verification/probe/run_temporal_pass.py": "805d66db051aa38224f75eec6b40832ad1b0d0449719939d01de08e663b5830d"
   },
   "game_launched": false,
   "bottle": {
@@ -50,7 +50,7 @@
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
-  "executable_sha256": "d53d8a3009de0a67b844337d1b3d5ad137749a1dfe5e0465c800260a1f950c73",
+  "executable_sha256": "bc5de6061ed02f483073f115a3c64e5a5bc28b301c9c32c05a6bbc3896f43b2e",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -59,19 +59,19 @@
     "--dll",
     "d3d9=b",
     "--workdir",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a617e3d7c5fdbe2b3/verification/probe/build",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a617e3d7c5fdbe2b3/verification/probe/build/temporal_pass_fixture.exe",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a5db0a971d2b5723a/verification/probe/build",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a5db0a971d2b5723a/verification/probe/build/temporal_pass_fixture.exe",
     "C:\\X3\\d3dx9_37.dll",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a617e3d7c5fdbe2b3/src/temporal/depth_decode.hlsl",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a617e3d7c5fdbe2b3/src/temporal/resolve.hlsl",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a617e3d7c5fdbe2b3/src/temporal/taa_sharpen_ps.hlsl"
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a5db0a971d2b5723a/src/temporal/depth_decode.hlsl",
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a5db0a971d2b5723a/src/temporal/resolve.hlsl",
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a5db0a971d2b5723a/src/temporal/taa_sharpen_ps.hlsl"
   ],
   "exit_code": 0,
   "source_unchanged": true,
   "binary_unchanged": true,
   "compiler_unchanged": true,
-  "report_sha256": "8804dd856e43d16e4d1dcf85233c860c99f66a0a666e2ad8ad564d8bd16fd506",
-  "samples": 528,
+  "report_sha256": "58d85cde92764d58d52c7cb64ca0890285bef85006492eea18b59772271fcd17",
+  "samples": 546,
   "state_restorations": 278,
   "generations": 2,
   "camera_pan": [
@@ -1566,6 +1566,112 @@
       "age_diff": "0.000000"
     }
   ],
+  "mote_streak": [
+    {
+      "sky": "flicker",
+      "value": "2.00",
+      "frames": "34",
+      "negative_px": "0",
+      "control_diff": "0.000000",
+      "trail_beyond_3px_max": "0.688477",
+      "trail_px": "144",
+      "overlap_output_over_current": "1.0000",
+      "overlap_px": "28",
+      "leading_output_over_current": "1.0000",
+      "leading_px": "12"
+    },
+    {
+      "sky": "dark",
+      "value": "2.00",
+      "frames": "34",
+      "negative_px": "0",
+      "control_diff": "0.000000",
+      "trail_beyond_3px_max": "0.000000",
+      "trail_px": "0",
+      "overlap_output_over_current": "1.0000",
+      "overlap_px": "28",
+      "leading_output_over_current": "1.0000",
+      "leading_px": "12"
+    },
+    {
+      "sky": "dark",
+      "value": "0.80",
+      "frames": "34",
+      "negative_px": "0",
+      "control_diff": "0.000000",
+      "trail_beyond_3px_max": "0.000000",
+      "trail_px": "0",
+      "overlap_output_over_current": "0.6574",
+      "overlap_px": "28",
+      "leading_output_over_current": "0.3686",
+      "leading_px": "12"
+    },
+    {
+      "sky": "flicker_hull",
+      "value": "2.00",
+      "frames": "34",
+      "negative_px": "648",
+      "control_diff": "0.000000",
+      "trail_beyond_3px_max": "0.830200",
+      "trail_px": "96",
+      "overlap_output_over_current": "1.0000",
+      "overlap_px": "28",
+      "leading_output_over_current": "1.0000",
+      "leading_px": "12"
+    },
+    {
+      "sky": "flicker",
+      "value": "2.00",
+      "frames": "34",
+      "negative_px": "0",
+      "control_diff": "0.000000",
+      "trail_beyond_3px_max": "0.688477",
+      "trail_px": "144",
+      "overlap_output_over_current": "1.0000",
+      "overlap_px": "28",
+      "leading_output_over_current": "1.0000",
+      "leading_px": "12"
+    },
+    {
+      "sky": "dark",
+      "value": "2.00",
+      "frames": "34",
+      "negative_px": "0",
+      "control_diff": "0.000000",
+      "trail_beyond_3px_max": "0.000000",
+      "trail_px": "0",
+      "overlap_output_over_current": "1.0000",
+      "overlap_px": "28",
+      "leading_output_over_current": "1.0000",
+      "leading_px": "12"
+    },
+    {
+      "sky": "dark",
+      "value": "0.80",
+      "frames": "34",
+      "negative_px": "0",
+      "control_diff": "0.000000",
+      "trail_beyond_3px_max": "0.000000",
+      "trail_px": "0",
+      "overlap_output_over_current": "0.6574",
+      "overlap_px": "28",
+      "leading_output_over_current": "0.3686",
+      "leading_px": "12"
+    },
+    {
+      "sky": "flicker_hull",
+      "value": "2.00",
+      "frames": "34",
+      "negative_px": "648",
+      "control_diff": "0.000000",
+      "trail_beyond_3px_max": "0.830200",
+      "trail_px": "96",
+      "overlap_output_over_current": "1.0000",
+      "overlap_px": "28",
+      "leading_output_over_current": "1.0000",
+      "leading_px": "12"
+    }
+  ],
   "seta_exit": [
     {
       "mode": "straight_off",
@@ -2352,7 +2458,7 @@
   },
   "lattice": {
     "report": "temporal-lattice.txt",
-    "report_sha256": "d952d0dd8a8cbe5bf08930929eab9852a0d606faf1b3a118124ed924f830a850",
+    "report_sha256": "5f0b6373748285d5a2e0cc6a20e78478bb73a9503bbf0acd6133ee997fe4d7f8",
     "exit_code": 0,
     "budget": {
       "plain": {
@@ -3855,11 +3961,11 @@
       "height": "768",
       "content": "all_geometry",
       "rounds": "6",
-      "plain_ms": "0.6132",
-      "far_stabiliser_ms": "0.8027",
-      "thin_region_ms": "1.4038",
-      "far_delta_ms": "0.1895",
-      "thin_region_delta_ms": "0.7906",
+      "plain_ms": "0.6275",
+      "far_stabiliser_ms": "0.8277",
+      "thin_region_ms": "1.4346",
+      "far_delta_ms": "0.2002",
+      "thin_region_delta_ms": "0.8071",
       "scope": "cpu_wall_with_event_query_drain"
     }
   ],
@@ -5052,12 +5158,12 @@
         "width": "1280",
         "height": "768",
         "rounds": "6",
-        "no_region_thin_ms": "1.4038",
-        "no_region_camera_ms": "1.5906",
-        "no_region_camera_delta_ms": "0.1868",
-        "fragmented_pan_thin_ms": "1.3039",
-        "fragmented_pan_camera_ms": "1.9146",
-        "fragmented_pan_camera_delta_ms": "0.6107",
+        "no_region_thin_ms": "1.4346",
+        "no_region_camera_ms": "1.5836",
+        "no_region_camera_delta_ms": "0.1490",
+        "fragmented_pan_thin_ms": "1.3552",
+        "fragmented_pan_camera_ms": "1.9688",
+        "fragmented_pan_camera_delta_ms": "0.6137",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ],
@@ -5066,11 +5172,11 @@
         "width": "1280",
         "height": "768",
         "rounds": "6",
-        "r32f_camera_ms": "1.9146",
-        "lane_input_law_ms": "1.7927",
-        "lane_input_lane_ms": "1.8249",
-        "lane_fetch_delta_ms": "0.0322",
-        "lane_input_over_r32f_ms": "-0.1219",
+        "r32f_camera_ms": "1.9688",
+        "lane_input_law_ms": "1.8597",
+        "lane_input_lane_ms": "1.8616",
+        "lane_fetch_delta_ms": "0.0019",
+        "lane_input_over_r32f_ms": "-0.1092",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]
@@ -5282,9 +5388,9 @@
         "height": "768",
         "rounds": "6",
         "content": "all_unrouted_sentinel_pan",
-        "strength_off_ms": "1.3085",
-        "strength_on_separable_ms": "1.5332",
-        "sentinel_delta_ms": "0.2247",
+        "strength_off_ms": "1.4638",
+        "strength_on_separable_ms": "1.7768",
+        "sentinel_delta_ms": "0.3130",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]

@@ -91,6 +91,50 @@ struct DensityRun {
         require(on1.applied&&on2.applied&&on1.image==grid_image&&on2.image==grid_image,"shadow_ab_toggle_on_matches_the_pre_toggle_grid_frame");
         require(has(on_row," grid_pass=1 ")&&has(on_row," march=grid_unshadowed fallback=no_cascade "),"shadow_ab_toggle_on_row_fields");
     }
+    // Ctrl+Alt+F11 (fog-dust-motes.md section 5.3) through the production fragment: the toggle the fixture export
+    // x3m_fog_dust_motes_fixture_toggle forwards to, called between frames, a launch with the motes on (N 8192 over the widest
+    // window, R 5000, so the pose's fog is within reach). The drift clock is the real one, so on frames are not compared
+    // byte for byte; the off frames are the launch-off stored frame, and the placement law is the pass fixture's.
+    void motes_ab(const std::vector<std::uint16_t>& vanilla,const std::vector<std::uint16_t>& in_march){
+        fog_spatial_state::Hooks hooks(d,api);fog_spatial_state::Scene scene(d,inputs,caps,std::vector<DWORD>(std::begin(card_program),std::end(card_program)));
+        Bridge b(d,hooks,scene,caps);b.record_aux();auto& m=b.motion;place(m);m.fog_density_requested_=true;m.fog_timing_=false;
+        x3m::renderer::FogMoteTuning motes{};motes.count=8192;motes.radius=5000.f;
+        m.fog_dust_motes_launch_=true;m.fog_density_config_.motes=motes;m.fog_density_config_.dust_motes=true; // configure_volumetric_fog_dust_motes
+        // A frame whose number is a multiple of 600 prints its row whatever changed. The jump there is a sample gap, which
+        // disarms the card replacement for one warm-up frame (fog_sector_.frame + 1 < frame_): two frames re-arm it first.
+        auto periodic=[&]{const std::uint64_t r=m.frame_%600;m.frame_+=r<=597?597-r:1197-r;frame(b);frame(b);return frame(b);};
+        Fill on_fill=fill(b,vanilla);IDirect3DVertexBuffer9* const vb=m.fog_->fixture_mote_vertices();
+        Frame on=periodic();const std::string on_row=row_of(m);
+        std::printf("MOTES_AB on_frames=%u vb=%u visible=%u on_row=%s\n",on_fill.frames,unsigned(vb!=nullptr),unsigned(on.image!=in_march),on_row.empty()?"none":on_row.c_str());
+        require(vb&&m.fog_->motes_variant()&&on.applied&&on.quads==3&&m.fog_motes_drawn_,"motes_ab_launch_on_creates_at_prepare_and_draws");
+        require(has(on_row," motes=1 mote_count=8192 mote_calls=12 ")&&has(on_row," mote_shadow=none mote_refused=none"),"motes_ab_launch_on_row_fields");
+        // Toggle off at the frame boundary: one row; the frame is the launch-off stored frame; the buffers stay.
+        const unsigned allocations=m.fog_->allocations(),references=m.fog_->references(),rows_before=x3m::motes_rows;
+        require(m.volumetric_fog_dust_motes_toggle()==0&&x3m::motes_rows==rows_before+1&&has(x3m::last_motes_row,"enabled=0 refused=none key=ctrl_alt_f11"),"motes_ab_toggle_off_logs_one_row");
+        Frame off=periodic();const std::string off_row=row_of(m);
+        std::printf("MOTES_AB off_row=%s\n",off_row.empty()?"none":off_row.c_str());
+        require(off.applied&&off.image==in_march&&off.quads==3&&!m.fog_->motes_variant()&&!m.fog_motes_drawn_,"motes_ab_toggled_off_frame_is_the_launch_off_frame");
+        require(has(off_row," motes=0 mote_count=0 mote_calls=0 "),"motes_ab_toggled_off_row_fields");
+        require(m.fog_->fixture_mote_vertices()==vb&&m.fog_->allocations()==allocations&&m.fog_->references()==references,"motes_ab_toggled_off_keeps_the_buffers");
+        // Twenty alternating frames: one toggle row per press, nothing created; every off frame is the launch-off frame.
+        const unsigned toggles_before=x3m::motes_rows;bool alternating=true;
+        for(unsigned i=0;i<20;++i){const int state=m.volumetric_fog_dust_motes_toggle();Frame f=frame(b);alternating=alternating&&f.applied&&f.quads==3&&m.fog_motes_drawn_==(state==1)&&(state==1||f.image==in_march);}
+        std::printf("MOTES_AB alternating_frames=20 toggle_rows=%u allocations=%u,%u\n",x3m::motes_rows-toggles_before,allocations,m.fog_->allocations());
+        require(alternating&&x3m::motes_rows-toggles_before==20u&&!m.fog_->motes_variant(),"motes_ab_alternating_frames_applied");
+        require(m.fog_->fixture_mote_vertices()==vb&&m.fog_->allocations()==allocations&&m.fog_->references()==references,"motes_ab_alternating_creates_nothing");
+        // Reset while on: the VB/IB go with the targets and come back once, at the first latch that prepares the pass.
+        require(m.volumetric_fog_dust_motes_toggle()==1,"motes_ab_toggle_on_before_reset");
+        const unsigned before_reset=m.fog_->allocations();
+        m.fog_->before_reset();const bool released=!m.fog_->fixture_mote_vertices();
+        m.fog_sector_={};m.fog_cards_={};m.fog_attach_failed_=false;m.fog_density_prepared_=false;++m.generation_;m.fog_->after_reset(S_OK);
+        Fill reset_on=fill(b,vanilla);IDirect3DVertexBuffer9* const regrown=m.fog_->fixture_mote_vertices();const unsigned after_fill=m.fog_->allocations();
+        Frame again=frame(b);Frame again2=frame(b);
+        std::printf("MOTES_AB reset_allocations=%u,%u,%u released=%u regrown=%u\n",before_reset,after_fill,m.fog_->allocations(),unsigned(released),unsigned(regrown!=nullptr));
+        require(released&&reset_on.native_exact&&reset_on.no_fault,"motes_ab_reset_releases_the_buffers");
+        // The family atlas 1 (prepare_field) + targets 1 + DEFAULT density atlases 2 + mote VB/IB 1, and nothing more after.
+        require(regrown&&after_fill==before_reset+5&&m.fog_->allocations()==after_fill&&m.fog_->fixture_mote_vertices()==regrown,"motes_ab_reset_recreates_the_buffers_once");
+        require(again.applied&&again2.applied&&m.fog_motes_drawn_,"motes_ab_after_reset_draws");
+    }
     void run(){
         std::vector<std::uint16_t> legacy_image,legacy_warm,vanilla,stored_reference;
         {   // Legacy reference at the same camera: the option off must never reach the density path.
@@ -125,6 +169,11 @@ struct DensityRun {
             require(m.fog_->fixture_density_cache()&&m.fog_->density_status().available&&m.fog_->density_ready(scene.input.w,scene.input.h),"stored_dynamic_cache_live");
             Frame steady=frame(b);require(steady.image==stored_a&&steady.suppressed&&steady.applied,"stored_steady_frame_bit_identical");
             stored_reference=stored_a; // the launch-off (in-march) frame at pose A for the shadow-pass A/B below
+            {   // The dust motes absent (fog-dust-motes.md section 4): nothing created, no report, no row field, the toggle a no-op.
+                const unsigned rows=x3m::motes_rows;
+                require(!m.fog_->fixture_mote_vertices()&&m.fog_->mote_report().frame==~std::uint64_t(0)&&!m.fog_->motes_variant()&&!std::strstr(x3m::last_frame_row," motes=")&&
+                        m.volumetric_fog_dust_motes_toggle()==-1&&x3m::motes_rows==rows,"motes_ab_option_absent_creates_nothing_rows_absent");
+            }
             std::printf("IMAGE stored_sector_a %016llx\n",fnv(stored_a));
             // Sector change: re-key, zero readiness in the same frame, native cards while it refills.
             const auto nodes_a=steady.nodes;
@@ -212,5 +261,6 @@ struct DensityRun {
             require(gone&&took<200.&&device_refs(d)==refs,"abandon_then_pass_destructor_is_prompt_and_balanced");
         }
         shadow_pass_ab(vanilla,stored_reference);
+        motes_ab(vanilla,stored_reference);
     }
 };

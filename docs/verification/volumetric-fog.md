@@ -2406,3 +2406,43 @@ Run 68 C (`/tmp/x3-bottleX3-run256`, Run68 DLL `39c8c70d…`): the fog command w
 
 **Decision (2026-09-23):** no visible win and a small cost, so `--fog-shadow-pass` stays
 default off; the option and the toggle remain for a paired-capture comparison if wanted.
+
+## Dust motes (2026-09-23)
+
+`--fog-dust-motes N[,SIZE[,STREAK]]` (`X3M_FOG_DUST_MOTES`, default off, stored range only;
+[fog-dust-motes.md](../architecture/fog-dust-motes.md), "As built"). Worktree build on main `72262ba1` (after the
+motion-weight commit `022798ba`), review fixes applied (caller cut, launcher/DLL option bounds), not committed at the
+time of the runs; bottle X3 (arm64, `FEX_X87REDUCEDPRECISION=1`, `WINEMSYNC=1`). All measured.
+Compact record: [bottle-X3/fog-dust-motes.json](../../verification/results/bottle-X3/fog-dust-motes.json),
+written by `verification/results/fog-dust-motes/summarize.py` from the three runs below.
+
+- DLL: `cmake -S . -B build-motes -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo`,
+  `cmake --build build-motes -j8` (`d3d9.dll` `a3bd8d001f3d1bf0…`); `check_no_x87.py`: 639 reachable functions, 0 violations.
+- Programs: `generate_rigid_motion_pixel.py --shader fog_dust_motes_vertex --shader fog_dust_motes_look
+  --shader fog_dust_motes_grid` under the Wine lock; `fog_density_shader_slots.py`: 311 / 257 ps_3_0 slots,
+  101 vs_3_0; the ten existing programs' bytecode unchanged.
+- Pass fixture: `fog_density_shader_run.py build/run/check` (reference `/tmp/x3-run67-fog-ref`, exporter and screen
+  digests unchanged), lock wait 0.0 s, child 92.3 s: `RESULT PASS checks=117 failures=0 state_restorations=1141`,
+  30 / 30 gates (new `motes_cases`, `motes_programs_below_512`), the 78 existing checks all PASS, accepted look
+  hashes equal, `GRID_REPORT calls=20 net_calls=15`, `GRID_TOGGLE off_calls=323 on_calls=338 difference=15`
+  (unchanged); the 29 `M_motes_*` / `motes_off_bit_identical` checks PASS, among them the caller cut
+  (`MOTES_CUT control_streak=1 cut_streak=0`, 6 units and 2 degrees, the frame within 0.38 of the still twin's
+  tolerance). `MOTES_CALLS off=322 on=334 stage=12`; the per-case numbers are in the note's table.
+- Route bridge: `fog_route_bridge_run.py run --cases /tmp/x3-fog-family-gpu-inputs-final/cases.txt`, baseline rebuilt
+  from `git archive 6f16dbf6`, lock wait 0.0 s, child 79.4 s: baseline PASS, bridge 36,333 checks PASS (15
+  `shadow_ab_*` names, 13 `motes_ab_*` names), exit 4 checks, `legacy_bit_identical_to_baseline` true. Two earlier
+  attempts failed on the fixture's own expectations (a frame-number jump to force a periodic row disarms the card
+  replacement for one warm-up frame; a Reset re-creates the family atlas too, +5 not +4) and were corrected in
+  `fog_route_density_inc.h`.
+- Temporal row (m): `run_temporal_pass.py` under the lock on the rebased tree (the motion-weight rows included), lock
+  wait 0.0 s, child 136.1 s: `passed: true`, `RESULT PASS numerical=744 state_restorations=278 generations=2`, 546
+  samples (712 / 528 of main plus 32 / 18 for case (m)), 84 `MOTION_WEIGHT` and 28 `SETA_EXIT` rows, the new
+  `MOTE_STREAK` asserts true on 8 rows. The tracked `temporal-pass.txt`, `temporal-lattice.txt` and
+  `temporal-pass-summary.json` are this run's (the summary's report digests equal the files).
+- Host: `test_volumetric_fog`, `test_comparison_hotkeys` (comparison controls 16,393 checks), `test_fog_density_shaders`,
+  `test_fog_route_bridge`, `test_fog_cards` (mock extended), `test_sector_background`, `test_sun_share_lane`,
+  `test_shader_compiler_provenance`, `test_fps_overlay`, `test_fog_field_assets`, `test_fog_density_cache` OK.
+- Launcher: `manage.py launch --bottle X3 --dry-run` with the fog prerequisites, `--volumetric-fog 0.02
+  --volumetric-fog-cards replace --volumetric-fog-range stored --fog-dust-motes 2048` resolves
+  `X3M_FOG_DUST_MOTES=2048,4,128`; without `--volumetric-fog-range stored` it exits 2 with
+  `--fog-dust-motes requires --volumetric-fog-range stored.`

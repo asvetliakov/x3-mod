@@ -69,3 +69,12 @@ python3 verification/probe/fog_route_bridge_run.py build-exit --output OUT
 X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/fog_route_bridge_run.py run --output OUT --cases <spatial cases.txt>
 python3 verification/probe/fog_route_bridge_run.py check --output OUT
 ```
+
+## Dust motes A/B (2026-09-23)
+
+`motes_ab` in `fog_route_density_inc.h` launches the fragment with `--fog-dust-motes` (N 8192, R 5000) and drives
+`volumetric_fog_dust_motes_toggle` between frames: frame-row fields on and off (a frame number that is a multiple of
+600 prints its row; two warm-up frames first, because the jump disarms the card replacement for one frame), the
+toggled-off frame equal to the launch-off stored frame, twenty alternating frames creating nothing, and a Reset while
+on re-creating the VB/IB once. The run without the option checks that nothing is created, no row field is printed and
+the toggle is a no-op. Placement and colour against a host twin are the FogPass fixture's (`fog_density_pass_fixture.cpp`).

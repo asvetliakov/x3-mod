@@ -47,7 +47,9 @@ try:
     # exit reset (seta-sky-hull-share-decay.md section 6: nine age-program sequences and fourteen metrics per generation). 672 / 488: the
     # same rows on the far and far-camera programs (six sequences and eleven metrics per generation). 712 / 528: the motion
     # history weight (taa-motion-history-weight.md section 6: ten rows on two age programs, ten metrics per program and generation).
-    assert run.returncode==0 and match and tuple(map(int,match.groups()))==(712,278,2) and report['samples']==528 and 'RESET PASS' in text and 'FAIL' not in text,text[-1500:]
+    # 744 / 546: the dust motes' streak over sky, case (m) of fog-dust-motes.md section 5.4 (seven sequences and nine metrics
+    # per generation).
+    assert run.returncode==0 and match and tuple(map(int,match.groups()))==(744,278,2) and report['samples']==546 and 'RESET PASS' in text and 'FAIL' not in text,text[-1500:]
     # Motion history weight rows (docs/architecture/taa-motion-history-weight.md): the age programs' keep weight capped by the
     # smaller of the translation parallax and the screen motion. Off path, every slow row, the pan and the co-moving hull
     # bit-identical; the age target never differs; the half-texel 12.5 px/frame row is sharper (E ratio) with the cap 0.8.
@@ -60,6 +62,12 @@ try:
         assert all(weight_rows[(program,name,'1')]['age_diff']=='0.000000' for name in ('5px','5.5px','6.5px','12px','12.5px')),program
         assert float(weight_rows[(program,'6.5px','2')]['output_diff'])<=.002<.01<=float(weight_rows[(program,'6.5px','1')]['output_diff']),(weight_rows[(program,'6.5px','1')],weight_rows[(program,'6.5px','2')])
         assert float(weight_rows[(program,'12.5px','1')]['e_ratio'])>=1.5*float(weight_rows[(program,'12.5px','0')]['e_ratio']) and float(weight_rows[(program,'12.5px','1')]['output_diff'])>0,(weight_rows[(program,'12.5px','0')],weight_rows[(program,'12.5px','1')])
+    # Case (m): the unrouted streak writes no negative age and, over a dark sky, no trail beyond 3 px; the hull row's marks are
+    # the hull's own. The flickering sky's trail and the segment brightness ratios are reported, not gated.
+    report['mote_streak']=[dict(re.findall(r'(\w+)=(\S+)',line)) for line in text.splitlines() if line.startswith('MOTE_STREAK ')]
+    streak_rows={(row['sky'],row['value']):row for row in report['mote_streak'][:4]}
+    assert len(report['mote_streak'])==8 and sorted(streak_rows)==[('dark','0.80'),('dark','2.00'),('flicker','2.00'),('flicker_hull','2.00')],report['mote_streak']
+    assert all(streak_rows[k]['negative_px']=='0' for k in (('dark','0.80'),('dark','2.00'),('flicker','2.00'))) and all(streak_rows[k]['trail_px']=='0' for k in (('dark','0.80'),('dark','2.00'))),report['mote_streak']
     # Exit reset rows (docs/architecture/seta-sky-hull-share-decay.md): strict alone leaves the hull share in the trail and no
     # negative age; with the floor every fresh trail pixel is current-only once and the trail is sky-only (B == R) afterwards.
     report['seta_exit']=[dict(re.findall(r'(\w+)=(\S+)',line)) for line in text.splitlines() if line.startswith('SETA_EXIT ')]

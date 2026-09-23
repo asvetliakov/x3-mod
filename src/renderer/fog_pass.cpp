@@ -15,11 +15,11 @@ template<class T> void drop(T*& value) noexcept { if (value) { value->Release();
 bool lost(HRESULT hr) noexcept { return hr == D3DERR_DEVICELOST || hr == D3DERR_DEVICENOTRESET; }
 // IDirect3DDevice9 vtable slots (verification/probe/abi_check.cpp).
 enum Slot : unsigned {
-    GetDirect3D = 6, GetCreationParameters = 9, CreateTexture = 23, UpdateSurface = 30, UpdateTexture = 31, StretchRect = 34, SetRenderTarget = 37, GetRenderTarget = 38,
+    GetDirect3D = 6, GetCreationParameters = 9, CreateTexture = 23, CreateVertexBuffer = 26, CreateIndexBuffer = 27, UpdateSurface = 30, UpdateTexture = 31, StretchRect = 34, SetRenderTarget = 37, GetRenderTarget = 38,
     SetDepthStencilSurface = 39, GetDepthStencilSurface = 40, BeginScene = 41, EndScene = 42,
     SetViewport = 47, GetViewport = 48, SetRenderState = 57, CreateStateBlock = 59, SetTexture = 65,
-    SetTextureStageState = 67, SetSamplerState = 69, SetScissorRect = 75, GetScissorRect = 76, DrawPrimitiveUP = 83,
-    CreateVertexDeclaration = 86, SetVertexDeclaration = 87, CreateVertexShader = 91, SetVertexShader = 92,
+    SetTextureStageState = 67, SetSamplerState = 69, SetScissorRect = 75, GetScissorRect = 76, DrawIndexedPrimitive = 82, DrawPrimitiveUP = 83,
+    CreateVertexDeclaration = 86, SetVertexDeclaration = 87, CreateVertexShader = 91, SetVertexShader = 92, SetVertexShaderConstantF = 94,
     SetStreamSource = 100, GetStreamSource = 101, SetStreamSourceFreq = 102, GetStreamSourceFreq = 103, SetIndices = 104, CreatePixelShader = 106, SetPixelShader = 107, SetPixelShaderConstantF = 109
 };
 using D = IDirect3DDevice9*;
@@ -56,6 +56,10 @@ using SetIndicesFn = HRESULT(WINAPI*)(D, IDirect3DIndexBuffer9*);
 using CreatePsFn = HRESULT(WINAPI*)(D, const DWORD*, IDirect3DPixelShader9**);
 using SetPsFn = HRESULT(WINAPI*)(D, IDirect3DPixelShader9*);
 using SetPsConstantsFn = HRESULT(WINAPI*)(D, UINT, const float*, UINT);
+using SetVsConstantsFn = HRESULT(WINAPI*)(D, UINT, const float*, UINT);
+using CreateVbFn = HRESULT(WINAPI*)(D, UINT, DWORD, DWORD, D3DPOOL, IDirect3DVertexBuffer9**, HANDLE*);
+using CreateIbFn = HRESULT(WINAPI*)(D, UINT, DWORD, D3DFORMAT, D3DPOOL, IDirect3DIndexBuffer9**, HANDLE*);
+using DrawIndexedFn = HRESULT(WINAPI*)(D, D3DPRIMITIVETYPE, INT, UINT, UINT, UINT, UINT);
 // Only our authored programs are embedded (tools/shaders/generate_rigid_motion_pixel.py).
 constexpr DWORD march_words[] = {
 #include "fog_march_program_inc.h"
@@ -88,6 +92,25 @@ constexpr DWORD density_march_grid_words[] = {
 constexpr DWORD density_repair_grid_words[] = {
 #include "fog_density_repair_grid_program_inc.h"
 };
+// Dust motes (docs/architecture/fog-dust-motes.md, FogDensityConfig::motes): the capsule vertex program and the pixel
+// program in the in-march and grid variants, drawn after the repair; created at prepare_density only with the option.
+constexpr DWORD mote_vertex_words[] = {
+#include "fog_dust_motes_vertex_program_inc.h"
+};
+constexpr DWORD mote_look_words[] = {
+#include "fog_dust_motes_look_program_inc.h"
+};
+constexpr DWORD mote_grid_words[] = {
+#include "fog_dust_motes_grid_program_inc.h"
+};
+// Stream 0: unit seed xyz, corner xy (fog_mote_vertex_bytes).
+constexpr D3DVERTEXELEMENT9 mote_declaration[] = {
+    {0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
+    {0, 12, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 1},
+    D3DDECL_END()
+};
+constexpr double mote_drift_period=8.0; // seconds per drift cycle
+constexpr double mote_cut_cosine=.8660254037844386; // a view axis turning more than 30 degrees in one frame is a cut
 constexpr unsigned density_required_slots=512;
 constexpr unsigned fog_constant_rows=fog_grid_first_register+fog_grid_rows; // c0..c41 of a stored-density frame
 // c0.zw of the full-resolution repair draw. FogParams::m20/m21 carry the raster offset plus
@@ -165,8 +188,9 @@ struct FogPass::SavedState {
 };
 FogPass::~FogPass(){detach();}
 void FogPass::release_grid() noexcept { drop(grid_surface_);drop(grid_);grid_width_=grid_height_=0; }
+void FogPass::release_motes() noexcept { drop(mote_vb_);drop(mote_ib_);mote_built_count_=0;mote_built_seed_=0;mote_previous_valid_=false; }
 void FogPass::release_targets() noexcept {
-    drop(lit_surface_);drop(scratch_surface_);drop(lit_);drop(scratch_);drop(block_);release_grid();
+    drop(lit_surface_);drop(scratch_surface_);drop(lit_);drop(scratch_);drop(block_);release_grid();release_motes();
     width_=height_=half_width_=half_height_=0;
 }
 void FogPass::release_density_default() noexcept {
@@ -199,6 +223,8 @@ void FogPass::detach() noexcept {
     for(unsigned i=0;i<2;++i){drop(density_staging_surface_[i]);drop(density_staging_[i]);}
     drop(density_march_);drop(density_composite_);drop(density_repair_);
     drop(density_visibility_);drop(density_march_grid_);drop(density_repair_grid_);
+    drop(mote_vs_);drop(mote_declaration_);drop(mote_ps_);drop(mote_ps_grid_);
+    mote_caps_=motes_refused_=false;mote_max_index_=mote_max_primitives_=0;adapter_format_=D3DFMT_UNKNOWN;mote_report_={};
     fog::DensityCache::retire(density_);density_=nullptr; // joins the worker; a cache it had to abandon is leaked, not freed
     density_config_={};density_status_={};density_refused_=false;grid_refused_=false;ps30_slots_=0;drop(march_);drop(composite_);drop(quad_vs_);drop(quad_declaration_);
     device_=nullptr;vtable_=nullptr;caps_={};reset_pending_=false;disarm_field();cached_profile_=fog_field::Profile::None;
@@ -207,13 +233,14 @@ void FogPass::detach() noexcept {
 }
 // Reset keeps the worker, both CPU caches and the SYSTEMMEM staging textures; only the DEFAULT
 // atlases go, and the cache re-uploads every committed tile under the normal budget afterwards.
-void FogPass::before_reset() noexcept {PreserveCpuState guard;release_targets();drop(atlas_);release_density_default();disarm_field();reset_pending_=device_!=nullptr;}
+void FogPass::before_reset() noexcept {PreserveCpuState guard;release_targets();drop(atlas_);release_density_default();disarm_field();reset_pending_=device_!=nullptr;} // release_targets drops the mote VB/IB
 void FogPass::after_reset(HRESULT hr) noexcept {PreserveCpuState guard;if(SUCCEEDED(hr))reset_pending_=false;}
 unsigned FogPass::references() const noexcept {
     unsigned n=0;
     for(unsigned i=0;i<2;++i)n+=(density_staging_[i]!=nullptr)+(density_atlas_[i]!=nullptr)+(density_staging_surface_[i]!=nullptr)+(density_atlas_surface_[i]!=nullptr);
     n+=(density_march_!=nullptr)+(density_composite_!=nullptr)+(density_repair_!=nullptr);
     n+=(density_visibility_!=nullptr)+(density_march_grid_!=nullptr)+(density_repair_grid_!=nullptr)+(grid_!=nullptr)+(grid_surface_!=nullptr);
+    n+=(mote_vs_!=nullptr)+(mote_declaration_!=nullptr)+(mote_ps_!=nullptr)+(mote_ps_grid_!=nullptr)+(mote_vb_!=nullptr)+(mote_ib_!=nullptr);
     for(const void* p:{static_cast<void*>(atlas_),static_cast<void*>(lit_),static_cast<void*>(scratch_),static_cast<void*>(lit_surface_),static_cast<void*>(scratch_surface_),static_cast<void*>(march_),static_cast<void*>(composite_),static_cast<void*>(quad_vs_),static_cast<void*>(quad_declaration_),static_cast<void*>(block_)})n+=p!=nullptr;
     return n;
 }
@@ -253,6 +280,10 @@ HRESULT FogPass::attach(D d,void* const* native,const D3DCAPS9& caps,D3DFORMAT f
     if(SUCCEEDED(hr))hr=call<CreatePsFn>(CreatePixelShader)(d,march_words,&march_);
     if(SUCCEEDED(hr))hr=call<CreatePsFn>(CreatePixelShader)(d,composite_words,&composite_);
     if(FAILED(hr)){const unsigned slots=caps_.largest_program_slots;detach();caps_.largest_program_slots=slots;caps_.programs=hr;return refuse("program_create",hr);}
+    // The dust motes' device limits, kept for a later request (plain copies, no query): additive blending with an
+    // explicit ADD operation, the vertex program's constant rows, and the 16-bit index range of the largest N.
+    mote_caps_=caps.MaxVertexShaderConst>=fog_mote_vs_rows&&(caps.PrimitiveMiscCaps&D3DPMISCCAPS_BLENDOP)&&(caps.SrcBlendCaps&D3DPBLENDCAPS_ONE)&&(caps.DestBlendCaps&D3DPBLENDCAPS_ONE);
+    mote_max_index_=caps.MaxVertexIndex;mote_max_primitives_=caps.MaxPrimitiveCount;adapter_format_=format;
     caps_.programs=hr;caps_.enabled=true;caps_.reason="";return S_OK;
 }
 HRESULT FogPass::prepare_field(void* module,fog_field::Profile profile) noexcept {
@@ -339,6 +370,34 @@ HRESULT FogPass::density_resources() noexcept {
             else{grid_width_=aw;grid_height_=ah;++allocations_;}
         }
     }
+    // The dust motes are optional like the grid: a capability, program or buffer failure (not a lost device) drops the
+    // mote stage for the rest of the attachment and says why in density_status().motes_refused; the fog stays.
+    auto refuse_motes=[&](const char* reason){motes_refused_=true;density_config_.dust_motes=false;density_status_.motes_refused=reason;
+        drop(mote_vs_);drop(mote_declaration_);drop(mote_ps_);drop(mote_ps_grid_);release_motes();};
+    if(density_config_.dust_motes&&!mote_vs_){
+        if(const char* reason=mote_capabilities())refuse_motes(reason);
+        else{
+            bool fits=true;
+            for(auto p:{std::pair{mote_look_words,std::size(mote_look_words)},std::pair{mote_grid_words,std::size(mote_grid_words)}}){
+                const unsigned slots=ps3_program_slots(reinterpret_cast<const std::uint32_t*>(p.first),p.second);
+                fits=fits&&slots&&slots<density_required_slots;
+            }
+            if(!fits)refuse_motes("mote_compiled_slots");
+            else{
+                HRESULT hr=call<CreateVsFn>(CreateVertexShader)(device_,mote_vertex_words,&mote_vs_);
+                if(SUCCEEDED(hr))hr=call<CreateDeclarationFn>(CreateVertexDeclaration)(device_,mote_declaration,&mote_declaration_);
+                if(SUCCEEDED(hr))hr=call<CreatePsFn>(CreatePixelShader)(device_,mote_look_words,&mote_ps_);
+                if(SUCCEEDED(hr))hr=call<CreatePsFn>(CreatePixelShader)(device_,mote_grid_words,&mote_ps_grid_);
+                if(lost(hr)){drop(mote_vs_);drop(mote_declaration_);drop(mote_ps_);drop(mote_ps_grid_);reset_pending_=true;return hr;}
+                if(FAILED(hr))refuse_motes("mote_program_create");
+            }
+        }
+    }
+    if(density_config_.dust_motes&&mote_vs_&&(!mote_vb_||mote_built_count_!=density_config_.motes.count||mote_built_seed_!=density_config_.motes.seed)){
+        const HRESULT hr=mote_buffers();
+        if(lost(hr)){reset_pending_=true;return hr;}
+        if(FAILED(hr))refuse_motes("mote_buffers");
+    }
     if(!density_){
         density_=new(std::nothrow) fog::DensityCache;
         if(!density_||!density_->start()){fog::DensityCache::retire(density_);density_=nullptr;return refuse("density_worker",E_OUTOFMEMORY);}
@@ -384,6 +443,100 @@ HRESULT FogPass::density_uploads(unsigned budget) noexcept {
     density_status_.upload_bytes_total+=density_status_.upload_bytes;density_status_.upload_rects_total+=density_status_.upload_rects;
     return hr;
 }
+// The dust motes' documented prerequisites: the attach-time limits, then the FP16 target's post-pixel-shader blending.
+const char* FogPass::mote_capabilities() noexcept {
+    const unsigned n=density_config_.motes.count;
+    if(n<fog_mote_count_min||n>fog_mote_count_max)return "mote_count";
+    if(!mote_caps_)return "mote_blend_caps";
+    if(mote_max_index_<4u*n-1u||mote_max_primitives_<2u*n)return "mote_index_limits";
+    IDirect3D9* api=nullptr;D3DDEVICE_CREATION_PARAMETERS creation{};
+    HRESULT hr=call<GetD3DFn>(GetDirect3D)(device_,&api);
+    if(SUCCEEDED(hr)&&!api)hr=E_FAIL;
+    if(SUCCEEDED(hr))hr=call<GetCreationFn>(GetCreationParameters)(device_,&creation);
+    if(SUCCEEDED(hr))hr=api->CheckDeviceFormat(creation.AdapterOrdinal,creation.DeviceType,adapter_format_,D3DUSAGE_RENDERTARGET|D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING,D3DRTYPE_TEXTURE,D3DFMT_A16B16G16R16F);
+    drop(api);
+    return hr==D3D_OK?nullptr:"mote_fp16_blending";
+}
+// N capsules: four corners of one unit seed each (fog_mote_seed), two triangles per capsule. Static DEFAULT buffers written
+// once through Lock; released with the targets (Reset, resize, detach) and re-created here by the next prepare_density.
+HRESULT FogPass::mote_buffers() noexcept {
+    release_motes();
+    const unsigned n=density_config_.motes.count;const std::uint32_t seed=density_config_.motes.seed;
+    HRESULT hr=call<CreateVbFn>(CreateVertexBuffer)(device_,n*4u*fog_mote_vertex_bytes,D3DUSAGE_WRITEONLY,0,D3DPOOL_DEFAULT,&mote_vb_,nullptr);
+    if(SUCCEEDED(hr))hr=call<CreateIbFn>(CreateIndexBuffer)(device_,n*6u*unsigned(sizeof(std::uint16_t)),D3DUSAGE_WRITEONLY,D3DFMT_INDEX16,D3DPOOL_DEFAULT,&mote_ib_,nullptr);
+    void* bits=nullptr;
+    if(SUCCEEDED(hr))hr=mote_vb_->Lock(0,0,&bits,0);
+    if(SUCCEEDED(hr)){
+        if(bits){
+            static constexpr float corners[4][2]={{-1.f,-1.f},{1.f,-1.f},{-1.f,1.f},{1.f,1.f}};
+            float* out=static_cast<float*>(bits);
+            for(unsigned i=0;i<n;++i){
+                float s[3];fog_mote_seed(i,seed,s);
+                for(const auto& c:corners){*out++=s[0];*out++=s[1];*out++=s[2];*out++=c[0];*out++=c[1];}
+            }
+        }
+        const HRESULT unlock=mote_vb_->Unlock();
+        hr=!bits?E_FAIL:unlock;
+    }
+    bits=nullptr;
+    if(SUCCEEDED(hr))hr=mote_ib_->Lock(0,0,&bits,0);
+    if(SUCCEEDED(hr)){
+        if(bits){
+            std::uint16_t* out=static_cast<std::uint16_t*>(bits);
+            for(unsigned i=0;i<n;++i){
+                const std::uint16_t b=static_cast<std::uint16_t>(4u*i);
+                for(unsigned k:{0u,1u,2u,2u,1u,3u})*out++=static_cast<std::uint16_t>(b+k);
+            }
+        }
+        const HRESULT unlock=mote_ib_->Unlock();
+        hr=!bits?E_FAIL:unlock;
+    }
+    if(FAILED(hr)){release_motes();return hr;}
+    mote_built_count_=n;mote_built_seed_=seed;++allocations_;return S_OK;
+}
+// The vertex program's twelve rows (fog_dust_motes_vs.hlsl). CPU only: the world->view rotation (the inverse of the fog's
+// view->world rows, double), the camera modulo the cube side, the previous drawn frame's basis when it is the frame
+// before this one, the drift phases and the brightness (GAIN x density scale x far ramp). False when a value is unusable.
+bool FogPass::mote_constants(const FogFrame& f,float ready_far,float k[fog_mote_vs_rows][4],FogMoteReport& report,double r[9]) const noexcept {
+    const FogMoteTuning& t=density_config_.motes;const FogParams& p=f.params;
+    double m[3][3];
+    for(unsigned row=0;row<3;++row)for(unsigned col=0;col<3;++col)m[row][col]=p.world.inverse_columns[3*col+row]; // world = view m
+    const double det=m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1])-m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0])+m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
+    if(!std::isfinite(det)||!(std::abs(det)>.5))return false;
+    r[0]=(m[1][1]*m[2][2]-m[1][2]*m[2][1])/det;r[1]=(m[0][2]*m[2][1]-m[0][1]*m[2][2])/det;r[2]=(m[0][1]*m[1][2]-m[0][2]*m[1][1])/det;
+    r[3]=(m[1][2]*m[2][0]-m[1][0]*m[2][2])/det;r[4]=(m[0][0]*m[2][2]-m[0][2]*m[2][0])/det;r[5]=(m[0][2]*m[1][0]-m[0][0]*m[1][2])/det;
+    r[6]=(m[1][0]*m[2][1]-m[1][1]*m[2][0])/det;r[7]=(m[0][1]*m[2][0]-m[0][0]*m[2][1])/det;r[8]=(m[0][0]*m[1][1]-m[0][1]*m[1][0])/det;
+    const double radius=t.radius,side=2*radius,seconds=std::isfinite(f.mote_seconds)?f.mote_seconds:0.;
+    double delta[3]{},shift=0,turn=1;
+    if(mote_previous_valid_){
+        double forward=0,a=0,b=0;
+        for(unsigned i=0;i<3;++i){
+            delta[i]=f.camera_world[i]-mote_previous_camera_[i];shift+=delta[i]*delta[i];
+            forward+=r[3*i+2]*mote_previous_rotation_[3*i+2];a+=r[3*i+2]*r[3*i+2];b+=mote_previous_rotation_[3*i+2]*mote_previous_rotation_[3*i+2];
+        }
+        shift=std::sqrt(shift);turn=a>0&&b>0?forward/std::sqrt(a*b):-1.;
+    }
+    const bool streak=mote_previous_valid_&&!f.mote_cut&&f.frame==mote_previous_frame_+1&&shift<=radius&&turn>=mote_cut_cosine;
+    const double* before=streak?mote_previous_rotation_:r;
+    for(unsigned j=0;j<3;++j)for(unsigned i=0;i<3;++i){k[1+j][i]=float(r[3*i+j]);k[4+j][i]=float(before[3*i+j]);}
+    k[0][0]=p.m00;k[0][1]=p.m11;k[0][2]=p.m20-quad_pixel_centre_m20(width_);k[0][3]=p.m21-quad_pixel_centre_m21(height_);
+    k[1][3]=float(side);k[2][3]=float(1/side);k[3][3]=float(radius);
+    k[4][3]=t.near_fade;k[5][3]=float(1/(.25*radius));k[6][3]=float(1./t.near_fade);
+    for(unsigned i=0;i<3;++i){
+        double wrapped=std::fmod(f.camera_world[i],side);if(wrapped<0)wrapped+=side;
+        k[7][i]=float(wrapped);if(k[7][i]>=float(side))k[7][i]=0.f;
+        k[8][i]=streak?float(delta[i]):0.f;
+    }
+    k[7][3]=streak?1.f:0.f;k[8][3]=t.streak;
+    const double two_pi=6.283185307179586,now=seconds/mote_drift_period,then=streak?mote_previous_seconds_/mote_drift_period:now;
+    k[9][0]=float(two_pi*(now-std::floor(now)));k[9][1]=float(two_pi*(then-std::floor(then)));k[9][2]=t.drift;k[9][3]=t.gain*p.density_scale*ready_far;
+    k[10][0]=t.size;k[10][1]=t.max_px;k[10][2]=float(double(t.size)*radius);k[10][3]=t.soft;
+    k[11][0]=.5f*float(width_);k[11][1]=.5f*float(height_);k[11][2]=2.f/float(width_);k[11][3]=2.f/float(height_);
+    for(unsigned i=0;i<fog_mote_vs_rows;++i)for(unsigned j=0;j<4;++j)if(!std::isfinite(k[i][j]))return false;
+    report.streak=streak;report.count=t.count;
+    report.shift_px=mote_previous_valid_?float(shift/radius*.5*double(height_)*double(p.m11)):0.f;
+    return true;
+}
 HRESULT FogPass::prepare_density(const FogDensityConfig& config,const double camera[3],std::uint64_t frame) noexcept {
     if(!config.enabled){ // off: no CPU-state capture, no allocation, no device call
         if(density_status_.available||density_status_.ready_far!=0){density_status_.available=false;density_status_.reason="off";density_status_.ready_fine=density_status_.ready_far=0;}
@@ -399,6 +552,7 @@ HRESULT FogPass::prepare_density(const FogDensityConfig& config,const double cam
     if(!std::isfinite(config.sigma)||config.sigma<=0||config.sigma>1.f)return E_INVALIDARG;
     density_config_=config; // density_resources creates the variant the config asks for
     if(grid_refused_)density_config_.shadow_pass=false; // a refused grid stays refused until detach: the in-march programs draw
+    if(motes_refused_||density_config_.motes.count==0)density_config_.dust_motes=false; // refused motes stay refused; no option, no stage
     HRESULT hr=density_resources();if(FAILED(hr))return hr;
     fog::CacheIdentity identity;identity.sector_key=config.sector_key;identity.recipe=config.recipe;identity.offset={config.world_offset[0],config.world_offset[1],config.world_offset[2]};
     density_->configure(identity);
@@ -551,6 +705,17 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
         r.cascades_bound=n-first;
     }
     constants[9][0]=r.cascades_bound?1.f:0.f;
+    // Dust motes (fog-dust-motes.md): the last stage, after the repair, only while the option's toggle is latched on and
+    // its programs and buffers exist. Rows and report are CPU work of this frame; nothing here touches the device.
+    const bool motes_wanted=density&&density_config_.dust_motes&&!motes_refused_;
+    float mote_rows[fog_mote_vs_rows][4]{};double mote_rotation[9]{};bool mote_stage=false;
+    if(motes_wanted){
+        mote_report_=FogMoteReport{};mote_report_.frame=f.frame;mote_report_.count=density_config_.motes.count;
+        mote_report_.shadow=!r.cascades_bound?"none":grid?"grid":"in_march";
+        mote_stage=mote_vs_&&mote_declaration_&&mote_ps_&&mote_ps_grid_&&mote_vb_&&mote_ib_&&mote_built_count_==density_config_.motes.count&&
+            mote_constants(f,ready_far,mote_rows,mote_report_,mote_rotation);
+    }
+    if(!mote_stage)mote_previous_valid_=false; // no streak across a frame without motes
     SavedState saved(*this);r.failed=FogStage::Capture;hr=saved.capture();
     if(FAILED(hr)){r.operation=hr;if(lost(hr)){reset_pending_=true;r.scene_known=false;r.caller_state_restored=false;r.route_poisoned=true;}return finish(hr);}
     bool lost_seen=false,changed=false,opened_here=false,closed_borrowed=false;
@@ -634,6 +799,33 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
         for(;slot<8&&SUCCEEDED(r.operation);++slot)if(repair_inputs[slot])record(FogStage::Repair,call<SetTextureFn>(SetTexture)(device_,slot,repair_inputs[slot]));
         if(grid&&slot>4){const unsigned bound=draw_grid?1u:0u;grid_report_.calls+=bound;grid_report_.net_calls+=int(bound)-int(grid_replaced_repair);}
         if(SUCCEEDED(r.operation))r.applied=record(FogStage::Repair,quad(width_,height_));
+        if(mote_stage&&r.applied&&SUCCEEDED(r.operation)){
+            // ONE/ONE on the still bound FP16 target (no SetRenderTarget) with the constants and samplers the repair left:
+            // the capsules read RT2 at s0, the atlases at s1/s7 and the maps (s4-s5) or the grid (s4). The block Apply puts
+            // back the programs, declaration, indices, vertex constants and render states; the stream tuples are restored
+            // explicitly. CLIPPING and BLENDOP are set: normalize leaves clipping off and never touches the blend operation.
+            const unsigned start=calls_;HRESULT hr_m=call<SetVsFn>(SetVertexShader)(device_,mote_vs_);
+            if(SUCCEEDED(hr_m))hr_m=call<SetDeclarationFn>(SetVertexDeclaration)(device_,mote_declaration_);
+            if(SUCCEEDED(hr_m))hr_m=call<SetStreamFn>(SetStreamSource)(device_,0,mote_vb_,0,fog_mote_vertex_bytes);
+            if(SUCCEEDED(hr_m))hr_m=call<SetIndicesFn>(SetIndices)(device_,mote_ib_);
+            if(SUCCEEDED(hr_m))hr_m=call<SetPsFn>(SetPixelShader)(device_,grid?mote_ps_grid_:mote_ps_);
+            if(SUCCEEDED(hr_m))hr_m=call<SetVsConstantsFn>(SetVertexShaderConstantF)(device_,0,&mote_rows[0][0],fog_mote_vs_rows);
+            for(auto state:{std::pair{D3DRS_CLIPPING,DWORD(TRUE)},std::pair{D3DRS_ALPHABLENDENABLE,DWORD(TRUE)},std::pair{D3DRS_SRCBLEND,DWORD(D3DBLEND_ONE)},
+                            std::pair{D3DRS_DESTBLEND,DWORD(D3DBLEND_ONE)},std::pair{D3DRS_BLENDOP,DWORD(D3DBLENDOP_ADD)}})
+                if(SUCCEEDED(hr_m))hr_m=call<SetRsFn>(SetRenderState)(device_,state.first,state.second);
+            const UINT n=density_config_.motes.count;
+            if(SUCCEEDED(hr_m))hr_m=call<DrawIndexedFn>(DrawIndexedPrimitive)(device_,D3DPT_TRIANGLELIST,0,0,4*n,0,2*n);
+            mote_report_.calls=calls_-start;
+            if(SUCCEEDED(hr_m)){
+                r.motes=mote_report_.drawn=true;mote_previous_valid_=true;mote_previous_frame_=f.frame;mote_previous_seconds_=f.mote_seconds;
+                for(unsigned i=0;i<3;++i)mote_previous_camera_[i]=f.camera_world[i];
+                for(unsigned i=0;i<9;++i)mote_previous_rotation_[i]=mote_rotation[i];
+            } else {
+                mote_previous_valid_=false;
+                if(lost(hr_m))record(FogStage::Motes,hr_m); // the device went: the transaction's loss path owns it
+                else{motes_refused_=true;density_config_.dust_motes=false;density_status_.motes_refused="mote_draw";} // the fog frame stands
+            }
+        } else if(mote_stage)mote_previous_valid_=false;
     }
     if(!density&&may_draw&&SUCCEEDED(r.operation))record(FogStage::Composite,bind_target(f.target,width_,height_,composite_));
     if(!density&&may_draw&&SUCCEEDED(r.operation)){

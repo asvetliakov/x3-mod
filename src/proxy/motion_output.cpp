@@ -407,6 +407,7 @@ void MotionOutput::release_resources() noexcept {
     // other passes. This is the device release path, not DllMain (FogPass::abandon_density_worker).
     if (fog_) { taa_call([&] { fog_->detach(); }); fog_.reset(); fog_frame_ = ~std::uint64_t(0); }
     fog_density_refused_ = fog_density_prepared_ = fog_density_camera_valid_ = fog_density_config_logged_ = false; // a new pass may be refused for another reason
+    fog_motes_drawn_ = false;
     release_depth_leases(); release_candidate_extents();
     detach_shadow_retention(); // every held reference goes before the device does (flush=teardown)
     if (depth_replay_) { taa_call([&] { depth_replay_->detach(); }); depth_replay_.reset(); }

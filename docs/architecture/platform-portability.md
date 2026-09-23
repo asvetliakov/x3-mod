@@ -587,6 +587,27 @@ slots) compiled by the native `d3dx9_37` at generation time. Bilinear filtering 
 X3 only ([fog ledger](../verification/volumetric-fog.md)); native Windows execution unverified,
 like the rest of the fog.
 
+## 2026-09-23: stored fog dust motes (`--fog-dust-motes`, default off)
+
+`X3M_FOG_DUST_MOTES=N,SIZE,STREAK` ([fog-dust-motes.md](fog-dust-motes.md)) adds, only with the option,
+one vs_3_0 program (101 slots, no vertex texture fetch), one vertex declaration (two `FLOAT3`/`FLOAT2`
+texcoords), two ps_3_0 programs (311 / 257 slots, `tex2Dlod` only), a `D3DPOOL_DEFAULT`
+`D3DUSAGE_WRITEONLY` vertex buffer (N x 80 B) and 16-bit index buffer (N x 12 B) written once through
+`Lock`, released with the targets on Reset/resize/detach and re-created at the next `prepare_density`
+(no `D3DUSAGE_SOFTWAREPROCESSING`: hardware vertex processing is assumed; on a software- or mixed-VP device
+running in software mode the buffers are not valid stream sources, an unverified gap; the declaration
+carries only `TEXCOORD0` float3 and `TEXCOORD1` float2 elements, no `POSITION` usage, which vs_3_0 permits);
+per applied frame 12 device calls inside the existing `D3DSBT_ALL` bracket (`SetVertexShader`,
+`SetVertexDeclaration`, `SetStreamSource`, `SetIndices`, `SetPixelShader`,
+`SetVertexShaderConstantF`, five `SetRenderState`: `CLIPPING`, `ALPHABLENDENABLE`, `SRCBLEND`/`DESTBLEND`
+`ONE`, `BLENDOP` `ADD`; one `DrawIndexedPrimitive`). Prerequisites are documented capabilities, checked
+before anything is created: `D3DPMISCCAPS_BLENDOP`, `D3DPBLENDCAPS_ONE` (source and destination),
+`MaxVertexShaderConst >= 12`, `MaxVertexIndex >= 4N - 1`, `MaxPrimitiveCount >= 2N`, and
+`CheckDeviceFormat(D3DUSAGE_RENDERTARGET | D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING, A16B16G16R16F)`;
+a refusal drops the motes only (`fog_dust_motes_refused`). No point sprites, instancing, VPOS, MRT
+or Wine export. Cross-compiled with MinGW i686 / SSE2 and qualified on bottle X3 only (fog ledger,
+"Dust motes"); native Windows execution unverified, like the rest of the fog.
+
 ## 2026-09-22: partial sun occlusion, step 1 (`--sun-occlusion`, default off)
 
 D3D side, documented calls only: `CheckDeviceFormat` and `CreateTexture` for two 1x1

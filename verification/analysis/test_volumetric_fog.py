@@ -354,7 +354,7 @@ class FogLauncherTests(unittest.TestCase):
         self.assertIn(first, run)
         self.assertLess(run.index(first), run.index('grid_fallback = "refused"'))
         self.assertLess(run.index(first), run.index('grid_fallback = "toggled_off"'))
-        self.assertIn('restore=%08lx stage=%u%s",', run)
+        self.assertIn('restore=%08lx stage=%u%s%s",', run)  # the grid fields, then the dust motes' fields
         self.assertLess(run.index('if (fog_shadow_pass_launch_) {\n            const renderer::FogGridReport none{};'), run.index('std::snprintf(grid_fields'))
         for field in ('grid_pass=%u', 'grid_built=%u', 'grid_bind=%08lx', 'march=%s', 'fallback=%s', 'grid_refused=%s', 'grid_cascades=%u',
                       'grid_kernel=%.3g,%.3g,%.3g', 'grid_far_width=%.1f', 'grid_frame_term=%.4f', 'grid_calls=%u', 'grid_net_calls=%d'):
@@ -363,6 +363,74 @@ class FogLauncherTests(unittest.TestCase):
                       'grid->drawn ? "grid" : "grid_unshadowed"', 'grid_fallback = "not_executed"'):
             self.assertIn(value, run)
         self.assertIn('else if (fog_->grid_report().frame == frame_)', run)
+
+    def test_dust_motes_option(self):
+        # --fog-dust-motes N[,SIZE[,STREAK]] -> X3M_FOG_DUST_MOTES=N,SIZE,STREAK (fog-dust-motes.md section 4): default and
+        # explicit 0 are off, always written so an inherited value cannot enable the motes; stored range only.
+        stored = ('--volumetric-fog', '--volumetric-fog-range', 'stored')
+        status, output, error = self.launch(*self.BASE, *stored)
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_DUST_MOTES": "0,4,128"', output)
+        for value, expected in (('2048', '2048,4,128'), ('64,2', '64,2,128'), ('8192,16,0', '8192,16,0'), ('512,6,512', '512,6,512'), ('0', '0,4,128'), ('8192,2.123456789,511.987654321', '8192,2.12346,511.988')):
+            status, output, error = self.launch(*self.BASE, *stored, '--fog-dust-motes', value)
+            self.assertEqual(status, 0, (value, error)); self.assertIn('"X3M_FOG_DUST_MOTES": "%s"' % expected, output)
+        for value in ('63', '8193', '2048,1', '2048,17', '2048,4,513', '2048,4,-1', 'abc', '2048,,4', '2048,4,128,1', '2048,nan'):
+            self.assertEqual(self.launch(*self.BASE, *stored, '--fog-dust-motes', value)[0], 2, value)
+        status, _, error = self.launch(*self.BASE, '--volumetric-fog', '--fog-dust-motes', '2048')
+        self.assertEqual(status, 2); self.assertIn('--fog-dust-motes requires --volumetric-fog-range stored', error)
+        self.assertEqual(self.launch(*self.BASE, '--fog-dust-motes', '2048')[0], 2)
+        self.assertEqual(self.launch(*self.BASE, '--volumetric-fog', '--fog-dust-motes', '0')[0], 0)  # explicit off needs no stored range
+        status, output, error = self.launch(*self.BASE, *stored, environment={'X3M_FOG_DUST_MOTES': '2048,4,128'})
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_DUST_MOTES": "0,4,128"', output)
+        # Inherited tunables survive only with the option on.
+        tunables = {'X3M_FOG_MOTES_GAIN': '4', 'X3M_FOG_MOTES_SEED': '9'}
+        status, output, error = self.launch(*self.BASE, *stored, environment=tunables)
+        self.assertEqual(status, 0, error); self.assertNotIn('X3M_FOG_MOTES_', output)
+        status, output, error = self.launch(*self.BASE, *stored, '--fog-dust-motes', '2048', environment=tunables)
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MOTES_GAIN": "4"', output)
+        # The DLL: stored range only, the whole triple must parse, tunables only with the option on, one mode line; an
+        # overlong value and a request without the stored range each log one line instead of being ignored silently.
+        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        self.assertIn('const DWORD motes_length=GetEnvironmentVariableW(L"X3M_FOG_DUST_MOTES",setting,32);', capture)
+        self.assertIn('volumetric_fog_motes_mode enabled=0 invalid=1 reason=overlong length=%lu', capture)
+        self.assertIn('volumetric_fog_motes_mode enabled=0 reason=requires_stored_range count=%lu', capture)
+        self.assertIn('renderer::fog_mote_option(unsigned(n),values[0],values[1],motes)&&motes.count', capture)
+        self.assertIn('std::swprintf(name,std::size(name),L"X3M_FOG_MOTES_%hs",field.name);', capture)
+        self.assertIn('volumetric_fog_motes_mode enabled=1 count=%u', capture)
+        self.assertIn('hooked.motion_output.configure_volumetric_fog_dust_motes(volumetric_fog_motes);', capture)
+        motes = (ROOT / 'src/renderer/fog_mote_math.h').read_text()
+        for name, low, high in (('RADIUS', '200.f', '5000.f'), ('NEAR', '5.f', '200.f'), ('GAIN', '0.f', '8.f'), ('SOFT', '0.f', '.1f'), ('DRIFT', '0.f', '200.f')):
+            self.assertRegex(motes, r'\{"%s", &FogMoteTuning::\w+, %s, %s\}' % (name, re.escape(low), re.escape(high)))
+        self.assertIn('{"MAX_PX", &FogMoteTuning::max_px, fog_mote_size_min, 64.f}', motes)
+
+    def test_dust_motes_stage_and_frame_row(self):
+        # fog-dust-motes.md: the stage is the transaction's last, after the repair and only with the latched toggle; its
+        # resources are created at prepare_density (never on a draw path); the frame row carries its fields only with the option.
+        source = (ROOT / 'src/renderer/fog_pass.cpp').read_text()
+        execute = extract_function(source, 'HRESULT FogPass::execute(')
+        self.assertLess(execute.index('r.applied=record(FogStage::Repair,quad(width_,height_));'), execute.index('if(mote_stage&&r.applied&&SUCCEEDED(r.operation)){'))
+        self.assertLess(execute.index('if(mote_stage&&r.applied&&SUCCEEDED(r.operation)){'), execute.index('if(opened_here&&!lost_seen){'))
+        self.assertIn('const bool motes_wanted=density&&density_config_.dust_motes&&!motes_refused_;', execute)
+        self.assertEqual(execute.count('DrawIndexedPrimitive'), 1)
+        for forbidden in ('CreateVertexBuffer', 'CreateIndexBuffer', 'CreateVertexShader', 'CreatePixelShader', 'Lock('):
+            self.assertNotIn(forbidden, execute)
+        resources = extract_function(source, 'HRESULT FogPass::density_resources(')
+        self.assertIn('if(density_config_.dust_motes&&!mote_vs_){', resources)
+        prepare = extract_function(source, 'HRESULT FogPass::prepare_density(')
+        self.assertIn('if(motes_refused_||density_config_.motes.count==0)density_config_.dust_motes=false;', prepare)
+        # Released with the targets (Reset, resize, detach), counted in allocations().
+        self.assertIn('release_grid();release_motes();', source)
+        self.assertIn('mote_built_count_=n;mote_built_seed_=seed;++allocations_;return S_OK;', source)
+        fragment = (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
+        run = extract_function(fragment, 'void MotionOutput::run_volumetric_fog(')
+        self.assertIn('char mote_fields[200]; mote_fields[0] = \'\\0\';\n        if (fog_dust_motes_launch_) {', run)
+        for field in ('motes=%u', 'mote_count=%u', 'mote_calls=%u', 'mote_shift_px=%.1f', 'mote_streak=%u', 'mote_shadow=%s', 'mote_refused=%s'):
+            self.assertIn(field, run)
+        self.assertIn('if (fog_dust_motes_launch_ && in.density) {', run)  # the drift clock is read only with the option
+        # The proxy's cut verdict reaches the stage; a cut frame draws no streak whatever the geometric bounds say.
+        self.assertIn('in.mote_cut = cut_finished_ && counters_.cut;', run)
+        self.assertIn('const bool streak=mote_previous_valid_&&!f.mote_cut&&f.frame==mote_previous_frame_+1&&', source)
+        prepare_proxy = extract_function(fragment, 'void MotionOutput::prepare_volumetric_fog_density(')
+        self.assertIn('fog_dust_motes_refused device=%llu frame=%llu reason=%s fallback=fog_without_motes', prepare_proxy)
 
     def test_look_option_and_variable_are_retired(self):
         # 2026-09-22: the presets L0/L1/L3 are gone, the former L2 is the only look, and there is no selector.

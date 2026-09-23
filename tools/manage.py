@@ -101,6 +101,27 @@ def hull_emitters_requested(args):
     return bool(args.hull_emitters or (args.emission_source_gain is not None and args.emission_source_gain > 1.0))
 
 
+def fog_dust_motes_value(parser, text):
+    """--fog-dust-motes N[,SIZE[,STREAK]] -> (N, SIZE, STREAK): N 0 (off) or 64..8192, SIZE 2..16 px (default 4),
+    STREAK 0..512 px (default 128); the DLL's X3M_FOG_DUST_MOTES rule (docs/architecture/fog-dust-motes.md)."""
+    parts = text.split(',')
+    try:
+        if not 1 <= len(parts) <= 3:
+            raise ValueError
+        count = int(parts[0])
+        size = float(parts[1]) if len(parts) > 1 else 4.0
+        streak = float(parts[2]) if len(parts) > 2 else 128.0
+    except ValueError:
+        parser.error('--fog-dust-motes takes N[,SIZE[,STREAK]].')
+    if count != 0 and not 64 <= count <= 8192:
+        parser.error('--fog-dust-motes N must be 0 (off) or within [64, 8192].')
+    if not (math.isfinite(size) and 2.0 <= size <= 16.0):
+        parser.error('--fog-dust-motes SIZE must be within [2, 16] pixels.')
+    if not (math.isfinite(streak) and 0.0 <= streak <= 512.0):
+        parser.error('--fog-dust-motes STREAK must be within [0, 512] pixels.')
+    return count, size, streak
+
+
 # The proxy writes its session-*.log into <game dir>\x3-modern-captures; the
 # launcher's own teed terminal output joins it there, so one preserved run
 # directory (tools/analysis/snapshot_x3_run.py) holds both clocks
@@ -388,6 +409,7 @@ def main():
     # Retired 2026-09-22 with the presets L0/L1/L3: registered only so that an old command line is refused by name.
     parser.add_argument('--volumetric-fog-look', nargs='?', const='', default=None, help=argparse.SUPPRESS)
     parser.add_argument('--fog-shadow-pass', choices=('on', 'off'), default=None, help='Stored fog only: compute the sun-shadow shaft visibility in its own quarter-resolution pass before the march (three-cascade cross-fade, the finest cascade, a penumbra that widens with the blocker distance) instead of the march\'s per-step lookup; off (default) draws the accepted look unchanged, so the two can be A/B compared in one build (X3M_FOG_SHADOW_PASS; on requires --volumetric-fog-range stored). docs/architecture/fog-shadow-pass.md')
+    parser.add_argument('--fog-dust-motes', default=None, metavar='N[,SIZE[,STREAK]]', help='Stored fog only: N near-camera dust motes (0 off, 64..8192; 2048 gives ~120 on screen) in a 400 m world-anchored window, drawn after the fog with the fog\'s own density, colour and shafts, SIZE the minimum width in pixels (2..16, default 4), STREAK the velocity streak cap in pixels (0..512, default 128); Ctrl+Alt+F11 toggles them (X3M_FOG_DUST_MOTES; tuning by X3M_FOG_MOTES_<NAME>; requires --volumetric-fog-range stored). docs/architecture/fog-dust-motes.md')
     parser.add_argument('--volumetric-fog-everywhere', action='store_true', help='Debug only: force bluewell when no known family is available, still requiring a valid view (X3M_VOLUMETRIC_FOG_EVERYWHERE=1; requires --volumetric-fog)')
     parser.add_argument('--volumetric-fog-timing', action='store_true', help='One volumetric_fog_frame log line per frame with the CPU wall time and device-call count of the pass (X3M_VOLUMETRIC_FOG_TIMING=1; requires --volumetric-fog)')
     parser.add_argument('--shimmer-trace', action='store_true', help='Diagnostic distant-shimmer trace (X3M_SHIMMER_TRACE=1; requires --motion-output --taa; default off): every frame logs one shimmer_frame line with the TAA state (history, skip, cut, jitter index) and the projection p00/p11 as integers scaled by 1e4, plus up to 32 shimmer_draw lines identifying that frame\'s Asteroid-class scene draws (node/model/lod, vertex, index and primitive counts, the distance-fade f in per mille when the draw was fade-admitted and its derived screen rectangle) with a truncated count beyond 32 (docs/architecture/linear-distance-fade-region.md, "Shimmer trace (diagnostic)")')
@@ -872,6 +894,10 @@ def main():
         parser.error('--volumetric-fog-range stored requires a positive --volumetric-fog strength (0 detaches the pass).')
     if args.fog_shadow_pass == 'on' and args.volumetric_fog_range != 'stored':
         parser.error('--fog-shadow-pass on requires --volumetric-fog-range stored.')
+    if args.fog_dust_motes is not None:
+        args.fog_dust_motes = fog_dust_motes_value(parser, args.fog_dust_motes)
+        if args.fog_dust_motes[0] and args.volumetric_fog_range != 'stored':
+            parser.error('--fog-dust-motes requires --volumetric-fog-range stored.')
     if args.volumetric_fog is not None and not (math.isfinite(args.volumetric_fog) and 0.0 <= args.volumetric_fog <= 0.1):
         parser.error('--volumetric-fog must be within [0, 0.1].')
     if args.fade_witness is not None and not 1 <= args.fade_witness <= 100000:
@@ -1253,6 +1279,15 @@ def main():
         env['X3M_VOLUMETRIC_FOG_RANGE'] = args.volumetric_fog_range or 'legacy'
         env.pop('X3M_VOLUMETRIC_FOG_LOOK', None)  # retired 2026-09-22: never inherited, never set (the DLL logs one ignore line)
         env['X3M_FOG_SHADOW_PASS'] = '1' if args.fog_shadow_pass == 'on' else '0'
+        # The dust motes: always explicit ('0,4,128' is off) so an inherited value cannot enable them; the DLL reads at most
+        # 31 characters, which '%.6g' keeps the triple well inside. Without the option no inherited tunable survives.
+        motes = args.fog_dust_motes or (0, 4.0, 128.0)
+        env['X3M_FOG_DUST_MOTES'] = '%d,%.6g,%.6g' % motes
+        if len(env['X3M_FOG_DUST_MOTES']) >= 32:
+            parser.error('--fog-dust-motes: the formatted value exceeds the 31 characters the DLL reads.')
+        if not motes[0]:
+            for name in [k for k in env if k.startswith('X3M_FOG_MOTES_')]:
+                env.pop(name, None)
         env['X3M_VOLUMETRIC_FOG_EVERYWHERE'] = '1' if args.volumetric_fog_everywhere else '0'
         env['X3M_VOLUMETRIC_FOG_TIMING'] = '1' if args.volumetric_fog_timing else '0'
         env['X3M_EMISSION_GAIN'] = repr(args.emission_gain if args.emission_gain is not None else 1.0)

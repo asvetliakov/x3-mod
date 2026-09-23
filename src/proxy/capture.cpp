@@ -178,6 +178,9 @@ bool volumetric_fog_range_stored = false;
 // X3M_FOG_SHADOW_PASS=1 (docs/architecture/fog-shadow-pass.md; launcher --fog-shadow-pass on, default off): the stored
 // range's sun-shadow shaft visibility in its own quarter-resolution pass before the march. Stored range only.
 bool volumetric_fog_shadow_pass = false;
+// X3M_FOG_DUST_MOTES=N,SIZE,STREAK (docs/architecture/fog-dust-motes.md; launcher --fog-dust-motes, default off): the
+// stored range's near-camera dust motes, drawn after the repair; tunables X3M_FOG_MOTES_<NAME>. Stored range only.
+x3m::renderer::FogMoteTuning volumetric_fog_motes{};
 // X3M_FOG_LOOK_<NAME>=<float> tuning of the single stored-range look (renderer::fog_look_fields;
 // X3M_FOG_LOOK_AMBIENT_SUN / _AWAY = r,g,b): read once here, stored range only. The preset selector
 // X3M_VOLUMETRIC_FOG_LOOK was retired with L0/L1/L3 on 2026-09-22 and is ignored with one log line.
@@ -1257,7 +1260,11 @@ void comparison_begin_frame(Device& ctx) noexcept {
     // Ctrl+Shift+F11: the fog shadow-pass A/B (comparison-hotkeys.md, "Fog
     // shadow pass"). Polled only when the pass was enabled at launch; one
     // fog_shadow_pass_toggle line per accepted press, no notice.
-    keys.fog_shadow_pass=volumetric_fog_shadow_pass && (GetAsyncKeyState(VK_F11)&0x8000)!=0;
+    // Ctrl+Alt+F11 with Shift up: the dust motes on/off (comparison-hotkeys.md, "Fog dust motes"), polled only with
+    // --fog-dust-motes, on F11's own raw latch; one fog_dust_motes_toggle line per accepted press, no notice.
+    const bool f11=(volumetric_fog_shadow_pass || volumetric_fog_motes.count) && (GetAsyncKeyState(VK_F11)&0x8000)!=0;
+    keys.fog_shadow_pass=volumetric_fog_shadow_pass && f11;
+    keys.fog_dust_motes=volumetric_fog_motes.count && f11;
     // Ctrl+Alt+F9 / F10 with Shift up: the volumetric fog on/off and its strength ladder, polled only with
     // --volumetric-fog (raw F9/F10 latches of their own; Ctrl+Shift+F9/F10 stay exposure and bloom).
     keys.fog_toggle=volumetric_fog_requested && (GetAsyncKeyState(VK_F9)&0x8000)!=0;
@@ -1271,6 +1278,7 @@ void comparison_begin_frame(Device& ctx) noexcept {
     const auto action=ctx.comparison.sample(keys);
     if(action.sun_shadow)ctx.motion_output.sun_shadow_toggle();
     if(action.fog_shadow_pass)ctx.motion_output.volumetric_fog_shadow_pass_toggle();
+    if(action.fog_dust_motes)ctx.motion_output.volumetric_fog_dust_motes_toggle();
     if(action.fog_toggle)ctx.motion_output.volumetric_fog_toggle();
     if(action.fog_step)ctx.motion_output.volumetric_fog_step();
     ctx.motion_output.volumetric_fog_begin_frame();
@@ -1410,7 +1418,8 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
             char second[40];
             if(fog<0)std::snprintf(second,sizeof second,"%s",at_rest);
             else if(!(fog&1))std::snprintf(second,sizeof second,"%s%sFOG OFF",at_rest,*at_rest?"  ":"");
-            else std::snprintf(second,sizeof second,"%s%sFOG %.2fx%s",at_rest,*at_rest?"  ":"",double(ctx.motion_output.volumetric_fog_strength() / .02f),(fog&2)?"":" IDLE");
+            else std::snprintf(second,sizeof second,"%s%sFOG %.2fx%s%s",at_rest,*at_rest?"  ":"",double(ctx.motion_output.volumetric_fog_strength() / .02f),(fog&2)?"":" IDLE",
+                               (fog&MotionOutput::fog_overlay_motes)?" MOTES":"");
             ctx.fps_notice.text(ctx.fps_overlay.line(),second);
         }
     }
@@ -2548,6 +2557,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_volumetric_fog_range(volumetric_fog_range_stored);
     hooked.motion_output.configure_volumetric_fog_look(volumetric_fog_look_tuning);
     hooked.motion_output.configure_volumetric_fog_shadow_pass(volumetric_fog_shadow_pass);
+    hooked.motion_output.configure_volumetric_fog_dust_motes(volumetric_fog_motes);
     { LARGE_INTEGER frequency{};QueryPerformanceFrequency(&frequency); // the frame_end clock; one read per device
       hooked.fps_overlay.configure(fps_overlay_requested,frequency.QuadPart>0?uint64_t(frequency.QuadPart):1); }
     hooked.motion_output.configure_screen_emission_timing(screen_emission_timing_requested);
@@ -3240,6 +3250,35 @@ void initialize_log(HMODULE module) {
         log("volumetric_fog_shadow_pass enabled=%u grid=quarter slices=64 tiles=4x4 format=A8R8G8B8 cascades=3 taps=4 penumbra=%g,%g,%g",unsigned(volumetric_fog_shadow_pass),
             double(volumetric_fog_look_tuning.penumbra),double(volumetric_fog_look_tuning.penumbra_min),double(volumetric_fog_look_tuning.penumbra_max));
      }
+     // X3M_FOG_DUST_MOTES=N,SIZE,STREAK: the whole string must parse (N 0 or 64..8192, SIZE 2..16, STREAK 0..512), anything
+     // else keeps the motes off; the tunables are read only with the option on (one volumetric_fog_motes_mode line). A
+     // value of 32 or more characters, or a count above 0 without the stored range, says so in one line instead.
+     volumetric_fog_motes={};
+     const DWORD motes_length=GetEnvironmentVariableW(L"X3M_FOG_DUST_MOTES",setting,32);
+     if(motes_length>=32)log("volumetric_fog_motes_mode enabled=0 invalid=1 reason=overlong length=%lu",motes_length);
+     else if(motes_length&&!volumetric_fog_range_stored){
+        wchar_t* end=nullptr;const unsigned long n=wcstoul(setting,&end,10);
+        if(end==setting||n!=0)log("volumetric_fog_motes_mode enabled=0 reason=requires_stored_range count=%lu stored=0 fog=%u",n,unsigned(volumetric_fog_requested));
+     } else if(motes_length){
+        wchar_t* end=nullptr;const unsigned long n=wcstoul(setting,&end,10);float values[2]{};bool valid=end!=setting&&*end==L',';
+        for(unsigned i=0;i<2&&valid;++i){wchar_t* at=end+1;values[i]=wcstof(at,&end);valid=end!=at&&*end==(i?L'\0':L',');}
+        renderer::FogMoteTuning motes{};
+        if(valid&&n<=renderer::fog_mote_count_max&&renderer::fog_mote_option(unsigned(n),values[0],values[1],motes)&&motes.count){
+            unsigned overrides=0;
+            for(const auto& field:renderer::fog_mote_fields){
+                wchar_t name[48]{};std::swprintf(name,std::size(name),L"X3M_FOG_MOTES_%hs",field.name);
+                if(!fog_env(name))continue;
+                wchar_t* stop=nullptr;const float v=wcstof(setting,&stop);
+                if(stop!=setting&&*stop==L'\0')overrides+=renderer::fog_mote_set(motes,field,v);
+            }
+            if(fog_env(L"X3M_FOG_MOTES_SEED")){wchar_t* stop=nullptr;const unsigned long v=wcstoul(setting,&stop,10);if(stop!=setting&&*stop==L'\0'&&v<=0x7fffffffUL){motes.seed=std::uint32_t(v);++overrides;}}
+            renderer::fog_mote_normalize(motes);
+            volumetric_fog_motes=motes;
+            log("volumetric_fog_motes_mode enabled=1 count=%u size=%g streak=%g overrides=%u RADIUS=%g NEAR=%g MAX_PX=%g GAIN=%g SOFT=%g DRIFT=%g SEED=%u key=ctrl_alt_f11",
+                motes.count,double(motes.size),double(motes.streak),overrides,double(motes.radius),double(motes.near_fade),double(motes.max_px),double(motes.gain),double(motes.soft),double(motes.drift),unsigned(motes.seed));
+        } else if(valid&&n==0)log("volumetric_fog_motes_mode enabled=0 reason=off");
+        else log("volumetric_fog_motes_mode enabled=0 invalid=1 reason=%s",valid?"out_of_range":"unparsable");
+     }
      if(asked)log("volumetric_fog_range mode=%s atlas_bytes=%u levels=2 cpu_bytes=%u upload_budget_bytes=%u upload_rects=%u ramp_frames=%u worker_threads=%u",volumetric_fog_range_stored?"stored":"legacy",
         volumetric_fog_range_stored?unsigned(fog::kAtlasBytes):0u,volumetric_fog_range_stored?unsigned(4*fog::kAtlasBytes):0u,volumetric_fog_range_stored?unsigned(fog::kDefaultUploadBudget):0u,
         volumetric_fog_range_stored?fog::kDefaultUploadRects:0u,volumetric_fog_range_stored?fog::kReadinessRampFrames:0u,unsigned(volumetric_fog_range_stored));
@@ -3548,6 +3587,13 @@ extern "C" __declspec(dllexport) int x3m_fog_shadow_pass_fixture_toggle(IDirect3
     x3m::CaptureLock lock;
     const auto it=x3m::devices.find(device);
     return it==x3m::devices.end()?-1:it->second->motion_output.volumetric_fog_shadow_pass_toggle();
+}
+// The dust motes' on/off (comparison-hotkeys.md, "Fog dust motes"): the Ctrl+Alt+F11 action without the key, at the
+// same frame boundary. Returns the new state (1 on / 0 off), -1 without the option or for an unknown device.
+extern "C" __declspec(dllexport) int x3m_fog_dust_motes_fixture_toggle(IDirect3DDevice9* device) {
+    x3m::CaptureLock lock;
+    const auto it=x3m::devices.find(device);
+    return it==x3m::devices.end()?-1:it->second->motion_output.volumetric_fog_dust_motes_toggle();
 }
 // Own-ship-adaptive cascade 0 seam (shadow-cascade-extents.md, section 5):
 // the fixture executable's synthetic own-ship root node stands in for the

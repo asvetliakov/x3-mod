@@ -2,9 +2,9 @@
 
 Design note, 2026-09-23 (Fable, high), for change 8 of
 [fog-visual-direction-review-2026-09-21.md](fog-visual-direction-review-2026-09-21.md): the sense-of-speed
-and scale cue the stored-density fog lacks. To be built **default off** behind one launcher option for the
-candidate after the next. Nothing here is implemented; every cost is an estimate [I] until costed against
-the pass fixture; [M] marks numbers read from the notes or source. Units: 5 render units = 1 m, 5000 per km.
+and scale cue the stored-density fog lacks. Built **default off** behind one launcher option on 2026-09-23;
+what differs from the design below and the fixture numbers are in "As built" at the end. In the design
+sections every cost is an estimate [I]; [M] marks numbers read from the notes or source. Units: 5 render units = 1 m, 5000 per km.
 Owning runtime notes: [fog-density-runtime-integration.md](fog-density-runtime-integration.md) (the L2
 look, rows c22-c41, the transaction), [fog-shadow-pass.md](fog-shadow-pass.md) (grid variant),
 [seta-sky-hull-share-decay.md](seta-sky-hull-share-decay.md) and
@@ -33,10 +33,10 @@ repair leaves bound, so a clear or idle sector draws none by construction (the t
 | Streak | screen segment from `P_prev(q + delta)` (previous basis, previous drift time) to `P(q)`, length clamped to STREAK px (128); radiance x `size/(size + L)` | Energy conservation: a long SETA streak is faint; the streak also overlaps its previous position, the TAA argument of section 3 |
 | Drift | `q += DRIFT sin(w t + phi_i)` per axis, DRIFT 20 units, period 8 s, VS only | Motes move at rest (docked, idle); world-anchored, so no state |
 | Geometry | static DEFAULT VB: N x 4 vertices (seed xyz, corner uv, 20 B: 160 KB) + IB N x 6 x 2 B (24 KB), `DrawIndexedPrimitive` once; created at `prepare_density` beside the grid target, released with `release_targets`, recreated after Reset by the next latch; counted in `allocations()` | Same lifetime rule as the grid; no MANAGED pool (a D3D9Ex-style device refuses it and the retention probe exists only because that is uncertain) |
-| VS (vs_3_0) | wrap, drift, near/far fade, current and previous projection, capsule expansion (perpendicular +/- size/2, along the streak), degenerate (w = 0) when view z <= 0 or the fade is 0; ~11 constant rows, one upload | No VTF, no instancing, no point sprites |
-| PS (ps_3_0), one source, two variants (`FOG_SHADOW_PASS`) like the march | capsule falloff (8 ALU); occlusion `vis = geometry(d) ? saturate((d.b - z)/(SOFT z)) : 1` from RT2 at s0 (1 fetch, `valid_geometry_depth` of the include; SOFT .02, 0 = hard clip); density `rho = lerp(far, fine, lambda)` at `cam_local + q` with the march's `level_sample` (4 fetches) and the look remap (coverage waves, warp: the same include, rows c22-c35); colour `albedo x (phase x E_sun/pi x visibility + ambient)` with the look's two-lobe phase on the mote direction, its two-colour ambient, and the sun visibility from `fog_look_visibility` (in-march variant, maps at s4-s5 as the repair binds them, ~90 slots, 4 fetches) or one grid fetch at slice `|q|/500` (grid variant, ~15 slots); x `density_scale` (carries the 90-frame far ramp) x GAIN x `rho'` | Everything is the fog's own law and constants, so a mote sits in a cloud body exactly where the march draws one and goes dark inside a shaft; slots [I] 230-260 in-march, 160-190 grid, a fresh 512 budget |
+| VS (vs_3_0) | wrap, drift, near/far fade, current and previous projection, capsule expansion (perpendicular +/- size/2, along the streak), degenerate (w = 0; superseded, see As built: one point outside the clip volume) when view z <= 0 or the fade is 0; ~11 constant rows, one upload (12 as built) | No VTF, no instancing, no point sprites |
+| PS (ps_3_0), one source, two variants (`FOG_SHADOW_PASS`) like the march | capsule falloff (8 ALU); occlusion `vis = geometry(d) ? saturate((d.b - z)/(SOFT z)) : 1` from RT2 at s0 (1 fetch, `valid_geometry_depth` of the include; SOFT .02, 0 = hard clip); density `rho = lerp(far, fine, lambda)` at `cam_local + q` with the march's `level_sample` (4 fetches) and the look remap (coverage waves, warp: the same include, rows c22-c35); colour `albedo x (phase x E_sun/pi x visibility + ambient)` with the look's two-lobe phase on the mote direction, its two-colour ambient, and the sun visibility from `fog_look_visibility` (in-march variant, maps at s4-s5 as the repair binds them, ~90 slots, 4 fetches) or one grid fetch at slice `|q|/500` (grid variant, ~15 slots); x `density_scale` (carries the 90-frame far ramp) x GAIN x `rho'` (as built these scalars reach the PS through the VS, not a c42 row: superseded, see As built) | Everything is the fog's own law and constants, so a mote sits in a cloud body exactly where the march draws one and goes dark inside a shaft; slots [I] 230-260 in-march, 160-190 grid, a fresh 512 budget |
 | Placement | after the repair draw, on `f.target` (full resolution, still bound: no `SetRenderTarget`), before `EndScene`/restore; the block restores VS, declaration, streams, indices, VS constants and the three blend states (`D3DSBT_ALL`) | Before the `StretchRect` copy the motes would enter the scratch scene and be extinguished by the whole column (a sky-pixel mote through 22.5 km of fog); the march cannot see them (no RT2). Over 200 m the fog's own transmittance is ~1 [I], so drawing them un-fogged is right |
-| Blend | ONE/ONE on the FP16 target; requires `D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING` on A16B16G16R16F, already queried by the HDR pass (`caps_.fp16_blending`); the 8-bit route's X8R8G8B8 blend is baseline | A refused blend capability refuses the mote stage only (`density_status().motes_refused`, one log line), never the fog, the grid's rule |
+| Blend | ONE/ONE on the FP16 target; requires `D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING` on A16B16G16R16F, already queried by the HDR pass (`caps_.fp16_blending`; superseded, see As built: FogPass makes its own `CheckDeviceFormat` at the first request and checks `D3DPMISCCAPS_BLENDOP` and `D3DPBLENDCAPS_ONE`); the 8-bit route's X8R8G8B8 blend is baseline | A refused blend capability refuses the mote stage only (`density_status().motes_refused`, one log line), never the fog, the grid's rule |
 | Projection | the jittered projection a routed draw uses this frame (engine rows + the route's jitter), not the fog quad's corrected rows | The resolve removes the jitter from every current sample; an un-jittered mote would wobble +/- 0.5 px against the world. The RT2 depth it is tested against is on the same jittered grid |
 
 Displacement at the wrap radius perpendicular to the flight path, 1280x768 (`p11` 1.3333 -> 512 px per unit tan
@@ -65,6 +65,12 @@ free of new machinery in both variants (table above); the cascade at 200 m is th
 (the 1500 map is bound and unused there, as for the march) and the finest slice of the grid in the grid
 variant. Strength (Ctrl+Alt+F10 ladder) scales `density_scale`, so motes follow the fog's strength; GAIN is
 the mote-only multiplier.
+
+**Known bias (as built, left for the flight to rate):** the scene target holds the encoded image (exponent 1/2.2
+with the AgX decode), and ONE/ONE adds `pow(c, 1/2.2)` to it. That is exact over black, but over a lit pixel s it
+over-adds: the result `s + c^(1/2.2)` exceeds the correct `(s^2.2 + c)^(1/2.2)`, increasingly so as s grows, so a
+mote in front of a bright hull or a lit cloud reads brighter than its radiance. The blend is unchanged for now;
+a decode-add-encode would need the target as a texture or a second pass.
 
 ## 3. Motion and TAA
 
@@ -106,7 +112,7 @@ mask lane is possible (section 7).
   logged once as `volumetric_fog_motes_mode`.
 - `volumetric_fog_frame` gains, with the option on: `motes=0|1` (drawn), `mote_count=N`, `mote_calls=<device
   calls of the stage>`, `mote_shift_px=<512 |delta| / R: the perpendicular displacement at the wrap radius
-  this frame>`, `mote_streak=0|1` (previous basis valid: 0 on a cut, a Reset, a gap or |delta| > R),
+  this frame>` (superseded, see As built: H/2 x m11 in place of 512), `mote_streak=0|1` (previous basis valid: 0 on a cut, a Reset, a gap or |delta| > R),
   `mote_shadow=in_march|grid|none`, `mote_refused=<reason|none>`. Same budget rules as the grid fields.
 - **Ctrl+Alt+F11** toggles the stage (free since the look cycle was retired on 2026-09-22; the Alt rule on
   F11's own raw latch, so Ctrl+Shift+F11 stays the shadow pass; polled only with the option). One
@@ -152,9 +158,10 @@ mask lane is possible (section 7).
 
 Device calls per applied frame [I]: `SetVertexShader`, `SetVertexDeclaration`, `SetStreamSource`,
 `SetIndices`, `SetPixelShader`, one `SetVertexShaderConstantF`, three `SetRenderState` (blend enable, src,
-dst), `DrawIndexedPrimitive` = **10-11**, about 5 us at the ledger's .42 us per call, against 338 / 324 per
+dst), `DrawIndexedPrimitive` = **10-11** (superseded, see As built: 12 measured, with `BLENDOP` and `CLIPPING`),
+about 5 us at the ledger's .42 us per call, against 338 / 324 per
 applied frame measured in runs 251 / 250 [M]. The PS reads the rows already uploaded (one new row c42
-(GAIN, SOFT, R, NEAR) rides the existing 42-row upload) and the samplers the repair leaves bound. CPU
+(GAIN, SOFT, R, NEAR) rides the existing 42-row upload; superseded, see As built: no c42) and the samplers the repair leaves bound. CPU
 otherwise: the modulo, delta and drift time in double, one retained basis copy; no allocation, lock or
 per-draw work. GPU [I]: 8192 vertices x ~40 instructions; fill ~120 motes x 4 px x (4 + L) px = ~5 k px at
 normal speed, ~30 k px under SETA at 1280x768 (~250-slot pixels, 5-9 fetches), under 1 % of the march's
@@ -209,3 +216,88 @@ the row to `platform-portability.md`.
 5. Fog transmittance over 200 m at the flown strength (assumed ~1): a one-line host computation from
    `sigma_eff` and the fine field along the camera's 1000-unit neighbourhood settles whether motes need an
    extinction term of their own.
+
+## As built (2026-09-23)
+
+Sources: `src/renderer/fog_mote_math.h` (option triple, `X3M_FOG_MOTES_<NAME>` table, seed lattice),
+`src/fog/fog_dust_motes_vs.hlsl` and `fog_dust_motes_ps.hlsl` with the variants `_look_ps` (in-march
+visibility) and `_grid_ps` (`FOG_SHADOW_PASS`), compiled to `src/renderer/fog_dust_motes_{vertex,look,grid}_program_inc.h`;
+`FogPass` (`fog_pass.{h,cpp}`: resources in `density_resources`, `mote_constants`, the stage after the repair),
+the proxy fragment (`motion_output_fog_inc.h`: toggle, drift clock, frame-row fields, refusal line), `capture.cpp`
+(parse, F11 read shared with the shadow pass, overlay, fixture export), `comparison_controls.h`, `tools/manage.py`.
+
+Where it differs from the design above:
+
+- **12 device calls per applied frame** (measured; the estimate was 10-11): `SetVertexShader`,
+  `SetVertexDeclaration`, `SetStreamSource`, `SetIndices`, `SetPixelShader`, one `SetVertexShaderConstantF`
+  (12 rows), five `SetRenderState` and `DrawIndexedPrimitive`. The two extra states: `BLENDOP` `ADD` (normalize
+  never sets the blend operation, so a caller's `MAX` or `REVSUBTRACT` would apply; the pass fixture's hostile state
+  now sets `MAX`) and `CLIPPING` `TRUE` (normalize turns clipping off; capsules at the screen edge leave the viewport).
+- **No pixel row c42.** GAIN x `density_scale` x far ramp and SOFT reach the pixel program through the vertex
+  program's interpolators, so the march's 42-row upload and every call up to the repair are the off path's; on
+  minus off is exactly the stage (measured 334 - 322 = 12).
+- Vertex constants c0-c11: c0 the jittered projection routed draws use (FogParams' rows minus the quad pixel-centre
+  term), c1-c3 this frame's world->view rotation (the double inverse of the fog's view->world rows), c4-c6 the previous
+  drawn frame's, c7 camera mod W + streak flag, c8 camera delta + STREAK, c9 drift phases, DRIFT and brightness,
+  c10 SIZE, MAX_PX, K, SOFT, c11 the viewport. Both streak ends use this frame's projection (no jitter streak at rest).
+- Seeds are 24-bit unit values (lowbias32 of index and SEED) scaled by W in the vertex program; 20 B per vertex,
+  VB N x 80 B, IB N x 12 B: 188,416 B at N 2048 (by construction), 753,664 B at 8192. A culled mote puts its four corners
+  on one point outside the clip volume instead of w = 0.
+- Streak rule: the previous drawn fog frame is `FogFrame::frame - 1`, the caller reports no cut
+  (`FogFrame::mote_cut`, the proxy's cut-detector verdict `cut_finished_ && counters_.cut`, so a cockpit/external view
+  switch or a roll-only cut inside the geometric bounds draws none), |delta| <= R and the view axis turned under
+  30 degrees; anything else (cut, gap, Reset, toggle, a previous endpoint behind the camera) draws zero length.
+- **Maintenance risk: the pixel program repeats the march's law inline** (the domain warp, the coverage shift of the
+  three oblique waves, the taper smoothstep, the two-lobe phase and the ambient lerp of `march_depth` under `FOG_LOOK`
+  in `fog_density_field_inc.h`), calling only the shared `level_sample`, `look_wave`, `look_density`, `geometry`,
+  `valid_geometry_depth`, `fog_look_visibility`, `grid_slice` and `grid_tile`. Factoring those lines into shared
+  functions would recompile the march and repair and change their accepted bytecode (repair sits at 510 of 512 slots),
+  so they are duplicated; a change to the look's law must be made in both places (the pass fixture's twin catches a
+  divergence only in the mote cases).
+- Drift clock: `QueryPerformanceCounter` seconds since the first mote frame, read only with the option
+  (`FogFrame::mote_seconds`); the 8 s phases are reduced on the CPU in double.
+- Output `pow(colour, 1/gamma)`, alpha 0 (exact over black with the 2.2 encode; the scene alpha is untouched).
+- Refusals (`density_status().motes_refused`, one `fog_dust_motes_refused` line, sticky until detach, the fog draws
+  on): `mote_count`, `mote_blend_caps` (`D3DPMISCCAPS_BLENDOP`, `D3DPBLENDCAPS_ONE` source and destination,
+  `MaxVertexShaderConst >= 12`), `mote_index_limits`, `mote_fp16_blending` (`RENDERTARGET |
+  QUERY_POSTPIXELSHADER_BLENDING` on A16B16G16R16F, queried at the first request, not at attach), `mote_compiled_slots`,
+  `mote_program_create`, `mote_buffers`, `mote_draw` (a draw that fails without a lost device; the fog frame stands).
+  A lost device inside the stage takes the transaction's loss path (`FogStage::Motes`).
+- The host twin is C++ (`verification/probe/fog_dust_motes_cpu.h` over `fog_density_cpu_march.h`'s texel-exact field)
+  inside the production FogPass fixture (`fog_density_pass_fixture.cpp`, real VB/IB, blending and state
+  restoration), reported by `fog_density_shader_run.py`; not the Python shader reference. The fixture picks its dense
+  and void poses with the twin on a 1500-unit lattice of +-18 km around pose A (pose A itself has no fog within 200
+  units). `mote_shift_px` uses H/2 x m11 (512 at 1280x768).
+
+Measured on bottle X3 (compact record `verification/results/bottle-X3/fog-dust-motes.json`, written by
+`verification/results/fog-dust-motes/summarize.py`; ledger `docs/verification/volumetric-fog.md`, "Dust motes"):
+
+| Item | Result |
+| --- | --- |
+| Slots (ps look / ps grid / vs) | 311 / 257 / 101; texture instructions 13 / 6 / 0 |
+| Device calls, applied frame | off 322, on 334: +12, equal to the stage's own count |
+| Pass fixture | 117 checks (the 78 existing unchanged + 39 new), 1,141 state restorations, 30 / 30 gates, accepted look hashes equal, `GRID_REPORT` 20 / 15 and `GRID_TOGGLE` 323 / 338 / 15 as before |
+| Off path | toggled-off frame byte-identical to a pass launched without the option, same call count |
+| Sky (N 512, R 200, SIZE 4, STREAK 8) | 34 of 142 drawn motes in fog; every pixel within 0.41 of the tolerance (2e-3 + 3 %), worst 9.3e-4; 5 isolated blobs: centroid within 0.029 px of the projection, energy within 1.44 % |
+| Streak (12 units right, next frame) | `mote_shift_px` 3.7412 = expected; per pixel 0.37 of tolerance with 8 STREAK-clamped capsules; length of the isolated streaks within 0.036 px; the gap frame draws zero length (0.31) |
+| Caller cut (6 units, 2 degree yaw, `mote_cut`) | the same step streaks without the flag; with it zero length, the frame within 0.38 of the still twin's tolerance |
+| Void pose | image byte-identical to the launch-off frame |
+| Plane at view z 90 | 26 motes behind absent, 4 in front present; per pixel 0.25 |
+| Wrap | camera + W on each axis puts every mote on the same pixel (13 blobs within 0.0038 px); + W/2 moves the lattice |
+| Shafts | in-march dark map on the 0.15 floor law (0.25 of tolerance, energy 0.267 of the lit frame); grid variant lit 0.41, dark 0.25 |
+| Reset | VB/IB released; +4 allocations at the next prepare (targets, two atlases, motes); frames byte-identical |
+| Refusal (no `BLENDOP` cap) | `mote_blend_caps`; frame and call count equal to the launch-off frame |
+| Route bridge | 36,333 checks; 15 `shadow_ab_*` and 13 `motes_ab_*` names; legacy images bit-identical to baseline `6f16dbf6`; row `motes=1 mote_count=8192 mote_calls=12`; Reset +5 allocations (family atlas, targets, two atlases, motes) |
+| Temporal row (m) | negative ages 0 over the flickering sky and the dark sky (M 2 and 0.8); no trail beyond 3 px over the dark sky (both M); a moving hull's marks 648 with and without the streak; `run_temporal_pass.py` 744 / 546 on the rebased tree |
+
+Reported, not gated (temporal row (m), 5 x 24 px streak at 8 px/frame, far_camera + strict + exit 0.25 + stabiliser
+0.7): output/current on the centre row is 1.00 (overlapped) and 1.00 (leading) at M 2, above the stabiliser's emitter
+bound E 1 (the box shrinks to the inner 3x3); at M 0.8, below it, 0.66 and 0.37: the 7x7 box of a 5-px streak holds the
+dark sky, so each pixel climbs over its three covered frames. Over the flickering sky every 3x3 spans [0, 1], so the
+clip cannot cut the history of M: the trail reaches 0.69 (34 % of M) and stays above 0.05 M for the whole remainder of
+the sequence (the trail spans the screen) as it decays at the 0.97 weight. The 3 px trail gate therefore applies to
+the dark sky only; the flickering-sky trail is reported, not gated.
+
+Unknowns: 1 is measured above (a mote below E 1 shows at 0.37-0.66 of its radiance; GAIN about 1.5-2.7, or motes
+above E, correct it; a sky whose local range spans the mote's value keeps a decaying trail); 2 is settled; 3-5 need
+the flight.

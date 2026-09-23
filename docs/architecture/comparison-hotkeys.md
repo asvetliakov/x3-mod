@@ -210,8 +210,27 @@ key is polled. In-game behavior is unverified.
 
 The stored fog's look-preset cycle (**Ctrl+Alt+F11**) and the overlay's `L0..L3`
 readout were retired on 2026-09-22 with the presets themselves: the stored range
-has one look (`fog-density-runtime-integration.md`, "The look"), F11 under
-Ctrl+Alt produces no fog action. The overlay's fog part reads `FOG 1.50x`.
+has one look (`fog-density-runtime-integration.md`, "The look"). Since
+2026-09-23 **Ctrl+Alt+F11** is the dust motes' on/off (below); without
+`--fog-dust-motes` it produces no fog action. The overlay's fog part reads `FOG 1.50x`.
+
+## Fog dust motes
+
+**Ctrl+Alt+F11** (Shift up) switches the stored fog's dust motes
+(`fog-dust-motes.md`) off and on while they were enabled at launch
+(`--fog-dust-motes N[,SIZE[,STREAK]]`, `X3M_FOG_DUST_MOTES`); otherwise the key
+is not polled for them. The overlay's Alt rule on F11's own raw latch: the one
+`GetAsyncKeyState(VK_F11)` read feeds both the shadow-pass key (Ctrl+Shift) and
+this one, so Ctrl+Shift+F11 stays the shadow pass and a held F11 never becomes a
+press by changing modifiers. The press flips the proxy's copy of the mote
+toggle; the fog pass latches it at the next owner latch, so a frame draws the
+motes whole or not at all. Off is the launch-off transaction; the mote programs
+and the VB/IB stay allocated (a Reset releases the buffers with the targets, the
+next latch re-creates them). One `fog_dust_motes_toggle device= frame=
+enabled=0|1 refused=<reason|none> key=ctrl_alt_f11` line per press; no notice.
+With `--fps-overlay` the fog part appends ` MOTES` while the last fog frame drew
+them. The fixture export `x3m_fog_dust_motes_fixture_toggle` stands in for the
+press. In-game and native Windows behavior are unverified.
 
 ## Fog shadow pass
 

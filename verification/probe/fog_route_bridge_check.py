@@ -40,6 +40,11 @@ DENSITY_REQUIRED={
  'shadow_ab_alternating_creates_nothing','shadow_ab_reset_while_off_keeps_no_grid','shadow_ab_toggle_on_logs_one_row',
  'shadow_ab_toggle_on_recreates_the_grid_once','shadow_ab_toggle_on_grid_ready_no_null_target','shadow_ab_toggle_on_matches_the_pre_toggle_grid_frame',
  'shadow_ab_toggle_on_row_fields',
+ # The fog dust motes' A/B (Ctrl+Alt+F11; fog-dust-motes.md section 5.3) through the same fragment.
+ 'motes_ab_option_absent_creates_nothing_rows_absent','motes_ab_launch_on_creates_at_prepare_and_draws','motes_ab_launch_on_row_fields',
+ 'motes_ab_toggle_off_logs_one_row','motes_ab_toggled_off_frame_is_the_launch_off_frame','motes_ab_toggled_off_row_fields',
+ 'motes_ab_toggled_off_keeps_the_buffers','motes_ab_alternating_frames_applied','motes_ab_alternating_creates_nothing',
+ 'motes_ab_toggle_on_before_reset','motes_ab_reset_releases_the_buffers','motes_ab_reset_recreates_the_buffers_once','motes_ab_after_reset_draws',
 }
 LEGACY_IMAGES=('legacy_warm','legacy_replaced','legacy_captured_cameras_33','legacy_new_family_warm','legacy_after_reset')
 DENSITY_SCOPE='DENSITY_SCOPE range=stored worker=real_thread cache=dynamic owner=synthetic native_reset=pass_edges_only process_exit=separate_exit_fixture'

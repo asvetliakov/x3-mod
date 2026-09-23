@@ -33,7 +33,11 @@ SOURCES = [ROOT / 'verification/probe/fog_density_shader_fixture.cpp', ROOT / 's
 PASS_SOURCES = [ROOT / 'verification/probe/fog_density_pass_fixture.cpp', ROOT / 'src/renderer/fog_pass.cpp', ROOT / 'src/fog/fog_density_cache.cpp',
                 ROOT / 'src/fog/fog_density_generator.cpp', ROOT / 'src/renderer/fog_field_assets.cpp']
 PASS_INPUTS = ['src/renderer/fog_pass.h', 'src/renderer/fog_look_math.h', 'src/renderer/fog_shadow_grid.h', 'src/fog/fog_density_cache.h', 'src/fog/fog_density_generator.h', 'src/proxy/cpu_state.h', 'verification/probe/fog_density_cpu_march.h',
-               'src/renderer/fog_march_program_inc.h', 'src/renderer/fog_composite_program_inc.h', 'src/renderer/quad_vertex_program.h']
+               'src/renderer/fog_march_program_inc.h', 'src/renderer/fog_composite_program_inc.h', 'src/renderer/quad_vertex_program.h',
+               # Dust motes (fog-dust-motes.md): the stage's header, programs and the fixture's CPU twin.
+               'src/renderer/fog_mote_math.h', 'verification/probe/fog_dust_motes_cpu.h', 'src/renderer/fog_dust_motes_vertex_program_inc.h',
+               'src/renderer/fog_dust_motes_look_program_inc.h', 'src/renderer/fog_dust_motes_grid_program_inc.h']
+MOTE_PROGRAMS = tuple(name.replace('_', '-') for name in list(slots.MOTE_PROGRAMS) + list(slots.MOTE_VERTEX))
 # Pass off must stay the accepted look byte for byte: sha256 prefixes of the look-collapse acceptance
 # (docs/verification/volumetric-fog.md, "Single look", 2026-09-22), same baked packets and reference poses.
 ACCEPTED_LOOK_HASHES = {('A_look_sky', 'bilinear32'): '5a6ce47b291850ef', ('A_look_sky', 'bilinear16'): '8e3cbf876597046c',
@@ -61,14 +65,14 @@ def digest(path):
 def shaders_current():
     """The provenance record of each fragment must match the sources, includes and header on disk."""
     records = {}
-    for name in PROGRAMS + LOOK_PROGRAMS + GRID_PROGRAMS:
+    for name in PROGRAMS + LOOK_PROGRAMS + GRID_PROGRAMS + MOTE_PROGRAMS:
         record = json.loads((ROOT / f'verification/results/{name}-program.json').read_text())
-        header = slots.PROGRAMS[name.replace('-', '_')]
+        key = name.replace('-', '_'); header = slots.PROGRAMS.get(key) or slots.MOTE_VERTEX[key]
         if record['source_sha256'] != digest(ROOT / record['source']) or record['header_sha256'] != digest(header):
             raise ValueError(f'{name}: stale embedded shader; rerun tools/shaders/generate_rigid_motion_pixel.py')
         if any(digest(ROOT / p) != h for p, h in (record.get('includes') or {}).items()):
             raise ValueError(f'{name}: stale shader include')
-        records[name] = dict(bytecode_sha256=record['bytecode_sha256'], **slots.count(slots.words_of(header)))
+        records[name] = dict(bytecode_sha256=record['bytecode_sha256'], **slots.count(slots.words_of(header), record.get('target', 'ps_3_0')))
     return records
 
 
@@ -250,9 +254,14 @@ def pass_report(out, execution):
     fixture_checks = re.findall(r'^CHECK (.+?) (PASS|FAIL)\s*$', text, re.M)  # a few labels contain spaces
     result = re.search(r'^RESULT PASS checks=(\d+) failures=0 state_restorations=(\d+)', text, re.M)
     rows = {}
-    for tag in ('FILL', 'PASS_VS_CPU', 'STEADY', 'RECENTRE', 'SEAM', 'SHAFTS', 'RESET_REUPLOAD', 'REPAIR', 'DETACH', 'DEVICE_REFERENCES', 'PREPARE_CPU', 'STATIC_GENERATION', 'REFUSAL', 'GRID', 'GRID_REPORT', 'GRID_TOGGLE'):
+    for tag in ('FILL', 'PASS_VS_CPU', 'STEADY', 'RECENTRE', 'SEAM', 'SHAFTS', 'RESET_REUPLOAD', 'REPAIR', 'DETACH', 'DEVICE_REFERENCES', 'PREPARE_CPU', 'STATIC_GENERATION', 'REFUSAL', 'GRID', 'GRID_REPORT', 'GRID_TOGGLE',
+                'MOTES_POSES', 'MOTES_RESOURCES', 'MOTES_CALLS', 'MOTES_SKY', 'MOTES_STREAK', 'MOTES_CUT', 'MOTES_DEPTH', 'MOTES_WRAP', 'MOTES_RESET', 'MOTES_REFUSAL'):
         found = re.search(r'^%s (.*)$' % tag, text, re.M)
         rows[tag.lower()] = numbers(found.group(1)) if found else None
+    rows['motes_shafts'] = [numbers(m) for m in re.findall(r'^MOTES_SHAFTS (.*)$', text, re.M)]
+    # The dust motes' cases (fog-dust-motes.md section 5): the M_motes_* checks and the off-path identity.
+    mote_checks = {n: s for n, s in fixture_checks if n.startswith('M_motes_') or n == 'motes_off_bit_identical'}
+    rows['motes_checks'] = dict(count=len(mote_checks), failed=sorted(n for n, s in mote_checks.items() if s != 'PASS'))
     rows['seam_recentres'] = [numbers(m) for m in re.findall(r'^SEAM_RECENTRE (.*)$', text, re.M)]
     differing = [int(v) for v in re.findall(r'^ATLAS \S+ level=\d differing_bytes=(\d+)', text, re.M)]
     passed = bool(result) and execution.get('pass_returncode') == 0 and all(s == 'PASS' for _, s in fixture_checks) and len(fixture_checks) >= PASS_CHECKS_MINIMUM \
@@ -377,7 +386,10 @@ def check(out, reference):
         grid_penumbra_widens=all(.5 <= grid_bands[k]['ratio'] <= 2 and grid_bands[k]['width_texels'] >= 1 for k in grid_bands) and widths == sorted(widths),
         grid_programs_created=all(grid['fixture_checks'].values()),
         grid_refused_falls_back_to_in_march=grid['refused_grid_falls_back'],
-        grid_pass_fixture=bool(grid_pass_summary) and grid_pass_summary.get('fogged_pixels', 0) > 0 and grid_pass_summary.get('in_scatter_differs', 0) > 0)
+        grid_pass_fixture=bool(grid_pass_summary) and grid_pass_summary.get('fogged_pixels', 0) > 0 and grid_pass_summary.get('in_scatter_differs', 0) > 0,
+        # The dust motes (fog-dust-motes.md section 5): every M_motes_* case against the twin, the off path the accepted frame.
+        motes_cases=(pass_summary.get('motes_checks') or {}).get('count', 0) >= 29 and not pass_summary['motes_checks']['failed'],
+        motes_programs_below_512=all(shaders[name]['slots'] < 512 for name in MOTE_PROGRAMS))
     reported = dict(parity_S_bilinear_max=b['cand_S']['max'], parity_S_texel_exact_max=e['cand_S']['max'])  # not gated
     summary = dict(schema=2, result='PASS' if all(gates.values()) else 'FAIL', gates=gates, reported_not_gated=reported, host_candidate_vs_dense64=host, gate_values=GATE, versus_host=rows,
                    fp16_bilinear_vs_texel_exact=dict(T=filtering, S=filtering_S), temporal_residual_vs_dense64=temporal, production_rgba16f_temporal_residual_vs_dense64=temporal16,

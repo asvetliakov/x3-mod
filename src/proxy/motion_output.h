@@ -979,6 +979,15 @@ public:
     // hands to FogPass::prepare_density, so every frame draws one variant and off is the launch-off in-march path (the
     // grid target stays allocated). One fog_shadow_pass_toggle line per press; returns the new state, -1 without the pass.
     int volumetric_fog_shadow_pass_toggle() noexcept;
+    // X3M_FOG_DUST_MOTES (fog-dust-motes.md): the stored range's dust motes, read once at init; count 0 is off.
+    void configure_volumetric_fog_dust_motes(const renderer::FogMoteTuning& motes) noexcept {
+        fog_dust_motes_launch_ = motes.count > 0; fog_density_config_.motes = motes; fog_density_config_.dust_motes = motes.count > 0;
+    }
+    // Ctrl+Alt+F11 (comparison-hotkeys.md; launched with the motes only): flips the mote stage the next owner latch hands
+    // to FogPass::prepare_density; off keeps the mote programs and buffers. One fog_dust_motes_toggle line per press;
+    // returns the new state, -1 without the option.
+    int volumetric_fog_dust_motes_toggle() noexcept;
+    static constexpr int fog_overlay_motes = 1 << 24; // volumetric_fog_overlay_state: the motes were drawn last fog frame
     // DllMain DLL_PROCESS_DETACH only (FogPass::abandon_density_worker): no join, no lock, no log.
     void abandon_volumetric_fog_worker() noexcept { if (fog_) fog_->abandon_density_worker(); }
     // Ctrl+Alt+F9 toggles the pass, Ctrl+Alt+F10 steps the strength through
@@ -990,7 +999,8 @@ public:
     int volumetric_fog_step() noexcept;
     // FPS overlay second line: -1 option off, else (enabled, strength in 1/1000, current active family).
     int volumetric_fog_overlay_state() const noexcept {
-        return !fog_requested_ ? -1 : int(fog_enabled_) | int(fog_sector_.current(frame_) && !fog_cards_.fault) << 1 | int(fog_strength_ * 1000.f + .5f) << 2;
+        return !fog_requested_ ? -1 : int(fog_enabled_) | int(fog_sector_.current(frame_) && !fog_cards_.fault) << 1 | int(fog_strength_ * 1000.f + .5f) << 2 |
+            (fog_motes_drawn_ ? fog_overlay_motes : 0);
     }
     float volumetric_fog_strength() const noexcept { return fog_strength_; }
     // Ctrl+Shift+F12 (comparison-hotkeys.md, "Sun shadows at rest"): the
@@ -2225,6 +2235,9 @@ private:
     static constexpr std::uint64_t fog_grid_change_frames = 60; // at most one change-driven row per 60 frames (the card row's spacing)
     static constexpr unsigned fog_grid_change_cap = 16; // change-driven rows per session; the toggle row is not budgeted
     unsigned fog_grid_change_logs_ = 0;
+    // X3M_FOG_DUST_MOTES at launch: arms the Ctrl+Alt+F11 toggle and the mote fields of volumetric_fog_frame.
+    bool fog_dust_motes_launch_ = false, fog_motes_refused_logged_ = false, fog_motes_drawn_ = false;
+    long long fog_motes_epoch_qpc_ = 0; // the drift clock's origin (first mote frame)
     unsigned fog_density_logs_ = 0;
     std::uint64_t fog_density_sample_frame_ = ~std::uint64_t(0), fog_density_key_ = 0;
     long long fog_density_epoch_qpc_ = 0, fog_density_sample_qpc_ = 0;

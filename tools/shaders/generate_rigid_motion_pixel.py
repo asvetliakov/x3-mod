@@ -174,6 +174,18 @@ SHADERS = {
     'fog_density_repair_grid': dict(source=ROOT / 'src/fog/fog_density_repair_grid_ps.hlsl',
                               header=ROOT / 'src/renderer/fog_density_repair_grid_program_inc.h',
                               provenance=ROOT / 'verification/results/fog-density-repair-grid-program.json'),
+    # Dust motes of the stored fog (docs/architecture/fog-dust-motes.md, X3M_FOG_DUST_MOTES): the capsule vertex
+    # program and the pixel program in the in-march and grid variants, drawn after the repair.
+    'fog_dust_motes_vertex': dict(source=ROOT / 'src/fog/fog_dust_motes_vs.hlsl',
+                              header=ROOT / 'src/renderer/fog_dust_motes_vertex_program_inc.h',
+                              provenance=ROOT / 'verification/results/fog-dust-motes-vertex-program.json',
+                              target='vs_3_0'),
+    'fog_dust_motes_look': dict(source=ROOT / 'src/fog/fog_dust_motes_look_ps.hlsl',
+                              header=ROOT / 'src/renderer/fog_dust_motes_look_program_inc.h',
+                              provenance=ROOT / 'verification/results/fog-dust-motes-look-program.json'),
+    'fog_dust_motes_grid': dict(source=ROOT / 'src/fog/fog_dust_motes_grid_ps.hlsl',
+                              header=ROOT / 'src/renderer/fog_dust_motes_grid_program_inc.h',
+                              provenance=ROOT / 'verification/results/fog-dust-motes-grid-program.json'),
     'fog_density_march_exact': dict(source=ROOT / 'verification/probe/fog_density_march_exact_ps.hlsl',
                                     header=ROOT / 'verification/probe/fog_density_march_exact_program_inc.h',
                                     provenance=ROOT / 'verification/results/fog-density-march-exact-program.json'),

@@ -27,6 +27,11 @@ PROGRAMS.update(LOOK_PROGRAMS)
 GRID_PROGRAMS = {name: ROOT / ('src/renderer/%s_program_inc.h' % name) for name in (
     'fog_density_visibility_grid', 'fog_density_march_grid', 'fog_density_repair_grid')}
 PROGRAMS.update(GRID_PROGRAMS)
+# Dust motes (X3M_FOG_DUST_MOTES, fog-dust-motes.md): the capsule pixel program in the in-march and grid variants, and
+# its vs_3_0 vertex program (counted with the same table; vs_3_0 offers at least 512 slots as well).
+MOTE_PROGRAMS = {name: ROOT / ('src/renderer/%s_program_inc.h' % name) for name in ('fog_dust_motes_look', 'fog_dust_motes_grid')}
+PROGRAMS.update(MOTE_PROGRAMS)
+MOTE_VERTEX = {'fog_dust_motes_vertex': ROOT / 'src/renderer/fog_dust_motes_vertex_program_inc.h'}
 ZERO = {31, 48, 81, 47, 30}                    # dcl, defi, def, defb, label
 COST = {37: 8, 66: 6,                          # sincos, texldb
         # loop rep if ifc breakc callnz nrm pow texldd breakp
@@ -41,9 +46,9 @@ def words_of(path):
     return [int(w, 16) for w in re.findall(r'0x([0-9a-f]{8})u', Path(path).read_text())]
 
 
-def count(words):
-    if len(words) < 2 or words[0] != 0xffff0300 or words[-1] != 0xffff:
-        raise ValueError('expected a complete ps_3_0 program')
+def count(words, target='ps_3_0'):
+    if len(words) < 2 or words[0] != {'ps_3_0': 0xffff0300, 'vs_3_0': 0xfffe0300}[target] or words[-1] != 0xffff:
+        raise ValueError('expected a complete %s program' % target)
     slots = fetches = loops = 0
     i = 1
     while i < len(words) - 1:
@@ -63,6 +68,7 @@ def count(words):
 
 def main():
     rows = {name: count(words_of(path)) for name, path in PROGRAMS.items()}
+    rows.update({name: count(words_of(path), 'vs_3_0') for name, path in MOTE_VERTEX.items()})
     print(json.dumps(rows, indent=1))
     return 0 if all(r['slots'] < 512 for r in rows.values()) else 1
 

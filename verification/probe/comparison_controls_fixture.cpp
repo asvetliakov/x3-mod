@@ -164,6 +164,21 @@ int main(){
     grid.reset_focus();CHECK(!grid.sample(q).fog_shadow_pass);
     {x3m::ComparisonControls first;x3m::ComparisonKeys h{};h.foreground=true;h.control=h.shift=h.fog_shadow_pass=true;
      CHECK(!first.sample(h).fog_shadow_pass);CHECK(!first.sample(h).fog_shadow_pass);} // held before the first foreground sample
+    // Ctrl+Alt+F11 (the fog dust motes, --fog-dust-motes only): the Alt rule on F11's own raw latch. The physical F11 raises
+    // both raw keys when both options are on; Ctrl+Shift+F11 stays the shadow pass, Ctrl+Alt+F11 is the motes only.
+    x3m::ComparisonControls motes;
+    x3m::ComparisonKeys u{};u.foreground=true;motes.sample(u);
+    u.control=u.alt=true;motes.sample(u);
+    u.fog_dust_motes=u.fog_shadow_pass=true;{const auto a=motes.sample(u);CHECK(a.fog_dust_motes&&!a.fog_shadow_pass&&!a.fog_toggle&&!a.fps_overlay&&!a.sun_shadow);}
+    for(unsigned i=0;i<1000;++i)CHECK(!motes.sample(u).fog_dust_motes); // held is not a second press
+    u.fog_dust_motes=u.fog_shadow_pass=false;motes.sample(u);u.alt=false;u.shift=true;motes.sample(u);
+    u.fog_dust_motes=u.fog_shadow_pass=true;{const auto a=motes.sample(u);CHECK(a.fog_shadow_pass&&!a.fog_dust_motes);} // Ctrl+Shift+F11 stays the shadow pass
+    u.shift=false;u.alt=true;CHECK(!motes.sample(u).fog_dust_motes); // swapping Shift for Alt on a held F11 is not a press
+    u.fog_dust_motes=u.fog_shadow_pass=false;motes.sample(u);u.shift=true;u.fog_dust_motes=true;CHECK(!motes.sample(u).fog_dust_motes); // Ctrl+Alt+Shift+F11
+    u.shift=false;u.fog_dust_motes=false;motes.sample(u);u.control=false;u.fog_dust_motes=true;CHECK(!motes.sample(u).fog_dust_motes); // Alt+F11 without Ctrl
+    u.control=true;u.fog_dust_motes=false;motes.sample(u);u.foreground=false;u.fog_dust_motes=true;CHECK(!motes.sample(u).fog_dust_motes);
+    u.foreground=true;CHECK(!motes.sample(u).fog_dust_motes); // held through alt-tab
+    u.fog_dust_motes=false;motes.sample(u);u.fog_dust_motes=true;CHECK(motes.sample(u).fog_dust_motes);
     // A launch with only --fps-overlay: the caller leaves every other key
     // false (their polls are gated on their own options), so the overlay chord
     // is the only action the sampler can ever produce, edge after edge.

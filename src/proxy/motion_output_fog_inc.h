@@ -205,6 +205,11 @@ void MotionOutput::prepare_volumetric_fog_density(UINT width, UINT height) noexc
         fog_shadow_pass_refused_logged_ = true;
         log("fog_shadow_pass_refused device=%llu frame=%llu reason=%s fallback=in_march_lookup", id_, frame_, status.shadow_pass_refused);
     }
+    if (status.motes_refused && !fog_motes_refused_logged_) {
+        // The mote stage could not be built or drew once without success (not a lost device): the fog draws without it.
+        fog_motes_refused_logged_ = true;
+        log("fog_dust_motes_refused device=%llu frame=%llu reason=%s fallback=fog_without_motes", id_, frame_, status.motes_refused);
+    }
     if (FAILED(hr)) return; // device loss or a transient failure: no fog this frame, retried at the next latch
     fog_density_prepared_ = true;
     if (rekeyed) { fog_density_key_ = placement.key; fog_density_epoch("sector_key"); }
@@ -363,6 +368,15 @@ int MotionOutput::volumetric_fog_shadow_pass_toggle() noexcept {
     log("fog_shadow_pass_toggle device=%llu frame=%llu enabled=%u refused=%s key=ctrl_shift_f11", id_, frame_, unsigned(fog_density_config_.shadow_pass), refused ? refused : "none");
     return fog_density_config_.shadow_pass ? 1 : 0;
 }
+int MotionOutput::volumetric_fog_dust_motes_toggle() noexcept {
+    if (!fog_dust_motes_launch_) return -1;
+    // The proxy's copy only, at the frame boundary; FogPass latches it at the next prepare_density. Off skips the stage
+    // (the transaction is the launch-off one); the mote programs and buffers stay allocated.
+    fog_density_config_.dust_motes = !fog_density_config_.dust_motes;
+    const char* refused = fog_ && fog_->motes_refused() ? fog_->density_status().motes_refused : nullptr;
+    log("fog_dust_motes_toggle device=%llu frame=%llu enabled=%u refused=%s key=ctrl_alt_f11", id_, frame_, unsigned(fog_density_config_.dust_motes), refused ? refused : "none");
+    return fog_density_config_.dust_motes ? 1 : 0;
+}
 int MotionOutput::volumetric_fog_step() noexcept {
     if (!fog_requested_) return -1;
     fog_strength_ = renderer::fog_strength_next(fog_strength_);
@@ -443,6 +457,12 @@ void MotionOutput::run_volumetric_fog() noexcept {
         in.recipe_id = fog_sector_.recipe; in.field_generation = fog_sector_.field_generation;
         in.main_target = true; in.linear_depth_current = true; in.caller_scene_known = true;
         in.caller_scene_open = scene_open_; in.caller_stateblock_recording = shadow_.recording; in.caller_queries_idle = active_queries_ == 0;
+        if (fog_dust_motes_launch_ && in.density) { // the motes' drift clock: seconds since the first mote frame
+            LARGE_INTEGER now{}, frequency{}; QueryPerformanceCounter(&now); QueryPerformanceFrequency(&frequency);
+            if (!fog_motes_epoch_qpc_) fog_motes_epoch_qpc_ = now.QuadPart;
+            in.mote_seconds = frequency.QuadPart > 0 ? double(now.QuadPart - fog_motes_epoch_qpc_) / double(frequency.QuadPart) : 0.;
+            in.mote_cut = cut_finished_ && counters_.cut; // the cut detector's verdict (view switch, roll-only cut): no streak
+        }
         LARGE_INTEGER t0{}, t1{}, f{};
         if (fog_timing_) QueryPerformanceCounter(&t0);
         taa_call([&] { hr = fog_->execute(in, &out); });
@@ -466,6 +486,7 @@ void MotionOutput::run_volumetric_fog() noexcept {
     }
     release(depth); release(rt0);
     complete_volumetric_fog(skip, hr, out);
+    if (fog_dust_motes_launch_) fog_motes_drawn_ = !skip && out.motes; // the overlay's " MOTES"
     // Camera cuts invalidate TAA history, not readiness of this current-frame
     // spatial pass. Authority/resource changes and failures own rewarming;
     // disarming on a cut would stack native cards and volume on the next frame.
@@ -503,9 +524,19 @@ void MotionOutput::run_volumetric_fog() noexcept {
                 unsigned(fog_density_config_.shadow_pass), unsigned(g.drawn), static_cast<unsigned long>(g.bind), grid_march, grid_fallback, refused ? refused : "none", g.cascades,
                 double(g.kernel[0]), double(g.kernel[1]), double(g.kernel[2]), double(g.far_width), double(g.frame_term), g.calls, g.net_calls);
         }
-        log("volumetric_fog_frame device=%llu frame=%llu applied=%u reason=%s strength=%.4f density_scale=%.3f cards=%u profile=%u field_generation=%llu sun=%s shadow_maps=%u cpu_us=%.1f calls=%u result=%08lx restore=%08lx stage=%u%s",
+        // Launched with the dust motes (fog-dust-motes.md section 4): the stage's report of this frame, zeros when the
+        // density transaction did not take the stage (toggled off, refused, not executed).
+        char mote_fields[200]; mote_fields[0] = '\0';
+        if (fog_dust_motes_launch_) {
+            const renderer::FogMoteReport none{};
+            const auto& m = fog_ && in.density && out.device_calls && fog_->mote_report().frame == frame_ ? fog_->mote_report() : none;
+            const char* refused = fog_ && fog_->motes_refused() ? fog_->density_status().motes_refused : nullptr;
+            std::snprintf(mote_fields, sizeof mote_fields, " motes=%u mote_count=%u mote_calls=%u mote_shift_px=%.1f mote_streak=%u mote_shadow=%s mote_refused=%s",
+                unsigned(!skip && out.motes), m.count, m.calls, double(m.shift_px), unsigned(m.streak), m.shadow, refused ? refused : "none");
+        }
+        log("volumetric_fog_frame device=%llu frame=%llu applied=%u reason=%s strength=%.4f density_scale=%.3f cards=%u profile=%u field_generation=%llu sun=%s shadow_maps=%u cpu_us=%.1f calls=%u result=%08lx restore=%08lx stage=%u%s%s",
             id_, frame_, unsigned(!skip && out.applied), reason, double(fog_strength_), double(fog_sector_.density_scale), unsigned(fog_latch_.cards_recent(frame_)), fog_sector_.profile, fog_sector_.field_generation,
-            skip ? "none" : sun_tracked ? "tracked" : "fallback", out.cascades_bound, us, out.device_calls, out.operation, out.restore, unsigned(out.failed), grid_fields);
+            skip ? "none" : sun_tracked ? "tracked" : "fallback", out.cascades_bound, us, out.device_calls, out.operation, out.restore, unsigned(out.failed), grid_fields, mote_fields);
     }
     if (fog_timing_ && fog_density_requested_ && fog_) {
         const auto& d = fog_->density_status();

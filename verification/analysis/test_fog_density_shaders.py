@@ -65,6 +65,35 @@ class FogDensityShaders(unittest.TestCase):
         with self.assertRaises(ValueError):
             slots.count([0xffff0300])  # no END token
 
+    def test_dust_mote_programs(self):
+        # fog-dust-motes.md: the capsule pixel program in the in-march and grid variants over the shared field include, and
+        # its vs_3_0 vertex program; recorded compilations, a fresh 512-slot budget, and the drawn programs untouched.
+        text = (ROOT / 'tools/shaders/generate_rigid_motion_pixel.py').read_text()
+        for name, path in list(slots.MOTE_PROGRAMS.items()) + list(slots.MOTE_VERTEX.items()):
+            r = record(name)
+            self.assertIn("'%s': dict(" % name, text)
+            self.assertEqual(r['source_sha256'], digest(ROOT / r['source']), name)
+            self.assertEqual(r['header_sha256'], digest(path), name)
+            for include, value in (r['includes'] or {}).items():
+                self.assertEqual(value, digest(ROOT / include), (name, include))
+            words = slots.words_of(path)
+            self.assertEqual(r['bytecode_sha256'], hashlib.sha256(struct.pack('<%dI' % len(words), *words)).hexdigest(), name)
+        self.assertEqual(record('fog_dust_motes_vertex')['target'], 'vs_3_0')
+        counts = {name: slots.count(slots.words_of(path)) for name, path in slots.MOTE_PROGRAMS.items()}
+        vertex = slots.count(slots.words_of(slots.MOTE_VERTEX['fog_dust_motes_vertex']), 'vs_3_0')
+        for name, row in counts.items():
+            self.assertLess(row['slots'], 512, name); self.assertEqual(row['loops'], 0, name)
+            self.assertIn('src/fog/fog_density_field_inc.h', record(name)['includes'], name)
+        # In-march: depth + 2x2 level fetches + 2 cascades x 4 shaft taps (13); grid: depth + 2x2 + one grid fetch (6).
+        self.assertEqual([counts[n]['texture_instructions'] for n in ('fog_dust_motes_look', 'fog_dust_motes_grid')], [13, 6])
+        self.assertEqual(vertex['texture_instructions'], 0)  # no vertex texture fetch
+        self.assertLess(vertex['slots'], 512)
+        self.assertIn('#define FOG_SHADOW_PASS\n', (ROOT / record('fog_dust_motes_grid')['source']).read_text())
+        self.assertNotIn('FOG_SHADOW_PASS', (ROOT / record('fog_dust_motes_look')['source']).read_text())
+        pass_source = (ROOT / 'src/renderer/fog_pass.cpp').read_text()
+        for name in ('vertex', 'look', 'grid'):
+            self.assertIn('#include "fog_dust_motes_%s_program_inc.h"' % name, pass_source)
+
     def test_programs_are_registered_with_the_generator_and_use_inc_h(self):
         text = (ROOT / 'tools/shaders/generate_rigid_motion_pixel.py').read_text()
         for name in NAMES:

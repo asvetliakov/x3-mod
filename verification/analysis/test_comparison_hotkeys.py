@@ -105,7 +105,9 @@ class ComparisonHotkeys(unittest.TestCase):
         self.assertIn('result.fog_shadow_pass = keys.fog_shadow_pass && !fog_shadow_pass_down_;', controls)
         self.assertIn('fog_shadow_pass_down_ = keys.fog_shadow_pass;', controls)
         polling = extract_function(capture, 'void comparison_begin_frame(')
-        self.assertIn('keys.fog_shadow_pass=volumetric_fog_shadow_pass && (GetAsyncKeyState(VK_F11)&0x8000)!=0;', polling)
+        # F11 is read once, only with the shadow pass or the dust motes launched; each option takes its own raw key.
+        self.assertIn('const bool f11=(volumetric_fog_shadow_pass || volumetric_fog_motes.count) && (GetAsyncKeyState(VK_F11)&0x8000)!=0;', polling)
+        self.assertIn('keys.fog_shadow_pass=volumetric_fog_shadow_pass && f11;', polling)
         self.assertEqual(capture.count('GetAsyncKeyState(VK_F11)'), 1, 'one owner per function key')
         self.assertIn('if(action.fog_shadow_pass)ctx.motion_output.volumetric_fog_shadow_pass_toggle();', polling)
         # The pass implies the fog option, so the sampler's early return still covers it.
@@ -123,6 +125,35 @@ class ComparisonHotkeys(unittest.TestCase):
         for forbidden in ('release', 'detach', 'fog_->prepare', 'native<', 'invalidate'):
             self.assertNotIn(forbidden, code)
         self.assertIn('x3m_fog_shadow_pass_fixture_toggle', capture)
+
+    def test_fog_dust_motes_key_and_frame_boundary(self):
+        """Ctrl+Alt+F11 with Shift up (comparison-hotkeys.md, "Fog dust motes"): polled only with --fog-dust-motes, on
+        F11's own raw latch under the Alt rule (the sampler runs in comparison_controls_fixture.cpp); the toggle flips the
+        proxy's copy of the mote stage, which FogPass latches at the next prepare_density, and logs one row."""
+        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        controls = (ROOT / 'src/proxy/comparison_controls.h').read_text()
+        header = (ROOT / 'src/proxy/motion_output.h').read_text()
+        fragment = (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
+        self.assertIn('bool fog_dust_motes = false;', controls)
+        self.assertIn('result.fog_dust_motes = keys.control && keys.alt && !keys.shift && keys.fog_dust_motes && !fog_dust_motes_down_;', controls)
+        self.assertIn('fog_dust_motes_down_ = keys.fog_dust_motes;', controls)
+        polling = extract_function(capture, 'void comparison_begin_frame(')
+        self.assertIn('keys.fog_dust_motes=volumetric_fog_motes.count && f11;', polling)
+        self.assertIn('if(action.fog_dust_motes)ctx.motion_output.volumetric_fog_dust_motes_toggle();', polling)
+        # The motes imply the stored range and so the fog option: the sampler's early return and the Alt poll cover them.
+        self.assertIn('} else if(motes_length){', capture)  # parsed only past the overlong and stored-range refusals
+        self.assertIn('keys.alt=(fps_overlay_requested || volumetric_fog_requested) && (GetAsyncKeyState(VK_MENU)&0x8000)!=0;', polling)
+        self.assertIn('fog_dust_motes_launch_ = motes.count > 0; fog_density_config_.motes = motes; fog_density_config_.dust_motes = motes.count > 0;', header)
+        toggle = extract_function(fragment, 'int MotionOutput::volumetric_fog_dust_motes_toggle(')
+        self.assertLess(toggle.index('if (!fog_dust_motes_launch_) return -1;'), toggle.index('fog_density_config_.dust_motes = !fog_density_config_.dust_motes;'))
+        self.assertIn('fog_dust_motes_toggle device=%llu frame=%llu enabled=%u refused=%s key=ctrl_alt_f11', toggle)
+        code = '\n'.join(line.split('//')[0] for line in toggle.splitlines())
+        for forbidden in ('release', 'detach', 'fog_->prepare', 'native<', 'invalidate'):
+            self.assertNotIn(forbidden, code)
+        self.assertIn('x3m_fog_dust_motes_fixture_toggle', capture)
+        # The overlay's fog line appends " MOTES" while the stage drew the last fog frame.
+        self.assertIn('(fog&MotionOutput::fog_overlay_motes)?" MOTES":""', capture)
+        self.assertIn('(fog_motes_drawn_ ? fog_overlay_motes : 0)', header)
 
     def run_host(self, fixture, functions, exposure=False, notice=False, handoff=False, toggles=()):
         compiler = shutil.which('clang++') or shutil.which('c++')

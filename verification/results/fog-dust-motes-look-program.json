@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "source": "src/fog/fog_density_march_grid_ps.hlsl",
-  "source_sha256": "925b2f016b9cdff4c925a98f8e1498ccde54237da1b2a0a32385e9404a1c94d2",
+  "source": "src/fog/fog_dust_motes_look_ps.hlsl",
+  "source_sha256": "2737c682cb0b450c8308c7fb6d82222b47d56aa390236be99a5b5243f8007275",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
   "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",
@@ -10,16 +10,16 @@
   "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
   "defines": null,
   "includes": {
-    "src/fog/fog_density_march_ps.hlsl": "a6c27430a3c9f19e3456e7290dd4e96de2e1ce66cbb1ef9f48c2c16954674600",
+    "src/fog/fog_dust_motes_ps.hlsl": "0eb8b74fce44700ad9896c204297ad897de096af1b25c8a05f7c0aff74789ce5",
     "src/fog/fog_density_field_inc.h": "56b0179b95c9c486073a2dfd72e9df1d7334843f1951c87f3e88eb7be64d9df0",
     "src/fog/fog_shadow_grid_inc.h": "fae5df8acfe6e4c969678093fa9d5fe750180f22a572df017d59cebe0f927f96"
   },
-  "word_count": 1613,
-  "bytecode_sha256": "75e87bb75808313e089454f5ec3387282d3644b1d4a1bb0fee71bdc826d297dd",
-  "header_sha256": "52f1afd0b487159cf846d2598299cab1710d67671d27a9058adf110dabbf6a73",
+  "word_count": 1346,
+  "bytecode_sha256": "b20ae4581993a67cf32616fe7c63a268c1b80f5f2171fbd46e9e1d2a70813a1f",
+  "header_sha256": "5261468a077ba55071c7a299346a6f06070cd229d2ed85b3779944146eb146f2",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "d1850b4e53ab5647f9b3986fadd39d12d7545039f48636aa49158d58adcf1003",
-    "tools/shaders/generate_rigid_motion_pixel.py": "483867e3e6ec0a345f9e7427c3fced24b8756b8e50b7d764986bbed0da4ee59a"
+    "tools/shaders/generate_rigid_motion_pixel.py": "5aeaf8e0a1b49b7068d9e799f147d0adf18f7c9ce25f56c55d618ce50736f226"
   },
   "copyright_scope": "Original authored project shader; no game shader bytes",
   "creates_d3d_device": false

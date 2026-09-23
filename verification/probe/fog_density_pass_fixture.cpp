@@ -5,6 +5,7 @@
 // Timings are render-thread CPU under this harness, never game FPS or GPU cost.
 #include "../../src/fog/fog_density_cache.h"
 #include "fog_density_cpu_march.h"
+#include "fog_dust_motes_cpu.h"
 #define WIN32_LEAN_AND_MEAN
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -86,7 +87,7 @@ struct Snapshot{
         for(auto state:{D3DRS_ZENABLE,D3DRS_ZWRITEENABLE,D3DRS_ZFUNC,D3DRS_STENCILENABLE,D3DRS_ALPHATESTENABLE,D3DRS_ALPHABLENDENABLE,D3DRS_SEPARATEALPHABLENDENABLE,D3DRS_FOGENABLE,D3DRS_SRGBWRITEENABLE,D3DRS_SCISSORTESTENABLE,D3DRS_CLIPPLANEENABLE,D3DRS_CLIPPING,D3DRS_LIGHTING,D3DRS_INDEXEDVERTEXBLENDENABLE,D3DRS_POINTSPRITEENABLE,D3DRS_DITHERENABLE,D3DRS_ANTIALIASEDLINEENABLE,D3DRS_VERTEXBLEND,D3DRS_FILLMODE,D3DRS_CULLMODE,D3DRS_COLORWRITEENABLE,D3DRS_COLORWRITEENABLE1,D3DRS_MULTISAMPLEMASK,D3DRS_SRCBLEND,D3DRS_DESTBLEND,D3DRS_BLENDOP}){DWORD value=0;check(d->GetRenderState(state,&value),"state render");add(value);}
         for(UINT i=0;i<8;++i){DWORD value=0;check(d->GetRenderState(D3DRENDERSTATETYPE(D3DRS_WRAP0+i),&value),"state wrap");add(value);}
         for(UINT i=0;i<8;++i)for(auto state:{D3DTSS_TEXCOORDINDEX,D3DTSS_TEXTURETRANSFORMFLAGS}){DWORD value=0;check(d->GetTextureStageState(i,state,&value),"state stage");add(value);}
-        float pc[168]{},vc[32]{};check(d->GetPixelShaderConstantF(0,pc,42),"state ps constants");check(d->GetVertexShaderConstantF(0,vc,8),"state vs constants");add(pc);add(vc);
+        float pc[168]{},vc[64]{};check(d->GetPixelShaderConstantF(0,pc,42),"state ps constants");check(d->GetVertexShaderConstantF(0,vc,16),"state vs constants");add(pc);add(vc);
     }
     bool operator==(const Snapshot& o)const{return bytes==o.bytes;}
 };
@@ -139,7 +140,9 @@ struct Scene{
             float bias=-.75f;DWORD bits=0;std::memcpy(&bits,&bias,4);check(d->SetSamplerState(i,D3DSAMP_MIPMAPLODBIAS,bits),"hostile LOD");check(d->SetSamplerState(i,D3DSAMP_SRGBTEXTURE,TRUE),"hostile sRGB");check(d->SetSamplerState(i,D3DSAMP_MAXMIPLEVEL,2),"hostile maxmip");
         }
         float constants[168];for(unsigned i=0;i<168;++i)constants[i]=float(i)*.25f-7;
-        check(d->SetPixelShaderConstantF(0,constants,42),"hostile ps constants");check(d->SetVertexShaderConstantF(0,constants,8),"hostile vs constants");
+        check(d->SetPixelShaderConstantF(0,constants,42),"hostile ps constants");check(d->SetVertexShaderConstantF(0,constants,16),"hostile vs constants");
+        // The dust motes' stage blends (fog-dust-motes.md): a blend operation and factors it must set and put back.
+        check(d->SetRenderState(D3DRS_BLENDOP,D3DBLENDOP_MAX),"hostile blend op");check(d->SetRenderState(D3DRS_SRCBLEND,D3DBLEND_DESTCOLOR),"hostile src blend");check(d->SetRenderState(D3DRS_DESTBLEND,D3DBLEND_ZERO),"hostile dest blend");
     }
 };
 FogFrame make_frame(const Case& c,Scene& s,std::uint64_t frame,bool density){
@@ -234,6 +237,258 @@ std::vector<Case> read_cases(const std::string& file,FogDensityConfig& config){
     if(cases.size()!=2||!(config.sigma>0))throw std::runtime_error("cases need A_sky, B_sky and sigma");return cases;
 }
 
+// --- Dust motes (docs/architecture/fog-dust-motes.md): the transaction's last stage against fog_dust_motes_cpu.h ---
+// Every mote frame is paired with the same pose drawn with the toggle off (the pass's own launch-off transaction), so
+// the difference is the motes alone; the twin predicts it per pixel. Frames run under hostile caller state (Harness).
+void invert3(const double m[3][3],double out[3][3]){
+    const double det=m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1])-m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0])+m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
+    out[0][0]=(m[1][1]*m[2][2]-m[1][2]*m[2][1])/det;out[0][1]=(m[0][2]*m[2][1]-m[0][1]*m[2][2])/det;out[0][2]=(m[0][1]*m[1][2]-m[0][2]*m[1][1])/det;
+    out[1][0]=(m[1][2]*m[2][0]-m[1][0]*m[2][2])/det;out[1][1]=(m[0][0]*m[2][2]-m[0][2]*m[2][0])/det;out[1][2]=(m[0][2]*m[1][0]-m[0][0]*m[1][2])/det;
+    out[2][0]=(m[1][0]*m[2][1]-m[1][1]*m[2][0])/det;out[2][1]=(m[0][1]*m[2][0]-m[0][0]*m[2][1])/det;out[2][2]=(m[0][0]*m[1][1]-m[0][1]*m[1][0])/det;
+}
+void dust_motes(Device d,const D3DCAPS9& caps,D3DPRESENT_PARAMETERS& pp,const FogDensityConfig& base,const Case& A){
+    using fog_motes_cpu::Mote;
+    auto device_refs=[&]{d->AddRef();return unsigned(d->Release());};const unsigned refs_before=device_refs();
+    FogDensityConfig config=base;FogMoteTuning& t=config.motes;
+    t.count=512;t.size=4;t.streak=8;t.radius=200;t.near_fade=5;t.max_px=12;t.gain=1;t.soft=.02f;t.drift=20;t.seed=7;config.dust_motes=true;
+    const double seconds=3.25;const UINT W=128,H=72;
+    auto frame_of=[&](const Case& c,Scene& s,std::uint64_t n){FogFrame f=make_frame(c,s,n,true);f.mote_seconds=seconds;return f;};
+    auto twin_of=[&](const FogFrame& f,double visibility){
+        fog_motes_cpu::Frame out;double m[3][3];
+        for(unsigned row=0;row<3;++row)for(unsigned col=0;col<3;++col)m[row][col]=f.params.world.inverse_columns[3*col+row];
+        invert3(m,out.rotation);for(int a=0;a<3;++a)out.camera[a]=f.camera_world[a];
+        out.m00=f.params.m00;out.m11=f.params.m11;out.m20=double(f.params.m20-1.f/float(f.width));out.m21=double(f.params.m21+1.f/float(f.height));
+        out.width=f.width;out.height=f.height;out.seconds=f.mote_seconds;out.brightness=double(t.gain)*double(f.params.density_scale);out.visibility=visibility;
+        return out;
+    };
+    auto list_of=[&](const fog_motes_cpu::Frame& tf,const FogFrame& f){return fog_motes_cpu::motes(t,tf,cpu_setup(f,config));};
+    auto on_screen=[&](const Mote& m){int b[4];fog_motes_cpu::bounds(m,b);return m.drawn&&b[2]>=0&&b[3]>=0&&b[0]<int(W)&&b[1]<int(H);};
+    auto significant=[&](const Mote& m){return m.drawn&&m.rho>0&&std::max({m.colour[0],m.colour[1],m.colour[2]})>.02;};
+    // Motes whose capsule box (one pixel of margin) lies inside the target and meets no other contributing mote's box.
+    auto isolated=[&](const std::vector<Mote>& list){
+        std::vector<const Mote*> out;
+        for(const Mote& m:list){
+            if(!significant(m))continue;int b[4];fog_motes_cpu::bounds(m,b);
+            if(b[0]<1||b[1]<1||b[2]>int(W)-2||b[3]>int(H)-2)continue;
+            bool alone=true;
+            for(const Mote& o:list){if(&o==&m||!o.drawn||!(o.rho>0))continue;int c[4];fog_motes_cpu::bounds(o,c);if(c[0]<=b[2]+2&&c[2]>=b[0]-2&&c[1]<=b[3]+2&&c[3]>=b[1]-2){alone=false;break;}}
+            if(alone)out.push_back(&m);
+        }
+        return out;
+    };
+    auto target=[&](Scene& s){return half_image(surface_bytes(d,s.target_surface.p));};
+    auto difference=[&](const std::vector<float>& on,const std::vector<float>& off){std::vector<double> out(std::size_t(W)*H*3);for(std::size_t i=0;i<std::size_t(W)*H;++i)for(int c=0;c<3;++c)out[i*3+c]=double(on[i*4+c])-double(off[i*4+c]);return out;};
+    struct Versus{double worst=0,worst_abs=0;unsigned lit=0,alpha_moved=0;};
+    auto versus=[&](const std::vector<double>& gpu,const std::vector<double>& ref){Versus v;for(std::size_t i=0;i<gpu.size();++i){const double e=std::fabs(gpu[i]-ref[i]);v.worst_abs=std::max(v.worst_abs,e);v.worst=std::max(v.worst,e/(2e-3+.03*std::fabs(ref[i])));v.lit+=ref[i]>1e-3;}return v;};
+    auto moment=[&](const std::vector<double>& img,const Mote& m,double& cx,double& cy){
+        int b[4];fog_motes_cpu::bounds(m,b);double sum=0,x=0,y=0;
+        for(int py=b[1]-1;py<=b[3]+1;++py)for(int px=b[0]-1;px<=b[2]+1;++px){const std::size_t i=(std::size_t(py)*W+px)*3;const double w=img[i]+img[i+1]+img[i+2];sum+=w;x+=w*px;y+=w*py;}
+        cx=sum>0?x/sum:0;cy=sum>0?y/sum:0;return sum;
+    };
+    Com<IDirect3DTexture9> dark_texture;{const std::vector<float> dark(64*64,0.f);upload(d,64,64,D3DFMT_R32F,4,dark.data(),0,&dark_texture.p);}
+    auto shade=[&](Harness& h,Scene& s,const Case& c,bool on,IDirect3DTexture9* map,FogResult& r,bool cut=false){
+        h.config.dust_motes=on;check(h.prepare(c.cam),"motes prepare");FogFrame f=frame_of(c,s,h.frame);f.mote_cut=cut;
+        if(map){f.count=1;auto& k=f.cascades[0];k.map=map;k.valid=true;k.frame=h.frame;k.bias=0;k.rows[0]=1e-9f;k.rows[5]=1e-9f;k.rows[10]=1e-9f;k.rows[11]=.5f;k.texel_world=36.6f;k.depth_range=200000.f;}
+        if(h.execute(c,s,r,false,&f)!=S_OK||!r.applied)throw std::runtime_error("motes transaction");
+        return target(s);
+    };
+    // Poses: a dense one (most on-screen motes inside cloud) and a void one (every on-screen mote below the coverage
+    // with margin), searched with the twin on a 1500-unit lattice of +-18 km around pose A: a 27-point screen of the
+    // camera's neighbourhood first, then the full mote list of the candidates.
+    Scene scene(d,caps,W,H);scene.create();
+    Case dense=A,empty=A;int dense_score=-1;bool found_void=false;
+    {
+        std::vector<std::pair<int,Case>> candidates;std::vector<Case> clear_candidates;
+        for(int i=0;i<25*25*25;++i){
+            Case c=A;c.cam[0]+=1500.*(i%25-12);c.cam[1]+=1500.*(i/25%25-12);c.cam[2]+=1500.*(i/625-12);
+            const FogFrame f=frame_of(c,scene,0);const fog_cpu::Setup s=cpu_setup(f,config);int filled=0;bool clear=true;
+            for(int n=0;n<27;++n){const double q[3]={100.*(n%3-1),100.*(n/3%3-1),100.*(n/9-1)};double margin=0;filled+=fog_motes_cpu::density(s,q,&margin)>.05;clear=clear&&margin<-.05;}
+            candidates.push_back({filled,c});if(clear)clear_candidates.push_back(c);
+        }
+        std::stable_sort(candidates.begin(),candidates.end(),[](const auto& a,const auto& b){return a.first>b.first;});
+        for(std::size_t n=0;n<candidates.size()&&n<8;++n){
+            const Case& c=candidates[n].second;const FogFrame f=frame_of(c,scene,0);const auto list=list_of(twin_of(f,1),f);
+            int seen=0,filled=0;for(const Mote& m:list)if(on_screen(m)){++seen;filled+=m.rho>.05;}
+            if(seen>=10&&filled>dense_score){dense_score=filled;dense=c;}
+        }
+        for(std::size_t n=0;n<clear_candidates.size()&&n<16&&!found_void;++n){
+            const Case& c=clear_candidates[n];const FogFrame f=frame_of(c,scene,0);const auto list=list_of(twin_of(f,1),f);
+            int seen=0;bool clear=true;for(const Mote& m:list)if(on_screen(m)){++seen;clear=clear&&m.margin<-.02;}
+            if(seen>=10&&clear){found_void=true;empty=c;}
+        }
+    }
+    std::printf("MOTES_POSES dense_filled=%d void_found=%u dense_offset=%.0f,%.0f,%.0f void_offset=%.0f,%.0f,%.0f\n",dense_score,unsigned(found_void),
+                dense.cam[0]-A.cam[0],dense.cam[1]-A.cam[1],dense.cam[2]-A.cam[2],empty.cam[0]-A.cam[0],empty.cam[1]-A.cam[1],empty.cam[2]-A.cam[2]);
+    require(dense_score>=8&&found_void,"M_motes_poses_found");
+    // The launch-off reference: the same pose through a pass without the option (the accepted transaction).
+    std::vector<float> plain_image;unsigned plain_calls=0;
+    {
+        FogPass plain;check(plain.attach(d,table,caps,D3DFMT_X8R8G8B8),"plain attach");Harness hp(d,caps,plain,base);check(plain.prepare_targets(W,H),"plain targets");
+        require(hp.settle(dense.cam),"motes plain pose settles");FogResult r;check(hp.prepare(dense.cam),"plain prepare");FogFrame f=frame_of(dense,scene,hp.frame);
+        if(hp.execute(dense,scene,r,false,&f)!=S_OK||!r.applied||r.motes)throw std::runtime_error("plain transaction");
+        plain_image=target(scene);plain_calls=r.device_calls;
+        require(!plain.fixture_mote_vertices()&&plain.mote_report().frame==~std::uint64_t(0)&&!plain.motes_variant(),"M_motes_absent_create_and_report_nothing");
+        plain.detach();
+    }
+    FogPass pass;check(pass.attach(d,table,caps,D3DFMT_X8R8G8B8),"motes attach");Harness hx(d,caps,pass,config);check(pass.prepare_targets(W,H),"motes targets");
+    const unsigned references_off=pass.references();
+    require(hx.settle(dense.cam)&&pass.fixture_mote_vertices()&&pass.motes_variant()&&!pass.density_status().motes_refused,"M_motes_created_at_prepare");
+    std::printf("MOTES_RESOURCES count=%u vb_bytes=%u ib_bytes=%u default_vb_bytes_2048=%u default_ib_bytes_2048=%u\n",t.count,t.count*4u*fog_mote_vertex_bytes,t.count*12u,2048u*4u*fog_mote_vertex_bytes,2048u*12u);
+    (void)references_off;
+    // Off (toggled) and on at the dense pose, sky depth.
+    const unsigned allocations=pass.allocations(),references=pass.references();IDirect3DVertexBuffer9* const vb=pass.fixture_mote_vertices();
+    FogResult r_off,r_on;const auto off=shade(hx,scene,dense,false,nullptr,r_off);const auto on=shade(hx,scene,dense,true,nullptr,r_on);
+    const FogMoteReport report=pass.mote_report();
+    require(off==plain_image&&r_off.device_calls==plain_calls&&!r_off.motes,"motes_off_bit_identical");
+    require(r_on.motes&&report.drawn&&report.frame==hx.frame&&report.count==t.count&&int(r_on.device_calls)-int(r_off.device_calls)==int(report.calls),"M_motes_calls_equal_on_minus_off");
+    std::printf("MOTES_CALLS off=%u on=%u stage=%u shadow=%s\n",r_off.device_calls,r_on.device_calls,report.calls,report.shadow);
+    require(pass.allocations()==allocations&&pass.references()==references&&pass.fixture_mote_vertices()==vb,"M_motes_toggle_creates_nothing");
+    bool alpha_same=true;for(std::size_t i=3;i<on.size();i+=4)alpha_same=alpha_same&&on[i]==off[i];
+    const FogFrame f_dense=frame_of(dense,scene,0);const auto sky_list=list_of(twin_of(f_dense,1),f_dense);
+    const auto sky_gpu=difference(on,off);const auto sky_ref=fog_motes_cpu::image(sky_list,W,H,nullptr,t.soft);const Versus sky=versus(sky_gpu,sky_ref);
+    double worst_centroid=0,worst_energy=0,worst_twin_centroid=0;unsigned blobs=0;
+    for(const Mote* m:isolated(sky_list)){
+        double gx,gy,hx_,hy;const double ge=moment(sky_gpu,*m,gx,gy),he=moment(sky_ref,*m,hx_,hy);if(!(he>1e-3))continue;++blobs;
+        worst_centroid=std::max(worst_centroid,std::hypot(gx-m->centre[0],gy-m->centre[1]));worst_twin_centroid=std::max(worst_twin_centroid,std::hypot(gx-hx_,gy-hy));
+        worst_energy=std::max(worst_energy,std::fabs(ge/he-1));
+    }
+    unsigned drawn=0,visible=0;for(const Mote& m:sky_list){drawn+=m.drawn;visible+=on_screen(m)&&m.rho>0;}
+    std::printf("MOTES_SKY drawn=%u visible_in_fog=%u lit_pixels=%u worst_vs_twin=%.4f worst_abs=%.6f isolated=%u worst_centroid_px=%.4f worst_centroid_vs_twin_px=%.4f worst_energy=%.5f\n",
+                drawn,visible,sky.lit,sky.worst,sky.worst_abs,blobs,worst_centroid,worst_twin_centroid,worst_energy);
+    require(sky.worst<=1&&sky.lit>=40&&alpha_same,"M_motes_sky_matches_host_twin");
+    require(blobs>=3&&worst_centroid<=.5,"M_motes_sky_centroids_within_half_pixel");
+    require(blobs>=3&&worst_energy<=.02,"M_motes_sky_energy_within_2_percent");
+    // Streak: the next consecutive frame 12 units to the right; then a still frame at the same pose after a gap.
+    Case moved=dense;for(int a=0;a<3;++a)moved.cam[a]+=12.*A.r[a];
+    FogResult r_streak,r_moved_off,r_still;const auto streak=shade(hx,scene,moved,true,nullptr,r_streak);const FogMoteReport streak_report=pass.mote_report();
+    const auto moved_off=shade(hx,scene,moved,false,nullptr,r_moved_off);const auto still=shade(hx,scene,moved,true,nullptr,r_still);const FogMoteReport still_report=pass.mote_report();
+    const FogFrame f_moved=frame_of(moved,scene,0);
+    auto tf=twin_of(f_moved,1);tf.streak=true;for(int a=0;a<3;++a)tf.previous_camera[a]=dense.cam[a];tf.previous_seconds=seconds;{const auto tp=twin_of(f_dense,1);for(int a=0;a<3;++a)for(int b=0;b<3;++b)tf.previous_rotation[a][b]=tp.rotation[a][b];}
+    const auto streak_list=list_of(tf,f_moved);const auto still_list=list_of(twin_of(f_moved,1),f_moved);
+    const auto streak_gpu=difference(streak,moved_off),still_gpu=difference(still,moved_off);
+    const Versus vs_streak=versus(streak_gpu,fog_motes_cpu::image(streak_list,W,H,nullptr,t.soft)),vs_still=versus(still_gpu,fog_motes_cpu::image(still_list,W,H,nullptr,t.soft));
+    double worst_length=0;unsigned streaks=0,clamped=0,long_streaks=0;
+    {
+        const auto a=isolated(streak_list),b=isolated(still_list);
+        for(const Mote* m:a){
+            const Mote* s=nullptr;for(const Mote* o:b)if(o->index==m->index)s=o;if(!s)continue;
+            double sx,sy,tx,ty;if(!(moment(streak_gpu,*m,sx,sy)>1e-3)||!(moment(still_gpu,*s,tx,ty)>1e-3))continue;
+            ++streaks;clamped+=m->length>=double(t.streak)-1e-6;long_streaks+=m->length>=2;worst_length=std::max(worst_length,std::fabs(2*std::hypot(sx-tx,sy-ty)-m->length));
+        }
+    }
+    const double expected_shift=12./double(t.radius)*.5*H*double(f_moved.params.m11);
+    unsigned clamped_visible=0;for(const Mote& m:streak_list)clamped_visible+=on_screen(m)&&significant(m)&&m.length>=double(t.streak)-1e-6;
+    std::printf("MOTES_STREAK report_streak=%u shift_px=%.4f expected=%.4f worst_vs_twin=%.4f still_worst_vs_twin=%.4f isolated=%u long=%u clamped=%u clamped_visible=%u worst_length_px=%.4f still_report_streak=%u\n",
+                unsigned(streak_report.streak),double(streak_report.shift_px),expected_shift,vs_streak.worst,vs_still.worst,streaks,long_streaks,clamped,clamped_visible,worst_length,unsigned(still_report.streak));
+    // Per pixel the twin covers every streak, the STREAK-clamped ones included; the length is measured on isolated capsules.
+    require(streak_report.streak&&std::fabs(streak_report.shift_px-expected_shift)<=1e-3*expected_shift&&vs_streak.worst<=1&&clamped_visible>=1,"M_motes_streak_matches_host_twin");
+    require(streaks>=2&&long_streaks>=2&&worst_length<=1,"M_motes_streak_length_within_1px");
+    require(!still_report.streak&&vs_still.worst<=1,"M_motes_cut_zero_length");
+    {   // A consecutive frame more than R away is a cut as well.
+        Case jump=moved;jump.cam[0]+=300.;FogResult r;shade(hx,scene,jump,true,nullptr,r);
+        require(r.motes&&!pass.mote_report().streak&&pass.mote_report().shift_px>0,"M_motes_jump_beyond_radius_is_a_cut");
+    }
+    {   // The caller's cut signal (a view switch, a roll-only cut) inside every geometric bound: 6 units, a 2 degree yaw.
+        // Without the signal the same step streaks; with it the frame is the still frame of the twin (zero length).
+        Case turned=moved;const double a=2*3.14159265358979/180,c=std::cos(a),sn=std::sin(a);
+        for(int i=0;i<3;++i){turned.r[i]=moved.r[i]*c+moved.f[i]*sn;turned.f[i]=moved.f[i]*c-moved.r[i]*sn;turned.cam[i]+=6.*moved.r[i];}
+        FogResult r0,r1,r2,r3,r4;shade(hx,scene,moved,true,nullptr,r0);shade(hx,scene,turned,true,nullptr,r1);const bool control=pass.mote_report().streak;
+        shade(hx,scene,moved,true,nullptr,r2);const auto cut_on=shade(hx,scene,turned,true,nullptr,r3,true);const FogMoteReport cut_report=pass.mote_report();
+        const auto cut_off=shade(hx,scene,turned,false,nullptr,r4);
+        const FogFrame f=frame_of(turned,scene,0);const Versus v=versus(difference(cut_on,cut_off),fog_motes_cpu::image(list_of(twin_of(f,1),f),W,H,nullptr,t.soft));
+        std::printf("MOTES_CUT control_streak=%u cut_streak=%u shift_px=%.4f worst_vs_still_twin=%.4f lit_pixels=%u\n",unsigned(control),unsigned(cut_report.streak),double(cut_report.shift_px),v.worst,v.lit);
+        require(control&&r3.motes&&!cut_report.streak&&cut_report.shift_px>0&&v.worst<=1&&v.lit>=20,"M_motes_caller_cut_draws_zero_length");
+    }
+    // Void: no mote in fog, the frame is the launch-off frame byte for byte.
+    {
+        require(hx.settle(empty.cam),"motes void pose settles");FogResult a,b;const auto void_off=shade(hx,scene,empty,false,nullptr,a);const auto void_on=shade(hx,scene,empty,true,nullptr,b);
+        require(b.motes&&void_on==void_off,"M_motes_void_image_identical");
+    }
+    // Depth: a plane at view z 90 over the whole target; motes behind it vanish, in front stay.
+    {
+        require(hx.settle(dense.cam),"motes dense pose settles again");
+        const float plane=90.f;std::vector<float> depth(std::size_t(W)*H*4,0.f);for(std::size_t i=0;i<std::size_t(W)*H;++i){depth[4*i]=.5f;depth[4*i+2]=plane;}
+        scene.set_depth(depth);FogResult a,b;const auto plane_off=shade(hx,scene,dense,false,nullptr,a);const auto plane_on=shade(hx,scene,dense,true,nullptr,b);
+        const auto gpu=difference(plane_on,plane_off);const auto ref=fog_motes_cpu::image(sky_list,W,H,depth.data(),t.soft);const Versus v=versus(gpu,ref);
+        unsigned behind=0,front=0;bool behind_absent=true,front_present=true;
+        for(const Mote& m:sky_list){
+            if(!on_screen(m)||!(m.rho>0))continue;const int x=int(std::floor(m.centre[0]+.5)),y=int(std::floor(m.centre[1]+.5));if(x<0||y<0||x>=int(W)||y>=int(H))continue;
+            const std::size_t i=(std::size_t(y)*W+x)*3;
+            if(m.view[2]>plane*(1+t.soft)+1&&ref[i]+ref[i+1]+ref[i+2]==0){++behind;behind_absent=behind_absent&&gpu[i]==0&&gpu[i+1]==0&&gpu[i+2]==0;}
+            if(m.view[2]<plane-5&&ref[i+1]>2e-2){++front;front_present=front_present&&gpu[i+1]>0;}
+        }
+        std::printf("MOTES_DEPTH plane=%.0f behind=%u front=%u worst_vs_twin=%.4f\n",double(plane),behind,front,v.worst);
+        require(v.worst<=1,"M_motes_depth3_matches_host_twin");
+        require(behind>=1&&front>=1&&behind_absent&&front_present,"M_motes_depth3_behind_absent_front_present");
+        std::vector<float> sky_depth(std::size_t(W)*H*4,0.f);for(std::size_t i=0;i<std::size_t(W)*H;++i)sky_depth[4*i]=2.f;scene.set_depth(sky_depth);
+    }
+    // Wrap: the camera moved by the cube side on each axis places every mote at the same pixel; half a side does not.
+    {
+        const double side=2.*t.radius;bool same=true;double worst=0;unsigned compared=0;
+        for(int axis=0;axis<4;++axis){
+            Case c=dense;c.cam[axis<3?axis:0]+=axis<3?side:side/2;require(hx.settle(c.cam),"motes wrap pose settles");
+            FogResult a,b;const auto wrap_off=shade(hx,scene,c,false,nullptr,a);const auto wrap_on=shade(hx,scene,c,true,nullptr,b);
+            const FogFrame f=frame_of(c,scene,0);const auto list=list_of(twin_of(f,1),f);const auto gpu=difference(wrap_on,wrap_off);const Versus v=versus(gpu,fog_motes_cpu::image(list,W,H,nullptr,t.soft));
+            bool placed=true;for(std::size_t i=0;i<list.size();++i)placed=placed&&list[i].drawn==sky_list[i].drawn&&(!list[i].drawn||(list[i].centre[0]==sky_list[i].centre[0]&&list[i].centre[1]==sky_list[i].centre[1]));
+            if(axis<3){
+                same=same&&placed&&v.worst<=1;
+                for(const Mote* m:isolated(list)){const Mote* o=nullptr;for(const Mote* k:isolated(sky_list))if(k->index==m->index)o=k;if(!o)continue;
+                    double gx,gy,sx,sy;if(!(moment(gpu,*m,gx,gy)>1e-3)||!(moment(sky_gpu,*o,sx,sy)>1e-3))continue;++compared;worst=std::max(worst,std::hypot(gx-sx,gy-sy));}
+            } else {
+                std::printf("MOTES_WRAP axes_same=%u compared=%u worst_centroid_shift_px=%.4f half_side_same=%u\n",unsigned(same),compared,worst,unsigned(placed));
+                require(same&&compared>=2&&worst<=.05,"M_motes_wrap_one_side_places_every_mote_identically");
+                require(!placed&&v.worst<=1,"M_motes_wrap_half_side_moves_the_lattice");
+            }
+        }
+        require(hx.settle(dense.cam),"motes dense pose settles after the wrap");
+    }
+    // Shafts, in-march variant: the fully shadowed map puts every mote on the .15 floor of the sun term.
+    {
+        FogResult a,b;const auto dark_off=shade(hx,scene,dense,false,dark_texture.p,a);const auto dark_on=shade(hx,scene,dense,true,dark_texture.p,b);
+        const auto list=list_of(twin_of(f_dense,0),f_dense);const auto gpu=difference(dark_on,dark_off);const Versus v=versus(gpu,fog_motes_cpu::image(list,W,H,nullptr,t.soft));
+        double darker=0,lighter=0;for(std::size_t i=0;i<gpu.size();++i){darker+=gpu[i];lighter+=sky_gpu[i];}
+        std::printf("MOTES_SHAFTS variant=in_march shadow=%s worst_vs_twin=%.4f energy_ratio=%.4f\n",pass.mote_report().shadow,v.worst,lighter>0?darker/lighter:0.);
+        require(b.motes&&std::string(pass.mote_report().shadow)=="in_march"&&v.worst<=1&&darker<lighter&&darker>0,"M_motes_shadow_floor_law_in_march");
+    }
+    // Reset while on: the VB/IB go with the targets and come back once at the next latch; the frame is unchanged.
+    {
+        dark_texture.reset();const unsigned before=pass.allocations();
+        scene.release();pass.before_reset();const HRESULT reset=d->Reset(&pp);pass.after_reset(reset);check(reset,"motes Reset");scene.create();
+        require(!pass.fixture_mote_vertices()&&!pass.reset_pending(),"M_motes_reset_releases_the_buffers");
+        check(pass.prepare_targets(W,H),"motes targets after Reset");require(hx.settle(dense.cam)&&pass.fixture_mote_vertices(),"M_motes_reset_recreates_at_prepare");
+        const unsigned after=pass.allocations();FogResult a,b;const auto again_off=shade(hx,scene,dense,false,nullptr,a);const auto again_on=shade(hx,scene,dense,true,nullptr,b);
+        std::printf("MOTES_RESET allocations_before=%u after=%u\n",before,after);
+        require(again_on==on&&again_off==off&&pass.allocations()==after&&after==before+4,"M_motes_after_reset_byte_identical_created_once");
+        const std::vector<float> dark(64*64,0.f);upload(d,64,64,D3DFMT_R32F,4,dark.data(),0,&dark_texture.p);
+    }
+    // The grid variant (X3M_FOG_SHADOW_PASS on): the mote program reads the grid; no cascade is lit, the dark map the floor.
+    {
+        FogDensityConfig gconfig=config;gconfig.shadow_pass=true;
+        FogPass grid;check(grid.attach(d,table,caps,D3DFMT_X8R8G8B8),"motes grid attach");Harness hg(d,caps,grid,gconfig);check(grid.prepare_targets(W,H),"motes grid targets");
+        require(hg.settle(dense.cam)&&grid.fixture_grid()&&grid.fixture_mote_vertices(),"motes grid pose settles");
+        FogResult a,b,c,e;const auto lit_off=shade(hg,scene,dense,false,nullptr,a);const auto lit_on=shade(hg,scene,dense,true,nullptr,b);const char* lit_shadow=grid.mote_report().shadow;
+        const auto dark_off=shade(hg,scene,dense,false,dark_texture.p,c);const auto dark_on=shade(hg,scene,dense,true,dark_texture.p,e);const char* dark_shadow=grid.mote_report().shadow;
+        const Versus lit=versus(difference(lit_on,lit_off),fog_motes_cpu::image(sky_list,W,H,nullptr,t.soft));
+        const Versus dark=versus(difference(dark_on,dark_off),fog_motes_cpu::image(list_of(twin_of(f_dense,0),f_dense),W,H,nullptr,t.soft));
+        std::printf("MOTES_SHAFTS variant=grid lit_shadow=%s dark_shadow=%s lit_worst_vs_twin=%.4f dark_worst_vs_twin=%.4f grid_drawn=%u\n",lit_shadow,dark_shadow,lit.worst,dark.worst,unsigned(e.grid));
+        require(std::string(lit_shadow)=="none"&&lit.worst<=1&&b.motes,"M_motes_grid_variant_unshadowed_matches_twin");
+        require(std::string(dark_shadow)=="grid"&&e.grid&&e.motes&&dark.worst<=1,"M_motes_shadow_floor_law_grid");
+        scene.release();grid.detach();require(grid.references()==0,"M_motes_grid_detach_releases_everything");scene.create();
+    }
+    // A device without an explicit blend operation refuses the mote stage only: the frame is the launch-off one.
+    {
+        D3DCAPS9 limited=caps;limited.PrimitiveMiscCaps&=~DWORD(D3DPMISCCAPS_BLENDOP);
+        FogPass refused;check(refused.attach(d,table,limited,D3DFMT_X8R8G8B8),"motes refused attach");Harness hr(d,caps,refused,config);check(refused.prepare_targets(W,H),"motes refused targets");
+        require(hr.settle(dense.cam),"motes refused pose settles");FogResult r;const auto image=shade(hr,scene,dense,true,nullptr,r);
+        const char* reason=refused.density_status().motes_refused;
+        std::printf("MOTES_REFUSAL reason=%s calls=%u plain_calls=%u\n",reason?reason:"none",r.device_calls,plain_calls);
+        require(reason&&std::string(reason)=="mote_blend_caps"&&!refused.fixture_mote_vertices()&&!r.motes&&image==plain_image&&r.device_calls==plain_calls&&!refused.motes_variant(),"M_motes_refused_capability_keeps_the_fog_frame");
+        scene.release();refused.detach();scene.create();
+    }
+    dark_texture.reset();scene.release();pass.detach();
+    require(pass.references()==0&&!pass.fixture_mote_vertices(),"M_motes_detach_releases_everything");
+    require(device_refs()==refs_before,"M_motes_device_refcount_balanced");
+}
 void run(const std::string& cases_file){
     FogDensityConfig config;config.enabled=true;config.sector_key=0x5ec7;config.recipe=1;
     const std::vector<Case> cases=read_cases(cases_file,config);const Case& A=cases[0];
@@ -563,6 +818,8 @@ void run(const std::string& cases_file){
         scene.release();pass.detach();require(pass.references()==0&&!pass.fixture_grid(),"grid_detach_releases_everything");
         require(device_references()==references_before,"grid_device_refcount_balanced");
     }
+    // --- Dust motes (fog-dust-motes.md): after every existing case, on their own pass instances ---
+    dust_motes(d,caps,pp,config,A);
     // --- Capability refusal: the legacy family path is bit-identical with and without a refused density request ---
     {
         auto legacy=[&](bool request_density,std::vector<std::uint8_t>& out,const char*& reason){
