@@ -1,0 +1,4 @@
+x3-bottleX3-run261 all 14 dt_p50 median 19855.5 draws_p50 median 309.5
+x3-bottleX3-run261 slow=0 11 dt_p50 median 20006 draws_p50 median 310
+x3-bottleX3-run259 all 31 dt_p50 median 18615 draws_p50 median 262
+x3-bottleX3-run259 slow=0 28 dt_p50 median 18472.5 draws_p50 median 262.0

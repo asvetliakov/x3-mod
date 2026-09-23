@@ -1729,3 +1729,22 @@ lighting" (also true of Run 69 B, unreported then).
   lit area) and a synthesized dominant material with area-weighted lighting scalars
   ([merged-lod-feasibility.md](merged-lod-feasibility.md)); Run 69 B's `stage_match` texture
   rows were one draw off (corrected by `draw_state.py`), the glow-group match still holds.
+
+## Run 261: area-ranked light maps and the synthesized material (2026-09-23)
+
+Run 69 D (`/tmp/x3-bottleX3-run261`, Run68 DLL, overlay `87bf16cd…`: compact placement,
+80 / 150 px, `--collapse glow-area 70`, synthesized outpost material). Outputs:
+`verification/results/run261-area70/`. All measured. The user: the lighting difference at
+the switch is "less visible now".
+
+- Pilot nodes at LOD 1 with the expected draws: TL 9, M2 8, M1 ×2 9, outpost 10 (3 alpha);
+  the outpost at s 155 drew LOD 0 (34 draws). No census overflow, no stale rows.
+- **Outpost pair at an unchanged view (5564 coarse, 6392 fine):** sun part 0.103 vs 0.110
+  (94 %, was 77 % in run259), non-sun part 0.0151 vs 0.0208 (73 %, was 29 %),
+  facing/averted 1.93 vs 1.51. The collapsed draw uploads `g_MatDiffuseStrength` 0.499
+  (was 0.400), so the synthesized material is in effect.
+- Remaining gap: the coarse outpost's non-sun part is still 27 % lower and its sun part 6 %
+  lower; no ship pair across 80 px was captured. Next: the atlas collapse (one material with
+  baked diffuse and light-map atlases, [merged-lod-feasibility.md](merged-lod-feasibility.md)).
+- Frame time 20.0 ms at 310 draws vs run259's 18.5 ms at 262 draws is a different scene, not
+  an A/B (inferred).

@@ -1,0 +1,8 @@
+# Run 69 D triage (2026-09-23). L=/tmp/x3-bottleX3-run261/session-20260923-042227-212.log, C=/tmp/x3-bottleX3-run261
+# Census/capture frames: 5564-5571 (outpost coarse, LOD 1) and 6392-6399 (outpost fine, LOD 0); camera rotation identical, t differs <0.1.
+python3 ../run257-pilot/node_census.py $L 5564 6392 > census_run261_out.txt
+python3 ../run259-lighting/outpost_pair.py $C $L 18eeb658 5564 6392 2>/dev/null > outpost_pair_out.txt
+python3 ../run259-lighting/draw_state.py $L 000053b8,00004f72,00004f75,00004f76 5564 6392 > state_run261_out.txt
+grep -E '^R (5564|6392) [0-9]+ 000053b8 ' state_run261_out.txt | (prim-weighted c12)   # coarse 0.508 (collapsed draw 82: 7192 prims c12=0.499), fine 0.562
+python3 frame_timing_cmp.py $L /tmp/x3-bottleX3-run259/session-20260923-033540-472.log > frame_timing_cmp_out.txt
+grep '^cull_census_frame' $L   # overflow=0 in all 16 frames; grep -oE 'stale[a-z_]*=[^ ]*' $L -> 6569 stale=0 only
