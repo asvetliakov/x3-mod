@@ -15,8 +15,11 @@ there. What grows to 380 ms?
 
 **Answer (leading hypothesis, one runtime count from proof).** `0x0045b720` is
 the **per-sector media-cue selector**; its tail restarts the sector's
-soundtrack/video cue through the play helper `0x004f65f0` (`0x0045c607`)
-whenever the selected cue is *not currently registered as playing*.
+station advert / comm-screen video cue (the `Videos`/`VideoLists` selector,
+kind `0x5a`, which drives screen textures; it is not the sector soundtrack,
+whose player is the script-driven `MOV_` path of
+[music-restart.md](music-restart.md)) through the play helper `0x004f65f0`
+(`0x0045c607`) whenever the selected cue is *not currently registered as playing*.
 `0x00498140` links a media record only when the DirectShow graph constructor
 `0x004cf460` succeeds, and frees it and returns 0 when it fails
 ([voice-startup-sequence.md](voice-startup-sequence.md) §3), so a cue whose

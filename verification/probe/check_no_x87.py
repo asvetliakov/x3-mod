@@ -85,7 +85,13 @@ EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry
                 '_x3m_collide_query_lookup', '_x3m_collide_query_store', '_x3m_collide_query_enter', '_x3m_collide_query_leave',
                 # partial sun occlusion (src/proxy/sun_occlusion.cpp, X3M_SUN_OCCLUSION=1): the flare-probe thunk and its integer-only
                 # handler run inside the engine's record loop with no boundary; the lens thunk's begin / end carry PreserveCpuState
-                '_x3m_sun_probe_thunk', '_x3m_sun_probe_decide', '_x3m_sun_lens_thunk', '_x3m_sun_lens_begin', '_x3m_sun_lens_end']
+                '_x3m_sun_probe_thunk', '_x3m_sun_probe_decide', '_x3m_sun_lens_thunk', '_x3m_sun_lens_begin', '_x3m_sun_lens_end',
+                # sector-music keep and trace (src/proxy/music_keep.cpp, X3M_MUSIC_KEEP=1 / X3M_MUSIC_TRACE=1): integer stubs and handlers under
+                # LightCallBoundary inside the engine's stop-all, play routine and MOV_StopMovie; the line formatter runs behind call_preserved
+                '_x3m_music_keep_a_stub', '_x3m_music_keep_c_thunk', '_x3m_music_keep_entry_stub', '_x3m_music_keep_stop_movie_stub',
+                '_x3m_music_trace_stop_stub', '_x3m_music_trace_play_stub', '_x3m_music_trace_stop_movie_stub',
+                '_x3m_music_keep_stop_all', '_x3m_music_keep_seek', '_x3m_music_keep_stop_all_entry', '_x3m_music_keep_stop_movie',
+                '_x3m_music_trace_stop', '_x3m_music_trace_play', '_x3m_music_trace_stop_movie']
 # The lock view without the FNSAVE/FRSTOR shell (src/ownership/d3d9_ownership.cpp,
 # route-per-draw-cost.md lever 2a): called only from the draw hooks' route, it
 # preserves nothing itself, so it and its core are a required root, and its own

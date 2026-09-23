@@ -401,6 +401,8 @@ def main():
     parser.add_argument('--media-cue-trace', action='store_true', help='Trace every media-record build: one byte-verified gate on the allocator 0x00498140 records the media id, caller (selector/speech/script/savegame/query/other), constructor flags, result (the record or 0) and build duration of every call, drained at the Present boundary as media_cue lines (first 32 per second) plus one media_cue_window line per 300 frames with attempts/failures/refusals, per-frame attempt p50/max and the top ids (X3M_MEDIA_CUE_TRACE=1; requires --telemetry; docs/verification/media-cues.md, "Gate")')
     parser.add_argument('--media-cue-cache', choices=('on', 'off'), default='on', help='Negative cache for the sector selector\'s cue restart: a media id whose selector-path build returned 0 is refused (EAX 0, the state a failed build leaves) on the same gate for --media-cue-retry-s seconds instead of rebuilding the DirectShow graph every frame; speech, script, savegame and query callers are never refused (X3M_MEDIA_CUE_CACHE; default on since run 34, independent of --telemetry; pass off to restore the stock per-frame retry)')
     parser.add_argument('--media-cue-retry-s', type=int, default=30, metavar='N', help='Seconds before a cached media-cue failure is retried (X3M_MEDIA_CUE_RETRY_S; default 30; 1..3600; meaningless with --media-cue-cache off)')
+    parser.add_argument('--music-keep', action='store_true', help='Keep the sector music playing at its position across alt-tab, save and pause (X3M_MUSIC_KEEP=1; default absent = nothing patched; opt-in this round: the assumption that the story script replays the same track id after the stop-all is unverified, fly --music-trace first; refused with --vanilla): a six-byte trampoline inside the engine\'s stop-all 0x004982b0 (site 0x004982db) lets a music record through the save and pause callers without the IMediaControl::Pause (the bookkeeping and the script wake stay vanilla) and marks the track after the alt-tab caller, and the play routine\'s seek call 0x00498d54 -> 0x004d0430 is redirected so a MOV_PlayMovie of the held or still-playing track returns without the seek to 0 ms; another id (sector change), load, P_Leave and game start keep vanilla behaviour. One music_keep_stop / music_keep_seek line per decision (docs/reverse-engineering/music-restart.md, Implementation). Exact executable and bytes only, otherwise fails closed to vanilla')
+    parser.add_argument('--music-trace', action='store_true', help='Trace the music state machine (X3M_MUSIC_TRACE=1; default absent = nothing patched; independent of --music-keep; refused with --vanilla): three byte-verified entry trampolines log every stop-all 0x004982b0 (caller return address and name), every play 0x00498c90 (id, start ms, caller, record flags) and every MOV_StopMovie 0x00498810 (id, caller) as music_trace_stop / music_trace_play / music_trace_stop_movie lines with the Present frame counter, a sequence number and QPC, at most 1,000 lines per session. Expected after an alt-tab: music_trace_stop name=alt_tab, then music_trace_play of the same id with start_ms=0 (docs/reverse-engineering/music-restart.md, Implementation)')
     parser.add_argument('--audio-sites', action='store_true', help='Load hang witness: add the fourteen byte-verified audio-path markers (media create SetState/Pause returns, message pump entry and drain iterations, the six 0x00498370 manager-update call sites, refill entry, CompletionStatus poll with its HRESULT bucket, Update return, cue play) to the game-phase group (X3M_AUDIO_SITES=1; requires --game-phases); one game_phase_audio line per telemetry window and, with --profile, every 2 s from the sampler thread so the counters stay visible while frames are stopped (docs/architecture/voice-decoder-adapter.md, "Load hang witness build")')
     parser.add_argument('--ownership', action='store_true', help='Enable the experimental normal-D3D9 ownership wrapper')
     parser.add_argument('--depth-copy', action='store_true', help='Enable experimental original-preserving depth copy (requires --ownership)')
@@ -625,6 +627,8 @@ def main():
         parser.error('--media-cue-retry-s must be between 1 and 3600.')
     if args.audio_sites and not args.game_phases:
         parser.error('--audio-sites requires --game-phases.')
+    if args.vanilla and (args.music_keep or args.music_trace):
+        parser.error('--music-keep/--music-trace cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the music routines is not loaded.')
     if args.profile_raw and not args.profile:
         parser.error('--profile-raw requires --profile.')
     if args.mesh_adjacency != 'native' and not args.telemetry:
@@ -1253,6 +1257,13 @@ def main():
         env['X3M_MEDIA_CUE_TRACE'] = '1' if args.media_cue_trace else '0'
         env['X3M_MEDIA_CUE_CACHE'] = '1' if args.media_cue_cache == 'on' else '0'
         env['X3M_MEDIA_CUE_RETRY_S'] = str(args.media_cue_retry_s)
+        # Music keep and trace: set only when requested (refused with --vanilla above) and dropped otherwise,
+        # so a stale shell value cannot patch the stop-all or the play routine's seek.
+        for option, variable in ((args.music_keep, 'X3M_MUSIC_KEEP'), (args.music_trace, 'X3M_MUSIC_TRACE')):
+            if option:
+                env[variable] = '1'
+            else:
+                env.pop(variable, None)
         env['X3M_FRAME_TIMING_STATE_STAMPS'] = str(args.frame_timing_state_stamps if args.frame_timing else 0)
         env['X3M_OWNERSHIP'] = '1' if args.ownership else '0'
         env['X3M_DEPTH_COPY'] = '1' if args.depth_copy else '0'

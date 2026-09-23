@@ -267,8 +267,13 @@ callee-saved registers; LastError is not read by the surrounding code.
 
 Risks: depends on the script replaying the same id after the status-1 wake
 (unverified). If it plays another id, the different-id rule gives vanilla
-behaviour; if it plays nothing, a keep-running track plays to its end with
-flag `2` clear and no completion (silence afterwards until the script acts).
+behaviour; if it plays nothing, a keep-running track plays on with flag `2`
+clear, unserviced by the manager (§6, "Orphans"), until the next stop-all,
+where the implementation pauses it (review fix F2, 2026-09-23), or its own
+end (no completion, silence afterwards until the script acts). A
+DirectSound-path record (`0x40`) is never kept running: the pump services
+flag-2 records only and the save's file write blocks the loop, so its buffer
+would starve (F1).
 
 ### Rejected shapes for the brief's candidates
 
@@ -298,6 +303,148 @@ flag `2` clear and no completion (silence afterwards until the script acts).
 * Thread identity of WndProc vs. main loop was not measured.
 * The proxy has no WndProc or WM_ACTIVATE hook today (`src/proxy` only polls
   foreground/focus in telemetry); both patches are new engine patches.
+
+## 6. Implementation (2026-09-23)
+
+`src/proxy/music_keep.cpp` / `music_keep.h` / `music_keep_core.h`; launcher
+`--music-keep` (`X3M_MUSIC_KEEP=1`, **off by default this round**: the
+same-id replay of §5 is unverified) and `--music-trace` (`X3M_MUSIC_TRACE=1`,
+opt-in), neither forwarded under `--vanilla`; ledger
+[music-keep.md](../verification/music-keep.md); byte check
+[`verify_music_keep_writes.py`](../../verification/results/music-restart/verify_music_keep_writes.py)
+(reads every window and constant from the core header, models the writes,
+raw-scans the site interiors, repeats the caller census; `PASS`, 39 checks).
+Both features install on the backend-load path inside the `engine_patch`
+window (after `collide_memo`), only when the variable is exactly `1`, the
+executable hash verifies and every window below matches; any later claim is
+refused `late_claim`; a failed second claim puts the first back
+(`rollback_failed` keeps the module registered so `shutdown()` retries);
+LastError is preserved by install, Present and the handlers; the DLL is
+pinned once a site is live. The stubs are integer-only assembly (no x87, no
+SSE); the handlers run under `LightCallBoundary` and are roots of
+`check_no_x87.py` (650 reachable functions, PASS); the line formatter runs
+behind `call_preserved`.
+
+### Sites and bytes
+
+| Patch | Site | Displaced / redirected bytes | Written | Continuation |
+| --- | --- | --- | --- | --- |
+| A (keep) | `0x004982db` | `8b 7e 24 39 5f 04` (`mov edi,[esi+0x24]; cmp [edi+4],ebx`) | `e9 rel32` to the claim dispatcher, byte 6 (`04`) untouched | tail = the six bytes + `jmp 0x004982e1` (vanilla, paused); or `mov edi,[esi+0x24]; jmp 0x00498322` (keep_running) |
+| C (keep) | `0x00498d54` | `e8 d7 76 03 00` (`call 0x004d0430`) | `e8 rel32` to the thunk | `jmp 0x004d0430` with the same stack (vanilla), `mov eax,1; ret` (skip), or `call 0x004d1810` (EAX = held record) then the vanilla seek |
+| T1 (trace; also the keep's entry stub) | `0x004982b0` | `a1 44 6f 60 00` (`mov eax,[0x606f44]`) | `e9 rel32` | tail = the five bytes + `jmp 0x004982b5`; shared site: claimed once, the keep's orphan stub and the trace stub chain in front of each other |
+| T2 (trace) | `0x00498c90` | `51 53 8b 5c 24 14` (`push ecx; push ebx; mov ebx,[esp+0x14]`) | `e9 rel32`, byte 6 (`14`) untouched | tail = the six bytes + `jmp 0x00498c96` (the ESP-relative load replays at the entry ESP: the stub restores it exactly) |
+| T3 (trace; also the keep's stop-movie stub) | `0x00498810` | `8b 0d 44 6f 60 00` (`mov ecx,[0x606f44]`) | `e9 rel32`, byte 6 (`00`) untouched | tail = the six bytes + `jmp 0x00498816`; shared site like T1 |
+
+Write kinds (`engine_patch`): A (`0x004982db & 7 = 3`, five bytes inside one
+qword) and the three entry sites (`& 7 = 0`) are written with one
+`lock cmpxchg8b` (`write_a=atomic`, `write_entry=atomic`, …); C is a plain
+five-byte copy, because `0x00498d54 & 7 = 4` puts the call across a qword
+boundary (`write_c=plain`), and relies on the install window alone (no other
+thread executes engine code on the backend-load path). The manager's loop
+re-seek at `0x0049840a` is the second caller of `0x004d0430` (the third is
+`0x00498f55`); both stay deliberately vanilla, only the play routine's call at
+`0x00498d54` is redirected.
+
+Windows compared before any write (all from the core header, all pinned by
+the verifier): `0x004982cc` (26 B around A), `0x00498322` (15 B, the
+bookkeeping label), `0x00498d4d` (7 B), `0x00498d59` (29 B through the run
+call, whose target `0x004d1870` is checked), `0x00498d8c` (6 B, flag `2`
+set), `0x004d0430` (26 B head), `0x004d1810` (whole 87 B body: it clobbers
+EAX/ECX/EDX only), `0x004d1870` (14 B head), the three trace heads (16/18/14
+B), the six stop-all callers, the three play callers and the three
+`0x00498810` callers (E8 target and return address). Raw scan: no rel8/rel32
+branch into any site interior (`0x00498c6f` is the ModRM byte of
+`lea edi,[esp+0x18]`, rejected as an operand-byte hit like `0x00498d4e` in
+the site verifier). New census fact: `0x00498810` has three direct callers,
+`0x00499881` (`MOV_StopMovie`), `0x0045c27d` (inside the selector
+`0x0045b720`) and `0x004f66be`.
+
+### Decisions
+
+* Stop-all (A), per playing record: caller by return address (`alt_tab`
+  `0x004d36c2` → paused; `save` `0x00404561`, `pause` `0x00407069` →
+  keep_running; `load` `0x00404cf2`, `p_leave` `0x00497bbb`,
+  `session_start` `0x0040387d` and any unknown address → vanilla, and every
+  hold is dropped). A non-music record (`[rec+0x2c] & 0x80` clear) is never
+  held. A DirectSound-path music record (`0x40`) is paused, never kept
+  running (F1). A held record is `(record, id, media, mode)` in a four-slot
+  table (oldest replaced). The classifier's `[esp+0x10]` depth is pinned by
+  the 38-byte window from `0x004982c0` (`push ebp` … `push esi; push edi`)
+  plus `push ebx` in the 16-byte head (F5).
+* Stop-all entry (shared site, any caller, before the record loop): every
+  keep_running hold that is still linked with the same id and media, flag `2`
+  clear, context 0 and music is paused with `0x004d1810` and dropped
+  (`music_keep_orphan`); a keep_running hold that is unlinked, playing again
+  or claimed by a task is dropped without a pause; paused-mode holds stay
+  (F2). So a track the script never replayed cannot play on through an
+  alt-tab or a load.
+* `MOV_StopMovie` native entry (shared site, EAX = id): the id's holds are
+  dropped (`music_keep_stop_movie`); the engine pauses the record itself, and
+  the replay that follows a script stop seeks to 0 as vanilla does (F4).
+* Seek (C), when `0x00498c90` found the record and is about to seek: non-music
+  → vanilla (no log). Music, start 0, and a hold for `(record, id, media)` or
+  flag `2` still set → **skip** (return 1; the Run at `0x00498d71` resumes or
+  is a no-op; flag `2` and the new completion context are stored as vanilla).
+  Otherwise, a keep_running hold whose record is still linked with the same
+  id and media, flag `2` clear, `+0x14` context 0 (not claimed by a script
+  task again) and music → `0x004d1810` on it, then the vanilla seek
+  (`pause_then_vanilla`); else vanilla. Every music play drops the holds.
+
+### Orphans: a keep_running track is unserviced until the script replays it
+
+The manager update `0x00498370` visits only records with flag `2` (§1,
+"Natural end"): after a save or
+pause the keep_running record has flag `2` clear (the vanilla bookkeeping at
+`0x00498322` still runs), so until the script replays the same id the track
+gets no end-of-track poll (`0x004d14e0`), no completion and no loop re-seek
+(`0x0049840a`). In the expected flow the replay arrives on the next script
+step and re-sets flag `2`, so nothing is missed; if the script does not
+replay, the track plays on with the graph running and unserviced until its
+own end or the next stop-all (where F2 pauses it). This is the **second thing
+the trace flight must settle**: a `music_trace_stop name=save|pause` with no
+following same-id `music_trace_play` means the keep leaves an orphan. Leaving
+flag `2` set instead (skipping the `and [esi+0x2c],~2` as well) would keep the
+manager servicing the track, but the stop-all's completion `(ctx,1)` and the
+clearing of `+0x14`/`+0x18` still run, so the natural end would fire a second
+completion with context 0 into the script slot (`0x0049845b`, callee
+`0x004a4910`, ctx 0 undecoded) and the MOVI chunk would carry flag `2`
+(masked on restore, `0x00498b99`, so harmless). The note's invariant that
+"the script is woken exactly as before and the MOVI chunk is what vanilla
+writes" is what the keep relies on, and the ctx-0 completion is unmodelled,
+so the behaviour stays: flag `2` cleared, orphan paused at the next stop-all.
+
+### Lines and how to read a flight
+
+Written synchronously through the session log's OS handle (they may precede
+buffered lines written earlier; sort by `seq=`, not by file order). `frame=`
+is the last Present's counter (frozen while inactive), `qpc=` the clock.
+Cap: 1,000 event lines per session, then one `music_trace_cap` line.
+
+* `music_trace_stop frame= seq= qpc= caller=0x… name=alt_tab|save|pause|load|p_leave|session_start|unknown`
+* `music_trace_play frame= seq= qpc= id= start_ms= caller=0x… name=MOV_PlayMovie|MOV_PlayMovieFrom|helper_0x004f6640|unknown record=0x… flags=0x…`
+  (`record`/`flags` from a bounded walk of the list at entry: `flags & 2`
+  = still registered as playing, `& 0x80` = music class)
+* `music_trace_stop_movie frame= seq= qpc= id= caller=0x… name=… record=0x… flags=0x…`
+* with the keep on: `music_keep_stop … name= record= id= flags= mode=keep_running|paused|vanilla held= holds=`,
+  `music_keep_seek … record= id= start_ms= flags= action=skip|vanilla|pause_then_vanilla hold_id= pause_record= holds_before=`,
+  `music_keep_orphan … caller= name= record= id= action=pause holds=` (an unreplayed keep_running track paused at a
+  stop-all: the F2 path, and evidence of the orphan case above), `music_keep_stop_movie … id= caller= name= dropped= holds=`,
+  and `music_walk_cut … walk=find_record|live_record limit=4096 cuts=` when a record-list walk hit its bound (never expected)
+* install: `music_keep requested= patched= reason=ok|… site_a=0x004982db site_c=0x00498d54 write_a= write_c= …`,
+  `music_trace requested= patched= reason= site_stop_all= site_play= site_stop_movie= … cap=1000`.
+
+Expected after an alt-tab out and back: `music_trace_stop name=alt_tab`, then
+(after reactivation) `music_trace_play id=<same id> start_ms=0
+name=MOV_PlayMovie flags=0x90|0xd0` (flag `2` clear: the stop-all cleared it);
+with the keep on, `music_keep_stop name=alt_tab mode=paused held=1` between
+them and `music_keep_seek action=skip hold_id=<id>` before the play's flags are
+set again. Save and pause: the same with `name=save` / `name=pause`,
+`mode=keep_running`. A sector change: `music_trace_play` of another id with
+`action=vanilla` (or `pause_then_vanilla` when a keep_running track was still
+running). What settles §5: whether the play after the stop carries the same
+id (the `restart_pairs()` helper of the verifier pairs each stop with the next
+play and marks `same_id` and `seek_skipped`); a play of another id or no play
+at all means the keep must not ship as is.
 
 ## Reproduce
 

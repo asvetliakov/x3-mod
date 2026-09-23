@@ -9,6 +9,7 @@
 #include "cull_census.h"
 #include "collide_box_cull.h"
 #include "pause_key_only.h"
+#include "music_keep.h"
 #include "collide_narrow_census.h"
 #include "collide_sat_sse2.h"
 #include "collide_memo.h"
@@ -1403,6 +1404,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     collide_narrow_census::present(ctx.id,ctx.frame,ctx.capture); // X3M_COLLIDE_NARROW_CENSUS=1 only: swaps the accepted-pair ring; one collide_narrow line per 300 frames, collide_narrow_pair rows on a capture frame
     sun_occlusion::present(ctx.frame+1); // X3M_SUN_OCCLUSION / _LOG only: the probe override's frame boundary
     collide_memo::present(ctx.id,ctx.frame,ctx.capture); // X3M_COLLIDE_MEMO=1 only: advances the memo's frame (entries expire after one frame untouched); one collide_memo line per 300 frames
+    music_keep::present(ctx.id,ctx.frame,ctx.capture); // X3M_MUSIC_KEEP=1 / X3M_MUSIC_TRACE=1 only: stores the frame counter the music lines carry
     cull_small_parts::present(ctx.id,ctx.frame,ctx.capture); // X3M_CULL_SMALL_PARTS_PX only: the frame's threshold and culled count on a captured frame
     telemetry::present(ctx.stats,ctx.frame,ctx.capture,begin,end,hr);
     if(ctx.fps_overlay.visible()){
@@ -3365,6 +3367,7 @@ void initialize_log(HMODULE module) {
     collide_sat_sse2::initialize(); // X3M_COLLIDE_SAT_SSE2=1 only; the sole call of the OBB separating-axis test 0x004e3280 (at 0x004e25a3) redirected to an SSE2 reimplementation, same window, disjoint from every other claim
     pause_key_only::initialize(); // X3M_PAUSE_KEY_ONLY=1 only; 12-byte in-place rewrite of the flight pause's key exit at 0x004043a5 (key X3M_PAUSE_KEY, default 0x1b5), same window, disjoint from every other claim
     collide_memo::initialize(); // X3M_COLLIDE_MEMO=1 only; the sole call of 0x004e29f0 (at 0x0047f329, inside the mesh-pair query) redirected to the no-contact memo's thunk, same window, after the census and the SAT so the bytes it hashes are settled
+    music_keep::initialize(); // X3M_MUSIC_KEEP=1: stop-all classifier trampoline (0x004982db) and the play seek call redirect (0x00498d54); X3M_MUSIC_TRACE=1: three entry trampolines (0x004982b0, 0x00498c90, 0x00498810); same window, disjoint from every other claim
     // X3M_SUN_OCCLUSION=1 / X3M_SUN_OCCLUSION_LOG=1 only (docs/architecture/sun-partial-occlusion.md): the flare probe's call
     // 0x00471630 and the lens traversal's call 0x00472491, same window, disjoint from every other claim except
     // X3M_SUBMIT_PHASES' stamp at 0x00472490 (refused by name). The override needs the route's RT2 (X3M_MOTION_OUTPUT=1).

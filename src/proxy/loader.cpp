@@ -5,6 +5,7 @@
 #include "cull_census.h"
 #include "collide_box_cull.h"
 #include "pause_key_only.h"
+#include "music_keep.h"
 #include "collide_narrow_census.h"
 #include "collide_sat_sse2.h"
 #include "collide_memo.h"
@@ -374,6 +375,7 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
         if (reserved == nullptr) x3m::collide_sat_sse2::shutdown(); // same rule: the SAT call back only on FreeLibrary
         if (reserved == nullptr) x3m::sun_occlusion::shutdown(); // same rule: the probe and lens calls back only on FreeLibrary
         if (reserved == nullptr) x3m::collide_memo::shutdown(); // same rule: the memo's call back only on FreeLibrary
+        if (reserved == nullptr) x3m::music_keep::shutdown(); // same rule: the music keep and trace sites back only on FreeLibrary
         if (reserved == nullptr) x3m::cull_census::shutdown(); // same rule: the two census sites back only on FreeLibrary
         if (reserved == nullptr) x3m::cull_small_parts::shutdown(); // same rule: the small-parts site back only on FreeLibrary
     }

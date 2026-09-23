@@ -1,0 +1,171 @@
+{
+ "exe_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+ "checks": {
+  "sha256": true,
+  "constants": true,
+  "window_a_window": true,
+  "window_a_skip_window": true,
+  "window_c_pre_window": true,
+  "window_c_post_window": true,
+  "window_play_set_playing_window": true,
+  "window_seek_head": true,
+  "window_pause_body": true,
+  "window_run_head": true,
+  "window_stop_all_head": true,
+  "window_play_head": true,
+  "window_stop_movie_head": true,
+  "a_skip_is_bookkeeping_label": true,
+  "a_je_consumes_tail_cmp": true,
+  "claim_music_keep_a": true,
+  "claim_music_trace_stop_all": true,
+  "claim_music_trace_play": true,
+  "claim_music_trace_stop_movie": true,
+  "call_music_keep_c": true,
+  "stop_movie_calls_pause": true,
+  "stop_callers": true,
+  "play_callers": true,
+  "stop_movie_callers": true,
+  "interior_4982db": true,
+  "interior_4982b0": true,
+  "interior_498c90": true,
+  "interior_498810": true,
+  "interior_498d54": true,
+  "callers_4982b0": true,
+  "callers_498c90": true,
+  "callers_498810": true,
+  "callers_4d0430": true,
+  "callers_4d1810": true,
+  "callers_4d1870": true,
+  "stop_all_callers_are_the_table": true,
+  "play_callers_are_the_table": true,
+  "stop_movie_callers_are_the_table": true,
+  "no_literal_refs": true
+ },
+ "check_count": 39,
+ "windows": {
+  "a_window": 38,
+  "a_skip_window": 15,
+  "c_pre_window": 7,
+  "c_post_window": 29,
+  "play_set_playing_window": 6,
+  "seek_head": 26,
+  "pause_body": 87,
+  "run_head": 14,
+  "stop_all_head": 16,
+  "play_head": 18,
+  "stop_movie_head": 14
+ },
+ "written": {
+  "music_keep_a": {
+   "site": "0x4982db",
+   "length": 6,
+   "original": "8b7e24395f04",
+   "instructions": [
+    3,
+    3
+   ],
+   "writes_example_dispatcher_0x0a100000": "e9207dc60904",
+   "tail_prefix": "8b7e24395f04e9",
+   "tail_jump_target": "0x4982e1"
+  },
+  "music_trace_stop_all": {
+   "site": "0x4982b0",
+   "length": 5,
+   "original": "a1446f6000",
+   "instructions": [
+    5
+   ],
+   "writes_example_dispatcher_0x0a100000": "e94b7dc609",
+   "tail_prefix": "a1446f6000e9",
+   "tail_jump_target": "0x4982b5"
+  },
+  "music_trace_play": {
+   "site": "0x498c90",
+   "length": 6,
+   "original": "51538b5c2414",
+   "instructions": [
+    1,
+    1,
+    4
+   ],
+   "writes_example_dispatcher_0x0a100000": "e96b73c60914",
+   "tail_prefix": "51538b5c2414e9",
+   "tail_jump_target": "0x498c96"
+  },
+  "music_trace_stop_movie": {
+   "site": "0x498810",
+   "length": 6,
+   "original": "8b0d446f6000",
+   "instructions": [
+    6
+   ],
+   "writes_example_dispatcher_0x0a100000": "e9eb77c60900",
+   "tail_prefix": "8b0d446f6000e9",
+   "tail_jump_target": "0x498816"
+  },
+  "music_keep_c": {
+   "site": "0x498d54",
+   "length": 5,
+   "original": "e8d7760300",
+   "writes_example_thunk_0x0a200000": "e8a772d609",
+   "callee": "0x4d0430",
+   "caller_pops": 4
+  }
+ },
+ "direct_callers": {
+  "0x4982b0": [
+   "0x403878",
+   "0x40455c",
+   "0x404ced",
+   "0x407064",
+   "0x497bb6",
+   "0x4d36bd"
+  ],
+  "0x498c90": [
+   "0x49981f",
+   "0x499982",
+   "0x4f6668"
+  ],
+  "0x498810": [
+   "0x45c27d",
+   "0x499881",
+   "0x4f66be"
+  ],
+  "0x4d0430": [
+   "0x49840a",
+   "0x498d54",
+   "0x498f55"
+  ],
+  "0x4d1810": [
+   "0x49885f"
+  ],
+  "0x4d1870": [
+   "0x498d71",
+   "0x498f76"
+  ]
+ },
+ "literal_dword_refs": {
+  "0x4982b0": 0,
+  "0x498c90": 0,
+  "0x498810": 0,
+  "0x4d0430": 0,
+  "0x4d1810": 0,
+  "0x4d1870": 0
+ },
+ "raw_branch_into_site_interior": {
+  "0x4982db": [],
+  "0x4982b0": [],
+  "0x498c90": [
+   "0x498c6f"
+  ],
+  "0x498810": [],
+  "0x498d54": []
+ },
+ "rejected_operand_byte_hits": {
+  "0x498c90": [
+   "0x498c6f"
+  ]
+ },
+ "failures": [],
+ "result": "PASS"
+}
