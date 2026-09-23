@@ -2158,3 +2158,13 @@ env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3
 
 To remove the pilot: delete `addon/05.cat`, `05.dat` and `05.x3m-lod.json`; the originals are untouched.
 
+
+## Runs 73, 73 B/C, 74 A, 75 A/B/C, 76 A (completed 2026-09-23/24; run272-run281)
+
+Instructions as issued (provenance only). All used the Run 73 A stand command kept in user-runs.md.
+
+- Run 73 A: batch overlay of the flown sectors (19 bodies) in a busy sector; two F8 bursts. Result: run272.
+- Run 73 B: fog hand-over transits + docked view, --music-keep alt-tab x2, bolts third then first person with an F8 burst; C: --gpu-sync-timing stand. Results: run273, run274.
+- Run 74 A: overlay re-baked with aspect thresholds + texel rule (22 bodies); factories and the gate near their switch, flat stations, capital ships; two F8 bursts. Result: run277. Run 74 B: fog shadow pass A/B under --gpu-sync-timing (run275 pass off at launch, run276 on).
+- Run 75 A: two gate jumps incl. same family, a docked save load, a new game in fog; B: bolts 3,12 third/first person with a burst; C: timing split still/moving in fogged and busy sectors. Results: run278, run279, run280.
+- Run 76 A: overlay re-baked with the light-atlas bleed guard; factory panels across the switch; ships at their switch. Result: run281 (with the share-gate re-bake).
