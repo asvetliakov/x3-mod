@@ -227,6 +227,20 @@ class ParseIdentity(unittest.TestCase):
         with self.assertRaises(identity.ProxyIdentityError):
             identity.parse_identity(LINE.replace('attach_us=4210', 'attach_us=soon'))
 
+    def test_executable_fields_optional_and_checked(self):
+        line = LINE + f' exe_sha256={OTHER} exe_bytes=2153984 exe_hash_us=17000 exe_laa=1 exe_max_app=fffeffff'
+        fields = identity.parse_identity(line)
+        self.assertEqual((fields['exe_sha256'], fields['exe_bytes'], fields['exe_hash_us'], fields['exe_laa'], fields['exe_max_app']),
+                         (OTHER, 2153984, 17000, True, 0xfffeffff))
+        self.assertNotIn('exe_hash_us', identity.parse_identity(LINE))
+        for bad in ('exe_bytes=+1', 'exe_bytes=1_0', 'exe_hash_us=-3', 'exe_laa=2', 'exe_max_app=fffeffff0', 'exe_sha256=abc'):
+            name = bad.split('=')[0]
+            with self.subTest(bad), self.assertRaises(identity.ProxyIdentityError):
+                identity.parse_identity(re.sub(name + r'=\S+', bad, line))
+        for bad in ('attach_us=+4210', 'attach_us=4_210', 'bytes=+3211264'):
+            with self.subTest(bad), self.assertRaises(identity.ProxyIdentityError):
+                identity.parse_identity(re.sub(bad.split('=')[0] + r'=\S+', bad, line, count=1))
+
     def test_unavailable_none_and_unknown(self):
         fields = identity.parse_identity(
             'proxy_identity sha256=unavailable bytes=0 path=unknown manifest_sha256=none source_commit=unknown')

@@ -46,7 +46,7 @@ def synthetic_image(site=probe.SITE_BYTES, extra=()):
 
 class SyntheticImage(unittest.TestCase):
     def test_documented_bytes_pass_except_identity(self):
-        report = probe.verify(synthetic_image(), sha256=probe.EXPECTED_SHA256)
+        report = probe.verify(synthetic_image())
         checks = report['checks']
         self.assertTrue(checks['site_bytes']['ok'])
         self.assertTrue(checks['relocation']['ok'], checks['relocation'])

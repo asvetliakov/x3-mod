@@ -315,6 +315,31 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def executable_record(exe):
+    """Provenance of X3AP.exe for the install record and --dry-run: raw SHA-256,
+    size, IMAGE_FILE_LARGE_ADDRESS_AWARE, the known-list label and whether the
+    structural identity holds. Never refuses: the proxy's executable gate is
+    structural (docs/reverse-engineering/executable-identity.md); a failed
+    identity warns (every hook module will stay off), an unknown hash with a
+    passing identity is INFO on stderr."""
+    probe = str(ROOT / 'verification' / 'probe')
+    if probe not in sys.path:
+        sys.path.insert(0, probe)
+    import exe_identity
+    data = exe.read_bytes()
+    info = exe_identity.info(data)
+    record = {key: info[key] for key in ('sha256', 'bytes', 'laa', 'checksum', 'known')}
+    record['identity_ok'] = exe_identity.identity_ok(data)
+    if not record['identity_ok']:
+        print(f'Warning: {exe.name} is not the known X3AP.exe image (structure/anchors); the structural gate '
+              f'disables every hook module and the proxy runs without engine hooks.', file=sys.stderr)
+    elif not record['known']:
+        print(f'Info: {exe.name} SHA-256 {record["sha256"]} is not in the known list '
+              f'(shipped, LAA cleared, NTCore 4GB patch); structure and anchors match, hooks still check their own site bytes.',
+              file=sys.stderr)
+    return record
+
+
 MARKER = b'X3M_SOURCE_COMMIT='
 
 
@@ -1213,7 +1238,8 @@ def main():
                 source = args.dll_source.resolve(strict=True)
                 commit, origin = source_commit(source)
                 media_package.install(game, source,
-                    {'source': str(source), 'source_commit': commit, 'manifest_source': origin},
+                    {'source': str(source), 'source_commit': commit, 'manifest_source': origin,
+                     'executable': executable_record(game / 'X3AP.exe')},
                     retire_media=True)
                 print(f'Installed {dll}; bottle configuration unchanged.')
             elif args.action == 'uninstall':
@@ -1631,6 +1657,7 @@ def main():
                 if args.dry_run:
                     print(json.dumps({'command': command, 'cwd': str(game), 'launcher_stderr': str(launcher_log),
                                       'overrides': overrides,
+                                      'executable': executable_record(game / 'X3AP.exe'),
                                       'voice_decoder': voice_line,
                                       'env': {**{k: env[k] for k in sorted(env) if k.startswith('X3M_')},
                                               **voice_env}}, indent=2))

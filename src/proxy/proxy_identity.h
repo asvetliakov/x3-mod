@@ -6,6 +6,10 @@
 // the DLL it came from (docs/architecture/platform-portability.md, "Session
 // identity"). Documented Win32 only (GetModuleFileNameW, CreateFileW/ReadFile,
 // CryptoAPI SHA-256, GetEnvironmentStringsW); runs once, off the render path.
+// The identity line also carries the game executable's raw SHA-256, size and
+// LARGE_ADDRESS_AWARE bit (exe_sha256= exe_bytes= exe_laa=) and the process's
+// GetSystemInfo lpMaximumApplicationAddress (exe_max_app=) as provenance; the
+// executable gate itself is structural (executable_identity.h).
 namespace x3m::proxy_identity {
 void log_identity(HMODULE self);
 // One `loaded_module` line for a DLL this process has loaded: the resolved

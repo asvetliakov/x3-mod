@@ -51,6 +51,8 @@ import struct
 import subprocess
 from pathlib import Path
 
+import exe_identity  # structure + anchors gate; hashes are INFO (docs/reverse-engineering/executable-identity.md)
+
 import verify_chase_aim_sites as common
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -769,7 +771,7 @@ def inspect(data, decoded, core_text, claims, narrow=None, sat=None):
         return [struct.unpack('<I', image.read(va + 4 * k, 4))[0] for k in range(count)]
     constants = source_constants(core_text)
     checks = {
-        'exe_identity': hashlib.sha256(data).hexdigest() == common.EXPECTED_SHA256 and len(data) == common.EXPECTED_SIZE,
+        'exe_identity': exe_identity.identity_ok(data),
         'preferred_base': image.image_base == common.IMAGE_BASE,
         'p1_windows': image.read(P1_SITE, len(P1_SITE_WINDOW)) == P1_SITE_WINDOW and image.read(P1_COMPARE, len(P1_COMPARE_WINDOW)) == P1_COMPARE_WINDOW
                       and image.read(P1_REJECT, len(P1_REJECT_WINDOW)) == P1_REJECT_WINDOW and image.read(P1_CONTINUE, len(P1_CONTINUE_WINDOW)) == P1_CONTINUE_WINDOW,
@@ -800,7 +802,7 @@ def inspect(data, decoded, core_text, claims, narrow=None, sat=None):
         checks.update(inspect_narrow(image, p1, narrow['decoded'], narrow['core_text'], narrow['claims']))
     if narrow is not None and sat is not None:
         checks.update(inspect_sat(image, narrow['decoded'], sat['core_text'], sat['claims']))
-    return {'result': 'PASS' if all(checks.values()) else 'FAIL', 'checks': checks, 'p1_site': hex(P1_SITE), 'p2_site': hex(P2_SITE),
+    return {'result': 'PASS' if all(checks.values()) else 'FAIL', 'checks': checks, 'exe_info': exe_identity.info(data), 'p1_site': hex(P1_SITE), 'p2_site': hex(P2_SITE),
             'narrow_sites': [hex(N5_SITE), hex(N6_SITE), hex(N7_SITE), hex(N8_SITE)] if narrow is not None else [],
             'sat_site': hex(SAT_SITE) if sat is not None else None, 'sat_other_claims_checked': len(sat['claims']) if sat is not None else 0, 'narrow_other_claims_checked': len(narrow['claims']) if narrow is not None else 0,
             'other_claims_checked': len(claims), 'overlaps': overlaps(claims), 'jump_table_0x45e108': [hex(v) for v in table(0x45e108, 2)],

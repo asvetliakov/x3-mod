@@ -19,7 +19,8 @@
 static_assert(sizeof(void*) == 4, "Verified x86 image layout only");
 namespace x3m::chase_camera {
 namespace {
-// The site (X3AP.exe SHA-256 fdbf3418…, preferred base 0x00400000), bytes
+// The site (X3AP.exe per executable_identity.h, shipped SHA-256 fdbf3418…,
+// preferred base 0x00400000), bytes
 // verified against the installed executable and the Ghidra listing on
 // 2026-09-13 (docs/reverse-engineering/external-camera.md, "Hook site"):
 //   00420e06  83 7b 54 00        cmp dword ptr [ebx+0x54],0

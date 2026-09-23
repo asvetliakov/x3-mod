@@ -28,7 +28,7 @@ Every session log opens with two lines written once by `capture.cpp`
 `initialize_log` (implementation in `src/proxy/proxy_identity.cpp`), ahead of
 every derived `*_mode` line, so a gameplay log can never lose its provenance:
 
-    proxy_identity sha256=<64 hex|unavailable> bytes=<n> path=<dll path> manifest_sha256=<64 hex|none> source_commit=<commit[-dirty]|unknown> attach_us=<n>
+    proxy_identity sha256=<64 hex|unavailable> bytes=<n> path=<dll path> manifest_sha256=<64 hex|none> source_commit=<commit[-dirty]|unknown> attach_us=<n> exe_sha256=<64 hex|unavailable> exe_bytes=<n> exe_laa=<0|1> exe_max_app=<8 hex>
     proxy_options [NAME=VALUE ...]
     proxy_environment [NAME=VALUE ...] count=<n>
 
@@ -63,7 +63,12 @@ is the SHA-256 of the loaded module's own file, computed at attach through
 documented Win32 (`GetModuleFileNameW`, `CreateFileW`/`ReadFile` with
 `FILE_FLAG_SEQUENTIAL_SCAN`, CryptoAPI `PROV_RSA_AES`/`CALG_SHA_256`,
 `GetEnvironmentStringsW`); nothing runs per frame, `GetLastError` is restored and
-no exception escapes (a failure yields `sha256=unavailable`). `attach_us` is what
+no exception escapes (a failure yields `sha256=unavailable`). `exe_sha256`/`exe_bytes` are
+the same for the game executable (`GetModuleFileNameW(nullptr)`) and `exe_laa` is
+IMAGE_FILE_LARGE_ADDRESS_AWARE in its mapped headers, `exe_max_app` the process's
+`GetSystemInfo` lpMaximumApplicationAddress: provenance only, since the
+executable gate is structural (`docs/reverse-engineering/executable-identity.md`).
+`attach_us` is what
 the header itself cost, measured with QPC: ~122 ms for a 15.8 MB DLL under
 CrossOver/FEX, all of it the emulated SHA-256, once per process. Any character
 outside printable ASCII in a path or option value becomes `_` so the

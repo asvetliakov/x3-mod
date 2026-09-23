@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Read-only qualification of lead-marker and optional central-HUD seams."""
 import argparse
-import hashlib
 import json
 import re
 import shutil
 import struct
 import subprocess
 from pathlib import Path
+
+import exe_identity  # structure + anchors gate; hashes are INFO (docs/reverse-engineering/executable-identity.md)
 
 from verify_chase_aim_sites import (
     DEFAULT_EXE, EXPECTED_SHA256, EXPECTED_SIZE, IMAGE_BASE, Image, HookSpec,
@@ -209,7 +210,8 @@ def verify_path(exe=DEFAULT_EXE, source=DEFAULT_SOURCE, objdump=OBJDUMP):
         image = Image(data)
         report = inspect(image, disassemble_functions(exe, objdump), Path(source).read_text())
         report['checks']['image_size'] = len(data) == EXPECTED_SIZE
-        report['checks']['image_hash'] = hashlib.sha256(data).hexdigest() == EXPECTED_SHA256
+        report['checks']['exe_identity'] = exe_identity.identity_ok(data)
+        report['exe_info'] = exe_identity.info(data)
         report['result'] = 'PASS' if all(report['checks'].values()) else 'FAIL'
         return report
     except (OSError, RuntimeError, ValueError, IndexError, struct.error) as error:

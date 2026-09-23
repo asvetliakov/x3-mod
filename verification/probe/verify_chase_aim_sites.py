@@ -12,7 +12,6 @@ usage: verify_chase_aim_sites.py [--exe PATH] [--source PATH] [--json]
 """
 import argparse
 import dataclasses
-import hashlib
 import json
 import re
 import shutil
@@ -21,6 +20,8 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+import exe_identity  # structure + anchors gate; hashes are INFO (docs/reverse-engineering/executable-identity.md)
 
 from verify_chase_camera_site import (  # Reuse installed-image provenance and PE mapping.
     DEFAULT_EXE,
@@ -274,12 +275,12 @@ def check_source_specs(text, specs=SITES):
     }
 
 
-def verify(data, decoded, source_text, sha256=None, specs=SITES):
+def verify(data, decoded, source_text, specs=SITES):
     report = {'result': 'FAIL', 'checks': {}}
     checks = report['checks']
-    digest = sha256 or hashlib.sha256(data).hexdigest()
-    checks['sha256'] = {'ok': digest == EXPECTED_SHA256, 'value': digest}
+    report['exe_info'] = exe_identity.info(data)  # INFO only
     checks['size'] = {'ok': len(data) == EXPECTED_SIZE, 'value': len(data)}
+    checks['exe_identity'] = {'ok': exe_identity.identity_ok(data)}
     try:
         image = Image(data)
     except (ValueError, IndexError, struct.error) as error:
@@ -311,7 +312,7 @@ def verify(data, decoded, source_text, sha256=None, specs=SITES):
     return report
 
 
-def verify_path(exe, source=DEFAULT_SOURCE, sha256=None, objdump=OBJDUMP):
+def verify_path(exe, source=DEFAULT_SOURCE, objdump=OBJDUMP):
     data = image_bytes(exe)
     source_text = Path(source).read_text(encoding='utf-8')
     try:
@@ -320,7 +321,7 @@ def verify_path(exe, source=DEFAULT_SOURCE, sha256=None, objdump=OBJDUMP):
         return {'result': 'FAIL', 'checks': {
             'disassembler': {'ok': False, 'error': str(error)},
         }}
-    return verify(data, decoded, source_text, sha256=sha256)
+    return verify(data, decoded, source_text)
 
 
 def main():

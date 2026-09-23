@@ -21,6 +21,8 @@ import struct
 import subprocess
 from pathlib import Path
 
+import exe_identity  # structure + anchors gate; hashes are INFO (docs/reverse-engineering/executable-identity.md)
+
 import verify_chase_aim_sites as common
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -129,7 +131,7 @@ def inspect(data, instructions, core_text):
     reject_sources = sorted(i.va for i in instructions if common._is_direct_control(i) == REJECT_VA)
     constants = source_constants(core_text)
     checks = {
-        'exe_identity': hashlib.sha256(data).hexdigest() == common.EXPECTED_SHA256 and len(data) == common.EXPECTED_SIZE,
+        'exe_identity': exe_identity.identity_ok(data),
         'preferred_base': image.image_base == common.IMAGE_BASE,
         'window_bytes': image.read(WINDOW_VA, len(WINDOW)) == WINDOW,
         'window_whole_instructions': [i.va for i in instructions if WINDOW_VA <= i.va < window_end] == [0x4c27a1, 0x4c27a7, 0x4c27aa, 0x4c27ad, 0x4c27af, 0x4c27b5, 0x4c27b7],
@@ -142,7 +144,7 @@ def inspect(data, instructions, core_text):
         'source_constants': constants == EXPECTED_CONSTANTS,
         'encoders': len(encode_site_patch(SITE_VA, 0x10000000)) == 6 and len(encode_detour(0x10000000, 0x10001000, ADMIT_VA, REJECT_VA, 0x10002000)) == DETOUR_LENGTH,
     }
-    return {'result': 'PASS' if all(checks.values()) else 'FAIL', 'checks': checks, 'site': hex(SITE_VA),
+    return {'result': 'PASS' if all(checks.values()) else 'FAIL', 'checks': checks, 'exe_info': exe_identity.info(data), 'site': hex(SITE_VA),
             'incoming_window_branches': [(hex(a), hex(t)) for a, t in incoming], 'reject_target_sources': [hex(a) for a in reject_sources],
             'function_instructions': len(instructions), 'exe_sha256': hashlib.sha256(data).hexdigest()}
 

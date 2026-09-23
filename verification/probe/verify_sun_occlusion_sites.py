@@ -3,7 +3,7 @@
 
 Sites and claims of src/proxy/sun_occlusion_core.h (docs/reverse-engineering/lens-flare-visibility.md,
 sections 12 and 16): the flare probe's call 0x00471630 -> 0x00488720 and the lens traversal's call
-0x00472491 -> 0x0047e6e0. Verified: the executable's SHA-256; the 21 whole-instruction context bytes
+0x00472491 -> 0x0047e6e0. Verified: the executable identity (exe_identity.py; the raw SHA-256 is INFO); the 21 whole-instruction context bytes
 around each call exactly as the header pins them, decoded gap-free by objdump with the call on an
 instruction boundary; both rel32 targets; the probe's prologue with its three early tests (148
 bytes, the FNV-1a the DLL compares) and their decoded shape (test/jne, four signed compares with
@@ -15,7 +15,6 @@ disjointness from every other claimed site under src/proxy, except the one docum
 (X3M_SUBMIT_PHASES' sort_return_b stamp at 0x00472490, refused by name at install). No Wine, no launch.
 """
 import argparse
-import hashlib
 import json
 import re
 import struct
@@ -23,11 +22,13 @@ import subprocess
 import sys
 from pathlib import Path
 
+import exe_identity  # structure + anchors gate; hashes are INFO (docs/reverse-engineering/executable-identity.md)
+
 ROOT = Path(__file__).resolve().parents[2]
 PROXY = ROOT / 'src/proxy'
 HEADER = PROXY / 'sun_occlusion_core.h'
 DEFAULT_EXE = Path.home() / 'Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe'
-EXPECTED_SHA256 = 'fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab'
+EXPECTED_SHA256 = exe_identity.SHIPPED_SHA256  # provenance only: reported as INFO, never a check
 OBJDUMP = 'i686-w64-mingw32-objdump'
 TEXT_BASE, TEXT_OFFSET, TEXT_SIZE = 0x401000, 0x400, 0x130630
 PROBE_SITE, PROBE_TARGET, LENS_SITE, LENS_TARGET = 0x471630, 0x488720, 0x472491, 0x47e6e0
@@ -64,7 +65,7 @@ def decode(exe, start, stop):
 def verify(exe):
     data = Path(exe).read_bytes()
     at = lambda va, n: data[va - TEXT_BASE + TEXT_OFFSET: va - TEXT_BASE + TEXT_OFFSET + n]
-    checks = {'sha256': hashlib.sha256(data).hexdigest() == EXPECTED_SHA256}
+    checks = {'exe_identity': exe_identity.identity_ok(data)}
     checks['probe_context'] = at(PROBE_CONTEXT[0], 21).hex() == PROBE_CONTEXT[1]
     checks['lens_context'] = at(LENS_CONTEXT[0], 21).hex() == LENS_CONTEXT[1]
     rel = lambda site: site + 5 + struct.unpack('<i', at(site + 1, 4))[0]
@@ -128,7 +129,7 @@ def verify(exe):
     pinned = lambda name, value: re.search(r'\b%s\s*=\s*0x0*%x(?![0-9a-fA-F])' % (name, value), header) is not None
     checks['header_constants'] = (pinned('probe_site_va', PROBE_SITE) and pinned('probe_target_va', PROBE_TARGET) and pinned('lens_site_va', LENS_SITE) and pinned('lens_target_va', LENS_TARGET)
                                   and pinned('probe_gates_fnv1a', GATES[2]) and pinned('probe_gates_length', GATES[1]) and pinned('conflicting_submit_phase_va', 0x472490))
-    return {'passed': all(checks.values()), 'checks': checks, 'conflicts': conflicts, 'branches_into_interior': branches_in, 'absolute_references': references,
+    return {'passed': all(checks.values()), 'checks': checks, 'exe_info': exe_identity.info(data), 'conflicts': conflicts, 'branches_into_interior': branches_in, 'absolute_references': references,
             'probe_callers': sorted(hex(v) for v in callers[PROBE_TARGET]), 'lens_callers': sorted(hex(v) for v in callers[LENS_TARGET])}
 
 

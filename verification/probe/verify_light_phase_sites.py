@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Read-only R7 whole-call span, caller, ABI and claim qualification. No Wine."""
-import hashlib
 import json
 import struct
 import subprocess
 from pathlib import Path
+
+import exe_identity  # structure + anchors gate; hashes are INFO (docs/reverse-engineering/executable-identity.md)
 import verify_chase_aim_sites as common
 import verify_submit_phase_sites as shared
 ROOT=Path(__file__).resolve().parents[2]
@@ -25,7 +26,7 @@ def inspect(data,decoded,source,claims,anchored=True):
     ins=[i for region in REGIONS for i in decoded.get(region,[])]
     by_va={i.va:i for i in ins}
     specs=[(m.group(1),int(m.group(2),16),bytes(int(v,16) for v in __import__('re').findall(r'0x([0-9a-fA-F]{1,2})',m.group(3))),int(m.group(4)),int(m.group(5)),int(m.group(6))) for m in common._SOURCE_SPEC_RE.finditer(source)]
-    checks={'identity':hashlib.sha256(data).hexdigest()==common.EXPECTED_SHA256,
+    checks={'identity':exe_identity.identity_ok(data),
             'source':specs==[(s.name,s.va,s.expected,len(s.expected),0,0) for s in SITES],
             'regions':all(decoded.get(r) and decoded[r][0].va==r[0] and decoded[r][-1].end==r[1] and all(a.end==b.va for a,b in zip(decoded[r],decoded[r][1:])) for r in REGIONS),
             'claim_anchors':anchored,
@@ -53,7 +54,7 @@ def inspect(data,decoded,source,claims,anchored=True):
     checks['raw_exit_edges']=edges==EXIT_EDGES
     checks['raw_interior']=not interior
     checks['absolute_references']=not any(struct.pack('<I',va) in data for s in SITES for va in range(s.va,s.end))
-    return {'result':'PASS' if all(checks.values()) else 'FAIL','checks':checks,'instructions':sum(map(len,decoded.values())),'claims':len(claims)}
+    return {'result':'PASS' if all(checks.values()) else 'FAIL','checks':checks,'exe_info':exe_identity.info(data),'instructions':sum(map(len,decoded.values())),'claims':len(claims)}
 def verify():
     claims,anchored=shared.other_claims(ROOT/'src/proxy',SOURCE)
     return inspect(common.DEFAULT_EXE.read_bytes(),decode(),SOURCE.read_text(),claims,anchored)

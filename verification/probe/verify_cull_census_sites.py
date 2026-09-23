@@ -30,6 +30,8 @@ import struct
 import subprocess
 from pathlib import Path
 
+import exe_identity  # structure + anchors gate; hashes are INFO (docs/reverse-engineering/executable-identity.md)
+
 import verify_chase_aim_sites as common
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -223,7 +225,7 @@ def inspect(data, instructions, core_text):
     _, _, d_slot_writers, model_slot_writers = writers(instructions, *FUNCTION)
     starts = {i.va for i in instructions}
     checks = {
-        'exe_identity': hashlib.sha256(data).hexdigest() == common.EXPECTED_SHA256 and len(data) == common.EXPECTED_SIZE,
+        'exe_identity': exe_identity.identity_ok(data),
         'preferred_base': image.image_base == common.IMAGE_BASE,
         'measure_window_bytes': image.read(MEASURE_WINDOW_VA, len(MEASURE_WINDOW)) == MEASURE_WINDOW,
         'exit_window_bytes': image.read(EXIT_WINDOW_VA, len(EXIT_WINDOW)) == EXIT_WINDOW,
@@ -252,7 +254,7 @@ def inspect(data, instructions, core_text):
         'encoders': len(encode_measure_stub(0x10000000, 0x10002000, 0x10001000, 0x10000030)) == MEASURE_STUB_LENGTH
                     and len(encode_exit_stub(0x10000100, 0x10002000, 0x10001100, 0x10000120)) == EXIT_STUB_LENGTH,
     }
-    return {'result': 'PASS' if all(checks.values()) else 'FAIL', 'checks': checks,
+    return {'result': 'PASS' if all(checks.values()) else 'FAIL', 'checks': checks, 'exe_info': exe_identity.info(data),
             'measure_site': hex(MEASURE_SITE_VA), 'exit_site': hex(EXIT_SITE_VA),
             'measure_sources': [hex(a) for a in sources(MEASURE_SITE_VA)], 'exit_sources': [hex(a) for a in sources(EXIT_SITE_VA)],
             'interior_branches': [(hex(a), hex(t)) for a, t in interior(MEASURE_SITE_VA) + interior(EXIT_SITE_VA)],

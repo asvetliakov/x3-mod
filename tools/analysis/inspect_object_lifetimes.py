@@ -9,8 +9,12 @@ import hashlib
 import json
 from pathlib import Path
 import struct
+import sys
 
-EXPECTED_SHA256 = 'fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab'
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'verification' / 'probe'))
+import exe_identity  # noqa: E402  structure + anchors gate; the hash is INFO (docs/reverse-engineering/executable-identity.md)
+
+EXPECTED_SHA256 = exe_identity.SHIPPED_SHA256  # provenance only
 SITES = (
     ('renderer_scene_deserialize', 0x40508d, 0x47a720),
     ('restore_node_handle', 0x47a6ad, 0x4efbf0),
@@ -34,8 +38,8 @@ CENTRAL_BOUNDARIES = (
 def inspect(path):
     data = path.read_bytes()
     digest = hashlib.sha256(data).hexdigest()
-    if len(data) != 2153984 or digest != EXPECTED_SHA256:
-        raise ValueError('Executable size/hash is not the reviewed X3AP version')
+    if not exe_identity.identity_ok(data):
+        raise ValueError('Executable structure/anchors are not the reviewed X3AP image')
     pe = struct.unpack_from('<I', data, 0x3c)[0]
     if data[:2] != b'MZ' or data[pe:pe+4] != b'PE\0\0':
         raise ValueError('Invalid PE signatures')
@@ -76,7 +80,7 @@ def inspect(path):
         central.append(dict(name=name, function_entry_va=f'{entry:08x}', hook_va=f'{hook:08x}',
             hook_rva=f'{hook-base:08x}', displaced_bytes=expected, resume_va=f'{hook+size:08x}',
             reviewed_region_bytes=end-entry, reviewed_region_sha256=hashlib.sha256(at(entry,end-entry)).hexdigest()))
-    return dict(executable=path.name, bytes=len(data), sha256=digest, preferred_base=f'{base:08x}',
+    return dict(executable=path.name, bytes=len(data), sha256=digest, exe_info=exe_identity.info(data), preferred_base=f'{base:08x}',
                 sites=sites, central_boundaries=central,
                 limitation='Static callsite/ABI candidates; no live hook or coverage validation.')
 

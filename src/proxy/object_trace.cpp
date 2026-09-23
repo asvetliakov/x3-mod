@@ -1,6 +1,6 @@
 #include "object_trace.h"
 #include "engine_memory.h"
-#include <wincrypt.h>
+#include "executable_identity.h"
 #include <excpt.h>
 #include <array>
 #include <cstring>
@@ -116,36 +116,24 @@ bool patch(void* site,void* target) {
     ++session;observation.store(true);state="active";return true;
 }
 
-bool fingerprint(HMODULE module) {
-    wchar_t path[32768];const DWORD length=GetModuleFileNameW(module,path,32768);
-    if(!length||length>=32768)return false;
-    HANDLE file=CreateFileW(path,GENERIC_READ,FILE_SHARE_READ,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
-    if(file==INVALID_HANDLE_VALUE)return false;
-    LARGE_INTEGER size{};HCRYPTPROV provider=0;HCRYPTHASH hash=0;
-    bool ok=GetFileSizeEx(file,&size)&&size.QuadPart==2153984&&
-        CryptAcquireContextW(&provider,nullptr,nullptr,PROV_RSA_AES,CRYPT_VERIFYCONTEXT)&&
-        CryptCreateHash(provider,CALG_SHA_256,0,0,&hash);
-    unsigned char buffer[16384];DWORD count=0;
-    while(ok){if(!ReadFile(file,buffer,sizeof buffer,&count,nullptr)){ok=false;break;}if(!count)break;ok=CryptHashData(hash,buffer,count,0)!=FALSE;}
-    unsigned char digest[32]{};DWORD digest_size=sizeof digest;
-    static constexpr unsigned char expected[]={0xfd,0xbf,0x34,0x18,0xd8,0xf0,0xa8,0x97,0xb5,0x8a,0x0b,0xbb,0x44,0x9b,0x23,0xf5,0x98,0x13,0x5b,0xa6,0xaa,0x9e,0xa4,0xec,0xa6,0x6d,0xf3,0x3a,0xdd,0x34,0xf8,0xab};
-    ok=ok&&CryptGetHashParam(hash,HP_HASHVAL,digest,&digest_size,0)&&digest_size==32&&!std::memcmp(digest,expected,32);
-    if(hash)CryptDestroyHash(hash);
-    if(provider)CryptReleaseContext(provider,0);
-    CloseHandle(file);return ok;
-}
-// The exact-executable identity: preferred base, PE headers of the expected
-// image extent and the SHA-256 of the file on disk. Evaluated once per process
-// (the hash reads 2 MB); shared with every module that reads engine globals.
+// The executable identity (executable_identity.h,
+// docs/reverse-engineering/executable-identity.md): the mapped headers and
+// section table at the preferred base, one whole-instruction anchor per engine
+// global the proxy reads, and the file size on disk. No file hash: the LAA bit
+// and the PE CheckSum are free, so the 4GB-patched image verifies. Each hook
+// still compares its own site bytes before it writes. Evaluated once per
+// process (about 40 short reads and one GetFileSizeEx); shared with every
+// module that reads engine globals.
 bool verified_image() {
-    static int cached=-1;
-    if(cached>=0)return cached==1;
+    // Racing first callers compute the same value; the atomic makes the publish well-defined.
+    static std::atomic<int> cached{-1};
+    const int known=cached.load(std::memory_order_acquire);
+    if(known>=0)return known==1;
     HMODULE module=GetModuleHandleW(nullptr);
-    IMAGE_DOS_HEADER dos{};IMAGE_NT_HEADERS32 nt{};
-    const uintptr_t base=reinterpret_cast<uintptr_t>(module);
-    const bool valid=base==0x400000&&read_memory(base,&dos,sizeof dos)&&dos.e_magic==IMAGE_DOS_SIGNATURE&&dos.e_lfanew>0&&dos.e_lfanew<0x1000&&
-        read_memory(base+dos.e_lfanew,&nt,sizeof nt)&&nt.Signature==IMAGE_NT_SIGNATURE&&nt.FileHeader.Machine==IMAGE_FILE_MACHINE_I386&&nt.OptionalHeader.Magic==IMAGE_NT_OPTIONAL_HDR32_MAGIC&&nt.OptionalHeader.SizeOfImage>0x208b40&&fingerprint(module);
-    cached=valid?1:0;
+    const bool valid=reinterpret_cast<uintptr_t>(module)==executable_identity::image_base&&
+        executable_identity::known_structure(read_memory)&&executable_identity::anchors_match(read_memory)&&
+        executable_identity::known_file_size(module);
+    cached.store(valid?1:0,std::memory_order_release);
     return valid;
 }
 }
@@ -154,6 +142,12 @@ bool executable_verified() {
     const bool valid=verified_image();
     SetLastError(error);
     return valid;
+}
+bool large_address_aware() {
+    const DWORD error=GetLastError();
+    const bool laa=executable_identity::large_address_aware(reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr)),read_memory);
+    SetLastError(error);
+    return laa;
 }
 bool initialize() {
     const DWORD error=GetLastError();

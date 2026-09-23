@@ -29,7 +29,7 @@ inline float sqrt_no_x87(float v) noexcept {
     return std::sqrt(v);
 #endif
 }
-// ---- Sites (preferred base 0x00400000; X3AP.exe SHA-256 fdbf3418...f8ab) ----
+// ---- Sites (preferred base 0x00400000; X3AP.exe per executable_identity.h, shipped SHA-256 fdbf3418...f8ab) ----
 constexpr std::uintptr_t probe_site_va = 0x00471630, probe_target_va = 0x00488720;
 constexpr std::uintptr_t lens_site_va = 0x00472491, lens_target_va = 0x0047e6e0;
 // Whole instructions around the probe call, from 0x0047162a: mov ecx,[esp+0x14]; push ecx;

@@ -1,5 +1,6 @@
 #include "object_lifetime.h"
 #include "engine_memory.h"
+#include "executable_identity.h"
 #include <wincrypt.h>
 #include <excpt.h>
 #include <array>
@@ -382,25 +383,6 @@ bool digest_bytes(const void* bytes,DWORD size,const char* expected){
     if(provider)CryptReleaseContext(provider,0);
     return ok;
 }
-bool fingerprint(HMODULE module){
-    wchar_t path[32768];const DWORD length=GetModuleFileNameW(module,path,32768);
-    if(!length || length>=32768)return false;
-    HANDLE file=CreateFileW(path,GENERIC_READ,FILE_SHARE_READ,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
-    if(file==INVALID_HANDLE_VALUE)return false;
-    LARGE_INTEGER size{};HCRYPTPROV provider=0;HCRYPTHASH hash=0;
-    bool ok=GetFileSizeEx(file,&size) && size.QuadPart==2153984 &&
-        CryptAcquireContextW(&provider,nullptr,nullptr,PROV_RSA_AES,CRYPT_VERIFYCONTEXT) && CryptCreateHash(provider,CALG_SHA_256,0,0,&hash);
-    unsigned char data[16384];DWORD count=0;
-    while(ok){if(!ReadFile(file,data,sizeof data,&count,nullptr)){ok=false;break;}if(!count)break;ok=CryptHashData(hash,data,count,0)!=FALSE;}
-    unsigned char digest[32]{};DWORD digest_size=32;
-    constexpr char expected[]="fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab";
-    ok=ok && CryptGetHashParam(hash,HP_HASHVAL,digest,&digest_size,0) && digest_size==32;
-    if(ok)for(unsigned i=0;i<32;++i){constexpr char hex[]="0123456789abcdef";
-        if(expected[2*i]!=hex[digest[i]>>4] || expected[2*i+1]!=hex[digest[i]&15]){ok=false;break;}}
-    if(hash)CryptDestroyHash(hash);
-    if(provider)CryptReleaseContext(provider,0);
-    CloseHandle(file);return ok;
-}
 bool code_fingerprints(std::uintptr_t base){
     struct Region {unsigned rva,size;const char* hash;};
     constexpr Region regions[]={
@@ -424,13 +406,12 @@ bool initialize(){
     if(GetEnvironmentVariableW(L"X3M_OBJECT_LIFETIME",setting,4)!=1 || setting[0]!=L'1'){
         diagnostic="disabled";SetLastError(error);return false;
     }
+    // The shared executable identity (executable_identity.h: structure, global
+    // anchors, file size; no file hash, so the 4GB-patched image verifies) and
+    // this observer's own site fingerprints before anything is patched.
     const auto module=GetModuleHandleW(nullptr);const auto base=reinterpret_cast<std::uintptr_t>(module);
-    IMAGE_DOS_HEADER dos{};IMAGE_NT_HEADERS32 nt{};
-    const bool valid=base==0x400000 && read_memory(base,&dos,sizeof dos) && dos.e_magic==IMAGE_DOS_SIGNATURE &&
-        dos.e_lfanew>0 && dos.e_lfanew<0x1000 && read_memory(base+dos.e_lfanew,&nt,sizeof nt) &&
-        nt.Signature==IMAGE_NT_SIGNATURE && nt.FileHeader.Machine==IMAGE_FILE_MACHINE_I386 &&
-        nt.OptionalHeader.Magic==IMAGE_NT_OPTIONAL_HDR32_MAGIC && nt.OptionalHeader.SizeOfImage>0x208518 &&
-        fingerprint(module) && code_fingerprints(base);
+    const bool valid=base==executable_identity::image_base && executable_identity::known_structure(read_memory) &&
+        executable_identity::anchors_match(read_memory) && executable_identity::known_file_size(module) && code_fingerprints(base);
     bool result=false;
     if(valid)result=install({reinterpret_cast<void*>(base+0xefbf0),reinterpret_cast<void*>(base+0xefd39),
         reinterpret_cast<void*>(base+0xefe10),reinterpret_cast<void*>(base+0x508d),reinterpret_cast<void*>(base+0x7a720),base+0x208518},MaxEntries,0,0);

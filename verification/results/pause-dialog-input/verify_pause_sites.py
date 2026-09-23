@@ -14,13 +14,15 @@ import hashlib, json, os, re, shutil, struct, subprocess, sys, tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / "verification/probe"))
+import exe_identity  # noqa: E402  structure + anchors gate; the hash is INFO (docs/reverse-engineering/executable-identity.md)
 CORE = ROOT / "src/proxy/pause_key_only_core.h"
 DEFAULT_KEY, MAX_KEY = 0x1B5, 0x1FFF
 WINDOW_VA, WINDOW_LEN = 0x004043A0, 79
 INSTALL_RE = re.compile(r"\bpause_key_only patched=(?P<patched>[01]) key=(?P<key>0x[0-9a-f]+) reason=(?P<reason>[a-z_]+) "
                         r"requested=(?P<requested>[01]) site=(?P<site>0x[0-9a-f]{8}) write=(?P<write>none|atomic|plain)\s*$")
 
-EXE_SHA = "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab"
+EXE_SHA = exe_identity.SHIPPED_SHA256  # provenance only
 DEFAULT = os.path.expanduser("~/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe")
 OBJDUMP = "i686-w64-mingw32-objdump"
 
@@ -132,8 +134,8 @@ def main():
             if sva <= va < sva + rs:
                 return b[va - sva + ra: va - sva + ra + n]
         return None
-    res = {"exe": os.path.basename(exe), "sha256": hashlib.sha256(b).hexdigest()}
-    res["sha256_ok"] = res["sha256"] == EXE_SHA
+    res = {"exe": os.path.basename(exe), "sha256": hashlib.sha256(b).hexdigest(), "exe_info": exe_identity.info(b)}
+    res["exe_identity_ok"] = exe_identity.identity_ok(b)
     res["sites"] = {k: rd(va, len(bytes.fromhex(h))) == bytes.fromhex(h) for k, (va, h) in SITES.items()}
 
     # Native command dispatcher 0x00406de0: case = param-3 via byte map 0x004077a8, dword table 0x0040770c.
@@ -223,7 +225,7 @@ def main():
     dll_ok = (core is not None and dll["window_matches_image"] and dll["original_matches_note"] and dll["default_key_bytes_match_note"]
               and all(v.get("ok") for v in dll["keys"].values()))
 
-    ok = (dll_ok and res["sha256_ok"] and all(res["sites"].values()) and res["native9_name"] == "X2_SetPause"
+    ok = (dll_ok and res["exe_identity_ok"] and all(res["sites"].values()) and res["native9_name"] == "X2_SetPause"
           and res["native9_target"] == "0x40705d" and res["dik_map"]["DIK_PAUSE(0xc5)"] == "0x1b5"
           and res["bit0_clear_sites"] == ["4043e3"] and not res["wait_fn_bad_opcode"]
           and not hits and res["aligned_dword_refs_into_patch_span"] == 0 and res["patch_old_matches"]

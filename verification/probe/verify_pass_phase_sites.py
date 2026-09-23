@@ -17,11 +17,12 @@ production site table (src/proxy/pass_phase_sites.h) is checked when present.
 No Wine or game launch.
 """
 import argparse
-import hashlib
 import json
 import struct
 import subprocess
 from pathlib import Path
+
+import exe_identity  # structure + anchors gate; hashes are INFO (docs/reverse-engineering/executable-identity.md)
 
 import verify_chase_aim_sites as common
 
@@ -199,9 +200,9 @@ def verify(exe=DEFAULT_EXE, source=SOURCE):
         report = inspect(common.Image(data), decode(exe), text, data)
     except (ValueError, OSError, struct.error, subprocess.SubprocessError) as error:
         return {'result': 'FAIL', 'checks': {'decode': False}, 'error': str(error)}
-    report['checks']['exe_identity'] = (hashlib.sha256(data).hexdigest() == common.EXPECTED_SHA256
-                                        and len(data) == common.EXPECTED_SIZE)
-    report['exe_sha256'] = hashlib.sha256(data).hexdigest()
+    report['checks']['exe_identity'] = exe_identity.identity_ok(data)
+    report['exe_info'] = exe_identity.info(data)
+    report['exe_sha256'] = report['exe_info']['sha256']
     report['result'] = 'PASS' if all(report['checks'].values()) else 'FAIL'
     return report
 

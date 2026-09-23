@@ -15,7 +15,7 @@ Analyzed 2026-09-10, read-only, from the installed Steam bottle's `drive_c/X3/X3
 | Characteristics | 32-bit, large address aware, relocations stripped |
 | Linker version | 8.0 |
 
-All addresses below are preferred virtual addresses for **this hash only**. They are research anchors, not approved executable patches. The initial implementation can intercept COM calls without patching them.
+The proxy does not gate on this hash: the identity is the PE structure plus verified sites, with the LAA bit and CheckSum free (`executable-identity.md`, which also lists the LAA-cleared and 4GB-patch hashes). All addresses below are preferred virtual addresses for **this image**. They are research anchors, not approved executable patches. The initial implementation can intercept COM calls without patching them.
 
 ## Graphics imports
 

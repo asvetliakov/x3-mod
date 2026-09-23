@@ -4,7 +4,8 @@
 #include "object_trace.h"
 #include <cstring>
 
-// Sites (X3AP.exe SHA-256 fdbf3418…, preferred base 0x00400000), bytes verified
+// Sites (X3AP.exe as identified by executable_identity.h, preferred base
+// 0x00400000; the shipped file is SHA-256 fdbf3418…), bytes verified
 // against the installed executable and Ghidra listings on 2026-09-12
 // (docs/reverse-engineering/loading-probes.md). `length` covers whole
 // instructions with no relative branch; `ret_pop` is the callee's `ret n`.

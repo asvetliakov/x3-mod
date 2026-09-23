@@ -31,6 +31,8 @@ import struct
 import subprocess
 from pathlib import Path
 
+import exe_identity  # structure + anchors gate; hashes are INFO (docs/reverse-engineering/executable-identity.md)
+
 import verify_chase_aim_sites as common
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -168,7 +170,7 @@ def inspect(data, instructions, core_text):
     ret = by_va.get(RET_VA)
     claim = (SITE_VA, SITE_VA + 5)
     checks = {
-        'exe_identity': hashlib.sha256(data).hexdigest() == common.EXPECTED_SHA256 and len(data) == common.EXPECTED_SIZE,
+        'exe_identity': exe_identity.identity_ok(data),
         'preferred_base': image.image_base == common.IMAGE_BASE,
         'window_bytes': image.read(WINDOW_VA, len(WINDOW)) == WINDOW,
         'window_whole_instructions': [i.va for i in instructions if WINDOW_VA <= i.va < window_end] == WINDOW_INSTRUCTIONS and by_va.get(window_end) is not None,
@@ -194,7 +196,7 @@ def inspect(data, instructions, core_text):
         'threshold_rule': (threshold_for(2, struct.unpack('<f', struct.pack('<I', 0x3f4ccccc))[0], 1280), threshold_for(4, struct.unpack('<f', struct.pack('<I', 0x3f4ccccc))[0], 1280),
                            threshold_for(8, struct.unpack('<f', struct.pack('<I', 0x3f4ccccc))[0], 1280)) == (3, 6, 11),
     }
-    return {'result': 'PASS' if all(checks.values()) else 'FAIL', 'checks': checks, 'site': hex(SITE_VA), 'cull': hex(CULL_VA),
+    return {'result': 'PASS' if all(checks.values()) else 'FAIL', 'checks': checks, 'exe_info': exe_identity.info(data), 'site': hex(SITE_VA), 'cull': hex(CULL_VA),
             'site_sources': [hex(a) for a in sources], 'interior_branches': [(hex(a), hex(t)) for a, t in interior],
             'other_claims': {k: hex(a) for k, (a, _) in OTHER_CLAIMS.items()},
             'function_instructions': len(instructions), 'exe_sha256': hashlib.sha256(data).hexdigest()}

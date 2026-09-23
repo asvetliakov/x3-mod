@@ -16,6 +16,8 @@ import re
 import subprocess
 from pathlib import Path
 
+import exe_identity  # structure + anchors gate; hashes are INFO (docs/reverse-engineering/executable-identity.md)
+
 import verify_collide_sites as sites
 
 common = sites.common
@@ -202,7 +204,7 @@ def inspect(data, decoded, core_text, claims):
     calls_out = sorted({t for i in collider if i.mnemonic == 'call' and not ALLOCATOR[0] <= i.va < ALLOCATOR[1] for t in [target(i)] if t is not None and not COLLIDER[0] <= t < COLLIDER[1]})
     helpers = [i for bounds in HELPERS for i in decoded[bounds]]
     checks = {
-        'exe_identity': hashlib.sha256(data).hexdigest() == common.EXPECTED_SHA256 and len(data) == common.EXPECTED_SIZE,
+        'exe_identity': exe_identity.identity_ok(data),
         'preferred_base': image.image_base == common.IMAGE_BASE,
         'windows': image.read(SITE - len(PRE_WINDOW), len(PRE_WINDOW)) == PRE_WINDOW and image.read(RETURN, len(POST_WINDOW)) == POST_WINDOW,
         'site_whole_call': SITE in by_caller and by_caller[SITE].mnemonic == 'call' and len(by_caller[SITE].raw) == 5 and target(by_caller[SITE]) == TARGET and RETURN in by_caller,
@@ -250,7 +252,7 @@ def inspect(data, decoded, core_text, claims):
         'census_windows_disjoint': not any(lo < RETURN + len(POST_WINDOW) and SITE - len(PRE_WINDOW) < hi for lo, hi in sites.narrow_own_windows() + sites.sat_own_windows()),
         'source_constants': source_constants(core_text) == EXPECTED_CONSTANTS,
     }
-    return {'result': 'PASS' if all(checks.values()) else 'FAIL', 'checks': checks, 'site': hex(SITE), 'target': hex(TARGET), 'other_claims_checked': len(claims),
+    return {'result': 'PASS' if all(checks.values()) else 'FAIL', 'checks': checks, 'exe_info': exe_identity.info(data), 'site': hex(SITE), 'target': hex(TARGET), 'other_claims_checked': len(claims),
             'overlaps': overlaps(claims), 'globals_named': len(named), 'exe_sha256': hashlib.sha256(data).hexdigest()}
 
 

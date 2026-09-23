@@ -16,11 +16,18 @@ struct Snapshot {
     uint32_t parent=0, alpha13c=0; // capture-only copies from the existing node read
     uint32_t world[16]{}, world_basis[16]{}, view[16]{}, projection[16]{};
 };
-bool initialize(); // X3M_OBJECT_TRACE=1, exact executable SHA256 + code/site checks
-// Exact-executable identity alone (base 0x400000, PE headers, file SHA-256),
+bool initialize(); // X3M_OBJECT_TRACE=1, executable identity + callsite bytes
+// Executable identity alone (executable_identity.h: base 0x400000, PE headers
+// and section table with the LAA bit and CheckSum free, one whole-instruction
+// anchor per engine global the proxy reads, file size; no file hash),
 // evaluated once per process and cached. Shared by every module that reads
-// engine globals; true never implies the callsite patch is installed.
+// engine globals; each hook still checks its own site bytes. true never
+// implies the callsite patch is installed. LastError preserved.
 bool executable_verified();
+// IMAGE_FILE_LARGE_ADDRESS_AWARE of the main module's mapped headers (the
+// value the loader acted on); false when unreadable. Provenance only, never a
+// gate; logged once in the proxy_identity line. LastError preserved.
+bool large_address_aware();
 bool active(); // observation enabled; not synonymous with code ownership
 bool recovery_required(); // owned code/protection still needs quiescent restoration
 const char* status(); // static diagnostic string; initialize once, then read

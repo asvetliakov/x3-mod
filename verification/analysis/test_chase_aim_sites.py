@@ -60,7 +60,7 @@ def verify_synthetic(data):
     # hands objdump only a headerless code window, because Microsoft Defender
     # for Endpoint classifies these synthetic PE images as
     # Trojan:Win32/Wacatac.C!ml and quarantines them mid-run.
-    return probe.verify_path(data, sha256=probe.EXPECTED_SHA256)
+    return probe.verify_path(data)
 
 
 class SourceParity(unittest.TestCase):

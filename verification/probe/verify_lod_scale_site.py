@@ -18,6 +18,8 @@ import struct
 import subprocess
 from pathlib import Path
 
+import exe_identity  # structure + anchors gate; hashes are INFO (docs/reverse-engineering/executable-identity.md)
+
 import verify_chase_aim_sites as common
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -77,7 +79,7 @@ def inspect(data, instructions, core_text):
     following = by_va.get(NEXT_VA)
     constants = source_constants(core_text)
     checks = {
-        'exe_identity': hashlib.sha256(data).hexdigest() == common.EXPECTED_SHA256 and len(data) == common.EXPECTED_SIZE,
+        'exe_identity': exe_identity.identity_ok(data),
         'preferred_base': image.image_base == common.IMAGE_BASE,
         'window_bytes': image.read(WINDOW_VA, len(WINDOW)) == WINDOW,
         'site_whole_instruction': site is not None and site.raw == SITE and site.mnemonic == 'fmul' and '0x760' in site.operands,
@@ -89,7 +91,7 @@ def inspect(data, instructions, core_text):
                                           'config_pointer_va': 0x606f34, 'config_scale_offset': 0x760, 'window': WINDOW},
         'replacement_length': len(encode_replacement(0)) == len(SITE),
     }
-    return {'result': 'PASS' if all(checks.values()) else 'FAIL', 'checks': checks, 'site': hex(SITE_VA),
+    return {'result': 'PASS' if all(checks.values()) else 'FAIL', 'checks': checks, 'exe_info': exe_identity.info(data), 'site': hex(SITE_VA),
             'exe_sha256': hashlib.sha256(data).hexdigest()}
 
 

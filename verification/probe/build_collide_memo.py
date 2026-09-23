@@ -18,6 +18,7 @@ import subprocess
 from pathlib import Path
 from run_chase_aim_trace import FLAGS
 import verify_collide_memo_site as site
+import exe_identity  # structure + anchors gate; the hash is INFO (docs/reverse-engineering/executable-identity.md)
 sites = site.sites
 ROOT = Path(__file__).resolve().parents[2]
 BUILD = ROOT / 'build/verification/collide-memo'
@@ -108,8 +109,8 @@ def audit_absolute_memory(rows, ranges):
 def engine_fragment(exe=sites.DEFAULT_EXE):
     data = Path(exe).read_bytes()
     image = site.common.Image(data)
-    if hashlib.sha256(data).hexdigest() != site.common.EXPECTED_SHA256 or site.body_hashes(image) != site.HASHES:
-        raise RuntimeError('engine bytes do not match the pinned hashes')
+    if not exe_identity.identity_ok(data) or site.body_hashes(image) != site.HASHES:
+        raise RuntimeError('engine bytes do not match the executable identity or the pinned body hashes')
     audit = audit_absolute_memory(reachable_engine_instructions(exe, image, RANGES), RANGES)
     blob, rows = b'', []
     for va, length in RANGES:

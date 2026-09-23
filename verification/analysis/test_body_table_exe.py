@@ -23,7 +23,7 @@ from verification.analysis.test_chase_aim_sites import synthetic_image  # noqa: 
 
 CORE = ROOT / 'src/proxy/cull_census_core.h'
 
-# (va, bytes, instruction) in the installed EXE (common.EXPECTED_SHA256).
+# (va, bytes, instruction) in the installed EXE (exe_identity.identity_ok).
 PATTERNS = (
     # 0x0046d910: body manager init
     (0x46d912, '8b3d18856000', 'mov edi,[0x00608518]'),
@@ -106,9 +106,9 @@ class BodyTableExe(unittest.TestCase):
 
     @unittest.skipUnless(common.DEFAULT_EXE.is_file(), 'installed executable not present')
     def test_installed_executable(self):
-        import hashlib
+        import exe_identity
         data = common.image_bytes(common.DEFAULT_EXE)
-        self.assertEqual(hashlib.sha256(data).hexdigest(), common.EXPECTED_SHA256)
+        self.assertTrue(exe_identity.identity_ok(data))  # structure + anchors; the raw hash is INFO only
         self.assertEqual([hex(va) for va, ok in inspect(data).items() if not ok], [])
 
 

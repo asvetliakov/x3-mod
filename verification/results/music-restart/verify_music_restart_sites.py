@@ -19,7 +19,10 @@ from pathlib import Path
 
 EXE = Path(os.environ.get('X3AP_EXE', Path.home() /
            'Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe'))
-SHA256 = 'fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab'
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'verification' / 'probe'))
+import exe_identity  # noqa: E402  structure + anchors gate; the hash is INFO (docs/reverse-engineering/executable-identity.md)
+
+SHA256 = exe_identity.SHIPPED_SHA256  # provenance only
 TEXT_VA, TEXT_RAW, TEXT_SIZE = 0x401000, 0x400, 1247232
 
 # (name, VA, hex bytes)
@@ -103,8 +106,8 @@ def main():
         return text[va - TEXT_VA:va - TEXT_VA + n]
 
     failures = []
-    if sha != SHA256:
-        failures.append('sha256')
+    if not exe_identity.identity_ok(data):
+        failures.append('exe_identity')
     for name, va, hexbytes in PATTERNS:
         want = bytes.fromhex(hexbytes)
         if rd(va, len(want)) != want:
@@ -158,7 +161,7 @@ def main():
     if any(literal.values()):
         failures.append('literal_refs')
     result = {
-        'exe_sha256': sha, 'patterns': len(PATTERNS), 'table_entries': len(TABLE_ENTRIES), 'commands': len(COMMANDS),
+        'exe_sha256': sha, 'exe_info': exe_identity.info(data), 'patterns': len(PATTERNS), 'table_entries': len(TABLE_ENTRIES), 'commands': len(COMMANDS),
         'direct_callers': {hex(t): v for t, v in callers.items()},
         'literal_dword_refs': literal,
         'raw_branch_into_hook_site_interior': {hex(s): v for s, v in interior.items()},

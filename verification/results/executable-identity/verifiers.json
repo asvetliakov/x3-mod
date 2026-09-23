@@ -1,0 +1,800 @@
+{
+ "commit": "70cd9d92e13096541332c9a27d1ef2aebf7f6a31-dirty",
+ "anchors": 41,
+ "shipped": {
+  "info": {
+   "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+   "known": "shipped (LAA set, CheckSum 0)",
+   "bytes": 2153984,
+   "laa": true,
+   "checksum": "0x00000000",
+   "identity_digest": "9d8ddf43f06031f4fb21e5e700d55a2df8881c76bd8c5ce4a9af0866d6dc38c8",
+   "known_image": true
+  },
+  "verifiers": {
+   "exe_identity": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "shipped (LAA set, CheckSum 0)"
+   },
+   "verify_chase_camera_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "shipped (LAA set, CheckSum 0)"
+   },
+   "verify_chase_aim_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_chase_lead_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "shipped (LAA set, CheckSum 0)"
+   },
+   "verify_collide_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "shipped (LAA set, CheckSum 0)"
+   },
+   "verify_point_light_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "shipped (LAA set, CheckSum 0)"
+   },
+   "verify_collide_memo_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "shipped (LAA set, CheckSum 0)"
+   },
+   "verify_cull_small_parts_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "shipped (LAA set, CheckSum 0)"
+   },
+   "verify_cull_census_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "shipped (LAA set, CheckSum 0)"
+   },
+   "verify_lod_scale_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "shipped (LAA set, CheckSum 0)"
+   },
+   "verify_game_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_frame_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_media_cue_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_loop_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_residual_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_pass_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_voice_dmo_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_submit_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_post_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_sun_occlusion_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "shipped (LAA set, CheckSum 0)"
+   },
+   "verify_light_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "shipped (LAA set, CheckSum 0)"
+   },
+   "pause": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "shipped (LAA set, CheckSum 0)"
+   },
+   "music_restart": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "shipped (LAA set, CheckSum 0)"
+   }
+  }
+ },
+ "laa_cleared": {
+  "info": {
+   "sha256": "9d8ddf43f06031f4fb21e5e700d55a2df8881c76bd8c5ce4a9af0866d6dc38c8",
+   "known": "LAA cleared (CheckSum 0)",
+   "bytes": 2153984,
+   "laa": false,
+   "checksum": "0x00000000",
+   "identity_digest": "9d8ddf43f06031f4fb21e5e700d55a2df8881c76bd8c5ce4a9af0866d6dc38c8",
+   "known_image": true
+  },
+  "verifiers": {
+   "exe_identity": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": false,
+    "known": "LAA cleared (CheckSum 0)"
+   },
+   "verify_chase_camera_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": false,
+    "known": "LAA cleared (CheckSum 0)"
+   },
+   "verify_chase_aim_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_chase_lead_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": false,
+    "known": "LAA cleared (CheckSum 0)"
+   },
+   "verify_collide_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": false,
+    "known": "LAA cleared (CheckSum 0)"
+   },
+   "verify_point_light_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": false,
+    "known": "LAA cleared (CheckSum 0)"
+   },
+   "verify_collide_memo_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": false,
+    "known": "LAA cleared (CheckSum 0)"
+   },
+   "verify_cull_small_parts_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": false,
+    "known": "LAA cleared (CheckSum 0)"
+   },
+   "verify_cull_census_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": false,
+    "known": "LAA cleared (CheckSum 0)"
+   },
+   "verify_lod_scale_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": false,
+    "known": "LAA cleared (CheckSum 0)"
+   },
+   "verify_game_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_frame_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_media_cue_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_loop_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_residual_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_pass_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_voice_dmo_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_submit_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_post_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_sun_occlusion_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": false,
+    "known": "LAA cleared (CheckSum 0)"
+   },
+   "verify_light_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": false,
+    "known": "LAA cleared (CheckSum 0)"
+   },
+   "pause": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": false,
+    "known": "LAA cleared (CheckSum 0)"
+   },
+   "music_restart": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": false,
+    "known": "LAA cleared (CheckSum 0)"
+   }
+  }
+ },
+ "ntcore_4gb": {
+  "info": {
+   "sha256": "5d6b741e7269b40e2a7df850fc274d593d0b39ac647e0b0205b64737c93190c3",
+   "known": "NTCore 4gb_patch.exe output (LAA set, CheckSum 0x0021bd66)",
+   "bytes": 2153984,
+   "laa": true,
+   "checksum": "0x0021bd66",
+   "identity_digest": "9d8ddf43f06031f4fb21e5e700d55a2df8881c76bd8c5ce4a9af0866d6dc38c8",
+   "known_image": true
+  },
+  "verifiers": {
+   "exe_identity": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "NTCore 4gb_patch.exe output (LAA set, CheckSum 0x0021bd66)"
+   },
+   "verify_chase_camera_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "NTCore 4gb_patch.exe output (LAA set, CheckSum 0x0021bd66)"
+   },
+   "verify_chase_aim_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_chase_lead_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "NTCore 4gb_patch.exe output (LAA set, CheckSum 0x0021bd66)"
+   },
+   "verify_collide_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "NTCore 4gb_patch.exe output (LAA set, CheckSum 0x0021bd66)"
+   },
+   "verify_point_light_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "NTCore 4gb_patch.exe output (LAA set, CheckSum 0x0021bd66)"
+   },
+   "verify_collide_memo_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "NTCore 4gb_patch.exe output (LAA set, CheckSum 0x0021bd66)"
+   },
+   "verify_cull_small_parts_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "NTCore 4gb_patch.exe output (LAA set, CheckSum 0x0021bd66)"
+   },
+   "verify_cull_census_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "NTCore 4gb_patch.exe output (LAA set, CheckSum 0x0021bd66)"
+   },
+   "verify_lod_scale_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "NTCore 4gb_patch.exe output (LAA set, CheckSum 0x0021bd66)"
+   },
+   "verify_game_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_frame_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_media_cue_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_loop_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_residual_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_pass_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_voice_dmo_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_submit_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_post_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_sun_occlusion_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "NTCore 4gb_patch.exe output (LAA set, CheckSum 0x0021bd66)"
+   },
+   "verify_light_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "NTCore 4gb_patch.exe output (LAA set, CheckSum 0x0021bd66)"
+   },
+   "pause": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "NTCore 4gb_patch.exe output (LAA set, CheckSum 0x0021bd66)"
+   },
+   "music_restart": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": "NTCore 4gb_patch.exe output (LAA set, CheckSum 0x0021bd66)"
+   }
+  }
+ },
+ "unknown_hash": {
+  "info": {
+   "sha256": "712693d9452a6144fe4aec404e5d7243e733000c2a57316e1e76ba3f17d2c8af",
+   "known": null,
+   "bytes": 2153984,
+   "laa": true,
+   "checksum": "0x00000000",
+   "identity_digest": "664ef2500c430db67d368f329b2e8a817f7ec9966c0de6512099d72233cdfda1",
+   "known_image": false
+  },
+  "verifiers": {
+   "exe_identity": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": null
+   },
+   "verify_chase_camera_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": null
+   },
+   "verify_chase_aim_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_chase_lead_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": null
+   },
+   "verify_collide_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": null
+   },
+   "verify_point_light_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": null
+   },
+   "verify_collide_memo_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": null
+   },
+   "verify_cull_small_parts_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": null
+   },
+   "verify_cull_census_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": null
+   },
+   "verify_lod_scale_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": null
+   },
+   "verify_game_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_frame_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_media_cue_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_loop_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_residual_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_pass_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_voice_dmo_site": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_submit_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_post_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": null,
+    "known": null
+   },
+   "verify_sun_occlusion_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": null
+   },
+   "verify_light_phase_sites": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": null
+   },
+   "pause": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": null
+   },
+   "music_restart": {
+    "result": "PASS",
+    "rc": 0,
+    "laa": true,
+    "known": null
+   }
+  }
+ },
+ "site_corrupt": {
+  "verify_chase_camera_site": {
+   "va": "0x00420e0f",
+   "identity_ok": true,
+   "result": "FAIL",
+   "rc": 1,
+   "laa": true,
+   "known": null
+  },
+  "verify_lod_scale_site": {
+   "va": "0x0047d44d",
+   "identity_ok": true,
+   "result": "FAIL",
+   "rc": 1,
+   "laa": true,
+   "known": null
+  }
+ },
+ "different_build": {
+  "identity_ok": false,
+  "verifiers": {
+   "exe_identity": {
+    "result": "FAIL",
+    "rc": 1,
+    "laa": true,
+    "known": null
+   },
+   "verify_chase_camera_site": {
+    "result": "FAIL",
+    "rc": 1,
+    "laa": true,
+    "known": null
+   },
+   "verify_chase_aim_sites": {
+    "result": "FAIL",
+    "rc": 1,
+    "laa": null,
+    "known": null
+   },
+   "verify_chase_lead_sites": {
+    "result": "FAIL",
+    "rc": 1,
+    "laa": true,
+    "known": null
+   },
+   "verify_collide_sites": {
+    "result": "FAIL",
+    "rc": 1,
+    "laa": true,
+    "known": null
+   },
+   "verify_point_light_site": {
+    "result": "FAIL",
+    "rc": 1,
+    "laa": true,
+    "known": null
+   },
+   "verify_collide_memo_site": {
+    "result": "FAIL",
+    "rc": 1,
+    "laa": true,
+    "known": null
+   },
+   "verify_cull_small_parts_site": {
+    "result": "FAIL",
+    "rc": 1,
+    "laa": true,
+    "known": null
+   },
+   "verify_cull_census_sites": {
+    "result": "FAIL",
+    "rc": 1,
+    "laa": true,
+    "known": null
+   },
+   "verify_lod_scale_site": {
+    "result": "FAIL",
+    "rc": 1,
+    "laa": true,
+    "known": null
+   },
+   "verify_game_phase_sites": {
+    "result": "FAIL",
+    "rc": 1,
+    "laa": null,
+    "known": null
+   },
+   "verify_frame_phase_sites": {
+    "result": "FAIL",
+    "rc": 1,
+    "laa": null,
+    "known": null
+   },
+   "verify_media_cue_site": {
+    "result": "FAIL",
+    "rc": 1,
+    "laa": null,
+    "known": null
+   },
+   "verify_loop_phase_sites": {
+    "result": "FAIL",
+    "rc": 1,
+    "laa": null,
+    "known": null
+   },
+   "verify_residual_phase_sites": {
+    "result": "FAIL",
+    "rc": 1,
+    "laa": null,
+    "known": null
+   },
+   "verify_pass_phase_sites": {
+    "result": "FAIL",
+    "rc": 1,
+    "laa": null,
+    "known": null
+   },
+   "verify_voice_dmo_site": {
+    "result": "FAIL",
+    "rc": 1,
+    "laa": null,
+    "known": null
+   },
+   "verify_submit_phase_sites": {
+    "result": "FAIL",
+    "rc": 1,
+    "laa": null,
+    "known": null
+   },
+   "verify_post_phase_sites": {
+    "result": "FAIL",
+    "rc": 1,
+    "laa": null,
+    "known": null
+   },
+   "verify_sun_occlusion_sites": {
+    "result": "FAIL",
+    "rc": 1,
+    "laa": true,
+    "known": null
+   },
+   "verify_light_phase_sites": {
+    "result": "FAIL",
+    "rc": 0,
+    "laa": true,
+    "known": null
+   },
+   "pause": {
+    "result": "FAIL",
+    "rc": 1,
+    "laa": true,
+    "known": null
+   },
+   "music_restart": {
+    "result": "FAIL",
+    "rc": 1,
+    "laa": true,
+    "known": null
+   }
+  }
+ },
+ "summary": {
+  "shipped": {
+   "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+   "known": "shipped (LAA set, CheckSum 0)",
+   "laa": true,
+   "pass": 23,
+   "total": 23
+  },
+  "laa_cleared": {
+   "sha256": "9d8ddf43f06031f4fb21e5e700d55a2df8881c76bd8c5ce4a9af0866d6dc38c8",
+   "known": "LAA cleared (CheckSum 0)",
+   "laa": false,
+   "pass": 23,
+   "total": 23
+  },
+  "ntcore_4gb": {
+   "sha256": "5d6b741e7269b40e2a7df850fc274d593d0b39ac647e0b0205b64737c93190c3",
+   "known": "NTCore 4gb_patch.exe output (LAA set, CheckSum 0x0021bd66)",
+   "laa": true,
+   "pass": 23,
+   "total": 23
+  },
+  "unknown_hash": {
+   "sha256": "712693d9452a6144fe4aec404e5d7243e733000c2a57316e1e76ba3f17d2c8af",
+   "known": null,
+   "laa": true,
+   "pass": 23,
+   "total": 23
+  }
+ },
+ "result": "PASS"
+}

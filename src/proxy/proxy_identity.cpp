@@ -1,8 +1,10 @@
 #include "proxy_identity.h"
 #include "capture.h"
+#include "object_trace.h"
 #include "x3m_source_commit_inc.h"
 #include <wincrypt.h>
 #include <algorithm>
+#include <cstdint>
 #include <cstring>
 #include <cwchar>
 #include <exception>
@@ -228,8 +230,8 @@ void log_identity(HMODULE self) {
     const DWORD saved=GetLastError();
     LARGE_INTEGER begin{},end{},frequency{};
     QueryPerformanceCounter(&begin); QueryPerformanceFrequency(&frequency);
-    std::string hex="unavailable",path_utf8="unknown",manifest="none",option_line,environment_line=" count=0";
-    unsigned long long bytes=0;
+    std::string hex="unavailable",path_utf8="unknown",manifest="none",option_line,environment_line=" count=0",exe_hex="unavailable";
+    unsigned long long bytes=0,exe_bytes=0;
     // Nothing may escape into initialize_log: a bad_alloc on the 32 KiB buffers
     // or the environment block costs the header, never the session.
     try {
@@ -248,11 +250,34 @@ void log_identity(HMODULE self) {
     } catch(const std::exception&) {
         hex="unavailable"; option_line.clear(); environment_line=" count=0";
     }
+    // attach_us keeps its pre-2026-09-23 scope (DLL hash, manifest, environment)
+    // so it stays comparable with older logs; the executable hash has its own cost.
     QueryPerformanceCounter(&end);
     const unsigned long long microseconds=frequency.QuadPart>0&&end.QuadPart>begin.QuadPart
         ?static_cast<unsigned long long>((end.QuadPart-begin.QuadPart)*1000000ll/frequency.QuadPart):0ull;
-    log("proxy_identity sha256=%s bytes=%llu path=%s manifest_sha256=%s source_commit=%s attach_us=%llu",
-        hex.c_str(),bytes,path_utf8.c_str(),manifest.c_str(),X3M_SOURCE_COMMIT,microseconds);
+    // The game executable's raw SHA-256: provenance only (the identity gate
+    // is structural, docs/reverse-engineering/executable-identity.md).
+    LARGE_INTEGER exe_begin{},exe_end{};
+    QueryPerformanceCounter(&exe_begin);
+    try {
+        std::wstring exe(32768,L'\0');
+        const DWORD exe_length=GetModuleFileNameW(nullptr,&exe[0],static_cast<DWORD>(exe.size()));
+        if(exe_length&&exe_length<exe.size()){
+            exe.resize(exe_length);
+            if(!hash_file(exe,exe_hex,exe_bytes)) exe_hex="unavailable";
+        }
+    } catch(const std::exception&) { exe_hex="unavailable"; }
+    QueryPerformanceCounter(&exe_end);
+    const unsigned long long exe_microseconds=frequency.QuadPart>0&&exe_end.QuadPart>exe_begin.QuadPart
+        ?static_cast<unsigned long long>((exe_end.QuadPart-exe_begin.QuadPart)*1000000ll/frequency.QuadPart):0ull;
+    const bool laa=object_trace::large_address_aware();
+    // The user address-space limit this process actually got (documented: 0x7ffeffff
+    // for a 32-bit process without LARGE_ADDRESS_AWARE, 0xfffeffff with it under WOW64).
+    SYSTEM_INFO system{};
+    GetSystemInfo(&system);
+    const unsigned long max_app=static_cast<unsigned long>(reinterpret_cast<std::uintptr_t>(system.lpMaximumApplicationAddress));
+    log("proxy_identity sha256=%s bytes=%llu path=%s manifest_sha256=%s source_commit=%s attach_us=%llu exe_sha256=%s exe_bytes=%llu exe_hash_us=%llu exe_laa=%d exe_max_app=%08lx",
+        hex.c_str(),bytes,path_utf8.c_str(),manifest.c_str(),X3M_SOURCE_COMMIT,microseconds,exe_hex.c_str(),exe_bytes,exe_microseconds,laa?1:0,max_app);
     log("proxy_options%s",option_line.c_str());
     log("proxy_environment%s",environment_line.c_str());
     SetLastError(saved);

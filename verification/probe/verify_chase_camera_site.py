@@ -3,7 +3,8 @@
 
 Mirrors what src/proxy/chase_camera.cpp will do in the process, on the file
 instead (docs/architecture/chase-camera.md, "Verification plan"): the exact
-executable identity (SHA-256, size), the ten bytes at 0x00420e06, the
+executable identity (exe_identity.py: structure and global anchors; the raw
+SHA-256 is INFO against the known list), the ten bytes at 0x00420e06, the
 relocated-prologue rules the trampoline relies on (whole instructions, exactly
 one relative branch and it is the declared jz whose rel32 the tail re-bases, no
 other branch in the function lands inside the displaced span), the cockpit
@@ -13,15 +14,16 @@ order the design depends on. Nothing is written; the game directory is only read
 usage: verify_chase_camera_site.py [--exe PATH] [--json]   (exit 0 = PASS)
 """
 import argparse
-import hashlib
 import json
 import struct
 import sys
 from pathlib import Path
 
+import exe_identity  # structure + anchors gate; hashes are INFO (docs/reverse-engineering/executable-identity.md)
+
 DEFAULT_EXE = Path.home() / 'Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe'
-EXPECTED_SHA256 = 'fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab'
-EXPECTED_SIZE = 2153984
+EXPECTED_SHA256 = exe_identity.SHIPPED_SHA256  # provenance only: reported as INFO, never a check
+EXPECTED_SIZE = exe_identity.FILE_SIZE
 IMAGE_BASE = 0x00400000
 SITE_VA = 0x00420e06
 SITE_BYTES = bytes.fromhex('837b54000f8409020000')
@@ -127,12 +129,12 @@ def branches_into(image, lo, hi, interior_lo, interior_hi):
     return hits
 
 
-def verify(data, sha256=None):
+def verify(data):
     report = {'result': 'FAIL', 'checks': {}}
     checks = report['checks']
-    digest = sha256 or hashlib.sha256(data).hexdigest()
-    checks['sha256'] = {'ok': digest == EXPECTED_SHA256, 'value': digest}
+    report['exe_info'] = exe_identity.info(data)  # INFO only
     checks['size'] = {'ok': len(data) == EXPECTED_SIZE, 'value': len(data)}
+    checks['exe_identity'] = {'ok': exe_identity.identity_ok(data)}
     try:
         image = Image(data)
     except (ValueError, struct.error) as e:
@@ -183,7 +185,8 @@ def main():
     if args.json:
         print(json.dumps(report, indent=2))
     else:
-        print(json.dumps({'result': report['result'], 'exe': report['exe'], **{k: v['ok'] for k, v in report['checks'].items()}}))
+        print(json.dumps({'result': report['result'], 'exe': report['exe'], 'exe_info': report['exe_info'],
+                          **{k: v['ok'] for k, v in report['checks'].items()}}))
     return 0 if report['result'] == 'PASS' else 1
 
 
