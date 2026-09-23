@@ -854,14 +854,17 @@ public:
     // against the union of that frame's derived rectangles. Off (0) costs
     // nothing per draw or per frame.
     void configure_fade_witness(unsigned frames) noexcept;
-    // Bolt footprint (docs/architecture/bolt-footprint.md, option A';
-    // X3M_BOLT_FOOTPRINT=R[,G]): a minimum on-screen half-extent of R px for
-    // every bullet instance of an admitted additive draw whose projected
-    // major half-extent is below the gate G, through a proxy-owned dynamic
-    // vertex buffer bound for that draw only. Process-start configuration;
-    // the caller has already required the additive route and the ownership
-    // Unlock scan. Invalid R/G leave the option off.
-    void configure_bolt_footprint(bool requested, float r_px, float g_px) noexcept;
+    // Bolt footprint (docs/architecture/bolt-footprint.md, option A' with the
+    // Run 73 B visibility rule; X3M_BOLT_FOOTPRINT=W[,L]): every bullet
+    // instance of an admitted additive draw narrower than W px is widened to
+    // W and shorter than L px lengthened to L along its projected axis, in the
+    // camera plane, through a proxy-owned dynamic vertex buffer bound for that
+    // draw only, and only while the chase camera applied its pose (the
+    // external back view; first person and every other view draw the game's
+    // bytes). Process-start configuration; the caller has already required
+    // the additive route and the ownership Unlock scan. Invalid W/L leave the
+    // option off.
+    void configure_bolt_footprint(bool requested, float w_px, float l_px) noexcept;
     bool bolt_footprint_requested() const noexcept { return bolt_footprint_requested_; }
     // Fade-band motion arm threshold (X3M_FADE_ROUTE=<permille>, default
     // 500; fade_route::threshold_off disables the arm): a reviewed pair drawn
@@ -1939,17 +1942,22 @@ private:
     // Reset and at detach, recreated after. A creation failure is final
     // until Reset. Counters: the 300-frame window line and the session.
     bool bolt_footprint_requested_ = false;
-    float bolt_footprint_r_ = bolt_footprint::default_half_extent, bolt_footprint_g_ = bolt_footprint::default_gate;
+    float bolt_footprint_w_ = bolt_footprint::default_min_width, bolt_footprint_l_ = bolt_footprint::default_min_length;
     std::unique_ptr<bolt_footprint::Plan[]> bolt_plans_;
     IDirect3DVertexBuffer9* bolt_vb_ = nullptr;
     UINT bolt_vb_bytes_ = 0;
     bool bolt_vb_failed_ = false;
     struct BoltCounters {
         std::uint32_t draws = 0, written = 0, untouched = 0, instances = 0, expanded = 0;
+        std::uint32_t lengthened = 0, widened = 0, world_axis = 0, disc = 0, gated = 0; // gated: outside the chase view, histogram only, never written
         std::uint32_t refused_shape = 0, refused_rows = 0, refused_buffer = 0, refused_period = 0, refused_w = 0, refused_recheck = 0, failures = 0, locks = 0, timed = 0;
         std::uint64_t ticks = 0;
     } bolt_window_{}, bolt_session_{};
     unsigned bolt_window_frames_ = 0, bolt_windows_ = 0;
+    // Pre-expansion size histograms of the window's instances, [0] in the
+    // chase view (the plan's axes), [1] in any other view (bounding box only).
+    bolt_footprint::Histogram bolt_hist_[2]{};
+    std::uint32_t chase_pose_mark_ = 0; // chase_camera::pose_write_count() at the last Present (the frame-stamped view gate)
     unsigned bolt_refusal_logged_ = 0; // bit per refusal reason already logged (one line each per device)
     float screen_additive_gain_ = 1.f;
     bool screen_additive_enabled_ = true; // Ctrl+Shift+F5 runtime A/B; the variant stays created
@@ -1971,6 +1979,18 @@ private:
     // Present, logged only with telemetry on): this frame's admitted and
     // refused draws and the bit mask of the nine table indices admitted.
     unsigned screen_additive_frame_admitted_ = 0, screen_additive_frame_refused_ = 0, screen_additive_frame_pairs_ = 0;
+    // 300-frame window of the additive route (screen_emission_additive_refused_window):
+    // every draw with an additive pair bound, admissions, refusals per reason
+    // (prepare_screen_additive's vocabulary) and apply failures; the rest of
+    // the pair draws never reached the route (routed, composed, fog-masked,
+    // not submitted, Ctrl+Shift+F5 off).
+    static constexpr unsigned screen_additive_reason_count = 10;
+    struct ScreenAdditiveWindow {
+        std::uint32_t pair_draws = 0, admitted = 0, apply_failures = 0;
+        std::uint32_t refused[screen_additive_reason_count]{};
+    } screen_additive_window_{};
+    unsigned screen_additive_window_frames_ = 0;
+    void log_screen_additive_window() noexcept;
     unsigned fade_route_threshold_ = 500; // per mille; fade_route::threshold_off = arm off
     fade_route::Hysteresis fade_hysteresis_; // per node identity; cleared at Reset
     // The last routed scene draw: node identity, lifetime serial, frame and

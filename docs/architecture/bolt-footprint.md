@@ -15,6 +15,13 @@ documented D3D9 only. The same fix also lifts the bolts out of the TAA
 resolve's attenuation, which is the second, so far unmeasured, half of their
 invisibility.
 
+**Superseded in part (Run 73 B, last section).** In run273 the R/G rule
+expanded 22 % of the chase-view instances of the second flight (664 of 3,084)
+and 16 % of the first-person ones (1,181 of 7,368); the built rule is now a visibility rule (full width
+below W = 3 px widened to W, full length below L = 12 px lengthened to L along
+the projected flight axis), written in the chase view only, with
+`--bolt-footprint W[,L]`.
+
 ## 1. Evidence
 
 Measured unless marked (paths under `verification/results/`):
@@ -241,6 +248,10 @@ so the halo appears without any clamp exception.
 
 ## Implementation (2026-09-23, option A′ as built)
 
+The rule, the option syntax and the telemetry fields below are the first
+build's; Run 73 B (last section) replaces them. Grouping, the substitute
+buffer, the camera-plane displacement and the refusals are unchanged.
+
 Code: `src/proxy/bolt_footprint_core.h` (the rule, header-only, no Windows/D3D,
 single-precision SSE only), `MotionOutput::prepare_bolt_footprint` /
 `finish_bolt_footprint` / `ensure_bolt_buffer` in `src/proxy/motion_output.cpp`,
@@ -378,3 +389,136 @@ enabled=0` and nothing runs. An explicit non-zero value implies
 route, so a plain launch keeps its native bullet blend (assumption: the
 ratified "implies" applies to the option as typed, not to the launcher
 default, which would otherwise change every `--hdr` launch's blend law).
+
+## Run 73 B: visibility rule, chase-view gate, telemetry (2026-09-23)
+
+User report on the Run73 DLL (`--bolt-footprint 3,8`): in the chase view the
+corvette's bolts are still barely visible small white balls. Evidence under
+`verification/results/run273-fog-bolts/` (session log
+`/tmp/x3-bottleX3-run273/session-20260923-182033-212.log`, local), measured
+unless marked:
+
+| Question | Finding | Script / output |
+| --- | --- | --- |
+| Bolts on screen in the F8 burst (frames 15495–15502, pre-resolve FP16 scene, blue-dominant, luminance > 0.4) | 2 bolts in flight on each bullet frame (15496, 15498, 15499, 15500), 3–4 × 3–5 px, area 9–14 px, peak 2.8–3.4; none on the frames without a bullet draw. They already carry the 3,8 rule's expansion of draw 90 (round, R = 3): the "small white balls" | `bolt_components.py` / `.txt` |
+| What one draw holds | 48 primitives = 144 vertices = 2 instances of a 72-vertex body (the two guns); 72 primitives = 3 instances. The part batch's buffer is 1,769,472 B = 1024 × 72 × 24 (inferred: a 72-vertex part batch; the stock 72-vertex bodies are flamethrower, PlasmaBeam and Repair) | `bullet_pair_state_diff.txt`, `bullet_uv_periods_out.txt` |
+| Old rule per view | chase windows 22,312 instances, 10,716 expanded (48 %; second flight 3,084 / 664 = 22 %); first person (chase verdict InternalView throughout, frames 13800–14399) 7,368 instances, 1,181 expanded (16 %) | `bolt_views.py` / `.txt` |
+| Native projected length and width per instance | not in the log (no vertex dump): the new `bolt_footprint_hist` row measures them on the next flight. Inferred from the old rule: an untouched thin instance had A ≥ ≈ 8 px half-length (the minor target R(1 − t) only reaches a sub-pixel B near G), so most untouched chase-view instances were long streaks, and the expanded ones sub-3-px dots, the end-on bolts ahead of the ship | rule arithmetic |
+
+**Rule (as built, `bolt_footprint_core.h`).** Minimum full width W
+(default 3 px) and full length L (default 12 px). The length axis e_L is the
+projected world axis of the body: the major eigenvector of the area-weighted
+second moment of the instance's triangles about their area centroid (a
+per-vertex covariance is biased by the triangle list's repeated diagonal: 4°
+on a 3:1 card body in the host oracle), used when the body is elongated
+(λ1 ≥ 2 (λ2 + λ3)), projected as the derivative of the pixel position along
+it at the centroid, which is the line to the axis' vanishing point and stays
+defined when the bolt is seen end-on. Without a world axis, the major axis of
+the 2D shape covariance (also area-weighted, over the projected triangles; a
+per-vertex covariance tilted a round crossed-card body by 20°) when the shape
+is clearly elongated (extents ratio ≥ 1.5). With no usable axis at all (an
+elongated body exactly end-on, derivative below 10⁻³ of the rate of an axis
+perpendicular to the view, or a round body with a round shape) the footprint
+is a W × W square on the screen axes (`disc`): no lengthening, the same on
+every frame (review F2: the 2D major axis is rounding noise there and turned an
+end-on bolt into an 8.6 × 8.3 px diagonal streak). A = max |d·e_L|,
+B = max |d·e_W| about the pixel centroid; s1 = L / max(2A, 0.1) when 2A < L,
+s2 = W / max(2B, 0.1) when 2B < W, each 1 otherwise; a scale whose largest
+displacement (s − 1)·extent stays below 0.25 px is dropped, so an axis the
+vertices do not span (all on one point, a zero-width line) is never reported
+as expanded (review F3); s1 = s2 = 1 leaves the bytes the game's. The
+displacement, the camera-plane solve (clip z and w unchanged), the substitute
+buffer (147,456 B, the scan bound: every drawable prefix fits, unchanged) and
+every refusal are the first build's. An end-on chase-view bolt becomes an
+L × W streak on the line to its vanishing point; a thin long bolt is widened
+to W and keeps its length; a bolt at or above both minimums is untouched. The
+rule is continuous in both extents up to that 0.25 px step.
+
+**First person unchanged: a view gate, not a size argument.** The old
+numbers show first-person instances below the minimums (16 % expanded under
+the weaker R/G rule; receding first-person bolts converge on the crosshair and
+shrink to dots), so the same rule would change them. The footprint writes only
+while `chase_camera::pose_applied_since(mark)` holds, a frame-stamped gate
+(review F1): the chase handler's last visit of the active control cockpit wrote
+its pose (verdict Applied, both writes done) and a pose was written after
+`mark`, the write count MotionOutput takes at every Present. So the gate is
+closed on a frame without an admitted visit (a target or remote view whose view
+object is not the ref object, a load, a menu), after an internal
+(first-person), front, side, scripted or refused visit, with `--camera
+vanilla` and with an uninstalled site. A closed gate keeps every bullet draw
+byte for byte the game's: no plan runs, only the projected bounding box of
+each instance feeds the `other` histogram (review F4), the draw is counted
+`gated=`, and nothing is created, locked or bound (the gate sits before
+`plan_draw` and `ensure_bolt_buffer`). Native Windows:
+the gate is the mod's own byte-verified EXE hook state, no Wine dependency; the
+footprint therefore needs `--camera chase` (the user's launches carry it).
+
+**Draw 9 (task 3).** Every bullet frame of the burst draws the pair twice
+from the same buffer (identity 5797, consecutive DISCARD revisions), same
+primitive count, same c0–3 rows hash, same colour blend ONE / INVSRCCOLOR /
+ADD, Z test LESSEQUAL, Z write off. Draw 9 comes right after the depth clear
+that follows the far pass (draws 1–8) and before the ships (10–89); draw 90
+after them. They differ in exactly two states: draw 9 has
+SEPARATEALPHABLENDENABLE = 1 (alpha triple ZERO/ZERO/ADD: it writes scene
+alpha 0 under the bolt) and ALPHATESTENABLE = 0; draw 90 has 0 and 1. The
+additive admission requires separate alpha off (`composition_blend[3] == 0`),
+hence `reason=state` on draw 9 every time. Whether the two draws carry the
+same instances is inferred (identical counts on all four frames, one writer
+cycle per pass), not proven: the vertex bytes are not logged. If they do, the
+visible bolt is draw 9's native core (occluded by ships drawn after it) plus
+draw 90's gained, expanded footprint, so the expansion reaches the corvette's
+bolts. A third draw with the same VS and PS `0a523f33` (1,068–1,136
+primitives, draw 91) is not an additive pair.
+
+**Admission drop after the new game (task 4).** From frame 16258 to the end:
+0 admitted, 0 refused, pair mask 000, 0 `bolt_footprint` draws, and 0 chase
+fire events (`chase_fire_window native_inactive_override` 0 in every window,
+against 216 in 12160–15871; `fire_segments.py`). A proxy gate would have
+counted: every bullet frame before produced one refusal (draw 9) and one
+admission (draw 90), the pair lookup is by shader hash (no bullet PS was
+recreated after 16258, no Reset was logged, the motion route stayed latched and
+the Ctrl+Shift+F5 key stayed on), so no bullet draw with the pair bound
+reached the route: nothing was fired or drawn there (inferred from the
+counters; the first-person fire key is not counted by `chase_fire`). No proxy
+state is carried across the new game; nothing to fix. The new
+`screen_emission_additive_refused_window` row separates the cases from now on.
+
+**Telemetry (per 300 frames).**
+`bolt_footprint … draws= written= untouched= gated= instances= expanded=
+lengthened= widened= world_axis= disc= refused_* failures= locks= timed_draws= us=
+session_draws= session_written= session_expanded= session_gated=
+buffer_bytes=`; `bolt_footprint_hist … view=chase|other measure=axis|bbox
+instances= edges_px=0.5,1,1.5,2,3,4,6,8,12,16,32 half_length=<12 counts>
+width=<12 counts> min_width= min_length=` for each view with measured
+instances, before expansion (bucket i counts values below edge i, the last one
+≥ 32 px; the chase view along the plan's axes, the gated views from the
+projected bounding box: half its larger side, its smaller side);
+`screen_emission_additive_refused_window … pair_draws= admitted= refused=
+apply_failures= not_reached= state= draw_shape= scene= no_fp16_target=
+no_variant= srgb_sampler= projected= dither= alpha_state= alpha_caps=
+enabled=` whenever the additive route is requested (telemetry or not),
+`not_reached` being the pair draws the route never evaluated (routed,
+composed, fog-masked, not submitted, key off). The mode line is
+`bolt_footprint_mode requested=1 enabled= w= l= valid= additive= ownership=
+view_gate=chase_camera`.
+
+**Cost (inferred; the `us=` field measures it).** Per admitted bullet draw,
+added to the first build's projection: one cross product and one `sqrtss` per
+triangle in world and on screen, a 3×3 moment and 16 power iterations per
+instance, one derivative; about twice the old planning arithmetic, no
+allocation, no new D3D call. The histogram is two increments per instance.
+Gated draws (first person) pay the projection and a bounding box only, less
+than the first build, which planned them fully; they are never written. The additive window
+adds one bool test and one increment per bullet draw.
+
+**Option.** `--bolt-footprint [W[,L]]`, launcher default `3,12`
+(`X3M_BOLT_FOOTPRINT=3,12`), `0` off, W in (0, 64], W ≤ L ≤ 256, L defaults to
+12; the prerequisites and the `--vanilla` refusal are unchanged. An old `R,G`
+value parses as W,L (for example `3,8` = 3 px wide, 8 px long).
+
+**Next flight.** Chase view, fire held, one F8 burst, then a first-person
+stretch: `bolt_footprint_hist` for the native size distribution in each view,
+`bolt_footprint` `lengthened`/`widened`/`gated`, `bolt_components.py` on the
+burst (bolts 12 px long on the line to the aim point, peak not lower), and the
+first-person burst byte-identical to the vanilla bolt look (`gated` equals the
+first-person draws, `written=0` there).

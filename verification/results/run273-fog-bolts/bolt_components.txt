@@ -1,0 +1,8 @@
+frame 15495 bolts_in_flight 0  | fixed_lights 4
+frame 15496 bolts_in_flight 2 (860,747 4x3px area 9 peak 3.37) (1028,718 4x4px area 11 peak 2.82) | fixed_lights 3
+frame 15497 bolts_in_flight 0  | fixed_lights 4
+frame 15498 bolts_in_flight 2 (865,749 4x5px area 12 peak 3.24) (1033,723 4x3px area 9 peak 3.32) | fixed_lights 4
+frame 15499 bolts_in_flight 2 (1040,739 4x4px area 14 peak 3.29) (880,741 4x4px area 11 peak 3.25) | fixed_lights 3
+frame 15500 bolts_in_flight 2 (1013,727 4x4px area 10 peak 3.14) (867,728 3x4px area 9 peak 3.33) | fixed_lights 4
+frame 15501 bolts_in_flight 1 (1046,746 4x4px area 10 peak 1.76) | fixed_lights 4
+frame 15502 bolts_in_flight 0  | fixed_lights 4

@@ -1,0 +1,11 @@
+seg frames 0-428: admitted=0 fire_override=0 fire_refused_view=0 footprint_draws=0 refused=0
+seg frames 429-11112: admitted=1228 bullet_ps_created=5 fire_override=40 fire_refused_view=0 footprint_draws=1228 refused=0
+seg frames 11113-12159: admitted=0 fire_override=0 fire_refused_view=0 footprint_draws=0 refused=0
+seg frames 12160-15871: admitted=1083 fire_override=216 fire_refused_view=0 footprint_draws=1079 refused=1083
+seg frames 15872-16257: admitted=0 fire_override=3 fire_refused_view=0 footprint_draws=4 refused=0
+seg frames 16258-19554: admitted=0 fire_override=0 fire_refused_view=0 footprint_draws=0 refused=0
+seg frames 19555-24764: admitted=0 fire_override=0 fire_refused_view=0 footprint_draws=0 refused=0
+seg frames 24765-31510: admitted=0 fire_override=0 fire_refused_view=0 footprint_draws=0 refused=0
+seg frames 31511-33816: admitted=0 fire_override=0 fire_refused_view=0 footprint_draws=0 refused=0
+seg frames 33817-35512: admitted=0 fire_override=0 fire_refused_view=0 footprint_draws=0 refused=0
+seg frames 35513-999999999: admitted=0 refused=0

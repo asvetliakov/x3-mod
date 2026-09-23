@@ -90,20 +90,24 @@ def collide_default(explicit, args):
     return explicit if explicit is not None else not args.vanilla
 
 
-# Bolt footprint (docs/architecture/bolt-footprint.md, option A'): forwarded on
-# every modded launch as X3M_BOLT_FOOTPRINT=3,8 (3 px minimum half-extent, 8 px
-# gate); --bolt-footprint 0 turns it off, --bolt-footprint R[,G] chooses the
-# pixels, and a --vanilla launch forwards nothing. The DLL enables it only with
-# the additive bullets (--screen-emission-additive: --motion-output --hdr) and
-# the ownership Unlock scan (--ownership); otherwise it logs bolt_footprint_mode
-# enabled=0 and nothing runs.
-BOLT_FOOTPRINT_DEFAULT = '3,8'
-BOLT_FOOTPRINT_DEFAULT_G = 8.0
+# Bolt footprint (docs/architecture/bolt-footprint.md, option A' with the Run 73 B
+# visibility rule): forwarded on every modded launch as X3M_BOLT_FOOTPRINT=3,12
+# (bolts narrower than 3 px are widened to 3 px, shorter than 12 px lengthened
+# to 12 px along their projected axis, in the chase view only); --bolt-footprint
+# 0 turns it off, --bolt-footprint W[,L] chooses the pixels, and a --vanilla
+# launch forwards nothing. The DLL enables it only with the additive bullets
+# (--screen-emission-additive: --motion-output --hdr) and the ownership Unlock
+# scan (--ownership); otherwise it logs bolt_footprint_mode enabled=0 and
+# nothing runs. It writes only while the chase camera (--camera chase) applies
+# its pose; first person and every other view keep the game's bolts.
+BOLT_FOOTPRINT_DEFAULT = '3,12'
+BOLT_FOOTPRINT_DEFAULT_L = 12.0
 
 
 def bolt_footprint_values(text):
-    """R or R,G in pixels: (0.0, 0.0) for the explicit off value, (R, G) when
-    finite with 0 < R <= 64 and R < G <= 256, None when malformed."""
+    """W or W,L in pixels (full width and length): (0.0, 0.0) for the explicit
+    off value, (W, L) when finite with 0 < W <= 64 and W <= L <= 256, None when
+    malformed."""
     parts = text.split(',')
     if len(parts) > 2 or any(not p.strip() for p in parts):
         return None
@@ -114,11 +118,11 @@ def bolt_footprint_values(text):
     if len(values) == 1:
         if values[0] == 0.0:
             return (0.0, 0.0)
-        values.append(BOLT_FOOTPRINT_DEFAULT_G)
-    r, g = values
-    if not (math.isfinite(r) and math.isfinite(g) and 0.0 < r <= 64.0 and r < g <= 256.0):
+        values.append(BOLT_FOOTPRINT_DEFAULT_L)
+    w, length = values
+    if not (math.isfinite(w) and math.isfinite(length) and 0.0 < w <= 64.0 and w <= length <= 256.0):
         return None
-    return (r, g)
+    return (w, length)
 
 
 def bolt_footprint_env(args):
@@ -603,7 +607,7 @@ def main():
     parser.add_argument('--shimmer-trace', action='store_true', help='Diagnostic distant-shimmer trace (X3M_SHIMMER_TRACE=1; requires --motion-output --taa; default off): every frame logs one shimmer_frame line with the TAA state (history, skip, cut, jitter index) and the projection p00/p11 as integers scaled by 1e4, plus up to 32 shimmer_draw lines identifying that frame\'s Asteroid-class scene draws (node/model/lod, vertex, index and primitive counts, the distance-fade f in per mille when the draw was fade-admitted and its derived screen rectangle) with a truncated count beyond 32 (docs/architecture/linear-distance-fade-region.md, "Shimmer trace (diagnostic)")')
     parser.add_argument('--screen-emission', action='store_true', help='Packed screen emission of the bullet draws inside the region bracket (X3M_SCREEN_EMISSION=1, which also sets X3M_SCREEN_EMISSION_BOUND=1; requires --taa --motion-output --ownership --hdr --hdr-tonemap and gamma2.2 decode, with or without --linear-materials; default off): the nine SM1 screen pairs drawn in the native ONE/INVSRCCOLOR state with a locked-prefix bound compose through policy 8 in place; unbounded, unknown-state, capability-refused or otherwise refused draws stay native (docs/architecture/screen-emission-region.md, step C)')
     parser.add_argument('--screen-emission-additive', type=float, default=None, metavar='G', help='Additive bullets (X3M_SCREEN_EMISSION_ADDITIVE=G, finite 1..8; requires --motion-output --hdr; mutually exclusive with --screen-emission; default off): the nine SM1 screen pairs drawn in the native ONE/INVSRCCOLOR state draw in place with DESTBLEND ONE and their colour multiplied by G (G=1 binds the original shader), so the FP16 scene accumulates G*q + D above 1.0 for exposure and bloom; no bracket, bound, copies or temporal work; the blend law changes and native parity is not kept (docs/architecture/screen-emission-region.md, "Additive option"). Ctrl+Shift+F5 switches these draws between G and native during play (no shader is recreated; one screen_emission_additive_toggle line per press). With --telemetry, one screen_emission_additive_frame line per Present reports the admitted and refused draws of that frame and the hex mask of the nine pairs admitted')
-    parser.add_argument('--bolt-footprint', nargs='?', const=BOLT_FOOTPRINT_DEFAULT, default=None, metavar='R[,G]', help='[launcher default on modded launches: 3,8; --bolt-footprint 0 = off; not forwarded under --vanilla, where an explicit value is refused] Minimum on-screen footprint of the weapon bolts (X3M_BOLT_FOOTPRINT=R[,G], pixels, finite 0 < R <= 64 and R < G <= 256, G defaults to 8; needs the additive bullets, --screen-emission-additive with --motion-output --hdr, and --ownership for the Unlock scan; an explicit non-zero value implies --screen-emission-additive 1 when that option is absent, the default never does): every bullet instance of an admitted additive draw whose projected major half-extent is below G px is expanded on the CPU about its own projected centroid, in the camera plane, so its half-extent reaches R px along both principal axes (the minor target fades to zero at G, so a bolt of 2G px or more, every first-person player bolt, keeps its bytes untouched); the expanded prefix is drawn from a proxy-owned dynamic vertex buffer bound for that draw only under the game\'s own shaders, blend and depth (clip z and w unchanged). Instances are found by the UV period of the drawn prefix; a stream without one, a draw without a published Unlock scan or an instance behind the camera plane stays native. One bolt_footprint line per 300 frames (draws, written, instances, expanded, refusals, CPU us) and a bolt_footprint_mode line at start (docs/architecture/bolt-footprint.md, Implementation)')
+    parser.add_argument('--bolt-footprint', nargs='?', const=BOLT_FOOTPRINT_DEFAULT, default=None, metavar='W[,L]', help='[launcher default on modded launches: 3,12; --bolt-footprint 0 = off; not forwarded under --vanilla, where an explicit value is refused] Minimum on-screen size of the weapon bolts in the chase view only (X3M_BOLT_FOOTPRINT=W[,L], pixels, full width and length, finite 0 < W <= 64 and W <= L <= 256, L defaults to 12): every bolt instance of the admitted additive bullet draw narrower than W is widened to W and shorter than L lengthened to L along its projected flight axis, about its own centre in the camera plane (depth unchanged), drawn from a proxy-owned dynamic vertex buffer; only while the chase camera (--camera chase) applies its pose, so first person and every other view keep the game\'s bolts. Needs the additive bullets, --screen-emission-additive with --motion-output --hdr, and --ownership for the Unlock scan; an explicit non-zero value implies --screen-emission-additive 1 when that option is absent, the default never does. One bolt_footprint line per 300 frames (draws, written, gated, instances, lengthened, widened, refusals, CPU us), one bolt_footprint_hist line per view (pre-expansion half-length and width histograms, chase and other views) and a bolt_footprint_mode line at start (docs/architecture/bolt-footprint.md)')
     parser.add_argument('--screen-emission-additive-alpha', type=float, default=None, metavar='K', help='Per-source bloom attenuation of the additive bullets (X3M_SCREEN_EMISSION_ADDITIVE_ALPHA=K, finite 0..1; requires --screen-emission-additive; absent keeps the native alpha law): the admitted additive draw writes K*a + D.a to the scene alpha the bloom extract uses as its per-pixel authored weight, through separate-alpha blending (DESTBLENDALPHA ONE with SRCBLENDALPHA ZERO at K=0, ONE at K=1, else BLENDFACTOR with K in every lane; the colour law stays ONE/ONE/ADD and reads no blend factor). K=0 makes the bolts bloom only through the thresholded highlight term while engines, sun and every other alpha-authored emitter keep their channel; their presented brightness is unchanged because the colour law is untouched. A device without D3DPMISCCAPS_SEPARATEALPHABLEND, or without D3DPBLENDCAPS_BLENDFACTOR for a K strictly between 0 and 1, refuses the draw to the native path with screen_emission_additive_refused reason=alpha_caps. Ctrl+Shift+F5 turns it off with the rest of the option (docs/architecture/bloom-per-source-attenuation.md, option 1)')
     parser.add_argument('--screen-emission-timing', action='store_true', help='Per-frame timing diagnostic of the screen-emission option (X3M_SCREEN_EMISSION_TIMING=1; requires --screen-emission; default off): one screen_emission_frame line per Present with that frame\'s packed_admitted, brackets_px and cpu_us (the wall-clock QueryPerformanceCounter delta since the previous Present). The option itself logs nothing per frame (docs/architecture/screen-emission-region.md, step C)')
     parser.add_argument('--screen-emission-gain', type=float, default=None, metavar='G', help='Step E gain of the packed screen composition, finite 0.5..8, default 1 (X3M_SCREEN_EMISSION_GAIN; requires --screen-emission): the composed bullet is decode(native after) - decode(native before) scaled by G on the decoded scene, so 1 presents the native bolt exactly and larger values lift it into HDR for bloom and exposure (docs/architecture/screen-emission-region.md, step E)')
@@ -1126,7 +1130,7 @@ def main():
         parser.error('--screen-emission-additive-alpha must be finite and within [0, 1].')
     bolt_footprint = bolt_footprint_values(args.bolt_footprint) if args.bolt_footprint is not None else None
     if args.bolt_footprint is not None and bolt_footprint is None:
-        parser.error('--bolt-footprint expects R or R,G in pixels: 0 (off), or finite 0 < R <= 64 and R < G <= 256.')
+        parser.error('--bolt-footprint expects W or W,L in pixels: 0 (off), or finite 0 < W <= 64 and W <= L <= 256.')
     if args.vanilla and bolt_footprint not in (None, (0.0, 0.0)):
         parser.error('--bolt-footprint cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that draws the expanded bolts is not loaded.')
     if bolt_footprint not in (None, (0.0, 0.0)):
@@ -1465,7 +1469,7 @@ def main():
             env['X3M_SCREEN_EMISSION_ADDITIVE_ALPHA'] = repr(args.screen_emission_additive_alpha)
         else:
             env.pop('X3M_SCREEN_EMISSION_ADDITIVE_ALPHA', None)
-        # Bolt footprint: the launcher default on a modded launch (3,8), the
+        # Bolt footprint: the launcher default on a modded launch (3,12), the
         # explicit value, the explicit off value, nothing under --vanilla; an
         # explicit non-zero value implies the additive bullets at gain 1 when
         # --screen-emission-additive is absent (the default never does, so a

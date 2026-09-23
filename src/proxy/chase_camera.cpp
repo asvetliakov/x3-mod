@@ -44,6 +44,11 @@ chase::Tunables tunables;
 chase::State pipeline;
 uint64_t qpc_frequency = 0, qpc_last = 0;
 std::atomic<std::uint32_t> snap_epoch{0};
+// Bolt footprint view gate: whether the last active-cockpit visit wrote the
+// chase pose, and how many visits have written one (the consumer compares the
+// count against its own mark taken at the previous Present).
+std::atomic<bool> pose_written{false};
+std::atomic<std::uint32_t> pose_writes{0};
 PoseContinuity continuity;
 SRWLOCK stats_lock = SRWLOCK_INIT;
 Stats stats_;
@@ -106,6 +111,8 @@ double fix_scene_camera(uintptr_t cockpit_scene, const chase::Mat3& view_rel_now
 // The per-frame work, on the game thread inside the trampoline (full CPU
 // boundary around it; XMM0-7 saved by the stub).
 void publish_pose(bool written, bool snapped = false) {
+    pose_written.store(written, std::memory_order_relaxed);
+    if (written) pose_writes.fetch_add(1, std::memory_order_relaxed);
     if (continuity.update(written, snapped)) snap_epoch.fetch_add(1, std::memory_order_relaxed);
 }
 void handle(uint32_t* regs) {
@@ -426,6 +433,10 @@ Stats stats() {
     return s;
 }
 std::uint32_t snap_generation() { return snap_epoch.load(std::memory_order_relaxed); }
+std::uint32_t pose_write_count() { return pose_writes.load(std::memory_order_relaxed); }
+bool pose_applied_since(std::uint32_t mark) {
+    return pose_gate_open(site.patched_in, pose_written.load(std::memory_order_relaxed), pose_writes.load(std::memory_order_relaxed), mark);
+}
 void report(std::uint64_t frame) {
     if (!site.patched_in) return;
     chase_fire::report(frame);
@@ -481,6 +492,7 @@ void note_last_device() {
 }
 void shutdown() {
     chase_fire::shutdown();
+    pose_written.store(false, std::memory_order_relaxed);
     if (!site.patched_in) return;
     const bool okay = engine_patch::restore(site);
     state = site.status;

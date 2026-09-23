@@ -1,0 +1,17 @@
+window_end 3299 view chase chase_applied 300 chase_refused 0 last_verdict 0 draws 20 instances 54 expanded 0 share 0.00
+window_end 3599 view chase chase_applied 300 chase_refused 0 last_verdict 0 draws 1160 instances 18402 expanded 9280 share 0.50
+window_end 3899 view chase chase_applied 300 chase_refused 0 last_verdict 0 draws 48 instances 772 expanded 772 share 1.00
+window_end 12899 view chase chase_applied 300 chase_refused 0 last_verdict 0 draws 49 instances 453 expanded 108 share 0.24
+window_end 13199 view chase chase_applied 300 chase_refused 0 last_verdict 0 draws 76 instances 597 expanded 170 share 0.28
+window_end 13499 view mixed chase_applied 24 chase_refused 248 last_verdict 1 draws 103 instances 687 expanded 43 share 0.06
+window_end 13799 view mixed chase_applied 56 chase_refused 203 last_verdict 1 draws 68 instances 462 expanded 73 share 0.16
+window_end 14099 view first_person chase_applied 0 chase_refused 300 last_verdict 1 draws 244 instances 4392 expanded 701 share 0.16
+window_end 14399 view first_person chase_applied 0 chase_refused 300 last_verdict 1 draws 164 instances 2976 expanded 480 share 0.16
+window_end 14699 view mixed chase_applied 77 chase_refused 223 last_verdict 0 draws 113 instances 1836 expanded 353 share 0.19
+window_end 14999 view chase chase_applied 300 chase_refused 0 last_verdict 0 draws 91 instances 681 expanded 161 share 0.24
+window_end 15299 view chase chase_applied 300 chase_refused 0 last_verdict 0 draws 69 instances 630 expanded 110 share 0.17
+window_end 15599 view chase chase_applied 300 chase_refused 0 last_verdict 0 draws 102 instances 699 expanded 111 share 0.16
+window_end 15899 view chase chase_applied 270 chase_refused 0 last_verdict 0 draws 4 instances 24 expanded 4 share 0.17
+total chase: windows 9 instances 22312 expanded 10716 share 0.480
+total first_person: windows 2 instances 7368 expanded 1181 share 0.160
+total mixed: windows 3 instances 2985 expanded 469 share 0.157

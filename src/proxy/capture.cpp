@@ -153,8 +153,8 @@ float hull_emissive_widening[2] = {1.f, 1.f};
 float hull_lightmap_gain = 1.f;        // X3M_HULL_LIGHTMAP_GAIN: gain on the light-map (self-illumination) term inside the original hull pixel programs, finite 1..8, 1 = off (requires X3M_HDR=1, excludes X3M_LINEAR_MATERIALS=1; Ctrl+Shift+F4 switches it alone)
 bool screen_emission_additive_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE=G: in-place ADD/ONE/ONE bullets with a colour gain (screen-emission-region.md, "Additive option")
 float screen_emission_additive_gain = 1.f;       // G, finite 1..8; anything else refuses the option
-bool bolt_footprint_requested = false; // X3M_BOLT_FOOTPRINT=R[,G]: minimum on-screen bolt footprint on the additive draws (bolt-footprint.md, option A')
-float bolt_footprint_r = 3.f, bolt_footprint_g = 8.f;
+bool bolt_footprint_requested = false; // X3M_BOLT_FOOTPRINT=W[,L]: minimum on-screen bolt width and length on the additive draws (bolt-footprint.md, option A', Run 73 B rule)
+float bolt_footprint_w = 3.f, bolt_footprint_l = 12.f;
 bool screen_emission_additive_alpha_requested = false; // X3M_SCREEN_EMISSION_ADDITIVE_ALPHA=K: per-source bloom attenuation of the additive draw (bloom-per-source-attenuation.md, option 1)
 float screen_emission_additive_alpha = 1.f;      // K, finite 0..1; absent or invalid keeps the native alpha law a + D.a
 unsigned fade_witness_frames = 0; // X3M_FADE_WITNESS=<k>, 0 = off
@@ -2516,7 +2516,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
         log("hull_emissive_widening_configured accepted=%u k=%g b=%g",unsigned(accepted),double(hull_emissive_widening[0]),double(hull_emissive_widening[1]));
     }
     hooked.motion_output.configure_screen_emission_additive(screen_emission_additive_requested,screen_emission_additive_gain,screen_emission_additive_alpha_requested,screen_emission_additive_alpha);
-    hooked.motion_output.configure_bolt_footprint(bolt_footprint_requested,bolt_footprint_r,bolt_footprint_g);
+    hooked.motion_output.configure_bolt_footprint(bolt_footprint_requested,bolt_footprint_w,bolt_footprint_l);
     hooked.motion_output.configure_fade_witness(fade_witness_frames);
     hooked.motion_output.configure_fade_route(fade_route_threshold);
     hooked.motion_output.configure_shimmer_trace(shimmer_trace_requested);
@@ -3320,31 +3320,33 @@ void initialize_log(HMODULE module) {
          log("screen_emission_additive_mode requested=1 enabled=%u gain=%g gain_valid=%u motion=%u hdr=%u packed_conflict=%u alpha=%s alpha_requested=%u alpha_valid=%u",
              screen_emission_additive_requested,double(screen_emission_additive_gain),unsigned(valid),motion_output_requested,hdr_requested,unsigned(conflict),
              alpha_text,unsigned(alpha_present),unsigned(alpha_valid));}}
-    // X3M_BOLT_FOOTPRINT=R[,G] (px; finite, 0 < R <= 64, R < G <= 256; unset,
-    // "0" or invalid = off): the bolt footprint of docs/architecture/
-    // bolt-footprint.md (option A'), a minimum on-screen half-extent R for
-    // every bullet instance of an admitted additive draw whose projected
-    // half-extent is below the gate G. Needs the additive route (enabled just
+    // X3M_BOLT_FOOTPRINT=W[,L] (px, full extents; finite, 0 < W <= 64,
+    // W <= L <= 256, L defaults to 12; unset, "0" or invalid = off): the bolt
+    // footprint of docs/architecture/bolt-footprint.md (option A', Run 73 B
+    // rule): every bullet instance of an admitted additive draw narrower than
+    // W is widened to W and shorter than L lengthened to L along its projected
+    // axis, in the chase view only (chase_camera::pose_applied_since(); every other
+    // view draws the game's bytes). Needs the additive route (enabled just
     // above: motion output and X3M_HDR=1) and the ownership Unlock scan
     // (X3M_OWNERSHIP=1: the loader enables the locked-prefix scan through
     // bolt_footprint_requested()).
-    {bolt_footprint_requested=false;bolt_footprint_r=3.f;bolt_footprint_g=8.f;
+    {bolt_footprint_requested=false;bolt_footprint_w=3.f;bolt_footprint_l=12.f;
      SetLastError(ERROR_SUCCESS);
      const DWORD length=GetEnvironmentVariableW(L"X3M_BOLT_FOOTPRINT",setting,32);
      const bool fits=length&&length<32; // a value of 31+ characters is not parsed: refused below, never silently off
-     wchar_t* end=nullptr;const float r=fits?wcstof(setting,&end):0.f;
-     const bool r_parsed=fits&&end!=setting;
-     float g=8.f;bool g_parsed=true;
-     if(r_parsed&&*end==L','){wchar_t* g_end=nullptr;g=wcstof(end+1,&g_end);g_parsed=g_end!=end+1&&!*g_end;}
-     else if(r_parsed&&*end)g_parsed=false;
-     const bool parsed=r_parsed&&g_parsed;
-     if(length&&!(parsed&&r==0.f)){ // "0" is the explicit off value: silent
-         const bool valid=parsed&&std::isfinite(r)&&std::isfinite(g)&&r>0.f&&r<=64.f&&g>r&&g<=256.f;
+     wchar_t* end=nullptr;const float w=fits?wcstof(setting,&end):0.f;
+     const bool w_parsed=fits&&end!=setting;
+     float l=12.f;bool l_parsed=true;
+     if(w_parsed&&*end==L','){wchar_t* l_end=nullptr;l=wcstof(end+1,&l_end);l_parsed=l_end!=end+1&&!*l_end;}
+     else if(w_parsed&&*end)l_parsed=false;
+     const bool parsed=w_parsed&&l_parsed;
+     if(length&&!(parsed&&w==0.f)){ // "0" is the explicit off value: silent
+         const bool valid=parsed&&std::isfinite(w)&&std::isfinite(l)&&w>0.f&&w<=64.f&&l>=w&&l<=256.f;
          const bool ownership=GetEnvironmentVariableW(L"X3M_OWNERSHIP",setting,32)==1&&setting[0]==L'1';
          bolt_footprint_requested=valid&&screen_emission_additive_requested&&ownership;
-         if(valid){bolt_footprint_r=r;bolt_footprint_g=g;}
-         log("bolt_footprint_mode requested=1 enabled=%u r=%g g=%g valid=%u additive=%u ownership=%u",
-             unsigned(bolt_footprint_requested),double(bolt_footprint_r),double(bolt_footprint_g),unsigned(valid),
+         if(valid){bolt_footprint_w=w;bolt_footprint_l=l;}
+         log("bolt_footprint_mode requested=1 enabled=%u w=%g l=%g valid=%u additive=%u ownership=%u view_gate=chase_camera",
+             unsigned(bolt_footprint_requested),double(bolt_footprint_w),double(bolt_footprint_l),unsigned(valid),
              unsigned(screen_emission_additive_requested),unsigned(ownership));}}
     // X3M_SCREEN_EMISSION_TIMING=1: the option's opt-in per-frame timing
     // diagnostic (one screen_emission_frame line per Present). Needs the

@@ -81,6 +81,21 @@ Stats stats();
 // Process-wide broadcast: observing a snap must not consume another device's
 // cut. A fresh history conservatively cuts on the first nonzero generation.
 std::uint32_t snap_generation();
+// The bolt footprint's view gate, frame-stamped: open only when the handler
+// wrote its chase pose (verdict Applied, both writes done) on a visit of the
+// active control cockpit after the consumer's mark, taken as
+// pose_write_count() at its previous Present, and that visit was the last
+// one. Closed when the site is not installed, before the first visit, on a
+// frame without an admitted visit (a target or remote view whose view object
+// is not the ref object, a load, a menu), and after an internal
+// (first-person), front, side, scripted or refused visit. Relaxed atomics: the
+// cockpit update, the frame's draws and its Present run on the game's thread
+// in that order.
+inline bool pose_gate_open(bool installed, bool last_visit_written, std::uint32_t writes, std::uint32_t mark) {
+    return installed && last_visit_written && writes != mark;
+}
+std::uint32_t pose_write_count();
+bool pose_applied_since(std::uint32_t mark);
 struct SnapCursor {
     std::uint32_t generation = 0;
     // Call only when submitting a cut to the temporal pass (a failed pass

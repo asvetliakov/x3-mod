@@ -702,16 +702,17 @@ void MotionOutput::configure_screen_emission_additive(bool requested, float gain
     screen_additive_alpha_factor_ = (quantised << 24) | (quantised << 16) | (quantised << 8) | quantised;
 }
 
-// Bolt footprint (bolt-footprint.md option A'): process-start configuration.
-// The plans array (one per instance, at most max_instances) is the only
-// allocation; the substitute buffer follows the first draw that needs it.
-void MotionOutput::configure_bolt_footprint(bool requested, float r_px, float g_px) noexcept {
+// Bolt footprint (bolt-footprint.md option A', Run 73 B rule): process-start
+// configuration. The plans array (one per instance, at most max_instances) is
+// the only allocation; the substitute buffer follows the first draw that
+// needs it.
+void MotionOutput::configure_bolt_footprint(bool requested, float w_px, float l_px) noexcept {
     if (device_) return; // Process-start configuration only.
     bolt_footprint_requested_ = false;
-    if (!requested || !screen_additive_requested_ || !bolt_footprint::valid_parameters(r_px, g_px)) return;
+    if (!requested || !screen_additive_requested_ || !bolt_footprint::valid_parameters(w_px, l_px)) return;
     if (!bolt_plans_) bolt_plans_.reset(new (std::nothrow) bolt_footprint::Plan[bolt_footprint::max_instances]);
     if (!bolt_plans_) return;
-    bolt_footprint_r_ = r_px; bolt_footprint_g_ = g_px;
+    bolt_footprint_w_ = w_px; bolt_footprint_l_ = l_px;
     bolt_footprint_requested_ = true;
 }
 void MotionOutput::configure_fade_route(unsigned threshold_permille) noexcept {
@@ -3992,6 +3993,10 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     // Step B rectangle before step C's admission: an admitted screen draw
     // composes inside it; without it the draw stays native.
     if (screen_emission_bound_) derive_prefix_region(call, route);
+    // Additive window: every draw with an additive pair bound (one bool test
+    // for any other draw); the ones the route never evaluates are the
+    // difference to admitted + refused + apply failures at the window line.
+    if (shadow_.screen_additive_pair) ++screen_additive_window_.pair_draws;
     if (!route.routed) {
         const HRESULT restored = restore_bindings_checked();
         if (FAILED(restored)) {
@@ -4006,7 +4011,11 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
             if (!route.fog_card_mask.masked && route.submit) prepare_composition(call, route);
             // Additive option: its pair check is the only per-draw cost for
             // any other draw; never on a draw the bracket already took.
-            if (shadow_.screen_additive_pair && screen_additive_enabled_ && route.submit && !route.composition && !route.fog_card_mask.masked) prepare_screen_additive(call, route);
+            if (shadow_.screen_additive_pair && screen_additive_enabled_ && route.submit && !route.composition && !route.fog_card_mask.masked) {
+                const unsigned failures = screen_additive_failures_;
+                prepare_screen_additive(call, route);
+                screen_additive_window_.apply_failures += screen_additive_failures_ - failures;
+            }
         }
     }
     // Source-only gain: a null pointer test when the option is off or the
@@ -4336,8 +4345,10 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
     static constexpr const char* reasons[] = {"state", "draw_shape", "scene", "no_fp16_target", "no_variant", "srgb_sampler", "projected", "dither",
         "alpha_state", "alpha_caps"};
     constexpr unsigned reason_count = sizeof reasons / sizeof reasons[0];
+    static_assert(reason_count == screen_additive_reason_count, "the window row prints every reason");
     const auto refuse = [&](unsigned reason) {
         ++screen_additive_refused_; ++screen_additive_frame_refused_;
+        if (reason < reason_count) ++screen_additive_window_.refused[reason];
         if (reason < reason_count && !(screen_additive_refusal_logged_ & (1u << reason))) {
             screen_additive_refusal_logged_ |= 1u << reason;
             log("screen_emission_additive_refused device=%llu frame=%llu index=%lu reason=%s", id_, frame_, counters_.draws, reasons[reason]);
@@ -4418,7 +4429,7 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
         }
         route.screen_additive_alpha = true;
     }
-    ++screen_additive_admitted_; ++screen_additive_frame_admitted_;
+    ++screen_additive_admitted_; ++screen_additive_frame_admitted_; ++screen_additive_window_.admitted;
     if (shadow_.screen_additive_index < screen_emission::pair_count)
         screen_additive_frame_pairs_ |= 1u << shadow_.screen_additive_index;
     // Bolt footprint: one bool test unless requested; it never changes the
@@ -4557,11 +4568,20 @@ void MotionOutput::prepare_bolt_footprint(const MotionDrawCall& call, MotionRout
     // Instanced geometry draws more than the prefix: one documented Get.
     UINT frequency = 0;
     if (FAILED(direct_call<GetStreamFreqFn>(GetStreamSourceFreq, 0, &frequency)) || frequency != 1) { ++c.refused_shape; refuse_once(7, frequency); return; }
+    // The view gate: only the external back view with this frame's chase pose
+    // is ever written; first person and every other view draw the game's
+    // bytes and only fill the cheap bounding-box histogram (no plan, no
+    // moments; bolt-footprint.md, "Run 73 B").
+    const bool chase_view = chase_camera::pose_applied_since(chase_pose_mark_);
+    if (!chase_view) {
+        if (!histogram_draw(frame, positions, extras, count, &bolt_hist_[1])) { ++c.refused_period; refuse_once(8, count); return; }
+        ++c.gated; return;
+    }
     DrawStats stats;
-    if (!plan_draw(frame, positions, extras, count, bolt_footprint_r_, bolt_footprint_g_, bolt_plans_.get(), max_instances, &stats)) {
+    if (!plan_draw(frame, positions, extras, count, bolt_footprint_w_, bolt_footprint_l_, bolt_plans_.get(), max_instances, &stats, &bolt_hist_[0])) {
         ++c.refused_period; refuse_once(8, count); return;
     }
-    c.instances += stats.instances; c.refused_w += stats.refused_w;
+    c.instances += stats.instances; c.refused_w += stats.refused_w; c.world_axis += stats.world_axis; c.disc += stats.disc;
     if (!stats.expanded) { ++c.untouched; return; } // every instance is large enough (or refused): the game's bytes draw
     const UINT bytes = count * stride;
     if (!ensure_bolt_buffer(bytes)) { ++c.failures; return; }
@@ -4588,7 +4608,7 @@ void MotionOutput::prepare_bolt_footprint(const MotionDrawCall& call, MotionRout
     hr = native<SetStreamFn>(SetStreamSource)(device_, 0, bolt_vb_, 0, stride);
     if (FAILED(hr)) { release(stream); ++c.failures; return; }
     route.bolt_footprint = true; route.bolt_restore_stream = stream; route.bolt_restore_offset = offset; route.bolt_restore_stride = bound_stride;
-    ++c.written; c.expanded += expanded;
+    ++c.written; c.expanded += expanded; c.lengthened += stats.lengthened; c.widened += stats.widened;
 }
 // After the draw, before the additive route's own restores: the
 // application's stream 0 back, the owned reference released.
@@ -4623,7 +4643,11 @@ void MotionOutput::release_bolt_buffer() noexcept {
 // One line per 300 frames: this window's draws and instances, then the
 // session totals accumulate. `us` is the CPU time of prepare_bolt_footprint
 // over the `timed_draws` draws that were timed (all of them with telemetry
-// on, else those of the window's last frame), refused draws included.
+// on, else those of the window's last frame), refused draws included. Then
+// one bolt_footprint_hist line per view with measured instances: the
+// pre-expansion half-length and full width histograms (hist_edges), along the
+// plan's axes in the chase view (measure=axis), from the projected bounding
+// box in the gated views (measure=bbox).
 void MotionOutput::log_bolt_footprint_window() noexcept {
     auto& w = bolt_window_; auto& s = bolt_session_;
     LARGE_INTEGER frequency{}; QueryPerformanceFrequency(&frequency);
@@ -4631,11 +4655,45 @@ void MotionOutput::log_bolt_footprint_window() noexcept {
     s.draws += w.draws; s.written += w.written; s.untouched += w.untouched; s.instances += w.instances; s.expanded += w.expanded;
     s.refused_shape += w.refused_shape; s.refused_rows += w.refused_rows; s.refused_buffer += w.refused_buffer; s.refused_period += w.refused_period;
     s.refused_w += w.refused_w; s.refused_recheck += w.refused_recheck; s.failures += w.failures; s.locks += w.locks; s.ticks += w.ticks; s.timed += w.timed;
+    s.lengthened += w.lengthened; s.widened += w.widened; s.world_axis += w.world_axis; s.disc += w.disc; s.gated += w.gated;
     ++bolt_windows_;
-    log("bolt_footprint device=%llu frame=%llu frames=%u draws=%u written=%u untouched=%u instances=%u expanded=%u refused_period=%u refused_w=%u refused_buffer=%u refused_rows=%u refused_shape=%u refused_recheck=%u failures=%u locks=%u timed_draws=%u us=%.1f session_draws=%u session_written=%u session_expanded=%u buffer_bytes=%lu",
-        id_, frame_, bolt_window_frames_, w.draws, w.written, w.untouched, w.instances, w.expanded, w.refused_period, w.refused_w, w.refused_buffer, w.refused_rows, w.refused_shape, w.refused_recheck,
-        w.failures, w.locks, w.timed, us, s.draws, s.written, s.expanded, static_cast<unsigned long>(bolt_vb_bytes_));
+    log("bolt_footprint device=%llu frame=%llu frames=%u draws=%u written=%u untouched=%u gated=%u instances=%u expanded=%u lengthened=%u widened=%u world_axis=%u disc=%u refused_period=%u refused_w=%u refused_buffer=%u refused_rows=%u refused_shape=%u refused_recheck=%u failures=%u locks=%u timed_draws=%u us=%.1f session_draws=%u session_written=%u session_expanded=%u session_gated=%u buffer_bytes=%lu",
+        id_, frame_, bolt_window_frames_, w.draws, w.written, w.untouched, w.gated, w.instances, w.expanded, w.lengthened, w.widened, w.world_axis, w.disc,
+        w.refused_period, w.refused_w, w.refused_buffer, w.refused_rows, w.refused_shape, w.refused_recheck,
+        w.failures, w.locks, w.timed, us, s.draws, s.written, s.expanded, s.gated, static_cast<unsigned long>(bolt_vb_bytes_));
+    for (unsigned view = 0; view < 2; ++view) {
+        const auto& h = bolt_hist_[view];
+        if (!h.instances) continue;
+        char lengths[bolt_footprint::hist_buckets * 11 + 1], widths[bolt_footprint::hist_buckets * 11 + 1];
+        int at_l = 0, at_w = 0;
+        for (unsigned i = 0; i < bolt_footprint::hist_buckets; ++i) {
+            at_l += std::snprintf(lengths + at_l, sizeof lengths - std::size_t(at_l), i ? ",%u" : "%u", unsigned(h.half_length[i]));
+            at_w += std::snprintf(widths + at_w, sizeof widths - std::size_t(at_w), i ? ",%u" : "%u", unsigned(h.width[i]));
+        }
+        log("bolt_footprint_hist device=%llu frame=%llu frames=%u view=%s measure=%s instances=%u edges_px=0.5,1,1.5,2,3,4,6,8,12,16,32 half_length=%s width=%s min_width=%g min_length=%g",
+            id_, frame_, bolt_window_frames_, view ? "other" : "chase", view ? "bbox" : "axis", unsigned(h.instances), lengths, widths,
+            double(bolt_footprint_w_), double(bolt_footprint_l_));
+    }
     w = BoltCounters{}; bolt_window_frames_ = 0;
+    bolt_hist_[0] = bolt_footprint::Histogram{}; bolt_hist_[1] = bolt_footprint::Histogram{};
+}
+// One line per 300 frames while the additive route is requested (telemetry
+// or not): the window's additive-pair draws, admissions, refusals per reason
+// and apply failures; not_reached = the pair draws the route never evaluated
+// (routed, composed, fog-masked, not submitted after a failed restore, or the
+// Ctrl+Shift+F5 key off). A window without any bullet draw logs pair_draws=0,
+// which tells "nothing to admit" from a refusal.
+void MotionOutput::log_screen_additive_window() noexcept {
+    auto& w = screen_additive_window_;
+    std::uint32_t refused = 0;
+    for (unsigned i = 0; i < screen_additive_reason_count; ++i) refused += w.refused[i];
+    const std::uint32_t evaluated = w.admitted + refused + w.apply_failures;
+    log("screen_emission_additive_refused_window device=%llu frame=%llu frames=%u pair_draws=%u admitted=%u refused=%u apply_failures=%u not_reached=%u "
+        "state=%u draw_shape=%u scene=%u no_fp16_target=%u no_variant=%u srgb_sampler=%u projected=%u dither=%u alpha_state=%u alpha_caps=%u enabled=%u",
+        id_, frame_, screen_additive_window_frames_, w.pair_draws, w.admitted, refused, w.apply_failures, w.pair_draws > evaluated ? w.pair_draws - evaluated : 0u,
+        w.refused[0], w.refused[1], w.refused[2], w.refused[3], w.refused[4], w.refused[5], w.refused[6], w.refused[7], w.refused[8], w.refused[9],
+        unsigned(screen_additive_enabled_));
+    w = ScreenAdditiveWindow{}; screen_additive_window_frames_ = 0;
 }
 bool MotionOutput::publish_composition() noexcept {
     auto** slot = composition_->owning_candidate();
@@ -6780,7 +6838,9 @@ void MotionOutput::after_present(HRESULT result) noexcept {
     if (screen_additive_requested_) {
         if (telemetry_) log_screen_additive_frame();
         screen_additive_frame_admitted_ = screen_additive_frame_refused_ = screen_additive_frame_pairs_ = 0; // this frame only
+        if (++screen_additive_window_frames_ >= 300u) log_screen_additive_window();
     }
+    if (bolt_footprint_requested_) chase_pose_mark_ = chase_camera::pose_write_count(); // the next frame's gate needs a fresh chase pose
     if (bolt_footprint_requested_ && ++bolt_window_frames_ >= 300u) log_bolt_footprint_window();
     if (fade_refused_count_) log_fade_refused();
     if (emission_source_gain_requested_) {
