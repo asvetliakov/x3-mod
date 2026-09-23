@@ -1,0 +1,93 @@
+frame 34356: raster bbox x=[925,1049] y=[430,575] px=5826 view z [14567,23559]
+  all: hit 5195 (0.892) hole 466 occl 165 hit luma mean 0.1667
+  ZONE (arms, r_yz>10000 |x|<4000): px 1714 hit 1473 (0.859) hole 213 (0.124) luma 0.1454
+  CORE: px 4112 hit 3722 (0.905) hole 253 (0.062) luma 0.1752
+  zone mat31 - px= 1185 hit=0.877 hole=0.115 occl=0.008 luma=0.1570 rgb=0.1701,0.1588,0.1015
+  core mat46 - px=  581 hit=0.907 hole=0.088 occl=0.005 luma=0.0723 rgb=0.0645,0.0761,0.0583
+  core mat11 A px=  411 hit=0.917 hole=0.054 occl=0.029 luma=0.0880 rgb=0.0793,0.0925,0.0688
+  core mat16 - px=  360 hit=0.964 hole=0.031 occl=0.006 luma=0.0633 rgb=0.0564,0.0665,0.0511
+  core mat22 - px=  308 hit=0.857 hole=0.075 occl=0.068 luma=0.1233 rgb=0.1079,0.1302,0.1012
+  zone mat27 - px=  295 hit=0.807 hole=0.186 occl=0.007 luma=0.1070 rgb=0.1091,0.1100,0.0712
+  core mat17 - px=  266 hit=0.880 hole=0.015 occl=0.105 luma=0.1193 rgb=0.1015,0.1265,0.1007
+  core mat 7 - px=  263 hit=0.859 hole=0.084 occl=0.057 luma=0.0628 rgb=0.0540,0.0665,0.0516
+  core mat12 A px=  250 hit=0.892 hole=0.068 occl=0.040 luma=0.1506 rgb=0.1603,0.1534,0.0937
+  core mat40 - px=  249 hit=0.984 hole=0.016 occl=0.000 luma=1.2023 rgb=1.5625,1.1689,0.4723
+  core mat19 - px=  174 hit=0.920 hole=0.023 occl=0.057 luma=0.1118 rgb=0.1003,0.1174,0.0900
+  core mat23 - px=  160 hit=0.869 hole=0.056 occl=0.075 luma=0.0667 rgb=0.0588,0.0704,0.0539
+  core mat14 - px=  138 hit=0.964 hole=0.029 occl=0.007 luma=0.0291 rgb=0.0230,0.0317,0.0217
+  core mat20 - px=  128 hit=0.938 hole=0.039 occl=0.023 luma=0.0921 rgb=0.0822,0.0968,0.0742
+  core mat24 - px=  127 hit=0.945 hole=0.055 occl=0.000 luma=0.0696 rgb=0.0454,0.0768,0.0695
+  core mat 8 - px=  126 hit=1.000 hole=0.000 occl=0.000 luma=0.0361 rgb=0.0318,0.0381,0.0294
+  zone mat 9 A px=  111 hit=0.829 hole=0.144 occl=0.027 luma=0.1830 rgb=0.1708,0.1911,0.1387
+  core mat30 - px=   99 hit=0.960 hole=0.010 occl=0.030 luma=0.1019 rgb=0.0901,0.1072,0.0840
+  core mat 9 A px=   83 hit=0.976 hole=0.000 occl=0.024 luma=0.0398 rgb=0.0317,0.0428,0.0342
+  core mat 2 A px=   82 hit=0.622 hole=0.378 occl=0.000 luma=0.9366 rgb=1.1943,0.9144,0.3973
+  core mat 1 A px=   72 hit=0.694 hole=0.292 occl=0.014 luma=0.0976 rgb=0.0815,0.1040,0.0819
+  zone mat11 A px=   59 hit=0.932 hole=0.034 occl=0.034 luma=0.0799 rgb=0.0779,0.0830,0.0552
+  core mat45 - px=   54 hit=0.833 hole=0.148 occl=0.019 luma=0.3198 rgb=0.3749,0.3190,0.1661
+  core mat26 - px=   50 hit=0.720 hole=0.060 occl=0.220 luma=0.0577 rgb=0.0495,0.0614,0.0452
+  core mat27 - px=   41 hit=0.976 hole=0.000 occl=0.024 luma=0.0696 rgb=0.0584,0.0742,0.0579
+  core mat15 - px=   38 hit=0.947 hole=0.026 occl=0.026 luma=0.1910 rgb=0.0388,0.2283,0.2686
+  core mat 5 - px=   34 hit=0.853 hole=0.147 occl=0.000 luma=0.2703 rgb=0.2669,0.2785,0.1993
+frame 35575: raster bbox x=[927,1051] y=[441,586] px=5838 view z [14616,23544]
+  all: hit 5000 (0.856) hole 601 occl 237 hit luma mean 0.1703
+  ZONE (arms, r_yz>10000 |x|<4000): px 1708 hit 1401 (0.820) hole 277 (0.162) luma 0.1459
+  CORE: px 4130 hit 3599 (0.871) hole 324 (0.078) luma 0.1799
+  zone mat31 - px= 1201 hit=0.845 hole=0.146 occl=0.009 luma=0.1629 rgb=0.1771,0.1646,0.1042
+  core mat46 - px=  585 hit=0.868 hole=0.121 occl=0.010 luma=0.0643 rgb=0.0568,0.0678,0.0523
+  core mat11 A px=  395 hit=0.894 hole=0.071 occl=0.035 luma=0.0879 rgb=0.0774,0.0927,0.0705
+  core mat16 - px=  363 hit=0.931 hole=0.050 occl=0.019 luma=0.0628 rgb=0.0558,0.0661,0.0508
+  core mat22 - px=  316 hit=0.832 hole=0.076 occl=0.092 luma=0.1208 rgb=0.1059,0.1274,0.0991
+  zone mat27 - px=  273 hit=0.740 hole=0.245 occl=0.015 luma=0.0852 rgb=0.0833,0.0883,0.0610
+  core mat17 - px=  271 hit=0.827 hole=0.026 occl=0.148 luma=0.1206 rgb=0.1022,0.1279,0.1021
+  core mat 7 - px=  262 hit=0.859 hole=0.084 occl=0.057 luma=0.0743 rgb=0.0600,0.0795,0.0650
+  core mat40 - px=  254 hit=0.961 hole=0.035 occl=0.004 luma=1.1676 rgb=1.5192,1.1349,0.4560
+  core mat12 A px=  236 hit=0.852 hole=0.076 occl=0.072 luma=0.2135 rgb=0.2391,0.2151,0.1226
+  core mat19 - px=  170 hit=0.888 hole=0.059 occl=0.053 luma=0.1124 rgb=0.1005,0.1180,0.0909
+  core mat23 - px=  166 hit=0.801 hole=0.054 occl=0.145 luma=0.0547 rgb=0.0491,0.0575,0.0433
+  core mat14 - px=  144 hit=0.944 hole=0.028 occl=0.028 luma=0.0365 rgb=0.0281,0.0398,0.0294
+  core mat24 - px=  134 hit=0.933 hole=0.067 occl=0.000 luma=0.0693 rgb=0.0477,0.0759,0.0666
+  core mat 8 - px=  129 hit=1.000 hole=0.000 occl=0.000 luma=0.0418 rgb=0.0368,0.0441,0.0340
+  core mat20 - px=  128 hit=0.898 hole=0.055 occl=0.047 luma=0.0866 rgb=0.0774,0.0911,0.0698
+  zone mat 9 A px=  105 hit=0.790 hole=0.200 occl=0.010 luma=0.1765 rgb=0.1685,0.1835,0.1307
+  core mat30 - px=  104 hit=0.894 hole=0.029 occl=0.077 luma=0.1231 rgb=0.1087,0.1296,0.1011
+  core mat 9 A px=   88 hit=0.955 hole=0.011 occl=0.034 luma=0.0384 rgb=0.0303,0.0413,0.0327
+  core mat 2 A px=   81 hit=0.630 hole=0.370 occl=0.000 luma=0.9499 rgb=1.2125,0.9274,0.3990
+  core mat 1 A px=   71 hit=0.549 hole=0.437 occl=0.014 luma=0.1053 rgb=0.0877,0.1123,0.0883
+  zone mat11 A px=   61 hit=0.803 hole=0.164 occl=0.033 luma=0.0492 rgb=0.0427,0.0523,0.0384
+  core mat26 - px=   54 hit=0.685 hole=0.056 occl=0.259 luma=0.0548 rgb=0.0456,0.0586,0.0441
+  core mat45 - px=   53 hit=0.717 hole=0.245 occl=0.038 luma=0.5453 rgb=0.6723,0.5373,0.2512
+  core mat27 - px=   39 hit=0.949 hole=0.000 occl=0.051 luma=0.0765 rgb=0.0684,0.0803,0.0626
+  core mat15 - px=   37 hit=0.946 hole=0.000 occl=0.054 luma=0.2091 rgb=0.0401,0.2506,0.2948
+  core mat 5 - px=   34 hit=0.735 hole=0.206 occl=0.059 luma=0.1981 rgb=0.1918,0.2049,0.1484
+frame 36788: raster bbox x=[894,1034] y=[484,653] px=7767 view z [12214,21156]
+  all: hit 7008 (0.902) hole 575 occl 184 hit luma mean 0.1717
+  ZONE (arms, r_yz>10000 |x|<4000): px 2168 hit 1880 (0.867) hole 254 (0.117) luma 0.0949
+  CORE: px 5599 hit 5128 (0.916) hole 321 (0.057) luma 0.1998
+  zone mat31 - px= 1530 hit=0.893 hole=0.101 occl=0.007 luma=0.0927 rgb=0.0773,0.0991,0.0750
+  core mat46 - px=  818 hit=0.928 hole=0.068 occl=0.004 luma=0.0738 rgb=0.0661,0.0775,0.0607
+  core mat11 A px=  530 hit=0.940 hole=0.051 occl=0.009 luma=0.1090 rgb=0.1058,0.1130,0.0792
+  core mat16 - px=  509 hit=0.959 hole=0.031 occl=0.010 luma=0.0530 rgb=0.0456,0.0561,0.0439
+  core mat22 - px=  410 hit=0.905 hole=0.049 occl=0.046 luma=0.1343 rgb=0.1122,0.1436,0.1068
+  core mat 7 - px=  361 hit=0.845 hole=0.097 occl=0.058 luma=0.0767 rgb=0.0549,0.0834,0.0746
+  zone mat27 - px=  353 hit=0.768 hole=0.204 occl=0.028 luma=0.0778 rgb=0.0649,0.0831,0.0628
+  core mat17 - px=  349 hit=0.908 hole=0.014 occl=0.077 luma=0.1223 rgb=0.1074,0.1288,0.1008
+  core mat12 A px=  341 hit=0.874 hole=0.073 occl=0.053 luma=0.0972 rgb=0.0985,0.1002,0.0634
+  core mat40 - px=  330 hit=0.988 hole=0.006 occl=0.006 luma=1.5484 rgb=2.0379,1.5003,0.5834
+  core mat19 - px=  243 hit=0.905 hole=0.041 occl=0.053 luma=0.1440 rgb=0.1335,0.1499,0.1163
+  core mat23 - px=  211 hit=0.877 hole=0.052 occl=0.071 luma=0.0802 rgb=0.0764,0.0833,0.0606
+  core mat24 - px=  186 hit=0.973 hole=0.027 occl=0.000 luma=0.0825 rgb=0.0552,0.0904,0.0843
+  core mat14 - px=  182 hit=0.940 hole=0.038 occl=0.022 luma=0.0391 rgb=0.0311,0.0423,0.0313
+  core mat 8 - px=  177 hit=1.000 hole=0.000 occl=0.000 luma=0.0410 rgb=0.0353,0.0435,0.0336
+  core mat20 - px=  172 hit=0.936 hole=0.052 occl=0.012 luma=0.0876 rgb=0.0806,0.0915,0.0695
+  core mat30 - px=  141 hit=0.936 hole=0.028 occl=0.035 luma=0.1198 rgb=0.1087,0.1261,0.0901
+  zone mat 9 A px=  129 hit=0.853 hole=0.116 occl=0.031 luma=0.1787 rgb=0.1606,0.1870,0.1495
+  core mat 9 A px=  112 hit=0.991 hole=0.000 occl=0.009 luma=0.0635 rgb=0.0571,0.0660,0.0576
+  core mat 2 A px=  106 hit=0.632 hole=0.368 occl=0.000 luma=1.0314 rgb=1.3300,1.0027,0.4365
+  core mat 1 A px=   97 hit=0.691 hole=0.289 occl=0.021 luma=0.0943 rgb=0.0775,0.1005,0.0824
+  zone mat11 A px=   80 hit=0.900 hole=0.075 occl=0.025 luma=0.0855 rgb=0.0706,0.0913,0.0714
+  core mat45 - px=   66 hit=0.788 hole=0.197 occl=0.015 luma=0.2676 rgb=0.3176,0.2670,0.1269
+  core mat26 - px=   64 hit=0.891 hole=0.031 occl=0.078 luma=0.0653 rgb=0.0570,0.0688,0.0543
+  core mat15 - px=   62 hit=0.968 hole=0.032 occl=0.000 luma=0.3084 rgb=0.0940,0.3590,0.4377
+  core mat 5 - px=   49 hit=0.898 hole=0.061 occl=0.041 luma=0.2747 rgb=0.2811,0.2797,0.2067
+  core mat27 - px=   49 hit=1.000 hole=0.000 occl=0.000 luma=0.0685 rgb=0.0579,0.0732,0.0541

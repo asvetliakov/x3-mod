@@ -1,0 +1,8 @@
+6136 lum max 4.55 p99.9 2.632 n>1 53571 n>2 2827 depth covered 258050 zmin 0.98627
+6137 lum max 5.09 p99.9 2.634 n>1 53564 n>2 2807 depth covered 258338 zmin 0.98627
+6138 lum max 5.06 p99.9 2.633 n>1 53555 n>2 2828 depth covered 258313 zmin 0.98627
+6139 lum max 4.88 p99.9 2.630 n>1 53568 n>2 2804 depth covered 257758 zmin 0.98628
+6140 lum max 5.11 p99.9 2.630 n>1 53489 n>2 2795 depth covered 258301 zmin 0.98627
+6141 lum max 4.61 p99.9 2.633 n>1 53557 n>2 2825 depth covered 257931 zmin 0.98627
+6142 lum max 5.06 p99.9 2.635 n>1 53618 n>2 2827 depth covered 258519 zmin 0.98627
+6143 lum max 5.33 p99.9 2.632 n>1 53552 n>2 2812 depth covered 258032 zmin 0.98627

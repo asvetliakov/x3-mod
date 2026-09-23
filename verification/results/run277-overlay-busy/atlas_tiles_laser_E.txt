@@ -1,0 +1,34 @@
+tile keys ['mats', 'names', 'sources', 'lo', 'span', 'base', 'content', 'origin', 'texels_per_px', 'name', 'share', 'clamped_faces', 'clamped_share', 'capped']
+0 mats [5] origin [8, 504] content [192, 232] light metal_argon_apartments_labs_light.tga
+1 mats [7] origin [376, 504] content [196, 220] light NULL
+2 mats [8] origin [216, 504] content [144, 228] light NULL
+3 mats [13] origin [116, 876] content [40, 40] light metal_argon_misc_tech_light.tga
+4 mats [14] origin [612, 752] content [172, 88] light metal_argon_misc_tech_light.tga
+5 mats [15] origin [900, 504] content [116, 168] light metal_argon_pipes_tech_light.tga
+6 mats [16] origin [588, 504] content [296, 208] light NULL
+7 mats [17] origin [8, 8] content [848, 480] light NULL
+8 mats [18] origin [800, 752] content [108, 84] light NULL
+9 mats [19] origin [196, 752] content [140, 108] light NULL
+10 mats [20] origin [352, 752] content [244, 92] light NULL
+11 mats [21] origin [320, 984] content [92, 20] light metal_argon_trims_01_light.tga
+12 mats [22] origin [288, 944] content [232, 24] light metal_argon_trims_02_light.tga
+13 mats [23] origin [260, 876] content [308, 32] light metal_argon_trims_03_light.tga
+14 mats [24] origin [8, 944] content [264, 24] light metal_argon_trims_04_light.tga
+15 mats [25] origin [584, 876] content [176, 28] light metal_argon_trims_05_light.tga
+16 mats [26] origin [8, 752] content [172, 108] light metal_argon_trims_06_light.tga
+17 mats [27] origin [536, 944] content [148, 24] light metal_argon_trims_01_light.tga
+18 mats [28] origin [8, 984] content [296, 20] light metal_argon_trims_08_light.tga
+19 mats [30] origin [924, 752] content [84, 80] light metal_argon_circular_light.tga
+20 mats [31] origin [428, 984] content [20, 20] light argon_solar_panels_01_light.tga
+21 mats [32] origin [76, 876] content [24, 44] light argon_solar_panels_02_light.tga
+22 mats [39] origin [700, 944] content [60, 24] light NULL
+23 mats [40] origin [464, 984] content [44, 12] light metal_argon_exhaust_trims_02_light.tga
+24 mats [43] origin [172, 876] content [72, 36] light NULL
+25 mats [45] origin [8, 876] content [52, 52] light metal_argon_circular2_light.tga
+26 mats [46] origin [872, 8] content [132, 300] light metal_argon_smooth_plating_light.tga
+20 {'mats': [31], 'lo': [0.48999, 0.010895], 'span': [1.0, 0.989105], 'base': [256, 256], 'content': [20, 20], 'origin': [428, 984], 'texels_per_px': 3.15559, 'share': 0.065517, 'clamped_faces': 0, 'capped': False}
+23 {'mats': [40], 'lo': [-0.000839, 0.005966], 'span': [1.006393, 0.992203], 'base': [512, 128], 'content': [44, 12], 'origin': [464, 984], 'texels_per_px': 2.832649, 'share': 0.03816, 'clamped_faces': 0, 'capped': False}
+17 {'mats': [27], 'lo': [-0.005859, -6.1e-05], 'span': [1.817368, 2.029495], 'base': [1024, 128], 'content': [148, 24], 'origin': [536, 944], 'texels_per_px': 2.61177, 'share': 0.072605, 'clamped_faces': 0, 'capped': False}
+13 {'mats': [23], 'lo': [-0.007202, -0.008804], 'span': [3.860703, 2.842331], 'base': [1024, 128], 'content': [308, 32], 'origin': [260, 876], 'texels_per_px': 5.538673, 'share': 0.080462, 'clamped_faces': 0, 'capped': False}
+21 {'mats': [32], 'lo': [0.410339, 0.039963], 'span': [1.179306, 2.128693], 'base': [256, 256], 'content': [24, 44], 'origin': [76, 876], 'texels_per_px': 4.282312, 'share': 0.000331, 'clamped_faces': 0, 'capped': False}
+texels_per_px min..max [(2.61177, [27]), (2.832649, [40]), (3.15559, [31])] [(9.394305, [21]), (9.703664, [18]), (10.80747, [45])]

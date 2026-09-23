@@ -1,0 +1,66 @@
+frame 6137 pair=yes excess>0.3: components 1615 pixels 3318
+  (779,1045) 1x1 area 1 peakL 4.00 excess 4.00 rgb 4.03,3.99,3.99 z_at 0.98661 z_min_box 0.98640
+  (780,1037) 1x2 area 2 peakL 3.75 excess 3.75 rgb 3.65,3.78,3.78 z_at 0.98662 z_min_box 0.98640
+  (874,731) 5x7 area 22 peakL 3.28 excess 3.28 rgb 3.10,3.09,5.97 z_at -1.00000 z_min_box 0.99367
+  (1097,1059) 1x1 area 1 peakL 3.23 excess 3.22 rgb 2.58,3.37,3.74 z_at 0.98658 z_min_box 0.98645
+  (907,1064) 1x3 area 3 peakL 3.19 excess 3.19 rgb 2.56,3.32,3.70 z_at 0.98642 z_min_box 0.98628
+  (1098,1062) 1x1 area 1 peakL 3.17 excess 3.16 rgb 2.53,3.30,3.69 z_at 0.98654 z_min_box 0.98644
+  (820,1058) 1x1 area 1 peakL 3.11 excess 3.11 rgb 2.50,3.24,3.61 z_at 0.98658 z_min_box 0.98644
+  (1093,1059) 1x1 area 1 peakL 3.09 excess 3.09 rgb 2.49,3.22,3.59 z_at 0.98658 z_min_box 0.98644
+  (911,1061) 1x1 area 1 peakL 3.07 excess 3.07 rgb 2.47,3.21,3.56 z_at 0.98644 z_min_box 0.98628
+  (1010,1065) 1x2 area 2 peakL 3.06 excess 3.06 rgb 2.46,3.19,3.56 z_at 0.98639 z_min_box 0.98628
+frame 6138 pair=no excess>0.3: components 1271 pixels 2510
+  (1141,1044) 1x5 area 5 peakL 4.00 excess 4.00 rgb 4.00,4.00,4.00 z_at 0.98662 z_min_box 0.98640
+  (781,1045) 1x1 area 1 peakL 4.00 excess 3.96 rgb 4.03,3.99,3.99 z_at 0.98663 z_min_box 0.98640
+  (1022,731) 1x1 area 1 peakL 3.43 excess 3.43 rgb 2.73,3.55,4.36 z_at 0.99406 z_min_box 0.99363
+  (782,1037) 1x2 area 2 peakL 3.45 excess 3.41 rgb 3.35,3.47,3.49 z_at 0.98664 z_min_box 0.98640
+  (823,1059) 1x2 area 2 peakL 3.22 excess 3.22 rgb 2.58,3.36,3.73 z_at 0.98658 z_min_box 0.98645
+  (1140,1037) 1x1 area 1 peakL 3.22 excess 3.22 rgb 3.05,3.25,3.32 z_at 0.98661 z_min_box 0.98640
+  (1013,1064) 1x6 area 6 peakL 3.21 excess 3.21 rgb 2.58,3.35,3.72 z_at 0.98644 z_min_box 0.98628
+  (906,1062) 1x2 area 2 peakL 3.21 excess 3.21 rgb 2.58,3.35,3.71 z_at 0.98644 z_min_box 0.98630
+  (822,1062) 1x2 area 2 peakL 3.17 excess 3.17 rgb 2.53,3.31,3.70 z_at 0.98654 z_min_box 0.98644
+  (905,1066) 1x2 area 2 peakL 3.17 excess 3.17 rgb 2.53,3.30,3.68 z_at 0.98638 z_min_box 0.98628
+frame 6139 pair=yes excess>0.3: components 1590 pixels 4064
+  (779,1043) 1x6 area 6 peakL 4.00 excess 4.00 rgb 4.02,3.99,3.99 z_at 0.98662 z_min_box 0.98640
+  (1140,1046) 1x1 area 1 peakL 4.00 excess 3.99 rgb 4.00,4.00,4.00 z_at 0.98662 z_min_box 0.98640
+  (876,726) 6x6 area 22 peakL 3.68 excess 3.68 rgb 3.43,3.47,6.48 z_at -1.00000 z_min_box -1.00000
+  (1138,1037) 1x2 area 2 peakL 3.33 excess 3.29 rgb 3.22,3.36,3.39 z_at 0.98664 z_min_box 0.98640
+  (1097,1059) 1x2 area 2 peakL 3.22 excess 3.21 rgb 2.58,3.35,3.73 z_at 0.98659 z_min_box 0.98645
+  (1014,1063) 1x2 area 2 peakL 3.19 excess 3.19 rgb 2.56,3.33,3.70 z_at 0.98643 z_min_box 0.98629
+  (907,1066) 2x5 area 6 peakL 3.18 excess 3.18 rgb 2.55,3.32,3.71 z_at 0.98641 z_min_box 0.98628
+  (1012,1068) 1x1 area 1 peakL 3.18 excess 3.18 rgb 2.54,3.31,3.70 z_at 0.98636 z_min_box 0.98628
+  (1098,1062) 1x2 area 2 peakL 3.16 excess 3.16 rgb 2.53,3.29,3.68 z_at 0.98654 z_min_box 0.98644
+  (1015,1067) 1x1 area 1 peakL 3.16 excess 3.16 rgb 2.53,3.29,3.67 z_at 0.98637 z_min_box 0.98628
+frame 6140 pair=no excess>0.3: components 1456 pixels 2662
+  (1140,1038) 1x1 area 1 peakL 3.78 excess 3.78 rgb 3.68,3.81,3.81 z_at 0.98661 z_min_box 0.98640
+  (1013,1062) 1x3 area 3 peakL 3.25 excess 3.25 rgb 2.60,3.39,3.76 z_at 0.98645 z_min_box 0.98631
+  (1096,1058) 1x2 area 2 peakL 3.24 excess 3.24 rgb 2.60,3.38,3.76 z_at 0.98660 z_min_box 0.98646
+  (906,1062) 1x1 area 1 peakL 3.23 excess 3.23 rgb 2.59,3.37,3.73 z_at 0.98643 z_min_box 0.98630
+  (905,1066) 1x1 area 1 peakL 3.17 excess 3.17 rgb 2.54,3.31,3.69 z_at 0.98638 z_min_box 0.98628
+  (827,1058) 1x1 area 1 peakL 3.12 excess 3.12 rgb 2.50,3.25,3.62 z_at 0.98659 z_min_box 0.98644
+  (1017,1060) 1x2 area 2 peakL 3.12 excess 3.12 rgb 2.50,3.25,3.62 z_at 0.98645 z_min_box 0.98630
+  (1100,1058) 1x2 area 2 peakL 3.11 excess 3.11 rgb 2.49,3.24,3.60 z_at 0.98659 z_min_box 0.98644
+  (910,1063) 1x2 area 2 peakL 3.07 excess 3.07 rgb 2.48,3.20,3.56 z_at 0.98642 z_min_box 0.98628
+  (826,1063) 1x1 area 1 peakL 3.07 excess 3.07 rgb 2.46,3.19,3.57 z_at 0.98652 z_min_box 0.98644
+frame 6141 pair=yes excess>0.3: components 1443 pixels 2777
+  (1050,738) 6x6 area 24 peakL 4.06 excess 4.06 rgb 3.80,3.82,7.15 z_at -1.00000 z_min_box 0.99347
+  (779,1045) 1x3 area 3 peakL 4.00 excess 4.00 rgb 4.03,3.99,3.99 z_at 0.98661 z_min_box 0.98640
+  (781,1045) 1x1 area 1 peakL 4.00 excess 3.99 rgb 4.03,3.99,3.99 z_at 0.98664 z_min_box 0.98640
+  (871,734) 5x7 area 21 peakL 3.29 excess 3.29 rgb 3.18,3.09,5.93 z_at -1.00000 z_min_box 0.99359
+  (1097,1059) 1x1 area 1 peakL 3.22 excess 3.22 rgb 2.58,3.36,3.73 z_at 0.98659 z_min_box 0.98645
+  (1014,1063) 1x1 area 1 peakL 3.20 excess 3.20 rgb 2.57,3.33,3.70 z_at 0.98642 z_min_box 0.98629
+  (907,1065) 1x4 area 4 peakL 3.19 excess 3.19 rgb 2.55,3.33,3.71 z_at 0.98641 z_min_box 0.98628
+  (1015,1067) 1x1 area 1 peakL 3.17 excess 3.17 rgb 2.54,3.31,3.69 z_at 0.98637 z_min_box 0.98628
+  (780,1037) 1x1 area 1 peakL 3.15 excess 3.15 rgb 2.97,3.19,3.27 z_at 0.98661 z_min_box 0.98640
+  (1098,1062) 1x1 area 1 peakL 3.15 excess 3.14 rgb 2.52,3.28,3.66 z_at 0.98654 z_min_box 0.98644
+frame 6142 pair=no excess>0.3: components 1594 pixels 4135
+  (1141,1044) 1x3 area 3 peakL 4.00 excess 4.00 rgb 4.00,4.00,4.00 z_at 0.98661 z_min_box 0.98640
+  (1140,1037) 1x2 area 2 peakL 3.74 excess 3.74 rgb 3.64,3.77,3.78 z_at 0.98662 z_min_box 0.98640
+  (1057,854) 1x2 area 2 peakL 5.06 excess 3.37 rgb 4.67,5.11,5.62 z_at 0.99061 z_min_box 0.99022
+  (1012,1061) 6x9 area 13 peakL 3.23 excess 3.23 rgb 2.59,3.37,3.74 z_at 0.98647 z_min_box 0.98631
+  (1096,1058) 1x2 area 2 peakL 3.23 excess 3.23 rgb 2.59,3.37,3.74 z_at 0.98659 z_min_box 0.98645
+  (823,1059) 1x1 area 1 peakL 3.22 excess 3.22 rgb 2.58,3.36,3.72 z_at 0.98658 z_min_box 0.98645
+  (906,1062) 1x1 area 1 peakL 3.21 excess 3.21 rgb 2.58,3.35,3.71 z_at 0.98643 z_min_box 0.98629
+  (822,1062) 1x1 area 1 peakL 3.17 excess 3.17 rgb 2.53,3.30,3.69 z_at 0.98653 z_min_box 0.98644
+  (905,1066) 1x1 area 1 peakL 3.16 excess 3.16 rgb 2.53,3.30,3.68 z_at 0.98637 z_min_box 0.98628
+  (1017,1060) 1x2 area 2 peakL 3.13 excess 3.13 rgb 2.51,3.27,3.63 z_at 0.98645 z_min_box 0.98630

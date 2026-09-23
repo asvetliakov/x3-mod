@@ -1,0 +1,16 @@
+Run 74 A triage (run277, argon_tech_S_laser_E panel transition). No Wine, reads the installed game read-only.
+LOG=/tmp/x3-bottleX3-run277/session-20260923-214035-212.log
+python3 body_draws.py $LOG 0000542a 35568 36781                      > body_draws_542a.txt
+python3 ../../../tools/analysis/body_materials.py --lod 0 stations/station_scenes/tech/argon_tech_S_laser_E > laser_E_lod0_materials.txt
+python3 body_records.py stations/station_scenes/tech/argon_tech_S_laser_E > body_records_laser_E.txt
+python3 arm_zone.py stations/station_scenes/tech/argon_tech_S_laser_E 10000 4000 > arm_zone_laser_E_panelplane.txt
+python3 arm_capture.py $LOG /tmp/x3-bottleX3-run277/ stations/station_scenes/tech/argon_tech_S_laser_E 35568:2469521 36781:2763482 > arm_capture_laser_E.txt
+python3 arm_capture.py $LOG /tmp/x3-bottleX3-run277/ stations/station_scenes/tech/argon_tech_S_laser_E 34356:2188159 35575:2696044 36788:3064309 > arm_capture_laser_E_more.txt
+python3 panel_texels.py stations/station_scenes/tech/argon_tech_S_laser_E 31 27 23 11 9 36 12 2 1 > panel_texels_laser_E.txt
+python3 panel_bump.py stations/station_scenes/tech/argon_tech_S_laser_E 31 > panel_bump_mat31.txt
+python3 panel_light_mips.py stations/station_scenes/tech/argon_tech_S_laser_E 31 [light|diffuse|specular] > panel_{light,diffuse,specular}_mips_mat31.txt
+atlas_tiles_laser_E.txt: tiles of bodies[18].atlas in <game>/addon/05.x3m-lod.json (python json query)
+python3 group_draws.py $LOG ../lod-overlay-batch/install-run74/x3m-lod-batch-bodies.txt 7606 18469 34356 35568 36781 > group_draws_run277.txt
+python3 group_draws.py /tmp/x3-bottleX3-run272/session-20260923-170032-216.log ../lod-overlay-batch/install/x3m-lod-batch-bodies.txt 5500 21505 > group_draws_run272.txt
+TOP=40 python3 ../run272-batch-busy/burst_draws.py $LOG ../lod-overlay-batch/install-run74/x3m-lod-batch-bodies.txt 7606 18469 34356 35568 36781 > burst_draws_out.txt
+frame_timing windows: grep '^frame_timing qpc' on both logs (dt_p50_us, draws_p50 of the 300-frame windows containing the bursts)

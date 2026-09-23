@@ -124,3 +124,27 @@ FLUSH in `frame()` after the Present pair retired the GPU (no extra spin); the t
   unread / lost / failed 0, also after the Reset (measured). The core fixture feeds not-ready, lost and failed reads
   and checks each counter apart. The runner's rewritten `gpu-sync-timing.{json,txt}` were restored.
 - Production FogPass fixture: `repair_census_counts_the_pixels_the_repair_writes` (volumetric-fog.md, same date).
+
+## Run 280 (Run 75 C, 2026-09-23): the TAA and fog splits at 1920×1080
+
+Run75 DLL (22 passes; `taa_display` has no rows on the HDR route, so `taa` carries four sub-pairs). Medians in ms,
+each sub-pass including its own 0.264 ms floor (measured; `verification/results/run280-gpu-sync-split/`):
+
+| window | taa | copy | mask | box | resolve |
+| --- | --- | --- | --- | --- | --- |
+| busy clear sector (Oort Cloud, idx 21), still | 6.0 | 0.45 | 2.13 | 1.18 | 2.08 |
+| same, fast flight | 6.2–6.3 | 0.46 | 2.02–2.07 | 1.17 | 2.45–2.55 |
+| fogged sector (idx 2), turning in place | 4.0 | 0.45 | 1.23 | 0.83 | 1.27 |
+| fogged, moving | 4.2 | 0.45 | 1.33 | 0.83–0.93 | 1.37 |
+
+Reading: motion adds 0.4–0.5 ms and only in the resolve (the history lookup, inferred); the sector difference is
+content: the three stabiliser mask draws (+0.8 ms), the resolve (+0.7) and the box (+0.35) all grow with hull
+coverage. The mask passes are the largest single TAA cost in a busy sector, ahead of the resolve. Fog, fogged sector:
+`fog_route` 6.65–6.88 = `fog_march` 4.79–5.01 + `fog_composite` 0.55–0.57 + `fog_repair` 0.57–0.58 + motes 0.21 +
+0.5–0.6 exclusive; net of floors the march is 4.5–4.7 ms (the cost model said 2.9–3.3), composite and repair about
+0.3 each; the repair writes only 60–187 px per frame (30–104 ppm, `volumetric_fog_repair_census`, unread/lost/failed 0),
+so its cost is the full-screen prologue, not the repaired marches. `fog_route` net of the three added floors is
+about 1.5 ms above Run 274 (possibly a different fogged sector; open). The final window and the
+`gpu_sync_timing_summary` rows are again missing at shutdown (open). Consequences for the plan: TAA → merge or
+cheapen the mask passes before touching the history filter; fog → step B (far bins) and step C (quarter-resolution
+march, the repair fraction is tiny) are the levers.

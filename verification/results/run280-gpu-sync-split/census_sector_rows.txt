@@ -1,0 +1,25 @@
+volumetric_fog_sector device=1 frame=0 profile=0 reason=no_cockpit sector=00000000 index=-1 generation=1 density_scale=1.000 forced_profile=none
+volumetric_fog_repair_census window=1 frames=0..299 n=0 median_ppm=0 p90_ppm=0 max_ppm=0 last_pixels=0 area=0 unread=0 lost=0 failed=0 device=1
+volumetric_fog_repair_census window=2 frames=300..599 n=0 median_ppm=0 p90_ppm=0 max_ppm=0 last_pixels=0 area=0 unread=0 lost=0 failed=0 device=1
+volumetric_fog_repair_census window=3 frames=600..899 n=0 median_ppm=0 p90_ppm=0 max_ppm=0 last_pixels=0 area=0 unread=0 lost=0 failed=0 device=1
+volumetric_fog_repair_census window=4 frames=900..1199 n=0 median_ppm=0 p90_ppm=0 max_ppm=0 last_pixels=0 area=0 unread=0 lost=0 failed=0 device=1
+volumetric_fog_sector device=1 frame=1319 profile=0 reason=clear sector=11f09478 index=21 generation=1 density_scale=1.000 forced_profile=none
+volumetric_fog_repair_census window=5 frames=1200..1499 n=0 median_ppm=0 p90_ppm=0 max_ppm=0 last_pixels=0 area=0 unread=0 lost=0 failed=0 device=1
+volumetric_fog_repair_census window=6 frames=1500..1799 n=0 median_ppm=0 p90_ppm=0 max_ppm=0 last_pixels=0 area=0 unread=0 lost=0 failed=0 device=1
+volumetric_fog_repair_census window=7 frames=1800..2099 n=0 median_ppm=0 p90_ppm=0 max_ppm=0 last_pixels=0 area=0 unread=0 lost=0 failed=0 device=1
+volumetric_fog_repair_census window=8 frames=2100..2399 n=0 median_ppm=0 p90_ppm=0 max_ppm=0 last_pixels=0 area=0 unread=0 lost=0 failed=0 device=1
+volumetric_fog_repair_census window=9 frames=2400..2699 n=0 median_ppm=0 p90_ppm=0 max_ppm=0 last_pixels=0 area=0 unread=0 lost=0 failed=0 device=1
+volumetric_fog_repair_census window=10 frames=2700..2999 n=0 median_ppm=0 p90_ppm=0 max_ppm=0 last_pixels=0 area=0 unread=0 lost=0 failed=0 device=1
+volumetric_fog_repair_census window=11 frames=3000..3299 n=0 median_ppm=0 p90_ppm=0 max_ppm=0 last_pixels=0 area=0 unread=0 lost=0 failed=0 device=1
+volumetric_fog_sector device=1 frame=3566 profile=0 reason=no_cockpit sector=00000000 index=-1 generation=1 density_scale=1.000 forced_profile=none
+volumetric_fog_repair_census window=12 frames=3300..3599 n=0 median_ppm=0 p90_ppm=0 max_ppm=0 last_pixels=0 area=0 unread=0 lost=0 failed=0 device=1
+volumetric_fog_sector device=1 frame=3845 profile=1 reason=bluewell sector=119301a8 index=2 generation=1 density_scale=1.000 forced_profile=none
+volumetric_fog_handover device=1 frame=3847 step=1 coldfill=1 whole_atlas=1 arm_frame=3846 frames=1 ms=6862.6 drawable_frame=3847 drawable_ms=6862.6 fill_ms=563.3 fill_busy_ms=560.2 fill_cpu_ms=1080.0 busy_ms=594.3 latches=1 upload_bytes=4260096
+volumetric_fog_repair_census window=13 frames=3600..3899 n=52 median_ppm=71 p90_ppm=88 max_ppm=92 last_pixels=186 area=2073600 unread=0 lost=0 failed=0 device=1
+volumetric_fog_repair_census window=14 frames=3900..4199 n=300 median_ppm=83 p90_ppm=96 max_ppm=112 last_pixels=174 area=2073600 unread=0 lost=0 failed=0 device=1
+volumetric_fog_repair_census window=15 frames=4200..4499 n=300 median_ppm=90 p90_ppm=104 max_ppm=109 last_pixels=195 area=2073600 unread=0 lost=0 failed=0 device=1
+volumetric_fog_repair_census window=16 frames=4500..4799 n=300 median_ppm=44 p90_ppm=105 max_ppm=152 last_pixels=56 area=2073600 unread=0 lost=0 failed=0 device=1
+volumetric_fog_repair_census window=17 frames=4800..5099 n=300 median_ppm=29 p90_ppm=35 max_ppm=43 last_pixels=67 area=2073600 unread=0 lost=0 failed=0 device=1
+volumetric_fog_repair_census window=18 frames=5100..5399 n=300 median_ppm=30 p90_ppm=35 max_ppm=42 last_pixels=62 area=2073600 unread=0 lost=0 failed=0 device=1
+volumetric_fog_repair_census window=19 frames=5400..5699 n=300 median_ppm=33 p90_ppm=37 max_ppm=43 last_pixels=57 area=2073600 unread=0 lost=0 failed=0 device=1
+volumetric_fog_sector device=1 frame=5813 profile=0 reason=no_cockpit sector=00000000 index=-1 generation=1 density_scale=1.000 forced_profile=none

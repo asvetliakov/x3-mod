@@ -1,0 +1,8 @@
+mat31: faces 360 (merged group mat49); source bump 256x256, atlas 1024x1024
+texels per 3D area: source 2.837e-02, atlas 1.751e-04, atlas/source linear ratio 0.0786
+src L0 mean x=-0.026 y=+0.029 |xy|=0.102 |mean|=0.080 | atlas L0 mean x=-0.013 y=-0.020 |xy|=0.077 |mean|=0.037
+src L1 mean x=+0.003 y=+0.031 |xy|=0.102 |mean|=0.070 | atlas L1 mean x=-0.029 y=-0.007 |xy|=0.083 |mean|=0.032
+src L2 mean x=-0.009 y=+0.018 |xy|=0.062 |mean|=0.032 | atlas L2 mean x=-0.012 y=+0.003 |xy|=0.046 |mean|=0.030
+src L3 mean x=-0.008 y=+0.042 |xy|=0.089 |mean|=0.057 | atlas L3 mean x=+0.008 y=+0.002 |xy|=0.025 |mean|=0.013
+src L4 mean x=-0.006 y=+0.003 |xy|=0.086 |mean|=0.051 | atlas L4 mean x=-0.004 y=+0.008 |xy|=0.012 |mean|=0.009
+src L5 mean x=-0.011 y=-0.012 |xy|=0.063 |mean|=0.027 | atlas L5 mean x=-0.008 y=+0.012 |xy|=0.015 |mean|=0.015

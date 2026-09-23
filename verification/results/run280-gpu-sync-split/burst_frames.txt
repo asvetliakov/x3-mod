@@ -1,0 +1,24 @@
+capture_armed device=1 frame=3176 start_frame=3476 delay=300
+capture_armed device=1 frame=5384 start_frame=5684 delay=300
+3476 245.5 ms
+3477 238.1 ms
+3478 247.4 ms
+3479 244.4 ms
+3480 220.6 ms
+3481 229.9 ms
+3482 231.0 ms
+3483 231.4 ms
+5684 155.9 ms
+5685 160.0 ms
+5686 157.3 ms
+5687 150.8 ms
+5688 149.3 ms
+5689 151.6 ms
+5690 149.5 ms
+5691 151.1 ms
+frame=3476 dt_us=443401
+frame=3477 dt_us=419420
+frame=5684 dt_us=381952
+frame=5685 dt_us=357021
+frame=5690 dt_us=311589
+frame=5686 dt_us=311341

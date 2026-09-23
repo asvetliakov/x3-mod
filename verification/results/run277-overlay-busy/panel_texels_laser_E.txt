@@ -1,0 +1,44 @@
+texture b'metals\\argon\\metal_argon_antennas-B_03_alpha.tga' error texture b'metals\\argon\\metal_argon_antennas-B_03_alpha.tga' does not resolve under dds/ (pck, dds) or tex/ (jpg, tga, bmp)
+texture b'metals\\argon\\metal_argon_antennas-A_alpha.tga' error texture b'metals\\argon\\metal_argon_antennas-A_alpha.tga' does not resolve under dds/ (pck, dds) or tex/ (jpg, tga, bmp)
+texture b'metals\\argon\\metal_argon_lattice_support_beams_03_alpha.tga' error texture b'metals\\argon\\metal_argon_lattice_support_beams_03_alpha.tga' does not resolve under dds/ (pck, dds) or tex/ (jpg, tga, bmp)
+texture b'metals\\argon\\metal_argon_antennas-B_01_alpha.tga' error texture b'metals\\argon\\metal_argon_antennas-B_01_alpha.tga' does not resolve under dds/ (pck, dds) or tex/ (jpg, tga, bmp)
+texture b'metals\\argon\\metal_argon_lattice_support_beams_01_alpha.tga' error texture b'metals\\argon\\metal_argon_lattice_support_beams_01_alpha.tga' does not resolve under dds/ (pck, dds) or tex/ (jpg, tga, bmp)
+texture b'metals\\argon\\metal_argon_lattice_support_beams_03_alpha.tga' error texture b'metals\\argon\\metal_argon_lattice_support_beams_03_alpha.tga' does not resolve under dds/ (pck, dds) or tex/ (jpg, tga, bmp)
+texture b'metals\\argon\\metal_argon_lattice_support_beams_04_alpha.tga' error texture b'metals\\argon\\metal_argon_lattice_support_beams_04_alpha.tga' does not resolve under dds/ (pck, dds) or tex/ (jpg, tga, bmp)
+texture b'metals\\argon\\metal_argon_lattice_grid_alpha.tga' error texture b'metals\\argon\\metal_argon_lattice_grid_alpha.tga' does not resolve under dds/ (pck, dds) or tex/ (jpg, tga, bmp)
+mat31 textures: diffuse=b'others\\argon_solar_panels_01_diff.tga' light=b'others\\argon_solar_panels_01_light.tga' specular=b'others\\argon_solar_panels_01_spec.tga' alpha=b'metals\\argon\\metal_argon_antennas-B_03_alpha.tga'
+  diffuse  mean RGBA (0..255, area-weighted): src 54.9,54.9,58.3,255.0 | merged 55.9,55.9,61.1,255.0
+  light    mean RGBA (0..255, area-weighted): src 0.8,0.6,0.4,0.8 | merged 0.0,0.0,0.0,0.1
+  specular mean RGBA (0..255, area-weighted): src 223.6,223.1,223.6,255.0 | merged 227.5,226.6,227.5,255.0
+mat27 textures: diffuse=b'metals\\argon\\metal_argon_trims_07_diff.tga' light=b'metals\\argon\\metal_argon_trims_01_light.tga' specular=b'metals\\argon\\metal_argon_trims_07_spec.tga' alpha=b'NULL'
+  diffuse  mean RGBA (0..255, area-weighted): src 104.1,103.1,106.8,255.0 | merged 106.2,104.9,108.3,255.0
+  light    mean RGBA (0..255, area-weighted): src 0.0,0.0,0.0,0.1 | merged 0.0,0.0,0.0,0.1
+  specular mean RGBA (0..255, area-weighted): src 153.1,153.6,153.1,255.0 | merged 155.3,155.2,155.3,255.0
+mat23 textures: diffuse=b'metals\\argon\\metal_argon_trims_03_diff.tga' light=b'metals\\argon\\metal_argon_trims_03_light.tga' specular=b'metals\\argon\\metal_argon_trims_03_spec.tga' alpha=b'NULL'
+  diffuse  mean RGBA (0..255, area-weighted): src 92.0,90.9,94.2,255.0 | merged 92.4,91.6,94.9,255.0
+  light    mean RGBA (0..255, area-weighted): src 1.2,1.1,0.4,1.6 | merged 1.1,0.9,0.4,1.5
+  specular mean RGBA (0..255, area-weighted): src 148.1,148.0,148.1,255.0 | merged 149.1,149.1,149.1,255.0
+mat11 textures: diffuse=b'metals\\argon\\metal_argon_lattice_support_beams_03_diff.tga' light=b'metals\\argon\\metal_argon_lattice_support_beams_03_light.tga' specular=b'metals\\argon\\metal_argon_lattice_support_beams_03_spec.tga' alpha=b'metals\\argon\\metal_argon_lattice_support_beams_03_alpha.tga'
+  diffuse  mean RGBA (0..255, area-weighted): src 107.6,106.8,109.6,207.3 | merged 107.6,106.8,109.6,207.3
+  light    mean RGBA (0..255, area-weighted): src 0.1,0.1,0.1,0.1 | merged 0.1,0.1,0.1,0.1
+  specular mean RGBA (0..255, area-weighted): src 173.2,173.0,173.2,255.0 | merged 173.2,173.0,173.2,255.0
+mat9 textures: diffuse=b'metals\\argon\\metal_argon_lattice_support_beams_01_diff.tga' light=b'metals\\argon\\metal_argon_lattice_support_beams_01_light.tga' specular=b'metals\\argon\\metal_argon_lattice_support_beams_01_spec.tga' alpha=b'metals\\argon\\metal_argon_lattice_support_beams_01_alpha.tga'
+  diffuse  mean RGBA (0..255, area-weighted): src 96.4,95.4,98.7,172.5 | merged 109.1,106.7,109.4,192.9
+  light    mean RGBA (0..255, area-weighted): src 11.0,10.7,11.0,12.5 | merged 0.0,0.0,0.0,0.0
+  specular mean RGBA (0..255, area-weighted): src 176.8,176.9,176.8,255.0 | merged 174.9,174.7,174.9,255.0
+mat36 textures: diffuse=b'metals\\argon\\metal_argon_lattice_grid_diff.tga' light=b'metals\\argon\\metal_argon_lattice_grid_light.tga' specular=b'metals\\argon\\metal_argon_lattice_grid_spec.tga' alpha=b'metals\\argon\\metal_argon_lattice_grid_alpha.tga'
+  diffuse  mean RGBA (0..255, area-weighted): src 91.2,90.0,92.8,131.7 | merged 104.0,103.3,106.2,215.6
+  light    mean RGBA (0..255, area-weighted): src 0.2,0.2,0.2,0.4 | merged 0.0,0.0,0.0,0.0
+  specular mean RGBA (0..255, area-weighted): src 135.6,135.4,135.6,255.0 | merged 169.7,169.9,169.7,255.0
+mat12 textures: diffuse=b'metals\\argon\\metal_argon_lattice_support_beams_04_diff.tga' light=b'metals\\argon\\metal_argon_lattice_support_beams_04_light.tga' specular=b'metals\\argon\\metal_argon_lattice_support_beams_04_spec.tga' alpha=b'metals\\argon\\metal_argon_lattice_support_beams_04_alpha.tga'
+  diffuse  mean RGBA (0..255, area-weighted): src 98.4,97.5,100.5,135.1 | merged 107.4,106.5,109.2,209.1
+  light    mean RGBA (0..255, area-weighted): src 0.0,0.0,0.0,0.0 | merged 0.0,0.1,0.0,0.1
+  specular mean RGBA (0..255, area-weighted): src 170.0,170.0,170.0,255.0 | merged 172.8,172.7,172.8,255.0
+mat2 textures: diffuse=b'metals\\argon\\metal_argon_antennas-B_01_diff.tga' light=b'metals\\argon\\metal_argon_antennas-B_01_light.tga' specular=b'metals\\argon\\metal_argon_antennas-B_01_spec.tga' alpha=b'metals\\argon\\metal_argon_antennas-B_01_alpha.tga'
+  diffuse  mean RGBA (0..255, area-weighted): src 93.3,92.0,94.6,121.4 | merged 105.5,104.6,107.5,221.5
+  light    mean RGBA (0..255, area-weighted): src 5.4,5.5,0.5,6.1 | merged 0.2,0.2,0.2,0.4
+  specular mean RGBA (0..255, area-weighted): src 167.3,167.5,167.3,255.0 | merged 173.1,173.1,173.1,255.0
+mat1 textures: diffuse=b'metals\\argon\\metal_argon_antennas-A_diff.tga' light=b'metals\\argon\\metal_argon_antennas-A_light.tga' specular=b'metals\\argon\\metal_argon_antennas-A_spec.tga' alpha=b'metals\\argon\\metal_argon_antennas-A_alpha.tga'
+  diffuse  mean RGBA (0..255, area-weighted): src 97.4,96.5,99.1,82.4 | merged 108.3,107.4,110.0,204.0
+  light    mean RGBA (0..255, area-weighted): src 0.1,0.1,0.1,0.1 | merged 0.1,0.1,0.1,0.2
+  specular mean RGBA (0..255, area-weighted): src 175.4,175.4,175.4,255.0 | merged 175.5,175.3,175.5,255.0

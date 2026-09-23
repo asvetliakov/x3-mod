@@ -1,0 +1,82 @@
+installed entry addon/05.cat objects/stations/station_scenes/tech/argon_tech_S_laser_E.pbb skipped for original ['addon/05.cat']
+orig ladder [(593198, 37), (250, 25), (150, 15), (80, 1), (30, 1)]
+inst ladder [(593198, 37), (250, 3), (196, 1)]
+L0 part0 flags=0x30000001 mat 0 A faces=    2 x=[46408,46408] y=[-19376,-19264] z=[-1041,-951]
+L0 part0 flags=0x30000001 mat 1 A faces=  410 x=[-42242,64045] y=[-19376,2777] z=[-8588,8496]
+L0 part0 flags=0x30000001 mat 2 A faces=  812 x=[15437,55694] y=[-19376,8455] z=[-6079,6261]
+L0 part0 flags=0x30000001 mat 3 A faces=    6 x=[46408,54999] y=[-19264,-8241] z=[-1041,62]
+L0 part0 flags=0x30000001 mat 4 A faces=    2 x=[46408,46482] y=[-19376,-19264] z=[-1041,-1041]
+L0 part0 flags=0x30000001 mat 5 - faces= 1852 x=[-33498,53621] y=[-19830,-1273] z=[-7485,7392]
+L0 part0 flags=0x30000001 mat 7 - faces= 5444 x=[-43732,65536] y=[-20022,6627] z=[-9165,9149]
+L0 part0 flags=0x30000001 mat 8 - faces=  357 x=[28657,45550] y=[-9197,-4800] z=[-3339,3355]
+L0 part0 flags=0x30000001 mat 9 A faces=  168 x=[-35579,57382] y=[-17659,18374] z=[-15841,15825]
+L0 part0 flags=0x30000001 mat10 A faces=   20 x=[-35237,-32260] y=[-12650,-9677] z=[-2124,2234]
+L0 part0 flags=0x30000001 mat11 A faces= 4248 x=[-36713,58516] y=[-18142,18857] z=[-17726,17710]
+L0 part0 flags=0x30000001 mat12 A faces= 1188 x=[-35344,45190] y=[-12751,5533] z=[-7061,7136]
+L0 part0 flags=0x30000001 mat13 - faces=    4 x=[45444,46633] y=[-17883,-16623] z=[-928,944]
+L0 part0 flags=0x30000001 mat14 - faces= 2961 x=[-35818,57621] y=[-18608,7128] z=[-9579,9563]
+L0 part0 flags=0x30000001 mat15 - faces= 3022 x=[-34485,50296] y=[-19200,3052] z=[-7413,7397]
+L0 part0 flags=0x30000001 mat16 - faces= 3900 x=[30076,52779] y=[-19904,-1825] z=[-7925,7833]
+L0 part0 flags=0x30000001 mat17 - faces= 6372 x=[-36713,58516] y=[-19945,2777] z=[-6890,6988]
+L0 part0 flags=0x30000001 mat18 - faces=  139 x=[-34440,45088] y=[-11970,-7423] z=[-3760,3776]
+L0 part0 flags=0x30000001 mat19 - faces= 1541 x=[-9637,50148] y=[-14103,-2156] z=[-4688,4645]
+L0 part0 flags=0x30000001 mat20 - faces= 4034 x=[-34771,54490] y=[-12997,5116] z=[-8694,8679]
+L0 part0 flags=0x30000001 mat21 - faces=  386 x=[-34904,42480] y=[-12354,-6000] z=[-1764,1874]
+L0 part0 flags=0x30000001 mat22 - faces= 3674 x=[-36713,58516] y=[-20022,6785] z=[-8826,8811]
+L0 part0 flags=0x30000001 mat23 - faces= 6873 x=[-34366,50981] y=[-20022,18809] z=[-17726,17710]
+L0 part0 flags=0x30000001 mat24 - faces= 1244 x=[-34750,50263] y=[-20022,-2076] z=[-7770,7678]
+L0 part0 flags=0x30000001 mat25 - faces=  473 x=[-15525,49761] y=[-18862,-3143] z=[-4689,1616]
+L0 part0 flags=0x30000001 mat26 - faces= 1430 x=[-34217,52751] y=[-18862,1290] z=[-6225,6322]
+L0 part0 flags=0x30000001 mat27 - faces=  780 x=[-15495,53394] y=[-19650,19472] z=[-18108,18093]
+L0 part0 flags=0x30000001 mat28 - faces=  408 x=[-34201,53345] y=[-12489,-4227] z=[-4071,4234]
+L0 part0 flags=0x30000001 mat30 - faces= 1877 x=[-36343,58146] y=[-17659,18374] z=[-15800,15784]
+L0 part0 flags=0x30000001 mat31 - faces=  360 x=[-2527,2529] y=[-18756,19472] z=[-18095,18079]
+L0 part0 flags=0x30000001 mat32 - faces=    8 x=[32373,33298] y=[-5585,-3177] z=[-773,703]
+L0 part0 flags=0x30000001 mat36 A faces=   78 x=[-6107,42710] y=[-13000,-4134] z=[-3186,3254]
+L0 part0 flags=0x30000001 mat39 - faces=   22 x=[38630,42414] y=[-5624,-4095] z=[-851,781]
+L0 part0 flags=0x30000001 mat40 - faces= 1024 x=[15237,27978] y=[4842,8044] z=[-6279,6461]
+L0 part0 flags=0x30000001 mat43 - faces=  142 x=[36242,46979] y=[-15570,-10658] z=[-2748,2764]
+L0 part0 flags=0x30000001 mat45 - faces= 3012 x=[-35455,44506] y=[-12818,8115] z=[-6279,6461]
+L0 part0 flags=0x30000001 mat46 - faces= 2624 x=[31030,53621] y=[-20022,-3010] z=[-7925,7833]
+inst rec0 value=593198 part0 flags=0x30000001 mat0 faces=2 
+inst rec0 value=593198 part0 flags=0x30000001 mat1 faces=410 
+inst rec0 value=593198 part0 flags=0x30000001 mat2 faces=812 
+inst rec0 value=593198 part0 flags=0x30000001 mat3 faces=6 
+inst rec0 value=593198 part0 flags=0x30000001 mat4 faces=2 
+inst rec0 value=593198 part0 flags=0x30000001 mat5 faces=1852 
+inst rec0 value=593198 part0 flags=0x30000001 mat7 faces=5444 
+inst rec0 value=593198 part0 flags=0x30000001 mat8 faces=357 
+inst rec0 value=593198 part0 flags=0x30000001 mat9 faces=168 
+inst rec0 value=593198 part0 flags=0x30000001 mat10 faces=20 
+inst rec0 value=593198 part0 flags=0x30000001 mat11 faces=4248 
+inst rec0 value=593198 part0 flags=0x30000001 mat12 faces=1188 
+inst rec0 value=593198 part0 flags=0x30000001 mat13 faces=4 
+inst rec0 value=593198 part0 flags=0x30000001 mat14 faces=2961 
+inst rec0 value=593198 part0 flags=0x30000001 mat15 faces=3022 
+inst rec0 value=593198 part0 flags=0x30000001 mat16 faces=3900 
+inst rec0 value=593198 part0 flags=0x30000001 mat17 faces=6372 
+inst rec0 value=593198 part0 flags=0x30000001 mat18 faces=139 
+inst rec0 value=593198 part0 flags=0x30000001 mat19 faces=1541 
+inst rec0 value=593198 part0 flags=0x30000001 mat20 faces=4034 
+inst rec0 value=593198 part0 flags=0x30000001 mat21 faces=386 
+inst rec0 value=593198 part0 flags=0x30000001 mat22 faces=3674 
+inst rec0 value=593198 part0 flags=0x30000001 mat23 faces=6873 
+inst rec0 value=593198 part0 flags=0x30000001 mat24 faces=1244 
+inst rec0 value=593198 part0 flags=0x30000001 mat25 faces=473 
+inst rec0 value=593198 part0 flags=0x30000001 mat26 faces=1430 
+inst rec0 value=593198 part0 flags=0x30000001 mat27 faces=780 
+inst rec0 value=593198 part0 flags=0x30000001 mat28 faces=408 
+inst rec0 value=593198 part0 flags=0x30000001 mat30 faces=1877 
+inst rec0 value=593198 part0 flags=0x30000001 mat31 faces=360 
+inst rec0 value=593198 part0 flags=0x30000001 mat32 faces=8 
+inst rec0 value=593198 part0 flags=0x30000001 mat36 faces=78 
+inst rec0 value=593198 part0 flags=0x30000001 mat39 faces=22 
+inst rec0 value=593198 part0 flags=0x30000001 mat40 faces=1024 
+inst rec0 value=593198 part0 flags=0x30000001 mat43 faces=142 
+inst rec0 value=593198 part0 flags=0x30000001 mat45 faces=3012 
+inst rec0 value=593198 part0 flags=0x30000001 mat46 faces=2624 
+inst rec1 value=250 part0 flags=0x30000001 mat49 faces=17661 mat15:3022 mat45:3012 mat30:1877 mat5:1852 mat19:1541 mat26:1430 mat24:1244 mat40:1024 mat27:780 mat25:473 mat28:408 mat31:360
+inst rec1 value=250 part0 flags=0x30000001 mat49 faces=36302 mat23:6873 mat17:6372 mat7:5444 mat20:4034 mat16:3900 mat22:3674 mat14:2961 mat46:2624 mat21:386 mat39:22 mat32:8 mat13:4
+inst rec1 value=250 part0 flags=0x30000001 mat11 faces=6934 mat11:4248 mat12:1188 mat2:812 mat1:410 mat9:168 mat36:78 mat10:20 mat3:6 mat0:2 mat4:2
+inst rec2 value=196 part0 flags=0x30000001 mat17 faces=2359 
+inst materials 50 orig 49

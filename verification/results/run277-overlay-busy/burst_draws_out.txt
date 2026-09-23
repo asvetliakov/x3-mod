@@ -1,0 +1,138 @@
+frame 7606 draws=160 by camera={'477f1340': 5, '477f0ba8': 137, '00000000': 9, '477eaee0': 3, '114a33f8': 4, '477d4e08': 1, '4769f800': 1}
+  38 draws  147498 prim model=000053b8 cam=0ba8 ovl=1 ctxlod=[0, 1] lods=3 thr=100000,30,150 nodes=2+0nocensus s=93,d=15380230,r=2246786,lod=1,kept s=117440512,d=-21279,r=2246786,lod=0,kept body=Stations\others\military_outpost_middleb
+  18 draws    5760 prim model=00005421 cam=0ba8 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=18+0nocensus s=4,d=20507310,r=150314,lod=0,kept s=4,d=20514905,r=150314,lod=0,kept s=4,d=20654298,r=150314,lod=0,kept body=stations\connections\connect_argon_pipe_huge_cargoanimA_
+  12 draws    3840 prim model=00005432 cam=0ba8 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=12+0nocensus s=4,d=19843521,r=150314,lod=0,kept s=4,d=19851458,r=150314,lod=0,kept s=4,d=19929940,r=150314,lod=0,kept body=stations\connections\connect_argon_pipe_huge_cargoanimA
+   9 draws    1440 prim model=00005422 cam=0ba8 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=9+0nocensus s=4,d=20489148,r=140475,lod=0,kept s=4,d=20638196,r=140475,lod=0,kept s=4,d=20817843,r=140475,lod=0,kept body=stations\connections\connect_argon_pipe_huge_cargoanimB_
+   9 draws    1242 prim model=00000000 cam=0000 ovl=0 ctxlod=[0] no census row nodes=0+1nocensus  body=-
+   6 draws   10362 prim model=00004a88 cam=0ba8 ovl=0 ctxlod=[0] lods=4 thr=100000,30,15,5 nodes=5+0nocensus s=45,d=17243,r=1236,lod=0,kept s=45,d=17246,r=1236,lod=0,kept s=51,d=15460,r=1236,lod=0,kept body=ships\props\weapondummy
+   6 draws  170744 prim model=00005434 cam=0ba8 ovl=1 ctxlod=[1] lods=3 thr=100000,30,154 nodes=1+0nocensus s=17,d=20099673,r=535270,lod=1,kept body=stations\station_scenes\tech\argon_tech_L_laser_bb
+   6 draws     960 prim model=00005433 cam=0ba8 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=6+0nocensus s=4,d=19854296,r=140475,lod=0,kept s=4,d=19942645,r=140475,lod=0,kept s=4,d=20014617,r=140475,lod=0,kept body=stations\connections\connect_argon_pipe_huge_cargoanimB
+   4 draws    3968 prim model=000050e9 cam=1340 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=1+0nocensus s=117440512,d=0,r=5000000,lod=0,kept body=environments\nebulae\greenvoid\nebula_greenvoid_background_01
+   4 draws  107397 prim model=00005411 cam=0ba8 ovl=1 ctxlod=[1] lods=3 thr=100000,250,278 nodes=1+0nocensus s=173,d=7203269,r=1953631,lod=1,kept body=stations\station_scenes\others\argon_spacedock
+   4 draws   90006 prim model=00005530 cam=0ba8 ovl=1 ctxlod=[1] lods=3 thr=100000,30,83 nodes=1+0nocensus s=33,d=10835381,r=568030,lod=1,kept body=ships\owp\owp_large
+   4 draws   96942 prim model=0000543f cam=0ba8 ovl=1 ctxlod=[1] lods=3 thr=100000,250,173 nodes=1+0nocensus s=41,d=10892075,r=711107,lod=1,kept body=stations\station_scenes\tech\argon_tech_L_shield_F
+   4 draws   94502 prim model=0000542b cam=0ba8 ovl=1 ctxlod=[1] lods=3 thr=100000,250,184 nodes=1+0nocensus s=17,d=20737255,r=572549,lod=1,kept body=stations\station_scenes\tech\argon_tech_M_laser_G
+   3 draws   60897 prim model=0000542a cam=0ba8 ovl=1 ctxlod=[1] lods=3 thr=100000,250,196 nodes=1+0nocensus s=18,d=20317340,r=593198,lod=1,kept body=stations\station_scenes\tech\argon_tech_S_laser_E
+   3 draws   50145 prim model=00005536 cam=0ba8 ovl=1 ctxlod=[1] lods=3 thr=100000,30,120 nodes=1+0nocensus s=10,d=13342038,r=208882,lod=1,kept body=ships\m7\split_M7M
+   3 draws       6 prim model=00005691 cam=aee0 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=3+0nocensus s=117440512,d=0,r=32,lod=0,kept s=117440512,d=34,r=32,lod=0,kept s=117440512,d=70,r=32,lod=0,kept body=effects/menugfx/hud_target_text
+   2 draws   23744 prim model=00005699 cam=0ba8 ovl=1 ctxlod=[1] lods=3 thr=100000,30,155 nodes=1+0nocensus s=27,d=15793997,r=678369,lod=1,kept body=others\argon_gate
+   2 draws    9834 prim model=00004fea cam=0ba8 ovl=0 ctxlod=[0] lods=4 thr=100000,30,15,5 nodes=1+0nocensus s=187,d=17110,r=5013,lod=0,kept body=ships\argon\argon_M3_var2
+   2 draws   16011 prim model=000053ab cam=0ba8 ovl=1 ctxlod=[1] lods=3 thr=100000,30,155 nodes=1+0nocensus s=13,d=7259252,r=150032,lod=1,kept body=stations\living_sections\argon_livingsection
+   2 draws   25204 prim model=00005529 cam=0ba8 ovl=1 ctxlod=[1] lods=3 thr=100000,30,120 nodes=1+0nocensus s=28,d=8972047,r=401434,lod=1,kept body=ships\M7\Argon_M7
+   2 draws   18075 prim model=00004f75 cam=0ba8 ovl=1 ctxlod=[1] lods=3 thr=100000,30,120 nodes=1+0nocensus s=45,d=7123257,r=511093,lod=1,kept body=ships\argon\argon_M1
+   2 draws   15284 prim model=00004f72 cam=0ba8 ovl=1 ctxlod=[1] lods=3 thr=100000,30,120 nodes=1+0nocensus s=21,d=18014188,r=606393,lod=1,kept body=ships\argon\argon_TL
+   2 draws   23826 prim model=0000552a cam=0ba8 ovl=1 ctxlod=[1] lods=3 thr=100000,30,120 nodes=1+0nocensus s=21,d=6104710,r=206941,lod=1,kept body=ships\M7\Argon_m7m
+   2 draws      96 prim model=0000569a cam=0ba8 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=1+0nocensus s=19,d=15818848,r=483135,lod=0,kept body=others\argon_gate_effect
+   2 draws       4 prim model=00005696 cam=33f8 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=117440512,d=0,r=98,lod=0,kept body=effects/menugfx/hud_radar_2d
+   1 draws     768 prim model=000050e8 cam=1340 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=1+0nocensus s=117440512,d=0,r=5000000,lod=0,kept body=environments\nebulae\greenvoid\nebula_greenvoid_stars_01
+   1 draws    1712 prim model=00004fee cam=0ba8 ovl=0 ctxlod=[0] lods=3 thr=100000,20,5 nodes=1+0nocensus s=66,d=17007733,r=1755931,lod=0,kept body=environments\asteroids\asteroid_A_ClassMine
+   1 draws    1712 prim model=00004fef cam=0ba8 ovl=0 ctxlod=[0] lods=5 thr=100000,20,5,2,30 nodes=1+0nocensus s=81,d=7996701,r=1016512,lod=0,kept body=environments\asteroids\asteroid_B_ClassMine
+   1 draws    2592 prim model=00005427 cam=0ba8 ovl=0 ctxlod=[3] lods=5 thr=100000,250,150,80,30 nodes=1+0nocensus s=23,d=15420470,r=570149,lod=3,kept body=stations\station_scenes\tech\argon_tech_S_laser_A
+   1 draws     360 prim model=00004e86 cam=0ba8 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=1+0nocensus s=212,d=12573,r=4170,lod=0,kept body=effects\engines\fx_engine_argon_M3
+   1 draws       2 prim model=00005697 cam=33f8 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=117440512,d=0,r=256,lod=0,kept body=effects/menugfx/hud_info_2d
+   1 draws       2 prim model=00005698 cam=33f8 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=117440512,d=206,r=256,lod=0,kept body=effects/menugfx/hud_weapons_2d
+   1 draws       2 prim model=0000569b cam=4e08 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=640,d=1024,r=1024,lod=0,kept body=effects/menugfx/GUI/sidebar
+   1 draws       2 prim model=0000568d cam=f800 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=247,d=1325,r=512,lod=0,kept body=effects\menugfx\GUI\gui_master
+frame 18469 draws=324 by camera={'477f1340': 5, '477f0ba8': 302, '00000000': 8, '477eaee0': 3, '114a33f8': 4, '477d4e08': 1, '4769f800': 1}
+  56 draws    3456 prim model=35b8bf23 cam=0ba8 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=8+0nocensus s=6,d=1532168,r=16354,lod=0,kept s=6,d=1533495,r=16354,lod=0,kept s=6,d=1536470,r=16354,lod=0,kept body=-
+  35 draws  107397 prim model=00005411 cam=0ba8 ovl=1 ctxlod=[0] lods=3 thr=100000,250,278 nodes=1+0nocensus s=338,d=3696985,r=1953631,lod=0,kept body=stations\station_scenes\others\argon_spacedock
+  32 draws   18075 prim model=00004f75 cam=0ba8 ovl=1 ctxlod=[0] lods=3 thr=100000,30,120 nodes=1+0nocensus s=218,d=1494979,r=511093,lod=0,kept body=ships\argon\argon_M1
+  25 draws    3994 prim model=35ba45c3 cam=0ba8 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=16,d=1495579,r=39157,lod=0,kept body=-
+  25 draws  152900 prim model=0000546d cam=0ba8 ovl=0 ctxlod=[0] lods=5 thr=100000,250,150,80,30 nodes=1+0nocensus s=150,d=6657378,r=1567294,lod=0,kept body=stations\station_scenes\others\argon_L_solarpowerplant
+  18 draws   15602 prim model=00005526 cam=0ba8 ovl=0 ctxlod=[1] lods=4 thr=100000,30,15,5 nodes=1+0nocensus s=5,d=3641065,r=31646,lod=1,kept body=ships\mm6\argon_mm6
+  15 draws   13563 prim model=00005429 cam=0ba8 ovl=0 ctxlod=[2] lods=5 thr=100000,250,150,80,30 nodes=1+0nocensus s=35,d=15411203,r=851752,lod=2,kept body=stations\station_scenes\tech\argon_tech_S_laser_C
+  15 draws   19231 prim model=0000542e cam=0ba8 ovl=0 ctxlod=[2] lods=5 thr=100000,250,150,80,30 nodes=1+0nocensus s=30,d=12882454,r=620972,lod=2,kept body=stations\station_scenes\tech\argon_tech_L_laser_Q
+  15 draws   20708 prim model=00004f7e cam=0ba8 ovl=0 ctxlod=[0] lods=4 thr=100000,30,15,5 nodes=1+0nocensus s=38,d=8965017,r=534080,lod=0,kept body=ships\split\split_M2
+  10 draws    5698 prim model=00005534 cam=0ba8 ovl=0 ctxlod=[1] lods=4 thr=100000,30,15,5 nodes=1+0nocensus s=5,d=5637145,r=45416,lod=1,kept body=ships\mm6\split_mm6
+   8 draws    2560 prim model=00005421 cam=0ba8 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=8+0nocensus s=6,d=15612374,r=150314,lod=0,kept s=6,d=15614511,r=150314,lod=0,kept s=6,d=15958604,r=150314,lod=0,kept body=stations\connections\connect_argon_pipe_huge_cargoanimA_
+   8 draws    1300 prim model=00000000 cam=0000 ovl=0 ctxlod=[0] no census row nodes=0+1nocensus  body=-
+   6 draws   10362 prim model=00004a88 cam=0ba8 ovl=0 ctxlod=[0] lods=4 thr=100000,30,15,5 nodes=6+0nocensus s=45,d=17242,r=1236,lod=0,kept s=45,d=17245,r=1236,lod=0,kept s=51,d=15458,r=1236,lod=0,kept body=ships\props\weapondummy
+   6 draws    3264 prim model=00004e37 cam=0ba8 ovl=0 ctxlod=[1] lods=4 thr=100000,30,15,5 nodes=6+0nocensus s=7,d=1462293,r=17920,lod=1,kept s=7,d=1476911,r=17920,lod=1,kept s=7,d=1491794,r=17920,lod=1,kept body=ships\props\bigturret_leftweapon
+   4 draws    3968 prim model=000050e9 cam=1340 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=1+0nocensus s=117440512,d=0,r=5000000,lod=0,kept body=environments\nebulae\greenvoid\nebula_greenvoid_background_01
+   4 draws   32022 prim model=000053ab cam=0ba8 ovl=1 ctxlod=[1] lods=3 thr=100000,30,155 nodes=2+0nocensus s=8,d=11224190,r=150032,lod=1,kept s=26,d=3608111,r=150032,lod=1,kept body=stations\living_sections\argon_livingsection
+   4 draws    2172 prim model=00004e38 cam=0ba8 ovl=0 ctxlod=[1] lods=4 thr=100000,30,15,5 nodes=4+0nocensus s=7,d=1462293,r=17920,lod=1,kept s=7,d=1491794,r=17920,lod=1,kept s=7,d=1492192,r=17920,lod=1,kept body=ships\props\bigturret_rightweapon
+   4 draws   73749 prim model=000053b8 cam=0ba8 ovl=1 ctxlod=[1] lods=3 thr=100000,30,150 nodes=1+0nocensus s=142,d=10110202,r=2246786,lod=1,kept body=Stations\others\military_outpost_middleb
+   4 draws  116315 prim model=00005428 cam=0ba8 ovl=1 ctxlod=[1] lods=3 thr=100000,30,165 nodes=1+0nocensus s=13,d=18220944,r=394237,lod=1,kept body=stations\station_scenes\tech\argon_tech_M_laser_cc
+   4 draws  108429 prim model=000053aa cam=0ba8 ovl=1 ctxlod=[1] lods=3 thr=100000,30,216 nodes=1+0nocensus s=64,d=11279071,r=1132932,lod=1,kept body=stations\station_scenes\others\argon_equipmentdock
+   4 draws     640 prim model=00005422 cam=0ba8 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=4+0nocensus s=5,d=15615998,r=140475,lod=0,kept s=5,d=15967089,r=140475,lod=0,kept s=6,d=13120902,r=140475,lod=0,kept body=stations\connections\connect_argon_pipe_huge_cargoanimB_
+   3 draws   50145 prim model=00005536 cam=0ba8 ovl=1 ctxlod=[1] lods=3 thr=100000,30,120 nodes=1+0nocensus s=23,d=5726054,r=208882,lod=1,kept body=ships\m7\split_M7M
+   3 draws       6 prim model=00005691 cam=aee0 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=3+0nocensus s=117440512,d=0,r=32,lod=0,kept s=117440512,d=34,r=32,lod=0,kept s=117440512,d=70,r=32,lod=0,kept body=effects/menugfx/hud_target_text
+   2 draws    3424 prim model=00004fef cam=0ba8 ovl=0 ctxlod=[0] lods=5 thr=100000,20,5,2,30 nodes=2+0nocensus s=41,d=15697873,r=1016512,lod=0,kept s=62,d=10354107,r=1016512,lod=0,kept body=environments\asteroids\asteroid_B_ClassMine
+   2 draws    9834 prim model=00004fea cam=0ba8 ovl=0 ctxlod=[0] lods=4 thr=100000,30,15,5 nodes=1+0nocensus s=187,d=17110,r=5013,lod=0,kept body=ships\argon\argon_M3_var2
+   2 draws   23826 prim model=0000552a cam=0ba8 ovl=1 ctxlod=[1] lods=3 thr=100000,30,120 nodes=1+0nocensus s=28,d=4597781,r=206941,lod=1,kept body=ships\M7\Argon_m7m
+   2 draws       4 prim model=00005696 cam=33f8 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=117440512,d=0,r=98,lod=0,kept body=effects/menugfx/hud_radar_2d
+   1 draws     768 prim model=000050e8 cam=1340 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=1+0nocensus s=117440512,d=0,r=5000000,lod=0,kept body=environments\nebulae\greenvoid\nebula_greenvoid_stars_01
+   1 draws      28 prim model=35ba45c4 cam=0ba8 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=11,d=1457525,r=25270,lod=0,kept body=-
+   1 draws      28 prim model=35ba45c5 cam=0ba8 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=11,d=1459074,r=25178,lod=0,kept body=-
+   1 draws     360 prim model=00004e86 cam=0ba8 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=1+0nocensus s=424,d=12574,r=8340,lod=0,kept body=effects\engines\fx_engine_argon_M3
+   1 draws       2 prim model=00005697 cam=33f8 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=117440512,d=0,r=256,lod=0,kept body=effects/menugfx/hud_info_2d
+   1 draws       2 prim model=00005698 cam=33f8 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=117440512,d=206,r=256,lod=0,kept body=effects/menugfx/hud_weapons_2d
+   1 draws       2 prim model=0000569b cam=4e08 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=640,d=1024,r=1024,lod=0,kept body=effects/menugfx/GUI/sidebar
+   1 draws       2 prim model=0000568d cam=f800 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=283,d=1157,r=512,lod=0,kept body=effects\menugfx\GUI\gui_master
+frame 34356 draws=84 by camera={'13f11fb0': 5, '13f11818': 61, '00000000': 8, '13f0b360': 3, '13f75cd0': 1, '118842f8': 4, '29c47100': 1, '29bcfb70': 1}
+  12 draws    1680 prim model=00005413 cam=1818 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=12+0nocensus s=18,d=2116546,r=61759,lod=0,kept s=18,d=2131875,r=61759,lod=0,kept s=18,d=2138906,r=61759,lod=0,kept body=stations\connections\connect_argon_pipe_medium_cargo_cargoanimA
+  10 draws    4270 prim model=35b42b43 cam=1818 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=5+0nocensus s=6,d=2326406,r=22099,lod=0,kept s=6,d=2329962,r=22099,lod=0,kept s=6,d=2341974,r=22099,lod=0,kept body=-
+   8 draws    2560 prim model=00005421 cam=1818 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=8+0nocensus s=13,d=6916513,r=150314,lod=0,kept s=13,d=6927747,r=150314,lod=0,kept s=13,d=6964674,r=150314,lod=0,kept body=stations\connections\connect_argon_pipe_huge_cargoanimA_
+   8 draws    1334 prim model=00000000 cam=0000 ovl=0 ctxlod=[0] no census row nodes=0+1nocensus  body=-
+   6 draws   10362 prim model=00004a88 cam=1818 ovl=0 ctxlod=[0] lods=4 thr=100000,30,15,5 nodes=5+0nocensus s=45,d=17245,r=1236,lod=0,kept s=45,d=17246,r=1236,lod=0,kept s=51,d=15460,r=1236,lod=0,kept body=ships\props\weapondummy
+   6 draws     360 prim model=00005412 cam=1818 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=6+0nocensus s=12,d=2114479,r=42080,lod=0,kept s=12,d=2134972,r=42080,lod=0,kept s=13,d=1929568,r=42080,lod=0,kept body=stations\connections\connect_argon_pipe_medium_cargo_cargoanimB
+   5 draws     670 prim model=35b42b44 cam=1818 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=5+0nocensus s=4,d=2306871,r=17366,lod=0,kept s=4,d=2311456,r=17366,lod=0,kept s=4,d=2326267,r=17366,lod=0,kept body=-
+   4 draws    3968 prim model=000050e9 cam=1fb0 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=1+0nocensus s=117440512,d=0,r=5000000,lod=0,kept body=environments\nebulae\greenvoid\nebula_greenvoid_background_01
+   4 draws     640 prim model=00005422 cam=1818 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=4+0nocensus s=12,d=6926689,r=140475,lod=0,kept s=12,d=6974625,r=140475,lod=0,kept s=12,d=7218495,r=140475,lod=0,kept body=stations\connections\connect_argon_pipe_huge_cargoanimB_
+   4 draws   94502 prim model=0000542b cam=1818 ovl=1 ctxlod=[1] lods=3 thr=100000,250,184 nodes=1+0nocensus s=51,d=7094589,r=572549,lod=1,kept body=stations\station_scenes\tech\argon_tech_M_laser_G
+   3 draws   60897 prim model=0000542a cam=1818 ovl=1 ctxlod=[1] lods=3 thr=100000,250,196 nodes=1+0nocensus s=186,d=2036411,r=593198,lod=1,kept body=stations\station_scenes\tech\argon_tech_S_laser_E
+   3 draws       6 prim model=00005691 cam=b360 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=3+0nocensus s=117440512,d=0,r=32,lod=0,kept s=117440512,d=34,r=32,lod=0,kept s=117440512,d=70,r=32,lod=0,kept body=effects/menugfx/hud_target_text
+   2 draws    9834 prim model=00004fea cam=1818 ovl=0 ctxlod=[0] lods=4 thr=100000,30,15,5 nodes=1+0nocensus s=187,d=17111,r=5013,lod=0,kept body=ships\argon\argon_M3_var2
+   2 draws       4 prim model=00005696 cam=42f8 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=117440512,d=0,r=98,lod=0,kept body=effects/menugfx/hud_radar_2d
+   1 draws     768 prim model=000050e8 cam=1fb0 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=1+0nocensus s=117440512,d=0,r=5000000,lod=0,kept body=environments\nebulae\greenvoid\nebula_greenvoid_stars_01
+   1 draws     360 prim model=00004e86 cam=1818 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=1+0nocensus s=212,d=12574,r=4170,lod=0,kept body=effects\engines\fx_engine_argon_M3
+   1 draws       2 prim model=0000568f cam=5cd0 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=117440512,d=113,r=512,lod=0,kept body=effects/menugfx/GUI/blackpearl
+   1 draws       2 prim model=00005697 cam=42f8 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=117440512,d=0,r=256,lod=0,kept body=effects/menugfx/hud_info_2d
+   1 draws       2 prim model=00005698 cam=42f8 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=117440512,d=206,r=256,lod=0,kept body=effects/menugfx/hud_weapons_2d
+   1 draws       2 prim model=0000569b cam=7100 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=640,d=1024,r=1024,lod=0,kept body=effects/menugfx/GUI/sidebar
+   1 draws       2 prim model=0000568d cam=fb70 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=326,d=1005,r=512,lod=0,kept body=effects\menugfx\GUI\gui_master
+frame 35568 draws=86 by camera={'13f11fb0': 5, '13f11818': 61, '00000000': 8, '13f0b360': 3, '13f75cd0': 1, '118842f8': 6, '29c47100': 1, '29bcfb70': 1}
+  12 draws    1680 prim model=00005413 cam=1818 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=12+0nocensus s=18,d=2122296,r=61759,lod=0,kept s=18,d=2122749,r=61759,lod=0,kept s=18,d=2133559,r=61759,lod=0,kept body=stations\connections\connect_argon_pipe_medium_cargo_cargoanimA
+  10 draws    4270 prim model=35b42b43 cam=1818 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=5+0nocensus s=6,d=2322961,r=22099,lod=0,kept s=6,d=2326543,r=22099,lod=0,kept s=6,d=2338791,r=22099,lod=0,kept body=-
+   8 draws    2560 prim model=00005421 cam=1818 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=8+0nocensus s=13,d=6928852,r=150314,lod=0,kept s=13,d=6943294,r=150314,lod=0,kept s=13,d=6980589,r=150314,lod=0,kept body=stations\connections\connect_argon_pipe_huge_cargoanimA_
+   8 draws    1320 prim model=00000000 cam=0000 ovl=0 ctxlod=[0] no census row nodes=0+1nocensus  body=-
+   6 draws   10362 prim model=00004a88 cam=1818 ovl=0 ctxlod=[0] lods=4 thr=100000,30,15,5 nodes=6+0nocensus s=45,d=17245,r=1236,lod=0,kept s=45,d=17247,r=1236,lod=0,kept s=51,d=15460,r=1236,lod=0,kept body=ships\props\weapondummy
+   6 draws     360 prim model=00005412 cam=1818 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=6+0nocensus s=12,d=2109816,r=42080,lod=0,kept s=12,d=2128380,r=42080,lod=0,kept s=13,d=1928341,r=42080,lod=0,kept body=stations\connections\connect_argon_pipe_medium_cargo_cargoanimB
+   5 draws     670 prim model=35b42b44 cam=1818 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=5+0nocensus s=4,d=2303613,r=17366,lod=0,kept s=4,d=2308231,r=17366,lod=0,kept s=4,d=2323335,r=17366,lod=0,kept body=-
+   4 draws    3968 prim model=000050e9 cam=1fb0 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=1+0nocensus s=117440512,d=0,r=5000000,lod=0,kept body=environments\nebulae\greenvoid\nebula_greenvoid_background_01
+   4 draws     640 prim model=00005422 cam=1818 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=4+0nocensus s=12,d=6942797,r=140475,lod=0,kept s=12,d=6991598,r=140475,lod=0,kept s=12,d=7234528,r=140475,lod=0,kept body=stations\connections\connect_argon_pipe_huge_cargoanimB_
+   4 draws   94502 prim model=0000542b cam=1818 ovl=1 ctxlod=[1] lods=3 thr=100000,250,184 nodes=1+0nocensus s=51,d=7108946,r=572549,lod=1,kept body=stations\station_scenes\tech\argon_tech_M_laser_G
+   3 draws   60897 prim model=0000542a cam=1818 ovl=1 ctxlod=[1] lods=3 thr=100000,250,196 nodes=1+0nocensus s=186,d=2034672,r=593198,lod=1,kept body=stations\station_scenes\tech\argon_tech_S_laser_E
+   3 draws       6 prim model=00005691 cam=b360 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=3+0nocensus s=117440512,d=0,r=32,lod=0,kept s=117440512,d=34,r=32,lod=0,kept s=117440512,d=70,r=32,lod=0,kept body=effects/menugfx/hud_target_text
+   2 draws    9834 prim model=00004fea cam=1818 ovl=0 ctxlod=[0] lods=4 thr=100000,30,15,5 nodes=1+0nocensus s=187,d=17111,r=5013,lod=0,kept body=ships\argon\argon_M3_var2
+   2 draws       4 prim model=00005696 cam=42f8 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=117440512,d=0,r=98,lod=0,kept body=effects/menugfx/hud_radar_2d
+   2 draws       4 prim model=0000569d cam=42f8 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=117440512,d=146,r=128,lod=0,kept body=effects/menugfx/monitor_video_2
+   1 draws     768 prim model=000050e8 cam=1fb0 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=1+0nocensus s=117440512,d=0,r=5000000,lod=0,kept body=environments\nebulae\greenvoid\nebula_greenvoid_stars_01
+   1 draws     360 prim model=00004e86 cam=1818 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=1+0nocensus s=212,d=12574,r=4170,lod=0,kept body=effects\engines\fx_engine_argon_M3
+   1 draws       2 prim model=0000568f cam=5cd0 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=117440512,d=114,r=512,lod=0,kept body=effects/menugfx/GUI/blackpearl
+   1 draws       2 prim model=00005697 cam=42f8 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=117440512,d=0,r=256,lod=0,kept body=effects/menugfx/hud_info_2d
+   1 draws       2 prim model=00005698 cam=42f8 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=117440512,d=206,r=256,lod=0,kept body=effects/menugfx/hud_weapons_2d
+   1 draws       2 prim model=0000569b cam=7100 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=640,d=1024,r=1024,lod=0,kept body=effects/menugfx/GUI/sidebar
+   1 draws       2 prim model=0000568d cam=fb70 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=316,d=1034,r=512,lod=0,kept body=effects\menugfx\GUI\gui_master
+frame 36781 draws=118 by camera={'13f11fb0': 5, '13f11818': 95, '00000000': 8, '13f0b360': 3, '13f75cd0': 1, '118842f8': 4, '29c47100': 1, '29bcfb70': 1}
+  37 draws   60897 prim model=0000542a cam=1818 ovl=1 ctxlod=[0] lods=3 thr=100000,250,196 nodes=1+0nocensus s=211,d=1791680,r=593198,lod=0,kept body=stations\station_scenes\tech\argon_tech_S_laser_E
+  12 draws    1680 prim model=00005413 cam=1818 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=12+0nocensus s=20,d=1885321,r=61759,lod=0,kept s=20,d=1885947,r=61759,lod=0,kept s=20,d=1886731,r=61759,lod=0,kept body=stations\connections\connect_argon_pipe_medium_cargo_cargoanimA
+  10 draws    4270 prim model=35b42b43 cam=1818 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=5+0nocensus s=6,d=2074335,r=22099,lod=0,kept s=6,d=2076912,r=22099,lod=0,kept s=6,d=2091630,r=22099,lod=0,kept body=-
+   8 draws    2560 prim model=00005421 cam=1818 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=8+0nocensus s=13,d=7033985,r=150314,lod=0,kept s=13,d=7047518,r=150314,lod=0,kept s=13,d=7072516,r=150314,lod=0,kept body=stations\connections\connect_argon_pipe_huge_cargoanimA_
+   8 draws    1248 prim model=00000000 cam=0000 ovl=0 ctxlod=[0] no census row nodes=0+1nocensus  body=-
+   6 draws   10362 prim model=00004a88 cam=1818 ovl=0 ctxlod=[0] lods=4 thr=100000,30,15,5 nodes=6+0nocensus s=45,d=17243,r=1236,lod=0,kept s=45,d=17245,r=1236,lod=0,kept s=51,d=15459,r=1236,lod=0,kept body=ships\props\weapondummy
+   6 draws     360 prim model=00005412 cam=1818 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=6+0nocensus s=14,d=1876634,r=42080,lod=0,kept s=14,d=1891499,r=42080,lod=0,kept s=15,d=1694484,r=42080,lod=0,kept body=stations\connections\connect_argon_pipe_medium_cargo_cargoanimB
+   5 draws     670 prim model=35b42b44 cam=1818 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=5+0nocensus s=5,d=2055833,r=17366,lod=0,kept s=5,d=2059202,r=17366,lod=0,kept s=5,d=2077395,r=17366,lod=0,kept body=-
+   4 draws    3968 prim model=000050e9 cam=1fb0 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=1+0nocensus s=117440512,d=0,r=5000000,lod=0,kept body=environments\nebulae\greenvoid\nebula_greenvoid_background_01
+   4 draws     640 prim model=00005422 cam=1818 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=4+0nocensus s=12,d=7043924,r=140475,lod=0,kept s=12,d=7083520,r=140475,lod=0,kept s=13,d=6750934,r=140475,lod=0,kept body=stations\connections\connect_argon_pipe_huge_cargoanimB_
+   4 draws   94502 prim model=0000542b cam=1818 ovl=1 ctxlod=[1] lods=3 thr=100000,250,184 nodes=1+0nocensus s=52,d=6915261,r=572549,lod=1,kept body=stations\station_scenes\tech\argon_tech_M_laser_G
+   3 draws       6 prim model=00005691 cam=b360 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=3+0nocensus s=117440512,d=0,r=32,lod=0,kept s=117440512,d=34,r=32,lod=0,kept s=117440512,d=70,r=32,lod=0,kept body=effects/menugfx/hud_target_text
+   2 draws    9834 prim model=00004fea cam=1818 ovl=0 ctxlod=[0] lods=4 thr=100000,30,15,5 nodes=1+0nocensus s=187,d=17110,r=5013,lod=0,kept body=ships\argon\argon_M3_var2
+   2 draws       4 prim model=00005696 cam=42f8 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=117440512,d=0,r=98,lod=0,kept body=effects/menugfx/hud_radar_2d
+   1 draws     768 prim model=000050e8 cam=1fb0 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=1+0nocensus s=117440512,d=0,r=5000000,lod=0,kept body=environments\nebulae\greenvoid\nebula_greenvoid_stars_01
+   1 draws     360 prim model=00004e86 cam=1818 ovl=0 ctxlod=[0] lods=1 thr=100000 nodes=1+0nocensus s=212,d=12573,r=4170,lod=0,kept body=effects\engines\fx_engine_argon_M3
+   1 draws       2 prim model=0000568f cam=5cd0 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=117440512,d=89,r=512,lod=0,kept body=effects/menugfx/GUI/blackpearl
+   1 draws       2 prim model=00005697 cam=42f8 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=117440512,d=0,r=256,lod=0,kept body=effects/menugfx/hud_info_2d
+   1 draws       2 prim model=00005698 cam=42f8 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=117440512,d=206,r=256,lod=0,kept body=effects/menugfx/hud_weapons_2d
+   1 draws       2 prim model=0000569b cam=7100 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=640,d=1024,r=1024,lod=0,kept body=effects/menugfx/GUI/sidebar
+   1 draws       2 prim model=0000568d cam=fb70 ovl=0 ctxlod=[0] lods=1 thr=10000 nodes=1+0nocensus s=435,d=753,r=512,lod=0,kept body=effects\menugfx\GUI\gui_master

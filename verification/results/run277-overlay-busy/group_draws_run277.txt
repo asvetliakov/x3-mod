@@ -1,0 +1,15 @@
+frame 7606 draws=160 main=477f0ba8 overlay_merged=44/866526p overlay_lod0=34/73749p laddered=11/26212p single_lod=48/12456p no_census=0/0p other_views=23/5996p
+   >10: node=396f5f18 draws=34 s=117440512 lod=0 lods=3 thr=100000,30,150 body=Stations\others\military_outpost_middleb ovl=1
+frame 18469 draws=324 main=477f0ba8 overlay_merged=21/404486p overlay_lod0=67/125472p laddered=118/256758p single_lod=96/11066p no_census=0/0p other_views=22/6054p
+   >10: node=2a554798 draws=35 s=338 lod=0 lods=3 thr=100000,250,278 body=stations\station_scenes\others\argon_spacedock ovl=1
+   >10: node=43e441b0 draws=32 s=218 lod=0 lods=3 thr=100000,30,120 body=ships\argon\argon_M1 ovl=1
+   >10: node=43e44e30 draws=25 s=16 lod=0 lods=1 thr=10000 body=- ovl=0
+   >10: node=32b8ff58 draws=25 s=150 lod=0 lods=5 thr=100000,250,150,80,30 body=stations\station_scenes\others\argon_L_solarpowerplant ovl=0
+   >10: node=4404b938 draws=18 s=5 lod=1 lods=4 thr=100000,30,15,5 body=ships\mm6\argon_mm6 ovl=0
+   >10: node=341b44b8 draws=15 s=35 lod=2 lods=5 thr=100000,250,150,80,30 body=stations\station_scenes\tech\argon_tech_S_laser_C ovl=0
+   >10: node=34816b60 draws=15 s=30 lod=2 lods=5 thr=100000,250,150,80,30 body=stations\station_scenes\tech\argon_tech_L_laser_Q ovl=0
+   >10: node=3dc824d0 draws=15 s=38 lod=0 lods=4 thr=100000,30,15,5 body=ships\split\split_M2 ovl=0
+frame 34356 draws=84 main=13f11818 overlay_merged=7/155399p overlay_lod0=0/0p laddered=8/20196p single_lod=46/10540p no_census=0/0p other_views=23/6090p
+frame 35568 draws=86 main=13f11818 overlay_merged=7/155399p overlay_lod0=0/0p laddered=8/20196p single_lod=46/10540p no_census=0/0p other_views=25/6080p
+frame 36781 draws=118 main=13f11818 overlay_merged=4/94502p overlay_lod0=37/60897p laddered=8/20196p single_lod=46/10540p no_census=0/0p other_views=23/6004p
+   >10: node=45af6260 draws=37 s=211 lod=0 lods=3 thr=100000,250,196 body=stations\station_scenes\tech\argon_tech_S_laser_E ovl=1
