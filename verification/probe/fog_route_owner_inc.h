@@ -3,6 +3,10 @@
 #include "fog_card_policy.h"
 #include "fog_card_mask.h"
 #include "fog_card_match.h"
+#ifndef X3M_ROUTE_BRIDGE_BASELINE
+#include "fog_prefill.h" // 4ff60c8a members
+#include "../renderer/gpu_sync_timing_core.h"
+#endif
 #include "shadow_replay_projection.h"
 #include "sun_shadow_apply_pass.h"
 #include <cstdarg>
@@ -84,7 +88,11 @@ struct MotionOutput {
     // config's motes as configure_volumetric_fog_dust_motes does to launch with the option.
     bool fog_dust_motes_launch_=false,fog_motes_refused_logged_=false,fog_motes_drawn_=false;long long fog_motes_epoch_qpc_=0;
     int volumetric_fog_dust_motes_toggle()noexcept;
-    unsigned fog_density_logs_=0;
+    unsigned fog_density_logs_=0,fog_handover_logs_=0; // 4ff60c8a members (motion_output.h)
+    bool fog_prefill_launch_=false;fog_prefill::Record fog_prefill_{};unsigned fog_prefill_logs_=0;
+    fog_prefill::Decision fog_prefill_confirm(const FogSectorFrame&,const sector_background::Sample&)noexcept;
+    void volumetric_fog_prefill(const fog_prefill::Result&,std::uint64_t)noexcept;
+    gpu_sync_timing::Marks* gpu_sync_=nullptr;
     std::uint64_t fog_density_sample_frame_=~std::uint64_t(0),fog_density_key_=0;
     long long fog_density_epoch_qpc_=0,fog_density_sample_qpc_=0;double fog_density_camera_[3]{};
     static constexpr unsigned fog_density_gap_ms=500;

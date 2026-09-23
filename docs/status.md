@@ -1,6 +1,6 @@
 # Project status
 
-Updated 2026-09-23 (day): the Run72 candidate is installed (box cull, forward reticle, 1.05 boom, pause key-only, decoder discovery, identity without a file hash, music trace/keep opt-in, data-driven fog families); Run 72 A/B queued; Run 71 accepted the merged-LOD atlas overlay built from the LOD 0 meshes (no visible transition; ships 2 draws, outpost 4); next is the fleet batch with mod support; earlier the Run70 candidate was installed (motion weight 0.7,2,8 and dust motes 1300,3 as defaults, both accepted in Run 70 A/B); Run 68 and Run 69 A-D flew: the SETA exit reset accepted and made default with strict sky history, the fog shadow pass stays off, the merged-LOD pilot overlay works (engine glows and lighting recovered step by step, atlas build next); earlier, Run 67 flew: footprint 8 accepted as the default, the SETA residual diagnosed and fixed behind an option, no cullable draw bucket left, fog pass needs its A/B; the merged-LOD pilot is tooled (bob1.py, lod_overlay.py); lod-scale stays off by user decision; Run 65 accepted the sun edge fix, core dimming, widening 4 with the emissive vote and the fog regression; Run 59 accepted the camera-relative gate for pans. Run56 (run200) is accepted for media stability: the user
+Updated 2026-09-23 (17:40): the Run73 candidate is installed (fog hand-over R1-R3 with the docked walk, bolt footprint 3,8 default, on top of everything in Run72); Run 73 A flew on the Run72 DLL with the batch overlay (overlay bodies 2-4 draws; the remaining 200+ draws are refused texel_floor bodies, single-LOD pipes and signs; baker fix in progress); Run 73 B/C queued; earlier: the Run72 candidate is installed (box cull, forward reticle, 1.05 boom, pause key-only, decoder discovery, identity without a file hash, music trace/keep opt-in, data-driven fog families); Run 72 A/B queued; Run 71 accepted the merged-LOD atlas overlay built from the LOD 0 meshes (no visible transition; ships 2 draws, outpost 4); next is the fleet batch with mod support; earlier the Run70 candidate was installed (motion weight 0.7,2,8 and dust motes 1300,3 as defaults, both accepted in Run 70 A/B); Run 68 and Run 69 A-D flew: the SETA exit reset accepted and made default with strict sky history, the fog shadow pass stays off, the merged-LOD pilot overlay works (engine glows and lighting recovered step by step, atlas build next); earlier, Run 67 flew: footprint 8 accepted as the default, the SETA residual diagnosed and fixed behind an option, no cullable draw bucket left, fog pass needs its A/B; the merged-LOD pilot is tooled (bob1.py, lod_overlay.py); lod-scale stays off by user decision; Run 65 accepted the sun edge fix, core dimming, widening 4 with the emissive vote and the fog regression; Run 59 accepted the camera-relative gate for pans. Run56 (run200) is accepted for media stability: the user
 reports no crash and no media-related stutter. The accepted production baseline
 is merged to main. Run57 accepts the station-flash default correction. Fog-range and moving-lattice
 work remain open. The agent never launches the game. See the [run queue](verification/user-runs.md) and the current
@@ -8,27 +8,31 @@ work remain open. The agent never launches the game. See the [run queue](verific
 
 ## Installed build
 
-Bottle **X3**, **CrossOver Preview.app**. Run72 DLL SHA-256:
-`c17792a91718e40e376847a4f2af36b1a9c1800e2ce7c9df7ab7f0edb0cfd6e5`
-(55,642,083 bytes), built once from clean reviewed main `dcf3728b`.
-Retained DLL: `/tmp/x3-run72-candidate/build/d3d9.dll`. Installed 2026-09-23.
+Bottle **X3**, **CrossOver Preview.app**. Run73 DLL SHA-256:
+`3eadf8e5340177cd52a0a655f41cf321767811f41d942ed978adefc83e56e6f5`
+(55,870,714 bytes), built once from clean reviewed main `4ff60c8a`.
+Retained DLL: `/tmp/x3-run73-candidate/build/d3d9.dll`. Installed 2026-09-23 17:40.
 
-Changes against Run70 (`a773e9f2…`), all launcher defaults on modded launches unless noted: `--collide-box-cull` on;
-chase HUD reticle anchored `forward` and the boom 1.05×; `--pause-key-only` (only the Pause key or a click ends the
-flight pause); the voice decoder shipped in the repository and discovered automatically; the executable identity is
-structural plus site bytes (no file hash; the identity line logs `exe_laa=`/`exe_max_app=`); `--music-trace` and
-`--music-keep` (both opt-in, the keep off until the trace flight confirms the same-track replay); data-driven fog
-families from `<game>/x3m/fog-families.bin` when present (not installed; the 14 compiled profiles apply).
-The merged-LOD pilot overlay `addon/05.cat` stays installed ([record](../verification/results/lod-overlay-pilot/install.json)).
+Changes against Run72 (`c17792a9…`), all launcher defaults on modded launches: the fog hand-over
+([note](architecture/fog-handover.md)): `--fog-handover-step` (cold-start far readiness in one step),
+`--fog-handover-coldfill` (far need box first, whole-atlas latch), `--fog-handover-prefill` (the next sector's density
+filled during the transit stall from the global object list) and `--fog-docked` (parent walk for the docked view);
+`--bolt-footprint 3,8` ([note](architecture/bolt-footprint.md): sub-gate bullet instances expanded on the CPU through a
+proxy-owned dynamic vertex buffer for the admitted additive bullet draw). `--music-keep` stays opt-in with the
+alt-tab skip_all path. The batch merged-LOD overlay `addon/05.cat` stays installed
+([record](../verification/results/lod-overlay-pilot/install.json)); fog families file absent (14 compiled profiles).
 
-[Qualification](../verification/results/run72-candidate-qualification.json): x87 walk 114 roots / 658 reachable / zero
-violations; imports 213 functions (Run70 210: +GetFileType, SetFilePointerEx, lstrcmpW from the fog-family loader),
-17 exports; temporal pass RESULT PASS 744 / 278, 546 samples (report byte-identical); motion-output 190 cases /
-271,369 checks identical; fog pass 117 checks, 30/30 gates; route bridge 35,811 checks, the same 110 names PASS; fog-family
-fixture 67 cases; identity verifiers 23/23 on four EXE variants; pause/music site verifiers PASS; host suite 238 modules /
-2,442 tests reused from the merge gate. Not a native Windows execution. The [install record](../verification/results/run72-candidate-install.json)
-verifies installed bytes and unchanged X3AP.exe `fdbf3418…` and cxbottle.conf `cc5d6c00…`. Rollback: Run70
-`/tmp/x3-run70-candidate/build/d3d9.dll`, then Run69 and older. The dry run after the install passed; no game was launched by the agent.
+[Qualification](../verification/results/run73-candidate-qualification.json): x87 walk 116 roots / 671 reachable / zero
+violations; imports and exports unchanged against Run72 (213 functions, 17 exports); temporal pass RESULT PASS 744 / 278,
+546 samples (report byte-identical); motion-output 190 cases / 271,369 checks identical; fog pass 122 checks, 30/30 gates,
+HANDOVER latches=1 upload_bytes=4,260,096 ready 577.9 ms; route bridge 34,545 checks, the same 110 names PASS; fog-family
+fixture 67 cases; GPU sync timing fixture 30/30 (event queries available, 1,440 syncs); identity verifiers 23/23 on four
+EXE variants; pause/music site verifiers PASS (music keep writes 48); host suite 242 modules / 2,492 tests from the merge
+gate. Not a native Windows execution. The [install record](../verification/results/run73-candidate-install.json)
+verifies installed bytes and unchanged X3AP.exe `fdbf3418…` and cxbottle.conf `cc5d6c00…`. Rollback: Run72
+`/tmp/x3-run72-candidate/build/d3d9.dll`, then Run70 and older. The dry run after the install passed; no game was launched by the agent.
+The route bridge ran from a scratch harness copy carrying the 4ff60c8a owner members; the same members are now in
+`verification/probe/fog_route_owner_inc.h` (bridge compiles against main).
 
 ## Current work and pending acceptance
 
