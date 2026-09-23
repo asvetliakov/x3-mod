@@ -2289,6 +2289,7 @@ private:
     float taa_thin_emissive_ = 0.f;     // X3M_TAA_THIN_REGION_EMISSIVE=E: emissive vote of the thin region (thin-glow-lines.md 8.3 R3)
     float taa_sentinel_strength_ = 0.f, taa_sentinel_emitter_ = 1.f; // X3M_TAA_SENTINEL_STABILISER=S[,E]
     bool taa_masks_logged_ = false;           // the one line for TemporalPass::line_masks_failed()
+    bool taa_fold_logged_ = false;            // the one line for TemporalPass::Diagnostics::depth_folded (taa-high-resolution.md S1), per attachment
     bool taa_alpha_history_ = false;          // X3M_TAA_ALPHA_HISTORY (HDR route only)
     float taa_history_weight_ = .9f;          // X3M_TAA_HISTORY_WEIGHT
     // 8-bit route: failed sharpened draws (the pass kept the resolve, the

@@ -1917,7 +1917,7 @@ depth sentinel) it runs, per frame:
 | sub-pass | work (1920×1080, full-screen quads) | source |
 | --- | --- | --- |
 | CPU | validation, state-block Capture, `normalize` (about 100 device calls), restore and Apply; span minus wait is 0.29 ms including the 0.26 ms floor (W4, measured), so about 0.03 ms | `temporal_pass.cpp:427–434, 646` |
-| `taa_copy` | depth copy draw: RT2 lane (16 B/px) point-sampled into the R32F history depth; no colour copy (the FP16 scene is sampled in place), no snapshot | `:468` |
+| `taa_copy` | depth copy draw: RT2 lane (16 B/px) point-sampled into the R32F history depth; no colour copy (the FP16 scene is sampled in place), no snapshot. Folded into the mask tests draw since S1 (below), so it should read only its floor (inferred, not flown) | `:478` (skipped when folded) |
 | `taa_mask` | three `line_mask_camera` draws: the tests (28 depth taps on four 7-tap lines, motion, lane depth, and the emissive vote's 9 scene taps on routed pixels), then the 17-tap x and y passes (A8R8G8B8) with the composition | `:508`, `line_mask_ps.hlsl` |
 | `taa_box` | sentinel stabiliser: rows (7 FP16 taps, two FP16 MRT outputs), columns (14 taps where the mask opens the box, 9 more beside emitters over sky) | `:540`, `thin_box_*_ps.hlsl` |
 | `taa_resolve` | `far_camera` resolve with the R32F age MRT: about 29 fetches per pixel at rest, 44 when the history lookup is fractional | `:423`, `resolve.hlsl` |
@@ -1969,6 +1969,8 @@ line_mask 368 → 399, line_mask_camera 344 → 372, thin_box_rows 35 → 77 (me
   the output would change.
 - Dropping the depth copy (reading the lane in the mask and resolve): the copy is the next frame's history depth;
   28 mask taps on the 16-B lane cost more than one 16-B read; ping-ponging RT2 itself is a motion-output change.
+  Superseded for the mask alone by S1 below: the tests draw reads the lane and writes the history depth as COLOR1,
+  and the resolve and box still read R32F.
 - Folding the box rows into the x mask pass as MRT: mixes A8R8G8B8 and FP16 targets
   (`D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS`) for one pass's fixed overhead.
 - An R16F age target (counts 1..64 are exact in FP16): the capture path and the fixture read the age as R32F, so
@@ -2094,3 +2096,22 @@ Procedure if adopted:
 
 Before any output change, the next step is to split `taa_mask` into its three draws in the diagnostic build. The
 busy-sector excess over the bench, 0.9 ms, is the only cost left that is large enough to matter.
+
+### Mask split and depth-copy fold (2026-09-24)
+
+Steps 0 and 1 of [taa-high-resolution.md](taa-high-resolution.md) ("S1 / S2 implemented"), not flown yet.
+
+- **Split.** `--gpu-sync-timing` reports the three mask draws as `taa_mask_tests`, `taa_mask_x` and `taa_mask_y`
+  inside `taa_mask`. With three more floors, `taa_mask` reads about 0.8 ms above Run 280 for the same work
+  (inferred). The next flight settles which draw carries the busy-sector excess (1.87 ms net against the bench's 0.84).
+- **S1, depth copy folded.** On the lane RT2 the tests draw binds the lane at s1 and writes `depths_[next]` as COLOR1
+  (`line_mask_{,camera_}depth_ps.hlsl`, `X3M_MASK_DEPTH_OUT`). The copy draw then does not run: `taa_copy` should read
+  only its floor. Slots, measured: 420 and 407, against 428 and 427 for the base programs, whose bytes are unchanged.
+  Every output was byte-identical against an R32F twin in the fixture (bottle X3, measured). Expected, inferred:
+  -0.14 to -0.17 ms at 1080p.
+  - The lattice fixture's CPU-wall lane row (1280x768, one sample per run, not GPU time) reads lane input minus R32F
+    input -0.086 ms after the change against -0.109 ms before. That is within its run-to-run noise and neither
+    confirms nor refutes the saving.
+- **S2 stopped.** RT2 `.g` carries the sun share and `.b` the view depth, both read beside `.r`, so `G32R32F` cannot
+  hold the lane.
+

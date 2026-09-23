@@ -36,8 +36,8 @@ enum Pass : unsigned {
     Bloom,            // the bloom prepare and commit
     Present,          // the proxy's Present work and the native Present
     // Sub-passes inside Taa (TemporalPass::run), appended so the indices above stay: each pair adds its sync floor to Taa.
-    TaaCopy,          // input copies: colour scratch / staging, depth StretchRect or copy draw, depth decode, supplemental snapshot
-    TaaMask,          // the stabiliser mask draws (far / thin region, one or three full-screen draws)
+    TaaCopy,          // input copies: colour scratch / staging, depth StretchRect or copy draw (none when folded into taa_mask_tests), depth decode, supplemental snapshot
+    TaaMask,          // the stabiliser mask draws (far / thin region, one or three full-screen draws; nests the three taa_mask_* below)
     TaaBox,           // the camera gate's 7x7 box: the 49-tap draw or the sentinel stabiliser's rows + columns
     TaaResolve,       // the resolve draw (with the age target) and the required-mask snapshot
     TaaDisplay,       // the 8-bit route's display draw: the post-resolve sharpen or the identity copy
@@ -45,6 +45,10 @@ enum Pass : unsigned {
     FogMarch,         // the half-resolution march quad
     FogComposite,     // the full-resolution composite quad
     FogRepair,        // the full-resolution repair quad (the pixel census's occlusion query brackets it)
+    // The three mask draws inside TaaMask (TemporalPass::run, one Span per draw), appended likewise: each pair adds its sync floor to TaaMask.
+    TaaMaskTests,     // the per-pixel tests draw (thin region) or the far-only draw; with a two- or four-channel depth it also writes the depth history (S1)
+    TaaMaskX,         // the separable maxima / minima along x
+    TaaMaskY,         // the separable maxima / minima along y and the composition
     pass_count
 };
 constexpr unsigned boundary_count = 2 * pass_count; // one event query per boundary (begin, end) of every pass
@@ -54,7 +58,8 @@ inline const char* pass_name(unsigned pass) noexcept {
     static constexpr const char* names[pass_count] = {"scene", "engine", "shadow_depth", "sun_apply", "retention", "fog_fill", "fog_route",
                                                       "motes", "taa", "hdr_writeback", "meter", "hdr_readback", "bloom", "present",
                                                       "taa_copy", "taa_mask", "taa_box", "taa_resolve", "taa_display",
-                                                      "fog_march", "fog_composite", "fog_repair"};
+                                                      "fog_march", "fog_composite", "fog_repair",
+                                                      "taa_mask_tests", "taa_mask_x", "taa_mask_y"};
     return pass < pass_count ? names[pass] : "?";
 }
 constexpr bool once_per_frame(unsigned pass) noexcept { return pass == Scene || pass == Engine; }

@@ -1504,6 +1504,7 @@ bool MotionOutput::ensure_taa() noexcept {
     if (taa_ && !taa_failed_) return true;
     if (taa_failed_) return false;
     try { taa_ = std::make_unique<renderer::TemporalPass>(); } catch (...) { taa_failed_ = true; return false; }
+    taa_fold_logged_ = false;
     HRESULT hr = E_FAIL;
     // The sharpen program is created only when the switch is on: with it off
     // the pass is the pre-sharpen pass, shader for shader.
@@ -1708,6 +1709,11 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             const std::uint64_t run_ticks = stamp() - run_begin;
             const auto diagnostics = taa_->diagnostics();
             t.result = injected ? hr : diagnostics.operation; t.restore = diagnostics.restoration;
+            // The depth-copy fold (taa-high-resolution.md S1): one line on the attachment's first completed run.
+            if (!taa_fold_logged_ && !injected && SUCCEEDED(diagnostics.operation)) {
+                taa_fold_logged_ = true;
+                log("motion_output_taa_depth_fold device=%llu depth_fold=%u reason=%s", id_, unsigned(diagnostics.depth_folded), diagnostics.depth_fold_reason);
+            }
             auto& c = counters_;
             c.taa_run_ticks += run_ticks; c.taa_capture_ticks += diagnostics.ticks_capture;
             c.taa_copy_color_ticks += diagnostics.ticks_copy_color; c.taa_copy_depth_ticks += diagnostics.ticks_copy_depth;

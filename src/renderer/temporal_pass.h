@@ -277,6 +277,14 @@ struct Diagnostics {
     bool history_valid = false;
     bool reset_pending = false; // before_reset seen, after_reset(SUCCEEDED) not yet
     std::uint64_t completed_frames = 0;
+    // The last run wrote the next depth history as COLOR1 of the mask chain's first draw instead of a copy draw
+    // (docs/architecture/taa-high-resolution.md S1: a two- or four-channel current depth, a far-program run, the
+    // depth-folding mask program created); false otherwise.
+    bool depth_folded = false;
+    // Why the last run folded or not: "lane_mrt" (folded), "r32f_depth" (an R32F current depth needs no copy draw), "d24_decode"
+    // (the D24X8 snapshot is decoded), "far_off" (no far-program run), "mrt_caps" (fewer than two targets or no
+    // MRTINDEPENDENTBITDEPTHS), "program" (the folding program was not created), "not_run" (refused before the decision).
+    const char* depth_fold_reason = "not_run";
     // CPU-side QueryPerformanceCounter ticks of the last run's phases, taken
     // only with configure_timing(true); zero otherwise. Wall clock around the
     // device calls (submission cost, driver work, any blocking), never GPU
@@ -411,6 +419,10 @@ private:
     // Camera-relative gate (section 32.1): its mask and resolve programs, the 7x7 box pass and its two A16B16G16R16F targets
     // ([0] minimum, [1] maximum; default pool, released with the histories, allocated on the first camera-gate run).
     IDirect3DPixelShader9 *line_mask_camera_ = nullptr, *far_camera_ = nullptr, *thin_box_ = nullptr;
+    // S1 (docs/architecture/taa-high-resolution.md): line_mask_ / line_mask_camera_ built with X3M_MASK_DEPTH_OUT, bound
+    // only for the chain's first draw on a two- or four-channel current depth, which then writes depths_[next] as COLOR1
+    // (R32F beside the A8R8G8B8 mask; mrt_age_ covers MRTINDEPENDENTBITDEPTHS). Optional: null keeps the copy draw.
+    IDirect3DPixelShader9 *line_mask_depth_ = nullptr, *line_mask_camera_depth_ = nullptr;
     IDirect3DTexture9* boxes_[2]{};
     IDirect3DSurface9* box_surfaces_[2]{};
     bool boxes_failed_ = false;

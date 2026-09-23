@@ -190,7 +190,7 @@ void TemporalPass::release_history() noexcept {
     reactive_policy_=ReactivePolicy::Unavailable;
     width_=height_=current_=0;
 }
-void TemporalPass::shutdown() noexcept {release_history();drop(block_);drop(decoder_);drop(resolve_);drop(snapshot_);drop(thin_);drop(age_);drop(far_);drop(far_camera_);drop(line_mask_camera_);drop(thin_box_);drop(thin_box_rows_);drop(thin_box_columns_);line_masks_failed_=false;line_masks_result_=S_OK;boxes_failed_=false;boxes_result_=S_OK;box_rows_failed_=false;box_rows_result_=S_OK;drop(line_mask_);mrt_age_=false;drop(sharpen_);drop(copy_);drop(quad_vs_);drop(quad_declaration_);device_=nullptr;vtable_=nullptr;render_targets_=streams_=0;diagnostics_.reset_pending=false;}
+void TemporalPass::shutdown() noexcept {release_history();drop(block_);drop(decoder_);drop(resolve_);drop(snapshot_);drop(thin_);drop(age_);drop(far_);drop(far_camera_);drop(line_mask_camera_);drop(line_mask_depth_);drop(line_mask_camera_depth_);drop(thin_box_);drop(thin_box_rows_);drop(thin_box_columns_);line_masks_failed_=false;line_masks_result_=S_OK;boxes_failed_=false;boxes_result_=S_OK;box_rows_failed_=false;box_rows_result_=S_OK;drop(line_mask_);mrt_age_=false;drop(sharpen_);drop(copy_);drop(quad_vs_);drop(quad_declaration_);device_=nullptr;vtable_=nullptr;render_targets_=streams_=0;diagnostics_.reset_pending=false;}
 // Every owned texture and the state block must not exist across Reset; the
 // compiled shaders survive it. Runs are refused until after_reset succeeds.
 void TemporalPass::before_reset() noexcept {line_masks_failed_=false;line_masks_result_=S_OK;boxes_failed_=false;boxes_result_=S_OK;box_rows_failed_=false;box_rows_result_=S_OK;release_history();drop(block_);diagnostics_.reset_pending=device_!=nullptr;}
@@ -240,6 +240,9 @@ HRESULT TemporalPass::configure_far(const DWORD* reference_program) noexcept {
     if(SUCCEEDED(camera))camera=make(temporal_resolve_far_camera_program(),&far_camera_);
     if(SUCCEEDED(camera))camera=make(temporal_thin_box_program(),&thin_box_);
     if(FAILED(camera)){drop(line_mask_camera_);drop(far_camera_);drop(thin_box_);}
+    // S1 (taa-high-resolution.md): the depth-folding first draws, optional; a refusal keeps the copy draw for that program.
+    if(!line_mask_depth_&&FAILED(make(temporal_line_mask_depth_program(),&line_mask_depth_)))drop(line_mask_depth_);
+    if(line_mask_camera_&&!line_mask_camera_depth_&&FAILED(make(temporal_line_mask_camera_depth_program(),&line_mask_camera_depth_)))drop(line_mask_camera_depth_);
     return hr;
 }
 HRESULT TemporalPass::configure_sentinel() noexcept {
@@ -323,7 +326,7 @@ HRESULT TemporalPass::ensure_block() noexcept {
 }
 HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     if(out)*out={};
-    diagnostics_.operation=diagnostics_.restoration=S_OK;
+    diagnostics_.operation=diagnostics_.restoration=S_OK;diagnostics_.depth_folded=false;diagnostics_.depth_fold_reason="not_run";
     // Phase timing (Diagnostics::ticks_*): QPC pairs only, no device call changes.
     diagnostics_.timed=timing_;
     diagnostics_.ticks_capture=diagnostics_.ticks_copy_color=diagnostics_.ticks_copy_depth=diagnostics_.ticks_draw=diagnostics_.ticks_apply=0;
@@ -385,6 +388,13 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     bool stabilise=camera&&sentinel_requested&&!box_rows_failed_;
     if(stabilise){const HRESULT rows=ensure_box_rows();if(lost(rows))return fail(rows);if(FAILED(rows)){box_rows_failed_=true;box_rows_result_=rows;stabilise=false;}}
     else if(box_rows_[0]){for(auto& p:box_row_surfaces_)drop(p);for(auto& p:box_rows_)drop(p);}
+    // S1 (docs/architecture/taa-high-resolution.md): on a two- or four-channel current depth the mask chain's first draw reads
+    // it at s1 itself and writes depths_[next] as COLOR1 (R32F beside the A8R8G8B8 mask: two targets and
+    // MRTINDEPENDENTBITDEPTHS, both in mrt_age_); the copy draw below does not run. Every later reader of depths_[next]
+    // (the dilations' fallback at s6, the box columns, the resolve, the next frame's history) comes after that draw.
+    IDirect3DPixelShader9* const fold_program=depth_draw&&far_on&&mrt_age_&&render_targets_>=2?(camera?line_mask_camera_depth_:line_mask_depth_):nullptr;
+    const bool fold=fold_program!=nullptr;
+    diagnostics_.depth_fold_reason=fold?"lane_mrt":!depth_draw?(in.current_depth?"r32f_depth":"d24_decode"):!far_on?"far_off":!(mrt_age_&&render_targets_>=2)?"mrt_caps":"program";
     hr=ensure_block();if(FAILED(hr))return fail(hr);
     history_.begin(in.width,in.height,in.epoch);
     if(in.camera_cut||in.cut||!in.history_allowed||in.reactive_policy==ReactivePolicy::Unavailable||
@@ -465,7 +475,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     // the two- or four-channel source; R32F stores only .r, exactly preserving
     // sentinels. Never request an unsupported G32R32F/A32B32G32R32F -> R32F
     // StretchRect conversion.
-    if(SUCCEEDED(hr)&&depth_draw){
+    if(SUCCEEDED(hr)&&depth_draw&&!fold){
         const auto depth_mark=stamp();
         if(step(call<SetRtFn>(SetRenderTarget)(d,0,depth_surfaces_[next]))&&
            step(call<SetPsFn>(SetPixelShader)(d,copy_))&&
@@ -507,10 +517,15 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
         // Thin region: tests -> [0], maxima along x -> [1], along y and composition -> [0]. Far stabiliser alone: mode 2 -> [1].
         const UINT draws=thin_on?3:1;final_mask=thin_on?0:1;
         for(UINT pass=0;pass<draws&&SUCCEEDED(hr);++pass){
-            const UINT target=draws==1?1:(pass==1?1:0);IDirect3DTexture9* const source=pass==0?depths_[next]:line_masks_[pass==1?0:1];
+            // S1: the first draw reads the caller's depth itself and writes depths_[next] as RT1 (unbound again right after).
+            const bool fold_draw=fold&&pass==0;
+            const UINT target=draws==1?1:(pass==1?1:0);IDirect3DTexture9* const source=pass==0?(fold?in.current_depth:depths_[next]):line_masks_[pass==1?0:1];
             constants.options[2]=draws==1?2.f:pass==0?0.f:pass==1?1.f:3.f;constants.options[3]=0.f;
+            // --gpu-sync-timing: one sub-pass per draw inside taa_mask (the tests or far-only draw, maxima along x, along y + composition).
+            gpu_sync_timing::Span sync_span(sync_marks_,pass==0?unsigned(gpu_sync_timing::TaaMaskTests):pass==1?unsigned(gpu_sync_timing::TaaMaskX):unsigned(gpu_sync_timing::TaaMaskY));
             if(step(call<SetTextureFn>(SetTexture)(d,1,nullptr))&&step(call<SetRtFn>(SetRenderTarget)(d,0,line_mask_surfaces_[target]))&&
-               step(call<SetPsFn>(SetPixelShader)(d,camera?line_mask_camera_:line_mask_))&&
+               (!fold_draw||(step(call<SetRsFn>(SetRenderState)(d,D3DRS_COLORWRITEENABLE1,15))&&step(call<SetRtFn>(SetRenderTarget)(d,1,depth_surfaces_[next]))))&&
+               step(call<SetPsFn>(SetPixelShader)(d,fold_draw?fold_program:camera?line_mask_camera_:line_mask_))&&
                step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,0,&constants.clip_to_previous[0][0],4))&&
                step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,4,constants.size_jitter,1))&&
                step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,5,far_constants,1))&&
@@ -520,10 +535,12 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
                // The emissive vote reads this frame's scene at s0 (already point / clamp from normalize; the resolve rebinds it).
                (!emissive_vote||step(call<SetTextureFn>(SetTexture)(d,0,pass==0?(in.color?in.color:scratch_):nullptr)))&&
                (!camera||(step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,8,parallax_constants,1))&&step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,9,lane_constants,1))&&
-                          step(call<SetTextureFn>(SetTexture)(d,5,lane&&pass==0?in.current_depth:nullptr))))&& // s0..s6 are point / clamp already; the resolve rebinds s5
+                          step(call<SetTextureFn>(SetTexture)(d,5,lane&&pass==0&&!fold?in.current_depth:nullptr))))&& // s0..s6 are point / clamp already; the resolve rebinds s5; the folded draw reads .b at s1
                (!stabilise||step(call<SetTextureFn>(SetTexture)(d,6,pass==2?depths_[next]:nullptr)))&& // sentinel stabiliser: s6 serves only the fallback path (thin region off); with the thin region on the tests draw carries the class; the resolve rebinds s6
                step(call<SetTextureFn>(SetTexture)(d,4,in.motion_policy==MotionPolicy::PerPixel?in.motion:nullptr))&&
                step(call<SetTextureFn>(SetTexture)(d,1,source)))hr=quad(in.width,in.height);
+            if(fold_draw&&!lost(hr)){const HRESULT unbind=call<SetRtFn>(SetRenderTarget)(d,1,nullptr);if(SUCCEEDED(hr))hr=unbind;}
+            if(fold_draw&&SUCCEEDED(hr))diagnostics_.depth_folded=true;
         }
         constants.options[2]=strict_sky_term;constants.options[3]=resolve_policy;
         if(SUCCEEDED(hr)&&step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_MINFILTER,D3DTEXF_POINT))&&step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_MAGFILTER,D3DTEXF_POINT))&&

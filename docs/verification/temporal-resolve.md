@@ -1940,3 +1940,23 @@ invalid or oversized values stay off and log. Evidence:
 runner pins `X3M_TAA_MOTION_WEIGHT=0` (none of its cases runs an age program, so its committed
 results cannot change); one review (Opus). The temporal fixture's current counts are 744 / 278 /
 546 (after the dust-motes merge). Post-merge gate recorded in the commit.
+
+## 2026-09-24 depth-copy fold (taa-high-resolution.md S1; fixture, not flown)
+
+On a two- or four-channel current depth (the sun-shadow lane's RT2) with a far-program run, the mask chain's first draw
+writes the next R32F depth history as COLOR1 (`line_mask_{,camera_}depth_ps.hlsl`), and the copy draw no longer runs.
+Bottle X3, measured:
+
+- `run_temporal_pass.py` PASS 744 / 278 / 546 with `temporal-pass.txt` byte-identical (sha256 `58d85cde…`). The
+  default mode has no lane input.
+- Lattice mode: RESULT PASS 508 / 89, from 500 / 12. The fold adds 8 numerical and 77 state checks. The cases are
+  listed in taa-high-resolution.md, "S1 / S2 implemented":
+  - fifteen `DEPTH_FOLD` rows, byte comparisons against the R32F twin or, with the lane term on, against the copy path;
+  - the committed one-ulp negative control;
+  - the refused RT1 bind and the failed fold draw;
+  - a device Reset.
+  Every run restores the hostile state.
+- The other 4,144 lattice rows equal the committed report outside the timing and slot rows. That includes the seven
+  lane-term flight rows, which are 4-decimal summaries, not bytes (`verification/results/taa-high-resolution/s1_identity.py`,
+  `_out.txt`).
+

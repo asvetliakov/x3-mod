@@ -74,6 +74,14 @@ SHADERS = {
     'temporal_line_mask_camera': dict(source=ROOT / 'src/temporal/line_mask_camera_ps.hlsl',
         header=ROOT / 'src/renderer/temporal_line_mask_camera_program_inc.h',
         provenance=ROOT / 'verification/results/temporal-line-mask-camera-program.json'),
+    # The two mask programs' first draw with the current depth copy folded in (docs/architecture/taa-high-resolution.md S1):
+    # COLOR1 = the current-depth texel for the R32F history. Defines plus includes; the programs above keep their bytes.
+    'temporal_line_mask_depth': dict(source=ROOT / 'src/temporal/line_mask_depth_ps.hlsl',
+        header=ROOT / 'src/renderer/temporal_line_mask_depth_program_inc.h',
+        provenance=ROOT / 'verification/results/temporal-line-mask-depth-program.json'),
+    'temporal_line_mask_camera_depth': dict(source=ROOT / 'src/temporal/line_mask_camera_depth_ps.hlsl',
+        header=ROOT / 'src/renderer/temporal_line_mask_camera_depth_program_inc.h',
+        provenance=ROOT / 'verification/results/temporal-line-mask-camera-depth-program.json'),
     'temporal_resolve_far_camera': dict(source=ROOT / 'src/temporal/resolve_far_camera.hlsl',
         header=ROOT / 'src/renderer/temporal_resolve_far_camera_program_inc.h',
         provenance=ROOT / 'verification/results/temporal-resolve-far-camera-program.json'),

@@ -1,0 +1,45 @@
+# TAA high resolution step 0 (mask split) + S1 (depth-copy fold); S2 stopped. Bottle X3, worktree on 8ec6b781 + the change,
+# 2026-09-24; X3AP count 0 before each Wine step; every Wine step through verification/probe/wine_lock.py.
+# Programs: X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 tools/shaders/generate_rigid_motion_pixel.py \
+#   --shader temporal_line_mask --shader temporal_line_mask_camera --shader temporal_line_mask_depth --shader temporal_line_mask_camera_depth -> PASS
+#   temporal_line_mask        1574 words bytecode 802ff929a19f234b... (unchanged; include hash and generator hash refreshed)
+#   temporal_line_mask_camera 1579 words bytecode 332fa59537d91f63... (unchanged; _inc.h byte-identical)
+#   temporal_line_mask_depth        1554 words bytecode ee283dc7dd0eae45... slots 420 (base 428)
+#   temporal_line_mask_camera_depth 1533 words bytecode 5bacb6fef06e0290... slots 407 (base 427)
+# Bloom records: X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 tools/shaders/generate_bloom_programs.py
+#   -> passed, 9 programs, bytecode unchanged; only the generator's input hash in the nine JSONs moves (test_bloom_programs pins it).
+#   Two earlier attempts failed mid-run with "winewrapper.exe: cannot execute" on a random program (transient; the third ran clean).
+# Scratch build: cmake -S . -B <scratch>/build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+#   -DPython3_EXECUTABLE=/usr/bin/python3 && cmake --build <scratch>/build -j8 -> exit 0, 0 warnings;
+#   /usr/bin/python3 verification/probe/check_no_x87.py <scratch>/build/d3d9.dll -> PASS, 673 reachable, 0 violations (d3d9.dll 3fc312fa..., provenance)
+# Host: PYTHONPATH=verification/probe /usr/bin/python3 -m unittest test_gpu_sync_timing test_linear_cutout_contract test_taa_image_defaults
+#   test_taa_camera_path test_shader_compiler_provenance test_bloom_programs test_bloom_artifact_staging test_fog_density_shaders
+#   test_bloom_composition_checker -> 56 tests OK
+# Temporal pass: X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_temporal_pass.py
+#   -> exit 0, 141.3 s child; RESULT PASS numerical=744 state_restorations=278 generations=2, 546 samples,
+#   temporal-pass.txt sha256 58d85cde92764d58... (byte-identical); lattice RESULT PASS numerical=504 state_restorations=12 lattice=1
+#   python3 verification/results/taa-high-resolution/s1_identity.py -> s1_identity_out.txt (exit 0)
+#   Negative control (scratch build only, not committed): one lane texel .r one ulp up -> camera_sentinel depth_bytes_differ=3, RESULT FAIL.
+# GPU sync: X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_gpu_sync_timing.py \
+#   --exe <scratch>/build/gpu_sync_timing_fixture.exe -> RESULT checks=32 failures=0 PASS; queries=50 census=1 references=51;
+#   syncs 2496 = 48 x (50 + 2); 0 issue / data failures, 0 timeouts, 0 dropped; Reset references 51;
+#   window 3 medians: taa 2111, taa_mask 854, taa_mask_tests 209, taa_mask_x 195, taa_mask_y 209 us (exe 967b55686b39fe50...)
+# Motion output: X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py
+#   -> exit 0, 554.6 s child; python3 verification/results/sky-history-default/compare_motion_output.py (HEAD summary vs new):
+passed old=True new=True
+cases old=190 new=190 missing=[] added=[]
+checks old=271369 new=271369
+cases with differing stable fields: 0
+# Every rewritten verification/results/bottle-X3 file restored with git checkout.
+# --- Review follow-up (same day): fault, G32R32F, lane-term byte, Reset and negative-control cases; the depth_fold log line ---
+# Scratch build of the updated tree: exit 0, 0 warnings; check_no_x87.py PASS, 673 reachable, 0 violations (d3d9.dll 00798573..., provenance)
+# Host: the nine modules above -> 56 tests OK; every module that reads motion_output.{cpp,h} or temporal_pass (26 modules) -> 247 tests, 0 failures
+# Temporal pass: X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_temporal_pass.py
+#   -> exit 0, 168.8 s child; RESULT PASS numerical=744 state_restorations=278 generations=2, temporal-pass.txt 58d85cde... (identical);
+#   lattice RESULT PASS numerical=508 state_restorations=89 lattice=1 (15 DEPTH_FOLD rows, 2 DEPTH_FOLD_FAULT rows, 1 DEPTH_FOLD_RESET row,
+#   all asserted by the runner); s1_identity.py -> s1_identity_out.txt (exit 0)
+
+# Motion output: X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py -> exit 0, 524.0 s child;
+#   compare_motion_output.py: passed old=True new=True, cases 190/190, checks 271369/271369, 0 cases with differing stable fields;
+#   the new session line appears exactly once in each of the 66 TAA session logs: motion_output_taa_depth_fold device=1 depth_fold=0 reason=r32f_depth
+#   (no case runs a far program on a lane). Every rewritten bottle-X3 result restored.

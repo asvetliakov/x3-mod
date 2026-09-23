@@ -216,3 +216,24 @@ Reading:
   ranges 2.5-4.1x; the pipelined scene ratio 5.6-6.2x and the submit ratio 5.2-5.6x are stable.
 - Not measured: the game's own frame (this replays the census pattern, not the engine), a real
   translator's per-call cost beyond the shadow compare and `Map`, native Windows.
+
+## 2026-09-24: `taa_mask_*` draws (taa-high-resolution.md step 0; uncommitted worktree, not installed)
+
+Three passes appended after `fog_repair`, indices 0-21 unchanged: `taa_mask_tests` 22, `taa_mask_x` 23, `taa_mask_y` 24.
+Each is one `Span` around one draw of the mask loop in `TemporalPass::run`, nested inside `taa_mask`, and always closes.
+The far-only configuration draws once, reported as `taa_mask_tests`. That makes 25 passes and 50 event queries. Each
+pair adds about 0.26 ms to `taa_mask`, `taa` and the serialised frame (inferred from the light-pair floor), so on the
+flown thin-region configuration `taa_mask` reads about 0.8 ms higher than in Run 280 for the same work. Null marks
+when the option is off: one branch per draw, no device call.
+
+- Host (measured): `test_gpu_sync_timing` passes 8 tests. The core fixture's check count is unchanged at 35: its
+  names check now requires 25 passes / 50 boundaries and indices 21 / 22 / 24. The wiring test finds one Span per mask
+  draw in `temporal_pass.cpp`.
+- Wine fixture, bottle X3, scratch CMake build of this tree (exe `967b5568…`), measured:
+  - PASS 32/32 (count unchanged; the nesting check now also requires `taa_mask` >= each `taa_mask_*` median).
+  - 50 queries plus the census hold 51 device references, and Reset recreated all 51.
+  - 2,496 syncs = 48 x (50 + 2), with 0 failures, timeouts or dropped frames.
+  - Window 3 medians: `taa_mask` 854 us, nesting `taa_mask_tests` / `_x` / `_y` at 209 / 195 / 209 us (one 16x16 quad
+    each); `taa` 2,111 us.
+  - The runner's rewritten `gpu-sync-timing.{json,txt}` were restored.
+

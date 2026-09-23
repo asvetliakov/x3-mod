@@ -97,6 +97,10 @@ beyond the next `--gpu-sync-timing` flight, where `taa_copy` should read only it
 
 ### S2. Halve the depth lane: RT2 `A32B32G32R32F` -> `G32R32F` (byte-identical values)
 
+**Stopped 2026-09-24:** the premise is wrong. On the lane RT2 `.g` is not a copy of `.r`: the route's programs overwrite
+it with the sun share (the transformed materials' final `oC2.g` MOV, `linear_material.cpp:1713`, `material_motion.h:9`),
+which the sun-shadow apply quads read beside `.r` and `.b`. See "S1 / S2 implemented" below.
+
 Mechanism. `current_depth_ps.hlsl` writes `float4((z/w).xx, w, w)`; `.g` duplicates `.r` and `.a` duplicates `.b`.
 Writing `float4(z/w, w, w, w)` instead keeps R32F's `.r` bit for bit and puts the clip w in `.g`, so a `G32R32F` RT2
 carries (device depth, view z) in 8 bytes; the readers move from `.b` to `.g`: `line_mask_ps.hlsl` (s5),
@@ -325,7 +329,7 @@ D3D9 short of fewer pixels.
 - **Whether the pixel-sized mask windows are right at 5120x1440 at all** (a quarter of the 1280x768 angular reach
   horizontally, and a 7-tap line test that sees a class change only within 3 px): the 5120x1440 lattice-stand flight,
   which may argue for S5 on look grounds before cost grounds.
-- **Any reader of the lane's `.a`** before S2: a grep over `src/` and the capture analyzers.
+- **Any reader of the lane's `.a`** before S2: none (grep, 2026-09-24), but S2 is stopped by `.g` (the sun share), not `.a`.
 
 ## Decision (main session, 2026-09-24)
 
@@ -337,3 +341,73 @@ reference and one flight, the hash oracle retired for those as section 4 prescri
 stage; the SM3 resolve and the full-res tests draw remain, so 5120×1440 needs the fog quarter-res march and the
 overlay's draw cuts as well. Context: the D3D11 route is closed on the CrossOver target
 ([d3d11-post-chain-feasibility.md](d3d11-post-chain-feasibility.md)).
+
+## S1 / S2 implemented (2026-09-24)
+
+**Diagnostic split.** `--gpu-sync-timing` reports `taa_mask_tests`, `taa_mask_x` and `taa_mask_y` (indices 22-24,
+appended; 25 passes, 50 event queries) nested inside `taa_mask`, one `Span` per draw of the mask loop
+(`temporal_pass.cpp`, the loop in `run`). The far-only configuration has one draw, reported as `taa_mask_tests`. Each
+pair adds its sync floor (about 0.26 ms) to `taa_mask` and `taa`. Ledger: [gpu-sync-timing.md](../verification/gpu-sync-timing.md).
+
+**S1, shipped.** On a two- or four-channel current depth with a far-program run, the chain's first draw binds the
+caller's depth at s1 and writes the next R32F depth history as COLOR1; the copy draw does not run. It uses two new
+programs, `line_mask_depth_ps.hlsl` and `line_mask_camera_depth_ps.hlsl` (`line_mask_ps.hlsl` with
+`X3M_MASK_DEPTH_OUT`). They are bound only for that one draw, so no draw writes `oC1` without a second target bound.
+The camera variant takes the lane's `.b` from the centre texel it already fetched, so s5 stays unbound. The base
+programs' bytecode is unchanged (same sha256). Instruction slots, measured: `line_mask_depth` 420 (base 428),
+`line_mask_camera_depth` 407 (base 427). The fold needs `mrt_age_` (two targets and `MRTINDEPENDENTBITDEPTHS`) and the
+program. Otherwise, or if creating the program fails, the copy draw runs as before. RT1 is unbound right after the
+draw, before any later reader of the history depth (the composition's s6 fallback, the box columns, the resolve).
+
+Consumers: the fold changes only `depths_[next]`, which receives the same `.r`. RT2 itself is untouched. The shadow
+apply, the fog and the mask's lane term read RT2 directly, so their `.b` is the same texel as before.
+
+Identity proof (bottle X3, measured):
+
+- `run_temporal_pass.py` passes 744 / 278 / 546 with `temporal-pass.txt` byte-identical. The default mode has no lane
+  input, so this shows that the paths without the fold are unchanged.
+- The lattice mode's `DEPTH_FOLD` cases (RESULT 508 / 89, from 500 / 12) cover four configurations, three frames each
+  under a pan: the camera program with and without the sentinel stabiliser, the screen-gate thin region and the far
+  stabiliser alone. Every run starts from the hostile state and must restore it exactly, including RT1 and
+  `COLORWRITEENABLE1`. The colour history, depth history, age target and final mask are compared byte for byte:
+  - with the lane term off, against an R32F twin holding the same `.r`: the lane fold, the `G32R32F` fold, and the lane
+    with the folding programs refused at creation (the copy-draw fallback) are all 0 bytes different;
+  - with the lane term on (both camera configurations), the lane fold against the lane copy path: 0 bytes different.
+    The fold reads `.b` from s1's centre texel, the copy path from s5.
+  - `Diagnostics::depth_fold_reason` reads `lane_mrt`, `program` and `r32f_depth` as expected.
+- A committed negative control, one lane texel's `.r` one ulp up, gives 3 differing depth-history bytes and must fail
+  the identity.
+- Faults with a lane input and the lane term on, once for a refused RT1 bind and once for a failed fold draw:
+  - the run returns E_FAIL (as `operation`), publishes nothing and drops the history;
+  - RT1 is unbound right after the attempt, and the caller's RT1 and `COLORWRITEENABLE1` come back;
+  - the next run folds again from an empty history.
+- A device Reset between two lane runs (`before_reset` / `after_reset`, every default-pool object released): the fold
+  resumes byte-identical to its R32F twin.
+- The seven lane-term flight rows (`THIN_REGION_CAMERA_FLIGHT lane=1`) match the committed report. These are 4-decimal
+  summary rows, not a byte comparison; the byte comparison is the lane-term case above.
+
+Evidence: `verification/results/taa-high-resolution/s1_identity.py` and its `_out.txt`, and `acceptance_out.txt`
+beside them (build, x87, host, GPU sync and motion output).
+
+Session log: the attachment's first completed run logs one line, `motion_output_taa_depth_fold device=N depth_fold=1|0
+reason=lane_mrt|r32f_depth|d24_decode|far_off|mrt_caps|program`, so a flight shows the fold directly.
+
+Expected saving (inferred, section 2): -0.14 to -0.17 ms at 1080p and -0.5 to -0.6 ms at 5120x1440. That is the
+copy's 20 B/px and fixed cost, minus the 4 B COLOR1 write and the tests draw's taps now walking 16-byte texels.
+The next `--gpu-sync-timing` flight on the lane configuration should show `taa_copy` at its floor.
+
+**S2, stopped.** The lane RT2 carries three live channels:
+
+- `.r` is device depth, read by everything.
+- `.g` is the sun share, written by the route's final `oC2.g` MOV (`linear_material.h:114, 161`,
+  `material_motion.h:9`) and read by `sun_shadow_apply_ps.hlsl` / `sun_shadow_cascade_apply_ps.hlsl`.
+- `.b` is the clip w (view z), read by the shadow apply quads (receiver depth), by the fog march / composite /
+  repair / motes (`fog_density_field_inc.h:135, 293`, `fog_field_inc.h:69`, `fog_dust_motes_ps.hlsl:15`) and by the
+  camera mask's lane term.
+- `.a` has no reader.
+
+`G32R32F` holds two of the three live channels, and D3D9 has no three-channel float target. Moving w into `.g` would
+need the share moved elsewhere (a fourth render target or a packed encoding), which is a producer ABI change outside
+this step. The fog pass also refuses any RT2 that is not `A32B32G32R32F` (`fog_pass.cpp:726`). The 8 B/px and
+59 MB at 5120x1440 stay on the table only with such a redesign.
+

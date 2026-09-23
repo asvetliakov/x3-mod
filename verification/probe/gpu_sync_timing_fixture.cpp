@@ -57,7 +57,7 @@ constexpr unsigned W = 1280, H = 720, heavy_quads = 96, engine_quads = 32;
 // One frame of the production protocol with fake work. Heavy: ShadowDepth, FogRoute,
 // HdrWriteback; light: SunApply, Taa, Motes (nested in FogRoute), Meter (nested in
 // HdrWriteback), Bloom (two pairs, as prepare + commit), FogFill, HdrReadback, the five taa_* sub-passes (nested in Taa,
-// as TemporalPass::run marks them), fog_march / fog_composite / fog_repair (nested in FogRoute before Motes, as
+// as TemporalPass::run marks them; taa_mask nests taa_mask_tests / _x / _y, one light quad each), fog_march / fog_composite / fog_repair (nested in FogRoute before Motes, as
 // FogPass::execute marks them; the repair's light quad inside the census bracket, and the 8x8 needs-repair quad in its own
 // bracket between composite and repair, drawn only while needs_wanted() as FogPass does); empty: Retention.
 static HRESULT run_frame(IDirect3DDevice9* d, GpuSyncTiming& t, std::uint64_t index, gst::Report* report, bool* closed) {
@@ -83,7 +83,12 @@ static HRESULT run_frame(IDirect3DDevice9* d, GpuSyncTiming& t, std::uint64_t in
     { gst::NeedsSpan second(&t, W * H, 2); quad(d, 0.f, 0.f, 32.f, 32.f, 0x00010101); } // likewise for the needs census
     t.begin(gst::Motes); light(); t.end(gst::Motes); t.end(gst::FogRoute);
     t.begin(gst::Taa);
-    for (unsigned sub : {gst::TaaCopy, gst::TaaMask, gst::TaaBox, gst::TaaResolve, gst::TaaDisplay}) { t.begin(sub); light(); t.end(sub); }
+    for (unsigned sub : {gst::TaaCopy, gst::TaaMask, gst::TaaBox, gst::TaaResolve, gst::TaaDisplay}) {
+        t.begin(sub);
+        if (sub == gst::TaaMask) for (unsigned draw : {gst::TaaMaskTests, gst::TaaMaskX, gst::TaaMaskY}) { t.begin(draw); light(); t.end(draw); } // one Span per mask draw
+        else light();
+        t.end(sub);
+    }
     t.end(gst::Taa);
     t.begin(gst::HdrWriteback); t.begin(gst::Meter); light(); t.end(gst::Meter); heavy(); t.end(gst::HdrWriteback);
     t.begin(gst::Bloom); light(); t.end(gst::Bloom);
@@ -134,6 +139,7 @@ static Phase run(IDirect3DDevice9* d, GpuSyncTiming& t, unsigned frames, std::ui
                    && P[gst::HdrWriteback].window.median >= P[gst::Meter].window.median && P[gst::Engine].window.median >= P[gst::FogFill].window.median;
         for (unsigned sub = gst::TaaCopy; sub <= gst::TaaDisplay; ++sub) m.nested = m.nested && P[gst::Taa].window.median >= P[sub].window.median;
         for (unsigned sub = gst::FogMarch; sub <= gst::FogRepair; ++sub) m.nested = m.nested && P[gst::FogRoute].window.median >= P[sub].window.median;
+        for (unsigned sub = gst::TaaMaskTests; sub <= gst::TaaMaskY; ++sub) m.nested = m.nested && P[gst::TaaMask].window.median >= P[sub].window.median;
         // The repair's 16x16 light quad, exactly, every frame; the frame's second bracket (a 32x32 quad) never counts.
         const std::uint32_t ppm = gst::census_ppm(256, W * H);
         m.census = m.census && t.census_available() && r.census.ppm.n == r.frames && r.census.ppm.median == ppm && r.census.max_ppm == ppm
@@ -227,7 +233,7 @@ int main() {
         const auto& s = t->stats();
         std::printf("STATS phase=first syncs=%llu polls=%llu issue_failures=%llu data_failures=%llu timeouts=%llu dropped_frames=%llu\n", (unsigned long long)(s.syncs - syncs_before),
                     (unsigned long long)s.polls, (unsigned long long)s.issue_failures, (unsigned long long)s.data_failures, (unsigned long long)s.timeouts, (unsigned long long)s.dropped_frames);
-        // 44 boundaries per frame plus the commit's second Bloom pair (the repeated begins and the stray end never sync).
+        // 50 boundaries per frame plus the commit's second Bloom pair (the repeated begins and the stray end never sync).
         require("first_syncs_exact", s.syncs - syncs_before == 48ull * (gst::boundary_count + 2));
         require("first_no_failures", s.issue_failures == 0 && s.data_failures == 0 && s.timeouts == 0 && s.dropped_frames == 0);
         const gst::Report session = t->summary();

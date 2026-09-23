@@ -42,6 +42,15 @@ inline constexpr std::uint32_t temporal_resolve_far_camera_words[] = {
 inline constexpr std::uint32_t temporal_thin_box_words[] = {
 #include "temporal_thin_box_program_inc.h"
 };
+// The mask chain's first draw with the current depth copy folded in (docs/architecture/taa-high-resolution.md S1):
+// src/temporal/line_mask_depth_ps.hlsl and line_mask_camera_depth_ps.hlsl, COLOR1 = the current-depth texel
+// (manifests verification/results/temporal-line-mask{,-camera}-depth-program.json).
+inline constexpr std::uint32_t temporal_line_mask_depth_words[] = {
+#include "temporal_line_mask_depth_program_inc.h"
+};
+inline constexpr std::uint32_t temporal_line_mask_camera_depth_words[] = {
+#include "temporal_line_mask_camera_depth_program_inc.h"
+};
 // Sentinel stabiliser (docs/architecture/temporal-integration.md "Distant unrouted stations under a pan"): the separable box,
 // src/temporal/thin_box_rows_ps.hlsl and thin_box_columns_ps.hlsl (manifests verification/results/temporal-thin-box-{rows,columns}-program.json).
 inline constexpr std::uint32_t temporal_thin_box_rows_words[] = {
@@ -76,6 +85,9 @@ inline constexpr const auto& temporal_resolve_far_program() noexcept { return de
 inline constexpr const auto& temporal_line_mask_camera_program() noexcept { return detail::temporal_line_mask_camera_words; }
 inline constexpr const auto& temporal_resolve_far_camera_program() noexcept { return detail::temporal_resolve_far_camera_words; }
 inline constexpr const auto& temporal_thin_box_program() noexcept { return detail::temporal_thin_box_words; }
+// The depth-folding mask programs configure_far creates on top (optional: a refusal keeps the copy draw).
+inline constexpr const auto& temporal_line_mask_depth_program() noexcept { return detail::temporal_line_mask_depth_words; }
+inline constexpr const auto& temporal_line_mask_camera_depth_program() noexcept { return detail::temporal_line_mask_camera_depth_words; }
 inline constexpr const auto& temporal_thin_box_rows_program() noexcept { return detail::temporal_thin_box_rows_words; }
 inline constexpr const auto& temporal_thin_box_columns_program() noexcept { return detail::temporal_thin_box_columns_words; }
 } // namespace x3m::renderer

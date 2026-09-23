@@ -29,8 +29,9 @@ int main() {
     std::uint32_t values[5] = {50, 10, 40, 20, 30};
     const g::Stat exact = g::Tracker::exact_of(values, 5);
     check(exact.n == 5 && exact.median == 30 && exact.p90 == 50, "exact nearest-rank median and p90");
-    check(g::pass_count == 22 && g::boundary_count == 44 && std::string_view(g::pass_name(g::FogRoute)) == "fog_route" && std::string_view(g::pass_name(g::Present)) == "present" && std::string_view(g::pass_name(g::TaaCopy)) == "taa_copy" && std::string_view(g::pass_name(g::TaaDisplay)) == "taa_display"
-          && g::TaaDisplay == 18 && g::FogMarch == 19 && std::string_view(g::pass_name(g::FogMarch)) == "fog_march" && std::string_view(g::pass_name(g::FogComposite)) == "fog_composite" && std::string_view(g::pass_name(g::FogRepair)) == "fog_repair" && std::string_view(g::pass_name(99)) == "?", "passes and names");
+    check(g::pass_count == 25 && g::boundary_count == 50 && std::string_view(g::pass_name(g::FogRoute)) == "fog_route" && std::string_view(g::pass_name(g::Present)) == "present" && std::string_view(g::pass_name(g::TaaCopy)) == "taa_copy" && std::string_view(g::pass_name(g::TaaDisplay)) == "taa_display"
+          && g::TaaDisplay == 18 && g::FogMarch == 19 && std::string_view(g::pass_name(g::FogMarch)) == "fog_march" && std::string_view(g::pass_name(g::FogComposite)) == "fog_composite" && std::string_view(g::pass_name(g::FogRepair)) == "fog_repair"
+          && g::FogRepair == 21 && g::TaaMaskTests == 22 && g::TaaMaskY == 24 && std::string_view(g::pass_name(g::TaaMaskTests)) == "taa_mask_tests" && std::string_view(g::pass_name(g::TaaMaskX)) == "taa_mask_x" && std::string_view(g::pass_name(g::TaaMaskY)) == "taa_mask_y" && std::string_view(g::pass_name(99)) == "?", "passes and names");
     check(g::census_ppm(0, 100) == 0 && g::census_ppm(1, 3) == 333333 && g::census_ppm(255, 527) == 483870 && g::census_ppm(5, 0) == 0 && g::census_ppm(7, 5) == 1000000
           && g::census_ppm(2073600, 2073600) == 1000000, "census ppm: integer, zero area, saturated");
 

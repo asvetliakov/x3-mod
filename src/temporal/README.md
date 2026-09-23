@@ -249,7 +249,10 @@ stabiliser (`resolve_far.hlsl`; `docs/architecture/taa-distant-line-fade.md` sec
 `r` (filter weight) and `g` (far history-weight gate); the mask program takes the gate in `c5` (d0, inv, filter on, weight on)
 and `c24.yzw` become the weight target and the LO..HI speed gate. The thin region (`taa-lattice-crawl.md` section 13) adds
 the mask's `b` (strength, speed-gated in the mask program: `c6`, `s4` motion, `c0..c3`) and `a`, and `c24.x` = clip relaxation;
-this variant compiles no 3x3 sentinel soft clip. Ordinary resolve uses zero;
+this variant compiles no 3x3 sentinel soft clip. On a two- or four-channel current depth (the sun-shadow lane's RT2) the
+mask chain's first draw uses `line_mask_depth_ps.hlsl` / `line_mask_camera_depth_ps.hlsl` instead (`X3M_MASK_DEPTH_OUT`:
+`s1` = that depth itself, `COLOR1` = its texel into the R32F next depth history, which then needs no copy draw;
+`docs/architecture/taa-high-resolution.md` S1). Ordinary resolve uses zero;
 `prepare` initializes the mode and reserved component to zero. Runtime code must
 not use snapshot mode as a color resolve. `TemporalPass` uses this third GPU draw
 only under `ReactivePolicy::RequiredMask` and owns the resulting ping-pong masks.

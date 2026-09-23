@@ -79,6 +79,11 @@
 // adds an EMISSIVE VOTE to b in the tests draw (c7.z = 0), reading this frame's scene at s0. E = 0 (the default) does not
 // read s0 or c10 at all and the mask is what it was bit for bit. E is in the units of the bound scene: the HDR route binds the
 // FP16 scene, the 8-bit route the FP16 copy of the display-referred target, where nothing exceeds 1 and E >= 1 never fires.
+// X3M_MASK_DEPTH_OUT (line_mask_depth_ps.hlsl, line_mask_camera_depth_ps.hlsl; docs/architecture/taa-high-resolution.md S1):
+// the tests draw (c7.z = 0) or the far-only draw (c7.z = 2) with s1 = the caller's two- or four-channel current depth
+// itself instead of its R32F copy; COLOR1 = that centre texel, which the caller's R32F second target (the next depth
+// history) stores as its .r, the value the copy draw wrote. Every tap reads .r, so the mask is the same bit for bit; the
+// camera variant takes the lane's .b from the same centre texel instead of s5. Bound only for that one draw.
 sampler2D scene : register(s0);
 sampler2D source : register(s1);
 sampler2D motionOverride : register(s4);
@@ -96,6 +101,9 @@ float4 depthParallax : register(c8); // camera_depth_parallax(): (DX, DY, DW) / 
 float4 laneParallax : register(c9);  // camera_lane_parallax(): (DX, DY, DW), 1 where s5 carries the view z; w = 0: c8 alone
 sampler2D laneDepth : register(s5);  // the caller's four-channel current depth (.b = clip w = view z), point / clamp
 sampler2D ownDepth : register(s6);   // composition with c6.x > 0 only: the current depth (.r), point / clamp
+#endif
+#ifdef X3M_MASK_DEPTH_OUT
+static float4 centreTexel; // s1 at this pixel: the whole current-depth texel (main sets it first)
 #endif
 static const float lineMargin = 1.1;
 static const float3 lumaWeights = float3(0.2126, 0.7152, 0.0722); // Rec.709, as resolve.hlsl and the box programs weigh luma
@@ -181,7 +189,11 @@ float2 gateOpen(float2 uv, float depth, float4 motion) {
         // position over z is the far-plane image plus c8.xyz * (d - m22); the sentinel has no geometry and stays at infinity.
         // Preferred where the lane is bound (c9.w = 1): 1 / view z read directly from .b, no depth law at all.
         if (validDepth(depth)) {
+#ifdef X3M_MASK_DEPTH_OUT
+            float viewZ = centreTexel.b; // s1 is the lane itself: the texel s5 would return
+#else
             float viewZ = tex2Dlod(laneDepth, float4(uv, 0, 0)).b;
+#endif
             // With the lane bound the law is never consulted: a valid depth whose .b is not positive stays on the far plane.
             previous += laneParallax.w > 0.5 ? laneParallax.xyz * (viewZ > 0 ? 1 / viewZ : 0) : depthParallax.xyz * (depth - depthParallax.w);
         }
@@ -198,8 +210,15 @@ float2 gateOpen(float2 uv, float depth, float4 motion) {
 }
 #endif
 
+#ifdef X3M_MASK_DEPTH_OUT
+struct MaskDepthOut { float4 mask : COLOR0; float4 depth : COLOR1; };
+MaskDepthOut main(float2 uv : TEXCOORD0)
+{
+    centreTexel = fetch(uv);
+#else
 float4 main(float2 uv : TEXCOORD0) : COLOR0
 {
+#endif
     float4 result = 0;
     if (options.z > 1.5 && options.z < 2.5) {
         result.rg = farWeight(fetch(uv).r) * farGate.zw;
@@ -317,5 +336,12 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0
         }
 #endif
     }
+#ifdef X3M_MASK_DEPTH_OUT
+    MaskDepthOut output;
+    output.mask = result;
+    output.depth = centreTexel;
+    return output;
+#else
     return result;
+#endif
 }

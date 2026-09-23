@@ -2011,6 +2011,7 @@ void loop_timings(IDirect3DDevice9* d,const DWORD* baseline,const DWORD* candida
 #include "temporal_line_inc.h"
 #include "temporal_far_inc.h"
 #include "temporal_thin_region_inc.h"
+#include "temporal_depth_fold_inc.h"
 
 int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=1;WNDCLASSA cls{};cls.lpfnWndProc=DefWindowProcA;cls.hInstance=GetModuleHandleA(nullptr);cls.lpszClassName="X3TemporalPassFixture";RegisterClassA(&cls);HWND window=CreateWindowA(cls.lpszClassName,"X3 temporal production module",WS_OVERLAPPEDWINDOW,90,90,128,128,nullptr,nullptr,cls.hInstance,nullptr);
     // Optional sixth argument: "stationary-only" runs just the stationary
@@ -2046,7 +2047,7 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=
                 X3M_BUDGET(temporal_resolve_program,"embedded_plain");X3M_BUDGET(temporal_resolve_snapshot_program,"embedded_snapshot");
                 X3M_BUDGET(temporal_resolve_thin_program,"embedded_thin");X3M_BUDGET(temporal_resolve_age_program,"embedded_age");
                 X3M_BUDGET(temporal_line_mask_program,"embedded_line_mask");X3M_BUDGET(temporal_resolve_far_program,"embedded_far");
-                X3M_BUDGET(temporal_line_mask_camera_program,"embedded_line_mask_camera");X3M_BUDGET(temporal_resolve_far_camera_program,"embedded_far_camera");X3M_BUDGET(temporal_thin_box_program,"embedded_thin_box");X3M_BUDGET(temporal_thin_box_rows_program,"embedded_thin_box_rows");X3M_BUDGET(temporal_thin_box_columns_program,"embedded_thin_box_columns");
+                X3M_BUDGET(temporal_line_mask_camera_program,"embedded_line_mask_camera");X3M_BUDGET(temporal_line_mask_depth_program,"embedded_line_mask_depth");X3M_BUDGET(temporal_line_mask_camera_depth_program,"embedded_line_mask_camera_depth");X3M_BUDGET(temporal_resolve_far_camera_program,"embedded_far_camera");X3M_BUDGET(temporal_thin_box_program,"embedded_thin_box");X3M_BUDGET(temporal_thin_box_rows_program,"embedded_thin_box_rows");X3M_BUDGET(temporal_thin_box_columns_program,"embedded_thin_box_columns");
                 #undef X3M_BUDGET
             }
             // The retained baseline also exceeds the advertised limit on X3.
@@ -2054,7 +2055,7 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=
             // and execution below qualify only this backend, not cap compliance.
         }
         auto* sharpener=static_cast<DWORD*>(sc->GetBufferPointer());
-        if(lattice){lattice_cases(d.p,compiler,static_cast<DWORD*>(rc->GetBufferPointer()));const unsigned latticeNumeric=numeric_checks,latticeState=state_checks;std::printf("LATTICE_BASE numerical=%u state_restorations=%u\n",latticeNumeric,latticeState);flicker_cases(d.p,compiler,static_cast<DWORD*>(rc->GetBufferPointer()));std::printf("FLICKER_BASE numerical=%u state_restorations=%u\n",numeric_checks,state_checks);line_cases(d.p,compiler,static_cast<DWORD*>(rc->GetBufferPointer()));std::printf("LINE_BASE numerical=%u state_restorations=%u\n",numeric_checks,state_checks);far_cases(d.p,compiler,static_cast<DWORD*>(rc->GetBufferPointer()));std::printf("FAR_BASE numerical=%u state_restorations=%u\n",numeric_checks,state_checks);thin_region_cases(d.p,compiler,static_cast<DWORD*>(rc->GetBufferPointer()));std::printf("RESULT PASS numerical=%u state_restorations=%u lattice=1\n",numeric_checks,state_checks);result=0;}
+        if(lattice){lattice_cases(d.p,compiler,static_cast<DWORD*>(rc->GetBufferPointer()));const unsigned latticeNumeric=numeric_checks,latticeState=state_checks;std::printf("LATTICE_BASE numerical=%u state_restorations=%u\n",latticeNumeric,latticeState);flicker_cases(d.p,compiler,static_cast<DWORD*>(rc->GetBufferPointer()));std::printf("FLICKER_BASE numerical=%u state_restorations=%u\n",numeric_checks,state_checks);line_cases(d.p,compiler,static_cast<DWORD*>(rc->GetBufferPointer()));std::printf("LINE_BASE numerical=%u state_restorations=%u\n",numeric_checks,state_checks);far_cases(d.p,compiler,static_cast<DWORD*>(rc->GetBufferPointer()));std::printf("FAR_BASE numerical=%u state_restorations=%u\n",numeric_checks,state_checks);thin_region_cases(d.p,compiler,static_cast<DWORD*>(rc->GetBufferPointer()));depth_fold_cases(d.p,compiler,static_cast<DWORD*>(rc->GetBufferPointer()),pp);std::printf("RESULT PASS numerical=%u state_restorations=%u lattice=1\n",numeric_checks,state_checks);result=0;}
         else if(sunLaneOnly){sun_lane_cases(d.p,pp,compiler,static_cast<DWORD*>(rc->GetBufferPointer()));result=0;}
         else if(stationaryOnly){stationary_cases(d.p,compiler,static_cast<DWORD*>(dc->GetBufferPointer()),static_cast<DWORD*>(rc->GetBufferPointer()));std::printf("RESULT PASS numerical=%u stationary_only=1\n",numeric_checks);result=0;}
         else if(measure){sharpen_measure(d.p,compiler,static_cast<DWORD*>(dc->GetBufferPointer()),static_cast<DWORD*>(rc->GetBufferPointer()),sharpener);std::printf("RESULT PASS numerical=%u sharpen_measure=1\n",numeric_checks);result=0;}

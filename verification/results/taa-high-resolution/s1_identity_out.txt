@@ -1,0 +1,28 @@
+temporal-pass.txt identical=1 sha256=58d85cde92764d58
+lattice rows compared=4144/4144 differing=0 (timing, slot and RESULT rows excluded; fold rows after them)
+lane flight rows (fold path, lane term on) identical=1 n=7
+DEPTH_FOLD case=camera_sentinel run=lane_fold against=r32f reason=lane_mrt against_reason=r32f_depth frames=3 folded=3 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+DEPTH_FOLD case=camera_sentinel run=lane_copy against=r32f reason=program against_reason=r32f_depth frames=3 folded=0 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+DEPTH_FOLD case=camera_sentinel run=g32r32f_fold against=r32f reason=lane_mrt against_reason=r32f_depth frames=3 folded=3 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+DEPTH_FOLD case=camera_sentinel run=lane_term_fold against=lane_term_copy reason=lane_mrt against_reason=program frames=3 folded=3 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+DEPTH_FOLD case=camera_sentinel run=negative_control against=r32f reason=lane_mrt against_reason=r32f_depth frames=3 folded=3 history_frames=2 color_bytes_differ=0 depth_bytes_differ=3 age_bytes_differ=0 mask_bytes_differ=0
+DEPTH_FOLD case=camera run=lane_fold against=r32f reason=lane_mrt against_reason=r32f_depth frames=3 folded=3 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+DEPTH_FOLD case=camera run=lane_copy against=r32f reason=program against_reason=r32f_depth frames=3 folded=0 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+DEPTH_FOLD case=camera run=g32r32f_fold against=r32f reason=lane_mrt against_reason=r32f_depth frames=3 folded=3 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+DEPTH_FOLD case=camera run=lane_term_fold against=lane_term_copy reason=lane_mrt against_reason=program frames=3 folded=3 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+DEPTH_FOLD case=thin_screen run=lane_fold against=r32f reason=lane_mrt against_reason=r32f_depth frames=3 folded=3 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+DEPTH_FOLD case=thin_screen run=lane_copy against=r32f reason=program against_reason=r32f_depth frames=3 folded=0 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+DEPTH_FOLD case=thin_screen run=g32r32f_fold against=r32f reason=lane_mrt against_reason=r32f_depth frames=3 folded=3 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+DEPTH_FOLD case=far_only run=lane_fold against=r32f reason=lane_mrt against_reason=r32f_depth frames=3 folded=3 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+DEPTH_FOLD case=far_only run=lane_copy against=r32f reason=program against_reason=r32f_depth frames=3 folded=0 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+DEPTH_FOLD case=far_only run=g32r32f_fold against=r32f reason=lane_mrt against_reason=r32f_depth frames=3 folded=3 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+DEPTH_FOLD_FAULT kind=rt1_bind reached=1 hr=80004005 operation=80004005 history_valid=0 folded=0 rt1_unbound_after_bind=1 recovered_hr=00000000 recovered_folded=1 recovered_history=0
+DEPTH_FOLD_FAULT kind=fold_draw reached=1 hr=80004005 operation=80004005 history_valid=0 folded=0 rt1_unbound_after_bind=1 recovered_hr=00000000 recovered_folded=1 recovered_history=0
+DEPTH_FOLD_RESET before_folded=2 before_history=1 after_folded=2 after_history=1 bytes_differ=0,0,0,0
+RESULT PASS numerical=508 state_restorations=89 lattice=1
+RESOLVE_BUDGET variant=embedded_line_mask dwords=1574 instruction_slots=428 device_limit=512 headroom=84 within_guaranteed_512=1
+RESOLVE_BUDGET variant=embedded_line_mask_camera dwords=1579 instruction_slots=427 device_limit=512 headroom=85 within_guaranteed_512=1
+RESOLVE_BUDGET variant=embedded_line_mask_depth dwords=1554 instruction_slots=420 device_limit=512 headroom=92 within_guaranteed_512=1
+RESOLVE_BUDGET variant=embedded_line_mask_camera_depth dwords=1533 instruction_slots=407 device_limit=512 headroom=105 within_guaranteed_512=1
+before LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.9688 lane_input_law_ms=1.8597 lane_input_lane_ms=1.8616 lane_fetch_delta_ms=0.0019 lane_input_over_r32f_ms=-0.1092 scope=cpu_wall_with_event_query_drain
+after LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.9891 lane_input_law_ms=2.0142 lane_input_lane_ms=2.0202 lane_fetch_delta_ms=0.0060 lane_input_over_r32f_ms=0.0252 scope=cpu_wall_with_event_query_drain
