@@ -152,3 +152,14 @@ target_compile_definitions(gpu_sync_timing_fixture PRIVATE WIN32_LEAN_AND_MEAN N
 target_compile_options(gpu_sync_timing_fixture PRIVATE -Wall -Wextra -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2)
 target_link_options(gpu_sync_timing_fixture PRIVATE -static -static-libgcc -static-libstdc++)
 target_link_libraries(gpu_sync_timing_fixture PRIVATE user32)
+# Feasibility probe (run by the Wine queue owner through verification/probe/run_d3d11_interop.py):
+# D3D9 / D3D9Ex / D3D11 devices in one process, cross-API texture sharing, the mask dilation
+# as ps_3_0 passes vs one cs_5_0 dispatch, DXGI HDR colour-space queries, D3D11 caps. Every
+# graphics API is loaded at run time (no d3d9/d3d11/dxgi import); version.dll reads the
+# module version resources for provenance.
+add_executable(d3d11_interop_fixture verification/probe/d3d11_interop_fixture.cpp)
+target_compile_features(d3d11_interop_fixture PRIVATE cxx_std_17)
+target_compile_definitions(d3d11_interop_fixture PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_compile_options(d3d11_interop_fixture PRIVATE -Wall -Wextra -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2)
+target_link_options(d3d11_interop_fixture PRIVATE -static -static-libgcc -static-libstdc++)
+target_link_libraries(d3d11_interop_fixture PRIVATE user32 version)

@@ -1,0 +1,986 @@
+{
+ "passed": true,
+ "game_launched": false,
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "sources": {
+  "verification/probe/d3d11_interop_fixture.cpp": "9f28ce5b4f16f0201180bd14696ec6f6d469dfcac79e15d932ba6c9424c4dc9e",
+  "verification/probe/run_d3d11_interop.py": "5745d161af739c60f8d80709d0895b9241903fe6784a4cf740028828ff1f38e8"
+ },
+ "executable": "/private/tmp/claude-501/-Users-asvetl-x3-mod/ec1d2a17-c1f5-4762-8f3d-98edd98ef126/scratchpad/interop-003746/d3d11_interop_fixture.exe",
+ "executable_sha256": "a6c4bddc920761b0edb2c8788c3aa1bab17e8a6399ec056c0999e04ab17883f4",
+ "dll_overrides": "d3d9=b",
+ "command": [
+  "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+  "--bottle",
+  "X3",
+  "--no-update",
+  "--dll",
+  "d3d9=b",
+  "--workdir",
+  "/private/tmp/claude-501/-Users-asvetl-x3-mod/ec1d2a17-c1f5-4762-8f3d-98edd98ef126/scratchpad/interop-003746",
+  "/private/tmp/claude-501/-Users-asvetl-x3-mod/ec1d2a17-c1f5-4762-8f3d-98edd98ef126/scratchpad/interop-003746/d3d11_interop_fixture.exe"
+ ],
+ "elapsed_s": 9.3,
+ "exit_code": 0,
+ "report_sha256": "97bd697fc65f5d3094fc7946160d13b090f3c34b587e2d8e41d314d0446f0fdb",
+ "report": {
+  "modules": [
+   {
+    "name": "d3d9.dll",
+    "loaded": 1,
+    "path": "C:\\windows\\system32\\d3d9.dll",
+    "image_size": 180224,
+    "file_size": 187968,
+    "version": "5.3.1.904",
+    "product": "Wine_11.15",
+    "builtin": 1,
+    "markers": "wined3d"
+   },
+   {
+    "name": "d3d11.dll",
+    "loaded": 1,
+    "path": "C:\\windows\\system32\\d3d11.dll",
+    "image_size": 3170304,
+    "file_size": 388672,
+    "version": "10.0.17763.1",
+    "product": "DXMT",
+    "builtin": 1,
+    "markers": "DXMT,dxmt,winemetal"
+   },
+   {
+    "name": "dxgi.dll",
+    "loaded": 1,
+    "path": "C:\\windows\\system32\\DXGI.DLL",
+    "image_size": 1060864,
+    "file_size": 208448,
+    "version": "10.0.17763.1",
+    "product": "DXMT",
+    "builtin": 1,
+    "markers": "DXMT,dxmt,winemetal"
+   },
+   {
+    "name": "d3dcompiler_47.dll",
+    "loaded": 1,
+    "path": "C:\\windows\\system32\\d3dcompiler_47.dll",
+    "image_size": 184320,
+    "file_size": 192064,
+    "version": "6.3.9600.16984",
+    "product": "Wine_11.15",
+    "builtin": 1,
+    "markers": "wined3d,vkd3d"
+   }
+  ],
+  "devices": [
+   {
+    "api": "d3d9",
+    "hr": "00000000",
+    "flags": "00000040",
+    "adapter": "NVIDIA_GeForce_8800_GTX",
+    "driver": "nvd3dum.dll",
+    "vendor": "10de",
+    "device": 191,
+    "ps_version": 3.0,
+    "max_rts": 4,
+    "queries_event": 1,
+    "device_is_ex": 0
+   },
+   {
+    "api": "d3d9ex",
+    "hr": "00000000",
+    "flags": "00000040",
+    "adapter": "NVIDIA_GeForce_8800_GTX",
+    "driver": "nvd3dum.dll",
+    "vendor": "10de",
+    "device": 191,
+    "ps_version": 3.0,
+    "max_rts": 4,
+    "queries_event": 1,
+    "device_is_ex": 1
+   },
+   {
+    "api": "d3d11",
+    "hr": "00000000",
+    "path": "adapter",
+    "flags": "00000020",
+    "feature_level": "11_1"
+   }
+  ],
+  "adapters": [
+   {
+    "index": 0,
+    "description": "Apple_M5_Pro",
+    "vendor": "106b",
+    "device": 0,
+    "luid": "29060000:01000000",
+    "dedicated_mb": 901,
+    "flags": "0"
+   }
+  ],
+  "shaders": [
+   {
+    "name": "gradient_ps3_vpos",
+    "target": "ps_3_0",
+    "hr": "00000000",
+    "bytes": 1700,
+    "message": "-"
+   },
+   {
+    "name": "dilate_ps3_vpos",
+    "target": "ps_3_0",
+    "hr": "00000000",
+    "bytes": 2144,
+    "message": "-"
+   },
+   {
+    "name": "compose_ps3_vpos",
+    "target": "ps_3_0",
+    "hr": "00000000",
+    "bytes": 372,
+    "message": "-"
+   },
+   {
+    "name": "fullscreen_vs",
+    "target": "vs_5_0",
+    "hr": "00000000",
+    "bytes": 700,
+    "message": "-"
+   },
+   {
+    "name": "gradient_ps",
+    "target": "ps_5_0",
+    "hr": "00000000",
+    "bytes": 2640,
+    "message": "-"
+   },
+   {
+    "name": "dilate_ps",
+    "target": "ps_5_0",
+    "hr": "00000000",
+    "bytes": 5768,
+    "message": "-"
+   },
+   {
+    "name": "compose_ps",
+    "target": "ps_5_0",
+    "hr": "00000000",
+    "bytes": 840,
+    "message": "-"
+   },
+   {
+    "name": "dilate_cs",
+    "target": "cs_5_0",
+    "hr": "00000000",
+    "bytes": 8852,
+    "message": "-"
+   }
+  ],
+  "shares": [
+   {
+    "dir": "d3d11_to_d3d9ex",
+    "format": "A8R8G8B8",
+    "create_hr": "00000000",
+    "handle_hr": "00000000",
+    "keyed_mutex_hr": "80004002",
+    "handle": "40000002",
+    "open_hr": "00000000",
+    "opened": 1,
+    "exact": 0,
+    "mismatches": 65536,
+    "first_x": 0,
+    "first_y": 0,
+    "first_bytes": "00000000000000000000000000000000",
+    "reverse_exact": 0,
+    "roundtrip_us": 4785.8,
+    "sync_us": 462.6,
+    "synced": 1
+   },
+   {
+    "dir": "d3d11_to_d3d9",
+    "format": "A8R8G8B8",
+    "create_hr": "00000000",
+    "handle_hr": "00000000",
+    "keyed_mutex_hr": "80004002",
+    "handle": "40000042",
+    "open_hr": "80004001",
+    "opened": 0,
+    "exact": 0,
+    "mismatches": 0,
+    "first_x": 0,
+    "first_y": 0,
+    "first_bytes": "-",
+    "reverse_exact": -1,
+    "roundtrip_us": 0.0,
+    "sync_us": 0.0,
+    "synced": 0
+   },
+   {
+    "dir": "d3d11_to_d3d9ex",
+    "format": "A16B16G16R16F",
+    "create_hr": "00000000",
+    "handle_hr": "00000000",
+    "keyed_mutex_hr": "80004002",
+    "handle": "40000082",
+    "open_hr": "00000000",
+    "opened": 1,
+    "exact": 0,
+    "mismatches": 65536,
+    "first_x": 0,
+    "first_y": 0,
+    "first_bytes": "00000000000000000000000000000000",
+    "reverse_exact": 0,
+    "roundtrip_us": 2399.8,
+    "sync_us": 424.5,
+    "synced": 1
+   },
+   {
+    "dir": "d3d11_to_d3d9",
+    "format": "A16B16G16R16F",
+    "create_hr": "00000000",
+    "handle_hr": "00000000",
+    "keyed_mutex_hr": "80004002",
+    "handle": "400000c2",
+    "open_hr": "80004001",
+    "opened": 0,
+    "exact": 0,
+    "mismatches": 0,
+    "first_x": 0,
+    "first_y": 0,
+    "first_bytes": "-",
+    "reverse_exact": -1,
+    "roundtrip_us": 0.0,
+    "sync_us": 0.0,
+    "synced": 0
+   },
+   {
+    "dir": "d3d11_to_d3d9ex",
+    "format": "A32B32G32R32F",
+    "create_hr": "00000000",
+    "handle_hr": "00000000",
+    "keyed_mutex_hr": "80004002",
+    "handle": "40000102",
+    "open_hr": "00000000",
+    "opened": 1,
+    "exact": 0,
+    "mismatches": 65536,
+    "first_x": 0,
+    "first_y": 0,
+    "first_bytes": "00000000000000000000000000000000",
+    "reverse_exact": 0,
+    "roundtrip_us": 633.0,
+    "sync_us": 213.7,
+    "synced": 1
+   },
+   {
+    "dir": "d3d11_to_d3d9",
+    "format": "A32B32G32R32F",
+    "create_hr": "00000000",
+    "handle_hr": "00000000",
+    "keyed_mutex_hr": "80004002",
+    "handle": "40000142",
+    "open_hr": "80004001",
+    "opened": 0,
+    "exact": 0,
+    "mismatches": 0,
+    "first_x": 0,
+    "first_y": 0,
+    "first_bytes": "-",
+    "reverse_exact": -1,
+    "roundtrip_us": 0.0,
+    "sync_us": 0.0,
+    "synced": 0
+   },
+   {
+    "dir": "d3d11_to_d3d9ex",
+    "format": "D24S8",
+    "create_hr": "00000000",
+    "handle_hr": "00000000",
+    "keyed_mutex_hr": "80004002",
+    "handle": "40000182",
+    "open_hr": "00000000",
+    "opened": 1,
+    "exact": 0,
+    "mismatches": 0,
+    "first_x": 0,
+    "first_y": 0,
+    "first_bytes": "-",
+    "reverse_exact": -1,
+    "roundtrip_us": 0.0,
+    "sync_us": 0.0,
+    "synced": 0
+   },
+   {
+    "dir": "d3d11_to_d3d9",
+    "format": "D24S8",
+    "create_hr": "00000000",
+    "handle_hr": "00000000",
+    "keyed_mutex_hr": "80004002",
+    "handle": "400001c2",
+    "open_hr": "80004001",
+    "opened": 0,
+    "exact": 0,
+    "mismatches": 0,
+    "first_x": 0,
+    "first_y": 0,
+    "first_bytes": "-",
+    "reverse_exact": -1,
+    "roundtrip_us": 0.0,
+    "sync_us": 0.0,
+    "synced": 0
+   },
+   {
+    "dir": "d3d11_to_d3d9ex",
+    "format": "D32F_LOCKABLE",
+    "create_hr": "00000000",
+    "handle_hr": "00000000",
+    "keyed_mutex_hr": "80004002",
+    "handle": "40000202",
+    "open_hr": "00000000",
+    "opened": 1,
+    "exact": 0,
+    "mismatches": 0,
+    "first_x": 0,
+    "first_y": 0,
+    "first_bytes": "-",
+    "reverse_exact": -1,
+    "roundtrip_us": 0.0,
+    "sync_us": 0.0,
+    "synced": 0
+   },
+   {
+    "dir": "d3d11_to_d3d9",
+    "format": "D32F_LOCKABLE",
+    "create_hr": "00000000",
+    "handle_hr": "00000000",
+    "keyed_mutex_hr": "80004002",
+    "handle": "40000242",
+    "open_hr": "80004001",
+    "opened": 0,
+    "exact": 0,
+    "mismatches": 0,
+    "first_x": 0,
+    "first_y": 0,
+    "first_bytes": "-",
+    "reverse_exact": -1,
+    "roundtrip_us": 0.0,
+    "sync_us": 0.0,
+    "synced": 0
+   },
+   {
+    "dir": "d3d9ex_to_d3d11",
+    "format": "A8R8G8B8",
+    "create_hr": "00000000",
+    "handle": "00000000",
+    "open_hr": "80004005",
+    "opened": 0,
+    "exact": 0,
+    "mismatches": 0,
+    "first_x": 0,
+    "first_y": 0,
+    "roundtrip_us": 0.0,
+    "sync_us": 0.0,
+    "synced": 0
+   },
+   {
+    "dir": "d3d9_to_d3d11",
+    "format": "A8R8G8B8",
+    "create_hr": "80004001",
+    "handle": "00000000",
+    "open_hr": "80004005",
+    "opened": 0,
+    "exact": 0,
+    "mismatches": 0,
+    "first_x": 0,
+    "first_y": 0,
+    "roundtrip_us": 0.0,
+    "sync_us": 0.0,
+    "synced": 0
+   },
+   {
+    "dir": "d3d9ex_to_d3d11",
+    "format": "A16B16G16R16F",
+    "create_hr": "00000000",
+    "handle": "00000000",
+    "open_hr": "80004005",
+    "opened": 0,
+    "exact": 0,
+    "mismatches": 0,
+    "first_x": 0,
+    "first_y": 0,
+    "roundtrip_us": 0.0,
+    "sync_us": 0.0,
+    "synced": 0
+   },
+   {
+    "dir": "d3d9_to_d3d11",
+    "format": "A16B16G16R16F",
+    "create_hr": "80004001",
+    "handle": "00000000",
+    "open_hr": "80004005",
+    "opened": 0,
+    "exact": 0,
+    "mismatches": 0,
+    "first_x": 0,
+    "first_y": 0,
+    "roundtrip_us": 0.0,
+    "sync_us": 0.0,
+    "synced": 0
+   },
+   {
+    "dir": "d3d9ex_to_d3d11",
+    "format": "A32B32G32R32F",
+    "create_hr": "00000000",
+    "handle": "00000000",
+    "open_hr": "80004005",
+    "opened": 0,
+    "exact": 0,
+    "mismatches": 0,
+    "first_x": 0,
+    "first_y": 0,
+    "roundtrip_us": 0.0,
+    "sync_us": 0.0,
+    "synced": 0
+   },
+   {
+    "dir": "d3d9_to_d3d11",
+    "format": "A32B32G32R32F",
+    "create_hr": "80004001",
+    "handle": "00000000",
+    "open_hr": "80004005",
+    "opened": 0,
+    "exact": 0,
+    "mismatches": 0,
+    "first_x": 0,
+    "first_y": 0,
+    "roundtrip_us": 0.0,
+    "sync_us": 0.0,
+    "synced": 0
+   },
+   {
+    "dir": "d3d9ex_to_d3d11",
+    "format": "D24S8",
+    "create_hr": "00000000",
+    "handle": "00000000",
+    "open_hr": "80004005",
+    "opened": 0,
+    "exact": 0,
+    "mismatches": 0,
+    "first_x": 0,
+    "first_y": 0,
+    "roundtrip_us": 0.0,
+    "sync_us": 0.0,
+    "synced": 0
+   },
+   {
+    "dir": "d3d9_to_d3d11",
+    "format": "D24S8",
+    "create_hr": "80004001",
+    "handle": "00000000",
+    "open_hr": "80004005",
+    "opened": 0,
+    "exact": 0,
+    "mismatches": 0,
+    "first_x": 0,
+    "first_y": 0,
+    "roundtrip_us": 0.0,
+    "sync_us": 0.0,
+    "synced": 0
+   },
+   {
+    "dir": "d3d9ex_to_d3d11",
+    "format": "D32F_LOCKABLE",
+    "create_hr": "00000000",
+    "handle": "00000000",
+    "open_hr": "80004005",
+    "opened": 0,
+    "exact": 0,
+    "mismatches": 0,
+    "first_x": 0,
+    "first_y": 0,
+    "roundtrip_us": 0.0,
+    "sync_us": 0.0,
+    "synced": 0
+   },
+   {
+    "dir": "d3d9_to_d3d11",
+    "format": "D32F_LOCKABLE",
+    "create_hr": "80004001",
+    "handle": "00000000",
+    "open_hr": "80004005",
+    "opened": 0,
+    "exact": 0,
+    "mismatches": 0,
+    "first_x": 0,
+    "first_y": 0,
+    "roundtrip_us": 0.0,
+    "sync_us": 0.0,
+    "synced": 0
+   }
+  ],
+  "dilations": [
+   {
+    "api": "d3d9",
+    "variant": "ps3_three_passes",
+    "width": 1920,
+    "height": 1080,
+    "iterations": 8,
+    "method": "event_bracket",
+    "gpu_us": 414.1,
+    "empty_bracket_us": 21.4,
+    "mismatches": 0,
+    "synced": 1
+   },
+   {
+    "api": "d3d11",
+    "variant": "ps_three_passes",
+    "width": 1920,
+    "height": 1080,
+    "iterations": 8,
+    "method": "timestamp_disjoint",
+    "gpu_us": 239.1,
+    "cpu_bracket_us": 246.9,
+    "samples": 5,
+    "frequency": 1000000000,
+    "disjoint": 0
+   },
+   {
+    "api": "d3d11",
+    "variant": "cs5_one_dispatch",
+    "width": 1920,
+    "height": 1080,
+    "iterations": 8,
+    "method": "timestamp_disjoint",
+    "gpu_us": 189.9,
+    "cpu_bracket_us": 198.0,
+    "samples": 5,
+    "frequency": 1000000000,
+    "disjoint": 0
+   },
+   {
+    "api": "d3d9",
+    "variant": "ps3_three_passes",
+    "width": 5120,
+    "height": 1440,
+    "iterations": 8,
+    "method": "event_bracket",
+    "gpu_us": 1137.6,
+    "empty_bracket_us": 24.1,
+    "mismatches": 0,
+    "synced": 1
+   },
+   {
+    "api": "d3d11",
+    "variant": "ps_three_passes",
+    "width": 5120,
+    "height": 1440,
+    "iterations": 8,
+    "method": "timestamp_disjoint",
+    "gpu_us": 717.7,
+    "cpu_bracket_us": 731.4,
+    "samples": 5,
+    "frequency": 1000000000,
+    "disjoint": 0
+   },
+   {
+    "api": "d3d11",
+    "variant": "cs5_one_dispatch",
+    "width": 5120,
+    "height": 1440,
+    "iterations": 8,
+    "method": "timestamp_disjoint",
+    "gpu_us": 657.2,
+    "cpu_bracket_us": 666.3,
+    "samples": 5,
+    "frequency": 1000000000,
+    "disjoint": 0
+   }
+  ],
+  "verifications": [
+   {
+    "api": "d3d11",
+    "variant": "ps_three_passes",
+    "width": 1920,
+    "height": 1080,
+    "mismatches": 0
+   },
+   {
+    "api": "d3d11",
+    "variant": "cs5_one_dispatch",
+    "width": 1920,
+    "height": 1080,
+    "groups": "120x68",
+    "mismatches": 0
+   },
+   {
+    "api": "d3d11",
+    "variant": "ps_three_passes",
+    "width": 5120,
+    "height": 1440,
+    "mismatches": 0
+   },
+   {
+    "api": "d3d11",
+    "variant": "cs5_one_dispatch",
+    "width": 5120,
+    "height": 1440,
+    "groups": "320x90",
+    "mismatches": 0
+   }
+  ],
+  "outputs": [
+   {
+    "index": 0,
+    "name": "\\\\.\\DISPLAY1",
+    "desc1_hr": "00000000",
+    "colour_space": "RGB_FULL_G2084_NONE_P2020(12)",
+    "bits_per_colour": 10,
+    "min_nits": 0.0,
+    "max_nits": 400.0,
+    "max_full_frame_nits": 400.0,
+    "width": 5120,
+    "height": 1440
+   },
+   {
+    "index": 1,
+    "name": "\\\\.\\DISPLAY2",
+    "desc1_hr": "00000000",
+    "colour_space": "RGB_FULL_G2084_NONE_P2020(12)",
+    "bits_per_colour": 10,
+    "min_nits": 0.0,
+    "max_nits": 1600.0,
+    "max_full_frame_nits": 1600.0,
+    "width": 1512,
+    "height": 982
+   }
+  ],
+  "swapchain_attempts": [
+   {
+    "attempt": "flip_discard_fp16",
+    "hr": "00000000"
+   }
+  ],
+  "colour_spaces": [
+   {
+    "space": "RGB_FULL_G22_NONE_P709",
+    "hr": "00000000",
+    "support": 1,
+    "present": 1,
+    "overlay": 0
+   },
+   {
+    "space": "RGB_FULL_G10_NONE_P709",
+    "hr": "00000000",
+    "support": 1,
+    "present": 1,
+    "overlay": 0
+   },
+   {
+    "space": "RGB_FULL_G2084_NONE_P2020",
+    "hr": "00000000",
+    "support": 1,
+    "present": 1,
+    "overlay": 0
+   }
+  ],
+  "formats": [
+   {
+    "name": "R16G16B16A16_FLOAT",
+    "hr": "00000000",
+    "texture2d": 1,
+    "render_target": 1,
+    "depth_stencil": 0,
+    "shader_sample": 1,
+    "typed_uav": 1,
+    "display": 1,
+    "support2_hr": "00000000",
+    "uav_typed_load": 1,
+    "uav_typed_store": 1
+   },
+   {
+    "name": "R8_UNORM",
+    "hr": "00000000",
+    "texture2d": 1,
+    "render_target": 1,
+    "depth_stencil": 0,
+    "shader_sample": 1,
+    "typed_uav": 1,
+    "display": 0,
+    "support2_hr": "00000000",
+    "uav_typed_load": 1,
+    "uav_typed_store": 1
+   },
+   {
+    "name": "R8G8B8A8_UNORM",
+    "hr": "00000000",
+    "texture2d": 1,
+    "render_target": 1,
+    "depth_stencil": 0,
+    "shader_sample": 1,
+    "typed_uav": 1,
+    "display": 1,
+    "support2_hr": "00000000",
+    "uav_typed_load": 1,
+    "uav_typed_store": 1
+   },
+   {
+    "name": "B8G8R8A8_UNORM",
+    "hr": "00000000",
+    "texture2d": 1,
+    "render_target": 1,
+    "depth_stencil": 0,
+    "shader_sample": 1,
+    "typed_uav": 1,
+    "display": 1,
+    "support2_hr": "00000000",
+    "uav_typed_load": 1,
+    "uav_typed_store": 0
+   },
+   {
+    "name": "R32_FLOAT",
+    "hr": "00000000",
+    "texture2d": 1,
+    "render_target": 1,
+    "depth_stencil": 0,
+    "shader_sample": 1,
+    "typed_uav": 1,
+    "display": 0,
+    "support2_hr": "00000000",
+    "uav_typed_load": 1,
+    "uav_typed_store": 1
+   },
+   {
+    "name": "R16G16_FLOAT",
+    "hr": "00000000",
+    "texture2d": 1,
+    "render_target": 1,
+    "depth_stencil": 0,
+    "shader_sample": 1,
+    "typed_uav": 1,
+    "display": 0,
+    "support2_hr": "00000000",
+    "uav_typed_load": 1,
+    "uav_typed_store": 1
+   },
+   {
+    "name": "R11G11B10_FLOAT",
+    "hr": "00000000",
+    "texture2d": 1,
+    "render_target": 1,
+    "depth_stencil": 0,
+    "shader_sample": 1,
+    "typed_uav": 1,
+    "display": 0,
+    "support2_hr": "00000000",
+    "uav_typed_load": 1,
+    "uav_typed_store": 1
+   },
+   {
+    "name": "R10G10B10A2_UNORM",
+    "hr": "00000000",
+    "texture2d": 1,
+    "render_target": 1,
+    "depth_stencil": 0,
+    "shader_sample": 1,
+    "typed_uav": 1,
+    "display": 1,
+    "support2_hr": "00000000",
+    "uav_typed_load": 1,
+    "uav_typed_store": 1
+   },
+   {
+    "name": "R32G32B32A32_FLOAT",
+    "hr": "00000000",
+    "texture2d": 1,
+    "render_target": 1,
+    "depth_stencil": 0,
+    "shader_sample": 1,
+    "typed_uav": 1,
+    "display": 0,
+    "support2_hr": "00000000",
+    "uav_typed_load": 1,
+    "uav_typed_store": 1
+   },
+   {
+    "name": "D24_UNORM_S8_UINT",
+    "hr": "00000000",
+    "texture2d": 1,
+    "render_target": 0,
+    "depth_stencil": 1,
+    "shader_sample": 1,
+    "typed_uav": 0,
+    "display": 0,
+    "support2_hr": "00000000",
+    "uav_typed_load": 0,
+    "uav_typed_store": 0
+   },
+   {
+    "name": "D32_FLOAT",
+    "hr": "00000000",
+    "texture2d": 1,
+    "render_target": 0,
+    "depth_stencil": 1,
+    "shader_sample": 1,
+    "typed_uav": 0,
+    "display": 0,
+    "support2_hr": "00000000",
+    "uav_typed_load": 0,
+    "uav_typed_store": 0
+   }
+  ],
+  "steps": [
+   {
+    "status": "ok",
+    "name": "device_d3d9"
+   },
+   {
+    "status": "ok",
+    "name": "device_d3d9ex"
+   },
+   {
+    "status": "ok",
+    "name": "device_d3d11"
+   },
+   {
+    "status": "ok",
+    "name": "share_d3d11_to_d3d9"
+   },
+   {
+    "status": "ok",
+    "name": "share_d3d9_to_d3d11"
+   },
+   {
+    "status": "ok",
+    "name": "dilation_d3d9"
+   },
+   {
+    "status": "ok",
+    "name": "dilation_d3d9"
+   },
+   {
+    "status": "ok",
+    "name": "hdr_outputs"
+   },
+   {
+    "status": "ok",
+    "name": "hdr_swapchain"
+   },
+   {
+    "status": "ok",
+    "name": "caps"
+   }
+  ],
+  "notes": [],
+  "compiler": {
+   "available": 1
+  },
+  "plain": {
+   "query_device9ex_hr": "80004002"
+  },
+  "keyed_mutex": {
+   "create_hr": "00000000",
+   "query_hr": "00000000",
+   "acquire_hr": "00000000"
+  },
+  "hdr": {
+   "swapchain": "flip_discard_fp16",
+   "swapchain3_hr": "00000000",
+   "present_hr": "00000000",
+   "set_colorspace_g10_hr": "00000000",
+   "containing_output_hr": "00000000",
+   "tearing_hr": "00000000",
+   "tearing": 1
+  },
+  "caps": {
+   "feature_level": "11_1",
+   "compute_shaders": 1,
+   "compute_via_4x_hr": "00000000",
+   "compute_via_4x": 1,
+   "tgsm_bytes": 32768,
+   "max_threads_per_group": 1024,
+   "max_group_dim": 65535,
+   "threading_hr": "00000000",
+   "driver_command_lists": 1,
+   "driver_concurrent_creates": 1,
+   "doubles_hr": "00000000",
+   "doubles": 0,
+   "options_hr": "00000000",
+   "map_no_overwrite_cb": 1,
+   "uav_only_rendering_forced_sample_count": 1,
+   "options2_hr": "00000000",
+   "typed_uav_load_additional": 1,
+   "ps_specified_stencil_ref": 1,
+   "min_precision_hr": "00000000",
+   "ps_min_precision": 2,
+   "all_other_min_precision": 2
+  },
+  "checks": [
+   [
+    "d3d9_plain_device_created",
+    true
+   ],
+   [
+    "dilation_d3d9_1920x1080_matches_reference",
+    true
+   ],
+   [
+    "dilation_d3d11_ps_1920x1080_matches_reference",
+    true
+   ],
+   [
+    "dilation_d3d11_cs_1920x1080_matches_reference",
+    true
+   ],
+   [
+    "dilation_d3d9_5120x1440_matches_reference",
+    true
+   ],
+   [
+    "dilation_d3d11_ps_5120x1440_matches_reference",
+    true
+   ],
+   [
+    "dilation_d3d11_cs_5120x1440_matches_reference",
+    true
+   ]
+  ],
+  "references": [
+   {
+    "width": 1920,
+    "height": 1080,
+    "cpu_us": 84275
+   },
+   {
+    "width": 5120,
+    "height": 1440,
+    "cpu_us": 288152
+   }
+  ],
+  "result": {
+   "checks": 7,
+   "failures": 0,
+   "unavailable": 0,
+   "path": "measured",
+   "verdict": "PASS"
+  },
+  "check_count": 7,
+  "failed_checks": [],
+  "step_status": {
+   "device_d3d9": "ok",
+   "device_d3d9ex": "ok",
+   "device_d3d11": "ok",
+   "share_d3d11_to_d3d9": "ok",
+   "share_d3d9_to_d3d11": "ok",
+   "dilation_d3d9": "ok",
+   "hdr_outputs": "ok",
+   "hdr_swapchain": "ok",
+   "caps": "ok"
+  }
+ }
+}
