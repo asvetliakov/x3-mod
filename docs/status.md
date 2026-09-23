@@ -19,8 +19,8 @@ Changes against Run72 (`c17792a9…`), all launcher defaults on modded launches:
 filled during the transit stall from the global object list) and `--fog-docked` (parent walk for the docked view);
 `--bolt-footprint 3,8` ([note](architecture/bolt-footprint.md): sub-gate bullet instances expanded on the CPU through a
 proxy-owned dynamic vertex buffer for the admitted additive bullet draw). `--music-keep` stays opt-in with the
-alt-tab skip_all path. The batch merged-LOD overlay `addon/05.cat` stays installed
-([record](../verification/results/lod-overlay-pilot/install.json)); fog families file absent (14 compiled profiles).
+alt-tab skip_all path. The batch merged-LOD overlay `addon/05.cat` was re-baked after the install with the aspect thresholds and the area-weighted
+texel rule (22 bodies, 127 MB; [record](../verification/results/lod-overlay-batch/install-run74/install.json)); fog families file absent (14 compiled profiles).
 
 [Qualification](../verification/results/run73-candidate-qualification.json): x87 walk 116 roots / 671 reachable / zero
 violations; imports and exports unchanged against Run72 (213 functions, 17 exports); temporal pass RESULT PASS 744 / 278,
