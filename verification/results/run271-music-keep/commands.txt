@@ -11,3 +11,5 @@ for f in 2116..2123: python3 bolt_center.py $C $f 860 500 1060 700 [png] > bolt_
 python3 ../run270-defaults/bolt_blobs.py $C 2116 - 1.10 (and 2119, 2123): whole-frame components p50 area 2 px
 python3 fog_entry_timeline.py $L > fog_entry_timeline_out.txt
 grep -E '^volumetric_fog_(sector|prepare|cache|families|toggle) |^loading_phase ' $L ; families event=absent (compiled_only)
+
+# design note bolt-footprint.md (2026-09-23): python3 bolt_motion.py $C 2116 2123 860 500 1060 700 > bolt_motion_out.txt (components move a median 4 px per frame, ~25% static within 1 px); python3 bullet_bodies.py > bullet_bodies_out.txt (21 stock bullet bodies, 12-78 faces each; no 2-face quad)

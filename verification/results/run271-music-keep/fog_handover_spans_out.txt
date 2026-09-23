@@ -1,0 +1,26 @@
+no_cockpit span: frames 2359-2633 = 274 frames in 5.97 s = 45.9 fps
+fill1: frames 2634-2662 = 28 frames in 1.29 s = 21.7 fps
+ramp1: frames 2663-2752 = 89 frames in 2.14 s = 41.6 fps
+fill2: frames 5329-5343 = 14 frames in 1.56 s = 9.0 fps
+ramp2: frames 5344-5433 = 89 frames in 2.93 s = 30.4 fps
+fill3: frames 8984-9050 = 66 frames in 1.94 s = 34.1 fps
+ramp3: frames 9051-9140 = 89 frames in 2.49 s = 35.7 fps
+frame 1069->1070: 112 ms
+frame 1070->1071: 12541 ms
+frame 2357->2358: 336 ms
+frame 2358->2359: 6501 ms
+frame 2359->2360: 76 ms
+frame 2632->2633: 104 ms
+frame 2633->2634: 12525 ms
+frame 2634->2635: 46 ms
+frame 2662->2663: 50 ms
+frame 5326->5327: 8 ms
+frame 5327->5328: 4374 ms
+frame 5328->5329: 233 ms
+frame 5329->5330: 189 ms
+frame 5343->5344: 43 ms
+frame 8981->8982: 17 ms
+frame 8982->8983: 6146 ms
+frame 8983->8984: 404 ms
+frame 8984->8985: 92 ms
+frame 9050->9051: 31 ms
