@@ -1,0 +1,22 @@
+CHECK transit_needs_another_known_sector_id PASS
+HEAP_TOKEN_CHANGE epoch=0 ready_far=1.000 generated_after=0 image_same=1
+ATLAS heap_token level=0 differing_bytes=0
+ATLAS heap_token level=1 differing_bytes=0
+CHECK heap_token_change_same_sector_keeps_the_field PASS
+CHECK plan_hitch_same_sector_keeps_the_resident_field PASS
+CHECK plan_token_change_same_id_keeps_the_resident_field PASS
+CHECK plan_token_change_id_unread_keeps_the_resident_field PASS
+CHECK plan_resident_key_in_another_sector_recentres PASS
+CHECK plan_new_key_starts_and_pending_waits PASS
+RESULT PASS checks=102 failures=0
+PASS bridge_checks=35865 exit_checks=4
+checks [34545, 35865]
+names [110, 110]
+only_old []
+only_new []
+shadow_ab_names [15, 15]
+motes_ab_names [13, 13]
+motes_ab_rows [4, 4]
+bridge_transit_epochs=0
+HANDOVER frames=462 oversize=1 whole=1 early=0 latches=1 upload_bytes=4260096 ready_ms=577.8 drawable_ms=577.8 fill_ms=576.1 fill_busy_ms=574.8 fill_cpu_ms=580.0
+RESULT PASS checks=122 failures=0 state_restorations=1171

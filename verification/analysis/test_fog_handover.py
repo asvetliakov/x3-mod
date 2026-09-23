@@ -36,7 +36,7 @@ class FogHandoverHost(unittest.TestCase):
 
     def test_all_checks_pass(self):
         self.assertEqual((self.returncode, re.findall(r'^CHECK (\S+) FAIL', self.text, re.M)), (0, []), self.text[-2000:])
-        self.assertRegex(self.text, r'RESULT PASS checks=9\d failures=0')
+        self.assertRegex(self.text, r'RESULT PASS checks=10\d failures=0')
         self.assertNotRegex(self.text, r'differing_bytes=[1-9]')
 
     def test_readiness_step_cold_versus_warm(self):
@@ -77,6 +77,7 @@ class FogHandoverHost(unittest.TestCase):
                      'walk_misaligned_node', 'walk_unreadable_link', 'walk_table_loading', 'walk_index_out_of_range', 'walk_bad_record',
                      'walk_never_exceeds_25_reads', 'gate_polls_only_in_a_stall_and_once_per_250ms', 'decide_confirms_the_same_key_and_discards_the_rest',
                      'plan_hitch_same_sector_keeps_the_resident_field', 'plan_resident_key_in_another_sector_recentres', 'plan_new_key_starts_and_pending_waits',
+                     'plan_token_change_same_id_keeps_the_resident_field', 'plan_token_change_id_unread_keeps_the_resident_field',
                      'prefill_fills_the_far_need_box_at_the_origin_and_holds', 'prefill_confirmed_configure_keeps_the_fill',
                      'prefill_hands_over_after_three_extension_slabs_and_the_latch', 'prefill_settles_to_the_destination_field', 'prefill_discard_starts_a_new_fill'):
             self.assertIn('CHECK %s PASS' % name, self.text)
@@ -85,6 +86,13 @@ class FogHandoverHost(unittest.TestCase):
         self.assertEqual((eighth.group(1), int(eighth.group(2))), ('found', 8))
         ninth = re.search(r'^PREFILL_WALK case=ninth status=(\w+) steps=(\d+)', self.text, re.M)
         self.assertEqual((ninth.group(1), int(ninth.group(2))), ('bound', 8))
+
+    def test_heap_token_change_is_no_transit(self):
+        # Run75 bridge: only another sector id (both known; run273 2317 -> 3221, index 2 both) is a transit; a heap-token
+        # change of the same sector keeps the resident field and its image.
+        for name in ('transit_needs_another_known_sector_id', 'heap_token_change_same_sector_keeps_the_field'):
+            self.assertIn('CHECK %s PASS' % name, self.text)
+        self.assertEqual(fields(self.text, 'HEAP_TOKEN_CHANGE'), {'epoch': 0, 'ready_far': 1, 'generated_after': 0, 'image_same': 1})
 
     def test_cold_step_arms_cards_in_the_same_frame(self):
         for name in ('cold_step_arms_the_cards_in_the_same_frame', 'cold_step_arming_faults_when_the_frame_fails', 'cold_step_arming_respects_refusal_and_inactive'):
@@ -132,15 +140,17 @@ class FogHandoverWiring(unittest.TestCase):
         # run273: the resident key is re-centred (a cold start), the switches come from the proxy, the worker may be
         # created by the prefill before the first stored frame and survives the first attach; a sector change or a
         # decided prefill drops the stale camera; a same-key transit invalidates; the cards line names the refusal.
-        self.assertIn('fog_prefill::plan(fog_prefill_, key, f.recipe, fog_density_config_.enabled && key == fog_density_key_, w.node == fog_density_ready_sector_)', fog)
+        self.assertIn('fog_prefill::plan(fog_prefill_, key, f.recipe, fog_density_config_.enabled && key == fog_density_key_, w.id, fog_density_ready_id_)', fog)
         self.assertIn('!(fog_strength_ > 0.f)) return;', fog[fog.index('void MotionOutput::volumetric_fog_prefill('):])
         self.assertIn('fog_->release_density_worker(); }', fog[fog.index('bool MotionOutput::attach_volumetric_fog('):])
         self.assertIn('if(prefill_refused_)return false;', fog_pass)
         self.assertIn('fog_card_refusal_ != fog_card_last_refusal_', fog)
         self.assertIn('fog_->prefill_density(key, f.recipe, placement.offset, origin, fog_density_config_.handover_step, fog_density_config_.handover_coldfill)', fog)
         self.assertIn('fog_ = std::make_unique<renderer::FogPass>(); fog_->configure_sync_timing(gpu_sync_);', fog[fog.index('void MotionOutput::volumetric_fog_prefill('):])
-        self.assertIn('if (changed || gap || prefill != fog_prefill::Decision::None) fog_density_camera_valid_ = false;', sample)
+        self.assertIn('if (transit || gap || prefill != fog_prefill::Decision::None) fog_density_camera_valid_ = false;', sample)
         self.assertIn('fog_density_epoch("transit")', sample)
+        self.assertIn('const bool transit = ready && fog_density_ready_sector_ != 0 && fog_prefill::other_sector(sample.sector_id, fog_density_ready_id_);', sample)
+        self.assertIn('else if (transit && cold && next.profile && fog_sector_placement(next).key == fog_density_key_) {', sample)
         self.assertIn('if (decision == fog_prefill::Decision::Confirmed) fog_density_key_ = key;', fog)
         self.assertIn('refusal=%s%s', fog[fog.index('log("volumetric_fog_cards device='):])
         cache = (ROOT / 'src/fog/fog_density_cache.cpp').read_text()

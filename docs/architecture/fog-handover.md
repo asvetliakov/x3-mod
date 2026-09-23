@@ -520,6 +520,34 @@ the resident identity is an `invalidate` (cold start) followed by the origin pos
 arrival at 19555 was 190 km from it, at 24765 228 km: X3 gates sit at the sector edges), so the
 arrival post then extends the origin box under the hold instead of filling from scratch.
 
+**Transit identity (Run75 bridge fix).** Rule (1) as first written also fired on a mere reallocation:
+the route bridge's `heap_token_change_keeps_key_cache_and_image` (token 0x1000 -> 0x7000, same index
+and family, same placement key) logged epoch `transit` and refilled. In run273 the 19555 jump kept
+the background index (2 -> 2) and changed the token (`119301a8` -> `6cb11818`) and the id at
+`[sector+8]` (2317 -> 3221; measured from the session log's `volumetric_fog_sector` and prefill poll
+rows). The placement key already mixes the index, so the id is the only identity left: a transit is
+`fog_prefill::other_sector(id, last_id)`, both ids known (non-zero) and different. A token change
+with the same id, or with an unread id, is taken as a reallocation: no epoch, and the resident field,
+image and camera stay (the bridge passes no id). A same-id reallocation is inferred from the bridge's
+synthetic case, not observed in flight: the one observed same-sector rebuild (run273 docked load at
+33817, foggreenoutlands index 14, id 4370 -> 3926, token `6c7c4640` -> `6cb0fd88`) changed the id and
+is covered by the sample gap; a same-sector rebuild with a new id and no gap would cold-start, the
+acceptable direction (a refill, never a stale field). The camera drop follows the same rule (transit, gap or a
+decided prefill): as first written it fired on any token change, so the latch of a sector change
+without ids skipped `configure` and the bridge failed `sector_change_rekeys_whole_far_node_offset`.
+With ids known (production, prefill on) a sector change still drops the camera and re-keys one frame
+later; the bridge, without ids, checks the same-frame re-key only. The ids are read when the prefill
+option is on (its default with the stored range); with it off a same-family transit takes the warm
+residency ramp and a sector change posts the previous scene end's camera once, as before 72645b5e.
+The poll's `plan` uses the same rule (`plan(record, key, recipe, resident, id, ready_id)`, review
+F3): a found resident key with the same id or either id unread is `current_sector` (the id-unread
+hitch and a reallocation with the ready id unread keep the field); only `other_sector(id, ready_id)`
+re-centres; the walk's token plays no part. Proof: the value rule and the plans in
+`fog_handover_host.cpp` (`transit_needs_another_known_sector_id`, `plan_token_change_*`); the cache
+case `HEAP_TOKEN_CHANGE` applies the rule by hand, and the production sample's wiring (no density
+call, camera kept for a reallocation, one invalidation for the 2317 -> 3221 pair) is `run273_transit`
+in `fog_card_motion_cases_inc.h` (`test_fog_cards`); the route bridge 110 names.
+
 **B. Gate into foggreenoutlands (24765), confirmed prefill "re-keyed".** It was not re-keyed: the
 `sector_key` epoch line at the latch came from the proxy's own key copy (`fog_density_key_` still
 held bluewell's; `configure` in the cache was a no-op), and the refill was the stale post above. Fix:
@@ -582,7 +610,8 @@ steps with one whole latch, largest step 1.000, settles bit for bit), `RECENTRE_
 resident key re-centred at the origin as a cold start, confirmed keeps it, stepped 5 frames after a
 20 km arrival), `PREFILL_ADOPTED` (nodes to the latch 795,144 < a first fill 1,103,336, one first
 fill; the stale post 2,357,917 with two), `NEW_GAME_PREFILL`. `fog_card_motion_cases_inc.h`:
-`run273_transit` (token and id changes, same key invalidates once, another key only drops the
-camera, the first sector only drops the camera), `run273_prefill_adopt` (key adopted, camera
+`run273_transit` (only an id change of the same key invalidates, once: token-only and same-id
+reallocations keep the camera too, the run273 2317 -> 3221 pair invalidates; another key only drops
+the camera, the first sector only drops the camera), host witness `HEAP_TOKEN_CHANGE` (no epoch, far atlas unchanged), `run273_prefill_adopt` (key adopted, camera
 dropped; discarded invalidates once), `run273_card_refusal` (12 named refusals, kept for the frame,
 reset at begin, unprepared is warm-up not refusal). Wiring checks in `test_fog_handover.py`.

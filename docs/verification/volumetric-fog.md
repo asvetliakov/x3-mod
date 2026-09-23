@@ -2710,3 +2710,32 @@ Design: [fog-gpu-cost.md, "Step A implemented"](../architecture/fog-gpu-cost.md#
   non-empty count. The census therefore counts written repair pixels (a lower bound on marched ones).
 - Not verified: native Windows; the early-out on a saturating column (off; no fixture case reaches T < 1e-4).
 
+## Run 75 pre-qualification: transit identity and the camera drop (2026-09-23)
+
+The Run75 candidate (from 72645b5e) failed the route bridge at `heap_token_change_keeps_key_cache_and_image`
+(9,054 checks; bridge frame 695, token 0x1000 -> 0x7000, same index and family: epoch `transit`, refill).
+Two regressions of 72645b5e, both fixed in the worktree (not yet a candidate):
+- The same-family transit rule fired on any heap-token change. run273's 19555 jump (measured,
+  [run273-fog-bolts/transit_identity.py](../../verification/results/run273-fog-bolts/transit_identity.py) + `.txt`)
+  kept index 2 and changed the token (`119301a8` -> `6cb11818`) and the id at `[sector+8]` (2317 -> 3221). Rule:
+  `fog_prefill::other_sector(id, last_id)`, both ids known and different; a token change with the same or an unread
+  id keeps field, image and camera. The poll's `plan` uses the same rule (review F3). A same-id reallocation is
+  inferred from the bridge's synthetic case, not observed in flight; the observed same-sector rebuild (docked load,
+  4370 -> 3926) changed the id and is covered by the sample gap.
+- Hidden behind the first abort: the stale-camera drop also fired on any token change, so the latch of a sector
+  change without ids skipped `configure` and the bridge failed `sector_change_rekeys_whole_far_node_offset`
+  (61 of 110 names). The drop now follows the transit rule (transit, gap, decided prefill).
+- Host: host witness 102 checks (`transit_needs_another_known_sector_id`, `HEAP_TOKEN_CHANGE` at the cache level with
+  the rule applied by hand, `plan_token_change_same_id/id_unread_*`); the production sample's wiring is
+  `run273_transit` in `fog_card_motion_cases_inc.h` (`realloc=1`, `token=1` camera kept, `run273=1` one
+  invalidation); `test_fog_handover` + `test_fog_cards` 13 tests OK, with `test_fog_route_bridge`,
+  `test_volumetric_fog` 37 OK.
+- Build: scratch MinGW i686 0 warnings, `check_no_x87.py` PASS 673 reachable, no violations.
+- Bridge (bottle X3, `wine_lock.py`): PASS 35,865 checks + 4 exit checks, 110 names, none only in Run73 or only
+  here, shadow/motes A/B 15/13/4 as Run73, no `transit` epoch. The 6f16dbf6 baseline builds with the repository
+  harness again (`fog_route_bridge_build.py` skips the two `X3M_ROUTE_BRIDGE_BASELINE`-guarded includes in its
+  include scan). Fog pass fixture: PASS 122 checks with `HANDOVER frames=462 whole=1 latches=1 ready_ms=577.8`.
+  Rows: [run75-transit-identity/rows_out.txt](../../verification/results/fog-handover/run75-transit-identity/rows_out.txt)
+  (`rows.sh`).
+- Open: the bridge passes no ids, so production's one-frame-later re-key on a sector change (camera dropped by the
+  id change) is not in the bridge.

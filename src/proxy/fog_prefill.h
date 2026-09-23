@@ -100,15 +100,25 @@ struct Record {
     std::uint64_t key = 0;
     long long qpc = 0;                           // when the fill was started
 };
-// The poll's plan for a Found sector: a pending prefill of the same key and recipe is left alone; the resident
-// field's own sector (the flown one, seen by its token: an in-flight hitch over 250 ms with its id unread, run273
-// review F4) is kept; the resident key in another sector is re-centred as a cold start; anything else starts.
+// A same-key transit (run273 case A: bluewell index 2 id 2317 -> bluewell index 2 id 3221, token 119301a8 -> 6cb11818):
+// the placement key already fixes the background index, so the sector id [sector+8] is the identity that tells another
+// sector; both must be known. A heap-token change with the same or an unread id (0) is taken as a reallocation of the
+// same sector and keeps the field and the image. Inferred from the bridge's synthetic case
+// (heap_token_change_keeps_key_cache_and_image), not observed in flight: the one observed same-sector rebuild (run273
+// docked load, foggreenoutlands index 14, id 4370 -> 3926) changed the id and is covered by the sample gap; a rebuild
+// with a new id and no gap would cold-start, the acceptable direction (a refill, never a stale field).
+inline bool other_sector(std::uint32_t id, std::uint32_t last_id) { return id && last_id && id != last_id; }
+// The poll's plan for a Found sector: a pending prefill of the same key and recipe is left alone; the resident key
+// is kept unless the found sector is another sector by the rule above (`id` the walk's, `ready_id` the last Ready
+// sample's): the same id, or either id unread (an in-flight hitch over 250 ms, run273 review F4, or a reallocation
+// with the ready id unread) is CurrentSector; the resident key in another sector is re-centred as a cold start;
+// anything else starts.
 enum class Plan { AlreadyStarted, CurrentSector, Recentre, Start };
 inline const char* name(Plan p) { return p == Plan::AlreadyStarted ? "already_started" : p == Plan::CurrentSector ? "current_sector" : p == Plan::Recentre ? "recentred" : "started"; }
-inline Plan plan(const Record& r, std::uint64_t key, unsigned recipe, bool resident, bool same_token) {
+inline Plan plan(const Record& r, std::uint64_t key, unsigned recipe, bool resident, std::uint32_t id, std::uint32_t ready_id) {
     if (r.pending && r.key == key && r.recipe == recipe) return Plan::AlreadyStarted;
-    if (resident && same_token) return Plan::CurrentSector;
-    return resident ? Plan::Recentre : Plan::Start;
+    if (!resident) return Plan::Start;
+    return other_sector(id, ready_id) ? Plan::Recentre : Plan::CurrentSector;
 }
 enum class Decision { None, Confirmed, Discarded };
 inline const char* name(Decision d) { return d == Decision::Confirmed ? "confirmed" : d == Decision::Discarded ? "discarded" : "none"; }

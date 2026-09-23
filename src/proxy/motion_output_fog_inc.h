@@ -288,18 +288,18 @@ void MotionOutput::volumetric_fog_sector_sample(std::uint64_t frame, const secto
         const bool gap = fog_density_sample_frame_ != ~std::uint64_t(0) && fog_density_sample_frame_ + 1 < frame && f.QuadPart > 0 &&
             (now.QuadPart - fog_density_sample_qpc_) * 1000 > static_cast<long long>(fog_density_gap_ms) * f.QuadPart;
         fog_density_sample_frame_ = frame; fog_density_sample_qpc_ = now.QuadPart;
-        // A Ready sample of another sector object than the last Ready one (token, or the id when both are known: the
-        // destination can reuse the freed source's address) is a transit or a load, gap or not (run273 case A: the
-        // stall frame's no_cockpit sample kept the frames consecutive, so the 5.4 s transit was no gap).
+        // A Ready sample of another sector than the last Ready one (its id [sector+8], both known: the destination can
+        // reuse the freed source's address; fog_prefill::other_sector) is a transit, gap or not (run273 case A: the stall
+        // frame's no_cockpit sample kept the frames consecutive, so the 5.4 s transit was no gap). A heap-token change
+        // with the same or an unread id is a reallocation: it keeps the field, the image and the camera (Run75 bridge).
         const bool ready = sample.status == sector_background::Status::Ready;
-        const bool changed = ready && fog_density_ready_sector_ != 0 &&
-            (sample.sector != fog_density_ready_sector_ || (sample.sector_id && fog_density_ready_id_ && sample.sector_id != fog_density_ready_id_));
+        const bool transit = ready && fog_density_ready_sector_ != 0 && fog_prefill::other_sector(sample.sector_id, fog_density_ready_id_);
         if (ready) { fog_density_ready_sector_ = sample.sector; fog_density_ready_id_ = sample.sector_id; }
         // R3: a pending prefill owns the transit's gap until the first Ready sample decides it (confirmed keeps the fill).
         const auto prefill = fog_prefill_confirm(next, sample);
         const bool cold = fog_ && fog_density_config_.enabled && !fog_density_refused_ && prefill == fog_prefill::Decision::None && !fog_prefill_.pending;
         if (gap && cold) { fog_->invalidate_density(); fog_density_epoch("sample_gap"); }
-        else if (changed && cold && next.profile && fog_sector_placement(next).key == fog_density_key_) {
+        else if (transit && cold && next.profile && fog_sector_placement(next).key == fog_density_key_) {
             // The same placement key in another sector (run273 case A): the resident window is centred on the source's
             // position, which means nothing in the destination. A cold start (step, cold fill) instead of the warm
             // residency ramp the first step would otherwise run; a different key re-keys at the latch by itself.
@@ -308,7 +308,7 @@ void MotionOutput::volumetric_fog_sector_sample(std::uint64_t frame, const secto
         // The camera the next latch would post is the previous scene end's, in the sector just left (run273 cases B and
         // D: a first fill around it was 1.09 M wasted nodes and discarded the prefilled box). This frame's latch skips
         // the post; the scene end re-validates it with this sector's camera and the next latch starts the fill there.
-        if (changed || gap || prefill != fog_prefill::Decision::None) fog_density_camera_valid_ = false;
+        if (transit || gap || prefill != fog_prefill::Decision::None) fog_density_camera_valid_ = false;
     }
     // Atlas generation remains usable across same-family sectors, but their
     // replacement warm-up/history key must still change.
@@ -345,8 +345,8 @@ void MotionOutput::volumetric_fog_prefill(const fog_prefill::Result& w, std::uin
             if (!fog_) { try { fog_ = std::make_unique<renderer::FogPass>(); fog_->configure_sync_timing(gpu_sync_); } catch (...) { fog_.reset(); } }
             // The resident key (run273 case A, a same-family gate): its window follows the source's position, so it
             // is re-centred at the destination's origin as a cold start; the confirmation keeps that fill. The flown
-            // sector itself (its token; an in-flight hitch with the id unread) keeps its field.
-            const auto plan = fog_prefill::plan(fog_prefill_, key, f.recipe, fog_density_config_.enabled && key == fog_density_key_, w.node == fog_density_ready_sector_);
+            // sector itself (the same id, or an id unread: a hitch or a reallocation) keeps its field.
+            const auto plan = fog_prefill::plan(fog_prefill_, key, f.recipe, fog_density_config_.enabled && key == fog_density_key_, w.id, fog_density_ready_id_);
             if (plan == fog_prefill::Plan::AlreadyStarted || plan == fog_prefill::Plan::CurrentSector) action = fog_prefill::name(plan);
             else if (!fog_ || fog_->prefill_refused()) action = "worker_refused"; // the worker could not start in this stall: no further attempt
             else if (!fog_->prefill_density(key, f.recipe, placement.offset, origin, fog_density_config_.handover_step, fog_density_config_.handover_coldfill)) action = fog_->prefill_refused() ? "worker_refused" : "not_posted"; // not_posted: retried at the next poll

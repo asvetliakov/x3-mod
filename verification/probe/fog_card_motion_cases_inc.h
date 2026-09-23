@@ -216,8 +216,9 @@ int main() {
    assert(confirmed&&discarded&&later&&m.fog_prefill_logs_==2);
    std::printf("prefill_gap confirmed=%u discarded=%u later_gap=%u PASS\n",unsigned(confirmed),unsigned(discarded),unsigned(later));
  }
- { // run273 A: a Ready sample of another sector object with the same placement key is a transit (no gap needed): one
-   // invalidation, the stale camera dropped; the same object again is nothing; another key only drops the camera.
+ { // run273 A: a Ready sample of another sector (its id, both known) with the same placement key is a transit (no gap
+   // needed): one invalidation, the stale camera dropped; the same object again is nothing; another sector with another
+   // key only drops the camera. A heap-token change of the same sector (same or unread id) keeps field and camera (Run75).
    MotionOutput m;m.warm();m.fog_density_requested_=true;m.fog_density_config_.enabled=true;++m.frame_;m.sample("bluewell",0x1000);
    m.fog_density_key_=fog_sector_placement(m.fog_sector_).key;
    auto ready=[&](unsigned sector,std::uint32_t id,const char* family="bluewell"){m.fog_density_camera_valid_=true;++m.frame_;
@@ -225,13 +226,17 @@ int main() {
      std::strcpy(s.family,family);m.volumetric_fog_sector_sample(m.frame_,s);};
    const unsigned before=m.fog_storage.density_calls;
    ready(0x1000,0);const bool same=m.fog_storage.density_calls==before&&m.fog_density_camera_valid_;
-   ready(0x2000,0);const bool token=m.fog_storage.density_calls==before+1&&!m.fog_density_camera_valid_;      // another object, same key
-   ready(0x2000,77);ready(0x2000,77);const bool id_same=m.fog_storage.density_calls==before+1&&m.fog_density_camera_valid_;
-   ready(0x2000,78);const bool id_change=m.fog_storage.density_calls==before+2&&!m.fog_density_camera_valid_;  // the freed address reused, another id
-   ready(0x3000,79,"foggreenoutlands");const bool rekey=m.fog_storage.density_calls==before+2&&!m.fog_density_camera_valid_; // the latch re-keys
-   m.fog_density_config_.enabled=false;m.fog_density_key_=0;ready(0x4000,80);const bool first=m.fog_storage.density_calls==before+2&&!m.fog_density_camera_valid_;
-   assert(same&&token&&id_same&&id_change&&rekey&&first);
-   std::printf("run273_transit same=%u token=%u id_same=%u id_change=%u rekey=%u first=%u PASS\n",unsigned(same),unsigned(token),unsigned(id_same),unsigned(id_change),unsigned(rekey),unsigned(first));
+   ready(0x2000,0);const bool token=m.fog_storage.density_calls==before&&m.fog_density_camera_valid_;          // another object, id unread: a reallocation
+   ready(0x2000,77);ready(0x2000,77);const bool id_same=m.fog_storage.density_calls==before&&m.fog_density_camera_valid_;
+   ready(0x5000,77);const bool realloc=m.fog_storage.density_calls==before&&m.fog_density_camera_valid_;        // new token, same id: field kept
+   ready(0x5000,78);const bool id_change=m.fog_storage.density_calls==before+1&&!m.fog_density_camera_valid_;  // the freed address reused, another id
+   ready(0x119301a8,2317);const unsigned source=m.fog_storage.density_calls;                                // run273 frame 19555: token and id, index 2 both
+   ready(0x6cb11818,3221);const bool run273=m.fog_storage.density_calls==source+1&&!m.fog_density_camera_valid_;
+   ready(0x3000,79,"foggreenoutlands");const bool rekey=m.fog_storage.density_calls==source+1&&!m.fog_density_camera_valid_; // the latch re-keys
+   m.fog_density_config_.enabled=false;m.fog_density_key_=0;ready(0x4000,80);const bool first=m.fog_storage.density_calls==source+1&&!m.fog_density_camera_valid_;
+   assert(same&&token&&id_same&&realloc&&id_change&&run273&&rekey&&first);
+   std::printf("run273_transit same=%u token=%u id_same=%u realloc=%u id_change=%u run273=%u rekey=%u first=%u PASS\n",unsigned(same),unsigned(token),unsigned(id_same),
+               unsigned(realloc),unsigned(id_change),unsigned(run273),unsigned(rekey),unsigned(first));
  }
  { // run273 B: a confirmed prefill adopts its key (the latch logs no sector_key epoch) and drops the stale camera; a
    // discarded one drops it too and invalidates once.

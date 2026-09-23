@@ -33,7 +33,7 @@ def main():
         for name in re.findall(r'^\s*#include\s+"([^"\n]+)"',source.read_text(),re.M):
             candidates=[source.parent/name,out/name,prod/'src/proxy'/name,prod/'src/renderer'/name,prod/'src/fog'/name,data/name]
             found=next((p.resolve() for p in candidates if p.is_file()),None)
-            if found is None and a.baseline and name in ('fog_route_density_inc.h','fog_density_cache.h'):continue # compiled out by X3M_ROUTE_BRIDGE_BASELINE
+            if found is None and a.baseline and name in ('fog_route_density_inc.h','fog_density_cache.h','fog_prefill.h','../renderer/gpu_sync_timing_core.h'):continue # compiled out by X3M_ROUTE_BRIDGE_BASELINE (fog_route_owner_inc.h)
             if found is None:raise ValueError('unbound local include: '+str(source)+' '+name)
             pending.append(found)
     inputs=sorted(bound)

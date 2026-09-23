@@ -437,6 +437,28 @@ void run273_cases() {
         require("same_key_transit_steps_with_one_whole_latch", wholes == 1 && ready > 0 && ready == resident && largest >= 1.f && report.due && report.step && report.cold_fill && report.whole_atlas);
         require("same_key_transit_settles_to_the_static_field", settle(cache, gpu, arrival, f, kDefaultUploadBudget) && equal_static(gpu, cache, "transit"));
     }
+    {   // A, identity (Run75 bridge): only another sector id (both known) is a transit; a heap-token change of the same sector
+        // (same index and key, same or unread id) re-configures the same identity: no epoch, the resident field and image stay.
+        // Cache level only: the invalidate is applied by hand from the rule; the production sample's wiring (no
+        // density call, camera kept) is proven by run273_transit in fog_card_motion_cases_inc.h (test_fog_cards).
+        namespace fp = x3m::fog_prefill;
+        require("transit_needs_another_known_sector_id", fp::other_sector(3221, 2317) && !fp::other_sector(77, 77) &&
+                !fp::other_sector(0, 77) && !fp::other_sector(77, 0) && !fp::other_sector(0, 0));
+        DensityCache cache; Gpu gpu; std::uint64_t f = 0;
+        cache.start_stepped(); cache.set_handover(true, true); cache.configure(kIdentity);
+        settle(cache, gpu, kCamera, f, kDefaultUploadBudget);
+        const std::uint64_t before = cache.stats().nodes_generated;
+        const std::vector<std::uint8_t> image = gpu.atlas[1];
+        bool epoch = false;
+        for (const auto ids : {std::pair<std::uint32_t, std::uint32_t>{77, 77}, {0, 77}, {77, 0}})   // token 0x1000 -> 0x7000, index 2 both
+            if (fp::other_sector(ids.second, ids.first)) { epoch = true; cache.invalidate(); }
+        cache.configure(kIdentity);                                                                 // the latch: same placement key
+        const Frame fr = frame(cache, gpu, kCamera, ++f, 4);
+        std::printf("HEAP_TOKEN_CHANGE epoch=%u ready_far=%.3f generated_after=%llu image_same=%u\n", unsigned(epoch), double(fr.state.ready[1]),
+                    (unsigned long long)(cache.stats().nodes_generated - before), unsigned(gpu.atlas[1] == image));
+        require("heap_token_change_same_sector_keeps_the_field", !epoch && fr.state.ready[1] >= 1.f && !fr.latch.whole[1] &&
+                cache.stats().nodes_generated == before && gpu.atlas[1] == image && equal_static(gpu, cache, "heap_token"));
+    }
     {   // A with R3: the resident key's prefill re-centres at the destination's origin as a cold start; confirmed keeps it.
         DensityCache cache; Gpu gpu; std::uint64_t f = 0;
         cache.start_stepped(); cache.set_handover(true, true); cache.configure(kIdentity);
@@ -574,13 +596,17 @@ void prefill_walk() {
     require("gate_stalled_does_not_consume_the_slot", looked && slot && spent);
     require("gate_polls_only_in_a_stall_and_once_per_250ms", !before && !at250 && at251 && !again && next && !after_present && stalled);
 
-    // The poll's plan (run273 review F4): a resident key with its own token (an in-flight hitch over 250 ms whose
-    // id was unread) keeps the field; the resident key in another sector is re-centred; a pending same key waits.
+    // The poll's plan (run273 review F4, Run75 F3): identity by the sector id, as the sample path. A found resident key
+    // with the same id or either id unread keeps the field; another known id (run273 2317 -> 3221) is re-centred; a
+    // pending same key waits. The walk's token plays no part (a reallocation moves it).
     {   fp::Record none, pending; pending.pending = true; pending.key = 42; pending.recipe = 1;
-        require("plan_hitch_same_sector_keeps_the_resident_field", fp::plan(none, 42, 1, true, true) == fp::Plan::CurrentSector);
-        require("plan_resident_key_in_another_sector_recentres", fp::plan(none, 42, 1, true, false) == fp::Plan::Recentre);
-        require("plan_new_key_starts_and_pending_waits", fp::plan(none, 43, 1, false, false) == fp::Plan::Start && fp::plan(none, 43, 1, false, true) == fp::Plan::Start &&
-                fp::plan(pending, 42, 1, true, true) == fp::Plan::AlreadyStarted && fp::plan(pending, 42, 2, true, true) == fp::Plan::CurrentSector);
+        require("plan_hitch_same_sector_keeps_the_resident_field", fp::plan(none, 42, 1, true, 3221, 0) == fp::Plan::CurrentSector);
+        require("plan_token_change_same_id_keeps_the_resident_field", fp::plan(none, 42, 1, true, 3221, 3221) == fp::Plan::CurrentSector);
+        require("plan_token_change_id_unread_keeps_the_resident_field", fp::plan(none, 42, 1, true, 0, 3221) == fp::Plan::CurrentSector &&
+                fp::plan(none, 42, 1, true, 0, 0) == fp::Plan::CurrentSector);
+        require("plan_resident_key_in_another_sector_recentres", fp::plan(none, 42, 1, true, 3221, 2317) == fp::Plan::Recentre);
+        require("plan_new_key_starts_and_pending_waits", fp::plan(none, 43, 1, false, 3221, 2317) == fp::Plan::Start && fp::plan(none, 43, 1, false, 3221, 3221) == fp::Plan::Start &&
+                fp::plan(pending, 42, 1, true, 3221, 3221) == fp::Plan::AlreadyStarted && fp::plan(pending, 42, 2, true, 3221, 3221) == fp::Plan::CurrentSector);
     }
     // The decision at the first Ready sample.
     fp::Record r; r.key = 42; r.recipe = 1;
