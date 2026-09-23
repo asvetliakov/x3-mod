@@ -1,0 +1,61 @@
+{
+ "exe_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+ "patterns": 38,
+ "table_entries": 8,
+ "commands": 4,
+ "direct_callers": {
+  "0x4982b0": [
+   "0x403878",
+   "0x40455c",
+   "0x404ced",
+   "0x407064",
+   "0x497bb6",
+   "0x4d36bd"
+  ],
+  "0x4d0430": [
+   "0x49840a",
+   "0x498d54",
+   "0x498f55"
+  ],
+  "0x498c90": [
+   "0x49981f",
+   "0x499982",
+   "0x4f6668"
+  ],
+  "0x4d0600": [
+   "0x4983ed"
+  ],
+  "0x4d1870": [
+   "0x498d71",
+   "0x498f76"
+  ],
+  "0x4d1810": [
+   "0x49885f"
+  ]
+ },
+ "literal_dword_refs": {
+  "0x4982b0": 0,
+  "0x4d0430": 0,
+  "0x498c90": 0,
+  "0x4d0600": 0,
+  "0x4d1870": 0,
+  "0x4d1810": 0
+ },
+ "raw_branch_into_hook_site_interior": {
+  "0x4d36bd": [],
+  "0x40455c": [],
+  "0x498d54": [],
+  "0x4d36da": [],
+  "0x4982db": [],
+  "0x498d71": [
+   "0x498d4e"
+  ]
+ },
+ "rejected_operand_byte_hits": {
+  "0x498d71": [
+   "0x498d4e"
+  ]
+ },
+ "failures": [],
+ "result": "PASS"
+}

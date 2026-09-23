@@ -10,7 +10,8 @@
     "docs/reverse-engineering/constant-uploads.md",
     "docs/reverse-engineering/savegame-gz-stream.md",
     "docs/reverse-engineering/script-xml-load-stall.md",
-    "docs/reverse-engineering/external-camera.md"
+    "docs/reverse-engineering/external-camera.md",
+    "docs/reverse-engineering/music-restart.md"
   ],
   "labels": {
     "0x00402710": {
@@ -28,6 +29,10 @@
     "0x00403a70": {
       "label": "main loop message pump site",
       "source": "loading-orchestration.md"
+    },
+    "0x00404530": {
+      "label": "save routine (stop-all at entry, file chunks incl. MOVI 0x004988d0)",
+      "source": "music-restart.md"
     },
     "0x00404cc0": {
       "label": "save-game open/validate (XSA3 magic)",
@@ -307,12 +312,44 @@
       "label": "movie playback driver (allocates, then 0x004cf460)",
       "source": "loading-profile-bottle-x3.md"
     },
+    "0x004982b0": {
+      "label": "media stop-all: Pause + DirectSound Stop every playing record, clear flag 2, completion (ctx,1); callers WM_ACTIVATE 0x004d36bd, save 0x0040455c, X2_SetPause 0x00407064, load, P_Leave, main-loop entry",
+      "source": "music-restart.md"
+    },
+    "0x00498370": {
+      "label": "media manager pump: per playing record 0x004d14e0; end -> clear flag 2 + completion (ctx,1)",
+      "source": "music-restart.md"
+    },
+    "0x00498810": {
+      "label": "media stop-by-id (MOV_StopMovie): pause 0x004d1810 + completion",
+      "source": "music-restart.md"
+    },
+    "0x004988d0": {
+      "label": "savegame MOVI chunk writer (0x28 bytes per media record, no position)",
+      "source": "music-restart.md"
+    },
+    "0x00498ad0": {
+      "label": "savegame MOVI chunk restore (recreates records, flags & ~2, never plays)",
+      "source": "music-restart.md"
+    },
+    "0x00498c90": {
+      "label": "media play-by-id (MOV_PlayMovie/PlayMovieFrom): find record, seek 0x004d0430 at 0x00498d54, run 0x004d1870 at 0x00498d71, set flag 2",
+      "source": "music-restart.md"
+    },
     "0x00499480": {
       "label": "pck xml resource class (xmlReadMemory)",
       "source": "loading-orchestration.md",
       "hooked_apis": [
         "xmlReadMemory"
       ]
+    },
+    "0x004997c0": {
+      "label": "MOV_ script command dispatcher (jump table 0x00499aec)",
+      "source": "music-restart.md"
+    },
+    "0x0049c210": {
+      "label": "SFX_ script command dispatcher (jump table 0x0049c7bc); MOD commands are stubs",
+      "source": "music-restart.md"
     },
     "0x0049d030": {
       "label": "resource consumer: calls resource load 0x004e8e10 and the signed-file loader 0x004cae90",
@@ -441,6 +478,22 @@
       "label": "DirectShow movie playback setup (CoCreateInstance of the X MPEG filter graph, Data\\mov\\%s, %05d.dat)",
       "source": "loading-profile-bottle-x3.md"
     },
+    "0x004d0430": {
+      "label": "media seek: Pause + IMediaPosition::put_CurrentPosition(start ms) (EAX = record, 1 stack arg)",
+      "source": "music-restart.md"
+    },
+    "0x004d0600": {
+      "label": "media position read: get_CurrentPosition -> ms (EAX = record, ESI = out)",
+      "source": "music-restart.md"
+    },
+    "0x004d1810": {
+      "label": "media pause: IMediaControl::Pause + DirectSound Stop (EAX = record)",
+      "source": "music-restart.md"
+    },
+    "0x004d1870": {
+      "label": "media run: sample setup (video), IMediaControl::Run (EAX = record)",
+      "source": "music-restart.md"
+    },
     "0x004d1df0": {
       "label": "clock advance: QPC -> real ms (*0x00606f34+0x720) and SETA-scaled game ms (+0x718 via +0xcc, +0xd0)",
       "source": "external-camera.md"
@@ -455,6 +508,10 @@
     "0x004d34b0": {
       "label": "Win32 message pump (PeekMessageA / GetMessageA)",
       "source": "loading-orchestration.md"
+    },
+    "0x004d3620": {
+      "label": "game WndProc: WM_ACTIVATE inactive -> input unacquire, active=0, media stop-all 0x004982b0",
+      "source": "music-restart.md"
     },
     "0x004d5a90": {
       "label": "Win32 input / message handling (GetKeyboardLayout, MapVirtualKeyExA; helper 0x004d6850)",
