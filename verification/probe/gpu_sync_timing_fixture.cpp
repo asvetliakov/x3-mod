@@ -55,7 +55,8 @@ static void bind(IDirect3DDevice9* d) {
 constexpr unsigned W = 1280, H = 720, heavy_quads = 96, engine_quads = 32;
 // One frame of the production protocol with fake work. Heavy: ShadowDepth, FogRoute,
 // HdrWriteback; light: SunApply, Taa, Motes (nested in FogRoute), Meter (nested in
-// HdrWriteback), Bloom (two pairs, as prepare + commit), FogFill, HdrReadback; empty: Retention.
+// HdrWriteback), Bloom (two pairs, as prepare + commit), FogFill, HdrReadback, the five taa_* sub-passes (nested in Taa,
+// as TemporalPass::run marks them); empty: Retention.
 static HRESULT run_frame(IDirect3DDevice9* d, GpuSyncTiming& t, std::uint64_t index, gst::Report* report, bool* closed) {
     auto heavy = [&] { for (unsigned i = 0; i < heavy_quads; ++i) quad(d, -0.5f, -0.5f, W - 0.5f, H - 0.5f, 0x00010101); };
     auto light = [&] { quad(d, 0.f, 0.f, 16.f, 16.f, 0x00010101); };
@@ -71,7 +72,9 @@ static HRESULT run_frame(IDirect3DDevice9* d, GpuSyncTiming& t, std::uint64_t in
     t.begin(gst::ShadowDepth); heavy(); t.end(gst::ShadowDepth);
     t.begin(gst::SunApply); light(); t.end(gst::SunApply);
     t.begin(gst::FogRoute); heavy(); t.begin(gst::Motes); light(); t.end(gst::Motes); t.end(gst::FogRoute);
-    t.begin(gst::Taa); light(); t.end(gst::Taa);
+    t.begin(gst::Taa);
+    for (unsigned sub : {gst::TaaCopy, gst::TaaMask, gst::TaaBox, gst::TaaResolve, gst::TaaDisplay}) { t.begin(sub); light(); t.end(sub); }
+    t.end(gst::Taa);
     t.begin(gst::HdrWriteback); t.begin(gst::Meter); light(); t.end(gst::Meter); heavy(); t.end(gst::HdrWriteback);
     t.begin(gst::Bloom); light(); t.end(gst::Bloom);
     t.end(gst::Taa); // an end without a begin: ignored
@@ -111,11 +114,12 @@ static Phase run(IDirect3DDevice9* d, GpuSyncTiming& t, unsigned frames, std::ui
             m.all_full = m.all_full && P[p].window.n == r.frames;
             m.waits_bounded = m.waits_bounded && P[p].wait_median <= P[p].window.median && P[p].window.median <= P[p].window.p90;
         }
-        const unsigned light_max = P[gst::SunApply].window.median > P[gst::Taa].window.median ? P[gst::SunApply].window.median : P[gst::Taa].window.median;
+        const unsigned light_max = P[gst::SunApply].window.median > P[gst::TaaResolve].window.median ? P[gst::SunApply].window.median : P[gst::TaaResolve].window.median;
         m.ordered = m.ordered && P[gst::ShadowDepth].window.median > light_max && P[gst::FogRoute].window.median > light_max
                     && P[gst::HdrWriteback].window.median > light_max && P[gst::Engine].window.median > light_max;
         m.nested = m.nested && P[gst::Scene].window.median >= P[gst::Engine].window.median && P[gst::FogRoute].window.median >= P[gst::Motes].window.median
                    && P[gst::HdrWriteback].window.median >= P[gst::Meter].window.median && P[gst::Engine].window.median >= P[gst::FogFill].window.median;
+        for (unsigned sub = gst::TaaCopy; sub <= gst::TaaDisplay; ++sub) m.nested = m.nested && P[gst::Taa].window.median >= P[sub].window.median;
         const bool first_window = m.windows == 1;
         m.dt_ok = m.dt_ok && r.dt_window.n == (first_window && first_dt_missing ? r.frames - 1 : r.frames) && r.dt_window.median >= P[gst::Scene].window.median;
     }
@@ -201,14 +205,15 @@ int main() {
         const auto& s = t->stats();
         std::printf("STATS phase=first syncs=%llu polls=%llu issue_failures=%llu data_failures=%llu timeouts=%llu dropped_frames=%llu\n", (unsigned long long)(s.syncs - syncs_before),
                     (unsigned long long)s.polls, (unsigned long long)s.issue_failures, (unsigned long long)s.data_failures, (unsigned long long)s.timeouts, (unsigned long long)s.dropped_frames);
-        // 28 boundaries per frame plus the commit's second Bloom pair (the repeated begins and the stray end never sync).
+        // 38 boundaries per frame plus the commit's second Bloom pair (the repeated begins and the stray end never sync).
         require("first_syncs_exact", s.syncs - syncs_before == 48ull * (gst::boundary_count + 2));
         require("first_no_failures", s.issue_failures == 0 && s.data_failures == 0 && s.timeouts == 0 && s.dropped_frames == 0);
         const gst::Report session = t->summary();
         std::printf("SESSION windows=%llu dt_n=%u dt_median_us=%u retention_median_us=%u fog_route_median_us=%u taa_median_us=%u\n", (unsigned long long)session.window,
                     session.dt_session.n, session.dt_session.median, session.pass[gst::Retention].session.median, session.pass[gst::FogRoute].session.median, session.pass[gst::Taa].session.median);
         require("session_counts", session.pass[gst::Taa].session.n == 48 && session.pass[gst::Retention].session.n == 48 && session.dt_session.n == 47);
-        std::printf("SYNC_COST empty_pair_median_us=%u light_pair_median_us=%u\n", session.pass[gst::Retention].session.median, session.pass[gst::Taa].session.median);
+        // The light pair is one sub-pass pair (the Taa pair now nests five of them).
+        std::printf("SYNC_COST empty_pair_median_us=%u light_pair_median_us=%u\n", session.pass[gst::Retention].session.median, session.pass[gst::TaaResolve].session.median);
 
         // Reset: the queries go before, come back after; 16 more frames close one window.
         t->before_reset();

@@ -65,3 +65,29 @@ proxy passes 11.7 ms serialised vs engine span 4.7 ms in the fogged stand window
 are the two large ones. Open: the final window and the `gpu_sync_timing_summary` rows were not written at exit;
 per-frame rows (or an inside/outside-engine tag on hdr_writeback flushes) are needed to isolate an F8 burst.
 Summariser: `verification/results/run274-gpu-sync/gpu_sync_windows.py`.
+
+## 2026-09-24: `taa_*` sub-passes (uncommitted worktree, not installed)
+
+Five passes appended after `present` (indices of the first 14 unchanged): `taa_copy`, `taa_mask`, `taa_box`,
+`taa_resolve`, `taa_display`, marked inside `TemporalPass::run` through `configure_sync_timing` (the motion output
+sets it before every run; null when the option is off: one branch per boundary, no device call). 19 passes, 38
+queries. Each pair adds about 0.26 ms to `taa` and to the serialised frame, so the next flight's `taa` reads about
+1.1 ms higher than run274's for the same work (four pairs at the 0.264 ms light-pair floor on the HDR route, where
+`taa_display` does not run; inferred). What each
+covers: [engine-frame-time.md, "TAA stage cost"](../architecture/engine-frame-time.md#taa-stage-cost-2026-09-24).
+
+- Host: `PYTHONPATH=verification/probe /usr/bin/python3 -m unittest verification.analysis.test_gpu_sync_timing`,
+  8 tests OK (measured): the core fixture checks 19 passes / 38 boundaries and the new names; the wiring test finds
+  one begin and one end site per sub-pass in `temporal_pass.cpp`.
+- Wine fixture (`gpu_sync_timing_fixture.cpp`): each frame now nests the five sub-pass pairs inside `taa`; the
+  nesting check requires `taa` >= each sub-pass median, the light reference is `taa_resolve`, and the exact sync
+  count follows `boundary_count` (48 x (38 + 2)). Check count unchanged (30). Run in bottle X3 (scratch CMake build,
+  exe `9ba31650…ac7e`, 8.5 s): PASS 30/30, 38 queries holding 38 device references, 1,920 syncs, 0 failures, 0
+  timeouts, 0 dropped frames, Reset recreated all 38; each sub-pass around one 16x16 quad reads 188–190 us window
+  median and the `taa` pair nesting all five 1,049 us (measured). The runner's rewritten
+  `gpu-sync-timing.{json,txt}` were restored to the committed ones.
+- Temporal pass (`TemporalPass` null marks) and motion output unchanged: see "TAA stage cost" for the
+  `run_temporal_pass.py` (744 / 278 / 546, report byte-identical) and `run_motion_output.py` (190 cases, 271,369
+  checks, 0 differing stable fields) results.
+
+Note (2026-09-23): the committed `verification/results/bottle-X3/temporal-lattice.txt` still carries the pre-cut instruction-slot rows (line_mask 368, line_mask_camera 344, thin_box_rows 35); the post-cut counts 399 / 372 / 77 come from the TAA cost worktree's lattice run and are refreshed by the next full temporal run that is committed.

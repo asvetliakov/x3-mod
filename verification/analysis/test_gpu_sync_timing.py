@@ -130,14 +130,17 @@ class GpuSyncTimingRunner(unittest.TestCase):
 class GpuSyncTimingWiring(unittest.TestCase):
     # Production begin / end / scoped (Span) sites per pass. Every pass has a begin and an
     # end site (a Span is both); Engine has two ends (the hook scene end and the copy
-    # fallback), SunApply two Spans (single map, cascades), Bloom two pairs (prepare, commit).
+    # fallback), SunApply two Spans (single map, cascades), Bloom two pairs (prepare, commit); the five taa_* sub-passes
+    # one pair each inside TemporalPass::run.
     SITES = {'Scene': (1, 1, 0), 'Engine': (1, 2, 0), 'ShadowDepth': (0, 0, 1), 'SunApply': (0, 0, 2), 'Retention': (0, 0, 1),
              'FogFill': (0, 0, 1), 'FogRoute': (1, 1, 0), 'Motes': (0, 0, 1), 'Taa': (1, 1, 0), 'HdrWriteback': (1, 1, 0),
-             'Meter': (1, 1, 0), 'HdrReadback': (1, 1, 0), 'Bloom': (2, 2, 0), 'Present': (1, 1, 0)}
+             'Meter': (1, 1, 0), 'HdrReadback': (1, 1, 0), 'Bloom': (2, 2, 0), 'Present': (1, 1, 0),
+             'TaaCopy': (1, 1, 0), 'TaaMask': (1, 1, 0), 'TaaBox': (1, 1, 0), 'TaaResolve': (1, 1, 0), 'TaaDisplay': (1, 1, 0)}
 
     def test_every_pass_has_begin_and_end_sites_in_production(self):
         sources = ''.join((ROOT / path).read_text() for path in (
-            'src/proxy/capture.cpp', 'src/proxy/motion_output.cpp', 'src/proxy/motion_output_fog_inc.h', 'src/renderer/hdr_pass.cpp', 'src/renderer/fog_pass.cpp'))
+            'src/proxy/capture.cpp', 'src/proxy/motion_output.cpp', 'src/proxy/motion_output_fog_inc.h', 'src/renderer/hdr_pass.cpp', 'src/renderer/fog_pass.cpp',
+            'src/renderer/temporal_pass.cpp'))
         names = re.findall(r'^\s+(\w+)(?: = 0)?,\s+//', CORE.read_text().split('enum Pass')[1].split('pass_count')[0], re.M)
         self.assertEqual(names, list(self.SITES))
         for name in names:

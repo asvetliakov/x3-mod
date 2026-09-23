@@ -1688,6 +1688,7 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             // Phase timing of the run (telemetry only): the pass stamps its own
             // five phases; the whole call is timed here and nests them.
             taa_->configure_timing(telemetry_);
+            taa_->configure_sync_timing(gpu_sync_); // --gpu-sync-timing only: the taa_* sub-pass pairs inside the Taa pair
             const std::uint64_t run_begin = stamp();
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
             // Fixture seam (HdrFault::Resolve): the run "fails" without touching

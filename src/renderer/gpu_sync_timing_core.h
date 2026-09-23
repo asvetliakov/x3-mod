@@ -29,19 +29,27 @@ enum Pass : unsigned {
     FogFill,          // the stored-density upload/prepare at the HDR latch
     FogRoute,         // the fog pass transaction on the routed FP16 target (nests Motes)
     Motes,            // the dust-mote draw inside the fog transaction
-    Taa,              // the temporal resolve
+    Taa,              // the temporal resolve (nests the five taa_* sub-passes below)
     HdrWriteback,     // the FP16 write-back / tonemap (nests Meter)
     Meter,            // the exposure meter chain inside the write-back
     HdrReadback,      // the previous frame's meter readback at the HDR latch
     Bloom,            // the bloom prepare and commit
     Present,          // the proxy's Present work and the native Present
+    // Sub-passes inside Taa (TemporalPass::run), appended so the indices above stay: each pair adds its sync floor to Taa.
+    TaaCopy,          // input copies: colour scratch / staging, depth StretchRect or copy draw, depth decode, supplemental snapshot
+    TaaMask,          // the stabiliser mask draws (far / thin region, one or three full-screen draws)
+    TaaBox,           // the camera gate's 7x7 box: the 49-tap draw or the sentinel stabiliser's rows + columns
+    TaaResolve,       // the resolve draw (with the age target) and the required-mask snapshot
+    TaaDisplay,       // the 8-bit route's display draw: the post-resolve sharpen or the identity copy
     pass_count
 };
 constexpr unsigned boundary_count = 2 * pass_count; // one event query per boundary (begin, end) of every pass
+static_assert(pass_count <= 32, "the Tracker's open / begun / closed masks are 32-bit");
 constexpr unsigned window_frames_default = 300, window_frames_max = 300;
 inline const char* pass_name(unsigned pass) noexcept {
     static constexpr const char* names[pass_count] = {"scene", "engine", "shadow_depth", "sun_apply", "retention", "fog_fill", "fog_route",
-                                                      "motes", "taa", "hdr_writeback", "meter", "hdr_readback", "bloom", "present"};
+                                                      "motes", "taa", "hdr_writeback", "meter", "hdr_readback", "bloom", "present",
+                                                      "taa_copy", "taa_mask", "taa_box", "taa_resolve", "taa_display"};
     return pass < pass_count ? names[pass] : "?";
 }
 constexpr bool once_per_frame(unsigned pass) noexcept { return pass == Scene || pass == Engine; }

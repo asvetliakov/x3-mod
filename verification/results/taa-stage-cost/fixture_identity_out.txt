@@ -1,0 +1,17 @@
+# TAA stage cuts, run_temporal_pass.py in bottle X3 (2026-09-24, worktree on a990206c + the cuts).
+# Main report: cmp verification/results/bottle-X3/temporal-pass.txt <committed copy> -> identical;
+#   sha256 58d85cde92764d58d52c7cb64ca0890285bef85006492eea18b59772271fcd17 both (shasum -a 256);
+#   RESULT PASS numerical=744 state_restorations=278 generations=2; 546 SAMPLE lines PASS; runner exit 0, 147.3 s.
+# Baseline run (HEAD programs restored, same session): main report also identical to the committed one.
+# Lattice reports: python3 verification/results/taa-stage-cost/fixture_identity.py <committed> <baseline> <new>
+lattice committed vs baseline: lines=4184/4184 differing kinds=['LINE_TIMING', 'LINE_TIMING_CAMERA', 'LINE_TIMING_CAMERA_LANE', 'LINE_TIMING_SENTINEL']
+lattice committed vs new: lines=4184/4184 differing kinds=['LINE_TIMING', 'LINE_TIMING_CAMERA', 'LINE_TIMING_CAMERA_LANE', 'LINE_TIMING_SENTINEL', 'RESOLVE_BUDGET variant=embedded_line_mask', 'RESOLVE_BUDGET variant=embedded_line_mask_camera', 'RESOLVE_BUDGET variant=embedded_thin_box_rows']
+committed LINE_TIMING plain_ms=0.6275 far_stabiliser_ms=0.8277 thin_region_ms=1.4346 far_delta_ms=0.2002 thin_region_delta_ms=0.8071
+committed LINE_TIMING_CAMERA no_region_thin_ms=1.4346 no_region_camera_ms=1.5836 no_region_camera_delta_ms=0.1490 fragmented_pan_thin_ms=1.3552 fragmented_pan_camera_ms=1.9688 fragmented_pan_camera_delta_ms=0.6137
+committed LINE_TIMING_SENTINEL strength_off_ms=1.4638 strength_on_separable_ms=1.7768 sentinel_delta_ms=0.3130
+baseline LINE_TIMING plain_ms=0.9187 far_stabiliser_ms=1.1600 thin_region_ms=2.3202 far_delta_ms=0.2413 thin_region_delta_ms=1.4015
+baseline LINE_TIMING_CAMERA no_region_thin_ms=2.3202 no_region_camera_ms=2.1901 no_region_camera_delta_ms=-0.1301 fragmented_pan_thin_ms=1.4560 fragmented_pan_camera_ms=2.3606 fragmented_pan_camera_delta_ms=0.9046
+baseline LINE_TIMING_SENTINEL strength_off_ms=1.3108 strength_on_separable_ms=1.5929 sentinel_delta_ms=0.2821
+new LINE_TIMING plain_ms=0.5625 far_stabiliser_ms=0.8483 thin_region_ms=1.1721 far_delta_ms=0.2858 thin_region_delta_ms=0.6096
+new LINE_TIMING_CAMERA no_region_thin_ms=1.1721 no_region_camera_ms=1.3219 no_region_camera_delta_ms=0.1499 fragmented_pan_thin_ms=0.8823 fragmented_pan_camera_ms=1.2658 fragmented_pan_camera_delta_ms=0.3836
+new LINE_TIMING_SENTINEL strength_off_ms=1.1098 strength_on_separable_ms=1.3423 sentinel_delta_ms=0.2326

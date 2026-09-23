@@ -443,6 +443,9 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     // StretchRect; the input is copied same-format into the staging texture
     // and the identity draw inside the scene bracket below converts it. An
     // FP16 texture input (in.color) takes neither copy nor scratch.
+    // --gpu-sync-timing sub-passes (configure_sync_timing): taa_copy .. taa_display below, each begin paired with an
+    // unconditional end (an end without its begin records nothing); off, one null branch each.
+    if(sync_marks_&&SUCCEEDED(hr))sync_marks_->begin(gpu_sync_timing::TaaCopy);
     mark=stamp();
     if(SUCCEEDED(hr)&&in.color_surface&&step(ensure_scratch())){
         if(draw_copy){if(step(ensure_staging(surface_format)))hr=call<StretchFn>(StretchRect)(d,in.color_surface,nullptr,staging_surface_,nullptr,D3DTEXF_POINT);}
@@ -487,6 +490,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
            step(call<SetTextureFn>(SetTexture)(d,5,in.reactive)))hr=quad(in.width,in.height);
         constants.options[2]=strict_sky_term;
     }
+    if(sync_marks_){sync_marks_->end(gpu_sync_timing::TaaCopy);if(SUCCEEDED(hr)&&far_on)sync_marks_->begin(gpu_sync_timing::TaaMask);}
     // Far stabiliser / thin region: the mask of the current depth (now complete in depths_[next]),
     // bound at s8 for the resolve (point, clamp, single level; the block restores the sampler).
     // c7.z is the mask program's mode; the resolve's c7 is uploaded again below.
@@ -526,11 +530,12 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
            step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_MIPFILTER,D3DTEXF_NONE))&&step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_ADDRESSU,D3DTADDRESS_CLAMP))&&
            step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_ADDRESSV,D3DTADDRESS_CLAMP))&&step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_SRGBTEXTURE,FALSE))&&
            step(call<SetSamplerFn>(SetSamplerState)(d,8,D3DSAMP_MAXMIPLEVEL,0)))hr=call<SetTextureFn>(SetTexture)(d,8,line_masks_[final_mask]);
+        if(sync_marks_){sync_marks_->end(gpu_sync_timing::TaaMask);if(SUCCEEDED(hr)&&camera)sync_marks_->begin(gpu_sync_timing::TaaBox);}
         // Camera gate: the 7x7 min / max box of the current colour (thin_box_ps.hlsl) into the two box targets (MRT, both
         // FP16), skipping every pixel the camera term did not open (the final mask at s8 decides, the same texel the resolve
         // reads). RT1 leaves the device again right after; the resolve binds the boxes at s9 / s10 once RT0 has moved on.
-        // Sentinel stabiliser: the box covers most of the sky, so it runs separably (thin_box_rows_ps.hlsl into the row pair on
-        // every pixel, thin_box_columns_ps.hlsl into the box pair where the mask opens; the same bytes as the 49-tap program,
+        // Sentinel stabiliser: the box covers most of the sky, so it runs separably (thin_box_rows_ps.hlsl into the row pair only where a
+        // column reader opens the box, thin_box_columns_ps.hlsl into the box pair where the mask opens; the same bytes as the 49-tap program,
         // plus the emitter bound c23.x, which the sharpen uploads again for itself later). The resolve rebinds s0..s3.
         if(SUCCEEDED(hr)&&stabilise){
             const float emitter[4]={in.sentinel_emitter,0.f,0.f,0.f};
@@ -556,7 +561,9 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
                step(call<SetTextureFn>(SetTexture)(d,0,in.color?in.color:scratch_)))hr=quad(in.width,in.height);
             if(!lost(hr)){const HRESULT unbind=call<SetRtFn>(SetRenderTarget)(d,1,nullptr);if(SUCCEEDED(hr))hr=unbind;}
         }
+        if(sync_marks_)sync_marks_->end(gpu_sync_timing::TaaBox);
     }
+    if(sync_marks_&&SUCCEEDED(hr))sync_marks_->begin(gpu_sync_timing::TaaResolve);
     if(SUCCEEDED(hr)&&step(call<SetTextureFn>(SetTexture)(d,0,nullptr))&&step(call<SetRtFn>(SetRenderTarget)(d,0,color_surfaces_[next]))&&
         step(call<SetPsFn>(SetPixelShader)(d,program))&&step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,0,&constants.clip_to_previous[0][0],x3::temporal::kResolveRegisterCount))&&
         step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,x3::temporal::kLuminanceRegister,constants.luminance,1))&&
@@ -594,6 +601,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
            step(call<SetPsFn>(SetPixelShader)(d,snapshot_))&&
            step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,7,constants.options,1)))hr=quad(in.width,in.height);
     }
+    if(sync_marks_){sync_marks_->end(gpu_sync_timing::TaaResolve);if(SUCCEEDED(hr)&&(in.sharpen>0||draw_copy))sync_marks_->begin(gpu_sync_timing::TaaDisplay);}
     // Post-resolve sharpen (sharpen.h): with the history set complete, RCAS of
     // the new FP16 colour history is drawn into the caller's 8-bit surface
     // (the resolve's own input, already copied into the scratch), inside the
@@ -628,6 +636,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
         display_written=SUCCEEDED(copy_result);
         if(lost(copy_result))hr=copy_result;
     }
+    if(sync_marks_)sync_marks_->end(gpu_sync_timing::TaaDisplay);
     if(own_scene&&!lost(hr)){const HRESULT end=call<SceneFn>(EndScene)(d);if(SUCCEEDED(hr)||lost(end))hr=end;}
     diagnostics_.ticks_draw+=stamp()-mark-depth_draw_ticks;
     diagnostics_.operation=hr;

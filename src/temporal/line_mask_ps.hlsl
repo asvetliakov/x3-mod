@@ -114,10 +114,15 @@ float farWeight(float depth) { return validDepth(depth) ? saturate((depth - farG
 // finite (|L| <= 65000, the resolve's own limit, which a NaN fails in either direction and an infinity in one), and a tap
 // that is not becomes 0 AT THE CENTRE (so the pixel's own luma cannot clear E) and the limit AS A NEIGHBOUR (so it cannot
 // lower the 3x3 minimum and let the centre through). A pixel whose whole 3x3 is non-finite keeps lowest = centre = 0.
+// Cost (docs/architecture/engine-frame-time.md, "TAA stage cost"): the centre tap is tested first. The vote needs centre > E, so
+// a pixel whose own luma (0 when non-finite, the loop's rule) does not exceed E returns false before the eight neighbour taps;
+// the loop below is unchanged and computes the same centre, so a pixel that passes votes exactly as before.
 float sceneLuma(float2 uv) { return dot(tex2Dlod(scene, float4(uv, 0, 0)).rgb, lumaWeights); }
 bool emissiveVote(float2 uv, float depth, float alpha) {
     if (!validDepth(depth) || !(options.x > 0.5)) return false;
     if (!(alpha >= 1 && alpha <= 1)) return false;
+    float own = sceneLuma(uv);
+    if (!((own == own && own <= emissiveFinite && own >= -emissiveFinite ? max(own, 0) : 0) > emissive.x)) return false;
     float centre = 0, lowest = emissiveFinite;
     [loop] for (int ny = -1; ny <= 1; ++ny) {
         [loop] for (int nx = -1; nx <= 1; ++nx) {
@@ -198,7 +203,10 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0
         float2 axis = compose ? float2(0, sizeJitter.y) : float2(sizeJitter.x, 0);
         float4 centre = fetch(uv);
         result = centre;
-        [loop] for (int k = -8; k <= 8; ++k) {
+        // The k = 0 tap is the centre itself (min / max with itself is the identity on these UNORM8 values, and min / max
+        // are exact and order-free), so the loop visits the 16 other taps only, each at the same uv + k * axis as before.
+        [loop] for (int j = 0; j < 16; ++j) {
+            int k = j < 8 ? j - 8 : j - 7;
             float4 tap = fetch(uv + k * axis);
 #ifdef X3M_CAMERA_GATE
             result.ar = min(result.ar, tap.ar);
@@ -236,13 +244,14 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0
 #else
             result.a = gateClosure(uv, depth, motion);
 #endif
+            // b only ever becomes 1: the first fragmented line ends the search and a fragmented pixel skips the emissive vote.
             [loop] for (int k = 0; k < 4; ++k) {
                 float2 along = (k == 0 ? float2(1, 0) : (k == 1 ? float2(0, 1) : (k == 2 ? float2(1, 1) : float2(1, -1)))) * sizeJitter.xy;
                 float changes = 0, previous = fetch(uv - 3 * along).r;
                 [loop] for (int t = -2; t <= 3; ++t) { float next = fetch(uv + t * along).r; if (classChange(previous, next)) changes += 1; previous = next; }
-                if (changes >= 2) result.b = 1;
+                if (changes >= 2) { result.b = 1; break; }
             }
-            [branch] if (emissive.x > 0) { if (emissiveVote(uv, depth, motion.w)) result.b = 1; }
+            [branch] if (emissive.x > 0 && result.b < 0.5) { if (emissiveVote(uv, depth, motion.w)) result.b = 1; }
         }
 #ifndef X3M_CAMERA_GATE
         if (validDepth(depth) && options.w > 0.5) {

@@ -1814,23 +1814,26 @@ not the pipelined frame. It replaces the unmerged timestamp-query attempt (branc
 device used here supports.
 
 - **Mechanism** (`src/renderer/gpu_sync_timing.{h,cpp}`, core `gpu_sync_timing_core.h`): one
-  `D3DQUERYTYPE_EVENT` query per boundary (14 passes x begin/end = 28, created once through the
+  `D3DQUERYTYPE_EVENT` query per boundary (19 passes x begin/end = 38, created once through the
   device's native `CreateQuery`, reused every frame). At a boundary: `Issue(D3DISSUE_END)`, then
   `GetData(D3DGETDATA_FLUSH)` until `S_OK`, the spin timed with `QueryPerformanceCounter`. The
   begin spin drains everything earlier, so end stamp minus begin stamp is the pass's CPU
   submission plus its GPU execution with nothing overlapping. `wait_median_us` is the end spin
   alone (GPU work still pending when the CPU finished submitting). Sync floor in the X3 bottle
   (Wine fixture, measured): an empty pair 18 us median, a pair around one 16x16 quad 264 us
-  median, so a small pass reads about 250 us of round trip; about 30 syncs per frame.
+  median, so a small pass reads about 250 us of round trip; about 30 syncs per frame before the
+  `taa_*` sub-passes, about 40 with them.
 - **Passes**: `scene` (first `BeginScene` of the frame to just before the native Present),
   `engine` (first `BeginScene` to the scene end, the engine's own draw span), `shadow_depth`,
   `sun_apply`, `retention`, `fog_fill` (stored-density prepare/upload), `fog_route` (the fog
   transaction), `motes`, `taa`, `hdr_writeback` (flushes add up), `meter`, `hdr_readback`,
-  `bloom` (prepare + commit), `present` (the proxy's Present work and the native Present).
+  `bloom` (prepare + commit), `present` (the proxy's Present work and the native Present), and inside
+  `taa` the sub-passes `taa_copy`, `taa_mask`, `taa_box`, `taa_resolve`, `taa_display` ("TAA stage
+  cost" below).
 - **Reading the spans**: nested spans include their inner pass; subtract for the exclusive cost.
   `engine` contains `fog_fill` and `hdr_readback` (the HDR latch) and every mid-scene
   `hdr_writeback` flush with its `meter`; `fog_route` contains `motes`; `hdr_writeback` contains
-  `meter`. `present` begins at the Present hook's entry, before `scene` ends just before the
+  `meter`; `taa` contains the five `taa_*` pairs and their sync floors. `present` begins at the Present hook's entry, before `scene` ends just before the
   native Present, so the proxy's pre-Present work (sector sample, notices, overlay) is counted in
   both. `scene` also carries the `engine` begin sync (both begins run back to back). The
   `shadow_depth` and `sun_apply` spans include their own per-frame log line.
@@ -1897,3 +1900,82 @@ against run270's clean 22 ms (CPU-bound, inferred). Second sector without fog (W
 fill), present p90 about 2.3× its median in every window, retention 0.03 → 0.40 and shadow_depth 0.87 → 2.8 ms
 from W13 in the second sector (open), sun_apply missing in 4 frames of W9. Evidence and the reusable summariser:
 `verification/results/run274-gpu-sync/gpu_sync_windows.py` (`windows.txt`).
+
+## TAA stage cost (2026-09-24)
+
+**Inside the `taa` boundary.** The pair wraps `TemporalPass::run` alone (`src/proxy/motion_output.cpp:1699–1701`,
+`src/renderer/temporal_pass.cpp:324`). On the flown configuration (the Run 73 launch line: HDR, far stabiliser
+0.985, thin region 0.97 with the camera gate, sentinel stabiliser 0.7 / E 1, emissive vote E 1, strict sky with exit
+0.25, motion weight 0.7, the sun-shadow lane's A32B32G32R32F RT2, no composition so the reactive policy is the
+depth sentinel) it runs, per frame:
+
+| sub-pass | work (1920×1080, full-screen quads) | source |
+| --- | --- | --- |
+| CPU | validation, state-block Capture, `normalize` (about 100 device calls), restore and Apply; span minus wait is 0.29 ms including the 0.26 ms floor (W4, measured), so about 0.03 ms | `temporal_pass.cpp:427–434, 646` |
+| `taa_copy` | depth copy draw: RT2 lane (16 B/px) point-sampled into the R32F history depth; no colour copy (the FP16 scene is sampled in place), no snapshot | `:468` |
+| `taa_mask` | three `line_mask_camera` draws: the tests (28 depth taps on four 7-tap lines, motion, lane depth, and the emissive vote's 9 scene taps on routed pixels), then the 17-tap x and y passes (A8R8G8B8) with the composition | `:508`, `line_mask_ps.hlsl` |
+| `taa_box` | sentinel stabiliser: rows (7 FP16 taps, two FP16 MRT outputs), columns (14 taps where the mask opens the box, 9 more beside emitters over sky) | `:540`, `thin_box_*_ps.hlsl` |
+| `taa_resolve` | `far_camera` resolve with the R32F age MRT: about 29 fetches per pixel at rest, 44 when the history lookup is fractional | `:423`, `resolve.hlsl` |
+
+Not inside it: the sharpen and AgX tonemap (the HDR route runs them in `hdr_writeback`), any history copy (the
+history is a ping-pong, `current_ ^ 1`, and the HDR route has no copy-back), the capture-frame readbacks (after the
+end mark), bloom. `taa_display` (the 8-bit route's sharpen or identity draw) does not run on the HDR route.
+
+**What grows with scene content** (read from the code; the raw run274 rows are not retained, so which one drove
+2.90 → 5.25 ms in W10 is inferred, not measured). Draw count itself does not enter; motion and coverage do:
+
+- The resolve's history lookup (`resolve.hlsl:541–553`): at rest the snapped fraction is 0, only one Catmull-Rom
+  weight is nonzero and `historyTap` fetches one texel (`:220`); any sub-pixel motion (flight, moving ships) takes
+  16 FP16 taps with 16 `weigh` divisions, about 29 → 44 fetches per pixel; the likeliest cause if W10 was flown
+  rather than parked.
+- The emissive vote (`line_mask_ps.hlsl:121`): 9 scene taps on every routed pixel with valid depth, so it grows
+  with hull coverage.
+- The box columns (`thin_box_columns_ps.hlsl:36, 45`): run where `b > a`, which at rest is every unrouted sky pixel
+  (the sentinel term) plus camera-gate-open regions under a pan; the emitter's 3x3 adds 9 taps beside content above
+  luma 1 over sky (suns, lasers, bright backdrop).
+- Fewer early exits: pixels whose correspondence is valid and proven go through the full clip and blend.
+
+**Cuts (shipped, byte-identical).** All four are shader-only; the resolve, its weights, jitter, clip and every
+default are untouched. Proof (bottle X3, measured): `run_temporal_pass.py` RESULT PASS 744 numerical / 278 state
+restorations, 546 samples, `temporal-pass.txt` byte-identical to the committed report (sha256 `58d85cde…`), the
+lattice-mode report identical except the three programs' slot counts and the CPU timing rows;
+`run_motion_output.py` 190 cases / 271,369 checks with 0 differing stable fields
+(`verification/results/taa-stage-cost/`).
+
+| cut | saves per pixel | where it pays |
+| --- | --- | --- |
+| emissive vote tests the centre first (`line_mask_ps.hlsl:121`): the vote needs centre > E, so 8 of 9 scene taps are skipped when the pixel's own luma is at most E; also skipped when the pixel is already fragmented (`:254`) | 8 FP16 taps | routed pixels (most hull pixels, inferred) |
+| the fragmentation search stops at the first fragmented line (`:252`) | up to 21 of 28 R32F taps | lattices, struts |
+| the two separable mask passes skip the duplicated centre tap (`:208`; min/max with itself is the identity) | 1 of 17 taps, twice | every pixel |
+| box rows are computed and written only where a column reader within ±3 rows opens the box (`thin_box_rows_ps.hlsl:38`, discard plus a branch around the taps) | 7 FP16 taps, 16 B of MRT writes | routed pixels more than 3 rows from open sky |
+
+Expected saving, inferred: about 0.1–0.4 ms of the 2.6 ms GPU span in a hull-heavy 1080p frame, near 0 in an
+all-sky one; not measured in game. The fixture's own timing rows (1280×768, CPU wall with event drain, one run each)
+cannot resolve it: the unchanged plain path read 0.63, 0.92 and 0.56 ms (committed, same-session baseline, cuts).
+The within-run deltas, interleaved rounds, all fall with the cuts but are single samples: thin region minus plain
+0.81 / 1.40 → 0.61 ms, camera minus screen gate on a fragmented pan 0.61 / 0.90 → 0.38 ms, sentinel stabiliser
+0.31 / 0.28 → 0.23 ms (`verification/results/taa-stage-cost/fixture_identity_out.txt`). All three early-outs compile to real branches
+(`ifc`/`breakc`/`texkill`, `verification/results/taa-stage-cost/sm3_flow.py`). Instruction slots of 512:
+line_mask 368 → 399, line_mask_camera 344 → 372, thin_box_rows 35 → 77 (measured).
+
+**Rejected.**
+
+- The 5- or 9-tap bilinear Catmull-Rom: needs bilinear history sampling; the samplers are point by contract and
+  the output would change.
+- Dropping the depth copy (reading the lane in the mask and resolve): the copy is the next frame's history depth;
+  28 mask taps on the 16-B lane cost more than one 16-B read; ping-ponging RT2 itself is a motion-output change.
+- Folding the box rows into the x mask pass as MRT: mixes A8R8G8B8 and FP16 targets
+  (`D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS`) for one pass's fixed overhead.
+- An R16F age target (counts 1..64 are exact in FP16): the capture path and the fixture read the age as R32F, so
+  the unchanged fixture cannot prove it.
+- Discarding the box columns outside the mask: the resolve multiplies `(b − a)` by `(box − clip)` everywhere, and
+  0 × a stale or uninitialised NaN texel is NaN; the columns must keep writing zeros.
+- Any resolve edit (centre-depth reuse, fetch sharing): `far_camera` sits at 505 of 512 slots and its instruction
+  order is pinned for rounding identity.
+- Sharpen, tonemap, depth decode, history copies, disabled-feature branches: not on the flown `taa` path (the HDR
+  write-back, the D24X8 snapshot input only, already a ping-pong, variants chosen per configuration at `:423`).
+
+**Diagnostic split.** `--gpu-sync-timing` now also reports `taa_copy`, `taa_mask`, `taa_box`, `taa_resolve` and
+`taa_display` inside `taa` (`TemporalPass::configure_sync_timing`, set before every run; null otherwise). Each
+pair adds about 0.26 ms to `taa` and to the serialised frame; `taa` minus the sub-passes is the CPU work plus five
+floors. Ledger: [gpu-sync-timing.md](../verification/gpu-sync-timing.md).

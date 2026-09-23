@@ -1,0 +1,6 @@
+# run_motion_output.py in bottle X3 (2026-09-24, worktree on a990206c with the TAA stage cuts; exit 0, 476.8 s under the lock),
+# then: python3 verification/results/sky-history-default/compare_motion_output.py  (HEAD summary vs the new one)
+passed old=True new=True
+cases old=190 new=190 missing=[] added=[]
+checks old=271369 new=271369
+cases with differing stable fields: 0

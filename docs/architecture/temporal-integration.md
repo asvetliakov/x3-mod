@@ -1096,7 +1096,7 @@ only when the variable is absent. The resolved S and E now appear in the startup
 `verification/probe/run_motion_output.py` pins `X3M_TAA_SENTINEL_STABILISER=0` for its scripts, whose oracles model the
 stabiliser off (`verification/probe/run_temporal_pass.py` drives the pass directly and reads no such variable).
 Differences from the change list below: the box pass runs **separably** while the stabiliser is on
-(`src/temporal/thin_box_rows_ps.hlsl` on every pixel into one more FP16 pair, `thin_box_columns_ps.hlsl` where the mask
+(`src/temporal/thin_box_rows_ps.hlsl` into one more FP16 pair, written only where a column reader opens the box, `thin_box_columns_ps.hlsl` where the mask
 opens; minimum / maximum are exactly separable and FP16 rounding is monotone, so the bytes equal the 49-tap program's), and
 the emitter bound lives in the columns program, so `thin_box_ps.hlsl` and its bytecode are untouched and remain the only
 box program of a run with S = 0. E is inert when S = 0. The 3x3 of the bound is read from the current colour directly.

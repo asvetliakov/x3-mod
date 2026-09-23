@@ -2,6 +2,7 @@
 #include <d3d9.h>
 #include <cstdint>
 #include "../temporal/resolve.h"
+#include "gpu_sync_timing_core.h"
 
 namespace x3m::renderer {
 enum class MotionPolicy { Unavailable, KnownCameraOnly, PerPixel };
@@ -374,6 +375,10 @@ public:
     // Phase timing of run (Diagnostics::ticks_*): off by default; costs five
     // QPC pairs per run when on and changes no device call.
     void configure_timing(bool enabled) noexcept { timing_ = enabled; }
+    // --gpu-sync-timing only (docs/architecture/engine-frame-time.md, "TAA stage cost"): the run's five sub-pass
+    // boundaries (gpu_sync_timing::TaaCopy .. TaaDisplay) inside the caller's Taa pair; null (the default) is one
+    // branch per boundary and no device call.
+    void configure_sync_timing(gpu_sync_timing::Marks* marks) noexcept { sync_marks_ = marks; }
 private:
     struct SavedState;
     template<class Fn> Fn call(unsigned slot) const noexcept {
@@ -441,6 +446,7 @@ private:
     ReactivePolicy reactive_policy_ = ReactivePolicy::Unavailable;
     Diagnostics diagnostics_{};
     bool timing_ = false;
+    gpu_sync_timing::Marks* sync_marks_ = nullptr;
     bool copy_by_draw_ = false;
     bool quad_fvf_ = false; // fixture-only XYZRHW twin (X3M_QUAD_FVF_SWITCH builds); always false in production
 };
