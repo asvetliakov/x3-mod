@@ -1,0 +1,17 @@
+W3 density_filling 24
+W3 density_unprepared 1
+W3 ok 8
+W4 ok 300
+W5 ok 300
+W6 ok 300
+W7 ok 135
+W8 card_refused 4
+W9 card_refused 300
+W10 card_refused 300
+W11 card_refused 300
+W12 card_refused 300
+W13 card_refused 300
+W14 card_refused 300
+W15 card_refused 300
+W16 card_refused 181
+W4 applied cpu_us p50 4469.3 n 300
