@@ -2686,3 +2686,27 @@ only). All figures measured unless marked.
   into another family and one docked save load: `refusal=` after the docked load, `recentred`/`adopted=1`
   lines, the hand-over `frames` per arrival; the arrival position during the stall (sector-transit-order
   row 8) for a two-frame hand-over far from the origin; the engine stall 1.2-2.4 s after arrival.
+
+## 2026-09-23: fog route step A: sub-pass boundaries, repair census, early-out off by default (uncommitted worktree)
+
+Design: [fog-gpu-cost.md, "Step A implemented"](../architecture/fog-gpu-cost.md#step-a-implemented-2026-09-23).
+
+- Programs (measured, `verification/results/fog-gpu-cost/step_a_programs.py`, output beside it): 12/12 fog programs
+  byte-identical to 72645b5e (march_look 425, march_grid 352, repair 510 slots); the early-out sits in
+  `fog_density_field_inc.h` under `FOG_MARCH_EARLY_OUT`, which no program defines, so the eleven programs including
+  that file were regenerated and only their provenance include hash moved. Review decision: defined, it cost 11-12
+  slots in the loop (425 -> 436, 352 -> 364, measured in the first build of this step) and cannot fire at 1.0x.
+- Fixture (bottle X3, `fog_density_shader_run.py build/run/check`, reference `/tmp/x3-run67-fog-ref`): shader fixture
+  `RESULT PASS checks=30`, pass fixture `RESULT PASS checks=123 failures=0 state_restorations=1125` (122 + the census
+  check), `check` PASS with 30/30 gates including `pass_off_bit_identical` (11/11 accepted look hashes),
+  `candidate_T/S`, `slots_below_512`, `march_loops_kept` (measured, final tree). `step_a_fixture_identity.py` (output
+  beside it) compares the shader fixture and the pass fixture against the committed summary: 568 figures compared,
+  0 differing, 95 keys the committed summary predates (motes, grid, hand-over rows), 33 worker-scheduling counters
+  that differ between two runs of identical code (listed VARIES). The recorded
+  `verification/results/fog-density-shader/summary.json` is this run's (march shader hashes back to 72645b5e).
+  An earlier run of this step with the early-out defined had the same 11 look hashes (it never fired).
+- Census (measured): the odd 31x17 target needs the repair on 255 pixels; the repair's clip also drops the 130 whose
+  march is exactly empty, and the occlusion query around the repair quad counted 125, equal to the CPU twin's
+  non-empty count. The census therefore counts written repair pixels (a lower bound on marched ones).
+- Not verified: native Windows; the early-out on a saturating column (off; no fixture case reaches T < 1e-4).
+

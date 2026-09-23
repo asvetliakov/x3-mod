@@ -225,6 +225,16 @@ struct Harness{
     }
 };
 
+// --gpu-sync-timing's marks as FogPass::execute calls them (fog-gpu-cost.md step A): pair counts per pass, and the
+// repair-pixel census bracket driving a real occlusion query, as GpuSyncTiming does.
+struct CensusMarks final:x3m::gpu_sync_timing::Marks{
+    IDirect3DQuery9* query=nullptr;unsigned begins[32]{},ends[32]{},census_begins=0,census_ends=0;std::uint32_t area=0;HRESULT issue=S_OK;
+    void begin(unsigned pass)noexcept override{if(pass<32)++begins[pass];}
+    void end(unsigned pass)noexcept override{if(pass<32)++ends[pass];}
+    void census_begin()noexcept override{++census_begins;const HRESULT hr=query->Issue(D3DISSUE_BEGIN);if(FAILED(hr))issue=hr;}
+    void census_end(std::uint32_t a)noexcept override{++census_ends;area=a;const HRESULT hr=query->Issue(D3DISSUE_END);if(FAILED(hr))issue=hr;}
+};
+
 std::vector<Case> read_cases(const std::string& file,FogDensityConfig& config){
     std::ifstream in(file);if(!in)throw std::runtime_error("cases");std::vector<Case> cases;std::string line;
     while(std::getline(in,line)){
@@ -727,7 +737,19 @@ void run(const std::string& cases_file){
             Scene odd(d,caps,31,17);std::vector<float> depth(std::size_t(31)*17*4,0.f);FogFrame shape=make_frame(A,odd,0,true);
             for(UINT y=0;y<17;++y)for(UINT x=0;x<31;++x){float* p=&depth[(std::size_t(y)*31+x)*4];if(x%2){double v[3];raster_ray(shape,x,y,v);p[0]=.5f;p[2]=float(60000/std::sqrt(v[0]*v[0]+v[1]*v[1]+1));}else p[0]=2.f;}
             odd.depth_values=depth;odd.create();check(pass.prepare_targets(31,17),"odd targets");require(hx.settle(A.cam),"odd settle");
-            FogResult r;const HRESULT hr=hx.execute(A,odd,r);const auto out=half_image(surface_bytes(d,odd.target_surface.p));const auto lit=half_image(surface_bytes(d,pass.fixture_st()));
+            // The repair-pixel census around this transaction: every odd (geometry) column has only sky half samples, so
+            // 15 x 17 = 255 of the 527 pixels need the repair march and the even (sky) columns are all served; the repair's
+            // clip also drops a march that comes out exactly empty (T 1, S 0), so the count is the needed pixels whose CPU
+            // march is not exactly empty.
+            Com<IDirect3DQuery9> occlusion;check(d->CreateQuery(D3DQUERYTYPE_OCCLUSION,&occlusion.p),"census query");
+            CensusMarks marks;marks.query=occlusion.p;pass.configure_sync_timing(&marks);
+            FogResult r;const HRESULT hr=hx.execute(A,odd,r);pass.configure_sync_timing(nullptr);
+            DWORD counted=0;HRESULT census_got=S_FALSE;bool census_pairs=false;
+            {const LONGLONG start=ticks();
+             while((census_got=occlusion->GetData(&counted,sizeof counted,D3DGETDATA_FLUSH))==S_FALSE&&seconds(start)<5)Sleep(0);
+             census_pairs=marks.begins[x3m::gpu_sync_timing::FogMarch]==1&&marks.ends[x3m::gpu_sync_timing::FogMarch]==1&&marks.begins[x3m::gpu_sync_timing::FogComposite]==1&&
+                              marks.ends[x3m::gpu_sync_timing::FogComposite]==1&&marks.begins[x3m::gpu_sync_timing::FogRepair]==1&&marks.ends[x3m::gpu_sync_timing::FogRepair]==1;}
+            const auto out=half_image(surface_bytes(d,odd.target_surface.p));const auto lit=half_image(surface_bytes(d,pass.fixture_st()));
             require(hr==S_OK&&r.applied&&r.half_width==16&&r.half_height==9,"odd_31x17_transaction_half_16x9");
             const FogFrame f=make_frame(A,odd,hx.frame,true);const fog_cpu::Setup cpu=cpu_setup(f,config);const double scene_rgb[3]={.25,.5,.75};
             double repair_worst=0,shifted_worst=0,composite_worst=0;bool alpha=true;unsigned repaired=0;
@@ -745,6 +767,15 @@ void run(const std::string& cases_file){
                 }
             }
             std::printf("REPAIR odd_target=31x17 repaired_checked=%u worst_vs_cpu=%.6f half_pixel_shift_control=%.6f composite_worst=%.6f\n",repaired,repair_worst,shifted_worst,composite_worst);
+            unsigned needed=0,written=0;
+            for(UINT y=0;y<17;++y)for(UINT x=1;x<31;x+=2){
+                double v[3];raster_ray(f,x,y,v);const auto m=fog_cpu::march(cpu,v,double(depth[(std::size_t(y)*31+x)*4+2]));++needed;
+                written+=!(m.T==1.0&&m.S[0]==0.0&&m.S[1]==0.0&&m.S[2]==0.0);
+            }
+            std::printf("REPAIR_CENSUS odd_target=31x17 counted=%lu needed=%u written_cpu=%u area=%u census_brackets=%u/%u pairs=%u get=%08lx issue=%08lx\n",(unsigned long)counted,needed,written,
+                        unsigned(marks.area),marks.census_begins,marks.census_ends,unsigned(census_pairs),(unsigned long)census_got,(unsigned long)marks.issue);
+            require(census_got==S_OK&&SUCCEEDED(marks.issue)&&needed==255&&written>0&&written<needed&&counted==written&&marks.area==527&&marks.census_begins==1&&marks.census_ends==1&&census_pairs,
+                    "repair_census_counts_the_pixels_the_repair_writes");
             require(repair_worst<=1e-3&&alpha,"repair_matches_cpu_reference_through_its_own_raster_pixel");
             require(shifted_worst>2e-3&&shifted_worst>3*repair_worst,"repair_reference_rejects_a_half_pixel_offset");
             require(composite_worst<=1e-3,"composite_footprint_clamps_at_odd_half_target_edge");

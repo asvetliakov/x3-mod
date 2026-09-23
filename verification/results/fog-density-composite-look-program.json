@@ -11,7 +11,7 @@
   "defines": null,
   "includes": {
     "src/fog/fog_density_composite_ps.hlsl": "99bf7e656bf710be240e2ff08a0775274d98d0db77d6afd3c8a125f49c0a9cbf",
-    "src/fog/fog_density_field_inc.h": "56b0179b95c9c486073a2dfd72e9df1d7334843f1951c87f3e88eb7be64d9df0",
+    "src/fog/fog_density_field_inc.h": "8e282b05c6fd326107f84850699026f842662c0784de04a41624e0668e47e6fa",
     "src/fog/fog_shadow_grid_inc.h": "fae5df8acfe6e4c969678093fa9d5fe750180f22a572df017d59cebe0f927f96"
   },
   "word_count": 922,

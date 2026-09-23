@@ -935,9 +935,9 @@ void final_admission_metric(ownership::AdmissionMonitor* monitor,const char* pha
 void gpu_sync_attach(Device& ctx,IDirect3DDevice9* d) {
     try { ctx.gpu_sync=std::make_unique<renderer::GpuSyncTiming>(); } catch (...) { log("gpu_sync_timing available=0 reason=allocation result=%08lx device=%llu event=create",E_OUTOFMEMORY,ctx.id); return; }
     const HRESULT hr=ctx.gpu_sync->attach(d,ctx.original);
-    log("gpu_sync_timing available=%u reason=%s result=%08lx device=%llu event=create queries=%u references=%u window=%u spin_limit_ms=%u",
+    log("gpu_sync_timing available=%u reason=%s result=%08lx device=%llu event=create queries=%u references=%u window=%u spin_limit_ms=%u census=%u",
         unsigned(ctx.gpu_sync->available()),ctx.gpu_sync->reason(),hr,ctx.id,ctx.gpu_sync->available()?gpu_sync_timing::boundary_count:0u,
-        ctx.gpu_sync->references(),ctx.gpu_sync->tracker().window(),renderer::GpuSyncTiming::spin_limit_ms);
+        ctx.gpu_sync->references(),ctx.gpu_sync->tracker().window(),renderer::GpuSyncTiming::spin_limit_ms,unsigned(ctx.gpu_sync->census_available()));
     if(!ctx.gpu_sync->available()){ctx.gpu_sync.reset();return;} // soft fail: nothing held, no per-frame work
     ctx.motion_output.configure_gpu_sync_timing(ctx.gpu_sync.get());
 }
@@ -995,6 +995,12 @@ void gpu_sync_present(Device& ctx) {
             r.window,p.window.n?gpu_sync_timing::pass_name(pass):"none",p.window.median,p.window.p90,p.window.n,p.wait_median,p.session.n,p.session.median,p.session.p90,
             r.dt_window.median,r.dt_window.p90,r.first_frame,r.last_frame,r.frames,r.dropped,r.unclosed,ctx.id);
     }
+    // The fog repair-pixel census (fog-gpu-cost.md, step A): per frame with a repair draw, the pixels its clip kept as
+    // ppm of the target; n=0 when no fog frame ran in the window.
+    if(ctx.gpu_sync->census_available())
+        log("volumetric_fog_repair_census window=%llu frames=%llu..%llu n=%u median_ppm=%u p90_ppm=%u max_ppm=%u last_pixels=%u area=%u unread=%u lost=%u failed=%u device=%llu",
+            r.window,r.first_frame,r.last_frame,r.census.ppm.n,r.census.ppm.median,r.census.ppm.p90,r.census.max_ppm,r.census.pixels,r.census.area,r.census.unread,
+            r.census.lost,r.census.failed,ctx.id);
 }
 ULONG WINAPI release_device(IDirect3DDevice9* d) {
     CpuCallBoundary cpu;

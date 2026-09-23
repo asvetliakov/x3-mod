@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_EXE = ROOT / 'build/gpu_sync_timing_fixture.exe'
 SOURCES = ('src/renderer/gpu_sync_timing_core.h', 'src/renderer/gpu_sync_timing.h', 'src/renderer/gpu_sync_timing.cpp', 'src/proxy/cpu_state.h',
            'verification/probe/gpu_sync_timing_fixture.cpp', 'verification/probe/run_gpu_sync_timing.py')
-EXPECTED_CHECKS = 30  # soft fail 4, attach 2, CPU state 2, 2 phases x 7, syncs/failures 2, session 1, Reset 2, failed Reset/detach 3
+EXPECTED_CHECKS = 32  # soft fail 4, attach 2, CPU state 2, 2 phases x 8 (with the repair census), syncs/failures 2, session 1, Reset 2, failed Reset/detach 3
 EXPECTED_WINDOWS = {'first': 3, 'after_reset': 1}
 
 
@@ -47,7 +47,7 @@ def fields(line):
 
 def parse(text):
     """The fixture's report as one dictionary (also the host test's subject)."""
-    report = {'checks': [], 'softfail': [], 'windows': [], 'passes': [], 'cpu_state': None, 'support': None, 'stats': None, 'session': None, 'sync_cost': None,
+    report = {'checks': [], 'softfail': [], 'windows': [], 'passes': [], 'census': [], 'cpu_state': None, 'support': None, 'stats': None, 'session': None, 'sync_cost': None,
               'reset': None, 'device': None, 'probe': None, 'result': None}
     for line in text.splitlines():
         if line.startswith('CHECK '):
@@ -59,6 +59,8 @@ def parse(text):
             report['windows'].append(fields(line))
         elif line.startswith('PASS '):
             report['passes'].append(fields(line))
+        elif line.startswith('CENSUS '):
+            report['census'].append(fields(line))
         elif line.startswith('DEVICE '):
             report['device'] = line[len('DEVICE '):]
         else:
@@ -91,7 +93,7 @@ def summary_of(report):
     return {'checks': report['check_count'], 'failed_checks': report['failed_checks'], 'device': report['device'], 'probe': report['probe'],
             'support': report['support'], 'softfail': [(s['kind'], s['reason'], s['available']) for s in report['softfail']],
             'windows': [(w['phase'], w['window'], w['n_frames'], w['dt_median_us']) for w in report['windows']],
-            'pass_median_us_per_window': medians, 'stats': report['stats'], 'session': report['session'], 'sync_cost': report['sync_cost'], 'reset': report['reset']}
+            'pass_median_us_per_window': medians, 'census': [(c['phase'], c['window'], c['n'], c['median_ppm'], c['last_pixels'], c['unread']) for c in report['census']], 'stats': report['stats'], 'session': report['session'], 'sync_cost': report['sync_cost'], 'reset': report['reset']}
 
 
 def main():

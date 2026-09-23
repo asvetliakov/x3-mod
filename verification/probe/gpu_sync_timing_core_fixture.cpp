@@ -29,7 +29,10 @@ int main() {
     std::uint32_t values[5] = {50, 10, 40, 20, 30};
     const g::Stat exact = g::Tracker::exact_of(values, 5);
     check(exact.n == 5 && exact.median == 30 && exact.p90 == 50, "exact nearest-rank median and p90");
-    check(g::pass_count == 19 && g::boundary_count == 38 && std::string_view(g::pass_name(g::FogRoute)) == "fog_route" && std::string_view(g::pass_name(g::Present)) == "present" && std::string_view(g::pass_name(g::TaaCopy)) == "taa_copy" && std::string_view(g::pass_name(g::TaaDisplay)) == "taa_display" && std::string_view(g::pass_name(99)) == "?", "passes and names");
+    check(g::pass_count == 22 && g::boundary_count == 44 && std::string_view(g::pass_name(g::FogRoute)) == "fog_route" && std::string_view(g::pass_name(g::Present)) == "present" && std::string_view(g::pass_name(g::TaaCopy)) == "taa_copy" && std::string_view(g::pass_name(g::TaaDisplay)) == "taa_display"
+          && g::TaaDisplay == 18 && g::FogMarch == 19 && std::string_view(g::pass_name(g::FogMarch)) == "fog_march" && std::string_view(g::pass_name(g::FogComposite)) == "fog_composite" && std::string_view(g::pass_name(g::FogRepair)) == "fog_repair" && std::string_view(g::pass_name(99)) == "?", "passes and names");
+    check(g::census_ppm(0, 100) == 0 && g::census_ppm(1, 3) == 333333 && g::census_ppm(255, 527) == 483870 && g::census_ppm(5, 0) == 0 && g::census_ppm(7, 5) == 1000000
+          && g::census_ppm(2073600, 2073600) == 1000000, "census ppm: integer, zero area, saturated");
 
     auto t = std::make_unique<g::Tracker>();
     t->configure(4);
@@ -82,6 +85,23 @@ int main() {
     check(r2.pass[g::Scene].session.n == 7 && r2.pass[g::Scene].session.median == 43 && r2.dt_session.n == 5, "session across windows (exact below 64 us)");
     const g::Report s = t->summary();
     check(s.window == 2 && s.pass[g::Scene].session.n == 7 && s.pass[g::Scene].window.n == 0, "summary: session only");
+    // Census: filed with kept frames only (an abandoned frame drops it), unread counted, per-window reset.
+    t->clear_frame();
+    const std::uint32_t census_pixels[6] = {100, 300, 200, 0, 0, 0};
+    const g::CensusRead census_reads[6] = {g::CensusOk, g::CensusOk, g::CensusOk, g::CensusNotReady, g::CensusLost, g::CensusFailed};
+    for (unsigned k = 0; k < 6; ++k) {
+        const std::uint64_t base = 200000 + k * 20000;
+        t->begin(g::Scene, base); t->end(g::Scene, base + 10, 0);
+        if (k == 1) t->abandon_frame();
+        t->census(census_pixels[k], 1000, census_reads[k]);
+        t->frame(20 + k, base + 16000, f);
+    }
+    const g::Report rc = t->report();
+    check(rc.census.ppm.n == 2 && rc.census.ppm.median == 100000 && rc.census.ppm.p90 == 200000 && rc.census.max_ppm == 200000 && rc.census.pixels == 200 && rc.census.area == 1000
+          && rc.census.unread == 1 && rc.census.lost == 1 && rc.census.failed == 1, "census: kept frames only; not ready, lost and failed counted apart");
+    t->begin(g::Scene, 300000); t->end(g::Scene, 300010, 0); t->frame(30, 316000, f);
+    const g::Report rn = t->report();
+    check(rn.census.ppm.n == 0 && rn.census.max_ppm == 0 && rn.census.unread == 0 && rn.census.lost == 0 && rn.census.failed == 0 && rn.census.area == 0, "census resets per window; a frame without a census files none");
     // Bounded arrays: frames past the window without a report never overflow.
     t->configure(1);
     for (unsigned k = 0; k < 700; ++k) { t->begin(g::Taa, k * 10); t->end(g::Taa, k * 10 + 3, 0); t->frame(1000 + k, 1000000 + k * 100, f); }

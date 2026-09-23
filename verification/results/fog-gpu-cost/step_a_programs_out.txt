@@ -1,0 +1,12 @@
+fog_density_march            bytecode=identical slots 415 -> 415 tex 17 -> 17 loops 1 -> 1 breakc 0 -> 0 below_512=True
+fog_density_composite        bytecode=identical slots 203 -> 203 tex 10 -> 10 loops 0 -> 0 breakc 0 -> 0 below_512=True
+fog_density_repair           bytecode=identical slots 510 -> 510 tex 22 -> 22 loops 1 -> 1 breakc 0 -> 0 below_512=True
+fog_density_march_exact      bytecode=identical slots 301 -> 301 tex 17 -> 17 loops 1 -> 1 breakc 0 -> 0 below_512=True
+fog_density_march_look       bytecode=identical slots 425 -> 425 tex 15 -> 15 loops 1 -> 1 breakc 0 -> 0 below_512=True
+fog_density_composite_look   bytecode=identical slots 210 -> 210 tex 10 -> 10 loops 0 -> 0 breakc 0 -> 0 below_512=True
+fog_density_repair_look      bytecode=identical slots 510 -> 510 tex 20 -> 20 loops 1 -> 1 breakc 0 -> 0 below_512=True
+fog_density_visibility_grid  bytecode=identical slots 319 -> 319 tex 12 -> 12 loops 2 -> 2 breakc 0 -> 0 below_512=True
+fog_density_march_grid       bytecode=identical slots 352 -> 352 tex  8 ->  8 loops 1 -> 1 breakc 0 -> 0 below_512=True
+fog_density_repair_grid      bytecode=identical slots 453 -> 453 tex 13 -> 13 loops 1 -> 1 breakc 0 -> 0 below_512=True
+fog_dust_motes_look          bytecode=identical slots 311 -> 311 tex 13 -> 13 loops 0 -> 0 breakc 0 -> 0 below_512=True
+fog_dust_motes_grid          bytecode=identical slots 257 -> 257 tex  6 ->  6 loops 0 -> 0 breakc 0 -> 0 below_512=True

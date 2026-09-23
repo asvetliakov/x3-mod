@@ -21,7 +21,13 @@
 // Reset. CreateQuery refused at attach: available() false, nothing held, and
 // the caller drops the object (no per-frame work). Each boundary preserves the
 // caller's x87/MXCSR state and LastError (PreserveCpuState). No heap after the
-// object exists.
+// object exists. The pixel census (Marks::census_begin/end, the fog repair
+// quad): one D3DQUERYTYPE_OCCLUSION query created after the event queries when
+// the device supports it (optional: the timing works without it), Issue(BEGIN)
+// / Issue(END) around the first bracketed draw of a frame, read without FLUSH in
+// frame() after the Present pair has retired the GPU; same lifetime as the event
+// queries. It is created through the native table, so the proxy's query hooks
+// never see it.
 #include <d3d9.h>
 #include <cstdint>
 #include "gpu_sync_timing_core.h"
@@ -56,6 +62,9 @@ public:
     bool tripped() const noexcept { return tripped_; } // the sticky timeout cut-off
     void begin(unsigned pass) noexcept override { if (available_) mark(pass, true); }
     void end(unsigned pass) noexcept override { if (available_) mark(pass, false); }
+    void census_begin() noexcept override;
+    void census_end(std::uint32_t area) noexcept override;
+    bool census_available() const noexcept { return census_ != nullptr; }
     // After the native Present of `frame` returned (the Present end already
     // marked): files the frame. True when a window closed and `report` holds it.
     bool frame(std::uint64_t frame, gpu_sync_timing::Report* report) noexcept;
@@ -75,6 +84,9 @@ private:
     IDirect3DDevice9* device_ = nullptr;
     void* const* native_ = nullptr;
     IDirect3DQuery9* queries_[gpu_sync_timing::boundary_count]{};
+    IDirect3DQuery9* census_ = nullptr;
+    enum class Census : unsigned { Idle, Open, Issued, Done } census_state_ = Census::Idle; // Done: this frame's bracket is spent
+    std::uint32_t census_area_ = 0;
     gpu_sync_timing::Tracker tracker_{};
     GpuSyncTimingStats stats_{};
     std::uint64_t frequency_ = 0;

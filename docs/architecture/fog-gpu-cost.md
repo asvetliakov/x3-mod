@@ -2,7 +2,7 @@
 
 Question: how to cut the GPU cost of the stored-density fog route without changing the accepted look
 (L2 law, density scale 1.0x, 22.5 km fade, dust motes 1300,3 / MAX_PX 8, shadow pass off). Plan for
-ratification; nothing here is implemented. [M] measured, [I] inferred.
+ratification; step A is implemented (last section), B and C are not. [M] measured, [I] inferred.
 
 Measured (Run 73 C, run274, `--gpu-sync-timing`, stand window W4, 300 frames all `reason=ok`,
 `verification/results/run274-gpu-sync/windows.txt`): `fog_route` 4.43 ms median / 5.15 p90, W5-W6
@@ -159,3 +159,47 @@ in the march program, the repair-pixel census) goes into the candidate after the
 split and a new reference; step C (quarter-resolution march) waits for the census. Context: the fog shadow pass
 itself costs about 0.3 ms of the route (Run 74 B), so the cuts have to come from the march and composite; the stand
 is CPU-bound at 22 ms, so a GPU cut shows as headroom there and as FPS only in GPU-bound scenes.
+
+## Step A implemented (2026-09-23)
+
+Uncommitted worktree on 72645b5e, not installed. [M] measured on the fixtures; ledgers
+[volumetric-fog.md](../verification/volumetric-fog.md) and [gpu-sync-timing.md](../verification/gpu-sync-timing.md), same date.
+
+- **Sub-pass boundaries.** `fog_march` (19), `fog_composite` (20), `fog_repair` (21) are appended after `taa_display`,
+  so the first 19 indices and names are unchanged: 22 passes, 44 event queries (section 4's "14 -> 17" predates the
+  `taa_*` passes). One `gpu_sync_timing::Span` around each of the three stored-path quads in `FogPass::execute` (the
+  binds before a quad are CPU state until the draw, so they stay in `fog_route` only). Off: one null branch per
+  boundary, no device call, nothing per draw.
+- **Early-out: in the source, off by default.** `[branch] if (sum.z < 1e-4) break;` at the end of the look's bin loop
+  in `fog_density_field_inc.h`, compiled only under `FOG_MARCH_EARLY_OUT`, which no program defines. Why off: at the
+  accepted 1.0x look 1-T stays <= .26, so T never reaches 1e-4 and the break never fires, while defined it cost
+  11-12 slots inside the 64-bin loop [M: `fog_density_march_look` 425 -> 436, `fog_density_march_grid` 352 -> 364,
+  one `breakc` each], a per-pixel cost with no gain. As shipped every fog program is byte-identical to 72645b5e
+  [M, `verification/results/fog-gpu-cost/step_a_programs.py`: 12/12, march_look 425, march_grid 352]. Available for
+  a dense-look experiment (a family or strength that saturates T): define it in `fog_density_march_ps.hlsl` (march
+  programs only; repair is at 510 of 512), regenerate, and add a saturating fixture case with a new reference to prove
+  the residual stays under the .003 gate; then price it with `fog_march` before/after at the same view.
+- **Repair census.** The occlusion-query fallback of section 4 (no flight capture carries RT2): one
+  `D3DQUERYTYPE_OCCLUSION` query created with the sync queries when the device supports it, bracketing the
+  `fog_repair` quad inside its pair, read without FLUSH after the frame's Present pair (the end sync has retired it:
+  no extra spin). Row per 300-frame window: `volumetric_fog_repair_census window= frames= n= median_ppm= p90_ppm=
+  max_ppm= last_pixels= area= unread= lost= failed= device=` (unread: not ready; lost / failed: `GetData` refused). Cost off: none (no object exists). Cost on: two `Issue` calls and one
+  `GetData` per fogged frame, nothing on the GPU beyond the occlusion counter [I]. **Semantics** [M, pass fixture]:
+  the repair clips pixels that need no repair *and* pixels whose march comes out exactly empty, so the count is the
+  written repair pixels, a lower bound on the marched ones (odd 31x17 target: 255 need the repair, 125 written, equal
+  to the CPU twin). It measures today's 2-px spacing only; the 4-px fraction for step C still needs the RT2 census.
+- **Boundary overhead in the diagnostic.** The three pairs add about 3 x 0.264 = 0.79 ms to `fog_route` and to the
+  serialised frame [I, from the light-pair floor]; with the nested `motes` pair the envelope carries four floors.
+
+How to read the next `--gpu-sync-timing` flight (a fogged stand window, all 300 frames `reason=ok`):
+
+- `fog_route` reads about 0.8 ms above run274's 4.43 for the same work. Its exclusive remainder, `fog_route -
+  fog_march - fog_composite - fog_repair - motes` (the sub-pass medians already include their own floors), is the
+  normalize/copy/binds plus the route's own pair floor; compare that and the sum against run274's ~3.9 ms exclusive.
+- `fog_march - 0.264` against section 1's 2.9-3.3 ms prices step B (far bins 24 cut the march's far share); a
+  `fog_march` well below that range means the model over-weights the march and B's saving shrinks with it.
+- `fog_composite - 0.264` against 0.3-0.45 ms and `fog_repair - 0.264` against 0.15-0.3 ms plus repaired marches.
+  With the census: `(fog_repair - 0.264) / (median_ppm x 2,073,600 / 1e6)` is the cost per written repair pixel,
+  an upper bound on the per-pixel march cost because the 5-tap prologue of every pixel is in it. Step C multiplies the
+  pixel count at 4-px spacing by that cost; the census alone does not give the 4-px count.
+- The early-out is off in this build, so `fog_march` carries no break; see above for the dense-look experiment.

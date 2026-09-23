@@ -198,8 +198,9 @@ public:
     const FogMoteReport& mote_report() const noexcept { return mote_report_; }
     bool motes_refused() const noexcept { return motes_refused_; } // sticky until detach; the fog draws without motes
     bool motes_variant() const noexcept { return density_config_.dust_motes; } // the mote toggle the last prepare_density latched
-    // --gpu-sync-timing (engine-frame-time.md, "GPU sync timing"): the mote
-    // draw's boundary pair inside execute. Null (the default): one branch per mote draw.
+    // --gpu-sync-timing (engine-frame-time.md, "GPU sync timing"): the boundary pairs inside execute (fog_march,
+    // fog_composite, fog_repair around the three quads, motes around the mote draw) and the repair-pixel census
+    // bracket (fog-gpu-cost.md, step A). Null (the default): one branch per boundary, no device call.
     void configure_sync_timing(gpu_sync_timing::Marks* marks) noexcept { sync_marks_ = marks; }
     // Caller contract for the worker's lifetime:
     //  - MotionOutput::release_resources (the device release path, never under the loader lock)

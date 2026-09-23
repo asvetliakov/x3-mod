@@ -39,6 +39,8 @@ HRESULT GpuSyncTiming::create() noexcept {
         if (SUCCEEDED(hr) && !queries_[i]) hr = E_POINTER;
     }
     if (FAILED(hr)) { release(); reason_ = "create_failed"; return create_result_ = hr; } // partial creation rolled back
+    // The optional census query: unsupported or refused leaves the timing available without it.
+    if (create_query(device_, D3DQUERYTYPE_OCCLUSION, nullptr) == S_OK && (FAILED(create_query(device_, D3DQUERYTYPE_OCCLUSION, &census_)) || !census_)) census_ = nullptr;
     add_ref(device_); const ULONG after = release_fn(device_);
     references_ = after > before ? unsigned(after - before) : 0u;
     tracker_.clear_frame(); consecutive_failures_ = 0;
@@ -49,6 +51,8 @@ void GpuSyncTiming::release() noexcept {
     PreserveCpuState guard;
     references_ = 0; // before the loop: a query's final Release re-enters the hooked device Release
     for (IDirect3DQuery9*& query : queries_) { IDirect3DQuery9* old = query; query = nullptr; if (old) old->Release(); }
+    if (IDirect3DQuery9* old = census_) { census_ = nullptr; old->Release(); }
+    census_state_ = Census::Idle;
     tracker_.clear_frame();
     available_ = false; release_pending_ = false; references_ = 0;
 }
@@ -108,8 +112,29 @@ void GpuSyncTiming::mark(unsigned pass, bool begin) noexcept {
     consecutive_failures_ = 0;
     if (begin) tracker_.begin(pass, after); else tracker_.end(pass, after, wait);
 }
+void GpuSyncTiming::census_begin() noexcept {
+    if (!available_ || !census_ || census_state_ != Census::Idle || tracker_.abandoned()) return;
+    PreserveCpuState guard;
+    census_state_ = SUCCEEDED(census_->Issue(D3DISSUE_BEGIN)) ? Census::Open : Census::Done;
+}
+void GpuSyncTiming::census_end(std::uint32_t area) noexcept {
+    if (census_state_ != Census::Open || !census_) return; // closes a begun bracket even after the cut-off switched the boundaries off
+    PreserveCpuState guard;
+    census_state_ = SUCCEEDED(census_->Issue(D3DISSUE_END)) ? Census::Issued : Census::Done;
+    census_area_ = area;
+}
 bool GpuSyncTiming::frame(std::uint64_t frame, gpu_sync_timing::Report* report) noexcept {
     if (!available_) return false;
+    if (census_state_ == Census::Issued && !tracker_.abandoned()) {
+        // The Present pair's end sync retired every command before it: the count is ready, no FLUSH, no spin.
+        PreserveCpuState guard;
+        DWORD pixels = 0;
+        const HRESULT hr = census_->GetData(&pixels, sizeof pixels, 0);
+        tracker_.census(hr == S_OK ? std::uint32_t(pixels) : 0u, census_area_,
+                        hr == S_OK ? gpu_sync_timing::CensusOk : hr == S_FALSE ? gpu_sync_timing::CensusNotReady
+                        : hr == D3DERR_DEVICELOST ? gpu_sync_timing::CensusLost : gpu_sync_timing::CensusFailed);
+    }
+    census_state_ = Census::Idle;
     if (!tracker_.frame(frame, qpc(), frequency_)) return false;
     const gpu_sync_timing::Report r = tracker_.report();
     if (report) *report = r;

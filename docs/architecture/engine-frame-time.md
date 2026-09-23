@@ -1814,7 +1814,7 @@ not the pipelined frame. It replaces the unmerged timestamp-query attempt (branc
 device used here supports.
 
 - **Mechanism** (`src/renderer/gpu_sync_timing.{h,cpp}`, core `gpu_sync_timing_core.h`): one
-  `D3DQUERYTYPE_EVENT` query per boundary (19 passes x begin/end = 38, created once through the
+  `D3DQUERYTYPE_EVENT` query per boundary (22 passes x begin/end = 44, created once through the
   device's native `CreateQuery`, reused every frame). At a boundary: `Issue(D3DISSUE_END)`, then
   `GetData(D3DGETDATA_FLUSH)` until `S_OK`, the spin timed with `QueryPerformanceCounter`. The
   begin spin drains everything earlier, so end stamp minus begin stamp is the pass's CPU
@@ -1822,18 +1822,21 @@ device used here supports.
   alone (GPU work still pending when the CPU finished submitting). Sync floor in the X3 bottle
   (Wine fixture, measured): an empty pair 18 us median, a pair around one 16x16 quad 264 us
   median, so a small pass reads about 250 us of round trip; about 30 syncs per frame before the
-  `taa_*` sub-passes, about 40 with them.
+  `taa_*` sub-passes, about 40 with them, about 46 with the `fog_*` sub-passes on a fogged frame.
 - **Passes**: `scene` (first `BeginScene` of the frame to just before the native Present),
   `engine` (first `BeginScene` to the scene end, the engine's own draw span), `shadow_depth`,
   `sun_apply`, `retention`, `fog_fill` (stored-density prepare/upload), `fog_route` (the fog
   transaction), `motes`, `taa`, `hdr_writeback` (flushes add up), `meter`, `hdr_readback`,
-  `bloom` (prepare + commit), `present` (the proxy's Present work and the native Present), and inside
+  `bloom` (prepare + commit), `present` (the proxy's Present work and the native Present), inside
   `taa` the sub-passes `taa_copy`, `taa_mask`, `taa_box`, `taa_resolve`, `taa_display` ("TAA stage
-  cost" below).
+  cost" below), and inside `fog_route` the sub-passes `fog_march`, `fog_composite`, `fog_repair`
+  (indices 19-21; each around one quad of the stored path: the half-resolution march, the
+  full-resolution composite and repair; [fog-gpu-cost.md, "Step A implemented"](fog-gpu-cost.md#step-a-implemented-2026-09-23)).
 - **Reading the spans**: nested spans include their inner pass; subtract for the exclusive cost.
   `engine` contains `fog_fill` and `hdr_readback` (the HDR latch) and every mid-scene
   `hdr_writeback` flush with its `meter`; `fog_route` contains `motes`; `hdr_writeback` contains
-  `meter`; `taa` contains the five `taa_*` pairs and their sync floors. `present` begins at the Present hook's entry, before `scene` ends just before the
+  `meter`; `taa` contains the five `taa_*` pairs and their sync floors; `fog_route` also contains the
+  three `fog_*` pairs and their sync floors (about 3 x 0.264 ms). `present` begins at the Present hook's entry, before `scene` ends just before the
   native Present, so the proxy's pre-Present work (sector sample, notices, overlay) is counted in
   both. `scene` also carries the `engine` begin sync (both begins run back to back). The
   `shadow_depth` and `sun_apply` spans include their own per-frame log line.
@@ -1849,7 +1852,9 @@ device used here supports.
   figures so far and the window's Present-to-Present CPU `dt` of the serialised frames; an
   abandoned frame files no dt), and `gpu_sync_timing_summary` rows at the device's final release
   (session figures from a histogram, exact below 64 us, at most 6.25 % bucket width above). A
-  process that exits without releasing the device has only the window rows. Column table:
+  process that exits without releasing the device has only the window rows. When the device
+  offers `D3DQUERYTYPE_OCCLUSION`, one `volumetric_fog_repair_census` row per window as well (the
+  pixels the fog repair writes, in ppm of the target). Column table:
   [gpu-sync-timing.md](../verification/gpu-sync-timing.md).
 - **Failure and lifetime**: `CreateQuery(EVENT)` refused (support probe or part-way, partial
   creation rolled back) logs one `gpu_sync_timing available=0 reason=…` line and drops the

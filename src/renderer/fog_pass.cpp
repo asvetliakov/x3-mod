@@ -823,13 +823,15 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
         grid_report_.calls+=calls_-march_start;grid_report_.net_calls+=int(calls_-march_start)-(reached?3:0);
     } else for(unsigned i=0;i<fog_cascade_max&&may_draw&&SUCCEEDED(r.operation);++i)
         record(FogStage::March,call<SetTextureFn>(SetTexture)(device_,4+i,shadow_maps[i]));
-    if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,quad(half_width_,half_height_));
+    // --gpu-sync-timing only: the fog_march / fog_composite / fog_repair pairs bracket the three quads (the binds are
+    // CPU state until the draw); off, each is one null-pointer branch.
+    if(may_draw&&SUCCEEDED(r.operation)){gpu_sync_timing::Span sync_span(sync_marks_,gpu_sync_timing::FogMarch);record(FogStage::March,quad(half_width_,half_height_));}
     if(density&&may_draw&&SUCCEEDED(r.operation)){
         // Composite never marches (no atlas, no maps); repair marches only the pixels no half sample serves.
         record(FogStage::Composite,bind_target(f.target,width_,height_,density_composite_,samplers));
         IDirect3DTexture9* composite_inputs[]={f.depth_share,nullptr,scratch_,lit_};
         for(UINT i=0;i<4&&SUCCEEDED(r.operation);++i)if(composite_inputs[i])record(FogStage::Composite,call<SetTextureFn>(SetTexture)(device_,i,composite_inputs[i]));
-        if(SUCCEEDED(r.operation)){r.scene_write_started=true;record(FogStage::Composite,quad(width_,height_));}
+        if(SUCCEEDED(r.operation)){r.scene_write_started=true;gpu_sync_timing::Span sync_span(sync_marks_,gpu_sync_timing::FogComposite);record(FogStage::Composite,quad(width_,height_));}
         if(SUCCEEDED(r.operation))record(FogStage::Repair,bind_target(f.target,width_,height_,grid?density_repair_grid_:density_repair_,samplers));
         float repair_c0[4];density_repair_projection(p,repair_c0);
         if(SUCCEEDED(r.operation))record(FogStage::Repair,call<SetPsConstantsFn>(SetPixelShaderConstantF)(device_,0,repair_c0,1));
@@ -837,7 +839,13 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
         UINT slot=0; // the slots bound (or tried) before a failure stopped the loop
         for(;slot<8&&SUCCEEDED(r.operation);++slot)if(repair_inputs[slot])record(FogStage::Repair,call<SetTextureFn>(SetTexture)(device_,slot,repair_inputs[slot]));
         if(grid&&slot>4){const unsigned bound=draw_grid?1u:0u;grid_report_.calls+=bound;grid_report_.net_calls+=int(bound)-int(grid_replaced_repair);}
-        if(SUCCEEDED(r.operation))r.applied=record(FogStage::Repair,quad(width_,height_));
+        if(SUCCEEDED(r.operation)){
+            // The repair-pixel census: the pixels the repair's clip keeps, as an occlusion count of the full target
+            // (volumetric_fog_repair_census, fog-gpu-cost.md step A); inside the pair, whose end sync retires it.
+            gpu_sync_timing::Span sync_span(sync_marks_,gpu_sync_timing::FogRepair);
+            gpu_sync_timing::CensusSpan census(sync_marks_,std::uint32_t(width_)*std::uint32_t(height_));
+            r.applied=record(FogStage::Repair,quad(width_,height_));
+        }
         if(mote_stage&&r.applied&&SUCCEEDED(r.operation)){
             // ONE/ONE on the still bound FP16 target (no SetRenderTarget) with the constants and samplers the repair left:
             // the capsules read RT2 at s0, the atlases at s1/s7 and the maps (s4-s5) or the grid (s4). The block Apply puts

@@ -262,6 +262,13 @@ float4 march_depth(float2 uv, float4 depth) {
             }
             sum.xy += sum.z*a*float2(light.y*lerp(look_albedo.w,1.0,light.x),lerp(look_ambient1.w,1.0,light.x));
             sum.z *= 1.0-a.x;
+#ifdef FOG_MARCH_EARLY_OUT
+            // Transmittance early-out (fog-gpu-cost.md cut #3), defined by no program: at the 1.0x look 1-T stays <= .26,
+            // so it never fires and would cost 11-12 slots per bin; kept for a dense-look experiment (a march program
+            // defines it, repair never: 510 of 512 slots; needs a new reference). The bins left out could add at most
+            // T x the per-sample radiance, S <~ 1.5e-3 at T 1e-4, under the .003 gate.
+            [branch] if (sum.z < 1e-4) break;
+#endif
         }
     }
     float cosine = dot(direction,sun_horizon.xyz);

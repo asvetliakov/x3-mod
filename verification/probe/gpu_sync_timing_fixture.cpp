@@ -5,7 +5,8 @@
 // device references the queries hold, 48 frames of fake passes through the
 // production protocol (BeginScene opens Scene and Engine, heavy / light / empty /
 // nested pairs, the Present pair, frame()) with a 16-frame window so three windows
-// close, the window and session figures, CPU-state and LastError preservation
+// close, the window and session figures, the repair-pixel census (one occlusion
+// query around the fog_repair quad, exact pixel count per window), CPU-state and LastError preservation
 // across a boundary, the sync cost of an empty pair, then Reset (queries released
 // before, recreated after, 16 more frames), a failed Reset and detach. Built by
 // CMake (target gpu_sync_timing_fixture); run through
@@ -56,7 +57,8 @@ constexpr unsigned W = 1280, H = 720, heavy_quads = 96, engine_quads = 32;
 // One frame of the production protocol with fake work. Heavy: ShadowDepth, FogRoute,
 // HdrWriteback; light: SunApply, Taa, Motes (nested in FogRoute), Meter (nested in
 // HdrWriteback), Bloom (two pairs, as prepare + commit), FogFill, HdrReadback, the five taa_* sub-passes (nested in Taa,
-// as TemporalPass::run marks them); empty: Retention.
+// as TemporalPass::run marks them), fog_march / fog_composite / fog_repair (nested in FogRoute before Motes, as
+// FogPass::execute marks them; the repair's light quad inside the census bracket); empty: Retention.
 static HRESULT run_frame(IDirect3DDevice9* d, GpuSyncTiming& t, std::uint64_t index, gst::Report* report, bool* closed) {
     auto heavy = [&] { for (unsigned i = 0; i < heavy_quads; ++i) quad(d, -0.5f, -0.5f, W - 0.5f, H - 0.5f, 0x00010101); };
     auto light = [&] { quad(d, 0.f, 0.f, 16.f, 16.f, 0x00010101); };
@@ -71,7 +73,12 @@ static HRESULT run_frame(IDirect3DDevice9* d, GpuSyncTiming& t, std::uint64_t in
     t.begin(gst::Retention); t.end(gst::Retention);
     t.begin(gst::ShadowDepth); heavy(); t.end(gst::ShadowDepth);
     t.begin(gst::SunApply); light(); t.end(gst::SunApply);
-    t.begin(gst::FogRoute); heavy(); t.begin(gst::Motes); light(); t.end(gst::Motes); t.end(gst::FogRoute);
+    t.begin(gst::FogRoute); heavy();
+    t.begin(gst::FogMarch); light(); t.end(gst::FogMarch);
+    t.begin(gst::FogComposite); light(); t.end(gst::FogComposite);
+    t.begin(gst::FogRepair); { gst::CensusSpan census(&t, W * H); light(); } t.end(gst::FogRepair);
+    { gst::CensusSpan second(&t, W * H); quad(d, 0.f, 0.f, 32.f, 32.f, 0x00010101); } // a second bracket in the frame: not counted
+    t.begin(gst::Motes); light(); t.end(gst::Motes); t.end(gst::FogRoute);
     t.begin(gst::Taa);
     for (unsigned sub : {gst::TaaCopy, gst::TaaMask, gst::TaaBox, gst::TaaResolve, gst::TaaDisplay}) { t.begin(sub); light(); t.end(sub); }
     t.end(gst::Taa);
@@ -88,7 +95,7 @@ static HRESULT run_frame(IDirect3DDevice9* d, GpuSyncTiming& t, std::uint64_t in
     return present;
 }
 
-struct Phase { unsigned windows = 0, frames = 0; bool all_full = true, ordered = true, nested = true, dt_ok = true, waits_bounded = true, sequence = true; std::uint64_t last_window = 0; };
+struct Phase { unsigned windows = 0, frames = 0; bool all_full = true, ordered = true, nested = true, dt_ok = true, waits_bounded = true, sequence = true, census = true; std::uint64_t last_window = 0; };
 static void print_window(const char* phase, const gst::Report& r) {
     std::printf("WINDOW phase=%s window=%llu frames=%llu..%llu n_frames=%u dropped=%u unclosed=%u dt_n=%u dt_median_us=%u dt_p90_us=%u\n", phase,
                 (unsigned long long)r.window, (unsigned long long)r.first_frame, (unsigned long long)r.last_frame, r.frames, r.dropped, r.unclosed,
@@ -97,6 +104,8 @@ static void print_window(const char* phase, const gst::Report& r) {
         std::printf("PASS phase=%s window=%llu pass=%s n=%u median_us=%u p90_us=%u wait_median_us=%u session_n=%u session_median_us=%u session_p90_us=%u\n", phase,
                     (unsigned long long)r.window, gst::pass_name(p), r.pass[p].window.n, r.pass[p].window.median, r.pass[p].window.p90, r.pass[p].wait_median,
                     r.pass[p].session.n, r.pass[p].session.median, r.pass[p].session.p90);
+    std::printf("CENSUS phase=%s window=%llu n=%u median_ppm=%u p90_ppm=%u max_ppm=%u last_pixels=%u area=%u unread=%u lost=%u failed=%u\n", phase, (unsigned long long)r.window,
+                r.census.ppm.n, r.census.ppm.median, r.census.ppm.p90, r.census.max_ppm, r.census.pixels, r.census.area, r.census.unread, r.census.lost, r.census.failed);
 }
 static Phase run(IDirect3DDevice9* d, GpuSyncTiming& t, unsigned frames, std::uint64_t first_index, const char* phase, bool first_dt_missing) {
     Phase m; m.last_window = t.tracker().windows();
@@ -120,6 +129,11 @@ static Phase run(IDirect3DDevice9* d, GpuSyncTiming& t, unsigned frames, std::ui
         m.nested = m.nested && P[gst::Scene].window.median >= P[gst::Engine].window.median && P[gst::FogRoute].window.median >= P[gst::Motes].window.median
                    && P[gst::HdrWriteback].window.median >= P[gst::Meter].window.median && P[gst::Engine].window.median >= P[gst::FogFill].window.median;
         for (unsigned sub = gst::TaaCopy; sub <= gst::TaaDisplay; ++sub) m.nested = m.nested && P[gst::Taa].window.median >= P[sub].window.median;
+        for (unsigned sub = gst::FogMarch; sub <= gst::FogRepair; ++sub) m.nested = m.nested && P[gst::FogRoute].window.median >= P[sub].window.median;
+        // The repair's 16x16 light quad, exactly, every frame; the frame's second bracket (a 32x32 quad) never counts.
+        const std::uint32_t ppm = gst::census_ppm(256, W * H);
+        m.census = m.census && t.census_available() && r.census.ppm.n == r.frames && r.census.ppm.median == ppm && r.census.max_ppm == ppm
+                   && r.census.pixels == 256 && r.census.area == W * H && r.census.unread == 0 && r.census.lost == 0 && r.census.failed == 0;
         const bool first_window = m.windows == 1;
         m.dt_ok = m.dt_ok && r.dt_window.n == (first_window && first_dt_missing ? r.frames - 1 : r.frames) && r.dt_window.median >= P[gst::Scene].window.median;
     }
@@ -134,6 +148,7 @@ static void judge(const char* phase, const Phase& m, unsigned expected_windows) 
     std::snprintf(label, sizeof label, "%s_nested_spans_cover_inner", phase); require(label, m.nested);
     std::snprintf(label, sizeof label, "%s_dt_counted_and_covers_scene", phase); require(label, m.dt_ok);
     std::snprintf(label, sizeof label, "%s_wait_median_p90_ordered", phase); require(label, m.waits_bounded);
+    std::snprintf(label, sizeof label, "%s_repair_census_exact", phase); require(label, m.census);
 }
 
 int main() {
@@ -179,8 +194,8 @@ int main() {
         // The measured path on the native table.
         hr = t->attach(d, native, 16);
         const ULONG attached = probe(d);
-        std::printf("SUPPORT available=%u reason=%s result=%08lx references=%u device_delta=%lu queries=%u frequency=%llu\n", unsigned(t->available()), t->reason(), (unsigned long)hr,
-                    t->references(), (unsigned long)(attached - baseline), gst::boundary_count, (unsigned long long)t->frequency());
+        std::printf("SUPPORT available=%u reason=%s result=%08lx references=%u device_delta=%lu queries=%u census=%u frequency=%llu\n", unsigned(t->available()), t->reason(), (unsigned long)hr,
+                    t->references(), (unsigned long)(attached - baseline), gst::boundary_count, unsigned(t->census_available()), (unsigned long long)t->frequency());
         if (!require("attach_available", hr == S_OK && t->available())) throw std::runtime_error("event queries unavailable on this device");
         require("references_match_device_delta", t->references() == unsigned(attached - baseline) && t->references() > 0);
         bind(d);
@@ -205,7 +220,7 @@ int main() {
         const auto& s = t->stats();
         std::printf("STATS phase=first syncs=%llu polls=%llu issue_failures=%llu data_failures=%llu timeouts=%llu dropped_frames=%llu\n", (unsigned long long)(s.syncs - syncs_before),
                     (unsigned long long)s.polls, (unsigned long long)s.issue_failures, (unsigned long long)s.data_failures, (unsigned long long)s.timeouts, (unsigned long long)s.dropped_frames);
-        // 38 boundaries per frame plus the commit's second Bloom pair (the repeated begins and the stray end never sync).
+        // 44 boundaries per frame plus the commit's second Bloom pair (the repeated begins and the stray end never sync).
         require("first_syncs_exact", s.syncs - syncs_before == 48ull * (gst::boundary_count + 2));
         require("first_no_failures", s.issue_failures == 0 && s.data_failures == 0 && s.timeouts == 0 && s.dropped_frames == 0);
         const gst::Report session = t->summary();

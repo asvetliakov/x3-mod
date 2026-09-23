@@ -1,0 +1,16 @@
+ADDED gates.motes_cases: True
+ADDED gates.motes_programs_below_512: True
+VARIES pass_fixture.atlas_comparisons: 14 -> 16
+VARIES pass_fixture.checks: 73 -> 123
+VARIES pass_fixture.fill.drawn_frames: 625 -> 619
+VARIES pass_fixture.fill.frames: 1074 -> 1064
+VARIES pass_fixture.fill.no_fog_frames: 448 -> 444
+VARIES pass_fixture.prepare_cpu.idle_frames: 1933 -> 2759
+VARIES pass_fixture.prepare_cpu.upload_frames: 6349 -> 7261
+VARIES pass_fixture.prepare_cpu.us_per_update_surface: 9.68 -> 10.06
+VARIES pass_fixture.recentre.upload_bytes: 341832 -> 338224
+VARIES pass_fixture.seam_recentres[0].upload_bytes: 264968 -> 264712
+VARIES pass_fixture.seam_recentres[1].upload_bytes: 370248 -> 372536
+VARIES pass_fixture.seam_recentres[2].upload_bytes: 264968 -> 265224
+VARIES pass_fixture.state_restorations: 1099 -> 1125
+compared=568 differing=0 added=95 scheduling=33 pass_off_hashes_equal=True n_hashes=11 result=PASS gates=30/30 pass_fixture_checks 73 -> 123

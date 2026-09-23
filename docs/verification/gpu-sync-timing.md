@@ -57,6 +57,14 @@ changed, so the recorded exe predates it: rebuild before the next run.
 | `dropped` | frames abandoned by a failed or timed-out sync or a non-cooperative device |
 | `unclosed` | passes still open at a frame's end (not filed) |
 
+`volumetric_fog_repair_census` (one row per window while the device offers `D3DQUERYTYPE_OCCLUSION`; fog-gpu-cost.md
+step A): `n` frames of the window with a fog repair draw; `median_ppm`, `p90_ppm`, `max_ppm` the pixels the repair
+wrote per frame in parts per million of the target (`area`); `last_pixels` the last such frame's count; for counted draws of kept frames whose result was not read, `unread`
+(`GetData` S_FALSE: not ready at the frame's end, expected 0), `lost` (`D3DERR_DEVICELOST`) and `failed` (any other
+refusal) apart. The repair's `clip` drops pixels that need no
+repair and pixels whose full-resolution march comes out exactly empty (T 1, S 0), so the count is a lower bound on the
+marched repair pixels, equal to it wherever every repaired ray crosses fog.
+
 ## Run 274 (Run 73 C, 2026-09-23): first flight, 1920×1080
 
 Diagnostic ran (available=1, 28 queries, 15 windows, dropped 0, no timeouts, no Reset). Per-pass medians and the
@@ -91,3 +99,28 @@ covers: [engine-frame-time.md, "TAA stage cost"](../architecture/engine-frame-ti
   checks, 0 differing stable fields) results.
 
 Note (2026-09-23): the committed `verification/results/bottle-X3/temporal-lattice.txt` still carries the pre-cut instruction-slot rows (line_mask 368, line_mask_camera 344, thin_box_rows 35); the post-cut counts 399 / 372 / 77 come from the TAA cost worktree's lattice run and are refreshed by the next full temporal run that is committed.
+
+## 2026-09-23: `fog_*` sub-passes and the repair census (fog-gpu-cost.md step A; uncommitted worktree, not installed)
+
+Three passes appended after `taa_display` (indices 0-18 unchanged): `fog_march` 19, `fog_composite` 20, `fog_repair`
+21, one `Span` each around the stored path's three quads in `FogPass::execute` (null marks when the option is off: one
+branch per boundary, no device call). 22 passes, 44 event queries, plus one optional occlusion query for the census
+(45 device references in the fixture). Each fog pair adds about 0.264 ms to `fog_route` and the serialised frame
+(inferred from the light-pair floor). Census: `Marks::census_begin/census_end` (default no-op), `CensusSpan` inside
+the `fog_repair` Span; `GpuSyncTiming` issues BEGIN/END on the first bracket of a frame and reads the count without
+FLUSH in `frame()` after the Present pair retired the GPU (no extra spin); the tracker files it with the frame
+(an abandoned frame drops it) and reports n / median / p90 / max ppm per window.
+
+- Host (measured): `PYTHONPATH=verification/probe /usr/bin/python3 -m unittest verification.analysis.test_gpu_sync_timing
+  verification.analysis.test_fog_density_shaders verification.analysis.test_volumetric_fog verification.analysis.test_fog_route_bridge`
+  39 tests OK; the core fixture now has 35 checks (22 passes / 44 boundaries, the fog names and indices,
+  `census_ppm`, census filing with abandoned and unread frames, per-window reset); the wiring test finds one Span per
+  fog sub-pass in `fog_pass.cpp`.
+- Wine fixture (bottle X3, scratch CMake build of the final tree, exe `fe5bbba4…`, 10.3 s): PASS 32/32 (was 30: one
+  `*_repair_census_exact` check per phase), 44 queries + census holding 45 device references, 2,208 syncs
+  (48 x (44 + 2)), 0 failures / timeouts / dropped frames, Reset recreated all 45. Each frame nests the three fog pairs
+  in `fog_route` (window medians 176-195 us around one 16x16 quad each) and brackets the `fog_repair` quad with the
+  census plus a second 32x32 bracket that must not count: every window n=16, 256 pixels, 277 ppm of 1280x720,
+  unread / lost / failed 0, also after the Reset (measured). The core fixture feeds not-ready, lost and failed reads
+  and checks each counter apart. The runner's rewritten `gpu-sync-timing.{json,txt}` were restored.
+- Production FogPass fixture: `repair_census_counts_the_pixels_the_repair_writes` (volumetric-fog.md, same date).
