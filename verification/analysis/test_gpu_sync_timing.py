@@ -42,7 +42,7 @@ class GpuSyncTimingCore(unittest.TestCase):
                     self.assertEqual(build.returncode, 0, build.stdout + build.stderr)
                     run = subprocess.run([str(executable)], capture_output=True, text=True, timeout=30)
                     self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
-                    self.assertEqual(run.stdout, 'gpu_sync_timing_core checks=35 failures=0\n')
+                    self.assertEqual(run.stdout, 'gpu_sync_timing_core checks=36 failures=0\n')
 
     def test_core_is_integer_only_without_d3d_or_heap(self):
         core = CORE.read_text()

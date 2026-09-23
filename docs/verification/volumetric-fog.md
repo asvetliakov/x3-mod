@@ -2847,3 +2847,67 @@ Design and numbers: [fog-gpu-cost.md](../architecture/fog-gpu-cost.md), "Step B 
   from the 6f16dbf6 archive, `build-exit`, `run --cases /tmp/x3-fog-family-gpu-inputs-final/cases.txt`, child 79 s,
   `check`): PASS 36,549 checks + 4 exit checks, 110 names, 0 FAIL, `legacy_bit_identical_to_baseline` true.
 - Open: a docked save load flight with this matcher.
+
+## 2026-09-24: fog route step C: quarter-resolution march behind `--fog-march-scale` (uncommitted worktree, default 2, not installed)
+
+Design, program matrix, deviation tables and flight plan: [fog-gpu-cost.md](../architecture/fog-gpu-cost.md), "Step C
+implemented". [M] unless marked.
+
+- Law: `FOG_MARCH_SCALE` (2 or 4) in `fog_density_field_inc.h`. At 2 the macros expand to the literals they replaced:
+  the 14 pre-existing fog programs are byte-identical to 638b19ad, 7 are new, and the 15 regenerated records change only
+  include and tool hashes (`header_sha256` unchanged)
+  ([step_c_programs_out.txt](../../verification/results/fog-gpu-cost/step_c_programs_out.txt)). At 4 the samples sit at
+  full pixels 4q with the same class law and fetch count. New programs (slots): march q4 and march far24 q4 425, repair
+  q4 and repair far24 q4 510, composite q4 210, needs census at 2 and at 4 77 each; all under 512.
+- Switch: launcher `--fog-march-scale {2,4}` → `X3M_FOG_MARCH_SCALE`. The variable is always written; 4 needs the
+  stored range and is refused with `--fog-shadow-pass on`. FogPass latches it at `prepare_density`, creates the quarter
+  target before its programs, and keeps the working set when a set or the target fails (sticky `program` / `target`);
+  if after a Reset both the quarter target and the half set fail in one prepare, the quarter set is dropped and the next
+  prepare builds the half set, 4 staying refused as `target` (review F1).
+  The shadow pass clamps 4 to 2. Log rows: `volumetric_fog_march_scale`, `march_scale=` on the cache config row, and
+  `fog_march_scale_refused`.
+- Needs census (`--gpu-sync-timing` only): a second occlusion query around a colour-writes-off quad that keeps
+  `needs_repair` pixels at the drawn spacing. `volumetric_fog_repair_census` gains `needs_n= needs_px= needs_p90_px=
+  needs_max_px= needs_scale= needs_missed=`.
+- Fog fixture (bottle X3, `wine_lock.py`; shader child 58 s, pass child 60 s; `--reference /tmp/x3-run67-fog-ref
+  --variant-reference /tmp/x3-run76-fog-ref-far24 --scale4-reference /tmp/x3-run77-fog-ref-scale4`): PASS 44/44.
+  - The 30 default gates pass, including `pass_off_bit_identical` (11/11 hashes). Of 685 default figures compared with
+    638b19ad's summary, 683 are equal and 2 are the expected count changes the step C cases add (shader fixture checks
+    35 → 41, generated atlases 32 → 36); the script exits 0
+    ([step_c_fixture_identity_out.txt](../../verification/results/fog-gpu-cost/step_c_fixture_identity_out.txt)).
+  - The 7 far24 gates pass and `far24.json` is unchanged.
+  - The 7 `q4_*` gates pass against the new reference (reference_sha256 `0d6b8e09f39a…`): look T max .00077, S max
+    .00044; repair .00049.
+  - Pass fixture: 177 checks after the review (142 before), 35 of them step C, including the double failure after a
+    Reset (`Q4_DOUBLE`: quarter set dropped, reason `target`, the next prepare draws the default frame at 64x36): CPU twin at the quarter rays T .00046 / S .00017; far24
+    at spacing 4 T .00047 / S .00014; back at 2 byte-identical with 3 programs and the same 322 device calls; spacing 3
+    refused; Reset; injected program failure, target failure and shadow clamp; needs census 255/255/0/255 equal to the
+    twin.
+  - Exporter bit-identity at spacing 2: run67 153/153 arrays, far24 26/26
+    ([step_c_exporter_identity_out.txt](../../verification/results/fog-gpu-cost/step_c_exporter_identity_out.txt)).
+- Look move from 2 to 4 ([step_c_deviation_out.txt](../../verification/results/fog-gpu-cost/step_c_deviation_out.txt),
+  synthetic poses; the look-case rows use the fixture's cell-centre rays, only the depth-edge rows the production 4q
+  placement):
+  - Look cases (fogged pixels): T max .023-.027, mean .0012-.0013; S max .006-.022; 9.9-11.5 % past .003; unbiased.
+  - Depth edges, class band: T max .126 at 4 against .039 at 2 vs truth; 34.7 % against 9.1 % past .003. The worst are
+    sky pixels beside thin features.
+  - Repaired pixels are exact. Needs 222 → 300, written 52 → 78.
+- GPU sync fixture (`run_gpu_sync_timing.py --exe <scratch>/gpu_sync_timing_fixture.exe`): PASS 32/32. Every window's
+  CENSUS row carries `needs_n=16 needs_px=64 needs_scale=4 needs_missed=0`, and the second bracket is not counted
+  ([step_c_gpu_sync_summary.json](../../verification/results/fog-gpu-cost/step_c_gpu_sync_summary.json)). The host core
+  fixture has 36 checks (35 before).
+- Route bridge (build, `--baseline` from a `git archive` of 6f16dbf6, `build-exit`, `run --cases
+  /tmp/x3-fog-family-gpu-inputs-final/cases.txt`, children 9 / 25 / 48 s, `check`): PASS, 36,651 checks + 4 exit
+  checks, 110 names, `legacy_bit_identical_to_baseline` true
+  ([step_c_route_bridge_summary.json](../../verification/results/fog-gpu-cost/step_c_route_bridge_summary.json); built
+  before the review's F1 fix, which the orchestrator's gate re-runs).
+- Tracked outputs:
+  - The runners' rewrites of `verification/results/bottle-X3/` and `verification/results/fog-density-route/` were
+    restored.
+  - Shader records: the fog programs were regenerated natively (`tool_sources` refresh only, bytecode unchanged), and
+    the nine bloom records were regenerated for the generator hash (bytecode unchanged; `test_bloom_programs` OK).
+- Build and host: scratch MinGW i686 RelWithDebInfo, 0 warnings; `check_no_x87.py` PASS, 673 reachable. Host tests
+  `test_fog_density_shaders`, `test_volumetric_fog` (new `test_march_scale_option`), `test_fog_route_bridge`,
+  `test_fog_look_reference`, `test_gpu_sync_timing`, `test_launcher_stderr_tee`, `test_lod_scale_launch`: 59 tests OK; after the review fixes the fog modules with `test_bloom_programs`: 51 tests OK, fresh build 0 warnings, x87 PASS 673.
+- Open: the flight (same stand, `--gpu-sync-timing`, `--fog-march-scale 2` then `4`; `fog_march`, `needs_px`, and the
+  look on station silhouettes against fog).

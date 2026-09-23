@@ -28,6 +28,15 @@ PROGRAMS.update(LOOK_PROGRAMS)
 FAR24_PROGRAMS = {name: ROOT / ('src/renderer/%s_program_inc.h' % name) for name in (
     'fog_density_march_look_far24', 'fog_density_repair_look_far24')}
 PROGRAMS.update(FAR24_PROGRAMS)
+# The look marched at quarter resolution (docs/architecture/fog-gpu-cost.md step C, --fog-march-scale 4): march and repair
+# at both far-bin counts and the composite, samples 4 px apart; the renderer creates these instead of the scale-2 set.
+Q4_PROGRAMS = {name: ROOT / ('src/renderer/%s_program_inc.h' % name) for name in (
+    'fog_density_march_look_q4', 'fog_density_march_look_far24_q4', 'fog_density_repair_look_q4', 'fog_density_repair_look_far24_q4',
+    'fog_density_composite_look_q4')}
+PROGRAMS.update(Q4_PROGRAMS)
+# --gpu-sync-timing only: the needs-repair census quad at spacing 2 and 4 (no march, no loop).
+CENSUS_PROGRAMS = {name: ROOT / ('src/renderer/%s_program_inc.h' % name) for name in ('fog_density_needs_census', 'fog_density_needs_census_q4')}
+PROGRAMS.update(CENSUS_PROGRAMS)
 # The sun-visibility slice grid (X3M_FOG_SHADOW_PASS=1): the pass and the look's march/repair reading it.
 GRID_PROGRAMS = {name: ROOT / ('src/renderer/%s_program_inc.h' % name) for name in (
     'fog_density_visibility_grid', 'fog_density_march_grid', 'fog_density_repair_grid')}

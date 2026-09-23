@@ -88,6 +88,39 @@ constexpr DWORD density_march_far24_words[] = {
 constexpr DWORD density_repair_far24_words[] = {
 #include "fog_density_repair_look_far24_program_inc.h"
 };
+// The same looks marched at quarter resolution (FogDensityConfig::march_scale 4, fog-gpu-cost.md step C): march, repair and
+// composite read their samples at full pixels 4q; created instead of the programs above when asked. Composite is shared by
+// both far-bin counts at each spacing.
+constexpr DWORD density_march_q4_words[] = {
+#include "fog_density_march_look_q4_program_inc.h"
+};
+constexpr DWORD density_repair_q4_words[] = {
+#include "fog_density_repair_look_q4_program_inc.h"
+};
+constexpr DWORD density_march_far24_q4_words[] = {
+#include "fog_density_march_look_far24_q4_program_inc.h"
+};
+constexpr DWORD density_repair_far24_q4_words[] = {
+#include "fog_density_repair_look_far24_q4_program_inc.h"
+};
+constexpr DWORD density_composite_q4_words[] = {
+#include "fog_density_composite_look_q4_program_inc.h"
+};
+// --gpu-sync-timing only: the needs-repair census quad at either spacing (clips unless needs_repair; colour writes off).
+constexpr DWORD density_needs_words[] = {
+#include "fog_density_needs_census_program_inc.h"
+};
+constexpr DWORD density_needs_q4_words[] = {
+#include "fog_density_needs_census_q4_program_inc.h"
+};
+struct ProgramWords { const DWORD* words; std::size_t count; };
+// Index: (far bins 24 ? 1 : 0) + (march scale 4 ? 2 : 0). Composite and census by spacing only.
+constexpr ProgramWords density_march_programs[4] = {{density_march_words,std::size(density_march_words)},{density_march_far24_words,std::size(density_march_far24_words)},
+    {density_march_q4_words,std::size(density_march_q4_words)},{density_march_far24_q4_words,std::size(density_march_far24_q4_words)}};
+constexpr ProgramWords density_repair_programs[4] = {{density_repair_words,std::size(density_repair_words)},{density_repair_far24_words,std::size(density_repair_far24_words)},
+    {density_repair_q4_words,std::size(density_repair_q4_words)},{density_repair_far24_q4_words,std::size(density_repair_far24_q4_words)}};
+constexpr ProgramWords density_composite_programs[2] = {{density_composite_words,std::size(density_composite_words)},{density_composite_q4_words,std::size(density_composite_q4_words)}};
+constexpr ProgramWords density_needs_programs[2] = {{density_needs_words,std::size(density_needs_words)},{density_needs_q4_words,std::size(density_needs_q4_words)}};
 // The sun-visibility slice grid (docs/architecture/fog-shadow-pass.md, FogDensityConfig::shadow_pass): the pass over
 // the 4x4-tile RGBA8 atlas and the look's march/repair reading it (FOG_SHADOW_PASS). Created beside the look programs
 // when the pass is requested; the *_look pair above stays the control variant.
@@ -197,8 +230,9 @@ struct FogPass::SavedState {
 FogPass::~FogPass(){detach();}
 void FogPass::release_grid() noexcept { drop(grid_surface_);drop(grid_);grid_width_=grid_height_=0; }
 void FogPass::release_motes() noexcept { drop(mote_vb_);drop(mote_ib_);mote_built_count_=0;mote_built_seed_=0;mote_previous_valid_=false; }
+void FogPass::release_quarter() noexcept { drop(quarter_surface_);drop(quarter_);quarter_width_=quarter_height_=0; }
 void FogPass::release_targets() noexcept {
-    drop(lit_surface_);drop(scratch_surface_);drop(lit_);drop(scratch_);drop(block_);release_grid();release_motes();
+    drop(lit_surface_);drop(scratch_surface_);drop(lit_);drop(scratch_);drop(block_);release_grid();release_motes();release_quarter();
     width_=height_=half_width_=half_height_=0;
 }
 void FogPass::release_density_default() noexcept {
@@ -252,6 +286,8 @@ void FogPass::detach() noexcept {
     release_density_default();
     for(unsigned i=0;i<2;++i){drop(density_staging_surface_[i]);drop(density_staging_[i]);}
     drop(density_march_);drop(density_composite_);drop(density_repair_);density_far_bins_=0;far_bins_shadow_clamp_=false;far_bins_unbuildable_=0;
+    density_march_scale_=0;march_scale_shadow_clamp_=false;march_scale_unbuildable_=0;march_scale_unbuildable_reason_=nullptr;
+    drop(density_needs_);density_needs_scale_=0;needs_refused_=false;
     drop(density_visibility_);drop(density_march_grid_);drop(density_repair_grid_);
     drop(mote_vs_);drop(mote_declaration_);drop(mote_ps_);drop(mote_ps_grid_);
     mote_caps_=motes_refused_=false;mote_max_index_=mote_max_primitives_=0;adapter_format_=D3DFMT_UNKNOWN;mote_report_={};
@@ -268,7 +304,7 @@ void FogPass::after_reset(HRESULT hr) noexcept {PreserveCpuState guard;if(SUCCEE
 unsigned FogPass::references() const noexcept {
     unsigned n=0;
     for(unsigned i=0;i<2;++i)n+=(density_staging_[i]!=nullptr)+(density_atlas_[i]!=nullptr)+(density_staging_surface_[i]!=nullptr)+(density_atlas_surface_[i]!=nullptr);
-    n+=(density_march_!=nullptr)+(density_composite_!=nullptr)+(density_repair_!=nullptr);
+    n+=(density_march_!=nullptr)+(density_composite_!=nullptr)+(density_repair_!=nullptr)+(density_needs_!=nullptr)+(quarter_!=nullptr)+(quarter_surface_!=nullptr);
     n+=(density_visibility_!=nullptr)+(density_march_grid_!=nullptr)+(density_repair_grid_!=nullptr)+(grid_!=nullptr)+(grid_surface_!=nullptr);
     n+=(mote_vs_!=nullptr)+(mote_declaration_!=nullptr)+(mote_ps_!=nullptr)+(mote_ps_grid_!=nullptr)+(mote_vb_!=nullptr)+(mote_ib_!=nullptr);
     for(const void* p:{static_cast<void*>(atlas_),static_cast<void*>(lit_),static_cast<void*>(scratch_),static_cast<void*>(lit_surface_),static_cast<void*>(scratch_surface_),static_cast<void*>(march_),static_cast<void*>(composite_),static_cast<void*>(quad_vs_),static_cast<void*>(quad_declaration_),static_cast<void*>(block_)})n+=p!=nullptr;
@@ -364,50 +400,92 @@ HRESULT FogPass::prepare_field(void* module,fog_field::Profile profile) noexcept
     active_profile_=profile;++field_generation_;return S_OK;
 }
 HRESULT FogPass::density_resources() noexcept {
-    auto refuse=[&](const char* reason,HRESULT hr){density_refused_=true;density_status_.available=false;density_status_.reason=reason;return hr;};
-    // The march/repair pair of one far-bin count (fog-gpu-cost.md step B): slot-checked, then created into m/r; nothing
-    // existing is touched. `why` names a failure that is not a lost device.
-    auto make_pair=[&](unsigned bins,IDirect3DPixelShader9** m,IDirect3DPixelShader9** r,const char** why)->HRESULT{
-        const bool coarse=bins==fog_far_bins_coarse;
-        const std::pair<const DWORD*,std::size_t> march=coarse?std::pair{density_march_far24_words,std::size(density_march_far24_words)}:std::pair{density_march_words,std::size(density_march_words)};
-        const std::pair<const DWORD*,std::size_t> repair=coarse?std::pair{density_repair_far24_words,std::size(density_repair_far24_words)}:std::pair{density_repair_words,std::size(density_repair_words)};
+    auto refuse=[&](const char* reason,HRESULT hr){density_refused_=true;density_status_.available=false;density_status_.reason=reason;release_quarter();return hr;};
+    // The quarter-resolution march target (fog-gpu-cost.md step C) before the programs that draw into it: sized from the
+    // current targets, released with them (resize, before_reset, detach) and re-created here. A creation failure that is not
+    // a lost device refuses spacing 4 until detach ("target"); the half-resolution set draws instead.
+    if(density_config_.march_scale==fog_march_scale_quarter&&!quarter_&&width_&&height_){
+        const UINT qw=fog_march_extent(width_,fog_march_scale_quarter),qh=fog_march_extent(height_,fog_march_scale_quarter);
+        HRESULT hr=call<CreateTextureFn>(CreateTexture)(device_,qw,qh,1,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&quarter_,nullptr);
+        if(SUCCEEDED(hr))hr=quarter_->GetSurfaceLevel(0,&quarter_surface_);
+        if(lost(hr)){release_quarter();reset_pending_=true;return hr;}
+        if(FAILED(hr)){
+            // The quarter set draws nowhere without its target: the half-resolution set replaces it below.
+            release_quarter();march_scale_unbuildable_=fog_march_scale_quarter;march_scale_unbuildable_reason_="target";
+            density_status_.march_scale_refused="target";density_config_.march_scale=fog_march_scale_default;
+        } else {quarter_width_=qw;quarter_height_=qh;++allocations_;}
+    }
+    // The march/repair (and, with `c`, the composite) of one far-bin count at one march spacing (fog-gpu-cost.md steps B and
+    // C): slot-checked, then created into m/r/c; nothing existing is touched. `why` names a failure that is not a lost device.
+    auto make_set=[&](unsigned bins,unsigned scale,IDirect3DPixelShader9** m,IDirect3DPixelShader9** r,IDirect3DPixelShader9** c,const char** why)->HRESULT{
+        const unsigned variant=(bins==fog_far_bins_coarse?1u:0u)+(scale==fog_march_scale_quarter?2u:0u);
+        const ProgramWords set[3]={density_march_programs[variant],density_repair_programs[variant],density_composite_programs[variant>>1]};
         // Per program, not only the device's ps_3_0 count: repair sits at 510 of the 512 slots a ps_3_0
         // device has to offer, so a program that grew past the ceiling must refuse before it is created.
-        for(auto p:{march,repair}){
-            const unsigned slots=ps3_program_slots(reinterpret_cast<const std::uint32_t*>(p.first),p.second);
+        for(unsigned i=0;i<(c?3u:2u);++i){
+            const unsigned slots=ps3_program_slots(reinterpret_cast<const std::uint32_t*>(set[i].words),set[i].count);
             if(!slots||slots>=density_required_slots){*why="density_compiled_slots";return D3DERR_NOTAVAILABLE;}
         }
-        HRESULT hr=call<CreatePsFn>(CreatePixelShader)(device_,march.first,m);
-        if(SUCCEEDED(hr))hr=call<CreatePsFn>(CreatePixelShader)(device_,repair.first,r);
-        if(FAILED(hr)){drop(*m);drop(*r);*why="density_program_create";}
+        HRESULT hr=call<CreatePsFn>(CreatePixelShader)(device_,set[0].words,m);
+        if(SUCCEEDED(hr))hr=call<CreatePsFn>(CreatePixelShader)(device_,set[1].words,r);
+        if(SUCCEEDED(hr)&&c)hr=call<CreatePsFn>(CreatePixelShader)(device_,set[2].words,c);
+        if(FAILED(hr)){drop(*m);drop(*r);if(c)drop(*c);*why="density_program_create";}
         return hr;
     };
     if(!density_march_){
         // attach already proved ps_3_0, unrestricted NPOT >= 1560x1430, FP16 linear filtering and FP16 targets.
         if(ps30_slots_<density_required_slots)return refuse("density_ps30_slots",D3DERR_NOTAVAILABLE);
-        const unsigned composite_slots=ps3_program_slots(reinterpret_cast<const std::uint32_t*>(density_composite_words),std::size(density_composite_words));
-        if(!composite_slots||composite_slots>=density_required_slots)return refuse("density_compiled_slots",D3DERR_NOTAVAILABLE);
         const char* why="density_program_create";
-        HRESULT hr=call<CreatePsFn>(CreatePixelShader)(device_,density_composite_words,&density_composite_);
-        if(SUCCEEDED(hr))hr=make_pair(density_config_.far_bins,&density_march_,&density_repair_,&why);
-        if(FAILED(hr)&&!lost(hr)&&density_composite_&&density_config_.far_bins!=fog_far_bins_default){
+        HRESULT hr=make_set(density_config_.far_bins,density_config_.march_scale,&density_march_,&density_repair_,&density_composite_,&why);
+        if(FAILED(hr)&&!lost(hr)&&density_config_.march_scale!=fog_march_scale_default){
+            // The quarter-resolution set could not be built: the half-resolution set draws, and 4 stays refused until detach.
+            march_scale_unbuildable_=density_config_.march_scale;march_scale_unbuildable_reason_="program";
+            density_status_.march_scale_refused="program";density_config_.march_scale=fog_march_scale_default;
+            hr=make_set(density_config_.far_bins,density_config_.march_scale,&density_march_,&density_repair_,&density_composite_,&why);
+        }
+        if(FAILED(hr)&&!lost(hr)&&density_config_.far_bins!=fog_far_bins_default){
             // The 24-bin pair could not be built: the accepted 40-bin pair draws, and 24 stays refused until detach.
             far_bins_unbuildable_=density_config_.far_bins;density_status_.far_bins_refused="program";density_config_.far_bins=fog_far_bins_default;
-            hr=make_pair(fog_far_bins_default,&density_march_,&density_repair_,&why);
+            hr=make_set(density_config_.far_bins,density_config_.march_scale,&density_march_,&density_repair_,&density_composite_,&why);
         }
         // Pixel shaders survive Reset; nothing is created on a draw path. A refusal is final: with the
         // retired presets gone there is no unshaped fallback, so the stored path stays off (legacy untouched).
         if(FAILED(hr)){drop(density_march_);drop(density_composite_);drop(density_repair_);if(lost(hr)){reset_pending_=true;return hr;}return refuse(why,hr);}
-        density_far_bins_=density_config_.far_bins;
-    } else if(density_far_bins_!=density_config_.far_bins){
-        // Another count than the drawing pair (only a caller that changes FogDensityConfig::far_bins; the proxy fixes it at
-        // launch): the new pair is built first and replaces the old only when complete. The shared composite stays. A pair
-        // that cannot be built leaves the working one drawing and that count refused until detach.
-        IDirect3DPixelShader9 *march=nullptr,*repair=nullptr;const char* why=nullptr;
-        const HRESULT hr=make_pair(density_config_.far_bins,&march,&repair,&why);
+        density_far_bins_=density_config_.far_bins;density_march_scale_=density_config_.march_scale;
+    } else if(density_far_bins_!=density_config_.far_bins||density_march_scale_!=density_config_.march_scale){
+        // Another count or spacing than the drawing set (only a caller that changes FogDensityConfig::far_bins or march_scale;
+        // the proxy fixes both at launch): the new set is built first and replaces the old only when complete; the composite
+        // is re-created only with the spacing. A set that cannot be built leaves the working one drawing and the requested
+        // count and/or spacing refused until detach.
+        const bool rescale=density_march_scale_!=density_config_.march_scale;
+        IDirect3DPixelShader9 *march=nullptr,*repair=nullptr,*composite=nullptr;const char* why=nullptr;
+        const HRESULT hr=make_set(density_config_.far_bins,density_config_.march_scale,&march,&repair,rescale?&composite:nullptr,&why);
         if(lost(hr)){reset_pending_=true;return hr;}
-        if(FAILED(hr)){far_bins_unbuildable_=density_config_.far_bins;density_status_.far_bins_refused="program";density_config_.far_bins=density_far_bins_;}
-        else{drop(density_march_);drop(density_repair_);density_march_=march;density_repair_=repair;density_far_bins_=density_config_.far_bins;}
+        if(FAILED(hr)){
+            if(density_far_bins_!=density_config_.far_bins){far_bins_unbuildable_=density_config_.far_bins;density_status_.far_bins_refused="program";density_config_.far_bins=density_far_bins_;}
+            if(rescale&&density_march_scale_==fog_march_scale_quarter&&!quarter_){
+                // The quarter set has no target (it could not be re-created after a Reset or resize: 4 is refused as "target")
+                // and the half set could not be built now: nothing here can draw. Drop the quarter set so the next prepare
+                // builds the half set from scratch (first creation); 4 stays refused with its own reason.
+                drop(density_march_);drop(density_repair_);drop(density_composite_);density_march_scale_=fog_march_scale_default;
+            } else if(rescale){march_scale_unbuildable_=density_config_.march_scale;march_scale_unbuildable_reason_="program";density_status_.march_scale_refused="program";density_config_.march_scale=density_march_scale_;}
+        } else {
+            drop(density_march_);drop(density_repair_);density_march_=march;density_repair_=repair;density_far_bins_=density_config_.far_bins;
+            if(rescale){drop(density_composite_);density_composite_=composite;density_march_scale_=density_config_.march_scale;}
+        }
+    }
+    // The quarter target lives only while the quarter programs draw (a refused or swapped-back spacing releases it).
+    if(density_march_scale_!=fog_march_scale_quarter)release_quarter();
+    // --gpu-sync-timing only: the needs-repair census program of the drawing spacing (step C), created while marks are
+    // configured, never on a draw path. A failure that is not a lost device drops the census draw until detach.
+    if(sync_marks_&&!needs_refused_&&density_needs_scale_!=density_march_scale_){
+        const ProgramWords p=density_needs_programs[density_march_scale_==fog_march_scale_quarter?1u:0u];
+        const unsigned slots=ps3_program_slots(reinterpret_cast<const std::uint32_t*>(p.words),p.count);
+        IDirect3DPixelShader9* needs=nullptr;
+        const HRESULT hr=slots&&slots<density_required_slots?call<CreatePsFn>(CreatePixelShader)(device_,p.words,&needs):D3DERR_NOTAVAILABLE;
+        if(lost(hr)){drop(needs);reset_pending_=true;return hr;}
+        if(FAILED(hr)){drop(needs);drop(density_needs_);density_needs_scale_=0;needs_refused_=true;}
+        else{drop(density_needs_);density_needs_=needs;density_needs_scale_=density_march_scale_;}
     }
     // The visibility grid is optional: a failure to build it (not a lost device) falls back to the in-march programs
     // for the rest of the attachment and says why in density_status().shadow_pass_refused; the stored fog stays.
@@ -623,6 +701,7 @@ HRESULT FogPass::prepare_density(const FogDensityConfig& config,const double cam
     for(unsigned i=0;i<3;++i)if(!std::isfinite(camera[i])||!std::isfinite(config.world_offset[i])||!std::isfinite(config.chroma[i])||config.chroma[i]<0||config.chroma[i]>16.f)return E_INVALIDARG;
     if(!std::isfinite(config.sigma)||config.sigma<=0||config.sigma>1.f)return E_INVALIDARG;
     if(!fog_far_bins_valid(config.far_bins))return E_INVALIDARG; // only 40 and 24 have programs
+    if(!fog_march_scale_valid(config.march_scale))return E_INVALIDARG; // only 2 and 4 have programs
     density_config_=config; // density_resources creates the variant the config asks for
     {   // Far bins (fog-gpu-cost.md step B): 24 never with the shadow pass (sticky once asked, so a grid frame and its
         // toggled-off frame draw one law), never above the aliasing cap, never after its programs failed; 40 draws instead.
@@ -634,6 +713,17 @@ HRESULT FogPass::prepare_density(const FogDensityConfig& config,const double cam
         }
         if(!why&&density_config_.far_bins==far_bins_unbuildable_&&density_far_bins_){why="program";density_config_.far_bins=density_far_bins_;}
         density_status_.far_bins_refused=why;
+    }
+    {   // March spacing (fog-gpu-cost.md step C), latched here like far_bins: 4 never with the shadow pass (sticky once asked;
+        // the grid programs exist at spacing 2 only, so a grid frame and its toggled-off frame draw one spacing), never after
+        // its programs or its quarter target failed; 2 draws instead.
+        const char* why=nullptr;
+        if(config.march_scale==fog_march_scale_quarter){
+            march_scale_shadow_clamp_=march_scale_shadow_clamp_||config.shadow_pass;
+            if(march_scale_shadow_clamp_){why="shadow_pass";density_config_.march_scale=fog_march_scale_default;}
+            else if(march_scale_unbuildable_==fog_march_scale_quarter){why=march_scale_unbuildable_reason_;density_config_.march_scale=fog_march_scale_default;}
+        }
+        density_status_.march_scale_refused=why;
     }
     if(grid_refused_)density_config_.shadow_pass=false; // a refused grid stays refused until detach: the in-march programs draw
     if(motes_refused_||density_config_.motes.count==0)density_config_.dust_motes=false; // refused motes stay refused; no option, no stage
@@ -719,8 +809,14 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
         if(!(ready_far>0)){r.operation=S_FALSE;return finish(S_FALSE);} // same zero-device-call path as off
         if(f.depth_share==density_atlas_[0]||f.depth_share==density_atlas_[1]||f.depth_share==density_staging_[0]||f.depth_share==density_staging_[1])return refuse(E_INVALIDARG);
     } else if(!resources_ready(f.width,f.height,f.profile,f.recipe_id,f.field_generation))return refuse(E_INVALIDARG);
-    if(f.depth_share==atlas_||f.depth_share==lit_||f.depth_share==scratch_||f.depth_share==grid_||f.target==lit_surface_||f.target==scratch_surface_||f.target==grid_surface_)return refuse(E_INVALIDARG);
+    if(f.depth_share==atlas_||f.depth_share==lit_||f.depth_share==scratch_||f.depth_share==grid_||f.target==lit_surface_||f.target==scratch_surface_||f.target==grid_surface_||
+       (quarter_&&(f.depth_share==quarter_||f.target==quarter_surface_)))return refuse(E_INVALIDARG);
     const bool grid=density&&density_config_.shadow_pass;
+    // The march target: half resolution, or the quarter target while the quarter programs draw (fog-gpu-cost.md step C;
+    // density_ready proved it exists). The legacy path always marches at half resolution.
+    const bool quarter=density&&density_march_scale_==fog_march_scale_quarter;
+    IDirect3DTexture9* const march_texture=quarter?quarter_:lit_;IDirect3DSurface9* const march_surface=quarter?quarter_surface_:lit_surface_;
+    const UINT march_width=quarter?quarter_width_:half_width_,march_height=quarter?quarter_height_:half_height_;
     D3DSURFACE_DESC ds{},ss{};HRESULT hr=f.depth_share->GetLevelDesc(0,&ds);if(FAILED(hr))return refuse(hr);
     hr=f.target->GetDesc(&ss);if(FAILED(hr))return refuse(hr);
     if(ds.Width!=width_||ds.Height!=height_||ds.Format!=D3DFMT_A32B32G32R32F||ss.Width!=width_||ss.Height!=height_||ss.Format!=D3DFMT_A16B16G16R16F||
@@ -733,7 +829,7 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
     float constants[fog_constant_rows][4]{};
     const auto& p=f.params;
     constants[0][0]=p.m00;constants[0][1]=p.m11;constants[0][2]=p.m20;constants[0][3]=p.m21;
-    constants[1][0]=static_cast<float>(width_);constants[1][1]=static_cast<float>(height_);constants[1][2]=static_cast<float>(half_width_);constants[1][3]=static_cast<float>(half_height_);
+    constants[1][0]=static_cast<float>(width_);constants[1][1]=static_cast<float>(height_);constants[1][2]=static_cast<float>(march_width);constants[1][3]=static_cast<float>(march_height);
     for(unsigned i=0;i<3;++i){constants[2][i]=p.world.origin_mod[i];constants[3][i]=p.world.sun_world[i];}
     constants[2][3]=base_sigma_*p.density_scale;constants[3][3]=fog_volume_horizon;
     if(density){
@@ -750,7 +846,7 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
     for(unsigned i=0;i<std::min(f.count,fog_cascade_max);++i) {
         const auto& k=f.cascades[i];
         if(!k.valid||!k.map||!fog_shadow_current(f.frame,k.frame)||!fog_shadow_rows(k.rows,k.bias)||
-           k.map==f.depth_share||k.map==atlas_||k.map==lit_||k.map==scratch_||k.map==grid_||(density&&(k.map==density_atlas_[0]||k.map==density_atlas_[1])))continue;
+           k.map==f.depth_share||k.map==atlas_||k.map==lit_||k.map==scratch_||k.map==grid_||(quarter_&&k.map==quarter_)||(density&&(k.map==density_atlas_[0]||k.map==density_atlas_[1])))continue;
         D3DSURFACE_DESC desc{};
         hr=k.map->GetLevelDesc(0,&desc);if(lost(hr))return refuse(hr);if(FAILED(hr))continue;
         if(desc.Format!=D3DFMT_R32F||desc.Width<64||desc.Width!=desc.Height||
@@ -856,7 +952,7 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
         grid_report_.drawn=r.grid;grid_report_.calls=calls_-grid_calls_start;grid_report_.net_calls=int(grid_report_.calls)-int(constants_set);
         if(draw_grid&&!r.grid)grid_report_.unshadowed="failed";
     }
-    if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,bind_target(lit_surface_,half_width_,half_height_,density?(grid?density_march_grid_:density_march_):march_,samplers));
+    if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,bind_target(march_surface,march_width,march_height,density?(grid?density_march_grid_:density_march_):march_,samplers));
     if(may_draw&&SUCCEEDED(r.operation)&&!constants_set)record(FogStage::March,call<SetPsConstantsFn>(SetPixelShaderConstantF)(device_,0,&constants[0][0],density?fog_constant_rows:22u));
     if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetTextureFn>(SetTexture)(device_,0,f.depth_share));
     if(may_draw&&SUCCEEDED(r.operation))record(FogStage::March,call<SetTextureFn>(SetTexture)(device_,1,density?density_atlas_[0]:atlas_));
@@ -873,13 +969,22 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
         record(FogStage::March,call<SetTextureFn>(SetTexture)(device_,4+i,shadow_maps[i]));
     // --gpu-sync-timing only: the fog_march / fog_composite / fog_repair pairs bracket the three quads (the binds are
     // CPU state until the draw); off, each is one null-pointer branch.
-    if(may_draw&&SUCCEEDED(r.operation)){gpu_sync_timing::Span sync_span(sync_marks_,gpu_sync_timing::FogMarch);record(FogStage::March,quad(half_width_,half_height_));}
+    if(may_draw&&SUCCEEDED(r.operation)){gpu_sync_timing::Span sync_span(sync_marks_,gpu_sync_timing::FogMarch);record(FogStage::March,quad(march_width,march_height));}
     if(density&&may_draw&&SUCCEEDED(r.operation)){
         // Composite never marches (no atlas, no maps); repair marches only the pixels no half sample serves.
         record(FogStage::Composite,bind_target(f.target,width_,height_,density_composite_,samplers));
-        IDirect3DTexture9* composite_inputs[]={f.depth_share,nullptr,scratch_,lit_};
+        IDirect3DTexture9* composite_inputs[]={f.depth_share,nullptr,scratch_,march_texture};
         for(UINT i=0;i<4&&SUCCEEDED(r.operation);++i)if(composite_inputs[i])record(FogStage::Composite,call<SetTextureFn>(SetTexture)(device_,i,composite_inputs[i]));
         if(SUCCEEDED(r.operation)){r.scene_write_started=true;gpu_sync_timing::Span sync_span(sync_marks_,gpu_sync_timing::FogComposite);record(FogStage::Composite,quad(width_,height_));}
+        if(SUCCEEDED(r.operation)&&sync_marks_&&density_needs_&&density_needs_scale_==density_march_scale_&&sync_marks_->needs_wanted()){
+            // --gpu-sync-timing only (fog-gpu-cost.md step C): the pixels the repair marches at this spacing, as an occlusion
+            // count of one full-screen quad on the still bound target (RT2 at s0 from the composite) with colour writes off;
+            // outside the three sub-pass pairs, inside fog_route. The repair's bind below sets its own program.
+            record(FogStage::Census,call<SetPsFn>(SetPixelShader)(device_,density_needs_));
+            if(SUCCEEDED(r.operation))record(FogStage::Census,call<SetRsFn>(SetRenderState)(device_,D3DRS_COLORWRITEENABLE,0));
+            if(SUCCEEDED(r.operation)){gpu_sync_timing::NeedsSpan needs(sync_marks_,std::uint32_t(width_)*std::uint32_t(height_),density_march_scale_);record(FogStage::Census,quad(width_,height_));}
+            if(SUCCEEDED(r.operation))record(FogStage::Census,call<SetRsFn>(SetRenderState)(device_,D3DRS_COLORWRITEENABLE,15));
+        }
         if(SUCCEEDED(r.operation))record(FogStage::Repair,bind_target(f.target,width_,height_,grid?density_repair_grid_:density_repair_,samplers));
         float repair_c0[4];density_repair_projection(p,repair_c0);
         if(SUCCEEDED(r.operation))record(FogStage::Repair,call<SetPsConstantsFn>(SetPixelShaderConstantF)(device_,0,repair_c0,1));
@@ -944,7 +1049,7 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
     if(lost_seen)reset_pending_=true;
     r.caller_state_restored=SUCCEEDED(r.restore)&&r.scene_known&&r.scene_open==f.caller_scene_open;
     if(!r.caller_state_restored)r.route_poisoned=true;
-    if(SUCCEEDED(r.operation)&&SUCCEEDED(r.restore)&&r.caller_state_restored){r.failed=FogStage::None;r.lit=lit_;r.half_width=half_width_;r.half_height=half_height_;}
+    if(SUCCEEDED(r.operation)&&SUCCEEDED(r.restore)&&r.caller_state_restored){r.failed=FogStage::None;r.lit=march_texture;r.half_width=march_width;r.half_height=march_height;}
     return finish(FAILED(r.operation)?r.operation:r.restore);
 }
 } // namespace x3m::renderer

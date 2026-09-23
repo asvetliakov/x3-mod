@@ -68,6 +68,12 @@ struct Marks {
     // count at the frame's end; `area` is the draw's full pixel count. The first bracket per frame counts. Default: nothing.
     virtual void census_begin() noexcept {}
     virtual void census_end(std::uint32_t area) noexcept { (void)area; }
+    // The needs-repair census (fog-gpu-cost.md, step C): a second occlusion bracket around a diagnostic quad that keeps
+    // exactly the pixels the repair marches at march spacing `scale` (2 or 4). The caller draws that quad only while
+    // needs_wanted() is true (this frame's bracket unspent and counted), so a frame without it adds no GPU work.
+    virtual bool needs_wanted() noexcept { return false; }
+    virtual void needs_begin() noexcept {}
+    virtual void needs_end(std::uint32_t area, std::uint32_t scale) noexcept { (void)area; (void)scale; }
 protected:
     ~Marks() = default;
 };
@@ -89,6 +95,15 @@ public:
     CensusSpan(const CensusSpan&) = delete; CensusSpan& operator=(const CensusSpan&) = delete;
 private:
     Marks* marks_; std::uint32_t area_;
+};
+// The needs-repair bracket around its quad; nothing when `marks` is null.
+class NeedsSpan {
+public:
+    NeedsSpan(Marks* marks, std::uint32_t area, std::uint32_t scale) noexcept : marks_(marks), area_(area), scale_(scale) { if (marks_) marks_->needs_begin(); }
+    ~NeedsSpan() { if (marks_) marks_->needs_end(area_, scale_); }
+    NeedsSpan(const NeedsSpan&) = delete; NeedsSpan& operator=(const NeedsSpan&) = delete;
+private:
+    Marks* marks_; std::uint32_t area_, scale_;
 };
 
 // Ticks of a counter at `frequency` Hz as microseconds, saturated to 32 bits.
@@ -135,14 +150,45 @@ struct PassReport { Stat window, session; std::uint32_t wait_median = 0; };
 // The window's pixel census: per frame with a counted draw, the count as ppm of its area (median, p90, max) and
 // the last frame's area and count; for counted draws of kept frames whose result was not read: unread (not ready at
 // the frame end), lost (the device was lost), failed (any other refusal).
-struct CensusReport { Stat ppm; std::uint32_t max_ppm = 0, area = 0, pixels = 0, unread = 0, lost = 0, failed = 0; };
+// px: the same frames as pixel counts; tag: the last counted frame's tag (the needs census: the march spacing).
+struct CensusReport { Stat ppm, px; std::uint32_t max_ppm = 0, max_px = 0, area = 0, pixels = 0, tag = 0, unread = 0, lost = 0, failed = 0; };
 enum CensusRead : unsigned { CensusNone = 0, CensusOk, CensusNotReady, CensusLost, CensusFailed };
+// One census counter's window: the frame's pending read, filed with the frame, and the window's samples.
+class CensusWindow {
+public:
+    void pending(std::uint32_t pixels, std::uint32_t area, std::uint32_t tag, CensusRead read) noexcept { read_ = read; pixels_ = pixels; area_ = area; tag_ = tag; }
+    void file() noexcept {
+        if (read_ == CensusNotReady) ++unread_;
+        else if (read_ == CensusLost) ++lost_;
+        else if (read_ == CensusFailed) ++failed_;
+        else if (read_ == CensusOk && count_ < window_frames_max) {
+            const std::uint32_t ppm = census_ppm(pixels_, area_);
+            ppm_[count_] = ppm; px_[count_] = pixels_; ++count_;
+            max_ppm_ = std::max(max_ppm_, ppm); max_px_ = std::max(max_px_, pixels_);
+            last_area_ = area_; last_pixels_ = pixels_; last_tag_ = tag_;
+        }
+        read_ = CensusNone;
+    }
+    void drop_pending() noexcept { read_ = CensusNone; }
+    template<class Exact> CensusReport take(Exact exact) noexcept {
+        CensusReport r; r.ppm = exact(ppm_, count_); r.px = exact(px_, count_); r.max_ppm = max_ppm_; r.max_px = max_px_;
+        r.area = last_area_; r.pixels = last_pixels_; r.tag = last_tag_; r.unread = unread_; r.lost = lost_; r.failed = failed_;
+        count_ = max_ppm_ = max_px_ = last_area_ = last_pixels_ = last_tag_ = unread_ = lost_ = failed_ = 0;
+        return r;
+    }
+private:
+    CensusRead read_ = CensusNone;
+    std::uint32_t pixels_ = 0, area_ = 0, tag_ = 0;
+    std::uint32_t ppm_[window_frames_max]{}, px_[window_frames_max]{}, count_ = 0, max_ppm_ = 0, max_px_ = 0, last_area_ = 0, last_pixels_ = 0, last_tag_ = 0;
+    std::uint32_t unread_ = 0, lost_ = 0, failed_ = 0;
+};
 struct Report {
     std::uint64_t window = 0, first_frame = 0, last_frame = 0;
     std::uint32_t frames = 0, dropped = 0, unclosed = 0; // frames in the window; frames dropped by a failed sync; passes open at a frame end
     PassReport pass[pass_count]{};
     Stat dt_window, dt_session;
-    CensusReport census;
+    CensusReport census; // the repair's written pixels (step A)
+    CensusReport needs;  // the pixels the repair marches at the drawn spacing (step C; tag = the spacing)
 };
 
 class Tracker {
@@ -168,7 +214,9 @@ public:
     }
     // The frame's census count (the owner reads it just before frame()); filed with the frame unless it is abandoned.
     // `read`: CensusOk, or why the counted draw's result was not available (pixels ignored then).
-    void census(std::uint32_t pixels, std::uint32_t area, CensusRead read) noexcept { census_pending_ = read; census_pixels_ = pixels; census_area_ = area; }
+    void census(std::uint32_t pixels, std::uint32_t area, CensusRead read) noexcept { census_.pending(pixels, area, 0, read); }
+    // The frame's needs-repair count at march spacing `scale`, filed like census().
+    void needs(std::uint32_t pixels, std::uint32_t area, std::uint32_t scale, CensusRead read) noexcept { needs_.pending(pixels, area, scale, read); }
     // A failed sync: nothing of this frame is recorded and no boundary syncs again until frame().
     void abandon_frame() noexcept { abandoned_ = true; open_ = 0; }
     // Device Reset or release: the frame's marks go and the next dt has no predecessor.
@@ -193,14 +241,7 @@ public:
                 samples_[pass][count_[pass]] = us; waits_[pass][count_[pass]] = ticks_to_us(wait_[pass], frequency); ++count_[pass];
                 ++hist_[pass][bucket_of(us)]; ++session_n_[pass];
             }
-            if (census_pending_ == CensusNotReady) ++census_unread_;
-            else if (census_pending_ == CensusLost) ++census_lost_;
-            else if (census_pending_ == CensusFailed) ++census_failed_;
-            else if (census_pending_ == CensusOk && census_count_ < window_frames_max) {
-                const std::uint32_t ppm = census_ppm(census_pixels_, census_area_);
-                census_[census_count_++] = ppm; census_max_ = std::max(census_max_, ppm);
-                census_last_area_ = census_area_; census_last_pixels_ = census_pixels_;
-            }
+            census_.file(); needs_.file();
         }
         clear_marks();
         return frames_ >= window_;
@@ -216,10 +257,8 @@ public:
             count_[pass] = 0;
         }
         r.dt_window = exact(dt_, dt_count_);
-        r.census.ppm = exact(census_, census_count_); r.census.max_ppm = census_max_;
-        r.census.area = census_last_area_; r.census.pixels = census_last_pixels_; r.census.unread = census_unread_; r.census.lost = census_lost_; r.census.failed = census_failed_;
+        r.census = census_.take(&Tracker::exact); r.needs = needs_.take(&Tracker::exact);
         frames_ = dropped_ = unclosed_ = dt_count_ = 0;
-        census_count_ = census_max_ = census_last_area_ = census_last_pixels_ = census_unread_ = census_lost_ = census_failed_ = 0;
         return r;
     }
     // Session figures from the histograms (window fields empty).
@@ -237,7 +276,7 @@ public:
     static Stat exact_of(std::uint32_t* values, std::uint32_t n) noexcept { return exact(values, n); } // host test
 private:
     void clear_marks() noexcept {
-        open_ = begun_ = closed_ = 0; abandoned_ = false; census_pending_ = CensusNone;
+        open_ = begun_ = closed_ = 0; abandoned_ = false; census_.drop_pending(); needs_.drop_pending();
         for (unsigned pass = 0; pass < pass_count; ++pass) sum_[pass] = wait_[pass] = 0;
     }
     // Sorts `values` in place (the window arrays are refilled next window).
@@ -270,8 +309,6 @@ private:
     std::uint32_t dt_[window_frames_max]{};
     std::uint32_t hist_[pass_count][histogram_buckets]{}, session_n_[pass_count]{};
     std::uint32_t dt_hist_[histogram_buckets]{}, dt_session_n_ = 0;
-    CensusRead census_pending_ = CensusNone;
-    std::uint32_t census_pixels_ = 0, census_area_ = 0;
-    std::uint32_t census_[window_frames_max]{}, census_count_ = 0, census_max_ = 0, census_last_area_ = 0, census_last_pixels_ = 0, census_unread_ = 0, census_lost_ = 0, census_failed_ = 0;
+    CensusWindow census_{}, needs_{};
 };
 } // namespace x3m::gpu_sync_timing

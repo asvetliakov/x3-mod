@@ -349,6 +349,48 @@ class FogLauncherTests(unittest.TestCase):
         for name in ('march', 'repair'):
             self.assertIn('#include "fog_density_%s_look_far24_program_inc.h"' % name, fog_pass)
 
+    def test_march_scale_option(self):
+        # --fog-march-scale {2,4} -> X3M_FOG_MARCH_SCALE (fog-gpu-cost.md step C), default 2 (the accepted half-resolution march),
+        # 4 only with the stored range and never with the shadow pass (its grid programs keep spacing 2); combines with
+        # --fog-far-bins; an inherited value never picks the variant.
+        stored = ('--volumetric-fog', '--volumetric-fog-range', 'stored')
+        status, output, error = self.launch(*self.BASE, *stored)
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MARCH_SCALE": "2"', output)
+        status, output, error = self.launch(*self.BASE, *stored, '--fog-march-scale', '4')
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MARCH_SCALE": "4"', output)
+        status, output, error = self.launch(*self.BASE, *stored, '--fog-march-scale', '4', '--fog-far-bins', '24')
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MARCH_SCALE": "4"', output); self.assertIn('"X3M_FOG_FAR_BINS": "24"', output)
+        status, output, error = self.launch(*self.BASE, '--volumetric-fog', '--fog-march-scale', '2')
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MARCH_SCALE": "2"', output)
+        status, _, error = self.launch(*self.BASE, '--volumetric-fog', '--fog-march-scale', '4')
+        self.assertEqual(status, 2); self.assertIn('--fog-march-scale 4 requires --volumetric-fog-range stored', error)
+        status, _, error = self.launch(*self.BASE, *stored, '--fog-march-scale', '4', '--fog-shadow-pass', 'on')
+        self.assertEqual(status, 2); self.assertIn('--fog-march-scale 4 cannot be combined with --fog-shadow-pass on', error)
+        self.assertEqual(self.launch(*self.BASE, *stored, '--fog-march-scale', '3')[0], 2)
+        status, output, error = self.launch(*self.BASE, *stored, environment={'X3M_FOG_MARCH_SCALE': '4'})
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MARCH_SCALE": "2"', output)
+        # The DLL: exactly "4" under the stored range and without the shadow pass; any other value is echoed as invalid; FogPass
+        # refuses a spacing other than 2/4 at prepare and clamps 4 itself (shadow pass, programs, target).
+        capture = (ROOT / 'src/proxy/capture.cpp').read_text()
+        self.assertIn('march_scale_asked=!wcscmp(setting,L"4");', capture)
+        self.assertIn('if(!march_scale_asked&&wcscmp(setting,L"2"))march_scale_refusal="invalid";', capture)
+        self.assertIn('if(march_scale_asked&&volumetric_fog_shadow_pass)march_scale_refusal="shadow_pass";', capture)
+        self.assertIn('log("volumetric_fog_march_scale scale=%u requested=%s refused=%s"', capture)
+        self.assertIn('hooked.motion_output.configure_volumetric_fog_march_scale(volumetric_fog_march_scale);', capture)
+        self.assertIn('needs_px=%u', capture)
+        self.assertIn('fog_density_config_.march_scale = scale;', (ROOT / 'src/proxy/motion_output.h').read_text())
+        fragment = (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
+        self.assertIn('log("fog_march_scale_refused device=%llu frame=%llu reason=%s requested=%u drawn=%u"', fragment)
+        self.assertIn('far_bins=%u march_scale=%u"', fragment)
+        fog_pass = (ROOT / 'src/renderer/fog_pass.cpp').read_text()
+        self.assertIn('if(!fog_march_scale_valid(config.march_scale))return E_INVALIDARG;', fog_pass)
+        self.assertIn('march_scale_shadow_clamp_=march_scale_shadow_clamp_||config.shadow_pass;', fog_pass)
+        resources = extract_function(fog_pass, 'HRESULT FogPass::density_resources(')
+        # The quarter target before the programs that draw into it; it lives only while they draw.
+        self.assertLess(resources.index('if(density_config_.march_scale==fog_march_scale_quarter&&!quarter_&&width_&&height_){'), resources.index('auto make_set='))
+        self.assertIn('if(density_march_scale_!=fog_march_scale_quarter)release_quarter();', resources)
+        self.assertIn('release_quarter();', extract_function(fog_pass, 'void FogPass::release_targets('))
+
     def test_shadow_pass_ab_toggle_and_frame_row(self):
         # fog-shadow-pass.md "A/B toggle and log row": toggled off, FogPass latches shadow_pass=false at prepare_density
         # and draws the launch-off in-march path; the grid stays allocated (only refuse_grid and release_targets drop it).

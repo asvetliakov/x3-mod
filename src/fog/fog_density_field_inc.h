@@ -6,7 +6,23 @@ sampler2D depth_texture : register(s0);
 sampler2D fine_atlas : register(s1); // 512-unit nodes; LINEAR (POINT with FOG_DENSITY_EXACT_TEXELS)
 sampler2D far_atlas : register(s7);  // 4096-unit nodes
 float4 projection : register(c0);
-float4 sizes : register(c1); // full W,H,half W,H
+float4 sizes : register(c1); // full W,H, march target W,H (half, or quarter under FOG_MARCH_SCALE 4)
+// The march spacing in full pixels (docs/architecture/fog-gpu-cost.md, step C). 2 is the accepted half-resolution march;
+// the *_q4 programs define 4 (launcher --fog-march-scale 4): march pixel p takes the ray and the depth class of full pixel
+// FOG_MARCH_STEP*p, and composite/repair read their samples there with the same class law, 2x2 footprint and fetch count.
+// The default expands to the literals it replaced, so the scale-2 programs are byte-identical.
+#ifndef FOG_MARCH_SCALE
+#define FOG_MARCH_SCALE 2
+#endif
+#if FOG_MARCH_SCALE == 2
+#define FOG_MARCH_STEP 2.0
+#define FOG_MARCH_INVERSE 0.5
+#elif FOG_MARCH_SCALE == 4
+#define FOG_MARCH_STEP 4.0
+#define FOG_MARCH_INVERSE 0.25
+#else
+#error FOG_MARCH_SCALE must be 2 or 4
+#endif
 float4 camera_sigma : register(c2); // xyz unused, sigma (strength and far readiness folded in by the caller)
 float4 sun_horizon : register(c3); // sun direction, horizon 200000
 float4 inverse_view0 : register(c4);
@@ -217,13 +233,16 @@ float4 march_depth(float2 uv, float4 depth) {
     // lookup alone per pixel and frame lets TAA integrate the shaft along the bin while cloud detail stays noise free.
     float4 offset = 0.5;
 #ifdef FOG_SHADOW_PASS
+#if FOG_MARCH_SCALE != 2
+#error the visibility grid programs exist at the half-resolution march spacing only
+#endif
     // The visibility grid replaces the lookup and its offset: the grid texel under this pixel (march uv (2p+.5)/full,
     // repair uv (f+.5)/full, both a quarter of the full pixel), clamped inside a tile so bilinear never crosses one.
     float2 grid_at = clamp(uv*sizes.xy*0.25,0.5,grid_layout.xy-0.5);
 #else
 #ifndef FOG_LOOK_NO_OFFSET // repair pixels (depth-class edges) keep the bin centres
-    // The half-resolution pixel that covers this one (march: itself), so a repair pixel offsets like its neighbours.
-    float2 cell = floor(uv*sizes.xy*0.5) + look_extinction.w; // march uv: (2p+.5)/full, repair uv: (f+.5)/full
+    // The march-target pixel that covers this one (march: itself), so a repair pixel offsets like its neighbours.
+    float2 cell = floor(uv*sizes.xy*FOG_MARCH_INVERSE) + look_extinction.w; // march uv: (2p+.5)/full (4p at scale 4), repair uv: (f+.5)/full
     offset += (frac(52.9829189*frac(dot(cell,float2(0.06711056,0.00583715)))) - 0.5)*float4(look_self.zw,look_taps.zw);
 #endif
 #endif
@@ -286,11 +305,12 @@ float4 march_depth(float2 uv, float4 depth) {
 }
 #endif
 float4 march_pixel(float2 uv) { return march_depth(uv,tex2Dlod(depth_texture,float4(uv,0,0))); }
-// Composite and repair share the half-footprint class law: the weight of half
-// sample q for full pixel depth d (zero across geometry/sky classes and for
-// invalid half depths), so both programs agree on which pixels need repair.
+// Composite and repair share the footprint class law: the weight of march
+// sample q (full pixel FOG_MARCH_STEP*q) for full pixel depth d (zero across
+// geometry/sky classes and for invalid sample depths), so both programs agree on
+// which pixels need repair.
 float footprint_weight(float4 d, float2 q, float w) {
-    float4 hd = tex2Dlod(depth_texture,float4((q*2.0+0.5)/sizes.xy,0,0));
+    float4 hd = tex2Dlod(depth_texture,float4((q*FOG_MARCH_STEP+0.5)/sizes.xy,0,0));
     if (geometry(d) != geometry(hd) || (geometry(hd) && !valid_geometry_depth(hd))) w = 0.0;
     // Preserve the existing relative-depth law within the compatible class.
     else if (geometry(d)) w *= exp(-abs(hd.b-d.b)/max(0.05*min(d.b,hd.b),1e-6)) + 1e-4;
@@ -303,15 +323,16 @@ float4 depth_class(float4 r, float4 b) {
     return g*(2.0-(1.0-step(b,0.0))*step(b,3.402823466e38));
 }
 // Sign of the composite's weight only: a compatible tap contributes w*(exp(..)+1e-4) > 0
-// for every nonzero bilinear weight (0.25, 0.5 or 1), so weight > 0 is exactly "some tap
-// with w > 0 has the pixel's class and that class is not invalid". Returns 1 when the
-// pixel needs the full-resolution march (valid pixel class, no compatible half sample).
+// for every nonzero bilinear weight (quarters at spacing 2: 0.25, 0.5 or 1; sixteenths at
+// spacing 4: k/16, all exact in float), so weight > 0 is exactly "some tap with w > 0 has the
+// pixel's class and that class is not invalid". Returns 1 when the pixel needs the
+// full-resolution march (valid pixel class, no compatible march sample).
 float needs_repair(float4 d, float2 pixel) {
-    float2 hp = pixel*0.5;
+    float2 hp = pixel*FOG_MARCH_INVERSE;
     float2 base = floor(hp), f = frac(hp), top = sizes.zw-1.0;
     // base >= 0, so only the upper clamp of the composite's footprint applies.
-    float4 q01 = (min(base.xyxy+float4(0,0,1,0),top.xyxy)*2.0+0.5)/sizes.xyxy;
-    float4 q23 = (min(base.xyxy+float4(0,1,1,1),top.xyxy)*2.0+0.5)/sizes.xyxy;
+    float4 q01 = (min(base.xyxy+float4(0,0,1,0),top.xyxy)*FOG_MARCH_STEP+0.5)/sizes.xyxy;
+    float4 q23 = (min(base.xyxy+float4(0,1,1,1),top.xyxy)*FOG_MARCH_STEP+0.5)/sizes.xyxy;
     float4 h0 = tex2Dlod(depth_texture,float4(q01.xy,0,0)), h1 = tex2Dlod(depth_texture,float4(q01.zw,0,0));
     float4 h2 = tex2Dlod(depth_texture,float4(q23.xy,0,0)), h3 = tex2Dlod(depth_texture,float4(q23.zw,0,0));
     float4 c = depth_class(float4(h0.r,h1.r,h2.r,h3.r),float4(h0.b,h1.b,h2.b,h3.b));

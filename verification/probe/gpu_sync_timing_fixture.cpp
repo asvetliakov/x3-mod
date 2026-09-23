@@ -58,7 +58,8 @@ constexpr unsigned W = 1280, H = 720, heavy_quads = 96, engine_quads = 32;
 // HdrWriteback; light: SunApply, Taa, Motes (nested in FogRoute), Meter (nested in
 // HdrWriteback), Bloom (two pairs, as prepare + commit), FogFill, HdrReadback, the five taa_* sub-passes (nested in Taa,
 // as TemporalPass::run marks them), fog_march / fog_composite / fog_repair (nested in FogRoute before Motes, as
-// FogPass::execute marks them; the repair's light quad inside the census bracket); empty: Retention.
+// FogPass::execute marks them; the repair's light quad inside the census bracket, and the 8x8 needs-repair quad in its own
+// bracket between composite and repair, drawn only while needs_wanted() as FogPass does); empty: Retention.
 static HRESULT run_frame(IDirect3DDevice9* d, GpuSyncTiming& t, std::uint64_t index, gst::Report* report, bool* closed) {
     auto heavy = [&] { for (unsigned i = 0; i < heavy_quads; ++i) quad(d, -0.5f, -0.5f, W - 0.5f, H - 0.5f, 0x00010101); };
     auto light = [&] { quad(d, 0.f, 0.f, 16.f, 16.f, 0x00010101); };
@@ -76,8 +77,10 @@ static HRESULT run_frame(IDirect3DDevice9* d, GpuSyncTiming& t, std::uint64_t in
     t.begin(gst::FogRoute); heavy();
     t.begin(gst::FogMarch); light(); t.end(gst::FogMarch);
     t.begin(gst::FogComposite); light(); t.end(gst::FogComposite);
+    if (t.needs_wanted()) { gst::NeedsSpan needs(&t, W * H, 4); quad(d, 0.f, 0.f, 8.f, 8.f, 0x00010101); }
     t.begin(gst::FogRepair); { gst::CensusSpan census(&t, W * H); light(); } t.end(gst::FogRepair);
     { gst::CensusSpan second(&t, W * H); quad(d, 0.f, 0.f, 32.f, 32.f, 0x00010101); } // a second bracket in the frame: not counted
+    { gst::NeedsSpan second(&t, W * H, 2); quad(d, 0.f, 0.f, 32.f, 32.f, 0x00010101); } // likewise for the needs census
     t.begin(gst::Motes); light(); t.end(gst::Motes); t.end(gst::FogRoute);
     t.begin(gst::Taa);
     for (unsigned sub : {gst::TaaCopy, gst::TaaMask, gst::TaaBox, gst::TaaResolve, gst::TaaDisplay}) { t.begin(sub); light(); t.end(sub); }
@@ -104,8 +107,9 @@ static void print_window(const char* phase, const gst::Report& r) {
         std::printf("PASS phase=%s window=%llu pass=%s n=%u median_us=%u p90_us=%u wait_median_us=%u session_n=%u session_median_us=%u session_p90_us=%u\n", phase,
                     (unsigned long long)r.window, gst::pass_name(p), r.pass[p].window.n, r.pass[p].window.median, r.pass[p].window.p90, r.pass[p].wait_median,
                     r.pass[p].session.n, r.pass[p].session.median, r.pass[p].session.p90);
-    std::printf("CENSUS phase=%s window=%llu n=%u median_ppm=%u p90_ppm=%u max_ppm=%u last_pixels=%u area=%u unread=%u lost=%u failed=%u\n", phase, (unsigned long long)r.window,
-                r.census.ppm.n, r.census.ppm.median, r.census.ppm.p90, r.census.max_ppm, r.census.pixels, r.census.area, r.census.unread, r.census.lost, r.census.failed);
+    std::printf("CENSUS phase=%s window=%llu n=%u median_ppm=%u p90_ppm=%u max_ppm=%u last_pixels=%u area=%u unread=%u lost=%u failed=%u needs_n=%u needs_px=%u needs_p90_px=%u needs_max_px=%u needs_scale=%u needs_missed=%u\n",
+                phase, (unsigned long long)r.window, r.census.ppm.n, r.census.ppm.median, r.census.ppm.p90, r.census.max_ppm, r.census.pixels, r.census.area, r.census.unread, r.census.lost, r.census.failed,
+                r.needs.px.n, r.needs.px.median, r.needs.px.p90, r.needs.max_px, r.needs.tag, r.needs.unread + r.needs.lost + r.needs.failed);
 }
 static Phase run(IDirect3DDevice9* d, GpuSyncTiming& t, unsigned frames, std::uint64_t first_index, const char* phase, bool first_dt_missing) {
     Phase m; m.last_window = t.tracker().windows();
@@ -134,6 +138,9 @@ static Phase run(IDirect3DDevice9* d, GpuSyncTiming& t, unsigned frames, std::ui
         const std::uint32_t ppm = gst::census_ppm(256, W * H);
         m.census = m.census && t.census_available() && r.census.ppm.n == r.frames && r.census.ppm.median == ppm && r.census.max_ppm == ppm
                    && r.census.pixels == 256 && r.census.area == W * H && r.census.unread == 0 && r.census.lost == 0 && r.census.failed == 0;
+        // The needs-repair census (step C): the 8x8 quad exactly, tagged with its spacing, every frame; the second bracket never counts.
+        m.census = m.census && t.needs_available() && r.needs.px.n == r.frames && r.needs.px.median == 64 && r.needs.max_px == 64 && r.needs.tag == 4
+                   && r.needs.area == W * H && r.needs.unread == 0 && r.needs.lost == 0 && r.needs.failed == 0;
         const bool first_window = m.windows == 1;
         m.dt_ok = m.dt_ok && r.dt_window.n == (first_window && first_dt_missing ? r.frames - 1 : r.frames) && r.dt_window.median >= P[gst::Scene].window.median;
     }

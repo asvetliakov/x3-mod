@@ -102,6 +102,20 @@ int main() {
     t->begin(g::Scene, 300000); t->end(g::Scene, 300010, 0); t->frame(30, 316000, f);
     const g::Report rn = t->report();
     check(rn.census.ppm.n == 0 && rn.census.max_ppm == 0 && rn.census.unread == 0 && rn.census.lost == 0 && rn.census.failed == 0 && rn.census.area == 0, "census resets per window; a frame without a census files none");
+    // The needs-repair counter (fog-gpu-cost.md step C): its own window beside the repair census, pixel counts kept exact,
+    // the spacing tag of the last counted frame; an abandoned frame drops both.
+    const std::uint32_t needs_pixels[4] = {40, 70, 10, 999};
+    for (unsigned k = 0; k < 4; ++k) {
+        const std::uint64_t base = 400000 + k * 20000;
+        t->begin(g::Scene, base); t->end(g::Scene, base + 10, 0);
+        if (k == 3) t->abandon_frame();
+        t->census(5, 1000, g::CensusOk);
+        t->needs(needs_pixels[k], 1000, k == 2 ? 4u : 2u, k == 1 ? g::CensusNotReady : g::CensusOk);
+        t->frame(40 + k, base + 16000, f);
+    }
+    const g::Report rq = t->report();
+    check(rq.needs.px.n == 2 && rq.needs.px.median == 10 && rq.needs.px.p90 == 40 && rq.needs.max_px == 40 && rq.needs.ppm.median == 10000 && rq.needs.tag == 4
+          && rq.needs.pixels == 10 && rq.needs.unread == 1 && rq.census.px.n == 3 && rq.census.px.median == 5 && rq.census.tag == 0, "needs census: own window, exact pixels, spacing tag, abandoned frame dropped");
     // Bounded arrays: frames past the window without a report never overflow.
     t->configure(1);
     for (unsigned k = 0; k < 700; ++k) { t->begin(g::Taa, k * 10); t->end(g::Taa, k * 10 + 3, 0); t->frame(1000 + k, 1000000 + k * 100, f); }

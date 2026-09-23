@@ -93,7 +93,8 @@ def summary_of(report):
     return {'checks': report['check_count'], 'failed_checks': report['failed_checks'], 'device': report['device'], 'probe': report['probe'],
             'support': report['support'], 'softfail': [(s['kind'], s['reason'], s['available']) for s in report['softfail']],
             'windows': [(w['phase'], w['window'], w['n_frames'], w['dt_median_us']) for w in report['windows']],
-            'pass_median_us_per_window': medians, 'census': [(c['phase'], c['window'], c['n'], c['median_ppm'], c['last_pixels'], c['unread']) for c in report['census']], 'stats': report['stats'], 'session': report['session'], 'sync_cost': report['sync_cost'], 'reset': report['reset']}
+            'pass_median_us_per_window': medians, 'census': [(c['phase'], c['window'], c['n'], c['median_ppm'], c['last_pixels'], c['unread']) for c in report['census']],
+            'needs_census': [(c['phase'], c['window'], c.get('needs_n'), c.get('needs_px'), c.get('needs_scale'), c.get('needs_missed')) for c in report['census']], 'stats': report['stats'], 'session': report['session'], 'sync_cost': report['sync_cost'], 'reset': report['reset']}
 
 
 def main():

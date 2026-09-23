@@ -193,6 +193,11 @@ bool volumetric_fog_shadow_pass = false;
 // grid programs have no 24-bin variant) or a column cap above fog_far_bins_coarse_cap_max keep the accepted 40, and any
 // other value is logged as invalid and keeps 40.
 unsigned volumetric_fog_far_bins = x3m::renderer::fog_far_bins_default;
+// X3M_FOG_MARCH_SCALE=2|4 (docs/architecture/fog-gpu-cost.md, step C; launcher --fog-march-scale, default 2): the stored
+// look's march spacing in full pixels. Exactly "4" selects the quarter-resolution programs; "2", absent, the legacy range or
+// the shadow pass (its grid programs exist at spacing 2 only) keep the accepted half-resolution march, and any other value
+// is logged as invalid and keeps 2.
+unsigned volumetric_fog_march_scale = x3m::renderer::fog_march_scale_default;
 // X3M_FOG_HANDOVER_STEP / X3M_FOG_HANDOVER_COLDFILL (docs/architecture/fog-handover.md, "Implementation"; launcher
 // --fog-handover-step / --fog-handover-coldfill, default on, exactly "0" is off): the stored range's cold-start
 // readiness step and cold fill. Stored range only.
@@ -1001,11 +1006,13 @@ void gpu_sync_present(Device& ctx) {
             r.dt_window.median,r.dt_window.p90,r.first_frame,r.last_frame,r.frames,r.dropped,r.unclosed,ctx.id);
     }
     // The fog repair-pixel census (fog-gpu-cost.md, step A): per frame with a repair draw, the pixels its clip kept as
-    // ppm of the target; n=0 when no fog frame ran in the window.
+    // ppm of the target; n=0 when no fog frame ran in the window. Step C: needs_* are the pixels the repair marches at
+    // the drawn march spacing (needs_scale 2 or 4; 0: none counted), per frame, as pixel counts; needs_missed counts
+    // frames whose needs query was not read (not ready, lost or refused).
     if(ctx.gpu_sync->census_available())
-        log("volumetric_fog_repair_census window=%llu frames=%llu..%llu n=%u median_ppm=%u p90_ppm=%u max_ppm=%u last_pixels=%u area=%u unread=%u lost=%u failed=%u device=%llu",
+        log("volumetric_fog_repair_census window=%llu frames=%llu..%llu n=%u median_ppm=%u p90_ppm=%u max_ppm=%u last_pixels=%u area=%u unread=%u lost=%u failed=%u needs_n=%u needs_px=%u needs_p90_px=%u needs_max_px=%u needs_scale=%u needs_missed=%u device=%llu",
             r.window,r.first_frame,r.last_frame,r.census.ppm.n,r.census.ppm.median,r.census.ppm.p90,r.census.max_ppm,r.census.pixels,r.census.area,r.census.unread,
-            r.census.lost,r.census.failed,ctx.id);
+            r.census.lost,r.census.failed,r.needs.px.n,r.needs.px.median,r.needs.px.p90,r.needs.max_px,r.needs.tag,r.needs.unread+r.needs.lost+r.needs.failed,ctx.id);
 }
 ULONG WINAPI release_device(IDirect3DDevice9* d) {
     CpuCallBoundary cpu;
@@ -2720,6 +2727,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_volumetric_fog_look(volumetric_fog_look_tuning);
     hooked.motion_output.configure_volumetric_fog_shadow_pass(volumetric_fog_shadow_pass);
     hooked.motion_output.configure_volumetric_fog_far_bins(volumetric_fog_far_bins);
+    hooked.motion_output.configure_volumetric_fog_march_scale(volumetric_fog_march_scale);
     hooked.motion_output.configure_volumetric_fog_dust_motes(volumetric_fog_motes);
     hooked.motion_output.configure_volumetric_fog_handover(volumetric_fog_handover_step,volumetric_fog_handover_coldfill);
     hooked.motion_output.configure_volumetric_fog_prefill(volumetric_fog_prefill);
@@ -3419,6 +3427,7 @@ void initialize_log(HMODULE module) {
      volumetric_fog_range_stored=volumetric_fog_requested && fog_env(L"X3M_VOLUMETRIC_FOG_RANGE")==6 && !wcscmp(setting,L"stored");
      volumetric_fog_shadow_pass=volumetric_fog_range_stored && fog_env(L"X3M_FOG_SHADOW_PASS")==1 && setting[0]==L'1';
      volumetric_fog_far_bins=renderer::fog_far_bins_default;
+     volumetric_fog_march_scale=renderer::fog_march_scale_default;
      // Default on: absent or anything but exactly "0" keeps the switch (fog-handover.md, "Implementation").
      const auto fog_default_on=[&](const wchar_t* name){return !(fog_env(name)==1 && setting[0]==L'0');};
      volumetric_fog_handover_step=volumetric_fog_range_stored && fog_default_on(L"X3M_FOG_HANDOVER_STEP");
@@ -3472,6 +3481,20 @@ void initialize_log(HMODULE module) {
             !(volumetric_fog_look_tuning.sky_cap<=renderer::fog_far_bins_coarse_cap_max)?"cap":"none";
         if(far_bins_asked&&!std::strcmp(far_bins_refusal,"none"))volumetric_fog_far_bins=renderer::fog_far_bins_coarse;
         log("volumetric_fog_far_bins bins=%u requested=%s refused=%s sky_cap=%g",volumetric_fog_far_bins,far_bins_value,far_bins_refusal,double(volumetric_fog_look_tuning.sky_cap));
+        // X3M_FOG_MARCH_SCALE (step C), echoed the same way: exactly "4" under the stored range and without the shadow pass.
+        char march_scale_value[40]="2";const char* march_scale_refusal="none";bool march_scale_asked=false;
+        const DWORD march_scale_length=GetEnvironmentVariableW(L"X3M_FOG_MARCH_SCALE",setting,32);
+        if(march_scale_length>=32){std::snprintf(march_scale_value,sizeof march_scale_value,"overlong_%lu",static_cast<unsigned long>(march_scale_length));march_scale_refusal="invalid";}
+        else if(march_scale_length>0){
+            for(DWORD i=0;i<march_scale_length;++i){const wchar_t c=setting[i];
+                march_scale_value[i]=(c>=L'0'&&c<=L'9')||(c>=L'A'&&c<=L'Z')||(c>=L'a'&&c<=L'z')||c==L'.'||c==L'_'||c==L'+'||c==L'-'?char(c):'?';}
+            march_scale_value[march_scale_length]='\0';
+            march_scale_asked=!wcscmp(setting,L"4");
+            if(!march_scale_asked&&wcscmp(setting,L"2"))march_scale_refusal="invalid";
+        }
+        if(march_scale_asked&&volumetric_fog_shadow_pass)march_scale_refusal="shadow_pass";
+        if(march_scale_asked&&!std::strcmp(march_scale_refusal,"none"))volumetric_fog_march_scale=renderer::fog_march_scale_quarter;
+        log("volumetric_fog_march_scale scale=%u requested=%s refused=%s",volumetric_fog_march_scale,march_scale_value,march_scale_refusal);
      }
      // X3M_FOG_DUST_MOTES=N,SIZE,STREAK: the whole string must parse (N 0 or 64..8192, SIZE 2..16, STREAK 0..512), anything
      // else keeps the motes off; the tunables are read only with the option on (one volumetric_fog_motes_mode line). A

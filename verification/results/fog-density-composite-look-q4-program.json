@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "source": "src/fog/fog_density_composite_look_q4_ps.hlsl",
+  "source_sha256": "0c90467ded3d0c63ab3a4954ff124b1c53760d1d467cbea5a6ae4c1cdf548897",
+  "compiler": "native d3dx9_37.dll D3DXCompileShader",
+  "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+  "entry": "main",
+  "target": "ps_3_0",
+  "flags": 32768,
+  "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
+  "defines": null,
+  "includes": {
+    "src/fog/fog_density_composite_look_ps.hlsl": "19d77a5b36545372beb9bf19f643ef48c40f0add677fe6ca21f196856be05fd7",
+    "src/fog/fog_density_composite_ps.hlsl": "651475a2d3a49cf75bce2883974b0aed2eb347e8d08edb6e2a67f836f7193164",
+    "src/fog/fog_density_field_inc.h": "ea48e44db21a65d656d3d22098ea7c277889963ac90a9eb58a0915e49fe6895d",
+    "src/fog/fog_shadow_grid_inc.h": "fae5df8acfe6e4c969678093fa9d5fe750180f22a572df017d59cebe0f927f96"
+  },
+  "word_count": 922,
+  "bytecode_sha256": "c787967e49f66a4475a62f03ff66948f55190d190a4c39444588199b62f5d6e0",
+  "header_sha256": "27d30d885d25ab38e50e9fe0b8eece79ed7916b5c77f4c4c991d6535004f0f73",
+  "tool_sources": {
+    "tools/shaders/compile_rigid_motion_pixel.cpp": "d1850b4e53ab5647f9b3986fadd39d12d7545039f48636aa49158d58adcf1003",
+    "tools/shaders/generate_rigid_motion_pixel.py": "dc673465d9af4a78a087ec654e98c089409f7a54338176279ac91b80750f90b3"
+  },
+  "copyright_scope": "Original authored project shader; no game shader bytes",
+  "creates_d3d_device": false
+}

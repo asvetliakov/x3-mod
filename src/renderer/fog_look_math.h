@@ -18,6 +18,12 @@ constexpr bool fog_far_bins_valid(unsigned bins) { return bins == fog_far_bins_d
 // 24 bins is one sample per 4096-unit far node at the 112,500 cap (ds 4187.5); a larger column cap (X3M_FOG_LOOK_SKY_CAP up
 // to 200,000: ds 7833, 1.9 nodes) would skip nodes and alias, so the 24-bin variant is refused above this cap.
 constexpr float fog_far_bins_coarse_cap_max = 120000.f;
+// The march spacing in full pixels (FOG_MARCH_SCALE; docs/architecture/fog-gpu-cost.md, step C): the accepted 2 (half
+// resolution), or 4 with the separately compiled *_q4 march/repair/composite (X3M_FOG_MARCH_SCALE=4). No other spacing has
+// programs. The march target of a W x H scene is fog_march_extent(W, scale) x fog_march_extent(H, scale).
+constexpr unsigned fog_march_scale_default = 2, fog_march_scale_quarter = 4;
+constexpr bool fog_march_scale_valid(unsigned scale) { return scale == fog_march_scale_default || scale == fog_march_scale_quarter; }
+constexpr unsigned fog_march_extent(unsigned full, unsigned scale) { return (full + scale - 1) / scale; }
 // Every scalar has an environment override X3M_FOG_LOOK_<NAME> read once at init (fog_look_fields).
 struct FogLookTuning {
     float coverage = .35f, exponent = 2.f, sigma_scale = 8.f;         // rho' = saturate((rho-c)/(1-c))^p: soft zero-slope toe

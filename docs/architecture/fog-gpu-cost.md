@@ -2,8 +2,8 @@
 
 Question: how to cut the GPU cost of the stored-density fog route without changing the accepted look
 (L2 law, density scale 1.0x, 22.5 km fade, dust motes 1300,3 / MAX_PX 8, shadow pass off). Plan for
-ratification; steps A and B are implemented (sections "Step A implemented", "Step B implemented"), step C is assessed
-there, not built. [M] measured, [I] inferred.
+ratification; steps A, B and C are implemented (sections "Step A implemented", "Step B implemented", "Step C
+implemented"); B and C are runtime variants, off by default, awaiting a flight. [M] measured, [I] inferred.
 
 Measured (Run 73 C, run274, `--gpu-sync-timing`, stand window W4, 300 frames all `reason=ok`,
 `verification/results/run274-gpu-sync/windows.txt`): `fog_route` 4.43 ms median / 5.15 p90, W5-W6
@@ -327,3 +327,168 @@ loop is not where most of the march time goes: the per-ray base (near bins, the 
 fetch cost per sample) dominates. User: no visible difference between 24 and 40 in a short stand. Decision: 40 stays
 the default (the saving does not buy the far-detail risk); step C (quarter-resolution march) is the lever and is being
 implemented as a runtime variant.
+
+## Step C implemented (2026-09-24)
+
+Uncommitted worktree on 638b19ad, not installed; default 2 (the accepted half-resolution march). Ledger:
+[volumetric-fog.md](../verification/volumetric-fog.md), same date. Evidence scripts: `verification/results/fog-gpu-cost/step_c_*.py`
+with their `_out.txt`. [M] measured, [I] inferred.
+
+**The law.** `FOG_MARCH_SCALE` in `fog_density_field_inc.h` (2 or 4; anything else is a compile error) expands to
+`FOG_MARCH_STEP` / `FOG_MARCH_INVERSE`, which at 2 are the literals `2.0` / `0.5` they replaced, so all 14 pre-existing
+fog programs are byte-identical to 638b19ad (7 are new; the 15 regenerated records, dust-mote vertex included, change only
+their include and tool hashes, `header_sha256` unchanged) [M, `step_c_programs_out.txt`]. At 4, march pixel p takes the ray and the
+depth class of full pixel 4p (uv `(4p+.5)/full`), the shaft-lookup noise cell is the quarter pixel, and composite, repair
+and `needs_repair` read their samples at full pixels 4q with `hp = pixel*0.25`: the same class law, relative-depth weight,
+2x2 footprint and fetch count. The sample sits at the cell's first pixel rather than at 4p+1.5 as the assessment above
+suggested: with `hp = pixel*0.25` a sample at 4p+1.5 would be interpolated 1.5 px away from where its ray was taken, while
+at 4p a pixel on a sample has f = 0 (exact alignment) and the scale-2 expansion stays token-identical. The last 1-3 columns
+and rows clamp to the last sample, as the last odd column does at scale 2. The grid programs (`FOG_SHADOW_PASS`) exist at
+spacing 2 only (`#error` otherwise).
+
+**Program matrix** [M, `step_c_programs_out.txt`; ps_3_0 slots / texture instructions / rep count]:
+
+| Program | scale 2, 40 far bins | scale 2, 24 | scale 4, 40 | scale 4, 24 |
+| --- | --- | --- | --- | --- |
+| march look | 425 / 15 / 64 (default) | 425 / 15 / 48 | 425 / 15 / 64 | 425 / 15 / 48 |
+| repair look | 510 / 20 / 64 (default) | 510 / 20 / 48 | 510 / 20 / 64 | 510 / 20 / 48 |
+| composite look | 210 / 10 (shared by both bin counts) | | 210 / 10 (shared) | |
+| needs census (diagnostic only) | 77 / 5 | | 77 / 5 | |
+
+The DLL now carries 12 look programs (4 march, 4 repair, 2 composite, 2 census); 7 are new. Each attachment creates
+three of them, plus the census one under `--gpu-sync-timing`. There is no new constant: the spacing is a define, and
+`sizes.zw` carries the march target's extent.
+
+**Variant mechanism** (the far-bins pattern). `FogDensityConfig::march_scale` accepts 2 or 4; anything else returns
+`E_INVALIDARG` at `prepare_density`. The value is latched at `prepare_density`, and `density_resources` creates the
+following, never on a draw path:
+
+- first the quarter target: A16B16G16R16F, `fog_march_extent(w,4)` x `fog_march_extent(h,4)`, 480x270 at 1080p. It is
+  sized from and released with the targets and re-created at the next prepare after Reset or resize;
+- then the march/repair/composite of the requested (far bins, spacing).
+
+Switching and failure rules:
+
+- A spacing change builds the new set before it drops the old one. The composite is rebuilt only when the spacing
+  changes; a far-bin change alone swaps the march/repair pair.
+- A set that cannot be built leaves the working one drawing (`march_scale_refused=program`, sticky until detach, no
+  retries). One exception (review F1): after a Reset or resize while 4 draws, if the quarter target cannot be re-created
+  and the half set cannot be built in the same prepare, the quarter set is dropped (it cannot draw without its target),
+  4 stays refused as `target`, and the next prepare builds the half set from scratch [M, pass fixture `q4_double_*`].
+- A quarter target that cannot be created refuses 4 as `target` (sticky).
+- The quarter target exists only while the quarter programs draw.
+- From the first prepare that asks for the shadow pass until detach, 4 is clamped to 2 (`shadow_pass`), so a grid frame
+  and its toggled-off frame draw at one spacing.
+
+The legacy path and the half-resolution `lit_` are untouched. The half target stays allocated while 4 draws (4 MB at
+1080p), so a refusal can fall back without an allocation.
+
+Proxy and launcher:
+
+- `--fog-march-scale {2,4}` → `X3M_FOG_MARCH_SCALE`. The variable is always written; 4 needs the stored range, is
+  refused with `--fog-shadow-pass on`, and combines with `--fog-far-bins`.
+- The DLL accepts exactly `4`. It logs `volumetric_fog_march_scale scale= requested= refused=none|shadow_pass|invalid`
+  once at init, adds `march_scale=` to the cache config row, and logs `fog_march_scale_refused reason= requested= drawn=`
+  once.
+- Per frame, 2 and 4 issue the same device calls [M: 322, pass fixture]; nothing is added per draw.
+
+**The repair at 4 px and the needs census.** The repair marches at full resolution every valid-class pixel whose four
+nonzero-weight samples (full pixels 4q) all belong to another depth class. The class law is today's; only the spacing
+widens.
+
+Under `--gpu-sync-timing` the census works as follows:
+
+- A second `D3DQUERYTYPE_OCCLUSION` query, created with the first and sharing its lifetime and Reset handling, brackets
+  one full-screen quad of `fog_density_needs_census[_q4]` between composite and repair, with colour writes off.
+- The quad clips unless `needs_repair` holds at the drawn spacing, so it counts the pixels the repair marches, including
+  those whose march comes out empty. The step A census counts only the pixels written.
+- `volumetric_fog_repair_census` gains `needs_n=`, `needs_px=` (median per frame), `needs_p90_px=`, `needs_max_px=`,
+  `needs_scale=` and `needs_missed=`.
+- Cost with the diagnostic on: a 77-slot, 5-fetch full-screen pass inside `fog_route` but outside the three sub-pass
+  pairs, about the cost of the repair prologue, ~0.3 ms [I]. With it off, nothing is created and nothing is drawn.
+- GPU check [M, pass fixture, two 31x17 layouts]: needs 255/255/0/255 (layout A at 2 and 4, layout B at 2 and 4) equal
+  the CPU twin; written 125/125/0/128 equal the twin's non-empty marches.
+
+**Fixture** (bottle X3, `wine_lock.py`; `fog_density_shader_run.py build/run/check --reference /tmp/x3-run67-fog-ref
+--variant-reference /tmp/x3-run76-fog-ref-far24 --scale4-reference /tmp/x3-run77-fog-ref-scale4`) [M]:
+
+- Default unchanged. 30/30 default gates pass, including `pass_off_bit_identical` (11/11 hashes). Against 638b19ad's
+  summary, 685 default figures were compared: 683 are equal and 2 differ as expected, both counts the step C cases add to
+  the same run (shader fixture checks 35 → 41, generated atlases 32 → 36); the script names those two and exits 0
+  (`step_c_fixture_identity_out.txt`). `far24.json` is byte-identical to the committed
+  one, and the exporter reproduces the run67 references (153/153 arrays) and the far24 ones (26/26) bit for bit
+  (`step_c_exporter_identity_out.txt`).
+- Scale-4 reference `/tmp/x3-run77-fog-ref-scale4`: exporter `--march-scale 4` over every pixel of the 64x36 quarter
+  grid, reference_sha256 `0d6b8e09f39a…`, cases `fe7c6cf092dc…`, pinned in `fog-density-shader/q4.json`. All 7 `q4_*`
+  gates pass:
+  - look cases, GPU against host: T max .00077, S max .00044;
+  - shaft offset exercised, shadowed fog coloured;
+  - repair split at spacing 4: .00049 from its host law and .009 from the offset law;
+  - programs under 512 slots with the default fetch counts;
+  - the look moves;
+  - 35 pass-fixture checks (after the review). They cover quarter frames against the CPU twin (T .00046 / S .00017) and far24 at spacing 4
+    (T .00047 / S .00014). Back at 2 the frames are byte-identical, 3 programs are created and the device calls match.
+    Spacing 3 is refused, Reset re-creates the target, and injected program and target failures and the shadow-pass
+    clamp each keep the half-resolution frame; the double failure after a Reset. The census checks are included.
+- Totals: 44/44 gates; pass fixture 177 checks; summary 35.2 KB, q4.json 23.1 KB.
+
+**How far the look moves** [M, `step_c_deviation_out.txt`; synthetic poses, not the flown sector]. Look cases have one
+depth class each. The FP16 march images of both spacings are upsampled to the 256x144 screen by the composite's bilinear
+law and compared on fogged pixels. This table models the fixture's look-case rays, which sit at march-cell centres (the
+fixture's c0 shifts them there, full coordinate s p + s/2), not at the production placement 4q; it measures the coarser
+sampling of a one-class field. Only the depth-edge study below uses the production placement (c0 zero, samples at full
+pixels s q, the composite and repair programs themselves):
+
+| Case | T max | T mean | S max | S mean | Past .003 | Signed T mean |
+| --- | --- | --- | --- | --- | --- | --- |
+| A sky (= A depth3) | .0265 | .0012 | .0214 | .0006 | 11.2 % | +.00004 |
+| A depth 90000 | .0266 | .0012 | .0217 | .0006 | 11.3 % | +.00004 |
+| A stripes / held | .0265 | .0012 | .0146 / .0154 | .0007 / .0005 | 11.5 / 11.1 % | +.00004 |
+| A shadowed | .0265 | .0012 | .0113 | .0004 | 11.0 % | +.00004 |
+| B sky | .0227 | .0013 | .0063 | .0003 | 9.9 % | +.00003 |
+
+For depth edges, the fixture draws a station-like layout on the same screen: a hull, a nearer module across its edge, a
+far hull, struts 1-6 px wide over sky and over the far hull, and a 2-px cable. Each spacing is drawn the production way
+(FP16 march, composite, repair into FP32 over scenes 0 and 1, which yields S and the tinted T^k) and compared with the look
+marched at every full pixel:
+
+| Pixels (fogged) | n | 2 vs truth: T / S max, past .003 | 4 vs truth: T / S max, past .003 | 4 vs 2: T / S max, past .003 |
+| --- | --- | --- | --- | --- |
+| class edge band (within 4 px of sky/geometry) | 5796 | .039 / .016, 9.1 % | .126 / .053, 34.7 % | .087 / .037, 29.5 % |
+| geometry depth edge band | 261 | .0009 / .0002, 0 | .0014 / .0004, 0 | .0013 / .0004, 0 |
+| off band | 9986 | .012 / .005, 1.5 % | .035 / .010, 10.9 % | .024 / .007, 8.4 % |
+| repaired at 4 | 78 | .0007 / 0 | 0 / 0 | .0007 / 0 |
+
+Pixels needing repair (host twin): 222 at 2 and 300 at 4, i.e. 0.60 % → 0.81 % (1.35x). The GPU repair writes 52 → 78
+of them.
+
+The repair itself is exact; the look moves on the pixels the class law still serves. The worst are sky pixels beside a
+thin feature (a cable or a hull corner) whose nearest sky samples sit up to 4 px away across a sky fog gradient: T error
+.126 at 4 against .039 at 2, and the same pixel is the worst at both spacings. Elsewhere the change is unbiased (signed
+mean T +.00004). Under TAA the per-frame jitter moves the ray within the pixel, not within the 4x4 cell, so the result is
+a fixed softening of fog detail near silhouettes and at cloud edges, not noise [I].
+
+**Expected saving** [I]:
+
+- The march costs ~8.9 ns per marched pixel (run280). A quarter of the pixels is ~1.15 ms instead of 4.5-4.7 ms net at
+  40 bins, or ~0.85 ms with 24 far bins.
+- Composite and the repair prologue are unchanged (~0.3 ms each).
+- Repaired marches rise to about 1.5x today's 62-216 written pixels, well under 0.1 ms.
+- Net: ~3.4 ms of GPU time at 1080p, ~3.6 ms together with step B. At the CPU-bound stand this is headroom, not FPS.
+
+**Flight plan (one user flight, `--gpu-sync-timing`).**
+
+- Setup: the same save and stand as Run 75 C (run280, fogged sector idx 2). Two launches with everything else equal:
+  `--fog-march-scale 2`, then `--fog-march-scale 4` (far bins at the default 40). In each, two still 300-frame windows,
+  then two while turning in place; host idle.
+- Read per window:
+  - `fog_march` median and p90. Target [I]: ~1.4-1.6 ms including the 0.264 floor, down from 4.79-5.01.
+  - `fog_composite` and `fog_repair` as controls; repair may rise by the extra marches.
+  - `taa` and `engine` as controls.
+  - `volumetric_fog_repair_census` `needs_px` at 2 and at 4, with `needs_scale`.
+  - `volumetric_fog_march_scale scale=4 refused=none` in the second log.
+  - In both launches the census quad adds ~0.3 ms to `fog_route`.
+- Look check in both launches: station hulls, struts and cables against fog and fogged sky (the measured worst case is
+  sky pixels beside thin features), and cloud and shaft edges while turning (softer detail, 4x coarser lookup cells).
+- Accept when the user sees no difference at the stand and while turning, and `fog_march` drops by at least 2 ms. The
+  default then flips in a later candidate, with the accepted-look hashes re-pinned.

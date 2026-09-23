@@ -1,0 +1,290 @@
+{
+ "passed": true,
+ "exit_code": 0,
+ "elapsed_s": 3.4,
+ "executable_sha256": "6a711923f6746a2ea33f66d8ab6e34d1788dea16a0d5d19a31f2ec43f662e81e",
+ "checks": 32,
+ "failed_checks": [],
+ "device": "adapter=NVIDIA GeForce 8800 GTX driver=nvd3dum.dll",
+ "probe": {
+  "event": 0
+ },
+ "support": {
+  "available": 1,
+  "reason": "ok",
+  "result": 0,
+  "references": 46,
+  "device_delta": 46,
+  "queries": 44,
+  "census": 1,
+  "frequency": 10000000
+ },
+ "softfail": [
+  [
+   "unsupported",
+   "event_unsupported",
+   0
+  ],
+  [
+   "partial",
+   "create_failed",
+   0
+  ]
+ ],
+ "windows": [
+  [
+   "first",
+   1,
+   16,
+   12586
+  ],
+  [
+   "first",
+   2,
+   16,
+   9980
+  ],
+  [
+   "first",
+   3,
+   16,
+   12801
+  ],
+  [
+   "after_reset",
+   4,
+   16,
+   13284
+  ]
+ ],
+ "pass_median_us_per_window": {
+  "scene": [
+   12326,
+   9714,
+   12301,
+   13056
+  ],
+  "engine": [
+   1405,
+   1139,
+   1505,
+   1533
+  ],
+  "shadow_depth": [
+   2360,
+   1613,
+   2429,
+   2459
+  ],
+  "sun_apply": [
+   192,
+   181,
+   190,
+   189
+  ],
+  "retention": [
+   15,
+   15,
+   15,
+   15
+  ],
+  "fog_fill": [
+   189,
+   182,
+   186,
+   194
+  ],
+  "fog_route": [
+   3706,
+   3015,
+   3832,
+   3990
+  ],
+  "motes": [
+   189,
+   190,
+   188,
+   190
+  ],
+  "taa": [
+   1168,
+   1126,
+   1173,
+   1121
+  ],
+  "hdr_writeback": [
+   2642,
+   1939,
+   2676,
+   2676
+  ],
+  "meter": [
+   191,
+   188,
+   187,
+   189
+  ],
+  "hdr_readback": [
+   203,
+   197,
+   203,
+   201
+  ],
+  "bloom": [
+   374,
+   367,
+   475,
+   366
+  ],
+  "present": [
+   75,
+   53,
+   73,
+   59
+  ],
+  "taa_copy": [
+   190,
+   184,
+   189,
+   182
+  ],
+  "taa_mask": [
+   186,
+   179,
+   184,
+   183
+  ],
+  "taa_box": [
+   189,
+   182,
+   183,
+   181
+  ],
+  "taa_resolve": [
+   183,
+   182,
+   183,
+   186
+  ],
+  "taa_display": [
+   184,
+   181,
+   198,
+   181
+  ],
+  "fog_march": [
+   193,
+   187,
+   210,
+   207
+  ],
+  "fog_composite": [
+   186,
+   181,
+   187,
+   182
+  ],
+  "fog_repair": [
+   199,
+   197,
+   193,
+   191
+  ]
+ },
+ "census": [
+  [
+   "first",
+   1,
+   16,
+   277,
+   256,
+   0
+  ],
+  [
+   "first",
+   2,
+   16,
+   277,
+   256,
+   0
+  ],
+  [
+   "first",
+   3,
+   16,
+   277,
+   256,
+   0
+  ],
+  [
+   "after_reset",
+   4,
+   16,
+   277,
+   256,
+   0
+  ]
+ ],
+ "needs_census": [
+  [
+   "first",
+   1,
+   16,
+   64,
+   4,
+   0
+  ],
+  [
+   "first",
+   2,
+   16,
+   64,
+   4,
+   0
+  ],
+  [
+   "first",
+   3,
+   16,
+   64,
+   4,
+   0
+  ],
+  [
+   "after_reset",
+   4,
+   16,
+   64,
+   4,
+   0
+  ]
+ ],
+ "stats": {
+  "phase": "first",
+  "syncs": 2208,
+  "polls": 5754148,
+  "issue_failures": 0,
+  "data_failures": 0,
+  "timeouts": 0,
+  "dropped_frames": 0
+ },
+ "session": {
+  "windows": 3,
+  "dt_n": 47,
+  "dt_median_us": 12544,
+  "retention_median_us": 15,
+  "fog_route_median_us": 3520,
+  "taa_median_us": 1184
+ },
+ "sync_cost": {
+  "empty_pair_median_us": 15,
+  "light_pair_median_us": 180
+ },
+ "reset": {
+  "result": 0,
+  "available": 1,
+  "reason": "ok",
+  "references": 46,
+  "device_delta": 46
+ }
+}

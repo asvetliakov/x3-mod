@@ -18,6 +18,11 @@ same [12000, cap]. It holds only what the *_look_far24 march/repair programs dra
 their stripes arrays, and the look repair split (`A_repair_shafts`, `_other`); the unshaped, invalid, empty and grid cases
 belong to the default 40-bin reference, which this mode never touches.
 
+`--march-scale 4` (docs/architecture/fog-gpu-cost.md, step C): the variant reference of the quarter-resolution march of the
+same 256x144 screen. The look cases (option `scale=4`) are marched on every pixel of the 64x36 quarter grid (ray and shaft
+lookup cell = the quarter pixel), and the look repair split's repaired rays go through (x+2, y+2)/full (the quarter
+target's c0); the law is unchanged, so only the ray set and the lookup cells differ from the default reference.
+
 The sun-visibility slice grid (docs/architecture/fog-shadow-pass.md, src/renderer/fog_shadow_grid.h): `grid_atlas` is the
 host twin of fog_density_visibility_grid_ps.hlsl over the fixture's synthetic cascades (`grid_cascades`: 2 the striped
 occluder, 3 the two-cascade seam, 4 the penumbra edge) and `grid_reader` the march's bilinear lane read of it. Grid
@@ -314,7 +319,16 @@ def both(origin, directions, limits, chroma, store):
     return {'candidate_S': cand['S'], 'candidate_T': cand['T'], 'dense64_S': dense['S'], 'dense64_T': dense['T']}
 
 
-def run(asset_data, output, far_bins=40):
+def quarter_rays(pose, scale):
+    """m.rays of the march grid at spacing `scale` over the same m.W x m.H half-resolution screen (scale 2: m.rays)."""
+    w, h = 2 * m.W // scale, 2 * m.H // scale
+    x, y = np.meshgrid(np.arange(w), np.arange(h)); u = (x + .5) / w; v = (y + .5) / h; t = math.tan(math.radians(30))
+    local = np.stack(((2 * u - 1) * (w / h) * t, (1 - 2 * v) * t, np.ones_like(u)), axis=-1); local /= np.linalg.norm(local, axis=-1, keepdims=True)
+    r, up, f = basis(pose); world = local[..., :1] * r + local[..., 1:2] * up + local[..., 2:] * f
+    return (world / np.linalg.norm(world, axis=-1, keepdims=True)).reshape(-1, 3).astype(m.F), x.ravel(), y.ravel(), w
+
+
+def run(asset_data, output, far_bins=40, march_scale=2):
     if output.exists():
         raise ValueError(f'output directory already exists: {output}')
     output.mkdir(parents=True)
@@ -324,9 +338,9 @@ def run(asset_data, output, far_bins=40):
         raise ValueError('sigma')
     volume = m.fog.decode_packet(asset_data / 'foggreenoutlands.fogbin', manifest)
     chroma = (volume[..., :3].sum((0, 1, 2), dtype=np.float64) / volume[..., 3].sum(dtype=np.float64)).astype(m.F)
-    store = m.LazyStore(); arrays = {}; pops = m.populations(); variant = far_bins != 40
+    store = m.LazyStore(); arrays = {}; pops = m.populations(); variant = far_bins != 40 or march_scale != 2
     march = lambda *args, **kw: look_march(*args, far_bins=far_bins, **kw)  # noqa: E731  the look law at this reference's far bins
-    far_option = ' far=%d' % far_bins if variant else ''
+    far_option = (' far=%d' % far_bins if far_bins != 40 else '') + (' scale=%d' % march_scale if march_scale != 2 else '')
     lines = ['sigma %r' % float(m.SIGMA), 'chroma %r %r %r' % tuple(float(np.float32(c)) for c in chroma)]
 
     def case(name, origin, pose, mode, value, extra=''):
@@ -364,9 +378,12 @@ def run(asset_data, output, far_bins=40):
             # goes through (x+1, y+1)/full (its c0 is the half-resolution one). The repair program keeps the bin
             # centres (FOG_LOOK_NO_OFFSET); `_other` is the offset lookup, which the GPU result must not match.
             fx, fy = np.meshgrid(8 * np.arange(32) + 1, 8 * np.arange(18) + 4); fx = fx.ravel(); fy = fy.ravel(); t = math.tan(math.radians(30))
-            local = np.stack(((2 * (fx + 1) / (2 * m.W) - 1) * (m.W / m.H) * t, (1 - 2 * (fy + 1) / (2 * m.H)) * t, np.ones(len(fx))), 1)
+            c0 = march_scale // 2  # the repair ray's offset in full pixels under the march target's c0 (scale 2: +1, scale 4: +2)
+            local = np.stack(((2 * (fx + c0) / (2 * m.W) - 1) * (m.W / m.H) * t, (1 - 2 * (fy + c0) / (2 * m.H)) * t, np.ones(len(fx))), 1)
             r, u, f = basis(pose); length = np.linalg.norm(local, axis=1); d = (local[:, :1] * r + local[:, 1:2] * u + local[:, 2:] * f) / length[:, None]
             arrays['A_repair_pixels'] = fy * 2 * m.W + fx; stripes = stripe_visibility(pose['forward'], 24000., 1024)
+            # `_other` keeps the half-resolution lookup cells at every spacing: a control law measurably away from the bin
+            # centres (the quarter cells happen to move these rays by less than twice the gate).
             for key, pixels in (('', None), ('_other', (fx // 2, fy // 2))):
                 S, T = march(origin, d, 20000. * length, True, chroma, store, m.SIGMA, 5, pixels, visibility=stripes)
                 arrays[f'A_repair_shafts{key}_S'] = S; arrays[f'A_repair_shafts{key}_T'] = T
@@ -378,6 +395,9 @@ def run(asset_data, output, far_bins=40):
         # The look on the stratified rays (half-resolution pixel = ray index): sky, two geometry depths across
         # the taper, the striped occluder with and without a temporal resolve, and the fully shadowed sky (coloured).
         strat = sy * m.W + sx; arrays[f'{name}_look_pixels'] = strat
+        look_rays, look_xy = allr[strat], (sx, sy)
+        if march_scale != 2:  # every pixel of the quarter grid, its own rays and lookup cells
+            look_rays, qx, qy, qw = quarter_rays(pose, march_scale); look_xy = (qx, qy); arrays[f'{name}_look_pixels'] = qy * qw + qx
         looks = [(f'{name}_look_sky', 'sky', None, False)]
         if name == 'A':
             # shadow=2: the striped occluder, whose lookup is offset per pixel and frame (phase 5); `_held` is TAA
@@ -388,13 +408,14 @@ def run(asset_data, output, far_bins=40):
             phase = 5 if shadowed == 2 else 0
             held = label.endswith('_held')
             case(label, origin, pose, mode, repr(depth) if depth else '0', f'look phase={phase} shadow={int(shadowed)}' + (' resolved=0' if held else '') + far_option)
-            S, T = march(origin, allr[strat], np.full(len(strat), depth or m.FAR), depth is not None, chroma, store, m.SIGMA, phase, (sx, sy), shadowed is True,
+            n = len(look_rays)
+            S, T = march(origin, look_rays, np.full(n, depth or m.FAR), depth is not None, chroma, store, m.SIGMA, phase, look_xy, shadowed is True,
                               visibility=stripe_visibility(pose['forward']) if shadowed == 2 else None, resolved=not held)
             arrays[f'{label}_S'] = S; arrays[f'{label}_T'] = T
             if shadowed == 2:  # what the offset lookup moves: the same case marched with the lookup at bin centres
-                arrays[f'{label}_centre_delta'] = np.abs(S - march(origin, allr[strat], np.full(len(strat), m.FAR), False, chroma, store, m.SIGMA, phase, (sx, sy),
+                arrays[f'{label}_centre_delta'] = np.abs(S - march(origin, look_rays, np.full(n, m.FAR), False, chroma, store, m.SIGMA, phase, look_xy,
                                                                          visibility=stripe_visibility(pose['forward']), tuning=dict(TUNING, shadow_jitter=0.))[0]).max(1)
-                arrays[f'{label}_noise_margin'] = look_noise(sx, sy, look_constants(chroma, phase=phase)[0][8, 3])[1] if not held else np.ones(len(sx))
+                arrays[f'{label}_noise_margin'] = look_noise(look_xy[0], look_xy[1], look_constants(chroma, phase=phase)[0][8, 3])[1] if not held else np.ones(n)
         # The visibility grid (X3M_FOG_SHADOW_PASS=1): the same rays through the FOG_SHADOW_PASS march reading the pass's
         # atlas. No cascade: the fixture compares the GPU image with the in-march case byte for byte (no arrays here).
         # Stripes: the host atlas (fixture gate 2/255) and the host march reading it; `A_look_stripes` is the in-march
@@ -430,6 +451,8 @@ def run(asset_data, output, far_bins=40):
                   manifest_sha256=m.digest(asset_data / 'manifest.json'), packet_sha256=m.digest(asset_data / 'foggreenoutlands.fogbin'))
     if variant:
         record['far_bins'] = far_bins
+    if march_scale != 2:
+        record['march_scale'] = march_scale
     (output / 'reference.json').write_text(json.dumps(record, indent=2) + '\n')
     return record
 
@@ -438,7 +461,8 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--asset-data', type=Path, required=True); p.add_argument('--output', type=Path, required=True)
     p.add_argument('--far-bins', type=int, choices=(40, 24), default=40, help='look far bins: 40 the default reference, 24 the step B variant')
-    a = p.parse_args(); print(json.dumps(run(a.asset_data, a.output, a.far_bins)))
+    p.add_argument('--march-scale', type=int, choices=(2, 4), default=2, help='march spacing: 2 the default reference, 4 the step C quarter-resolution variant')
+    a = p.parse_args(); print(json.dumps(run(a.asset_data, a.output, a.far_bins, a.march_scale)))
 
 
 if __name__ == '__main__':

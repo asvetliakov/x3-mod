@@ -1,0 +1,3 @@
+x3-run67-fog-ref: arrays identical 153/153 cases identical True only_one_side []
+x3-run76-fog-ref-far24: arrays identical 26/26 cases identical True only_one_side []
+result PASS

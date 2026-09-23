@@ -80,7 +80,7 @@ struct MotionOutput {
 #ifndef X3M_ROUTE_BRIDGE_BASELINE
     // Stored-density range: the production members, verbatim defaults.
     bool fog_density_requested_=false,fog_density_refused_=false,fog_density_prepared_=false,fog_density_camera_valid_=false;
-    bool fog_density_config_logged_=false,fog_density_ready_logged_[2]{},fog_shadow_pass_refused_logged_=false,fog_far_bins_refused_logged_=false;
+    bool fog_density_config_logged_=false,fog_density_ready_logged_[2]{},fog_shadow_pass_refused_logged_=false,fog_far_bins_refused_logged_=false,fog_march_scale_refused_logged_=false;
     // The grid pass A/B (fog-shadow-pass.md): the production members, verbatim defaults; set both as
     // configure_volumetric_fog_shadow_pass(true) does to launch with the pass.
     bool fog_shadow_pass_launch_=false;const char* fog_grid_last_march_="none";std::uint64_t fog_grid_logged_frame_=0;

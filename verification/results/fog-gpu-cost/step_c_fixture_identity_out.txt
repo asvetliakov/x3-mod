@@ -1,0 +1,21 @@
+EXPECTED fixture_checks: 35 -> 41
+ADDED gates.q4_look_cases: True
+ADDED gates.q4_look_shadowed_coloured: True
+ADDED gates.q4_look_shaft_offset_exercised: True
+ADDED gates.q4_moves_the_look: True
+ADDED gates.q4_pass_fixture: True
+ADDED gates.q4_programs: True
+ADDED gates.q4_repair_shaft_lookup: True
+EXPECTED generation.atlases: 32 -> 36
+VARIES pass_fixture.checks: 142 -> 177
+VARIES pass_fixture.fill.drawn_frames: 633 -> 627
+VARIES pass_fixture.fill.frames: 1079 -> 1071
+VARIES pass_fixture.fill.no_fog_frames: 445 -> 443
+VARIES pass_fixture.handover.frames: 500 -> 460
+VARIES pass_fixture.prepare_cpu.idle_frames: 2977 -> 2652
+VARIES pass_fixture.prepare_cpu.upload_frames: 7386 -> 7293
+VARIES pass_fixture.prepare_cpu.us_per_update_surface: 10.71 -> 6.57
+VARIES pass_fixture.recentre.upload_bytes: 341624 -> 341136
+VARIES pass_fixture.seam_recentres[1].upload_bytes: 369976 -> 371784
+VARIES pass_fixture.state_restorations: 1149 -> 1159
+compared=685 differing=0 expected_changes=2 added=57 scheduling=34 pass_off_hashes_equal=True n_hashes=11 result=PASS gates=44/44 pass_fixture_checks 142 -> 177

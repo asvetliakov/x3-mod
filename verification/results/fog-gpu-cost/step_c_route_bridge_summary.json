@@ -1,0 +1,156 @@
+{
+  "bottle": {
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "name": "X3",
+    "wine_arch": "arm64"
+  },
+  "bridge_checks": 36651,
+  "density": {
+    "abandon": {
+      "ms": 1.1
+    },
+    "first_fill": {
+      "far_ready_ms": 895.4,
+      "filling_frames": 299.0,
+      "fine_ready_ms": 1888.4,
+      "frames": 772.0,
+      "nodes": 3451840.0
+    },
+    "images": {
+      "legacy_after_reset": "7378a9f6148776ad",
+      "legacy_captured_cameras_33": "1430864db12b4828",
+      "legacy_new_family_warm": "4136579b460f30b6",
+      "legacy_pose_a": "2c4c8b588a1fb4dc",
+      "legacy_replaced": "c9b969bbfbcb3eb5",
+      "legacy_warm": "7378a9f6148776ad",
+      "stored_sector_a": "6654c07b91417f78",
+      "stored_sector_b": "30ad7271278454ee"
+    },
+    "legacy_bit_identical_to_baseline": true,
+    "prepare_cost_us": {
+      "steady_frames": 184.0,
+      "steady_us_median": 2.9,
+      "steady_us_p99": 22.4,
+      "upload_frames": 3849.0,
+      "upload_us_max": 2788.1,
+      "upload_us_median": 24.9,
+      "upload_us_p99": 121.4
+    },
+    "release": {
+      "device_refs": 13.0,
+      "expected": 13.0,
+      "join_ms": 7.48,
+      "live_worker": 1.0
+    },
+    "reset": {
+      "frames": 98.0,
+      "regenerated_nodes": 0.0,
+      "reuploaded_bytes": 8520192.0
+    },
+    "sector_change_fill": {
+      "far_ready_ms": 846.7,
+      "filling_frames": 311.0,
+      "fine_ready_ms": 1850.9,
+      "frames": 778.0,
+      "nodes": 6925760.0
+    }
+  },
+  "exit_cases": [
+    {
+      "abandon": "1",
+      "case": "idle",
+      "code": "0",
+      "exit_ms": "2",
+      "exited": "1",
+      "midfill": "0",
+      "order": "worker_parked,ready,dllmain_detach_process_exit,dllmain_detach_end,static_destructor_begin,static_destructor_end",
+      "started": "1",
+      "wait_ms": "2386"
+    },
+    {
+      "abandon": "1",
+      "case": "midfill",
+      "code": "0",
+      "exit_ms": "2",
+      "exited": "1",
+      "midfill": "1",
+      "order": "worker_generating,ready,dllmain_detach_process_exit,dllmain_detach_end,static_destructor_begin,static_destructor_end",
+      "started": "1",
+      "wait_ms": "317"
+    },
+    {
+      "abandon": "0",
+      "case": "control-idle",
+      "code": "0",
+      "exit_ms": "37657",
+      "exited": "0",
+      "midfill": "0",
+      "order": "worker_parked,ready,dllmain_detach_process_exit,dllmain_detach_end,static_destructor_begin",
+      "started": "1",
+      "wait_ms": "39989"
+    },
+    {
+      "abandon": "0",
+      "case": "control-midfill",
+      "code": "0",
+      "exit_ms": "2",
+      "exited": "1",
+      "midfill": "1",
+      "order": "worker_generating,ready,dllmain_detach_process_exit,dllmain_detach_end,static_destructor_begin,static_destructor_end",
+      "started": "1",
+      "wait_ms": "299"
+    }
+  ],
+  "exit_checks": 4,
+  "exit_controls": [
+    {
+      "case": "control-idle",
+      "finished_static_destructor": "0",
+      "hung": "1",
+      "reached_static_destructor": "1"
+    },
+    {
+      "case": "control-midfill",
+      "finished_static_destructor": "1",
+      "hung": "0",
+      "reached_static_destructor": "1"
+    }
+  ],
+  "limits": [
+    "Synthetic owner/sun/sector and captured camera rotations; no shaft-map publication, game reader or shader recognition is exercised.",
+    "Whole production fog fragment, real native card calls and FogPass; actual scene-hook/selector dispatch is covered separately.",
+    "TAA invalidation request endpoint only; no claim of GPU temporal-history clearing or motion quality.",
+    "Pass/policy Reset rewarm here; native device Reset is covered by the separate production state fixture.",
+    "CrossOver results do not establish native Windows runtime parity.",
+    "Stored-density range: real worker, cache, uploads and ramps behind the synthetic owner; process exit under the loader lock is the separate exit fixture; fixture timings are not game FPS or GPU cost."
+  ],
+  "result": "PASS",
+  "schema": 1,
+  "steps": [
+    {
+      "executable_sha256": "08448a3d9ab10b762283e4bf4cd4a9e11a76cafc466aa910e7e23b143db1d405",
+      "log_sha256": "013fb0326b964eda49b0d648066fa62c8bce5958946f584cbf823273caa4aec0",
+      "name": "baseline",
+      "returncode": 0,
+      "seconds": 8.659975208999999
+    },
+    {
+      "executable_sha256": "cc75c86c441b16e22276c7bacc569148edbd27677ac45ea0af7c7634531d9022",
+      "log_sha256": "163cb4df0c5637e0b2d24831f9f337d6a4c5c2f322bc9fccfa5b511c54cd7d06",
+      "name": "bridge",
+      "returncode": 0,
+      "seconds": 24.649740084
+    },
+    {
+      "executable_sha256": "7979a33cb69f5fb04768a523854a68c73114316de0b51bd68d2d52c33bdd2e19",
+      "log_sha256": "88259e4a904414941de66914b62a47e1e38f1539d0b270775e4564458b7dfdf5",
+      "name": "exit",
+      "returncode": 0,
+      "seconds": 48.318032458000005
+    }
+  ]
+}

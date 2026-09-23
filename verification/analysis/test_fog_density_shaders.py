@@ -11,7 +11,8 @@ sys.path.insert(0, str(ROOT / 'verification/probe'))
 import fog_density_shader_slots as slots  # noqa: E402
 
 BASE = ('fog_density_march', 'fog_density_composite', 'fog_density_repair', 'fog_density_march_exact')
-NAMES = BASE + tuple(slots.LOOK_PROGRAMS) + tuple(slots.FAR24_PROGRAMS) + tuple(slots.GRID_PROGRAMS)  # the single look (FOG_LOOK), its 24-far-bin and visibility-grid variants
+# The single look (FOG_LOOK), its 24-far-bin, quarter-resolution (step C) and visibility-grid variants, and the needs-repair census.
+NAMES = BASE + tuple(slots.LOOK_PROGRAMS) + tuple(slots.FAR24_PROGRAMS) + tuple(slots.Q4_PROGRAMS) + tuple(slots.CENSUS_PROGRAMS) + tuple(slots.GRID_PROGRAMS)
 
 
 def digest(path):
@@ -61,10 +62,18 @@ class FogDensityShaders(unittest.TestCase):
         # grid fetch (depth + 2x2 atlas + grid + 2 sun-ward = 8; repair adds four footprint taps and the scene).
         self.assertEqual([counts[n]['texture_instructions'] for n in slots.GRID_PROGRAMS], [12, 8, 13])
         self.assertEqual(counts['fog_density_visibility_grid']['loops'], 2)  # slices x taps, both static loops
+        # Step C: the quarter-resolution programs are the scale-2 ones with other sample spacings: the same fetches, one loop
+        # (composite none), slots within a few. The census quad: depth + four footprint depths, no loop.
+        for name in slots.Q4_PROGRAMS:
+            default = name.replace('_q4', '')
+            self.assertEqual(counts[name]['texture_instructions'], counts[default]['texture_instructions'], name)
+            self.assertEqual(counts[name]['loops'], counts[default]['loops'], name)
+            self.assertLessEqual(abs(counts[name]['slots'] - counts[default]['slots']), 4, name)
+        self.assertEqual([counts[n]['texture_instructions'] for n in slots.CENSUS_PROGRAMS], [5, 5])
         for name in NAMES:
             if name in slots.GRID_PROGRAMS:
                 continue
-            self.assertEqual(counts[name]['loops'], 0 if 'composite' in name else 1, name)
+            self.assertEqual(counts[name]['loops'], 0 if 'composite' in name or name in slots.CENSUS_PROGRAMS else 1, name)
         self.assertEqual([counts[n]['loops'] for n in ('fog_density_march_grid', 'fog_density_repair_grid')], [1, 1])
         with self.assertRaises(ValueError):
             slots.count([0xffff0300])  # no END token
@@ -122,6 +131,15 @@ class FogDensityShaders(unittest.TestCase):
             self.assertIn('#define FOG_FAR_BINS 24\n', source, name)
             self.assertIn('#include "%s_ps.hlsl"' % name.replace('_far24', ''), source, name)
         self.assertIn('#ifndef FOG_FAR_BINS\n#define FOG_FAR_BINS 40\n#endif', text)
+        # Step C: the quarter-resolution variants define FOG_MARCH_SCALE 4 over the scale-2 sources; the default expands to the
+        # literals it replaced (2.0 / 0.5), so the scale-2 programs keep their bytes (pinned below and by the fixture hashes).
+        for name in list(slots.Q4_PROGRAMS) + ['fog_density_needs_census_q4']:
+            source = (ROOT / record(name)['source']).read_text()
+            self.assertIn('#define FOG_MARCH_SCALE 4\n', source, name)
+            self.assertIn('#include "%s_ps.hlsl"' % name.replace('_q4', ''), source, name)
+        self.assertIn('#ifndef FOG_MARCH_SCALE\n#define FOG_MARCH_SCALE 2\n#endif\n#if FOG_MARCH_SCALE == 2\n#define FOG_MARCH_STEP 2.0\n#define FOG_MARCH_INVERSE 0.5\n', text)
+        self.assertIn('#if FOG_MARCH_SCALE != 2\n#error', text)  # the grid programs exist at spacing 2 only
+        self.assertNotIn('pixel*0.5', text); self.assertNotIn('q*2.0+0.5', text)
         self.assertIn('[loop] for (int i=0; i<24+FOG_FAR_BINS; ++i) {', text)
         self.assertIn('max(distance-12000.0,0.0)/float(FOG_FAR_BINS)', text)
         # The grid variants are the look plus FOG_SHADOW_PASS; the pass program is its own source over the shared include.
@@ -144,6 +162,10 @@ class FogDensityShaders(unittest.TestCase):
             self.assertIn('#include "fog_density_%s_grid_program_inc.h"' % name, pass_source)
         for name in ('march', 'repair'):
             self.assertIn('#include "fog_density_%s_look_far24_program_inc.h"' % name, pass_source)
+        for name in slots.Q4_PROGRAMS:
+            self.assertIn('#include "%s_program_inc.h"' % name, pass_source)
+        for name in slots.CENSUS_PROGRAMS:
+            self.assertIn('#include "%s_program_inc.h"' % name, pass_source)
 
     def test_recorded_fixture_summary_passes_the_gates(self):
         s = json.loads((ROOT / 'verification/results/fog-density-shader/summary.json').read_text())
@@ -192,6 +214,21 @@ class FogDensityShaders(unittest.TestCase):
             for variant in ('bilinear32', 'bilinear16'):
                 self.assertLessEqual(row[variant]['T']['max'], .003, label); self.assertLessEqual(row[variant]['S']['max'], .003, label)
         self.assertGreaterEqual(len(f['pass_fixture_checks']), 16); self.assertTrue(all(v == 'PASS' for v in f['pass_fixture_checks'].values()))
+        # Step C: the quarter-resolution variant's record, its 7 gates in both files, its reference pinned by march_scale.
+        self.assertEqual(s['march_scale_variant_file'], 'q4.json')
+        q = json.loads((ROOT / 'verification/results/fog-density-shader/q4.json').read_text())
+        self.assertEqual(q['result'], 'PASS'); self.assertEqual(q['bottle']['name'], 'X3')
+        self.assertEqual(q['gates'], {k: v for k, v in s['gates'].items() if k.startswith('q4_')}); self.assertEqual(len(q['gates']), 7)
+        self.assertEqual((q['reference']['march_scale'], q['reference']['far_bins']), (4, 40))
+        self.assertEqual(sorted(q['deviation_from_scale_2']), sorted(looks))
+        for label, row in q['look_versus_host'].items():
+            for variant in ('bilinear32', 'bilinear16'):
+                self.assertLessEqual(row[variant]['T']['max'], .003, label); self.assertLessEqual(row[variant]['S']['max'], .003, label)
+        e = q['depth_edges']
+        self.assertGreater(e['needs_repair']['4'], e['needs_repair']['2']); self.assertLessEqual(e['repaired_gpu']['4'], e['needs_repair']['4'])
+        self.assertGreaterEqual(len(q['pass_fixture_checks']), 10); self.assertTrue(all(v == 'PASS' for v in q['pass_fixture_checks'].values()))
+        for name in slots.Q4_PROGRAMS:
+            self.assertEqual(s['shaders'][name.replace('_', '-')]['slots'], q['programs'][name.replace('_', '-')]['slots'])
 
 
 if __name__ == '__main__':

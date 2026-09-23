@@ -9,8 +9,8 @@ float4 main(float2 uv:TEXCOORD0):COLOR0 {
     float4 scene = tex2Dlod(scene_texture,float4(uv,0,0));
     float4 d = tex2Dlod(depth_texture,float4(uv,0,0));
     if (geometry(d) && !valid_geometry_depth(d)) return scene;
-    // Half samples are at full even pixels, rather than 2x2 cell centres.
-    float2 hp = pixel*0.5;
+    // March samples are at full pixels FOG_MARCH_STEP*q (even pixels at scale 2), rather than cell centres.
+    float2 hp = pixel*FOG_MARCH_INVERSE;
     float2 base = floor(hp), f = frac(hp);
     float4 sum = 0.0; float weight = 0.0;
     [unroll] for (int y=0; y<2; ++y) {

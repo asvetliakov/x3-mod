@@ -1,0 +1,33 @@
+look cases, scale 4 vs scale 2 on the 256x144 screen (fogged pixels):
+case                   fogged   T max  T mean   S max  S mean  past .003 signed T mean
+A_look_depth3           19805  0.0265  0.0012  0.0214  0.0006  2212 11.2%      +0.00004
+A_look_depth90000       19495  0.0266  0.0012  0.0217  0.0006  2194 11.3%      +0.00004
+A_look_shadowed         19805  0.0265  0.0012  0.0113  0.0004  2181 11.0%      +0.00004
+A_look_sky              19805  0.0265  0.0012  0.0214  0.0006  2212 11.2%      +0.00004
+A_look_stripes          19805  0.0265  0.0012  0.0146  0.0007  2286 11.5%      +0.00004
+A_look_stripes_held     19805  0.0265  0.0012  0.0154  0.0005  2189 11.1%      +0.00004
+B_look_sky              15341  0.0227  0.0013  0.0063  0.0003  1517 9.9%      +0.00003
+
+depth-edge chain 256x144: geometry 16717 sky 20147 edge band 16490 (class 12635, geometry depth 3855); needs_repair twin s2 222 s4 300; written by the GPU repair s2 52 s4 78
+pixels                          n compare        T max   T mean   S max   S mean  past .003
+all_fogged                  16043 s2_vs_truth   0.0388  0.00072  0.0159  0.00018   679 4.2%
+all_fogged                  16043 s4_vs_truth   0.1258  0.00220  0.0531  0.00073  3102 19.3%
+all_fogged                  16043 s4_vs_s2      0.0870  0.00166  0.0372  0.00060  2552 15.9%
+edge_band                    6057 s2_vs_truth   0.0388  0.00096  0.0159  0.00027   526 8.7%
+edge_band                    6057 s4_vs_truth   0.1258  0.00325  0.0531  0.00111  2013 33.2%
+edge_band                    6057 s4_vs_s2      0.0870  0.00255  0.0372  0.00092  1712 28.3%
+class_edge_band              5796 s2_vs_truth   0.0388  0.00099  0.0159  0.00028   526 9.1%
+class_edge_band              5796 s4_vs_truth   0.1258  0.00337  0.0531  0.00116  2013 34.7%
+class_edge_band              5796 s4_vs_s2      0.0870  0.00265  0.0372  0.00096  1712 29.5%
+geometry_depth_edge_band      261 s2_vs_truth   0.0009  0.00042  0.0002  0.00003     0 0.0%
+geometry_depth_edge_band      261 s4_vs_truth   0.0014  0.00064  0.0004  0.00013     0 0.0%
+geometry_depth_edge_band      261 s4_vs_s2      0.0013  0.00030  0.0004  0.00011     0 0.0%
+off_band                     9986 s2_vs_truth   0.0122  0.00057  0.0047  0.00012   153 1.5%
+off_band                     9986 s4_vs_truth   0.0347  0.00157  0.0100  0.00049  1089 10.9%
+off_band                     9986 s4_vs_s2      0.0235  0.00113  0.0067  0.00040   840 8.4%
+needs_repair_s4                78 s2_vs_truth   0.0007  0.00017  0.0000  0.00000     0 0.0%
+needs_repair_s4                78 s4_vs_truth   0.0000  0.00000  0.0000  0.00000     0 0.0%
+needs_repair_s4                78 s4_vs_s2      0.0007  0.00017  0.0000  0.00000     0 0.0%
+served_s4_in_band            5979 s2_vs_truth   0.0388  0.00097  0.0159  0.00027   526 8.8%
+served_s4_in_band            5979 s4_vs_truth   0.1258  0.00329  0.0531  0.00113  2013 33.7%
+served_s4_in_band            5979 s4_vs_s2      0.0870  0.00258  0.0372  0.00094  1712 28.6%

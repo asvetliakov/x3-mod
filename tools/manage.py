@@ -599,6 +599,7 @@ def main():
     parser.add_argument('--fog-dust-motes', default=None, metavar='N[,SIZE[,STREAK]]', help='Stored fog only: N near-camera dust motes (0 off, 64..8192; 2048 gives ~120 on screen) in a 400 m world-anchored window, drawn after the fog with the fog\'s own density, colour and shafts, SIZE the minimum width in pixels (2..16, default 4 when N is given alone), STREAK the velocity streak cap in pixels (0..512, default 128); Ctrl+Alt+F11 toggles them (X3M_FOG_DUST_MOTES; tuning by X3M_FOG_MOTES_<NAME>; a value above 0 requires --volumetric-fog-range stored). Default when omitted under --volumetric-fog-range stored = 1300,3,128 with X3M_FOG_MOTES_MAX_PX=8 unless that is set (accepted in Run 70 B/B2, 2026-09-23), else off; 0 is the explicit off and the opt-out. docs/architecture/fog-dust-motes.md')
     # Hand-over after a sector change (docs/architecture/fog-handover.md, "Implementation"): default on, --no-... opts out.
     parser.add_argument('--fog-far-bins', choices=('40', '24'), default=None, help='Stored fog only: far march bins of the look over 12-22.5 km; 40 (default) draws the accepted look, 24 takes one sample per 4096-unit far node (fewer bins, a cheaper march; step B of docs/architecture/fog-gpu-cost.md) so the two can be A/B compared in one build (X3M_FOG_FAR_BINS; 24 requires --volumetric-fog-range stored and is refused with --fog-shadow-pass on, whose grid programs keep 40).')
+    parser.add_argument('--fog-march-scale', choices=('2', '4'), default=None, help='Stored fog only: march spacing in full pixels; 2 (default) draws the accepted half-resolution march, 4 marches at quarter resolution with the depth-class upsample and the edge repair at 4-px spacing (a cheaper march; step C of docs/architecture/fog-gpu-cost.md) so the two can be A/B compared in one build (X3M_FOG_MARCH_SCALE; 4 requires --volumetric-fog-range stored and is refused with --fog-shadow-pass on, whose grid programs keep spacing 2). Combines with --fog-far-bins.')
     parser.add_argument('--fog-handover-step', dest='fog_handover_step', action='store_true', default=None, help='Stored fog only, default on: at a cold start (a new sector identity or a load gap) the far density readiness steps to 1 in the frame the far need box is resident, so the vanilla cards are masked at once instead of after a 90-frame ramp; warm refills (a jump inside the same sector) keep the ramp. --no-fog-handover-step keeps the ramp everywhere (X3M_FOG_HANDOVER_STEP; requires --volumetric-fog-range stored when given). One volumetric_fog_handover log line per cold start either way.')
     parser.add_argument('--no-fog-handover-step', dest='fog_handover_step', action='store_false', help='Keep the 90-frame far readiness ramp at a cold start (X3M_FOG_HANDOVER_STEP=0).')
     parser.add_argument('--fog-handover-coldfill', dest='fog_handover_coldfill', action='store_true', default=None, help='Stored fog only, default on: at a cold start the worker fills only the far need box, the far level goes up in one whole-atlas latch (4,260,096 B, past the 1,065,024 B per-frame budget once), then the fine level and the window growth continue under the budget. --no-fog-handover-coldfill keeps the budgeted fill (X3M_FOG_HANDOVER_COLDFILL; requires --volumetric-fog-range stored when given).')
@@ -1109,6 +1110,10 @@ def main():
         parser.error('--fog-far-bins 24 requires --volumetric-fog-range stored.')
     if args.fog_far_bins == '24' and args.fog_shadow_pass == 'on':
         parser.error('--fog-far-bins 24 cannot be combined with --fog-shadow-pass on (the grid programs keep 40 far bins).')
+    if args.fog_march_scale == '4' and args.volumetric_fog_range != 'stored':
+        parser.error('--fog-march-scale 4 requires --volumetric-fog-range stored.')
+    if args.fog_march_scale == '4' and args.fog_shadow_pass == 'on':
+        parser.error('--fog-march-scale 4 cannot be combined with --fog-shadow-pass on (the grid programs keep spacing 2).')
     if (args.fog_handover_step is not None or args.fog_handover_coldfill is not None or args.fog_handover_prefill is not None) and args.volumetric_fog_range != 'stored':
         parser.error('--fog-handover-step, --fog-handover-coldfill and --fog-handover-prefill (and their --no- forms) require --volumetric-fog-range stored.')
     if args.fog_docked is not None and args.volumetric_fog is None:
@@ -1536,6 +1541,7 @@ def main():
         env.pop('X3M_VOLUMETRIC_FOG_LOOK', None)  # retired 2026-09-22: never inherited, never set (the DLL logs one ignore line)
         env['X3M_FOG_SHADOW_PASS'] = '1' if args.fog_shadow_pass == 'on' else '0'
         env['X3M_FOG_FAR_BINS'] = '24' if args.fog_far_bins == '24' else '40'  # explicit: an inherited value never picks the variant
+        env['X3M_FOG_MARCH_SCALE'] = '4' if args.fog_march_scale == '4' else '2'  # explicit: an inherited value never picks the variant
         # Hand-over and docked view (fog-handover.md, "Implementation"): default on, always explicit so an inherited
         # value cannot decide them; the DLL reads them only under the stored range (hand-over) or the fog (docked).
         env['X3M_FOG_HANDOVER_STEP'] = '0' if args.fog_handover_step is False else '1'

@@ -27,7 +27,9 @@
 // / Issue(END) around the first bracketed draw of a frame, read without FLUSH in
 // frame() after the Present pair has retired the GPU; same lifetime as the event
 // queries. It is created through the native table, so the proxy's query hooks
-// never see it.
+// never see it. The needs-repair census (Marks::needs_*, fog-gpu-cost.md step C)
+// is a second occlusion query of the same kind and lifetime, created after the
+// first; either may be missing without affecting the other or the timing.
 #include <d3d9.h>
 #include <cstdint>
 #include "gpu_sync_timing_core.h"
@@ -62,9 +64,13 @@ public:
     bool tripped() const noexcept { return tripped_; } // the sticky timeout cut-off
     void begin(unsigned pass) noexcept override { if (available_) mark(pass, true); }
     void end(unsigned pass) noexcept override { if (available_) mark(pass, false); }
-    void census_begin() noexcept override;
-    void census_end(std::uint32_t area) noexcept override;
-    bool census_available() const noexcept { return census_ != nullptr; }
+    void census_begin() noexcept override { census_open(0); }
+    void census_end(std::uint32_t area) noexcept override { census_close(0, area, 0); }
+    bool needs_wanted() noexcept override { return available_ && census_[1] && census_state_[1] == Census::Idle && !tracker_.abandoned(); }
+    void needs_begin() noexcept override { census_open(1); }
+    void needs_end(std::uint32_t area, std::uint32_t scale) noexcept override { census_close(1, area, scale); }
+    bool census_available() const noexcept { return census_[0] != nullptr; }
+    bool needs_available() const noexcept { return census_[1] != nullptr; }
     // After the native Present of `frame` returned (the Present end already
     // marked): files the frame. True when a window closed and `report` holds it.
     bool frame(std::uint64_t frame, gpu_sync_timing::Report* report) noexcept;
@@ -81,12 +87,16 @@ private:
     void release() noexcept;
     void mark(unsigned pass, bool begin) noexcept;
     bool sync(unsigned boundary, std::uint64_t* after, std::uint64_t* wait) noexcept;
+    void census_open(unsigned slot) noexcept;
+    void census_close(unsigned slot, std::uint32_t area, std::uint32_t tag) noexcept;
     IDirect3DDevice9* device_ = nullptr;
     void* const* native_ = nullptr;
     IDirect3DQuery9* queries_[gpu_sync_timing::boundary_count]{};
-    IDirect3DQuery9* census_ = nullptr;
-    enum class Census : unsigned { Idle, Open, Issued, Done } census_state_ = Census::Idle; // Done: this frame's bracket is spent
-    std::uint32_t census_area_ = 0;
+    // Occlusion queries: [0] the repair's written pixels, [1] the needs-repair pixels (tag: the march spacing).
+    IDirect3DQuery9* census_[2]{};
+    enum class Census : unsigned { Idle, Open, Issued, Done }; // Done: this frame's bracket is spent
+    Census census_state_[2]{Census::Idle, Census::Idle};
+    std::uint32_t census_area_[2]{}, census_tag_[2]{};
     gpu_sync_timing::Tracker tracker_{};
     GpuSyncTimingStats stats_{};
     std::uint64_t frequency_ = 0;

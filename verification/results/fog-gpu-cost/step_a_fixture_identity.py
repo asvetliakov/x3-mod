@@ -19,6 +19,8 @@ VOLATILE_SUFFIXES = ('_ms', '_us', '_ns', 'sha256', 'timestamp', 'seconds', '_pe
 SCHEDULING = ('pass_fixture.fill.', 'pass_fixture.prepare_cpu.', 'pass_fixture.steady.', 'pass_fixture.recentre.upload_bytes',
               'pass_fixture.seam_recentres[', 'pass_fixture.handover.frames', 'pass_fixture.state_restorations',
               'pass_fixture.checks', 'pass_fixture.atlas_comparisons')
+# Keys a later step names as expected changes (counts its own variant adds); printed EXPECTED, not counted as differing.
+EXPECTED = ()
 
 
 def volatile(key):
@@ -42,7 +44,7 @@ def main():
     old = json.loads(subprocess.run(['git', '-C', str(ROOT), 'show', f'{BASE}:verification/results/fog-density-shader/summary.json'],
                                     capture_output=True, text=True, check=True).stdout)
     a, b = dict(flatten(old)), dict(flatten(new))
-    compared = differing = added = varies = 0
+    compared = differing = added = varies = expected = 0
     for key in sorted(set(a) | set(b)):
         if volatile(key):
             continue
@@ -57,12 +59,15 @@ def main():
                 print(f'VARIES {key}: {a.get(key)!r} -> {b.get(key)!r}')
             continue
         compared += 1
-        if a.get(key) != b.get(key):
+        if a.get(key) != b.get(key) and key in EXPECTED:
+            expected += 1
+            print(f'EXPECTED {key}: {a.get(key)!r} -> {b.get(key)!r}')
+        elif a.get(key) != b.get(key):
             differing += 1
             print(f'DIFF {key}: {a.get(key)!r} -> {b.get(key)!r}')
     hashes = new.get('visibility_grid', {}).get('pass_off_hashes')
     same_hashes = hashes is not None and hashes['measured'] == hashes['expected']
-    print(f'compared={compared} differing={differing} added={added} scheduling={varies} pass_off_hashes_equal={same_hashes} n_hashes={len(hashes["measured"]) if hashes else 0} '
+    print(f'compared={compared} differing={differing} expected_changes={expected} added={added} scheduling={varies} pass_off_hashes_equal={same_hashes} n_hashes={len(hashes["measured"]) if hashes else 0} '
           f'result={new["result"]} gates={sum(new["gates"].values())}/{len(new["gates"])} pass_fixture_checks {old["pass_fixture"]["checks"]} -> {new["pass_fixture"]["checks"]}')
     return 0 if differing == 0 and same_hashes else 1
 
