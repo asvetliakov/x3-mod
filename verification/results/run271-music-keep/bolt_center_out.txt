@@ -1,0 +1,8 @@
+frame 2116 window 860,500-1060,700 components 35 area_px p50 1.0 max 10 area<=2 27 peak_lum p50 2.15 max 4.62 max_extent_px 4
+frame 2117 window 860,500-1060,700 components 34 area_px p50 1.0 max 12 area<=2 29 peak_lum p50 2.18 max 5.17 max_extent_px 4
+frame 2118 window 860,500-1060,700 components 32 area_px p50 1.0 max 10 area<=2 25 peak_lum p50 2.25 max 5.18 max_extent_px 4
+frame 2119 window 860,500-1060,700 components 34 area_px p50 1.0 max 10 area<=2 26 peak_lum p50 2.03 max 4.93 max_extent_px 4
+frame 2120 window 860,500-1060,700 components 31 area_px p50 2.0 max 8 area<=2 24 peak_lum p50 2.15 max 4.84 max_extent_px 4
+frame 2121 window 860,500-1060,700 components 36 area_px p50 1.0 max 11 area<=2 26 peak_lum p50 2.08 max 5.20 max_extent_px 4
+frame 2122 window 860,500-1060,700 components 33 area_px p50 2.0 max 11 area<=2 25 peak_lum p50 2.33 max 5.36 max_extent_px 4
+frame 2123 window 860,500-1060,700 components 34 area_px p50 1.5 max 8 area<=2 24 peak_lum p50 2.39 max 5.63 max_extent_px 4

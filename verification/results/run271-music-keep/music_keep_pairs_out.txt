@@ -1,0 +1,19 @@
+frames 17952 music_keep lines 47 window samples 24 not_foreground 10
+seq=2 frame=113 name=alt_tab id=8404 mode=paused stop_to_seek_ms=3.2284 seek_action=skip stop_to_next_frame_end_ms=2.8174 max_frame_gap_ms_next10=30.2004
+seq=4 frame=169 name=alt_tab id=8404 mode=paused stop_to_seek_ms=2.3287 seek_action=skip stop_to_next_frame_end_ms=1.915 max_frame_gap_ms_next10=38.6254
+seq=6 frame=253 name=alt_tab id=8404 mode=paused stop_to_seek_ms=1.8238 seek_action=skip stop_to_next_frame_end_ms=1.4936 max_frame_gap_ms_next10=32.7124
+seq=8 frame=348 name=alt_tab id=8404 mode=paused stop_to_seek_ms=1.721 seek_action=skip stop_to_next_frame_end_ms=1.3887 max_frame_gap_ms_next10=37.6242
+seq=10 frame=554 name=alt_tab id=8404 mode=paused stop_to_seek_ms=1.6738 seek_action=skip stop_to_next_frame_end_ms=1.3683 max_frame_gap_ms_next10=33.4791
+seq=12 frame=759 name=alt_tab id=8404 mode=paused stop_to_seek_ms=2.5959 seek_action=skip stop_to_next_frame_end_ms=1.8288 max_frame_gap_ms_next10=176.7482
+seq=15 frame=1146 name=alt_tab id=2002 mode=paused stop_to_seek_ms=6.4327 seek_action=skip stop_to_next_frame_end_ms=3.2976 max_frame_gap_ms_next10=51.0853
+seq=19 frame=9746 name=pause id=40 mode=paused stop_to_seek_ms=0.2704 seek_action=skip stop_to_next_frame_end_ms=4158.185 max_frame_gap_ms_next10=4158.7801
+seq=21 frame=9811 name=pause id=40 mode=paused stop_to_seek_ms=0.2032 seek_action=skip stop_to_next_frame_end_ms=2949.5003 max_frame_gap_ms_next10=2949.893
+seq=23 frame=9811 name=alt_tab id=40 mode=paused stop_to_seek_ms=950.3941 seek_action=skip stop_to_next_frame_end_ms=946.5295 max_frame_gap_ms_next10=2949.893
+seq=25 frame=10138 name=pause id=40 mode=paused stop_to_seek_ms=0.1725 seek_action=skip stop_to_next_frame_end_ms=2341.6493 max_frame_gap_ms_next10=2342.0681
+seq=27 frame=10207 name=pause id=40 mode=paused stop_to_seek_ms=0.1439 seek_action=skip stop_to_next_frame_end_ms=826.4235 max_frame_gap_ms_next10=826.8235
+seq=29 frame=10358 name=pause id=40 mode=paused stop_to_seek_ms=0.1504 seek_action=skip stop_to_next_frame_end_ms=1654.8243 max_frame_gap_ms_next10=1655.251
+seq=31 frame=10457 name=alt_tab id=40 mode=paused stop_to_seek_ms=3.2921 seek_action=skip stop_to_next_frame_end_ms=1.7357 max_frame_gap_ms_next10=43.2506
+seq=33 frame=10734 name=alt_tab id=40 mode=paused stop_to_seek_ms=4.3822 seek_action=skip stop_to_next_frame_end_ms=2.9677 max_frame_gap_ms_next10=48.4447
+seq=35 frame=11123 name=alt_tab id=40 mode=paused stop_to_seek_ms=2.7505 seek_action=skip stop_to_next_frame_end_ms=1.4939 max_frame_gap_ms_next10=37.9919
+seq=39 frame=14250 name=save id=2004 mode=paused stop_to_seek_ms=5763.8519 seek_action=skip stop_to_next_frame_end_ms=5758.7267 max_frame_gap_ms_next10=5783.7165
+seq=44 frame=16054 name=save id=2002 mode=paused stop_to_seek_ms=5752.4728 seek_action=skip stop_to_next_frame_end_ms=5745.1673 max_frame_gap_ms_next10=5767.1013

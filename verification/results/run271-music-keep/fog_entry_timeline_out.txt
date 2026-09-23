@@ -1,0 +1,57 @@
+loading_phase [('menu_shown', 4, '6826'), ('save_load_begin', 1070, '0'), ('save_load_complete', 1071, '12537')]
+sector frame=0 reason=no_cockpit profile=0 sector=00000000
+  runs: 0-1070 applied=- no_row (+0.0s..+35.48s)
+  cards first: 
+  cache: 
+sector frame=1071 reason=anchor_mismatch profile=0 sector=126f77c0
+  runs: 1071-1194 applied=0 card_refused (+0.0s..+3.21s)
+  cards first: 
+  cache: 
+sector frame=1195 reason=clear profile=0 sector=126f77c0
+  runs: 1195-2357 applied=0 card_refused (+0.0s..+33.54s); 2358-2358 applied=- no_row (+33.88s..+33.88s)
+  cards first: 
+  cache: 
+sector frame=2359 reason=no_cockpit profile=0 sector=00000000
+  runs: 2359-2633 applied=- no_row (+0.0s..+5.97s)
+  cards first: 
+  cache: 
+sector frame=2634 reason=bluewell profile=1 sector=126f8120
+  runs: 2634-2662 applied=0 density_filling (+0.0s..+1.29s); 2663-3099 applied=1 ok (+1.34s..+12.19s); 3100-3227 applied=0 card_refused (+12.21s..+15.39s); 3228-5327 applied=1 ok (+15.42s..+53.65s)
+  cards first: observed=2634 (+0.0s), ready=2753 (+3.5s), suppressed=2753 (+3.5s)
+  cache: config@2634(+0.0s ms=None None), epoch@2634(+0.0s ms=None sector_key), far_ready@2752(+3.48s ms=3586.9 None), fine_ready@2778(+4.12s ms=4227.3 None)
+sector frame=5328 reason=no_cockpit profile=0 sector=00000000
+  runs: 5328-5328 applied=- no_row (+0.0s..+0.0s)
+  cards first: 
+  cache: 
+sector frame=5329 reason=bluewell profile=1 sector=11c427b8
+  runs: 5329-5343 applied=0 density_filling (+0.0s..+1.56s); 5344-8982 applied=1 ok (+1.6s..+82.69s)
+  cards first: observed=5329 (+0.0s), ready=5434 (+4.56s), suppressed=5434 (+4.56s)
+  cache: epoch@5330(+0.19s ms=None residency), far_ready@5433(+4.53s ms=4350.9 None), fine_ready@5449(+4.94s ms=4758.1 None)
+sector frame=8983 reason=no_cockpit profile=0 sector=00000000
+  runs: 8983-8983 applied=- no_row (+0.0s..+0.0s)
+  cards first: 
+  cache: 
+sector frame=8984 reason=foggreenoutlands profile=2 sector=613227b8
+  runs: 8984-9050 applied=0 density_filling (+0.0s..+1.94s); 9051-14245 applied=1 ok (+1.97s..+141.8s)
+  cards first: observed=8984 (+0.0s), ready=9141 (+4.48s), suppressed=9141 (+4.48s)
+  cache: epoch@8984(+0.0s ms=None sector_key), far_ready@9140(+4.46s ms=4658.0 None), fine_ready@9191(+5.62s ms=5815.5 None)
+sector frame=14246 reason=anchor_mismatch profile=0 sector=613227b8
+  runs: 14246-15251 applied=0 card_refused (+0.0s..+25.23s)
+  cards first: observed=14246 (+0.0s)
+  cache: 
+sector frame=15252 reason=foggreenoutlands profile=2 sector=613227b8
+  runs: 15252-16047 applied=1 ok (+0.0s..+15.63s)
+  cards first: observed=15252 (+0.0s), ready=15253 (+0.03s), suppressed=15253 (+0.03s)
+  cache: 
+sector frame=16048 reason=anchor_mismatch profile=0 sector=613227b8
+  runs: 16048-16748 applied=0 card_refused (+0.0s..+14.4s)
+  cards first: observed=16048 (+0.0s)
+  cache: 
+sector frame=16749 reason=foggreenoutlands profile=2 sector=613227b8
+  runs: 16749-16749 applied=1 ok (+0.0s..+0.0s); 16750-16786 applied=0 card_refused (+0.02s..+0.5s); 16787-17870 applied=1 ok (+0.52s..+12.5s); 17871-17871 applied=- no_row (+12.92s..+12.92s)
+  cards first: observed=16749 (+0.0s), ready=16787 (+0.52s), suppressed=16787 (+0.52s)
+  cache: 
+sector frame=17872 reason=no_cockpit profile=0 sector=00000000
+  runs: 17872-17950 applied=- no_row (+0.0s..+1.65s)
+  cards first: 
+  cache: epoch@17872(+0.0s ms=None sample_gap)

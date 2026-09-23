@@ -1,0 +1,13 @@
+# Run 72 B triage (2026-09-23). C=/tmp/x3-bottleX3-run271, L=$C/session-20260923-092916-216.log (231 MB, 1,805,058 lines, never read whole); one session only (launcher-stderr: 1 launcher command).
+# DLL c17792a9 (proxy_identity sha256 c17792a9..., source_commit dcf3728b), 1920x1080. proxy_options: X3M_MUSIC_KEEP=1 X3M_MUSIC_TRACE=1, no X3M_CULL_SMALL_PARTS_PX (= --cull-small-parts 0; run270 had 4.0000). Burst: capture_armed start_frame 2116 (chase camera active).
+sed -n '43,44p' $L -> music_keep patched=1 armed=1 reason=ok ; music_trace patched=0 armed=0 reason=bytes_mismatch (keep installed first; trace_windows_match() compares the already-patched shared heads 0x004982b0/0x00498810, src/proxy/music_keep.cpp:419-421,458)
+grep -oE '^music_[a-z_]+' $L | sort | uniq -c -> music_keep 1, music_keep_stop 18 (alt_tab 11, pause 5, save 2; all mode=paused), music_keep_seek 29 (skip 18, vanilla 11), music_trace 1, orphan/stop_movie/walk_cut/music_trace_* 0
+python3 music_keep_pairs.py $L > music_keep_pairs_out.txt   (stop->seek ms, stop->next frame_end ms, max frame gap)
+grep '^telemetry_window ' $L -> 24 samples, 10 not foreground; frames keep presenting while inactive (e.g. 10457..10603, 146 frames)
+objdump -d --start-address=0x4d0700 --stop-address=0x4d0ad0 X3AP.exe (DS pump: [m+0x48]==1&&[m+0x64]==1 -> Buffer Stop, [m+0x4c]=[m+0x50]=0, SetCurrentPosition(0), async IStreamSample::Update; Play only after the first copy); 0x4d0244..0x4d0339: sample [m+0x60]=2 s of audio, DS ring [m+0x28]=5 s, DSBUFFERDESC flags 0x10088 (no GLOBALFOCUS)
+awk draw ps=ec1f5c4a in frames 2116-2123 -> 2 draws/frame, 8/8 frames, kind=primitive trianglelist, 792-840 primitives each, VB stride 24 dynamic 1.77 MB, object_context node 0
+grep screen_emission_additive_frame frame=2116..2123 -> admitted=2 refused=0 in 8/8 ; hdr_frame ev=1.10378 (ev_max 1.30)
+for f in 2116..2123: python3 bolt_center.py $C $f 860 500 1060 700 [png] > bolt_center_out.txt (components p50 area 1-2 px, max extent 4 px); crops in the session scratchpad only
+python3 ../run270-defaults/bolt_blobs.py $C 2116 - 1.10 (and 2119, 2123): whole-frame components p50 area 2 px
+python3 fog_entry_timeline.py $L > fog_entry_timeline_out.txt
+grep -E '^volumetric_fog_(sector|prepare|cache|families|toggle) |^loading_phase ' $L ; families event=absent (compiled_only)

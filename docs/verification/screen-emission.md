@@ -63,3 +63,12 @@ to a hull highlight's. The readbacks could not isolate the bolt pixels (a bolt-f
 candidate pixels). Most likely limit (inferred): fewer/shorter bolt primitives on screen at the chase distance,
 not the emission route. Next: Run 72 B holds fire in third person for a burst, once with `--cull-small-parts 0`
 to rule out the small-part cull, and a per-draw bolt rectangle/luminance diagnostic if that does not settle it.
+
+### Run 271 (Run 72 B): cull ruled out, bolts are 1–2 px dots
+
+With `--cull-small-parts 0` and fire held: the bullet pair (ec1f5c4a, ps_1_1 / vs_1_1) is drawn and admitted in 8 of 8
+frames, 792–840 primitives per draw (about 31 bolts on screen), exposure 1.10 EV; the bolts reach the screen as
+components of median area 1–2 px and at most 4 px extent (measured, `run271-music-keep/bolt_center_out.txt`).
+Neither the cull nor the emission route limits them; the hull widening rewrites SM3 light-map fetches and cannot
+add coverage. Plausible fix (inferred): a minimum on-screen footprint for the bullet draws in the additive route
+(design note pending); a per-effect gain would only brighten a 1 px dot under the bloom clamp.

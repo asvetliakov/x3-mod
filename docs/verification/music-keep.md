@@ -46,3 +46,18 @@ other 5 alt-tab stops happened inside a paused state and had no replay. Pause: 1
 while armed or the save path does not reach the hook). Sector change: a new id starts without a stop/replay pair.
 Verdict: the same-id replay assumption holds for alt-tab; `--music-keep` may fly (Run 72 B) with the trace
 kept on; the save case remains to be traced (the user saves at a known time).
+
+## Run 72 B (run271, 2026-09-23): --music-keep flown
+
+Evidence `verification/results/run271-music-keep/` (measured). The sector music record is on the DirectSound path
+(flags 0xd2, bit 0x40), so the keep's rule sent every caller (alt-tab 11, pause 5, save 2) to `mode=paused`; all 18
+stops were followed by a same-id replay whose seek was skipped (`music_keep_seek skip` 18, vanilla 11 for new ids).
+Saves (both taken while docked, 5.75 s each) kept the track position and did not restart it. Pause pauses the music
+(the loop blocks; the user accepts). Alt-tab: the user hears a ~1 s interruption and a ~0.5 s rewind; the replay
+follows the stop by 1.7–6.4 ms and frames keep presenting while inactive (10 of 24 focus samples inactive with
+146 frames presented; music-restart.md §2's "loop sits in GetMessage" is wrong), so the gap is the DirectSound
+re-arm in the pump 0x4d0700 (buffer stopped, cursors reset, SetCurrentPosition(0), Play only after the next 2 s
+sample decodes; inferred from the disassembly), not the inactive time; the rewind is unexplained. `music_trace`
+did not install (`bytes_mismatch`: the keep had already patched the two shared entry sites), so no trace rows exist.
+Next: for the alt-tab caller skip the whole per-record stop (keep flag 2 set, no status 1) so the pump keeps
+servicing the buffer and nothing re-arms; fix the shared-site claim so trace and keep coexist; correct the note.

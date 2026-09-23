@@ -2520,3 +2520,15 @@ Worktree on main `70cd9d92`, not committed at the time of the runs; host only, n
   `addon/maps/{WareTemplate.xml,x3_universe.xml}`) with self-referencing links; the tree needs re-extraction before
   it is used again. The evidence above reads TBackgrounds and the map from `addon/07.cat` (as the census did);
   `make_mod_root.py` now refuses an existing destination and symlinked parents.
+
+## Run 271 (Run 72 B, 2026-09-23): hand-over after a sector change, docked view
+
+Measured (`verification/results/run271-music-keep/fog_entry_timeline_out.txt`): after a sector change the medium is
+drawn from +1.3–2.0 s and the vanilla cards are suppressed only at +3.5–4.6 s, when the far density level is ready
+(far_ready 3.6–4.7 s; card warm-up one frame after; no atlas decode with the compiled profiles); a 6 s `no_cockpit`
+span precedes the first sector frame, during which no sector identity exists for the fill. After undocking with the
+cache resident the hand-over is immediate (+0.03/+0.52 s). Docked spans (25 s, 14 s): the sample has scene
+authority but the sector detector refuses with `anchor_mismatch` (the ship's parent is the station, not the sector;
+`sector_background.h` cross-check), so profile 0 and the native cards (7 observed, 0 suppressed). Unexplained: 37
+frames of card refusal after the second undock. Next: a design note on starting the fill from the sector-change
+event and masking the cards earlier; accept the docked anchor when the parent's parent is the cockpit sector.
