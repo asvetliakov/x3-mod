@@ -3,7 +3,7 @@
 Feature: `--collide-box-cull` / `X3M_COLLIDE_BOX_CULL=1`, `src/proxy/collide_box_cull.cpp`, sites `0x0045d58e` (P1,
 all-pairs loop of the sector collision pass `0x0045d250`) and `0x0045cc7c` (P2, swept scan of `0x0045cab0`)
 ([sector-collide.md](../reverse-engineering/sector-collide.md) sections 6 and 10;
-[engine-frame-time.md](../architecture/engine-frame-time.md) 2.1). Default off; nothing is written unless the variable
+[engine-frame-time.md](../architecture/engine-frame-time.md) 2.1). The DLL's fallback is off; nothing is written unless the variable
 is exactly `1`, the executable hash matches, and the seven byte windows, the two helper bodies and the four call
 targets verify. The stubs skip only pairs the engine's own `dist > R` compare discards; class-7 pairs always take the
 engine path.
@@ -17,13 +17,15 @@ engine path.
 | 2026-09-18 | Clean DLL build and the no-x87 walk (the module has no per-pair C++ handler; the stubs are audited by the build script) | `cmake -S . -B build/clean-collide -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo && cmake --build build/clean-collide -j8`; `python3 verification/probe/check_no_x87.py build/clean-collide/d3d9.dll` | 0 warnings; PASS, 79 roots, 539 reachable functions, 0 violations; sha256 `761a18db…6f2d` (worktree build, not a candidate) |
 | 2026-09-18 | Launcher dry run | `python3 tools/manage.py launch --collide-box-cull --dry-run` | env carries `X3M_COLLIDE_BOX_CULL=1`; absent option drops an inherited value (host test); no launch |
 | 2026-09-18 | Unaffected fixtures rerun | `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_object_lifetime.py`; `… run_ownership.py` | object lifetime 674 checks, 0 failures; ownership exit 0 |
+| 2026-09-23 | Launcher default on modded launches (user decision after run133/134, [sampling-profiler.md](sampling-profiler.md) Run 43 A: clean install, ~17 % of P1 pairs rejected (17.1–18.2 %, median ≈ 17.4 %), no defect, no measurable collide-phase gain); `--no-collide-box-cull` opts out, `--vanilla` forwards nothing unless given; DLL fallback unchanged (unset = nothing patched, like the memo and SAT) | `python3 tools/manage.py launch --dry-run --direct --camera chase` (and with `--no-collide-box-cull`); `test_collide_box_cull` | env carries `X3M_COLLIDE_BOX_CULL=1` / omits it; tests OK |
 
 ## Open
 
-- Not flown. First flight: the run125-area stand twice with `--telemetry --frame-phases --loop-phases`, once adding
-  `--collide-box-cull`; compare `loop_phases collide_p50_us` and read `collide_census`. If `p1_rejected / p1_pairs` is
-  small the plateau is owned by survivors, class-7 pairs or L1 (`p2_cands`), and the lever is the second-stage
-  broadphase of the note, not this patch.
+- Flown as Run 43 A (run133/run134, [sampling-profiler.md](sampling-profiler.md)): patched cleanly, ~17 % of P1 pairs
+  culled, no measurable collide-phase gain (the cost is the narrow phase on accepted pairs), no defect. Launcher
+  default on since 2026-09-23 by user decision.
+- P2 (`0x0045cc7c`) was never entered in flight (`p2_cands=0` in all 22 windows), and the box cull, memo and SSE2 SAT
+  have not flown together yet: the next user launch checks the three `collide_*` install lines.
 - The counters are published per 300-frame window (p50/max/sum) and exactly on F8 frames, not as one line per frame,
   to keep the session log bounded; the window is keyed on Present frames, `loop_phases` on sampled frames, so the two
   lines join by nearest `frame=`.

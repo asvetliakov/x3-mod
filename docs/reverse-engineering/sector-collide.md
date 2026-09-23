@@ -360,7 +360,7 @@ frame from the frame counter the existing telemetry already keeps.
 
 ## 10. Implemented: `--collide-box-cull` (2026-09-18)
 
-`X3M_COLLIDE_BOX_CULL=1` (launcher `--collide-box-cull`, default off), `src/proxy/collide_box_cull.{h,cpp}` and
+`X3M_COLLIDE_BOX_CULL=1` (launcher `--collide-box-cull`, launcher default on modded launches since 2026-09-23, DLL fallback off), `src/proxy/collide_box_cull.{h,cpp}` and
 `collide_box_cull_core.h`: two `engine_patch` trampolines, P1 `0x0045d58e` and P2 `0x0045cc7c`, six displaced bytes
 each (two whole `mov`s), stubs of 139 and 117 bytes (127/105 without counters). It replaces the separate census of §7:
 the stubs count pairs entering each site and pairs the box rejected.

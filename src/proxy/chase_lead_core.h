@@ -6,6 +6,17 @@
 #include "chase_camera_math.h"
 
 namespace x3m::chase_lead::core {
+// X3M_CHASE_HUD_ANCHOR: an absent variable means forward (default since 2026-09-23, matching the launcher);
+// exactly "forward" means forward; "centre", an empty value or anything else keeps the native centre placement.
+// `length` is GetEnvironmentVariableW's return (characters without the terminator, or the size needed).
+inline bool anchor_forward_setting(bool present, const wchar_t *value, std::uint32_t length) {
+    if (!present) return true;
+    static const wchar_t forward[] = L"forward";
+    if (length != 7 || !value) return false;
+    for (unsigned i = 0; i <= 7; ++i)
+        if (value[i] != forward[i]) return false;
+    return true;
+}
 struct Identity {
     std::uint64_t generation = 0, serial = 0;
     std::uint32_t thread = 0, cockpit = 0, ship = 0, ship_id = 0, target = 0, target_id = 0, camera = 0, scene = 0,

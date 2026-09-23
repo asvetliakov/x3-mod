@@ -160,7 +160,7 @@ struct Tunables {
     double pos_tau = 0.38;          // s, boom-offset spring time constant (X3M_CHASE_POS_TAU)
     double offset_y = 0.50;         // 75% screen height from a centred native anchor (X3M_CHASE_OFFSET_Y)
     double pitch_down_deg = 0.5;    // near-parallel elevated framing (user default 2026-09-16); 0 keeps legacy framing; (0,30] sets ship-relative downward look
-    double distance_scale = 0.90;   // multiplies the vanilla boom offset (X3M_CHASE_DISTANCE_SCALE)
+    double distance_scale = 1.05;   // multiplies the vanilla boom offset (X3M_CHASE_DISTANCE_SCALE; 0.90 before the 2026-09-23 user decision)
     double lag_clamp_deg = 8.0;     // max orientation lag (X3M_CHASE_LAG_CLAMP_DEG)
     double pos_lag_clamp = 0.10;    // max |offset lag| as a fraction of the boom length (X3M_CHASE_POS_LAG_CLAMP)
     double combat_tightness = 0.0;  // 0..1: while a target is locked (Input::target_locked) both time constants are scaled by (1 - tightness); 1 = rigid follow (X3M_CHASE_COMBAT_TIGHTNESS)

@@ -17,9 +17,10 @@ The accepted configuration range is `[0,30]`; zero explicitly selects the old
 geometry, rather than an elevated camera with zero depression. Combined with
 `--chase-rot-tau 0.15 --chase-pos-tau 0.20 --chase-distance-scale 1`, zero
 restores the previous framing and following behavior. The user requested a
-revised distance after that flight: distance scale is now **0.90**, placing
+revised distance after that flight: distance scale became **0.90** (the 2026-09-16 state), placing
 the settled camera at 90% of the native boom length (previously 85%, and
-60% in the earlier elevated-framing flight). The
+60% in the earlier elevated-framing flight). **2026-09-23:** the default is now **1.05** (user decision: the boom
+15–20 % longer so corvettes fit; compiled default and launcher); the 0.90 figures below are the 2026-09-16 state. The
 existing `offset_y=0.45`, rotation lag limit 8 degrees and position lag limit
 0.10 are retained.
 
@@ -60,7 +61,7 @@ pitch are accounted for by reconstructing the boom, not added twice.
 These guarantees describe the settled anchor. The ship silhouette and bounded
 spring lag can move its visible center. Pitch alone cannot guarantee the entire
 ship silhouette fits; that also depends on ship dimensions, FOV and distance.
-The 0.90 distance is farther out than the previous 0.85 setting, but remains
+The 0.90 distance (2026-09-16 state) is farther out than the previous 0.85 setting, but remains
 closer than the native boom and can still crop the hull; it preserves the
 anchor placement, not a full-hull visibility guarantee.
 
@@ -106,7 +107,7 @@ allocation, lock, memory probe or per-frame logging. Three alternating
 one-million-step host samples per mode, including synthetic input generation,
 measured median 0.17053 us/step for legacy geometry and 0.16964 us/step for
 elevated geometry at the earlier explicit 10-degree / distance-scale-1 setting (the algorithm is
-unchanged by the current 13-degree / distance-scale-0.90 defaults); the small difference is noise, not a claimed speedup. All
+unchanged by the then-current 13-degree / distance-scale-0.90 defaults); the small difference is noise, not a claimed speedup. All
 six million frames applied without refusal. Local evidence:
 `verification/results/chase-elevated-host-performance.json`. These host timings
 do not measure CrossOver, the complete hook boundary, game FPS or load time.

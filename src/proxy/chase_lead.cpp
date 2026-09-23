@@ -795,8 +795,12 @@ bool initialize() {
     }
     initialized = true;
     wchar_t anchor[16]{};
+    // A zero return is "unset" only with ERROR_ENVVAR_NOT_FOUND; an empty value also returns 0 and keeps centre.
+    // LastError is cleared first and restored to the caller's value on every exit below.
+    SetLastError(ERROR_SUCCESS);
     const DWORD anchor_length = GetEnvironmentVariableW(L"X3M_CHASE_HUD_ANCHOR", anchor, 16);
-    hud_anchor_forward = anchor_length == 7 && !std::wcscmp(anchor, L"forward");
+    const bool anchor_present = anchor_length != 0 || GetLastError() != ERROR_ENVVAR_NOT_FOUND;
+    hud_anchor_forward = core::anchor_forward_setting(anchor_present, anchor, anchor_length);
     bool ok = chase_camera::installed() && chase_transition::installed() && object_trace::executable_verified() &&
               engine_patch::install_window_open() && []() {
                   unsigned char actual[sizeof hide_bytes]{};

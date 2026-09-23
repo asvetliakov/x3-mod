@@ -8,6 +8,7 @@ counter-example fails), the counter window, the production wiring and the
 --collide-box-cull launcher gate (--dry-run only, never a launch). No Wine.
 """
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -219,16 +220,19 @@ class CollideSites(unittest.TestCase):
 
 
 class CollideLaunchOption(unittest.TestCase):
-    def launch(self, directory, *args, inherited=None):
+    def launch(self, directory, *args, inherited=None, vanilla=True):
         module = load_manage()
         game = Path(directory) / 'game'
         game.mkdir(exist_ok=True)
         (game / 'X3AP.exe').touch()
+        if not vanilla:   # a modded launch wants an installed proxy that matches its manifest
+            (game / 'd3d9.dll').write_bytes(b'proxy')
+            (game / 'x3-modern-install.json').write_text(json.dumps({'sha256': hashlib.sha256(b'proxy').hexdigest()}))
         wine = Path(directory) / 'wine'
         wine.touch()
-        argv = ['manage.py', 'launch', '--dry-run', '--vanilla', '--game-dir', str(game), *args]
+        argv = ['manage.py', 'launch', '--dry-run', *(['--vanilla'] if vanilla else []), '--game-dir', str(game), *args]
         output, error = io.StringIO(), io.StringIO()
-        with mock.patch.object(sys, 'argv', argv), mock.patch.object(module, 'WINE', wine), \
+        with mock.patch.object(sys, 'argv', argv), mock.patch.object(module, 'WINE', wine), mock.patch.object(module, 'VOICE_DECODER_REPO', None), \
                 mock.patch.dict(module.os.environ, inherited or {}), \
                 mock.patch.object(module.subprocess, 'call', side_effect=AssertionError('must never launch')), \
                 contextlib.redirect_stdout(output), contextlib.redirect_stderr(error):
@@ -237,6 +241,15 @@ class CollideLaunchOption(unittest.TestCase):
             except SystemExit as exit_error:
                 return exit_error.code, output.getvalue(), error.getvalue()
         return 0, output.getvalue(), error.getvalue()
+
+    def test_modded_launch_default_and_its_off_switch(self):
+        # Launcher default on a modded launch since 2026-09-23 (collide_default, like the memo and the SSE2 SAT).
+        with tempfile.TemporaryDirectory() as directory:
+            env = lambda *args, **kw: json.loads(self.launch(directory, *args, **kw)[1])['env'].get('X3M_COLLIDE_BOX_CULL')
+            self.assertEqual(env(vanilla=False), '1')
+            self.assertEqual(env('--collide-box-cull', vanilla=False), '1')
+            self.assertIsNone(env('--no-collide-box-cull', vanilla=False, inherited={'X3M_COLLIDE_BOX_CULL': '1'}))
+            self.assertIsNone(env(inherited={'X3M_COLLIDE_BOX_CULL': '1'}))   # --vanilla forwards nothing unless asked
 
     def test_absent_option_drops_the_variable_even_when_inherited(self):
         with tempfile.TemporaryDirectory() as directory:

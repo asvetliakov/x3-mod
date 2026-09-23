@@ -1,8 +1,8 @@
 # Chase reticle placement: survey of third-person flight games and the option for this mod
 
 **Ratified 2026-09-15 (orchestrator):** no code change. The next user run tries
-`--chase-pitch-down-deg 0.5 --chase-offset-y 0.50` with the default `centre`
-anchor as the first row, then the 5°/0.50/`forward` compromise if the top view
+`--chase-pitch-down-deg 0.5 --chase-offset-y 0.50` with the then-default `centre`
+anchor (default `forward` on chase since 2026-09-23) as the first row, then the 5°/0.50/`forward` compromise if the top view
 is missed; `--chase-lag-clamp-deg 4` only with `forward`.
 **2026-09-16:** run 26 accepted that row and the user made it the default:
 pitch-down 0.5° and `offset_y` 0.50 are now the compiled and launcher defaults
@@ -12,7 +12,7 @@ recalled, not verified; the recommendation rests on measured mod geometry.
 Design note, 2026-09-15. Question: the installed chase camera (13° pitch-down,
 `offset_y` 0.45, distance 0.90, lag clamps 8°/0.10) puts the ship's forward
 vanishing point 118 px above screen centre (768-row viewport). `--chase-hud-anchor
-centre` (default, user's preference after run 25) leaves the native crosshair at
+centre` (then the default, user's preference after run 25; `forward` on chase since 2026-09-23) leaves the native crosshair at
 centre, which is a false aim cue; `forward` moves the group onto the true vanishing
 point, which the user confirms is aligned but finds clunky in the upper-middle of
 the screen. How do comparable games place an external camera and still give a
@@ -98,8 +98,9 @@ write or hot-path work changes, and native Windows behaviour is identical to
 CrossOver because only launch-time constants differ.
 
 **Preferred: near-parallel elevated camera, native centre anchor (pattern A).**
-`--chase-pitch-down-deg 0.5 --chase-offset-y 0.50` with the default
-`--chase-hud-anchor centre`. `manage.py` parses the pitch as a float and the
+2026-09-23: `forward` is the chase default since this date, with the 0.5° pitch; there the vanishing point sits only a few px from centre, so the earlier "clunky" objection (made at 13°, 118 px) no longer applies.
+`--chase-pitch-down-deg 0.5 --chase-offset-y 0.50` with the default (before
+2026-09-23) `--chase-hud-anchor centre`. `manage.py` parses the pitch as a float and the
 handler treats any non-zero value as the elevated construction (`env_double`,
 `pitch_down_deg == 0` selects legacy), so 0.5° is the parallel design with the
 camera raised above the axis rather than the legacy on-axis tilt-up. Settled, the

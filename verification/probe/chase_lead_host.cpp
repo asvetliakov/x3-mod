@@ -927,8 +927,22 @@ static void native_hook_context_failure_revokes() {
 } // namespace
 } // namespace x3m::chase_lead
 
+static void hud_anchor_setting_parse() {
+    using namespace x3m::chase_lead;
+    ++scenarios;
+    using x3m::chase_lead::core::anchor_forward_setting;
+    check(anchor_forward_setting(false, L"", 0), "unset anchor variable selects forward");
+    check(anchor_forward_setting(true, L"forward", 7), "forward selects forward");
+    check(!anchor_forward_setting(true, L"centre", 6), "centre keeps native placement");
+    check(!anchor_forward_setting(true, L"forwarx", 7) && !anchor_forward_setting(true, L"Forward", 7) &&
+          !anchor_forward_setting(true, L"forward2", 8) && !anchor_forward_setting(true, L"", 17),
+          "other or oversized value keeps native placement");
+    check(!anchor_forward_setting(true, L"", 0), "empty value keeps native placement");
+}
+
 int main() {
     using namespace x3m::chase_lead;
+    hud_anchor_setting_parse();
     geometry_and_late_fov();
     native_passthrough();
     publication_rejection(Lifetime, false, true, false);

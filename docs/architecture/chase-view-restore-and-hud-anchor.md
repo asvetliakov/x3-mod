@@ -2,7 +2,7 @@
 
 Design note, 2026-09-15, for two user requests on the installed chase camera
 (`--camera chase`, 13° pitch-down, `offset_y` 0.45, distance 0.90). Item 2 now
-has an isolated source implementation, defaulting to native centre placement;
+has an isolated source implementation, defaulting to native centre placement (default `forward` on chase, centre otherwise, since 2026-09-23);
 it is not built, installed or accepted in game. Item 1 remains unimplemented
 behind its telemetry prerequisite. Evidence base: the chase notes
 ([camera](chase-camera.md), [elevated geometry](elevated-chase-camera.md),
@@ -286,6 +286,7 @@ Option: `X3M_CHASE_HUD_ANCHOR=forward|centre` / `--chase-hud-anchor`, default
 `centre` (native placement, no writes) until accepted. Install line adds
 `hud_anchor=<centre|forward>`; the existing window report gains
 `hud_anchor applied=… refused=… last_px=x,y`.
+Default `forward` since 2026-09-23 (user decision): the launcher forwards `forward` on a `--camera chase` launch unless `--chase-hud-anchor centre` is given (`centre` on other cameras), and the DLL treats an unset variable as `forward`.
 
 ### Verification
 
@@ -308,8 +309,8 @@ Option: `X3M_CHASE_HUD_ANCHOR=forward|centre` / `--chase-hud-anchor`, default
 ### Source checkpoint (2026-09-15)
 
 The isolated implementation adds `--chase-hud-anchor forward|centre` and always
-sets `X3M_CHASE_HUD_ANCHOR`, so the default `centre` clears a stale shell value
-and performs no anchor ticket, projection or node write. `forward` retains the
+sets `X3M_CHASE_HUD_ANCHOR` (since 2026-09-23 `forward` on chase, `centre` otherwise), so a stale shell value is cleared; `centre`
+performs no anchor ticket, projection or node write. `forward` retains the
 ship-forward row only from a successfully written chase pose. Central admission
 creates one of eight fixed update/lifetime tickets; the final-FOV seam consumes
 the matching ticket, rereads the final camera projection, and validates every

@@ -206,9 +206,10 @@ Framing defaults changed on 2026-09-16 after run 26 accepted the raised camera:
 pitch-down 13° → 0.5° and `offset_y` 0.45 → 0.50, the near-parallel elevated
 camera of [chase-hud-reticle-survey.md](chase-hud-reticle-survey.md) (ship at
 75 % of screen height, forward vanishing point ~4.5 px above centre, so the
-default `centre` HUD anchor is a true boresight cue). A non-zero 0.5 keeps the
+`centre` HUD anchor, the default until 2026-09-23, is a true boresight cue). A non-zero 0.5 keeps the
 elevated construction; only an explicit 0 selects legacy framing. The launcher
 forwards both constants explicitly in chase mode.
+Defaults changed again on 2026-09-23 (user decision): distance scale 0.90 → 1.05 (compiled default and launcher, now forwarded explicitly in chase mode like the two framing constants) and the HUD anchor `centre` → `forward` ([hud anchor](chase-view-restore-and-hud-anchor.md)).
 
 | Variable | Flag | Default | Range | Meaning |
 | --- | --- | --- | --- | --- |
@@ -217,7 +218,7 @@ forwards both constants explicitly in chase mode.
 | `X3M_CHASE_POS_TAU` | `--chase-pos-tau` | 0.38 s | (0, 10] | boom spring time constant |
 | `X3M_CHASE_OFFSET_Y` | `--chase-offset-y` | 0.50 | [−1, 1] | ship below centre, fraction of the half screen height (negative = above centre); 0.50 projects the settled anchor at 75% of screen height in elevated mode; silhouette and lag can shift the visible center |
 | `X3M_CHASE_PITCH_DOWN_DEG` | `--chase-pitch-down-deg` | 0.5° | [0, 30] | downward look in the ship-up/native-yaw frame; zero restores legacy framing geometry |
-| `X3M_CHASE_DISTANCE_SCALE` | `--chase-distance-scale` | 0.90 | (0, 10] | multiplies the vanilla boom (the scripts already size it per ship class) |
+| `X3M_CHASE_DISTANCE_SCALE` | `--chase-distance-scale` | 1.05 (0.90 before 2026-09-23) | (0, 10] | multiplies the vanilla boom (the scripts already size it per ship class) |
 | `X3M_CHASE_LAG_CLAMP_DEG` | `--chase-lag-clamp-deg` | 8° | [0, 90] | orientation lag clamp = the screen window |
 | `X3M_CHASE_POS_LAG_CLAMP` | `--chase-pos-lag-clamp` | 0.10 | [0, 1] | boom lag clamp as a fraction of the boom |
 | `X3M_CHASE_COMBAT_TIGHTNESS` | `--chase-combat-tightness` | 0 | [0, 1] | scales both time constants by (1 − tightness) while the cockpit reports a target lock (step 7a; field semantics unverified in game); the install line says `combat=off` at 0 and `combat=tracking_1e4_unverified` otherwise |

@@ -52,3 +52,18 @@ and still opt-in. Host-only evidence; no game or Wine run.
 PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_chase_camera verification.analysis.test_chase_lead   # 53 tests OK; chase_lead_host scenarios=69 checks=268 failures=0
 ./x3run --camera chase --motion-output --hdr --hdr-tonemap --dry-run            # X3M_CHASE_PITCH_DOWN_DEG=0.5, X3M_CHASE_OFFSET_Y=0.5
 ```
+
+## 2026-09-23 default `forward` on chase, distance scale 1.05
+
+User decision: the launcher forwards `X3M_CHASE_HUD_ANCHOR=forward` on a `--camera chase` launch unless
+`--chase-hud-anchor centre` is given (`centre` on other cameras), and `X3M_CHASE_DISTANCE_SCALE=1.05` in chase mode.
+In the DLL an absent variable means `forward` (`core::anchor_forward_setting`); a zero return from
+`GetEnvironmentVariableW` counts as absent only with `ERROR_ENVVAR_NOT_FOUND`, so an empty value keeps `centre`;
+LastError is restored. Host-only evidence; no game or Wine run.
+
+```sh
+PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_chase_camera verification.analysis.test_chase_lead   # 54 tests OK; chase_lead_host scenarios=70 checks=273 failures=0 (unset/forward/centre/other/empty parse cases)
+python3 tools/manage.py launch --dry-run --direct --camera chase                          # X3M_CHASE_HUD_ANCHOR=forward, X3M_CHASE_DISTANCE_SCALE=1.05
+python3 tools/manage.py launch --dry-run --direct --camera chase --chase-hud-anchor centre  # X3M_CHASE_HUD_ANCHOR=centre
+python3 tools/manage.py launch --dry-run --direct --camera vanilla                        # X3M_CHASE_HUD_ANCHOR=centre
+```

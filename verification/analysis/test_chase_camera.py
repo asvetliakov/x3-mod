@@ -190,7 +190,7 @@ class ChaseCameraPipeline(unittest.TestCase):
             self.assertAlmostEqual(r['basis'][7], -math.sin(math.radians(pitch_down_deg)), places=12)
             self.assertGreater(r['pos'][1], 0)
             self.assertLess(r['pos'][2], 0)
-            self.assertAlmostEqual(r['distance'], 0.90 * math.hypot(40, 200), places=10)
+            self.assertAlmostEqual(r['distance'], 1.05 * math.hypot(40, 200), places=10)
             alpha = math.radians(pitch_down_deg) + math.atan(offset_y * vfov)
             self.assertAlmostEqual(math.atan2(r['pos'][1], -r['pos'][2]), alpha, places=12)
 
@@ -475,7 +475,7 @@ class ChaseCameraPipeline(unittest.TestCase):
         self.assertEqual(d['lag_clamp_deg'], 8.0)
         self.assertEqual(d['pos_lag_clamp'], 0.10)
         self.assertEqual(d['offset_y'], 0.50)
-        self.assertEqual(d['distance_scale'], 0.90)
+        self.assertEqual(d['distance_scale'], 1.05)   # 0.90 before 2026-09-23
         self.assertEqual(d['combat_tightness'], 0.0)
         self.assertEqual(d['max_dt'], 0.10)
         self.assertEqual(d['snap_coalesce_frames'], 3)
@@ -657,7 +657,7 @@ class ChaseCameraLaunchOptions(unittest.TestCase):
             wine.touch()
             (Path(directory) / 'X3AP.exe').touch()
             argv = ['manage.py', 'launch', '--dry-run', '--vanilla', '--game-dir', directory, *args]
-            with mock.patch.object(sys, 'argv', argv), mock.patch.object(manage, 'WINE', wine), \
+            with mock.patch.object(sys, 'argv', argv), mock.patch.object(manage, 'WINE', wine), mock.patch.object(manage, 'VOICE_DECODER_REPO', None), \
                     mock.patch.object(manage.subprocess, 'call', side_effect=AssertionError('must never launch')) as call, \
                     contextlib.redirect_stdout(output), contextlib.redirect_stderr(io.StringIO()):
                 try:
@@ -680,12 +680,29 @@ class ChaseCameraLaunchOptions(unittest.TestCase):
         for value in ('-1', '30.1', '90', 'nan', 'inf'):
             self.assertEqual(self.invoke('--camera', 'chase', '--chase-pitch-down-deg', value)[0], 2)
 
-    def test_hud_anchor_defaults_to_centre_and_clears_stale_environment(self):
-        for camera in ('vanilla', 'chase'):
-            with mock.patch.dict(os.environ, {'X3M_CHASE_HUD_ANCHOR': 'forward'}):
+    def test_hud_anchor_defaults_to_forward_in_chase_mode_and_clears_stale_environment(self):
+        # Default forward on a chase launch since 2026-09-23; centre elsewhere and when asked.
+        for camera, stale, expected in (('vanilla', 'forward', 'centre'), ('chase', 'centre', 'forward')):
+            with mock.patch.dict(os.environ, {'X3M_CHASE_HUD_ANCHOR': stale}):
                 code, output = self.invoke('--camera', camera)
             self.assertEqual(code, 0)
-            self.assertEqual(output['env']['X3M_CHASE_HUD_ANCHOR'], 'centre')
+            self.assertEqual(output['env']['X3M_CHASE_HUD_ANCHOR'], expected)
+        with mock.patch.dict(os.environ, {'X3M_CHASE_HUD_ANCHOR': 'forward'}):
+            code, output = self.invoke('--camera', 'chase', '--chase-hud-anchor', 'centre')
+        self.assertEqual(code, 0)
+        self.assertEqual(output['env']['X3M_CHASE_HUD_ANCHOR'], 'centre')
+        self.assertEqual(self.invoke('--chase-hud-anchor', 'centre')[0], 0)
+
+    def test_distance_scale_default_is_forwarded_and_overridable(self):
+        with mock.patch.dict(os.environ, {'X3M_CHASE_DISTANCE_SCALE': '0.9'}):
+            code, output = self.invoke('--camera', 'chase')
+        self.assertEqual(code, 0)
+        self.assertEqual(output['env']['X3M_CHASE_DISTANCE_SCALE'], '1.05')
+        code, output = self.invoke('--camera', 'chase', '--chase-distance-scale', '0.9')
+        self.assertEqual(code, 0)
+        self.assertEqual(float(output['env']['X3M_CHASE_DISTANCE_SCALE']), 0.9)
+        for value in ('0', '10.5', 'nan'):
+            self.assertEqual(self.invoke('--camera', 'chase', '--chase-distance-scale', value)[0], 2)
 
     def test_forward_hud_anchor_is_forwarded_in_chase_mode(self):
         code, output = self.invoke('--camera', 'chase', '--chase-hud-anchor', 'forward')
