@@ -317,3 +317,13 @@ drops by at least 0.5 ms; then the default flips to 24 in a later candidate, wit
   mechanism, one more occlusion-counted quad whose program clips unless `needs_repair` at 4-px spacing (colour writes
   off, diagnostic only), beside today's count.
 
+
+## Run 76 D (run284 40 bins, run285 24 bins, run286 default; 2026-09-24): step B in flight
+
+Fogged stand under `--gpu-sync-timing`, 300-frame windows, `fog_march` serialised medians incl. its 0.264 ms floor
+(measured; `verification/results/run284-286-far-bins/`): 40 bins 4.77–4.89 ms (run284) and 4.86–4.96 (run286);
+24 bins 4.37–4.71 ms (run285). Saving 0.2–0.5 ms, well under the 0.8–1.15 ms the cost model inferred, so the far
+loop is not where most of the march time goes: the per-ray base (near bins, the shaft/ambient terms, the atlas
+fetch cost per sample) dominates. User: no visible difference between 24 and 40 in a short stand. Decision: 40 stays
+the default (the saving does not buy the far-detail risk); step C (quarter-resolution march) is the lever and is being
+implemented as a runtime variant.
