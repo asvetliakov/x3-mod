@@ -157,11 +157,14 @@ public:
     HandoverReport take_handover() noexcept { HandoverReport r = report_; report_.due = false; return r; }
     // A changed identity is an invalidation.
     void configure(const CacheIdentity& identity) noexcept;
-    // R3 prefill (fog-handover.md, "R3 implementation"): configure(identity), then post `camera` to the worker
-    // without advancing readiness or uploading. Never waits. True when the camera reached the worker; false (not
-    // running, camera refused, or a missed lock) leaves the caller to retry at its next poll.
+    // R3 prefill (fog-handover.md, "R3 implementation"): configure(identity) (a cold start even for the resident
+    // identity), then post `camera` to the worker without advancing readiness or uploading. Never waits. True when
+    // the camera reached the worker; false (not running, camera refused, or a missed lock) leaves the caller to
+    // retry at its next poll.
     bool prefill(const CacheIdentity& identity, const double camera[3]) noexcept;
-    void invalidate() noexcept; // sector change or load: drop everything, refill, ramp
+    // Sector change or load: drop everything, refill, ramp (or step under the hand-over). The worker parks until
+    // the next step or prefill posts a camera for the new epoch; the previous epoch's camera is never filled around.
+    void invalidate() noexcept;
     FrameState step(const double camera[3], std::uint64_t frame) noexcept;
     // Need box of `camera` resident on the GPU (the execute-time guard).
     bool covers(int level, const double camera[3]) const noexcept;

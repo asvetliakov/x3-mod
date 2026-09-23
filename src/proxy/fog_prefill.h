@@ -100,6 +100,16 @@ struct Record {
     std::uint64_t key = 0;
     long long qpc = 0;                           // when the fill was started
 };
+// The poll's plan for a Found sector: a pending prefill of the same key and recipe is left alone; the resident
+// field's own sector (the flown one, seen by its token: an in-flight hitch over 250 ms with its id unread, run273
+// review F4) is kept; the resident key in another sector is re-centred as a cold start; anything else starts.
+enum class Plan { AlreadyStarted, CurrentSector, Recentre, Start };
+inline const char* name(Plan p) { return p == Plan::AlreadyStarted ? "already_started" : p == Plan::CurrentSector ? "current_sector" : p == Plan::Recentre ? "recentred" : "started"; }
+inline Plan plan(const Record& r, std::uint64_t key, unsigned recipe, bool resident, bool same_token) {
+    if (r.pending && r.key == key && r.recipe == recipe) return Plan::AlreadyStarted;
+    if (resident && same_token) return Plan::CurrentSector;
+    return resident ? Plan::Recentre : Plan::Start;
+}
 enum class Decision { None, Confirmed, Discarded };
 inline const char* name(Decision d) { return d == Decision::Confirmed ? "confirmed" : d == Decision::Discarded ? "discarded" : "none"; }
 // The key owns the field (fog_sector_policy.h): the same placement key keeps the fill whatever the heap token;

@@ -1,0 +1,36 @@
+{
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "X3",
+    "--no-update",
+    "/private/tmp/claude-501/-Users-asvetl-x3-mod/ec1d2a17-c1f5-4762-8f3d-98edd98ef126/scratchpad/ad27d6df/fogpass2/fog_density_shader_fixture.exe",
+    "Z:\\private\\tmp\\x3-run67-fog-ref\\cases.txt",
+    "Z:\\private\\tmp\\claude-501\\-Users-asvetl-x3-mod\\ec1d2a17-c1f5-4762-8f3d-98edd98ef126\\scratchpad\\ad27d6df\\fogpass2\\images"
+  ],
+  "returncode": 0,
+  "shader_returncode": 0,
+  "pass_returncode": 0,
+  "seconds": 50.132963084000004,
+  "pass_seconds": 45.988800208,
+  "pass_command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "X3",
+    "--no-update",
+    "/private/tmp/claude-501/-Users-asvetl-x3-mod/ec1d2a17-c1f5-4762-8f3d-98edd98ef126/scratchpad/ad27d6df/fogpass2/fog_density_pass_fixture.exe",
+    "Z:\\private\\tmp\\x3-run67-fog-ref\\cases.txt"
+  ],
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "executable_sha256": "1755263d8a3ee131dbb7e24256b04972c547a30a0e2cda005e6c100d6762507f",
+  "pass_executable_sha256": "051f107a37ca5dce37e5af7a7994ff7e7db6aef11326ad532994998677228c34",
+  "cases_sha256": "9a19dcb63d8074e9d2d3582f3f78e21c2c0b5d0782318f482081807eed296226"
+}

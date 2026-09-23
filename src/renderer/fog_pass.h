@@ -172,10 +172,17 @@ public:
     HRESULT prepare_density(const FogDensityConfig&,const double camera_world[3],std::uint64_t frame) noexcept;
     void invalidate_density() noexcept; // load or sector change without a key change
     // R3 (fog-handover.md, "R3 implementation"): start the far fill of an identity found during a transit stall,
-    // with the switches of the last prepare_density. No device call, no allocation, never waits. False: no worker
-    // yet (the first stored frame creates it), the path is refused, a Reset is pending, or the camera was not
-    // posted (a missed lock); the caller retries at its next poll.
-    bool prefill_density(std::uint64_t sector_key,std::uint32_t recipe,const double world_offset[3],const double camera[3]) noexcept;
+    // with the caller's hand-over switches (the proxy's, so a prefill before the first stored frame steps and cold-fills
+    // too). No device call, never waits. When no stored frame has run yet the worker is created here, inside the
+    // caller's resource-creation hook: two 4,260,096 B caches (zeroed), the job and scratch arrays, a thread and the
+    // module pin, at most once per stall (a failed start sets prefill_refused() until the next prepare_density or
+    // release_density_worker, and later polls allocate nothing). False: the path is refused, a Reset is pending, the
+    // worker could not start, or the camera was not posted (a missed lock; retried at the next poll). The resident
+    // identity is re-centred as a cold start.
+    bool prefill_density(std::uint64_t sector_key,std::uint32_t recipe,const double world_offset[3],const double camera[3],bool handover_step,bool handover_coldfill) noexcept;
+    bool prefill_refused() const noexcept { return prefill_refused_; }
+    // A worker a prefill started is not kept until device release when the attach is refused (8.5 MB): joins it.
+    void release_density_worker() noexcept;
     // This frame's prepare_density succeeded and a ray from `camera` may be drawn: far ramp
     // above zero and the far need box resident. Pure CPU, no lock, no device call.
     bool density_drawable(const double camera[3]) const noexcept;
@@ -282,7 +289,7 @@ private:
     IDirect3DTexture9* grid_=nullptr; IDirect3DSurface9* grid_surface_=nullptr; UINT grid_width_=0,grid_height_=0;
     FogDensityConfig density_config_{}; FogDensityStatus density_status_{};
     FogGridReport grid_report_{};
-    unsigned ps30_slots_=0; bool density_refused_=false,grid_refused_=false;
+    unsigned ps30_slots_=0; bool density_refused_=false,prefill_refused_=false,grid_refused_=false;
     // Dust motes (FogDensityConfig::motes): one vs_3_0 program, its declaration, the pixel program in the in-march and
     // grid variants (created once, surviving Reset) and the static DEFAULT VB/IB (released with the targets, re-created
     // by the next prepare_density). The previous drawn fog frame's basis feeds the streak; Reset and any gap drop it.

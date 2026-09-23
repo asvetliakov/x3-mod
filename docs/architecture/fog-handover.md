@@ -439,11 +439,12 @@ arrival's need box before the whole-atlas latch. The start is recorded as prefil
 (`fog_prefill::Record`) only when the camera reached the worker (`DensityCache::prefill` returns
 true); a missed lock logs `action=not_posted` and the next poll retries. A repeated poll finding the
 same pending key does nothing (`already_started`); a found sector whose key is the resident field's
-(`fog_density_key_`, the same sector or one sharing its background record) is skipped
-(`current_key`). Nothing is drawn from it:
-drawing stays gated by `fog_sector_.current(frame_)`, set only by the detector. Without a density
-worker yet (no stored frame since attach), a refused path or a pending Reset the poll logs
-`action=no_cache` and does nothing.
+(`fog_density_key_`, another sector sharing its background record) is re-centred at the destination's
+origin as a cold start (`recentred`; Run 73 B case A below, which replaced the earlier `current_key`
+skip). Nothing is drawn from it:
+drawing stays gated by `fog_sector_.current(frame_)`, set only by the detector. Before the first
+stored frame of a session the poll constructs the `FogPass` object and `prefill_density` starts the
+worker (no device call; Run 73 B case D); a refused path or a pending Reset logs `not_posted`.
 
 **Confirmation.** While a prefill is pending, the transit's `sample_gap` invalidation is deferred.
 At the detector's first Ready sample, `fog_prefill::decide`: the same placement key and recipe keep
@@ -461,9 +462,10 @@ engine spends anyway; on few cores it competes with the load (not measured). A w
 fill and is discarded at Ready; it cannot draw. Save loads expose the sector only at the end of the
 stall (sector-transit-order §3), so R3 gains nothing there; R1+R2 still apply. A hitch of more than
 250 ms without Present in ordinary flight (not a transit) also opens the gate: the walk then finds
-the flown sector (`same_id`, or `current_key` if its id was not yet read) or no candidate, and starts
-nothing; a started prefill in such a hitch would be confirmed or discarded at the next Ready sample
-like any other. The lead time per
+the flown sector (`same_id`) or no candidate, and starts nothing; a started prefill in such a hitch
+would be confirmed or discarded at the next Ready sample like any other (a `recentred` one of the
+flown sector's own key would cost one cold fill, which needs its id to be unread: it is read at every
+Ready sample after a break, so this is not expected). The lead time per
 transit is what the `stall_ms` of the first `found` poll against the stall length measures in a
 flight. Native Windows: the same EXE offsets and documented calls.
 
@@ -475,3 +477,112 @@ record), the stall gate (nothing before the first Present or within 250 ms of it
 (far need box at the origin, held, the Ready `configure` keeps it, hand-over after the extension
 and one latch, settled field equal to the destination's, a different key starts over). The poll's
 wiring, the deferred gap and the poll sites are source checks in `test_fog_handover.py`.
+
+## Run 73 B findings and fixes (2026-09-23)
+
+Run273 (Run 73 B, Run73 DLL from `4ff60c8a`, all four switches on) exposed four gaps. Evidence:
+`verification/results/run273-fog-bolts/handover_gaps.py` (+ `_out.txt`, written for this section) over
+the session log, and the triage files beside it. All figures measured unless marked; frames are
+session frame ids.
+
+**Common cause behind B, C and D: the arrival frame posts the sector just left.** The owner latch
+posts "the previous scene end's camera" (fog_pass.h), which at the first frame of a new sector is the
+source sector's position. `DensityCache::step` posts it, the worker does a full first fill around
+it (1.09 M nodes, ~0.6 s at the measured 1.8 M nodes/s), the next frame's post retargets the window
+to the real position, the intersection is empty (unrelated coordinates) and a second first fill runs.
+Frame 16258 (D): 0 -> 2,349,664 nodes at the latch (`handover_gaps_out.txt`, node deltas), twice a
+first fill of 1,092,727, and the run's hand-over line reports the worker busy for far longer than the
+far need box's own fill (24848: `busy_ms=1742.1` against `fill_busy_ms=597.6`; the 16308 line, not
+tracked here, showed the same shape: the "~700 ms outside the fill" of the brief is that wasted
+first fill). Frame 24765 (B): 2,184,796 nodes after arrival, twice a first fill, although the
+confirmed prefill had already filled the origin box during the stall; the stale post retargeted the
+window away from it and discarded it. Fix, two parts:
+`volumetric_fog_sector_sample` drops `fog_density_camera_valid_` on a sector change, a gap or a
+prefill decision (this frame's latch posts nothing; the scene end re-validates the camera with the
+new sector's and the next latch starts the fill there), and `DensityCache::apply_invalidate_locked`
+clears `request_.camera_valid` (a new epoch has no camera until one is posted for it; `invalidate`
+also empties `posted_need_` so the next `step` posts even a camera that did not move). Cost: one
+frame between the sector's first frame and the fill start (the arrival frame is 40-110 ms long
+anyway); the fill then starts at the right place once.
+
+**A. Same-family gate (bluewell -> bluewell, 19555).** Not a cold start because the transit was no
+`sample_gap`: the stall frame 19554 sampled `no_cockpit`, which stamped `fog_density_sample_frame_`,
+so 19555 was consecutive and the 5.4 s of wall clock did not count; the prefill poll saw
+`current_key` and did nothing; the first step at 19556 found the need box (190 km from the source
+position, another sector) not resident and ran the warm `residency` ramp: epoch at 19556, `far_ready`
+at 19676, 120 frames and `ms=3460.0` (`handover_gaps_out.txt`). Fix: (1) a Ready sample of another sector object than the last Ready one
+(the sector token, or `[sector+8]` when both ids are known: the destination can reuse the freed
+source's address) is a transit; with the same placement key while the field is configured it is a
+cold start (`invalidate_density`, epoch `transit`: step and cold fill), a different key re-keys at
+the latch as before; (2) the prefill no longer skips the resident key: `DensityCache::prefill` of
+the resident identity is an `invalidate` (cold start) followed by the origin post, the poll logs
+`recentred`, and the confirmation keeps that fill. The origin is still the best single guess (the
+arrival at 19555 was 190 km from it, at 24765 228 km: X3 gates sit at the sector edges), so the
+arrival post then extends the origin box under the hold instead of filling from scratch.
+
+**B. Gate into foggreenoutlands (24765), confirmed prefill "re-keyed".** It was not re-keyed: the
+`sector_key` epoch line at the latch came from the proxy's own key copy (`fog_density_key_` still
+held bluewell's; `configure` in the cache was a no-op), and the refill was the stale post above. Fix:
+a confirmed prefill adopts its key (`fog_density_key_ = key`, the confirm line carries `adopted=1`),
+`rekeyed` compares the key only, the prefill start is an epoch (`prefill`) so `far_ready` and the
+hand-over line count from the cold start, and the stale post is skipped. Remaining cost for an
+arrival far from the origin: the far box grows from the origin box to the arrival's far target; under
+the cold hold it now grows to the far target only, not to the window's edge (`work_once`, `want`
+bounded by the far target: for the 24765 arrival 795,144 nodes against 1,103,336 for a first fill,
+host witness `PREFILL_ADOPTED`; with window-edge slabs the same geometry gives 1,372,189,
+`verification/results/fog-handover/run273-fixes/window_edge_slabs.py`, whose far-target figure
+803,765 is within 1.1 % of the witness, a boundary-rounding difference), about 0.44 s of
+worker time (inferred from 1.8 M nodes/s) plus one latch, against 1.15 s measured in the flight. Two
+frames after arrival needs the arrival position during the stall, which is written last
+(sector-transit-order section 2 row 8): open.
+
+**C. Docked save load (33817): cards refused for 384 frames after the cold step.** The scene-end
+path passed every gate up to `density_drawable` in 33817-33859 (`density_filling`), the far level
+stepped at 33860 and armed the cards, and from 33860 the first card of every frame was refused
+before or at the readiness check (`refused=1 ready=0`, `suppressed=0`), so the pass skipped as
+`card_refused` until the undock (34244, 7/7 suppressed at once). The same docked view in flight
+(31504-33815, 7 cards a frame) was masked throughout, so the condition is one the load changes and
+the undock's view change clears; the rows of the two states differ in nothing the gates read
+(field diff of every row type between 31510 and 33870: only camera, scene statistics and
+`set_rt 14 -> 4`, `sun_shadow_lane_frame stamped 1 -> 0`). **Not pinned from the code** (measured:
+the refusal happened; inferred: it is a card-time gate or readiness component that the scene end
+does not evaluate, most likely a render-state or frame-structure difference after the load, since
+every readiness component except `density_drawable` was true at the scene end of the same
+frames). Fix delivered: the diagnostic. `prepare_fog_card` names the frame's first refusal
+(`fog_off`, `pair`, `shape`, `scene`, `queries`, `composition`, `owner`, `taa`, `linear_depth`,
+`sun_lane`, `pass_done`, `frequency`, `states`, `mask`, or the readiness verdict: the prerequisite's
+own name, `resources`, the parameter check's name, `density_unprepared`, `density_ramp`,
+`density_drawable`) and the `volumetric_fog_cards` line carries it as `refusal=`, per frame in
+timing mode and at every change (60-frame spacing) otherwise; the gates are the same checks in the
+same order, one branch each, no new per-card work. The next flight's first `refusal=` value after a
+docked load settles it.
+
+**D. New game into a fogged sector (16258).** Three parts. (1) The prefill could not start: the
+poll found bluewell 7.1 s into the 12.6 s stall but `prefill_density` refused (`not_posted`)
+because no stored frame had created the density worker (and no `FogPass` existed). Now the poll
+constructs the `FogPass` (no device call) and `prefill_density` creates and starts the worker
+(portable, no D3D), takes the hand-over switches from the proxy, and `FogPass::attach` keeps a
+worker that exists (its `detach` released everything else); the first `prepare_density` finds it,
+creates the atlases (their `gpu_reset` is covered by the whole-atlas latch, as before). (2) The
+~700 ms of worker time outside the fill was the stale-camera first fill (above). (3) The 612 ms
+frame 16307 was not the latch: `frame_phases_slow` puts 599 ms in `pre_render` (before BeginScene,
+engine time) with the slowest hooked call at 1.9 ms and `views` at 12.8 ms, which bound the latch;
+frames 24847 (188 ms) and 19596 (707 ms) have the same shape, 1.2-2.4 s after each arrival, and the
+worker generated 0.95-1.2 M nodes during each such stall (the big upload after it is the backlog).
+Inferred: the engine's autosave after a gate transit or a new game. The latch stays whole (the
+docked load's latch frame was 12 ms, measured); nothing was split. Expected first fog frame on a
+new game: the arrival frame's latch posts nothing (camera stale), the next latch posts the origin
+camera and takes the whole-atlas latch (the box was filled in the stall), the frame after steps and
+masks the cards: arrival + 2 frames, host witness `NEW_GAME_PREFILL` (latch in the first posted
+frame, ready 1.000 in the next); the 600 ms engine stall a second later is untouched.
+
+**Verification.** `fog_handover_host.cpp` (95 checks): `INVALIDATE_PARKS` (the worker parks after
+an invalidate and fills only around the next posted camera), `TRANSIT_COLD` (a same-key transit
+steps with one whole latch, largest step 1.000, settles bit for bit), `RECENTRE_PREFILL` (the
+resident key re-centred at the origin as a cold start, confirmed keeps it, stepped 5 frames after a
+20 km arrival), `PREFILL_ADOPTED` (nodes to the latch 795,144 < a first fill 1,103,336, one first
+fill; the stale post 2,357,917 with two), `NEW_GAME_PREFILL`. `fog_card_motion_cases_inc.h`:
+`run273_transit` (token and id changes, same key invalidates once, another key only drops the
+camera, the first sector only drops the camera), `run273_prefill_adopt` (key adopted, camera
+dropped; discarded invalidates once), `run273_card_refusal` (12 named refusals, kept for the frame,
+reset at begin, unprepared is warm-up not refusal). Wiring checks in `test_fog_handover.py`.

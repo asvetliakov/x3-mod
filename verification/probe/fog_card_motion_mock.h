@@ -105,7 +105,7 @@ struct MockFog { struct Caps {bool enabled=true;}cap; const Caps& caps()const{re
   out->scene_open=in.caller_scene_open;return execute_result;
  }
  unsigned density_calls=0;renderer::FogDensityStatus density{};
- void invalidate_density(){++density_calls;}bool density_drawable(const double*)const{return density.ready_far>0;}bool density_ready(unsigned,unsigned)const{return density.ready_far>0;}
+ bool drawable=true; void invalidate_density(){++density_calls;}bool density_drawable(const double*)const{return drawable&&density.ready_far>0;}bool density_ready(unsigned,unsigned)const{return density.ready_far>0;}
  const renderer::FogDensityStatus& density_status()const{return density;}
  renderer::FogGridReport grid{};const renderer::FogGridReport& grid_report()const{return grid;}bool grid_refused()const{return false;}bool grid_variant()const{return false;}
  renderer::FogMoteReport motes{};const renderer::FogMoteReport& mote_report()const{return motes;}bool motes_refused()const{return false;}
@@ -139,6 +139,8 @@ struct MotionOutput {
  fog_card_suppressed_total_=0,fog_card_refused_total_=0,fog_card_logged_frame_=0;
  const char* fog_last_reason_="";
  bool fog_requested_=true,fog_enabled_=true,fog_disabled_=false,fog_attach_failed_=false,fog_cards_replace_=true;
+ const char* fog_card_refusal_=nullptr;const char* fog_card_last_refusal_=nullptr;const char* fog_card_ready_reason_=nullptr;bool fog_card_refusal_ready_=false;
+ std::uint32_t fog_density_ready_sector_=0,fog_density_ready_id_=0;
  float fog_strength_=.02f,fog_anisotropy_=.3f;
  bool fog_card_ready_checked_=false,fog_card_ready_=false,state_hooks_=false,composition_busy_=false,
  composition_state_lost_=false,motion_state_lost_=false,main_msaa_=false,taa_enabled_=true,taa_failed_=false,

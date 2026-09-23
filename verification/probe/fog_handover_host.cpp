@@ -393,7 +393,122 @@ void prefill_cache() {
     require("prefill_settles_to_the_destination_field", settle(cache, gpu, arrival, f, kDefaultUploadBudget) && equal_static(gpu, cache, "prefill", destination.offset));
     const CacheIdentity other{0x7777, 1, kNoOffset};
     cache.configure(other);                              // a different key at Ready: discarded, a new epoch
-    require("prefill_discard_starts_a_new_fill", cache.worker_step() && cache.identity() == other);
+    // The new epoch has no camera (run273 case D): the worker parks until the next step posts the arrival's.
+    const bool parked = !cache.worker_step() && cache.identity() == other;
+    frame(cache, gpu, arrival, ++f, 0);
+    require("prefill_discard_starts_a_new_fill", parked && cache.worker_step());
+}
+
+// run273 (Run 73 B) cases at the cache level: A same-key transit, B confirmed prefill adopted without a stale post,
+// D fill during the loading stall on a cache no stored frame has configured, and the invariant behind B and D:
+// an invalidate forgets the previous epoch's camera.
+void run273_cases() {
+    const double origin[3] = {0, 0, 0};
+    {   // D invariant: after invalidate the worker parks; nothing is generated around the previous camera.
+        DensityCache cache; Gpu gpu; std::uint64_t f = 0;
+        cache.start_stepped(); cache.set_handover(true, true); cache.configure(kIdentity);
+        frame(cache, gpu, kCamera, ++f, 2);
+        const std::uint64_t before = cache.stats().nodes_generated;
+        cache.invalidate();
+        const bool parked = !cache.worker_step() && cache.stats().nodes_generated == before && cache.idle();
+        const double elsewhere[3] = {kCamera[0] - 300 * kFarDelta, kCamera[1] + 200 * kFarDelta, kCamera[2]};
+        frame(cache, gpu, elsewhere, ++f, 1);
+        const NodeKey origin_far = cache.worker_origin(1), expect = window_origin(kFarDelta, elsewhere[0], elsewhere[1], elsewhere[2]);
+        std::printf("INVALIDATE_PARKS parked=%u generated_after=%llu\n", unsigned(parked), (unsigned long long)(cache.stats().nodes_generated - before));
+        require("invalidate_parks_the_worker_until_a_camera_is_posted", parked && cache.stats().nodes_generated > before &&
+                origin_far.x == expect.x && origin_far.y == expect.y && origin_far.z == expect.z);
+    }
+    {   // A: a same-key transit is a cold start (the proxy's invalidate on the sector change): one whole latch, stepped.
+        DensityCache cache; Gpu gpu; std::uint64_t f = 0;
+        cache.start_stepped(); cache.set_handover(true, true); cache.configure(kIdentity);
+        require("transit_source_field_settles", settle(cache, gpu, kCamera, f, kDefaultUploadBudget));
+        cache.invalidate();                                      // volumetric_fog_sector_sample: epoch "transit"
+        const double arrival[3] = {kCamera[0] + 300 * kFarDelta, kCamera[1], kCamera[2]};
+        unsigned wholes = 0; long long resident = -1, ready = -1; HandoverReport report; float largest = 0.f, previous = 0.f;
+        for (int i = 0; i < 400 && ready < 0; ++i) {
+            const Frame fr = frame(cache, gpu, arrival, ++f, 4);
+            wholes += fr.latch.whole[1];
+            if (fr.state.resident[1] && resident < 0) resident = (long long)f;
+            largest = std::max(largest, fr.state.ready[1] - previous); previous = fr.state.ready[1];
+            if (fr.state.ready[1] >= 1.f) ready = (long long)f;
+            if (fr.report.due) report = fr.report;
+        }
+        std::printf("TRANSIT_COLD resident_frame=%lld ready_frame=%lld wholes=%u largest_step=%.3f\n", resident, ready, wholes, double(largest));
+        require("same_key_transit_steps_with_one_whole_latch", wholes == 1 && ready > 0 && ready == resident && largest >= 1.f && report.due && report.step && report.cold_fill && report.whole_atlas);
+        require("same_key_transit_settles_to_the_static_field", settle(cache, gpu, arrival, f, kDefaultUploadBudget) && equal_static(gpu, cache, "transit"));
+    }
+    {   // A with R3: the resident key's prefill re-centres at the destination's origin as a cold start; confirmed keeps it.
+        DensityCache cache; Gpu gpu; std::uint64_t f = 0;
+        cache.start_stepped(); cache.set_handover(true, true); cache.configure(kIdentity);
+        settle(cache, gpu, kCamera, f, kDefaultUploadBudget);
+        const std::uint64_t before = cache.stats().nodes_generated;
+        const bool posted = cache.prefill(kIdentity, origin);
+        const bool filled = cache.worker_step();
+        const std::uint64_t first = intersect(window_box(window_origin(kFarDelta, 0, 0, 0)), grow(need_box(1, origin), kFirstFillSlack[1])).nodes();
+        const bool held = !cache.worker_step();
+        cache.configure(kIdentity);                              // confirmed: the same identity keeps the fill
+        const bool kept = !cache.worker_step() && cache.stats().nodes_generated == before + first;
+        const double arrival[3] = {20000.0, -10000.0, 5000.0};
+        unsigned wholes = 0; long long resident = -1, ready = -1; const std::uint64_t start = f;
+        for (int i = 0; i < 200 && ready < 0; ++i) {
+            const Frame fr = frame(cache, gpu, arrival, ++f);
+            wholes += fr.latch.whole[1];
+            if (fr.state.resident[1] && resident < 0) resident = (long long)f;
+            if (fr.state.ready[1] >= 1.f) ready = (long long)f;
+        }
+        std::printf("RECENTRE_PREFILL first_nodes=%llu ready_frames=%lld wholes=%u\n", (unsigned long long)first, ready - (long long)start, wholes);
+        require("same_key_prefill_recentres_at_the_origin_as_a_cold_start", posted && filled && held && kept);
+        require("same_key_prefill_hands_over_stepped_after_the_latch", wholes == 1 && ready > 0 && ready == resident && ready - (long long)start <= 5);
+    }
+    {   // B: the confirmed prefill is adopted when the arrival camera is the first post; a stale post would discard it.
+        const CacheIdentity destination{0x9999, 1, WorldOffset{3 * kFarDelta, 0, -5 * kFarDelta}};
+        const double arrival[3] = {153045.0, 168066.0, -16679.0};     // run273 frame 24765, 227 km from the origin (measured)
+        const double stale[3] = {-134686.9 * 3, 5846.421, -190359.5}; // the source sector's camera, unrelated coordinates
+        // Nodes generated between the prefill and the whole latch (far level only: the hold parks the fine level).
+        auto run = [&](bool post_stale, std::uint64_t& after, std::uint64_t& first_fills, unsigned& wholes, long long& ready, long long& resident) {
+            DensityCache cache; Gpu gpu; std::uint64_t f = 0;
+            cache.start_stepped(); cache.set_handover(true, true);
+            cache.prefill(destination, origin);
+            while (cache.worker_step()) {}                             // the stall: the far need box at the origin, then the hold
+            const std::uint64_t prefilled = cache.stats().nodes_generated;
+            cache.configure(destination);                             // confirmed
+            if (post_stale) frame(cache, gpu, stale, ++f, 4);         // the legacy latch of the arrival frame
+            wholes = 0; ready = resident = -1; after = 0;
+            for (int i = 0; i < 400 && ready < 0; ++i) {
+                const Frame fr = frame(cache, gpu, arrival, ++f, 0);
+                if (fr.latch.whole[1] && !wholes) { after = cache.stats().nodes_generated - prefilled; first_fills = cache.stats().first_fills; }
+                wholes += fr.latch.whole[1];
+                if (fr.state.resident[1] && resident < 0) resident = (long long)f;
+                if (fr.state.ready[1] >= 1.f) ready = (long long)f;
+                for (int k = 0; k < 4 && cache.worker_step(); ++k) {}
+            }
+        };
+        std::uint64_t adopted_nodes = 0, stale_nodes = 0, adopted_fills = 0, stale_fills = 0; unsigned adopted_wholes = 0, stale_wholes = 0; long long ar = -1, ares = -1, sr = -1, sres = -1;
+        run(false, adopted_nodes, adopted_fills, adopted_wholes, ar, ares);
+        run(true, stale_nodes, stale_fills, stale_wholes, sr, sres);
+        const std::uint64_t first = intersect(window_box(window_origin(kFarDelta, arrival[0], arrival[1], arrival[2])), grow(need_box(1, arrival), kFirstFillSlack[1])).nodes();
+        std::printf("PREFILL_ADOPTED nodes_to_latch=%llu first_fills=%llu stale_post_nodes_to_latch=%llu stale_first_fills=%llu first_fill=%llu wholes=%u ready_frame=%lld\n",
+                    (unsigned long long)adopted_nodes, (unsigned long long)adopted_fills, (unsigned long long)stale_nodes, (unsigned long long)stale_fills, (unsigned long long)first, adopted_wholes, ar);
+        require("confirmed_prefill_adopted_extends_less_than_a_first_fill", adopted_wholes == 1 && ar > 0 && ar == ares && adopted_nodes < first && adopted_fills == 1);
+        require("stale_post_after_a_prefill_costs_a_first_fill_or_more", stale_wholes == 1 && sr > 0 && stale_nodes >= first && stale_nodes > adopted_nodes && stale_fills >= 2);
+    }
+    {   // D: the prefill on a cache no stored frame has configured (a new game), then the first prepare's gpu_reset,
+        // the arrival at the origin: the whole latch in the first posted frame, stepped in the next.
+        DensityCache cache; Gpu gpu; std::uint64_t f = 0;
+        cache.start_stepped(); cache.set_handover(true, true);
+        const CacheIdentity destination{0x1234, 1, WorldOffset{-2 * kFarDelta, 4 * kFarDelta, 0}};
+        const bool posted = cache.prefill(destination, origin);
+        while (cache.worker_step()) {}
+        const std::uint64_t first = intersect(window_box(window_origin(kFarDelta, 0, 0, 0)), grow(need_box(1, origin), kFirstFillSlack[1])).nodes();
+        const bool filled = cache.stats().nodes_generated == first && !cache.idle();
+        cache.configure(destination); cache.gpu_reset();          // the first prepare_density: the same identity, new atlases
+        const double arrival[3] = {0.0, 7.0, 24.0};                // run273 frame 16258 (measured)
+        const Frame one = frame(cache, gpu, arrival, ++f, 0), two = frame(cache, gpu, arrival, ++f, 0);
+        std::printf("NEW_GAME_PREFILL first_nodes=%llu latch_frame_whole=%u ready_frame2=%.3f\n", (unsigned long long)first, unsigned(one.latch.whole[1]), double(two.state.ready[1]));
+        require("new_game_prefill_fills_during_the_stall", posted && filled);
+        require("new_game_prefill_latches_in_the_first_posted_frame_and_steps_in_the_next", one.latch.whole[1] && one.latch.rects[1] == 1 && !one.state.resident[1] &&
+                two.state.resident[1] && two.state.ready[1] == 1.f && two.report.due && two.report.latches == 1);
+    }
 }
 
 // R3 read side on synthetic global-list layouts (sector-transit-order.md §1, §5).
@@ -459,6 +574,14 @@ void prefill_walk() {
     require("gate_stalled_does_not_consume_the_slot", looked && slot && spent);
     require("gate_polls_only_in_a_stall_and_once_per_250ms", !before && !at250 && at251 && !again && next && !after_present && stalled);
 
+    // The poll's plan (run273 review F4): a resident key with its own token (an in-flight hitch over 250 ms whose
+    // id was unread) keeps the field; the resident key in another sector is re-centred; a pending same key waits.
+    {   fp::Record none, pending; pending.pending = true; pending.key = 42; pending.recipe = 1;
+        require("plan_hitch_same_sector_keeps_the_resident_field", fp::plan(none, 42, 1, true, true) == fp::Plan::CurrentSector);
+        require("plan_resident_key_in_another_sector_recentres", fp::plan(none, 42, 1, true, false) == fp::Plan::Recentre);
+        require("plan_new_key_starts_and_pending_waits", fp::plan(none, 43, 1, false, false) == fp::Plan::Start && fp::plan(none, 43, 1, false, true) == fp::Plan::Start &&
+                fp::plan(pending, 42, 1, true, true) == fp::Plan::AlreadyStarted && fp::plan(pending, 42, 2, true, true) == fp::Plan::CurrentSector);
+    }
     // The decision at the first Ready sample.
     fp::Record r; r.key = 42; r.recipe = 1;
     const auto none = fp::decide(r, true, 42, 1);
@@ -490,6 +613,7 @@ int main() {
     parent_walk();
     cold_fill_edges();
     prefill_cache();
+    run273_cases();
     prefill_walk();
     card_arming();
     std::printf("RESULT %s checks=%u failures=%u\n", failures ? "FAIL" : "PASS", checks_run, failures);

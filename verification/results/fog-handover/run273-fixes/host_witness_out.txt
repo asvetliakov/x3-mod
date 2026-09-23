@@ -1,0 +1,134 @@
+CHECK stepped_cache_starts PASS
+COLD_STEP resident_frame=6 ready_frame=6 arm_frame=1 latches=4 upload_bytes=4260096 drawable_us=834880 fill_us=303284 fill_busy_us=302089 fill_cpu_us=303134
+CHECK cold_step_ready_far_is_zero_until_resident PASS
+CHECK cold_step_ready_far_steps_to_one_in_the_resident_frame PASS
+CHECK cold_step_report_due_once_in_that_frame PASS
+CHECK cold_step_report_fill_measured PASS
+CHECK cold_step_report_taken_once PASS
+ATLAS cold_step level=0 differing_bytes=0
+ATLAS cold_step level=1 differing_bytes=0
+CHECK cold_step_settles_to_the_static_field PASS
+WARM_RAMP resident_frame=109 ready_frame=198 frames=89 largest_step=0.011111
+CHECK warm_jump_drops_readiness_at_once PASS
+CHECK warm_refill_keeps_the_ramp PASS
+CHECK warm_refill_reports_nothing PASS
+CHECK invalidate_is_a_cold_start_and_steps PASS
+COLD_RAMP resident_frame=6 ready_frame=95 frames=89 far_latches=4 max_latch_bytes=1065024 report_latches=4
+CHECK legacy_ramp_starts_at_one_ninetieth PASS
+CHECK legacy_ramp_reaches_one_after_the_ramp PASS
+CHECK legacy_report_after_the_ramp PASS
+CHECK legacy_far_goes_up_in_several_budgeted_latches PASS
+COLD_FILL far_first_nodes=1124864 generated=1124864 held=1
+CHECK cold_fill_generates_only_the_far_need_box_first PASS
+CHECK cold_fill_holds_the_worker_until_the_latch PASS
+COLD_FILL_LATCH far_rects=1 far_bytes=4260096 whole=1 fine_rects=0 budget=1065024
+CHECK cold_fill_whole_atlas_in_one_latch_past_the_budget PASS
+CHECK cold_fill_fine_waits_for_the_next_latch PASS
+CHECK cold_fill_whole_atlas_equals_the_cpu_cache PASS
+CHECK cold_fill_releases_the_worker PASS
+COLD_FILL_REPORT ready=1.000 frames=2 latches=1 upload_bytes=4260096 whole=1 fill_us=299566 fill_busy_us=298548 fill_cpu_us=299129 drawable_us=815076 busy_us=812129
+CHECK cold_fill_resident_and_stepped_in_frame_3 PASS
+CHECK cold_fill_report_one_latch_whole_atlas PASS
+ATLAS cold_fill level=0 differing_bytes=0
+ATLAS cold_fill level=1 differing_bytes=0
+CHECK cold_fill_settles_to_the_static_field PASS
+CHECK cold_fill_later_latches_within_the_budget PASS
+CHECK cold_fill_warm_jump_stays_budgeted_and_ramped PASS
+CHECK cold_fill_switched_off_releases_the_hold PASS
+ATLAS cold_fill_off level=0 differing_bytes=0
+ATLAS cold_fill_off level=1 differing_bytes=0
+CHECK cold_fill_switched_off_settles PASS
+CHECK cold_fill_after_gpu_reset_one_whole_latch_then_resident PASS
+CHECK walk_depth0_direct_match_without_walk PASS
+CHECK walk_depth1_found_ready_same_identity PASS
+CHECK walk_depth1_off_is_the_legacy_mismatch PASS
+WALK depth=1 reads_walk=25 reads_legacy=22
+CHECK walk_depth1_costs_two_reads_per_hop PASS
+CHECK walk_depth2_found_ready_same_identity PASS
+CHECK walk_depth2_off_is_the_legacy_mismatch PASS
+WALK depth=2 reads_walk=27 reads_legacy=22
+CHECK walk_depth2_costs_two_reads_per_hop PASS
+CHECK walk_depth3_found_ready_same_identity PASS
+CHECK walk_depth3_off_is_the_legacy_mismatch PASS
+WALK depth=3 reads_walk=29 reads_legacy=22
+CHECK walk_depth3_costs_two_reads_per_hop PASS
+CHECK walk_depth4_exceeds_the_bound_and_refuses PASS
+CHECK walk_other_sector_refuses PASS
+CHECK walk_null_parent_refuses PASS
+CHECK walk_misaligned_parent_refuses_without_reading_it PASS
+CHECK walk_unreadable_object_refuses PASS
+CHECK walk_cycle_is_bounded PASS
+CHECK walk_limit_argument_is_honoured PASS
+CHECK walk_direct_match_reads_exactly_the_legacy_reads PASS
+CHECK walk_span_reports_once_per_span_and_outcome PASS
+CHECK hold_invalidate_one_whole_latch_of_the_new_identity PASS
+ATLAS hold_invalidate level=0 differing_bytes=0
+ATLAS hold_invalidate level=1 differing_bytes=0
+CHECK hold_invalidate_settles_to_the_new_field PASS
+LOST_WHOLE wholes=2 latches=2 whole=1
+CHECK lost_whole_latch_is_taken_again PASS
+CHECK whole_latch_waits_for_the_need_box PASS
+CHECK threaded_worker_starts PASS
+THREADED_COLD_FILL frames=451 wholes=1 far_views_before_latch=0 resident=124 ready=124 idle=1 seconds=1.12
+CHECK threaded_hold_then_one_whole_latch PASS
+CHECK threaded_far_staging_not_offered_while_unpublished PASS
+ATLAS threaded_cold_fill level=0 differing_bytes=0
+ATLAS threaded_cold_fill level=1 differing_bytes=0
+CHECK threaded_worker_woken_after_the_latch_settles PASS
+CHECK prefill_posts_only_on_a_running_cache PASS
+CHECK prefill_fills_the_far_need_box_at_the_origin_and_holds PASS
+CHECK prefill_confirmed_configure_keeps_the_fill PASS
+PREFILL ready_frame=5 wholes=1 arm_frame=1 latches=1
+CHECK prefill_hands_over_after_three_extension_slabs_and_the_latch PASS
+ATLAS prefill level=0 differing_bytes=0
+ATLAS prefill level=1 differing_bytes=0
+CHECK prefill_settles_to_the_destination_field PASS
+CHECK prefill_discard_starts_a_new_fill PASS
+INVALIDATE_PARKS parked=1 generated_after=1124864
+CHECK invalidate_parks_the_worker_until_a_camera_is_posted PASS
+CHECK transit_source_field_settles PASS
+TRANSIT_COLD resident_frame=105 ready_frame=105 wholes=1 largest_step=1.000
+CHECK same_key_transit_steps_with_one_whole_latch PASS
+ATLAS transit level=0 differing_bytes=0
+ATLAS transit level=1 differing_bytes=0
+CHECK same_key_transit_settles_to_the_static_field PASS
+RECENTRE_PREFILL first_nodes=1092727 ready_frames=5 wholes=1
+CHECK same_key_prefill_recentres_at_the_origin_as_a_cold_start PASS
+CHECK same_key_prefill_hands_over_stepped_after_the_latch PASS
+PREFILL_ADOPTED nodes_to_latch=795144 first_fills=1 stale_post_nodes_to_latch=2357917 stale_first_fills=2 first_fill=1103336 wholes=1 ready_frame=3
+CHECK confirmed_prefill_adopted_extends_less_than_a_first_fill PASS
+CHECK stale_post_after_a_prefill_costs_a_first_fill_or_more PASS
+NEW_GAME_PREFILL first_nodes=1092727 latch_frame_whole=1 ready_frame2=1.000
+CHECK new_game_prefill_fills_during_the_stall PASS
+CHECK new_game_prefill_latches_in_the_first_posted_frame_and_steps_in_the_next PASS
+PREFILL_WALK case=tail status=found steps=1 reads=10 family=bluewell
+CHECK walk_accepts_the_sector_at_the_tail PASS
+PREFILL_WALK case=eighth status=found steps=8 reads=24
+CHECK walk_accepts_the_eighth_node_within_25_reads PASS
+PREFILL_WALK case=ninth status=bound steps=8 reads=17
+CHECK walk_is_cut_at_eight_nodes PASS
+CHECK walk_stops_at_the_list_head PASS
+CHECK walk_empty_list_is_the_head PASS
+CHECK walk_skips_a_cut_scene_space_subtype PASS
+CHECK walk_refuses_a_freed_object PASS
+CHECK walk_refuses_a_sector_without_scene PASS
+CHECK walk_refuses_the_last_ready_id PASS
+CHECK walk_no_manager PASS
+CHECK walk_unreadable_manager PASS
+CHECK walk_misaligned_node PASS
+CHECK walk_unreadable_link PASS
+CHECK walk_table_loading PASS
+CHECK walk_index_out_of_range PASS
+CHECK walk_bad_record PASS
+PREFILL_WALK worst_reads=24 budget=25
+CHECK walk_never_exceeds_25_reads PASS
+CHECK gate_stalled_does_not_consume_the_slot PASS
+CHECK gate_polls_only_in_a_stall_and_once_per_250ms PASS
+CHECK plan_hitch_same_sector_keeps_the_resident_field PASS
+CHECK plan_resident_key_in_another_sector_recentres PASS
+CHECK plan_new_key_starts_and_pending_waits PASS
+CHECK decide_confirms_the_same_key_and_discards_the_rest PASS
+CHECK cold_step_arms_the_cards_in_the_same_frame PASS
+CHECK cold_step_arming_faults_when_the_frame_fails PASS
+CHECK cold_step_arming_respects_refusal_and_inactive PASS
+RESULT PASS checks=98 failures=0

@@ -1,0 +1,99 @@
+# world camera (render units ~ m) at the arrival frames, from camera_state r/t
+16257 valid=0
+16258 world=0,7,24 |r|=0 km
+16259 world=0,7,24 |r|=0 km
+19553 world=13100,2207,124184 |r|=125 km
+19555 world=-12500,-21381,-187914 |r|=190 km
+19556 world=-12500,-21339,-185493 |r|=187 km
+24763 world=-85623,-17930,216238 |r|=233 km
+24765 world=153045,168068,-16681 |r|=228 km
+24766 world=150761,168083,-16668 |r|=226 km
+33815 world=-85880,-10741,56598 |r|=103 km
+33817 world=-84957,-29416,54729 |r|=105 km
+# cache_frame nodes / ready_far / upload_bytes
+16258 nodes=0 ready_far=0.0000 upload_bytes=0 rects=0
+16259 nodes=253952 ready_far=0.0000 upload_bytes=0 rects=0
+16305 nodes=1376224 ready_far=0.0000 upload_bytes=0 rects=0
+16306 nodes=1398240 ready_far=0.0000 upload_bytes=0 rects=0
+16307 nodes=2349664 ready_far=0.0000 upload_bytes=4260096 rects=1
+16308 nodes=2378336 ready_far=1.0000 upload_bytes=62744 rects=13
+19553 nodes=8998368 ready_far=1.0000 upload_bytes=65544 rects=2
+19555 nodes=8998368 ready_far=1.0000 upload_bytes=0 rects=0
+19556 nodes=8998368 ready_far=0.0000 upload_bytes=0 rects=0
+19587 nodes=10165799 ready_far=0.0111 upload_bytes=81920 rects=8
+19596 nodes=11700871 ready_far=0.1111 upload_bytes=1064512 rects=24
+24763 nodes=27745512 ready_far=1.0000 upload_bytes=137808 rects=33
+24765 nodes=28857279 ready_far=0.0000 upload_bytes=0 rects=0
+24766 nodes=28935615 ready_far=0.0000 upload_bytes=0 rects=0
+24843 nodes=30687259 ready_far=0.0000 upload_bytes=0 rects=0
+24847 nodes=31042075 ready_far=0.0000 upload_bytes=4260096 rects=1
+24848 nodes=31066651 ready_far=1.0000 upload_bytes=56880 rects=18
+33817 nodes=42963859 ready_far=0.0000 upload_bytes=0 rects=0
+33859 nodes=44077907 ready_far=0.0000 upload_bytes=4260096 rects=1
+33860 nodes=44102483 ready_far=1.0000 upload_bytes=49152 rects=6
+# frames with pre_render_us > 100 ms (engine time before BeginScene) and the slowest hooked call of the latch frames
+1 pre_render_ms=491 views_ms=0 
+2 pre_render_ms=905 views_ms=0 
+4 pre_render_ms=6906 views_ms=180 
+45 pre_render_ms=194 views_ms=10 
+428 pre_render_ms=122 views_ms=0 
+429 pre_render_ms=20423 views_ms=375 
+679 pre_render_ms=326 views_ms=12 
+11112 pre_render_ms=510 views_ms=0 
+11113 pre_render_ms=6473 views_ms=13 
+12017 pre_render_ms=401 views_ms=9 
+12159 pre_render_ms=136 views_ms=0 
+12160 pre_render_ms=12843 views_ms=122 
+12207 pre_render_ms=303 views_ms=8 
+15871 pre_render_ms=376 views_ms=0 
+15872 pre_render_ms=6277 views_ms=14 
+16257 pre_render_ms=105 views_ms=0 
+16258 pre_render_ms=12456 views_ms=142 
+16307 pre_render_ms=599 views_ms=12 slow_call_us=1862 gap_pre_us=603461
+19554 pre_render_ms=5332 views_ms=0 
+19596 pre_render_ms=707 views_ms=18 slow_call_us=2798 gap_pre_us=707761
+20213 pre_render_ms=286 views_ms=14 
+20356 pre_render_ms=121 views_ms=11 
+23400 pre_render_ms=463 views_ms=8 
+24087 pre_render_ms=169 views_ms=7 
+24225 pre_render_ms=113 views_ms=8 
+24764 pre_render_ms=5143 views_ms=0 
+24847 pre_render_ms=188 views_ms=8 slow_call_us=1751 gap_pre_us=189845
+25762 pre_render_ms=182 views_ms=10 
+25943 pre_render_ms=148 views_ms=10 
+26113 pre_render_ms=1995 views_ms=15 
+27064 pre_render_ms=112 views_ms=9 
+27354 pre_render_ms=197 views_ms=8 
+28283 pre_render_ms=210 views_ms=7 
+28517 pre_render_ms=134 views_ms=8 
+29408 pre_render_ms=490 views_ms=9 
+29489 pre_render_ms=471 views_ms=9 
+29637 pre_render_ms=146 views_ms=11 
+31511 pre_render_ms=5881 views_ms=21 
+32237 pre_render_ms=124 views_ms=8 
+33816 pre_render_ms=415 views_ms=0 
+33817 pre_render_ms=16073 views_ms=88 
+# node deltas: arrival -> whole latch (a first fill is 1,092,727 at the origin / 1,103,336 at 24765, window_edge_slabs.py)
+16258->16307 nodes=2349664
+24765->24847 nodes=2184796
+33817->33859 nodes=1114048
+# A: residency epoch 19556 -> far_ready 19676 = 120 frames (far_ready ms is on the 19676 row below)
+# events
+volumetric_fog_cache device=1 frame=16258 event=config mode=stored result=00000000 profile=1 sigma=2.5e-06 chroma=0.0516,0.2695,1.0000 atlas_bytes=4260096 upload_budget_bytes=1065024 upload_rects=64 r
+volumetric_fog_cache device=1 frame=16258 event=epoch reason=sector_key sector_key=89c6b79e1d39dd80 offset=1863680,131072,7905280
+volumetric_fog_cache device=1 frame=19556 event=epoch reason=residency sector_key=89c6b79e1d39dd80 offset=1863680,131072,7905280
+volumetric_fog_cache device=1 frame=19676 event=far_ready ms=3460.0 nodes=12347047 worker_busy_ms=7214.2 upload_bytes_total=62732456 missed_locks=2
+volumetric_fog_prefill device=1 frame=24765 event=confirmed lead_ms=3577.8 same_sector=1 same_id=1 key=1414d783b635f2b6 prefill_key=1414d783b635f2b6 index=14 prefill_index=14 profile=2
+volumetric_fog_cache device=1 frame=24765 event=epoch reason=sector_key sector_key=1414d783b635f2b6 offset=6299648,7495680,7458816
+volumetric_fog_cache device=1 frame=24848 event=far_ready ms=1188.7 nodes=31066651 worker_busy_ms=19486.8 upload_bytes_total=137582632 missed_locks=4
+volumetric_fog_handover device=1 frame=24848 step=1 coldfill=1 whole_atlas=1 arm_frame=24765 frames=83 ms=4794.8 drawable_frame=24848 drawable_ms=4794.8 fill_ms=599.0 fill_busy_ms=597.6 fill_cpu_ms=1180.0 busy_ms=1742.1 latches=1 upload_bytes=4260096
+volumetric_fog_docked device=1 frame=33817 walk=found depth=1 ref_object=130e9810 ref_parent=82fb36d0 last=6cb0fd88 sector=6cb0fd88 anchor_check=mismatch fallback=none
+volumetric_fog_cache device=1 frame=33817 event=epoch reason=sample_gap sector_key=1414d783b635f2b6 offset=6299648,7495680,7458816
+volumetric_fog_cache device=1 frame=33860 event=far_ready ms=594.0 nodes=44102483 worker_busy_ms=28493.4 upload_bytes_total=199473104 missed_locks=6
+volumetric_fog_handover device=1 frame=33860 step=1 coldfill=1 whole_atlas=1 arm_frame=33817 frames=43 ms=593.9 drawable_frame=33860 drawable_ms=593.9 fill_ms=577.6 fill_busy_ms=575.5 fill_cpu_ms=1510.0 busy_ms=587.9 latches=1 upload_bytes=4260096
+# cards rows: docked in flight (31510), docked at load (33859-33860, 34243) and after undock (34244)
+31510 observed=7 suppressed=7 refused=0 ready=1 warmup=0 mode=2
+33859 observed=7 suppressed=0 refused=0 ready=0 warmup=1 mode=0
+33860 observed=7 suppressed=0 refused=1 ready=0 warmup=0 mode=0
+34243 observed=7 suppressed=0 refused=1 ready=0 warmup=0 mode=0
+34244 observed=7 suppressed=7 refused=0 ready=1 warmup=0 mode=2

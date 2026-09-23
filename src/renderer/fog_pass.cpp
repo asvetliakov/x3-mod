@@ -201,13 +201,22 @@ void FogPass::release_density_default() noexcept {
 }
 void FogPass::abandon_density_worker() noexcept { if(density_){density_->abandon();density_=nullptr;} }
 void FogPass::invalidate_density() noexcept { PreserveCpuState guard;if(density_)density_->invalidate();density_status_.ready_fine=density_status_.ready_far=0; }
-bool FogPass::prefill_density(std::uint64_t sector_key,std::uint32_t recipe,const double world_offset[3],const double camera[3]) noexcept {
-    if(!density_||density_refused_||reset_pending_||!density_config_.enabled||!world_offset||!camera)return false;
+bool FogPass::prefill_density(std::uint64_t sector_key,std::uint32_t recipe,const double world_offset[3],const double camera[3],bool handover_step,bool handover_coldfill) noexcept {
+    if(density_refused_||reset_pending_||!world_offset||!camera)return false;
     PreserveCpuState guard;
+    // The first fogged sector of a session (run273 case D, a new game): no stored frame has run yet, so the worker
+    // does not exist. It is portable (no device, no D3D object): create it here and let the first prepare_density
+    // find it. A failed start is retried at the next poll and refused, with its reason, by that prepare.
+    if(!density_){
+        if(prefill_refused_)return false; // this stall's one attempt failed: no allocation per poll
+        density_=new(std::nothrow) fog::DensityCache;
+        if(!density_||!density_->start()){fog::DensityCache::retire(density_);density_=nullptr;prefill_refused_=true;return false;}
+    }
     fog::CacheIdentity identity;identity.sector_key=sector_key;identity.recipe=recipe;identity.offset={world_offset[0],world_offset[1],world_offset[2]};
-    density_->set_handover(density_config_.handover_step,density_config_.handover_coldfill);
+    density_->set_handover(handover_step,handover_coldfill);
     return density_->prefill(identity,camera); // false: not posted (missed lock); the caller's next poll retries
 }
+void FogPass::release_density_worker() noexcept { PreserveCpuState guard;fog::DensityCache::retire(density_);density_=nullptr;prefill_refused_=false; }
 bool FogPass::density_drawable(const double camera[3]) const noexcept {
     return density_&&camera&&density_status_.available&&density_status_.ready_far>0&&density_->covers(1,camera);
 }
@@ -239,7 +248,7 @@ void FogPass::detach() noexcept {
     drop(mote_vs_);drop(mote_declaration_);drop(mote_ps_);drop(mote_ps_grid_);
     mote_caps_=motes_refused_=false;mote_max_index_=mote_max_primitives_=0;adapter_format_=D3DFMT_UNKNOWN;mote_report_={};
     fog::DensityCache::retire(density_);density_=nullptr; // joins the worker; a cache it had to abandon is leaked, not freed
-    density_config_={};density_status_={};density_refused_=false;grid_refused_=false;ps30_slots_=0;drop(march_);drop(composite_);drop(quad_vs_);drop(quad_declaration_);
+    density_config_={};density_status_={};density_refused_=false;prefill_refused_=false;grid_refused_=false;ps30_slots_=0;drop(march_);drop(composite_);drop(quad_vs_);drop(quad_declaration_);
     device_=nullptr;vtable_=nullptr;caps_={};reset_pending_=false;disarm_field();cached_profile_=fog_field::Profile::None;cached_packet_=0;
     field_recipe_=0;base_sigma_=0;std::vector<std::uint16_t>().swap(atlas_bytes_);
     render_targets_=streams_=max_width_=max_height_=0;
@@ -258,7 +267,12 @@ unsigned FogPass::references() const noexcept {
     return n;
 }
 HRESULT FogPass::attach(D d,void* const* native,const D3DCAPS9& caps,D3DFORMAT format) noexcept {
-    PreserveCpuState guard;detach();
+    PreserveCpuState guard;
+    // A worker started by a prefill before the first attach (run273 case D) keeps its fill: detach releases
+    // everything else; the atlases it needs are created at the first prepare_density (with their gpu_reset).
+    fog::DensityCache* prefilled=density_;density_=nullptr;
+    detach();
+    density_=prefilled;
     auto refuse=[&](const char* reason,HRESULT hr=D3DERR_NOTAVAILABLE){device_=nullptr;vtable_=nullptr;caps_.reason=reason;return hr;};
     if(!d||!native)return refuse("device_native_table",E_INVALIDARG);
     if(caps.PixelShaderVersion<D3DPS_VERSION(3,0)||caps.VertexShaderVersion<D3DVS_VERSION(3,0))return refuse("shader_model3");
@@ -575,6 +589,7 @@ HRESULT FogPass::prepare_density(const FogDensityConfig& config,const double cam
     density_config_=config; // density_resources creates the variant the config asks for
     if(grid_refused_)density_config_.shadow_pass=false; // a refused grid stays refused until detach: the in-march programs draw
     if(motes_refused_||density_config_.motes.count==0)density_config_.dust_motes=false; // refused motes stay refused; no option, no stage
+    prefill_refused_=false; // a stored frame ran: the next stall may try the worker again (density_resources refuses for good)
     HRESULT hr=density_resources();if(FAILED(hr))return hr;
     fog::CacheIdentity identity;identity.sector_key=config.sector_key;identity.recipe=config.recipe;identity.offset={config.world_offset[0],config.world_offset[1],config.world_offset[2]};
     density_->set_handover(config.handover_step,config.handover_coldfill); // read at the next cold start

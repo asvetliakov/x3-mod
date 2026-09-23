@@ -117,6 +117,9 @@ class FogCardPolicyTests(unittest.TestCase):
             self.assertIn('cut_sequence frames=32 cuts=11 warmup=0 suppressed=192 applied=32 PASS', result.stdout)
             self.assertIn('cut_recovery scenarios=8 PASS', result.stdout)
             self.assertIn('prefill_gap confirmed=1 discarded=1 later_gap=1 PASS', result.stdout)  # R3 gap hold and decision
+            self.assertIn('run273_transit same=1 token=1 id_same=1 id_change=1 rekey=1 first=1 PASS', result.stdout)  # case A: a same-key transit is a cold start
+            self.assertIn('run273_prefill_adopt adopted=1 discarded=1 PASS', result.stdout)  # case B: the confirmed key is adopted, the stale camera dropped
+            self.assertIn('run273_card_refusal named=12 PASS', result.stdout)  # case C: the first refusal of a frame is named
             for cards in (6, 8):
                 self.assertIn(f'card_native_calls cards={cards} rs_get={12*cards} freq_get={cards} mask_set={2*cards} total={15*cards}', result.stdout)
 

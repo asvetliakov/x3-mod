@@ -2302,6 +2302,10 @@ private:
     std::uint64_t fog_frame_ = ~std::uint64_t(0), fog_applied_frames_ = 0;
     const char* fog_last_reason_ = "";
     bool fog_cards_replace_ = false, fog_card_ready_checked_ = false, fog_card_ready_ = false;
+    const char* fog_card_refusal_ = nullptr;      // the frame's first card refusal (gate or readiness component), for the cards line
+    const char* fog_card_last_refusal_ = nullptr; // the refusal the last cards line printed (part of its change key)
+    bool fog_card_refusal_ready_ = false;         // the refusal is a readiness verdict (printed with the ready: prefix)
+    const char* fog_card_ready_reason_ = nullptr; // the frame's readiness verdict when it failed
     FogCardPolicy fog_cards_{};
     unsigned fog_card_mode_ = 0, fog_card_logs_ = 0;
     std::uint64_t fog_card_logged_frame_ = 0, fog_transition_frame_ = ~std::uint64_t(0), fog_card_last_report_ = ~std::uint64_t(0), fog_card_observed_total_ = 0, fog_card_suppressed_total_ = 0, fog_card_refused_total_ = 0;
@@ -2322,8 +2326,10 @@ private:
     bool fog_prefill_launch_ = false;       // X3M_FOG_HANDOVER_PREFILL under the stored range
     fog_prefill::Record fog_prefill_{};     // the started prefill until the detector's first Ready sample
     unsigned fog_prefill_logs_ = 0;
+    bool fog_prefill_refused_logged_ = false; // one worker_refused poll line per stall
     fog_prefill::Decision fog_prefill_confirm(const FogSectorFrame& next, const sector_background::Sample& sample) noexcept;
     std::uint64_t fog_density_sample_frame_ = ~std::uint64_t(0), fog_density_key_ = 0;
+    std::uint32_t fog_density_ready_sector_ = 0, fog_density_ready_id_ = 0; // the last Ready sample's sector token and id: a change is a transit or a load
     long long fog_density_epoch_qpc_ = 0, fog_density_sample_qpc_ = 0;
     static constexpr unsigned fog_density_gap_ms = 500; // a longer gap in scene samples is a load
     double fog_density_camera_[3]{};

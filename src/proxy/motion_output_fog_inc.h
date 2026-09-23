@@ -119,7 +119,7 @@ bool MotionOutput::attach_volumetric_fog() noexcept {
     const bool attached = SUCCEEDED(hr) && fog_->caps().enabled;
     log("volumetric_fog_device device=%llu frame=%llu attached=%u reason=%s result=%08lx slots=%u retry=reset", id_, frame_, unsigned(attached),
         attached ? "ok" : queried ? fog_->caps().reason : "adapter_query", hr, fog_->caps().largest_program_slots);
-    if (!attached) fog_attach_failed_ = true;
+    if (!attached) { fog_attach_failed_ = true; fog_->release_density_worker(); } // a prefill's worker does not wait for Reset with its 8.5 MB
     return attached;
 }
 void MotionOutput::prepare_volumetric_fog_targets(UINT width, UINT height) noexcept {
@@ -186,7 +186,7 @@ void MotionOutput::prepare_volumetric_fog_density(UINT width, UINT height) noexc
     if (!fog_->resources_ready(width, height, profile, fog_sector_.recipe, fog_sector_.field_generation)) return;
     HRESULT hr = E_FAIL; bool family = false;
     const FogSectorPlacement placement = fog_sector_placement(fog_sector_);
-    const bool rekeyed = !fog_density_config_.enabled || placement.key != fog_density_key_;
+    const bool rekeyed = placement.key != fog_density_key_; // 0 before the first key; a confirmed prefill already set it
     taa_call([&] {
         auto& c = fog_density_config_;
         family = fog_->field_family(c.chroma, &c.sigma);
@@ -288,9 +288,27 @@ void MotionOutput::volumetric_fog_sector_sample(std::uint64_t frame, const secto
         const bool gap = fog_density_sample_frame_ != ~std::uint64_t(0) && fog_density_sample_frame_ + 1 < frame && f.QuadPart > 0 &&
             (now.QuadPart - fog_density_sample_qpc_) * 1000 > static_cast<long long>(fog_density_gap_ms) * f.QuadPart;
         fog_density_sample_frame_ = frame; fog_density_sample_qpc_ = now.QuadPart;
+        // A Ready sample of another sector object than the last Ready one (token, or the id when both are known: the
+        // destination can reuse the freed source's address) is a transit or a load, gap or not (run273 case A: the
+        // stall frame's no_cockpit sample kept the frames consecutive, so the 5.4 s transit was no gap).
+        const bool ready = sample.status == sector_background::Status::Ready;
+        const bool changed = ready && fog_density_ready_sector_ != 0 &&
+            (sample.sector != fog_density_ready_sector_ || (sample.sector_id && fog_density_ready_id_ && sample.sector_id != fog_density_ready_id_));
+        if (ready) { fog_density_ready_sector_ = sample.sector; fog_density_ready_id_ = sample.sector_id; }
         // R3: a pending prefill owns the transit's gap until the first Ready sample decides it (confirmed keeps the fill).
         const auto prefill = fog_prefill_confirm(next, sample);
-        if (gap && prefill == fog_prefill::Decision::None && !fog_prefill_.pending && fog_ && fog_density_config_.enabled && !fog_density_refused_) { fog_->invalidate_density(); fog_density_epoch("sample_gap"); }
+        const bool cold = fog_ && fog_density_config_.enabled && !fog_density_refused_ && prefill == fog_prefill::Decision::None && !fog_prefill_.pending;
+        if (gap && cold) { fog_->invalidate_density(); fog_density_epoch("sample_gap"); }
+        else if (changed && cold && next.profile && fog_sector_placement(next).key == fog_density_key_) {
+            // The same placement key in another sector (run273 case A): the resident window is centred on the source's
+            // position, which means nothing in the destination. A cold start (step, cold fill) instead of the warm
+            // residency ramp the first step would otherwise run; a different key re-keys at the latch by itself.
+            fog_->invalidate_density(); fog_density_epoch("transit");
+        }
+        // The camera the next latch would post is the previous scene end's, in the sector just left (run273 cases B and
+        // D: a first fill around it was 1.09 M wasted nodes and discarded the prefilled box). This frame's latch skips
+        // the post; the scene end re-validates it with this sector's camera and the next latch starts the fill there.
+        if (changed || gap || prefill != fog_prefill::Decision::None) fog_density_camera_valid_ = false;
     }
     // Atlas generation remains usable across same-family sectors, but their
     // replacement warm-up/history key must still change.
@@ -310,7 +328,8 @@ void MotionOutput::volumetric_fog_sector_sample(std::uint64_t frame, const secto
 // fog sector starts the far fill of its placement identity centred at the sector origin (the arrival position is
 // written last), recorded as prefilled and unconfirmed; nothing draws before the detector's first Ready sample.
 void MotionOutput::volumetric_fog_prefill(const fog_prefill::Result& w, std::uint64_t stall_ms) noexcept {
-    if (!fog_prefill_launch_ || !fog_density_active() || !fog_enabled_ || fog_disabled_) return;
+    // The same conditions as the latch (a worker at strength 0 would fill for nothing).
+    if (!fog_prefill_launch_ || !fog_density_active() || !fog_enabled_ || fog_disabled_ || fog_attach_failed_ || !(fog_strength_ > 0.f)) return;
     const char* action = "none";
     std::uint64_t key = 0;
     if (w.status == fog_prefill::Walk::Found) {
@@ -320,18 +339,28 @@ void MotionOutput::volumetric_fog_prefill(const fog_prefill::Result& w, std::uin
             const FogSectorPlacement placement = fog_sector_placement(f);
             key = placement.key;
             static constexpr double origin[3] = {0., 0., 0.};
-            if (fog_prefill_.pending && fog_prefill_.key == key && fog_prefill_.recipe == f.recipe) action = "already_started";
-            else if (fog_density_config_.enabled && key == fog_density_key_) action = "current_key"; // the resident field already is this key
-            else if (!fog_ || !fog_->prefill_density(key, f.recipe, placement.offset, origin)) action = "not_posted"; // retried at the next poll
+            // The first fogged sector of a session (run273 case D) has no pass yet: the object alone (no device
+            // call) lets prefill_density start the worker (its one allocation; a failed start is refused for the
+            // rest of the stall); the first stored frame attaches and keeps it.
+            if (!fog_) { try { fog_ = std::make_unique<renderer::FogPass>(); fog_->configure_sync_timing(gpu_sync_); } catch (...) { fog_.reset(); } }
+            // The resident key (run273 case A, a same-family gate): its window follows the source's position, so it
+            // is re-centred at the destination's origin as a cold start; the confirmation keeps that fill. The flown
+            // sector itself (its token; an in-flight hitch with the id unread) keeps its field.
+            const auto plan = fog_prefill::plan(fog_prefill_, key, f.recipe, fog_density_config_.enabled && key == fog_density_key_, w.node == fog_density_ready_sector_);
+            if (plan == fog_prefill::Plan::AlreadyStarted || plan == fog_prefill::Plan::CurrentSector) action = fog_prefill::name(plan);
+            else if (!fog_ || fog_->prefill_refused()) action = "worker_refused"; // the worker could not start in this stall: no further attempt
+            else if (!fog_->prefill_density(key, f.recipe, placement.offset, origin, fog_density_config_.handover_step, fog_density_config_.handover_coldfill)) action = fog_->prefill_refused() ? "worker_refused" : "not_posted"; // not_posted: retried at the next poll
             else {
                 LARGE_INTEGER now{}; QueryPerformanceCounter(&now);
+                action = fog_prefill::name(plan);
                 fog_prefill_ = {true, w.node, w.id, w.sample.index, f.profile, f.recipe, key, now.QuadPart};
-                action = "started";
+                fog_density_epoch("prefill"); // the cold start's clock: far_ready and the hand-over line count from here
             }
         }
     }
-    if (fog_prefill_logs_ < 512u) {
-        ++fog_prefill_logs_;
+    const bool refused = action[0] == 'w' && !std::strcmp(action, "worker_refused"); // one line per stall for a refused worker
+    if (refused ? !fog_prefill_refused_logged_ : fog_prefill_logs_ < 512u) {
+        if (refused) fog_prefill_refused_logged_ = true; else ++fog_prefill_logs_;
         log("volumetric_fog_prefill device=%llu frame=%llu event=poll walk=%s steps=%u reads=%u node=%08x id=%u index=%d family=\"%s\" stall_ms=%llu action=%s key=%016llx",
             id_, frame_, fog_prefill::name(w.status), w.steps, w.reads, w.node, w.id, w.sample.index, w.sample.name_valid ? w.sample.family : "",
             static_cast<unsigned long long>(stall_ms), action, static_cast<unsigned long long>(key));
@@ -345,14 +374,15 @@ fog_prefill::Decision MotionOutput::fog_prefill_confirm(const FogSectorFrame& ne
     const std::uint64_t key = usable ? fog_sector_placement(next).key : 0;
     const auto decision = fog_prefill::decide(fog_prefill_, usable, key, next.recipe);
     fog_prefill_.pending = false;
+    if (decision == fog_prefill::Decision::Confirmed) fog_density_key_ = key; // adopted: the latch's configure is a no-op and logs no sector_key epoch
     LARGE_INTEGER now{}, f{}; QueryPerformanceCounter(&now); QueryPerformanceFrequency(&f);
     const long long tenths = f.QuadPart > 0 ? (now.QuadPart - fog_prefill_.qpc) * 10000 / f.QuadPart : -10; // 0.1 ms, integer (no x87)
     const double lead_ms = double(std::int32_t(tenths > 0x7fffffffLL ? 0x7fffffffLL : tenths)) * .1;
     if (fog_prefill_logs_ < 512u) {
         ++fog_prefill_logs_;
-        log("volumetric_fog_prefill device=%llu frame=%llu event=%s lead_ms=%.1f same_sector=%u same_id=%u key=%016llx prefill_key=%016llx index=%d prefill_index=%d profile=%u",
+        log("volumetric_fog_prefill device=%llu frame=%llu event=%s lead_ms=%.1f same_sector=%u same_id=%u key=%016llx prefill_key=%016llx index=%d prefill_index=%d profile=%u adopted=%u",
             id_, frame_, fog_prefill::name(decision), lead_ms, unsigned(sample.sector == fog_prefill_.sector), unsigned(sample.sector_id != 0 && sample.sector_id == fog_prefill_.id),
-            static_cast<unsigned long long>(key), static_cast<unsigned long long>(fog_prefill_.key), sample.index, fog_prefill_.index, next.profile);
+            static_cast<unsigned long long>(key), static_cast<unsigned long long>(fog_prefill_.key), sample.index, fog_prefill_.index, next.profile, unsigned(decision == fog_prefill::Decision::Confirmed));
     }
     if (decision == fog_prefill::Decision::Discarded && fog_ && fog_density_config_.enabled && !fog_density_refused_) {
         fog_->invalidate_density(); fog_density_epoch("prefill_discarded");
@@ -380,7 +410,7 @@ void MotionOutput::complete_volumetric_fog(const char* skip, HRESULT result, con
 }
 void MotionOutput::volumetric_fog_begin_frame() noexcept {
     if (!fog_requested_) return;
-    fog_card_ready_checked_ = fog_card_ready_ = false;
+    fog_card_ready_checked_ = fog_card_ready_ = false; fog_card_refusal_ = nullptr; fog_card_refusal_ready_ = false;
     if (fog_sector_.frame + 1 < frame_) fog_cards_.armed = false;
     // Stored range: while the far ramp is incomplete the cards stay and the ramping medium stacks
     // on them (warm-up), so the hand-over never shows less fog than either medium alone.
@@ -401,22 +431,33 @@ void MotionOutput::prepare_fog_card(const MotionDrawCall& call, MotionRoute& rou
         shadow_.stream0_stride, shadow_.position_offset, shadow_.position_type, 0, shadow_.declaration};
     // Cached identity, geometry and caller gates precede all card-specific
     // reads. Keep production's hybrid unhook: no global setter observation is
-    // needed for the few strict cards in a frame.
-    if (!fog_enabled_ || fog_disabled_ || fog_attach_failed_ || !shadow_.fog_card_pair || !shape.static_matches() || !scene_open_ || !scene_bound() || shadow_.recording || active_queries_ ||
-        composition_busy_ || composition_state_lost_ || motion_state_lost_ || hdr_state_ != HdrState::Active ||
-        !hdr_ || !hdr_->target() || main_msaa_ || !taa_enabled_ || taa_failed_ || counters_.taa.attempted ||
-        !jitter_active_ || !counters_.filled || !depth_surface_ || !depth_enabled_ || lane_depth_format() != D3DFMT_A32B32G32R32F || sun_lane_failed_ || sun_frame_.failed || fog_frame_ == frame_) {
-        fog_cards_.reject(); return;
-    }
+    // needed for the few strict cards in a frame. The first refusal of a frame
+    // names its gate on the volumetric_fog_cards line (run273 case C); the
+    // checks are the same, in the same order, one branch each.
+    // Gate names carry "gate:"; a readiness verdict is printed as "ready:" + the component's own name.
+    auto refuse = [&](const char* why, bool ready = false) { fog_cards_.reject(); if (!fog_card_refusal_) { fog_card_refusal_ = why; fog_card_refusal_ready_ = ready; } };
+    const char* gate = nullptr;
+    if (!fog_enabled_ || fog_disabled_ || fog_attach_failed_) gate = "gate:fog_off";
+    else if (!shadow_.fog_card_pair) gate = "gate:pair";
+    else if (!shape.static_matches()) gate = "gate:shape";
+    else if (!scene_open_ || !scene_bound()) gate = "gate:scene";
+    else if (shadow_.recording || active_queries_) gate = "gate:queries";
+    else if (composition_busy_ || composition_state_lost_ || motion_state_lost_) gate = "gate:composition";
+    else if (hdr_state_ != HdrState::Active || !hdr_ || !hdr_->target() || main_msaa_) gate = "gate:owner";
+    else if (!taa_enabled_ || taa_failed_ || counters_.taa.attempted || !jitter_active_) gate = "gate:taa";
+    else if (!counters_.filled || !depth_surface_ || !depth_enabled_ || lane_depth_format() != D3DFMT_A32B32G32R32F) gate = "gate:linear_depth";
+    else if (sun_lane_failed_ || sun_frame_.failed) gate = "gate:sun_lane";
+    else if (fog_frame_ == frame_) gate = "gate:pass_done";
+    if (gate) { refuse(gate); return; }
     // Hooks on: validated shadow; hooks off: the existing current-draw cache,
     // invalidated by before_draw. Never reuse another draw's stream frequency.
     shape.frequency_known = SUCCEEDED(direct_call<GetStreamFreqFn>(GetStreamSourceFreq, 0, &shape.frequency));
-    if (!shape.matches()) { fog_cards_.reject(); return; }
+    if (!shape.matches()) { refuse("gate:frequency"); return; }
     const FogCardStates states{state_field(0), state_field(1), state_field(2), state_field(3), state_field(4),
         state_field(30), state_field(29), state_field(31),
         blend_known(0) ? composition_blend_field(0) : -1, blend_known(1) ? composition_blend_field(1) : -1,
         blend_known(2) ? composition_blend_field(2) : -1, blend_known(3) ? composition_blend_field(3) : -1};
-    if (!states.matches()) { fog_cards_.reject(); return; }
+    if (!states.matches()) { refuse("gate:states"); return; }
     if (!fog_card_ready_checked_) {
         fog_card_ready_checked_ = true;
         // Shared parameter/sun validation includes floating ABI returns. Keep
@@ -424,11 +465,18 @@ void MotionOutput::prepare_fog_card(const MotionDrawCall& call, MotionRoute& rou
         call_preserved([&] {
             renderer::FogFrame in{}; bool sun = false;
             in.width = target_width_; in.height = target_height_;
-            fog_card_ready_ = !fog_frame_prerequisite() && fog_ && fog_->resources_ready(in.width, in.height, static_cast<renderer::fog_field::Profile>(fog_sector_.profile), fog_sector_.recipe, fog_sector_.field_generation) &&
-                !fog_frame_parameters(in, 1.f, sun) && (!fog_density_active() || (fog_density_prepared_ && fog_->density_status().ready_far >= 1.f && fog_->density_drawable(in.params.world.origin)));
+            const char* why = fog_frame_prerequisite();
+            if (!why && !(fog_ && fog_->resources_ready(in.width, in.height, static_cast<renderer::fog_field::Profile>(fog_sector_.profile), fog_sector_.recipe, fog_sector_.field_generation))) why = "resources";
+            if (!why) why = fog_frame_parameters(in, 1.f, sun);
+            if (!why && fog_density_active()) {
+                if (!fog_density_prepared_) why = "density_unprepared";
+                else if (!(fog_->density_status().ready_far >= 1.f)) why = "density_ramp";
+                else if (!fog_->density_drawable(in.params.world.origin)) why = "density_drawable";
+            }
+            fog_card_ready_ = !why; fog_card_ready_reason_ = why;
         });
     }
-    if (!fog_card_ready_) { fog_cards_.reject(); return; }
+    if (!fog_card_ready_) { refuse(fog_card_ready_reason_ ? fog_card_ready_reason_ : "unknown", true); return; }
     call_preserved([&] {
         route.fog_card_mask.begin(7, [&](DWORD mask) { return native<SetRenderStateFn>(SetRenderState)(device_, D3DRS_COLORWRITEENABLE, mask); });
     });
@@ -436,7 +484,7 @@ void MotionOutput::prepare_fog_card(const MotionDrawCall& call, MotionRoute& rou
         ++fog_cards_.suppressed;
         fog_card_transition(2);
     } else {
-        fog_cards_.reject();
+        refuse("gate:mask");
         route.preparation_error = route.fog_card_mask.operation;
         if (route.fog_card_mask.restore < 0) {
             motion_state_lost_ = true; motion_state_error_ = route.fog_card_mask.restore;
@@ -655,12 +703,15 @@ void MotionOutput::run_volumetric_fog() noexcept {
         std::uint64_t(fog_cards_.refused) << 48 | std::uint64_t(fog_card_ready_) << 49 | std::uint64_t(fog_cards_.warmup) << 50 |
         std::uint64_t(fog_cards_.fault) << 51 | std::uint64_t(!skip && out.applied) << 52;
     fog_card_observed_total_ += fog_cards_.observed; fog_card_suppressed_total_ += fog_cards_.suppressed; fog_card_refused_total_ += unsigned(fog_cards_.refused);
-    if (fog_cards_replace_ && (fog_timing_ || (changed || ((card_report != fog_card_last_report_) && frame_ - fog_card_logged_frame_ >= 60u) || frame_ % 600u == 0u))) {
+    // The refusal name is part of the change key (string literals: a pointer compare), under the same 60-frame spacing.
+    const bool card_changed = card_report != fog_card_last_report_ || fog_card_refusal_ != fog_card_last_refusal_;
+    if (fog_cards_replace_ && (fog_timing_ || (changed || (card_changed && frame_ - fog_card_logged_frame_ >= 60u) || frame_ % 600u == 0u))) {
         if (!fog_timing_) ++fog_card_logs_;
-        fog_card_logged_frame_ = frame_;
-        log("volumetric_fog_cards device=%llu frame=%llu observed=%u suppressed=%u refused=%u ready=%u warmup=%u applied=%u fault=%u reason=%s mode=%u observed_total=%llu suppressed_total=%llu refused_total=%llu",
+        fog_card_logged_frame_ = frame_; fog_card_last_refusal_ = fog_card_refusal_;
+        log("volumetric_fog_cards device=%llu frame=%llu observed=%u suppressed=%u refused=%u ready=%u warmup=%u applied=%u fault=%u reason=%s mode=%u observed_total=%llu suppressed_total=%llu refused_total=%llu refusal=%s%s",
             id_, frame_, fog_cards_.observed, fog_cards_.suppressed, unsigned(fog_cards_.refused), unsigned(fog_card_ready_),
-            unsigned(fog_cards_.warmup), unsigned(!skip && out.applied), unsigned(fog_cards_.fault), fog_card_fault_reason_, fog_card_mode_, fog_card_observed_total_, fog_card_suppressed_total_, fog_card_refused_total_);
+            unsigned(fog_cards_.warmup), unsigned(!skip && out.applied), unsigned(fog_cards_.fault), fog_card_fault_reason_, fog_card_mode_, fog_card_observed_total_, fog_card_suppressed_total_, fog_card_refused_total_,
+            fog_card_refusal_ready_ ? "ready:" : "", fog_card_refusal_ ? fog_card_refusal_ : "none");
     }
     fog_card_last_report_ = card_report;
     fog_last_reason_ = reason;

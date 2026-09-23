@@ -743,7 +743,9 @@ void sector_background_context(Device& ctx, bool scene_authority = false) {
 }
 // R3 (fog-handover.md, "R3 implementation"): from the resource-creation hooks. Outside a stall the cost is one
 // GetTickCount64 and one compare; inside, at most one bounded walk (<= 25 validated reads) per 250 ms on the
-// render thread, LastError preserved. Never allocates, never waits, keeps no engine pointer.
+// render thread, LastError preserved. Never waits, keeps no engine pointer. Allocates only when a found fogged
+// sector precedes the session's first stored frame: the FogPass object and the density worker (8.5 MB of caches
+// and a thread, FogPass::prefill_density), at most once per stall; a failed start is refused for the stall.
 void fog_prefill_poll(Device& ctx) {
     const std::uint64_t now=GetTickCount64();
     if(!ctx.fog_prefill_gate.stalled(now))return;

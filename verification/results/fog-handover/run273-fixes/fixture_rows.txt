@@ -1,0 +1,2 @@
+HANDOVER frames=497 oversize=1 whole=1 early=0 latches=1 upload_bytes=4260096 ready_ms=621.9 drawable_ms=621.9 fill_ms=619.7 fill_busy_ms=617.9 fill_cpu_ms=610.0
+RESULT PASS checks=122 failures=0 state_restorations=1136

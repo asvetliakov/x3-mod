@@ -2621,3 +2621,68 @@ unless marked.
   poll against the stall length; confirmed/discarded; the hand-over line), one docking at a station and in
   a carrier; creations per frame for the hook envelope's cost; the whole-atlas frame's cost under `--gpu-sync-timing`
   (`FogFill`, estimated 0.5–2 ms copy plus 1–3 ms upload by the reviewer, not measured).
+
+## Run 73 B (run273): four hand-over gaps, fixes and the card-refusal diagnostic (2026-09-23)
+
+[fog-handover.md](../architecture/fog-handover.md), "Run 73 B findings and fixes". Worktree on `e8615d05`
+(main), not committed at the time; no flight yet. Triage evidence and the query written for this entry:
+`verification/results/run273-fog-bolts/` (`handover_gaps.py` + `_out.txt` over the 325 MB session log, rows
+only). All figures measured unless marked.
+
+- Cause shared by B, C and D: the arrival frame's owner latch posts the previous scene end's camera, the
+  source sector's position; the worker fills a first far box there (1.09 M nodes) and again at the real
+  position one frame later. Frame 16258: 2,349,664 nodes at the latch, twice a first fill of 1,092,727 (the
+  "~700 ms outside the fill"; `handover_gaps_out.txt` node deltas); frame 24765: 2,184,796 nodes after arrival although
+  the confirmed prefill had filled the origin box (discarded by the stale retarget). Fixed: the sample drops
+  the camera on a sector change, a gap or a prefill decision (the arrival latch posts nothing) and the cache's
+  invalidate forgets the posted camera (`request_.camera_valid = false`, `posted_need_` emptied).
+- A (19555, bluewell -> bluewell): no `sample_gap` because the stall frame's `no_cockpit` sample kept the
+  frames consecutive; the poll skipped the resident key (`current_key`); warm `residency` ramp, epoch
+  19556 -> `far_ready` 19676: 120 frames, `ms=3460.0`. Fixed: a Ready sample of another sector object (token, or `[sector+8]` id) with the same key is a
+  cold start (epoch `transit`); the prefill re-centres the resident key at the origin as a cold start
+  (`recentred`), confirmed keeps it.
+- B (24765): not re-keyed (the `sector_key` epoch line was the proxy's key copy; the cache's configure was a
+  no-op); the loss was the stale post. Fixed: a confirmed prefill adopts its key (`adopted=1` on the confirm
+  line), the prefill start is an epoch (`prefill`), and under the cold hold the far box grows to the far target
+  only (host witness `PREFILL_ADOPTED`: 795,144 nodes to the latch for the 228 km arrival against 1,103,336
+  for a first fill; window-edge slabs by the same geometry 1,372,189, `run273-fixes/window_edge_slabs.py`). Expected: about 0.44 s of worker time plus one latch
+  (inferred at 1.8 M nodes/s) against 1.15 s measured.
+- C (33817, docked load): the first card of every frame from the cold step (33860) to the undock (34244) was
+  refused before or at the readiness check; the scene end had passed every component but `density_drawable`
+  in 33817-33859; the docked view in flight (31504-33815) was masked 7/7 a frame. Not pinned from the code
+  (a field diff of every row type between 31510 and 33870 shows nothing the gates read). Delivered: the
+  `volumetric_fog_cards` line names the frame's first refusal (`refusal=` gate or readiness component),
+  same checks in the same order; the next docked load settles it.
+- D (16258, new game): the prefill found bluewell 7.1 s into the 12.6 s stall but had no worker (`not_posted`).
+  Fixed: the poll constructs the `FogPass` and `prefill_density` starts the worker (no device call), takes the
+  switches from the proxy; `attach` keeps an existing worker. The 612 ms frame 16307 was not the latch:
+  599 ms in `pre_render` (engine time before BeginScene), slowest hooked call 1.9 ms, `views` 12.8 ms; the same
+  shape at 19596 (707 ms) and 24847 (188 ms), 1.2-2.4 s after each arrival (inferred: the autosave). The
+  latch stays whole; the docked load's latch frame was 12 ms. Expected first fog frame on a new game:
+  arrival + 2 frames (`NEW_GAME_PREFILL`).
+- Host: `test_fog_handover` (98 checks after the review round, with the poll plan cases: `INVALIDATE_PARKS`, `TRANSIT_COLD` largest step 1.000,
+  `RECENTRE_PREFILL` stepped 5 frames after a 20 km arrival, `PREFILL_ADOPTED`, `NEW_GAME_PREFILL` latch in
+  the first posted frame and ready 1.000 in the next) and `test_fog_cards` (`run273_transit`,
+  `run273_prefill_adopt`, `run273_card_refusal named=12` with `gate:`/`ready:` prefixes and the cards line's change
+  key): 12 tests OK; `test_sector_background`,
+  `test_fog_density_cache`, `test_volumetric_fog` (27 tests OK); `test_fog_route_bridge`,
+  `test_fog_density_shaders`, `test_fog_sector_policy` (14 tests OK). `test_launcher_switches` does not exist;
+  the launcher switches are `test_fog_handover.FogHandoverWiring.test_launcher_switches`.
+  [run273-fixes/host_witness_out.txt](../../verification/results/fog-handover/run273-fixes/host_witness_out.txt).
+- Review round (F1-F8): figures re-derived from tracked files, the poll's allocation documented and bounded to one
+  attempt per stall (`prefill_refused`), the prefill gated on strength and its worker released on attach refusal, the
+  flown sector's token keeps the field (`fog_prefill::plan`, `current_sector`), the refusal name in the cards line's
+  change key, prefixed refusal names; rebuilt `d3d9.dll` `3b1f82172b11df4e…`, 0 warnings, x87 671 reachable / no
+  violations; fixture rerun PASS (rows below refreshed from it).
+- Build: scratch `cmake` (MinGW i686, RelWithDebInfo) 0 warnings, `d3d9.dll` `251342ea732eb5c6…` (first round);
+  `check_no_x87.py` 671 reachable, no violations.
+- Fixture (bottle X3, `wine_lock.py`, rerun after the review round): `RESULT PASS checks=122 failures=0`, `HANDOVER
+  frames=497 oversize=1 whole=1 early=0 latches=1 upload_bytes=4260096 ready_ms=621.9 drawable_ms=621.9 fill_ms=619.7
+  fill_busy_ms=617.9 fill_cpu_ms=610.0`, check PASS with every gate true, pass executable `051f107a37ca…` (first
+  round: frames=390, ready_ms=583.2, `978d0d2bfe38…`)
+  ([run273-fixes/fixture_rows.txt](../../verification/results/fog-handover/run273-fixes/fixture_rows.txt),
+  `execution.json`).
+- Open: the flight (Run 73 C or later) with a new game into a fogged sector, one same-family gate, one gate
+  into another family and one docked save load: `refusal=` after the docked load, `recentred`/`adopted=1`
+  lines, the hand-over `frames` per arrival; the arrival position during the stall (sector-transit-order
+  row 8) for a two-frame hand-over far from the origin; the engine stall 1.2-2.4 s after arrival.

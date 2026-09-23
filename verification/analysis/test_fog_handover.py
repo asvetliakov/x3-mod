@@ -36,7 +36,7 @@ class FogHandoverHost(unittest.TestCase):
 
     def test_all_checks_pass(self):
         self.assertEqual((self.returncode, re.findall(r'^CHECK (\S+) FAIL', self.text, re.M)), (0, []), self.text[-2000:])
-        self.assertRegex(self.text, r'RESULT PASS checks=8\d failures=0')
+        self.assertRegex(self.text, r'RESULT PASS checks=9\d failures=0')
         self.assertNotRegex(self.text, r'differing_bytes=[1-9]')
 
     def test_readiness_step_cold_versus_warm(self):
@@ -76,6 +76,7 @@ class FogHandoverHost(unittest.TestCase):
                      'walk_refuses_a_sector_without_scene', 'walk_refuses_the_last_ready_id', 'walk_no_manager', 'walk_unreadable_manager',
                      'walk_misaligned_node', 'walk_unreadable_link', 'walk_table_loading', 'walk_index_out_of_range', 'walk_bad_record',
                      'walk_never_exceeds_25_reads', 'gate_polls_only_in_a_stall_and_once_per_250ms', 'decide_confirms_the_same_key_and_discards_the_rest',
+                     'plan_hitch_same_sector_keeps_the_resident_field', 'plan_resident_key_in_another_sector_recentres', 'plan_new_key_starts_and_pending_waits',
                      'prefill_fills_the_far_need_box_at_the_origin_and_holds', 'prefill_confirmed_configure_keeps_the_fill',
                      'prefill_hands_over_after_three_extension_slabs_and_the_latch', 'prefill_settles_to_the_destination_field', 'prefill_discard_starts_a_new_fill'):
             self.assertIn('CHECK %s PASS' % name, self.text)
@@ -128,12 +129,31 @@ class FogHandoverWiring(unittest.TestCase):
         self.assertLess(poll.index('fog_prefill_gate.stalled(now)'), poll.index('GetCurrentThreadId()'))  # outside a stall: one compare
         self.assertLess(poll.index('GetCurrentThreadId()'), poll.index('fog_prefill_gate.take(now)'))  # another thread never takes the slot
         self.assertLess(poll.index('fog_prefill_gate.take(now)'), poll.index('GetLastError()'))
-        self.assertIn('action = "current_key"', fog)
+        # run273: the resident key is re-centred (a cold start), the switches come from the proxy, the worker may be
+        # created by the prefill before the first stored frame and survives the first attach; a sector change or a
+        # decided prefill drops the stale camera; a same-key transit invalidates; the cards line names the refusal.
+        self.assertIn('fog_prefill::plan(fog_prefill_, key, f.recipe, fog_density_config_.enabled && key == fog_density_key_, w.node == fog_density_ready_sector_)', fog)
+        self.assertIn('!(fog_strength_ > 0.f)) return;', fog[fog.index('void MotionOutput::volumetric_fog_prefill('):])
+        self.assertIn('fog_->release_density_worker(); }', fog[fog.index('bool MotionOutput::attach_volumetric_fog('):])
+        self.assertIn('if(prefill_refused_)return false;', fog_pass)
+        self.assertIn('fog_card_refusal_ != fog_card_last_refusal_', fog)
+        self.assertIn('fog_->prefill_density(key, f.recipe, placement.offset, origin, fog_density_config_.handover_step, fog_density_config_.handover_coldfill)', fog)
+        self.assertIn('fog_ = std::make_unique<renderer::FogPass>(); fog_->configure_sync_timing(gpu_sync_);', fog[fog.index('void MotionOutput::volumetric_fog_prefill('):])
+        self.assertIn('if (changed || gap || prefill != fog_prefill::Decision::None) fog_density_camera_valid_ = false;', sample)
+        self.assertIn('fog_density_epoch("transit")', sample)
+        self.assertIn('if (decision == fog_prefill::Decision::Confirmed) fog_density_key_ = key;', fog)
+        self.assertIn('refusal=%s%s', fog[fog.index('log("volumetric_fog_cards device='):])
+        cache = (ROOT / 'src/fog/fog_density_cache.cpp').read_text()
+        self.assertIn('request_.camera_valid = false;', cache[cache.index('void DensityCache::apply_invalidate_locked()'):cache.index('void DensityCache::post_locked()')])
+        self.assertIn('if (identity == identity_) invalidate(); else configure(identity);', cache)
+        self.assertIn('fog::DensityCache* prefilled=density_;density_=nullptr;', fog_pass[fog_pass.index('HRESULT FogPass::attach('):])
+        self.assertIn('if(!density_){', fog_pass[fog_pass.index('bool FogPass::prefill_density('):fog_pass.index('bool FogPass::density_drawable(')])
         self.assertIn('SetLastError(value)', poll)
         self.assertIn('volumetric_fog_prefill=volumetric_fog_range_stored && fog_default_on(L"X3M_FOG_HANDOVER_PREFILL");', capture)
         self.assertIn('sector_background::anchor_refused(s)', (ROOT / 'src/proxy/fog_sector_policy.h').read_text())
         # The card mask still requires full far readiness and a drawable density frame (the invariant is unchanged).
-        self.assertIn('fog_->density_status().ready_far >= 1.f && fog_->density_drawable(in.params.world.origin)', fog)
+        card = fog[fog.index('void MotionOutput::prepare_fog_card('):fog.index('void MotionOutput::finish_fog_card(')]
+        self.assertLess(card.index('else if (!(fog_->density_status().ready_far >= 1.f)) why = "density_ramp";'), card.index('else if (!fog_->density_drawable(in.params.world.origin)) why = "density_drawable";'))
 
     def test_launcher_switches(self):
         launcher = test_volumetric_fog.FogLauncherTests()

@@ -436,7 +436,13 @@ bool DensityCache::work_once(bool& idle) noexcept {
         slab = grown = intersect(window, grow(need[level], kFirstFillSlack[level]));
         first_fills_.fetch_add(1, std::memory_order_relaxed);
     } else {
-        if (!next_slab(state.box, window, level == 1 ? far_target : need[level], slab)) return true;
+        // Under the cold hold the far box grows to the far target only (a prefill centred elsewhere, run273 case B:
+        // the arrival 228 km from the origin): a slab to the window's edge would add up to a whole first fill of
+        // nodes before the latch. The growth to the full window resumes once the latch releases the hold.
+        NodeBox want = window;
+        if (level == 1 && request.cold_hold)
+            for (int a = 0; a < 3; ++a) { want.lo[a] = std::max(window.lo[a], std::min(state.box.lo[a], far_target.lo[a])); want.hi[a] = std::min(window.hi[a], std::max(state.box.hi[a], far_target.hi[a])); }
+        if (!next_slab(state.box, want, level == 1 ? far_target : need[level], slab)) return true;
         grown = state.box;
         for (int a = 0; a < 3; ++a) {
             grown.lo[a] = std::min(grown.lo[a], slab.lo[a]);
@@ -476,6 +482,10 @@ void DensityCache::apply_invalidate_locked() noexcept {
     ++request_.serial;
     request_.offset = identity_.offset;
     request_.cold_hold = cold_latch_;
+    // The new epoch has no camera until one is posted for it (run273 case D: the previous epoch's camera
+    // belonged to another sector, and a fill around it was a wasted 1.09 M nodes). post_locked applies a
+    // pending camera right after this, so a step or prefill in the same post starts the worker at once.
+    request_.camera_valid = false;
     far_published_us_ = far_fill_busy_us_ = far_fill_cpu_us_ = -1;
     for (int l = 0; l < kLevelCount; ++l) {
         SharedLevel& s = shared_[l];
@@ -509,6 +519,7 @@ void DensityCache::invalidate() noexcept {
         candidate_valid_[l] = false;
         candidate_seq_[l] = transferred_seq_[l] = 0;
         ready_[l] = 0;
+        posted_need_[l] = empty_box(); // the next step posts its camera even if it did not move
     }
     // A cold start: the switches in force now decide this fill; the report restarts.
     cold_ = cold_frame_pending_ = true;
@@ -528,7 +539,9 @@ void DensityCache::invalidate() noexcept {
 }
 bool DensityCache::prefill(const CacheIdentity& identity, const double camera[3]) noexcept {
     if (!(running_ || stepped_) || !admitted(camera)) return false;
-    configure(identity);
+    // A prefill is always a cold start (run273 case A): the same identity re-centred at the destination's
+    // origin steps and latches like a new one, instead of the warm ramp a lost residency would run.
+    if (identity == identity_) invalidate(); else configure(identity);
     for (int a = 0; a < 3; ++a) camera_[a] = camera[a];
     pending_camera_ = true;
     std::unique_lock<std::mutex> lock(sync().mutex, std::try_to_lock);

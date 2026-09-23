@@ -2812,7 +2812,7 @@ void MotionOutput::before_reset() noexcept {
     release_lens_depth();
     lens_frame_active_ = lens_suppress_ = false; lens_record_ = 0; lens_pass_qpc_ = 0; lens_hold_ = {}; sun_occlusion_attach_failed_ = false;
     if (fog_) taa_call([&] { fog_->before_reset(); });
-    fog_sector_ = {}; fog_cards_ = {}; fog_card_ready_checked_ = fog_card_ready_ = false; fog_card_fault_reason_ = "none";
+    fog_sector_ = {}; fog_cards_ = {}; fog_card_ready_checked_ = fog_card_ready_ = false; fog_card_fault_reason_ = "none"; fog_card_refusal_ = fog_card_last_refusal_ = fog_card_ready_reason_ = nullptr; fog_card_refusal_ready_ = false;
     fog_failures_ = 0; fog_attach_failed_ = false; // a transient failure or attach refusal is retried after Reset
     fog_density_prepared_ = false; // the worker, both CPU caches and the staging survive; only the DEFAULT atlases went
     sun_apply_attach_failed_ = false; // a transient attach failure is retried after Reset

@@ -70,6 +70,7 @@ struct MotionOutput {
     bool fog_requested_=true,fog_enabled_=true,fog_everywhere_=false,fog_timing_=false,fog_disabled_=false,fog_attach_failed_=false,fog_sun_fallback_logged_=false;
     float fog_strength_=.02f,fog_anisotropy_=.3f;
     bool fog_cards_replace_=true,fog_card_ready_checked_=false,fog_card_ready_=false;
+    const char* fog_card_refusal_=nullptr;const char* fog_card_last_refusal_=nullptr;const char* fog_card_ready_reason_=nullptr;bool fog_card_refusal_ready_=false; // run273 members (motion_output.h)
     bool fog_families_checked_=false; // added by dcf3728b (motion_output.h fog_families_checked_)
     unsigned fog_failures_=0,fog_logs_=0,fog_card_mode_=0,fog_card_logs_=0;
     std::uint64_t id_=1,frame_=0,generation_=0,fog_frame_=~std::uint64_t(0),fog_applied_frames_=0;
@@ -89,11 +90,12 @@ struct MotionOutput {
     bool fog_dust_motes_launch_=false,fog_motes_refused_logged_=false,fog_motes_drawn_=false;long long fog_motes_epoch_qpc_=0;
     int volumetric_fog_dust_motes_toggle()noexcept;
     unsigned fog_density_logs_=0,fog_handover_logs_=0; // 4ff60c8a members (motion_output.h)
-    bool fog_prefill_launch_=false;fog_prefill::Record fog_prefill_{};unsigned fog_prefill_logs_=0;
+    bool fog_prefill_launch_=false;fog_prefill::Record fog_prefill_{};unsigned fog_prefill_logs_=0;bool fog_prefill_refused_logged_=false;
     fog_prefill::Decision fog_prefill_confirm(const FogSectorFrame&,const sector_background::Sample&)noexcept;
     void volumetric_fog_prefill(const fog_prefill::Result&,std::uint64_t)noexcept;
     gpu_sync_timing::Marks* gpu_sync_=nullptr;
     std::uint64_t fog_density_sample_frame_=~std::uint64_t(0),fog_density_key_=0;
+    std::uint32_t fog_density_ready_sector_=0,fog_density_ready_id_=0; // run273 members (motion_output.h)
     long long fog_density_epoch_qpc_=0,fog_density_sample_qpc_=0;double fog_density_camera_[3]{};
     static constexpr unsigned fog_density_gap_ms=500;
     renderer::FogDensityConfig fog_density_config_{};

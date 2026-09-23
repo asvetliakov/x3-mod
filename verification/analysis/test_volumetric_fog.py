@@ -533,7 +533,7 @@ class FogWiringTests(unittest.TestCase):
         self.assertTrue(all('fog_requested_' in line for line in sites), sites)
         # Allocation failure: disabled for the session with one line; the sun from the tracked light, a logged fallback otherwise.
         self.assertIn('renderer::fog_failure_action(device_lost, out.failed == renderer::FogStage::Targets, fog_failures_)', fragment)
-        self.assertIn('if (!attached) fog_attach_failed_ = true;', fragment)
+        self.assertIn('if (!attached) { fog_attach_failed_ = true; fog_->release_density_worker(); }', fragment)
         self.assertIn('fog_failures_ = 0; fog_attach_failed_ = false;', motion[motion.index('void MotionOutput::before_reset()'):motion.index('void MotionOutput::after_reset(')])
         self.assertIn('if (cut_finished_ && counters_.cut) fog_latch_.cut(frame_);', fragment)
         self.assertIn('volumetric_fog_disabled device=%llu frame=%llu reason=%s result=%08lx session=1', fragment)

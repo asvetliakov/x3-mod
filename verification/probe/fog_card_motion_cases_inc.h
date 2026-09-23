@@ -216,5 +216,79 @@ int main() {
    assert(confirmed&&discarded&&later&&m.fog_prefill_logs_==2);
    std::printf("prefill_gap confirmed=%u discarded=%u later_gap=%u PASS\n",unsigned(confirmed),unsigned(discarded),unsigned(later));
  }
+ { // run273 A: a Ready sample of another sector object with the same placement key is a transit (no gap needed): one
+   // invalidation, the stale camera dropped; the same object again is nothing; another key only drops the camera.
+   MotionOutput m;m.warm();m.fog_density_requested_=true;m.fog_density_config_.enabled=true;++m.frame_;m.sample("bluewell",0x1000);
+   m.fog_density_key_=fog_sector_placement(m.fog_sector_).key;
+   auto ready=[&](unsigned sector,std::uint32_t id,const char* family="bluewell"){m.fog_density_camera_valid_=true;++m.frame_;
+     sector_background::Sample s;s.status=sector_background::Status::Ready;s.row_valid=s.name_valid=true;s.dust=8;s.sector=sector;s.sector_id=id;
+     std::strcpy(s.family,family);m.volumetric_fog_sector_sample(m.frame_,s);};
+   const unsigned before=m.fog_storage.density_calls;
+   ready(0x1000,0);const bool same=m.fog_storage.density_calls==before&&m.fog_density_camera_valid_;
+   ready(0x2000,0);const bool token=m.fog_storage.density_calls==before+1&&!m.fog_density_camera_valid_;      // another object, same key
+   ready(0x2000,77);ready(0x2000,77);const bool id_same=m.fog_storage.density_calls==before+1&&m.fog_density_camera_valid_;
+   ready(0x2000,78);const bool id_change=m.fog_storage.density_calls==before+2&&!m.fog_density_camera_valid_;  // the freed address reused, another id
+   ready(0x3000,79,"foggreenoutlands");const bool rekey=m.fog_storage.density_calls==before+2&&!m.fog_density_camera_valid_; // the latch re-keys
+   m.fog_density_config_.enabled=false;m.fog_density_key_=0;ready(0x4000,80);const bool first=m.fog_storage.density_calls==before+2&&!m.fog_density_camera_valid_;
+   assert(same&&token&&id_same&&id_change&&rekey&&first);
+   std::printf("run273_transit same=%u token=%u id_same=%u id_change=%u rekey=%u first=%u PASS\n",unsigned(same),unsigned(token),unsigned(id_same),unsigned(id_change),unsigned(rekey),unsigned(first));
+ }
+ { // run273 B: a confirmed prefill adopts its key (the latch logs no sector_key epoch) and drops the stale camera; a
+   // discarded one drops it too and invalidates once.
+   MotionOutput m;m.warm();m.fog_density_requested_=true;m.fog_density_config_.enabled=true;++m.frame_;m.sample();
+   const std::uint64_t key=fog_sector_placement(m.fog_sector_).key;
+   auto transit=[&](std::uint64_t prefill_key){
+     m.fog_prefill_={true,0x1000,7,m.fog_sector_.index,m.fog_sector_.profile,m.fog_sector_.recipe,prefill_key,mock_qpc};
+     m.fog_density_camera_valid_=true;m.fog_density_key_=0;
+     m.frame_+=5;mock_qpc+=10;sector_background::Sample s;s.status=sector_background::Status::NoCockpit;
+     m.volumetric_fog_sector_sample(m.frame_,s);++m.frame_;m.sample();
+   };
+   const unsigned before=m.fog_storage.density_calls;
+   transit(key);const bool adopted=m.fog_density_key_==key&&!m.fog_density_camera_valid_&&m.fog_storage.density_calls==before;
+   transit(key+1);const bool discarded=m.fog_density_key_==0&&!m.fog_density_camera_valid_&&m.fog_storage.density_calls==before+1;
+   assert(adopted&&discarded);
+   std::printf("run273_prefill_adopt adopted=%u discarded=%u PASS\n",unsigned(adopted),unsigned(discarded));
+ }
+ { // run273 C: the frame's first refusal is named (gate:<gate>, or ready:<component>), kept for the frame, reset at begin.
+   auto refusal=[](const MotionOutput& m){return std::string(m.fog_card_refusal_?(m.fog_card_refusal_ready_?"ready:":""):"")+(m.fog_card_refusal_?m.fog_card_refusal_:"none");};
+   unsigned named=0;
+   auto expect=[&](MotionOutput& m,const char* want){const bool ok=refusal(m)==want;if(!ok)std::printf("refusal got=%s want=%s\n",refusal(m).c_str(),want);assert(ok);named+=std::strcmp(want,"none")!=0;};
+   { MotionOutput m;m.warm();m.draw();expect(m,"none");assert(m.fog_cards_.suppressed==1); }
+   { MotionOutput m;m.warm();m.active_queries_=1;m.draw();expect(m,"gate:queries");
+     m.active_queries_=0;m.fog_cards_.refused=false;m.hdr_state_=HdrState::Off;m.draw();expect(m,"gate:queries"); // the first refusal stays
+     m.next();expect(m,"none"); }
+   { MotionOutput m;m.warm();m.hdr_state_=HdrState::Off;m.draw();expect(m,"gate:owner"); }
+   { MotionOutput m;m.warm();m.counters_.filled=false;m.draw();expect(m,"gate:linear_depth"); }
+   { MotionOutput m;m.warm();m.bound=false;m.draw();expect(m,"gate:scene"); }
+   { MotionOutput m;m.warm();m.fog_frame_=m.frame_;m.draw();expect(m,"gate:pass_done"); }
+   { MotionOutput m;m.warm();m.device_storage.frequency=2;m.draw();expect(m,"gate:frequency"); }
+   { MotionOutput m;m.warm();m.device_storage.states[4]=0;m.draw();expect(m,"gate:states"); }
+   { MotionOutput m;m.warm();m.prerequisites_ready=false;m.draw();expect(m,"ready:prerequisite");assert(!m.fog_card_ready_); }
+   { MotionOutput m;m.warm();m.fog_storage.ready=false;m.draw();expect(m,"ready:resources"); }
+   { MotionOutput m;m.warm();m.parameters_ready=false;m.draw();expect(m,"ready:parameters"); }
+   { // The docked-at-load shape: cards armed by the cold step, density prepared and far-ready, the frame's origin not drawable.
+     MotionOutput m;m.warm();m.fog_density_requested_=true;m.fog_density_prepared_=true;m.fog_storage.density.ready_far=1.f;m.next();
+     m.fog_storage.drawable=false;m.draw();expect(m,"ready:density_drawable");assert(!m.fog_card_ready_&&m.fog_cards_.refused);
+     m.fog_storage.drawable=true;m.next();m.draw();expect(m,"none");assert(m.fog_cards_.suppressed==1);m.complete(true,"ok");
+     m.fog_density_prepared_=false;m.next();m.draw();expect(m,"none");assert(m.fog_cards_.warmup); // unprepared: warm-up, no refusal
+   }
+   { // The cards line: a refusal change is a change of the report (60-frame spacing), the printed line records it.
+     MotionOutput m;m.warm();m.draw();m.run_volumetric_fog();const auto logs=m.fog_card_logs_;
+     auto advance=[&](unsigned frames){for(unsigned i=0;i<frames;++i){m.next();m.draw();m.run_volumetric_fog();}}; // consecutive masked frames keep the cards armed
+     advance(60);const bool quiet=m.fog_card_logs_==logs;
+     m.next();m.active_queries_=1;m.draw();m.run_volumetric_fog();
+     const bool refused_line=m.fog_card_logs_==logs+1&&m.fog_card_last_refusal_&&!std::strcmp(m.fog_card_last_refusal_,"gate:queries");
+     m.active_queries_=0;for(unsigned i=0;i<60;++i){m.next();m.active_queries_=1;m.draw();m.run_volumetric_fog();} // the same refusal: no further line
+     const bool held=m.fog_card_logs_==logs+1;
+     m.active_queries_=0;m.next();m.hdr_state_=HdrState::Off;m.draw();m.run_volumetric_fog();
+     const bool changed_line=m.fog_card_logs_==logs+2&&!std::strcmp(m.fog_card_last_refusal_,"gate:owner");
+     for(unsigned i=0;i<30;++i){m.next();m.draw();m.run_volumetric_fog();} // still owner, within 60 frames: no line
+     const bool spaced=m.fog_card_logs_==logs+2&&m.frame_<600;
+     if(!(quiet&&held))std::printf("cards_line quiet=%u held=%u\n",unsigned(quiet),unsigned(held));
+     assert(quiet&&held);
+     assert(refused_line&&changed_line&&spaced);
+   }
+   std::printf("run273_card_refusal named=%u PASS\n",named);
+ }
  std::puts("actual MotionOutput card methods PASS");
 }
