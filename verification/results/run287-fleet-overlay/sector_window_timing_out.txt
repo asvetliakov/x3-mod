@@ -1,0 +1,3 @@
+run287 frames 582..20915 windows=67 dt_p50_med=13883 dt_p95_med=16237 draws_p50_med=156 draw_p50_us_med=1386
+run277 frames 2303..19386 windows=56 dt_p50_med=15781.0 dt_p95_med=19752.5 draws_p50_med=171.5 draw_p50_us_med=1566.0
+run281 frames 1186..41444 windows=134 dt_p50_med=11097.5 dt_p95_med=15144.0 draws_p50_med=117.0 draw_p50_us_med=1009.5

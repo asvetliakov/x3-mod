@@ -1,0 +1,56 @@
+slot05 others/argon_gate marker_thr=[678369, 30, 155] source_thr=[678369, 30, 20, 10, 30]
+      8 verdict=kept lod=1 lods=3 thr=100000,30,155
+slot05 ships/argon/argon_tl marker_thr=[606393, 30, 120] source_thr=[606393, 30, 15, 5]
+      8 verdict=kept lod=1 lods=3 thr=100000,30,120
+slot05 ships/argon/argon_tp_l marker_thr=[34257, 30, 120] source_thr=[34257, 30, 15, 5]
+      8 verdict=culled_small lod=0 lods=- thr=-
+slot05 ships/argon/argon_tp_s marker_thr=[20743, 30, 115] source_thr=[20743, 30, 15, 5]
+      8 verdict=culled_small lod=0 lods=- thr=-
+slot05 ships/argon/argon_ts_liquidstorage_m marker_thr=[20743, 30, 115] source_thr=[20743, 30, 15, 5]
+     24 verdict=culled_small lod=0 lods=- thr=-
+slot05 ships/boron/boron_m3_var2 marker_thr=[5679, 30, 119] source_thr=[5679, 30, 15, 5]
+      8 verdict=culled_min lod=0 lods=- thr=-
+slot05 ships/boron/boron_m4 marker_thr=[4494, 30, 104] source_thr=[4494, 30, 15, 5]
+      8 verdict=culled_min lod=0 lods=- thr=-
+slot05 ships/boron/boron_m4_var1 marker_thr=[5161, 30, 102] source_thr=[5161, 30, 15, 5]
+      8 verdict=culled_min lod=0 lods=- thr=-
+slot05 ships/boron/boron_ts_liquidstorage_m marker_thr=[24189, 30, 115] source_thr=[24189, 30, 15, 5]
+      8 verdict=culled_small lod=0 lods=- thr=-
+slot05 ships/m3/boron_m3p marker_thr=[10455, 30, 102] source_thr=[10455, 30, 15, 5]
+      8 verdict=culled_small lod=0 lods=- thr=-
+slot05 ships/m4/otas_m4p marker_thr=[5064, 30, 102] source_thr=[5064, 30, 15, 5]
+     16 verdict=culled_min lod=0 lods=- thr=-
+slot05 ships/m7/argon_m7 marker_thr=[401434, 30, 120] source_thr=[401434, 30, 15, 5]
+      8 verdict=kept lod=1 lods=3 thr=100000,30,120
+slot05 ships/m7/split_m7 marker_thr=[422636, 30, 120] source_thr=[422636, 30, 15, 5]
+      8 verdict=kept lod=1 lods=3 thr=100000,30,120
+slot05 ships/owp/owp_large marker_thr=[568030, 30, 83] source_thr=[568030, 30, 15, 5]
+      8 verdict=kept lod=1 lods=3 thr=100000,30,83
+slot05 ships/paranid/paranid_m3_var1 marker_thr=[6485, 30, 99] source_thr=[6485, 30, 15, 5]
+      8 verdict=culled_min lod=0 lods=- thr=-
+slot05 ships/paranid/paranid_m4_var3 marker_thr=[4453, 30, 95] source_thr=[4453, 30, 15, 5]
+      8 verdict=culled_min lod=0 lods=- thr=-
+slot05 ships/split/split_m2 marker_thr=[534080, 30, 120] source_thr=[534080, 30, 15, 5]
+      8 verdict=kept lod=1 lods=3 thr=100000,30,120
+slot05 ships/tm/otas_tm marker_thr=[53533, 30, 120] source_thr=[53533, 30, 15, 5]
+      8 verdict=kept lod=1 lods=3 thr=100000,30,120
+slot05 ships/x3ap/boron/xtc_boron_m4p marker_thr=[7198, 49, 175] source_thr=[7198, 49, 23, 11]
+      8 verdict=culled_min lod=0 lods=- thr=-
+      8 verdict=culled_small lod=0 lods=- thr=-
+slot05 stations/docks/argon_newdock_center marker_thr=[30842, 30, 150] source_thr=[30842, 30, 15, 5]
+     16 verdict=culled_size lod=0 lods=- thr=-
+slot05 stations/living_sections/argon_livingsection marker_thr=[150032, 30, 155] source_thr=[150032, 30, 15, 5, 30]
+      8 verdict=kept lod=1 lods=3 thr=100000,30,155
+slot05 stations/others/military_outpost_middleb marker_thr=[2246786, 30, 150] source_thr=[2246786, 30, 15]
+      8 verdict=kept lod=0 lods=3 thr=100000,30,150
+      8 verdict=kept lod=1 lods=3 thr=100000,30,150
+slot05 stations/station_scenes/others/argon_spacedock marker_thr=[1953631, 250, 278] source_thr=[1953631, 250, 150, 80, 30]
+      8 verdict=kept lod=1 lods=3 thr=100000,250,278
+slot05 stations/station_scenes/tech/argon_tech_l_laser_bb marker_thr=[535270, 30, 154] source_thr=[535270, 30, 15, 5]
+      8 verdict=kept lod=1 lods=3 thr=100000,30,154
+slot05 stations/station_scenes/tech/argon_tech_l_shield_f marker_thr=[711107, 250, 173] source_thr=[711107, 250, 150, 80, 30]
+      8 verdict=kept lod=1 lods=3 thr=100000,250,173
+slot05 stations/station_scenes/tech/argon_tech_m_laser_g marker_thr=[572549, 250, 184] source_thr=[572549, 250, 150, 80, 30]
+      8 verdict=kept lod=1 lods=3 thr=100000,250,184
+slot05 stations/station_scenes/tech/argon_tech_s_laser_e marker_thr=[593198, 250, 196] source_thr=[593198, 250, 150, 80, 30]
+      8 verdict=kept lod=1 lods=3 thr=100000,250,196

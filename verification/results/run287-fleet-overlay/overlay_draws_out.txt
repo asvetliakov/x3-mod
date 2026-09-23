@@ -1,0 +1,19 @@
+burst frames 4545..4552 (8), draws/frame [156]
+slot05 MERGED lod=1 draws/frame=[2] marker_draws=2 census lods=3 thr=100000,30,155 marker_thr=*,30,155 others/argon_gate
+slot05 MERGED lod=1 draws/frame=[2] marker_draws=2 census lods=3 thr=100000,30,120 marker_thr=*,30,120 ships/argon/argon_tl
+slot05 MERGED lod=1 draws/frame=[2] marker_draws=2 census lods=3 thr=100000,30,120 marker_thr=*,30,120 ships/m7/argon_m7
+slot05 MERGED lod=1 draws/frame=[2] marker_draws=2 census lods=3 thr=100000,30,120 marker_thr=*,30,120 ships/m7/split_m7
+slot05 MERGED lod=1 draws/frame=[4] marker_draws=4 census lods=3 thr=100000,30,83 marker_thr=*,30,83 ships/owp/owp_large
+slot05 MERGED lod=1 draws/frame=[2] marker_draws=2 census lods=3 thr=100000,30,120 marker_thr=*,30,120 ships/split/split_m2
+slot05 MERGED lod=1 draws/frame=[2] marker_draws=2 census lods=3 thr=100000,30,120 marker_thr=*,30,120 ships/tm/otas_tm
+slot05 MERGED lod=1 draws/frame=[2] marker_draws=2 census lods=3 thr=100000,30,155 marker_thr=*,30,155 stations/living_sections/argon_livingsection
+slot05 other  lod=0 draws/frame=[34] marker_draws=4 census lods=3 thr=100000,30,150 marker_thr=*,30,150 stations/others/military_outpost_middleb
+slot05 MERGED lod=1 draws/frame=[4] marker_draws=4 census lods=3 thr=100000,30,150 marker_thr=*,30,150 stations/others/military_outpost_middleb
+slot05 MERGED lod=1 draws/frame=[4] marker_draws=4 census lods=3 thr=100000,250,278 marker_thr=*,250,278 stations/station_scenes/others/argon_spacedock
+slot05 MERGED lod=1 draws/frame=[6] marker_draws=6 census lods=3 thr=100000,30,154 marker_thr=*,30,154 stations/station_scenes/tech/argon_tech_l_laser_bb
+slot05 MERGED lod=1 draws/frame=[4] marker_draws=4 census lods=3 thr=100000,250,173 marker_thr=*,250,173 stations/station_scenes/tech/argon_tech_l_shield_f
+slot05 MERGED lod=1 draws/frame=[4] marker_draws=4 census lods=3 thr=100000,250,184 marker_thr=*,250,184 stations/station_scenes/tech/argon_tech_m_laser_g
+slot05 MERGED lod=1 draws/frame=[3] marker_draws=3 census lods=3 thr=100000,250,196 marker_thr=*,250,196 stations/station_scenes/tech/argon_tech_s_laser_e
+burst draw totals over all frames: {'slot05': 616, 'non-overlay': 632}
+slot05: distinct overlay bodies in cull_census (whole log) 27, with overlay-length ladder 14
+slot06: distinct overlay bodies in cull_census (whole log) 0, with overlay-length ladder 0

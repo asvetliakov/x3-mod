@@ -1,0 +1,7 @@
+Run 77 A triage (run287, DLL 268db207, fleet overlay addon/05 476 + addon/06 115). No Wine; reads installed markers read-only.
+LOG=/tmp/x3-bottleX3-run287/session-20260924-025446-212.log ; ADDON="$HOME/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/addon"
+python3 overlay_draws.py $LOG "$ADDON" > overlay_draws_out.txt        # burst 4545..4552 per-body draws, slot tag, merged test
+python3 census_ladders.py $LOG "$ADDON" > census_ladders_out.txt      # every overlay body in cull_census, ladder vs marker
+python3 frame_timing.py $LOG 4545 > frame_timing_run287.txt; python3 frame_timing.py <run277 log> 7606 > frame_timing_run277.txt; python3 frame_timing.py <run281 log> 0 > frame_timing_run281.txt
+python3 sector_window_timing.py > sector_window_timing_out.txt       # spans from grep '^volumetric_fog_sector' in each log
+python3 warn_rows.py <log> > warn_rows_run{287,281,277}.txt; diff of key sets 281 vs 287
