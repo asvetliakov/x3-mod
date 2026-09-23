@@ -1792,7 +1792,6 @@ marked. The user: "better now?", still some visible transition, acceptable if no
   geometry as the coarse record's source ([merged-lod-feasibility.md](merged-lod-feasibility.md)).
 - No anomalies (census overflow 0, stale 0, no texture failures).
 
-<<<<<<< ours
 ## Run 270: first flight at 1920×1080 (Run 72 A, 2026-09-23)
 
 Backbuffer 1920×1080 (create_device; run269 was 1280×768). Only the first ~100 s (windows 900–2700) are free of a
@@ -1804,8 +1803,6 @@ frame. None of the full-screen passes scaled with the ×2.2 pixel count on the C
 frame is CPU-bound by draw count (inferred). GPU per-pass cost at 1080p is unmeasured (needs the GPU timer branch or a
 quiet rerun); fog measured only under contention: 675 µs p50 / 1,009 µs p90. Evidence: `verification/results/run270-defaults/`.
 
-=======
->>>>>>> theirs
 ## GPU sync timing
 
 `--gpu-sync-timing` (`X3M_GPU_SYNC_TIMING=1`, default off, refused with `--vanilla`) measures
@@ -1822,33 +1819,6 @@ device used here supports.
   `GetData(D3DGETDATA_FLUSH)` until `S_OK`, the spin timed with `QueryPerformanceCounter`. The
   begin spin drains everything earlier, so end stamp minus begin stamp is the pass's CPU
   submission plus its GPU execution with nothing overlapping. `wait_median_us` is the end spin
-<<<<<<< ours
-  alone (GPU work still pending when the CPU finished submitting).
-- **Passes**: `scene` (first `BeginScene` of the frame to just before the native Present),
-  `engine` (first `BeginScene` to the scene end, the engine's own draw span; `fog_fill` and
-  `hdr_readback` run at the HDR latch inside it), `shadow_depth`, `sun_apply`, `retention`,
-  `fog_fill` (stored-density prepare/upload), `fog_route` (the fog transaction; `motes` nests
-  inside), `motes`, `taa`, `hdr_writeback` (flushes add up; `meter` nests inside), `meter`,
-  `hdr_readback`, `bloom` (prepare + commit), `present` (the proxy's Present work and the native
-  Present). Nested spans include their inner pass; subtract for the exclusive cost. The
-  `shadow_depth` and `sun_apply` spans include their own per-frame log line.
-- **Rows**: per 300 frames, one `gpu_sync_timing window=… pass=… median_us=… p90_us=…` row per
-  pass measured in the window (exact nearest-rank window figures, the spin wait, the session
-  figures so far and the window's Present-to-Present CPU `dt` of the serialised frames), and
-  `gpu_sync_timing_summary` rows at the device's final release (session figures from a
-  histogram, exact below 64 us, at most 6.25 % bucket width above). A process that exits without
-  releasing the device has only the window rows.
-- **Failure and lifetime**: `CreateQuery(EVENT)` refused (support probe or part-way, partial
-  creation rolled back) logs one `gpu_sync_timing available=0 reason=…` line and drops the
-  object: no per-frame work. A failed `Issue`/`GetData` or a spin past 500 ms drops that frame;
-  four in a row release the queries until the next successful Reset. The queries are released in
-  `before_reset` and at the final release (their device references are in the final-release
-  accounting) and recreated after a successful Reset. Each boundary runs under
-  `PreserveCpuState` (x87/MXCSR and LastError). Off, no object exists and each boundary is one
-  null-pointer branch; nothing is added to the per-draw path.
-- **Portability**: documented D3D9 and Win32 only (event queries, `QueryPerformanceCounter`), so
-  native Windows parity holds by construction; not verified on Windows.
-=======
   alone (GPU work still pending when the CPU finished submitting). Sync floor in the X3 bottle
   (Wine fixture, measured): an empty pair 18 us median, a pair around one 16x16 quad 264 us
   median, so a small pass reads about 250 us of round trip; about 30 syncs per frame.
@@ -1896,5 +1866,34 @@ device used here supports.
 - **Portability**: documented D3D9 and Win32 only (event queries, `TestCooperativeLevel`,
   `QueryPerformanceCounter`), so native Windows parity holds by construction; not verified on
   Windows.
->>>>>>> theirs
 - Ledger: [gpu-sync-timing.md](../verification/gpu-sync-timing.md).
+
+## Run 274: GPU per-pass cost at 1920×1080 (Run 73 C, 2026-09-23)
+
+First flight with `--gpu-sync-timing` (Run73 DLL, batch overlay of 22 bodies, host idle). 15 windows of 300
+frames, dropped 0, no timeouts, no Reset; the tail (frames 4500–4754) and the `gpu_sync_timing_summary` rows
+were not written (open). Stand window W4 (frames 900–1199, fogged first sector), medians in ms with the 0.264 ms
+light-pair floor noted separately (measured; sums inferred):
+
+| pass | median | p90 |
+| --- | --- | --- |
+| scene (whole span) | 19.38 | 21.60 |
+| engine (own draws, contains fog_fill + hdr_readback) | 5.15 | 5.66 |
+| fog_route (motes nest) | 4.43 | 5.15 |
+| taa | 2.90 | 3.17 |
+| present | 1.64 | 3.77 |
+| bloom | 1.24 | 1.39 |
+| hdr_writeback (meter nests) | 1.08 | 1.23 |
+| shadow_depth | 0.87 | 0.93 |
+| sun_apply | 0.74 | 0.86 |
+| hdr_readback | 0.40 | 0.50 |
+| motes / retention / fog_fill | 0.23 / 0.03 / 0.02 | 0.36 / 0.05 / 0.15 |
+
+Proxy passes sum to 11.7 ms serialised against 4.7 ms for the engine's own span; about 3 ms of `scene` is
+unattributed (CPU gaps and begin spins). Serialised dt 22.8 ms; the end-spin waits sum to about 9.1 ms, which a
+pipelined frame overlaps, and the 14 pair floors cost 0.25–3.7 ms, so the undiagnosed frame is about 14–22 ms
+against run270's clean 22 ms (CPU-bound, inferred). Second sector without fog (W10): engine 10.29, taa 5.25, scene
+25.79, dt 32.9 ms. Anomalies: loading spikes (fog_route p90 39.6 ms in W3, engine p90 160 ms in W8, the cold
+fill), present p90 about 2.3× its median in every window, retention 0.03 → 0.40 and shadow_depth 0.87 → 2.8 ms
+from W13 in the second sector (open), sun_apply missing in 4 frames of W9. Evidence and the reusable summariser:
+`verification/results/run274-gpu-sync/gpu_sync_windows.py` (`windows.txt`).

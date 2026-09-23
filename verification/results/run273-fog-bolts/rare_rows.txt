@@ -1,0 +1,75 @@
+16:bolt_footprint_mode requested=1 enabled=1 r=3 g=8 valid=1 additive=1 ownership=1
+18:volumetric_fog_handover_mode step=1 coldfill=1 prefill=1 docked=1 walk_limit=3 stored=1
+19:volumetric_fog_look_mode look=single overrides=0 COVERAGE=0.35 EXPONENT=2 SIGMA_SCALE=8 FORWARD_G=0.75 FORWARD_WEIGHT=0.7 BACK_G=-0.15 ALBEDO_WHITE=0.5 AMBIENT_GAIN=0.35 EXTINCTION_TINT=0.6 SCATTER_LIFT=0.5 LIFT_FLOOR=0.5 SHADOW_FLOOR=0.15 SKY_CAP=112500 TAPER_START=65000 SELF_SHADOW=3 POWDER=0.5 TAP_DISTANCE=3000 TAP_LENGTH=9000 COVERAGE_VARIATION=0.12 WARP_CYCLES_NEAR=13 WARP_NEAR=500 WARP_CYCLES_FAR=5 WARP_FAR=1400 SHADOW_JITTER=1 PENUMBRA=1 PENUMBRA_MIN=1 PENUMBRA_MAX=16
+20:volumetric_fog_shadow_pass enabled=0 grid=quarter slices=64 tiles=4x4 format=A8R8G8B8 cascades=3 taps=4 penumbra=1,1,16
+21:volumetric_fog_motes_mode enabled=1 count=1300 size=3 streak=128 overrides=1 RADIUS=1000 NEAR=25 MAX_PX=8 GAIN=1 SOFT=0.02 DRIFT=20 SEED=1 key=ctrl_alt_f11 source=env
+22:volumetric_fog_range mode=stored atlas_bytes=4260096 levels=2 cpu_bytes=17040384 upload_budget_bytes=1065024 upload_rects=64 ramp_frames=90 worker_threads=1
+23:volumetric_fog_mode requested=1 enabled=1 motion_output=1 taa=1 hdr=1 shadow_replay_depth=1 shadow_cascades=1 strength=0.02 density_scale=1 anisotropy=0.3 everywhere=0 timing=1 cards=replace rule=current_engine_family keys=ctrl_alt_f9,ctrl_alt_f10
+43:pause_key_only patched=1 key=0x1b5 reason=ok requested=1 site=0x004043a5 write=plain
+45:music_keep requested=1 patched=1 armed=1 reason=ok site_a=0x004982db site_c=0x00498d54 site_entry=0x004982b0 site_stop_movie=0x00498810 write_a=atomic write_c=plain write_entry=atomic write_stop_movie=atomic status_gate=ok site_d=0x004983d9 write_d=atomic thunk_d=0x76b88dc0 alt_tab_mode=skip_all stub_a=0x76b88d40 thunk_c=0x76b88d80 stub_entry=0x76b88df0 stub_stop_movie=0x76b88e20 skip=0x00498322 next_record=0x00498359 seek=0x004d0430 pause=0x004d1810 holds=4 walk_limit=4096
+53:loading_hook name=CreateFileA installed=1
+54:loading_hook name=ReadFile installed=1
+55:loading_hook name=SetFilePointer installed=1
+56:loading_hook name=D3DXCreateEffect installed=1
+57:loading_hook name=D3DXCreateTextureFromFileInMemoryEx installed=1
+58:loading_hook name=D3DXCreateCubeTextureFromFileInMemoryEx installed=1
+59:loading_hook name=D3DXLoadSurfaceFromFileInMemory installed=1
+60:loading_hook name=SetCursor installed=1
+61:loading_hook name=SetCursorPos installed=1
+62:loading_hook name=gzopen installed=1
+63:loading_hook name=gzread installed=1
+64:loading_hook name=gzseek installed=1
+65:loading_hook name=inflate installed=1
+66:loading_hook name=xmlReadMemory installed=1
+67:loading_hook name=D3DXCreateMesh installed=1
+68:loading_hook name=D3DXCleanMesh installed=1
+69:loading_hook name=FindFirstFileA installed=1
+70:loading_hook name=FindNextFileA installed=1
+71:loading_hook name=FindClose installed=1
+72:loading_hook name=gzgetc installed=1
+73:loading_hook name=gztell installed=1
+74:loading_hook name=gzclose installed=1
+75:loading_hook name=gzwrite installed=1
+76:loading_hook name=CryptAcquireContextA installed=1 cache_active=1
+77:loading_hook name=CryptReleaseContext installed=1 cache_active=1
+78:loading_hook name=CryptImportKey installed=1 cache_active=1
+79:loading_hook name=CryptDestroyKey installed=1 cache_active=1
+172:volumetric_fog_families device=1 frame=0 event=absent families=0 packets=0 rows_disabled=0 bytes=0 reason=absent fallback=compiled_only path="C:\X3\x3m\fog-families.bin"
+173:volumetric_fog_sector device=1 frame=0 profile=0 reason=no_cockpit sector=00000000 index=-1 generation=1 density_scale=1.000 forced_profile=none
+5350:volumetric_fog_docked device=1 frame=429 walk=found depth=1 ref_object=112c4db0 ref_parent=10d76f60 last=114e8558 sector=114e8558 anchor_check=mismatch fallback=none
+5351:volumetric_fog_sector device=1 frame=429 profile=0 reason=clear sector=114e8558 index=21 generation=1 density_scale=1.000 forced_profile=none
+65992:bolt_footprint_refused device=1 frame=3295 index=6 reason=buffer detail=1
+66753:bolt_footprint_buffer device=1 frame=3329 bytes=147456 hr=00000000
+230780:volumetric_fog_sector device=1 frame=11113 profile=0 reason=no_cockpit sector=00000000 index=-1 generation=1 density_scale=1.000 forced_profile=none
+241202:volumetric_fog_sector device=1 frame=12160 profile=0 reason=clear sector=119301a8 index=67 generation=1 density_scale=1.000 forced_profile=none
+684325:volumetric_fog_sector device=1 frame=15872 profile=0 reason=no_cockpit sector=00000000 index=-1 generation=1 density_scale=1.000 forced_profile=none
+688685:volumetric_fog_sector device=1 frame=16258 profile=1 reason=bluewell sector=119301a8 index=2 generation=1 density_scale=1.000 forced_profile=none
+688686:volumetric_fog_device device=1 frame=16258 attached=1 reason=ok result=00000000 slots=506 retry=reset
+688687:volumetric_fog_prepare device=1 frame=16258 profile=1 field_generation=1 width=1920 height=1080 result=00000000 cpu_us=17421.2
+688688:volumetric_fog_cache device=1 frame=16258 event=config mode=stored result=00000000 profile=1 sigma=2.5e-06 chroma=0.0516,0.2695,1.0000 atlas_bytes=4260096 upload_budget_bytes=1065024 upload_rects=64 ramp_frames=90 shadow_pass=0
+688689:volumetric_fog_cache device=1 frame=16258 event=epoch reason=sector_key sector_key=89c6b79e1d39dd80 offset=1863680,131072,7905280
+690164:volumetric_fog_cache device=1 frame=16308 event=far_ready ms=1411.2 nodes=2378336 worker_busy_ms=1317.6 upload_bytes_total=4322840 missed_locks=0
+690165:volumetric_fog_handover device=1 frame=16308 step=1 coldfill=1 whole_atlas=1 arm_frame=16258 frames=50 ms=1411.6 drawable_frame=16308 drawable_ms=1411.6 fill_ms=615.6 fill_busy_ms=611.5 fill_cpu_ms=1550.0 busy_ms=1317.6 latches=1 upload_bytes=4260096
+693586:volumetric_fog_cache device=1 frame=16467 event=fine_ready ms=3766.4 nodes=4446816 worker_busy_ms=2484.6 upload_bytes_total=11721472 missed_locks=0
+760572:volumetric_fog_sector device=1 frame=19554 profile=0 reason=no_cockpit sector=00000000 index=-1 generation=1 density_scale=1.000 forced_profile=none
+760594:volumetric_fog_sector device=1 frame=19555 profile=1 reason=bluewell sector=6cb11818 index=2 generation=1 density_scale=1.000 forced_profile=none
+760595:volumetric_fog_prepare device=1 frame=19555 profile=1 field_generation=1 width=1920 height=1080 result=00000000 cpu_us=9.3
+761035:volumetric_fog_cache device=1 frame=19556 event=epoch reason=residency sector_key=89c6b79e1d39dd80 offset=1863680,131072,7905280
+763756:volumetric_fog_cache device=1 frame=19676 event=far_ready ms=3460.0 nodes=12347047 worker_busy_ms=7214.2 upload_bytes_total=62732456 missed_locks=2
+764331:volumetric_fog_cache device=1 frame=19699 event=fine_ready ms=3978.4 nodes=12379815 worker_busy_ms=7235.5 upload_bytes_total=62865584 missed_locks=2
+874808:volumetric_fog_sector device=1 frame=24764 profile=0 reason=no_cockpit sector=00000000 index=-1 generation=1 density_scale=1.000 forced_profile=none
+874830:volumetric_fog_sector device=1 frame=24765 profile=2 reason=foggreenoutlands sector=6c7c4640 index=14 generation=1 density_scale=1.000 forced_profile=none
+874831:volumetric_fog_prepare device=1 frame=24765 profile=2 field_generation=2 width=1920 height=1080 result=00000000 cpu_us=22059.3
+874832:volumetric_fog_cache device=1 frame=24765 event=epoch reason=sector_key sector_key=1414d783b635f2b6 offset=6299648,7495680,7458816
+876788:volumetric_fog_cache device=1 frame=24848 event=far_ready ms=1188.7 nodes=31066651 worker_busy_ms=19486.8 upload_bytes_total=137582632 missed_locks=4
+876789:volumetric_fog_handover device=1 frame=24848 step=1 coldfill=1 whole_atlas=1 arm_frame=24765 frames=83 ms=4794.8 drawable_frame=24848 drawable_ms=4794.8 fill_ms=599.0 fill_busy_ms=597.6 fill_cpu_ms=1180.0 busy_ms=1742.1 latches=1 upload_bytes=4260096
+880654:volumetric_fog_cache device=1 frame=25023 event=fine_ready ms=3281.5 nodes=33548827 worker_busy_ms=20805.9 upload_bytes_total=144055088 missed_locks=4
+1021013:volumetric_fog_docked device=1 frame=31506 walk=found depth=1 ref_object=332cc728 ref_parent=330b93a0 last=6c7c4640 sector=6c7c4640 anchor_check=mismatch fallback=none
+1070249:volumetric_fog_docked device=1 frame=33817 walk=found depth=1 ref_object=130e9810 ref_parent=82fb36d0 last=6cb0fd88 sector=6cb0fd88 anchor_check=mismatch fallback=none
+1070250:volumetric_fog_cache device=1 frame=33817 event=epoch reason=sample_gap sector_key=1414d783b635f2b6 offset=6299648,7495680,7458816
+1070251:volumetric_fog_sector device=1 frame=33817 profile=2 reason=foggreenoutlands sector=6cb0fd88 index=14 generation=1 density_scale=1.000 forced_profile=none
+1071451:volumetric_fog_cache device=1 frame=33860 event=far_ready ms=594.0 nodes=44102483 worker_busy_ms=28493.4 upload_bytes_total=199473104 missed_locks=6
+1071452:volumetric_fog_handover device=1 frame=33860 step=1 coldfill=1 whole_atlas=1 arm_frame=33817 frames=43 ms=593.9 drawable_frame=33860 drawable_ms=593.9 fill_ms=577.6 fill_busy_ms=575.5 fill_cpu_ms=1510.0 busy_ms=587.9 latches=1 upload_bytes=4260096
+1075050:volumetric_fog_cache device=1 frame=34034 event=fine_ready ms=2654.4 nodes=47158163 worker_busy_ms=30100.1 upload_bytes_total=206852800 missed_locks=7
+1106807:volumetric_fog_cache device=1 frame=35513 event=epoch reason=sample_gap sector_key=1414d783b635f2b6 offset=6299648,7495680,7458816
+1106808:volumetric_fog_sector device=1 frame=35513 profile=0 reason=no_cockpit sector=00000000 index=-1 generation=1 density_scale=1.000 forced_profile=none

@@ -1,0 +1,8 @@
+frame=15496 index=9 primitives=48 vs=5e484a06672e28fb ps=ec1f5c4a2f4e1445
+frame=15496 index=90 primitives=48 vs=5e484a06672e28fb ps=ec1f5c4a2f4e1445
+frame=15498 index=9 primitives=72 vs=5e484a06672e28fb ps=ec1f5c4a2f4e1445
+frame=15498 index=90 primitives=72 vs=5e484a06672e28fb ps=ec1f5c4a2f4e1445
+frame=15499 index=9 primitives=48 vs=5e484a06672e28fb ps=ec1f5c4a2f4e1445
+frame=15499 index=90 primitives=48 vs=5e484a06672e28fb ps=ec1f5c4a2f4e1445
+frame=15500 index=9 primitives=48 vs=5e484a06672e28fb ps=ec1f5c4a2f4e1445
+frame=15500 index=90 primitives=48 vs=5e484a06672e28fb ps=ec1f5c4a2f4e1445

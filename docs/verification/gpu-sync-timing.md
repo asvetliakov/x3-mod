@@ -56,3 +56,12 @@ changed, so the recorded exe predates it: rebuild before the next run.
 | `frames`, `window_frames` | first..last frame of the window and its frame count |
 | `dropped` | frames abandoned by a failed or timed-out sync or a non-cooperative device |
 | `unclosed` | passes still open at a frame's end (not filed) |
+
+## Run 274 (Run 73 C, 2026-09-23): first flight, 1920×1080
+
+Diagnostic ran (available=1, 28 queries, 15 windows, dropped 0, no timeouts, no Reset). Per-pass medians and the
+reading of them are in [engine-frame-time.md, "Run 274"](../architecture/engine-frame-time.md#run-274-gpu-per-pass-cost-at-19201080-run-73-c-2026-09-23):
+proxy passes 11.7 ms serialised vs engine span 4.7 ms in the fogged stand window; fog_route 4.43 and taa 2.90 ms
+are the two large ones. Open: the final window and the `gpu_sync_timing_summary` rows were not written at exit;
+per-frame rows (or an inside/outside-engine tag on hdr_writeback flushes) are needed to isolate an F8 burst.
+Summariser: `verification/results/run274-gpu-sync/gpu_sync_windows.py`.
