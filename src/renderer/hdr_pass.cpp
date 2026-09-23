@@ -501,7 +501,9 @@ HRESULT HdrPass::copy_draw(IDirect3DSurface9* source_target, IDirect3DTexture9* 
     // the tonemap writes the 8-bit image (its result is consumed next frame).
     if (SUCCEEDED(op) && program && program->meter) {
         const std::uint64_t begin = stamp(program->timing);
+        if (sync_marks_) sync_marks_->begin(gpu_sync_timing::Meter); // --gpu-sync-timing only
         program->meter_result = meter_chain(source_texture, width, height, fault(HdrFault::Meter) ? E_FAIL : S_OK);
+        if (sync_marks_) sync_marks_->end(gpu_sync_timing::Meter);
         program->ticks_meter = stamp(program->timing) - begin;
         step(call<SetTextureFn>(SetTexture)(device_, 0, nullptr));
     }

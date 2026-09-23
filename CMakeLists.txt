@@ -82,7 +82,7 @@ add_library(d3d9 SHARED
   src/ownership/finite_buffer_evidence.cpp src/ownership/portable_managed_upload.cpp
   src/proxy/draw_input.cpp src/proxy/object_lifetime.cpp src/proxy/mesh_adjacency_cache.cpp src/proxy/mesh_adjacency_fast.cpp
   src/renderer/temporal_pass.cpp src/renderer/hdr_pass.cpp src/renderer/exposure.cpp src/renderer/material_radiance.cpp
-  src/renderer/fog_pass.cpp src/fog/fog_density_cache.cpp src/fog/fog_density_generator.cpp src/renderer/shadow_replay_pass.cpp src/renderer/sun_shadow_apply_pass.cpp src/renderer/sun_occlusion_pass.cpp src/renderer/lens_visibility_variant.cpp
+  src/renderer/gpu_sync_timing.cpp src/renderer/fog_pass.cpp src/fog/fog_density_cache.cpp src/fog/fog_density_generator.cpp src/renderer/shadow_replay_pass.cpp src/renderer/sun_shadow_apply_pass.cpp src/renderer/sun_occlusion_pass.cpp src/renderer/lens_visibility_variant.cpp
   src/renderer/motion_history.cpp src/renderer/rigid_position.cpp src/renderer/shader_population.cpp
   src/renderer/material_motion.cpp src/renderer/linear_material.cpp src/renderer/linear_emission.cpp src/renderer/linear_emission_sm1.cpp src/renderer/linear_emission_pass.cpp src/renderer/motion_row_history.cpp src/proxy/motion_output.cpp
   src/renderer/rigid_motion.cpp src/renderer/rigid_replay_program.cpp src/proxy/d3d9.def)
@@ -143,3 +143,12 @@ target_compile_definitions(fog_family_file_fixture PRIVATE WIN32_LEAN_AND_MEAN N
 target_compile_options(fog_family_file_fixture PRIVATE -Wall -Wextra -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2)
 target_link_options(fog_family_file_fixture PRIVATE -static -static-libgcc -static-libstdc++)
 add_dependencies(fog_family_file_fixture x3m_fog_field_assets)
+# Verification fixture (built here, run by the Wine queue owner through
+# verification/probe/run_gpu_sync_timing.py): the production --gpu-sync-timing owner on
+# the bottle's D3D9 device (soft fail, 48 frames of fake passes, Reset, detach).
+add_executable(gpu_sync_timing_fixture verification/probe/gpu_sync_timing_fixture.cpp src/renderer/gpu_sync_timing.cpp)
+target_compile_features(gpu_sync_timing_fixture PRIVATE cxx_std_17)
+target_compile_definitions(gpu_sync_timing_fixture PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_compile_options(gpu_sync_timing_fixture PRIVATE -Wall -Wextra -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2)
+target_link_options(gpu_sync_timing_fixture PRIVATE -static -static-libgcc -static-libstdc++)
+target_link_libraries(gpu_sync_timing_fixture PRIVATE user32)

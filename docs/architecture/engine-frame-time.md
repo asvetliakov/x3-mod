@@ -1802,3 +1802,46 @@ HDR readback 222 (146), TAA 561 (737), density fill 54 (50), fog off in that win
 frame. None of the full-screen passes scaled with the ×2.2 pixel count on the CPU side; present p50 6–8 µs, so the
 frame is CPU-bound by draw count (inferred). GPU per-pass cost at 1080p is unmeasured (needs the GPU timer branch or a
 quiet rerun); fog measured only under contention: 675 µs p50 / 1,009 µs p90. Evidence: `verification/results/run270-defaults/`.
+
+## GPU sync timing
+
+`--gpu-sync-timing` (`X3M_GPU_SYNC_TIMING=1`, default off, refused with `--vanilla`) measures
+the GPU cost of each proxy pass by serialising CPU and GPU at the pass boundaries. It is a
+diagnostic for one flight: frame rate drops while it is on, and its figures are serialised costs,
+not the pipelined frame. It replaces the unmerged timestamp-query attempt (branch
+`worktree-agent-a2b067e4005541a7a`, 423bd098), which the X3 bottle refuses
+(`D3DQUERYTYPE_TIMESTAMP*`, 0x8876086a); event queries are the documented D3D9 type every
+device used here supports.
+
+- **Mechanism** (`src/renderer/gpu_sync_timing.{h,cpp}`, core `gpu_sync_timing_core.h`): one
+  `D3DQUERYTYPE_EVENT` query per boundary (14 passes x begin/end = 28, created once through the
+  device's native `CreateQuery`, reused every frame). At a boundary: `Issue(D3DISSUE_END)`, then
+  `GetData(D3DGETDATA_FLUSH)` until `S_OK`, the spin timed with `QueryPerformanceCounter`. The
+  begin spin drains everything earlier, so end stamp minus begin stamp is the pass's CPU
+  submission plus its GPU execution with nothing overlapping. `wait_median_us` is the end spin
+  alone (GPU work still pending when the CPU finished submitting).
+- **Passes**: `scene` (first `BeginScene` of the frame to just before the native Present),
+  `engine` (first `BeginScene` to the scene end, the engine's own draw span; `fog_fill` and
+  `hdr_readback` run at the HDR latch inside it), `shadow_depth`, `sun_apply`, `retention`,
+  `fog_fill` (stored-density prepare/upload), `fog_route` (the fog transaction; `motes` nests
+  inside), `motes`, `taa`, `hdr_writeback` (flushes add up; `meter` nests inside), `meter`,
+  `hdr_readback`, `bloom` (prepare + commit), `present` (the proxy's Present work and the native
+  Present). Nested spans include their inner pass; subtract for the exclusive cost. The
+  `shadow_depth` and `sun_apply` spans include their own per-frame log line.
+- **Rows**: per 300 frames, one `gpu_sync_timing window=… pass=… median_us=… p90_us=…` row per
+  pass measured in the window (exact nearest-rank window figures, the spin wait, the session
+  figures so far and the window's Present-to-Present CPU `dt` of the serialised frames), and
+  `gpu_sync_timing_summary` rows at the device's final release (session figures from a
+  histogram, exact below 64 us, at most 6.25 % bucket width above). A process that exits without
+  releasing the device has only the window rows.
+- **Failure and lifetime**: `CreateQuery(EVENT)` refused (support probe or part-way, partial
+  creation rolled back) logs one `gpu_sync_timing available=0 reason=…` line and drops the
+  object: no per-frame work. A failed `Issue`/`GetData` or a spin past 500 ms drops that frame;
+  four in a row release the queries until the next successful Reset. The queries are released in
+  `before_reset` and at the final release (their device references are in the final-release
+  accounting) and recreated after a successful Reset. Each boundary runs under
+  `PreserveCpuState` (x87/MXCSR and LastError). Off, no object exists and each boundary is one
+  null-pointer branch; nothing is added to the per-draw path.
+- **Portability**: documented D3D9 and Win32 only (event queries, `QueryPerformanceCounter`), so
+  native Windows parity holds by construction; not verified on Windows.
+- Ledger: [gpu-sync-timing.md](../verification/gpu-sync-timing.md).

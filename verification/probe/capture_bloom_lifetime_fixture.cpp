@@ -13,6 +13,7 @@
 #include <thread>
 #include <vector>
 #include "../../src/proxy/comparison_controls.h"
+#include "../../src/renderer/gpu_sync_timing_core.h" // the pass enumerators the extracted bloom marks name
 #include "../../src/proxy/capture_arm_core.h" // portable; only so the Device replica can hold the pending-capture member
 
 #define WINAPI
@@ -263,6 +264,14 @@ std::map<IDirect3DDevice9*, std::shared_ptr<Device>> devices;
 // exercises lifetime, not the setter fast path.
 void forget_cached_device() noexcept {}
 bool bloom_requested=true;
+// --gpu-sync-timing helpers (capture.cpp): off here (no object, no references), so the
+// extracted release, Reset and bloom paths see the production calls with zero contribution.
+struct GpuSyncCalls { unsigned references = 0, releases = 0, before_resets = 0, after_resets = 0, marks = 0; } gpu_sync_calls;
+unsigned gpu_sync_references(const Device&) noexcept { ++gpu_sync_calls.references; return 0; }
+void gpu_sync_release(Device&) { ++gpu_sync_calls.releases; }
+void gpu_sync_before_reset(Device&) { ++gpu_sync_calls.before_resets; }
+void gpu_sync_after_reset(Device&,HRESULT) { ++gpu_sync_calls.after_resets; }
+void gpu_sync_mark(Device&,unsigned,bool) noexcept { ++gpu_sync_calls.marks; }
 
 namespace compositor_owner {
 struct Snapshot { std::uintptr_t renderer = 1, record = 2, device = 0, manager = 3, manager_device = 0; };

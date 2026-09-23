@@ -25,6 +25,7 @@
 #include "exposure.h"
 #include "../temporal/agx.h"
 #include "../temporal/sharpen.h"
+#include "gpu_sync_timing_core.h"
 
 namespace x3m::renderer {
 // Attach-time verdict: caps.reason is "ok" or the first failed check.
@@ -152,6 +153,9 @@ public:
     HdrPass& operator=(const HdrPass&) = delete;
     // Stage-2 switches; effective at the next attach.
     void configure(const HdrConfig& config) noexcept { config_ = config; }
+    // --gpu-sync-timing (engine-frame-time.md, "GPU sync timing"): the meter
+    // chain's boundary pair. Null (the default): one branch per meter run.
+    void configure_sync_timing(gpu_sync_timing::Marks* marks) noexcept { sync_marks_ = marks; }
     const HdrConfig& config() const noexcept { return config_; }
     // Device is BORROWED. `native` is the device's original method table; every
     // call goes through it. Runs the capability gate (section 5 of the design)
@@ -249,6 +253,7 @@ public:
     HRESULT fixture_readback(float* out, std::size_t floats, UINT* width, UINT* height) noexcept;
 #endif
 private:
+    gpu_sync_timing::Marks* sync_marks_ = nullptr;
     struct SavedState;
     // What one copy draw runs: the program (identity or tonemap), its
     // constants (c8..c21 when set) and whether the meter chain precedes it.

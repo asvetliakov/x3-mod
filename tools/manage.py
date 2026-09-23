@@ -435,6 +435,7 @@ def main():
     parser.add_argument('--frame-end-stride', type=int, default=300, metavar='N',
                         help='Frames between two frame_end lines, 1..100000, default 300 (X3M_FRAME_END_STRIDE; no prerequisite: frame_end exists in every mode): 1 logs every frame, which makes the frame cost readable per toggle state and shows periodic events the 300-frame cadence hides, at about 100 B of log per frame. Capture frames always log one. The other 300-frame reports of the Present path (chase camera, admission, finite upload) keep their own cadence')
     parser.add_argument('--fps-overlay', action='store_true', help='On-screen frame-rate line on the presented image (X3M_FPS_OVERLAY=1; default off; no prerequisite): "FPS 61.3  16.3 MS  DRAWS 638" from a one-second sliding window of the Present-to-Present interval (the ms figure is the frame interval, not GPU time), refreshed every 250 ms, plus "SHADOWS ON|OFF" when --sun-shadow-apply is on. Ctrl+Alt+F7 hides and shows it (Alt is the Option key under Wine on macOS; Shift must be up, so the Ctrl+Shift+F7 telemetry marker never fires on it). Drawn with Clear rectangles like the comparison notice, no GPU objects (docs/architecture/comparison-hotkeys.md, "FPS overlay")')
+    parser.add_argument('--gpu-sync-timing', action='store_true', help='Serialised GPU cost of each proxy pass (X3M_GPU_SYNC_TIMING=1; default off; no prerequisite; refused with --vanilla). Diagnostic for one flight only: it serialises CPU and GPU at every pass boundary (one D3D9 event query issued and spun on with D3DGETDATA_FLUSH until the GPU is idle), so frame rate drops while it is on and the figures are serialised costs, not the pipelined frame. Passes: scene, engine draw span, shadow depth, sun apply, retention, fog fill, fog route, motes, TAA, HDR write-back, meter, HDR readback, bloom, present. One gpu_sync_timing row per pass per 300 frames (window and session median/p90 in us, the spin wait, the serialised Present-to-Present dt) and gpu_sync_timing_summary rows at the final device release. A device that refuses event queries logs one gpu_sync_timing available=0 line and runs unchanged (docs/architecture/engine-frame-time.md, "GPU sync timing")')
     parser.add_argument('--frame-timing-state-stamps', type=int, default=0, metavar='N',
                         help='Stamp every Nth hooked state call in the frame-timing diagnostic (X3M_FRAME_TIMING_STATE_STAMPS; requires --frame-timing; default 0 = count the calls without reading the clock, so state_us is reported as -1). Two QueryPerformanceCounter reads cost about 136 ns per state call under FEX, which is several ms per busy frame; N>0 stamps one call in N and scales the sum by N (reported as state_sampled=N)')
     parser.add_argument('--game-phases', action='store_true', help='Measure native frame phases and delayed target-lock work (X3M_GAME_PHASES=1; requires --telemetry)')
@@ -677,6 +678,8 @@ def main():
         parser.error('--media-cue-retry-s must be between 1 and 3600.')
     if args.audio_sites and not args.game_phases:
         parser.error('--audio-sites requires --game-phases.')
+    if args.vanilla and args.gpu_sync_timing:
+        parser.error('--gpu-sync-timing cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so there is no proxy pass to time.')
     if args.vanilla and (args.music_keep or args.music_trace):
         parser.error('--music-keep/--music-trace cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the music routines is not loaded.')
     if args.profile_raw and not args.profile:
@@ -1299,6 +1302,7 @@ def main():
         env['X3M_FRAME_TIMING'] = '1' if args.frame_timing else '0'
         env['X3M_FRAME_END_STRIDE'] = str(args.frame_end_stride)  # explicit, so an inherited value cannot change the cadence
         env['X3M_FPS_OVERLAY'] = '1' if args.fps_overlay else '0'
+        env['X3M_GPU_SYNC_TIMING'] = '1' if args.gpu_sync_timing else '0'  # explicit, so an inherited value cannot serialise a normal flight
         env['X3M_FRAME_PHASES'] = '1' if args.frame_phases else '0'  # implied by --residual-phases above
         env['X3M_PASS_PHASES'] = '1' if args.pass_phases else '0'
         env['X3M_RESIDUAL_PHASES'] = '1' if args.residual_phases else '0'

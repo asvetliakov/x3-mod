@@ -34,6 +34,7 @@
 #include "../renderer/camera_reprojection.h"
 #include "../temporal/resolve.h"
 #include "../renderer/fog_pass.h"
+#include "../renderer/gpu_sync_timing_core.h"
 #include "../renderer/sun_occlusion_pass.h"
 #include "fog_card_policy.h"
 #include "fog_sector_policy.h"
@@ -862,6 +863,11 @@ public:
     // bracket pixels and the wall-clock frame time). Off costs one predicate
     // per Present; on, one QPC and one log call.
     void configure_screen_emission_timing(bool requested) noexcept;
+    // --gpu-sync-timing (engine-frame-time.md, "GPU sync timing"): the device's
+    // serialising boundary owner (capture.cpp); the scene-end passes, the HDR
+    // latch and the resolve mark their pairs on it, and it is handed to the
+    // HDR and fog passes (meter, motes). Null (the default): one branch per boundary.
+    void configure_gpu_sync_timing(gpu_sync_timing::Marks* marks) noexcept;
     bool composition_requested() const noexcept { return linear_emission_requested_ || distance_fade_requested_ || screen_emission_requested_; }
     // The blend-state shadow (SRCBLEND/DESTBLEND/BLENDOP/SEPARATEALPHA) is fed
     // for the composition producers and for the source-gain admission.
@@ -2146,6 +2152,7 @@ private:
     unsigned hook_disagreements_logged_ = 0; // own budget: a latch-only screen must not starve the failure log
     // Telemetry sink (capture.cpp's per-device State) and frame-line cadence.
     telemetry::State* stats_ = nullptr;
+    gpu_sync_timing::Marks* gpu_sync_ = nullptr; // owned by the device context (capture.cpp); null when --gpu-sync-timing is off
     unsigned frame_log_interval_ = 60;
     // Lazy binding state: RT1 (and RT2) held by the route across routed draws.
     bool lazy_mode_ = false, lazy_rt1_ = false, lazy_rt2_ = false;

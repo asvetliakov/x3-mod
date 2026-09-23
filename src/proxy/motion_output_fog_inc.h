@@ -109,6 +109,7 @@ bool MotionOutput::attach_volumetric_fog() noexcept {
     if (!fog_) {
         try { fog_ = std::make_unique<renderer::FogPass>(); }
         catch (...) { disable_volumetric_fog("allocation", E_OUTOFMEMORY); return false; }
+        fog_->configure_sync_timing(gpu_sync_); // --gpu-sync-timing only: the motes' pair
     }
     if (fog_->caps().enabled) return true;
     D3DDISPLAYMODE display{};
@@ -498,7 +499,9 @@ void MotionOutput::run_volumetric_fog() noexcept {
         }
         LARGE_INTEGER t0{}, t1{}, f{};
         if (fog_timing_) QueryPerformanceCounter(&t0);
+        if (gpu_sync_) gpu_sync_->begin(gpu_sync_timing::FogRoute); // --gpu-sync-timing only (the motes' pair nests inside)
         taa_call([&] { hr = fog_->execute(in, &out); });
+        if (gpu_sync_) gpu_sync_->end(gpu_sync_timing::FogRoute);
         if (fog_timing_) { QueryPerformanceCounter(&t1); QueryPerformanceFrequency(&f); us = f.QuadPart ? double(t1.QuadPart - t0.QuadPart) * 1e6 / double(f.QuadPart) : 0.; }
         reconcile_volumetric_fog(in, out, hr);
         if (FAILED(hr)) {

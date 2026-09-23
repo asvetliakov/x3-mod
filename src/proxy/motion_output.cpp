@@ -716,6 +716,11 @@ void MotionOutput::configure_screen_emission_timing(bool requested) noexcept {
     if (device_) return; // Process-start diagnostic configuration only.
     screen_emission_timing_ = requested && screen_emission_requested_;
 }
+void MotionOutput::configure_gpu_sync_timing(gpu_sync_timing::Marks* marks) noexcept {
+    gpu_sync_ = marks;
+    if (hdr_) hdr_->configure_sync_timing(marks);
+    if (fog_) fog_->configure_sync_timing(marks);
+}
 
 void MotionOutput::configure_mip_bias(float bias) noexcept {
     mip_bias_ = bias;
@@ -1676,7 +1681,9 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
 #else
             constexpr bool injected = false;
 #endif
+            if (gpu_sync_) gpu_sync_->begin(gpu_sync_timing::Taa); // --gpu-sync-timing only
             if (injected) { hr = E_FAIL; taa_->invalidate(); } else hr = taa_->run(in, &out);
+            if (gpu_sync_) gpu_sync_->end(gpu_sync_timing::Taa);
             if (taa_->line_masks_failed() && !taa_masks_logged_) {
                 taa_masks_logged_ = true;
                 log("motion_output_taa_masks device=%llu unavailable=1 create=%08lx far_weight=%.4f far_filter=%.3f effect=options_off_for_session", id_, taa_->line_masks_result(), double(taa_far_weight_), double(taa_far_filter_));
@@ -1829,6 +1836,7 @@ void MotionOutput::before_stretch(IDirect3DSurface9* source, const RECT* source_
     // of the main target, so the application copies the resolved image); any
     // other copy reading the main target flushes first, one writing it ends
     // first.
+    if (bloom && gpu_sync_) gpu_sync_->end(gpu_sync_timing::Engine); // --gpu-sync-timing only: the copy fallback's scene end (a no-op after the hook's)
     if(bloom&&!counters_.hook_scene_end){publish_sun_lane("copy");if(candidates_requested_)publish_shadow_replay_candidates();if(sun_apply_requested_&&sun_shadow_enabled_)run_sun_shadow_apply();} // F12 off: the quad is skipped whole
     if (bloom && fog_requested_) run_volumetric_fog(); // once per frame (fog_frame_), as at the hook
     if (motion_state_lost_ || composition_state_lost_) return;
@@ -1907,6 +1915,7 @@ void MotionOutput::scene_end_hook(MotionHdrSceneCallback callback, void* context
     // the frame's draw counter at the signal, so draws after the scene end
     // are identifiable by index in the per-draw capture log.
     if (capture_) log("scene_end_marker device=%llu frame=%llu draw_index=%lu", id_, frame_, static_cast<unsigned long>(counters_.draws));
+    if (gpu_sync_) gpu_sync_->end(gpu_sync_timing::Engine); // --gpu-sync-timing only: the engine's draw span ends where the proxy's scene-end work begins
     publish_sun_lane("hook");
     if (candidates_requested_) publish_shadow_replay_candidates();
     // Sun-shadow application (legacy-sun-application.md section 2): after the
@@ -2427,6 +2436,7 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
         if (enabled_) {
             try { hdr_ = std::make_unique<renderer::HdrPass>(); } catch (...) { hdr_.reset(); }
             if (hdr_) {
+                hdr_->configure_sync_timing(gpu_sync_); // --gpu-sync-timing only: the meter's pair
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
                 if (fixture_hdr_fault_count_) { hdr_->set_fault(static_cast<renderer::HdrFault>(fixture_hdr_fault_kind_), fixture_hdr_fault_count_); fixture_hdr_fault_count_ = 0; }
 #endif
@@ -6010,7 +6020,7 @@ void MotionOutput::begin_redirect() noexcept {
     h.redirected = true;
     if (fog_requested_) {
         prepare_volumetric_fog_targets(pending_.rt.width, pending_.rt.height);
-        if (fog_density_requested_) prepare_volumetric_fog_density(pending_.rt.width, pending_.rt.height);
+        if (fog_density_requested_) { gpu_sync_timing::Span span(gpu_sync_, gpu_sync_timing::FogFill); prepare_volumetric_fog_density(pending_.rt.width, pending_.rt.height); } // --gpu-sync-timing: the fill's pair
     }
     probe_cutout_caps(); // a transient verdict retries at this boundary, never a draw
     // Stage 2: consume the previous frame's meter and adapt the EV this
@@ -6019,7 +6029,9 @@ void MotionOutput::begin_redirect() noexcept {
         static std::uint64_t frequency = 0;
         if (!frequency) { LARGE_INTEGER f{}; QueryPerformanceFrequency(&f); frequency = std::uint64_t(f.QuadPart); }
         LARGE_INTEGER now{}; QueryPerformanceCounter(&now);
+        if (gpu_sync_) gpu_sync_->begin(gpu_sync_timing::HdrReadback); // --gpu-sync-timing only
         const renderer::HdrFrameBegin b = hdr_->begin_frame(std::uint64_t(now.QuadPart), frequency, telemetry_);
+        if (gpu_sync_) gpu_sync_->end(gpu_sync_timing::HdrReadback);
         h.stepped = b.stepped; h.readback = b.readback; h.readback_ticks = b.ticks_readback; h.readback_timing = b.readback_timing;
         if (b.readback != S_FALSE) record(unsigned(telemetry::Metric::HdrMeterReadback), b.ticks_readback, FAILED(b.readback));
     }
@@ -6041,7 +6053,9 @@ renderer::HdrWriteback MotionOutput::hdr_writeback(IDirect3DSurface9* final_rt0,
     if (write && capture_ && !h.writebacks && hdr_->target())
         readback_surface(hdr_->target(), D3DFMT_A16B16G16R16F, 8, L"hdr", L"rgba16f", "hdr_readback", "rgba16f_row_major", hdr_->width(), hdr_->height());
     const std::uint64_t begin = stamp();
+    if (gpu_sync_) gpu_sync_->begin(gpu_sync_timing::HdrWriteback); // --gpu-sync-timing only (flushes add up; the meter's pair nests inside)
     const renderer::HdrWriteback r = hdr_->write_back(hdr_main_, final_rt0, scene_open_, write, telemetry_, hdr_resolved_, display);
+    if (gpu_sync_) gpu_sync_->end(gpu_sync_timing::HdrWriteback);
     const std::uint64_t ticks = stamp() - begin;
     if (write) {
         ++h.writebacks; h.source = unsigned(r.source);
@@ -7674,7 +7688,7 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
     // Caster retention: retirements, the sun flush, the seen nodes' classes and
     // the unseen walk, before the replay that issues the admitted records and
     // after the frame's sun source is decided (each cascade's own basis).
-    if (retention_) retention_scene_end(sun_source_switched);
+    if (retention_) { gpu_sync_timing::Span span(gpu_sync_, gpu_sync_timing::Retention); retention_scene_end(sun_source_switched); } // --gpu-sync-timing: the walk's pair
     // Capture frames: one line per record (what admitted it, into which
     // cascades, and what its own program said the sun was).
     if (capture_) {
@@ -7779,12 +7793,16 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
     // `depth_replayed_frame_` deliberately keeps the frame of the last real
     // transaction: every consumer (the apply quad's precondition, the F8 map
     // dump) then sees that this frame published nothing.
+    {
+    // --gpu-sync-timing only: the replay transaction's pair (its per-frame line included); nothing without a replay.
+    gpu_sync_timing::Span shadow_span(sun_shadow_enabled_ && (depth_cascades_on() || depth_replay_requested_) ? gpu_sync_ : nullptr, gpu_sync_timing::ShadowDepth);
     if (!sun_shadow_enabled_) {
         depth_replayed_ = 0; depth_cascade_frame_ok_ = false;
         if (depth_replay_requested_) release_depth_leases();
     }
     else if (depth_cascades_on()) run_shadow_replay_cascades(quiet_records);
     else if (depth_replay_requested_) run_shadow_replay_depth(quiet_records);
+    }
     if (retention_) publish_shadow_retention(); // the frame line reads this frame's live counts: before the reset
     candidates_.reset();
 }
@@ -7899,7 +7917,7 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
         for (unsigned s = 0; s < in.count; ++s) if (in.cascades[s].valid) ++sampled; // an absent cascade is lit: its slot samples no map
         LARGE_INTEGER t0{}, t1{}, f{};
         QueryPerformanceCounter(&t0);
-        if (!skip) taa_call([&] { hr = sun_apply_->execute_cascades(in, &out); });
+        if (!skip) { gpu_sync_timing::Span span(gpu_sync_, gpu_sync_timing::SunApply); taa_call([&] { hr = sun_apply_->execute_cascades(in, &out); }); } // --gpu-sync-timing: the quad's pair
         QueryPerformanceCounter(&t1);
         QueryPerformanceFrequency(&f);
         us = f.QuadPart ? double(t1.QuadPart - t0.QuadPart) * 1e6 / double(f.QuadPart) : 0.;
@@ -7965,7 +7983,7 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
         in.caller_scene_open = scene_open_; in.caller_stateblock_recording = shadow_.recording;
         LARGE_INTEGER t0{}, t1{}, f{};
         QueryPerformanceCounter(&t0);
-        if (!skip) taa_call([&] { hr = sun_apply_->execute(in, &out); });
+        if (!skip) { gpu_sync_timing::Span span(gpu_sync_, gpu_sync_timing::SunApply); taa_call([&] { hr = sun_apply_->execute(in, &out); }); } // --gpu-sync-timing: the quad's pair
         sampled = 1; // the single map
         QueryPerformanceCounter(&t1);
         QueryPerformanceFrequency(&f);

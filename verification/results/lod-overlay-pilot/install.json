@@ -1,363 +1,389 @@
 {
- "installed": "2026-09-23 (after run268) local",
- "replaces": {
-  "installed": "2026-09-23 (after run265) local",
-  "replaces": {
-   "installed": "2026-09-23T05:08 local",
-   "replaces": {
-    "installed": "2026-09-23T04:19 local",
-    "replaces": {
-     "installed": "2026-09-23T03:32 local",
-     "replaces": {
-      "installed": "2026-09-23T03:23 local",
-      "replaces": {
-       "installed": "2026-09-23T02:46 local",
-       "command": "tools/analysis/lod_overlay.py 'ships/argon/argon_TL=50' 'ships/argon/argon_M2=50' 'ships/argon/argon_M1=50' 'Stations/others/military_outpost_middleb=100' --install",
-       "main_commit": "a2bb37ac",
-       "files": {
-        "addon/05.cat": {
-         "bytes": 191,
-         "sha256": "c5737a0a307f7d2590a788b736225139f39334908b35fa677935b15f56881c0f"
-        },
-        "addon/05.dat": {
-         "bytes": 12471545,
-         "sha256": "66f4f7a64b4b2304df12c09e82b4a0665b9bf751dd7bbd5dfd628688322f0686"
-        },
-        "addon/05.x3m-lod.json": {
-         "bytes": 1942
-        }
-       },
-       "originals": "34 archive files unchanged (tool hash guard)",
-       "bodies": {
-        "ships/argon/argon_TL": {
-         "T_pad": 50,
-         "ladder_after": [
-          null,
-          30,
-          15,
-          5,
-          5,
-          50
-         ],
-         "C_groups": [
-          "opaque:mat17:541f",
-          "alpha:mat38:12f"
-         ]
-        },
-        "ships/argon/argon_M2": {
-         "T_pad": 50,
-         "ladder_after": [
-          null,
-          30,
-          15,
-          5,
-          5,
-          50
-         ],
-         "C_groups": [
-          "opaque:mat17:722f",
-          "alpha:mat31:34f"
-         ]
-        },
-        "ships/argon/argon_M1": {
-         "T_pad": 50,
-         "ladder_after": [
-          null,
-          30,
-          15,
-          5,
-          5,
-          50
-         ],
-         "C_groups": [
-          "opaque:mat11:638f",
-          "alpha:mat27:20f"
-         ]
-        },
-        "Stations/others/military_outpost_middleb": {
-         "T_pad": 100,
-         "ladder_after": [
-          null,
-          30,
-          15,
-          15,
-          100
-         ],
-         "C_groups": [
-          "opaque:mat17:9201f",
-          "alpha:mat9:252f"
-         ]
-        }
-       },
-       "removal": "delete the three addon/05.* files",
-       "dll": "Run68 39c8c70d unchanged"
-      },
-      "command": "tools/analysis/lod_overlay.py --install --replace 'ships/argon/argon_TL=50' 'ships/argon/argon_M2=50' 'ships/argon/argon_M1=50' 'Stations/others/military_outpost_middleb=100'",
-      "main_commit": "6baec2e7",
-      "collapse": "glow (default): bright-light-map materials keep their group; alpha group only when the material alpha-tests or blends",
-      "files": {
-       "addon/05.cat": {
-        "bytes": 191,
-        "sha256": "def76feb566c6ae169dceb2de731bd7ffc3e7cb10132fe8c28fb803b2273822b"
-       },
-       "addon/05.dat": {
-        "bytes": 12471651,
-        "sha256": "b3fbf98441231adff9da58ad97f682668e68791eb5397b791eeeb5b8e354fbe3"
-       },
-       "addon/05.x3m-lod.json": {
-        "bytes": 2183
-       }
-      },
-      "originals": "34 archive files unchanged",
-      "bodies": {
-       "ships/argon/argon_TL": {
-        "T_pad": 50,
-        "groups": [
-         "opaque:17:532",
-         "glow:37:3",
-         "glow:38:9",
-         "glow:40:6",
-         "glow:41:3"
-        ],
-        "draws": 5
-       },
-       "ships/argon/argon_M2": {
-        "T_pad": 50,
-        "groups": [
-         "opaque:17:738",
-         "glow:37:3",
-         "glow:38:6",
-         "glow:40:6",
-         "glow:41:3"
-        ],
-        "draws": 5
-       },
-       "ships/argon/argon_M1": {
-        "T_pad": 50,
-        "groups": [
-         "opaque:11:640",
-         "glow:26:3",
-         "glow:27:9",
-         "glow:29:4",
-         "glow:30:2"
-        ],
-        "draws": 5
-       },
-       "Stations/others/military_outpost_middleb": {
-        "T_pad": 100,
-        "groups": [
-         "opaque:17:9149",
-         "glow:41:52",
-         "alpha:9:252"
-        ],
-        "draws": 3
-       }
-      },
-      "dll": "Run68 39c8c70d unchanged"
-     },
-     "command": "tools/analysis/lod_overlay.py --install --replace 'ships/argon/argon_TL=80' 'ships/argon/argon_M2=80' 'ships/argon/argon_M1=80' 'Stations/others/military_outpost_middleb=150'",
-     "main_commit": "compact merge (after 55872eba)",
-     "placement": "compact: [record 0, C at index 1, pad], glow collapse",
-     "files": {
-      "addon/05.cat": {
-       "bytes": 190,
-       "sha256": "cf6fd61ef761e72ac1e66601bc60356a2e220cfbcdf1212a894ab62a42721649"
-      },
-      "addon/05.dat": {
-       "bytes": 7789650,
-       "sha256": "bd311b5486d4d2181ca7280ae962be912d5319b452e47c5454935814c76ed181"
-      },
-      "addon/05.x3m-lod.json": {
-       "bytes": 2670
-      }
-     },
-     "originals": "34 archive files unchanged",
-     "bodies": {
-      "ships/argon/argon_TL": {
-       "T_pad": 80,
-       "ladder": [
-        null,
-        30,
-        80
-       ],
-       "draws": 5
-      },
-      "ships/argon/argon_M2": {
-       "T_pad": 80,
-       "ladder": [
-        null,
-        30,
-        80
-       ],
-       "draws": 5
-      },
-      "ships/argon/argon_M1": {
-       "T_pad": 80,
-       "ladder": [
-        null,
-        30,
-        80
-       ],
-       "draws": 5
-      },
-      "Stations/others/military_outpost_middleb": {
-       "T_pad": 150,
-       "ladder": [
-        null,
-        30,
-        150
-       ],
-       "draws": 3
-      }
-     },
-     "dll": "Run68 39c8c70d unchanged"
-    },
-    "command": "tools/analysis/lod_overlay.py --install --replace --collapse glow-area 70 'ships/argon/argon_TL=80' 'ships/argon/argon_M2=80' 'ships/argon/argon_M1=80' 'Stations/others/military_outpost_middleb=150'",
-    "main_commit": "after 022798ba (glow-area merge)",
-    "placement": "compact, collapse glow-area 70 with the synthesized merge material (outpost mat51)",
-    "files": {
-     "addon/05.cat": {
-      "bytes": 189,
-      "sha256": "87bf16cda51813d312f4c9ed13231a5344a0deb06224f5c378de22f717a619a2"
-     },
-     "addon/05.dat": {
-      "bytes": 7789979,
-      "sha256": "c2f0abd6f76f78a2f8810719179f2245107fe37bdbff70205e93b89926a29303"
-     },
-     "addon/05.x3m-lod.json": {
-      "bytes": 4339
-     }
-    },
-    "originals": "34 archive files unchanged",
-    "bodies": {
-     "ships/argon/argon_TL": {
-      "T_pad": 80,
-      "draws": 9
-     },
-     "ships/argon/argon_M2": {
-      "T_pad": 80,
-      "draws": 8
-     },
-     "ships/argon/argon_M1": {
-      "T_pad": 80,
-      "draws": 9
-     },
-     "Stations/others/military_outpost_middleb": {
-      "T_pad": 150,
-      "draws": 10,
-      "synth": "mat51 = mat17 with area-weighted g_Mat* (diffuse 0.40->0.499, specular 2.4->2.81, power 5->5.67, reflection 0.9->0.967)"
-     }
-    },
-    "dll": "Run68 39c8c70d unchanged"
-   },
-   "command": "tools/analysis/lod_overlay.py --install --replace --collapse atlas 'ships/argon/argon_TL=80' 'ships/argon/argon_M2=80' 'ships/argon/argon_M1=80' 'Stations/others/military_outpost_middleb=150'",
-   "main_commit": "3f9aefde",
-   "placement": "compact, collapse atlas (diffuse DXT1, light DXT5, bump DXT5 atlases; one material per coarse record; specular NULL)",
-   "files": {
+  "installed_at": "2026-09-23T09:58:41+04:00",
+  "command": "/usr/bin/python3 tools/analysis/lod_overlay.py --batch --only verification/results/lod-overlay-batch/sectors.txt --install --replace --jobs 2",
+  "commit": "a1670dec",
+  "slot": 5,
+  "files": {
     "addon/05.cat": {
-     "bytes": 700,
-     "sha256": "f3f607fa91398b66930656edebd58bf126d68059a7f25b4475f60a1a801b74e8"
+      "sha256": "4bf79c7ae937d7dc3c82b590652786a647f3edd74ba471ded48dbfdaf9b443e5",
+      "bytes": 5239
     },
     "addon/05.dat": {
-     "bytes": 15525012,
-     "sha256": "54acfc471ee1b18bfc7c6f7d5ff037197e9a64beaeb512b497d6a278833df4b2"
+      "sha256": "92e9f3ebe297547fbaf57739a1089474e6d2a49c6bcd1dd73cf753d5ee820b28",
+      "bytes": 123585419
     },
     "addon/05.x3m-lod.json": {
-     "bytes": 77276
+      "sha256": "c2070fa7fedc24bf6c38619378f6a7906fc13878b0506e1f1d0d73705c9de9b9",
+      "bytes": 561390
+    },
+    "addon/x3m-lod-batch.json": {
+      "sha256": "a5ed3567aff6e8e089d28fa8b4800e3990c782549e7d1b4256a072b25f462608"
     }
-   },
-   "originals": "34 archive files unchanged",
-   "members": "4 bodies + 12 atlas textures (dds/x3m_lod_<body>_{diffuse,light,bump}.pck)",
-   "bodies": {
-    "ships/argon/argon_TL": {
-     "T_pad": 80,
-     "atlas": 2048,
-     "draws": 1
-    },
-    "ships/argon/argon_M2": {
-     "T_pad": 80,
-     "atlas": 1024,
-     "draws": 1
-    },
-    "ships/argon/argon_M1": {
-     "T_pad": 80,
-     "atlas": 1024,
-     "draws": 1
-    },
-    "Stations/others/military_outpost_middleb": {
-     "T_pad": 150,
-     "atlas": 2048,
-     "draws": 2
-    }
-   },
-   "dll": "Run69 70abe438"
   },
-  "command": "tools/analysis/lod_overlay.py --install --replace --collapse atlas --atlas-specular 'ships/argon/argon_TL=80' 'ships/argon/argon_M2=80' 'ships/argon/argon_M1=80' 'Stations/others/military_outpost_middleb=150'",
-  "main_commit": "d52b3bcb",
-  "placement": "compact, collapse atlas with diffuse (DXT1), light (DXT5), bump (DXT5) and specular (DXT5) atlases; one material per coarse record",
-  "files": {
-   "addon/05.cat": {
-    "sha256": "7a060de77df1b1db371c0cdbd7661f931aa44e8e768cc36d88c63c814320ad66"
-   },
-   "addon/05.dat": {
-    "bytes": 19321288,
-    "sha256": "41e5999782c6ce0e70e546af6d37bbc918e59f7ff0701c1414d46f07be7976de"
-   }
-  },
-  "originals": "34 archive files unchanged",
-  "members": "4 bodies + 16 atlas textures",
-  "evidence": [
-   "verification/results/lod-overlay-pilot/build_atlas_specular_out.txt",
-   "verification/results/lod-overlay-pilot/pilot_check_atlas_specular_out.txt"
-  ],
-  "why": "run265: the NULL specular slot bound the engine's 32x32 placeholder (id 537), coarse highlights 22-27 % brighter than fine",
-  "dll": "Run69 70abe438"
- },
- "command": "tools/analysis/lod_overlay.py --install --replace --collapse atlas --atlas-specular 'ships/argon/argon_TL=80@0' 'ships/argon/argon_M2=80@0' 'ships/argon/argon_M1=80@0' 'Stations/others/military_outpost_middleb=150@0'",
- "main_commit": "ee356b6e",
- "placement": "compact; C = LOD 0 geometry with diffuse/light/bump/specular atlases (tile-aware mips, 8-texel gutter); pad = byte copy of the original coarsest record (collision vanilla); atlas groups split at 60,000 points",
- "files": {
-  "addon/05.cat": {
-   "bytes": 876,
-   "sha256": "d29b0c880f86d7cdcf3220f7ea4a346566ade590d2a15cd0c1cc67f6022c50f2"
-  },
-  "addon/05.dat": {
-   "bytes": 19466361,
-   "sha256": "5fd877c177233b70d8abe6fee6504e54048c89191954463d9cf73b083aebad81"
+  "summary": "batch of the flown sectors: 19 bodies built, 3 texel_floor refused; 561 -> 55 drawn groups below the switch; atlases 37.08 MB, members 86.51 MB; display 1920x1080 (reference 1800); Run72 DLL c17792a9 installed",
+  "record_copies": "verification/results/lod-overlay-batch/install/",
+  "game_running_at_install": false,
+  "replaces": {
+    "installed": "2026-09-23 (after run268) local",
+    "replaces": {
+      "installed": "2026-09-23 (after run265) local",
+      "replaces": {
+        "installed": "2026-09-23T05:08 local",
+        "replaces": {
+          "installed": "2026-09-23T04:19 local",
+          "replaces": {
+            "installed": "2026-09-23T03:32 local",
+            "replaces": {
+              "installed": "2026-09-23T03:23 local",
+              "replaces": {
+                "installed": "2026-09-23T02:46 local",
+                "command": "tools/analysis/lod_overlay.py 'ships/argon/argon_TL=50' 'ships/argon/argon_M2=50' 'ships/argon/argon_M1=50' 'Stations/others/military_outpost_middleb=100' --install",
+                "main_commit": "a2bb37ac",
+                "files": {
+                  "addon/05.cat": {
+                    "bytes": 191,
+                    "sha256": "c5737a0a307f7d2590a788b736225139f39334908b35fa677935b15f56881c0f"
+                  },
+                  "addon/05.dat": {
+                    "bytes": 12471545,
+                    "sha256": "66f4f7a64b4b2304df12c09e82b4a0665b9bf751dd7bbd5dfd628688322f0686"
+                  },
+                  "addon/05.x3m-lod.json": {
+                    "bytes": 1942
+                  }
+                },
+                "originals": "34 archive files unchanged (tool hash guard)",
+                "bodies": {
+                  "ships/argon/argon_TL": {
+                    "T_pad": 50,
+                    "ladder_after": [
+                      null,
+                      30,
+                      15,
+                      5,
+                      5,
+                      50
+                    ],
+                    "C_groups": [
+                      "opaque:mat17:541f",
+                      "alpha:mat38:12f"
+                    ]
+                  },
+                  "ships/argon/argon_M2": {
+                    "T_pad": 50,
+                    "ladder_after": [
+                      null,
+                      30,
+                      15,
+                      5,
+                      5,
+                      50
+                    ],
+                    "C_groups": [
+                      "opaque:mat17:722f",
+                      "alpha:mat31:34f"
+                    ]
+                  },
+                  "ships/argon/argon_M1": {
+                    "T_pad": 50,
+                    "ladder_after": [
+                      null,
+                      30,
+                      15,
+                      5,
+                      5,
+                      50
+                    ],
+                    "C_groups": [
+                      "opaque:mat11:638f",
+                      "alpha:mat27:20f"
+                    ]
+                  },
+                  "Stations/others/military_outpost_middleb": {
+                    "T_pad": 100,
+                    "ladder_after": [
+                      null,
+                      30,
+                      15,
+                      15,
+                      100
+                    ],
+                    "C_groups": [
+                      "opaque:mat17:9201f",
+                      "alpha:mat9:252f"
+                    ]
+                  }
+                },
+                "removal": "delete the three addon/05.* files",
+                "dll": "Run68 39c8c70d unchanged"
+              },
+              "command": "tools/analysis/lod_overlay.py --install --replace 'ships/argon/argon_TL=50' 'ships/argon/argon_M2=50' 'ships/argon/argon_M1=50' 'Stations/others/military_outpost_middleb=100'",
+              "main_commit": "6baec2e7",
+              "collapse": "glow (default): bright-light-map materials keep their group; alpha group only when the material alpha-tests or blends",
+              "files": {
+                "addon/05.cat": {
+                  "bytes": 191,
+                  "sha256": "def76feb566c6ae169dceb2de731bd7ffc3e7cb10132fe8c28fb803b2273822b"
+                },
+                "addon/05.dat": {
+                  "bytes": 12471651,
+                  "sha256": "b3fbf98441231adff9da58ad97f682668e68791eb5397b791eeeb5b8e354fbe3"
+                },
+                "addon/05.x3m-lod.json": {
+                  "bytes": 2183
+                }
+              },
+              "originals": "34 archive files unchanged",
+              "bodies": {
+                "ships/argon/argon_TL": {
+                  "T_pad": 50,
+                  "groups": [
+                    "opaque:17:532",
+                    "glow:37:3",
+                    "glow:38:9",
+                    "glow:40:6",
+                    "glow:41:3"
+                  ],
+                  "draws": 5
+                },
+                "ships/argon/argon_M2": {
+                  "T_pad": 50,
+                  "groups": [
+                    "opaque:17:738",
+                    "glow:37:3",
+                    "glow:38:6",
+                    "glow:40:6",
+                    "glow:41:3"
+                  ],
+                  "draws": 5
+                },
+                "ships/argon/argon_M1": {
+                  "T_pad": 50,
+                  "groups": [
+                    "opaque:11:640",
+                    "glow:26:3",
+                    "glow:27:9",
+                    "glow:29:4",
+                    "glow:30:2"
+                  ],
+                  "draws": 5
+                },
+                "Stations/others/military_outpost_middleb": {
+                  "T_pad": 100,
+                  "groups": [
+                    "opaque:17:9149",
+                    "glow:41:52",
+                    "alpha:9:252"
+                  ],
+                  "draws": 3
+                }
+              },
+              "dll": "Run68 39c8c70d unchanged"
+            },
+            "command": "tools/analysis/lod_overlay.py --install --replace 'ships/argon/argon_TL=80' 'ships/argon/argon_M2=80' 'ships/argon/argon_M1=80' 'Stations/others/military_outpost_middleb=150'",
+            "main_commit": "compact merge (after 55872eba)",
+            "placement": "compact: [record 0, C at index 1, pad], glow collapse",
+            "files": {
+              "addon/05.cat": {
+                "bytes": 190,
+                "sha256": "cf6fd61ef761e72ac1e66601bc60356a2e220cfbcdf1212a894ab62a42721649"
+              },
+              "addon/05.dat": {
+                "bytes": 7789650,
+                "sha256": "bd311b5486d4d2181ca7280ae962be912d5319b452e47c5454935814c76ed181"
+              },
+              "addon/05.x3m-lod.json": {
+                "bytes": 2670
+              }
+            },
+            "originals": "34 archive files unchanged",
+            "bodies": {
+              "ships/argon/argon_TL": {
+                "T_pad": 80,
+                "ladder": [
+                  null,
+                  30,
+                  80
+                ],
+                "draws": 5
+              },
+              "ships/argon/argon_M2": {
+                "T_pad": 80,
+                "ladder": [
+                  null,
+                  30,
+                  80
+                ],
+                "draws": 5
+              },
+              "ships/argon/argon_M1": {
+                "T_pad": 80,
+                "ladder": [
+                  null,
+                  30,
+                  80
+                ],
+                "draws": 5
+              },
+              "Stations/others/military_outpost_middleb": {
+                "T_pad": 150,
+                "ladder": [
+                  null,
+                  30,
+                  150
+                ],
+                "draws": 3
+              }
+            },
+            "dll": "Run68 39c8c70d unchanged"
+          },
+          "command": "tools/analysis/lod_overlay.py --install --replace --collapse glow-area 70 'ships/argon/argon_TL=80' 'ships/argon/argon_M2=80' 'ships/argon/argon_M1=80' 'Stations/others/military_outpost_middleb=150'",
+          "main_commit": "after 022798ba (glow-area merge)",
+          "placement": "compact, collapse glow-area 70 with the synthesized merge material (outpost mat51)",
+          "files": {
+            "addon/05.cat": {
+              "bytes": 189,
+              "sha256": "87bf16cda51813d312f4c9ed13231a5344a0deb06224f5c378de22f717a619a2"
+            },
+            "addon/05.dat": {
+              "bytes": 7789979,
+              "sha256": "c2f0abd6f76f78a2f8810719179f2245107fe37bdbff70205e93b89926a29303"
+            },
+            "addon/05.x3m-lod.json": {
+              "bytes": 4339
+            }
+          },
+          "originals": "34 archive files unchanged",
+          "bodies": {
+            "ships/argon/argon_TL": {
+              "T_pad": 80,
+              "draws": 9
+            },
+            "ships/argon/argon_M2": {
+              "T_pad": 80,
+              "draws": 8
+            },
+            "ships/argon/argon_M1": {
+              "T_pad": 80,
+              "draws": 9
+            },
+            "Stations/others/military_outpost_middleb": {
+              "T_pad": 150,
+              "draws": 10,
+              "synth": "mat51 = mat17 with area-weighted g_Mat* (diffuse 0.40->0.499, specular 2.4->2.81, power 5->5.67, reflection 0.9->0.967)"
+            }
+          },
+          "dll": "Run68 39c8c70d unchanged"
+        },
+        "command": "tools/analysis/lod_overlay.py --install --replace --collapse atlas 'ships/argon/argon_TL=80' 'ships/argon/argon_M2=80' 'ships/argon/argon_M1=80' 'Stations/others/military_outpost_middleb=150'",
+        "main_commit": "3f9aefde",
+        "placement": "compact, collapse atlas (diffuse DXT1, light DXT5, bump DXT5 atlases; one material per coarse record; specular NULL)",
+        "files": {
+          "addon/05.cat": {
+            "bytes": 700,
+            "sha256": "f3f607fa91398b66930656edebd58bf126d68059a7f25b4475f60a1a801b74e8"
+          },
+          "addon/05.dat": {
+            "bytes": 15525012,
+            "sha256": "54acfc471ee1b18bfc7c6f7d5ff037197e9a64beaeb512b497d6a278833df4b2"
+          },
+          "addon/05.x3m-lod.json": {
+            "bytes": 77276
+          }
+        },
+        "originals": "34 archive files unchanged",
+        "members": "4 bodies + 12 atlas textures (dds/x3m_lod_<body>_{diffuse,light,bump}.pck)",
+        "bodies": {
+          "ships/argon/argon_TL": {
+            "T_pad": 80,
+            "atlas": 2048,
+            "draws": 1
+          },
+          "ships/argon/argon_M2": {
+            "T_pad": 80,
+            "atlas": 1024,
+            "draws": 1
+          },
+          "ships/argon/argon_M1": {
+            "T_pad": 80,
+            "atlas": 1024,
+            "draws": 1
+          },
+          "Stations/others/military_outpost_middleb": {
+            "T_pad": 150,
+            "atlas": 2048,
+            "draws": 2
+          }
+        },
+        "dll": "Run69 70abe438"
+      },
+      "command": "tools/analysis/lod_overlay.py --install --replace --collapse atlas --atlas-specular 'ships/argon/argon_TL=80' 'ships/argon/argon_M2=80' 'ships/argon/argon_M1=80' 'Stations/others/military_outpost_middleb=150'",
+      "main_commit": "d52b3bcb",
+      "placement": "compact, collapse atlas with diffuse (DXT1), light (DXT5), bump (DXT5) and specular (DXT5) atlases; one material per coarse record",
+      "files": {
+        "addon/05.cat": {
+          "sha256": "7a060de77df1b1db371c0cdbd7661f931aa44e8e768cc36d88c63c814320ad66"
+        },
+        "addon/05.dat": {
+          "bytes": 19321288,
+          "sha256": "41e5999782c6ce0e70e546af6d37bbc918e59f7ff0701c1414d46f07be7976de"
+        }
+      },
+      "originals": "34 archive files unchanged",
+      "members": "4 bodies + 16 atlas textures",
+      "evidence": [
+        "verification/results/lod-overlay-pilot/build_atlas_specular_out.txt",
+        "verification/results/lod-overlay-pilot/pilot_check_atlas_specular_out.txt"
+      ],
+      "why": "run265: the NULL specular slot bound the engine's 32x32 placeholder (id 537), coarse highlights 22-27 % brighter than fine",
+      "dll": "Run69 70abe438"
+    },
+    "command": "tools/analysis/lod_overlay.py --install --replace --collapse atlas --atlas-specular 'ships/argon/argon_TL=80@0' 'ships/argon/argon_M2=80@0' 'ships/argon/argon_M1=80@0' 'Stations/others/military_outpost_middleb=150@0'",
+    "main_commit": "ee356b6e",
+    "placement": "compact; C = LOD 0 geometry with diffuse/light/bump/specular atlases (tile-aware mips, 8-texel gutter); pad = byte copy of the original coarsest record (collision vanilla); atlas groups split at 60,000 points",
+    "files": {
+      "addon/05.cat": {
+        "bytes": 876,
+        "sha256": "d29b0c880f86d7cdcf3220f7ea4a346566ade590d2a15cd0c1cc67f6022c50f2"
+      },
+      "addon/05.dat": {
+        "bytes": 19466361,
+        "sha256": "5fd877c177233b70d8abe6fee6504e54048c89191954463d9cf73b083aebad81"
+      }
+    },
+    "originals": "34 archive files unchanged",
+    "members": "4 bodies + 16 atlas textures",
+    "evidence": [
+      "verification/results/lod-overlay-pilot/install_atlas_lod0_out.txt",
+      "verification/results/lod-overlay-pilot/pilot_check_atlas_lod0_out.txt"
+    ],
+    "bodies": {
+      "ships/argon/argon_TL": {
+        "T_pad": 80,
+        "source_record": 0,
+        "atlas": 1024,
+        "draws": 2
+      },
+      "ships/argon/argon_M2": {
+        "T_pad": 80,
+        "source_record": 0,
+        "atlas": 1024,
+        "draws": 2
+      },
+      "ships/argon/argon_M1": {
+        "T_pad": 80,
+        "source_record": 0,
+        "atlas": 1024,
+        "draws": 2
+      },
+      "Stations/others/military_outpost_middleb": {
+        "T_pad": 150,
+        "source_record": 0,
+        "atlas": 2048,
+        "draws": 4,
+        "groups": "3 atlas (9,530 / 59,993 / 59,994 points) + alpha"
+      }
+    },
+    "dll": "Run70 a773e9f2"
   }
- },
- "originals": "34 archive files unchanged",
- "members": "4 bodies + 16 atlas textures",
- "evidence": [
-  "verification/results/lod-overlay-pilot/install_atlas_lod0_out.txt",
-  "verification/results/lod-overlay-pilot/pilot_check_atlas_lod0_out.txt"
- ],
- "bodies": {
-  "ships/argon/argon_TL": {
-   "T_pad": 80,
-   "source_record": 0,
-   "atlas": 1024,
-   "draws": 2
-  },
-  "ships/argon/argon_M2": {
-   "T_pad": 80,
-   "source_record": 0,
-   "atlas": 1024,
-   "draws": 2
-  },
-  "ships/argon/argon_M1": {
-   "T_pad": 80,
-   "source_record": 0,
-   "atlas": 1024,
-   "draws": 2
-  },
-  "Stations/others/military_outpost_middleb": {
-   "T_pad": 150,
-   "source_record": 0,
-   "atlas": 2048,
-   "draws": 4,
-   "groups": "3 atlas (9,530 / 59,993 / 59,994 points) + alpha"
-  }
- },
- "dll": "Run70 a773e9f2"
 }

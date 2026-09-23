@@ -11,6 +11,7 @@
 #include "fog_mote_math.h"
 #include "fog_volume_math.h"
 #include "fog_field_assets.h"
+#include "gpu_sync_timing_core.h"
 namespace x3m::fog { class DensityCache; }
 namespace x3m::renderer {
 struct FogCaps {
@@ -178,6 +179,9 @@ public:
     const FogMoteReport& mote_report() const noexcept { return mote_report_; }
     bool motes_refused() const noexcept { return motes_refused_; } // sticky until detach; the fog draws without motes
     bool motes_variant() const noexcept { return density_config_.dust_motes; } // the mote toggle the last prepare_density latched
+    // --gpu-sync-timing (engine-frame-time.md, "GPU sync timing"): the mote
+    // draw's boundary pair inside execute. Null (the default): one branch per mote draw.
+    void configure_sync_timing(gpu_sync_timing::Marks* marks) noexcept { sync_marks_ = marks; }
     // Caller contract for the worker's lifetime:
     //  - MotionOutput::release_resources (the device release path, never under the loader lock)
     //    calls detach(), which joins the worker and releases every density resource. If the join
@@ -222,6 +226,7 @@ public:
     const fog::DensityCache* fixture_density_cache() const noexcept { return density_; }
 #endif
 private:
+    gpu_sync_timing::Marks* sync_marks_=nullptr;
     struct SavedState;
     template<class Fn> Fn call(unsigned slot) const noexcept { ++calls_; return reinterpret_cast<Fn>(vtable_[slot]); }
     HRESULT normalize(bool density) noexcept;

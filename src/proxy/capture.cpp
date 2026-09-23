@@ -40,6 +40,7 @@
 #include "compositor_bridge.h"
 #include "compositor_owner.h"
 #include "../renderer/bloom_programs.h"
+#include "../renderer/gpu_sync_timing.h"
 #include "../renderer/shader_population.h"
 #include "chase_camera.h"
 #include "chase_aim_trace.h"
@@ -165,6 +166,11 @@ bool sun_shadow_apply_requested = false;
 // frame-rate line on the presented image, Ctrl+Alt+F7 hides and shows it.
 // Off, the Present path pays one branch and polls no key.
 bool fps_overlay_requested = false;
+// X3M_GPU_SYNC_TIMING=1 (engine-frame-time.md, "GPU sync timing"; default off,
+// one diagnostic flight): an event query at every pass boundary, spun to
+// completion, so each pass's span is its serialised GPU cost. Off, no object
+// exists and every boundary pays one null-pointer branch.
+bool gpu_sync_timing_requested = false;
 // X3M_VOLUMETRIC_FOG=1 (default off; docs/architecture/volumetric-fog.md, "Stage 1
 // implementation"): X3M_VOLUMETRIC_FOG_STRENGTH=<tau_max> (0..0.1, default 0.02),
 // X3M_VOLUMETRIC_FOG_ANISOTROPY=<g> (0..0.9, default 0.3),
@@ -317,6 +323,10 @@ struct Device : Hooks {
     MotionCapture motion;
     MotionOutput motion_output;
     renderer::BloomPass bloom;
+    // --gpu-sync-timing boundary queries (device resources: released before Reset
+    // and at the final release like bloom's); null when off or refused.
+    std::unique_ptr<renderer::GpuSyncTiming> gpu_sync;
+    bool gpu_sync_summary_logged = false;
     ComparisonControls comparison;
     ComparisonNotice comparison_notice;
     bool comparison_report_pending = false;
@@ -865,6 +875,67 @@ void final_admission_metric(ownership::AdmissionMonitor* monitor,const char* pha
         phase,state.active_roots,state.waiting_roots,state.admitted_roots,state.promotions,
         unsigned(state.vetoes),unsigned(state.first_veto),monitor!=nullptr);
 }
+// --gpu-sync-timing (engine-frame-time.md, "GPU sync timing"). Every helper is a
+// no-op when the option is off or the device refused the event queries.
+void gpu_sync_attach(Device& ctx,IDirect3DDevice9* d) {
+    try { ctx.gpu_sync=std::make_unique<renderer::GpuSyncTiming>(); } catch (...) { log("gpu_sync_timing available=0 reason=allocation result=%08lx device=%llu event=create",E_OUTOFMEMORY,ctx.id); return; }
+    const HRESULT hr=ctx.gpu_sync->attach(d,ctx.original);
+    log("gpu_sync_timing available=%u reason=%s result=%08lx device=%llu event=create queries=%u references=%u window=%u spin_limit_ms=%u",
+        unsigned(ctx.gpu_sync->available()),ctx.gpu_sync->reason(),hr,ctx.id,ctx.gpu_sync->available()?gpu_sync_timing::boundary_count:0u,
+        ctx.gpu_sync->references(),ctx.gpu_sync->tracker().window(),renderer::GpuSyncTiming::spin_limit_ms);
+    if(!ctx.gpu_sync->available()){ctx.gpu_sync.reset();return;} // soft fail: nothing held, no per-frame work
+    ctx.motion_output.configure_gpu_sync_timing(ctx.gpu_sync.get());
+}
+unsigned gpu_sync_references(const Device& ctx) noexcept { return ctx.gpu_sync?ctx.gpu_sync->references():0u; }
+void gpu_sync_mark(Device& ctx,unsigned pass,bool begin) noexcept {
+    if(!ctx.gpu_sync)return;
+    if(begin)ctx.gpu_sync->begin(pass); else ctx.gpu_sync->end(pass);
+}
+void gpu_sync_log_summary(Device& ctx) {
+    if(!ctx.gpu_sync||ctx.gpu_sync_summary_logged)return;
+    ctx.gpu_sync_summary_logged=true;
+    const auto r=ctx.gpu_sync->summary(); const auto& s=ctx.gpu_sync->stats();
+    unsigned rows=0;
+    for(unsigned pass=0;pass<gpu_sync_timing::pass_count;++pass){
+        const auto& p=r.pass[pass].session;
+        if(!p.n&&(rows||pass+1<gpu_sync_timing::pass_count))continue; // one row at least, so the dt and counters are always reported
+        ++rows;
+        log("gpu_sync_timing_summary device=%llu pass=%s n=%u median_us=%u p90_us=%u dt_n=%u dt_median_us=%u dt_p90_us=%u windows=%llu frames=%llu syncs=%llu polls=%llu dropped_frames=%llu timeouts=%llu issue_failures=%llu data_failures=%llu available=%u reason=%s",
+            ctx.id,p.n?gpu_sync_timing::pass_name(pass):"none",p.n,p.median,p.p90,r.dt_session.n,r.dt_session.median,r.dt_session.p90,r.window,ctx.frame,
+            s.syncs,s.polls,s.dropped_frames,s.timeouts,s.issue_failures,s.data_failures,unsigned(ctx.gpu_sync->available()),ctx.gpu_sync->reason());
+    }
+}
+// The final release: the session rows, then the queries go (their device references with them).
+void gpu_sync_release(Device& ctx) {
+    if(!ctx.gpu_sync)return;
+    gpu_sync_log_summary(ctx);
+    ctx.gpu_sync->detach();
+}
+void gpu_sync_before_reset(Device& ctx) { if(ctx.gpu_sync)ctx.gpu_sync->before_reset(); }
+void gpu_sync_after_reset(Device& ctx,HRESULT hr) {
+    if(!ctx.gpu_sync)return;
+    ctx.gpu_sync->after_reset(hr);
+    if(SUCCEEDED(hr))log("gpu_sync_timing available=%u reason=%s result=%08lx device=%llu event=reset references=%u",
+        unsigned(ctx.gpu_sync->available()),ctx.gpu_sync->reason(),ctx.gpu_sync->create_result(),ctx.id,ctx.gpu_sync->references());
+}
+// After the native Present: closes the Present pair, files the frame and, per
+// completed window, one row per measured pass (window and session figures, the
+// window's Present-to-Present CPU dt of the serialised frames).
+void gpu_sync_present(Device& ctx) {
+    if(!ctx.gpu_sync)return;
+    ctx.gpu_sync->end(gpu_sync_timing::Present);
+    gpu_sync_timing::Report r;
+    if(!ctx.gpu_sync->frame(ctx.frame,&r))return;
+    unsigned rows=0;
+    for(unsigned pass=0;pass<gpu_sync_timing::pass_count;++pass){
+        const auto& p=r.pass[pass];
+        if(!p.window.n&&(rows||pass+1<gpu_sync_timing::pass_count))continue; // a window without any pass still reports its dt
+        ++rows;
+        log("gpu_sync_timing window=%llu pass=%s median_us=%u p90_us=%u n=%u wait_median_us=%u session_n=%u session_median_us=%u session_p90_us=%u dt_median_us=%u dt_p90_us=%u frames=%llu..%llu window_frames=%u dropped=%u unclosed=%u device=%llu",
+            r.window,p.window.n?gpu_sync_timing::pass_name(pass):"none",p.window.median,p.window.p90,p.window.n,p.wait_median,p.session.n,p.session.median,p.session.p90,
+            r.dt_window.median,r.dt_window.p90,r.first_frame,r.last_frame,r.frames,r.dropped,r.unclosed,ctx.id);
+    }
+}
 ULONG WINAPI release_device(IDirect3DDevice9* d) {
     CpuCallBoundary cpu;
     auto* monitor=ownership::process_admission_monitor();
@@ -891,18 +962,18 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
             if (retained) {
                 ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(1)(d);
                 const ULONG now = fn(d);
-                if (now <= ctx.motion_output.device_references() + ctx.bloom.references() + 1 + retained) ctx.motion_output.retention_before_final_release();
+                if (now <= ctx.motion_output.device_references() + ctx.bloom.references() + gpu_sync_references(ctx) + 1 + retained) ctx.motion_output.retention_before_final_release();
             }
         }
         const unsigned held = accounting
-            ? ctx.motion_output.device_references() + ctx.bloom.references() : 0;
+            ? ctx.motion_output.device_references() + ctx.bloom.references() + gpu_sync_references(ctx) : 0;
         if (held) {
             ctx.motion_output.restore_bindings();
             const ULONG count=ctx.get<ULONG (WINAPI*)(IDirect3DDevice9*)>(1)(d);
             const ULONG after=fn(d);
             if(after==held+1){
                 BloomOperation internal(ctx);
-                ctx.bloom.shutdown(); ctx.motion_output.release_resources();
+                gpu_sync_release(ctx); ctx.bloom.shutdown(); ctx.motion_output.release_resources();
                 log("motion_output_release device=%llu held=%u count=%lu released=1",ctx.id,held,count);
             }
         }
@@ -1052,7 +1123,9 @@ void compositor_pre(const X3mCompositorFrame* frame,void* storage,void*) {
     }
     call.input.boundary.admitted=true;
     const auto begin=telemetry::now();
+    gpu_sync_mark(ctx,gpu_sync_timing::Bloom,true); // --gpu-sync-timing only
     const auto prepared=ctx.bloom.prepare(call.input);
+    gpu_sync_mark(ctx,gpu_sync_timing::Bloom,false);
     if(!prepared.state_preserved)ctx.motion_output.stateblock_applied();
     if(prepared.ready){
         call.candidate=prepared.candidate;
@@ -1080,7 +1153,9 @@ void compositor_post(const X3mCompositorFrame*,void* storage,void*) {
     Device& ctx=*call.owner;
     BloomOperation internal(ctx);
     const auto begin=telemetry::now();
+    gpu_sync_mark(ctx,gpu_sync_timing::Bloom,true); // --gpu-sync-timing only: the commit adds to the prepare's span
     const auto result=ctx.bloom.commit(call.candidate,call.input.boundary);
+    gpu_sync_mark(ctx,gpu_sync_timing::Bloom,false);
     call.ready=false; // every candidate is consumed at most once
     if(!result.state_preserved)ctx.motion_output.stateblock_applied();
     if(result.committed){
@@ -1349,6 +1424,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     auto owner=devices.at(d);
     auto& ctx=*owner;
     auto fn=ctx.get<HRESULT (WINAPI*)(IDirect3DDevice9*,const RECT*,const RECT*,HWND,const RGNDATA*)>(17);
+    gpu_sync_mark(ctx,gpu_sync_timing::Present,true); // --gpu-sync-timing only: the proxy's Present work and the native Present
     if(sector_background_requested || volumetric_fog_requested)sector_background_context(ctx); // menus/loading without BeginScene
     ctx.motion_output.before_present();
     if(ctx.comparison_report_pending){comparison_log(ctx,"frame","none",true);ctx.comparison_report_pending=false;}
@@ -1380,6 +1456,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
         if(ctx.fps_overlay.draw_outcome(FAILED(overlay.operation)||FAILED(overlay.restore)))
             log("renderer_fps_overlay device=%llu frame=%llu operation=%08lx restore=%08lx drawn=%u",ctx.id,ctx.frame,overlay.operation,overlay.restore,overlay.drawn);
     }
+    gpu_sync_mark(ctx,gpu_sync_timing::Scene,false); // --gpu-sync-timing only: the whole-scene bracket ends just before the native Present
     const auto begin=telemetry::now();
     frame_phases::present_begin(); // X3M_FRAME_PHASES only: the present phase begins; same placement rule as frame_timing
     frame_timing::present_begin(); // ahead of before_original: pre-call instrumentation must not alter the native input state (cpu_state.h)
@@ -1387,6 +1464,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     const HRESULT hr=fn(d,a,b,w,r);cpu.after_original();
     frame_timing::present_end();
     frame_phases::present_end(); // X3M_FRAME_PHASES only: closes the frame at the native Present return
+    gpu_sync_present(ctx); // --gpu-sync-timing only: the Present pair, the frame's spans, one row per pass per 300 frames
     ctx.motion_output.after_present(hr);
     const bool scene_confirmed=ctx.scene_depth.end_frame(hr);
     const bool motion_committed=ctx.motion.end_frame(scene_confirmed,hr);
@@ -1529,6 +1607,7 @@ HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODE
     {
         BloomOperation internal(ctx);
         ctx.bloom.before_reset(); ctx.bloom_attempted=false;
+        gpu_sync_before_reset(ctx); // the boundary queries go before the Reset (device resources)
         ctx.motion_output.before_reset();
     }
     presentation_parameters("reset_before",ctx.id,ctx.stats.focus_window,p);
@@ -1553,6 +1632,7 @@ HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODE
     telemetry::record(ctx.stats,telemetry::Metric::Reset,telemetry::now()-begin,FAILED(hr));
     presentation_parameters("reset_after",ctx.id,ctx.stats.focus_window,p);
     ctx.motion_output.after_reset(hr);
+    gpu_sync_after_reset(ctx,hr); // recreated after a successful Reset
     lod_scale::refresh(); // the multiplier may be rewritten if the device bring-up path re-runs
     point_light_admission::next_frame(); // a Reset also retires the frame's root verdicts
     cull_census::begin_frame(false); // a Reset disarms the census stubs and drops the partial frame
@@ -1819,6 +1899,7 @@ HRESULT WINAPI begin_scene(IDirect3DDevice9* d){
     HookGuard lock;auto& ctx=*devices.at(d);
     cpu.before_original();
     const HRESULT hr=ctx.get<HRESULT(WINAPI*)(IDirect3DDevice9*)>(41)(d);cpu.after_original();
+    if(SUCCEEDED(hr)&&ctx.gpu_sync){ctx.gpu_sync->begin(gpu_sync_timing::Scene);ctx.gpu_sync->begin(gpu_sync_timing::Engine);} // --gpu-sync-timing only: the frame's first BeginScene opens both (first per frame only)
     if(SUCCEEDED(hr)&&(sector_background_requested || volumetric_fog_requested))sector_background_context(ctx,true);
     ctx.motion_output.after_begin_scene(hr);
     lod_scale::refresh(); // X3M_LOD_SCALE only: catches the bring-up write before the first frame's LOD pass
@@ -2566,6 +2647,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     { LARGE_INTEGER frequency{};QueryPerformanceFrequency(&frequency); // the frame_end clock; one read per device
       hooked.fps_overlay.configure(fps_overlay_requested,frequency.QuadPart>0?uint64_t(frequency.QuadPart):1); }
     hooked.motion_output.configure_screen_emission_timing(screen_emission_timing_requested);
+    if(gpu_sync_timing_requested)gpu_sync_attach(hooked,d); // engine-frame-time.md, "GPU sync timing": the boundary queries, or one available=0 line and nothing else
     hooked.motion_output.attach(d,hooked.original,hooked.id,hooked.caps,motion_output_requested,&hooked.stats);
     // The engine-memory reader's counters at device creation (integers only;
     // telemetry::summary repeats the line with phase=summary).
@@ -2776,6 +2858,9 @@ void initialize_log(HMODULE module) {
     // X3M_FPS_OVERLAY=1 (default off): the on-screen frame-rate line.
     fps_overlay_requested=GetEnvironmentVariableW(L"X3M_FPS_OVERLAY",setting,32)==1 && setting[0]==L'1';
     if(fps_overlay_requested)log("fps_overlay_mode requested=1 refresh_ms=250 window_ms=1000 key=ctrl_alt_f7");
+    // X3M_GPU_SYNC_TIMING=1 (default off): serialising event-query spins at the proxy's pass boundaries (one diagnostic flight).
+    gpu_sync_timing_requested=GetEnvironmentVariableW(L"X3M_GPU_SYNC_TIMING",setting,32)==1 && setting[0]==L'1';
+    if(gpu_sync_timing_requested)log("gpu_sync_timing_mode requested=1 passes=%u boundaries=%u window=%u serialises=1",gpu_sync_timing::pass_count,gpu_sync_timing::boundary_count,gpu_sync_timing::window_frames_default);
     scene_depth_capture_requested=GetEnvironmentVariableW(L"X3M_SCENE_DEPTH_CAPTURE",setting,32)==1 && setting[0]==L'1';
     finite_positions_requested=GetEnvironmentVariableW(L"X3M_FINITE_POSITIONS",setting,32)==1 && setting[0]==L'1';
     motion_capture_requested=GetEnvironmentVariableW(L"X3M_MOTION_CAPTURE",setting,32)==1 && setting[0]==L'1' &&

@@ -6,6 +6,7 @@
 #include "fog_card_match.h"
 #include "fog_pass_math.h"
 #include "fog_volume_math.h"
+#include "gpu_sync_timing_core.h"
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
@@ -129,6 +130,7 @@ struct MotionOutput {
  bool fog_everywhere_=false;std::uint64_t generation_=0,fog_transition_frame_=~std::uint64_t(0);
  struct SunFrame {bool failed=false,published=true;}sun_frame_;bool sun_lane_failed_=false;
  bool scene_open_=true,cut_finished_=false,fog_timing_=false;
+ gpu_sync_timing::Marks* gpu_sync_=nullptr; // --gpu-sync-timing off: the fog route's pair is one null-pointer branch
  unsigned fog_failures_=0,fog_logs_=0,fog_card_logs_=0;
  std::uint64_t fog_applied_frames_=0,fog_card_last_report_=0,fog_card_observed_total_=0,
  fog_card_suppressed_total_=0,fog_card_refused_total_=0,fog_card_logged_frame_=0;

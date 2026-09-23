@@ -819,6 +819,7 @@ HRESULT FogPass::execute(const FogFrame& f,FogResult* output) noexcept {
             // the capsules read RT2 at s0, the atlases at s1/s7 and the maps (s4-s5) or the grid (s4). The block Apply puts
             // back the programs, declaration, indices, vertex constants and render states; the stream tuples are restored
             // explicitly. CLIPPING and BLENDOP are set: normalize leaves clipping off and never touches the blend operation.
+            gpu_sync_timing::Span sync_span(sync_marks_,gpu_sync_timing::Motes); // --gpu-sync-timing only
             const unsigned start=calls_;HRESULT hr_m=call<SetVsFn>(SetVertexShader)(device_,mote_vs_);
             if(SUCCEEDED(hr_m))hr_m=call<SetDeclarationFn>(SetVertexDeclaration)(device_,mote_declaration_);
             if(SUCCEEDED(hr_m))hr_m=call<SetStreamFn>(SetStreamSource)(device_,0,mote_vb_,0,fog_mote_vertex_bytes);
