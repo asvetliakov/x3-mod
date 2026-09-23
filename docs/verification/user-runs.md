@@ -42,7 +42,10 @@ not rerun requests.
 <a id="53-spatial-fog-and-moving-lattice-state--ready-for-flight"></a>
 Run51/53 instructions are [archived](../archive/run53-completed-2026-09-20.md); they are not rerun requests.
 
-No run is queued. Run 76 A–D are complete; the docked-load fix (alpha test) and the TAA mask cut are on main for the Run77 candidate. Completed instructions for Runs 73-76 A are in the [archive](../archive/user-runs-completed.md).
+Run 76 A–D are complete; the docked-load fix (alpha test) and the TAA mask cut are on main for the Run77 candidate. Completed instructions for Runs 73-76 A are in the [archive](../archive/user-runs-completed.md).
+
+**Run 77 A (queued 2026-09-24 01:50): Run76 DLL `57a7830d…` unchanged. Game data: the fleet-wide merged-LOD overlay is installed in `addon/05`: 485 bodies (all 286 eligible ships, 199 stations; 106 stations left out because the engine cannot seek past 2 GB in one dat, a split across two slots follows), 1.95 GB, reusing the 22 flown-sector bodies unchanged ([record](../verification/results/lod-overlay-batch/install-fleet/install.json)).** Fly the stand command below through sectors you have not flown with an overlay: at least one Boron, one Paranid, one Split and one Teladi sector, and the Terran or Argon shipyard sector; look at stations and capital ships at a distance and across their switch for anything wrong (a wrong or stretched texture, a missing or black part, a flicker, a visible pop, a tinted panel). Two F8 bursts: one in a race sector with several stations at a distance, one at a race shipyard or dock just outside its switch. Report FPS against Run 76 A and any body that looks wrong (a screenshot with the target name is enough).
+
 
 Stand command (Run 73 A's, unchanged):
 

@@ -1,0 +1,70 @@
+{
+ "installed_at": "2026-09-24T01:44+04:00",
+ "command": [
+  "python3 tools/analysis/lod_overlay.py --batch --sync --install --replace --jobs 2  (fleet, 591 bodies, dat 2,660,660,021 B: over the engine seek limit, replaced 9 minutes later by:)",
+  "python3 tools/analysis/lod_overlay.py --batch --sync --only verification/results/lod-overlay-batch/fleet-under-2gb.txt --install --replace --jobs 2"
+ ],
+ "commit": "2c1e7dd8",
+ "slot": 5,
+ "display": "1920x1080 (reference width 1800)",
+ "rule": "ships T_class=min(200,max(80,2.5*T_1)), stations 150; aspect k capped 1.5/2.0; texel floor 0.5 area-weighted, share 0.10; light-bleed guard (max 4/255 at L = ceil(log2 texels/px) + 2, repack within 15 % scale loss else kept group); surface-share gate 0.02",
+ "files": {
+  "addon/05.cat": {
+   "sha256": "2a76277671e67e8a04d83d33467bed66ade225bc49cdbe7bf197d567c67d3635",
+   "bytes": 132332
+  },
+  "addon/05.dat": {
+   "sha256": "e1beef5414e6bb7327e70de57313d2e6f90d9fd2d9391e676d31413e4df3a511",
+   "bytes": 1949149427
+  },
+  "addon/05.x3m-lod.json": {
+   "sha256": "e57b5c2bccd087d82186414cad88829a6e10376dd1036782c58c21f95c7df158",
+   "bytes": 12259513
+  },
+  "addon/x3m-lod-batch.json": {
+   "sha256": "6a5d43a30b48cc84a4bd894f58cbd6b890f6ed6e7d44c811af4aaeb48c052970",
+   "bytes": 2042081
+  }
+ },
+ "summary": {
+  "enumerated_fleet": 2453,
+  "eligible_fleet": 591,
+  "installed": 485,
+  "ships": 286,
+  "stations": 199,
+  "dropped_stations": 106,
+  "draws_below_switch_fleet": "9819 -> 1469 (591 bodies)",
+  "draws_saved_installed": "7894 of 8350",
+  "dat_bytes": 1949149427,
+  "members": 2425,
+  "members_beyond_2_31": 0,
+  "atlas_bytes_stored": "402.64 MB",
+  "fleet_bake_seconds": 2234.0,
+  "subset_rebake_seconds": 238.4,
+  "reused": 485
+ },
+ "seek_limit": "the engine opens catalogue members with fopen + fseek(long) (loading-orchestration.md step 11); the fleet dat had 480 station members past offset 2^31; the subset keeps every body whose members fit under --cap 1,950,000,000 (fleet-under-2gb.json: all ships and others, stations ranked by draws saved per byte); the baker split across slots is in progress",
+ "record_copies": "verification/results/lod-overlay-batch/install-fleet/",
+ "game_running_at_install": false,
+ "replaces": {
+  "installed": "2026-09-24T00:24+04:00",
+  "files": {
+   "addon/05.cat": {
+    "sha256": "2fb1d3a435da4f1903a0cbe75b2e042947dcfc691e42f713b622f6059d48cec1",
+    "bytes": 6035
+   },
+   "addon/05.dat": {
+    "sha256": "d943c6e5b3daeff0c634b9c37cbba23fc6e1e8ce0fa7521750322b8542740fba",
+    "bytes": 125842199
+   },
+   "addon/05.x3m-lod.json": {
+    "sha256": "0c022b4e6a8a8ee46be49bb92e3f784f0a547ea2cbd7a55c94d71b9f3a14f517",
+    "bytes": 779868
+   },
+   "addon/x3m-lod-batch.json": {
+    "sha256": "4e0ea55112885a5fa555e82853ef4379e1ae87be832c5d6ade336dc4fcd2102e",
+    "bytes": 163123
+   }
+  }
+ }
+}
