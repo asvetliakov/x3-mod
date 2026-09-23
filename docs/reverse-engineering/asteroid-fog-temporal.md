@@ -94,7 +94,8 @@ or node flags `+0x12c` contain `0x02000000`. Otherwise define:
 - `F`: camera `+0x370`, with a minimum of 100,000,000 native coordinate units
   when the configuration integer at `*0x00606f34 + 0x768` equals 2, or
   500,000,000 when it is at least 3. Values below 2 use the camera value.
-  This field's UI setting name is not established here.
+  This field is the View Distance setting; per-class inputs, the far cull and
+  the fog-band walk are in [distance fade](distance-fade.md).
 - `D`: distance between node translation `+0xb0/+0xb4/+0xb8` and camera
   position `+0x30/+0x34/+0x38`, computed from integer differences, a
   floating squared sum, square root (`0x00412440`) and integer conversion
