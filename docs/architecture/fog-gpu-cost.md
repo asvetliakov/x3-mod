@@ -492,3 +492,26 @@ a fixed softening of fog detail near silhouettes and at cloud edges, not noise [
   sky pixels beside thin features), and cloud and shaft edges while turning (softer detail, 4x coarser lookup cells).
 - Accept when the user sees no difference at the stand and while turning, and `fog_march` drops by at least 2 ms. The
   default then flips in a later candidate, with the accepted-look hashes re-pinned.
+
+## Run 77 C (run289 scale 2, run290 scale 4; 2026-09-24): step C at 5120x1440, the rings
+
+First sessions at 5120x1440 under `--gpu-sync-timing` (medians of the per-window medians, measured;
+[triage](../../verification/results/run289-290-march-scale/)): `fog_march` 8.99 ms at scale 2 (2.0x the 1080p net,
+against 3.56x by pixels) and 2.68 ms at scale 4, a saving of 6.3 ms; `fog_composite` / `fog_repair` 1.15 / 1.16 at both;
+`fog_route` 13.59 -> 7.21; TAA stage 8.81 (mask 2.95 = tests 1.51 + x 0.68 + y 0.67, box 2.21, resolve 2.81 still /
+3.49 turning, copy 0.02 = the S1 fold at its floor); engine 7.5; serialised dt 45.9 -> 39.0 ms; the leaf-pass GPU wait
+sum 29.5 -> 23.1 ms, so the frame is GPU-bound at scale 2 and close to it at scale 4 (inferred). Needs census 205 px
+(28 ppm) at scale 2, 556 px (75 ppm) at scale 4.
+
+Look: the user reports transparent moving rings ("oil rings on water", the fog's own colour) at scale 4 only. The
+captures show no interpolation seam at the 4-px sample columns in either run (second-difference phase ratio
+0.99-1.03, no autocorrelation peak at lag 4 or 8). Inside a diagonal sky band (a light shaft, inferred) the pre-TAA
+HDR carries a lattice that changes per frame; its autocorrelation peaks are multiples of 4 px at scale 4 and of 2 px at
+scale 2 (weaker), and all lattice vectors are near-periods of the shaft-offset noise cell (`fog_density_field_inc.h`
+245-246, keyed per march cell, shifted each frame by `fog_look_math.h:107`). So the rings are the shaft-offset noise
+at 4x4-px cells, not the density upsample; the repair pass cannot reach open sky. Ranked remedies: `SHADOW_JITTER=0`
+(free, brings back the shaft comb), a per-frame jitter of the quarter grid (the resolve can integrate it since fog runs
+first, but 4 px exceeds the 3x3 clamp), scale 3 / a 4x2 target (refused by the `#error` today, ~4.0-4.5 ms), a
+bicubic or bilateral upsample (targets seams that were not found). Decision: scale 2 stays the default; Run 77 C2
+(scale 4 with and without the jitter, `--taa-debug`) decides between decoupling the noise cell from the march cell
+(key the shaft noise per 2-px or per pixel inside the scale-4 march) and a scale-3 variant.

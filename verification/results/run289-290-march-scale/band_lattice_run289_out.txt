@@ -1,0 +1,6 @@
+run289 2155->2156 band rms(clipped) 1.76e-04 background rms(clipped) 1.46e-04 clip 3.42e-04
+  autocorr peaks at lag >= 3 (value,dx,dy): (0.61,-8,8) (0.57,-12,2) (0.51,4,6) (0.46,16,4) (0.46,-16,16) (0.46,-24,4)
+run289 2156->2157 band rms(clipped) 2.44e-04 background rms(clipped) 4.69e-04 clip 7.62e-04
+  autocorr peaks at lag >= 3 (value,dx,dy): (0.41,-8,8) (0.38,-12,2) (0.38,4,6) (0.31,-4,14) (0.30,-7,8) (0.30,-16,16)
+run289 2157->2158 band rms(clipped) 1.41e-04 background rms(clipped) 2.77e-04 clip 3.18e-04
+  autocorr peaks at lag >= 3 (value,dx,dy): (0.49,-8,8) (0.43,4,6) (0.40,-12,2) (0.40,-4,14) (0.36,-7,8) (0.36,-16,16)
