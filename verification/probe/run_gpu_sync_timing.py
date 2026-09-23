@@ -47,7 +47,7 @@ def fields(line):
 
 def parse(text):
     """The fixture's report as one dictionary (also the host test's subject)."""
-    report = {'checks': [], 'softfail': [], 'windows': [], 'passes': [], 'support': None, 'stats': None, 'session': None, 'sync_cost': None,
+    report = {'checks': [], 'softfail': [], 'windows': [], 'passes': [], 'cpu_state': None, 'support': None, 'stats': None, 'session': None, 'sync_cost': None,
               'reset': None, 'device': None, 'probe': None, 'result': None}
     for line in text.splitlines():
         if line.startswith('CHECK '):
@@ -62,7 +62,7 @@ def parse(text):
         elif line.startswith('DEVICE '):
             report['device'] = line[len('DEVICE '):]
         else:
-            for tag, key in (('PROBE ', 'probe'), ('SUPPORT ', 'support'), ('STATS ', 'stats'), ('SESSION ', 'session'), ('SYNC_COST ', 'sync_cost'), ('RESET ', 'reset')):
+            for tag, key in (('PROBE ', 'probe'), ('CPUSTATE ', 'cpu_state'), ('SUPPORT ', 'support'), ('STATS ', 'stats'), ('SESSION ', 'session'), ('SYNC_COST ', 'sync_cost'), ('RESET ', 'reset')):
                 if line.startswith(tag):
                     report[key] = fields(line)
             if line.startswith('RESULT '):

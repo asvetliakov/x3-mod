@@ -128,14 +128,25 @@ class GpuSyncTimingRunner(unittest.TestCase):
 
 
 class GpuSyncTimingWiring(unittest.TestCase):
-    def test_every_pass_has_a_boundary_pair_in_production(self):
+    # Production begin / end / scoped (Span) sites per pass. Every pass has a begin and an
+    # end site (a Span is both); Engine has two ends (the hook scene end and the copy
+    # fallback), SunApply two Spans (single map, cascades), Bloom two pairs (prepare, commit).
+    SITES = {'Scene': (1, 1, 0), 'Engine': (1, 2, 0), 'ShadowDepth': (0, 0, 1), 'SunApply': (0, 0, 2), 'Retention': (0, 0, 1),
+             'FogFill': (0, 0, 1), 'FogRoute': (1, 1, 0), 'Motes': (0, 0, 1), 'Taa': (1, 1, 0), 'HdrWriteback': (1, 1, 0),
+             'Meter': (1, 1, 0), 'HdrReadback': (1, 1, 0), 'Bloom': (2, 2, 0), 'Present': (1, 1, 0)}
+
+    def test_every_pass_has_begin_and_end_sites_in_production(self):
         sources = ''.join((ROOT / path).read_text() for path in (
             'src/proxy/capture.cpp', 'src/proxy/motion_output.cpp', 'src/proxy/motion_output_fog_inc.h', 'src/renderer/hdr_pass.cpp', 'src/renderer/fog_pass.cpp'))
         names = re.findall(r'^\s+(\w+)(?: = 0)?,\s+//', CORE.read_text().split('enum Pass')[1].split('pass_count')[0], re.M)
-        self.assertEqual(len(names), 14)
+        self.assertEqual(names, list(self.SITES))
         for name in names:
-            marked = len(re.findall(rf'gpu_sync_timing::{name}\b', sources))
-            self.assertGreaterEqual(marked, 1, name)
+            begins = len(re.findall(rf'begin\(gpu_sync_timing::{name}\)|gpu_sync_timing::{name},true\)', sources))
+            ends = len(re.findall(rf'end\(gpu_sync_timing::{name}\)|gpu_sync_timing::{name},false\)', sources))
+            spans = len(re.findall(rf'Span \w+\([^;]*gpu_sync_timing::{name}\)', sources))
+            self.assertEqual((begins, ends, spans), self.SITES[name], name)
+            self.assertGreaterEqual(begins + spans, 1, name)
+            self.assertGreaterEqual(ends + spans, 1, name)
 
     def test_lifetime_and_off_cost(self):
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
@@ -147,6 +158,21 @@ class GpuSyncTimingWiring(unittest.TestCase):
         self.assertIn('gpu_sync_before_reset(ctx);', capture)
         self.assertIn('gpu_sync_after_reset(ctx,hr);', capture)
         self.assertIn('if(!ctx.gpu_sync->available()){ctx.gpu_sync.reset();return;}', capture)
+        # The failure cut-off never releases inside a pass: the owner defers, the Present hook
+        # releases under BloomOperation (no final-release accounting while a query's final
+        # Release re-enters release_device), and release() zeroes the references first.
+        present_helper = capture[capture.index('void gpu_sync_present(Device& ctx) {'):]
+        present_helper = present_helper[:present_helper.index('\n}\n')]
+        self.assertIn('{BloomOperation internal(ctx);ctx.gpu_sync->release_deferred();}', present_helper)
+        owner_source = (ROOT / 'src/renderer/gpu_sync_timing.cpp').read_text()
+        mark = owner_source[owner_source.index('void GpuSyncTiming::mark('):owner_source.index('bool GpuSyncTiming::frame(')]
+        self.assertNotIn('release()', mark)
+        self.assertIn('release_pending_ = true', mark)
+        release = owner_source[owner_source.index('void GpuSyncTiming::release()'):owner_source.index('void GpuSyncTiming::before_reset()')]
+        self.assertLess(release.index('references_ = 0;'), release.index('->Release()'))
+        # A lost device is refused before any spin; the timeout cut-off is sticky.
+        self.assertIn('native_[TestCooperativeLevel]', mark)
+        self.assertIn('if (tripped_) {', owner_source)
         present = capture[capture.index('HRESULT WINAPI present('):]
         order = [present.index(s) for s in ('gpu_sync_mark(ctx,gpu_sync_timing::Present,true);', 'gpu_sync_mark(ctx,gpu_sync_timing::Scene,false);',
                                             'const HRESULT hr=fn(d,a,b,w,r);', 'gpu_sync_present(ctx);', '++ctx.frame;')]

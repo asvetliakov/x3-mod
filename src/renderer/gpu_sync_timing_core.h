@@ -132,11 +132,12 @@ public:
     // Device Reset or release: the frame's marks go and the next dt has no predecessor.
     void clear_frame() noexcept { clear_marks(); has_last_ = false; }
     // The frame's end (after the native Present): files the closed passes and the
-    // Present-to-Present dt. True when the window is complete (take report()).
+    // Present-to-Present dt (not for an abandoned frame). True when the window is complete (take report()).
     bool frame(std::uint64_t frame_index, std::uint64_t stamp, std::uint64_t frequency) noexcept {
         if (!frames_) first_frame_ = frame_index;
         last_frame_ = frame_index; ++frames_;
-        if (has_last_ && stamp > last_ && dt_count_ < window_frames_max) {
+        // An abandoned frame files no dt either (its interval holds a failed or timed-out spin).
+        if (has_last_ && !abandoned_ && stamp > last_ && dt_count_ < window_frames_max) {
             const std::uint32_t us = ticks_to_us(stamp - last_, frequency);
             dt_[dt_count_++] = us; ++dt_hist_[bucket_of(us)]; ++dt_session_n_;
         }

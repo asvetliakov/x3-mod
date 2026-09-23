@@ -1792,6 +1792,7 @@ marked. The user: "better now?", still some visible transition, acceptable if no
   geometry as the coarse record's source ([merged-lod-feasibility.md](merged-lod-feasibility.md)).
 - No anomalies (census overflow 0, stale 0, no texture failures).
 
+<<<<<<< ours
 ## Run 270: first flight at 1920×1080 (Run 72 A, 2026-09-23)
 
 Backbuffer 1920×1080 (create_device; run269 was 1280×768). Only the first ~100 s (windows 900–2700) are free of a
@@ -1803,6 +1804,8 @@ frame. None of the full-screen passes scaled with the ×2.2 pixel count on the C
 frame is CPU-bound by draw count (inferred). GPU per-pass cost at 1080p is unmeasured (needs the GPU timer branch or a
 quiet rerun); fog measured only under contention: 675 µs p50 / 1,009 µs p90. Evidence: `verification/results/run270-defaults/`.
 
+=======
+>>>>>>> theirs
 ## GPU sync timing
 
 `--gpu-sync-timing` (`X3M_GPU_SYNC_TIMING=1`, default off, refused with `--vanilla`) measures
@@ -1819,6 +1822,7 @@ device used here supports.
   `GetData(D3DGETDATA_FLUSH)` until `S_OK`, the spin timed with `QueryPerformanceCounter`. The
   begin spin drains everything earlier, so end stamp minus begin stamp is the pass's CPU
   submission plus its GPU execution with nothing overlapping. `wait_median_us` is the end spin
+<<<<<<< ours
   alone (GPU work still pending when the CPU finished submitting).
 - **Passes**: `scene` (first `BeginScene` of the frame to just before the native Present),
   `engine` (first `BeginScene` to the scene end, the engine's own draw span; `fog_fill` and
@@ -1844,4 +1848,53 @@ device used here supports.
   null-pointer branch; nothing is added to the per-draw path.
 - **Portability**: documented D3D9 and Win32 only (event queries, `QueryPerformanceCounter`), so
   native Windows parity holds by construction; not verified on Windows.
+=======
+  alone (GPU work still pending when the CPU finished submitting). Sync floor in the X3 bottle
+  (Wine fixture, measured): an empty pair 18 us median, a pair around one 16x16 quad 264 us
+  median, so a small pass reads about 250 us of round trip; about 30 syncs per frame.
+- **Passes**: `scene` (first `BeginScene` of the frame to just before the native Present),
+  `engine` (first `BeginScene` to the scene end, the engine's own draw span), `shadow_depth`,
+  `sun_apply`, `retention`, `fog_fill` (stored-density prepare/upload), `fog_route` (the fog
+  transaction), `motes`, `taa`, `hdr_writeback` (flushes add up), `meter`, `hdr_readback`,
+  `bloom` (prepare + commit), `present` (the proxy's Present work and the native Present).
+- **Reading the spans**: nested spans include their inner pass; subtract for the exclusive cost.
+  `engine` contains `fog_fill` and `hdr_readback` (the HDR latch) and every mid-scene
+  `hdr_writeback` flush with its `meter`; `fog_route` contains `motes`; `hdr_writeback` contains
+  `meter`. `present` begins at the Present hook's entry, before `scene` ends just before the
+  native Present, so the proxy's pre-Present work (sector sample, notices, overlay) is counted in
+  both. `scene` also carries the `engine` begin sync (both begins run back to back). The
+  `shadow_depth` and `sun_apply` spans include their own per-frame log line.
+- **Side effects**: the spin runs under the recursive capture hook mutex, and inside whatever
+  CPU stamps enclose the boundary: `frame_timing` (`--frame-timing`) buckets, `fog_timing`
+  (`--volumetric-fog-timing`) and the HDR/TAA telemetry ticks include the spins, so do not read
+  those rows from a sync-timing flight. The scene-end and pre-Present drains also mean the
+  game's own queries always have results by the next frame and its simulation sees the
+  serialised frame time: engine work gated on a pending query or on frame time may behave
+  differently under this diagnostic.
+- **Rows**: per 300 frames, one `gpu_sync_timing window=… pass=… median_us=… p90_us=…` row per
+  pass measured in the window (exact nearest-rank window figures, the spin wait, the session
+  figures so far and the window's Present-to-Present CPU `dt` of the serialised frames; an
+  abandoned frame files no dt), and `gpu_sync_timing_summary` rows at the device's final release
+  (session figures from a histogram, exact below 64 us, at most 6.25 % bucket width above). A
+  process that exits without releasing the device has only the window rows. Column table:
+  [gpu-sync-timing.md](../verification/gpu-sync-timing.md).
+- **Failure and lifetime**: `CreateQuery(EVENT)` refused (support probe or part-way, partial
+  creation rolled back) logs one `gpu_sync_timing available=0 reason=…` line and drops the
+  object: no per-frame work. The frame's `scene` begin first calls the native
+  `TestCooperativeLevel`; anything but `D3D_OK` abandons the frame with no spin, and a lost
+  device's `GetData` returns `D3DERR_DEVICELOST` at once. A failed `Issue`/`GetData` or a spin
+  past the limit (500 ms, then 50 ms while the previous boundary failed) drops that frame. Four
+  consecutive failures switch the boundaries off at once; the queries are released at the end of
+  that frame's Present under `BloomOperation` (a query's final Release re-enters the hooked device
+  Release; the references are zeroed first) and recreated after the next successful Reset. Four
+  timeouts in the session latch a cut-off that no Reset lifts, so a driver that times out now and
+  then costs at most one 500 ms hitch and three 50 ms ones before it is off (one
+  `event=cutoff` line). The queries are released in `before_reset` and at the final release
+  (their device references are in the final-release accounting) and recreated after a successful
+  Reset. Each boundary runs under `PreserveCpuState` (x87/MXCSR and LastError). Off, no object
+  exists and each boundary is one null-pointer branch; nothing is added to the per-draw path.
+- **Portability**: documented D3D9 and Win32 only (event queries, `TestCooperativeLevel`,
+  `QueryPerformanceCounter`), so native Windows parity holds by construction; not verified on
+  Windows.
+>>>>>>> theirs
 - Ledger: [gpu-sync-timing.md](../verification/gpu-sync-timing.md).

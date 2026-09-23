@@ -180,14 +180,18 @@ int main() {
         if (!require("attach_available", hr == S_OK && t->available())) throw std::runtime_error("event queries unavailable on this device");
         require("references_match_device_delta", t->references() == unsigned(attached - baseline) && t->references() > 0);
         bind(d);
-        // CPU state across a boundary: LastError and MXCSR survive the sync (PreserveCpuState).
+        // CPU state across a boundary: LastError, MXCSR and the x87 control word survive the sync (PreserveCpuState).
         {
             unsigned mxcsr = 0, rounding = 0; asm volatile("stmxcsr %0" : "=m"(mxcsr));
+            unsigned short control = 0, control_after = 0; asm volatile("fnstcw %0" : "=m"(control));
             const unsigned changed = (mxcsr & ~0x6000u) | 0x6000u; asm volatile("ldmxcsr %0" :: "m"(changed));
+            const unsigned short control_changed = static_cast<unsigned short>(control ^ 0x0c00u); asm volatile("fldcw %0" :: "m"(control_changed)); // x87 rounding flipped
             SetLastError(0x13572468u);
             t->begin(gst::Retention); t->end(gst::Retention);
-            const DWORD error = GetLastError(); asm volatile("stmxcsr %0" : "=m"(rounding)); asm volatile("ldmxcsr %0" :: "m"(mxcsr));
-            require("boundary_preserves_lasterror_and_mxcsr", error == 0x13572468u && rounding == changed);
+            const DWORD error = GetLastError(); asm volatile("stmxcsr %0" : "=m"(rounding)); asm volatile("fnstcw %0" : "=m"(control_after));
+            asm volatile("ldmxcsr %0" :: "m"(mxcsr)); asm volatile("fldcw %0" :: "m"(control));
+            std::printf("CPUSTATE lasterror=%08lx mxcsr=%08x/%08x x87_cw=%04x/%04x\n", (unsigned long)error, rounding, changed, control_after, control_changed);
+            require("boundary_preserves_lasterror_mxcsr_x87cw", error == 0x13572468u && rounding == changed && control_after == control_changed);
             t->before_reset(); t->after_reset(S_OK); // drops the probe's marks (release clears the frame); the next dt has no predecessor
             require("recreate_after_probe", t->available() && t->references() == unsigned(attached - baseline) && probe(d) == attached);
         }

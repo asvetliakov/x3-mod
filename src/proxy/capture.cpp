@@ -924,6 +924,11 @@ void gpu_sync_after_reset(Device& ctx,HRESULT hr) {
 void gpu_sync_present(Device& ctx) {
     if(!ctx.gpu_sync)return;
     ctx.gpu_sync->end(gpu_sync_timing::Present);
+    if(ctx.gpu_sync->release_pending()){ // the failure cut-off tripped this frame: the queries go here, outside every pass
+        {BloomOperation internal(ctx);ctx.gpu_sync->release_deferred();} // their final Release re-enters release_device: no final-release accounting meanwhile
+        log("gpu_sync_timing available=0 reason=%s result=%08lx device=%llu event=cutoff frame=%llu timeouts=%llu issue_failures=%llu data_failures=%llu",
+            ctx.gpu_sync->reason(),ctx.gpu_sync->create_result(),ctx.id,ctx.frame,ctx.gpu_sync->stats().timeouts,ctx.gpu_sync->stats().issue_failures,ctx.gpu_sync->stats().data_failures);
+    }
     gpu_sync_timing::Report r;
     if(!ctx.gpu_sync->frame(ctx.frame,&r))return;
     unsigned rows=0;

@@ -7795,7 +7795,7 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
     // dump) then sees that this frame published nothing.
     {
     // --gpu-sync-timing only: the replay transaction's pair (its per-frame line included); nothing without a replay.
-    gpu_sync_timing::Span shadow_span(sun_shadow_enabled_ && (depth_cascades_on() || depth_replay_requested_) ? gpu_sync_ : nullptr, gpu_sync_timing::ShadowDepth);
+    gpu_sync_timing::Span shadow_span(gpu_sync_ && sun_shadow_enabled_ && (depth_cascades_on() || depth_replay_requested_) ? gpu_sync_ : nullptr, gpu_sync_timing::ShadowDepth);
     if (!sun_shadow_enabled_) {
         depth_replayed_ = 0; depth_cascade_frame_ok_ = false;
         if (depth_replay_requested_) release_depth_leases();

@@ -65,8 +65,8 @@ int main() {
     check(r.pass[g::Engine].window.n == 2 && r.pass[g::Engine].window.median == 100 && r.pass[g::Engine].window.p90 == 300, "engine spans 100/300");
     check(r.pass[g::Bloom].window.n == 2 && r.pass[g::Bloom].window.median == 40 && r.pass[g::Bloom].window.p90 == 50 && r.pass[g::Bloom].wait_median == 1, "bloom pairs add up: 30+20 and 40; waits 30 and 1");
     check(r.pass[g::Taa].window.n == 0 && r.pass[g::Motes].window.n == 0, "unclosed and stray passes not filed");
-    check(r.dt_window.n == 3 && r.dt_window.median == 10000 && r.dt_window.p90 == 16000, "dt 16000/10000/10000, the first frame has none");
-    check(r.pass[g::Scene].session.n == 3 && r.pass[g::Scene].session.median == g::bucket_value(g::bucket_of(400)) && r.dt_session.n == 3, "session so far");
+    check(r.dt_window.n == 2 && r.dt_window.median == 10000 && r.dt_window.p90 == 16000, "dt 16000/10000: the first frame has none, the abandoned frame files none");
+    check(r.pass[g::Scene].session.n == 3 && r.pass[g::Scene].session.median == g::bucket_value(g::bucket_of(400)) && r.dt_session.n == 2, "session so far");
     // Next window: counts restart; the session keeps accumulating; Reset clears the dt predecessor.
     t->clear_frame();
     for (unsigned k = 0; k < 4; ++k) {
@@ -79,7 +79,7 @@ int main() {
     check(r2.window == 2 && r2.first_frame == 10 && r2.frames == 4 && r2.dropped == 0 && r2.pass[g::Scene].window.n == 4 && r2.pass[g::Scene].window.median == 41 && r2.pass[g::Scene].window.p90 == 43,
           "second window exact");
     check(r2.dt_window.n == 3 && r2.dt_window.median == 20000, "dt after clear_frame: no predecessor");
-    check(r2.pass[g::Scene].session.n == 7 && r2.pass[g::Scene].session.median == 43 && r2.dt_session.n == 6, "session across windows (exact below 64 us)");
+    check(r2.pass[g::Scene].session.n == 7 && r2.pass[g::Scene].session.median == 43 && r2.dt_session.n == 5, "session across windows (exact below 64 us)");
     const g::Report s = t->summary();
     check(s.window == 2 && s.pass[g::Scene].session.n == 7 && s.pass[g::Scene].window.n == 0, "summary: session only");
     // Bounded arrays: frames past the window without a report never overflow.
