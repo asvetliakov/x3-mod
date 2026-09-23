@@ -1,0 +1,46 @@
+toggles [('5318', '0'), ('5587', '1'), ('5976', '0'), ('6545', '1')]
+fog rows 8822 applied Counter({'1': 8774, '0': 48}) reasons [('density_filling', 47), ('density_unprepared', 1)]
+motes_on=True applied=7936 motes=Counter({'1': 7936}) count=Counter({'2048': 7936}) calls=Counter({'12': 7936}) streak=Counter({'1': 7931, '0': 5}) shadow=Counter({'in_march': 7936}) refused=Counter({'none': 7936}) devcalls=[('336', 7936)]
+  shift_px p10/50/90/max 0.3/2.3/3.9/1730.1  cpu_us p50/p95 631.5/1112.2
+motes_on=False applied=838 motes=Counter({'0': 838}) count=Counter({'0': 838}) calls=Counter({'0': 838}) streak=Counter({'0': 838}) shadow=Counter({'none': 838}) refused=Counter({'none': 838}) devcalls=[('324', 838)]
+  shift_px p10/50/90/max 0.0/0.0/0.0/0.0  cpu_us p50/p95 564.7/737.0
+ft 1 300 on dt_p50 13563 p95 25369 draws 402 slow 12
+ft 301 600 on dt_p50 16459 p95 17850 draws 445 slow 1
+ft 601 900 on dt_p50 10795 p95 14121 draws 126 slow 7
+ft 901 1200 on dt_p50 11720 p95 12933 draws 160 slow 1
+ft 1201 1500 on dt_p50 9184 p95 12088 draws 77 slow 0
+ft 1501 1800 on dt_p50 11094 p95 15823 draws 119 slow 4
+ft 1801 2100 on dt_p50 12335 p95 14841 draws 135 slow 0
+ft 2101 2400 on dt_p50 13215 p95 15780 draws 163 slow 1
+ft 2401 2700 on dt_p50 10229 p95 15636 draws 69 slow 5
+ft 2701 3000 on dt_p50 10382 p95 13370 draws 74 slow 0
+ft 3001 3300 on dt_p50 11730 p95 14348 draws 120 slow 1
+ft 3301 3600 on dt_p50 11632 p95 14120 draws 114 slow 2
+ft 3601 3900 on dt_p50 19037 p95 23881 draws 158 slow 2
+ft 3901 4200 on dt_p50 14711 p95 27587 draws 141 slow 9
+ft 4201 4500 on dt_p50 11967 p95 14313 draws 120 slow 1
+ft 4501 4800 on dt_p50 12649 p95 15212 draws 143 slow 0
+ft 4801 5100 on dt_p50 11792 p95 15319 draws 130 slow 8
+ft 5101 5400 mixed dt_p50 11729 p95 13307 draws 130 slow 0
+ft 5401 5700 mixed dt_p50 11710 p95 13172 draws 130 slow 1
+ft 5701 6000 mixed dt_p50 11607 p95 12807 draws 130 slow 0
+ft 6001 6300 off dt_p50 11710 p95 13249 draws 130 slow 0
+ft 6301 6600 mixed dt_p50 11655 p95 13502 draws 130 slow 8
+ft 6601 6900 on dt_p50 11736 p95 15275 draws 94 slow 1
+ft 6901 7200 on dt_p50 14042 p95 17107 draws 147 slow 1
+ft 7201 7500 on dt_p50 13118 p95 15148 draws 146 slow 0
+ft 7501 7800 on dt_p50 13572 p95 16667 draws 146 slow 0
+ft 7801 8100 on dt_p50 15024 p95 18542 draws 202 slow 0
+ft 8101 8400 on dt_p50 16899 p95 19826 draws 244 slow 0
+ft 8401 8700 on dt_p50 16714 p95 19466 draws 257 slow 0
+ft 8701 9000 on dt_p50 15323 p95 18439 draws 221 slow 0
+ft 9001 9300 on dt_p50 12705 p95 14151 draws 151 slow 0
+ft 9301 9600 on dt_p50 12659 p95 16422 draws 401 slow 3
+ft 9601 9900 on dt_p50 12816 p95 16124 draws 409 slow 0
+ft 9901 10200 on dt_p50 13826 p95 16747 draws 444 slow 0
+ft 10201 10500 on dt_p50 14033 p95 16727 draws 448 slow 0
+cap 5048 {'applied': '1', 'motes': '1', 'mote_shift_px': '2.5', 'mote_streak': '1', 'cpu_us': '542.0', 'calls': '336', 'strength': '0.0200', 'density_scale': '1.000'}
+cap 5055 {'applied': '1', 'motes': '1', 'mote_shift_px': '41.0', 'mote_streak': '1', 'cpu_us': '502.3', 'calls': '336', 'strength': '0.0200', 'density_scale': '1.000'}
+cap 6411 {'applied': '1', 'motes': '0', 'mote_shift_px': '0.0', 'mote_streak': '0', 'cpu_us': '505.4', 'calls': '324', 'strength': '0.0200', 'density_scale': '1.000'}
+cap 6418 {'applied': '1', 'motes': '0', 'mote_shift_px': '0.0', 'mote_streak': '0', 'cpu_us': '528.3', 'calls': '324', 'strength': '0.0200', 'density_scale': '1.000'}
+other {'hull_emission_refused_state': 16, 'bloom_refusal': 1, 'hull_emission_refused': 16, 'emission_source_gain_refused_state': 16}

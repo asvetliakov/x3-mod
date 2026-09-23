@@ -2446,3 +2446,25 @@ written by `verification/results/fog-dust-motes/summarize.py` from the three run
   --volumetric-fog-cards replace --volumetric-fog-range stored --fog-dust-motes 2048` resolves
   `X3M_FOG_DUST_MOTES=2048,4,128`; without `--volumetric-fog-range stored` it exits 2 with
   `--fog-dust-motes requires --volumetric-fog-range stored.`
+
+## Run 264: fog dust motes in flight (2026-09-23)
+
+Run 70 B (`/tmp/x3-bottleX3-run264`, Run69 DLL `70abe438…`): the fog command with
+`--fog-dust-motes 2048` and the Ctrl+Alt+F11 toggle (4 toggles). Outputs:
+`verification/results/run264-motes/` (`log_summary.py`, `sky_blobs.py`). All measured unless
+marked. The user: no fps effect; too many (wants 30–40 % fewer); too big ("snow").
+
+- Mode row `count=2048 size=4 streak=128 RADIUS=1000 NEAR=25 MAX_PX=12 GAIN=1 SOFT=0.02
+  DRIFT=20`; 7,936 applied frames with motes on (`mote_calls=12`, 336 device calls) vs 838
+  off (324); no refusal; `mote_shift_px` p50 2.3 px; `mote_streak=0` only on the first stage
+  frame, two |delta| > R gaps and the two toggles; no cut rows.
+- **Cost:** frame time p50 11.79 ms on vs 11.71 off in the same scene (130 draws), fog cpu_us
+  +20–25 µs (inferred from spans).
+- **Look (on/off capture pair 5048/6411, sky census):** 94–112 extra mote-sized blobs, extent
+  p10/50/90 5/8/14 px and width 4/6/10 px (round discs, not streaks: the streak at 2.3 px/frame
+  is 2–9 px), peak about 1.0× the fog behind them (p90 1.3×); the design estimated ~120 motes.
+  "Snow" = disc size at the near end (12 px cap inside 333 units) and brightness, not streaks.
+- **Next (B2):** `--fog-dust-motes 1300,3` with `X3M_FOG_MOTES_MAX_PX=8` (37 % fewer, 25 %
+  smaller, near cap 8 px); `X3M_FOG_MOTES_GAIN=0.6` if still too bright; size 3 is the floor
+  (the 3×3 TAA clip argument). Open: the on frame's sky median was 12.5 % brighter than the
+  off frame's, more than the motes' coverage explains (scene/fog state difference, inferred).
