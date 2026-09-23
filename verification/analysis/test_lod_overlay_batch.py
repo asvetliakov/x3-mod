@@ -852,8 +852,49 @@ class LightBleed(unittest.TestCase):
             self.assertEqual(len(kept['extra']), len({i for f in kept['faces'] for i in f[:3]}))   # tangent records
             s = lod_atlas.summary(res)
             self.assertEqual((s['kept_light_bleed'], s['light_bleed']['remedy']), ([0], 'keep'))
-            self.assertIn('atlas light_bleed=1 kept=1', '\n'.join(lod_atlas.format_summary(s)))
+            self.assertIn('atlas light_bleed=1 counted=1 ignored=0 kept=1', '\n'.join(lod_atlas.format_summary(s)))
             self.assertEqual(len(m), len(mats) + 1)                      # one atlas material (tile 1 only)
+
+    def test_share_gate(self):
+        """--light-bleed-share: a tile over the limit counts only from share_min of the atlased surface (the
+        plan's face area, so pruning does not raise it); a smaller one is reported ignored (share, texels)
+        and the body builds exactly as with the guard off; a large one still takes the remedy."""
+        lay = self.layout()
+        rec, info = self.faces(lay)
+        self.assertEqual(lod_atlas.LIGHT_BLEED_SHARE, lod_overlay.LIGHT_BLEED_SHARE)
+        small = dict(lay, area=100.0, face_keys={}, tiles=[dict(lay['tiles'][0], area=1.0), dict(lay['tiles'][1], area=99.0)])
+        chk = lod_atlas.light_bleed(small, rec, info, self.sources, share_min=0.02)
+        a = chk['tiles'][0]
+        self.assertEqual((chk['flagged'], chk['ignored'], a['share'], a['texels']), ([], [0], 0.01, [16, 16]))
+        self.assertGreater(a['added'], lod_atlas.LIGHT_BLEED_MAX)
+        self.assertEqual(lod_atlas.light_bleed(small, rec, info, self.sources, share_min=0.01)['flagged'], [0])
+        self.assertEqual(lod_atlas.tile_share(lod_atlas.prune_layout(small, {1}), small['tiles'][0]), 0.01)
+        with tempfile.TemporaryDirectory() as folder:
+            game = make_game(folder)
+            assets, _ = lod_overlay.original_assets(game)
+            tree = bob1.parse(bob1.serialise(atlas_tree_lod0()))
+            mats, r0 = bob1.materials(tree), bob1.lods(tree)[0]
+            off = lod_atlas.build(assets, 'b', list(mats), r0, set(), 8, (64,), light_bleed_max=0)
+            m = list(mats)
+            on = lod_atlas.build(assets, 'b', m, r0, set(), 8, (64,), light_bleed_share=0.6)   # mat0: 0.537
+            b = on['light_bleed']
+            self.assertEqual(([r['mats'] for r in b['ignored']], b['flagged'], b['remedy'], b['kept']),
+                             ([[0]], [], None, []))
+            self.assertAlmostEqual(b['ignored'][0]['share'], 0.5372, places=4)
+            self.assertEqual(on['record'], off['record'])
+            self.assertEqual({k: e['sha256'] for k, e in on['encoded'].items()},
+                             {k: e['sha256'] for k, e in off['encoded'].items()})
+            s = lod_atlas.summary(on)
+            self.assertEqual(lod_overlay.bleed_fields(dict(s, kept_light_bleed_draws=0)),
+                             dict(light_bleed=1, light_bleed_counted=0, light_bleed_remedy=None, kept_light_bleed=[],
+                                  kept_light_bleed_draws=0,
+                                  light_bleed_ignored=[dict(mats=[0], level=6, share=b['ignored'][0]['share'], texels=[32, 16],
+                                                            added=b['ignored'][0]['added'])]))
+            self.assertIn('atlas light_bleed=1 counted=0 ignored=1 kept=0', '\n'.join(lod_atlas.format_summary(s)))
+            self.assertIn('ignored (under the share) mat0 L6 share 0.5372 32x16 texels', '\n'.join(lod_atlas.format_summary(s)))
+            large = lod_atlas.build(assets, 'b', list(mats), r0, set(), 8, (64,), light_bleed_share=0.5)
+            self.assertEqual((large['light_bleed']['remedy'], large['light_bleed']['kept'],
+                              large['light_bleed']['ignored']), ('keep', [0], []))
 
     def test_body_without_emitter_unchanged(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -887,11 +928,13 @@ class LightBleed(unittest.TestCase):
             self.assertEqual(sorted(record['light_bleed']['bodies']), ['ships/x/good', 'ships/x/mixed'])
             self.assertEqual(record['light_bleed']['max'], lod_atlas.LIGHT_BLEED_MAX)
             self.assertIn('light_bleed (--light-bleed-max 4: ', text)
-            self.assertIn('bodies 2, tiles 2, kept groups 2', text)
-            self.assertRegex(text, r'ships/x/good .* ELIGIBLE light_bleed=1 kept=1')
+            self.assertIn('bodies 2, tiles 2 (counted 2, ignored 0), kept groups 2', text)
+            self.assertRegex(text, r'ships/x/good .* ELIGIBLE light_bleed=1 counted=1 ignored=0 kept=1')
             self.assertIn("'kept:mat0:", (out / 'x3m-lod-batch-bodies.txt').read_text())
             row = dict(baked=by['ships/x/good'])
-            self.assertEqual(census.bleed_text(row), ' light_bleed=1 kept=1')
+            self.assertEqual(census.bleed_text(row), ' light_bleed=1 counted=1 ignored=0 kept=1')
+            self.assertEqual(record['light_bleed']['share'], lod_atlas.LIGHT_BLEED_SHARE)
+
             self.assertEqual(census.bleed_text({}), '')                  # a census-only row: nothing baked
             code, text = run(args + ['--out', str(Path(folder) / 'off'), '--screen-width', '320',
                                      '--light-bleed-max', '0'])
@@ -899,6 +942,14 @@ class LightBleed(unittest.TestCase):
             self.assertIn('light_bleed off (--light-bleed-max 0)', text)
             self.assertEqual([b.get('light_bleed') for b in record['bodies'] if b['eligible']], [None, None])
             self.assertEqual(record['settings']['atlas']['light_bleed_max'], 0)   # --sync rebuilds on a change
+            off_draws = {b['name']: b['draws'] for b in record['bodies'] if b['eligible']}
+            code, text = run(args + ['--out', str(Path(folder) / 'small'), '--screen-width', '320',
+                                     '--light-bleed-share', '0.9'])
+            by = {b['name']: b for b in json.loads((Path(folder) / 'small' / 'x3m-lod-batch.json').read_text())['bodies']}
+            self.assertEqual({n: (by[n]['light_bleed'], by[n]['light_bleed_counted'], len(by[n]['light_bleed_ignored']),
+                                  by[n]['kept_light_bleed'], by[n]['draws']) for n in off_draws},
+                             {n: (1, 0, 1, [], d) for n, d in off_draws.items()})   # no kept group: the off draws
+            self.assertIn('bodies 2, tiles 2 (counted 0, ignored 2), kept groups 0', text)
 
 
 if __name__ == '__main__':

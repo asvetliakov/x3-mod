@@ -71,7 +71,13 @@ tooling"; census: tools/analysis/atlas_census.py):
   box and against the same texels resampled from the tile's own light map alone; a tile whose
   face-area-weighted mean added Rec.709 luminance exceeds LIGHT_BLEED_MAX (4/255, absolute: the dark tiles
   at risk hold 0-1/255 of their own light, so a relative rule would flag DXT noise; laser_E's panel took
-  +21.8) is flagged light_bleed. Remedies in order: (1) repack_layout, the emitter tiles (own mean light
+  +21.8) is over the bleed limit. It counts (flagged) only when its mesh-space face-area share of the
+  atlased surface (the plan's, stable across repack and prune) is at least LIGHT_BLEED_SHARE (2 %,
+  --light-bleed-share); a smaller one is reported as light_bleed_ignored with its share and texel size and
+  takes no remedy: over the 22 Run 74 bodies the ships' flagged tiles sat mostly at L5-L8, i.e. tiles a few
+  pixels wide at the switch size, whose tint is a few pixels while their kept groups cost 9 extra draws
+  per set of ship instances, and no tint was seen in flight; laser_E's panel tile (L4) is well above the
+  share. Remedies for the counted tiles, in order: (1) repack_layout, the emitter tiles (own mean light
   above EMITTER_LUMA 16/255, not flagged) packed first in their own shelves with an empty margin of
   2^(L+1) texels (L = the highest flagged level; halved until the pack keeps the minimum texel ratio >=
   min(MIN_RATIO, the plan's own) and the atlas scale within LIGHT_BLEED_SCALE_LOSS (15 %, --light-bleed-
@@ -81,7 +87,8 @@ tooling"; census: tools/analysis/atlas_census.py):
   part and material, after the atlas groups, like the glow collapse) at the current pack (prune_layout: the
   other tiles keep their places), up to LIGHT_BLEED_ROUNDS times; a tile still flagged then is accepted
   and reported as residual. The
-  summary carries light_bleed (flagged, remedy, repack, kept, residual, after) and kept_light_bleed.
+  summary carries light_bleed (flagged = counted, ignored, remedy, repack, kept, residual, after) and
+  kept_light_bleed.
   light_bleed_max 0 (lod_overlay --light-bleed-max 0) turns the guard off.
 - Bump: the shipped bump maps are swizzled tangent-space normal maps (DXT5, x in alpha,
   y in R = G = B, z implied; bump_maps_out.txt). They are decoded to unit vectors,
@@ -165,6 +172,7 @@ LIGHT_BLEED_MAX = 4.0      # light_bleed: mean added Rec.709 luminance (0..255) 
 EMITTER_LUMA = 16.0        # light_bleed repack: a tile whose own mean light luminance (0..255) exceeds this is an emitter
 LIGHT_BLEED_ROUNDS = 3     # light_bleed: keep rounds
 LIGHT_BLEED_SCALE_LOSS = 0.15   # light_bleed repack: the largest relative drop of the atlas scale a repack may cost
+LIGHT_BLEED_SHARE = 0.02   # light_bleed: a tile over the limit counts for the remedy only from this atlased-surface share
 LUMA_709 = np.array((0.2126, 0.7152, 0.0722))
 BARY7 = np.array([(1 / 3, 1 / 3, 1 / 3), (.6, .2, .2), (.2, .6, .2), (.2, .2, .6), (.8, .1, .1), (.1, .8, .1),
                   (.1, .1, .8)])   # light_bleed sample points per face (barycentric)
@@ -1253,14 +1261,26 @@ def _box3(img):
     return sum(q[dy:dy + h, dx:dx + w] for dy in range(3) for dx in range(3)) / 9.0
 
 
-def light_bleed(layout, record, info, sources, bleed_max=LIGHT_BLEED_MAX, widen_levels=WIDEN_LEVELS):
+def tile_share(layout, t):
+    """Mesh-space face-area share of tile `t` over the layout's atlased surface as planned (layout 'area',
+    kept by repack_layout and prune_layout, so a pruned tile's share does not grow); the tile's 'share'
+    when the layout carries no areas, None without either."""
+    if t.get('area') is not None and layout.get('area'):
+        return t['area'] / layout['area']
+    return t.get('share')
+
+
+def light_bleed(layout, record, info, sources, bleed_max=LIGHT_BLEED_MAX, widen_levels=WIDEN_LEVELS,
+                share_min=0.0):
     """Per tile of `layout` (rewritten `record`, its rewrite info, per-tile float light sources as
     tile_sources): at L = light_level(tile ratio), the Rec.709 luminance (0..255) of the tile-aware light
     atlas level L (bake_level) around 7 barycentric samples per face (the level-L texel holding the sample
     and a +-1 texel box, the GPU's bilinear and widened footprint) against the same texels resampled from
     the tile's own repeating light map alone (the source at the equivalent level, no neighbour). 'added'
     = face-area-weighted mean of max(0, atlas box - own box); 'own' = mean of the own box (the tile's
-    light); flagged when added > bleed_max. Tiles without a ratio or faces are not checked (level None)."""
+    light); over when added > bleed_max, and then flagged (counted for the remedy) when the tile's share
+    (tile_share; None counts) is at least share_min, else ignored. Rows carry share and texels (content
+    width, height at level 0). Tiles without a ratio or faces are not checked (level None)."""
     n, g = layout['size'], layout['gutter']
     pts = record['points']
     uv_of = lambda j: point_uv(pts[j])
@@ -1272,7 +1292,7 @@ def light_bleed(layout, record, info, sources, bleed_max=LIGHT_BLEED_MAX, widen_
         L, faces = light_level(t.get('ratio'), n, widen_levels), by_tile.get(ti)
         row = dict(tile=ti, mats=list(t['mats']), name=(t['names'].get('diffuse') or b'').decode('latin1'),
                    light=(t['names'].get('light') or b'').decode('latin1'), level=L, own=None, added=None,
-                   flagged=False)
+                   share=_num(tile_share(layout, t)), texels=list(t['content']), flagged=False, ignored=False)
         rows.append(row)
         if L is None or not faces:
             row['level'] = None
@@ -1305,9 +1325,12 @@ def light_bleed(layout, record, info, sources, bleed_max=LIGHT_BLEED_MAX, widen_
         w = area / area.sum()
         row['own'] = round(float((own.mean(1) * w).sum()), 3)
         row['added'] = round(float((np.maximum(0.0, got - own).mean(1) * w).sum()), 3)
-        row['flagged'] = row['added'] > bleed_max
-    return dict(tiles=rows, flagged=[r['tile'] for r in rows if r['flagged']], max=bleed_max,
-                widen_levels=widen_levels)
+        if row['added'] > bleed_max:
+            small = row['share'] is not None and row['share'] < share_min
+            row['flagged'], row['ignored'] = not small, small
+    return dict(tiles=rows, flagged=[r['tile'] for r in rows if r['flagged']],
+                ignored=[r['tile'] for r in rows if r['ignored']], max=bleed_max, widen_levels=widen_levels,
+                share_min=share_min)
 
 
 def repack_layout(layout, emit, pad, min_ratio=MIN_RATIO, max_loss=LIGHT_BLEED_SCALE_LOSS):
@@ -1554,9 +1577,10 @@ def prune_layout(layout, keep):
 
 def guard_bleed(assets, body, mats, record, alpha, px, sizes, specular, synth, bump, max_group_points, textures,
                 bleed_max=LIGHT_BLEED_MAX, widen_levels=WIDEN_LEVELS, emitter_luma=EMITTER_LUMA,
-                rounds=LIGHT_BLEED_ROUNDS, scale_loss=LIGHT_BLEED_SCALE_LOSS):
+                rounds=LIGHT_BLEED_ROUNDS, scale_loss=LIGHT_BLEED_SCALE_LOSS, share_min=LIGHT_BLEED_SHARE):
     """collapse with the light-atlas bleed guard: (result, report). After the layout, light_bleed checks
-    every tile; flagged tiles are remedied in this order of cost: (1) repack_layout with the emitter tiles
+    every tile; a tile over the limit below share_min of the atlased surface is only reported (ignored, from
+    the first check); with none counted the result is the unguarded collapse. Flagged tiles are remedied in this order of cost: (1) repack_layout with the emitter tiles
     (own light above emitter_luma, not flagged) in their own region and a 2^(L+1)-texel empty margin (L =
     the highest flagged level; halved as needed), accepted only when the atlas scale drops by at most
     scale_loss and fewer tiles are flagged afterwards; (2) every tile still flagged keeps its materials as
@@ -1574,7 +1598,7 @@ def guard_bleed(assets, body, mats, record, alpha, px, sizes, specular, synth, b
         if 'light' not in r['slots']:
             return r, None
         return r, light_bleed(r['layout'], r['record'], r['info'], tile_sources(r['layout'], r['textures'], 'light'),
-                              bleed_max, widen_levels)
+                              bleed_max, widen_levels, share_min)
     res, chk = run()
     first = chk
     for rnd in range(rounds + 1):
@@ -1603,8 +1627,8 @@ def guard_bleed(assets, body, mats, record, alpha, px, sizes, specular, synth, b
     remedy = (None if not flagged else 'residual' if chk['flagged'] else
               'keep+repack' if keep and repack else 'keep' if keep else 'repack')
     report = dict(max=bleed_max, widen_levels=widen_levels, emitter_luma=emitter_luma, scale_loss=scale_loss,
-                  checked=sum(1 for r in first['tiles'] if r['level'] is not None) if first else 0,
-                  flagged=flagged, remedy=remedy, repack=repack, kept=sorted(keep),
+                  share_min=share_min, checked=sum(1 for r in first['tiles'] if r['level'] is not None) if first else 0,
+                  flagged=flagged, ignored=[r for r in first['tiles'] if r['ignored']] if first else [], remedy=remedy, repack=repack, kept=sorted(keep),
                   residual=[r for r in chk['tiles'] if r['flagged']] if chk else [],
                   tiles=chk['tiles'] if chk else [])
     return res, report
@@ -1612,14 +1636,14 @@ def guard_bleed(assets, body, mats, record, alpha, px, sizes, specular, synth, b
 
 def build(assets, body, mats, record, alpha, px, sizes=(1024, 2048), fmt='dxt', specular=False, synth=True,
           bump=True, max_group_points=None, textures=None, light_bleed_max=LIGHT_BLEED_MAX,
-          widen_levels=WIDEN_LEVELS, light_bleed_scale_loss=LIGHT_BLEED_SCALE_LOSS):
+          widen_levels=WIDEN_LEVELS, light_bleed_scale_loss=LIGHT_BLEED_SCALE_LOSS, light_bleed_share=LIGHT_BLEED_SHARE):
     """collapse (with the light-bleed guard unless light_bleed_max is falsy) + bake + encode + check; the
     result carries the encoded DDS per slot, the checks and 'light_bleed' (guard_bleed's report)."""
     textures = textures or Textures(assets)
     if light_bleed_max:
         res, bleed = guard_bleed(assets, body, mats, record, alpha, px, sizes, specular, synth, bump,
                                  max_group_points, textures, light_bleed_max, widen_levels,
-                                 scale_loss=light_bleed_scale_loss)
+                                 scale_loss=light_bleed_scale_loss, share_min=light_bleed_share)
     else:
         res, bleed = collapse(assets, body, mats, record, alpha, px, sizes, specular, synth, bump=bump,
                               max_group_points=max_group_points, textures=textures), None
@@ -1691,16 +1715,16 @@ def texel_floor(rows, min_texels, floor_share):
 
 
 def bleed_summary(b):
-    """JSON-ready light_bleed report (guard_bleed): the flagged tiles of the first check, the remedy, the
-    kept materials, the residual tiles and the final check's rows of the flagged tiles' materials ('after');
+    """JSON-ready light_bleed report (guard_bleed): the flagged (counted) and ignored (under share_min)
+    tiles of the first check, the remedy, the kept materials, the residual tiles and the final check's rows of the flagged tiles' materials ('after');
     None when the guard was off."""
     if b is None:
         return None
-    row = lambda r: {k: r[k] for k in ('tile', 'mats', 'name', 'light', 'level', 'own', 'added')}
+    row = lambda r: {k: r.get(k) for k in ('tile', 'mats', 'name', 'light', 'level', 'own', 'added', 'share', 'texels')}
     hit = {m for f in b['flagged'] for m in f['mats']}
     return dict(max=b['max'], widen_levels=b['widen_levels'], emitter_luma=b['emitter_luma'], checked=b['checked'],
-                scale_loss=b.get('scale_loss'),
-                flagged=[row(r) for r in b['flagged']], remedy=b['remedy'], repack=b['repack'], kept=b['kept'],
+                scale_loss=b.get('scale_loss'), share_min=b.get('share_min'),
+                flagged=[row(r) for r in b['flagged']], ignored=[row(r) for r in b.get('ignored', [])], remedy=b['remedy'], repack=b['repack'], kept=b['kept'],
                 residual=[row(r) for r in b['residual']], after=[row(r) for r in b['tiles'] if set(r['mats']) & hit])
 
 
@@ -1756,11 +1780,17 @@ def format_summary(s):
     if b:
         mats_ = lambda r: 'mat' + '/'.join(str(m) for m in r['mats'])
         rp = b.get('repack')
-        lines.append(f'atlas light_bleed={len(b["flagged"])} kept={len(b["kept"])}: {b["checked"]} tiles checked at'
+        ign = b.get('ignored') or []
+        tile_ = lambda r: (f'{mats_(r)} L{r["level"]}'
+                           + (f' share {r["share"]:.4f}' if r.get('share') is not None else '')
+                           + (f' {r["texels"][0]}x{r["texels"][1]} texels' if r.get('texels') else '')
+                           + f' own {r["own"]:.1f} +{r["added"]:.1f}')
+        lines.append(f'atlas light_bleed={len(b["flagged"]) + len(ign)} counted={len(b["flagged"])} ignored={len(ign)}'
+                     f' kept={len(b["kept"])}: {b["checked"]} tiles checked at'
                      f' L = ceil(log2 texels/px) + {b["widen_levels"]}, flagged above {b["max"]:g}/255 mean added'
                      ' luminance'
-                     + ('; flagged ' + ', '.join(f'{mats_(r)} L{r["level"]} own {r["own"]:.1f} +{r["added"]:.1f}'
-                                                 for r in b['flagged']) + f'; remedy {b["remedy"]}'
+                     + (f', counted from share {b["share_min"]:g}' if b.get('share_min') is not None else '')
+                     + ('; flagged ' + ', '.join(tile_(r) for r in b['flagged']) + f'; remedy {b["remedy"]}'
                         if b['flagged'] else '')
                      + (f' (emitters mat{rp["emitters"]} in their own region, margin {rp["pad"]} texels, L'
                         f' {rp["level"]}, scale {rp["scale_before"]:.4f} -> {rp["scale"]:.4f}, min texels/px'
@@ -1768,6 +1798,7 @@ def format_summary(s):
                      + (f'; kept as own groups {["mat%d" % m for m in b["kept"]]}' if b['kept'] else '')
                      + ('; after ' + ', '.join(f'{mats_(r)} +{r["added"]:.1f}' for r in b['after'])
                         if b.get('after') else '')
+                     + ('; ignored (under the share) ' + ', '.join(tile_(r) for r in ign) if ign else '')
                      + (f'; RESIDUAL {len(b["residual"])} tiles' if b['residual'] else ''))
     x = s.get('texel')
     if x:

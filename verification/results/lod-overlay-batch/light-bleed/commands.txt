@@ -10,3 +10,18 @@ laser_E (the --only file holds the one body name):
   the two runs' summary lines (atlas sizes, draws, light_bleed, timing) -> batch_totals_out.txt
 Default --light-bleed-scale-loss 0.15 in the ON runs. Wall time (time): off 1:45.9, on 2:05.2; baking 92.0 s -> 108.5 s with 2 jobs (on run shared the host with another agent's tool run).
 The off run's dat bytes (127,449,546) equal the installed Run 74 overlay's (install-run74/install.json).
+The outputs above were renamed *_v1 (light_bleed_22_out_v1.txt, batch_totals_out_v1.txt, laser_E_out_v1.txt).
+
+Surface-share gate (--light-bleed-share, default 0.02), 2026-09-24, dry runs only (no --install, no Wine;
+game dir read-only). Base 638b19ad plus the uncommitted gate change. A tile over the limit counts for the
+remedy only when its mesh-space face-area share of the atlased surface (the plan's) is >= 0.02; smaller
+ones are reported light_bleed_ignored with share and texel size.
+  python3 tools/analysis/lod_overlay.py --batch --only verification/results/lod-overlay-batch/sectors.txt --dry-run --display 1920x1080 --jobs 2 --light-bleed-max 0 --out <scratch>/b22off
+  python3 tools/analysis/lod_overlay.py --batch --only verification/results/lod-overlay-batch/sectors.txt --dry-run --display 1920x1080 --jobs 2 --out <scratch>/b22share
+  python3 compare_light_bleed.py <scratch>/b22off <scratch>/b22share light_bleed_22_out_v1.txt > light_bleed_22_out.txt
+  the two runs' summary lines -> batch_totals_out.txt; laser_E's plan and guard lines from b22share's -bodies.txt -> laser_E_out.txt
+The off run's dat bytes (127,449,546) again equal the installed Run 74 overlay's. Draws below the switch
+67 (off) -> 76 (v1 guard) -> 68 (share gate); atlas bytes 14.86 -> 12.67 (v1) -> 13.26 MB; 53 tiles over
+the limit on 16 bodies, 16 counted on 10 bodies, 37 ignored; one kept group (argon_M2 mat17, counted in a
+later round after the repack). Wall time: baking 96.8 s (off), 93.7 s (share) with 2 jobs; another agent's
+Wine fixture shared the host.

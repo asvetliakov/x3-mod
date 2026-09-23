@@ -799,6 +799,16 @@ Rule (`lod_atlas.guard_bleed`, run by `build`; `--light-bleed-max Y`, default 4,
 - A tile is flagged `light_bleed` when its face-area-weighted mean added Rec.709 luminance
   exceeds Y/255. The threshold is absolute: the tiles at risk hold 0–1/255 of their own light,
   so a relative rule would flag DXT noise.
+- Surface-share gate (2026-09-24, `--light-bleed-share S`, default 0.02): a tile over the limit
+  counts for the remedies only when its mesh-space face area is at least S of the atlased
+  surface (the plan's area, so pruning a kept tile does not raise the others' shares). A smaller
+  tile is reported as `light_bleed_ignored` with its share and texel size and gets no remedy.
+  Reason: the v1 guard kept 9 groups on six ships, one extra draw per kept material per ship
+  instance, for tiles mostly checked at L5–L8 (for example `argon_M1` mat28 L7, `Argon_M7`
+  mat30/mat31 L6–L7, `Argon_m7m` mat7/mat8 L6–L7). A tile at such a level is a few pixels wide
+  at the switch size, so its tint covers a few pixels, and the user saw no tint on ships in
+  flight. laser_E's panel tile (mat31, L4) holds 6.6 % of its body's atlased surface and still
+  counts. Only counted tiles set the repack level L and take remedy 2.
 - Remedy 1, repack: the emitter tiles (own mean light above 16/255, not flagged) are packed
   first in their own shelves. Each gets an empty margin of 2^(L+1) texels, with L the highest
   flagged level. The margin is background, not gutter, because the gutter repeats the emitter.
@@ -813,8 +823,11 @@ Rule (`lod_atlas.guard_bleed`, run by `build`; `--light-bleed-max Y`, default 4,
   current pack (`prune_layout`; the freed area turns background), so no tile gains a new
   neighbour. This repeats for up to 3 rounds; a tile still flagged after that is accepted and
   reported as residual. Remedy 1 is preferred over remedy 2 per flagged tile.
-- Output: the batch rows print `light_bleed=<tiles> kept=<materials>`. The summary lists the
-  affected bodies, and the record carries `light_bleed.bodies` and per-body `light_bleed`,
+- Output: the batch rows print `light_bleed=<tiles> counted=<tiles> ignored=<tiles>
+  kept=<materials>`, and the per-tile report gives L, share, tile size in texels, own light and
+  the added luminance. The summary lists the affected bodies, and the record carries
+  `light_bleed.bodies` (and `light_bleed.share`) and per-body `light_bleed` (tiles over the
+  limit), `light_bleed_counted`, `light_bleed_ignored` (mats, level, share, texels, added),
   `kept_light_bleed`, `kept_light_bleed_draws` and `light_bleed_remedy`. The census does not
   bake, so its own rows carry no guard columns.
 
@@ -835,6 +848,20 @@ Dry runs over the Run 74 set (`--only verification/results/lod-overlay-batch/sec
   at 1024². Stored atlas bytes went from 14.86 to 12.67 MB and dat bytes from 127,449,546 to
   125,263,525. Baking took 92.0 s before and 108.5 s after (2 jobs, host shared with another
   agent's run). With the guard off, the dat bytes equal the installed Run 74 overlay's.
+  These v1 outputs are kept as `*_v1.txt`.
+- With the surface-share gate (default 0.02; `light_bleed_22_out.txt`): the same 53 tiles on 16
+  bodies are over the limit; 16 tiles on 10 bodies count and 37 are ignored. Ignored shares
+  range from 0.00003 to 0.0137 (largest: `Argon_m7m` mat20, then laser_E mat26 at 0.0134). The
+  bodies with only ignored tiles match the guard-off run in draws, atlas and member bytes and
+  minimum texel ratio (`Argon_M7`, `Split_M7M`,
+  `military_outpost_middleb`, `argon_equipmentdock`, `argon_tech_M_laser_G`,
+  `argon_trading_station_partA`). One kept group remains: `argon_M2` mat17, counted in a later
+  round after the repack. Draws below the switch: 67 (off) → 76 (v1) → 68. Stored atlas bytes
+  14.86 → 12.67 (v1) → 13.26 MB. Minimum texel ratio with the gate: M1 3.10, M2 3.44 (v1 2.79),
+  TL 2.76, M7 4.56 (unchanged from off), m7m 3.04, Split_M7M 2.86 (unchanged), laser_E 2.18.
+  laser_E is unchanged from v1 apart from the report: mat31 counted (share 0.0655, 20×20
+  texels, +21.8), mat21 and mat26 ignored; repack with a 4-texel margin, after mat31 +0.2,
+  3 draws.
 
 **Fleet batch census (2026-09-23; `tools/analysis/lod_batch_census.py`, read-only).** Over
 all 1635 winning `BOB1` bodies (installed `addon/05` skipped) it runs the atlas collapse's own

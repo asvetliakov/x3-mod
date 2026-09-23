@@ -272,12 +272,15 @@ def fallback_text(fb):
 
 
 def bleed_text(r):
-    """' light_bleed=<flagged tiles> kept=<kept materials>' of a baked batch row (lod_overlay.bleed_fields);
-    '' for a census-only row (the census does not bake, so it cannot run the check)."""
+    """' light_bleed=<tiles over the limit> counted=<remedied> ignored=<under the share> kept=<kept
+    materials>' of a baked batch row (lod_overlay.bleed_fields; a row without the share split counts every
+    tile); '' for a census-only row (the census does not bake, so it cannot run the check)."""
     b = r.get('baked') or {}
     if 'light_bleed' not in b:
         return ''
-    return f' light_bleed={b["light_bleed"]} kept={len(b["kept_light_bleed"])}'
+    ign = len(b.get('light_bleed_ignored') or [])
+    return (f' light_bleed={b["light_bleed"]} counted={b.get("light_bleed_counted", b["light_bleed"] - ign)}'
+            f' ignored={ign} kept={len(b["kept_light_bleed"])}')
 
 
 def aspect_text(r):
