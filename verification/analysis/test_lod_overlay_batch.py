@@ -4,7 +4,8 @@ ambiguous-extension refusals, trailing bytes, the
 mixed-effects split, the second UV set with an occlusion decal, negative material indices,
 qualified atlas names, tex/ jpg textures, the display-derived width, marker validation and
 orphans, --sync reuse with slot retirement, the addon/mods warning, and the area-weighted texel floor
-with the clamped layout (span-clamped outlier faces, texel_clamped tiles)."""
+with the clamped layout (span-clamped outlier faces, texel_clamped tiles), and the 2^31 - 1 dat limit with
+the multi-slot split (--max-dat-bytes), cross-slot reuse, rollback, shrink and an orphaned slot."""
 import contextlib
 import copy
 import gzip
@@ -602,6 +603,203 @@ class BatchRun(unittest.TestCase):
                 slot=1, bodies=[], overlay_sha256={'cat': h[str(game / 'addon/01.cat')], 'dat': h[str(game / 'addon/01.dat')]})))
             with self.assertRaisesRegex(SystemExit, 'already installed'):
                 run(['--game', str(game), '--dry-run', '--collapse', 'two', 'ships/x/good=8@0'])
+
+
+class Big:
+    """A member payload that only reports its length (no memory for the 2^31 cases)."""
+    def __init__(self, n):
+        self.n = n
+
+    def __len__(self):
+        return self.n
+
+
+class MultiSlot(unittest.TestCase):
+    """--max-dat-bytes: the hard 2^31 - 1 refusal, the split over consecutive slots with every body's members in
+    one archive, --sync reuse across slots, rollback of every slot, shrinking and an orphaned slot."""
+
+    def test_pack_and_slot_plan(self):
+        body = lambda name, *sizes: dict(name=name, members=[(f'{name}/{i}', Big(n)) for i, n in enumerate(sizes)])
+        packs = lod_overlay.pack_slots([body('a', 60, 30), body('b', 20), body('c', 50, 1), body('d', 40)], 100)
+        self.assertEqual([[p['name'] for p in g] for g in packs], [['a'], ['b', 'c'], ['d']])
+        with self.assertRaisesRegex(SystemExit, 'more than --max-dat-bytes 100'):
+            lod_overlay.pack_slots([body('a', 60, 41)], 100)
+        limit = lod_overlay.DAT_LIMIT
+        self.assertEqual(limit, 2147483647)
+        # a --max-dat-bytes above 2^31 - 1 is clamped: the split happens at the limit
+        self.assertEqual(len(lod_overlay.pack_slots([body('a', limit // 2 + 1), body('b', limit // 2 + 1)],
+                                                    2 * limit)), 2)
+        self.assertEqual(len(lod_overlay.pack_slots([body('a', limit // 2 + 1), body('b', limit // 2 + 1)],
+                                                    lod_overlay.MAX_DAT_BYTES)), 2)
+        with self.assertRaisesRegex(SystemExit, r'more than 2\^31 - 1 = 2147483647 in one archive'):
+            lod_overlay.pack_slots([body('a', limit, 1)], 2 * limit)
+        with self.assertRaisesRegex(SystemExit, r'addon/05\.dat would be 2147483648 bytes'):  # the real slot number
+            lod_overlay.check_dat_limit(5, [('x', Big(limit + 1))])
+        # (prev live slots, nxt, count, start) -> (new, replaced, retired, removed)
+        plan = lod_overlay.slot_plan
+        self.assertEqual(plan([2, 3], 4, 2, 2), ([2, 3], [2, 3], [], []))
+        self.assertEqual(plan([2, 3], 4, 1, 2), ([2], [2], [], [3]))            # shrink: 03 removed
+        self.assertEqual(plan([2], 3, 3, 2), ([2, 3, 4], [2], [], []))          # grow
+        self.assertEqual(plan([2], 4, 2, 4), ([4, 5], [], [2], []))             # a mod above: retire
+        self.assertEqual(plan([2, 4], 5, 1, 4), ([4], [4], [2], []))            # 03 orphaned by a mod
+        self.assertEqual(plan([], 5, 2, 5), ([5, 6], [], [], []))
+        with self.assertRaisesRegex(SystemExit, 'stop at 99'):
+            plan([], 99, 2, 99)
+
+    @unittest.mock.patch.object(lod_overlay, 'running_game', return_value=[])
+    def test_hard_limit_refuses_whatever_the_option(self, _running):
+        with tempfile.TemporaryDirectory() as folder:
+            game, out = make_game(folder), Path(folder) / 'out'
+            with unittest.mock.patch.object(lod_overlay, 'DAT_LIMIT', 1000):    # stands in for 2^31 - 1
+                with self.assertRaisesRegex(SystemExit, r'more than 2\^31 - 1 = 1000 in one archive; nothing written'):
+                    run(BATCH + ['--game', str(game), '--out', str(out), '--max-dat-bytes', str(10 ** 12)])
+                with self.assertRaisesRegex(SystemExit, r'more than 2\^31 - 1 = 1000'):
+                    run(BATCH + ['--game', str(game), '--install', '--max-dat-bytes', str(10 ** 12)])
+            with unittest.mock.patch.object(lod_overlay, 'DAT_LIMIT', 10):
+                with self.assertRaisesRegex(SystemExit, r'above 2\^31 - 1 = 10 '):     # single-body mode too
+                    run(['--game', str(game), '--out', str(out), '--collapse', 'two', '--max-dat-bytes',
+                         str(10 ** 12), 'ships/x/good=8@0'])
+            self.assertFalse(out.exists())                                   # no record, no archive
+            self.assertEqual(sorted(p.name for p in (game / 'addon').iterdir()), ['01.cat', '01.dat'])
+
+    @unittest.mock.patch.object(lod_overlay, 'running_game', return_value=[])
+    def test_marker_without_overlay_slots(self, _running):
+        """The installed bottle's shape: a single-slot marker written before overlay_slots existed is a valid
+        one-slot overlay; --sync --install reuses its bodies and grows to two slots, and a failed second write
+        restores it byte for byte."""
+        with tempfile.TemporaryDirectory() as folder:
+            game = make_game(folder)
+            addon = game / 'addon'
+            run(BATCH + ['--game', str(game), '--install'])
+            old = json.loads((addon / '02.x3m-lod.json').read_text())
+            old.pop('overlay_slots')
+            (addon / '02.x3m-lod.json').write_text(json.dumps(old))
+            self.assertEqual([(m['slot'], m['status'], m['overlay_slots']) for m in lod_overlay.installed_markers(game)],
+                             [(2, 'valid', [2])])
+            sizes = [sum(m['bytes'] for m in b['members']) for b in old['bodies']]
+            cap = str(-(-sum(sizes) // 2) + max(sizes))
+            state = {p.name: p.read_bytes() for p in addon.iterdir()}
+            real, calls = lod_overlay.write_catalogue, []
+
+            def failing(cat, members):
+                calls.append(cat.name)
+                if len(calls) == 2:
+                    raise OSError('disk full')
+                return real(cat, members)
+            with unittest.mock.patch.object(lod_overlay, 'write_catalogue', failing):
+                with self.assertRaisesRegex(OSError, 'disk full'):
+                    run(BATCH + ['--sync', '--game', str(game), '--install', '--max-dat-bytes', cap])
+            self.assertEqual(calls, ['02.cat', '03.cat'])
+            self.assertEqual({p.name: p.read_bytes() for p in addon.iterdir()}, state)   # incl. the record
+            code, text = run(BATCH + ['--sync', '--game', str(game), '--install', '--max-dat-bytes', cap])
+            self.assertIn('built 0 + reused 9 = 9', text)
+            self.assertIn('target addon/02.cat + .dat .. addon/03 (2 slots', text)
+            self.assertEqual([(m['slot'], m['status'], m['overlay_slots']) for m in lod_overlay.installed_markers(game)],
+                             [(2, 'valid', [2, 3]), (3, 'valid', [2, 3])])
+            self.assertEqual({b.get('reused_from') for s in (2, 3)
+                              for b in json.loads((addon / f'{s:02d}.x3m-lod.json').read_text())['bodies']}, {2})
+            self.assertEqual(sorted(addon.glob('*.x3m-replaced')), [])
+
+    @unittest.mock.patch.object(lod_overlay, 'running_game', return_value=[])
+    def test_split_reuse_rollback_shrink_orphan(self, _running):
+        with tempfile.TemporaryDirectory() as folder:
+            game = make_game(folder)
+            code, text = run(BATCH + ['--game', str(game), '--out', str(Path(folder) / 'one')])
+            one = json.loads((Path(folder) / 'one/addon/02.x3m-lod.json').read_text())
+            sizes = [sum(m['bytes'] for m in b['members']) for b in one['bodies']]     # plan order
+            cap = -(-sum(sizes) // 2) + max(sizes)
+            self.assertLess(cap, sum(sizes))
+            # a --max-dat-bytes above the limit splits at the limit, with a note
+            with unittest.mock.patch.object(lod_overlay, 'DAT_LIMIT', cap):
+                code, text = run(BATCH + ['--game', str(game), '--out', str(Path(folder) / 'clamp'),
+                                          '--max-dat-bytes', str(10 ** 12)])
+            self.assertIn(f'is above 2^31 - 1; the overlay is split at {cap}', text)
+            self.assertIn(f'(2 slots, dat cap {cap})', text)
+            # (b) split over two consecutive slots, installed
+            code, text = run(BATCH + ['--game', str(game), '--install', '--max-dat-bytes', str(cap)])
+            self.assertEqual(code, 0)
+            self.assertIn('target addon/02.cat + .dat .. addon/03 (2 slots', text)
+            addon = game / 'addon'
+            markers = lod_overlay.installed_markers(game)
+            self.assertEqual([(m['slot'], m['status'], m['overlay_slots']) for m in markers],
+                             [(2, 'valid', [2, 3]), (3, 'valid', [2, 3])])
+            record = json.loads((addon / 'x3m-lod-batch.json').read_text())
+            self.assertEqual([r['slot'] for r in record['slots']], [2, 3])
+            seen = []
+            for m, row in zip(markers, record['slots']):
+                members = cat_members(addon / f'{m["slot"]:02d}.cat')
+                names = [b['name'] for b in m['manifest']['bodies']]
+                seen += names
+                want = {x['path'] for b in m['manifest']['bodies'] for x in b['members']}
+                self.assertEqual(set(members), want)                 # every body's members in its own archive
+                self.assertEqual((row['bodies'], row['members'], row['bytes']),
+                                 (len(names), len(members), (addon / f'{m["slot"]:02d}.dat').stat().st_size))
+                self.assertLessEqual(row['bytes'], cap)
+                self.assertIn(f'addon/{m["slot"]:02d} {len(names)} bodies {len(members)} members {row["bytes"]} B', text)
+            self.assertEqual(seen, [b['name'] for b in one['bodies']])  # plan order, each body once
+            self.assertEqual(lod_overlay.original_assets(game)[1], ['addon/02.cat', 'addon/03.cat'])
+            self.assertEqual(lod_overlay.next_slot(game), 4)
+            state = {p.name: p.read_bytes() for p in addon.iterdir() if p.name[:2] in ('02', '03')}
+            record_bytes = (addon / 'x3m-lod-batch.json').read_bytes()
+            # (c) --sync reuses every body from both slots and reproduces the layout
+            out = Path(folder) / 'sync'
+            code, text = run(BATCH + ['--sync', '--game', str(game), '--out', str(out), '--max-dat-bytes', str(cap)])
+            self.assertIn('built 0 + reused 9 = 9', text)
+            for s in (2, 3):
+                self.assertEqual(cat_members(out / f'addon/{s:02d}.cat'), cat_members(addon / f'{s:02d}.cat'))
+                m = json.loads((out / f'addon/{s:02d}.x3m-lod.json').read_text())
+                self.assertEqual({b.get('reused_from') for b in m['bodies']}, {s})
+            # (d) the second archive's write fails: both slots are put back byte for byte
+            real, calls = lod_overlay.write_catalogue, []
+
+            def failing(cat, members):
+                calls.append(cat.name)
+                if len(calls) == 2:
+                    raise OSError('disk full')
+                return real(cat, members)
+            with unittest.mock.patch.object(lod_overlay, 'write_catalogue', failing):
+                with self.assertRaisesRegex(OSError, 'disk full'):
+                    run(BATCH + ['--game', str(game), '--install', '--max-dat-bytes', str(cap)])
+            self.assertEqual(calls, ['02.cat', '03.cat'])
+            self.assertEqual({p.name: p.read_bytes() for p in addon.iterdir() if p.name[:2] in ('02', '03')}, state)
+            self.assertEqual(sorted(addon.glob('*.x3m-replaced')), [])
+            self.assertEqual((addon / 'x3m-lod-batch.json').read_bytes(), record_bytes)   # previous record kept
+            # shrink: at the default cap the overlay fits one slot; 03 is removed (it is the top slot)
+            code, text = run(BATCH + ['--sync', '--game', str(game), '--install'])
+            self.assertIn('built 0 + reused 9 = 9', text)
+            self.assertIn('removed the previous overlay slots addon/03', text)
+            self.assertEqual([(m['slot'], m['status'], m['overlay_slots']) for m in lod_overlay.installed_markers(game)],
+                             [(2, 'valid', [2])])
+            self.assertEqual(lod_overlay.next_slot(game), 3)
+            self.assertEqual(sorted(addon.glob('*.x3m-replaced')), [])
+            # grow back to two slots, then a mod overwrites 03: 03 is a source, 02 retired, the overlay moves up
+            run(BATCH + ['--sync', '--game', str(game), '--install', '--max-dat-bytes', str(cap)])
+            self.assertEqual(lod_overlay.next_slot(game), 4)
+            write_catalogue(addon / '03.cat', [('objects/ships/x/modship.bob', bob1.serialise(mixed_tree()))])
+            self.assertEqual([(m['slot'], m['status']) for m in lod_overlay.installed_markers(game)],
+                             [(2, 'valid'), (3, 'orphaned')])
+            mod03 = (addon / '03.dat').read_bytes()
+            code, text = run(BATCH + ['--sync', '--game', str(game), '--install', '--max-dat-bytes', str(cap)])
+            self.assertIn('target addon/04.cat + .dat .. addon/05', text)
+            self.assertIn('addon/02 retired', text)
+            self.assertIn('removed orphaned marker 03.x3m-lod.json', text)
+            self.assertEqual((addon / '03.dat').read_bytes(), mod03)
+            statuses = {m['slot']: m['status'] for m in lod_overlay.installed_markers(game)}
+            self.assertEqual(statuses, {2: 'retired', 4: 'valid', 5: 'valid'})
+            bodies = {b['name']: b for s in (4, 5)
+                      for b in json.loads((addon / f'{s:02d}.x3m-lod.json').read_text())['bodies']}
+            self.assertEqual(bodies['ships/x/modship']['source'], 'addon/03.cat')
+            self.assertNotIn('reused_from', bodies['ships/x/modship'])       # its input changed (the mod's body)
+            self.assertEqual(lod_overlay.next_slot(game), 6)
+            # single-body --replace takes over the whole two-slot overlay: 04 replaced, 05 removed
+            code, text = run(['--game', str(game), '--install', '--replace', '--collapse', 'two', 'ships/x/good=8@0'])
+            self.assertEqual({m['slot']: m['status'] for m in lod_overlay.installed_markers(game)},
+                             {2: 'retired', 4: 'valid'})
+            self.assertEqual(lod_overlay.next_slot(game), 5)
+            (m,) = [m for m in lod_overlay.installed_markers(game) if m['status'] == 'valid']
+            (addon / '04.x3m-lod.json').write_text(json.dumps(dict(m['manifest'], overlay_slots=[3, 5])))
+            self.assertEqual({m['path'].name: m['status'] for m in lod_overlay.installed_markers(game)},
+                             {'02.x3m-lod.json': 'retired', '04.x3m-lod.json': 'unreadable'})   # malformed group
 
 
 def texel_tree(g):

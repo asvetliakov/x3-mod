@@ -300,6 +300,27 @@ member keeps the winning member's exact archive path, and a body whose winning
 resource is loose is refused. `addon/mods/` is not used because a mod package is
 searched only when selected in the launcher.
 
+**Dat size and multiple slots (2026-09-24).** The engine opens a member with
+`fopen` + `fseek(long)` ([loading-orchestration.md](../reverse-engineering/loading-orchestration.md)
+step 11, `0x004e8827`), so a member ending past 2^31 − 1 is unreachable; the largest
+vanilla dat (`02.dat`) is 2,114,263,875 B, and the 2026-09-24 fleet bake (591 bodies) wrote a
+2,660,660,021 B `addon/05.dat` with 480 members past that limit. `lod_overlay.py` now refuses
+any dat above 2^31 − 1 whatever `--max-dat-bytes` says (exit non-zero, nothing written) and
+`--batch` splits the overlay at `--max-dat-bytes` (default 2,000,000,000; a larger value is
+clamped to 2^31 − 1 with a note in the summary) over consecutive
+slots `NN, NN+1, …` in plan order, each body's `.pbb`/`.bob` and atlas members inside one
+archive; every slot has its own marker (its bodies, its own cat/dat sha256, `overlay_slots`),
+and the batch record and summary list every slot with its body and member counts and bytes
+(on a real run the record is written only after the install succeeded, so a failed install
+leaves the previous record in place).
+The mount loop counts `addon\%02d.cat` up to the first missing number
+([body-format-bob1.md](../reverse-engineering/body-format-bob1.md) `0x004ec9e0`), so the slots
+stay contiguous. Capacity: the Mayhem 3 tree ships `addon/05`–`12` on top of vanilla
+`addon/01`–`04` (measured from the tree listing; the mod is used in the wild), so the archive
+table holds at least 12 addon slots and two or three overlay slots raise no capacity concern;
+with such a mod installed the overlay takes the next free numbers after the mod's (13, 14, …).
+The single-body mode refuses rather than splits.
+
 **Placement (corrected 2026-09-23 after Run 68 B).** The engine draws
 `final = clamp(sel - 1, 0, n-1)` at View Distance Very High (this bottle), where
 `sel` is the highest record with `s < trunc(T·f)` walking from the last record
@@ -982,8 +1003,13 @@ evidence under `verification/results/lod-overlay-batch/batch-dryrun/`.
   one inert text member (`x3m_lod/retired_NN.txt`; never a zero-entry CAT or a 0-byte DAT) with
   a marker recording it as retired, so the numbering stays contiguous (the mount loop stops at
   the first gap); engine acceptance of a retired slot is not yet verified and needs a launch.
+  A multi-slot overlay is the set of live markers sharing one `overlay_slots` list; its slots at
+  the top of the numbering are reused from their lowest number, slots above the new overlay's end
+  are removed, the others retired, and move-aside/rollback covers every slot at once. A mod that
+  overwrote one of its slots orphans that slot only (read as a source, marker removed on
+  `--install`). The originals hash leaves out every live and retired slot of ours.
   `--sync` rebuilds only bodies whose `inputs_sha256` changed or that are new and copies the
-  other bodies' members from the previous overlay dat (each verified by sha256), provided the
+  other bodies' members from any live slot of the previous overlay (each verified by sha256), provided the
   previous overlay used the same rule, width, atlas options and tool sources (`tool_sha256` over
   `lod_atlas.py`, `lod_overlay.py`, `bob1.py` and `lod_batch_census.py`, which decides T_pad, in the
   settings, so a tool change rebuilds).
