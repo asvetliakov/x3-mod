@@ -1,0 +1,16 @@
+# Run 75 B recording screenshots/corwette-bullets.mov (1920x1080, 120 fps recording, game overlay 66-73 FPS); frames extracted with
+# ffmpeg -ss {7,15,20} -t {5,3,4} (all frames) into the scratch dir; exact duplicates dropped (distinct frames ~50/s).
+# recording_transient.py SEG REGION 110 50 (blob brighter than the 5x5-dilated max of both neighbour distinct frames by >50, 8-bit >110)
+# recording_link.py OUT R 2 XLO XHI (nearest link, <=2-frame gap, area <= 1.5x+3); TP: R 15, x 800-1100, region 600,300,1320,760; FP: R 70, x 200-1800, region 100,80,1820,1000
+span histogram [(2, 8), (3, 10), (4, 4)]
+tp1_tr.txt: tracks>=2 22 span(distinct frames) median 3.0 min 2 max 4
+span histogram [(2, 8), (3, 4), (4, 3), (5, 1), (6, 1)]
+tp2_tr.txt: tracks>=2 17 span(distinct frames) median 3 min 2 max 6
+span histogram [(2, 9), (3, 8), (4, 1), (5, 1), (6, 2), (7, 1), (8, 4), (10, 4), (11, 4), (12, 3), (13, 2), (14, 3), (15, 2), (16, 1), (17, 1), (19, 1), (20, 3), (22, 3), (23, 1), (24, 1), (25, 1), (27, 1), (29, 1), (44, 1)]
+fp_tr.txt: tracks>=2 59 span(distinct frames) median 10 min 2 max 44
+#
+# Summary (measured on the tracks above; distinct frames ~50/s, so 1 distinct frame ~20 ms):
+# view         | visible span (distinct frames)        | appear at (px)                       | vanish at (px)                                   | size in flight   | peak (8-bit) | end
+# third person | median 3 (2-4 tp1, 2-6 tp2) ~60 ms    | y 734-742, x ~860-874 / ~1045-1052   | y 725-731, x ~870-880 / ~1033-1041 (over sky)    | 2x2-3x4, area 2-7 | 195-255      | abrupt, peak at last frame 210-255, no fade
+# first person | single-bolt tracks 19-29 (~0.4-0.6 s) | screen edges, 14x10-36x19 px          | convergence ~(855-877,614-627) / ~(1004-1032,614-632) | shrinks to 1x2-3x3 | 255 until ~2 px | shrinks to 1-3 px, then gone
+# hull top edge in the same columns (x 870/878/1035/1040): y 746/740/744/748 (tp1 0036), 753/747/742/746 (tp1 0295, tp2 0115): bolts appear at or just above the silhouette and vanish 10-20 px further out over sky
