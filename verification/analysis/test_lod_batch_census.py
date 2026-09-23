@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools' / 'analysis
 import bob1
 import lod_batch_census as census
 from sector_fog_census import write_catalogue
-from test_bob1 import atlas_textures, atlas_tree, atlas_tree_lod0
+from test_bob1 import atlas_textures, atlas_tree, atlas_tree_lod0, no_bump, text_body
 
 
 def packed(tree):
@@ -119,6 +119,38 @@ class BatchCensus(unittest.TestCase):
         self.assertEqual(by['ships/x/single']['filter'], ['no_draw_gain'])
         self.assertEqual(by['effects/fx/e']['filter'], ['category_other'])
         self.assertIn('ELIGIBLE', census.format_row(good))
+
+    def test_text_bodies(self):
+        opts = dict(sizes=(1024, 2048), include_other=False, rule=dict(census.RULE), widths=(1920,))
+        with tempfile.TemporaryDirectory() as folder:
+            game = Path(folder) / 'game'
+            write_catalogue(game / '01.cat', atlas_textures())
+            write_catalogue(game / '02.cat', [
+                ('objects/ships/x/good.pbb', packed(no_bump(atlas_tree_lod0()))),
+                ('objects/ships/t/good.pbd', gzip.compress(text_body(no_bump(atlas_tree_lod0())), mtime=0)),
+                ('objects/stations/t/plain.bod', text_body(no_bump(atlas_tree_lod0()))),   # unpacked text member
+                ('objects/ships/t/bump.pbd', text_body(atlas_tree_lod0())),        # bump map: no tangent records
+                ('objects/ships/t/bad.pbd', b'BODY 0\n'),
+                ('objects/ships/t/binary.pbd', packed(atlas_tree_lod0())),          # BOB1 bytes under a text name
+                ('objects/ships/t/scene.pbd', b'VER: 3;\nP 0; B ships\\x\\good; b\n')])
+            rows, _ = census.run(game, opts, include_text=True)
+            binary_only, _ = census.run(game, opts)
+        by = {r['name']: r for r in rows}
+        self.assertEqual(sorted(by), ['ships/t/bad', 'ships/t/binary', 'ships/t/bump', 'ships/t/good', 'ships/x/good',
+                                      'stations/t/plain'])                        # the text scene is skipped
+        self.assertEqual(by['ships/t/bump']['refuse'], ['text_no_tangents'])
+        self.assertEqual([r['name'] for r in binary_only], ['ships/x/good'])
+        text, binary = by['ships/t/good'], by['ships/x/good']
+        self.assertTrue(text['eligible'] and text['text'] and 'text' not in binary)
+        same = ('lods', 'thresholds', 't_pad', 'mat', 'r0_faces', 'r0_points', 'r0_drawn', 'c_drawn', 'slots', 'tiles')
+        self.assertEqual({k: text[k] for k in same}, {k: binary[k] for k in same})
+        self.assertNotEqual(text['atlas_stem'], binary['atlas_stem'])              # qualified by the member path
+        self.assertTrue(by['stations/t/plain']['eligible'])
+        self.assertEqual((by['ships/t/bad']['refuse'], by['ships/t/binary']['refuse']),
+                         (['text_parse_error'], ['text_parse_error']))
+        self.assertIn('binary data', by['ships/t/binary']['atlas_error'])
+        self.assertIn(' text refuse=- filter=- ELIGIBLE', census.format_row(text))
+        self.assertIn('+ 5 text bodies (.pbd/.bod, scenes skipped)', census.summary(rows, [], opts, {})[0])
 
     def test_rule_sizes_and_sector_parse(self):
         self.assertEqual([census.t_pad('ship', t) for t in ([], [30], [60], [100])], [80, 80, 150, 200])

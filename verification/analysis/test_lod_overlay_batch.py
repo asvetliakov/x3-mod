@@ -1,5 +1,6 @@
 """Fleet batch mode of the merged-LOD overlay tool (tools/analysis/lod_overlay.py --batch) on synthetic
-catalogues: .bob enumeration, text-body and ambiguous-extension refusals, trailing bytes, the
+catalogues: .bob enumeration, text bodies (compiled, written as .pbb) and the text_parse_error and
+ambiguous-extension refusals, trailing bytes, the
 mixed-effects split, the second UV set with an occlusion decal, negative material indices,
 qualified atlas names, tex/ jpg textures, the display-derived width, marker validation and
 orphans, --sync reuse with slot retirement, and the addon/mods warning."""
@@ -24,7 +25,7 @@ import lod_overlay
 import numpy as np
 from inspect_x3 import read_catalogue
 from sector_fog_census import unpack, write_catalogue
-from test_bob1 import atlas_textures, atlas_tree_lod0
+from test_bob1 import atlas_textures, atlas_tree_lod0, first_use, no_bump, text_body
 
 
 def packed(tree, trailing=b''):
@@ -89,7 +90,10 @@ def make_game(folder):
     write_catalogue(game / '02.cat', [
         ('objects/ships/x/good.pbb', packed(atlas_tree_lod0())),
         ('objects/ships/x/bobby.bob', body),                                   # unpacked .bob member
-        ('objects/ships/x/text.pbd', b'BODY 0\n'),                            # text body
+        ('objects/ships/x/text.pbd', gzip.compress(text_body(no_bump(atlas_tree_lod0())), mtime=0)),   # packed text body
+        ('objects/ships/x/bumptext.pbd', gzip.compress(text_body(atlas_tree_lod0()), mtime=0)),   # bump map: refused
+        ('objects/ships/x/badtext.pbd', b'BODY 0\n'),                         # text outside the grammar
+        ('objects/ships/x/scene.pbd', b'VER: 3;\nP 0; B ships\\x\\good; b\n'),      # text scene: skipped
         ('objects/ships/x/amb.pbb', packed(atlas_tree_lod0())),
         ('objects/ships/x/amb.pbd', b'BODY 0\n'),
         ('objects/ships/x/trail2.pbb', packed(atlas_tree_lod0(), b'OB')),     # 2 stray closer bytes
@@ -129,12 +133,19 @@ class Enumeration(unittest.TestCase):
             rows, skipped = census.run(game, opts, include_text=True)
         by = {r['name']: r for r in rows}
         self.assertEqual(skipped, [])
-        self.assertEqual(sorted(by), ['ships/x/amb', 'ships/x/bobby', 'ships/x/good', 'ships/x/jpg', 'ships/x/mixed',
-                                      'ships/x/modship', 'ships/x/oob', 'ships/x/text', 'ships/x/trail2',
-                                      'ships/x/trail9', 'ships/x/uv', 'ships/x/uvbad', 'stations/y/good'])
+        self.assertEqual(sorted(by), ['ships/x/amb', 'ships/x/badtext', 'ships/x/bobby', 'ships/x/bumptext',
+                                      'ships/x/good', 'ships/x/jpg',
+                                      'ships/x/mixed', 'ships/x/modship', 'ships/x/oob', 'ships/x/text',
+                                      'ships/x/trail2', 'ships/x/trail9', 'ships/x/uv', 'ships/x/uvbad',
+                                      'stations/y/good'])                         # the text scene is skipped
         self.assertTrue(by['ships/x/bobby']['eligible'] and by['ships/x/modship']['eligible'])    # .bob members
         self.assertEqual(by['ships/x/modship']['source'], 'addon/01.cat')
-        self.assertEqual(by['ships/x/text']['refuse'], ['text_body'])
+        self.assertTrue(by['ships/x/text']['eligible'] and by['ships/x/text']['text'])
+        self.assertEqual({k: by['ships/x/text'][k] for k in ('r0_drawn', 'c_drawn', 'mat', 'lods')},
+                         {k: by['ships/x/good'][k] for k in ('r0_drawn', 'c_drawn', 'mat', 'lods')})
+        self.assertIn(' text ', census.format_row(by['ships/x/text']))
+        self.assertEqual(by['ships/x/badtext']['refuse'], ['text_parse_error'])
+        self.assertEqual(by['ships/x/bumptext']['refuse'], ['text_no_tangents'])
         self.assertEqual(by['ships/x/amb']['refuse'], ['ambiguous_body_ext'])
         self.assertEqual((by['ships/x/trail2']['trailing'], by['ships/x/trail2']['eligible']), (2, True))
         self.assertEqual(by['ships/x/trail9']['refuse'], ['trailing_bytes'])
@@ -164,8 +175,15 @@ class Enumeration(unittest.TestCase):
                 lod_overlay.plan_body(assets, 'ships/x/trail9', 8, 'compact', collapse='two')
             with self.assertRaisesRegex(SystemExit, r'group material index \[-79\] outside'):
                 lod_overlay.plan_body(assets, 'ships/x/oob', 8, 'compact', collapse='two', source_record=0)
-            with self.assertRaisesRegex(SystemExit, 'text body'):
-                lod_overlay.plan_body(assets, 'ships/x/text', 8, 'compact', collapse='two')
+            with self.assertRaisesRegex(SystemExit, 'text_parse_error'):
+                lod_overlay.plan_body(assets, 'ships/x/badtext', 8, 'compact', collapse='two')
+            with self.assertRaisesRegex(SystemExit, 'text_no_tangents'):
+                lod_overlay.plan_body(assets, 'ships/x/bumptext', 8, 'compact', collapse='two', source_record=0)
+            t = lod_overlay.plan_body(assets, 'ships/x/text', 8, 'compact', collapse='two', source_record=0)
+            self.assertEqual((t['member'], t['source_member']), ('objects/ships/x/text.pbb', 'objects/ships/x/text.pbd'))
+            written = bob1.parse(unpack(t['stored']))                          # gzip-packed BOB1 under the .pbb name
+            self.assertEqual(bob1.lods(written)[0], bob1.lods(first_use(atlas_tree_lod0()))[0])
+            self.assertEqual(lod_overlay.body_manifest(dict(t, members=[]))['source_member'], 'objects/ships/x/text.pbd')
             good = lod_overlay.plan_body(assets, 'stations/y/good', 8, 'compact', collapse='two', source_record=0)
             self.assertTrue(good['guard_waived'])                              # T_1 160 > T_pad 8, source record 0
             self.assertEqual([l['value'] for l in good['ladder']], [100, 160, 8])
@@ -196,10 +214,13 @@ class BatchRun(unittest.TestCase):
             record = json.loads((out / 'x3m-lod-batch.json').read_text())
             by = {b['name']: b for b in record['bodies']}
             self.assertEqual(record['settings']['screen_width'], 1800)                # 1080 * 1280 / 768
-            self.assertEqual((record['slot'], record['retired_slot'], record['counts']['enumerated']), (2, None, 13))
-            self.assertEqual(record['counts']['overlay_bodies'], 8)
+            self.assertEqual((record['slot'], record['retired_slot'], record['counts']['enumerated']), (2, None, 15))
+            self.assertEqual(record['counts']['overlay_bodies'], 9)
             self.assertEqual(record['refused'], {'ambiguous_body_ext': 1, 'material_outside_table': 1,
-                                                 'occlusion_mismatch': 1, 'text_body': 1, 'trailing_bytes': 1})
+                                                 'occlusion_mismatch': 1, 'text_no_tangents': 1, 'text_parse_error': 1,
+                                                 'trailing_bytes': 1})
+            self.assertFalse(record['binary_only'])
+            self.assertEqual(by['ships/x/text']['member'], '02.cat:objects/ships/x/text.pbd')   # census source member
             self.assertEqual((by['ships/x/good']['draws'], by['ships/x/mixed']['draws'], by['ships/x/uv']['draws']),
                              (1, 2, 1))                                              # drawn groups: atlas [+ one per effect]; hidden part excluded
             self.assertEqual(by['ships/x/mixed']['atlas_materials'], 2)
@@ -207,13 +228,13 @@ class BatchRun(unittest.TestCase):
             self.assertEqual(record['mixed_effect_bodies'], ['ships/x/mixed'])
             self.assertEqual(record['uv2_bodies'], ['ships/x/uv'])
             self.assertIn('tex/j_diff.jpg', by['ships/x/jpg']['texture_sources'])
-            self.assertEqual(record['ratio']['measured'], 8)
+            self.assertEqual(record['ratio']['measured'], 9)
             self.assertIn('addon/01.cat', by['ships/x/modship']['member'])
             self.assertTrue((out / 'x3m-lod-batch-summary.txt').exists())
             bodies = (out / 'x3m-lod-batch-bodies.txt').read_text()
             self.assertIn('compact guard waived', bodies)
             self.assertIn('non-dds sources diffuse=01.cat:tex/j_diff.jpg', bodies)
-            self.assertIn('bodies enumerated 13', text)
+            self.assertIn('bodies enumerated 15', text)
             self.assertIn('dry run: nothing written', text)
             only = Path(folder) / 'only.txt'
             only.write_text('ships/x/good=80@0\nships/x/text\n')
@@ -221,8 +242,14 @@ class BatchRun(unittest.TestCase):
                                       '--record', str(Path(folder) / 'r.json'), '--display', '2560x1440'])
             record = json.loads((Path(folder) / 'r.json').read_text())
             self.assertEqual((record['counts']['enumerated'], record['counts']['overlay_bodies'],
-                              record['settings']['screen_width']), (2, 1, 2400))
+                              record['settings']['screen_width']), (2, 2, 2400))
             self.assertIn('upper bound', text)
+            code, text = run(BATCH + ['--dry-run', '--binary-only', '--game', str(game), '--out', str(out),
+                                      '--record', str(Path(folder) / 'b.json')])
+            record = json.loads((Path(folder) / 'b.json').read_text())
+            self.assertEqual((record['binary_only'], record['counts']['enumerated'], record['counts']['overlay_bodies']),
+                             (True, 12, 8))                                   # text, badtext, bumptext left out
+            self.assertNotIn('text_no_tangents', record['refused'])
 
     @unittest.mock.patch.object(lod_overlay, 'running_game', return_value=[])
     def test_write_markers_sync_and_retire(self, _running):
@@ -253,8 +280,10 @@ class BatchRun(unittest.TestCase):
             self.assertIn(f'dds/x3m_lod_{q_station}_diffuse.pck', members)
             self.assertEqual(sorted(p for p in members if p.startswith('objects/')),
                              ['objects/ships/x/bobby.bob', 'objects/ships/x/good.pbb', 'objects/ships/x/jpg.pbb',
-                              'objects/ships/x/mixed.pbb', 'objects/ships/x/modship.bob', 'objects/ships/x/trail2.pbb',
-                              'objects/ships/x/uv.pbb', 'objects/stations/y/good.pbb'])
+                              'objects/ships/x/mixed.pbb', 'objects/ships/x/modship.bob', 'objects/ships/x/text.pbb',
+                              'objects/ships/x/trail2.pbb', 'objects/ships/x/uv.pbb', 'objects/stations/y/good.pbb'])
+            self.assertEqual(bodies['ships/x/text']['source_member'], 'objects/ships/x/text.pbd')
+            self.assertEqual(unpack(members['objects/ships/x/text.pbb'])[:4], b'BOB1')   # the text winner, compiled
             self.assertEqual(members['objects/ships/x/bobby.bob'][:4], b'BOB1')   # unpacked member stays unpacked
             # mixed effects: one atlas material per effect, one group each in part 0
             mixed = bob1.parse(unpack(members['objects/ships/x/mixed.pbb']))
@@ -287,7 +316,7 @@ class BatchRun(unittest.TestCase):
             # --sync: nothing changed, every body reused from the previous overlay dat
             out2 = Path(folder) / 'out2'
             code, text = run(BATCH + ['--sync', '--game', str(game), '--out', str(out2)])
-            self.assertIn('built 0 + reused 8 = 8', text)
+            self.assertIn('built 0 + reused 9 = 9', text)
             self.assertEqual(cat_members(out2 / 'addon/02.cat'), members)
             m2 = json.loads((out2 / 'addon/02.x3m-lod.json').read_text())
             self.assertTrue(all(b.get('reused_from') == 2 for b in m2['bodies']))
@@ -295,7 +324,7 @@ class BatchRun(unittest.TestCase):
             write_catalogue(game / '03.cat', [('objects/ships/x/good.pbb', packed(with_threshold(atlas_tree_lod0(), 6)))])
             out3 = Path(folder) / 'out3'
             code, text = run(BATCH + ['--sync', '--game', str(game), '--out', str(out3)])
-            self.assertIn('built 1 + reused 7 = 8', text)
+            self.assertIn('built 1 + reused 8 = 9', text)
             m3 = json.loads((out3 / 'addon/02.x3m-lod.json').read_text())
             rebuilt = [b['name'] for b in m3['bodies'] if 'reused_from' not in b]
             self.assertEqual(rebuilt, ['ships/x/good'])
@@ -314,7 +343,7 @@ class BatchRun(unittest.TestCase):
             self.assertEqual((retired['retired'], retired['retired_by'], retired['slot']), (True, 4, 2))
             m4 = json.loads((out4 / 'addon/04.x3m-lod.json').read_text())
             self.assertEqual((m4['slot'], m4['batch']['retired_slot']), (4, 2))
-            self.assertEqual(sum(1 for b in m4['bodies'] if 'reused_from' in b), 7)   # modship: same bytes in addon/03
+            self.assertEqual(sum(1 for b in m4['bodies'] if 'reused_from' in b), 8)   # modship: same bytes in addon/03
             # --install with the retire path: 02 becomes the empty pair, 04 the overlay; markers validate
             (game / 'addon/03.cat').unlink(), (game / 'addon/03.dat').unlink()
             write_catalogue(game / 'addon/03.cat', [('objects/ships/x/modship.bob', bob1.serialise(atlas_tree_lod0()))])
@@ -360,14 +389,14 @@ class BatchRun(unittest.TestCase):
             argv = [a for a in BATCH if a != '0'][:-1]                       # default --min-texels
             code, text = run(argv + ['--dry-run', '--game', str(game), '--out', str(out), '--min-texels', '100'])
             record = json.loads((out / 'x3m-lod-batch.json').read_text())
-            self.assertEqual((record['counts']['overlay_bodies'], record['refused']['texel_floor']), (0, 8))
+            self.assertEqual((record['counts']['overlay_bodies'], record['refused']['texel_floor']), (0, 9))
             floor = record['ratio']['texel_floor']
-            self.assertEqual(len(floor), 8)
+            self.assertEqual(len(floor), 9)
             self.assertTrue(all(0 < v < 100 for v in floor.values()))
             by = {b['name']: b for b in record['bodies']}
             self.assertEqual(by['ships/x/good']['refuse'], ['texel_floor'])
             self.assertAlmostEqual(by['ships/x/good']['ratio'], floor['ships/x/good'])
-            self.assertIn(f'refused texel_floor (< 100) 8: ', text)
+            self.assertIn(f'refused texel_floor (< 100) 9: ', text)
             self.assertIn(f'ships/x/good {floor["ships/x/good"]:.2f}', text)
             self.assertIn('dry run: nothing written', text)
             with self.assertRaisesRegex(SystemExit, 'texel_floor'):        # single-body atlas path, same option
@@ -437,7 +466,7 @@ class BatchRun(unittest.TestCase):
             write_catalogue(game / 'addon/mods/Big.cat', [('objects/ships/x/good.pbb', packed(atlas_tree_lod0())),
                                                           ('objects/ships/x/nothere.pbb', packed(atlas_tree_lod0()))])
             code, text = run(BATCH + ['--dry-run', '--game', str(game), '--out', str(out)])
-            self.assertIn('warning: addon/mods/Big.cat (2 bodies) overrides the overlay for 1 of its 8 bodies', text)
+            self.assertIn('warning: addon/mods/Big.cat (2 bodies) overrides the overlay for 1 of its 9 bodies', text)
             record = json.loads((out / 'x3m-lod-batch.json').read_text())
             self.assertTrue(any('Big.cat' in n for n in record['notes']))
             # single-body mode: an orphaned marker does not block, a live one does

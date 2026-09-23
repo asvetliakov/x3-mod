@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Read-only census for a fleet-wide merged-LOD atlas overlay batch (lod_overlay.py --collapse atlas).
 
-Walks every winning binary body (.pbb and unpacked .bob members; mods ship .bob) of the
+Walks every winning binary body (.pbb and unpacked .bob members; mods ship .bob) and, unless
+--binary-only, every winning text body (.pbd/.bod, compiled by bob1.parse_text) of the
 installed catalogues, with every catalogue carrying a valid x3m-lod marker skipped
 (lod_overlay.original_assets; an orphaned marker's catalogue is a mod's and is read), and prints
 one row per body: ladder, record 0 faces/points/groups, the coarsest record's groups, effect
@@ -12,8 +13,11 @@ draws saved against record 0 and against the coarsest record, and the estimated 
 Nothing is baked, built or written into the game directory: the atlas checks run
 lod_atlas.collapse (effect classes, occlusion check, layout, UV rewrite and group split; no
 baking) on a copy of the material table. With include_text (the batch), winning text bodies
-(.pbd/.bod without a binary twin) are rows refused as text_body; a stem with both a binary and
-a text member is ambiguous_body_ext (bob1.resolve_body). Bodies with up to
+(.pbd/.bod without a binary twin) are compiled by bob1.parse_text and censused like binary ones
+(column text; a text scene is skipped like CUT1, a body outside the grammar or whose compile does
+not re-parse equal is text_parse_error, and lod_overlay.text_refusals adds text_no_tangents,
+text_normals_inferred and text_collision_box); a stem with both a binary
+and a text member is ambiguous_body_ext (bob1.resolve_body). Bodies with up to
 lod_overlay.MAX_TRAILING stray bytes after /BOB parse with a warning column (trailing); more
 is trailing_bytes. Each row carries inputs_sha256 (the decoded body plus every texture the
 tiles read) for lod_overlay.py --batch --sync.
@@ -36,6 +40,7 @@ Sizes are tried from --atlas-size up to --atlas-max-size (default 4096, above th
 default, so the need is visible); the summary also gives the 2048-capped totals.
 
   python3 tools/analysis/lod_batch_census.py [--game DIR] [--out DIR] [--jobs N] [--limit N] [--screen-width 1920]
+      [--binary-only]
 """
 import argparse
 import hashlib
@@ -124,22 +129,37 @@ def census_body(assets, textures, entry, opts):
     name = bob1.body_stem(path)[len('objects/'):]
     row = dict(name=name, member=f'{entry["source"]}:{path}', source=entry['source'], path=path,
                cat=category(path), refuse=[], filter=[], trailing=0)
-    if path.lower().endswith(TEXT_EXTENSIONS):
-        row['refuse'].append('text_body')
-        return row
     data = assets.read_entry(entry)
     k = bob1.kind(data)
-    if k == 'CUT1':
+    if path.lower().endswith(TEXT_EXTENSIONS):
+        row['text'] = True
+        if not k and bob1.text_kind(data) == 'scene':
+            return dict(row, skip='scene')          # the text twin of a CUT1 scene: not a body
+        try:
+            if k or bytes(data[:3]) == b'BOB':
+                raise bob1.FormatError(f'text member holding binary data (magic {bytes(data[:4])!r})')
+            tree = bob1.parse_text(data)
+        except bob1.FormatError as exc:
+            row['refuse'].append('text_parse_error')
+            row['atlas_error'] = str(exc)[:160]
+            return row
+        if not lod_overlay.text_compiles(tree):
+            row['refuse'].append('text_parse_error')
+            row['atlas_error'] = 'the compiled text body does not serialise and parse back'
+            return row
+        row['refuse'] += lod_overlay.text_refusals(tree)     # policy while 0x00483f20 is untraced
+    elif k == 'CUT1':
         return dict(row, skip='CUT1')
-    if k != 'BOB1':
+    elif k != 'BOB1':
         row['refuse'].append('not_bob1')
         return row
-    try:
-        tree = bob1.parse(data, lod_overlay.MAX_TRAILING)
-    except bob1.FormatError as exc:
-        row['refuse'].append('trailing_bytes' if 'trailing bytes' in str(exc) else 'parse_error')
-        row['atlas_error'] = str(exc)[:160]
-        return row
+    else:
+        try:
+            tree = bob1.parse(data, lod_overlay.MAX_TRAILING)
+        except bob1.FormatError as exc:
+            row['refuse'].append('trailing_bytes' if 'trailing bytes' in str(exc) else 'parse_error')
+            row['atlas_error'] = str(exc)[:160]
+            return row
     row['trailing'] = tree.get('trailing_bytes', 0)
     body_data = data[:len(data) - row['trailing']] if row['trailing'] else data
     row['source_decoded_sha256'] = hashlib.sha256(data).hexdigest()
@@ -149,7 +169,7 @@ def census_body(assets, textures, entry, opts):
             row['refuse'].append('resolve_mismatch')
     except bob1.FormatError:               # both .pbb and .pbd exist: engine order unverified
         row['refuse'].append('ambiguous_body_ext')
-    if bob1.serialise(tree) != body_data:
+    if not row.get('text') and bob1.serialise(tree) != body_data:
         row['refuse'].append('writer_mismatch')
     if 'loose' in entry:
         row['refuse'].append('loose_winner')
@@ -257,7 +277,8 @@ def text_body_keys(assets):
 
 def run(game, opts, jobs=1, limit=None, only=None, include_text=False):
     """(rows, skipped marker sources) over every winning binary body (and, with include_text, the
-    text bodies as text_body rows); `only` restricts to a set of body keys (body_key(name))."""
+    winning text bodies, compiled by bob1.parse_text); `only` restricts to a set of body keys
+    (body_key(name))."""
     assets, skipped = lod_overlay.original_assets(Path(game))
     keys = body_keys(assets) + (text_body_keys(assets) if include_text else [])
     if only is not None:
@@ -298,6 +319,8 @@ def format_row(r):
               + f' member~{mb(r["member_bytes"])} MB')
     if r.get('trailing'):
         s += f' trailing={r["trailing"]}'
+    if r.get('text'):
+        s += ' text'
     if r.get('atlas_materials', 1) > 1:
         s += f' atlas_materials={r["atlas_materials"]}'
     s += f' refuse={",".join(r["refuse"]) or "-"} filter={",".join(r["filter"]) or "-"}'
@@ -363,8 +386,9 @@ def sector_report(label, census, by_key, widths):
 def summary(rows, skipped, opts, sectors):
     widths = opts['widths']
     el = [r for r in rows if r['eligible']]
+    n_text = sum(1 for r in rows if r.get('text'))
     lines = [f'bodies {len(rows)} (winning .pbb/.bob BOB1/non-CUT1 resources'
-             f'{" + text bodies" if any("text_body" in r["refuse"] for r in rows) else ""};'
+             f'{f" + {n_text} text bodies (.pbd/.bod, scenes skipped)" if n_text else ""};'
              f' overlay sources skipped: {skipped or "none"})',
              f'rule: ships T_pad = min({opts["rule"]["t_cap"]:g}, max({opts["rule"]["ship_min"]:g},'
              f' {opts["rule"]["ship_factor"]:g} x T_1)); stations/others {opts["rule"]["station_t"]:g}'
@@ -433,6 +457,8 @@ def main(argv=None):
     ap.add_argument('--station-t', type=float, default=RULE['station_t'])
     ap.add_argument('--t-cap', type=float, default=RULE['t_cap'])
     ap.add_argument('--include-other', action='store_true', help='apply the station rule to other top directories')
+    ap.add_argument('--binary-only', action='store_true',
+                    help='leave the winning text bodies (.pbd/.bod) out (the census before bob1.parse_text)')
     ap.add_argument('--sector', action='append', metavar='LABEL=FILE:FRAME',
                     help='flown body set from a node census (default: run255 burst 2, run257 burst 1, run260)')
     a = ap.parse_args(argv)
@@ -443,7 +469,7 @@ def main(argv=None):
     opts = dict(sizes=tuple(sizes), include_other=a.include_other, widths=widths,
                 rule=dict(ship_min=a.ship_min, ship_factor=a.ship_factor, station_t=a.station_t, t_cap=a.t_cap))
     t0 = time.time()
-    rows, skipped = run(a.game, opts, a.jobs, a.limit)
+    rows, skipped = run(a.game, opts, a.jobs, a.limit, include_text=not a.binary_only)
     root = Path(__file__).resolve().parents[2]
     specs = SECTORS if not a.sector else [
         (s.split('=', 1)[0],) + tuple(s.split('=', 1)[1].rsplit(':', 1)) for s in a.sector]

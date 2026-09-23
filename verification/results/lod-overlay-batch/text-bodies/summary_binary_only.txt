@@ -1,0 +1,68 @@
+bodies 2990 (winning .pbb/.bob BOB1/non-CUT1 resources; overlay sources skipped: none)
+rule: ships T_pad = min(200, max(80, 2.5 x T_1)); stations/others 150 (cap 200); other top dirs excluded; source record 0, compact; sizes [1024, 2048, 4096]; texel rule at 1920 wide (reference; extra columns [1280, 2560])
+eligible 1020 (no refusal, draws saved >= 1): ship 715, station 305, other 0
+  eligible totals at 1920 wide: atlases 25000.77 MB (cap 2048: 11729.99 MB), sizes {1024: 561, 2048: 233, 4096: 226}, ratio < 2 171 (at cap 2048: 259)
+  eligible totals at 1280 wide: atlases 18805.78 MB (cap 2048: 9704.14 MB), sizes {1024: 699, 2048: 166, 4096: 155}, ratio < 2 131 (at cap 2048: 182)
+  eligible totals at 2560 wide: atlases 31386.59 MB (cap 2048: 13829.24 MB), sizes {1024: 418, 2048: 303, 4096: 299}, ratio < 2 203 (at cap 2048: 334)
+  eligible body members ~4251.39 MB (record 0 x 1.2); draws saved per instance below T_pad, summed over bodies: 12005 against record 0, 6268 against the coarsest record (217 eligible bodies save none against it)
+  atlas bytes are a lower bound: diffuse is counted DXT1 (lod_atlas.encode picks DXT5 when the level-0 alpha is not all 255), light/bump/specular DXT5; the slot set assumes --atlas-specular
+refusals (a body counts once per reason; first reason in brackets):
+  no_opaque: 387 [382]
+  dominant_slot_missing: 253 [253]
+  material_outside_table: 156 [141]
+  non_effect_material: 155 [144]
+  texture_unresolved: 119 [117]
+  ambiguous_body_ext: 58 [58]
+  no_diffuse: 28 [28]
+  occlusion_mismatch: 8 [8]
+  trailing_bytes: 8 [8]
+  not_bob1: 3 [3]
+  parse_error: 1 [1]
+filters on otherwise accepted bodies: category_other 633, no_draw_gain 571
+refusals among bodies with r0_drawn >= 10: no_diffuse 27, no_opaque 11, material_outside_table 6, ambiguous_body_ext 6, dominant_slot_missing 5, occlusion_mismatch 3, non_effect_material 3
+top 40 by record 0 drawn groups:
+   44 stations/others/argon_player_headquarter (station, thr [250, 150, 80], T_pad 150) C_drawn=6 coarse_drawn=34 @1920=4096 @1280=4096 @2560=4096 ELIGIBLE
+   41 ships/TM/Pirate_TM (ship, thr [30, 15, 5], T_pad 80) C_drawn=2 coarse_drawn=24 @1920=2048 @1280=2048 @2560=4096 ELIGIBLE
+   41 ships/others/pirate_TL_var2 (ship, thr [30, 15, 5], T_pad 80) C_drawn=3 coarse_drawn=35 @1920=4096 @1280=4096 @2560=4096 ELIGIBLE
+   41 stations/station_scenes/farm/argon_farm_M_factory_G (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=3 coarse_drawn=1 @1920=1024 @1280=1024 @2560=1024 ELIGIBLE
+   40 ships/others/pirate_TL_var1 (ship, thr [30, 15, 5], T_pad 80) C_drawn=4 coarse_drawn=25 @1920=4096 @1280=4096 @2560=4096 ELIGIBLE
+   40 ships/pirate/pirate_tm_caravel/hull (ship, thr [30, 15, 5], T_pad 80) C_drawn=2 coarse_drawn=24 @1920=2048 @1280=2048 @2560=4096 ELIGIBLE
+   40 stations/station_scenes/farm/argon_farm_M_factory_B (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=3 coarse_drawn=1 @1920=1024 @1280=1024 @2560=2048 ELIGIBLE
+   40 stations/station_scenes/pirate_TL_var1 (station, thr [30, 15, 5], T_pad 150) C_drawn=4 coarse_drawn=25 @1920=4096 @1280=4096 @2560=4096 ELIGIBLE
+   40 stations/station_scenes/tech/argon_tech_L_missile_h (station, thr [30, 15, 5], T_pad 150) C_drawn=4 coarse_drawn=30 @1920=4096 @1280=2048 @2560=4096 ELIGIBLE
+   39 ships/teladi/teladi_m2_cormorant/hull (ship, thr [43, 15, 3], T_pad 107) C_drawn=4 coarse_drawn=27 @1920=2048 @1280=1024 @2560=2048 ELIGIBLE
+   39 stations/station_scenes/farm/argon_farm_S_factory_B (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=3 coarse_drawn=1 @1920=2048 @1280=1024 @2560=2048 ELIGIBLE
+   39 stations/station_scenes/food/argon_food_S_factory_A (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=3 coarse_drawn=1 @1920=2048 @1280=1024 @2560=2048 ELIGIBLE
+   39 stations/station_scenes/others/argon_mineA_silicon_S (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=4 coarse_drawn=1 @1920=1024 @1280=1024 @2560=1024 ELIGIBLE
+   39 stations/station_scenes/others/argon_mineB_silicon_S (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=4 coarse_drawn=1 @1920=1024 @1280=1024 @2560=1024 ELIGIBLE
+   39 stations/station_scenes/tech/argon_tech_L_missile_B (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=3 coarse_drawn=1 @1920=2048 @1280=2048 @2560=4096 ELIGIBLE
+   39 stations/station_scenes/tech/argon_tech_L_missile_D (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=4 coarse_drawn=1 @1920=2048 @1280=1024 @2560=2048 ELIGIBLE
+   39 stations/station_scenes/tech/argon_tech_L_missile_E (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=4 coarse_drawn=1 @1920=2048 @1280=2048 @2560=4096 ELIGIBLE
+   39 stations/station_scenes/tech/argon_tech_L_missile_g (station, thr [30, 15, 5], T_pad 150) C_drawn=4 coarse_drawn=27 @1920=1024 @1280=1024 @2560=1024 ELIGIBLE
+   39 stations/station_scenes/tech/argon_tech_L_shield_C (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=5 coarse_drawn=1 @1920=2048 @1280=1024 @2560=2048 ELIGIBLE
+   39 stations/station_scenes/tech/argon_tech_L_shield_I (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=4 coarse_drawn=1 @1920=2048 @1280=1024 @2560=2048 ELIGIBLE
+   39 stations/station_scenes/tech/argon_tech_S_factory_F (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=3 coarse_drawn=1 @1920=1024 @1280=1024 @2560=2048 ELIGIBLE
+   39 stations/station_scenes/tech/argon_tech_S_laser_G (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=3 coarse_drawn=1 @1920=2048 @1280=1024 @2560=2048 ELIGIBLE
+   39 stations/station_scenes/tech/argon_tech_S_missile_Q (station, thr [30, 15, 5], T_pad 150) C_drawn=4 coarse_drawn=28 @1920=1024 @1280=1024 @2560=2048 ELIGIBLE
+   39 stations/station_scenes/tech/argon_tech_S_missile_h (station, thr [30, 15, 5], T_pad 150) C_drawn=4 coarse_drawn=29 @1920=1024 @1280=1024 @2560=2048 ELIGIBLE
+   39 stations/station_scenes/tech/argon_tech_S_missile_l (station, thr [30, 15, 5], T_pad 150) C_drawn=4 coarse_drawn=29 @1920=1024 @1280=1024 @2560=2048 ELIGIBLE
+   39 stations/station_scenes/tech/argon_tech_S_missile_m (station, thr [30, 15, 5], T_pad 150) C_drawn=5 coarse_drawn=27 @1920=2048 @1280=1024 @2560=2048 ELIGIBLE
+   39 stations/station_scenes/tech/argon_tech_S_shield_A (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=4 coarse_drawn=1 @1920=2048 @1280=1024 @2560=2048 ELIGIBLE
+   39 stations/station_scenes/tech/terraformer_hub_A (station, thr [], T_pad 150) C_drawn=7 coarse_drawn=39 @1920=1024 @1280=1024 @2560=2048 ELIGIBLE
+   38 ships/M7/Argon_m7m (ship, thr [30, 15, 5], T_pad 80) C_drawn=2 coarse_drawn=27 @1920=1024 @1280=1024 @2560=1024 ELIGIBLE
+   38 ships/argon/argon_m7_minotaur/hull (ship, thr [30, 15, 5], T_pad 80) C_drawn=2 coarse_drawn=27 @1920=1024 @1280=1024 @2560=1024 ELIGIBLE
+   38 ships/terraformer/cpuship_destr_a (ship, thr [30, 15, 5], T_pad 80) C_drawn=38 coarse_drawn=2 @1920=1024 @1280=1024 @2560=1024 refuse=no_draw_gain
+   38 ships/xenon/xenon_m2_V/hull (ship, thr [45, 17, 4], T_pad 112) C_drawn=2 coarse_drawn=7 @1920=1024 @1280=1024 @2560=2048 ELIGIBLE
+   38 ships/yaki/yaki_m2 (ship, thr [30, 15, 5], T_pad 80) C_drawn=3 coarse_drawn=24 @1920=4096 @1280=2048 @2560=4096 ELIGIBLE
+   38 ships/yaki/yaki_m2_tenshi/hull (ship, thr [30, 15, 5], T_pad 80) C_drawn=3 coarse_drawn=24 @1920=4096 @1280=2048 @2560=4096 ELIGIBLE
+   38 stations/sadiablo/supply_base (station, thr [43, 15, 3], T_pad 150) C_drawn=3 coarse_drawn=27 @1920=4096 @1280=4096 @2560=4096 ELIGIBLE
+   38 stations/station_scenes/farm/argon_farm_M_factory_F (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=4 coarse_drawn=1 @1920=1024 @1280=1024 @2560=1024 ELIGIBLE
+   38 stations/station_scenes/farm/argon_farm_S_factory_F (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=3 coarse_drawn=1 @1920=1024 @1280=1024 @2560=1024 ELIGIBLE
+   38 stations/station_scenes/food/argon_food_M_factory_A (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=3 coarse_drawn=1 @1920=1024 @1280=1024 @2560=1024 ELIGIBLE
+   38 stations/station_scenes/lost_colony/lostcolony_energy (station, thr [30, 15], T_pad 150) C_drawn=- coarse_drawn=32  refuse=dominant_slot_missing
+   38 stations/station_scenes/others/argon_mineA_ore_L (station, thr [250, 150, 80, 30], T_pad 150) C_drawn=5 coarse_drawn=1 @1920=1024 @1280=1024 @2560=1024 ELIGIBLE
+flown sectors:
+  run255_burst2: eligible 12; 1920 wide 367.01 MB (cap 2048 132.13 MB); 1280 wide 176.17 MB (cap 2048 117.45 MB); 2560 wide 381.69 MB (cap 2048 146.81 MB)
+  run257_burst1: eligible 14; 1920 wide 391.48 MB (cap 2048 156.60 MB); 1280 wide 244.68 MB (cap 2048 127.24 MB); 2560 wide 391.48 MB (cap 2048 156.60 MB)
+  run260: eligible 10; 1920 wide 371.90 MB (cap 2048 137.02 MB); 1280 wide 166.38 MB (cap 2048 107.66 MB); 2560 wide 386.58 MB (cap 2048 151.70 MB)
+elapsed 217 s, jobs 6

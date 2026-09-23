@@ -1,0 +1,19 @@
+# Text bodies (.bod/.pbd) in the merged-LOD census and batch overlay (2026-09-23; read-only, no Wine, no build, no install).
+# Run from the checkout root. S = <session scratchpad>/textbody (untracked), BOTTLE = ~/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3; the bottle and /tmp/x3-mod1, /tmp/x3-mod2 are only read.
+ps -axww -o args= | grep '[X]3AP.exe'      # empty before every run
+python3 verification/results/fog-family-data/tool-dryrun/make_mod_root.py $S/modroot   # vanilla+mod root (symlinks into a fresh dir)
+# body-format-bob1.md section 8: twins, coverage, record extents
+PYTHONPATH=tools/analysis python3 verification/results/lod-overlay-batch/text-bodies/text_pairs.py > text_pairs_out.txt          # bottle, 53 stems, ~5 s
+PYTHONPATH=tools/analysis python3 verification/results/lod-overlay-batch/text-bodies/text_coverage.py $S/modroot > text_coverage_modroot_out.txt   # ~14 s
+PYTHONPATH=tools/analysis python3 verification/results/lod-overlay-batch/text-bodies/text_coverage.py "$BOTTLE" > text_coverage_bottle_out.txt
+PYTHONPATH=tools/analysis python3 verification/results/lod-overlay-batch/text-bodies/record_extent.py "$BOTTLE" bin > record_extent_out.txt    # bottle binaries
+PYTHONPATH=tools/analysis python3 verification/results/lod-overlay-batch/text-bodies/material_flags.py "$BOTTLE" > material_flags_out.txt     # classic MAT6 flags vs switches, binary MAT5
+# census with text bodies (default) and without (--binary-only), same root and rule
+python3 tools/analysis/lod_batch_census.py --game $S/modroot --out $S/census_text --jobs 6                  # ~210 s; rerun after the review refusals (text_no_tangents, text_normals_inferred, text_collision_box)
+python3 tools/analysis/lod_batch_census.py --game $S/modroot --out $S/census_bin --jobs 6 --binary-only
+cp $S/census_text/summary.txt summary_text.txt; cp $S/census_bin/summary.txt summary_binary_only.txt
+PYTHONPATH=tools/analysis python3 verification/results/lod-overlay-batch/text-bodies/text_census.py $S/census_text $S/census_bin $S/modroot text_rows_ship_station.txt > text_census_out.txt
+# end-to-end: batch dry run over the 5 text bodies the census made eligible before the review refusals (only_text.txt);
+# first run built all 5 (41 -> 7 draws, 14.2 s); after the refusals all 5 are refused (1.6 s). Writes the record under $S only
+python3 tools/analysis/lod_overlay.py --batch --dry-run --jobs 2 --game $S/modroot --out $S/dry_text --only verification/results/lod-overlay-batch/text-bodies/only_text.txt
+cp $S/dry_text/x3m-lod-batch-summary.txt batch_dryrun_text_summary.txt

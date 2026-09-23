@@ -1,0 +1,7 @@
+with text: bodies 4613 (winning .pbb/.bob BOB1/non-CUT1 resources + 1623 text bodies (.pbd/.bod, scenes skipped); overlay sources skipped: none)
+binary only: bodies 2990 (winning .pbb/.bob BOB1/non-CUT1 resources; overlay sources skipped: none)
+rows: with text 4613, binary only 2990, text rows 1623
+text rows by (layer, category, outcome) {('mod', 'other', 'not eligible'): 996, ('mod', 'ship', 'not eligible'): 15, ('mod', 'station', 'not eligible'): 4, ('vanilla', 'other', 'not eligible'): 559, ('vanilla', 'ship', 'not eligible'): 37, ('vanilla', 'station', 'not eligible'): 12}
+text rows by refusal/filter reason {'filter:category_other': 1538, 'text_normals_inferred': 1408, 'no_opaque': 1230, 'non_effect_material': 151, 'text_collision_box': 150, 'mat3': 149, 'text_no_tangents': 47, 'texture_unresolved': 31, 'material_outside_table': 25, 'text_parse_error': 21, 'dominant_slot_missing': 6, 'filter:no_draw_gain': 6}
+eligible: with text 1020, binary only 1020; gained 0, lost 0 []
+wrote 68 ship/station text rows to verification/results/lod-overlay-batch/text-bodies/text_rows_ship_station.txt

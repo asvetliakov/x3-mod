@@ -23,7 +23,9 @@ CLI (prints derived numbers only; never writes body bytes):
   python3 tools/analysis/bob1.py audit [--summary] [--json OUT] [--view-distance V] [--factor F]
 """
 import argparse
+import math
 import os
+import re
 import struct
 import sys
 from pathlib import Path
@@ -252,6 +254,16 @@ def kind(data):
 
 
 def parse(data, max_trailing=0):
+    """Parse a decoded body, dispatching on the magic as 0x004863c0 does: a payload starting
+    with 'BOB' is binary (parse_binary), anything else is the text form (parse_text). A CUT1
+    scene container is refused (not a body)."""
+    head = bytes(data[:4])
+    if head == b'CUT1' or head.startswith(b'BOB'):
+        return parse_binary(data, max_trailing)
+    return parse_text(data)
+
+
+def parse_binary(data, max_trailing=0):
     """Parse a decoded BOB1 body; raises FormatError on any deviation the engine rejects.
 
     Up to max_trailing bytes after the final /BOB are tolerated and counted in the tree's
@@ -308,6 +320,388 @@ def serialise(tree):
         w.tag('/' + t[:3])
     w.tag('/BOB')
     return bytes(w.b)
+
+
+# --- text form (.bod / .pbd) --------------------------------------------------------------
+# Grammar derived from the shipped text bodies and their compiled twins
+# (body-format-bob1.md section 8, "Text form"); the engine's text parser 0x00483f20 is not decompiled.
+
+TEXT_POS_DIVISOR = 1.52587890625        # BOD position unit = BOB unit * 100000/65536 (x2bc)
+SPTYPE_NAMES = {'SPTYPE_LONG': 0, 'SPTYPE_BOOL': 1, 'SPTYPE_FLOAT': 2, 'SPTYPE_FLOAT2': 3, 'SPTYPE_FLOAT3': 4,
+                'SPTYPE_FLOAT4': 5, 'SPTYPE_MATRIX3': 6, 'SPTYPE_MATRIX4': 7, 'SPTYPE_STRING': 8}
+FACE_BASE, FACE_UV, FACE_SMOOTH = 1, 8, 16          # face flag = -(bits)
+TEXT_MATERIALS = {'MATERIAL3': 'MAT3', 'MATERIAL5': 'MAT5', 'MATERIAL6': 'MAT6'}
+_TEXT_LEX = re.compile(r'/!([^\n]*?)!/|/[^\n]*')      # /! block !/ on one line, else '/' comment to end of line
+_TEXT_INT = re.compile(r'-?[0-9]+')
+_TEXT_HEX = re.compile(r'0[xX][0-9a-fA-F]+')
+_TEXT_NUM = re.compile(r'-?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][-+]?[0-9]+)?')
+I32, U32 = (-0x80000000, 0x7fffffff), (0, 0xffffffff)
+_SCENE_LINE = re.compile(rb'^[ \t]*(VER[ \t]*:|P[ \t]+-?\d+[ \t]*;)', re.M)
+
+
+def text_kind(data):
+    """'scene' for a text scene (VER:/P n; node lines, the text twin of CUT1), else 'body'."""
+    return 'scene' if _SCENE_LINE.search(bytes(data[:65536])) else 'body'
+
+
+class TextReader:
+    """Field stream of a text body: ';'-separated values with '//' and '/' comments removed;
+    a /! ... !/ block is one magic field ('\\0', content). Tracks the line for errors."""
+
+    def __init__(self, data):
+        data = bytes(data)
+        text = (data[3:] if data.startswith(b'\xef\xbb\xbf') else data).decode('latin1')
+        self.magic, self.info = [], None
+
+        def lex(m):
+            if m.group(1) is not None:
+                self.magic.append(m.group(1))
+                return f'\0{len(self.magic) - 1};'
+            if m.group(0).startswith('/!'):
+                raise FormatError(f'text line {text.count(chr(10), 0, m.start()) + 1}: unclosed /! block')
+            if self.info is None and m.group(0).startswith('/#'):
+                self.info = m.group(0)[2:].strip()
+            return ''
+        self.fields = self._split(_TEXT_LEX.sub(lex, text))
+        self.i = 0
+
+    @staticmethod
+    def _split(code):
+        out, pending, line = [], '', 1
+        for n, chunk in enumerate(code.split('\n'), 1):
+            parts = chunk.split(';')
+            parts[0] = pending + '\n' + parts[0] if pending.strip() else parts[0]
+            for p in parts[:-1]:
+                out.append((p.strip(), n))
+            pending = parts[-1]
+            line = n
+        if pending.strip():
+            raise FormatError(f'text: unterminated value {pending.strip()[:40]!r} at line {line}')
+        return out
+
+    def error(self, msg):
+        line = self.fields[min(self.i, len(self.fields) - 1)][1] if self.fields else 0
+        return FormatError(f'text line {line}: {msg}')
+
+    def done(self):
+        return self.i >= len(self.fields)
+
+    def peek(self):
+        return self.fields[self.i][0] if self.i < len(self.fields) else None
+
+    def next(self):
+        if self.i >= len(self.fields):
+            raise FormatError('text: truncated (unexpected end of body)')
+        v = self.fields[self.i][0]; self.i += 1
+        return v
+
+    def is_magic(self):
+        v = self.peek()
+        return v is not None and v.startswith('\0')
+
+    def peek_magic(self):
+        v = self.peek()
+        return self.magic[int(v[1:])] if v is not None and v.startswith('\0') else None
+
+    def magic_field(self):
+        v = self.next()
+        if not v.startswith('\0'):
+            self.i -= 1
+            raise self.error(f'expected a /! !/ block, got {v[:40]!r}')
+        return self.magic[int(v[1:])]
+
+    def int(self, what='integer', span=I32):
+        v = self.next()
+        if not _TEXT_INT.fullmatch(v):
+            self.i -= 1
+            raise self.error(f'expected {what}, got {v[:40]!r}')
+        n = int(v)
+        if not span[0] <= n <= span[1]:
+            self.i -= 1
+            raise self.error(f'{what} {v[:40]} outside {span[0]}..{span[1]}')
+        return n
+
+    def num(self, what='number'):
+        v = self.next()
+        n = float(v) if _TEXT_NUM.fullmatch(v) else math.nan
+        if not math.isfinite(n):
+            self.i -= 1
+            raise self.error(f'expected a finite {what}, got {v[:40]!r}')
+        return n
+
+    def string(self, what='string'):
+        v = self.next()
+        if '\0' in v:
+            self.i -= 1
+            raise self.error(f'expected {what}, got a /! block')
+        return v.encode('latin1')
+
+    def bits(self, what):
+        """A flags value written as a binary digit string (0000000001000000 = 0x40), 32 bits at most."""
+        v = self.next()
+        if not v or set(v) - {'0', '1'} or int(v, 2) > 0xffffffff:
+            self.i -= 1
+            raise self.error(f'{what} {v[:40]!r} is not a binary digit string of at most 32 bits')
+        return int(v, 2)
+
+    def word(self, what='16-bit value'):
+        v = self.int(what)
+        if not 0 <= v <= 0xffff:
+            self.i -= 1
+            raise self.error(f'{what} {v} outside 0..65535')
+        return v
+
+
+def _fixed(v):
+    """16.16 fixed point, rounded to nearest (x2bc); must fit a signed 32-bit int."""
+    if not math.isfinite(v):
+        raise FormatError(f'text: {v} is not finite')
+    n = int(math.floor(v * 65536.0 + 0.5))
+    if not I32[0] <= n <= I32[1]:
+        raise FormatError(f'text: {v} outside the 16.16 range')
+    return n
+
+
+def _text_int(text, what, span=I32):
+    if _TEXT_HEX.fullmatch(text):
+        n = int(text, 16)
+    elif _TEXT_INT.fullmatch(text):
+        n = int(text)
+    else:
+        raise FormatError(f'text: bad {what} {text[:40]!r}')
+    if not span[0] <= n <= span[1]:
+        raise FormatError(f'text: {what} {text[:40]} outside {span[0]}..{span[1]}')
+    return n
+
+
+def _text_name(v):
+    return b'' if v.upper() == b'NULL' else v
+
+
+def _read_text_material(r, key, first):
+    """One MATERIALn record; `first` is the value after 'MATERIALn:' (the index)."""
+    ver = MATVER[TEXT_MATERIALS[key]]
+    m = {'index': _text_int(first, 'material index', (0, 0xffff))}
+    if ver >= 6:
+        m['flags'] = _text_int(r.next(), 'material flags', U32)
+        if m['flags'] & EFFECT_MATERIAL:
+            m['technique'] = r.word('technique')
+            m['effect'] = r.string('effect file')
+            params = []
+            for _ in range(r.word('parameter count')):
+                name = r.string('parameter name')
+                tname = r.next()
+                typ = SPTYPE_NAMES.get(tname.upper())
+                if typ is None:
+                    raise r.error(f'unknown effect parameter type {tname[:40]!r}')
+                if typ == 8:
+                    val = r.string('parameter value')
+                elif typ in (0, 1):
+                    val = [r.int('parameter value')]
+                else:
+                    val = [_fixed(r.num('parameter value')) for _ in range(SPTYPE_WORDS[typ])]
+                params.append((name, typ, val))
+            m['params'] = params
+            return m
+        tex = r.string('texture')
+        if _TEXT_INT.fullmatch(tex.decode('latin1')):
+            raise r.error('MATERIAL6 with a numeric texture (MATERIAL3 layout) is not supported')
+        m['texture'] = _text_name(tex)
+    else:
+        m['texture'] = r.word('texture id')
+    colors = [r.word('colour') for _ in range(9)]
+    transparency = r.int('transparency', (I32[0], U32[1])) & 0xffffffff
+    m['colors'] = colors + [transparency >> 16, transparency & 0xffff, r.word('self illumination')]
+    m['w24'] = r.word('shininess'); m['w26'] = r.word('shininess strength')
+    blend, two_sided, wire = (r.int('material switch') for _ in range(3))
+    if ver < 6:       # MAT6 carries the same bits in its flags word (MAT6 text: flags 2 <-> 1;0;0)
+        m['flagword'] = (0x2 if blend else 0) | (0x10 if two_sided else 0) | (0x8 if wire else 0)
+    m['w2c'] = r.word('texture value')
+    if ver >= 6:
+        m['maps'] = [(_text_name(r.string('map')), r.word('map value')) for _ in range(3)]
+        m['extra'] = [(_text_name(r.string('map')), r.word('map value')) for _ in range(2)]
+    else:
+        n = 2 if ver == 3 else 3
+        m['maps'] = [(r.word('map id'), r.word('map value')) for _ in range(n)]
+        m['maps'] += [(0, 0)] * (3 - n)          # the binary layout (bob1.read_material) reads 3 pairs
+    return m
+
+
+def _read_text_normals(block):
+    body = block.strip()[2:] if block.strip().startswith('N:') else None
+    if body is None:
+        return None
+    vals = [v for v in re.split(r'[;{}\s]+', body) if v]
+    try:
+        vals = [float(v) for v in vals]
+    except ValueError:
+        raise FormatError(f'text: bad normal block {block[:60]!r}') from None
+    if len(vals) == 3:
+        return [tuple(vals)] * 3
+    if len(vals) == 9:
+        return [tuple(vals[0:3]), tuple(vals[3:6]), tuple(vals[6:9])]
+    raise FormatError(f'text: normal block with {len(vals)} values')
+
+
+def _face_normals(verts, raw):
+    """Normals for the faces without an N block, as the compiled twins carry them: a face with
+    smoothing group 0 gets its own normal cross(b - a, c - a) on every corner; otherwise a corner
+    gets the normalised sum of the (area-weighted) normals of the record's faces that use the same
+    vertex and share a smoothing bit with it."""
+    fn = []
+    for f in raw:
+        (ax, ay, az), (bx, by, bz), (cx, cy, cz) = (verts[i] for i in f['abc'])
+        ux, uy, uz, vx, vy, vz = bx - ax, by - ay, bz - az, cx - ax, cy - ay, cz - az
+        fn.append((uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx))
+    around = {vi: [] for f in raw if f['normals'] is None and f['smooth'] for vi in f['abc']}
+    for k, f in enumerate(raw):
+        for vi in f['abc']:
+            if vi in around:
+                around[vi].append(k)
+
+    def unit(v):
+        n = math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2])
+        return (v[0] / n, v[1] / n, v[2] / n) if n else (0.0, 0.0, 0.0)
+    for k, f in enumerate(raw):
+        if f['normals'] is not None:
+            continue
+        if not f['smooth']:
+            f['normals'] = [unit(fn[k])] * 3
+            continue
+        out = []
+        for vi in f['abc']:
+            sx = sy = sz = 0.0
+            for j in around[vi]:
+                if j == k or raw[j]['smooth'] & f['smooth']:
+                    sx += fn[j][0]; sy += fn[j][1]; sz += fn[j][2]
+            out.append(unit((sx, sy, sz)))
+        f['normals'] = out
+
+
+def _read_text_lod(r, value, info):
+    verts = []
+    while True:
+        x, y, z = r.int('vertex x'), r.int('vertex y'), r.int('vertex z')
+        if (x, y, z) == (-1, -1, -1):
+            break
+        verts.append((x, y, z))
+    pos = [tuple(int(math.floor(c / TEXT_POS_DIVISOR + 0.5)) for c in v) for v in verts]
+    raw, parts = [], []
+    while True:
+        if r.peek() == '-99' and parts:
+            r.next()
+            flags = r.bits('body flags')
+            break
+        part, bounds = {'faces': []}, None
+        while True:
+            if r.is_magic():
+                block = r.magic_field().strip()
+                if block.startswith('PART_VALUES_RAW:'):
+                    vals = [v for v in re.split(r'[;\s]+', block[16:]) if v]
+                    if len(vals) != 10:
+                        raise r.error('PART_VALUES_RAW needs 10 values')
+                    bounds = [_text_int(v, 'part value') for v in vals]
+                elif block.startswith('COLLISION_BOX:'):
+                    info['collision_boxes'] += 1       # not mapped: census/overlay refuse text_collision_box
+                else:
+                    raise r.error(f'unknown /! block {block[:40]!r}')
+                continue
+            mat = r.int('face material')
+            if mat == -99:
+                pflags = r.bits('part flags')
+                break
+            abc = (r.int('face vertex'), r.int('face vertex'), r.int('face vertex'))
+            for vi in abc:
+                if not 0 <= vi < len(verts):
+                    raise r.error(f'face vertex {vi} outside 0..{len(verts) - 1}')
+            fflag = r.int('face flags')
+            if fflag >= 0 or not -fflag & FACE_BASE or -fflag & ~(FACE_BASE | FACE_UV | FACE_SMOOTH):
+                raise r.error(f'unsupported face flags {fflag}')
+            bits = -fflag
+            smooth = r.int('smoothing group', (I32[0], U32[1])) if bits & FACE_SMOOTH else 0
+            uvs = [(r.num('u'), r.num('v')) for _ in range(3)] if bits & FACE_UV else None
+            block = r.peek_magic()
+            normals = _read_text_normals(r.magic_field()) if block is not None and block.strip().startswith('N:') else None
+            f = {'mat': mat, 'abc': abc, 'smooth': smooth & 0xffffffff, 'uvs': uvs, 'normals': normals}
+            if normals is None and f['smooth']:
+                info['inferred_normals'] += 1           # smoothed normal derived by _face_normals (no twin)
+            raw.append(f)
+            part['faces'].append(f)
+        part['flags'] = pflags
+        part['bounds'] = bounds
+        parts.append(part)
+    if any(f['normals'] is None for f in raw):
+        _face_normals(verts, raw)
+    # Points of the compiled twins: one point per distinct (vertex, uv, smoothing group) corner,
+    # plus the normal when the group is 0 (flat faces), in order of first use over the faces of
+    # every part of the record; a smoothed point takes the normal of its first corner.
+    points, index, out = [], {}, []
+    for part in parts:
+        groups, order = {}, []
+        for f in part['faces']:
+            face = []
+            for k, vi in enumerate(f['abc']):
+                pflags = 0x19
+                vals = list(pos[vi])
+                if f['uvs']:
+                    pflags |= 2
+                    vals += [_fixed(f['uvs'][k][0]), _fixed(f['uvs'][k][1])]
+                n = tuple(_fixed(c) for c in f['normals'][k])
+                key = (vi, pflags, tuple(vals[3:]), f['smooth'], n if not f['smooth'] else None)
+                j = index.get(key)
+                if j is None:
+                    j = index[key] = len(points)
+                    points.append((pflags,) + tuple(vals) + n + (f['smooth'],))
+                face.append(j)
+            if f['mat'] not in groups:
+                groups[f['mat']] = []
+                order.append(f['mat'])
+            groups[f['mat']].append((face[0], face[1], face[2], 1))
+        new = {'flags': part['flags'] & ~PART_PRECOMPUTED,
+               'groups': [{'material': m, 'faces': groups[m]} for m in order]}
+        if part['bounds'] is not None:
+            new['flags'] |= PART_PRECOMPUTED
+            new['bounds'] = part['bounds']
+            for g in new['groups']:
+                g['extra'] = []
+        out.append(new)
+    return {'value': value, 'flags': flags, 'points': points, 'parts': out}
+
+
+def parse_text(data):
+    """Parse a decoded text body (.bod/.pbd) into the tree parse_binary returns, so serialise()
+    writes the compiled BOB1 form. Raises FormatError on anything outside the established
+    grammar (body-format-bob1.md section 8); a text scene is refused. The tree also carries
+    'text': {'inferred_normals': faces with a smoothing group and no N: block (normal derived,
+    rule not validated by a twin), 'collision_boxes': COLLISION_BOX blocks (read, not mapped)};
+    serialise() ignores it."""
+    if text_kind(data) == 'scene':
+        raise FormatError('text scene (VER:/P lines), not a body')
+    r = TextReader(data)
+    sections, mats, mat_tag = [], [], None
+    while not r.done() and r.peek().startswith('MATERIAL'):
+        key, _, first = r.next().partition(':')
+        key = key.strip().upper()
+        if key not in TEXT_MATERIALS:
+            raise r.error(f'unsupported material record {key!r}')
+        tag = TEXT_MATERIALS[key]
+        if mat_tag not in (None, tag):
+            raise r.error(f'mixed material records {mat_tag} and {tag}')
+        mat_tag = tag
+        mats.append(_read_text_material(r, key, first.strip()))
+    if r.info is not None:
+        sections.append(('INFO', r.info.encode('latin1')))
+    if mat_tag:
+        sections.append((mat_tag, mats))
+    ladder, info = [], {'inferred_normals': 0, 'collision_boxes': 0}
+    while not r.done():
+        ladder.append(_read_text_lod(r, r.int('body size'), info))
+    if not ladder:
+        raise FormatError('text body has no body record')
+    if len(ladder) > 0xffff:
+        raise FormatError('too many LOD records')
+    sections.append(('BODY', ladder))
+    return {'sections': sections, 'text': info}
 
 
 def lods(tree):

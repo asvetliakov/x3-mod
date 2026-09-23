@@ -1,0 +1,5 @@
+ships/khaak/khaak_M5
+ships/props/KG_Split_turret_frame
+stations/others/HQdock
+stations/others/HQexitramp
+stations/others/paranid_stealth_generator

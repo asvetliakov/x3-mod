@@ -1,0 +1,32 @@
+text members 3219: scenes 1536, bodies 1683 {'effects': 226, 'environments': 1020, 'interface': 3, 'others': 6, 'patch20': 4, 'ships': 76, 'special': 1, 'stations': 16, 'v': 331}; CRLF 1505
+faces {'effects': 11365, 'environments': 37430, 'interface': 2912, 'others': 1240, 'patch20': 9076, 'ships': 214697, 'special': 8, 'stations': 231447, 'v': 104369}
+faces with an N block {'effects': 6756, 'environments': 34688, 'interface': 0, 'others': 96, 'patch20': 9076, 'ships': 192882, 'special': 0, 'stations': 215825, 'v': 1200}
+bodies with faces lacking an N block {'effects': 101, 'environments': 1015, 'interface': 3, 'others': 4, 'patch20': 0, 'ships': 17, 'special': 1, 'stations': 10, 'v': 282}
+/! block kinds {'N': 460523, 'COLLISION_BOX': 160, 'PART_VALUES_RAW': 65} face flag values {'-25': 543096, '-9': 69436, '-1': 2, '-17': 10}
+parse_text: 1659 compiled, 24 text_parse_error; material tags {'MAT6': 1405, 'MAT3': 151, 'MAT5': 98, '-': 5}
+lod_overlay.text_refusals of the compiled bodies by (top directory, reasons) {('effects', 'none'): 1, ('effects', 'text_collision_box'): 123, ('effects', 'text_normals_inferred'): 100, ('environments', 'text_collision_box'): 4, ('environments', 'text_no_tangents,text_collision_box'): 1, ('environments', 'text_no_tangents,text_normals_inferred'): 1, ('environments', 'text_normals_inferred'): 1014, ('interface', 'text_normals_inferred'): 3, ('others', 'none'): 1, ('others', 'text_no_tangents,text_normals_inferred'): 1, ('others', 'text_normals_inferred'): 3, ('patch20', 'text_no_tangents'): 4, ('ships', 'none'): 34, ('ships', 'text_collision_box'): 4, ('ships', 'text_no_tangents'): 19, ('ships', 'text_no_tangents,text_collision_box'): 2, ('ships', 'text_no_tangents,text_normals_inferred'): 5, ('ships', 'text_normals_inferred'): 8, ('special', 'text_normals_inferred'): 1, ('stations', 'none'): 2, ('stations', 'text_no_tangents,text_collision_box'): 4, ('stations', 'text_no_tangents,text_normals_inferred'): 6, ('stations', 'text_normals_inferred'): 4, ('v', 'none'): 23, ('v', 'text_collision_box'): 16, ('v', 'text_no_tangents,text_normals_inferred'): 31, ('v', 'text_normals_inferred'): 244}
+  refused 01.cat:objects/effects/menugfx/menu_dialog_text.pbd: text line 5: unsupported material record 'MATERIAL'
+  refused 01.cat:objects/effects/menugfx/menu_dialog_text2.pbd: text line 10: unsupported face flags 1
+  refused addon/11.cat:objects/others/argon_gate.pbd: text body has no body record
+  refused addon/06.cat:objects/ships/props/extern_BIG_dock.pbd: text line 7: MATERIAL6 with a numeric texture (MATERIAL3 layout) is not supported
+  refused addon/06.cat:objects/ships/props/extern_M4_dock.pbd: text line 7: MATERIAL6 with a numeric texture (MATERIAL3 layout) is not supported
+  refused addon/06.cat:objects/ships/props/extern_small_dock.pbd: text line 7: MATERIAL6 with a numeric texture (MATERIAL3 layout) is not supported
+  refused addon/06.cat:objects/ships/props/extern_small_dock2.pbd: text line 7: MATERIAL6 with a numeric texture (MATERIAL3 layout) is not supported
+  refused 01.cat:objects/v/00008.pbd: text line 12: unsupported face flags 1
+  refused 01.cat:objects/v/00012.pbd: text line 16: unsupported face flags 4
+  refused 01.cat:objects/v/00030.pbd: text line 15: unsupported face flags 4
+  refused 01.cat:objects/v/00031.pbd: text line 5: unsupported material record 'MATERIAL'
+  refused 01.cat:objects/v/00034.pbd: text line 5: unsupported material record 'MATERIAL'
+  refused 01.cat:objects/v/00094.pbd: text line 14: unsupported face flags 4
+  refused 01.cat:objects/v/00096.pbd: text line 14: unsupported face flags 4
+  refused 01.cat:objects/v/00098.pbd: text line 4: unsupported material record 'MATERIAL'
+  refused 01.cat:objects/v/00109.pbd: text line 12: unsupported face flags 1
+  refused 01.cat:objects/v/00116.pbd: text line 15: unsupported face flags 4
+  refused 01.cat:objects/v/00200.pbd: text line 15: unsupported face flags 4
+  refused 01.cat:objects/v/00214.pbd: text line 15: unsupported face flags 4
+  refused 01.cat:objects/v/00224.pbd: text line 5: unsupported material record 'MATERIAL'
+  refused 01.cat:objects/v/00234.pbd: text line 5: unsupported material record 'MATERIAL'
+  refused 01.cat:objects/v/00265.pbd: text line 15: unsupported face flags 4
+  refused 01.cat:objects/v/00357.pbd: text line 9: unsupported face flags 1
+  refused 01.cat:objects/v/00359.pbd: text line 9: unsupported face flags 1
+elapsed 13 s

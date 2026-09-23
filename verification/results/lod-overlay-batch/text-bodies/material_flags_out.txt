@@ -1,0 +1,4 @@
+winning text members: classic MATERIAL6 records with a named texture 208, flags == switch bits 203; others {'extra 0x1 missing 0x0': 5}
+all members text members: classic MATERIAL6 records with a named texture 208, flags == switch bits 203; others {'extra 0x1 missing 0x0': 5}
+binary MAT5 01.cat:objects/v/00586.pbb material 0 flag word 0x12 colors[9..11] [0, 1, 100] w24/w26 10/0
+  text twin: none

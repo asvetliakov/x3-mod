@@ -819,8 +819,18 @@ evidence under `verification/results/lod-overlay-batch/batch-dryrun/`.
   therefore eligible; `census.txt` marks them `T_pad=150<T_1`.
 - **Enumeration.** Unpacked `.bob` members are bodies (`canonical()` maps `.pbb` to `.bob`, so
   they share a key; the census's `.pbb`-only filter had dropped 1,271 of 1,438 mod bodies). A
-  winning text body (`.pbd`/`.bod`) is refused as `text_body`; a stem with both a binary and a
-  text member as `ambiguous_body_ext` (engine order unverified). Stray bytes after `/BOB`:
+  winning text body (`.pbd`/`.bod`) is compiled by `bob1.parse_text`
+  ([body-format-bob1.md](../reverse-engineering/body-format-bob1.md) §8) and censused like a
+  binary one (column `text`; a text scene is skipped like `CUT1`; a body outside the
+  established grammar is `text_parse_error`); the overlay writes it as the binary member of the
+  same stem (`.pbd` → gzip `.pbb`, `.bod` → `.bob`: our slot is the highest catalogue and binary
+  beats text inside a layer) and the marker records its `source_member`. Because that replaces
+  every record of the body with our compile, a text body is refused while the engine's text
+  loader `0x00483f20` is untraced: `text_no_tangents` (a used material names a bump map; the
+  compile writes no tangent records), `text_normals_inferred` (a smoothed face without an `N:`
+  block) and `text_collision_box` (an unmapped `COLLISION_BOX` block); `--binary-only` leaves
+  text bodies out of the census and the batch. A stem with both a binary and a text member stays
+  `ambiguous_body_ext` (engine order unverified). Stray bytes after `/BOB`:
   `bob1.parse(data, max_trailing)` tolerates up to `lod_overlay.MAX_TRAILING` (8) and records
   them; the engine parser `0x00481aa0` returns the model at the `/BOB` closer and never reads
   past it (body-format-bob1.md §1), so they are inert. Of the 94 mod bodies that failed to
@@ -944,6 +954,20 @@ evidence under `verification/results/lod-overlay-batch/batch-dryrun/`.
   435 ships, 9 stations; 82 in the `.pbb`-only census), 86 with tolerated trailing bytes (68
   eligible), 8 refused `trailing_bytes`, 57 eligible mixed-effect bodies, 4 `occlusion_mismatch`,
   and 1,020 eligible bodies overall (593 at 1024², 427 at 2048², ~11.3 GB of atlases estimated).
+- **Text bodies (2026-09-23, `verification/results/lod-overlay-batch/text-bodies/`, measured).**
+  With `bob1.parse_text` the census of the same vanilla+mod root reads 4,613 bodies instead of
+  2,990: 1,623 winning text bodies without a binary twin (1,015 from the mod layers, 608
+  vanilla; text scenes skipped), 1,602 of them compiled and 21 `text_parse_error` (MAT1
+  records, X2 quad faces, MATERIAL6 in the MATERIAL3 layout). With the text refusals
+  (`text_normals_inferred` 1,408, `text_collision_box` 150, `text_no_tangents` 47 rows) none of
+  them is eligible: 1,020 eligible bodies with and without text. Before those refusals 5 were
+  (`khaak_M5`, `KG_Split_turret_frame`, `paranid_stealth_generator` from vanilla,
+  `stations/others/HQdock` and `HQexitramp` from the mod); all five are bump-mapped, and a
+  `--batch --dry-run --only` over them now refuses all five (`text_no_tangents` 5,
+  `text_collision_box` 3, `text_normals_inferred` 2). The Mayhem 3 figure of 1,533 text winners
+  includes its text scenes (the root's 1,536 text scenes are skipped like `CUT1`); its ships and
+  stations reach the census as `.bob` bodies (inferred from the layer counts above). Lifting the
+  refusals needs the engine's text loader traced (body-format-bob1.md §8, Unknown).
 
 **Node side effects.** Two node-set side effects change at Very High (objdump of `0047cfe0..`,
 `/tmp/x3-lod/f47cfe0.s`). A child node flagged `node+0x12c & 0x40000` is hidden

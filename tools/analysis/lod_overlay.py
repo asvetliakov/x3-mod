@@ -183,8 +183,15 @@ reaches ~7 GB RSS on the biggest stations; every worker process is replaced afte
 accepted, the rule still decides T). The compact guard "T_pad not below T_1" is waived
 automatically when the source record is 0: C is then the full LOD 0 geometry, so C drawing in
 the Low..High band T_pad*f <= s < T_1*f (where the guard would otherwise refuse) is harmless;
-the guard stays for decimated sources (a coarser source record). Refusal reasons: text_body
-(a .pbd/.bod winner), ambiguous_body_ext (both a binary and a text member), trailing_bytes
+the guard stays for decimated sources (a coarser source record). A text winner (.pbd/.bod) is
+compiled by bob1.parse_text and written as the binary member of the same stem (.pbb/.bob; the
+overlay slot is the highest catalogue and binary beats text inside a layer); the marker records
+its source_member; --binary-only leaves text bodies out. Until the engine text loader 0x00483f20
+is traced a text body is refused as text_no_tangents (a used material names a t_BumpTexture;
+the compile writes no tangent records), text_normals_inferred (a smoothed face without an N:
+block) or text_collision_box (a COLLISION_BOX block, not mapped). Refusal reasons:
+text_parse_error (a text body outside the established grammar, body-format-bob1.md section 8),
+ambiguous_body_ext (both a binary and a text member), trailing_bytes
 (more than MAX_TRAILING stray bytes after /BOB; up to MAX_TRAILING are tolerated with a
 warning, the parser 0x00481aa0 returns at /BOB and never reads them), material_outside_table
 (a negative group material index, the ad signs), occlusion_mismatch (second UV set with
@@ -236,6 +243,7 @@ import json
 import multiprocessing
 import os
 import sys
+import struct
 import time
 from collections import Counter
 from pathlib import Path
@@ -247,6 +255,34 @@ from sector_fog_census import Assets, unpack, write_catalogue  # noqa: E402
 
 MARKER_SUFFIX = '.x3m-lod.json'
 REPLACED_SUFFIX = '.x3m-replaced'
+TEXT_BODY_EXTENSIONS = ('.pbd', '.bod')     # text bodies: compiled with bob1.parse_text, written as .pbb/.bob
+NULL_TEXTURES = (b'', b'null')
+
+
+def text_refusals(tree):
+    """Reasons a compiled text body is not overlaid while the engine's text loader 0x00483f20 is
+    untraced (the overlay replaces every record of the body with this compile):
+    text_no_tangents   a material a group uses names a t_BumpTexture: the compile writes no
+                       per-group tangent records (the game's compiles do);
+    text_normals_inferred  a face with a smoothing group and no N: block: its normal is derived
+                       by a rule no compiled twin validates;
+    text_collision_box a COLLISION_BOX block: read but not mapped to the model."""
+    info = tree.get('text', {})
+    mats = bob1.materials(tree)
+    used = {g['material'] for lod in bob1.lods(tree) for p in lod['parts'] for g in p['groups']}
+    bump = any(n.lower() == b't_bumptexture' and t == 8 and v.strip().lower() not in NULL_TEXTURES
+               for i in used if 0 <= i < len(mats) for n, t, v in mats[i].get('params', ()))
+    return ((['text_no_tangents'] if bump else [])
+            + (['text_normals_inferred'] if info.get('inferred_normals') else [])
+            + (['text_collision_box'] if info.get('collision_boxes') else []))
+
+
+def text_compiles(tree):
+    """True when the compiled text tree serialises and parses back to the same sections."""
+    try:
+        return bob1.parse_binary(bob1.serialise(tree))['sections'] == tree['sections']
+    except (bob1.FormatError, struct.error, OverflowError):
+        return False
 MAX_TRAILING = 8            # stray bytes after /BOB tolerated with a warning (86 of 94 failing mod bodies carry 1-2)
 DISPLAY = (1920, 1080)
 REFERENCE = (1280, 768)     # lod-selection.md reference frame of the threshold metric
@@ -718,20 +754,38 @@ def plan_body(assets, name, threshold, placement=None, force_threshold=False, co
     entry = bob1.resolve_body(assets, name)
     if 'loose' in entry:
         raise SystemExit(f'{name}: winning resource is loose file {entry["path"]}; a catalogue cannot override it')
-    if entry['path'].lower().endswith(('.pbd', '.bod')):
-        raise SystemExit(f'{name}: winning resource {entry["path"]} is a text body; only BOB1 bodies are overlaid')
     data = assets.read_entry(entry)
-    if bob1.kind(data) != 'BOB1':
-        raise SystemExit(f'{name}: {entry["path"]} is not a BOB1 body (magic {data[:4]!r})')
-    try:
-        tree = bob1.parse(data, MAX_TRAILING)
-    except bob1.FormatError as exc:
-        if 'trailing bytes' in str(exc):
-            raise SystemExit(f'{name}: {exc} (more than the {MAX_TRAILING} the parser tolerates)') from None
-        raise
-    trailing = tree.get('trailing_bytes', 0)
-    if bob1.serialise(tree) != (data[:len(data) - trailing] if trailing else data):
-        raise SystemExit(f'{name}: writer does not reproduce this body byte for byte; refusing')
+    text = entry['path'].lower().endswith(TEXT_BODY_EXTENSIONS)
+    member = entry['path']
+    if text:
+        # A text winner is compiled to BOB1 (bob1.parse_text) and written as the binary member of
+        # the same stem: our slot is the highest catalogue and binary beats text inside a layer.
+        if bob1.kind(data) or bytes(data[:3]) == b'BOB':
+            raise SystemExit(f'{name}: text_parse_error: {entry["path"]} is a text member holding binary data')
+        try:
+            tree = bob1.parse_text(data)
+        except bob1.FormatError as exc:
+            raise SystemExit(f'{name}: text_parse_error: {exc}') from None
+        reasons = text_refusals(tree)
+        if reasons:
+            raise SystemExit(f'{name}: {", ".join(reasons)}: text body refused until the engine text loader'
+                             ' 0x00483f20 is traced (lod_overlay.text_refusals)')
+        member = entry['path'][:-4] + {'.pbd': '.pbb', '.bod': '.bob'}[entry['path'][-4:].lower()]
+        if not text_compiles(tree):
+            raise SystemExit(f'{name}: text_parse_error: the compiled text body does not serialise and parse back')
+        trailing = 0
+    else:
+        if bob1.kind(data) != 'BOB1':
+            raise SystemExit(f'{name}: {entry["path"]} is not a BOB1 body (magic {data[:4]!r})')
+        try:
+            tree = bob1.parse(data, MAX_TRAILING)
+        except bob1.FormatError as exc:
+            if 'trailing bytes' in str(exc):
+                raise SystemExit(f'{name}: {exc} (more than the {MAX_TRAILING} the parser tolerates)') from None
+            raise
+        trailing = tree.get('trailing_bytes', 0)
+        if bob1.serialise(tree) != (data[:len(data) - trailing] if trailing else data):
+            raise SystemExit(f'{name}: writer does not reproduce this body byte for byte; refusing')
     if not any(t in ('MAT5', 'MAT6') for t, _ in tree['sections']) and not force_mat3:
         raise SystemExit(f'{name}: MAT3 body (no per-body materials); the loader rewrites the coarsest'
                          ' record of such a body with > 3 LODs to material 0x485; --force-mat3 overrides')
@@ -796,8 +850,9 @@ def plan_body(assets, name, threshold, placement=None, force_threshold=False, co
     with entry['cat'].with_suffix('.dat').open('rb') as f:
         f.seek(entry['offset'])
         head = bytes(v ^ 0x33 for v in f.read(2))
-    stored = gzip.compress(out, mtime=0) if head == b'\x1f\x8b' or entry['path'].lower().endswith('.pbb') else out
-    return dict(name=name, source=entry['source'], member=entry['path'], before=before, ladder=ladder,
+    stored = gzip.compress(out, mtime=0) if head == b'\x1f\x8b' or member.lower().endswith('.pbb') else out
+    return dict(name=name, source=entry['source'], member=member, before=before, ladder=ladder,
+                **({'source_member': entry['path']} if text else {}),
                 new=new, new_index=new_index, collapse=collapse, alpha=alpha_materials(mats), glow=glow,
                 area_kept=area_kept, area=area, synth=synth_report, source_materials=n_mats,
                 pad_index=pad_index, placement=placement, atlas_build=atlas, extra_members=extra,
@@ -842,7 +897,9 @@ def describe(plan, out=None):
     out = out or sys.stdout
     sr = plan.get('source_record', len(plan['before']) - 1)
     s_old, s_new = bob1.lod_summary(plan['before'][sr]), bob1.lod_summary(plan['new'])
-    print(f'{plan["name"]}: {plan["source"]}:{plan["member"]}', file=out)
+    print(f'{plan["name"]}: {plan["source"]}:{plan.get("source_member", plan["member"])}', file=out)
+    if plan.get('source_member'):
+        print(f'  text body compiled to BOB1 (bob1.parse_text); written as {plan["member"]}', file=out)
     if plan.get('trailing_bytes'):
         print(f'  warning: {plan["trailing_bytes"]} stray byte(s) after /BOB in the source member (tolerated up to'
               f' {MAX_TRAILING}; the engine parser returns at /BOB); the overlay member carries none', file=out)
@@ -1002,6 +1059,8 @@ def build_parser():
     b.add_argument('--only', type=Path, metavar='FILE',
                    help='batch: restrict to the bodies named in FILE (one per line; sectors.txt rows and'
                         ' eligible_bodies.txt NAME=T@N lines accepted; the rule still sets T)')
+    b.add_argument('--binary-only', action='store_true',
+                   help='batch: leave the winning text bodies (.pbd/.bod) out of the enumeration')
     b.add_argument('--sync', action='store_true',
                    help='batch: reuse the previous overlay\'s members for bodies whose inputs did not change')
     b.add_argument('--jobs', type=int, default=default_jobs(),
@@ -1181,7 +1240,9 @@ def body_manifest(p):
     """Per-body marker record of a plan (single and batch mode); 'draws' counts the drawn groups of
     C (hidden parts excluded), 'groups' every group."""
     return dict(
-        name=p['name'], source=p['source'], member=p['member'], placement=p['placement'], collapse=p['collapse'],
+        name=p['name'], source=p['source'], member=p['member'],
+        **({'source_member': p['source_member']} if p.get('source_member') else {}),
+        placement=p['placement'], collapse=p['collapse'],
         glow=sorted(p['glow']), area_kept=sorted(p['area_kept']), new_lod=p['new_index'], pad_lod=p['pad_index'],
         source_materials=p['source_materials'], source_record=p['source_record'], pad_source=p['pad_source'],
         trailing_bytes=p.get('trailing_bytes', 0), guard_waived=bool(p.get('guard_waived')),
@@ -1393,7 +1454,9 @@ def _bake_work(row):
     return bake_safely(_BAKE['assets'], row, _BAKE['atlas_opts'])
 
 
-BAKE_REASONS = (('texel_floor', 'texel_floor'), ('trailing bytes', 'trailing_bytes'), ('text body', 'text_body'),
+BAKE_REASONS = (('texel_floor', 'texel_floor'), ('trailing bytes', 'trailing_bytes'), ('text_parse_error', 'text_parse_error'),
+                ('text_no_tangents', 'text_no_tangents'), ('text_normals_inferred', 'text_normals_inferred'),
+                ('text_collision_box', 'text_collision_box'),
                 ('writer does not reproduce', 'writer_mismatch'), ('MAT3 body', 'mat3'),
                 ('outside the material table', 'material_outside_table'), ('loose file', 'loose_winner'),
                 ('already exists in', 'atlas_name_taken'), ('references', 'group_too_large'),
@@ -1488,7 +1551,7 @@ def batch(a, game, root, markers):
                     source_record=0, placement='compact', include_other=a.include_other,
                     atlas=dict(a.atlas_opts, sizes=list(a.atlas_opts['sizes'])), tool_sha256=tool_sha256())
     t0 = time.time()
-    rows, skipped = census.run(game, opts, a.jobs, only=only, include_text=True)
+    rows, skipped = census.run(game, opts, a.jobs, only=only, include_text=not a.binary_only)
     census_s = time.time() - t0
     rows.sort(key=lambda r: r['name'].lower())
     if skipped:
@@ -1588,7 +1651,7 @@ def batch(a, game, root, markers):
     multi = [p['name'] for p in plans if p['atlas'] and len(p['atlas'].get('materials', [0])) > 1]
     uv2 = [p['name'] for p in plans if p['atlas'] and p['atlas'].get('uv2_points')]
     per_body = bake_s / len(built) if built else 0.0
-    candidates = sum(1 for r in rows if 'text_body' not in r['refuse'] and 'category_other' not in r['filter'])
+    candidates = sum(1 for r in rows if 'text_parse_error' not in r['refuse'] and 'category_other' not in r['filter'])
     full_est = per_body * len(rows) if only is not None else bake_s
     trailing = sum(1 for p in plans if p['trailing'])
     waived = sum(1 for p in plans if p['guard_waived'])
@@ -1636,7 +1699,7 @@ def batch(a, game, root, markers):
     record = dict(
         tool='tools/analysis/lod_overlay.py --batch', dry_run=bool(a.dry_run), install=bool(a.install), game=str(game),
         slot=slot, retired_slot=retire, previous_slot=prev['slot'] if prev else None, sync=bool(a.sync),
-        settings=settings, only=str(a.only) if a.only else None, jobs=a.jobs,
+        settings=settings, only=str(a.only) if a.only else None, binary_only=a.binary_only, jobs=a.jobs,
         counts=dict(enumerated=len(rows), by_category=cats, eligible=len(eligible), built=len(built),
                     reused=len(reused), overlay_bodies=len(plans), candidates=candidates),
         refused=reasons, filtered=filters, atlas_sizes=sizes,
