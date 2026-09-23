@@ -222,6 +222,17 @@ struct FrameInputs {
     // read with sentinel_strict_sky and an age program only (the pass uploads the off
     // value otherwise, so the age target's bytes are those of the option off).
     float sky_history_exit_px = 0.f;
+    // Motion history weight (resolve c25.yzw, uploaded with c24 by the age variants;
+    // docs/architecture/taa-motion-history-weight.md): the history keep weight is capped
+    // at saturate(max(F, p^2 A + B)), 1 at or below motion_weight_v0 px/frame of the
+    // pixel's translation parallax against the rotation-only camera path and F at or
+    // above motion_weight_v1, so a hull under SETA translation accumulates a shorter
+    // history (less resample softening) while rest, pans and slow flight are untouched.
+    // motion_weight 0 off (the upload is 0, 1, 1: the cap is 1 and the blend bit for bit
+    // the run's without the fields), else 0.5 <= F < 1 with 0 <= V0 < V1 <= 64 (run()
+    // refuses the rest). Read by the age programs only; the caller keeps it 0 without
+    // the camera path (relative would then be the screen motion, a pan included).
+    float motion_weight = 0.f, motion_weight_v0 = 2.f, motion_weight_v1 = 8.f;
     bool caller_scene_open = true;
     bool caller_stateblock_recording = false;
     bool caller_queries_idle = false; // positive knowledge: no active occlusion/statistics query

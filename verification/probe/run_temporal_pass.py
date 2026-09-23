@@ -45,8 +45,21 @@ try:
     # (two sequences and one metric each). 552 / 410: the pan case (two sequences, one metric). 570 / 416: the
     # fade-band-beside-occluder, projective-pan and huge-camera-path cases (two sequences and one metric each). 616 / 444: the
     # exit reset (seta-sky-hull-share-decay.md section 6: nine age-program sequences and fourteen metrics per generation). 672 / 488: the
-    # same rows on the far and far-camera programs (six sequences and eleven metrics per generation).
-    assert run.returncode==0 and match and tuple(map(int,match.groups()))==(672,278,2) and report['samples']==488 and 'RESET PASS' in text and 'FAIL' not in text,text[-1500:]
+    # same rows on the far and far-camera programs (six sequences and eleven metrics per generation). 712 / 528: the motion
+    # history weight (taa-motion-history-weight.md section 6: ten rows on two age programs, ten metrics per program and generation).
+    assert run.returncode==0 and match and tuple(map(int,match.groups()))==(712,278,2) and report['samples']==528 and 'RESET PASS' in text and 'FAIL' not in text,text[-1500:]
+    # Motion history weight rows (docs/architecture/taa-motion-history-weight.md): the age programs' keep weight capped by the
+    # smaller of the translation parallax and the screen motion. Off path, every slow row, the pan and the co-moving hull
+    # bit-identical; the age target never differs; the half-texel 12.5 px/frame row is sharper (E ratio) with the cap 0.8.
+    report['motion_weight']=[dict(re.findall(r'(\w+)=(\S+)',line)) for line in text.splitlines() if line.startswith('MOTION_WEIGHT ')]
+    weight_rows={(row['program'],row['row'],row['on']):row for row in report['motion_weight'][:42]} # two programs x (ten rows x off / on + the 6.5 bound run) per generation
+    assert len(report['motion_weight'])==84 and len(weight_rows)==42,report['motion_weight']
+    for program in ('age','far_camera'):
+        for name in ('rest','1px','1.5px','pan12.5','comove12.5'):
+            assert weight_rows[(program,name,'1')]['output_diff']=='0.000000' and weight_rows[(program,name,'1')]['age_diff']=='0.000000',weight_rows[(program,name,'1')]
+        assert all(weight_rows[(program,name,'1')]['age_diff']=='0.000000' for name in ('5px','5.5px','6.5px','12px','12.5px')),program
+        assert float(weight_rows[(program,'6.5px','2')]['output_diff'])<=.002<.01<=float(weight_rows[(program,'6.5px','1')]['output_diff']),(weight_rows[(program,'6.5px','1')],weight_rows[(program,'6.5px','2')])
+        assert float(weight_rows[(program,'12.5px','1')]['e_ratio'])>=1.5*float(weight_rows[(program,'12.5px','0')]['e_ratio']) and float(weight_rows[(program,'12.5px','1')]['output_diff'])>0,(weight_rows[(program,'12.5px','0')],weight_rows[(program,'12.5px','1')])
     # Exit reset rows (docs/architecture/seta-sky-hull-share-decay.md): strict alone leaves the hull share in the trail and no
     # negative age; with the floor every fresh trail pixel is current-only once and the trail is sky-only (B == R) afterwards.
     report['seta_exit']=[dict(re.findall(r'(\w+)=(\S+)',line)) for line in text.splitlines() if line.startswith('SETA_EXIT ')]

@@ -1,6 +1,12 @@
 # Moving-hull softening under SETA: a parallax-gated history weight
 
+<<<<<<< HEAD
 Design note, 2026-09-23 (Fable). Not implemented. Numbers marked [M] are Run 68 A measurements
+=======
+Design note, 2026-09-23 (Fable). **Implemented 2026-09-23 (fixture-proven, awaiting review and commit; section 9 is
+the as-built record, `docs/verification/temporal-resolve.md` "2026-09-23 motion history weight"), default off until
+flown.** Numbers marked [M] are Run 68 A measurements
+>>>>>>> 66ee715d (WIP motion weight)
 (`verification/results/run254-exit/hull_sharp.py`, `hull_blurfit.py`, `hull_region_split.py`
 and their `*_out*.txt`; ledger `docs/verification/temporal-resolve.md`, "Run 254"); [E] are estimates
 from the model in section 3.
@@ -161,3 +167,92 @@ witness). Asserted:
    off, then `0.7,2,8`); the fixture's ripple row bounds it but does not rate it.
 3. The sigma model is a two-point calibration on a x1.4 grid; the 12 px/frame fixture row measures
    the real curve at 0.8 before any flight.
+4. **Answered at review (co-moving objects).** An object that moves with the camera (the player's ship in
+   the external view, an escort holding formation) has screen motion about 0 while its `relative` is the
+   turn's displacement, so the section 1 gate alone would cap it above V1 px/frame of yaw. As built the
+   gate is `min(dot(relative, relative), dot(screenPx, screenPx))`, `screenPx` the pixel's own lookup
+   displacement (`previousUV - uv` in px, formed for the lookup anyway): a pan (parallax 0), a co-moving
+   hull (screen motion 0) and rest keep 1, the SETA hull (both large) is capped. The fixture's co-moving
+   row (camera yaw 12.5 px/frame, hull screen-static) is bit-identical to off; the min also bounds the
+   gate for every input (the screen term is at most W^2 + H^2 px^2 inside the texture), so an overflowing
+   parallax cannot reach the off path's `0 * p2 + 1`.
+<<<<<<< HEAD
+=======
+
+## 9. As built (2026-09-23)
+
+**Term.** `resolve.hlsl`, `X3M_AGE_WEIGHT` variants only, computed beside the depth proof (the compiler sinks it to the
+blend anyway and keeps `parallax2` live across the loops) and applied after the far / adaptive keep and before the alpha
+history, exactly the section 1 form: `cap = saturate(max(F, dot(relative, relative) * A + B))`, `keep = min(keep, cap)`,
+c25.yzw = A, B, F (`prepare_motion_weight`, `resolve.h`; `prepare_exit` now writes the off triple 0, 1, 1 into yzw and
+`prepare_motion_weight` follows it). The age write is untouched: the cap changes the weight, never the count (fixture: the
+age target identical to off on every row). Plumbing as the exit reset's: `FrameInputs::motion_weight, _v0, _v1` validated by
+`run()` (`valid_motion_weight`: 0, or 0.5 <= F < 1 with 0 <= V0 < V1 <= 64), `X3M_TAA_MOTION_WEIGHT=F[,V0,V1]` parsed in
+`capture.cpp` (1 or 3 fields, else `taa_motion_weight_setting invalid=1`), logged as `motion_weight=F,V0,V1` in
+`motion_output_mode`, dropped per device without an age program (`motion_output_taa_motion_weight ... unavailable=1
+reason=no_age_program`), and handed to the pass only under camera policy 2 (`relative` is the translation parallax against
+the far-plane path there and the screen motion otherwise, i.e. a pan would be capped without the camera path).
+`--taa-motion-weight F[,V0,V1]` (requires `--taa`; F > 0 requires an age program; 0 the explicit off).
+
+**Slots (measured, D3DXDisassembleShader through the generator and the fixture's `RESOLVE_BUDGET`).** The term as written
+costs 4 slots on the far variants (a fresh `dp2add` for `parallax2`, `mad`, `max_sat`, `min`) and 6 / 6 / 9 on age /
+age_filter / age_line: the extra live scalar reshuffles the register allocation of the adaptive variants (movs), and every
+attempt to fold the cap into a value already live across the loops (the sign of `tolerance`, or reading the strict-sky
+predicate from `threshold`) cost one more. Neither of the note's two candidates is exact (the far-gate fold `g - g s`
+differs in the last ulp for `s` inside the 0.03..0.25 px/frame window, the camera-blend fold `b S - a S` for 0 < a < b) and
+each saves one slot, which would not have covered the four. The reserve applied instead is two rewrites that are exact by
+construction, on the age variants only (`#ifdef X3M_AGE_WEIGHT`; the plain / thin / line programs' bytes are unchanged):
+
+- the closest-depth dilation fetches the centre texel with the eight neighbours instead of skipping it (one `texldl` more
+  per pixel, the `kx != 0 || ky != 0` test and its branch gone: 5 to 7 slots): the centre cannot win (`neighbor < nearest`
+  fails on its own depth, a far-plane pixel's texel is the sentinel and fails `neighbor >= 0`) and the soft-clip flags it
+  would set are the ones the initialisers already set;
+- the alpha history's range test `blended >= low && blended <= high` as `min(blended - low, high - blended) >= 0` (1 to
+  3 slots): exact when `low`, `high` and `blended` are finite (the differences are the ones the compares formed); a NaN
+  `blended` gives `min(NaN, NaN)`, which fails as before; a non-finite `low` / `high` (an FP16 scene alpha the game wrote
+  as NaN or infinite, never seen; the range starts at the finite current alpha) is the one input where the backend's
+  `min` with a NaN operand decides, where the original kept the current alpha. HDR route only (c22.z).
+
+Reserve alone (before -> after): age 495 -> 487, age_filter 507 -> 499, age_line 507 -> 499, far 498 -> 488, far_camera
+510 -> 500; proven bit-identical on the committed fixture and runner before the term went in (0 stable lines removed / 0
+added on both reports, all 488 + 375 SAMPLE lines present, the SETA_EXIT rows identical). With the term: see the table
+below. The centre tap's cost is one fetch per pixel on the age programs (28 -> 29 on far_camera). The GPU cost is
+unmeasured: `LINE_TIMING_CAMERA` is a CPU-wall row whose run-to-run spread (1.33-2.01 ms across the three runs of this
+change) exceeds anything one fetch and a few slots could add; the flight's `--taa-debug` timing is the only measure.
+
+**With the term (measured, `RESOLVE_BUDGET` of the fixture and the generator's records; after cleanup batch 6 the age
+variants are age, far and far_camera):** age 495 -> **494**, far 498 -> **493**, far_camera 510 -> **505** of 512 (net
+-1 / -5 / -5 against the committed programs; the term with the co-moving gate of section 8 item 4 is +7 / +5 / +5 over the
+reserve, the gate's `min` against the screen motion +1 on each). Measured before the batch-6 rebase, the section-1 form
+without that gate was age 493, age_filter 505, age_line 508, far 492, far_camera 504. The plain / thin / snapshot programs:
+bytes unchanged (their headers did not regenerate; the records' include hash moved with `resolve.hlsl`).
+
+**Fixture (`verification/probe/run_temporal_pass.py`, case (m) `MOTION_WEIGHT`, `RESULT PASS numerical=712
+state_restorations=278 generations=2`, 528 samples; the ledger has the full table).** Deviations from section 6: the hull is
+a 512x16 strip (the 32-px edge scene holds a chain of only S / v frames at 12 px/frame), the stripe is a period-4 sinusoid
+point-sampled at the jittered position (the Gaussian sigma of a sinusoid is its amplitude ratio, so a continuous
+`sigma_fit` is reported beside the x1.4 grid), integer speeds were kept and half-texel ones added: at an integer speed the
+history tap lands on the texel grid and nothing is resampled (E ratio 0.65 at 1, 5 and 12 px/frame, the same as at rest),
+so the softening the option is for shows only at fractional speeds (E ratio 0.20 at 1.5, 5.5 and 12.5 px/frame, sigma_fit
+0.81 against 0.43 at rest). The pan row yaws 12.5 px/frame (the note's 5 would be vacuous: the cap at 5 is above the
+0.9 base); a co-moving row (camera yaw 12.5 px/frame, hull screen-static) proves the section 8 item 4 gate, and a 6.5
+px/frame half-texel row proves the ramp at a binding point (cap 0.8725: within 0.002 of a run whose cap is that constant,
+0.033 / 0.037 from off). The flicker witness compares jitter phases two frames apart (12.5 x 2 = 25 px). Off path: 0
+stable lines removed / 40 added (the new metrics) on temporal-pass.txt, 0 / 0 on temporal-lattice.txt, all 488 + 331
+SAMPLE lines present, SETA_EXIT rows identical.
+
+| row (both programs; far_camera = the flown configuration, age = the adaptive one) | E ratio off -> on | sigma_fit off -> on (grid) | ripple rms off -> on | output / age diff vs off |
+| --- | --- | --- | --- | --- |
+| rest | 0.647 / 0.622 (fc) unchanged | 0.43 / 0.45 (0.35 / 0.5) | 0.0142 / 0.0089 | **0 / 0** |
+| 1, 5, 12 px/frame (texel grid) | 0.649 -> 0.649, 0.649 -> 0.649, 0.647 -> **0.696** | 0.42, 0.42, 0.43 -> 0.39 | 0.0141, 0.0141, 0.0142 -> 0.0276 | 0 / 0, 0 / 0, 0.082 (0.087 fc) / **0** |
+| 1.5, 5.5 px/frame (half texel) | 0.197 -> 0.197 both | 0.81 -> 0.81 | 0.0094 -> 0.0094 | **0 / 0** both |
+| 6.5 px/frame (half texel, the ramp binds: cap 0.8725) | 0.197 -> **0.255** | 0.81 -> 0.75 | 0.0095 -> 0.0122 | 0.033 (0.037 fc) / **0**; 0 against the constant-cap run |
+| **12.5 px/frame** | 0.197 -> **0.383 (x1.95)** | 0.81 -> **0.62** (0.7 -> 0.7) | 0.0095 -> 0.0195 (**x2.06**) | 0.093 (0.104 fc) / **0** |
+| pan 12.5 px/frame (hull world-static) | 0.197 unchanged | 0.81 | 0.0095 | **0 / 0** |
+| co-moving 12.5 px/frame (camera yaw, hull screen-static) | 0.647 / 0.622 (fc) unchanged | 0.43 / 0.45 | 0.0142 / 0.0089 | **0 / 0** |
+
+The section 3 model said sigma 1.0 -> 0.8 (E x2.5) and alias x1.45 for 0.9 -> 0.8; the strip measures E x1.95 and a
+two-frame ripple x2.06 at the half-texel resample, so the fixture's ripple bound is 2.5x (the first run's number, as
+section 6 asked). Only the flight rates that trade (section 8, item 2). Everything below V0 and every pan is bit-identical
+on both targets, and the age target never differs: the cap changes the weight, never the count.
+>>>>>>> 66ee715d (WIP motion weight)

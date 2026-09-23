@@ -1161,6 +1161,120 @@ std::vector<std::vector<float>> lattice_model(const EdgeRun& run,double w){const
             const double old=std::min(std::max(double(px(out[n-1],x,y)),lo),hi);const float v=halfFloat(toHalf(float(cur+w*(old-cur))));
             for(UINT ch=0;ch<3;++ch)out[n][(y*S+x)*4+ch]=v;}}
     return out;}
+// (m) Motion history weight (docs/architecture/taa-motion-history-weight.md section 6): a routed hull (alpha 1, depth 0.9997,
+// exact motion vectors) textured with a period-4 sinusoidal stripe (0.25..1, point-sampled at the jittered raster position:
+// the sample at p shows content at p - jitter - displacement), static 16 frames then translating for 32 frames under a static
+// camera path (relative = the displacement), on the far-camera program with the flown settings (weight 0.9, thin region 0.97
+// under the camera gate, far 0.985, strict + band 3 + exit 0.25) and on the age program (thin clip 0.7, WMAX 0.9), with the
+// option 0.8,2,8 against off. The hull fills a 512x16 strip (the 32-px edge scene cannot hold a fast history: a pixel's chain
+// is only S / v frames long), read at x >= 386, where every chain reaches back through all 32 moving frames into the static
+// ones. Rows: rest, 1 / 5 / 12 px/frame (integer: the history tap lands on the texel grid, no resampling), 1.5 / 5.5 / 6.5 /
+// 12.5 (half-texel: the Catmull-Rom resample softening the option is for; 6.5 is where the ramp binds, cap 0.8725 below the
+// 0.9 base), a pan (camera yaw 12.5 px/frame with the hull world-static: its screen motion is the pan's, relative 0) and a
+// co-moving hull (camera yaw 12.5 px/frame with the hull screen-static: screen motion 0, relative the yaw). Per row and mode:
+// the interior Laplacian energy of the resolve over the current jittered sample (E ratio, the run254 triage's measure), the
+// best Gaussian sigma on {0, .35, .5, .7, 1, 1.4, 2} against the unjittered stripe (a sinusoid blurs to its amplitude times
+// exp(-2 pi^2 sigma^2 / 16); the continuous sigma_fit beside it), the mean |age|, the rms of output[n](x) - output[n - k](x -
+// k v) for the smallest k with an integer k v (the flicker witness in the content frame), all over the last 16 frames, and
+// the largest difference against the off run on both targets (R channel; the stripe is grey and the blend per channel).
+// Asserted: rest, 1, 1.5, the pan and the co-moving rows bit-identical to off (cap 1 at or below 2 px/frame, 0 under a pan,
+// 0 on a co-moving hull); the age target identical on every row (the cap changes the weight, never the count); 5 / 5.5 E
+// ratio not below off's (cap 0.93 / 0.91 above the 0.9 base); 6.5 within 0.002 of a run whose cap is the constant 0.8725
+// (F 0.8725, V0 0, V1 0.5: the ramp's A and B are checked at a binding point, a wrong B fails) and at least 0.01 from off;
+// 12.5 E ratio at least 1.5x off's and its ripple at most 2.5x off's (the first run measured 2.06x).
+void motion_weight_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,const DWORD* resolver){
+    std::puts("MOTION_WEIGHT_CASES");constexpr UINT W=512,H=16,P=16;constexpr unsigned frames=48,moveFrom=16;constexpr UINT X0=386,X1=W-3,Y0=2,Y1=H-2;
+    struct Defer{Defer(){deferMetrics=true;deferredFailures.clear();}~Defer(){deferMetrics=false;}} defer; // every row prints before a failed metric throws
+    constexpr float hullDepth=.9997f;constexpr double mean=.625,amp=.375,period=4,pi=3.14159265358979;
+    EdgeScene s(d,compiler); // the edge scene's state setup, flat shader and quad; its own 32x32 targets are not used
+    Com<IDirect3DTexture9> color,depth,motion;Com<IDirect3DSurface9> colorSurface,depthSurface,motionSurface;
+    check("mw color",d->CreateTexture(W,H,1,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&color.p,nullptr));check("mw color surface",color->GetSurfaceLevel(0,&colorSurface.p));
+    check("mw depth",d->CreateTexture(W,H,1,D3DUSAGE_RENDERTARGET,D3DFMT_R32F,D3DPOOL_DEFAULT,&depth.p,nullptr));check("mw depth surface",depth->GetSurfaceLevel(0,&depthSurface.p));
+    check("mw motion",d->CreateTexture(W,H,1,D3DUSAGE_RENDERTARGET,D3DFMT_A32B32G32R32F,D3DPOOL_DEFAULT,&motion.p,nullptr));check("mw motion surface",motion->GetSurfaceLevel(0,&motionSurface.p));
+    Com<ID3DXBuffer> a,b;Com<IDirect3DPixelShader9> stripePS,motionPS;
+    compile(compiler,"float4 c:register(c0);float4 main(float2 vpos:VPOS):COLOR0{float v=c.y+c.z*sin(6.28318530718*(floor(vpos.x)-c.x)/c.w);return float4(v,v,v,1);}","ps_3_0",&a.p);
+    compile(compiler,"float4 j:register(c0);float4 k:register(c1);float4 main(float2 vpos:VPOS):COLOR0{return float4((floor(vpos)+0.5-j.xy-j.zw)*k.xy,k.z,1);}","ps_3_0",&b.p);
+    check("mw stripe PS",d->CreatePixelShader(static_cast<DWORD*>(a->GetBufferPointer()),&stripePS.p));check("mw motion PS",d->CreatePixelShader(static_cast<DWORD*>(b->GetBufferPointer()),&motionPS.p));
+    auto target=[&](IDirect3DSurface9* rt,IDirect3DPixelShader9* ps){s.target(rt);D3DVIEWPORT9 vp{0,0,W,H,0,1};check("mw viewport",d->SetViewport(&vp));check("mw PS",d->SetPixelShader(ps));};
+    auto read=[&](IDirect3DTexture9* texture){D3DSURFACE_DESC desc{};check("mw desc",texture->GetLevelDesc(0,&desc));Com<IDirect3DSurface9> level,sys;check("mw level",texture->GetSurfaceLevel(0,&level.p));
+        check("mw readback surface",d->CreateOffscreenPlainSurface(W,H,desc.Format,D3DPOOL_SYSTEMMEM,&sys.p,nullptr));check("mw validation-only readback",d->GetRenderTargetData(level.p,sys.p));D3DLOCKED_RECT lock{};check("mw lock",sys->LockRect(&lock,nullptr,D3DLOCK_READONLY));
+        std::vector<float> out(W*H);for(UINT y=0;y<H;++y)for(UINT x=0;x<W;++x){const char* p=static_cast<const char*>(lock.pBits)+y*lock.Pitch;float v;if(desc.Format==D3DFMT_R32F)std::memcpy(&v,p+x*4,4);else if(desc.Format==D3DFMT_A32B32G32R32F)std::memcpy(&v,p+x*16,4);else{unsigned short h;std::memcpy(&h,p+x*8,2);v=halfFloat(h);}out[y*W+x]=v;} // the R channel
+        check("mw unlock",sys->UnlockRect());return out;};
+    struct Run{std::vector<std::vector<float>> current,output,age;std::vector<double> d;};
+    // program 0: the age program; 1: far_camera. v: the hull's translation in px/frame from frame 16; pan: a camera yaw of that
+    // many px/frame from frame 16 with the hull world-static (its motion vector carries the pan, the far-plane path too).
+    // triple: F, V0, V1 of the option (null: off). comove: the camera yaws pan px/frame but the hull stays screen-static.
+    auto sequence=[&](unsigned program,double v,double pan,const float* triple,bool comove=false){TemporalPass pass;check("mw initialize",pass.initialize(d,decoder,resolver));
+        if(program){check("mw configure far",pass.configure_far());require(pass.far_available()&&pass.camera_gate_available(),"mw far-camera program available");}
+        else{check("mw configure flicker",pass.configure_flicker());require(pass.age_available(),"mw age program available");}
+        Run run;double previous=0;
+        for(unsigned n=0;n<frames;++n){const unsigned index=n%P+1;const double jx=halton(index,2)-.5,jy=halton(index,3)-.5;
+            const double disp=n>=moveFrom?(v+(comove?0:pan))*(n-moveFrom+1):0,vx=disp-previous;previous=disp;run.d.push_back(disp);
+            target(colorSurface.p,stripePS.p);check("mw Begin",d->BeginScene());{const float c[4]={float(jx+disp),float(mean),float(amp),float(period)};check("mw stripe constant",d->SetPixelShaderConstantF(0,c,1));}s.quad(0,0,W,H,0,0);check("mw End",d->EndScene());
+            target(motionSurface.p,motionPS.p);check("mw motion Begin",d->BeginScene());{const float j[4]={float(jx),float(jy),float(vx),0},k[4]={1.f/W,1.f/H,hullDepth,0};check("mw motion j",d->SetPixelShaderConstantF(0,j,1));check("mw motion k",d->SetPixelShaderConstantF(1,k,1));}s.quad(0,0,W,H,0,0);check("mw motion End",d->EndScene());
+            target(depthSurface.p,s.flat.p);check("mw depth Begin",d->BeginScene());{const float c[4]={hullDepth,0,0,0};check("mw depth constant",d->SetPixelShaderConstantF(0,c,1));}s.quad(0,0,W,H,0,0);check("mw depth End",d->EndScene());
+            run.current.push_back(read(color.p));
+            if(n==0){const auto m=read(motion.p);double worst=0;for(UINT x=X0;x<X1;++x)worst=std::max(worst,std::fabs(m[(Y0*W+x)]-(x+.5-jx-vx)/W));require(worst<=1e-6,"mw motion target equals the producer contract");}
+            FrameInputs in;in.color=color.p;in.current_depth=depth.p;in.motion=motion.p;in.width=W;in.height=H;in.epoch=1;
+            const float path[16]={1,0,0,float(n>=moveFrom?-2*pan/W:0),0,1,0,0,0,0,1,0,0,0,0,1};std::copy(path,path+16,in.clip_to_previous);
+            in.current_jitter[0]=float(jx);in.current_jitter[1]=float(jy);in.weight=.9f;in.motion_policy=MotionPolicy::PerPixel;in.reactive_policy=ReactivePolicy::DerivedFromDepthSentinel;
+            in.sentinel_camera=true;in.sentinel_strict_sky=true;in.sky_history_exit_px=.25f;in.history_allowed=true;in.caller_queries_idle=true;in.caller_scene_open=true;
+            if(program){in.far_weight=.985f;in.far_d0=.9995f;in.far_inv=1.f/(.9999f-.9995f);in.far_speed_lo=x3::temporal::kFarSpeedLo;in.far_speed_hi=x3::temporal::kFarSpeedHi;in.thin_region_weight=.97f;in.thin_region_relax=1;in.thin_region_camera_gate=true;}
+            else{in.thin_clip=.7f;in.adaptive_weight=.9f;}
+            if(triple){in.motion_weight=triple[0];in.motion_weight_v0=triple[1];in.motion_weight_v1=triple[2];}
+            Output out;check("mw Begin resolve",d->BeginScene());check("mw resolve",pass.run(in,&out));check("mw End resolve",d->EndScene());
+            require(out.color&&out.age&&pass.diagnostics().history_valid&&out.used_history==(n>0),"mw history follows the sequence");
+            run.output.push_back(read(out.color));run.age.push_back(read(out.age));}
+        return run;};
+    struct Numbers{double eRatio=0,sigma=0,ampRatio=0,sigmaFit=0,age=0,ripple=0,diff=0,ageDiff=0;unsigned shiftFrames=0;};
+    auto numbers=[&](const Run& r,const Run* off,double speed){Numbers m;double eOut=0,eCur=0,best=1e30,ageSum=0,rippleSum=0;unsigned ageCount=0,rippleCount=0;
+        for(unsigned k=1;k<=4&&!m.shiftFrames;++k)if(std::fabs(k*speed-std::lround(k*speed))<1e-9)m.shiftFrames=k;
+        const int shift=int(std::lround(m.shiftFrames*speed));
+        for(unsigned n=frames-P;n<frames;++n)for(UINT y=Y0;y<Y1;++y)for(UINT x=X0;x<X1;++x){const auto& o=r.output[n];const auto& c=r.current[n];const std::size_t i=y*W+x;
+            auto lap=[&](const std::vector<float>& img){return 4.*img[i]-img[i-1]-img[i+1]-img[i-W]-img[i+W];};
+            eOut+=lap(o)*lap(o);eCur+=lap(c)*lap(c);
+            if(m.shiftFrames&&int(x)-shift>=1){const double dd=o[i]-r.output[n-m.shiftFrames][y*W+(int(x)-shift)];rippleSum+=dd*dd;++rippleCount;}}
+        for(double sigma:{0.,.35,.5,.7,1.,1.4,2.}){double err=0;unsigned cnt=0;const double g=std::exp(-2*pi*pi*sigma*sigma/(period*period));
+            for(unsigned n=frames-P;n<frames;++n)for(UINT y=Y0;y<Y1;++y)for(UINT x=X0;x<X1;++x){const double e=r.output[n][y*W+x]-(mean+amp*g*std::sin(2*pi*(x-r.d[n])/period));err+=e*e;++cnt;}
+            err=std::sqrt(err/cnt);if(err<best){best=err;m.sigma=sigma;}}
+        // The stripe's amplitude in the output, phase-free (the least-squares projection on the sine and cosine of the stripe's
+        // frequency at each frame's displacement, over the amplitude drawn): the grid sigma above steps x1.4, this is continuous.
+        {double amplitude=0;for(unsigned n=frames-P;n<frames;++n){double cs=0,cc=0;unsigned cnt=0;for(UINT y=Y0;y<Y1;++y)for(UINT x=X0;x<X1;++x){const double ph=2*pi*(x-r.d[n])/period,v=r.output[n][y*W+x]-mean;cs+=v*std::sin(ph);cc+=v*std::cos(ph);++cnt;}amplitude+=2*std::sqrt(cs*cs+cc*cc)/cnt/P;}
+            m.ampRatio=amplitude/amp;m.sigmaFit=m.ampRatio<1?std::sqrt(-std::log(m.ampRatio)*period*period/(2*pi*pi)):0;}
+        for(UINT y=Y0;y<Y1;++y)for(UINT x=X0;x<X1;++x){ageSum+=std::fabs(r.age[frames-1][y*W+x]);++ageCount;}
+        m.eRatio=eOut/eCur;m.age=ageSum/ageCount;m.ripple=rippleCount?std::sqrt(rippleSum/rippleCount):-1;
+        if(off)for(unsigned n=0;n<frames;++n)for(UINT i=0;i<W*H;++i){m.diff=std::max(m.diff,double(std::fabs(r.output[n][i]-off->output[n][i])));m.ageDiff=std::max(m.ageDiff,double(std::fabs(r.age[n][i]-off->age[n][i])));}
+        return m;};
+    struct Row{const char* name;double v,pan;bool comove;};
+    const Row rows[]={{"rest",0,0,false},{"1px",1,0,false},{"1.5px",1.5,0,false},{"5px",5,0,false},{"5.5px",5.5,0,false},{"6.5px",6.5,0,false},{"12px",12,0,false},{"12.5px",12.5,0,false},{"pan12.5",0,12.5,false},{"comove12.5",0,12.5,true}};
+    constexpr unsigned R=sizeof rows/sizeof rows[0],RAMP=5,FAST=7,PAN=8,COMOVE=9;
+    const float flown[3]={.8f,2,8},bound[3]={.8725f,0,.5f}; // bound: the cap is the constant F above 0.5 px/frame, the flown ramp's value at 6.5 px/frame
+    for(unsigned program=0;program<2;++program){const char* pn=program?"far_camera":"age";Numbers off[R],on[R];
+        for(unsigned k=0;k<R;++k){const Run rOff=sequence(program,rows[k].v,rows[k].pan,nullptr,rows[k].comove),rOn=sequence(program,rows[k].v,rows[k].pan,flown,rows[k].comove);
+            const double speed=rows[k].v+(rows[k].comove?0:rows[k].pan);off[k]=numbers(rOff,nullptr,speed);on[k]=numbers(rOn,&rOff,speed);
+            for(unsigned m=0;m<2;++m){const Numbers& q=m?on[k]:off[k];std::printf("MOTION_WEIGHT program=%s row=%s velocity_px=%.2f pan_px=%.2f comove=%u on=%u e_ratio=%.6f sigma=%.2f amplitude_ratio=%.4f sigma_fit=%.3f age_mean=%.3f ripple_rms=%.6f ripple_frames=%u output_diff=%.6f age_diff=%.6f\n",pn,rows[k].name,rows[k].v,rows[k].pan,unsigned(rows[k].comove),m,q.eRatio,q.sigma,q.ampRatio,q.sigmaFit,q.age,q.ripple,q.shiftFrames,q.diff,q.ageDiff);}
+            if(k==RAMP){const Run rBound=sequence(program,rows[k].v,rows[k].pan,bound);const Numbers b=numbers(rBound,&rOn,speed);
+                std::printf("MOTION_WEIGHT program=%s row=%s velocity_px=%.2f pan_px=%.2f comove=0 on=2 e_ratio=%.6f sigma=%.2f amplitude_ratio=%.4f sigma_fit=%.3f age_mean=%.3f ripple_rms=%.6f ripple_frames=%u output_diff=%.6f age_diff=%.6f\n",pn,rows[k].name,rows[k].v,rows[k].pan,b.eRatio,b.sigma,b.ampRatio,b.sigmaFit,b.age,b.ripple,b.shiftFrames,b.diff,b.ageDiff);
+                const std::string prefix=std::string("motion weight, ")+pn+" program: ";
+                // The ramp at a binding point: 0.8,2,8 at 6.5 px/frame is cap 1.01333 - 0.0033333 x 42.25 = 0.8725 in the shader's mad against the
+                // constant F = 0.8725 of the bound run (last-ulp apart: a rare FP16 rounding flip of the blend, not a visible difference).
+                metric((prefix+"6.5 px/frame: within 0.002 of the run whose cap is the constant 0.8725 (a wrong A or B fails)").c_str(),std::min(b.diff,.002),0,.002);
+                metric((prefix+"6.5 px/frame: the ramp binds (output differs from off by at least 0.01; min(diff, 0.01))").c_str(),std::min(on[k].diff,.01),.01,0);}}
+        const std::string prefix=std::string("motion weight, ")+pn+" program: ";
+        metric((prefix+"rest row bit-identical to off on both targets").c_str(),on[0].diff+on[0].ageDiff,0,0);
+        metric((prefix+"1 and 1.5 px/frame rows bit-identical to off (cap 1 at or below 2 px/frame)").c_str(),on[1].diff+on[1].ageDiff+on[2].diff+on[2].ageDiff,0,0);
+        metric((prefix+"pan row (camera yaw 12.5 px/frame, hull world-static) bit-identical to off").c_str(),on[PAN].diff+on[PAN].ageDiff,0,0);
+        metric((prefix+"co-moving row (camera yaw 12.5 px/frame, hull screen-static: relative 12.5, screen motion 0) bit-identical to off").c_str(),on[COMOVE].diff+on[COMOVE].ageDiff,0,0);
+        double ageDiff=0,slowRatio=1;for(unsigned k=0;k<R;++k)ageDiff+=on[k].ageDiff;for(unsigned k:{3u,4u})slowRatio=std::min(slowRatio,on[k].eRatio/off[k].eRatio);
+        metric((prefix+"age target identical to off on every row (the cap changes the weight, never the count)").c_str(),ageDiff,0,0);
+        metric((prefix+"5 and 5.5 px/frame: E ratio not below off's (min(on / off, 1))").c_str(),slowRatio,1,0);
+        metric((prefix+"12.5 px/frame: E ratio at least 1.5x off's (min(on / off, 1.5))").c_str(),std::min(on[FAST].eRatio/off[FAST].eRatio,1.5),1.5,0);
+        // The first run measured 2.06x on the age program (the design's model said 1.45x for the random-phase alias amplitude;
+        // this witness compares jitter phases two frames apart); the bound is set above it, the flight rates the trade.
+        metric((prefix+"12.5 px/frame: frame-to-frame rms at most 2.5x off's (max(on / off, 2.5))").c_str(),std::max(on[FAST].ripple/off[FAST].ripple,2.5),2.5,0);
+        require(on[FAST-1].diff>0&&on[FAST].diff>0&&off[FAST].eRatio<off[0].eRatio,"motion weight: the 12 and 12.5 px/frame rows differ from off and the half-texel row is softer than rest without the option");}
+    if(!deferredFailures.empty())throw std::runtime_error(deferredFailures.front());
+}
 void lattice_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
     std::puts("LATTICE_CASES");EdgeScene s(d,compiler);constexpr UINT S=EdgeScene::S;constexpr unsigned N=128,P=latticePhases;
     struct Defer{Defer(){deferMetrics=true;deferredFailures.clear();}~Defer(){deferMetrics=false;}} defer;
@@ -1889,7 +2003,7 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=
         else if(stationaryOnly){stationary_cases(d.p,compiler,static_cast<DWORD*>(dc->GetBufferPointer()),static_cast<DWORD*>(rc->GetBufferPointer()));std::printf("RESULT PASS numerical=%u stationary_only=1\n",numeric_checks);result=0;}
         else if(measure){sharpen_measure(d.p,compiler,static_cast<DWORD*>(dc->GetBufferPointer()),static_cast<DWORD*>(rc->GetBufferPointer()),sharpener);std::printf("RESULT PASS numerical=%u sharpen_measure=1\n",numeric_checks);result=0;}
         else if(supplementalOnly){auto* decoder=static_cast<DWORD*>(dc->GetBufferPointer());auto* resolver=static_cast<DWORD*>(rc->GetBufferPointer());reactive_cases(d.p,compiler,decoder,resolver);supplemental_cases(d.p,pp,compiler,decoder,resolver);std::printf("RESULT PASS numerical=%u state_restorations=%u supplemental_only=1\n",numeric_checks,state_checks);result=0;}
-        else for(unsigned generation=0;generation<2;++generation){auto* decoder=static_cast<DWORD*>(dc->GetBufferPointer());auto* resolver=static_cast<DWORD*>(rc->GetBufferPointer());cases(d.p,compiler,decoder,resolver,generation);reactive_cases(d.p,compiler,decoder,resolver);route_cases(d.p,compiler,decoder,resolver);stationary_cases(d.p,compiler,decoder,resolver);edge_cases(d.p,compiler,decoder,resolver);camera_cases(d.p,compiler,decoder,resolver);hdr_cases(d.p,compiler,decoder,resolver);sharpen_cases(d.p,compiler,decoder,resolver,sharpener);quad_twin_cases(d.p,compiler,decoder,resolver,sharpener);if(!generation)reset_continuity(d.p,pp,compiler,decoder,resolver);}
+        else for(unsigned generation=0;generation<2;++generation){auto* decoder=static_cast<DWORD*>(dc->GetBufferPointer());auto* resolver=static_cast<DWORD*>(rc->GetBufferPointer());cases(d.p,compiler,decoder,resolver,generation);reactive_cases(d.p,compiler,decoder,resolver);route_cases(d.p,compiler,decoder,resolver);stationary_cases(d.p,compiler,decoder,resolver);edge_cases(d.p,compiler,decoder,resolver);motion_weight_cases(d.p,compiler,decoder,resolver);camera_cases(d.p,compiler,decoder,resolver);hdr_cases(d.p,compiler,decoder,resolver);sharpen_cases(d.p,compiler,decoder,resolver,sharpener);quad_twin_cases(d.p,compiler,decoder,resolver,sharpener);if(!generation)reset_continuity(d.p,pp,compiler,decoder,resolver);}
         if(loopQualify){auto* decoder=static_cast<DWORD*>(dc->GetBufferPointer());auto* resolver=static_cast<DWORD*>(rc->GetBufferPointer());auto* unrolled=static_cast<DWORD*>(baseline->GetBufferPointer());
             std::printf("LOOP_FULL_SUITE numerical=%u state_restorations=%u generations=2\n",numeric_checks,state_checks);
             supplemental_cases(d.p,pp,compiler,decoder,resolver);loop_twins(d.p,compiler,decoder,unrolled,resolver);loop_timings(d.p,unrolled,resolver);

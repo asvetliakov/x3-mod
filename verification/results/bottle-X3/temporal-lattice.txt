@@ -11,19 +11,19 @@ CHECK embedded_snapshot within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_thin dwords=1818 instruction_slots=465 device_limit=512 headroom=47 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_thin within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_age dwords=1946 instruction_slots=495 device_limit=512 headroom=17 within_guaranteed_512=1
+RESOLVE_BUDGET variant=embedded_age dwords=1947 instruction_slots=494 device_limit=512 headroom=18 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_age within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_line_mask dwords=1401 instruction_slots=368 device_limit=512 headroom=144 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_line_mask within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_far dwords=1958 instruction_slots=498 device_limit=512 headroom=14 within_guaranteed_512=1
+RESOLVE_BUDGET variant=embedded_far dwords=1948 instruction_slots=493 device_limit=512 headroom=19 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_far within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_line_mask_camera dwords=1307 instruction_slots=344 device_limit=512 headroom=168 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_line_mask_camera within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_far_camera dwords=2016 instruction_slots=510 device_limit=512 headroom=2 within_guaranteed_512=1
+RESOLVE_BUDGET variant=embedded_far_camera dwords=2006 instruction_slots=505 device_limit=512 headroom=7 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_far_camera within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_thin_box dwords=238 instruction_slots=51 device_limit=512 headroom=461 within_guaranteed_512=1
@@ -1129,12 +1129,12 @@ LINE_CASES
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
-LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.7237 far_stabiliser_ms=1.0139 thin_region_ms=1.5416 far_delta_ms=0.2901 thin_region_delta_ms=0.8178 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.5416 no_region_camera_ms=1.7170 no_region_camera_delta_ms=0.1754 fragmented_pan_thin_ms=1.5307 fragmented_pan_camera_ms=2.1735 fragmented_pan_camera_delta_ms=0.6428 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=2.1735 lane_input_law_ms=2.2467 lane_input_lane_ms=2.2229 lane_fetch_delta_ms=-0.0239 lane_input_over_r32f_ms=0.0732 scope=cpu_wall_with_event_query_drain
+LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.6132 far_stabiliser_ms=0.8027 thin_region_ms=1.4038 far_delta_ms=0.1895 thin_region_delta_ms=0.7906 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.4038 no_region_camera_ms=1.5906 no_region_camera_delta_ms=0.1868 fragmented_pan_thin_ms=1.3039 fragmented_pan_camera_ms=1.9146 fragmented_pan_camera_delta_ms=0.6107 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.9146 lane_input_law_ms=1.7927 lane_input_lane_ms=1.8249 lane_fetch_delta_ms=0.0322 lane_input_over_r32f_ms=-0.1219 scope=cpu_wall_with_event_query_drain
 CHECK sentinel timing: separable box programs created PASS
 CHECK sentinel timing: separable box programs created PASS
-LINE_TIMING_SENTINEL width=1280 height=768 rounds=6 content=all_unrouted_sentinel_pan strength_off_ms=1.6557 strength_on_separable_ms=2.0206 sentinel_delta_ms=0.3649 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_SENTINEL width=1280 height=768 rounds=6 content=all_unrouted_sentinel_pan strength_off_ms=1.3085 strength_on_separable_ms=1.5332 sentinel_delta_ms=0.2247 scope=cpu_wall_with_event_query_drain
 LINE_BASE numerical=190 state_restorations=4
 FAR_CASES
 FAR_GATE ok=1 d0=0.99985647 inv=17734.900 expected_d0=0.99985652 expected_inv=17749.280

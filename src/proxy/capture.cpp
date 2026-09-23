@@ -242,6 +242,15 @@ float taa_sky_history_band_px = 3.f;
 // target and dropped the frame it leaves the band. Refused without strict; needs an age
 // program (far stabiliser or thin region), which motion_output judges.
 float taa_sky_history_exit_px = 0.f;
+// X3M_TAA_MOTION_WEIGHT=F[,V0,V1] (F 0 off, else 0.5..0.99; 0 <= V0 < V1 <= 64 px/frame, default 2,8;
+// default off; docs/architecture/taa-motion-history-weight.md): the age programs cap the history
+// keep weight at F for a pixel whose correspondence moves V1 px/frame or more of translation
+// parallax against the rotation-only camera path (1 at or below V0, a quadratic ramp between), so
+// a hull under SETA accumulates a shorter history; the gate is the smaller of that parallax and the
+// pixel's own screen motion, so a pan, a co-moving hull (the player's ship, an escort) and rest keep
+// their weight. Needs an age program (far stabiliser or thin region), which motion_output judges;
+// inert (cap 1) without the camera path (X3M_TAA_SENTINEL=1, or no camera transform this frame).
+float taa_motion_weight[3] = {0.f, 2.f, 8.f};
 unsigned camera_log_frames = 300;
 unsigned motion_jitter_samples = 8;
 // The finite huge displacement bound is a practical off switch. A missing
@@ -2311,6 +2320,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_sentinel(taa_sentinel_mode,camera_cut_degrees,camera_log_frames);
     hooked.motion_output.configure_unmatched_static(taa_unmatched_static);
     hooked.motion_output.configure_sky_history(taa_sky_history_strict,taa_sky_history_band_px,taa_sky_history_exit_px);
+    hooked.motion_output.configure_motion_weight(taa_motion_weight[0],taa_motion_weight[1],taa_motion_weight[2]);
     // Render-state configuration (hybrid unhook): the reasons that keep the
     // SetRenderState/SetSamplerState hooks installed, then the capability
     // check of the documented reads the unhooked route depends on (the proxy
@@ -3271,11 +3281,19 @@ void initialize_log(HMODULE module) {
         else taa_sky_history_exit_px=v;
     }
     else if(taa_sky_history_strict)taa_sky_history_exit_px=.25f; // Run 68 A (2026-09-23): the default under strict (0 is the opt-out); motion_output drops it without an age program
+    // X3M_TAA_MOTION_WEIGHT=<F>[,<V0>,<V1>]: the whole string must parse (1 or 3 fields) and lie in range; anything else keeps the option off.
+    if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_MOTION_WEIGHT",setting,32);n>=32)log("taa_motion_weight_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays off
+    else if(n>0){
+        float v[3]={0.f,2.f,8.f};unsigned count=0;wchar_t* cursor=setting;bool ok=true;
+        while(ok&&count<3){wchar_t* end=nullptr;v[count]=wcstof(cursor,&end);ok=end!=cursor;++count;if(!ok||*end==L'\0')break;ok=*end==L',';cursor=end+1;if(count==3)ok=false;}
+        ok=ok&&(count==1||count==3)&&x3::temporal::valid_motion_weight(v[0],v[1],v[2]);
+        if(ok)for(unsigned i=0;i<3;++i)taa_motion_weight[i]=v[i];else log("taa_motion_weight_setting invalid=1");
+    }
     if(GetEnvironmentVariableW(L"X3M_CAMERA_CUT_DEG",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=180)camera_cut_degrees=v;}
     if(GetEnvironmentVariableW(L"X3M_CAMERA_LOG",setting,32)>0){const unsigned long n=wcstoul(setting,nullptr,10);if(n>=1&&n<=1000000)camera_log_frames=unsigned(n);}
-    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s unmatched_static=%u sentinel_stabiliser=%.3f sentinel_emitter=%.3f sky_history=%s sky_history_band_px=%.2f sky_history_exit_px=%.3f camera_cut_deg=%.2f camera_log=%u state_shadow=%s scene_hook=%u hdr=%u taa_k=%.5f mip_bias=%g taa_sharpen=%.3f taa_history_weight=%.3f",
+    log("motion_output_mode requested=%u scope=live_same_draw_diagnostic history_requires=object_trace,object_lifetime temporal_consumer=%u taa=%u taa_debug=%u jitter=%u jitter_samples=%u cut_median_px=%.3f cut_missing=%.3f rt_mode=%s frame_log=%u sentinel=%s unmatched_static=%u sentinel_stabiliser=%.3f sentinel_emitter=%.3f sky_history=%s sky_history_band_px=%.2f sky_history_exit_px=%.3f motion_weight=%.3f,%g,%g camera_cut_deg=%.2f camera_log=%u state_shadow=%s scene_hook=%u hdr=%u taa_k=%.5f mip_bias=%g taa_sharpen=%.3f taa_history_weight=%.3f",
         motion_output_requested,taa_requested,taa_requested,taa_debug_requested,motion_jitter_requested,motion_jitter_samples,motion_cut_median_px,motion_cut_missing,motion_rt_lazy?"lazy":"perdraw",motion_frame_log,
-        taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",taa_unmatched_static,double(taa_sentinel[0]),double(taa_sentinel[1]),taa_sky_history_strict?"strict":"loose",taa_sky_history_band_px,double(taa_sky_history_exit_px),camera_cut_degrees,camera_log_frames,motion_state_shadow<0?"auto":motion_state_shadow?"1":"0",scene_hook_requested,hdr_requested,taa_k_override,double(taa_mip_bias),taa_sharpen,double(taa_history_weight));
+        taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",taa_unmatched_static,double(taa_sentinel[0]),double(taa_sentinel[1]),taa_sky_history_strict?"strict":"loose",taa_sky_history_band_px,double(taa_sky_history_exit_px),double(taa_motion_weight[0]),double(taa_motion_weight[1]),double(taa_motion_weight[2]),camera_cut_degrees,camera_log_frames,motion_state_shadow<0?"auto":motion_state_shadow?"1":"0",scene_hook_requested,hdr_requested,taa_k_override,double(taa_mip_bias),taa_sharpen,double(taa_history_weight));
     log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
     telemetry::initialize([]{if(logfile)fflush(logfile);});
     game_phases::initialize(); // all 33 claims here, before the first Present

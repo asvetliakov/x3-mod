@@ -133,6 +133,15 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
         self.assertIn('else if(taa_sky_history_strict)taa_sky_history_exit_px=.25f;', capture)
         self.assertIn('L"X3M_TAA_SKY_HISTORY_EXIT_PX"', capture)
 
+    def test_motion_weight_is_absent_unless_given(self):
+        # --taa-motion-weight (docs/architecture/taa-motion-history-weight.md): default off in the launcher and the DLL
+        # (X3M_TAA_MOTION_WEIGHT absent; capture.cpp starts at F = 0), so no flight caps the moving hull's history unasked.
+        with tempfile.TemporaryDirectory() as directory:
+            age = ('--taa-far-stabiliser', '0.985')
+            self.assertNotIn('X3M_TAA_MOTION_WEIGHT', self.env(directory, *TAA, *age, inherited={'X3M_TAA_MOTION_WEIGHT': '0.8,2,8'}))
+            self.assertEqual(self.env(directory, *TAA, *age, '--taa-motion-weight', '0.8,2,8')['X3M_TAA_MOTION_WEIGHT'], '0.8,2,8')
+        self.assertIn('float taa_motion_weight[3] = {0.f, 2.f, 8.f};', (ROOT / 'src/proxy/capture.cpp').read_text())
+
     def test_far_stabiliser_is_absent_unless_given(self):
         # --taa-far-stabiliser W[,A[,F0,F1]] (docs/architecture/taa-distant-line-fade.md section 9): components separate.
         with tempfile.TemporaryDirectory() as directory:

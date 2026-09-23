@@ -38,9 +38,14 @@ constexpr unsigned kFlickerRegister = 24;
 // c25 of the age variants (resolve_age.hlsl, resolve_far*.hlsl), uploaded with c24 as one
 // two-register block: x = the exit floor squared (px^2) of the strict sky history's exit
 // reset (docs/architecture/seta-sky-hull-share-decay.md), kSkyHistoryExitOff when the
-// option is off or the strict term is not in effect; yzw 0. The thin (non-age) programs
-// read c24 only. The option is 0 (off) or within [kSkyHistoryExitMin, band threshold]: at
-// the band threshold the mark and the band refusal coincide, so nothing is left to reset.
+// option is off or the strict term is not in effect; yzw = A, B, F of the motion history
+// weight (docs/architecture/taa-motion-history-weight.md): the age variants cap the history
+// keep weight at saturate(max(F, p^2 A + B)), p^2 the squared translation parallax of the
+// pixel's correspondence against the rotation-only camera path (px^2, the band term's
+// quantity). Off uploads 0, 1, 1: the cap is exactly 1 and min(keep, 1) is keep bit for bit.
+// The thin (non-age) programs read c24 only. The exit option is 0 (off) or within
+// [kSkyHistoryExitMin, band threshold]: at the band threshold the mark and the band refusal
+// coincide, so nothing is left to reset.
 constexpr unsigned kExitRegister = 25;
 static_assert(kExitRegister == kFlickerRegister + 1);
 constexpr float kSkyHistoryExitMin = .125f, kSkyHistoryExitOff = 1e30f;
@@ -49,9 +54,25 @@ inline bool valid_sky_history_exit(float px, float band_px) noexcept {
 }
 // The lane the age variants read. With the floor off or the strict term absent every
 // pixel's mark is 0 (a band pixel below the band threshold never reaches 1e30 px^2 of
-// parallax), so the age target holds the same positive counts as before the option.
+// parallax), so the age target holds the same positive counts as before the option. yzw
+// are written as the motion weight's off triple; prepare_motion_weight (after this) sets them.
 inline void prepare_exit(float out[4], float px, bool strict_sky_term) noexcept {
-    out[0] = strict_sky_term && px > 0 ? px * px : kSkyHistoryExitOff; out[1] = out[2] = out[3] = 0.f;
+    out[0] = strict_sky_term && px > 0 ? px * px : kSkyHistoryExitOff; out[1] = 0.f; out[2] = out[3] = 1.f;
+}
+// Motion history weight (X3M_TAA_MOTION_WEIGHT=F[,V0,V1]): F 0 is off; else 0.5 <= F < 1 with
+// 0 <= V0 < V1 <= 64 px/frame. The cap is 1 at or below V0 px/frame of parallax, F at or above
+// V1, linear in px^2 between (no square root): A = -(1 - F) / (V1^2 - V0^2), B = 1 - A V0^2.
+constexpr float kMotionWeightMin = .5f, kMotionWeightSpeedMax = 64.f;
+inline bool valid_motion_weight(float f, float v0, float v1) noexcept {
+    if (!std::isfinite(f) || f < 0) return false;
+    if (f == 0) return true;
+    return f >= kMotionWeightMin && f < 1 && std::isfinite(v0) && std::isfinite(v1) && v0 >= 0 && v1 > v0 && v1 <= kMotionWeightSpeedMax;
+}
+// c25.yzw. Off (or an invalid triple: fail closed to the identity) uploads A 0, B 1, F 1.
+inline void prepare_motion_weight(float out[4], float f, float v0, float v1) noexcept {
+    if (!valid_motion_weight(f, v0, v1) || f == 0) { out[1] = 0.f; out[2] = out[3] = 1.f; return; }
+    const float a = -(1.f - f) / (v1 * v1 - v0 * v0);
+    out[1] = a; out[2] = 1.f - a * v0 * v0; out[3] = f;
 }
 constexpr float kAdaptiveWeightMax = .99f;      // upper bound of WMAX
 constexpr float kAdaptiveLoDefault = .1f, kAdaptiveHiDefault = .5f; // px/frame

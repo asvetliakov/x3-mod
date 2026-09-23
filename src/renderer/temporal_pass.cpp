@@ -398,11 +398,14 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     if(!(std::isfinite(in.sky_history_band_px)&&in.sky_history_band_px>=1.f&&in.sky_history_band_px<=16.f))return fail(E_INVALIDARG);
     constants.history[1]=in.sky_history_band_px*in.sky_history_band_px;
     if(!x3::temporal::valid_sky_history_exit(in.sky_history_exit_px,in.sky_history_band_px))return fail(E_INVALIDARG);
+    if(!x3::temporal::valid_motion_weight(in.motion_weight,in.motion_weight_v0,in.motion_weight_v1))return fail(E_INVALIDARG);
     constants.luminance[2]=in.alpha_history?1.f:0.f; // read by the flicker variants only
     constants.luminance[3]=far_on?in.far_filter:0.f; // A of the masked filter: far variants only
     // c24 and, for the age programs, c25 (the exit floor squared under strict, else off: seta-sky-hull-share-decay.md) as one block.
     float flicker_constants[8]{};x3::temporal::prepare_flicker(flicker_constants,in.thin_clip,in.adaptive_weight,in.adaptive_lo,in.adaptive_hi);
     x3::temporal::prepare_exit(flicker_constants+4,in.sky_history_exit_px,strict_sky_term>0.f);
+    // c25.yzw: the motion history weight's A, B, F (taa-motion-history-weight.md), 0, 1, 1 when off: the age programs' cap is then exactly 1.
+    x3::temporal::prepare_motion_weight(flicker_constants+4,in.motion_weight,in.motion_weight_v0,in.motion_weight_v1);
     // Far variant: c24.yzw = W_FAR (the base weight when that component is off; its gate channel is 0 then), speed gate far_speed_lo .. far_speed_hi px/frame.
     // Far program: c24.x = clip relaxation of the thin region, c24.y = W_FAR (the base weight when off), c24.zw the shared speed gate;
     // c5.x (unread by every resolve until now) = the thin-region weight (the base weight when off).

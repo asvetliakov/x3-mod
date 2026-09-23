@@ -342,6 +342,7 @@ def main():
     parser.add_argument('--taa-sky-history', choices=['loose', 'strict'], default=None, help='Sky history rule of the TAA resolve under the camera path (X3M_TAA_SKY_HISTORY; requires --taa). strict: a sky pixel (depth sentinel) whose 3x3 holds no routed geometry accepts sentinel history only, so the hull of a station that moved away this frame is never blended into the sky (the SETA approach smear of run235, docs/architecture/seta-motion.md); the default when omitted with --taa since 2026-09-23 (accepted in Run 68 A). loose is the opt-out and the pre-SETA behaviour bit for bit: the 2%% relative depth tolerance proves any geometry beyond device depth 0.98 as the sky\'s history')
     parser.add_argument('--taa-sky-history-band-px', type=float, default=None, help='Band threshold of the strict sky history in px/frame (X3M_TAA_SKY_HISTORY_BAND_PX; requires --taa; 1..16, DLL default 3): the translation parallax at which the 1-px sky band beside a silhouette stops taking its history under --taa-sky-history strict (docs/architecture/seta-motion.md section 4)')
     parser.add_argument('--taa-sky-history-exit-px', type=float, default=None, help='Exit reset of the strict sky history in px/frame (X3M_TAA_SKY_HISTORY_EXIT_PX; requires --taa; a value above 0 also requires --taa-sky-history strict and an age program: --taa-far-stabiliser or --taa-thin-region; default when omitted with --taa = 0.25 (accepted in Run 68 A, 2026-09-23) under strict with an age program, else 0 = off, never an error: a plain --taa launch has no age program, so the reset resolves to 0 there, and it is on with --taa-far-stabiliser or --taa-thin-region; 0 is the explicit off and the opt-out, else 0.125..the band threshold): a sky pixel in the 1-px band beside a silhouette that took the silhouette\'s history while it moved at least this much translation parallax is marked in the age target and drops that history the frame it leaves the band, so the hull share it acquired leaves in one frame instead of decaying at the history weight (docs/architecture/seta-sky-hull-share-decay.md)')
+    parser.add_argument('--taa-motion-weight', default=None, metavar='F[,V0,V1]', help='Motion history weight of the TAA resolve (X3M_TAA_MOTION_WEIGHT; requires --taa; a value above 0 also requires an age program: --taa-far-stabiliser or --taa-thin-region; 0 is the explicit off (the DLL default), else 0.5 <= F < 1 with 0 <= V0 < V1 <= 64 px/frame, default 2,8; the flight candidate is 0.8,2,8): the history keep weight of a pixel whose correspondence moves at least V1 px/frame both on screen and against the rotation-only camera path (translation parallax) is capped at F (1 at or below V0, a quadratic ramp between), so a hull under SETA accumulates a shorter history and keeps more of its texture detail; rest, pans, a hull that moves with the camera (the player\'s ship in the external view, escorts) and slow flight are untouched. Inert (cap 1) under --taa-sentinel 1 and on frames without a camera transform: the parallax is measured against the camera path (docs/architecture/taa-motion-history-weight.md)')
     parser.add_argument('--camera-cut-deg', type=float, default=20.0, help='Camera rotation per frame (degrees) above which the resolve declares a cut (requires --taa; default 20)')
     parser.add_argument('--camera-log', type=int, default=300, help='Cadence in frames of the camera_state log line (requires --taa; capture frames always log; default 300)')
     parser.add_argument('--scene-hook', nargs='?', const='on', default=None, choices=['on', 'off'], help='Engine scene-end hook (X3M_SCENE_HOOK): patch the frame routine\'s compositing callsite (0x004721b1, exact executable and bytes only, otherwise it fails closed to the bloom-copy/selector boundary) so the route learns the scene end from the engine and, with --taa, resolves there before the glow pass. Default on with --motion-output since review 26 (iteration 10: 214/214 agreement); "--scene-hook" alone means on; "--scene-hook off" keeps the copy/selector boundary')
@@ -678,6 +679,25 @@ def main():
         band = 3.0 if args.taa_sky_history_band_px is None else args.taa_sky_history_band_px
         if not 0.125 <= args.taa_sky_history_exit_px <= band:
             parser.error('--taa-sky-history-exit-px must be 0 or within 0.125..the band threshold (%g) px/frame.' % band)
+    if args.taa_motion_weight is not None:
+        if not args.taa:
+            parser.error('--taa-motion-weight requires --taa.')
+        try:
+            weight = [float(field) for field in args.taa_motion_weight.split(',')]
+        except ValueError:
+            weight = []
+        if len(weight) not in (1, 3):
+            parser.error('--taa-motion-weight takes F[,V0,V1].')
+        weight += [2.0, 8.0][len(weight) - 1:]
+        if not (weight[0] == 0.0 or 0.5 <= weight[0] < 1.0) or not 0.0 <= weight[1] < weight[2] <= 64.0:
+            parser.error('--taa-motion-weight: F is 0 or within [0.5, 1), 0 <= V0 < V1 <= 64 px/frame.')
+        if weight[0] > 0:  # 0 is the explicit off spelling: forwarded as given, no further requirement (the DLL accepts it the same way)
+            # The cap lives in the age programs: one of them must be in effect (the DLL refuses it otherwise too).
+            age_program = (args.taa_far_stabiliser is not None and any(float(v) > 0 for v in args.taa_far_stabiliser.split(',')[:2])) \
+                or (args.taa_thin_region is not None and float(args.taa_thin_region.split(',')[0]) > 0)
+            if not age_program:
+                parser.error('--taa-motion-weight requires an age program: --taa-far-stabiliser or --taa-thin-region.')
+        args.taa_motion_weight = ','.join('%.9g' % value for value in weight)  # %.9g round-trips a float32 boundary value (0.9999999, 7.9999999) the DLL would otherwise refuse after rounding
     if not args.taa and (args.taa_sentinel != 'auto' or args.camera_cut_deg != 20.0 or args.camera_log != 300):
         parser.error('--taa-sentinel, --camera-cut-deg and --camera-log require --taa.')
     if not 0 < args.camera_cut_deg <= 180 or not 1 <= args.camera_log <= 1000000:
@@ -1153,7 +1173,7 @@ def main():
         # and the sentinel stabiliser) are already set or cleared above, so an
         # inherited value cannot survive either.
         for name, value in (('X3M_TAA_HISTORY_WEIGHT', args.taa_history_weight), ('X3M_TAA_FAR_STABILISER', args.taa_far_stabiliser), ('X3M_TAA_THIN_REGION', args.taa_thin_region), ('X3M_TAA_THIN_REGION_GATE', args.taa_thin_region_gate), ('X3M_TAA_THIN_REGION_EMISSIVE', args.taa_thin_region_emissive), ('X3M_TAA_SENTINEL_STABILISER', args.taa_sentinel_stabiliser),
-                            ('X3M_TAA_SKY_HISTORY', args.taa_sky_history), ('X3M_TAA_SKY_HISTORY_BAND_PX', args.taa_sky_history_band_px), ('X3M_TAA_SKY_HISTORY_EXIT_PX', args.taa_sky_history_exit_px),
+                            ('X3M_TAA_SKY_HISTORY', args.taa_sky_history), ('X3M_TAA_SKY_HISTORY_BAND_PX', args.taa_sky_history_band_px), ('X3M_TAA_SKY_HISTORY_EXIT_PX', args.taa_sky_history_exit_px), ('X3M_TAA_MOTION_WEIGHT', args.taa_motion_weight),
                             ('X3M_TAA_ALPHA_HISTORY', '1' if args.taa_alpha_history else None)):
             if value is not None:
                 env[name] = value if isinstance(value, str) else repr(value)

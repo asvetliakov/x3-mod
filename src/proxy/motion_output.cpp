@@ -1552,6 +1552,11 @@ bool MotionOutput::ensure_taa() noexcept {
         log("motion_output_taa_sky_history_exit device=%llu unavailable=1 reason=no_age_program requested=%.3f", id_, double(sky_history_exit_px_));
         sky_history_exit_px_ = 0.f;
     }
+    // Motion history weight (taa-motion-history-weight.md): the cap lives in the age programs, the same rule.
+    if (SUCCEEDED(hr) && motion_weight_[0] > 0.f && !(taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f)) {
+        log("motion_output_taa_motion_weight device=%llu unavailable=1 reason=no_age_program requested=%.3f,%g,%g", id_, double(motion_weight_[0]), double(motion_weight_[1]), double(motion_weight_[2]));
+        motion_weight_[0] = 0.f;
+    }
     taa_failed_ = FAILED(hr);
     log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f history_weight=%.3f copy=%s alpha_history=%u age_bytes_per_pixel=%u far_weight=%.4f far_filter=%.3f far_f0=%.1f far_f1=%.1f far_speed_lo=%.3f far_speed_hi=%.3f thin_region=%.4f thin_relax=%.3f thin_gate=%s thin_emissive=%.3f sentinel_stabiliser=%.3f sentinel_emitter=%.3f", id_, hr, taa_references_, double(taa_sharpen_), double(taa_history_weight_), taa_copy_draw_ ? "draw" : "stretch",
         unsigned(taa_alpha_history_), taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f ? 8u : 0u, double(taa_far_weight_), double(taa_far_filter_), double(taa_far_f0_), double(taa_far_f1_), double(taa_far_lo_), double(taa_far_hi_), double(taa_thin_weight_), double(taa_thin_relax_), taa_thin_camera_gate_ ? "camera" : "screen", double(taa_thin_emissive_), double(taa_sentinel_strength_), double(taa_sentinel_emitter_));
@@ -1619,6 +1624,9 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             in.sentinel_strict_sky = sky_history_strict_ && decision.policy == 2; // the resolve's c7.z term: seta-motion.md
             in.sky_history_band_px = sky_history_band_px_; // the band term's threshold, c5.y squared: seta-motion.md section 4
             in.sky_history_exit_px = sky_history_exit_px_; // the exit reset's floor, c25.x squared under strict with an age program: seta-sky-hull-share-decay.md
+            // The motion history weight's cap (c25.yzw) only against a real camera path: relative is the translation parallax
+            // under policy 2 and the screen motion otherwise (a pan would then be capped). taa-motion-history-weight.md.
+            if (decision.policy == 2) { in.motion_weight = motion_weight_[0]; in.motion_weight_v0 = motion_weight_[1]; in.motion_weight_v1 = motion_weight_[2]; }
             // Camera gate (taa-lattice-crawl.md section 32.3): the depth / translation term beside the far-plane matrix, from the
             // same two views and this frame's latched depth law; zero (the far-plane path) without the transform or a plausible law.
             if (taa_thin_camera_gate_ && decision.transform) {

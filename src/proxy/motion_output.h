@@ -638,6 +638,14 @@ public:
         sky_history_strict_ = strict; sky_history_band_px_ = band_px >= 1.f && band_px <= 16.f ? band_px : 3.f;
         sky_history_exit_px_ = strict && x3::temporal::valid_sky_history_exit(exit_px, sky_history_band_px_) ? exit_px : 0.f;
     }
+    // X3M_TAA_MOTION_WEIGHT=F[,V0,V1] (F 0 off, else 0.5..0.99, 0 <= V0 < V1 <= 64 px/frame; default off), the parallax-gated
+    // cap on the age programs' history keep weight (docs/architecture/taa-motion-history-weight.md): FrameInputs::motion_weight
+    // whenever the camera path is in effect (policy 2; the parallax is measured against it). Needs an age program (the far
+    // stabiliser, the thin region or the adaptive weight: taa_initialize logs it unavailable and drops it otherwise).
+    void configure_motion_weight(float f, float v0, float v1) noexcept {
+        const bool ok = x3::temporal::valid_motion_weight(f, v0, v1);
+        motion_weight_[0] = ok ? f : 0.f; motion_weight_[1] = ok ? v0 : 2.f; motion_weight_[2] = ok ? v1 : 8.f;
+    }
     // RT1/RT2 binding policy (X3M_MOTION_RT_MODE). perdraw (default): each
     // routed draw binds RT1/RT2 and COLORWRITEENABLE1/2 and after_draw puts
     // the application's values back. lazy (experiment): the bindings stay
@@ -2095,6 +2103,7 @@ private:
     bool sky_history_strict_ = false; // X3M_TAA_SKY_HISTORY=strict: FrameInputs::sentinel_strict_sky with the camera path
     float sky_history_band_px_ = 3.f; // X3M_TAA_SKY_HISTORY_BAND_PX: FrameInputs::sky_history_band_px
     float sky_history_exit_px_ = 0.f; // X3M_TAA_SKY_HISTORY_EXIT_PX: FrameInputs::sky_history_exit_px (0 without an age program)
+    float motion_weight_[3] = {0.f, 2.f, 8.f}; // X3M_TAA_MOTION_WEIGHT: FrameInputs::motion_weight, _v0, _v1 (0 without an age program)
     // Static-world previous rows for new keys (temporal-integration.md). The
     // camera verdict is evaluated once per frame, on the frame's first miss.
     unsigned unmatched_static_ = 0;

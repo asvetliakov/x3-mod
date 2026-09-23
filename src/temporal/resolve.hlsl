@@ -165,7 +165,8 @@ float4 flicker : register(c24); // thin-clip S, age wmax, speed LO, 1 / (HI - LO
 // reaches it, and under loose only a band pixel whose correspondence lies 1e15 px or
 // more from the camera path would (a camera path at prepare's 1e15 bound; the mark is
 // then written but read by nothing: the reset below is gated by the strict term's own
-// tolerance and the count is read through abs). yzw 0.
+// tolerance and the count is read through abs). yzw = A, B, F of the motion history weight
+// (docs/architecture/taa-motion-history-weight.md, at the depth proof below): 0, 1, 1 when off.
 #ifdef X3M_AGE_WEIGHT
 float4 skyExit : register(c25);
 #endif
@@ -304,9 +305,19 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // thin: the 3x3 (centre included) holds both a valid depth and the sentinel.
     bool sawSentinel = farPlane, sawValid = !farPlane;
 #endif
+#ifdef X3M_AGE_WEIGHT
+    // Slot budget of the age variants (taa-motion-history-weight.md, as built): the centre texel is
+    // fetched with the eight neighbours (one tap more per pixel) instead of being skipped, which
+    // drops the skip test and its branch (5-7 slots) exactly: the centre cannot win the dilation
+    // (neighbor < nearest fails on its own depth; a far-plane pixel's texel is the sentinel, which
+    // fails neighbor >= 0) and the soft-clip flags it would set are the ones the initialisers set.
+#define X3M_OFF_CENTRE(kx, ky) true
+#else
+#define X3M_OFF_CENTRE(kx, ky) (kx != 0 || ky != 0)
+#endif
     [loop] for (int ky = -1; ky <= 1; ++ky) {
         [loop] for (int kx = -1; kx <= 1; ++kx) {
-            if (kx != 0 || ky != 0) {
+            if (X3M_OFF_CENTRE(kx, ky)) {
                 float neighbor = fetch(currentDepth, uv + float2(kx, ky) * sizeJitter.xy).r;
                 // neighbor >= 0 && neighbor < nearest is validDepth(neighbor) && neighbor < nearest here:
                 // nearest starts at the validated centre depth (<= 1) and only falls, and a NaN fails >=.
@@ -471,6 +482,31 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     // a refused band pixel starts at 3, which the proof (at most the footprint's
     // weight, 1) can never reach, so the test below refuses it.
     float threshold = max(expectedDepth - tolerance, 0);
+#ifdef X3M_AGE_WEIGHT
+    // Motion history weight (docs/architecture/taa-motion-history-weight.md): the keep weight at
+    // the blend is capped by a floor that opens with the squared motion of the correspondence,
+    // cap = saturate(max(F, parallax2 * A + B)), c25.yzw = A, B, F, 1 at or below V0 px/frame
+    // and F at or above V1 (A = -(1 - F) / (V1^2 - V0^2), B = 1 - A V0^2). parallax2 is the
+    // smaller of two squared displacements: the translation parallax against the rotation-only
+    // camera path (the band term's quantity: 0 under a pan, the SETA approach's px/frame on a
+    // world-static hull) and the pixel's own screen motion (previousUV - uv, the lookup's
+    // displacement: 0 on a static hull and on one that moves with the camera, the player's ship
+    // in the external view or an escort under a turn, whose parallax is the turn itself). Only
+    // a hull that moves on screen AND against the camera path, the SETA hull, is capped; a pan,
+    // a co-moving hull and rest keep 1. A hull under SETA then accumulates a shorter history
+    // (fewer Catmull-Rom resamples, less softening) while nothing below V0 changes. Off
+    // uploads 0, 1, 1 and the cap is exactly 1 for every input: previousUV and uv lie inside
+    // the texture here (the lookup test above), so the screen term is at most W^2 + H^2 px^2
+    // and the min is finite even where the parallax overflowed to +inf (a routed pixel whose
+    // camera path is 1e15 px off screen: min(+inf, finite) is the finite one), never NaN
+    // (relative is a difference of finite values), so 0 * parallax2 + 1 is exactly 1 and
+    // min(keep, 1) at the blend is keep bit for bit. (The compiler sinks this to the blend
+    // beside the speed gate's length(), whose dp2add it shares, and keeps parallax2 live
+    // across the loops.)
+    float2 screenPx = (previousUV - uv) / sizeJitter.xy;
+    float parallax2 = min(dot(relative, relative), dot(screenPx, screenPx));
+    float cap = saturate(max(skyExit.w, parallax2 * skyExit.y + skyExit.z));
+#endif
     float considered = refused * options.z, proven = 0;
     [loop] for (int ty = 0; ty < 2; ++ty) {
         [loop] for (int tx = 0; tx < 2; ++tx) {
@@ -635,13 +671,30 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
 #else
     keep = min(age / (age + 1), lerp(flicker.y, history.z, saturate((speed - flicker.z) * flicker.w)));
 #endif
+    // The motion history weight's cap (computed with the depth proof above): min never raises a
+    // weight (young pixels, the exit reset's 0); before the alpha history so it uses the same weight.
+    keep = min(keep, cap);
 #endif
 #ifdef X3M_THIN_CLIP
     // Alpha history (c22.z is 0 or 1): same weight, clamped to the current 3x3
     // alpha range. Weight 0 is the current alpha exactly; a result outside the
     // range (>= and <= only: a NaN fails) keeps the current alpha.
     float blendedAlpha = lerp(alpha, clamp(accumulated.a / total, lowAlpha, highAlpha), keep * luminance.z);
+#ifdef X3M_AGE_WEIGHT
+    // Slot budget of the age variants (taa-motion-history-weight.md, as built): the same two range
+    // tests through one min, one to three slots fewer. Exact on the condition that lowAlpha,
+    // highAlpha and blendedAlpha are finite: the two differences are then the ones the compares
+    // form and min(a, b) >= 0 is a >= 0 and b >= 0. A NaN blendedAlpha (a NaN history alpha, or
+    // the current alpha through a NaN clamp) gives min(NaN, NaN), which fails as before. A
+    // non-finite lowAlpha or highAlpha (an FP16 scene alpha the game wrote as NaN or infinite;
+    // the range starts at the finite current alpha and a NaN neighbour does not move min / max
+    // on the verified backend) is the one input where the form may differ from the two
+    // compares: the original kept the current alpha there, this one follows the backend's min
+    // with a NaN operand. Alpha history is the HDR route's option only (c22.z).
+    if (min(blendedAlpha - lowAlpha, highAlpha - blendedAlpha) >= 0) alpha = blendedAlpha;
+#else
     if (blendedAlpha >= lowAlpha && blendedAlpha <= highAlpha) alpha = blendedAlpha;
+#endif
 #endif
 #ifdef X3M_AGE_WEIGHT
     // The count continues (1 after a reset); a marked band pixel writes it negated (the

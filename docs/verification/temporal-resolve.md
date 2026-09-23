@@ -1826,3 +1826,71 @@ it through `FrameInputs::thin_clip` / `adaptive_weight`), far, far_camera, the l
 | `run_temporal_pass.py`, bottle X3, main run | RESULT PASS 672 / 278, 488 samples, 28 `SETA_EXIT` rows: unchanged, report line for line the previous one |
 | same, lattice run | 583 / 23 -> **500 / 12**: LATTICE_BASE 28 / 9 -> 10 / 0 (filtered run-139 rows and refusals; weight rows kept), flicker block 182 / 4 -> 180 / 4 (filtered bit-identity pair), line block 45 / 2 -> 0 / 0 (timing only), far block 127 / 2 -> 109 / 2 (line-filter far row, `FAR_STABILISER` 24 -> 20, line mask-failure check), thin-region block 201 / 6 unchanged; every kept row's values equal the previous report |
 
+
+## 2026-09-23 motion history weight: a parallax-gated cap on the age programs' keep weight (fixture)
+
+Implements `docs/architecture/taa-motion-history-weight.md` (Fable, scratch build `build-mw`, not a candidate; section 9
+there is the as-built record). Option `--taa-motion-weight F[,V0,V1]` (`X3M_TAA_MOTION_WEIGHT`; requires `--taa`, F > 0
+an age program; 0 off, else 0.5 <= F < 1 with 0 <= V0 < V1 <= 64 px/frame, default 2,8; **default off**, `0.8,2,8` the
+flight candidate). The DLL logs it as `motion_weight=F,V0,V1` in `motion_output_mode`, refuses a malformed or out-of-range
+value (`taa_motion_weight_setting invalid=1`), drops it per device without an age program
+(`motion_output_taa_motion_weight ... unavailable=1 reason=no_age_program`) and hands it to the pass under camera policy 2
+only. The pass uploads c25.yzw = A, B, F with c24 / c25.x as the existing two-register block (0, 1, 1 when off: the cap is
+exactly 1). The age variants cap `keep` at `saturate(max(F, parallax2 * A + B))` before the alpha history, `parallax2` the
+smaller of the squared translation parallax and the squared screen motion (review: a hull that moves with the camera has
+screen motion 0 and would otherwise be capped by the turn); the age write is untouched. Rebased over cleanup batch 6 (the
+age variants are age, far and far_camera) and the sky-history defaults.
+
+**Reserve (before the term, the exit reset's method).** The term costs 4 slots on the far variants and 6 on the age one
+(register reshuffling; 6 / 9 on the since-removed age_filter / age_line), so far_camera (510) would not fit; the note's
+two candidates are not exact and save one each. Applied instead, on the age variants only: the centre texel fetched with
+the dilation's eight neighbours (the skip test and branch gone; exact, one fetch more) and the alpha range test as
+`min(blended - low, high - blended) >= 0` (exact). Reserve-only run (committed fixture and runner, HEAD shader plus the two
+rewrites; `verification/results/motion-weight/compare_reserve_out.txt`): `passed: true`, `RESULT PASS numerical=672
+state_restorations=278`, 488 samples; **0 stable lines removed / 0 added** on temporal-pass.txt (6886 lines both) and
+temporal-lattice.txt (5242 both), all 488 + 375 baseline SAMPLE lines present, the 28 SETA_EXIT rows identical; slots age
+495 -> 487, age_filter 507 -> 499, age_line 507 -> 499, far 498 -> 488, far_camera 510 -> 500.
+
+**Fixture with the term** (`X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+verification/probe/run_temporal_pass.py`, worktree `agent-a617e3d7c5fdbe2b3` after the rebase; the reports
+`temporal-pass.txt` / `temporal-lattice.txt` and `temporal-pass-summary.json` under `verification/results/bottle-X3/` are
+this run's; `verification/results/motion-weight/compare.py` and `compare_out.txt`, baseline main a651c219): `passed: true`,
+`RESULT PASS numerical=712 state_restorations=278 generations=2`, **528** samples (672 / 488 before: case (m), ten rows on
+two age programs and ten metrics per program and generation); lattice `RESULT PASS numerical=500 state_restorations=12`
+(batch 6's count). Off path: temporal-lattice.txt 0 stable lines removed / 0 added (every FLICKER, FAR_STABILISER,
+THIN_REGION, SENTINEL_STABILISER and SAMPLE row identical, 331 baseline SAMPLE lines present); temporal-pass.txt 0
+removed / 40 added (the new metrics), all 488 baseline SAMPLE lines present, SETA_EXIT rows identical.
+
+Case (m), `MOTION_WEIGHT` rows (a 512x16 routed hull at depth 0.9997 with a period-4 sinusoidal stripe point-sampled at the
+jittered position, static 16 frames then moving 32, read at x >= 386 over the last 16 frames; E ratio = interior Laplacian
+energy of the resolve over the current sample; sigma_fit from the stripe's amplitude, the x1.4 grid sigma in brackets;
+ripple = rms of output[n](x) - output[n - k](x - k v), k the smallest integer shift (1, or 2 at the half-texel speeds);
+far_camera = weight 0.9, thin region 0.97 under the camera gate, far 0.985, strict + band 3 + exit 0.25; age = thin clip
+0.7, WMAX 0.9; option 0.8,2,8 against off; both programs give the same numbers unless noted):
+
+| row | E ratio off -> on | sigma_fit off -> on (grid) | ripple rms off -> on | output / age diff vs off |
+| --- | --- | --- | --- | --- |
+| rest | 0.647 (age) / 0.622 (far_camera), unchanged | 0.43 / 0.45 (0.35 / 0.5) | 0.0142 / 0.0089 | **0 / 0** |
+| 1, 5 px/frame (integer: the tap lands on the texel grid, nothing is resampled) | 0.649 unchanged | 0.42 (0.35) | 0.0141 | **0 / 0** |
+| 12 px/frame (integer) | 0.647 -> **0.696** | 0.43 -> 0.39 | 0.0142 -> 0.0276 | 0.082 (age) / 0.087 (far_camera), age **0** |
+| 1.5, 5.5 px/frame (half texel) | 0.197 unchanged | 0.81 (0.7) | 0.0094 | **0 / 0** |
+| 6.5 px/frame (half texel; the ramp binds, cap 1.01333 - 0.0033333 x 42.25 = 0.8725) | 0.197 -> **0.255** | 0.81 -> 0.75 | 0.0095 -> 0.0122 | 0.033 (age) / 0.037 (far_camera), age **0**; **0.000000** against the run whose cap is the constant 0.8725 (F 0.8725, V0 0, V1 0.5) |
+| **12.5 px/frame** (half texel) | 0.197 -> **0.383 (x1.95)** | 0.81 -> **0.62** (0.7 -> 0.7) | 0.0095 -> 0.0195 (**x2.06**) | 0.093 (age) / 0.104 (far_camera), age **0** |
+| pan 12.5 px/frame (camera yaw, hull world-static) | 0.197 unchanged | 0.81 | 0.0095 | **0 / 0** |
+| co-moving 12.5 px/frame (camera yaw, hull screen-static: relative 12.5, screen motion 0) | 0.647 (age) / 0.622 (far_camera) unchanged | 0.43 / 0.45 | 0.0142 / 0.0089 | **0 / 0** |
+
+Asserted per program and generation: rest, 1 / 1.5, the pan and the co-moving rows bit-identical on both targets; the
+age target identical on every row; 5 / 5.5 E ratio not below off's; 6.5 within 0.002 of the constant-cap run (a wrong A
+or B fails; measured 0) and at least 0.01 from off; 12.5 E ratio at least 1.5x off's; 12.5 ripple at most 2.5x off's (the
+first run measured 2.06x, above the note's 1.45x random-phase alias model: the bound was set from the measurement as
+section 6 asked). The runner re-checks the bit-identity rows, the age identity and the 1.5x E ratio on
+the parsed rows. The 5 px/frame rows are unchanged by construction (cap 0.93 above the 0.9 base; nothing in the strip is
+fragmented, so the 0.97 thin-region ceiling is not exercised here: b = 0).
+
+| check | result |
+| --- | --- |
+| `RESOLVE_BUDGET` (fixture, D3DXDisassembleShader) age / far / far_camera | 495 -> **494**, 498 -> **493**, 510 -> **505** of 512 (the co-moving gate's min is +1 each over the section-1 form's 493 / 492 / 504, measured before the rebase with age_filter 505 and age_line 508); plain 432, thin 465, snapshot 46, masks 368 / 344, boxes 51 / 35 / 94 unchanged (bytes unchanged: the non-age headers did not regenerate) |
+| `LINE_TIMING_CAMERA` (1280x768, 6 rounds) no_region thin / camera, fragmented pan thin / camera | committed 1.3489 / 1.5017, 1.0570 / 1.4269 ms; reserve-only run 1.0768 / 1.2018, 0.9444 / 1.3342; with the term 1.4235 / 1.5995, 1.4083 / 2.0055; after the rebase 1.4038 / 1.5906, 1.3039 / 1.9146 (a CPU-wall row whose run-to-run spread exceeds the one-fetch and five-slot change: the GPU cost is unmeasured) |
+| scratch DLL `build-mw` (`cmake/mingw-i686.cmake`, RelWithDebInfo), no warnings; `check_no_x87.py` | built; PASS, 638 reachable functions, 0 violations; sha256 `926c9d048251396de46885135f26e9f0cdb4e2d9501e5fa450e799c18f9fe6e2` (after the rebase and the review fixes; `ac22cfcf…` before) |
+| `PYTHONPATH=verification/probe /usr/bin/python3 -m unittest verification.analysis.test_taa_image_defaults verification.analysis.test_taa_sky_history verification.analysis.test_taa_motion_weight verification.analysis.test_shader_compiler_provenance` | 33 tests, OK after the rebase (new module `test_taa_motion_weight.py`: forwarded as the triple with each age program, 0 the explicit off with `--taa` alone, omitted / inherited dropped, range and `--taa` / age-program refusals, DLL default 0; `test_taa_image_defaults`: absent unless given) |
+| `tools/manage.py launch --bottle X3 --dry-run --motion-output --ownership --object-trace --object-lifetime --taa --taa-far-stabiliser 0.985 --taa-thin-region 0.97 --taa-motion-weight 0.8,2,8` | `X3M_TAA_MOTION_WEIGHT=0.8,2,8` beside `X3M_TAA_FAR_STABILISER=0.985,0,80,130,0.03,0.25`, `X3M_TAA_THIN_REGION=0.97,1`, gate camera, strict + exit 0.25 (the defaults; without `--motion-output` the launcher stops at `--taa requires --motion-output`, as before). The triple is forwarded with `%.9g` (0.9999999,2,7.9999999 round-trips); an env value of 32+ chars logs `taa_motion_weight_setting invalid=1 reason=too_long` |
