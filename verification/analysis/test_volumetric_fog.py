@@ -365,11 +365,22 @@ class FogLauncherTests(unittest.TestCase):
         self.assertIn('else if (fog_->grid_report().frame == frame_)', run)
 
     def test_dust_motes_option(self):
-        # --fog-dust-motes N[,SIZE[,STREAK]] -> X3M_FOG_DUST_MOTES=N,SIZE,STREAK (fog-dust-motes.md section 4): default and
-        # explicit 0 are off, always written so an inherited value cannot enable the motes; stored range only.
+        # --fog-dust-motes N[,SIZE[,STREAK]] -> X3M_FOG_DUST_MOTES=N,SIZE,STREAK (fog-dust-motes.md section 4): omitted under
+        # the stored range the Run 70 B/B2 default 1300,3,128 with MAX_PX 8 (2026-09-23), without it off; explicit 0 is the
+        # opt-out; always written so an inherited value cannot decide the motes; a count above 0 needs the stored range.
         stored = ('--volumetric-fog', '--volumetric-fog-range', 'stored')
         status, output, error = self.launch(*self.BASE, *stored)
-        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_DUST_MOTES": "0,4,128"', output)
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_DUST_MOTES": "1300,3,128"', output)
+        self.assertIn('"X3M_FOG_MOTES_MAX_PX": "8"', output)
+        status, output, error = self.launch(*self.BASE, *stored, environment={'X3M_FOG_MOTES_MAX_PX': '16'})
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MOTES_MAX_PX": "16"', output)  # the user's value stands
+        for environment in (None, {'X3M_FOG_MOTES_MAX_PX': '16'}):
+            status, output, error = self.launch(*self.BASE, *stored, '--fog-dust-motes', '0', environment=environment)
+            self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_DUST_MOTES": "0,4,128"', output); self.assertNotIn('X3M_FOG_MOTES_', output)
+            status, output, error = self.launch(*self.BASE, '--volumetric-fog', environment=environment)  # no stored range: off
+            self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_DUST_MOTES": "0,4,128"', output); self.assertNotIn('X3M_FOG_MOTES_', output)
+        status, output, error = self.launch(*self.BASE, *stored, '--fog-dust-motes', '2048,4')
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_DUST_MOTES": "2048,4,128"', output); self.assertNotIn('X3M_FOG_MOTES_MAX_PX', output)
         for value, expected in (('2048', '2048,4,128'), ('64,2', '64,2,128'), ('8192,16,0', '8192,16,0'), ('512,6,512', '512,6,512'), ('0', '0,4,128'), ('8192,2.123456789,511.987654321', '8192,2.12346,511.988')):
             status, output, error = self.launch(*self.BASE, *stored, '--fog-dust-motes', value)
             self.assertEqual(status, 0, (value, error)); self.assertIn('"X3M_FOG_DUST_MOTES": "%s"' % expected, output)
@@ -380,11 +391,15 @@ class FogLauncherTests(unittest.TestCase):
         self.assertEqual(self.launch(*self.BASE, '--fog-dust-motes', '2048')[0], 2)
         self.assertEqual(self.launch(*self.BASE, '--volumetric-fog', '--fog-dust-motes', '0')[0], 0)  # explicit off needs no stored range
         status, output, error = self.launch(*self.BASE, *stored, environment={'X3M_FOG_DUST_MOTES': '2048,4,128'})
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_DUST_MOTES": "1300,3,128"', output)
+        status, output, error = self.launch(*self.BASE, '--volumetric-fog', environment={'X3M_FOG_DUST_MOTES': '2048,4,128'})
         self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_DUST_MOTES": "0,4,128"', output)
-        # Inherited tunables survive only with the option on.
+        # Inherited tunables survive only with the motes on: the default or the option above 0.
         tunables = {'X3M_FOG_MOTES_GAIN': '4', 'X3M_FOG_MOTES_SEED': '9'}
-        status, output, error = self.launch(*self.BASE, *stored, environment=tunables)
+        status, output, error = self.launch(*self.BASE, *stored, '--fog-dust-motes', '0', environment=tunables)
         self.assertEqual(status, 0, error); self.assertNotIn('X3M_FOG_MOTES_', output)
+        status, output, error = self.launch(*self.BASE, *stored, environment=tunables)
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MOTES_GAIN": "4"', output); self.assertIn('"X3M_FOG_MOTES_SEED": "9"', output)
         status, output, error = self.launch(*self.BASE, *stored, '--fog-dust-motes', '2048', environment=tunables)
         self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MOTES_GAIN": "4"', output)
         # The DLL: stored range only, the whole triple must parse, tunables only with the option on, one mode line; an
@@ -401,6 +416,14 @@ class FogLauncherTests(unittest.TestCase):
         for name, low, high in (('RADIUS', '200.f', '5000.f'), ('NEAR', '5.f', '200.f'), ('GAIN', '0.f', '8.f'), ('SOFT', '0.f', '.1f'), ('DRIFT', '0.f', '200.f')):
             self.assertRegex(motes, r'\{"%s", &FogMoteTuning::\w+, %s, %s\}' % (name, re.escape(low), re.escape(high)))
         self.assertIn('{"MAX_PX", &FogMoteTuning::max_px, fog_mote_size_min, 64.f}', motes)
+        # Absent under the stored range the DLL takes the same default (1300,3,128, MAX_PX 8); an invalid value stays off.
+        self.assertIn('constexpr unsigned fog_mote_default_count = 1300;', motes)
+        self.assertIn('constexpr float fog_mote_default_size = 3.f, fog_mote_default_streak = 128.f;', motes)
+        self.assertIn('float max_px = 8.f,', motes)
+        self.assertIn('} else if(motes_length||volumetric_fog_range_stored){', capture)
+        self.assertIn('unsigned long n=renderer::fog_mote_default_count;float values[2]{renderer::fog_mote_default_size,renderer::fog_mote_default_streak};bool valid=true;', capture)
+        self.assertIn('key=ctrl_alt_f11 source=%s', capture); self.assertIn('motes_length?"env":"default"', capture)
+        self.assertIn('volumetric_fog_motes_mode enabled=0 invalid=1 reason=%s",valid?"out_of_range":"unparsable"', capture)
 
     def test_dust_motes_stage_and_frame_row(self):
         # fog-dust-motes.md: the stage is the transaction's last, after the repair and only with the latched toggle; its

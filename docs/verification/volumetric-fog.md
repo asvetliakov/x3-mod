@@ -2468,3 +2468,11 @@ marked. The user: no fps effect; too many (wants 30–40 % fewer); too big ("sno
   smaller, near cap 8 px); `X3M_FOG_MOTES_GAIN=0.6` if still too bright; size 3 is the floor
   (the 3×3 TAA clip argument). Open: the on frame's sky median was 12.5 % brighter than the
   off frame's, more than the motes' coverage explains (scene/fog state difference, inferred).
+
+**Run 70 B2 (2026-09-23, user report, no session preserved):** flown with `--fog-dust-motes 1300,2`
+and `X3M_FOG_MOTES_MAX_PX=8`: "good setting, I like it"; told that 2 px sits below the note's
+4 px TAA minimum (section 3) and dims under the 3×3 clip, the user settled on size 3. **Decision:**
+motes on by default under the stored range at `1300,3,128` with `MAX_PX 8` (`--fog-dust-motes 0`
+opts out). The Run 264 entry's "size 3 is the floor" was a working limit; the note's derived
+minimum is 4 px, and 3 is the user's accepted trade. Reproducing Run 264 (2048,4 at MAX_PX 12)
+now needs `X3M_FOG_MOTES_MAX_PX=12`.

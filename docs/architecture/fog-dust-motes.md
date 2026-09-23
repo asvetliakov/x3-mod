@@ -2,7 +2,8 @@
 
 Design note, 2026-09-23 (Fable, high), for change 8 of
 [fog-visual-direction-review-2026-09-21.md](fog-visual-direction-review-2026-09-21.md): the sense-of-speed
-and scale cue the stored-density fog lacks. Built **default off** behind one launcher option on 2026-09-23;
+and scale cue the stored-density fog lacks. Built **default off** behind one launcher option on 2026-09-23; **default 1300,3 (MAX_PX 8) since 2026-09-23
+after Run 70 B/B2; the user also accepted 2; Run 264's 2048,4 needs X3M_FOG_MOTES_MAX_PX=12 to reproduce now** (under `--volumetric-fog-range stored`; `--fog-dust-motes 0` opts out);
 what differs from the design below and the fixture numbers are in "As built" at the end. In the design
 sections every cost is an estimate [I]; [M] marks numbers read from the notes or source. Units: 5 render units = 1 m, 5000 per km.
 Owning runtime notes: [fog-density-runtime-integration.md](fog-density-runtime-integration.md) (the L2
@@ -28,8 +29,8 @@ repair leaves bound, so a clear or idle sector draws none by construction (the t
 | Seeds | N per cube of side W = 2R, R = 1000 units (200 m), hashed from the index at creation (`SEED`), no RNG state | The review's 400 m cube; a fighter at 100-200 m/s crosses it in 5-10 s, under SETA in 0.5-1 s |
 | Wrap | CPU (double): `c_m = cam mod W`; VS: `q = s_i - c_m`, `q -= W round(q/W)`, so `q` in [-R, R)^3 camera-relative, float32 exact to 1e-4 units. A sector jump or view cut shows another slice of the same lattice: no reseed | The pass's `FogWorldBasis::origin` (double, the run197-admitted camera at 1e-3 Gram; first-person included) is the only camera input: no new reader |
 | Visibility volume | brightness x `saturate((R - |q|)/(.25 R))` x `saturate((|q| - NEAR)/NEAR)`, NEAR 25 units (5 m) | Spherical fade hides the cube faces where points enter; the near fade keeps a mote from filling the screen in first person, where no hull occludes the nose |
-| On screen | N = 2048 default -> ~1070 in the sphere, ~120 in a 90x60 deg frustum [I: solid-angle fraction 11.5 %] | 512 gave ~30 on screen, too sparse; 8192 is the cap |
-| Size | `size_px = clamp(K/|q|, SIZE, MAX_PX)`, SIZE 4 px, MAX_PX 12, K = SIZE x R | Sub-pixel points do not survive the 3x3 clip (section 3); everything at the wrap radius is at the minimum |
+| On screen | N = 2048 (design) -> ~1070 in the sphere, ~120 in a 90x60 deg frustum [I: solid-angle fraction 11.5 %]; default 1300 since Run 70 B/B2 (2026-09-23) | 512 gave ~30 on screen, too sparse; 8192 is the cap |
+| Size | `size_px = clamp(K/|q|, SIZE, MAX_PX)`, SIZE 4 px, MAX_PX 12, K = SIZE x R (design; default SIZE 3, MAX_PX 8 since Run 70 B/B2, below the 4 px minimum of section 3, accepted by eye) | Sub-pixel points do not survive the 3x3 clip (section 3); everything at the wrap radius is at the minimum |
 | Streak | screen segment from `P_prev(q + delta)` (previous basis, previous drift time) to `P(q)`, length clamped to STREAK px (128); radiance x `size/(size + L)` | Energy conservation: a long SETA streak is faint; the streak also overlaps its previous position, the TAA argument of section 3 |
 | Drift | `q += DRIFT sin(w t + phi_i)` per axis, DRIFT 20 units, period 8 s, VS only | Motes move at rest (docked, idle); world-anchored, so no state |
 | Geometry | static DEFAULT VB: N x 4 vertices (seed xyz, corner uv, 20 B: 160 KB) + IB N x 6 x 2 B (24 KB), `DrawIndexedPrimitive` once; created at `prepare_density` beside the grid target, released with `release_targets`, recreated after Reset by the next latch; counted in `allocations()` | Same lifetime rule as the grid; no MANAGED pool (a D3D9Ex-style device refuses it and the retention probe exists only because that is uncertain) |
@@ -104,11 +105,16 @@ mask lane is possible (section 7).
 ## 4. Option, log row, hotkey
 
 - `--fog-dust-motes N[,SIZE[,STREAK]]` -> `X3M_FOG_DUST_MOTES=N,SIZE,STREAK`; N 0 (explicit off) or 64..8192,
-  SIZE 2..16 px (default 4), STREAK 0..512 px (default 128); requires `--volumetric-fog-range stored`
-  (parser error otherwise, the `--fog-shadow-pass` rule). **Default off**: absent, the DLL creates nothing,
-  polls no key, and the transaction is byte-identical to today.
+  SIZE 2..16 px (default 4 when N is given alone), STREAK 0..512 px (default 128); a count above 0 requires
+  `--volumetric-fog-range stored` (parser error otherwise, the `--fog-shadow-pass` rule). **Default 1300,3
+  (MAX_PX 8) since 2026-09-23 after Run 70 B/B2; the user also accepted 2; Run 264's 2048,4 needs X3M_FOG_MOTES_MAX_PX=12 to reproduce now**: omitted under the stored range the
+  launcher forwards `X3M_FOG_DUST_MOTES=1300,3,128` and `X3M_FOG_MOTES_MAX_PX=8` unless that is set, and the DLL
+  takes the same values when the variable is absent under the stored range (`source=default` in the mode line).
+  `--fog-dust-motes 0` is the opt-out (`0,4,128`, inherited tunables dropped): the DLL creates nothing, polls no
+  key, and the transaction is byte-identical to the launch-off pass; without the stored range the motes stay off.
+  SIZE 3 is below the 4 px minimum section 3 derives from the 3x3 clip; the user's eye accepted it (and 2).
 - Tunables read once with the look tuning, `X3M_FOG_MOTES_<NAME>`: RADIUS (200..5000, 1000), NEAR (5..200,
-  25), MAX_PX (SIZE..64, 12), GAIN (0..8, 1), SOFT (0..0.1, 0.02), DRIFT (0..200, 20), SEED (integer, 1);
+  25), MAX_PX (SIZE..64, 8 since Run 70 B2, was 12), GAIN (0..8, 1), SOFT (0..0.1, 0.02), DRIFT (0..200, 20), SEED (integer, 1);
   logged once as `volumetric_fog_motes_mode`.
 - `volumetric_fog_frame` gains, with the option on: `motes=0|1` (drawn), `mote_count=N`, `mote_calls=<device
   calls of the stage>`, `mote_shift_px=<512 |delta| / R: the perpendicular displacement at the wrap radius

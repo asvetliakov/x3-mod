@@ -38,6 +38,8 @@ TAA_MIP_BIAS_DEFAULT = -0.5
 TAA_SHARPEN_DEFAULT = 0.75
 TAA_SKY_HISTORY_EXIT_PX_DEFAULT = 0.25  # Run 68 A (2026-09-23): exit reset of the strict sky history, px/frame
 TAA_MOTION_WEIGHT_DEFAULT = '0.7,2,8'  # Run 70 A (2026-09-23, run262/run263): parallax-gated history weight F,V0,V1
+FOG_DUST_MOTES_DEFAULT = (1300, 3.0, 128.0)  # Run 70 B/B2 (2026-09-23): N,SIZE,STREAK under the stored fog range
+FOG_MOTES_MAX_PX_DEFAULT = '8'  # Run 70 B2 (2026-09-23): X3M_FOG_MOTES_MAX_PX with the default motes, unless set
 # Hull light-map gain the launcher forwards in HDR mode when the option is
 # unset (user selection after run 41 C / run128, 2026-09-18,
 # docs/architecture/linear-emission-cost.md, "Hull light-map gain"). The DLL's
@@ -410,7 +412,7 @@ def main():
     # Retired 2026-09-22 with the presets L0/L1/L3: registered only so that an old command line is refused by name.
     parser.add_argument('--volumetric-fog-look', nargs='?', const='', default=None, help=argparse.SUPPRESS)
     parser.add_argument('--fog-shadow-pass', choices=('on', 'off'), default=None, help='Stored fog only: compute the sun-shadow shaft visibility in its own quarter-resolution pass before the march (three-cascade cross-fade, the finest cascade, a penumbra that widens with the blocker distance) instead of the march\'s per-step lookup; off (default) draws the accepted look unchanged, so the two can be A/B compared in one build (X3M_FOG_SHADOW_PASS; on requires --volumetric-fog-range stored). docs/architecture/fog-shadow-pass.md')
-    parser.add_argument('--fog-dust-motes', default=None, metavar='N[,SIZE[,STREAK]]', help='Stored fog only: N near-camera dust motes (0 off, 64..8192; 2048 gives ~120 on screen) in a 400 m world-anchored window, drawn after the fog with the fog\'s own density, colour and shafts, SIZE the minimum width in pixels (2..16, default 4), STREAK the velocity streak cap in pixels (0..512, default 128); Ctrl+Alt+F11 toggles them (X3M_FOG_DUST_MOTES; tuning by X3M_FOG_MOTES_<NAME>; requires --volumetric-fog-range stored). docs/architecture/fog-dust-motes.md')
+    parser.add_argument('--fog-dust-motes', default=None, metavar='N[,SIZE[,STREAK]]', help='Stored fog only: N near-camera dust motes (0 off, 64..8192; 2048 gives ~120 on screen) in a 400 m world-anchored window, drawn after the fog with the fog\'s own density, colour and shafts, SIZE the minimum width in pixels (2..16, default 4 when N is given alone), STREAK the velocity streak cap in pixels (0..512, default 128); Ctrl+Alt+F11 toggles them (X3M_FOG_DUST_MOTES; tuning by X3M_FOG_MOTES_<NAME>; a value above 0 requires --volumetric-fog-range stored). Default when omitted under --volumetric-fog-range stored = 1300,3,128 with X3M_FOG_MOTES_MAX_PX=8 unless that is set (accepted in Run 70 B/B2, 2026-09-23), else off; 0 is the explicit off and the opt-out. docs/architecture/fog-dust-motes.md')
     parser.add_argument('--volumetric-fog-everywhere', action='store_true', help='Debug only: force bluewell when no known family is available, still requiring a valid view (X3M_VOLUMETRIC_FOG_EVERYWHERE=1; requires --volumetric-fog)')
     parser.add_argument('--volumetric-fog-timing', action='store_true', help='One volumetric_fog_frame log line per frame with the CPU wall time and device-call count of the pass (X3M_VOLUMETRIC_FOG_TIMING=1; requires --volumetric-fog)')
     parser.add_argument('--shimmer-trace', action='store_true', help='Diagnostic distant-shimmer trace (X3M_SHIMMER_TRACE=1; requires --motion-output --taa; default off): every frame logs one shimmer_frame line with the TAA state (history, skip, cut, jitter index) and the projection p00/p11 as integers scaled by 1e4, plus up to 32 shimmer_draw lines identifying that frame\'s Asteroid-class scene draws (node/model/lod, vertex, index and primitive counts, the distance-fade f in per mille when the draw was fade-admitted and its derived screen rectangle) with a truncated count beyond 32 (docs/architecture/linear-distance-fade-region.md, "Shimmer trace (diagnostic)")')
@@ -1284,9 +1286,14 @@ def main():
         env['X3M_VOLUMETRIC_FOG_RANGE'] = args.volumetric_fog_range or 'legacy'
         env.pop('X3M_VOLUMETRIC_FOG_LOOK', None)  # retired 2026-09-22: never inherited, never set (the DLL logs one ignore line)
         env['X3M_FOG_SHADOW_PASS'] = '1' if args.fog_shadow_pass == 'on' else '0'
-        # The dust motes: always explicit ('0,4,128' is off) so an inherited value cannot enable them; the DLL reads at most
-        # 31 characters, which '%.6g' keeps the triple well inside. Without the option no inherited tunable survives.
+        # The dust motes: always explicit ('0,4,128' is off) so an inherited value cannot decide them; the DLL reads at most
+        # 31 characters, which '%.6g' keeps the triple well inside. Omitted under the stored range: the user-accepted Run 70
+        # B/B2 default 1300,3,128 (2026-09-23, docs/architecture/fog-dust-motes.md) with MAX_PX 8 unless the user set it;
+        # 0 is the opt-out. With the motes off no inherited tunable survives.
         motes = args.fog_dust_motes or (0, 4.0, 128.0)
+        if args.fog_dust_motes is None and args.volumetric_fog_range == 'stored':
+            motes = FOG_DUST_MOTES_DEFAULT
+            env.setdefault('X3M_FOG_MOTES_MAX_PX', FOG_MOTES_MAX_PX_DEFAULT)
         env['X3M_FOG_DUST_MOTES'] = '%d,%.6g,%.6g' % motes
         if len(env['X3M_FOG_DUST_MOTES']) >= 32:
             parser.error('--fog-dust-motes: the formatted value exceeds the 31 characters the DLL reads.')

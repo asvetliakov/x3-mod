@@ -178,8 +178,9 @@ bool volumetric_fog_range_stored = false;
 // X3M_FOG_SHADOW_PASS=1 (docs/architecture/fog-shadow-pass.md; launcher --fog-shadow-pass on, default off): the stored
 // range's sun-shadow shaft visibility in its own quarter-resolution pass before the march. Stored range only.
 bool volumetric_fog_shadow_pass = false;
-// X3M_FOG_DUST_MOTES=N,SIZE,STREAK (docs/architecture/fog-dust-motes.md; launcher --fog-dust-motes, default off): the
-// stored range's near-camera dust motes, drawn after the repair; tunables X3M_FOG_MOTES_<NAME>. Stored range only.
+// X3M_FOG_DUST_MOTES=N,SIZE,STREAK (docs/architecture/fog-dust-motes.md; launcher --fog-dust-motes; absent under the
+// stored range: 1300,3,128 with MAX_PX 8 since 2026-09-23 after Run 70 B/B2, else off; 0 is the opt-out): the stored range's
+// near-camera dust motes, drawn after the repair; tunables X3M_FOG_MOTES_<NAME>. Stored range only.
 x3m::renderer::FogMoteTuning volumetric_fog_motes{};
 // X3M_FOG_LOOK_<NAME>=<float> tuning of the single stored-range look (renderer::fog_look_fields;
 // X3M_FOG_LOOK_AMBIENT_SUN / _AWAY = r,g,b): read once here, stored range only. The preset selector
@@ -3254,15 +3255,19 @@ void initialize_log(HMODULE module) {
      // X3M_FOG_DUST_MOTES=N,SIZE,STREAK: the whole string must parse (N 0 or 64..8192, SIZE 2..16, STREAK 0..512), anything
      // else keeps the motes off; the tunables are read only with the option on (one volumetric_fog_motes_mode line). A
      // value of 32 or more characters, or a count above 0 without the stored range, says so in one line instead.
+     // Absent under the stored range: the Run 70 B/B2 default 1300,3,128 (2026-09-23), tunables read the same way.
      volumetric_fog_motes={};
      const DWORD motes_length=GetEnvironmentVariableW(L"X3M_FOG_DUST_MOTES",setting,32);
      if(motes_length>=32)log("volumetric_fog_motes_mode enabled=0 invalid=1 reason=overlong length=%lu",motes_length);
      else if(motes_length&&!volumetric_fog_range_stored){
         wchar_t* end=nullptr;const unsigned long n=wcstoul(setting,&end,10);
         if(end==setting||n!=0)log("volumetric_fog_motes_mode enabled=0 reason=requires_stored_range count=%lu stored=0 fog=%u",n,unsigned(volumetric_fog_requested));
-     } else if(motes_length){
-        wchar_t* end=nullptr;const unsigned long n=wcstoul(setting,&end,10);float values[2]{};bool valid=end!=setting&&*end==L',';
-        for(unsigned i=0;i<2&&valid;++i){wchar_t* at=end+1;values[i]=wcstof(at,&end);valid=end!=at&&*end==(i?L'\0':L',');}
+     } else if(motes_length||volumetric_fog_range_stored){
+        unsigned long n=renderer::fog_mote_default_count;float values[2]{renderer::fog_mote_default_size,renderer::fog_mote_default_streak};bool valid=true;
+        if(motes_length){
+            wchar_t* end=nullptr;n=wcstoul(setting,&end,10);valid=end!=setting&&*end==L',';
+            for(unsigned i=0;i<2&&valid;++i){wchar_t* at=end+1;values[i]=wcstof(at,&end);valid=end!=at&&*end==(i?L'\0':L',');}
+        }
         renderer::FogMoteTuning motes{};
         if(valid&&n<=renderer::fog_mote_count_max&&renderer::fog_mote_option(unsigned(n),values[0],values[1],motes)&&motes.count){
             unsigned overrides=0;
@@ -3275,8 +3280,8 @@ void initialize_log(HMODULE module) {
             if(fog_env(L"X3M_FOG_MOTES_SEED")){wchar_t* stop=nullptr;const unsigned long v=wcstoul(setting,&stop,10);if(stop!=setting&&*stop==L'\0'&&v<=0x7fffffffUL){motes.seed=std::uint32_t(v);++overrides;}}
             renderer::fog_mote_normalize(motes);
             volumetric_fog_motes=motes;
-            log("volumetric_fog_motes_mode enabled=1 count=%u size=%g streak=%g overrides=%u RADIUS=%g NEAR=%g MAX_PX=%g GAIN=%g SOFT=%g DRIFT=%g SEED=%u key=ctrl_alt_f11",
-                motes.count,double(motes.size),double(motes.streak),overrides,double(motes.radius),double(motes.near_fade),double(motes.max_px),double(motes.gain),double(motes.soft),double(motes.drift),unsigned(motes.seed));
+            log("volumetric_fog_motes_mode enabled=1 count=%u size=%g streak=%g overrides=%u RADIUS=%g NEAR=%g MAX_PX=%g GAIN=%g SOFT=%g DRIFT=%g SEED=%u key=ctrl_alt_f11 source=%s",
+                motes.count,double(motes.size),double(motes.streak),overrides,double(motes.radius),double(motes.near_fade),double(motes.max_px),double(motes.gain),double(motes.soft),double(motes.drift),unsigned(motes.seed),motes_length?"env":"default");
         } else if(valid&&n==0)log("volumetric_fog_motes_mode enabled=0 reason=off");
         else log("volumetric_fog_motes_mode enabled=0 invalid=1 reason=%s",valid?"out_of_range":"unparsable");
      }

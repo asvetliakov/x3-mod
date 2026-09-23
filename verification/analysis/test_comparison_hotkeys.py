@@ -127,8 +127,8 @@ class ComparisonHotkeys(unittest.TestCase):
         self.assertIn('x3m_fog_shadow_pass_fixture_toggle', capture)
 
     def test_fog_dust_motes_key_and_frame_boundary(self):
-        """Ctrl+Alt+F11 with Shift up (comparison-hotkeys.md, "Fog dust motes"): polled only with --fog-dust-motes, on
-        F11's own raw latch under the Alt rule (the sampler runs in comparison_controls_fixture.cpp); the toggle flips the
+        """Ctrl+Alt+F11 with Shift up (comparison-hotkeys.md, "Fog dust motes"): polled whenever the motes are on (by default under the stored range since 2026-09-23, or with --fog-dust-motes), on
+        F11's own raw latch under the Alt rule (the motes are on by default under the stored range since 2026-09-23) (the sampler runs in comparison_controls_fixture.cpp); the toggle flips the
         proxy's copy of the mote stage, which FogPass latches at the next prepare_density, and logs one row."""
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
         controls = (ROOT / 'src/proxy/comparison_controls.h').read_text()
@@ -141,7 +141,10 @@ class ComparisonHotkeys(unittest.TestCase):
         self.assertIn('keys.fog_dust_motes=volumetric_fog_motes.count && f11;', polling)
         self.assertIn('if(action.fog_dust_motes)ctx.motion_output.volumetric_fog_dust_motes_toggle();', polling)
         # The motes imply the stored range and so the fog option: the sampler's early return and the Alt poll cover them.
-        self.assertIn('} else if(motes_length){', capture)  # parsed only past the overlong and stored-range refusals
+        # Parsed only past the overlong and stored-range refusals; absent under the stored range the default 1300,3,128
+        # (Run 70 B/B2, 2026-09-23) enables them, so the key is polled there without the option unless 0 opted out.
+        self.assertIn('} else if(motes_length||volumetric_fog_range_stored){', capture)
+        self.assertIn('unsigned long n=renderer::fog_mote_default_count;', capture)
         self.assertIn('keys.alt=(fps_overlay_requested || volumetric_fog_requested) && (GetAsyncKeyState(VK_MENU)&0x8000)!=0;', polling)
         self.assertIn('fog_dust_motes_launch_ = motes.count > 0; fog_density_config_.motes = motes; fog_density_config_.dust_motes = motes.count > 0;', header)
         toggle = extract_function(fragment, 'int MotionOutput::volumetric_fog_dust_motes_toggle(')

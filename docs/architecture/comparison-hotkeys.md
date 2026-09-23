@@ -218,7 +218,8 @@ has one look (`fog-density-runtime-integration.md`, "The look"). Since
 
 **Ctrl+Alt+F11** (Shift up) switches the stored fog's dust motes
 (`fog-dust-motes.md`) off and on while they were enabled at launch
-(`--fog-dust-motes N[,SIZE[,STREAK]]`, `X3M_FOG_DUST_MOTES`); otherwise the key
+(`--fog-dust-motes N[,SIZE[,STREAK]]`, `X3M_FOG_DUST_MOTES`; on by default under
+`--volumetric-fog-range stored` since 2026-09-23, `--fog-dust-motes 0` opts out); otherwise the key
 is not polled for them. The overlay's Alt rule on F11's own raw latch: the one
 `GetAsyncKeyState(VK_F11)` read feeds both the shadow-pass key (Ctrl+Shift) and
 this one, so Ctrl+Shift+F11 stays the shadow pass and a held F11 never becomes a
