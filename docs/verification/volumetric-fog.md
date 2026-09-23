@@ -2825,3 +2825,11 @@ Design and numbers: [fog-gpu-cost.md](../architecture/fog-gpu-cost.md), "Step B 
   `test_fog_field_assets`, `test_fog_family_file`, `test_fog_handover`, `test_gpu_sync_timing`,
   `test_sector_background` 48 OK; after the review fixes the twelve modules together: 93 tests OK.
 - Open: the flight (same stand, `--gpu-sync-timing`, `--fog-far-bins 40` then `24`; `fog_march` and the look).
+
+## Run 283 (Run 76 C, 2026-09-24): docked load still engine fog; the state is named
+
+`volumetric_fog_card_states device=1 frame=961 z=0 zwrite=0 atest=1 blend=1 mask=7 cull=1 stencil=0 fill=3 src=2 dst=4
+op=1 sepalpha=0` every 300 frames on the refusal path; 829 frames `refusal=gate:states`, 901 `refusal=none` after
+undock (measured, grep). The docked-at-load card differs from the in-flight card in ALPHATESTENABLE only (1 instead of
+0); z and cull match the in-flight draw, so the 79ebac48 z/cull admission was not the differing state. Fix in progress:
+admit alpha test 0|1 (a masked card writes no colour; zwrite/stencil stay exact).
