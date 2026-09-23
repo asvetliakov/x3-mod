@@ -26,8 +26,8 @@ has fewer groups".
 |---|---|
 | `0x004863c0` | Body registry get-or-load (hash keyed on `id + 1`). On a miss it builds the name (`"v\%05"` at `0x00561164`, or the registered name), opens a stream with the extension list **`"pbb bob pbd bod"`** (`0x00561180`) via `0x004e9840(table 0x0054ed50, 0x12)`, then: payload starts with `"BOB"` → **`0x00481aa0`** (binary); otherwise → `0x00483f20` (text `.bod` parser). |
 | `0x00481aa0` | **BOB1 parser.** Allocates the `0x70`-byte model, loops `tag = 0x004e9b70(1)` and dispatches on the returned table index (switch at `0x00481d62`); returns the model when the `/BOB` closer arrives. Other caller: `0x00482f00` (same parser over an in-memory buffer; its caller `0x00491541` is presumably the `CUT1` "Embedded body" path, inferred from the `CUT1` table, not traced). |
-| `0x00483f20` | Non-`BOB` (text `.bod`) parser, same model structure (inferred from the magic branch; not decompiled; the grammar the shipped text bodies establish is §8). When `*(0x606f34)+0x108 & 0x800` the text-loaded model is immediately re-written as binary by **`0x00482fb0`** (`"%05d.bob"`/`"%s.bob"`), i.e. the EXE contains a BOB1 *writer* using the same tag table. Not studied further. |
-| `0x00482fb0` | BOB1 writer (`0x004e9f70(stream, tagIndex, open/close)` emits tag/closer, `0x004eb3f0` emits `u16`). Only its material part was read. |
+| `0x00483f20` | Non-`BOB` (text `.bod`/`.pbd`) parser, decompiled in [body-text-loader.md](body-text-loader.md): same model structure; normalises each record, ignores `/! … !/` blocks, computes its own normals, builds no tangent records. When `*(0x606f34)+0x108 & 0x800` (command line `-convertbodies`, `0x004ed03c`) the text-loaded model is re-written by **`0x00482fb0`**. |
+| `0x00482fb0` | `-convertbodies` BOB1 writer to `vc\%05d.bob` / `vc\%s.bob` (`0x004e9f70(stream, tagIndex, open/close)` emits tag/closer, `0x004eb3f0` emits `u16`); writes no effect-material data, tangent records or bounds ints ([body-text-loader.md](body-text-loader.md) §9). |
 | `0x0054ed50` | Tag table, 18 entries × `0x14`: `{+0 description, +4 tag, +8 closer, +0xc text label, +0x10 id}`. Strings live at `0x00560d60..0x00560f6c`. |
 | `0x0054eed0` | The `CUT1` scene table (same shape; `BOB1` appears there as "Embedded body"). 53 `.pbb` members are `CUT1`, not `BOB1`. |
 
@@ -390,14 +390,22 @@ does not apply the in-layer extension rank (`logical()` rejects mixed formats).
 
 ## 8. Text form (`.bod` / `.pbd`)
 
-2026-09-23. The engine's text parser `0x00483f20` is still not decompiled; the grammar
-below is what the shipped text bodies and their compiled binary twins establish, and it is
-implemented by `bob1.parse_text` (`parse()` dispatches on the `BOB` magic like `0x004863c0`).
+2026-09-23. The grammar below is what the shipped text bodies and their compiled binary twins
+establish (the x2bc / dbox2 compile), and it is implemented by `bob1.parse_text` (`parse()` dispatches on the `BOB` magic like `0x004863c0`).
 It compiles a text body into the tree `parse_binary` returns, so `serialise` writes its BOB1
 form. Sources: the 1,683 non-scene winning text members of the vanilla+mod root (Mayhem 3
 `/tmp/x3-mod1` addon 05–11 over the bottle, `/tmp/x3-mod2` addon 12) and the 53 vanilla stems
 shipped both as text and binary. Evidence and scripts:
 `verification/results/lod-overlay-batch/text-bodies/`.
+
+**The engine's own text load is different** (measured from `0x00483f20`,
+[body-text-loader.md](body-text-loader.md)): every `/! … !/` block is a `/` comment to its
+lexer, so `N:`, `PART_VALUES_RAW` and `COLLISION_BOX` are ignored; each record is normalised to
+max |position| 65536 with truncation; UVs are truncated, not rounded; normals are recomputed
+(flat corners never shared, smoothed corners merged by position, smoothing value and UV,
+angle-weighted); face words are `flags & ~1`; no tangent records are built, so bump materials
+draw with zero tangents; material fields are loaded as written (no compiler transforms). The
+mapping below is the compile's, which `bob1.parse_text` reproduces.
 
 **Lexing** (measured). Values end at `;`, surrounding white space is ignored (1,505 of the
 1,683 files are CRLF). `//` and `/` start a comment to the end of the line; `/! … !/` is a
@@ -439,14 +447,14 @@ others' the switch threshold, as in `BODY`.
 | vertex integers | position `round(v / 1.52587890625)` (× 65536/100000, the x2bc constant): 100000 → 65536 |
 | uv, normal, `SPTYPE_FLOAT*` values | `round(v × 65536)` (16.16) |
 | corners | one point per distinct (vertex, uv, smoothing group) corner, plus the normal when the group is 0, in first-use order over the faces of every part of the record; a point keeps the normal of its first corner; point flags `0x1b` (`0x19` without uv) |
-| face without `N:` | group 0: the face normal `cross(b − a, c − a)` on every corner (measured: `v/10678`, `v/12007`, `v/12009`); group ≠ 0: the normalised area-weighted sum over the record's faces that use the vertex and share a smoothing bit (**inferred**: no twin exercises it; counted in the tree's `text.inferred_normals` and refused as `text_normals_inferred`) |
-| `COLLISION_BOX:` | 7 reals per block (160 in the root); **not mapped**: counted in `text.collision_boxes` and refused as `text_collision_box` (its model field is unknown) |
+| face without `N:` | group 0: the face normal `cross(b − a, c − a)` on every corner (measured: `v/10678`, `v/12007`, `v/12009`); group ≠ 0: the normalised area-weighted sum over the record's faces that use the vertex and share a smoothing bit (**inferred** for the compile: no twin exercises it; counted in the tree's `text.inferred_normals` and refused as `text_normals_inferred`). The engine's text load (measured) instead sums unit face normals weighted by the corner angle over the corners merged into one point, and does so for every face, `N:` or not ([body-text-loader.md](body-text-loader.md) §5) |
+| `COLLISION_BOX:` | 7 reals per block (160 in the root); **not mapped**: counted in `text.collision_boxes` and refused as `text_collision_box`. The engine stores nothing from it: the block is a comment to `0x00483f20` (measured, [body-text-loader.md](body-text-loader.md) §7) |
 | faces of a part | one group per material in order of first appearance, faces in file order, face word 1 |
 | `PART_VALUES_RAW` | the 10 bounds ints and part flag `0x10000000`, with no tangent records; without it the part has no `0x10000000` (the loader then computes the bounds, as for the 21 shipped `0x00000001` parts) |
 | material `transparency` | `colors[9..10]` (high, low word); `selfillum` → `colors[11]`; shininess → `+0x24/+0x26` |
-| `blend; twosided; wire` | MAT5/MAT3 flag word `0x2 / 0x10 / 0x8`. Measured (`material_flags_out.txt`): in the bottle's 208 classic MATERIAL6 records with a named texture, `flags` equals `0x2·blend \| 0x10·twosided` in 203 and carries an extra `0x1` in 5; no record sets `wire`, so `0x8` is **inferred**. That MAT5 packs the triple into its flag word the same way is **inferred** (MAT5 and MAT6 bits both land in material `+0x28`, §2): the only binary MAT5, `01.cat:v/00586.pbb`, has flag word `0x12` but no text twin. MAT6 keeps its own `flags` field |
+| `blend; twosided; wire` | MAT5/MAT3 flag word `0x2 / 0x10 / 0x8`. Measured (`material_flags_out.txt`): in the bottle's 208 classic MATERIAL6 records with a named texture, `flags` equals `0x2·blend \| 0x10·twosided` in 203 and carries an extra `0x1` in 5; no record sets `wire`, so the compile's `0x8` is **inferred**; the engine's text load ORs `0x2 / 0x10 / 0x8` into `+0x28` for MATERIAL3/5 **and** MATERIAL6 (measured, `0x004847b1`, `0x004847d0`, `0x004847e0`). That MAT5 packs the triple into its flag word the same way is **inferred** (MAT5 and MAT6 bits both land in material `+0x28`, §2): the only binary MAT5, `01.cat:v/00586.pbb`, has flag word `0x12` but no text twin. MAT6 keeps its own `flags` field |
 | `NULL` | empty string (the equal twins, e.g. `v/00517`) |
-| MATERIAL3 maps | two pairs; padded with `(0, 0)` to the three `bob1.read_material` writes (**inferred**: no binary MAT3 exists) |
+| MATERIAL3 maps | two pairs; padded with `(0, 0)` to the three `bob1.read_material` writes. The engine's text load reads two pairs for MATERIAL3 and leaves `+0x36/+0x38` at 0 (measured, [body-text-loader.md](body-text-loader.md) §8); no binary MAT3 exists to compare |
 
 Refused as `text_parse_error` (24 of the 1,683): `MATERIAL:` (MAT1) records, a MATERIAL6 in
 the MATERIAL3 layout (numeric texture, 4 `extern_*_dock` props), quad faces (X2 `-9`/`-25`
@@ -481,7 +489,8 @@ parts carry `0x10000000` records built by the compiler), and the TC recompiles i
 `addon/01.cat` normalise each record to max |position| 65536 where the constant scale keeps the
 text's extent (`weapondummy` record 3: 64,583 against 65,536).
 1,255 of the 4,201 installed binary records (winning `.pbb`; `record_extent_out.txt`) are not at 65535–65536, so the loader does not require the
-normalisation; which one the engine's own text parser applies is open.
+normalisation. The engine's own text load normalises every record to 65536 (`trunc((v << 16) / m)`,
+measured, [body-text-loader.md](body-text-loader.md) §4), like the TC recompiles.
 
 **Overlay policy** (`lod_overlay.text_refusals`, until `0x00483f20` is traced). The overlay
 replaces every record of a body with this compile, so a text body is refused as
@@ -489,15 +498,23 @@ replaces every record of a body with this compile, so a text body is refused as
 records), `text_normals_inferred` when a smoothed face has no `N:` block, and
 `text_collision_box` when it carries a `COLLISION_BOX` block (`text_coverage_*_out.txt` gives
 the counts per directory). `--binary-only` (census and batch) leaves text bodies out entirely.
+With `0x00483f20` now traced ([body-text-loader.md](body-text-loader.md)): the tangent
+refusal matches the engine (a text load has zero tangents too, but the compile would change the
+normals the game currently draws), `COLLISION_BOX` carries nothing the engine reads, and the
+`N:` normals the compile keeps are not the normals the game draws for a text body. The policy
+itself is unchanged by this note.
 
 ## Unknown
 
-- **Text parser `0x00483f20`**: whether it builds tangent records, normalises records, and
-  keeps the classic MAT6 `flags`; §8 is the shipped-file reading, not the engine's.
+- **Text parser `0x00483f20`**: resolved in [body-text-loader.md](body-text-loader.md) (no
+  tangent records, per-record normalisation, classic MAT6 flags kept and OR-ed with the switch
+  bits); open there: the shader result of a zero tangent basis.
 - **What a coarse LOD must contain to be accepted and drawn correctly** beyond the
   grammar: whether a written part may drop `0x10000000` (letting `0x00481140`/
   `0x0047f3f0`/`0x00481010` compute the 10 bounds ints) — the 21 `0x00000001` parts say
-  the loader accepts it, but not that the result is identical; how the per-group
+  the loader accepts it, but not that the result is identical, and in a model with a bump
+  texture such a part gets zero tangents (the generator `0x004bbb10` needs group records,
+  `0x004bb97c`; [body-text-loader.md](body-text-loader.md) §6); how the per-group
   tangent records must be generated for a decimated mesh (the two vectors' order and
   handedness are inferred); and what the point `u32` (flag `0x10`) and the face word
   (always `1` in the samples) control in `0x00481310`.
@@ -515,8 +532,9 @@ the counts per directory). `--binary-only` (census and batch) leaves text bodies
 - `MAT1`/`MAT2`, `MAT3`, `BONE`, `WEIG` and effect types 3/4/6/7: decoded from code
   only; no installed member exercises them. The LOD flag `0x40` (half the bodies) is
   unexplained.
-- The writer `0x00482fb0` and the flag `*(0x606f34)+0x108 & 0x800` that triggers it were
-  not studied; whether it could produce reference `.bob` output is open.
+- The writer `0x00482fb0` (`-convertbodies`): resolved in
+  [body-text-loader.md](body-text-loader.md) §9; it writes no effect-material data, tangent
+  records or bounds ints, so it cannot produce reference `.bob` output for effect bodies.
 
 ## Reproduce
 

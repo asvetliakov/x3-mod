@@ -1,0 +1,49 @@
+engine_parse_error objects/effects/menugfx/menu_dialog_text.bod: body start not found
+engine_parse_error objects/ships/props/extern_big_dock.bod: body start not found
+engine_parse_error objects/ships/props/extern_m4_dock.bod: body start not found
+engine_parse_error objects/ships/props/extern_small_dock.bod: body start not found
+engine_parse_error objects/ships/props/extern_small_dock2.bod: body start not found
+engine_parse_error objects/v/00031.bod: body start not found
+engine_parse_error objects/v/00034.bod: body start not found
+engine_parse_error objects/v/00098.bod: body start not found
+engine_parse_error objects/v/00224.bod: body start not found
+engine_parse_error objects/v/00234.bod: body start not found
+blocks 140689
+blocks_multiline 0
+bob1_refused 23
+bodies 865
+compared_bodies 842
+engine_face_word_0 1
+engine_face_word_24 83732
+engine_face_word_8 1815
+engine_parse_error 10
+engine_parsed 855
+face_index_diff 0
+face_vertices_3 305494
+face_vertices_4 13
+lines_with_data_after_block 0
+lod_value_diff 0
+normal_flat_posdiff_d0 141
+normal_flat_posdiff_d1 276
+normal_flat_posdiff_d17_1024 3672
+normal_flat_posdiff_d2_16 1236
+normal_flat_posdiff_d_gt1024 123
+normal_smooth_d0 1236
+normal_smooth_d1 170
+normal_smooth_d_gt1024 66
+normal_smooth_posdiff_d0 25451
+normal_smooth_posdiff_d1 8648
+normal_smooth_posdiff_d17_1024 37781
+normal_smooth_posdiff_d2_16 19057
+normal_smooth_posdiff_d_gt1024 24093
+part_flag_0x2 0
+part_flag_0x30000000 0
+point_position_diff 61782
+point_uv_diff 77711
+points_bob1 503521
+points_engine 516994
+record_max_100000 462
+record_point_count_diff 127
+record_position_diff 674
+records 964
+records_compared 951
