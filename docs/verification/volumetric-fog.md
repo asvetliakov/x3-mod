@@ -2911,3 +2911,19 @@ implemented". [M] unless marked.
   `test_fog_look_reference`, `test_gpu_sync_timing`, `test_launcher_stderr_tee`, `test_lod_scale_launch`: 59 tests OK; after the review fixes the fog modules with `test_bloom_programs`: 51 tests OK, fresh build 0 warnings, x87 PASS 673.
 - Open: the flight (same stand, `--gpu-sync-timing`, `--fog-march-scale 2` then `4`; `fog_march`, `needs_px`, and the
   look on station silhouettes against fog).
+
+## Run 288 (Run 77 B, 2026-09-24): docked save load shows our fog after the fill latch; admission fixed
+
+- Flight (Run77 DLL `268db207…`, `/tmp/x3-bottleX3-run288`): the user reports engine fog for about 1 s after the
+  docked load, then our fog; undocking fine. Triage
+  ([timeline](../../verification/results/fog-handover/run288-docked-load/timeline_out.txt)): two docked loads of
+  foggreenoutlands (index 14). All 3,983 `volumetric_fog_cards` rows read `refusal=none` (measured), so the
+  `ALPHATESTENABLE` admission of 058fab39 removed the run283 `gate:states` blocker; the visible engine fog is the
+  density fill latch only: load 1 (from the menu, prefill adopted, ordering ran inside the load stall) 19 frames /
+  357 ms, `fill_ms=559.8`; load 2 (a reload of the same sector, prefill not adopted because the sector id was
+  unchanged, `walk=same_id`, cache epoch `sample_gap`) 49 frames / 608 ms, `fill_ms=635.9` (measured). No refusal
+  or drop-out afterwards across the undock (inferred at ~frame 3700 from the draw count) up to the next load. Both F8
+  bursts (2428–2435, 3440–3447) show `sup=7 app=1 applied=1 reason=ok`.
+- Verdict: case C closed at the accepted cold-start trade-off (the user accepted ~1 s on a new game). Open, optional:
+  a same-sector reload could keep the previous density cache instead of re-filling (the sector and family are
+  unchanged), which would remove the 0.6 s on reloads; not scheduled unless the user asks.

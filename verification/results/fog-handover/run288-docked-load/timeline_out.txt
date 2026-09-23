@@ -1,0 +1,185 @@
+event rows:
+  volumetric_fog_sector device=1 frame=0 profile=0 reason=no_cockpit sector=00000000 index=-1 generation=1 density_scale=1.000 forced_profile=none
+  loading_phase name=menu_shown frame=4 elapsed_ms=10890 stall_ms=6767 device=1 qpc=19343845909300
+  volumetric_fog_cache device=1 frame=512 event=epoch reason=prefill sector_key=0000000000000000 offset=0,0,0
+  volumetric_fog_docked device=1 frame=512 walk=found depth=1 ref_object=112cadd0 ref_parent=2f8baf90 last=111a47f8 sector=111a47f8 anchor_check=mismatch fallback=none
+  volumetric_fog_sector device=1 frame=512 profile=2 reason=foggreenoutlands sector=111a47f8 index=14 generation=1 density_scale=1.000 forced_profile=none
+  loading_phase name=save_load_begin frame=511 elapsed_ms=18904 stall_ms=0 device=1 qpc=19343926054315
+  loading_phase name=save_load_complete frame=512 elapsed_ms=30836 stall_ms=11932 device=1 qpc=19344045375599
+  volumetric_fog_cache device=1 frame=513 event=config mode=stored result=00000000 profile=2 sigma=6.25e-06 chroma=0.2007,1.0000,0.1207 atlas_bytes=4260096 upload_budget_bytes=1065024 upload_rects=64 ramp_frames=90 shadow_
+  volumetric_fog_cache device=1 frame=531 event=far_ready ms=1285.6 nodes=1493885 worker_busy_ms=761.6 upload_bytes_total=4309248 missed_locks=0
+  volumetric_fog_handover device=1 frame=531 step=1 coldfill=1 whole_atlas=1 arm_frame=513 frames=18 ms=1285.5 drawable_frame=531 drawable_ms=1285.5 fill_ms=559.8 fill_busy_ms=556.1 fill_cpu_ms=1100.0 busy_ms=761.5 latches
+  volumetric_fog_cache device=1 frame=688 event=fine_ready ms=3351.6 nodes=4311003 worker_busy_ms=2191.5 upload_bytes_total=10985816 missed_locks=0
+  volumetric_fog_docked device=1 frame=1844 walk=found depth=1 ref_object=50254fa0 ref_parent=1b478c60 last=11f30280 sector=11f30280 anchor_check=mismatch fallback=none
+  volumetric_fog_cache device=1 frame=1844 event=epoch reason=sample_gap sector_key=1414d783b635f2b6 offset=6299648,7495680,7458816
+  volumetric_fog_sector device=1 frame=1844 profile=2 reason=foggreenoutlands sector=11f30280 index=14 generation=1 density_scale=1.000 forced_profile=none
+  volumetric_fog_cache device=1 frame=1893 event=far_ready ms=653.4 nodes=5443011 worker_busy_ms=2771.1 upload_bytes_total=15303256 missed_locks=0
+  volumetric_fog_handover device=1 frame=1893 step=1 coldfill=1 whole_atlas=1 arm_frame=1845 frames=48 ms=653.6 drawable_frame=1893 drawable_ms=653.6 fill_ms=635.9 fill_busy_ms=565.1 fill_cpu_ms=1570.0 busy_ms=579.5 latche
+  volumetric_fog_cache device=1 frame=2060 event=fine_ready ms=2728.2 nodes=8505307 worker_busy_ms=4327.1 upload_bytes_total=22774736 missed_locks=0
+  capture_armed device=1 frame=2128 start_frame=2428 delay=300
+  capture_armed device=1 frame=3140 start_frame=3440 delay=300
+  volumetric_fog_cache device=1 frame=4497 event=epoch reason=sample_gap sector_key=1414d783b635f2b6 offset=6299648,7495680,7458816
+  volumetric_fog_sector device=1 frame=4497 profile=0 reason=no_cockpit sector=00000000 index=-1 generation=1 density_scale=1.000 forced_profile=none
+
+state transitions over the session (first frame of each new state):
+  frame=512 el=30839 dt=11934 draws=162 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_unprepared
+  frame=513 el=30889 dt=50 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=531 el=31196 dt=105 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=1844 el=59076 dt=11770 draws=162 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_unprepared
+  frame=1845 el=59100 dt=23 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1893 el=59684 dt=15 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+
+refusal counts: Counter({'none': 3983})
+fog frame reasons: Counter({('1', 'ok'): 3915, ('0', 'density_filling'): 66, ('0', 'density_unprepared'): 2})
+
+frames 510..570:
+  frame=510 el=18805 dt=14 draws=497 | cards obs=None sup=None ref=None ready=None warm=None app=None refusal=None reason=None | fog app=None reason=None
+  frame=511 el=18904 dt=99 draws=1 | cards obs=None sup=None ref=None ready=None warm=None app=None refusal=None reason=None | fog app=None reason=None
+  frame=512 el=30839 dt=11934 draws=162 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_unprepared
+  frame=513 el=30889 dt=50 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=514 el=30905 dt=15 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=515 el=30916 dt=11 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=516 el=30929 dt=12 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=517 el=30942 dt=13 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=518 el=30952 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=519 el=30963 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=520 el=30975 dt=12 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=521 el=30985 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=522 el=30996 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=523 el=31008 dt=12 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=524 el=31019 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=525 el=31033 dt=14 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=526 el=31043 dt=9 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=527 el=31053 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=528 el=31067 dt=14 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=529 el=31078 dt=11 draws=140 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=530 el=31091 dt=12 draws=140 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=531 el=31196 dt=105 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=532 el=31208 dt=12 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=533 el=31230 dt=21 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=534 el=31243 dt=13 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=535 el=31254 dt=11 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=536 el=31266 dt=12 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=537 el=31279 dt=12 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=538 el=31291 dt=11 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=539 el=31303 dt=11 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=540 el=31314 dt=11 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=541 el=31327 dt=12 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=542 el=31339 dt=12 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=543 el=31351 dt=12 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=544 el=31362 dt=11 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=545 el=31374 dt=11 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=546 el=31396 dt=22 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=547 el=31408 dt=11 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=548 el=31421 dt=12 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=549 el=31446 dt=25 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=550 el=31458 dt=12 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=551 el=31470 dt=11 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=552 el=31483 dt=13 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=553 el=31494 dt=11 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=554 el=31506 dt=11 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=555 el=31532 dt=26 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=556 el=31544 dt=11 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=557 el=31556 dt=11 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=558 el=31568 dt=12 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=559 el=31579 dt=11 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=560 el=31592 dt=12 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=561 el=31604 dt=12 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=562 el=31616 dt=12 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=563 el=31628 dt=12 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=564 el=31640 dt=11 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=565 el=31652 dt=12 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=566 el=31667 dt=14 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=567 el=31678 dt=11 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=568 el=31690 dt=11 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=569 el=31702 dt=12 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=570 el=31714 dt=11 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+
+frames 1842..1902:
+  frame=1842 el=46963 dt=10 draws=120 | cards obs=8 sup=8 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=1843 el=47306 dt=343 draws=1 | cards obs=None sup=None ref=None ready=None warm=None app=None refusal=None reason=None | fog app=None reason=None
+  frame=1844 el=59076 dt=11770 draws=162 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_unprepared
+  frame=1845 el=59100 dt=23 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1846 el=59112 dt=12 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1847 el=59123 dt=11 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1848 el=59134 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1849 el=59144 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1850 el=59155 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1851 el=59182 dt=27 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1852 el=59194 dt=11 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1853 el=59208 dt=14 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1854 el=59218 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1855 el=59229 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1856 el=59240 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1857 el=59251 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1858 el=59261 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1859 el=59275 dt=13 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1860 el=59285 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1861 el=59295 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1862 el=59306 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1863 el=59317 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1864 el=59328 dt=11 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1865 el=59339 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1866 el=59350 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1867 el=59361 dt=11 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1868 el=59372 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1869 el=59383 dt=11 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1870 el=59393 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1871 el=59404 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1872 el=59417 dt=12 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1873 el=59428 dt=11 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1874 el=59442 dt=14 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1875 el=59453 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1876 el=59466 dt=13 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1877 el=59476 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1878 el=59487 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1879 el=59497 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1880 el=59508 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1881 el=59518 dt=10 draws=141 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1882 el=59529 dt=10 draws=140 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1883 el=59539 dt=10 draws=140 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1884 el=59550 dt=10 draws=140 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1885 el=59561 dt=10 draws=140 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1886 el=59571 dt=10 draws=140 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1887 el=59596 dt=24 draws=140 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1888 el=59606 dt=10 draws=140 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1889 el=59617 dt=10 draws=140 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1890 el=59628 dt=11 draws=140 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1891 el=59657 dt=29 draws=140 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1892 el=59669 dt=11 draws=140 | cards obs=7 sup=0 ref=0 ready=0 warm=1 app=0 refusal=none reason=none | fog app=0 reason=density_filling
+  frame=1893 el=59684 dt=15 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=1894 el=59695 dt=11 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=1895 el=59709 dt=13 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=1896 el=59722 dt=12 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=1897 el=59735 dt=13 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=1898 el=59746 dt=11 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=1899 el=59758 dt=11 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=1900 el=59770 dt=11 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=1901 el=59783 dt=12 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=1902 el=59794 dt=11 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+
+F8 burst frames (fog applied / cards applied):
+  frame=2428 el=66569 dt=369 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=2429 el=66926 dt=357 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=2430 el=67262 dt=335 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=2431 el=67594 dt=332 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=2432 el=67943 dt=348 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=2433 el=68320 dt=376 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=2434 el=68695 dt=375 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=2435 el=69069 dt=374 draws=140 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=3440 el=81896 dt=427 draws=144 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=3441 el=82555 dt=659 draws=144 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=3442 el=82936 dt=381 draws=144 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=3443 el=83324 dt=387 draws=144 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=3444 el=83700 dt=376 draws=144 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=3445 el=84073 dt=372 draws=144 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=3446 el=84465 dt=392 draws=144 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+  frame=3447 el=84850 dt=384 draws=144 | cards obs=7 sup=7 ref=0 ready=1 warm=0 app=1 refusal=none reason=none | fog app=1 reason=ok
+
+draws per 100-frame bucket 3500..3800 (undock inferred from the draw drop):
+  3500: avg draws 142
+  3550: avg draws 140
+  3600: avg draws 154
+  3650: avg draws 142
+  3700: avg draws 85
+  3750: avg draws 82
