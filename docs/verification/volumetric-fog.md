@@ -2739,3 +2739,11 @@ Two regressions of 72645b5e, both fixed in the worktree (not yet a candidate):
   (`rows.sh`).
 - Open: the bridge passes no ids, so production's one-frame-later re-key on a sector change (camera dropped by the
   id change) is not in the bridge.
+
+## Run 278 (Run 75 A, 2026-09-23): hand-over fixes accepted, docked load pinned
+
+User report: a new game into a fogged sector (undocked) and gate transits between fogged sectors, including
+same-family, show our fog immediately; the docked save load still shows the engine fog until undock. The cards line
+names it: `volumetric_fog_cards … observed=7 refused=1 ready=0 … refusal=gate:states` on 1,115 frames from frame
+11692 (measured, grep of the session log; 12,638 frames `refusal=none`). The docked-at-load card draw fails the
+render-state gate, not readiness; fix in progress.
