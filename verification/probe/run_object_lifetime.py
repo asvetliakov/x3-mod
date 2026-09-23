@@ -50,7 +50,8 @@ def run(root):
         if build.returncode == 0 and data['sources_before'] == data['sources_after_build']:
             data['executable_sha256'] = digest(exe)
             command = [WINE, '--bottle', bottle.BOTTLE, '--no-update', '--workdir', str(exe.parent), str(exe)]
-            data['command'] = command
+            # Recorded repo-relative so the committed summary does not carry the checkout's path.
+            data['command'] = command[:5] + [str(exe.parent.relative_to(root)), str(exe.relative_to(root))]
             with report.open('wb') as out, wine_log.open('wb') as err:
                 data['exit_code'] = subprocess.run(command, stdout=out, stderr=err,
                                                   env=dict(os.environ), timeout=90).returncode
@@ -78,6 +79,12 @@ def run(root):
             # Retirement journal: measured cycle cost without/with a consumer and the empty drain.
             data['journal'] = [parse(l) for l in lines if l.startswith('JOURNAL ')]
             cases = [parse(l) for l in lines if l.startswith('JOURNAL_CASE ')]
+            # Engine-reader modes (engine_memory.h): the hooked cycle's cost with frames advancing,
+            # stalled past the 250 ms bound, and under the shutdown signal.
+            data['read_modes'] = [parse(l) for l in lines if l.startswith('READ_MODES ')]
+            read_modes_reported = (len(data['read_modes']) == 1 and
+                                   {'cycle_frame_us', 'cycle_stalled_us', 'cycle_shutdown_us', 'queries_frame',
+                                    'queries_stalled', 'queries_shutdown'} <= set(data['read_modes'][0]))
             data['journal_cases'] = {c.get('name'): c.get('result') for c in cases}
             # x87 comparison fidelity: the FXSAVE/FXRSTOR round-trip control decides
             # whether the ST0-ST7 slots are compared bit-exactly or under the
@@ -89,7 +96,7 @@ def run(root):
             x87_reported = bool(data['x87'] and data['x87'].get('roundtrip_exact') in ('0', '1') and
                                 {'save_stable', 'control_diff_slots', 'control_max_low_bits',
                                  'compare_diff_slots', 'compare_max_low_bits'} <= set(data['x87']))
-            identical = (x87_reported and len(cases) == len(JOURNAL_CASES) and data['journal_cases'] == dict.fromkeys(JOURNAL_CASES, 'PASS') and
+            identical = (x87_reported and read_modes_reported and len(cases) == len(JOURNAL_CASES) and data['journal_cases'] == dict.fromkeys(JOURNAL_CASES, 'PASS') and
                          len(data['journal']) == 1 and
                          {'cycle_idle_us', 'cycle_journal_us', 'retirement_delta_us', 'empty_drain_us'} <= set(data['journal'][0]) and
                          read_path_reported)

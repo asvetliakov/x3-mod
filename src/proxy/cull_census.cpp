@@ -317,7 +317,7 @@ void present(unsigned long long device, unsigned long long frame, bool captured)
         std::memset(body_cache_, 0, sizeof body_cache_); body_table_ = BodyTable{};
         // A fresh validation epoch for this frame's ladder reads: on a census-only run no motion
         // route advances it, so region checks would otherwise be trusted for up to 100 ms.
-        engine_memory::next_frame();
+        engine_memory::revalidate(); // an epoch only: not a Present (engine_memory.h)
         for (std::uint32_t i = 0; i < entries && ring_; ++i) {
             const Entry& e = ring_[i];
             // A culled_small row names the scope that culled it, then the model's LOD ladder

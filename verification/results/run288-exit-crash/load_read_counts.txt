@@ -1,0 +1,16 @@
+log=/tmp/x3-bottleX3-run287/session-20260924-025446-212.log load_s=22.648
+  t=-0.85s..+0.69s dt=1.54s reads=198972 queries=425 epoch_advances=167 presents=84
+  t=+0.69s..+6.30s dt=5.61s reads=266920 queries=108 epoch_advances=3 presents=0
+  t=+6.30s..+12.55s dt=6.25s reads=2527382 queries=297 epoch_advances=1 presents=0
+  t=+12.55s..+13.56s dt=1.02s reads=30 queries=21 epoch_advances=4 presents=0
+  t=+13.56s..+14.57s dt=1.01s reads=40 queries=28 epoch_advances=4 presents=0
+  t=+14.57s..+15.57s dt=1.00s reads=40 queries=28 epoch_advances=4 presents=0
+  t=+15.57s..+16.57s dt=1.00s reads=40 queries=28 epoch_advances=4 presents=0
+  t=+16.57s..+17.57s dt=1.00s reads=40 queries=28 epoch_advances=4 presents=0
+  t=+17.57s..+18.57s dt=1.01s reads=40 queries=28 epoch_advances=4 presents=0
+  t=+18.57s..+19.57s dt=1.00s reads=40 queries=28 epoch_advances=4 presents=0
+  t=+19.57s..+20.58s dt=1.00s reads=40 queries=28 epoch_advances=4 presents=0
+  t=+20.58s..+21.58s dt=1.00s reads=40 queries=28 epoch_advances=4 presents=0
+  t=+21.58s..+22.60s dt=1.02s reads=53692 queries=135 epoch_advances=5 presents=0
+  t=+22.60s..+23.87s dt=1.27s reads=134877 queries=1516 epoch_advances=79 presents=40
+bracket dt=24.72s reads=3182193 queries=2726 epoch_advances=291 presents=124

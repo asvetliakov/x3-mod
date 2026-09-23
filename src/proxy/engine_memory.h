@@ -11,11 +11,17 @@
 // then copied with `rep movsb` (the
 // unit is built without SSE/MMX so the read path leaves XMM state untouched).
 // A cached region is trusted until the next frame (next_frame(), called by the
-// motion route at begin_frame) or for at most ~100 ms without a frame advance
-// (a tick sampled every 64 reads, for callers outside the route), whichever
-// comes first; the first touch of a region in a frame re-queries it, so the
-// syscall count is one VirtualQuery per distinct region per frame instead of
-// one NtReadVirtualMemory per read (docs/verification/route-cost-run1.md).
+// motion route at begin_frame) or for at most ~100 ms (GetTickCount, sampled
+// on every read), whichever comes first; the first touch of a region in a
+// frame re-queries it, so the syscall count is one VirtualQuery per distinct
+// region per frame instead of one NtReadVirtualMemory per read
+// (docs/verification/route-cost-run1.md). Once the last next_frame() (a
+// Present) is older than 250 ms (a load stall, the game's shutdown), a cached
+// region is trusted only for 5 ms after its own validation; after
+// begin_shutdown() every read re-validates its whole span with VirtualQuery
+// before the copy and is refused when any part is not committed and readable
+// (docs/reverse-engineering/object-lifetimes.md, "Exit-time engine read
+// fault").
 // Validated direct reads are the only mode; the historical ReadProcessMemory
 // fallback (X3M_ENGINE_READS=rpm) was removed on 2026-09-22.
 //
@@ -33,16 +39,35 @@ namespace x3m::engine_memory {
 // false on a null address, a wrapping span, or a span not fully inside
 // committed readable memory.
 bool read(std::uintptr_t address, void* out, std::size_t size);
-// Advances the validation epoch: every cached region is re-queried on its
-// next touch. Motion route begin_frame; fixtures around a decommit.
+// A Present: advances the validation epoch (every cached region is
+// re-queried on its next touch), restarts the stall bound and ends a
+// begin_shutdown() signal. Only the motion route's per-Present begin_frame and
+// fixtures call it.
 void next_frame();
+// Advances the validation epoch only: neither the stall bound nor the shutdown
+// signal changes. Readers outside the Present path (sector background at
+// BeginScene, the fog prefill poll inside a stall, the cull census).
+void revalidate();
 // Drops every cached region (device Reset, fixtures).
 void reset();
+// Teardown signal: until the next next_frame() no cached region is trusted.
+// The lifetime observer raises it when the engine's render registry is
+// destroyed (engine teardown 0x004710f0, which frees the engine object next);
+// at exit no frame follows, so it holds to the end. source is a string
+// literal; the first one is kept for the summary row.
+void begin_shutdown(const char* source);
+bool shutting_down();
 struct Stats {
     std::uint64_t reads = 0;      // read() calls
     std::uint64_t queries = 0;    // VirtualQuery calls (cache misses and per-frame refreshes)
     std::uint64_t rejected = 0;   // spans refused by validation
     std::uint64_t frame = 0;      // current epoch (a 32-bit counter; wraps are harmless, the 100 ms tick bound still applies)
+    std::uint64_t stalled_reads = 0;     // reads with frames stalled past the bound (5 ms region trust)
+    std::uint64_t strict_reads = 0;      // reads after begin_shutdown() (a VirtualQuery each)
+    std::uint64_t refused_stalled = 0;   // of rejected: frames stalled past the bound, before any shutdown signal
+    std::uint64_t refused_shutdown = 0;  // of rejected: after begin_shutdown()
+    std::uint64_t shutdown_signals = 0;  // begin_shutdown() calls
+    const char* shutdown_source = nullptr;
 };
 Stats stats();
 }

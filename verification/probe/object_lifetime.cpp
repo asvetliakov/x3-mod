@@ -329,11 +329,37 @@ int main(){
         for(unsigned i=0;i<lt::JournalCapacity+1;++i){raw_insert(burst[0]);remove(primary,burst[0].handle);}
         lost=lt::journal_drain(cursor,out,lt::JournalCapacity);check(lost.overflow&&!lost.count&&!lost.more,"capacity+1 between drains is overflow");
         lost=lt::journal_drain(cursor,out,lt::JournalCapacity);check(!lost.overflow&&!lost.count,"cursor at the head after the boundary overflow");end_case("overflow_and_recovery");
-        // Costs: hooked insert+remove cycle without and with a consumer, and the empty drain.
+        // Read modes (engine_memory.h): the idle hooked cycle with frames advancing, stalled past
+        // the 250 ms bound (a region trusted 5 ms after its validation), and under the shutdown
+        // signal (a VirtualQuery per read). The flush_registry_destroy case above raised the signal;
+        // each mode starts from a Present (next_frame), as production would between those events.
+        {
+            LARGE_INTEGER frequency{},begin{},end{};QueryPerformanceFrequency(&frequency);const unsigned cycles=20000;double us[3]{},queries[3]{};
+            lt::journal_unregister();
+            for(unsigned mode=0;mode<3;++mode){
+                em::next_frame();
+                if(mode==1)Sleep(300);
+                if(mode==2)em::begin_shutdown("fixture_read_modes");
+                const auto before=em::stats();
+                QueryPerformanceCounter(&begin);
+                for(unsigned i=0;i<cycles;++i){raw_insert(burst[0]);remove(primary,burst[0].handle);}
+                QueryPerformanceCounter(&end);
+                const auto after=em::stats();
+                us[mode]=double(end.QuadPart-begin.QuadPart)*1e6/double(frequency.QuadPart)/cycles;queries[mode]=double(after.queries-before.queries)/cycles;
+                check(mode!=1||after.stalled_reads>before.stalled_reads,"stalled mode reached");
+                check(mode!=2||after.strict_reads>before.strict_reads,"strict mode reached");
+            }
+            cursor=lt::journal_register(); // restores the consumer count the cost passes below start from
+            em::next_frame();check(!em::shutting_down(),"a Present ends the fixture's shutdown signal");
+            std::printf("READ_MODES cycle_frame_us=%.4f cycle_stalled_us=%.4f cycle_shutdown_us=%.4f queries_frame=%.4f queries_stalled=%.4f queries_shutdown=%.4f\n",
+                us[0],us[1],us[2],queries[0],queries[1],queries[2]);
+        }
+        // Costs: hooked insert+remove cycle without and with a consumer, and the empty drain;
+        // each pass starts from a Present so the reader runs its per-frame cache.
         {
             LARGE_INTEGER frequency{},begin{},end{};QueryPerformanceFrequency(&frequency);const unsigned cycles=20000;double cost[2]{};std::uint64_t seen=0,overflows=0;
             for(unsigned pass=0;pass<4;++pass){
-                const bool journaled=pass&1;if(!journaled)lt::journal_unregister();else cursor=lt::journal_register();
+                const bool journaled=pass&1;if(!journaled)lt::journal_unregister();else cursor=lt::journal_register();em::next_frame();
                 QueryPerformanceCounter(&begin);
                 for(unsigned i=0;i<cycles;++i){raw_insert(burst[0]);remove(primary,burst[0].handle);if(journaled&&(i&255)==255){auto d=lt::journal_drain(cursor,out,lt::JournalCapacity);seen+=d.count;overflows+=d.overflow;}}
                 QueryPerformanceCounter(&end);

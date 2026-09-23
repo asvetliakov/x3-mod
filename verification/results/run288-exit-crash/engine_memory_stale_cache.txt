@@ -1,0 +1,8 @@
+pre_fix_5a9f45f8 exit=1
+  FAIL pre-frame read past the age bound re-queries
+  FAIL decommitted engine block 0.9 s after the last Present is refused
+  FAIL decommitted region past the 100 ms age bound is refused
+  engine_memory_host scenarios=3 checks=11 failures=3
+working_tree exit=0
+  HOTPATH frames=1000 reads=48000 queries=3000 ticks=49000 host_ns_per_read=7.5
+  engine_memory_host scenarios=7 checks=74 failures=0

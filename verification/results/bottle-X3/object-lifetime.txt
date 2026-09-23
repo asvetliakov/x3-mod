@@ -1,4 +1,4 @@
-TIMING mode=direct snapshot_us=0.750 reads_per_call=12.00 queries_per_call=0.0237 record=853bfaca11e07f83
+TIMING mode=direct snapshot_us=0.814 reads_per_call=12.00 queries_per_call=0.0197 record=853bfaca11e07f83
 JOURNAL_CASE name=no_consumer result=PASS
 JOURNAL_CASE name=retire_in_order result=PASS
 JOURNAL_CASE name=partial_drain result=PASS
@@ -7,10 +7,11 @@ JOURNAL_CASE name=flush_load_epoch result=PASS
 JOURNAL_CASE name=flush_registry_destroy result=PASS
 JOURNAL_CASE name=flush_registry_rebind result=PASS
 JOURNAL_CASE name=overflow_and_recovery result=PASS
-JOURNAL capacity=2048 cycle_idle_us=1.2668 cycle_journal_us=1.2503 retirement_delta_us=-0.0165 empty_drain_us=0.0062 drained=40000
+READ_MODES cycle_frame_us=1.3650 cycle_stalled_us=1.3668 cycle_shutdown_us=9.6458 queries_frame=0.0002 queries_stalled=0.0007 queries_shutdown=15.0000
+JOURNAL capacity=2048 cycle_idle_us=1.3591 cycle_journal_us=1.3623 retirement_delta_us=0.0032 empty_drain_us=0.0064 drained=40000
 JOURNAL_CASE name=cost result=PASS
 JOURNAL_CASE name=reregistration_and_shutdown result=PASS
 JOURNAL_CASE name=flush_capacity_exhausted result=PASS
 JOURNAL_CASE name=saturated_registration result=PASS
 X87 roundtrip_exact=0 save_stable=1 control_diff_slots=0xff control_exponent_diff=8 control_reserved_diff=0 control_max_low_bits=64 control_st0=3fff8000000000000000/80000000000000000000 control_ftw=0xc0/0xc0 compare_diff_slots=0xff compare_exponent_diff=80 compare_reserved_diff=0 compare_max_low_bits=64 compare_ftw=0xc0/0xc0
-RESULT PASS checks=657 failures=0 backend_calls=172590
+RESULT PASS checks=664 failures=0 backend_calls=292590

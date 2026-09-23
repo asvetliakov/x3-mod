@@ -12,7 +12,7 @@ namespace sector_background=x3m::sector_background;
 namespace object_trace {bool verified=true;bool executable_verified(){++error;++gate_calls;return verified;}}
 Memory memory;
 namespace engine_memory {
-void next_frame(){++error;++epochs;}
+void revalidate(){++error;++epochs;}
 bool read(std::uintptr_t p,void* out,std::size_t n){++error;return memory(p,out,n);}
 }
 std::vector<std::string> logs;

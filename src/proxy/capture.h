@@ -28,6 +28,8 @@ const wchar_t* capture_directory();
 // The engine_memory summary line (phase create|summary); telemetry.cpp calls
 // it from every summary. Integers only.
 void engine_memory_line(const char* phase, unsigned long long device, unsigned long long frame);
+// The engine reader's refusal summary, one row per destruction of the last live device.
+void engine_memory_refused_line();
 // Listener of the engine scene-end hook (scene_hook.h): called on the render
 // thread before the frame routine's compositing call; forwards to every hooked
 // device's route under the capture mutex.

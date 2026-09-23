@@ -339,3 +339,123 @@ counts, observed central mutations and epoch transitions alongside draw scopes.
 The static coverage limits above remain explicit. In-place camera cuts need a
 separate conservative history policy. No game was launched or observer installed
 into a running game during this mechanism checkpoint.
+
+## Exit-time engine read fault (2026-09-24)
+
+**Finding.** Both Run 77 sessions (run287/run288, DLL `268db207`) faulted at exit
+with a read of `0x03B88794` at `0x76B137FB`, the `rep movsb` of
+`engine_memory::read` (measured: `verification/results/run288-exit-crash/`).
+`0x03B88794` is the logged engine object `0x03b88788` + `0xC`, the registry slot
+that `read_registry` (this observer) and `object_trace::current` read. The fault
+came on the render thread 0.960 s and 0.912 s after the last logged row
+(measured), before the device-teardown summaries. Complete engine teardown
+`0x004710f0` destroys the registry and then frees the engine object (static
+finding above), so later generic-map mutations still reach `read_registry` with
+the stale engine pointer in the image slot. Cause (inferred, reproduced on the
+host): the reader trusted a cached region for its frame and 100 ms of a tick it
+refreshed only on every 64th read; after the last Present no frame advances and
+fewer than 64 reads arrive, so the freed, decommitted block passed the cache
+without a fresh `VirtualQuery`. Code unchanged since Run 76; the larger image
+moved the heap layout so the freed page now decommits (inferred).
+
+**Fix** (`src/proxy/engine_memory.{h,cpp}`):
+
+- `GetTickCount` is sampled on every read. Every age bound uses a signed,
+  wrap-safe difference, so a tick sampled before another thread's stamp does
+  not count as a stall.
+- **Three trust modes.**
+  - *Frame:* the last `next_frame()` is at most 250 ms old. A region is
+    trusted for its epoch and 100 ms, as before.
+  - *Stalled:* the last `next_frame()` is more than 250 ms old (a load, the
+    exit). A region is trusted only for 5 ms after its own `VirtualQuery`.
+    `GetTickCount` moves in steps (about 15.6 ms on Windows), so the
+    effective window is up to one step.
+  - *Shutdown:* every read re-validates its whole span (`MEM_COMMIT`,
+    readable, not guard/no-access) and is refused when any part fails.
+  - A per-read query in the stalled mode would cost too much. run287's save
+    load (22.65 s) made 2,848,344 reads in its summary intervals from 0.69 s
+    to 22.60 s, of which 2,527,382 fell in one 6.25 s window with one epoch advance and no Present (measured:
+    `run288-exit-crash/load_read_counts.{py,txt}`). At the 0.55 µs per query
+    measured below that is about 1.4 s (inferred).
+- **Epoch API split.** `next_frame()` is a Present: it advances the epoch,
+  restarts the stall bound and ends the shutdown signal. Only the motion
+  route's per-Present `begin_frame` (and fixtures) call it.
+  - `revalidate()` advances the epoch only. `sector_background_context` (at
+    BeginScene), `fog_prefill_poll` (every 250 ms inside a stall) and the cull
+    census now call it, so they no longer switch cache trust back on during a
+    load or drop the signal.
+  - Without the motion route there is no Present signal. The reader then
+    keeps the 100 ms region age alone, the pre-fix bound with a per-read tick.
+- **`begin_shutdown(source)`.** The observer raises it on `Destroy` of the
+  bound registry (`registry_destroy`); the next `next_frame()` ends it. At
+  exit no Present follows the teardown. The fixture's destroy-then-reinsert
+  case shows that a registry can be rebuilt in one process, so the signal is
+  not process-sticky.
+- `query()` preserves LastError across `VirtualQuery`.
+- **Readers.** They already tolerate `false`: `read_registry` fails, the
+  observer clears evidence and disables itself (`registry_unavailable`), and
+  `object_trace::current` leaves the `Registry` bit clear. Neither logs per
+  read.
+- **Summary row.** `engine_memory_read_refused reason=shutdown|stalled|
+  uncommitted|none count= shutdown= stalled= stalled_reads= strict_reads=
+  signals= signal=` carries cumulative counts.
+  - It is written each time the last live device is destroyed
+    (`capture.cpp`): normally once, at the game's teardown, not at
+    `DllMain`'s detach, which must not log.
+  - Reads after that destruction are not counted in any row.
+
+**Evidence.**
+
+- Host test `verification/analysis/test_engine_memory_shutdown.py` compiles
+  the production TU against a mock `VirtualQuery`/tick: 7 scenarios and 74
+  checks PASS (measured). It covers the exit shape, the per-read tick, the
+  hot path, 5 ms stalled trust, `revalidate()` leaving the stall bound and
+  signal alone, and the shutdown signal.
+- On the pre-fix reader the same driver fails 3 of 11 baseline checks,
+  including the decommitted block 0.9 s after the last Present (measured:
+  `run288-exit-crash/engine_memory_stale_cache.{py,txt}`).
+- Hot path, host: 1,000 advancing frames × 48 reads over 3 regions issue
+  exactly 3,000 `VirtualQuery` calls, with 0 stalled or strict reads
+  (measured).
+- Object-lifetime fixture under X3: PASS, 664 checks. Its new `READ_MODES`
+  row times the hooked insert+remove cycle (about 15 reads) per mode
+  (measured):
+  - Frame: 1.365 µs, 0.0002 queries per cycle.
+  - Stalled: 1.367 µs, 0.0007 queries per cycle.
+  - Shutdown: 9.646 µs, 15 queries per cycle, about 0.55 µs per query.
+- The fixture's cost passes now each start from a Present. Journal cycle
+  costs (idle / journal, µs, measured):
+
+  | Run | Idle | Journal | Note |
+  | --- | --- | --- | --- |
+  | 2026-09-22 record | 1.267 | 1.250 | pre-fix reader |
+  | First post-fix run | 9.17 | 9.11 | inflated: the destroy case's signal stayed raised |
+  | Now | 1.359 | 1.362 | per-read tick included |
+
+- Read-path `snapshot_us` (12 reads) was 0.741–0.755 before and 0.792–0.801
+  after, alternating three runs each, about +3.8 ns per read for the tick
+  (measured: `run288-exit-crash/engine_memory_read_path_ab.{py,txt}`).
+  run287 averaged about 2,745 reads per frame, which is about 11 µs per frame
+  (inferred).
+- Cull-census fixture: 101 checks, 0 failures (measured).
+- Scratch build: 0 warnings. `check_no_x87` PASS (673 reachable functions).
+  `engine_memory.cpp.obj` has 0 `%xmm`/`%mm`/`%st` references (measured).
+
+**Limits.**
+
+- A read that races a free on another thread between its query and its copy
+  can still fault. In the stalled mode that window is 5 ms, or one tick step.
+- That the exit-time reads run on the thread that frees the engine, which
+  would close the observed shape, is inferred from the faulting thread being
+  the render thread. It is not verified.
+- Not verified in the game. The next Run 77-style exit should show no fault
+  and one `engine_memory_read_refused` row. The next save load should show a
+  load time unchanged from run287's 22.6 s.
+
+
+Second-review limits (2026-09-24): the shutdown signal is raised only while the lifetime observer is live and
+`read_registry` succeeds at the Destroy hook; if observation was disabled earlier by a `fail()` (capacity, counter,
+registry unavailable) or the engine slot is already unreadable there, exit protection falls back to the stalled window
+(one tick step). `next_frame()` clears the signal unconditionally, so if engine teardown ever ran off the render
+thread with a Present between the registry destroy and the engine free, 100 ms cache trust would return before the
+free; the observed exit shape (no Present after teardown) is covered. Both inferred from the code, not observed.

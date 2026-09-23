@@ -1,5 +1,5 @@
 {
-  "started_utc": "2026-09-22T18:11:17.190103+00:00",
+  "started_utc": "2026-09-23T23:45:05.324265+00:00",
   "game_launched": false,
   "bottle": {
     "name": "X3",
@@ -13,56 +13,56 @@
   "fresh_build": true,
   "passed": true,
   "sources_before": {
-    "src/proxy/object_lifetime.cpp": "94c0ed5c3c07145c51c2aca1dcda1b06eb692e0cd428d35d025f4f16cf32dae9",
+    "src/proxy/object_lifetime.cpp": "79c61cb04616a0365ca845c7fd42a296610dcfb2c75291331506b90085007f53",
     "src/proxy/object_lifetime.h": "f2e77f4f3857b8ff4bd124eedf0109b78b189e1e7559b736ebcb617f4ac7d368",
-    "src/proxy/engine_memory.cpp": "31b2addd09b1efeebdac5941e0c99f342e3f27573320db0809e10a7de69d66ff",
-    "src/proxy/engine_memory.h": "6972f184043adfacfa6a3fc646166b4f6add140968ea1a3874ce8128ba73cf8b",
-    "verification/probe/object_lifetime.cpp": "cfddef5e842306a7cde9140fb087a0364ecdcb8af859965e24332a220ca4d9d8",
+    "src/proxy/engine_memory.cpp": "1db8421f74a720ad1890ee28b9ba98b350075c2faf95c626902f3260345d66fb",
+    "src/proxy/engine_memory.h": "a9f5a5262bef99cf23fd5ab4b2688aec56872ab8f995f6487d75481f1dc3b92d",
+    "verification/probe/object_lifetime.cpp": "4d473d0c3fbb538984cd13b5c51cea41b51ed53fe31b0eb7eb38e58158cad82f",
     "verification/probe/build_object_lifetime.sh": "d4ecfba9f59a16e9600751ea45916c99d3a4034ef7fe6c8bbb55bfbdd9bcfff9",
-    "verification/probe/run_object_lifetime.py": "138317e02c7cdf375d36905b06b0c917a94363adf5e1c9f9118c8740ac1033e3"
+    "verification/probe/run_object_lifetime.py": "497fba032f2da2fe9a917f7e25e6c5e8b8f778def617edbae9ec812f8249da12"
   },
   "build_exit": 0,
   "sources_after_build": {
-    "src/proxy/object_lifetime.cpp": "94c0ed5c3c07145c51c2aca1dcda1b06eb692e0cd428d35d025f4f16cf32dae9",
+    "src/proxy/object_lifetime.cpp": "79c61cb04616a0365ca845c7fd42a296610dcfb2c75291331506b90085007f53",
     "src/proxy/object_lifetime.h": "f2e77f4f3857b8ff4bd124eedf0109b78b189e1e7559b736ebcb617f4ac7d368",
-    "src/proxy/engine_memory.cpp": "31b2addd09b1efeebdac5941e0c99f342e3f27573320db0809e10a7de69d66ff",
-    "src/proxy/engine_memory.h": "6972f184043adfacfa6a3fc646166b4f6add140968ea1a3874ce8128ba73cf8b",
-    "verification/probe/object_lifetime.cpp": "cfddef5e842306a7cde9140fb087a0364ecdcb8af859965e24332a220ca4d9d8",
+    "src/proxy/engine_memory.cpp": "1db8421f74a720ad1890ee28b9ba98b350075c2faf95c626902f3260345d66fb",
+    "src/proxy/engine_memory.h": "a9f5a5262bef99cf23fd5ab4b2688aec56872ab8f995f6487d75481f1dc3b92d",
+    "verification/probe/object_lifetime.cpp": "4d473d0c3fbb538984cd13b5c51cea41b51ed53fe31b0eb7eb38e58158cad82f",
     "verification/probe/build_object_lifetime.sh": "d4ecfba9f59a16e9600751ea45916c99d3a4034ef7fe6c8bbb55bfbdd9bcfff9",
-    "verification/probe/run_object_lifetime.py": "138317e02c7cdf375d36905b06b0c917a94363adf5e1c9f9118c8740ac1033e3"
+    "verification/probe/run_object_lifetime.py": "497fba032f2da2fe9a917f7e25e6c5e8b8f778def617edbae9ec812f8249da12"
   },
-  "executable_sha256": "6946a879ea7354681fd38dcd0371d9b81f3980cba79c5efc1d50f92e52819263",
+  "executable_sha256": "3226853524d994e13bb7cceeeb859028bc3a74e96b92299a3e5de9bec0b9b0e8",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
     "X3",
     "--no-update",
     "--workdir",
-    "/Users/asvetl/x3-mod/verification/probe/build",
-    "/Users/asvetl/x3-mod/verification/probe/build/object_lifetime.exe"
+    "verification/probe/build",
+    "verification/probe/build/object_lifetime.exe"
   ],
   "exit_code": 0,
-  "executable_sha256_after_run": "6946a879ea7354681fd38dcd0371d9b81f3980cba79c5efc1d50f92e52819263",
+  "executable_sha256_after_run": "3226853524d994e13bb7cceeeb859028bc3a74e96b92299a3e5de9bec0b9b0e8",
   "sources_after_run": {
-    "src/proxy/object_lifetime.cpp": "94c0ed5c3c07145c51c2aca1dcda1b06eb692e0cd428d35d025f4f16cf32dae9",
+    "src/proxy/object_lifetime.cpp": "79c61cb04616a0365ca845c7fd42a296610dcfb2c75291331506b90085007f53",
     "src/proxy/object_lifetime.h": "f2e77f4f3857b8ff4bd124eedf0109b78b189e1e7559b736ebcb617f4ac7d368",
-    "src/proxy/engine_memory.cpp": "31b2addd09b1efeebdac5941e0c99f342e3f27573320db0809e10a7de69d66ff",
-    "src/proxy/engine_memory.h": "6972f184043adfacfa6a3fc646166b4f6add140968ea1a3874ce8128ba73cf8b",
-    "verification/probe/object_lifetime.cpp": "cfddef5e842306a7cde9140fb087a0364ecdcb8af859965e24332a220ca4d9d8",
+    "src/proxy/engine_memory.cpp": "1db8421f74a720ad1890ee28b9ba98b350075c2faf95c626902f3260345d66fb",
+    "src/proxy/engine_memory.h": "a9f5a5262bef99cf23fd5ab4b2688aec56872ab8f995f6487d75481f1dc3b92d",
+    "verification/probe/object_lifetime.cpp": "4d473d0c3fbb538984cd13b5c51cea41b51ed53fe31b0eb7eb38e58158cad82f",
     "verification/probe/build_object_lifetime.sh": "d4ecfba9f59a16e9600751ea45916c99d3a4034ef7fe6c8bbb55bfbdd9bcfff9",
-    "verification/probe/run_object_lifetime.py": "138317e02c7cdf375d36905b06b0c917a94363adf5e1c9f9118c8740ac1033e3"
+    "verification/probe/run_object_lifetime.py": "497fba032f2da2fe9a917f7e25e6c5e8b8f778def617edbae9ec812f8249da12"
   },
-  "report_sha256": "b587e49a22dd7bf79e91c39e815b0da53c4d4b420d562a6f23cabbf01d3dc72e",
-  "checks": 657,
+  "report_sha256": "99581f4813bf166e95b8430b0010caf55d9aa6ca54dba12af43e47b060acc1b7",
+  "checks": 664,
   "failures": 0,
-  "backend_calls": 172590,
+  "backend_calls": 292590,
   "read_path": {
     "timing": [
       {
         "mode": "direct",
-        "snapshot_us": "0.750",
+        "snapshot_us": "0.814",
         "reads_per_call": "12.00",
-        "queries_per_call": "0.0237",
+        "queries_per_call": "0.0197",
         "record": "853bfaca11e07f83"
       }
     ]
@@ -71,11 +71,21 @@
   "journal": [
     {
       "capacity": "2048",
-      "cycle_idle_us": "1.2668",
-      "cycle_journal_us": "1.2503",
-      "retirement_delta_us": "-0.0165",
-      "empty_drain_us": "0.0062",
+      "cycle_idle_us": "1.3591",
+      "cycle_journal_us": "1.3623",
+      "retirement_delta_us": "0.0032",
+      "empty_drain_us": "0.0064",
       "drained": "40000"
+    }
+  ],
+  "read_modes": [
+    {
+      "cycle_frame_us": "1.3650",
+      "cycle_stalled_us": "1.3668",
+      "cycle_shutdown_us": "9.6458",
+      "queries_frame": "0.0002",
+      "queries_stalled": "0.0007",
+      "queries_shutdown": "15.0000"
     }
   ],
   "journal_cases": {

@@ -365,6 +365,9 @@ namespace game_phases { static void invalidate_device() noexcept {} }
 // Inert mirror of the production diagnostic: the shader-population report does
 // no lifetime or Reset work, so it has nothing to contribute to this seam.
 static void report_shader_population(bool) noexcept {}
+// The engine reader's teardown row: counted, one per last-device destruction.
+static unsigned engine_memory_refused_rows=0;
+static void engine_memory_refused_line() noexcept {++engine_memory_refused_rows;}
 namespace sampling_profiler {
 static unsigned shutdown_under_lock=0;
 static void shutdown() noexcept {if(hook_guard_depth)++shutdown_under_lock;}
@@ -501,6 +504,7 @@ static void notice_pin_lifetime(AliasModel model,unsigned drop_at) {
     Environment env(model);
     std::weak_ptr<Device> cpu=env.ctx;
     const unsigned bad_shutdowns=sampling_profiler::shutdown_under_lock;
+    const unsigned refused_rows=engine_memory_refused_rows;
     unsigned present_calls=0;
     {
         NoticePin pin;
@@ -524,6 +528,7 @@ static void notice_pin_lifetime(AliasModel model,unsigned drop_at) {
     if(drop_at){
         check(env.native.destroyed==1&&devices.count(&env.device)==0,"normal pin Release retires last owned resources");
         check(cpu.expired(),"notice CPU owner outlives native/map retirement");
+        check(engine_memory_refused_rows==refused_rows+1,"last-device destruction writes one engine_memory_read_refused row");
     }else check(env.native.destroyed==0&&devices.count(&env.device)==1&&!env.ctx->bloom.shutdowns,"nonterminal notice pin keeps application resources");
 }
 

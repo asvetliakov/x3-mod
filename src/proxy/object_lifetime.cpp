@@ -219,7 +219,10 @@ __attribute__((force_align_arg_pointer)) void __cdecl x3m_lifetime_enter(Scope* 
                 if(registry){clear_entries();increment(registry_epoch);increment(revision);
                     fail(Reason::RegistryUnavailable,"registry_unavailable");}
             }else if(bind_registry(current) && scope->map==registry){
-                if(scope->kind==Destroy){clear_entries();registry_dead=true;increment(registry_epoch);}
+                // Registry destruction is engine teardown (0x004710f0 frees the engine
+                // object next): no cached engine region is trusted until a frame advances.
+                if(scope->kind==Destroy){clear_entries();registry_dead=true;increment(registry_epoch);
+                    x3m::engine_memory::begin_shutdown("registry_destroy");}
                 else {
                     if(registry_dead && scope->kind==Insert){registry_dead=false;clear_entries();increment(registry_epoch);}
                     retire(scope->key);

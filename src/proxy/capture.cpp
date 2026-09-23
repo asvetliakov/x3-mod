@@ -723,7 +723,7 @@ void sector_background_context(Device& ctx, bool scene_authority = false) {
     sector_background::Sample value;
     if(object_trace::executable_verified()) {
         // Even without the motion route, revalidate pages after a load/realloc.
-        engine_memory::next_frame();
+        engine_memory::revalidate(); // an epoch only: not a Present (engine_memory.h)
         auto read=[](std::uintptr_t p,void* out,std::size_t n){return engine_memory::read(p,out,n);};
         value=sector_background::sample(read,volumetric_fog_docked?sector_background::anchor_walk_limit:0u);
         // R3: the Ready sector's id [sector+8], read once per sector and again after any break in Ready samples
@@ -763,7 +763,7 @@ void fog_prefill_poll(Device& ctx) {
     const DWORD saved_error=GetLastError();
     struct RestoreError { DWORD value; ~RestoreError(){SetLastError(value);} } restore_error{saved_error};
     if(!object_trace::executable_verified())return;
-    engine_memory::next_frame(); // the stall reallocates: revalidate pages
+    engine_memory::revalidate(); // the stall reallocates: revalidate pages (an epoch only: neither ends the stall bound nor the shutdown signal)
     auto read=[](std::uintptr_t p,void* out,std::size_t n){return engine_memory::read(p,out,n);};
     const fog_prefill::Result result=fog_prefill::walk(read,ctx.fog_ready_sector_id);
     ctx.motion_output.volumetric_fog_prefill(result,now-ctx.fog_prefill_gate.present_ms);
@@ -1060,6 +1060,7 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         if(!refs){game_phases::invalidate_device();report_shader_population(true); // session end: flush the last count movement
         telemetry::summary(devices.at(d)->stats,"device_destroy",devices.at(d)->frame);telemetry::summary(telemetry::process(),"device_destroy",devices.at(d)->frame);log("device_destroy ptr=%p device=%llu",d,devices.at(d)->id);forget_cached_device();devices.erase(d);}
         last_device_destroyed=!refs&&devices.empty();
+        if(last_device_destroyed)engine_memory_refused_line(); // per last-device destroy, not at detach (DllMain's detach must not log); later reads are uncounted
     }
     // The profiler's quiescent stop: the last device is gone and the capture
     // mutex is released, so its final report cannot wait on a lock we hold.
@@ -3639,6 +3640,24 @@ void engine_memory_line(const char* phase,unsigned long long device,unsigned lon
         phase,static_cast<unsigned long long>(device),
         reads,queries,reads>=queries?reads-queries:0ull,static_cast<unsigned long long>(s.rejected),
         static_cast<unsigned long long>(frame?frame:s.frame));
+}
+// engine_memory_read_refused: the reader's cumulative refusals, one row each
+// time the last live device is destroyed (normally once, at the game's
+// teardown; again if the game later creates and destroys another device).
+// Reads after that destruction are not counted in any row. reason = shutdown
+// (after the registry-destroy signal), stalled (frames stopped past the
+// bound), uncommitted (while frames advance) or none, by precedence; count is
+// every refusal; stalled_reads/strict_reads count the reads validated in those
+// modes. The refusing readers (object_lifetime read_registry, object_trace
+// current) log nothing per read.
+void engine_memory_refused_line() {
+    const auto s=engine_memory::stats();
+    log("engine_memory_read_refused reason=%s count=%llu shutdown=%llu stalled=%llu stalled_reads=%llu strict_reads=%llu signals=%llu signal=%s",
+        s.refused_shutdown?"shutdown":s.refused_stalled?"stalled":s.rejected?"uncommitted":"none",
+        static_cast<unsigned long long>(s.rejected),static_cast<unsigned long long>(s.refused_shutdown),
+        static_cast<unsigned long long>(s.refused_stalled),static_cast<unsigned long long>(s.stalled_reads),
+        static_cast<unsigned long long>(s.strict_reads),
+        static_cast<unsigned long long>(s.shutdown_signals),s.shutdown_source?s.shutdown_source:"none");
 }
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
 // Fixture-only exports (verification/probe/motion_output_fixture.cpp). Absent

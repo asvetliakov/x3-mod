@@ -32,6 +32,8 @@ class ObjectLifetimeRunnerTests(unittest.TestCase):
     # fixture's actual output, from verification/results/bottle-X3/object-lifetime.txt.
     READ_PATH = (b'TIMING mode=direct snapshot_us=0.744 reads_per_call=12.00 queries_per_call=0.0237 record=853bfaca11e07f83\n'
                  b'JOURNAL capacity=2048 cycle_idle_us=1.0000 cycle_journal_us=1.0100 retirement_delta_us=0.0100 empty_drain_us=0.0200 drained=40000\n'
+                 b'READ_MODES cycle_frame_us=1.2000 cycle_stalled_us=1.3000 cycle_shutdown_us=9.0000'
+                 b' queries_frame=0.0001 queries_stalled=0.0100 queries_shutdown=6.0000\n'
                  b'X87 roundtrip_exact=0 save_stable=1 control_diff_slots=0xff control_exponent_diff=8'
                  b' control_reserved_diff=0 control_max_low_bits=64 control_st0=3fff8000000000000000/00000000000000000000'
                  b' control_ftw=0xc0/0xc0 compare_diff_slots=0xff compare_exponent_diff=80 compare_reserved_diff=0'
@@ -116,6 +118,20 @@ class ObjectLifetimeRunnerTests(unittest.TestCase):
                        self.READ_PATH + duplicate_journal + b'\n' + self.RESULT):
             with patch.object(RUNNER.subprocess, 'run', side_effect=self.fake_run(output)):
                 self.assert_failed(RUNNER.run(self.root))
+
+    # The engine reader's three modes are measured once; the command is recorded repo-relative.
+    def test_read_modes_required_and_command_repo_relative(self):
+        line = next(l for l in self.READ_PATH.split(b'\n') if l.startswith(b'READ_MODES '))
+        missing = self.READ_PATH.replace(line + b'\n', b'') + self.RESULT
+        partial = self.READ_PATH.replace(b' queries_shutdown=6.0000', b'') + self.RESULT
+        for output in (missing, partial, self.READ_PATH + line + b'\n' + self.RESULT):
+            with patch.object(RUNNER.subprocess, 'run', side_effect=self.fake_run(output)):
+                self.assert_failed(RUNNER.run(self.root))
+        with patch.object(RUNNER.subprocess, 'run', side_effect=self.fake_run()):
+            result = RUNNER.run(self.root)
+        self.assertTrue(result['passed'])
+        self.assertEqual(result['command'][-2:], ['verification/probe/build', 'verification/probe/build/object_lifetime.exe'])
+        self.assertNotIn(str(self.root), json.dumps(result['command']))
 
     # Direct reads are the only mode: exactly one TIMING line, mode=direct, with a
     # folded record that is not the unfolded FNV seed.

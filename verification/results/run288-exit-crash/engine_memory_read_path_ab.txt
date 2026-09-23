@@ -1,0 +1,15 @@
+engine_memory_read_path_ab.py, 2026-09-24, bottle X3 (arm64, FEX_X87REDUCEDPRECISION=1, WINEMSYNC=1), game not running
+old 0 TIMING mode=direct snapshot_us=0.749 reads_per_call=12.00 queries_per_call=0.0197 record=853bfaca11e07f83
+old 0 RESULT PASS checks=657 failures=0 backend_calls=172590
+new 0 TIMING mode=direct snapshot_us=0.793 reads_per_call=12.00 queries_per_call=0.0197 record=853bfaca11e07f83
+new 0 RESULT PASS checks=657 failures=0 backend_calls=172590
+old 1 TIMING mode=direct snapshot_us=0.755 reads_per_call=12.00 queries_per_call=0.0197 record=853bfaca11e07f83
+old 1 RESULT PASS checks=657 failures=0 backend_calls=172590
+new 1 TIMING mode=direct snapshot_us=0.792 reads_per_call=12.00 queries_per_call=0.0197 record=853bfaca11e07f83
+new 1 RESULT PASS checks=657 failures=0 backend_calls=172590
+old 2 TIMING mode=direct snapshot_us=0.741 reads_per_call=12.00 queries_per_call=0.0197 record=853bfaca11e07f83
+old 2 RESULT PASS checks=657 failures=0 backend_calls=172590
+new 2 TIMING mode=direct snapshot_us=0.801 reads_per_call=12.00 queries_per_call=0.0197 record=853bfaca11e07f83
+new 2 RESULT PASS checks=657 failures=0 backend_calls=172590
+summary: old 0.741-0.755 us, new 0.792-0.801 us per 12 reads (+0.045 us, ~+3.8 ns/read); queries_per_call identical
+note: "new" was built from the first fixed tree, before the review changes (signed ticks, flag under the lock, 5 ms stalled trust, revalidate split). The final tree's run_object_lifetime.py PASS (664 checks) reports snapshot_us=0.814, queries_per_call=0.0197; its READ_MODES row is in verification/results/bottle-X3/object-lifetime-summary.json
