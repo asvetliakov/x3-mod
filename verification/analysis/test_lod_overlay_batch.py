@@ -506,6 +506,79 @@ class BatchRun(unittest.TestCase):
             code, text = run(argv + ['--sync', '--no-aspect', '--out', str(Path(folder) / 'out4')])
             self.assertIn('built 2 + reused 0 = 2', text)
 
+    @unittest.mock.patch.object(lod_overlay, 'running_game', return_value=[])
+    def test_texel_fallback(self, _running):
+        """Default --texel-fallback 1: a texel_floor body is built at T_fb (the pad threshold) with the fallback in
+        the record; T_fb below T_1 or T_pad/4 stays refused; W not reached and a bake refusal are listed;
+        --texel-fallback 0 keeps the refusal; the option is a batch setting, so changing it makes --sync rebuild."""
+        self.assertEqual(lod_overlay.build_parser().parse_args(['--batch']).texel_fallback, 1.0)
+        with tempfile.TemporaryDirectory() as folder:
+            game, out1 = make_game(folder), Path(folder) / 'out1'
+            only = Path(folder) / 'only.txt'
+            only.write_text('ships/x/good\nstations/y/good\n')
+            argv = ['--batch', '--jobs', '1', '--atlas-size', '64', '--atlas-max-size', '128', '--only', str(only),
+                    '--game', str(game)]                                   # default --min-texels 0.5
+            code, text = run(argv + ['--out', str(out1)])
+            record = json.loads((out1 / 'x3m-lod-batch.json').read_text())
+            by = {b['name']: b for b in record['bodies']}
+            good, station = by['ships/x/good'], by['stations/y/good']
+            fb = good['texel_fallback']
+            self.assertEqual((good['eligible'], fb['accepted'], fb['t_pad'], good['threshold_aspect']),
+                             (True, True, 120, 120))
+            self.assertEqual(good['t_pad'], fb['t_fb'])
+            self.assertTrue(30 <= fb['t_fb'] < 120 and fb['weighted_after'] >= 1.0 and fb['weighted_before'] < 0.5)
+            self.assertFalse(good['texel']['refuse'])
+            marker = json.loads((out1 / 'addon/02.x3m-lod.json').read_text())
+            self.assertEqual({b['name']: b['pad_threshold'] for b in marker['bodies']}, {'ships/x/good': fb['t_fb']})
+            self.assertEqual(marker['batch']['settings']['atlas']['texel_fallback'], 1.0)
+            self.assertEqual((station['refuse'], station['texel_fallback']['guard']), (['texel_floor'], 'T_1'))
+            self.assertEqual(record['ratio']['texel_fallback'],
+                             {'ships/x/good': dict(t_pad=120, t_fb=fb['t_fb'], km=None, built=True)})
+            self.assertEqual(record['ratio']['texel_fallback_guard'], {'stations/y/good': 'T_1'})
+            self.assertIn(f'texel_fallback (--texel-fallback 1: T_fb = round(T_pad x weighted / W), T_fb >= max(T_1,'
+                          f' T_pad/4, 2)): built 1; ships/x/good T 120->{fb["t_fb"]} weighted 0.272->', text)
+            self.assertIn('; refused at bake 0; texel_floor 1 = at the guard 1; stations/y/good refused T 280 weighted'
+                          ' 0.116 starved 100.0% guard T_1 (T_fb 33 < 160) + W not reached in 3 steps 0 + no fallback 0',
+                          text)
+            self.assertIn(f'T=120->{fb["t_fb"]}(texel_fallback)', text)
+            code, text = run(argv + ['--dry-run', '--min-texels', '3', '--out', str(Path(folder) / 'o3')])
+            fb3 = json.loads((Path(folder) / 'o3/x3m-lod-batch.json').read_text())['bodies']
+            good3 = {b['name']: b for b in fb3}['ships/x/good']     # W taken as --min-texels 3: 120 -> 11 < 30
+            self.assertEqual((good3['refuse'], good3['texel_fallback']['guard'], good3['texel_fallback']['guard_t']),
+                             (['texel_floor'], 'relative', 11))
+            short = dict(accepted=False, W=1.0, t_pad=120, t1=5, t_fb=None, guard=None, weighted_before=0.27,
+                         starved_before=1.0, steps=[dict(t=90, weighted=0.4, starved=0.9, size=64)] * 3)
+            with unittest.mock.patch.object(census, 'texel_fallback', return_value=short):
+                code, text = run(argv + ['--dry-run', '--out', str(Path(folder) / 'o4')])
+            ratio = json.loads((Path(folder) / 'o4/x3m-lod-batch.json').read_text())['ratio']
+            self.assertEqual(ratio['texel_fallback_not_reached'], ['ships/x/good', 'stations/y/good'])
+            self.assertIn('texel_floor 2 = at the guard 0 + W not reached in 3 steps 2; ships/x/good refused T 120'
+                          ' weighted 0.270 starved 100.0% W 1 not reached in 3 steps (last T 90 weighted 0.400;', text)
+            real = lod_overlay.bake_safely
+            bake = lambda assets, row, opts: (dict(name=row['name'], refused='atlas texture x already exists in y')
+                                              if row['name'] == 'ships/x/good' else real(assets, row, opts))
+            with unittest.mock.patch.object(lod_overlay, 'bake_safely', side_effect=bake):
+                code, text = run(argv + ['--dry-run', '--out', str(Path(folder) / 'o5')])
+            ratio = json.loads((Path(folder) / 'o5/x3m-lod-batch.json').read_text())['ratio']
+            self.assertEqual(ratio['texel_fallback']['ships/x/good']['refused'], ['bake:atlas_name_taken'])
+            self.assertFalse(ratio['texel_fallback']['ships/x/good']['built'])
+            self.assertIn('built 0; refused at bake 1; ships/x/good T 120->', text)
+            self.assertIn('REFUSED at bake (bake:atlas_name_taken)', text)
+            code, text = run(argv + ['--dry-run', '--texel-fallback', '0', '--out', str(Path(folder) / 'o0')])
+            by0 = {b['name']: b for b in json.loads((Path(folder) / 'o0/x3m-lod-batch.json').read_text())['bodies']}
+            self.assertEqual([(by0[n]['refuse'], 'texel_fallback' in by0[n], by0[n]['t_pad']) for n in sorted(by0)],
+                             [(['texel_floor'], False, 120), (['texel_floor'], False, 280)])
+            self.assertIn('texel_fallback off (--texel-fallback 0)', text)
+            for name in ('02.cat', '02.dat', '02.x3m-lod.json'):
+                shutil.copy(out1 / 'addon' / name, game / 'addon' / name)
+            code, text = run(argv + ['--sync', '--out', str(Path(folder) / 'out2')])
+            self.assertIn('built 0 + reused 1 = 1', text)
+            code, text = run(argv + ['--sync', '--texel-fallback', '0.8', '--out', str(Path(folder) / 'out3')])
+            self.assertIn('built 1 + reused 0 = 1', text)
+            self.assertIn('was built with different settings', text)
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                run(argv + ['--dry-run', '--texel-fallback', '-1'])
+
     def test_mods_warning_and_single_mode_markers(self):
         with tempfile.TemporaryDirectory() as folder:
             game, out = make_game(folder), Path(folder) / 'out'

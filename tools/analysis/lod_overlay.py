@@ -184,6 +184,19 @@ switch distance D = r_world*640/T at T_class and T_pad in km (lod_batch_census.a
 units per metre, inferred; '-' without a flown radius), the thresholds, min_ratio, weighted ratio
 and starved share, lowest weighted first.
 
+Texel fallback (batch; --texel-fallback W, default 1.0 texels/px, 0 disables): a body the texel
+floor would refuse at T_pad is not refused but gets a lower switch size T_fb, so its merged record
+appears farther out, where the sparse atlas does not show. Atlas texels per screen pixel scale as
+1/T, so T_fb = round(T_pad * weighted / W) (W taken as max(W, --min-texels)); the layout is rebuilt at
+T_fb and the step repeats (at most 3 layouts) until weighted >= W and the starved share is within
+--texel-floor-share. T_fb must stay >= max(T_1, T_pad / 4, 2) (the ladder's record 1 threshold, a
+relative floor, the engine's s = 1 minimum); otherwise, or when W is not reached, the body stays
+refused texel_floor
+(lod_batch_census.texel_fallback). An accepted body builds at T_fb (the pad threshold) and its
+record carries texel_fallback (T_pad -> T_fb, weighted and starved before/after, atlas sizes, switch
+km with a flown radius); the summary lists the fallback bodies. The option is in the batch settings,
+so changing it makes --sync rebuild. The single-body mode keeps the threshold it is given.
+
 Batch mode (--batch; docs/architecture/merged-lod-feasibility.md "Batch mode"): one command
 builds an overlay over every eligible ship and station of the installed game, vanilla plus
 every numbered addon catalogue a mod adds. The census module (lod_batch_census.run, with
@@ -700,10 +713,11 @@ MAX_POINTS = 60000         # refusal limit for a merged group (non-atlas collaps
 
 MIN_TEXELS = 0.5            # texel floor: tiles below this many atlas texels per screen pixel are starved
 TEXEL_FLOOR_SHARE = 0.10    # texel_floor refusal: starved tiles cover more than this share of the atlased surface
+TEXEL_FALLBACK = 1.0        # batch: a texel_floor body gets a lower T so its weighted ratio reaches this (0: refuse)
 MAX_DEFAULT_JOBS = 6        # a worker on the biggest stations reaches ~7 GB RSS (2026-09-23 dry run)
 WORKER_BYTES = 7 << 30      # RAM budget per baking worker (that peak); the default keeps one budget spare
 ATLAS_DEFAULTS = dict(sizes=(1024, 2048), fmt='dxt', specular=False, bump=True, screen_width=effective_width(),
-                      min_texels=MIN_TEXELS, texel_floor_share=TEXEL_FLOOR_SHARE)
+                      min_texels=MIN_TEXELS, texel_floor_share=TEXEL_FLOOR_SHARE, texel_fallback=TEXEL_FALLBACK)
 
 
 def host_memory_bytes():
@@ -1083,6 +1097,11 @@ def build_parser():
                    help=f'atlas / batch: share (0..1) of the atlased surface (face area) the starved tiles may'
                         f' cover; they are accepted and listed as texel_clamped (default {TEXEL_FLOOR_SHARE};'
                         ' 0 refuses any starved tile)')
+    b.add_argument('--texel-fallback', type=float, default=TEXEL_FALLBACK, metavar='W',
+                   help='batch: a body the texel floor would refuse at T_pad is built at the lower switch size'
+                        ' T_fb = round(T_pad * weighted / W) (rebuilt up to 3 times until the area-weighted ratio'
+                        ' reaches W texels/px), T_fb >= max(T_1, T_pad/4, 2), else refused texel_floor (default'
+                        f' {TEXEL_FALLBACK:g}; 0 disables)')
     b.add_argument('--aspect-cap', type=aspect_cap,
                    default=(1.5, 2.0), metavar='SHIPS,STATIONS',
                    help='batch: K_max of the aspect factor, T_pad = round(T_class * clamp(k, 1, K_max))'
@@ -1129,9 +1148,11 @@ def main(argv=None):
         ap.error('--min-texels must be >= 0')
     if not 0 <= a.texel_floor_share < 1:
         ap.error('--texel-floor-share must be in [0, 1)')
+    if a.texel_fallback < 0:
+        ap.error('--texel-fallback must be >= 0')
     a.atlas_opts = dict(sizes=tuple(sizes), fmt=a.atlas_format, specular=a.atlas_specular or a.batch,
                         bump=a.atlas_bump, screen_width=width, min_texels=a.min_texels,
-                        texel_floor_share=a.texel_floor_share)
+                        texel_floor_share=a.texel_floor_share, texel_fallback=a.texel_fallback)
     a.hash_mode = 'sha256' if a.hash_archives else 'fingerprint'
     game = a.game.resolve()
     root = None
@@ -1568,6 +1589,7 @@ def batch(a, game, root, markers):
     only = parse_only(a.only) if a.only else None
     width = a.atlas_opts['screen_width']
     opts = dict(sizes=a.atlas_opts['sizes'], include_other=a.include_other, widths=(width,),
+                texel=dict(min_texels=a.min_texels, floor_share=a.texel_floor_share, fallback=a.texel_fallback),
                 rule=dict(census.RULE, aspect=not a.no_aspect, aspect_ship=a.aspect_cap[0],
                           aspect_station=a.aspect_cap[1]))
     settings = dict(rule=opts['rule'], screen_width=width, display=list(a.display), collapse='atlas',
@@ -1683,6 +1705,20 @@ def batch(a, game, root, markers):
     full_est = per_body * len(rows) if only is not None else bake_s
     trailing = sum(1 for p in plans if p['trailing'])
     waived = sum(1 for p in plans if p['guard_waived'])
+    # texel fallback, after the bake: accepted (built or refused at bake) and the texel_floor refusals split
+    # by why the fallback did not save them (guard, W not reached, no fallback tried)
+    fb_of = lambda r: r.get('texel_fallback') or {}
+    fallback = [r for r in rows if fb_of(r).get('accepted') and not r['filter']
+                and all(x.startswith('bake:') for x in r['refuse'])]
+    fb_baked = [r for r in fallback if r['eligible']]
+    fb_bake_refused = [r for r in fallback if not r['eligible']]
+    tf_rows = [r for r in rows if 'texel_floor' in r['refuse']]
+    fb_guard = [r for r in tf_rows if fb_of(r).get('guard')]
+    fb_short = [r for r in tf_rows if fb_of(r) and not fb_of(r).get('guard')]
+    fb_none = [r for r in tf_rows if not fb_of(r)]
+    fb_line = lambda rs, bake=False: ''.join(
+        f'; {r["name"]} {census.fallback_text(r["texel_fallback"])}'
+        + (f' REFUSED at bake ({",".join(r["refuse"])})' if bake else '') for r in rs)
     clamped_bodies = [r['name'] for r in rows if r['eligible'] and (r.get('texel') or {}).get('texel_clamped')]
     texel_lines = [f'texel rule per body at {width} wide (k = aspect factor, T = T_pad, r_body = layout radius in'
                    f' body units, r_world = flown radius, D = r_world*640/T in km at T_class->T_pad ({census.UNITS_PER_M:g}'
@@ -1700,7 +1736,8 @@ def batch(a, game, root, markers):
             f' size={est.get("size")} min={est["ratio"]:.3f} weighted={"-" if w is None else f"{w:.3f}"}'
             f' starved={100 * x["starved_share"]:.2f}% clamped={len(x["texel_clamped"])}'
             f'{" layout=clamped" if est.get("clamped") else ""}'
-            f' {"ELIGIBLE" if r["eligible"] else "refuse=" + ",".join(r["refuse"] + r["filter"])}')
+            f' {"ELIGIBLE" if r["eligible"] else "refuse=" + ",".join(r["refuse"] + r["filter"])}'
+            + (f' texel_fallback="{census.fallback_text(r["texel_fallback"])}"' if r.get('texel_fallback') else ''))
     summary = [
         f'batch: game {game}; display {a.display[0]}x{a.display[1]} -> reference width {width}; rule ships'
         f' T_class = min({opts["rule"]["t_cap"]:g}, max({opts["rule"]["ship_min"]:g}, {opts["rule"]["ship_factor"]:g} x T_1)),'
@@ -1727,6 +1764,13 @@ def batch(a, game, root, markers):
            + (', ...' if len(floor) > 12 else '') if floor else '')
         + f'; eligible with texel_clamped tiles (starved share <= {a.texel_floor_share:g}) {len(clamped_bodies)}'
         + (f' ({", ".join(clamped_bodies[:12])}{", ..." if len(clamped_bodies) > 12 else ""})' if clamped_bodies else ''),
+        (f'texel_fallback (--texel-fallback {a.texel_fallback:g}: T_fb = round(T_pad x weighted / W), T_fb >='
+         f' max(T_1, T_pad/4, 2)): built {len(fb_baked)}' + fb_line(fb_baked)
+         + f'; refused at bake {len(fb_bake_refused)}' + fb_line(fb_bake_refused, True)
+         + f'; texel_floor {len(tf_rows)} = at the guard {len(fb_guard)}' + fb_line(fb_guard)
+         + f' + W not reached in {census.FALLBACK_STEPS} steps {len(fb_short)}' + fb_line(fb_short)
+         + f' + no fallback {len(fb_none)}')
+        if a.texel_fallback else 'texel_fallback off (--texel-fallback 0)',
         f'draws below T_pad per instance, summed over the overlay bodies: {draws_before} -> {draws_after}'
         f' (drawn groups of record 0 -> of C, hidden parts excluded, alpha groups included); bodies with one atlas'
         f' material per effect ({len(multi)}):'
@@ -1761,7 +1805,14 @@ def batch(a, game, root, markers):
         ratio=dict(below_1=below1, below_2=below2, measured=len(ratios), min_texels=a.min_texels,
                    texel_floor={n: round(r, 4) for n, r in floor}, texel_floor_share=a.texel_floor_share,
                    texel_floor_starved={n: round(starved[n], 4) for n, _ in floor},
-                   texel_clamped=clamped_bodies),
+                   texel_clamped=clamped_bodies, texel_fallback_w=a.texel_fallback,
+                   texel_fallback={r['name']: dict(t_pad=r['texel_fallback']['t_pad'], t_fb=r['t_pad'],
+                                                   km=r['texel_fallback'].get('km_after'),
+                                                   built=r['eligible'],
+                                                   **({} if r['eligible'] else {'refused': r['refuse']}))
+                                   for r in fallback},
+                   texel_fallback_guard={r['name']: r['texel_fallback']['guard'] for r in fb_guard},
+                   texel_fallback_not_reached=[r['name'] for r in fb_short]),
         draws=dict(record0=draws_before, overlay=draws_after), mixed_effect_bodies=multi, uv2_bodies=uv2,
         timing=dict(census_s=round(census_s, 2), bake_s=round(bake_s, 2), per_body_s=round(per_body, 3),
                     extrapolated_full_s=round(full_est, 1), total_s=round(time.time() - t_start, 2)),
@@ -1778,6 +1829,7 @@ def batch(a, game, root, markers):
                      **{k: r[k] for k in ('thresholds', 't_class', 'aspect_k', 'threshold_aspect', 'aspect_note',
                                           'radius_body', 'radius_world', 'switch_km', 'switch_km_class') if k in r},
                      **({'texel': r['texel']} if r.get('texel') else {}),
+                     **({'texel_fallback': r['texel_fallback']} if r.get('texel_fallback') else {}),
                      **({'error': r['atlas_error']} if r.get('atlas_error') else {}),
                      **({'bake_error': r['bake_error']} if r.get('bake_error') else {}))
                 for r in rows],

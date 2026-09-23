@@ -1,8 +1,13 @@
-bodies 339 (eligible_bodies.txt), censused 339; width 1800, sizes [1024, 2048], --min-texels 0.5, --texel-floor-share 0.1; flown radii 53 bodies
+bodies 339 (eligible_bodies.txt), censused 339; width 1800, sizes [1024, 2048], --min-texels 0.5, --texel-floor-share 0.1, --texel-fallback 1; flown radii 53 bodies
 T changed by the aspect factor: 325 (ships 213, stations/others 112); at the cap: 84
 aspect off: census refusals/filters 1, texel_floor 1 ['stations/x3tc/torus_barrier_node'], t_pad_below_t1 0, ratio < 2 34
-aspect on: census refusals/filters 1, texel_floor 2 ['ships/teladi/teladi_M1', 'stations/x3tc/torus_barrier_node'], t_pad_below_t1 0, ratio < 2 36
-newly refused with the aspect factor: 1 ['ships/teladi/teladi_M1']
+aspect on: census refusals/filters 1, texel_floor 1 ['stations/x3tc/torus_barrier_node'], t_pad_below_t1 0, ratio < 2 36
+aspect off: texel_fallback tried 1, accepted 0 (eligible 0), refused at the guard [('stations/x3tc/torus_barrier_node', 'relative')], W not reached []; eligible after the texel rule 337 without the fallback -> 337 with it
+  stations/x3tc/torus_barrier_node thr=- refused T 150 weighted 0.055 starved 21.4% guard relative (T_fb 8 < 37.5)
+aspect on: texel_fallback tried 2, accepted 1 (eligible 1), refused at the guard [('stations/x3tc/torus_barrier_node', 'relative')], W not reached []; eligible after the texel rule 336 without the fallback -> 337 with it
+  ships/teladi/teladi_M1 thr=30,15,5 T 119->55 weighted 0.468->1.013 starved 34.0%->0.0% size 2048->2048 D - km steps 56:0.995,55:1.013
+  stations/x3tc/torus_barrier_node thr=- refused T 300 weighted 0.028 starved 21.4% guard relative (T_fb 8 < 75)
+newly refused with the aspect factor: 0 []
 newly t_pad_below_t1: []
 atlas bytes (census estimate, eligible rows) off 1918399632 -> on 2065200272; atlas size changes 10
 ratio falls below 2.0 with the aspect factor: 2 ['ships/x3ap/boron/XTC_boron_drone', 'ships/x3ap/boron/XTC_boron_m8']
@@ -155,7 +160,7 @@ per body with a changed T: name k T_class->T min_ratio off->on weighted on, atla
   ships/split/split_TS_storage_S k=1.453 T 80->116 min 2.003->2.010 weighted 2.010 atlas 1024/4893960->1024/4893960
   ships/split/split_m3_var1 k=1.382 T 80->111 min 4.833->3.483 weighted 4.066 atlas 1024/4893960->1024/4893960
   ships/split/split_m6 k=1.609 T 80->120 min 3.909->2.606 weighted 2.606 atlas 1024/4893960->1024/4893960
-  ships/teladi/teladi_M1 k=1.488 T 80->119 min 0.407->0.274 weighted 0.468 atlas 2048/19574024->2048/19574024
+  ships/teladi/teladi_M1 k=1.488 T 80->119 (texel_fallback T_fb 55) min 0.407->0.592 weighted 1.013 atlas 2048/19574024->2048/19574024
   ships/teladi/teladi_m5p k=1.753 T 80->120 min 3.298->2.199 weighted 2.199 atlas 1024/4893960->1024/4893960
   ships/teladi/teladi_m5p_pirate k=1.753 T 80->120 min 4.397->2.932 weighted 3.253 atlas 1024/4893960->1024/4893960
   ships/terraformer/terraformer_cpu k=1.106 T 80->89 min 9.871->8.873 weighted 8.873 atlas 1024/4893960->1024/4893960

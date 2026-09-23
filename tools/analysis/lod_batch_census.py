@@ -60,6 +60,19 @@ ratio and the starved share of lod_atlas.texel_floor at lod_overlay's defaults (
 --texel-floor-share 0.10); each width's atlas entry keeps the per-tile rows (lod_atlas.tile_rows)
 so the batch applies its own options. The census does not refuse texel_floor; the batch does.
 
+Texel fallback (opts['texel'] fallback W; the CLI and lod_overlay.py --texel-fallback default 1.0, a run
+without opts['texel'] and W = 0 disable it):
+a body whose layout at T_pad would be refused texel_floor at the reference width gets a lower switch
+size instead, so its merged record appears farther out. Texels per pixel scale as 1/T, so
+T_fb = round(T * weighted / max(W, F)) (F = --min-texels; W at the defaults), the layout is rebuilt
+at T_fb (the atlas size may change with it) and the step repeats, at most FALLBACK_STEPS layouts,
+until weighted >= W and the body passes the floor. T_fb must stay >= max(T_1, T_pad / 4, 2) (the
+ladder's record 1, a relative floor so a body is not pushed out to a few pixels, the engine's s = 1
+minimum); a step below that, or no pass within the steps, leaves the refusal (row texel_fallback
+accepted False, guard T_1 / relative / min_2: the binding floor).
+An accepted fallback rebuilds the census columns at T_fb (row t_pad = T_fb, threshold_aspect keeps the
+rule's T_pad) and records T_pad -> T_fb, weighted and starved share before/after, sizes and steps.
+
   python3 tools/analysis/lod_batch_census.py [--game DIR] [--out DIR] [--jobs N] [--limit N] [--screen-width 1920]
       [--binary-only]
 """
@@ -81,6 +94,8 @@ import lod_overlay     # noqa: E402
 RULE = dict(ship_min=80.0, ship_factor=2.5, station_t=150.0, t_cap=200.0, aspect=True, aspect_ship=1.5,
             aspect_station=2.0)
 UNITS_PER_M = 505.0       # world units per metre: inferred (docs/reverse-engineering/sector-collide.md)
+FALLBACK_STEPS = 3        # texel fallback: at most this many layout rebuilds
+FALLBACK_RELATIVE = 0.25  # texel fallback: T_fb >= T_pad * this (the relative guard)
 RADIUS_SOURCES = ('verification/results/run272-batch-busy/burst_draws_out.txt',)
 RADIUS_RE = re.compile(r'\b(?:r|radius)=(\d+)')
 BODY_RE = re.compile(r'\bbody=(\S+)')
@@ -199,11 +214,68 @@ def attach_world(rows, radii):
         w = radii.get(body_key(r['name']))
         if w and 't_pad' in r:
             r.update(radius_world=w, switch_km=switch_km(w, r['t_pad']), switch_km_class=switch_km(w, r['t_class']))
+            fb = r.get('texel_fallback')
+            if fb:
+                fb.update(km_before=switch_km(w, fb['t_pad']), km_after=switch_km(w, fb.get('t_fb')))
+
+
+def texel_opts(opts):
+    """(min_texels, floor_share, fallback W) of a census run: opts['texel'], else lod_overlay's floor defaults and
+    no fallback (callers without the option keep the pre-fallback census)."""
+    t = opts.get('texel') or {}
+    return (t.get('min_texels', lod_overlay.MIN_TEXELS), t.get('floor_share', lod_overlay.TEXEL_FLOOR_SHARE),
+            t.get('fallback', 0.0))
+
+
+def texel_fallback(texel_at, t_pad, t1, x0, min_texels, floor_share, w_target, steps=FALLBACK_STEPS):
+    """Lower switch size for a body refused texel_floor at t_pad (x0 = its lod_atlas.texel_floor result).
+    texel_at(T) -> (texel_floor result, atlas size) of the layout rebuilt at T. Each step takes
+    T' = min(T - 1, round(T * weighted / max(W, min_texels))); T' below max(T_1, T_pad * FALLBACK_RELATIVE, 2)
+    stops with the binding floor as guard ('T_1', 'relative' or 'min_2'); a layout with weighted >= W that passes the floor is accepted. Returns the
+    record dict (accepted, t_pad, t_fb, t1, W, weighted/starved/size before and after, steps, guard)."""
+    target = max(w_target, min_texels)
+    floors = sorted([(t1 or 0, 'T_1'), (t_pad * FALLBACK_RELATIVE, 'relative'), (2, 'min_2')],
+                    key=lambda f: -f[0])
+    floor_t, floor_name = floors[0]
+    out = dict(accepted=False, W=w_target, t_pad=t_pad, t1=t1, t_fb=None, guard=None,
+               weighted_before=x0['weighted_texels_per_px'], starved_before=x0['starved_share'], steps=[])
+    t, w = t_pad, x0['weighted_texels_per_px'] or 0.0
+    for _ in range(steps):
+        nt = min(t - 1, int(round(t * w / target)))
+        if nt < floor_t:
+            out.update(guard=floor_name, guard_t=nt, guard_floor=floor_t)
+            break
+        x, size = texel_at(nt)
+        w = x['weighted_texels_per_px'] or 0.0
+        out['steps'].append(dict(t=nt, weighted=x['weighted_texels_per_px'], starved=x['starved_share'], size=size))
+        t = nt
+        if w >= w_target and not x['refuse']:
+            out.update(accepted=True, t_fb=nt, weighted_after=x['weighted_texels_per_px'],
+                       starved_after=x['starved_share'], size_after=size)
+            break
+    return out
+
+
+def fallback_text(fb):
+    """One-line description of a texel_fallback record."""
+    f = lambda x: '-' if x is None else f'{x:.3f}'
+    steps = ','.join(f'{s["t"]}:{f(s["weighted"])}' for s in fb['steps']) or '-'
+    km = (f' D {fb["km_before"]:.2f}->{fb["km_after"]:.2f} km' if fb.get('km_after') else ' D - km')
+    if fb['accepted']:
+        return (f'T {fb["t_pad"]}->{fb["t_fb"]} weighted {f(fb["weighted_before"])}->{f(fb["weighted_after"])}'
+                f' starved {100 * fb["starved_before"]:.1f}%->{100 * fb["starved_after"]:.1f}%'
+                f' size {fb.get("size_before")}->{fb["size_after"]}{km} steps {steps}')
+    return (f'refused T {fb["t_pad"]} weighted {f(fb["weighted_before"])} starved {100 * fb["starved_before"]:.1f}%'
+            + (f' guard {fb["guard"]} (T_fb {fb["guard_t"]} < {fb["guard_floor"]:g})' if fb.get('guard')
+               else f' W {fb["W"]:g} not reached in {len(fb["steps"])} steps'
+                    f' (last T {fb["steps"][-1]["t"]} weighted {f(fb["steps"][-1]["weighted"])}; steps {steps})'))
 
 
 def aspect_text(r):
     d = '-' if r.get('switch_km') is None else f'{r["switch_km_class"]:.2f}->{r["switch_km"]:.2f}'
-    return (f'k={r["aspect_k"]:.2f} T_class={r["t_class"]} T={r["t_pad"]} r_body={r.get("radius_body", 0):.0f}'
+    fb = r.get('texel_fallback') or {}
+    t = f'{fb["t_pad"]}->{r["t_pad"]}(texel_fallback)' if fb.get('accepted') else r['t_pad']
+    return (f'k={r["aspect_k"]:.2f} T_class={r["t_class"]} T={t} r_body={r.get("radius_body", 0):.0f}'
             f' r_world={r.get("radius_world", "-")} D={d} km'
             + (f' ({r["aspect_note"]})' if r.get('aspect_note') else ''))
 
@@ -305,14 +377,30 @@ def census_body(assets, textures, entry, opts):
         return row
     stem = lod_overlay.qualified_stem(path)
     row['atlas_stem'] = stem
+    min_texels, floor_share, w_target = texel_opts(opts)
+    collapse = lambda t: lod_atlas.collapse(assets, stem, list(mats), r0, alpha, t * opts['widths'][0] / 1280,
+                                            opts['sizes'], specular=True, synth=True, textures=textures, bump=True)
     try:
-        res = lod_atlas.collapse(assets, stem, list(mats), r0, alpha, tp * opts['widths'][0] / 1280, opts['sizes'],
-                                 specular=True, synth=True, textures=textures, bump=True)
+        res = collapse(tp)
     except lod_atlas.AtlasError as exc:
         row['refuse'].append(atlas_reason(exc))
         row['atlas_error'] = str(exc)[:160]
         return row
     lay = res['layout']
+    x0 = lod_atlas.texel_floor(lod_atlas.tile_rows(lay), min_texels, floor_share)
+    if x0['refuse'] and w_target > 0:              # texel fallback: a lower switch size (the body appears farther out)
+        def texel_at(t):
+            L = lod_atlas.plan_layout(r0, mats, alpha, textures, t * opts['widths'][0] / 1280, opts['sizes'],
+                                      lod_atlas.GUTTER, res['slots'])
+            return lod_atlas.texel_floor(lod_atlas.tile_rows(L), min_texels, floor_share), L['size']
+        fb = texel_fallback(texel_at, tp, th[0] if th else None, x0, min_texels, floor_share, w_target)
+        fb['size_before'] = lay['size']
+        row['texel_fallback'] = fb
+        if fb['accepted']:
+            tp = fb['t_fb']
+            row['t_pad'] = tp
+            res = collapse(tp)
+            lay = res['layout']
     row.update(slots=list(res['slots']), tiles=len(lay['tiles']), dup=res['info']['duplicated'],
                c_drawn=drawn_groups(res['record']), c_groups=sum(len(p['groups']) for p in res['record']['parts']),
                atlas_materials=len(res['atlas_indices']), occlusion=res['occlusion'])
@@ -328,7 +416,7 @@ def census_body(assets, textures, entry, opts):
     row['atlas'] = {}
     for w, L in layouts.items():
         tiles = lod_atlas.tile_rows(L)
-        x = lod_atlas.texel_floor(tiles, lod_overlay.MIN_TEXELS, lod_overlay.TEXEL_FLOOR_SHARE)
+        x = lod_atlas.texel_floor(tiles, min_texels, floor_share)
         row['atlas'][w] = dict(size=L['size'], ratio=L['min_ratio'], bytes=atlas_bytes(L['size'], res['slots']),
                                bytes_cap2048=atlas_bytes(min(L['size'], 2048), res['slots']),
                                weighted_ratio=x['weighted_texels_per_px'], starved_share=x['starved_share'],
@@ -427,6 +515,8 @@ def format_row(r):
                         f' {mb(a[w]["bytes"])} MB)'
                         for w in a)
               + f' member~{mb(r["member_bytes"])} MB')
+    if r.get('texel_fallback'):
+        s += f' texel_fallback="{fallback_text(r["texel_fallback"])}"'
     if r.get('trailing'):
         s += f' trailing={r["trailing"]}'
     if r.get('text'):
@@ -520,6 +610,10 @@ def summary(rows, skipped, opts, sectors):
                  f' ({sum(1 for r in el if r["saved_coarse"] <= 0)} eligible bodies save none against it)')
     lines.append('  atlas bytes are a lower bound: diffuse is counted DXT1 (lod_atlas.encode picks DXT5 when the'
                  ' level-0 alpha is not all 255), light/bump/specular DXT5; the slot set assumes --atlas-specular')
+    fbs = [r for r in rows if r.get('texel_fallback')]
+    lines.append(f'texel_fallback (W {texel_opts(opts)[2]:g} texels/px): tried {len(fbs)}, accepted'
+                 f' {sum(1 for r in fbs if r["texel_fallback"]["accepted"])}'
+                 + ''.join(f'; {r["name"]} {fallback_text(r["texel_fallback"])}' for r in fbs))
     lines.append('refusals (a body counts once per reason; first reason in brackets):')
     reasons = _count(x for r in rows for x in r['refuse'])
     first = _count(r['refuse'][0] for r in rows if r['refuse'])
@@ -579,6 +673,10 @@ def main(argv=None):
     ap.add_argument('--aspect-cap', type=parse_aspect_cap, default=(RULE['aspect_ship'], RULE['aspect_station']),
                     metavar='SHIPS,STATIONS', help='K_max of the aspect rule (default 1.5,2.0)')
     ap.add_argument('--no-aspect', action='store_true', help='T_pad = T_class (no aspect factor)')
+    ap.add_argument('--texel-fallback', type=float, default=lod_overlay.TEXEL_FALLBACK, metavar='W',
+                    help='a body the texel floor would refuse at T_pad gets T_fb = round(T_pad * weighted / W),'
+                         ' T_fb >= max(T_1, T_pad/4, 2) (lod_overlay.py --texel-fallback; default'
+                         f' {lod_overlay.TEXEL_FALLBACK:g}, 0 disables)')
     ap.add_argument('--radius-log', action='append', type=Path, metavar='FILE',
                     help='flight census text with r=/radius= and body= (default: RADIUS_SOURCES present)')
     ap.add_argument('--include-other', action='store_true', help='apply the station rule to other top directories')
@@ -591,7 +689,11 @@ def main(argv=None):
     while n <= a.atlas_max_size:
         sizes.append(n); n *= 2
     widths = (a.screen_width,) + tuple(w for w in EXTRA_WIDTHS if w != a.screen_width)
+    if a.texel_fallback < 0:
+        ap.error('--texel-fallback must be >= 0')
     opts = dict(sizes=tuple(sizes), include_other=a.include_other, widths=widths,
+                texel=dict(min_texels=lod_overlay.MIN_TEXELS, floor_share=lod_overlay.TEXEL_FLOOR_SHARE,
+                           fallback=a.texel_fallback),
                 rule=dict(ship_min=a.ship_min, ship_factor=a.ship_factor, station_t=a.station_t, t_cap=a.t_cap,
                           aspect=not a.no_aspect, aspect_ship=a.aspect_cap[0], aspect_station=a.aspect_cap[1]))
     t0 = time.time()

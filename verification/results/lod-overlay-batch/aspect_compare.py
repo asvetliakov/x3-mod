@@ -6,9 +6,13 @@ defaults (reference width 1800 for 1920x1080, atlas sizes 1024/2048, --min-texel
 texel_floor refusals and the t_pad_below_t1 column (a waived guard for source record 0, not a
 refusal) in both runs, and per body k, T_class -> T, ratios and, where a flown radius is known
 (--radius-log, run272 burst census), the switch distance in km (~505 units/m, inferred).
+Both runs apply the texel fallback of the batch (--texel-fallback W, default 1.0 as lod_overlay.py;
+0 reproduces the pre-fallback output): a body the floor would refuse at T_pad is censused at T_fb;
+T changes are counted on the rule's T (threshold_aspect), and the fallback bodies are listed with
+T_pad -> T_fb, weighted and starved share before/after, the T_1 guard and km.
 Read-only; nothing is baked.
 
-  python3 verification/results/lod-overlay-batch/aspect_compare.py [--jobs N] [--radius-log FILE] > aspect_compare_out.txt
+  python3 verification/results/lod-overlay-batch/aspect_compare.py [--jobs N] [--radius-log FILE] [--texel-fallback W] > aspect_compare_out.txt
 """
 import argparse
 import sys
@@ -35,11 +39,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--jobs', type=int, default=4)
     ap.add_argument('--radius-log', action='append', type=Path)
+    ap.add_argument('--texel-fallback', type=float, default=1.0)
     a = ap.parse_args()
     lines = [line.split('#', 1)[0] for line in (Path(__file__).with_name('eligible_bodies.txt')).read_text().splitlines()]
     names = [line.split('=', 1)[0].strip() for line in lines if '=' in line]
     only = {census.body_key(n) for n in names}
-    base = dict(sizes=SIZES, include_other=False, widths=(WIDTH,))
+    base = dict(sizes=SIZES, include_other=False, widths=(WIDTH,),
+                texel=dict(min_texels=MIN_TEXELS, floor_share=SHARE, fallback=a.texel_fallback))
     runs = {}
     radii = census.world_radii(a.radius_log or census.default_radius_logs())
     for label, rule in (('on', dict(census.RULE)), ('off', dict(census.RULE, aspect=False))):
@@ -48,18 +54,31 @@ def main():
         runs[label] = {r['name']: r for r in rows}
     on, off = runs['on'], runs['off']
     common = sorted(set(on) & set(off))
-    changed = [n for n in common if on[n].get('t_pad') != off[n].get('t_pad')]
+    changed = [n for n in common if on[n].get('threshold_aspect') != off[n].get('threshold_aspect')]
     refused = lambda rs, n: rs[n]['refuse'] or not rs[n]['eligible']
     print(f'bodies {len(names)} (eligible_bodies.txt), censused {len(common)}; width {WIDTH}, sizes {list(SIZES)},'
-          f' --min-texels {MIN_TEXELS}, --texel-floor-share {SHARE}; flown radii {len(radii)} bodies')
+          f' --min-texels {MIN_TEXELS}, --texel-floor-share {SHARE}, --texel-fallback {a.texel_fallback:g};'
+          f' flown radii {len(radii)} bodies')
     print(f'T changed by the aspect factor: {len(changed)} (ships {sum(1 for n in changed if on[n]["cat"] == "ship")},'
           f' stations/others {sum(1 for n in changed if on[n]["cat"] != "ship")});'
-          f' at the cap: {sum(1 for n in changed if on[n]["t_pad"] == round(on[n]["t_class"] * (1.5 if on[n]["cat"] == "ship" else 2.0)))}')
+          f' at the cap: {sum(1 for n in changed if on[n]["threshold_aspect"] == round(on[n]["t_class"] * (1.5 if on[n]["cat"] == "ship" else 2.0)))}')
     for label, rs in (('off', off), ('on', on)):
         tf = [n for n in common if texel(rs[n])[2]]
         print(f'aspect {label}: census refusals/filters {sum(1 for n in common if refused(rs, n))},'
               f' texel_floor {len(tf)} {tf}, t_pad_below_t1 {sum(1 for n in common if rs[n].get("t_pad_below_t1"))},'
               f' ratio < 2 {sum(1 for n in common if (texel(rs[n])[0] or 9) < 2)}')
+    for label, rs in (('off', off), ('on', on)):
+        fbs = [n for n in common if rs[n].get('texel_fallback')]
+        acc = [n for n in fbs if rs[n]['texel_fallback']['accepted']]
+        el = sum(1 for n in common if rs[n]['eligible'] and not texel(rs[n])[2])
+        el_acc = sum(1 for n in acc if rs[n]['eligible'])
+        print(f'aspect {label}: texel_fallback tried {len(fbs)}, accepted {len(acc)} (eligible {el_acc}),'
+              f' refused at the guard {[(n, rs[n]["texel_fallback"]["guard"]) for n in fbs if rs[n]["texel_fallback"].get("guard")]},'
+              f' W not reached {[n for n in fbs if not rs[n]["texel_fallback"]["accepted"] and not rs[n]["texel_fallback"].get("guard")]};'
+              f' eligible after the texel rule {el - el_acc} without the fallback -> {el} with it')
+        for n in fbs:
+            print(f'  {n} thr={",".join(str(t) for t in rs[n].get("thresholds", ())) or "-"}'
+                  f' {census.fallback_text(rs[n]["texel_fallback"])}')
     newly = [n for n in common if (refused(on, n) or texel(on[n])[2]) and not (refused(off, n) or texel(off[n])[2])]
     print(f'newly refused with the aspect factor: {len(newly)} {newly}')
     print(f'newly t_pad_below_t1: {[n for n in common if on[n].get("t_pad_below_t1") and not off[n].get("t_pad_below_t1")]}')
@@ -76,7 +95,8 @@ def main():
         (m1, w1, _), (m0, _, _) = texel(r), texel(ro)
         f = lambda x: '-' if x is None else f'{x:.3f}'
         a0, a1 = (ro.get('atlas') or {}).get(WIDTH) or {}, (r.get('atlas') or {}).get(WIDTH) or {}
-        print(f'  {n} k={r["aspect_k"]:.3f} T {r["t_class"]}->{r["t_pad"]} min {f(m0)}->{f(m1)} weighted {f(w1)}'
+        fb = '' if r['t_pad'] == r['threshold_aspect'] else f' (texel_fallback T_fb {r["t_pad"]})'
+        print(f'  {n} k={r["aspect_k"]:.3f} T {r["t_class"]}->{r["threshold_aspect"]}{fb} min {f(m0)}->{f(m1)} weighted {f(w1)}'
               f' atlas {a0.get("size")}/{a0.get("bytes")}->{a1.get("size")}/{a1.get("bytes")}'
               + (f' D {r["switch_km_class"]:.2f}->{r["switch_km"]:.2f} km' if r.get('switch_km') else '')
               + (f' ({r["aspect_note"]})' if r.get('aspect_note') else ''))

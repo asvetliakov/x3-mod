@@ -206,6 +206,53 @@ class BatchCensus(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             lod_overlay.build_parser().parse_args(['--batch', '--aspect-cap', '0.5,2'])
 
+    def test_texel_fallback(self):
+        """T_fb = round(T * weighted / W), rebuilt until weighted >= W; guards T_1, T_pad/4 and 2; W not reached."""
+        linear = lambda t: (dict(weighted_texels_per_px=0.468 * 119 / t, starved_share=0.0 if 0.468 * 119 / t >= 1
+                                 else 0.34, refuse=0.468 * 119 / t < 0.5), 1024)
+        x0 = dict(weighted_texels_per_px=0.468, starved_share=0.34, refuse=True)
+        fb = census.texel_fallback(linear, 119, 30, x0, 0.5, 0.10, 1.0)
+        self.assertEqual((fb['accepted'], fb['t_fb'], [s['t'] for s in fb['steps']]), (True, 55, [56, 55]))
+        self.assertLess(fb['steps'][0]['weighted'], 1.0)                 # 0.9945 at 56: one more step
+        self.assertAlmostEqual(fb['weighted_after'], 0.468 * 119 / 55)
+        fb = census.texel_fallback(linear, 119, 60, x0, 0.5, 0.10, 1.0)  # 56 < T_1 60: refused
+        self.assertEqual((fb['accepted'], fb['guard'], fb['guard_t'], fb['steps']), (False, 'T_1', 56, []))
+        fb = census.texel_fallback(linear, 300, None, dict(x0, weighted_texels_per_px=0.028), 0.5, 0.10, 1.0)
+        self.assertEqual((fb['accepted'], fb['guard'], fb['guard_t'], fb['guard_floor']), (False, 'relative', 8, 75))
+        self.assertIn('guard relative (T_fb 8 < 75)', census.fallback_text(fb))   # torus_barrier_node: 300 -> 8
+        fb = census.texel_fallback(linear, 6, None, dict(x0, weighted_texels_per_px=0.1), 0.5, 0.10, 1.0)
+        self.assertEqual((fb['accepted'], fb['guard']), (False, 'min_2'))   # single-record body: engine s >= 2
+        flat = lambda t: (dict(weighted_texels_per_px=0.9, starved_share=0.4, refuse=True), 2048)
+        fb = census.texel_fallback(flat, 119, 2, dict(x0, weighted_texels_per_px=0.9), 0.5, 0.10, 1.0)
+        self.assertEqual((fb['accepted'], fb['guard'], [s['t'] for s in fb['steps']]), (False, None, [107, 96, 86]))
+        self.assertIn('W 1 not reached in 3 steps (last T 86 weighted 0.900; steps 107:0.900,96:0.900,86:0.900)',
+                      census.fallback_text(fb))
+        row = dict(name='ships/x/a', t_class=80, t_pad=55, aspect_k=1.49,
+                   texel_fallback=census.texel_fallback(linear, 119, 30, x0, 0.5, 0.10, 1.0))
+        census.attach_world([row], {'objects/ships/x/a': 505000})
+        self.assertAlmostEqual(row['texel_fallback']['km_after'], 505000 * 640 / 55 / 505 / 1000)
+        self.assertIn('T=119->55(texel_fallback)', census.aspect_text(row))
+        self.assertIn('T 119->55 weighted 0.468->1.013 starved 34.0%->0.0% size None->1024 D 5.38->11.64 km'
+                      ' steps 56:0.995,55:1.013',
+                      census.fallback_text(row['texel_fallback']))
+        with tempfile.TemporaryDirectory() as folder:                    # through census_body at 1920 wide
+            game = self.game(folder)
+            base = dict(sizes=(1024, 2048), include_other=False, rule=dict(census.RULE), widths=(1920,))
+            only = {'objects/ships/x/good', 'objects/stations/y/tall'}
+            on, _ = census.run(game, dict(base, texel=dict(min_texels=0.5, floor_share=0.1, fallback=1.0)), only=only)
+            off, _ = census.run(game, base, only=only)                   # no texel options: no fallback
+        on, off = ({r['name']: r for r in rows} for rows in (on, off))
+        good = on['ships/x/good']
+        self.assertTrue(good['texel_fallback']['accepted'])
+        self.assertEqual((good['t_pad'], good['threshold_aspect']), (good['texel_fallback']['t_fb'],
+                                                                     off['ships/x/good']['t_pad']))
+        self.assertGreaterEqual(good['atlas'][1920]['weighted_ratio'], 1.0)
+        self.assertLess(off['ships/x/good']['atlas'][1920]['weighted_ratio'], 0.5)
+        self.assertNotIn('texel_fallback', off['ships/x/good'])
+        self.assertEqual(on['stations/y/tall']['texel_fallback']['guard'], 'T_1')   # T_1 160
+        self.assertEqual(on['stations/y/tall']['t_pad'], off['stations/y/tall']['t_pad'])
+        self.assertIn('texel_fallback="T ', census.format_row(good))
+
     def test_rule_sizes_and_sector_parse(self):
         self.assertEqual([census.t_pad('ship', t) for t in ([], [30], [60], [100])], [80, 80, 150, 200])
         self.assertEqual(census.t_pad('station', [250]), 150)

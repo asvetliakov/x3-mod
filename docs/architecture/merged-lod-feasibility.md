@@ -950,6 +950,32 @@ evidence under `verification/results/lod-overlay-batch/batch-dryrun/`.
   1,918,399,632 → 2,065,200,272; `t_pad_below_t1` 0 → 0; `texel_floor` 1 → 2 (`teladi/teladi_M1`, k 1.49,
   T 80 → 119, weighted 0.468); min ratio below 2.0 on 34 → 36 bodies (`XTC_boron_drone` 2.004 →
   1.608, `XTC_boron_m8` 2.009 → 1.413).
+- **Texel fallback (batch default since 2026-09-23; `--texel-fallback W`, default 1.0; 0 restores
+  the refusal).** A body the texel floor would refuse at T_pad is built at a lower switch size T_fb
+  instead, so its merged record appears farther out, where the sparse atlas does not show. The rule
+  is in screen size because the baker has no world radius for unflown bodies: atlas texels per
+  screen pixel scale as 1/T, so T_fb = round(T_pad · weighted / W) (W taken as max(W, `--min-texels`)),
+  the layout is rebuilt at T_fb (the atlas size can change with px) and the step repeats, at most 3
+  layouts, until weighted ≥ W and the starved share ≤ `--texel-floor-share`. T_fb must stay
+  ≥ max(T_1, T_pad/4, 2) (record 1's threshold; a relative floor, so a body is not pushed out to a
+  few pixels; the engine's s = 1 minimum); a step below it, or W not reached, leaves the `texel_floor`
+  refusal (record `texel_fallback.guard` `T_1`/`relative`/`min_2`, the binding floor). The census
+  (`lod_batch_census.texel_fallback`) does the search, so the row's `t_pad` becomes T_fb
+  (`threshold_aspect` keeps the rule's T_pad) and the bake, the pad record and the atlas follow it.
+  Records carry `bodies[].texel_fallback` (T_pad → T_fb, weighted and starved share before/after,
+  atlas sizes, per-step T and weighted, km with a flown radius) and `ratio.texel_fallback` (with
+  `built`, or the bake refusal), `texel_fallback_guard` {body: guard} and `texel_fallback_not_reached`;
+  the summary lists the fallback bodies built and refused at bake, and splits the `texel_floor`
+  refusals into guard + W not reached + no fallback; the option is in the batch settings, so a change makes `--sync`
+  rebuild. The single-body mode keeps the threshold it is given.
+  Over the 339 bodies of `eligible_bodies.txt` at 1920x1080 (measured,
+  `lod-overlay-batch/aspect_compare_out.txt`): 1 body takes the fallback, 1 is refused at the
+  relative guard; eligible after the texel rule 336 → 337. `teladi/teladi_M1` (T_1 30, floor 30):
+  T 119 → 55 in two steps (56: weighted 0.995, 55: 1.013), weighted 0.468 → 1.013, starved
+  34.0 % → 0.0 %, atlas 2048 both; draws 17 → 2 (`r0_drawn`/`C_drawn`, `lod-overlay-batch/census.txt`);
+  no flown radius, so km unknown (at a given radius D scales by 119/55 = 2.16×).
+  `x3tc/torus_barrier_node` (single record, no T_1; draws 4 → 2 in `census.txt`) stays refused
+  `texel_floor`: the first step, T 300 → 8 (weighted 0.028), falls below the relative floor 75.
 - **Clamped layout (`lod_atlas.plan_layout`, 2026-09-23).** The starved tiles of the old
   refusals were not the wide ones: a few faces with saturated UVs (±32768 periods, the 16.16
   limit; in `argon_tech_L_laser_bb` 3,672 of the 23,452 `trims_02`/`trims_03` faces are wider
