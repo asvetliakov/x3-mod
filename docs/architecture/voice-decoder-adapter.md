@@ -117,9 +117,12 @@ v4's patched source `ext/libav/gstavauddec.c` is
 `f5ade4b3f324d74f2cc84630124361398ed1e4f6e7133b12ebcacd4d260908db`, the patch
 itself `1ee93bc47efbc5e27e303525b0d8c90a0beeb867b74dc58d583f3e6d0a0172c8`
 (repository copy `voice-decoder-float-limit.patch`). Its undefined-symbol set is
-identical to v3's, so it adds no import. Backups follow the existing
-convention: `artifacts/wma-plugin-v3` and `artifacts/wma-plugin-v4` in the
-resume directory.
+identical to v3's, so it adds no import. The `/tmp` trees of v1-v3 no longer
+exist (checked 2026-09-23); v4 is tracked in `tools/voice-decoder/v4/`, and the
+backups `artifacts/wma-plugin-v3` (plugin `55f4f87b…`, matches the table) and
+`artifacts/wma-plugin-v4` remain in the resume directory
+`~/x3-mod-resume-2026-09-14/` (see `tools/voice-decoder/v4/README.md`,
+Rollback).
 
 Two review findings constrain reuse: the plugin's single `LC_RPATH` is the
 **absolute** `/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/lib/aarch64`,
@@ -160,11 +163,11 @@ and no-audible-output checks. Result will land at
 - **Delivery at game launch.** The two variables must reach the game process
   through the launcher's own environment, process-locally, with no application,
   bottle or global write and no change to CrossOver's unversioned GStreamer
-  variables. Where the artifacts live for a non-`/tmp` opt-in, and how the
-  absolute `LC_RPATH` is re-established for the user's install, are undecided.
+  variables. How the absolute `LC_RPATH` is re-established for an install
+  where CrossOver Preview is not at `/Applications` is undecided.
 
-  `tools/manage.py launch --voice-decoder DIR` implements that delivery and is
-  off by default. It validates `DIR/runtime/plugins/libgstlibav.dylib` and
+  `tools/manage.py launch` implements that delivery for the chosen decoder
+  directory (explicit `--voice-decoder DIR` or discovered, below). It validates `DIR/runtime/plugins/libgstlibav.dylib` and
   `DIR/runtime/lib`, creates `DIR/registry` if missing (the only write it
   makes anywhere) and requires it to be a writable directory, then sets exactly
   `GST_PLUGIN_PATH_1_0=DIR/runtime/plugins` and
@@ -173,9 +176,31 @@ and no-audible-output checks. Result will land at
   `GST_PLUGIN_PATH`/`GST_REGISTRY`/`GST_PLUGIN_SYSTEM_PATH`, and nothing in the
   application, bottle or global configuration. An invalid `DIR` is refused with
   a message and a nonzero exit before anything is launched. `--dry-run` prints
-  both variables alongside the `X3M_*` environment; without the option the
-  launch command and environment are unchanged. Host coverage is
+  both variables alongside the `X3M_*` environment; without a chosen decoder
+  the launch command is unchanged and the environment carries no decoder
+  variable. Host coverage is
   `verification/analysis/test_voice_decoder_launch.py`.
+
+  Shipped copy and discovery (2026-09-23): the v4 build is tracked verbatim in
+  `tools/voice-decoder/v4/` (runtime, both patches, hash list, symbol audit,
+  build record; provenance and licence position in its `README.md`). The
+  registry cache is not tracked; GStreamer rebuilds it on first launch.
+  Without `--voice-decoder`, a modded launch now delivers the first valid of
+  `<game dir>/x3m/voice-decoder` (the drop-in location for a distribution
+  without the repository) and `tools/voice-decoder/v4`; a discovered directory
+  gets the same checks as an explicit one (plugin, closure, `registry/`
+  created when missing and writable; a dry run creates nothing and reports
+  `registry will be created`), and one that fails is skipped with a
+  `voice decoder: skipping …` note. Without a chosen decoder, stale shell
+  values of `GST_PLUGIN_PATH_1_0`, `GST_REGISTRY_1_0` and
+  `X3M_VOICE_DMO_FALLBACK` are stripped. `--voice-decoder none` (the literal
+  word; `./none` names a directory) opts out, an explicit `DIR` behaves and
+  fails exactly as before, and `--vanilla` never discovers.
+  `X3M_VOICE_DECODER_REPO` overrides the repository candidate for host tests
+  (empty = none) and is never forwarded; the in-process launcher tests patch
+  `VOICE_DECODER_REPO` instead, so no test touches the checkout copy.
+  The launch (and `--dry-run`, also as the JSON `voice_decoder` field) prints
+  `voice decoder: <dir> (<why>)` or `voice decoder: none (<why>)` on stderr.
 - **Cue timing.** The synthetic control's sample timestamp interval is
   95.1304 ms for 100 ms of PCM, and the native game trims cues by start/end
   timestamps, so correct decoding does not by itself make cue timing correct.
@@ -317,8 +342,8 @@ with `faults=N`. No per-frame cost.
 
 The ratified [cue timing correction](voice-cue-timing-correction.md) is applied as
 `voice-decoder-subbuffer.patch` on the private gst-libav copy. Build v3 under
-`/tmp/x3-wma-plugin-v3/` (backup `artifacts/wma-plugin-v3` in the resume
-directory) caps output buffers at 200 samples and sets a 500 ms decoder
+`/tmp/x3-wma-plugin-v3/` (that tree is gone; backup `artifacts/wma-plugin-v3`
+in the resume directory) caps output buffers at 200 samples and sets a 500 ms decoder
 tolerance; the native probe then reports anchor errors within 0.02 ms and
 1000 ms spans within 0.02 ms (`verification/results/bottle-X3/voice-native-actual-v3.json`,
 v1 error up to 701 ms, v2 47 ms). v3 is the gameplay candidate once the load

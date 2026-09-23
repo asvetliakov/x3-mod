@@ -257,7 +257,7 @@ class PackageTests(unittest.TestCase):
         from tools import manage
         wine = self.root / 'wine-placeholder'; wine.touch()
         with mock.patch.object(sys, 'argv', ['manage.py', 'launch', '--game-dir', str(self.game), *options]), \
-             mock.patch.object(manage, 'WINE', wine), mock.patch.object(manage, 'media_package', mp), \
+             mock.patch.object(manage, 'WINE', wine), mock.patch.object(manage, 'VOICE_DECODER_REPO', None), mock.patch.object(manage, 'media_package', mp), \
              mock.patch.object(manage, 'launch_teed', side_effect=launch), \
              mock.patch.object(manage.subprocess, 'Popen', side_effect=AssertionError('no actual child')), \
              contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):

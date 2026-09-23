@@ -131,7 +131,7 @@ class LauncherTee(unittest.TestCase):
             wine = Path(directory) / 'wine'; wine.touch()
             argv = ['manage.py', 'launch', '--dry-run', '--vanilla', '--game-dir', str(game)]
             output = io.StringIO()
-            with mock.patch.object(sys, 'argv', argv), mock.patch.object(self.manage, 'WINE', wine), \
+            with mock.patch.object(sys, 'argv', argv), mock.patch.object(self.manage, 'WINE', wine), mock.patch.object(self.manage, 'VOICE_DECODER_REPO', None), \
                     mock.patch.object(self.manage.subprocess, 'call', side_effect=AssertionError('must never launch')), \
                     contextlib.redirect_stdout(output):
                 self.manage.main()
@@ -164,7 +164,7 @@ class LaunchRecordsTheCommand(unittest.TestCase):
                 return 0
 
             argv = ['manage.py', 'launch', '--game-dir', str(game)]
-            with mock.patch.object(sys, 'argv', argv), mock.patch.object(module, 'WINE', wine), \
+            with mock.patch.object(sys, 'argv', argv), mock.patch.object(module, 'WINE', wine), mock.patch.object(module, 'VOICE_DECODER_REPO', None), \
                     mock.patch.object(module, 'launch_teed', fake_launch), \
                     mock.patch.object(module.subprocess, 'call', side_effect=AssertionError('must never launch')), \
                     contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):

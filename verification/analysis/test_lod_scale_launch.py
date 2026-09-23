@@ -30,7 +30,7 @@ class LodScaleLaunchOption(unittest.TestCase):
         wine.touch()
         argv = ['manage.py', 'launch', '--dry-run', '--vanilla', '--game-dir', str(game), *args]
         output, error = io.StringIO(), io.StringIO()
-        with mock.patch.object(sys, 'argv', argv), mock.patch.object(module, 'WINE', wine), \
+        with mock.patch.object(sys, 'argv', argv), mock.patch.object(module, 'WINE', wine), mock.patch.object(module, 'VOICE_DECODER_REPO', None), \
                 mock.patch.dict(module.os.environ, inherited or {}), \
                 mock.patch.object(module.subprocess, 'call', side_effect=AssertionError('must never launch')), \
                 contextlib.redirect_stdout(output), contextlib.redirect_stderr(error):

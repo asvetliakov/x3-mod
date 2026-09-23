@@ -2,12 +2,16 @@
 from pathlib import Path
 import shutil
 import struct
+import os
 import subprocess
 import tempfile
 import unittest
 from tools.analysis import analyze_motion_readback as readback
 
 ROOT = Path(__file__).resolve().parents[2]
+
+# Launcher dry runs must not discover the checkout's voice decoder copy.
+NO_REPO_DECODER = {**os.environ, 'X3M_VOICE_DECODER_REPO': ''}
 
 class SunShareLane(unittest.TestCase):
     def test_host_contract(self):
@@ -34,21 +38,21 @@ class SunShareLane(unittest.TestCase):
                 readback.load_r32f(path, 2, 2, 3)
 
     def test_cli_default_and_requirements(self):
-        result = subprocess.run(['python3', str(ROOT/'tools/manage.py'), 'launch', '--sun-shadow-lane', '--dry-run'], text=True, capture_output=True)
+        result = subprocess.run(['python3', str(ROOT/'tools/manage.py'), 'launch', '--sun-shadow-lane', '--dry-run'], text=True, capture_output=True, env=NO_REPO_DECODER)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('--sun-shadow-lane requires --motion-output --taa --hdr.', result.stderr)
         # The latch without linear materials (legacy-sun-application.md 4.1): the
         # lane is accepted on original shading; the apply needs the lane and the replay.
         base = ['python3', str(ROOT/'tools/manage.py'), 'launch', '--dry-run', '--motion-output', '--ownership', '--object-trace', '--object-lifetime', '--taa', '--hdr', '--sun-shadow-lane']
-        result = subprocess.run(base, text=True, capture_output=True)
+        result = subprocess.run(base, text=True, capture_output=True, env=NO_REPO_DECODER)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('"X3M_SUN_SHADOW_LANE": "1"', result.stdout)
         self.assertIn('"X3M_LINEAR_MATERIALS": "0"', result.stdout)
         self.assertIn('"X3M_SUN_SHADOW_APPLY": "0"', result.stdout)
-        result = subprocess.run(base + ['--sun-shadow-apply'], text=True, capture_output=True)
+        result = subprocess.run(base + ['--sun-shadow-apply'], text=True, capture_output=True, env=NO_REPO_DECODER)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('--sun-shadow-apply requires --sun-shadow-lane --shadow-replay-depth.', result.stderr)
-        result = subprocess.run(base + ['--shadow-replay-depth', '--sun-shadow-apply'], text=True, capture_output=True)
+        result = subprocess.run(base + ['--shadow-replay-depth', '--sun-shadow-apply'], text=True, capture_output=True, env=NO_REPO_DECODER)
         self.assertEqual(result.returncode, 0, result.stderr)
         for line in ('"X3M_SUN_SHADOW_LANE": "1"', '"X3M_SHADOW_REPLAY_DEPTH": "1"', '"X3M_SUN_SHADOW_APPLY": "1"', '"X3M_LINEAR_MATERIALS": "0"'):
             self.assertIn(line, result.stdout)

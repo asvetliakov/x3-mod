@@ -1,0 +1,26 @@
+undefined_total=560
+resolved_by_crossover=455
+resolved_by_ffmpeg_closure=87
+resolved_by_libSystem=0
+unresolved=18
+--- unresolved symbols:
+___error
+___stack_chk_fail
+___stack_chk_guard
+_bzero
+_fclose
+_fopen
+_fprintf
+_memcmp
+_memcpy
+_memset_pattern16
+_snprintf
+_sscanf
+_strcmp
+_strlen
+_strncmp
+_strstr
+_strtol
+_sysctl
+gst_glib_imports=438
+gst_glib_unresolved_by_cx=0

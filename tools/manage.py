@@ -29,7 +29,7 @@ WINE = Path('/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOve
 # Framing defaults the launcher always forwards in chase mode (user selection
 # 2026-09-16, docs/architecture/chase-hud-reticle-survey.md); they match the
 # DLL's own fallback in src/proxy/chase_camera_math.h.
-CHASE_FRAMING_DEFAULTS = {'X3M_CHASE_PITCH_DOWN_DEG': 0.5, 'X3M_CHASE_OFFSET_Y': 0.50}
+CHASE_FRAMING_DEFAULTS = {'X3M_CHASE_PITCH_DOWN_DEG': 0.5, 'X3M_CHASE_OFFSET_Y': 0.50, 'X3M_CHASE_DISTANCE_SCALE': 1.05}  # distance 0.9 -> 1.05: user decision 2026-09-23
 # TAA image defaults the launcher always forwards in TAA mode (user selection
 # after run 27, 2026-09-16, docs/architecture/temporal-integration.md); they
 # match the DLL's own fallback in src/proxy/capture.cpp. An explicit 0 still
@@ -79,12 +79,70 @@ CULL_SMALL_PARTS_DEFAULT_SCOPE = 'all'
 # forwarded on every modded launch (user selection after runs 45 A and 155/156,
 # 2026-09-19/20, docs/reverse-engineering/sector-collide.md 12.8 and 14: collide
 # phase 27 -> 12.7 ms with the SAT, a further ~60 % of node pairs skipped by the
-# memo, 808,408 verified answers with 0 mismatches). The DLL's own fallback stays
-# off (no variable = nothing patched); --no-collide-sat-sse2 / --no-collide-memo
+# memo, 808,408 verified answers with 0 mismatches). The sector box cull joined
+# them on 2026-09-23 (user decision after run133/134: installs cleanly, rejects
+# ~17 % of P1 pairs, no defect). The DLL's own fallback stays off (no variable =
+# nothing patched); --no-collide-sat-sse2 / --no-collide-memo / --no-collide-box-cull
 # turn them off, and a --vanilla launch forwards nothing unless asked explicitly.
 def collide_default(explicit, args):
     """An explicit --x / --no-x wins; unset means on for a modded launch, off under --vanilla."""
     return explicit if explicit is not None else not args.vanilla
+
+
+VOICE_DECODER_GAME_SUBDIR = Path('x3m/voice-decoder')  # drop-in location under the game directory
+# Shipped copy (tools/voice-decoder/v4/README.md). X3M_VOICE_DECODER_REPO
+# overrides it for tests that run the launcher as a subprocess; an empty value
+# removes the candidate. It is consumed by the launcher and never forwarded.
+VOICE_DECODER_REPO = ROOT / 'tools/voice-decoder/v4'
+VOICE_DECODER_REPO_ENV = 'X3M_VOICE_DECODER_REPO'
+
+
+def voice_decoder_problem(root, *, create_registry, dry_run=False):
+    """None when ROOT holds a deliverable plugin tree, else the reason it does
+    not. With CREATE_REGISTRY a missing ROOT/registry is created; under
+    DRY_RUN nothing is created and a missing registry only needs a writable
+    ROOT (the caller reports that it will be created)."""
+    plugin, libs, registry = root / 'runtime/plugins/libgstlibav.dylib', root / 'runtime/lib', root / 'registry'
+    if not plugin.is_file():
+        return f'{plugin} not found; build the plugin first (docs/architecture/voice-decoder-adapter.md).'
+    if not libs.is_dir():
+        return f'{libs} is not a directory; the private FFmpeg closure is missing.'
+    if dry_run and not registry.exists():
+        return None if os.access(root, os.W_OK) else f'cannot create the registry directory {registry}: {root} is not writable'
+    if create_registry:
+        try:
+            registry.mkdir(parents=True, exist_ok=True)
+        except OSError as error:
+            return f'cannot create the registry directory {registry}: {error}'
+    if not registry.is_dir() or not os.access(registry, os.W_OK):
+        return f'{registry} must be a writable directory.'
+    return None
+
+
+def select_voice_decoder(args, game):
+    """(directory or None, reason, notes). An explicit DIR is validated by the
+    caller and stays fatal; `none` (the literal argument; pass ./none for a
+    directory of that name) opts out; otherwise, on a modded launch, the first
+    valid of <game>/x3m/voice-decoder and the repository copy is taken and
+    each rejected candidate adds a note. A dry run creates nothing."""
+    if args.voice_decoder is not None:
+        if args.voice_decoder == 'none':
+            return None, '--voice-decoder none', []
+        return Path(os.path.abspath(os.path.expanduser(args.voice_decoder))), 'explicit --voice-decoder', []  # keep /tmp, do not follow symlinks
+    if args.vanilla:
+        return None, '--vanilla: no discovery', []
+    repo = os.environ.get(VOICE_DECODER_REPO_ENV)
+    repo = VOICE_DECODER_REPO if repo is None else (Path(repo) if repo else None)
+    notes = []
+    for label, root in (('game directory', game / VOICE_DECODER_GAME_SUBDIR), ('repository copy', repo)):
+        if root is None or not root.is_dir():
+            continue
+        problem = voice_decoder_problem(root, create_registry=not args.dry_run, dry_run=args.dry_run)
+        if problem is None:
+            pending = args.dry_run and not (root / 'registry').exists()
+            return root, f'discovered: {label}' + ('; registry will be created' if pending else ''), notes
+        notes.append(f'voice decoder: skipping {label} {root}: {problem}')
+    return None, 'no valid plugin directory found', notes
 
 
 def cull_small_parts_px(args):
@@ -460,19 +518,20 @@ def main():
     parser.add_argument('--chase-pos-tau', type=float, default=None, help='Chase camera boom spring time constant in seconds (X3M_CHASE_POS_TAU; default 0.38)')
     parser.add_argument('--chase-offset-y', type=float, default=None, help='Fraction of the half screen height the ship sits below centre, -1..1 (X3M_CHASE_OFFSET_Y; default 0.50, about 75%% screen height from a centred native anchor; negative puts the ship above centre)')
     parser.add_argument('--chase-pitch-down-deg', type=float, default=None, help='Downward look in degrees relative to ship forward, 0..30 (X3M_CHASE_PITCH_DOWN_DEG; default 0.5, the near-parallel elevated framing; 0 restores legacy framing geometry)')
-    parser.add_argument('--chase-distance-scale', type=float, default=None, help='Multiplier of the vanilla boom length (X3M_CHASE_DISTANCE_SCALE; default 0.9)')
+    parser.add_argument('--chase-distance-scale', type=float, default=None, help='Multiplier of the vanilla boom length (X3M_CHASE_DISTANCE_SCALE; default 1.05, forwarded on every chase launch; 0.9 before 2026-09-23)')
     parser.add_argument('--chase-lag-clamp-deg', type=float, default=None, help='Maximum orientation lag in degrees, the ship-on-screen window (X3M_CHASE_LAG_CLAMP_DEG; default 8)')
     parser.add_argument('--chase-pos-lag-clamp', type=float, default=None, help='Maximum boom lag as a fraction of the boom length, 0..1 (X3M_CHASE_POS_LAG_CLAMP; default 0.10)')
     parser.add_argument('--chase-combat-tightness', type=float, default=None, help='0..1: while the cockpit reports a target lock (+0x1e4 tracking mode 1/4 with a tracked object; unverified in game) both spring time constants are scaled by (1 - tightness) (X3M_CHASE_COMBAT_TIGHTNESS; default 0 = off)')
     parser.add_argument('--chase-scene-fix', action='store_true', help='Also re-express the layer-0 cockpit-scene camera through the smoothed view each applied frame (X3M_CHASE_SCENE_FIX=1; default off until the first run shows an external-view HUD element rendered there; review 31 A5)')
     parser.add_argument('--chase-view-restore', action='store_true', help='After a gate jump or jumpdrive, restore the rear chase view (mode 258) that the engine resets to the internal view: one-use ticket written into the live script assignment at the optimized store seam 0x004a3ffd under the full arm/pending/consume proof, with seven byte-verified cancellation sites (X3M_CHASE_VIEW_RESTORE=1; default off, patches nothing; requires --camera chase; docs/reverse-engineering/chase-view-transition.md)')
-    parser.add_argument('--chase-hud-anchor', choices=['forward', 'centre'], default='centre', help='Place the admitted chase HUD group at the ship-forward vanishing point or retain its native centre placement (X3M_CHASE_HUD_ANCHOR; default centre; forward requires --camera chase)')
-    parser.add_argument('--voice-decoder', type=Path, default=None, metavar='DIR', help='launch only, opt-in, default off: deliver the process-local WMA decoder plugin built in DIR to this one game process by setting GST_PLUGIN_PATH_1_0=DIR/runtime/plugins and GST_REGISTRY_1_0=DIR/registry/x3-arm64.bin in its environment. Nothing is written into the application, the bottle or any global configuration, no DYLD_LIBRARY_PATH and no unversioned GStreamer variable is touched; only DIR/registry is created if missing. Also sets X3M_VOICE_DMO_FALLBACK=1 so the proxy re-initialises the DMO wrapper the game creates with the registered WMA decoder DMO when the speech decoder class is unregistered (byte-verified hook at 0x004cfd46, inert where Init succeeds; docs/architecture/voice-decoder-adapter.md)')
+    parser.add_argument('--chase-hud-anchor', choices=['forward', 'centre'], default=None, help='Place the admitted chase HUD group at the ship-forward vanishing point or retain its native centre placement (X3M_CHASE_HUD_ANCHOR; default forward with --camera chase since 2026-09-23, centre otherwise; forward requires --camera chase)')
+    parser.add_argument('--voice-decoder', default=None, metavar='DIR', help='launch only. Default on a modded launch: the first valid of <game dir>/x3m/voice-decoder and the repository copy tools/voice-decoder/v4 (a candidate failing the checks below is skipped with a note; none found = no decoder; no discovery under --vanilla); --voice-decoder none = off (the literal word; pass ./none for a directory named none); an explicit DIR must be valid or the launch is refused. Deliver the process-local WMA decoder plugin built in DIR to this one game process by setting GST_PLUGIN_PATH_1_0=DIR/runtime/plugins and GST_REGISTRY_1_0=DIR/registry/x3-arm64.bin in its environment. Nothing is written into the application, the bottle or any global configuration, no DYLD_LIBRARY_PATH and no unversioned GStreamer variable is touched; only DIR/registry is created if missing (explicit or discovered; a dry run creates nothing for a discovered directory and reports that the registry will be created; the registry cache is rebuilt on first launch). The dry run prints the chosen directory and why, or "voice decoder: none". Also sets X3M_VOICE_DMO_FALLBACK=1 so the proxy re-initialises the DMO wrapper the game creates with the registered WMA decoder DMO when the speech decoder class is unregistered (byte-verified hook at 0x004cfd46, inert where Init succeeds; docs/architecture/voice-decoder-adapter.md)')
     parser.add_argument('--lod-scale', type=float, default=None, metavar='FACTOR', help='Scale the engine\'s mesh LOD switch distances by FACTOR, 0.25..4 (above 1 pushes them out, below 1 pulls them in for fewer detailed draws on far objects) (X3M_LOD_SCALE; default absent = vanilla; no other option needed): the LOD threshold multiplier read at 0x0047d44b is replaced by a proxy-owned mirror holding the game\'s value divided by FACTOR (same-length instruction, exact executable and bytes only, otherwise fails closed to vanilla; one lod_scale line in the session log). Cost: about 4-7x the triangles and 13-15x the draw calls per distant station body at 2-3x, and correspondingly fewer below 1; the cap of 4 keeps the integer-truncated thresholds away from collapse (docs/architecture/lod-scale.md)')
     parser.add_argument('--point-light-root-admission', action='store_true', help='Admit a point light for a mesh node whose root object is in range, not only when the node itself is (X3M_POINT_LIGHT_ROOT_ADMISSION=1; default absent = vanilla per-node cull): the six-byte range-test branch at 0x004c27af is replaced by a detour that keeps the native decision for an in-range node and otherwise walks the node\'s parent chain (at most 8 bounds-checked hops) and applies the same range predicate to the root; exact executable and bytes only, otherwise fails closed to vanilla; one point_light_root_admission line in the session log (docs/reverse-engineering/camera-and-lights.md, "Point-light admission site")')
     parser.add_argument('--cull-census', action='store_true', help='Log the engine\'s own cull/LOD census on F8 capture frames (X3M_CULL_CENSUS=1; default absent = nothing patched): two read-only trampolines on the per-node cull/LOD pass 0x0047cfe0 record, per node, the LOD metric s = r*640/D, the small-object measure, the two per-node thresholds, the cull verdict and the selected LOD index into a bounded ring (8192 entries, overflow= counted), emitted as cull_census rows at Present; outside capture frames each stub is one compare and a dead branch. Exact executable and bytes only, otherwise fails closed to vanilla; summarise with tools/analysis/cull_census.py (docs/reverse-engineering/lod-selection.md, "Cull census sites")')
     parser.add_argument('--object-bounds-log', action='store_true', help='Log the projected screen bounds of every routed draw whose object box the caster-candidate route already computed, on F8 capture frames only (X3M_OBJECT_BOUNDS_LOG=1; launch only, default absent = no line; requires --object-trace and --shadow-replay-candidates or --shadow-replay-depth, i.e. the same verified submission identity object_context needs): one object_bounds line per such draw with the box\'s viewport-clipped pixel rectangle, its device depth range and how many of its eight corners are inside the frustum (offscreen=1 for an empty rectangle, near=1 for a box straddling the eye plane). No geometry is transformed twice and nothing is patched; outside capture frames it is one bool test. Bucket a frame with tools/analysis/draw_accounting.py (docs/architecture/engine-frame-time.md, "Object bounds log")')
-    parser.add_argument('--collide-box-cull', action='store_true', help='Insert the missing integer bounding-box early-out in the engine\'s sector collision pass (X3M_COLLIDE_BOX_CULL=1; default absent = nothing patched): two trampolines at the square-root pair tests 0x0045d58e (all-pairs loop of 0x0045d250) and 0x0045cc7c (swept scan of 0x0045cab0) jump to the engine\'s own continue label when max(|dx|,|dy|,|dz|) exceeds the engine\'s reject radius plus a margin that covers its float32 and truncation error, so only pairs the engine\'s own compare discards are skipped; class-7 pairs always take the engine path. Counts pairs and box rejects per frame (collide_census line per 300 frames, collide_census_frame on F8 frames); compare loop_phases collide_p50_us with the option on and off (--loop-phases). Exact executable and bytes only, otherwise fails closed to vanilla (docs/reverse-engineering/sector-collide.md, section 10)')
+    parser.add_argument('--no-collide-box-cull', dest='collide_box_cull', action='store_false', default=None, help='Turn the sector collision box early-out off (it is on by default on a modded launch)')
+    parser.add_argument('--collide-box-cull', dest='collide_box_cull', action='store_true', default=None, help='[launcher default on modded launches since 2026-09-23; --no-collide-box-cull = off; not forwarded under --vanilla unless given] Insert the missing integer bounding-box early-out in the engine\'s sector collision pass (X3M_COLLIDE_BOX_CULL=1; default absent = nothing patched): two trampolines at the square-root pair tests 0x0045d58e (all-pairs loop of 0x0045d250) and 0x0045cc7c (swept scan of 0x0045cab0) jump to the engine\'s own continue label when max(|dx|,|dy|,|dz|) exceeds the engine\'s reject radius plus a margin that covers its float32 and truncation error, so only pairs the engine\'s own compare discards are skipped; class-7 pairs always take the engine path. Counts pairs and box rejects per frame (collide_census line per 300 frames, collide_census_frame on F8 frames); compare loop_phases collide_p50_us with the option on and off (--loop-phases). Exact executable and bytes only, otherwise fails closed to vanilla (docs/reverse-engineering/sector-collide.md, section 10)')
     parser.add_argument('--collide-narrow-census', action='store_true', help='One-flight diagnostic of the sector collision narrow phase (X3M_COLLIDE_NARROW_CENSUS=1; default absent = nothing patched; independent of --collide-box-cull): the call 0x0045d665 -> 0x0048ac80 is bracketed per accepted pair (objects, class/subtype/model, positions, transform hash, result, BVH node-pair visits, microseconds) into a 256-entry ring, 0x0048a9a5 counts mesh-pair tests, the entry of 0x004e2530 counts BVH node-pair visits and the entry of 0x004e2190 counts leaf triangle tests. One collide_narrow line per 300 frames (accepted / mesh_pairs / node_pairs / narrow_us / tri_tests p50, max, sum; the share of pairs a cross-frame no-contact memo would answer) and, on F8 frames, one collide_narrow_pair row per accepted pair ordered by visits. Exact executable and bytes only, otherwise fails closed to vanilla (docs/reverse-engineering/sector-collide.md, section 11.7)')
     parser.add_argument('--no-collide-sat-sse2', dest='collide_sat_sse2', action='store_false', default=None, help='Turn the SSE2 separating-axis test off (it is on by default on a modded launch)')
     parser.add_argument('--collide-sat-sse2', dest='collide_sat_sse2', action='store_true', default=None, help='[launcher default on modded launches; --no-collide-sat-sse2 = off; not forwarded under --vanilla unless given] Replace the engine\'s x87 OBB-OBB separating-axis test of the collision BVH descent with an SSE2 reimplementation (X3M_COLLIDE_SAT_SSE2=1; default absent = nothing patched; independent of --collide-box-cull and --collide-narrow-census): the sole call of 0x004e3280, at 0x004e25a3, is redirected. The box test only prunes the descent and the replacement separates only where the engine\'s compare separates with a 2^-20 relative margin to spare, and on an unordered (NaN) compare exactly as the engine does, so the same contacts are found. No counters of its own: fly it with --collide-narrow-census and compare narrow_us / node_pairs / tri_tests with the option on and off. Exact executable and bytes only, otherwise fails closed to vanilla (docs/reverse-engineering/sector-collide.md, section 12.8)')
@@ -1037,7 +1096,7 @@ def main():
     chase_tunables = {'X3M_CHASE_ROT_TAU': args.chase_rot_tau, 'X3M_CHASE_POS_TAU': args.chase_pos_tau, 'X3M_CHASE_OFFSET_Y': args.chase_offset_y,
                       'X3M_CHASE_PITCH_DOWN_DEG': args.chase_pitch_down_deg, 'X3M_CHASE_DISTANCE_SCALE': args.chase_distance_scale, 'X3M_CHASE_LAG_CLAMP_DEG': args.chase_lag_clamp_deg,
                       'X3M_CHASE_POS_LAG_CLAMP': args.chase_pos_lag_clamp, 'X3M_CHASE_COMBAT_TIGHTNESS': args.chase_combat_tightness}
-    if args.camera != 'chase' and (args.chase_scene_fix or args.chase_view_restore or args.chase_hud_anchor != 'centre' or any(v is not None for v in chase_tunables.values())):
+    if args.camera != 'chase' and (args.chase_scene_fix or args.chase_view_restore or args.chase_hud_anchor == 'forward' or any(v is not None for v in chase_tunables.values())):
         parser.error('--chase-rot-tau, --chase-pos-tau, --chase-offset-y, --chase-pitch-down-deg, --chase-distance-scale, --chase-lag-clamp-deg, --chase-pos-lag-clamp, --chase-combat-tightness, --chase-scene-fix, --chase-view-restore and --chase-hud-anchor forward require --camera chase.')
     # The same ranges chase::valid() enforces in the DLL (docs/architecture/
     # chase-camera.md, "Tunables"); offset_y is signed (negative puts the ship
@@ -1391,9 +1450,9 @@ def main():
             env['X3M_POINT_LIGHT_ROOT_ADMISSION'] = '1'
         else:
             env.pop('X3M_POINT_LIGHT_ROOT_ADMISSION', None)
-        # Collide box cull: same rule, set only when requested so a stale shell
-        # value cannot patch the collision pair tests.
-        if args.collide_box_cull:
+        # Collide box cull: launcher default on a modded launch (collide_default), dropped
+        # from an inherited environment when off so a stale shell value cannot patch the pair tests.
+        if collide_default(args.collide_box_cull, args):
             env['X3M_COLLIDE_BOX_CULL'] = '1'
         else:
             env.pop('X3M_COLLIDE_BOX_CULL', None)
@@ -1453,7 +1512,7 @@ def main():
         else:
             env.pop('X3M_CULL_SMALL_PARTS_PX', None)
             env.pop('X3M_CULL_SMALL_PARTS_SCOPE', None)
-        # The two framing constants are always forwarded at their production
+        # The three framing constants are always forwarded at their production
         # defaults so a stale shell value cannot reframe the camera; the rest
         # fall through to the DLL's compiled defaults when unset.
         for name, value in chase_tunables.items():
@@ -1465,31 +1524,35 @@ def main():
         # even when the shell retains values from an earlier experiment.
         env['X3M_CHASE_SCENE_FIX'] = '1' if args.chase_scene_fix else '0'
         env['X3M_CHASE_COMBAT_TIGHTNESS'] = repr(args.chase_combat_tightness or 0.0)
-        env['X3M_CHASE_HUD_ANCHOR'] = args.chase_hud_anchor
+        env['X3M_CHASE_HUD_ANCHOR'] = args.chase_hud_anchor or ('forward' if args.camera == 'chase' else 'centre')
         env['X3M_CHASE_VIEW_RESTORE'] = '1' if args.chase_view_restore else '0'  # default off: the seven restore sites stay unpatched
-        # Opt-in process-local WMA decoder: exactly the two versioned GStreamer
-        # variables reach the child, and only DIR/registry is ever created.
+        # Process-local WMA decoder: exactly the two versioned GStreamer
+        # variables reach the child, and only <dir>/registry is ever created. Without --voice-decoder a modded launch discovers
+        # <game>/x3m/voice-decoder, then tools/voice-decoder/v4; none under --vanilla.
         # CrossOver's unversioned GST_PLUGIN_PATH/GST_REGISTRY/
         # GST_PLUGIN_SYSTEM_PATH and DYLD_LIBRARY_PATH stay untouched
         # (docs/architecture/voice-decoder-adapter.md).
         voice_env = {}
-        if args.voice_decoder is not None:
-            root = Path(os.path.abspath(args.voice_decoder.expanduser()))  # keep /tmp, do not follow symlinks
-            plugins, plugin = root / 'runtime/plugins', root / 'runtime/plugins/libgstlibav.dylib'
-            libs, registry = root / 'runtime/lib', root / 'registry'
-            if not plugin.is_file():
-                parser.error(f'--voice-decoder: {plugin} not found; build the plugin first (docs/architecture/voice-decoder-adapter.md).')
-            if not libs.is_dir():
-                parser.error(f'--voice-decoder: {libs} is not a directory; the private FFmpeg closure is missing.')
-            try:
-                registry.mkdir(parents=True, exist_ok=True)
-            except OSError as error:
-                parser.error(f'--voice-decoder: cannot create the registry directory {registry}: {error}')
-            if not registry.is_dir() or not os.access(registry, os.W_OK):
-                parser.error(f'--voice-decoder: {registry} must be a writable directory.')
+        voice_root, voice_reason, voice_notes = select_voice_decoder(args, game)
+        env.pop(VOICE_DECODER_REPO_ENV, None)  # launcher-only test override, never forwarded
+        for note in voice_notes:
+            print(note, file=sys.stderr)
+        if voice_root is not None and args.voice_decoder is not None:
+            problem = voice_decoder_problem(voice_root, create_registry=True)
+            if problem is not None:
+                parser.error(f'--voice-decoder: {problem}')
+        voice_line = f'voice decoder: {voice_root} ({voice_reason})' if voice_root else f'voice decoder: none ({voice_reason})'
+        print(voice_line, file=sys.stderr)
+        if voice_root is not None:
+            plugins, registry = voice_root / 'runtime/plugins', voice_root / 'registry'
             voice_env = {'GST_PLUGIN_PATH_1_0': str(plugins), 'GST_REGISTRY_1_0': str(registry / 'x3-arm64.bin'),
                          'X3M_VOICE_DMO_FALLBACK': '1'}  # the DMO wrapper fallback hook travels with the decoder
             env.update(voice_env)
+        else:
+            # Without a chosen decoder no stale shell value may point GStreamer at a
+            # plugin or arm the DMO hook.
+            for name in ('GST_PLUGIN_PATH_1_0', 'GST_REGISTRY_1_0', 'X3M_VOICE_DMO_FALLBACK'):
+                env.pop(name, None)
         # --dll applies to this child only, preserving the user's other overrides;
         # ';' separates entries exactly as in WINEDLLOVERRIDES, which is what
         # CrossOver's wine --dll feeds.
@@ -1520,6 +1583,7 @@ def main():
                 if args.dry_run:
                     print(json.dumps({'command': command, 'cwd': str(game), 'launcher_stderr': str(launcher_log),
                                       'overrides': overrides,
+                                      'voice_decoder': voice_line,
                                       'env': {**{k: env[k] for k in sorted(env) if k.startswith('X3M_')},
                                               **voice_env}}, indent=2))
                     return

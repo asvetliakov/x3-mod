@@ -40,7 +40,7 @@ class MotionCutDefaultsLaunch(unittest.TestCase):
         argv = ['manage.py', 'launch', '--dry-run', '--vanilla', '--game-dir', str(game),
                 '--motion-output', '--ownership', '--object-trace', '--object-lifetime', '--taa']
         output, error = io.StringIO(), io.StringIO()
-        with mock.patch.object(sys, 'argv', argv), mock.patch.object(module, 'WINE', wine), \
+        with mock.patch.object(sys, 'argv', argv), mock.patch.object(module, 'WINE', wine), mock.patch.object(module, 'VOICE_DECODER_REPO', None), \
                 mock.patch.dict(module.os.environ, launch_env, clear=True), \
                 mock.patch.object(module.subprocess, 'call', side_effect=AssertionError('must never launch')), \
                 contextlib.redirect_stdout(output), contextlib.redirect_stderr(error):
