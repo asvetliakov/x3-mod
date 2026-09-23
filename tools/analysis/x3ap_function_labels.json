@@ -11,7 +11,8 @@
     "docs/reverse-engineering/savegame-gz-stream.md",
     "docs/reverse-engineering/script-xml-load-stall.md",
     "docs/reverse-engineering/external-camera.md",
-    "docs/reverse-engineering/music-restart.md"
+    "docs/reverse-engineering/music-restart.md",
+    "docs/reverse-engineering/alternative-video-playback.md"
   ],
   "labels": {
     "0x00402710": {
@@ -308,6 +309,10 @@
       "label": "cut-scene body loader (cut\\%05)",
       "source": "loading-orchestration.md"
     },
+    "0x00497b80": {
+      "label": "P_ script module dispatcher (31 commands; 9/10 = P_GetSysD3DFlags2/P_SetSysD3DFlags2)",
+      "source": "alternative-video-playback.md"
+    },
     "0x00498140": {
       "label": "movie playback driver (allocates, then 0x004cf460)",
       "source": "loading-profile-bottle-x3.md"
@@ -362,6 +367,14 @@
     "0x004b4f80": {
       "label": "CPureDeviceStateManager::SetRenderState (filters via 0x004b5620, then device vtable+0xe4)",
       "source": "constant-uploads.md"
+    },
+    "0x004b6f60": {
+      "label": "settings load from HKCU\\Software\\EGOSOFT\\<app> (VideoD3DFlags2 -> *0x00606f34+0x100 at 0x004b7291)",
+      "source": "alternative-video-playback.md"
+    },
+    "0x004b7b40": {
+      "label": "settings save to HKCU\\Software\\EGOSOFT\\<app> (VideoD3DFlags2 as 4-byte REG_BINARY at 0x004b7e4b)",
+      "source": "alternative-video-playback.md"
     },
     "0x004b89f0": {
       "label": "malloc wrapper used by the crypt/signature path",
@@ -466,6 +479,10 @@
     "0x004cae90": {
       "label": "signed-file load + verify (resource open/close 0x004e72a0/0x004e7350, read 0x004e9210, 2x signature verify 0x004cabc0)",
       "source": "script-xml-load-stall.md"
+    },
+    "0x004ccaf0": {
+      "label": "launcher Graphic Settings dialog proc (resource 110; checkbox 1258 <-> VideoD3DFlags2 bit 0x4000)",
+      "source": "alternative-video-playback.md"
     },
     "0x004ce080": {
       "label": "mod enumeration (addon\\mods, *.cat)",

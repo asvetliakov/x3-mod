@@ -78,7 +78,7 @@ a bit:
 | `0x4e7` (1255) | `+0x100` `0x800` (inverted) | `0x004cd15c` / `0x004cd168` | `Ship &Colour Variations` |
 | `0x4e6` (1254) | `+0x100` `0x1000` (inverted) | `0x004cd190` / `0x004cd19c` | `More Dynamic &Light Sources` |
 | `0x4e8` (1256) | `+0x100` `0x2000` | `0x004cd1c4` / `0x004cd1d0` | `Disable &Vertex Size Optimisation` |
-| `0x4ea` (1258) | `+0x100` `0x4000` | `0x004cd1f8` / `0x004cd204` | not present on page 1912 |
+| `0x4ea` (1258) | `+0x100` `0x4000` | `0x004cd1f8` / `0x004cd204` | not in the old `t/0001-L044.pck`; the effective `addon/04.cat` entry is `Use Alternative Video &Playback` ([alternative-video-playback.md](alternative-video-playback.md)) |
 | `0x4c6` (1222) | `+0xfc` `0x1` | `0x004cd0c6` / `0x004cd0cf` | antialiasing group |
 
 The menu *builder* reads the same bit back to set the checkbox:

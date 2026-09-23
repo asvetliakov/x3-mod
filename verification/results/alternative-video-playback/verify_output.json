@@ -1,0 +1,60 @@
+{
+ "exe_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+ "patterns": {
+  "count": 29,
+  "pass": 29
+ },
+ "guids_checked": 10,
+ "strings_checked": 11,
+ "clsid_counts": {
+  "VideoRenderer": 0,
+  "VMR7": 0,
+  "VMR9": 0,
+  "EVR": 0,
+  "NullRenderer": 0,
+  "SampleGrabber": 0,
+  "OverlayMixer": 0,
+  "AsyncReader": 0,
+  "LAVVideo": 0,
+  "LAVSplitterSource": 0,
+  "DSoundRender": 1,
+  "AMMultiMediaStream": 1
+ },
+ "census_bit_0x4000_on_0x100": {
+  "test_dword": [
+   "0x4cce36",
+   "0x4cd7c3",
+   "0x4cf5a4",
+   "0x4cff96",
+   "0x4d0036"
+  ],
+  "or_dword": [
+   "0x4cd1f8"
+  ],
+  "and_dword_clear": [
+   "0x4cd204"
+  ],
+  "test_byte_0x101_0x40": [],
+  "bt_bit14": []
+ },
+ "caption_1258": {
+  "source": "addon/04.cat",
+  "member": "addon/t/0001-L044.pck",
+  "text": "Use Alternative Video &amp;Playback"
+ },
+ "amstream_syswow64": {
+  "sha256": "a280ac310690a7fb2141dafb083439a9bb5a3160c93ed5c48efeb41024e41ca9",
+  "addmediastream_ret_stream_in_ebx": true,
+  "addmediastream_flag_adddefaultrenderer": true,
+  "adddefaultrenderer_with_ret_stream_is_e_invalidarg": true,
+  "openfile_renderex_flags_not_flags_and_1": true,
+  "openfile_partial_render_ok_cannot_render_to_cannot_connect": true
+ },
+ "bottle_registry_observation": {
+  "value": "0x289",
+  "alt_video_bit_0x4000": false,
+  "raw": "hex:89,02,00,00"
+ },
+ "fails": [],
+ "result": "PASS"
+}
