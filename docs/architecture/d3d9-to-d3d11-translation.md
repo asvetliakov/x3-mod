@@ -33,11 +33,33 @@ this bottle (D3DMetal ships x86_64 only). The one measurement: a
 draw-submission microbenchmark of the game's real per-draw call pattern on
 wined3d-D3D9 versus DXMT-D3D11 (section 5).
 
-**Ratified 2026-09-24 (main session):** no-go on a translator of our own on D3D11 or D3D12; the post chain
-stays on D3D9 and CPU work goes through engine patches. The section 5 microbenchmark is deferred, not queued:
-its own decision rule caps the CPU case under 1 ms per frame at any outcome, so it cannot change the decision
-on its own; it is picked up only if the 5120x1440 flight (Run 77 C) shows the post chain GPU-bound in a way
-the D3D9 steps S1-S5 cannot recover. HDR output over DXGI remains its own later design.
+**Ratification 2026-09-24 (main session), revised the same day after the user challenged the numbers:**
+the census (section 1), the architecture (section 2), the D3D11-over-D3D12 verdict (section 6) and the
+engine-seam analysis (section 7) stand. The decision numbers do not, and the no-go is **suspended** until
+one fixture reports:
+
+- *Effort.* "45-70 agent-days" is uncalibrated: this repository is 15 days old (first commit 2026-09-10,
+  1,534 commits, about 88k lines of production C++ plus HLSL, M) and holds the ownership layer, TAA, fog,
+  bloom, capture and the RE tooling. A scoped translator of 15-25k lines (I) is days of agent wall-clock for a
+  first cut; the bound is user launch cycles to reach draw parity, on the order of 10-20 (I), so one to three
+  weeks of wall-clock dominated by user runs (I).
+- *GPU.* "The Metal driver is the same under wined3d and DXMT" is wrong on this bottle: the Direct3D registry
+  key sets no renderer, and this wined3d build carries the OpenGL path (opengl32 import, GL_RENDERER strings,
+  M), so D3D9 runs over Apple's legacy OpenGL on top of Metal while DXMT is Metal directly (backend choice I,
+  no GL_RENDERER line captured). The dilation 414 vs 190 us (2.2x, M) is at least as likely a backend gap as
+  a "mask-class" property; if it applies to the engine's 5.15 ms and the post chain's 11.7 ms, the win is
+  several ms at 1080p and decisive at 5120x1440, not 1-2 ms.
+- *CPU.* The 1.8 ms counts only the app thread; wined3d's command-stream thread (its GL translation) is
+  never timed. On the CPU-bound 21.9 ms frame it is off the critical path, so the CPU conclusion probably
+  survives (I).
+
+Measure-first is therefore the **GPU backend A/B fixture** (no game launch): the same full-screen pixel
+shader and the same 460-draw engine-like scene on D3D9/wined3d and on D3D11/DXMT with the same timing
+method, at 1920x1080 and 5120x1440 target sizes, recorded under
+`verification/results/bottle-X3/gpu-backend-ab/`. Decision rule: a backend gap of 1.5x or more on the
+engine-like scene or the full-screen pass reopens the translator with the effort re-estimated from this
+repository's throughput; below 1.2x the no-go stands with the numbers above corrected. The section 5 CPU
+microbenchmark is a secondary item of the same fixture.
 
 ## 1. API surface census
 
