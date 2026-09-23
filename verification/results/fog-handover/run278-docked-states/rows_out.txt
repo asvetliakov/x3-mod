@@ -1,0 +1,32 @@
+refusal values:
+  51 refusal=0
+1115 refusal=gate:states
+12638 refusal=none
+first and last gate:states frames:
+volumetric_fog_cards device=1 frame=11692 observed=7 suppressed=0 refused=1 ready=0 warmup=0 applied=0 fault=0 reason=no
+volumetric_fog_cards device=1 frame=12806 observed=7 suppressed=0 refused=1 ready=0 warmup=0 applied=0 fault=0 reason=no
+cold step and the frame after the last refusal:
+volumetric_fog_cards device=1 frame=11691 observed=7 suppressed=0 refused=0 ready=0 warmup=1 applied=0 fault=0 reason=none mode=0 observed_total=43836 suppressed_total=43333 refused_total=0 refusal=none
+volumetric_fog_cache device=1 frame=11692 event=far_ready ms=1062.7 nodes=35301929 worker_busy_ms=20727.9 upload_bytes_total=155225624 missed_locks=6
+volumetric_fog_cards device=1 frame=11692 observed=7 suppressed=0 refused=1 ready=0 warmup=0 applied=0 fault=0 reason=none mode=0 observed_total=43843 suppressed_total=43333 refused_total=1 refusal=gate:states
+volumetric_fog_cards device=1 frame=12806 observed=7 suppressed=0 refused=1 ready=0 warmup=0 applied=0 fault=0 reason=none mode=0 observed_total=51641 suppressed_total=43333 refused_total=1115 refusal=gate:states
+volumetric_fog_cards device=1 frame=12807 observed=7 suppressed=7 refused=0 ready=1 warmup=0 applied=1 fault=0 reason=none mode=2 observed_total=51648 suppressed_total=43340 refused_total=1115 refusal=none
+observed/suppressed/refused/ready/warmup distribution of the volumetric_fog_cards rows:
+3546 observed=4 suppressed=4 refused=0 ready=1 warmup=0
+2471 observed=2 suppressed=2 refused=0 ready=1 warmup=0
+1820 observed=3 suppressed=3 refused=0 ready=1 warmup=0
+1560 observed=6 suppressed=6 refused=0 ready=1 warmup=0
+1115 observed=7 suppressed=0 refused=1 ready=0 warmup=0
+1044 observed=8 suppressed=8 refused=0 ready=1 warmup=0
+ 570 observed=9 suppressed=9 refused=0 ready=1 warmup=0
+ 518 observed=5 suppressed=5 refused=0 ready=1 warmup=0
+ 366 observed=1 suppressed=1 refused=0 ready=1 warmup=0
+ 317 observed=10 suppressed=10 refused=0 ready=1 warmup=0
+ 244 observed=7 suppressed=7 refused=0 ready=1 warmup=0
+  55 observed=11 suppressed=11 refused=0 ready=1 warmup=0
+state shadow mode, resyncs and invalidations in a docked frame and an undocked one:
+state_hooks device=1 installed=1 reason=frame_timing state_shadow=1 rs_mode=shadow
+frame=12692 draws=159 set_rt=4 rs_resyncs=0 rs_invalidations=0 sb_resyncs=0 draws=60 frame=12812 draws=164 set_rt=4 rs_resyncs=0 rs_invalidations=0 sb_resyncs=0 draws=60 
+capture rows (none: no per-draw state row exists for the docked frames):
+0
+0

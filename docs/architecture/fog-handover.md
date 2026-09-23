@@ -585,6 +585,30 @@ timing mode and at every change (60-frame spacing) otherwise; the gates are the 
 same order, one branch each, no new per-card work. The next flight's first `refusal=` value after a
 docked load settles it.
 
+*Run 75 A (run278, Run75 DLL from db13d929) pinned the gate.* From the cold step (11692, `far_ready`,
+`warmup=0`) to 12806 every frame's first card was refused at `gate:states` (1,115 frames, measured:
+`verification/results/fog-handover/run278-docked-states/rows.sh`); at 12807 the same 7 cards a frame
+were masked 7/7 with no other change in any per-frame row (draws 159 -> 164 at frames 12692 -> 12812, `set_rt` 4 both sides,
+no resync, `rs_invalidations=0`), and the transits and the new-game start of the same flight were
+accepted. So the draw is the fog card (pair, declaration, shape and stream frequency all passed; the
+same 7 draws are masked after the undock) and one of the twelve render states the gate compares
+differs while docked after a load. Which one is not in the log (no card row carries states; the
+motion-route capture was off), so it is inferred from the engine side: the card material's own text
+is `g_ZEnable 1` / `g_CullMode 2` and the dust pass overrides both to `ZENABLE 0` / `CULLMODE NONE`
+in every in-flight card (run174, 422 draws, [sector-fog.md](../reverse-engineering/sector-fog.md)
+sections 4 and 10); the docked-at-load view is the one scene set up by the load rather than by the
+sector entry, and the undock's view change rebuilds it. Fix (`fog_card_match.h`): `ZENABLE` takes 0
+or 1 and `CULLMODE` NONE or CW, the two documented sources of the card's state; `ZWRITEENABLE 0`,
+`STENCILENABLE 0`, colour mask 7, `ALPHATESTENABLE 0`, `FILLMODE SOLID` and the screen-blend triple
+stay exact, so a masked card still writes nothing (the replacement changes only `COLORWRITEENABLE`,
+restored in `finish_fog_card`), and the pair, shape, scene and frequency gates are unchanged.
+Diagnostic: the refused vector is printed as `volumetric_fog_card_states` (z, zwrite, atest, blend,
+mask, cull, stencil, fill, src, dst, op, sepalpha; 12 state fields after device and frame) at most once per 300 frames, on the refusal
+path only, so the next docked load names the state if it is not z/cull. Host:
+`run278_docked_states` in `fog_card_motion_cases_inc.h` (the (1, CW), (0, CW), (1, NONE) vectors
+admitted hooked and unhooked with the in-flight card's native calls; z 2, cull 3, cull 0, zwrite 1,
+stencil 1, alpha test 1 refused as `gate:states`; the row's 300-frame spacing).
+
 **D. New game into a fogged sector (16258).** Three parts. (1) The prefill could not start: the
 poll found bluewell 7.1 s into the 12.6 s stall but `prefill_density` refused (`not_posted`)
 because no stored frame had created the density worker (and no `FogPass` existed). Now the poll

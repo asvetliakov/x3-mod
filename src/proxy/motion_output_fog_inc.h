@@ -424,8 +424,8 @@ void MotionOutput::prepare_fog_card(const MotionDrawCall& call, MotionRoute& rou
     fog_latch_.card(frame_);
     ++fog_cards_.observed;
     if (!fog_sector_.current(frame_) || !fog_cards_.may_replace()) return;
-    static_assert(D3DPT_TRIANGLELIST == 4 && D3DDECLTYPE_FLOAT16_4 == 16 && D3DZB_FALSE == 0 && D3DCULL_NONE == 1 &&
-        D3DFILL_SOLID == 3 && D3DBLEND_ONE == 2 && D3DBLEND_INVSRCCOLOR == 4 && D3DBLENDOP_ADD == 1, "captured D3D9 enums");
+    static_assert(D3DPT_TRIANGLELIST == 4 && D3DDECLTYPE_FLOAT16_4 == 16 && D3DZB_FALSE == 0 && D3DZB_TRUE == 1 && D3DCULL_NONE == 1 &&
+        D3DCULL_CW == 2 && D3DFILL_SOLID == 3 && D3DBLEND_ONE == 2 && D3DBLEND_INVSRCCOLOR == 4 && D3DBLENDOP_ADD == 1, "captured D3D9 enums");
     FogCardShape shape{call.indexed, call.user_memory, shadow_.stream0 != 0, shadow_.indices != 0,
         shadow_.declaration_stream0_only, false, unsigned(call.topology), call.primitives, call.vertex_count,
         shadow_.stream0_stride, shadow_.position_offset, shadow_.position_type, 0, shadow_.declaration};
@@ -457,7 +457,17 @@ void MotionOutput::prepare_fog_card(const MotionDrawCall& call, MotionRoute& rou
         state_field(30), state_field(29), state_field(31),
         blend_known(0) ? composition_blend_field(0) : -1, blend_known(1) ? composition_blend_field(1) : -1,
         blend_known(2) ? composition_blend_field(2) : -1, blend_known(3) ? composition_blend_field(3) : -1};
-    if (!states.matches()) { refuse("gate:states"); return; }
+    if (!states.matches()) {
+        // Run278 case C: a docked-at-load card fails here with no state row in the log. The
+        // refused vector, at most once per 300 frames, on the refusal path only.
+        if (frame_ >= fog_card_states_log_frame_) {
+            fog_card_states_log_frame_ = frame_ + 300u;
+            call_preserved([&] { log("volumetric_fog_card_states device=%llu frame=%llu z=%ld zwrite=%ld atest=%ld blend=%ld mask=%ld cull=%ld stencil=%ld fill=%ld src=%ld dst=%ld op=%ld sepalpha=%ld",
+                id_, frame_, states.z, states.zwrite, states.alpha_test, states.blend, states.color_mask, states.cull, states.stencil, states.fill,
+                states.source, states.destination, states.operation, states.separate_alpha); });
+        }
+        refuse("gate:states"); return;
+    }
     if (!fog_card_ready_checked_) {
         fog_card_ready_checked_ = true;
         // Shared parameter/sun validation includes floating ABI returns. Keep

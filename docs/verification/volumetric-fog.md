@@ -2747,3 +2747,41 @@ same-family, show our fog immediately; the docked save load still shows the engi
 names it: `volumetric_fog_cards … observed=7 refused=1 ready=0 … refusal=gate:states` on 1,115 frames from frame
 11692 (measured, grep of the session log; 12,638 frames `refusal=none`). The docked-at-load card draw fails the
 render-state gate, not readiness; fix in progress.
+## Run 75 A (run278): docked-at-load card refusal pinned to the states gate, z/cull variant admitted (2026-09-23)
+
+Worktree change, not yet a candidate. Log `/tmp/x3-bottleX3-run278/session-20260923-222804-212.log` (Run75 DLL
+from db13d929); rows and counts by
+[run278-docked-states/rows.sh](../../verification/results/fog-handover/run278-docked-states/rows.sh) (`rows_out.txt`).
+- Measured: `refusal=gate:states` on 1,115 `volumetric_fog_cards` rows, frames 11692 (the cold step's `far_ready`,
+  `warmup=0`) to 12806, every one `observed=7 suppressed=0 refused=1 ready=0`; 12,638 rows `refusal=none`; at 12807
+  the same 7 cards a frame are masked 7/7 (`mode=2`, pass `applied=1`) and no other per-frame row changes (draws
+  159 -> 164 (frames 12692 -> 12812), `set_rt=4` on both sides, `rs_resyncs=0 rs_invalidations=0 sb_resyncs=0`, `state_hooks
+  state_shadow=1`). No row carries the card's states (capture off: 0 `capture=1` frames, 0 `motion_route` rows).
+- Inferred (engine side, sector-fog.md sections 4 and 10): the draw is the fog card (pair, declaration, shape and
+  stream frequency passed; the same draws are masked after the undock) and its `ZENABLE`/`CULLMODE` carry the
+  material's own text (`g_ZEnable 1`, `g_CullMode 2`) instead of the dust pass's override (0, NONE) in the scene
+  the load sets up. Not verified in flight: the next docked load prints the refused vector.
+- Fix (`fog_card_match.h`): `ZENABLE` 0 or 1, `CULLMODE` NONE or CW; zwrite 0, stencil 0, mask 7, alpha test 0,
+  fill SOLID and the ONE/INVSRCCOLOR/ADD/no-separate-alpha blend stay exact (a masked card writes nothing under
+  either variant; the replacement changes only `COLORWRITEENABLE`). Diagnostic `volumetric_fog_card_states`
+  (the 12 fields) on the refusal path, at most once per 300 frames (`fog_card_states_log_frame_`).
+- Host: `run278_docked_states admitted=6 refused=12 spaced=1` in `fog_card_motion_cases_inc.h` ((1,CW), (0,CW),
+  (1,NONE) admitted hooked and unhooked with the in-flight card's calls: 2 mask sets, 12 or 0 state gets; z 2,
+  cull 3, cull 0, zwrite 1, stencil 1, alpha test 1 refused `gate:states`; the row's spacing 300 frames, one row
+  per frame at most); the policy driver's per-member loop (+2 refused for every member, +1 admitted only for
+  z and cull, the docked vector, zwrite 1 refused); the four fog modules 37 tests OK (`test_fog_cards` 3,
+  `test_fog_handover`, `test_volumetric_fog`, `test_fog_route_bridge`).
+- Build: scratch MinGW i686 RelWithDebInfo, 0 warnings, d3d9.dll 55,968,044 bytes; `check_no_x87.py` PASS,
+  673 reachable functions, no violations.
+- Fog pass fixture (bottle X3, `wine_lock.py`): PASS 123 checks, 30/30 gates, `HANDOVER frames=483 whole=1
+  latches=1 ready_ms=605.6`, 51.4 s. The first attempt idled after writing all 143 images until the 540 s
+  runner limit (the hang the Run75 record notes); the orphan fixture was killed and the rerun passed.
+- Route bridge (bottle X3, `wine_lock.py`, checkout harness for both builds): PASS 37,281 checks + 4 exit checks,
+  110 names, none only in Run73 / Run75 or only here, shadow/motes A/B 15/13 as before; against the qualified
+  Run75 log (36,585) the six per-card names (`native_card_forward_once`, `native_card_LastError_preserved`,
+  `once_only_hook_fallback_guard`, `one_fog_transaction_maximum`, `route_RT1_RT2_bytes`,
+  `route_pass_state_restored`) each count +116, a uniform frame-count difference between runs (inferred), not a
+  changed verdict. Timings: baseline 2.8 s, bridge 18.6 s, exit 43.4 s; the lock waited 1,503 s behind two other
+  agents' runs. Tracked `verification/results/bottle-X3/` unchanged.
+- Not verified: the refused vector in flight (the next docked load's `volumetric_fog_card_states` row) and native
+  Windows.

@@ -140,6 +140,7 @@ struct MotionOutput {
  const char* fog_last_reason_="";
  bool fog_requested_=true,fog_enabled_=true,fog_disabled_=false,fog_attach_failed_=false,fog_cards_replace_=true;
  const char* fog_card_refusal_=nullptr;const char* fog_card_last_refusal_=nullptr;const char* fog_card_ready_reason_=nullptr;bool fog_card_refusal_ready_=false;
+ std::uint64_t fog_card_states_log_frame_=0; // the refused state vector's 300-frame spacing (the mock log is a no-op; the cases read this)
  std::uint32_t fog_density_ready_sector_=0,fog_density_ready_id_=0;
  float fog_strength_=.02f,fog_anisotropy_=.3f;
  bool fog_card_ready_checked_=false,fog_card_ready_=false,state_hooks_=false,composition_busy_=false,

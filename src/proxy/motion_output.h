@@ -2306,6 +2306,7 @@ private:
     const char* fog_card_last_refusal_ = nullptr; // the refusal the last cards line printed (part of its change key)
     bool fog_card_refusal_ready_ = false;         // the refusal is a readiness verdict (printed with the ready: prefix)
     const char* fog_card_ready_reason_ = nullptr; // the frame's readiness verdict when it failed
+    std::uint64_t fog_card_states_log_frame_ = 0; // first frame at which the next refused state vector may be printed (300-frame spacing)
     FogCardPolicy fog_cards_{};
     unsigned fog_card_mode_ = 0, fog_card_logs_ = 0;
     std::uint64_t fog_card_logged_frame_ = 0, fog_transition_frame_ = ~std::uint64_t(0), fog_card_last_report_ = ~std::uint64_t(0), fog_card_observed_total_ = 0, fog_card_suppressed_total_ = 0, fog_card_refused_total_ = 0;

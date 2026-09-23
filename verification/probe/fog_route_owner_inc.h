@@ -74,6 +74,7 @@ struct MotionOutput {
     bool fog_families_checked_=false; // added by dcf3728b (motion_output.h fog_families_checked_)
     unsigned fog_failures_=0,fog_logs_=0,fog_card_mode_=0,fog_card_logs_=0;
     std::uint64_t id_=1,frame_=0,generation_=0,fog_frame_=~std::uint64_t(0),fog_applied_frames_=0;
+    std::uint64_t fog_card_states_log_frame_=0; // run278 member (motion_output.h): the refused state vector row's spacing
     std::uint64_t fog_card_logged_frame_=0,fog_transition_frame_=~std::uint64_t(0),fog_card_last_report_=~std::uint64_t(0),fog_card_observed_total_=0,fog_card_suppressed_total_=0,fog_card_refused_total_=0;
     const char* fog_last_reason_="";const char* fog_card_fault_reason_="none";
 #ifndef X3M_ROUTE_BRIDGE_BASELINE
