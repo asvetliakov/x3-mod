@@ -609,6 +609,23 @@ path only, so the next docked load names the state if it is not z/cull. Host:
 admitted hooked and unhooked with the in-flight card's native calls; z 2, cull 3, cull 0, zwrite 1,
 stencil 1, alpha test 1 refused as `gate:states`; the row's 300-frame spacing).
 
+*Run 76 C (run283, Run76 DLL from 02b34ace) pinned the state: alpha test.* The refused vector,
+printed at frames 961, 1261 and 1561, was the same each time: `z=0 zwrite=0 atest=1 blend=1 mask=7
+cull=1 stencil=0 fill=3 src=2 dst=4 op=1 sepalpha=0`; the first card of every frame from 961 to 1789
+was refused at `gate:states` (829 frames), then 901 frames `refusal=none` after the undock (measured:
+`verification/results/fog-handover/run283-docked-states/rows.sh`, output beside it). So the
+docked-at-load card differs from the in-flight card in `ALPHATESTENABLE` only (1, not 0); z is 0 and
+cull NONE, the dust pass's override, so the run278 z/cull inference was not the differing state (the
+z/cull admission stays: it is harmless under the same argument). Fix (`fog_card_match.h`):
+`ALPHATESTENABLE` takes 0 or 1; 2 or unknown (-1) refuses. Safety: the replacement forces
+`COLORWRITEENABLE` to 0 on a masked card, and `ZWRITEENABLE 0` and `STENCILENABLE 0` stay exact, so
+alpha test can only discard fragments of a draw that writes nothing; the composite sets its own states
+in a state block; the pair, declaration, shape, scene and frequency gates stay strict. Host:
+`run278_docked_states` now admits the measured run283 vector as well (8 admitted, hooked and
+unhooked, with the in-flight card's native calls) and refuses 22 (from the run278 base: z 2, cull 3,
+cull 0, zwrite 1, stencil 1; from the run283 base: alpha test 2, zwrite 1, stencil 1, blend 0, fill 2,
+mask 15); `test_fog_cards` checks the matcher admits alpha test 1 and refuses 2 and -1. Not yet flown.
+
 **D. New game into a fogged sector (16258).** Three parts. (1) The prefill could not start: the
 poll found bluewell 7.1 s into the 12.6 s stall but `prefill_density` refused (`not_posted`)
 because no stored frame had created the density worker (and no `FogPass` existed). Now the poll

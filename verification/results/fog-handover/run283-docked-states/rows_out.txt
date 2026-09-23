@@ -1,0 +1,11 @@
+refused state vectors (frames, then the distinct vectors):
+volumetric_fog_card_states device=1 frame=961
+volumetric_fog_card_states device=1 frame=1261
+volumetric_fog_card_states device=1 frame=1561
+   3 device=1 z=0 zwrite=0 atest=1 blend=1 mask=7 cull=1 stencil=0 fill=3 src=2 dst=4 op=1 sepalpha=0
+refusal values of the volumetric_fog_cards rows:
+ 829 refusal=gate:states
+ 901 refusal=none
+first and last gate:states frames:
+volumetric_fog_cards device=1 frame=961 observed=7 suppressed=0 refused=1 ready=0 warmup=0 applied=0 fault=0 reason=none
+volumetric_fog_cards device=1 frame=1789 observed=7 suppressed=0 refused=1 ready=0 warmup=0 applied=0 fault=0 reason=non

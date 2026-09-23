@@ -65,9 +65,10 @@ int main() {
    assert(m.device_storage.freq_gets==1&&m.device_storage.gets==(hooked?0:12)&&m.device_storage.calls==2);
  }
  // Hooked and unhooked admission agree on every mismatched required value
- // (ZENABLE 1 is the material's own value, admitted: its refused value is USEW, 2).
+ // (ZENABLE 1 is the material's own value, admitted: its refused value is USEW, 2;
+ // ALPHATESTENABLE 1 is the run283 docked value, admitted: its refused value is 2).
  for(bool hooked:{false,true})for(unsigned state=0;state<12;++state){
-   MotionOutput m;m.state_hooks_=hooked;m.warm();const long flip=state==0?2:1;
+   MotionOutput m;m.state_hooks_=hooked;m.warm();const long flip=state==0||state==2?2:1;
    if(state<8){m.device_storage.states[state]^=flip;for(unsigned i=0;i<32;++i)if(shadow_states[i]==state)m.shadow_.states[i]^=DWORD(flip);}
    else {m.device_storage.blends[state-8]^=1;m.shadow_.composition_blend[state-8]^=1;}
    m.draw();assert(m.fog_cards_.refused&&m.device_storage.calls==0&&m.device_storage.gets==(hooked?0:12));
@@ -297,20 +298,29 @@ int main() {
    std::printf("run273_card_refusal named=%u PASS\n",named);
  }
  { // run278 C: the docked-at-load card carries the material's own z/cull (ZENABLE 1, CULLMODE CW) instead of the dust
-   // pass's override; admitted, hooked and unhooked, with the same native calls as the in-flight card. Every other
-   // value stays refused, and the refused vector's row is spaced 300 frames apart.
+   // pass's override; run283 measured the refused docked vector: z 0, cull NONE, ALPHATESTENABLE 1 (the only differing
+   // state). Each is admitted, hooked and unhooked, with the same native calls as the in-flight card. Every other value
+   // stays refused, from both the run278 and the run283 bases, and the refused vector's row is spaced 300 frames apart.
    unsigned admitted=0,refused=0;
    auto set=[](MotionOutput& m,unsigned state,long value){m.device_storage.states[state]=value;for(unsigned i=0;i<32;++i)if(shadow_states[i]==state)m.shadow_.states[i]=DWORD(value);};
-   for(bool hooked:{false,true})for(unsigned variant=0;variant<3;++variant){
+   for(bool hooked:{false,true})for(unsigned variant=0;variant<4;++variant){
      MotionOutput m;m.state_hooks_=hooked;m.warm();
-     if(variant!=1)set(m,D3DRS_ZENABLE,1);if(variant!=2)set(m,D3DRS_CULLMODE,2); // (1,CW), (0,CW), (1,NONE)
+     if(variant==3)set(m,D3DRS_ALPHATESTENABLE,1); // run283: (0,NONE) with alpha test 1
+     else{if(variant!=1)set(m,D3DRS_ZENABLE,1);if(variant!=2)set(m,D3DRS_CULLMODE,2);} // (1,CW), (0,CW), (1,NONE)
      m.draw();assert(!m.fog_cards_.refused&&m.fog_cards_.suppressed==1&&m.device_storage.calls==2&&m.device_storage.gets==(hooked?0:12));
      assert(m.fog_card_states_log_frame_==0&&!m.fog_card_refusal_);++admitted;
    }
-   for(bool hooked:{false,true})for(unsigned wrong=0;wrong<6;++wrong){
-     MotionOutput m;m.state_hooks_=hooked;m.warm();set(m,D3DRS_ZENABLE,1);set(m,D3DRS_CULLMODE,2);
+   for(bool hooked:{false,true})for(unsigned wrong=0;wrong<10;++wrong){
+     MotionOutput m;m.state_hooks_=hooked;m.warm();
+     if(wrong<5){set(m,D3DRS_ZENABLE,1);set(m,D3DRS_CULLMODE,2);}else set(m,D3DRS_ALPHATESTENABLE,1); // run278 / run283 base
      switch(wrong){case 0:set(m,D3DRS_ZENABLE,2);break;case 1:set(m,D3DRS_CULLMODE,3);break;case 2:set(m,D3DRS_CULLMODE,0);break;
-      case 3:set(m,D3DRS_ZWRITEENABLE,1);break;case 4:set(m,D3DRS_STENCILENABLE,1);break;case 5:set(m,D3DRS_ALPHATESTENABLE,1);break;}
+      case 3:set(m,D3DRS_ZWRITEENABLE,1);break;case 4:set(m,D3DRS_STENCILENABLE,1);break;
+      case 5:set(m,D3DRS_ALPHATESTENABLE,2);break;case 6:set(m,D3DRS_ZWRITEENABLE,1);break;case 7:set(m,D3DRS_STENCILENABLE,1);break;
+      case 8:set(m,D3DRS_ALPHABLENDENABLE,0);break;case 9:set(m,D3DRS_FILLMODE,2);break;}
+     m.draw();assert(m.fog_cards_.refused&&m.device_storage.calls==0&&!std::strcmp(m.fog_card_refusal_,"gate:states"));++refused;
+   }
+   for(bool hooked:{false,true}){ // run283 base, wrong colour mask
+     MotionOutput m;m.state_hooks_=hooked;m.warm();set(m,D3DRS_ALPHATESTENABLE,1);set(m,D3DRS_COLORWRITEENABLE,15);
      m.draw();assert(m.fog_cards_.refused&&m.device_storage.calls==0&&!std::strcmp(m.fog_card_refusal_,"gate:states"));++refused;
    }
    MotionOutput m;m.warm();set(m,D3DRS_ZWRITEENABLE,1);

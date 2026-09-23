@@ -24,10 +24,17 @@ struct FogCardShape {
 // text (g_ZEnable 1, g_CullMode 2 = CW; sector-fog.md section 4). A masked
 // card writes nothing under either (depth write off, stencil off), so the
 // docked-at-load variant (run278, fog-handover.md case C) is the same draw.
+// ALPHATESTENABLE takes 0 or 1: the docked-at-load card carries alpha test 1
+// with z 0 and cull NONE (run283, the only differing state). The replacement
+// forces COLORWRITEENABLE to 0 on a masked card and zwrite 0 and stencil 0
+// stay exact, so alpha test can only discard fragments of a draw that writes
+// nothing; the composite sets its own states in a state block. Any other
+// value (2, unknown -1) refuses; pair, declaration, shape, scene and
+// frequency gates stay strict.
 struct FogCardStates {
     long z, zwrite, alpha_test, blend, color_mask, cull, stencil, fill, source, destination, operation, separate_alpha;
     bool matches() const noexcept {
-        return (z == 0 || z == 1) && zwrite == 0 && alpha_test == 0 && blend == 1 && color_mask == 7 && (cull == 1 || cull == 2) && stencil == 0 && fill == 3 &&
+        return (z == 0 || z == 1) && zwrite == 0 && (alpha_test == 0 || alpha_test == 1) && blend == 1 && color_mask == 7 && (cull == 1 || cull == 2) && stencil == 0 && fill == 3 &&
             source == 2 && destination == 4 && operation == 1 && separate_alpha == 0;
     }
 };

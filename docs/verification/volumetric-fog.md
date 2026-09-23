@@ -2826,10 +2826,24 @@ Design and numbers: [fog-gpu-cost.md](../architecture/fog-gpu-cost.md), "Step B 
   `test_sector_background` 48 OK; after the review fixes the twelve modules together: 93 tests OK.
 - Open: the flight (same stand, `--gpu-sync-timing`, `--fog-far-bins 40` then `24`; `fog_march` and the look).
 
-## Run 283 (Run 76 C, 2026-09-24): docked load still engine fog; the state is named
+## Run 283 (Run 76 C, 2026-09-24): docked-at-load card pinned to alpha test, admitted (uncommitted worktree, not installed)
 
-`volumetric_fog_card_states device=1 frame=961 z=0 zwrite=0 atest=1 blend=1 mask=7 cull=1 stencil=0 fill=3 src=2 dst=4
-op=1 sepalpha=0` every 300 frames on the refusal path; 829 frames `refusal=gate:states`, 901 `refusal=none` after
-undock (measured, grep). The docked-at-load card differs from the in-flight card in ALPHATESTENABLE only (1 instead of
-0); z and cull match the in-flight draw, so the 79ebac48 z/cull admission was not the differing state. Fix in progress:
-admit alpha test 0|1 (a masked card writes no colour; zwrite/stencil stay exact).
+- Flight (Run76 DLL from 02b34ace, `/tmp/x3-bottleX3-run283/session-20260924-003849-212.log`): the refused vector
+  at frames 961, 1261 and 1561 was identical, `z=0 zwrite=0 atest=1 blend=1 mask=7 cull=1 stencil=0 fill=3 src=2
+  dst=4 op=1 sepalpha=0`; 829 frames `refusal=gate:states` (961-1789), 901 `refusal=none` after the undock
+  (measured, [rows.sh](../../verification/results/fog-handover/run283-docked-states/rows.sh), output beside it).
+  The only state differing from the in-flight card is `ALPHATESTENABLE` 1; z/cull were the dust pass's override.
+- Fix: `FogCardStates::matches()` admits `ALPHATESTENABLE` 0 or 1 (2 and unknown -1 refuse). A masked card writes no
+  colour (the replacement forces `COLORWRITEENABLE` 0), zwrite 0 and stencil 0 stay exact, so alpha test only
+  discards fragments of a draw that writes nothing; the composite sets its own states in a state block; pair,
+  declaration, shape, scene and frequency gates unchanged; the z/cull admission of 79ebac48 stays
+  ([fog-handover.md](../architecture/fog-handover.md) case C, run283 paragraph).
+- Host: `run278_docked_states admitted=8 refused=22` (the run283 vector admitted hooked and unhooked; zwrite 1,
+  stencil 1, alpha test 2, blend 0, mask 15, fill 2 refused from the run283 base), the flip loop's refused alpha-test
+  value is 2; `test_fog_cards`, `test_fog_handover`, `test_volumetric_fog`, `test_fog_route_bridge` 38 tests OK.
+- Build: scratch MinGW i686 RelWithDebInfo 0 warnings, `check_no_x87.py` PASS 673 reachable. Fog pass fixture (bottle
+  X3, `wine_lock.py`, lock wait 44 s, child 105 s): `--reference /tmp/x3-run67-fog-ref --variant-reference
+  /tmp/x3-run76-fog-ref-far24` PASS 37/37 gates, pass fixture 142 checks 0 failures. Route bridge (build, `--baseline`
+  from the 6f16dbf6 archive, `build-exit`, `run --cases /tmp/x3-fog-family-gpu-inputs-final/cases.txt`, child 79 s,
+  `check`): PASS 36,549 checks + 4 exit checks, 110 names, 0 FAIL, `legacy_bit_identical_to_baseline` true.
+- Open: a docked save load flight with this matcher.
