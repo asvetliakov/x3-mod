@@ -1,0 +1,56 @@
+{
+ "installed_at": "2026-09-24T00:24+04:00",
+ "command": "/usr/bin/python3 tools/analysis/lod_overlay.py --batch --only verification/results/lod-overlay-batch/sectors.txt --install --replace --jobs 2",
+ "commit": "e753819c",
+ "slot": 5,
+ "display": "1920x1080 (reference width 1800)",
+ "rule": "ships T_class=min(200,max(80,2.5*T_1)), stations 150; aspect k capped 1.5/2.0; texel floor 0.5 area-weighted, share 0.10; light-bleed guard (max 4/255 at L = ceil(log2 texels/px) + 2, repack within 15 % scale loss else kept group); surface-share gate 0.02",
+ "files": {
+  "addon/05.cat": {
+   "sha256": "2fb1d3a435da4f1903a0cbe75b2e042947dcfc691e42f713b622f6059d48cec1",
+   "bytes": 6035
+  },
+  "addon/05.dat": {
+   "sha256": "d943c6e5b3daeff0c634b9c37cbba23fc6e1e8ce0fa7521750322b8542740fba",
+   "bytes": 125842199
+  },
+  "addon/05.x3m-lod.json": {
+   "sha256": "0c022b4e6a8a8ee46be49bb92e3f784f0a547ea2cbd7a55c94d71b9f3a14f517",
+   "bytes": 779868
+  },
+  "addon/x3m-lod-batch.json": {
+   "sha256": "4e0ea55112885a5fa555e82853ef4379e1ae87be832c5d6ade336dc4fcd2102e",
+   "bytes": 163123
+  }
+ },
+ "summary": {
+  "eligible": 22,
+  "built": 22,
+  "draws_below_switch": "651 -> 68",
+  "dat_bytes": 125842199,
+  "atlas_bytes_stored": "13.26 MB"
+ },
+ "record_copies": "verification/results/lod-overlay-batch/install-run76b/",
+ "game_running_at_install": false,
+ "replaces": {
+  "installed": "2026-09-23T23:08+04:00",
+  "files": {
+   "addon/05.cat": {
+    "sha256": "e1a7c80ef16ec41d606b8bbfcc19ff7829dd49be1b940bcb979eacbcd7417b87",
+    "bytes": 6035
+   },
+   "addon/05.dat": {
+    "sha256": "5a7434457b44e862faba1bd3c3c907a6c41fad0dab756f10b48147266c784431",
+    "bytes": 125263525
+   },
+   "addon/05.x3m-lod.json": {
+    "sha256": "2fec488177ebd6aeca3ee18e934de1d149e146b37174c4754ef8aeca7ebf34fb",
+    "bytes": 775147
+   },
+   "addon/x3m-lod-batch.json": {
+    "sha256": "1837f05d4428178d42a38f2272d6375a8b9df40f334be24ba555f28a1a56382c",
+    "bytes": 148624
+   }
+  }
+ }
+}
