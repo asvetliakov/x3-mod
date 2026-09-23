@@ -7,3 +7,15 @@ python3 tools/analysis/atlas_census.py --screen-px 100 Stations/others/military_
 # Summary lines
 grep -h -E '^[0-9]+\.cat:|^uv storage|^points needing|^  (span|period) ' verification/results/lod-overlay-pilot/atlas_*.txt
 PYTHONPATH=verification/probe /usr/bin/python3 -m unittest verification.analysis.test_bob1
+# Atlas collapse pilot (2026-09-23): one material per body, diffuse + light-map atlases (tools/analysis/lod_atlas.py)
+rm -rf <worktree>/build-overlay
+python3 tools/analysis/lod_overlay.py --replace --collapse atlas --atlas-preview verification/results/lod-overlay-pilot --out <worktree>/build-overlay ships/argon/argon_TL=80 ships/argon/argon_M2=80 ships/argon/argon_M1=80 Stations/others/military_outpost_middleb=150 > verification/results/lod-overlay-pilot/build_atlas_out.txt
+python3 verification/results/lod-overlay-pilot/pilot_check.py verification/results/run255-census/node_census_out.txt <worktree>/build-overlay > verification/results/lod-overlay-pilot/pilot_check_atlas_out.txt
+# Texture-name resolution (stem under dds/), light-map alpha, NULL bump/specular precedent
+python3 verification/results/lod-overlay-pilot/texture_paths.py ships/argon/argon_TL ships/argon/argon_M2 ships/argon/argon_M1 Stations/others/military_outpost_middleb > verification/results/lod-overlay-pilot/texture_paths_out.txt
+python3 verification/results/lod-overlay-pilot/light_alpha.py > verification/results/lod-overlay-pilot/light_alpha_out.txt
+python3 verification/results/lod-overlay-pilot/null_slots.py > verification/results/lod-overlay-pilot/null_slots_out.txt
+# Bump atlas (2026-09-23, default --atlas-bump): what the shipped bump maps are; the build and check above were rerun
+python3 verification/results/lod-overlay-pilot/bump_maps.py ships/argon/argon_TL ships/argon/argon_M2 ships/argon/argon_M1 Stations/others/military_outpost_middleb > verification/results/lod-overlay-pilot/bump_maps_out.txt
+# Record order (review F1): shipped first-use convention; collapse records old vs new rule; atlas C records vs the previous build (kept in the session scratchpad)
+python3 verification/results/lod-overlay-pilot/record_order.py ships/argon/argon_TL ships/argon/argon_M2 ships/argon/argon_M1 Stations/others/military_outpost_middleb --new <worktree>/build-overlay --old <previous build root> > verification/results/lod-overlay-pilot/record_order_out.txt

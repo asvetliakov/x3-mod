@@ -63,3 +63,6 @@ verification/results/bottle-*/fog-pass-gpu1-wine.log
 
 # Per-agent scratch builds (build-footprint, build-<topic>): local, never committed
 /build-*/
+
+# Atlas previews are downscaled game textures (copyrighted art): local, never committed
+verification/results/lod-overlay-pilot/atlas_preview_*.png

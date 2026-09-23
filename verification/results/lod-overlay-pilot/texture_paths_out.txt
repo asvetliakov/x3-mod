@@ -1,0 +1,4 @@
+sources read without ['addon/05.cat']
+distinct texture names extension .dds=13 extension .tga=186 member extension .pck=184 member_with_directory=0 names=199 resolve_dds_stem=184 with_directory=199
+not resolving under dds/: ['argon_solarpanel_alpha.tga', 'argon_solarpanel_alpha8.tga', 'argon_wheat_alpha8.tga', 'metal_argon_antennas-A_alpha.tga', 'metal_argon_antennas-B_01_alpha.tga', 'metal_argon_antennas-B_02_alpha.tga', 'metal_argon_antennas-B_03_alpha.tga', 'metal_argon_antennas-B_04_alpha.tga', 'metal_argon_lattice_grid_alpha.tga', 'metal_argon_lattice_support_beams_01_alpha.tga', 'metal_argon_lattice_support_beams_02_alpha.tga', 'metal_argon_lattice_support_beams_03_alpha.tga', 'metal_argon_lattice_support_beams_04_alpha.tga', 'metal_argon_lattice_windowedgrid_alpha8.tga', 'metal_argon_specialglass_alpha8.tga']
+atlas stems 8 (x3m_lod_<body>_diffuse/_light) present in the shipped catalogues: 0

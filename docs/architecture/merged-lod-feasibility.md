@@ -484,6 +484,130 @@ by the appended material), `C` recomputed from the source, the table prefix, the
 synthesized material, the indices in the table, the kept set recomputed, and the
 highest final index 2. The build log is `build_area70_out.txt`.
 
+**Atlas collapse, `--collapse atlas` (2026-09-23; `tools/analysis/lod_atlas.py`).**
+It keeps the lit areas and the right diffuse texture at one draw. `C` gets one
+opaque group per part with one appended material per body. That material is a
+copy of the dominant opaque material with every `g_Mat*` FLOAT set to the
+face-area-weighted mean over all atlased materials, exhausts included. Its
+`t_DiffuseTexture`, `t_LightMapTexture` and `t_BumpTexture` point to per-body
+atlases (`--no-atlas-bump` leaves the bump slot NULL). `t_AlphaTexture` is NULL.
+`t_SpecularTexture` is NULL, which has shipped precedent: 120 of 7198 `argon.fx`
+materials have it (`null_slots_out.txt`); `--atlas-specular` bakes a specular
+atlas the same way. A NULL bump has almost none (1 of 7198 `argon.fx`, 0 of 8838
+`XT_standard_lighting.fx`), hence the bump atlas. Alpha-tested or alpha-blended
+faces keep one group per part, as with `two`.
+
+- **Layout.** One span tile per distinct (diffuse, light map, bump) set. Each face
+  moves by its integer UV shift, floor of min u and min v with 0.01 slack. A tile
+  holds the whole shifted span, so a tiling texture repeats inside it, and faces
+  are never split. A point used with different shifts, tiles or by an alpha face
+  is duplicated with its 7-int record. The UV map is a positive per-axis affine
+  map, so the tangent frames are unchanged.
+- **Records.** Records are regenerated per output group as one record per
+  referenced point, listed in the order the group's faces first use the points.
+  That is the shipped convention: in all 459 groups of every record of the four
+  pilot bodies the records are exactly the distinct face points in first-use
+  order (`record_order.py`, `record_order_out.txt`; measured). The other
+  collapses (`glow`, `glow-area`, `two`, `one`) now order merged groups' records
+  the same way, one record per point. Their `C` bytes are unchanged on the four
+  pilot bodies (the merged groups share no points). The atlas `C` records did
+  change: the duplicated points' records used to be appended at the end. The
+  textures and checks stayed identical.
+- **Refusals.** A record whose points carry a second UV set (point flag `0x04`)
+  is refused unless `--force-uv2`, because only the first UV pair is rewritten.
+  Opaque materials from more than one `.fx` file are refused unless
+  `--force-mixed-effects`. The pilot bodies have neither (all points `0x1b`; one
+  effect per body).
+- **Size.** Tile content is source texels over the span times one uniform
+  scale ≤ 1, rounded to 4 texels, with a 4-texel gutter. Shelf packing picks the
+  largest scale that fits. The atlas side is the first of `--atlas-size` (1024),
+  2×, … up to `--atlas-max-size` (2048) that gives at least 2 atlas texels per
+  screen pixel on every tile at the switch size `T`. `T` is the `NAME=T` value,
+  and the need per tile is inferred as √(face area / UV area) · T / radius.
+- **Baking.** The tile, gutter included, is area-resampled from the repeating
+  source (DXT1/3/5 or uncompressed), so the gutter holds the true neighbouring
+  texels. A NULL light map becomes constant black with alpha 0. `NONE_*` maps are
+  resampled. There is a box mip chain to 1×1, and each level is encoded as DXT1,
+  or DXT5 when the slot's alpha is not uniformly 255 (`--atlas-format a8r8g8b8`
+  for debugging). The shipped light maps carry an alpha that follows their RGB
+  (correlation with RGB 0.2–0.99, at least 0.81 on all but two of the 24 light
+  maps of argon_TL and the outpost; measured, `light_alpha_out.txt`), so the light atlases are DXT5.
+- **Bump.** The shipped bump maps are swizzled tangent-space normal maps, not
+  height maps and not blue (128, 128, 255) maps. All 25 distinct maps of the
+  pilot records are DXT5 with R = G = B (correlation ≥ 0.991) carrying y and
+  alpha carrying x. x and y are nearly uncorrelated (|r| ≤ 0.115), x² + y² ≤ 1
+  on ≥ 99.94 % of texels, and the mean is about (128, 128, 128, 108–129)
+  (`bump_maps.py`, `bump_maps_out.txt`; measured). Which channels the shaders
+  read is inferred from this layout, not traced. The bump atlas decodes them to unit vectors
+  (z = √(1 − x² − y²)), resamples vectors, renormalises, and renormalises again
+  after the box filter of every mip level. A NULL bump becomes the flat normal.
+  It is re-encoded in the same swizzle, so it is DXT5. The UV map scales u and v
+  by positive factors, so the tangent-space vectors stay valid in the unchanged
+  tangent frames.
+- **Texture names.** The atlases are the members `dds/x3m_lod_<body>_{diffuse,light,bump}.pck`
+  (gzip DDS, like every shipped texture). The material names them
+  `x3m_lod\x3m_lod_<body>_<slot>.tga`.
+
+The engine finds a material texture by its stem under `dds\`. All 199 distinct
+texture names of the four pilot bodies carry a directory, and none matches a
+member with that directory. 184 resolve as `dds/<stem>.pck`; the other 15 are
+`*_alpha` maps that do not resolve at all. No shipped layer holds an `x3m_lod_`
+stem (`texture_paths_out.txt`), so the new names shadow nothing and exist only in
+the overlay.
+
+Pilot build (`--replace --collapse atlas`, `T` 80/80/80/150, compact, not
+installed; measured, `build_atlas_out.txt`, `pilot_check_atlas_out.txt`):
+
+| body | atlas | tiles | texels/px at T (1024 / chosen) | dup. points | C bytes | draws | diffuse vs source mip 0, mean / p95 | vs prefiltered | light RGB / A mean | bump angle vs source, mean / p95 (°) | vs prefiltered (°) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| argon_TL | 2048² | 23 | 1.997 / 4.04 | 119 | 103 450 | 1 | 2.43 / 7.4 | 1.52 / 4.2 | 0.48 / 0.57 | 3.9 / 18.2 | 2.35 / 9.5 |
+| argon_M2 | 1024² | 25 | 2.23 | 118 | 143 064 | 1 | 3.25 / 12.6 | 1.80 / 5.0 | 0.60 / 0.84 | 5.4 / 28.7 | 2.32 / 8.5 |
+| argon_M1 | 1024² | 24 | 3.82 | 131 | 123 808 | 1 | 3.12 / 9.9 | 1.92 / 5.5 | 0.66 / 0.79 | 5.8 / 29.0 | 2.48 / 9.2 |
+| military_outpost_middleb | 2048² | 27 | 1.47 / 2.99 | 1 786 | 1 422 114 | 2 | 3.43 / 13.0 | 2.03 / 6.4 | 0.57 / 0.92 | 5.5 / 24.8 | 2.95 / 10.4 |
+
+The errors are per-face centroid means in 0..255 (bump: the angle between the
+decoded normals). "vs source mip 0" compares the atlas bilinear at the rewritten
+UV with the source bilinear at the original UV, with wrap. "vs prefiltered"
+compares against the source box-filtered over one atlas texel (bump: vectors
+averaged, then renormalised), i.e. without the downsampling loss. The bump
+error against mip 0 is the largest because the normal maps carry the most
+high-frequency detail; the remaining prefiltered error (2.3–3.0° mean) is DXT
+quantisation of y in RGB565 plus bilinear against box.
+
+- **UVs and shape.** Every rewritten vertex UV lies inside its tile. The inverse
+  map agrees with the original UV to 0.09 source texels or better. `C` has 1432 /
+  1983 / 1715 / 19 254 points.
+- **Encoding.** DXT1 compression error is mean 1.4–2.0 and p95 5–6 per channel.
+  DXT5 light is mean ≤ 0.8 and p95 ≤ 2. DXT5 bump is mean 2.3–3.7 and p95 6–8 on
+  RGB (y), and mean ≤ 0.73 and p95 4 on alpha (x).
+- **Sizes.** A DDS is 699 192 B (1024² DXT1), 1 398 256 B (1024² DXT5),
+  2 796 344 B (2048² DXT1) or 5 592 560 B (2048² DXT5). An uncompressed 2048²
+  atlas would be 22.4 MB. The built atlases total 34 954 336 B (33.3 MiB) of
+  texture data for the four bodies: diffuse 6 991 072, light 13 981 632 and bump
+  13 981 632 (20 972 704 B without bump). `05.cat` is 700 B, sha256
+  `f3f607fa…`, and `05.dat` is 15 525 012 B, sha256 `54acfc47…`.
+- **`pilot_check`.** Every field is true except `C_equals_source_last` and
+  `last_equals_source_last`, which are expected to be false: the UVs are
+  rewritten and points are added. Their UV-free replacements
+  `C_positions_equal` and `last_positions_equal` are true, so the collision
+  source keeps its geometry. `C` and the table recompute equal, and all three
+  textures per body check out by hash, format, full mip chain, material name and
+  resolution in the overlay root.
+
+PNG previews (`atlas_preview_<body>_{diffuse,light,bump}.png`, ≤ 512 px, tiles
+outlined) are written with `--atlas-preview` and kept local (downscaled game
+art).
+
+What is dropped:
+
+- Specular maps (slot NULL, precedented on `argon.fx`, not on
+  `XT_standard_lighting.fx`: 0 of 8839).
+- Known limit, coarse-mip bleed: the 4-texel gutter halves per mip level, so
+  from level 3 on neighbouring tiles and the unused area mix into tile borders
+  (the unused area is black for diffuse and light, flat for bump). Where that
+  shows depends on the screen size at which those mips are sampled.
+- The alpha materials' own textures beyond their dominant, as in `two`.
+
 **Node side effects.** Two node-set side effects change at Very High (objdump of `0047cfe0..`,
 `/tmp/x3-lod/f47cfe0.s`). A child node flagged `node+0x12c & 0x40000` is hidden
 when its parent (`node+0x18`) is not renderable or has `+0x14c > 0`
@@ -562,6 +686,7 @@ python3 tools/analysis/lod_overlay.py --install <body>[=T_pad] ... [--threshold 
 python3 tools/analysis/lod_overlay.py --install --replace <body>[=T_pad] ...   # swap the installed overlay (originals hash checked)
 python3 tools/analysis/body_materials.py <body> [--lod N] [--area-percent 50,70,90,100]   # census, draws per rule, rule f, diffuse substitution
 python3 tools/analysis/lod_overlay.py --out <scratch dir> --collapse glow-area 70 [--no-synth-material] <body>[=T_pad] ...
+python3 tools/analysis/lod_overlay.py --out <scratch dir> --collapse atlas [--atlas-size 1024] [--atlas-max-size 2048] [--atlas-format dxt|a8r8g8b8] [--atlas-specular] [--atlas-preview DIR] <body>=T_pad ...
 PYTHONPATH=verification/probe /usr/bin/python3 -m unittest verification.analysis.test_bob1
 ```
 
@@ -578,7 +703,13 @@ the engine glows stay lit below `T_pad` (`glow`). This is not a given: in run257
 the ships' coarse draws ran pixel shader `8759c7838bbc86c2`, not the LOD 0
 shaders `5e0a10fe…`/`ca6b…`, with stage 3 bound to id 722 and no size logged
 (`verification/results/run257-pilot/tex_run257_3615.txt`), and whether that
-shader samples a light map at all is untraced. The flight must also check that the outpost's alpha group
+shader samples a light map at all is untraced. For an atlas build (`--collapse
+atlas`) the flight must also check that `C` shows the per-material diffuse, the
+lit windows and exhaust glows, and bump relief (the bump atlas). On the outpost
+it must check whether the specular highlight is lost or wrong: its atlas material
+has `t_SpecularTexture` NULL, and `XT_standard_lighting.fx` has no shipped
+material with that slot NULL (0 of 8839). The ships' `argon.fx` has 120 of 7198.
+The flight must also check that the outpost's alpha group
 still renders as a cut-out rather than solid, and whether
 the `node+0x130 & 0x100000` flag changes anything visible (with compact it must
 no longer be set by the index rule on these nodes at Very High). A file that loads without a `lod` or

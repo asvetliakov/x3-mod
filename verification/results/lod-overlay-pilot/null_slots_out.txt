@@ -1,0 +1,27 @@
+('argon.fx', 1, 'alpha', 'NULL') 4809
+('argon.fx', 1, 'alpha', 'set') 2387
+('argon.fx', 1, 'bump', 'NULL') 1
+('argon.fx', 1, 'bump', 'set') 7197
+('argon.fx', 1, 'light', 'NULL') 1641
+('argon.fx', 1, 'light', 'set') 5557
+('argon.fx', 1, 'specular', 'NULL') 120
+('argon.fx', 1, 'specular', 'set') 7078
+('split.fx', 1, 'alpha', 'NULL') 473
+('split.fx', 1, 'bump', 'set') 525
+('split.fx', 1, 'light', 'set') 451
+('split.fx', 1, 'specular', 'set') 526
+('standard_lighting.fx', 1, 'alpha', 'NULL') 498
+('standard_lighting.fx', 1, 'alpha', 'set') 453
+('standard_lighting.fx', 1, 'bump', 'set') 888
+('standard_lighting.fx', 1, 'light', 'NULL') 526
+('standard_lighting.fx', 1, 'light', 'set') 425
+('standard_lighting.fx', 1, 'specular', 'set') 861
+('teladi.fx', 1, 'alpha', 'NULL') 227
+('teladi.fx', 1, 'bump', 'set') 249
+('teladi.fx', 1, 'specular', 'set') 249
+('xt_standard_lighting.fx', 1, 'alpha', 'set') 8806
+('xt_standard_lighting.fx', 1, 'bump', 'set') 8838
+('xt_standard_lighting.fx', 1, 'light', 'set') 8831
+('xt_standard_lighting.fx', 1, 'specular', 'set') 8839
+example ('argon.fx', 'specular') objects/patch20/argon_inactivegate.pbb
+example ('argon.fx', 'bump') objects/ships/others/astronaut.pbb

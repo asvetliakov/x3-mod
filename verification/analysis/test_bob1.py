@@ -18,7 +18,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools' / 'analysis
 import atlas_census
 import bob1
 import body_materials
+import lod_atlas
 import lod_overlay
+import numpy as np
 from inspect_x3 import read_catalogue
 from sector_fog_census import Assets, unpack, write_catalogue
 
@@ -218,7 +220,8 @@ class Overlay(unittest.TestCase):
         self.assertEqual([len(p['groups']) for p in new['parts']], [1, 1])
         # part 0: materials 1 (2 faces), 0 (3 faces) -> 0; part 1: 0 (1+2), 1 (1) -> 0
         self.assertEqual([p['groups'][0]['material'] for p in new['parts']], [0, 0])
-        self.assertEqual(len(new['parts'][0]['groups'][0]['extra']), 3 + 4)
+        extra = new['parts'][0]['groups'][0]['extra']                      # records 0-2 + 0-3: one per point,
+        self.assertEqual([e[0] for e in extra], [0, 1, 2, 3])              # in the faces' first-use order
         self.assertEqual(new['parts'][0]['bounds'], coarse['parts'][0]['bounds'])
         self.assertNotIn('extra', new['parts'][1]['groups'][0])
 
@@ -907,6 +910,172 @@ class AtlasCensus(unittest.TestCase):
         self.assertIn('not float32', text)
         self.assertIn('span   1024x1024: tiles=2 fits_at_full_density=yes scale=1.0000 split_or_clamp_faces=0/6', text)
         self.assertIn('period 1024x1024: tiles=2 fits_at_full_density=yes scale=1.0000 split_or_clamp_faces=2/6', text)
+
+
+def atlas_tree_pre():
+    """atlas_tree with a precomputed coarse part: one 7-int record per point a group uses."""
+    tree = atlas_tree()
+    part = bob1.lods(tree)[1]['parts'][0]
+    part['flags'], part['bounds'] = 0x30000001, list(range(10))
+    for g in part['groups']:
+        used = dict.fromkeys(i for f in g['faces'] for i in f[:3])
+        g['extra'] = [(i, 1000 * g['material'] + i, 0, 65536, 0, 65536, 0) for i in used]
+    for m, bump in zip(bob1.materials(tree), (b'm\\a_bump.tga', b'NULL')):
+        m['params'].append((b't_BumpTexture', 8, bump))
+    return tree
+
+
+def atlas_textures():
+    y, x = np.mgrid[0:16, 0:16]
+    rgba = lambda r, g, b, a: np.stack([np.broadcast_to(np.asarray(c), (16, 16)) for c in (r, g, b, a)],
+                                       -1).astype(np.uint8)
+    a_diff = rgba(8 + 15 * x, 8 + 15 * y, 100, 255)
+    b_diff = rgba(200, 16 * x, 16 * y, 255)
+    b_light = rgba(10 * y, 10 * y, 0, 16 * x)
+    dds = lambda img, fmt: lod_atlas.write_dds(lod_atlas.mip_chain(img.astype(np.float32)), fmt)
+    nx, ny = 0.6 * np.sin(x * np.pi / 4), 0.3 * np.cos(y * np.pi / 8)          # swizzled normal map: x in A, y in RGB
+    a_bump = rgba((ny + 1) * 127.5, (ny + 1) * 127.5, (ny + 1) * 127.5, (nx + 1) * 127.5)
+    return [('dds/a_diff.pck', gzip.compress(lod_atlas.write_dds([a_diff], 'A8R8G8B8'), mtime=0)),
+            ('dds/a_bump.pck', gzip.compress(dds(a_bump, 'DXT5'), mtime=0)),
+            ('dds/b_diff.pck', gzip.compress(dds(b_diff, 'DXT1'), mtime=0)),
+            ('dds/b_light.pck', gzip.compress(dds(b_light, 'DXT5'), mtime=0))]
+
+
+class LodAtlas(unittest.TestCase):
+    def test_dds_codec(self):
+        img = (np.arange(8 * 8 * 4).reshape(8, 8, 4) * 7 % 256).astype(np.float32)
+        levels = lod_atlas.mip_chain(img)
+        self.assertEqual([lv.shape[:2] for lv in levels], [(8, 8), (4, 4), (2, 2), (1, 1)])
+        self.assertTrue((levels[1][0, 0] == np.rint(img[:2, :2].reshape(-1, 4).mean(0))).all())
+        dds = lod_atlas.write_dds(levels, 'A8R8G8B8')
+        self.assertEqual(lod_atlas.dds_format(dds)[:3], (8, 8, 4))
+        for k, lv in enumerate(levels):
+            self.assertTrue((lod_atlas.decode_dds(dds, k) == lv).all())
+        two = np.zeros((4, 4, 4), np.uint8)
+        two[:, :2] = (255, 0, 0, 255)
+        two[:, 2:] = (0, 0, 255, 17)
+        dxt1 = lod_atlas.write_dds([two], 'DXT1')
+        self.assertEqual((len(dxt1), lod_atlas.dds_format(dxt1)[3]), (136, 'DXT1'))
+        self.assertTrue((lod_atlas.decode_dds(dxt1)[:, :, :3] == two[:, :, :3]).all())
+        dxt5 = lod_atlas.decode_dds(lod_atlas.write_dds([two], 'DXT5'))
+        self.assertTrue((dxt5 == two).all())                              # colour and two alpha levels exact
+        vec = lod_atlas.normalize(np.stack(np.broadcast_arrays(np.linspace(-1, 1, 8)[None, :], 0.5,
+                                                               np.ones((8, 8))), -1))
+        nlev = lod_atlas.normal_mip_chain(vec)
+        self.assertEqual(len(nlev), 4)
+        for lv in nlev:                                                    # every level renormalised
+            self.assertTrue(np.allclose(np.linalg.norm(lod_atlas.to_normals(lv), axis=-1), 1, atol=0.02))
+            self.assertTrue((lv[..., 0] == lv[..., 1]).all() and (lv[..., 1] == lv[..., 2]).all())
+        self.assertEqual(tuple(nlev[-1][0, 0]), (185, 185, 185, 128))   # x cancels, y = 0.5 / |(0, .5, 1)|
+        grad = np.stack(np.broadcast_arrays(np.arange(64)[None, :] * 4, np.arange(64)[:, None] * 4, 90, 255), -1)
+        back = lod_atlas.decode_dds(lod_atlas.write_dds([grad.astype(np.uint8)], 'DXT1')).astype(int)
+        self.assertLess(np.abs(back - grad).max(), 12)
+
+    def game(self, folder, extra=()):
+        game = Path(folder) / 'game'
+        write_catalogue(game / '01.cat', atlas_textures() + list(extra))
+        write_catalogue(game / '02.cat', [('objects/ships/x/b.pbb',
+                                           gzip.compress(bob1.serialise(atlas_tree_pre()), mtime=0))])
+        return game
+
+    def test_layout_escalates_size(self):
+        with tempfile.TemporaryDirectory() as folder:
+            assets, _ = lod_overlay.original_assets(self.game(folder))
+            tree = bob1.parse(bob1.serialise(atlas_tree_pre()))
+            coarse, mats = bob1.lods(tree)[1], bob1.materials(tree)
+            lay = lod_atlas.plan_layout(coarse, mats, set(), lod_atlas.Textures(assets), 8, (32, 64, 128))
+            self.assertEqual([(n, s == 1.0) for n, s, _ in lay['tried']], [(32, False), (64, True)])
+            self.assertEqual((lay['size'], [t['mats'] for t in lay['tiles']]), (64, [[0], [1]]))
+            self.assertEqual([t['content'] for t in lay['tiles']], [(32, 16), (20, 16)])   # 16 x (2, 1), 16 x (1.2, 1)
+            self.assertTrue(lay['ratio_ok'] and lay['min_ratio'] >= 2)
+            self.assertEqual(lay['face_keys'][0, 0, 2], (0, 1, 0))             # F: u 1..1.5 shifted by 1
+
+    @unittest.mock.patch.object(lod_overlay, 'running_game', return_value=[])
+    def test_atlas_overlay(self, _running):
+        with tempfile.TemporaryDirectory() as folder:
+            game, out, prev = self.game(folder), Path(folder) / 'out', Path(folder) / 'prev'
+            text = run(['--game', str(game), '--out', str(out), '--collapse', 'atlas', '--atlas-size', '64',
+                        '--atlas-max-size', '128', '--atlas-preview', str(prev), 'ships/x/b=8'])
+            self.assertIn("groups=['atlas:mat2~0:6f']", text)
+            self.assertIn('atlas 64x64', text)
+            entries = {e['path']: e for e in read_catalogue(out / 'addon/01.cat')}
+            self.assertEqual(sorted(entries), ['dds/x3m_lod_b_bump.pck', 'dds/x3m_lod_b_diffuse.pck',
+                                               'dds/x3m_lod_b_light.pck', 'objects/ships/x/b.pbb'])
+            raw = bytes(v ^ 0x33 for v in (out / 'addon/01.dat').read_bytes())
+            member = lambda p: unpack(raw[entries[p]['offset']:entries[p]['offset'] + entries[p]['size']])
+            written = bob1.parse(member('objects/ships/x/b.pbb'))
+            ladder, wm = bob1.lods(written), bob1.materials(written)
+            src = bob1.parse(bob1.serialise(atlas_tree_pre()))
+            self.assertEqual(ladder[0], bob1.lods(src)[0])
+            (grp,) = ladder[1]['parts'][0]['groups']
+            self.assertEqual((len(ladder[1]['points']), grp['material'], len(grp['faces'])), (14, 2, 6))
+            self.assertEqual(ladder[1]['points'][12][7:], bob1.lods(src)[1]['points'][1][7:])   # copies keep the rest
+            rec = {e[0]: e[1] for e in grp['extra']}
+            self.assertEqual((sorted(rec), rec[12], rec[13], rec[2]), (list(range(14)), 1, 1002, 2))
+            first_use = list(dict.fromkeys(i for f in grp['faces'] for i in f[:3]))
+            self.assertEqual([e[0] for e in grp['extra']], first_use)        # shipped order: faces' first use
+            self.assertEqual(first_use, [0, 1, 2, 3, 12, 4, 5, 6, 7, 8, 9, 10, 11, 13])
+            self.assertEqual(ladder[2]['parts'], ladder[1]['parts'])
+            p = {n: v for n, t, v in wm[2]['params']}
+            self.assertEqual((wm[2]['index'], p[b't_DiffuseTexture'], p[b't_LightMapTexture'], p[b't_BumpTexture']),
+                             (2, b'x3m_lod\\x3m_lod_b_diffuse.tga', b'x3m_lod\\x3m_lod_b_light.tga',
+                              b'x3m_lod\\x3m_lod_b_bump.tga'))
+            self.assertEqual(wm[:2], bob1.materials(src))
+            for path, fmt in (('dds/x3m_lod_b_diffuse.pck', 'DXT1'), ('dds/x3m_lod_b_light.pck', 'DXT5'),
+                              ('dds/x3m_lod_b_bump.pck', 'DXT5')):
+                dds = member(path)
+                self.assertEqual(lod_atlas.dds_format(dds), (64, 64, 7, fmt))
+                self.assertEqual(Assets(out).logical(path[:-4], ('.pck', '.dds', '.tga'))[0], dds)
+            (body,) = json.loads((out / 'addon/01.x3m-lod.json').read_text())['bodies']
+            c = body['atlas']['check']
+            self.assertEqual((c['uv_inside_content'], c['vertices'], body['atlas']['duplicated_points']), (18, 18, 2))
+            self.assertLess(c['max_map_error_texels'], 0.01)
+            self.assertLess(c['slots']['diffuse']['box_rgb'][0], 4)          # layout-exact up to DXT and filtering
+            self.assertLess(c['slots']['light']['box_a'][0], 4)
+            self.assertLess(c['slots']['bump']['box_angle'][2], 3)           # degrees, max over faces
+            bump = lod_atlas.decode_dds(member('dds/x3m_lod_b_bump.pck'))
+            self.assertEqual(tuple(bump[0, 63][1:]), (130, 132, 128))         # unused: flat normal (G, A = 128
+                                                                              # up to RGB565 quantisation)
+            text = run(['--game', str(game), '--dry-run', '--collapse', 'atlas', '--atlas-size', '64',
+                        '--no-atlas-bump', 'ships/x/b=8'])
+            self.assertNotIn('x3m_lod_b_bump', text)
+            self.assertEqual(body['synth'][0]['atlas'], True)
+            self.assertEqual(sorted(x.name for x in prev.iterdir()),
+                             ['atlas_preview_b_bump.png', 'atlas_preview_b_diffuse.png', 'atlas_preview_b_light.png'])
+            self.assertEqual((prev / 'atlas_preview_b_light.png').read_bytes()[:4], b'\x89PNG')
+            text = run(['--game', str(game), '--dry-run', '--collapse', 'atlas', '--atlas-size', '64',
+                        '--atlas-format', 'a8r8g8b8', 'ships/x/b=8'])
+            self.assertIn('A8R8G8B8 21972 bytes', text)                      # 4 x 5461 texels (7 mips) + 128
+        with tempfile.TemporaryDirectory() as folder:                      # an existing name would be shadowed
+            game = self.game(folder, [('dds/x3m_lod_b_light.pck', b'x')])
+            with self.assertRaises(SystemExit):
+                run(['--game', str(game), '--dry-run', '--collapse', 'atlas', 'ships/x/b=8'])
+
+    def test_atlas_refusals(self):
+        tree = bob1.parse(bob1.serialise(atlas_tree_pre()))
+        mats, coarse = bob1.materials(tree), bob1.lods(tree)[1]
+        p = coarse['points'][6]
+        coarse['points'][6] = p[:6] + (p[4], p[5]) + p[6:]
+        coarse['points'][6] = (0x1f,) + coarse['points'][6][1:]           # second UV set
+        other = [dict(m) for m in mats]
+        other[1] = dict(other[1], effect=b'other.fx')
+        with tempfile.TemporaryDirectory() as folder:
+            assets, _ = lod_overlay.original_assets(self.game(folder))
+            with self.assertRaisesRegex(lod_atlas.AtlasError, 'second UV set'):
+                lod_atlas.collapse(assets, 'b', list(mats), coarse, set(), 8, (64,))
+            res = lod_atlas.collapse(assets, 'b', list(mats), coarse, set(), 8, (64,), force_uv2=True)
+            self.assertEqual(res['record']['points'][6][6:8], coarse['points'][6][6:8])    # second pair kept
+            plain = bob1.lods(bob1.parse(bob1.serialise(atlas_tree_pre())))[1]
+            with self.assertRaisesRegex(lod_atlas.AtlasError, 'effect files'):
+                lod_atlas.collapse(assets, 'b', list(other), plain, set(), 8, (64,))
+            lod_atlas.collapse(assets, 'b', list(other), plain, set(), 8, (64,), force_mixed_effects=True)
+
+    def test_merged_records_first_use_order(self):
+        rec = lambda i: (i, i, 0, 65536, 0, 65536, 0)
+        g1 = {'material': 0, 'faces': [(2, 0, 1, 1)], 'extra': [rec(0), rec(1), rec(2)]}      # stored out of order
+        g2 = {'material': 1, 'faces': [(3, 1, 4, 1)], 'extra': [rec(4), rec(1), rec(3), rec(9)]}  # 1 shared, 9 unused
+        m = lod_overlay.merged_group([g1, g2], True)
+        self.assertEqual([e[0] for e in m['extra']], [2, 0, 1, 3, 4, 9])
 
 
 @unittest.skipUnless(bob1.DEFAULT_GAME.joinpath('X3AP.exe').is_file(), 'X3 bottle not present')

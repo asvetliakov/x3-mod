@@ -1,0 +1,10 @@
+sources read without ['addon/05.cat']
+A shipped groups with records 459: first-use order 459, same point set 459
+B ships/argon/argon_TL: C record bytes, first-use vs concatenated records: glow=same glow-area=same two=same one=same
+B ships/argon/argon_M2: C record bytes, first-use vs concatenated records: glow=same glow-area=same two=same one=same
+B ships/argon/argon_M1: C record bytes, first-use vs concatenated records: glow=same glow-area=same two=same one=same
+B Stations/others/military_outpost_middleb: C record bytes, first-use vs concatenated records: glow=same glow-area=same two=same one=same
+C atlas objects/ships/argon/argon_M1.pbb: C record sha256 3b8f3bda87465cb8 vs previous 2dc405f5f0e3081e CHANGED
+C atlas objects/ships/argon/argon_M2.pbb: C record sha256 af781118c67c53a5 vs previous 58511093fc3727ca CHANGED
+C atlas objects/ships/argon/argon_TL.pbb: C record sha256 c5d07df6bbc80ad4 vs previous ae210327723d6ea9 CHANGED
+C atlas objects/stations/others/military_outpost_middleb.pbb: C record sha256 d980df2c96a5c6ca vs previous 63227af6754942dc CHANGED

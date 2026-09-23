@@ -4,7 +4,8 @@
 Merged-LOD pilot mechanism (docs/architecture/merged-lod-feasibility.md section 6,
 docs/reverse-engineering/body-format-bob1.md): for each named body, copy its
 coarsest existing LOD (points, part flags, per-group 7-int records and the 10
-part ints are copied, nothing is recomputed), collapse every part's groups and
+part ints are copied, nothing is recomputed; a merged group lists its records in the
+order its faces first use the points, as every shipped group does), collapse every part's groups and
 add the result as a new LOD record. No decimation. Alpha materials are those
 whose effect parameters enable alpha testing or blending (g_AlphaTestEnable or
 g_AlphaBlendEnable non-zero); an alpha texture alone does not count (the pilot
@@ -25,8 +26,19 @@ ships' lattice materials have both off and draw opaque, run257). Collapse
     group with the dominant alpha material among them by face count; the rest
     into one group with the dominant opaque material.
   one: one group per part with the dominant material (alpha faces turn solid).
+  atlas: one group per part with ONE synthesized opaque material per body whose
+    diffuse and light-map textures are atlases baked from every opaque material of
+    the record (tools/analysis/lod_atlas.py: span tiles, integer UV shifts, points
+    duplicated where faces need different shifts, UVs rewritten into the atlas,
+    tangent records regenerated per group; DXT1/DXT5 or --atlas-format a8r8g8b8;
+    a bump atlas unless --no-atlas-bump; alpha slot NULL, specular NULL unless
+    --atlas-specular); alpha faces
+    as in two. The atlas side is the first of --atlas-size, 2x, ... up to
+    --atlas-max-size that leaves >= 2 atlas texels per screen pixel at the switch
+    size T (the NAME=T / --threshold value). The atlases are added to the same
+    catalogue as dds/x3m_lod_<body>_<slot>.pck (new names; nothing is shadowed).
 Faces of merged materials get the dominant material's textures over their own
-UVs (a look limit of the pilot).
+UVs (a look limit of the pilot; not with atlas).
 Synthesized material (default; --no-synth-material turns it off): for each
 material that merged faces collapse onto (per body, over every part's merged
 classes), the face-area-weighted mean of every FLOAT effect parameter named
@@ -215,7 +227,7 @@ def dominant_material(groups):
     return max(faces, key=lambda m: faces[m]) if faces else None
 
 
-COLLAPSES = ('glow', 'two', 'one', 'glow-area')
+COLLAPSES = ('glow', 'two', 'one', 'glow-area', 'atlas')
 KEEPING = ('glow', 'glow-area')      # collapses whose kept materials keep their own groups
 GLOW_LUMA = 0.5          # texel counts as bright above this Rec.601 luma
 GLOW_SHARE = 0.25        # light map is "mostly bright" at this bright-texel share
@@ -262,11 +274,23 @@ def light_area_materials(assets, materials, record, exclude=frozenset(), percent
     return set(kept), covered, total
 
 
+def first_use_records(groups, faces):
+    """The groups' 7-int records in the order `faces` first use their points (the shipped
+    convention: every shipped group lists its records so), one per point (the first group's
+    record wins); records of points no face uses follow in their original order."""
+    by = {}
+    for g in groups:
+        for e in g['extra']:
+            by.setdefault(e[0], e)
+    used = dict.fromkeys(i for f in faces for i in f[:3])
+    return [by[i] for i in used if i in by] + [e for g in groups for e in g['extra'] if e[0] not in used]
+
+
 def merged_group(groups, precomputed, remap=None):
     m = dominant_material(groups)
     g = {'material': (remap or {}).get(m, m), 'faces': [f for g in groups for f in g['faces']]}
     if precomputed:
-        g['extra'] = [e for g in groups for e in g['extra']]
+        g['extra'] = first_use_records(groups, g['faces'])
     return g
 
 
@@ -436,8 +460,33 @@ def place(ladder, coarse, placement, threshold, name='body', force_threshold=Fal
     return n, n + 1
 
 
+ATLAS_DEFAULTS = dict(sizes=(1024, 2048), fmt='dxt', specular=False, bump=True, force_uv2=False,
+                      force_mixed_effects=False)
+
+
+def atlas_collapse(assets, name, entry, mats, record, alpha, threshold, synth, opts):
+    """--collapse atlas: (C, synth report incl. the atlas material, atlas build, extra catalogue members)."""
+    import lod_atlas
+    if threshold is None:
+        raise SystemExit(f'{name}: --collapse atlas sizes the atlas for the switch size; pass NAME=T or --threshold')
+    body = Path(entry['path'].replace('\\', '/')).stem
+    try:
+        res = lod_atlas.build(assets, body, mats, record, alpha, threshold, opts['sizes'], opts['fmt'],
+                              opts['specular'], synth, opts['bump'], opts['force_uv2'], opts['force_mixed_effects'])
+    except lod_atlas.AtlasError as exc:
+        raise SystemExit(f'{name}: {exc}') from None
+    for slot, member in res['members'].items():
+        stem = member.rsplit('.', 1)[0]
+        taken = [e['source'] for ext in ('.pck', '.dds', '.tga') for e in assets.candidates(stem + ext)]
+        if taken:
+            raise SystemExit(f'{name}: atlas texture {stem} already exists in {taken}; it would be shadowed')
+    extra = [(res['members'][s], lod_atlas.stored(e['dds'])) for s, e in res['encoded'].items()]
+    res['summary'] = lod_atlas.summary(res)
+    return res['record'], res['synth'], res, extra
+
+
 def plan_body(assets, name, threshold, placement=None, force_threshold=False, collapse='glow', force_mat3=False,
-              glow_luma=GLOW_LUMA, glow_share=GLOW_SHARE, area_percent=None, synth=True):
+              glow_luma=GLOW_LUMA, glow_share=GLOW_SHARE, area_percent=None, synth=True, atlas_opts=None):
     entry = bob1.resolve_body(assets, name)
     if 'loose' in entry:
         raise SystemExit(f'{name}: winning resource is loose file {entry["path"]}; a catalogue cannot override it')
@@ -464,8 +513,13 @@ def plan_body(assets, name, threshold, placement=None, force_threshold=False, co
                     record_area=sum(group_area(ladder[-1], g) for p in ladder[-1]['parts'] for g in p['groups']))
     kept = glow | area_kept
     n_mats = len(mats)
-    remap, synth_report = synth_materials(mats, ladder[-1], alpha, collapse, kept) if synth else ({}, [])
-    new = coarse_record(ladder[-1], None, alpha, collapse, kept, remap)
+    atlas, extra = None, []
+    if collapse == 'atlas':
+        new, synth_report, atlas, extra = atlas_collapse(assets, name, entry, mats, ladder[-1], alpha, threshold,
+                                                         synth, dict(ATLAS_DEFAULTS, **(atlas_opts or {})))
+    else:
+        remap, synth_report = synth_materials(mats, ladder[-1], alpha, collapse, kept) if synth else ({}, [])
+        new = coarse_record(ladder[-1], None, alpha, collapse, kept, remap)
     new_index, pad_index = place(ladder, new, placement, threshold, name, force_threshold)
     out = bob1.serialise(tree)
     back = bob1.parse(out)
@@ -486,7 +540,8 @@ def plan_body(assets, name, threshold, placement=None, force_threshold=False, co
     return dict(name=name, source=entry['source'], member=entry['path'], before=before, ladder=ladder,
                 new=new, new_index=new_index, collapse=collapse, alpha=alpha_materials(mats), glow=glow,
                 area_kept=area_kept, area=area, synth=synth_report, source_materials=n_mats,
-                pad_index=pad_index, placement=placement,
+                pad_index=pad_index, placement=placement, atlas_build=atlas, extra_members=extra,
+                atlas=atlas and atlas['summary'],
                 source_decoded_sha256=hashlib.sha256(data).hexdigest(),
                 overlay_decoded_sha256=hashlib.sha256(out).hexdigest(),
                 decoded_bytes=(len(data), len(out)), stored=stored)
@@ -510,7 +565,8 @@ def ladder_text(ladder):
 
 
 def group_kind(plan, g):
-    return ('glow' if g['material'] in plan.get('glow', ()) else
+    return ('atlas' if plan.get('atlas') and g['material'] == plan['atlas']['material'] else
+            'glow' if g['material'] in plan.get('glow', ()) else
             'light' if g['material'] in plan.get('area_kept', ()) else
             'alpha' if g['material'] in plan['alpha'] else 'opaque')
 
@@ -555,8 +611,13 @@ def describe(plan, out=None):
     for syn in plan.get('synth', ()):
         rows = ' '.join(f'{n}={dom / 65536:.4g}->{w / 65536:.4g}(mean {mean / 65536:.4g})'
                         for n, dom, mean, w in syn['params'] if dom != w)
-        print(f'  synthesized mat{syn["index"]} = mat{syn["dominant"]} with the area-weighted g_Mat* mean over'
-              f' {syn["absorbed"]}: {rows}', file=out)
+        what = 'atlas material' if syn.get('atlas') else 'synthesized'
+        print(f'  {what} mat{syn["index"]} = mat{syn["dominant"]} with the area-weighted g_Mat* mean over'
+              f' {syn["absorbed"]}: {rows or "(unchanged)"}', file=out)
+    if plan.get('atlas'):
+        import lod_atlas
+        for line in lod_atlas.format_summary(plan['atlas']):
+            print('  ' + line, file=out)
     print(f'  decoded bytes {plan["decoded_bytes"][0]} -> {plan["decoded_bytes"][1]},'
           f' stored {len(plan["stored"])} (gzip), overlay sha256 {plan["overlay_decoded_sha256"][:16]}', file=out)
 
@@ -573,7 +634,7 @@ def parse_collapse(text):
             raise argparse.ArgumentTypeError(f'glow-area percentage {value} outside 0..100')
         return name, percent
     if sep or name not in COLLAPSES:
-        raise argparse.ArgumentTypeError(f'unknown collapse {text!r} (glow, two, one, glow-area P)')
+        raise argparse.ArgumentTypeError(f'unknown collapse {text!r} (glow, two, one, glow-area P, atlas)')
     return name, None
 
 
@@ -605,11 +666,32 @@ def main(argv=None):
                     help='compact: accept a T_pad below the record 1 threshold;'
                          ' pad: accept a T_pad that does not exceed every original threshold')
     ap.add_argument('--placement', choices=PLACEMENTS, help='placement (default: compact)')
-    ap.add_argument('--collapse', type=parse_collapse, default=('glow', None), metavar='{glow,two,one,glow-area P}',
+    ap.add_argument('--collapse', type=parse_collapse, default=('glow', None),
+                    metavar='{glow,two,one,glow-area P,atlas}',
                     help='glow (default): bright-light-map materials keep their group, the rest as two;'
                          ' glow-area P (or glow-area=P): glow plus the largest real-light-map materials up to'
                          ' P %% of their area; two: opaque + alpha-tested/blended group per part;'
-                         ' one: a single group per part')
+                         ' one: a single group per part; atlas: one opaque atlas material per body'
+                         ' (+ the alpha group as two)')
+    ap.add_argument('--atlas-size', type=int, default=1024,
+                    help='atlas: first atlas side tried (power of two, default 1024)')
+    ap.add_argument('--atlas-max-size', type=int, default=2048,
+                    help='atlas: largest side tried when the smaller one leaves < 2 atlas texels per screen'
+                         ' pixel at the switch size (default 2048)')
+    ap.add_argument('--atlas-format', choices=('dxt', 'a8r8g8b8'), default='dxt',
+                    help='atlas: dxt (default; DXT1, DXT5 for a slot with alpha) or a8r8g8b8 (uncompressed)')
+    ap.add_argument('--atlas-bump', action=argparse.BooleanOptionalAction, default=True,
+                    help='atlas: bake a bump (normal map) atlas and point t_BumpTexture at it (default on;'
+                         ' --no-atlas-bump leaves the slot NULL)')
+    ap.add_argument('--force-uv2', action='store_true',
+                    help='atlas: accept points with a second UV set (only the first pair is rewritten)')
+    ap.add_argument('--force-mixed-effects', action='store_true',
+                    help='atlas: accept opaque materials of more than one effect file (all drawn with the'
+                         ' dominant material\'s effect)')
+    ap.add_argument('--atlas-specular', action='store_true',
+                    help='atlas: also bake a specular atlas (default: t_SpecularTexture NULL)')
+    ap.add_argument('--atlas-preview', type=Path,
+                    help='atlas: write atlas_preview_<body>_<slot>.png (<= 512 px, tile outlines) into DIR')
     ap.add_argument('--no-synth-material', action='store_true',
                     help='merged groups keep the dominant material itself (no area-weighted g_Mat* copy)')
     ap.add_argument('--glow-luma', type=float, default=GLOW_LUMA,
@@ -636,6 +718,16 @@ def main(argv=None):
         ap.error('--force-slot needs --slot')
     if not (0 <= a.glow_luma < 1 and 0 < a.glow_share <= 1):
         ap.error('--glow-luma must be in [0, 1) and --glow-share in (0, 1]')
+    pow2 = lambda v: v >= 64 and not v & (v - 1)
+    if not (pow2(a.atlas_size) and pow2(a.atlas_max_size) and a.atlas_size <= a.atlas_max_size <= 8192):
+        ap.error('--atlas-size and --atlas-max-size must be powers of two, 64 <= size <= max size <= 8192')
+    sizes, n = [], a.atlas_size
+    while n <= a.atlas_max_size:
+        sizes.append(n)
+        n *= 2
+    atlas_opts = a.atlas_opts = dict(sizes=tuple(sizes), fmt=a.atlas_format, specular=a.atlas_specular,
+                                         bump=a.atlas_bump, force_uv2=a.force_uv2,
+                                         force_mixed_effects=a.force_mixed_effects)
     game = a.game.resolve()
     markers = sorted((game / 'addon').glob('*' + MARKER_SUFFIX))
     replace_slot = None
@@ -701,18 +793,20 @@ def main(argv=None):
         except ValueError:
             raise SystemExit(f'{arg}: NAME=T needs an integer threshold') from None
         plans.append(plan_body(assets, name, threshold, a.placement, a.force_threshold, a.collapse, a.force_mat3,
-                               a.glow_luma, a.glow_share, a.area_percent, not a.no_synth_material))
+                               a.glow_luma, a.glow_share, a.area_percent, not a.no_synth_material, atlas_opts))
     members = [p['member'] for p in plans]
     if len({m.lower() for m in members}) != len(members):
         raise SystemExit('the same body was named twice')
+    textures = [m for p in plans for m, _ in p['extra_members']]
+    if len({m.lower() for m in textures}) != len(textures):
+        raise SystemExit('two bodies share a file stem, so their atlas texture names collide')
     for p in plans:
         describe(p)
-    print(f'target {cat_rel} + .dat: {len(plans)} member(s),'
-          f' dat bytes {sum(len(p["stored"]) for p in plans)}')
+    print(f'target {cat_rel} + .dat: {len(plans)} member(s) + {len(textures)} atlas texture(s),'
+          f' dat bytes {sum(len(p["stored"]) + sum(len(d) for _, d in p["extra_members"]) for p in plans)}')
     if a.dry_run:
         print('dry run: nothing written')
         return 0
-
     cat = root / cat_rel
     written = [cat, cat.with_suffix('.dat'), cat.with_name(cat.stem + MARKER_SUFFIX)]
     replacing = a.install and replace_slot is not None
@@ -766,22 +860,38 @@ def main(argv=None):
     if left:
         print('warning: the new overlay is installed but these replaced files could not be removed'
               ' (delete them by hand): ' + '; '.join(left), file=sys.stderr)
+    if a.atlas_preview:                    # after a successful write only
+        import lod_atlas
+        a.atlas_preview.mkdir(parents=True, exist_ok=True)
+        for p in plans:
+            if p['atlas_build']:
+                body = Path(p['member']).stem
+                for slot, e in p['atlas_build']['encoded'].items():
+                    path = a.atlas_preview / f'atlas_preview_{body}_{slot}.png'
+                    level = lod_atlas.preview(e['dds'], p['atlas_build']['layout'], path)
+                    print(f'preview {path} (mip {level})')
+
     print(f'wrote {", ".join(str(w) for w in written)}; {len(before)} original archive files unchanged'
           + (f'; replaced the installed addon/{slot:02d} overlay' if moved else ''))
     return 0
 
 
 def write_overlay(a, game, plans, slot, before, written, replace_slot):
-    write_catalogue(written[0], [(p['member'], p['stored']) for p in plans])
+    write_catalogue(written[0], [(p['member'], p['stored']) for p in plans]
+                    + [m for p in plans for m in p['extra_members']])
     manifest = dict(tool='tools/analysis/lod_overlay.py', slot=slot, collapse=a.collapse,
                     glow_luma=a.glow_luma, glow_share=a.glow_share, area_percent=a.area_percent,
-                    synth_material=not a.no_synth_material, bodies=[
+                    synth_material=not a.no_synth_material,
+                    **({'atlas_options': dict(a.atlas_opts, sizes=list(a.atlas_opts['sizes']))}
+                       if a.collapse == 'atlas' else {}), bodies=[
         dict(name=p['name'], source=p['source'], member=p['member'], placement=p['placement'], collapse=p['collapse'],
              glow=sorted(p['glow']), area_kept=sorted(p['area_kept']), new_lod=p['new_index'], pad_lod=p['pad_index'],
              source_materials=p['source_materials'],
              synth=[dict(index=s['index'], dominant=s['dominant'], absorbed=s['absorbed'],
-                         params=[dict(name=n, dominant=d, mean=round(m, 1), written=w) for n, d, m, w in s['params']])
+                         params=[dict(name=n, dominant=d, mean=round(m, 1), written=w) for n, d, m, w in s['params']],
+                         **({'atlas': True} if s.get('atlas') else {}))
                     for s in p['synth']],
+             **({'atlas': p['atlas']} if p.get('atlas') else {}),
              source_thresholds=[l['value'] for l in p['before']],
              thresholds=[l['value'] for l in p['ladder']],
              threshold=p['new']['value'],
