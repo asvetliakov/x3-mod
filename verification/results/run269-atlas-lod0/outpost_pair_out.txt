@@ -1,0 +1,16 @@
+/Users/asvetl/x3-mod/verification/results/run269-atlas-lod0/../run259-lighting/outpost_pair.py:45: RuntimeWarning: divide by zero encountered in matmul
+  s = rt[..., 1]; nl = (n @ L)
+/Users/asvetl/x3-mod/verification/results/run269-atlas-lod0/../run259-lighting/outpost_pair.py:45: RuntimeWarning: overflow encountered in matmul
+  s = rt[..., 1]; nl = (n @ L)
+/Users/asvetl/x3-mod/verification/results/run269-atlas-lod0/../run259-lighting/outpost_pair.py:45: RuntimeWarning: invalid value encountered in matmul
+  s = rt[..., 1]; nl = (n @ L)
+== frame 2888 node 1c7f5ff8 box=(581,290)-(786,468) pixels=2667 draws_bounded=4 L_view=[0.483, 0.256, -0.837]
+  all                  px=  2667 lum mean/p50/p90=0.124/0.100/0.266 s mean=0.915 sun(lum*s) mean/p50=0.108/0.088 rest mean=0.0168
+  sun-facing n.l>0.2   px=  2343 lum mean/p50/p90=0.131/0.107/0.269 s mean=0.913 sun(lum*s) mean/p50=0.113/0.095 rest mean=0.0178
+  averted n.l<-0.2     px=    90 lum mean/p50/p90=0.089/0.030/0.273 s mean=0.974 sun(lum*s) mean/p50=0.087/0.029 rest mean=0.0019
+  corr(max(n.l,0), lum*s)=0.341  facing/averted lum ratio=1.48  share facing=0.88
+== frame 4294 node 1c7f5ff8 box=(729,214)-(1107,577) pixels=12365 draws_bounded=34 L_view=[0.183, 0.441, -0.878]
+  all                  px= 12365 lum mean/p50/p90=0.138/0.084/0.335 s mean=0.873 sun(lum*s) mean/p50=0.102/0.069 rest mean=0.0356
+  sun-facing n.l>0.2   px= 10997 lum mean/p50/p90=0.146/0.092/0.345 s mean=0.877 sun(lum*s) mean/p50=0.109/0.077 rest mean=0.0365
+  averted n.l<-0.2     px=   225 lum mean/p50/p90=0.082/0.058/0.170 s mean=0.804 sun(lum*s) mean/p50=0.054/0.036 rest mean=0.0283
+  corr(max(n.l,0), lum*s)=0.435  facing/averted lum ratio=1.77  share facing=0.89

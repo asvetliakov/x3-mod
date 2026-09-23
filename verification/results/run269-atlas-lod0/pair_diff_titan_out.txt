@@ -1,0 +1,10 @@
+spec frame 2888: mask px=1340 sun-facing px=1024 n.H>0.95 px=26 lum=0.306 | 0.6<n.H<0.85 px=651 lum=0.184 | ratio=1.66 | sun-facing lum p50/p95/p99=0.091/0.565/3.010
+spec frame 4294: mask px=15138 sun-facing px=9602 n.H>0.95 px=640 lum=0.473 | 0.6<n.H<0.85 px=2842 lum=0.411 | ratio=1.15 | sun-facing lum p50/p95/p99=0.077/1.697/3.047
+align: corr on I=-0.028; coarse box 123x78 at (322,244); fine bbox 292x331 at (0,436) box scale 0.421x0.236 x t=0.90; shift (0,4); depth ratio k=4.934; lum corr=0.067
+ratio: mean lum coarse/fine=0.395 (coarse 0.1079, fine 0.2732); median px ratio=0.765; std coarse/fine=0.1295/0.4614; detail(std lum-gauss2) coarse/fine=0.1162/0.2539
+diff: px=99 mean|d|=0.2332 mean d=-0.1653; energy low-pass(3px)=0.38 residual=0.36; silhouette IoU=0.213 xor px=1660 same-depth share of overlap=0.22; |d| share in 2px edge band=0.04 (band px share 0.11)
+  emissive   px share=0.364 |d| share=0.875 mean d=-0.4319 lum C/F=0.1646/0.5965 ratio=0.276 nonsun C/F=0.1036/0.4092
+  highlight  none
+  edge band  px share=0.111 |d| share=0.042 mean d=+0.0202 lum C/F=0.1053/0.0851 ratio=1.237 nonsun C/F=0.0638/0.0215
+  plating    px share=0.525 |d| share=0.083 mean d=-0.0200 lum C/F=0.0691/0.0891 ratio=0.776 nonsun C/F=0.0045/0.0308
+  thresholds: emissive nonsun>0.06; highlight sun part>0.426 (p95 fine)

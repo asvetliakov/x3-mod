@@ -1791,3 +1791,31 @@ marked. The user: "better now?", still some visible transition, acceptable if no
   2–4 texels/px). Fix in progress: tile-aware mips and an 8-texel gutter, plus the LOD 0
   geometry as the coarse record's source ([merged-lod-feasibility.md](merged-lod-feasibility.md)).
 - No anomalies (census overflow 0, stale 0, no texture failures).
+
+## Run 269: LOD 0 atlas overlay accepted (2026-09-23)
+
+Run 71 A (`/tmp/x3-bottleX3-run269`, Run70 DLL `a773e9f2…`, overlay `05.cat` `d29b0c88…` /
+`05.dat` `5fd877c1…`: coarse records from the LOD 0 meshes, tile-aware atlas mips, 8-texel
+gutter). Outputs: `verification/results/run269-atlas-lod0/` (`commands.txt`). All measured
+unless marked. The user: "All good, I don't see any transition now."
+
+- **Draws (node_census.py):** distant burst 2888: Titan argon_M2 LOD 1, 2 draws at s 63;
+  outpost LOD 1, 4 draws at s 114; two M1 at LOD 1, 2 draws each. Near burst 4294: Titan LOD 0,
+  32 draws at s 240; outpost LOD 0, 34 draws at s 221. The TL was not in view.
+- **Bindings (draw_state.py, coarse_tex_formats.py):** ships' coarse draws bind 1024² atlases
+  with 11 levels (s0 DXT1, s1/s2/s3 DXT5) plus the alpha group's own 512² DXT5; the outpost's
+  three atlas draws bind 2048² with 12 levels plus the lattice's 512×128. The 32×32 placeholder
+  (id 196 this run) is bound by 0 coarse draws (9 fine Titan draws bind it on s3, vanilla).
+- **Pair metrics:** not a held view (camera 25.5°, Titan 62° relative and 3.2× closer, the fine
+  box clipped at the screen edge; alignment correlation −0.03 / 0.16), so the ratios are not
+  comparable with Run 268 and are not credited to the switch (inferred). Acceptance rests on the
+  user's verdict plus the bindings and draw counts above.
+- **Frame time:** 18.0–19.8 ms at 247–299 draws (peak 23.2 ms / 357), the same as run268 while
+  drawing about 50 more calls; views differ, so inferred. Host idle during the flight.
+- **Anomalies:** census overflow 0, stale 0, one create_device (hr 0), 122 reader fallbacks (all
+  not-gzip), 54 loading-failure rows (46 in run268; 47 FindFirstFileA, unexplained but the same
+  classes), no new warning/error line classes.
+
+Verdict: the merged-LOD pilot is accepted at 80 / 150 px with the LOD 0 source record and the
+four atlases. Next: the fleet batch (rule and budget from the eligibility census) with mod
+support ([merged-lod-feasibility.md](merged-lod-feasibility.md) "Overlay tooling").
