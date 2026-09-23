@@ -1,0 +1,8 @@
+run281 commit=02b34ace last_row_utc=20:35:25.724874 teardown_rows=shadow_retention_summary,motion_output_mip_bias_summary,hull_lightmap_widen_summary engine=None sat_handler=0x76b66a80 proxy_delta_vs_pref=n/a fault=no
+run282 commit=02b34ace last_row_utc=20:38:22.850682 teardown_rows=shadow_retention_summary,motion_output_mip_bias_summary,hull_lightmap_widen_summary engine=03b08780 sat_handler=0x76b66a80 proxy_delta_vs_pref=n/a fault=no
+run283 commit=02b34ace last_row_utc=20:39:58.097074 teardown_rows=shadow_retention_summary,motion_output_mip_bias_summary,hull_lightmap_widen_summary engine=None sat_handler=0x76b66a80 proxy_delta_vs_pref=n/a fault=no
+run284 commit=02b34ace last_row_utc=20:42:46.670457 teardown_rows=shadow_retention_summary,motion_output_mip_bias_summary,hull_lightmap_widen_summary engine=03b09868 sat_handler=0x76b66a80 proxy_delta_vs_pref=n/a fault=no
+run285 commit=02b34ace last_row_utc=20:44:48.661585 teardown_rows=shadow_retention_summary,motion_output_mip_bias_summary,hull_lightmap_widen_summary engine=03b09868 sat_handler=0x76b66a80 proxy_delta_vs_pref=n/a fault=no
+run286 commit=02b34ace last_row_utc=20:46:52.941716 teardown_rows=shadow_retention_summary,motion_output_mip_bias_summary,hull_lightmap_widen_summary engine=03b09868 sat_handler=0x76b66a80 proxy_delta_vs_pref=n/a fault=no
+run287 commit=bc47873b last_row_utc=23:03:47.588505 teardown_rows=none engine=03b88788 sat_handler=0x76b46e80 proxy_delta_vs_pref=0x6f70000 fault_utc=23:03:48.549000 gap_s=0.960 fault=yes
+run288 commit=bc47873b last_row_utc=23:10:41.639321 teardown_rows=none engine=03b88788 sat_handler=0x76b46e80 proxy_delta_vs_pref=0x6f70000 fault_utc=23:10:42.551000 gap_s=0.912 fault=yes

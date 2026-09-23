@@ -1,0 +1,3 @@
+scanned_pe32=1497
+0x76b137fb: 0 covering image(s)
+0x03b88794: 0 covering image(s)

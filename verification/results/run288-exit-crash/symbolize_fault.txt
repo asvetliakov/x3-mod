@@ -1,0 +1,8 @@
+268db207d9cee13c
+thunk=0x6fbd6e80 delta=0x6f70000 load_base=0x76ab0000 pref_eip=0x6fba37fb
+copy_bytes
+/tmp/x3-run77-candidate/src/src/proxy/engine_memory.cpp:38
+ZN3x3m13engine_memory4readEjPvj
+/tmp/x3-run77-candidate/src/src/proxy/engine_memory.cpp:86
+6fba37fb:	f3 a4                	rep movsb %ds:(%esi),%es:(%edi)
+fault_address - logged engine (0x03b88788) = 0xc
