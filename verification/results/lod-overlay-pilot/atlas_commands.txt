@@ -1,0 +1,9 @@
+# Atlas census of the original coarsest record (the source of C; overlay catalogue addon/05.cat skipped by its marker).
+# --screen-px = the body's T_pad in s units (projected radius at the 640-wide reference; px = s * m00 * width / 1280).
+for b in ships/argon/argon_TL ships/argon/argon_M2 ships/argon/argon_M1; do
+  python3 tools/analysis/atlas_census.py --screen-px 50 $b > verification/results/lod-overlay-pilot/atlas_$(basename $b).txt
+done
+python3 tools/analysis/atlas_census.py --screen-px 100 Stations/others/military_outpost_middleb > verification/results/lod-overlay-pilot/atlas_military_outpost_middleb.txt
+# Summary lines
+grep -h -E '^[0-9]+\.cat:|^uv storage|^points needing|^  (span|period) ' verification/results/lod-overlay-pilot/atlas_*.txt
+PYTHONPATH=verification/probe /usr/bin/python3 -m unittest verification.analysis.test_bob1

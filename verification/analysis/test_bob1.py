@@ -15,6 +15,7 @@ import unittest
 import unittest.mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools' / 'analysis'))
+import atlas_census
 import bob1
 import body_materials
 import lod_overlay
@@ -819,6 +820,93 @@ class AreaRuleAndSynth(unittest.TestCase):
             self.assertEqual(json.loads((out2 / 'addon/02.x3m-lod.json').read_text())['bodies'][0]['synth'], [])
             text = run(['--game', str(game), '--dry-run', '--collapse', 'glow-area=0', 'stations/test/body=300'])
             self.assertIn("groups=['opaque:mat6~0:5f', 'glow:mat2:1f', 'alpha:mat3:1f', 'opaque:mat7~1:2f']", text)
+
+
+def atlas_tree():
+    def mat(diff, light):
+        return {'index': 0, 'flags': 0x02000000, 'technique': 1, 'effect': b'argon.fx',
+                'params': [(b't_DiffuseTexture', 8, diff), (b't_LightMapTexture', 8, light)]}
+    q = lambda x: int(round(x * 65536))
+    pt = lambda x, y, z, u, v: (0x1b, x, y, z, q(u), q(v), 0, 0, 65536, 1)
+    pts = [pt(0, 0, 0, 0, 0), pt(10, 0, 0, 1, 0), pt(0, 10, 0, 0, 1), pt(20, 0, 0, 2, 0),        # 0-3
+           pt(15, 0, 0, 1.5, 0), pt(15, 5, 0, 1.5, 0.5),                                       # 4-5
+           pt(0, 0, 5, 3.2, 0.1), pt(10, 0, 5, 3.8, 0.1), pt(0, 10, 5, 3.2, 0.6),              # 6-8
+           pt(0, 0, 8, 0.8, 0), pt(10, 0, 8, 1.2, 0), pt(0, 10, 8, 0.8, 0.5)]                  # 9-11
+    # material 0: A in [0,1] (area 50), B tiling u 0..2 (100), F u 1..1.5 shifted by 1 (12.5), shares point 1 with A
+    # material 1: C u 3.2..3.8 (50), D straddles u = 1 (50), H in [0,1] (40) and shares point 2 with material 0
+    g0 = {'material': 0, 'faces': [(0, 1, 2, 1), (0, 3, 2, 1), (1, 4, 5, 1)]}
+    g1 = {'material': 1, 'faces': [(6, 7, 8, 1), (9, 10, 11, 1), (2, 11, 9, 1)]}
+    coarse = {'value': 5, 'flags': 0, 'points': pts, 'parts': [{'flags': 1, 'groups': [g0, g1]}]}
+    lod0 = {'value': 100, 'flags': 0, 'points': pts, 'parts': [{'flags': 1, 'groups': [g0]}]}
+    return {'sections': [('MAT6', [mat(b'a_diff.tga', b'NULL'), mat(b'b_diff.tga', b'b_light.tga')]),
+                         ('BODY', [lod0, coarse])]}
+
+
+def dds_header(w, h, fourcc=b'DXT1'):
+    d = bytearray(128)
+    d[:4] = b'DDS '
+    struct.pack_into('<II', d, 12, h, w)
+    struct.pack_into('<I', d, 28, 1)
+    struct.pack_into('<I4s', d, 80, 4, fourcc)
+    return bytes(d)                                         # no texel data: size and format only
+
+
+class AtlasCensus(unittest.TestCase):
+    def census(self):
+        body = bob1.serialise(atlas_tree())
+        with tempfile.TemporaryDirectory() as folder:
+            game = Path(folder)
+            write_catalogue(game / '01.cat', [
+                ('dds/a_diff.pck', gzip.compress(dds_header(256, 256), mtime=0)),
+                ('dds/b_diff.pck', gzip.compress(dds_header(128, 128), mtime=0)),
+                ('dds/b_light.pck', gzip.compress(dds_header(128, 128, b'DXT5'), mtime=0))])
+            write_catalogue(game / '02.cat', [('objects/ships/x/b.pbb', gzip.compress(body, mtime=0))])
+            assets, _ = body_materials.original_assets(game)
+            tree = bob1.parse(assets.read_entry(bob1.resolve_body(assets, 'ships/x/b')))
+            return atlas_census.census(tree, None, assets)
+
+    def test_uv_census_and_shared_points(self):
+        c = self.census()
+        self.assertEqual((c['lod'], c['point_flags'], c['total_area']), (1, {0x1b: 12}, 302.5))
+        self.assertEqual((c['shared_points_materials'], c['shared_points_tiles'], c['shift_points']), (1, 1, 1))
+        m0, m1 = c['materials'][0], c['materials'][1]
+        self.assertEqual((m0['faces'], m0['in01'], m0['in01e'], m0['tiling'], m0['one_period']), (3, 1, 1, 1, 2))
+        self.assertEqual((m1['faces'], m1['in01'], m1['tiling'], m1['one_period']), (3, 1, 0, 2))
+        self.assertEqual([round(x, 4) for x in m0['bbox']], [0, 2, 0, 1])
+        self.assertEqual([round(x, 4) for x in m1['bbox']], [0, 3.8, 0, 1])
+        self.assertAlmostEqual(m0['share'], 162.5 / 302.5)
+        self.assertEqual((m0['diffuse']['size'], m0['diffuse']['fmt'], m0['light']['kind']), ((256, 256), 'DXT1', 'null'))
+        self.assertEqual((m1['light']['name'], m1['light']['size'], m1['light']['fmt']), ('b_light.tga', (128, 128), 'DXT5'))
+
+    def test_atlas_plan(self):
+        c = self.census()
+        span = atlas_census.tiles(c)
+        self.assertEqual([t['mats'] for t in span], [[0], [1]])
+        self.assertEqual([tuple(round(x, 4) for x in t['span']) for t in span], [(2, 1), (1.2, 1)])
+        self.assertEqual([t['split'] for t in span], [0, 0])
+        self.assertEqual([t['base'] for t in span], [(256, 256), (128, 128)])
+        period = atlas_census.tiles(c, 1)
+        self.assertEqual([t['split'] for t in period], [1, 1])              # B (tiling) and D (straddles u = 1)
+        self.assertEqual([tuple(round(x, 4) for x in t['span']) for t in period], [(1, 1), (1, 1)])
+        p = atlas_census.plan(span, 1024)
+        self.assertTrue(p['fits_full'])
+        self.assertEqual((p['scale'], p['split'], p['faces']), (1.0, 0, 6))
+        self.assertEqual([r['content'] for r in p['rows']], [(512, 256), (156, 128)])   # 153.6 -> 4-texel multiple
+        self.assertEqual(p['rows'][0]['d_density'], 1.0)
+        self.assertIsNone(p['rows'][0]['l_density'])                         # NULL light map: constant
+        self.assertAlmostEqual(p['rows'][1]['l_density'], 156 / 153.6, places=4)
+        small = atlas_census.plan(span, 256)
+        self.assertFalse(small['fits_full'])
+        self.assertTrue(0 < small['scale'] < 1)
+        self.assertLess(small['rows'][0]['d_density'], 1)
+        self.assertTrue(atlas_census.shelf_fits([(100, 50), (100, 50), (56, 50)], 256))
+        self.assertFalse(atlas_census.shelf_fits([(200, 200), (100, 100)], 256))
+        out = io.StringIO()
+        atlas_census.format_census(c, 'x', 50, out=out)
+        text = out.getvalue()
+        self.assertIn('not float32', text)
+        self.assertIn('span   1024x1024: tiles=2 fits_at_full_density=yes scale=1.0000 split_or_clamp_faces=0/6', text)
+        self.assertIn('period 1024x1024: tiles=2 fits_at_full_density=yes scale=1.0000 split_or_clamp_faces=2/6', text)
 
 
 @unittest.skipUnless(bob1.DEFAULT_GAME.joinpath('X3AP.exe').is_file(), 'X3 bottle not present')

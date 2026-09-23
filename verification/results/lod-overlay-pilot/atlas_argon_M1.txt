@@ -1,0 +1,84 @@
+skipped overlay catalogues: ['addon/05.cat']
+02.cat:objects/ships/argon/argon_M1.pbb  record LOD3 of 4 (value=5)  materials=24  faces=658  points=1584
+uv storage: point flags {0x1b: 1584}; 1584 points carry one UV as 2 x i32 16.16 fixed point (not float32), 0 a second UV set
+points needing duplication: shared by >= 2 materials 0, by >= 2 atlas tiles 0, by faces of one material with different integer UV shifts 123
+mat  alpha  faces  groups  area_share  uv_bbox(u0,u1,v0,v1)  in[0,1]  in[-.01,1.01]  tiling(>1)  one_period  diffuse | light  shared
+ 11  -  248  1  0.439  (-3.18,4.18,-1.11,2.12)  0.21  0.21  0.28  0.34  metal_argon_simple_plating_v2_diff.tga 1024x1024 DXT1 | NULL  -
+ 10  -  74  1  0.122  (-1.35,2.35,-0.62,1.82)  0.55  0.57  0.18  0.64  metal_argon_simple_plating_diff.tga 1024x1024 DXT1 | NULL  -
+  8  -  62  1  0.086  (-1.16,3.85,-2.85,1.82)  0.31  0.31  0.27  0.52  metal_argon_misc_tech_v2_diff.tga 512x512 DXT1 | metal_argon_misc_tech_light.tga 512x512 DXT5  -
+  5  -  51  1  0.075  (-0.32,2.15,-2.24,2.40)  0.53  0.53  0.22  0.57  metal_argon_base_metal_plating_diff.tga 1024x1024 DXT1 | NULL  -
+ 25  -  56  1  0.069  (-3.88,5.10,-1.04,1.01)  0.48  0.50  0.32  0.57  metal_argon_trims_09_diff.tga 1024x128 DXT1 | metal_argon_trims_09_light.tga 1024x128 DXT5  -
+ 16  -  23  1  0.034  (-1.29,2.29,0.00,1.50)  0.48  0.48  0.04  0.65  metal_argon_trims_02_diff.tga 1024x128 DXT1 | metal_argon_trims_02_light.tga 1024x128 DXT5  -
+  6  -  30  1  0.033  (-0.30,1.30,-0.19,1.18)  0.53  0.53  0.13  0.60  metal_argon_base_metal_plating_v2_diff.tga 1024x1024 DXT1 | NULL  -
+ 12  -  14  1  0.032  (-0.50,1.50,-0.16,0.61)  0.29  0.29  0.57  0.29  metal_argon_simple_plating_v3_diff.tga 1024x1024 DXT1 | NULL  -
+ 17  -  21  1  0.029  (-0.56,1.67,0.00,1.25)  0.33  0.33  0.14  0.48  metal_argon_trims_03_diff.tga 1024x128 DXT1 | metal_argon_trims_03_light.tga 1024x128 DXT5  -
+  9  -  20  1  0.029  (-0.34,1.34,-0.03,2.18)  0.45  0.45  0.20  0.55  metal_argon_pipes_tech_diff.tga 1024x1024 DXT1 | metal_argon_pipes_tech_light.tga 1024x1024 DXT5  -
+ 27  -  9  1  0.010  (-1.89,2.89,-0.97,2.27)  0.00  0.00  0.89  0.00  metal_argon_exhaust_source_02_diff.tga 256x256 DXT1 | metal_argon_exhaust_source_02_light.tga 256x256 DXT5  -
+ 15  -  2  1  0.010  (0.00,1.34,0.03,1.00)  0.00  0.00  1.00  0.00  metal_argon_trims_01_diff.tga 1024x128 DXT1 | metal_argon_trims_01_light.tga 1024x128 DXT5  -
+ 23  -  8  1  0.006  (-3.52,4.45,-2.02,1.00)  0.00  0.00  1.00  0.00  argon_solar_panels_01_diff.tga 256x256 DXT1 | argon_solar_panels_01_light.tga 256x256 DXT5  -
+ 13  -  2  1  0.005  (-0.07,3.00,0.35,0.61)  0.00  0.00  0.50  0.00  metal_argon_simple_plating_v4_diff.tga 1024x1024 DXT1 | NULL  -
+ 14  -  12  1  0.004  (-0.25,1.25,0.43,0.78)  0.83  0.83  0.00  1.00  metal_argon_simple_plating_v5_diff.tga 1024x1024 DXT1 | NULL  -
+ 19  -  5  1  0.004  (0.00,1.75,0.07,1.00)  0.80  0.80  0.00  1.00  metal_argon_trims_06_diff.tga 1024x128 DXT1 | metal_argon_trims_06_light.tga 1024x128 DXT5  -
+ 21  -  3  1  0.004  (-2.16,2.27,0.00,1.00)  0.00  0.00  1.00  0.00  metal_argon_trims_08_diff.tga 1024x128 DXT1 | metal_argon_trims_08_light.tga 1024x128 DXT5  -
+ 28  -  4  1  0.003  (-1.77,7.45,0.00,1.00)  0.00  0.00  1.00  0.00  metal_argon_exhaust_trims_01_diff.tga 512x128 DXT1 | NULL  -
+ 29  -  4  1  0.002  (-0.12,0.89,0.00,0.00)  0.75  0.75  0.00  0.75  metal_argon_exhaust_trims_02_diff.tga 512x128 DXT1 | metal_argon_exhaust_trims_02_light.tga 512x128 DXT5  -
+ 31  -  2  1  0.002  (1.42,2.22,-1.34,0.51)  0.00  0.00  1.00  0.00  metal_argon_vent_diff.tga 256x256 DXT1 | NULL  -
+  4  -  2  1  0.001  (-0.38,1.38,0.20,0.89)  0.50  0.50  0.50  0.50  metal_argon_apartments_labs_diff.tga 1024x1024 DXT1 | metal_argon_apartments_labs_v2_light.tga 1024x1024 DXT5  -
+ 26  -  3  1  0.001  (-2.18,5.82,0.07,3.72)  0.33  0.33  0.67  0.33  metal_argon_exhaust_source_01_diff.tga 256x256 DXT1 | metal_argon_exhaust_source_01_light.tga 256x256 DXT5  -
+ 18  -  1  1  0.001  (0.45,0.67,0.00,0.87)  1.00  1.00  0.00  1.00  metal_argon_trims_05_diff.tga 1024x128 DXT1 | metal_argon_trims_05_light.tga 1024x128 DXT5  -
+ 30  -  2  1  0.000  (0.01,0.99,0.01,0.29)  1.00  1.00  0.00  1.00  metal_argon_exhaust_trims_03_diff.tga 512x128 DXT1 | metal_argon_exhaust_trims_03_light.tga 512x128 DXT5  -
+atlas plan (tiles by (diffuse, light) pair, gutter 4 texels/side, 4-texel rounding, need at screen radius 50.0 px over body radius 6.116e+04)
+  span   1024x1024: tiles=24 fits_at_full_density=no scale=0.1236 split_or_clamp_faces=0/658 diffuse_density=0.0153..0.509 light_density=0.0153..0.509 atlas/need=6.12..38.5
+  span   2048x2048: tiles=24 fits_at_full_density=no scale=0.2538 split_or_clamp_faces=0/658 diffuse_density=0.0646..1.02 light_density=0.0646..1.02 atlas/need=12..78.5
+  span tiles: mats span(u,v) base -> 2048 content, diffuse/light density, atlas/need, split
+    [11] (3.44,3.01) 1024x1024 -> 896x784  0.0647/const  25.89  0
+    [10] (3.35,2.19) 1024x1024 -> 872x572  0.0648/const  25.71  0
+    [8] (2.75,3.51) 512x512 -> 360x456  0.0649/0.0649  13.42  0
+    [5] (1.79,3.60) 1024x1024 -> 468x936  0.0646/const  23.80  0
+    [25] (2.77,3.00) 1024x128 -> 720x100  0.0662/0.0662  16.81  0
+    [16] (2.05,1.00) 1024x128 -> 536x36  0.0719/0.0719  13.17  0
+    [6] (1.10,1.45) 1024x1024 -> 288x380  0.0655/const  27.28  0
+    [12] (2.31,1.05) 1024x1024 -> 604x276  0.0653/const  21.14  0
+    [17] (1.57,1.25) 1024x128 -> 408x44  0.07/0.07  16.26  0
+    [9] (2.28,2.23) 1024x1024 -> 596x580  0.0649/0.0649  25.20  0
+    [27] (3.68,2.65) 256x256 -> 240x176  0.0661/0.0661  21.94  0
+    [15] (1.34,0.97) 1024x128 -> 348x32  0.0656/0.0656  13.83  0
+    [23] (3.31,2.03) 256x256 -> 216x136  0.0665/0.0665  29.40  0
+    [13] (1.93,0.26) 1024x1024 -> 504x68  0.0658/const  25.64  0
+    [14] (0.95,0.35) 1024x1024 -> 248x92  0.0652/const  20.05  0
+    [19] (1.00,0.93) 1024x128 -> 260x32  0.0681/0.0681  19.52  0
+    [21] (2.63,1.00) 1024x128 -> 688x36  0.0718/0.0718  33.66  0
+    [28] (6.25,1.00) 512x128 -> 816x36  0.0717/const  41.35  0
+    [29] (1.47,0.00) 512x128 -> 192x4  1.02/1.02  -  0
+    [31] (0.80,2.13) 256x256 -> 52x140  0.065/const  16.40  0
+    [4] (1.83,0.69) 1024x1024 -> 480x180  0.0652/0.0652  78.48  0
+    [26] (8.71,2.65) 256x256 -> 568x172  0.0646/0.0646  60.12  0
+    [18] (0.22,0.87) 1024x128 -> 60x32  0.0764/0.0764  17.32  0
+    [30] (0.99,0.28) 512x128 -> 132x12  0.0877/0.0877  12.03  0
+  period 1024x1024: tiles=24 fits_at_full_density=no scale=0.3009 split_or_clamp_faces=351/658 diffuse_density=0.091..1.23 light_density=0.0916..1.23 atlas/need=12.9..93.7
+  period 2048x2048: tiles=24 fits_at_full_density=no scale=0.6179 split_or_clamp_faces=351/658 diffuse_density=0.385..2.5 light_density=0.385..2.5 atlas/need=26.1..191
+  period tiles: mats span(u,v) base -> 2048 content, diffuse/light density, atlas/need, split
+    [11] (1.00,1.00) 1024x1024 -> 636x632  0.385/const  63.15  164
+    [10] (1.00,1.00) 1024x1024 -> 636x636  0.386/const  62.79  27
+    [8] (1.00,1.00) 512x512 -> 320x320  0.391/0.391  32.96  30
+    [5] (0.94,1.00) 1024x1024 -> 600x636  0.386/const  58.16  22
+    [25] (1.00,1.00) 1024x128 -> 636x80  0.388/0.388  40.69  24
+    [16] (0.97,1.00) 1024x128 -> 616x80  0.387/0.387  30.58  8
+    [6] (0.95,0.97) 1024x1024 -> 604x616  0.385/const  66.14  12
+    [12] (0.99,0.86) 1024x1024 -> 624x548  0.385/const  51.28  10
+    [17] (1.00,1.00) 1024x128 -> 632x80  0.388/0.388  38.26  11
+    [9] (0.94,0.91) 1024x1024 -> 596x576  0.385/0.385  61.37  9
+    [27] (0.93,0.97) 256x256 -> 148x156  0.393/0.393  53.52  9
+    [15] (1.00,0.97) 1024x128 -> 636x80  0.401/0.401  34.21  2
+    [23] (0.74,1.00) 256x256 -> 120x160  0.398/0.398  71.86  8
+    [13] (0.93,0.26) 1024x1024 -> 592x164  0.387/const  62.15  2
+    [14] (0.95,0.35) 1024x1024 -> 604x224  0.387/const  48.83  0
+    [19] (1.00,0.93) 1024x128 -> 636x76  0.396/0.396  47.04  0
+    [21] (0.32,1.00) 1024x128 -> 204x80  0.394/0.394  78.82  3
+    [28] (0.81,1.00) 512x128 -> 256x80  0.387/const  96.05  4
+    [29] (0.89,0.00) 512x128 -> 284x4  2.5/2.5  -  1
+    [31] (0.58,0.62) 256x256 -> 92x100  0.388/const  40.07  2
+    [4] (0.45,0.69) 1024x1024 -> 288x436  0.386/0.386  190.87  1
+    [26] (0.90,0.93) 256x256 -> 144x148  0.391/0.391  147.80  2
+    [18] (0.22,0.87) 1024x128 -> 140x72  0.401/0.401  39.68  0
+    [30] (0.99,0.28) 512x128 -> 312x24  0.414/0.414  26.15  0
