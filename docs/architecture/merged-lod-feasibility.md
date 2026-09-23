@@ -773,6 +773,32 @@ coarse texel grid, stays black outside its footprint at every level. The black t
 content stays black wherever the two contents share no texel. The old box chain fails
 it at mip 4.
 
+**Fleet batch census (2026-09-23; `tools/analysis/lod_batch_census.py`, read-only).** Over
+all 1635 winning `BOB1` bodies (installed `addon/05` skipped) it runs the atlas collapse's own
+checks and layout on record 0 without baking (`verification/results/lod-overlay-batch/`:
+`summary.txt`, `census.txt`, `sectors.txt`, `eligible_bodies.txt`; measured). The texel rule's
+reference is `--screen-width 1920` (the user's display); 1280 and 2560 are extra columns.
+Proposed switch rule: ships `T_pad = min(200, max(80, 2.5·T_1))`, stations and `others/` 150,
+other top directories excluded (117 bodies). 339 bodies are eligible (220 ships, 119 stations).
+Refusals (a body can carry several): no opaque faces 298, opaque materials from more than one
+`.fx` 238, a second UV set 164, a group material index outside the body's table 156 (for
+visible parts `lod_atlas.collapse` raises `IndexError` there instead of refusing), `T_pad`
+below `T_1` 139 (the stations with `T_1` = 250, 97 of them with 250/150/80/30 by `census.txt`,
+among them `argon_spacedock`), a dominant material without a light-map slot 113, a non-effect
+material 49, both `.pbb` and `.pbd` present 47 (`bob1.resolve_body` raises; 10 of them otherwise
+eligible, `ambiguous_ext_out.txt`), and 10 otherwise eligible bodies whose file stems collide
+(the atlas names use the stem only, e.g. `ships/M6/Terran_M6` and `ships/usc/terran_m6`;
+`stem_collisions_out.txt`). 186 accepted bodies save no draw. Below `T_pad` the eligible bodies
+save 4358 draws per instance against record 0 and 3082 against their coarsest record (summed
+over bodies; 26 save none against the coarsest). At 1920 wide the ≥ 2 texels/px rule picks
+1024² for 169, 2048² for 79 and 4096² for 91 eligible bodies; 77 miss it even at 4096² (e.g.
+`ships/M7/Split_M7s` 0.02 by `census.txt`), 113 at the tool's 2048 cap. The added atlas
+residency of the eligible bodies of the flown sets at 1920 wide, 2048 cap / uncapped: run255
+burst 2 (10 bodies) 122.34 / 415.94 MB, run257 burst 1 (10) 122.34 / 415.94 MB, run260 (8)
+112.55 / 406.15 MB; at 1280 wide uncapped 229.99–298.50 MB. The byte figures are a lower bound:
+diffuse is counted DXT1, but `lod_atlas.encode` picks DXT5 for a slot whose level-0 alpha is not
+all 255, and the slot set assumes `--atlas-specular`.
+
 **Node side effects.** Two node-set side effects change at Very High (objdump of `0047cfe0..`,
 `/tmp/x3-lod/f47cfe0.s`). A child node flagged `node+0x12c & 0x40000` is hidden
 when its parent (`node+0x18`) is not renderable or has `+0x14c > 0`
@@ -853,6 +879,7 @@ python3 tools/analysis/body_materials.py <body> [--lod N] [--area-percent 50,70,
 python3 tools/analysis/lod_overlay.py --out <scratch dir> --collapse glow-area 70 [--no-synth-material] <body>[=T_pad] ...
 python3 tools/analysis/lod_overlay.py --out <scratch dir> --collapse atlas [--atlas-size 1024] [--atlas-max-size 2048] [--atlas-format dxt|a8r8g8b8] [--atlas-specular] [--atlas-preview DIR] [--source-record N] <body>=T_pad[@N] ...
 python3 verification/results/lod-overlay-pilot/atlas_mip_bleed.py <overlay root> ...   # light-atlas mips 0-4 against the tiles' own maps
+python3 tools/analysis/lod_batch_census.py --out <dir> [--jobs N] [--screen-width 1920] [--ship-min 80 --ship-factor 2.5 --station-t 150 --t-cap 200] [--atlas-max-size 4096]   # fleet eligibility, atlas sizes, costs, flown sectors
 PYTHONPATH=verification/probe /usr/bin/python3 -m unittest verification.analysis.test_bob1
 ```
 

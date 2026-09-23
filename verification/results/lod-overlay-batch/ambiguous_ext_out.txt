@@ -1,0 +1,11 @@
+ambiguous_body_ext 47; otherwise eligible (no other refusal, no filter) 10
+  ships/ANIMPROPS/m6mainradar1
+  ships/ANIMPROPS/m6mainradar1_base
+  ships/ANIMPROPS/m6radarspike1
+  ships/ANIMPROPS/m6radarspike1_base
+  ships/ANIMPROPS/m7mainradar1
+  ships/ANIMPROPS/m7mainradar1_base
+  ships/ANIMPROPS/m7radarspike1
+  ships/MM6/Teladi_MM6FAN
+  ships/STATIONS/Argon_owpmain
+  ships/STATIONS/Argon_owpsec

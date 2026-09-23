@@ -1,0 +1,6 @@
+# Fleet merged-LOD atlas batch census (2026-09-23; read-only, no build, no Wine)
+python3 verification/results/run257-pilot/node_census.py /tmp/x3-bottleX3-run260/session-20260923-034233-312.log 9868 9871 9875 > census_run260_out.txt   # run260 Argon Prime body set (3 identical frames)
+ps -axww -o args= | grep '[X]3AP.exe'   # empty before the run
+python3 tools/analysis/lod_batch_census.py --out verification/results/lod-overlay-batch --jobs 8   # --screen-width 1920 default; census.txt, summary.txt, sectors.txt, eligible_bodies.txt (134 s)
+(cd verification/results/lod-overlay-batch && python3 ambiguous_ext.py > ambiguous_ext_out.txt && python3 stem_collisions.py > stem_collisions_out.txt)   # review items C and D
+# rule parameters: --ship-min 80 --ship-factor 2.5 --station-t 150 --t-cap 200; sizes --atlas-size 1024 --atlas-max-size 4096

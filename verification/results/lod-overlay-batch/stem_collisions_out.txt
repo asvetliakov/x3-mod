@@ -1,0 +1,6 @@
+batch_stem_collision 10; with any other refusal or filter 0 (must be 0)
+  terraformer_gate: others/terraformer_gate, stations/others/terraformer_gate
+  terran_m2: ships/terran/terran_M2, ships/usc/Terran_m2
+  terran_m6: ships/M6/Terran_M6, ships/usc/terran_m6
+  terran_m7: ships/M7/Terran_M7, ships/usc/terran_m7
+  xtc_aldrin_m6: ships/x3ap/aldrin/XTC_aldrin_m6, ships/x3ap/XTC_aldrin_m6

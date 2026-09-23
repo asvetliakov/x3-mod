@@ -1,0 +1,247 @@
+== frame 9868 node_draws=341 alpha_tested=54
+N 334acc90 000053a0   36   6 [0] 35,0,kept 5 100000,30,20,10,30 stations\trading_stations\argon_trading_station_partB
+N 2d5607b0 00005428   36   9 [0] 20,0,kept 4 100000,30,15,5 stations\station_scenes\tech\argon_tech_M_laser_cc
+N 2c6e5598 00005411   35   6 [0] 1093,0,kept 5 100000,250,150,80,30 stations\station_scenes\others\argon_spacedock
+N 312f9d20 000053aa   33   5 [0] 79,0,kept 4 100000,30,15,5 stations\station_scenes\others\argon_equipmentdock
+N 334aca10 0000539f   32   6 [0] 22,0,kept 5 100000,30,15,5,5 stations\trading_stations\argon_trading_station_partA
+N 2a21aba8 00005414   30   0 [2] 30,2,kept 5 100000,250,150,80,30 stations\station_scenes\tech\argon_tech_S_factory_A
+N 2a21c728 000053ab   17   2 [0] 74,0,kept 5 100000,30,15,5,30 stations\living_sections\argon_livingsection
+N 1c388df8 00005698   16   2 [0] 42,0,kept 5 100000,30,20,10,30 others\argon_gate
+N 29ac4ba8 0000547a   15   9 [2] 45,2,kept 5 100000,250,150,80,30 stations\station_scenes\tech\argon_tech_L_missile_C
+N 35c73cc8 000054f9   10   3 [0] 11,0,kept 2 100000,15 others\argon_adsign_C
+N 00000000 00000000    8   0 [0] - - - -
+N 334afc10 00005409    6   2 [0] 14,0,kept 3 100000,25,5 stations\X3AP\StockmarketBoardXL
+N 334afe90 00005409    6   2 [0] 14,0,kept 3 100000,25,5 stations\X3AP\StockmarketBoardXL
+N 334b0110 0000540a    6   2 [0] 9,0,kept 3 100000,25,5 stations\X3AP\StockmarketBoardM
+N 3a96a168 00004f72    5   0 [1] 39,1,kept 3 100000,30,80 ships\argon\argon_TL
+N 3afbbd20 00004f72    5   0 [1] 39,1,kept 3 100000,30,80 ships\argon\argon_TL
+N 3ab332e0 00005018    4   0 [0] 117440512,0,kept 1 100000 environments\nebulae\bluewell\nebula_bluewell_background_01
+N 1c388678 00004e6f    4   0 [0] 579,0,kept 1 100000 environments\planets\planet_close_waterworld
+N 2a21d128 35b42b43    2   0 [0] 16,0,kept 1 10000 -
+N 2a21e028 35b42b43    2   0 [0] 16,0,kept 1 10000 -
+N 2c6e1998 35b42b43    2   0 [0] 16,0,kept 1 10000 -
+N 2c6e2898 35b42b43    2   0 [0] 16,0,kept 1 10000 -
+N 2c6e3798 35b42b43    2   0 [0] 16,0,kept 1 10000 -
+N 3afc8d68 00004f78    2   0 [0] 295,0,kept 4 100000,30,15,5 ships\argon\argon_M4
+N 1c3892f8 00005699    2   0 [0] 29,0,kept 1 100000 others\argon_gate_effect
+N 1202d568 00005695    2   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_radar_2d
+N 3ab33060 00005017    1   0 [0] 117440512,0,kept 1 100000 environments\nebulae\bluewell\nebula_bluewell_stars_01
+N 1c388178 00005384    1   0 [0] 44,0,kept 1 100000 environments\planets\moon_small_ice
+N 2a21d3a8 35b42b44    1   0 [0] 12,0,kept 1 10000 -
+N 2a21e2a8 35b42b44    1   0 [0] 12,0,kept 1 10000 -
+N 2c6e1c18 35b42b44    1   0 [0] 12,0,kept 1 10000 -
+N 2c6e2b18 35b42b44    1   0 [0] 12,0,kept 1 10000 -
+N 2c6e3a18 35b42b44    1   0 [0] 12,0,kept 1 10000 -
+N 3afc94e8 00004a88    1   0 [0] 98,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 3afc9768 00004a88    1   0 [0] 101,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 312fa220 000053ab    1   0 [3] 10,3,kept 5 100000,30,15,5,30 stations\living_sections\argon_livingsection
+N 3afc8fe8 00004e87    1   0 [0] 212,0,kept 1 100000 effects\engines\fx_engine_argon_M4
+N 3b07d280 0000501d    1   0 [0] 789,0,kept 1 10000 environments\nebulae\bluewell\nebula_bluewell_dust_part04
+N 3b07cb00 0000501e    1   0 [0] 12824,0,kept 1 10000 environments\nebulae\bluewell\nebula_bluewell_dust_part05
+N 3afe2d88 00005691    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_target_text
+N 3afe3008 00005691    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_target_text
+N 3afe3288 00005691    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_target_text
+N 3b05bd30 0000568f    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/GUI/blackpearl
+N 1202d7e8 00005696    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_info_2d
+N 1202da68 00005697    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_weapons_2d
+N 3afd7638 0000569a    1   0 [0] 640,0,kept 1 10000 effects/menugfx/GUI/sidebar
+N 3afd73b8 0000568d    1   0 [0] 486,0,kept 1 10000 effects\menugfx\GUI\gui_master
+B   36   6   1 000053a0 stations\trading_stations\argon_trading_station_partB
+B   36   9   1 00005428 stations\station_scenes\tech\argon_tech_M_laser_cc
+B   35   6   1 00005411 stations\station_scenes\others\argon_spacedock
+B   33   5   1 000053aa stations\station_scenes\others\argon_equipmentdock
+B   32   6   1 0000539f stations\trading_stations\argon_trading_station_partA
+B   30   0   1 00005414 stations\station_scenes\tech\argon_tech_S_factory_A
+B   18   2   2 000053ab stations\living_sections\argon_livingsection
+B   16   2   1 00005698 others\argon_gate
+B   15   9   1 0000547a stations\station_scenes\tech\argon_tech_L_missile_C
+B   12   4   2 00005409 stations\X3AP\StockmarketBoardXL
+B   10   3   1 000054f9 others\argon_adsign_C
+B   10   0   2 00004f72 ships\argon\argon_TL
+B   10   0   5 35b42b43 -
+B    8   0   1 00000000 -
+B    6   2   1 0000540a stations\X3AP\StockmarketBoardM
+B    5   0   5 35b42b44 -
+B    4   0   1 00005018 environments\nebulae\bluewell\nebula_bluewell_background_01
+B    4   0   1 00004e6f environments\planets\planet_close_waterworld
+B    3   0   3 00005691 effects/menugfx/hud_target_text
+B    2   0   1 00004f78 ships\argon\argon_M4
+B    2   0   1 00005699 others\argon_gate_effect
+B    2   0   1 00005695 effects/menugfx/hud_radar_2d
+B    2   0   2 00004a88 ships\props\weapondummy
+B    1   0   1 00005017 environments\nebulae\bluewell\nebula_bluewell_stars_01
+B    1   0   1 00005384 environments\planets\moon_small_ice
+B    1   0   1 00004e87 effects\engines\fx_engine_argon_M4
+B    1   0   1 0000501d environments\nebulae\bluewell\nebula_bluewell_dust_part04
+B    1   0   1 0000501e environments\nebulae\bluewell\nebula_bluewell_dust_part05
+B    1   0   1 0000568f effects/menugfx/GUI/blackpearl
+B    1   0   1 00005696 effects/menugfx/hud_info_2d
+B    1   0   1 00005697 effects/menugfx/hud_weapons_2d
+B    1   0   1 0000569a effects/menugfx/GUI/sidebar
+B    1   0   1 0000568d effects\menugfx\GUI\gui_master
+== frame 9871 node_draws=341 alpha_tested=54
+N 334acc90 000053a0   36   6 [0] 35,0,kept 5 100000,30,20,10,30 stations\trading_stations\argon_trading_station_partB
+N 2d5607b0 00005428   36   9 [0] 20,0,kept 4 100000,30,15,5 stations\station_scenes\tech\argon_tech_M_laser_cc
+N 2c6e5598 00005411   35   6 [0] 1093,0,kept 5 100000,250,150,80,30 stations\station_scenes\others\argon_spacedock
+N 312f9d20 000053aa   33   5 [0] 79,0,kept 4 100000,30,15,5 stations\station_scenes\others\argon_equipmentdock
+N 334aca10 0000539f   32   6 [0] 22,0,kept 5 100000,30,15,5,5 stations\trading_stations\argon_trading_station_partA
+N 2a21aba8 00005414   30   0 [2] 30,2,kept 5 100000,250,150,80,30 stations\station_scenes\tech\argon_tech_S_factory_A
+N 2a21c728 000053ab   17   2 [0] 74,0,kept 5 100000,30,15,5,30 stations\living_sections\argon_livingsection
+N 1c388df8 00005698   16   2 [0] 42,0,kept 5 100000,30,20,10,30 others\argon_gate
+N 29ac4ba8 0000547a   15   9 [2] 45,2,kept 5 100000,250,150,80,30 stations\station_scenes\tech\argon_tech_L_missile_C
+N 35c73cc8 000054f9   10   3 [0] 11,0,kept 2 100000,15 others\argon_adsign_C
+N 00000000 00000000    8   0 [0] - - - -
+N 334afc10 00005409    6   2 [0] 14,0,kept 3 100000,25,5 stations\X3AP\StockmarketBoardXL
+N 334afe90 00005409    6   2 [0] 14,0,kept 3 100000,25,5 stations\X3AP\StockmarketBoardXL
+N 334b0110 0000540a    6   2 [0] 9,0,kept 3 100000,25,5 stations\X3AP\StockmarketBoardM
+N 3a96a168 00004f72    5   0 [1] 39,1,kept 3 100000,30,80 ships\argon\argon_TL
+N 3afbbd20 00004f72    5   0 [1] 39,1,kept 3 100000,30,80 ships\argon\argon_TL
+N 3ab332e0 00005018    4   0 [0] 117440512,0,kept 1 100000 environments\nebulae\bluewell\nebula_bluewell_background_01
+N 1c388678 00004e6f    4   0 [0] 579,0,kept 1 100000 environments\planets\planet_close_waterworld
+N 2a21d128 35b42b43    2   0 [0] 16,0,kept 1 10000 -
+N 2a21e028 35b42b43    2   0 [0] 16,0,kept 1 10000 -
+N 2c6e1998 35b42b43    2   0 [0] 16,0,kept 1 10000 -
+N 2c6e2898 35b42b43    2   0 [0] 16,0,kept 1 10000 -
+N 2c6e3798 35b42b43    2   0 [0] 16,0,kept 1 10000 -
+N 3afc8d68 00004f78    2   0 [0] 295,0,kept 4 100000,30,15,5 ships\argon\argon_M4
+N 1c3892f8 00005699    2   0 [0] 29,0,kept 1 100000 others\argon_gate_effect
+N 1202d568 00005695    2   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_radar_2d
+N 3ab33060 00005017    1   0 [0] 117440512,0,kept 1 100000 environments\nebulae\bluewell\nebula_bluewell_stars_01
+N 1c388178 00005384    1   0 [0] 44,0,kept 1 100000 environments\planets\moon_small_ice
+N 2a21d3a8 35b42b44    1   0 [0] 12,0,kept 1 10000 -
+N 2a21e2a8 35b42b44    1   0 [0] 12,0,kept 1 10000 -
+N 2c6e1c18 35b42b44    1   0 [0] 12,0,kept 1 10000 -
+N 2c6e2b18 35b42b44    1   0 [0] 12,0,kept 1 10000 -
+N 2c6e3a18 35b42b44    1   0 [0] 12,0,kept 1 10000 -
+N 3afc94e8 00004a88    1   0 [0] 98,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 3afc9768 00004a88    1   0 [0] 101,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 312fa220 000053ab    1   0 [3] 10,3,kept 5 100000,30,15,5,30 stations\living_sections\argon_livingsection
+N 3afc8fe8 00004e87    1   0 [0] 212,0,kept 1 100000 effects\engines\fx_engine_argon_M4
+N 3b07d280 0000501d    1   0 [0] 789,0,kept 1 10000 environments\nebulae\bluewell\nebula_bluewell_dust_part04
+N 3b07cb00 0000501e    1   0 [0] 12824,0,kept 1 10000 environments\nebulae\bluewell\nebula_bluewell_dust_part05
+N 3afe2d88 00005691    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_target_text
+N 3afe3008 00005691    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_target_text
+N 3afe3288 00005691    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_target_text
+N 3b071870 0000568f    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/GUI/blackpearl
+N 1202d7e8 00005696    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_info_2d
+N 1202da68 00005697    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_weapons_2d
+N 3afd7638 0000569a    1   0 [0] 640,0,kept 1 10000 effects/menugfx/GUI/sidebar
+N 3afd73b8 0000568d    1   0 [0] 117440512,0,kept 1 10000 effects\menugfx\GUI\gui_master
+B   36   6   1 000053a0 stations\trading_stations\argon_trading_station_partB
+B   36   9   1 00005428 stations\station_scenes\tech\argon_tech_M_laser_cc
+B   35   6   1 00005411 stations\station_scenes\others\argon_spacedock
+B   33   5   1 000053aa stations\station_scenes\others\argon_equipmentdock
+B   32   6   1 0000539f stations\trading_stations\argon_trading_station_partA
+B   30   0   1 00005414 stations\station_scenes\tech\argon_tech_S_factory_A
+B   18   2   2 000053ab stations\living_sections\argon_livingsection
+B   16   2   1 00005698 others\argon_gate
+B   15   9   1 0000547a stations\station_scenes\tech\argon_tech_L_missile_C
+B   12   4   2 00005409 stations\X3AP\StockmarketBoardXL
+B   10   3   1 000054f9 others\argon_adsign_C
+B   10   0   2 00004f72 ships\argon\argon_TL
+B   10   0   5 35b42b43 -
+B    8   0   1 00000000 -
+B    6   2   1 0000540a stations\X3AP\StockmarketBoardM
+B    5   0   5 35b42b44 -
+B    4   0   1 00005018 environments\nebulae\bluewell\nebula_bluewell_background_01
+B    4   0   1 00004e6f environments\planets\planet_close_waterworld
+B    3   0   3 00005691 effects/menugfx/hud_target_text
+B    2   0   1 00004f78 ships\argon\argon_M4
+B    2   0   1 00005699 others\argon_gate_effect
+B    2   0   1 00005695 effects/menugfx/hud_radar_2d
+B    2   0   2 00004a88 ships\props\weapondummy
+B    1   0   1 00005017 environments\nebulae\bluewell\nebula_bluewell_stars_01
+B    1   0   1 00005384 environments\planets\moon_small_ice
+B    1   0   1 00004e87 effects\engines\fx_engine_argon_M4
+B    1   0   1 0000501d environments\nebulae\bluewell\nebula_bluewell_dust_part04
+B    1   0   1 0000501e environments\nebulae\bluewell\nebula_bluewell_dust_part05
+B    1   0   1 0000568f effects/menugfx/GUI/blackpearl
+B    1   0   1 00005696 effects/menugfx/hud_info_2d
+B    1   0   1 00005697 effects/menugfx/hud_weapons_2d
+B    1   0   1 0000569a effects/menugfx/GUI/sidebar
+B    1   0   1 0000568d effects\menugfx\GUI\gui_master
+== frame 9875 node_draws=341 alpha_tested=54
+N 334acc90 000053a0   36   6 [0] 35,0,kept 5 100000,30,20,10,30 stations\trading_stations\argon_trading_station_partB
+N 2d5607b0 00005428   36   9 [0] 20,0,kept 4 100000,30,15,5 stations\station_scenes\tech\argon_tech_M_laser_cc
+N 2c6e5598 00005411   35   6 [0] 1093,0,kept 5 100000,250,150,80,30 stations\station_scenes\others\argon_spacedock
+N 312f9d20 000053aa   33   5 [0] 79,0,kept 4 100000,30,15,5 stations\station_scenes\others\argon_equipmentdock
+N 334aca10 0000539f   32   6 [0] 22,0,kept 5 100000,30,15,5,5 stations\trading_stations\argon_trading_station_partA
+N 2a21aba8 00005414   30   0 [2] 30,2,kept 5 100000,250,150,80,30 stations\station_scenes\tech\argon_tech_S_factory_A
+N 2a21c728 000053ab   17   2 [0] 74,0,kept 5 100000,30,15,5,30 stations\living_sections\argon_livingsection
+N 1c388df8 00005698   16   2 [0] 42,0,kept 5 100000,30,20,10,30 others\argon_gate
+N 29ac4ba8 0000547a   15   9 [2] 45,2,kept 5 100000,250,150,80,30 stations\station_scenes\tech\argon_tech_L_missile_C
+N 35c73cc8 000054f9   10   3 [0] 11,0,kept 2 100000,15 others\argon_adsign_C
+N 00000000 00000000    8   0 [0] - - - -
+N 334afc10 00005409    6   2 [0] 14,0,kept 3 100000,25,5 stations\X3AP\StockmarketBoardXL
+N 334afe90 00005409    6   2 [0] 14,0,kept 3 100000,25,5 stations\X3AP\StockmarketBoardXL
+N 334b0110 0000540a    6   2 [0] 9,0,kept 3 100000,25,5 stations\X3AP\StockmarketBoardM
+N 3a96a168 00004f72    5   0 [1] 39,1,kept 3 100000,30,80 ships\argon\argon_TL
+N 3afbbd20 00004f72    5   0 [1] 40,1,kept 3 100000,30,80 ships\argon\argon_TL
+N 3ab332e0 00005018    4   0 [0] 117440512,0,kept 1 100000 environments\nebulae\bluewell\nebula_bluewell_background_01
+N 1c388678 00004e6f    4   0 [0] 579,0,kept 1 100000 environments\planets\planet_close_waterworld
+N 2a21d128 35b42b43    2   0 [0] 16,0,kept 1 10000 -
+N 2a21e028 35b42b43    2   0 [0] 16,0,kept 1 10000 -
+N 2c6e1998 35b42b43    2   0 [0] 16,0,kept 1 10000 -
+N 2c6e2898 35b42b43    2   0 [0] 16,0,kept 1 10000 -
+N 2c6e3798 35b42b43    2   0 [0] 16,0,kept 1 10000 -
+N 3afc8d68 00004f78    2   0 [0] 295,0,kept 4 100000,30,15,5 ships\argon\argon_M4
+N 1c3892f8 00005699    2   0 [0] 29,0,kept 1 100000 others\argon_gate_effect
+N 1202d568 00005695    2   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_radar_2d
+N 3ab33060 00005017    1   0 [0] 117440512,0,kept 1 100000 environments\nebulae\bluewell\nebula_bluewell_stars_01
+N 1c388178 00005384    1   0 [0] 44,0,kept 1 100000 environments\planets\moon_small_ice
+N 2a21d3a8 35b42b44    1   0 [0] 12,0,kept 1 10000 -
+N 2a21e2a8 35b42b44    1   0 [0] 12,0,kept 1 10000 -
+N 2c6e1c18 35b42b44    1   0 [0] 12,0,kept 1 10000 -
+N 2c6e2b18 35b42b44    1   0 [0] 12,0,kept 1 10000 -
+N 2c6e3a18 35b42b44    1   0 [0] 12,0,kept 1 10000 -
+N 3afc94e8 00004a88    1   0 [0] 98,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 3afc9768 00004a88    1   0 [0] 101,0,kept 4 100000,30,15,5 ships\props\weapondummy
+N 312fa220 000053ab    1   0 [3] 10,3,kept 5 100000,30,15,5,30 stations\living_sections\argon_livingsection
+N 3afc8fe8 00004e87    1   0 [0] 212,0,kept 1 100000 effects\engines\fx_engine_argon_M4
+N 3b07d280 0000501d    1   0 [0] 789,0,kept 1 10000 environments\nebulae\bluewell\nebula_bluewell_dust_part04
+N 3b07cb00 0000501e    1   0 [0] 12824,0,kept 1 10000 environments\nebulae\bluewell\nebula_bluewell_dust_part05
+N 3afe2d88 00005691    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_target_text
+N 3afe3008 00005691    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_target_text
+N 3afe3288 00005691    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_target_text
+N 3b071870 0000568f    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/GUI/blackpearl
+N 1202d7e8 00005696    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_info_2d
+N 1202da68 00005697    1   0 [0] 117440512,0,kept 1 10000 effects/menugfx/hud_weapons_2d
+N 3afd7638 0000569a    1   0 [0] 640,0,kept 1 10000 effects/menugfx/GUI/sidebar
+N 3afd73b8 0000568d    1   0 [0] 117440512,0,kept 1 10000 effects\menugfx\GUI\gui_master
+B   36   6   1 000053a0 stations\trading_stations\argon_trading_station_partB
+B   36   9   1 00005428 stations\station_scenes\tech\argon_tech_M_laser_cc
+B   35   6   1 00005411 stations\station_scenes\others\argon_spacedock
+B   33   5   1 000053aa stations\station_scenes\others\argon_equipmentdock
+B   32   6   1 0000539f stations\trading_stations\argon_trading_station_partA
+B   30   0   1 00005414 stations\station_scenes\tech\argon_tech_S_factory_A
+B   18   2   2 000053ab stations\living_sections\argon_livingsection
+B   16   2   1 00005698 others\argon_gate
+B   15   9   1 0000547a stations\station_scenes\tech\argon_tech_L_missile_C
+B   12   4   2 00005409 stations\X3AP\StockmarketBoardXL
+B   10   3   1 000054f9 others\argon_adsign_C
+B   10   0   2 00004f72 ships\argon\argon_TL
+B   10   0   5 35b42b43 -
+B    8   0   1 00000000 -
+B    6   2   1 0000540a stations\X3AP\StockmarketBoardM
+B    5   0   5 35b42b44 -
+B    4   0   1 00005018 environments\nebulae\bluewell\nebula_bluewell_background_01
+B    4   0   1 00004e6f environments\planets\planet_close_waterworld
+B    3   0   3 00005691 effects/menugfx/hud_target_text
+B    2   0   1 00004f78 ships\argon\argon_M4
+B    2   0   1 00005699 others\argon_gate_effect
+B    2   0   1 00005695 effects/menugfx/hud_radar_2d
+B    2   0   2 00004a88 ships\props\weapondummy
+B    1   0   1 00005017 environments\nebulae\bluewell\nebula_bluewell_stars_01
+B    1   0   1 00005384 environments\planets\moon_small_ice
+B    1   0   1 00004e87 effects\engines\fx_engine_argon_M4
+B    1   0   1 0000501d environments\nebulae\bluewell\nebula_bluewell_dust_part04
+B    1   0   1 0000501e environments\nebulae\bluewell\nebula_bluewell_dust_part05
+B    1   0   1 0000568f effects/menugfx/GUI/blackpearl
+B    1   0   1 00005696 effects/menugfx/hud_info_2d
+B    1   0   1 00005697 effects/menugfx/hud_weapons_2d
+B    1   0   1 0000569a effects/menugfx/GUI/sidebar
+B    1   0   1 0000568d effects\menugfx\GUI\gui_master
+== frame_timing
+(9300, 19986, 341)
+(9600, 20123, 341)
+(9900, 19815, 341)
