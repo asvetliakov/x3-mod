@@ -1,0 +1,29 @@
+/Users/asvetl/x3-mod/verification/results/run268-atlas-spec/pair_diff268.py:80: RuntimeWarning: divide by zero encountered in matmul
+  v = np.clip(np.log2(np.maximum(v @ np.array(ar.M_IN).T, ar.LOG_FLOOR)), ar.MIN_EV, ar.MAX_EV)
+/Users/asvetl/x3-mod/verification/results/run268-atlas-spec/pair_diff268.py:80: RuntimeWarning: overflow encountered in matmul
+  v = np.clip(np.log2(np.maximum(v @ np.array(ar.M_IN).T, ar.LOG_FLOOR)), ar.MIN_EV, ar.MAX_EV)
+/Users/asvetl/x3-mod/verification/results/run268-atlas-spec/pair_diff268.py:80: RuntimeWarning: invalid value encountered in matmul
+  v = np.clip(np.log2(np.maximum(v @ np.array(ar.M_IN).T, ar.LOG_FLOOR)), ar.MIN_EV, ar.MAX_EV)
+/Users/asvetl/x3-mod/verification/results/run268-atlas-spec/pair_diff268.py:82: RuntimeWarning: divide by zero encountered in matmul
+  disp = np.clip(v @ np.array(ar.M_OUT).T, 0, 1); dl = 0.2126 * disp[..., 0] + 0.7152 * disp[..., 1] + 0.0722 * disp[..., 2]
+/Users/asvetl/x3-mod/verification/results/run268-atlas-spec/pair_diff268.py:82: RuntimeWarning: overflow encountered in matmul
+  disp = np.clip(v @ np.array(ar.M_OUT).T, 0, 1); dl = 0.2126 * disp[..., 0] + 0.7152 * disp[..., 1] + 0.0722 * disp[..., 2]
+/Users/asvetl/x3-mod/verification/results/run268-atlas-spec/pair_diff268.py:82: RuntimeWarning: invalid value encountered in matmul
+  disp = np.clip(v @ np.array(ar.M_OUT).T, 0, 1); dl = 0.2126 * disp[..., 0] + 0.7152 * disp[..., 1] + 0.0722 * disp[..., 2]
+spec frame 4019: mask px=1511 sun-facing px=1258 n.H>0.95 px=23 lum=0.189 | 0.6<n.H<0.85 px=731 lum=0.141 | ratio=1.34 | sun-facing lum p50/p95/p99=0.092/0.429/2.364
+spec frame 4977: mask px=2170 sun-facing px=1805 n.H>0.95 px=37 lum=0.285 | 0.6<n.H<0.85 px=1007 lum=0.160 | ratio=1.78 | sun-facing lum p50/p95/p99=0.096/0.430/1.716
+align: corr on I=0.757; coarse box 94x76 at (464,252); fine bbox 135x105 at (491,287) box scale 0.696x0.724 x t=1.12; shift (-2,-2); depth ratio k=1.188; lum corr=0.709
+ratio: mean lum coarse/fine=1.332 (coarse 0.2306, fine 0.1732); median px ratio=1.023; std coarse/fine=0.4481/0.2654; detail(std lum-gauss2) coarse/fine=0.3012/0.1756
+diff: px=856 mean|d|=0.1227 mean d=+0.0575; energy low-pass(3px)=0.17 residual=0.71; silhouette IoU=0.791 xor px=335 same-depth share of overlap=0.68; |d| share in 2px edge band=0.29 (band px share 0.20)
+  emissive   px share=0.364 |d| share=0.588 mean d=+0.1236 lum C/F=0.3675/0.2439 ratio=1.507 nonsun C/F=0.2867/0.1262
+  highlight  px share=0.002 |d| share=0.005 mean d=+0.0153 lum C/F=0.2214/0.2062 ratio=1.074 nonsun C/F=0.0036/0.0086
+  edge band  px share=0.199 |d| share=0.286 mean d=+0.1040 lum C/F=0.3223/0.2184 ratio=1.476 nonsun C/F=0.2580/0.1155
+  plating    px share=0.435 |d| share=0.121 mean d=-0.0190 lum C/F=0.0740/0.0930 ratio=0.795 nonsun C/F=0.0095/0.0165
+  thresholds: emissive nonsun>0.06; highlight sun part>0.300 (p95 fine)
+display (AgX ev 1.292/1.292, luma 0..1): mean C/F=0.2285/0.1830 mean d=+0.0456 mean|d|=0.1252 (x255=31.9); off-band mean|d|=0.1195; band mean|d|=0.1482; low-pass(3px) mean|d|=0.0788; p90|d|=0.3083
+  display emissive   mean C/F=0.3727/0.2474 mean d=+0.1252 mean|d|=0.1883
+  display highlight  mean C/F=0.3377/0.2780 mean d=+0.0597 mean|d|=0.4063
+  display edge band  mean C/F=0.2702/0.1999 mean d=+0.0703 mean|d|=0.1482
+  display plating    mean C/F=0.0880/0.1206 mean d=-0.0327 mean|d|=0.0603
+nonsun frame 4019: mask px=1511 share>0.06=0.304 share>0.2=0.071 mean=0.1128 p50/p90/p99=0.0089/0.1438/2.2704 sum/1000=0.17 sum*z^2 rel=0.31 | sun part mean=0.0681 p99=0.2245
+nonsun frame 4977: mask px=2170 share>0.06=0.226 share>0.2=0.047 mean=0.0824 p50/p90/p99=0.0099/0.0967/1.6340 sum/1000=0.18 sum*z^2 rel=0.24 | sun part mean=0.0711 p99=0.2853

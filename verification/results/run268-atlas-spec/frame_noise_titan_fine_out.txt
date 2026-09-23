@@ -1,0 +1,9 @@
+4977->4978 jitter ('-0.125000', '-0.277778')->('0.375000', '0.055556') shift (-1,0) corr=0.740 px=2136 mean C=0.1676 mean d=-0.0013 mean|d|=0.0550 off-band=0.0536 low-pass(3px)=0.0108
+4978->4979 jitter ('0.375000', '0.055556')->('-0.437500', '0.388889') shift (1,0) corr=0.747 px=2140 mean C=0.1688 mean d=-0.0015 mean|d|=0.0523 off-band=0.0515 low-pass(3px)=0.0154
+4979->4980 jitter ('-0.437500', '0.388889')->('0.000000', '-0.166667') shift (-1,1) corr=0.693 px=2145 mean C=0.1701 mean d=+0.0015 mean|d|=0.0574 off-band=0.0575 low-pass(3px)=0.0127
+4980->4981 jitter ('0.000000', '-0.166667')->('-0.250000', '0.166667') shift (0,0) corr=0.886 px=2179 mean C=0.1675 mean d=+0.0003 mean|d|=0.0292 off-band=0.0296 low-pass(3px)=0.0070
+4981->4982 jitter ('-0.250000', '0.166667')->('0.250000', '-0.388889') shift (-1,1) corr=0.697 px=2166 mean C=0.1675 mean d=-0.0033 mean|d|=0.0540 off-band=0.0542 low-pass(3px)=0.0105
+4982->4983 jitter ('0.250000', '-0.388889')->('-0.375000', '-0.055556') shift (0,0) corr=0.754 px=2156 mean C=0.1711 mean d=+0.0019 mean|d|=0.0666 off-band=0.0645 low-pass(3px)=0.0122
+4983->4984 jitter ('-0.375000', '-0.055556')->('0.125000', '0.277778') shift (-1,0) corr=0.741 px=2183 mean C=0.1691 mean d=-0.0036 mean|d|=0.0569 off-band=0.0582 low-pass(3px)=0.0154
+pairs=7 median mean|d|=0.0550 off-band=0.0542 low-pass=0.0122
+8-frame per-pixel temporal std on common mask px=2099: mean=0.0549; std of 8-frame mean vs single frame mean|d|=0.0421

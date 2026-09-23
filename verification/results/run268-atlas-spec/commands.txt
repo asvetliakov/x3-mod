@@ -1,0 +1,17 @@
+# Run 70 C2 triage (2026-09-23). C=/tmp/x3-bottleX3-run268, L=$C/session-20260923-053657-216.log; Run69 DLL; overlay 05.cat 7a060de7 / 05.dat 41e59997 (from the brief, not rehashed here).
+# Only two F8 bursts exist: 4019-4026 and 4977-4984 (capture_armed rows). Titan (argon_M2 node 327b0c38, model 00004f76): coarse at 4019 (s78, LOD1, 1 draw), fine at 4977 (s93, LOD0, 32 draws).
+# Outpost (node 18f4efc0, 000053b8) is LOD0 in both bursts (s174 / s185, 34 draws each): no outpost coarse/fine pair; used as a fine/fine view-change control.
+python3 ../run257-pilot/node_census.py $L 4019 4977 > census_run268_out.txt
+python3 ../run259-lighting/draw_state.py $L 000053b8,00004f72,00004f75,00004f76 4019 4977 > state_run268_out.txt
+python3 coarse_tex_formats.py $L 1948 1949 1045 1046 1950 1951 1557 1558 537 > coarse_tex_formats_out.txt   # M2 coarse s2=1557 DXT5 1024x1024 11 levels; M1 s2=1045 same
+python3 view_delta.py $L 4019 4977 327b0c38 18f4efc0 > view_delta_out.txt   # camera 10.35 deg / 11.9 km; Titan 9.5 deg relative, 44.9 -> 36.8 km
+python3 ../run259-lighting/outpost_pair.py $C $L 327b0c38 4019 4977 > titan_pair_out.txt
+python3 ../run259-lighting/outpost_pair.py $C $L 18f4efc0 4019 4977 > outpost_pair_out.txt
+python3 ../run265-atlas/pair_diff.py $C $L 327b0c38 4019 4977 > pair_diff_titan_out.txt
+python3 pair_diff268.py $C $L 327b0c38 4019 4977 - /scratch/titan_pair_diff.png (untracked) > pair_diff268_titan_out.txt            # + AgX display block, nonsun rows
+python3 pair_diff268.py $C $L 18f4efc0 4019 4977 anchor /scratch/outpost_fine_fine_diff.png (untracked) > pair_diff268_outpost_fine_fine_out.txt   # control; 4019 box clipped at the top
+python3 frame_noise.py $C $L 327b0c38 4019 8 > frame_noise_titan_coarse_out.txt ; python3 frame_noise.py $C $L 327b0c38 4977 8 > frame_noise_titan_fine_out.txt ; python3 frame_noise.py $C $L 18f4efc0 4977 8 > frame_noise_outpost_fine_out.txt
+awk on state_run268_out.txt: fine M2 unique s3 light maps 21, 5.88 x 1024^2 texels; s0 31, 12.19 x 1024^2 (coarse atlas 1 x 1024^2 each)
+grep '^cull_census_frame' $L -> overflow=0 in 16 frames; grep -oE 'stale[a-z_]*=[^ ]*' $L -> stale=0 only (9216)
+grep '^resource_reader_metric' $L | tail -1 -> calls 4083 handled 3966 fallbacks 117 (all fallback_not_gzip)
+loading_metric failures rows 46 (39 FindFirstFileA, 5 D.., 1 CreateFileA, 1 gzopen) vs 49 in run265; backend_load error=203 in both; one create_device, hr 0

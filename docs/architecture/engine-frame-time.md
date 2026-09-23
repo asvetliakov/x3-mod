@@ -1770,3 +1770,24 @@ unless marked. The user: still sees a transition at the switch; asks whether the
   shine comes from the s2 placeholder (inferred, its texels are not logged).
 - **Next (C2):** the overlay rebuilt with `--atlas-specular` (DXT5 specular atlas per body;
   16 textures, 19.3 MB) and installed.
+
+## Run 268: atlas overlay with the specular atlas (2026-09-23)
+
+Run 70 C2 (`/tmp/x3-bottleX3-run268`, Run69 DLL, overlay `7a060de7…` with diffuse/light/bump/
+specular atlases). Outputs: `verification/results/run268-atlas-spec/`. All measured unless
+marked. The user: "better now?", still some visible transition, acceptable if nothing is wrong.
+
+- **Specular fixed:** the Titan's and M1's coarse draws bind s2 = the 1024² DXT5 specular atlas
+  with full mips; 0 of 104 draws bind the placeholder; highlights ×1.07 on 0.2 % of pixels.
+  The outpost stayed at LOD 0 in both captures (s 174 / 185), so no outpost pair this run.
+- **Titan pair (not a fixed view: camera 10° / 11.9 km apart; the outpost served as a control
+  for the view change: mean ×0.987, lit windows ×1.005):** mean ×1.33; lit windows and
+  exhausts ×1.51 on 36 % of pixels carrying 59 % of the difference (non-sun 0.287 vs 0.126,
+  glow area ×1.56, total ×1.29); plating ×0.80; silhouette IoU 0.79. Patch-scale change
+  0.079 display units against 0.027 for the control and 0.007–0.012 frame noise: the LOD step
+  is ~6–10× the noise (inferred).
+- **Cause (inferred):** cross-tile bleed in the light atlas's mip chain (plain box filter over
+  the whole atlas, 4-texel gutter, so ≤ 1 texel from mip 2 on, which is the level sampled at
+  2–4 texels/px). Fix in progress: tile-aware mips and an 8-texel gutter, plus the LOD 0
+  geometry as the coarse record's source ([merged-lod-feasibility.md](merged-lod-feasibility.md)).
+- No anomalies (census overflow 0, stale 0, no texture failures).

@@ -1,0 +1,10 @@
+== frame 4019 node 18f4efc0 box=(0,0)-(845,224) pixels=8104 draws_bounded=34 L_view=[0.313, 0.052, -0.948]
+  all                  px=  8104 lum mean/p50/p90=0.138/0.092/0.322 s mean=0.881 sun(lum*s) mean/p50=0.109/0.079 rest mean=0.0293
+  sun-facing n.l>0.2   px=  7316 lum mean/p50/p90=0.144/0.099/0.328 s mean=0.883 sun(lum*s) mean/p50=0.114/0.084 rest mean=0.0298
+  averted n.l<-0.2     px=    53 lum mean/p50/p90=0.083/0.036/0.252 s mean=0.802 sun(lum*s) mean/p50=0.052/0.035 rest mean=0.0315
+  corr(max(n.l,0), lum*s)=0.390  facing/averted lum ratio=1.73  share facing=0.90
+== frame 4977 node 18f4efc0 box=(599,12)-(902,304) pixels=8316 draws_bounded=34 L_view=[0.256, 0.214, -0.943]
+  all                  px=  8316 lum mean/p50/p90=0.136/0.085/0.325 s mean=0.888 sun(lum*s) mean/p50=0.108/0.075 rest mean=0.0278
+  sun-facing n.l>0.2   px=  7567 lum mean/p50/p90=0.142/0.094/0.332 s mean=0.889 sun(lum*s) mean/p50=0.113/0.080 rest mean=0.0289
+  averted n.l<-0.2     px=    46 lum mean/p50/p90=0.041/0.027/0.083 s mean=0.905 sun(lum*s) mean/p50=0.032/0.025 rest mean=0.0089
+  corr(max(n.l,0), lum*s)=0.390  facing/averted lum ratio=3.51  share facing=0.91

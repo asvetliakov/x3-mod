@@ -1,0 +1,18 @@
+spec frame 4019: mask px=10705 sun-facing px=8193 n.H>0.95 px=666 lum=0.236 | 0.6<n.H<0.85 px=3128 lum=0.119 | ratio=1.99 | sun-facing lum p50/p95/p99=0.087/0.401/0.620
+spec frame 4977: mask px=12121 sun-facing px=9268 n.H>0.95 px=837 lum=0.233 | 0.6<n.H<0.85 px=3521 lum=0.118 | ratio=1.98 | sun-facing lum p50/p95/p99=0.082/0.406/0.671
+anchor: origin coarse (710.8,52.8) z=82272, fine (749.0,126.7) z=77406; fine box mapped to (595,71)-(894,311)
+align: corr on I=0.531; coarse box 281x226 at (566,0); fine bbox 299x240 at (595,71) box scale 0.940x0.942 x t=1.01; shift (-1,4); depth ratio k=1.076; lum corr=0.469
+ratio: mean lum coarse/fine=0.987 (coarse 0.1167, fine 0.1182); median px ratio=0.955; std coarse/fine=0.1365/0.1257; detail(std lum-gauss2) coarse/fine=0.0964/0.0762
+diff: px=8579 mean|d|=0.0665 mean d=-0.0015; energy low-pass(3px)=0.07 residual=0.87; silhouette IoU=0.866 xor px=1549 same-depth share of overlap=0.86; |d| share in 2px edge band=0.17 (band px share 0.15)
+  emissive   px share=0.124 |d| share=0.353 mean d=+0.0013 lum C/F=0.2552/0.2538 ratio=1.005 nonsun C/F=0.1376/0.1186
+  highlight  px share=0.051 |d| share=0.145 mean d=+0.0275 lum C/F=0.3372/0.3097 ratio=1.089 nonsun C/F=0.0143/0.0152
+  edge band  px share=0.152 |d| share=0.170 mean d=-0.0088 lum C/F=0.1137/0.1225 ratio=0.928 nonsun C/F=0.0310/0.0267
+  plating    px share=0.672 |d| share=0.332 mean d=-0.0026 lum C/F=0.0750/0.0776 ratio=0.966 nonsun C/F=0.0047/0.0074
+  thresholds: emissive nonsun>0.06; highlight sun part>0.298 (p95 fine)
+display (AgX ev 1.292/1.292, luma 0..1): mean C/F=0.1654/0.1655 mean d=-0.0001 mean|d|=0.0968 (x255=24.7); off-band mean|d|=0.0944; band mean|d|=0.1103; low-pass(3px) mean|d|=0.0269; p90|d|=0.2984
+  display emissive   mean C/F=0.3721/0.3492 mean d=+0.0230 mean|d|=0.2512
+  display highlight  mean C/F=0.4979/0.4569 mean d=+0.0410 mean|d|=0.2446
+  display edge band  mean C/F=0.1607/0.1761 mean d=-0.0154 mean|d|=0.1103
+  display plating    mean C/F=0.1029/0.1070 mean d=-0.0041 mean|d|=0.0540
+nonsun frame 4019: mask px=10705 share>0.06=0.095 share>0.2=0.054 mean=0.0272 p50/p90/p99=0.0010/0.0539/0.3116 sum/1000=0.29 sum*z^2 rel=1.97 | sun part mean=0.0947 p99=0.4875
+nonsun frame 4977: mask px=12121 share>0.06=0.094 share>0.2=0.056 mean=0.0308 p50/p90/p99=0.0011/0.0523/0.3877 sum/1000=0.37 sum*z^2 rel=2.23 | sun part mean=0.0911 p99=0.4787
