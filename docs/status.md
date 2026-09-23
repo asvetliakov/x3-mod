@@ -4,7 +4,7 @@ Updated 2026-09-23 (late): the Run69 candidate is installed and Run 70 is queued
 reports no crash and no media-related stutter. The accepted production baseline
 is merged to main. Run57 accepts the station-flash default correction. Fog-range and moving-lattice
 work remain open. The agent never launches the game. See the [run queue](verification/user-runs.md) and the current
-[handoff](handoff-2026-09-23.md).
+[handoff](handoff-2026-09-23-late.md).
 
 ## Installed build
 
