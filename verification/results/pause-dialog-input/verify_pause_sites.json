@@ -1,0 +1,77 @@
+{
+ "exe": "X3AP.exe",
+ "sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+ "sha256_ok": true,
+ "sites": {
+  "set_pause_native9_or_bit0": true,
+  "set_pause_native9_sound": true,
+  "native_table_register": true,
+  "main_loop_input_call": true,
+  "wait_entry_test_bit0": true,
+  "wait_entry_jne": true,
+  "wait_head": true,
+  "wait_key_test": true,
+  "wait_mouse_test": true,
+  "wait_pump_call": true,
+  "wait_key_call": true,
+  "wait_exit_clear_bit0": true,
+  "wait_exit_clock_resync": true,
+  "wndproc_activate": true,
+  "wndproc_activate_inactive": true,
+  "wndproc_activateapp": true,
+  "dik_pause_to_0x1b5": true
+ },
+ "native9_name": "X2_SetPause",
+ "native9_target": "0x40705d",
+ "native3_name": "X2_Save",
+ "native3_target": "0x406e28",
+ "dik_map": {
+  "DIK_PAUSE(0xc5)": "0x1b5",
+  "DIK_LMENU(0x38)": "0x199",
+  "DIK_RMENU(0xb8)": "0x19a",
+  "DIK_LWIN(0xdb)": "0x1b2",
+  "DIK_RWIN(0xdc)": "0x1b3",
+  "DIK_ESCAPE(0x01)": "0x1b",
+  "DIK_TAB(0x0f)": "0x9"
+ },
+ "reg_plus_0x4a0_insns": [
+  "401a07 mov DWORD PTR [esi+0x4a0],ebx",
+  "403ac5 test BYTE PTR [esi+0x4a0],0x1",
+  "403b09 test BYTE PTR [esi+0x4a0],0x1",
+  "403dc5 test BYTE PTR [esi+0x4a0],0x4",
+  "403e07 and DWORD PTR [esi+0x4a0],0xfffffffb",
+  "40429a mov eax,DWORD PTR [ecx+0x4a0]",
+  "4042cb mov DWORD PTR [ecx+0x4a0],eax",
+  "4043dd mov ecx,DWORD PTR [eax+0x4a0]",
+  "4043e9 mov DWORD PTR [eax+0x4a0],ecx",
+  "406e35 or DWORD PTR [esi+0x4a0],0x4",
+  "40705d or DWORD PTR [esi+0x4a0],0x1"
+ ],
+ "bit0_clear_sites": [
+  "4043e3"
+ ],
+ "wait_fn_insn_count": 140,
+ "wait_fn_bad_opcode": false,
+ "patch_boundaries_orig": [
+  "0x4043a5",
+  "0x4043a7",
+  "0x4043a9",
+  "0x4043af"
+ ],
+ "raw_branch_encodings_into_patch_interior": [],
+ "aligned_dword_refs_into_patch_span": 0,
+ "patch_new_decode": [
+  "cmp si,0x1b5",
+  "jne 0x4043b1",
+  "cmp si,bx",
+  "jne 0x4043d8"
+ ],
+ "patch_old_matches": true,
+ "patch_new_boundaries": [
+  "0x4043a5",
+  "0x4043aa",
+  "0x4043ac",
+  "0x4043af"
+ ],
+ "verdict": "PASS"
+}
