@@ -1,0 +1,100 @@
+## uv2: n=164 cat={'other': 34, 'ship': 34, 'station': 96}
+  r0_drawn bands {'1': 27, '2-9': 111, '>=10': 26}
+  r0_drawn bands ship/station {'>=10': 25, '2-9': 91, '1': 14}
+  top stations/station_scenes/tech/terraformer_hub_A cat=station r0_drawn=39 uv2=13072 pts=40772
+  top ships/M7/Argon_m7m cat=ship r0_drawn=38 uv2=32187 pts=32187
+  top ships/Pirate/Pirate_M1 cat=ship r0_drawn=34 uv2=63995 pts=63995
+  top ships/Pirate/Pirate_m7 cat=ship r0_drawn=34 uv2=48238 pts=48238
+  top ships/Pirate/Pirate_M2 cat=ship r0_drawn=33 uv2=64937 pts=64937
+  top ships/argon/argon_M2_OCC_BLU cat=ship r0_drawn=32 uv2=42747 pts=42747
+  top ships/argon/argon_M2_OCC_BRI cat=ship r0_drawn=32 uv2=42747 pts=42747
+  top ships/argon/argon_M2_OCC_N cat=ship r0_drawn=32 uv2=42747 pts=42747
+  top ships/others/training_M2 cat=ship r0_drawn=32 uv2=36865 pts=36865
+  top stations/x3ap/torus/toruswreck_ringbig_right cat=station r0_drawn=32 uv2=127496 pts=127496
+  top ships/M7/Otas_M7M cat=ship r0_drawn=31 uv2=29445 pts=29445
+  top ships/MM6/Otas_M6M cat=ship r0_drawn=31 uv2=26367 pts=26367
+  top stations/x3ap/torus/toruswreck_ringmiddle_left cat=station r0_drawn=27 uv2=144956 pts=144956
+  top stations/x3ap/torus/toruswreck_buildingside_left cat=station r0_drawn=23 uv2=72753 pts=72753
+  top stations/x3ap/torus/toruswreck_tower_right cat=station r0_drawn=20 uv2=43532 pts=43532
+  uv2body stations/station_scenes/tech/terraformer_hub_A: uv2pts=13072/40772 identical=0 within1/65536=0 share=0.000 uv2_in_[0,1]=1.000 uv1_u_range=[-3.2,12.2] groups_touching_uv2=9 groups_not=30
+    effects {'XT_standard_lighting.fx': 9}
+    t_OcclusionTexture {'NONE_OCCL_DECAL.dds': 9}
+    t_LightMapTexture {'NONE_BLACK.dds': 3, 'metal_argon_pipes_tech_light.tga': 1, 'metal_argon_trims_06_light.tga': 1, 'metal_argon_circular_light.tga': 1}
+    t_BumpTexture {'metal_argon_smooth_plating_bump.tga': 1, 'metal_argon_trims_02_bump.tga': 1, 'metal_argon_pipes_tech_bump.tga': 1, 'metal_argon_lattice_support_beams_01_bump.tga': 1}
+    t_DetailTexture {'NONE_NORMAL_DETAIL.DDS': 9}
+    Tex2 {'(0,)': 9}
+    g_MatOcclStr {'(65536,)': 9}
+  uv2body ships/M7/Argon_m7m: uv2pts=32187/32187 identical=0 within1/65536=0 share=0.000 uv2_in_[0,1]=1.000 uv1_u_range=[-22.7,17.1] groups_touching_uv2=38 groups_not=0
+    effects {'XT_standard_lighting.fx': 38}
+    t_OcclusionTexture {'NONE_OCCL_DECAL.DDS': 38}
+    t_LightMapTexture {'NONE_BLACK.dds': 9, 'metal_argon_misc_tech_light.tga': 2, 'metal_argon_antennas-A_light.tga': 1, 'metal_argon_antennas-B_01_light.tga': 1}
+    t_BumpTexture {'metal_argon_simple_plating_bump.tga': 5, 'metal_argon_apartments_labs_bump.tga': 2, 'metal_argon_base_metal_plating_bump.tga': 2, 'metal_argon_misc_tech_bump.tga': 2}
+    t_DetailTexture {'NONE_NORMAL_DETAIL.DDS': 38}
+    Tex2 {'(0,)': 38}
+    g_MatOcclStr {'(65536,)': 38}
+  uv2body ships/Pirate/Pirate_M1: uv2pts=63995/63995 identical=0 within1/65536=0 share=0.000 uv2_in_[0,1]=1.000 uv1_u_range=[-13.6,25.6] groups_touching_uv2=34 groups_not=0
+    effects {'XT_standard_lighting.fx': 34}
+    t_OcclusionTexture {'PIRATE_M1M2F_decal.tga': 34}
+    t_LightMapTexture {'NONE_BLACK.dds': 8, 'metal_argon_misc_tech_light.tga': 2, 'argon_solar_panels_02_light.tga': 2, 'metal_argon_antennas-A_light.tga': 1}
+    t_BumpTexture {'metal_argon_simple_plating_bump.tga': 5, 'metal_argon_apartments_labs_bump.tga': 2, 'metal_argon_base_metal_plating_bump.tga': 2, 'metal_argon_misc_tech_bump.tga': 2}
+    t_DetailTexture {'NONE_NORMAL_DETAIL.DDS': 18, 'NONE_NORMAL_DETAIL.dds': 15, 'metal_argon_base_metal_plating_bump.tga': 1}
+    Tex2 {'(0,)': 34}
+    g_MatOcclStr {'(65536,)': 34}
+  uv2body ships/Pirate/Pirate_m7: uv2pts=48238/48238 identical=0 within1/65536=0 share=0.000 uv2_in_[0,1]=1.000 uv1_u_range=[-4.8,17.1] groups_touching_uv2=34 groups_not=0
+    effects {'XT_standard_lighting.fx': 34}
+    t_OcclusionTexture {'argon_m7m_decal.tga': 34}
+    t_LightMapTexture {'NONE_BLACK.dds': 9, 'metal_argon_misc_tech_light.tga': 2, 'metal_argon_antennas-A_light.tga': 1, 'metal_argon_antennas-B_01_light.tga': 1}
+    t_BumpTexture {'metal_argon_simple_plating_bump.tga': 5, 'metal_argon_base_metal_plating_bump.tga': 2, 'metal_argon_misc_tech_bump.tga': 2, 'metal_argon_antennas-A_bump.tga': 1}
+    t_DetailTexture {'NONE_NORMAL_DETAIL.DDS': 18, 'NONE_NORMAL_DETAIL.dds': 15, 'metal_argon_base_metal_plating_bump.tga': 1}
+    Tex2 {'(0,)': 34}
+    g_MatOcclStr {'(65536,)': 34}
+  uv2body ships/Pirate/Pirate_M2: uv2pts=64937/64937 identical=0 within1/65536=0 share=0.000 uv2_in_[0,1]=1.000 uv1_u_range=[-13.6,491.8] groups_touching_uv2=33 groups_not=0
+    effects {'XT_standard_lighting.fx': 33}
+    t_OcclusionTexture {'Pirate_M2_decal_.tga': 33}
+    t_LightMapTexture {'NONE_BLACK.dds': 7, 'metal_argon_misc_tech_light.tga': 2, 'metal_argon_antennas-A_light.tga': 1, 'metal_argon_antennas-B_01_light.tga': 1}
+    t_BumpTexture {'metal_teladi_plates_09_bump.tga': 3, 'metal_argon_base_metal_plating_bump.tga': 2, 'metal_argon_simple_plating_bump.tga': 2, 'metal_argon_antennas-A_bump.tga': 1}
+    t_DetailTexture {'NONE_NORMAL_DETAIL.DDS': 32, 'NONE_NORMAL_DETAIL.dds': 1}
+    Tex2 {'(0,)': 33}
+    g_MatOcclStr {'(65536,)': 33}
+## material_outside_table: n=156 cat={'other': 145, 'station': 10, 'ship': 1}
+  r0_drawn bands {'1': 145, '2-9': 5, '>=10': 6}
+  r0_drawn bands ship/station {'2-9': 5, '>=10': 6}
+  top others/argon_adsign_B cat=station r0_drawn=10 mat=MAT6
+  top others/argon_adsign_C cat=station r0_drawn=10 mat=MAT6
+  top others/argon_adsign_D cat=station r0_drawn=10 mat=MAT6
+  top others/terran_adsign_B cat=station r0_drawn=10 mat=MAT6
+  top others/terran_adsign_C cat=station r0_drawn=10 mat=MAT6
+  top others/terran_adsign_D cat=station r0_drawn=10 mat=MAT6
+  top others/argon_adsign_A cat=station r0_drawn=9 mat=MAT6
+  top others/terran_adsign_A cat=station r0_drawn=8 mat=MAT6
+  top ships/khaak/khaak_M3 cat=ship r0_drawn=4 mat=MAT6
+  top stations/goner/temple_adsign cat=station r0_drawn=4 mat=MAT6
+  bad groups per body {1: 156}; negative=156 nonneg_out_of_range=0; values {-79: 127, -81: 10, -82: 2, -26: 1, -92: 1, -97: 1, -77: 1, -83: 1, -93: 1, -90: 1, -91: 1, -94: 1, -98: 1, -96: 1, -100: 1, -101: 1, -102: 1, -103: 1, -104: 1, -105: 1}
+  ex others/argon_adsign_B cat=station mats=10 groups=10 bad_groups=1 (index, part flags, faces)=[(-81, '0x10000001', 1000)]
+  ex others/argon_adsign_C cat=station mats=10 groups=10 bad_groups=1 (index, part flags, faces)=[(-81, '0x10000001', 924)]
+  ex others/argon_adsign_D cat=station mats=10 groups=10 bad_groups=1 (index, part flags, faces)=[(-81, '0x10000001', 1848)]
+  ex others/terran_adsign_B cat=station mats=10 groups=10 bad_groups=1 (index, part flags, faces)=[(-81, '0x30000001', 1000)]
+  ex others/terran_adsign_C cat=station mats=10 groups=10 bad_groups=1 (index, part flags, faces)=[(-81, '0x30000001', 924)]
+  ex others/terran_adsign_D cat=station mats=10 groups=10 bad_groups=1 (index, part flags, faces)=[(-81, '0x30000001', 1848)]
+## dominant_slot_missing: n=113 cat={'other': 107, 'station': 6}
+  r0_drawn bands {'1': 70, '2-9': 43}
+  r0_drawn bands ship/station {'2-9': 5, '1': 1}
+  errors {'dominant material N has no t_lightmaptexture parameter': 113}
+  top environments/planets/planet_jupiter cat=other r0_drawn=5
+  top environments/nebulae/bluedistance/nebula_bluedistance_background_01 cat=other r0_drawn=4
+  top environments/nebulae/bluenexus/nebula_bluenexus_background_01 cat=other r0_drawn=4
+  top environments/nebulae/bluenova/nebula_bluenova_background_01 cat=other r0_drawn=4
+  top environments/nebulae/bluewell/nebula_bluewell_background_01 cat=other r0_drawn=4
+  top environments/nebulae/closeplanet/nebula_closeplanet_background_01 cat=other r0_drawn=4
+  top environments/nebulae/cyancorner/nebula_cyancorner_background_01 cat=other r0_drawn=4
+  top environments/nebulae/darkhorizon/nebula_darkhorizon_background_01 cat=other r0_drawn=4
+  top environments/nebulae/deepblue/nebula_deepblue_background_01 cat=other r0_drawn=4
+  top environments/nebulae/deepred/nebula_deepred_background_01 cat=other r0_drawn=4
+  ex environments/planets/planet_jupiter cat=other dominant=4 effect=planet_haze.fx slots=['diffuse']
+    opaque (mat, faces, effect, has_light) [(4, 3380, 'planet_haze.fx', False), (0, 2880, 'XT_standard_lighting.fx', True)]
+  ex environments/nebulae/bluedistance/nebula_bluedistance_background_01 cat=other dominant=0 effect=nebula.fx slots=['diffuse', 'alpha']
+    opaque (mat, faces, effect, has_light) [(0, 992, 'nebula.fx', False), (1, 992, 'nebula.fx', False), (2, 992, 'nebula.fx', False), (3, 992, 'nebula.fx', False)]
+  ex stations/station_scenes/lost_colony/lostcolony_energy_wreck cat=station dominant=1 effect=asteroid.fx slots=['diffuse', 'bump', 'specular', 't_DetailTexture']
+    opaque (mat, faces, effect, has_light) [(1, 340, 'asteroid.fx', False)]
+  ex stations/station_scenes/lost_colony/lostcolony_farm_wreck cat=station dominant=0 effect=asteroid.fx slots=['diffuse', 'bump', 'specular', 't_DetailTexture']
+    opaque (mat, faces, effect, has_light) [(0, 1610, 'asteroid.fx', False)]

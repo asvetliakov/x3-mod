@@ -1,0 +1,3 @@
+bodies (has_uv2, body-specific occlusion tex in r0 mats): {(False, False): 1465, (True, False): 49, (True, True): 115, (False, True): 5}
+material uses (has_uv2, Tex2): {(False, 0): 11041, (True, 0): 1121, (True, 1): 6}
+no-uv2 but occlusion tex: ['objects/ships/x3ap/usc/XTC_usc_m2plus.pbb', 'objects/stations/Cadius/USC/Headquarters/bottom.pbb', 'objects/stations/Cadius/USC/Headquarters/docking_moor_bottom.pbb', 'objects/stations/Cadius/USC/Headquarters/docking_moor_top.pbb', 'objects/stations/Cadius/USC/Headquarters/top.pbb']

@@ -1,0 +1,4 @@
+# Refusal-class evidence (uv2 / material_outside_table / dominant_slot_missing), 2026-09-23, read-only.
+# Inputs: ../census.txt; bottle X3 archives via tools/analysis/lod_overlay.original_assets + bob1.parse. No Wine.
+python3 verification/results/lod-overlay-batch/classes/classes.py    > verification/results/lod-overlay-batch/classes/classes_out.txt     # ~2 s
+python3 verification/results/lod-overlay-batch/classes/occl_fleet.py > verification/results/lod-overlay-batch/classes/occl_fleet_out.txt  # ~3 min, all 1634 BOB1 bodies
