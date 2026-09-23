@@ -1,13 +1,13 @@
 {
   "passed": true,
   "sources_before_build": {
-    "src/renderer/temporal_pass.h": "1a648c2ab06db2a2cd3847ccf947e1bac739816c449202b02c9f40b008babce0",
-    "src/renderer/temporal_pass.cpp": "e8498ee8b8d8cde55949b86dcddc5e27db4f1a9ffd2d4c382c44e19936d10435",
+    "src/renderer/temporal_pass.h": "288f466213efea49a1e4665cf08eef294d28f564098443744b686e34dcbbffbe",
+    "src/renderer/temporal_pass.cpp": "bae9aeb7563cb3a39b0bd9b03e89c713efc397881106fff87439018d488b03ac",
     "src/temporal/resolve.h": "853d6c9b800f3ab14750100a26ea48141bc4665ff78c00c054f6d63722bb5ed2",
     "src/temporal/resolve.hlsl": "e5517bfbc61338290b373b9e88bd25a4610a23741afb7e438f9302f468d8118b",
     "src/temporal/resolve_snapshot.hlsl": "b7b62bb66523b6e092143fc111a623413cd8d1e9bf7c7ab0afbc83a3f40f126d",
     "src/renderer/temporal_resolve_snapshot_program_inc.h": "decb661f2c75cdfb7960bff7018c364c0f398fbe399a5e5df6a62fb5d7916d69",
-    "src/renderer/temporal_resolve_program.h": "5de58f8c04ef908d30f7215a74994b9e0807f7589fadaab90eb07c15d6a40a66",
+    "src/renderer/temporal_resolve_program.h": "9fb0fec9af5a1eaebcedcd8e1a7f26b2d77a516155118a2dc6486f382563c03c",
     "src/temporal/resolve_thin.hlsl": "fcd645eff0211c5762dc973cc067c542c443291406a79b9ac2c77f43d9506fe4",
     "src/renderer/temporal_resolve_thin_program_inc.h": "46ee3172877c5f14d77629e1fe5a052c63779840beeab39b1021d4d9197f15f1",
     "src/temporal/resolve_age.hlsl": "8bd897574e9427d21c3b8c79221e3c019f7aa37e5dfbf1d5386149c4f19c942b",
@@ -17,27 +17,32 @@
     "verification/probe/temporal_far_inc.h": "cd3a110672dd6aa45997ffa6d4d39c4d3d1d0ea538c521bf4fdb55bb71b921d3",
     "verification/probe/temporal_thin_region_inc.h": "2dc1ec374c3f0f3a6449bb7ede4ab3159809a90c8087cf5427ab58c1a2cb576c",
     "src/temporal/line_mask_camera_ps.hlsl": "c60a1986f5d304b6690d05e20ac94ce96c762dd6e618cc2d5a46ad5601a17923",
-    "src/renderer/temporal_line_mask_camera_program_inc.h": "0a92892c56674f29b1fa15e435883a4de12f0f6dbcd7db67d1a8fb0a5993ccec",
+    "src/renderer/temporal_line_mask_camera_program_inc.h": "e42db734c8636c9a0f5bd53da4cf0a58bef3ea98f4e824c6dc044004ecd23596",
     "src/temporal/resolve_far_camera.hlsl": "375cb64c664241e7915f976e4b0ac4ff0f773caea5abcf728c72823d611bbd9d",
     "src/renderer/temporal_resolve_far_camera_program_inc.h": "321f071664c1617c0051135e4ab2c5ae05e988f0c5abf3fe7dedb7a06de03d10",
     "src/temporal/thin_box_ps.hlsl": "0f12a9cb79e8945b11844c977c5ad67bd7bc958af9275949b6ddc1c947b942e9",
     "src/renderer/temporal_thin_box_program_inc.h": "3bd06fcf9f249fb3941a681116480ade11e871d8e545c7c977a1f43e1f64a207",
-    "src/temporal/thin_box_rows_ps.hlsl": "3ef2e63568d11015cbf6ba1feb13271bc57d7aa8a7de89018466a2c04aa8b906",
-    "src/renderer/temporal_thin_box_rows_program_inc.h": "f096cad1e4c1b570dbacd57a47ec50564bce618e195bfad96cbbb194df76baa4",
+    "src/temporal/thin_box_rows_ps.hlsl": "f0a9ba58716bdb8c68278c31ade0f258522091c8036d216cc25f995084814bf2",
+    "src/renderer/temporal_thin_box_rows_program_inc.h": "7dda9762517e6ff62103a8c23761b5d28f3298be57d8db148c1e6c7025f0410e",
     "src/temporal/thin_box_columns_ps.hlsl": "8cff8341671e2cf84b5e8d03ee7f5a9ae987a2524ae064f2e782eacf9daf6d8b",
     "src/renderer/temporal_thin_box_columns_program_inc.h": "546f511353466a12ddcf54f8d2dfe53e2da7f6916ca119ab4a75e9e48a36fda9",
     "verification/probe/temporal_resolve_far_reference_inc.h": "b0ea38f96cc810280b8b7f5348ab6b624b9b0fcb254545893e4b0035d9dcd226",
     "src/temporal/resolve_far.hlsl": "30087df4338b9a3fec4d6dbca256e5c7b8515bb3cea41fe540e7e4a5af00e7b9",
     "src/renderer/temporal_resolve_far_program_inc.h": "34fbca67465743d5e4cd5d3296b75c24470297bfb60b8c19d9d2862cc7ecf85a",
-    "src/temporal/line_mask_ps.hlsl": "2961611353f8b80b1991c3e5d6aafc5fb9d7b4cb31b7b1a51b232203a5f9a23e",
-    "src/renderer/temporal_line_mask_program_inc.h": "e48d63180cdb08c5f53b0b704ac5467c580bf911f2c9b39b76a84e0c1c857297",
+    "src/temporal/line_mask_ps.hlsl": "59b59d8df70eaafd4f2e93076468d4974d6b1fc5090f385ea71c5edb8440a94c",
+    "src/renderer/temporal_line_mask_program_inc.h": "19204ee8b6c5995a12fbbfed975d07cd08be2c2ccdf38c36a573971c913941d4",
+    "src/temporal/line_mask_depth_ps.hlsl": "eeb0f7b4983f95593ac6914e2d8c7b54e04d205d6291e3aaa6bf4ee3432299dd",
+    "src/renderer/temporal_line_mask_depth_program_inc.h": "a12e62dc70e96a2aecff1ab6a9ab0bb2495f5bfefb0a528a2282e717e7c59c71",
+    "src/temporal/line_mask_camera_depth_ps.hlsl": "ee8080705188263e8436c347cc59060fa71d970dfeb984e6d73ebd2d6cc25574",
+    "src/renderer/temporal_line_mask_camera_depth_program_inc.h": "a6b7de70941e1cc48f19cb8a94d869ae153cb738dc8a93c4094529c62affeebf",
+    "verification/probe/temporal_depth_fold_inc.h": "b8f9dc79f037ea6444f4ee785e286218421022359458c87881c0b11ba06bc6eb",
     "src/temporal/depth_decode.hlsl": "91e0d68f91529181daf0ab359ca07641ca085cf8d262a760af43c2c465aabac5",
     "src/temporal/sharpen.h": "7929b76d44483ec76a5e939f7fd1245d981a88fe7eb6a32a73bae43fe81b771f",
     "src/temporal/rcas.hlsl": "50ce16e50069b2d6bf599575aa82828158b233e46723c1b7c277bcae7aacc152",
     "src/temporal/taa_sharpen_ps.hlsl": "af6a6734bcc506afaf990de01add0bcb2d7e57617c738ba08fa6ab2e7167d9a8",
-    "verification/probe/temporal_pass_fixture.cpp": "43da1c2e8a20751179c95cf6b9a44d0d840529249b3dff86d9c79c333eb32415",
+    "verification/probe/temporal_pass_fixture.cpp": "2eced928645f4c3c17c636dffa0827edf19c0559a7b31d39e5834ba7820565c3",
     "verification/probe/build_temporal_pass.sh": "a59f6e17764411adad516db293587561c0f30a63ebc8a58a663e067f4e49f6e9",
-    "verification/probe/run_temporal_pass.py": "805d66db051aa38224f75eec6b40832ad1b0d0449719939d01de08e663b5830d"
+    "verification/probe/run_temporal_pass.py": "110bd90d6923b5a6a54e8df2fafba9121ea0e989268ebb9ebee1f10c0e74d78e"
   },
   "game_launched": false,
   "bottle": {
@@ -50,7 +55,7 @@
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
-  "executable_sha256": "bc5de6061ed02f483073f115a3c64e5a5bc28b301c9c32c05a6bbc3896f43b2e",
+  "executable_sha256": "92988166607e975ae32bde67520ec1e72213bb32ffdcb1e6612d5c5ee14c0357",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -59,12 +64,12 @@
     "--dll",
     "d3d9=b",
     "--workdir",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a5db0a971d2b5723a/verification/probe/build",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a5db0a971d2b5723a/verification/probe/build/temporal_pass_fixture.exe",
+    "/private/tmp/x3-run77-candidate/src/verification/probe/build",
+    "/private/tmp/x3-run77-candidate/src/verification/probe/build/temporal_pass_fixture.exe",
     "C:\\X3\\d3dx9_37.dll",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a5db0a971d2b5723a/src/temporal/depth_decode.hlsl",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a5db0a971d2b5723a/src/temporal/resolve.hlsl",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a5db0a971d2b5723a/src/temporal/taa_sharpen_ps.hlsl"
+    "Z:/private/tmp/x3-run77-candidate/src/src/temporal/depth_decode.hlsl",
+    "Z:/private/tmp/x3-run77-candidate/src/src/temporal/resolve.hlsl",
+    "Z:/private/tmp/x3-run77-candidate/src/src/temporal/taa_sharpen_ps.hlsl"
   ],
   "exit_code": 0,
   "source_unchanged": true,
@@ -2458,7 +2463,7 @@
   },
   "lattice": {
     "report": "temporal-lattice.txt",
-    "report_sha256": "5f0b6373748285d5a2e0cc6a20e78478bb73a9503bbf0acd6133ee997fe4d7f8",
+    "report_sha256": "1d8c70858da3c4361d4859bcde70a0b74fb1db482331e7bafe2fc05bf40d1919",
     "exit_code": 0,
     "budget": {
       "plain": {
@@ -2497,10 +2502,10 @@
         "within_guaranteed_512": 1.0
       },
       "embedded_line_mask": {
-        "dwords": 1401.0,
-        "instruction_slots": 368.0,
+        "dwords": 1574.0,
+        "instruction_slots": 428.0,
         "device_limit": 512.0,
-        "headroom": 144.0,
+        "headroom": 84.0,
         "within_guaranteed_512": 1.0
       },
       "embedded_far": {
@@ -2511,10 +2516,24 @@
         "within_guaranteed_512": 1.0
       },
       "embedded_line_mask_camera": {
-        "dwords": 1307.0,
-        "instruction_slots": 344.0,
+        "dwords": 1579.0,
+        "instruction_slots": 427.0,
         "device_limit": 512.0,
-        "headroom": 168.0,
+        "headroom": 85.0,
+        "within_guaranteed_512": 1.0
+      },
+      "embedded_line_mask_depth": {
+        "dwords": 1554.0,
+        "instruction_slots": 420.0,
+        "device_limit": 512.0,
+        "headroom": 92.0,
+        "within_guaranteed_512": 1.0
+      },
+      "embedded_line_mask_camera_depth": {
+        "dwords": 1533.0,
+        "instruction_slots": 407.0,
+        "device_limit": 512.0,
+        "headroom": 105.0,
         "within_guaranteed_512": 1.0
       },
       "embedded_far_camera": {
@@ -2532,10 +2551,10 @@
         "within_guaranteed_512": 1.0
       },
       "embedded_thin_box_rows": {
-        "dwords": 204.0,
-        "instruction_slots": 35.0,
+        "dwords": 335.0,
+        "instruction_slots": 77.0,
         "device_limit": 512.0,
-        "headroom": 477.0,
+        "headroom": 435.0,
         "within_guaranteed_512": 1.0
       },
       "embedded_thin_box_columns": {
@@ -3961,11 +3980,11 @@
       "height": "768",
       "content": "all_geometry",
       "rounds": "6",
-      "plain_ms": "0.6275",
-      "far_stabiliser_ms": "0.8277",
-      "thin_region_ms": "1.4346",
-      "far_delta_ms": "0.2002",
-      "thin_region_delta_ms": "0.8071",
+      "plain_ms": "0.6567",
+      "far_stabiliser_ms": "0.8457",
+      "thin_region_ms": "1.3598",
+      "far_delta_ms": "0.1890",
+      "thin_region_delta_ms": "0.7031",
       "scope": "cpu_wall_with_event_query_drain"
     }
   ],
@@ -5158,12 +5177,12 @@
         "width": "1280",
         "height": "768",
         "rounds": "6",
-        "no_region_thin_ms": "1.4346",
-        "no_region_camera_ms": "1.5836",
-        "no_region_camera_delta_ms": "0.1490",
-        "fragmented_pan_thin_ms": "1.3552",
-        "fragmented_pan_camera_ms": "1.9688",
-        "fragmented_pan_camera_delta_ms": "0.6137",
+        "no_region_thin_ms": "1.3598",
+        "no_region_camera_ms": "1.5314",
+        "no_region_camera_delta_ms": "0.1716",
+        "fragmented_pan_thin_ms": "1.2869",
+        "fragmented_pan_camera_ms": "1.9427",
+        "fragmented_pan_camera_delta_ms": "0.6558",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ],
@@ -5172,11 +5191,11 @@
         "width": "1280",
         "height": "768",
         "rounds": "6",
-        "r32f_camera_ms": "1.9688",
-        "lane_input_law_ms": "1.8597",
-        "lane_input_lane_ms": "1.8616",
-        "lane_fetch_delta_ms": "0.0019",
-        "lane_input_over_r32f_ms": "-0.1092",
+        "r32f_camera_ms": "1.9427",
+        "lane_input_law_ms": "2.0907",
+        "lane_input_lane_ms": "1.9348",
+        "lane_fetch_delta_ms": "-0.1559",
+        "lane_input_over_r32f_ms": "0.1480",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]
@@ -5388,11 +5407,258 @@
         "height": "768",
         "rounds": "6",
         "content": "all_unrouted_sentinel_pan",
-        "strength_off_ms": "1.4638",
-        "strength_on_separable_ms": "1.7768",
-        "sentinel_delta_ms": "0.3130",
+        "strength_off_ms": "1.4193",
+        "strength_on_separable_ms": "1.6792",
+        "sentinel_delta_ms": "0.2599",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]
-  }
+  },
+  "depth_fold": [
+    {
+      "case": "camera_sentinel",
+      "run": "lane_fold",
+      "against": "r32f",
+      "reason": "lane_mrt",
+      "against_reason": "r32f_depth",
+      "frames": "3",
+      "folded": "3",
+      "history_frames": "2",
+      "color_bytes_differ": "0",
+      "depth_bytes_differ": "0",
+      "age_bytes_differ": "0",
+      "mask_bytes_differ": "0"
+    },
+    {
+      "case": "camera_sentinel",
+      "run": "lane_copy",
+      "against": "r32f",
+      "reason": "program",
+      "against_reason": "r32f_depth",
+      "frames": "3",
+      "folded": "0",
+      "history_frames": "2",
+      "color_bytes_differ": "0",
+      "depth_bytes_differ": "0",
+      "age_bytes_differ": "0",
+      "mask_bytes_differ": "0"
+    },
+    {
+      "case": "camera_sentinel",
+      "run": "g32r32f_fold",
+      "against": "r32f",
+      "reason": "lane_mrt",
+      "against_reason": "r32f_depth",
+      "frames": "3",
+      "folded": "3",
+      "history_frames": "2",
+      "color_bytes_differ": "0",
+      "depth_bytes_differ": "0",
+      "age_bytes_differ": "0",
+      "mask_bytes_differ": "0"
+    },
+    {
+      "case": "camera_sentinel",
+      "run": "lane_term_fold",
+      "against": "lane_term_copy",
+      "reason": "lane_mrt",
+      "against_reason": "program",
+      "frames": "3",
+      "folded": "3",
+      "history_frames": "2",
+      "color_bytes_differ": "0",
+      "depth_bytes_differ": "0",
+      "age_bytes_differ": "0",
+      "mask_bytes_differ": "0"
+    },
+    {
+      "case": "camera_sentinel",
+      "run": "negative_control",
+      "against": "r32f",
+      "reason": "lane_mrt",
+      "against_reason": "r32f_depth",
+      "frames": "3",
+      "folded": "3",
+      "history_frames": "2",
+      "color_bytes_differ": "0",
+      "depth_bytes_differ": "3",
+      "age_bytes_differ": "0",
+      "mask_bytes_differ": "0"
+    },
+    {
+      "case": "camera",
+      "run": "lane_fold",
+      "against": "r32f",
+      "reason": "lane_mrt",
+      "against_reason": "r32f_depth",
+      "frames": "3",
+      "folded": "3",
+      "history_frames": "2",
+      "color_bytes_differ": "0",
+      "depth_bytes_differ": "0",
+      "age_bytes_differ": "0",
+      "mask_bytes_differ": "0"
+    },
+    {
+      "case": "camera",
+      "run": "lane_copy",
+      "against": "r32f",
+      "reason": "program",
+      "against_reason": "r32f_depth",
+      "frames": "3",
+      "folded": "0",
+      "history_frames": "2",
+      "color_bytes_differ": "0",
+      "depth_bytes_differ": "0",
+      "age_bytes_differ": "0",
+      "mask_bytes_differ": "0"
+    },
+    {
+      "case": "camera",
+      "run": "g32r32f_fold",
+      "against": "r32f",
+      "reason": "lane_mrt",
+      "against_reason": "r32f_depth",
+      "frames": "3",
+      "folded": "3",
+      "history_frames": "2",
+      "color_bytes_differ": "0",
+      "depth_bytes_differ": "0",
+      "age_bytes_differ": "0",
+      "mask_bytes_differ": "0"
+    },
+    {
+      "case": "camera",
+      "run": "lane_term_fold",
+      "against": "lane_term_copy",
+      "reason": "lane_mrt",
+      "against_reason": "program",
+      "frames": "3",
+      "folded": "3",
+      "history_frames": "2",
+      "color_bytes_differ": "0",
+      "depth_bytes_differ": "0",
+      "age_bytes_differ": "0",
+      "mask_bytes_differ": "0"
+    },
+    {
+      "case": "thin_screen",
+      "run": "lane_fold",
+      "against": "r32f",
+      "reason": "lane_mrt",
+      "against_reason": "r32f_depth",
+      "frames": "3",
+      "folded": "3",
+      "history_frames": "2",
+      "color_bytes_differ": "0",
+      "depth_bytes_differ": "0",
+      "age_bytes_differ": "0",
+      "mask_bytes_differ": "0"
+    },
+    {
+      "case": "thin_screen",
+      "run": "lane_copy",
+      "against": "r32f",
+      "reason": "program",
+      "against_reason": "r32f_depth",
+      "frames": "3",
+      "folded": "0",
+      "history_frames": "2",
+      "color_bytes_differ": "0",
+      "depth_bytes_differ": "0",
+      "age_bytes_differ": "0",
+      "mask_bytes_differ": "0"
+    },
+    {
+      "case": "thin_screen",
+      "run": "g32r32f_fold",
+      "against": "r32f",
+      "reason": "lane_mrt",
+      "against_reason": "r32f_depth",
+      "frames": "3",
+      "folded": "3",
+      "history_frames": "2",
+      "color_bytes_differ": "0",
+      "depth_bytes_differ": "0",
+      "age_bytes_differ": "0",
+      "mask_bytes_differ": "0"
+    },
+    {
+      "case": "far_only",
+      "run": "lane_fold",
+      "against": "r32f",
+      "reason": "lane_mrt",
+      "against_reason": "r32f_depth",
+      "frames": "3",
+      "folded": "3",
+      "history_frames": "2",
+      "color_bytes_differ": "0",
+      "depth_bytes_differ": "0",
+      "age_bytes_differ": "0",
+      "mask_bytes_differ": "0"
+    },
+    {
+      "case": "far_only",
+      "run": "lane_copy",
+      "against": "r32f",
+      "reason": "program",
+      "against_reason": "r32f_depth",
+      "frames": "3",
+      "folded": "0",
+      "history_frames": "2",
+      "color_bytes_differ": "0",
+      "depth_bytes_differ": "0",
+      "age_bytes_differ": "0",
+      "mask_bytes_differ": "0"
+    },
+    {
+      "case": "far_only",
+      "run": "g32r32f_fold",
+      "against": "r32f",
+      "reason": "lane_mrt",
+      "against_reason": "r32f_depth",
+      "frames": "3",
+      "folded": "3",
+      "history_frames": "2",
+      "color_bytes_differ": "0",
+      "depth_bytes_differ": "0",
+      "age_bytes_differ": "0",
+      "mask_bytes_differ": "0"
+    }
+  ],
+  "depth_fold_fault": [
+    {
+      "kind": "rt1_bind",
+      "reached": "1",
+      "hr": "80004005",
+      "operation": "80004005",
+      "history_valid": "0",
+      "folded": "0",
+      "rt1_unbound_after_bind": "1",
+      "recovered_hr": "00000000",
+      "recovered_folded": "1",
+      "recovered_history": "0"
+    },
+    {
+      "kind": "fold_draw",
+      "reached": "1",
+      "hr": "80004005",
+      "operation": "80004005",
+      "history_valid": "0",
+      "folded": "0",
+      "rt1_unbound_after_bind": "1",
+      "recovered_hr": "00000000",
+      "recovered_folded": "1",
+      "recovered_history": "0"
+    }
+  ],
+  "depth_fold_reset": [
+    {
+      "before_folded": "2",
+      "before_history": "1",
+      "after_folded": "2",
+      "after_history": "1",
+      "bytes_differ": "0,0,0,0"
+    }
+  ]
 }

@@ -14,22 +14,28 @@ CHECK embedded_thin within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_age dwords=1947 instruction_slots=494 device_limit=512 headroom=18 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_age within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_line_mask dwords=1401 instruction_slots=368 device_limit=512 headroom=144 within_guaranteed_512=1
+RESOLVE_BUDGET variant=embedded_line_mask dwords=1574 instruction_slots=428 device_limit=512 headroom=84 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_line_mask within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_far dwords=1948 instruction_slots=493 device_limit=512 headroom=19 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_far within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_line_mask_camera dwords=1307 instruction_slots=344 device_limit=512 headroom=168 within_guaranteed_512=1
+RESOLVE_BUDGET variant=embedded_line_mask_camera dwords=1579 instruction_slots=427 device_limit=512 headroom=85 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_line_mask_camera within the guaranteed 512 slots PASS
+RESOLVE_BUDGET variant=embedded_line_mask_depth dwords=1554 instruction_slots=420 device_limit=512 headroom=92 within_guaranteed_512=1
+CHECK resolve instruction budget parsed for ps_3_0 PASS
+CHECK embedded_line_mask_depth within the guaranteed 512 slots PASS
+RESOLVE_BUDGET variant=embedded_line_mask_camera_depth dwords=1533 instruction_slots=407 device_limit=512 headroom=105 within_guaranteed_512=1
+CHECK resolve instruction budget parsed for ps_3_0 PASS
+CHECK embedded_line_mask_camera_depth within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_far_camera dwords=2006 instruction_slots=505 device_limit=512 headroom=7 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_far_camera within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_thin_box dwords=238 instruction_slots=51 device_limit=512 headroom=461 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_thin_box within the guaranteed 512 slots PASS
-RESOLVE_BUDGET variant=embedded_thin_box_rows dwords=204 instruction_slots=35 device_limit=512 headroom=477 within_guaranteed_512=1
+RESOLVE_BUDGET variant=embedded_thin_box_rows dwords=335 instruction_slots=77 device_limit=512 headroom=435 within_guaranteed_512=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_thin_box_rows within the guaranteed 512 slots PASS
 RESOLVE_BUDGET variant=embedded_thin_box_columns dwords=420 instruction_slots=94 device_limit=512 headroom=418 within_guaranteed_512=1
@@ -1129,12 +1135,12 @@ LINE_CASES
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
-LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.6275 far_stabiliser_ms=0.8277 thin_region_ms=1.4346 far_delta_ms=0.2002 thin_region_delta_ms=0.8071 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.4346 no_region_camera_ms=1.5836 no_region_camera_delta_ms=0.1490 fragmented_pan_thin_ms=1.3552 fragmented_pan_camera_ms=1.9688 fragmented_pan_camera_delta_ms=0.6137 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.9688 lane_input_law_ms=1.8597 lane_input_lane_ms=1.8616 lane_fetch_delta_ms=0.0019 lane_input_over_r32f_ms=-0.1092 scope=cpu_wall_with_event_query_drain
+LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.6567 far_stabiliser_ms=0.8457 thin_region_ms=1.3598 far_delta_ms=0.1890 thin_region_delta_ms=0.7031 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.3598 no_region_camera_ms=1.5314 no_region_camera_delta_ms=0.1716 fragmented_pan_thin_ms=1.2869 fragmented_pan_camera_ms=1.9427 fragmented_pan_camera_delta_ms=0.6558 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.9427 lane_input_law_ms=2.0907 lane_input_lane_ms=1.9348 lane_fetch_delta_ms=-0.1559 lane_input_over_r32f_ms=0.1480 scope=cpu_wall_with_event_query_drain
 CHECK sentinel timing: separable box programs created PASS
 CHECK sentinel timing: separable box programs created PASS
-LINE_TIMING_SENTINEL width=1280 height=768 rounds=6 content=all_unrouted_sentinel_pan strength_off_ms=1.4638 strength_on_separable_ms=1.7768 sentinel_delta_ms=0.3130 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_SENTINEL width=1280 height=768 rounds=6 content=all_unrouted_sentinel_pan strength_off_ms=1.4193 strength_on_separable_ms=1.6792 sentinel_delta_ms=0.2599 scope=cpu_wall_with_event_query_drain
 LINE_BASE numerical=190 state_restorations=4
 FAR_CASES
 FAR_GATE ok=1 d0=0.99985647 inv=17734.900 expected_d0=0.99985652 expected_inv=17749.280
@@ -4181,4 +4187,189 @@ CHECK thin-region history follows the sequence PASS
 CHECK thin-region program created on this device PASS
 CHECK thin-region history follows the sequence PASS
 CHECK mask-target creation failure under the thin region: plain resolve, history kept PASS
-RESULT PASS numerical=500 state_restorations=12 lattice=1
+DEPTH_FOLD_CASES
+CHECK fold: the folding programs refused at creation leave the far programs PASS
+CHECK fold: the folding programs refused at creation leave the far programs PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+DEPTH_FOLD case=camera_sentinel run=lane_fold against=r32f reason=lane_mrt against_reason=r32f_depth frames=3 folded=3 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+DEPTH_FOLD case=camera_sentinel run=lane_copy against=r32f reason=program against_reason=r32f_depth frames=3 folded=0 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+DEPTH_FOLD case=camera_sentinel run=g32r32f_fold against=r32f reason=lane_mrt against_reason=r32f_depth frames=3 folded=3 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+DEPTH_FOLD case=camera_sentinel run=lane_term_fold against=lane_term_copy reason=lane_mrt against_reason=program frames=3 folded=3 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+DEPTH_FOLD case=camera_sentinel run=negative_control against=r32f reason=lane_mrt against_reason=r32f_depth frames=3 folded=3 history_frames=2 color_bytes_differ=0 depth_bytes_differ=3 age_bytes_differ=0 mask_bytes_differ=0
+CHECK depth fold negative control: a one-ulp lane change reaches the depth history and fails the identity PASS
+CHECK depth fold: the lane and G32R32F runs fold every frame, the refused and R32F runs do not, and every output is byte-identical to its twin PASS
+CHECK fold: the folding programs refused at creation leave the far programs PASS
+CHECK fold: the folding programs refused at creation leave the far programs PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+DEPTH_FOLD case=camera run=lane_fold against=r32f reason=lane_mrt against_reason=r32f_depth frames=3 folded=3 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+DEPTH_FOLD case=camera run=lane_copy against=r32f reason=program against_reason=r32f_depth frames=3 folded=0 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+DEPTH_FOLD case=camera run=g32r32f_fold against=r32f reason=lane_mrt against_reason=r32f_depth frames=3 folded=3 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+DEPTH_FOLD case=camera run=lane_term_fold against=lane_term_copy reason=lane_mrt against_reason=program frames=3 folded=3 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+CHECK depth fold: the lane and G32R32F runs fold every frame, the refused and R32F runs do not, and every output is byte-identical to its twin PASS
+CHECK fold: the folding programs refused at creation leave the far programs PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+DEPTH_FOLD case=thin_screen run=lane_fold against=r32f reason=lane_mrt against_reason=r32f_depth frames=3 folded=3 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+DEPTH_FOLD case=thin_screen run=lane_copy against=r32f reason=program against_reason=r32f_depth frames=3 folded=0 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+DEPTH_FOLD case=thin_screen run=g32r32f_fold against=r32f reason=lane_mrt against_reason=r32f_depth frames=3 folded=3 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+CHECK depth fold: the lane and G32R32F runs fold every frame, the refused and R32F runs do not, and every output is byte-identical to its twin PASS
+CHECK fold: the folding programs refused at creation leave the far programs PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+DEPTH_FOLD case=far_only run=lane_fold against=r32f reason=lane_mrt against_reason=r32f_depth frames=3 folded=3 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+DEPTH_FOLD case=far_only run=lane_copy against=r32f reason=program against_reason=r32f_depth frames=3 folded=0 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+DEPTH_FOLD case=far_only run=g32r32f_fold against=r32f reason=lane_mrt against_reason=r32f_depth frames=3 folded=3 history_frames=2 color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+CHECK depth fold: the lane and G32R32F runs fold every frame, the refused and R32F runs do not, and every output is byte-identical to its twin PASS
+CHECK fold fault warm run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold RT1 refusal restores RT1 and COLORWRITEENABLE1 PASS
+CHECK fold recovery restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+DEPTH_FOLD_FAULT kind=rt1_bind reached=1 hr=80004005 operation=80004005 history_valid=0 folded=0 rt1_unbound_after_bind=1 recovered_hr=00000000 recovered_folded=1 recovered_history=0
+CHECK fold: a refused RT1 bind fails the run, unbinds RT1, restores the caller and folds again next run PASS
+CHECK fold fault warm run restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold draw failure restores RT1 and COLORWRITEENABLE1 PASS
+CHECK fold recovery restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+DEPTH_FOLD_FAULT kind=fold_draw reached=1 hr=80004005 operation=80004005 history_valid=0 folded=0 rt1_unbound_after_bind=1 recovered_hr=00000000 recovered_folded=1 recovered_history=0
+CHECK fold: a failed fold draw fails the run, unbinds RT1, restores the caller and folds again next run PASS
+CHECK fold before Reset restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold before Reset restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold before Reset restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold before Reset restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold after Reset restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold after Reset restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold after Reset restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+CHECK fold after Reset restores the hostile state PASS
+CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
+DEPTH_FOLD_RESET before_folded=2 before_history=1 after_folded=2 after_history=1 bytes_differ=0,0,0,0
+CHECK fold: a device Reset drops the history and the fold resumes byte-identical to the R32F twin PASS
+RESULT PASS numerical=508 state_restorations=89 lattice=1

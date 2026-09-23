@@ -1,0 +1,44 @@
+{
+ "candidate": {
+  "dll": "/tmp/x3-run77-candidate/build/d3d9.dll",
+  "sha256": "268db207d9cee13c20ff8d0d61c6ccb058b8ef967bc505c3c1ca786d6f887f6f",
+  "bytes": 56145284,
+  "commit": "bc47873b"
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run77-candidate/build/d3d9.dll",
+ "cwd": "/Users/asvetl/x3-mod",
+ "exit": 0,
+ "installed": {
+  "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "sha256": "268db207d9cee13c20ff8d0d61c6ccb058b8ef967bc505c3c1ca786d6f887f6f",
+  "bytes": 56145284
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+ },
+ "rollback": {
+  "dll": "/tmp/x3-run76-candidate/build/d3d9.dll",
+  "sha256": "57a7830db9a3ca203e19343fc2b51c7fae468e4cb8cc25b62297f85274fb5656",
+  "records": [
+   "verification/results/run76-candidate-qualification.json",
+   "verification/results/run76-candidate-install.json"
+  ],
+  "older": [
+   "/tmp/x3-run75-candidate/build/d3d9.dll 56d6863e\u2026"
+  ]
+ },
+ "qualification": "verification/results/run77-candidate-qualification.json",
+ "installed_at": "2026-09-24T02:51:35+04:00",
+ "game_running_at_install": false,
+ "dry_run_after_install": "python3 tools/manage.py launch --dry-run --bottle X3 --direct --camera chase: exit 0, X3M_FOG_MARCH_SCALE=2 X3M_FOG_FAR_BINS=40 X3M_BOLT_FOOTPRINT=3,12 X3M_CULL_SMALL_PARTS_PROJECTILES=on",
+ "game_data": "fleet overlay across addon/05 + addon/06 (verification/results/lod-overlay-batch/install-fleet-split/install.json), installed before this DLL",
+ "new_since_run76": [
+  "TAA mask-chain cut c694e6df",
+  "fog card alpha-test admission 058fab39 (docked load, Run 77 B)",
+  "fog step C --fog-march-scale 2|4 beb84ecc (default 2 byte-identical; Run 77 C)",
+  "TAA S1 depth-copy fold + three-draw mask split bc47873b (Run 77 C)"
+ ],
+ "note": "qualification ran while the fleet overlay bake (pid 11716) loaded the host; pass/fail unaffected, session timing figures carry that load (inferred); temporal-lattice.txt refreshed to 508/89 and temporal-pass-summary.json to the fold sections with this commit",
+ "produced_by": "main session, hashes measured with shasum -a 256 after install"
+}
