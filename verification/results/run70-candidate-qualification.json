@@ -1,0 +1,436 @@
+{
+ "schema": 1,
+ "candidate": {
+  "commit": "0bfa11ac",
+  "commit_full": "0bfa11ac033fe54ae9649c077eaf1a0fb258d559",
+  "branch": "main",
+  "checkout": "/Users/asvetl/x3-mod",
+  "source_clean": true,
+  "source_clean_note": "git status --porcelain at build time: no tracked changes (one untracked directory); fixture runners rewrote tracked bottle-X3 results, compact copies kept in /tmp/x3-run70-candidate, tracked files restored with git checkout. HEAD advanced to 9360135a (Run 268 docs/results only) during the motion-output run; git diff 0bfa11ac 9360135a -- src cmake CMakeLists.txt tools verification/probe is empty",
+  "dll": "/tmp/x3-run70-candidate/build/d3d9.dll",
+  "sha256": "a773e9f2d223efdb32e88d57e3c18fd9328494421fe4478dba50df5ba41c11ee",
+  "bytes": 55321848,
+  "embedded_marker": "X3M_SOURCE_COMMIT=0bfa11ac033fe54ae9649c077eaf1a0fb258d559",
+  "configuration": "RelWithDebInfo",
+  "toolchain": "cmake/mingw-i686.cmake",
+  "toolchain_versions": {
+   "i686-w64-mingw32-gcc": "16.2.0",
+   "binutils_ld": "2.47.20260726",
+   "cmake": "4.4.3"
+  },
+  "python3": "/usr/bin/python3",
+  "build_commands": [
+   "mkdir -p /tmp/x3-run70-candidate",
+   "cmake -S . -B /tmp/x3-run70-candidate/build -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPython3_EXECUTABLE=/usr/bin/python3",
+   "cmake --build /tmp/x3-run70-candidate/build -j8"
+  ],
+  "build_warnings": 0,
+  "build_warnings_check": "grep -ci warning /tmp/x3-run70-candidate/build.log -> 0",
+  "build_log_sha256": "360ab7c163e7d6de60f129f61c895661c5982d5b37ac2c04666ef7ccb8e7d9bf",
+  "size_versus_run69": "55,320,312 -> 55,321,848 bytes (+1,536)",
+  "supersedes": "Run69 candidate 70abe438 (5a11ad00)",
+  "sha256_recheck_after_fixtures": "a773e9f2d223efdb32e88d57e3c18fd9328494421fe4478dba50df5ba41c11ee"
+ },
+ "scope": "Versus the Run69 DLL 70abe438 (5a11ad00): --taa-motion-weight 0.7,2,8 launcher/DLL default under TAA with an age program (d52b3bcb); fog dust motes on by default under the stored range at 1300,3,128 with MAX_PX 8, default MAX_PX 12 -> 8 (0bfa11ac); lod_overlay tooling (no DLL effect). git diff --stat 5a11ad00 0bfa11ac -- src: 3 files, +23/-11",
+ "linked_audit": {
+  "command": "/usr/bin/python3 verification/probe/check_no_x87.py /tmp/x3-run70-candidate/build/d3d9.dll",
+  "result": "PASS",
+  "roots_count": 100,
+  "reachable_functions": 639,
+  "violations": 0,
+  "comparison": {
+   "run69": "100 roots / 639 reachable / 0 violations; unchanged"
+  },
+  "import_delta": {
+   "command": "python3 verification/results/run70-candidate-audit.py pe /tmp/x3-run69-candidate/build/d3d9.dll /tmp/x3-run70-candidate/build/d3d9.dll",
+   "baseline_dll": "/tmp/x3-run69-candidate/build/d3d9.dll (sha256 70abe438...)",
+   "imported_dlls": [
+    15,
+    15
+   ],
+   "new_imported_dlls": [],
+   "removed_imported_dlls": [],
+   "total_imported_functions": {
+    "run69": 210,
+    "run70": 210
+   },
+   "per_function_delta": {
+    "new": [],
+    "removed": []
+   }
+  },
+  "exports": {
+   "count": 17,
+   "names_equal_run69": true,
+   "x3m_exports": [],
+   "names": [
+    "D3DPERF_BeginEvent",
+    "D3DPERF_EndEvent",
+    "D3DPERF_GetStatus",
+    "D3DPERF_QueryRepeatFrame",
+    "D3DPERF_SetMarker",
+    "D3DPERF_SetOptions",
+    "D3DPERF_SetRegion",
+    "DebugSetLevel",
+    "DebugSetMute",
+    "Direct3D9EnableMaximizedWindowedModeShim",
+    "Direct3DCreate9",
+    "Direct3DCreate9Ex",
+    "Direct3DCreate9On12",
+    "Direct3DCreate9On12Ex",
+    "Direct3DShaderValidatorCreate9",
+    "PSGPError",
+    "PSGPSampleTexture"
+   ]
+  }
+ },
+ "temporal_pass": {
+  "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run70-candidate/lock-timings-temporal.json python3 verification/probe/run_temporal_pass.py",
+  "passed": true,
+  "exit_code": 0,
+  "result_line": "RESULT PASS numerical=744 state_restorations=278 generations=2",
+  "samples": 546,
+  "motion_weight_rows": 84,
+  "seta_exit_rows": 28,
+  "mote_streak_rows": 8,
+  "source_unchanged": true,
+  "binary_unchanged": true,
+  "compiler_unchanged": true,
+  "report": "verification/results/bottle-X3/temporal-pass.txt",
+  "report_sha256": "58d85cde92764d58d52c7cb64ca0890285bef85006492eea18b59772271fcd17",
+  "report_identical_to_committed": true,
+  "comparison_to_committed": {
+   "command": "python3 verification/results/run70-candidate-audit.py diff <git show HEAD:verification/results/bottle-X3/temporal-pass-summary.json> <run summary>",
+   "leaves": [
+    4520,
+    4520
+   ],
+   "changed": 26,
+   "added": 0,
+   "removed": 0,
+   "changed_by_section": {
+    "executable_sha256": 1,
+    "command": 5,
+    "lattice": 1,
+    "pass_timing": 5,
+    "thin_region_camera": 11,
+    "sentinel_stabiliser": 3
+   },
+   "changed_reading": "executable_sha256 and five command paths (committed run was from a worktree), lattice report_sha256 (temporal-lattice.txt differs only in the four LINE_TIMING* rows), and 19 CPU timing leaves (pass_timing 5, thin_region_camera 11, sentinel_stabiliser 3)"
+  },
+  "lock": {
+   "lock_wait_seconds": 3.167000000001835e-06,
+   "child_elapsed_seconds": 160.061882,
+   "exit_code": 0
+  }
+ },
+ "motion_output": {
+  "command": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run70-candidate/lock-timings-motion.json python3 verification/probe/run_motion_output.py",
+  "status": "PASS",
+  "passed": true,
+  "consume_only": false,
+  "cases": 190,
+  "nonzero_exit_cases": 0,
+  "total_checks": 271369,
+  "cases_versus_brief": "brief expected 206 cases; this run and the committed summary both have 190 (the runner selects 190)",
+  "binaries": {
+   "verification/probe/build/motion_output_fixture.exe": "093ae6b1dc11b0429afe90ef11fed309efef2309a112a2691ebfbc0821bedbe2",
+   "verification/probe/build/motion-output-seam/d3d9.dll": "d8c586309fac93712c7ff461501253d63ad4e146aa48d95e99da2f031fc34a25",
+   "build/d3d9.dll": "eeac6648d98ffe69f5481763e0769279c3f9c44687b97aa5b7f8727b98ff16ac"
+  },
+  "binaries_note": "the suite fresh-builds build/d3d9.dll from 0bfa11ac source in the checkout build directory; bytes differ from the candidate (path-dependent debug info), so these cases exercise the same source, not the candidate file",
+  "report_sha256": "3633adf20097d8b5cd16c0d89b3662564f6a259e722725cf97c197fcb9abb703",
+  "comparison_to_committed": {
+   "command": "python3 verification/results/sky-history-default/compare_motion_output.py <git show HEAD summary> <run summary>",
+   "cases": [
+    190,
+    190
+   ],
+   "missing": 0,
+   "added": 0,
+   "checks": [
+    271369,
+    271369
+   ],
+   "cases_with_differing_stable_fields": 0
+  },
+  "lock": {
+   "lock_wait_seconds": 3.7910000000029864e-06,
+   "child_elapsed_seconds": 553.537042583,
+   "exit_code": 0
+  }
+ },
+ "fog_pass": {
+  "commands": [
+   "python3 verification/probe/fog_density_shader_run.py build --output /tmp/x3-run70-candidate/fogpass --asset-data /tmp/x3-run70-candidate/build/generated/fog_field",
+   "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run70-candidate/lock-timings-fogpass.json python3 verification/probe/fog_density_shader_run.py run --output /tmp/x3-run70-candidate/fogpass --reference /tmp/x3-run67-fog-ref",
+   "python3 verification/probe/fog_density_shader_run.py check --output /tmp/x3-run70-candidate/fogpass --reference /tmp/x3-run67-fog-ref"
+  ],
+  "summarized_by": "python3 verification/results/fog-dust-motes/summarize.py --pass-run /tmp/x3-run70-candidate/fogpass --bridge-run /tmp/x3-run70-candidate/route --output /tmp/x3-run70-candidate/fog-summary.json",
+  "result_line": "RESULT PASS checks=117 failures=0 state_restorations=1132",
+  "result": "PASS",
+  "checks": 117,
+  "failed": [],
+  "gates": 30,
+  "gates_passed": 30,
+  "pre_existing_checks": 78,
+  "new_checks": 39,
+  "motes_named_checks": {
+   "count": 29,
+   "failed": []
+  },
+  "accepted_look_hashes_equal": true,
+  "executable_sha256": "d8b43a228dd64623ca11f68974a9bc0a14c4662a87a3aa07855201ab71579b7a",
+  "grid_toggle": {
+   "difference": 15,
+   "off_calls": 323,
+   "on_calls": 338
+  },
+  "motes_calls": {
+   "off": 322,
+   "on": 334,
+   "shadow": "none",
+   "stage": 12
+  },
+  "comparison_to_run69": {
+   "command": "python3 verification/results/run70-candidate-audit.py diff /tmp/x3-run69-candidate/fog-summary.json /tmp/x3-run70-candidate/fog-summary.json",
+   "pass_fixture_changed": [
+    "executable_sha256",
+    "state_restorations 1199 -> 1132 (not a check; wall-clock dependent worker fill frames, inferred)"
+   ],
+   "removed": [
+    "/temporal_streak/result (no --temporal-output given to summarize.py)"
+   ]
+  },
+  "lock": {
+   "lock_wait_seconds": 3.083000000000946e-06,
+   "child_elapsed_seconds": 93.87451487499999,
+   "exit_code": 0
+  }
+ },
+ "fog_route_bridge": {
+  "commands": [
+   "git archive 6f16dbf6 | tar -x -C /tmp/x3-run70-candidate/baseline-6f16dbf6",
+   "python3 verification/probe/fog_route_bridge_build.py --production-root /Users/asvetl/x3-mod --spatial-root /Users/asvetl/x3-mod --asset-data /tmp/x3-run70-candidate/build/generated/fog_field --output /tmp/x3-run70-candidate/route/build",
+   "python3 verification/probe/fog_route_bridge_build.py --baseline --production-root /tmp/x3-run70-candidate/baseline-6f16dbf6 --spatial-root /tmp/x3-run70-candidate/baseline-6f16dbf6 --asset-data /tmp/x3-run70-candidate/build/generated/fog_field --output /tmp/x3-run70-candidate/route/baseline-build",
+   "python3 verification/probe/fog_route_bridge_run.py build-exit --output /tmp/x3-run70-candidate/route",
+   "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run70-candidate/lock-timings-route.json python3 verification/probe/fog_route_bridge_run.py run --output /tmp/x3-run70-candidate/route --cases /tmp/x3-fog-family-gpu-inputs-final/cases.txt",
+   "python3 verification/probe/fog_route_bridge_run.py check --output /tmp/x3-run70-candidate/route --summary /tmp/x3-run70-candidate/route/summary.json"
+  ],
+  "result": "PASS",
+  "check_line": "PASS bridge_checks=36267 exit_checks=4",
+  "steps": [
+   [
+    "baseline",
+    0,
+    9.0
+   ],
+   [
+    "bridge",
+    0,
+    23.2
+   ],
+   [
+    "exit",
+    0,
+    48.2
+   ]
+  ],
+  "bridge_checks": 36267,
+  "exit_checks": 4,
+  "shadow_ab_names": 15,
+  "motes_ab_names": 13,
+  "legacy_bit_identical_to_baseline": true,
+  "motes_ab_rows": [
+   "alternating_frames=20 toggle_rows=20 allocations=7,7",
+   "reset_allocations=7,12,12 released=1 regrown=1"
+  ],
+  "comparison_to_run69": {
+   "command": "python3 verification/results/run70-candidate-audit.py bridge /tmp/x3-run69-candidate/route/bridge.log /tmp/x3-run70-candidate/route/bridge.log",
+   "checks": [
+    36927,
+    36267
+   ],
+   "status": [
+    {
+     "PASS": 36927
+    },
+    {
+     "PASS": 36267
+    }
+   ],
+   "names": [
+    110,
+    110
+   ],
+   "only_old": [],
+   "only_new": [],
+   "count_changed": {
+    "native_card_LastError_preserved": [
+     6116,
+     6006
+    ],
+    "native_card_forward_once": [
+     6116,
+     6006
+    ],
+    "once_only_hook_fallback_guard": [
+     6114,
+     6004
+    ],
+    "one_fog_transaction_maximum": [
+     6114,
+     6004
+    ],
+    "route_RT1_RT2_bytes": [
+     6114,
+     6004
+    ],
+    "route_pass_state_restored": [
+     6114,
+     6004
+    ]
+   },
+   "shadow_ab_names": [
+    15,
+    15
+   ],
+   "motes_ab_names": [
+    13,
+    13
+   ],
+   "motes_ab_row_field_changes": [
+    {
+     "on_frames": [
+      "781",
+      "777"
+     ]
+    },
+    {},
+    {},
+    {}
+   ],
+   "reading": "no check name added, removed or failed; every motes_ab and shadow_ab name passes with an unchanged count; the only MOTES_AB row difference is on_frames 781 -> 777; the 660 fewer checks are the six per-frame checks, -110 each, tracking the density-fill wait (DENSITY_FILL frames a/b 782/797 in Run69, 747/773 here)"
+  },
+  "check_count_versus_ledger": {
+   "ledger": 36333,
+   "here": 36267,
+   "difference": -66,
+   "reading": "below the brief floor 36,333 by 66 = the same six per-frame checks, 11 fewer frames each (inferred from the per-name comparison, which shows only those six names vary); not a changed check"
+  },
+  "motes_max_px_note": "motes_ab builds FogMoteTuning{} with count 8192 / radius 5000 and default max_px, which is 8 at 0bfa11ac (src/renderer/fog_mote_math.h); the bridge log does not print MAX_PX, so MAX_PX 8 in effect is inferred from source",
+  "lock": {
+   "lock_wait_seconds": 4.458999999998325e-06,
+   "child_elapsed_seconds": 80.541621541,
+   "exit_code": 0
+  }
+ },
+ "reused_evidence": {
+  "cull_census": {
+   "commit": "3c954738",
+   "result": "checks=101 failures=0",
+   "ledger": "docs/verification/cull-census.md",
+   "source_unchanged_since": "git diff --stat 3c954738 0bfa11ac -- src/proxy/cull_census* empty"
+  },
+  "host_suite": {
+   "commit": "0bfa11ac",
+   "command": "/usr/bin/python3 verification/probe/run_host_suite.py",
+   "modules": 232,
+   "tests": 2358,
+   "failing": 0,
+   "source": "orchestrator's gate result in the 0bfa11ac commit message ('host suite 232/2358 green'), not rerun by the candidate owner"
+  }
+ },
+ "dry_run": {
+  "command_script": "/tmp/x3-run70-candidate/run70-dryrun.sh",
+  "cwd": "/Users/asvetl/x3-mod",
+  "wrapped": "X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py --timings-json /tmp/x3-run70-candidate/lock-timings-dryrun.json sh /tmp/x3-run70-candidate/run70-dryrun.sh",
+  "form": "env -u CX_DEBUGMSG X3M_MOTION_FRAME_LOG=1 /usr/bin/python3 tools/manage.py launch --dry-run --bottle X3 --dll-source /tmp/x3-run70-candidate/build/d3d9.dll <session args>; launch --dry-run validates the installed proxy and ignores --dll-source",
+  "base": "A = Run 69 A without --taa-motion-weight 0.8,2,8; B = Run 69 B without --fog-dust-motes 2048; C = Run 69 C unchanged",
+  "game_launched": false,
+  "output": "/tmp/x3-run70-candidate/dryrun.txt",
+  "session_commands": "/tmp/x3-run70-candidate/run70-commands.md",
+  "exits": {
+   "A": 0,
+   "B": 0,
+   "C": 0
+  },
+  "delta_command": "python3 verification/results/run70-candidate-audit.py dryrun /tmp/x3-run69-candidate/dryrun.txt /tmp/x3-run70-candidate/dryrun.txt",
+  "delta": {
+   "A": {
+    "x3m": [
+     145,
+     145
+    ],
+    "added": {},
+    "removed": [],
+    "changed": {
+     "X3M_TAA_MOTION_WEIGHT": [
+      "0.8,2,8",
+      "0.7,2,8"
+     ]
+    }
+   },
+   "B": {
+    "x3m": [
+     141,
+     143
+    ],
+    "added": {
+     "X3M_FOG_MOTES_MAX_PX": "8",
+     "X3M_TAA_MOTION_WEIGHT": "0.7,2,8"
+    },
+    "removed": [],
+    "changed": {
+     "X3M_FOG_DUST_MOTES": [
+      "2048,4,128",
+      "1300,3,128"
+     ]
+    }
+   },
+   "C": {
+    "x3m": [
+     143,
+     145
+    ],
+    "added": {
+     "X3M_FOG_MOTES_MAX_PX": "8",
+     "X3M_TAA_MOTION_WEIGHT": "0.7,2,8"
+    },
+    "removed": [],
+    "changed": {
+     "X3M_FOG_DUST_MOTES": [
+      "0,4,128",
+      "1300,3,128"
+     ]
+    }
+   }
+  },
+  "confirmations": [
+   "X3M_TAA_MOTION_WEIGHT=0.7,2,8 on all three (A no longer passes the flag; B and C by the launcher default under TAA)",
+   "X3M_FOG_DUST_MOTES=1300,3,128 and X3M_FOG_MOTES_MAX_PX=8 in B and C (stored range); A 0,4,128 (legacy range, motes off), no MAX_PX",
+   "X3M_FOG_SHADOW_PASS=0, X3M_TAA_SKY_HISTORY=strict, X3M_TAA_SKY_HISTORY_EXIT_PX=0.25 on all three",
+   "X3M_CULL_CENSUS=1 and X3M_OBJECT_BOUNDS_LOG=1 in C only",
+   "C (unchanged command) now resolves motes on (1300,3,128) where Run69 C had them off (0,4,128)"
+  ],
+  "lock": {
+   "lock_wait_seconds": 3.8749999999969365e-06,
+   "child_elapsed_seconds": 0.302232375,
+   "exit_code": 0
+  }
+ },
+ "producer": "verification/results/run70-candidate-audit.py (pe: import/export audit; diff: fixture-summary leaf comparison; dryrun: X3M_* env delta per session; bridge: per-name route bridge check comparison)",
+ "bottle": "X3",
+ "wine_arch": "arm64",
+ "environment": {
+  "FEX_X87REDUCEDPRECISION": "1",
+  "WINEMSYNC": "1",
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "native_windows": "unverified",
+ "game_acceptance": "pending Run70",
+ "installed": false,
+ "incidents": [
+  "HEAD advanced 0bfa11ac -> 9360135a (docs and verification/results only) during the motion-output run; no production, tooling or probe input changed"
+ ]
+}

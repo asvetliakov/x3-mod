@@ -2047,6 +2047,8 @@ env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3
 | 51 | Longer media retry counter | 0 | Not flown; superseded by Run54 replacement-media verification. [Archived instructions](../archive/run53-completed-2026-09-20.md#51-media-retry-counter--same-view-longer-diagnostic-interval). |
 | 52 | Busy-station attribution and lazy-RT counter | 0 | Completed: A run187, B run188, C run189. Matched 478-draw separate-session B/C medians were 19.70 / 18.90 ms; lazy accepted as launcher default, no new engine patch justified. [Instructions archive](../archive/run52-completed-2026-09-20.md), [results](../verification/motion-output.md#run52-lazy-render-target-binding-accepted-as-launcher-default-2026-09-20). |
 | 53 | Spatial fog and lattice state | 0 | Completed: A run193, B run194. Fog preference 1.50×; camera-cut native-card flicker and observer reference interference reproduced and corrected. Visual acceptance remains open: fog follow-up is Run55; lattice Session B returned run201 and is under analysis. [Archive](../archive/run53-completed-2026-09-20.md), [lattice findings](../architecture/taa-lattice-crawl.md#27-bound-observer-reference-callbacks-and-device-lifetime-2026-09-20). |
+| 54 A | Media and expanded fog/shafts | 3 | Analysed: run195/run196/run197 crashed; Run197 first-person F8 exposes camera tolerance refusal. Session A superseded by Run55; B returned run201 and is under analysis. |
+| 54 B | Guarded lattice state observation | 1 | Run201 received; three capture bursts and state packets are under analysis. No repeat flight requested. [Archived instructions](../archive/run54b-completed-2026-09-21.md). |
 
 ## Run history paragraphs
 
@@ -2074,6 +2076,15 @@ Run 67 returned **run249** (A: SETA still smears a little, normal speed and pan 
 Moved from `user-runs.md` on 2026-09-23:
 
 Run 68 returned **run254** (A: SETA smear gone by the numbers, 7 % / 6 % against 27 % / 34 %; strict + band + exit reset become defaults; the SETA station blur is resample softening, a motion-weight option is being built), **run255** (B: 466 draws at the stand, the pilot placement corrected to the pad rule, T_pad 50/100) and **run256** (C: the toggle worked without a notice, no visible or median-cost difference, the pass stays off).
+Moved from `user-runs.md` on 2026-09-23:
+
+Run 69 D returned **run261** (lighting difference less visible; outpost pair: sun part 94 % of fine, non-sun 73 %, was 77 % / 29 %); the atlas collapse is being built for Run 69 E.
+
+Run 69 C returned **run259** / **run260** (80 / 150 px acceptable; the coarse model is sun-lit but 23 % weaker and loses 72 % of its light-map self-illumination, from the collapse; fixed by the area-ranked rule and the synthesized material).
+
+Run 69 B returned **run258** (engine glows back with the glow collapse; user asks for 80 / 150).
+
+Run 69 A returned **run257** (the pilot draws as designed, 297 vs 447 draws; engine glows lost because the two-group collapse dropped the exhaust materials' light maps; fixed by the glow collapse, reinstalled).
 
 ## Run 66 (completed 2026-09-22: run244 (SETA/pan, strict), run245-run248 (lod-scale A/B at the stand))
 
