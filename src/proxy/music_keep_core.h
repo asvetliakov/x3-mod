@@ -32,6 +32,13 @@ constexpr unsigned char a_window[a_window_length] = {
     0x46, 0x2c, 0x02, 0x8b, 0x6d, 0x00, 0x74, 0x7e, 0x8b, 0x7e, 0x24, 0x39, 0x5f, 0x04, 0x74, 0x13, 0x8b, 0x47, 0x74};
 constexpr unsigned a_skip_length = 15;                          // mov ecx,[0x6085e4]; and [esi+0x2c],~2; cmp ecx,ebx; mov eax,[esi+0x18]
 constexpr unsigned char a_skip_window[a_skip_length] = {0x8b, 0x0d, 0xe4, 0x85, 0x60, 0x00, 0x83, 0x66, 0x2c, 0xfd, 0x3b, 0xcb, 0x8b, 0x46, 0x18};
+// The per-record loop's continue: `cmp [ebp],ebx; jne 0x004982d0` then the epilogue (pop edi/esi/ebp/ebx; ret). It is
+// the target of the loop's own `je 0x00498359` at 0x004982d9 (in a_window: `74 7e`), taken for a record without flag 2,
+// so the skip_all exit reaches it in exactly that state: EBP = next node (loaded at 0x004982d6, before the site),
+// EBX = 0, the stack four pushes deep; ESI/EDI/EAX/ECX/EDX and the flags are dead there (rewritten before any read).
+constexpr std::uint32_t a_next_record_va = 0x00498359, a_loop_head_va = 0x004982d0, a_not_playing_je_va = 0x004982d9;
+constexpr unsigned a_next_record_length = 14;
+constexpr unsigned char a_next_record_window[a_next_record_length] = {0x39, 0x5d, 0x00, 0x0f, 0x85, 0x6e, 0xff, 0xff, 0xff, 0x5f, 0x5e, 0x5d, 0x5b, 0xc3};
 
 // ---- Patch C: the seek call of the play routine, 0x00498d54 -> 0x004d0430 ----
 constexpr std::uint32_t play_va = 0x00498c90, play_end_va = 0x00498e28;
@@ -62,6 +69,28 @@ constexpr unsigned char pause_body[pause_body_length] = {
 constexpr unsigned run_head_length = 14;                        // 0x004d1870: sub esp,0x70; push ebx; mov ebx,[eax+0x24]; test byte [ebx+0x8c],0x10
 constexpr unsigned char run_head[run_head_length] = {0x83, 0xec, 0x70, 0x53, 0x8b, 0x58, 0x24, 0xf6, 0x83, 0x8c, 0x00, 0x00, 0x00, 0x10};
 
+// ---- Patch D: the status query call of the media update, 0x004983d9 -> 0x004d14e0 ----
+// The update 0x00498370 asks 0x004d14e0 (its only caller; ECX = record, EAX = [rec+0x28]; returns AX: 1 playing,
+// 2 ended; preserves EBX/EBP/ESI/EDI; `ret`, no stack arguments) for every flag-2 record. While the engine's active
+// flag [0x00608adc] is 0 and the RunInBackground bit 0x4000 of the input flags word [*0x00606f3c] is clear, the query
+// answers 2 without looking (0x004d14f2..0x004d1500 -> 0x004d15a0), and 2 ends the record (0x0049842b: flag 2 cleared,
+// completion (ctx,1); a looped record re-seeks at 0x0049840a). A skip_all record keeps flag 2 through the alt-tab, so
+// the thunk answers 1 (playing: the caller only reads the position into a discarded local, 0x004983ed) for it in exactly
+// that state and forwards every other call unchanged.
+constexpr std::uint32_t d_site_va = 0x004983d9, d_target_va = 0x004d14e0, d_return_va = 0x004983de;
+constexpr std::uint32_t active_flag_va = 0x00608adc, input_flags_ptr_va = 0x00606f3c, run_in_background_bit = 0x4000;
+constexpr std::uint32_t d_caller_va = 0x004983d4, status_ended_va = 0x004d15a0, status_normal_va = 0x004d1506;
+constexpr unsigned d_caller_length = 41;                        // mov eax,[edi+0x28]; mov ecx,edi; call; movzx eax,ax; cmp ax,1; jne; lea esi,[esp+0x10]; mov eax,edi; call 0x4d0600; jmp; cmp ax,2; jne
+constexpr unsigned char d_caller_window[d_caller_length] = {
+    0x8b, 0x47, 0x28, 0x8b, 0xcf, 0xe8, 0x02, 0x91, 0x03, 0x00, 0x0f, 0xb7, 0xc0, 0x66, 0x3d, 0x01, 0x00, 0x75, 0x10, 0x8d, 0x74,
+    0x24, 0x10, 0x8b, 0xc7, 0xe8, 0x0e, 0x82, 0x03, 0x00, 0xe9, 0xbe, 0x00, 0x00, 0x00, 0x66, 0x3d, 0x02, 0x00, 0x75, 0x71};
+constexpr unsigned status_head_length = 38;                     // sub esp,0x24; push ebx/ebp/esi; mov esi,[ecx+0x24]; xor ebp,ebp; cmp [0x608adc],ebp; push edi; jne; mov edx,[0x606f3c]; test [edx],0x4000; je 0x4d15a0
+constexpr unsigned char status_head[status_head_length] = {
+    0x83, 0xec, 0x24, 0x53, 0x55, 0x56, 0x8b, 0x71, 0x24, 0x33, 0xed, 0x39, 0x2d, 0xdc, 0x8a, 0x60, 0x00, 0x57, 0x75,
+    0x12, 0x8b, 0x15, 0x3c, 0x6f, 0x60, 0x00, 0xf7, 0x02, 0x00, 0x40, 0x00, 0x00, 0x0f, 0x84, 0x9a, 0x00, 0x00, 0x00};
+constexpr unsigned status_ended_length = 12;                    // mov ax,2; pop edi/esi/ebp/ebx; add esp,0x24; ret
+constexpr unsigned char status_ended_window[status_ended_length] = {0x66, 0xb8, 0x02, 0x00, 0x5f, 0x5e, 0x5d, 0x5b, 0x83, 0xc4, 0x24, 0xc3};
+
 // ---- Trace sites: three entry trampolines ----
 constexpr std::uint32_t t_stop_all_site_va = stop_all_va;            // mov eax,[0x606f44] (5 bytes, absolute operand)
 constexpr unsigned t_stop_all_length = 5, stop_all_head_length = 16;
@@ -77,10 +106,14 @@ constexpr unsigned play_arg_id = 3, play_arg_minutes = 4, play_arg_seconds = 5, 
 constexpr unsigned trace_line_cap = 1000;
 
 // ---- Stop-all callers (return addresses) and their policy ----
-enum class StopMode : unsigned { vanilla = 0, keep_running = 1, paused = 2 };
+// skip_all: the record is left untouched (no Pause/Stop, flag 2 kept, no completion, context kept): the stub leaves for
+// a_next_record_va. The alt-tab caller only: the main loop keeps running through it (Run 72 B), so the pump keeps
+// servicing the record; save and pause block the loop, so they pause (keep_running / paused). skip_all needs Patch D
+// (the false "ended" of the status query while the active flag is 0); without it alt-tab falls back to paused.
+enum class StopMode : unsigned { vanilla = 0, keep_running = 1, paused = 2, skip_all = 3 };
 struct StopCaller { std::uint32_t call_va, return_va; const char* name; StopMode mode; };
 constexpr StopCaller stop_callers[] = {
-    {0x004d36bd, 0x004d36c2, "alt_tab", StopMode::paused},          // WndProc WM_ACTIVATE inactive arm
+    {0x004d36bd, 0x004d36c2, "alt_tab", StopMode::skip_all},        // WndProc WM_ACTIVATE inactive arm
     {0x0040455c, 0x00404561, "save", StopMode::keep_running},       // save routine 0x00404530, first statement
     {0x00407064, 0x00407069, "pause", StopMode::keep_running},      // X2_SetPause
     {0x00404ced, 0x00404cf2, "load", StopMode::vanilla},            // load 0x00404cc0
@@ -115,7 +148,9 @@ inline const char* stop_movie_caller_name(std::uint32_t return_va) {
     for (const auto& c : stop_movie_callers) if (c.return_va == return_va) return c.name;
     return "unknown";
 }
-inline const char* mode_name(StopMode m) { return m == StopMode::keep_running ? "keep_running" : m == StopMode::paused ? "paused" : "vanilla"; }
+inline const char* mode_name(StopMode m) {
+    return m == StopMode::keep_running ? "keep_running" : m == StopMode::paused ? "paused" : m == StopMode::skip_all ? "skip_all" : "vanilla";
+}
 
 // ---- Holds ----
 // A hold is a music record the classifier let through a preserve caller:
@@ -143,17 +178,25 @@ struct LiveRecord { std::uint32_t flags, context; };
 
 // Patch A decision. In: the record's flags, the stop-all caller's return
 // address. Out: the mode; the stub falls through to the vanilla Pause on
-// vanilla/paused and jumps to a_skip_va on keep_running. A vanilla caller
-// (load, P_Leave, session start, unknown) drops every hold; a non-music
-// record is never held and takes the vanilla path whatever the caller. A
-// DirectSound-path record (flag 0x40) is paused, not kept running, under
-// save and pause too: the pump services flag-2 records only and the save's
-// file write blocks the loop, so a running buffer would starve.
+// vanilla/paused, jumps to a_skip_va on keep_running and to a_next_record_va
+// on skip_all. A vanilla caller (load, P_Leave, session start, unknown) drops
+// every hold; a non-music record is never held and takes the vanilla path
+// whatever the caller. A DirectSound-path record (flag 0x40) is paused, not
+// kept running, under save and pause too: the pump services flag-2 records
+// only and the save's file write blocks the loop, so a running buffer would
+// starve. Alt-tab (skip_all, only when Patch D is live: `skip_all_available`):
+// the record stays registered as playing with its completion context, the
+// script is not woken and never replays; the record is held with the skip_all
+// kind, which only Patch D reads (decide_status) and the seek rule ignores (a
+// skip_all hold must not make the next start-0 play after the natural end skip
+// the seek). Without Patch D alt-tab takes the flown paused mode.
 struct StopDecision { StopMode mode; bool held; };
-inline StopDecision decide_stop(Holds& holds, std::uint32_t record, std::uint32_t flags, std::uint32_t id, std::uint32_t media, std::uint32_t return_va) {
+inline StopDecision decide_stop(Holds& holds, std::uint32_t record, std::uint32_t flags, std::uint32_t id, std::uint32_t media, std::uint32_t return_va,
+                                bool skip_all_available) {
     StopMode mode = stop_mode(return_va);
     if (mode == StopMode::vanilla) { holds.clear(); return {StopMode::vanilla, false}; }
     if (!(flags & flag_music)) return {StopMode::vanilla, false};
+    if (mode == StopMode::skip_all && !skip_all_available) mode = StopMode::paused;
     if (mode == StopMode::keep_running && (flags & flag_directsound)) mode = StopMode::paused;
     holds.add(Hold{record, id, media, mode});
     return {mode, true};
@@ -205,6 +248,7 @@ template<class Lookup>
 inline SeekDecision decide_seek(Holds& holds, std::uint32_t record, std::uint32_t flags, std::uint32_t id, std::uint32_t media, std::int32_t start_ms, Lookup&& live) {
     if (!(flags & flag_music)) return {SeekAction::vanilla, 0, 0};
     const Hold* mine = holds.find(record, id, media);
+    if (mine && mine->mode == StopMode::skip_all) mine = nullptr;   // flag 2 alone decides for a skip_all record
     if (start_ms == 0 && (mine || (flags & flag_playing))) {
         const std::uint32_t hold_id = mine ? mine->id : id;
         holds.clear();
@@ -226,5 +270,81 @@ inline SeekDecision decide_seek(Holds& holds, std::uint32_t record, std::uint32_
     }
     holds.clear();
     return d;
+}
+// Patch D decision. In: the visited record's flags, id and media, the engine's
+// active flag and the input flags word. True (answer 1 = playing, do not ask
+// the engine) only for a music record still marked playing that holds a
+// skip_all hold, while the active flag is 0 and the RunInBackground bit is
+// clear: exactly the state in which the query would answer "ended" without
+// looking. With the bit set the engine's own answer is genuine and forwarded.
+inline bool decide_status(const Holds& holds, std::uint32_t record, std::uint32_t flags, std::uint32_t id, std::uint32_t media, std::uint32_t active, std::uint32_t input_flags) {
+    if (active != 0 || (input_flags & run_in_background_bit)) return false;
+    if ((flags & (flag_music | flag_playing)) != (flag_music | flag_playing)) return false;
+    const Hold* h = holds.find(record, id, media);
+    return h && h->mode == StopMode::skip_all;
+}
+
+// ---- Shared entry sites (the stop-all entry 0x004982b0 and the MOV_StopMovie entry 0x00498810) ----
+// Both features patch the same two heads. The first to install claims the site (the claim writes `e9 rel32`
+// over its first five bytes); every feature chains its own stub in front of the current chain head. The
+// window checks of the second feature must therefore see through the first feature's live claim: a read
+// that overlaps a live claim of ours whose bytes are still exactly the claim's own patch is overlaid with
+// the claim's original bytes; any other byte there (a foreign write) stays and fails the comparison.
+struct LiveClaim { std::uint32_t site; const unsigned char* original; const unsigned char* patched; unsigned patch_length; };
+// Returns false when an overlapping claim's bytes are not its own patch (every other claim is still overlaid).
+inline bool overlay_claims(std::uint32_t at, unsigned char* bytes, unsigned length, const LiveClaim* claims, unsigned count) {
+    bool all_own = true;
+    for (unsigned c = 0; c < count; ++c) {
+        const LiveClaim& k = claims[c];
+        if (k.site + k.patch_length <= at || k.site >= at + length) continue;
+        bool own = true;
+        for (unsigned i = 0; i < k.patch_length; ++i) {
+            const std::uint32_t va = k.site + i;
+            if (va >= at && va < at + length && bytes[va - at] != k.patched[i]) own = false;
+        }
+        if (!own) { all_own = false; continue; }   // not our patch: leave the bytes as read (the comparison fails)
+        for (unsigned i = 0; i < k.patch_length; ++i) {
+            const std::uint32_t va = k.site + i;
+            if (va >= at && va < at + length) bytes[va - at] = k.original[i];
+        }
+    }
+    return all_own;
+}
+// Whether [at, at+length) holds `expected` in the unpatched image. `read(at, out, n)` reads code bytes.
+template<class Read>
+inline bool window_matches(Read&& read, std::uint32_t at, const unsigned char* expected, unsigned length, const LiveClaim* claims, unsigned count) {
+    unsigned char actual[128]{};
+    if (length > sizeof actual || !read(at, actual, length)) return false;
+    if (!overlay_claims(at, actual, length, claims, count)) return false;   // a foreign write over a live claim: fail closed
+    for (unsigned i = 0; i < length; ++i) if (actual[i] != expected[i]) return false;
+    return true;
+}
+// The shared claim: `Ops` supplies claim(site, spec) -> bool, status(site) -> const char*, push(site, stub,
+// continuation) -> bool (stores the current head into continuation, then makes the stub the head; false
+// leaves the chain untouched), restore(site) -> bool, live(site) -> bool. The first user claims, every user
+// chains; a push that fails on a fresh claim restores it. A feature that later fails its install releases
+// the site: the last user restores the bytes; while another user remains, the failed feature's stub stays
+// chained and its armed flag keeps it inert. Independent of which feature comes first.
+template<class Site> struct SharedSite { Site site{}; unsigned users = 0; };
+template<class Ops, class Site, class Spec, class Stub, class Slot>
+inline bool acquire_shared(Ops& ops, SharedSite<Site>& s, const Spec& spec, Stub stub, Slot& continuation, const char** reason) {
+    if (!s.users) {
+        if (ops.live(s.site)) { *reason = "site_live"; return false; }   // an unrestored claim (failed rollback): refuse, never forget it
+        s.site = Site{};
+        if (!ops.claim(s.site, spec)) { *reason = ops.status(s.site); return false; }
+    }
+    if (!ops.push(s.site, stub, continuation)) {
+        *reason = "chain_failed";
+        if (!s.users && !ops.restore(s.site)) *reason = "rollback_failed";
+        return false;
+    }
+    ++s.users;
+    return true;
+}
+template<class Ops, class Site>
+inline bool release_shared(Ops& ops, SharedSite<Site>& s) {
+    if (!s.users) return !ops.live(s.site) || ops.restore(s.site);   // a claim whose push failed: already restored by acquire_shared
+    if (--s.users) return true;
+    return ops.restore(s.site);
 }
 }

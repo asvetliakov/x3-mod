@@ -22,12 +22,23 @@ bool keep_patched_ = false, keep_armed_ = false, trace_patched_ = false, trace_a
 const char* keep_state_ = "disabled";
 const char* trace_state_ = "disabled";
 // Sites the keep owns alone (A, C) and the trace owns alone (play entry);
-// the stop-all entry and the MOV_StopMovie entry are shared: claimed once,
-// each feature chains its own stub in front (users counts the chained
-// features; the claim is restored when the last one releases it).
-struct SharedSite { engine_patch::Site site{}; unsigned users = 0; };
+// the stop-all entry and the MOV_StopMovie entry are shared: claimed once by
+// whichever feature installs first, each feature chains its own stub in front
+// (users counts the chained features; the claim is restored when the last one
+// releases it). The window checks see through a live shared claim
+// (core::window_matches), so either feature may install first.
+using SharedSite = core::SharedSite<engine_patch::Site>;
 engine_patch::Site a_site_{}, t_play_site_{};
-engine_patch::CallSite c_site_{};
+engine_patch::CallSite c_site_{}, d_site_{};
+// Patch D (the status-query gate) is optional inside the keep: when it cannot be claimed the keep still installs and
+// alt-tab takes the flown paused mode (status_gate_ false, status_gate_state_ the refusal, logged).
+bool status_gate_ = false;
+const char* status_gate_state_ = "disabled";
+unsigned long gated_ = 0;          // status queries answered "playing" by the gate
+unsigned last_active_ = 2;         // the engine's active flag at the last Present (2 = not sampled yet)
+// Which shared sites each feature acquired (released only by that feature; an orphaned live claim with no users is
+// restored by whoever rolls back or shuts down).
+bool keep_entry_acquired_ = false, keep_stop_movie_acquired_ = false, trace_entry_acquired_ = false, trace_stop_movie_acquired_ = false;
 SharedSite entry_site_{}, stop_movie_site_{};
 Holds holds_;
 volatile unsigned long long current_frame_ = 0;   // stored at Present, read by the handlers
@@ -36,9 +47,15 @@ bool cap_noted_ = false;
 
 std::uint32_t load32(std::uint32_t at) { std::uint32_t v = 0; std::memcpy(&v, reinterpret_cast<const void*>(std::uintptr_t(at)), 4); return v; }
 std::uint64_t qpc() { LARGE_INTEGER v{}; return QueryPerformanceCounter(&v) && v.QuadPart > 0 ? std::uint64_t(v.QuadPart) : 0; }
+// Compares a window with the unpatched image: a live shared entry claim (either feature's) is read as its
+// original bytes when the site still holds exactly that claim's patch; anything else there fails.
 bool bytes_match(std::uintptr_t at, const unsigned char* expected, unsigned length) {
-    unsigned char actual[128]{};
-    return length <= sizeof actual && engine_patch::read_code(at, actual, length) && !std::memcmp(actual, expected, length);
+    LiveClaim claims[2]{};
+    unsigned count = 0;
+    const SharedSite* const shared[] = {&entry_site_, &stop_movie_site_};
+    for (const SharedSite* s : shared)
+        if (s->site.patched_in) claims[count++] = LiveClaim{std::uint32_t(s->site.spec.address), s->site.original, s->site.patched, 5};
+    return window_matches([](std::uint32_t a, unsigned char* out, unsigned n) { return engine_patch::read_code(a, out, n); }, std::uint32_t(at), expected, length, claims, count);
 }
 bool call_targets(std::uintptr_t at, std::uintptr_t target) {
     unsigned char code[5]{};
@@ -122,8 +139,10 @@ extern "C" {
 // Pointer words the stubs jump or call through: set before a site goes live.
 volatile std::uint32_t x3m_music_stop_all_continue = 0;        // Patch A claim tail (the displaced instructions + jmp 0x004982e1)
 volatile std::uint32_t x3m_music_stop_all_skip = 0;            // 0x00498322
+volatile std::uint32_t x3m_music_stop_all_next = 0;            // 0x00498359 (the per-record loop's continue)
 volatile std::uint32_t x3m_music_seek_original = 0;            // 0x004d0430
 volatile std::uint32_t x3m_music_pause_fn = 0;                 // 0x004d1810
+volatile std::uint32_t x3m_music_status_original = 0;          // 0x004d14e0
 volatile std::uint32_t x3m_music_keep_entry_continue = 0, x3m_music_keep_stop_movie_continue = 0;
 volatile std::uint32_t x3m_music_trace_stop_continue = 0, x3m_music_trace_play_continue = 0, x3m_music_trace_stop_movie_continue = 0;
 std::uint32_t x3m_music_keep_pause_record = 0;
@@ -132,12 +151,37 @@ __attribute__((force_align_arg_pointer)) unsigned __cdecl x3m_music_keep_stop_al
     x3m::LightCallBoundary cpu;   // MXCSR + LastError; no x87 below
     if (!keep_armed_) return unsigned(StopMode::vanilla);
     const std::uint32_t flags = load32(record + record_flags), id = load32(record + record_id), media = load32(record + record_media);
-    const StopDecision d = decide_stop(holds_, record, flags, id, media, return_va);
+    const StopDecision d = decide_stop(holds_, record, flags, id, media, return_va, status_gate_);
     if (flags & flag_music)
         write_line("music_keep_stop frame=%llu seq=%lu qpc=%llu caller=0x%08lx name=%s record=0x%08lx id=%lu flags=0x%lx mode=%s held=%u holds=%u\n",
                    current_frame_, ++seq_, qpc(), static_cast<unsigned long>(return_va), stop_caller_name(return_va), static_cast<unsigned long>(record),
                    static_cast<unsigned long>(id), static_cast<unsigned long>(flags), mode_name(d.mode), d.held ? 1u : 0u, holds_.count);
     return unsigned(d.mode);
+}
+}
+namespace {
+// The gated case of Patch D (engine inactive): the boundary lives here so the per-frame fast path below carries no
+// unwind registration.
+__attribute__((noinline)) unsigned music_keep_status_inactive(std::uint32_t record) {
+    x3m::LightCallBoundary cpu;
+    const std::uint32_t pointer = load32(input_flags_ptr_va);
+    if (!pointer) return 0;   // the engine dereferences it itself on this path; forward unchanged
+    const std::uint32_t input = load32(pointer), flags = load32(record + record_flags), id = load32(record + record_id), media = load32(record + record_media);
+    if (!decide_status(holds_, record, flags, id, media, 0, input)) return 0;
+    ++gated_;
+    write_line("music_keep_status frame=%llu seq=%lu qpc=%llu record=0x%08lx id=%lu flags=0x%lx input_flags=0x%08lx action=playing gated=%lu\n",
+               current_frame_, ++seq_, qpc(), static_cast<unsigned long>(record), static_cast<unsigned long>(id), static_cast<unsigned long>(flags),
+               static_cast<unsigned long>(input), gated_);
+    return 1;
+}
+}
+extern "C" {
+// Patch D (ECX = record at the call 0x004983d9): 1 = answer "playing" without asking the engine, 0 = forward.
+// Per flag-2 record per frame; the common path (gate off or the engine active) is three integer loads and no call,
+// no API, no floating point, no unwind registration.
+__attribute__((force_align_arg_pointer)) unsigned __cdecl x3m_music_keep_status(std::uint32_t record) {
+    if (!keep_armed_ || !status_gate_ || load32(active_flag_va) != 0) return 0;
+    return music_keep_status_inactive(record);
 }
 __attribute__((force_align_arg_pointer)) unsigned __cdecl x3m_music_keep_seek(std::uint32_t record, std::int32_t start_ms) {
     x3m::LightCallBoundary cpu;
@@ -209,7 +253,10 @@ __attribute__((force_align_arg_pointer)) void __cdecl x3m_music_trace_stop_movie
 // ESI = record, EBX = 0, EBP = next node and the stop-all's return address at
 // [esp+0x10]; keep_running leaves for 0x00498322 with EDI loaded as the
 // displaced `mov edi,[esi+0x24]` would have (the flags are dead: the
-// continuation rewrites them before any reader), every other mode replays the
+// continuation rewrites them before any reader); skip_all jumps to
+// 0x00498359, the loop's continue, without the EDI load (EDI is dead there:
+// the next site reloads it, the epilogue pops it; EBP already holds the next
+// node, EBX 0; nothing of the record is touched); every other mode replays the
 // two displaced instructions through the tail so the `je 0x4982f6` consumes
 // the tail's CMP. Patch C: entered by `call` from 0x00498d54 with EAX =
 // record and [esp+4] = start ms; skip returns 1 with the stack untouched
@@ -218,7 +265,11 @@ __attribute__((force_align_arg_pointer)) void __cdecl x3m_music_trace_stop_movie
 // record; it clobbers EAX/ECX/EDX only, all saved here). Keep entry stub
 // (stop-all entry, shared site): loops on the handler, pausing each orphaned
 // keep-running record it returns until 0. Keep stop-movie stub and the trace
-// stubs: the saved block's address is the handler's one argument.
+// stubs: the saved block's address is the handler's one argument. Patch D
+// (status thunk): entered by `call` from 0x004983d9 with ECX = record, EAX =
+// [rec+0x28] and no stack argument; "playing" returns EAX = 1 (the caller
+// reads AX only) with ESP as at entry, every other answer tail-jumps to
+// 0x004d14e0 with EAX/ECX/EDX/EFLAGS restored.
 asm(R"(
     .intel_syntax noprefix
     .text
@@ -234,15 +285,25 @@ _x3m_music_keep_a_stub:
     call _x3m_music_keep_stop_all
     add esp, 8
     cmp eax, 1
+    je 1f
+    cmp eax, 3
+    je 3f
     pop edx
     pop ecx
     pop eax
-    je 1f
     popfd
     jmp dword ptr [_x3m_music_stop_all_continue]
-1:  popfd
+1:  pop edx
+    pop ecx
+    pop eax
+    popfd
     mov edi, dword ptr [esi+0x24]
     jmp dword ptr [_x3m_music_stop_all_skip]
+3:  pop edx
+    pop ecx
+    pop eax
+    popfd
+    jmp dword ptr [_x3m_music_stop_all_next]
 
     .p2align 4
     .globl _x3m_music_keep_c_thunk
@@ -266,6 +327,30 @@ _x3m_music_keep_c_thunk:
     pop eax
     popfd
     jmp dword ptr [_x3m_music_seek_original]
+1:  pop edx
+    pop ecx
+    pop eax
+    popfd
+    mov eax, 1
+    ret
+
+    .p2align 4
+    .globl _x3m_music_keep_status_thunk
+_x3m_music_keep_status_thunk:
+    pushfd
+    push eax
+    push ecx
+    push edx
+    push ecx
+    call _x3m_music_keep_status
+    add esp, 4
+    cmp eax, 1
+    je 1f
+    pop edx
+    pop ecx
+    pop eax
+    popfd
+    jmp dword ptr [_x3m_music_status_original]
 1:  pop edx
     pop ecx
     pop eax
@@ -360,6 +445,7 @@ _x3m_music_trace_stop_movie_stub:
 )");
 extern "C" void x3m_music_keep_a_stub();
 extern "C" void x3m_music_keep_c_thunk();
+extern "C" void x3m_music_keep_status_thunk();
 extern "C" void x3m_music_keep_entry_stub();
 extern "C" void x3m_music_keep_stop_movie_stub();
 extern "C" void x3m_music_trace_stop_stub();
@@ -378,32 +464,38 @@ bool hook_site(engine_patch::Site& site, const engine_patch::SiteSpec& spec, voi
 }
 // Restores a site the feature owns alone; false only when a live patch could not be put back.
 bool unhook_site(engine_patch::Site& site) { return engine_patch::restore(site); }
-// Shared site: the first user claims, every user chains its stub in front of
-// the current head. A push that fails leaves the chain untouched (store_pointer
-// is the only write). A feature that later fails its install releases the
-// site: the last user restores the bytes; while another user remains, the
-// failed feature's stub stays chained but its armed_ flag keeps it inert.
-bool acquire_shared(SharedSite& s, const engine_patch::SiteSpec& spec, void (*stub)(), volatile std::uint32_t& continuation, const char** reason) {
-    if (!s.users) {
-        s.site = engine_patch::Site{};
-        if (!engine_patch::claim(s.site, spec)) { *reason = s.site.status; return false; }
+// Shared site protocol (core::acquire_shared / release_shared, host-tested in both install orders) over
+// engine_patch. push: the stub's continuation is stored before the stub becomes the head (store_pointer is
+// the only write; a failed push leaves the chain untouched).
+struct PatchOps {
+    bool claim(engine_patch::Site& s, const engine_patch::SiteSpec& spec) { return engine_patch::claim(s, spec); }
+    const char* status(const engine_patch::Site& s) { return s.status; }
+    bool push(engine_patch::Site& s, void (*stub)(), volatile std::uint32_t& continuation) {
+        continuation = address_of(*s.entry);
+        return engine_patch::push_front(s, reinterpret_cast<void*>(stub)) != nullptr;
     }
-    continuation = address_of(*s.site.entry);
-    if (!engine_patch::push_front(s.site, reinterpret_cast<void*>(stub))) {
-        *reason = "chain_failed";
-        if (!s.users && !engine_patch::restore(s.site)) *reason = "rollback_failed";
-        return false;
-    }
-    ++s.users;
-    return true;
+    bool restore(engine_patch::Site& s) { return engine_patch::restore(s); }
+    bool live(const engine_patch::Site& s) { return s.patched_in; }
+};
+bool acquire_shared(SharedSite& s, bool& acquired, const engine_patch::SiteSpec& spec, void (*stub)(), volatile std::uint32_t& continuation, const char** reason) {
+    PatchOps ops;
+    acquired = core::acquire_shared(ops, s, spec, stub, continuation, reason);
+    return acquired;
 }
-bool release_shared(SharedSite& s) {
-    if (!s.users) return !s.site.patched_in || engine_patch::restore(s.site);   // a claim whose push failed: already restored above
-    if (--s.users) return true;
-    return engine_patch::restore(s.site);
+bool release_shared(SharedSite& s) { PatchOps ops; return core::release_shared(ops, s); }
+// Releases a shared site for one feature: its own use when it acquired one; otherwise only an orphaned live claim
+// (no users, left live by a failed rollback), whatever install stage was reached.
+bool release_for(SharedSite& s, bool& acquired) {
+    if (acquired) { acquired = false; return release_shared(s); }
+    return s.users ? true : release_shared(s);
+}
+bool status_windows_match() {
+    return bytes_match(d_caller_va, d_caller_window, d_caller_length) && bytes_match(d_target_va, status_head, status_head_length)
+        && bytes_match(status_ended_va, status_ended_window, status_ended_length) && call_targets(d_site_va, d_target_va);
 }
 bool keep_windows_match() {
     return bytes_match(stop_all_va, stop_all_head, stop_all_head_length) && bytes_match(a_window_va, a_window, a_window_length) && bytes_match(a_skip_va, a_skip_window, a_skip_length)
+        && bytes_match(a_next_record_va, a_next_record_window, a_next_record_length)
         && bytes_match(c_pre_va, c_pre_window, c_pre_length) && bytes_match(c_post_va, c_post_window, c_post_length)
         && bytes_match(play_set_playing_va, play_set_playing_window, play_set_playing_length)
         && bytes_match(c_target_va, seek_head, seek_head_length) && bytes_match(pause_va, pause_body, pause_body_length) && bytes_match(run_va, run_head, run_head_length)
@@ -422,9 +514,10 @@ bool trace_windows_match() {
 }
 engine_patch::SiteSpec entry_spec() { return spec_for("music_stop_all_entry", t_stop_all_site_va, stop_all_head, t_stop_all_length); }
 engine_patch::SiteSpec stop_movie_spec() { return spec_for("music_stop_movie_entry", t_stop_movie_site_va, stop_movie_head, t_stop_movie_length); }
-// A, then C, then the two shared entries; a later failure puts the earlier
-// ones back. A live site that cannot be restored keeps the module registered
-// (patched_) so shutdown() tries again, and armed_ stays false.
+// A, then C, then D (optional: a refusal only disables skip_all), then the two
+// shared entries; a later failure puts the earlier ones back. A live site that
+// cannot be restored keeps the module registered (patched_) so shutdown()
+// tries again, and armed_ stays false.
 bool install_keep(const char** reason) {
     if (!engine_patch::install_window_open()) { *reason = "late_claim"; return false; }
     if (!keep_windows_match()) { *reason = "bytes_mismatch"; return false; }
@@ -432,23 +525,34 @@ bool install_keep(const char** reason) {
     if (!pin_self()) { *reason = "pin_failed"; return false; }
     holds_.clear();
     x3m_music_keep_pause_record = 0;
-    x3m_music_stop_all_skip = a_skip_va; x3m_music_seek_original = c_target_va; x3m_music_pause_fn = pause_va;
-    unsigned stage = 0;
+    x3m_music_stop_all_skip = a_skip_va; x3m_music_stop_all_next = a_next_record_va; x3m_music_seek_original = c_target_va; x3m_music_pause_fn = pause_va;
+    x3m_music_status_original = d_target_va;
+    status_gate_ = false; status_gate_state_ = "disabled"; gated_ = 0; last_active_ = 2;
     bool ok = hook_site(a_site_, spec_for("music_keep_a", a_site_va, a_window + a_site_offset, a_site_length), &x3m_music_keep_a_stub, x3m_music_stop_all_continue, reason);
-    if (ok) { ++stage; c_site_ = engine_patch::CallSite{}; ok = engine_patch::claim_call(c_site_, c_site_va, c_target_va, reinterpret_cast<void*>(&x3m_music_keep_c_thunk)); if (!ok) *reason = c_site_.status; }
-    if (ok) { ++stage; ok = acquire_shared(entry_site_, entry_spec(), &x3m_music_keep_entry_stub, x3m_music_keep_entry_continue, reason); }
-    if (ok) { ++stage; ok = acquire_shared(stop_movie_site_, stop_movie_spec(), &x3m_music_keep_stop_movie_stub, x3m_music_keep_stop_movie_continue, reason); }
+    if (ok) { c_site_ = engine_patch::CallSite{}; ok = engine_patch::claim_call(c_site_, c_site_va, c_target_va, reinterpret_cast<void*>(&x3m_music_keep_c_thunk)); if (!ok) *reason = c_site_.status; }
+    if (ok) {
+        d_site_ = engine_patch::CallSite{};
+        if (!status_windows_match()) status_gate_state_ = "bytes_mismatch";
+        else if (engine_patch::claim_call(d_site_, d_site_va, d_target_va, reinterpret_cast<void*>(&x3m_music_keep_status_thunk))) status_gate_state_ = "ok";
+        else status_gate_state_ = d_site_.status;
+    }
+    if (ok) { ok = acquire_shared(entry_site_, keep_entry_acquired_, entry_spec(), &x3m_music_keep_entry_stub, x3m_music_keep_entry_continue, reason); }
+    if (ok) { ok = acquire_shared(stop_movie_site_, keep_stop_movie_acquired_, stop_movie_spec(), &x3m_music_keep_stop_movie_stub, x3m_music_keep_stop_movie_continue, reason); }
     if (!ok) {
         // Reverse order; restore_call/restore are no-ops on a site that is not live, so a claim that failed
-        // after going live (rollback_failed) is retried here too. Shared sites are released only when acquired.
+        // after going live (rollback_failed) is retried here too. Shared sites: this feature's own use, or an
+        // orphaned live claim, whatever stage was reached.
         bool back = true;
-        if (stage >= 3) back = release_shared(entry_site_) && back;
+        back = release_for(stop_movie_site_, keep_stop_movie_acquired_) && back;
+        back = release_for(entry_site_, keep_entry_acquired_) && back;
+        back = engine_patch::restore_call(d_site_) && back;
         back = engine_patch::restore_call(c_site_) && back;
         back = unhook_site(a_site_) && back;
         if (!back) { keep_patched_ = true; *reason = "rollback_failed"; }
         return false;
     }
     keep_patched_ = true; keep_armed_ = true;
+    status_gate_ = d_site_.patched_in && !std::strcmp(status_gate_state_, "ok");   // skip_all only with a complete gate claim (a rolled-back or unrestorable claim forwards)
     *reason = "ok";
     return true;
 }
@@ -458,13 +562,13 @@ bool install_trace(const char** reason) {
     if (!trace_windows_match()) { *reason = "bytes_mismatch"; return false; }
     if (!callers_match()) { *reason = "callers_mismatch"; return false; }
     if (!pin_self()) { *reason = "pin_failed"; return false; }
-    unsigned stage = 0;
     bool ok = hook_site(t_play_site_, spec_for("music_trace_play", t_play_site_va, play_head, t_play_length), &x3m_music_trace_play_stub, x3m_music_trace_play_continue, reason);
-    if (ok) { ++stage; ok = acquire_shared(stop_movie_site_, stop_movie_spec(), &x3m_music_trace_stop_movie_stub, x3m_music_trace_stop_movie_continue, reason); }
-    if (ok) { ++stage; ok = acquire_shared(entry_site_, entry_spec(), &x3m_music_trace_stop_stub, x3m_music_trace_stop_continue, reason); }
+    if (ok) { ok = acquire_shared(stop_movie_site_, trace_stop_movie_acquired_, stop_movie_spec(), &x3m_music_trace_stop_movie_stub, x3m_music_trace_stop_movie_continue, reason); }
+    if (ok) { ok = acquire_shared(entry_site_, trace_entry_acquired_, entry_spec(), &x3m_music_trace_stop_stub, x3m_music_trace_stop_continue, reason); }
     if (!ok) {
-        bool back = true;
-        if (stage >= 2) back = release_shared(stop_movie_site_) && back;   // acquired shared sites only: the keep's users stay counted
+        bool back = true;   // this feature's own uses (the keep's users stay counted) or an orphaned live claim
+        back = release_for(entry_site_, trace_entry_acquired_) && back;
+        back = release_for(stop_movie_site_, trace_stop_movie_acquired_) && back;
         back = unhook_site(t_play_site_) && back;
         if (!back) { trace_patched_ = true; *reason = "rollback_failed"; }
         return false;
@@ -499,14 +603,17 @@ bool initialize() {
     else trace_applied = install_trace(&trace_state_);
     if (keep_present)
         log("music_keep requested=%u patched=%u armed=%u reason=%s site_a=0x%08lx site_c=0x%08lx site_entry=0x%08lx site_stop_movie=0x%08lx write_a=%s write_c=%s write_entry=%s write_stop_movie=%s "
-            "stub_a=0x%08lx thunk_c=0x%08lx stub_entry=0x%08lx stub_stop_movie=0x%08lx skip=0x%08lx seek=0x%08lx pause=0x%08lx holds=%u walk_limit=%u",
+            "status_gate=%s site_d=0x%08lx write_d=%s thunk_d=0x%08lx alt_tab_mode=%s "
+            "stub_a=0x%08lx thunk_c=0x%08lx stub_entry=0x%08lx stub_stop_movie=0x%08lx skip=0x%08lx next_record=0x%08lx seek=0x%08lx pause=0x%08lx holds=%u walk_limit=%u",
             keep_requested ? 1u : 0u, keep_patched_ ? 1u : 0u, keep_armed_ ? 1u : 0u, keep_state_, static_cast<unsigned long>(a_site_va), static_cast<unsigned long>(c_site_va),
             static_cast<unsigned long>(t_stop_all_site_va), static_cast<unsigned long>(t_stop_movie_site_va),
             write_kind(a_site_.patched_in, a_site_.atomic_write), write_kind(c_site_.patched_in, c_site_.atomic_write),
             write_kind(entry_site_.site.patched_in, entry_site_.site.atomic_write), write_kind(stop_movie_site_.site.patched_in, stop_movie_site_.site.atomic_write),
+            status_gate_state_, static_cast<unsigned long>(d_site_va), write_kind(d_site_.patched_in, d_site_.atomic_write),
+            static_cast<unsigned long>(address_of(&x3m_music_keep_status_thunk)), mode_name(status_gate_ ? StopMode::skip_all : StopMode::paused),
             static_cast<unsigned long>(address_of(&x3m_music_keep_a_stub)), static_cast<unsigned long>(address_of(&x3m_music_keep_c_thunk)),
             static_cast<unsigned long>(address_of(&x3m_music_keep_entry_stub)), static_cast<unsigned long>(address_of(&x3m_music_keep_stop_movie_stub)),
-            static_cast<unsigned long>(a_skip_va), static_cast<unsigned long>(c_target_va), static_cast<unsigned long>(pause_va), hold_capacity, list_walk_limit);
+            static_cast<unsigned long>(a_skip_va), static_cast<unsigned long>(a_next_record_va), static_cast<unsigned long>(c_target_va), static_cast<unsigned long>(pause_va), hold_capacity, list_walk_limit);
     if (trace_present)
         log("music_trace requested=%u patched=%u armed=%u reason=%s site_stop_all=0x%08lx site_play=0x%08lx site_stop_movie=0x%08lx write_stop_all=%s write_play=%s write_stop_movie=%s "
             "stub_stop_all=0x%08lx stub_play=0x%08lx stub_stop_movie=0x%08lx cap=%u",
@@ -523,13 +630,14 @@ bool shutdown() {
     bool ok = true;
     keep_armed_ = trace_armed_ = false;
     if (keep_patched_) {
-        const bool back_sm = release_shared(stop_movie_site_), back_e = release_shared(entry_site_), back_c = engine_patch::restore_call(c_site_), back_a = unhook_site(a_site_);
-        keep_patched_ = false; holds_.clear();   // the stubs stay in the DLL (pinned); the claim tails stay in the arena
-        keep_state_ = back_sm && back_e && back_c && back_a ? "restored" : "restore_failed";
-        ok = ok && back_sm && back_e && back_c && back_a;
+        const bool back_sm = release_for(stop_movie_site_, keep_stop_movie_acquired_), back_e = release_for(entry_site_, keep_entry_acquired_);
+        const bool back_d = engine_patch::restore_call(d_site_), back_c = engine_patch::restore_call(c_site_), back_a = unhook_site(a_site_);
+        keep_patched_ = false; status_gate_ = false; holds_.clear();   // the stubs stay in the DLL (pinned); the claim tails stay in the arena
+        keep_state_ = back_sm && back_e && back_d && back_c && back_a ? "restored" : "restore_failed";
+        ok = ok && back_sm && back_e && back_d && back_c && back_a;
     }
     if (trace_patched_) {
-        const bool back_e = release_shared(entry_site_), back_sm = release_shared(stop_movie_site_), back_p = unhook_site(t_play_site_);
+        const bool back_e = release_for(entry_site_, trace_entry_acquired_), back_sm = release_for(stop_movie_site_, trace_stop_movie_acquired_), back_p = unhook_site(t_play_site_);
         trace_patched_ = false;
         trace_state_ = back_e && back_sm && back_p ? "restored" : "restore_failed";
         ok = ok && back_e && back_sm && back_p;
@@ -539,7 +647,19 @@ bool shutdown() {
 }
 const char* state() { return keep_state_; }
 const char* trace_state() { return trace_state_; }
+// Stores the frame counter; with the keep armed, samples the engine's active flag [0x00608adc] (one load) and writes
+// one music_keep_active line on each change, so a flight measures how long the flag stays 0 around an alt-tab.
 void present(unsigned long long, unsigned long long frame, bool) {
-    if (keep_patched_ || trace_patched_) current_frame_ = frame;   // one store, no API call
+    if (!keep_patched_ && !trace_patched_) return;
+    current_frame_ = frame;
+    if (!keep_armed_) return;
+    const unsigned active = load32(active_flag_va) != 0 ? 1u : 0u;
+    if (active == last_active_) return;
+    const DWORD error = GetLastError();
+    const std::uint32_t pointer = load32(input_flags_ptr_va);
+    write_line("music_keep_active frame=%llu seq=%lu qpc=%llu from=%s to=%u run_in_background=%u gated=%lu\n", frame, ++seq_, qpc(),
+               last_active_ == 2 ? "unsampled" : last_active_ ? "1" : "0", active, pointer && (load32(pointer) & run_in_background_bit) ? 1u : 0u, gated_);
+    last_active_ = active;
+    SetLastError(error);
 }
 }

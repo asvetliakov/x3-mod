@@ -409,6 +409,8 @@ concrete remaining gates, removal status and the separate depth-adapter gap.
   (2026-09-22) add only stack/register reads in the stub and Present-time reads
   through `engine_memory::read` (documented `VirtualQuery`), no new dependency.
 
+- music-keep skip_all: native alt-tab with a blocked loop unverified (DirectSound ring unserviced without GLOBALFOCUS, DirectShow audible in background) ([music-restart.md](../reverse-engineering/music-restart.md) §6 "Alt-tab").
+
 ## 2026-09-19: `--taa-current-filter` exceeds the guaranteed ps_3_0 slot count
 
 **Closed 2026-09-23 (cleanup batch 6):** the option and `resolve_filter.hlsl` were removed; every embedded resolve

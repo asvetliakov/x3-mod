@@ -1,0 +1,11 @@
+no_see_through failed_checks=7 first="keep first: trace installs beside it"
+overlay_over_foreign failed_checks=8 first="foreign byte in the claimed span: trace refused, keep's claim kept"
+skip_all_without_gate failed_checks=2 first="alt-tab without Patch D: the flown paused mode"
+seek_honours_skip_all_hold failed_checks=1 first="after alt-tab and the natural end: vanilla seek to 0"
+status_ignores_active_flag failed_checks=1 first="skip_all + active: forward"
+status_ignores_run_in_background failed_checks=1 first="skip_all + inactive + RunInBackground set: forward (the engine's answer is genuine)"
+status_any_hold_kind failed_checks=3 first="paused hold: forward"
+acquire_resets_live_site failed_checks=2 first="live site without users: refused, kept"
+no_restore_on_failed_fresh_push failed_checks=2 first="failed push on a fresh claim: restored"
+release_restores_early failed_checks=2 first="first release keeps the claims"
+result PASS

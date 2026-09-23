@@ -33,9 +33,10 @@ OUTPUT = Path(__file__).with_name('verify_writes_output.json')
 
 # (constant name of the window, constant name of its VA, kind) — kind: 'window' compared whole; 'claim' also decoded and modelled as a written site
 WINDOWS = [
-    ('a_window', 'a_window_va'), ('a_skip_window', 'a_skip_va'), ('c_pre_window', 'c_pre_va'), ('c_post_window', 'c_post_va'),
+    ('a_window', 'a_window_va'), ('a_skip_window', 'a_skip_va'), ('a_next_record_window', 'a_next_record_va'), ('c_pre_window', 'c_pre_va'), ('c_post_window', 'c_post_va'),
     ('play_set_playing_window', 'play_set_playing_va'), ('seek_head', 'c_target_va'), ('pause_body', 'pause_va'), ('run_head', 'run_va'),
     ('stop_all_head', 't_stop_all_site_va'), ('play_head', 't_play_site_va'), ('stop_movie_head', 't_stop_movie_site_va'),
+    ('d_caller_window', 'd_caller_va'), ('status_head', 'd_target_va'), ('status_ended_window', 'status_ended_va'),
 ]
 # Claim sites: (name, VA constant, length constant, window the expected bytes come from, offset constant into that window or None)
 CLAIMS = [
@@ -45,10 +46,12 @@ CLAIMS = [
     ('music_trace_stop_movie', 't_stop_movie_site_va', 't_stop_movie_length', 'stop_movie_head', None),
 ]
 CALL_SITE = ('music_keep_c', 'c_site_va', 'c_target_va')
+STATUS_CALL_SITE = ('music_keep_d', 'd_site_va', 'd_target_va')
 # Expected address constants (the note's sites) and the caller tables.
 EXPECTED = {
     'stop_all_va': 0x4982b0, 'stop_all_end_va': 0x498367, 'a_site_va': 0x4982db, 'a_next_va': 0x4982e1, 'a_skip_va': 0x498322, 'a_site_length': 6, 'a_return_slot': 0x10,
-    'a_window_va': 0x4982c0, 'a_window_length': 38, 'a_site_offset': 27, 'a_skip_length': 15, 'play_va': 0x498c90, 'play_end_va': 0x498e28,
+    'a_window_va': 0x4982c0, 'a_window_length': 38, 'a_site_offset': 27, 'a_skip_length': 15,
+    'a_next_record_va': 0x498359, 'a_next_record_length': 14, 'a_loop_head_va': 0x4982d0, 'a_not_playing_je_va': 0x4982d9, 'play_va': 0x498c90, 'play_end_va': 0x498e28,
     'c_site_va': 0x498d54, 'c_target_va': 0x4d0430, 'c_return_va': 0x498d59, 'c_pre_va': 0x498d4d, 'c_post_va': 0x498d59, 'c_run_call_va': 0x498d71,
     'run_va': 0x4d1870, 'pause_va': 0x4d1810, 'call_length': 5, 'c_pre_length': 7, 'c_post_length': 29, 'play_set_playing_va': 0x498d8c, 'play_set_playing_length': 6,
     'seek_head_length': 26, 'pause_body_length': 0x57, 'run_head_length': 14, 't_stop_all_site_va': 0x4982b0, 't_stop_all_length': 5, 'stop_all_head_length': 16,
@@ -56,12 +59,15 @@ EXPECTED = {
     'play_arg_id': 3, 'play_arg_minutes': 4, 'play_arg_seconds': 5, 'play_arg_ms': 6, 'trace_line_cap': 1000, 'list_head_va': 0x606f44,
     'record_id': 0x10, 'record_context': 0x14, 'record_slot': 0x18, 'record_media': 0x24, 'record_flags': 0x2c, 'flag_loop': 1, 'flag_playing': 2, 'flag_directsound': 0x40, 'flag_music': 0x80,
     'list_walk_limit': 4096, 'hold_capacity': 4,
+    'd_site_va': 0x4983d9, 'd_target_va': 0x4d14e0, 'd_return_va': 0x4983de, 'd_caller_va': 0x4983d4, 'd_caller_length': 41, 'status_head_length': 38,
+    'status_ended_va': 0x4d15a0, 'status_ended_length': 12, 'status_normal_va': 0x4d1506, 'active_flag_va': 0x608adc, 'input_flags_ptr_va': 0x606f3c,
+    'run_in_background_bit': 0x4000,
 }
-STOP_CALLERS = [(0x4d36bd, 0x4d36c2, 'alt_tab', 'paused'), (0x40455c, 0x404561, 'save', 'keep_running'), (0x407064, 0x407069, 'pause', 'keep_running'),
+STOP_CALLERS = [(0x4d36bd, 0x4d36c2, 'alt_tab', 'skip_all'), (0x40455c, 0x404561, 'save', 'keep_running'), (0x407064, 0x407069, 'pause', 'keep_running'),
                 (0x404ced, 0x404cf2, 'load', 'vanilla'), (0x497bb6, 0x497bbb, 'p_leave', 'vanilla'), (0x403878, 0x40387d, 'session_start', 'vanilla')]
 PLAY_CALLERS = [(0x49981f, 0x499824, 'MOV_PlayMovie'), (0x499982, 0x499987, 'MOV_PlayMovieFrom'), (0x4f6668, 0x4f666d, 'helper_0x004f6640')]
 STOP_MOVIE_CALLERS = [(0x499881, 0x499886, 'MOV_StopMovie'), (0x45c27d, 0x45c282, 'selector_0x0045b720'), (0x4f66be, 0x4f66c3, 'caller_0x004f66be')]
-CALLEES = {0x4982b0: 6, 0x498c90: 3, 0x498810: 3, 0x4d0430: 3, 0x4d1810: 1, 0x4d1870: 2}
+CALLEES = {0x4982b0: 6, 0x498c90: 3, 0x498810: 3, 0x4d0430: 3, 0x4d1810: 1, 0x4d1870: 2, 0x4d14e0: 1}
 # Raw-scan hits proven to be operand bytes of a containing instruction: 0x498c6f is the ModRM byte 0x7c of
 # `lea edi,[esp+0x18]` (8d 7c 24 18 at 0x498c6e), decoded as a false `jl` into 0x498c93.
 REJECTED_INTERIOR = {0x498c90: {0x498c6f}}
@@ -168,6 +174,15 @@ def inspect(data, core_text):
         checks['window_' + name] = bool(raw) and len(raw) == consts.get(name + '_length', consts.get(name.replace('_window', '') + '_length', len(raw))) and rd(consts[va_name], len(raw)) == raw
     checks['a_skip_is_bookkeeping_label'] = rd(consts['a_skip_va'], 4) == b'\x8b\x0d\xe4\x85' and consts['a_skip_va'] == 0x498322
     checks['a_je_consumes_tail_cmp'] = rd(consts['a_next_va'], 2) == b'\x74\x13'
+    # The skip_all exit's target is the per-record loop's continue: the loop's own `je` for a record without flag 2
+    # (at a_not_playing_je_va, inside a_window) lands on it, and its `jne` goes back to the loop head inside a_window.
+    je_at, cont, head = consts['a_not_playing_je_va'], consts['a_next_record_va'], consts['a_loop_head_va']
+    je = rd(je_at, 2)
+    jne = rd(cont + 3, 6)
+    checks['a_next_record_is_loop_continue'] = (
+        je[:1] == b'\x74' and je_at + 2 + struct.unpack('<b', je[1:])[0] == cont and consts['a_window_va'] <= je_at < consts['a_window_va'] + consts['a_window_length'] - 1
+        and jne[:2] == b'\x0f\x85' and cont + 9 + struct.unpack('<i', jne[2:])[0] == head and consts['a_window_va'] <= head < consts['a_site_va']
+        and consts['a_site_va'] < cont < consts['stop_all_end_va'])
     # Claim sites: whole instructions, expected bytes from the window, the written form.
     sites, written = {}, {}
     for name, va_name, len_name, window_name, offset_name in CLAIMS:
@@ -188,6 +203,28 @@ def inspect(data, core_text):
     written[c_name] = {'site': hex(c_site), 'length': 5, 'original': rd(c_site, 5).hex(), 'writes_example_thunk_0x0a200000': (b'\xe8' + struct.pack('<i', 0x0a200000 - (c_site + 5))).hex(),
                        'callee': hex(c_target), 'caller_pops': 4}
     checks['stop_movie_calls_pause'] = call_target(STOP_MOVIE_PAUSE_CALL) == consts['pause_va']
+    # Patch D: the update's only call of the status query, redirected; the query's inactive arm (active flag 0 and the
+    # RunInBackground bit clear -> the "ended" block) and the caller's contract (AX 1 -> position, AX 2 -> ended).
+    d_name, d_site_name, d_target_name = STATUS_CALL_SITE
+    d_site, d_target = consts[d_site_name], consts[d_target_name]
+    head = rd(d_target, consts['status_head_length'])
+
+    def rel8(at):
+        raw = rd(at, 2)
+        return at + 2 + struct.unpack('<b', raw[1:])[0]
+
+    def rel32(at):
+        return at + 6 + struct.unpack('<i', rd(at + 2, 4))[0]
+
+    checks['call_' + d_name] = (call_target(d_site) == d_target and d_site == consts['d_caller_va'] + 5 and d_site + 5 == consts['d_return_va']
+                                and rd(consts['d_return_va'], 7) == bytes.fromhex('0fb7c0663d0100') and rd(0x4983fb - 4, 4) == bytes.fromhex('663d0200'))
+    checks['status_inactive_arm'] = (
+        head[11:17] == b'\x39\x2d' + struct.pack('<I', consts['active_flag_va']) and rd(0x4d14f2, 1) == b'\x75' and rel8(0x4d14f2) == consts['status_normal_va']
+        and head[20:26] == b'\x8b\x15' + struct.pack('<I', consts['input_flags_ptr_va']) and head[26:32] == b'\xf7\x02' + struct.pack('<I', consts['run_in_background_bit'])
+        and rd(0x4d1500, 2) == b'\x0f\x84' and rel32(0x4d1500) == consts['status_ended_va'] and rd(consts['status_ended_va'], 4) == bytes.fromhex('66b80200'))
+    sites[d_site] = 5
+    written[d_name] = {'site': hex(d_site), 'length': 5, 'original': rd(d_site, 5).hex(), 'writes_example_thunk_0x0a300000': (b'\xe8' + struct.pack('<i', 0x0a300000 - (d_site + 5))).hex(),
+                       'callee': hex(d_target), 'caller_pops': 0}
     checks['stop_callers'] = [(a, b, n, m) for a, b, n, m in stops] == STOP_CALLERS and all(call_target(a) == consts['stop_all_va'] and b == a + 5 for a, b, _, _ in stops)
     checks['play_callers'] = plays[:len(PLAY_CALLERS)] == PLAY_CALLERS and all(call_target(a) == consts['play_va'] and b == a + 5 for a, b, _ in plays[:len(PLAY_CALLERS)])
     stop_movies = plays[len(PLAY_CALLERS):]

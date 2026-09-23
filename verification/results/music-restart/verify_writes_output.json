@@ -5,6 +5,7 @@
   "constants": true,
   "window_a_window": true,
   "window_a_skip_window": true,
+  "window_a_next_record_window": true,
   "window_c_pre_window": true,
   "window_c_post_window": true,
   "window_play_set_playing_window": true,
@@ -14,14 +15,20 @@
   "window_stop_all_head": true,
   "window_play_head": true,
   "window_stop_movie_head": true,
+  "window_d_caller_window": true,
+  "window_status_head": true,
+  "window_status_ended_window": true,
   "a_skip_is_bookkeeping_label": true,
   "a_je_consumes_tail_cmp": true,
+  "a_next_record_is_loop_continue": true,
   "claim_music_keep_a": true,
   "claim_music_trace_stop_all": true,
   "claim_music_trace_play": true,
   "claim_music_trace_stop_movie": true,
   "call_music_keep_c": true,
   "stop_movie_calls_pause": true,
+  "call_music_keep_d": true,
+  "status_inactive_arm": true,
   "stop_callers": true,
   "play_callers": true,
   "stop_movie_callers": true,
@@ -30,27 +37,33 @@
   "interior_498c90": true,
   "interior_498810": true,
   "interior_498d54": true,
+  "interior_4983d9": true,
   "callers_4982b0": true,
   "callers_498c90": true,
   "callers_498810": true,
   "callers_4d0430": true,
   "callers_4d1810": true,
   "callers_4d1870": true,
+  "callers_4d14e0": true,
   "stop_all_callers_are_the_table": true,
   "play_callers_are_the_table": true,
   "stop_movie_callers_are_the_table": true,
   "no_literal_refs": true
  },
- "check_count": 39,
+ "check_count": 48,
  "windows": {
   "a_window": 38,
   "a_skip_window": 15,
+  "a_next_record_window": 14,
   "c_pre_window": 7,
   "c_post_window": 29,
   "play_set_playing_window": 6,
   "seek_head": 26,
   "pause_body": 87,
   "run_head": 14,
+  "d_caller_window": 41,
+  "status_head": 38,
+  "status_ended_window": 12,
   "stop_all_head": 16,
   "play_head": 18,
   "stop_movie_head": 14
@@ -110,6 +123,14 @@
    "writes_example_thunk_0x0a200000": "e8a772d609",
    "callee": "0x4d0430",
    "caller_pops": 4
+  },
+  "music_keep_d": {
+   "site": "0x4983d9",
+   "length": 5,
+   "original": "e802910300",
+   "writes_example_thunk_0x0a300000": "e8227ce609",
+   "callee": "0x4d14e0",
+   "caller_pops": 0
   }
  },
  "direct_callers": {
@@ -142,6 +163,9 @@
   "0x4d1870": [
    "0x498d71",
    "0x498f76"
+  ],
+  "0x4d14e0": [
+   "0x4983d9"
   ]
  },
  "literal_dword_refs": {
@@ -150,7 +174,8 @@
   "0x498810": 0,
   "0x4d0430": 0,
   "0x4d1810": 0,
-  "0x4d1870": 0
+  "0x4d1870": 0,
+  "0x4d14e0": 0
  },
  "raw_branch_into_site_interior": {
   "0x4982db": [],
@@ -159,7 +184,8 @@
    "0x498c6f"
   ],
   "0x498810": [],
-  "0x498d54": []
+  "0x498d54": [],
+  "0x4983d9": []
  },
  "rejected_operand_byte_hits": {
   "0x498c90": [

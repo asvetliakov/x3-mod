@@ -91,7 +91,9 @@ EXTERN_ROOTS = ['_x3m_probe_enter', '_x3m_probe_exit', '_x3m_resource_read_entry
                 '_x3m_music_keep_a_stub', '_x3m_music_keep_c_thunk', '_x3m_music_keep_entry_stub', '_x3m_music_keep_stop_movie_stub',
                 '_x3m_music_trace_stop_stub', '_x3m_music_trace_play_stub', '_x3m_music_trace_stop_movie_stub',
                 '_x3m_music_keep_stop_all', '_x3m_music_keep_seek', '_x3m_music_keep_stop_all_entry', '_x3m_music_keep_stop_movie',
-                '_x3m_music_trace_stop', '_x3m_music_trace_play', '_x3m_music_trace_stop_movie']
+                '_x3m_music_trace_stop', '_x3m_music_trace_play', '_x3m_music_trace_stop_movie',
+                # the status-query gate at 0x004983d9 (per flag-2 record per frame inside the media update)
+                '_x3m_music_keep_status_thunk', '_x3m_music_keep_status']
 # The lock view without the FNSAVE/FRSTOR shell (src/ownership/d3d9_ownership.cpp,
 # route-per-draw-cost.md lever 2a): called only from the draw hooks' route, it
 # preserves nothing itself, so it and its core are a required root, and its own
