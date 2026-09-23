@@ -66,6 +66,7 @@ struct MotionOutput {
     bool fog_requested_=true,fog_enabled_=true,fog_everywhere_=false,fog_timing_=false,fog_disabled_=false,fog_attach_failed_=false,fog_sun_fallback_logged_=false;
     float fog_strength_=.02f,fog_anisotropy_=.3f;
     bool fog_cards_replace_=true,fog_card_ready_checked_=false,fog_card_ready_=false;
+    bool fog_families_checked_=false; // added by dcf3728b (motion_output.h fog_families_checked_)
     unsigned fog_failures_=0,fog_logs_=0,fog_card_mode_=0,fog_card_logs_=0;
     std::uint64_t id_=1,frame_=0,generation_=0,fog_frame_=~std::uint64_t(0),fog_applied_frames_=0;
     std::uint64_t fog_card_logged_frame_=0,fog_transition_frame_=~std::uint64_t(0),fog_card_last_report_=~std::uint64_t(0),fog_card_observed_total_=0,fog_card_suppressed_total_=0,fog_card_refused_total_=0;
