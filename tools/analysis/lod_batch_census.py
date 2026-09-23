@@ -22,9 +22,17 @@ lod_overlay.MAX_TRAILING stray bytes after /BOB parse with a warning column (tra
 is trailing_bytes. Each row carries inputs_sha256 (the decoded body plus every texture the
 tiles read) for lod_overlay.py --batch --sync.
 
-Switch-size rule (parameters --ship-min/--ship-factor/--station-t/--t-cap):
-  ships:    T_pad = min(200, max(80, 2.5 * T_1))   (T_1 = record 1 threshold; 80 for a single-LOD body)
-  stations: T_pad = min(200, 150)                  (objects/stations and objects/others)
+Switch-size rule (parameters --ship-min/--ship-factor/--station-t/--t-cap, --aspect-cap, --no-aspect):
+  ships:    T_class = min(200, max(80, 2.5 * T_1))   (T_1 = record 1 threshold; 80 for a single-LOD body)
+  stations: T_class = min(200, 150)                  (objects/stations and objects/others)
+  aspect:   T_pad = round(T_class * clamp(k, 1, K_max)), K_max 1.5 ships / 2.0 stations and others;
+            k = (r_box / r_eq) / sqrt(3) from the half-extents e = (max - min) / 2 per axis of record 0's
+            position-carrying points (flag 1): r_box = |e|, r_eq = (ex * ey * ez)^(1/3), so a cube is 1.
+            The engine compares s = r*640/D with the bounding-sphere radius r, which overstates a flat
+            body's visible size, so without it the merged record appears too far out. A zero extent
+            (a flat or linear body) takes r_eq over the nonzero extents (aspect_note); none: k = 1.
+            --no-aspect keeps T_pad = T_class. T_pad drives the pad record, the T_1 guard, the atlas
+            size and the texel ratio.
   other top directories (effects, environments, cockpits, ...) are excluded unless --include-other
   (then the station rule). compact placement's T_pad >= T_1 guard is waived for source record 0
   (lod_overlay.py, "Batch mode"), so T_pad below T_1 is a column, not a refusal.
@@ -38,6 +46,19 @@ through bob1.resolve_body as lod_overlay.plan_body does (both .pbb and .pbd -> a
 Atlas member names use lod_overlay.qualified_stem (stem + path hash), so stems never collide.
 Sizes are tried from --atlas-size up to --atlas-max-size (default 4096, above the tool's 2048
 default, so the need is visible); the summary also gives the 2048-capped totals.
+
+Switch distance: the engine's radius (model node +0xa0, `radius=` of the cull census) is in world units
+and not derivable from the body (records are normalised to a largest coordinate of 65536), so it comes
+from flight censuses (--radius-log; default RADIUS_SOURCES when present): lines carrying `r=N`/`radius=N`
+and `body=NAME` (run272 burst_draws_out.txt, raw cull_census rows), the largest per body. D = r*640/T in
+world units; km at ~505 units per metre (UNITS_PER_M, an inference of
+docs/reverse-engineering/sector-collide.md); rows without a flown radius print '-'. r_body (layout
+radius, normalised body units) is printed too.
+
+Texel rule columns: per width the minimum tile ratio, the area-weighted
+ratio and the starved share of lod_atlas.texel_floor at lod_overlay's defaults (--min-texels 0.5,
+--texel-floor-share 0.10); each width's atlas entry keeps the per-tile rows (lod_atlas.tile_rows)
+so the batch applies its own options. The census does not refuse texel_floor; the batch does.
 
   python3 tools/analysis/lod_batch_census.py [--game DIR] [--out DIR] [--jobs N] [--limit N] [--screen-width 1920]
       [--binary-only]
@@ -57,7 +78,12 @@ import bob1            # noqa: E402
 import lod_atlas       # noqa: E402
 import lod_overlay     # noqa: E402
 
-RULE = dict(ship_min=80.0, ship_factor=2.5, station_t=150.0, t_cap=200.0)
+RULE = dict(ship_min=80.0, ship_factor=2.5, station_t=150.0, t_cap=200.0, aspect=True, aspect_ship=1.5,
+            aspect_station=2.0)
+UNITS_PER_M = 505.0       # world units per metre: inferred (docs/reverse-engineering/sector-collide.md)
+RADIUS_SOURCES = ('verification/results/run272-batch-busy/burst_draws_out.txt',)
+RADIUS_RE = re.compile(r'\b(?:r|radius)=(\d+)')
+BODY_RE = re.compile(r'\bbody=(\S+)')
 SCREEN_WIDTH = 1920       # the user's display; the texel rule's reference width
 EXTRA_WIDTHS = (1280, 2560)
 SLOT_FORMAT = {'diffuse': 'DXT1', 'light': 'DXT5', 'bump': 'DXT5', 'specular': 'DXT5'}
@@ -109,6 +135,77 @@ def t_pad(cat, thresholds, rule=RULE):
 
 def body_key(name):
     return bob1.body_stem(name).lower()
+
+
+def aspect_k(points):
+    """(k, note) of a record: k = (r_box / r_eq) / sqrt(3) over the half-extents of its position-carrying
+    points (flag 1); a zero extent takes r_eq over the nonzero ones (note), none at all gives k = 1."""
+    lo, hi = [math.inf] * 3, [-math.inf] * 3
+    for p in points:
+        if p[0] & 1:
+            for k in range(3):
+                v = p[k + 1]
+                if v < lo[k]:
+                    lo[k] = v
+                if v > hi[k]:
+                    hi[k] = v
+    if lo[0] == math.inf:
+        return 1.0, 'no positions'
+    e = [(h - l) / 2 for l, h in zip(lo, hi)]
+    nz = [x for x in e if x > 0]
+    if not nz:
+        return 1.0, 'zero extent on every axis'
+    r_eq = math.prod(nz) ** (1 / len(nz))
+    note = '' if len(nz) == 3 else f'{3 - len(nz)} zero extent(s): r_eq over the {len(nz)} nonzero'
+    return math.sqrt(sum(x * x for x in e)) / r_eq / math.sqrt(3), note
+
+
+def t_aspect(cat, t_class, k, rule=RULE):
+    """T_pad = round(T_class * clamp(k, 1, K_max)) (K_max by category), T_class with the rule off."""
+    if not rule.get('aspect', True):
+        return t_class
+    cap = rule.get('aspect_ship', 1.5) if cat == 'ship' else rule.get('aspect_station', 2.0)
+    return int(round(t_class * min(max(k, 1.0), cap)))
+
+
+def world_radii(paths):
+    """{body key: largest world radius} from flight census text (r=N / radius=N with body=NAME)."""
+    out = {}
+    for path in paths:
+        with open(path, errors='replace') as f:
+            for line in f:
+                b = BODY_RE.search(line)
+                if not b:
+                    continue
+                radii = [int(x) for x in RADIUS_RE.findall(line)]
+                if radii:
+                    k = body_key(b.group(1))
+                    out[k] = max(out.get(k, 0), max(radii))
+    return out
+
+
+def default_radius_logs():
+    root = Path(__file__).resolve().parents[2]
+    return [root / p for p in RADIUS_SOURCES if (root / p).exists()]
+
+
+def switch_km(radius, t):
+    return radius * 640 / t / UNITS_PER_M / 1000 if radius and t else None
+
+
+def attach_world(rows, radii):
+    """radius_world, switch_km (at T_pad) and switch_km_class (at T_class) for rows with a flown radius."""
+    for r in rows:
+        w = radii.get(body_key(r['name']))
+        if w and 't_pad' in r:
+            r.update(radius_world=w, switch_km=switch_km(w, r['t_pad']), switch_km_class=switch_km(w, r['t_class']))
+
+
+def aspect_text(r):
+    d = '-' if r.get('switch_km') is None else f'{r["switch_km_class"]:.2f}->{r["switch_km"]:.2f}'
+    return (f'k={r["aspect_k"]:.2f} T_class={r["t_class"]} T={r["t_pad"]} r_body={r.get("radius_body", 0):.0f}'
+            f' r_world={r.get("radius_world", "-")} D={d} km'
+            + (f' ({r["aspect_note"]})' if r.get('aspect_note') else ''))
 
 
 SizedTextures = lod_atlas.Textures      # sizes and sources are cached in lod_atlas.Textures now
@@ -176,7 +273,9 @@ def census_body(assets, textures, entry, opts):
     ladder, mats = bob1.lods(tree), bob1.materials(tree)
     r0, last = ladder[0], ladder[-1]
     th = [l['value'] for l in ladder[1:]]
-    tp = t_pad(row['cat'], th, opts['rule'])
+    tc = t_pad(row['cat'], th, opts['rule'])
+    k, note = aspect_k(r0['points'])
+    tp = t_aspect(row['cat'], tc, k, opts['rule'])
     s0 = bob1.lod_summary(r0)
     alpha = lod_overlay.alpha_materials(mats)
     used = {g['material'] for p in r0['parts'] for g in p['groups']}
@@ -185,11 +284,14 @@ def census_body(assets, textures, entry, opts):
     effects = {mats[m].get('effect', b'').decode('latin1').lower() for m in opaque
                if 0 <= m < len(mats) and 'params' in mats[m]}
     uv2 = sum(1 for p in r0['points'] if p[0] & 4)
-    row.update(lods=len(ladder), thresholds=th, t_pad=tp, mat=mat_tag,
+    row.update(lods=len(ladder), thresholds=th, t_pad=tp, t_class=tc, aspect_k=round(k, 4), threshold_aspect=tp,
+               mat=mat_tag,
                r0_faces=s0['faces'], r0_points=s0['points'], r0_groups=s0['draws'], r0_drawn=drawn_groups(r0),
                coarse_groups=drawn_groups(last), effects=len(effects), uv2=uv2,
                alpha=len(used & alpha), r0_bytes=lod_overlay.record_bytes(r0))
     row['member_bytes'] = int(row['r0_bytes'] * MEMBER_FACTOR)
+    if note:
+        row['aspect_note'] = note
     if row['cat'] == 'other' and not opts['include_other']:
         row['filter'].append('category_other')
     if mat_tag not in ('MAT5', 'MAT6'):
@@ -218,14 +320,19 @@ def census_body(assets, textures, entry, opts):
                        for t in lay['tiles'] for v in t['names'].values() if v is not None})
     row['inputs_sha256'] = hashlib.sha256('\n'.join([row['source_decoded_sha256']] + tex_shas).encode()).hexdigest()
     row['texture_sources'] = sorted({v.split(':', 1)[-1] for t in lay['tiles'] for v in t['sources'].values() if v})
-    sizes = {opts['widths'][0]: (lay['size'], lay['min_ratio'])}
+    row['radius_body'] = lay['radius']
+    layouts = {opts['widths'][0]: lay}
     for w in opts['widths'][1:]:
-        l2 = lod_atlas.plan_layout(r0, mats, alpha, textures, tp * w / 1280, opts['sizes'],
-                                   lod_atlas.GUTTER, res['slots'])
-        sizes[w] = (l2['size'], l2['min_ratio'])
-    row['atlas'] = {w: dict(size=n, ratio=r, bytes=atlas_bytes(n, res['slots']),
-                            bytes_cap2048=atlas_bytes(min(n, 2048), res['slots']))
-                    for w, (n, r) in sizes.items()}
+        layouts[w] = lod_atlas.plan_layout(r0, mats, alpha, textures, tp * w / 1280, opts['sizes'],
+                                           lod_atlas.GUTTER, res['slots'])
+    row['atlas'] = {}
+    for w, L in layouts.items():
+        tiles = lod_atlas.tile_rows(L)
+        x = lod_atlas.texel_floor(tiles, lod_overlay.MIN_TEXELS, lod_overlay.TEXEL_FLOOR_SHARE)
+        row['atlas'][w] = dict(size=L['size'], ratio=L['min_ratio'], bytes=atlas_bytes(L['size'], res['slots']),
+                               bytes_cap2048=atlas_bytes(min(L['size'], 2048), res['slots']),
+                               weighted_ratio=x['weighted_texels_per_px'], starved_share=x['starved_share'],
+                               clamped=bool(L.get('clamped')), tiles=tiles)
     names = lod_atlas.texture_names(stem, res['slots'])[1]
     taken = sorted({e['source'] for m in names.values() for ext in lod_atlas.DDS_LOOKUP[1]
                     for e in assets.candidates(m.rsplit('.', 1)[0] + ext)})
@@ -306,14 +413,18 @@ def format_row(r):
     if 'lods' not in r:
         return f'{base} refuse={",".join(r["refuse"])} {r.get("atlas_error", "")}'.rstrip()
     th = ','.join(str(t) for t in r['thresholds']) or '-'
-    s = (f'{base} lods={r["lods"]} thr={th} T_pad={r["t_pad"]}{"<T_1" if r.get("t_pad_below_t1") else ""} mat={r["mat"]}'
+    s = (f'{base} lods={r["lods"]} thr={th} T_pad={r["t_pad"]}{"<T_1" if r.get("t_pad_below_t1") else ""} {aspect_text(r)}'
+         f' mat={r["mat"]}'
          f' r0_faces={r["r0_faces"]} r0_points={r["r0_points"]} r0_groups={r["r0_groups"]}'
          f' r0_drawn={r["r0_drawn"]} coarse_drawn={r["coarse_groups"]} effects={r["effects"]} uv2={r["uv2"]}'
          f' alpha_mats={r["alpha"]}')
     if 'atlas' in r:
         a = r['atlas']
+        wr = lambda x: '-' if x is None else f'{x:.2f}'
         s += (f' C_drawn={r["c_drawn"]} saved_vs_r0={r["saved_r0"]} saved_vs_coarse={r["saved_coarse"]} tiles={r["tiles"]} slots={len(r["slots"])}'
-              + ''.join(f' atlas@{w}={a[w]["size"]}(ratio {a[w]["ratio"]:.2f}, {mb(a[w]["bytes"])} MB)'
+              + ''.join(f' atlas@{w}={a[w]["size"]}(ratio {a[w]["ratio"]:.2f}, weighted {wr(a[w].get("weighted_ratio"))},'
+                        f' starved {100 * a[w].get("starved_share", 0):.1f}%{", clamped" if a[w].get("clamped") else ""},'
+                        f' {mb(a[w]["bytes"])} MB)'
                         for w in a)
               + f' member~{mb(r["member_bytes"])} MB')
     if r.get('trailing'):
@@ -434,6 +545,16 @@ def summary(rows, skipped, opts, sectors):
     return lines
 
 
+def parse_aspect_cap(text):
+    try:
+        ships, stations = (float(x) for x in text.split(','))
+    except ValueError:
+        raise argparse.ArgumentTypeError(f'--aspect-cap needs SHIPS,STATIONS, got {text!r}') from None
+    if not (ships >= 1 and stations >= 1):
+        raise argparse.ArgumentTypeError('--aspect-cap values must be >= 1')
+    return ships, stations
+
+
 def _count(it):
     out = {}
     for x in it:
@@ -455,6 +576,11 @@ def main(argv=None):
     ap.add_argument('--ship-factor', type=float, default=RULE['ship_factor'])
     ap.add_argument('--station-t', type=float, default=RULE['station_t'])
     ap.add_argument('--t-cap', type=float, default=RULE['t_cap'])
+    ap.add_argument('--aspect-cap', type=parse_aspect_cap, default=(RULE['aspect_ship'], RULE['aspect_station']),
+                    metavar='SHIPS,STATIONS', help='K_max of the aspect rule (default 1.5,2.0)')
+    ap.add_argument('--no-aspect', action='store_true', help='T_pad = T_class (no aspect factor)')
+    ap.add_argument('--radius-log', action='append', type=Path, metavar='FILE',
+                    help='flight census text with r=/radius= and body= (default: RADIUS_SOURCES present)')
     ap.add_argument('--include-other', action='store_true', help='apply the station rule to other top directories')
     ap.add_argument('--binary-only', action='store_true',
                     help='leave the winning text bodies (.pbd/.bod) out (the census before bob1.parse_text)')
@@ -466,9 +592,11 @@ def main(argv=None):
         sizes.append(n); n *= 2
     widths = (a.screen_width,) + tuple(w for w in EXTRA_WIDTHS if w != a.screen_width)
     opts = dict(sizes=tuple(sizes), include_other=a.include_other, widths=widths,
-                rule=dict(ship_min=a.ship_min, ship_factor=a.ship_factor, station_t=a.station_t, t_cap=a.t_cap))
+                rule=dict(ship_min=a.ship_min, ship_factor=a.ship_factor, station_t=a.station_t, t_cap=a.t_cap,
+                          aspect=not a.no_aspect, aspect_ship=a.aspect_cap[0], aspect_station=a.aspect_cap[1]))
     t0 = time.time()
     rows, skipped = run(a.game, opts, a.jobs, a.limit, include_text=not a.binary_only)
+    attach_world(rows, world_radii(a.radius_log or default_radius_logs()))
     root = Path(__file__).resolve().parents[2]
     specs = SECTORS if not a.sector else [
         (s.split('=', 1)[0],) + tuple(s.split('=', 1)[1].rsplit(':', 1)) for s in a.sector]
@@ -484,7 +612,11 @@ def main(argv=None):
         sectors[label] = (n_el, tot)
     census = [format_row(r) for r in sorted(rows, key=lambda r: r['name'].lower())]
     summ = summary(rows, skipped, opts, sectors) + [f'elapsed {time.time() - t0:.0f} s, jobs {a.jobs}']
-    eligible = [f'{r["name"]}={r["t_pad"]}@0' for r in sorted(rows, key=lambda r: r['name'].lower()) if r['eligible']]
+    rule = opts['rule']
+    eligible = [f'# NAME=T_pad@0 at the census rule (aspect factor '
+                + (f'on, K_max ships {rule["aspect_ship"]:g} stations {rule["aspect_station"]:g})' if rule['aspect']
+                   else 'off)') + '; lod_overlay.py --batch --only reads the names, its own rule decides T_pad']
+    eligible += [f'{r["name"]}={r["t_pad"]}@0' for r in sorted(rows, key=lambda r: r['name'].lower()) if r['eligible']]
     if a.out:
         out = Path(a.out)
         out.mkdir(parents=True, exist_ok=True)

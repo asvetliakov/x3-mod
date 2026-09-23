@@ -1,6 +1,8 @@
 """Fleet census for the merged-LOD atlas batch (tools/analysis/lod_batch_census.py) on a synthetic catalogue."""
+import contextlib
 import copy
 import gzip
+import io
 import json
 from pathlib import Path
 import sys
@@ -70,12 +72,13 @@ class BatchCensus(unittest.TestCase):
         return game
 
     def test_rows_refusals_and_costs(self):
-        opts = dict(sizes=(1024, 2048), include_other=False, rule=dict(census.RULE), widths=(1920, 1280))
+        opts = dict(sizes=(1024, 2048), include_other=False, rule=dict(census.RULE, aspect=False),   # class rule
+                    widths=(1920, 1280))
         with tempfile.TemporaryDirectory() as folder:
             game = self.game(folder)
             rows, skipped = census.run(game, opts)
             other, _ = census.run(game, dict(opts, include_other=True))
-            tiny, _ = census.run(game, dict(opts, rule=dict(census.RULE, ship_min=1, ship_factor=0)))
+            tiny, _ = census.run(game, dict(opts, rule=dict(opts['rule'], ship_min=1, ship_factor=0)))
         by = {r['name']: r for r in rows}
         self.assertEqual(skipped, ['addon/01.cat'])
         self.assertEqual(sorted(by), ['effects/fx/e', 'others/z/twin', 'ships/x/amb', 'ships/x/capped', 'ships/x/good',
@@ -143,7 +146,7 @@ class BatchCensus(unittest.TestCase):
         self.assertEqual([r['name'] for r in binary_only], ['ships/x/good'])
         text, binary = by['ships/t/good'], by['ships/x/good']
         self.assertTrue(text['eligible'] and text['text'] and 'text' not in binary)
-        same = ('lods', 'thresholds', 't_pad', 'mat', 'r0_faces', 'r0_points', 'r0_drawn', 'c_drawn', 'slots', 'tiles')
+        same = ('lods', 'thresholds', 't_pad', 'aspect_k', 'mat', 'r0_faces', 'r0_points', 'r0_drawn', 'c_drawn', 'slots', 'tiles')
         self.assertEqual({k: text[k] for k in same}, {k: binary[k] for k in same})
         self.assertNotEqual(text['atlas_stem'], binary['atlas_stem'])              # qualified by the member path
         self.assertTrue(by['stations/t/plain']['eligible'])
@@ -152,6 +155,56 @@ class BatchCensus(unittest.TestCase):
         self.assertIn('binary data', by['ships/t/binary']['atlas_error'])
         self.assertIn(' text refuse=- filter=- ELIGIBLE', census.format_row(text))
         self.assertIn('+ 5 text bodies (.pbd/.bod, scenes skipped)', census.summary(rows, [], opts, {})[0])
+
+    def test_aspect_rule(self):
+        box = lambda ex, ey, ez: [(1, sx * ex, sy * ey, sz * ez) for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)]
+        k, note = census.aspect_k(box(5, 5, 5))                                           # cube
+        self.assertEqual((round(k, 12), note), (1.0, ''))
+        k, note = census.aspect_k(box(100, 36, 23) + [(0, 900, 900, 900)])               # flag 0: no position
+        self.assertAlmostEqual(k, 1.44, places=2)
+        k, note = census.aspect_k(box(100, 100, 0))                                       # flat plane
+        self.assertAlmostEqual(k, (2 ** 0.5) / (3 ** 0.5))
+        self.assertIn('1 zero extent', note)
+        self.assertEqual(census.aspect_k([(1, 7, 7, 7)]), (1.0, 'zero extent on every axis'))
+        self.assertEqual(census.aspect_k([(0, 1, 2, 3)]), (1.0, 'no positions'))
+        t = census.t_aspect
+        self.assertEqual((t('ship', 80, 1.4), t('ship', 80, 1.6), t('ship', 80, 0.8)), (112, 120, 80))   # cap 1.5
+        self.assertEqual((t('station', 150, 1.44), t('station', 150, 1.856), t('station', 150, 2.5)),
+                         (216, 278, 300))                                                 # cap 2.0
+        self.assertEqual(t('other', 150, 2.5), 300)                                       # station rule
+        self.assertEqual(t('station', 150, 1.856, dict(census.RULE, aspect=False)), 150)  # --no-aspect
+        self.assertEqual(t('ship', 80, 1.6, dict(census.RULE, aspect_ship=1.25)), 100)
+        with tempfile.TemporaryDirectory() as folder:
+            log = Path(folder) / 'r.txt'
+            log.write_text('  4 draws 108429 prim s=80,d=8955643,r=1132932,lod=1,kept s=81,d=1,r=1000,lod=1,kept'
+                           ' body=stations\\station_scenes\\others\\argon_equipmentdock\n'
+                           'cull_census device=1 frame=2 view=main node=1 model=2 s=3 measure=4 d=5 radius=77 lod=0'
+                           ' verdict=kept lods=2 thr=100000,5 body=ships\\x\\good\nno body here r=5\n')
+            radii = census.world_radii([log])
+            self.assertEqual(radii, {'objects/stations/station_scenes/others/argon_equipmentdock': 1132932,
+                                     'objects/ships/x/good': 77})
+            row = dict(name='stations/station_scenes/others/argon_equipmentdock', t_class=150, t_pad=216, aspect_k=1.44)
+            census.attach_world([row], radii)
+            self.assertAlmostEqual(row['switch_km_class'], 9.572, places=3)             # 1132932 * 640 / 150 / 505
+            self.assertAlmostEqual(row['switch_km'], 6.647, places=3)
+            self.assertIn('k=1.44 T_class=150 T=216 r_body=0 r_world=1132932 D=9.57->6.65 km', census.aspect_text(row))
+            game = self.game(folder)
+            on, _ = census.run(game, dict(sizes=(1024, 2048), include_other=False, rule=dict(census.RULE),
+                                          widths=(1920,)), only={'objects/ships/x/good', 'objects/stations/y/tall'})
+        by = {r['name']: r for r in on}
+        k = census.aspect_k(bob1.lods(atlas_tree_lod0())[0]['points'])[0]
+        good, tall = by['ships/x/good'], by['stations/y/tall']
+        self.assertEqual((good['aspect_k'], good['t_class'], good['t_pad'], good['threshold_aspect']),
+                         (round(k, 4), 80, round(80 * min(max(k, 1), 1.5)), good['t_pad']))
+        self.assertEqual((tall['t_class'], tall['t_pad']), (150, round(150 * min(max(k, 1), 2.0))))
+        self.assertEqual(tall['t_pad_below_t1'], 160 > tall['t_pad'])                   # the guard sees T_aspect
+        self.assertIn(f'k={k:.2f} T_class=80 T={good["t_pad"]}', census.format_row(good))
+        import lod_overlay
+        self.assertEqual(lod_overlay.build_parser().parse_args(['--batch']).aspect_cap, (1.5, 2.0))
+        self.assertEqual(lod_overlay.build_parser().parse_args(['--batch', '--aspect-cap', '1.2,1.8']).aspect_cap,
+                         (1.2, 1.8))
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            lod_overlay.build_parser().parse_args(['--batch', '--aspect-cap', '0.5,2'])
 
     def test_rule_sizes_and_sector_parse(self):
         self.assertEqual([census.t_pad('ship', t) for t in ([], [30], [60], [100])], [80, 80, 150, 200])

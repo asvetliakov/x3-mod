@@ -23,6 +23,22 @@ tooling"; census: tools/analysis/atlas_census.py):
   >= MIN_RATIO (2) at the switch size px = T_pad * screen_width / 1280 (T is in the 1280-wide
   reference: real px = s * m00 * width / 1280; lod_overlay.py --screen-width) (inferred need per tile:
   sqrt(face area / UV area) * px / radius, radius = max |position|; as atlas_census).
+- Clamped layout: when one scale reaches neither MIN_RATIO nor scale 1 at a size (a tile whose span
+  is tens of thousands of periods, from a few faces with saturated 16.16 UVs, or a long repeat,
+  squeezes the uniform scale towards zero), the same size is tried with (a) every face whose own UV
+  extent exceeds OUTLIER_SPAN (256) periods span-clamped: left out of its tile's span and need, its
+  UVs clamped into the tile (face key (tile, su, sv, 1)); (b) every tile's scale capped at
+  MIN_RATIO / k (k = its texels per pixel at scale 1). It is taken when it reaches MIN_RATIO or
+  scale 1, and at the largest size. The sizes are tried in order, uniform then clamped per size, so
+  a body whose uniform layout reaches MIN_RATIO only at a larger size builds clamped at the smaller
+  one (deliberate: a 1024 atlas at 2 texels/px is the fleet budget, 2048 is four times the bytes);
+  only bodies whose uniform layout passes at the first size are unchanged. Over the 339 flown-sector
+  bodies: 55 went 2048 uniform -> 1024 clamped, 71 with a uniform ratio 0.5..2 and 27 below 0.5
+  moved to the clamped layout (verification/results/lod-overlay-batch/texel_share_compare_out.txt).
+- Texel rule (texel_floor over tile_rows): each tile's share is its faces' mesh-space area over the
+  atlased surface (measured; the screen-area share is inferred proportional). Tiles below
+  --min-texels plus the span-clamped faces (ratio 0) are starved; lod_overlay refuses texel_floor
+  only when they cover more than --texel-floor-share; the rest are reported as texel_clamped.
 - UVs: u' = (cx + (u - shift_u - lo_u) * cw / span_u) / N (v likewise; texel edges,
   16.16 rounded). The mapping is a positive per-axis affine map, so the tangent and
   binormal directions of the per-group 7-int records are unchanged: records are
@@ -120,6 +136,7 @@ BLOCK = 4
 GUTTER = 8                 # texels per side; a whole gutter texel survives to mip 3
 UV_ONE = 65536.0
 MIN_RATIO = 2.0
+OUTLIER_SPAN = 256.0       # clamped layout: a face repeating its texture over more periods than this is span-clamped
 MAX_GROUP_POINTS = 60000   # distinct points per output group: 16-bit indices per subgroup, with headroom
                            # for D3DXCleanMesh (0x004bc680, flags 3) splitting bowtie vertices before
                            # the vertex count is taken (fan_estimate.py)
@@ -556,9 +573,11 @@ def shelf_pack(rects, n):
 
 
 def fit(tiles, n, gutter):
-    """Largest uniform scale <= 1 whose tiles shelf-pack into n x n: (scale, contents, positions)."""
+    """Largest uniform scale <= 1 whose tiles shelf-pack into n x n: (scale, contents, positions). A tile
+    with a 'cap' (clamped layout) never takes more than cap x its full size."""
     def attempt(s):
-        cont = [(_side(t['full'][0], s), _side(t['full'][1], s)) for t in tiles]
+        cont = [(_side(t['full'][0], min(s, t.get('cap', 1.0))), _side(t['full'][1], min(s, t.get('cap', 1.0))))
+                for t in tiles]
         return cont, shelf_pack([(w + 2 * gutter, h + 2 * gutter) for w, h in cont], n)
     cont, pos = attempt(1.0)
     if pos is not None:
@@ -573,12 +592,63 @@ def fit(tiles, n, gutter):
     return lo, cont, pos
 
 
+def _tile_ratio(t, c):
+    """Atlas texels per screen pixel of tile t with content c at the switch size (None without a need)."""
+    return math.sqrt(c[0] * c[1] / (t['span'][0] * t['span'][1])) / t['need'] if t['need'] else None
+
+
+def _tile_stats(base, limit, px, radius, min_ratio):
+    """Copy of tile `base` with lo, hi, span, full and need over its faces. limit None: every face (the
+    uniform layout). limit L (the clamped layout): a face whose own UV extent (after its integer shift)
+    exceeds L periods on either axis is span-clamped: it is left out of lo/hi and the need, and its UVs
+    are clamped into the tile at the rewrite; the tile's scale is capped at min_ratio / k (k = its atlas
+    texels per screen pixel at scale 1) so a tile never holds more than min_ratio texels per pixel."""
+    t = {k: v for k, v in base.items() if k != 'face_list'}
+    lo, hi = [math.inf, math.inf], [-math.inf, -math.inf]
+    need_area = uv_area = clamped_area = 0.0
+    clamped = 0
+    for _, ranges, area, uva, ext in base['face_list']:
+        if limit is not None and ext > limit:
+            clamped += 1
+            clamped_area += area
+            continue
+        for k, (lo_, hi_) in enumerate(ranges):
+            lo[k], hi[k] = min(lo[k], lo_), max(hi[k], hi_)
+        need_area += area
+        uv_area += uva
+    if clamped == len(base['face_list']):                # no face left (or none at all): one period
+        lo, hi = [0.0, 0.0], [1.0, 1.0]
+    span = []
+    for k in range(2):
+        w = hi[k] - lo[k]
+        if w < 1.0 / t['base'][k]:                       # at least one source texel, centred
+            mid = (hi[k] + lo[k]) / 2
+            w = 1.0 / t['base'][k]
+            lo[k] = mid - w / 2
+        span.append(w)
+    t.update(lo=lo, hi=hi, span=tuple(span), full=(t['base'][0] * span[0], t['base'][1] * span[1]),
+             need=(math.sqrt(need_area / uv_area) * px / radius if px and radius and uv_area > 0 else None),
+             clamped_faces=clamped, clamped_area=clamped_area)
+    if limit is not None:
+        if clamped and clamped == len(base['face_list']):
+            t['cap'] = 0.0                               # every face clamped: the smallest content
+        elif t['need']:
+            t['cap'] = min(1.0, min_ratio * t['need'] / math.sqrt(t['base'][0] * t['base'][1]))
+    return t
+
+
 def plan_layout(record, mats, alpha, textures, px, sizes=(1024, 2048), gutter=GUTTER, slots=('diffuse', 'light'),
-                min_ratio=MIN_RATIO):
-    """Tiles, per-face keys and the chosen atlas size for the opaque faces of `record`."""
+                min_ratio=MIN_RATIO, outlier_span=OUTLIER_SPAN):
+    """Tiles, per-face keys and the chosen atlas size for the opaque faces of `record`.
+
+    Per size: the uniform layout (one scale for every tile) is taken when its minimum tile ratio reaches
+    min_ratio or its scale is 1. Otherwise the clamped layout is tried at the same size (span-clamped
+    faces and capped tiles, _tile_stats) and taken when it reaches min_ratio or scale 1; at the largest
+    size the clamped layout is taken. Every tile carries 'share' (its faces' mesh-space area over the
+    atlased area), 'clamped_share' (the span-clamped faces' share) and 'ratio'."""
     pts = record['points']
     radius = max((math.sqrt(p[1] ** 2 + p[2] ** 2 + p[3] ** 2) for p in pts if p[0] & 1), default=0.0)
-    tiles, tile_of, face_keys = [], {}, {}
+    tiles, tile_of = [], {}
     for pi, part in enumerate(record['parts']):
         if part['flags'] & HIDDEN_PART:
             continue
@@ -595,8 +665,7 @@ def plan_layout(record, mats, alpha, textures, px, sizes=(1024, 2048), gutter=GU
                 key = tile_key(names)
                 t = next((t for t in tiles if t['key'] == key), None)
                 if t is None:
-                    t = dict(key=key, names=names, mats=[], lo=[math.inf, math.inf], hi=[-math.inf, -math.inf],
-                             area=0.0, uv_area=0.0, faces=0)
+                    t = dict(key=key, names=names, mats=[], area=0.0, faces=0, face_list=[])
                     tiles.append(t)
                 t['mats'].append(mi)
                 tile_of[mi] = tiles.index(t)
@@ -607,58 +676,67 @@ def plan_layout(record, mats, alpha, textures, px, sizes=(1024, 2048), gutter=GU
                 if any(x is None for x in uvs):
                     raise AtlasError(f'material {mi}: a face uses a point without UV')
                 su, sv = face_shift(uvs)
-                face_keys[pi, gi, fi] = (ti, su, sv)
-                for k, (lo_, hi_) in enumerate(((min(u for u, _ in uvs) - su, max(u for u, _ in uvs) - su),
-                                                (min(v for _, v in uvs) - sv, max(v for _, v in uvs) - sv))):
-                    t['lo'][k] = min(t['lo'][k], lo_)
-                    t['hi'][k] = max(t['hi'][k], hi_)
-                t['area'] += body_materials.face_area(pts, f)
+                ranges = ((min(u for u, _ in uvs) - su, max(u for u, _ in uvs) - su),
+                          (min(v for _, v in uvs) - sv, max(v for _, v in uvs) - sv))
                 (a, b), (c, d), (e, h) = uvs
-                t['uv_area'] += 0.5 * abs((c - a) * (h - b) - (e - a) * (d - b))
+                area = body_materials.face_area(pts, f)
+                t['face_list'].append(((pi, gi, fi, su, sv), ranges, area,
+                                       0.5 * abs((c - a) * (h - b) - (e - a) * (d - b)),
+                                       max(ranges[0][1] - ranges[0][0], ranges[1][1] - ranges[1][0])))
+                t['area'] += area
                 t['faces'] += 1
+    if not tiles:
+        return None
+    src = tiles
     source_of = getattr(textures, 'source', lambda name: None)
+    total = sum(t['area'] for t in tiles)
     for t in tiles:
         sizes_ = [s for s in (textures.size(v) for v in t['names'].values()) if s]
         t['base'] = (max(s[0] for s in sizes_), max(s[1] for s in sizes_)) if sizes_ else (32, 32)
         t['sources'] = {k: (source_of(v) or {}).get('member') for k, v in t['names'].items()}
-        if t['faces'] == 0:
-            t['lo'], t['hi'] = [0.0, 0.0], [1.0, 1.0]
-        span = []
-        for k in range(2):
-            w = t['hi'][k] - t['lo'][k]
-            if w < 1.0 / t['base'][k]:                 # at least one source texel, centred
-                mid = (t['hi'][k] + t['lo'][k]) / 2
-                w = 1.0 / t['base'][k]
-                t['lo'][k] = mid - w / 2
-            span.append(w)
-        t['span'] = tuple(span)
-        t['full'] = (t['base'][0] * span[0], t['base'][1] * span[1])
-        t['need'] = (math.sqrt(t['area'] / t['uv_area']) * px / radius
-                     if px and radius and t['uv_area'] > 0 else None)
-    if not tiles:
-        return None
-    tried = []
+        t['share'] = t['area'] / total if total > 0 else 1.0 / len(tiles)
+    variants = {False: [_tile_stats(t, None, px, radius, min_ratio) for t in src]}
+    tried, chosen = [], None
     for n in sizes:
-        scale, cont, pos = fit(tiles, n, gutter)
-        ratios = [math.sqrt(c[0] * c[1] / (t['span'][0] * t['span'][1])) / t['need']
-                  for t, c in zip(tiles, cont) if t['need']]
-        tried.append((n, scale, cont, pos, min(ratios) if ratios else math.inf))
-        if tried[-1][4] >= min_ratio or scale >= 1.0:     # at scale 1 a larger atlas adds nothing
-            break
-    n, scale, cont, pos, low = tried[-1]
-    for t, c, p in zip(tiles, cont, pos):
+        for clamp in (False, True):
+            if clamp not in variants:
+                variants[True] = [_tile_stats(t, outlier_span, px, radius, min_ratio) for t in src]
+            vt = variants[clamp]
+            scale, cont, pos = fit(vt, n, gutter)
+            ratios = [r for r in (_tile_ratio(t, c) for t, c in zip(vt, cont)) if r is not None]
+            low = min(ratios) if ratios else math.inf
+            tried.append((n, scale, low, clamp))
+            chosen = (n, scale, cont, pos, low, clamp)
+            if low >= min_ratio or scale >= 1.0:      # at scale 1 a larger atlas adds nothing
+                break
+        else:
+            continue
+        break
+    n, scale, cont, pos, low, clamp = chosen
+    tiles = variants[clamp]
+    face_keys = {}
+    for ti, (t, src_t, c, p) in enumerate(zip(tiles, src, cont, pos)):
         t['content'] = c
         t['origin'] = (p[0] + gutter, p[1] + gutter)             # content origin, texels
-        t['ratio'] = (math.sqrt(c[0] * c[1] / (t['span'][0] * t['span'][1])) / t['need']) if t['need'] else None
+        t['ratio'] = _tile_ratio(t, c)
+        t['capped'] = bool(clamp and t.get('cap', 1.0) < scale)
+        t['clamped_share'] = t['clamped_area'] / total if total > 0 else 0.0
+        for (pi, gi, fi, su, sv), _, _, _, ext in src_t['face_list']:
+            face_keys[pi, gi, fi] = (ti, su, sv, 1) if clamp and ext > outlier_span else (ti, su, sv)
     return dict(size=n, scale=scale, gutter=gutter, tiles=tiles, face_keys=face_keys, radius=radius, px=px,
-                min_ratio=low, ratio_ok=low >= min_ratio, tried=[(x[0], x[1], x[4]) for x in tried],
+                min_ratio=low, ratio_ok=low >= min_ratio, tried=[x[:3] for x in tried],
+                tried_clamped=[x[3] for x in tried], clamped=clamp, outlier_span=outlier_span, area=total,
                 slots=tuple(slots))
 
 
-def atlas_uv(t, n, u, v, su, sv):
-    """Atlas UV (periods of the atlas, float) of an original UV under shift (su, sv) in tile t."""
-    x = t['origin'][0] + (u - su - t['lo'][0]) * t['content'][0] / t['span'][0]
-    y = t['origin'][1] + (v - sv - t['lo'][1]) * t['content'][1] / t['span'][1]
+def atlas_uv(t, n, u, v, su, sv, clamp=False):
+    """Atlas UV (periods of the atlas, float) of an original UV under shift (su, sv) in tile t; clamp (a
+    span-clamped face) clamps the shifted UV into the tile's span first."""
+    du, dv = u - su - t['lo'][0], v - sv - t['lo'][1]
+    if clamp:
+        du, dv = min(max(du, 0.0), t['span'][0]), min(max(dv, 0.0), t['span'][1])
+    x = t['origin'][0] + du * t['content'][0] / t['span'][0]
+    y = t['origin'][1] + dv * t['content'][1] / t['span'][1]
     return x / n, y / n
 
 
@@ -758,7 +836,7 @@ def rewrite_record(record, layout, atlas_index, alpha, alpha_remap=None, max_gro
                 new_pts.append(pts[i]); origin.append(i); copies_of[i].append(index[k])
         return index[k]
 
-    parts, faces_map, pending = [], [], []
+    parts, faces_map, pending, span_clamped = [], [], [], set()
     n = layout['size'] if layout else 0
     for pi, part in enumerate(record['parts']):
         new = {'flags': part['flags'], 'groups': []}
@@ -794,6 +872,8 @@ def rewrite_record(record, layout, atlas_index, alpha, alpha_remap=None, max_gro
                     for j in out[:3]:
                         ref_group.setdefault(j, gi)
                     if key is not None:
+                        if len(key) > 3:                  # span-clamped face (plan_layout clamped layout)
+                            span_clamped.add(len(faces_map))
                         faces_map.append((pi, f, out, g['material'], key[0]))
             pending.append((new, pi, cls, material, faces, ref_group, pre, blocks))
         if 'bounds' in part:
@@ -803,7 +883,7 @@ def rewrite_record(record, layout, atlas_index, alpha, alpha_remap=None, max_gro
         if key is not None:
             t = layout['tiles'][key[0]]
             u, v = point_uv(pts[i])
-            au, av = atlas_uv(t, n, u, v, key[1], key[2])
+            au, av = atlas_uv(t, n, u, v, key[1], key[2], len(key) > 3)
             new_pts[j] = with_uv(pts[i], int(round(au * UV_ONE)), int(round(av * UV_ONE)))
     missing, split = 0, []
     for new, pi, cls, material, faces, ref_group, pre, blocks in pending:
@@ -836,7 +916,7 @@ def rewrite_record(record, layout, atlas_index, alpha, alpha_remap=None, max_gro
         lod['weights'] = [record['weights'][o] for o in origin]
     lod['parts'] = parts
     return lod, dict(origin=origin, duplicated=len(new_pts) - len(pts), faces=faces_map,
-                     missing_records=missing, copies_of=copies_of, split=split)
+                     missing_records=missing, copies_of=copies_of, split=split, span_clamped=span_clamped)
 
 
 def atlas_material(mats, dom, names, areas, synth=True):
@@ -1155,7 +1235,8 @@ def _stats(errs):
 
 CHECK_FACES = 4096         # faces sampled per slot by check() (b); (c) always covers every face
 CHECK_TEXELS = 2e7         # source texels the box reference of (b) may gather per slot (thins the sample)
-CHECK_MAP_TEXELS = 1.0     # build() refuses a body whose inverse-map error (c) exceeds this many source texels
+CHECK_MAP_TEXELS = 1.0     # build() refuses a body with a face whose inverse-map error (c) exceeds this many source texels
+CHECK_MAP_ATLAS_TEXELS = 0.1   # ... and this many atlas texels (16.16 rounding: <= size / 131072 atlas texels)
 
 
 def check(source_record, out_record, result, atlases, mats, max_faces=CHECK_FACES):
@@ -1168,13 +1249,19 @@ def check(source_record, out_record, result, atlases, mats, max_faces=CHECK_FACE
     hundreds of periods on a 200k-face body cost an hour per body (2026-09-23).
     (c) every rewritten vertex UV inside its tile content (and gutter), and the inverse-mapped
     centroid equal to the original one modulo the integer shift (max error in source texels),
-    over every face."""
+    over every face, also in atlas texels; 'map_error_faces' counts the faces off by more than
+    CHECK_MAP_TEXELS source texels and CHECK_MAP_ATLAS_TEXELS atlas texels (a tile holding far fewer
+    texels than its source turns the 16.16 rounding of the atlas UV into several source texels, which
+    is not a mapping error). A span-clamped face (plan_layout clamped layout; UVs clamped into the tile) counts
+    in the inside test only: it is neither inverse-mapped nor sampled ('span_clamped_faces')."""
     layout, textures = result['layout'], result['textures']
     n, g = layout['size'], layout['gutter']
     spts, opts = source_record['points'], out_record['points']
     faces = result['info']['faces']
+    clamped = result['info'].get('span_clamped', ())
     inside = in_gutter = 0
-    worst_map = 0.0
+    worst_map = worst_atlas = 0.0
+    map_errors = 0
     su_list = []
     stride = max(1, -(-len(faces) // max_faces)) if max_faces else 1
     for fi, (pi, sf, of, mi, ti) in enumerate(faces):
@@ -1188,12 +1275,18 @@ def check(source_record, out_record, result, atlases, mats, max_faces=CHECK_FACE
             tol = 2.0 * n / UV_ONE
             inside += cx - tol <= x <= cx + cw + tol and cy - tol <= y <= cy + ch + tol
             in_gutter += cx - g <= x <= cx + cw + g and cy - g <= y <= cy + ch + g
+        if fi in clamped:
+            continue
         ou = np.mean([point_uv(spts[i]) for i in sf[:3]], 0)
         nu = np.mean([point_uv(opts[j]) for j in of[:3]], 0)
         su, sv = face_shift([point_uv(spts[i]) for i in sf[:3]])
         inv_u = t['lo'][0] + (nu[0] * n - cx) * t['span'][0] / cw
         inv_v = t['lo'][1] + (nu[1] * n - cy) * t['span'][1] / ch
-        worst_map = max(worst_map, abs(inv_u - (ou[0] - su)) * t['base'][0], abs(inv_v - (ou[1] - sv)) * t['base'][1])
+        du, dv = abs(inv_u - (ou[0] - su)), abs(inv_v - (ou[1] - sv))
+        e_src = max(du * t['base'][0], dv * t['base'][1])
+        e_atl = max(du * cw / t['span'][0], dv * ch / t['span'][1])
+        worst_map, worst_atlas = max(worst_map, e_src), max(worst_atlas, e_atl)
+        map_errors += int(e_src > CHECK_MAP_TEXELS and e_atl > CHECK_MAP_ATLAS_TEXELS)
         if fi % stride == 0:
             su_list.append((ou, nu, mi, t))
     # the box reference gathers (span / content * source side) texels per axis and face: thin the
@@ -1204,7 +1297,8 @@ def check(source_record, out_record, result, atlases, mats, max_faces=CHECK_FACE
         thin = math.ceil(work / CHECK_TEXELS)
         su_list = su_list[::thin]
     out = dict(faces=len(faces), vertices=3 * len(faces), inside=inside, in_gutter=in_gutter,
-               max_map_error_texels=worst_map, sampled_faces=len(su_list), slots={})
+               max_map_error_texels=float(worst_map), max_map_error_atlas_texels=float(worst_atlas), map_error_faces=map_errors,
+               sampled_faces=len(su_list), span_clamped_faces=len(clamped), slots={})
     angle = lambda x, y: np.degrees(np.arccos(np.clip((normalize(to_normals(x)) * normalize(to_normals(y))).sum(-1),
                                                        -1, 1)))
     for slot, atlas in atlases.items():
@@ -1288,14 +1382,63 @@ def build(assets, body, mats, record, alpha, px, sizes=(1024, 2048), fmt='dxt', 
     if c['inside'] < c['vertices']:
         raise AtlasError(f'atlas check: {c["vertices"] - c["inside"]} of {c["vertices"]} rewritten vertex UVs fall'
                          ' outside their tile content')
-    if c['max_map_error_texels'] > CHECK_MAP_TEXELS:
+    if c.get('map_error_faces'):
         raise AtlasError(f'atlas check: inverse-map error {c["max_map_error_texels"]:.3f} source texels exceeds'
-                         f' {CHECK_MAP_TEXELS}')
+                         f' {CHECK_MAP_TEXELS} (and {CHECK_MAP_ATLAS_TEXELS} atlas texels) on {c["map_error_faces"]}'
+                         ' faces')
     return res
 
 
 def _num(x):
     return None if x is None else round(float(x), 6)
+
+
+def tile_rows(layout):
+    """Compact per-tile rows of a layout for the texel rule (texel_floor) and the census: the diffuse
+    name, atlas texels per screen pixel at the switch size, the tile's share of the atlased surface
+    (mesh-space face area; the screen share is inferred proportional to it), its UV span, and its
+    span-clamped faces (count, share) and cap flag of the clamped layout."""
+    return [dict(name=(t['names'].get('diffuse') or b'').decode('latin1'), texels_per_px=_num(t['ratio']),
+                 share=_num(t['share']), span=[_num(x) for x in t['span']], clamped_faces=t.get('clamped_faces', 0),
+                 clamped_share=_num(t.get('clamped_share', 0.0)), capped=bool(t.get('capped')))
+            for t in layout['tiles']]
+
+
+def texel_floor(rows, min_texels, floor_share):
+    """Area-weighted texel rule over tile_rows: the atlased surface is split into each tile's kept faces
+    (at the tile's ratio) and its span-clamped faces (ratio 0: their UVs do not reproduce the source).
+    Starved = the parts below min_texels; refuse when their share exceeds floor_share (so floor_share 0
+    is the old per-tile minimum rule, min_texels 0 disables). weighted_texels_per_px is the ratio at the
+    floor_share area quantile (ascending): refuse <=> weighted_texels_per_px < min_texels. texel_clamped
+    lists the starved parts per tile (tile, texels_per_px, share = the tile's share, starved_share,
+    span_clamped_faces). Tiles without a measured ratio (no radius or UV area) take no part."""
+    parts = []
+    for k, r in enumerate(rows):
+        cs = r.get('clamped_share') or 0.0
+        kept = max(0.0, (r.get('share') or 0.0) - cs)
+        if r.get('texels_per_px') is not None and kept > 0:
+            parts.append((r['texels_per_px'], kept, k))
+        if cs > 0:
+            parts.append((0.0, cs, k))
+    parts.sort(key=lambda x: x[0])
+    starved, clamped = 0.0, {}
+    for ratio, share, k in parts:
+        if min_texels and ratio < min_texels:
+            starved += share
+            r = rows[k]
+            e = clamped.setdefault(k, dict(tile=r['name'], texels_per_px=r.get('texels_per_px'), share=r.get('share'),
+                                           starved_share=0.0, span_clamped_faces=r.get('clamped_faces', 0)))
+            e['starved_share'] = round(e['starved_share'] + share, 6)
+    total = sum(x[1] for x in parts)
+    weighted, cum = None, 0.0
+    for ratio, share, _ in parts:
+        cum += share
+        weighted = ratio
+        if cum > floor_share * total + 1e-12:
+            break
+    return dict(min_texels=min_texels, floor_share=floor_share, starved_share=round(starved, 6),
+                weighted_texels_per_px=_num(weighted), refuse=bool(min_texels) and starved > floor_share + 1e-12,
+                texel_clamped=sorted(clamped.values(), key=lambda e: -e['starved_share']))
 
 
 def summary(res):
@@ -1305,7 +1448,9 @@ def summary(res):
         material=res['atlas_index'], materials=list(res.get('atlas_indices', [res['atlas_index']])),
         dominant=res['dominant'], size=L['size'], scale=_num(L['scale']),
         gutter=L['gutter'], px=L['px'], min_texels_per_px=_num(L['min_ratio']), ratio_ok=bool(L['ratio_ok']),
-        tried=[dict(size=n, scale=_num(s), min_texels_per_px=_num(m)) for n, s, m in L['tried']],
+        tried=[dict(size=n, scale=_num(s), min_texels_per_px=_num(m), clamped=c)
+               for (n, s, m), c in zip(L['tried'], L.get('tried_clamped', [False] * len(L['tried'])))],
+        clamped=bool(L.get('clamped')), outlier_span=L.get('outlier_span'), radius=_num(L['radius']),
         duplicated_points=res['info']['duplicated'], points=len(res['record']['points']),
         split_groups=res['info']['split'],
         missing_tangent_records=res['info']['missing_records'], effects=[list(e) for e in res['effects']],
@@ -1313,7 +1458,10 @@ def summary(res):
         tiles=[dict(mats=t['mats'], names={k: (v.decode('latin1') if v else None) for k, v in t['names'].items()},
                     sources=dict(t.get('sources', {})),
                     lo=[_num(x) for x in t['lo']], span=[_num(x) for x in t['span']], base=list(t['base']),
-                    content=list(t['content']), origin=list(t['origin']), texels_per_px=_num(t['ratio']))
+                    content=list(t['content']), origin=list(t['origin']), texels_per_px=_num(t['ratio']),
+                    name=(t['names'].get('diffuse') or b'').decode('latin1'), share=_num(t['share']),
+                    clamped_faces=t.get('clamped_faces', 0), clamped_share=_num(t.get('clamped_share', 0.0)),
+                    capped=bool(t.get('capped')))
                for t in L['tiles']],
         textures=[dict(slot=s, name=res['names'][s].decode('latin1'), member=res['members'][s], format=e['format'],
                        dds_bytes=e['bytes'], dds_sha256=e['sha256'],
@@ -1321,12 +1469,16 @@ def summary(res):
                   for s, e in res['encoded'].items()],
         check=dict(faces=c['faces'], sampled_faces=c.get('sampled_faces', c['faces']), vertices=c['vertices'], uv_inside_content=c['inside'],
                    uv_inside_gutter=c['in_gutter'], max_map_error_texels=_num(c['max_map_error_texels']),
+                   span_clamped_faces=c.get('span_clamped_faces', 0),
+                   max_map_error_atlas_texels=_num(c.get('max_map_error_atlas_texels')),
+                   map_error_faces=c.get('map_error_faces', 0),
                    slots={s: {k: [_num(x) for x in v] for k, v in d.items()} for s, d in c['slots'].items()}))
 
 
 def format_summary(s):
     """Report lines for lod_overlay.describe."""
-    tried = ', '.join(f'{t["size"]}: {t["min_texels_per_px"]:.3f}' for t in s['tried'])
+    tried = ', '.join(f'{t["size"]}{" clamped" if t.get("clamped") else ""}: {t["min_texels_per_px"]:.3f}'
+                      for t in s['tried'])
     mats = s.get('materials', [s['material']])
     lines = [f'atlas {s["size"]}x{s["size"]} (min atlas texels per screen pixel at px={s["px"]:g}: {tried}; '
              f'>= 2: {"yes" if s["ratio_ok"] else "NO"}) scale {s["scale"]:.4f} tiles {len(s["tiles"])} gutter '
@@ -1335,6 +1487,21 @@ def format_summary(s):
              f' = copy of mat{s["dominant"]}); effects {s["effects"]}'
              + (f'; second UV set on {s["uv2_points"]} points passed through, occlusion {s["occlusion"]}'
                 if s.get('uv2_points') else '')]
+    x = s.get('texel')
+    if x:
+        w = x['weighted_texels_per_px']
+        lines.append(f'atlas texel rule: min {s["min_texels_per_px"]:.3f}, area-weighted'
+                     f' {"-" if w is None else f"{w:.3f}"} atlas texels per screen pixel (ratio at the'
+                     f' {x["floor_share"]:g} area quantile); below --min-texels {x["min_texels"]:g}:'
+                     f' {100 * x["starved_share"]:.2f} % of the atlased surface (--texel-floor-share'
+                     f' {100 * x["floor_share"]:g} %); layout {"clamped" if s.get("clamped") else "uniform"},'
+                     f' capped tiles {sum(1 for t in s["tiles"] if t.get("capped"))}, span-clamped faces'
+                     f' {sum(t.get("clamped_faces", 0) for t in s["tiles"])}')
+        for e in x['texel_clamped']:
+            r = e['texels_per_px']
+            lines.append(f'atlas texel_clamped: {e["tile"]} ratio {"-" if r is None else f"{r:.3f}"} share'
+                         f' {100 * e["share"]:.2f} % starved {100 * e["starved_share"]:.2f} %'
+                         f' span-clamped faces {e["span_clamped_faces"]}')
     for t in s['tiles']:
         odd = {k: v for k, v in t.get('sources', {}).items() if v and not v.split(':', 1)[-1].lower().startswith('dds/')}
         if odd:
@@ -1349,7 +1516,9 @@ def format_summary(s):
     c = s['check']
     lines.append(f'atlas check: faces {c["faces"]}, vertex UVs inside their tile {c["uv_inside_content"]}/'
                  f'{c["vertices"]} (inside tile+gutter {c["uv_inside_gutter"]}), max inverse-map error'
-                 f' {c["max_map_error_texels"]:.3f} source texels')
+                 f' {c["max_map_error_texels"]:.3f} source texels'
+                 + (f' / {c["max_map_error_atlas_texels"]:.4f} atlas texels' if c.get('max_map_error_atlas_texels') is not None else '')
+                 + (f', span-clamped faces {c["span_clamped_faces"]}' if c.get('span_clamped_faces') else ''))
     for slot, d in c['slots'].items():
         lines.append(f'atlas sampling {slot} ({c.get("sampled_faces", c["faces"])} face centroids, mean/p95/max of |error| 0..255): vs source mip 0'
                      f' RGB {"/".join(f"{x:.2f}" for x in d["src_rgb"])} A {"/".join(f"{x:.2f}" for x in d["src_a"])};'

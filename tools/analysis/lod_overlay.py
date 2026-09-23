@@ -35,7 +35,10 @@ ships' lattice materials have both off and draw opaque, run257). Collapse
     --atlas-specular); alpha faces
     as in two. The atlas side is the first of --atlas-size, 2x, ... up to
     --atlas-max-size that leaves >= 2 atlas texels per screen pixel at the switch
-    size T (the NAME=T / --threshold value). The atlases are added to the same
+    size T (the NAME=T / --threshold value), with one scale for every tile, or
+    else with the clamped layout (lod_atlas.plan_layout: faces repeating their
+    texture over more than lod_atlas.OUTLIER_SPAN periods are span-clamped, and no
+    tile holds more than 2 texels per pixel). The atlases are added to the same
     catalogue as dds/x3m_lod_<body>_<slot>.pck (new names; nothing is shadowed).
 Faces of merged materials get the dominant material's textures over their own
 UVs (a look limit of the pilot; not with atlas).
@@ -166,16 +169,30 @@ s*m00*width/1280). The projection keeps the vertical field of view (assumption: 
 derives m00 from the aspect ratio at a fixed vertical FOV, so a 16:9 display shows the
 768-line reference height over H lines), hence the effective reference width is
 H*1280/768 (1800 for 1080 lines), the width the atlas texel rule uses. The rule does not refuse
-below 2 texels/px: the ratio is reported per body and the batch counts bodies below 1.0; a body
-whose atlas would fall below --min-texels (default 0.5) is refused as texel_floor with its ratio.
+below 2 texels/px: the ratio is reported per body and the batch counts bodies below 1.0. The texel
+floor is area-weighted (lod_atlas.texel_floor): each tile's share is its faces' mesh-space area over
+the atlased (opaque, not hidden) surface (measured; the share of the projected screen area is
+inferred proportional to it, ignoring view direction and occlusion). Tiles below --min-texels
+(default 0.5) atlas texels per screen pixel at the switch size, plus the span-clamped faces (counted
+at ratio 0), are starved; a body is refused as texel_floor only when the starved parts cover more
+than --texel-floor-share (default 0.10) of that surface. Otherwise the starved tiles are accepted
+and listed as texel_clamped (tile, ratio, share, starved share). The weighted ratio is the tile ratio
+at the --texel-floor-share area quantile (refuse <=> weighted < --min-texels); --texel-floor-share 0
+is the per-tile minimum rule. The batch summary lists per body the aspect factor k, T_class and T_pad
+(below), the layout radius r_body (normalised body units), the flown world radius r_world and the
+switch distance D = r_world*640/T at T_class and T_pad in km (lod_batch_census.attach_world: ~505
+units per metre, inferred; '-' without a flown radius), the thresholds, min_ratio, weighted ratio
+and starved share, lowest weighted first.
 
 Batch mode (--batch; docs/architecture/merged-lod-feasibility.md "Batch mode"): one command
 builds an overlay over every eligible ship and station of the installed game, vanilla plus
 every numbered addon catalogue a mod adds. The census module (lod_batch_census.run, with
 .bob members, text bodies and the trailing-byte tolerance) enumerates every winning body of
 ships/, stations/ and others/ (--include-other adds the rest under the station rule), applies
-the rule ships T_pad = min(200, max(80, 2.5*T_1)) (80 for a single-record body), stations and
-others 150, source record 0, compact placement, --collapse atlas with --atlas-specular on, and
+the rule ships T_class = min(200, max(80, 2.5*T_1)) (80 for a single-record body), stations and
+others 150, then the aspect factor T_pad = round(T_class * clamp(k, 1, K_max)) (k from record 0's
+half-extents, 1 for a cube; K_max --aspect-cap SHIPS,STATIONS, default 1.5,2.0; --no-aspect keeps
+T_class; lod_batch_census.aspect_k), source record 0, compact placement, --collapse atlas with --atlas-specular on, and
 bakes the eligible bodies in worker processes (--jobs, default min(cpu-2, 6, RAM // 7 GiB - 1),
 at least 1, so 2 on a 24 GiB host: a worker holds one body's decoded textures at a time and
 reaches ~7 GB RSS on the biggest stations; every worker process is replaced after one body). --only FILE restricts the run to the bodies named in FILE
@@ -219,7 +236,7 @@ rebuilds only the bodies whose inputs changed (inputs_sha256 over the decoded bo
 texture its tiles read) or that are new, and copies the other bodies' members (body + atlases,
 verified by sha256) from the previous overlay dat; the previous overlay must have been built
 with the same rule, width, atlas options and tool sources (tool_sha256 over lod_atlas.py,
-lod_overlay.py and bob1.py in the settings). addon/mods/*.cat
+lod_overlay.py, bob1.py and lod_batch_census.py in the settings). addon/mods/*.cat
 are detected and a warning gives how many overlay bodies a selected mod would override.
 The before/after archive check is a cat sha256 plus dat size and mtime by default
 (--hash-archives hashes every dat; mod trees are gigabytes); the marker records the mode.
@@ -681,11 +698,12 @@ def place(ladder, coarse, placement, threshold, name='body', force_threshold=Fal
 MAX_POINTS = 60000         # refusal limit for a merged group (non-atlas collapses; as lod_atlas.MAX_GROUP_POINTS)
 
 
-MIN_TEXELS = 0.5            # texel floor: below this many atlas texels per screen pixel a body is refused (texel_floor)
+MIN_TEXELS = 0.5            # texel floor: tiles below this many atlas texels per screen pixel are starved
+TEXEL_FLOOR_SHARE = 0.10    # texel_floor refusal: starved tiles cover more than this share of the atlased surface
 MAX_DEFAULT_JOBS = 6        # a worker on the biggest stations reaches ~7 GB RSS (2026-09-23 dry run)
 WORKER_BYTES = 7 << 30      # RAM budget per baking worker (that peak); the default keeps one budget spare
 ATLAS_DEFAULTS = dict(sizes=(1024, 2048), fmt='dxt', specular=False, bump=True, screen_width=effective_width(),
-                      min_texels=MIN_TEXELS)
+                      min_texels=MIN_TEXELS, texel_floor_share=TEXEL_FLOOR_SHARE)
 
 
 def host_memory_bytes():
@@ -717,9 +735,13 @@ def atlas_collapse(assets, name, entry, mats, record, alpha, threshold, synth, o
     except lod_atlas.AtlasError as exc:
         raise SystemExit(f'{name}: {exc}') from None
     low = res['layout']['min_ratio']
-    if opts.get('min_texels') and low < opts['min_texels']:
-        raise SystemExit(f'{name}: texel_floor: the atlas would give {low:.2f} atlas texels per screen pixel at the'
-                         f' switch size, below --min-texels {opts["min_texels"]:g}; it would draw blurred')
+    texel = lod_atlas.texel_floor(lod_atlas.tile_rows(res['layout']), opts.get('min_texels', 0),
+                                  opts.get('texel_floor_share', TEXEL_FLOOR_SHARE))
+    if texel['refuse']:
+        raise SystemExit(f'{name}: texel_floor: tiles below --min-texels {opts["min_texels"]:g} atlas texels per'
+                         f' screen pixel at the switch size cover {100 * texel["starved_share"]:.1f} % of the atlased'
+                         f' surface, above --texel-floor-share {100 * texel["floor_share"]:g} % (min {low:.2f},'
+                         f' area-weighted {texel["weighted_texels_per_px"]:.2f}); it would draw blurred')
     for slot, member in res['members'].items():
         stem = member.rsplit('.', 1)[0]
         taken = [e['source'] for ext in lod_atlas.DDS_LOOKUP[1] for e in assets.candidates(stem + ext)]
@@ -727,6 +749,7 @@ def atlas_collapse(assets, name, entry, mats, record, alpha, threshold, synth, o
             raise SystemExit(f'{name}: atlas texture {stem} already exists in {taken}; it would be shadowed')
     extra = [(res['members'][s], lod_atlas.stored(e['dds'])) for s, e in res['encoded'].items()]
     res['summary'] = lod_atlas.summary(res)
+    res['summary']['texel'] = texel
     return res['record'], res['synth'], res, extra
 
 
@@ -960,6 +983,12 @@ def join_collapse(argv):
     return out
 
 
+def aspect_cap(text):
+    """--aspect-cap SHIPS,STATIONS (lod_batch_census.parse_aspect_cap; imported late: it imports this module)."""
+    import lod_batch_census
+    return lod_batch_census.parse_aspect_cap(text)
+
+
 def build_parser():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('bodies', nargs='*', help='body name as the scene references it, or member path;'
@@ -1046,9 +1075,22 @@ def build_parser():
                         ' RAM // 7 GiB - 1), at least 1: a worker baking one of the biggest stations reaches'
                         ' ~7 GB RSS, and every worker process is replaced after each body)')
     b.add_argument('--min-texels', type=float, default=MIN_TEXELS, metavar='F',
-                   help=f'atlas / batch: refuse a body (reason texel_floor) whose atlas would give fewer than F'
-                        f' atlas texels per screen pixel at the display reference (default {MIN_TEXELS}; 0 disables);'
-                        ' the ratio is still reported for every body')
+                   help=f'atlas / batch: a tile whose atlas gives fewer than F atlas texels per screen pixel at'
+                        f' the display reference is starved (default {MIN_TEXELS}; 0 disables); the body is refused'
+                        ' (reason texel_floor) when its starved tiles cover more than --texel-floor-share of the'
+                        ' atlased surface; the ratio is still reported for every body')
+    b.add_argument('--texel-floor-share', type=float, default=TEXEL_FLOOR_SHARE, metavar='S',
+                   help=f'atlas / batch: share (0..1) of the atlased surface (face area) the starved tiles may'
+                        f' cover; they are accepted and listed as texel_clamped (default {TEXEL_FLOOR_SHARE};'
+                        ' 0 refuses any starved tile)')
+    b.add_argument('--aspect-cap', type=aspect_cap,
+                   default=(1.5, 2.0), metavar='SHIPS,STATIONS',
+                   help='batch: K_max of the aspect factor, T_pad = round(T_class * clamp(k, 1, K_max))'
+                        ' (default 1.5,2.0)')
+    b.add_argument('--no-aspect', action='store_true', help='batch: T_pad = T_class (no aspect factor)')
+    b.add_argument('--radius-log', action='append', type=Path, metavar='FILE',
+                   help='batch: flight census text with r=/radius= and body= for the switch distance in km'
+                        ' (default: lod_batch_census.RADIUS_SOURCES present)')
     b.add_argument('--budget-mb', type=float, default=512.0,
                    help='batch: warn when a flown sector\'s resident atlas estimate exceeds this (default 512)')
     b.add_argument('--record', type=Path,
@@ -1085,8 +1127,11 @@ def main(argv=None):
     width = effective_width(a.display, a.screen_width)
     if a.min_texels < 0:
         ap.error('--min-texels must be >= 0')
+    if not 0 <= a.texel_floor_share < 1:
+        ap.error('--texel-floor-share must be in [0, 1)')
     a.atlas_opts = dict(sizes=tuple(sizes), fmt=a.atlas_format, specular=a.atlas_specular or a.batch,
-                        bump=a.atlas_bump, screen_width=width, min_texels=a.min_texels)
+                        bump=a.atlas_bump, screen_width=width, min_texels=a.min_texels,
+                        texel_floor_share=a.texel_floor_share)
     a.hash_mode = 'sha256' if a.hash_archives else 'fingerprint'
     game = a.game.resolve()
     root = None
@@ -1355,7 +1400,7 @@ def write_overlay(a, game, members, bodies, slot, before, written, exclude_slot,
 
 # --- batch mode ----------------------------------------------------------------------------
 
-TOOL_FILES = ('lod_atlas.py', 'lod_overlay.py', 'bob1.py')
+TOOL_FILES = ('lod_atlas.py', 'lod_overlay.py', 'bob1.py', 'lod_batch_census.py')   # the census decides T_pad
 
 
 def tool_sha256():
@@ -1522,24 +1567,31 @@ def batch(a, game, root, markers):
     mods = sorted((game / 'addon' / 'mods').glob('*.cat'))
     only = parse_only(a.only) if a.only else None
     width = a.atlas_opts['screen_width']
-    opts = dict(sizes=a.atlas_opts['sizes'], include_other=a.include_other, widths=(width,), rule=dict(census.RULE))
+    opts = dict(sizes=a.atlas_opts['sizes'], include_other=a.include_other, widths=(width,),
+                rule=dict(census.RULE, aspect=not a.no_aspect, aspect_ship=a.aspect_cap[0],
+                          aspect_station=a.aspect_cap[1]))
     settings = dict(rule=opts['rule'], screen_width=width, display=list(a.display), collapse='atlas',
                     source_record=0, placement='compact', include_other=a.include_other,
                     atlas=dict(a.atlas_opts, sizes=list(a.atlas_opts['sizes'])), tool_sha256=tool_sha256())
     t0 = time.time()
     rows, skipped = census.run(game, opts, a.jobs, only=only, include_text=not a.binary_only)
+    census.attach_world(rows, census.world_radii(a.radius_log or census.default_radius_logs()))
     census_s = time.time() - t0
     rows.sort(key=lambda r: r['name'].lower())
     if skipped:
         notes.append(f'source bodies read without the overlay catalogue(s) {skipped}')
-    floor = []                             # texel floor: refused before baking, ratio kept in the record
+    floor, starved = [], {}                # texel floor: refused before baking, ratio kept in the record
     for r in rows:
-        ratio = (r.get('atlas') or {}).get(width, {}).get('ratio')
-        if r['eligible'] and a.min_texels and ratio is not None and ratio < a.min_texels:
+        est = (r.get('atlas') or {}).get(width, {})
+        ratio = est.get('ratio')
+        if est.get('tiles') is not None:
+            r['texel'] = lod_atlas.texel_floor(est['tiles'], a.min_texels, a.texel_floor_share)
+        if r['eligible'] and a.min_texels and ratio is not None and r.get('texel', {}).get('refuse', False):
             r['refuse'].append('texel_floor')
             r['eligible'] = False
             r['ratio'] = ratio
             floor.append((r['name'], ratio))
+            starved[r['name']] = r['texel']['starved_share']
     eligible = [r for r in rows if r['eligible']]
     reused = {}
     if a.sync:
@@ -1631,10 +1683,32 @@ def batch(a, game, root, markers):
     full_est = per_body * len(rows) if only is not None else bake_s
     trailing = sum(1 for p in plans if p['trailing'])
     waived = sum(1 for p in plans if p['guard_waived'])
+    clamped_bodies = [r['name'] for r in rows if r['eligible'] and (r.get('texel') or {}).get('texel_clamped')]
+    texel_lines = [f'texel rule per body at {width} wide (k = aspect factor, T = T_pad, r_body = layout radius in'
+                   f' body units, r_world = flown radius, D = r_world*640/T in km at T_class->T_pad ({census.UNITS_PER_M:g}'
+                   f' units/m, inferred); ratios in atlas texels per screen pixel at the switch size; weighted = ratio'
+                   f' at the {a.texel_floor_share:g} area quantile; starved = share below --min-texels'
+                   f' {a.min_texels:g}; lowest weighted first):']
+    for r in sorted((r for r in rows if r.get('texel')),
+                    key=lambda r: (r['texel']['weighted_texels_per_px'] is None,
+                                   r['texel']['weighted_texels_per_px'] or 0.0, r['name'].lower())):
+        x, est = r['texel'], r['atlas'][width]
+        w = x['weighted_texels_per_px']
+        texel_lines.append(
+            f'  {r["name"]} {census.aspect_text(r)} thr={",".join(str(t) for t in r.get("thresholds", ())) or "-"}'
+            f' px={r.get("t_pad", 0) * width / 1280:.1f}'
+            f' size={est.get("size")} min={est["ratio"]:.3f} weighted={"-" if w is None else f"{w:.3f}"}'
+            f' starved={100 * x["starved_share"]:.2f}% clamped={len(x["texel_clamped"])}'
+            f'{" layout=clamped" if est.get("clamped") else ""}'
+            f' {"ELIGIBLE" if r["eligible"] else "refuse=" + ",".join(r["refuse"] + r["filter"])}')
     summary = [
         f'batch: game {game}; display {a.display[0]}x{a.display[1]} -> reference width {width}; rule ships'
-        f' T_pad = min({opts["rule"]["t_cap"]:g}, max({opts["rule"]["ship_min"]:g}, {opts["rule"]["ship_factor"]:g} x T_1)),'
-        f' stations/others {opts["rule"]["station_t"]:g}; source record 0, compact (T_1 guard waived: {waived} bodies);'
+        f' T_class = min({opts["rule"]["t_cap"]:g}, max({opts["rule"]["ship_min"]:g}, {opts["rule"]["ship_factor"]:g} x T_1)),'
+        f' stations/others {opts["rule"]["station_t"]:g}; aspect factor '
+        + (f'K_max ships {opts["rule"]["aspect_ship"]:g} stations {opts["rule"]["aspect_station"]:g}'
+           f' ({sum(1 for r in rows if r.get("t_pad") != r.get("t_class"))} bodies with T_pad != T_class)'
+           if opts['rule']['aspect'] else 'off (--no-aspect)')
+        + f'; source record 0, compact (T_1 guard waived: {waived} bodies);'
         f' atlas sizes {list(a.atlas_opts["sizes"])}, {a.atlas_opts["fmt"]}, specular on',
         f'bodies enumerated {len(rows)}{" (--only " + str(a.only) + ")" if a.only else ""}: '
         + ', '.join(f'{k} {v}' for k, v in cats.items())
@@ -1646,9 +1720,13 @@ def batch(a, game, root, markers):
         f' {member_total / 1e6:.2f} MB; dat bytes {atlas_total + member_total}',
         f'texels per px at {width} wide: below 1.0 {len(below1)}'
         + (f' ({", ".join(below1[:12])}{", ..." if len(below1) > 12 else ""})' if below1 else '')
-        + f', below 2.0 {below2}, of {len(ratios)} built; refused texel_floor (< {a.min_texels:g}) {len(floor)}'
-        + (': ' + ', '.join(f'{n} {r:.2f}' for n, r in sorted(floor, key=lambda x: x[1])[:12])
-           + (', ...' if len(floor) > 12 else '') if floor else ''),
+        + f', below 2.0 {below2}, of {len(ratios)} built; refused texel_floor (tiles below --min-texels'
+          f' {a.min_texels:g} cover more than --texel-floor-share {a.texel_floor_share:g} of the surface) {len(floor)}'
+        + (': ' + ', '.join(f'{n} {100 * starved[n]:.1f} % (min {r:.2f})'
+                            for n, r in sorted(floor, key=lambda x: -starved[x[0]])[:12])
+           + (', ...' if len(floor) > 12 else '') if floor else '')
+        + f'; eligible with texel_clamped tiles (starved share <= {a.texel_floor_share:g}) {len(clamped_bodies)}'
+        + (f' ({", ".join(clamped_bodies[:12])}{", ..." if len(clamped_bodies) > 12 else ""})' if clamped_bodies else ''),
         f'draws below T_pad per instance, summed over the overlay bodies: {draws_before} -> {draws_after}'
         f' (drawn groups of record 0 -> of C, hidden parts excluded, alpha groups included); bodies with one atlas'
         f' material per effect ({len(multi)}):'
@@ -1662,7 +1740,7 @@ def batch(a, game, root, markers):
         + (f' (replaces the previous overlay in that slot)' if prev is not None and retire is None else '')
         + (f'; addon/{retire:02d} retired to an empty catalogue' if retire is not None else '')
         + (f'; orphaned markers: {[m["path"].name for m in orphaned]}' if orphaned else '')]
-    summary += notes + mod_notes + sector_lines + budget
+    summary += notes + mod_notes + sector_lines + budget + texel_lines
     for line in summary:
         print(line)
     # record
@@ -1681,7 +1759,9 @@ def batch(a, game, root, markers):
         refused=reasons, filtered=filters, atlas_sizes=sizes,
         bytes=dict(atlas=atlas_total, members=member_total, dat=atlas_total + member_total),
         ratio=dict(below_1=below1, below_2=below2, measured=len(ratios), min_texels=a.min_texels,
-                   texel_floor={n: round(r, 4) for n, r in floor}),
+                   texel_floor={n: round(r, 4) for n, r in floor}, texel_floor_share=a.texel_floor_share,
+                   texel_floor_starved={n: round(starved[n], 4) for n, _ in floor},
+                   texel_clamped=clamped_bodies),
         draws=dict(record0=draws_before, overlay=draws_after), mixed_effect_bodies=multi, uv2_bodies=uv2,
         timing=dict(census_s=round(census_s, 2), bake_s=round(bake_s, 2), per_body_s=round(per_body, 3),
                     extrapolated_full_s=round(full_est, 1), total_s=round(time.time() - t_start, 2)),
@@ -1693,7 +1773,11 @@ def batch(a, game, root, markers):
                      trailing=r.get('trailing', 0), inputs_sha256=r.get('inputs_sha256'),
                      **({'ratio': round(r['ratio'], 4)} if 'ratio' in r else {}),
                      texture_sources=r.get('texture_sources'),
-                     estimate=(r.get('atlas') or {}).get(width), **r.get('baked', {}),
+                     estimate=({k: v for k, v in r['atlas'][width].items() if k != 'tiles'}
+                               if (r.get('atlas') or {}).get(width) else None), **r.get('baked', {}),
+                     **{k: r[k] for k in ('thresholds', 't_class', 'aspect_k', 'threshold_aspect', 'aspect_note',
+                                          'radius_body', 'radius_world', 'switch_km', 'switch_km_class') if k in r},
+                     **({'texel': r['texel']} if r.get('texel') else {}),
                      **({'error': r['atlas_error']} if r.get('atlas_error') else {}),
                      **({'bake_error': r['bake_error']} if r.get('bake_error') else {}))
                 for r in rows],

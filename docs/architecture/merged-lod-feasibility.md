@@ -525,7 +525,9 @@ faces keep one group per part, as with `two`.
   largest scale that fits. The atlas side is the first of `--atlas-size` (1024),
   2×, … up to `--atlas-max-size` (2048) that gives at least 2 atlas texels per
   screen pixel on every tile at the switch size `T`. `T` is the `NAME=T` value,
-  and the need per tile is inferred as √(face area / UV area) · T / radius.
+  and the need per tile is inferred as √(face area / UV area) · T / radius. When no size
+  reaches 2 with one scale, the clamped layout (span-clamped outlier faces, per-tile cap at
+  2 texels/px; "Batch mode", clamped layout) is tried at each size.
 - **Baking.** The tile, gutter included, is area-resampled from the repeating
   source (DXT1/3/5 or uncompressed), so the gutter holds the true neighbouring
   texels. A NULL light map becomes constant black with alpha 0. `NONE_*` maps are
@@ -808,8 +810,9 @@ enumerates the bodies and the tool bakes them in worker processes (`--jobs`, def
 tests: `verification/analysis/test_lod_overlay_batch.py` on synthetic catalogues, dry-run
 evidence under `verification/results/lod-overlay-batch/batch-dryrun/`.
 
-- **Rule and guard.** Ships `T_pad = min(200, max(80, 2.5·T_1))` (80 for a single-record body),
-  stations and `others/` 150, source record 0, compact placement, `--collapse atlas` with the
+- **Rule and guard.** Ships `T_class = min(200, max(80, 2.5·T_1))` (80 for a single-record body),
+  stations and `others/` 150, then `T_pad = round(T_class · clamp(k, 1, K_max))` (aspect factor,
+  below; `--no-aspect` keeps T_class), source record 0, compact placement, `--collapse atlas` with the
   specular atlas on; `--include-other` adds the remaining top directories under the station
   rule. The compact guard "T_pad not below T_1" is waived automatically when the source record
   is 0: C is then the full LOD 0 geometry, so C drawing at Low..High in the band
@@ -894,26 +897,98 @@ evidence under `verification/results/lod-overlay-batch/batch-dryrun/`.
   `--sync` rebuilds only bodies whose `inputs_sha256` changed or that are new and copies the
   other bodies' members from the previous overlay dat (each verified by sha256), provided the
   previous overlay used the same rule, width, atlas options and tool sources (`tool_sha256` over
-  `lod_atlas.py`, `lod_overlay.py`, `bob1.py` in the settings, so a tool change rebuilds).
+  `lod_atlas.py`, `lod_overlay.py`, `bob1.py` and `lod_batch_census.py`, which decides T_pad, in the
+  settings, so a tool change rebuilds).
   `addon/mods/*.cat` are detected and a warning gives how many overlay bodies a selected mod
   overrides. The before/after archive check is a cat sha256 plus dat size and mtime by default
   (`--hash-archives` hashes every dat; the mod trees are gigabytes); the marker records the mode.
-- **Texel floor (`--min-texels F`, default 0.5).** A body whose layout gives fewer than F atlas
-  texels per screen pixel at the display reference is refused as `texel_floor` (the summary
-  lists it with its ratio; the ratio is still reported for every body) instead of being built
-  blurred; `--min-texels 0` disables the floor. Four flown bodies are known to sit below 1.0:
-  `argon_tech_M_laser_cc` 0.04, `argon_tech_L_laser_bb` 0.05, `argon_gate` 0.23 and
-  `owp_large` 0.72 (measured, `batch-dryrun/bottle-sectors-record_out.txt`); with the default
-  floor the first three are refused and `owp_large` is still built (rerun: 19 built, 3
-  `texel_floor`). One tile spanning hundreds of UV periods forces the uniform layout scale
-  towards zero. The later fix is a span clamp or a per-tile scale in `lod_atlas.plan_layout`,
-  not attempted here.
+- **Texel floor (`--min-texels F`, default 0.5; `--texel-floor-share S`, default 0.10;
+  area-weighted since 2026-09-23).** Each tile carries its *share*: the mesh-space area of its
+  faces over the atlased surface (opaque faces outside hidden parts; measured). That the share of
+  the projected screen area follows it is inferred (orientation-averaged projection is
+  proportional to area; view direction and occlusion ignored). Tiles below F atlas texels per
+  screen pixel at the display reference, plus the span-clamped faces below (counted at ratio 0),
+  are *starved*; a body is refused as `texel_floor` only when the starved parts cover more than S
+  of that surface. Otherwise it is built, and the starved tiles are listed as `texel_clamped`
+  (tile, ratio, share, starved share, span-clamped faces) in the body's atlas summary, the
+  describe text and the batch record (`bodies[].texel`, `ratio.texel_clamped`). The *weighted
+  ratio* is the tile ratio at the S area quantile, so refuse <=> weighted < F; S = 0 is the old
+  per-tile minimum rule and F = 0 disables the floor. The census and the batch summary print per
+  body the aspect factor k, T_class → T_pad, `r_body` (layout radius in normalised body units:
+  every record's largest coordinate is 65,536, so it is not a size), `r_world` (the flown radius,
+  below) and the switch distance in km, the thresholds, px at the batch width, min and weighted
+  ratio and the starved share, lowest weighted first.
+- **Aspect-aware switch threshold (batch default since 2026-09-23; `--aspect-cap SHIPS,STATIONS`,
+  default 1.5,2.0; `--no-aspect`).** The engine compares s = r·640/D with the bounding-sphere
+  radius r, which overstates a flat or elongated body's visible size, so its merged record
+  appeared too far out. `lod_batch_census.aspect_k`: half-extents e = (max − min)/2 per axis of
+  record 0's position-carrying points (flag 1), r_box = |e|, r_eq = (ex·ey·ez)^(1/3),
+  k = (r_box / r_eq)/√3 (a cube is 1; a zero extent takes r_eq over the nonzero extents with an
+  `aspect_note`, none at all gives 1). T_pad = round(T_class · clamp(k, 1, K_max)), K_max 1.5 for
+  ships and 2.0 for stations and others; T_class is the class rule above. T_pad drives the pad
+  record, the T_1 guard, the atlas size and the texel ratio (sized for the larger T, so the ratio
+  falls). k is scale invariant, so a text body (per-record normalisation) gives the binary twin's k
+  (test). The world radius is not derivable from the body; it comes from flight censuses
+  (`--radius-log`, default `run272-batch-busy/burst_draws_out.txt` when present: `r=`/`radius=`
+  with `body=`), and km use ~505 units per metre, an inference of
+  [sector-collide.md](../reverse-engineering/sector-collide.md). Record keys `aspect_k`,
+  `t_class`, `threshold_aspect`, `radius_body`, `radius_world`, `switch_km`, `switch_km_class`.
+  Reference bodies (`--dry-run`, 1920x1080; measured; km inferred):
+
+  | body | k | T_class → T | switch km | min texels/px (`--no-aspect` → aspect) |
+  | --- | --- | --- | --- | --- |
+  | argon_equipmentdock | 1.44 | 150 → 216 | 9.57 → 6.65 | 2.461 → 2.034 |
+  | argon_spacedock | 1.86 | 150 → 278 | 16.51 → 8.91 | 3.089 → 2.053 |
+  | argon_trading_station_partA | 1.02 | 150 → 153 | 3.40 → 3.34 | 2.001 → 2.005 |
+  | argon_trading_station_partB | 1.10 | 150 → 165 | 5.31 → 4.82 | 2.016 → 2.004 |
+  | argon_M2 | 1.40 | 80 → 112 | 8.37 → 5.98 | 5.168 → 3.691 |
+  | argon_TL | 1.59 (cap 1.5) | 80 → 120 | 9.61 → 6.40 | 4.416 → 2.944 |
+
+  All six build at 1024. Over the 339 bodies of `eligible_bodies.txt` (measured,
+  `lod-overlay-batch/aspect_compare_out.txt`): T changes for 325 (213 ships, 112 stations/others;
+  84 at the cap); atlas size changes on 10 bodies, eligible-body atlas bytes (census estimate)
+  1,918,399,632 → 2,065,200,272; `t_pad_below_t1` 0 → 0; `texel_floor` 1 → 2 (`teladi/teladi_M1`, k 1.49,
+  T 80 → 119, weighted 0.468); min ratio below 2.0 on 34 → 36 bodies (`XTC_boron_drone` 2.004 →
+  1.608, `XTC_boron_m8` 2.009 → 1.413).
+- **Clamped layout (`lod_atlas.plan_layout`, 2026-09-23).** The starved tiles of the old
+  refusals were not the wide ones: a few faces with saturated UVs (±32768 periods, the 16.16
+  limit; in `argon_tech_L_laser_bb` 3,672 of the 23,452 `trims_02`/`trims_03` faces are wider
+  than 256 periods, the widest 59,914 and 64,892) or a legitimately long repeat (`argon_gate`
+  plating, widest faces 79 and 131 periods) made one tile's full size tens of thousands of
+  texels, so the uniform scale fell towards zero and starved every other tile (measured,
+  `lod-overlay-batch/uv_outlier_faces_out.txt`). When the uniform layout misses 2 texels/px at a
+  size, the clamped layout is tried at the same size: a face whose own UV extent exceeds
+  `OUTLIER_SPAN` (256) periods is span-clamped (left out of the tile's span and need, its UVs
+  clamped into the tile, so it samples a stretch of one period instead of the repeat's mip-tail
+  average: an approximation, inferred acceptable at ≤ a few % of the surface), and every tile's
+  scale is capped at 2 / k (k = its texels per pixel at scale 1: no tile holds more than 2 texels
+  per pixel, which is invisible at and beyond the switch). Sizes are tried in order, uniform then
+  clamped at each size, so a body whose uniform layout reaches 2 only at 2048 now builds clamped at
+  1024 (deliberate: a 1024 atlas at 2 texels/px is the fleet budget; 2048 costs four times the
+  bytes). Only bodies whose uniform layout passes at 1024 (or reaches scale 1 there) are unchanged.
+  Over the 339 flown-sector bodies 153 build clamped: 55 had reached ≥ 2 at 2048 (all now 1024,
+  e.g. `Boron_M7` 3.752 at 2048 -> 2.017 at 1024), 71 had a uniform ratio of 0.5–2 and 27 were
+  below 0.5. The inverse-map gate now counts a face only
+  when it is off by more than 1 source texel *and* 0.1 atlas texel: a capped tile holding 1/300
+  of its source density turns the 16.16 rounding of the atlas UV (≤ size/131,072 atlas texels)
+  into 2.5–7.9 source texels without any mapping error (`argon_gate`, the tech stations).
+  Over the 339 bodies of `eligible_bodies.txt` at 1920x1080 (measured,
+  `texel_share_compare.py`): `texel_floor` 28 -> 1 (`x3tc/torus_barrier_node`, 21.4 % starved at
+  full source density), 27 bodies newly eligible and none lost, 153 clamped layouts, 21 bodies with
+  `texel_clamped` tiles, atlas sizes 1024/2048 177/162 -> 321/18, atlas bytes (census estimate: DDS
+  with mips) 4,037,222,808 -> 1,923,293,592 for the 339 (per body in the output). Flown-sector dry run
+  (`--only` the three bodies, measured): `argon_tech_L_laser_bb` min 0.046 -> 2.007 at 1024
+  (2.69 % starved, 3,672 span-clamped faces in 2 tiles, 356,095 stored atlas bytes, draws 38 -> 6),
+  `argon_tech_M_laser_cc` 0.044 -> 2.003 at 1024 (1.30 %, 2,212 faces in 3 tiles, 283,381 bytes,
+  36 -> 4), `argon_gate` 0.228 -> 2.025 at 1024 (0 %, 231,042 bytes, 16 -> 2); all three build and
+  pass the gate. How span-clamped faces look in game is not verified.
 - **Workers.** `--jobs` defaults to min(cpu−2, 6, RAM // 7 GiB − 1), at least 1 (2 on this
   24 GiB host): a worker baking one of the biggest stations (4096² source textures decoded,
   2048² atlases with full mip chains) reaches ~7 GB RSS (measured on the flown-sector dry run),
   and the pool replaces every worker process after one body (`maxtasksperchild=1`).
 - **Build gate.** `lod_atlas.build` refuses a body when its own check finds a rewritten vertex UV
-  outside its tile content, an inverse-map error above 1 source texel, or a face whose material
+  outside its tile content, a face whose inverse-mapped centroid is off by more than 1 source texel
+  and 0.1 atlas texel (span-clamped faces excepted), or a face whose material
   is not in its tile's material list; the specular atlas is baked only when an atlased material
   carries `t_SpecularTexture`.
 - **Baking cost.** `lod_atlas.level_weights` (the per-axis area-resampling matrix of a tile at

@@ -3,7 +3,8 @@ catalogues: .bob enumeration, text bodies (compiled, written as .pbb) and the te
 ambiguous-extension refusals, trailing bytes, the
 mixed-effects split, the second UV set with an occlusion decal, negative material indices,
 qualified atlas names, tex/ jpg textures, the display-derived width, marker validation and
-orphans, --sync reuse with slot retirement, and the addon/mods warning."""
+orphans, --sync reuse with slot retirement, the addon/mods warning, and the area-weighted texel floor
+with the clamped layout (span-clamped outlier faces, texel_clamped tiles)."""
 import contextlib
 import copy
 import gzip
@@ -121,12 +122,12 @@ def cat_members(cat):
     return {p: raw[e['offset']:e['offset'] + e['size']] for p, e in entries.items()}
 
 
-BATCH = ['--batch', '--jobs', '1', '--atlas-size', '64', '--atlas-max-size', '128', '--min-texels', '0']
+BATCH = ['--batch', '--jobs', '1', '--no-aspect', '--atlas-size', '64', '--atlas-max-size', '128', '--min-texels', '0']
 
 
 class Enumeration(unittest.TestCase):
     def test_census_rows(self):
-        opts = dict(sizes=(64, 128), include_other=False, rule=dict(census.RULE), widths=(1280,))
+        opts = dict(sizes=(64, 128), include_other=False, rule=dict(census.RULE, aspect=False), widths=(1280,))
         with tempfile.TemporaryDirectory() as folder:
             game = make_game(folder)
             rows, skipped = census.run(game, opts, include_text=True)
@@ -262,7 +263,7 @@ class BatchRun(unittest.TestCase):
                 lod_overlay.hash_files([out1 / 'addon/02.dat'])[str(out1 / 'addon/02.dat')]))})
             self.assertEqual((marker['originals_mode'], marker['display'], marker['screen_width']),
                              ('fingerprint', [1920, 1080], 1800))
-            self.assertEqual(marker['batch']['settings']['rule'], census.RULE)
+            self.assertEqual(marker['batch']['settings']['rule'], dict(census.RULE, aspect=False))   # BATCH: --no-aspect
             self.assertEqual((marker['collapse'], marker['batch']['settings']['tool_sha256']),
                              ('atlas', lod_overlay.tool_sha256()))
             bodies = {b['name']: b for b in marker['bodies']}
@@ -393,8 +394,11 @@ class BatchRun(unittest.TestCase):
             by = {b['name']: b for b in record['bodies']}
             self.assertEqual(by['ships/x/good']['refuse'], ['texel_floor'])
             self.assertAlmostEqual(by['ships/x/good']['ratio'], floor['ships/x/good'])
-            self.assertIn(f'refused texel_floor (< 100) 9: ', text)
-            self.assertIn(f'ships/x/good {floor["ships/x/good"]:.2f}', text)
+            self.assertIn('refused texel_floor (tiles below --min-texels 100 cover more than --texel-floor-share 0.1'
+                          ' of the surface) 9: ', text)
+            starved = record['ratio']['texel_floor_starved']
+            self.assertEqual(set(starved), set(floor))
+            self.assertIn(f'ships/x/good {100 * starved["ships/x/good"]:.1f} % (min {floor["ships/x/good"]:.2f})', text)
             self.assertIn('dry run: nothing written', text)
             with self.assertRaisesRegex(SystemExit, 'texel_floor'):        # single-body atlas path, same option
                 run(['--game', str(game), '--dry-run', '--collapse', 'atlas', '--atlas-size', '64',
@@ -449,13 +453,58 @@ class BatchRun(unittest.TestCase):
             with unittest.mock.patch.object(lod_atlas, 'check', return_value=dict(good, inside=good['vertices'] - 1)), \
                     self.assertRaisesRegex(lod_atlas.AtlasError, 'outside their tile content'):
                 lod_atlas.build(assets, 'b', list(mats), r0, set(), 8, (64, 128))
-            with unittest.mock.patch.object(lod_atlas, 'check', return_value=dict(good, max_map_error_texels=1.5)), \
+            with unittest.mock.patch.object(lod_atlas, 'check', return_value=dict(good, max_map_error_texels=1.5, map_error_faces=1)), \
                     self.assertRaisesRegex(lod_atlas.AtlasError, 'inverse-map error'):
                 lod_atlas.build(assets, 'b', list(mats), r0, set(), 8, (64, 128))
             bad = dict(res)
             bad['info'] = dict(res['info'], faces=[(pi, sf, of, 99, ti) for pi, sf, of, mi, ti in res['info']['faces']])
             with self.assertRaisesRegex(lod_atlas.AtlasError, 'placed in tile'):
                 lod_atlas.check(r0, res['record'], bad, {}, spec + [dict(spec[0])] * 100)
+
+    @unittest.mock.patch.object(lod_overlay, 'running_game', return_value=[])
+    def test_default_aspect_rule_and_sync(self, _running):
+        """--batch without --no-aspect: the settings carry the aspect rule and caps, T_pad = round(T_class * k)
+        drives the pad threshold, the census source is in the tool hash, and --sync rebuilds every body when the
+        aspect settings change."""
+        self.assertIn('lod_batch_census.py', lod_overlay.TOOL_FILES)
+        here = Path(lod_overlay.__file__).resolve().parent
+        h = lod_overlay.hashlib.sha256()
+        for name in ('lod_atlas.py', 'lod_overlay.py', 'bob1.py', 'lod_batch_census.py'):
+            h.update((here / name).read_bytes())
+        self.assertEqual(lod_overlay.tool_sha256(), h.hexdigest())
+        with unittest.mock.patch.object(lod_overlay, 'TOOL_FILES', lod_overlay.TOOL_FILES[:3]):
+            self.assertNotEqual(lod_overlay.tool_sha256(), h.hexdigest())
+        k = census.aspect_k(bob1.lods(atlas_tree_lod0())[0]['points'])[0]
+        t_ship, t_station = round(80 * min(max(k, 1), 1.5)), round(150 * min(max(k, 1), 2.0))
+        self.assertTrue(k > 1 and t_ship != 80)                                  # the fixture is not a cube
+        with tempfile.TemporaryDirectory() as folder:
+            game, out1 = make_game(folder), Path(folder) / 'out1'
+            only = Path(folder) / 'only.txt'
+            only.write_text('ships/x/good\nstations/y/good\n')
+            argv = ['--batch', '--jobs', '1', '--atlas-size', '64', '--atlas-max-size', '128', '--min-texels', '0',
+                    '--only', str(only), '--game', str(game)]
+            code, text = run(argv + ['--out', str(out1)])
+            marker = json.loads((out1 / 'addon/02.x3m-lod.json').read_text())
+            self.assertEqual(marker['batch']['settings']['rule'], census.RULE)
+            self.assertEqual((census.RULE['aspect'], census.RULE['aspect_ship'], census.RULE['aspect_station']),
+                             (True, 1.5, 2.0))
+            record = json.loads((out1 / 'x3m-lod-batch.json').read_text())
+            by = {b['name']: b for b in record['bodies']}
+            self.assertEqual([(by[n]['t_class'], by[n]['threshold_aspect'], by[n]['t_pad']) for n in
+                              ('ships/x/good', 'stations/y/good')], [(80, t_ship, t_ship), (150, t_station, t_station)])
+            self.assertEqual(by['ships/x/good']['aspect_k'], round(k, 4))
+            pads = {b['name']: b['pad_threshold'] for b in marker['bodies']}
+            self.assertEqual(pads, {'ships/x/good': t_ship, 'stations/y/good': t_station})
+            self.assertIn('aspect factor K_max ships 1.5 stations 2 (2 bodies with T_pad != T_class)', text)
+            for name in ('02.cat', '02.dat', '02.x3m-lod.json'):
+                shutil.copy(out1 / 'addon' / name, game / 'addon' / name)
+            code, text = run(argv + ['--sync', '--out', str(Path(folder) / 'out2')])
+            self.assertIn('built 0 + reused 2 = 2', text)
+            code, text = run(argv + ['--sync', '--aspect-cap', '1.2,1.8', '--out', str(Path(folder) / 'out3')])
+            self.assertIn('built 2 + reused 0 = 2', text)
+            self.assertIn('was built with different settings', text)
+            code, text = run(argv + ['--sync', '--no-aspect', '--out', str(Path(folder) / 'out4')])
+            self.assertIn('built 2 + reused 0 = 2', text)
 
     def test_mods_warning_and_single_mode_markers(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -480,6 +529,146 @@ class BatchRun(unittest.TestCase):
                 slot=1, bodies=[], overlay_sha256={'cat': h[str(game / 'addon/01.cat')], 'dat': h[str(game / 'addon/01.dat')]})))
             with self.assertRaisesRegex(SystemExit, 'already installed'):
                 run(['--game', str(game), '--dry-run', '--collapse', 'two', 'ships/x/good=8@0'])
+
+
+def texel_tree(g):
+    """Tile A (a_diff): a unit face plus a face of edge g whose u runs 0..1000 (a saturated-UV outlier);
+    tile B (b_diff): a unit face. A far unused point sets radius 200, so at px 80 each unit face needs
+    4 screen pixels per UV period (16 source texels: ratio 4 at scale 1)."""
+    q = lambda x: int(round(x * 65536))
+    pt = lambda x, y, z, u, v: (0x1b, x, y, z, q(u), q(v), 0, 0, 65536, 1)
+    pts = [pt(0, 0, 0, 0, 0), pt(10, 0, 0, 1, 0), pt(0, 10, 0, 0, 1),
+           pt(0, 0, 1, 0, 0), pt(g, 0, 1, 1000, 0), pt(0, g, 1, 0, 1),
+           pt(0, 0, 2, 0, 0), pt(10, 0, 2, 1, 0), pt(0, 10, 2, 0, 1), pt(200, 0, 0, 0, 0)]
+    mats = bob1.materials(atlas_tree_lod0())[:2]
+    part = {'flags': 1, 'groups': [{'material': 0, 'faces': [(0, 1, 2, 1), (3, 4, 5, 1)]},
+                                   {'material': 1, 'faces': [(6, 7, 8, 1)]}]}
+    lod0 = {'value': 100, 'flags': 0, 'points': pts, 'parts': [part]}
+    coarse = {'value': 3, 'flags': 0, 'points': pts, 'parts': [copy.deepcopy(part)]}
+    return {'sections': [('MAT6', copy.deepcopy(mats)), ('BODY', [lod0, coarse])]}
+
+
+class TexelFloorShare(unittest.TestCase):
+    def test_weighted_rule(self):
+        rows = [dict(name='big', texels_per_px=3.0, share=0.85, clamped_share=0.0, clamped_faces=0),
+                dict(name='small', texels_per_px=0.1, share=0.08, clamped_share=0.0, clamped_faces=0),
+                dict(name='garbage', texels_per_px=2.0, share=0.07, clamped_share=0.01, clamped_faces=1)]
+        x = lod_atlas.texel_floor(rows, 0.5, 0.10)                  # starved 0.08 + 0.01 <= 0.10: accepted
+        self.assertFalse(x['refuse'])
+        self.assertAlmostEqual(x['starved_share'], 0.09)
+        self.assertEqual([(e['tile'], e['starved_share']) for e in x['texel_clamped']], [('small', 0.08), ('garbage', 0.01)])
+        self.assertEqual(x['weighted_texels_per_px'], 2.0)          # ratio at the 0.10 area quantile
+        rows[1]['share'], rows[0]['share'] = 0.20, 0.73             # a starved large tile still refuses
+        x = lod_atlas.texel_floor(rows, 0.5, 0.10)
+        self.assertTrue(x['refuse'])
+        self.assertEqual(x['weighted_texels_per_px'], 0.1)          # refuse <=> weighted < --min-texels
+        self.assertTrue(lod_atlas.texel_floor(rows[:1] + rows[2:], 0.5, 0.0)['refuse'])   # share 0: any starved part
+        self.assertFalse(lod_atlas.texel_floor(rows, 0, 0.10)['refuse'])                  # --min-texels 0 disables
+
+    def game(self, folder):
+        game = Path(folder) / 'game'
+        write_catalogue(game / '01.cat', atlas_textures())
+        write_catalogue(game / '02.cat', [('objects/ships/x/small.pbb', packed(texel_tree(1))),
+                                          ('objects/ships/x/large.pbb', packed(texel_tree(10)))])
+        return game
+
+    def test_clamped_layout(self):
+        with tempfile.TemporaryDirectory() as folder:
+            game = self.game(folder)
+            assets, _ = lod_overlay.original_assets(game)
+            tree = bob1.parse(bob1.serialise(texel_tree(1)))
+            mats, r0 = bob1.materials(tree), bob1.lods(tree)[0]
+            lay = lod_atlas.plan_layout(r0, mats, set(), lod_atlas.Textures(assets), 80, (64, 128))
+            # uniform: A spans 1000 periods, B is squeezed below 2; clamped at 64: the outlier leaves A's span,
+            # both tiles capped at 2 texels per pixel
+            self.assertEqual([(n, c) for (n, _, _), c in zip(lay['tried'], lay['tried_clamped'])], [(64, False), (64, True)])
+            self.assertLess(lay['tried'][0][2], 2)
+            self.assertTrue(lay['clamped'] and lay['ratio_ok'])
+            self.assertEqual((lay['size'], [t['span'] for t in lay['tiles']]), (64, [(1.0, 1.0), (1.0, 1.0)]))
+            self.assertEqual([(t['clamped_faces'], t['capped']) for t in lay['tiles']], [(1, True), (0, True)])
+            self.assertAlmostEqual(lay['tiles'][0]['clamped_share'], 0.5 / 100.5)
+            self.assertEqual((lay['face_keys'][0, 0, 0], lay['face_keys'][0, 0, 1]), ((0, 0, 0), (0, 0, 0, 1)))
+            res = lod_atlas.build(assets, 'b', list(mats), r0, set(), 80, (64, 128))
+            c = res['check']                                          # clamped UVs inside the tile, not inverse-mapped
+            self.assertEqual((c['inside'], c['vertices'], c['span_clamped_faces']), (9, 9, 1))
+            self.assertEqual((c['map_error_faces'], c['max_map_error_texels'] < 1), (0, True))
+            bad = dict(res, layout=dict(res['layout'], tiles=[dict(t, lo=[t['lo'][0] + 0.5, t['lo'][1]])
+                                                              for t in res['layout']['tiles']]))
+            self.assertEqual(lod_atlas.check(r0, res['record'], bad, {}, mats)['map_error_faces'], 2)   # half a period off
+
+    def test_check_on_downscaled_tile(self):
+        """The inverse-map gate on synthetic tiles (no baking): A holds 1/300 of its source density (1024-texel
+        source over 300 periods in 1024 atlas texels, 3.41 per period; 256 source texels per atlas texel in v),
+        B 0.56 atlas texels per period. The 16.16 rounding of the atlas UV is over a source texel on A but far
+        below 0.1 atlas texel: it passes. Swapped tiles, V flipped in A, half a period off in A and half a
+        period off in B (0.28 atlas texels) fail."""
+        q = lambda x: int(round(x * 65536))
+        n = 1024
+        tiles = [dict(mats=[0], origin=(8, 8), content=(1024, 4), lo=[0.0, 0.0], span=(300.0, 1.0), base=(1024, 1024)),
+                 dict(mats=[1], origin=(8, 40), content=(56, 4), lo=[0.0, 0.0], span=(100.0, 1.0), base=(1024, 1024))]
+        src, out, faces = [], [], []
+        for k in range(24):
+            ti, i = k % 2, len(src)
+            u0, v0 = 5 * k + (3.137 * k % 1) + 0.0123, 0.05 + (0.0171 * k % 0.2)
+            uvs = [(u0 + du, v0 + dv) for du, dv in ((0, 0), (0.31, 0.07), (0.05, 0.43))]
+            su, sv = lod_atlas.face_shift(uvs)
+            for j, (u, v) in enumerate(uvs):
+                p = (0x1b, k, j, 0, q(u), q(v), 0, 0, 65536, 1)
+                src.append(p)
+                au, av = lod_atlas.atlas_uv(tiles[ti], n, *lod_atlas.point_uv(p), su, sv)
+                out.append(lod_atlas.with_uv(p, int(round(au * 65536)), int(round(av * 65536))))
+            faces.append((0, (i, i + 1, i + 2, 1), (i, i + 1, i + 2, 1), ti, ti))
+
+        def gate(tl=tiles, pts=out):
+            res = dict(layout=dict(size=n, gutter=8, tiles=tl), textures=None, info=dict(faces=faces, span_clamped=set()))
+            return lod_atlas.check({'points': src}, {'points': pts}, res, {}, [])
+
+        check = lambda tl=tiles, pts=out: (gate(tl, pts)['map_error_faces'],)
+        c = gate()
+        self.assertEqual(c['map_error_faces'], 0)                              # rounding only: passes
+        self.assertGreater(c['max_map_error_texels'], lod_atlas.CHECK_MAP_TEXELS)   # the old gate would refuse
+        self.assertLess(c['max_map_error_atlas_texels'], 0.01)
+        swapped = [dict(tiles[0], origin=tiles[1]['origin']), dict(tiles[1], origin=tiles[0]['origin'])]
+        self.assertEqual(check(swapped)[0], 24)
+        cy, ch = tiles[0]['origin'][1], tiles[0]['content'][1]
+        flip = list(out)
+        for f in faces:
+            if f[3] == 0:
+                for j in f[2][:3]:
+                    u, v = lod_atlas.point_uv(out[j])
+                    flip[j] = lod_atlas.with_uv(out[j], q(u), q((2 * cy + ch) / n - v))
+        self.assertEqual(check(pts=flip)[0], 12)                               # V flipped in A
+        self.assertEqual(check([dict(tiles[0], lo=[0.5, 0.0]), tiles[1]])[0], 12)   # half a period off in A
+        self.assertEqual(check([tiles[0], dict(tiles[1], lo=[0.5, 0.0])])[0], 12)   # 0.28 atlas texels in B
+
+    def test_single_and_batch(self):
+        with tempfile.TemporaryDirectory() as folder:
+            game, out = self.game(folder), Path(folder) / 'out'
+            single = ['--game', str(game), '--dry-run', '--collapse', 'atlas', '--atlas-size', '64', '--screen-width',
+                      '1280']
+            text = run(single + ['ships/x/small=80@0'])[1]
+            self.assertIn('atlas texel_clamped: a_diff.tga ratio', text)
+            self.assertIn('span-clamped faces 1', text)
+            with self.assertRaisesRegex(SystemExit, r'texel_floor: .* cover 33\.3 % of the atlased surface'):
+                run(single + ['ships/x/large=80@0'])
+            self.assertIn('target addon/01.cat', run(single + ['--texel-floor-share', '0.5', 'ships/x/large=80@0'])[1])
+            code, text = run(['--batch', '--jobs', '1', '--no-aspect', '--atlas-size', '64', '--atlas-max-size', '128',
+                              '--screen-width', '1280', '--dry-run', '--game', str(game), '--out', str(out)])
+            record = json.loads((out / 'x3m-lod-batch.json').read_text())
+            by = {b['name']: b for b in record['bodies']}
+            self.assertEqual((by['ships/x/small']['eligible'], by['ships/x/large']['refuse']), (True, ['texel_floor']))
+            self.assertEqual(record['ratio']['texel_clamped'], ['ships/x/small'])
+            self.assertEqual(record['ratio']['texel_floor_share'], 0.1)
+            small = by['ships/x/small']
+            self.assertEqual([e['tile'] for e in small['texel']['texel_clamped']], ['a_diff.tga'])
+            self.assertEqual((small['radius_body'], small['thresholds'], small['t_class'], small['threshold_aspect']),
+                             (200.0, [3], 80, 80))                            # --no-aspect: T_pad = T_class
+            self.assertNotIn('switch_km', small)                              # no flown radius
+            self.assertTrue(small['estimate']['clamped'] and 'tiles' not in small['estimate'])
+            self.assertIn('ships/x/large k=7.28 T_class=80 T=80 r_body=200 r_world=- D=- km thr=3 px=80.0 size=64 min=2.',
+                          text)
+            self.assertIn('eligible with texel_clamped tiles (starved share <= 0.1) 1 (ships/x/small)', text)
+            self.assertIn('atlas texel_clamped: a_diff.tga', (out / 'x3m-lod-batch-bodies.txt').read_text())
 
 
 if __name__ == '__main__':

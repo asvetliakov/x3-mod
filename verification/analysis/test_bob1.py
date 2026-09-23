@@ -1170,7 +1170,9 @@ class LodAtlas(unittest.TestCase):
             coarse, mats = bob1.lods(tree)[1], bob1.materials(tree)
             lay = lod_atlas.plan_layout(coarse, mats, set(), lod_atlas.Textures(assets), 8, (32, 64, 128),
                                         gutter=4)                           # 32 fits only below scale 1
-            self.assertEqual([(n, s == 1.0) for n, s, _ in lay['tried']], [(32, False), (64, True)])
+            self.assertEqual([(n, s == 1.0, c) for (n, s, _), c in zip(lay['tried'], lay['tried_clamped'])],
+                             [(32, False, False), (32, False, True), (64, True, False)])   # clamped tried at 32 too
+            self.assertFalse(lay['clamped'])
             self.assertEqual((lay['size'], [t['mats'] for t in lay['tiles']]), (64, [[0], [1]]))
             self.assertEqual([t['content'] for t in lay['tiles']], [(32, 16), (20, 16)])   # 16 x (2, 1), 16 x (1.2, 1)
             self.assertTrue(lay['ratio_ok'] and lay['min_ratio'] >= 2)
