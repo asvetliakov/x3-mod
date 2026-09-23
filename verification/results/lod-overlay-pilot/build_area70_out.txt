@@ -1,0 +1,48 @@
+source bodies read without the overlay catalogue(s) ['addon/05.cat']
+ships/argon/argon_TL: 02.cat:objects/ships/argon/argon_TL.pbb
+  ladder before: thresholds ['-', 30, 15, 5] draws [37, 31, 28, 23] record bytes [2158116, 1002124, 382474, 95860]
+  ladder after:  thresholds ['-', 30, 80] draws [37, 9, 9] record bytes [2158116, 95692, 95692]
+  compact: new LOD1 threshold=30 + pad copy LOD2 threshold=80 (original LOD1..3 dropped) flags=0x0 points=1313 parts=1 groups/part [23] -> [9] draws 23 -> 9 faces=553 collapse=glow-area groups=['opaque:mat17:395f', 'light:mat14:40f', 'light:mat22:26f', 'light:mat23:27f', 'light:mat35:44f', 'glow:mat37:3f', 'glow:mat38:9f', 'glow:mat40:6f', 'glow:mat41:3f'] part_flags=['0x30000001']
+  main-view drawable at Very High (f=1): before [0, 1, 2] after [0, 1] (new record drawable: True)
+        low drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<80:LOD2 s>=80:LOD0
+     medium drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<80:LOD2 s>=80:LOD0
+       high drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<80:LOD2 s>=80:LOD0
+  very-high drawable [0, 1] by s: before s<5:LOD2 5<=s<15:LOD1 s>=15:LOD0 | after s<80:LOD1 s>=80:LOD0
+  glow-area 70 %: light-map materials [14, 22, 23, 35] cover 0.764 of the real-light-map area outside the glow set (0.213 of the record); glow [37, 38, 40, 41]
+  decoded bytes 3710571 -> 2421497, stored 926134 (gzip), overlay sha256 33b1e0b5d19d9b16
+ships/argon/argon_M2: 02.cat:objects/ships/argon/argon_M2.pbb
+  ladder before: thresholds ['-', 30, 15, 5] draws [38, 32, 30, 25] record bytes [2837656, 1390570, 517638, 135564]
+  ladder after:  thresholds ['-', 30, 80] draws [38, 8, 8] record bytes [2837656, 135360, 135360]
+  compact: new LOD1 threshold=30 + pad copy LOD2 threshold=80 (original LOD1..3 dropped) flags=0x0 points=1865 parts=1 groups/part [25] -> [8] draws 25 -> 8 faces=756 collapse=glow-area groups=['opaque:mat17:575f', 'light:mat14:67f', 'light:mat22:34f', 'light:mat35:62f', 'glow:mat37:3f', 'glow:mat38:6f', 'glow:mat40:6f', 'glow:mat41:3f'] part_flags=['0x30000001']
+  main-view drawable at Very High (f=1): before [0, 1, 2] after [0, 1] (new record drawable: True)
+        low drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<80:LOD2 s>=80:LOD0
+     medium drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<80:LOD2 s>=80:LOD0
+       high drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<80:LOD2 s>=80:LOD0
+  very-high drawable [0, 1] by s: before s<5:LOD2 5<=s<15:LOD1 s>=15:LOD0 | after s<80:LOD1 s>=80:LOD0
+  glow-area 70 %: light-map materials [14, 22, 35] cover 0.725 of the real-light-map area outside the glow set (0.203 of the record); glow [37, 38, 40, 41]
+  decoded bytes 4953343 -> 3180291, stored 1251142 (gzip), overlay sha256 62f1a148d5c54697
+ships/argon/argon_M1: 02.cat:objects/ships/argon/argon_M1.pbb
+  ladder before: thresholds ['-', 30, 15, 5] draws [33, 32, 29, 24] record bytes [2459860, 1177922, 439832, 115438]
+  ladder after:  thresholds ['-', 30, 80] draws [33, 9, 9] record bytes [2459860, 115258, 115258]
+  compact: new LOD1 threshold=30 + pad copy LOD2 threshold=80 (original LOD1..3 dropped) flags=0x0 points=1584 parts=1 groups/part [24] -> [9] draws 24 -> 9 faces=658 collapse=glow-area groups=['opaque:mat11:478f', 'light:mat8:62f', 'light:mat16:23f', 'light:mat17:21f', 'light:mat25:56f', 'glow:mat26:3f', 'glow:mat27:9f', 'glow:mat29:4f', 'glow:mat30:2f'] part_flags=['0x30000001']
+  main-view drawable at Very High (f=1): before [0, 1, 2] after [0, 1] (new record drawable: True)
+        low drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<80:LOD2 s>=80:LOD0
+     medium drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<80:LOD2 s>=80:LOD0
+       high drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<80:LOD2 s>=80:LOD0
+  very-high drawable [0, 1] by s: before s<5:LOD2 5<=s<15:LOD1 s>=15:LOD0 | after s<80:LOD1 s>=80:LOD0
+  glow-area 70 %: light-map materials [8, 16, 17, 25] cover 0.801 of the real-light-map area outside the glow set (0.218 of the record); glow [26, 27, 29, 30]
+  decoded bytes 4265101 -> 2762425, stored 999948 (gzip), overlay sha256 946e608e75c54126
+Stations/others/military_outpost_middleb: 02.cat:objects/stations/others/military_outpost_middleb.pbb
+  ladder before: thresholds ['-', 30, 15] draws [34, 33, 30] record bytes [9487692, 4726884, 1304574]
+  ladder after:  thresholds ['-', 30, 150] draws [34, 10, 10] record bytes [9487692, 1304334, 1304334]
+  compact: new LOD1 threshold=30 + pad copy LOD2 threshold=150 (original LOD1..2 dropped) flags=0x40 points=17468 parts=1 groups/part [30] -> [10] draws 30 -> 10 faces=9453 collapse=glow-area groups=['opaque:mat51~17:7192f', 'light:mat5:378f', 'light:mat6:372f', 'light:mat9:124f', 'light:mat21:220f', 'light:mat23:517f', 'light:mat30:470f', 'light:mat36:83f', 'glow:mat41:52f', 'alpha:mat11:45f'] part_flags=['0x30000001']
+  main-view drawable at Very High (f=1): before [0, 1] after [0, 1] (new record drawable: True)
+        low drawable [0, 2] by s: before s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<150:LOD2 s>=150:LOD0
+     medium drawable [0, 2] by s: before s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<150:LOD2 s>=150:LOD0
+       high drawable [0, 2] by s: before s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<150:LOD2 s>=150:LOD0
+  very-high drawable [0, 1] by s: before s<15:LOD1 s>=15:LOD0 | after s<150:LOD1 s>=150:LOD0
+  glow-area 70 %: light-map materials [5, 6, 9, 21, 23, 30, 36] cover 0.716 of the real-light-map area outside the glow set (0.349 of the record); glow [41]
+  synthesized mat51 = mat17 with the area-weighted g_Mat* mean over [7, 8, 13, 14, 15, 16, 17, 18, 19, 20, 22, 24, 25, 26, 27, 32, 35, 39, 43, 46, 47]: g_MatSpecularStrength=2.4->2.812(mean 2.812) g_MatSpecularPower=5->5.673(mean 5.673) g_MatReflectionStrength=0.9->0.9673(mean 0.9673) g_MatDiffuseStrength=0.4->0.4986(mean 0.4986) g_MatMinFresnel=0->6.104e-05(mean 5.604e-05)
+  decoded bytes 15629883 -> 12209255, stored 4612755 (gzip), overlay sha256 c7902ba9dc813f9d
+target addon/05.cat + .dat: 4 member(s), dat bytes 7789979
+wrote <worktree>/build-overlay/addon/05.cat, <worktree>/build-overlay/addon/05.dat, <worktree>/build-overlay/addon/05.x3m-lod.json; 34 original archive files unchanged

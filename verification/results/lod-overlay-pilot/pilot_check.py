@@ -6,7 +6,8 @@ A. The documented selection rule (bob1.final_index, Very High) against every
 B. The produced overlay: per member, parse + serialise byte-identical, original
    records identical to the installed source (compact: 3 records in all, record 0
    equal as parsed and its bytes, located in the decoded source, equal at the same
-   offset of the decoded overlay; pad/append-pad: every original record), C (index
+   offset of the decoded overlay plus the bytes of any appended materials;
+   pad/append-pad: every original record), C (index
    new_lod of the manifest) equal to the source's last record
    in points, record flags, part flags, part ints and per-part face/7-int multisets
    (only the grouping may differ), C's groups (kind, material, faces), pad a copy
@@ -16,6 +17,13 @@ B. The produced overlay: per member, parse + serialise byte-identical, original
    alpha-blends (lod_overlay.alpha_materials), else opaque. Checks for --collapse
    glow: one opaque group, at most one alpha group, and exactly one group per glow
    material used by the source's last record (recomputed with glow_materials).
+   glow-area P: kind light = material in the manifest's area_kept list (recomputed
+   with light_area_materials); the glow and light materials each keep one group.
+   Material table: the source's materials are a prefix of the overlay's; every
+   appended (synthesized) material has index = position and equals its dominant
+   except g_Mat* FLOAT parameters; every group index of every record is inside the
+   table; the synthesized set and C recomputed from the source (synth_materials,
+   coarse_record) equal the overlay's. Alpha kinds use the overlay's table.
    Also: the highest main-view final index over all View Distance settings (the
    engine sets node+0x130 |= 0x100000 at >= 3) and whether the last record (the
    collision source) equals the source's last record in geometry.
@@ -90,7 +98,8 @@ def overlay(root):
     body_of = {b['member']: b for b in marker['bodies']}
     assets, skipped = lod_overlay.original_assets(bob1.DEFAULT_GAME)
     print(f'B collapse {marker.get("collapse")} glow_luma {marker.get("glow_luma")} glow_share'
-          f' {marker.get("glow_share")}; sources read without {skipped}')
+          f' {marker.get("glow_share")} area_percent {marker.get("area_percent")} synth_material'
+          f' {marker.get("synth_material")}; sources read without {skipped}')
     for e in read_catalogue(cat):
         data = unpack(bytes(v ^ 0x33 for v in raw[e['offset']:e['offset'] + e['size']]))
         tree = bob1.parse(data)
@@ -100,26 +109,61 @@ def overlay(root):
         source = bob1.lods(src_tree)
         n = len(source)
         mats = bob1.materials(src_tree)
-        alpha = lod_overlay.alpha_materials(mats)
+        omats = bob1.materials(tree)
+        src_alpha = lod_overlay.alpha_materials(mats)
+        alpha = lod_overlay.alpha_materials(omats)
         glow = glow_of[e['path']]
+        rec = body_of[e['path']]
+        collapse = rec.get('collapse', marker.get('collapse'))
         used = sorted({g['material'] for p in source[-1]['parts'] for g in p['groups']})
         glow_ok = glow == lod_overlay.glow_materials(assets, mats, used, marker['glow_luma'], marker['glow_share'])
-        kind = lambda m: 'glow' if m in glow else 'alpha' if m in alpha else 'opaque'
-        rec = body_of[e['path']]
+        area_kept = set(rec.get('area_kept', ()))
+        area_ok = (area_kept == lod_overlay.light_area_materials(assets, mats, source[-1], glow,
+                                                                 marker['area_percent'])[0]
+                   if collapse == 'glow-area' else not area_kept)
+        kept = glow | area_kept
+        kind = lambda m: 'glow' if m in glow else 'light' if m in area_kept else 'alpha' if m in alpha else 'opaque'
+        n_src = len(mats)
+        appended = omats[n_src:]
+        light_only = lambda a, b: ([p for p in a.get('params', ()) if not lod_overlay.is_light_param(p[0], p[1])]
+                                   == [p for p in b.get('params', ()) if not lod_overlay.is_light_param(p[0], p[1])])
+        syn_of = {s['index']: s['dominant'] for s in rec.get('synth', ())}
+        table_ok = (omats[:n_src] == mats and sorted(syn_of) == list(range(n_src, len(omats)))
+                    and all(m.get('index') == i and light_only(m, mats[syn_of[i]])
+                            and {k: v for k, v in m.items() if k != 'params' and k != 'index'}
+                            == {k: v for k, v in mats[syn_of[i]].items() if k != 'params' and k != 'index'}
+                            for i, m in enumerate(appended, n_src)))
+        indices_ok = all(g['material'] < len(omats) for l in ladder for p in l['parts'] for g in p['groups'])
+        recomputed = list(mats)
+        remap, _ = (lod_overlay.synth_materials(recomputed, source[-1], src_alpha, collapse, kept)
+                    if marker.get('synth_material') else ({}, []))
+        synth_ok = recomputed == omats
+        c_recomputed = lod_overlay.coarse_record(source[-1], None, src_alpha, collapse, kept, remap)
         placement, c, pad = rec.get('placement', 'pad'), rec['new_lod'], rec['pad_lod']
         if placement == 'compact':
             r0 = _record(source[0])                     # source round-trips, so these are its record 0 bytes
             at = src_data.find(r0)
-            originals = len(ladder) == 3 and ladder[0] == source[0] and at > 0 and data[at:at + len(r0)] == r0
+            w = bob1.Writer()                           # appended materials shift record 0 by their bytes
+            ver = next(bob1.MATVER[t] for t, _ in tree['sections'] if t in bob1.MATVER) if appended else 6
+            for m in appended:
+                bob1.write_material(w, m, ver)
+            shift = len(w.b)
+            originals = (len(ladder) == 3 and ladder[0] == source[0] and at > 0
+                         and data[at + shift:at + shift + len(r0)] == r0)
         else:
             originals = ladder[:n] == source
         shape_ok = True
         for cp, sp in zip(ladder[c]['parts'], source[-1]['parts']):
             kinds = [kind(g['material']) for g in cp['groups']]
-            glow_groups = sorted(g['material'] for g in cp['groups'] if g['material'] in glow)
+            kept_groups = sorted(g['material'] for g in cp['groups'] if g['material'] in kept)
             shape_ok &= (kinds.count('opaque') <= 1 and kinds.count('alpha') <= 1
-                         and glow_groups == sorted({g['material'] for g in sp['groups']} & glow))
+                         and kept_groups == sorted({g['material'] for g in sp['groups']} & kept))
         c_groups = [(kind(g['material']), g['material'], len(g['faces'])) for p in ladder[c]['parts'] for g in p['groups']]
+        c_recomputed['value'] = ladder[c]['value']
+        c_ok = c_recomputed['parts'] == ladder[c]['parts']
+        synth_text = ' '.join(f'mat{s["index"]}~{s["dominant"]}:' + ','.join(
+            f'{q["name"]}={q["dominant"] / 65536:.4g}->{q["written"] / 65536:.4g}' for q in s['params']
+            if q['dominant'] != q['written']) for s in rec.get('synth', ())) or 'none'
         th = [l['value'] for l in ladder[1:]]
         copy = (pad is not None and ladder[c]['parts'] == ladder[pad]['parts']
                 and ladder[c]['points'] == ladder[pad]['points'] and ladder[c]['flags'] == ladder[pad]['flags'])
@@ -132,7 +176,9 @@ def overlay(root):
               f' pad_is_copy={copy} C_equals_source_last={same_geometry(ladder[c], source[-1])}'
               f' last_equals_source_last={same_geometry(ladder[-1], source[-1])}'
               f' max_main_view_final_index={max_final}'
-              f' glow_recomputed_equal={glow_ok} C_shape_ok={shape_ok}'
+              f' glow_recomputed_equal={glow_ok} area_kept_recomputed_equal={area_ok} C_shape_ok={shape_ok}'
+              f' C_recomputed_equal={c_ok} materials {n_src}->{len(omats)} table_ok={table_ok}'
+              f' indices_in_table={indices_ok} synth_recomputed_equal={synth_ok} synth {synth_text}'
               f' C_groups {c_groups}'
               f' very-high {bob1.format_bands(bob1.selection_bands(th))}'
               f' high {bob1.format_bands(bob1.selection_bands(th, "high"))}')

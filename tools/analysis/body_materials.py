@@ -14,6 +14,13 @@ grouping rules give the draw count a collapsed record would have:
   d+b  rule d with the kept light-map groups further merged by (diffuse, light map)
   e  keep glow light maps only (= lod_overlay --collapse glow): like d, but only materials
      whose light map is mostly bright keep their own material
+  fP keep the glow set (e) plus the smallest set of the other real-light-map materials,
+     ranked by face area in this record (ties: lower index), whose area covers P % of their
+     total area (= lod_overlay --collapse glow-area P); P from --area-percent (50,70,90,100)
+Per rule the report also gives the diffuse substitution: the share of the record's area
+that keeps its own material, is the merge target itself, or is merged onto a target whose
+diffuse texture has the same file stem or a different one; and for the rule f candidates
+the ranked list with each light map's 99th-percentile luma.
 Draws are counted per part (a part's groups are the subsets; parts are never merged);
 empty groups count like any other, as coarse_record keeps them.
 Light-map status: placeholder = NULL/empty (the engine binds its 32x32 placeholder,
@@ -25,7 +32,7 @@ Bodies are read from the shipped catalogues: any catalogue with a lod_overlay ma
 (<slot>.x3m-lod.json beside it) is skipped, so the original resolves with an overlay
 installed. Read-only; prints numbers and names only.
 
-  python3 tools/analysis/body_materials.py ships/argon/argon_TL [--lod N] [--game DIR]
+  python3 tools/analysis/body_materials.py ships/argon/argon_TL [--lod N] [--game DIR] [--area-percent 50,70,90,100]
 """
 import argparse
 import math
@@ -190,18 +197,64 @@ def face_area(points, face):
 
 # --- census and rules ---------------------------------------------------------------------
 
-def census(tree, lod_index=None, assets=None):
-    """dict(lod, value, draws, materials={mi: row}, rules={...})."""
+AREA_PERCENTS = (50, 70, 90, 100)
+
+
+def area_select(areas, percent):
+    """Smallest area-ranked prefix of {mi: area} whose area reaches percent % of the total:
+    (kept list in rank order, covered area, total area). Ties rank the lower index first."""
+    total = sum(areas.values())
+    need = total * percent / 100.0 - 1e-9 * total
+    kept, covered = [], 0.0
+    for mi in sorted(areas, key=lambda m: (-areas[m], m)):
+        if covered >= need:
+            break
+        kept.append(mi); covered += areas[mi]
+    return kept, covered, total
+
+
+def diffuse_stem(material):
+    s = slots(material)
+    name = s.get('diffuse', s.get('texture'))
+    return PurePosixPath(name.decode('latin1').replace('\\', '/')).stem.lower() if name else None
+
+
+def substitution(rec, mats, alpha, kept, group_area):
+    """Area of the record by fate under a keep-set rule (lod_overlay.collapse_classes 'glow'):
+    own (kept material), target (the merge target's own faces), same / different (merged onto a
+    target with the same / another diffuse stem); pairs = {(target stem, own stem): area}."""
+    get = lambda mi: mats[mi] if 0 <= mi < len(mats) else {}
+    out = dict(own=0.0, target=0.0, same=0.0, different=0.0, pairs={})
+    for part in rec['parts']:
+        for kind, cls in lod_overlay.collapse_classes(part['groups'], alpha, 'glow', kept):
+            d = lod_overlay.dominant_material(cls)
+            for g in cls:
+                a = group_area[id(g)]
+                if kind == 'kept':
+                    out['own'] += a
+                elif g['material'] == d:
+                    out['target'] += a
+                else:
+                    ds, gs = diffuse_stem(get(d)), diffuse_stem(get(g['material']))
+                    out['same' if ds == gs else 'different'] += a
+                    if ds != gs:
+                        out['pairs'][ds, gs] = out['pairs'].get((ds, gs), 0.0) + a
+    return out
+
+
+def census(tree, lod_index=None, assets=None, percents=AREA_PERCENTS):
+    """dict(lod, value, draws, materials={mi: row}, rules={...}, area={P: ...}, subst={rule: ...})."""
     ladder = bob1.lods(tree)
     k = len(ladder) - 1 if lod_index is None else lod_index
     rec = ladder[k]
     mats = bob1.materials(tree)
     alpha = lod_overlay.alpha_materials(mats)
     cache = {}
-    rows, total = OrderedDict(), 0.0
+    rows, total, group_area = OrderedDict(), 0.0, {}
     for part in rec['parts']:
         for g in part['groups']:
             area = sum(face_area(rec['points'], f) for f in g['faces'])
+            group_area[id(g)] = area
             total += area
             r = rows.setdefault(g['material'], dict(groups=0, faces=0, area=0.0))
             r['groups'] += 1; r['faces'] += len(g['faces']); r['area'] += area
@@ -221,10 +274,22 @@ def census(tree, lod_index=None, assets=None):
                  light_info=linfo, share=r['area'] / total if total else 0.0, glow_name=glow_name,
                  glow_bright=glow_bright)
     real = {mi for mi, r in rows.items() if r['light'] == 'real'}
+    glow = {mi for mi, r in rows.items() if r['glow_bright']}
+    candidates = {mi: rows[mi]['area'] for mi in real - glow}
+    keeps = {'c': set(), 'e': glow, 'd': real}
+    area = OrderedDict()
+    for p in percents:
+        kept, covered, cand_total = area_select(candidates, p)
+        area[p] = dict(kept=kept, covered=covered, total=cand_total)
+        keeps[f'f{p:g}'] = glow | set(kept)
+    out_rules = dict(rules(rec, mats, alpha, real), e=rules(rec, mats, alpha, glow)['d'])
+    for key, kept in keeps.items():
+        if key.startswith('f'):
+            out_rules[key] = rules(rec, mats, alpha, kept)['d']
     return dict(lod=k, lods=len(ladder), value=rec['value'], total_area=total, materials=rows,
-                draws=sum(len(p['groups']) for p in rec['parts']), real_light=real,
-                rules=dict(rules(rec, mats, alpha, real),
-                           e=rules(rec, mats, alpha, {mi for mi, r in rows.items() if r['glow_bright']})['d']))
+                draws=sum(len(p['groups']) for p in rec['parts']), real_light=real, glow=glow,
+                rules=out_rules, area=area, keeps=keeps,
+                subst={key: substitution(rec, mats, alpha, kept, group_area) for key, kept in keeps.items()})
 
 
 def _key_full(m):
@@ -310,6 +375,46 @@ def format_census(c, origin='', out=None):
         p(f'  {k}: {label}')
     p(f'  diagnostics: b merges mixing alpha and opaque {r["b_mixes_alpha"]};'
       f' a merges whose non-texture params differ {r["a_param_diffs"]}')
+    format_area_rule(c, p)
+
+
+def _p99(r):
+    li = r['light_info'] or {}
+    return f'{li["p99"]:.2f}' if 'p99' in li else '-'
+
+
+def format_area_rule(c, p):
+    rl, area = c['materials'], c['area']
+    if not area:
+        return
+    cand_total = next(iter(area.values()))['total']
+    ranked = sorted((mi for mi in c['real_light'] - c['glow']), key=lambda m: (-rl[m]['area'], m))
+    p(f'rule f candidates (real light map, not glow): {len(ranked)} materials, record share'
+      f' {cand_total / c["total_area"] if c["total_area"] else 0:.3f}; glow set kept always:'
+      + (' '.join(f'mat{mi}(share {rl[mi]["share"]:.3f} p99 {_p99(rl[mi])})' for mi in sorted(c['glow'])) or ' none'))
+    p('  rank  mat  record_share  lm_share  cum  p99  luma  bright  diffuse')
+    cum = 0.0
+    for i, mi in enumerate(ranked, 1):
+        r, li = rl[mi], rl[mi]['light_info'] or {}
+        cum += r['area']
+        p(f'  {i:4d}  {mi:3d}  {r["share"]:.3f}  {r["area"] / cand_total if cand_total else 0:.3f}'
+          f'  {cum / cand_total if cand_total else 0:.3f}  {_p99(r)}  {li.get("luma", float("nan")):.2f}'
+          f'  {li.get("bright", float("nan")):.2f}  {short(r["slots"].get("diffuse", r["slots"].get("texture")))}')
+    for pct, a in area.items():
+        p(f'  f{pct:g}: draws={c["rules"][f"f{pct:g}"]}  kept {a["kept"]}  covered'
+          f' {a["covered"] / a["total"] if a["total"] else 0:.3f} of the candidate area'
+          f' ({a["covered"] / c["total_area"] if c["total_area"] else 0:.3f} of the record)'
+          f'  kept p99 max {max((rl[m]["light_info"] or {}).get("p99", 0) for m in a["kept"]) if a["kept"] else 0:.2f}')
+    order = ['c', 'e'] + [f'f{pct:g}' for pct in area] + ['d']
+    p('diffuse substitution (share of record area): rule  own  target  same-diffuse  other-diffuse')
+    t = c['total_area'] or 1.0
+    for key in order:
+        s = c['subst'][key]
+        p(f'  {key}: {s["own"] / t:.3f}  {s["target"] / t:.3f}  {s["same"] / t:.3f}  {s["different"] / t:.3f}')
+    key = f'f{70:g}' if 70 in area else order[-2]
+    top = sorted(c['subst'][key]['pairs'].items(), key=lambda kv: -kv[1])[:6]
+    p(f'  {key} largest other-diffuse merges (target <- own, record share): '
+      + '; '.join(f'{d} <- {g} {a / t:.3f}' for (d, g), a in top))
 
 
 def main(argv=None):
@@ -317,7 +422,15 @@ def main(argv=None):
     ap.add_argument('body', nargs='+', help='archive body name (ships/argon/argon_TL) or a decoded body file')
     ap.add_argument('--lod', type=int, help='record index (default: the original coarsest record n-1)')
     ap.add_argument('--game', type=Path, default=bob1.DEFAULT_GAME)
+    ap.add_argument('--area-percent', default=','.join(map(str, AREA_PERCENTS)),
+                    help='rule f coverage percentages, comma-separated (default %(default)s)')
     a = ap.parse_args(argv)
+    try:
+        percents = [float(v) for v in a.area_percent.split(',') if v.strip()]
+    except ValueError:
+        ap.error('--area-percent takes comma-separated numbers')
+    if not all(0 <= v <= 100 for v in percents):
+        ap.error('--area-percent values must be in 0..100')
     assets, skipped = original_assets(a.game)
     if skipped:
         print(f'skipped overlay catalogues: {skipped}')
@@ -332,7 +445,7 @@ def main(argv=None):
         n = len(bob1.lods(tree))
         if a.lod is not None and not 0 <= a.lod < n:
             raise SystemExit(f'{name}: --lod {a.lod} outside 0..{n - 1}')
-        format_census(census(tree, a.lod, assets), origin)
+        format_census(census(tree, a.lod, assets, percents), origin)
     return 0
 
 

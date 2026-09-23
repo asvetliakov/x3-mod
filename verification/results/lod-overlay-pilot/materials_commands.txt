@@ -7,3 +7,8 @@ python3 tools/analysis/body_materials.py --lod 0 ships/argon/argon_TL
 # Rule e as --collapse glow (default), rebuilt against the installed 05 overlay's originals (2026-09-23)
 python3 tools/analysis/lod_overlay.py --replace --out <worktree>/build-overlay ships/argon/argon_TL=50 ships/argon/argon_M2=50 ships/argon/argon_M1=50 Stations/others/military_outpost_middleb=100
 python3 verification/results/lod-overlay-pilot/pilot_check.py verification/results/run255-census/node_census_out.txt <worktree>/build-overlay > verification/results/lod-overlay-pilot/pilot_check_glow_out.txt
+# Rule f (glow-area) and diffuse substitution added to materials_<body>.txt by the same loop (2026-09-23)
+python3 verification/results/lod-overlay-pilot/emission_share.py ships/argon/argon_TL ships/argon/argon_M2 ships/argon/argon_M1 Stations/others/military_outpost_middleb > verification/results/lod-overlay-pilot/emission_share_out.txt
+# Rule f pilot at P = 70 with the synthesized merge material (default), rebuilt against the installed 05 overlay's originals
+python3 tools/analysis/lod_overlay.py --replace --collapse glow-area 70 --out <worktree>/build-overlay ships/argon/argon_TL=80 ships/argon/argon_M2=80 ships/argon/argon_M1=80 Stations/others/military_outpost_middleb=150 > verification/results/lod-overlay-pilot/build_area70_out.txt
+python3 verification/results/lod-overlay-pilot/pilot_check.py verification/results/run255-census/node_census_out.txt <worktree>/build-overlay > verification/results/lod-overlay-pilot/pilot_check_area70_out.txt

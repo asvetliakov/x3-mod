@@ -1,0 +1,25 @@
+sources read without ['addon/05.cat']
+ships/argon/argon_TL: candidate emission 1.771e+07 (area-luma units), glow set emission 9.868e+07 (0.848 of all real-light-map emission)
+  f50: draws=8 area covered 0.636 emission covered 0.165
+  f70: draws=9 area covered 0.764 emission covered 0.247
+  f90: draws=12 area covered 0.928 emission covered 0.506
+  f100: draws=15 area covered 1.000 emission covered 1.000
+  top emitters (mat share_of_candidate_emission area_share_of_record p99): 6 0.489 0.011 0.80; 28 0.137 0.013 0.68; 15 0.099 0.017 0.45; 23 0.082 0.036 0.16; 14 0.070 0.056 0.09
+ships/argon/argon_M2: candidate emission 1.315e+07 (area-luma units), glow set emission 6.029e+07 (0.821 of all real-light-map emission)
+  f50: draws=7 area covered 0.603 emission covered 0.231
+  f70: draws=8 area covered 0.725 emission covered 0.299
+  f90: draws=11 area covered 0.902 emission covered 0.546
+  f100: draws=17 area covered 1.000 emission covered 1.000
+  top emitters (mat share_of_candidate_emission area_share_of_record p99): 6 0.354 0.005 0.80; 14 0.171 0.086 0.09; 15 0.129 0.014 0.45; 23 0.098 0.027 0.16; 28 0.073 0.004 0.68
+ships/argon/argon_M1: candidate emission 1.054e+07 (area-luma units), glow set emission 6.681e+07 (0.864 of all real-light-map emission)
+  f50: draws=7 area covered 0.569 emission covered 0.265
+  f70: draws=9 area covered 0.801 emission covered 0.474
+  f90: draws=10 area covered 0.907 emission covered 0.795
+  f100: draws=16 area covered 1.000 emission covered 1.000
+  top emitters (mat share_of_candidate_emission area_share_of_record p99): 9 0.321 0.029 0.45; 8 0.205 0.086 0.09; 17 0.129 0.029 0.16; 21 0.084 0.004 0.68; 16 0.080 0.034 0.11
+Stations/others/military_outpost_middleb: candidate emission 2.499e+08 (area-luma units), glow set emission 5.293e+07 (0.175 of all real-light-map emission)
+  f50: draws=8 area covered 0.561 emission covered 0.543
+  f70: draws=10 area covered 0.716 emission covered 0.960
+  f90: draws=13 area covered 0.913 emission covered 0.980
+  f100: draws=22 area covered 1.000 emission covered 1.000
+  top emitters (mat share_of_candidate_emission area_share_of_record p99): 6 0.431 0.041 0.80; 5 0.408 0.035 0.83; 9 0.047 0.058 0.16; 23 0.028 0.052 0.16; 36 0.023 0.080 0.09

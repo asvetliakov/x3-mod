@@ -16,12 +16,27 @@ ships' lattice materials have both off and draw opaque, run257). Collapse
     their own material, one group per such material: these carry the engine
     glows (exhaust materials' light maps, run257). The remaining faces collapse
     like two. Window lights on near-black light maps are dropped.
+  glow-area P (--collapse glow-area P, 0 <= P <= 100): glow, plus the smallest
+    set of the other real-light-map materials (a resolvable, non-NONE_* light
+    map), ranked by face area in the coarsest record (ties: lower index first),
+    whose area covers P % of their total area; each keeps its own group like a
+    glow material (body_materials.py rule f). P = 0 is glow.
   two: at most two groups per part: faces of alpha materials go into a second
     group with the dominant alpha material among them by face count; the rest
     into one group with the dominant opaque material.
   one: one group per part with the dominant material (alpha faces turn solid).
 Faces of merged materials get the dominant material's textures over their own
 UVs (a look limit of the pilot).
+Synthesized material (default; --no-synth-material turns it off): for each
+material that merged faces collapse onto (per body, over every part's merged
+classes), the face-area-weighted mean of every FLOAT effect parameter named
+g_Mat* (diffuse, specular strength and power, reflection, occlusion, fresnel)
+over the merged materials that carry it is computed; if it differs from the
+dominant material's value (16.16, rounded), a copy of the dominant material with
+those parameters replaced (textures and every other parameter unchanged, record
+index = its position) is appended to the MAT6 table and the merged groups point
+at it. Existing indices do not move, so record 0 is untouched; the written body
+must parse back with the same table and every group index inside it.
 MAT3 bodies (no MAT5/MAT6 section) are refused unless --force-mat3: the loader
 gives every group of the coarsest record material 0x485 when such a body has
 more than 3 LODs (body-format-bob1.md section 4), which would hit the pad
@@ -200,7 +215,8 @@ def dominant_material(groups):
     return max(faces, key=lambda m: faces[m]) if faces else None
 
 
-COLLAPSES = ('glow', 'two', 'one')
+COLLAPSES = ('glow', 'two', 'one', 'glow-area')
+KEEPING = ('glow', 'glow-area')      # collapses whose kept materials keep their own groups
 GLOW_LUMA = 0.5          # texel counts as bright above this Rec.601 luma
 GLOW_SHARE = 0.25        # light map is "mostly bright" at this bright-texel share
 ALPHA_PARAMS = (b'g_alphatestenable', b'g_alphablendenable')
@@ -225,19 +241,105 @@ def glow_materials(assets, materials, used=None, luma=GLOW_LUMA, share=GLOW_SHAR
     return out
 
 
-def merged_group(groups, precomputed):
-    g = {'material': dominant_material(groups), 'faces': [f for g in groups for f in g['faces']]}
+def light_area_materials(assets, materials, record, exclude=frozenset(), percent=100.0):
+    """Rule f: (kept set, covered area, total area) over the materials of `record` whose
+    light map is real (resolvable, not NONE_*) and not in `exclude`, ranked by face area."""
+    import body_materials
+    cache, areas = {}, {}
+    for part in record['parts']:
+        for g in part['groups']:
+            mi = g['material']
+            if mi in exclude or not 0 <= mi < len(materials):
+                continue
+            if mi not in areas:
+                light = body_materials.slots(materials[mi]).get('light')
+                if light is None or body_materials.light_status(
+                        body_materials.texture_info(assets, light, cache)) != 'real':
+                    continue
+                areas[mi] = 0.0
+            areas[mi] += sum(body_materials.face_area(record['points'], f) for f in g['faces'])
+    kept, covered, total = body_materials.area_select(areas, percent)
+    return set(kept), covered, total
+
+
+def merged_group(groups, precomputed, remap=None):
+    m = dominant_material(groups)
+    g = {'material': (remap or {}).get(m, m), 'faces': [f for g in groups for f in g['faces']]}
     if precomputed:
         g['extra'] = [e for g in groups for e in g['extra']]
     return g
 
 
-def coarse_record(coarsest, threshold, alpha=frozenset(), collapse='two', glow=frozenset()):
+def collapse_classes(groups, alpha=frozenset(), collapse='two', kept=frozenset()):
+    """One part's groups -> [(kind, groups)] in output order, kind 'merged' (collapsed onto
+    the class's dominant material) or 'kept' (one kept material's own groups)."""
+    if collapse not in COLLAPSES:
+        raise ValueError(f'unknown collapse {collapse!r}')
+    kept = kept if collapse in KEEPING else frozenset()
+    rest = [g for g in groups if g['material'] not in kept]
+    if collapse == 'one':
+        classes = [('merged', rest)]
+    else:
+        own = list(dict.fromkeys(g['material'] for g in groups if g['material'] in kept))
+        classes = ([('merged', [g for g in rest if g['material'] not in alpha])]
+                   + [('kept', [g for g in groups if g['material'] == m]) for m in own]
+                   + [('merged', [g for g in rest if g['material'] in alpha])])
+    return [(k, c) for k, c in classes if c]
+
+
+def is_light_param(name, typ):
+    return typ == 2 and name.lower().startswith(b'g_mat')
+
+
+def synth_materials(materials, coarsest, alpha=frozenset(), collapse='two', kept=frozenset()):
+    """Append synthesized materials (module notes) to `materials` in place; returns
+    (remap {dominant: new index}, report [dict(index, dominant, absorbed, params)]), params
+    = [(name, dominant 16.16, weighted mean 16.16 float, written 16.16)] per g_Mat* FLOAT."""
+    import body_materials
+    weights = {}
+    for part in coarsest['parts']:
+        for kind, cls in collapse_classes(part['groups'], alpha, collapse, kept):
+            if kind != 'merged':
+                continue
+            w = weights.setdefault(dominant_material(cls), {})
+            for g in cls:
+                w[g['material']] = w.get(g['material'], 0.0) + sum(
+                    body_materials.face_area(coarsest['points'], f) for f in g['faces'])
+    remap, report = {}, []
+    for d, w in weights.items():
+        if not 0 <= d < len(materials) or 'params' not in materials[d]:
+            continue
+        rows, params = [], []
+        for name, typ, val in materials[d]['params']:
+            if is_light_param(name, typ):
+                num = den = 0.0
+                for mi, area in w.items():
+                    if not 0 <= mi < len(materials):
+                        continue
+                    v = [pv for pn, pt, pv in materials[mi].get('params', ())
+                         if pt == 2 and pn.lower() == name.lower()]
+                    if v:
+                        num += area * v[0][0]; den += area
+                if den > 0:
+                    mean = num / den
+                    rows.append((name.decode('latin1'), val[0], mean, int(round(mean))))
+                    val = [int(round(mean))]
+            params.append((name, typ, val))
+        if any(r[1] != r[3] for r in rows):
+            new = dict(materials[d], index=len(materials), params=params)
+            remap[d] = len(materials)
+            materials.append(new)
+            report.append(dict(index=remap[d], dominant=d, absorbed=sorted(w), params=rows))
+    return remap, report
+
+
+def coarse_record(coarsest, threshold, alpha=frozenset(), collapse='two', glow=frozenset(), remap=None):
     """New LOD: coarsest's points and part data copied; per part the groups are collapsed
     to one (collapse 'one'), to opaque + alpha groups (collapse 'two', alpha = material
     indices that alpha-test or alpha-blend; the alpha group follows the opaque one), or
-    (collapse 'glow') to the opaque group, one group per glow material in first-use
-    order, then the alpha group."""
+    (collapse 'glow' / 'glow-area', glow = the kept materials) to the opaque group, one
+    group per kept material in first-use order, then the alpha group. remap maps a merged
+    group's dominant material to a synthesized one (synth_materials)."""
     if collapse not in COLLAPSES:
         raise ValueError(f'unknown collapse {collapse!r}')
     parts = []
@@ -245,16 +347,8 @@ def coarse_record(coarsest, threshold, alpha=frozenset(), collapse='two', glow=f
         new = {'flags': part['flags'], 'groups': part['groups']}
         if part['groups']:
             pre = part['flags'] & bob1.PART_PRECOMPUTED
-            kept = glow if collapse == 'glow' else frozenset()
-            rest = [g for g in part['groups'] if g['material'] not in kept]
-            if collapse == 'one':
-                classes = [rest]
-            else:
-                own = list(dict.fromkeys(g['material'] for g in part['groups'] if g['material'] in kept))
-                classes = ([[g for g in rest if g['material'] not in alpha]]
-                           + [[g for g in part['groups'] if g['material'] == m] for m in own]
-                           + [[g for g in rest if g['material'] in alpha]])
-            new['groups'] = [merged_group(c, pre) for c in classes if c]
+            new['groups'] = [merged_group(c, pre, remap if k == 'merged' else None)
+                             for k, c in collapse_classes(part['groups'], alpha, collapse, glow)]
         if 'bounds' in part:
             new['bounds'] = list(part['bounds'])
         parts.append(new)
@@ -343,7 +437,7 @@ def place(ladder, coarse, placement, threshold, name='body', force_threshold=Fal
 
 
 def plan_body(assets, name, threshold, placement=None, force_threshold=False, collapse='glow', force_mat3=False,
-              glow_luma=GLOW_LUMA, glow_share=GLOW_SHARE):
+              glow_luma=GLOW_LUMA, glow_share=GLOW_SHARE, area_percent=None, synth=True):
     entry = bob1.resolve_body(assets, name)
     if 'loose' in entry:
         raise SystemExit(f'{name}: winning resource is loose file {entry["path"]}; a catalogue cannot override it')
@@ -362,22 +456,45 @@ def plan_body(assets, name, threshold, placement=None, force_threshold=False, co
     mats = bob1.materials(tree)
     alpha = alpha_materials(mats)
     used = sorted({g['material'] for p in ladder[-1]['parts'] for g in p['groups']})
-    glow = glow_materials(assets, mats, used, glow_luma, glow_share) if collapse == 'glow' else set()
-    new = coarse_record(ladder[-1], None, alpha, collapse, glow)
+    glow = glow_materials(assets, mats, used, glow_luma, glow_share) if collapse in KEEPING else set()
+    area_kept, area = set(), None
+    if collapse == 'glow-area':
+        area_kept, covered, total = light_area_materials(assets, mats, ladder[-1], glow, area_percent)
+        area = dict(percent=area_percent, covered=covered, total=total,
+                    record_area=sum(group_area(ladder[-1], g) for p in ladder[-1]['parts'] for g in p['groups']))
+    kept = glow | area_kept
+    n_mats = len(mats)
+    remap, synth_report = synth_materials(mats, ladder[-1], alpha, collapse, kept) if synth else ({}, [])
+    new = coarse_record(ladder[-1], None, alpha, collapse, kept, remap)
     new_index, pad_index = place(ladder, new, placement, threshold, name, force_threshold)
     out = bob1.serialise(tree)
-    check = bob1.lods(bob1.parse(out))
+    back = bob1.parse(out)
+    check = bob1.lods(back)
     if [l['value'] for l in check] != [l['value'] for l in ladder]:
         raise SystemExit(f'{name}: re-parse of the written body failed')
+    back_mats = bob1.materials(back)
+    if (back_mats != mats or len(back_mats) != n_mats + len(synth_report)
+            or any(m.get('index') != i for i, m in enumerate(back_mats[n_mats:], n_mats))):
+        raise SystemExit(f'{name}: the material table does not parse back as written')
+    per_body = any(t in ('MAT5', 'MAT6') for t, _ in back['sections'])   # MAT3 indexes the global table
+    if per_body and any(g['material'] >= len(back_mats) for l in check for p in l['parts'] for g in p['groups']):
+        raise SystemExit(f'{name}: a group material index is outside the written material table')
     with entry['cat'].with_suffix('.dat').open('rb') as f:
         f.seek(entry['offset'])
         head = bytes(v ^ 0x33 for v in f.read(2))
     stored = gzip.compress(out, mtime=0) if head == b'\x1f\x8b' or entry['path'].lower().endswith('.pbb') else out
     return dict(name=name, source=entry['source'], member=entry['path'], before=before, ladder=ladder,
-                new=new, new_index=new_index, collapse=collapse, alpha=alpha, glow=glow, pad_index=pad_index, placement=placement,
+                new=new, new_index=new_index, collapse=collapse, alpha=alpha_materials(mats), glow=glow,
+                area_kept=area_kept, area=area, synth=synth_report, source_materials=n_mats,
+                pad_index=pad_index, placement=placement,
                 source_decoded_sha256=hashlib.sha256(data).hexdigest(),
                 overlay_decoded_sha256=hashlib.sha256(out).hexdigest(),
                 decoded_bytes=(len(data), len(out)), stored=stored)
+
+
+def group_area(record, group):
+    import body_materials
+    return sum(body_materials.face_area(record['points'], f) for f in group['faces'])
 
 
 def record_bytes(lod):
@@ -394,7 +511,14 @@ def ladder_text(ladder):
 
 def group_kind(plan, g):
     return ('glow' if g['material'] in plan.get('glow', ()) else
+            'light' if g['material'] in plan.get('area_kept', ()) else
             'alpha' if g['material'] in plan['alpha'] else 'opaque')
+
+
+def group_label(plan, g):
+    syn = {s['index']: s['dominant'] for s in plan.get('synth', ())}
+    m = g['material']
+    return f'{group_kind(plan, g)}:mat{m}' + (f'~{syn[m]}' if m in syn else '') + f':{len(g["faces"])}f'
 
 
 def describe(plan, out=None):
@@ -403,8 +527,7 @@ def describe(plan, out=None):
     print(f'{plan["name"]}: {plan["source"]}:{plan["member"]}', file=out)
     print(f'  ladder before: {ladder_text(plan["before"])}', file=out)
     print(f'  ladder after:  {ladder_text(plan["ladder"])}', file=out)
-    groups = [f'{group_kind(plan, g)}:mat{g["material"]}:{len(g["faces"])}f'
-              for p in plan['new']['parts'] for g in p['groups']]
+    groups = [group_label(plan, g) for p in plan['new']['parts'] for g in p['groups']]
     pad = (f' + pad copy LOD{plan["pad_index"]} threshold={plan["ladder"][plan["pad_index"]]["value"]}'
            if plan['pad_index'] else '')
     th = [l['value'] for l in plan['before'][1:]]
@@ -423,8 +546,50 @@ def describe(plan, out=None):
         print(f'  {view:>9} drawable {bob1.drawable(new_th, view)} by s: before'
               f' {bob1.format_bands(bob1.selection_bands(th, view))} | after'
               f' {bob1.format_bands(bob1.selection_bands(new_th, view))}', file=out)
+    if plan.get('area'):
+        a = plan['area']
+        print(f'  glow-area {a["percent"]:g} %: light-map materials {sorted(plan["area_kept"])} cover'
+              f' {a["covered"] / a["total"] if a["total"] else 0:.3f} of the real-light-map area outside the'
+              f' glow set ({a["covered"] / a["record_area"] if a["record_area"] else 0:.3f} of the record);'
+              f' glow {sorted(plan["glow"])}', file=out)
+    for syn in plan.get('synth', ()):
+        rows = ' '.join(f'{n}={dom / 65536:.4g}->{w / 65536:.4g}(mean {mean / 65536:.4g})'
+                        for n, dom, mean, w in syn['params'] if dom != w)
+        print(f'  synthesized mat{syn["index"]} = mat{syn["dominant"]} with the area-weighted g_Mat* mean over'
+              f' {syn["absorbed"]}: {rows}', file=out)
     print(f'  decoded bytes {plan["decoded_bytes"][0]} -> {plan["decoded_bytes"][1]},'
           f' stored {len(plan["stored"])} (gzip), overlay sha256 {plan["overlay_decoded_sha256"][:16]}', file=out)
+
+
+def parse_collapse(text):
+    """'glow' / 'two' / 'one' / 'glow-area=P' (0 <= P <= 100) -> (collapse, percent or None)."""
+    name, sep, value = text.partition('=')
+    if name == 'glow-area':
+        try:
+            percent = float(value)
+        except ValueError:
+            raise argparse.ArgumentTypeError('glow-area needs a percentage: --collapse glow-area P') from None
+        if not 0 <= percent <= 100:
+            raise argparse.ArgumentTypeError(f'glow-area percentage {value} outside 0..100')
+        return name, percent
+    if sep or name not in COLLAPSES:
+        raise argparse.ArgumentTypeError(f'unknown collapse {text!r} (glow, two, one, glow-area P)')
+    return name, None
+
+
+def join_collapse(argv):
+    """Rewrite '--collapse glow-area P' (and '--collapse=glow-area P') to '--collapse glow-area=P'."""
+    out, i = [], 0
+    argv = list(argv)
+    while i < len(argv):
+        v = argv[i]
+        if v == '--collapse' and argv[i + 1:i + 2] == ['glow-area'] and i + 2 < len(argv):
+            out += [v, f'glow-area={argv[i + 2]}']; i += 3
+        elif v == '--collapse=glow-area' and i + 1 < len(argv):
+            out.append(f'--collapse=glow-area={argv[i + 1]}'); i += 2
+        else:
+            out.append(v); i += 1
+    return out
 
 
 def main(argv=None):
@@ -440,9 +605,13 @@ def main(argv=None):
                     help='compact: accept a T_pad below the record 1 threshold;'
                          ' pad: accept a T_pad that does not exceed every original threshold')
     ap.add_argument('--placement', choices=PLACEMENTS, help='placement (default: compact)')
-    ap.add_argument('--collapse', choices=COLLAPSES, default='glow',
+    ap.add_argument('--collapse', type=parse_collapse, default=('glow', None), metavar='{glow,two,one,glow-area P}',
                     help='glow (default): bright-light-map materials keep their group, the rest as two;'
-                         ' two: opaque + alpha-tested/blended group per part; one: a single group per part')
+                         ' glow-area P (or glow-area=P): glow plus the largest real-light-map materials up to'
+                         ' P %% of their area; two: opaque + alpha-tested/blended group per part;'
+                         ' one: a single group per part')
+    ap.add_argument('--no-synth-material', action='store_true',
+                    help='merged groups keep the dominant material itself (no area-weighted g_Mat* copy)')
     ap.add_argument('--glow-luma', type=float, default=GLOW_LUMA,
                     help=f'glow: luma above which a light-map texel is bright (default {GLOW_LUMA})')
     ap.add_argument('--glow-share', type=float, default=GLOW_SHARE,
@@ -461,7 +630,8 @@ def main(argv=None):
                                               ' contiguous free slot)')
     ap.add_argument('--force-slot', action='store_true', help='allow a --slot other than the next contiguous one')
     ap.add_argument('--dry-run', action='store_true', help='print the planned records; write nothing')
-    a = ap.parse_args(argv)
+    a = ap.parse_args(join_collapse(sys.argv[1:] if argv is None else argv))
+    a.collapse, a.area_percent = a.collapse
     if a.force_slot and a.slot is None:
         ap.error('--force-slot needs --slot')
     if not (0 <= a.glow_luma < 1 and 0 < a.glow_share <= 1):
@@ -531,7 +701,7 @@ def main(argv=None):
         except ValueError:
             raise SystemExit(f'{arg}: NAME=T needs an integer threshold') from None
         plans.append(plan_body(assets, name, threshold, a.placement, a.force_threshold, a.collapse, a.force_mat3,
-                               a.glow_luma, a.glow_share))
+                               a.glow_luma, a.glow_share, a.area_percent, not a.no_synth_material))
     members = [p['member'] for p in plans]
     if len({m.lower() for m in members}) != len(members):
         raise SystemExit('the same body was named twice')
@@ -604,9 +774,14 @@ def main(argv=None):
 def write_overlay(a, game, plans, slot, before, written, replace_slot):
     write_catalogue(written[0], [(p['member'], p['stored']) for p in plans])
     manifest = dict(tool='tools/analysis/lod_overlay.py', slot=slot, collapse=a.collapse,
-                    glow_luma=a.glow_luma, glow_share=a.glow_share, bodies=[
+                    glow_luma=a.glow_luma, glow_share=a.glow_share, area_percent=a.area_percent,
+                    synth_material=not a.no_synth_material, bodies=[
         dict(name=p['name'], source=p['source'], member=p['member'], placement=p['placement'], collapse=p['collapse'],
-             glow=sorted(p['glow']), new_lod=p['new_index'], pad_lod=p['pad_index'],
+             glow=sorted(p['glow']), area_kept=sorted(p['area_kept']), new_lod=p['new_index'], pad_lod=p['pad_index'],
+             source_materials=p['source_materials'],
+             synth=[dict(index=s['index'], dominant=s['dominant'], absorbed=s['absorbed'],
+                         params=[dict(name=n, dominant=d, mean=round(m, 1), written=w) for n, d, m, w in s['params']])
+                    for s in p['synth']],
              source_thresholds=[l['value'] for l in p['before']],
              thresholds=[l['value'] for l in p['ladder']],
              threshold=p['new']['value'],

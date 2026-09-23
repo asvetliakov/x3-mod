@@ -34,3 +34,28 @@ draws per rule: a=23  b=23  c=1  d=15  db=15  e=5  (original record 23)
   db: d, kept groups merged by (diffuse, light)
   e: keep only mostly-bright (glow) light maps, rest -> dominant
   diagnostics: b merges mixing alpha and opaque 0; a merges whose non-texture params differ 0
+rule f candidates (real light map, not glow): 10 materials, record share 0.279; glow set kept always:mat37(share 0.001 p99 1.00) mat38(share 0.017 p99 1.00) mat40(share 0.003 p99 0.81) mat41(share 0.001 p99 0.83)
+  rank  mat  record_share  lm_share  cum  p99  luma  bright  diffuse
+     1   35  0.070  0.251  0.251  0.03  0.00  0.00  metal_argon_trims_09_diff.tga
+     2   14  0.056  0.201  0.452  0.09  0.00  0.00  metal_argon_misc_tech_v2_diff.tga
+     3   22  0.052  0.185  0.636  0.11  0.00  0.00  metal_argon_trims_02_diff.tga
+     4   23  0.036  0.127  0.764  0.16  0.01  0.00  metal_argon_trims_03_diff.tga
+     5   15  0.017  0.061  0.825  0.45  0.01  0.01  metal_argon_pipes_tech_diff.tga
+     6   21  0.016  0.056  0.881  0.05  0.00  0.00  metal_argon_trims_01_diff.tga
+     7   28  0.013  0.047  0.928  0.68  0.02  0.02  metal_argon_trims_08_diff.tga
+     8    6  0.011  0.039  0.967  0.80  0.11  0.08  metal_argon_apartments_labs_diff.tga
+     9   26  0.009  0.031  0.998  0.04  0.00  0.00  metal_argon_trims_06_diff.tga
+    10   25  0.000  0.002  1.000  0.05  0.00  0.00  metal_argon_trims_05_diff.tga
+  f50: draws=8  kept [35, 14, 22]  covered 0.636 of the candidate area (0.178 of the record)  kept p99 max 0.11
+  f70: draws=9  kept [35, 14, 22, 23]  covered 0.764 of the candidate area (0.213 of the record)  kept p99 max 0.16
+  f90: draws=12  kept [35, 14, 22, 23, 15, 21, 28]  covered 0.928 of the candidate area (0.259 of the record)  kept p99 max 0.68
+  f100: draws=15  kept [35, 14, 22, 23, 15, 21, 28, 6, 26, 25]  covered 1.000 of the candidate area (0.279 of the record)  kept p99 max 0.80
+diffuse substitution (share of record area): rule  own  target  same-diffuse  other-diffuse
+  c: 0.000  0.436  0.000  0.564
+  e: 0.023  0.436  0.000  0.542
+  f50: 0.200  0.436  0.000  0.364
+  f70: 0.236  0.436  0.000  0.328
+  f90: 0.282  0.436  0.000  0.283
+  f100: 0.302  0.436  0.000  0.262
+  d: 0.302  0.436  0.000  0.262
+  f70 largest other-diffuse merges (target <- own, record share): metal_argon_simple_plating_v2_diff <- metal_argon_simple_plating_diff 0.113; metal_argon_simple_plating_v2_diff <- metal_argon_simple_plating_v3_diff 0.054; metal_argon_simple_plating_v2_diff <- metal_argon_base_metal_plating_diff 0.053; metal_argon_simple_plating_v2_diff <- metal_argon_base_metal_plating_v2_diff 0.028; metal_argon_simple_plating_v2_diff <- metal_argon_pipes_tech_diff 0.017; metal_argon_simple_plating_v2_diff <- metal_argon_trims_01_diff 0.016

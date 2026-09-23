@@ -685,6 +685,142 @@ class MaterialCensus(unittest.TestCase):
                 body_materials.texture_info(assets, b'x\\NONE_WHITE.dds', {})), 'stock')
 
 
+def synth_tree(strengths=(26214, 32768, 32768, 32768, 32768, 32768)):
+    """material_tree with g_Mat* scalars; mat1 light map dark (real, not glow), mat2 white (glow)."""
+    tree = material_tree()
+    lights = (b'NULL', b'm\\dark_light.tga', b'm\\l1_light.tga', b'NULL', b'NULL', b'NULL')
+    for m, s, l in zip(bob1.materials(tree), strengths, lights):
+        m['params'] = ([(n, t, l if n == b't_LightMapTexture' else v) for n, t, v in m['params']]
+                       + [(b'g_MatDiffuseStrength', 2, [s]), (b'g_MatSpecularPower', 2, [393216]),
+                          (b'g_Brightness', 2, [s])])
+    return tree
+
+
+def light_game(root, body):
+    write_catalogue(root / '01.cat', [('dds/l1_light.pck', gzip.compress(dds_dxt1_white(), mtime=0)),
+                                      ('dds/dark_light.pck', gzip.compress(dds_dxt1_white(0x0841), mtime=0))])
+    write_catalogue(root / '02.cat', [('objects/stations/test/Body.pbb', gzip.compress(body, mtime=0))])
+    write_catalogue(root / 'addon/01.cat', [('addon/types/Dummy.txt', b'y')])
+    return root
+
+
+class AreaRuleAndSynth(unittest.TestCase):
+    shape = staticmethod(lambda lod: [[(g['material'], len(g['faces'])) for g in p['groups']] for p in lod['parts']])
+
+    def test_area_select(self):
+        areas = {3: 10.0, 1: 10.0, 2: 30.0}
+        sel = body_materials.area_select
+        self.assertEqual(sel(areas, 50), ([2], 30.0, 50.0))
+        self.assertEqual(sel(areas, 60), ([2], 30.0, 50.0))            # exactly 60 % is covered
+        self.assertEqual(sel(areas, 70)[0], [2, 1])                    # tie: lower index first
+        self.assertEqual(sel(areas, 100)[0], [2, 1, 3])
+        self.assertEqual(sel(areas, 0)[0], [])
+        self.assertEqual(sel({}, 70), ([], 0.0, 0.0))
+
+    def test_rule_f_and_substitution_without_assets(self):
+        c = body_materials.census(bob1.parse(bob1.serialise(material_tree())))
+        # real light maps 1 (area 100) and 2 (50), neither bright without assets
+        self.assertEqual([c['rules'][k] for k in ('c', 'e', 'f50', 'f70', 'f90', 'f100', 'd')], [3, 3, 5, 6, 6, 6, 6])
+        self.assertEqual((c['area'][50]['kept'], c['area'][50]['covered'], c['area'][50]['total']), ([1], 100.0, 150.0))
+        self.assertEqual(c['area'][70]['kept'], [1, 2])
+        s = c['subst']
+        self.assertEqual({k: s['c'][k] for k in ('own', 'target', 'same', 'different')},
+                         dict(own=0.0, target=250.0, same=150.0, different=100.0))
+        self.assertEqual({k: s['f50'][k] for k in ('own', 'target', 'same', 'different')},
+                         dict(own=100.0, target=250.0, same=50.0, different=100.0))
+        self.assertEqual(s['c']['pairs'], {('a_diff', 'b_diff'): 50.0, ('a_diff', 'metal_exhaust_diff'): 50.0})
+        for key, v in s.items():
+            self.assertAlmostEqual(v['own'] + v['target'] + v['same'] + v['different'], c['total_area'], msg=key)
+        out = io.StringIO()
+        body_materials.format_census(c, 'x', out)
+        self.assertIn('  f50: draws=5  kept [1]  covered 0.667 of the candidate area', out.getvalue())
+        self.assertIn('  c: 0.000  0.500  0.300  0.200', out.getvalue())
+
+    def test_synth_materials(self):
+        tree = synth_tree()
+        mats = bob1.materials(tree)
+        coarse = bob1.lods(tree)[-1]
+        alpha = lod_overlay.alpha_materials(mats)
+        self.assertEqual(alpha, {3})
+        remap, rep = lod_overlay.synth_materials(mats, coarse, alpha, 'glow', {2})
+        # part 0: 0 (area 150) absorbs 1, 5, 4 (50 each); part 1: 1 (50, first of a face tie) absorbs 0 (50)
+        self.assertEqual(remap, {0: 6, 1: 7})
+        self.assertEqual(len(mats), 8)
+        self.assertEqual([(r['index'], r['dominant'], r['absorbed']) for r in rep], [(6, 0, [0, 1, 4, 5]), (7, 1, [0, 1])])
+        self.assertEqual(rep[0]['params'], [('g_MatDiffuseStrength', 26214, 29491.0, 29491),
+                                            ('g_MatSpecularPower', 393216, 393216.0, 393216)])
+        param = lambda m, n: [v for pn, _, v in m['params'] if pn == n][0]
+        self.assertEqual((param(mats[6], b'g_MatDiffuseStrength'), param(mats[7], b'g_MatDiffuseStrength')),
+                         ([29491], [29491]))
+        self.assertEqual(param(mats[6], b'g_Brightness'), [26214])              # not a g_Mat* factor
+        self.assertEqual((mats[6]['index'], mats[7]['index']), (6, 7))
+        self.assertEqual({k: v for k, v in mats[6].items() if k not in ('index', 'params')},
+                         {k: v for k, v in mats[0].items() if k not in ('index', 'params')})
+        new = lod_overlay.coarse_record(coarse, 7, alpha, 'glow', {2}, remap)
+        self.assertEqual(self.shape(new), [[(6, 5), (2, 1), (3, 1)], [(7, 2)]])   # alpha group alone: no copy
+        same = synth_tree((32768,) * 6)
+        self.assertEqual(lod_overlay.synth_materials(bob1.materials(same), bob1.lods(same)[-1], {3}, 'two'), ({}, []))
+        self.assertEqual(len(bob1.materials(same)), 6)
+        # glow-area keeps light-map materials like glow ones; 'two' ignores the kept set
+        coarse0 = bob1.lods(material_tree())[-1]
+        self.assertEqual(lod_overlay.coarse_record(coarse0, 7, {3}, 'glow-area', {1, 2}),
+                         lod_overlay.coarse_record(coarse0, 7, {3}, 'glow', {1, 2}))
+        self.assertEqual(lod_overlay.coarse_record(coarse0, 7, {3}, 'two', {1, 2}),
+                         lod_overlay.coarse_record(coarse0, 7, {3}, 'two'))
+
+    @unittest.mock.patch.object(lod_overlay, 'running_game', return_value=[])
+    def test_glow_area_overlay_round_trip(self, _running):
+        body = bob1.serialise(synth_tree())
+        with tempfile.TemporaryDirectory() as folder:
+            game = light_game(Path(folder) / 'game', body)
+            assets, _ = lod_overlay.original_assets(game)
+            tree = bob1.parse(body)
+            mats, coarse = bob1.materials(tree), bob1.lods(tree)[-1]
+            self.assertEqual(lod_overlay.glow_materials(assets, mats), {2})
+            self.assertEqual(lod_overlay.light_area_materials(assets, mats, coarse, {2}, 50), ({1}, 100.0, 100.0))
+            self.assertEqual(lod_overlay.light_area_materials(assets, mats, coarse, {2}, 0), (set(), 0.0, 100.0))
+            c = body_materials.census(tree, None, assets)
+            self.assertEqual((c['glow'], c['area'][50]['kept'], c['rules']['f50']), ({2}, [1], 6))
+            for argv in (['--collapse', 'glow-area', 'stations/test/body=300'],     # no percentage
+                         ['--collapse', 'glow-area', '101', 'stations/test/body=300'],
+                         ['--collapse', 'glow-area=x', 'stations/test/body=300'], ['--collapse', 'three', 'x=300']):
+                with self.subTest(argv=argv), self.assertRaises(SystemExit), \
+                        contextlib.redirect_stderr(io.StringIO()):
+                    run(['--game', str(game), '--dry-run'] + argv)
+            out = Path(folder) / 'out'
+            text = run(['--game', str(game), '--out', str(out), '--collapse', 'glow-area', '50', 'stations/test/body=300'])
+            self.assertIn("groups=['opaque:mat6~0:4f', 'light:mat1:1f', 'glow:mat2:1f', 'alpha:mat3:1f',"
+                          " 'opaque:mat6~0:1f', 'light:mat1:1f']", text)
+            self.assertIn('synthesized mat6 = mat0', text)
+            self.assertIn('g_MatDiffuseStrength=0.4->0.4333', text)
+            data = unpack(bytes(v ^ 0x33 for v in (out / 'addon/02.dat').read_bytes()))
+            written = bob1.parse(data)
+            self.assertEqual(bob1.serialise(written), data)
+            wm, ladder = bob1.materials(written), bob1.lods(written)
+            self.assertEqual(wm[:6], bob1.materials(bob1.parse(body)))
+            self.assertEqual((len(wm), wm[6]['index']), (7, 6))
+            self.assertEqual([v for n, _, v in wm[6]['params'] if n == b'g_MatDiffuseStrength'], [[28399]])
+            self.assertEqual(ladder[0], bob1.lods(bob1.parse(body))[0])
+            self.assertEqual(self.shape(ladder[1]), [[(6, 4), (1, 1), (2, 1), (3, 1)], [(6, 1), (1, 1)]])
+            self.assertEqual(ladder[1]['parts'], ladder[2]['parts'])
+            self.assertTrue(all(g['material'] < len(wm) for l in ladder for p in l['parts'] for g in p['groups']))
+            (rec,) = (m := json.loads((out / 'addon/02.x3m-lod.json').read_text()))['bodies']
+            self.assertEqual((m['collapse'], m['area_percent'], m['synth_material']), ('glow-area', 50.0, True))
+            self.assertEqual((rec['glow'], rec['area_kept'], rec['source_materials']), ([2], [1], 6))
+            self.assertEqual([(s['index'], s['dominant'], s['absorbed']) for s in rec['synth']], [(6, 0, [0, 4, 5])])
+            self.assertEqual(rec['synth'][0]['params'][0], dict(name='g_MatDiffuseStrength', dominant=26214,
+                                                               mean=28398.7, written=28399))
+            out2 = Path(folder) / 'out2'
+            run(['--game', str(game), '--out', str(out2), '--collapse=glow-area', '50', '--no-synth-material',
+                 'stations/test/body=300'])
+            plain = bob1.parse(unpack(bytes(v ^ 0x33 for v in (out2 / 'addon/02.dat').read_bytes())))
+            self.assertEqual(len(bob1.materials(plain)), 6)
+            self.assertEqual(self.shape(bob1.lods(plain)[1]), [[(0, 4), (1, 1), (2, 1), (3, 1)], [(0, 1), (1, 1)]])
+            self.assertEqual(json.loads((out2 / 'addon/02.x3m-lod.json').read_text())['bodies'][0]['synth'], [])
+            text = run(['--game', str(game), '--dry-run', '--collapse', 'glow-area=0', 'stations/test/body=300'])
+            self.assertIn("groups=['opaque:mat6~0:5f', 'glow:mat2:1f', 'alpha:mat3:1f', 'opaque:mat7~1:2f']", text)
+
+
 @unittest.skipUnless(bob1.DEFAULT_GAME.joinpath('X3AP.exe').is_file(), 'X3 bottle not present')
 class Installed(unittest.TestCase):
     def test_first_20_bodies_round_trip(self):

@@ -411,6 +411,79 @@ MAT3 bodies are refused unless `--force-mat3`: the loader gives the coarsest
 record of such a body with more than 3 LODs material `0x485`, which would be the
 pad.
 
+**Rule f, `--collapse glow-area P` (2026-09-23, after the Run 69 C lighting
+triage).** Rule f keeps the glow set (as `glow`). It also keeps the smallest set of
+the other real-light-map materials whose summed face area in the coarsest record
+covers `P` % of their total area. A real light map is one that resolves and is not
+`NONE_*`. The candidates are ranked by face area, and ties go to the lower index.
+Every kept material has its own group; the rest collapse as in `glow`, with the
+alpha rule unchanged. `P = 0` is `glow`. `body_materials.py` reports rule f at
+`--area-percent` (default 50, 70, 90, 100). It prints the ranked candidates with
+their light-map 99th-percentile luma, and per rule the diffuse substitution: the
+share of record area that keeps its own material, is the merge target itself, or
+is merged onto a target with the same or a different diffuse stem. Draws of `C`
+(measured, `materials_<body>.txt`; "other diffuse" = share of record area drawn
+with a different diffuse texture):
+
+| body | c | e | f50 | f70 | f90 | f100 = d | other diffuse c / e / f70 / d | f70 kept light maps, p99 luma |
+|---|---|---|---|---|---|---|---|---|
+| argon_TL | 1 | 5 | 8 | 9 | 12 | 15 | 0.56 / 0.54 / 0.33 / 0.26 | 35, 14, 22, 23: 0.03–0.16 |
+| argon_M2 | 1 | 5 | 7 | 8 | 11 | 17 | 0.55 / 0.53 / 0.33 / 0.25 | 14, 35, 22: 0.03–0.11 |
+| argon_M1 | 1 | 5 | 7 | 9 | 10 | 16 | 0.56 / 0.55 / 0.33 / 0.28 | 8, 25, 16, 17: 0.03–0.16 |
+| military_outpost_middleb | 2 | 3 | 8 | 10 | 13 | 22 | 0.74 / 0.73 / 0.42 / 0.30 | 36, 9, 23, 21, 6, 30, 5: 0.05–0.83 |
+
+At the run257 stand that is 23 (e), 37 (f50), 45 (f70), 56 (f90) and 86 (d)
+draws. No merged material shares its target's diffuse texture: the "same diffuse"
+share is 0 in every body and rule. The ships' target is
+`metal_argon_simple_plating_v2` (44–45 % of the record). The largest faces
+repainted with it are `simple_plating`, `base_metal_plating(_v2)` and
+`simple_plating_v3`; on the outpost they are `exhaust_trims_01` and
+`simple_plating_v4`. The area ranking picks dim maps first on the ships. Their
+largest light maps (`trims_09`, `misc_tech_v2`, `trims_02/03`) have mean luma ≤ 0.01
+and p99 ≤ 0.16, i.e. dark fields with sparse window spots. The bright window maps
+(`apartments_labs` p99 0.80, `trims_08` 0.68, `pipes_tech` 0.45) cover 0.1–3 % of
+the record each. Weighted by area × mean luma (a proxy: it ignores how much of each
+texture the faces' UVs actually map)
+(`verification/results/lod-overlay-pilot/emission_share_out.txt`), the glow set
+already carries 82–86 % of the ships' light-map emission. f70 recovers 25 / 30 /
+47 % of the rest (TL / M2 / M1) and f90 51–80 %. On the outpost the two
+`apartments_labs` materials (5, 6) are 84 % of the non-glow emission and rank 5th
+and 7th by area, so f70 recovers 96 % there. The ×4 light-map gain scales every
+map alike and does not change these shares.
+
+**Synthesized merge material (2026-09-23; default, `--no-synth-material` turns it
+off).** Run 69 C found the collapsed outpost's sun term about 23 % weaker. Its
+dominant material 17 has `g_MatDiffuseStrength` 0.40, against a prim-weighted
+0.56 on the fine outpost. For each merge target, `lod_overlay.py` averages every
+`FLOAT` effect parameter named `g_Mat*` over the materials merged onto it (across
+all parts), weighted by face area. If the rounded 16.16 mean differs from the
+target's value, a copy of the target with those parameters replaced is appended
+to the `MAT6` table, and the merged groups point at it. Textures, colour grading
+(`g_Brightness`, `g_Color_*`) and every other parameter stay the target's. The
+copy's record index is its position. Existing indices do not move, so record 0 is
+unchanged. `plan_body` refuses unless the written body parses back with the same
+table and every group index of every record is inside it (MAT5/MAT6 bodies
+only, since MAT3 indexes the global table). The manifest lists each synthesized
+material with its dominant, the absorbed materials and dominant/mean/written
+values. On the four pilot bodies at f70 only the outpost gets one: `mat51` (a copy
+of 17) over 21 merged materials. It has diffuse strength 0.40 → 0.499, specular
+strength 2.4 → 2.81, specular power 5 → 5.67, reflection strength 0.9 → 0.967,
+and min fresnel 0 → 6e-5. The ships' coarse materials all carry identical `g_Mat*`
+values (diffuse 0.5, specular 3.0, power 6, reflection 0.5), so none is
+synthesized for them. The mean excludes kept materials, so it is 0.499, not the
+fine outpost's 0.56.
+
+Rule-f pilot build (2026-09-23, `--replace --collapse glow-area 70 --out
+<worktree>/build-overlay`, ships `T_pad` 80, outpost 150, compact, not
+installed). `C` has 9 / 8 / 9 / 10 draws (TL / M2 / M1 / outpost). The outpost's
+opaque group uses `mat51`, and its alpha group is material 11 alone, because the
+alpha materials 9 and 36 have real light maps and are kept. `05.cat` is 189 bytes,
+sha256 `87bf16cd…`. `05.dat` is 7 789 979 bytes, sha256 `c2f0abd6…`. Every
+`pilot_check` field is true (`pilot_check_area70_out.txt`): record 0 bytes (shifted
+by the appended material), `C` recomputed from the source, the table prefix, the
+synthesized material, the indices in the table, the kept set recomputed, and the
+highest final index 2. The build log is `build_area70_out.txt`.
+
 **Node side effects.** Two node-set side effects change at Very High (objdump of `0047cfe0..`,
 `/tmp/x3-lod/f47cfe0.s`). A child node flagged `node+0x12c & 0x40000` is hidden
 when its parent (`node+0x18`) is not renderable or has `+0x14c > 0`
@@ -487,7 +560,8 @@ python3 tools/analysis/lod_overlay.py --dry-run <body>[=T_pad] ... [--threshold 
 python3 tools/analysis/lod_overlay.py --out <scratch dir> <body>[=T_pad] ... [--threshold T] [--placement P]
 python3 tools/analysis/lod_overlay.py --install <body>[=T_pad] ... [--threshold T] [--placement P]   # game dir; never overwrites
 python3 tools/analysis/lod_overlay.py --install --replace <body>[=T_pad] ...   # swap the installed overlay (originals hash checked)
-python3 tools/analysis/body_materials.py <body> [--lod N]   # material census and draws per collapse rule
+python3 tools/analysis/body_materials.py <body> [--lod N] [--area-percent 50,70,90,100]   # census, draws per rule, rule f, diffuse substitution
+python3 tools/analysis/lod_overlay.py --out <scratch dir> --collapse glow-area 70 [--no-synth-material] <body>[=T_pad] ...
 PYTHONPATH=verification/probe /usr/bin/python3 -m unittest verification.analysis.test_bob1
 ```
 
