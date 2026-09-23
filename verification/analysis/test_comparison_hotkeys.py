@@ -221,7 +221,10 @@ class ComparisonHotkeys(unittest.TestCase):
                 except (ValueError, TypeError):
                     continue
                 defaults.append(node)
-        compiled = compile(ast.fix_missing_locations(ast.Module(body=defaults + [main], type_ignores=[])), 'manage_under_test.py', 'exec')
+        # Module-level helpers main() names (argparse `type=` callables such as pause_key_code).
+        referenced = {n.id for n in ast.walk(main) if isinstance(n, ast.Name)}
+        helpers = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in referenced]
+        compiled = compile(ast.fix_missing_locations(ast.Module(body=defaults + helpers + [main], type_ignores=[])), 'manage_under_test.py', 'exec')
         scope = dict(argparse=argparse, math=math, Path=Path, GAME=Path('/unused'), BOTTLE='X3', ROOT=ROOT, __doc__='test')
         exec(compiled, scope)
         base = ['manage.py', 'launch', '--motion-output', '--hdr', '--hdr-tonemap']

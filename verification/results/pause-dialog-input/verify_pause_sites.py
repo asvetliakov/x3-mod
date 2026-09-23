@@ -3,10 +3,22 @@
 
 Reads the bottle X3AP.exe (read-only) and prints/writes only derived facts:
 addresses, short instruction byte patterns, table resolutions and counts.
-Usage: python3 verify_pause_sites.py [path/to/X3AP.exe] [--json out.json]
-Needs i686-w64-mingw32-objdump on PATH for the decode checks.
+Usage: python3 verify_pause_sites.py [path/to/X3AP.exe] [--json out.json] [--key CODE]
+Needs i686-w64-mingw32-objdump on PATH for the decode checks and a host C++
+compiler (clang++/c++) for the DLL-byte checks: the production encoder in
+src/proxy/pause_key_only_core.h is compiled and its window, original bytes and
+replacement (default key 0x1b5, plus --key CODE) are compared with the image
+and decoded at the site.
 """
-import hashlib, json, os, re, struct, subprocess, sys, tempfile
+import hashlib, json, os, re, shutil, struct, subprocess, sys, tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[3]
+CORE = ROOT / "src/proxy/pause_key_only_core.h"
+DEFAULT_KEY, MAX_KEY = 0x1B5, 0x1FFF
+WINDOW_VA, WINDOW_LEN = 0x004043A0, 79
+INSTALL_RE = re.compile(r"\bpause_key_only patched=(?P<patched>[01]) key=(?P<key>0x[0-9a-f]+) reason=(?P<reason>[a-z_]+) "
+                        r"requested=(?P<requested>[01]) site=(?P<site>0x[0-9a-f]{8}) write=(?P<write>none|atomic|plain)\s*$")
 
 EXE_SHA = "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab"
 DEFAULT = os.path.expanduser("~/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/X3AP.exe")
@@ -35,6 +47,64 @@ SITES = {
 PATCH_VA, PATCH_OLD = 0x004043A5, "8b ce 33 cb f7 c1 ff 0f 00 00 75 27"
 PATCH_NEW = "66 81 fe b5 01 75 05 66 39 de 75 27"   # cmp si,0x1b5; jne 4043b1; cmp si,bx; jne 4043d8
 
+def encode_patch(key):
+    """The replacement the DLL writes at 0x004043a5 (Python twin of core::encode_site)."""
+    if not 1 <= key <= MAX_KEY or not key & 0xFFF:
+        raise ValueError("key out of range: %r" % key)
+    return bytes([0x66, 0x81, 0xFE, key & 0xFF, key >> 8, 0x75, 0x05, 0x66, 0x39, 0xDE, 0x75, 0x27])
+
+def parse_install_line(line):
+    """The DLL's one pause_key_only line as a dict, or None."""
+    m = INSTALL_RE.search(line)
+    if not m:
+        return None
+    g = m.groupdict()
+    return {"patched": g["patched"] == "1", "key": int(g["key"], 16), "reason": g["reason"], "requested": g["requested"] == "1",
+            "site": int(g["site"], 16), "write": g["write"]}
+
+DLL_HARNESS = r"""
+#include "pause_key_only_core.h"
+#include <cstdio>
+#include <cstdlib>
+using namespace x3m::pause_key_only::core;
+static void hex(const unsigned char* p, unsigned n) { for (unsigned i = 0; i < n; ++i) std::printf("%02x", p[i]); std::printf("\n"); }
+int main(int argc, char** argv) {
+    hex(window, window_length); hex(original, site_length);
+    std::printf("%lx %lx %u\n", (unsigned long)window_va, (unsigned long)site_va, site_offset);
+    for (int i = 1; i < argc; ++i) { unsigned char out[site_length]; const char* r = plan(window, std::uint32_t(std::strtoul(argv[i], nullptr, 0)), out); if (r) std::printf("%s\n", r); else hex(out, site_length); }
+    return 0;
+}
+"""
+
+def dll_core(keys):
+    """Compiles the production core with the host compiler; returns (window, original, (window_va, site_va, offset), {key: bytes|reason})."""
+    compiler = shutil.which("clang++") or shutil.which("c++")
+    if not compiler:
+        return None
+    with tempfile.TemporaryDirectory(prefix="x3-pause-core-") as d:
+        src, exe = Path(d) / "h.cpp", Path(d) / "h"
+        src.write_text(DLL_HARNESS)
+        b = subprocess.run([compiler, "-std=c++17", "-Wall", "-Wextra", "-Werror", "-I", str(CORE.parent), str(src), "-o", str(exe)], capture_output=True, text=True)
+        if b.returncode:
+            return None
+        r = subprocess.run([str(exe)] + [hex(k) for k in keys], capture_output=True, text=True)
+    lines = r.stdout.split()
+    if r.returncode or len(lines) != 5 + len(keys):
+        return None
+    wva, sva, off = int(lines[2], 16), int(lines[3], 16), int(lines[4])
+    out = {}
+    for k, v in zip(keys, lines[5:]):
+        out[k] = bytes.fromhex(v) if re.fullmatch(r"[0-9a-f]+", v) else v
+    return bytes.fromhex(lines[0]), bytes.fromhex(lines[1]), (wva, sva, off), out
+
+def decode_at(raw, va):
+    with tempfile.NamedTemporaryFile(suffix=".bin", delete=False) as f:
+        f.write(raw); p = f.name
+    d = subprocess.run([OBJDUMP, "-D", "-b", "binary", "-m", "i386", "-M", "intel", "--adjust-vma=" + hex(va), p], capture_output=True, text=True).stdout
+    os.unlink(p)
+    rows = [l for l in d.splitlines() if re.match(r"^\s+[0-9a-f]+:\t", l)]
+    return [hex(int(l.split(":")[0], 16)) for l in rows], [" ".join(l.split("\t")[-1].split()) for l in rows]
+
 def sections(b):
     pe = struct.unpack_from("<I", b, 0x3C)[0]
     n = struct.unpack_from("<H", b, pe + 6)[0]
@@ -51,6 +121,9 @@ def main():
     out_json = None
     if "--json" in args:
         i = args.index("--json"); out_json = args[i + 1]; del args[i:i + 2]
+    keys = [DEFAULT_KEY]
+    while "--key" in args:
+        i = args.index("--key"); keys.append(int(args[i + 1], 0)); del args[i:i + 2]
     exe = args[0] if args else DEFAULT
     b = open(exe, "rb").read()
     secs = sections(b)
@@ -128,7 +201,29 @@ def main():
     res["patch_old_matches"] = rd(PATCH_VA, 12) == bytes.fromhex(PATCH_OLD)
     res["patch_new_boundaries"] = [hex(int(m.group(1), 16)) for m in re.finditer(r"^\s+([0-9a-f]+):", d2, re.M)]
 
-    ok = (res["sha256_ok"] and all(res["sites"].values()) and res["native9_name"] == "X2_SetPause"
+    # The bytes the DLL writes: the production core, compiled, against the image and the decoder.
+    core = dll_core(keys)
+    dll = {"core_compiled": core is not None}
+    if core:
+        window, original, (wva, sva, off), written = core
+        dll["window_matches_image"] = window == rd(WINDOW_VA, WINDOW_LEN) and len(window) == WINDOW_LEN and wva == WINDOW_VA
+        dll["original_matches_note"] = original == bytes.fromhex(PATCH_OLD) and sva == PATCH_VA and wva + off == PATCH_VA
+        dll["default_key_bytes_match_note"] = written.get(DEFAULT_KEY) == bytes.fromhex(PATCH_NEW)
+        dll["keys"] = {}
+        for k in keys:
+            w = written.get(k)
+            if not isinstance(w, bytes):
+                dll["keys"][hex(k)] = {"refused": w, "ok": False}
+                continue
+            starts, insns = decode_at(w, PATCH_VA)
+            dll["keys"][hex(k)] = {"bytes": w.hex(" "), "python_twin": w == encode_patch(k), "boundaries": starts, "decode": insns,
+                                   "ok": w == encode_patch(k) and starts == ["0x4043a5", "0x4043aa", "0x4043ac", "0x4043af"]
+                                   and insns == ["cmp si," + hex(k), "jne 0x4043b1", "cmp si,bx", "jne 0x4043d8"]}
+    res["dll_patch"] = dll
+    dll_ok = (core is not None and dll["window_matches_image"] and dll["original_matches_note"] and dll["default_key_bytes_match_note"]
+              and all(v.get("ok") for v in dll["keys"].values()))
+
+    ok = (dll_ok and res["sha256_ok"] and all(res["sites"].values()) and res["native9_name"] == "X2_SetPause"
           and res["native9_target"] == "0x40705d" and res["dik_map"]["DIK_PAUSE(0xc5)"] == "0x1b5"
           and res["bit0_clear_sites"] == ["4043e3"] and not res["wait_fn_bad_opcode"]
           and not hits and res["aligned_dword_refs_into_patch_span"] == 0 and res["patch_old_matches"]

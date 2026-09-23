@@ -256,7 +256,12 @@ Hook-site validation (mechanised in the verifier):
   (`WM_SYSCOMMAND SC_CLOSE` → `0x00401d60` is still pumped). (c) A reactivation
   click can still unpause if DirectInput delivers its button-down after
   `Acquire`. (d) Portability: an EXE byte patch keyed to this hash; nothing
-  Wine-specific, so it behaves the same on native Windows.
+  Wine-specific, so it behaves the same on native Windows. (e) `cmp si,bx`
+  compares all 16 bits where the original compared the low 12: with Pause held
+  since before the pause, pressing and then releasing Shift changes the read
+  from `0x1b5` to `0x11b5` and back, and the return to `0x1b5` differs from the
+  previous read, so it unpauses where vanilla did not (accepted: it needs the
+  Pause key held).
 
 ### 4.2 Proxy-side message filter: not effective
 
@@ -306,8 +311,40 @@ paused the game presents nothing; after the exit the game clock is resynced
   reactivation click reaches DirectInput as a button-down: runtime questions.
   §4.1 covers every key; only the click case would remain.
 - The meaning of `[obj+0x4d8]` (mode 1 vs in-flight) and of `[*0x00606f34+0x728]`.
-- Nothing was tested in the game; the patch is a proposal with static
-  validation only.
+- Nothing was tested in the game; the patch is implemented (below) with
+  static and host validation only.
+
+## Implementation
+
+§4.1 is `src/proxy/pause_key_only.cpp` with its portable core
+`pause_key_only_core.h`, gated by `X3M_PAUSE_KEY_ONLY=1` (unset = nothing
+patched; the launcher forwards it on every modded launch, `--no-pause-key-only`
+turns it off; `--pause-key-only` and `--pause-key` are refused under `--vanilla`,
+which loads the builtin d3d9, so the proxy never runs).
+`X3M_PAUSE_KEY` (`--pause-key CODE`, 0x-hex or decimal in `[0x1, 0x1fff]` with a
+non-zero low 12 bits, default `0x1b5`) is written into the `cmp si,imm16` immediate for a rebound
+Pause key; any other value refuses with `bad_key`. The install runs on the
+backend-load path in the `engine_patch` install window, after the
+exact-executable check, and compares the 79 bytes `0x004043a0`–`0x004043ee`
+(loop head to the bit-0 clear; fail closed, `bytes_mismatch`, which also
+refuses an already patched image); after the first Present it refuses with
+`late_claim`. The 12 bytes straddle a qword, so `write_code` takes the plain
+copy (`write=plain`); `VirtualProtect`/`FlushInstructionCache`, a read-back
+compare and rollback to the original bytes follow the `point_light_admission`
+shape; the rollback is judged by a read-back of the original bytes
+(`patch_rolled_back`; `rollback_unprotected` when the original bytes are back but the final re-protect failed; else `rollback_failed`, kept registered for `shutdown()`); `key()` reports 0 once the original bytes are back;
+`LastError` is preserved. There is no stub and no pointer into the DLL, so this
+module pins nothing and nothing runs per frame; a device Reset does not touch
+it; `FreeLibrary` restores the bytes if they are still ours. It relies on the
+DLL not being unloaded while the main thread spins in the loop (a restore then
+would move the instruction boundaries under it); in practice the stub-emitting
+modules pin the DLL (`collide_sat_sse2` and `collide_memo` are on by default),
+so that path is unreachable. One line per process when the variable is set:
+`pause_key_only patched=1 key=0x1b5 reason=ok requested=1 site=0x004043a5 write=plain`.
+The verifier now also compiles the core and checks that its window equals the
+image and that the bytes it writes decode to the four instructions above
+(`--key CODE` for a rebound key). Evidence:
+[pause-key-only.md](../verification/pause-key-only.md).
 
 ## Input block `*0x00606f3c` (fields used here)
 

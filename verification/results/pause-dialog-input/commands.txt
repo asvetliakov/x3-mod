@@ -1,0 +1,19 @@
+# Pause key only (2026-09-23): commands behind docs/verification/pause-key-only.md
+
+# Site verifier incl. the DLL bytes (production core compiled on the host) -> PASS
+python3 verification/results/pause-dialog-input/verify_pause_sites.py --json verification/results/pause-dialog-input/verify_pause_sites.json
+# A rebound key decodes the same way; an out-of-range key is refused (bad_key, FAIL)
+python3 verification/results/pause-dialog-input/verify_pause_sites.py --key 0x2c
+python3 verification/results/pause-dialog-input/verify_pause_sites.py --key 0x2000
+python3 verification/results/pause-dialog-input/verify_pause_sites.py --key 0x1000
+
+# Host tests -> 19 tests OK
+PYTHONPATH=verification/probe /usr/bin/python3 -m unittest verification.analysis.test_pause_key_only verification.analysis.test_collide_box_cull
+
+# Launcher-default regression (every module with a manage.py launch --dry-run) -> 418 tests OK, 1 skipped
+PYTHONPATH=verification/probe /usr/bin/python3 -m unittest $(grep -l "'--dry-run'" verification/analysis/test_*.py | grep -v -e test_pause_key_only -e test_collide_box_cull | sed 's#/#.#g; s#\.py$##')
+
+# Scratch build and no-x87 walk -> build OK, 0 warnings; PASS, 100 roots, 639 reachable, 0 violations
+cmake -S . -B build-pause-scratch -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPython3_EXECUTABLE=/usr/bin/python3 && cmake --build build-pause-scratch -j8 --target d3d9
+/usr/bin/python3 verification/probe/check_no_x87.py build-pause-scratch/d3d9.dll
+rm -rf build-pause-scratch

@@ -73,5 +73,30 @@
   "0x4043ac",
   "0x4043af"
  ],
+ "dll_patch": {
+  "core_compiled": true,
+  "window_matches_image": true,
+  "original_matches_note": true,
+  "default_key_bytes_match_note": true,
+  "keys": {
+   "0x1b5": {
+    "bytes": "66 81 fe b5 01 75 05 66 39 de 75 27",
+    "python_twin": true,
+    "boundaries": [
+     "0x4043a5",
+     "0x4043aa",
+     "0x4043ac",
+     "0x4043af"
+    ],
+    "decode": [
+     "cmp si,0x1b5",
+     "jne 0x4043b1",
+     "cmp si,bx",
+     "jne 0x4043d8"
+    ],
+    "ok": true
+   }
+  }
+ },
  "verdict": "PASS"
 }

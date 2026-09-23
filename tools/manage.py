@@ -145,6 +145,26 @@ def select_voice_decoder(args, game):
     return None, 'no valid plugin directory found', notes
 
 
+# Pause key only (user decision 2026-09-23, docs/reverse-engineering/pause-dialog-input.md):
+# forwarded on every modded launch; the DLL's own fallback stays off (no variable =
+# nothing patched). --vanilla loads the builtin d3d9 (the proxy never runs), so the
+# option and the key are refused there. The key is an engine key code (the reader's
+# 12-bit code, | 0x1000 with Shift held; the 12-bit part must not be 0); DIK_PAUSE is 0x1b5.
+PAUSE_KEY_DEFAULT = 0x1b5
+PAUSE_KEY_MAX = 0x1fff
+
+
+def pause_key_code(text):
+    """--pause-key CODE: 0x-hex or decimal, the range the DLL accepts ([1, 0x1fff])."""
+    try:
+        value = int(text, 0)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f'not an integer key code: {text!r}')
+    if not 1 <= value <= PAUSE_KEY_MAX or not value & 0xfff:
+        raise argparse.ArgumentTypeError(f'key code out of range: {text} (expected [0x1, 0x{PAUSE_KEY_MAX:x}] with a non-zero low 12 bits)')
+    return value
+
+
 def cull_small_parts_px(args):
     """The PX the launcher forwards: the explicit --cull-small-parts when given
     (0 = off), else the launcher default on a modded launch and nothing under
@@ -543,6 +563,9 @@ def main():
     parser.add_argument('--sun-occlusion-radius', type=float, default=None, metavar='U', help='Half-width of the sun disc the visibility pass samples, as a fraction of the back-buffer width (X3M_SUN_OCCLUSION_RADIUS; 0.005 <= U <= 0.25, default 0.04 = 51 px at 1280; the engine\'s record size saturates for the sun, so the radius is not derived; calibrate from the lens_*.bgra8 readback of a clear-sky burst: radius_px in the sun_visibility line should match the glow disc; requires --sun-occlusion)')
     parser.add_argument('--sun-occlusion-curve', type=float, default=None, metavar='EXP', help='Exponent on the used visibility fraction (X3M_SUN_OCCLUSION_CURVE; 0.25 <= EXP <= 4, default 1; requires --sun-occlusion)')
     parser.add_argument('--sun-occlusion-core-f', choices=('on', 'off'), default=None, help='Whether the per-pixel clipped core bodies of the sun are also multiplied by the visibility fraction f (X3M_SUN_OCCLUSION_CORE_F, default on whenever --sun-occlusion is given, accepted in flight in run235): on = the clipped disc dims with the covered fraction like the ghosts and streaks; off = clip only, the Run64 behaviour. Requires --sun-occlusion (without it nothing is patched)')
+    parser.add_argument('--no-pause-key-only', dest='pause_key_only', action='store_false', default=None, help='Keep the vanilla pause exit (any key or mouse button unpauses; it is restricted by default on a modded launch)')
+    parser.add_argument('--pause-key-only', dest='pause_key_only', action='store_true', default=None, help='[launcher default on modded launches; --no-pause-key-only = off; refused under --vanilla, where the proxy is not loaded] While the flight pause is up, only the Pause key or a mouse click ends it; every other key, including the Alt/Command press that starts an alt-tab, is read and ignored (X3M_PAUSE_KEY_ONLY=1; default absent = nothing patched). The engine\'s pause wait loop in 0x00404280 exits on any new key or mouse button; its key test at 0x004043a5 (12 bytes) is rewritten in place to accept only the pause key newly pressed; the mouse exit is unchanged. Shift+Pause no longer unpauses. One pause_key_only log line (patched, key, reason). Exact executable and bytes only, otherwise fails closed to vanilla (docs/reverse-engineering/pause-dialog-input.md, section 4.1)')
+    parser.add_argument('--pause-key', type=pause_key_code, default=None, metavar='CODE', help=f'Engine key code that ends the pause under --pause-key-only (X3M_PAUSE_KEY; default 0x{PAUSE_KEY_DEFAULT:x} = DIK_PAUSE): the reader\'s 12-bit code, | 0x1000 for a Shift chord, 0x-hex or decimal in [0x1, 0x{PAUSE_KEY_MAX:x}] with a non-zero low 12 bits; for a rebound Pause key. Needs the patch (refused with --no-pause-key-only and under --vanilla)')
     parser.add_argument('--collide-memo-verify', action='store_true', help='Diagnostic form of --collide-memo (implies it; X3M_COLLIDE_MEMO_VERIFY=1): nothing is skipped, every query that would have been answered from the memo runs in the engine as well and the two are compared; verify_mismatches in the collide_memo line must stay 0. Costs what vanilla costs: for one flight')
     parser.add_argument('--cull-small-parts', type=float, default=None, metavar='PX', help='Cull mesh nodes whose projected radius is under PX pixels, 0 < PX <= 64 (X3M_CULL_SMALL_PARTS_PX; launcher default 2 on every modded launch, --cull-small-parts 0 = off, nothing patched; --vanilla forwards nothing and the DLL\'s own fallback stays off): one trampoline on the per-node cull/LOD pass 0x0047cfe0 at 0x0047d2a2 sends a node whose engine metric s = r*640/D is below the per-frame threshold (PX converted with the live projection scale and the back-buffer width, the cull-census bucket rule) down the engine\'s own size-cull instruction at 0x0047d2c3; every other node runs the vanilla compare. Run131 census at the run117 station view: 2 px = 403 of the 878 census-attributed draws (901 in the frame; about 9.6 ms at 23.7 us/draw), 4 px = 458; lower bounds, because a culled node also culls its 0x40000-flagged children (0x0047d055). The threshold applies in every view (small casters leave the shadow and env maps too) and is scaled by the one main-view projection. Exact executable and bytes only, otherwise fails closed to vanilla; risk: popping of thin parts (antennas, clamps) whose radius is small, cascading to their descendants (none seen at 2 px in run 43 B) (docs/architecture/engine-frame-time.md 2.3, docs/reverse-engineering/lod-selection.md "Cull small parts site")')
     parser.add_argument('--cull-small-parts-scope', choices=('all', 'bodies'), default=None, help='Which nodes --cull-small-parts may cull (X3M_CULL_SMALL_PARTS_SCOPE; default all; refused when the cull is off, enables nothing on its own). bodies = only nodes without a parent link ([node+0x18] == 0, the test the displaced instruction already performs): whole distant objects, which at 2 px are invisible anyway, while the glowing sub-parts of nearer stations (a few px, visible) stay. all = every node under the threshold. Fixture replay of the run131 rows at 2 px: all 97 nodes / 403 draws, bodies 89 / 395 (body-flagged rows; the rows carry no parent link, docs/verification/cull-small-parts.md). Run 43 B: at 2 px `all` took the busy view from 884 to 477 draws and ~30 to ~42 fps with no visible pop-in, while `bodies` culled 36 nodes/frame and saved nothing (nearly every small node has a parent), so `all` is the default in the launcher and in the DLL')
@@ -1114,6 +1137,10 @@ def main():
     # 0 is off; otherwise the value must survive the DLL's fixed-point parser ([+]digits[.digits], (0, 64]).
     if args.cull_small_parts is not None and not (math.isfinite(args.cull_small_parts) and (args.cull_small_parts == 0.0 or 0.0001 <= args.cull_small_parts <= 64.0)):
         parser.error(f'--cull-small-parts out of range: {args.cull_small_parts} (expected 0 or [0.0001, 64])')
+    if args.vanilla and (args.pause_key_only or args.pause_key is not None):
+        parser.error('--pause-key-only/--pause-key cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the pause never runs')
+    if args.pause_key is not None and args.pause_key_only is False:
+        parser.error('--pause-key needs the pause-key-only patch: it cannot be combined with --no-pause-key-only')
     if args.collide_memo is False and (args.collide_memo_verify or args.collide_query_phases):
         parser.error('--collide-memo-verify/--collide-query-phases implies the memo: it cannot be combined with --no-collide-memo')
     if args.sun_occlusion and not args.motion_output:
@@ -1472,6 +1499,16 @@ def main():
             env['X3M_COLLIDE_MEMO'] = '1'
         else:
             env.pop('X3M_COLLIDE_MEMO', None)
+        # Pause key only: launcher default on a modded launch, never under --vanilla (refused above); the
+        # key travels only with the patch and only when given, so a stale shell value cannot rebind it.
+        if args.pause_key_only is not False and not args.vanilla:
+            env['X3M_PAUSE_KEY_ONLY'] = '1'
+        else:
+            env.pop('X3M_PAUSE_KEY_ONLY', None)
+        if args.pause_key is not None:
+            env['X3M_PAUSE_KEY'] = f'0x{args.pause_key:x}'
+        else:
+            env.pop('X3M_PAUSE_KEY', None)
         if args.collide_query_phases:
             env['X3M_COLLIDE_QUERY_PHASES'] = '1'
         else:

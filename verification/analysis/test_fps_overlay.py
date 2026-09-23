@@ -114,7 +114,12 @@ class FpsOverlay(unittest.TestCase):
             and node.targets[0].slice.value == 'X3M_FPS_OVERLAY']
         self.assertEqual(len(assignments), 1)
         main.body = statements + assignments + [ast.Return(value=ast.Name(id='env', ctx=ast.Load()))]
-        compiled = compile(ast.fix_missing_locations(ast.Module(body=[main], type_ignores=[])), 'manage_under_test.py', 'exec')
+        referenced = {n.id for n in ast.walk(main) if isinstance(n, ast.Name)}
+        defaults = [node for node in tree.body if isinstance(node, ast.Assign) and len(node.targets) == 1
+                    and isinstance(node.targets[0], ast.Name) and node.targets[0].id.isupper() and node.targets[0].id in referenced
+                    and isinstance(node.value, ast.Constant)]
+        helpers = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in referenced]
+        compiled = compile(ast.fix_missing_locations(ast.Module(body=defaults + helpers + [main], type_ignores=[])), 'manage_under_test.py', 'exec')
         scope = dict(argparse=argparse, Path=Path, GAME=Path('/unused'), BOTTLE='X3', ROOT=ROOT, __doc__='test')
         exec(compiled, scope)
         for arguments, expected in (([], '0'), (['--fps-overlay'], '1')):

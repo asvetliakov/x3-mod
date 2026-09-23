@@ -8,6 +8,7 @@
 #include "lod_scale.h"
 #include "cull_census.h"
 #include "collide_box_cull.h"
+#include "pause_key_only.h"
 #include "collide_narrow_census.h"
 #include "collide_sat_sse2.h"
 #include "collide_memo.h"
@@ -3362,6 +3363,7 @@ void initialize_log(HMODULE module) {
     collide_box_cull::initialize(); // X3M_COLLIDE_BOX_CULL=1 only; two box early-out trampolines on the sector collision pair tests (0x0045d58e, 0x0045cc7c), same window
     collide_narrow_census::initialize(); // X3M_COLLIDE_NARROW_CENSUS=1 only; narrow-phase census: two call redirects (0x0045d665, 0x0048a9a5) and one entry trampoline (0x004e2530), same window, disjoint from the box-cull claims
     collide_sat_sse2::initialize(); // X3M_COLLIDE_SAT_SSE2=1 only; the sole call of the OBB separating-axis test 0x004e3280 (at 0x004e25a3) redirected to an SSE2 reimplementation, same window, disjoint from every other claim
+    pause_key_only::initialize(); // X3M_PAUSE_KEY_ONLY=1 only; 12-byte in-place rewrite of the flight pause's key exit at 0x004043a5 (key X3M_PAUSE_KEY, default 0x1b5), same window, disjoint from every other claim
     collide_memo::initialize(); // X3M_COLLIDE_MEMO=1 only; the sole call of 0x004e29f0 (at 0x0047f329, inside the mesh-pair query) redirected to the no-contact memo's thunk, same window, after the census and the SAT so the bytes it hashes are settled
     // X3M_SUN_OCCLUSION=1 / X3M_SUN_OCCLUSION_LOG=1 only (docs/architecture/sun-partial-occlusion.md): the flare probe's call
     // 0x00471630 and the lens traversal's call 0x00472491, same window, disjoint from every other claim except
