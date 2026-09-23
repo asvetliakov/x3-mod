@@ -1,0 +1,62 @@
+{
+ "installed_at": "2026-09-23T23:08+04:00",
+ "command": "/usr/bin/python3 tools/analysis/lod_overlay.py --batch --only verification/results/lod-overlay-batch/sectors.txt --install --replace --jobs 2",
+ "commit": "d4d8744f",
+ "slot": 5,
+ "display": "1920x1080 (reference width 1800)",
+ "rule": "ships T_class=min(200,max(80,2.5*T_1)), stations 150; aspect k capped 1.5/2.0; texel floor 0.5 area-weighted, share 0.10; light-bleed guard (max 4/255 at L = ceil(log2 texels/px) + 2, repack within 15 % scale loss else kept group)",
+ "files": {
+  "addon/05.cat": {
+   "sha256": "e1a7c80ef16ec41d606b8bbfcc19ff7829dd49be1b940bcb979eacbcd7417b87",
+   "bytes": 6035
+  },
+  "addon/05.dat": {
+   "sha256": "5a7434457b44e862faba1bd3c3c907a6c41fad0dab756f10b48147266c784431",
+   "bytes": 125263525
+  },
+  "addon/05.x3m-lod.json": {
+   "sha256": "2fec488177ebd6aeca3ee18e934de1d149e146b37174c4754ef8aeca7ebf34fb",
+   "bytes": 775147
+  },
+  "addon/x3m-lod-batch.json": {
+   "sha256": "1837f05d4428178d42a38f2272d6375a8b9df40f334be24ba555f28a1a56382c",
+   "bytes": 148624
+  }
+ },
+ "summary": {
+  "enumerated": 49,
+  "eligible": 22,
+  "built": 22,
+  "atlas_sizes": {
+   "1024": 22
+  },
+  "atlas_bytes_stored": "12.67 MB",
+  "dat_bytes": 125263525,
+  "draws_below_switch": "651 -> 76",
+  "light_bleed": "bodies 16, tiles 53, kept groups 9 (argon_M1 1, argon_M2 2, argon_TL 1, Argon_M7 2, Argon_m7m 1, owp_large 2)",
+  "laser_E": "panels mat31 +21.8 -> +0.2 by a 4-texel repack margin, 3 draws"
+ },
+ "record_copies": "verification/results/lod-overlay-batch/install-run76/",
+ "game_running_at_install": false,
+ "replaces": {
+  "installed": "2026-09-23T18:14+04:00",
+  "files": {
+   "addon/05.cat": {
+    "sha256": "7559af95368e54d280b69bd1ea50b240705190363135e126afddd9a13306ee51",
+    "bytes": 6036
+   },
+   "addon/05.dat": {
+    "sha256": "f19ba0a976bd38ea1746aed7be75a6d502013b56bd65f4001ddb698064c1a59b",
+    "bytes": 127449546
+   },
+   "addon/05.x3m-lod.json": {
+    "sha256": "5c220c5a3d942515f9ef6058c8ecb8b40f2c522adc98eae7c9123b4c578c75df",
+    "bytes": 746469
+   },
+   "addon/x3m-lod-batch.json": {
+    "sha256": "2ceb93d79e8a69fbc613b697853dc7dda6693859341da264eb1f91a6741ffb02",
+    "bytes": 140921
+   }
+  }
+ }
+}

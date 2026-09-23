@@ -1,0 +1,558 @@
+others/argon_gate: 01.cat:objects/others/argon_gate.pbb
+  ladder before: thresholds ['-', 30, 20, 10, 30] draws [16, 16, 16, 14, 12] record bytes [2184804, 1224880, 569930, 223662, 160378]
+  ladder after:  thresholds ['-', 30, 155] draws [16, 2, 12] record bytes [2184804, 2345288, 160378]
+  compact: new LOD1 threshold=30 + pad copy of original LOD4 (2126 points) LOD2 threshold=155 (original LOD1..4 dropped) from source LOD0 (points 27331, faces 23744) flags=0x40 points=29777 parts=1 groups/part [16] -> [2] draws 16 -> 2 faces=23744 collapse=atlas groups=['atlas:mat16~12:23584f', 'alpha:mat11:160f'] part_flags=['0x10000001']
+  main-view drawable at Very High (f=1): before [0, 3] after [0, 1] (new record drawable: True)
+        low drawable [0, 2] by s: before s<30:LOD4 s>=30:LOD0 | after s<155:LOD2 s>=155:LOD0
+     medium drawable [0, 2] by s: before s<30:LOD4 s>=30:LOD0 | after s<155:LOD2 s>=155:LOD0
+       high drawable [0, 2] by s: before s<30:LOD4 s>=30:LOD0 | after s<155:LOD2 s>=155:LOD0
+  very-high drawable [0, 1] by s: before s<30:LOD3 s>=30:LOD0 | after s<155:LOD1 s>=155:LOD0
+  atlas material mat16 = mat12 with the area-weighted g_Mat* mean over [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15]: g_MatReflectionBlur=0->0.3419(mean 0.3419)
+  atlas 1024x1024 (min atlas texels per screen pixel at px=217.969: 1024: 0.121, 1024 clamped: 2.014; >= 2: yes) scale 1.0000 tiles 14 gutter 8 duplicated points 2446 -> 29777 points, tangent records missing 0; materials ['mat16'] (mat16 = copy of mat12); effects [['argon.fx', 1]]
+  atlas light_bleed=0 kept=0: 14 tiles checked at L = ceil(log2 texels/px) + 2, flagged above 4/255 mean added luminance
+  atlas texel rule: min 2.014, area-weighted 2.057 atlas texels per screen pixel (ratio at the 0.1 area quantile); below --min-texels 0.5: 0.00 % of the atlased surface (--texel-floor-share 10 %); layout clamped, capped tiles 14, span-clamped faces 0
+  atlas diffuse: dds/x3m_lod_argon_gate_7a1c2c_diffuse.pck (x3m_lod\x3m_lod_argon_gate_7a1c2c_diffuse.tga) DXT1 699192 bytes sha256 821a1c339d3c803c; compression error mean/p95 R=2.17/6 G=1.90/6 B=1.94/6 A=0.00/0
+  atlas light: dds/x3m_lod_argon_gate_7a1c2c_light.pck (x3m_lod\x3m_lod_argon_gate_7a1c2c_light.tga) DXT5 1398256 bytes sha256 f80213f10c02aad9; compression error mean/p95 R=0.23/0 G=0.24/0 B=0.24/0 A=0.08/0
+  atlas bump: dds/x3m_lod_argon_gate_7a1c2c_bump.pck (x3m_lod\x3m_lod_argon_gate_7a1c2c_bump.tga) DXT5 1398256 bytes sha256 7ebbc24cfe25198c; compression error mean/p95 R=3.54/9 G=2.50/9 B=3.54/9 A=0.84/5
+  atlas specular: dds/x3m_lod_argon_gate_7a1c2c_specular.pck (x3m_lod\x3m_lod_argon_gate_7a1c2c_specular.tga) DXT5 1398256 bytes sha256 78cd3a8bb7d718ab; compression error mean/p95 R=3.27/11 G=3.26/11 B=3.27/11 A=0.00/0
+  atlas check: faces 23584, vertex UVs inside their tile 70752/70752 (inside tile+gutter 70752), max inverse-map error 2.502 source texels / 0.0077 atlas texels
+  atlas sampling diffuse (983 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 6.16/18.19/53.15 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 2.50/7.03/18.51 A 0.00/0.00/0.00
+  atlas sampling light (983 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 0.59/3.58/90.58 A 0.93/0.00/89.49; vs source prefiltered to the atlas texel RGB 0.32/2.76/12.54 A 0.36/0.00/42.40
+  atlas sampling bump (983 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 3.19/7.52/89.70 A 12.90/63.57/98.94; vs source prefiltered to the atlas texel RGB 2.06/4.44/20.40 A 3.90/17.28/36.31; normal angle (degrees) vs source 7.03/32.69/52.37, vs prefiltered 2.22/8.61/17.11
+  atlas sampling specular (983 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 15.36/55.18/101.90 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 4.63/12.19/39.39 A 0.00/0.00/0.00
+  decoded bytes 4392081 -> 4720605, stored 1073660 (gzip), overlay sha256 6c395297638a88a5
+
+ships/argon/argon_M1: 02.cat:objects/ships/argon/argon_M1.pbb
+  ladder before: thresholds ['-', 30, 15, 5] draws [33, 32, 29, 24] record bytes [2459860, 1177922, 439832, 115438]
+  ladder after:  thresholds ['-', 30, 120] draws [33, 4, 24] record bytes [2459860, 2542408, 115438]
+  compact: new LOD1 threshold=30 + pad copy of original LOD3 (1584 points) LOD2 threshold=120 (original LOD1..3 dropped) from source LOD0 (points 32878, faces 18087) flags=0x0 points=34134 parts=2 groups/part [32, 1] -> [3, 1] draws 33 -> 4 faces=18087 collapse=atlas groups=['atlas:mat49~11:17633f', 'kept:mat30:304f', 'alpha:mat0:138f', 'opaque:mat32:12f'] part_flags=['0x30000001', '0x30008001']
+  main-view drawable at Very High (f=1): before [0, 1, 2] after [0, 1] (new record drawable: True)
+        low drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<120:LOD2 s>=120:LOD0
+     medium drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<120:LOD2 s>=120:LOD0
+       high drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<120:LOD2 s>=120:LOD0
+  very-high drawable [0, 1] by s: before s<5:LOD2 5<=s<15:LOD1 s>=15:LOD0 | after s<120:LOD1 s>=120:LOD0
+  atlas material mat49 = mat11 with the area-weighted g_Mat* mean over [3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31]: (unchanged)
+  atlas 1024x1024 (min atlas texels per screen pixel at px=168.75: 1024: 3.322; >= 2: yes) scale 0.1047 tiles 27 gutter 8 duplicated points 1256 -> 34134 points, tangent records missing 0; materials ['mat49'] (mat49 = copy of mat11); effects [['argon.fx', 1]]
+  atlas light_bleed=6 kept=1: 28 tiles checked at L = ceil(log2 texels/px) + 2, flagged above 4/255 mean added luminance; flagged mat17 L4 own 1.2 +5.2, mat22 L5 own 0.4 +35.2, mat23 L5 own 0.5 +17.5, mat25 L5 own 0.3 +8.2, mat28 L7 own 0.0 +41.0, mat31 L5 own 0.0 +4.2; remedy keep+repack (emitters mat[3, 4, 26, 27, 29, 30] in their own region, margin 16 texels, L 7, scale 0.1223 -> 0.1047, min texels/px 3.322 -> 3.101); kept as own groups ['mat30']; after mat17 +0.0, mat22 +0.0, mat23 +0.0, mat25 +0.0, mat28 +0.0, mat31 +0.0
+  atlas texel rule: min 3.101, area-weighted 3.246 atlas texels per screen pixel (ratio at the 0.1 area quantile); below --min-texels 0.5: 0.00 % of the atlased surface (--texel-floor-share 10 %); layout uniform, capped tiles 0, span-clamped faces 0
+  atlas diffuse: dds/x3m_lod_argon_M1_fa6140_diffuse.pck (x3m_lod\x3m_lod_argon_M1_fa6140_diffuse.tga) DXT1 699192 bytes sha256 f6e72654b81b5a7f; compression error mean/p95 R=2.18/6 G=1.84/6 B=2.12/6 A=0.00/0
+  atlas light: dds/x3m_lod_argon_M1_fa6140_light.pck (x3m_lod\x3m_lod_argon_M1_fa6140_light.tga) DXT5 1398256 bytes sha256 01c9a7e454848233; compression error mean/p95 R=0.89/4 G=0.80/4 B=0.90/4 A=0.34/0
+  atlas bump: dds/x3m_lod_argon_M1_fa6140_bump.pck (x3m_lod\x3m_lod_argon_M1_fa6140_bump.tga) DXT5 1398256 bytes sha256 ca064b6ee2fa22ef; compression error mean/p95 R=3.21/7 G=2.30/7 B=3.21/7 A=0.79/4
+  atlas specular: dds/x3m_lod_argon_M1_fa6140_specular.pck (x3m_lod\x3m_lod_argon_M1_fa6140_specular.tga) DXT5 1398256 bytes sha256 d34e5c95ce181c89; compression error mean/p95 R=3.85/11 G=3.81/11 B=3.85/11 A=0.00/0
+  atlas check: faces 17633, vertex UVs inside their tile 52899/52899 (inside tile+gutter 52899), max inverse-map error 0.072 source texels / 0.0077 atlas texels
+  atlas sampling diffuse (3527 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 4.07/15.93/78.98 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 2.14/6.29/23.78 A 0.00/0.00/0.00
+  atlas sampling light (3527 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 1.26/6.96/77.61 A 1.73/3.05/146.57; vs source prefiltered to the atlas texel RGB 0.55/3.01/52.57 A 0.52/1.02/82.14
+  atlas sampling bump (3527 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 5.30/22.77/108.34 A 7.01/42.03/131.24; vs source prefiltered to the atlas texel RGB 3.23/8.99/53.54 A 2.47/12.49/50.37; normal angle (degrees) vs source 5.07/26.98/65.58, vs prefiltered 2.00/7.08/28.56
+  atlas sampling specular (3527 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 11.59/33.49/117.21 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 4.49/13.65/43.16 A 0.00/0.00/0.00
+  decoded bytes 4265101 -> 5191233, stored 1859739 (gzip), overlay sha256 f9eb270aed6763e3
+
+ships/argon/argon_M2: 02.cat:objects/ships/argon/argon_M2.pbb
+  ladder before: thresholds ['-', 30, 15, 5] draws [38, 32, 30, 25] record bytes [2837656, 1390570, 517638, 135564]
+  ladder after:  thresholds ['-', 30, 112] draws [38, 10, 25] record bytes [2837656, 2935132, 135564]
+  compact: new LOD1 threshold=30 + pad copy of original LOD3 (1865 points) LOD2 threshold=112 (original LOD1..3 dropped) from source LOD0 (points 37706, faces 21780) flags=0x0 points=39188 parts=2 groups/part [32, 6] -> [4, 6] draws 38 -> 10 faces=21780 collapse=atlas groups=['atlas:mat48~17:20796f', 'kept:mat19:780f', 'kept:mat37:34f', 'alpha:mat1:158f', 'alpha:mat0:2f', 'alpha:mat1:2f', 'alpha:mat2:2f', 'alpha:mat3:2f', 'alpha:mat4:2f', 'opaque:mat5:2f'] part_flags=['0x30000001', '0x30008001']
+  main-view drawable at Very High (f=1): before [0, 1, 2] after [0, 1] (new record drawable: True)
+        low drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<112:LOD2 s>=112:LOD0
+     medium drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<112:LOD2 s>=112:LOD0
+       high drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<112:LOD2 s>=112:LOD0
+  very-high drawable [0, 1] by s: before s<5:LOD2 5<=s<15:LOD1 s>=15:LOD0 | after s<112:LOD1 s>=112:LOD0
+  atlas material mat48 = mat17 with the area-weighted g_Mat* mean over [5, 6, 7, 8, 14, 15, 16, 17, 18, 20, 21, 22, 23, 25, 26, 27, 28, 30, 31, 34, 35, 38, 39, 40, 41, 43]: (unchanged)
+  atlas 1024x1024 (min atlas texels per screen pixel at px=157.5: 1024: 3.691; >= 2: yes) scale 0.0892 tiles 26 gutter 8 duplicated points 1482 -> 39188 points, tangent records missing 0; materials ['mat48'] (mat48 = copy of mat17); effects [['argon.fx', 1]]
+  atlas light_bleed=11 kept=2: 28 tiles checked at L = ceil(log2 texels/px) + 2, flagged above 4/255 mean added luminance; flagged mat6 L6 own 23.5 +5.3, mat20 L5 own 0.0 +11.2, mat21 L6 own 0.7 +4.1, mat22 L4 own 0.6 +15.3, mat23 L4 own 1.3 +20.3, mat27 L5 own 0.5 +12.3, mat30 L5 own 0.4 +7.8, mat31 L5 own 0.5 +29.4, mat34 L6 own 0.5 +13.5, mat35 L6 own 0.2 +9.0, mat43 L5 own 0.0 +16.3; remedy keep+repack (emitters mat[5, 6, 38, 40, 41] in their own region, margin 64 texels, L 6, scale 0.1029 -> 0.0892, min texels/px 3.485 -> 2.788); kept as own groups ['mat19', 'mat37']; after mat6 +0.0, mat20 +0.0, mat21 +0.0, mat22 +0.0, mat23 +0.0, mat27 +0.4, mat30 +0.1, mat31 +0.0, mat34 +0.0, mat35 +0.0, mat43 +0.0
+  atlas texel rule: min 2.788, area-weighted 3.524 atlas texels per screen pixel (ratio at the 0.1 area quantile); below --min-texels 0.5: 0.00 % of the atlased surface (--texel-floor-share 10 %); layout uniform, capped tiles 0, span-clamped faces 0
+  atlas diffuse: dds/x3m_lod_argon_M2_0dfa9d_diffuse.pck (x3m_lod\x3m_lod_argon_M2_0dfa9d_diffuse.tga) DXT1 699192 bytes sha256 a27fe972a00839bd; compression error mean/p95 R=2.11/6 G=1.77/6 B=2.07/6 A=0.00/0
+  atlas light: dds/x3m_lod_argon_M2_0dfa9d_light.pck (x3m_lod\x3m_lod_argon_M2_0dfa9d_light.tga) DXT5 1398256 bytes sha256 73e7409f316986bf; compression error mean/p95 R=0.71/2 G=0.63/2 B=0.72/2 A=0.27/0
+  atlas bump: dds/x3m_lod_argon_M2_0dfa9d_bump.pck (x3m_lod\x3m_lod_argon_M2_0dfa9d_bump.tga) DXT5 1398256 bytes sha256 3c017ad5f4a2df7b; compression error mean/p95 R=3.11/6 G=2.17/6 B=3.11/6 A=0.68/4
+  atlas specular: dds/x3m_lod_argon_M2_0dfa9d_specular.pck (x3m_lod\x3m_lod_argon_M2_0dfa9d_specular.tga) DXT5 1398256 bytes sha256 177c070d48f5d017; compression error mean/p95 R=3.80/10 G=3.76/10 B=3.80/10 A=0.00/0
+  atlas check: faces 20796, vertex UVs inside their tile 62388/62388 (inside tile+gutter 62388), max inverse-map error 0.085 source texels / 0.0077 atlas texels
+  atlas sampling diffuse (3466 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 4.29/16.94/80.42 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 2.18/6.08/19.99 A 0.00/0.00/0.00
+  atlas sampling light (3466 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 1.18/4.76/87.53 A 1.52/2.72/150.57; vs source prefiltered to the atlas texel RGB 0.57/3.52/53.41 A 0.55/1.40/92.81
+  atlas sampling bump (3466 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 5.47/24.87/107.03 A 6.92/40.09/117.76; vs source prefiltered to the atlas texel RGB 3.13/9.54/53.59 A 2.65/12.61/60.03; normal angle (degrees) vs source 5.16/28.56/58.52, vs prefiltered 2.04/7.02/28.65
+  atlas sampling specular (3466 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 12.12/36.19/111.66 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 4.72/14.02/46.52 A 0.00/0.00/0.00
+  decoded bytes 4953343 -> 5981745, stored 2343664 (gzip), overlay sha256 9c1cdd2382cdee3d
+
+ships/argon/argon_TL: 02.cat:objects/ships/argon/argon_TL.pbb
+  ladder before: thresholds ['-', 30, 15, 5] draws [37, 31, 28, 23] record bytes [2158116, 1002124, 382474, 95860]
+  ladder after:  thresholds ['-', 30, 120] draws [37, 9, 23] record bytes [2158116, 2228268, 95860]
+  compact: new LOD1 threshold=30 + pad copy of original LOD3 (1313 points) LOD2 threshold=120 (original LOD1..3 dropped) from source LOD0 (points 28982, faces 15296) flags=0x0 points=30050 parts=2 groups/part [31, 6] -> [3, 6] draws 37 -> 9 faces=15296 collapse=atlas groups=['atlas:mat48~17:14852f', 'kept:mat41:304f', 'alpha:mat1:128f', 'alpha:mat0:2f', 'alpha:mat1:2f', 'alpha:mat2:2f', 'alpha:mat3:2f', 'alpha:mat4:2f', 'opaque:mat5:2f'] part_flags=['0x30000001', '0x30008001']
+  main-view drawable at Very High (f=1): before [0, 1, 2] after [0, 1] (new record drawable: True)
+        low drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<120:LOD2 s>=120:LOD0
+     medium drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<120:LOD2 s>=120:LOD0
+       high drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<120:LOD2 s>=120:LOD0
+  very-high drawable [0, 1] by s: before s<5:LOD2 5<=s<15:LOD1 s>=15:LOD0 | after s<120:LOD1 s>=120:LOD0
+  atlas material mat48 = mat17 with the area-weighted g_Mat* mean over [5, 6, 7, 8, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 25, 26, 27, 28, 31, 34, 35, 37, 38, 39, 40, 43]: (unchanged)
+  atlas 1024x1024 (min atlas texels per screen pixel at px=168.75: 1024: 2.944; >= 2: yes) scale 0.1008 tiles 26 gutter 8 duplicated points 1068 -> 30050 points, tangent records missing 0; materials ['mat48'] (mat48 = copy of mat17); effects [['argon.fx', 1]]
+  atlas light_bleed=3 kept=1: 27 tiles checked at L = ceil(log2 texels/px) + 2, flagged above 4/255 mean added luminance; flagged mat23 L4 own 1.2 +34.1, mat35 L5 own 0.3 +4.9, mat43 L5 own 0.0 +8.1; remedy keep+repack (emitters mat[5, 6, 37, 38, 40, 41] in their own region, margin 16 texels, L 5, scale 0.1146 -> 0.1008, min texels/px 2.944 -> 2.764); kept as own groups ['mat41']; after mat23 +0.0, mat35 +0.0, mat43 +0.0
+  atlas texel rule: min 2.764, area-weighted 3.006 atlas texels per screen pixel (ratio at the 0.1 area quantile); below --min-texels 0.5: 0.00 % of the atlased surface (--texel-floor-share 10 %); layout uniform, capped tiles 0, span-clamped faces 0
+  atlas diffuse: dds/x3m_lod_argon_TL_d948df_diffuse.pck (x3m_lod\x3m_lod_argon_TL_d948df_diffuse.tga) DXT1 699192 bytes sha256 f3370d3da5e3c5e4; compression error mean/p95 R=2.04/6 G=1.69/5 B=2.01/6 A=0.00/0
+  atlas light: dds/x3m_lod_argon_TL_d948df_light.pck (x3m_lod\x3m_lod_argon_TL_d948df_light.tga) DXT5 1398256 bytes sha256 7a244cd0012422f8; compression error mean/p95 R=0.74/2 G=0.67/2 B=0.74/3 A=0.29/0
+  atlas bump: dds/x3m_lod_argon_TL_d948df_bump.pck (x3m_lod\x3m_lod_argon_TL_d948df_bump.tga) DXT5 1398256 bytes sha256 ca52c76c60fbe266; compression error mean/p95 R=3.18/6 G=2.17/6 B=3.18/6 A=0.66/4
+  atlas specular: dds/x3m_lod_argon_TL_d948df_specular.pck (x3m_lod\x3m_lod_argon_TL_d948df_specular.tga) DXT5 1398256 bytes sha256 38c6c5a75a36c01b; compression error mean/p95 R=3.74/10 G=3.71/10 B=3.74/10 A=0.00/0
+  atlas check: faces 14852, vertex UVs inside their tile 44556/44556 (inside tile+gutter 44556), max inverse-map error 0.075 source texels / 0.0077 atlas texels
+  atlas sampling diffuse (3713 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 4.28/16.88/66.61 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 2.21/6.33/25.12 A 0.00/0.00/0.00
+  atlas sampling light (3713 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 1.47/7.89/102.81 A 1.97/4.37/147.58; vs source prefiltered to the atlas texel RGB 0.73/4.95/49.85 A 0.74/1.73/78.76
+  atlas sampling bump (3713 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 5.66/24.74/109.95 A 6.93/40.46/111.84; vs source prefiltered to the atlas texel RGB 3.28/9.15/44.08 A 2.56/12.46/62.96; normal angle (degrees) vs source 5.23/27.99/61.42, vs prefiltered 2.05/7.33/34.05
+  atlas sampling specular (3713 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 11.70/34.35/118.88 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 4.53/13.72/41.65 A 0.00/0.00/0.00
+  decoded bytes 3710571 -> 4555719, stored 1734723 (gzip), overlay sha256 613ab1597c13483c
+
+ships/M7/Argon_M7: 02.cat:objects/ships/M7/Argon_M7.pbb
+  ladder before: thresholds ['-', 30, 15, 5] draws [16, 16, 16, 11] record bytes [3312682, 1732210, 577294, 126444]
+  ladder after:  thresholds ['-', 30, 120] draws [16, 4, 11] record bytes [3312682, 3424210, 126444]
+  compact: new LOD1 threshold=30 + pad copy of original LOD3 (1725 points) LOD2 threshold=120 (original LOD1..3 dropped) from source LOD0 (points 44078, faces 25204) flags=0x40 points=45770 parts=1 groups/part [16] -> [4] draws 16 -> 4 faces=25204 collapse=atlas groups=['atlas:mat52~17:25032f', 'kept:mat21:4f', 'kept:mat24:20f', 'alpha:mat53~1:148f'] part_flags=['0x30000001']
+  main-view drawable at Very High (f=1): before [0, 1, 2] after [0, 1] (new record drawable: True)
+        low drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<120:LOD2 s>=120:LOD0
+     medium drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<120:LOD2 s>=120:LOD0
+       high drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<120:LOD2 s>=120:LOD0
+  very-high drawable [0, 1] by s: before s<5:LOD2 5<=s<15:LOD1 s>=15:LOD0 | after s<120:LOD1 s>=120:LOD0
+  atlas material mat52 = mat17 with the area-weighted g_Mat* mean over [5, 13, 14, 16, 17, 18, 19, 20, 28, 30, 31, 38]: g_MatSpecularStrength=3.4->3.186(mean 3.186) g_MatSpecularPower=7->6.499(mean 6.499) g_MatMinFresnel=0.09999->0.04994(mean 0.04994)
+  synthesized mat53 = mat1 with the area-weighted g_Mat* mean over [1, 9]: g_MatMinFresnel=0.09999->0.0704(mean 0.0704)
+  atlas 1024x1024 (min atlas texels per screen pixel at px=168.75: 1024: 4.555; >= 2: yes) scale 0.1245 tiles 12 gutter 8 duplicated points 1692 -> 45770 points, tangent records missing 0; materials ['mat52'] (mat52 = copy of mat17); effects [['XT_standard_lighting.fx', 1]]
+  atlas light_bleed=5 kept=2: 14 tiles checked at L = ceil(log2 texels/px) + 2, flagged above 4/255 mean added luminance; flagged mat5 L6 own 26.5 +6.4, mat24 L7 own 0.4 +18.9, mat28 L8 own 5.9 +18.1, mat30 L7 own 0.4 +40.1, mat31 L6 own 0.5 +56.6; remedy keep+repack (emitters mat[38] in their own region, margin 128 texels, L 8, scale 0.1460 -> 0.1245, min texels/px 4.555 -> 3.910); kept as own groups ['mat21', 'mat24']; after mat5 +0.0, mat28 +0.0, mat30 +0.3, mat31 +1.0
+  atlas texel rule: min 3.910, area-weighted 3.910 atlas texels per screen pixel (ratio at the 0.1 area quantile); below --min-texels 0.5: 0.00 % of the atlased surface (--texel-floor-share 10 %); layout uniform, capped tiles 0, span-clamped faces 0
+  atlas diffuse: dds/x3m_lod_Argon_M7_c5cdcc_diffuse.pck (x3m_lod\x3m_lod_Argon_M7_c5cdcc_diffuse.tga) DXT1 699192 bytes sha256 f1db5d162d03a025; compression error mean/p95 R=1.99/6 G=1.62/5 B=1.89/6 A=0.00/0
+  atlas light: dds/x3m_lod_Argon_M7_c5cdcc_light.pck (x3m_lod\x3m_lod_Argon_M7_c5cdcc_light.tga) DXT5 1398256 bytes sha256 6a9fab7aa7e63282; compression error mean/p95 R=0.85/3 G=0.71/2 B=0.86/3 A=0.30/0
+  atlas bump: dds/x3m_lod_Argon_M7_c5cdcc_bump.pck (x3m_lod\x3m_lod_Argon_M7_c5cdcc_bump.tga) DXT5 1398256 bytes sha256 d259bbe3bc6d4712; compression error mean/p95 R=3.45/6 G=2.35/7 B=3.45/6 A=0.66/4
+  atlas specular: dds/x3m_lod_Argon_M7_c5cdcc_specular.pck (x3m_lod\x3m_lod_Argon_M7_c5cdcc_specular.tga) DXT5 1398256 bytes sha256 579e8f07a651847d; compression error mean/p95 R=3.60/10 G=3.57/10 B=3.60/10 A=0.00/0
+  atlas check: faces 25032, vertex UVs inside their tile 75096/75096 (inside tile+gutter 75096), max inverse-map error 0.062 source texels / 0.0077 atlas texels
+  atlas sampling diffuse (3576 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 3.35/12.77/52.08 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 1.78/4.93/31.69 A 0.00/0.00/0.00
+  atlas sampling light (3576 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 0.63/0.00/153.37 A 1.00/0.00/205.85; vs source prefiltered to the atlas texel RGB 0.36/0.00/47.34 A 0.42/0.00/68.70
+  atlas sampling bump (3576 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 6.27/29.63/105.14 A 7.68/46.36/97.62; vs source prefiltered to the atlas texel RGB 3.96/11.89/41.75 A 3.28/15.33/47.31; normal angle (degrees) vs source 5.91/30.78/61.28, vs prefiltered 2.64/9.09/24.30
+  atlas sampling specular (3576 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 10.42/30.28/101.64 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 4.37/13.11/52.41 A 0.00/0.00/0.00
+  decoded bytes 5861444 -> 6980450, stored 2766711 (gzip), overlay sha256 58c654355e807e92
+
+ships/M7/Argon_m7m: 02.cat:objects/ships/M7/Argon_m7m.pbb
+  ladder before: thresholds ['-', 30, 15, 5] draws [38, 37, 35, 27] record bytes [2763588, 1365136, 481592, 102220]
+  ladder after:  thresholds ['-', 30, 120] draws [38, 3, 27] record bytes [2763588, 2856556, 102220]
+  compact: new LOD1 threshold=30 + pad copy of original LOD3 (1233 points) LOD2 threshold=120 (original LOD1..3 dropped) from source LOD0 (points 32187, faces 23826) flags=0x40 points=33449 parts=1 groups/part [38] -> [3] draws 38 -> 3 faces=23826 collapse=atlas groups=['atlas:mat51~17:23100f', 'kept:mat34:8f', 'alpha:mat52~1:718f'] part_flags=['0x30000001']
+  main-view drawable at Very High (f=1): before [0, 1, 2] after [0, 1] (new record drawable: True)
+        low drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<120:LOD2 s>=120:LOD0
+     medium drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<120:LOD2 s>=120:LOD0
+       high drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<120:LOD2 s>=120:LOD0
+  very-high drawable [0, 1] by s: before s<5:LOD2 5<=s<15:LOD1 s>=15:LOD0 | after s<120:LOD1 s>=120:LOD0
+  atlas material mat51 = mat17 with the area-weighted g_Mat* mean over [5, 6, 7, 8, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 30, 31, 35, 38, 39, 40, 41, 43, 50]: g_MatSpecularStrength=2.4->2.935(mean 2.935) g_MatSpecularPower=5->5.67(mean 5.67) g_MatReflectionStrength=0.9->0.967(mean 0.967) g_MatDiffuseStrength=0.4->0.5838(mean 0.5838)
+  synthesized mat52 = mat1 with the area-weighted g_Mat* mean over [1, 2, 4, 9, 10, 12, 29, 36]: g_MatMinFresnel=0.09999->0.02196(mean 0.02195)
+  atlas 1024x1024 (min atlas texels per screen pixel at px=168.75: 1024: 3.540; >= 2: yes) scale 0.1121 tiles 29 gutter 8 duplicated points 1262 -> 33449 points, tangent records missing 0; materials ['mat51'] (mat51 = copy of mat17); effects [['XT_standard_lighting.fx', 1]]; second UV set on 32187 points passed through, occlusion {'xt_standard_lighting.fx': 'none'}
+  atlas light_bleed=7 kept=1: 30 tiles checked at L = ceil(log2 texels/px) + 2, flagged above 4/255 mean added luminance; flagged mat7 L6 own 0.0 +39.1, mat8 L7 own 0.0 +35.3, mat20 L5 own 0.0 +21.3, mat22 L5 own 0.5 +27.1, mat28 L6 own 6.1 +7.0, mat31 L5 own 0.5 +35.5, mat39 L7 own 0.0 +9.3; remedy keep+repack (emitters mat[5, 6, 38, 40, 41] in their own region, margin 32 texels, L 7, scale 0.1276 -> 0.1121, min texels/px 3.540 -> 3.040); kept as own groups ['mat34']; after mat7 +0.1, mat8 +1.8, mat20 +0.0, mat22 +0.0, mat28 +0.1, mat31 +0.4, mat39 +0.3
+  atlas texel rule: min 3.040, area-weighted 3.525 atlas texels per screen pixel (ratio at the 0.1 area quantile); below --min-texels 0.5: 0.00 % of the atlased surface (--texel-floor-share 10 %); layout uniform, capped tiles 0, span-clamped faces 0
+  atlas diffuse: dds/x3m_lod_Argon_m7m_d4597e_diffuse.pck (x3m_lod\x3m_lod_Argon_m7m_d4597e_diffuse.tga) DXT1 699192 bytes sha256 f8f9bcfe0671e6be; compression error mean/p95 R=2.25/7 G=1.90/6 B=2.22/7 A=0.00/0
+  atlas light: dds/x3m_lod_Argon_m7m_d4597e_light.pck (x3m_lod\x3m_lod_Argon_m7m_d4597e_light.tga) DXT5 1398256 bytes sha256 44dff6f3da9ecb9a; compression error mean/p95 R=0.64/2 G=0.59/2 B=0.63/2 A=0.24/0
+  atlas bump: dds/x3m_lod_Argon_m7m_d4597e_bump.pck (x3m_lod\x3m_lod_Argon_m7m_d4597e_bump.tga) DXT5 1398256 bytes sha256 078c52317b144d54; compression error mean/p95 R=3.37/8 G=2.42/8 B=3.37/8 A=0.84/4
+  atlas specular: dds/x3m_lod_Argon_m7m_d4597e_specular.pck (x3m_lod\x3m_lod_Argon_m7m_d4597e_specular.tga) DXT5 1398256 bytes sha256 e9f2761c72e94eb9; compression error mean/p95 R=3.95/11 G=3.91/11 B=3.95/11 A=0.00/0
+  atlas check: faces 23100, vertex UVs inside their tile 69300/69300 (inside tile+gutter 69300), max inverse-map error 0.068 source texels / 0.0077 atlas texels
+  atlas sampling diffuse (3850 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 5.22/21.32/79.59 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 2.49/7.50/49.66 A 0.00/0.00/0.00
+  atlas sampling light (3850 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 1.12/3.87/141.22 A 1.59/1.20/207.06; vs source prefiltered to the atlas texel RGB 0.58/2.51/54.14 A 0.64/0.87/85.13
+  atlas sampling bump (3850 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 7.80/43.71/107.37 A 8.93/46.69/116.17; vs source prefiltered to the atlas texel RGB 4.24/14.88/48.42 A 3.79/16.95/61.40; normal angle (degrees) vs source 6.92/32.09/65.95, vs prefiltered 2.94/10.61/30.04
+  atlas sampling specular (3850 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 11.59/34.53/105.77 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 4.68/13.51/63.57 A 0.00/0.00/0.00
+  decoded bytes 4823175 -> 5837303, stored 2222832 (gzip), overlay sha256 e84a2ee5c6144705
+
+ships/M7/Split_M7M: 02.cat:objects/ships/M7/Split_M7M.pbb
+  ladder before: thresholds ['-', 30, 15, 5] draws [11, 11, 11, 9] record bytes [6081210, 2911042, 796878, 179652]
+  ladder after:  thresholds ['-', 30, 120] draws [11, 3, 9] record bytes [6081210, 6200442, 179652]
+  compact: new LOD1 threshold=30 + pad copy of original LOD3 (2421 points) LOD2 threshold=120 (original LOD1..3 dropped) from source LOD0 (points 79980, faces 50145) flags=0x40 points=81788 parts=1 groups/part [11] -> [3] draws 11 -> 3 faces=50145 collapse=atlas groups=['atlas:mat19~12:39611f', 'atlas:mat19~12:10530f', 'alpha:mat15:4f'] part_flags=['0x30000001']
+  main-view drawable at Very High (f=1): before [0, 1, 2] after [0, 1] (new record drawable: True)
+        low drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<120:LOD2 s>=120:LOD0
+     medium drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<120:LOD2 s>=120:LOD0
+       high drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<120:LOD2 s>=120:LOD0
+  very-high drawable [0, 1] by s: before s<5:LOD2 5<=s<15:LOD1 s>=15:LOD0 | after s<120:LOD1 s>=120:LOD0
+  atlas material mat19 = mat12 with the area-weighted g_Mat* mean over [0, 1, 2, 4, 5, 6, 7, 12, 17, 18]: g_MatSpecularStrength=3->2.908(mean 2.908) g_MatSpecularPower=6->6.428(mean 6.428) g_MatReflectionStrength=0.9->0.8994(mean 0.8994) g_MatReflectionBlur=1->0.9941(mean 0.9941) g_MatDiffuseStrength=0.6->0.599(mean 0.599) g_MatMinFresnel=0.09999->0.09993(mean 0.09993)
+  atlas 1024x1024 (min atlas texels per screen pixel at px=168.75: 1024: 2.864; >= 2: yes) scale 0.1359 tiles 10 gutter 8 duplicated points 1808 -> 81788 points, tangent records missing 0; materials ['mat19'] (mat19 = copy of mat12); effects [['XT_standard_lighting.fx', 1]]
+  atlas light_bleed=1 kept=0: 10 tiles checked at L = ceil(log2 texels/px) + 2, flagged above 4/255 mean added luminance; flagged mat7 L6 own 5.5 +27.5; remedy repack (emitters mat[17, 18] in their own region, margin 64 texels, L 6, scale 0.1537 -> 0.1359, min texels/px 2.864 -> 2.684); after mat7 +0.0
+  atlas texel rule: min 2.684, area-weighted 3.601 atlas texels per screen pixel (ratio at the 0.1 area quantile); below --min-texels 0.5: 0.00 % of the atlased surface (--texel-floor-share 10 %); layout uniform, capped tiles 0, span-clamped faces 0
+  atlas split: part 0 mat19 50141 faces -> 2 groups of [59926, 21854] points (<= MAX_GROUP_POINTS each; shared points duplicated)
+  atlas diffuse: dds/x3m_lod_Split_M7M_f8f894_diffuse.pck (x3m_lod\x3m_lod_Split_M7M_f8f894_diffuse.tga) DXT5 1398256 bytes sha256 c24308623d9913f9; compression error mean/p95 R=2.20/6 G=1.72/5 B=1.92/5 A=0.01/0
+  atlas light: dds/x3m_lod_Split_M7M_f8f894_light.pck (x3m_lod\x3m_lod_Split_M7M_f8f894_light.tga) DXT5 1398256 bytes sha256 db46dc206bec09db; compression error mean/p95 R=0.43/3 G=0.39/2 B=0.39/3 A=0.03/0
+  atlas bump: dds/x3m_lod_Split_M7M_f8f894_bump.pck (x3m_lod\x3m_lod_Split_M7M_f8f894_bump.tga) DXT5 1398256 bytes sha256 d569209af5803a2c; compression error mean/p95 R=2.09/6 G=1.61/6 B=2.09/6 A=0.52/3
+  atlas specular: dds/x3m_lod_Split_M7M_f8f894_specular.pck (x3m_lod\x3m_lod_Split_M7M_f8f894_specular.tga) DXT5 1398256 bytes sha256 3c3bde4d3279b6b8; compression error mean/p95 R=4.15/11 G=4.12/11 B=4.15/11 A=0.00/0
+  atlas check: faces 50141, vertex UVs inside their tile 150423/150423 (inside tile+gutter 150423), max inverse-map error 0.056 source texels / 0.0077 atlas texels
+  atlas sampling diffuse (3857 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 8.35/34.36/109.68 A 0.09/0.00/40.89; vs source prefiltered to the atlas texel RGB 3.62/12.79/47.52 A 0.05/0.00/28.05
+  atlas sampling light (3857 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 3.75/24.55/89.91 A 3.15/27.54/76.91; vs source prefiltered to the atlas texel RGB 2.08/12.70/45.27 A 1.37/11.35/44.86
+  atlas sampling bump (3857 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 8.50/45.48/102.66 A 7.46/40.62/114.24; vs source prefiltered to the atlas texel RGB 3.50/13.51/48.68 A 2.60/12.09/44.81; normal angle (degrees) vs source 6.58/26.02/58.97, vs prefiltered 2.29/7.61/22.27
+  atlas sampling specular (3857 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 14.43/47.49/130.69 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 5.97/19.32/84.11 A 0.00/0.00/0.00
+  decoded bytes 10009900 -> 12504543, stored 5452553 (gzip), overlay sha256 c61a071e2ddaaffa
+
+ships/owp/owp_large: 02.cat:objects/ships/owp/owp_large.pbb
+  ladder before: thresholds ['-', 30, 15, 5] draws [20, 19, 17, 16] record bytes [10986918, 6805330, 2336168, 465894]
+  ladder after:  thresholds ['-', 30, 83] draws [20, 6, 16] record bytes [10986918, 12734034, 465894]
+  compact: new LOD1 threshold=30 + pad copy of original LOD3 (6372 points) LOD2 threshold=83 (original LOD1..3 dropped) from source LOD0 (points 144644, faces 90006) flags=0x40 points=171118 parts=1 groups/part [20] -> [6] draws 20 -> 6 faces=90006 collapse=atlas groups=['atlas:mat51~17:36694f', 'atlas:mat51~17:26361f', 'atlas:mat51~17:26735f', 'kept:mat43:4f', 'kept:mat45:44f', 'alpha:mat52~9:168f'] part_flags=['0x30000001']
+  main-view drawable at Very High (f=1): before [0, 1, 2] after [0, 1] (new record drawable: True)
+        low drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<83:LOD2 s>=83:LOD0
+     medium drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<83:LOD2 s>=83:LOD0
+       high drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<83:LOD2 s>=83:LOD0
+  very-high drawable [0, 1] by s: before s<5:LOD2 5<=s<15:LOD1 s>=15:LOD0 | after s<83:LOD1 s>=83:LOD0
+  atlas material mat51 = mat17 with the area-weighted g_Mat* mean over [5, 6, 7, 14, 15, 16, 17, 18, 19, 20, 30, 31, 32, 37, 38]: g_MatSpecularStrength=3.4->3.205(mean 3.205) g_MatSpecularPower=7->6.525(mean 6.525) g_MatMinFresnel=0.09999->0.05383(mean 0.05384)
+  synthesized mat52 = mat9 with the area-weighted g_Mat* mean over [1, 9, 10]: g_MatMinFresnel=0->0.03247(mean 0.03247)
+  atlas 1024x1024 (min atlas texels per screen pixel at px=116.719: 1024: 0.403, 1024 clamped: 2.029; >= 2: yes) scale 1.0000 tiles 15 gutter 8 duplicated points 26474 -> 171118 points, tangent records missing 0; materials ['mat51'] (mat51 = copy of mat17); effects [['XT_standard_lighting.fx', 1]]
+  atlas light_bleed=4 kept=2: 17 tiles checked at L = ceil(log2 texels/px) + 2, flagged above 4/255 mean added luminance; flagged mat7 L4 own 0.0 +6.7, mat37 L4 own 92.4 +5.1, mat43 L4 own 0.0 +26.4, mat45 L4 own 0.9 +53.7; remedy keep+repack (emitters mat[5, 6, 37, 38] in their own region, margin 128 texels, L 7, scale 1.0000 -> 1.0000, min texels/px 2.029 -> 2.029); kept as own groups ['mat43', 'mat45']; after mat7 +1.0, mat37 +0.0
+  atlas texel rule: min 2.029, area-weighted 2.032 atlas texels per screen pixel (ratio at the 0.1 area quantile); below --min-texels 0.5: 0.00 % of the atlased surface (--texel-floor-share 10 %); layout clamped, capped tiles 15, span-clamped faces 0
+  atlas split: part 0 mat51 89790 faces -> 3 groups of [50768, 59990, 60000] points (<= MAX_GROUP_POINTS each; shared points duplicated)
+  atlas diffuse: dds/x3m_lod_owp_large_ba70b0_diffuse.pck (x3m_lod\x3m_lod_owp_large_ba70b0_diffuse.tga) DXT1 699192 bytes sha256 0835cacbb127cc09; compression error mean/p95 R=2.25/6 G=1.98/6 B=2.21/6 A=0.00/0
+  atlas light: dds/x3m_lod_owp_large_ba70b0_light.pck (x3m_lod\x3m_lod_owp_large_ba70b0_light.tga) DXT5 1398256 bytes sha256 88385c4c0c4b8d11; compression error mean/p95 R=1.28/10 G=1.14/9 B=1.12/8 A=0.54/5
+  atlas bump: dds/x3m_lod_owp_large_ba70b0_bump.pck (x3m_lod\x3m_lod_owp_large_ba70b0_bump.tga) DXT5 1398256 bytes sha256 0e2f3ee603da4aa6; compression error mean/p95 R=2.13/5 G=1.43/6 B=2.13/5 A=0.42/2
+  atlas specular: dds/x3m_lod_owp_large_ba70b0_specular.pck (x3m_lod\x3m_lod_owp_large_ba70b0_specular.tga) DXT5 1398256 bytes sha256 82f5a11f75a59616; compression error mean/p95 R=3.34/9 G=3.12/9 B=3.34/9 A=0.00/0
+  atlas check: faces 89790, vertex UVs inside their tile 269370/269370 (inside tile+gutter 269370), max inverse-map error 21.888 source texels / 0.0077 atlas texels
+  atlas sampling diffuse (4 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 13.72/26.33/28.27 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 2.29/5.81/6.68 A 0.00/0.00/0.00
+  atlas sampling light (4 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 0.73/2.48/2.92 A 3.91/13.30/15.64; vs source prefiltered to the atlas texel RGB 3.75/12.76/15.02 A 3.94/13.39/15.76
+  atlas sampling bump (4 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 4.60/9.24/10.40 A 2.44/8.31/9.77; vs source prefiltered to the atlas texel RGB 2.81/3.31/3.31 A 1.60/5.36/6.30; normal angle (degrees) vs source 2.14/5.12/5.87, vs prefiltered 1.42/2.71/3.03
+  atlas sampling specular (4 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 12.09/15.61/16.17 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 1.75/1.85/1.86 A 0.00/0.00/0.00
+  decoded bytes 20705035 -> 24301945, stored 10055293 (gzip), overlay sha256 69e0d0c9c416af68
+
+stations/living_sections/argon_livingsection: 02.cat:objects/stations/living_sections/argon_livingsection.pbb
+  ladder before: thresholds ['-', 30, 15, 5, 30] draws [17, 11, 5, 1, 1] record bytes [1755186, 883120, 347952, 78776, 23320]
+  ladder after:  thresholds ['-', 30, 155] draws [17, 2, 1] record bytes [1755186, 1864302, 23320]
+  compact: new LOD1 threshold=30 + pad copy of original LOD4 (303 points) LOD2 threshold=155 (original LOD1..4 dropped) from source LOD0 (points 22708, faces 16011) flags=0x0 points=24364 parts=1 groups/part [17] -> [2] draws 17 -> 2 faces=16011 collapse=atlas groups=['atlas:mat48~17:15939f', 'alpha:mat1:72f'] part_flags=['0x10000001']
+  main-view drawable at Very High (f=1): before [0, 3] after [0, 1] (new record drawable: True)
+        low drawable [0, 2] by s: before s<30:LOD4 s>=30:LOD0 | after s<155:LOD2 s>=155:LOD0
+     medium drawable [0, 2] by s: before s<30:LOD4 s>=30:LOD0 | after s<155:LOD2 s>=155:LOD0
+       high drawable [0, 2] by s: before s<30:LOD4 s>=30:LOD0 | after s<155:LOD2 s>=155:LOD0
+  very-high drawable [0, 1] by s: before s<30:LOD3 s>=30:LOD0 | after s<155:LOD1 s>=155:LOD0
+  atlas material mat48 = mat17 with the area-weighted g_Mat* mean over [5, 7, 14, 15, 17, 19, 20, 21, 22, 23, 24, 26, 27, 28, 30]: (unchanged)
+  atlas 1024x1024 (min atlas texels per screen pixel at px=217.969: 1024: 0.749, 1024 clamped: 2.007; >= 2: yes) scale 1.0000 tiles 15 gutter 8 duplicated points 1656 -> 24364 points, tangent records missing 0; materials ['mat48'] (mat48 = copy of mat17); effects [['argon.fx', 1]]
+  atlas light_bleed=0 kept=0: 15 tiles checked at L = ceil(log2 texels/px) + 2, flagged above 4/255 mean added luminance
+  atlas texel rule: min 2.007, area-weighted 2.008 atlas texels per screen pixel (ratio at the 0.1 area quantile); below --min-texels 0.5: 0.00 % of the atlased surface (--texel-floor-share 10 %); layout clamped, capped tiles 15, span-clamped faces 0
+  atlas diffuse: dds/x3m_lod_argon_livingsection_27a2d5_diffuse.pck (x3m_lod\x3m_lod_argon_livingsection_27a2d5_diffuse.tga) DXT1 699192 bytes sha256 103082d38c9a0ecf; compression error mean/p95 R=2.08/6 G=1.74/6 B=1.99/6 A=0.00/0
+  atlas light: dds/x3m_lod_argon_livingsection_27a2d5_light.pck (x3m_lod\x3m_lod_argon_livingsection_27a2d5_light.tga) DXT5 1398256 bytes sha256 b74770570f9cf565; compression error mean/p95 R=0.29/0 G=0.27/0 B=0.25/0 A=0.13/0
+  atlas bump: dds/x3m_lod_argon_livingsection_27a2d5_bump.pck (x3m_lod\x3m_lod_argon_livingsection_27a2d5_bump.tga) DXT5 1398256 bytes sha256 c02720bb9f98a22e; compression error mean/p95 R=3.05/8 G=2.26/8 B=3.05/8 A=0.78/4
+  atlas specular: dds/x3m_lod_argon_livingsection_27a2d5_specular.pck (x3m_lod\x3m_lod_argon_livingsection_27a2d5_specular.tga) DXT5 1398256 bytes sha256 c95c16d35de087e1; compression error mean/p95 R=3.59/10 G=3.56/10 B=3.59/10 A=0.00/0
+  atlas check: faces 15939, vertex UVs inside their tile 47817/47817 (inside tile+gutter 47817), max inverse-map error 0.111 source texels / 0.0078 atlas texels
+  atlas sampling diffuse (3985 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 3.71/13.59/67.59 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 1.96/5.59/20.42 A 0.00/0.00/0.00
+  atlas sampling light (3985 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 1.31/3.75/110.73 A 2.05/0.00/179.93; vs source prefiltered to the atlas texel RGB 0.70/3.32/76.17 A 0.83/0.00/91.55
+  atlas sampling bump (3985 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 6.84/36.40/112.72 A 8.29/53.06/134.40; vs source prefiltered to the atlas texel RGB 3.67/12.39/62.72 A 3.08/15.40/65.25; normal angle (degrees) vs source 6.42/35.27/67.29, vs prefiltered 2.50/9.63/30.73
+  atlas sampling specular (3985 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 12.75/38.05/123.83 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 4.66/12.93/60.26 A 0.00/0.00/0.00
+  decoded bytes 3157797 -> 3713719, stored 1465624 (gzip), overlay sha256 fecc5ee496cb29de
+
+stations/others/military_outpost_middleb: 02.cat:objects/stations/others/military_outpost_middleb.pbb
+  ladder before: thresholds ['-', 30, 15] draws [34, 33, 30] record bytes [9487692, 4726884, 1304574]
+  ladder after:  thresholds ['-', 30, 150] draws [34, 4, 30] record bytes [9487692, 9878052, 1304574]
+  compact: new LOD1 threshold=30 + pad copy of original LOD2 (17468 points) LOD2 threshold=150 (original LOD1..2 dropped) from source LOD0 (points 125867, faces 73749) flags=0x40 points=131787 parts=1 groups/part [34] -> [4] draws 34 -> 4 faces=73749 collapse=atlas groups=['atlas:mat51~17:6232f', 'atlas:mat51~17:35811f', 'atlas:mat51~17:30282f', 'alpha:mat52~11:1424f'] part_flags=['0x30000001']
+  main-view drawable at Very High (f=1): before [0, 1] after [0, 1] (new record drawable: True)
+        low drawable [0, 2] by s: before s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<150:LOD2 s>=150:LOD0
+     medium drawable [0, 2] by s: before s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<150:LOD2 s>=150:LOD0
+       high drawable [0, 2] by s: before s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<150:LOD2 s>=150:LOD0
+  very-high drawable [0, 1] by s: before s<15:LOD1 s>=15:LOD0 | after s<150:LOD1 s>=150:LOD0
+  atlas material mat51 = mat17 with the area-weighted g_Mat* mean over [5, 6, 7, 8, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 30, 32, 33, 35, 39, 41, 43, 46, 47]: g_MatSpecularStrength=2.4->2.859(mean 2.859) g_MatSpecularPower=5->5.771(mean 5.771) g_MatReflectionStrength=0.9->0.9771(mean 0.9771) g_MatDiffuseStrength=0.4->0.5288(mean 0.5288) g_MatMinFresnel=0->7.629e-05(mean 7.496e-05)
+  synthesized mat52 = mat11 with the area-weighted g_Mat* mean over [0, 1, 9, 11, 12, 36]: g_MatMinFresnel=0->0.0009766(mean 0.0009827)
+  atlas 1024x1024 (min atlas texels per screen pixel at px=210.938: 1024: 0.805, 1024 clamped: 2.021; >= 2: yes) scale 1.0000 tiles 28 gutter 8 duplicated points 5920 -> 131787 points, tangent records missing 0; materials ['mat51'] (mat51 = copy of mat17); effects [['XT_standard_lighting.fx', 1]]
+  atlas light_bleed=1 kept=0: 28 tiles checked at L = ceil(log2 texels/px) + 2, flagged above 4/255 mean added luminance; flagged mat27 L4 own 0.5 +5.7; remedy repack (emitters mat[5, 6, 41] in their own region, margin 32 texels, L 4, scale 1.0000 -> 1.0000, min texels/px 2.021 -> 2.021); after mat27 +0.0
+  atlas texel rule: min 2.021, area-weighted 2.031 atlas texels per screen pixel (ratio at the 0.1 area quantile); below --min-texels 0.5: 0.00 % of the atlased surface (--texel-floor-share 10 %); layout clamped, capped tiles 28, span-clamped faces 0
+  atlas split: part 0 mat51 72325 faces -> 3 groups of [9530, 59993, 59994] points (<= MAX_GROUP_POINTS each; shared points duplicated)
+  atlas diffuse: dds/x3m_lod_military_outpost_middleb_06baba_diffuse.pck (x3m_lod\x3m_lod_military_outpost_middleb_06baba_diffuse.tga) DXT1 699192 bytes sha256 98924cc3fa1e6a1b; compression error mean/p95 R=2.60/7 G=2.22/6 B=2.51/7 A=0.00/0
+  atlas light: dds/x3m_lod_military_outpost_middleb_06baba_light.pck (x3m_lod\x3m_lod_military_outpost_middleb_06baba_light.tga) DXT5 1398256 bytes sha256 c85d619cdcf4d8b6; compression error mean/p95 R=0.79/6 G=0.69/5 B=0.62/4 A=0.39/3
+  atlas bump: dds/x3m_lod_military_outpost_middleb_06baba_bump.pck (x3m_lod\x3m_lod_military_outpost_middleb_06baba_bump.tga) DXT5 1398256 bytes sha256 1b8a07cb4ba5dbf8; compression error mean/p95 R=2.58/7 G=1.99/8 B=2.58/7 A=0.93/4
+  atlas specular: dds/x3m_lod_military_outpost_middleb_06baba_specular.pck (x3m_lod\x3m_lod_military_outpost_middleb_06baba_specular.tga) DXT5 1398256 bytes sha256 c733a141f0224563; compression error mean/p95 R=3.64/9 G=3.57/9 B=3.64/9 A=0.00/0
+  atlas check: faces 72325, vertex UVs inside their tile 216975/216975 (inside tile+gutter 216975), max inverse-map error 1.019 source texels / 0.0078 atlas texels
+  atlas sampling diffuse (4019 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 7.32/26.14/80.32 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 3.02/9.57/33.98 A 0.00/0.00/0.00
+  atlas sampling light (4019 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 1.77/8.07/152.55 A 3.05/10.20/201.33; vs source prefiltered to the atlas texel RGB 0.93/6.01/58.81 A 1.16/7.29/74.20
+  atlas sampling bump (4019 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 6.64/40.15/118.44 A 12.00/75.85/127.57; vs source prefiltered to the atlas texel RGB 2.50/7.98/46.71 A 3.31/14.27/50.70; normal angle (degrees) vs source 7.87/37.99/71.94, vs prefiltered 2.11/7.16/25.03
+  atlas sampling specular (4019 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 16.77/51.76/131.48 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 5.38/14.13/44.89 A 0.00/0.00/0.00
+  decoded bytes 15629883 -> 20785482, stored 7761564 (gzip), overlay sha256 f94be19ce81a83f2
+
+stations/station_scenes/others/argon_equipmentdock: 02.cat:objects/stations/station_scenes/others/argon_equipmentdock.pbb
+  ladder before: thresholds ['-', 30, 15, 5] draws [33, 33, 31, 25] record bytes [12035430, 5678232, 2159396, 408778]
+  ladder after:  thresholds ['-', 30, 216] draws [33, 4, 25] record bytes [12035430, 12700494, 408778]
+  compact: new LOD1 threshold=30 + pad copy of original LOD3 (5488 points) LOD2 threshold=216 (original LOD1..3 dropped) from source LOD0 (points 156062, faces 108429) flags=0x40 points=166144 parts=1 groups/part [33] -> [4] draws 33 -> 4 faces=108429 collapse=atlas groups=['atlas:mat51~27:19894f', 'atlas:mat51~27:39872f', 'atlas:mat51~27:38089f', 'alpha:mat11:10574f'] part_flags=['0x30000001']
+  main-view drawable at Very High (f=1): before [0, 1, 2] after [0, 1] (new record drawable: True)
+        low drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<216:LOD2 s>=216:LOD0
+     medium drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<216:LOD2 s>=216:LOD0
+       high drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<216:LOD2 s>=216:LOD0
+  very-high drawable [0, 1] by s: before s<5:LOD2 5<=s<15:LOD1 s>=15:LOD0 | after s<216:LOD1 s>=216:LOD0
+  atlas material mat51 = mat27 with the area-weighted g_Mat* mean over [5, 6, 7, 8, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 26, 27, 28, 30, 31, 35, 37, 39, 40, 41, 43, 47]: g_MatSpecularStrength=3->2.982(mean 2.982) g_MatSpecularPower=6->5.933(mean 5.933) g_MatReflectionStrength=1->0.9933(mean 0.9933) g_MatDiffuseStrength=1->0.5939(mean 0.5939)
+  atlas 1024x1024 (min atlas texels per screen pixel at px=303.75: 1024: 1.709, 1024 clamped: 2.034; >= 2: yes) scale 1.0000 tiles 28 gutter 8 duplicated points 10082 -> 166144 points, tangent records missing 0; materials ['mat51'] (mat51 = copy of mat27); effects [['XT_standard_lighting.fx', 1]]
+  atlas light_bleed=1 kept=0: 28 tiles checked at L = ceil(log2 texels/px) + 2, flagged above 4/255 mean added luminance; flagged mat26 L4 own 0.3 +12.2; remedy repack (emitters mat[5, 6, 37, 40, 41] in their own region, margin 32 texels, L 4, scale 1.0000 -> 1.0000, min texels/px 2.034 -> 2.034); after mat26 +0.0
+  atlas texel rule: min 2.034, area-weighted 2.034 atlas texels per screen pixel (ratio at the 0.1 area quantile); below --min-texels 0.5: 0.00 % of the atlased surface (--texel-floor-share 10 %); layout clamped, capped tiles 28, span-clamped faces 0
+  atlas split: part 0 mat51 97855 faces -> 3 groups of [27867, 59995, 59998] points (<= MAX_GROUP_POINTS each; shared points duplicated)
+  atlas diffuse: dds/x3m_lod_argon_equipmentdock_7887bb_diffuse.pck (x3m_lod\x3m_lod_argon_equipmentdock_7887bb_diffuse.tga) DXT1 699192 bytes sha256 a77aae217c0f178d; compression error mean/p95 R=2.62/7 G=2.31/7 B=2.58/7 A=0.00/0
+  atlas light: dds/x3m_lod_argon_equipmentdock_7887bb_light.pck (x3m_lod\x3m_lod_argon_equipmentdock_7887bb_light.tga) DXT5 1398256 bytes sha256 ad433fec6379a877; compression error mean/p95 R=1.18/8 G=1.02/7 B=1.04/6 A=0.43/3
+  atlas bump: dds/x3m_lod_argon_equipmentdock_7887bb_bump.pck (x3m_lod\x3m_lod_argon_equipmentdock_7887bb_bump.tga) DXT5 1398256 bytes sha256 c4c7eec9db0cddaa; compression error mean/p95 R=2.43/6 G=1.93/6 B=2.43/6 A=0.87/4
+  atlas specular: dds/x3m_lod_argon_equipmentdock_7887bb_specular.pck (x3m_lod\x3m_lod_argon_equipmentdock_7887bb_specular.tga) DXT5 1398256 bytes sha256 6216dd1264e2ddad; compression error mean/p95 R=3.70/10 G=3.61/10 B=3.70/10 A=0.00/0
+  atlas check: faces 97855, vertex UVs inside their tile 293565/293565 (inside tile+gutter 293565), max inverse-map error 0.801 source texels / 0.0077 atlas texels
+  atlas sampling diffuse (4078 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 7.63/24.54/72.36 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 3.07/9.05/27.28 A 0.00/0.00/0.00
+  atlas sampling light (4078 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 0.72/0.88/232.36 A 1.01/1.97/230.28; vs source prefiltered to the atlas texel RGB 0.32/1.15/43.48 A 0.45/1.92/71.73
+  atlas sampling bump (4078 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 8.26/38.92/126.42 A 15.45/74.21/120.97; vs source prefiltered to the atlas texel RGB 3.53/12.86/34.70 A 4.00/14.47/35.81; normal angle (degrees) vs source 9.98/41.63/70.87, vs prefiltered 2.64/7.94/20.08
+  atlas sampling specular (4078 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 15.91/46.79/139.13 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 5.36/13.29/38.02 A 0.00/0.00/0.00
+  decoded bytes 20392562 -> 25257596, stored 9320381 (gzip), overlay sha256 3c22b6b59dfada7b
+
+stations/station_scenes/others/argon_spacedock: 02.cat:objects/stations/station_scenes/others/argon_spacedock.pbb
+  ladder before: thresholds ['-', 250, 150, 80, 30] draws [35, 20, 10, 1, 1] record bytes [11652312, 6191236, 2862662, 978878, 374228]
+  ladder after:  thresholds ['-', 250, 278] draws [35, 4, 1] record bytes [11652312, 12627288, 374228]
+  compact: new LOD1 threshold=250 + pad copy of original LOD4 (5021 points) LOD2 threshold=278 (original LOD1..4 dropped) from source LOD0 (points 150507, faces 107397) flags=0x0 points=165285 parts=1 groups/part [35] -> [4] draws 35 -> 4 faces=107397 collapse=atlas groups=['atlas:mat49~39:28631f', 'atlas:mat49~39:43507f', 'atlas:mat49~39:33087f', 'alpha:mat50~11:2172f'] part_flags=['0x10000001']
+  main-view drawable at Very High (f=1): before [0, 1, 2, 3] after [0, 1] (new record drawable: True)
+        low drawable [0, 2] by s: before s<30:LOD4 30<=s<80:LOD3 80<=s<150:LOD2 150<=s<250:LOD1 s>=250:LOD0 | after s<278:LOD2 s>=278:LOD0
+     medium drawable [0, 2] by s: before s<30:LOD4 30<=s<80:LOD3 80<=s<150:LOD2 150<=s<250:LOD1 s>=250:LOD0 | after s<278:LOD2 s>=278:LOD0
+       high drawable [0, 2] by s: before s<30:LOD4 30<=s<80:LOD3 80<=s<150:LOD2 150<=s<250:LOD1 s>=250:LOD0 | after s<278:LOD2 s>=278:LOD0
+  very-high drawable [0, 1] by s: before s<30:LOD3 30<=s<80:LOD2 80<=s<150:LOD1 s>=150:LOD0 | after s<278:LOD1 s>=278:LOD0
+  atlas material mat49 = mat39 with the area-weighted g_Mat* mean over [5, 6, 7, 8, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 30, 35, 37, 39, 40, 41, 43, 45, 46]: (unchanged)
+  synthesized mat50 = mat11 with the area-weighted g_Mat* mean over [1, 9, 10, 11, 12, 44]: g_MatSpecularStrength=3->3(mean 3) g_MatSpecularPower=6->6(mean 6)
+  atlas 1024x1024 (min atlas texels per screen pixel at px=390.938: 1024: 1.667, 1024 clamped: 2.053; >= 2: yes) scale 1.0000 tiles 29 gutter 8 duplicated points 14778 -> 165285 points, tangent records missing 0; materials ['mat49'] (mat49 = copy of mat39); effects [['argon.fx', 1]]
+  atlas light_bleed=5 kept=0: 29 tiles checked at L = ceil(log2 texels/px) + 2, flagged above 4/255 mean added luminance; flagged mat13 L4 own 0.5 +4.6, mat14 L4 own 0.5 +25.1, mat21 L5 own 0.6 +21.4, mat26 L4 own 0.3 +14.0, mat45 L5 own 0.4 +10.2; remedy repack (emitters mat[5, 6, 37, 40, 41] in their own region, margin 64 texels, L 5, scale 1.0000 -> 1.0000, min texels/px 2.053 -> 2.053); after mat13 +0.0, mat14 +0.0, mat21 +0.0, mat26 +0.0, mat45 +0.0
+  atlas texel rule: min 2.053, area-weighted 2.077 atlas texels per screen pixel (ratio at the 0.1 area quantile); below --min-texels 0.5: 0.00 % of the atlased surface (--texel-floor-share 10 %); layout clamped, capped tiles 29, span-clamped faces 0
+  atlas split: part 0 mat49 105225 faces -> 3 groups of [41891, 59995, 59963] points (<= MAX_GROUP_POINTS each; shared points duplicated)
+  atlas diffuse: dds/x3m_lod_argon_spacedock_180ac6_diffuse.pck (x3m_lod\x3m_lod_argon_spacedock_180ac6_diffuse.tga) DXT1 699192 bytes sha256 5eb401d30852020b; compression error mean/p95 R=2.57/7 G=2.22/6 B=2.48/7 A=0.00/0
+  atlas light: dds/x3m_lod_argon_spacedock_180ac6_light.pck (x3m_lod\x3m_lod_argon_spacedock_180ac6_light.tga) DXT5 1398256 bytes sha256 cc0d34298ad55dcb; compression error mean/p95 R=1.44/9 G=1.23/10 B=1.30/8 A=0.52/4
+  atlas bump: dds/x3m_lod_argon_spacedock_180ac6_bump.pck (x3m_lod\x3m_lod_argon_spacedock_180ac6_bump.tga) DXT5 1398256 bytes sha256 114bf1a5f521ca33; compression error mean/p95 R=2.06/5 G=1.58/5 B=2.06/5 A=0.74/3
+  atlas specular: dds/x3m_lod_argon_spacedock_180ac6_specular.pck (x3m_lod\x3m_lod_argon_spacedock_180ac6_specular.tga) DXT5 1398256 bytes sha256 635f50b5e231110c; compression error mean/p95 R=3.44/9 G=3.38/9 B=3.44/9 A=0.00/0
+  atlas check: faces 105225, vertex UVs inside their tile 315675/315675 (inside tile+gutter 315675), max inverse-map error 1.206 source texels / 0.0078 atlas texels
+  atlas sampling diffuse (2024 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 8.58/29.40/83.17 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 3.42/11.16/24.90 A 0.00/0.00/0.00
+  atlas sampling light (2024 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 1.64/2.38/171.81 A 2.34/3.05/222.54; vs source prefiltered to the atlas texel RGB 0.59/2.50/33.29 A 0.60/2.33/56.01
+  atlas sampling bump (2024 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 6.38/37.44/126.61 A 14.51/74.46/127.05; vs source prefiltered to the atlas texel RGB 2.43/7.73/27.49 A 2.61/8.89/32.42; normal angle (degrees) vs source 8.96/40.80/74.36, vs prefiltered 1.73/6.23/17.37
+  atlas sampling specular (2024 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 19.30/61.12/135.78 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 5.74/14.39/33.86 A 0.00/0.00/0.00
+  decoded bytes 22132899 -> 24730515, stored 7119783 (gzip), overlay sha256 a15bf675f9a59500
+
+stations/station_scenes/tech/argon_tech_L_laser_bb: 02.cat:objects/stations/station_scenes/tech/argon_tech_L_laser_bb.pbb
+  ladder before: thresholds ['-', 30, 15, 5] draws [38, 35, 33, 29] record bytes [19620716, 9308848, 2914318, 754146]
+  ladder after:  thresholds ['-', 30, 154] draws [38, 6, 29] record bytes [19620716, 20529350, 754146]
+  compact: new LOD1 threshold=30 + pad copy of original LOD3 (10220 points) LOD2 threshold=154 (original LOD1..3 dropped) from source LOD0 (points 255883, faces 170744) flags=0x40 points=269656 parts=1 groups/part [38] -> [6] draws 38 -> 6 faces=170744 collapse=atlas groups=['atlas:mat51~17:39497f', 'atlas:mat51~17:33150f', 'atlas:mat51~17:37543f', 'atlas:mat51~17:41124f', 'atlas:mat51~17:6272f', 'alpha:mat52~11:13158f'] part_flags=['0x30000001']
+  main-view drawable at Very High (f=1): before [0, 1, 2] after [0, 1] (new record drawable: True)
+        low drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<154:LOD2 s>=154:LOD0
+     medium drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<154:LOD2 s>=154:LOD0
+       high drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<154:LOD2 s>=154:LOD0
+  very-high drawable [0, 1] by s: before s<5:LOD2 5<=s<15:LOD1 s>=15:LOD0 | after s<154:LOD1 s>=154:LOD0
+  atlas material mat51 = mat17 with the area-weighted g_Mat* mean over [5, 6, 7, 8, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 30, 31, 32, 39, 43, 45, 46, 47]: g_MatSpecularStrength=3.4->2.919(mean 2.919) g_MatSpecularPower=7->6.166(mean 6.166) g_MatMinFresnel=0.09999->0.01672(mean 0.01672)
+  synthesized mat52 = mat11 with the area-weighted g_Mat* mean over [0, 1, 2, 3, 4, 9, 10, 11, 12, 36]: g_MatReflectionStrength=1->0.9999(mean 0.9999) g_MatMinFresnel=0->0.0009155(mean 0.0009132)
+  atlas 1024x1024 (min atlas texels per screen pixel at px=216.562: 1024: 0.045, 1024 clamped: 2.007; >= 2: yes) scale 1.0000 tiles 28 gutter 8 duplicated points 13773 -> 269656 points, tangent records missing 0; materials ['mat51'] (mat51 = copy of mat17); effects [['XT_standard_lighting.fx', 1]]
+  atlas light_bleed=1 kept=0: 28 tiles checked at L = ceil(log2 texels/px) + 2, flagged above 4/255 mean added luminance; flagged mat22 L4 own 0.6 +8.2; remedy repack (emitters mat[5, 6] in their own region, margin 32 texels, L 4, scale 1.0000 -> 1.0000, min texels/px 2.007 -> 2.007); after mat22 +0.0
+  atlas texel rule: min 2.007, area-weighted 2.030 atlas texels per screen pixel (ratio at the 0.1 area quantile); below --min-texels 0.5: 2.69 % of the atlased surface (--texel-floor-share 10 %); layout clamped, capped tiles 28, span-clamped faces 3672
+  atlas texel_clamped: metals\argon\metal_argon_trims_03_diff.tga ratio 2.286 share 6.96 % starved 1.99 % span-clamped faces 3032
+  atlas texel_clamped: metals\argon\metal_argon_trims_02_diff.tga ratio 2.030 share 5.84 % starved 0.70 % span-clamped faces 640
+  atlas split: part 0 mat51 157586 faces -> 5 groups of [59985, 59998, 59999, 59962, 7068] points (<= MAX_GROUP_POINTS each; shared points duplicated)
+  atlas diffuse: dds/x3m_lod_argon_tech_L_laser_bb_6ecdee_diffuse.pck (x3m_lod\x3m_lod_argon_tech_L_laser_bb_6ecdee_diffuse.tga) DXT1 699192 bytes sha256 5178b243e7b375c0; compression error mean/p95 R=2.45/6 G=2.19/6 B=2.50/6 A=0.00/0
+  atlas light: dds/x3m_lod_argon_tech_L_laser_bb_6ecdee_light.pck (x3m_lod\x3m_lod_argon_tech_L_laser_bb_6ecdee_light.tga) DXT5 1398256 bytes sha256 77ec62f661cfd0b8; compression error mean/p95 R=1.32/10 G=1.17/9 B=1.07/8 A=0.65/6
+  atlas bump: dds/x3m_lod_argon_tech_L_laser_bb_6ecdee_bump.pck (x3m_lod\x3m_lod_argon_tech_L_laser_bb_6ecdee_bump.tga) DXT5 1398256 bytes sha256 563178c89352ed2a; compression error mean/p95 R=2.39/6 G=1.83/7 B=2.39/6 A=0.81/4
+  atlas specular: dds/x3m_lod_argon_tech_L_laser_bb_6ecdee_specular.pck (x3m_lod\x3m_lod_argon_tech_L_laser_bb_6ecdee_specular.tga) DXT5 1398256 bytes sha256 53bc847cff7a4716; compression error mean/p95 R=3.27/8 G=3.22/9 B=3.27/8 A=0.00/0
+  atlas check: faces 157586, vertex UVs inside their tile 472758/472758 (inside tile+gutter 472758), max inverse-map error 4.808 source texels / 0.0078 atlas texels, span-clamped faces 3672
+  atlas sampling diffuse (790 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 7.99/25.52/65.66 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 3.07/8.77/22.32 A 0.00/0.00/0.00
+  atlas sampling light (790 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 1.66/8.47/196.76 A 2.63/8.06/180.78; vs source prefiltered to the atlas texel RGB 0.84/6.07/42.29 A 1.04/4.21/88.39
+  atlas sampling bump (790 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 8.37/45.99/119.75 A 13.33/64.60/124.90; vs source prefiltered to the atlas texel RGB 3.24/10.46/42.23 A 3.77/14.33/47.19; normal angle (degrees) vs source 8.78/40.60/69.99, vs prefiltered 2.50/8.80/21.76
+  atlas sampling specular (790 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 17.30/58.04/117.22 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 5.17/13.80/38.84 A 0.00/0.00/0.00
+  decoded bytes 32708792 -> 41019398, stored 15181832 (gzip), overlay sha256 05fffd26432bee29
+
+stations/station_scenes/tech/argon_tech_L_missile_C: 02.cat:objects/stations/station_scenes/tech/argon_tech_L_missile_C.pbb
+  compact guard waived: T_pad 156 is below T_1 250; C is the full LOD 0 geometry, so C drawing at Low..High in the band above T_pad is harmless
+  ladder before: thresholds ['-', 250, 150, 80, 30] draws [37, 25, 15, 1, 1] record bytes [7998042, 4271082, 2001650, 572824, 537078]
+  ladder after:  thresholds ['-', 250, 156] draws [37, 3, 1] record bytes [7998042, 8506890, 537078]
+  compact: new LOD1 threshold=250 + pad copy of original LOD4 (7286 points) LOD2 threshold=156 (original LOD1..4 dropped) from source LOD0 (points 102336, faces 77709) flags=0x0 points=110052 parts=1 groups/part [37] -> [3] draws 37 -> 3 faces=77709 collapse=atlas groups=['atlas:mat49~16:35674f', 'atlas:mat49~16:39509f', 'alpha:mat11:2526f'] part_flags=['0x30000001']
+  main-view drawable at Very High (f=1): before [0, 1, 2, 3] after [0, 1] (new record drawable: True)
+        low drawable [0, 1, 2] by s: before s<30:LOD4 30<=s<80:LOD3 80<=s<150:LOD2 150<=s<250:LOD1 s>=250:LOD0 | after s<156:LOD2 156<=s<250:LOD1 s>=250:LOD0
+     medium drawable [0, 1, 2] by s: before s<30:LOD4 30<=s<80:LOD3 80<=s<150:LOD2 150<=s<250:LOD1 s>=250:LOD0 | after s<156:LOD2 156<=s<250:LOD1 s>=250:LOD0
+       high drawable [0, 1, 2] by s: before s<30:LOD4 30<=s<80:LOD3 80<=s<150:LOD2 150<=s<250:LOD1 s>=250:LOD0 | after s<156:LOD2 156<=s<250:LOD1 s>=250:LOD0
+  very-high drawable [0, 1] by s: before s<30:LOD3 30<=s<80:LOD2 80<=s<150:LOD1 s>=150:LOD0 | after s<156:LOD1 s>=156:LOD0
+  atlas material mat49 = mat16 with the area-weighted g_Mat* mean over [5, 7, 8, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 30, 31, 32, 35, 39, 43, 45, 46]: (unchanged)
+  atlas 1024x1024 (min atlas texels per screen pixel at px=219.375: 1024: 1.995, 1024 clamped: 2.013; >= 2: yes) scale 1.0000 tiles 27 gutter 8 duplicated points 7716 -> 110052 points, tangent records missing 0; materials ['mat49'] (mat49 = copy of mat16); effects [['argon.fx', 1]]
+  atlas light_bleed=0 kept=0: 27 tiles checked at L = ceil(log2 texels/px) + 2, flagged above 4/255 mean added luminance
+  atlas texel rule: min 2.013, area-weighted 2.037 atlas texels per screen pixel (ratio at the 0.1 area quantile); below --min-texels 0.5: 0.00 % of the atlased surface (--texel-floor-share 10 %); layout clamped, capped tiles 27, span-clamped faces 0
+  atlas split: part 0 mat49 75183 faces -> 2 groups of [45509, 59871] points (<= MAX_GROUP_POINTS each; shared points duplicated)
+  atlas diffuse: dds/x3m_lod_argon_tech_L_missile_C_d5d8cc_diffuse.pck (x3m_lod\x3m_lod_argon_tech_L_missile_C_d5d8cc_diffuse.tga) DXT1 699192 bytes sha256 d8cf5d0c940c8524; compression error mean/p95 R=2.31/6 G=2.02/6 B=2.29/6 A=0.00/0
+  atlas light: dds/x3m_lod_argon_tech_L_missile_C_d5d8cc_light.pck (x3m_lod\x3m_lod_argon_tech_L_missile_C_d5d8cc_light.tga) DXT5 1398256 bytes sha256 47892922e1cbc28e; compression error mean/p95 R=0.51/2 G=0.45/1 B=0.43/2 A=0.23/0
+  atlas bump: dds/x3m_lod_argon_tech_L_missile_C_d5d8cc_bump.pck (x3m_lod\x3m_lod_argon_tech_L_missile_C_d5d8cc_bump.tga) DXT5 1398256 bytes sha256 d49037988edf1039; compression error mean/p95 R=2.36/6 G=1.66/6 B=2.36/6 A=0.74/4
+  atlas specular: dds/x3m_lod_argon_tech_L_missile_C_d5d8cc_specular.pck (x3m_lod\x3m_lod_argon_tech_L_missile_C_d5d8cc_specular.tga) DXT5 1398256 bytes sha256 b78a7f89794d7078; compression error mean/p95 R=3.50/9 G=3.43/9 B=3.50/9 A=0.00/0
+  atlas check: faces 75183, vertex UVs inside their tile 225549/225549 (inside tile+gutter 225549), max inverse-map error 0.433 source texels / 0.0077 atlas texels
+  atlas sampling diffuse (3957 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 6.91/24.96/79.50 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 2.83/8.66/28.36 A 0.00/0.00/0.00
+  atlas sampling light (3957 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 1.83/2.74/156.07 A 3.08/5.19/219.69; vs source prefiltered to the atlas texel RGB 0.77/2.29/74.21 A 1.17/3.90/98.89
+  atlas sampling bump (3957 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 6.39/36.44/111.15 A 11.44/63.81/120.46; vs source prefiltered to the atlas texel RGB 2.72/7.93/44.46 A 2.80/11.83/51.14; normal angle (degrees) vs source 7.51/38.57/72.03, vs prefiltered 1.94/6.97/24.11
+  atlas sampling specular (3957 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 15.60/45.76/139.66 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 4.82/13.05/40.98 A 0.00/0.00/0.00
+  decoded bytes 15454306 -> 17117174, stored 5990232 (gzip), overlay sha256 280bfb92b836f966
+
+stations/station_scenes/tech/argon_tech_L_shield_F: 02.cat:objects/stations/station_scenes/tech/argon_tech_L_shield_F.pbb
+  compact guard waived: T_pad 173 is below T_1 250; C is the full LOD 0 geometry, so C drawing at Low..High in the band above T_pad is harmless
+  ladder before: thresholds ['-', 250, 150, 80, 30] draws [38, 26, 15, 1, 1] record bytes [11590404, 5906594, 2425962, 565096, 663472]
+  ladder after:  thresholds ['-', 250, 173] draws [38, 4, 1] record bytes [11590404, 12140634, 663472]
+  compact: new LOD1 threshold=250 + pad copy of original LOD4 (8971 points) LOD2 threshold=173 (original LOD1..4 dropped) from source LOD0 (points 152103, faces 96942) flags=0x0 points=160446 parts=1 groups/part [38] -> [4] draws 38 -> 4 faces=96942 collapse=atlas groups=['atlas:mat49~17:20392f', 'atlas:mat49~17:31631f', 'atlas:mat49~17:39193f', 'alpha:mat11:5726f'] part_flags=['0x30000001']
+  main-view drawable at Very High (f=1): before [0, 1, 2, 3] after [0, 1] (new record drawable: True)
+        low drawable [0, 1, 2] by s: before s<30:LOD4 30<=s<80:LOD3 80<=s<150:LOD2 150<=s<250:LOD1 s>=250:LOD0 | after s<173:LOD2 173<=s<250:LOD1 s>=250:LOD0
+     medium drawable [0, 1, 2] by s: before s<30:LOD4 30<=s<80:LOD3 80<=s<150:LOD2 150<=s<250:LOD1 s>=250:LOD0 | after s<173:LOD2 173<=s<250:LOD1 s>=250:LOD0
+       high drawable [0, 1, 2] by s: before s<30:LOD4 30<=s<80:LOD3 80<=s<150:LOD2 150<=s<250:LOD1 s>=250:LOD0 | after s<173:LOD2 173<=s<250:LOD1 s>=250:LOD0
+  very-high drawable [0, 1] by s: before s<30:LOD3 30<=s<80:LOD2 80<=s<150:LOD1 s>=150:LOD0 | after s<173:LOD1 s>=173:LOD0
+  atlas material mat49 = mat17 with the area-weighted g_Mat* mean over [5, 7, 8, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 30, 31, 32, 35, 39, 40, 43, 45, 46]: (unchanged)
+  atlas 1024x1024 (min atlas texels per screen pixel at px=243.281: 1024: 1.799, 1024 clamped: 2.030; >= 2: yes) scale 1.0000 tiles 28 gutter 8 duplicated points 8343 -> 160446 points, tangent records missing 0; materials ['mat49'] (mat49 = copy of mat17); effects [['argon.fx', 1]]
+  atlas light_bleed=1 kept=0: 28 tiles checked at L = ceil(log2 texels/px) + 2, flagged above 4/255 mean added luminance; flagged mat22 L4 own 0.6 +4.6; remedy repack (emitters mat[5, 40] in their own region, margin 32 texels, L 4, scale 1.0000 -> 1.0000, min texels/px 2.030 -> 2.030); after mat22 +0.0
+  atlas texel rule: min 2.030, area-weighted 2.033 atlas texels per screen pixel (ratio at the 0.1 area quantile); below --min-texels 0.5: 0.00 % of the atlased surface (--texel-floor-share 10 %); layout clamped, capped tiles 28, span-clamped faces 0
+  atlas split: part 0 mat49 91216 faces -> 3 groups of [30911, 59993, 59946] points (<= MAX_GROUP_POINTS each; shared points duplicated)
+  atlas diffuse: dds/x3m_lod_argon_tech_L_shield_F_8d2146_diffuse.pck (x3m_lod\x3m_lod_argon_tech_L_shield_F_8d2146_diffuse.tga) DXT1 699192 bytes sha256 9b26e814f847720e; compression error mean/p95 R=2.25/6 G=1.93/6 B=2.24/6 A=0.00/0
+  atlas light: dds/x3m_lod_argon_tech_L_shield_F_8d2146_light.pck (x3m_lod\x3m_lod_argon_tech_L_shield_F_8d2146_light.tga) DXT5 1398256 bytes sha256 17f2d32550840c74; compression error mean/p95 R=0.40/2 G=0.34/1 B=0.33/2 A=0.16/0
+  atlas bump: dds/x3m_lod_argon_tech_L_shield_F_8d2146_bump.pck (x3m_lod\x3m_lod_argon_tech_L_shield_F_8d2146_bump.tga) DXT5 1398256 bytes sha256 358c4b9b53a16ca3; compression error mean/p95 R=1.93/5 G=1.30/5 B=1.93/5 A=0.57/3
+  atlas specular: dds/x3m_lod_argon_tech_L_shield_F_8d2146_specular.pck (x3m_lod\x3m_lod_argon_tech_L_shield_F_8d2146_specular.tga) DXT5 1398256 bytes sha256 f48b28b294500430; compression error mean/p95 R=3.34/8 G=3.24/8 B=3.34/8 A=0.00/0
+  atlas check: faces 91216, vertex UVs inside their tile 273648/273648 (inside tile+gutter 273648), max inverse-map error 1.001 source texels / 0.0077 atlas texels
+  atlas sampling diffuse (3966 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 8.45/28.01/80.76 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 3.51/9.53/26.69 A 0.00/0.00/0.00
+  atlas sampling light (3966 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 1.89/5.14/161.12 A 2.93/7.52/223.67; vs source prefiltered to the atlas texel RGB 0.79/3.75/73.55 A 1.12/5.69/76.53
+  atlas sampling bump (3966 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 8.12/45.71/120.03 A 13.31/75.09/150.24; vs source prefiltered to the atlas texel RGB 3.08/10.95/48.22 A 3.74/15.38/42.90; normal angle (degrees) vs source 9.03/45.22/83.64, vs prefiltered 2.51/8.32/25.47
+  atlas sampling specular (3966 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 17.78/56.76/146.92 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 5.27/13.97/55.12 A 0.00/0.00/0.00
+  decoded bytes 21225156 -> 24469668, stored 7787623 (gzip), overlay sha256 356f40c137b415a4
+
+stations/station_scenes/tech/argon_tech_M_laser_cc: 02.cat:objects/stations/station_scenes/tech/argon_tech_M_laser_cc.pbb
+  ladder before: thresholds ['-', 30, 15, 5] draws [36, 34, 31, 28] record bytes [13407458, 6416518, 2065700, 493636]
+  ladder after:  thresholds ['-', 30, 165] draws [36, 4, 28] record bytes [13407458, 14057306, 493636]
+  compact: new LOD1 threshold=30 + pad copy of original LOD3 (6699 points) LOD2 threshold=165 (original LOD1..3 dropped) from source LOD0 (points 174938, faces 116315) flags=0x40 points=184790 parts=1 groups/part [36] -> [4] draws 36 -> 4 faces=116315 collapse=atlas groups=['atlas:mat51~17:34536f', 'atlas:mat51~17:39530f', 'atlas:mat51~17:34363f', 'alpha:mat52~11:7886f'] part_flags=['0x30000001']
+  main-view drawable at Very High (f=1): before [0, 1, 2] after [0, 1] (new record drawable: True)
+        low drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<165:LOD2 s>=165:LOD0
+     medium drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<165:LOD2 s>=165:LOD0
+       high drawable [0, 2] by s: before s<5:LOD3 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<165:LOD2 s>=165:LOD0
+  very-high drawable [0, 1] by s: before s<5:LOD2 5<=s<15:LOD1 s>=15:LOD0 | after s<165:LOD1 s>=165:LOD0
+  atlas material mat51 = mat17 with the area-weighted g_Mat* mean over [5, 7, 8, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 30, 31, 32, 39, 43, 45, 46, 47]: g_MatSpecularStrength=3.4->2.99(mean 2.99) g_MatSpecularPower=7->6.178(mean 6.178) g_MatMinFresnel=0.09999->0.01805(mean 0.01805)
+  synthesized mat52 = mat11 with the area-weighted g_Mat* mean over [0, 1, 2, 3, 4, 9, 11, 12, 36]: g_MatReflectionStrength=1->0.9998(mean 0.9998) g_MatMinFresnel=0->0.0007477(mean 0.0007484)
+  atlas 1024x1024 (min atlas texels per screen pixel at px=232.031: 1024: 0.040, 1024 clamped: 2.012; >= 2: yes) scale 1.0000 tiles 27 gutter 8 duplicated points 9852 -> 184790 points, tangent records missing 0; materials ['mat51'] (mat51 = copy of mat17); effects [['XT_standard_lighting.fx', 1]]
+  atlas light_bleed=0 kept=0: 27 tiles checked at L = ceil(log2 texels/px) + 2, flagged above 4/255 mean added luminance
+  atlas texel rule: min 2.012, area-weighted 2.012 atlas texels per screen pixel (ratio at the 0.1 area quantile); below --min-texels 0.5: 1.30 % of the atlased surface (--texel-floor-share 10 %); layout clamped, capped tiles 27, span-clamped faces 2212
+  atlas texel_clamped: metals\argon\metal_argon_trims_03_diff.tga ratio 2.023 share 6.20 % starved 0.75 % span-clamped faces 1578
+  atlas texel_clamped: metals\argon\metal_argon_trims_02_diff.tga ratio 2.045 share 5.12 % starved 0.53 % span-clamped faces 548
+  atlas texel_clamped: metals\argon\metal_argon_base_metal_plating_diff.tga ratio 2.012 share 17.22 % starved 0.02 % span-clamped faces 86
+  atlas split: part 0 mat51 108429 faces -> 3 groups of [51743, 59978, 59877] points (<= MAX_GROUP_POINTS each; shared points duplicated)
+  atlas diffuse: dds/x3m_lod_argon_tech_M_laser_cc_83f5ae_diffuse.pck (x3m_lod\x3m_lod_argon_tech_M_laser_cc_83f5ae_diffuse.tga) DXT1 699192 bytes sha256 fb8fdfc9a7cfa0b7; compression error mean/p95 R=1.87/5 G=1.30/5 B=2.45/5 A=0.00/0
+  atlas light: dds/x3m_lod_argon_tech_M_laser_cc_83f5ae_light.pck (x3m_lod\x3m_lod_argon_tech_M_laser_cc_83f5ae_light.tga) DXT5 1398256 bytes sha256 f61a5c29b04c05d9; compression error mean/p95 R=0.35/1 G=0.36/1 B=0.34/1 A=0.10/0
+  atlas bump: dds/x3m_lod_argon_tech_M_laser_cc_83f5ae_bump.pck (x3m_lod\x3m_lod_argon_tech_M_laser_cc_83f5ae_bump.tga) DXT5 1398256 bytes sha256 7ec800814fd48608; compression error mean/p95 R=2.28/4 G=1.29/4 B=2.28/4 A=0.37/3
+  atlas specular: dds/x3m_lod_argon_tech_M_laser_cc_83f5ae_specular.pck (x3m_lod\x3m_lod_argon_tech_M_laser_cc_83f5ae_specular.tga) DXT5 1398256 bytes sha256 7fdd3ebad2753012; compression error mean/p95 R=2.53/7 G=2.11/7 B=2.53/7 A=0.00/0
+  atlas check: faces 108429, vertex UVs inside their tile 325287/325287 (inside tile+gutter 325287), max inverse-map error 6.982 source texels / 0.0078 atlas texels, span-clamped faces 2212
+  atlas sampling diffuse (158 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 7.44/28.12/46.01 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 2.68/7.86/11.95 A 0.00/0.00/0.00
+  atlas sampling light (158 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 1.27/2.69/109.75 A 1.40/1.58/159.45; vs source prefiltered to the atlas texel RGB 0.84/2.29/51.98 A 0.65/1.02/68.58
+  atlas sampling bump (158 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 8.23/44.45/115.97 A 12.39/66.07/107.62; vs source prefiltered to the atlas texel RGB 3.00/8.30/25.75 A 3.42/15.52/32.85; normal angle (degrees) vs source 8.85/44.62/66.96, vs prefiltered 2.35/9.01/15.29
+  atlas sampling specular (158 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 15.79/46.30/81.74 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 4.86/12.16/29.64 A 0.00/0.00/0.00
+  decoded bytes 22494086 -> 28073596, stored 9949418 (gzip), overlay sha256 49ab5be57d14df77
+
+stations/station_scenes/tech/argon_tech_M_laser_G: 02.cat:objects/stations/station_scenes/tech/argon_tech_M_laser_G.pbb
+  compact guard waived: T_pad 184 is below T_1 250; C is the full LOD 0 geometry, so C drawing at Low..High in the band above T_pad is harmless
+  ladder before: thresholds ['-', 250, 150, 80, 30] draws [38, 25, 15, 1, 1] record bytes [10887470, 5825190, 2545186, 406662, 491690]
+  ladder after:  thresholds ['-', 250, 184] draws [38, 4, 1] record bytes [10887470, 11322068, 491690]
+  compact: new LOD1 threshold=250 + pad copy of original LOD4 (6656 points) LOD2 threshold=184 (original LOD1..4 dropped) from source LOD0 (points 142044, faces 94502) flags=0x0 points=148635 parts=1 groups/part [38] -> [4] draws 38 -> 4 faces=94502 collapse=atlas groups=['atlas:mat49~23:45643f', 'atlas:mat49~23:33343f', 'atlas:mat49~23:4394f', 'alpha:mat11:11122f'] part_flags=['0x30000001']
+  main-view drawable at Very High (f=1): before [0, 1, 2, 3] after [0, 1] (new record drawable: True)
+        low drawable [0, 1, 2] by s: before s<30:LOD4 30<=s<80:LOD3 80<=s<150:LOD2 150<=s<250:LOD1 s>=250:LOD0 | after s<184:LOD2 184<=s<250:LOD1 s>=250:LOD0
+     medium drawable [0, 1, 2] by s: before s<30:LOD4 30<=s<80:LOD3 80<=s<150:LOD2 150<=s<250:LOD1 s>=250:LOD0 | after s<184:LOD2 184<=s<250:LOD1 s>=250:LOD0
+       high drawable [0, 1, 2] by s: before s<30:LOD4 30<=s<80:LOD3 80<=s<150:LOD2 150<=s<250:LOD1 s>=250:LOD0 | after s<184:LOD2 184<=s<250:LOD1 s>=250:LOD0
+  very-high drawable [0, 1] by s: before s<30:LOD3 30<=s<80:LOD2 80<=s<150:LOD1 s>=150:LOD0 | after s<184:LOD1 s>=184:LOD0
+  atlas material mat49 = mat23 with the area-weighted g_Mat* mean over [5, 6, 7, 8, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 30, 31, 32, 39, 41, 43, 45, 46]: (unchanged)
+  atlas 1024x1024 (min atlas texels per screen pixel at px=258.75: 1024: 1.388, 1024 clamped: 2.005; >= 2: yes) scale 1.0000 tiles 28 gutter 8 duplicated points 6591 -> 148635 points, tangent records missing 0; materials ['mat49'] (mat49 = copy of mat23); effects [['argon.fx', 1]]
+  atlas light_bleed=1 kept=0: 28 tiles checked at L = ceil(log2 texels/px) + 2, flagged above 4/255 mean added luminance; flagged mat6 L4 own 17.7 +13.9; remedy repack (emitters mat[5, 41] in their own region, margin 32 texels, L 4, scale 1.0000 -> 1.0000, min texels/px 2.005 -> 2.005); after mat6 +0.0
+  atlas texel rule: min 2.005, area-weighted 2.018 atlas texels per screen pixel (ratio at the 0.1 area quantile); below --min-texels 0.5: 0.00 % of the atlased surface (--texel-floor-share 10 %); layout clamped, capped tiles 28, span-clamped faces 0
+  atlas split: part 0 mat49 83380 faces -> 3 groups of [59978, 59982, 8321] points (<= MAX_GROUP_POINTS each; shared points duplicated)
+  atlas diffuse: dds/x3m_lod_argon_tech_M_laser_G_c2e11c_diffuse.pck (x3m_lod\x3m_lod_argon_tech_M_laser_G_c2e11c_diffuse.tga) DXT1 699192 bytes sha256 9282687f3b90f933; compression error mean/p95 R=2.26/6 G=1.96/6 B=2.25/6 A=0.00/0
+  atlas light: dds/x3m_lod_argon_tech_M_laser_G_c2e11c_light.pck (x3m_lod\x3m_lod_argon_tech_M_laser_G_c2e11c_light.tga) DXT5 1398256 bytes sha256 3e7df39467e22feb; compression error mean/p95 R=0.43/2 G=0.37/1 B=0.35/1 A=0.19/0
+  atlas bump: dds/x3m_lod_argon_tech_M_laser_G_c2e11c_bump.pck (x3m_lod\x3m_lod_argon_tech_M_laser_G_c2e11c_bump.tga) DXT5 1398256 bytes sha256 82003fa5c76f4afa; compression error mean/p95 R=2.16/6 G=1.54/6 B=2.16/6 A=0.68/4
+  atlas specular: dds/x3m_lod_argon_tech_M_laser_G_c2e11c_specular.pck (x3m_lod\x3m_lod_argon_tech_M_laser_G_c2e11c_specular.tga) DXT5 1398256 bytes sha256 00a2499542c7cb32; compression error mean/p95 R=3.51/9 G=3.46/9 B=3.51/9 A=0.00/0
+  atlas check: faces 83380, vertex UVs inside their tile 250140/250140 (inside tile+gutter 250140), max inverse-map error 0.404 source texels / 0.0078 atlas texels
+  atlas sampling diffuse (3971 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 8.33/28.61/72.61 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 3.29/9.19/31.87 A 0.00/0.00/0.00
+  atlas sampling light (3971 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 1.81/6.36/149.60 A 2.92/9.07/236.07; vs source prefiltered to the atlas texel RGB 1.06/6.04/98.77 A 1.26/4.77/102.36
+  atlas sampling bump (3971 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 8.86/44.54/122.95 A 12.96/70.54/126.17; vs source prefiltered to the atlas texel RGB 3.31/10.59/53.84 A 3.70/15.10/52.78; normal angle (degrees) vs source 9.17/42.66/80.64, vs prefiltered 2.57/8.56/26.07
+  atlas sampling specular (3971 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 16.71/55.17/146.37 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 5.12/12.93/47.64 A 0.00/0.00/0.00
+  decoded bytes 20229824 -> 22776380, stored 7858127 (gzip), overlay sha256 b6f554be2bea232d
+
+stations/station_scenes/tech/argon_tech_S_factory_A: 02.cat:objects/stations/station_scenes/tech/argon_tech_S_factory_A.pbb
+  compact guard waived: T_pad 163 is below T_1 250; C is the full LOD 0 geometry, so C drawing at Low..High in the band above T_pad is harmless
+  ladder before: thresholds ['-', 250, 150, 80, 30] draws [38, 25, 15, 1, 1] record bytes [6870740, 3588566, 1798298, 435842, 486848]
+  ladder after:  thresholds ['-', 250, 163] draws [38, 3, 1] record bytes [6870740, 7240184, 486848]
+  compact: new LOD1 threshold=250 + pad copy of original LOD4 (6595 points) LOD2 threshold=163 (original LOD1..4 dropped) from source LOD0 (points 88063, faces 66128) flags=0x0 points=93667 parts=1 groups/part [38] -> [3] draws 38 -> 3 faces=66128 collapse=atlas groups=['atlas:mat49~46:18196f', 'atlas:mat49~46:40590f', 'alpha:mat11:7342f'] part_flags=['0x30000001']
+  main-view drawable at Very High (f=1): before [0, 1, 2, 3] after [0, 1] (new record drawable: True)
+        low drawable [0, 1, 2] by s: before s<30:LOD4 30<=s<80:LOD3 80<=s<150:LOD2 150<=s<250:LOD1 s>=250:LOD0 | after s<163:LOD2 163<=s<250:LOD1 s>=250:LOD0
+     medium drawable [0, 1, 2] by s: before s<30:LOD4 30<=s<80:LOD3 80<=s<150:LOD2 150<=s<250:LOD1 s>=250:LOD0 | after s<163:LOD2 163<=s<250:LOD1 s>=250:LOD0
+       high drawable [0, 1, 2] by s: before s<30:LOD4 30<=s<80:LOD3 80<=s<150:LOD2 150<=s<250:LOD1 s>=250:LOD0 | after s<163:LOD2 163<=s<250:LOD1 s>=250:LOD0
+  very-high drawable [0, 1] by s: before s<30:LOD3 30<=s<80:LOD2 80<=s<150:LOD1 s>=150:LOD0 | after s<163:LOD1 s>=163:LOD0
+  atlas material mat49 = mat46 with the area-weighted g_Mat* mean over [5, 6, 7, 8, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 30, 31, 32, 35, 39, 43, 45, 46]: (unchanged)
+  atlas 1024x1024 (min atlas texels per screen pixel at px=229.219: 1024: 1.836, 1024 clamped: 2.016; >= 2: yes) scale 1.0000 tiles 28 gutter 8 duplicated points 5604 -> 93667 points, tangent records missing 0; materials ['mat49'] (mat49 = copy of mat46); effects [['argon.fx', 1]]
+  atlas light_bleed=0 kept=0: 28 tiles checked at L = ceil(log2 texels/px) + 2, flagged above 4/255 mean added luminance
+  atlas texel rule: min 2.016, area-weighted 2.045 atlas texels per screen pixel (ratio at the 0.1 area quantile); below --min-texels 0.5: 0.00 % of the atlased surface (--texel-floor-share 10 %); layout clamped, capped tiles 28, span-clamped faces 0
+  atlas split: part 0 mat49 58786 faces -> 2 groups of [23607, 59926] points (<= MAX_GROUP_POINTS each; shared points duplicated)
+  atlas diffuse: dds/x3m_lod_argon_tech_S_factory_A_b0b239_diffuse.pck (x3m_lod\x3m_lod_argon_tech_S_factory_A_b0b239_diffuse.tga) DXT1 699192 bytes sha256 ebf4726a9b0d4a74; compression error mean/p95 R=2.37/6 G=2.05/6 B=2.31/6 A=0.00/0
+  atlas light: dds/x3m_lod_argon_tech_S_factory_A_b0b239_light.pck (x3m_lod\x3m_lod_argon_tech_S_factory_A_b0b239_light.tga) DXT5 1398256 bytes sha256 1d51065b121415d9; compression error mean/p95 R=0.46/2 G=0.41/2 B=0.39/2 A=0.22/0
+  atlas bump: dds/x3m_lod_argon_tech_S_factory_A_b0b239_bump.pck (x3m_lod\x3m_lod_argon_tech_S_factory_A_b0b239_bump.tga) DXT5 1398256 bytes sha256 f5c4b040d153dd73; compression error mean/p95 R=2.50/6 G=1.79/6 B=2.50/6 A=0.74/4
+  atlas specular: dds/x3m_lod_argon_tech_S_factory_A_b0b239_specular.pck (x3m_lod\x3m_lod_argon_tech_S_factory_A_b0b239_specular.tga) DXT5 1398256 bytes sha256 93e302c988a1c353; compression error mean/p95 R=3.44/9 G=3.37/9 B=3.44/9 A=0.00/0
+  atlas check: faces 58786, vertex UVs inside their tile 176358/176358 (inside tile+gutter 176358), max inverse-map error 0.605 source texels / 0.0078 atlas texels
+  atlas sampling diffuse (3920 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 7.55/25.03/74.85 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 2.95/9.35/26.47 A 0.00/0.00/0.00
+  atlas sampling light (3920 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 1.91/2.03/212.70 A 2.85/4.10/243.74; vs source prefiltered to the atlas texel RGB 0.76/1.86/82.68 A 1.08/2.88/102.32
+  atlas sampling bump (3920 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 6.84/32.18/120.20 A 13.62/69.64/119.95; vs source prefiltered to the atlas texel RGB 2.91/9.02/27.82 A 3.17/12.70/53.47; normal angle (degrees) vs source 8.67/39.57/69.35, vs prefiltered 2.18/7.45/25.16
+  atlas sampling specular (3920 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 16.23/45.26/141.44 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 4.94/13.22/44.05 A 0.00/0.00/0.00
+  decoded bytes 13253924 -> 14672936, stored 5023444 (gzip), overlay sha256 adf3b9e8193e4473
+
+stations/station_scenes/tech/argon_tech_S_laser_E: 02.cat:objects/stations/station_scenes/tech/argon_tech_S_laser_E.pbb
+  compact guard waived: T_pad 196 is below T_1 250; C is the full LOD 0 geometry, so C drawing at Low..High in the band above T_pad is harmless
+  ladder before: thresholds ['-', 250, 150, 80, 30] draws [37, 25, 15, 1, 1] record bytes [6865176, 3575624, 1544928, 294420, 352456]
+  ladder after:  thresholds ['-', 250, 196] draws [37, 3, 1] record bytes [6865176, 7201368, 352456]
+  compact: new LOD1 threshold=250 + pad copy of original LOD4 (4767 points) LOD2 threshold=196 (original LOD1..4 dropped) from source LOD0 (points 89247, faces 60897) flags=0x0 points=94347 parts=1 groups/part [37] -> [3] draws 37 -> 3 faces=60897 collapse=atlas groups=['atlas:mat49~23:17661f', 'atlas:mat49~23:36302f', 'alpha:mat11:6934f'] part_flags=['0x30000001']
+  main-view drawable at Very High (f=1): before [0, 1, 2, 3] after [0, 1] (new record drawable: True)
+        low drawable [0, 1, 2] by s: before s<30:LOD4 30<=s<80:LOD3 80<=s<150:LOD2 150<=s<250:LOD1 s>=250:LOD0 | after s<196:LOD2 196<=s<250:LOD1 s>=250:LOD0
+     medium drawable [0, 1, 2] by s: before s<30:LOD4 30<=s<80:LOD3 80<=s<150:LOD2 150<=s<250:LOD1 s>=250:LOD0 | after s<196:LOD2 196<=s<250:LOD1 s>=250:LOD0
+       high drawable [0, 1, 2] by s: before s<30:LOD4 30<=s<80:LOD3 80<=s<150:LOD2 150<=s<250:LOD1 s>=250:LOD0 | after s<196:LOD2 196<=s<250:LOD1 s>=250:LOD0
+  very-high drawable [0, 1] by s: before s<30:LOD3 30<=s<80:LOD2 80<=s<150:LOD1 s>=150:LOD0 | after s<196:LOD1 s>=196:LOD0
+  atlas material mat49 = mat23 with the area-weighted g_Mat* mean over [5, 7, 8, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 30, 31, 32, 39, 40, 43, 45, 46]: (unchanged)
+  atlas 1024x1024 (min atlas texels per screen pixel at px=275.625: 1024: 2.612; >= 2: yes) scale 0.0661 tiles 27 gutter 8 duplicated points 5100 -> 94347 points, tangent records missing 0; materials ['mat49'] (mat49 = copy of mat23); effects [['argon.fx', 1]]
+  atlas light_bleed=3 kept=0: 27 tiles checked at L = ceil(log2 texels/px) + 2, flagged above 4/255 mean added luminance; flagged mat21 L6 own 0.7 +6.1, mat26 L5 own 0.3 +8.6, mat31 L4 own 0.6 +21.8; remedy repack (emitters mat[5, 40] in their own region, margin 4 texels, L 6, scale 0.0777 -> 0.0661, min texels/px 2.612 -> 2.182); after mat21 +1.9, mat26 +0.0, mat31 +0.2
+  atlas texel rule: min 2.182, area-weighted 2.562 atlas texels per screen pixel (ratio at the 0.1 area quantile); below --min-texels 0.5: 0.00 % of the atlased surface (--texel-floor-share 10 %); layout uniform, capped tiles 0, span-clamped faces 0
+  atlas split: part 0 mat49 53963 faces -> 2 groups of [23490, 59946] points (<= MAX_GROUP_POINTS each; shared points duplicated)
+  atlas diffuse: dds/x3m_lod_argon_tech_S_laser_E_894664_diffuse.pck (x3m_lod\x3m_lod_argon_tech_S_laser_E_894664_diffuse.tga) DXT1 699192 bytes sha256 b85fd74b07ea922e; compression error mean/p95 R=2.00/6 G=1.65/5 B=1.94/6 A=0.00/0
+  atlas light: dds/x3m_lod_argon_tech_S_laser_E_894664_light.pck (x3m_lod\x3m_lod_argon_tech_S_laser_E_894664_light.tga) DXT5 1398256 bytes sha256 6bd263748f3fa681; compression error mean/p95 R=0.32/0 G=0.28/0 B=0.28/0 A=0.14/0
+  atlas bump: dds/x3m_lod_argon_tech_S_laser_E_894664_bump.pck (x3m_lod\x3m_lod_argon_tech_S_laser_E_894664_bump.tga) DXT5 1398256 bytes sha256 33ac909dc05946e8; compression error mean/p95 R=2.90/5 G=1.96/5 B=2.90/5 A=0.56/3
+  atlas specular: dds/x3m_lod_argon_tech_S_laser_E_894664_specular.pck (x3m_lod\x3m_lod_argon_tech_S_laser_E_894664_specular.tga) DXT5 1398256 bytes sha256 c936fd81ebe8786d; compression error mean/p95 R=3.55/9 G=3.50/9 B=3.55/9 A=0.00/0
+  atlas check: faces 53963, vertex UVs inside their tile 161889/161889 (inside tile+gutter 161889), max inverse-map error 0.117 source texels / 0.0078 atlas texels
+  atlas sampling diffuse (3855 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 5.74/21.27/69.17 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 2.65/8.08/26.20 A 0.00/0.00/0.00
+  atlas sampling light (3855 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 1.51/4.30/125.84 A 2.30/3.73/226.19; vs source prefiltered to the atlas texel RGB 0.70/2.59/74.38 A 0.98/2.80/81.87
+  atlas sampling bump (3855 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 8.10/44.13/116.04 A 11.43/58.98/140.47; vs source prefiltered to the atlas texel RGB 3.53/11.31/46.72 A 3.90/16.27/51.78; normal angle (degrees) vs source 8.22/37.02/75.38, vs prefiltered 2.75/8.97/28.31
+  atlas sampling specular (3855 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 13.59/39.82/122.22 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 4.75/13.51/49.16 A 0.00/0.00/0.00
+  decoded bytes 12706194 -> 14494116, stored 4788726 (gzip), overlay sha256 e874a3888432e4ba
+
+stations/trading_stations/argon_trading_station_partA: 02.cat:objects/stations/trading_stations/argon_trading_station_partA.pbb
+  ladder before: thresholds ['-', 30, 15, 5, 5] draws [32, 21, 11, 1, 1] record bytes [1213122, 615914, 231738, 78228, 78228]
+  ladder after:  thresholds ['-', 30, 153] draws [32, 2, 1] record bytes [1213122, 1246158, 78228]
+  compact: new LOD1 threshold=30 + pad copy of original LOD4 (1077 points) LOD2 threshold=153 (original LOD1..4 dropped) from source LOD0 (points 16554, faces 7506) flags=0x0 points=17060 parts=1 groups/part [32] -> [2] draws 32 -> 2 faces=7506 collapse=atlas groups=['atlas:mat48~7:7262f', 'alpha:mat10:244f'] part_flags=['0x10000001']
+  main-view drawable at Very High (f=1): before [0, 1, 3] after [0, 1] (new record drawable: True)
+        low drawable [0, 2] by s: before s<5:LOD4 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<153:LOD2 s>=153:LOD0
+     medium drawable [0, 2] by s: before s<5:LOD4 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<153:LOD2 s>=153:LOD0
+       high drawable [0, 2] by s: before s<5:LOD4 5<=s<15:LOD2 15<=s<30:LOD1 s>=30:LOD0 | after s<153:LOD2 s>=153:LOD0
+  very-high drawable [0, 1] by s: before s<5:LOD3 5<=s<15:LOD1 s>=15:LOD0 | after s<153:LOD1 s>=153:LOD0
+  atlas material mat48 = mat7 with the area-weighted g_Mat* mean over [6, 7, 8, 13, 14, 15, 16, 17, 18, 19, 20, 22, 23, 24, 25, 26, 27, 28, 30, 31, 35, 39, 40, 43, 45]: (unchanged)
+  atlas 1024x1024 (min atlas texels per screen pixel at px=215.156: 1024: 0.653, 1024 clamped: 2.005; >= 2: yes) scale 1.0000 tiles 25 gutter 8 duplicated points 506 -> 17060 points, tangent records missing 0; materials ['mat48'] (mat48 = copy of mat7); effects [['argon.fx', 1]]
+  atlas light_bleed=1 kept=0: 25 tiles checked at L = ceil(log2 texels/px) + 2, flagged above 4/255 mean added luminance; flagged mat45 L4 own 0.4 +11.8; remedy repack (emitters mat[6, 40] in their own region, margin 32 texels, L 4, scale 1.0000 -> 1.0000, min texels/px 2.005 -> 2.005); after mat45 +0.1
+  atlas texel rule: min 2.005, area-weighted 2.008 atlas texels per screen pixel (ratio at the 0.1 area quantile); below --min-texels 0.5: 0.00 % of the atlased surface (--texel-floor-share 10 %); layout clamped, capped tiles 25, span-clamped faces 0
+  atlas diffuse: dds/x3m_lod_argon_trading_station_partA_f36125_diffuse.pck (x3m_lod\x3m_lod_argon_trading_station_partA_f36125_diffuse.tga) DXT1 699192 bytes sha256 e7b726d2b69221be; compression error mean/p95 R=2.09/6 G=1.74/6 B=2.00/6 A=0.00/0
+  atlas light: dds/x3m_lod_argon_trading_station_partA_f36125_light.pck (x3m_lod\x3m_lod_argon_trading_station_partA_f36125_light.tga) DXT5 1398256 bytes sha256 1c23846ea383b99e; compression error mean/p95 R=0.08/0 G=0.09/0 B=0.09/0 A=0.04/0
+  atlas bump: dds/x3m_lod_argon_trading_station_partA_f36125_bump.pck (x3m_lod\x3m_lod_argon_trading_station_partA_f36125_bump.tga) DXT5 1398256 bytes sha256 2b278f26f409d2d6; compression error mean/p95 R=3.18/8 G=2.29/8 B=3.18/8 A=0.78/4
+  atlas specular: dds/x3m_lod_argon_trading_station_partA_f36125_specular.pck (x3m_lod\x3m_lod_argon_trading_station_partA_f36125_specular.tga) DXT5 1398256 bytes sha256 82a22396d290aa4c; compression error mean/p95 R=3.66/10 G=3.63/10 B=3.66/10 A=0.00/0
+  atlas check: faces 7262, vertex UVs inside their tile 21786/21786 (inside tile+gutter 21786), max inverse-map error 0.092 source texels / 0.0076 atlas texels
+  atlas sampling diffuse (3631 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 4.60/19.72/72.28 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 2.46/7.81/24.58 A 0.00/0.00/0.00
+  atlas sampling light (3631 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 0.15/0.00/78.26 A 0.23/0.00/157.96; vs source prefiltered to the atlas texel RGB 0.10/0.00/27.20 A 0.14/0.00/49.17
+  atlas sampling bump (3631 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 6.77/32.82/149.07 A 7.90/45.82/127.83; vs source prefiltered to the atlas texel RGB 3.61/13.44/45.98 A 3.22/15.44/47.40; normal angle (degrees) vs source 6.12/31.51/72.05, vs prefiltered 2.54/9.52/21.71
+  atlas sampling specular (3631 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 10.30/28.84/102.31 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 4.12/11.33/36.84 A 0.00/0.00/0.00
+  decoded bytes 2289273 -> 2611105, stored 646303 (gzip), overlay sha256 a16d6aa4226850ef
+
+stations/trading_stations/argon_trading_station_partB: 02.cat:objects/stations/trading_stations/argon_trading_station_partB.pbb
+  ladder before: thresholds ['-', 30, 20, 10, 30] draws [36, 34, 32, 29, 29] record bytes [3751828, 1806576, 878980, 221136, 221136]
+  ladder after:  thresholds ['-', 30, 165] draws [36, 2, 29] record bytes [3751828, 3899194, 221136]
+  compact: new LOD1 threshold=30 + pad copy of original LOD4 (3035 points) LOD2 threshold=165 (original LOD1..4 dropped) from source LOD0 (points 50811, faces 24862) flags=0x0 points=53050 parts=1 groups/part [36] -> [2] draws 36 -> 2 faces=24862 collapse=atlas groups=['atlas:mat48~7:23826f', 'alpha:mat49~11:1036f'] part_flags=['0x10000001']
+  main-view drawable at Very High (f=1): before [0, 3] after [0, 1] (new record drawable: True)
+        low drawable [0, 2] by s: before s<30:LOD4 s>=30:LOD0 | after s<165:LOD2 s>=165:LOD0
+     medium drawable [0, 2] by s: before s<30:LOD4 s>=30:LOD0 | after s<165:LOD2 s>=165:LOD0
+       high drawable [0, 2] by s: before s<30:LOD4 s>=30:LOD0 | after s<165:LOD2 s>=165:LOD0
+  very-high drawable [0, 1] by s: before s<30:LOD3 s>=30:LOD0 | after s<165:LOD1 s>=165:LOD0
+  atlas material mat48 = mat7 with the area-weighted g_Mat* mean over [5, 6, 7, 8, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 30, 31, 32, 34, 35, 37, 39, 40, 43, 46]: g_MatReflectionStrength=0.5->0.6004(mean 0.6004) g_MatReflectionBlur=1->0.7547(mean 0.7547)
+  synthesized mat49 = mat11 with the area-weighted g_Mat* mean over [1, 3, 9, 11, 12, 36]: g_MatReflectionStrength=0.5->0.5642(mean 0.5642) g_MatReflectionBlur=1->0.8717(mean 0.8717)
+  atlas 1024x1024 (min atlas texels per screen pixel at px=232.031: 1024: 0.884, 1024 clamped: 2.004; >= 2: yes) scale 1.0000 tiles 30 gutter 8 duplicated points 2239 -> 53050 points, tangent records missing 0; materials ['mat48'] (mat48 = copy of mat7); effects [['argon.fx', 1]]
+  atlas light_bleed=0 kept=0: 30 tiles checked at L = ceil(log2 texels/px) + 2, flagged above 4/255 mean added luminance
+  atlas texel rule: min 2.004, area-weighted 2.014 atlas texels per screen pixel (ratio at the 0.1 area quantile); below --min-texels 0.5: 0.00 % of the atlased surface (--texel-floor-share 10 %); layout clamped, capped tiles 30, span-clamped faces 0
+  atlas diffuse: dds/x3m_lod_argon_trading_station_partB_649c5f_diffuse.pck (x3m_lod\x3m_lod_argon_trading_station_partB_649c5f_diffuse.tga) DXT1 699192 bytes sha256 d2ca3bddd97b2efe; compression error mean/p95 R=2.52/7 G=2.24/7 B=2.51/7 A=0.00/0
+  atlas light: dds/x3m_lod_argon_trading_station_partB_649c5f_light.pck (x3m_lod\x3m_lod_argon_trading_station_partB_649c5f_light.tga) DXT5 1398256 bytes sha256 2b02622ca2432f9d; compression error mean/p95 R=0.26/0 G=0.24/0 B=0.23/0 A=0.10/0
+  atlas bump: dds/x3m_lod_argon_trading_station_partB_649c5f_bump.pck (x3m_lod\x3m_lod_argon_trading_station_partB_649c5f_bump.tga) DXT5 1398256 bytes sha256 157189c480fe6ddf; compression error mean/p95 R=2.70/7 G=2.16/7 B=2.70/7 A=0.87/4
+  atlas specular: dds/x3m_lod_argon_trading_station_partB_649c5f_specular.pck (x3m_lod\x3m_lod_argon_trading_station_partB_649c5f_specular.tga) DXT5 1398256 bytes sha256 8d97667af979176e; compression error mean/p95 R=3.94/10 G=3.88/10 B=3.94/10 A=0.00/0
+  atlas check: faces 23826, vertex UVs inside their tile 71478/71478 (inside tile+gutter 71478), max inverse-map error 0.236 source texels / 0.0078 atlas texels
+  atlas sampling diffuse (3971 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 7.23/25.71/85.92 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 3.12/9.38/23.33 A 0.00/0.00/0.00
+  atlas sampling light (3971 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 0.74/0.70/160.04 A 1.10/1.22/235.18; vs source prefiltered to the atlas texel RGB 0.41/1.00/68.64 A 0.52/0.93/84.02
+  atlas sampling bump (3971 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 7.11/41.68/114.56 A 10.22/56.59/116.56; vs source prefiltered to the atlas texel RGB 3.06/11.10/48.09 A 3.49/13.25/44.47; normal angle (degrees) vs source 7.32/34.80/61.87, vs prefiltered 2.48/8.11/25.24
+  atlas sampling specular (3971 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 14.04/40.29/138.51 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 4.75/13.28/41.23 A 0.00/0.00/0.00
+  decoded bytes 6951699 -> 7947353, stored 1987280 (gzip), overlay sha256 c63e963ee9df1c34
+
+stations/x3ap/StockmarketBoardM: addon/01.cat:objects/stations/x3ap/StockmarketBoardM.pbb
+  ladder before: thresholds ['-', 25, 5] draws [6, 6, 5] record bytes [374924, 84790, 30506]
+  ladder after:  thresholds ['-', 25, 180] draws [6, 3, 5] record bytes [374924, 380960, 30506]
+  compact: new LOD1 threshold=25 + pad copy of original LOD2 (401 points) LOD2 threshold=180 (original LOD1..2 dropped) from source LOD0 (points 4964, faces 2944) flags=0x40 points=5056 parts=2 groups/part [5, 1] -> [2, 1] draws 6 -> 3 faces=2944 collapse=atlas groups=['atlas:mat8~3:668f', 'alpha:mat2:2244f', 'alpha:mat7:32f'] part_flags=['0x30000001']
+  main-view drawable at Very High (f=1): before [0, 1] after [0, 1] (new record drawable: True)
+        low drawable [0, 2] by s: before s<5:LOD2 5<=s<25:LOD1 s>=25:LOD0 | after s<180:LOD2 s>=180:LOD0
+     medium drawable [0, 2] by s: before s<5:LOD2 5<=s<25:LOD1 s>=25:LOD0 | after s<180:LOD2 s>=180:LOD0
+       high drawable [0, 2] by s: before s<5:LOD2 5<=s<25:LOD1 s>=25:LOD0 | after s<180:LOD2 s>=180:LOD0
+  very-high drawable [0, 1] by s: before s<5:LOD1 s>=5:LOD0 | after s<180:LOD1 s>=180:LOD0
+  atlas material mat8 = mat3 with the area-weighted g_Mat* mean over [3, 5, 6]: (unchanged)
+  atlas 1024x1024 (min atlas texels per screen pixel at px=253.125: 1024: 4.298; >= 2: yes) scale 0.7217 tiles 3 gutter 8 duplicated points 92 -> 5056 points, tangent records missing 0; materials ['mat8'] (mat8 = copy of mat3); effects [['XT_standard_lighting.fx', 1]]
+  atlas light_bleed=2 kept=0: 3 tiles checked at L = ceil(log2 texels/px) + 2, flagged above 4/255 mean added luminance; flagged mat3 L6 own 0.6 +4.5, mat5 L6 own 0.5 +8.5; remedy repack (emitters mat[6] in their own region, margin 128 texels, L 6, scale 0.7217 -> 0.7217, min texels/px 4.298 -> 4.298); after mat3 +0.0, mat5 +0.0
+  atlas texel rule: min 4.298, area-weighted 9.757 atlas texels per screen pixel (ratio at the 0.1 area quantile); below --min-texels 0.5: 0.00 % of the atlased surface (--texel-floor-share 10 %); layout uniform, capped tiles 0, span-clamped faces 0
+  atlas diffuse: dds/x3m_lod_StockmarketBoardM_07cc82_diffuse.pck (x3m_lod\x3m_lod_StockmarketBoardM_07cc82_diffuse.tga) DXT1 699192 bytes sha256 866f1b1691e48860; compression error mean/p95 R=1.62/5 G=1.34/4 B=1.48/5 A=0.00/0
+  atlas light: dds/x3m_lod_StockmarketBoardM_07cc82_light.pck (x3m_lod\x3m_lod_StockmarketBoardM_07cc82_light.tga) DXT5 1398256 bytes sha256 df5646ed3513a6bd; compression error mean/p95 R=0.38/0 G=0.42/1 B=0.54/0 A=0.14/0
+  atlas bump: dds/x3m_lod_StockmarketBoardM_07cc82_bump.pck (x3m_lod\x3m_lod_StockmarketBoardM_07cc82_bump.tga) DXT5 1398256 bytes sha256 e287981c810bde50; compression error mean/p95 R=3.22/8 G=2.04/8 B=3.22/8 A=0.86/5
+  atlas specular: dds/x3m_lod_StockmarketBoardM_07cc82_specular.pck (x3m_lod\x3m_lod_StockmarketBoardM_07cc82_specular.tga) DXT5 1398256 bytes sha256 82c2cb2fcf1b08c7; compression error mean/p95 R=3.19/9 G=3.18/9 B=3.19/9 A=0.00/0
+  atlas check: faces 668, vertex UVs inside their tile 2004/2004 (inside tile+gutter 2004), max inverse-map error 0.010 source texels / 0.0070 atlas texels
+  atlas sampling diffuse (668 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 1.54/5.26/12.37 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 1.47/4.06/12.90 A 0.00/0.00/0.00
+  atlas sampling light (668 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 1.22/9.21/20.57 A 0.10/0.32/5.45; vs source prefiltered to the atlas texel RGB 1.10/5.61/20.15 A 0.12/0.29/6.91
+  atlas sampling bump (668 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 3.69/13.76/27.66 A 2.70/13.78/27.16; vs source prefiltered to the atlas texel RGB 3.34/10.72/21.78 A 2.41/11.28/24.42; normal angle (degrees) vs source 2.41/8.11/14.59, vs prefiltered 2.12/7.79/12.81
+  atlas sampling specular (668 face centroids, mean/p95/max of |error| 0..255): vs source mip 0 RGB 3.84/10.39/20.27 A 0.00/0.00/0.00; vs source prefiltered to the atlas texel RGB 3.23/9.34/14.82 A 0.00/0.00/0.00
+  decoded bytes 506317 -> 804607, stored 206600 (gzip), overlay sha256 b70b390408b4d413
+
