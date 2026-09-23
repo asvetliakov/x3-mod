@@ -1,0 +1,3 @@
+ships/props/boron_m7turretB_weapon  # addon/06.cat:objects/ships/props/boron_m7turretB_weapon.bob r0_drawn=7
+ships/teladi/teladi_m2_cormorant/hull  # addon/06.cat:objects/ships/teladi/teladi_m2_cormorant/hull.bob r0_drawn=39
+stations/sadiablo/supply_base  # addon/06.cat:objects/stations/sadiablo/supply_base.bob r0_drawn=38

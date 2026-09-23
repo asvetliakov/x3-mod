@@ -1,0 +1,13 @@
+marker top-level collapse atlas atlas_options present True bodies collapse ['atlas']
+ships/x/mixed ladder [100, 5, 80] mats 3 -> 5 new mats [(3, b'argon.fx', [b'x3m_lod\\x3m_lod_mixed_154868_diffuse.tga', b'x3m_lod\\x3m_lod_mixed_154868_light.tga']), (4, b'other.fx', [b'x3m_lod\\x3m_lod_mixed_154868_diffuse.tga', b'x3m_lod\\x3m_lod_mixed_154868_light.tga'])]
+  C groups [(0, 3, 4), (0, 4, 3), (1, 2, 1)] record-order mismatches 0 R0 identical True
+  C point flags [27] source flags [27]
+ships/x/uv ladder [100, 5, 80] mats 3 -> 4 new mats [(3, b'argon.fx', [b'x3m_lod\\x3m_lod_uv_ccb4b6_diffuse.tga', b'x3m_lod\\x3m_lod_uv_ccb4b6_light.tga'])]
+  C groups [(0, 3, 6), (1, 2, 1)] record-order mismatches 0 R0 identical True
+  C point flags [31] source flags [31]
+  uv2 pass-through ok True
+ships/x/good ladder [100, 5, 80] mats 3 -> 4 new mats [(3, b'argon.fx', [b'x3m_lod\\x3m_lod_good_7f1922_diffuse.tga', b'x3m_lod\\x3m_lod_good_7f1922_light.tga'])]
+  C groups [(0, 3, 6), (1, 2, 1)] record-order mismatches 0 R0 identical True
+  C point flags [27] source flags [27]
+atlas members 24 e.g. ['dds/x3m_lod_bobby_885d8a_bump.pck', 'dds/x3m_lod_bobby_885d8a_diffuse.pck']
+material refs 24 unresolved [] unreferenced slots []

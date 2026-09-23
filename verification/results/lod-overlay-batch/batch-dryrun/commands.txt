@@ -1,0 +1,23 @@
+# Merged-LOD overlay batch mode: dry runs (2026-09-23; read-only against the bottle, no Wine, no --install).
+# Run from the repository root. S = the session scratchpad; the bottle addon/05 pilot overlay is skipped through its
+# (legacy) marker. Wall times are on this host with the given --jobs. The first (b) and (c) runs had the game closed (ps check); the b2 rerun overlapped the user's flight, so its timing is not clean.
+ps -axww -o args= | grep '[X]3AP.exe'   # must print nothing before a batch run
+# (a) host tests: the batch module plus the census, bob1 (incl. the existing lod_overlay tests) and game_guard
+PYTHONPATH=verification/probe /usr/bin/python3 -m unittest verification.analysis.test_bob1 verification.analysis.test_lod_batch_census verification.analysis.test_lod_overlay_batch verification.analysis.test_game_guard
+# (b) flown-sector bodies of the bottle (the --only list is sectors.txt itself: every 'N draws NAME' row of the three sectors)
+/usr/bin/python3 tools/analysis/lod_overlay.py --batch --dry-run --only verification/results/lod-overlay-batch/sectors.txt --out $S/batch-b --jobs 6 > $S/batch-b.log 2>&1
+cp $S/batch-b/x3m-lod-batch-summary.txt bottle-sectors-summary.txt
+/usr/bin/python3 verification/results/lod-overlay-batch/batch-dryrun/record_digest.py $S/batch-b/x3m-lod-batch.json > bottle-sectors-record_out.txt   # per-body draws / sizes / ratios from the record JSON
+# (c) synthetic vanilla+mod root (verification/results/lod-overlay-mods/commands.txt recipe: bottle 01..13 + addon/01..04,
+#     /tmp/x3-mod1 addon/05..11, /tmp/x3-mod2 addon/12; M=$S/modroot), restricted to three mod-catalogue .bob bodies (only_mods.txt,
+#     trimmed by hand from the nine mod_enumeration.py picked: a trailing-byte turret prop, a mixed-effects hull, a station)
+/usr/bin/python3 tools/analysis/lod_overlay.py --batch --dry-run --game $S/modroot --only verification/results/lod-overlay-batch/batch-dryrun/only_mods.txt --out $S/batch-c --jobs 3 > $S/batch-c.log 2>&1
+cp $S/batch-c/x3m-lod-batch-summary.txt modroot-summary.txt
+/usr/bin/python3 verification/results/lod-overlay-batch/batch-dryrun/record_digest.py $S/batch-c/x3m-lod-batch.json > modroot-record_out.txt
+# (c') census-only enumeration of the whole mod root with .bob members and text bodies (no baking; eligible counts by category; 4 jobs, ~4 min)
+/usr/bin/python3 verification/results/lod-overlay-batch/batch-dryrun/mod_enumeration.py $S/modroot --jobs 4 > mod_enumeration_out.txt   # also writes only_mods.txt
+# Timings above are from the final reruns (after lod_atlas.level_weights was vectorised and check() bounded): (b) 55.2 s wall, (c) 13.2 s wall.
+# The first (b) attempt had two bodies still baking after 34 min (level_weights loop) and, after that fix, after 58 min (check() box gather); see the note.
+# Both dry runs above predate --min-texels (default 0.5, added afterwards). Rerun of (b) with the default (--out $S/batch-b2): 19 built, 3 refused texel_floor (argon_tech_M_laser_cc 0.04, argon_tech_L_laser_bb 0.05, argon_gate 0.23); owp_large 0.72 stays above the floor; census 10.8 s, baking 44.3 s, total 55.1 s.
+# b2 summary kept as bottle-sectors-b2-summary.txt. Review fixes (F1-F12) landed after b2; the reviewer scripts and their outputs are under ../review/ (commands in review/commands.txt).
+# b3 (after the review fixes, game closed per game_guard.game_running(), --jobs 2, --out $S/batch-b3): 19 built, 3 texel_floor, atlas 37.08 MB (specular baked only where a merged material carries t_SpecularTexture), members 86.51 MB; census 13.8 s, baking 91.1 s, total 104.9 s. Summary: bottle-sectors-b3-summary.txt.

@@ -1,0 +1,15 @@
+root /private/tmp/claude-501/-Users-asvetl-x3-mod/ec1d2a17-c1f5-4762-8f3d-98edd98ef126/scratchpad/modroot: rows 5842 (skipped sources []); mod-catalogue winners (addon/05+) 2974
+mod winners by category {'other': 1654, 'station': 75, 'ship': 1245}
+mod winners by member extension {'bob': 1274, 'pbb': 167, 'pbd': 1482, 'bod': 51}
+mod winners by source {'addon/06.cat': 1910, 'addon/10.cat': 4, 'addon/11.cat': 846, 'addon/12.cat': 214}
+mod eligible 444: by category {'station': 9, 'ship': 435}, by extension {'bob': 444}
+mod refusals (a body counts once per reason) {'text_body': 1533, 'non_effect_material': 106, 'texture_unresolved': 106, 'no_opaque': 97, 'dominant_slot_missing': 44, 'ambiguous_body_ext': 17, 'no_diffuse': 11, 'trailing_bytes': 8, 'occlusion_mismatch': 4, 'not_bob1': 3}
+mod filters {'category_other': 498, 'no_draw_gain': 381}
+mod bodies with tolerated trailing bytes 86 (eligible 68); refused trailing_bytes 8
+mod eligible with more than one atlas material (mixed effects) 57, with a second UV set 2
+mod eligible reading a texture outside dds/ (tex/ jpg|tga) 0; texture members by top dir/ext {('dds', 'pck'): 11678, ('dds', 'dds'): 409}
+all eligible 1020 ({'station': 305, 'ship': 715}); atlas sizes at 1800 wide {1024: 593, 2048: 427}; estimated atlas bytes 11260 MB (cap 2048 11260 MB)
+all refusals {'text_body': 2852, 'no_opaque': 387, 'dominant_slot_missing': 253, 'material_outside_table': 156, 'non_effect_material': 155, 'texture_unresolved': 119, 'ambiguous_body_ext': 58, 'no_diffuse': 28, 'occlusion_mismatch': 8, 'trailing_bytes': 8, 'not_bob1': 3, 'parse_error': 1}
+all filters {'category_other': 633, 'no_draw_gain': 571}
+only_mods.txt: 9 mod bodies for the baking dry run
+exit 0

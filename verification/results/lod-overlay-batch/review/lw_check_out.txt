@@ -1,0 +1,2 @@
+cases 728 shape/threshold failures 0 max|old-new| 1.192e-07 max|rowsum-1| 3.576e-07
+bit-identical cases 484 of 728

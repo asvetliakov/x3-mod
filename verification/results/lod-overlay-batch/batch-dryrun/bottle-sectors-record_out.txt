@@ -1,0 +1,59 @@
+record /private/tmp/claude-501/-Users-asvetl-x3-mod/ec1d2a17-c1f5-4762-8f3d-98edd98ef126/scratchpad/batch-b/x3m-lod-batch.json: slot 5 retired None previous 5 dry_run True
+settings: width 1800 display [1920, 1080] sizes [1024, 2048]
+counts {'enumerated': 49, 'by_category': {'station': 20, 'other': 19, 'ship': 10}, 'eligible': 22, 'built': 22, 'reused': 0, 'overlay_bodies': 22, 'candidates': 30}
+refused {'dominant_slot_missing': 9, 'text_body': 9, 'material_outside_table': 3, 'ambiguous_body_ext': 1, 'no_opaque': 1}
+filtered {'no_draw_gain': 4, 'category_other': 1}
+atlas sizes {'1024': 12, '2048': 10} bytes {'atlas': 37753878, 'members': 112379334, 'dat': 150133212} ratio below 1.0 4 below 2.0 8 of 22
+draws {'record0': 651, 'overlay': 67}; mixed-effect bodies []; uv2 bodies ['ships/M7/Argon_m7m']
+timing {'census_s': 8.51, 'bake_s': 46.72, 'per_body_s': 2.124, 'extrapolated_full_s': 104.1, 'total_s': 55.23}; sectors {'run255_burst2': {'eligible': 13, 'atlas_bytes': 23174637}, 'run257_burst1': {'eligible': 15, 'atlas_bytes': 21092163}, 'run260': {'eligible': 11, 'atlas_bytes': 23988001}}; budget warnings []
+note: source bodies read without the overlay catalogue(s) ['addon/05.cat']
+bodies (overlay bodies first):
+  others/argon_gate: cat=station T_pad=150 r0_drawn=16 draws=2 atlas=2048 ratio=0.23 atlas_mats=1 atlas_MB=0.58 member_MB=1.07 s=8.76 reused=False
+  ships/argon/argon_M1: cat=ship T_pad=80 r0_drawn=32 draws=2 atlas=1024 ratio=4.98 atlas_mats=1 atlas_MB=1.24 member_MB=1.86 s=5.75 reused=False
+  ships/argon/argon_M2: cat=ship T_pad=80 r0_drawn=32 draws=2 atlas=1024 ratio=5.17 atlas_mats=1 atlas_MB=1.35 member_MB=2.34 s=5.89 reused=False
+  ships/argon/argon_TL: cat=ship T_pad=80 r0_drawn=31 draws=2 atlas=1024 ratio=4.42 atlas_mats=1 atlas_MB=1.28 member_MB=1.73 s=5.24 reused=False
+  ships/M7/Argon_M7: cat=ship T_pad=80 r0_drawn=16 draws=2 atlas=1024 ratio=6.83 atlas_mats=1 atlas_MB=0.97 member_MB=2.77 s=5.48 reused=False
+  ships/M7/Argon_m7m: cat=ship T_pad=80 r0_drawn=38 draws=2 atlas=1024 ratio=5.31 atlas_mats=1 atlas_MB=1.36 member_MB=2.22 s=6.1 reused=False
+  ships/M7/Split_M7M: cat=ship T_pad=80 r0_drawn=11 draws=3 atlas=1024 ratio=4.3 atlas_mats=1 atlas_MB=1.41 member_MB=5.45 s=7.29 reused=False
+  ships/owp/owp_large: cat=ship T_pad=80 r0_drawn=20 draws=4 atlas=2048 ratio=0.72 atlas_mats=1 atlas_MB=1.80 member_MB=10.09 s=19.79 reused=False
+  stations/living_sections/argon_livingsection: cat=station T_pad=150 r0_drawn=17 draws=2 atlas=2048 ratio=1.56 atlas_mats=1 atlas_MB=4.41 member_MB=1.47 s=10.58 reused=False
+  stations/others/military_outpost_middleb: cat=station T_pad=150 r0_drawn=34 draws=4 atlas=2048 ratio=1.48 atlas_mats=1 atlas_MB=1.90 member_MB=7.77 s=16.25 reused=False
+  stations/station_scenes/others/argon_equipmentdock: cat=station T_pad=150 r0_drawn=33 draws=4 atlas=1024 ratio=2.46 atlas_mats=1 atlas_MB=1.18 member_MB=9.33 s=13.86 reused=False
+  stations/station_scenes/others/argon_spacedock: cat=station T_pad=150<T_1 r0_drawn=35 draws=4 atlas=1024 ratio=3.09 atlas_mats=1 atlas_MB=1.06 member_MB=7.15 s=14.26 reused=False guard_waived
+  stations/station_scenes/tech/argon_tech_L_laser_bb: cat=station T_pad=150 r0_drawn=38 draws=6 atlas=2048 ratio=0.05 atlas_mats=1 atlas_MB=0.05 member_MB=15.00 s=22.21 reused=False
+  stations/station_scenes/tech/argon_tech_L_missile_C: cat=station T_pad=150<T_1 r0_drawn=37 draws=3 atlas=1024 ratio=2.07 atlas_mats=1 atlas_MB=1.40 member_MB=6.00 s=12.0 reused=False guard_waived
+  stations/station_scenes/tech/argon_tech_L_shield_F: cat=station T_pad=150<T_1 r0_drawn=38 draws=4 atlas=1024 ratio=2.07 atlas_mats=1 atlas_MB=0.51 member_MB=7.80 s=13.96 reused=False guard_waived
+  stations/station_scenes/tech/argon_tech_M_laser_cc: cat=station T_pad=150 r0_drawn=36 draws=4 atlas=2048 ratio=0.04 atlas_mats=1 atlas_MB=0.05 member_MB=9.79 s=17.49 reused=False
+  stations/station_scenes/tech/argon_tech_M_laser_G: cat=station T_pad=150<T_1 r0_drawn=38 draws=4 atlas=2048 ratio=3.07 atlas_mats=1 atlas_MB=1.84 member_MB=7.86 s=17.53 reused=False guard_waived
+  stations/station_scenes/tech/argon_tech_S_factory_A: cat=station T_pad=150<T_1 r0_drawn=38 draws=3 atlas=2048 ratio=4.19 atlas_mats=1 atlas_MB=4.76 member_MB=5.03 s=16.29 reused=False guard_waived
+  stations/station_scenes/tech/argon_tech_S_laser_E: cat=station T_pad=150<T_1 r0_drawn=37 draws=3 atlas=1024 ratio=3.41 atlas_mats=1 atlas_MB=1.33 member_MB=4.79 s=10.28 reused=False guard_waived
+  stations/trading_stations/argon_trading_station_partA: cat=station T_pad=150 r0_drawn=32 draws=2 atlas=2048 ratio=1.43 atlas_mats=1 atlas_MB=4.59 member_MB=0.65 s=10.51 reused=False
+  stations/trading_stations/argon_trading_station_partB: cat=station T_pad=150 r0_drawn=36 draws=2 atlas=2048 ratio=1.54 atlas_mats=1 atlas_MB=4.26 member_MB=1.99 s=11.54 reused=False
+  stations/x3ap/StockmarketBoardM: cat=station T_pad=150 r0_drawn=6 draws=3 atlas=1024 ratio=5.16 atlas_mats=1 atlas_MB=0.42 member_MB=0.21 s=1.69 reused=False
+  effects/engines/fx_engine_argon_m3: cat=other refuse=material_outside_table filter=category_other
+  effects/engines/fx_engine_argon_M4: cat=other refuse=material_outside_table filter=category_other
+  effects/menugfx/GUI/blackpearl: cat=other refuse=text_body filter=-
+  effects/menugfx/GUI/gui_master: cat=other refuse=text_body filter=-
+  effects/menugfx/GUI/sidebar: cat=other refuse=text_body filter=-
+  effects/menugfx/hud_info_2d: cat=other refuse=text_body filter=-
+  effects/menugfx/hud_radar_2d: cat=other refuse=text_body filter=-
+  effects/menugfx/hud_target_text: cat=other refuse=text_body filter=-
+  effects/menugfx/hud_weapons_2d: cat=other refuse=text_body filter=-
+  environments/asteroids/asteroid_A_ClassMine: cat=other refuse=dominant_slot_missing filter=category_other error="dominant material 0 has no t_lightmaptexture parameter"
+  environments/asteroids/asteroid_B_ClassMine: cat=other refuse=dominant_slot_missing filter=category_other error="dominant material 0 has no t_lightmaptexture parameter"
+  environments/nebulae/bluewell/nebula_bluewell_background_01: cat=other refuse=dominant_slot_missing filter=category_other error="dominant material 0 has no t_lightmaptexture parameter"
+  environments/nebulae/bluewell/nebula_bluewell_dust_part04: cat=other refuse=text_body filter=-
+  environments/nebulae/bluewell/nebula_bluewell_dust_part05: cat=other refuse=text_body filter=-
+  environments/nebulae/bluewell/nebula_bluewell_stars_01: cat=other refuse=dominant_slot_missing filter=category_other error="dominant material 0 has no t_lightmaptexture parameter"
+  environments/nebulae/greenvoid/nebula_greenvoid_background_01: cat=other refuse=dominant_slot_missing filter=category_other error="dominant material 0 has no t_lightmaptexture parameter"
+  environments/nebulae/greenvoid/nebula_greenvoid_stars_01: cat=other refuse=dominant_slot_missing filter=category_other error="dominant material 0 has no t_lightmaptexture parameter"
+  environments/planets/moon_small_ice: cat=other refuse=- filter=category_other,no_draw_gain
+  environments/planets/planet_close_waterworld: cat=other refuse=dominant_slot_missing filter=category_other error="dominant material 3 has no t_lightmaptexture parameter"
+  others/argon_adsign_C: cat=station refuse=material_outside_table filter=-
+  others/argon_gate_effect: cat=station refuse=no_opaque filter=- error="the record has no opaque faces to atlas"
+  ships/argon/argon_M3_var2: cat=ship refuse=dominant_slot_missing filter=- error="dominant material 1 has no t_lightmaptexture parameter"
+  ships/argon/argon_M4: cat=ship refuse=- filter=no_draw_gain
+  ships/props/weapondummy: cat=ship refuse=ambiguous_body_ext filter=no_draw_gain
+  stations/connections/connect_argon_pipe_huge_cargoanimA_: cat=station refuse=- filter=no_draw_gain
+  stations/connections/connect_argon_pipe_huge_cargoanimB_: cat=station refuse=- filter=no_draw_gain
+  stations/x3ap/StockmarketBoardXL: cat=station refuse=dominant_slot_missing filter=- error="dominant material 7 has no t_lightmaptexture parameter"

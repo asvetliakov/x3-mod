@@ -1000,8 +1000,8 @@ class LodAtlas(unittest.TestCase):
             self.assertIn("groups=['atlas:mat2~0:6f']", text)
             self.assertIn('atlas 64x64', text)
             entries = {e['path']: e for e in read_catalogue(out / 'addon/01.cat')}
-            self.assertEqual(sorted(entries), ['dds/x3m_lod_b_bump.pck', 'dds/x3m_lod_b_diffuse.pck',
-                                               'dds/x3m_lod_b_light.pck', 'objects/ships/x/b.pbb'])
+            self.assertEqual(sorted(entries), ['dds/x3m_lod_b_b5dd13_bump.pck', 'dds/x3m_lod_b_b5dd13_diffuse.pck',
+                                               'dds/x3m_lod_b_b5dd13_light.pck', 'objects/ships/x/b.pbb'])
             raw = bytes(v ^ 0x33 for v in (out / 'addon/01.dat').read_bytes())
             member = lambda p: unpack(raw[entries[p]['offset']:entries[p]['offset'] + entries[p]['size']])
             written = bob1.parse(member('objects/ships/x/b.pbb'))
@@ -1019,11 +1019,11 @@ class LodAtlas(unittest.TestCase):
             self.assertEqual(ladder[2]['parts'], ladder[1]['parts'])
             p = {n: v for n, t, v in wm[2]['params']}
             self.assertEqual((wm[2]['index'], p[b't_DiffuseTexture'], p[b't_LightMapTexture'], p[b't_BumpTexture']),
-                             (2, b'x3m_lod\\x3m_lod_b_diffuse.tga', b'x3m_lod\\x3m_lod_b_light.tga',
-                              b'x3m_lod\\x3m_lod_b_bump.tga'))
+                             (2, b'x3m_lod\\x3m_lod_b_b5dd13_diffuse.tga', b'x3m_lod\\x3m_lod_b_b5dd13_light.tga',
+                              b'x3m_lod\\x3m_lod_b_b5dd13_bump.tga'))
             self.assertEqual(wm[:2], bob1.materials(src))
-            for path, fmt in (('dds/x3m_lod_b_diffuse.pck', 'DXT1'), ('dds/x3m_lod_b_light.pck', 'DXT5'),
-                              ('dds/x3m_lod_b_bump.pck', 'DXT5')):
+            for path, fmt in (('dds/x3m_lod_b_b5dd13_diffuse.pck', 'DXT1'), ('dds/x3m_lod_b_b5dd13_light.pck', 'DXT5'),
+                              ('dds/x3m_lod_b_b5dd13_bump.pck', 'DXT5')):
                 dds = member(path)
                 self.assertEqual(lod_atlas.dds_format(dds), (64, 64, 7, fmt))
                 self.assertEqual(Assets(out).logical(path[:-4], ('.pck', '.dds', '.tga'))[0], dds)
@@ -1034,12 +1034,12 @@ class LodAtlas(unittest.TestCase):
             self.assertLess(c['slots']['diffuse']['box_rgb'][0], 4)          # layout-exact up to DXT and filtering
             self.assertLess(c['slots']['light']['box_a'][0], 4)
             self.assertLess(c['slots']['bump']['box_angle'][2], 3)           # degrees, max over faces
-            bump = lod_atlas.decode_dds(member('dds/x3m_lod_b_bump.pck'))
+            bump = lod_atlas.decode_dds(member('dds/x3m_lod_b_b5dd13_bump.pck'))
             self.assertEqual(tuple(bump[0, 63][1:]), (130, 132, 128))         # unused: flat normal (G, A = 128
                                                                               # up to RGB565 quantisation)
             text = run(['--game', str(game), '--dry-run', '--collapse', 'atlas', '--atlas-size', '64',
                         '--no-atlas-bump', 'ships/x/b=8'])
-            self.assertNotIn('x3m_lod_b_bump', text)
+            self.assertNotIn('x3m_lod_b_b5dd13_bump', text)
             self.assertEqual(body['synth'][0]['atlas'], True)
             self.assertEqual(sorted(x.name for x in prev.iterdir()),
                              ['atlas_preview_b_bump.png', 'atlas_preview_b_diffuse.png', 'atlas_preview_b_light.png'])
@@ -1048,7 +1048,7 @@ class LodAtlas(unittest.TestCase):
                         '--atlas-format', 'a8r8g8b8', 'ships/x/b=8'])
             self.assertIn('A8R8G8B8 21972 bytes', text)                      # 4 x 5461 texels (7 mips) + 128
         with tempfile.TemporaryDirectory() as folder:                      # an existing name would be shadowed
-            game = self.game(folder, [('dds/x3m_lod_b_light.pck', b'x')])
+            game = self.game(folder, [('dds/x3m_lod_b_b5dd13_light.pck', b'x')])
             with self.assertRaises(SystemExit):
                 run(['--game', str(game), '--dry-run', '--collapse', 'atlas', 'ships/x/b=8'])
 
@@ -1062,14 +1062,24 @@ class LodAtlas(unittest.TestCase):
         other[1] = dict(other[1], effect=b'other.fx')
         with tempfile.TemporaryDirectory() as folder:
             assets, _ = lod_overlay.original_assets(self.game(folder))
-            with self.assertRaisesRegex(lod_atlas.AtlasError, 'second UV set'):
-                lod_atlas.collapse(assets, 'b', list(mats), coarse, set(), 8, (64,))
-            res = lod_atlas.collapse(assets, 'b', list(mats), coarse, set(), 8, (64,), force_uv2=True)
-            self.assertEqual(res['record']['points'][6][6:8], coarse['points'][6][6:8])    # second pair kept
+            res = lod_atlas.collapse(assets, 'b', list(mats), coarse, set(), 8, (64,))   # second UV set: passed through
+            self.assertEqual(res['record']['points'][6][6:8], coarse['points'][6][6:8])
+            self.assertEqual((res['uv2'], res['occlusion']), (1, {'argon.fx': 'none'}))
+            occl = [dict(m, params=m['params'] + [(b't_OcclusionTexture', 8, t)])
+                    for m, t in zip(mats, (b'a_decal.tga', b'NONE_OCCL_DECAL.dds'))]
+            with self.assertRaisesRegex(lod_atlas.AtlasError, 'occlusion textures'):
+                lod_atlas.collapse(assets, 'b', list(occl), coarse, set(), 8, (64,))
             plain = bob1.lods(bob1.parse(bob1.serialise(atlas_tree_pre())))[1]
-            with self.assertRaisesRegex(lod_atlas.AtlasError, 'effect files'):
-                lod_atlas.collapse(assets, 'b', list(other), plain, set(), 8, (64,))
-            lod_atlas.collapse(assets, 'b', list(other), plain, set(), 8, (64,), force_mixed_effects=True)
+            two = list(other)
+            res = lod_atlas.collapse(assets, 'b', two, plain, set(), 8, (64,))       # mixed effects: one material each
+            self.assertEqual((res['atlas_indices'], res['atlas_of']), ([2, 3], {0: 2, 1: 3}))
+            self.assertEqual([(g['material'], len(g['faces'])) for g in res['record']['parts'][0]['groups']],
+                             [(2, 3), (3, 3)])
+            self.assertEqual([m['effect'] for m in two[2:]], [b'argon.fx', b'other.fx'])
+            neg = bob1.lods(bob1.parse(bob1.serialise(atlas_tree_pre())))[1]
+            neg['parts'][0]['groups'][1]['material'] = -79
+            with self.assertRaisesRegex(lod_atlas.AtlasError, 'outside the material table'):
+                lod_atlas.collapse(assets, 'b', list(mats), neg, set(), 8, (64,))
 
     def test_merged_records_first_use_order(self):
         rec = lambda i: (i, i, 0, 65536, 0, 65536, 0)

@@ -251,8 +251,13 @@ def kind(data):
     return {b'BOB1': 'BOB1', b'CUT1': 'CUT1'}.get(head)
 
 
-def parse(data):
-    """Parse a decoded BOB1 body; raises FormatError on any deviation the engine rejects."""
+def parse(data, max_trailing=0):
+    """Parse a decoded BOB1 body; raises FormatError on any deviation the engine rejects.
+
+    Up to max_trailing bytes after the final /BOB are tolerated and counted in the tree's
+    'trailing_bytes' (serialise never writes them): the engine parser 0x00481aa0 returns the
+    model at the /BOB closer and never reads past it (body-format-bob1.md section 1), so such
+    bytes are inert; mod tooling leaves 1-2 stray closer bytes on 86 bodies of the tested mods."""
     if kind(data) != 'BOB1':
         raise FormatError(f'not a BOB1 body (magic {bytes(data[:4])!r})')
     r = Reader(data); r.expect('BOB1')
@@ -273,9 +278,13 @@ def parse(data):
         else:
             raise FormatError(f'unsupported or unknown tag {t!r} at {r.o - 4:#x}')
         r.expect('/' + t[:3])
+    tree = {'sections': sections}
     if r.o != len(data):
-        raise FormatError(f'{len(data) - r.o} trailing bytes after /BOB')
-    return {'sections': sections}
+        n = len(data) - r.o
+        if n > max_trailing:
+            raise FormatError(f'{n} trailing bytes after /BOB')
+        tree['trailing_bytes'] = n
+    return tree
 
 
 def serialise(tree):

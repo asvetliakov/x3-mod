@@ -160,24 +160,123 @@ and renaming or deleting a CAT/DAT the game holds open fails unless the game
 opened it with FILE_SHARE_DELETE; the rename then fails and the restore path
 runs.
 
+Screen reference (--display WxH, default 1920x1080; --screen-width W overrides): T is in the
+1280-wide reference of lod-selection.md (s = r*640/D is resolution independent; real px =
+s*m00*width/1280). The projection keeps the vertical field of view (assumption: the engine
+derives m00 from the aspect ratio at a fixed vertical FOV, so a 16:9 display shows the
+768-line reference height over H lines), hence the effective reference width is
+H*1280/768 (1800 for 1080 lines), the width the atlas texel rule uses. The rule does not refuse
+below 2 texels/px: the ratio is reported per body and the batch counts bodies below 1.0; a body
+whose atlas would fall below --min-texels (default 0.5) is refused as texel_floor with its ratio.
+
+Batch mode (--batch; docs/architecture/merged-lod-feasibility.md "Batch mode"): one command
+builds an overlay over every eligible ship and station of the installed game, vanilla plus
+every numbered addon catalogue a mod adds. The census module (lod_batch_census.run, with
+.bob members, text bodies and the trailing-byte tolerance) enumerates every winning body of
+ships/, stations/ and others/ (--include-other adds the rest under the station rule), applies
+the rule ships T_pad = min(200, max(80, 2.5*T_1)) (80 for a single-record body), stations and
+others 150, source record 0, compact placement, --collapse atlas with --atlas-specular on, and
+bakes the eligible bodies in worker processes (--jobs, default min(cpu-2, 6, RAM // 7 GiB - 1),
+at least 1, so 2 on a 24 GiB host: a worker holds one body's decoded textures at a time and
+reaches ~7 GB RSS on the biggest stations; every worker process is replaced after one body). --only FILE restricts the run to the bodies named in FILE
+(one per line; lod_batch_census sectors.txt rows and eligible_bodies.txt NAME=T@N lines are
+accepted, the rule still decides T). The compact guard "T_pad not below T_1" is waived
+automatically when the source record is 0: C is then the full LOD 0 geometry, so C drawing in
+the Low..High band T_pad*f <= s < T_1*f (where the guard would otherwise refuse) is harmless;
+the guard stays for decimated sources (a coarser source record). Refusal reasons: text_body
+(a .pbd/.bod winner), ambiguous_body_ext (both a binary and a text member), trailing_bytes
+(more than MAX_TRAILING stray bytes after /BOB; up to MAX_TRAILING are tolerated with a
+warning, the parser 0x00481aa0 returns at /BOB and never reads them), material_outside_table
+(a negative group material index, the ad signs), occlusion_mismatch (second UV set with
+differing occlusion decals inside one merged group), mat3, no_opaque, dominant_slot_missing,
+texture_unresolved, pil_missing (a jpg/tga/bmp texture without Pillow), and the lod_atlas
+reasons. Mixed effects and the second UV set are handled, not refused (lod_atlas notes).
+Atlas member names are dds/x3m_lod_<stem>_<hash6>_<slot>.pck with the hash from the member
+path (qualified_stem), unique within an overlay and stable across runs.
+
+Markers and slots in batch mode: the overlay slot is the next contiguous free addon number.
+Every run validates every addon/NN.x3m-lod.json marker by hash (installed_markers): the
+marker records the overlay cat/dat sha256, and a marker whose hashes do not match the files
+beside it is orphaned (a mod overwrote the slot): it is reported, its catalogue is read as a
+source like any mod catalogue, and --install removes the orphaned marker. A live marker (valid
+hashes, or a legacy marker without them) names the previous overlay: batch mode supersedes it
+without --replace. If its slot is still the highest addon number the new overlay takes that
+slot (the --replace move-aside/rollback path); otherwise (a mod added higher numbers) the new
+overlay goes to the next slot and the old slot's cat/dat are replaced by a retired catalogue
+holding one inert text member x3m_lod/retired_NN.txt (never a zero-entry CAT or 0-byte DAT)
+with a marker recording it as retired (contiguity must hold; the engine stops at the first
+gap; engine acceptance of a retired slot still needs a launch). A legacy marker (no overlay
+hashes, the pilot's shape) is trusted only when every body it names is in the catalogue beside
+it with the recorded overlay_decoded_sha256 (legacy_verified); otherwise it is orphaned, so a
+mod that overwrote that slot is neither skipped as a source nor retired or replaced. --sync
+rebuilds only the bodies whose inputs changed (inputs_sha256 over the decoded body and every
+texture its tiles read) or that are new, and copies the other bodies' members (body + atlases,
+verified by sha256) from the previous overlay dat; the previous overlay must have been built
+with the same rule, width, atlas options and tool sources (tool_sha256 over lod_atlas.py,
+lod_overlay.py and bob1.py in the settings). addon/mods/*.cat
+are detected and a warning gives how many overlay bodies a selected mod would override.
+The before/after archive check is a cat sha256 plus dat size and mtime by default
+(--hash-archives hashes every dat; mod trees are gigabytes); the marker records the mode.
+The batch writes a record JSON (--record, default x3m-lod-batch.json under --out, beside the marker on --install, else in the
+working directory) with the counts by reason, atlas sizes and bytes, the texels/px ratio per
+body, the per-sector resident estimate (lod_batch_census.sector_report over its census files;
+--budget-mb N, default 512, warns when a sector exceeds N), per-body timings and the
+extrapolated full-set wall time, and a *-bodies.txt log with every body's plan.
+
   python3 tools/analysis/lod_overlay.py --dry-run --threshold 50 ships/argon/argon_TL
   python3 tools/analysis/lod_overlay.py --out /tmp/x3m-lod ships/argon/argon_TL=50 stations/others/military_outpost_middleb=100
+  python3 tools/analysis/lod_overlay.py --batch --dry-run --only verification/results/lod-overlay-batch/sectors.txt --out /tmp/x3m-batch
+  python3 tools/analysis/lod_overlay.py --batch --sync --install
 """
 import argparse
 import gzip
 import hashlib
+import io
 import json
+import multiprocessing
 import os
 import sys
+import time
 from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bob1  # noqa: E402
-from sector_fog_census import Assets, write_catalogue  # noqa: E402
+from inspect_x3 import read_catalogue  # noqa: E402
+from sector_fog_census import Assets, unpack, write_catalogue  # noqa: E402
 
 MARKER_SUFFIX = '.x3m-lod.json'
 REPLACED_SUFFIX = '.x3m-replaced'
+MAX_TRAILING = 8            # stray bytes after /BOB tolerated with a warning (86 of 94 failing mod bodies carry 1-2)
+DISPLAY = (1920, 1080)
+REFERENCE = (1280, 768)     # lod-selection.md reference frame of the threshold metric
+LIVE_MARKERS = ('valid', 'legacy')
+OURS_MARKERS = LIVE_MARKERS + ('retired', 'unreadable')   # catalogues never read as body sources
+
+
+def qualified_stem(member):
+    """Atlas name stem of a body member path: file stem + 6 hex of sha1(lower-case posix path), so
+    colliding stems (ships/terran/terran_M3 vs ships/usc/terran_m3) get distinct, stable names."""
+    p = member.replace('\\', '/')
+    return f'{Path(p).stem}_{hashlib.sha1(p.lower().encode()).hexdigest()[:6]}'
+
+
+def effective_width(display=None, screen_width=None):
+    """Reference width for the texel rule: --screen-width, else H*1280/768 of --display."""
+    if screen_width is not None:
+        return int(screen_width)
+    w, h = display or DISPLAY
+    return int(round(h * REFERENCE[0] / REFERENCE[1]))
+
+
+def parse_display(text):
+    try:
+        w, h = (int(v) for v in text.lower().split('x'))
+    except ValueError:
+        raise argparse.ArgumentTypeError(f'--display needs WxH, got {text!r}') from None
+    if w < 320 or h < 240:
+        raise argparse.ArgumentTypeError(f'--display {text}: too small')
+    return w, h
 
 
 def running_game():
@@ -200,10 +299,76 @@ def originals_digest(hashes):
     return hashlib.sha256(json.dumps(sorted(hashes.items())).encode()).hexdigest()
 
 
-def original_assets(game):
-    """(Assets, skipped sources): every catalogue with a marker beside it is left out."""
+def installed_markers(game):
+    """[dict(path, slot, manifest, status)] for every addon/NN.x3m-lod.json, status one of
+    'valid' (the marker's overlay cat/dat sha256 match the files beside it), 'legacy' (a marker
+    without overlay hashes, from before 2026-09-23, whose every recorded body member is present
+    in the catalogue beside it with the recorded overlay_decoded_sha256: legacy_verified), 'retired'
+    (the retired catalogue we wrote, hashes match), 'orphaned' (hashes differ, the files are gone,
+    or a legacy marker carries no body proof or its members do not match: a mod overwrote the
+    slot) or 'unreadable'."""
+    out = []
+    for path in sorted((Path(game) / 'addon').glob('*' + MARKER_SUFFIX)):
+        m = dict(path=path, slot=None, manifest=None, status='unreadable')
+        try:
+            manifest = json.loads(path.read_text())
+            slot = int(manifest['slot'])
+            if path.name != f'{slot:02d}{MARKER_SUFFIX}':
+                raise ValueError('marker name does not match its slot')
+        except (ValueError, KeyError, TypeError, OSError):
+            out.append(m)
+            continue
+        m.update(slot=slot, manifest=manifest)
+        cat = path.with_name(f'{slot:02d}.cat')
+        expected = manifest.get('overlay_sha256')
+        if not cat.exists() or not cat.with_suffix('.dat').exists():
+            m['status'] = 'orphaned'
+        elif not isinstance(expected, dict):
+            m['status'] = 'legacy' if legacy_verified(cat, manifest) else 'orphaned'
+        else:
+            got = hash_files([cat, cat.with_suffix('.dat')])
+            if (got[str(cat)], got[str(cat.with_suffix('.dat'))]) == (expected.get('cat'), expected.get('dat')):
+                m['status'] = 'retired' if manifest.get('retired') else 'valid'
+            else:
+                m['status'] = 'orphaned'
+        out.append(m)
+    return out
+
+
+def legacy_verified(cat, manifest):
+    """True when a marker without overlay hashes still proves the catalogue is ours: it names at
+    least one body, and every named body member is in the catalogue beside it with the recorded
+    overlay_decoded_sha256 (the pilot marker shape). Anything else (no bodies, a missing member,
+    a different sha, an unreadable catalogue) is no proof: a mod may have overwritten the slot."""
+    bodies = manifest.get('bodies') if isinstance(manifest, dict) else None
+    if not isinstance(bodies, list) or not bodies:
+        return False
+    try:
+        entries = {e['path'].lower(): e for e in read_catalogue(cat)}
+        with cat.with_suffix('.dat').open('rb') as f:
+            for b in bodies:
+                member, want = b.get('member'), b.get('overlay_decoded_sha256')
+                e = entries.get(str(member).lower()) if member else None
+                if e is None or not want:
+                    return False
+                f.seek(e['offset'])
+                data = unpack(bytes(v ^ 0x33 for v in f.read(e['size'])))
+                if hashlib.sha256(data).hexdigest() != want:
+                    return False
+    except (ValueError, OSError, KeyError, TypeError, EOFError):
+        return False
+    return True
+
+
+def original_assets(game, markers=None):
+    """(Assets, skipped sources): every catalogue with a live, retired or unreadable marker beside
+    it is left out; an orphaned marker's catalogue (a mod overwrote the slot) is read as a source."""
     assets = Assets(Path(game))
-    marked = lambda e: 'cat' in e and e['cat'].with_name(e['cat'].stem + MARKER_SUFFIX).exists()
+    markers = installed_markers(game) if markers is None else markers
+    ours = {m['path'].with_name(f'{m["slot"]:02d}.cat') for m in markers if m['slot'] and m['status'] in OURS_MARKERS}
+    ours |= {m['path'].with_name(m['path'].name[:-len(MARKER_SUFFIX)] + '.cat') for m in markers
+             if m['status'] == 'unreadable'}
+    marked = lambda e: 'cat' in e and e['cat'] in ours
     skipped = sorted({e['source'] for v in assets.entries.values() for e in v if marked(e)})
     if skipped:
         for key in list(assets.entries):
@@ -224,6 +389,26 @@ def hash_files(paths):
                 h.update(block)
         out[str(p)] = h.hexdigest()
     return out
+
+
+def fingerprint_files(paths, full=False):
+    """{path: fingerprint}: sha256 of every .cat (small) and, with full, of every .dat; otherwise
+    a .dat is 'size:<bytes>:mtime_ns:<ns>' (mod trees are gigabytes; --hash-archives hashes them)."""
+    out = {}
+    for p in paths:
+        if full or p.suffix.lower() == '.cat':
+            out.update(hash_files([p]))
+        else:
+            st = p.stat()
+            out[str(p)] = f'size:{st.st_size}:mtime_ns:{st.st_mtime_ns}'
+    return out
+
+
+def archive_digest(game, exclude_slot, mode):
+    """(digest, fingerprints) of the installed archives other than exclude_slot in mode 'sha256'
+    (every file hashed) or 'fingerprint' (fingerprint_files)."""
+    fp = (hash_files if mode == 'sha256' else fingerprint_files)(original_archives(game, exclude_slot))
+    return originals_digest(fp), fp
 
 
 def next_slot(game):
@@ -478,24 +663,48 @@ def place(ladder, coarse, placement, threshold, name='body', force_threshold=Fal
 MAX_POINTS = 60000         # refusal limit for a merged group (non-atlas collapses; as lod_atlas.MAX_GROUP_POINTS)
 
 
-ATLAS_DEFAULTS = dict(sizes=(1024, 2048), fmt='dxt', specular=False, bump=True, force_uv2=False,
-                      force_mixed_effects=False, screen_width=1280)
+MIN_TEXELS = 0.5            # texel floor: below this many atlas texels per screen pixel a body is refused (texel_floor)
+MAX_DEFAULT_JOBS = 6        # a worker on the biggest stations reaches ~7 GB RSS (2026-09-23 dry run)
+WORKER_BYTES = 7 << 30      # RAM budget per baking worker (that peak); the default keeps one budget spare
+ATLAS_DEFAULTS = dict(sizes=(1024, 2048), fmt='dxt', specular=False, bump=True, screen_width=effective_width(),
+                      min_texels=MIN_TEXELS)
+
+
+def host_memory_bytes():
+    """Physical RAM in bytes (sysconf), None when the host does not report it."""
+    try:
+        return os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')
+    except (ValueError, OSError, AttributeError):
+        return None
+
+
+def default_jobs():
+    """min(cpu - 2, MAX_DEFAULT_JOBS, RAM // WORKER_BYTES - 1), at least 1: 2 on a 24 GiB host."""
+    jobs = min((os.cpu_count() or 2) - 2, MAX_DEFAULT_JOBS)
+    ram = host_memory_bytes()
+    if ram:
+        jobs = min(jobs, max(1, ram // WORKER_BYTES - 1))
+    return max(1, jobs)
 
 
 def atlas_collapse(assets, name, entry, mats, record, alpha, threshold, synth, opts):
-    """--collapse atlas: (C, synth report incl. the atlas material, atlas build, extra catalogue members)."""
+    """--collapse atlas: (C, synth report incl. the atlas materials, atlas build, extra catalogue members)."""
     import lod_atlas
     if threshold is None:
         raise SystemExit(f'{name}: --collapse atlas sizes the atlas for the switch size; pass NAME=T or --threshold')
-    body = Path(entry['path'].replace('\\', '/')).stem
+    body = qualified_stem(entry['path'])
     try:
-        res = lod_atlas.build(assets, body, mats, record, alpha, threshold * opts['screen_width'] / 1280, opts['sizes'], opts['fmt'],
-                              opts['specular'], synth, opts['bump'], opts['force_uv2'], opts['force_mixed_effects'])
+        res = lod_atlas.build(assets, body, mats, record, alpha, threshold * opts['screen_width'] / 1280, opts['sizes'],
+                              opts['fmt'], opts['specular'], synth, opts['bump'])
     except lod_atlas.AtlasError as exc:
         raise SystemExit(f'{name}: {exc}') from None
+    low = res['layout']['min_ratio']
+    if opts.get('min_texels') and low < opts['min_texels']:
+        raise SystemExit(f'{name}: texel_floor: the atlas would give {low:.2f} atlas texels per screen pixel at the'
+                         f' switch size, below --min-texels {opts["min_texels"]:g}; it would draw blurred')
     for slot, member in res['members'].items():
         stem = member.rsplit('.', 1)[0]
-        taken = [e['source'] for ext in ('.pck', '.dds', '.tga') for e in assets.candidates(stem + ext)]
+        taken = [e['source'] for ext in lod_atlas.DDS_LOOKUP[1] for e in assets.candidates(stem + ext)]
         if taken:
             raise SystemExit(f'{name}: atlas texture {stem} already exists in {taken}; it would be shadowed')
     extra = [(res['members'][s], lod_atlas.stored(e['dds'])) for s, e in res['encoded'].items()]
@@ -509,11 +718,19 @@ def plan_body(assets, name, threshold, placement=None, force_threshold=False, co
     entry = bob1.resolve_body(assets, name)
     if 'loose' in entry:
         raise SystemExit(f'{name}: winning resource is loose file {entry["path"]}; a catalogue cannot override it')
+    if entry['path'].lower().endswith(('.pbd', '.bod')):
+        raise SystemExit(f'{name}: winning resource {entry["path"]} is a text body; only BOB1 bodies are overlaid')
     data = assets.read_entry(entry)
     if bob1.kind(data) != 'BOB1':
         raise SystemExit(f'{name}: {entry["path"]} is not a BOB1 body (magic {data[:4]!r})')
-    tree = bob1.parse(data)
-    if bob1.serialise(tree) != data:
+    try:
+        tree = bob1.parse(data, MAX_TRAILING)
+    except bob1.FormatError as exc:
+        if 'trailing bytes' in str(exc):
+            raise SystemExit(f'{name}: {exc} (more than the {MAX_TRAILING} the parser tolerates)') from None
+        raise
+    trailing = tree.get('trailing_bytes', 0)
+    if bob1.serialise(tree) != (data[:len(data) - trailing] if trailing else data):
         raise SystemExit(f'{name}: writer does not reproduce this body byte for byte; refusing')
     if not any(t in ('MAT5', 'MAT6') for t, _ in tree['sections']) and not force_mat3:
         raise SystemExit(f'{name}: MAT3 body (no per-body materials); the loader rewrites the coarsest'
@@ -526,6 +743,11 @@ def plan_body(assets, name, threshold, placement=None, force_threshold=False, co
         raise SystemExit(f'{name}: --source-record {source_record} outside the body\'s records 0..{len(ladder) - 1}')
     source = ladder[src_index]
     mats = bob1.materials(tree)
+    bad = sorted({g['material'] for l in (source, before[-1]) for p in l['parts'] for g in p['groups']
+                  if not 0 <= g['material'] < len(mats)})
+    if bad and any(t in ('MAT5', 'MAT6') for t, _ in tree['sections']):
+        raise SystemExit(f'{name}: group material index {bad} outside the material table (0..{len(mats) - 1});'
+                         ' the ad signs carry one such negative-index group; refusing')
     alpha = alpha_materials(mats)
     used = sorted({g['material'] for p in source['parts'] for g in p['groups']})
     glow = glow_materials(assets, mats, used, glow_luma, glow_share) if collapse in KEEPING else set()
@@ -549,7 +771,10 @@ def plan_body(assets, name, threshold, placement=None, force_threshold=False, co
         raise SystemExit(f'{name}: a group of C built from record {src_index} references {widest} points, above'
                          f' {MAX_POINTS} (65,535 less headroom for D3DXCleanMesh): a larger subgroup needs the unqualified 32-bit'
                          ' index path; use --collapse atlas (which splits such groups) or a coarser source record')
-    new_index, pad_index = place(ladder, new, placement, threshold, name, force_threshold)
+    t_1 = before[1]['value'] if len(before) >= 2 else None
+    guard_waived = (placement == 'compact' and src_index == 0 and threshold is not None and t_1 is not None
+                    and t_1 > threshold and not force_threshold)      # C is the full LOD 0: harmless above T_pad
+    new_index, pad_index = place(ladder, new, placement, threshold, name, force_threshold or guard_waived)
     pad_source = None
     if pad_index is not None and src_index != len(before) - 1:
         # the pad only feeds the collision tree (built from the last record at creation,
@@ -576,8 +801,8 @@ def plan_body(assets, name, threshold, placement=None, force_threshold=False, co
                 new=new, new_index=new_index, collapse=collapse, alpha=alpha_materials(mats), glow=glow,
                 area_kept=area_kept, area=area, synth=synth_report, source_materials=n_mats,
                 pad_index=pad_index, placement=placement, atlas_build=atlas, extra_members=extra,
-                source_record=src_index, pad_source=pad_source,
-                atlas=atlas and atlas['summary'],
+                source_record=src_index, pad_source=pad_source, trailing_bytes=trailing,
+                guard_waived=guard_waived, atlas=atlas and atlas['summary'],
                 source_decoded_sha256=hashlib.sha256(data).hexdigest(),
                 overlay_decoded_sha256=hashlib.sha256(out).hexdigest(),
                 decoded_bytes=(len(data), len(out)), stored=stored)
@@ -601,7 +826,7 @@ def ladder_text(ladder):
 
 
 def group_kind(plan, g):
-    return ('atlas' if plan.get('atlas') and g['material'] == plan['atlas']['material'] else
+    return ('atlas' if plan.get('atlas') and g['material'] in plan['atlas'].get('materials', [plan['atlas']['material']]) else
             'glow' if g['material'] in plan.get('glow', ()) else
             'light' if g['material'] in plan.get('area_kept', ()) else
             'alpha' if g['material'] in plan['alpha'] else 'opaque')
@@ -618,6 +843,13 @@ def describe(plan, out=None):
     sr = plan.get('source_record', len(plan['before']) - 1)
     s_old, s_new = bob1.lod_summary(plan['before'][sr]), bob1.lod_summary(plan['new'])
     print(f'{plan["name"]}: {plan["source"]}:{plan["member"]}', file=out)
+    if plan.get('trailing_bytes'):
+        print(f'  warning: {plan["trailing_bytes"]} stray byte(s) after /BOB in the source member (tolerated up to'
+              f' {MAX_TRAILING}; the engine parser returns at /BOB); the overlay member carries none', file=out)
+    if plan.get('guard_waived'):
+        print(f'  compact guard waived: T_pad {plan["ladder"][plan["pad_index"]]["value"]} is below T_1'
+              f' {plan["before"][1]["value"]}; C is the full LOD 0 geometry, so C drawing at Low..High in the'
+              ' band above T_pad is harmless', file=out)
     print(f'  ladder before: {ladder_text(plan["before"])}', file=out)
     print(f'  ladder after:  {ladder_text(plan["ladder"])}', file=out)
     groups = [group_label(plan, g) for p in plan['new']['parts'] for g in p['groups']]
@@ -693,9 +925,9 @@ def join_collapse(argv):
     return out
 
 
-def main(argv=None):
+def build_parser():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('bodies', nargs='+', help='body name as the scene references it, or member path;'
+    ap.add_argument('bodies', nargs='*', help='body name as the scene references it, or member path;'
                                               ' NAME=T sets that body\'s threshold (overrides --threshold)')
     ap.add_argument('--threshold', type=int,
                     help='compact: T_pad, required, not below the original record 1 threshold;'
@@ -703,7 +935,7 @@ def main(argv=None):
                          ' before-last: T <= T_last, default T_last;'
                          ' append-pad: required, 3 <= T, below T_last for multi-LOD bodies')
     ap.add_argument('--force-threshold', action='store_true',
-                    help='compact: accept a T_pad below the record 1 threshold;'
+                    help='compact: accept a T_pad below the record 1 threshold (waived anyway for source record 0);'
                          ' pad: accept a T_pad that does not exceed every original threshold')
     ap.add_argument('--placement', choices=PLACEMENTS, help='placement (default: compact)')
     ap.add_argument('--collapse', type=parse_collapse, default=('glow', None),
@@ -711,29 +943,26 @@ def main(argv=None):
                     help='glow (default): bright-light-map materials keep their group, the rest as two;'
                          ' glow-area P (or glow-area=P): glow plus the largest real-light-map materials up to'
                          ' P %% of their area; two: opaque + alpha-tested/blended group per part;'
-                         ' one: a single group per part; atlas: one opaque atlas material per body'
+                         ' one: a single group per part; atlas: one opaque atlas material per effect file'
                          ' (+ the alpha group as two)')
     ap.add_argument('--atlas-size', type=int, default=1024,
                     help='atlas: first atlas side tried (power of two, default 1024)')
     ap.add_argument('--atlas-max-size', type=int, default=2048,
                     help='atlas: largest side tried when the smaller one leaves < 2 atlas texels per screen'
                          ' pixel at the switch size (default 2048)')
-    ap.add_argument('--screen-width', type=int, default=1280,
-                    help='atlas: display width in pixels for the >= 2 texels per pixel rule (default 1280). T is'
-                         ' in the 1280-wide reference (real px = s * m00 * width / 1280), so the rule is applied'
-                         ' at T * W / 1280 and a wider display gets the larger atlas')
+    ap.add_argument('--display', type=parse_display, default=DISPLAY, metavar='WxH',
+                    help='display resolution (default 1920x1080); the texel rule\'s reference width is'
+                         ' H * 1280 / 768 (the projection keeps the vertical field of view; module notes)')
+    ap.add_argument('--screen-width', type=int,
+                    help='override the reference width derived from --display. T is in the 1280-wide reference'
+                         ' (real px = s * m00 * width / 1280), so the texel rule is applied at T * W / 1280')
     ap.add_argument('--atlas-format', choices=('dxt', 'a8r8g8b8'), default='dxt',
                     help='atlas: dxt (default; DXT1, DXT5 for a slot with alpha) or a8r8g8b8 (uncompressed)')
     ap.add_argument('--atlas-bump', action=argparse.BooleanOptionalAction, default=True,
                     help='atlas: bake a bump (normal map) atlas and point t_BumpTexture at it (default on;'
                          ' --no-atlas-bump leaves the slot NULL)')
-    ap.add_argument('--force-uv2', action='store_true',
-                    help='atlas: accept points with a second UV set (only the first pair is rewritten)')
-    ap.add_argument('--force-mixed-effects', action='store_true',
-                    help='atlas: accept opaque materials of more than one effect file (all drawn with the'
-                         ' dominant material\'s effect)')
     ap.add_argument('--atlas-specular', action='store_true',
-                    help='atlas: also bake a specular atlas (default: t_SpecularTexture NULL)')
+                    help='atlas: also bake a specular atlas (default: t_SpecularTexture NULL; always on in --batch)')
     ap.add_argument('--atlas-preview', type=Path,
                     help='atlas: write atlas_preview_<body>_<slot>.png (<= 512 px, tile outlines) into DIR')
     ap.add_argument('--source-record', type=int, metavar='N',
@@ -753,6 +982,9 @@ def main(argv=None):
                          ' running game keeps the old CAT/DAT open (and its catalogue index in memory); a DAT'
                          ' it reopens after the swap would not match that index')
     ap.add_argument('--force-mat3', action='store_true', help='accept a MAT3 body (see the module notes)')
+    ap.add_argument('--hash-archives', action='store_true',
+                    help='hash every installed .dat before and after the run (default: cat sha256 plus dat'
+                         ' size and mtime)')
     ap.add_argument('--game', type=Path, default=bob1.DEFAULT_GAME)
     ap.add_argument('--out', type=Path, help='output root (receives addon/NN.cat/.dat)')
     ap.add_argument('--install', action='store_true', help='write into the game directory (never overwrites)')
@@ -760,8 +992,42 @@ def main(argv=None):
                                               ' contiguous free slot)')
     ap.add_argument('--force-slot', action='store_true', help='allow a --slot other than the next contiguous one')
     ap.add_argument('--dry-run', action='store_true', help='print the planned records; write nothing')
+    b = ap.add_argument_group('batch mode (module notes, "Batch mode")')
+    b.add_argument('--batch', action='store_true',
+                   help='fleet-wide overlay over every eligible ship and station (ships/, stations/, others/):'
+                        ' rule ships min(200, max(80, 2.5 T_1)), stations 150; source record 0; compact;'
+                        ' --collapse atlas with --atlas-specular')
+    b.add_argument('--include-other', action='store_true',
+                   help='batch: include the other top directories (effects, environments, ...) under the station rule')
+    b.add_argument('--only', type=Path, metavar='FILE',
+                   help='batch: restrict to the bodies named in FILE (one per line; sectors.txt rows and'
+                        ' eligible_bodies.txt NAME=T@N lines accepted; the rule still sets T)')
+    b.add_argument('--sync', action='store_true',
+                   help='batch: reuse the previous overlay\'s members for bodies whose inputs did not change')
+    b.add_argument('--jobs', type=int, default=default_jobs(),
+                   help='batch: worker processes for the census and the baking (default min(cpu count - 2, 6,'
+                        ' RAM // 7 GiB - 1), at least 1: a worker baking one of the biggest stations reaches'
+                        ' ~7 GB RSS, and every worker process is replaced after each body)')
+    b.add_argument('--min-texels', type=float, default=MIN_TEXELS, metavar='F',
+                   help=f'atlas / batch: refuse a body (reason texel_floor) whose atlas would give fewer than F'
+                        f' atlas texels per screen pixel at the display reference (default {MIN_TEXELS}; 0 disables);'
+                        ' the ratio is still reported for every body')
+    b.add_argument('--budget-mb', type=float, default=512.0,
+                   help='batch: warn when a flown sector\'s resident atlas estimate exceeds this (default 512)')
+    b.add_argument('--record', type=Path,
+                   help='batch: record JSON path (default x3m-lod-batch.json under --out or beside the marker on --install, else in the working'
+                        ' directory); *-summary.txt and *-bodies.txt are written beside it')
+    return ap
+
+
+def main(argv=None):
+    ap = build_parser()
     a = ap.parse_args(join_collapse(sys.argv[1:] if argv is None else argv))
     a.collapse, a.area_percent = a.collapse
+    if a.batch and a.bodies:
+        ap.error('--batch takes no body names; restrict the set with --only FILE')
+    if not a.batch and not a.bodies:
+        ap.error('name at least one body, or pass --batch')
     if a.force_slot and a.slot is None:
         ap.error('--force-slot needs --slot')
     if a.source_record is not None and a.source_record < 0:
@@ -771,35 +1037,22 @@ def main(argv=None):
     pow2 = lambda v: v >= 64 and not v & (v - 1)
     if not (pow2(a.atlas_size) and pow2(a.atlas_max_size) and a.atlas_size <= a.atlas_max_size <= 8192):
         ap.error('--atlas-size and --atlas-max-size must be powers of two, 64 <= size <= max size <= 8192')
+    if a.screen_width is not None and a.screen_width < 320:
+        ap.error('--screen-width must be >= 320')
+    if a.jobs < 1:
+        ap.error('--jobs must be >= 1')
     sizes, n = [], a.atlas_size
     while n <= a.atlas_max_size:
         sizes.append(n)
         n *= 2
-    atlas_opts = a.atlas_opts = dict(sizes=tuple(sizes), fmt=a.atlas_format, specular=a.atlas_specular,
-                                         bump=a.atlas_bump, force_uv2=a.force_uv2,
-                                         force_mixed_effects=a.force_mixed_effects, screen_width=a.screen_width)
+    width = effective_width(a.display, a.screen_width)
+    if a.min_texels < 0:
+        ap.error('--min-texels must be >= 0')
+    a.atlas_opts = dict(sizes=tuple(sizes), fmt=a.atlas_format, specular=a.atlas_specular or a.batch,
+                        bump=a.atlas_bump, screen_width=width, min_texels=a.min_texels)
+    a.hash_mode = 'sha256' if a.hash_archives else 'fingerprint'
     game = a.game.resolve()
-    markers = sorted((game / 'addon').glob('*' + MARKER_SUFFIX))
-    replace_slot = None
-    if markers and not a.replace:
-        raise SystemExit(f'an x3m-lod overlay is already installed ({markers[0].name}); remove it first'
-                         ' or pass --replace')
-    if a.replace:
-        if len(markers) != 1:
-            raise SystemExit(f'--replace needs exactly one installed x3m-lod overlay, found {len(markers)}')
-        try:
-            manifest = json.loads(markers[0].read_text())
-            replace_slot = int(manifest['slot'])
-            expected = manifest['originals_sha256']
-        except (ValueError, KeyError, TypeError) as exc:
-            raise SystemExit(f'--replace: unreadable marker {markers[0].name} ({exc})') from None
-        if markers[0].name != f'{replace_slot:02d}{MARKER_SUFFIX}':
-            raise SystemExit(f'--replace: marker {markers[0].name} does not name slot {replace_slot}')
-        if originals_digest(hash_files(original_archives(game, replace_slot))) != expected:
-            raise SystemExit(f'--replace: the installed archives other than addon/{replace_slot:02d} do not match'
-                             f' the originals hash in {markers[0].name}; refusing')
-        if a.slot is not None and a.slot != replace_slot:
-            raise SystemExit(f'--replace: --slot {a.slot} differs from the installed overlay slot {replace_slot}')
+    root = None
     if not a.dry_run:
         if a.install == (a.out is not None):
             raise SystemExit('pass exactly one of --out DIR or --install')
@@ -815,6 +1068,38 @@ def main(argv=None):
         root = game if a.install else a.out.resolve()
         if not a.install and (root == game or root.is_relative_to(game)):
             raise SystemExit('--out must be outside the game directory (use --install to target it)')
+    elif a.out is not None:
+        root = a.out.resolve()
+    markers = installed_markers(game)
+    for m in markers:
+        if m['status'] == 'orphaned':
+            print(f'warning: marker {m["path"].name} is orphaned (addon/{m["slot"]:02d}.cat/.dat do not match its'
+                  ' hashes: a mod overwrote the slot); that catalogue is read as a mod source'
+                  + (' and the marker is removed on --install' if a.install else ''))
+        elif m['status'] == 'unreadable':
+            print(f'warning: marker {m["path"].name} is unreadable; its catalogue is not read as a source')
+    if a.batch:
+        a.collapse, a.area_percent = 'atlas', None
+        return batch(a, game, root, markers)
+    live = [m for m in markers if m['status'] in LIVE_MARKERS]
+    replace_slot = None
+    if live and not a.replace:
+        raise SystemExit(f'an x3m-lod overlay is already installed ({live[0]["path"].name}); remove it first'
+                         ' or pass --replace')
+    if a.replace:
+        if len(live) != 1:
+            raise SystemExit(f'--replace needs exactly one installed x3m-lod overlay, found {len(live)}')
+        manifest, replace_slot = live[0]['manifest'], live[0]['slot']
+        try:
+            expected = manifest['originals_sha256']
+        except (KeyError, TypeError) as exc:
+            raise SystemExit(f'--replace: unreadable marker {live[0]["path"].name} ({exc})') from None
+        mode = manifest.get('originals_mode', 'sha256')
+        if archive_digest(game, replace_slot, mode)[0] != expected:
+            raise SystemExit(f'--replace: the installed archives other than addon/{replace_slot:02d} do not match'
+                             f' the originals {mode} in {live[0]["path"].name}; refusing')
+        if a.slot is not None and a.slot != replace_slot:
+            raise SystemExit(f'--replace: --slot {a.slot} differs from the installed overlay slot {replace_slot}')
     if replace_slot is not None:
         slot = replace_slot
     elif a.slot is None:
@@ -831,8 +1116,8 @@ def main(argv=None):
         if (game / rel).exists() and replace_slot is None:
             raise SystemExit(f'{rel} already exists in the game directory')
 
-    before = None if a.dry_run else hash_files(original_archives(game, replace_slot))
-    assets, skipped = original_assets(game)
+    before = None if a.dry_run else archive_digest(game, replace_slot, a.hash_mode)[1]
+    assets, skipped = original_assets(game, markers)
     if skipped:
         print(f'source bodies read without the overlay catalogue(s) {skipped}')
     plans = []
@@ -847,31 +1132,94 @@ def main(argv=None):
         if source_record is not None and source_record < 0:
             raise SystemExit(f'{arg}: the source record must be >= 0')
         plans.append(plan_body(assets, name, threshold, a.placement, a.force_threshold, a.collapse, a.force_mat3,
-                               a.glow_luma, a.glow_share, a.area_percent, not a.no_synth_material, atlas_opts,
+                               a.glow_luma, a.glow_share, a.area_percent, not a.no_synth_material, a.atlas_opts,
                                source_record))
-    members = [p['member'] for p in plans]
-    if len({m.lower() for m in members}) != len(members):
-        raise SystemExit('the same body was named twice')
-    textures = [m for p in plans for m, _ in p['extra_members']]
-    if len({m.lower() for m in textures}) != len(textures):
-        raise SystemExit('two bodies share a file stem, so their atlas texture names collide')
+    for p in plans:
+        p['members'] = [(p['member'], p['stored'])] + list(p['extra_members'])
+    check_member_names(plans)
     for p in plans:
         describe(p)
+    textures = [m for p in plans for m, _ in p['extra_members']]
     print(f'target {cat_rel} + .dat: {len(plans)} member(s) + {len(textures)} atlas texture(s),'
-          f' dat bytes {sum(len(p["stored"]) + sum(len(d) for _, d in p["extra_members"]) for p in plans)}')
+          f' dat bytes {sum(len(d) for p in plans for _, d in p["members"])}')
     if a.dry_run:
         print('dry run: nothing written')
         return 0
-    cat = root / cat_rel
+    members = [m for p in plans for m in p['members']]
+    written, moved = commit_outputs(a, game, root, slot, replace_slot, members, [body_manifest(p) for p in plans], before)
+    if a.atlas_preview:                    # after a successful write only
+        import lod_atlas
+        a.atlas_preview.mkdir(parents=True, exist_ok=True)
+        for p in plans:
+            if p['atlas_build']:
+                body = Path(p['member']).stem
+                for slot_name, e in p['atlas_build']['encoded'].items():
+                    path = a.atlas_preview / f'atlas_preview_{body}_{slot_name}.png'
+                    level = lod_atlas.preview(e['dds'], p['atlas_build']['layout'], path)
+                    print(f'preview {path} (mip {level})')
+    print(f'wrote {", ".join(str(w) for w in written)}; {len(before)} original archive files unchanged'
+          + (f'; replaced the installed addon/{slot:02d} overlay' if moved else ''))
+    return 0
+
+
+def check_member_names(plans):
+    members = [m for p in plans for m, _ in p['members'][:1]]
+    if len({m.lower() for m in members}) != len(members):
+        raise SystemExit('the same body was named twice')
+    textures = [m for p in plans for m, _ in p['members'][1:]]
+    if len({m.lower() for m in textures}) != len(textures):
+        raise SystemExit('two bodies produce the same atlas texture name (qualified stem collision)')
+
+
+def drawn_groups(lod):
+    """Groups of the record's non-hidden parts (the engine skips HIDDEN_PART parts; lod_atlas)."""
+    import lod_atlas
+    return sum(len(p['groups']) for p in lod['parts'] if not p['flags'] & lod_atlas.HIDDEN_PART)
+
+
+def body_manifest(p):
+    """Per-body marker record of a plan (single and batch mode); 'draws' counts the drawn groups of
+    C (hidden parts excluded), 'groups' every group."""
+    return dict(
+        name=p['name'], source=p['source'], member=p['member'], placement=p['placement'], collapse=p['collapse'],
+        glow=sorted(p['glow']), area_kept=sorted(p['area_kept']), new_lod=p['new_index'], pad_lod=p['pad_index'],
+        source_materials=p['source_materials'], source_record=p['source_record'], pad_source=p['pad_source'],
+        trailing_bytes=p.get('trailing_bytes', 0), guard_waived=bool(p.get('guard_waived')),
+        synth=[dict(index=s['index'], dominant=s['dominant'], absorbed=s['absorbed'],
+                    params=[dict(name=n, dominant=d, mean=round(m, 1), written=w) for n, d, m, w in s['params']],
+                    **({'atlas': True, 'effect': s.get('effect')} if s.get('atlas') else {}))
+               for s in p['synth']],
+        **({'atlas': p['atlas']} if p.get('atlas') else {}),
+        source_thresholds=[l['value'] for l in p['before']],
+        thresholds=[l['value'] for l in p['ladder']],
+        threshold=p['new']['value'],
+        pad_threshold=p['ladder'][p['pad_index']]['value'] if p['pad_index'] else None,
+        source_decoded_sha256=p['source_decoded_sha256'],
+        overlay_decoded_sha256=p['overlay_decoded_sha256'],
+        draws=drawn_groups(p['new']), groups=bob1.lod_summary(p['new'])['draws'],
+        members=[dict(path=m, sha256=hashlib.sha256(d).hexdigest(), bytes=len(d)) for m, d in p['members']])
+
+
+def commit_outputs(a, game, root, slot, replace_slot, members, bodies, before, manifest_extra=None, retire=None,
+                   remove_markers=()):
+    """Write addon/NN.cat/.dat and the marker under root (and, with retire=M, an empty catalogue with a
+    retired marker at addon/MM) with the move-aside / restore protocol of the module notes; on
+    --install the orphaned markers in remove_markers are deleted last. Returns (written, moved)."""
+    cat = root / f'addon/{slot:02d}.cat'
     written = [cat, cat.with_suffix('.dat'), cat.with_name(cat.stem + MARKER_SUFFIX)]
-    replacing = a.install and replace_slot is not None
-    asides = [(w, w.with_name(w.name + REPLACED_SUFFIX)) for w in written]
+    retired_files = []
+    if retire is not None:
+        rcat = root / f'addon/{retire:02d}.cat'
+        retired_files = [rcat, rcat.with_suffix('.dat'), rcat.with_name(rcat.stem + MARKER_SUFFIX)]
+    targets = written + retired_files
+    replacing = a.install and (replace_slot is not None or retire is not None)
+    asides = [(w, w.with_name(w.name + REPLACED_SUFFIX)) for w in targets]
     if replacing:
         for _, aside in asides:
             if aside.exists():
                 raise SystemExit(f'{aside} exists (an interrupted --replace?); resolve it by hand')
-    elif any(p.exists() for p in written):
-        raise SystemExit(f'refusing to overwrite existing {cat_rel} outputs under {root}')
+    elif any(p.exists() for p in targets):
+        raise SystemExit(f'refusing to overwrite existing addon/{slot:02d} outputs under {root}')
 
     moved = []               # (target, aside) pairs actually moved aside, in order
     state = {'writing': False}
@@ -892,7 +1240,7 @@ def main(argv=None):
             return
         if state['writing']:
             restored = {w for w, _ in moved}
-            for w in written:
+            for w in targets:
                 if w not in restored:
                     w.unlink(missing_ok=True)
     try:
@@ -902,7 +1250,8 @@ def main(argv=None):
                     w.rename(aside)
                     moved.append((w, aside))
         state['writing'] = True
-        write_overlay(a, game, plans, slot, before, written, replace_slot)
+        write_overlay(a, game, members, bodies, slot, before, written, replace_slot if retire is None else retire,
+                      manifest_extra, retired_files, retire)
     except BaseException:
         restore()
         raise
@@ -912,55 +1261,426 @@ def main(argv=None):
             aside.unlink()
         except OSError as exc:
             left.append(f'{aside} ({exc})')
+    if a.install:
+        for path in remove_markers:
+            try:
+                path.unlink()
+                print(f'removed orphaned marker {path.name}')
+            except OSError as exc:
+                left.append(f'{path} ({exc})')
     if left:
-        print('warning: the new overlay is installed but these replaced files could not be removed'
+        print('warning: the new overlay is installed but these files could not be removed'
               ' (delete them by hand): ' + '; '.join(left), file=sys.stderr)
-    if a.atlas_preview:                    # after a successful write only
-        import lod_atlas
-        a.atlas_preview.mkdir(parents=True, exist_ok=True)
-        for p in plans:
-            if p['atlas_build']:
-                body = Path(p['member']).stem
-                for slot, e in p['atlas_build']['encoded'].items():
-                    path = a.atlas_preview / f'atlas_preview_{body}_{slot}.png'
-                    level = lod_atlas.preview(e['dds'], p['atlas_build']['layout'], path)
-                    print(f'preview {path} (mip {level})')
-
-    print(f'wrote {", ".join(str(w) for w in written)}; {len(before)} original archive files unchanged'
-          + (f'; replaced the installed addon/{slot:02d} overlay' if moved else ''))
-    return 0
+    return targets, moved
 
 
-def write_overlay(a, game, plans, slot, before, written, replace_slot):
-    write_catalogue(written[0], [(p['member'], p['stored']) for p in plans]
-                    + [m for p in plans for m in p['extra_members']])
+def retired_member(retire, slot):
+    """The one member of a retired catalogue: a tiny text file under a unique x3m_lod/ name that no
+    engine loader resolves, so no zero-entry CAT / 0-byte DAT is ever mounted."""
+    return (f'x3m_lod/retired_{retire:02d}.txt',
+            f'x3m-lod overlay slot {retire:02d} retired; the overlay lives in addon/{slot:02d}\n'.encode())
+
+
+def write_overlay(a, game, members, bodies, slot, before, written, exclude_slot, manifest_extra=None,
+                  retired_files=(), retire=None):
+    write_catalogue(written[0], members)
+    overlay = hash_files(written[:2])
     manifest = dict(tool='tools/analysis/lod_overlay.py', slot=slot, collapse=a.collapse,
                     glow_luma=a.glow_luma, glow_share=a.glow_share, area_percent=a.area_percent,
-                    synth_material=not a.no_synth_material,
+                    synth_material=not a.no_synth_material, display=list(a.display),
+                    screen_width=a.atlas_opts['screen_width'],
                     **({'atlas_options': dict(a.atlas_opts, sizes=list(a.atlas_opts['sizes']))}
-                       if a.collapse == 'atlas' else {}), bodies=[
-        dict(name=p['name'], source=p['source'], member=p['member'], placement=p['placement'], collapse=p['collapse'],
-             glow=sorted(p['glow']), area_kept=sorted(p['area_kept']), new_lod=p['new_index'], pad_lod=p['pad_index'],
-             source_materials=p['source_materials'], source_record=p['source_record'],
-             pad_source=p['pad_source'],
-             synth=[dict(index=s['index'], dominant=s['dominant'], absorbed=s['absorbed'],
-                         params=[dict(name=n, dominant=d, mean=round(m, 1), written=w) for n, d, m, w in s['params']],
-                         **({'atlas': True} if s.get('atlas') else {}))
-                    for s in p['synth']],
-             **({'atlas': p['atlas']} if p.get('atlas') else {}),
-             source_thresholds=[l['value'] for l in p['before']],
-             thresholds=[l['value'] for l in p['ladder']],
-             threshold=p['new']['value'],
-             pad_threshold=p['ladder'][p['pad_index']]['value'] if p['pad_index'] else None,
-             source_decoded_sha256=p['source_decoded_sha256'],
-             overlay_decoded_sha256=p['overlay_decoded_sha256']) for p in plans],
-        originals=len(before), originals_sha256=originals_digest(before))
+                       if a.collapse == 'atlas' else {}),
+                    bodies=bodies, originals=len(before), originals_sha256=originals_digest(before),
+                    originals_mode=a.hash_mode,
+                    overlay_sha256={'cat': overlay[str(written[0])], 'dat': overlay[str(written[1])]},
+                    **(manifest_extra or {}))
     written[2].write_text(json.dumps(manifest, indent=1) + '\n')
-    after = hash_files(original_archives(game, replace_slot))
+    if retired_files:
+        write_catalogue(retired_files[0], [retired_member(retire, slot)])
+        rh = hash_files(retired_files[:2])
+        retired_files[2].write_text(json.dumps(dict(
+            tool='tools/analysis/lod_overlay.py', slot=retire, retired=True, retired_by=slot,
+            overlay_sha256={'cat': rh[str(retired_files[0])], 'dat': rh[str(retired_files[1])]},
+            note='retired catalogue with one inert text member (no body, texture or type resource): the x3m-lod'
+                 ' overlay moved to a higher slot because a mod added addon numbers above this one; the file'
+                 ' pair keeps the addon numbering contiguous. Engine acceptance of a retired slot is not yet'
+                 ' verified in a launch'), indent=1) + '\n')
+    after = archive_digest(game, exclude_slot, a.hash_mode)[1]
+    ours = set(written) | set(retired_files)
     changed = sorted(k for k in before.keys() | after.keys() if before.get(k) != after.get(k)
-                     and not any(Path(k) == w for w in written))
+                     and not any(Path(k) == w for w in ours))
     if changed:
         raise SystemExit(f'original archives changed during the run ({changed}); outputs removed')
+
+
+# --- batch mode ----------------------------------------------------------------------------
+
+TOOL_FILES = ('lod_atlas.py', 'lod_overlay.py', 'bob1.py')
+
+
+def tool_sha256():
+    """sha256 over the source of the three modules that shape an overlay member: a tool change makes
+    --sync rebuild every body (the settings no longer match)."""
+    h = hashlib.sha256()
+    here = Path(__file__).resolve().parent
+    for name in TOOL_FILES:
+        h.update((here / name).read_bytes())
+    return h.hexdigest()
+
+
+def parse_only(path):
+    """Body keys named in FILE: plain names, NAME=T@N lines (eligible_bodies.txt) or lod_batch_census
+    sectors.txt rows ('   62 draws ships/argon/argon_TL ...'); '#' starts a comment."""
+    import lod_batch_census as census
+    names = set()
+    for line in Path(path).read_text().splitlines():
+        line = line.split('#', 1)[0].strip()
+        if not line or line.startswith('=='):
+            continue
+        tok = line.split()
+        if len(tok) >= 3 and tok[1] == 'draws':
+            name = tok[2]
+        elif tok[0].isdigit() or tok[0].startswith('eligible'):
+            continue
+        else:
+            name = tok[0].split('=', 1)[0]
+        names.add(census.body_key(name))
+    return names
+
+
+def bake_body(assets, row, atlas_opts):
+    """Plan and bake one census-eligible body for the batch (compact, atlas, source record 0, T_pad
+    from the row); returns a compact dict (no records) or dict(name, refused=reason)."""
+    import lod_atlas
+    t0 = time.time()
+    out = io.StringIO()
+    try:
+        p = plan_body(assets, row['name'], row['t_pad'], 'compact', False, 'atlas', False, GLOW_LUMA, GLOW_SHARE,
+                      None, True, atlas_opts, 0)
+        describe(p, out)
+    except SystemExit as exc:
+        return dict(name=row['name'], refused=str(exc), seconds=time.time() - t0)
+    except (bob1.FormatError, lod_atlas.AtlasError, FileNotFoundError, ValueError) as exc:
+        return dict(name=row['name'], refused=f'{type(exc).__name__}: {exc}', seconds=time.time() - t0)
+    finally:
+        assets.cache.clear()
+    p['members'] = [(p['member'], p['stored'])] + list(p['extra_members'])
+    manifest = body_manifest(p)
+    manifest['inputs_sha256'] = row.get('inputs_sha256')
+    return dict(name=p['name'], member=p['member'], source=p['source'], members=p['members'], manifest=manifest,
+                text=out.getvalue(), draws=manifest['draws'], atlas=p['atlas'], reused=False,
+                trailing=p.get('trailing_bytes', 0), guard_waived=bool(p.get('guard_waived')),
+                seconds=time.time() - t0)
+
+
+_BAKE = {}
+
+
+def _bake_init(game, atlas_opts):
+    _BAKE['assets'] = original_assets(Path(game))[0]
+    _BAKE['atlas_opts'] = atlas_opts
+
+
+def bake_safely(assets, row, atlas_opts):
+    try:
+        return bake_body(assets, row, atlas_opts)
+    except Exception as exc:                        # one bad body must not end the batch
+        return dict(name=row['name'], refused=f'{type(exc).__name__}: {exc}', seconds=0.0)
+
+
+def _bake_work(row):
+    return bake_safely(_BAKE['assets'], row, _BAKE['atlas_opts'])
+
+
+BAKE_REASONS = (('texel_floor', 'texel_floor'), ('trailing bytes', 'trailing_bytes'), ('text body', 'text_body'),
+                ('writer does not reproduce', 'writer_mismatch'), ('MAT3 body', 'mat3'),
+                ('outside the material table', 'material_outside_table'), ('loose file', 'loose_winner'),
+                ('already exists in', 'atlas_name_taken'), ('references', 'group_too_large'),
+                ('not a BOB1', 'not_bob1'), ('no body resource', 'not_found'))
+
+
+def bake_reason(message):
+    """Refusal code of a bake failure message: the plan_body refusals, then the lod_atlas reasons
+    (lod_batch_census.ATLAS_REASONS), else bake_other."""
+    import lod_batch_census as census
+    for needle, code in BAKE_REASONS:
+        if needle in message:
+            return code
+    code = census.atlas_reason(message)
+    return 'bake_other' if code == 'atlas_other' else code
+
+
+def reuse_previous(prev, eligible, settings, notes):
+    """{name: plan} of the eligible bodies whose members can be copied from the previous overlay:
+    same batch settings, same inputs_sha256, every member present with its recorded sha256."""
+    out = {}
+    pm = prev['manifest']
+    if (pm.get('batch') or {}).get('settings') != settings:
+        notes.append(f'--sync: the previous overlay addon/{prev["slot"]:02d} was built with different settings'
+                     ' (rule, width or atlas options); every body is rebuilt')
+        return out
+    old_cat = prev['path'].with_name(f'{prev["slot"]:02d}.cat')
+    try:
+        entries = {e['path']: e for e in read_catalogue(old_cat)}
+    except (ValueError, OSError) as exc:
+        notes.append(f'--sync: cannot read addon/{prev["slot"]:02d}.cat ({exc}); every body is rebuilt')
+        return out
+    old = {b['name'].lower(): b for b in pm.get('bodies', ())}
+    with old_cat.with_suffix('.dat').open('rb') as f:
+        for r in eligible:
+            b = old.get(r['name'].lower())
+            if not b or not b.get('inputs_sha256') or b['inputs_sha256'] != r.get('inputs_sha256'):
+                continue
+            got = []
+            for mem in b.get('members', ()):
+                e = entries.get(mem['path'])
+                if e is None or e['size'] != mem['bytes']:
+                    break
+                f.seek(e['offset'])
+                data = bytes(v ^ 0x33 for v in f.read(e['size']))
+                if hashlib.sha256(data).hexdigest() != mem['sha256']:
+                    break
+                got.append((mem['path'], data))
+            else:
+                if got:
+                    out[r['name']] = dict(name=r['name'], member=b['member'], source=b['source'], members=got,
+                                          manifest=dict(b, reused_from=prev['slot']), draws=b.get('draws'),
+                                          atlas=b.get('atlas'), reused=True, trailing=b.get('trailing_bytes', 0),
+                                          guard_waived=b.get('guard_waived', False), seconds=0.0,
+                                          text=f'{r["name"]}: reused from addon/{prev["slot"]:02d} ({len(got)} members,'
+                                               f' inputs {r["inputs_sha256"][:16]})\n')
+    return out
+
+
+def batch(a, game, root, markers):
+    import lod_atlas
+    import lod_batch_census as census
+    t_start = time.time()
+    notes = []
+    orphaned = [m for m in markers if m['status'] == 'orphaned']
+    live = [m for m in markers if m['status'] in LIVE_MARKERS]
+    if len(live) > 1:
+        raise SystemExit(f'--batch: more than one live x3m-lod overlay ({[m["path"].name for m in live]}); resolve by hand')
+    prev = live[0] if live else None
+    nxt = next_slot(game)
+    if prev is not None and prev['slot'] == nxt - 1:
+        slot, retire = prev['slot'], None
+    elif prev is not None:
+        slot, retire = nxt, prev['slot']
+        notes.append(f'previous overlay addon/{prev["slot"]:02d} is no longer the highest addon slot (mod catalogues'
+                     f' up to addon/{nxt - 1:02d}); the new overlay takes addon/{slot:02d} and addon/{retire:02d}'
+                     ' becomes a valid empty catalogue (marker: retired)')
+    else:
+        slot, retire = nxt, None
+    if a.slot is not None and a.slot != slot and not a.force_slot:
+        raise SystemExit(f'--slot {a.slot}: the batch slot is {slot} (pass --force-slot to override)')
+    if a.slot is not None and a.force_slot:
+        slot = a.slot
+    for m in orphaned:
+        notes.append(f'orphaned marker {m["path"].name}: addon/{m["slot"]:02d} was overwritten by a mod; read as a'
+                     ' source' + ('; the marker is removed on --install' if a.install else ''))
+    mods = sorted((game / 'addon' / 'mods').glob('*.cat'))
+    only = parse_only(a.only) if a.only else None
+    width = a.atlas_opts['screen_width']
+    opts = dict(sizes=a.atlas_opts['sizes'], include_other=a.include_other, widths=(width,), rule=dict(census.RULE))
+    settings = dict(rule=opts['rule'], screen_width=width, display=list(a.display), collapse='atlas',
+                    source_record=0, placement='compact', include_other=a.include_other,
+                    atlas=dict(a.atlas_opts, sizes=list(a.atlas_opts['sizes'])), tool_sha256=tool_sha256())
+    t0 = time.time()
+    rows, skipped = census.run(game, opts, a.jobs, only=only, include_text=True)
+    census_s = time.time() - t0
+    rows.sort(key=lambda r: r['name'].lower())
+    if skipped:
+        notes.append(f'source bodies read without the overlay catalogue(s) {skipped}')
+    floor = []                             # texel floor: refused before baking, ratio kept in the record
+    for r in rows:
+        ratio = (r.get('atlas') or {}).get(width, {}).get('ratio')
+        if r['eligible'] and a.min_texels and ratio is not None and ratio < a.min_texels:
+            r['refuse'].append('texel_floor')
+            r['eligible'] = False
+            r['ratio'] = ratio
+            floor.append((r['name'], ratio))
+    eligible = [r for r in rows if r['eligible']]
+    reused = {}
+    if a.sync:
+        if prev is None:
+            notes.append('--sync: no previous overlay; every body is built')
+        else:
+            reused = reuse_previous(prev, eligible, settings, notes)
+    to_bake = [r for r in eligible if r['name'] not in reused]
+    t0 = time.time()
+    if a.jobs <= 1 or len(to_bake) <= 1:
+        assets, _ = original_assets(game, markers)
+        results = [bake_safely(assets, r, a.atlas_opts) for r in to_bake]
+    elif to_bake:
+        with multiprocessing.get_context('spawn').Pool(min(a.jobs, len(to_bake)), _bake_init,
+                                                       (str(game), a.atlas_opts), maxtasksperchild=1) as pool:
+            results = pool.map(_bake_work, to_bake, chunksize=1)
+    else:
+        results = []
+    bake_s = time.time() - t0
+    by_name = {r['name']: r for r in rows}
+    plans = []
+    for res in results:
+        row = by_name[res['name']]
+        if 'refused' in res:
+            row['refuse'].append('bake:' + bake_reason(res['refused']))
+            row['bake_error'] = res['refused'][:200]
+            row['eligible'] = False
+        else:
+            plans.append(res)
+    plans += list(reused.values())
+    plans.sort(key=lambda p: p['name'].lower())
+    check_member_names(plans)
+    for p in plans:
+        row = by_name[p['name']]
+        atlas_bytes = sum(len(d) for _, d in p['members'][1:])
+        row['baked'] = dict(reused=p['reused'], draws=p['draws'], atlas_size=(p['atlas'] or {}).get('size'),
+                            ratio=(p['atlas'] or {}).get('min_texels_per_px'), atlas_bytes=atlas_bytes,
+                            member_bytes=len(p['members'][0][1]), seconds=round(p['seconds'], 2),
+                            guard_waived=p['guard_waived'],
+                            atlas_materials=len((p['atlas'] or {}).get('materials', [0])))
+        if 'atlas' in row and width in row['atlas']:
+            row['atlas'][width]['bytes'] = row['atlas'][width]['bytes_cap2048'] = atlas_bytes
+    built = [p for p in plans if not p['reused']]
+    # sectors and budget
+    by_key = {census.body_key(r['name']): r for r in rows}
+    repo = Path(__file__).resolve().parents[2]
+    sector_lines, sectors, budget = [], {}, []
+    for label, path, frame in census.SECTORS:
+        p = repo / path
+        if not p.exists():
+            sector_lines.append(f'== {label}: {path} missing')
+            continue
+        lines, n_el, tot = census.sector_report(f'{label} ({path} frame {frame})', census.parse_census(p, frame),
+                                                by_key, (width,))
+        sector_lines += lines
+        sectors[label] = dict(eligible=n_el, atlas_bytes=tot[width][0])
+        if tot[width][0] > a.budget_mb * 1e6:
+            budget.append(f'warning: sector {label}: resident atlas estimate {tot[width][0] / 1e6:.2f} MB exceeds'
+                          f' --budget-mb {a.budget_mb:g}')
+    mod_notes = []
+    for mc in mods:
+        try:
+            keys = {census.body_key(e['path']) for e in read_catalogue(mc)
+                    if e['path'].lower().endswith(bob1.BODY_EXTENSIONS)}
+        except (ValueError, OSError) as exc:
+            mod_notes.append(f'warning: addon/mods/{mc.name}: unreadable ({exc})')
+            continue
+        hit = sum(1 for p in plans if census.body_key(p['name']) in keys)
+        mod_notes.append(f'warning: addon/mods/{mc.name} ({len(keys)} bodies) overrides the overlay for {hit} of its'
+                         f' {len(plans)} bodies while that mod is selected in the launcher')
+    # summary
+    cnt = lambda it: dict(sorted(Counter(it).items(), key=lambda x: (-x[1], x[0])))
+    reasons = cnt(x for r in rows for x in r['refuse'])
+    filters = cnt(x for r in rows if not r['refuse'] for x in r['filter'])
+    cats = cnt(r['cat'] for r in rows)
+    sizes = cnt(p['atlas']['size'] for p in plans if p['atlas'])
+    ratios = sorted((p['atlas']['min_texels_per_px'], p['name']) for p in plans if p['atlas']
+                    and p['atlas'].get('min_texels_per_px') is not None)
+    below1 = [n for r, n in ratios if r < 1.0]
+    below2 = sum(1 for r, _ in ratios if r < 2.0)
+    atlas_total = sum(len(d) for p in plans for _, d in p['members'][1:])
+    member_total = sum(len(p['members'][0][1]) for p in plans)
+    draws_before = sum(by_name[p['name']].get('r0_drawn', 0) for p in plans)
+    draws_after = sum(p['draws'] for p in plans)
+    multi = [p['name'] for p in plans if p['atlas'] and len(p['atlas'].get('materials', [0])) > 1]
+    uv2 = [p['name'] for p in plans if p['atlas'] and p['atlas'].get('uv2_points')]
+    per_body = bake_s / len(built) if built else 0.0
+    candidates = sum(1 for r in rows if 'text_body' not in r['refuse'] and 'category_other' not in r['filter'])
+    full_est = per_body * len(rows) if only is not None else bake_s
+    trailing = sum(1 for p in plans if p['trailing'])
+    waived = sum(1 for p in plans if p['guard_waived'])
+    summary = [
+        f'batch: game {game}; display {a.display[0]}x{a.display[1]} -> reference width {width}; rule ships'
+        f' T_pad = min({opts["rule"]["t_cap"]:g}, max({opts["rule"]["ship_min"]:g}, {opts["rule"]["ship_factor"]:g} x T_1)),'
+        f' stations/others {opts["rule"]["station_t"]:g}; source record 0, compact (T_1 guard waived: {waived} bodies);'
+        f' atlas sizes {list(a.atlas_opts["sizes"])}, {a.atlas_opts["fmt"]}, specular on',
+        f'bodies enumerated {len(rows)}{" (--only " + str(a.only) + ")" if a.only else ""}: '
+        + ', '.join(f'{k} {v}' for k, v in cats.items())
+        + f'; eligible {len(eligible)}; built {len(built)} + reused {len(reused)} = {len(plans)} overlay bodies',
+        'refused by reason (a body counts once per reason): '
+        + (', '.join(f'{k} {v}' for k, v in reasons.items()) or 'none'),
+        'filtered: ' + (', '.join(f'{k} {v}' for k, v in filters.items()) or 'none'),
+        f'atlas sizes {sizes}; atlas bytes {atlas_total / 1e6:.2f} MB (stored, gzip DDS); body members'
+        f' {member_total / 1e6:.2f} MB; dat bytes {atlas_total + member_total}',
+        f'texels per px at {width} wide: below 1.0 {len(below1)}'
+        + (f' ({", ".join(below1[:12])}{", ..." if len(below1) > 12 else ""})' if below1 else '')
+        + f', below 2.0 {below2}, of {len(ratios)} built; refused texel_floor (< {a.min_texels:g}) {len(floor)}'
+        + (': ' + ', '.join(f'{n} {r:.2f}' for n, r in sorted(floor, key=lambda x: x[1])[:12])
+           + (', ...' if len(floor) > 12 else '') if floor else ''),
+        f'draws below T_pad per instance, summed over the overlay bodies: {draws_before} -> {draws_after}'
+        f' (drawn groups of record 0 -> of C, hidden parts excluded, alpha groups included); bodies with one atlas'
+        f' material per effect ({len(multi)}):'
+        f' {", ".join(multi[:12])}{", ..." if len(multi) > 12 else ""}; second UV set passed through ({len(uv2)}):'
+        f' {", ".join(uv2[:12])}{", ..." if len(uv2) > 12 else ""}; stray trailing bytes tolerated: {trailing}',
+        f'timing: census {census_s:.1f} s, baking {bake_s:.1f} s for {len(built)} bodies with {a.jobs} jobs'
+        f' ({per_body:.2f} s per body wall); extrapolated full set: {full_est:.0f} s'
+        + (f' (this run x {len(rows)} enumerated / {len(built)} built; upper bound, every candidate baked)'
+           if only is not None else ' (this run is the full set)') + f'; total {time.time() - t_start:.1f} s',
+        f'target addon/{slot:02d}.cat + .dat'
+        + (f' (replaces the previous overlay in that slot)' if prev is not None and retire is None else '')
+        + (f'; addon/{retire:02d} retired to an empty catalogue' if retire is not None else '')
+        + (f'; orphaned markers: {[m["path"].name for m in orphaned]}' if orphaned else '')]
+    summary += notes + mod_notes + sector_lines + budget
+    for line in summary:
+        print(line)
+    # record
+    if a.record is not None:
+        record_path = a.record
+    elif root is not None:                 # --out DIR, or the game's addon/ on --install (beside the marker)
+        record_path = (root / 'addon' if a.install else root) / 'x3m-lod-batch.json'
+    else:
+        record_path = Path.cwd() / f'x3m-lod-batch-{slot:02d}.json'
+    record = dict(
+        tool='tools/analysis/lod_overlay.py --batch', dry_run=bool(a.dry_run), install=bool(a.install), game=str(game),
+        slot=slot, retired_slot=retire, previous_slot=prev['slot'] if prev else None, sync=bool(a.sync),
+        settings=settings, only=str(a.only) if a.only else None, jobs=a.jobs,
+        counts=dict(enumerated=len(rows), by_category=cats, eligible=len(eligible), built=len(built),
+                    reused=len(reused), overlay_bodies=len(plans), candidates=candidates),
+        refused=reasons, filtered=filters, atlas_sizes=sizes,
+        bytes=dict(atlas=atlas_total, members=member_total, dat=atlas_total + member_total),
+        ratio=dict(below_1=below1, below_2=below2, measured=len(ratios), min_texels=a.min_texels,
+                   texel_floor={n: round(r, 4) for n, r in floor}),
+        draws=dict(record0=draws_before, overlay=draws_after), mixed_effect_bodies=multi, uv2_bodies=uv2,
+        timing=dict(census_s=round(census_s, 2), bake_s=round(bake_s, 2), per_body_s=round(per_body, 3),
+                    extrapolated_full_s=round(full_est, 1), total_s=round(time.time() - t_start, 2)),
+        sectors=sectors, budget_mb=a.budget_mb, budget_warnings=budget, notes=notes + mod_notes,
+        orphaned_markers=[m['path'].name for m in orphaned],
+        bodies=[dict(name=r['name'], cat=r['cat'], member=r.get('member'), t_pad=r.get('t_pad'),
+                     t_pad_below_t1=r.get('t_pad_below_t1', False), r0_drawn=r.get('r0_drawn'),
+                     refuse=r['refuse'], filter=r['filter'], eligible=r['eligible'],
+                     trailing=r.get('trailing', 0), inputs_sha256=r.get('inputs_sha256'),
+                     **({'ratio': round(r['ratio'], 4)} if 'ratio' in r else {}),
+                     texture_sources=r.get('texture_sources'),
+                     estimate=(r.get('atlas') or {}).get(width), **r.get('baked', {}),
+                     **({'error': r['atlas_error']} if r.get('atlas_error') else {}),
+                     **({'bake_error': r['bake_error']} if r.get('bake_error') else {}))
+                for r in rows],
+        summary=summary)
+    record_path.parent.mkdir(parents=True, exist_ok=True)
+    record_path.write_text(json.dumps(record, indent=1, default=str) + '\n')
+    stem = record_path.with_suffix('')
+    Path(str(stem) + '-summary.txt').write_text('\n'.join(summary) + '\n')
+    Path(str(stem) + '-bodies.txt').write_text(''.join(p['text'] + '\n' for p in plans))
+    print(f'record {record_path} (+ -summary.txt, -bodies.txt)')
+    if a.dry_run:
+        print('dry run: nothing written')
+        return 0
+    if not plans:
+        raise SystemExit('--batch: no eligible body; nothing to write')
+    before = archive_digest(game, prev['slot'] if prev else None, a.hash_mode)[1]
+    members = [m for p in plans for m in p['members']]
+    extra = dict(batch=dict(settings=settings, counts=record['counts'], timing=record['timing'],
+                            retired_slot=retire, record=str(record_path)))
+    written, moved = commit_outputs(a, game, root, slot, prev['slot'] if prev and retire is None else None, members,
+                                    [p['manifest'] for p in plans], before, extra, retire,
+                                    [m['path'] for m in orphaned])
+    print(f'wrote {", ".join(str(w) for w in written)}; {len(before)} original archive files unchanged'
+          + (f'; replaced the installed addon/{slot:02d} overlay' if moved and retire is None else '')
+          + (f'; retired addon/{retire:02d}' if retire is not None else ''))
+    return 0
 
 
 def cli():

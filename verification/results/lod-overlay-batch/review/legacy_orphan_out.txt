@@ -1,0 +1,4 @@
+markers [(2, 'orphaned')]
+skipped as sources []
+["target addon/04.cat + .dat; orphaned markers: ['02.x3m-lod.json']", '     3 draws objects/effects/menugfx/hud_target_text (no binary body in the catalogues)', '     3 draws objects/effects/menugfx/hud_target_text (no binary body in the catalogues)']
+addon/02 entries after [{'path': 'objects/ships/x/modonly.pbb', 'size': 605, 'offset': 0}] dat bytes 605 mod 02.dat preserved anywhere True

@@ -83,31 +83,39 @@ class BatchCensus(unittest.TestCase):
                                       'ships/x/twin', 'ships/x/uv', 'stations/y/good', 'stations/y/tall'])   # CUT1 scene left out
         refuse = {n: by[n]['refuse'] for n in ('ships/x/uv', 'ships/x/mixed', 'ships/x/oob', 'ships/x/m3',
                                                'ships/x/over', 'ships/x/amb', 'ships/x/capped')}
-        self.assertEqual(refuse, {'ships/x/uv': ['uv2'], 'ships/x/mixed': ['mixed_effects'],
+        self.assertEqual(refuse, {'ships/x/uv': [], 'ships/x/mixed': [],                  # handled, not refused
                                   'ships/x/oob': ['material_outside_table'], 'ships/x/m3': ['mat3'],
-                                  'ships/x/over': ['t_pad_below_t1'], 'ships/x/amb': ['ambiguous_body_ext'],
+                                  'ships/x/over': [], 'ships/x/amb': ['ambiguous_body_ext'],
                                   'ships/x/capped': []})
         self.assertEqual((by['ships/x/capped']['t_pad'], by['ships/x/over']['t_pad']), (200, 200))
         self.assertTrue(by['ships/x/capped']['eligible'])
+        self.assertTrue(by['ships/x/over']['eligible'] and by['ships/x/over']['t_pad_below_t1'])   # guard waived
+        self.assertIn('T_pad=200<T_1', census.format_row(by['ships/x/over']))
+        self.assertEqual((by['ships/x/uv']['uv2'], by['ships/x/uv']['occlusion']), (1, {'argon.fx': 'none'}))
+        self.assertEqual((by['ships/x/mixed']['effects'], by['ships/x/mixed']['atlas_materials'],
+                          by['ships/x/mixed']['c_drawn']), (2, 2, 2))
         e = {r['name']: r for r in other}['effects/fx/e']
         self.assertEqual((e['eligible'], e['t_pad'], e['filter']), (True, 150, []))
         t = {r['name']: r for r in tiny}['ships/x/good']
-        self.assertEqual((t['t_pad'], t['refuse']), (1, ['t_pad_below_t1']))
+        self.assertEqual((t['t_pad'], t['refuse']), (1, ['t_pad_below_2']))
         good = by['ships/x/good']
-        self.assertTrue(good['eligible'])                         # its stem peer stations/y/good is refused, so no collision
-        self.assertEqual(by['stations/y/good']['refuse'], ['t_pad_below_t1'])
+        self.assertTrue(good['eligible'])
+        self.assertTrue(by['stations/y/good']['eligible'])       # same stem as ships/x/good: names are qualified
+        self.assertNotEqual(good['atlas_stem'], by['stations/y/good']['atlas_stem'])
+        self.assertEqual(len(good['inputs_sha256']), 64)
+        self.assertEqual(good['texture_sources'], ['dds/a_bump.pck', 'dds/a_diff.pck', 'dds/b_diff.pck', 'dds/b_light.pck'])
         self.assertEqual((good['lods'], good['thresholds'], good['t_pad'], good['mat']), (2, [5], 80, 'MAT6'))
         self.assertEqual((good['r0_groups'], good['r0_drawn'], good['coarse_groups'], good['c_drawn']), (3, 2, 2, 1))
         self.assertEqual((good['effects'], good['uv2'], good['alpha'], good['slots']),
-                         (1, 0, 0, ['diffuse', 'light', 'bump', 'specular']))
+                         (1, 0, 0, ['diffuse', 'light', 'bump']))          # no t_SpecularTexture: no specular atlas
         self.assertEqual(list(good['atlas']), [1920, 1280])
         self.assertEqual((good['saved_r0'], good['saved_coarse']), (1, 1))
         a = good['atlas'][1920]
-        self.assertEqual((a['size'], a['bytes']), (1024, 699192 + 3 * 1398256))
+        self.assertEqual((a['size'], a['bytes']), (1024, 699192 + 2 * 1398256))
         self.assertEqual(good['member_bytes'], int(good['r0_bytes'] * 1.2))
-        self.assertEqual(by['ships/x/twin']['refuse'], ['batch_stem_collision'])   # both otherwise eligible
-        self.assertEqual(by['others/z/twin']['stem_peers'], ['ships/x/twin'])
-        self.assertEqual((by['stations/y/tall']['t_pad'], by['stations/y/tall']['refuse']), (150, ['t_pad_below_t1']))
+        self.assertTrue(by['ships/x/twin']['eligible'] and by['others/z/twin']['eligible'])   # no stem collision
+        self.assertEqual((by['stations/y/tall']['t_pad'], by['stations/y/tall']['refuse'],
+                          by['stations/y/tall']['t_pad_below_t1']), (150, [], True))
         self.assertEqual(by['ships/x/single']['filter'], ['no_draw_gain'])
         self.assertEqual(by['effects/fx/e']['filter'], ['category_other'])
         self.assertIn('ELIGIBLE', census.format_row(good))

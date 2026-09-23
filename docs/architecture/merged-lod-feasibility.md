@@ -799,6 +799,152 @@ burst 2 (10 bodies) 122.34 / 415.94 MB, run257 burst 1 (10) 122.34 / 415.94 MB, 
 diffuse is counted DXT1, but `lod_atlas.encode` picks DXT5 for a slot whose level-0 alpha is not
 all 255, and the slot set assumes `--atlas-specular`.
 
+### Batch mode (2026-09-23; `lod_overlay.py --batch`)
+
+One command builds and installs an overlay over every eligible ship and station of the
+installed game, vanilla plus every numbered addon catalogue a mod adds
+(`python3 tools/analysis/lod_overlay.py --batch [--sync] --install`). The census module
+enumerates the bodies and the tool bakes them in worker processes (`--jobs`, default cpu-2);
+tests: `verification/analysis/test_lod_overlay_batch.py` on synthetic catalogues, dry-run
+evidence under `verification/results/lod-overlay-batch/batch-dryrun/`.
+
+- **Rule and guard.** Ships `T_pad = min(200, max(80, 2.5·T_1))` (80 for a single-record body),
+  stations and `others/` 150, source record 0, compact placement, `--collapse atlas` with the
+  specular atlas on; `--include-other` adds the remaining top directories under the station
+  rule. The compact guard "T_pad not below T_1" is waived automatically when the source record
+  is 0: C is then the full LOD 0 geometry, so C drawing at Low..High in the band
+  `T_pad·f <= s < T_1·f` (the case the guard refuses) shows the same mesh with the atlas
+  textures, which is harmless. The guard stays for a decimated source (a coarser source
+  record). The 139 `t_pad_below_t1` refusals of the census (the 250/150/80/30 stations) are
+  therefore eligible; `census.txt` marks them `T_pad=150<T_1`.
+- **Enumeration.** Unpacked `.bob` members are bodies (`canonical()` maps `.pbb` to `.bob`, so
+  they share a key; the census's `.pbb`-only filter had dropped 1,271 of 1,438 mod bodies). A
+  winning text body (`.pbd`/`.bod`) is refused as `text_body`; a stem with both a binary and a
+  text member as `ambiguous_body_ext` (engine order unverified). Stray bytes after `/BOB`:
+  `bob1.parse(data, max_trailing)` tolerates up to `lod_overlay.MAX_TRAILING` (8) and records
+  them; the engine parser `0x00481aa0` returns the model at the `/BOB` closer and never reads
+  past it (body-format-bob1.md §1), so they are inert. Of the 94 mod bodies that failed to
+  parse, 86 carry 1–2 stray closer bytes (`B`, `OB`; measured over `/tmp/x3-mod1`,
+  `/tmp/x3-mod2`) and are tolerated with a warning; 8 carry 502–7956 bytes (a duplicated tail)
+  and are refused as `trailing_bytes`. A negative group material index (156 vanilla bodies,
+  one ad-sign group each) is refused as `material_outside_table` before the collapse instead
+  of the former `IndexError`.
+- **Mixed effects.** `lod_atlas.collapse` groups the opaque materials by effect file and emits
+  one merged material per effect (a copy of that effect's dominant material with the atlas
+  textures and that effect's area-weighted `g_Mat*` means), all sharing the one atlas set
+  (same tiles, same UV rewrite); each part gets one output group per effect, so a body draws
+  one atlas group per effect plus the alpha group. The 238 vanilla `mixed_effects` refusals
+  are no longer refused for this reason (`StockmarketBoardXL`, `pirate_TL_var1/2`,
+  `planet_close_waterworld` under `--include-other`; other reasons may still apply, e.g.
+  `StockmarketBoardXL` is `dominant_slot_missing`).
+- **Second UV set.** The fleet's second set is the per-body occlusion decal unwrap
+  (`t_OcclusionTexture` in `[0,1]`, one texture per body, `XT_standard_lighting.fx`;
+  `classes/classes_out.txt`). The record rewrite copies the second pair through unchanged
+  (`with_uv` rewrites only the first pair), the merged material keeps the dominant material's
+  `t_OcclusionTexture` and the `g_Mat*` mean covers `g_MatOcclStr`. A body is refused as
+  `occlusion_mismatch` when the opaque materials of one merged group carry more than one
+  occlusion texture (`NULL`/`NONE_*`/absent count as none; none mixed with a decal refuses).
+  The 164 vanilla `uv2` refusals (25 heavy: `Argon_m7m`, Pirate M1/M2/M7, the `argon_M2_OCC_*`
+  variants, `terraformer_hub_A`) are no longer refused for this reason.
+- **Names and textures.** Atlas members are `dds/x3m_lod_<stem>_<hash6>_<slot>.pck` with the
+  hash from the lower-case member path (`lod_overlay.qualified_stem`), so colliding stems
+  (`ships/terran/terran_M3` vs `ships/usc/terran_m3`; 369 collisions in the mod trees) get
+  distinct names that are stable across runs; the batch refuses a duplicate name. Source
+  textures resolve as the engine's loader does: `dds/<stem>.pck|.dds` (`0x004dc540`, extension
+  list "pck dds", path table `+0x7c` `dds\%s`), then `tex/<stem>.jpg|.tga|.bmp` (the wrapper
+  `0x004f3510`, `+0x74` `tex\%s`); the dds-before-tex order is inferred from the path table and
+  the wrapper's role, not traced, and no enumerated mod body reads a `tex/` member (0 affected,
+  `mod_enumeration_out.txt`); jpg/tga/bmp are decoded with Pillow (imported lazily; a
+  missing Pillow refuses the body as `pil_missing`), and the manifest records the member each
+  tile's textures came from. Vanilla ships 2,550 `dds/*.pck`, 255 `tex/*.jpg` and 11
+  `tex/*.tga` members (measured); the mods add `dds/*.dds`, `tex/*.jpg` and `tex/*.tga`.
+- **Screen reference.** `--display WxH` (default 1920x1080) derives the reference width as
+  `H·1280/768` (1800 for 1080 lines), on the assumption that the projection keeps the vertical
+  field of view, so the 768-line reference height maps onto H lines; `--screen-width` overrides.
+  The atlas cap defaults to 2048 (`--atlas-max-size`); the texel rule never refuses below 2
+  texels/px, the ratio is reported per body and the summary counts the bodies below 1.0.
+- **Markers, slots, sync.** The overlay slot is the next contiguous free addon number. Every
+  run validates every `addon/NN.x3m-lod.json` by hash: the marker records the overlay cat/dat
+  sha256, the display/width, the rule and per body its source catalogue, member, member sha256
+  and an `inputs_sha256` over the decoded body and every texture its tiles read. A marker whose
+  hashes do not match the files beside it is orphaned (a mod overwrote the slot): it is
+  reported, the catalogue is read as a mod source, and `--install` removes the marker. A legacy
+  marker without overlay hashes (the installed pilot's shape) is trusted only when every body it
+  names is present in the catalogue beside it with the recorded `overlay_decoded_sha256`
+  (`legacy_verified`); a legacy marker with no bodies, a missing member or a different sha is
+  orphaned, so a mod that overwrote that slot is neither skipped as a source nor retired or
+  replaced (`review/legacy_orphan.py`, and the test). Batch
+  mode supersedes the live previous overlay without `--replace`: if its slot is still the
+  highest addon number the new overlay takes it (move-aside/rollback path); otherwise the new
+  overlay goes to the next slot and the old slot's cat/dat become a retired catalogue holding
+  one inert text member (`x3m_lod/retired_NN.txt`; never a zero-entry CAT or a 0-byte DAT) with
+  a marker recording it as retired, so the numbering stays contiguous (the mount loop stops at
+  the first gap); engine acceptance of a retired slot is not yet verified and needs a launch.
+  `--sync` rebuilds only bodies whose `inputs_sha256` changed or that are new and copies the
+  other bodies' members from the previous overlay dat (each verified by sha256), provided the
+  previous overlay used the same rule, width, atlas options and tool sources (`tool_sha256` over
+  `lod_atlas.py`, `lod_overlay.py`, `bob1.py` in the settings, so a tool change rebuilds).
+  `addon/mods/*.cat` are detected and a warning gives how many overlay bodies a selected mod
+  overrides. The before/after archive check is a cat sha256 plus dat size and mtime by default
+  (`--hash-archives` hashes every dat; the mod trees are gigabytes); the marker records the mode.
+- **Texel floor (`--min-texels F`, default 0.5).** A body whose layout gives fewer than F atlas
+  texels per screen pixel at the display reference is refused as `texel_floor` (the summary
+  lists it with its ratio; the ratio is still reported for every body) instead of being built
+  blurred; `--min-texels 0` disables the floor. Four flown bodies are known to sit below 1.0:
+  `argon_tech_M_laser_cc` 0.04, `argon_tech_L_laser_bb` 0.05, `argon_gate` 0.23 and
+  `owp_large` 0.72 (measured, `batch-dryrun/bottle-sectors-record_out.txt`); with the default
+  floor the first three are refused and `owp_large` is still built (rerun: 19 built, 3
+  `texel_floor`). One tile spanning hundreds of UV periods forces the uniform layout scale
+  towards zero. The later fix is a span clamp or a per-tile scale in `lod_atlas.plan_layout`,
+  not attempted here.
+- **Workers.** `--jobs` defaults to min(cpu−2, 6, RAM // 7 GiB − 1), at least 1 (2 on this
+  24 GiB host): a worker baking one of the biggest stations (4096² source textures decoded,
+  2048² atlases with full mip chains) reaches ~7 GB RSS (measured on the flown-sector dry run),
+  and the pool replaces every worker process after one body (`maxtasksperchild=1`).
+- **Build gate.** `lod_atlas.build` refuses a body when its own check finds a rewritten vertex UV
+  outside its tile content, an inverse-map error above 1 source texel, or a face whose material
+  is not in its tile's material list; the specular atlas is baked only when an atlased material
+  carries `t_SpecularTexture`.
+- **Baking cost.** `lod_atlas.level_weights` (the per-axis area-resampling matrix of a tile at
+  one mip level) was a per-texel Python loop whose cost scaled with the tile's span in source
+  texels: a tiling texture spanning hundreds of UV periods (e.g. `Pirate_M2`'s u range
+  −13.6..491.8) cost ~1e9 iterations, and the first flown-sector dry run had two bodies still
+  baking after 34 minutes. It is now vectorised (whole periods, the partial interior run and the
+  two edge texels folded onto `t mod n` with numpy; weights equal to float32 rounding, max
+  |old − new| 1.2e-7 over 307 random and edge cases and 8 of 16 pilot atlases differ from the
+  installed ones by 1–18 decoded bytes, measured: `review/lw_check.py`, `review/pilot_atlas_cmp.py`),
+  so a 2048-row, 505-period matrix takes 0.01 s.
+  The second hot spot was `lod_atlas.check` (b), the per-face sampling diagnostic, whose box
+  reference gathers span/content source texels per face and axis: on the same bodies it ran
+  for another hour. It now samples at most `CHECK_FACES` (4096) faces, evenly spaced in face
+  order, thinned further so that the box reference gathers at most `CHECK_TEXELS` (2e7) source
+  texels per slot (`sampled_faces` in the manifest); the UV-inside and inverse-map checks (c)
+  still cover every face.
+- **Reporting.** Each run prints and records (`x3m-lod-batch.json`, `-summary.txt`,
+  `-bodies.txt` under `--out` or `--record`) the counts by refusal reason, atlas sizes and
+  bytes, the texels/px ratio, draws before/after, the per-sector resident estimate through
+  `lod_batch_census.sector_report` over its census files with a `--budget-mb` warning (default
+  512), timings and the extrapolated full-set wall time.
+- **Dry runs (2026-09-23, `batch-dryrun/`, measured).** Bottle, flown-sector bodies (`--only
+  sectors.txt`, 49 enumerated): 22 overlay bodies (12 at 1024², 10 at 2048²; 37.75 MB of atlases,
+  112.38 MB of body members), drawn groups 651 → 67 summed over them; Titan (`argon_M2`) 2
+  draws, `military_outpost_middleb` 4, `Argon_m7m` 2 with its 32,187 second-UV points passed
+  through, the six 250/150/80/30 stations under the waived guard 3–4 each; refused
+  `dominant_slot_missing` 9 (`StockmarketBoardXL` among them, so no flown mixed-effects body
+  was built), `text_body` 9, `material_outside_table` 3 (`argon_adsign_C`, two engine
+  effects), `ambiguous_body_ext` 1 (`weapondummy`), `no_opaque` 1; four bodies below 1.0
+  texel/px (`argon_tech_M_laser_cc` 0.04, `argon_tech_L_laser_bb` 0.05, `argon_gate` 0.23,
+  `owp_large` 0.72; that run predates the texel floor, which now refuses the first three); resident atlas
+  estimate 21–24 MB per flown sector; census 8.5 s, baking 46.7 s for 22 bodies with 6 jobs.
+  Vanilla+mod root (`modroot`, `only_mods.txt`, 3 `.bob` bodies from `addon/06.cat`):
+  `teladi_m2_cormorant/hull` 39 → 4 draws with three atlas materials (three effect files),
+  `boron_m7turretB_weapon` with 1 tolerated stray byte 7 → 1, `supply_base` 38 → 3; the
+  census-level enumeration of that root (`mod_enumeration_out.txt`) finds 2,974 mod-catalogue
+  winners (1,274 `.bob`, 167 `.pbb`, 1,482 `.pbd`, 51 `.bod`), 444 of them eligible (all `.bob`;
+  435 ships, 9 stations; 82 in the `.pbb`-only census), 86 with tolerated trailing bytes (68
+  eligible), 8 refused `trailing_bytes`, 57 eligible mixed-effect bodies, 4 `occlusion_mismatch`,
+  and 1,020 eligible bodies overall (593 at 1024², 427 at 2048², ~11.3 GB of atlases estimated).
+
 **Node side effects.** Two node-set side effects change at Very High (objdump of `0047cfe0..`,
 `/tmp/x3-lod/f47cfe0.s`). A child node flagged `node+0x12c & 0x40000` is hidden
 when its parent (`node+0x18`) is not renderable or has `+0x14c > 0`

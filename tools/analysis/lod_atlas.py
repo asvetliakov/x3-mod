@@ -66,21 +66,42 @@ tooling"; census: tools/analysis/atlas_census.py):
   its groups are copied with their own materials and UVs (points shared with atlased faces
   are duplicated), and its materials take no part in the tiles, the effect check or the
   g_Mat* mean. Record 0 of argon_TL / M2 / M1 has one (a 24-point box).
-- Refusals: a record with a second UV set (point flag 0x04; only the first pair is
-  rewritten) unless force_uv2, and opaque materials of more than one effect file unless
-  force_mixed_effects.
-- Material: a copy of the dominant opaque material (face count over all parts) with
-  t_DiffuseTexture / t_LightMapTexture = the atlases, t_SpecularTexture = the
-  specular atlas (--atlas-specular) or NULL (as 120 of 7198 shipped argon.fx
+- Mixed effects: the opaque materials are grouped by effect file (.fx, case-insensitive);
+  every effect gets its own merged material and one output group per part, all sharing
+  the one atlas set (same tiles, same UV rewrite), so a body draws one atlas group per
+  effect (238 vanilla bodies mix effects; lod-overlay-batch/summary.txt).
+- Second UV set (point flag 0x04): the fleet's second set is the per-body occlusion decal
+  unwrap (t_OcclusionTexture in [0,1], one texture per body, XT_standard_lighting.fx;
+  lod-overlay-batch/classes/classes_out.txt). Only the first pair is rewritten; the second
+  pair is copied through unchanged (with_uv keeps every other field), and the merged
+  material keeps the dominant material's t_OcclusionTexture and the g_Mat* mean covers
+  g_MatOcclStr. The body is refused when the opaque materials of one merged group carry
+  more than one occlusion texture (NULL / NONE_* / absent count as "none"; none mixed with
+  a decal refuses too), since one material cannot sample them all.
+- Material: per effect a copy of that effect's dominant opaque material (face count over
+  all parts) with t_DiffuseTexture / t_LightMapTexture = the atlases, t_SpecularTexture =
+  the specular atlas (--atlas-specular) or NULL (as 120 of 7198 shipped argon.fx
   materials), t_BumpTexture = the bump atlas (default; NULL with bump off),
-  t_AlphaTexture NULL,
-  every g_Mat* FLOAT the face-area-weighted mean over all atlased materials (unless
-  synth is off), appended to MAT6 with record index = position.
+  t_AlphaTexture NULL (the specular atlas is baked only when some atlased material carries
+  t_SpecularTexture), every g_Mat* FLOAT the face-area-weighted mean over the atlased
+  materials of that effect (unless synth is off), appended to MAT6 with record index =
+  position. A group material index outside the table (negative on the ad signs) is
+  refused before any of this.
 - Textures: member dds/x3m_lod_<body>_<slot>.pck (gzip DDS, as every shipped texture)
   named in the material as x3m_lod\\x3m_lod_<body>_<slot>.tga: the engine resolves a
   material texture name by its stem under dds\\ (shipped names carry a directory and
   .tga while the members are dds/<stem>.pck; the texture loader 0x004dc540 takes the
-  extension list "pck dds", loading-orchestration.md).
+  extension list "pck dds", loading-orchestration.md). <body> is the caller's qualified
+  stem (lod_overlay.qualified_stem: file stem + a 6-hex hash of the member path, so
+  colliding stems such as ships/terran/terran_M3 and ships/usc/terran_m3 get distinct,
+  stable names).
+- Source textures are resolved as the engine's loader does: dds/<stem>.pck|.dds (path
+  table +0x7c "dds\\%s", extension list "pck dds"), then tex/<stem>.jpg|.tga|.bmp (the
+  jpg/tga wrapper 0x004f3510, +0x74 "tex\\%s"); the dds-before-tex order is inferred from the
+  path table and the wrapper's role, not traced (no enumerated mod body reads a tex/ member,
+  so no body depends on it); jpg/tga/bmp are decoded with Pillow
+  (imported lazily; a missing Pillow refuses the body with a reason). The layout records
+  the member each tile's textures came from (tile 'sources').
 """
 import gzip
 import hashlib
@@ -364,41 +385,122 @@ def write_dds(levels, fmt):
 
 # --- texture resolution -------------------------------------------------------------------
 
-def texture_bytes(assets, name):
-    """Decoded DDS bytes of a material texture name (stem under dds/), None for NULL."""
+DDS_LOOKUP = ('dds', ('.pck', '.dds'))            # 0x004dc540 "pck dds" under +0x7c "dds\%s"
+IMAGE_LOOKUP = ('tex', ('.jpg', '.tga', '.bmp'))  # 0x004f3510 jpg/tga wrapper under +0x74 "tex\%s"
+
+
+def texture_source(assets, name):
+    """(decoded member bytes, kind 'dds' | 'image', info) of a material texture name resolved as
+    the engine's loader does (module notes): dds/<stem>.pck|.dds, then tex/<stem>.jpg|.tga|.bmp.
+    info = dict(source, member, decoded_sha256) from Assets.get; None for NULL."""
     if name is None or body_materials.is_null(name):
         return None
-    stem = 'dds/' + PurePosixPath(name.decode('latin1').replace('\\', '/')).stem
+    stem = PurePosixPath(name.decode('latin1').replace('\\', '/')).stem
     try:
-        data, _ = assets.logical(stem, ('.pck', '.dds', '.tga'))
+        data, info = assets.logical(f'{DDS_LOOKUP[0]}/{stem}', DDS_LOOKUP[1])
+        if data is None:
+            data, info = assets.logical(f'{IMAGE_LOOKUP[0]}/{stem}', IMAGE_LOOKUP[1])
     except ValueError as exc:
         raise AtlasError(f'texture {name!r}: {exc}') from None
     if data is None:
-        raise AtlasError(f'texture {name!r} does not resolve under dds/')
-    if data[:4] != b'DDS ':
-        raise AtlasError(f'texture {name!r} is not a DDS file')
+        raise AtlasError(f'texture {name!r} does not resolve under dds/ (pck, dds) or tex/ (jpg, tga, bmp)')
+    if data[:4] == b'DDS ':
+        return data, 'dds', info
+    if info['member'].lower().startswith(DDS_LOOKUP[0] + '/'):
+        raise AtlasError(f'texture {name!r} is not a DDS file ({info["member"]})')
+    return data, 'image', info
+
+
+def texture_bytes(assets, name):
+    """Decoded DDS bytes of a material texture name, None for NULL; a jpg/tga/bmp source is refused."""
+    src = texture_source(assets, name)
+    if src is None:
+        return None
+    data, kind, info = src
+    if kind != 'dds':
+        raise AtlasError(f'texture {name!r} is not a DDS file ({info["member"]})')
     return data
 
 
+def _pil_image(data, name):
+    import io
+    try:
+        from PIL import Image
+    except ImportError:
+        raise AtlasError(f'texture {name!r} is a jpg/tga/bmp member and Pillow (PIL) is not installed') from None
+    try:
+        return Image.open(io.BytesIO(data))
+    except Exception as exc:
+        raise AtlasError(f'texture {name!r}: cannot decode image ({exc})') from None
+
+
+def decode_image(data, name=b'?'):
+    """RGBA uint8 array (h, w, 4) of a jpg/tga/bmp member (Pillow, imported lazily)."""
+    with _pil_image(data, name) as im:
+        return np.asarray(im.convert('RGBA'), np.uint8)
+
+
+def image_size(data, name=b'?'):
+    with _pil_image(data, name) as im:
+        return im.size
+
+
 class Textures:
-    """Decoded mip 0 of material textures by name (lower-case), None for NULL."""
+    """Decoded mip 0 of material textures by name (lower-case), None for NULL; sizes and the
+    resolved member per name are cached too (plan_layout asks per tile per body)."""
     def __init__(self, assets):
-        self.assets, self.cache = assets, {}
+        self.assets, self.cache, self.sizes, self.sources = assets, {}, {}, {}
+
+    @staticmethod
+    def key(name):
+        return None if name is None or body_materials.is_null(name) else name.lower()
+
+    def _resolve(self, name):
+        """(data, kind, info) or None, with the member recorded under self.sources."""
+        key = self.key(name)
+        src = texture_source(self.assets, name)
+        if key is not None and src is not None:
+            self.sources[key] = dict(member=f'{src[2]["source"]}:{src[2]["member"]}', kind=src[1],
+                                     decoded_sha256=src[2]['decoded_sha256'])
+        return src
 
     def get(self, name):
-        key = None if name is None or body_materials.is_null(name) else name.lower()
+        key = self.key(name)
         if key not in self.cache:
-            data = texture_bytes(self.assets, name)
-            self.cache[key] = None if data is None else decode_dds(data)
+            src = self._resolve(name)
+            if src is None:
+                self.cache[key] = None
+            else:
+                data, kind, _ = src
+                self.cache[key] = decode_dds(data) if kind == 'dds' else decode_image(data, name)
         return self.cache[key]
 
     def size(self, name):
         """(w, h) of a real (not NULL, not NONE_*) texture, else None."""
         if name is None or body_materials.is_null(name) or body_materials.is_stock(name):
             return None
-        data = texture_bytes(self.assets, name)
-        w, h, _, _ = dds_format(data)
-        return w, h
+        key = self.key(name)
+        if key not in self.sizes:
+            try:
+                data, kind, _ = self._resolve(name)
+                self.sizes[key] = dds_format(data)[:2] if kind == 'dds' else tuple(image_size(data, name))
+            except AtlasError as exc:
+                self.sizes[key] = exc
+        if isinstance(self.sizes[key], Exception):
+            raise self.sizes[key]
+        return self.sizes[key]
+
+    def source(self, name):
+        """dict(member, kind, decoded_sha256) of a resolved texture name, None for NULL / unresolved."""
+        key = self.key(name)
+        if key is None:
+            return None
+        if key not in self.sources:
+            try:
+                self._resolve(name)
+            except AtlasError:
+                return None
+        return self.sources.get(key)
 
 
 # --- layout -------------------------------------------------------------------------------
@@ -514,9 +616,11 @@ def plan_layout(record, mats, alpha, textures, px, sizes=(1024, 2048), gutter=GU
                 (a, b), (c, d), (e, h) = uvs
                 t['uv_area'] += 0.5 * abs((c - a) * (h - b) - (e - a) * (d - b))
                 t['faces'] += 1
+    source_of = getattr(textures, 'source', lambda name: None)
     for t in tiles:
         sizes_ = [s for s in (textures.size(v) for v in t['names'].values()) if s]
         t['base'] = (max(s[0] for s in sizes_), max(s[1] for s in sizes_)) if sizes_ else (32, 32)
+        t['sources'] = {k: (source_of(v) or {}).get('member') for k, v in t['names'].items()}
         if t['faces'] == 0:
             t['lo'], t['hi'] = [0.0, 0.0], [1.0, 1.0]
         span = []
@@ -637,7 +741,10 @@ def rewrite_record(record, layout, atlas_index, alpha, alpha_remap=None, max_gro
     """C with rewritten UVs, duplicated points and regrouped parts; returns (lod, info). An output
     group referencing more than max_group_points distinct points is split (split_faces: whole
     source groups packed first-fit) into groups of the same material; a point used by an earlier split group is
-    duplicated (with its tangent record) so that the split groups share no point."""
+    duplicated (with its tangent record) so that the split groups share no point. atlas_index is
+    one atlas material index for every opaque group, or {source material: atlas material} (one
+    output class per distinct atlas material per part, in first-use order)."""
+    atlas_of = (lambda m: atlas_index) if isinstance(atlas_index, int) else atlas_index.__getitem__
     pts = record['points']
     new_pts, origin, owner, index, copies_of = list(pts), list(range(len(pts))), {}, {}, {}
 
@@ -660,8 +767,17 @@ def rewrite_record(record, layout, atlas_index, alpha, alpha_remap=None, max_gro
         if part['flags'] & HIDDEN_PART:                   # copied group by group, original UVs
             classes = [([(gi, g)], g['material'], False) for gi, g in enumerate(groups)]
         else:
-            classes = [([(gi, g) for gi, g in enumerate(groups) if g['material'] not in alpha], atlas_index, True),
-                       ([(gi, g) for gi, g in enumerate(groups) if g['material'] in alpha], None, False)]
+            classes = []
+            for gi, g in enumerate(groups):
+                if g['material'] in alpha:
+                    continue
+                ai = atlas_of(g['material'])
+                cls = next((c for c in classes if c[1] == ai), None)
+                if cls is None:
+                    cls = ([], ai, True)
+                    classes.append(cls)
+                cls[0].append((gi, g))
+            classes.append(([(gi, g) for gi, g in enumerate(groups) if g['material'] in alpha], None, False))
         for cls, material, atlased in classes:
             if not cls:
                 continue
@@ -758,11 +874,43 @@ def texture_names(body, slots):
             {s: f'dds/{st}.pck' for s, st in stems.items()})
 
 
+OCCLUSION_SLOT = b't_occlusiontexture'
+
+
+def effect_name(material):
+    return material.get('effect', b'').decode('latin1').lower()
+
+
+def occlusion_name(material):
+    """Lower-case t_OcclusionTexture of an effect material; None for absent / NULL / NONE_*."""
+    for n, t, v in material.get('params', ()):
+        if t == 8 and n.lower() == OCCLUSION_SLOT:
+            return None if body_materials.is_null(v) or body_materials.is_stock(v) else v.lower().decode('latin1')
+    return None
+
+
+def effect_classes(mats, opaque):
+    """[(effect, [material indices in first-use order])] of the opaque groups, largest face count
+    first (ties: first use). Refuses a group material index outside the table."""
+    faces, order = {}, {}
+    for g in opaque:
+        m = g['material']
+        if not 0 <= m < len(mats):
+            raise AtlasError(f'group material index {m} is outside the material table (0..{len(mats) - 1})')
+        eff = effect_name(mats[m])
+        order.setdefault(eff, [])
+        if m not in order[eff]:
+            order[eff].append(m)
+        faces[eff] = faces.get(eff, 0) + len(g['faces'])
+    ranked = sorted(order, key=lambda e: (-faces[e], list(order).index(e)))
+    return [(e, order[e]) for e in ranked]
+
+
 def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular=False, synth=True,
-             gutter=GUTTER, min_ratio=MIN_RATIO, textures=None, bump=True, force_uv2=False,
-             force_mixed_effects=False, max_group_points=None):
-    """Atlas collapse of `record`: appends the atlas material (then any synthesized alpha material)
-    to `mats` in place. Returns dict(record, layout, atlas_index, names, members, synth, ...)."""
+             gutter=GUTTER, min_ratio=MIN_RATIO, textures=None, bump=True, max_group_points=None):
+    """Atlas collapse of `record`: appends one atlas material per opaque effect file (then any
+    synthesized alpha material) to `mats` in place. Returns dict(record, layout, atlas_index (the
+    largest effect's), atlas_indices, atlas_of, names, members, synth, uv2, occlusion, ...)."""
     import lod_overlay
     textures = textures or Textures(assets)
     areas, opaque = {}, []
@@ -777,23 +925,34 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
     if not opaque:
         raise AtlasError('the record has no opaque faces to atlas')
     uv2 = sum(1 for p in record['points'] if p[0] & 4)
-    if uv2 and not force_uv2:
-        raise AtlasError(f'{uv2} points carry a second UV set (point flag 0x04); only the first UV pair is'
-                         ' rewritten into the atlas, so anything sampling the second set would be wrong;'
-                         ' --force-uv2 overrides')
-    effects = sorted({mats[m].get('effect', b'').decode('latin1').lower() for m in areas})
-    if len(effects) > 1 and not force_mixed_effects:
-        raise AtlasError(f'the opaque materials use {len(effects)} effect files {effects}; one atlas material'
-                         ' draws them all with one effect; --force-mixed-effects overrides')
+    classes = effect_classes(mats, opaque)
+    occlusion = {}
+    for eff, mis in classes:
+        names_ = sorted({occlusion_name(mats[m]) or 'none' for m in mis}, key=str)
+        if len(names_) > 1:
+            raise AtlasError(f'the opaque materials of effect {eff or "(none)"} carry {len(names_)} different'
+                             f' occlusion textures {names_} (second UV set: {uv2} points); one merged material'
+                             ' cannot sample them all')
+        occlusion[eff] = names_[0]
     dom = dominant(opaque)
     has_bump = any(t == 8 and n.lower() == SLOT_NAMES['bump'] for n, t, _ in mats[dom].get('params', ()))
-    slots = ('diffuse', 'light') + (('bump',) if bump and has_bump else ()) + (('specular',) if specular else ())
+    has_spec = any(t == 8 and n.lower() == SLOT_NAMES['specular'] for m in areas for n, t, _ in mats[m].get('params', ()))
+    slots = (('diffuse', 'light') + (('bump',) if bump and has_bump else ())
+             + (('specular',) if specular and has_spec else ()))
     layout = plan_layout(record, mats, alpha, textures, px, sizes, gutter, slots, min_ratio)
     names, members = texture_names(body, slots)
-    mat, rows = atlas_material(mats, dom, names, areas, synth)
-    atlas_index = len(mats)
-    mats.append(mat)
-    report = [dict(index=atlas_index, dominant=dom, absorbed=sorted(areas), params=rows, atlas=True)]
+    atlas_of, indices, report = {}, [], []
+    for eff, mis in classes:
+        d = dominant([g for g in opaque if g['material'] in mis])
+        mat, rows = atlas_material(mats, d, names, {m: areas[m] for m in mis}, synth)
+        idx = len(mats)
+        mats.append(mat)
+        indices.append(idx)
+        for m in mis:
+            atlas_of[m] = idx
+        report.append(dict(index=idx, dominant=d, absorbed=sorted(mis), params=rows, atlas=True, effect=eff,
+                           occlusion=occlusion[eff]))
+    atlas_index = indices[0]
     remap = {}
     if synth:
         alpha_only = {'points': record['points'], 'parts': [
@@ -801,10 +960,11 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
             for p in record['parts'] if not p['flags'] & HIDDEN_PART]}
         remap, more = lod_overlay.synth_materials(mats, alpha_only, alpha, 'two', frozenset())
         report += more
-    lod, info = rewrite_record(record, layout, atlas_index, alpha, remap, max_group_points)
+    lod, info = rewrite_record(record, layout, atlas_of, alpha, remap, max_group_points)
     effects = sorted({(mats[m].get('effect', b'').decode('latin1'), mats[m].get('technique')) for m in areas})
-    return dict(record=lod, layout=layout, atlas_index=atlas_index, dominant=dom, names=names, members=members,
-                slots=slots, synth=report, info=info, effects=effects, textures=textures)
+    return dict(record=lod, layout=layout, atlas_index=atlas_index, atlas_indices=indices, atlas_of=atlas_of,
+                dominant=dom, names=names, members=members, slots=slots, synth=report, info=info,
+                effects=effects, textures=textures, uv2=uv2, occlusion=occlusion)
 
 
 # --- baking -------------------------------------------------------------------------------
@@ -814,19 +974,29 @@ def level_weights(k0, k1, scale, origin, content, lo, span, src_n):
     texel k covers level-0 atlas texels [k * scale, (k + 1) * scale), which map to the source
     periods lo + (x - origin) * span / content of a repeating source (origin / content: the
     tile's content origin and size in level-0 texels)."""
-    m = np.zeros((k1 - k0, src_n), np.float32)
+    # Vectorised (2026-09-23): per level texel the coverage of every source texel index t in
+    # [floor(a), floor(b)] is folded onto t mod src_n: whole periods, the partial period of the
+    # interior run and the two edge texels. The former per-texel Python loop scaled with the
+    # tile's span in source texels (a tiling texture spanning hundreds of periods took hours).
+    rows = k1 - k0
     step = scale * span / content * src_n
-    for r, k in enumerate(range(k0, k1)):
-        a = (lo + (k * scale - origin) * span / content) * src_n
-        b = a + step
-        j = math.floor(a)
-        while j < b:
-            cov = min(b, j + 1) - max(a, j)
-            if cov > 0:
-                m[r, j % src_n] += cov
-            j += 1
-        m[r] /= step
-    return m
+    k = np.arange(k0, k1, dtype=np.float64)
+    a = (lo + (k * scale - origin) * span / content) * src_n
+    b = a + step
+    fa, fb = np.floor(a).astype(np.int64), np.floor(b).astype(np.int64)
+    m = np.zeros((rows, src_n), np.float64)
+    if rows == 0:
+        return m.astype(np.float32)
+    j = np.arange(src_n, dtype=np.int64)
+    c = np.maximum(fb - fa - 1, 0)                    # interior texels fa+1 .. fb-1, coverage 1 each
+    m += (c // src_n)[:, None]
+    m += (((j[None, :] - ((fa + 1) % src_n)[:, None]) % src_n) < (c % src_n)[:, None])
+    r = np.arange(rows)
+    same = fb == fa
+    np.add.at(m, (r, fa % src_n), np.where(same, b - a, fa + 1 - a))
+    np.add.at(m, (r, fb % src_n), np.where(same, 0.0, b - fb))
+    m /= step
+    return m.astype(np.float32)
 
 
 def axis_weights(n_out, gutter, lo, span, src_n):
@@ -983,13 +1153,22 @@ def _stats(errs):
     return (float(e.mean()), float(np.percentile(e, 95)), float(e.max())) if len(e) else (0.0, 0.0, 0.0)
 
 
-def check(source_record, out_record, result, atlases, mats):
+CHECK_FACES = 4096         # faces sampled per slot by check() (b); (c) always covers every face
+CHECK_TEXELS = 2e7         # source texels the box reference of (b) may gather per slot (thins the sample)
+CHECK_MAP_TEXELS = 1.0     # build() refuses a body whose inverse-map error (c) exceeds this many source texels
+
+
+def check(source_record, out_record, result, atlases, mats, max_faces=CHECK_FACES):
     """(b) per slot: atlas bilinear at the rewritten face centroid vs the source bilinear (wrap)
     at the original centroid (mip 0), and vs the source box-filtered over one atlas texel
-    (a reference without the downsampling loss); mean / p95 / max over faces of the mean
-    |RGB| error and of the |A| error (0..255).
+    (a reference without the downsampling loss); mean / p95 / max over the sampled faces of the
+    mean |RGB| error and of the |A| error (0..255). At most max_faces faces are sampled, evenly
+    spaced in face order (every face below that; 'sampled_faces' reports the count): the box
+    reference gathers span/content source texels per face and axis, so a tiling texture spanning
+    hundreds of periods on a 200k-face body cost an hour per body (2026-09-23).
     (c) every rewritten vertex UV inside its tile content (and gutter), and the inverse-mapped
-    centroid equal to the original one modulo the integer shift (max error in source texels)."""
+    centroid equal to the original one modulo the integer shift (max error in source texels),
+    over every face."""
     layout, textures = result['layout'], result['textures']
     n, g = layout['size'], layout['gutter']
     spts, opts = source_record['points'], out_record['points']
@@ -997,8 +1176,11 @@ def check(source_record, out_record, result, atlases, mats):
     inside = in_gutter = 0
     worst_map = 0.0
     su_list = []
-    for pi, sf, of, mi, ti in faces:
+    stride = max(1, -(-len(faces) // max_faces)) if max_faces else 1
+    for fi, (pi, sf, of, mi, ti) in enumerate(faces):
         t = layout['tiles'][ti]
+        if mi not in t['mats']:
+            raise AtlasError(f'atlas check: face of material {mi} was placed in tile {ti} of materials {t["mats"]}')
         (cx, cy), (cw, ch) = t['origin'], t['content']
         for j in of[:3]:
             u, v = point_uv(opts[j])
@@ -1012,9 +1194,17 @@ def check(source_record, out_record, result, atlases, mats):
         inv_u = t['lo'][0] + (nu[0] * n - cx) * t['span'][0] / cw
         inv_v = t['lo'][1] + (nu[1] * n - cy) * t['span'][1] / ch
         worst_map = max(worst_map, abs(inv_u - (ou[0] - su)) * t['base'][0], abs(inv_v - (ou[1] - sv)) * t['base'][1])
-        su_list.append((ou, nu, mi, t))
+        if fi % stride == 0:
+            su_list.append((ou, nu, mi, t))
+    # the box reference gathers (span / content * source side) texels per axis and face: thin the
+    # sample further so that the gathered texels stay within CHECK_TEXELS per slot
+    work = sum((t['span'][0] / t['content'][0] * t['base'][0] + 1) * (t['span'][1] / t['content'][1] * t['base'][1] + 1)
+               for _, _, _, t in su_list)
+    if work > CHECK_TEXELS:
+        thin = math.ceil(work / CHECK_TEXELS)
+        su_list = su_list[::thin]
     out = dict(faces=len(faces), vertices=3 * len(faces), inside=inside, in_gutter=in_gutter,
-               max_map_error_texels=worst_map, slots={})
+               max_map_error_texels=worst_map, sampled_faces=len(su_list), slots={})
     angle = lambda x, y: np.degrees(np.arccos(np.clip((normalize(to_normals(x)) * normalize(to_normals(y))).sum(-1),
                                                        -1, 1)))
     for slot, atlas in atlases.items():
@@ -1087,13 +1277,20 @@ def preview(dds, layout, path, limit=512):
 # --- lod_overlay entry --------------------------------------------------------------------
 
 def build(assets, body, mats, record, alpha, px, sizes=(1024, 2048), fmt='dxt', specular=False, synth=True,
-          bump=True, force_uv2=False, force_mixed_effects=False, max_group_points=None):
+          bump=True, max_group_points=None, textures=None):
     """collapse + bake + encode + check; the result carries the encoded DDS per slot and the checks."""
-    res = collapse(assets, body, mats, record, alpha, px, sizes, specular, synth, bump=bump, force_uv2=force_uv2,
-                   force_mixed_effects=force_mixed_effects, max_group_points=max_group_points)
+    res = collapse(assets, body, mats, record, alpha, px, sizes, specular, synth, bump=bump,
+                   max_group_points=max_group_points, textures=textures)
     images = bake(res['layout'], res['textures'])
     res['encoded'] = encode(images, res['layout'], fmt)
     res['check'] = check(record, res['record'], res, {s: e['decoded'] for s, e in res['encoded'].items()}, mats)
+    c = res['check']
+    if c['inside'] < c['vertices']:
+        raise AtlasError(f'atlas check: {c["vertices"] - c["inside"]} of {c["vertices"]} rewritten vertex UVs fall'
+                         ' outside their tile content')
+    if c['max_map_error_texels'] > CHECK_MAP_TEXELS:
+        raise AtlasError(f'atlas check: inverse-map error {c["max_map_error_texels"]:.3f} source texels exceeds'
+                         f' {CHECK_MAP_TEXELS}')
     return res
 
 
@@ -1105,13 +1302,16 @@ def summary(res):
     """JSON-ready description of an atlas build (manifest)."""
     L, c = res['layout'], res['check']
     return dict(
-        material=res['atlas_index'], dominant=res['dominant'], size=L['size'], scale=_num(L['scale']),
+        material=res['atlas_index'], materials=list(res.get('atlas_indices', [res['atlas_index']])),
+        dominant=res['dominant'], size=L['size'], scale=_num(L['scale']),
         gutter=L['gutter'], px=L['px'], min_texels_per_px=_num(L['min_ratio']), ratio_ok=bool(L['ratio_ok']),
         tried=[dict(size=n, scale=_num(s), min_texels_per_px=_num(m)) for n, s, m in L['tried']],
         duplicated_points=res['info']['duplicated'], points=len(res['record']['points']),
         split_groups=res['info']['split'],
         missing_tangent_records=res['info']['missing_records'], effects=[list(e) for e in res['effects']],
+        uv2_points=res.get('uv2', 0), occlusion=res.get('occlusion', {}),
         tiles=[dict(mats=t['mats'], names={k: (v.decode('latin1') if v else None) for k, v in t['names'].items()},
+                    sources=dict(t.get('sources', {})),
                     lo=[_num(x) for x in t['lo']], span=[_num(x) for x in t['span']], base=list(t['base']),
                     content=list(t['content']), origin=list(t['origin']), texels_per_px=_num(t['ratio']))
                for t in L['tiles']],
@@ -1119,7 +1319,7 @@ def summary(res):
                        dds_bytes=e['bytes'], dds_sha256=e['sha256'],
                        compression_error_rgba=[[_num(m), _num(p)] for m, p in e['error']])
                   for s, e in res['encoded'].items()],
-        check=dict(faces=c['faces'], vertices=c['vertices'], uv_inside_content=c['inside'],
+        check=dict(faces=c['faces'], sampled_faces=c.get('sampled_faces', c['faces']), vertices=c['vertices'], uv_inside_content=c['inside'],
                    uv_inside_gutter=c['in_gutter'], max_map_error_texels=_num(c['max_map_error_texels']),
                    slots={s: {k: [_num(x) for x in v] for k, v in d.items()} for s, d in c['slots'].items()}))
 
@@ -1127,11 +1327,18 @@ def summary(res):
 def format_summary(s):
     """Report lines for lod_overlay.describe."""
     tried = ', '.join(f'{t["size"]}: {t["min_texels_per_px"]:.3f}' for t in s['tried'])
+    mats = s.get('materials', [s['material']])
     lines = [f'atlas {s["size"]}x{s["size"]} (min atlas texels per screen pixel at px={s["px"]:g}: {tried}; '
              f'>= 2: {"yes" if s["ratio_ok"] else "NO"}) scale {s["scale"]:.4f} tiles {len(s["tiles"])} gutter '
              f'{s["gutter"]} duplicated points {s["duplicated_points"]} -> {s["points"]} points, tangent records'
-             f' missing {s["missing_tangent_records"]}; material mat{s["material"]} = copy of mat{s["dominant"]};'
-             f' effects {s["effects"]}']
+             f' missing {s["missing_tangent_records"]}; materials {["mat%d" % m for m in mats]} (mat{s["material"]}'
+             f' = copy of mat{s["dominant"]}); effects {s["effects"]}'
+             + (f'; second UV set on {s["uv2_points"]} points passed through, occlusion {s["occlusion"]}'
+                if s.get('uv2_points') else '')]
+    for t in s['tiles']:
+        odd = {k: v for k, v in t.get('sources', {}).items() if v and not v.split(':', 1)[-1].lower().startswith('dds/')}
+        if odd:
+            lines.append(f'atlas tile mats {t["mats"]}: non-dds sources ' + ', '.join(f'{k}={v}' for k, v in odd.items()))
     for sp in s.get('split_groups', ()):
         lines.append(f'atlas split: part {sp["part"]} mat{sp["material"]} {sp["faces"]} faces -> {len(sp["points"])}'
                      f' groups of {sp["points"]} points (<= MAX_GROUP_POINTS each; shared points duplicated)')
@@ -1144,7 +1351,7 @@ def format_summary(s):
                  f'{c["vertices"]} (inside tile+gutter {c["uv_inside_gutter"]}), max inverse-map error'
                  f' {c["max_map_error_texels"]:.3f} source texels')
     for slot, d in c['slots'].items():
-        lines.append(f'atlas sampling {slot} (per-face centroid, mean/p95/max of |error| 0..255): vs source mip 0'
+        lines.append(f'atlas sampling {slot} ({c.get("sampled_faces", c["faces"])} face centroids, mean/p95/max of |error| 0..255): vs source mip 0'
                      f' RGB {"/".join(f"{x:.2f}" for x in d["src_rgb"])} A {"/".join(f"{x:.2f}" for x in d["src_a"])};'
                      f' vs source prefiltered to the atlas texel RGB {"/".join(f"{x:.2f}" for x in d["box_rgb"])}'
                      f' A {"/".join(f"{x:.2f}" for x in d["box_a"])}'

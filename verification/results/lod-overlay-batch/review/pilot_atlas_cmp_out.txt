@@ -1,0 +1,5 @@
+objects/ships/argon/argon_M1.pbb stored==installed True decoded==installed True decoded bytes 5192117 differing bytes 0
+dds/x3m_lod_argon_M1_diffuse.pck stored==installed False decoded==installed False decoded bytes 699192 differing bytes 4
+dds/x3m_lod_argon_M1_light.pck stored==installed False decoded==installed False decoded bytes 1398256 differing bytes 18
+dds/x3m_lod_argon_M1_bump.pck stored==installed True decoded==installed True decoded bytes 1398256 differing bytes 0
+dds/x3m_lod_argon_M1_specular.pck stored==installed False decoded==installed False decoded bytes 1398256 differing bytes 5

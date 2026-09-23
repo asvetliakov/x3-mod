@@ -1,0 +1,97 @@
+batch: game /Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3; display 1920x1080 -> reference width 1800; rule ships T_pad = min(200, max(80, 2.5 x T_1)), stations/others 150; source record 0, compact (T_1 guard waived: 6 bodies); atlas sizes [1024, 2048], dxt, specular on
+bodies enumerated 49 (--only verification/results/lod-overlay-batch/sectors.txt): station 20, other 19, ship 10; eligible 19; built 19 + reused 0 = 19 overlay bodies
+refused by reason (a body counts once per reason): dominant_slot_missing 9, text_body 9, material_outside_table 3, texel_floor 3, ambiguous_body_ext 1, no_opaque 1
+filtered: no_draw_gain 4, category_other 1
+atlas sizes {1024: 12, 2048: 7}; atlas bytes 37.08 MB (stored, gzip DDS); body members 86.51 MB; dat bytes 123585419
+texels per px at 1800 wide: below 1.0 1 (ships/owp/owp_large), below 2.0 5, of 19 built; refused texel_floor (< 0.5) 3: stations/station_scenes/tech/argon_tech_M_laser_cc 0.04, stations/station_scenes/tech/argon_tech_L_laser_bb 0.05, others/argon_gate 0.23
+draws below T_pad per instance, summed over the overlay bodies: 561 -> 55 (drawn groups of record 0 -> of C, hidden parts excluded, alpha groups included); bodies with one atlas material per effect (0): ; second UV set passed through (1): ships/M7/Argon_m7m; stray trailing bytes tolerated: 0
+timing: census 13.8 s, baking 91.1 s for 19 bodies with 2 jobs (4.79 s per body wall); extrapolated full set: 235 s (this run x 49 enumerated / 19 built; upper bound, every candidate baked); total 104.9 s
+target addon/05.cat + .dat (replaces the previous overlay in that slot)
+source bodies read without the overlay catalogue(s) ['addon/05.cat']
+== run255_burst2 (verification/results/run255-census/node_census_out.txt frame 14286): 20 bodies drawn
+    62 draws ships/argon/argon_TL T_pad=80 r0_drawn=31 C_drawn=2 @1800=1024/1.28MB
+    37 draws ships/M7/Argon_m7m T_pad=80 r0_drawn=38 C_drawn=2 @1800=1024/1.36MB
+    36 draws stations/trading_stations/argon_trading_station_partB T_pad=150 r0_drawn=36 C_drawn=2 @1800=2048/4.26MB
+    36 draws stations/station_scenes/tech/argon_tech_M_laser_cc not eligible: texel_floor
+    35 draws stations/station_scenes/others/argon_spacedock T_pad=150 r0_drawn=35 C_drawn=4 @1800=1024/1.06MB
+    33 draws stations/station_scenes/others/argon_equipmentdock T_pad=150 r0_drawn=33 C_drawn=4 @1800=1024/1.18MB
+    32 draws stations/trading_stations/argon_trading_station_partA T_pad=150 r0_drawn=32 C_drawn=2 @1800=2048/4.59MB
+    32 draws ships/argon/argon_M2 T_pad=80 r0_drawn=32 C_drawn=2 @1800=1024/1.35MB
+    32 draws ships/argon/argon_M1 T_pad=80 r0_drawn=32 C_drawn=2 @1800=1024/1.24MB
+    17 draws stations/living_sections/argon_livingsection T_pad=150 r0_drawn=17 C_drawn=2 @1800=2048/4.41MB
+    16 draws others/argon_gate not eligible: texel_floor
+    15 draws stations/station_scenes/tech/argon_tech_L_missile_C T_pad=150 r0_drawn=37 C_drawn=3 @1800=1024/1.40MB
+    12 draws stations/x3ap/StockmarketBoardXL not eligible: dominant_slot_missing
+    10 draws others/argon_adsign_C not eligible: material_outside_table
+     6 draws stations/x3ap/StockmarketBoardM T_pad=150 r0_drawn=6 C_drawn=3 @1800=1024/0.42MB
+     4 draws environments/nebulae/bluewell/nebula_bluewell_background_01 not eligible: dominant_slot_missing,category_other
+     4 draws environments/planets/planet_close_waterworld not eligible: dominant_slot_missing,category_other
+     2 draws ships/argon/argon_M4 not eligible: no_draw_gain
+     2 draws others/argon_gate_effect not eligible: no_opaque
+     2 draws effects/menugfx/hud_radar_2d not eligible: text_body
+  eligible 11; resident atlas estimate (one set per distinct body, added to the source textures): 1800 wide 22.55 MB (cap 2048: 22.55 MB)
+== run257_burst1 (verification/results/run257-pilot/census_run257_out.txt frame 3615): 31 bodies drawn
+    38 draws stations/station_scenes/tech/argon_tech_L_laser_bb not eligible: texel_floor
+    38 draws ships/M7/Argon_m7m T_pad=80 r0_drawn=38 C_drawn=2 @1800=1024/1.36MB
+    36 draws stations/others/military_outpost_middleb T_pad=150 r0_drawn=34 C_drawn=4 @1800=2048/1.90MB
+    35 draws stations/station_scenes/others/argon_spacedock T_pad=150 r0_drawn=35 C_drawn=4 @1800=1024/1.06MB
+    32 draws ships/M7/Argon_M7 T_pad=80 r0_drawn=16 C_drawn=2 @1800=1024/0.97MB
+    20 draws ships/owp/owp_large T_pad=80 r0_drawn=20 C_drawn=4 @1800=2048/1.80MB
+    15 draws stations/station_scenes/tech/argon_tech_L_shield_F T_pad=150 r0_drawn=38 C_drawn=4 @1800=1024/0.51MB
+    14 draws others/argon_gate not eligible: texel_floor
+    11 draws ships/M7/Split_M7M T_pad=80 r0_drawn=11 C_drawn=3 @1800=1024/1.41MB
+     8 draws stations/connections/connect_argon_pipe_huge_cargoanimA_ not eligible: no_draw_gain
+     6 draws ships/props/weapondummy not eligible: ambiguous_body_ext,no_draw_gain
+     4 draws environments/nebulae/greenvoid/nebula_greenvoid_background_01 not eligible: dominant_slot_missing,category_other
+     4 draws ships/argon/argon_M1 T_pad=80 r0_drawn=32 C_drawn=2 @1800=1024/1.24MB
+     4 draws stations/connections/connect_argon_pipe_huge_cargoanimB_ not eligible: no_draw_gain
+     3 draws effects/menugfx/hud_target_text not eligible: text_body
+     2 draws ships/argon/argon_M3_var2 not eligible: dominant_slot_missing
+     2 draws ships/argon/argon_M2 T_pad=80 r0_drawn=32 C_drawn=2 @1800=1024/1.35MB
+     2 draws ships/argon/argon_TL T_pad=80 r0_drawn=31 C_drawn=2 @1800=1024/1.28MB
+     2 draws others/argon_gate_effect not eligible: no_opaque
+     2 draws effects/menugfx/hud_radar_2d not eligible: text_body
+     2 draws effects/menugfx/GUI/gui_master not eligible: text_body
+     1 draws environments/nebulae/greenvoid/nebula_greenvoid_stars_01 not eligible: dominant_slot_missing,category_other
+     1 draws environments/asteroids/asteroid_A_ClassMine not eligible: dominant_slot_missing,category_other
+     1 draws environments/asteroids/asteroid_B_ClassMine not eligible: dominant_slot_missing,category_other
+     1 draws stations/living_sections/argon_livingsection T_pad=150 r0_drawn=17 C_drawn=2 @1800=2048/4.41MB
+     1 draws stations/station_scenes/tech/argon_tech_S_laser_E T_pad=150 r0_drawn=37 C_drawn=3 @1800=1024/1.33MB
+     1 draws stations/station_scenes/tech/argon_tech_M_laser_G T_pad=150 r0_drawn=38 C_drawn=4 @1800=2048/1.84MB
+     1 draws effects/engines/fx_engine_argon_m3 not eligible: material_outside_table,category_other
+     1 draws effects/menugfx/hud_info_2d not eligible: text_body
+     1 draws effects/menugfx/hud_weapons_2d not eligible: text_body
+     1 draws effects/menugfx/GUI/sidebar not eligible: text_body
+  eligible 13; resident atlas estimate (one set per distinct body, added to the source textures): 1800 wide 20.46 MB (cap 2048: 20.46 MB)
+== run260 (verification/results/lod-overlay-batch/census_run260_out.txt frame 9868): 30 bodies drawn
+    36 draws stations/trading_stations/argon_trading_station_partB T_pad=150 r0_drawn=36 C_drawn=2 @1800=2048/4.26MB
+    36 draws stations/station_scenes/tech/argon_tech_M_laser_cc not eligible: texel_floor
+    35 draws stations/station_scenes/others/argon_spacedock T_pad=150 r0_drawn=35 C_drawn=4 @1800=1024/1.06MB
+    33 draws stations/station_scenes/others/argon_equipmentdock T_pad=150 r0_drawn=33 C_drawn=4 @1800=1024/1.18MB
+    32 draws stations/trading_stations/argon_trading_station_partA T_pad=150 r0_drawn=32 C_drawn=2 @1800=2048/4.59MB
+    30 draws stations/station_scenes/tech/argon_tech_S_factory_A T_pad=150 r0_drawn=38 C_drawn=3 @1800=2048/4.76MB
+    18 draws stations/living_sections/argon_livingsection T_pad=150 r0_drawn=17 C_drawn=2 @1800=2048/4.41MB
+    16 draws others/argon_gate not eligible: texel_floor
+    15 draws stations/station_scenes/tech/argon_tech_L_missile_C T_pad=150 r0_drawn=37 C_drawn=3 @1800=1024/1.40MB
+    12 draws stations/x3ap/StockmarketBoardXL not eligible: dominant_slot_missing
+    10 draws others/argon_adsign_C not eligible: material_outside_table
+    10 draws ships/argon/argon_TL T_pad=80 r0_drawn=31 C_drawn=2 @1800=1024/1.28MB
+     6 draws stations/x3ap/StockmarketBoardM T_pad=150 r0_drawn=6 C_drawn=3 @1800=1024/0.42MB
+     4 draws environments/nebulae/bluewell/nebula_bluewell_background_01 not eligible: dominant_slot_missing,category_other
+     4 draws environments/planets/planet_close_waterworld not eligible: dominant_slot_missing,category_other
+     3 draws effects/menugfx/hud_target_text not eligible: text_body
+     2 draws ships/argon/argon_M4 not eligible: no_draw_gain
+     2 draws others/argon_gate_effect not eligible: no_opaque
+     2 draws effects/menugfx/hud_radar_2d not eligible: text_body
+     2 draws ships/props/weapondummy not eligible: ambiguous_body_ext,no_draw_gain
+     1 draws environments/nebulae/bluewell/nebula_bluewell_stars_01 not eligible: dominant_slot_missing,category_other
+     1 draws environments/planets/moon_small_ice not eligible: category_other,no_draw_gain
+     1 draws effects/engines/fx_engine_argon_M4 not eligible: material_outside_table,category_other
+     1 draws environments/nebulae/bluewell/nebula_bluewell_dust_part04 not eligible: text_body
+     1 draws environments/nebulae/bluewell/nebula_bluewell_dust_part05 not eligible: text_body
+     1 draws effects/menugfx/GUI/blackpearl not eligible: text_body
+     1 draws effects/menugfx/hud_info_2d not eligible: text_body
+     1 draws effects/menugfx/hud_weapons_2d not eligible: text_body
+     1 draws effects/menugfx/GUI/sidebar not eligible: text_body
+     1 draws effects/menugfx/GUI/gui_master not eligible: text_body
+  eligible 9; resident atlas estimate (one set per distinct body, added to the source textures): 1800 wide 23.36 MB (cap 2048: 23.36 MB)

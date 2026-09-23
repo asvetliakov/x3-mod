@@ -1,22 +1,29 @@
 #!/usr/bin/env python3
 """Read-only census for a fleet-wide merged-LOD atlas overlay batch (lod_overlay.py --collapse atlas).
 
-Walks every winning binary body (.pbb, as bob1.py audit) of the shipped catalogues, with every
-catalogue carrying an x3m-lod marker skipped (lod_overlay.original_assets), and prints one row
-per body: ladder, record 0 faces/points/groups, the coarsest record's groups, effect files,
-material table kind, second UV set, alpha materials, atlas-name collisions, the reasons
-`--collapse atlas` (source record 0, compact placement) would refuse it, the atlas size the
-texel rule picks at --screen-width (default 1920, the reference for every total; 1280 and
-2560 are extra columns), draws saved against record 0 and against the coarsest record, and
-the estimated overlay cost. Nothing is baked, built
-or written into the game directory: the atlas checks run lod_atlas.collapse (uv2, effect,
-layout, UV rewrite and group split; no baking) on a copy of the material table.
+Walks every winning binary body (.pbb and unpacked .bob members; mods ship .bob) of the
+installed catalogues, with every catalogue carrying a valid x3m-lod marker skipped
+(lod_overlay.original_assets; an orphaned marker's catalogue is a mod's and is read), and prints
+one row per body: ladder, record 0 faces/points/groups, the coarsest record's groups, effect
+files, material table kind, second UV set, alpha materials, the reasons `--collapse atlas`
+(source record 0, compact placement) would refuse it, the atlas size the texel rule picks at
+--screen-width (default 1920, the reference for every total; 1280 and 2560 are extra columns),
+draws saved against record 0 and against the coarsest record, and the estimated overlay cost.
+Nothing is baked, built or written into the game directory: the atlas checks run
+lod_atlas.collapse (effect classes, occlusion check, layout, UV rewrite and group split; no
+baking) on a copy of the material table. With include_text (the batch), winning text bodies
+(.pbd/.bod without a binary twin) are rows refused as text_body; a stem with both a binary and
+a text member is ambiguous_body_ext (bob1.resolve_body). Bodies with up to
+lod_overlay.MAX_TRAILING stray bytes after /BOB parse with a warning column (trailing); more
+is trailing_bytes. Each row carries inputs_sha256 (the decoded body plus every texture the
+tiles read) for lod_overlay.py --batch --sync.
 
-Switch-size rule (proposed; parameters --ship-min/--ship-factor/--station-t/--t-cap):
+Switch-size rule (parameters --ship-min/--ship-factor/--station-t/--t-cap):
   ships:    T_pad = min(200, max(80, 2.5 * T_1))   (T_1 = record 1 threshold; 80 for a single-LOD body)
   stations: T_pad = min(200, 150)                  (objects/stations and objects/others)
   other top directories (effects, environments, cockpits, ...) are excluded unless --include-other
-  (then the station rule). compact placement refuses T_pad < T_1 (lod_overlay.place).
+  (then the station rule). compact placement's T_pad >= T_1 guard is waived for source record 0
+  (lod_overlay.py, "Batch mode"), so T_pad below T_1 is a column, not a refusal.
 
 Costs: atlas bytes = DDS bytes of the slots the tool writes with --atlas-specular (assumed;
 bump only when the dominant material has a bump slot) with a full mip chain at the chosen side.
@@ -24,13 +31,14 @@ A lower bound: diffuse is counted DXT1 and light/bump/specular DXT5 as on the pi
 lod_atlas.encode picks DXT5 for any slot whose level-0 alpha is not all 255, which is not known
 without baking. Body member bytes ~ record 0 bytes x 1.2. Before any check, the body must resolve
 through bob1.resolve_body as lod_overlay.plan_body does (both .pbb and .pbd -> ambiguous_body_ext).
-batch_stem_collision counts only among bodies that are otherwise eligible (atlas names use the stem).
+Atlas member names use lod_overlay.qualified_stem (stem + path hash), so stems never collide.
 Sizes are tried from --atlas-size up to --atlas-max-size (default 4096, above the tool's 2048
 default, so the need is visible); the summary also gives the 2048-capped totals.
 
   python3 tools/analysis/lod_batch_census.py [--game DIR] [--out DIR] [--jobs N] [--limit N] [--screen-width 1920]
 """
 import argparse
+import hashlib
 import math
 import multiprocessing
 import os
@@ -53,11 +61,14 @@ STATION_DIRS = ('stations', 'others')
 SECTORS = (('run255_burst2', 'verification/results/run255-census/node_census_out.txt', '14286'),
            ('run257_burst1', 'verification/results/run257-pilot/census_run257_out.txt', '3615'),
            ('run260', 'verification/results/lod-overlay-batch/census_run260_out.txt', '9868'))
-ATLAS_REASONS = (('second UV set', 'uv2'), ('effect files', 'mixed_effects'),
+ATLAS_REASONS = (('occlusion textures', 'occlusion_mismatch'), ('outside the material table', 'material_outside_table'),
                  ('not an effect material', 'non_effect_material'), ('no diffuse', 'no_diffuse'),
                  ('no opaque faces', 'no_opaque'), ('without UV', 'no_uv'), ('do not fit', 'atlas_fit'),
                  ('does not resolve', 'texture_unresolved'), ('not a DDS', 'texture_not_dds'),
+                 ('Pillow', 'pil_missing'), ('cannot decode image', 'texture_decode'),
                  ('Ambiguous', 'texture_ambiguous'), ('parameter', 'dominant_slot_missing'))
+TEXT_EXTENSIONS = ('.pbd', '.bod')
+BINARY_EXTENSIONS = ('.pbb', '.bob')
 
 
 def dds_bytes(n, fmt):
@@ -95,22 +106,7 @@ def body_key(name):
     return bob1.body_stem(name).lower()
 
 
-class SizedTextures(lod_atlas.Textures):
-    """Textures with the size lookup cached (plan_layout asks per tile per body)."""
-    def __init__(self, assets):
-        super().__init__(assets)
-        self.sizes = {}
-
-    def size(self, name):
-        key = None if name is None else name.lower()
-        if key not in self.sizes:
-            try:
-                self.sizes[key] = super().size(name)
-            except lod_atlas.AtlasError as exc:
-                self.sizes[key] = exc
-        if isinstance(self.sizes[key], Exception):
-            raise self.sizes[key]
-        return self.sizes[key]
+SizedTextures = lod_atlas.Textures      # sizes and sources are cached in lod_atlas.Textures now
 
 
 def atlas_reason(exc):
@@ -123,10 +119,14 @@ def drawn_groups(lod):
 
 
 def census_body(assets, textures, entry, opts):
-    """One row dict for a winning .pbb entry; 'skip' set for CUT1 scenes (not bodies)."""
+    """One row dict for a winning .pbb/.bob entry; 'skip' set for CUT1 scenes (not bodies)."""
     path = entry['path']
     name = bob1.body_stem(path)[len('objects/'):]
-    row = dict(name=name, member=f'{entry["source"]}:{path}', cat=category(path), refuse=[], filter=[])
+    row = dict(name=name, member=f'{entry["source"]}:{path}', source=entry['source'], path=path,
+               cat=category(path), refuse=[], filter=[], trailing=0)
+    if path.lower().endswith(TEXT_EXTENSIONS):
+        row['refuse'].append('text_body')
+        return row
     data = assets.read_entry(entry)
     k = bob1.kind(data)
     if k == 'CUT1':
@@ -135,17 +135,21 @@ def census_body(assets, textures, entry, opts):
         row['refuse'].append('not_bob1')
         return row
     try:
-        tree = bob1.parse(data)
-    except bob1.FormatError:
-        row['refuse'].append('parse_error')
+        tree = bob1.parse(data, lod_overlay.MAX_TRAILING)
+    except bob1.FormatError as exc:
+        row['refuse'].append('trailing_bytes' if 'trailing bytes' in str(exc) else 'parse_error')
+        row['atlas_error'] = str(exc)[:160]
         return row
+    row['trailing'] = tree.get('trailing_bytes', 0)
+    body_data = data[:len(data) - row['trailing']] if row['trailing'] else data
+    row['source_decoded_sha256'] = hashlib.sha256(data).hexdigest()
     try:                                   # the resolver lod_overlay.plan_body uses first
         won = bob1.resolve_body(assets, name)
         if (won['source'], won['path']) != (entry['source'], entry['path']):
             row['refuse'].append('resolve_mismatch')
     except bob1.FormatError:               # both .pbb and .pbd exist: engine order unverified
         row['refuse'].append('ambiguous_body_ext')
-    if bob1.serialise(tree) != data:
+    if bob1.serialise(tree) != body_data:
         row['refuse'].append('writer_mismatch')
     if 'loose' in entry:
         row['refuse'].append('loose_winner')
@@ -171,28 +175,30 @@ def census_body(assets, textures, entry, opts):
         row['filter'].append('category_other')
     if mat_tag not in ('MAT5', 'MAT6'):
         row['refuse'].append('mat3')
-    if tp < 2 or (th and th[0] > tp):
-        row['refuse'].append('t_pad_below_t1')
-    if uv2:
-        row['refuse'].append('uv2')
-    if len(effects) > 1:
-        row['refuse'].append('mixed_effects')
+    row['t_pad_below_t1'] = bool(th and th[0] > tp)          # guard waived for source record 0 (a column only)
+    if tp < 2:
+        row['refuse'].append('t_pad_below_2')
     if any(not 0 <= g['material'] < len(mats) for p in r0['parts'] for g in p['groups']):
-        row['refuse'].append('material_outside_table')      # lod_atlas.collapse raises IndexError on these
+        row['refuse'].append('material_outside_table')      # negative indices on the ad signs
     if {'mat3', 'material_outside_table'} & set(row['refuse']):
         return row
-    stem = Path(path.replace('\\', '/')).stem
+    stem = lod_overlay.qualified_stem(path)
+    row['atlas_stem'] = stem
     try:
         res = lod_atlas.collapse(assets, stem, list(mats), r0, alpha, tp * opts['widths'][0] / 1280, opts['sizes'],
-                                 specular=True, synth=True, textures=textures, bump=True,
-                                 force_uv2=True, force_mixed_effects=True)
+                                 specular=True, synth=True, textures=textures, bump=True)
     except lod_atlas.AtlasError as exc:
         row['refuse'].append(atlas_reason(exc))
         row['atlas_error'] = str(exc)[:160]
         return row
     lay = res['layout']
     row.update(slots=list(res['slots']), tiles=len(lay['tiles']), dup=res['info']['duplicated'],
-               c_drawn=drawn_groups(res['record']), c_groups=sum(len(p['groups']) for p in res['record']['parts']))
+               c_drawn=drawn_groups(res['record']), c_groups=sum(len(p['groups']) for p in res['record']['parts']),
+               atlas_materials=len(res['atlas_indices']), occlusion=res['occlusion'])
+    tex_shas = sorted({(textures.source(v) or {}).get('decoded_sha256') or 'unresolved:' + v.decode('latin1').lower()
+                       for t in lay['tiles'] for v in t['names'].values() if v is not None})
+    row['inputs_sha256'] = hashlib.sha256('\n'.join([row['source_decoded_sha256']] + tex_shas).encode()).hexdigest()
+    row['texture_sources'] = sorted({v.split(':', 1)[-1] for t in lay['tiles'] for v in t['sources'].values() if v})
     sizes = {opts['widths'][0]: (lay['size'], lay['min_ratio'])}
     for w in opts['widths'][1:]:
         l2 = lod_atlas.plan_layout(r0, mats, alpha, textures, tp * w / 1280, opts['sizes'],
@@ -202,7 +208,7 @@ def census_body(assets, textures, entry, opts):
                             bytes_cap2048=atlas_bytes(min(n, 2048), res['slots']))
                     for w, (n, r) in sizes.items()}
     names = lod_atlas.texture_names(stem, res['slots'])[1]
-    taken = sorted({e['source'] for m in names.values() for ext in ('.pck', '.dds', '.tga')
+    taken = sorted({e['source'] for m in names.values() for ext in lod_atlas.DDS_LOOKUP[1]
                     for e in assets.candidates(m.rsplit('.', 1)[0] + ext)})
     if taken:
         row['refuse'].append('atlas_name_taken')
@@ -236,13 +242,27 @@ def _work(key):
 
 
 def body_keys(assets):
-    return sorted(k for k, v in assets.entries.items() if v[-1]['path'].lower().endswith('.pbb'))
+    """Winning binary bodies (.pbb and unpacked .bob members share one canonical key)."""
+    return sorted(k for k, v in assets.entries.items() if v[-1]['path'].lower().endswith(BINARY_EXTENSIONS))
 
 
-def run(game, opts, jobs=1, limit=None):
-    """(rows, skipped marker sources) over every winning .pbb resource."""
+def text_body_keys(assets):
+    """Winning text bodies (.pbd/.bod) whose stem has no binary member anywhere (those are the
+    ambiguous_body_ext rows of the binary key); cut scenes (objects/cut) are left out."""
+    binary = {k[:-4] for k in body_keys(assets)}
+    return sorted(k for k, v in assets.entries.items()
+                  if v[-1]['path'].lower().endswith(TEXT_EXTENSIONS) and k[:-4] not in binary
+                  and not k.startswith(('objects/cut/', 'addon/objects/cut/')))
+
+
+def run(game, opts, jobs=1, limit=None, only=None, include_text=False):
+    """(rows, skipped marker sources) over every winning binary body (and, with include_text, the
+    text bodies as text_body rows); `only` restricts to a set of body keys (body_key(name))."""
     assets, skipped = lod_overlay.original_assets(Path(game))
-    keys = body_keys(assets)[:limit]
+    keys = body_keys(assets) + (text_body_keys(assets) if include_text else [])
+    if only is not None:
+        keys = [k for k in keys if body_key(k) in only]
+    keys = keys[:limit]
     if jobs <= 1:
         _WORKER.update(assets=assets, textures=SizedTextures(assets), opts=opts, skipped=skipped)
         rows = [_work(k) for k in keys]
@@ -250,15 +270,6 @@ def run(game, opts, jobs=1, limit=None):
         with multiprocessing.get_context('spawn').Pool(jobs, _init, (str(game), opts)) as pool:
             rows = pool.map(_work, keys, chunksize=4)
     rows = [r for r in rows if 'skip' not in r]
-    stems = {}                             # only bodies the batch would actually take
-    for r in rows:
-        if 'slots' in r and not r['refuse'] and not r['filter']:
-            stems.setdefault(Path(r['name']).name.lower(), []).append(r)
-    for group in stems.values():
-        if len(group) > 1:
-            for r in group:
-                r['refuse'].append('batch_stem_collision')
-                r['stem_peers'] = [x['name'] for x in group if x is not r]
     for r in rows:
         r['eligible'] = not r['refuse'] and not r['filter']
     return rows, skipped
@@ -275,7 +286,7 @@ def format_row(r):
     if 'lods' not in r:
         return f'{base} refuse={",".join(r["refuse"])} {r.get("atlas_error", "")}'.rstrip()
     th = ','.join(str(t) for t in r['thresholds']) or '-'
-    s = (f'{base} lods={r["lods"]} thr={th} T_pad={r["t_pad"]} mat={r["mat"]}'
+    s = (f'{base} lods={r["lods"]} thr={th} T_pad={r["t_pad"]}{"<T_1" if r.get("t_pad_below_t1") else ""} mat={r["mat"]}'
          f' r0_faces={r["r0_faces"]} r0_points={r["r0_points"]} r0_groups={r["r0_groups"]}'
          f' r0_drawn={r["r0_drawn"]} coarse_drawn={r["coarse_groups"]} effects={r["effects"]} uv2={r["uv2"]}'
          f' alpha_mats={r["alpha"]}')
@@ -285,10 +296,12 @@ def format_row(r):
               + ''.join(f' atlas@{w}={a[w]["size"]}(ratio {a[w]["ratio"]:.2f}, {mb(a[w]["bytes"])} MB)'
                         for w in a)
               + f' member~{mb(r["member_bytes"])} MB')
+    if r.get('trailing'):
+        s += f' trailing={r["trailing"]}'
+    if r.get('atlas_materials', 1) > 1:
+        s += f' atlas_materials={r["atlas_materials"]}'
     s += f' refuse={",".join(r["refuse"]) or "-"} filter={",".join(r["filter"]) or "-"}'
     s += ' ELIGIBLE' if r['eligible'] else ''
-    if r.get('stem_peers'):
-        s += f' stem_peers={",".join(r["stem_peers"])}'
     if r.get('taken'):
         s += f' taken={",".join(r["taken"])}'
     if r.get('atlas_error'):
@@ -350,7 +363,9 @@ def sector_report(label, census, by_key, widths):
 def summary(rows, skipped, opts, sectors):
     widths = opts['widths']
     el = [r for r in rows if r['eligible']]
-    lines = [f'bodies {len(rows)} (winning .pbb BOB1/non-CUT1 resources; overlay sources skipped: {skipped or "none"})',
+    lines = [f'bodies {len(rows)} (winning .pbb/.bob BOB1/non-CUT1 resources'
+             f'{" + text bodies" if any("text_body" in r["refuse"] for r in rows) else ""};'
+             f' overlay sources skipped: {skipped or "none"})',
              f'rule: ships T_pad = min({opts["rule"]["t_cap"]:g}, max({opts["rule"]["ship_min"]:g},'
              f' {opts["rule"]["ship_factor"]:g} x T_1)); stations/others {opts["rule"]["station_t"]:g}'
              f' (cap {opts["rule"]["t_cap"]:g}); other top dirs {"station rule" if opts["include_other"] else "excluded"};'

@@ -1,0 +1,12 @@
+record /private/tmp/claude-501/-Users-asvetl-x3-mod/ec1d2a17-c1f5-4762-8f3d-98edd98ef126/scratchpad/batch-c/x3m-lod-batch.json: slot 13 retired None previous None dry_run True
+settings: width 1800 display [1920, 1080] sizes [1024, 2048]
+counts {'enumerated': 3, 'by_category': {'ship': 2, 'station': 1}, 'eligible': 3, 'built': 3, 'reused': 0, 'overlay_bodies': 3, 'candidates': 3}
+refused {}
+filtered {}
+atlas sizes {'2048': 3} bytes {'atlas': 11231596, 'members': 20507294, 'dat': 31738890} ratio below 1.0 1 below 2.0 1 of 3
+draws {'record0': 84, 'overlay': 8}; mixed-effect bodies ['ships/teladi/teladi_m2_cormorant/hull']; uv2 bodies []
+timing {'census_s': 3.19, 'bake_s': 10.04, 'per_body_s': 3.348, 'extrapolated_full_s': 10.0, 'total_s': 13.24}; sectors {'run255_burst2': {'eligible': 0, 'atlas_bytes': 0}, 'run257_burst1': {'eligible': 0, 'atlas_bytes': 0}, 'run260': {'eligible': 0, 'atlas_bytes': 0}}; budget warnings []
+bodies (overlay bodies first):
+  ships/props/boron_m7turretB_weapon: cat=ship T_pad=132 r0_drawn=7 draws=1 atlas=2048 ratio=2.94 atlas_mats=1 atlas_MB=6.42 member_MB=0.32 s=7.91 reused=False trailing=1
+  ships/teladi/teladi_m2_cormorant/hull: cat=ship T_pad=107 r0_drawn=39 draws=4 atlas=2048 ratio=3.69 atlas_mats=3 atlas_MB=4.60 member_MB=6.29 s=9.27 reused=False
+  stations/sadiablo/supply_base: cat=station T_pad=150 r0_drawn=38 draws=3 atlas=2048 ratio=0.7 atlas_mats=1 atlas_MB=0.21 member_MB=13.89 s=9.78 reused=False

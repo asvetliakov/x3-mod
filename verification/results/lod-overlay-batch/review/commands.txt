@@ -1,0 +1,8 @@
+# Reviewer scripts for the batch-mode checkpoint (2026-09-23), rerun after the review fixes F1-F12. Read-only on the
+# bottle (addon/05 pilot skipped through its legacy marker, now content-verified); no Wine. Run from this directory.
+# lw_check.py: old (loop) vs new (vectorised) lod_atlas.level_weights; the old module is `git show <pre-batch>:tools/analysis/lod_atlas.py`
+/usr/bin/python3 lw_check.py $S/lod_atlas_old.py > lw_check_out.txt                 # 728 cases, max |old-new| 1.19e-7, 484 bit-identical
+PYTHONPATH=../../../probe /usr/bin/python3 synth_bytes.py > synth_bytes_out.txt   # synthetic overlay: marker collapse=atlas, C groups per effect, uv2 pass-through, atlas refs resolve
+/usr/bin/python3 pilot_body_cmp.py > pilot_body_cmp_out.txt                        # body members == Run 71 pilot sha256 with plain stems; qualified names differ by the 28-byte name suffixes only
+/usr/bin/python3 pilot_atlas_cmp.py ships/argon/argon_M1 > pilot_atlas_cmp_out.txt # one real bake: body identical; diffuse/light/specular atlases differ by 4/18/5 decoded bytes (float32 rounding of the weights), bump identical
+PYTHONPATH=../../../probe /usr/bin/python3 legacy_orphan.py > legacy_orphan_out.txt # F1: legacy marker without body proof over a mod's catalogue -> orphaned, read as a source, the mod's 02.dat preserved
