@@ -53,8 +53,10 @@ constexpr unsigned ret_pop = 8;
 // Render-node fields the handlers read (every one dereferenced by the pass
 // itself on the same node before the site: station-material-distance.md,
 // shadow-caster-lifetime.md 3a).
-constexpr unsigned parent_offset = 0x18, radius_offset = 0xa0, flags12c_offset = 0x12c, model_offset = 0x140,
+constexpr unsigned parent_offset = 0x18, radius_offset = 0xa0, flags12c_offset = 0x12c, flags130_offset = 0x130, model_offset = 0x140,
                    lod_offset = 0x14c, threshold_1d8_offset = 0x1d8, threshold_1dc_offset = 0x1dc;
+// +0x130 bit of a class-0 (TBullets) root node: cull_small_parts_core.h projectile_flag.
+constexpr std::uint32_t projectile_flag = 0x20000000;
 constexpr unsigned ring_size = 8192;
 constexpr std::uint32_t no_index = 0xffffffffu;
 // The model's LOD ladder (docs/architecture/merged-lod-feasibility.md 1):
@@ -76,6 +78,7 @@ struct Entry {
     std::uint32_t exited;
     std::uint32_t parent;   // node+0x18 at the measure site (0 = a parentless node: a body for cull_small_parts' scope)
     std::uint32_t model_ptr; // the model pointer at the exit site (exit_model_pointer), 0 when the pass had none for this node
+    std::uint32_t flags130;  // node+0x130 at the measure site (projectile_flag: the small-parts stub's exemption)
 };
 // At the exit site EBX is the model pointer only on the LOD path: after the
 // measure site EBX is written solely at 0x0047d2f6 (0: negative model id),
@@ -185,12 +188,17 @@ inline const char* verdict_name(Verdict v) {
 // step (the env-map view's < 20 test with the bit set, or the last-LOD fade).
 // small_bodies_only mirrors the stub's scope (X3M_CULL_SMALL_PARTS_SCOPE=bodies):
 // it never culls a parented node, so such a node is not named culled_small.
-inline Verdict classify(const Entry& e, std::int32_t small_threshold = 0, bool small_bodies_only = false) {
+// small_exempt_projectiles mirrors X3M_CULL_SMALL_PARTS_PROJECTILES=on: a node
+// carrying projectile_flag runs the engine's own compare, so it is not either.
+inline bool small_exempt(const Entry& e, std::int32_t small_threshold, bool small_exempt_projectiles) {
+    return small_exempt_projectiles && small_threshold > 0 && e.s < small_threshold && (e.flags130 & projectile_flag);
+}
+inline Verdict classify(const Entry& e, std::int32_t small_threshold = 0, bool small_bodies_only = false, bool small_exempt_projectiles = false) {
     if (!e.exited) return Verdict::no_exit;
     if (e.flags_out & 2u) return Verdict::kept;
     if (e.limit > 0 && e.measure < e.limit) return Verdict::culled_size;
     if (e.measure < 1 && !(e.flags_in & 0x4000000u)) return Verdict::culled_min;
-    if (small_threshold > 0 && e.s < small_threshold && !(small_bodies_only && e.parent)) return Verdict::culled_small;
+    if (small_threshold > 0 && e.s < small_threshold && !(small_bodies_only && e.parent) && !small_exempt(e, small_threshold, small_exempt_projectiles)) return Verdict::culled_small;
     return Verdict::culled_other;
 }
 

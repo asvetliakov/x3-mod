@@ -1,0 +1,5 @@
+object_context rows 794 models 35
+model 00000205 nodes_with_bit 2 nodes_without 0 rows_with 2 rows_without 0
+models with the bit on any node: 1
+model 00000205 entry: [2, 0, 2, 0]
+bit rows ('00000205', '24980040', '01001002') 2

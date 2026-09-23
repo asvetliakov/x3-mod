@@ -16,7 +16,11 @@
 // flag 0x09000000 -- 89 nodes / 395 draws at 2 px, 120 / 450 at 4 px) and a
 // parented node below the threshold reaches the engine's compare with the
 // native registers and flags; the census armed together with the stub reports
-// the flipped nodes as renderable=0 with verdict culled_small and the scope; callee-saved registers, ESP, the
+// the flipped nodes as renderable=0 with verdict culled_small and the scope;
+// rows marked as projectiles (+0x130 |= 0x20000000, the engine's class-0 marker)
+// below the threshold run the vanilla compare with the exemption on (counted in
+// exempt_bullet= and the census's culled_small_exempt_bullet=) and are culled
+// like any node with it off; callee-saved registers, ESP, the
 // empty x87 stack and LastError preserved; exact rollback; option off,
 // changed bytes and the closed window refused. Diagnostic timings only; not
 // game FPS. Never launches the game.
@@ -425,6 +429,27 @@ static bool replay_flipped_exactly(const Node* reference, std::int32_t threshold
     return true;
 }
 
+// Projectile marking: every third row carries the engine's class-0 marker in +0x130 (the synthetic pass never
+// touches that bit, so the native result of a marked tree is replay_native with the same bit set).
+static bool row_marked(unsigned i) { return i % 3 == 0; }
+static void mark_rows(Node* tree) { for (unsigned i = 0; i < kRowCount; ++i) if (row_marked(i)) put(tree[1 + i].bytes, score::flags130_offset, get(tree[1 + i].bytes, score::flags130_offset) | score::projectile_flag); }
+static void unmark_rows(Node* tree) { for (unsigned i = 0; i < kRowCount; ++i) if (row_marked(i)) put(tree[1 + i].bytes, score::flags130_offset, get(tree[1 + i].bytes, score::flags130_offset) & ~score::projectile_flag); }
+static unsigned rows_below_marked(std::int32_t threshold) { unsigned n = 0; for (unsigned i = 0; i < kRowCount; ++i) if (kRows[i].s < threshold && row_marked(i)) ++n; return n; }
+// Whether exactly the unmarked kept rows below the threshold flipped (the marked ones keep the engine's verdict).
+static bool replay_flipped_exactly_unmarked(const Node* reference, std::int32_t threshold) {
+    for (unsigned i = 0; i < kRowCount; ++i) {
+        const bool kept_native = (get(reference[1 + i].bytes, ccore::flags12c_offset) & 2u) != 0;
+        const bool kept_now = (get(replay[1 + i].bytes, ccore::flags12c_offset) & 2u) != 0;
+        if (kept_now != (kept_native && !(kRows[i].s < threshold && !row_marked(i)))) return false;
+    }
+    return true;
+}
+static unsigned kept_marked_below(const Node* reference, std::int32_t threshold, unsigned* draws) {
+    unsigned n = 0; *draws = 0;
+    for (unsigned i = 0; i < kRowCount; ++i) if (row_marked(i) && kRows[i].s < threshold && (get(reference[1 + i].bytes, ccore::flags12c_offset) & 2u)) { ++n; *draws += unsigned(kRows[i].draws); }
+    return n;
+}
+
 // ---- the 12-node bench tree of the census fixture ----
 static Node R, A, B, C, E, F, G, H, I, J, gA1, gA2;
 static Node* const all[] = {&R, &A, &B, &C, &E, &F, &G, &H, &I, &J, &gA1, &gA2};
@@ -497,26 +522,33 @@ int main() {
     { score::Scope sc = score::Scope::bodies; check(score::parse_scope("", &sc) && sc == score::Scope::all && score::parse_scope("bodies", &sc) && sc == score::Scope::bodies && !score::parse_scope("ALL", &sc) && !score::parse_scope("body", &sc) && score::parse_scope("all", &sc) && sc == score::Scope::all, "scope parser: all (default), bodies, nothing else"); }
     check(!small::initialize() && !std::strcmp(small::state(), "bytes_mismatch") && small::stub_address() == 0, "engine site absent in this process: bytes_mismatch, nothing patched");
     check(install_lines.back().find(" scope=all") != std::string::npos, "unset scope: the install line says scope=all (default)");
+    check(install_lines.back().find(" projectiles=marker_mismatch") != std::string::npos, "unset projectiles: on by default, turned off when the engine's marker instructions are absent (this process)");
+    SetEnvironmentVariableW(L"X3M_CULL_SMALL_PARTS_PROJECTILES", L"missiles");
+    check(!small::initialize() && !std::strcmp(small::state(), "invalid_projectiles") && small::stub_address() == 0 && install_lines.back().find(" projectiles=invalid") != std::string::npos, "unknown projectiles value: invalid_projectiles, nothing patched");
+    SetEnvironmentVariableW(L"X3M_CULL_SMALL_PARTS_PROJECTILES", L"off");
+    check(!small::initialize() && !std::strcmp(small::state(), "bytes_mismatch") && install_lines.back().find(" projectiles=off") != std::string::npos, "projectiles off: parsed and logged, the marker not consulted");
+    SetEnvironmentVariableW(L"X3M_CULL_SMALL_PARTS_PROJECTILES", nullptr);
     const std::uintptr_t site = addr(small_site()), cull = addr(small_cull());
     synthetic_small_window[2] ^= 1;
-    check(!small::install_at(site, cull, false) && !std::strcmp(small::state(), "bytes_mismatch") && small_window_original() == false, "changed window byte: bytes_mismatch");
+    check(!small::install_at(site, cull, false, true) && !std::strcmp(small::state(), "bytes_mismatch") && small_window_original() == false, "changed window byte: bytes_mismatch");
     synthetic_small_window[2] ^= 1;
     check(small_window_original(), "window byte restored");
-    check(!small::install_at(0, cull, false) && !std::strcmp(small::state(), "invalid_site"), "null site refused");
-    check(!small::install_at(site, cull + 1, false) && !std::strcmp(small::state(), "invalid_site"), "cull target not at window offset 47 refused");
+    check(!small::install_at(0, cull, false, true) && !std::strcmp(small::state(), "invalid_site"), "null site refused");
+    check(!small::install_at(site, cull + 1, false, true) && !std::strcmp(small::state(), "invalid_site"), "cull target not at window offset 47 refused");
 
     // ---- install ----
-    check(small::install_at(site, cull, false) && !std::strcmp(small::state(), "ok"), "install_at synthetic site");
+    check(small::install_at(site, cull, false, true) && !std::strcmp(small::state(), "ok") && small::projectiles_exempt(), "install_at synthetic site (projectiles exempt)");
     if (!small::stub_address()) { std::printf("FAIL install state=%s\nCULL SMALL PARTS CPU checks=%u failures=%u\n", small::state(), checks, failures + 1); return 1; }
     check(small_site()[0] == 0xe9 && !std::memcmp(synthetic_small_window, score::window, score::site_offset) && !std::memcmp(synthetic_small_window + score::site_offset + 5, score::window + score::site_offset + 5, score::window_length - score::site_offset - 5), "site is jmp dispatcher; every other window byte untouched");
     {
         const std::uint32_t at = std::uint32_t(small::stub_address()), slot = (at + score::stub_length + 3) & ~3u;
         unsigned char want[score::stub_length];
-        score::encode_stub(at, addr(const_cast<std::int32_t*>(&x3m_cull_small_parts_threshold)), addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_culled)), std::uint32_t(cull), slot, want, score::Scope::all);
-        check(!std::memcmp(reinterpret_cast<const void*>(at), want, score::stub_length) && !std::strcmp(small::scope(), "all"), "stub bytes as encoded (scope all)");
+        score::encode_stub(at, addr(const_cast<std::int32_t*>(&x3m_cull_small_parts_threshold)), addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_culled)),
+                           addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_exempt)), std::uint32_t(cull), slot, want, score::Scope::all, true);
+        check(!std::memcmp(reinterpret_cast<const void*>(at), want, score::stub_length) && !std::strcmp(small::scope(), "all"), "stub bytes as encoded (scope all, projectiles on)");
         check(*reinterpret_cast<void**>(slot) != nullptr, "continuation slot points at the tail");
     }
-    check(!small::install_at(site, cull, false) && !std::strcmp(small::state(), "already_installed"), "second install refused");
+    check(!small::install_at(site, cull, false, true) && !std::strcmp(small::state(), "already_installed"), "second install refused");
     check(x3m_cull_small_parts_threshold == 0 && small::stats().threshold == 0, "installed with the threshold at 0");
     check(small::requested_px() == 2.0, "requested px carried from the setting");
 
@@ -557,7 +589,7 @@ int main() {
         std::printf("REPLAY px=2 threshold=3 flipped=%u draws=%u other_changes=%u culled_count=%lu\n", f.flipped, f.draws, f.other_changes, (unsigned long)x3m_cull_small_parts_culled);
     }
     small::present(7, 4991, true);
-    check(small_lines.size() == 4 && small_lines[3].find("cull_small_parts_frame device=7 frame=4991 px=2 threshold=3 culled=1147 m00=0.799999952 width=1280") == 0, "capture frame: one cull_small_parts_frame row");
+    check(small_lines.size() == 4 && small_lines[3].find("cull_small_parts_frame device=7 frame=4991 px=2 threshold=3 culled=1147 m00=0.799999952 width=1280 scope=all projectiles=on exempt_bullet=0") == 0, "capture frame: one cull_small_parts_frame row (no marked row: exempt_bullet=0)");
     check(x3m_cull_small_parts_culled == 0, "present clears the count");
     small::present(7, 4992, false);
     check(small_lines.size() == 4, "plain frame: no row");
@@ -576,6 +608,29 @@ int main() {
         small::present(7, 5000 + k, false);
     }
     check(!small::set_px(0.0) && !small::set_px(65.0), "set_px outside the band refused");
+
+    // ---- projectiles: marked rows below the threshold keep the engine's verdict ----
+    check(small::set_px(2.0), "projectiles: back to 2 px");
+    small::begin_frame();
+    {
+        unsigned marked_draws = 0; const unsigned marked_kept = kept_marked_below(replay_native, 3, &marked_draws);
+        std::memcpy(replay, replay_initial, sizeof(Node) * (kRowCount + 1)); mark_rows(replay);
+        SetLastError(0x5152);
+        patched = run(replay[0], view);
+        check(GetLastError() == 0x5152, "projectiles: LastError preserved across the armed pass");
+        check(patched.preserved && patched.x87_empty && same_outputs(patched, native), "projectiles: registers, ESP, x87 and EAX/ECX/EDX/EFLAGS as native");
+        check(x3m_cull_small_parts_exempt == rows_below_marked(3) && x3m_cull_small_parts_culled + x3m_cull_small_parts_exempt == rows_below(3) && rows_below_marked(3) > 0,
+              "projectiles: every marked node below the threshold counted exempt, the rest culled (together every node below it)");
+        unmark_rows(replay);
+        const Flip f = replay_compare(replay_native);
+        check(f.other_changes == 0 && replay_flipped_exactly_unmarked(replay_native, 3), "projectiles: only unmarked kept nodes below the threshold flip; marked ones keep the engine's verdict");
+        check(marked_kept > 0 && f.flipped == kRowsExpected[0].nodes - marked_kept && f.draws == kRowsExpected[0].draws - marked_draws, "projectiles: the flipped class shrinks by exactly the marked kept rows");
+        std::printf("REPLAY projectiles=on px=2 threshold=3 marked_below=%u marked_kept=%u flipped=%u draws=%u exempt_count=%lu culled_count=%lu\n", rows_below_marked(3), marked_kept, f.flipped, f.draws,
+                    (unsigned long)x3m_cull_small_parts_exempt, (unsigned long)x3m_cull_small_parts_culled);
+        small::present(7, 4995, true);
+        char want_row[160]; std::snprintf(want_row, sizeof want_row, "scope=all projectiles=on exempt_bullet=%u", rows_below_marked(3));
+        check(!small_lines.empty() && small_lines.back().find(want_row) != std::string::npos && x3m_cull_small_parts_exempt == 0, "projectiles: the frame row carries exempt_bullet=, present clears it");
+    }
 
     // ---- the census and the stub armed together ----
     check(census::install_at(addr(synthetic_measure_window + ccore::measure_site_offset), addr(synthetic_exit_window + ccore::exit_site_offset)) && !std::strcmp(census::state(), "ok"), "census installed beside the stub (disjoint claims)");
@@ -608,6 +663,20 @@ int main() {
         { unsigned scoped = 0; for (const std::string& line : census_entry_lines) if (line.find("verdict=culled_small scope=all") != std::string::npos) ++scoped; check(scoped == 97, "both armed: every culled_small row carries scope=all"); }
         check(kept == 164 - 97 && size == 624 && min == 426 && other == 0, "both armed: kept 67, culled_size 624, culled_min 426 (the engine's share unchanged)");
         std::printf("CENSUS rows=%u fidelity=%u kept=%u culled_size=%u culled_min=%u culled_small=%u other=%u\n", (unsigned)rows.size(), fidelity, kept, size, min, small_verdicts, other);
+        census_frame_lines.clear(); census_entry_lines.clear();
+    }
+    // the census beside the stub on a marked tree: marked rows below the threshold are not culled_small, the frame row counts them
+    small::begin_frame(); census::begin_frame(true);
+    std::memcpy(replay, replay_initial, sizeof(Node) * (kRowCount + 1)); mark_rows(replay);
+    run(replay[0], view);
+    census::present(7, 4996, true); small::present(7, 4996, true);
+    {
+        unsigned marked_draws = 0; const unsigned marked_kept = kept_marked_below(replay_native, 3, &marked_draws);
+        unsigned small_verdicts = 0; for (const std::string& line : census_entry_lines) if (line.find("verdict=culled_small") != std::string::npos) ++small_verdicts;
+        char want_row[64]; std::snprintf(want_row, sizeof want_row, " culled_small_exempt_bullet=%u", rows_below_marked(3));
+        check(census_entry_lines.size() == kRowCount && small_verdicts == 97 - marked_kept, "census on a marked tree: culled_small only for the unmarked flipped rows");
+        check(census_frame_lines.size() == 1 && census_frame_lines[0].find(want_row) != std::string::npos, "census on a marked tree: the frame row counts every marked row below the threshold");
+        std::printf("CENSUS projectiles=on culled_small=%u marked_kept=%u frame=%s\n", small_verdicts, marked_kept, census_frame_lines.empty() ? "-" : census_frame_lines[0].c_str());
         census_frame_lines.clear(); census_entry_lines.clear();
     }
     // the census alone (stub disarmed) reports the engine's verdicts again
@@ -662,16 +731,37 @@ int main() {
     std::printf("CULL SMALL PARTS BENCH native_pass_us=%.4f patched_disarmed_us=%.4f patched_armed_us=%.4f nodes_per_pass=12 culled_per_armed_pass=7 harness=fixture_call_included game_fps=unmeasured\n",
                 native_us, disarmed_us, armed_us);
     // ---- re-install, restore, then the closed window refuses ----
+    // ---- projectiles off: marked nodes are culled like any node ----
+    check(small::install_at(site, cull, false, false) && !std::strcmp(small::state(), "ok") && !small::projectiles_exempt(), "re-install with projectiles off");
+    {
+        const std::uint32_t at = std::uint32_t(small::stub_address()), slot = (at + score::stub_length + 3) & ~3u;
+        unsigned char want[score::stub_length];
+        score::encode_stub(at, addr(const_cast<std::int32_t*>(&x3m_cull_small_parts_threshold)), addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_culled)),
+                           addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_exempt)), std::uint32_t(cull), slot, want, score::Scope::all, false);
+        check(!std::memcmp(reinterpret_cast<const void*>(at), want, score::stub_length) && want[22] == 0xeb && want[23] == score::stub_replay - 24, "projectiles off: stub bytes as encoded (jmp over the marker test)");
+        small::after_reset(kRowsWidth); check(small::set_px(2.0), "projectiles off: 2 px"); small::begin_frame();
+        std::memcpy(replay, replay_initial, sizeof(Node) * (kRowCount + 1)); mark_rows(replay);
+        const Result off = run(replay[0], view);
+        unmark_rows(replay);
+        const Flip f = replay_compare(replay_native);
+        check(off.preserved && off.x87_empty && same_outputs(off, native) && f.other_changes == 0 && replay_flipped_exactly(replay_native, 3) && f.flipped == 97 && f.draws == 403,
+              "projectiles off: the full 97-node / 403-draw class flips, marked or not");
+        check(x3m_cull_small_parts_exempt == 0 && x3m_cull_small_parts_culled == rows_below(3), "projectiles off: nothing exempt, every node below the threshold counted culled");
+        small::present(7, 4997, true);
+        check(!small_lines.empty() && small_lines.back().find("scope=all projectiles=off exempt_bullet=0") != std::string::npos, "projectiles off: the frame row says so");
+    }
+    check(small::shutdown() && small_window_original(), "projectiles off: restore, rollback bytes exact");
     // ---- scope bodies: only parentless nodes are culled ----
-    check(small::install_at(site, cull, true) && !std::strcmp(small::state(), "ok") && !std::strcmp(small::scope(), "bodies"), "re-install with scope bodies");
+    check(small::install_at(site, cull, true, true) && !std::strcmp(small::state(), "ok") && !std::strcmp(small::scope(), "bodies"), "re-install with scope bodies");
     {
         const std::uint32_t at = std::uint32_t(small::stub_address()), slot = (at + score::stub_length + 3) & ~3u;
         unsigned char want[score::stub_length], all_stub[score::stub_length];
-        score::encode_stub(at, addr(const_cast<std::int32_t*>(&x3m_cull_small_parts_threshold)), addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_culled)), std::uint32_t(cull), slot, want, score::Scope::bodies);
-        score::encode_stub(at, addr(const_cast<std::int32_t*>(&x3m_cull_small_parts_threshold)), addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_culled)), std::uint32_t(cull), slot, all_stub, score::Scope::all);
+        const std::uint32_t exempt_word = addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_exempt));
+        score::encode_stub(at, addr(const_cast<std::int32_t*>(&x3m_cull_small_parts_threshold)), addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_culled)), exempt_word, std::uint32_t(cull), slot, want, score::Scope::bodies, true);
+        score::encode_stub(at, addr(const_cast<std::int32_t*>(&x3m_cull_small_parts_threshold)), addr(const_cast<std::uint32_t*>(&x3m_cull_small_parts_culled)), exempt_word, std::uint32_t(cull), slot, all_stub, score::Scope::all, true);
         check(!std::memcmp(reinterpret_cast<const void*>(at), want, score::stub_length), "bodies stub bytes as encoded");
-        check(!std::memcmp(want, all_stub, score::stub_scope_branch) && !std::memcmp(want + score::stub_cull, all_stub + score::stub_cull, score::stub_length - score::stub_cull) && want[27] == 0x75 && want[28] == score::stub_continue - 29 && want[35] == 0xeb && want[36] == score::stub_cull - 37,
-              "bodies stub differs from the all stub only in bytes 27..46: jne continue, mov eax,[edi+0x1d8], jmp cull");
+        check(!std::memcmp(want, all_stub, score::stub_scope_branch) && !std::memcmp(want + score::stub_cull, all_stub + score::stub_cull, score::stub_length - score::stub_cull) && want[39] == 0x75 && want[40] == score::stub_continue - 41 && want[47] == 0xeb && want[48] == score::stub_cull - 49,
+              "bodies stub differs from the all stub only in bytes 39..58: jne continue, mov eax,[edi+0x1d8], jmp cull");
     }
     small::after_reset(kRowsWidth);
     for (unsigned k = 0; k < kRowsExpectedCount; ++k) {
@@ -726,7 +816,7 @@ int main() {
     }
     check(small::shutdown() && small_window_original(), "bodies: restore, rollback bytes exact");
     x3m::engine_patch::close_install_window("fixture");
-    check(!small::install_at(site, cull, false) && !std::strcmp(small::state(), "late_claim") && small_window_original(), "closed install window: late_claim, site untouched");
+    check(!small::install_at(site, cull, false, true) && !std::strcmp(small::state(), "late_claim") && small_window_original(), "closed install window: late_claim, site untouched");
     std::printf("CULL SMALL PARTS CPU checks=%u failures=%u\n", checks, failures);
     return failures ? 1 : 0;
 }

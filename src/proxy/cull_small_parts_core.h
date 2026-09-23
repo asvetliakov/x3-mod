@@ -51,7 +51,9 @@ constexpr unsigned char window[window_length] = {
 constexpr unsigned char site[site_length] = {0x8b,0x4f,0x18, 0x85,0xc9};
 constexpr unsigned ret_pop = 8;
 // Node fields the stub reads: the same ones the displaced span and its
-// successors read on the same node (parent link, own and parent threshold).
+// successors read on the same node (parent link, own and parent threshold),
+// and +0x130 (the projectile marker below), which the pass itself rewrites on
+// the same node at 0x0047cfed.
 constexpr unsigned parent_offset = 0x18, threshold_1d8_offset = 0x1d8;
 // Setting band: pixels of projected radius below which a node is culled;
 // 0 or unset = off. 64 px is a guard against a typo, not a measurement.
@@ -105,43 +107,84 @@ inline std::int32_t threshold_for(double px, float m00, unsigned width) {
     return static_cast<std::int32_t>(t);
 }
 
-// The stub (64 bytes), entered by the dispatcher's `jmp [entry]` with the
+// Projectile exemption (X3M_CULL_SMALL_PARTS_PROJECTILES, default on;
+// docs/reverse-engineering/lod-selection.md, "Projectile nodes"). The engine's
+// object creation 0x0043fxxx..0x004412xx gives every class-0 object (TBullets:
+// bolts, beams, flak, whatever type a mod adds to the table) one root node and
+// ORs 0x20800000 into its +0x130 (0x004401ae stores the value, 0x00441242 ORs
+// it on the class-0 node path only); the engine itself tests +0x130 &
+// 0x20000000 to keep such nodes out of the script occluder list (0x00488b00).
+// The field is per node and read by the pass on the same node at its entry
+// (0x0047cfed `and [edi+0x130],...`). No other object class sets the bit, and a
+// false result either way only restores the vanilla compare or the current cull.
+// Missiles (class 10) take the generic path (no marker, a multi-node scene) and
+// are not exempt; they are large enough to rarely fall under a few pixels.
+constexpr unsigned flags130_offset = 0x130;
+constexpr std::uint32_t projectile_flag = 0x20000000;
+// The two engine instructions that establish the marker, pinned at install:
+// 004401ae  c7 44 24 20 00 00 80 20   MOV dword [ESP+0x20],0x20800000   ; class-0 case
+// 0044123b  8b 45 70                  MOV EAX,[EBP+0x70]                ; the object's root node
+// 0044123e  8b 54 24 20               MOV EDX,[ESP+0x20]
+// 00441242  09 90 30 01 00 00         OR  [EAX+0x130],EDX
+constexpr std::uintptr_t marker_store_va = 0x004401ae, marker_or_va = 0x0044123b;
+constexpr unsigned marker_store_length = 8, marker_or_length = 13;
+constexpr unsigned char marker_store[marker_store_length] = {0xc7,0x44,0x24,0x20, 0x00,0x00,0x80,0x20};
+constexpr unsigned char marker_or[marker_or_length] = {0x8b,0x45,0x70, 0x8b,0x54,0x24,0x20, 0x09,0x90,0x30,0x01,0x00,0x00};
+// `on` (also unset or empty) exempts marked nodes; `off` culls them like any node; anything else is refused.
+inline bool parse_projectiles(const char* text, bool* exempt) {
+    if (!text || !*text || !std::strcmp(text, "on")) { *exempt = true; return true; }
+    if (!std::strcmp(text, "off")) { *exempt = false; return true; }
+    return false;
+}
+
+// The stub (82 bytes), entered by the dispatcher's `jmp [entry]` with the
 // site's exact register state and ESP (no return address):
 //    0  83 3d abs32 00      CMP  dword [threshold],0    ; off (0) outside an armed frame
-//    7  7e 31               JLE  continue
+//    7  7e 43               JLE  continue
 //    9  50                  PUSH EAX                    ; dead at the site; preserved anyway
 //   10  a1 abs32            MOV  EAX,[threshold]
 //   15  39 44 24 30         CMP  [ESP+0x30],EAX         ; s (site [ESP+0x2c]) - threshold
 //   19  58                  POP  EAX
-//   20  7d 24               JGE  continue               ; s >= threshold: the engine's own compare
-//   22  8b 4f 18            MOV  ECX,[EDI+0x18]         ; 0x0047d2a2..0x0047d2b9 replayed so ECX/EAX
-//   25  85 c9               TEST ECX,ECX                ;   arrive at the cull exactly as the engine
-//   27  8b 87 d8 01 00 00   MOV  EAX,[EDI+0x1d8]        ;   leaves them (both dead there anyway)
-//   33  74 0c               JE   cull
-//   35  8b 89 d8 01 00 00   MOV  ECX,[ECX+0x1d8]
-//   41  3b c8               CMP  ECX,EAX
-//   43  7e 02               JLE  cull
-//   45  8b c1               MOV  EAX,ECX
-//   47  ff 05 abs32         INC  dword [culled]         ; cull: per-frame count, render thread only
-//   53  e9 rel32            JMP  0x0047d2c3             ; the engine's `and [edi+0x12c],~2; jmp 0x0047d2d1`
-//   58  ff 25 abs32         JMP  [next]                 ; continue: the tail (displaced MOV+TEST, jump back to 0x0047d2a7)
+//   20  7d 36               JGE  continue               ; s >= threshold: the engine's own compare
+//   22  f7 87 30 01 00 00 00 00 00 20   TEST dword [EDI+0x130],0x20000000   ; projectile marker
+//   32  75 24               JNE  exempt
+//   34  8b 4f 18            MOV  ECX,[EDI+0x18]         ; 0x0047d2a2..0x0047d2b9 replayed so ECX/EAX
+//   37  85 c9               TEST ECX,ECX                ;   arrive at the cull exactly as the engine
+//   39  8b 87 d8 01 00 00   MOV  EAX,[EDI+0x1d8]        ;   leaves them (both dead there anyway)
+//   45  74 0c               JE   cull
+//   47  8b 89 d8 01 00 00   MOV  ECX,[ECX+0x1d8]
+//   53  3b c8               CMP  ECX,EAX
+//   55  7e 02               JLE  cull
+//   57  8b c1               MOV  EAX,ECX
+//   59  ff 05 abs32         INC  dword [culled]         ; cull: per-frame count, render thread only
+//   65  e9 rel32            JMP  0x0047d2c3             ; the engine's `and [edi+0x12c],~2; jmp 0x0047d2d1`
+//   70  ff 05 abs32         INC  dword [exempt]         ; exempt: per-frame count, then the vanilla compare
+//   76  ff 25 abs32         JMP  [next]                 ; continue: the tail (displaced MOV+TEST, jump back to 0x0047d2a7)
 // No call, no Win32, no floating point: LastError and the x87 stack are
-// untouched by construction; EFLAGS are dead on both exits.
+// untouched by construction; EFLAGS are dead on every exit (the tail's
+// displaced TEST regenerates them, the cull AND overwrites them). The marker
+// test reads one word of the node and writes no register; it runs only on a
+// node already below the threshold.
 //
-// Scope `bodies` keeps the layout and replaces bytes 27..46: the replayed
+// Projectiles `off` replaces bytes 22..33 with `eb 0a` (JMP 34) and int3
+// padding: the marker is not read and the exempt block is unreachable.
+//
+// Scope `bodies` keeps the layout and replaces bytes 39..58: the replayed
 // parent test decides, a parented node continues, a parentless one is culled
 // with EAX/ECX exactly as the engine's JE path leaves them (ECX = 0, EAX = own):
-//   22  8b 4f 18            MOV  ECX,[EDI+0x18]
-//   25  85 c9               TEST ECX,ECX
-//   27  75 1d               JNE  continue               ; has a parent: the engine's own compare. The tail
+//   34  8b 4f 18            MOV  ECX,[EDI+0x18]
+//   37  85 c9               TEST ECX,ECX
+//   39  75 23               JNE  continue               ; has a parent: the engine's own compare. The tail
 //                                                       ;   re-executes the displaced MOV+TEST, so ECX and
 //                                                       ;   EFLAGS reach 0x0047d2a7 as native; EAX untouched
-//   29  8b 87 d8 01 00 00   MOV  EAX,[EDI+0x1d8]
-//   35  eb 0a               JMP  cull
-//   37  cc * 10
+//   41  8b 87 d8 01 00 00   MOV  EAX,[EDI+0x1d8]
+//   47  eb 0a               JMP  cull
+//   49  cc * 10
 // One extra taken-or-not branch on nodes already below the threshold only.
-constexpr unsigned stub_length = 64, stub_cull = 47, stub_continue = 58, stub_scope_branch = 27;
-inline void encode_stub(std::uint32_t at, std::uint32_t threshold, std::uint32_t culled, std::uint32_t cull_target, std::uint32_t next_slot, unsigned char out[stub_length], Scope scope) {
+// The projectile test precedes the scope's parent test, so it applies to both scopes.
+constexpr unsigned stub_length = 82, stub_projectile = 22, stub_replay = 34, stub_cull = 59, stub_exempt = 70, stub_continue = 76, stub_scope_branch = 39;
+inline void encode_stub(std::uint32_t at, std::uint32_t threshold, std::uint32_t culled, std::uint32_t exempt, std::uint32_t cull_target, std::uint32_t next_slot,
+                        unsigned char out[stub_length], Scope scope, bool exempt_projectiles) {
     out[0] = 0x83; out[1] = 0x3d; std::memcpy(out + 2, &threshold, 4); out[6] = 0x00;
     out[7] = 0x7e; out[8] = static_cast<unsigned char>(stub_continue - 9);
     out[9] = 0x50;
@@ -149,22 +192,30 @@ inline void encode_stub(std::uint32_t at, std::uint32_t threshold, std::uint32_t
     out[15] = 0x39; out[16] = 0x44; out[17] = 0x24; out[18] = 0x30;
     out[19] = 0x58;
     out[20] = 0x7d; out[21] = static_cast<unsigned char>(stub_continue - 22);
-    out[22] = 0x8b; out[23] = 0x4f; out[24] = 0x18;
-    out[25] = 0x85; out[26] = 0xc9;
-    out[27] = 0x8b; out[28] = 0x87; out[29] = 0xd8; out[30] = 0x01; out[31] = 0x00; out[32] = 0x00;
-    out[33] = 0x74; out[34] = static_cast<unsigned char>(stub_cull - 35);
-    out[35] = 0x8b; out[36] = 0x89; out[37] = 0xd8; out[38] = 0x01; out[39] = 0x00; out[40] = 0x00;
-    out[41] = 0x3b; out[42] = 0xc8;
-    out[43] = 0x7e; out[44] = static_cast<unsigned char>(stub_cull - 45);
-    out[45] = 0x8b; out[46] = 0xc1;
-    out[47] = 0xff; out[48] = 0x05; std::memcpy(out + 49, &culled, 4);
-    out[53] = 0xe9; const std::uint32_t rel = cull_target - (at + 58); std::memcpy(out + 54, &rel, 4);
-    out[58] = 0xff; out[59] = 0x25; std::memcpy(out + 60, &next_slot, 4);
+    out[22] = 0xf7; out[23] = 0x87; out[24] = flags130_offset & 0xff; out[25] = flags130_offset >> 8; out[26] = 0x00; out[27] = 0x00;
+    std::memcpy(out + 28, &projectile_flag, 4);
+    out[32] = 0x75; out[33] = static_cast<unsigned char>(stub_exempt - 34);
+    out[34] = 0x8b; out[35] = 0x4f; out[36] = 0x18;
+    out[37] = 0x85; out[38] = 0xc9;
+    out[39] = 0x8b; out[40] = 0x87; out[41] = 0xd8; out[42] = 0x01; out[43] = 0x00; out[44] = 0x00;
+    out[45] = 0x74; out[46] = static_cast<unsigned char>(stub_cull - 47);
+    out[47] = 0x8b; out[48] = 0x89; out[49] = 0xd8; out[50] = 0x01; out[51] = 0x00; out[52] = 0x00;
+    out[53] = 0x3b; out[54] = 0xc8;
+    out[55] = 0x7e; out[56] = static_cast<unsigned char>(stub_cull - 57);
+    out[57] = 0x8b; out[58] = 0xc1;
+    out[59] = 0xff; out[60] = 0x05; std::memcpy(out + 61, &culled, 4);
+    out[65] = 0xe9; const std::uint32_t rel = cull_target - (at + stub_exempt); std::memcpy(out + 66, &rel, 4);
+    out[70] = 0xff; out[71] = 0x05; std::memcpy(out + 72, &exempt, 4);
+    out[76] = 0xff; out[77] = 0x25; std::memcpy(out + 78, &next_slot, 4);
+    if (!exempt_projectiles) {
+        out[22] = 0xeb; out[23] = static_cast<unsigned char>(stub_replay - 24);
+        std::memset(out + 24, 0xcc, stub_replay - 24);
+    }
     if (scope == Scope::bodies) {
-        out[27] = 0x75; out[28] = static_cast<unsigned char>(stub_continue - 29);
-        out[29] = 0x8b; out[30] = 0x87; out[31] = 0xd8; out[32] = 0x01; out[33] = 0x00; out[34] = 0x00;
-        out[35] = 0xeb; out[36] = static_cast<unsigned char>(stub_cull - 37);
-        std::memset(out + 37, 0xcc, stub_cull - 37);
+        out[39] = 0x75; out[40] = static_cast<unsigned char>(stub_continue - 41);
+        out[41] = 0x8b; out[42] = 0x87; out[43] = 0xd8; out[44] = 0x01; out[45] = 0x00; out[46] = 0x00;
+        out[47] = 0xeb; out[48] = static_cast<unsigned char>(stub_cull - 49);
+        std::memset(out + 49, 0xcc, stub_cull - 49);
     }
 }
 }

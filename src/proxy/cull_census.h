@@ -20,7 +20,8 @@
 // 12-node pass), and a compare-and-store through an integer-only cdecl
 // handler inside them. The rows are emitted at Present
 // (`cull_census_frame` with `overflow=`, then one `cull_census` row per
-// entry, ending ` lods=<n|-> thr=<t0,t1,...|-> body=<name|->`). Installed on the backend-load path inside the engine_patch install
+// entry, ending ` lods=<n|-> thr=<t0,t1,...|-> body=<name|->`; the frame row
+// ends ` culled_small_exempt_bullet=<n>`). Installed on the backend-load path inside the engine_patch install
 // window after the exact-executable and window-byte checks, with this module
 // pinned; a failed second claim rolls the first back.
 namespace x3m::cull_census {
@@ -42,8 +43,10 @@ struct Stats { std::uint32_t entries, overflow, unmeasured, exited; bool armed; 
 Stats stats();
 // The small-parts stub's threshold for the current frame (cull_small_parts,
 // 0 = none): rows whose `s` is below it and that the engine's own limit did
-// not cull are reported as `culled_small`. One plain store per frame.
-void note_small_threshold(std::int32_t threshold, bool bodies_only = false);   // bodies_only: the stub's scope (parentless nodes only)
+// not cull are reported as `culled_small`, except a node the stub exempts as
+// a projectile (+0x130 & 0x20000000 with the exemption on), which the frame
+// row counts as `culled_small_exempt_bullet=`. One plain store per frame.
+void note_small_threshold(std::int32_t threshold, bool bodies_only = false, bool exempt_projectiles = false);   // bodies_only: the stub's scope (parentless nodes only)
 #ifdef X3M_CULL_CENSUS_FIXTURE
 // Fixture build only: the image global holding the body manager pointer
 // (production reads the constant core::body_global_va); the CPU fixture points

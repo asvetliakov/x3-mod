@@ -33,6 +33,7 @@ Entry* ring_ = nullptr;
 std::atomic<std::uint32_t> count_{0}, overflow_{0}, unmeasured_{0}, exited_{0};
 std::uint32_t pending_node_ = 0, pending_index_ = no_index;
 bool small_bodies_only_ = false;   // cull_small_parts' scope for the frame being recorded
+bool small_exempt_projectiles_ = false; // cull_small_parts' projectile exemption for the frame being recorded
 std::int32_t small_threshold_ = 0; // cull_small_parts' threshold for the frame being recorded (0 = none)
 // The LOD ladder of each model a captured frame's rows name, read at Present
 // (never inside the pass) through engine_memory::read, which validates every
@@ -183,9 +184,9 @@ extern "C" void x3m_cull_census_measure(std::uint32_t node, std::int32_t measure
     pending_node_ = node;
     if (!ring_ || index >= ring_size) { overflow_.fetch_add(1, std::memory_order_relaxed); pending_index_ = no_index; return; }
     // Every field below was dereferenced by the pass itself on this node
-    // before the site (0x0047d08b radius, 0x0047d19b model, 0x0047d1af flags,
-    // 0x0047d258/0x0047d2a7 thresholds) and the parent link is read at
-    // 0x0047d2a2..0x0047d2af with the same null test.
+    // before the site (0x0047cfed +0x130, 0x0047d08b radius, 0x0047d19b model,
+    // 0x0047d1af flags, 0x0047d258/0x0047d2a7 thresholds) and the parent link
+    // is read at 0x0047d2a2..0x0047d2af with the same null test.
     const auto* n = reinterpret_cast<const std::uint32_t*>(node);
     Entry& e = ring_[index];
     e.node = node; e.model = n[model_offset / 4]; e.view = view;
@@ -194,7 +195,7 @@ extern "C" void x3m_cull_census_measure(std::uint32_t node, std::int32_t measure
     const std::uint32_t parent = n[parent_offset / 4];
     e.parent = parent;
     e.limit = size_limit(e.thr_1d8, parent != 0, parent ? std::int32_t(reinterpret_cast<const std::uint32_t*>(parent)[threshold_1d8_offset / 4]) : 0);
-    e.flags_in = n[flags12c_offset / 4]; e.flags_out = 0; e.lod = 0; e.exited = 0; e.model_ptr = 0;
+    e.flags_in = n[flags12c_offset / 4]; e.flags130 = n[flags130_offset / 4]; e.flags_out = 0; e.lod = 0; e.exited = 0; e.model_ptr = 0;
     pending_index_ = index;
     count_.store(index + 1, std::memory_order_relaxed);
 }
@@ -289,7 +290,9 @@ void begin_frame(bool capture) {
 #ifdef X3M_CULL_CENSUS_FIXTURE
 void set_body_table_global(std::uintptr_t va) { body_global_ = va; }
 #endif
-void note_small_threshold(std::int32_t threshold, bool bodies_only) { small_threshold_ = threshold; small_bodies_only_ = bodies_only; }
+void note_small_threshold(std::int32_t threshold, bool bodies_only, bool exempt_projectiles) {
+    small_threshold_ = threshold; small_bodies_only_ = bodies_only; small_exempt_projectiles_ = exempt_projectiles;
+}
 Stats stats() {
     Stats s{};
     s.entries = count_.load(std::memory_order_relaxed); s.overflow = overflow_.load(std::memory_order_relaxed);
@@ -304,8 +307,12 @@ void present(unsigned long long device, unsigned long long frame, bool captured)
     if (captured) {
         const Stats s = stats();
         const std::uint32_t entries = s.entries < ring_size ? s.entries : ring_size;
-        log("cull_census_frame device=%llu frame=%llu entries=%lu overflow=%lu unmeasured=%lu exited=%lu ring=%u",
-            device, frame, (unsigned long)entries, (unsigned long)s.overflow, (unsigned long)s.unmeasured, (unsigned long)s.exited, ring_size);
+        // Rows below the small-parts threshold that the stub let through as projectiles (the
+        // stub's own per-frame count is exempt_bullet= in cull_small_parts_frame).
+        std::uint32_t exempt = 0;
+        for (std::uint32_t i = 0; i < entries && ring_; ++i) if (small_exempt(ring_[i], small_threshold_, small_exempt_projectiles_)) ++exempt;
+        log("cull_census_frame device=%llu frame=%llu entries=%lu overflow=%lu unmeasured=%lu exited=%lu ring=%u culled_small_exempt_bullet=%lu",
+            device, frame, (unsigned long)entries, (unsigned long)s.overflow, (unsigned long)s.unmeasured, (unsigned long)s.exited, ring_size, (unsigned long)exempt);
         std::memset(ladder_cache_, 0, sizeof ladder_cache_);
         std::memset(body_cache_, 0, sizeof body_cache_); body_table_ = BodyTable{};
         // A fresh validation epoch for this frame's ladder reads: on a census-only run no motion
@@ -315,7 +322,7 @@ void present(unsigned long long device, unsigned long long frame, bool captured)
             const Entry& e = ring_[i];
             // A culled_small row names the scope that culled it, then the model's LOD ladder
             // and the body name of its id (appended: the row parsers anchor on the fields before them).
-            const Verdict verdict = classify(e, small_threshold_, small_bodies_only_);
+            const Verdict verdict = classify(e, small_threshold_, small_bodies_only_, small_exempt_projectiles_);
             char ladder[8 + 12 + 5 + ladder_cap * 12 + 1];
             const Ladder& l = ladder_of(e.model_ptr);
             format_ladder(ladder, sizeof ladder, e.model_ptr && l.known, l.count, l.thresholds, l.thr);

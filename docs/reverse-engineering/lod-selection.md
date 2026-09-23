@@ -727,11 +727,12 @@ compare and the engine's own cull instruction `0047d2c3 83 a7 2c 01 00 00 fd`
 the lod_scale's `0047d44b`; the fixture installs the census and this stub on
 the same synthetic pass and both report correctly.
 
-**Stub** (64 bytes, no call, no Win32, no floating point): `cmp dword
+**Stub** (82 bytes since 2026-09-23, 64 before the projectile test; no call, no Win32, no floating point): `cmp dword
 [threshold],0; jle continue` (the disarmed cost), then `push eax; mov
 eax,[threshold]; cmp [esp+0x30],eax; pop eax; jge continue` on the pass's own
 `s = r·640/D` at `[ESP+0x2c]` (ESP unchanged: the site is a `jmp`, not a
-`call`); below the threshold it replays `0047d2a2..0047d2b9` so EAX/ECX arrive
+`call`); below the threshold `test dword [edi+0x130],0x20000000; jne exempt`
+lets a projectile node through (see "Projectile nodes" below), otherwise it replays `0047d2a2..0047d2b9` so EAX/ECX arrive
 as the engine leaves them (both dead there), increments a per-frame count and
 jumps to `0047d2c3`. The node therefore takes exactly the path of a node whose
 measure is under a positive limit: renderable bit cleared, then the
@@ -766,7 +767,8 @@ default `all` since 2026-09-19; an absent or empty variable is `all` too).
 (`[node+0x18] == 0`), the test the displaced `mov ecx,[edi+0x18]; test ecx,ecx`
 already performs; `all` is the behaviour described above. The scope is fixed at
 install and selects the emitted stub, so there is no per-node scope read: the
-`bodies` stub keeps the 64-byte layout and replaces bytes 27..46 with `jne
+`bodies` stub keeps the layout and replaces bytes 39..58 (27..46 in the
+64-byte stub before the projectile test) with `jne
 continue; mov eax,[edi+0x1d8]; jmp cull` (int3 padding). A parented node below
 the threshold leaves through the same `jmp [next]` as every kept node: the tail
 re-executes the displaced `mov`/`test`, so ECX and EFLAGS reach `0047d2a7`
@@ -799,10 +801,93 @@ view) and its `cull_small_parts_value` log line is capped at 16 per session.
 is unreachable with only this option on; `cull_small_parts::after_reset`
 disarms the threshold until the next `begin_frame` re-reads the live buffer.
 
-**Verified.** Site verifier 19/19 on the installed EXE (18/18 before the scope's
+**Verified.** Since the projectile test (2026-09-23): site verifier 21/21, CPU
+fixture 132 checks ([ledger](../verification/cull-small-parts.md)). Before it:
+site verifier 19/19 on the installed EXE (18/18 before the scope's
 `encoder_bodies` check; an earlier "16/16" here was stale); CPU fixture 113
 checks with the scope cases (78 before). Earlier record: CPU fixture 78 checks
 (native fidelity of all 1,214 rows, 403 / 458 / 479 draws flip at 2 / 4 / 8 px
 and nothing else changes, census + stub together, registers/ESP/x87/LastError,
 rollback, refusals). Cost in the fixture harness: 0.235 µs per 12-node pass
 native, 0.244 disarmed, 0.237 armed with 7 of 12 culled (Wine/FEX, not game FPS).
+
+### Projectile nodes (2026-09-23, Run 75 B)
+
+Run 75 B (run279, 4 px, chase view, fire held) measured the cull removing the
+player's bolts: 51–54 bullet nodes per frame (body `v\00517`, model id
+`0x205`, radius 784, 58,634 units of travel per frame), 30–33 `culled_small`
+(s = 1–3 against threshold 4), 18–20 `culled_min` by the engine's own
+measure, 0–3 kept; Run 271 with the cull off drew 33–35
+([bolt-footprint ledger](../verification/bolt-footprint.md), Run 75 B). The
+model id cannot identify a projectile (mods add bullet bodies), and the
+census's `flags_in` (`+0x12c` = `01001002`) is shared with ship parts.
+
+**The marker [s].** The sector-object creation routine (class in `DX`, switch
+at `0x004400d8` through the byte table `0x00441d94` / jump table
+`0x00441d44`; class numbering as in
+[sector-collide.md](sector-collide.md) §12.1) handles class 0 (`TBullets`) at
+`0x004400df`: it allocates the `0xa0`-byte payload, takes the body id from
+the type record's first word (`0x0044019b`) and stores
+`[esp+0x20] = 0x20800000` at `0x004401ae` (`c7 44 24 20 00 00 80 20`; the
+local is zeroed for every class at `0x004400b8`). Only the class-0 node path
+(`0x004410f0`: `cmp ax,bx; jne` with BX = 0) consumes it: `0x004410f9`
+allocates the root node (`0x00486d10`), `0x00441107` sets the body, the
+`+0x58` flags of the bullet type pick the mesh builder (`0x00412450`,
+`0x0047eef0`, `0x0047eb90`, `0x0047f0a0`; none allocates a child node), and
+`0x0044123b..0x00441248` (`mov eax,[ebp+0x70]; mov edx,[esp+0x20]; or
+[eax+0x130],edx`) ORs the marker into the root node's `+0x130`. The other
+classes leave through `0x0044124a`/`0x00441255` without touching `+0x130`
+(the class-7 subtype `0x113` store at `0x00440665` is dead for that reason).
+So every bolt, beam and flak object, including types a mod appends to
+`TBullets`, is one root node with `+0x130 & 0x20800000`. The engine itself
+reads the bit: `0x00488b00 test dword [edi+0x130],0x20000000` keeps such
+nodes out of the script occluder list. `0x800000` alone is not specific
+(`0x0046b137..0x0046b316` OR `0x10800000` into `+0x130`; `0x0046ce6f` and
+`0x0047e9cb` clear it). The marker local is written three times
+(`0x004400b8` zero, `0x004401ae`, the dead `0x00440665`) and read once
+(`0x0044123e`). No immediate `and` on `+0x130` clears `0x20000000` (the
+masks are `~1`, `~2`, `~0x20000`, `~0x40000`, `~0x180000`, `~0x800000`), no
+byte access to `+0x131..+0x133` exists, the register setter/clearer pair
+`0x004871a0`/`0x004871b0` is reached only with `0x40` (`0x00441cfe`,
+`0x00441d0f`, `0x00450758`, `0x00450774`), and the read-modify-write stores
+`0x00487353` (`& ~0x180`) and `0x0047a3af` (`& ~0x80 | 0x100`) keep it. The
+whole-word stores (node initialisers, the node copy `0x0047a012`, the save
+loader `0x004304fe`, the clone `0x0048721d` that keeps bit 0 only, the
+scene loader `0x00494ab8` and a few more) were not all traced to their
+records (not verified; a store that dropped the bit would only cull that bolt
+as before).
+
+**Measured [m].** In run279 the 794 `object_context` rows (35 models, the
+object-trace submission rows carry `flags130` per drawn node) show the bit on
+model `0x205` nodes only (2 of 2 bullet nodes, `flags130=24980040`,
+`flags12c=01001002`), on no other model
+(`verification/results/run279-bolts/projectile_flag.py`).
+
+**Missiles** (class 10, `TMissiles`) take the generic path: a fixed dummy
+body `0x1b`, the scene loaded from the type (`0x004412a2`), no marker and a
+multi-node scene, so no single node word names them at the cull site. They
+are not exempt; at a radius far above a bolt's they rarely fall under a few
+pixels. Mines and drones are other classes (drones are ships) and are not
+exempt either.
+
+**The exemption.** `X3M_CULL_SMALL_PARTS_PROJECTILES=on` (the default;
+`--cull-small-parts-projectiles on|off`) emits `test dword
+[edi+0x130],0x20000000; jne exempt` at stub offset 22, after the threshold
+compare, so only nodes already below the threshold pay one load and one
+not-taken branch; `exempt` increments a per-frame count and leaves through
+the same `jmp [next]` as a kept node (the tail re-executes the displaced
+`mov`/`test`, EAX was restored by the `pop`, no register is written by the
+`test`). `off` emits `jmp 34` over the test. The pass itself rewrites `+0x130`
+on the same node at `0047cfed`, so the read is of a live field. Both failure
+modes restore behaviour that exists today: a missed marker culls the node as
+before, a false one runs the vanilla compare. `initialize()` compares the two
+marker instructions (`0x004401ae`, 8 bytes; `0x0044123b`, 13 bytes) and
+installs the exemption off (`projectiles=marker_mismatch`) when they differ.
+Rows: `cull_small_parts_frame ... projectiles=on exempt_bullet=<n>` (the
+stub's count, every marked node below the threshold including those the
+engine then culls itself) and `cull_census_frame ... culled_small_exempt_bullet=<n>`
+(the same class counted from the census ring); an exempt row is never
+`culled_small`. Expected cost in the run279 view: about 31 more bullet
+instances per firing frame, about 750 more primitives in the bullet draw
+(24 faces each, inferred from the body sizes in the bolt-footprint note), no
+extra draw call.

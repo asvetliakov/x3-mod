@@ -64,11 +64,15 @@ candidate pixels). Most likely limit (inferred): fewer/shorter bolt primitives o
 not the emission route. Next: Run 72 B holds fire in third person for a burst, once with `--cull-small-parts 0`
 to rule out the small-part cull, and a per-draw bolt rectangle/luminance diagnostic if that does not settle it.
 
-### Run 271 (Run 72 B): cull ruled out, bolts are 1–2 px dots
+### Run 271 (Run 72 B): with the cull off, bolts are 1–2 px dots
 
 With `--cull-small-parts 0` and fire held: the bullet pair (ec1f5c4a, ps_1_1 / vs_1_1) is drawn and admitted in 8 of 8
-frames, 792–840 primitives per draw (about 31 bolts on screen), exposure 1.10 EV; the bolts reach the screen as
+frames, 792–840 primitives per draw (about 33–35 bolts on screen, 792–840 primitives at 24 each), exposure 1.10 EV; the bolts reach the screen as
 components of median area 1–2 px and at most 4 px extent (measured, `run271-music-keep/bolt_center_out.txt`).
-Neither the cull nor the emission route limits them; the hull widening rewrites SM3 light-map fetches and cannot
-add coverage. Plausible fix (inferred): a minimum on-screen footprint for the bullet draws in the additive route
+With the cull off the emission route does not limit them; the hull widening rewrites SM3 light-map fetches and cannot
+add coverage. **Correction (Run 75 B, run279, 2026-09-23):** this run did not rule the cull out for a launch
+that has it on. With `--cull-small-parts 4` the stub culled 30–33 of the 51–54 bullet nodes per chase-view frame
+(s = 1–3 against threshold 4) one frame after they left the muzzle, and 0–3 were drawn; Run 271's 33–35 drawn bolts
+were the cull-off count (`docs/verification/bolt-footprint.md`, Run 75 B). Projectile nodes are now exempt by
+default (`--cull-small-parts-projectiles`, `docs/reverse-engineering/lod-selection.md` "Projectile nodes"). Plausible fix (inferred): a minimum on-screen footprint for the bullet draws in the additive route
 (design note pending); a per-effect gain would only brighten a 1 px dot under the bloom clamp.

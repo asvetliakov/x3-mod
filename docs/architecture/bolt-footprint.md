@@ -22,6 +22,17 @@ below W = 3 px widened to W, full length below L = 12 px lengthened to L along
 the projected flight axis), written in the chase view only, with
 `--bolt-footprint W[,L]`.
 
+**Cull interaction (Run 75 B, run279).** The rule can only widen bolts that
+reach the draw. With `--cull-small-parts 4` the small-part cull removed 30–33
+of the 51–54 bullet nodes per chase-view frame (18–20 more by the engine's
+own measure, 0–3 drawn), so the footprint saw only the few bolts nearest the
+camera; the §1 evidence was taken with the cull off (Run 271) and does not
+describe a default launch. Since 2026-09-23 projectile nodes (the engine's
+class-0 marker `+0x130 & 0x20000000`) are exempt from that cull by default
+(`--cull-small-parts-projectiles on`; [lod-selection.md](../reverse-engineering/lod-selection.md)
+"Projectile nodes"). Expected: about 31 more bullet instances (~750
+primitives) per firing frame reaching this rule.
+
 ## 1. Evidence
 
 Measured unless marked (paths under `verification/results/`):

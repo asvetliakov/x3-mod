@@ -74,6 +74,10 @@ SHADOW_CASCADE_MIN_FOOTPRINT_DEFAULT = 8.0
 # --cull-small-parts 0 turns it off, and a --vanilla launch forwards nothing.
 CULL_SMALL_PARTS_DEFAULT_PX = 2.0
 CULL_SMALL_PARTS_DEFAULT_SCOPE = 'all'
+# Run 75 B (run279): at 4 px the stub culled 30-33 of the 51-54 bolts per frame
+# one frame after they left the muzzle; projectile nodes (the engine's class-0
+# marker +0x130 & 0x20000000) are exempt by default.
+CULL_SMALL_PARTS_DEFAULT_PROJECTILES = 'on'
 
 
 # Collision narrow phase: the SSE2 separating-axis test and the no-contact memo are
@@ -681,6 +685,7 @@ def main():
     parser.add_argument('--collide-memo-verify', action='store_true', help='Diagnostic form of --collide-memo (implies it; X3M_COLLIDE_MEMO_VERIFY=1): nothing is skipped, every query that would have been answered from the memo runs in the engine as well and the two are compared; verify_mismatches in the collide_memo line must stay 0. Costs what vanilla costs: for one flight')
     parser.add_argument('--cull-small-parts', type=float, default=None, metavar='PX', help='Cull mesh nodes whose projected radius is under PX pixels, 0 < PX <= 64 (X3M_CULL_SMALL_PARTS_PX; launcher default 2 on every modded launch, --cull-small-parts 0 = off, nothing patched; --vanilla forwards nothing and the DLL\'s own fallback stays off): one trampoline on the per-node cull/LOD pass 0x0047cfe0 at 0x0047d2a2 sends a node whose engine metric s = r*640/D is below the per-frame threshold (PX converted with the live projection scale and the back-buffer width, the cull-census bucket rule) down the engine\'s own size-cull instruction at 0x0047d2c3; every other node runs the vanilla compare. Run131 census at the run117 station view: 2 px = 403 of the 878 census-attributed draws (901 in the frame; about 9.6 ms at 23.7 us/draw), 4 px = 458; lower bounds, because a culled node also culls its 0x40000-flagged children (0x0047d055). The threshold applies in every view (small casters leave the shadow and env maps too) and is scaled by the one main-view projection. Exact executable and bytes only, otherwise fails closed to vanilla; risk: popping of thin parts (antennas, clamps) whose radius is small, cascading to their descendants (none seen at 2 px in run 43 B) (docs/architecture/engine-frame-time.md 2.3, docs/reverse-engineering/lod-selection.md "Cull small parts site")')
     parser.add_argument('--cull-small-parts-scope', choices=('all', 'bodies'), default=None, help='Which nodes --cull-small-parts may cull (X3M_CULL_SMALL_PARTS_SCOPE; default all; refused when the cull is off, enables nothing on its own). bodies = only nodes without a parent link ([node+0x18] == 0, the test the displaced instruction already performs): whole distant objects, which at 2 px are invisible anyway, while the glowing sub-parts of nearer stations (a few px, visible) stay. all = every node under the threshold. Fixture replay of the run131 rows at 2 px: all 97 nodes / 403 draws, bodies 89 / 395 (body-flagged rows; the rows carry no parent link, docs/verification/cull-small-parts.md). Run 43 B: at 2 px `all` took the busy view from 884 to 477 draws and ~30 to ~42 fps with no visible pop-in, while `bodies` culled 36 nodes/frame and saved nothing (nearly every small node has a parent), so `all` is the default in the launcher and in the DLL')
+    parser.add_argument('--cull-small-parts-projectiles', choices=('on', 'off'), default=None, help='Whether --cull-small-parts spares weapon projectiles (X3M_CULL_SMALL_PARTS_PROJECTILES; default on; refused when the cull is off, enables nothing on its own). on = a node carrying the engine\'s class-0 (TBullets) marker, +0x130 & 0x20000000 set at object creation (0x00441242) for every bolt, beam and flak type including mod-added ones, runs the vanilla compare instead of the pixel cull; missiles carry no marker and stay subject to the cull (they rarely fall under a few pixels). Run 75 B at 4 px: 30-33 of 51-54 bolts per frame were culled by the stub one frame after leaving the muzzle; expected cost with on about 31 more bullet instances (~750 primitives) per frame while firing. The DLL turns the exemption off (projectiles=marker_mismatch) when the two marker instructions are not the verified bytes (docs/reverse-engineering/lod-selection.md "Projectile nodes")')
     parser.add_argument('--dry-run', action='store_true', help='launch only: validate the options and installation, print the command and X3M_* environment as JSON, and exit without launching')
     args = parser.parse_args()
     if args.dry_run and args.action != 'launch':
@@ -1285,6 +1290,8 @@ def main():
         parser.error(f'--sun-occlusion-curve out of range: {args.sun_occlusion_curve} (expected [0.25, 4])')
     if args.cull_small_parts_scope is not None and not cull_small_parts_px(args):
         parser.error('--cull-small-parts-scope requires a non-zero --cull-small-parts')
+    if args.cull_small_parts_projectiles is not None and not cull_small_parts_px(args):
+        parser.error('--cull-small-parts-projectiles requires a non-zero --cull-small-parts')
     if not 100 <= args.profile_interval_us <= 1000000:
         parser.error('--profile-interval-us must be between 100 and 1000000.')
     if args.gz_buffer_kb != 256 and not args.gz_buffer:
@@ -1703,9 +1710,11 @@ def main():
         if cull_px:
             env['X3M_CULL_SMALL_PARTS_PX'] = f'{cull_px:.4f}'  # fixed-point: the DLL parser takes no exponent form
             env['X3M_CULL_SMALL_PARTS_SCOPE'] = args.cull_small_parts_scope or CULL_SMALL_PARTS_DEFAULT_SCOPE
+            env['X3M_CULL_SMALL_PARTS_PROJECTILES'] = args.cull_small_parts_projectiles or CULL_SMALL_PARTS_DEFAULT_PROJECTILES
         else:
             env.pop('X3M_CULL_SMALL_PARTS_PX', None)
             env.pop('X3M_CULL_SMALL_PARTS_SCOPE', None)
+            env.pop('X3M_CULL_SMALL_PARTS_PROJECTILES', None)
         # The three framing constants are always forwarded at their production
         # defaults so a stale shell value cannot reframe the camera; the rest
         # fall through to the DLL's compiled defaults when unset.

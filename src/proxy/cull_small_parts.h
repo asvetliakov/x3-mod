@@ -11,7 +11,10 @@
 // width, exactly as the census summariser buckets nodes; a node whose `s`
 // is below that threshold takes the engine's own size-cull instruction at
 // 0x0047d2c3 (renderable bit cleared, nothing queued), every other node runs
-// the vanilla compare. With the threshold at 0 (option off, no valid camera
+// the vanilla compare, and so does a node below it that carries the engine's
+// class-0 projectile marker (+0x130 & 0x20000000: bolts and beams;
+// X3M_CULL_SMALL_PARTS_PROJECTILES=on|off, default on; cull_small_parts_core.h
+// "Projectile exemption"). With the threshold at 0 (option off, no valid camera
 // yet, a Reset) the stub is one compare and a branch. No handler call: the
 // stub is straight-line integer code, LastError and the x87 stack untouched.
 // Installed on the backend-load path inside the engine_patch install window
@@ -27,9 +30,14 @@ bool shutdown();    // restores the site (dynamic-unload detach only); true when
 // of the engine's `and [edi+0x12c],~2` (window offset 47).
 // bodies_only: the stub culls only parentless nodes (`[node+0x18] == 0`;
 // X3M_CULL_SMALL_PARTS_SCOPE=bodies); false = every node (`all`, the default).
-bool install_at(std::uintptr_t site, std::uintptr_t cull_target, bool bodies_only);
+// exempt_projectiles: a node carrying the engine's class-0 marker
+// (+0x130 & 0x20000000: bolts, beams) runs the vanilla compare
+// (X3M_CULL_SMALL_PARTS_PROJECTILES=on, the default; initialize() turns it off
+// when the marker's two engine instructions are not the verified bytes).
+bool install_at(std::uintptr_t site, std::uintptr_t cull_target, bool bodies_only, bool exempt_projectiles);
 const char* state();
 const char* scope();                // "bodies" or "all": the installed stub's scope (the default before an install)
+bool projectiles_exempt();          // the installed stub exempts marked projectile nodes
 std::uintptr_t stub_address();
 double requested_px();
 bool set_px(double px);             // the setting without a relaunch (fixture and diagnostics); false outside the band
@@ -44,12 +52,15 @@ void set_backbuffer_width(unsigned width);
 void after_reset(unsigned width);   // disarms until the next begin_frame
 // Emits the cull_small_parts_frame row for a captured frame and clears the count.
 void present(unsigned long long device, unsigned long long frame, bool captured);
-struct Stats { std::int32_t threshold; std::uint32_t culled; float m00; unsigned width; };
+struct Stats { std::int32_t threshold; std::uint32_t culled, exempt; float m00; unsigned width; };
 Stats stats();
 }
 // The words the stub reads and writes: the frame's threshold in `s` units
 // (0 = off) and the per-frame count of nodes it sent down the cull path
 // (every node below the threshold, including those the engine's own limit or
-// degenerate-size test would have culled; the census names the difference).
+// degenerate-size test would have culled; the census names the difference),
+// and the per-frame count of nodes below the threshold it let through as
+// projectiles (same inclusive rule).
 extern "C" volatile std::int32_t x3m_cull_small_parts_threshold;
 extern "C" volatile std::uint32_t x3m_cull_small_parts_culled;
+extern "C" volatile std::uint32_t x3m_cull_small_parts_exempt;

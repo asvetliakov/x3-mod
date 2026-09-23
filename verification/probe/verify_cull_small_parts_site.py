@@ -17,7 +17,10 @@ branches are exactly the documented ones, that every branch inside the window
 stays inside it or lands on its end, that the frame prologue and the three `[esp+0x2c]` stores that make that
 slot `s` are the expected bytes, that the claim is disjoint from the
 cull-census sites (0x0047d258, 0x0047d528) and the lod_scale site
-(0x0047d44b), that the function ends in `ret 8`, and that
+(0x0047d44b), that the function ends in `ret 8`, that the engine's class-0
+projectile marker is established by the pinned instructions (0x004401ae
+stores 0x20800000, 0x0044123b..0x00441248 ORs it into the root node's +0x130)
+and consumed as 0x20000000 by the occluder filter at 0x00488b00, and that
 src/proxy/cull_small_parts_core.h carries the same constants and window. Also
 the stub encoder and the `cull_small_parts`, `cull_small_parts_value` and
 `cull_small_parts_frame` line parsers the host test exercises. No Wine, no
@@ -53,33 +56,47 @@ RET_VA = 0x47d54f
 # before the site rebalance with `add esp`), and these are the three final writers of that slot before the site.
 PROLOGUE = bytes.fromhex('83ec14 8a44241c 53 55 56 57'.replace(' ', ''))
 S_STORES = {0x47d229: bytes.fromhex('c744242c00000007'), 0x47d24a: bytes.fromhex('8944242c'), 0x47d250: bytes.fromhex('c744242c01000000')}
-STUB_LENGTH, STUB_CULL, STUB_CONTINUE, STUB_SCOPE_BRANCH = 64, 47, 58, 27
+STUB_LENGTH, STUB_PROJECTILE, STUB_REPLAY, STUB_CULL, STUB_EXEMPT, STUB_CONTINUE, STUB_SCOPE_BRANCH = 82, 22, 34, 59, 70, 76, 39
 SCOPES = ('bodies', 'all')
+# The engine's class-0 (TBullets) root-node marker the stub's exemption tests (docs/reverse-engineering/lod-selection.md, "Projectile nodes").
+FLAGS130_OFFSET, PROJECTILE_FLAG = 0x130, 0x20000000
+MARKER_STORE_VA, MARKER_STORE = 0x4401ae, bytes.fromhex('c744242000008020')              # mov dword [esp+0x20],0x20800000 (class-0 case)
+MARKER_OR_VA, MARKER_OR = 0x44123b, bytes.fromhex('8b4570 8b542420 099030010000'.replace(' ', ''))  # mov eax,[ebp+0x70]; mov edx,[esp+0x20]; or [eax+0x130],edx
+MARKER_USE_VA, MARKER_USE = 0x488b00, bytes.fromhex('f7873001000000000020')             # test dword [edi+0x130],0x20000000 (occluder filter)
 LOG_RE = re.compile(r'\bcull_small_parts requested=(?P<requested>\S+) px=(?P<px>[0-9.e+-]+) patched=(?P<patched>[01]) reason=(?P<reason>\S+) '
-                    r'site=0x(?P<site>[0-9a-f]{8}) cull=0x(?P<cull>[0-9a-f]{8}) write=(?P<write>none|atomic|plain) stub=0x(?P<stub>[0-9a-f]{8}) camera=(?P<camera>\S+)(?: scope=(?P<scope>bodies|all|invalid))?')
+                    r'site=0x(?P<site>[0-9a-f]{8}) cull=0x(?P<cull>[0-9a-f]{8}) write=(?P<write>none|atomic|plain) stub=0x(?P<stub>[0-9a-f]{8}) camera=(?P<camera>\S+)(?: scope=(?P<scope>bodies|all|invalid))?'
+                    r'(?: projectiles=(?P<projectiles>on|off|marker_mismatch|invalid))?')
 VALUE_RE = re.compile(r'\bcull_small_parts_value px=(?P<px>[0-9.e+-]+) m00=(?P<m00>[0-9.e+-]+) width=(?P<width>\d+) threshold=(?P<threshold>-?\d+)')
 FRAME_RE = re.compile(r'\bcull_small_parts_frame device=(?P<device>\d+) frame=(?P<frame>\d+) px=(?P<px>[0-9.e+-]+) threshold=(?P<threshold>-?\d+) '
-                      r'culled=(?P<culled>\d+) m00=(?P<m00>[0-9.e+-]+) width=(?P<width>\d+)(?: scope=(?P<scope>bodies|all))?')
+                      r'culled=(?P<culled>\d+) m00=(?P<m00>[0-9.e+-]+) width=(?P<width>\d+)(?: scope=(?P<scope>bodies|all))?'
+                      r'(?: projectiles=(?P<projectiles>on|off) exempt_bullet=(?P<exempt>\d+))?')
 
 
-def encode_stub(at, threshold, culled, cull_target, next_slot, scope='all'):
+def encode_stub(at, threshold, culled, exempt, cull_target, next_slot, scope='all', projectiles=True):
     """cmp dword [threshold],0; jle continue; push eax; mov eax,[threshold]; cmp [esp+0x30],eax; pop eax; jge continue;
+    test dword [edi+0x130],0x20000000; jne exempt;
     mov ecx,[edi+0x18]; test ecx,ecx; mov eax,[edi+0x1d8]; je cull; mov ecx,[ecx+0x1d8]; cmp ecx,eax; jle cull; mov eax,ecx;
-    cull: inc dword [culled]; jmp cull_target; continue: jmp [next]. Scope `bodies` replaces bytes 27..46 with
-    jne continue; mov eax,[edi+0x1d8]; jmp cull; int3 padding (a parented node runs the engine's own compare). The C++ encoder's contract."""
+    cull: inc dword [culled]; jmp cull_target; exempt: inc dword [exempt]; continue: jmp [next]. Projectiles off replaces
+    bytes 22..33 with jmp 34 and int3 padding. Scope `bodies` replaces bytes 39..58 with jne continue; mov eax,[edi+0x1d8];
+    jmp cull; int3 padding (a parented node runs the engine's own compare). The C++ encoder's contract."""
     if scope not in SCOPES:
         raise ValueError('scope must be bodies or all')
-    for value in (at, threshold, culled, cull_target, next_slot):
+    for value in (at, threshold, culled, exempt, cull_target, next_slot):
         if not 0 <= value <= 0xffffffff:
             raise ValueError('addresses must be 32-bit VAs')
     code = (b'\x83\x3d' + struct.pack('<I', threshold) + b'\x00' + b'\x7e' + bytes([STUB_CONTINUE - 9])
             + b'\x50' + b'\xa1' + struct.pack('<I', threshold) + b'\x39\x44\x24\x30' + b'\x58' + b'\x7d' + bytes([STUB_CONTINUE - 22])
-            + b'\x8b\x4f\x18' + b'\x85\xc9' + b'\x8b\x87\xd8\x01\x00\x00' + b'\x74' + bytes([STUB_CULL - 35])
-            + b'\x8b\x89\xd8\x01\x00\x00' + b'\x3b\xc8' + b'\x7e' + bytes([STUB_CULL - 45]) + b'\x8b\xc1'
-            + b'\xff\x05' + struct.pack('<I', culled) + b'\xe9' + struct.pack('<I', (cull_target - (at + 58)) & 0xffffffff)
+            + b'\xf7\x87' + struct.pack('<I', FLAGS130_OFFSET) + struct.pack('<I', PROJECTILE_FLAG) + b'\x75' + bytes([STUB_EXEMPT - 34])
+            + b'\x8b\x4f\x18' + b'\x85\xc9' + b'\x8b\x87\xd8\x01\x00\x00' + b'\x74' + bytes([STUB_CULL - 47])
+            + b'\x8b\x89\xd8\x01\x00\x00' + b'\x3b\xc8' + b'\x7e' + bytes([STUB_CULL - 57]) + b'\x8b\xc1'
+            + b'\xff\x05' + struct.pack('<I', culled) + b'\xe9' + struct.pack('<I', (cull_target - (at + STUB_EXEMPT)) & 0xffffffff)
+            + b'\xff\x05' + struct.pack('<I', exempt)
             + b'\xff\x25' + struct.pack('<I', next_slot))
+    if not projectiles:
+        skip = b'\xeb' + bytes([STUB_REPLAY - 24])
+        code = code[:STUB_PROJECTILE] + skip + b'\xcc' * (STUB_REPLAY - STUB_PROJECTILE - len(skip)) + code[STUB_REPLAY:]
     if scope == 'bodies':
-        body = b'\x75' + bytes([STUB_CONTINUE - 29]) + b'\x8b\x87\xd8\x01\x00\x00' + b'\xeb' + bytes([STUB_CULL - 37])
+        body = b'\x75' + bytes([STUB_CONTINUE - 41]) + b'\x8b\x87\xd8\x01\x00\x00' + b'\xeb' + bytes([STUB_CULL - 49])
         code = code[:STUB_SCOPE_BRANCH] + body + b'\xcc' * (STUB_CULL - STUB_SCOPE_BRANCH - len(body)) + code[STUB_CULL:]
     assert len(code) == STUB_LENGTH
     return code
@@ -105,7 +122,8 @@ def parse_log_line(line):
         return None
     row = match.groupdict()
     return {'requested': row['requested'], 'px': float(row['px']), 'patched': row['patched'] == '1', 'reason': row['reason'],
-            'site': int(row['site'], 16), 'cull': int(row['cull'], 16), 'write': row['write'], 'stub': int(row['stub'], 16), 'camera': row['camera'], 'scope': row['scope']}
+            'site': int(row['site'], 16), 'cull': int(row['cull'], 16), 'write': row['write'], 'stub': int(row['stub'], 16), 'camera': row['camera'], 'scope': row['scope'],
+            'projectiles': row['projectiles']}
 
 
 def parse_value_line(line):
@@ -122,16 +140,31 @@ def parse_frame_line(line):
         return None
     row = match.groupdict()
     return {'device': int(row['device']), 'frame': int(row['frame']), 'px': float(row['px']), 'threshold': int(row['threshold']),
-            'culled': int(row['culled']), 'm00': float(row['m00']), 'width': int(row['width']), 'scope': row['scope']}
+            'culled': int(row['culled']), 'm00': float(row['m00']), 'width': int(row['width']), 'scope': row['scope'],
+            'projectiles': row['projectiles'], 'exempt_bullet': int(row['exempt']) if row['exempt'] is not None else None}
 
 
 def scope_stub_ok():
-    args = (0x10000000, 0x10002000, 0x10002004, CULL_VA, 0x10000040)
+    args = (0x10000000, 0x10002000, 0x10002004, 0x10002008, CULL_VA, 0x10000054)
     every, bodies = encode_stub(*args, scope='all'), encode_stub(*args, scope='bodies')
     return (len(bodies) == STUB_LENGTH and bodies[:STUB_SCOPE_BRANCH] == every[:STUB_SCOPE_BRANCH] and bodies[STUB_CULL:] == every[STUB_CULL:]
-            and bodies[22:27] == SITE and bodies[27] == 0x75 and 29 + bodies[28] == STUB_CONTINUE
-            and bodies[29:35] == bytes.fromhex('8b87d8010000') and bodies[35] == 0xeb and 37 + bodies[36] == STUB_CULL
-            and bodies[37:STUB_CULL] == b'\xcc' * (STUB_CULL - 37))
+            and bodies[STUB_REPLAY:STUB_REPLAY + 5] == SITE and bodies[39] == 0x75 and 41 + bodies[40] == STUB_CONTINUE
+            and bodies[41:47] == bytes.fromhex('8b87d8010000') and bodies[47] == 0xeb and 49 + bodies[48] == STUB_CULL
+            and bodies[49:STUB_CULL] == b'\xcc' * (STUB_CULL - 49))
+
+
+def projectile_stub_ok():
+    """The marker test sits on the below-threshold path only (after the jge), reads node+0x130 against 0x20000000 and branches to
+    the exempt count, which falls through into the continue jump; `off` jumps over it to the replay; both scopes keep it."""
+    args = (0x10000000, 0x10002000, 0x10002004, 0x10002008, CULL_VA, 0x10000054)
+    on, off, bodies = encode_stub(*args), encode_stub(*args, projectiles=False), encode_stub(*args, scope='bodies')
+    return (on[STUB_PROJECTILE:STUB_PROJECTILE + 2] == b'\xf7\x87' and struct.unpack_from('<II', on, STUB_PROJECTILE + 2) == (FLAGS130_OFFSET, PROJECTILE_FLAG)
+            and on[32] == 0x75 and 34 + on[33] == STUB_EXEMPT and on[STUB_EXEMPT:STUB_EXEMPT + 2] == b'\xff\x05'
+            and struct.unpack_from('<I', on, STUB_EXEMPT + 2)[0] == 0x10002008 and STUB_EXEMPT + 6 == STUB_CONTINUE
+            and 22 + on[21] == STUB_CONTINUE and 9 + on[8] == STUB_CONTINUE and on[STUB_REPLAY:STUB_REPLAY + 5] == SITE
+            and off[:STUB_PROJECTILE] == on[:STUB_PROJECTILE] and off[STUB_REPLAY:] == on[STUB_REPLAY:]
+            and off[22] == 0xeb and 24 + off[23] == STUB_REPLAY and off[24:STUB_REPLAY] == b'\xcc' * (STUB_REPLAY - 24)
+            and bodies[STUB_PROJECTILE:STUB_REPLAY] == on[STUB_PROJECTILE:STUB_REPLAY])
 
 
 def source_constants(text):
@@ -143,14 +176,20 @@ def source_constants(text):
         match = re.search(rf'\b{name}\[\w+\]\s*=\s*\{{([^}}]*)\}}', text)
         return bytes(int(b, 0) for b in re.findall(r'0x[0-9a-fA-F]{2}', match.group(1))) if match else b''
     names = ('function_va', 'function_end_va', 'window_va', 'site_va', 'next_va', 'je_va', 'cull_va', 'after_cull_va', 'window_length', 'site_offset',
-             'site_length', 'cull_offset', 'ret_pop', 'parent_offset', 'threshold_1d8_offset', 'stub_length', 'stub_cull', 'stub_continue', 'stub_scope_branch')
-    return {name: value(name) for name in names} | {'window': array('window'), 'site': array('site')}
+             'site_length', 'cull_offset', 'ret_pop', 'parent_offset', 'threshold_1d8_offset', 'stub_length', 'stub_cull', 'stub_continue', 'stub_scope_branch',
+             'stub_projectile', 'stub_replay', 'stub_exempt', 'flags130_offset', 'projectile_flag', 'marker_store_va', 'marker_or_va',
+             'marker_store_length', 'marker_or_length')
+    return {name: value(name) for name in names} | {'window': array('window'), 'site': array('site'),
+                                                     'marker_store': array('marker_store'), 'marker_or': array('marker_or')}
 
 
 EXPECTED_CONSTANTS = {'function_va': FUNCTION[0], 'function_end_va': FUNCTION[1], 'window_va': WINDOW_VA, 'site_va': SITE_VA, 'next_va': NEXT_VA, 'je_va': JE_VA,
                       'cull_va': CULL_VA, 'after_cull_va': AFTER_CULL_VA, 'window_length': len(WINDOW), 'site_offset': SITE_VA - WINDOW_VA, 'site_length': 5,
                       'cull_offset': CULL_VA - WINDOW_VA, 'ret_pop': 8, 'parent_offset': 0x18, 'threshold_1d8_offset': 0x1d8,
-                      'stub_length': STUB_LENGTH, 'stub_cull': STUB_CULL, 'stub_continue': STUB_CONTINUE, 'stub_scope_branch': STUB_SCOPE_BRANCH, 'window': WINDOW, 'site': SITE}
+                      'stub_length': STUB_LENGTH, 'stub_cull': STUB_CULL, 'stub_continue': STUB_CONTINUE, 'stub_scope_branch': STUB_SCOPE_BRANCH, 'window': WINDOW, 'site': SITE,
+                      'stub_projectile': STUB_PROJECTILE, 'stub_replay': STUB_REPLAY, 'stub_exempt': STUB_EXEMPT, 'flags130_offset': FLAGS130_OFFSET,
+                      'projectile_flag': PROJECTILE_FLAG, 'marker_store_va': MARKER_STORE_VA, 'marker_or_va': MARKER_OR_VA,
+                      'marker_store_length': len(MARKER_STORE), 'marker_or_length': len(MARKER_OR), 'marker_store': MARKER_STORE, 'marker_or': MARKER_OR}
 
 
 def decode(exe):
@@ -189,9 +228,14 @@ def inspect(data, instructions, core_text):
         'claim_disjoint': all(claim[1] <= a or a + n <= claim[0] for a, n in OTHER_CLAIMS.values()),
         'function_ret': ret is not None and ret.mnemonic == 'ret' and ret.raw == bytes.fromhex('c20800') and ret.end == FUNCTION[1],
         'source_constants': source_constants(core_text) == EXPECTED_CONSTANTS,
-        'encoder': len(encode_stub(0x10000000, 0x10002000, 0x10002004, CULL_VA, 0x10000040)) == STUB_LENGTH,
+        'encoder': len(encode_stub(0x10000000, 0x10002000, 0x10002004, 0x10002008, CULL_VA, 0x10000054)) == STUB_LENGTH,
+        # The exemption's premise: the class-0 creation path stores 0x20800000 and ORs it into the root node's +0x130, and the engine
+        # itself reads bit 0x20000000 of +0x130 (occluder filter). Bytes only: these lie outside the decoded pass.
+        'projectile_marker': image.read(MARKER_STORE_VA, len(MARKER_STORE)) == MARKER_STORE and image.read(MARKER_OR_VA, len(MARKER_OR)) == MARKER_OR
+                             and image.read(MARKER_USE_VA, len(MARKER_USE)) == MARKER_USE,
+        'encoder_projectiles': projectile_stub_ok(),
         # Scope bodies: the stub's parent test is the displaced span itself (same bytes, so the tail's replay leaves ECX/EFLAGS
-        # as native on the continue path), its branches land on the stub's cull and continue labels, and only bytes 27..46 differ.
+        # as native on the continue path), its branches land on the stub's cull and continue labels, and only bytes 39..58 differ.
         'encoder_bodies': scope_stub_ok(),
         'threshold_rule': (threshold_for(2, struct.unpack('<f', struct.pack('<I', 0x3f4ccccc))[0], 1280), threshold_for(4, struct.unpack('<f', struct.pack('<I', 0x3f4ccccc))[0], 1280),
                            threshold_for(8, struct.unpack('<f', struct.pack('<I', 0x3f4ccccc))[0], 1280)) == (3, 6, 11),
