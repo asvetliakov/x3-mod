@@ -1,0 +1,114 @@
+OTHER gpu_sync_timing_mode requested=1 passes=14 boundaries=28 window=300 serialises=1
+OTHER gpu_sync_timing available=1 reason=ok result=00000000 device=1 event=create queries=28 references=28 window=300 spin_limit_ms=500
+W1 frames=0..299 dt_med=21.9 dt_p90=25.6 dropped=0 unclosed=297
+   scene          n= 297 med= 18.456 p90= 20.564 wait= 1.522 med-floor= 18.192
+   present        n= 300 med=  2.418 p90=  4.755 wait= 0.789 med-floor=  2.154
+   hdr_writeback  n=   2 med=  2.286 p90=  6.576 wait= 0.956 med-floor=  2.022
+   meter          n=   2 med=  1.127 p90= 13.159 wait= 0.828 med-floor=  0.863
+   hdr_readback   n=   2 med=  0.356 p90=  0.670 wait= 0.147 med-floor=  0.092
+   fog_fill       n=   2 med=  0.037 p90=  0.368 wait= 0.034 med-floor=  0.000
+W2 frames=300..599 dt_med=23.6 dt_p90=30.8 dropped=0 unclosed=257
+   scene          n= 299 med= 19.924 p90= 25.074 wait= 1.481 med-floor= 19.660
+   engine         n=  42 med=  7.480 p90=  9.681 wait= 1.792 med-floor=  7.216
+   fog_route      n=  23 med=  6.216 p90=  6.584 wait= 0.029 med-floor=  5.952
+   taa            n=  42 med=  3.934 p90=  6.576 wait= 3.437 med-floor=  3.670
+   present        n= 300 med=  2.374 p90=  4.817 wait= 0.765 med-floor=  2.110
+   bloom          n=  42 med=  1.944 p90=  2.295 wait= 1.184 med-floor=  1.680
+   hdr_writeback  n=  42 med=  1.897 p90=  2.501 wait= 0.944 med-floor=  1.633
+   sun_apply      n=  42 med=  1.119 p90=  1.832 wait= 0.986 med-floor=  0.855
+   shadow_depth   n=  42 med=  1.091 p90=  1.633 wait= 0.918 med-floor=  0.827
+   meter          n=  42 med=  0.636 p90=  0.857 wait= 0.438 med-floor=  0.372
+   hdr_readback   n=  42 med=  0.405 p90=  0.559 wait= 0.029 med-floor=  0.141
+   motes          n=  23 med=  0.371 p90=  0.622 wait= 0.343 med-floor=  0.107
+   fog_fill       n=  42 med=  0.194 p90=  0.568 wait= 0.119 med-floor=  0.000
+   retention      n=  42 med=  0.052 p90=  0.213 wait= 0.026 med-floor=  0.000
+W3 frames=600..899 dt_med=30.4 dt_p90=34.5 dropped=0 unclosed=0
+   scene          n= 300 med= 25.005 p90= 28.568 wait= 1.141 med-floor= 24.741
+   engine         n= 300 med=  6.723 p90=  7.573 wait= 1.669 med-floor=  6.459
+   fog_route      n= 300 med=  5.943 p90=  6.845 wait= 0.026 med-floor=  5.679
+   taa            n= 300 med=  3.588 p90=  4.087 wait= 3.174 med-floor=  3.324
+   present        n= 300 med=  1.875 p90=  3.901 wait= 0.650 med-floor=  1.611
+   bloom          n= 300 med=  1.576 p90=  2.306 wait= 0.940 med-floor=  1.312
+   hdr_writeback  n= 300 med=  1.435 p90=  1.736 wait= 0.788 med-floor=  1.171
+   shadow_depth   n= 300 med=  1.007 p90=  1.083 wait= 0.834 med-floor=  0.743
+   sun_apply      n= 300 med=  0.958 p90=  1.122 wait= 0.817 med-floor=  0.694
+   meter          n= 300 med=  0.506 p90=  0.678 wait= 0.335 med-floor=  0.242
+   hdr_readback   n= 300 med=  0.439 p90=  0.568 wait= 0.026 med-floor=  0.175
+   motes          n= 300 med=  0.336 p90=  0.450 wait= 0.312 med-floor=  0.072
+   retention      n= 300 med=  0.073 p90=  0.192 wait= 0.027 med-floor=  0.000
+   fog_fill       n= 300 med=  0.031 p90=  0.194 wait= 0.024 med-floor=  0.000
+W4 frames=900..1199 dt_med=27.6 dt_p90=32.9 dropped=0 unclosed=0
+   scene          n= 300 med= 21.745 p90= 25.902 wait= 1.101 med-floor= 21.481
+   engine         n= 300 med=  5.331 p90=  5.845 wait= 1.639 med-floor=  5.067
+   fog_route      n= 300 med=  5.303 p90=  6.427 wait= 0.024 med-floor=  5.039
+   taa            n= 300 med=  3.106 p90=  3.804 wait= 2.784 med-floor=  2.842
+   present        n= 300 med=  1.759 p90=  3.315 wait= 0.607 med-floor=  1.495
+   bloom          n= 300 med=  1.436 p90=  1.978 wait= 0.920 med-floor=  1.172
+   hdr_writeback  n= 300 med=  1.287 p90=  1.630 wait= 0.750 med-floor=  1.023
+   shadow_depth   n= 300 med=  0.940 p90=  1.025 wait= 0.798 med-floor=  0.676
+   sun_apply      n= 300 med=  0.892 p90=  1.050 wait= 0.788 med-floor=  0.628
+   meter          n= 300 med=  0.451 p90=  0.600 wait= 0.324 med-floor=  0.187
+   hdr_readback   n= 300 med=  0.415 p90=  0.533 wait= 0.025 med-floor=  0.151
+   motes          n= 300 med=  0.329 p90=  0.443 wait= 0.311 med-floor=  0.065
+   retention      n= 300 med=  0.074 p90=  0.192 wait= 0.023 med-floor=  0.000
+   fog_fill       n= 300 med=  0.027 p90=  0.143 wait= 0.020 med-floor=  0.000
+W5 frames=1200..1499 dt_med=26.1 dt_p90=29.0 dropped=0 unclosed=0
+   scene          n= 300 med= 21.560 p90= 23.936 wait= 1.104 med-floor= 21.296
+   engine         n= 300 med=  5.348 p90=  5.895 wait= 1.562 med-floor=  5.084
+   fog_route      n= 300 med=  5.055 p90=  5.909 wait= 0.024 med-floor=  4.791
+   taa            n= 300 med=  3.069 p90=  3.463 wait= 2.694 med-floor=  2.805
+   present        n= 300 med=  1.742 p90=  2.958 wait= 0.587 med-floor=  1.478
+   bloom          n= 300 med=  1.391 p90=  1.903 wait= 0.907 med-floor=  1.127
+   hdr_writeback  n= 300 med=  1.257 p90=  1.518 wait= 0.674 med-floor=  0.993
+   shadow_depth   n= 300 med=  0.929 p90=  1.008 wait= 0.787 med-floor=  0.665
+   sun_apply      n= 300 med=  0.855 p90=  0.981 wait= 0.710 med-floor=  0.591
+   meter          n= 300 med=  0.441 p90=  0.597 wait= 0.322 med-floor=  0.177
+   hdr_readback   n= 300 med=  0.416 p90=  0.544 wait= 0.025 med-floor=  0.152
+   motes          n= 300 med=  0.314 p90=  0.432 wait= 0.295 med-floor=  0.050
+   retention      n= 300 med=  0.072 p90=  0.187 wait= 0.022 med-floor=  0.000
+   fog_fill       n= 300 med=  0.026 p90=  0.145 wait= 0.019 med-floor=  0.000
+W6 frames=1500..1799 dt_med=24.2 dt_p90=27.2 dropped=0 unclosed=0
+   scene          n= 300 med= 19.952 p90= 22.876 wait= 1.069 med-floor= 19.688
+   engine         n= 300 med=  5.155 p90=  5.717 wait= 1.586 med-floor=  4.891
+   fog_route      n= 300 med=  4.662 p90=  5.614 wait= 0.021 med-floor=  4.398
+   taa            n= 300 med=  2.824 p90=  3.251 wait= 2.581 med-floor=  2.560
+   present        n= 300 med=  1.759 p90=  4.139 wait= 0.594 med-floor=  1.495
+   bloom          n= 300 med=  1.287 p90=  1.568 wait= 0.885 med-floor=  1.023
+   hdr_writeback  n= 300 med=  1.130 p90=  1.346 wait= 0.654 med-floor=  0.866
+   shadow_depth   n= 300 med=  0.898 p90=  0.994 wait= 0.767 med-floor=  0.634
+   sun_apply      n= 300 med=  0.771 p90=  0.925 wait= 0.670 med-floor=  0.507
+   hdr_readback   n= 300 med=  0.390 p90=  0.500 wait= 0.022 med-floor=  0.126
+   meter          n= 300 med=  0.388 p90=  0.501 wait= 0.313 med-floor=  0.124
+   motes          n= 300 med=  0.256 p90=  0.417 wait= 0.239 med-floor=  0.000
+   retention      n= 300 med=  0.066 p90=  0.175 wait= 0.019 med-floor=  0.000
+   fog_fill       n= 300 med=  0.023 p90=  0.041 wait= 0.016 med-floor=  0.000
+W7 frames=1800..2099 dt_med=23.1 dt_p90=25.3 dropped=0 unclosed=0
+   scene          n= 300 med= 19.326 p90= 20.120 wait= 1.058 med-floor= 19.062
+   engine         n= 300 med=  4.991 p90=  5.255 wait= 1.572 med-floor=  4.727
+   fog_route      n= 300 med=  4.522 p90=  4.883 wait= 0.020 med-floor=  4.258
+   taa            n= 300 med=  2.808 p90=  2.945 wait= 2.580 med-floor=  2.544
+   present        n= 300 med=  1.645 p90=  3.948 wait= 0.546 med-floor=  1.381
+   bloom          n= 300 med=  1.240 p90=  1.359 wait= 0.848 med-floor=  0.976
+   hdr_writeback  n= 300 med=  1.091 p90=  1.212 wait= 0.648 med-floor=  0.827
+   shadow_depth   n= 300 med=  0.881 p90=  0.907 wait= 0.756 med-floor=  0.617
+   sun_apply      n= 300 med=  0.742 p90=  0.859 wait= 0.659 med-floor=  0.478
+   hdr_readback   n= 300 med=  0.384 p90=  0.416 wait= 0.021 med-floor=  0.120
+   meter          n= 300 med=  0.376 p90=  0.411 wait= 0.309 med-floor=  0.112
+   motes          n= 300 med=  0.216 p90=  0.340 wait= 0.207 med-floor=  0.000
+   retention      n= 300 med=  0.062 p90=  0.072 wait= 0.018 med-floor=  0.000
+   fog_fill       n= 300 med=  0.023 p90=  0.028 wait= 0.016 med-floor=  0.000
+W8 frames=2100..2399 dt_med=23.9 dt_p90=26.6 dropped=0 unclosed=0
+   scene          n= 300 med= 19.325 p90= 20.975 wait= 1.068 med-floor= 19.061
+   engine         n= 300 med=  4.994 p90=  5.296 wait= 1.589 med-floor=  4.730
+   fog_route      n= 300 med=  4.522 p90=  5.165 wait= 0.020 med-floor=  4.258
+   taa            n= 300 med=  2.811 p90=  3.040 wait= 2.582 med-floor=  2.547
+   present        n= 300 med=  1.673 p90=  3.274 wait= 0.554 med-floor=  1.409
+   bloom          n= 300 med=  1.249 p90=  1.367 wait= 0.868 med-floor=  0.985
+   hdr_writeback  n= 300 med=  1.095 p90=  1.242 wait= 0.650 med-floor=  0.831
+   shadow_depth   n= 300 med=  0.879 p90=  0.940 wait= 0.756 med-floor=  0.615
+   sun_apply      n= 300 med=  0.744 p90=  0.864 wait= 0.660 med-floor=  0.480
+   hdr_readback   n= 300 med=  0.390 p90=  0.449 wait= 0.021 med-floor=  0.126
+   meter          n= 300 med=  0.379 p90=  0.466 wait= 0.310 med-floor=  0.115
+   motes          n= 300 med=  0.219 p90=  0.355 wait= 0.210 med-floor=  0.000
+   retention      n= 300 med=  0.062 p90=  0.083 wait= 0.018 med-floor=  0.000
+   fog_fill       n= 300 med=  0.023 p90=  0.034 wait= 0.016 med-floor=  0.000

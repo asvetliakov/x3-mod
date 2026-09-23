@@ -1,0 +1,3 @@
+13253:fog_shadow_pass_toggle device=1 frame=751 enabled=0 refused=none key=ctrl_shift_f11
+26346:fog_shadow_pass_toggle device=1 frame=1324 enabled=1 refused=none key=ctrl_shift_f11
+40105:fog_shadow_pass_toggle device=1 frame=1948 enabled=0 refused=none key=ctrl_shift_f11
