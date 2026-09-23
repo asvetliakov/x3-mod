@@ -1894,3 +1894,30 @@ fragmented, so the 0.97 thin-region ceiling is not exercised here: b = 0).
 | scratch DLL `build-mw` (`cmake/mingw-i686.cmake`, RelWithDebInfo), no warnings; `check_no_x87.py` | built; PASS, 638 reachable functions, 0 violations; sha256 `926c9d048251396de46885135f26e9f0cdb4e2d9501e5fa450e799c18f9fe6e2` (after the rebase and the review fixes; `ac22cfcf…` before) |
 | `PYTHONPATH=verification/probe /usr/bin/python3 -m unittest verification.analysis.test_taa_image_defaults verification.analysis.test_taa_sky_history verification.analysis.test_taa_motion_weight verification.analysis.test_shader_compiler_provenance` | 33 tests, OK after the rebase (new module `test_taa_motion_weight.py`: forwarded as the triple with each age program, 0 the explicit off with `--taa` alone, omitted / inherited dropped, range and `--taa` / age-program refusals, DLL default 0; `test_taa_image_defaults`: absent unless given) |
 | `tools/manage.py launch --bottle X3 --dry-run --motion-output --ownership --object-trace --object-lifetime --taa --taa-far-stabiliser 0.985 --taa-thin-region 0.97 --taa-motion-weight 0.8,2,8` | `X3M_TAA_MOTION_WEIGHT=0.8,2,8` beside `X3M_TAA_FAR_STABILISER=0.985,0,80,130,0.03,0.25`, `X3M_TAA_THIN_REGION=0.97,1`, gate camera, strict + exit 0.25 (the defaults; without `--motion-output` the launcher stops at `--taa requires --motion-output`, as before). The triple is forwarded with `%.9g` (0.9999999,2,7.9999999 round-trips); an env value of 32+ chars logs `taa_motion_weight_setting invalid=1 reason=too_long` |
+
+## Run 262: motion weight 0.8,2,8 in flight, accepted (2026-09-23)
+
+Run 70 A (`/tmp/x3-bottleX3-run262`, Run69 DLL `70abe438…`): the Run 68 A command plus
+`--taa-motion-weight 0.8,2,8` (strict + exit 0.25 as defaults). Three bursts: SETA 5823,
+SETA 12554, normal speed 7062. The user: the SETA blur is better and acceptable. Scripts and
+outputs: `verification/results/run262-motion-weight/` (`run_all.sh`; `hull_ripple.py` new).
+All measured unless marked.
+
+- Option active: `motion_weight=0.800,2,8`, `camera_policy=2` on all bursts, no refusal.
+- **Sharpness by hull motion bin against run254:** below 2 px/frame unchanged (σ 0.5 / 0.7 /
+  1.0, E ratio within ±0.01); 8–16 px/frame E ratio 0.068 / 0.062 → 0.117 / 0.147 and σ 1.4 →
+  0.7; ≥16 px/frame 0.020 / 0.028 → 0.076 / 0.113, σ 1.4 → 1.0 / 0.7.
+- **The trade:** motion-compensated frame-to-frame ripple rms(taa)/rms(hdr) at 8–16 px/frame
+  0.33 → 0.37 / 0.34 → 0.46, at ≥16 0.13 → 0.21 / 0.17 → 0.35 (1.1–2.0× against the model's
+  1.45×); below 2 px/frame within ±0.03. Median age on moving hull unchanged (the cap changes
+  the weight, not the count).
+- No co-moving hull with large parallax occurred (parallax equalled screen motion; the logged
+  0.28°/frame rotation is matrix precision noise, inferred), so the gate has no in-flight
+  witness yet. The normal-speed burst is a different scene from run254's (median motion 4.9 vs
+  0.4 px/frame). Far-sky share ≥13 px 11 → 23 % in one SETA burst: scene variance, unproven.
+- 0 apply/restore failures, 96/96 frames per burst.
+
+**Decision (2026-09-23):** `--taa-motion-weight 0.8,2,8` becomes the launcher and DLL default
+under TAA with an age program and camera policy 2 (`0` opts out). 0.9 would be a no-op (the
+base keep is 0.9 and the cap is a floor); 0.7 buys σ 0.80 → 0.73 for ~1.26× more ripple
+(model); 0.85 is the knob if the ripple ever shows.

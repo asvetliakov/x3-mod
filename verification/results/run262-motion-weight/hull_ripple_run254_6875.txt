@@ -1,0 +1,13 @@
+/tmp/x3-bottleX3-run254 6876-6906: rotation-only flow (image median) px/frame median 0.01; sign votes [31, 0]
+ disp_bin px rms_taa rms_hdr ratio median_age
+  0-0.5 740795 0.0180 0.0447 0.403 64
+  0.5-1 286808 0.0211 0.0503 0.419 64
+  1-2 92939 0.0136 0.0641 0.212 64
+  2-4 553 0.0132 0.0780 0.170 64
+ key_bin px rms_taa rms_hdr ratio median_age
+  0-0.5 740903 0.0180 0.0447 0.403 64
+  0.5-1 286948 0.0211 0.0503 0.419 64
+  1-2 92739 0.0136 0.0641 0.212 64
+  2-4 505 0.0137 0.0809 0.169 64
+ disp<1 hull parallax p50/p90/p99/max [0.38, 0.74, 0.96, 1.01]
+ co-moving (disp<1, parallax>=2): px 0
