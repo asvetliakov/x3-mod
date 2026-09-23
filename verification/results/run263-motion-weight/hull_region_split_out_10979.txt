@@ -1,0 +1,4 @@
+/tmp/x3-bottleX3-run263 10980..11010 step 3, moving hull (>=1 px/frame): split px E_taa/E_hdr best_sigma resid_ratio median_age
+  b=0 54736 0.149 0.7 0.282 64
+  0<b<255 29 0.023 1.4 0.127 64
+  b=255 69468 0.122 0.7 0.251 64

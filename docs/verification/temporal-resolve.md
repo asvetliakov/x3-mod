@@ -1921,3 +1921,13 @@ All measured unless marked.
 under TAA with an age program and camera policy 2 (`0` opts out). 0.9 would be a no-op (the
 base keep is 0.9 and the cap is a floor); 0.7 buys σ 0.80 → 0.73 for ~1.26× more ripple
 (model); 0.85 is the knob if the ripple ever shows.
+
+**Run 263 (0.7,2,8), 2026-09-23:** the same command with `--taa-motion-weight 0.7,2,8`, two SETA
+bursts (6104 pure translation, 10979 at 0.23°/frame), no normal-speed burst. The user: blur
+slightly better than 0.8, no shimmer noticed. Outputs `verification/results/run263-motion-weight/`
+(`run_all.sh`). Measured against run262: E ratio at 8–16 px/frame 0.117 / 0.147 → 0.222 / 0.179,
+at ≥16 0.076 / 0.113 → 0.139 / 0.165; σ at ≥16 1.0 / 0.7 → 0.7 / 0.7 (the 4–8 bin also fits 0.7,
+small counts); ripple ratio at 8–16 ×1.66 / ×1.06, at ≥16 ×1.39 / ×0.89 (model ~1.26×, scene
+variance in both directions); below 2 px/frame and the far sky within run262's spread. The
+scenes differ, so every cross-run number mixes the weight with the scene; a replayed path at 0.8
+and 0.7 would be the clean A/B. **Decision (user, 2026-09-23): the default is `0.7,2,8`.**

@@ -1,0 +1,2 @@
+/tmp/x3-bottleX3-run263 frames 6111-6135 k=0.7: d1-2 dark 2845 below-own-mean 1900 (67%); d3-12 dark 1589 below-own-mean 122 (8%); d>=13 dark 13660 below-own-mean 1420 (10%)
+/tmp/x3-bottleX3-run263 frames 10986-11010 k=0.7: d1-2 dark 2375 below-own-mean 1417 (60%); d3-12 dark 1654 below-own-mean 164 (10%); d>=13 dark 9116 below-own-mean 1298 (14%)
