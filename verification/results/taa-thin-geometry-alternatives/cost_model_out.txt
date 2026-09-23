@@ -1,0 +1,13 @@
+bench chain (tests + x + y + 3 fixed): 0.71 ms; in-game busy mask 1.87 -> unattributed excess ratio 2.23x over the bench chain 0.84
+
+option                                       1080p ms   5120x1440 ms
+A' temporal propagation (drop x, y)         0.28-0.67        0.8-2.4
+C  S4 half-res box                          0.40-0.50        1.1-1.8
+C  S5 half-res dilations (alone)            0.10-0.10        0.3-0.4
+E  fold box columns into resolve            0.05-0.12        0.1-0.4
+B  per-draw tag (vote only)                 0.00-0.04        0.0-0.1
+G  mask cadence 1/2                         0.32-0.84        0.9-3.0
+D  coverage re-render                     -0.30--0.10      -0.8--0.4
+
+A' + S4 combined at 1080p busy: 0.68-1.17 of the stage's 4.78 net; at 5120x1440 1.9-4.2
+D per-draw CPU: 448 draws x 20 % tagged x 4.8 us = 0.43 ms per frame on the submitting path
