@@ -123,6 +123,7 @@ bool taa_thin_gate_given = false;
 float taa_thin_emissive = 0.f; // X3M_TAA_THIN_REGION_EMISSIVE=E (thin-glow-lines.md 8.3 R3): emissive vote of the thin region (0 off)
 bool taa_thin_camera_gate = false; // X3M_TAA_THIN_REGION_GATE=camera (taa-lattice-crawl.md section 32.1)
 float taa_sentinel[2] = {0.f, 1.f}; // X3M_TAA_SENTINEL_STABILISER=S[,E] (temporal-integration.md "sentinel stabiliser"): strength (0 off), emitter bound (0 none)
+bool taa_sentinel_default = false; // X3M_TAA_SENTINEL_STABILISER_DEFAULT=1 with a valid value: the launcher filled it in (off since 2026-09-25); sentinel_stabiliser_default= on the motion_output_taa row
 bool taa_alpha_history = false;  // X3M_TAA_ALPHA_HISTORY=1
 float taa_history_weight = .9f;  // X3M_TAA_HISTORY_WEIGHT (0.5..0.98)
 // X3M_HDR=1 (default off; requires X3M_MOTION_OUTPUT=1): the FP16 HDR scene
@@ -2532,7 +2533,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_taa_resolve(taa_history_weight);
     hooked.motion_output.configure_taa_far(taa_far[0],taa_far[1],taa_far[2],taa_far[3],taa_far[4],taa_far[5]);
     hooked.motion_output.configure_taa_thin_region(taa_thin_region[0],taa_thin_region[1],taa_thin_region[2],taa_thin_region[3],taa_thin_gate_given,taa_thin_camera_gate,taa_thin_emissive);
-    hooked.motion_output.configure_taa_sentinel(taa_sentinel[0],taa_sentinel[1]);
+    hooked.motion_output.configure_taa_sentinel(taa_sentinel[0],taa_sentinel[1],taa_sentinel_default);
     hooked.motion_output.configure_taa_flicker(taa_alpha_history);
     hooked.motion_output.configure_rt_mode(motion_rt_lazy);
     hooked.motion_output.configure_frame_log(motion_frame_log);
@@ -3100,12 +3101,16 @@ void initialize_log(HMODULE module) {
     // gate (always box-clipped); E >= 0, the emitter bound in scene luma (default 1; 0 = none). 1 or 2 fields; anything else
     // keeps the option off. Meaningful only with the camera gate; the route turns it off otherwise and says so.
     // Absent is the Run61/Run62-accepted default: S = 0.7 with E = 1 whenever the TAA route runs with the thin-region
-    // camera gate resolved above (that gate is the only path the stabiliser has); off otherwise, and "0" opts out.
+    // camera gate resolved above (that gate is the only path the stabiliser has); off otherwise, and "0" opts out. Since
+    // 2026-09-25 the launcher sends 0 on modded --taa launches with X3M_TAA_SENTINEL_STABILISER_DEFAULT=1 (read only with a
+    // valid value, exactly "1"); this fallback is unchanged so the fixtures stay byte-identical.
     {wchar_t sentinel_setting[32];const DWORD length=taa_requested?GetEnvironmentVariableW(L"X3M_TAA_SENTINEL_STABILISER",sentinel_setting,32):0;
         if(length>0&&length<32){float v[2]={0.f,1.f};unsigned count=0;wchar_t* cursor=sentinel_setting;bool ok=true;
             while(ok&&count<2){wchar_t* end=nullptr;v[count]=wcstof(cursor,&end);ok=end!=cursor;++count;if(!ok||*end==L'\0')break;ok=*end==L',';cursor=end+1;if(count==2)ok=false;}
             ok=ok&&v[0]>=0.f&&v[0]<=1.f&&v[1]>=0.f&&v[1]<=65000.f;
-            if(ok){taa_sentinel[0]=v[0];taa_sentinel[1]=v[1];}else log("taa_sentinel_stabiliser_setting invalid=1");}
+            if(ok){taa_sentinel[0]=v[0];taa_sentinel[1]=v[1];
+                taa_sentinel_default=GetEnvironmentVariableW(L"X3M_TAA_SENTINEL_STABILISER_DEFAULT",sentinel_setting,32)==1&&sentinel_setting[0]==L'1';}
+            else log("taa_sentinel_stabiliser_setting invalid=1");}
         else if(length>=32)log("taa_sentinel_stabiliser_setting invalid=1 reason=too_long length=%lu",length);
         else if(taa_requested&&taa_thin_camera_gate)taa_sentinel[0]=.7f;} // run216/run221: 0.7 is the default with the camera gate ("0" opts out)
     // X3M_TAA_HISTORY_WEIGHT=<w> (0.5 <= w <= 0.98; unset: 0.9): the resolve's history weight (docs/verification/

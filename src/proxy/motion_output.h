@@ -1018,8 +1018,9 @@ public:
     // "Distant unrouted stations under a pan"), off by default: thin-region
     // strength S of unrouted depth-sentinel pixels through the camera gate, box
     // clipped; emitter bound E (0 none). Turned off at initialisation without
-    // the camera gate or the separable box programs.
-    void configure_taa_sentinel(float strength, float emitter) noexcept { taa_sentinel_strength_ = strength; taa_sentinel_emitter_ = emitter; }
+    // the camera gate or the separable box programs. `launcher_default` (X3M_TAA_SENTINEL_STABILISER_DEFAULT=1: the
+    // launcher's off default since 2026-09-25) is logged as sentinel_stabiliser_default= on the motion_output_taa row.
+    void configure_taa_sentinel(float strength, float emitter, bool launcher_default = false) noexcept { taa_sentinel_strength_ = strength; taa_sentinel_emitter_ = emitter; taa_sentinel_default_ = launcher_default; }
     // X3M_TAA_ALPHA_HISTORY (docs/architecture/taa-flicker-suppression.md; HDR route only), off by default: with it
     // off the pass never creates the variant program. (The thin clip and adaptive weight of the same note were
     // removed 2026-09-23, cleanup batch 6.) Before attach, like the others.
@@ -2380,6 +2381,7 @@ private:
     bool taa_thin_camera_gate_ = false; // X3M_TAA_THIN_REGION_GATE=camera
     float taa_thin_emissive_ = 0.f;     // X3M_TAA_THIN_REGION_EMISSIVE=E: emissive vote of the thin region (thin-glow-lines.md 8.3 R3)
     float taa_sentinel_strength_ = 0.f, taa_sentinel_emitter_ = 1.f; // X3M_TAA_SENTINEL_STABILISER=S[,E]
+    bool taa_sentinel_default_ = false;       // that S came from the launcher's default (X3M_TAA_SENTINEL_STABILISER_DEFAULT=1)
     bool taa_masks_logged_ = false;           // the one line for TemporalPass::line_masks_failed()
     bool taa_box_refused_logged_ = false;     // the one line per TemporalPass::camera_gate_failed() episode (box targets refused: thin region off)
     bool taa_fold_logged_ = false;            // the one line for TemporalPass::Diagnostics::depth_folded (taa-high-resolution.md S1), per attachment

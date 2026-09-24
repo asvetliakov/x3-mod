@@ -303,20 +303,19 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
         self.assertIn('thin_region&&(!std::isfinite(in.thin_region_emissive)||in.thin_region_emissive<0)', passcpp)
         self.assertIn('SetPixelShaderConstantF)(d,10,emissive_constants,1)', passcpp)
 
-    def test_sentinel_stabiliser_defaults_to_0_7_with_the_camera_gate(self):
+    def test_sentinel_stabiliser_defaults_to_off_on_taa_launches(self):
         # --taa-sentinel-stabiliser S[,E] (docs/architecture/temporal-integration.md, "Distant unrouted
-        # stations under a pan"). Run 61 (run216: lasers over sky clean) and Run 62 (run221: the
-        # distant-station pan flicker fixed) accepted S = 0.7, so it is the default whenever the TAA
-        # route runs with the thin-region camera gate; without that gate it resolves to off, not an
-        # error, and "off"/"0" is the opt-out.
+        # stations under a pan"). Run 61/62 accepted S = 0.7 under the camera gate; since 2026-09-25 (Run 82 A
+        # launch 2, docs/architecture/fade-rt2-ownership.md section 5) the launcher sends 0 on every modded --taa
+        # launch (marker X3M_TAA_SENTINEL_STABILISER_DEFAULT=1, test_taa_sentinel_stabiliser_default.py), with or
+        # without the camera gate; an explicit 0.7 restores the previous look. This harness launches --vanilla, where the
+        # default is not sent at all (an inherited value is dropped); explicit values are still forwarded as before.
         with tempfile.TemporaryDirectory() as directory:
-            for inherited in (None, {'X3M_TAA_SENTINEL_STABILISER': '0.2'}):
-                env = self.env(directory, *TAA, '--taa-thin-region', '0.97', inherited=inherited)
-                self.assertEqual((env['X3M_TAA_THIN_REGION_GATE'], env['X3M_TAA_SENTINEL_STABILISER']), ('camera', '0.7'))
-            # No camera gate: the option resolves to off (the variable is dropped, inherited or not), never an error.
-            for args in ((), ('--taa-thin-region', '0'), ('--taa-thin-region', '0.97', '--taa-thin-region-gate', 'screen')):
-                for inherited in (None, {'X3M_TAA_SENTINEL_STABILISER': '0.7'}):
-                    self.assertNotIn('X3M_TAA_SENTINEL_STABILISER', self.env(directory, *TAA, *args, inherited=inherited), args)
+            for args in (('--taa-thin-region', '0.97'), (), ('--taa-thin-region', '0'), ('--taa-thin-region', '0.97', '--taa-thin-region-gate', 'screen')):
+                for inherited in (None, {'X3M_TAA_SENTINEL_STABILISER': '0.7', 'X3M_TAA_SENTINEL_STABILISER_DEFAULT': '1'}):
+                    env = self.env(directory, *TAA, *args, inherited=inherited)
+                    self.assertNotIn('X3M_TAA_SENTINEL_STABILISER', env, args)
+                    self.assertNotIn('X3M_TAA_SENTINEL_STABILISER_DEFAULT', env, args)
             # Without --taa nothing is forwarded either (and no error, since nothing was asked for).
             self.assertNotIn('X3M_TAA_SENTINEL_STABILISER', self.env(directory, '--motion-output', inherited={'X3M_TAA_SENTINEL_STABILISER': '0.7'}))
             # The opt-out, by name and by number.
@@ -340,8 +339,8 @@ class TaaImageDefaultsLaunch(unittest.TestCase):
         self.assertIn('float taa_sentinel[2] = {0.f, 1.f};', source)
         self.assertIn('taa_requested?GetEnvironmentVariableW(L"X3M_TAA_SENTINEL_STABILISER"', source)
         self.assertIn('sentinel_stabiliser=%.3f sentinel_emitter=%.3f', (ROOT / 'src/proxy/motion_output.cpp').read_text())
-        # The native fallback mirrors the launcher: 0.7 (E at its initialiser 1) when the camera gate is
-        # in effect, resolved after that gate and after the thin region it depends on.
+        # The native fallback when the variable is unset keeps the Run 61/62 0.7 (E at its initialiser 1) when the camera
+        # gate is in effect (the launcher sends 0 explicitly), resolved after that gate and after the thin region it depends on.
         self.assertIn('else if(taa_requested&&taa_thin_camera_gate)taa_sentinel[0]=.7f;', source)
         stabiliser = source.index('GetEnvironmentVariableW(L"X3M_TAA_SENTINEL_STABILISER"')
         self.assertLess(source.index('GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION_GATE"'), stabiliser)
@@ -424,8 +423,9 @@ class TaaAgeProgramDefaultsLaunch(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             env, _ = self.run_env(directory, *TAA, '--hdr', inherited={'X3M_TAA_FAR_STABILISER': '0', 'X3M_TAA_THIN_REGION': '0'})
             self.assertEqual((env['X3M_TAA_FAR_STABILISER'], env['X3M_TAA_THIN_REGION']), ('0.985,0,80,130,0.03,0.25', '0.97,1'))
-            # The derived defaults see the defaulted thin region: camera gate, emissive vote 1 (HDR), sentinel stabiliser 0.7.
-            self.assertEqual((env['X3M_TAA_THIN_REGION_GATE'], env['X3M_TAA_THIN_REGION_EMISSIVE'], env['X3M_TAA_SENTINEL_STABILISER']), ('camera', '1', '0.7'))
+            # The derived defaults see the defaulted thin region: camera gate, emissive vote 1 (HDR); the sentinel stabiliser is off
+            # by default since 2026-09-25.
+            self.assertEqual((env['X3M_TAA_THIN_REGION_GATE'], env['X3M_TAA_THIN_REGION_EMISSIVE'], env['X3M_TAA_SENTINEL_STABILISER']), ('camera', '1', '0'))
             # An explicit value still wins; the other keeps its default.
             env, _ = self.run_env(directory, *TAA, '--taa-thin-region', '0.95')
             self.assertEqual((env['X3M_TAA_FAR_STABILISER'], env['X3M_TAA_THIN_REGION']), ('0.985,0,80,130,0.03,0.25', '0.95,1'))

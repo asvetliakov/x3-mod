@@ -2994,3 +2994,18 @@ voted draws alone keep the lattice crawl down, and `taa_mask_tests` with `--gpu-
 refresh stream offsets on `Capture` (fixture: streams 0/1 offsets 24 -> 0 and 48 -> 0 when the pass was created under
 different offsets); the fixture cases start each frame from the hostile state, which hides it. Production state-restore
 defect, pre-existing; not in this change.
+
+**2026-09-25: sentinel stabiliser off by default on modded `--taa` launches.** Run 82 A launch 2 (run313/run314,
+[run313-run82a-stabiliser-off](../../verification/results/run313-run82a-stabiliser-off/)) flew `--taa-sentinel-stabiliser 0`
+with the fade RT2 owner covering the alpha-tested station cutouts: valid depth 0.970-0.974 / 0.911-0.965 of the plant
+crop's detail pixels (rest burst 1673 / pan burst 2124; the second plant in the pan 0.47-0.49), `fade_refused` 0 and no
+`unmatched=no_zwrite` refusal, no shimmer seen by the user (`docs/architecture/fade-rt2-ownership.md` section 5
+conditions 1, 2, 4; condition 3, the replay, open: no `color_*` input dumped). `tools/manage.py` now sends
+`X3M_TAA_SENTINEL_STABILISER=0` with `X3M_TAA_SENTINEL_STABILISER_DEFAULT=1` when `--taa` is given without the option
+(also without the camera gate, where 0 is inert), an explicit value with marker 0 (0.7 restores the previous look for an
+A/B), nothing without `--taa` or under `--vanilla`. The DLL reads the marker only with a valid value and logs
+`sentinel_stabiliser_default=%u` at the end of the `motion_output_taa` row; its fallback when the variable is unset stays
+0.7 under the camera gate (fixtures unchanged). `run_motion_output.py` drops an inherited marker. Host:
+`test_taa_sentinel_stabiliser_default` 6 tests, `test_taa_image_defaults` updated to the new default, 55 launcher modules
+739 tests OK; dry runs: `--taa` 0/1, `--taa-sentinel-stabiliser 0.7` 0.7/0, `--vanilla` neither; build 0 warnings,
+`check_no_x87` 684 / 0.

@@ -6534,8 +6534,9 @@ def main(argv=None):
             env.update(VARIANTS[variant])
             env.pop('X3M_SUN_SHADOW_RECEIVER_DEPTH', None)  # the former option: the DLL and the fixtures read no such variable
             env.pop('X3M_TAA_REGION_HOLD', None)  # removed 2026-09-24 (A' only): the DLL logs a stale value; only REGION_HOLD_TWINS set it
-            for marker in ('X3M_TAA_THIN_VOTE_DEFAULT', 'X3M_FADE_RT2_OWNER_DEFAULT', 'X3M_LOD_OCCLUSION_DEFAULT', 'X3M_TAA_BOX_RESOLUTION_DEFAULT'):
-                env.pop(marker, None)  # the launcher's Run 81/82 default markers: never inherited, set only by a case (seam-thin-vote-far-on, seam-taa-thin-hold-half)
+            for marker in ('X3M_TAA_THIN_VOTE_DEFAULT', 'X3M_FADE_RT2_OWNER_DEFAULT', 'X3M_LOD_OCCLUSION_DEFAULT', 'X3M_TAA_BOX_RESOLUTION_DEFAULT',
+                           'X3M_TAA_SENTINEL_STABILISER_DEFAULT'):
+                env.pop(marker, None)  # the launcher's default markers: never inherited, set only by a case (seam-thin-vote-far-on, seam-taa-thin-hold-half)
             env.update(hdr_env)
             if taa:
                 # ca6ad2e made --taa default to sharpen 0.75 and mip bias -0.5;

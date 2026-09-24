@@ -113,3 +113,15 @@ per frame (inferred, not timed).
   detail pixels valid depth >= 0.9 (run311: 0.17-0.48), the remaining sentinel detail pixels the panel holes and the edge
   halo; stabiliser class 0 on them; a `motion_route` row with `atest=1 fade_arm=1` on a VS other than `4944d81dfe531b37` /
   `53a0a641107ed76c` is a newcomer to name (note section 2.6).
+
+**2026-09-25, sentinel stabiliser off by default** (Run 82 A launch 2, run313/run314, `--taa-sentinel-stabiliser 0` on the
+Run82 DLL with the alpha-tested cutout owner; [run313-run82a-stabiliser-off](../../verification/results/run313-run82a-stabiliser-off/),
+scripts beside their outputs): `fade_refused` 0 on all 4,493 `fade_route_frame` rows, no `unmatched=no_zwrite` refusal;
+station detail pixels with valid depth 0.970-0.974 on the fog-band plant crop at rest (burst 1673) and 0.911-0.965 in the
+pan (burst 2124), against 0.17-0.48 on run311 (the second plant in the pan burst 0.47-0.49); the user saw no shimmer.
+`docs/architecture/fade-rt2-ownership.md` section 5 conditions 1, 2 and 4 met; condition 3 (replay) still open, no `color_*`
+input was dumped. The launcher now sends `X3M_TAA_SENTINEL_STABILISER=0` with `X3M_TAA_SENTINEL_STABILISER_DEFAULT=1` on
+every modded `--taa` launch (`sentinel_stabiliser_default=` on the `motion_output_taa` row; explicit values marker 0, an
+explicit 0.7 restores the previous look; nothing without `--taa` or under `--vanilla`); the DLL fallback when unset stays
+0.7 under the camera gate, so fixtures are unchanged. Host: `test_taa_sentinel_stabiliser_default` 6 tests; the 55
+launcher modules 739 tests OK; build 0 warnings, `check_no_x87` 684 / 0.

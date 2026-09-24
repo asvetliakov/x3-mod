@@ -1631,9 +1631,10 @@ bool MotionOutput::ensure_taa() noexcept {
     }
     taa_failed_ = FAILED(hr);
     // ps30_slots: D3DCAPS9::MaxPixelShader30InstructionSlots at initialize (AGENTS.md "Shader slot budget": logged, never a gate).
-    log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f history_weight=%.3f copy=%s alpha_history=%u age_bytes_per_pixel=%u far_weight=%.4f far_filter=%.3f far_f0=%.1f far_f1=%.1f far_speed_lo=%.3f far_speed_hi=%.3f thin_region=%.4f thin_relax=%.3f thin_gate=%s thin_emissive=%.3f sentinel_stabiliser=%.3f sentinel_emitter=%.3f ps30_slots=%u", id_, hr, taa_references_, double(taa_sharpen_), double(taa_history_weight_), taa_copy_draw_ ? "draw" : "stretch",
+    // sentinel_stabiliser_default: 1 when the stabiliser value is the launcher's default (off since 2026-09-25), 0 otherwise.
+    log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f history_weight=%.3f copy=%s alpha_history=%u age_bytes_per_pixel=%u far_weight=%.4f far_filter=%.3f far_f0=%.1f far_f1=%.1f far_speed_lo=%.3f far_speed_hi=%.3f thin_region=%.4f thin_relax=%.3f thin_gate=%s thin_emissive=%.3f sentinel_stabiliser=%.3f sentinel_emitter=%.3f ps30_slots=%u sentinel_stabiliser_default=%u", id_, hr, taa_references_, double(taa_sharpen_), double(taa_history_weight_), taa_copy_draw_ ? "draw" : "stretch",
         unsigned(taa_alpha_history_), taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f ? 8u : 0u, double(taa_far_weight_), double(taa_far_filter_), double(taa_far_f0_), double(taa_far_f1_), double(taa_far_lo_), double(taa_far_hi_), double(taa_thin_weight_), double(taa_thin_relax_), taa_thin_camera_gate_ ? "camera" : "screen", double(taa_thin_emissive_), double(taa_sentinel_strength_), double(taa_sentinel_emitter_),
-        taa_ ? taa_->ps30_instruction_slots() : 0u);
+        taa_ ? taa_->ps30_instruction_slots() : 0u, unsigned(taa_sentinel_default_));
     return !taa_failed_;
 }
 // The whole resolve at the bloom copy: RT1/RT2 containers as inputs, the
