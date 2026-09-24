@@ -1,0 +1,45 @@
+run304 mixed: windows=8 dt p50 16.5 p95 17.0 ms pan: windows=26 dt p50 16.0 p95 18.0 ms rest: windows=14 dt p50 17.0 p95 18.0 ms
+  session dt median 16.0 ms over 14662 frames (frame>=300); spikes >2x: 36; >100 ms: 24
+   frame 1689 dt 19208 ms class=mixed cut_within5=False
+   frame 14800 dt 6616 ms class=rest cut_within5=False
+   frame 1688 dt 2880 ms class=mixed cut_within5=False
+   frame 1729 dt 665 ms class=mixed cut_within5=False
+   frame 7060 dt 588 ms class=pan cut_within5=False
+   frame 7064 dt 525 ms class=pan cut_within5=False
+   frame 7061 dt 506 ms class=pan cut_within5=False
+   frame 7066 dt 499 ms class=pan cut_within5=False
+   frame 7062 dt 494 ms class=pan cut_within5=False
+   frame 7065 dt 494 ms class=pan cut_within5=False
+   frame 7063 dt 467 ms class=pan cut_within5=False
+   frame 7067 dt 465 ms class=pan cut_within5=False
+   frame 14799 dt 422 ms class=rest cut_within5=False
+   frame 4241 dt 401 ms class=pan cut_within5=False
+   frame 4523 dt 398 ms class=mixed cut_within5=False
+run305 mixed: windows=13 dt p50 16.0 p95 16.0 ms pan: windows=30 dt p50 16.0 p95 16.0 ms rest: windows=4 dt p50 15.0 p95 16.5 ms
+  session dt median 16 ms over 14381 frames (frame>=300); spikes >2x: 51; >100 ms: 44
+   frame 571 dt 14261 ms class=rest cut_within5=False nearest_lod_switch=1032 (+461) usc_dock_c_core_top D=16492328
+   frame 14594 dt 6859 ms class=rest cut_within5=False nearest_lod_switch=14229 (-365) usc_dock_e_tower D=15469813
+   frame 357 dt 1241 ms class=rest cut_within5=False nearest_lod_switch=1032 (+675) usc_dock_c_core_top D=16492328
+   frame 6635 dt 614 ms class=mixed cut_within5=False nearest_lod_switch=6797 (+162) usc_dock_e_tower D=15518649
+   frame 6641 dt 525 ms class=mixed cut_within5=False nearest_lod_switch=6797 (+156) usc_dock_e_tower D=15518649
+   frame 6640 dt 520 ms class=mixed cut_within5=False nearest_lod_switch=6797 (+157) usc_dock_e_tower D=15518649
+   frame 6636 dt 514 ms class=mixed cut_within5=False nearest_lod_switch=6797 (+161) usc_dock_e_tower D=15518649
+   frame 6637 dt 513 ms class=mixed cut_within5=False nearest_lod_switch=6797 (+160) usc_dock_e_tower D=15518649
+   frame 6639 dt 513 ms class=mixed cut_within5=False nearest_lod_switch=6797 (+158) usc_dock_e_tower D=15518649
+   frame 7489 dt 511 ms class=mixed cut_within5=False nearest_lod_switch=7628 (+139) usc_dock_e_upper_core D=11738860
+   frame 7483 dt 507 ms class=mixed cut_within5=False nearest_lod_switch=7628 (+145) usc_dock_e_upper_core D=11738860
+   frame 12717 dt 505 ms class=mixed cut_within5=False nearest_lod_switch=12900 (+183) usc_dock_e_tower D=15487433
+   frame 7490 dt 503 ms class=mixed cut_within5=False nearest_lod_switch=7628 (+138) usc_dock_e_upper_core D=11738860
+   frame 12716 dt 500 ms class=mixed cut_within5=False nearest_lod_switch=12900 (+184) usc_dock_e_tower D=15487433
+   frame 13309 dt 498 ms class=pan cut_within5=False nearest_lod_switch=13533 (+224) usc_dock_e_tower D=15476172
+  first lod_switch usc_dock_c_core_top frame 1032 D=16492328 dt[-3..+3]=[17, 16, 16, 28, 15, 17, 17]
+  first lod_switch usc_dock_c_core_bottom frame 2605 D=12850670 dt[-3..+3]=[15, 16, 15, 16, 15, 15, 15]
+  first lod_switch usc_dock_c_left_arm frame 2991 D=7140487 dt[-3..+3]=[15, 15, 15, 19, 14, 15, 15]
+  first lod_switch usc_dock_c_tower frame 2997 D=8318295 dt[-3..+3]=[15, 15, 15, 16, 15, 15, 16]
+  first lod_switch usc_dock_c_right_rings frame 3315 D=7644448 dt[-3..+3]=[16, 16, 15, 17, 14, 15, 15]
+  first lod_switch usc_dock_c_left_rings frame 3802 D=6792079 dt[-3..+3]=[15, 15, 15, 16, 15, 15, 15]
+  first lod_switch usc_small_station_d frame 4021 D=6088501 dt[-3..+3]=[15, 15, 15, 16, 14, 15, 15]
+  first lod_switch usc_dock_c_right_arm frame 4061 D=6798217 dt[-3..+3]=[15, 15, 15, 16, 14, 15, 15]
+  first lod_switch usc_dock_e_tower frame 5666 D=15429239 dt[-3..+3]=[16, 17, 17, 18, 17, 17, 16]
+  first lod_switch usc_dock_e_upper_core frame 6036 D=11773250 dt[-3..+3]=[16, 17, 16, 19, 16, 17, 16]
+  first lod_switch terran_catapult_gate frame 10373 D=5664963 dt[-3..+3]=[14, 14, 15, 30, 11, 15, 15]

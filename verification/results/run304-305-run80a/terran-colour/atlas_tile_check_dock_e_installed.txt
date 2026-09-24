@@ -1,0 +1,35 @@
+# terran red tile
+06.x3m-lod.json stations/station_scenes/terran/usc_dock_e_left_rings: atlas 1024 DXT1 tiles 4 groups 2
+  mats [0] tile 688x952 at 8,8 texels/px 18.754201: OWN terran_platesheet_white_diff.dds 3.18; terran_platesheet_dark_diff.dds 209.79; terran_techsheet_diff.dds 146.13; terran_windowsheet_diff.dds 140.29
+  mats [2] tile 136x32 at 508,976 texels/px 6.629391: terran_platesheet_white_diff.dds 205.36; OWN terran_platesheet_dark_diff.dds 1.42; terran_techsheet_diff.dds 51.32; terran_windowsheet_diff.dds 70.13
+  mats [3] tile 168x28 at 660,976 texels/px 3.488283: terran_platesheet_white_diff.dds 141.22; terran_platesheet_dark_diff.dds 67.91; OWN terran_techsheet_diff.dds 5.92; terran_windowsheet_diff.dds 31.32
+  mats [4] tile 484x40 at 8,976 texels/px 4.489521: terran_platesheet_white_diff.dds 139.79; terran_platesheet_dark_diff.dds 69.34; terran_techsheet_diff.dds 38.19; OWN terran_windowsheet_diff.dds 5.64
+06.x3m-lod.json stations/station_scenes/terran/usc_dock_e_lower_core: atlas 1024 DXT1 tiles 4 groups 3
+  mats [0] tile 548x484 at 8,532 texels/px 6.767504: OWN terran_platesheet_white_diff.dds 3.23; terran_platesheet_red_diff.dds 159.15; terran_techsheet_diff.dds 145.27; terran_windowsheet_diff.dds 140.11
+  mats [1] tile 156x60 at 752,532 texels/px 11.023559: terran_platesheet_white_diff.dds 158.17; OWN terran_platesheet_red_diff.dds 1.96; terran_techsheet_diff.dds 35.35; terran_windowsheet_diff.dds 42.79
+  mats [3] tile 164x256 at 572,532 texels/px 3.406686: terran_platesheet_white_diff.dds 145.16; terran_platesheet_red_diff.dds 38.36; OWN terran_techsheet_diff.dds 5.58; terran_windowsheet_diff.dds 30.02
+  mats [4] tile 468x508 at 8,8 texels/px 6.927225: terran_platesheet_white_diff.dds 139.91; terran_platesheet_red_diff.dds 41.16; terran_techsheet_diff.dds 34.67; OWN terran_windowsheet_diff.dds 5.76
+06.x3m-lod.json stations/station_scenes/terran/usc_dock_e_right_rings: atlas 1024 DXT1 tiles 4 groups 2
+  mats [0] tile 692x956 at 8,8 texels/px 14.948987: OWN terran_platesheet_white_diff.dds 3.16; terran_platesheet_dark_diff.dds 209.78; terran_techsheet_diff.dds 146.11; terran_windowsheet_diff.dds 140.27
+  mats [2] tile 136x32 at 508,980 texels/px 6.256946: terran_platesheet_white_diff.dds 205.36; OWN terran_platesheet_dark_diff.dds 1.42; terran_techsheet_diff.dds 51.32; terran_windowsheet_diff.dds 70.13
+  mats [3] tile 168x28 at 660,980 texels/px 3.422899: terran_platesheet_white_diff.dds 142.07; terran_platesheet_dark_diff.dds 66.72; OWN terran_techsheet_diff.dds 5.17; terran_windowsheet_diff.dds 30.14
+  mats [4] tile 484x36 at 8,980 texels/px 4.70325: terran_platesheet_white_diff.dds 140.13; terran_platesheet_dark_diff.dds 69.22; terran_techsheet_diff.dds 36.36; OWN terran_windowsheet_diff.dds 5.71
+06.x3m-lod.json stations/station_scenes/terran/usc_dock_e_tower: atlas 1024 DXT1 tiles 4 groups 3
+  mats [0] tile 496x216 at 184,8 texels/px 2.01584: OWN terran_platesheet_white_diff.dds 3.27; terran_platesheet_red_diff.dds 159.11; terran_techsheet_diff.dds 145.11; terran_windowsheet_diff.dds 139.90
+  mats [1] tile 160x252 at 8,8 texels/px 2.033305: terran_platesheet_white_diff.dds 159.15; OWN terran_platesheet_red_diff.dds 1.92; terran_techsheet_diff.dds 41.71; terran_windowsheet_diff.dds 42.79
+  mats [3] tile 160x20 at 8,276 texels/px 2.202311: terran_platesheet_white_diff.dds 142.59; terran_platesheet_red_diff.dds 38.55; OWN terran_techsheet_diff.dds 5.73; terran_windowsheet_diff.dds 27.69
+  mats [4] tile 276x140 at 696,8 texels/px 2.032042: terran_platesheet_white_diff.dds 139.71; terran_platesheet_red_diff.dds 40.51; terran_techsheet_diff.dds 31.21; OWN terran_windowsheet_diff.dds 5.44
+06.x3m-lod.json stations/station_scenes/terran/usc_dock_e_upper_core: atlas 1024 DXT1 tiles 4 groups 3
+  mats [0] tile 716x788 at 8,8 texels/px 7.536977: OWN terran_platesheet_white_diff.dds 3.01; terran_platesheet_red_diff.dds 159.04; terran_techsheet_diff.dds 145.10; terran_windowsheet_diff.dds 139.94
+  mats [1] tile 256x212 at 740,8 texels/px 7.077652: terran_platesheet_white_diff.dds 159.23; OWN terran_platesheet_red_diff.dds 1.88; terran_techsheet_diff.dds 42.69; terran_windowsheet_diff.dds 43.20
+  mats [3] tile 380x100 at 8,812 texels/px 4.169438: terran_platesheet_white_diff.dds 144.38; terran_platesheet_red_diff.dds 39.46; OWN terran_techsheet_diff.dds 5.32; terran_windowsheet_diff.dds 33.70
+  mats [4] tile 760x88 at 8,928 texels/px 9.18237: terran_platesheet_white_diff.dds 139.45; terran_platesheet_red_diff.dds 41.56; terran_techsheet_diff.dds 37.87; OWN terran_windowsheet_diff.dds 5.63
+# khaak spec/bump
+05.x3m-lod.json: body ships/M6/Khaak_M6Main, atlas slots ['bump', 'diffuse', 'light', 'specular'], size 1024
+tile 0 mats [0] diffuse 01.cat:tex/true/25.jpg: specular same source mean |spec - diff| RGB 0.00; bump other source mean |bump G - f(diff G)| 80.70
+tile 1 mats [1] diffuse 01.cat:tex/true/260.jpg: specular same source mean |spec - diff| RGB 0.00; bump same source mean |bump G - f(diff G)| 2.12
+tile 2 mats [2] diffuse 01.cat:tex/true/36.jpg: specular same source mean |spec - diff| RGB 0.00; bump other source mean |bump G - f(diff G)| 37.90
+tile 3 mats [3] diffuse 01.cat:tex/true/29.jpg: specular same source mean |spec - diff| RGB 0.00; bump other source mean |bump G - f(diff G)| 55.72
+tile 4 mats [4] diffuse 01.cat:dds/metal_argon_simple_plating_diff.pck: specular other source mean |spec - diff| RGB 62.17; bump other source mean |bump G - f(diff G)| 27.70
+tile 5 mats [5] diffuse 01.cat:tex/true/263.jpg: specular same source mean |spec - diff| RGB 0.00; bump same source mean |bump G - f(diff G)| 1.99
+tile 6 mats [6] diffuse 01.cat:dds/60.pck: specular other source mean |spec - diff| RGB 80.35; bump other source mean |bump G - f(diff G)| 38.73

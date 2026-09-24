@@ -48,3 +48,16 @@ site stays registered (`registered=1`).
   id 0, which binds texture-table entry 0, or the placeholder if that entry has no D3D texture. What entry 0
   is was not traced.
 - Vanilla lower records. They get occlusion through a UV2 about 1 % off the unwrap (above).
+
+**2026-09-24 Run 80 A (run304 baseline, run305 `--lod-occlusion all --lod-switch-log`): flown.** run305 logs
+`lod_occlusion site=004c34f7 status=patched reason=ok mode=all setting=all write=atomic`; run304 logs
+`status=off reason=record0 write=none` (measured). Every LOD > 0 draw of the Orbital Defence Station binds the 2048²
+12-level occlusion map (texture 1483) at s5: 224 ODS draws, 544 slot-06 LOD > 0 draws in all
+(`run304-305-run80a/terran-colour/occl_lod_census_run304_305.txt`, per body `occl_lod_census_bodies_run305.txt`). The
+merged record's UV2 matches record 0 for 100 % of points within 1/512 (`occl_uv2_match_installed.txt`), so the map
+lands where the fine record puts it. No first-use hitch: around the first `lod_switch` of each of the 11 switching
+bodies dt over ±3 frames is at most 30 ms; the session's 150-400 ms hitches occur in both sessions and have no
+attributing row (`spikes_nonburst_out.txt`). The user sees the red plates and no misplaced occlusion. The brightness
+difference the user reports between fine and coarse red plates is not the occlusion map (both records bind the same
+map) but the baker's synthesised material constants, and the underside transition is a shadow-caster difference; both
+are in [lod-overlay.md](lod-overlay.md) and the sun-shadow ledger. Decision pending the user: `all` as the default.

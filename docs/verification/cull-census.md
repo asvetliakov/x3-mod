@@ -70,3 +70,12 @@ panel/center/bottom at 0.15..0.34 draw lod 1). The user confirms the coarse reco
 (screenshots/terran-lod1.png vs -lod2.png) but the coarse record loses the station's red colouring and one part
 flickers under motion (triage under `verification/results/run299-303-run79a/terran-colour/` and `ods-flicker/`).
 `--terran-station-lod distance` was not flown. Script: `run299-303-run79a/overlay_bursts.py` (`_run299_out.txt`).
+
+**2026-09-24 Run 80 A (run305, `--lod-switch-log`): the ODS flicker is a LOD pop without hysteresis.** 48 `lod_switch`
+rows over 11 bodies, every `lod_switch_frame` row `switches=1`, no `lod_switch_overflow` (measured;
+`run304-305-run80a/lod_switch_counts_out.txt`, `terran-colour/switch_intervals_run305.txt`). `usc_dock_e_tower` switched
+25 times between frames 5666 and 14229: 1 -> 0 at s = 197 and 0 -> 1 at s = 196 with T_pad = 197, gaps 27 / 187 / 1767
+frames (min / median / max), D between 15.42 M and 15.53 M; `usc_dock_e_upper_core` 12 times (s 212 <-> 213/214, T_pad
+213, gaps down to 3 frames). One pop per crossing, made visible by the record swap changing the material constants and
+the sun-shadow casters together (lod-overlay.md, sun-shadow ledger). Fix direction: make the records match visually
+(baker shading classes, alpha-tested casters) before any hysteresis patch of the size loop.

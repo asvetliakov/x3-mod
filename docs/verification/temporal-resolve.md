@@ -2729,3 +2729,12 @@ Evidence:
   `exit_rows`, `taa_frames`); `taa_frames.py`, the only one that reads a reformatted row, parses a synthetic run299 excerpt
   with the new `motion_output_taa` and `motion_output_taa_history_taps ... mask_targets=1` rows (5,000 frames, exit 0,
   the row carried). The others read frame, gpu-sync, abnormal, exit and bolt rows this change does not touch.
+
+## 2026-09-24 Run 80 A launches 1-2 (run304 baseline, run305 occlusion): A'-only build flown
+
+Both sessions on DLL 593112dc (one launch each, 5120x1440, 14,961 / 14,680 frames, no fault, refused, late_claim or
+rollback rows; measured, `verification/results/run304-305-run80a/`). `motion_output_taa_history_taps requested=5
+drawn=5 region_hold=1 mask_targets=1` in both. No GPU pass figures: `--gpu-sync-timing` was off and frame time is
+pinned at vsync (rest p50 17.0 / 15.0 ms, pan 16.0 / 16.0 ms), so the A'-only TAA cost stays at Run 79 A's measured
+1.54 ms mask + 0.23 ms box until a `--gpu-sync-timing` launch. CPU encode `taa_run_us` median 197 / 170 µs. Neither
+session carried `--taa-thin-vote` or `--fade-rt2-owner` (no setting rows): launches 3 and 4 are pending.

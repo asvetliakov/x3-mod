@@ -1,0 +1,8 @@
+B=13309 A=12714 cascade 3 rect 2531,406-2926,837 all: px=8713 shadowed_B=2538 shadowed_A=2273 shadowed_B_lit_A=265 lit_B_shadowed_A=0 centre_shift=[180.8, -71.3, 158.7]
+B=13309 A=12714 cascade 3 rect 2531,406-2926,837 red: px=68 shadowed_B=0 shadowed_A=0 shadowed_B_lit_A=0 lit_B_shadowed_A=0 centre_shift=[180.8, -71.3, 158.7]
+B=12714 A=13309 cascade 3 rect 2833,386-3322,871 all: px=13824 shadowed_B=3651 shadowed_A=4080 shadowed_B_lit_A=0 lit_B_shadowed_A=429 centre_shift=[-180.8, 71.3, -158.7]
+B=12714 A=13309 cascade 3 rect 2833,386-3322,871 red: px=123 shadowed_B=5 shadowed_A=18 shadowed_B_lit_A=0 lit_B_shadowed_A=13 centre_shift=[-180.8, 71.3, -158.7]
+B=13309 A=12714 cascade 4 rect 2531,406-2926,837 all: px=40777 shadowed_B=10023 shadowed_A=7188 shadowed_B_lit_A=2835 lit_B_shadowed_A=0 centre_shift=[163.2, -135.4, 164.5]
+B=13309 A=12714 cascade 4 rect 2531,406-2926,837 red: px=5369 shadowed_B=430 shadowed_A=189 shadowed_B_lit_A=241 lit_B_shadowed_A=0 centre_shift=[163.2, -135.4, 164.5]
+B=12714 A=13309 cascade 4 rect 2833,386-3322,871 all: px=58099 shadowed_B=10457 shadowed_A=14367 shadowed_B_lit_A=0 lit_B_shadowed_A=3910 centre_shift=[-163.2, 135.4, -164.5]
+B=12714 A=13309 cascade 4 rect 2833,386-3322,871 red: px=8778 shadowed_B=447 shadowed_A=2003 shadowed_B_lit_A=0 lit_B_shadowed_A=1556 centre_shift=[-163.2, 135.4, -164.5]

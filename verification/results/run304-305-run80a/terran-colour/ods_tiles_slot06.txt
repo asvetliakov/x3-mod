@@ -1,0 +1,60 @@
+== usc_dock_e_left_rings source_record=0 new_lod=1 pad_lod=2 thresholds=[1702749, 30, 173] source_materials=6 draws=2 groups=2 atlas=1024 material=6 dominant=0 glow=[]
+  occlusion: {"xt_standard_lighting.fx": "unique\\x3tc\\terran_uscdock_e_occl.tga"}
+  atlas.materials: [6]  split_groups: []
+  tile mats=[0] diff=terran_platesheet_white_diff.dds light=NONE_BLACK.dds spec=terran_platesheet_spec.dds content=[688, 952] origin=[8, 8] share=0.871836 tpp=18.754201
+  tile mats=[2] diff=terran_platesheet_dark_diff.dds light=NONE_BLACK.dds spec=terran_platesheet_spec.dds content=[136, 32] origin=[508, 976] share=0.044177 tpp=6.629391
+  tile mats=[3] diff=terran_techsheet_diff.dds light=terran_techsheet_light.dds spec=terran_techsheet_spec.dds content=[168, 28] origin=[660, 976] share=0.04559 tpp=3.488283
+  tile mats=[4] diff=terran_windowsheet_diff.dds light=terran_windowsheet_light.dds spec=terran_windowsheet_spec.dds content=[484, 40] origin=[8, 976] share=0.038396 tpp=4.489521
+  synth index=6 dominant=0 absorbed=[0, 2, 3, 4]
+    g_MatSpecularStrength: dominant=222822 mean=202663.7 written=202664  (3.400 -> 3.092)
+    g_MatSpecularPower: dominant=393216 mean=426813.3 written=426813  (6.000 -> 6.513)
+    g_MatReflectionBlur: dominant=196608 mean=171410.0 written=171410  (3.000 -> 2.616)
+    g_MatDiffuseStrength: dominant=78643 mean=76963.2 written=76963  (1.200 -> 1.174)
+== usc_dock_e_lower_core source_record=0 new_lod=1 pad_lod=2 thresholds=[3176240, 30, 207] source_materials=6 draws=3 groups=3 atlas=1024 material=6 dominant=0 glow=[]
+  occlusion: {"xt_standard_lighting.fx": "unique\\x3tc\\terran_uscdock_e_occl.tga"}
+  atlas.materials: [6]  split_groups: [{'part': 0, 'material': 6, 'faces': 60361, 'points': [60000, 45375]}]
+  tile mats=[0] diff=terran_platesheet_white_diff.dds light=NONE_BLACK.dds spec=terran_platesheet_spec.dds content=[548, 484] origin=[8, 532] share=0.78383 tpp=6.767504
+  tile mats=[1] diff=terran_platesheet_red_diff.dds light=NONE_BLACK.dds spec=terran_platesheet_spec.dds content=[156, 60] origin=[752, 532] share=0.00058 tpp=11.023559
+  tile mats=[3] diff=terran_techsheet_diff.dds light=terran_techsheet_light.dds spec=terran_techsheet_spec.dds content=[164, 256] origin=[572, 532] share=0.186096 tpp=3.406686
+  tile mats=[4] diff=terran_windowsheet_diff.dds light=terran_windowsheet_light.dds spec=terran_windowsheet_spec.dds content=[468, 508] origin=[8, 8] share=0.029494 tpp=6.927225
+  synth index=6 dominant=0 absorbed=[0, 1, 3, 4]
+    g_MatSpecularStrength: dominant=222822 mean=188821.5 written=188822  (3.400 -> 2.881)
+    g_MatSpecularPower: dominant=393216 mean=449883.6 written=449884  (6.000 -> 6.865)
+    g_MatReflectionBlur: dominant=196608 mean=154107.3 written=154107  (3.000 -> 2.351)
+    g_MatDiffuseStrength: dominant=78643 mean=75809.7 written=75810  (1.200 -> 1.157)
+== usc_dock_e_right_rings source_record=0 new_lod=1 pad_lod=2 thresholds=[1822910, 30, 192] source_materials=6 draws=2 groups=2 atlas=1024 material=6 dominant=0 glow=[]
+  occlusion: {"xt_standard_lighting.fx": "unique\\x3tc\\terran_uscdock_e_occl.tga"}
+  atlas.materials: [6]  split_groups: []
+  tile mats=[0] diff=terran_platesheet_white_diff.dds light=NONE_BLACK.dds spec=terran_platesheet_spec.dds content=[692, 956] origin=[8, 8] share=0.862924 tpp=14.948987
+  tile mats=[2] diff=terran_platesheet_dark_diff.dds light=NONE_BLACK.dds spec=terran_platesheet_spec.dds content=[136, 32] origin=[508, 980] share=0.028637 tpp=6.256946
+  tile mats=[3] diff=terran_techsheet_diff.dds light=terran_techsheet_light.dds spec=terran_techsheet_spec.dds content=[168, 28] origin=[660, 980] share=0.068497 tpp=3.422899
+  tile mats=[4] diff=terran_windowsheet_diff.dds light=terran_windowsheet_light.dds spec=terran_windowsheet_spec.dds content=[484, 36] origin=[8, 980] share=0.039942 tpp=4.70325
+  synth index=6 dominant=0 absorbed=[0, 2, 3, 4]
+    g_MatSpecularStrength: dominant=222822 mean=201261.8 written=201262  (3.400 -> 3.071)
+    g_MatSpecularPower: dominant=393216 mean=429149.7 written=429150  (6.000 -> 6.548)
+    g_MatReflectionBlur: dominant=196608 mean=169657.7 written=169658  (3.000 -> 2.589)
+    g_MatDiffuseStrength: dominant=78643 mean=76846.3 written=76846  (1.200 -> 1.173)
+== usc_dock_e_tower source_record=0 new_lod=1 pad_lod=2 thresholds=[4763793, 30, 197] source_materials=6 draws=3 groups=3 atlas=1024 material=6 dominant=0 glow=[]
+  occlusion: {"xt_standard_lighting.fx": "unique\\x3tc\\terran_uscdock_e_occl.tga"}
+  atlas.materials: [6]  split_groups: [{'part': 0, 'material': 6, 'faces': 60928, 'points': [60000, 44163]}]
+  tile mats=[0] diff=terran_platesheet_white_diff.dds light=NONE_BLACK.dds spec=terran_platesheet_spec.dds content=[496, 216] origin=[184, 8] share=0.632095 tpp=2.01584
+  tile mats=[1] diff=terran_platesheet_red_diff.dds light=NONE_BLACK.dds spec=terran_platesheet_spec.dds content=[160, 252] origin=[8, 8] share=0.108194 tpp=2.033305
+  tile mats=[3] diff=terran_techsheet_diff.dds light=terran_techsheet_light.dds spec=terran_techsheet_spec.dds content=[160, 20] origin=[8, 276] share=0.137884 tpp=2.202311
+  tile mats=[4] diff=terran_windowsheet_diff.dds light=terran_windowsheet_light.dds spec=terran_windowsheet_spec.dds content=[276, 140] origin=[696, 8] share=0.121827 tpp=2.032042
+  synth index=6 dominant=0 absorbed=[0, 1, 3, 4]
+    g_MatSpecularStrength: dominant=222822 mean=164955.7 written=164956  (3.400 -> 2.517)
+    g_MatSpecularPower: dominant=393216 mean=489660.1 written=489660  (6.000 -> 7.472)
+    g_MatReflectionBlur: dominant=196608 mean=124274.9 written=124275  (3.000 -> 1.896)
+    g_MatDiffuseStrength: dominant=78643 mean=73820.9 written=73821  (1.200 -> 1.126)
+== usc_dock_e_upper_core source_record=0 new_lod=1 pad_lod=2 thresholds=[3929343, 30, 213] source_materials=6 draws=3 groups=3 atlas=1024 material=6 dominant=0 glow=[]
+  occlusion: {"xt_standard_lighting.fx": "unique\\x3tc\\terran_uscdock_e_occl.tga"}
+  atlas.materials: [6]  split_groups: [{'part': 0, 'material': 6, 'faces': 40764, 'points': [54713, 14920]}]
+  tile mats=[0] diff=terran_platesheet_white_diff.dds light=NONE_BLACK.dds spec=terran_platesheet_spec.dds content=[716, 788] origin=[8, 8] share=0.813106 tpp=7.536977
+  tile mats=[1] diff=terran_platesheet_red_diff.dds light=NONE_BLACK.dds spec=terran_platesheet_spec.dds content=[256, 212] origin=[740, 8] share=0.015023 tpp=7.077652
+  tile mats=[3] diff=terran_techsheet_diff.dds light=terran_techsheet_light.dds spec=terran_techsheet_spec.dds content=[380, 100] origin=[8, 812] share=0.142427 tpp=4.169438
+  tile mats=[4] diff=terran_windowsheet_diff.dds light=terran_windowsheet_light.dds spec=terran_windowsheet_spec.dds content=[760, 88] origin=[8, 928] share=0.029443 tpp=9.18237
+  synth index=6 dominant=0 absorbed=[0, 1, 3, 4]
+    g_MatSpecularStrength: dominant=222822 mean=193426.3 written=193426  (3.400 -> 2.951)
+    g_MatSpecularPower: dominant=393216 mean=442209.0 written=442209  (6.000 -> 6.748)
+    g_MatReflectionBlur: dominant=196608 mean=159863.2 written=159863  (3.000 -> 2.439)
+    g_MatDiffuseStrength: dominant=78643 mean=76193.4 written=76193  (1.200 -> 1.163)

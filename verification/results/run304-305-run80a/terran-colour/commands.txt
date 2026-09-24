@@ -1,0 +1,16 @@
+# Run 80 A Terran ODS look (run305 = --lod-occlusion all --lod-switch-log; run304 = baseline). Read-only; no Wine, no game.
+# Run from this directory. L5=/tmp/x3-bottleX3-run305/session-20260924-204013-340.log  L4=/tmp/x3-bottleX3-run304/session-20260924-203421-212.log
+grep -n '^lod_occlusion' $L5 $L4                                                        # patch rows (run305 line 44: status=patched write=atomic; run304 off/record0)
+python3 ../../run299-303-run79a/terran-colour/occl_lod_census.py $L5 $L4 > occl_lod_census_run304_305.txt
+python3 occl_lod_census_bodies.py $L5 | tr ' ' '\n' | grep -E '^(lod|slot|draws)|x[0-9]+$' | paste -sd' ' - | sed 's/ lod/\nlod/g' > occl_lod_census_bodies_run305.txt   # per body|s5
+python3 ods_burst_draws.py $L5 12714..12721,13309..13316 > ods_burst_draws_run305.txt   # ODS draws, textures s0-s6, PS consts, states
+python3 ods_rects.py $L5 12714,13309 > ods_rects_run305.txt; python3 ods_rects.py $L4 7060 > ods_rects_run304.txt (empty: no ODS in run304's burst)
+python3 ods_tiles.py > ods_tiles_slot06.txt                                             # installed slot-06 tile table + synth material
+python3 ../../lod-overlay-batch/install-fleet3/installed_checks.py usc_dock_e > atlas_tile_check_dock_e_installed.txt
+python3 ../../run299-303-run79a/terran-colour/occl_uv2_match.py stations/station_scenes/terran/usc_dock_e_{tower,lower_core,upper_core} > occl_uv2_match_installed.txt
+python3 texture_headers.py NONE_ENVI '...envmap.dds' NONE_BLACK NONE_NORMAL_DETAIL <sources> > texture_headers_out.txt
+python3 red_plate_stats.py > red_plate_stats_run305.txt; python3 chroma_bins.py > chroma_bins_run305.txt
+python3 shadow_vis.py /tmp/x3-bottleX3-run305 12714 2833 386 3322 871 [png]; ... 13309 2531 406 2926 837 [png]   -> shadow_vis_run305.txt
+python3 shadow_cross.py /tmp/x3-bottleX3-run305 13309 12714 K 2531 406 2926 837; ... 12714 13309 K 2833 386 3322 871 (K=3,4) -> shadow_cross_run305.txt
+python3 ../../run299-303-run79a/ods-flicker/lod_switch_rows.py $L5 > lod_switch_rows_run305.txt
+python3 switch_intervals.py $L5 > switch_intervals_run305.txt

@@ -1,0 +1,11 @@
+new in run304:
+cull_census_lod_switch 1
+lod_occlusion 1
+new in run305:
+cull_census_lod_switch 1
+lod_occlusion 1
+lod_switch 48
+lod_switch_frame 48
+in run300 not in 304/305:
+gz_buffer_file 3
+hull_emission_draw 44

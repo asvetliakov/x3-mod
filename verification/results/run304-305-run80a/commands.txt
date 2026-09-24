@@ -1,0 +1,13 @@
+Run 80 A triage (run304 baseline, run305 --lod-occlusion all --lod-switch-log), DLL 593112dc (9cf5decf), 5120x1440, bottle X3.
+Scripts copied from ../run299-303-run79a (paths are run-number arguments) plus new ones; logs read-only, no Wine; run from this directory.
+grep -aE '^(proxy_identity|lod_occlusion|terran_station_lod|motion_output_taa |create_device|cull_census_lod_switch|loading_phase)' /tmp/x3-bottleX3-run30[45]/session-*.log   # Q1
+grep -acE '^(taa_thin_vote_configured|fade_rt2_owner_configured|fade_rt2_owner_setting|thin_vote_mode|thin_vote_frame)' LOG   # Q5 (0 both)
+python3 gpu_taa.py 304 305 > gpu_taa_out.txt          # Q2: no gpu_sync_timing rows (header only)
+python3 taa_frames.py 304 305 > taa_frames_out.txt     # Q2 CPU taa_run_us, resolved counts
+python3 pan_windows.py 304 305 > pan_windows_out.txt   # rest/pan class per 300-frame window
+python3 dt_windows.py 304 305 > dt_windows_out.txt     # Q3
+python3 frame_rest_pan.py 304 305 > frame_rest_pan_out.txt   # Q3 dt by class, spikes, dt around first lod_switch per body
+python3 spikes_nonburst.py 304 305 > spikes_nonburst_out.txt # Q3 spikes excluding F8 burst frames
+python3 bolt_rows.py 304 305 > bolt_rows_out.txt       # Q4
+python3 lod_switch_counts.py /tmp/x3-bottleX3-run305/session-*.log > lod_switch_counts_out.txt   # Q6
+python3 abnormal_rows.py 304 305 > abnormal_rows_out.txt; python3 exit_rows.py 304 305 > exit_rows_out.txt; bash rowtype_diff.sh > rowtype_diff_out.txt   # Q1/Q7

@@ -210,3 +210,17 @@ game was not running (pgrep before, during and after; the baker's guard). Record
 | check | command | result |
 |---|---|---|
 | rebake + install (measured) | `python3 tools/analysis/lod_overlay.py --batch --sync --install --replace --jobs 2`; `installed_checks.py` (reads installed members by seek) | 48.5 min wall. Eligible/built 611 -> 620 (census 625 minus the same 5 bake-time texel_floor bodies); the 9 new bodies are the 6 from the resolver fix and the 3 toruswreck bodies. Refusal counts as the census predicted: texture_unresolved 44 -> 0, texture_animation_unsupported 168, texture_generated 1, material_outside_table 185 -> 16, no_opaque 651 -> 648. addon/05 493 bodies 1,992,076,927 B, addon/06 127 bodies 732,092,975 B (both below the 2e9 cap and 2^31-1); installed cat/dat sha256 equal to the markers' overlay_sha256; EXE sha256 unchanged. usc_dock_e_tower: 4 tiles, red plate its own tile at 1.92 (controls >= 41.71); 54 installed Terran bodies: 35 red tiles 1.81-2.40 (controls >= 30.25), own source closest on 231/231 tiles. Khaak_M6Main spec = diffuse 0.00 on the 5 same-source tiles, bump 2.12/1.99 on the 2 same-source tiles (matches the scratch bake). Not flown |
+
+## 2026-09-24 Run 80 A: the merged material's constants
+
+The coarse record of `usc_dock_e_tower` (record 1, material 6 on atlas 2149, draws #11/#12 = 60,928 faces =
+groups m0+m1+m3+m4 of record 0) draws its red plates 1.41x brighter than record 0 (red RGB 0.344 -> 0.485; non-red
+0.93x; measured on the run305 bursts 12714 fine / 13309 coarse, different views so indicative;
+`run304-305-run80a/terran-colour/red_plate_stats_run305.txt`). The atlas tiles are right (all 20 ODS tiles closest to
+their own source, red tiles within 1.88-1.96; `atlas_tile_check_dock_e_installed.txt`) and the occlusion map is the
+same at both records. The cause is the synthesised material: `is_light_param` (`lod_overlay.py:824`) and the
+area-weighted loop (`:846-860`) average only `g_Mat*` floats and take everything else from the dominant material, so the
+red/tech/window tiles get white's constants: `g_MatSpecularStrength` 2.517 (source 1.0), `g_MatSpecularPower` 7.47 (10),
+`g_MatDiffuseStrength` 1.126 (1.0), `p_TexTiling` 100 (10), `t_CubeMapTexture` the envmap (NONE_ENVI) and alpha test
+off (on). Fix in progress: shading classes (one merged draw per class of like constants; section below when it lands),
+then a full rebake.

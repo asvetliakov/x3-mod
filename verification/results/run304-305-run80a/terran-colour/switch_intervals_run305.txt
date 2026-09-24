@@ -1,0 +1,12 @@
+lod_switch_frame rows=48 max_switches_in_a_frame=1
+usc_dock_e_tower: switches=25 frames 5666..14229 max_per_frame=1 T_pad=197 s(1->0)=[197] s(0->1)=[196] gap_frames min=27 median=187.0 max=1767
+usc_dock_e_upper_core: switches=12 frames 6036..7634 max_per_frame=1 T_pad=213 s(1->0)=[213, 214] s(0->1)=[212] gap_frames min=3 median=14 max=598
+usc_dock_c_core_top: switches=3 frames 1032..1981 max_per_frame=1 T_pad=239 s(1->0)=[239] s(0->1)=[238] gap_frames min=78 median=474.5 max=871
+usc_dock_c_core_bottom: switches=1 frames 2605..2605 max_per_frame=1 T_pad=189 s(1->0)=[189] s(0->1)=[]
+usc_dock_c_left_arm: switches=1 frames 2991..2991 max_per_frame=1 T_pad=204 s(1->0)=[204] s(0->1)=[]
+usc_dock_c_tower: switches=1 frames 2997..2997 max_per_frame=1 T_pad=258 s(1->0)=[258] s(0->1)=[]
+usc_dock_c_right_rings: switches=1 frames 3315..3315 max_per_frame=1 T_pad=186 s(1->0)=[186] s(0->1)=[]
+usc_dock_c_left_rings: switches=1 frames 3802..3802 max_per_frame=1 T_pad=199 s(1->0)=[199] s(0->1)=[]
+usc_small_station_d: switches=1 frames 4021..4021 max_per_frame=1 T_pad=150 s(1->0)=[150] s(0->1)=[]
+usc_dock_c_right_arm: switches=1 frames 4061..4061 max_per_frame=1 T_pad=205 s(1->0)=[205] s(0->1)=[]
+terran_catapult_gate: switches=1 frames 10373..10373 max_per_frame=1 T_pad=203 s(1->0)=[203] s(0->1)=[]

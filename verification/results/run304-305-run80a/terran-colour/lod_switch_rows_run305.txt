@@ -1,0 +1,61 @@
+== /tmp/x3-bottleX3-run305/session-20260924-204013-340.log
+frames_with_switches=48 overflow_frames=0 dropped_rows=0 nodes=11 first_frame=1032 last_frame=14229
+node=28eb14d8 view=41891ab8 body=stations\station_scenes\terran\usc_dock_e_tower switches=25 flag31=1
+  frame 5666: 1->0 s=197 D=15429239 T_pad=197
+  frame 5699: 0->1 s=196 D=15525827 T_pad=197
+  frame 5856: 1->0 s=197 D=15435555 T_pad=197
+  frame 6008: 0->1 s=196 D=15480413 T_pad=197
+  frame 6229: 1->0 s=197 D=15464661 T_pad=197
+  frame 6797: 0->1 s=196 D=15518649 T_pad=197
+  frame 6972: 1->0 s=197 D=15452948 T_pad=197
+  frame 7097: 0->1 s=196 D=15502343 T_pad=197
+  frame 7644: 1->0 s=197 D=15418167 T_pad=197
+  frame 7696: 0->1 s=196 D=15493320 T_pad=197
+  frame 9463: 1->0 s=197 D=15465264 T_pad=197
+  frame 9490: 0->1 s=196 D=15487730 T_pad=197
+  frame 9588: 1->0 s=197 D=15474893 T_pad=197
+  frame 9832: 0->1 s=196 D=15517679 T_pad=197
+  frame 10801: 1->0 s=197 D=15448633 T_pad=197
+  frame 10897: 0->1 s=196 D=15488747 T_pad=197
+  frame 10983: 1->0 s=197 D=15470372 T_pad=197
+  frame 11129: 0->1 s=196 D=15513826 T_pad=197
+  frame 11476: 1->0 s=197 D=15441202 T_pad=197
+  frame 11605: 0->1 s=196 D=15519044 T_pad=197
+  frame 11866: 1->0 s=197 D=15471660 T_pad=197
+  frame 12900: 0->1 s=196 D=15487433 T_pad=197
+  frame 13533: 1->0 s=197 D=15476172 T_pad=197
+  frame 13732: 0->1 s=196 D=15486965 T_pad=197
+  frame 14229: 1->0 s=197 D=15469813 T_pad=197
+node=28eb1758 view=41891ab8 body=stations\station_scenes\terran\usc_dock_e_upper_core switches=12 flag31=1
+  frame 6036: 1->0 s=213 D=11773250 T_pad=213
+  frame 6039: 0->1 s=212 D=11824080 T_pad=213
+  frame 6208: 1->0 s=213 D=11787153 T_pad=213
+  frame 6214: 0->1 s=212 D=11849205 T_pad=213
+  frame 6812: 1->0 s=213 D=11761706 T_pad=213
+  frame 6823: 0->1 s=212 D=11842475 T_pad=213
+  frame 6938: 1->0 s=213 D=11775479 T_pad=213
+  frame 6952: 0->1 s=212 D=11830827 T_pad=213
+  frame 7107: 1->0 s=214 D=11739109 T_pad=213
+  frame 7113: 0->1 s=212 D=11853845 T_pad=213
+  frame 7628: 1->0 s=214 D=11738860 T_pad=213
+  frame 7634: 0->1 s=212 D=11812758 T_pad=213
+node=35a74450 view=41891ab8 body=stations\station_scenes\terran\usc_dock_c_core_top switches=3 flag31=1
+  frame 1032: 1->0 s=239 D=16492328 T_pad=239
+  frame 1110: 0->1 s=238 D=16504252 T_pad=239
+  frame 1981: 1->0 s=239 D=16491639 T_pad=239
+node=2398ebd0 view=41891ab8 body=others\terran_catapult_gate switches=1 flag31=0
+  frame 10373: 1->0 s=203 D=5664963 T_pad=203
+node=35a5be88 view=41891ab8 body=stations\station_scenes\terran\usc_small_station_d switches=1 flag31=1
+  frame 4021: 1->0 s=150 D=6088501 T_pad=150
+node=35a741d0 view=41891ab8 body=stations\station_scenes\terran\usc_dock_c_tower switches=1 flag31=1
+  frame 2997: 1->0 s=258 D=8318295 T_pad=258
+node=3601df28 view=41891ab8 body=stations\station_scenes\terran\usc_dock_c_core_bottom switches=1 flag31=1
+  frame 2605: 1->0 s=189 D=12850670 T_pad=189
+node=3601e1a8 view=41891ab8 body=stations\station_scenes\terran\usc_dock_c_right_arm switches=1 flag31=1
+  frame 4061: 1->0 s=205 D=6798217 T_pad=205
+node=3601e428 view=41891ab8 body=stations\station_scenes\terran\usc_dock_c_left_arm switches=1 flag31=1
+  frame 2991: 1->0 s=204 D=7140487 T_pad=204
+node=3601e6a8 view=41891ab8 body=stations\station_scenes\terran\usc_dock_c_left_rings switches=1 flag31=1
+  frame 3802: 1->0 s=199 D=6792079 T_pad=199
+node=3601e928 view=41891ab8 body=stations\station_scenes\terran\usc_dock_c_right_rings switches=1 flag31=1
+  frame 3315: 1->0 s=186 D=7644448 T_pad=186

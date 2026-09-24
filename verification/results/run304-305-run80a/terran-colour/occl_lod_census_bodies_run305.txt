@@ -1,0 +1,7 @@
+draws
+lod=0 slot=- draws=144 nebula_solarsystem_background_|637:32x32:L6x128 planet_venus|637:32x32:L6x16
+lod=0 slot=05 draws=160 terran_m6|1479:32x32:L6x96 terran_m6|637:32x32:L6x32 terran_m6|1507:32x32:L6x32
+lod=0 slot=06 draws=128 usc_dock_e_tower|1483:2048x2048:L12x64 usc_small_station_d|1513:1024x1024:L11x64
+lod>0 slot=- draws=64 turretdummy3|1511:32x32:L6x64
+lod>0 slot=05 draws=88 terran_catapult_gate|1479:32x32:L6x72 terran_ts|637:32x32:L6x16
+lod>0 slot=06 draws=544 usc_small_station_d|1513:1024x1024:L11x96 terran_spp_center|637:32x32:L6x96 usc_dock_e_upper_core|1483:2048x2048:L12x64 usc_dock_e_lower_core|1483:2048x2048:L12x64 terran_spp_bottom|637:32x32:L6x64 usc_dock_e_left_rings|1483:2048x2048:L12x32 usc_dock_e_right_rings|1483:2048x2048:L12x32 terran_spp_bottom|1479:32x32:L6x32 terran_spp_center|1479:32x32:L6x32 usc_dock_e_tower|1483:2048x2048:L12x32

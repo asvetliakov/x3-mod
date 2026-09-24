@@ -1,0 +1,9 @@
+== stations/station_scenes/terran/usc_dock_e_tower addon/06.cat:objects/stations/station_scenes/terran/usc_dock_e_tower.pbb
+  record1 value=30 points=104657 pos_exact=1.000 uv2_within_1/512=1.000 within_1/64=1.000 uv2_range=[0.002,0.997]
+  record2 value=197 points=15603 pos_exact=1.000 uv2_within_1/512=0.989 within_1/64=0.990 uv2_range=[-0.498,1.437]
+== stations/station_scenes/terran/usc_dock_e_lower_core addon/06.cat:objects/stations/station_scenes/terran/usc_dock_e_lower_core.pbb
+  record1 value=30 points=107173 pos_exact=1.000 uv2_within_1/512=1.000 within_1/64=1.000 uv2_range=[0.002,0.997]
+  record2 value=207 points=16495 pos_exact=1.000 uv2_within_1/512=0.991 within_1/64=0.991 uv2_range=[-0.994,1.461]
+== stations/station_scenes/terran/usc_dock_e_upper_core addon/06.cat:objects/stations/station_scenes/terran/usc_dock_e_upper_core.pbb
+  record1 value=30 points=69981 pos_exact=1.000 uv2_within_1/512=1.000 within_1/64=1.000 uv2_range=[0.002,0.997]
+  record2 value=213 points=11801 pos_exact=1.000 uv2_within_1/512=0.988 within_1/64=0.989 uv2_range=[-0.403,1.286]

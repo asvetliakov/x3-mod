@@ -1,0 +1,2 @@
+tower      burst 12714 lod=0 lit=54995 red=8810 red_share=0.1602 red_rgb=(0.344,0.149,0.148) red_lum_p50=0.2191 p90=0.2798 nonred_rgb=(0.581,0.536,0.541)
+tower      burst 13309 lod=1 lit=36801 red=5405 red_share=0.1469 red_rgb=(0.485,0.206,0.206) red_lum_p50=0.3084 p90=0.3761 nonred_rgb=(0.538,0.495,0.502)

@@ -1,0 +1,2 @@
+frame 12714 rect 2833,386-3322,871 geo_px=64195 visible_share=0.8329 cascades={np.int64(-1): np.int64(6172), np.int64(3): np.int64(9621), np.int64(4): np.int64(48402)} z_p50=151145 red_px=8825 red_visible_share=0.9489 red_rgb_lit=(0.359,0.155,0.154) red_rgb_shadowed=(0.072,0.031,0.031)
+frame 13309 rect 2531,406-2926,837 geo_px=45488 visible_share=0.7755 cascades={np.int64(-1): np.int64(4770), np.int64(3): np.int64(6145), np.int64(4): np.int64(34573)} z_p50=171051 red_px=5402 red_visible_share=0.9204 red_rgb_lit=(0.519,0.221,0.220) red_rgb_shadowed=(0.092,0.040,0.039)
