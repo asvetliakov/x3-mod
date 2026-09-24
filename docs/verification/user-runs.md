@@ -20,7 +20,8 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 
 | Run | Purpose | Sessions | Status |
 | --- | --- | ---: | --- |
-| 80 A | A'-only build (hold-off chain removed) with the opt-in `--lod-occlusion all`, `--taa-thin-vote on`, `--fade-rt2-owner on` A/Bs, `--lod-switch-log` on the ODS while turning, bolt shape telemetry; Terran colours after the rebake | 1 | Queued 2026-09-24 evening; Run80 DLL `593112dc…` installed 19:49, fleet overlay install-fleet3 (620 bodies) installed 20:16; ready |
+| 81 A | Run81 defaults (thin vote, fade owner, occlusion `all`, FOV 58.7155 vertical, age programs) + alpha casters look; S4 half box A/B; sentinel stabiliser off with the owner on, at 5120x1440 (candidate 9e1645be) | 0 | Queued 2026-09-24 22:15; Run81 DLL `b4e945ed…` installed 22:15, fleet overlay install-fleet3 unchanged |
+| 80 A | A'-only build (hold-off chain removed) with the opt-in `--lod-occlusion all`, `--taa-thin-vote on`, `--fade-rt2-owner on` A/Bs, `--lod-switch-log` on the ODS while turning, bolt shape telemetry; Terran colours after the rebake | 5 | Completed 2026-09-24 (run304 baseline, run305 occlusion + switch log, run306 thin vote, run307 fade owner, run308 gpu-sync baseline): occlusion patch works (every LOD>0 ODS draw binds the map, no hitch; made the default `all`); thin vote and fade owner accepted as defaults (no visible issue, no GPU pass cost within 50 us; A'-only TAA 6.78 ms at 5120x1440, mask 1.49 / box 2.41 / resolve 2.68); ODS flicker = one LOD pop per crossing without hysteresis; coarse red plates 1.41x brighter = baker's synthesised material constants (user accepts, no shading classes); underside transition = alpha-tested casters excluded from the shadow replay (opt-in `--shadow-alpha-casters` in Run81); sentinel stabiliser removal needs the S = 0 launch (Run 81 A) |
 | 79 A | A' region hold on/off look + gpu-sync cost, Terran station LOD patch bursts (USC dock, SPP XL) size/distance, slot-06 control, at 5120x1440 (candidate df01f23b) | 4 | Completed 2026-09-24 (run299/300/302/303; run301 aborted): A' accepted (no visible difference on the lattice stand, pans, silhouettes, shards; mask 2.93 -> 1.54 ms with the x/y draws gone, box +0.23 ms, net -1.1 ms at 5120x1440); Terran patch works (status=patched, all 16 slot-06 bodies flag31=1, lod 1 below s/T_pad 1.0, coarse ODS confirmed); the coarse record lost its red plates (baker alpha rule, fixed 5aa645e3, rebake pending) and its ambient occlusion (engine LOD-0 gate: opt-in `--lod-occlusion all` ac381be7); one ODS part flickers under motion on both hold settings (inferred LOD pop; `--lod-switch-log` e8af9e46); `--terran-station-lod distance` not flown |
 | 78 A | Dither A/B, S3 5 vs 16 taps, clean exit, slot-06 burst, scale 4 default at 5120x1440 (candidate ee3bbf88) | 1 | Completed 2026-09-24 (run295-298): dither accepted (rings gone on, back off, no frame-time cost); exit fixed (no fault, four exits; the refused row never written, expectation withdrawn); slot-06 bodies never switch to their coarse record (USC dock, Terran SPP XL at s/T_pad 0.17-0.36) while slot-05 bodies do: triage-deep open; TAA taps 5, no refusals, look accepted; bolts ok (84 shape refusals, 1.1 %, open); Run 77 D closed by this session |
 | 74 A | Re-baked overlay: aspect thresholds + area-weighted texel rule, 22 bodies, busy sector, Run73 DLL | 1 | Completed 2026-09-23 (run277, flown on the Run75 DLL): accepted, FPS much better, almost no visible transition; one visible switch on the solar-panel arms of the plasma thrower factory (F8 bursts 35568–35575 coarse, 36781–36788 fine), triage in progress; overlay stays installed. |
@@ -34,36 +35,44 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 73 B/C | Fog hand-over, --music-keep alt-tab, bolt footprint (B); --gpu-sync-timing stand (C), Run73 DLL | 2 | B completed (run273): music keep accepted (6 alt-tabs, all skip_all); docked view in flight shows our fog; open: same-family gate jump 3.5 s of engine fog (residency drop + ramp), confirmed prefill still re-filled after arrival (1.15 s), docked save load keeps engine fog until undock (cards armed but refused, 4.5 s), new-game cold start 1.34 s (0.7 s ordering + 0.6 s fill latch); bolts unchanged (rule leaves half-length >= 3 px untouched; no additive admission after the new game) ([triage](../verification/results/run273-fog-bolts/), fixes in progress). C completed (run274): per-pass GPU table ([note](../architecture/engine-frame-time.md#run-274-gpu-per-pass-cost-at-19201080-run-73-c-2026-09-23)); proxy 11.7 ms serialised vs engine 4.7 ms, fog_route 4.4 / taa 2.9 ms. |
 | 73 A | Merged-LOD batch overlay of the flown sectors (19 bodies) in a busy sector, Run72 DLL | 1 | Completed 2026-09-23 (run272): FPS better, no oddity reported; overlay bodies draw the merged record at 2–4 draws; 234/217 draws per burst come from texel_floor-refused tech stations and the gate (36–38 / 14–32 each), single-LOD pipes (42), refused signs (~35), the spacedock above its switch and the outpost with the camera inside its sphere ([triage](../verification/results/run272-batch-busy/burst_draws_out.txt)); baker per-tile clamp in progress. |
 
-## Run 80 (open)
+## Run 81 (open)
 
-**Run 80 A (queued 2026-09-24 evening; Run80 DLL `593112dc…` from 9cf5decf installed 19:49; fleet overlay install-fleet3 installed 20:16: the coarse Terran records carry their red plates).** One session at
-5120x1440, several launches, the stand command below unchanged (`--taa-region-hold` no longer exists; the launcher
-refuses it). Please report per launch:
+**Run 81 A (queued 2026-09-24 22:15; Run81 DLL `b4e945ed…` from 9e1645be installed 22:15; fleet overlay install-fleet3 unchanged).**
+New defaults in this build: `--taa-thin-vote on`, `--fade-rt2-owner on`, `--lod-occlusion all`, `--fov 58.7155` (58.7 deg vertical
+= 90 / 106 / 127 deg horizontal at 16:9 / 21:9 / 32:9; the game's 73.7 deg vertical is `--fov game`), and under `--taa` the age
+programs `--taa-far-stabiliser 0.985` and `--taa-thin-region 0.97` (dropped from the stand command below; they are on). New
+opt-ins: `--taa-box-resolution half` (S4), `--shadow-alpha-casters on`. One session at 5120x1440, three launches; each command is
+the stand command below plus the flags shown. Please report per launch:
 
-1. **Baseline** (launch 1, defaults): the A'-only build on the lattice stand and under a slow pan: same look as Run 79 A's
-   hold-on launch; nothing new expected. One F8 burst at the stand.
-2. **Occlusion patch** (launch 2, add `--lod-occlusion all`): the Terran Orbital Defence Station at the run297 "a little
-   far" distance (coarse record): expect the ambient-occlusion shading back on the coarse record (darker panels, closer to
-   the fine model), the log row `lod_occlusion site=004c34f7 status=patched write=atomic`; watch for a hitch or stutter the
-   first time a distant station comes into view (the occlusion map loads at draw time), and look at any distant vanilla
-   station for misplaced occlusion (their UV2 is about 1 % off). One F8 burst on the coarse ODS.
-3. **LOD switch log** (same launch, add `--lod-switch-log`): near the ODS, turn the ship slowly with the station in the
-   right third of the screen and say whether the part flicker is a single pop per crossing or continuous. The
-   `lod_switch` rows settle whether the flicker is the record 0 <-> coarse pop.
-4. **Thin vote** (launch 3, add `--taa-thin-vote on`; needs the lane, already in the command): the lattice stand at rest
-   and under a slow pan, then a large near station: any change in crawl on hull-backed arms, any ghosting on voted
-   panels during pans, loading time on sector entry; `--gpu-sync-timing` optional for the `taa_mask` row. One F8 burst.
-5. **Fade owner** (launch 4, add `--fade-rt2-owner on`): the run214 stand (two distant stations in the fade band), slow
-   vertical pan 3-9 px/frame: flicker on the stations under the pan, trail behind the silhouette, a pop at the band
-   edges on approach. One F8 burst at rest and one during the pan.
-6. If bolts are fired anywhere: nothing to do; the `bolt_footprint_refused` rows now carry the sub-clause.
-7. **Rebaked overlay**: the coarse ODS should now show its red plates (compare with screenshots/terran-lod1.png); say if any body looks wrong (missing texture, black or wrong-coloured panel).
-8. Exit through the menu.
+1. **Defaults, FOV and alpha casters** (launch 1: stand command + `--gpu-sync-timing --shadow-alpha-casters on`). In order:
+   a. FOV: the lattice stand and a station near the screen edge (the old edge stretch should be gone; the picture is zoomed in
+      against Run 80 A, 127 deg across the width instead of 139); target brackets, the lead reticle, mouse aim and cockpit zoom must
+      still sit on their objects. Then open the in-game FOV menu, move the slider to 90 (the vanilla look) and back to its minimum
+      (about 74, close to the new default) to compare; say which you prefer and whether the menu value survives a save/reload.
+   b. TAA defaults: the lattice stand at rest and under a slow pan (thin vote and fade owner now on), two distant stations in the
+      fade band under a slow vertical pan.
+   c. ODS: the Terran Orbital Defence Station close (fine record) and at the run297 "a little far" distance (coarse record): the
+      underside strip below the long spine should now be shadowed at both records (the transition you marked in Run 80 A gone);
+      any shadow acne or missing shadow elsewhere; the coarse record's occlusion and red plates (the small brightness change is
+      accepted).
+   F8 bursts: one at the lattice stand, one on the close ODS, one on the coarse ODS. Rows to confirm: `fov ... status=patched
+   value=0x3470`, `fov_confirm ... match=1`, `cull_small_parts_value ... focus=`, `taa_thin_vote_configured ... default=1`,
+   `fade_rt2_owner_configured ... default=1`, `lod_occlusion ... setting=all default=1`, `shadow_alpha_casters` per frame
+   (`refused_pool` must stay 0).
+2. **S4 half-resolution box** (launch 2: stand command + `--gpu-sync-timing --taa-box-resolution half`): the lattice stand at rest and
+   in a pan, a laser or engine trail over sky (a halo up to 2 px is expected), a silhouette against sky under a pan, the run221
+   distant-station pan; any difference from launch 1. One F8 burst at the stand. The `taa_box` row against launch 1 decides the cost.
+3. **Sentinel stabiliser off** (launch 3: stand command with `X3M_TAA_SENTINEL_STABILISER=0` added to the env before `x3run`;
+   owner, vote and the thin-region weight stay on by default): the run214 stand (two distant stations in the fade band), slow
+   vertical pan 3-9 px/frame: flicker on the stations, trail behind the silhouette, pop at the band edges on approach; then the
+   lattice stand at rest and under a pan. One F8 burst at rest and one during the pan on the run214 stand. Decides whether the
+   sentinel stabiliser is removed now that the owner gives fade-band stations their depth.
+4. Exit through the menu after each launch.
 
-Stand command (Run 73 A's, unchanged):
+Stand command (Run 73 A's minus the two age-program flags, which are defaults now):
 
 ```sh
-env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3-mod/x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-far-stabiliser 0.985 --light-map-far-fade 80,220 --motion-rt-mode lazy --frame-end-stride 1 --taa-thin-region 0.97 --volumetric-fog 0.02 --volumetric-fog-cards replace --volumetric-fog-range stored --volumetric-fog-timing --capture-start 999999 --capture-frames 8 --capture-delay 300 --cull-small-parts 4 --frame-timing --frame-phases --object-bounds-log --cull-census
+env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3-mod/x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --light-map-far-fade 80,220 --motion-rt-mode lazy --frame-end-stride 1 --volumetric-fog 0.02 --volumetric-fog-cards replace --volumetric-fog-range stored --volumetric-fog-timing --capture-start 999999 --capture-frames 8 --capture-delay 300 --cull-small-parts 4 --frame-timing --frame-phases --object-bounds-log --cull-census
 ```
 
 To remove the overlay: delete `addon/05.cat`, `05.dat`, `05.x3m-lod.json` and `x3m-lod-batch*.json/txt`; the originals are untouched.
@@ -78,4 +87,4 @@ not rerun requests.
 <a id="53-spatial-fog-and-moving-lattice-state--ready-for-flight"></a>
 Run51/53 instructions are [archived](../archive/run53-completed-2026-09-20.md); they are not rerun requests.
 
-Run 80 A is the only queued run. Completed instructions for Runs 73-78 are in the [archive](../archive/user-runs-completed.md).
+Run 81 A is the only queued run. Completed instructions for Runs 73-80 are in the [archive](../archive/user-runs-completed.md).

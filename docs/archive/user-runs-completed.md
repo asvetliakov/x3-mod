@@ -2200,3 +2200,32 @@ Run 77 D (bolts in a busy fight) closed by Run 78 A run298: bolts ok.
 env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3-mod/x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-far-stabiliser 0.985 --light-map-far-fade 80,220 --motion-rt-mode lazy --frame-end-stride 1 --taa-thin-region 0.97 --volumetric-fog 0.02 --volumetric-fog-cards replace --volumetric-fog-range stored --volumetric-fog-timing --capture-start 999999 --capture-frames 8 --capture-delay 300 --cull-small-parts 4 --frame-timing --frame-phases --object-bounds-log --cull-census
 ```
 
+
+## Run 80 A — Completed 2026-09-24 (run304-308)
+
+**Run 80 A (queued 2026-09-24 evening; Run80 DLL `593112dc…` from 9cf5decf installed 19:49; fleet overlay install-fleet3 installed 20:16: the coarse Terran records carry their red plates).** One session at
+5120x1440, several launches, the stand command below unchanged (`--taa-region-hold` no longer exists; the launcher
+refuses it). Please report per launch:
+
+1. **Baseline** (launch 1, defaults): the A'-only build on the lattice stand and under a slow pan: same look as Run 79 A's
+   hold-on launch; nothing new expected. One F8 burst at the stand.
+2. **Occlusion patch** (launch 2, add `--lod-occlusion all`): the Terran Orbital Defence Station at the run297 "a little
+   far" distance (coarse record): expect the ambient-occlusion shading back on the coarse record (darker panels, closer to
+   the fine model), the log row `lod_occlusion site=004c34f7 status=patched write=atomic`; watch for a hitch or stutter the
+   first time a distant station comes into view (the occlusion map loads at draw time), and look at any distant vanilla
+   station for misplaced occlusion (their UV2 is about 1 % off). One F8 burst on the coarse ODS.
+3. **LOD switch log** (same launch, add `--lod-switch-log`): near the ODS, turn the ship slowly with the station in the
+   right third of the screen and say whether the part flicker is a single pop per crossing or continuous. The
+   `lod_switch` rows settle whether the flicker is the record 0 <-> coarse pop.
+4. **Thin vote** (launch 3, add `--taa-thin-vote on`; needs the lane, already in the command): the lattice stand at rest
+   and under a slow pan, then a large near station: any change in crawl on hull-backed arms, any ghosting on voted
+   panels during pans, loading time on sector entry; `--gpu-sync-timing` optional for the `taa_mask` row. One F8 burst.
+5. **Fade owner** (launch 4, add `--fade-rt2-owner on`): the run214 stand (two distant stations in the fade band), slow
+   vertical pan 3-9 px/frame: flicker on the stations under the pan, trail behind the silhouette, a pop at the band
+   edges on approach. One F8 burst at rest and one during the pan.
+6. If bolts are fired anywhere: nothing to do; the `bolt_footprint_refused` rows now carry the sub-clause.
+7. **Rebaked overlay**: the coarse ODS should now show its red plates (compare with screenshots/terran-lod1.png); say if any body looks wrong (missing texture, black or wrong-coloured panel).
+8. Exit through the menu.
+
+
+Stand command: Run 73 A's (with `--taa-far-stabiliser 0.985 --taa-thin-region 0.97`, defaults since Run 81).
