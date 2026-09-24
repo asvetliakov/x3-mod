@@ -105,7 +105,8 @@ settings.
   at device creation. No second program set for smaller caps: if a device refuses a
   program at creation, the pass logs one row and stays off. The practical ceiling is run-time
   cost (about 1 us per slot per frame at 5120x1440) and first-draw compile
-  (0.65 s at 4k slots, 8.6 s at 16k), so keep programs in the low thousands
+  (cold cache 0.65 s at 4k slots, 8.6 s at 16k; warm cache 0.14 s / 1.8 s; measured),
+  so keep programs in the low thousands
   (`docs/architecture/platform-portability.md`, "Shader slot budget"). Do not
   refuse or split a shader for exceeding 512.
 - Keep verification, probes and test assets separate from production source.

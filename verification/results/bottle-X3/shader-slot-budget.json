@@ -32,8 +32,16 @@
  "exit_code": 0,
  "elapsed_s": 558.6,
  "reparsed": {
-  "runner_sha256": "b65f9779b6c1f1a3627d77938f473d9bd43d2e60baea1ee0c5ac0f2f81f1424a",
+  "runner_sha256": "63ad6cd97101a51b9b40afd22ed2ca4e5f605bc068902e0cd41b08cdeb46233f",
   "fixture_source_sha256_now": "6ecfcfff6ac40e5d640cb93e202e32f6fee92e90737b16510a951eae605a167a"
+ },
+ "first_run": {
+  "log": "build/shader_slot_budget/shader-slot-budget.run1.stdout",
+  "sha256": "a979ec63e25da826b961155fc4fa7b76e1081bc1857ee07d0fafd4f016f68e0d",
+  "cases_with_first_draw": 29,
+  "matched": 28,
+  "mismatched": [],
+  "note": "first run = first time the backend compiled these programs (cold); the main run repeated identical bytecode (warm backend cache, inferred)"
  },
  "stderr_lines": 2,
  "stderr_err_lines": [],
@@ -61,7 +69,8 @@
     "first_draw_ms": 19.7,
     "reps": 40,
     "ms_per_draw": 0.0444,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 79.5
    },
    {
     "stage": "ps_3_0",
@@ -85,7 +94,8 @@
     "first_draw_ms": 10.6,
     "reps": 40,
     "ms_per_draw": 0.0444,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 41.7
    },
    {
     "stage": "ps_3_0",
@@ -109,7 +119,8 @@
     "first_draw_ms": 10.3,
     "reps": 40,
     "ms_per_draw": 0.0407,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 41.2
    },
    {
     "stage": "ps_3_0",
@@ -133,7 +144,8 @@
     "first_draw_ms": 10.3,
     "reps": 40,
     "ms_per_draw": 0.0423,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 41.2
    },
    {
     "stage": "ps_3_0",
@@ -157,7 +169,8 @@
     "first_draw_ms": 10.2,
     "reps": 40,
     "ms_per_draw": 0.0405,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 39.7
    },
    {
     "stage": "ps_3_0",
@@ -181,7 +194,8 @@
     "first_draw_ms": 10.7,
     "reps": 40,
     "ms_per_draw": 0.0366,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 39.6
    },
    {
     "stage": "ps_3_0",
@@ -205,7 +219,8 @@
     "first_draw_ms": 10.1,
     "reps": 40,
     "ms_per_draw": 0.0406,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 38.9
    },
    {
     "stage": "ps_3_0",
@@ -229,7 +244,8 @@
     "first_draw_ms": 10.1,
     "reps": 40,
     "ms_per_draw": 0.0405,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 39.0
    },
    {
     "stage": "ps_3_0",
@@ -253,7 +269,8 @@
     "first_draw_ms": 10.0,
     "reps": 40,
     "ms_per_draw": 0.0403,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 39.7
    },
    {
     "stage": "ps_3_0",
@@ -277,7 +294,8 @@
     "first_draw_ms": 10.1,
     "reps": 40,
     "ms_per_draw": 0.0362,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 39.2
    },
    {
     "stage": "ps_3_0",
@@ -301,7 +319,8 @@
     "first_draw_ms": 10.1,
     "reps": 40,
     "ms_per_draw": 0.04,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 39.5
    },
    {
     "stage": "ps_3_0",
@@ -325,7 +344,8 @@
     "first_draw_ms": 11.7,
     "reps": 40,
     "ms_per_draw": 0.0452,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 46.9
    },
    {
     "stage": "ps_3_0",
@@ -349,7 +369,8 @@
     "first_draw_ms": 21.1,
     "reps": 40,
     "ms_per_draw": 0.0576,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 88.0
    },
    {
     "stage": "ps_3_0",
@@ -373,7 +394,8 @@
     "first_draw_ms": 55.2,
     "reps": 40,
     "ms_per_draw": 0.1017,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 218.9
    },
    {
     "stage": "ps_3_0",
@@ -397,7 +419,8 @@
     "first_draw_ms": 141.2,
     "reps": 40,
     "ms_per_draw": 0.1663,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 650.8
    },
    {
     "stage": "ps_3_0",
@@ -421,7 +444,8 @@
     "first_draw_ms": 474.7,
     "reps": 10,
     "ms_per_draw": 0.5705,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 2225.2
    },
    {
     "stage": "ps_3_0",
@@ -445,7 +469,8 @@
     "first_draw_ms": 1784.3,
     "reps": 10,
     "ms_per_draw": 0.6448,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 8591.8
    },
    {
     "stage": "ps_3_0",
@@ -469,7 +494,8 @@
     "first_draw_ms": 2.4,
     "reps": 40,
     "ms_per_draw": 0.0148,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 10.1
    },
    {
     "stage": "ps_3_0",
@@ -493,7 +519,8 @@
     "first_draw_ms": 27.2,
     "reps": 10,
     "ms_per_draw": 0.9424,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 62.9
    },
    {
     "stage": "ps_3_0",
@@ -578,7 +605,8 @@
     "first_draw_ms": 11.5,
     "reps": 40,
     "ms_per_draw": 0.0164,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 51.3
    },
    {
     "stage": "ps_3_0",
@@ -602,7 +630,8 @@
     "first_draw_ms": 11.0,
     "reps": 40,
     "ms_per_draw": 0.0218,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 45.8
    },
    {
     "stage": "ps_3_0",
@@ -626,7 +655,8 @@
     "first_draw_ms": 11.0,
     "reps": 40,
     "ms_per_draw": 0.0206,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 49.7
    },
    {
     "stage": "ps_3_0",
@@ -650,7 +680,8 @@
     "first_draw_ms": 11.0,
     "reps": 40,
     "ms_per_draw": 0.02,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 46.6
    },
    {
     "stage": "ps_3_0",
@@ -674,7 +705,8 @@
     "first_draw_ms": 24.2,
     "reps": 40,
     "ms_per_draw": 0.0206,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 126.8
    },
    {
     "stage": "ps_3_0",
@@ -698,7 +730,8 @@
     "first_draw_ms": 169.5,
     "reps": 40,
     "ms_per_draw": 0.0286,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 1022.4
    },
    {
     "stage": "ps_3_0",
@@ -722,7 +755,8 @@
     "first_draw_ms": 7278.1,
     "reps": 10,
     "ms_per_draw": 0.2472,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 45778.1
    },
    {
     "stage": "ps_3_0",
@@ -746,7 +780,8 @@
     "first_draw_ms": 7258.6,
     "reps": 10,
     "ms_per_draw": 0.2493,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 46003.1
    },
    {
     "stage": "ps_3_0",
@@ -770,7 +805,8 @@
     "first_draw_ms": 7121.9,
     "reps": 10,
     "ms_per_draw": 0.2484,
-    "coop": "00000000"
+    "coop": "00000000",
+    "first_draw_ms_first_run": 45974.9
    },
    {
     "stage": "ps_3_0",

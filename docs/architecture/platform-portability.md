@@ -424,8 +424,9 @@ lines 784-785, checked 2026-09-24 against the GitHub master source: `MaxPixelSha
 - The device cap is logged once at device creation. No second program set for smaller caps (the user targets
   modern cards): if a device refuses a program at creation, the owning pass logs one row and stays off, which is
   the existing creation-failure path.
-- The practical ceiling on this backend is the first-draw backend shader compile: 39 ms at 513 slots, 651 ms at
-  4,097, 8.6 s at 16,385 (measured). Keep programs in the low thousands of slots.
+- The practical ceiling on this backend is the first-draw backend shader compile. Cold cache: 39 ms at 513 slots,
+  651 ms at 4,097, 8.6 s at 16,385. Warm cache: 10 / 141 / 1,784 ms (both measured). Keep programs in the low
+  thousands of slots.
 
 ## 2026-09-19: `--taa-current-filter` exceeds the guaranteed ps_3_0 slot count
 
