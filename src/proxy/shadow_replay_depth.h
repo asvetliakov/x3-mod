@@ -34,6 +34,10 @@ struct DepthGeometry {
     DWORD cull_mode = D3DCULL_NONE;
     float rows[16]{};   // the application's own clip rows (pre-jitter)
     float sun[4]{};     // that register's value at the draw (diagnostics; the replay uses the frame's one validated sun)
+    // Alpha-tested caster (X3M_SHADOW_ALPHA_CASTERS): the draw's stage-0 texture, its own
+    // GetTexture reference (the lease, released with the others), and the discard threshold.
+    IDirect3DBaseTexture9* alpha_texture = nullptr;
+    float alpha_threshold = 0.f;
 };
 struct DepthCounts {
     std::uint32_t draws = 0, replayed = 0, skipped_lease = 0, skipped_state = 0, skipped_caps = 0;

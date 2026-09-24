@@ -579,6 +579,12 @@ public:
         depth_replay_depth_half_=depth_half>=renderer::shadow_replay_depth_half_min&&depth_half<=renderer::shadow_replay_depth_half_max?depth_half:renderer::shadow_replay_depth_half_default;
         depth_cascade_.size=depth_replay_size_; depth_cascade_.half_extent=depth_replay_extent_; depth_cascade_.set_depth_half(depth_replay_depth_half_);
     }
+    // Alpha-tested casters (shadow-replay-gates.md, "Alpha-tested casters";
+    // X3M_SHADOW_ALPHA_CASTERS=1, default off): alpha-tested routed draws become
+    // caster candidates whose replay keeps their alpha test (their stage-0
+    // texture at TEXCOORD0 against their own ALPHAFUNC/ALPHAREF). Rides the depth
+    // replay (call after configure_shadow_replay_depth); off: no code runs.
+    void configure_shadow_alpha_casters(bool requested) noexcept { alpha_casters_requested_=requested&&depth_replay_requested_; }
     // Sun-shadow cascades (docs/architecture/shadow-cascades.md; X3M_SHADOW_CASCADES):
     // a set with count >= 1 replaces the single map by that many camera-centred
     // maps in one replay transaction, a cascade mask per candidate, per-cascade
@@ -1392,6 +1398,7 @@ private:
         // GetDeclaration read that hashes it): the depth lease's multistream
         // verdict, once per SetVertexDeclaration instead of per leased draw.
         bool declaration_stream0_only = false;
+        bool declaration_uv0 = false; // ... and has a stream-0 TEXCOORD0 element (the alpha caster program's UV input)
         renderer::Surface rt0, depth;
         bool extra_rt[4]{};
         renderer::Viewport viewport;
@@ -1609,6 +1616,11 @@ private:
     float depth_replay_extent_=renderer::shadow_replay_extent_default, depth_replay_depth_half_=renderer::shadow_replay_depth_half_default;
     std::unique_ptr<renderer::ShadowReplayPass> depth_replay_;
     HRESULT depth_replay_attach_result_=S_FALSE;
+    // Alpha-tested casters: requested (with the depth replay), and ready once the
+    // attached pass holds its alpha programs (a refused program: never, one row).
+    bool alpha_casters_requested_=false;
+    bool alpha_casters_ready() const noexcept { return alpha_casters_requested_&&depth_replay_&&depth_replay_->caps().enabled&&depth_replay_->caps().alpha; }
+    shadow_replay::AlphaCasterCounts alpha_caster_counts_{};
     // The record list's parallel arrays: the inline storage for record_capacity
     // records, or (a cascade set with more records: shadow-cascade-extents.md,
     // "Caster pool control") storage allocated once at attach, candidate_capacity_
@@ -1679,6 +1691,7 @@ public:
 private:
 #endif
     void note_depth_geometry(const MotionRoute& route, unsigned index) noexcept;
+    bool alpha_caster_source(IDirect3DBaseTexture9*& texture, float& threshold) noexcept; // the draw's alpha test as a caster: false refuses it
     bool fill_depth_geometry(const MotionRoute& route, shadow_replay::DepthGeometry& g) noexcept; // rows, keys, cull mode and the declaration's own reference; no lease
     void release_depth_leases() noexcept;
     bool ensure_shadow_replay_depth() noexcept;

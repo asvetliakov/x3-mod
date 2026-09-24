@@ -407,6 +407,35 @@ struct Frame {
     }
 };
 
+// ---- alpha-tested casters (docs/architecture/shadow-replay-gates.md, "Alpha-tested casters") ----
+// X3M_SHADOW_ALPHA_CASTERS: what an alpha-tested routed draw's own alpha test
+// (the documented D3DRS_ALPHAFUNC / D3DRS_ALPHAREF values) makes of it as a
+// caster. Opaque: every pixel passes (ALWAYS, or GREATEREQUAL / GREATER below
+// the lowest alpha), cast with the depth-only program. Tested: cast with the
+// alpha program, discarding where the sampled alpha is below `threshold`
+// (GREATEREQUAL ref: ref / 255; GREATER ref: half a code above it, so an
+// 8-bit texel equal to ref is discarded). Refused: NEVER draws nothing, and
+// LESS, EQUAL, LESSEQUAL and NOTEQUAL keep low alpha, which one threshold
+// cannot express: no caster. The reference is the low 8 bits (the documented
+// range 0x00..0xFF).
+enum class AlphaCaster : std::uint8_t { Opaque = 0, Tested = 1, Refused = 2 };
+inline AlphaCaster alpha_caster(std::uint32_t func, std::uint32_t ref, float& threshold) noexcept {
+    threshold = 0.f;
+    const std::uint32_t code = ref & 0xFFu;
+    switch (func) {
+    case 8: return AlphaCaster::Opaque;                                          // D3DCMP_ALWAYS
+    case 7: if (!code) return AlphaCaster::Opaque; threshold = float(code) / 255.f; return AlphaCaster::Tested;  // GREATEREQUAL
+    case 5: threshold = (float(code) + .5f) / 255.f; return AlphaCaster::Tested; // GREATER
+    default: return AlphaCaster::Refused;                                        // NEVER, LESS, EQUAL, LESSEQUAL, NOTEQUAL, unknown
+    }
+}
+// Per-frame counts of the alpha-tested draws that reached the candidate
+// decision with the option on (the shadow_alpha_casters line).
+struct AlphaCasterCounts {
+    std::uint32_t seen = 0, tested = 0, opaque = 0; // reached the decision; admitted with the alpha program; admitted as opaque
+    std::uint32_t state = 0, function = 0, uv = 0, texture = 0, pool = 0; // refused: state read failed; the comparison; no stream-0 TEXCOORD0; no 2D stage-0 texture; texture not D3DPOOL_MANAGED
+};
+
 // ---- vertex extents (docs/architecture/shadow-replay-gates.md, "Casters by bounds") ----
 // The object-space AABB of one draw's vertex range, read once per (buffer,
 // revision, range, position layout) at a scene end and cached; the draw-time

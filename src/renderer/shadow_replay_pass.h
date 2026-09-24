@@ -31,6 +31,12 @@ struct ShadowReplayDraw {
     bool indexed = false;
     DWORD cull_mode = D3DCULL_NONE;
     float light_rows[16]{}; // shadow_replay_light_rows output: c0-c3 of the authored program
+    // Alpha-tested caster (X3M_SHADOW_ALPHA_CASTERS; docs/architecture/shadow-replay-gates.md,
+    // "Alpha-tested casters"): the draw's own stage-0 texture (borrowed: the caller holds
+    // the lease) sampled at the declaration's TEXCOORD0.xy, the pixel discarded where its
+    // alpha is below `alpha_threshold` (clip(tex.a - threshold)). Null: the depth-only program.
+    IDirect3DBaseTexture9* alpha_texture = nullptr;
+    float alpha_threshold = 0.f;
 };
 struct ShadowReplayCaps {
     bool enabled = false;
@@ -38,6 +44,10 @@ struct ShadowReplayCaps {
     D3DFORMAT map_format = D3DFMT_UNKNOWN, depth_format = D3DFMT_UNKNOWN;
     bool readable = false; // the map is an R32F colour target that GetRenderTargetData can copy
     HRESULT formats = S_FALSE, programs = S_FALSE;
+    // The alpha-tested caster programs (request_alpha_programs before attach): created
+    // beside the depth-only pair; a refusal leaves `alpha` false and the pass enabled.
+    bool alpha = false;
+    HRESULT alpha_programs = S_FALSE;
     unsigned halved = 0; // cascade maps whose requested size exceeded MaxTextureWidth/Height and was halved
 };
 // One draw issue of a cascade transaction: the draw (index into the shared
@@ -76,6 +86,9 @@ public:
     // MaxTextureWidth/Height is halved until it fits (caps().halved counts the
     // maps affected; size(i) is what was kept), and refused below 64.
     HRESULT attach_cascades(IDirect3DDevice9*, void* const* native, const D3DCAPS9&, D3DFORMAT adapter_format, const unsigned* sizes, unsigned count) noexcept;
+    // Whether the next attach also creates the alpha-tested caster programs (kept across
+    // detach and attach; default off, then nothing differs from the depth-only pass).
+    void request_alpha_programs(bool requested) noexcept { alpha_requested_ = requested; }
     const ShadowReplayCaps& caps() const noexcept { return caps_; }
     // The map and its depth attachment (default pool), created lazily and
     // rebuilt after Reset; a failure releases every partial object.
@@ -136,6 +149,7 @@ private:
     HRESULT bind() noexcept;
     HRESULT bind_map(unsigned map) noexcept;
     HRESULT issue(const ShadowReplayDraw&, const float* rows, unsigned vectors, bool invert_cull = false, unsigned* state_calls = nullptr) noexcept;
+    HRESULT bind_alpha(const ShadowReplayDraw&, unsigned& made) noexcept;
     void release_targets() noexcept;
     IDirect3DDevice9* device_ = nullptr;
     void* const* vtable_ = nullptr;
@@ -143,6 +157,14 @@ private:
     IDirect3DStateBlock9* block_ = nullptr;
     IDirect3DVertexShader9* vs_ = nullptr;
     IDirect3DPixelShader9* ps_ = nullptr;
+    IDirect3DVertexShader9* vs_alpha_ = nullptr; // alpha-tested casters: v0 + TEXCOORD0 in, the depth and the UV out
+    IDirect3DPixelShader9* ps_alpha_ = nullptr;  // texld s0, texkill (a - c0.x), the depth
+    bool alpha_requested_ = false;
+    // Per transaction (reset by bind()): the program pair bound, the sampler-0 state
+    // written once, the texture and threshold last bound (no redundant calls).
+    bool alpha_bound_ = false, alpha_sampler_ = false;
+    IDirect3DBaseTexture9* alpha_texture_ = nullptr;
+    float alpha_threshold_ = -1.f;
     IDirect3DTexture9* maps_[shadow_replay_maps_max]{};
     IDirect3DSurface9* map_surfaces_[shadow_replay_maps_max]{};
     IDirect3DSurface9* depth_ = nullptr;

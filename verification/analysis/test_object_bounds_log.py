@@ -233,9 +233,10 @@ class ProductionWiring(unittest.TestCase):
         self.assertIn('object_bounds device=%llu frame=%llu index=%lu node=%p model=%08lx '
                       'sx0=%.1f sy0=%.1f sx1=%.1f sy1=%.1f zmin=%.6f zmax=%.6f inside=%u%s%s', source)
         # The line is written only on capture frames, only with the option, and
-        # only for a draw whose object box the route already computed.
+        # only for a draw whose object box the route already computed (an
+        # alpha-tested caster of --shadow-alpha-casters keeps its alpha_tested=1 mark).
         self.assertIn('if (object_bounds_log_ && capture_ && e->state == shadow_replay::ExtentState::Known) '
-                      'log_object_bounds(route, draw_rows(), e->lo, e->hi);', source)
+                      'log_object_bounds(route, draw_rows(), e->lo, e->hi, route.alpha_tested);', source)
         self.assertIn('#include "../renderer/object_bounds_projection.h"', source)
         header = (ROOT / 'src/proxy/motion_output.h').read_text()
         self.assertIn('void configure_object_bounds_log(bool requested) noexcept { object_bounds_log_ = requested; }', header)

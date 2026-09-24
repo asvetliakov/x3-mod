@@ -2636,6 +2636,14 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
           if(GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_DEPTH_HALF",text,32)>0){ end=nullptr; const float v=wcstof(text,&end); if(end!=text&&*end==L'\0'&&v>=renderer::shadow_replay_depth_half_min&&v<=renderer::shadow_replay_depth_half_max)depth_half=v; }
           log("shadow_replay_depth_mode requested=1 enabled=%u size=%u extent=%.9g depth_half=%.9g cap=%u motion_output=%u ownership=%u",enabled,size,double(extent),double(depth_half),cap,motion_output_requested,wrapped);
           hooked.motion_output.configure_shadow_replay_depth(enabled,size,extent,depth_half);
+          // Alpha-tested casters (shadow-replay-gates.md, "Alpha-tested casters"):
+          // X3M_SHADOW_ALPHA_CASTERS=1 (default off) lets alpha-tested routed draws
+          // cast with their own alpha test; rides the depth replay.
+          { wchar_t alpha[4]{};
+            if(GetEnvironmentVariableW(L"X3M_SHADOW_ALPHA_CASTERS",alpha,4)==1&&alpha[0]==L'1'){
+                log("shadow_alpha_casters_mode requested=1 enabled=%u",enabled);
+                hooked.motion_output.configure_shadow_alpha_casters(enabled);
+            } }
           // Sun-shadow cascades (docs/architecture/shadow-cascades.md): X3M_SHADOW_CASCADES
           // is the ascending half-extent list (1..5 values, 50..150000 units); absent,
           // empty or "0" keeps the single map above. X3M_SHADOW_CASCADE_SIZES (one

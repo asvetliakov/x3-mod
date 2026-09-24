@@ -3520,14 +3520,15 @@ void MotionOutput::set_indices(IDirect3DIndexBuffer9* buffer) noexcept {
 // the stream-0 POSITION0 layout the key records.
 void MotionOutput::set_vertex_declaration(IDirect3DVertexDeclaration9* declaration) noexcept {
     if (!enabled_ || shadow_.recording) return;
-    shadow_.declaration = 0; shadow_.position_offset = shadow_.position_type = 0; shadow_.declaration_stream0_only = false;
+    shadow_.declaration = 0; shadow_.position_offset = shadow_.position_type = 0; shadow_.declaration_stream0_only = shadow_.declaration_uv0 = false;
     if (!declaration) return;
     D3DVERTEXELEMENT9 elements[MAXD3DDECLLENGTH + 1]{};
     UINT count = MAXD3DDECLLENGTH + 1;
     if (FAILED(declaration->GetDeclaration(elements, &count)) || count < 2 || count > MAXD3DDECLLENGTH + 1) return;
-    bool position = false, stream0_only = true;
+    bool position = false, stream0_only = true, uv0 = false;
     for (UINT i = 0; i + 1 < count; ++i) {
         if (elements[i].Stream != 0) stream0_only = false;
+        if (elements[i].Stream == 0 && elements[i].Usage == D3DDECLUSAGE_TEXCOORD && elements[i].UsageIndex == 0) uv0 = true;
         if (elements[i].Stream == 0 && elements[i].Usage == D3DDECLUSAGE_POSITION && elements[i].UsageIndex == 0) {
             position = true; shadow_.position_offset = elements[i].Offset; shadow_.position_type = elements[i].Type;
         }
@@ -3536,13 +3537,14 @@ void MotionOutput::set_vertex_declaration(IDirect3DVertexDeclaration9* declarati
     shadow_.declaration = hash_bytes(elements, count * sizeof(elements[0]));
     if (!shadow_.declaration) shadow_.declaration = 1;
     shadow_.declaration_stream0_only = stream0_only;
+    shadow_.declaration_uv0 = uv0;
 }
 void MotionOutput::set_fvf(DWORD) noexcept {
     if (!enabled_ || shadow_.recording) return;
     // SetFVF binds a runtime-owned declaration; identify it the same way.
     IDirect3DVertexDeclaration9* declaration = nullptr;
     if (SUCCEEDED(native<GetDeclarationFn>(GetVertexDeclaration)(device_, &declaration))) set_vertex_declaration(declaration);
-    else { shadow_.declaration = 0; shadow_.position_offset = shadow_.position_type = 0; }
+    else { shadow_.declaration = 0; shadow_.position_offset = shadow_.position_type = 0; shadow_.declaration_uv0 = false; }
     release(declaration);
 }
 void MotionOutput::set_viewport(const D3DVIEWPORT9* viewport) noexcept {
@@ -3682,7 +3684,7 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
         thin_vote_frame_.sample_at = 1u + (previous_opaque ? std::uint32_t(frame_ % previous_opaque) : 0u); // the frame's sampled opaque draw
         if (ownership::buffer_invalidations_pending()) drain_thin_invalidations(); } // reads queued by a frame without a scene end are dropped (its next draws re-queue)
     if (retention_) retention_frame_begin(); // retirements are consumed here too; sightings of a frame without a scene end leave
-    if (candidates_requested_) { if (depth_replay_requested_) release_depth_leases(); sun_latch_.begin_frame(); point_sun_.begin_frame(); point_sun_poll_ticks_ = 0; candidate_bounds_unavailable_ = 0; candidate_extents_.begin_frame(); candidate_bounds_state_ = 0; release_candidate_extents(); candidates_.reset(); } // a frame that never reached a scene end keeps no records, leases or queued reads; the sun and the box rows are per frame
+    if (candidates_requested_) { if (depth_replay_requested_) release_depth_leases(); sun_latch_.begin_frame(); point_sun_.begin_frame(); point_sun_poll_ticks_ = 0; candidate_bounds_unavailable_ = 0; candidate_extents_.begin_frame(); candidate_bounds_state_ = 0; release_candidate_extents(); candidates_.reset(); alpha_caster_counts_ = {}; } // a frame that never reached a scene end keeps no records, leases or queued reads; the sun and the box rows are per frame
     // Keep failed-lane storage until the next scene latch can compare its
     // exact dimensions/generation before transactionally replacing it. The
     // reset frame snapshot above is unavailable; no stale lane is published.
@@ -7733,6 +7735,11 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
     const bool managed = shadow_.stream0_pool == shadow_replay::PoolClass::Managed
         && (!route.key.indexed || shadow_.indices_pool == shadow_replay::PoolClass::Managed);
     bool admitted = origin_rule, by_bounds = false, vb_known = false;
+    // Alpha-tested draws are excluded (W3) unless the alpha casters are on and the
+    // attached pass holds their programs (shadow-replay-gates.md, "Alpha-tested
+    // casters"); an included one takes the box test like any draw, and its own
+    // alpha test is read once it would be a managed candidate (below).
+    bool alpha_excluded = route.alpha_tested && !alpha_casters_ready();
     std::uint8_t verdict_source = std::uint8_t(shadow_replay::VerdictSource::Origin);
     // The frame's sun: one sample per z-writing routed draw from the bound
     // program's own LightDir_Dir0 register (none: counted, contributes nothing).
@@ -7760,7 +7767,7 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
     const auto view = [](std::uintptr_t identity, ownership::BufferLockView& out) noexcept {
         return identity && SUCCEEDED(ownership::get_buffer_lock_view_light(reinterpret_cast<IDirect3DResource9*>(identity), &out)) && out.known;
     };
-    if (zwrite && shadow_ok && managed && !route.alpha_tested) {
+    if (zwrite && shadow_ok && managed && !alpha_excluded) {
         // Bookend view at the draw: registry snapshot keyed by the wrapper
         // identity (never dereferenced here); its revision keys the extent.
         vb_known = view(shadow_.stream0_identity, vb);
@@ -7797,7 +7804,7 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
                     // Object bounds log: the box this draw's verdict uses, projected
                     // through the draw's own clip rows. Capture frames only, and only
                     // with X3M_OBJECT_BOUNDS_LOG; the corners are the route's own.
-                    if (object_bounds_log_ && capture_ && e->state == shadow_replay::ExtentState::Known) log_object_bounds(route, draw_rows(), e->lo, e->hi);
+                    if (object_bounds_log_ && capture_ && e->state == shadow_replay::ExtentState::Known) log_object_bounds(route, draw_rows(), e->lo, e->hi, route.alpha_tested);
                     if (e->state == shadow_replay::ExtentState::Known && !ensure_candidate_bounds_rows()) ++candidate_bounds_unavailable_;
                     else if (e->state == shadow_replay::ExtentState::Known) {
                         const float* rows = draw_rows();
@@ -7816,8 +7823,8 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
             }
         }
     } else if (object_bounds_log_ && zwrite && shadow_ok && managed) {
-        // Object bounds log for an alpha-tested draw (the only draw that reaches
-        // here): the box only, never a verdict. A missing extent is collected
+        // Object bounds log for an excluded alpha-tested draw (the only draw that
+        // reaches here): the box only, never a verdict. A missing extent is collected
         // (every frame, so it is known by the capture frame) and queued only
         // after the frame's caster reads, into what they left
         // (queue_object_bounds_alpha_reads). The row is marked alpha_tested=1,
@@ -7859,7 +7866,7 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
             cascade_mask = std::uint8_t(kept);
             const bool was_admitted = admitted;
             admitted = cascade_mask != 0;
-            if (was_admitted && !admitted && retention_ && depth_replay_requested_ && candidates_published_frame_ != frame_ && vb_known) note_refused_sighting(route, vb, exact_extent);
+            if (was_admitted && !admitted && retention_ && depth_replay_requested_ && candidates_published_frame_ != frame_ && vb_known && !route.alpha_tested) note_refused_sighting(route, vb, exact_extent); // an alpha-tested draw is never retained (it would be re-issued without its test)
         }
     }
     // Static-only cascades (shadow-cascade-extents.md, "Caster pool control"): a
@@ -7867,7 +7874,7 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
     // (counted per cascade) before the caps and the record are decided, unless
     // the draw's world extent reaches large_min (a capital hull part: admitted
     // moving, counted large_admitted<i>).
-    if (cascades && (cascade_mask & depth_cascade_static_mask_) && zwrite && shadow_ok && managed && !route.alpha_tested) {
+    if (cascades && (cascade_mask & depth_cascade_static_mask_) && zwrite && shadow_ok && managed && !alpha_excluded) {
         const std::uint8_t wanted = std::uint8_t(cascade_mask & depth_cascade_static_mask_);
         bool miss = false;
         const std::uint8_t refused = std::uint8_t(wanted & ~classify_candidate_static(route, draw_rows(), class_lo, class_hi, wanted, miss));
@@ -7886,18 +7893,24 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
                 // no lease), but it is still a sighting of its node for the retention store: without
                 // it the node would be unseen at the scene end, dropped as moving, and readmitted fresh
                 // by the ring next frame (directional-shadows.md, "Run 40 A (run116) diagnosis", cause 1).
-                if (was_admitted && !admitted && retention_ && depth_replay_requested_ && candidates_published_frame_ != frame_ && vb_known) note_refused_sighting(route, vb, exact_extent);
+                if (was_admitted && !admitted && retention_ && depth_replay_requested_ && candidates_published_frame_ != frame_ && vb_known && !route.alpha_tested) note_refused_sighting(route, vb, exact_extent);
             }
         }
     }
     // Own-ship-adaptive cascade 0: the own ship's z-writing draws with a known extent feed the frame's radius.
     if (zwrite && cascade_adaptive_on() && exact_extent && own_ship_draw(std::uintptr_t(route.key.node), route.key.node_handle, route.load_epoch, route.registry_epoch)) note_own_ship_draw(*exact_extent);
-    if (!candidates_.draw(zwrite, admitted, by_bounds, origin_rule, route.alpha_tested, shadow_ok, shadow_.stream0_pool, shadow_.indices_pool, route.key.indexed,
-                          cascades ? candidate_capacity_ : candidate_cap_, cascades ? &cascade_mask : nullptr, cascades ? depth_cascade_draw_caps_ : nullptr)) return;
+    // An included alpha-tested draw that would be a managed candidate: its own
+    // alpha test as a caster (one ALPHAFUNC/ALPHAREF read from the state shadow
+    // and, for a tested caster, the stage-0 texture's type and level-0 pool; its
+    // reference becomes the lease: alpha_caster_source). Refused: excluded.
+    IDirect3DBaseTexture9* alpha_texture = nullptr; float alpha_threshold = 0.f;
+    if (route.alpha_tested && !alpha_excluded && zwrite && admitted && shadow_ok && managed) alpha_excluded = !alpha_caster_source(alpha_texture, alpha_threshold);
+    if (!candidates_.draw(zwrite, admitted, by_bounds, origin_rule, alpha_excluded, shadow_ok, shadow_.stream0_pool, shadow_.indices_pool, route.key.indexed,
+                          cascades ? candidate_capacity_ : candidate_cap_, cascades ? &cascade_mask : nullptr, cascades ? depth_cascade_draw_caps_ : nullptr)) { release(alpha_texture); return; }
     // A managed candidate without a known view for every buffer it uses is
     // counted managed but not leased.
-    if (!vb_known) return;
-    if (route.key.indexed && !view(shadow_.indices_identity, ib)) return;
+    if (!vb_known) { release(alpha_texture); return; }
+    if (route.key.indexed && !view(shadow_.indices_identity, ib)) { release(alpha_texture); return; }
     auto& r = candidates_.record(cascades ? cascade_mask : std::uint8_t(1));
     if (cascades) candidates_.count_cascades(cascade_mask);
     r.verdict = verdict_source; r.serial = route.key.object_lifetime; r.size = projected;
@@ -7912,8 +7925,12 @@ void MotionOutput::note_candidate_draw(const MotionRoute& route) noexcept {
         note_depth_geometry(route, candidates_.record_count - 1);
         auto& g = depth_geometry_[candidates_.record_count - 1];
         g.sun_register = std::int8_t(draw_sun_register); g.sun_known = draw_sun_agrees; std::memcpy(g.sun, draw_sun, sizeof g.sun);
-        if (retention_ && candidates_published_frame_ != frame_) note_retention_draw(route, r, g, exact_extent); // a draw after the frame's scene end is not a sighting
+        if (alpha_texture && g.leased) { g.alpha_texture = alpha_texture; g.alpha_threshold = alpha_threshold; alpha_texture = nullptr; } // the texture joins the lease
+        // A draw after the frame's scene end is not a sighting; an alpha-tested caster is never
+        // retained (the store re-issues its records with the depth-only program).
+        if (retention_ && candidates_published_frame_ != frame_ && !route.alpha_tested) note_retention_draw(route, r, g, exact_extent);
     }
+    release(alpha_texture); // not leased (no depth replay, or an unleased record)
 }
 // One object_bounds line for this routed draw (X3M_OBJECT_BOUNDS_LOG, capture
 // frames only): the projected screen box of the route's own object box in
@@ -8155,7 +8172,7 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
         for (unsigned i = 0; i < depth_cascades_.count; ++i) caps[i] = depth_cascades_.bound(i);
         candidates_.select_cascades(caps, depth_cascades_.count, candidate_select_scratch_.get());
         candidates_.compact(
-            [this](unsigned i) noexcept { if (!depth_replay_requested_) return; auto& g = depth_geometry_[i]; release(g.declaration); release(g.vertex_buffer); release(g.index_buffer); g = {}; },
+            [this](unsigned i) noexcept { if (!depth_replay_requested_) return; auto& g = depth_geometry_[i]; release(g.declaration); release(g.vertex_buffer); release(g.index_buffer); release(g.alpha_texture); g = {}; },
             [this](unsigned from, unsigned to) noexcept { if (!depth_replay_requested_) return; depth_geometry_[to] = depth_geometry_[from]; depth_geometry_[from] = {}; }); // the lease moves with the record
         QueryPerformanceCounter(&t1);
         if (!qpc_frequency_) { LARGE_INTEGER f{}; if (QueryPerformanceFrequency(&f) && f.QuadPart > 0) qpc_frequency_ = std::uint64_t(f.QuadPart); }
@@ -8399,6 +8416,14 @@ void MotionOutput::publish_shadow_replay_candidates() noexcept {
         id_, frame_, c.routed, c.zwrite, c.slice0, c.bounds, c.origin, c.fallback, c.managed, c.dynamic, c.default_pool, c.excluded, c.unknown, c.shadow_mismatch,
         c.leased, c.capped, c.reads, c.serial_changed, c.readonly_after, c.writable_after, c.pending, c.in_flight, c.quiet, c.cold_thread, c.stale,
         static_cast<unsigned long long>(c.roots), static_cast<unsigned long long>(c.waiting), c.nested, c.overflow, cascade_fields);
+    // Alpha-tested casters (option on only): what the frame's alpha-tested
+    // draws that reached the candidate decision became.
+    if (alpha_casters_requested_) {
+        const auto& a = alpha_caster_counts_;
+        log("shadow_alpha_casters device=%llu frame=%llu ready=%u seen=%u tested=%u opaque=%u refused_state=%u refused_function=%u refused_uv=%u refused_texture=%u refused_pool=%u",
+            id_, frame_, unsigned(alpha_casters_ready()), a.seen, a.tested, a.opaque, a.state, a.function, a.uv, a.texture, a.pool);
+        alpha_caster_counts_ = {};
+    }
     // Ctrl+Shift+F12 off (comparison-hotkeys.md, "Sun shadows at rest"): one
     // boolean test, then no transaction at all this frame (no map cleared,
     // nothing drawn, no retained caster issued). The frame's leases are still

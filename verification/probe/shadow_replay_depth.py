@@ -216,7 +216,13 @@ def shape_vertices(shape, scale=1.0):
            # (AABB +-1 x +-1.5: radius about 1.7 through the rows), a capital (+-20 x +-30: about 34) and the ladder
            # cases' corvette (+-8.5 x +-13: about 14.5) and destroyer (+-24 x +-240: about 182).
            'H1': ((-1, -1.5), (1, -1.5), (0, 1.5)), 'H2': ((-20, -30), (20, -30), (0, 30)),
-           'H3': ((-8.5, -13), (8.5, -13), (0, 13)), 'H4': ((-24, -240), (24, -240), (0, 240))}[shape]
+           'H3': ((-8.5, -13), (8.5, -13), (0, 13)), 'H4': ((-24, -240), (24, -240), (0, 240)),
+           # The alpha-tested A of the route-level alpha caster script (shadow-replay-gates.md, "Alpha-tested
+           # casters"): A's TEXCOORD0.x is (x + 1) / 4, the texture keeps u < .5, i.e. x < 1: AL1 + AL2; AS1 + AS2
+           # the band 0.9 < x < 1.1 around the discard line and AT the tip x > 2.9 (WRAP blends texel 63 there),
+           # both ambiguous in the comparison.
+           'AL1': ((-1, 1), (1, 1), (1, -1)), 'AL2': ((-1, 1), (1, -1), (-1, -3)),
+           'AS1': ((.9, 1), (1.1, 1), (1.1, -.9)), 'AS2': ((.9, 1), (1.1, -.9), (.9, -1.1)), 'AT': ((2.9, 1), (3, 1), (2.9, .9))}[shape]
     return [(x * scale, y * scale, .5) for x, y in tri]
 
 

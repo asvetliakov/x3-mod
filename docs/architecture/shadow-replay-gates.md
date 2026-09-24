@@ -444,9 +444,66 @@ Not exercised: the unreadable fallback formats (R32F and D24X8 are available her
 Windows ([platform-portability.md](platform-portability.md)). E1–E5 are unchanged.
 
 Open issues (review, 2026-09-16): ALPHATESTENABLE forced off makes alpha-tested casters
-write full-quad depth (revisit before any consumer); on DEVICELOST mid-transaction the
+write full-quad depth (revisit before any consumer; alpha-tested draws are excluded by W3, and
+`--shadow-alpha-casters` keeps their test in a pixel program instead, below); on DEVICELOST mid-transaction the
 private map may stay bound into the app's Reset (same convention as the AO pass; native
 behaviour unverified).
+
+### Alpha-tested casters (2026-09-24, `--shadow-alpha-casters on|off`, default off)
+
+`X3M_SHADOW_ALPHA_CASTERS=1` (rides `--shadow-replay-depth`) lifts W3's exclusion of alpha-tested
+routed draws (`MotionRoute::alpha_tested`: the tested-opaque and exact cutout arms) and keeps their
+alpha test in the caster pass. Motive: Run 80 A (run305), the Terran ODS `usc_dock_e_tower` red
+plate / tech / window groups are alpha-tested at record 0 and cast nothing while the merged coarse
+record draws them opaque and casts, so the underside is lit at the fine record and shadowed at the
+coarse one (cascade 4: 3,910 fine-lit / coarse-shadowed pixels, 0 the reverse;
+`verification/results/run304-305-run80a/terran-colour/shadow_cross_run305.txt`).
+
+**The law it reproduces.** The Argon, standard and XT effect families (station-material-distance.md,
+"Shader and effect contracts") output `alpha = vertexAlpha x (EnableGlow ? LightMap.a : Diffuse.a)`
+with the diffuse at s0 and the pass test GREATEREQUAL ref 1. The caster keeps `Diffuse.a` at s0,
+sampled at the declaration's TEXCOORD0.xy, against the draw's own ALPHAFUNC/ALPHAREF
+(`shadow_replay::alpha_caster`: GREATEREQUAL `ref/255`, GREATER half a code above, ALWAYS and
+GREATEREQUAL 0 opaque, NEVER/LESS/EQUAL/LESSEQUAL/NOTEQUAL refused). It is exact when
+`EnableGlow = 0`, `vertexAlpha = 1` (AlphaValue 1, fog off; b0 = 0 on every captured draw) and the
+material texture matrix is identity (the XT BUMP VS applies it to TEXCOORD0.xy; identity by default,
+xt-material-linkage.md). A glowing material (alpha from the light map), a fading AlphaValue or a
+scrolled texture matrix is not modelled: the caster then follows the diffuse alpha.
+
+**Draw path** (`note_candidate_draw`, `alpha_caster_source`): an included alpha-tested draw takes the
+box test like any draw; once it would be a managed candidate, one ALPHAFUNC/ALPHAREF read from the
+state shadow and, for a tested caster, `GetTexture(0)` / `GetType` / `GetLevelDesc(0)`: a 2D
+`D3DPOOL_MANAGED` texture and a stream-0 TEXCOORD0 element (`declaration_uv0`, from the declaration
+hook's existing `GetDeclaration` read) are required, else the draw stays excluded (counted). The
+`GetTexture` reference is the lease, released with the buffers' (`release_depth_leases`, the
+importance drop's compaction) before every Reset. An alpha-tested draw is never fed to the retention
+store (its re-issue would be depth-only); its node's opaque draws still are. Until the pass holds the
+alpha programs (the first scene end attaches it) alpha-tested draws stay excluded.
+
+**Pass** (`ShadowReplayPass::request_alpha_programs`, `bind_alpha`): one more authored pair created at
+attach beside the depth-only one: vs_3_0 = the depth-only program plus `mov o2.xy, v1` (TEXCOORD0 in,
+TEXCOORD1 out; 9 instructions), ps_3_0 = `texld r0, v1, s0; add r0, r0.w, -c0.x; texkill r0;
+max r0, v0.x, c1.x; mov oC0, r0` (5). The fixed-function alpha test stays off in the pass (the PS
+writes depth, not alpha). A refused program logs one `shadow_alpha_casters_device attached=0` row and
+the option stays off on that device (no fallback set). Issue order puts each map's alpha issues after
+its opaque ones (live, then retained); per transaction the pair is bound once, sampler 0 written once
+(WRAP as the engine's material samplers, trilinear, no bias, no LOD clamp, no sRGB), the texture and
+`c0` only when they change, the depth-only pair bound back for a later opaque issue. The D3DSBT_ALL
+block restores all of it. Option off: no alpha program, no extra call, issue order unchanged.
+
+**Diagnostics.** `shadow_alpha_casters_mode`, one `shadow_alpha_casters_device` row per attach, and per
+frame `shadow_alpha_casters ready= seen= tested= opaque= refused_state= refused_function= refused_uv=
+refused_texture= refused_pool=` (option on only).
+
+**Cost model.** run305 (option absent): alpha-tested z-writing managed draws admitted by the origin rule,
+`excluded=` of `shadow_replay_candidates`, mean 5.3 / p50 3 / p95 22 / max 30 per frame against 16.1
+leased casters; F8 frames carry about 30 alpha-tested draws with known extents (27-33)
+(`verification/results/run304-305-run80a/alpha_casters.py`). Per admitted alpha caster: three COM calls
+at the draw, one extra reference; per issue at most one `SetTexture` and one `SetPixelShaderConstantF`
+more than an opaque issue, plus 10 calls once per transaction. At the measured 1.1-1.3 us per replayed
+draw (directional-shadows.md, run 253) about 30 more issues per cascade are some 35 us per frame [I].
+
+Verification: `docs/verification/directional-shadows.md`, "Alpha-tested casters".
 
 ## 4. Non-goals and recommendation
 

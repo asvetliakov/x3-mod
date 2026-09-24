@@ -485,6 +485,17 @@ class LauncherAndProxyTests(unittest.TestCase):
         self.assertEqual(motion.count('texture_level0_size('), 2)  # the definition and resync_samplers (the hook is in capture.cpp)
         self.assertEqual(capture.count('texture_level0_size('), 1)
         self.assertEqual(motion.count('GetLevelDesc'), 1)
+        # The one other GetLevelDesc of the route: the alpha-tested casters' pool check (--shadow-alpha-casters,
+        # default off) in the replay include. Per draw by design, but never on the off path: only an alpha-tested
+        # draw that would be a managed candidate reaches it, and only with the option on and the pass holding its
+        # alpha programs (alpha_casters_ready requires alpha_casters_requested_).
+        replay = (ROOT / 'src/proxy/motion_output_shadow_replay_inc.h').read_text()
+        self.assertEqual(replay.count('GetLevelDesc'), 1)
+        self.assertIn('GetLevelDesc(0, &desc)', extract_function(replay, 'bool MotionOutput::alpha_caster_source('))
+        self.assertEqual(motion.count('alpha_caster_source('), 1)
+        self.assertIn('if (route.alpha_tested && !alpha_excluded && zwrite && admitted && shadow_ok && managed) alpha_excluded = !alpha_caster_source(alpha_texture, alpha_threshold);', motion)
+        self.assertIn('bool alpha_excluded = route.alpha_tested && !alpha_casters_ready();', motion)
+        self.assertIn('bool alpha_casters_ready() const noexcept { return alpha_casters_requested_&&', header)
         setter = extract_function(motion, 'void MotionOutput::set_texture(')
         self.assertIn('if (queried) { s.levels = levels; s.width = width; s.height = height; s.identity = identity; }', setter)
         wanted = extract_function(motion, 'bool MotionOutput::texture_levels_wanted(')

@@ -1,0 +1,132 @@
+{
+ "case": "seam-ownership-shadow-alpha-route",
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "binaries": {
+  "verification/probe/build/motion_output_fixture.exe": "4a871f265d16fd97b1bc4e3a04f2713c59bf635337269caa61da335f66799338",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "ffa0120ed2cadd4e71a85e4577e6adce34c6a9512c7e305fe0f23fc09fd555a1",
+  "build/d3d9.dll": "c459a5a07d17c6a43c533a13703eeb50a62c8e1fb2918de05c6b84288e6426ed"
+ },
+ "checks": 66,
+ "func": "greaterequal",
+ "rows": [
+  {
+   "frame": "0",
+   "ready": "0",
+   "seen": "0",
+   "tested": "0",
+   "refused_function": "0",
+   "refused_pool": "0"
+  },
+  {
+   "frame": "1",
+   "ready": "1",
+   "seen": "1",
+   "tested": "1",
+   "refused_function": "0",
+   "refused_pool": "0"
+  },
+  {
+   "frame": "2",
+   "ready": "1",
+   "seen": "1",
+   "tested": "1",
+   "refused_function": "0",
+   "refused_pool": "0"
+  },
+  {
+   "frame": "3",
+   "ready": "1",
+   "seen": "1",
+   "tested": "0",
+   "refused_function": "0",
+   "refused_pool": "1"
+  },
+  {
+   "frame": "4",
+   "ready": "1",
+   "seen": "1",
+   "tested": "1",
+   "refused_function": "0",
+   "refused_pool": "0"
+  },
+  {
+   "frame": "5",
+   "ready": "1",
+   "seen": "1",
+   "tested": "1",
+   "refused_function": "0",
+   "refused_pool": "0"
+  }
+ ],
+ "map": {
+  "size": 256,
+  "frames": {
+   "0": {
+    "covered_cpu": 659,
+    "covered_gpu": 659,
+    "ambiguous": 69,
+    "coverage_disagreements": 0,
+    "max_depth_error": 8.954555723805768e-06
+   },
+   "1": {
+    "covered_cpu": 492,
+    "covered_gpu": 492,
+    "ambiguous": 46,
+    "coverage_disagreements": 0,
+    "max_depth_error": 1.6495114516457132e-05,
+    "right_uncovered": 138,
+    "right_texels": 138
+   },
+   "2": {
+    "covered_cpu": 474,
+    "covered_gpu": 474,
+    "ambiguous": 44,
+    "coverage_disagreements": 0,
+    "max_depth_error": 5.594692508881227e-06,
+    "right_uncovered": 137,
+    "right_texels": 137
+   },
+   "3": {
+    "covered_cpu": 14,
+    "covered_gpu": 14,
+    "ambiguous": 2,
+    "coverage_disagreements": 0,
+    "max_depth_error": 4.087328288604475e-06
+   },
+   "4": {
+    "covered_cpu": 460,
+    "covered_gpu": 462,
+    "ambiguous": 62,
+    "coverage_disagreements": 0,
+    "max_depth_error": 1.343795114716606e-05,
+    "right_uncovered": 135,
+    "right_texels": 135
+   },
+   "5": {
+    "covered_cpu": 14,
+    "covered_gpu": 14,
+    "ambiguous": 1,
+    "coverage_disagreements": 0,
+    "max_depth_error": 6.4564012713375085e-06
+   }
+  }
+ },
+ "devices": 1,
+ "half": {
+  "frames": 3,
+  "right_texels_min": 135
+ },
+ "exit": 0,
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-alpha-route-20260924-214626-299633",
+ "trace_sha256": "b1588e83215c6b26dfd24c2317e4e729efdaa6e7de9ecd8b3b9a58b9e0c863cc",
+ "dll_sha256": "ffa0120ed2cadd4e71a85e4577e6adce34c6a9512c7e305fe0f23fc09fd555a1",
+ "exe_sha256": "4a871f265d16fd97b1bc4e3a04f2713c59bf635337269caa61da335f66799338"
+}

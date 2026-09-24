@@ -1,0 +1,6 @@
+frames=14022
+excluded: mean=5.3 p50=3 p95=22 max=30 frames_nonzero=13777
+leased: mean=16.1 p50=16 p95=22 max=30 frames_nonzero=14021
+routed: mean=77.1 p50=99 p95=114 max=125 frames_nonzero=14022
+excluded/leased: mean=0.304 p95=1.000
+capture frames with alpha_tested object_bounds rows: 32; rows per frame min=27 max=33 mean=30.0

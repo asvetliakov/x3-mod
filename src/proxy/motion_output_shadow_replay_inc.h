@@ -64,6 +64,38 @@ void MotionOutput::note_depth_geometry(const MotionRoute& route, unsigned index)
     g.leased = true;
     SetLastError(error);
 }
+// Alpha-tested casters (shadow-replay-gates.md, "Alpha-tested casters"): the
+// current draw's alpha test as a caster. Opaque (ALWAYS, or a comparison every
+// alpha passes): true with no texture. Tested: true with the stage-0 texture's
+// own GetTexture reference in `texture` (the caller's lease) when the bound
+// declaration carries a stream-0 TEXCOORD0 and the texture is a 2D
+// D3DPOOL_MANAGED texture. The lease keeps the object alive to the scene end;
+// its content is not: the application may LockRect or UpdateTexture it between
+// the draw and the replay, and the replay then samples the new texels. That is
+// accepted as a low-risk approximation (material textures are written at load);
+// the pool check keeps out render targets and dynamic textures, which change
+// every frame by design, and DEFAULT-pool references, which would hold a Reset.
+// Anything else: false, nothing held.
+// Documented D3D9 only; LastError kept.
+bool MotionOutput::alpha_caster_source(IDirect3DBaseTexture9*& texture, float& threshold) noexcept {
+    texture = nullptr; threshold = 0.f;
+    auto& a = alpha_caster_counts_;
+    ++a.seen;
+    DWORD func = 0, ref = 0;
+    if (FAILED(render_state(D3DRS_ALPHAFUNC, &func)) || FAILED(render_state(D3DRS_ALPHAREF, &ref))) { ++a.state; return false; }
+    const shadow_replay::AlphaCaster kind = shadow_replay::alpha_caster(func, ref, threshold);
+    if (kind == shadow_replay::AlphaCaster::Opaque) { ++a.opaque; return true; }
+    if (kind == shadow_replay::AlphaCaster::Refused) { ++a.function; return false; }
+    if (!shadow_.declaration_uv0) { ++a.uv; return false; }
+    const DWORD error = GetLastError();
+    IDirect3DBaseTexture9* bound = nullptr;
+    if (FAILED(native<GetTextureFn>(GetTexture)(device_, 0, &bound)) || !bound || bound->GetType() != D3DRTYPE_TEXTURE) { release(bound); ++a.texture; SetLastError(error); return false; }
+    D3DSURFACE_DESC desc{};
+    if (FAILED(static_cast<IDirect3DTexture9*>(bound)->GetLevelDesc(0, &desc)) || desc.Pool != D3DPOOL_MANAGED) { release(bound); ++a.pool; SetLastError(error); return false; }
+    texture = bound; ++a.tested;
+    SetLastError(error);
+    return true;
+}
 // A draw the static gate refused from every cascade it met (no record, no
 // lease) is still a sighting of its node for the retention store
 // (directional-shadows.md, "Run 40 A (run116) diagnosis", cause 1): the same
@@ -131,12 +163,12 @@ void MotionOutput::release_depth_leases() noexcept {
     if (telemetry_) { const DWORD error = GetLastError(); begin_ok = QueryPerformanceCounter(&begin) != FALSE; SetLastError(error); ++counters_.lease_retire_calls; }
     for (unsigned i = 0; i < candidate_capacity_; ++i) {
         auto& g = depth_geometry_[i];
-        if (!g.leased && !g.declaration && !g.vertex_buffer && !g.index_buffer) continue;
+        if (!g.leased && !g.declaration && !g.vertex_buffer && !g.index_buffer && !g.alpha_texture) continue;
         if (telemetry_) {
             ++counters_.lease_retire_records;
-            counters_.lease_retire_refs += unsigned(g.declaration != nullptr) + unsigned(g.vertex_buffer != nullptr) + unsigned(g.index_buffer != nullptr);
+            counters_.lease_retire_refs += unsigned(g.declaration != nullptr) + unsigned(g.vertex_buffer != nullptr) + unsigned(g.index_buffer != nullptr) + unsigned(g.alpha_texture != nullptr);
         }
-        release(g.declaration); release(g.vertex_buffer); release(g.index_buffer);
+        release(g.declaration); release(g.vertex_buffer); release(g.index_buffer); release(g.alpha_texture);
         g.leased = false;
     }
     if (telemetry_) {
@@ -158,6 +190,7 @@ bool MotionOutput::ensure_shadow_replay_depth() noexcept {
     if (depth_replay_attach_failed_) return false;
     depth_replay_attach_failed_ = true;
     if (!depth_replay_) { try { depth_replay_ = std::make_unique<renderer::ShadowReplayPass>(); } catch (...) { depth_replay_attach_result_ = E_OUTOFMEMORY; return false; } }
+    depth_replay_->request_alpha_programs(alpha_casters_requested_);
     D3DDISPLAYMODE display{};
     HRESULT hr = native<GetDisplayModeFn>(GetDisplayMode)(device_, 0, &display);
     const char* reason = "adapter_query";
@@ -180,6 +213,11 @@ bool MotionOutput::ensure_shadow_replay_depth() noexcept {
     log("shadow_replay_depth_device device=%llu attached=%u reason=%s result=%08lx size=%u map_format=%u depth_format=%u readable=%u adapter_format=%u",
         id_, !depth_replay_attach_failed_, depth_replay_attach_failed_ ? reason : "ok", hr, depth_replay_size_,
         unsigned(caps.map_format), unsigned(caps.depth_format), caps.readable, unsigned(display.Format));
+    // Alpha-tested casters: one row per attach; refused programs leave the
+    // option off for this device (no fallback program set).
+    if (alpha_casters_requested_)
+        log("shadow_alpha_casters_device device=%llu attached=%u programs=%08lx",
+            id_, unsigned(!depth_replay_attach_failed_ && caps.alpha), static_cast<unsigned long>(caps.alpha_programs));
     if (depth_cascades_on()) {
         // The caps line of the cascade attach (shadow-cascades.md, "Unknown"):
         // the device limits beside what the pass kept.
@@ -209,12 +247,13 @@ void MotionOutput::run_shadow_replay_depth(const bool* quiet) noexcept {
     // The frame's one validated sun (shadow_replay_sun.h), never a record's own register.
     const float* sun = shadow_replay::sun_verdict_usable(sun_verdict_) ? sun_latch_.frame_sun() : nullptr;
     const char* unleased = nullptr;
+    unsigned alpha_draws = 0; // alpha-tested casters: issued after the opaque ones (one program switch)
     for (unsigned i = 0; i < n; ++i) {
         const auto& g = depth_geometry_[i];
         ++c.draws;
         if (!g.leased) { ++c.skipped_state; if (!unleased) unleased = g.multistream ? "multistream" : "geometry"; continue; }
         if (!quiet[i]) { ++c.skipped_lease; continue; }
-        ++admitted;
+        ++admitted; alpha_draws += g.alpha_texture != nullptr;
     }
     bool refused = c.draws == 0;
     if (!refused && c.skipped_lease) { refused = true; log_depth_refusal(shadow_replay::DepthReason::Lease, "bookends", S_OK, 0); }
@@ -234,16 +273,16 @@ void MotionOutput::run_shadow_replay_depth(const bool* quiet) noexcept {
     renderer::ShadowReplayBasis basis{};
     if (!refused && !state && !renderer::shadow_replay_basis(camera_scene_, sun, depth_cascade_, basis)) state = "basis";
     if (!refused && !state) {
-        unsigned k = 0;
+        unsigned k = 0, alpha_k = admitted - alpha_draws;
         for (unsigned i = 0; i < n && !state; ++i) {
             const auto& g = depth_geometry_[i];
-            auto& d = draws[k];
+            auto& d = draws[g.alpha_texture ? alpha_k++ : k++];
             d = {};
             d.vertex_buffer = g.vertex_buffer; d.index_buffer = g.index_buffer; d.declaration = g.declaration;
             d.stream_offset = g.stream_offset; d.stride = g.stride; d.topology = g.topology; d.primitives = g.primitives; d.first = g.first;
             d.min_vertex = g.min_vertex; d.vertex_count = g.vertex_count; d.base_vertex = g.base_vertex; d.indexed = g.indexed; d.cull_mode = g.cull_mode;
+            d.alpha_texture = g.alpha_texture; d.alpha_threshold = g.alpha_threshold;
             if (!renderer::shadow_replay_light_rows(camera_scene_, g.rows, basis, depth_cascade_, d.light_rows)) state = "rows";
-            ++k;
         }
     }
     if (!refused && state) { refused = true; c.skipped_state = c.draws; log_depth_refusal(shadow_replay::DepthReason::State, state, S_OK, 0); }
@@ -262,7 +301,10 @@ void MotionOutput::run_shadow_replay_depth(const bool* quiet) noexcept {
             log("shadow_replay_depth_target device=%llu frame=%llu size=%u map_format=%u depth_format=%u allocations=%u",
                 id_, frame_, depth_replay_->size(), unsigned(caps.map_format), unsigned(caps.depth_format), depth_replay_->allocations());
         }
-        if (FAILED(out.restore)) invalidate_render_states();
+        // A failed restore leaves the pass's state bound: the render-state shadow and the sampler
+        // shadows (stage 0 carries the alpha casters' texture and sampler states; composition_textures_
+        // with it) are re-read from the device instead of trusted.
+        if (FAILED(out.restore)) { invalidate_render_states(); resync_samplers(); }
         if (FAILED(hr)) { c.skipped_state = c.draws; log_depth_refusal(shadow_replay::DepthReason::State, "transaction", out.operation, unsigned(out.failed)); }
         else {
             c.replayed = out.drawn; depth_basis_ = basis; sun_shadow_force_replay_ = false; // the single map replays whole every frame; the demand is spent here too
@@ -319,12 +361,13 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
     const float* sun = shadow_replay::sun_verdict_usable(sun_verdict_) ? sun_latch_.frame_sun() : nullptr;
     const char* unleased = nullptr;
     unsigned per_cascade[renderer::shadow_cascade_max]{}, issues = 0;
+    unsigned alpha_cascade[renderer::shadow_cascade_max]{}; // alpha-tested casters' issues per cascade: placed after the opaque ones (one program switch per map)
     for (unsigned i = 0; i < n; ++i) {
         const auto& g = depth_geometry_[i];
         ++c.draws;
         if (!g.leased) { ++c.skipped_state; if (!unleased) unleased = g.multistream ? "multistream" : "geometry"; continue; }
         if (!quiet[i]) { ++c.skipped_lease; continue; }
-        for (unsigned k = 0; k < cascades; ++k) if (candidates_.records[i].cascades & (1u << k)) { ++per_cascade[k]; ++issues; }
+        for (unsigned k = 0; k < cascades; ++k) if (candidates_.records[i].cascades & (1u << k)) { ++per_cascade[k]; ++issues; alpha_cascade[k] += g.alpha_texture != nullptr; }
     }
     const unsigned live_issues = issues;
     for (unsigned q = 0; q < m; ++q) {
@@ -372,7 +415,7 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
     unsigned cull_none[renderer::shadow_cascade_max]{}, cull_inverted[renderer::shadow_cascade_max]{};
     const auto count_cull = [&](unsigned k, DWORD cull) { if (depth_cascade_backface_mask_ >> k & 1u) ++(cull == D3DCULL_NONE ? cull_none : cull_inverted)[k]; };
     if (!refused && !state) {
-        unsigned fill[renderer::shadow_cascade_max]{};
+        unsigned fill[renderer::shadow_cascade_max]{}, alpha_fill[renderer::shadow_cascade_max]{};
         for (unsigned i = 0; i < n && !state; ++i) {
             const auto& g = depth_geometry_[i];
             auto& d = draws[i];
@@ -380,6 +423,7 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
             d.vertex_buffer = g.vertex_buffer; d.index_buffer = g.index_buffer; d.declaration = g.declaration;
             d.stream_offset = g.stream_offset; d.stride = g.stride; d.topology = g.topology; d.primitives = g.primitives; d.first = g.first;
             d.min_vertex = g.min_vertex; d.vertex_count = g.vertex_count; d.base_vertex = g.base_vertex; d.indexed = g.indexed; d.cull_mode = g.cull_mode;
+            d.alpha_texture = g.alpha_texture; d.alpha_threshold = g.alpha_threshold;
             double base[3][4];
             unsigned base_of = 0; // the cascade whose axes `base` was built with (one product per draw while the cascades share a sun)
             if (!renderer::shadow_cascade_draw_rows(camera_scene_, g.rows, bases[0], base)) { state = "rows"; break; }
@@ -389,13 +433,14 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
                     if (!renderer::shadow_cascade_draw_rows(camera_scene_, g.rows, bases[k], base)) { state = "rows"; break; }
                     base_of = k;
                 }
-                auto& issue = depth_issues_[offsets[k] + fill[k]++];
+                // Opaque issues fill the list from its start (the retained records follow them), alpha-tested ones its tail.
+                auto& issue = depth_issues_[offsets[k] + (g.alpha_texture ? per_cascade[k] - alpha_cascade[k] + alpha_fill[k]++ : fill[k]++)];
                 issue.draw = std::uint16_t(i); count_cull(k, g.cull_mode);
                 if (!renderer::shadow_cascade_light_rows(base, bases[k], depth_cascades_.cascades[k], issue.rows)) { state = "rows"; break; }
             }
         }
         unsigned live_fill[renderer::shadow_cascade_max]{};
-        for (unsigned k = 0; k < cascades; ++k) live_fill[k] = fill[k];
+        for (unsigned k = 0; k < cascades; ++k) live_fill[k] = fill[k] + alpha_fill[k];
         for (unsigned q = 0; q < m && !state; ++q) {
             const auto& r = retention_->store.draws[retention_->store.admitted[q]];
             auto& d = draws[n + q];
@@ -415,6 +460,7 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
                 if (!renderer::shadow_cascade_light_rows(base, bases[k], depth_cascades_.cascades[k], issue.rows)) { state = "rows"; break; }
             }
         }
+        for (unsigned k = 0; k < cascades; ++k) fill[k] += alpha_fill[k];
         if (retained_on) for (unsigned k = 0; k < cascades; ++k) { retention_->replayed_live[k] = live_fill[k]; retention_->replayed_retained[k] = fill[k] - live_fill[k]; retention_->retained_issues += fill[k] - live_fill[k]; }
         for (unsigned l = 0; l < list_count; ++l) lists[l].count = fill[lists[l].map];
     }
@@ -435,7 +481,10 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
             log("shadow_replay_depth_target device=%llu frame=%llu size=%u map_format=%u depth_format=%u allocations=%u",
                 id_, frame_, depth_replay_->depth_size(), unsigned(caps.map_format), unsigned(caps.depth_format), depth_replay_->allocations());
         }
-        if (FAILED(out.restore)) invalidate_render_states();
+        // A failed restore leaves the pass's state bound: the render-state shadow and the sampler
+        // shadows (stage 0 carries the alpha casters' texture and sampler states; composition_textures_
+        // with it) are re-read from the device instead of trusted.
+        if (FAILED(out.restore)) { invalidate_render_states(); resync_samplers(); }
         if (FAILED(hr)) { refused = true; c.skipped_state = c.draws; log_depth_refusal(shadow_replay::DepthReason::State, "transaction", out.operation, unsigned(out.failed)); }
     }
     if (depth_replay_) {

@@ -400,6 +400,30 @@ CASES += [case(f'seam-ownership-shadow-replay-ladder-{m}', 'shadowreplay', 'owne
 CASES += [case('seam-ownership-shadow-replay-ladder-corvette-static', 'shadowreplay', 'ownership', camera=True, hdr_env=dict(SHADOW_LADDER_ENV, X3M_FIXTURE_OWN_SHIP='corvette', X3M_SHADOW_CASCADE_STATIC_FROM='3'))]
 CASES += [case('seam-ownership-shadow-replay-wide', 'shadowreplay', 'ownership', camera=True, hdr_env=SHADOW_REPLAY_WIDE_ENV),
           case('seam-ownership-shadow-replay-far-refused', 'shadowreplay', 'ownership', camera=True, hdr_env=SHADOW_REPLAY_FAR_ENV)]
+# Alpha-tested casters (docs/architecture/shadow-replay-gates.md, "Alpha-tested
+# casters"; X3M_SHADOW_ALPHA_CASTERS). The "shadowalpha" script drives the
+# production ShadowReplayPass directly (as "sunapply" does): an alpha-tested quad
+# whose texture alpha is 0 in half of it casts half a shadow, the opaque casters
+# draw byte-identically with and without the alpha programs, hostile state is
+# restored, a Reset repeats the map byte for byte, a refused alpha program leaves
+# the pass enabled without it. The DLL twin: the plain cascade case with the option
+# on (the script draws no alpha-tested draw), whose maps must equal the option-off
+# case's and whose device attaches the alpha programs.
+SHADOW_ALPHA_CASE, SHADOW_ALPHA_TWIN = 'shadow-alpha-casters', ('seam-ownership-shadow-replay-cascades-alpha-on', 'seam-ownership-shadow-replay-cascades')
+CASES += [case(SHADOW_ALPHA_CASE, 'shadowalpha', enabled='0'),
+          case(SHADOW_ALPHA_TWIN[0], 'shadowreplay', 'ownership', camera=True, hdr_env=dict(SHADOW_REPLAY_CASCADES_ENV, X3M_SHADOW_ALPHA_CASTERS='1'))]
+# The route-level script ("shadowalpharoute", motion_output_shadow_alpha_inc.h): an alpha-tested draw
+# through the real capture path. Gate 4 routes one only on the sun-share lane's tested-opaque arm (or the
+# exact cutout arm), so the case runs the lane on the FP16 scene with TAA, the ownership wrapper and the
+# rotating camera, the 8-unit cascade 0 at 256^2. GREATEREQUAL ref 128: admitted (tested=1) with the
+# managed half texture and the map holds A's x < 1 part; the DEFAULT-pool frame refused_pool; the zero
+# texture admitted and casting nothing. The LESS twin: refused_function on every alpha-tested frame.
+SHADOW_ALPHA_ROUTE_ENV = dict(X3M_SHADOW_REPLAY_DEPTH='1', X3M_SHADOW_REPLAY_SIZE='256', X3M_FIXTURE_SLICE_NEAR='0.5', X3M_FIXTURE_SHADOW_EXTENT='8',
+                              X3M_SUN_SHADOW_LANE='1', X3M_LINEAR_MATERIALS='0', X3M_SHADOW_ALPHA_CASTERS='1', X3M_MOTION_FRAME_LOG='1')
+SHADOW_ALPHA_ROUTE_CASES = {'seam-ownership-shadow-alpha-route': 'greaterequal', 'seam-ownership-shadow-alpha-route-less': 'less'}
+SHADOW_ALPHA_ROUTE_FRAMES, SHADOW_ALPHA_ROUTE_RESET = 6, 4
+CASES += [case(name, 'shadowalpharoute', 'ownership', jitter=True, taa=True, hdr=True, camera=True,
+               hdr_env=dict(SHADOW_ALPHA_ROUTE_ENV, X3M_FIXTURE_ALPHA_FUNC=func)) for name, func in SHADOW_ALPHA_ROUTE_CASES.items()]
 # Sun-shadow caster retention (docs/architecture/shadow-caster-retention.md,
 # "Fixture and twin cases"): the "shadowretention" script under the three
 # settings of the DLL. Live: every compared cascade map equals the CPU twin of
@@ -1547,7 +1571,8 @@ def sources():
     paths += [PROBE / name for name in (
         'verify_ownership_integration.py', 'run_ownership_integration.py', 'verify_capture_state.py',
         'bottle.py', 'game_guard.py', 'wine_lock.py', 'shadow_replay_depth.py', 'sun_shadow_apply.py', 'motion_output_sun_apply_inc.h', 'motion_output_sun_apply_cascades_inc.h', 'motion_output_lightmap_fade_inc.h',
-        'motion_output_shadow_retention_inc.h', 'motion_output_shadow_pool_inc.h', 'motion_output_thin_vote_inc.h', 'motion_output_fade_route_inc.h')]
+        'motion_output_shadow_retention_inc.h', 'motion_output_shadow_pool_inc.h', 'motion_output_thin_vote_inc.h', 'motion_output_fade_route_inc.h',
+        'motion_output_shadow_alpha_inc.h')]
     paths += [ROOT / 'tools' / 'analysis' / 'shadow_retention.py']
     return {str(p.relative_to(ROOT)): sha(p) for p in sorted(paths)}
 
@@ -2177,6 +2202,146 @@ def toggle_windows(name, text, trace_lines, setting):
         else:
             off_window |= set(range(frame, presses[index + 1] if index + 1 < len(presses) else SHADOW_REPLAY_FRAMES))
     return off_window, on_frames
+
+
+def validate_shadow_alpha(name, text):
+    """The alpha-tested caster script (motion_output_shadow_alpha_inc.h): the
+    fixture's own checks passed, the half shadow (H's alpha-255 half cast in
+    full, its alpha-0 half and the zero-alpha quad not at all), the opaque
+    casters byte-identical with and without the alpha programs, the Reset
+    repeat byte-identical, the refused program's pass without references."""
+    assert 'RESULT PASS' in text, f'{name}: fixture failed'
+    lines = text.splitlines()
+    checks = int(fields(next(l for l in lines if l.startswith('RESULT PASS')))['checks'])
+    maps = {}
+    for line in lines:
+        if line.startswith('ALPHA_MAP '):
+            f = fields(line)
+            maps[f['label']] = {k: tuple(int(v) for v in f[k].split('/')) if '/' in f[k] else f[k] for k in f if k != 'label'}
+    assert set(maps) == {'alpha', 'opaque_alpha_pass', 'opaque_depth_only', 'cascade0', 'cascade1', 'after_reset'}, (name, sorted(maps))
+    a = maps['alpha']
+    assert a['h_left'][1] > 0 and a['h_left'][0] == a['h_left'][1] and a['h_right'][1] > 0 and a['h_right'][0] == 0, (name, a)
+    assert a['z'][0] == 0 and a['o1'][0] == a['o1'][1] > 0 and a['o2'][0] == a['o2'][1] > 0 and a['depth_ok'] == '1', (name, a)
+    assert maps['opaque_alpha_pass']['hash'] == maps['opaque_depth_only']['hash'], (name, 'opaque casters differ with the alpha programs')
+    assert maps['after_reset']['hash'] == a['hash'], (name, 'the map after the Reset differs')
+    device = fields(next(l for l in lines if l.startswith('ALPHA_DEVICE ')))
+    calls = fields(next(l for l in lines if l.startswith('ALPHA_CALLS ')))
+    refused = fields(next(l for l in lines if l.startswith('ALPHA_REFUSED ')))
+    assert device['alpha'] == '1' and device['programs'] == '00000000', (name, device)
+    assert calls['state_calls'] == calls['expected'], (name, calls)
+    assert (refused['enabled'], refused['alpha'], refused['programs'], refused['references']) == ('1', '0', '8876086c', '2'), (name, refused)
+    caps = fields(next(l for l in lines if l.startswith('ALPHA_CAPS ')))
+    return {'checks': checks, 'maps': maps, 'state_calls': int(calls['state_calls']), 'device': device, 'refused': refused, 'caps': caps,
+            'half_shadow_fraction': a['h_left'][0] / (a['h_left'][1] + a['h_right'][1])}
+
+
+def validate_shadow_alpha_route(name, text, trace, directory, func):
+    """The route-level alpha caster script: per frame the DLL's
+    shadow_alpha_casters row (admission and refusal reason), the counter's
+    excluded= and the replay's draws=, and every map against the CPU
+    projection of the casters the frame admitted (A's x < 1 part on the
+    tested frames, the discard line and the WRAP tip ambiguous), with the
+    half-shadow witness: texels of A's x > 1 part the full A would cover,
+    left uncovered."""
+    assert 'RESULT PASS' in text and 'ALPHA_ROUTE PASS' in text, f'{name}: fixture failed'
+    lines = text.splitlines()
+    checks = int(fields(next(l for l in lines if l.startswith('RESULT PASS')))['checks'])
+    tl = trace.splitlines()
+    rows = [fields(l) for l in tl if l.startswith('shadow_alpha_casters ')]
+    counters = [fields(l) for l in tl if l.startswith('shadow_replay_candidates ')]
+    depth = [fields(l) for l in tl if l.startswith('shadow_replay_depth ')]
+    mode = [fields(l) for l in tl if l.startswith('shadow_alpha_casters_mode ')]
+    device = [fields(l) for l in tl if l.startswith('shadow_alpha_casters_device ')]
+    frames = SHADOW_ALPHA_ROUTE_FRAMES
+    assert len(mode) == 1 and mode[0]['enabled'] == '1', (name, mode)
+    assert device and all(d['attached'] == '1' for d in device), (name, device)
+    assert len(rows) == len(counters) == len(depth) == frames, (name, len(rows), len(counters), len(depth))
+    zero = dict(tested='0', opaque='0', refused_state='0', refused_function='0', refused_uv='0', refused_texture='0', refused_pool='0')
+    less = func == 'less'
+    expected = []
+    for frame in range(frames):
+        if frame == 0:
+            e = dict(zero, seen='0')
+        elif less:
+            e = dict(zero, seen='1', refused_function='1')
+        elif frame == 3:
+            e = dict(zero, seen='1', refused_pool='1')
+        else:
+            e = dict(zero, seen='1', tested='1')
+        expected.append(e)
+    for frame, (row, e) in enumerate(zip(rows, expected)):
+        assert all(row[k] == v for k, v in e.items()), (name, frame, row, e)
+        assert row['ready'] == ('0' if frame == 0 else '1'), (name, frame, row)
+    admitted = [frame == 0 or (not less and frame != 3) for frame in range(frames)]
+    for frame, (counter, d) in enumerate(zip(counters, depth)):
+        assert counter['excluded'] == ('0' if admitted[frame] else '1'), (name, frame, counter['excluded'])
+        assert d['replayed'] == d['draws'] == ('2' if admitted[frame] else '1'), (name, frame, d)
+    import numpy as np
+    maps = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('SHADOW_MAP ')}
+    cameras = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('SHADOW_CAMERA ')}
+    draws = {}
+    for l in lines:
+        if l.startswith('SHADOW_DRAW '):
+            f = fields(l); draws.setdefault(int(f['frame']), {})[f['shape']] = {'t': float(f['t']), 'p': float(f['p']), 'zo': float(f['zo'])}
+    size, comparisons, witness = 256, {}, []
+    for frame in range(frames):
+        m = maps[frame]
+        assert m['available'] == '1' and int(m['width']) == size and m['valid'] == '1', (name, frame, m)
+        triple = lambda key: tuple(float(v) for v in m[key].split(','))
+        basis = {'right': triple('right'), 'up': triple('up'), 'forward': triple('forward'), 'center': triple('center'),
+                 'extent': float(m['extent']), 'depth_half': float(m['depth_half'])}
+        c = cameras[frame]
+        camera = {'m00': float(c['m00']), 'm11': float(c['m11']), 'r': [float(v) for v in c['r'].split(',')], 't': [float(v) for v in c['t'].split(',')]}
+        a, b = draws[frame]['A'], draws[frame]['B']
+        tested = admitted[frame] and frame != 0 and frame != 5
+        cast = [dict(b, shape='B')] + ([dict(a, shape='A')] if frame == 0 else [dict(a, shape='AL1'), dict(a, shape='AL2')] if tested else [])
+        gpu = np.asarray(struct.unpack(f'<{size * size}f', (directory / f'shadow_{frame}.r32f').read_bytes()), dtype=np.float64).reshape(size, size)
+        cpu, ambiguous = depth_replay.expected_map(cast, camera, basis, size)
+        if tested:
+            band, _ = depth_replay.expected_map([dict(a, shape=s) for s in ('AS1', 'AS2', 'AT')], camera, basis, size)
+            ambiguous = ambiguous | (band < 1.0)
+        clear = ~ambiguous
+        covered_cpu, covered_gpu = cpu < 1.0, gpu < 1.0
+        both = covered_cpu & covered_gpu & clear
+        disagree = int(((covered_cpu != covered_gpu) & clear).sum())
+        error = float(np.abs(gpu[both] - cpu[both]).max()) if both.any() else 0.0
+        comparison = {'covered_cpu': int(covered_cpu.sum()), 'covered_gpu': int(covered_gpu.sum()), 'ambiguous': int(ambiguous.sum()),
+                      'coverage_disagreements': disagree, 'max_depth_error': error}
+        assert disagree == 0 and error <= depth_replay.DEPTH_TOLERANCE and both.any(), (name, frame, comparison)
+        if tested:
+            full, _ = depth_replay.expected_map([dict(b, shape='B'), dict(a, shape='A')], camera, basis, size)
+            right = (full < 1.0) & ~covered_cpu & clear  # A's x > 1 part (not under B): the full A casts there, the alpha-tested one must not
+            comparison['right_uncovered'] = int((right & ~covered_gpu).sum()); comparison['right_texels'] = int(right.sum())
+            assert comparison['right_texels'] >= 100 and comparison['right_uncovered'] == comparison['right_texels'], (name, frame, comparison)
+            witness.append((comparison['right_texels'], comparison['covered_gpu']))
+        comparisons[frame] = comparison
+    result = {'checks': checks + 6 * frames + 3, 'func': func, 'rows': [{k: r[k] for k in ('frame', 'ready', 'seen', 'tested', 'refused_function', 'refused_pool')} for r in rows],
+              'map': {'size': size, 'frames': comparisons}, 'devices': len(device)}
+    if witness:
+        result['half'] = {'frames': len(witness), 'right_texels_min': min(w[0] for w in witness)}
+    return result
+
+
+def validate_shadow_alpha_twin(name, trace, case, off):
+    """The cascade case with X3M_SHADOW_ALPHA_CASTERS=1: the mode line, the
+    device line (the alpha programs attached), one shadow_alpha_casters line
+    per frame with nothing seen (the script draws no alpha-tested draw), and
+    every map's comparison equal to the option-off case's record."""
+    tl = trace.splitlines()
+    mode = [fields(l) for l in tl if l.startswith('shadow_alpha_casters_mode ')]
+    device = [fields(l) for l in tl if l.startswith('shadow_alpha_casters_device ')]
+    frames = [fields(l) for l in tl if l.startswith('shadow_alpha_casters ')]
+    assert len(mode) == 1 and mode[0]['enabled'] == '1', (name, mode)
+    assert device and all(d['attached'] == '1' and d['programs'] == '00000000' for d in device), (name, device)
+    counters = [l for l in tl if l.startswith('shadow_replay_candidates ')]
+    assert len(frames) == len(counters) > 0 and all(f['seen'] == '0' and f['tested'] == '0' for f in frames), (name, len(frames), len(counters))
+    first = next((i for i, f in enumerate(frames) if f['ready'] == '1'), None)
+    assert first is not None and first <= 1 and all(f['ready'] == '1' for f in frames[first:]), (name, 'the alpha programs ready from the first attached frame on (the pass attaches at the first scene end)')
+    checks = 4
+    if off is not None:
+        assert case['map'] == off['map'], (name, 'the option-on maps differ from the option-off case')
+        checks += 1
+    return {'checks': checks, 'devices': len(device), 'frames': len(frames), 'compared_to': SHADOW_ALPHA_TWIN[1] if off is not None else None}
 
 
 def validate_shadow_replay_cascades(name, text, trace, directory, env, taa):
@@ -6108,7 +6273,7 @@ def main(argv=None):
             directory = BUILD / ('motion-output-' + name + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
             directory.mkdir(parents=True)
             shutil.copy(candidate_exe, directory)
-            shutil.copy(candidate_seam if mode in ('seam', 'msaa', 'cutout', 'zonly', 'faderoute', 'lightmapfade', 'lightmapwiden', 'shadowreplay', 'shadowretention', 'shadowpool', 'unmatchedstatic', 'boltshape') + HDR_MODES + ('thinvote',) and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
+            shutil.copy(candidate_seam if mode in ('seam', 'msaa', 'cutout', 'zonly', 'faderoute', 'lightmapfade', 'lightmapwiden', 'shadowreplay', 'shadowretention', 'shadowpool', 'shadowalpha', 'shadowalpharoute', 'unmatchedstatic', 'boltshape') + HDR_MODES + ('thinvote',) and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
             env = dict(os.environ, X3M_CAMERA='vanilla', X3M_CHASE_SCENE_FIX='0', X3M_CHASE_COMBAT_TIGHTNESS='0', X3M_MOTION_OUTPUT=enabled, X3M_MOTION_JITTER='1' if jitter else '0', X3M_MOTION_JITTER_SAMPLES=str(JITTER_SAMPLES),
                        X3M_TAA='1' if taa else '0', X3M_TAA_DEBUG='1' if taa and not bench else '0',
                        X3M_CAPTURE_START='1000' if bench else str(BURST_CAPTURE[0]) if burst else '1',
@@ -6161,7 +6326,8 @@ def main(argv=None):
                        # Cascades off unless a case sets them (the single-map path is the default).
                        X3M_SHADOW_CASCADES='0', X3M_FIXTURE_SUNAPPLY_CASCADES='0',
                        # Caster retention off unless a case sets it.
-                       X3M_SHADOW_RETENTION_CENSUS='0', X3M_SHADOW_CASTER_RETENTION='0', X3M_SHADOW_RETENTION_TIMING='0')
+                       X3M_SHADOW_RETENTION_CENSUS='0', X3M_SHADOW_CASTER_RETENTION='0', X3M_SHADOW_RETENTION_TIMING='0',
+                       X3M_SHADOW_ALPHA_CASTERS='0')  # alpha-tested casters off unless a case sets them
             for inherited in ('X3M_SHADOW_CASCADE_SIZES', 'X3M_SHADOW_CASCADE_CAPS', 'X3M_SHADOW_CASCADE_BUDGET', 'X3M_FIXTURE_SHADOW_CASCADES',
                               'X3M_SHADOW_CASTER_RETENTION_AGE', 'X3M_SHADOW_CASTER_RETENTION_EPS'):
                 env.pop(inherited, None)
@@ -6327,6 +6493,24 @@ def main(argv=None):
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} script={case["script"]} store={case["store"]} frames={case["frames"]} maps={case["map"]["maps"]} max_depth_error={case["map"]["max_depth_error"]} us={case["us"].get("median")}', flush=True)
                 continue
+            if mode == 'shadowalpharoute':
+                case = validate_shadow_alpha_route(name, text, trace, directory, SHADOW_ALPHA_ROUTE_CASES[name])
+                case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
+                result['cases'][name] = case
+                (RESULTS / f'{name}-fixture.json').write_text(json.dumps({'case': name, 'bottle': result['bottle'], 'binaries': result['binaries'], **case}, indent=1) + '\n')
+                save()
+                print(f'{name}: exit={completed.returncode} checks={case["checks"]} rows={case["rows"]} half={case.get("half")}', flush=True)
+                continue
+            if mode == 'shadowalpha':
+                case = validate_shadow_alpha(name, text)
+                case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
+                result['cases'][name] = case
+                (RESULTS / f'{name}-fixture.json').write_text(json.dumps({'case': name, 'bottle': result['bottle'], 'binaries': result['binaries'], **case}, indent=1) + '\n')
+                save()
+                print(f'{name}: exit={completed.returncode} checks={case["checks"]} h_left={case["maps"]["alpha"]["h_left"]} h_right={case["maps"]["alpha"]["h_right"]} state_calls={case["state_calls"]}', flush=True)
+                continue
             if mode == 'shadowreplay':
                 case = (validate_shadow_replay_adaptive if 'X3M_FIXTURE_OWN_SHIP' in hdr_env else validate_shadow_replay_cascades if 'X3M_FIXTURE_SHADOW_CASCADES' in hdr_env else validate_shadow_replay)(name, text, trace, directory, hdr_env, taa)  # the wrapper's own frame lines belong to the 12-frame seam script (validate_ownership); this script has 8 frames and a Reset
                 case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
@@ -6336,6 +6520,9 @@ def main(argv=None):
                     compact = {k: v for k, v in case.items() if k not in ('map', 'per_frame', 'sun', 'refusals', 'targets')}
                     compact['map'] = {k: v for k, v in case['map'].items() if k != 'frames'}
                     (RESULTS / f'{name}-fixture.json').write_text(json.dumps({'case': name, 'bottle': result['bottle'], 'binaries': result['binaries'], **compact}, indent=1) + '\n')
+                if name == SHADOW_ALPHA_TWIN[0]:
+                    case['alpha'] = validate_shadow_alpha_twin(name, trace, case, result['cases'].get(SHADOW_ALPHA_TWIN[1]))
+                    case['checks'] += case['alpha']['checks']
                 result['cases'][name] = case
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} depth={case["depth"]} casters={case["casters"]} us={case.get("us", {}).get("median")} max_depth_error={case.get("map", {}).get("max_depth_error")}', flush=True)

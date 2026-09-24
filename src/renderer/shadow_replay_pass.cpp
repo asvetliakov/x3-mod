@@ -1,5 +1,6 @@
 #include "shadow_replay_pass.h"
 #include <array>
+#include <utility>
 
 namespace x3m::renderer {
 namespace {
@@ -10,9 +11,10 @@ enum Slot : unsigned {
     GetDirect3D = 6, GetCreationParameters = 9, CreateTexture = 23, CreateDepthStencilSurface = 29,
     SetRenderTarget = 37, GetRenderTarget = 38, SetDepthStencilSurface = 39, GetDepthStencilSurface = 40,
     BeginScene = 41, EndScene = 42, Clear = 43, SetViewport = 47, GetViewport = 48, SetRenderState = 57, CreateStateBlock = 59,
+    SetTexture = 65, SetSamplerState = 69,
     SetScissorRect = 75, GetScissorRect = 76, DrawPrimitive = 81, DrawIndexedPrimitive = 82,
     SetVertexDeclaration = 87, GetVertexDeclaration = 88, SetFVF = 89, GetFVF = 90, CreateVertexShader = 91, SetVertexShader = 92, SetVertexShaderConstantF = 94,
-    SetStreamSource = 100, SetStreamSourceFreq = 102, SetIndices = 104, CreatePixelShader = 106, SetPixelShader = 107
+    SetStreamSource = 100, SetStreamSourceFreq = 102, SetIndices = 104, CreatePixelShader = 106, SetPixelShader = 107, SetPixelShaderConstantF = 109
 };
 using D = IDirect3DDevice9*;
 using GetD3DFn = HRESULT(WINAPI*)(D, IDirect3D9**);
@@ -45,6 +47,9 @@ using SetFreqFn = HRESULT(WINAPI*)(D, UINT, UINT);
 using SetIndicesFn = HRESULT(WINAPI*)(D, IDirect3DIndexBuffer9*);
 using CreatePsFn = HRESULT(WINAPI*)(D, const DWORD*, IDirect3DPixelShader9**);
 using SetPsFn = HRESULT(WINAPI*)(D, IDirect3DPixelShader9*);
+using SetTextureFn = HRESULT(WINAPI*)(D, DWORD, IDirect3DBaseTexture9*);
+using SetSamplerFn = HRESULT(WINAPI*)(D, DWORD, D3DSAMPLERSTATETYPE, DWORD);
+using SetPsConstantsFn = HRESULT(WINAPI*)(D, UINT, const float*, UINT);
 // D3D9 token encoding authored here from the documented operation contract
 // (as rigid_replay_program.cpp); not a captured program.
 // vs_3_0: pos = (v0.xyz, 1); o0 = light rows c0-c3 . pos with o0.z = max(z, 0);
@@ -74,6 +79,42 @@ constexpr DWORD pixel_words[] = {
     0x05000051u, 0xa00f0000u, 0u, 0u, 0u, 0u,            // def c0, 0, 0, 0, 0
     0x0200001fu, 0x80000005u, 0x900f0000u,               // dcl_texcoord v0
     0x0300000bu, 0x800f0000u, 0x90000000u, 0xa0000000u,  // max r0, v0.x, c0.x
+    0x02000001u, 0x800f0800u, 0x80e40000u,               // mov oC0, r0
+    0x0000ffffu};
+// Alpha-tested casters (X3M_SHADOW_ALPHA_CASTERS; docs/architecture/
+// shadow-replay-gates.md, "Alpha-tested casters"), authored the same way.
+// vs_3_0: the depth-only program above plus the declaration's TEXCOORD0 in v1
+// and its .xy out in o2 (TEXCOORD1); o1 carries only the depth's .x.
+constexpr DWORD alpha_vertex_words[] = {
+    0xfffe0300u,
+    0x05000051u, 0xa00f0008u, 0x3f800000u, 0u, 0u, 0u,  // def c8, 1, 0, 0, 0
+    0x0200001fu, 0x80000000u, 0x900f0000u,               // dcl_position v0
+    0x0200001fu, 0x80000005u, 0x900f0001u,               // dcl_texcoord v1
+    0x0200001fu, 0x80000000u, 0xe00f0000u,               // dcl_position o0
+    0x0200001fu, 0x80000005u, 0xe0010001u,               // dcl_texcoord o1.x
+    0x0200001fu, 0x80010005u, 0xe0030002u,               // dcl_texcoord1 o2.xy
+    0x04000004u, 0x800f0000u, 0x90240000u, 0xa0400008u, 0xa0150008u, // mad r0, v0.xyzx, c8.xxxy, c8.yyyx
+    0x03000009u, 0xe0010000u, 0x80e40000u, 0xa0e40000u,  // dp4 o0.x, r0, c0
+    0x03000009u, 0xe0020000u, 0x80e40000u, 0xa0e40001u,  // dp4 o0.y, r0, c1
+    0x03000009u, 0x80040001u, 0x80e40000u, 0xa0e40002u,  // dp4 r1.z, r0, c2
+    0x03000009u, 0xe0080000u, 0x80e40000u, 0xa0e40003u,  // dp4 o0.w, r0, c3
+    0x02000001u, 0xe0010001u, 0x80aa0001u,               // mov o1.x, r1.z
+    0x0300000bu, 0x80040001u, 0x80aa0001u, 0xa0550008u,  // max r1.z, r1.z, c8.y
+    0x02000001u, 0xe0040000u, 0x80aa0001u,               // mov o0.z, r1.z
+    0x02000001u, 0xe0030002u, 0x90e40001u,               // mov o2.xy, v1
+    0x0000ffffu};
+// ps_3_0: r0 = s0 at v1.xy; texkill (r0.a - c0.x) replicated (the alpha test
+// GREATEREQUAL c0.x: clip(tex.a - threshold)); oC0 = max(v0.x, 0) as above.
+constexpr DWORD alpha_pixel_words[] = {
+    0xffff0300u,
+    0x05000051u, 0xa00f0001u, 0u, 0u, 0u, 0u,            // def c1, 0, 0, 0, 0
+    0x0200001fu, 0x80000005u, 0x90010000u,               // dcl_texcoord v0.x
+    0x0200001fu, 0x80010005u, 0x90030001u,               // dcl_texcoord1 v1.xy
+    0x0200001fu, 0x90000000u, 0xa00f0800u,               // dcl_2d s0
+    0x03000042u, 0x800f0000u, 0x90e40001u, 0xa0e40800u,  // texld r0, v1, s0
+    0x03000002u, 0x800f0000u, 0x80ff0000u, 0xa1000000u,  // add r0, r0.w, -c0.x
+    0x01000041u, 0x800f0000u,                            // texkill r0
+    0x0300000bu, 0x800f0000u, 0x90000000u, 0xa0000001u,  // max r0, v0.x, c1.x
     0x02000001u, 0x800f0800u, 0x80e40000u,               // mov oC0, r0
     0x0000ffffu};
 } // namespace
@@ -133,7 +174,8 @@ struct ShadowReplayPass::SavedState {
 ShadowReplayPass::~ShadowReplayPass() { detach(); }
 unsigned ShadowReplayPass::references() const noexcept {
     unsigned n = 0;
-    for (const void* p : {static_cast<const void*>(block_), static_cast<const void*>(vs_), static_cast<const void*>(ps_), static_cast<const void*>(depth_)})
+    for (const void* p : {static_cast<const void*>(block_), static_cast<const void*>(vs_), static_cast<const void*>(ps_), static_cast<const void*>(depth_),
+                          static_cast<const void*>(vs_alpha_), static_cast<const void*>(ps_alpha_)})
         n += p != nullptr;
     for (unsigned i = 0; i < shadow_replay_maps_max; ++i) n += (maps_[i] != nullptr) + (map_surfaces_[i] != nullptr);
     return n;
@@ -143,7 +185,8 @@ void ShadowReplayPass::release_targets() noexcept {
     drop(depth_); invalidate_retained(); // a map that is gone retains nothing
 }
 void ShadowReplayPass::detach() noexcept {
-    release_targets(); drop(block_); drop(vs_); drop(ps_);
+    release_targets(); drop(block_); drop(vs_); drop(ps_); drop(vs_alpha_); drop(ps_alpha_);
+    alpha_bound_ = alpha_sampler_ = false; alpha_texture_ = nullptr; alpha_threshold_ = -1.f;
     device_ = nullptr; vtable_ = nullptr; count_ = depth_size_ = render_targets_ = 0; reset_pending_ = false; caps_ = {}; view_rows_valid_ = false;
     for (unsigned& size : sizes_) size = 0;
 }
@@ -208,6 +251,16 @@ HRESULT ShadowReplayPass::attach_maps(IDirect3DDevice9* d, void* const* native, 
     if (SUCCEEDED(hr)) hr = call<CreatePsFn>(CreatePixelShader)(d, pixel_words, &ps_);
     caps_.programs = hr;
     if (FAILED(hr)) { const ShadowReplayCaps kept = caps_; detach(); caps_ = kept; caps_.reason = "programs"; return hr; }
+    // The alpha-tested caster pair, only when asked for. A refused program
+    // (no smaller fallback set: platform-portability.md, "Shader slot budget")
+    // leaves the pass enabled for the depth-only casters with caps_.alpha false.
+    if (alpha_requested_) {
+        HRESULT alpha = call<CreateVsFn>(CreateVertexShader)(d, alpha_vertex_words, &vs_alpha_);
+        if (SUCCEEDED(alpha)) alpha = call<CreatePsFn>(CreatePixelShader)(d, alpha_pixel_words, &ps_alpha_);
+        caps_.alpha_programs = alpha;
+        caps_.alpha = SUCCEEDED(alpha) && vs_alpha_ && ps_alpha_;
+        if (!caps_.alpha) { drop(vs_alpha_); drop(ps_alpha_); }
+    }
     caps_.enabled = true; caps_.reason = "";
     return S_OK;
 }
@@ -265,6 +318,51 @@ HRESULT ShadowReplayPass::bind() noexcept {
     STEP(call<SetPsFn>(SetPixelShader)(d, ps_));
     STEP(call<SetFreqFn>(SetStreamSourceFreq)(d, 0, 1));
 #undef STEP
+    alpha_bound_ = alpha_sampler_ = false; alpha_texture_ = nullptr; alpha_threshold_ = -1.f; // this transaction's alpha state starts unbound
+    return S_OK;
+}
+// An alpha-tested issue's program pair, sampler 0 (written once per
+// transaction: WRAP as the engine's material samplers, trilinear, no bias or
+// LOD clamp, no sRGB decode; the alpha is never decoded anyway), its texture
+// and threshold, each only when it changes; an opaque issue after one binds
+// the depth-only pair back. The block restores every one of these.
+HRESULT ShadowReplayPass::bind_alpha(const ShadowReplayDraw& r, unsigned& made) noexcept {
+    D d = device_;
+    HRESULT hr = S_OK;
+    if (!r.alpha_texture) {
+        if (!alpha_bound_) return S_OK;
+        hr = call<SetVsFn>(SetVertexShader)(d, vs_); ++made;
+        if (SUCCEEDED(hr)) { hr = call<SetPsFn>(SetPixelShader)(d, ps_); ++made; }
+        if (SUCCEEDED(hr)) alpha_bound_ = false;
+        return hr;
+    }
+    if (!alpha_bound_) {
+        hr = call<SetVsFn>(SetVertexShader)(d, vs_alpha_); ++made;
+        if (SUCCEEDED(hr)) { hr = call<SetPsFn>(SetPixelShader)(d, ps_alpha_); ++made; }
+        if (FAILED(hr)) return hr;
+        alpha_bound_ = true;
+    }
+    if (!alpha_sampler_) {
+        const std::pair<D3DSAMPLERSTATETYPE, DWORD> states[] = {
+            {D3DSAMP_ADDRESSU, D3DTADDRESS_WRAP}, {D3DSAMP_ADDRESSV, D3DTADDRESS_WRAP}, {D3DSAMP_MAGFILTER, D3DTEXF_LINEAR}, {D3DSAMP_MINFILTER, D3DTEXF_LINEAR},
+            {D3DSAMP_MIPFILTER, D3DTEXF_LINEAR}, {D3DSAMP_MIPMAPLODBIAS, 0}, {D3DSAMP_MAXMIPLEVEL, 0}, {D3DSAMP_SRGBTEXTURE, FALSE}};
+        for (const auto& state : states) {
+            hr = call<SetSamplerFn>(SetSamplerState)(d, 0, state.first, state.second); ++made;
+            if (FAILED(hr)) return hr;
+        }
+        alpha_sampler_ = true;
+    }
+    if (r.alpha_texture != alpha_texture_) {
+        hr = call<SetTextureFn>(SetTexture)(d, 0, r.alpha_texture); ++made;
+        if (FAILED(hr)) return hr;
+        alpha_texture_ = r.alpha_texture;
+    }
+    if (r.alpha_threshold != alpha_threshold_) {
+        const float threshold[4] = {r.alpha_threshold, r.alpha_threshold, r.alpha_threshold, r.alpha_threshold};
+        hr = call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 0, threshold, 1); ++made;
+        if (FAILED(hr)) return hr;
+        alpha_threshold_ = r.alpha_threshold;
+    }
     return S_OK;
 }
 // One draw: the application's own geometry bindings and cull mode (inverted
@@ -273,7 +371,8 @@ HRESULT ShadowReplayPass::bind() noexcept {
 HRESULT ShadowReplayPass::issue(const ShadowReplayDraw& r, const float* rows, unsigned vectors, bool invert_cull, unsigned* state_calls) noexcept {
     D d = device_;
     unsigned made = 0; // native state calls made (each only after the previous succeeded)
-    HRESULT hr = call<SetDeclarationFn>(SetVertexDeclaration)(d, r.declaration); ++made;
+    HRESULT hr = bind_alpha(r, made);
+    if (SUCCEEDED(hr)) { hr = call<SetDeclarationFn>(SetVertexDeclaration)(d, r.declaration); ++made; }
     if (SUCCEEDED(hr)) { hr = call<SetStreamFn>(SetStreamSource)(d, 0, r.vertex_buffer, r.stream_offset, r.stride); ++made; }
     if (SUCCEEDED(hr)) { hr = call<SetIndicesFn>(SetIndices)(d, r.indexed ? r.index_buffer : nullptr); ++made; }
     if (SUCCEEDED(hr)) { hr = call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, shadow_replay_cull_mode(r.cull_mode, invert_cull)); ++made; }
@@ -308,7 +407,8 @@ HRESULT ShadowReplayPass::execute_cascades(const ShadowReplayDraw* draws, unsign
     }
     for (unsigned i = 0; i < draw_count; ++i) {
         const auto& r = draws[i];
-        if (!r.vertex_buffer || !r.declaration || !r.stride || !r.primitives || (r.indexed && !r.index_buffer)) return fail(ShadowReplayStage::Validate, E_INVALIDARG);
+        if (!r.vertex_buffer || !r.declaration || !r.stride || !r.primitives || (r.indexed && !r.index_buffer) || (r.alpha_texture && !caps_.alpha))
+            return fail(ShadowReplayStage::Validate, E_INVALIDARG);
     }
     // From here the listed maps are being rewritten: whatever was retained
     // for them is void until the owner retains again after a full success.
@@ -357,7 +457,8 @@ HRESULT ShadowReplayPass::execute(const ShadowReplayDraw* draws, unsigned count,
     if (reset_pending_) return fail(ShadowReplayStage::Validate, D3DERR_DEVICENOTRESET);
     for (unsigned i = 0; i < count; ++i) {
         const auto& r = draws[i];
-        if (!r.vertex_buffer || !r.declaration || !r.stride || !r.primitives || (r.indexed && !r.index_buffer)) return fail(ShadowReplayStage::Validate, E_INVALIDARG);
+        if (!r.vertex_buffer || !r.declaration || !r.stride || !r.primitives || (r.indexed && !r.index_buffer) || (r.alpha_texture && !caps_.alpha))
+            return fail(ShadowReplayStage::Validate, E_INVALIDARG);
     }
     HRESULT hr = prepare();
     if (FAILED(hr)) return fail(ShadowReplayStage::Targets, hr);

@@ -501,6 +501,19 @@ drivers is unverified (as RT1's alpha-1 blend is); the `faderoute` `-owner` fixt
 4.8e-8 on this backend, measured) is the parity check to run on a native machine. Slots: depth fragment 5 (plain 3, thin
 twin 4), each pixel variant 2 above the option-off one; measured, D3DX.
 
+## 2026-09-24: alpha-tested sun-shadow casters (`--shadow-alpha-casters`, default off)
+
+[shadow-replay-gates.md](shadow-replay-gates.md), "Alpha-tested casters"; ledger
+`docs/verification/directional-shadows.md` "Alpha-tested casters". Documented D3D9 only: the draw's stage-0
+texture from `GetTexture` (a 2D `D3DPOOL_MANAGED` texture, checked with `GetType`/`GetLevelDesc`), bound by
+`SetTexture` in the replay transaction with explicit sampler-0 states, and one more authored vs_3_0/ps_3_0
+pair (9 and 5 instructions; `texld`, `texkill`) created at attach; a refused program logs
+`shadow_alpha_casters_device attached=0` and the option stays off (no fallback set). The pixel program
+reads its UV from TEXCOORD1.xy, which the vertex program writes with that mask (the depth lane o1.x/v0.x
+likewise), so the pair links under the SM3 semantic rules. Gap: `texkill` coverage and bilinear alpha at the
+edge on native drivers are unverified; the `shadow-alpha-casters` fixture case (the half-shadow counts and
+the byte-identical opaque maps) is the parity check to run on a native machine.
+
 ## Shader slot budget
 
 User decision 2026-09-24: programs are sized against `MaxPixelShader30InstructionSlots` as the device reports it.

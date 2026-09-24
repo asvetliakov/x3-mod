@@ -3728,3 +3728,71 @@ second sector, and accepts P=8 as the launcher default. 8 stays: a larger P save
 (`shadow_cascade_min_footprint_default`), so fixtures that expect the old absent-is-off behaviour pin
 `X3M_SHADOW_CASCADE_MIN_FOOTPRINT='0'` (`run_motion_output.py`, `run_route_bench.py`, `run_sun_share_live.py`).
 Host check: `test_shadow_cascade_footprint.LauncherDefault`.
+
+## Alpha-tested casters (`--shadow-alpha-casters on|off`, default off) (2026-09-24, worktree `agent-a9ec37321c6f28aa0`)
+
+Motive: Run 80 A (run305), the Terran ODS `usc_dock_e_tower` red plate / tech / window groups are
+alpha-tested at record 0 (test on, ref 1, texture alpha 255 everywhere) and excluded from the caster
+candidates (W3), while the merged coarse record draws them opaque and casts: cascade 4 has 3,910
+fine-lit / coarse-shadowed pixels and 0 the reverse (`run304-305-run80a/terran-colour/shadow_cross_run305.txt`).
+Design and limits: [shadow-replay-gates.md](../architecture/shadow-replay-gates.md), "Alpha-tested casters".
+
+**Established before the change.**
+1. Caster pass: vs_3_0 reads POSITION only, ps_3_0 writes `max(depth, 0)` to the R32F map, ALPHATESTENABLE
+   forced off; no texture, no UV. An alpha test needs a second program pair (the pixel program is the
+   only place the test can live: the fixed-function test would compare the depth the PS outputs).
+2. Replay inputs: a record leases VB, IB and declaration at the draw and holds the rows; nothing of the
+   material. The stage-0 texture can be leased the same way (its `GetTexture` reference, released with the
+   buffers before every Reset). The effects' output alpha is `vertexAlpha x (EnableGlow ? LightMap.a :
+   Diffuse.a)` with the diffuse at s0 and GREATEREQUAL ref 1 (station-material-distance.md); the body
+   declaration carries TEXCOORD0 (float4, body-text-loader.md) and XT BUMP's VS passes it through the
+   material texture matrix (identity by default). Sound for the diffuse-alpha case (EnableGlow 0,
+   AlphaValue 1, fog off, identity texture matrix); glow materials, fading AlphaValue and scrolled
+   texture matrices are not modelled (the caster follows the diffuse alpha).
+3. Cost [M] (`verification/results/run304-305-run80a/alpha_casters.py` on run305, 14,022 frames,
+   output `alpha_casters_run305.txt`): alpha-tested z-writing managed draws admitted by the origin rule
+   (`excluded=`) mean 5.3, p50 3, p95 22, max 30 per frame, against 16.1 leased casters; the 32 F8 frames
+   carry 27-33 alpha-tested draws with a known extent. At 1.1-1.3 us per replayed draw (run253 above)
+   about 30 more issues per cascade cost some 35 us per frame [I].
+
+**Fixture evidence** (`X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+verification/probe/run_motion_output.py <the 26 shadow-replay cases> shadow-alpha-casters
+seam-ownership-shadow-replay-cascades-alpha-on seam-ownership-shadow-alpha-route seam-ownership-shadow-alpha-route-less`,
+exit 0, 30 cases in one run after the review fixes; binaries `build/d3d9.dll` `c459a5a0…`, seam DLL `ffa0120e…`,
+fixture `4a871f26…`, the same in every case record: `verification/results/bottle-X3/motion-output-partial.json`,
+`shadow-alpha-casters-fixture.json`, `seam-ownership-shadow-alpha-route{,-less}-fixture.json`) [M]:
+
+| Check | Result |
+| --- | --- |
+| Half shadow (`shadow-alpha-casters`, pass driven directly, 256^2 map, 64^2 texture alpha 255 for u < .5, 0 beyond) | H's alpha-255 half 7,257 / 7,257 texels cast, its alpha-0 half 0 / 7,257, the zero-alpha quad 0 / 1,369, the opaque quads 8,473 / 8,473 and 1,369 / 1,369, every cast texel at its quad's depth; 26 fixture checks |
+| Issue path | 35 native state calls for [opaque, alpha, alpha, opaque] = 4 x 5 + 12 (pair, sampler 0 x 8, texture, threshold) + 1 (texture) + 2 (pair back); cascades 31 / 24 as counted by the script |
+| Restoration | hostile stage-0 texture, sampler 0 (CLAMP/MIRROR/POINT/bias -1.5/MAXMIPLEVEL 3/sRGB), PS c0, pixel program and alpha test restored exactly around every transaction (`RESTORE differences=0`), main target byte-identical |
+| Option off | the opaque casters' map byte-identical with and without the alpha programs (hash `eaa854f911e94262` both); the depth-only pass refuses an alpha draw at validation, nothing touched |
+| Reset | the transaction after a Reset byte-identical (hash `31c968f001e94262` before and after) |
+| Refused program | CreatePixelShader failing through a copied device table: pass enabled, `alpha=0`, `programs=8876086c`, 2 references (the created alpha VS released), opaque map identical |
+| Committed record | all 26 shadow-replay cases with the option off: `map` records and check counts equal to HEAD's `motion-output-summary.json` (`verification/results/shadow-alpha-casters/compare_committed.py`, output `compare_committed.txt`: identical 27, differing 0, the twin included) |
+| DLL twin (option on, no alpha-tested draw in the script) | maps equal to the option-off cascade case; `shadow_alpha_casters_device attached=1 programs=00000000`; one `shadow_alpha_casters` line per frame, `seen=0` |
+| Route level (`seam-ownership-shadow-alpha-route`: the real capture path, the lane's tested-opaque arm on the FP16 scene with TAA, the ownership wrapper, the rotating camera; caster A alpha-tested GREATEREQUAL ref 128 with a managed 64^2 texture, alpha 255 for u < .5) | `shadow_alpha_casters` per frame: frame 0 (A opaque) `ready=0 seen=0`; frames 1, 2, 4 (the last after a Reset) `seen=1 tested=1`, every refusal 0; frame 3 (DEFAULT-pool texture) `refused_pool=1`, `excluded=1`, `draws=1`; frame 5 (zero alpha) `tested=1`, casting nothing. Maps against the CPU projection of the admitted casters: 0 coverage disagreements on all six frames (A's x < 1 part on 1/2/4: 492/474/462 texels cast; the discard line and the WRAP tip ambiguous), and A's x > 1 part (138/137/135 texels the full A would cover) left uncovered on every tested frame: the half shadow through the route; 66 checks |
+| Route level, negative twin (`-less`: ALPHAFUNC LESS) | `refused_function=1`, `tested=0` on frames 1-5, `excluded=1`, `draws=1`; maps B alone, 0 disagreements; 66 checks |
+
+Build: `cmake --build build` 0 warnings; `check_no_x87.py build/d3d9.dll` 684 reachable functions, 0
+violations [M]. Host: `test_shadow_alpha_casters` (launcher, classification driver, program token walk)
+and the shadow modules, 92 tests OK; full suite (`run_host_suite.py`) 258 modules / 2,689 tests with two
+source-text assertions the change moved: `test_object_bounds_log` (the bounds-path call now passes
+`route.alpha_tested`; assertion updated) and `test_hull_emissive_widening` (its "one `GetLevelDesc`, never per
+draw" check: `motion_output.cpp` keeps its one; the test now also counts the replay include, exactly one there,
+inside `alpha_caster_source`, whose single call site is guarded by `alpha_excluded` (option on and the alpha
+programs ready) and the managed-candidate admission, so the option-off path never reaches it); both OK on
+rerun [M].
+
+**Review fixes (same day).** A failed restore of the replay transaction now re-reads the sampler shadows
+(`resync_samplers`, stage 0 and `composition_textures_` included) beside the render-state shadow; the lease
+comment states that a managed texture's content can still change before the replay (accepted). The route
+cases above cover the draw-time lease, the ALPHAFUNC/ALPHAREF read and the pool check; the TEXCOORD0
+refusal (`refused_uv`) and a non-2D stage-0 texture (`refused_texture`) have no fixture frame.
+
+**Not flown.** For the next flight with
+`--shadow-alpha-casters on`: `shadow_alpha_casters tested=` should follow run305's `excluded=` (5.3 mean),
+`refused_pool` / `refused_uv` / `refused_texture` 0 (the game's material textures are assumed
+`D3DPOOL_MANAGED` [I]), and `shadow_cross.py` on the ODS pair at cascade 4 should drop the 3,910
+fine-lit / coarse-shadowed pixels toward 0; replay `us` per frame up by tens of microseconds.

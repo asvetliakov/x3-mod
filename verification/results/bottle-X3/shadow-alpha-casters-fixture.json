@@ -1,0 +1,195 @@
+{
+ "case": "shadow-alpha-casters",
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "binaries": {
+  "verification/probe/build/motion_output_fixture.exe": "4a871f265d16fd97b1bc4e3a04f2713c59bf635337269caa61da335f66799338",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "ffa0120ed2cadd4e71a85e4577e6adce34c6a9512c7e305fe0f23fc09fd555a1",
+  "build/d3d9.dll": "c459a5a07d17c6a43c533a13703eeb50a62c8e1fb2918de05c6b84288e6426ed"
+ },
+ "checks": 26,
+ "maps": {
+  "alpha": {
+   "o1": [
+    8473,
+    8473
+   ],
+   "h_left": [
+    7257,
+    7257
+   ],
+   "h_right": [
+    0,
+    7257
+   ],
+   "z": [
+    0,
+    1369
+   ],
+   "o2": [
+    1369,
+    1369
+   ],
+   "depth_ok": "1",
+   "covered": "18850",
+   "hash": "31c968f001e94262"
+  },
+  "opaque_alpha_pass": {
+   "o1": [
+    8473,
+    8473
+   ],
+   "h_left": [
+    0,
+    7257
+   ],
+   "h_right": [
+    0,
+    7257
+   ],
+   "z": [
+    0,
+    1369
+   ],
+   "o2": [
+    1369,
+    1369
+   ],
+   "depth_ok": "1",
+   "covered": "10530",
+   "hash": "eaa854f911e94262"
+  },
+  "opaque_depth_only": {
+   "o1": [
+    8473,
+    8473
+   ],
+   "h_left": [
+    0,
+    7257
+   ],
+   "h_right": [
+    0,
+    7257
+   ],
+   "z": [
+    0,
+    1369
+   ],
+   "o2": [
+    1369,
+    1369
+   ],
+   "depth_ok": "1",
+   "covered": "10530",
+   "hash": "eaa854f911e94262"
+  },
+  "cascade0": {
+   "o1": [
+    8473,
+    8473
+   ],
+   "h_left": [
+    7257,
+    7257
+   ],
+   "h_right": [
+    0,
+    7257
+   ],
+   "z": [
+    0,
+    1369
+   ],
+   "o2": [
+    0,
+    1369
+   ],
+   "depth_ok": "1",
+   "covered": "17329",
+   "hash": "02c84dd91597cf22"
+  },
+  "cascade1": {
+   "o1": [
+    0,
+    8473
+   ],
+   "h_left": [
+    7257,
+    7257
+   ],
+   "h_right": [
+    0,
+    7257
+   ],
+   "z": [
+    0,
+    1369
+   ],
+   "o2": [
+    1369,
+    1369
+   ],
+   "depth_ok": "1",
+   "covered": "9841",
+   "hash": "05137bb5fcd3b665"
+  },
+  "after_reset": {
+   "o1": [
+    8473,
+    8473
+   ],
+   "h_left": [
+    7257,
+    7257
+   ],
+   "h_right": [
+    0,
+    7257
+   ],
+   "z": [
+    0,
+    1369
+   ],
+   "o2": [
+    1369,
+    1369
+   ],
+   "depth_ok": "1",
+   "covered": "18850",
+   "hash": "31c968f001e94262"
+  }
+ },
+ "state_calls": 35,
+ "device": {
+  "alpha": "1",
+  "programs": "00000000",
+  "references": "4",
+  "depth_only_references": "2"
+ },
+ "refused": {
+  "enabled": "1",
+  "alpha": "0",
+  "programs": "8876086c",
+  "references": "2",
+  "create_ps_calls": "2"
+ },
+ "caps": {
+  "ps": "ffff0300",
+  "vs": "fffe0300",
+  "ps30_slots": "512"
+ },
+ "half_shadow_fraction": 0.5,
+ "exit": 0,
+ "directory": "verification/probe/build/motion-output-shadow-alpha-casters-20260924-214623-131816",
+ "trace_sha256": "b8251cba027f95614508a4dfd44c7ba9eafafc3f36dae3e51cf1e8c47ea8a4a0",
+ "dll_sha256": "ffa0120ed2cadd4e71a85e4577e6adce34c6a9512c7e305fe0f23fc09fd555a1",
+ "exe_sha256": "4a871f265d16fd97b1bc4e3a04f2713c59bf635337269caa61da335f66799338"
+}

@@ -596,6 +596,7 @@ def main():
     parser.add_argument('--shadow-replay-size', type=int, default=None, metavar='N', help='Side of the square depth replay map in texels, 64..4096, default 1024 (X3M_SHADOW_REPLAY_SIZE; requires --shadow-replay-depth); map memory is 4 N^2 bytes (R32F) plus the depth attachment')
     parser.add_argument('--shadow-replay-extent', type=float, default=None, metavar='E', help='Half-extent of the cascade-0 map box in world units in the sun basis, 50..4000, default 250 (X3M_SHADOW_REPLAY_EXTENT; requires --shadow-replay-depth): the world texel is 2 E / N, so a station-wide box (E 1000-1500) needs --shadow-replay-size 2048-4096 for the same texel; the candidate box test, the replay projection and the apply quad share the value')
     parser.add_argument('--shadow-replay-depth-half', type=float, default=None, metavar='D', help='Half depth range of the cascade-0 map box along the sun in world units, 128..8192, default 512 (X3M_SHADOW_REPLAY_DEPTH_HALF; requires --shadow-replay-depth); the apply bias is expressed in world units and rescaled from it per frame')
+    parser.add_argument('--shadow-alpha-casters', choices=('on', 'off'), default=None, help='Alpha-tested routed draws cast sun shadows and keep their alpha test in the caster pass (X3M_SHADOW_ALPHA_CASTERS; default off; on requires --shadow-replay-depth): the draw\'s stage-0 texture (2D, managed pool) is sampled at its TEXCOORD0 and the caster pixel is discarded below its own ALPHAREF (GREATEREQUAL / GREATER; ALWAYS casts opaque; the other comparisons and a draw without TEXCOORD0 stay excluded); one shadow_alpha_casters line per frame. Alpha from the diffuse texture only (docs/architecture/shadow-replay-gates.md, "Alpha-tested casters")')
     parser.add_argument('--shadow-replay-cap', type=int, default=None, metavar='N', help='Managed caster candidates recorded and replayed per frame, 1..1024, default 512 (X3M_SHADOW_REPLAY_CAP; requires --shadow-replay-candidates or --shadow-replay-depth); the rest count capped in the shadow_replay_candidates line')
     parser.add_argument('--shadow-cascades', default=None, metavar='E0,E1,...|default', help='Sun-shadow cascades (X3M_SHADOW_CASCADES; default off: the single --shadow-replay-extent map; requires --shadow-replay-depth): 1..5 ascending half-extents in world units, each 50..150000, of camera-centred texel-snapped maps replayed in one transaction; "default" means 250,1500,7500,25000 (a 30 km reach: 250,1500,7500,37500,150000). Every cascade reaches 2 x the largest extent towards the light, the apply quad selects the first cascade containing a pixel with a 10 %% blend band and fades the last one to lit; the far cascade replays on even frames only while the frame exceeds --shadow-cascade-budget (docs/architecture/shadow-cascades.md)')
     parser.add_argument('--shadow-cascade-sizes', default=None, metavar='N[,N...]', help='Map side per cascade, 64..4096, one value for all or one per cascade, default 4096 (X3M_SHADOW_CASCADE_SIZES; requires --shadow-cascades); memory is 4 N^2 bytes per map plus one depth attachment of the largest size')
@@ -1027,6 +1028,8 @@ def main():
         parser.error('--shadow-replay-depth requires --motion-output --ownership.')
     if args.shadow_replay_size is not None and not args.shadow_replay_depth:
         parser.error('--shadow-replay-size requires --shadow-replay-depth.')
+    if args.shadow_alpha_casters == 'on' and not args.shadow_replay_depth:
+        parser.error('--shadow-alpha-casters on requires --shadow-replay-depth.')
     if args.shadow_replay_size is not None and not 64 <= args.shadow_replay_size <= 4096:
         parser.error('--shadow-replay-size must be within [64, 4096].')
     if (args.shadow_replay_extent is not None or args.shadow_replay_depth_half is not None) and not args.shadow_replay_depth:
@@ -1580,6 +1583,8 @@ def main():
         env['X3M_SUN_SHADOW_APPLY'] = '1' if args.sun_shadow_apply else '0'
         env['X3M_SHADOW_REPLAY_CANDIDATES'] = '1' if (args.shadow_replay_candidates or args.shadow_replay_depth) else '0'
         env['X3M_SHADOW_REPLAY_DEPTH'] = '1' if args.shadow_replay_depth else '0'
+        # Explicit off value so an inherited shell value cannot enable the alpha casters.
+        env['X3M_SHADOW_ALPHA_CASTERS'] = '1' if args.shadow_alpha_casters == 'on' else '0'
         env['X3M_SHADOW_REPLAY_SIZE'] = str(args.shadow_replay_size if args.shadow_replay_size is not None else 1024)
         env['X3M_SHADOW_REPLAY_EXTENT'] = repr(args.shadow_replay_extent if args.shadow_replay_extent is not None else 250.0)
         env['X3M_SHADOW_REPLAY_DEPTH_HALF'] = repr(args.shadow_replay_depth_half if args.shadow_replay_depth_half is not None else 512.0)
