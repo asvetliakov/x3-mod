@@ -20,12 +20,16 @@ constexpr float kAgxMaxEv = 4.026069f;
 constexpr float kAgxLumaWeights[3] = {0.2126f, 0.7152f, 0.0722f}; // static const in the shader
 constexpr float kAgxClampOff = 65504.f;                            // FP16 max: X3M_HDR_CLAMP unset
 constexpr float kAgxDecodeGamma = 2.2f;
+// Display dither of the 8-bit store (display_dither.hlsl, X3M_HDR_DITHER):
+// +-0.5 code, i.e. an amplitude of one code. c8.z of the AgX programs and
+// c23.w of taa_sharpen_ps.hlsl carry it; every other value there is 0.
+constexpr float kDisplayDitherAmplitude = 1.f / 255.f;
 
 enum class AgxDecode { gamma22, srgb, none };
 enum class AgxLook { none, golden, punchy };
 
 struct AgxConstants {
-    float exposure[4]{1.f, kAgxClampOff, 0.f, 0.f};   // c8: exp2(EV), clamp max, -, -
+    float exposure[4]{1.f, kAgxClampOff, 0.f, 0.f};   // c8: exp2(EV), clamp max, display dither amplitude (0 or kDisplayDitherAmplitude), -
     float decode[4]{kAgxDecodeGamma, 0.f, 0.f, 0.f};   // c9: gamma exponent, srgb flag, none flag, -
     float inset[3][4]{                                 // c10..c12: M_in rows, w unused
         {0.842479062253094f, 0.0784335999999992f, 0.0792237451477643f, 0.f},
@@ -65,7 +69,8 @@ inline void set_decode(AgxConstants& out, AgxDecode mode) noexcept {
 
 // exposure_multiplier is exp2(EV_adapted) of the previous frame (exposure.h,
 // stage 2); clamp_max <= 0 means X3M_HDR_CLAMP unset and uploads kAgxClampOff.
-// Everything else in the block is fixed by the reference.
+// Everything else in the block is fixed by the reference; the display
+// dither (exposure[2]) is left at 0 (set_dither below).
 inline bool prepare(AgxConstants& out, float exposure_multiplier, float clamp_max,
                     AgxDecode decode, AgxLook look) noexcept {
     if(!std::isfinite(exposure_multiplier) || exposure_multiplier <= 0
@@ -76,5 +81,12 @@ inline bool prepare(AgxConstants& out, float exposure_multiplier, float clamp_ma
     set_decode(out, decode);
     set_look(out, look);
     return true;
+}
+
+// The display dither of the AgX write-back into the 8-bit target (c8.z). Only
+// the production write-back sets it; the capability self test and a write
+// into an FP16 staging target keep 0.
+inline void set_dither(AgxConstants& out, bool dither) noexcept {
+    out.exposure[2] = dither ? kDisplayDitherAmplitude : 0.f;
 }
 } // namespace x3::temporal

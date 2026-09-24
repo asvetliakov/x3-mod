@@ -61,6 +61,14 @@ struct HdrCaps {
     bool sharpen = false;
     const char* sharpen_reason = "off";
     HRESULT sharpen_shader = S_FALSE;
+    // Display dither of the 8-bit write (X3M_HDR_DITHER): the AgX and RCAS
+    // programs take it as a constant (c8.z, c23.w) and need nothing created;
+    // the identity write-back needs its dithered twin, whose creation failure
+    // leaves only the identity draws undithered (reason "shader").
+    // reason "ok", "off" (not requested), "shader".
+    bool dither = false;
+    const char* dither_reason = "off";
+    HRESULT dither_shader = S_FALSE;
 };
 enum class HdrTonemap : unsigned { Identity = 0, Agx = 1 };
 // Stage-2 switches (X3M_HDR_TONEMAP, X3M_HDR_DECODE, X3M_HDR_LOOK,
@@ -81,6 +89,10 @@ struct HdrConfig {
     // X3M_TAA_SHARPEN in [0, 1]: RCAS of the tonemapped (or identity) image
     // when the write-back samples a resolved TAA image (sharpen.h). 0: off.
     float sharpen = 0.f;
+    // X3M_HDR_DITHER: +-0.5 code static display dither on every write of the
+    // FP16 image into the 8-bit target (display_dither.hlsl). Off unless set;
+    // the launcher's default is on.
+    bool dither = false;
     bool meter_requested() const noexcept { return exposure == ExposureMode::Auto || allow_auto_toggle; }
 };
 const char* hdr_tonemap_name(HdrTonemap tonemap) noexcept;
@@ -175,6 +187,10 @@ public:
     // The sharpen programs are in use (configured, created and not disabled
     // after repeated draw failures); applied only to a resolved source.
     bool sharpen_active() const noexcept { return caps_.sharpen && sharpen_shader_ && sharpen_failures_ < tonemap_failure_limit; }
+    // The identity write-back program in use: the dithered twin when the
+    // display dither is on and it was created, else the plain copy (which the
+    // self test always uses).
+    IDirect3DPixelShader9* identity_shader() const noexcept { return caps_.dither && writeback_dither_shader_ ? writeback_dither_shader_ : shader_; }
     const ExposureState& exposure() const noexcept { return exposure_; }
     ExposureMode exposure_mode() const noexcept { return config_.exposure; }
     // Comparison-only handoff at a closed frame boundary; never provisions
@@ -298,6 +314,7 @@ private:
     HdrCaps caps_{};
     HdrConfig config_{};
     IDirect3DPixelShader9* shader_ = nullptr;   // embedded ps_3_0 identity copy
+    IDirect3DPixelShader9* writeback_dither_shader_ = nullptr; // its display-dithered twin (X3M_HDR_DITHER)
     // The vs_3_0 pass-through and declaration of every quad this pass draws
     // (quad_vertex_program.h); created at attach, surviving Reset, one device
     // reference each. quad_fvf_: the fixture-only XYZRHW twin (never in production).

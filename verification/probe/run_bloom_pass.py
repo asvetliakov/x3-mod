@@ -21,6 +21,8 @@ from game_guard import game_running
 ROOT = builder.ROOT
 sys.path.insert(0, str(ROOT/'verification/analysis'))
 import test_bloom_composition as oracle
+sys.path.insert(0, str(ROOT/'tools/analysis'))
+import agx_reference as agx_ref
 ref = filtering.ref
 NAMES = ('quad_vs', *(f'bloom_{name}_ps' for name in filtering.KERNELS),
          'bloom_agx_ps', 'taa_sharpen_ps', 'hdr_writeback_ps')
@@ -80,7 +82,19 @@ def make_cases():
                               authored_glow_gain=gain, highlight_gain=.05, scatter=.7,
                               source_clamp=0., image=image))
     cases.extend(clamp_cases())
+    cases.extend(dither_cases())
     return cases
+
+
+# X3M_HDR_DITHER (docs/verification/hdr-scene-path.md, "Display dither"): the
+# constant 8x6 gamma2.2 image with bloom, c8.z = 1/255, unsharpened (the direct
+# A8R8G8B8 candidate draw dithers) and sharpened (the FP16 staging draw gets 0,
+# taa_sharpen applies c23.w). The oracle adds the same static pattern.
+def dither_cases():
+    image = [[(2., .5, .125, .375) for x in range(8)] for y in range(6)]
+    return [dict(mode='gamma2.2', kind='dither', width=8, height=6, levels=3, strength=.5, sharp=sharp,
+                 threshold=0., exposure=1., authored_glow_gain=0., highlight_gain=.05, scatter=.7,
+                 source_clamp=0., dither=agx_ref.DITHER_AMPLITUDE, image=image) for sharp in (0., .75)]
 
 
 # The live compositor constants (capture.cpp: authored glow .375, highlight
@@ -115,12 +129,12 @@ def clamp_cases():
 
 def write_cases(cases, path):
     with path.open('wb') as f:
-        f.write(b'X3BP0003' + struct.pack('<I',len(cases)))
+        f.write(b'X3BP0004' + struct.pack('<I',len(cases)))
         for c in cases:
-            f.write(struct.pack('<4I8f',c['width'],c['height'],ref.DECODE_MODES.index(c['mode']),
+            f.write(struct.pack('<4I9f',c['width'],c['height'],ref.DECODE_MODES.index(c['mode']),
                                 c['levels'],c['strength'],c['sharp'],c['threshold'],c['exposure'],
                                 c['authored_glow_gain'],c['highlight_gain'],c['scatter'],
-                                c['source_clamp']))
+                                c['source_clamp'],c.get('dither',0.)))
             for row in c['image']:
                 for p in row:
                     f.write(struct.pack('<4e',*p))
@@ -136,11 +150,17 @@ def expected(c):
     display = [[oracle.composition(e,b,c['strength'],exposure=c['exposure'],mode=c['mode'])
                 for e,b in zip(row,blur)] for row,blur in zip(c['image'],bloom)]
     if not c['sharp']:
-        return [[p[:3] for p in row] for row in display]
-    w,h=c['width'],c['height']
-    def get(x,y): return display[min(h-1,max(0,y))][min(w-1,max(0,x))]
-    return [[oracle.rcas_cross([get(x,y-1),get(x-1,y),get(x,y),get(x+1,y),get(x,y+1)],
-                               2**(-2*(1-c['sharp']))) for x in range(w)] for y in range(h)]
+        out=[[p[:3] for p in row] for row in display]
+    else:
+        w,h=c['width'],c['height']
+        def get(x,y): return display[min(h-1,max(0,y))][min(w-1,max(0,x))]
+        out=[[oracle.rcas_cross([get(x,y-1),get(x-1,y),get(x,y),get(x+1,y),get(x,y+1)],
+                                2**(-2*(1-c['sharp']))) for x in range(w)] for y in range(h)]
+    if c.get('dither',0.):
+        # The static display dither of the final 8-bit write, once, after RCAS.
+        out=[[tuple(agx_ref.dither_display(v,x,y,c['dither']) for v in p[:3]) for x,p in enumerate(row)]
+             for y,row in enumerate(out)]
+    return out
 
 
 def compare(c,path,baseline_path):
@@ -152,10 +172,24 @@ def compare(c,path,baseline_path):
         b,g,r,a=data[i*4:i*4+4]
         alpha_errors+=a!=baseline[i*4+3]
         errors.extend(abs(actual-oracle.code8(wanted)) for actual,wanted in zip((r,g,b),p))
-    return dict(passed=max(errors)<=MAX_CODE_ERROR and alpha_errors==0,
+    result=dict(passed=max(errors)<=MAX_CODE_ERROR and alpha_errors==0,
                 max_code_error=max(errors), mean_code_error=sum(errors)/len(errors),
                 channels=len(errors), alpha_errors=alpha_errors, sha256=filtering.digest(path),
                 original_sha256=filtering.digest(baseline_path))
+    if c.get('dither',0.):
+        # The pattern is present: the constant image does not store one code per channel,
+        # and the mean signed error against the undithered oracle stays near zero.
+        plain=[p for row in expected(dict(c,dither=0.)) for p in row]
+        signed=[]; distinct=[set(),set(),set()]
+        for i,p in enumerate(plain):
+            b,g,r,a=data[i*4:i*4+4]
+            for k,(actual,wanted) in enumerate(zip((r,g,b),p)):
+                signed.append(actual-255.*wanted); distinct[k].add(actual)
+        result.update(dither=c['dither'], mean_signed_error_vs_undithered=sum(signed)/len(signed),
+                      codes_per_channel=[len(s) for s in distinct],
+                      max_code_error_vs_undithered=max(abs(v) for v in signed))
+        result['passed']=result['passed'] and max(len(s) for s in distinct)>1
+    return result
 
 
 # The clamp identities hold where the displayed scene is identical between two

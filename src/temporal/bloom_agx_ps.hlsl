@@ -7,7 +7,9 @@
 // c27.z is the bloom scratch bound. Use the normal writeback's latched exposure
 // in c8; candidate preparation must neither meter nor advance TAA history.
 //
-// No sharpen: write directly into the complete A8R8G8B8 candidate.
+// No sharpen: write directly into the complete A8R8G8B8 candidate, with the
+// display dither of c8.z (display_dither.hlsl). The FP16 staging write gets
+// c8.z = 0 from the host; the sharpen that follows dithers with c23.w.
 // Sharpen: write display RGB once into A16B16G16R16F staging, then run existing
 // taa_sharpen_ps.hlsl into the complete A8R8G8B8 candidate. The stage is AFTER
 // AgX, never a FP16 store of the exposed scene+bloom sum. This introduces
@@ -20,7 +22,7 @@
 #include "bloom_common.hlsl"
 sampler2D reconstructedBloom : register(s1);
 
-float4 main(float2 uv : TEXCOORD0) : COLOR0
+float4 main(float2 uv : TEXCOORD0, float2 vpos : VPOS) : COLOR0
 {
     float4 scene = tex2Dlod(sceneColor, float4(uv, 0, 0));
     // Preserve the base AgX arithmetic, including identity-decode negatives
@@ -29,5 +31,6 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0
     v = min(v, exposure.y);
     v *= exposure.x;
     v = bloomComposite(v, bloomTent(reconstructedBloom, uv));
-    return agxTonemapExposed(v, scene.a);
+    float4 c = agxTonemapExposed(v, scene.a);
+    return float4(displayDither(c.rgb, vpos, exposure.z), c.a);
 }

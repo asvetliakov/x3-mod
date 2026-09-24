@@ -57,19 +57,21 @@ struct Case {
     // Zero is the unbounded feed; any positive value is the decoded-space
     // bloom source ceiling of docs/architecture/bloom-falloff.md.
     float source_clamp;
+    float dither;   // c8.z of the write-back (X3M_HDR_DITHER): 0 or 1/255
     std::vector<unsigned short> pixels;
 };
 std::vector<Case> cases(const std::string& directory) {
     std::ifstream f(directory + "/cases.bin", std::ios::binary);
-    char magic[8]; require(bool(f.read(magic, 8)) && !std::memcmp(magic, "X3BP0003", 8), "input magic");
-    unsigned n = read<unsigned>(f); require(n == 45, "input count");
+    char magic[8]; require(bool(f.read(magic, 8)) && !std::memcmp(magic, "X3BP0004", 8), "input magic");
+    unsigned n = read<unsigned>(f); require(n == 47, "input count");
     std::vector<Case> out;
     for (unsigned i = 0; i < n; ++i) {
         Case c{}; c.w=read<unsigned>(f); c.h=read<unsigned>(f); c.mode=read<unsigned>(f);
         c.levels=read<unsigned>(f);
         c.strength=read<float>(f); c.sharp=read<float>(f); c.threshold=read<float>(f);
         c.exposure=read<float>(f); c.authored_glow_gain=read<float>(f); c.highlight_gain=read<float>(f);
-        c.scatter=read<float>(f); c.source_clamp=read<float>(f);
+        c.scatter=read<float>(f); c.source_clamp=read<float>(f); c.dither=read<float>(f);
+        require(c.dither==0.f||c.dither==x3::temporal::kDisplayDitherAmplitude, "input dither");
         require(c.w >= 4 && c.w <= 64 && c.h >= 4 && c.h <= 64 && c.mode < 3, "input bounds");
         x3::temporal::BloomParams params{};params.strength=c.strength;params.threshold=c.threshold;
         params.levels=c.levels;params.scatter=c.scatter;
@@ -254,6 +256,7 @@ unsigned run_case(IDirect3DDevice9* d,const D3DCAPS9& caps,void* const* native,c
     input.filter.highlight_gain=c.highlight_gain;
     if(c.source_clamp>0.f)input.filter.source_clamp=c.source_clamp;
     require(x3::temporal::prepare(input.agx,c.exposure,0,input.decode,x3::temporal::AgxLook::none),"AgX constants");
+    x3::temporal::set_dither(input.agx,c.dither>0.f);
     auto& boundary=input.boundary;boundary.main=main.surface.p;check(main.surface->GetDesc(&boundary.main_desc),"Main desc");
     boundary.frame=7;boundary.reset=post_reset?3:2;boundary.thread=GetCurrentThreadId();boundary.admitted=true;
     unsigned checks=0;

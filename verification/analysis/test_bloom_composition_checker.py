@@ -44,7 +44,7 @@ class CompositionCheckerTests(unittest.TestCase):
     def test_comparison_expands_authored_shader_and_shared_tail(self):
         source = ROOT / 'verification/probe/bloom_agx_fused_comparison_ps.hlsl'
         expanded, includes = checker.generator.expand_includes(source)
-        expected = ['bloom_agx_ps.hlsl', 'agx.hlsl', 'bloom_common.hlsl', 'rcas.hlsl']
+        expected = ['bloom_agx_ps.hlsl', 'agx.hlsl', 'display_dither.hlsl', 'bloom_common.hlsl', 'rcas.hlsl']
         self.assertEqual([p.name for p in includes], expected)
         self.assertIn('#define main bloomComposedTap', expanded)
         self.assertIn('#undef main', expanded)

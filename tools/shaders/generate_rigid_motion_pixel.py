@@ -8,7 +8,9 @@ the current-depth fragment
 the temporal resolve the live route runs (temporal step 3;
 src/temporal/resolve.hlsl -> src/renderer/temporal_resolve_program_inc.h),
 the HDR scene path's stage-1 identity write-back (src/temporal/hdr_writeback_ps.hlsl
--> src/renderer/hdr_writeback_program_inc.h) and its stage-2 AgX tonemap
+-> src/renderer/hdr_writeback_program_inc.h; its display-dithered twin
+src/temporal/hdr_writeback_dither_ps.hlsl -> hdr_writeback_dither_program_inc.h)
+and its stage-2 AgX tonemap
 (src/temporal/agx.hlsl -> src/renderer/hdr_tonemap_program_inc.h) and exposure
 meter chain (src/temporal/hdr_meter_level0_ps.hlsl and hdr_meter_reduce_ps.hlsl
 -> src/renderer/hdr_meter_level0_program_inc.h, hdr_meter_reduce_program_inc.h),
@@ -98,6 +100,10 @@ SHADERS = {
     'hdr_writeback': dict(source=ROOT / 'src/temporal/hdr_writeback_ps.hlsl',
                           header=ROOT / 'src/renderer/hdr_writeback_program_inc.h',
                           provenance=ROOT / 'verification/results/hdr-writeback-program.json'),
+    # The identity write-back with the static display dither (X3M_HDR_DITHER).
+    'hdr_writeback_dither': dict(source=ROOT / 'src/temporal/hdr_writeback_dither_ps.hlsl',
+                                 header=ROOT / 'src/renderer/hdr_writeback_dither_program_inc.h',
+                                 provenance=ROOT / 'verification/results/hdr-writeback-dither-program.json'),
     'hdr_tonemap': dict(source=ROOT / 'src/temporal/agx.hlsl',
                         header=ROOT / 'src/renderer/hdr_tonemap_program_inc.h',
                         provenance=ROOT / 'verification/results/hdr-tonemap-program.json'),

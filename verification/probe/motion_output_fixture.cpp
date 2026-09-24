@@ -393,6 +393,7 @@ struct Fixture {
     bool seam = false, enabled = false, jitter = false, taa = false, bench = false, burst = false, lazy = false, envmap = false;
     bool routebench = false; unsigned routebench_draws = 400; // "routebench [draws]": per-routed-draw CPU cost (run_route_bench.py)
     float sharpen = 0.f;   // X3M_TAA_SHARPEN: the presented image is RCAS of the resolved one (the runner compares it against the Python reference)
+    bool hdr_dither = false; // X3M_HDR_DITHER=1: the presented cells carry the +-0.5 code display dither (the runner checks it per pixel)
     bool hook = false, wrap = false, burst_mask = false, state_shadow = true, hdr = false, hdrvalues = false, hdrfault = false;
     int (*hull_toggle)(IDirect3DDevice9*,int) = nullptr; // x3m_hull_emission_fixture_toggle: the F4 (lightmap=1) and F6 (lightmap=0) hull actions
     bool hdrramp = false, hdrexposure = false, hdrtonemapfault = false; // stage-2 scripts
@@ -1069,7 +1070,7 @@ struct Fixture {
         resolve_expected = true;
         std::printf("COLOR_BEFORE frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(before_image)));
         if (unmatchedstatic) { boundary_before = before_image; boundary_after = after_image; }
-        else if (!hdr_agx) verify_coverage(before_image); // the oracle reads raster colours; an AgX write-back presents tonemapped ones
+        else if (!hdr_agx && !hdr_dither) verify_coverage(before_image); // the oracle reads raster colours; an AgX or dithered write-back presents others
     }
     // Every presented frame beside the executable, for the runner's per-pixel
     // comparisons between runs (the HDR twins): row-major BGRA8, no header.
@@ -1084,7 +1085,7 @@ struct Fixture {
         const auto image = color_image();
         std::printf("COLOR frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(image)));
         write_presented(image);
-        if (!taa && !skip_coverage && !hdr_agx) verify_coverage(image);
+        if (!taa && !skip_coverage && !hdr_agx && !hdr_dither) verify_coverage(image);
         skip_coverage = false;
         previous_presented = image;
         if (unmatchedstatic) { if (custom_verify) custom_verify(*this); } else verify_motion();
@@ -1673,7 +1674,7 @@ struct Fixture {
                     at_hook ? "hook" : glow ? "stretchrect" : "none", glow, outside);
         ++taa_frames; taa_history_frames += history; taa_changed_pixels += changed;
         std::printf("COLOR_BEFORE frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(before_image)));
-        if (!hdr_agx) verify_coverage(before_image); // the oracle reads raster colours; an AgX write-back presents tonemapped ones
+        if (!hdr_agx && !hdr_dither) verify_coverage(before_image); // the oracle reads raster colours; an AgX or dithered write-back presents others
         api(d->EndScene(), "EndScene");
         const auto image = color_image();
         std::printf("COLOR frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(image)));
@@ -2704,15 +2705,26 @@ struct Fixture {
         const auto image = color_image();
         std::printf("COLOR frame=%llu hash=%016llx\n", frame, static_cast<unsigned long long>(color_hash(image)));
         write_presented(image);
-        unsigned nonuniform = 0;
+        // With the display dither (X3M_HDR_DITHER) a cell is not uniform but
+        // every pixel lies within one code per channel of the centre (alpha
+        // exact); the runner checks each pixel against reference + pattern.
+        unsigned nonuniform = 0, beyond_one = 0;
         for (unsigned row = 0; row < ramp_rows; ++row) for (unsigned col = 0; col < ramp_columns; ++col) {
             const DWORD centre = image[std::size_t(row) * W + col * ramp_column_width + ramp_column_width / 2];
             bool uniform = true;
-            for (unsigned x = 0; x < ramp_column_width; ++x) uniform = uniform && image[std::size_t(row) * W + col * ramp_column_width + x] == centre;
+            for (unsigned x = 0; x < ramp_column_width; ++x) {
+                const DWORD value = image[std::size_t(row) * W + col * ramp_column_width + x];
+                uniform = uniform && value == centre;
+                for (unsigned c = 0; c < 4; ++c) {
+                    const int a = int((value >> (8 * c)) & 255), e = int((centre >> (8 * c)) & 255);
+                    beyond_one += (c == 3 ? a != e : std::abs(a - e) > 1);
+                }
+            }
             nonuniform += !uniform;
             std::printf("RAMP frame=%llu row=%u col=%u input=%.9g presented=%08lx uniform=%u\n", frame, row, col, ramp_value(row), centre, uniform);
         }
-        require(!nonuniform, "every ramp cell presents one code on all its pixels");
+        if (hdr_dither) require(!beyond_one, "every ramp cell stays within one code of its centre (dithered)");
+        else require(!nonuniform, "every ramp cell presents one code on all its pixels");
         exposure_state_line("EXPOSURE_STATE");
         api(d->Present(nullptr, nullptr, nullptr, nullptr), "Present");
         ++frame; ++frames_since_reset;
@@ -3137,6 +3149,7 @@ int main(int argc, char** argv) {
         f.hdr = f.enabled && GetEnvironmentVariableA("X3M_HDR", setting, sizeof setting) == 1 && setting[0] == '1';
         f.hull_toggle = symbol<int (*)(IDirect3DDevice9*,int)>(runtime, "x3m_hull_emission_fixture_toggle", false);
         f.hdr_agx = f.hdr && GetEnvironmentVariableA("X3M_HDR_TONEMAP", setting, sizeof setting) > 0 && (!std::strcmp(setting, "agx") || !std::strcmp(setting, "1"));
+        f.hdr_dither = f.hdr && GetEnvironmentVariableA("X3M_HDR_DITHER", setting, sizeof setting) > 0 && (!std::strcmp(setting, "1") || !std::strcmp(setting, "on"));
         if (f.taa && GetEnvironmentVariableA("X3M_TAA_SHARPEN", setting, sizeof setting) > 0) { const float v = float(std::atof(setting)); if (v > 0.f && v <= 1.f) f.sharpen = v; }
         // A caps/self-test fault must be queued before the device is created (attach).
         if (f.hdr_fault && GetEnvironmentVariableA("X3M_FIXTURE_HDR_FAULT", setting, sizeof setting) > 0) f.hdr_fault(nullptr, unsigned(std::atoi(setting)), 1);

@@ -58,11 +58,12 @@ class MotionOutputRunnerTests(unittest.TestCase):
                      'seam-taa-hdr-tonemap-auto', 'seam-taa-hdr-tonemap-fault'}
         automatic |= {f'bench-{size}-hdr-tonemap-taa-{suffix}' for size in ('1280x768', '5120x1440')
                       for suffix in ('off', 'on', 'sharpen-on')}
-        manual = {f'seam-hdr-ramp-{suffix}': '0' for suffix in ('none', 'golden', 'punchy', 'decode-none', 'decode-srgb', 'clamp4', 'identity')}
+        manual = {f'seam-hdr-ramp-{suffix}': '0' for suffix in ('none', 'golden', 'punchy', 'decode-none', 'decode-srgb', 'clamp4', 'identity',
+                                                                'dither', 'identity-dither')}
         manual.update({'seam-hdr-ramp-ev-minus2': '-2', 'seam-hdr-ramp-ev-plus1-punchy': '1', 'production-hdr-ramp-none': '0',
                        'seam-taa-hdr-tonemap-on': '0', 'seam-taa-hdr-tonemap-ev1': '1', 'seam-taa-hdr-tonemap-k0': '0',
                        'seam-ownership-taa-hdr-tonemap-on': '0', 'production-taa-hdr-tonemap-on': '0',
-                       'seam-taa-hook-hdr-tonemap-on': '0', 'seam-taa-hdr-tonemap-sharpen-on': '0',
+                       'seam-taa-hook-hdr-tonemap-on': '0', 'seam-taa-hdr-tonemap-sharpen-on': '0', 'seam-taa-hdr-tonemap-sharpen-dither': '0',
                        'seam-taa-cutout-blended': '0', 'seam-taa-cutout-opaque': '0',
                        'seam-taa-fade-route-routed': '0', 'seam-taa-fade-route-routed-perdraw': '0', 'seam-taa-fade-route-masked': '0',
                        'seam-taa-fade-route-sentinel': '0', 'seam-taa-fade-route-hover': '0', 'seam-taa-fade-route-original': '0',
@@ -71,7 +72,7 @@ class MotionOutputRunnerTests(unittest.TestCase):
                        'seam-taa-cutout-opaque-get': '0'})
         self.assertEqual({n for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'auto'}, automatic)
         self.assertEqual({n: e['X3M_HDR_EV_MANUAL'] for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'manual'}, manual)
-        self.assertEqual((len(hdr), len(automatic), len(manual)), (73, 14, 31))  # 4 seam-*lightmap-far-fade* and 7 seam-lightmap-widen-* cases set no exposure mode (runtime default)
+        self.assertEqual((len(hdr), len(automatic), len(manual)), (77, 14, 34))  # 4 seam-*lightmap-far-fade* and 7 seam-lightmap-widen-* cases set no exposure mode (runtime default)
         for name, env in hdr.items():
             with self.subTest(case=name):
                 if name in automatic:

@@ -1,6 +1,7 @@
 """AgX host reference (design §3): curve properties, constants, and header/shader consistency."""
 import hashlib
 import json
+import math
 import re
 import subprocess
 import sys
@@ -154,7 +155,10 @@ class CompiledProgramTests(unittest.TestCase):
     def test_manifests_pin_the_sources(self):
         for name, source in (('hdr-tonemap-program', 'src/temporal/agx.hlsl'),
                              ('hdr-meter-level0-program', 'src/temporal/hdr_meter_level0_ps.hlsl'),
-                             ('hdr-meter-reduce-program', 'src/temporal/hdr_meter_reduce_ps.hlsl')):
+                             ('hdr-meter-reduce-program', 'src/temporal/hdr_meter_reduce_ps.hlsl'),
+                             ('hdr-tonemap-sharpen-program', 'src/temporal/agx_sharpen_ps.hlsl'),
+                             ('taa-sharpen-program', 'src/temporal/taa_sharpen_ps.hlsl'),
+                             ('hdr-writeback-dither-program', 'src/temporal/hdr_writeback_dither_ps.hlsl')):
             manifest = json.loads((ROOT / 'verification/results' / f'{name}.json').read_text())
             self.assertEqual(manifest['source'], source)
             self.assertEqual(manifest['source_sha256'], hashlib.sha256((ROOT / source).read_bytes()).hexdigest(), name)
@@ -162,6 +166,8 @@ class CompiledProgramTests(unittest.TestCase):
             header = ROOT / 'src/renderer' / (name.replace('-', '_') + '_inc.h')
             self.assertEqual(manifest['header_sha256'], hashlib.sha256(header.read_bytes()).hexdigest(), name)
             self.assertEqual(manifest['word_count'], header.read_text().count('0x'))
+            for include, digest in (manifest['includes'] or {}).items():
+                self.assertEqual(digest, hashlib.sha256((ROOT / include).read_bytes()).hexdigest(), (name, include))
 
     def test_meter_shader_mirrors_the_reference(self):
         text = (ROOT / 'src/temporal/hdr_meter_level0_ps.hlsl').read_text()
@@ -169,6 +175,67 @@ class CompiledProgramTests(unittest.TestCase):
         self.assertEqual(sorted(int(m) for m in re.findall(r'register\(c(\d+)\)', text)), [0, 1, 2, 3])
         self.assertIn('log2(clamp(L, meter.x, meter.y))', text)
         self.assertIn('acc * (1.0 / 16.0)', text)
+
+
+class DitherTests(unittest.TestCase):
+    """X3M_HDR_DITHER (display_dither.hlsl): the static +-0.5 code dither of the 8-bit store."""
+    W, H = 128, 128
+
+    def test_expected_code_per_pixel(self):
+        # Pixel (0, 0): the pattern at the centre (0.5, 0.5), by hand.
+        inner = 0.06711056 * 0.5 + 0.00583715 * 0.5
+        self.assertAlmostEqual(ref.dither_noise(0, 0), (52.9829189 * inner) % 1.0, places=12)
+        for y in range(0, self.H, 7):
+            for x in range(0, self.W, 5):
+                n = ref.dither_noise(x, y)
+                self.assertTrue(0.0 <= n < 1.0)
+                for v in (0.0, 0.25, 0.4967, 100.3 / 255.0, 254.6 / 255.0, 1.0, -0.2, 1.7):
+                    code = ref.store_code(ref.dither_display(v, x, y))
+                    c = min(max(v, 0.0), 1.0)
+                    # round(255 c + n - 0.5) = floor(255 c + n), clamped by the saturated store.
+                    self.assertEqual(code, math.floor(255.0 * c + n) if 0.0 < c < 1.0 else ref.store_code(c), (x, y, v))
+                    self.assertLessEqual(abs(code - 255.0 * c), 1.0)
+                # Amplitude 0 returns the input unchanged in the reference (inputs in [0, 1]).
+                self.assertEqual(ref.dither_display(0.3, x, y, 0.0), 0.3)
+        # Black and white stay exact: the offset is below half a code.
+        self.assertTrue(all(ref.store_code(ref.dither_display(v, x, y)) == c
+                            for v, c in ((0.0, 0), (1.0, 255)) for y in range(self.H) for x in range(self.W)))
+
+    def test_constant_input_spread_and_mean(self):
+        for fraction in (0.0, 0.1, 0.25, 0.5, 0.73, 0.9, 0.99):
+            v = (100.0 + fraction) / 255.0
+            codes = [ref.store_code(ref.dither_display(v, x, y)) for y in range(self.H) for x in range(self.W)]
+            undithered = ref.store_code(v)
+            self.assertLessEqual(max(codes) - min(codes), 1, fraction)
+            mean = sum(codes) / len(codes)
+            # The mean is the unquantised value (the undithered code when the
+            # input sits on a code) within 0.01 code.
+            self.assertAlmostEqual(mean, 255.0 * v, delta=0.01, msg=fraction)
+            if fraction == 0.0:
+                self.assertEqual(set(codes), {undithered})
+            else:
+                self.assertEqual(set(codes), {100, 101}, fraction)
+
+    def test_shader_and_header_carry_the_reference(self):
+        text = (ROOT / 'src/temporal/display_dither.hlsl').read_text()
+        self.assertIn('static const float2 ditherIgnWeights = float2(%r, %r);' % ref.DITHER_IGN_WEIGHTS, text)
+        self.assertIn('static const float ditherIgnScale = %r;' % ref.DITHER_IGN_SCALE, text)
+        self.assertIn('frac(ditherIgnScale * frac(dot(floor(vpos) + 0.5, ditherIgnWeights)))', text)
+        self.assertIn('saturate(saturate(c) + (displayDitherNoise(vpos) - 0.5) * amplitude)', text)
+        self.assertIn('constexpr float kDisplayDitherAmplitude = 1.f / 255.f;', HEADER.read_text())
+        self.assertAlmostEqual(ref.DITHER_AMPLITUDE, 1.0 / 255.0)
+        # Every program that stores the FP16 image into the 8-bit target applies it once, after the transform.
+        for source, call in (('agx.hlsl', 'displayDither(c.rgb, vpos, exposure.z)'),
+                             ('agx_sharpen_ps.hlsl', 'displayDither(rcas(b, d, e.rgb, f, h), vpos, exposure.z)'),
+                             ('taa_sharpen_ps.hlsl', 'displayDither(rcas(b, d, e.rgb, f, h), vpos, sharpenConstants.w)'),
+                             ('bloom_agx_ps.hlsl', 'displayDither(c.rgb, vpos, exposure.z)'),
+                             ('hdr_writeback_dither_ps.hlsl', 'displayDither(c.rgb, vpos, 1.0 / 255.0)')):
+            code = re.sub(r'//[^\n]*', '', (ROOT / 'src/temporal' / source).read_text())
+            self.assertEqual(code.count('displayDither('), 1, source)
+            self.assertIn(call, code, source)
+            self.assertIn('float2 vpos : VPOS', code, source)
+        # The plain identity copy stays undithered (8-bit to 8-bit copies and the self test use it).
+        self.assertNotIn('dither', (ROOT / 'src/temporal/hdr_writeback_ps.hlsl').read_text().lower())
 
 
 class RampTests(unittest.TestCase):

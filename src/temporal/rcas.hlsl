@@ -26,7 +26,9 @@
 //
 // c23 (x3::temporal::kSharpenRegister; the resolve owns c0..c7 and c22, the
 // AgX block c8..c21): x = sharpness gain exp2(-stops) in (0, 1] (1 = the
-// strongest published setting, 0 stops), y = 1 / width, z = 1 / height, w = 0.
+// strongest published setting, 0 stops), y = 1 / width, z = 1 / height, w = the
+// display dither amplitude taa_sharpen_ps.hlsl applies (0 = none; RCAS itself
+// never reads it).
 float4 sharpenConstants : register(c23);
 
 // Luma times two, the published weights (R/2 + G + B/2).

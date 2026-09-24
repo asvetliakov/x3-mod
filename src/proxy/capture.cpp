@@ -124,7 +124,8 @@ float taa_history_weight = .9f;  // X3M_TAA_HISTORY_WEIGHT (0.5..0.98)
 // path (docs/architecture/hdr-scene-path.md). Stage 2 switches, all
 // defaulting to the stage-1 identity behaviour: X3M_HDR_TONEMAP=agx|identity,
 // X3M_HDR_DECODE=gamma2.2|pow22|srgb|none, X3M_HDR_LOOK=none|golden|punchy,
-// X3M_HDR_CLAMP=<float>, X3M_HDR_EXPOSURE=auto|manual|fixed, X3M_HDR_EV_MANUAL=<ev>
+// X3M_HDR_CLAMP=<float>, X3M_HDR_DITHER=1|on (display dither, default off),
+// X3M_HDR_EXPOSURE=auto|manual|fixed, X3M_HDR_EV_MANUAL=<ev>
 // (implies manual), X3M_HDR_EV=<offset> (alias X3M_HDR_EV_OFFSET),
 // X3M_HDR_KEY, X3M_HDR_EV_MIN/MAX, X3M_HDR_ADAPT_UP/DOWN (seconds),
 // X3M_HDR_METER_BG (tile background floor, scene units), X3M_HDR_METER_MIN_LIT
@@ -3067,7 +3068,11 @@ void initialize_log(HMODULE module) {
         if(!wcscmp(setting,L"golden"))hdr_config.look=x3::temporal::AgxLook::golden;
         else if(!wcscmp(setting,L"punchy"))hdr_config.look=x3::temporal::AgxLook::punchy;
     }
-    if(GetEnvironmentVariableW(L"X3M_HDR_CLAMP",setting,32)>0){const float v=wcstof(setting,nullptr);if(v>0&&v<=65504.f)hdr_config.clamp_max=v;}
+    {const DWORD n=GetEnvironmentVariableW(L"X3M_HDR_CLAMP",setting,32);if(n>0&&n<32){const float v=wcstof(setting,nullptr);if(v>0&&v<=65504.f)hdr_config.clamp_max=v;}}
+    // X3M_HDR_DITHER=1|on: +-0.5 code static display dither of every write of
+    // the FP16 image into the 8-bit target (off when unset; the launcher's
+    // --hdr-dither defaults to on).
+    {const DWORD n=GetEnvironmentVariableW(L"X3M_HDR_DITHER",setting,32);if(n>0&&n<32)hdr_config.dither=!wcscmp(setting,L"1")||!wcscmp(setting,L"on");}
     const DWORD exposure_length=GetEnvironmentVariableW(L"X3M_HDR_EXPOSURE",setting,32);
     if(exposure_length>0)hdr_config.exposure=(exposure_length<32 && !wcscmp(setting,L"auto"))
         ? x3m::renderer::ExposureMode::Auto : x3m::renderer::ExposureMode::Manual;

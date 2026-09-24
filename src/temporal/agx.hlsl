@@ -12,7 +12,8 @@
 //        through the -0.5 pixel quad of resolve.hlsl. The alpha carries through.
 //   out  the game's A8R8G8B8 main surface, SRGBWRITEENABLE=FALSE, blending off.
 //        oC0.rgb is ALREADY display encoded by the outset matrix; there is no
-//        pow(2.2) here (the standard AgX integration bug, §3).
+//        pow(2.2) here (the standard AgX integration bug, §3). main() adds the
+//        static display dither (c8.z) to the saturated result; alpha untouched.
 //
 // Documented caveat (§2): the game blended in gamma space, so decoding at this
 // input is not physically exact; X3M_HDR_DECODE=none exists for the A/B.
@@ -20,7 +21,10 @@
 // Constant layout: c8..c21, chosen away from the resolve's c0..c7 so both
 // programs can share one device constant file without clobbering each other.
 //   c8   exposure    x exp2(EV_adapted) of frame n-1, y clamp max on the decoded
-//                    input (X3M_HDR_CLAMP; the host writes 65504 when off), zw 0
+//                    input (X3M_HDR_CLAMP; the host writes 65504 when off),
+//                    z display dither amplitude of the 8-bit store
+//                    (display_dither.hlsl; 1/255 with X3M_HDR_DITHER, else 0;
+//                    a write into an FP16 staging target gets 0), w 0
 //   c9   decodeMode  x gamma exponent (2.2), y sRGB-piecewise flag, z none flag
 //                    (exactly one of {x>0, y, z} in use; the host validates)
 //   c10  inset0      rows of M_in  (w unused)
@@ -35,6 +39,7 @@
 //   c19  lookSlope   xyz slope, w saturation           (none/golden/punchy, §3)
 //   c20  lookOffset  xyz offset, w 0
 //   c21  lookPower   xyz power, w 0
+#include "display_dither.hlsl"
 sampler2D sceneColor : register(s0);
 float4 exposure   : register(c8);
 float4 decodeMode : register(c9);
@@ -124,8 +129,9 @@ float4 agxTonemap(float4 scene)
 }
 
 #ifndef AGX_NO_MAIN
-float4 main(float2 uv : TEXCOORD0) : COLOR0
+float4 main(float2 uv : TEXCOORD0, float2 vpos : VPOS) : COLOR0
 {
-    return agxTonemap(tex2Dlod(sceneColor, float4(uv, 0, 0)));
+    float4 c = agxTonemap(tex2Dlod(sceneColor, float4(uv, 0, 0)));
+    return float4(displayDither(c.rgb, vpos, exposure.z), c.a);
 }
 #endif

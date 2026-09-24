@@ -73,7 +73,9 @@ reference. The device-facing route lives in `src/proxy/motion_output.cpp`; see
 
 `HdrPass` owns the `A16B16G16R16F` scene target the live route binds as RT0,
 the attach-time capability gate and self test, and the write-back into the
-game's 8-bit target: the stage-1 identity copy (`hdr_writeback_program{,_inc}.h`)
+game's 8-bit target: the stage-1 identity copy (`hdr_writeback_program{,_inc}.h`;
+with `X3M_HDR_DITHER` its display-dithered twin `hdr_writeback_dither_program{,_inc}.h`,
+the AgX programs then carrying the dither amplitude in c8.z)
 or, configured with `X3M_HDR_TONEMAP=agx`, the AgX tonemap
 (`hdr_tonemap_program{,_inc}.h`, compiled from `src/temporal/agx.hlsl` with the
 constant block of `src/temporal/agx.h`) preceded by the exposure meter chain

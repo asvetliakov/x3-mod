@@ -123,9 +123,9 @@ class FixtureAcceptance(unittest.TestCase):
         self.assertNotEqual(fixture.RESET_CASE_INDEX,len(self.cases)-1)
 
     def test_source_clamp_cases_pin_live_constants_and_the_clamp_identities(self):
-        clamp=self.cases[36:]
+        clamp=self.cases[36:45]
         self.assertEqual(len(clamp),9)
-        self.assertEqual(len(self.cases),45)
+        self.assertEqual(len(self.cases),47)
         for c in clamp:
             self.assertEqual((c['kind'],c['mode'],c['levels'],c['scatter']),('clamp','gamma2.2',5,.65))
             self.assertEqual((c['authored_glow_gain'],c['highlight_gain'],c['threshold'],c['strength']),
@@ -213,14 +213,14 @@ class FixtureAcceptance(unittest.TestCase):
             fixture.write_cases(self.cases,a);fixture.write_cases(fixture.make_cases(),b)
             self.assertEqual(a.read_bytes(),b.read_bytes())
             payload=a.read_bytes()
-            self.assertEqual(payload[:12],b'X3BP0003'+struct.pack('<I',45))
+            self.assertEqual(payload[:12],b'X3BP0004'+struct.pack('<I',47))
             offset=12
             for c in self.cases:
-                header=struct.pack('<4I8f',c['width'],c['height'],
+                header=struct.pack('<4I9f',c['width'],c['height'],
                                    fixture.ref.DECODE_MODES.index(c['mode']),c['levels'],
                                    c['strength'],c['sharp'],c['threshold'],c['exposure'],
                                    c['authored_glow_gain'],c['highlight_gain'],c['scatter'],
-                                   c['source_clamp'])
+                                   c['source_clamp'],c.get('dither',0.))
                 self.assertEqual(payload[offset:offset+len(header)],header)
                 offset+=len(header)+c['width']*c['height']*8
             self.assertEqual(offset,len(payload))

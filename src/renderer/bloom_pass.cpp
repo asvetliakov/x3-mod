@@ -483,6 +483,9 @@ HRESULT BloomPass::validate_inputs(const BloomPrepare& p) const noexcept {
     for (unsigned i = 0; i < 4; ++i) if (p.agx.decode[i] != expected.decode[i]) return E_INVALIDARG;
     if (p.agx.exposure[0] <= 0 || p.agx.exposure[0] > x3::temporal::kAgxClampOff
         || p.agx.exposure[1] <= 0 || p.agx.exposure[1] > x3::temporal::kAgxClampOff) return E_INVALIDARG;
+    // c8.z is the display dither of the write-back this candidate replaces:
+    // off or the one amplitude the shaders are built for, nothing else.
+    if (p.agx.exposure[2] != 0.f && p.agx.exposure[2] != x3::temporal::kDisplayDitherAmplitude) return E_INVALIDARG;
     D3DSURFACE_DESC scene{};
     HRESULT hr = p.scene->GetLevelDesc(0, &scene);
     if (FAILED(hr)) return hr;
@@ -584,8 +587,13 @@ BloomPreparation BloomPass::prepare(const BloomPrepare& p) noexcept {
     }
     if (SUCCEEDED(result.operation)) {
         geometry(c, sw, sh, width, height);
+        // The display dither (c8.z) belongs to the 8-bit write: the direct
+        // candidate draw keeps it, the FP16 staging draw before the sharpen
+        // gets 0 and the sharpen applies it once (c23.w below).
+        x3::temporal::AgxConstants agx = p.agx;
+        if (p.sharpen > 0) agx.exposure[2] = 0.f;
         result.operation = call<SetConstants>(SetPixelShaderConstantF)(device_, x3::temporal::kAgxFirstRegister,
-            p.agx.exposure, x3::temporal::kAgxRegisterCount);
+            agx.exposure, x3::temporal::kAgxRegisterCount);
         if (SUCCEEDED(result.operation)) result.operation = fault(BloomFault::PrepareDraw) ? E_FAIL
             : draw(p.sharpen > 0 ? resources_.stage : resources_.candidate, candidate_, p.scene, source, &c);
     }
@@ -593,6 +601,7 @@ BloomPreparation BloomPass::prepare(const BloomPrepare& p) noexcept {
         x3::temporal::SharpenConstants sharp{};
         if (p.exact_sharpen) sharp = p.sharpen_constants;
         else if (!x3::temporal::prepare_sharpen(sharp, p.sharpen, width, height)) result.operation = E_INVALIDARG;
+        sharp.values[3] = p.agx.exposure[2]; // display dither of the 8-bit candidate write (taa_sharpen_ps.hlsl)
         if (SUCCEEDED(result.operation)) result.operation = call<SetConstants>(SetPixelShaderConstantF)(device_, x3::temporal::kSharpenRegister, sharp.values, 1);
         if (SUCCEEDED(result.operation)) result.operation = fault(BloomFault::PrepareDraw) ? E_FAIL
             : draw(resources_.candidate, sharpen_, views.stage, nullptr);

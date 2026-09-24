@@ -634,6 +634,7 @@ def main():
     light_map_fade.add_argument('--light-map-far-fade', default=None, metavar='P0,P1[,G]', help='Fade the hull light-map gain with distance: a routed hull draw keeps --hull-lightmap-gain while its pixel footprint (world units per pixel at the object origin, the --taa-far-stabiliser measure) is below P0 and falls linearly to G (default 1 = the game\'s own brightness, within [0, gain]) at P1, so sub-pixel glowing windows of distant objects stop shimmering under TAA. 0 < P0 < P1 <= 1e6; launcher default 80,220,1. The option latches the camera projection itself (no --taa needed). Enabled by default with an active original-hull light-map gain; --no-light-map-far-fade disables it. Requires an active light-map gain (--hdr, not --linear-materials, gain above 1).')
     light_map_fade.add_argument('--no-light-map-far-fade', action='store_true', help='Disable the default distance fade of hull light-map brightness; keep the configured gain at all distances.')
     parser.add_argument('--hull-emissive-widening', default=None, metavar='K[,B]', help='Widen the light-map (window/hull-light) fetch of every gained hull program by its own texel footprint and boost thin emitters (X3M_HULL_EMISSIVE_WIDENING; docs/architecture/hull-emissive-widening.md 8.3): the fetch becomes a texldd whose screen-space gradients are the pixel\'s own times k = clamp(K x light-map texels per pixel, 1, K), so a 1-texel strip is filtered over K px from the distance where it is 1 px wide (and not at all where it is K px wide; near hulls are the un-widened image bit for bit), and a second, 2k-wide fetch gates a boost B on features thinner than about 1.3 k px (t = saturate((L_k / L_2k - 1.35) / 0.15); panels and their edges keep t = 0). B = 1 is the energy-conserving law (a sub-pixel strip at I w / k); B = K shows it at I w, the peak a converged un-widened TAA would show, over K px. Finite 1 < K <= 8, 1 <= B <= K; B defaults to K. Omitted resolves to 4 (K = B = 4, the user-accepted run236/run237 default since 2026-09-22) wherever the light-map gain is already active, and to off where it is not; "off" is the opt-out. Requires an active light-map gain (--hdr, not --linear-materials, --hull-lightmap-gain above 1). Ctrl+Shift+F4 drops it with the gain.')
+    parser.add_argument('--hdr-dither', choices=['on', 'off'], default=None, help='Static +-0.5 code display dither of every write of the FP16 image into the 8-bit target (X3M_HDR_DITHER; requires --hdr; default on with --hdr): the AgX write-back, its sharpened variant, the identity write-back and the bloom candidate add one fixed interleaved-gradient pattern before the 8-bit store, so the smooth fogged sky shows no contour rings moving with the exposure. Static in screen space (a still image stays still); the mean code equals the unquantised value; off: at amplitude 0 the store equals the former one mathematically (inputs already in [0,1]); the dither-off cases reproduce the recorded figures (docs/verification/hdr-scene-path.md, "Display dither")')
     parser.add_argument('--hdr-look', choices=['none', 'golden', 'punchy'], default='none', help='AgX look (X3M_HDR_LOOK; requires --hdr-tonemap; default none)')
     parser.add_argument('--hdr-bloom', action='store_true', help='Replace stock bloom RGB with bloom from the FP16 scene before AgX (X3M_HDR_BLOOM=1; requires --hdr-tonemap and scene hook; default off)')
     parser.add_argument('--bloom-source-clamp', type=float, default=None, metavar='C', help='Decoded-space ceiling on the bloom extraction source only (X3M_BLOOM_SOURCE_CLAMP=C, finite 0 < C <= 64; requires --hdr-bloom; absent keeps today\'s unbounded feed). The pyramid then sees at most code C, so an over-bright emitter (additive bolts at gain 5, overlapping sprites) can no longer feed tens or hundreds of units into the halo and saturate it into a white disk; the presented scene keeps its full HDR value and every source at code C or below is bit-identical to today. Recommended value 1.0, the ceiling of the native A8R8G8B8 scene map the original compositor read (docs/architecture/bloom-falloff.md)')
@@ -949,6 +950,8 @@ def main():
         parser.error('--hdr requires --motion-output.')
     if args.hdr_tonemap and not args.hdr:
         parser.error('--hdr-tonemap requires --hdr.')
+    if args.hdr_dither is not None and not args.hdr:
+        parser.error('--hdr-dither requires --hdr.')
     if args.linear_distance_fade is None:
         # Default on where its prerequisites hold (user decision 2026-09-14,
         # runs 11/14/15); silently off otherwise, so an unrelated launch does
@@ -1611,6 +1614,8 @@ def main():
         else:
             env.pop('X3M_BLOOM_SOURCE_CLAMP', None)
         env['X3M_HDR_LOOK'] = args.hdr_look
+        # Always explicit so a stale shell value can neither enable nor disable it.
+        env['X3M_HDR_DITHER'] = '1' if args.hdr and args.hdr_dither != 'off' else '0'
         env['X3M_HDR_DECODE'] = args.hdr_decode
         env['X3M_HDR_EV'] = repr(args.hdr_ev)
         env['X3M_HDR_EXPOSURE'] = 'fixed' if args.hdr_ev_manual is not None else (args.hdr_exposure or 'auto')

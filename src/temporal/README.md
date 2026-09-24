@@ -495,3 +495,14 @@ into `src/renderer/hdr_*_program_inc.h` with pinned manifests under
 `verification/results/`, and their constants are pinned to
 `tools/analysis/agx_reference.py` / `exposure_reference.py` by
 `verification/analysis/test_agx_reference.py`.
+
+`display_dither.hlsl` is the static +-0.5 code display dither of the 8-bit
+store (`X3M_HDR_DITHER`; `--hdr-dither`, launcher default on): interleaved
+gradient noise of `floor(VPOS) + 0.5`, added to the saturated display value
+and saturated again, alpha untouched. `agx.hlsl`, `agx_sharpen_ps.hlsl` and
+`bloom_agx_ps.hlsl` take the amplitude from c8.z, `taa_sharpen_ps.hlsl` from
+c23.w (0 on the 8-bit route), and `hdr_writeback_dither_ps.hlsl` is the
+identity write-back with the amplitude fixed at 1/255 (the plain
+`hdr_writeback_ps.hlsl` stays the 8-bit-to-8-bit copy and the self test's
+program). At amplitude 0 the store equals the former one mathematically (inputs already in [0,1]); the dither-off cases reproduce the recorded figures. CPU twin:
+`agx_reference.dither_noise()` / `dither_display()`.

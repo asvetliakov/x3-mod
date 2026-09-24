@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "source": "src/temporal/agx_sharpen_ps.hlsl",
-  "source_sha256": "1f47eaa68434fb7f9cecdf302725f3dbf56a2f783896967553dc1c21e1e7c6e5",
+  "source": "src/temporal/hdr_writeback_dither_ps.hlsl",
+  "source_sha256": "2ec8aa6e761099057aa508a89844726beda145f15f98b5d26ca09361d5e12d06",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
   "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",
@@ -10,13 +10,11 @@
   "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
   "defines": null,
   "includes": {
-    "src/temporal/agx.hlsl": "cb510151dd3ead31f97ce5b99e139bd062df3fd86bbb7d53cc8de8fbaac875f6",
-    "src/temporal/display_dither.hlsl": "400f58f16b94c12ea0b018ad8871a729588cfac8f1b34d779eccb0ea676dbcbf",
-    "src/temporal/rcas.hlsl": "a5a58522fb31af0ba32ed2779f7c4356a8ff8cf84d3a1c0ea9cfa06945011d81"
+    "src/temporal/display_dither.hlsl": "400f58f16b94c12ea0b018ad8871a729588cfac8f1b34d779eccb0ea676dbcbf"
   },
-  "word_count": 1735,
-  "bytecode_sha256": "ca528480ea5da7a3d32af991bab68965183bc2865e5ae95c949e1331f0fe4739",
-  "header_sha256": "aeeb8ac92ae53cdf97960825fa42968fbcacfc300a851e046e38c21a38c31627",
+  "word_count": 102,
+  "bytecode_sha256": "cc600ea1ae8a2c7fcf0b6948cf529afc91322ad29c75ba503e003331d8049bc0",
+  "header_sha256": "64d7b1547bd6a37ae26f25ca905c47897d194b8a02490366470753eb994ed488",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "d1850b4e53ab5647f9b3986fadd39d12d7545039f48636aa49158d58adcf1003",
     "tools/shaders/generate_rigid_motion_pixel.py": "98572ac40ee5d886acf3ec5371fa639979898141b27e430b5bf950bd0b6a8a44"

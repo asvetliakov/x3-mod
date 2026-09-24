@@ -2480,13 +2480,14 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
             hdr_caps.stretch_conversion, unsigned(hdr_main_format), hdr_caps.mrt_blending, hdr_caps.self_test_targets, hdr_caps.self_test_detail, enabled_, depth_enabled_);
         // Stage 2: the tonemap and meter verdicts and the switches in force.
         const auto& c = hdr_config_; const auto& x = c.params;
-        log("hdr_tonemap device=%llu enabled=%u requested=%s tonemap=%u tonemap_reason=%s meter=%u meter_reason=%s look=%s decode=%s clamp=%g exposure=%s ev_manual=%.4f ev_offset=%.4f key=%.4f ev_min=%.2f ev_max=%.2f tau_up=%.3f tau_down=%.3f meter_floor=%g meter_clip=%g meter_bg=%g meter_min_lit=%g white_target=%g key_pull=%g ev_deadband=%g edge_weight=%g tile_max=%u fixed_dt_ms=%.3f tonemap_shader=%08lx meter_shader=%08lx chain_format=%s chain_target=%08lx chain_sampling=%08lx",
+        log("hdr_tonemap device=%llu enabled=%u requested=%s tonemap=%u tonemap_reason=%s meter=%u meter_reason=%s look=%s decode=%s clamp=%g exposure=%s ev_manual=%.4f ev_offset=%.4f key=%.4f ev_min=%.2f ev_max=%.2f tau_up=%.3f tau_down=%.3f meter_floor=%g meter_clip=%g meter_bg=%g meter_min_lit=%g white_target=%g key_pull=%g ev_deadband=%g edge_weight=%g tile_max=%u fixed_dt_ms=%.3f tonemap_shader=%08lx meter_shader=%08lx chain_format=%s chain_target=%08lx chain_sampling=%08lx dither=%u dither_reason=%s dither_shader=%08lx",
             id_, hdr_enabled_, renderer::hdr_tonemap_name(c.tonemap), hdr_caps.tonemap, hdr_caps.tonemap_reason, hdr_caps.meter, hdr_caps.meter_reason,
             renderer::hdr_look_name(c.look), renderer::hdr_decode_name(c.decode), double(c.clamp_max), renderer::hdr_exposure_name(c.exposure),
             double(c.ev_manual), double(x.ev_offset), double(x.key), double(x.ev_min), double(x.ev_max), double(x.tau_up), double(x.tau_down),
             double(x.meter_floor), double(x.meter_clip), double(x.meter_bg), double(x.meter_min_lit), double(x.white_target), double(x.key_pull),
             double(x.ev_deadband), double(x.meter_edge_weight), renderer::kMeterTileMax,
-            double(c.fixed_dt) * 1000., hdr_caps.tonemap_shader, hdr_caps.meter_shader, hdr_caps.chain_format_name, hdr_caps.chain_target, hdr_caps.chain_sampling);
+            double(c.fixed_dt) * 1000., hdr_caps.tonemap_shader, hdr_caps.meter_shader, hdr_caps.chain_format_name, hdr_caps.chain_target, hdr_caps.chain_sampling,
+            hdr_caps.dither, hdr_caps.dither_reason, hdr_caps.dither_shader);
         hdr_tonemap_disabled_logged_ = false; hdr_taa_k_ = 0.f;
     }
     qualify_sun_lane();

@@ -12,11 +12,13 @@
 // the sigmoid then compresses unevenly; this order is the one the fixture
 // verifies against RCAS(AgX(resolved)) per pixel. Alpha is the centre's.
 // The history the resolve published is only sampled here, never written.
+// The static display dither (display_dither.hlsl, amplitude c8.z) is added
+// once, to the sharpened result, never to the taps.
 #define AGX_NO_MAIN
 #include "agx.hlsl"
 #include "rcas.hlsl"
 
-float4 main(float2 uv : TEXCOORD0) : COLOR0
+float4 main(float2 uv : TEXCOORD0, float2 vpos : VPOS) : COLOR0
 {
     float2 dx = float2(sharpenConstants.y, 0);
     float2 dy = float2(0, sharpenConstants.z);
@@ -25,5 +27,5 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0
     float3 d = agxTonemap(tex2Dlod(sceneColor, float4(uv - dx, 0, 0))).rgb;
     float3 f = agxTonemap(tex2Dlod(sceneColor, float4(uv + dx, 0, 0))).rgb;
     float3 h = agxTonemap(tex2Dlod(sceneColor, float4(uv + dy, 0, 0))).rgb;
-    return float4(rcas(b, d, e.rgb, f, h), e.a);
+    return float4(displayDither(rcas(b, d, e.rgb, f, h), vpos, exposure.z), e.a);
 }

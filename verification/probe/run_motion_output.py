@@ -598,7 +598,10 @@ RAMP_CASES = {'seam-hdr-ramp-none': dict(AGX_MANUAL, X3M_HDR_EV_MANUAL='0'),
               'seam-hdr-ramp-ev-minus2': dict(AGX_MANUAL, X3M_HDR_EV_MANUAL='-2'),
               'seam-hdr-ramp-ev-plus1-punchy': dict(AGX_MANUAL, X3M_HDR_EV_MANUAL='1', X3M_HDR_LOOK='punchy', X3M_HDR_CLAMP='16'),
               'production-hdr-ramp-none': dict(AGX_MANUAL, X3M_HDR_EV_MANUAL='0'),
-              'seam-hdr-ramp-identity': dict(X3M_HDR_EXPOSURE='manual', X3M_HDR_EV_MANUAL='0')}  # tonemap off: the stage-1 conversion on the same ramp
+              'seam-hdr-ramp-identity': dict(X3M_HDR_EXPOSURE='manual', X3M_HDR_EV_MANUAL='0'),  # tonemap off: the stage-1 conversion on the same ramp
+              # X3M_HDR_DITHER (hdr-scene-path.md "Display dither"): every pixel against reference + the static pattern.
+              'seam-hdr-ramp-dither': dict(AGX_MANUAL, X3M_HDR_EV_MANUAL='0', X3M_HDR_DITHER='1'),
+              'seam-hdr-ramp-identity-dither': dict(X3M_HDR_EXPOSURE='manual', X3M_HDR_EV_MANUAL='0', X3M_HDR_DITHER='1')}
 CASES += [case(name, 'hdrramp', hdr=True, hdr_env=env) for name, env in RAMP_CASES.items()]
 # Auto-exposure ceiling (X3M_HDR_EV_MAX): the DLL's production default moved
 # from +1.5 EV to +1.0 (3df7b9f) and then to +1.3 (b391635, with the runner's
@@ -675,6 +678,11 @@ CASES += [case('seam-taa-sharpen-off', 'seam', jitter=True, taa=True, hdr_env=di
           case('seam-taa-sharpen-half', 'seam', jitter=True, taa=True, hdr_env=dict(X3M_TAA_SHARPEN='0.5')),
           case('seam-taa-hdr-sharpen-on', 'seam', jitter=True, taa=True, hdr=True, hdr_env=dict(X3M_TAA_SHARPEN='1')),
           case('seam-taa-hdr-tonemap-sharpen-on', 'seam', jitter=True, taa=True, hdr=True, hdr_env=dict(TAA_HDR, X3M_TAA_SHARPEN='1'))]
+# The display dither on the two sharpened HDR write-backs (identity+RCAS: c23.w;
+# AgX+RCAS: c8.z): the presented frame is the RCAS reference plus the static
+# pattern, within the same tolerance widened by the dither's half code.
+CASES += [case('seam-taa-hdr-sharpen-dither', 'seam', jitter=True, taa=True, hdr=True, hdr_env=dict(X3M_TAA_SHARPEN='1', X3M_HDR_DITHER='1')),
+          case('seam-taa-hdr-tonemap-sharpen-dither', 'seam', jitter=True, taa=True, hdr=True, hdr_env=dict(TAA_HDR, X3M_TAA_SHARPEN='1', X3M_HDR_DITHER='1'))]
 CASES += [case(f'bench-{size}-taa-sharpen-on', 'bench', jitter=True, taa=True, bench=size, hdr_env=dict(X3M_TAA_SHARPEN='1')) for size in BENCH_SIZES]
 # Native-Windows fixes (docs/architecture/native-windows-audit-2026-09-12.md
 # D1-D3): twins of seam-taa-on. seam-taa-quad-fvf draws every proxy quad
@@ -3270,7 +3278,10 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     # Stage 3 with the AgX write-back: the coverage oracle reads raster
     # colours and is skipped on tonemapped frames (two checks per frame).
     agx = any(l.startswith('hdr_tonemap ') and fields(l).get('tonemap') == '1' for l in trace.splitlines())
-    if agx:
+    # X3M_HDR_DITHER likewise: the dithered write-back presents no raster colour.
+    dithered = any(l.startswith('hdr_tonemap ') and fields(l).get('dither') == '1' for l in trace.splitlines())
+    raster_blind = agx or dithered
+    if raster_blind:
         expected_checks -= 24
     # Post-resolve sharpen: the bit-identical check of the frames without
     # history is waived (the display image is sharpened on every frame).
@@ -3301,14 +3312,14 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     # (Stage 3, AgX write-back: the oracle reads raster colours and the fixture
     # skips it on tonemapped frames; the presented image is then checked
     # against the AgX reference of the resolved FP16 image instead.)
-    assert sorted(coverage) == ([] if agx else list(range(12))), (name, sorted(coverage))
+    assert sorted(coverage) == ([] if raster_blind else list(range(12))), (name, sorted(coverage))
     assert all(c['mismatches'] == '0' and int(c['checked']) > 3000 and int(c['background']) > 0 for c in coverage.values()), (name, coverage)
-    assert len({c['background_color'] for c in coverage.values()}) == (0 if agx else 1), (name, 'background colour differs between frames')
+    assert len({c['background_color'] for c in coverage.values()}) == (0 if raster_blind else 1), (name, 'background colour differs between frames')
     assert all(c['jitter'] == str(int(jitter)) for c in coverage.values())
     for frame, c in coverage.items():
         _, jx, jy = expected_jitter(frame) if jitter else (0, 0.0, 0.0)
         assert abs(float(c['jx']) - jx) < 1e-6 and abs(float(c['jy']) - jy) < 1e-6, (name, frame, c)
-    assert (result['coverage_frames'] == 0) if agx else (result['coverage_frames'] == 12 and result['coverage_pixels'] > 40000)
+    assert (result['coverage_frames'] == 0) if raster_blind else (result['coverage_frames'] == 12 and result['coverage_pixels'] > 40000)
     taa_lines = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('TAA ')}
     if taa:
         # Fixture verdicts per frame: the bloom copy equals the main target,
@@ -4012,6 +4023,7 @@ def hdr_env_params(hdr_env):
     decode = hdr_env.get('X3M_HDR_DECODE', 'gamma2.2')
     decode = 'none' if decode == 'none' else 'srgb' if decode == 'srgb' else 'gamma2.2'
     return dict(agx=hdr_env.get('X3M_HDR_TONEMAP') in ('agx', '1'), decode=decode, look=hdr_env.get('X3M_HDR_LOOK', 'none'),
+                dither=hdr_env.get('X3M_HDR_DITHER') in ('1', 'on'),
                 clamp=float(hdr_env.get('X3M_HDR_CLAMP', '0')), ev_manual=hdr_env.get('X3M_HDR_EV_MANUAL'),
                 ev_offset=float(hdr_env.get('X3M_HDR_EV', hdr_env.get('X3M_HDR_EV_OFFSET', '0'))),
                 tau_up=float(hdr_env.get('X3M_HDR_ADAPT_UP', exposure_ref.TAU_UP)), tau_down=float(hdr_env.get('X3M_HDR_ADAPT_DOWN', exposure_ref.TAU_DOWN)),
@@ -4033,6 +4045,13 @@ def reference_codes(rgb_engine, ev, params):
 
 def code_errors(presented_rgb, reference_rgb):
     return [abs(p - r) for p, r in zip(presented_rgb, reference_rgb)]
+
+
+def dithered_codes(reference_rgb, x, y):
+    """X3M_HDR_DITHER: the unrounded value the store receives for a reference
+    (0..255 floats) at pixel (x, y): saturate(c) + (noise - 0.5) code, saturated
+    (display_dither.hlsl; agx_ref.dither_display)."""
+    return tuple(255.0 * agx_ref.dither_display(c / 255.0, x, y) for c in reference_rgb)
 
 
 def hdr_stage2_lines(trace):
@@ -4083,7 +4102,11 @@ def validate_hdrramp(name, text, trace, directory, hdr_env, hdr_fault=None):
     for l in lines:
         if l.startswith('RAMP '):
             f = fields(l); ramp[(int(f['frame']), int(f['row']), int(f['col']))] = f
-    assert len(ramp) == 3 * 65 * 4 and all(f['uniform'] == '1' for f in ramp.values()), (name, len(ramp))
+    # Dithered: cells are not uniform (the fixture bounds each pixel within one
+    # code of its centre instead); every pixel is compared below.
+    assert len(ramp) == 3 * 65 * 4 and (params['dither'] or all(f['uniform'] == '1' for f in ramp.values())), (name, len(ramp))
+    assert tm.get('dither', '0') == str(int(params['dither'])) and tm.get('dither_reason', 'off') == ('ok' if params['dither'] else 'off'), (name, tm)
+    dither = {}
     reference_rows = agx_ref.ramp_values()
     assert len(reference_rows) == 65
     stats = {}
@@ -4103,6 +4126,27 @@ def validate_hdrramp(name, text, trace, directory, hdr_env, hdr_fault=None):
                 pr, pg, pb, pa = bgra8(presented, index)
                 assert f'{pa:02x}{pr:02x}{pg:02x}{pb:02x}' == ramp[(frame, row, col)]['presented'], (name, frame, row, col)
                 ref = reference_codes((r, g, b), ev, params)
+                if params['dither']:
+                    # Every pixel of the cell (the FP16 input is uniform over it):
+                    # presented against reference + pattern, the exact-code match
+                    # with the double-precision pattern, and the signed error
+                    # against the undithered reference (its mean must stay ~0).
+                    y = row
+                    for x in range(col * 16, col * 16 + 16):
+                        qr, qg, qb, qa = bgra8(presented, row * 64 + x)
+                        target = dithered_codes(ref, x, y)
+                        for k, e in enumerate(code_errors((qr, qg, qb), target)):
+                            errors[k].append(e)
+                        exact = [agx_ref.store_code(v / 255.0) for v in target]
+                        dither.setdefault(frame, {'pixels': 0, 'exact': 0, 'signed': 0.0, 'interior': 0, 'cells_nonuniform': 0})
+                        d = dither[frame]
+                        for p_, v_, e_ in zip((qr, qg, qb), ref, exact):
+                            if 0.0 < v_ < 255.0:
+                                d['interior'] += 1; d['signed'] += p_ - v_
+                            d['pixels'] += 1; d['exact'] += int(p_ == e_)
+                        alpha_errors.append(abs(qa - round(255.0 * a)))
+                    dither[frame]['cells_nonuniform'] += int(ramp[(frame, row, col)]['uniform'] == '0')
+                    continue
                 for k, e in enumerate(code_errors((pr, pg, pb), ref)):
                     errors[k].append(e)
                 alpha_errors.append(abs(pa - round(255.0 * a)))
@@ -4111,6 +4155,15 @@ def validate_hdrramp(name, text, trace, directory, hdr_env, hdr_fault=None):
         overall = [e for k in range(3) for e in errors[k]]
         stats[frame] = {'channels': per_channel, 'max': max(overall), 'mean': sum(overall) / len(overall),
                         'alpha_max': max(alpha_errors), 'cells': 65 * 4, 'input_max_relative_error': max(input_errors)}
+        if params['dither']:
+            d = dither[frame]
+            stats[frame]['dither'] = {'pixels_x_channels': d['pixels'], 'exact_fraction': d['exact'] / d['pixels'],
+                                      'interior_channels': d['interior'], 'mean_signed_error_vs_undithered': d['signed'] / d['interior'],
+                                      'cells_nonuniform': d['cells_nonuniform']}
+            # The pattern is there (cells vary) and it is this pattern (most codes equal the
+            # double-precision prediction; the rest sit within the shader residual of a boundary).
+            assert d['cells_nonuniform'] > 0 and stats[frame]['dither']['exact_fraction'] >= 0.75, (name, frame, stats[frame]['dither'])
+            assert abs(stats[frame]['dither']['mean_signed_error_vs_undithered']) <= 0.25, (name, frame, stats[frame]['dither'])
         assert stats[frame]['max'] <= RAMP_MAX_CODE_ERROR, f'{name}: frame {frame} ramp max error {stats[frame]["max"]} codes exceeds 1: {per_channel}'
         assert stats[frame]['mean'] <= RAMP_MEAN_CODE_ERROR, f'{name}: frame {frame} ramp mean error {stats[frame]["mean"]} codes exceeds 0.5: {per_channel}'
         assert stats[frame]['alpha_max'] <= 1, (name, frame, stats[frame])
@@ -4560,17 +4613,23 @@ def validate_sharpen(name, text, trace, directory, hdr_env, hdr, sharpen, width=
         assert present_line['result'] == '00000000' and present_line['file'] == f'present_1_{frame}.bgra8', (name, frame, present_line)
         assert (directory / 'x3-modern-captures' / present_line['file']).read_bytes() == presented, f'{name}: frame {frame} present_1_{frame}.bgra8 differs from the presented image'
         errors, alpha, outside, changed = [], [], 0, 0
+        # X3M_HDR_DITHER: the store receives RCAS + the static pattern, so the
+        # comparison target carries it and the 3x3 bound widens by one code.
+        slack = 1 if params['dither'] else 0
+        exact = 0
         for i, px in enumerate(expected):
             pr, pg, pb, pa = bgra8(presented, i)
-            errors.append(max(abs(p - 255.0 * e) for p, e in zip((pr, pg, pb), px)))
+            target = dithered_codes(tuple(255.0 * e for e in px), i % width, i // width) if params['dither'] else tuple(255.0 * e for e in px)
+            errors.append(max(abs(p - v) for p, v in zip((pr, pg, pb), target)))
+            exact += all(p == agx_ref.store_code(v / 255.0) for p, v in zip((pr, pg, pb), target))
             alpha.append(abs(pa - round(255.0 * min(max(resolved[i][3], 0.0), 1.0))))
             lo, hi = bounds[i]
-            if any(p < l or p > h for p, l, h in zip((pr, pg, pb), lo, hi)):
+            if any(p < l - slack or p > h + slack for p, l, h in zip((pr, pg, pb), lo, hi)):
                 outside += 1
             if (pr, pg, pb) != unsharpened[i]:
                 changed += 1
         entry = {'max_code_error': max(errors), 'mean_code_error': sum(errors) / len(errors), 'alpha_max': max(alpha), 'outside_3x3': outside, 'changed': changed,
-                 'present_readback': present_line['file'], 'present_equals_presented': True}
+                 'present_readback': present_line['file'], 'present_equals_presented': True, 'dither': params['dither'], 'exact_pixel_fraction': exact / len(expected)}
         if params['agx']:
             # The other order: sharpen the engine-space image, then tonemap it.
             alternative = rcas_reference([tuple(min(max(c, 0.0), 1.0) for c in (r, g, b)) for r, g, b, a in resolved], width, height, gain)

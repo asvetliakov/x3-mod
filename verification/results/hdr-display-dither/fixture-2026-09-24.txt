@@ -1,0 +1,21 @@
+status PARTIAL cases 9
+seam-hdr-ramp-dither: RESULT PASS checks=11 exit=0
+seam-hdr-ramp-dither: ramp max=0.500 mean=0.201 alpha_max=0 frames_1_2_channel_stats_equal=True exact=0.9999 signed_mean=-0.0020 nonuniform_cells=180
+seam-hdr-ramp-identity: RESULT PASS checks=11 exit=0
+seam-hdr-ramp-identity: ramp max=0.497 mean=0.082 alpha_max=0 frames_1_2_channel_stats_equal=True
+seam-hdr-ramp-identity-dither: RESULT PASS checks=11 exit=0
+seam-hdr-ramp-identity-dither: ramp max=0.500 mean=0.163 alpha_max=0 frames_1_2_channel_stats_equal=True exact=1.0000 signed_mean=-0.0006 nonuniform_cells=148
+seam-hdr-ramp-none: RESULT PASS checks=11 exit=0
+seam-hdr-ramp-none: ramp max=0.498 mean=0.183 alpha_max=0 frames_1_2_channel_stats_equal=True
+seam-taa-hdr-sharpen-dither: RESULT PASS checks=134 exit=0
+seam-taa-hdr-sharpen-dither: sharpen max=0.500 mean=0.353 changed=0.405 outside_3x3=0 exact_min=1.0000
+seam-taa-hdr-sharpen-on: RESULT PASS checks=158 exit=0
+seam-taa-hdr-sharpen-on: sharpen max=0.500 mean=0.326 changed=0.036 outside_3x3=0 exact_min=1.0000
+seam-taa-hdr-tonemap-sharpen-dither: RESULT PASS checks=134 exit=0
+seam-taa-hdr-tonemap-sharpen-dither: sharpen max=0.500 mean=0.373 changed=0.495 outside_3x3=0 exact_min=0.9998
+seam-taa-hdr-tonemap-sharpen-on: RESULT PASS checks=134 exit=0
+seam-taa-hdr-tonemap-sharpen-on: sharpen max=0.500 mean=0.385 changed=0.050 outside_3x3=0 exact_min=0.9998
+seam-taa-sharpen-on: RESULT PASS checks=158 exit=0
+seam-taa-sharpen-on: sharpen max=0.498 mean=0.088 changed=0.012 outside_3x3=0 exact_min=1.0000
+seam-taa-hdr-sharpen-dither: history files=8 identical_to_seam-taa-hdr-sharpen-on=True
+seam-taa-hdr-tonemap-sharpen-dither: history files=8 identical_to_seam-taa-hdr-tonemap-sharpen-on=True

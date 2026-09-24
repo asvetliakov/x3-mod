@@ -1,5 +1,6 @@
 #include "hdr_pass.h"
 #include "hdr_writeback_program.h"
+#include "hdr_writeback_dither_program.h"
 #include "quad_vertex_program.h"
 #include "hdr_tonemap_program.h"
 #include "taa_sharpen_program.h"
@@ -219,7 +220,7 @@ std::uint64_t HdrPass::stamp(bool timing) const noexcept {
 
 void HdrPass::shutdown() noexcept {
     release_target();
-    drop(shader_); drop(tonemap_shader_); drop(meter_level0_shader_); drop(meter_reduce_shader_);
+    drop(shader_); drop(writeback_dither_shader_); drop(tonemap_shader_); drop(meter_level0_shader_); drop(meter_reduce_shader_);
     drop(sharpen_shader_); drop(tonemap_sharpen_shader_); drop(quad_vs_); drop(quad_declaration_);
     device_ = nullptr; native_ = nullptr;
     caps_ = HdrCaps{};
@@ -264,7 +265,7 @@ static unsigned chain_geometry(UINT width, UINT height, UINT levels_w[], UINT le
 }
 
 unsigned HdrPass::references() const noexcept {
-    unsigned n = (target_ ? 1u : 0u) + (shader_ ? 1u : 0u) + (tonemap_shader_ ? 1u : 0u)
+    unsigned n = (target_ ? 1u : 0u) + (shader_ ? 1u : 0u) + (writeback_dither_shader_ ? 1u : 0u) + (tonemap_shader_ ? 1u : 0u)
         + (meter_level0_shader_ ? 1u : 0u) + (meter_reduce_shader_ ? 1u : 0u) + chain_count_
         + (sharpen_shader_ ? 1u : 0u) + (tonemap_sharpen_shader_ ? 1u : 0u)
         + (quad_vs_ ? 1u : 0u) + (quad_declaration_ ? 1u : 0u);
@@ -482,7 +483,9 @@ HRESULT HdrPass::copy_draw(IDirect3DSurface9* source_target, IDirect3DTexture9* 
     (void)source_target;
     *restoration = S_OK;
     SavedState saved;
-    saved.constants_saved = program != nullptr;
+    // Only a program that uploads constants (AgX c8..c21, sharpen c23, the
+    // meter's c0..c3) saves and restores them; the identity programs read none.
+    saved.constants_saved = program && (program->constants || program->sharpen || program->meter);
     HRESULT hr = save(saved);
     if (FAILED(hr)) return hr;
     HRESULT op = S_OK;
@@ -937,6 +940,15 @@ void HdrPass::attach(IDirect3DDevice9* device, void* const* native, const D3DCAP
             drop(sharpen_shader_); drop(tonemap_sharpen_shader_); caps_.sharpen = false; caps_.sharpen_reason = "shader";
         } else { caps_.sharpen = true; caps_.sharpen_reason = "ok"; }
     }
+    // Display dither: the AgX and RCAS programs read their amplitude from
+    // c8.z / c23.w; only the identity write-back needs its dithered twin.
+    // A creation failure keeps the identity draws undithered.
+    if (!std::strcmp(reason, "ok") && config_.dither) {
+        caps_.dither = true;
+        caps_.dither_shader = call<CreatePsFn>(CreatePixelShader)(device_, reinterpret_cast<const DWORD*>(hdr_writeback_dither_program()), &writeback_dither_shader_);
+        if (FAILED(caps_.dither_shader) || !writeback_dither_shader_) { drop(writeback_dither_shader_); caps_.dither_reason = "shader"; }
+        else caps_.dither_reason = "ok";
+    }
     exposure_.configure(config_.params, config_.exposure, config_.ev_manual);
     exposure_.reset();
     tonemap_failures_ = 0; sharpen_failures_ = 0; latch_ticks_ = 0; chain_slot_ = 0;
@@ -952,7 +964,7 @@ void HdrPass::attach(IDirect3DDevice9* device, void* const* native, const D3DCAP
     prepare_constants();
     caps_.reason = reason;
     caps_.enabled = !std::strcmp(reason, "ok");
-    if (!caps_.enabled) { drop(shader_); drop(tonemap_shader_); drop(meter_level0_shader_); drop(meter_reduce_shader_); drop(sharpen_shader_); drop(tonemap_sharpen_shader_); drop(quad_vs_); drop(quad_declaration_); caps_.tonemap = caps_.meter = caps_.sharpen = false; }
+    if (!caps_.enabled) { drop(shader_); drop(writeback_dither_shader_); drop(tonemap_shader_); drop(meter_level0_shader_); drop(meter_reduce_shader_); drop(sharpen_shader_); drop(tonemap_sharpen_shader_); drop(quad_vs_); drop(quad_declaration_); caps_.tonemap = caps_.meter = caps_.sharpen = caps_.dither = false; }
 }
 
 // The tonemap's constant block for the coming write-back: exp2 of the EV the
@@ -961,6 +973,7 @@ void HdrPass::attach(IDirect3DDevice9* device, void* const* native, const D3DCAP
 void HdrPass::prepare_constants() noexcept {
     if (!x3::temporal::prepare(agx_, exposure_.exposure(), config_.clamp_max, config_.decode, config_.look))
         x3::temporal::prepare(agx_, 1.f, config_.clamp_max, config_.decode, config_.look);
+    x3::temporal::set_dither(agx_, caps_.dither);
 }
 
 bool HdrPass::comparison_exposure(ExposureMode mode) noexcept {
@@ -1072,6 +1085,12 @@ HdrWriteback HdrPass::write_back(IDirect3DSurface9* main, IDirect3DSurface9* fin
         const float sharpen_strength = config_.sharpen;
         const bool sharpen = source != nullptr && sharpen_active() && (!use_tonemap || tonemap_sharpen_shader_)
             && x3::temporal::prepare_sharpen(sharpen_, sharpen_strength, width_, height_);
+        // Display dither: c8.z of agx_ (prepare_constants) for the AgX
+        // programs, c23.w for the identity+RCAS program, the dithered twin
+        // for the identity copy. The AgX+RCAS program ignores c23.w, so the
+        // snapshot's c23 stays the plain one.
+        if (sharpen && !use_tonemap) sharpen_.values[3] = caps_.dither ? x3::temporal::kDisplayDitherAmplitude : 0.f;
+        Program identity; identity.shader = identity_shader();
         if (SUCCEEDED(hr)) {
             Program program;
             if (use_tonemap || sharpen) {
@@ -1088,16 +1107,16 @@ HdrWriteback HdrPass::write_back(IDirect3DSurface9* main, IDirect3DSurface9* fin
                     // against the sharpen and redraw unsharpened (the meter, if it
                     // ran, is not repeated); repeated failures disable the sharpen.
                     ++sharpen_failures_; result.sharpened = false; result.sharpen_fallback = true;
-                    program.shader = use_tonemap ? tonemap_shader_ : shader_; program.sharpen = nullptr; program.meter = false;
+                    program.shader = use_tonemap ? tonemap_shader_ : identity.shader; program.sharpen = nullptr; program.meter = false;
                     hr = copy_draw(target_, texture, main, width_, height_, final_rt0, &result.restore, injected_draw, injected_restore, &program);
                     if (use_tonemap) result.tonemap_draw = hr;
                 }
                 if (use_tonemap && FAILED(hr) && !lost(hr) && SUCCEEDED(result.restore) && SUCCEEDED(injected_draw)) {
                     ++tonemap_failures_;
                     result.tonemap = false; result.fallback = true;
-                    hr = copy_draw(target_, texture, main, width_, height_, final_rt0, &result.restore, injected_draw, injected_restore);
+                    hr = copy_draw(target_, texture, main, width_, height_, final_rt0, &result.restore, injected_draw, injected_restore, &identity);
                 }
-            } else hr = copy_draw(target_, texture, main, width_, height_, final_rt0, &result.restore, injected_draw, injected_restore);
+            } else hr = copy_draw(target_, texture, main, width_, height_, final_rt0, &result.restore, injected_draw, injected_restore, &identity);
         }
         result.draw = hr;
         // A scene we opened is always closed, lost device included: the runtime

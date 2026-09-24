@@ -169,6 +169,34 @@ def tonemap_engine(rgb_engine: Sequence[float], exposure: float = 1.0, decode_mo
     return output(look(agx_core(v), look_name))
 
 
+# --- Display dither (src/temporal/display_dither.hlsl) ----------------------
+# X3M_HDR_DITHER: a static +-0.5 code offset added to the saturated display
+# value before the A8R8G8B8 store. Interleaved gradient noise (Jimenez 2014)
+# of the pixel centre; the shader evaluates it in float32, this in double
+# (they differ by about 1e-4 of the noise away from its wrap point, so only a
+# pixel within that distance of a rounding boundary can store another code).
+DITHER_IGN_WEIGHTS = (0.06711056, 0.00583715)
+DITHER_IGN_SCALE = 52.9829189
+DITHER_AMPLITUDE = 1.0 / 255.0  # one code: +-0.5 code about the value
+
+
+def dither_noise(x: int, y: int) -> float:
+    """The pattern in [0, 1) at integer pixel (x, y), evaluated at the pixel centre."""
+    inner = DITHER_IGN_WEIGHTS[0] * (x + 0.5) + DITHER_IGN_WEIGHTS[1] * (y + 0.5)
+    outer = DITHER_IGN_SCALE * (inner - math.floor(inner))
+    return outer - math.floor(outer)
+
+
+def dither_display(value: float, x: int, y: int, amplitude: float = DITHER_AMPLITUDE) -> float:
+    """displayDither(): saturate(saturate(value) + (noise - 0.5) * amplitude)."""
+    return _clamp(_clamp(value, 0.0, 1.0) + (dither_noise(x, y) - 0.5) * amplitude, 0.0, 1.0)
+
+
+def store_code(value: float) -> int:
+    """The 8-bit UNORM store of a display value: saturate, round to nearest."""
+    return int(math.floor(_clamp(value, 0.0, 1.0) * 255.0 + 0.5))
+
+
 # --- Tables ------------------------------------------------------------------
 def ramp_values(start: float = 0.001, stop: float = 64.0, steps_per_octave: int = 4) -> list:
     """Geometric ramp from ``start`` to ``stop`` inclusive, ``steps_per_octave`` samples per doubling."""

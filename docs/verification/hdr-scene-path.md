@@ -674,3 +674,86 @@ OK (588 tests).
   option, the HUD and text draws after the scene end, and the environment-map
   excursion after the compositor are modelled by the fixture scripts, not
   exercised in gameplay.
+
+## Display dither (`X3M_HDR_DITHER`, 2026-09-24)
+
+Cause (Run 77 C2, `verification/results/run291-293-rings/`, measured there):
+the AgX write-back stored `saturate(v)` into the A8R8G8B8 target undithered;
+the fogged sky's FP16 gradient is 0-1 FP16 ulp per pixel (one ulp = 1/22 of an
+8-bit code), so the store drew contour lines 14-15 px apart (fog march scale 2)
+that the auto exposure (|Δev| p50 0.004-0.007 per frame) moved 4-6 px per
+0.01 EV: the moving rings.
+
+Change: `src/temporal/display_dither.hlsl` adds a static ±0.5 code offset
+(interleaved gradient noise of `floor(VPOS) + 0.5`, one offset for the three
+channels) to the saturated display value and saturates again; alpha untouched.
+Static, not per-frame: the write follows TAA, so a varying pattern would
+flicker by one code at rest. Every write of the FP16 image into the 8-bit
+target takes it: `agx.hlsl` and `agx_sharpen_ps.hlsl` (c8.z),
+`bloom_agx_ps.hlsl` (c8.z; its FP16 staging write gets 0 and the following
+`taa_sharpen_ps.hlsl` applies it via c23.w), `taa_sharpen_ps.hlsl` (c23.w: the
+HDR identity+RCAS write-back; the 8-bit route keeps 0) and the new
+`hdr_writeback_dither_ps.hlsl` (the identity write-back, amplitude fixed). The
+plain identity copy stays the self test's and every 8-bit-to-8-bit copy's
+program; the self tests upload c8.z = 0. At amplitude 0 the store equals the
+former one mathematically (inputs already in [0,1]); the dither-off cases
+reproduce the recorded figures. DLL: `X3M_HDR_DITHER=1|on`, off when unset; launcher `--hdr-dither on|off`,
+default on with `--hdr`, always exported. `hdr_tonemap` log line: `dither=
+dither_reason= dither_shader=`.
+
+Instruction slots (D3DX `D3DXDisassembleShader` of the embedded programs,
+measured; `verification/results/hdr-display-dither/measure.py bins|slots`):
+
+| program | before | after | ps_3_0 guaranteed |
+| --- | ---: | ---: | ---: |
+| `hdr_tonemap` (agx.hlsl) | 66 | 76 | 512 |
+| `hdr_tonemap_sharpen` | 392 | 402 | 512 |
+| `taa_sharpen` | 91 | 101 | 512 |
+| `bloom_agx` | 105 | 115 | 512 |
+| `hdr_writeback` (unchanged) | 1 | 1 | 512 |
+| `hdr_writeback_dither` (new) | – | 13 | 512 |
+
+Cost: 10 arithmetic slots per presented pixel, no texture (inferred < 0.1 ms
+at 5120×1440; not timed).
+
+CPU reference (`agx_reference.dither_noise/dither_display/store_code`,
+`test_agx_reference.DitherTests`, measured): per pixel the stored code is
+`floor(255 c + noise)`; a constant input stores at most two adjacent codes and
+the mean code equals `255 v` within 0.00055 code (128×128) and 0.00029 code
+(1920×1080) over seven fractions (`measure.py reference`); black and white
+stay exact.
+
+Wine fixture (`run_motion_output.py`, selected cases, PARTIAL by design, X3
+bottle, measured; the per-case figures, RESULT lines and twin history
+equality are kept in `verification/results/hdr-display-dither/motion-output-cases-2026-09-24.json`
+by `measure.py keep` and printed by `measure.py fixture` into
+`fixture-2026-09-24.txt`; same figures in two runs, before and after the
+review fixes):
+
+| case | result |
+| --- | --- |
+| `seam-hdr-ramp-none`, `-identity`, `seam-taa-sharpen-on`, `seam-taa-hdr-sharpen-on`, `seam-taa-hdr-tonemap-sharpen-on` (dither off) | reproduce the recorded figures: ramp max 0.498 / 0.497 code, mean 0.183 / 0.082; sharpen max 0.498 / 0.500 / 0.500, mean 0.088 / 0.326 / 0.385 |
+| `seam-hdr-ramp-dither` (AgX) | every pixel of the 780 cells against reference + pattern: max 0.500, mean 0.201 code; 99.99 % of pixel-channels equal the double-precision prediction; mean signed error against the undithered reference −0.002 code; 180 of 260 cells non-uniform; frames 1 and 2 give equal per-channel statistics (the runner asserts it) |
+| `seam-hdr-ramp-identity-dither` | max 0.500, mean 0.163; 100 % exact prediction; signed mean −0.0006; 148 cells non-uniform |
+| `seam-taa-hdr-sharpen-dither` (identity+RCAS, c23.w) | max 0.500, mean 0.353 against RCAS + pattern; 0 channels outside the 3×3 bound widened by one code; 100 % exact; FP16 history files identical to `seam-taa-hdr-sharpen-on` (8 of 8) |
+| `seam-taa-hdr-tonemap-sharpen-dither` (AgX+RCAS, c8.z) | max 0.500, mean 0.373; 0 outside; ≥ 99.98 % exact; history identical to `seam-taa-hdr-tonemap-sharpen-on` (8 of 8) |
+
+The fixture skips its raster-colour coverage oracle on dithered frames, as on
+AgX frames.
+
+Bloom candidate (`run_bloom_pass.py`, X3 bottle, measured; input format
+`X3BP0004` carries the per-case c8.z; `measure.py bloom` →
+`verification/results/hdr-display-dither/bloom-pass-2026-09-24.json`): PASS,
+47 images, max 1 code against the fused reference (bound 3 unchanged). The 45
+existing cases (c8.z = 0) keep max 1 code. Two new cases, the constant 8×6
+gamma2.2 image with bloom 0.5 and c8.z = 1/255, the oracle adding the same
+pattern once after RCAS:
+
+| case | max / mean code error | mean signed error vs undithered oracle | codes per channel (R/G/B) | max vs undithered |
+| --- | --- | ---: | --- | ---: |
+| 45, unsharpened (direct A8R8G8B8 draw dithers) | 1 / 0.007 | −0.026 | 1 / 2 / 2 | 0.83 |
+| 46, sharpen 0.75 (FP16 staging gets 0, `taa_sharpen` c23.w dithers) | 1 / 0.063 | −0.082 | 1 / 2 / 2 | 0.83 |
+
+(R saturates at 255, so one code.) Not covered: native Windows
+(cross-compiled) and the in-game rings (needs a user flight at 5120×1440 with
+`--hdr-dither on` and `off`).

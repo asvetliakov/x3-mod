@@ -1,0 +1,443 @@
+{
+ "bottle": {
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "name": "X3",
+  "wine_arch": "arm64"
+ },
+ "bound_codes": 3,
+ "cases": [
+  {
+   "authored_glow_gain": 0.0,
+   "dither": 0.00392156862745098,
+   "exposure": 1.0,
+   "height": 6,
+   "highlight_gain": 0.05,
+   "kind": "dither",
+   "levels": 3,
+   "mode": "gamma2.2",
+   "scatter": 0.7,
+   "sharp": 0.0,
+   "source_clamp": 0.0,
+   "strength": 0.5,
+   "threshold": 0.0,
+   "width": 8
+  },
+  {
+   "authored_glow_gain": 0.0,
+   "dither": 0.00392156862745098,
+   "exposure": 1.0,
+   "height": 6,
+   "highlight_gain": 0.05,
+   "kind": "dither",
+   "levels": 3,
+   "mode": "gamma2.2",
+   "scatter": 0.7,
+   "sharp": 0.75,
+   "source_clamp": 0.0,
+   "strength": 0.5,
+   "threshold": 0.0,
+   "width": 8
+  }
+ ],
+ "images": [
+  {
+   "alpha_errors": 0,
+   "channels": 144,
+   "index": 0,
+   "max_code_error": 0,
+   "mean_code_error": 0.0,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 144,
+   "index": 1,
+   "max_code_error": 0,
+   "mean_code_error": 0.0,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 144,
+   "index": 2,
+   "max_code_error": 0,
+   "mean_code_error": 0.0,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 144,
+   "index": 3,
+   "max_code_error": 0,
+   "mean_code_error": 0.0,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 189,
+   "index": 4,
+   "max_code_error": 0,
+   "mean_code_error": 0.0,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 189,
+   "index": 5,
+   "max_code_error": 1,
+   "mean_code_error": 0.010582010582010581,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 189,
+   "index": 6,
+   "max_code_error": 1,
+   "mean_code_error": 0.026455026455026454,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 189,
+   "index": 7,
+   "max_code_error": 1,
+   "mean_code_error": 0.0582010582010582,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 144,
+   "index": 8,
+   "max_code_error": 0,
+   "mean_code_error": 0.0,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 144,
+   "index": 9,
+   "max_code_error": 0,
+   "mean_code_error": 0.0,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 144,
+   "index": 10,
+   "max_code_error": 0,
+   "mean_code_error": 0.0,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 144,
+   "index": 11,
+   "max_code_error": 0,
+   "mean_code_error": 0.0,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 189,
+   "index": 12,
+   "max_code_error": 0,
+   "mean_code_error": 0.0,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 189,
+   "index": 13,
+   "max_code_error": 1,
+   "mean_code_error": 0.021164021164021163,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 189,
+   "index": 14,
+   "max_code_error": 1,
+   "mean_code_error": 0.005291005291005291,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 189,
+   "index": 15,
+   "max_code_error": 1,
+   "mean_code_error": 0.042328042328042326,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 144,
+   "index": 16,
+   "max_code_error": 0,
+   "mean_code_error": 0.0,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 144,
+   "index": 17,
+   "max_code_error": 0,
+   "mean_code_error": 0.0,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 144,
+   "index": 18,
+   "max_code_error": 0,
+   "mean_code_error": 0.0,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 144,
+   "index": 19,
+   "max_code_error": 0,
+   "mean_code_error": 0.0,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 189,
+   "index": 20,
+   "max_code_error": 0,
+   "mean_code_error": 0.0,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 189,
+   "index": 21,
+   "max_code_error": 1,
+   "mean_code_error": 0.037037037037037035,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 189,
+   "index": 22,
+   "max_code_error": 1,
+   "mean_code_error": 0.005291005291005291,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 189,
+   "index": 23,
+   "max_code_error": 1,
+   "mean_code_error": 0.05291005291005291,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 144,
+   "index": 24,
+   "max_code_error": 1,
+   "mean_code_error": 0.034722222222222224,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 144,
+   "index": 25,
+   "max_code_error": 0,
+   "mean_code_error": 0.0,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 189,
+   "index": 26,
+   "max_code_error": 1,
+   "mean_code_error": 0.005291005291005291,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 189,
+   "index": 27,
+   "max_code_error": 1,
+   "mean_code_error": 0.047619047619047616,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 144,
+   "index": 28,
+   "max_code_error": 1,
+   "mean_code_error": 0.006944444444444444,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 144,
+   "index": 29,
+   "max_code_error": 1,
+   "mean_code_error": 0.027777777777777776,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 189,
+   "index": 30,
+   "max_code_error": 1,
+   "mean_code_error": 0.010582010582010581,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 189,
+   "index": 31,
+   "max_code_error": 1,
+   "mean_code_error": 0.015873015873015872,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 144,
+   "index": 32,
+   "max_code_error": 0,
+   "mean_code_error": 0.0,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 144,
+   "index": 33,
+   "max_code_error": 1,
+   "mean_code_error": 0.006944444444444444,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 189,
+   "index": 34,
+   "max_code_error": 1,
+   "mean_code_error": 0.010582010582010581,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 189,
+   "index": 35,
+   "max_code_error": 1,
+   "mean_code_error": 0.010582010582010581,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 7680,
+   "index": 36,
+   "max_code_error": 0,
+   "mean_code_error": 0.0,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 7680,
+   "index": 37,
+   "max_code_error": 0,
+   "mean_code_error": 0.0,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 7680,
+   "index": 38,
+   "max_code_error": 0,
+   "mean_code_error": 0.0,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 7680,
+   "index": 39,
+   "max_code_error": 0,
+   "mean_code_error": 0.0,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 7680,
+   "index": 40,
+   "max_code_error": 0,
+   "mean_code_error": 0.0,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 7680,
+   "index": 41,
+   "max_code_error": 1,
+   "mean_code_error": 0.041666666666666664,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 7680,
+   "index": 42,
+   "max_code_error": 1,
+   "mean_code_error": 0.041666666666666664,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 7680,
+   "index": 43,
+   "max_code_error": 1,
+   "mean_code_error": 0.07291666666666667,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 7680,
+   "index": 44,
+   "max_code_error": 1,
+   "mean_code_error": 0.041666666666666664,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 144,
+   "codes_per_channel": [
+    1,
+    2,
+    2
+   ],
+   "dither": 0.00392156862745098,
+   "index": 45,
+   "max_code_error": 1,
+   "max_code_error_vs_undithered": 0.8305646699288047,
+   "mean_code_error": 0.006944444444444444,
+   "mean_signed_error_vs_undithered": -0.02644150583832862,
+   "passed": true
+  },
+  {
+   "alpha_errors": 0,
+   "channels": 144,
+   "codes_per_channel": [
+    1,
+    2,
+    2
+   ],
+   "dither": 0.00392156862745098,
+   "index": 46,
+   "max_code_error": 1,
+   "max_code_error_vs_undithered": 0.8305646699288047,
+   "mean_code_error": 0.0625,
+   "mean_signed_error_vs_undithered": -0.08199706139388417,
+   "passed": true
+  }
+ ],
+ "passed": true,
+ "phase": "complete",
+ "source": "run_bloom_pass.py"
+}
