@@ -131,7 +131,39 @@ tooling"; census: tools/analysis/atlas_census.py):
   t_SpecularTexture), every g_Mat* FLOAT the face-area-weighted mean over the atlased
   materials of that effect (unless synth is off), appended to MAT6 with record index =
   position. A group material index outside the table (negative on the ad signs) is
-  refused before any of this.
+  refused before any of this. The copied record must declare t_DiffuseTexture, and
+  t_LightMapTexture when any material of that effect declares it (required_slots); the dominant is
+  taken among the materials that declare them (class_dominant). A slot no material of the effect
+  declares is not added, so the record keeps its effect's own parameter set. Every one of the 52
+  2026-09-24 dominant_slot_missing bodies was an effect with no light-map parameter on any of its
+  materials (glass.fx 37, asteroid.fx 10, planet_haze.fx 2, adeffects.fx 2, effects.fx 1; measured).
+  For glass.fx, adeffects.fx and effects.fx the merged material is the dominant's record with the
+  diffuse atlas, the bump atlas when the record declares t_BumpTexture and the specular atlas only
+  with --atlas-specular (else NULL), and no light map. adeffects.fx (StockmarketBoard) passes its UVs
+  through g_TexMatrix with TexAnim* all zero and a clamp address mode: the baker ignores the address
+  mode (it bakes wrap repeats over the face spans) and whether the engine animates g_TexMatrix is
+  untraced.
+- Kept effects (KEPT_EFFECTS, excluded_materials): planet_haze.fx (its vertex shader builds every
+  texture coordinate from normal / position / view / light, never from the mesh UVs, and the effect
+  blends itself) and asteroid.fx (its pixel shader samples t_DetailTexture at a coordinate derived
+  from the mesh UVs, so the atlas rewrite would change the detail repeat; admitting it needs a
+  detail-tiling-aware rewrite) never enter the atlas: their opaque materials keep their own groups,
+  material and UVs (one draw per part and material, like light_bleed's kept groups) and are reported
+  as kept_effects; a body whose opaque materials are all on such effects is refused excluded_effect.
+- NULL diffuse (t_DiffuseTexture NULL / "0" / empty): the tile's diffuse is NULL_DIFFUSE_TEXEL, black
+  and opaque. This is inferred, not measured: the engine binds a placeholder for a NULL texture, assumed
+  black by size (the NULL light-map placeholder's content is still open in
+  docs/reverse-engineering/hull-self-illumination.md), and the diffuse alpha 255 is chosen to match the
+  atlas background. No shipped effect material carries a diffuse colour parameter (only the scalar
+  g_MatDiffuseStrength; 1,131 ship/station bodies, 17,143 materials, measured 2026-09-24). Affected
+  parts measured in the 2026-09-24 dry bake: split_TL material 14 (every slot NULL, 76 faces, a solid
+  tile), teladi_M6 material 27 (NULL diffuse + fx_illum_03 light-map trim, 40 faces) and
+  teladi_trading_station_partA materials 26 (NULL diffuse + fx_windows_teladi_01, 48 faces) and 25
+  (NULL diffuse + fx_illum_01). A tile whose every
+  slot is NULL is solid: SOLID_SIDE (4) texels, one period, no texel need, every face keyed
+  (tile, 0, 0, SOLID_KEY) and clamped into it (check: solid_faces, not span-clamped). A material
+  with no t_DiffuseTexture parameter at all (truncated argon.fx / standard_lighting.fx records, whose
+  sampled default is the effect file's, untraced) is still refused as no_diffuse.
 - Textures: member dds/x3m_lod_<body>_<slot>.pck (gzip DDS, as every shipped texture)
   named in the material as x3m_lod\\x3m_lod_<body>_<slot>.tga: the engine resolves a
   material texture name by its stem under dds\\ (shipped names carry a directory and
@@ -146,7 +178,15 @@ tooling"; census: tools/analysis/atlas_census.py):
   path table and the wrapper's role, not traced (no enumerated mod body reads a tex/ member,
   so no body depends on it); jpg/tga/bmp are decoded with Pillow
   (imported lazily; a missing Pillow refuses the body with a reason). The layout records
-  the member each tile's textures came from (tile 'sources').
+  the member each tile's textures came from (tile 'sources'). Not widened (2026-09-24): the Khaak
+  M6 names (25.jpg, 36.jpg, ...) exist only as tex/true/<n>.jpg, a folder the EXE builds only for
+  numbered textures ("true\\%d" at 0x004f43fe, integer ids of the table at 0x006069ac); the string
+  wrapper 0x004f3510 never adds true\\, so those stay texture_unresolved, as do the names that are
+  in no catalogue at all.
+- 2026-09-24 change (dominant choice per effect, kept effects, NULL diffuse, solid tiles): tool_sha256 covers this
+  file, so the next lod_overlay --batch --sync rebuilds every body instead of reusing it; bodies
+  that baked before are byte-identical (no eligible body had a NULL diffuse or a dominant without
+  a required slot).
 """
 import gzip
 import hashlib
@@ -186,6 +226,9 @@ HIDDEN_PART = 0x8000       # part flag: skipped by the collection helper 0x0047d
 SLOT_NAMES = {'diffuse': b't_diffusetexture', 'light': b't_lightmaptexture', 'bump': b't_bumptexture',
               'specular': b't_speculartexture'}
 NULL_TEXEL = (0.0, 0.0, 0.0, 0.0)   # NULL light/specular map: black placeholder; alpha 0 like NONE_BLACK
+NULL_DIFFUSE_TEXEL = (0.0, 0.0, 0.0, 255.0)   # NULL diffuse: the black placeholder (inferred), opaque like the atlas background
+SOLID_SIDE = BLOCK         # source side of a solid tile (every slot NULL): one DXT block
+SOLID_KEY = 2              # face key (tile, 0, 0, SOLID_KEY): a face of a solid tile, UVs clamped into it
 FORMATS = ('dxt', 'a8r8g8b8')
 
 
@@ -589,6 +632,11 @@ def material_slots(material, slots=('diffuse', 'light')):
     return {k: s.get(k) for k in slots}
 
 
+def null_texel(slot):
+    """RGBA the atlas holds for a NULL texture in `slot` (bump: see from_normals of the flat normal)."""
+    return NULL_DIFFUSE_TEXEL if slot == 'diffuse' else NULL_TEXEL
+
+
 def tile_key(slots):
     return tuple((k, None if v is None or body_materials.is_null(v) else v.lower()) for k, v in slots.items())
 
@@ -645,8 +693,14 @@ def _tile_stats(base, limit, px, radius, min_ratio):
     uniform layout). limit L (the clamped layout): a face whose own UV extent (after its integer shift)
     exceeds L periods on either axis is span-clamped: it is left out of lo/hi and the need, and its UVs
     are clamped into the tile at the rewrite; the tile's scale is capped at min_ratio / k (k = its atlas
-    texels per screen pixel at scale 1) so a tile never holds more than min_ratio texels per pixel."""
+    texels per screen pixel at scale 1) so a tile never holds more than min_ratio texels per pixel.
+    A solid tile (every slot NULL) holds one constant texel per slot: one period of SOLID_SIDE texels,
+    no need (it takes no part in the texel ratio or floor) and every face clamped into it at the rewrite."""
     t = {k: v for k, v in base.items() if k != 'face_list'}
+    if base.get('solid'):
+        t.update(lo=[0.0, 0.0], hi=[1.0, 1.0], span=(1.0, 1.0), full=tuple(float(x) for x in base['base']), need=None,
+                 clamped_faces=0, clamped_area=0.0)
+        return t
     lo, hi = [math.inf, math.inf], [-math.inf, -math.inf]
     need_area = uv_area = clamped_area = 0.0
     clamped = 0
@@ -704,8 +758,8 @@ def plan_layout(record, mats, alpha, textures, px, sizes=(1024, 2048), gutter=GU
                 if not 0 <= mi < len(mats) or 'params' not in mats[mi]:
                     raise AtlasError(f'material {mi} is not an effect material; cannot atlas it')
                 names = material_slots(mats[mi], slots)
-                if names['diffuse'] is None or body_materials.is_null(names['diffuse']):
-                    raise AtlasError(f'material {mi} has no diffuse texture')
+                if names['diffuse'] is None:              # no t_DiffuseTexture: the effect default is untraced
+                    raise AtlasError(f'material {mi} has no diffuse texture (no t_DiffuseTexture parameter)')
                 key = tile_key(names)
                 t = next((t for t in tiles if t['key'] == key), None)
                 if t is None:
@@ -736,7 +790,10 @@ def plan_layout(record, mats, alpha, textures, px, sizes=(1024, 2048), gutter=GU
     total = sum(t['area'] for t in tiles)
     for t in tiles:
         sizes_ = [s for s in (textures.size(v) for v in t['names'].values()) if s]
-        t['base'] = (max(s[0] for s in sizes_), max(s[1] for s in sizes_)) if sizes_ else (32, 32)
+        if all(v is None or body_materials.is_null(v) for v in t['names'].values()):
+            t['solid'] = True                    # every slot NULL: one constant texel per slot
+        t['base'] = ((max(s[0] for s in sizes_), max(s[1] for s in sizes_)) if sizes_ else
+                     (SOLID_SIDE, SOLID_SIDE) if t.get('solid') else (32, 32))
         t['sources'] = {k: (source_of(v) or {}).get('member') for k, v in t['names'].items()}
         t['share'] = t['area'] / total if total > 0 else 1.0 / len(tiles)
     variants = {False: [_tile_stats(t, None, px, radius, min_ratio) for t in src]}
@@ -766,7 +823,8 @@ def plan_layout(record, mats, alpha, textures, px, sizes=(1024, 2048), gutter=GU
         t['capped'] = bool(clamp and t.get('cap', 1.0) < scale)
         t['clamped_share'] = t['clamped_area'] / total if total > 0 else 0.0
         for (pi, gi, fi, su, sv), _, _, _, ext in src_t['face_list']:
-            face_keys[pi, gi, fi] = (ti, su, sv, 1) if clamp and ext > outlier_span else (ti, su, sv)
+            face_keys[pi, gi, fi] = ((ti, 0, 0, SOLID_KEY) if t.get('solid') else
+                                     (ti, su, sv, 1) if clamp and ext > outlier_span else (ti, su, sv))
     return dict(size=n, scale=scale, gutter=gutter, tiles=tiles, face_keys=face_keys, radius=radius, px=px,
                 min_ratio=low, ratio_ok=low >= min_ratio, tried=[x[:3] for x in tried],
                 tried_clamped=[x[3] for x in tried], clamped=clamp, outlier_span=outlier_span, area=total,
@@ -882,7 +940,7 @@ def rewrite_record(record, layout, atlas_index, alpha, alpha_remap=None, max_gro
                 new_pts.append(pts[i]); origin.append(i); copies_of[i].append(index[k])
         return index[k]
 
-    parts, faces_map, pending, span_clamped = [], [], [], set()
+    parts, faces_map, pending, span_clamped, solid = [], [], [], set(), set()
     n = layout['size'] if layout else 0
     for pi, part in enumerate(record['parts']):
         new = {'flags': part['flags'], 'groups': []}
@@ -920,8 +978,8 @@ def rewrite_record(record, layout, atlas_index, alpha, alpha_remap=None, max_gro
                     for j in out[:3]:
                         ref_group.setdefault(j, gi)
                     if key is not None:
-                        if len(key) > 3:                  # span-clamped face (plan_layout clamped layout)
-                            span_clamped.add(len(faces_map))
+                        if len(key) > 3:                  # span-clamped face (plan_layout clamped layout) or solid tile
+                            (solid if key[3] == SOLID_KEY else span_clamped).add(len(faces_map))
                         faces_map.append((pi, f, out, g['material'], key[0]))
             pending.append((new, pi, cls, material, faces, ref_group, pre, blocks))
         if 'bounds' in part:
@@ -964,19 +1022,42 @@ def rewrite_record(record, layout, atlas_index, alpha, alpha_remap=None, max_gro
         lod['weights'] = [record['weights'][o] for o in origin]
     lod['parts'] = parts
     return lod, dict(origin=origin, duplicated=len(new_pts) - len(pts), faces=faces_map,
-                     missing_records=missing, copies_of=copies_of, split=split, span_clamped=span_clamped)
+                     missing_records=missing, copies_of=copies_of, split=split, span_clamped=span_clamped,
+                     solid=solid)
 
 
-def atlas_material(mats, dom, names, areas, synth=True):
+def declared(material):
+    """Lower-case names of the STRING (texture) parameters an effect material declares."""
+    return {n.lower() for n, t, _ in material.get('params', ()) if t == 8}
+
+
+def required_slots(mats, mis):
+    """Texture parameters the merged material of one effect class must carry: t_DiffuseTexture, and
+    t_LightMapTexture when any material of the class declares it (an effect whose materials never declare
+    it, e.g. glass.fx / asteroid.fx, does not sample a light map; its merged material leaves it out as its
+    own materials do)."""
+    light = SLOT_NAMES['light']
+    return (SLOT_NAMES['diffuse'],) + ((light,) if any(light in declared(mats[m]) for m in mis) else ())
+
+
+def class_dominant(mats, groups, need):
+    """Dominant material (face count) among the class's materials that declare every parameter in `need`;
+    the plain dominant when none does (atlas_material then refuses)."""
+    carry = {m for m in {g['material'] for g in groups} if set(need) <= declared(mats[m])}
+    return dominant([g for g in groups if g['material'] in carry] or groups)
+
+
+def atlas_material(mats, dom, names, areas, synth=True, need=(b't_diffusetexture', b't_lightmaptexture')):
     """Copy of mats[dom] with the atlas textures and (synth) area-weighted g_Mat* means; rows as
-    lod_overlay.synth_materials."""
+    lod_overlay.synth_materials. A slot the copied record does not declare is not added (the record keeps
+    its effect's parameter set); `need` (required_slots) must all be declared."""
     base = mats[dom]
     replace = {b't_speculartexture': b'NULL', b't_bumptexture': b'NULL', b't_alphatexture': b'NULL'}
     replace.update({SLOT_NAMES[s]: v for s, v in names.items()})
     have = {n.lower() for n, t, _ in base['params'] if t == 8}
-    for need in (b't_diffusetexture', b't_lightmaptexture'):
-        if need not in have:
-            raise AtlasError(f'dominant material {dom} has no {need.decode()} parameter')
+    for slot in need:
+        if slot not in have:
+            raise AtlasError(f'dominant material {dom} has no {slot.decode()} parameter')
     params, rows = [], []
     for name, typ, val in base['params']:
         low = name.lower()
@@ -1017,6 +1098,31 @@ def occlusion_name(material):
     return None
 
 
+KEPT_EFFECTS = {
+    # vertex shader builds every texture coordinate from normal / position / view / light, never from the
+    # mesh UVs, and the effect sets its own blending: an atlas UV rewrite cannot reproduce it
+    'planet_haze.fx': 'texcoords not from mesh UVs',
+    # pixel shader samples t_DetailTexture at a coordinate derived from the mesh UVs: the atlas rewrite would
+    # change the detail repeat; admitting it needs a detail-tiling-aware rewrite
+    'asteroid.fx': 'detail map tiles with the mesh UVs',
+}
+
+
+def excluded_materials(mats, record, alpha):
+    """Opaque materials of the visible parts of `record` whose effect file is in KEPT_EFFECTS: they keep their
+    own groups (collapse keep) instead of entering the atlas."""
+    out = set()
+    for part in record['parts']:
+        if part['flags'] & HIDDEN_PART:
+            continue
+        for g in part['groups']:
+            m = g['material']
+            if m not in alpha and 0 <= m < len(mats) and \
+                    effect_name(mats[m]).replace('\\', '/').rsplit('/', 1)[-1] in KEPT_EFFECTS:
+                out.add(m)
+    return frozenset(out)
+
+
 def effect_classes(mats, opaque):
     """[(effect, [material indices in first-use order])] of the opaque groups, largest face count
     first (ties: first use). Refuses a group material index outside the table."""
@@ -1041,10 +1147,14 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
     synthesized alpha material) to `mats` in place. Returns dict(record, layout, atlas_index (the
     largest effect's), atlas_indices, atlas_of, names, members, synth, uv2, occlusion, kept, ...).
     Materials in `keep` (light_bleed) are not atlased: they keep their own groups, textures and UVs and
-    take no part in the effect classes, the occlusion check or the g_Mat* means. `layout` (light_bleed's
-    repack) replaces plan_layout; it must have been planned with the same keep set."""
+    take no part in the effect classes, the occlusion check or the g_Mat* means; the opaque materials of a
+    KEPT_EFFECTS effect (excluded_materials) are kept the same way and reported as kept_effects (a body
+    with nothing else opaque is refused). `layout` (light_bleed's repack) replaces plan_layout; it must
+    have been planned with the same keep set."""
     import lod_overlay
     textures = textures or Textures(assets)
+    kept_fx = excluded_materials(mats, record, alpha)
+    bleed_keep, keep = frozenset(keep), frozenset(keep) | kept_fx
     areas, opaque = {}, []
     for part in record['parts']:
         if part['flags'] & HIDDEN_PART:
@@ -1054,6 +1164,9 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
                 opaque.append(g)
                 areas[g['material']] = areas.get(g['material'], 0.0) + sum(
                     body_materials.face_area(record['points'], f) for f in g['faces'])
+    if not opaque and kept_fx:
+        effs = sorted({effect_name(mats[m]) for m in kept_fx})
+        raise AtlasError(f'every opaque material is on an excluded effect {effs} (kept_effects); nothing to atlas')
     if not opaque:
         raise AtlasError('the record has no opaque faces to atlas')
     uv2 = sum(1 for p in record['points'] if p[0] & 4)
@@ -1077,8 +1190,9 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
     names, members = texture_names(body, slots)
     atlas_of, indices, report = {}, [], []
     for eff, mis in classes:
-        d = dominant([g for g in opaque if g['material'] in mis])
-        mat, rows = atlas_material(mats, d, names, {m: areas[m] for m in mis}, synth)
+        need = required_slots(mats, mis)
+        d = class_dominant(mats, [g for g in opaque if g['material'] in mis], need)
+        mat, rows = atlas_material(mats, d, names, {m: areas[m] for m in mis}, synth, need)
         idx = len(mats)
         mats.append(mat)
         indices.append(idx)
@@ -1098,7 +1212,8 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
     effects = sorted({(mats[m].get('effect', b'').decode('latin1'), mats[m].get('technique')) for m in areas})
     return dict(record=lod, layout=layout, atlas_index=atlas_index, atlas_indices=indices, atlas_of=atlas_of,
                 dominant=dom, names=names, members=members, slots=slots, synth=report, info=info,
-                effects=effects, textures=textures, uv2=uv2, occlusion=occlusion, kept=sorted(keep))
+                effects=effects, textures=textures, uv2=uv2, occlusion=occlusion, kept=sorted(bleed_keep),
+                kept_effects=sorted(kept_fx))
 
 
 # --- baking -------------------------------------------------------------------------------
@@ -1161,7 +1276,7 @@ def bake_level(layout, sources, slot, level=0):
     bump = slot == 'bump'
     img = np.zeros((nl, nl, 3 if bump else 4), np.float32)
     img[:, :, -1] = 1 if bump else 255 if slot == 'diffuse' else 0     # flat normal / opaque / black
-    null = np.array((0, 0, 1) if bump else NULL_TEXEL, np.float32)
+    null = np.array((0, 0, 1) if bump else null_texel(slot), np.float32)
     inner = []
     for t, src in zip(layout['tiles'], sources):
         (x0, x1, y0, y1), over = tile_boxes(t, g, level)
@@ -1442,12 +1557,14 @@ def check(source_record, out_record, result, atlases, mats, max_faces=CHECK_FACE
     CHECK_MAP_TEXELS source texels and CHECK_MAP_ATLAS_TEXELS atlas texels (a tile holding far fewer
     texels than its source turns the 16.16 rounding of the atlas UV into several source texels, which
     is not a mapping error). A span-clamped face (plan_layout clamped layout; UVs clamped into the tile) counts
-    in the inside test only: it is neither inverse-mapped nor sampled ('span_clamped_faces')."""
+    in the inside test only: it is neither inverse-mapped nor sampled ('span_clamped_faces'); so does a face of
+    a solid tile ('solid_faces', reported only when there is one)."""
     layout, textures = result['layout'], result['textures']
     n, g = layout['size'], layout['gutter']
     spts, opts = source_record['points'], out_record['points']
     faces = result['info']['faces']
     clamped = result['info'].get('span_clamped', ())
+    solid = result['info'].get('solid', ())
     inside = in_gutter = 0
     worst_map = worst_atlas = 0.0
     map_errors = 0
@@ -1464,7 +1581,7 @@ def check(source_record, out_record, result, atlases, mats, max_faces=CHECK_FACE
             tol = 2.0 * n / UV_ONE
             inside += cx - tol <= x <= cx + cw + tol and cy - tol <= y <= cy + ch + tol
             in_gutter += cx - g <= x <= cx + cw + g and cy - g <= y <= cy + ch + g
-        if fi in clamped:
+        if fi in clamped or fi in solid:                  # UVs clamped into the tile: not inverse-mapped
             continue
         ou = np.mean([point_uv(spts[i]) for i in sf[:3]], 0)
         nu = np.mean([point_uv(opts[j]) for j in of[:3]], 0)
@@ -1487,7 +1604,8 @@ def check(source_record, out_record, result, atlases, mats, max_faces=CHECK_FACE
         su_list = su_list[::thin]
     out = dict(faces=len(faces), vertices=3 * len(faces), inside=inside, in_gutter=in_gutter,
                max_map_error_texels=float(worst_map), max_map_error_atlas_texels=float(worst_atlas), map_error_faces=map_errors,
-               sampled_faces=len(su_list), span_clamped_faces=len(clamped), slots={})
+               sampled_faces=len(su_list), span_clamped_faces=len(clamped), slots={},
+               **({'solid_faces': len(solid)} if solid else {}))
     angle = lambda x, y: np.degrees(np.arccos(np.clip((normalize(to_normals(x)) * normalize(to_normals(y))).sum(-1),
                                                        -1, 1)))
     for slot, atlas in atlases.items():
@@ -1504,7 +1622,7 @@ def check(source_record, out_record, result, atlases, mats, max_faces=CHECK_FACE
             ou = np.array([su_list[k][0] for k in ks])
             a = bilinear(atlas, nu[:, 0], nu[:, 1], False)
             if src is None:
-                null = from_normals(np.array([0.0, 0.0, 1.0])) if bump else np.array(NULL_TEXEL)
+                null = from_normals(np.array([0.0, 0.0, 1.0])) if bump else np.array(null_texel(slot))
                 ref = box = np.broadcast_to(null, a.shape)
             else:
                 ref = bilinear(src, ou[:, 0], ou[:, 1], True)
@@ -1743,6 +1861,7 @@ def summary(res):
         missing_tangent_records=res['info']['missing_records'], effects=[list(e) for e in res['effects']],
         uv2_points=res.get('uv2', 0), occlusion=res.get('occlusion', {}),
         kept_light_bleed=list(res.get('kept', [])),
+        **({'kept_effects': list(res['kept_effects'])} if res.get('kept_effects') else {}),
         light_bleed=bleed_summary(res.get('light_bleed')),
         tiles=[dict(mats=t['mats'], names={k: (v.decode('latin1') if v else None) for k, v in t['names'].items()},
                     sources=dict(t.get('sources', {})),
@@ -1750,7 +1869,7 @@ def summary(res):
                     content=list(t['content']), origin=list(t['origin']), texels_per_px=_num(t['ratio']),
                     name=(t['names'].get('diffuse') or b'').decode('latin1'), share=_num(t['share']),
                     clamped_faces=t.get('clamped_faces', 0), clamped_share=_num(t.get('clamped_share', 0.0)),
-                    capped=bool(t.get('capped')))
+                    capped=bool(t.get('capped')), **({'solid': True} if t.get('solid') else {}))
                for t in L['tiles']],
         textures=[dict(slot=s, name=res['names'][s].decode('latin1'), member=res['members'][s], format=e['format'],
                        dds_bytes=e['bytes'], dds_sha256=e['sha256'],
@@ -1759,6 +1878,7 @@ def summary(res):
         check=dict(faces=c['faces'], sampled_faces=c.get('sampled_faces', c['faces']), vertices=c['vertices'], uv_inside_content=c['inside'],
                    uv_inside_gutter=c['in_gutter'], max_map_error_texels=_num(c['max_map_error_texels']),
                    span_clamped_faces=c.get('span_clamped_faces', 0),
+                   **({'solid_faces': c['solid_faces']} if c.get('solid_faces') else {}),
                    max_map_error_atlas_texels=_num(c.get('max_map_error_atlas_texels')),
                    map_error_faces=c.get('map_error_faces', 0),
                    slots={s: {k: [_num(x) for x in v] for k, v in d.items()} for s, d in c['slots'].items()}))

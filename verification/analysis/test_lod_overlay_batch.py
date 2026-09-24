@@ -1150,5 +1150,123 @@ class LightBleed(unittest.TestCase):
             self.assertIn('bodies 2, tiles 2 (counted 0, ignored 2), kept groups 0', text)
 
 
+def refusal_tree(kind):
+    """atlas_tree_lod0 (material 0: a_diff, NULL light, a_bump; material 1: b_diff, b_light, NULL bump; 3 faces
+    each in record 0, so material 0 is the dominant by first use) shaped like one 2026-09-24 refusal class."""
+    tree = atlas_tree_lod0()
+    mats = bob1.materials(tree)
+    drop = lambda m, name: [p for p in m['params'] if p[0] != name]
+    put = lambda m, name, v: [(n, t, v if n == name else x) for n, t, x in m['params']]
+    if kind == 'glass':          # argon_M3: a second effect whose only material declares no light map
+        mats[1]['effect'] = b'glass.fx'
+        mats[1]['params'] = drop(mats[1], b't_LightMapTexture') + [(b't_CubeMapTexture', 8, b'envmap.dds')]
+    elif kind == 'sibling':      # the effect's dominant lacks the light map its sibling declares
+        mats[0]['params'] = drop(mats[0], b't_LightMapTexture')
+    elif kind == 'null_diffuse':  # teladi_M6: NULL diffuse beside a real map
+        mats[0]['params'] = put(mats[0], b't_DiffuseTexture', b'NULL')
+    elif kind == 'solid':        # split_TL material 14: every slot NULL
+        mats[0]['params'] = put(mats[0], b't_BumpTexture', b'NULL')
+        mats[0]['params'] = put(mats[0], b't_DiffuseTexture', b'NULL')
+    elif kind == 'no_diffuse_param':   # argon_food_S_factory_C material 9: a truncated record
+        mats[0]['params'] = drop(mats[0], b't_DiffuseTexture')
+    elif kind == 'true_folder':  # Khaak_M6Main: '25.jpg' exists only as tex/true/25.jpg
+        mats[0]['params'] = put(mats[0], b't_DiffuseTexture', b'25.jpg')
+    elif kind in ('planet_haze', 'asteroid'):   # khaak_hive_base / lostcolony_energy: an excluded effect
+        mats[1]['effect'] = kind.encode() + b'.fx'
+        mats[1]['params'] = drop(mats[1], b't_LightMapTexture')
+    elif kind == 'haze_only':    # terraformer_hub_D: every opaque material on planet_haze.fx
+        for m in mats[:2]:
+            m['effect'] = b'planet_haze.fx'
+    return tree
+
+
+class RefusalClasses(unittest.TestCase):
+    """dominant_slot_missing, no_diffuse and texture_unresolved (2026-09-24)."""
+    def build(self, kind):
+        with tempfile.TemporaryDirectory() as folder:
+            game = Path(folder) / 'game'
+            write_catalogue(game / '01.cat', atlas_textures() + [('tex/true/25.jpg', jpg_texture())])
+            assets, _ = lod_overlay.original_assets(game)
+            tree = bob1.parse(bob1.serialise(refusal_tree(kind)))
+            mats, r0 = list(bob1.materials(tree)), bob1.lods(tree)[0]
+            return lod_atlas.build(assets, 'b', mats, r0, set(), 8, (64, 128), light_bleed_max=0), mats
+
+    def test_dominant_slot_missing(self):
+        src = bob1.materials(refusal_tree('glass'))
+        res, mats = self.build('glass')
+        by = {r['effect']: r for r in res['synth'] if r.get('atlas')}
+        glass = mats[by['glass.fx']['index']]
+        self.assertEqual([(n, t) for n, t, _ in glass['params']], [(n, t) for n, t, _ in src[1]['params']])
+        vals = {n: v for n, t, v in glass['params']}
+        self.assertEqual((vals[b't_DiffuseTexture'], vals[b't_BumpTexture'], vals[b't_CubeMapTexture']),
+                         (res['names']['diffuse'], res['names']['bump'], b'envmap.dds'))
+        self.assertNotIn(b't_LightMapTexture', vals)              # glass.fx declares none: none added
+        argon = {n: v for n, t, v in mats[by['argon.fx']['index']]['params']}
+        self.assertEqual(argon[b't_LightMapTexture'], res['names']['light'])
+        src = bob1.materials(refusal_tree('sibling'))
+        res, mats = self.build('sibling')
+        (row,) = [r for r in res['synth'] if r.get('atlas')]
+        self.assertEqual((row['dominant'], row['absorbed']), (1, [0, 1]))      # the one declaring the light map
+        self.assertEqual([n for n, _, _ in mats[row['index']]['params']], [n for n, _, _ in src[1]['params']])
+        with self.assertRaisesRegex(lod_atlas.AtlasError, 'no t_lightmaptexture parameter'):
+            lod_atlas.atlas_material(src, 0, res['names'], {0: 1.0}, need=lod_atlas.required_slots(src, [0, 1]))
+
+    def test_no_diffuse(self):
+        res, _ = self.build('null_diffuse')
+        t = next(t for t in res['layout']['tiles'] if 0 in t['mats'])
+        self.assertFalse(t.get('solid'))
+        self.assertEqual(t['base'], (16, 16))                     # sized by its bump map
+        (cx, cy), (cw, ch) = t['origin'], t['content']
+        diff = res['encoded']['diffuse']
+        self.assertEqual(diff['format'], 'DXT1')                  # the NULL diffuse is opaque black
+        self.assertTrue((diff['decoded'][cy:cy + ch, cx:cx + cw] == (0, 0, 0, 255)).all())
+        res, _ = self.build('solid')
+        t = next(t for t in res['layout']['tiles'] if 0 in t['mats'])
+        self.assertEqual((t.get('solid'), t['base'], t['span'], t['content'], t['ratio']), (True, (4, 4), (1.0, 1.0),
+                                                                                           (4, 4), None))
+        c = res['check']
+        self.assertEqual((c['inside'], c['map_error_faces'], c['span_clamped_faces'], c['solid_faces']),
+                         (c['vertices'], 0, 0, 3))               # own key: not counted as span-clamped
+        self.assertEqual({k for f, k in res['layout']['face_keys'].items() if k[0] == res['layout']['tiles'].index(t)},
+                         {(res['layout']['tiles'].index(t), 0, 0, lod_atlas.SOLID_KEY)})
+        (cx, cy), (cw, ch) = t['origin'], t['content']
+        self.assertTrue((res['encoded']['diffuse']['decoded'][cy:cy + ch, cx:cx + cw] == (0, 0, 0, 255)).all())
+        self.assertTrue((res['encoded']['light']['decoded'][cy:cy + ch, cx:cx + cw] == 0).all())
+        rows = lod_atlas.tile_rows(res['layout'])
+        solid = rows[res['layout']['tiles'].index(t)]
+        self.assertGreater(solid['share'], 0.0)
+        self.assertAlmostEqual(lod_atlas.texel_floor(rows, 1e9, 0.0)['starved_share'], 1.0 - solid['share'],
+                               places=5)                          # the solid tile takes no part in the floor
+        self.assertTrue(lod_atlas.summary(res)['tiles'][res['layout']['tiles'].index(t)]['solid'])
+        with self.assertRaisesRegex(lod_atlas.AtlasError, 'no diffuse texture') as cm:
+            self.build('no_diffuse_param')
+        self.assertEqual(census.atlas_reason(cm.exception), 'no_diffuse')
+
+    def test_kept_effects(self):
+        for kind in ('planet_haze', 'asteroid'):
+            res, mats = self.build(kind)
+            self.assertEqual(res['kept_effects'], [1])
+            self.assertEqual([t['mats'] for t in res['layout']['tiles']], [[0]])        # never in the atlas
+            self.assertEqual([r['effect'] for r in res['synth'] if r.get('atlas')], ['argon.fx'])
+            groups = [g for p in res['record']['parts'] if not p['flags'] & lod_atlas.HIDDEN_PART for g in p['groups']]
+            self.assertEqual([g['material'] for g in groups], [res['atlas_index'], 1])  # own group, own material
+            src = bob1.lods(refusal_tree(kind))[0]
+            uv = lambda rec, g: sorted(lod_atlas.point_uv(rec['points'][i]) for f in g['faces'] for i in f[:3])
+            self.assertEqual(uv(res['record'], groups[1]),
+                             uv(src, next(g for g in src['parts'][0]['groups'] if g['material'] == 1)))   # UVs untouched
+            s = lod_atlas.summary(res)
+            self.assertEqual((s['kept_effects'], s['kept_light_bleed']), ([1], []))
+        res, _ = self.build('glass')
+        self.assertNotIn('kept_effects', lod_atlas.summary(res))
+        with self.assertRaisesRegex(lod_atlas.AtlasError, 'excluded effect') as cm:
+            self.build('haze_only')
+        self.assertEqual(census.atlas_reason(cm.exception), 'excluded_effect')
+
+    def test_texture_unresolved(self):
+        with self.assertRaisesRegex(lod_atlas.AtlasError, 'does not resolve') as cm:
+            self.build('true_folder')                             # tex/true/ is the numbered-texture folder only
+        self.assertEqual(census.atlas_reason(cm.exception), 'texture_unresolved')
+
+
 if __name__ == '__main__':
     unittest.main()

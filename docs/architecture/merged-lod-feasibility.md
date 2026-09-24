@@ -1188,6 +1188,49 @@ evidence under `verification/results/lod-overlay-batch/batch-dryrun/`.
   from the layer counts above). Residuals against the engine's in-memory model (classic-MAT6
   switch bits after a texture overwrite, the part centre of a part without `0x10000000`) are in
   body-format-bob1.md §8.
+- **Refusal classes (2026-09-24, `verification/results/lod-overlay-batch/refusal-classes/`,
+  measured on the bottle's catalogues, not installed).** The installed batch refused 80 bodies for
+  these three reasons.
+  - *dominant_slot_missing* (52). In every case no material of the effect declares
+    `t_LightMapTexture` (glass.fx 37, asteroid.fx 10, planet_haze.fx 2, adeffects.fx 2, effects.fx 1),
+    so no sibling carries it. `lod_atlas.collapse` now requires the light-map parameter only when some
+    material of the effect declares it, and takes the dominant among the materials that declare the
+    required slots; the merged material stays a copy of an existing record of that effect, with
+    nothing added. The reason is now unreachable (documented at `lod_batch_census.ATLAS_REASONS`).
+  - Two effects never enter the atlas (`lod_atlas.KEPT_EFFECTS`): their opaque materials keep their
+    own groups, material and UVs, reported as `kept_effects`. planet_haze.fx's vertex shader builds
+    every texture coordinate from normal, position, view and light, never from the mesh UVs, and the
+    effect blends itself. asteroid.fx's pixel shader samples a detail map at a coordinate derived from
+    the mesh UVs, so the atlas rewrite would change the detail repeat; admitting it needs a
+    detail-tiling-aware rewrite. A body with nothing else opaque is refused `excluded_effect`.
+  - adeffects.fx (StockmarketBoard) stays merged. It passes its UVs through `g_TexMatrix`; its
+    TexAnim values are all zero and it uses a clamp address mode. The baker ignores address mode (it
+    bakes wrap repeats), and whether the engine animates `g_TexMatrix` is untraced.
+  - Measured outcomes: argon_M3 is `no_draw_gain` (2 → 2) and lostcolony_energy builds 38 → 3 (1024²),
+    with asteroid material 33 as one kept group. Unmeasured: the other glass fighters (argon_M5 and
+    fightdrone_MK have three effect classes), khaak_hive_base and terraformer_hub_D (planet_haze),
+    StockmarketBoardS/XL (adeffects), arrow_indicator (effects.fx, `others/`), and the asteroid-only
+    lostcolony wrecks (expected `excluded_effect`).
+  - *no_diffuse* (17). No shipped material has a diffuse-colour parameter: 17,143 materials carry only
+    the scalar `g_MatDiffuseStrength`. A NULL `t_DiffuseTexture` (12 bodies, 0.02–1.3 % of the atlased
+    area) now bakes as opaque black. That is inferred, not measured: the placeholder is assumed black
+    as for NULL light maps, whose content is still open in
+    [hull-self-illumination.md](../reverse-engineering/hull-self-illumination.md), and alpha 255 is
+    chosen. The affected parts:
+    - split_TL material 14: every slot NULL, 76 faces, a 4×4 solid tile keyed apart from the
+      span-clamped faces (76 `solid_faces`, 62 span-clamped).
+    - teladi_M6 material 27: NULL diffuse with the fx_illum_03 light-map trim, 40 faces.
+    - teladi_trading_station_partA material 26 (fx_windows_teladi_01, 48 faces) and 25 (fx_illum_01).
+
+    split_TL builds 15 → 1, teladi_M6 13 → 2 and partA 15 → 3 (2048²). The five argon stations whose
+    material has no `t_DiffuseTexture` parameter stay refused (the effect default is untraced).
+  - *texture_unresolved* (11): the resolver is not widened. Khaak_M6Main/Sec's 16 names exist only as
+    `tex/true/<n>.jpg`, and the EXE builds `true\` only in the numbered-texture path `0x004f43fe`,
+    never in the string wrapper `0x004f3510`. The rest (`unique_argon_hybrid_bump`,
+    `AGI_M3-body_light`, `XTC_terran_door_*`, `unique_argon_M3_02_diff`) are in no catalogue.
+  - argon_M2's overlay (5 members, cat, dat, manifest row) is byte-identical before and after, and no
+    installed body uses planet_haze.fx or asteroid.fx (0 of 591). The tool change moves
+    `tool_sha256`, so the next `--sync` rebuilds every body.
 
 **Node side effects.** Two node-set side effects change at Very High (objdump of `0047cfe0..`,
 `/tmp/x3-lod/f47cfe0.s`). A child node flagged `node+0x12c & 0x40000` is hidden

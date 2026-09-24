@@ -107,7 +107,10 @@ STATION_DIRS = ('stations', 'others')
 SECTORS = (('run255_burst2', 'verification/results/run255-census/node_census_out.txt', '14286'),
            ('run257_burst1', 'verification/results/run257-pilot/census_run257_out.txt', '3615'),
            ('run260', 'verification/results/lod-overlay-batch/census_run260_out.txt', '9868'))
-ATLAS_REASONS = (('occlusion textures', 'occlusion_mismatch'), ('outside the material table', 'material_outside_table'),
+# dominant_slot_missing ('parameter') is unreachable since 2026-09-24: plan_layout refuses a material without
+# t_DiffuseTexture first (no_diffuse) and lod_atlas.required_slots asks for t_LightMapTexture only when a material of
+# the class declares it, which class_dominant then picks; the needle stays as a guard of atlas_material's check.
+ATLAS_REASONS = (('excluded effect', 'excluded_effect'), ('occlusion textures', 'occlusion_mismatch'), ('outside the material table', 'material_outside_table'),
                  ('not an effect material', 'non_effect_material'), ('no diffuse', 'no_diffuse'),
                  ('no opaque faces', 'no_opaque'), ('without UV', 'no_uv'), ('do not fit', 'atlas_fit'),
                  ('does not resolve', 'texture_unresolved'), ('not a DDS', 'texture_not_dds'),
@@ -403,7 +406,7 @@ def census_body(assets, textures, entry, opts):
     if x0['refuse'] and w_target > 0:              # texel fallback: a lower switch size (the body appears farther out)
         def texel_at(t):
             L = lod_atlas.plan_layout(r0, mats, alpha, textures, t * opts['widths'][0] / 1280, opts['sizes'],
-                                      lod_atlas.GUTTER, res['slots'])
+                                      lod_atlas.GUTTER, res['slots'], keep=frozenset(res['kept_effects']))
             return lod_atlas.texel_floor(lod_atlas.tile_rows(L), min_texels, floor_share), L['size']
         fb = texel_fallback(texel_at, tp, th[0] if th else None, x0, min_texels, floor_share, w_target)
         fb['size_before'] = lay['size']
@@ -416,6 +419,8 @@ def census_body(assets, textures, entry, opts):
     row.update(slots=list(res['slots']), tiles=len(lay['tiles']), dup=res['info']['duplicated'],
                c_drawn=drawn_groups(res['record']), c_groups=sum(len(p['groups']) for p in res['record']['parts']),
                atlas_materials=len(res['atlas_indices']), occlusion=res['occlusion'])
+    if res['kept_effects']:
+        row['kept_effects'] = list(res['kept_effects'])     # own groups in C (lod_atlas.KEPT_EFFECTS)
     tex_shas = sorted({(textures.source(v) or {}).get('decoded_sha256') or 'unresolved:' + v.decode('latin1').lower()
                        for t in lay['tiles'] for v in t['names'].values() if v is not None})
     row['inputs_sha256'] = hashlib.sha256('\n'.join([row['source_decoded_sha256']] + tex_shas).encode()).hexdigest()
@@ -424,7 +429,7 @@ def census_body(assets, textures, entry, opts):
     layouts = {opts['widths'][0]: lay}
     for w in opts['widths'][1:]:
         layouts[w] = lod_atlas.plan_layout(r0, mats, alpha, textures, tp * w / 1280, opts['sizes'],
-                                           lod_atlas.GUTTER, res['slots'])
+                                           lod_atlas.GUTTER, res['slots'], keep=frozenset(res['kept_effects']))
     row['atlas'] = {}
     for w, L in layouts.items():
         tiles = lod_atlas.tile_rows(L)

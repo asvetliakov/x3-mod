@@ -246,9 +246,15 @@ outside that grammar; a MATERIAL3 text body is mat3), ambiguous_body_ext (both a
 (more than MAX_TRAILING stray bytes after /BOB; up to MAX_TRAILING are tolerated with a
 warning, the parser 0x00481aa0 returns at /BOB and never reads them), material_outside_table
 (a negative group material index, the ad signs), occlusion_mismatch (second UV set with
-differing occlusion decals inside one merged group), mat3, no_opaque, dominant_slot_missing,
-texture_unresolved, pil_missing (a jpg/tga/bmp texture without Pillow), and the lod_atlas
-reasons. Mixed effects and the second UV set are handled, not refused (lod_atlas notes).
+differing occlusion decals inside one merged group), mat3, no_opaque, dominant_slot_missing
+(unreachable since 2026-09-24: the dominant is taken among the materials that declare the needed
+slots and an effect that declares no light map keeps none), excluded_effect (every opaque material
+on lod_atlas.KEPT_EFFECTS, planet_haze.fx / asteroid.fx, which otherwise keep their own groups),
+no_diffuse (since 2026-09-24 only a material without a t_DiffuseTexture parameter; a NULL diffuse
+bakes the black placeholder), texture_unresolved, pil_missing (a jpg/tga/bmp texture without
+Pillow), and the lod_atlas reasons. Mixed effects and the second UV set are handled, not refused
+(lod_atlas notes). A change to lod_atlas.py or this file changes tool_sha256, so the next --sync
+rebuilds every body.
 Atlas member names are dds/x3m_lod_<stem>_<hash6>_<slot>.pck with the hash from the member
 path (qualified_stem), unique within an overlay and stable across runs.
 
@@ -900,6 +906,10 @@ def atlas_collapse(assets, name, entry, mats, record, alpha, threshold, synth, o
     kept = set(res.get('kept', ()))
     res['summary']['kept_light_bleed_draws'] = sum(1 for p in res['record']['parts'] if not p['flags'] & lod_atlas.HIDDEN_PART
                                                    for g in p['groups'] if g['material'] in kept)
+    if res.get('kept_effects'):
+        fx = set(res['kept_effects'])
+        res['summary']['kept_effect_draws'] = sum(1 for p in res['record']['parts'] if not p['flags'] & lod_atlas.HIDDEN_PART
+                                                  for g in p['groups'] if g['material'] in fx)
     return res['record'], res['synth'], res, extra
 
 

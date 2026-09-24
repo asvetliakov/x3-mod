@@ -1,0 +1,238 @@
+# refusal_classes.py, 2026-09-24; bottle X3 installed batch record (read-only); scratch bakes under <worktree>/build/lod-refusals (untracked)
+## fleet (installed record, before the change)
+  38 dominant_slot_missing    ship     only
+  14 dominant_slot_missing    station  only
+  10 no_diffuse               ship     only
+   7 no_diffuse               station  only
+   9 texture_unresolved       ship     only
+   1 texture_unresolved       ship     with ambiguous_body_ext
+   1 texture_unresolved       station  with ambiguous_body_ext
+  dominant_slot_missing                    others/arrow_indicator  dominant material 0 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/argon/argon_M3  dominant material 1 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/argon/argon_M3_var1  dominant material 1 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/argon/argon_M3_var2  dominant material 1 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/argon/argon_M3_var3  dominant material 1 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/argon/argon_M4_var1  dominant material 3 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/argon/argon_M4_var2  dominant material 3 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/argon/argon_M4_var3  dominant material 3 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/argon/argon_M5  dominant material 2 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/argon/argon_M5_var1  dominant material 1 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/argon/argon_M5_var2  dominant material 1 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/argon/argon_M5_var3  dominant material 2 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/khaak/khaak_hive_base  dominant material 3 has no t_lightmaptexture parameter
+  texture_unresolved                       ships/M3/Argon_hybrid  texture b'dds\\unique_argon_hybrid_bump.tga' does not resolve under dds/ (pck, dds) or tex/ (jpg, tga, bmp)
+  texture_unresolved                       ships/M6/Khaak_M6Main  texture b'25.jpg' does not resolve under dds/ (pck, dds) or tex/ (jpg, tga, bmp)
+  texture_unresolved                       ships/M6/Khaak_M6Sec  texture b'36.jpg' does not resolve under dds/ (pck, dds) or tex/ (jpg, tga, bmp)
+  dominant_slot_missing                    ships/others/fightdrone_MK  dominant material 2 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/others/goner_M3  dominant material 1 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/patch2_ships/argon_m3_plus  dominant material 1 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/patch2_ships/split_m3_plus  dominant material 1 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/split/split_m3  dominant material 3 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/split/split_m3_var2  dominant material 1 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/split/split_m3_var3  dominant material 1 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/split/split_m4  dominant material 1 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/split/split_m4_var1  dominant material 1 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/split/split_m4_var3  dominant material 1 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/split/split_m5  dominant material 3 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/split/split_m5_var1  dominant material 1 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/split/split_m5_var2  dominant material 1 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/split/split_m5_var3  dominant material 1 has no t_lightmaptexture parameter
+  no_diffuse                               ships/split/split_TL  material 14 has no diffuse texture
+  dominant_slot_missing                    ships/teladi/teladi_M3  dominant material 3 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/teladi/teladi_M3_var1  dominant material 1 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/teladi/teladi_M3_var2  dominant material 1 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/teladi/teladi_M3_var3  dominant material 1 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/teladi/teladi_M4  dominant material 3 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/teladi/teladi_M4_var1  dominant material 1 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/teladi/teladi_M4_var2  dominant material 1 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/teladi/teladi_M4_var3  dominant material 1 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/teladi/teladi_M5  dominant material 3 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/teladi/teladi_M5_var1  dominant material 1 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/teladi/teladi_M5_var2  dominant material 1 has no t_lightmaptexture parameter
+  dominant_slot_missing                    ships/teladi/teladi_M5_var3  dominant material 1 has no t_lightmaptexture parameter
+  no_diffuse                               ships/teladi/teladi_M6  material 27 has no diffuse texture
+  no_diffuse                               ships/teladi/teladi_TP_L  material 26 has no diffuse texture
+  no_diffuse                               ships/teladi/teladi_TP_S  material 21 has no diffuse texture
+  no_diffuse                               ships/teladi/teladi_TS_liquid_M  material 20 has no diffuse texture
+  no_diffuse                               ships/teladi/teladi_TS_liquid_S  material 20 has no diffuse texture
+  no_diffuse                               ships/teladi/teladi_TS_liquidstorage_L  material 23 has no diffuse texture
+  no_diffuse                               ships/teladi/teladi_TS_liquidstorage_M  material 23 has no diffuse texture
+  no_diffuse                               ships/teladi/teladi_TS_storage_M  material 20 has no diffuse texture
+  no_diffuse                               ships/teladi/teladi_TS_storage_S  material 20 has no diffuse texture
+  texture_unresolved                       ships/terran/atf_m3  texture b'AGI_M3-body_light.tga' does not resolve under dds/ (pck, dds) or tex/ (jpg, tga, bmp)
+  texture_unresolved                       ships/terran/atf_m3p  texture b'AGI_M3-body_light.tga' does not resolve under dds/ (pck, dds) or tex/ (jpg, tga, bmp)
+  texture_unresolved                       ships/x3ap/props/XTC_terran_dock_quicklaunch_LDoorL  texture b'XTC_terran_door_diff.dds' does not resolve under dds/ (pck, dds) or tex/ (jpg, tga, bmp)
+  texture_unresolved                       ships/x3ap/props/XTC_terran_dock_quicklaunch_LDoorR  texture b'XTC_terran_door_diff.dds' does not resolve under dds/ (pck, dds) or tex/ (jpg, tga, bmp)
+  texture_unresolved                       ships/x3ap/props/XTC_terran_dock_quicklaunch_MDoor  texture b'XTC_terran_door_diff.dds' does not resolve under dds/ (pck, dds) or tex/ (jpg, tga, bmp)
+  texture_unresolved                       ships/x3ap/props/XTC_terran_dock_quicklaunch_TDoor  texture b'XTC_terran_door_diff.dds' does not resolve under dds/ (pck, dds) or tex/ (jpg, tga, bmp)
+  ambiguous_body_ext,texture_unresolved    ships/xenon/xenon_m4  texture b'unique_xenon_M5_02_diff.dds' does not resolve under dds/ (pck, dds) or tex/ (jpg, tga, bmp)
+  ambiguous_body_ext,texture_unresolved    stations/docks/test  texture b'unique\\unique_argon_M3_02_diff.tga' does not resolve under dds/ (pck, dds) or tex/ (jpg, tga, bmp)
+  no_diffuse                               stations/station_scenes/farm/argon_farm_M_factory_I_wreck  material 0 has no diffuse texture
+  no_diffuse                               stations/station_scenes/food/argon_food_S_factory_C  material 9 has no diffuse texture
+  no_diffuse                               stations/station_scenes/liquid/argon_liquid_M_factory_F  material 1 has no diffuse texture
+  dominant_slot_missing                    stations/station_scenes/lost_colony/lostcolony_energy  dominant material 33 has no t_lightmaptexture parameter
+  dominant_slot_missing                    stations/station_scenes/lost_colony/lostcolony_energy_wreck  dominant material 1 has no t_lightmaptexture parameter
+  dominant_slot_missing                    stations/station_scenes/lost_colony/lostcolony_farm  dominant material 0 has no t_lightmaptexture parameter
+  dominant_slot_missing                    stations/station_scenes/lost_colony/lostcolony_farm_wreck  dominant material 0 has no t_lightmaptexture parameter
+  dominant_slot_missing                    stations/station_scenes/lost_colony/lostcolony_food  dominant material 0 has no t_lightmaptexture parameter
+  dominant_slot_missing                    stations/station_scenes/lost_colony/lostcolony_food_wreck  dominant material 0 has no t_lightmaptexture parameter
+  dominant_slot_missing                    stations/station_scenes/lost_colony/lostcolony_tecA  dominant material 29 has no t_lightmaptexture parameter
+  dominant_slot_missing                    stations/station_scenes/lost_colony/lostcolony_tecA_wreck  dominant material 0 has no t_lightmaptexture parameter
+  dominant_slot_missing                    stations/station_scenes/lost_colony/lostcolony_tecB  dominant material 0 has no t_lightmaptexture parameter
+  dominant_slot_missing                    stations/station_scenes/lost_colony/lostcolony_tecB_wreck  dominant material 0 has no t_lightmaptexture parameter
+  no_diffuse                               stations/station_scenes/tech/argon_tech_S_factory_C  material 24 has no diffuse texture
+  no_diffuse                               stations/station_scenes/tech/argon_tech_S_laser_A  material 4 has no diffuse texture
+  dominant_slot_missing                    stations/station_scenes/tech/terraformer_hub_D  dominant material 0 has no t_lightmaptexture parameter
+  no_diffuse                               stations/trading_stations/teladi_trading_station_partA  material 25 has no diffuse texture
+  no_diffuse                               stations/trading_stations/teladi_trading_station_partB  material 25 has no diffuse texture
+  dominant_slot_missing                    stations/x3ap/StockmarketBoardS  dominant material 7 has no t_lightmaptexture parameter
+  dominant_slot_missing                    stations/x3ap/StockmarketBoardXL  dominant material 7 has no t_lightmaptexture parameter
+## effects
+  others/arrow_indicator: effect effects.fx materials [0]
+  ships/argon/argon_M3: effect glass.fx materials [1]
+  ships/argon/argon_M3_var1: effect glass.fx materials [1]
+  ships/argon/argon_M3_var2: effect glass.fx materials [1]
+  ships/argon/argon_M3_var3: effect glass.fx materials [1]
+  ships/argon/argon_M4_var1: effect glass.fx materials [3]
+  ships/argon/argon_M4_var2: effect glass.fx materials [3]
+  ships/argon/argon_M4_var3: effect glass.fx materials [3]
+  ships/argon/argon_M5: effect glass.fx materials [2]
+  ships/argon/argon_M5_var1: effect glass.fx materials [1]
+  ships/argon/argon_M5_var2: effect glass.fx materials [1]
+  ships/argon/argon_M5_var3: effect glass.fx materials [2]
+  ships/khaak/khaak_hive_base: effect planet_haze.fx materials [3]
+  ships/others/fightdrone_MK: effect glass.fx materials [2]
+  ships/others/goner_M3: effect glass.fx materials [1]
+  ships/patch2_ships/argon_m3_plus: effect glass.fx materials [1]
+  ships/patch2_ships/split_m3_plus: effect glass.fx materials [1]
+  ships/split/split_m3: effect glass.fx materials [3]
+  ships/split/split_m3_var2: effect glass.fx materials [1]
+  ships/split/split_m3_var3: effect glass.fx materials [1]
+  ships/split/split_m4: effect glass.fx materials [1]
+  ships/split/split_m4_var1: effect glass.fx materials [1]
+  ships/split/split_m4_var3: effect glass.fx materials [1]
+  ships/split/split_m5: effect glass.fx materials [3]
+  ships/split/split_m5_var1: effect glass.fx materials [1]
+  ships/split/split_m5_var2: effect glass.fx materials [1]
+  ships/split/split_m5_var3: effect glass.fx materials [1]
+  ships/teladi/teladi_M3: effect glass.fx materials [3]
+  ships/teladi/teladi_M3_var1: effect glass.fx materials [1]
+  ships/teladi/teladi_M3_var2: effect glass.fx materials [1]
+  ships/teladi/teladi_M3_var3: effect glass.fx materials [1]
+  ships/teladi/teladi_M4: effect glass.fx materials [3]
+  ships/teladi/teladi_M4_var1: effect glass.fx materials [1]
+  ships/teladi/teladi_M4_var2: effect glass.fx materials [1]
+  ships/teladi/teladi_M4_var3: effect glass.fx materials [1]
+  ships/teladi/teladi_M5: effect glass.fx materials [3]
+  ships/teladi/teladi_M5_var1: effect glass.fx materials [1]
+  ships/teladi/teladi_M5_var2: effect glass.fx materials [1]
+  ships/teladi/teladi_M5_var3: effect glass.fx materials [1]
+  stations/station_scenes/lost_colony/lostcolony_energy: effect asteroid.fx materials [33]
+  stations/station_scenes/lost_colony/lostcolony_energy_wreck: effect asteroid.fx materials [1]
+  stations/station_scenes/lost_colony/lostcolony_farm: effect asteroid.fx materials [0]
+  stations/station_scenes/lost_colony/lostcolony_farm_wreck: effect asteroid.fx materials [0]
+  stations/station_scenes/lost_colony/lostcolony_food: effect asteroid.fx materials [0]
+  stations/station_scenes/lost_colony/lostcolony_food_wreck: effect asteroid.fx materials [0]
+  stations/station_scenes/lost_colony/lostcolony_tecA: effect asteroid.fx materials [29]
+  stations/station_scenes/lost_colony/lostcolony_tecA_wreck: effect asteroid.fx materials [0]
+  stations/station_scenes/lost_colony/lostcolony_tecB: effect asteroid.fx materials [0]
+  stations/station_scenes/lost_colony/lostcolony_tecB_wreck: effect asteroid.fx materials [0]
+  stations/station_scenes/tech/terraformer_hub_D: effect planet_haze.fx materials [0]
+  stations/x3ap/StockmarketBoardS: effect adeffects.fx materials [7]
+  stations/x3ap/StockmarketBoardXL: effect adeffects.fx materials [7]
+   2 adeffects.fx             no material declares it
+  10 asteroid.fx              no material declares it
+   1 effects.fx               no material declares it
+  37 glass.fx                 no material declares it
+   2 planet_haze.fx           no material declares it
+## nodiff
+  ships/split/split_TL: area share 0.0004 [(14, 'NULL', b'NULL')]
+  ships/teladi/teladi_M6: area share 0.0002 [(27, 'NULL', b'effects\\others\\fx_illum_03.tga')]
+  ships/teladi/teladi_TP_L: area share 0.0006 [(26, 'NULL', b'effects\\others\\fx_illum_03.tga')]
+  ships/teladi/teladi_TP_S: area share 0.0013 [(21, 'NULL', b'effects\\others\\fx_illum_03.tga')]
+  ships/teladi/teladi_TS_liquid_M: area share 0.0009 [(20, 'NULL', b'effects\\others\\fx_illum_03.tga')]
+  ships/teladi/teladi_TS_liquid_S: area share 0.0013 [(20, 'NULL', b'effects\\others\\fx_illum_03.tga')]
+  ships/teladi/teladi_TS_liquidstorage_L: area share 0.0005 [(23, 'NULL', b'effects\\others\\fx_illum_03.tga')]
+  ships/teladi/teladi_TS_liquidstorage_M: area share 0.0009 [(23, 'NULL', b'effects\\others\\fx_illum_03.tga')]
+  ships/teladi/teladi_TS_storage_M: area share 0.0009 [(20, 'NULL', b'effects\\others\\fx_illum_03.tga')]
+  ships/teladi/teladi_TS_storage_S: area share 0.0013 [(20, 'NULL', b'effects\\others\\fx_illum_03.tga')]
+  stations/station_scenes/farm/argon_farm_M_factory_I_wreck: area share 1.0000 [(0, 'no parameter', None)]
+  stations/station_scenes/food/argon_food_S_factory_C: area share 0.0018 [(9, 'no parameter', None)]
+  stations/station_scenes/liquid/argon_liquid_M_factory_F: area share 0.0185 [(1, 'no parameter', None)]
+  stations/station_scenes/tech/argon_tech_S_factory_C: area share 0.0526 [(24, 'no parameter', None)]
+  stations/station_scenes/tech/argon_tech_S_laser_A: area share 0.0000 [(4, 'no parameter', None)]
+  stations/trading_stations/teladi_trading_station_partA: area share 0.0129 [(25, 'NULL', b'effects\\others\\fx_illum_01.tga'), (26, 'NULL', b'effects\\others\\fx_windows_teladi_01.tga')]
+  stations/trading_stations/teladi_trading_station_partB: area share 0.0031 [(25, 'NULL', b'effects\\others\\fx_illum_01.tga'), (26, 'NULL', b'effects\\others\\fx_windows_teladi_01.tga')]
+## textures
+  dds\unique_argon_hybrid_bump.tga         in 0 member(s) [] used by ['ships/M3/Argon_hybrid#0.bump']
+  25.jpg                                   in 1 member(s) ['01.cat:tex/true/25.jpg'] used by ['ships/M6/Khaak_M6Main#0.diffuse', 'ships/M6/Khaak_M6Sec#1.diffuse']
+  425.jpg                                  in 1 member(s) ['01.cat:tex/true/425.jpg'] used by ['ships/M6/Khaak_M6Main#0.bump', 'ships/M6/Khaak_M6Sec#1.bump']
+  25_spec.jpg                              in 1 member(s) ['01.cat:tex/true/25_spec.jpg'] used by ['ships/M6/Khaak_M6Main#0.specular', 'ships/M6/Khaak_M6Sec#1.specular']
+  260.jpg                                  in 1 member(s) ['01.cat:tex/true/260.jpg'] used by ['ships/M6/Khaak_M6Main#1.diffuse']
+  260_bump.jpg                             in 1 member(s) ['01.cat:tex/true/260_bump.jpg'] used by ['ships/M6/Khaak_M6Main#1.bump']
+  260_spec.jpg                             in 1 member(s) ['01.cat:tex/true/260_spec.jpg'] used by ['ships/M6/Khaak_M6Main#1.specular']
+  36.jpg                                   in 1 member(s) ['01.cat:tex/true/36.jpg'] used by ['ships/M6/Khaak_M6Main#2.diffuse', 'ships/M6/Khaak_M6Sec#0.diffuse']
+  209.jpg                                  in 1 member(s) ['01.cat:tex/true/209.jpg'] used by ['ships/M6/Khaak_M6Main#2.bump', 'ships/M6/Khaak_M6Sec#0.bump']
+  36_spec.jpg                              in 1 member(s) ['01.cat:tex/true/36_spec.jpg'] used by ['ships/M6/Khaak_M6Main#2.specular', 'ships/M6/Khaak_M6Sec#0.specular']
+  29.jpg                                   in 1 member(s) ['01.cat:tex/true/29.jpg'] used by ['ships/M6/Khaak_M6Main#3.diffuse']
+  367.jpg                                  in 1 member(s) ['01.cat:tex/true/367.jpg'] used by ['ships/M6/Khaak_M6Main#3.bump']
+  29_spec.jpg                              in 1 member(s) ['01.cat:tex/true/29_spec.jpg'] used by ['ships/M6/Khaak_M6Main#3.specular']
+  263.jpg                                  in 1 member(s) ['01.cat:tex/true/263.jpg'] used by ['ships/M6/Khaak_M6Main#5.diffuse', 'ships/M6/Khaak_M6Main#5.light', 'ships/M6/Khaak_M6Sec#2.diffuse', 'ships/M6/Khaak_M6Sec#2.light']
+  263_bump.jpg                             in 1 member(s) ['01.cat:tex/true/263_bump.jpg'] used by ['ships/M6/Khaak_M6Main#5.bump', 'ships/M6/Khaak_M6Sec#2.bump']
+  263_spec.jpg                             in 1 member(s) ['01.cat:tex/true/263_spec.jpg'] used by ['ships/M6/Khaak_M6Main#5.specular', 'ships/M6/Khaak_M6Sec#2.specular']
+  69.jpg                                   in 1 member(s) ['01.cat:tex/true/69.jpg'] used by ['ships/M6/Khaak_M6Main#6.specular']
+  AGI_M3-body_light.tga                    in 0 member(s) [] used by ['ships/terran/atf_m3#0.light', 'ships/terran/atf_m3p#0.light']
+  XTC_terran_door_diff.dds                 in 0 member(s) [] used by ['ships/x3ap/props/XTC_terran_dock_quicklaunch_LDoorL#0.diffuse', 'ships/x3ap/props/XTC_terran_dock_quicklaunch_LDoorR#0.diffuse', 'ships/x3ap/props/XTC_terran_dock_quicklaunch_MDoor#0.diffuse', 'ships/x3ap/props/XTC_terran_dock_quicklaunch_TDoor#0.diffuse']
+  XTC_terran_door_bump.dds                 in 0 member(s) [] used by ['ships/x3ap/props/XTC_terran_dock_quicklaunch_LDoorL#0.bump', 'ships/x3ap/props/XTC_terran_dock_quicklaunch_LDoorR#0.bump', 'ships/x3ap/props/XTC_terran_dock_quicklaunch_MDoor#0.bump', 'ships/x3ap/props/XTC_terran_dock_quicklaunch_TDoor#0.bump']
+  XTC_terran_door_spec.dds                 in 0 member(s) [] used by ['ships/x3ap/props/XTC_terran_dock_quicklaunch_LDoorL#0.specular', 'ships/x3ap/props/XTC_terran_dock_quicklaunch_LDoorR#0.specular', 'ships/x3ap/props/XTC_terran_dock_quicklaunch_MDoor#0.specular', 'ships/x3ap/props/XTC_terran_dock_quicklaunch_TDoor#0.specular']
+  unique\unique_argon_M3_02_diff.tga       in 0 member(s) [] used by ['stations/docks/test#0.diffuse']
+## table (after the change: lod_overlay.py --batch --only only_affected.txt --out build/lod-refusals/after-affected --jobs 2; argon_M2 from --out after-m2)
+body                                                       result                     draws atlas     bytes    min weighted  starved
+ships/argon/argon_M3                                       no_draw_gain                2->-  1024         -  3.570    3.570   0.000%
+ships/M6/Khaak_M6Main                                      texture_unresolved          7->-     -         -    nan      nan   0.000%
+                                                           texture b'25.jpg' does not resolve under dds/ (pck, dds) or tex/ (jpg, tga, bmp)
+ships/split/split_TL                                       ELIGIBLE                   15->1  1024    342464  2.012    2.016   0.037%
+ships/teladi/teladi_M6                                     ELIGIBLE                   13->2  1024    465244  2.010    2.012   0.000%
+ships/terran/atf_m3                                        texture_unresolved          4->-     -         -    nan      nan   0.000%
+                                                           texture b'AGI_M3-body_light.tga' does not resolve under dds/ (pck, dds) or tex/ (jpg, tga, bmp)
+stations/station_scenes/food/argon_food_S_factory_C        no_diffuse                 33->-     -         -    nan      nan   0.000%
+                                                           material 9 has no diffuse texture (no t_DiffuseTexture parameter)
+stations/station_scenes/lost_colony/lostcolony_energy      ELIGIBLE                   38->3  1024    509141  2.009    2.009   0.000%
+stations/trading_stations/teladi_trading_station_partA     ELIGIBLE                   15->3  2048    825950  2.012    2.012   0.000%
+ships/argon/argon_M2                                       ELIGIBLE                   32->3  1024    777733  3.691    4.604   0.000%
+## compare argon_M2 (--out before-m2 = HEAD 4d1e40e5, after-m2 = this change)
+members before 5 after 5 identical 5
+  same 05.cat:dds/x3m_lod_argon_M2_0dfa9d_bump.pck ee8c342ec84d4124 ee8c342ec84d4124
+  same 05.cat:dds/x3m_lod_argon_M2_0dfa9d_diffuse.pck 192d3ef1a3d8469f 192d3ef1a3d8469f
+  same 05.cat:dds/x3m_lod_argon_M2_0dfa9d_light.pck c7755fd010f70ebf c7755fd010f70ebf
+  same 05.cat:dds/x3m_lod_argon_M2_0dfa9d_specular.pck cec66f637f4a1469 cec66f637f4a1469
+  same 05.cat:objects/ships/argon/argon_M2.pbb 8a4f6e1e5622c05d 8a4f6e1e5622c05d
+  manifest ships/argon/argon_M2: same
+## params (run 2026-09-24 before the flight with the same code as a scratch script; 2 min CPU, not rerun while the game ran)
+bodies 1131 binary ship/station bodies; 17,143 effect materials carry g_MatDiffuseStrength (FLOAT) and g_MatEmissiveColor (float4); diffuse-colour parameters: none (the only other colour parameters are LightDir_Color0/1, g_Color_1/2/3, g_Color_Envipaint/Lines/Highlight and their Power/Weighting, g_bColor_Mixing, g_ColorWriteEnable)
+materials with no diffuse map: 18 standard_lighting.fx NULL, 5 split.fx NULL, 4 argon.fx no parameter, 2 standard_lighting.fx no parameter
+## EXE (X3AP.exe, capstone, read-only)
+0x004f43fe push 'true\%d' (0x00564fb4) then +0x74 'tex\%s': the numbered-texture path (id in edi, name table 0x006069ac); the only reference to that string
+0x004f3510 string wrapper: '.jpg' -> 0x004dd2c0 (lookup 0x004e8e10 with 'jpg', name as given), '.tga' -> 0x004de9c0, each retried without the extension; a name with a directory -> +0x7c 'dds\%s' of the basename -> 0x004dc540 ('pck dds'); no 'true\' anywhere on this path
+## rerun after review (kept effects, solid key): --out build/lod-refusals/after2-affected, after2-m2
+body                                                       result                     draws atlas     bytes    min weighted  starved
+ships/argon/argon_M3                                       no_draw_gain                2->-  1024         -  3.570    3.570   0.000%
+ships/M6/Khaak_M6Main                                      texture_unresolved          7->-     -         -    nan      nan   0.000%
+                                                           texture b'25.jpg' does not resolve under dds/ (pck, dds) or tex/ (jpg, tga, bmp)
+ships/split/split_TL                                       ELIGIBLE                   15->1  1024    342464  2.012    2.016   0.037%
+ships/teladi/teladi_M6                                     ELIGIBLE                   13->2  1024    465244  2.010    2.012   0.000%
+ships/terran/atf_m3                                        texture_unresolved          4->-     -         -    nan      nan   0.000%
+                                                           texture b'AGI_M3-body_light.tga' does not resolve under dds/ (pck, dds) or tex/ (jpg, tga, bmp)
+stations/station_scenes/food/argon_food_S_factory_C        no_diffuse                 33->-     -         -    nan      nan   0.000%
+                                                           material 9 has no diffuse texture (no t_DiffuseTexture parameter)
+stations/station_scenes/lost_colony/lostcolony_energy      ELIGIBLE                   38->3  1024    304567  2.020    2.036   0.000%
+stations/trading_stations/teladi_trading_station_partA     ELIGIBLE                   15->3  2048    825950  2.012    2.012   0.000%
+ships/argon/argon_M2                                       ELIGIBLE                   32->3  1024    777733  3.691    4.604   0.000%
+members before 5 after 5 identical 5
+  same 05.cat:dds/x3m_lod_argon_M2_0dfa9d_bump.pck ee8c342ec84d4124 ee8c342ec84d4124
+  same 05.cat:dds/x3m_lod_argon_M2_0dfa9d_diffuse.pck 192d3ef1a3d8469f 192d3ef1a3d8469f
+  same 05.cat:dds/x3m_lod_argon_M2_0dfa9d_light.pck c7755fd010f70ebf c7755fd010f70ebf
+  same 05.cat:dds/x3m_lod_argon_M2_0dfa9d_specular.pck cec66f637f4a1469 cec66f637f4a1469
+  same 05.cat:objects/ships/argon/argon_M2.pbb 8a4f6e1e5622c05d 8a4f6e1e5622c05d
+  manifest ships/argon/argon_M2: same
+lostcolony_energy: kept_effects [33] (asteroid.fx), kept_effect_draws 1, draws 3; split_TL: solid_faces 76, span_clamped_faces 62 (138 before the solid key); installed overlay manifests 05/06: 0 of 591 bodies use planet_haze.fx or asteroid.fx
