@@ -368,6 +368,7 @@ class MotionOutputRunnerTests(unittest.TestCase):
             (directory / f'reference_taa_{f}.rgba16f').write_bytes(struct.pack('<%de' % len(shown), *shown))
         report.append(f'FADE_ROUTE_CHECKS frames={frames} script={script} quads=2')
         report.append(f'RESULT PASS checks=900 restorations=36 frames={frames}')
+        trace.append('fade_rt2_owner_configured requested=0 enabled=0 default=0 motion_output=1 taa=1 hdr=1 fade_route=500 lane=0')  # the runner pins off
         return '\n'.join(report), '\n'.join(trace)
 
     def fade_zonly_output(self, script):
@@ -479,7 +480,9 @@ class MotionOutputRunnerTests(unittest.TestCase):
                (text, trace.replace('fade_permille=1000', 'fade_permille=999', 1), True),
                (text, trace.replace('fade_route=500', 'fade_route=400', 1), True),
                (text.replace('TAA frame=3 history=1', 'TAA frame=3 history=0', 1), trace, True),
-               (text, trace.replace('frame=3 rt_mode=lazy draws=4 routed=3', 'frame=3 rt_mode=lazy draws=4 routed=2', 1), True)]
+               (text, trace.replace('frame=3 rt_mode=lazy draws=4 routed=3', 'frame=3 rt_mode=lazy draws=4 routed=2', 1), True),
+               (text, trace.replace('fade_rt2_owner_configured requested=0 enabled=0 default=0', 'fade_rt2_owner_configured requested=0 enabled=0 default=1'), True),
+               (text, '\n'.join(l for l in trace.split('\n') if not l.startswith('fade_rt2_owner_configured ')), True)]
         for output, log, lazy in bad:
             with self.subTest(output=(output != text, log != trace, lazy)), self.assertRaises(AssertionError):
                 runner.validate_fade_route('host', 'routed', lazy, output, log, directory)

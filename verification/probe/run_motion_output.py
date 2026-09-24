@@ -776,7 +776,10 @@ THIN_VOTE_TWINS = {'seam-thin-vote-far-on': 'seam-thin-vote-far-off'}
 # (the owner fragment writes max(w * 0 + c218.x, 0) = the vote's .a on every opaque row).
 THIN_VOTE_OWNER_TWINS = {'seam-thin-vote-far-on-owner': 'seam-thin-vote-far-on'}
 THIN_VOTE_FRAMES, THIN_VOTE_SIZE = 6, 128
-CASES += [case(name, 'thinvote', 'ownership', jitter=True, taa=True, hdr=True, hdr_env=dict(THIN_VOTE_ENV, X3M_TAA_THIN_VOTE=vote, X3M_FIXTURE_THIN_SCALE=scale, X3M_FIXTURE_THIN_SCRIPT=script))
+# seam-thin-vote-far-on carries the launcher's default marker (X3M_TAA_THIN_VOTE_DEFAULT=1, Run 81): its configured row reads default=1.
+THIN_VOTE_DEFAULT_MARKED = ('seam-thin-vote-far-on',)
+CASES += [case(name, 'thinvote', 'ownership', jitter=True, taa=True, hdr=True, hdr_env=dict(THIN_VOTE_ENV, X3M_TAA_THIN_VOTE=vote, X3M_FIXTURE_THIN_SCALE=scale, X3M_FIXTURE_THIN_SCRIPT=script,
+                                                                                            **({'X3M_TAA_THIN_VOTE_DEFAULT': '1'} if name in THIN_VOTE_DEFAULT_MARKED else {})))
           for name, (vote, scale, script) in THIN_VOTE_CASES.items()]
 CASES += [case('seam-thin-vote-far-on-owner', 'thinvote', 'ownership', jitter=True, taa=True, hdr=True,
                hdr_env=dict(THIN_VOTE_ENV, X3M_TAA_THIN_VOTE='on', X3M_FIXTURE_THIN_SCALE='far', X3M_FIXTURE_THIN_SCRIPT='plain', X3M_FADE_RT2_OWNER='on'))]
@@ -4054,7 +4057,8 @@ def validate_thin_vote(name, text, trace, directory, env):
     holds = [fields(l) for l in trace.splitlines() if l.startswith('motion_output_taa_history_taps ')]
     assert holds and holds[0]['region_hold'] == '1', (name, holds)  # the taa_mask dump is the tests target (A')
     if vote:
-        assert len(configured) == 1 and configured[0]['enabled'] == '1', (name, configured)
+        assert len(configured) == 1 and configured[0]['enabled'] == '1' and configured[0]['requested'] == '1', (name, configured)
+        assert configured[0]['default'] == ('1' if env.get('X3M_TAA_THIN_VOTE_DEFAULT') == '1' else '0'), (name, configured)
         assert len(modes) == 1 and modes[0]['enabled'] == '1' and modes[0]['lane'] == '1' and modes[0]['cache'] == '1', (name, modes)
         assert not absent, (name, absent)
         assert len(frames) >= THIN_VOTE_FRAMES, (name, len(frames))
@@ -4097,7 +4101,9 @@ def validate_thin_vote(name, text, trace, directory, env):
             assert [fields(l)['subset'] for l in lines if l.startswith('THIN_REWRITTEN ')] == ['T1'], name
         checks += 8
     else:
-        assert not configured and not modes and not frames and not absent, (name, configured, modes, frames, absent)
+        # An explicit off still logs its configured row (requested=0, default=0: the fixture sets no X3M_TAA_THIN_VOTE_DEFAULT).
+        assert [(c['requested'], c['enabled'], c['default']) for c in configured] == [('0', '0', '0')], (name, configured)
+        assert not modes and not frames and not absent, (name, modes, frames, absent)
         checks += 1
     # The tests target's b: every voting subset's pixels flagged (254/255 of the code, + the class bit), none elsewhere;
     # panel pixels further than 4 px from the fill (its silhouette corners are fragmented lines) never.
@@ -5970,6 +5976,11 @@ def validate_fade_route(name, script, lazy, text, trace, directory, owner=False,
     assert sorted(materials) == ([] if original else list(range(FADE_ROUTE_FRAMES))), (name, sorted(materials))
     fade_frames = {int(fields(l)['frame']): fields(l) for l in trace.splitlines() if l.startswith('fade_route_frame ')}
     assert sorted(fade_frames) == (list(range(FADE_ROUTE_FRAMES)) if original else []), (name, sorted(fade_frames))
+    # The runner always sets X3M_FADE_RT2_OWNER (off pinned, on in the -owner cases) and never X3M_FADE_RT2_OWNER_DEFAULT:
+    # one configured row per run, requested = the value, default=0 (logged for off too since Run 81).
+    owner_rows = [fields(l) for l in trace.splitlines() if l.startswith('fade_rt2_owner_configured ')]
+    assert [(r['requested'], r['default']) for r in owner_rows] == [('1' if owner else '0', '0')], (name, owner_rows)
+    assert owner or owner_rows[0]['enabled'] == '0', (name, owner_rows)
     for f, row in fade_frames.items():
         expected = (str(2 * int(routed_at[f] and not overlay)), str(2 * int(not routed_at[f] and not overlay)), str(2 * int(held_at[f])), str(FADE_ROUTE_THRESHOLD), '1',
                     str(2 * int(routed_at[f] and overlay)), str(2 * int(not routed_at[f] and overlay)))
@@ -6334,6 +6345,8 @@ def main(argv=None):
             env.update(VARIANTS[variant])
             env.pop('X3M_SUN_SHADOW_RECEIVER_DEPTH', None)  # the former option: the DLL and the fixtures read no such variable
             env.pop('X3M_TAA_REGION_HOLD', None)  # removed 2026-09-24 (A' only): the DLL logs a stale value; only REGION_HOLD_TWINS set it
+            for marker in ('X3M_TAA_THIN_VOTE_DEFAULT', 'X3M_FADE_RT2_OWNER_DEFAULT', 'X3M_LOD_OCCLUSION_DEFAULT'):
+                env.pop(marker, None)  # the launcher's Run 81 default markers: never inherited, set only by a case (seam-thin-vote-far-on)
             env.update(hdr_env)
             if taa:
                 # ca6ad2e made --taa default to sharpen 0.75 and mip bias -0.5;

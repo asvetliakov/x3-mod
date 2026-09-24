@@ -8,6 +8,8 @@ read in code this session, [S] from disassembly notes, [I] inferred.
 
 ## Decision
 
+**Default on since Run 81** (launcher, whenever `--taa --motion-output --hdr` are given, else not sent with one launcher line; `X3M_FADE_RT2_OWNER_DEFAULT=1`, row `fade_rt2_owner_configured ... default=1`; Run 80 A launch 4).
+
 **Ratified 2026-09-24 (orchestrator)** with three conditions: (1) the ownership lands behind an opt-in option
 (`--fade-rt2-owner on|off`, default off) until its first flight, so the installed A' behaviour and every pinned fixture
 stay byte-identical with it off; (2) the flag lane uses the c216-c218 upload of section 2 and lands after option B's

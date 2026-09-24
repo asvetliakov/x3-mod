@@ -243,10 +243,11 @@ bool one_row(const std::string& rows, const char* needle) {
     for (char c : rows) lines += c == '\n';
     return lines == 1 && contains(rows, needle);
 }
-std::string install_row(const char* status, const char* reason, const char* mode, const char* setting, const char* write) {
+// default=1 only where a case sets X3M_LOD_OCCLUSION_DEFAULT=1 with a value (the launcher's default marker).
+std::string install_row(const char* status, const char* reason, const char* mode, const char* setting, const char* write, bool defaulted = false) {
     char text[200];
-    std::snprintf(text, sizeof text, "lod_occlusion site=%08lx status=%s reason=%s mode=%s setting=%s write=%s",
-                  static_cast<unsigned long>(sites::site_va), status, reason, mode, setting, write);
+    std::snprintf(text, sizeof text, "lod_occlusion site=%08lx status=%s reason=%s mode=%s setting=%s write=%s default=%u",
+                  static_cast<unsigned long>(sites::site_va), status, reason, mode, setting, write, defaulted ? 1u : 0u);
     return text;
 }
 double qpc_us(LARGE_INTEGER a, LARGE_INTEGER b) {
@@ -343,19 +344,28 @@ int main() {
     check(vanilla(b), "private_before_placeholder_for_lod1");
 
     // ---- refusals and the default through initialize(): nothing is protected, written or flushed ----
-    struct Refusal { const wchar_t* setting; bool exe; const char* name; const char* row; };
+    struct Refusal { const wchar_t* setting; bool exe; const char* name; const char* row; const wchar_t* marker; };
     const std::string unset_row = install_row("off", "record0", "record0", "-", "none");
     const std::string record0_row = install_row("off", "record0", "record0", "record0", "none");
     const std::string invalid_row = install_row("refused", "invalid_setting", "-", "All", "none");
     const std::string long_row = install_row("refused", "too_long", "-", "?", "none");
     const std::string exe_row = install_row("refused", "executable_mismatch", "all", "all", "none");
-    const Refusal refusals[] = {{nullptr, true, "default_unset_off", unset_row.c_str()},
-                                {L"record0", true, "refuse_record0", record0_row.c_str()},
-                                {L"All", true, "refuse_invalid_setting", invalid_row.c_str()},
-                                {L"allallallallallallallallallallallall", true, "refuse_too_long", long_row.c_str()},
-                                {L"all", false, "refuse_executable_mismatch", exe_row.c_str()}};
+    const std::string exe_default_row = install_row("refused", "executable_mismatch", "all", "all", "none", true);
+    const std::string record0_default_row = install_row("off", "record0", "record0", "record0", "none", true);
+    // The launcher's default marker (X3M_LOD_OCCLUSION_DEFAULT=1) reaches the row as default=1 with a value, and
+    // is ignored without one (unset stays default=0); any other marker value is default=0.
+    const Refusal refusals[] = {{nullptr, true, "default_unset_off", unset_row.c_str(), nullptr},
+                                {L"record0", true, "refuse_record0", record0_row.c_str(), nullptr},
+                                {L"All", true, "refuse_invalid_setting", invalid_row.c_str(), nullptr},
+                                {L"allallallallallallallallallallallall", true, "refuse_too_long", long_row.c_str(), nullptr},
+                                {L"all", false, "refuse_executable_mismatch", exe_row.c_str(), nullptr},
+                                {L"all", false, "default_marker_executable_mismatch", exe_default_row.c_str(), L"1"},
+                                {L"record0", true, "default_marker_record0", record0_default_row.c_str(), L"1"},
+                                {nullptr, true, "default_marker_unset_ignored", unset_row.c_str(), L"1"},
+                                {L"all", false, "default_marker_other_value", exe_row.c_str(), L"yes"}};
     for (const Refusal& r : refusals) {
         set_mode(r.setting);
+        SetEnvironmentVariableW(L"X3M_LOD_OCCLUSION_DEFAULT", r.marker);
         executable_ok = r.exe;
         arm();
         const bool applied = initialize_checked(r.name);
@@ -365,6 +375,7 @@ int main() {
               page_is(engine, reference, original), name, last_log().c_str());
     }
     set_mode(L"all");
+    SetEnvironmentVariableW(L"X3M_LOD_OCCLUSION_DEFAULT", nullptr);
     executable_ok = true;
 
     // A changed window byte (the cmp's displacement) and an already patched, unregistered window: bytes_mismatch.

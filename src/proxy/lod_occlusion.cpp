@@ -64,11 +64,15 @@ bool initialize() {
     const DWORD error = GetLastError();
     if (patched_) { SetLastError(error); return true; }
     // Unset or empty = the DLL default (record0, engine bytes); 1..31 characters must be
-    // exactly record0 or all; anything else is refused and nothing is patched.
+    // exactly record0 or all; anything else is refused and nothing is patched. The launcher
+    // sends all by default since Run 81 and marks it with X3M_LOD_OCCLUSION_DEFAULT=1 (the
+    // row's default=1; default=0 for an explicit value or no marker).
     wchar_t text[setting_capacity]{};
     const DWORD length = GetEnvironmentVariableW(L"X3M_LOD_OCCLUSION", text, setting_capacity);
     char setting[setting_capacity]{};
     printable(text, length, setting);
+    wchar_t marker[2]{};
+    const bool from_default = length > 0 && GetEnvironmentVariableW(L"X3M_LOD_OCCLUSION_DEFAULT", marker, 2) == 1 && marker[0] == L'1';
     Mode mode = default_mode;
     bool applied = false, parsed = true;
     if (length >= setting_capacity) { state_ = "too_long"; parsed = false; }
@@ -79,8 +83,8 @@ bool initialize() {
     // rollback_failed leaves the site registered with bytes that may still be patched (or neither
     // original nor patched): the one failure that modifies the engine is not reported as a refusal.
     const char* status = applied ? "patched" : patched_ ? "patched_unverified" : parsed && mode == Mode::record0 ? "off" : "refused";
-    log("lod_occlusion site=%08lx status=%s reason=%s mode=%s setting=%s write=%s",
-        static_cast<unsigned long>(site_va), status, state_, parsed ? mode_name(mode) : "-", setting, write_);
+    log("lod_occlusion site=%08lx status=%s reason=%s mode=%s setting=%s write=%s default=%u",
+        static_cast<unsigned long>(site_va), status, state_, parsed ? mode_name(mode) : "-", setting, write_, unsigned(from_default));
     SetLastError(error);
     return applied;
 }

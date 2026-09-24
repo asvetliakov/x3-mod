@@ -28,6 +28,7 @@ import build_lod_occlusion_patch as build
 import verify_lod_occlusion_site as verifier
 ROOT = Path(__file__).resolve().parents[2]
 NAME = 'lod-occlusion-patch.json'
+DEFAULT_MARKERS = ('X3M_LOD_OCCLUSION_DEFAULT', 'X3M_TAA_THIN_VOTE_DEFAULT', 'X3M_FADE_RT2_OWNER_DEFAULT')
 
 
 PRODUCTION_SOURCES = ('src/proxy/lod_occlusion.cpp', 'src/proxy/lod_occlusion.h', 'src/proxy/lod_occlusion_sites.h',
@@ -93,7 +94,9 @@ def main():
     binding = source_binding()  # taken before the build, so the binary is built from what it names
     built = build.build()
     started = time.time()
-    process = subprocess.Popen([bottle.WINE, *bottle.wine_args(name), str(build.EXE)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    # The launcher's Run 81 default markers never reach the fixture from the shell (its cases set the one they test).
+    env = {k: v for k, v in os.environ.items() if k not in DEFAULT_MARKERS}
+    process = subprocess.Popen([bottle.WINE, *bottle.wine_args(name), str(build.EXE)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
     timed_out = False
     try:
         stdout, stderr = process.communicate(timeout=120)

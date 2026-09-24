@@ -2915,3 +2915,7 @@ GPU pass time (measured, `verification/results/run308-run80a-gpu-baseline/gpu_re
 serialising) p50/p95 over TAA windows 30.7/36.5 ms; run306 33.8/39.9, run307 31.1/35.6: the +3.1 / +0.5 ms follow
 scene/engine time and flight content, not the features (inferred; no same-route A/B). Mask stays at Run 79 A's hold-on
 level (run302 1.54 ms; hold-off run303 2.93 ms).
+
+**Run 81 defaults (launcher and DLL row, not flown):** `--taa-thin-vote` and `--fade-rt2-owner` default on when their prerequisites are given (else not sent, one `default on not sent:` launcher line); the configured rows log for on and off with `default=1|0`; host tests `test_taa_thin_vote`, `test_fade_region`. Wine (measured, X3, partial `run_motion_output.py`): `seam-thin-vote-far-on` 56 checks (`requested=1 enabled=1 default=1`, marker set), `seam-thin-vote-far-off` 47 (`requested=0 default=0`), `seam-taa-fade-route-routed` 5100 (owner row `requested=0`), its owner twin 5185 (`requested=1 enabled=1`).
+
+**Run 81 defaults, age programs (launcher, not flown):** with `--taa` on a modded launch `--taa-far-stabiliser` defaults to 0.985 and `--taa-thin-region` to 0.97 (the Run 80 A stand command; `off`/0 turn them off; nothing sent under `--vanilla` or without `--taa`); the gate, emissive vote and sentinel stabiliser defaults derive from them as before; host test `test_taa_image_defaults`.

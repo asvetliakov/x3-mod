@@ -185,7 +185,10 @@ class LodOcclusionCore(unittest.TestCase):
     def test_install_line_parser(self):
         row = verifier.parse_log_line
         ok = row('00:01 lod_occlusion site=004c34f7 status=patched reason=ok mode=all setting=all write=atomic')
-        self.assertEqual(ok, {'site': 0x4c34f7, 'status': 'patched', 'reason': 'ok', 'mode': 'all', 'setting': 'all', 'write': 'atomic', 'patched': True})
+        self.assertEqual(ok, {'site': 0x4c34f7, 'status': 'patched', 'reason': 'ok', 'mode': 'all', 'setting': 'all', 'write': 'atomic', 'patched': True, 'default': None})
+        # Since Run 81 the row names the value's source: default=1 when the launcher filled in its default.
+        self.assertTrue(row('lod_occlusion site=004c34f7 status=patched reason=ok mode=all setting=all write=atomic default=1')['default'])
+        self.assertIs(row('lod_occlusion site=004c34f7 status=off reason=record0 mode=record0 setting=record0 write=none default=0')['default'], False)
         off = row('lod_occlusion site=004c34f7 status=off reason=record0 mode=record0 setting=- write=none')
         self.assertEqual((off['patched'], off['status'], off['mode']), (False, 'off', 'record0'))
         refused = row('lod_occlusion site=004c34f7 status=refused reason=bytes_mismatch mode=all setting=all write=none')
@@ -220,7 +223,8 @@ class LodOcclusionCore(unittest.TestCase):
                        'engine_patch::write_code', 'FlushInstructionCache', 'VirtualProtect', 'PAGE_EXECUTE_READWRITE',
                        '"patched_unverified"', 'if (!std::strcmp(reason, "restored")) patched_ = false;', 'log_handle()', 'WriteFile(handle',
                        '"lod_occlusion_restore site=%08lx status=%s found=%s registered=%u\\n"', 'SetLastError(error);',
-                       'log("lod_occlusion site=%08lx status=%s reason=%s mode=%s setting=%s write=%s"'):
+                       'log("lod_occlusion site=%08lx status=%s reason=%s mode=%s setting=%s write=%s default=%u"',
+                       'GetEnvironmentVariableW(L"X3M_LOD_OCCLUSION_DEFAULT", marker, 2) == 1 && marker[0] == L\'1\''):
             self.assertIn(needle, module)
         header = (ROOT / 'src/proxy/lod_occlusion_sites.h').read_text()
         for needle in ('plan(current)', 'memcmp(back, expected_write, write_length)', '"patch_rolled_back"', '"rollback_unprotected"', '"rollback_failed"',
@@ -288,18 +292,28 @@ class LodOcclusionLaunchOption(unittest.TestCase):
         self.assertEqual(code, 0, error)
         return json.loads(output)['env'].get(self.NAME)
 
+    def pair(self, directory, *args, **kwargs):
+        code, output, error = self.launch(directory, *args, **kwargs)
+        self.assertEqual(code, 0, error)
+        env = json.loads(output)['env']
+        return env.get(self.NAME), env.get(self.NAME + '_DEFAULT')
+
     def test_default_explicit_modes_and_vanilla(self):
+        # Default all since Run 81 (user decision 2026-09-24), marked default=1; an explicit value is default=0;
+        # off is the no-patch spelling of record0; --vanilla sends neither variable.
         with tempfile.TemporaryDirectory() as directory:
-            self.assertEqual(self.value(directory), 'record0')
-            self.assertEqual(self.value(directory, inherited={self.NAME: 'all'}), 'record0')   # a stale value never travels
-            self.assertEqual(self.value(directory, '--lod-occlusion', 'record0'), 'record0')
-            self.assertEqual(self.value(directory, '--lod-occlusion', 'all', inherited={self.NAME: 'record0'}), 'all')
-            self.assertIsNone(self.value(directory, vanilla=True, inherited={self.NAME: 'all'}))
+            self.assertEqual(self.pair(directory), ('all', '1'))
+            self.assertEqual(self.pair(directory, inherited={self.NAME: 'record0', self.NAME + '_DEFAULT': '0'}), ('all', '1'))   # a stale value never travels
+            self.assertEqual(self.pair(directory, '--lod-occlusion', 'record0'), ('record0', '0'))
+            self.assertEqual(self.pair(directory, '--lod-occlusion', 'off', inherited={self.NAME: 'all'}), ('record0', '0'))
+            self.assertEqual(self.pair(directory, '--lod-occlusion', 'all', inherited={self.NAME: 'record0'}), ('all', '0'))
+            self.assertEqual(self.pair(directory, vanilla=True, inherited={self.NAME: 'all', self.NAME + '_DEFAULT': '1'}), (None, None))
 
     def test_refusals(self):
         with tempfile.TemporaryDirectory() as directory:
             for args, vanilla, message in ((('--lod-occlusion', 'all'), True, 'cannot be combined with --vanilla'),
                                            (('--lod-occlusion', 'record0'), True, 'cannot be combined with --vanilla'),
+                                           (('--lod-occlusion', 'off'), True, 'cannot be combined with --vanilla'),
                                            (('--lod-occlusion', 'All'), False, 'invalid choice'),
                                            (('--lod-occlusion', 'on'), False, 'invalid choice')):
                 with self.subTest(args=args, vanilla=vanilla):
@@ -309,7 +323,7 @@ class LodOcclusionLaunchOption(unittest.TestCase):
 
     def test_launch_command_unchanged(self):
         with tempfile.TemporaryDirectory() as directory:
-            record0 = json.loads(self.launch(directory)[1])
+            record0 = json.loads(self.launch(directory, '--lod-occlusion', 'record0')[1])
             every = json.loads(self.launch(directory, '--lod-occlusion', 'all')[1])
             self.assertEqual(record0['command'], every['command'])
             self.assertEqual({k: v for k, v in every['env'].items() if record0['env'].get(k) != v}, {self.NAME: 'all'})

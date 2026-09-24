@@ -61,3 +61,5 @@ attributing row (`spikes_nonburst_out.txt`). The user sees the red plates and no
 difference the user reports between fine and coarse red plates is not the occlusion map (both records bind the same
 map) but the baker's synthesised material constants, and the underside transition is a shadow-caster difference; both
 are in [lod-overlay.md](lod-overlay.md) and the sun-shadow ledger. Decision pending the user: `all` as the default.
+
+**Default all since Run 81, user decision 2026-09-24 (not flown):** the launcher sends `X3M_LOD_OCCLUSION=all` with `X3M_LOD_OCCLUSION_DEFAULT=1` (`off` added as the spelling of `record0`); the row gains `default=1|0`; host test `test_lod_occlusion_site`. Wine rerun `run_lod_occlusion_patch.py` (measured, X3, record on 17868e9d with `lod_occlusion.cpp` dirty): 108/108, including four `default_marker_*` cases (marker 1 with `all` or `record0` logs `default=1`; unset setting or another marker value logs `default=0`).

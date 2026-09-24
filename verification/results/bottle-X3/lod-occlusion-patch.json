@@ -9,15 +9,13 @@
   "src/proxy/engine_patch.h"
  ],
  "source": {
-  "commit": "49c77603c2f45300c6b6f646e0c61d357df5eee6",
+  "commit": "17868e9d88db3b641efcf1a849785c4a5ac3f1ff",
   "production_sources_dirty": true,
   "dirty_paths": [
-   "src/proxy/lod_occlusion.cpp",
-   "src/proxy/lod_occlusion.h",
-   "src/proxy/lod_occlusion_sites.h"
+   "src/proxy/lod_occlusion.cpp"
   ],
   "sha256": {
-   "src/proxy/lod_occlusion.cpp": "42a94a26cae49f85397622fcb774f47f25eef17d6d9c882933b33d0e3f9b5e74",
+   "src/proxy/lod_occlusion.cpp": "b0dbe0cb398126a2e17cca9dbb9a544b185b50bf0e9d73cb64881e47557bbc2a",
    "src/proxy/lod_occlusion.h": "5638be117920ed19f6edf4c29e01d1689def06ddf8f1d1dddca1562e4da1f36e",
    "src/proxy/lod_occlusion_sites.h": "7e5a7e7856c74de1f46d2369961fcc6068910fb58971d0b2e0c587d0324b85ba",
    "src/proxy/engine_patch.cpp": "9eb31fbf19e4f88432655ccccfe6e054739d9b8ba5f5be4054dfccf513330a2b",
@@ -36,7 +34,7 @@
  },
  "exit_status": 0,
  "elapsed_s": 5.3,
- "executable_sha256": "a505c748c22e2eded50f84ca7491893da183e34fb12c34448c7e139bcd8153ec",
+ "executable_sha256": "a993303f14758011e36b5a75c0164ea9bed52ae9cc82d0f18dbf70982d0b6f52",
  "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
  "build_audit": {
   "module_imports_own_protect_or_flush": [],
@@ -59,11 +57,11 @@
    "size": 4096,
    "data_readonly": true
   },
-  "highest_other_section_end": "00440398",
+  "highest_other_section_end": "004403d4",
   "overlapping_sections": []
  },
- "check_count": 100,
- "pass_count": 100,
+ "check_count": 108,
+ "pass_count": 108,
  "checks": [
   {
    "name": "restore_log_opened",
@@ -147,6 +145,38 @@
   },
   {
    "name": "refuse_executable_mismatch_row_and_untouched",
+   "pass": true
+  },
+  {
+   "name": "default_marker_executable_mismatch_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "default_marker_executable_mismatch_row_and_untouched",
+   "pass": true
+  },
+  {
+   "name": "default_marker_record0_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "default_marker_record0_row_and_untouched",
+   "pass": true
+  },
+  {
+   "name": "default_marker_unset_ignored_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "default_marker_unset_ignored_row_and_untouched",
+   "pass": true
+  },
+  {
+   "name": "default_marker_other_value_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "default_marker_other_value_row_and_untouched",
    "pass": true
   },
   {
@@ -641,8 +671,8 @@
   "raw_restore_lod1": 2
  },
  "timing_us": {
-  "install_us": 235.3,
-  "restore_us": 180.6
+  "install_us": 216.7,
+  "restore_us": 174.0
  },
  "install_rows": [
   {
@@ -652,6 +682,7 @@
    "mode": "record0",
    "setting": "-",
    "write": "none",
+   "default": false,
    "patched": false
   },
   {
@@ -661,6 +692,7 @@
    "mode": "record0",
    "setting": "record0",
    "write": "none",
+   "default": false,
    "patched": false
   },
   {
@@ -670,6 +702,7 @@
    "mode": "-",
    "setting": "All",
    "write": "none",
+   "default": false,
    "patched": false
   },
   {
@@ -679,6 +712,7 @@
    "mode": "-",
    "setting": "?",
    "write": "none",
+   "default": false,
    "patched": false
   },
   {
@@ -688,6 +722,47 @@
    "mode": "all",
    "setting": "all",
    "write": "none",
+   "default": false,
+   "patched": false
+  },
+  {
+   "site": "004c34f7",
+   "status": "refused",
+   "reason": "executable_mismatch",
+   "mode": "all",
+   "setting": "all",
+   "write": "none",
+   "default": true,
+   "patched": false
+  },
+  {
+   "site": "004c34f7",
+   "status": "off",
+   "reason": "record0",
+   "mode": "record0",
+   "setting": "record0",
+   "write": "none",
+   "default": true,
+   "patched": false
+  },
+  {
+   "site": "004c34f7",
+   "status": "off",
+   "reason": "record0",
+   "mode": "record0",
+   "setting": "-",
+   "write": "none",
+   "default": false,
+   "patched": false
+  },
+  {
+   "site": "004c34f7",
+   "status": "refused",
+   "reason": "executable_mismatch",
+   "mode": "all",
+   "setting": "all",
+   "write": "none",
+   "default": false,
    "patched": false
   },
   {
@@ -697,6 +772,7 @@
    "mode": "all",
    "setting": "all",
    "write": "none",
+   "default": false,
    "patched": false
   },
   {
@@ -706,6 +782,7 @@
    "mode": "all",
    "setting": "all",
    "write": "none",
+   "default": false,
    "patched": false
   },
   {
@@ -715,6 +792,7 @@
    "mode": "all",
    "setting": "all",
    "write": "none",
+   "default": false,
    "patched": false
   },
   {
@@ -724,6 +802,7 @@
    "mode": "all",
    "setting": "all",
    "write": "atomic",
+   "default": false,
    "patched": true
   },
   {
@@ -733,6 +812,7 @@
    "mode": "all",
    "setting": "all",
    "write": "atomic",
+   "default": false,
    "patched": false
   },
   {
@@ -742,6 +822,7 @@
    "mode": "all",
    "setting": "all",
    "write": "atomic",
+   "default": false,
    "patched": false
   },
   {
@@ -751,6 +832,7 @@
    "mode": "all",
    "setting": "all",
    "write": "atomic",
+   "default": false,
    "patched": false
   },
   {
@@ -760,6 +842,7 @@
    "mode": "all",
    "setting": "all",
    "write": "atomic",
+   "default": false,
    "patched": false
   },
   {
@@ -769,6 +852,7 @@
    "mode": "all",
    "setting": "all",
    "write": "atomic",
+   "default": false,
    "patched": true
   },
   {
@@ -778,6 +862,7 @@
    "mode": "all",
    "setting": "all",
    "write": "atomic",
+   "default": false,
    "patched": true
   },
   {
@@ -787,6 +872,7 @@
    "mode": "all",
    "setting": "all",
    "write": "atomic",
+   "default": false,
    "patched": true
   },
   {
@@ -796,6 +882,7 @@
    "mode": "all",
    "setting": "all",
    "write": "none",
+   "default": false,
    "patched": false
   }
  ],
@@ -862,7 +949,7 @@
   }
  ],
  "result": {
-  "checks": 100,
+  "checks": 108,
   "failures": 0
  },
  "passed": true,

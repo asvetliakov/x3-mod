@@ -582,8 +582,8 @@ User decision 2026-09-24 (Run 79 A). `src/proxy/lod_occlusion.cpp` with the site
   - `X3M_LOD_OCCLUSION` unset, empty or `record0`: the engine's bytes (the DLL default).
   - `all`: patched.
   - Any other value, or 32 characters or more: refused, nothing patched.
-  - Launcher: `--lod-occlusion record0|all`. It is always exported on a modded launch (default
-    `record0`) and refused with `--vanilla`.
+  - Launcher: `--lod-occlusion off|record0|all` (`off` = `record0`). It is always exported on a modded
+    launch and refused with `--vanilla`. Default all since Run 81, user decision 2026-09-24 (row `default=1`).
   - One row: `lod_occlusion site=004c34f7 status=patched|patched_unverified|off|refused reason=… mode=record0|all|- setting=… write=none|atomic|plain`.
 - **Side effect on vanilla bodies.** The patch is unconditional. Vanilla records past 0 then bind
   their material's occlusion map as well, through a second UV set that is 98.8–99.2 % within

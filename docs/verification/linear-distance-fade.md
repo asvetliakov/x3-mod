@@ -25,3 +25,5 @@ was not run, and `fade_routed` max 24 is below the §5 figure of 62 (a different
 launch (`X3M_TAA_SENTINEL_STABILISER=0` with the owner on, bursts at rest and in the pan); the replay crop can be
 taken from run307's owner box (x 1979-3109, y 583-950). Open: 27.6k same-depth unowned pixels inside the owner box on
 4613 cannot be attributed per draw from the dump.
+
+**Run 81 default (not flown):** `--fade-rt2-owner` defaults on with `--taa --motion-output --hdr` (else not sent, one launcher line); `fade_rt2_owner_configured` now logs for on and off with `default=1|0` (host test `test_fade_region`). Wine (measured, X3): `seam-taa-fade-route-routed` 5100 checks with `requested=0 enabled=0 default=0`, `seam-taa-fade-route-routed-owner` 5185 with `requested=1 enabled=1 default=0`.

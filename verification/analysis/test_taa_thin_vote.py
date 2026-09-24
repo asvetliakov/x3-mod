@@ -287,15 +287,43 @@ class ThinVoteLaunch(unittest.TestCase):
         self.assertEqual(code, 0, error)
         return json.loads(output)['env']
 
-    def test_default_off_not_forwarded_and_inherited_dropped(self):
+    def test_default_on_since_run81(self):
+        # (1) No option with every prerequisite: on, marked as the default; an inherited value cannot change it.
         with tempfile.TemporaryDirectory() as directory:
-            self.assertNotIn('X3M_TAA_THIN_VOTE', self.env(directory, *TAA, *LANE))
-            self.assertNotIn('X3M_TAA_THIN_VOTE', self.env(directory, *TAA, *LANE, inherited={'X3M_TAA_THIN_VOTE': 'on'}))
+            for inherited in (None, {'X3M_TAA_THIN_VOTE': 'off', 'X3M_TAA_THIN_VOTE_DEFAULT': '0'}):
+                env = self.env(directory, *TAA, *LANE, inherited=inherited)
+                self.assertEqual((env['X3M_TAA_THIN_VOTE'], env['X3M_TAA_THIN_VOTE_DEFAULT']), ('on', '1'))
+
+    def test_default_without_prerequisites_is_not_sent_nor_refused(self):
+        # (4) Without --taa (or without the lane) the default is dropped with one launcher line, never a refusal.
+        with tempfile.TemporaryDirectory() as directory:
+            for args, missing in ((['--motion-output', '--hdr'], '--taa --ownership --sun-shadow-lane'), ([*TAA], '--hdr --sun-shadow-lane')):
+                code, output, error = self.launch(directory, *args, inherited={'X3M_TAA_THIN_VOTE': 'on', 'X3M_TAA_THIN_VOTE_DEFAULT': '1'})
+                self.assertEqual(code, 0, error)
+                env = json.loads(output)['env']
+                self.assertNotIn('X3M_TAA_THIN_VOTE', env)
+                self.assertNotIn('X3M_TAA_THIN_VOTE_DEFAULT', env)
+                # One line for this option, naming only the missing prerequisites.
+                self.assertEqual([l for l in error.splitlines() if l.startswith('default on not sent: --taa-thin-vote')],
+                                 [f'default on not sent: --taa-thin-vote (missing {missing})'], error)
+
+    def test_vanilla_sends_neither(self):
+        # (3) --vanilla: no option value, no default marker, no launcher line.
+        with tempfile.TemporaryDirectory() as directory:
+            code, output, error = self.launch(directory, '--vanilla', inherited={'X3M_TAA_THIN_VOTE': 'on', 'X3M_FADE_RT2_OWNER': 'on'})
+            self.assertEqual(code, 0, error)
+            env = json.loads(output)['env']
+            for name in ('X3M_TAA_THIN_VOTE', 'X3M_TAA_THIN_VOTE_DEFAULT', 'X3M_FADE_RT2_OWNER', 'X3M_FADE_RT2_OWNER_DEFAULT'):
+                self.assertNotIn(name, env)
+            self.assertNotIn('default on not sent', error)
 
     def test_on_and_off_are_forwarded(self):
+        # (2) An explicit value is forwarded with default=0.
         with tempfile.TemporaryDirectory() as directory:
-            self.assertEqual(self.env(directory, *TAA, *LANE, '--taa-thin-vote', 'on')['X3M_TAA_THIN_VOTE'], 'on')
-            self.assertEqual(self.env(directory, *TAA, '--taa-thin-vote', 'off')['X3M_TAA_THIN_VOTE'], 'off')
+            env = self.env(directory, *TAA, *LANE, '--taa-thin-vote', 'on')
+            self.assertEqual((env['X3M_TAA_THIN_VOTE'], env['X3M_TAA_THIN_VOTE_DEFAULT']), ('on', '0'))
+            env = self.env(directory, *TAA, '--taa-thin-vote', 'off')
+            self.assertEqual((env['X3M_TAA_THIN_VOTE'], env['X3M_TAA_THIN_VOTE_DEFAULT']), ('off', '0'))
 
     def test_refusals(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -318,6 +346,9 @@ class ThinVoteSource(unittest.TestCase):
     def test_dll_parses_off_by_default_and_uploads_c218_only_with_the_option(self):
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
         self.assertIn('bool taa_thin_vote = false;', capture)
+        # The configured row appears whenever a valid value arrived (on or off) and names the value's source.
+        self.assertIn('if(taa_thin_vote_given)log("taa_thin_vote_configured requested=%u enabled=%u default=%u ', capture)
+        self.assertIn('taa_thin_vote_default=taa_thin_vote_given&&GetEnvironmentVariableW(L"X3M_TAA_THIN_VOTE_DEFAULT",setting,32)==1&&setting[0]==L\'1\';', capture)
         self.assertIn('GetEnvironmentVariableW(L"X3M_TAA_THIN_VOTE",setting,32)', capture)
         self.assertIn('if(enabled)renderer::material_motion_configure_thin_vote(true);', capture)
         motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()

@@ -221,6 +221,8 @@ of its own hull at similar depth fails the line test's background margin (`(1 - 
 classified today; whether such lattices crawl is unmeasured (open). With A' the composed effect is one tests draw
 carrying both classifiers and no dilation draws.
 
+**Default on since Run 81** (launcher, whenever `--taa --motion-output --ownership --hdr --sun-shadow-lane` are given, else not sent with one launcher line; `X3M_TAA_THIN_VOTE_DEFAULT=1`, row `taa_thin_vote_configured ... default=1`; Run 80 A launch 3). The thin region itself (`--taa-thin-region`) defaults to 0.97 with `--taa` since Run 81, and `--taa-far-stabiliser` to 0.985.
+
 **Implemented (2026-09-24, opt-in, default off, not flown).** `--taa-thin-vote on|off` (`X3M_TAA_THIN_VOTE`; on needs
 `--taa --motion-output --ownership --sun-shadow-lane`, refused under `--vanilla`); ledger:
 [temporal-resolve.md](../verification/temporal-resolve.md#2026-09-24-thin-vote-b-opt-in-fixture-not-flown). The

@@ -10,7 +10,7 @@ import run_lod_occlusion_patch as runner
 
 ROOT = Path(__file__).resolve().parents[2]
 RECORD = ROOT / 'verification/results/bottle-X3/lod-occlusion-patch.json'
-CHECKS = 100
+CHECKS = 108  # 100 + the four default_marker_* cases (row and LastError each), Run 81
 PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE, PAGE_EXECUTE_WRITECOPY = 0x20, 0x40, 0x80
 
 
@@ -112,10 +112,12 @@ class LodOcclusionPatchRecordTests(unittest.TestCase):
         installs = self.record['install_rows']
         self.assertTrue(all(row['site'] == '004c34f7' for row in installs))
         self.assertEqual(Counter((row['status'], row['reason'], row['write']) for row in installs), Counter({
-            ('patched', 'ok', 'atomic'): 4, ('off', 'record0', 'none'): 2, ('refused', 'bytes_mismatch', 'none'): 2,
+            ('patched', 'ok', 'atomic'): 4, ('off', 'record0', 'none'): 4, ('refused', 'bytes_mismatch', 'none'): 2,
             ('refused', 'patch_rolled_back', 'atomic'): 2, ('refused', 'invalid_setting', 'none'): 1, ('refused', 'too_long', 'none'): 1,
-            ('refused', 'executable_mismatch', 'none'): 1, ('refused', 'protect_failed', 'none'): 1, ('refused', 'rollback_unprotected', 'atomic'): 1,
+            ('refused', 'executable_mismatch', 'none'): 3, ('refused', 'protect_failed', 'none'): 1, ('refused', 'rollback_unprotected', 'atomic'): 1,
             ('patched_unverified', 'rollback_failed', 'atomic'): 1, ('refused', 'late_claim', 'none'): 1}))
+        # The launcher's default marker reaches the row only with a value and marker 1 (default_marker_executable_mismatch, _record0).
+        self.assertEqual(Counter(row['default'] for row in installs), Counter({False: len(installs) - 2, True: 2}))
         restores = self.record['restore_rows']
         # Every restore names the engine's jne except the private page's, which names its own copy at the same page offset.
         self.assertEqual(Counter(row['site'] == '004c34f7' for row in restores), Counter({True: 9, False: 1}))

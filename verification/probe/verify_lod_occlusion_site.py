@@ -50,7 +50,7 @@ BEFORE_VA, BEFORE = 0x4c34d8, bytes.fromhex('8b442428 8b7074 85f6 0f84ef000000'.
 AFTER = bytes.fromhex('0f8cca000000')
 WINDOW_STARTS = [0x4c34e7, 0x4c34ea, 0x4c34f1, 0x4c34f7, 0x4c34fd, 0x4c3502]
 LOG_RE = re.compile(r'\blod_occlusion site=(?P<site>[0-9a-f]{8}) status=(?P<status>patched|patched_unverified|off|refused) reason=(?P<reason>\S+) '
-                    r'mode=(?P<mode>record0|all|-) setting=(?P<setting>[!-~]+) write=(?P<write>none|atomic|plain)')
+                    r'mode=(?P<mode>record0|all|-) setting=(?P<setting>[!-~]+) write=(?P<write>none|atomic|plain)(?: default=(?P<default>[01]))?')
 RESTORE_RE = re.compile(r'\blod_occlusion_restore site=(?P<site>[0-9a-f]{8}) status=(?P<status>restored|restore_not_owned|restore_failed) '
                         r'found=(?P<found>[0-9a-f]{8}|--) registered=(?P<registered>[01])')
 
@@ -63,6 +63,7 @@ def parse_log_line(line):
     row = match.groupdict()
     row['site'] = int(row['site'], 16)
     row['patched'] = row['status'] == 'patched'
+    row['default'] = None if row['default'] is None else row['default'] == '1'  # absent before Run 81
     return row
 
 

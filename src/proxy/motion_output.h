@@ -660,7 +660,7 @@ public:
     // X3M_TAA_BOX_RESOLUTION (full default, half; docs/architecture/taa-high-resolution.md S4): the camera gate's box at half
     // resolution, TemporalPass::configure_box_resolution(2); full is the pass without the call, bit for bit and log for log.
     void configure_box_resolution(bool half) noexcept { taa_box_half_ = half; }
-    // X3M_TAA_THIN_VOTE (on|off, default off; docs/architecture/taa-thin-geometry-alternatives.md section 3.2): the
+    // X3M_TAA_THIN_VOTE (on|off, DLL default off when the variable is unset; the launcher sends on since Run 81; docs/architecture/taa-thin-geometry-alternatives.md section 3.2): the
     // draw-time thin vote of the thin region. `enabled` is the caller's resolution (requested with the route, TAA, the
     // sun-share lane and the ownership wrapper); it also switched the material transformer
     // (renderer::material_motion_configure_thin_vote) before any program was created. Enabled: every routed draw uploads
@@ -668,7 +668,7 @@ public:
     // histogram is read once at a scene end through the application's wrapper (READONLY, MANAGED only) and the tests draw
     // is the thin-vote twin. Off: nothing runs and the upload is c216-c217 as before.
     void configure_thin_vote(bool requested, bool enabled) noexcept { thin_vote_requested_ = requested; thin_vote_upload_ = enabled; }
-    // X3M_FADE_RT2_OWNER (on|off, default off; docs/architecture/fade-rt2-ownership.md): every draw the fade-band arm
+    // X3M_FADE_RT2_OWNER (on|off, DLL default off when the variable is unset; the launcher sends on since Run 81; docs/architecture/fade-rt2-ownership.md): every draw the fade-band arm
     // routes owns RT2 (COLORWRITEENABLE2 15 instead of 0; the owner depth fragment's .a = 1 from c218.y makes the
     // engine's SRCALPHA/INVSRCALPHA blend store the exact depth) and the arm's pair identity widens from the seven
     // distance_fade_rows pairs to every reviewed pair with a fade_route::registers row (original shading only, the

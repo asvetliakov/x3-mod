@@ -388,5 +388,72 @@ class TaaImageDefaultsDll(unittest.TestCase):
         self.assertIn('taa_thin_weight_ = 0.f; taa_thin_camera_gate_ = false;', (ROOT / 'src/proxy/motion_output.cpp').read_text())
 
 
+
+class TaaAgeProgramDefaultsLaunch(unittest.TestCase):
+    """Run 81 defaults on a modded launch: --taa-far-stabiliser 0.985 and --taa-thin-region 0.97 with --taa; off/0 turn
+    them off; --vanilla and a launch without --taa send neither and print nothing about them. No game, no Wine."""
+    NAMES = ('X3M_TAA_FAR_STABILISER', 'X3M_TAA_THIN_REGION')
+
+    def launch(self, directory, *args, inherited=None, vanilla=False):
+        module = load_manage()
+        game = Path(directory) / 'game'
+        game.mkdir(exist_ok=True)
+        (game / 'X3AP.exe').touch()
+        (game / 'd3d9.dll').write_bytes(b'fixture')
+        (game / 'x3-modern-install.json').write_text(json.dumps({'sha256': __import__('hashlib').sha256(b'fixture').hexdigest()}))
+        wine = Path(directory) / 'wine'
+        wine.touch()
+        argv = ['manage.py', 'launch', '--dry-run', *(['--vanilla'] if vanilla else []), '--game-dir', str(game), *args]
+        output, error = io.StringIO(), io.StringIO()
+        with mock.patch.object(sys, 'argv', argv), mock.patch.object(module, 'WINE', wine), mock.patch.object(module, 'VOICE_DECODER_REPO', None), \
+                mock.patch.dict(module.os.environ, inherited or {}), \
+                mock.patch.object(module.subprocess, 'call', side_effect=AssertionError('must never launch')), \
+                contextlib.redirect_stdout(output), contextlib.redirect_stderr(error):
+            try:
+                module.main()
+            except SystemExit as exit_error:
+                return exit_error.code, output.getvalue(), error.getvalue()
+        return 0, output.getvalue(), error.getvalue()
+
+    def run_env(self, directory, *args, **kwargs):
+        code, output, error = self.launch(directory, *args, **kwargs)
+        self.assertEqual(code, 0, error)
+        return json.loads(output)['env'], error
+
+    def test_default_on_with_taa(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env, _ = self.run_env(directory, *TAA, '--hdr', inherited={'X3M_TAA_FAR_STABILISER': '0', 'X3M_TAA_THIN_REGION': '0'})
+            self.assertEqual((env['X3M_TAA_FAR_STABILISER'], env['X3M_TAA_THIN_REGION']), ('0.985,0,80,130,0.03,0.25', '0.97,1'))
+            # The derived defaults see the defaulted thin region: camera gate, emissive vote 1 (HDR), sentinel stabiliser 0.7.
+            self.assertEqual((env['X3M_TAA_THIN_REGION_GATE'], env['X3M_TAA_THIN_REGION_EMISSIVE'], env['X3M_TAA_SENTINEL_STABILISER']), ('camera', '1', '0.7'))
+            # An explicit value still wins; the other keeps its default.
+            env, _ = self.run_env(directory, *TAA, '--taa-thin-region', '0.95')
+            self.assertEqual((env['X3M_TAA_FAR_STABILISER'], env['X3M_TAA_THIN_REGION']), ('0.985,0,80,130,0.03,0.25', '0.95,1'))
+
+    def test_explicit_off(self):
+        with tempfile.TemporaryDirectory() as directory:
+            for off in ('off', '0', 'OFF'):
+                env, _ = self.run_env(directory, *TAA, '--taa-far-stabiliser', off, '--taa-thin-region', off)
+                self.assertEqual((env['X3M_TAA_FAR_STABILISER'], env['X3M_TAA_THIN_REGION']), ('0,0,80,130,0.03,0.25', '0,1'), off)
+                # Neither age program in effect: the options keyed on them resolve off, as before the defaults.
+                self.assertNotIn('X3M_TAA_THIN_REGION_GATE', env)
+                self.assertEqual(env['X3M_TAA_MOTION_WEIGHT'], '0')
+
+    def test_vanilla_and_no_taa_send_nothing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env, error = self.run_env(directory, *TAA, vanilla=True, inherited={name: '0.97' for name in self.NAMES})
+            self.assertFalse(set(self.NAMES) & set(env))
+            env, error = self.run_env(directory, '--motion-output', '--hdr', inherited={name: '0.97' for name in self.NAMES})
+            self.assertFalse(set(self.NAMES) & set(env))
+            self.assertNotIn('stabiliser', error)
+            self.assertNotIn('thin-region', error)
+
+    def test_history_weight_above_a_default_keeps_it_off(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env, _ = self.run_env(directory, *TAA, '--taa-history-weight', '0.98')
+            self.assertNotIn('X3M_TAA_THIN_REGION', env)
+            self.assertEqual(env['X3M_TAA_FAR_STABILISER'], '0.985,0,80,130,0.03,0.25')
+
+
 if __name__ == '__main__':
     unittest.main()

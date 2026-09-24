@@ -790,15 +790,30 @@ class FadeOwnerLaunch(unittest.TestCase):
         self.assertEqual(code,0,error)
         return json.loads(output)['env']
 
-    def test_default_off_not_forwarded_and_inherited_dropped(self):
+    def test_default_on_since_run81(self):
+        # (1) No option with --taa --motion-output --hdr: on, marked as the default; an inherited value cannot change it.
         with tempfile.TemporaryDirectory() as directory:
-            self.assertNotIn('X3M_FADE_RT2_OWNER',self.env(directory,*self.TAA))
-            self.assertNotIn('X3M_FADE_RT2_OWNER',self.env(directory,*self.TAA,inherited={'X3M_FADE_RT2_OWNER':'on'}))
+            for inherited in (None,{'X3M_FADE_RT2_OWNER':'off','X3M_FADE_RT2_OWNER_DEFAULT':'0'}):
+                env=self.env(directory,*self.TAA,inherited=inherited)
+                self.assertEqual((env['X3M_FADE_RT2_OWNER'],env['X3M_FADE_RT2_OWNER_DEFAULT']),('on','1'))
+
+    def test_default_without_prerequisites_is_not_sent_nor_refused(self):
+        # (4) Without --taa (or without --hdr) the default is dropped with one launcher line, never a refusal.
+        with tempfile.TemporaryDirectory() as directory:
+            for args,missing in ((['--motion-output','--hdr'],'--taa'),(self.TAA[:-1],'--hdr')):
+                code,output,error=self.launch(directory,*args,inherited={'X3M_FADE_RT2_OWNER':'on','X3M_FADE_RT2_OWNER_DEFAULT':'1'})
+                self.assertEqual(code,0,error)
+                env=json.loads(output)['env']
+                self.assertNotIn('X3M_FADE_RT2_OWNER',env);self.assertNotIn('X3M_FADE_RT2_OWNER_DEFAULT',env)
+                self.assertEqual([l for l in error.splitlines() if l.startswith('default on not sent: --fade-rt2-owner')],
+                                 [f'default on not sent: --fade-rt2-owner (missing {missing})'],error)
 
     def test_on_and_off_are_forwarded(self):
+        # (2) An explicit value is forwarded with default=0.
         with tempfile.TemporaryDirectory() as directory:
-            self.assertEqual(self.env(directory,*self.TAA,'--fade-rt2-owner','on')['X3M_FADE_RT2_OWNER'],'on')
-            self.assertEqual(self.env(directory,*self.TAA,'--fade-rt2-owner','off')['X3M_FADE_RT2_OWNER'],'off')
+            for value in ('on','off'):
+                env=self.env(directory,*self.TAA,'--fade-rt2-owner',value)
+                self.assertEqual((env['X3M_FADE_RT2_OWNER'],env['X3M_FADE_RT2_OWNER_DEFAULT']),(value,'0'))
 
     def test_refusals(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -819,6 +834,8 @@ class FadeOwnerSource(unittest.TestCase):
     def test_parse_and_configuration(self):
         capture=(ROOT/'src/proxy/capture.cpp').read_text()
         self.assertIn('bool fade_rt2_owner = false;',capture)
+        self.assertIn('if(fade_rt2_owner_given)log("fade_rt2_owner_configured requested=%u enabled=%u default=%u ',capture)
+        self.assertIn('fade_rt2_owner_default=fade_rt2_owner_given&&GetEnvironmentVariableW(L"X3M_FADE_RT2_OWNER_DEFAULT",setting,32)==1&&setting[0]==L\'1\';',capture)
         self.assertIn('GetEnvironmentVariableW(L"X3M_FADE_RT2_OWNER",setting,32)',capture)
         self.assertIn('const bool enabled=fade_rt2_owner&&motion_output_requested&&taa_requested&&hdr_requested&&fade_route_threshold<=1000u;',capture)
         self.assertIn('if(enabled)renderer::material_motion_configure_fade_owner(true);',capture)
