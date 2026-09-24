@@ -1,5 +1,5 @@
 {
- "commit": "250cc48d47ea84d72468b2782c2095719c46c80a-dirty",
+ "commit": "3ee2fe20a955b8e7c866d3d0a294d629cf4a5454-dirty",
  "anchors": 41,
  "shipped": {
   "info": {
@@ -744,6 +744,14 @@
   },
   "verify_fov_site@setfocus": {
    "va": "0x0042dbf8",
+   "identity_ok": true,
+   "result": "FAIL",
+   "rc": 1,
+   "laa": true,
+   "known": null
+  },
+  "verify_fov_site@load": {
+   "va": "0x0041c8c2",
    "identity_ok": true,
    "result": "FAIL",
    "rc": 1,

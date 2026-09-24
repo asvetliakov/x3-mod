@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only qualification of the field-of-view sites 0x0041c9d9 and 0x0042dbf8.
+"""Read-only qualification of the field-of-view sites 0x0041c9d9, 0x0042dbf8 and 0x0041c8c1.
 
 src/proxy/fov.cpp replaces the imm32 of the cockpit registry constructor's
 `MOV dword [ESI+0x24],0x4000` (c7 46 24 00 40 00 00) with F'(N), the remap of
@@ -27,7 +27,21 @@ with unchanged boundaries and only the immediate changed, the atomic-word rule
 for the four-byte write, the reader contract (`mov edx,[0x00608504]; mov
 esi,[edx+0x24]` at 0x00421148, `mov [edx+0x24],ecx` at 0x0042dc04), no other
 DLL claim on the window, the conversion table and bounds, and that
-src/proxy/fov_sites.h carries the same constants. Also the `fov`,
+src/proxy/fov_sites.h carries the same constants. The third site, the
+registry serializer's load store `MOV [EBP+0x24],EAX; POP ESI; MOV AL,1` at
+0x0041c8c1 (section 7.4.4): the 23-byte window 0x0041c8b4..0x0041c8ca with
+both calls reaching 0x004e9420, its whole-instruction decode inside the
+serializer 0x0041c6e0..0x0041c8ee (the only direct branch into the window is
+0x0041c8a8's to its start), the serializer's callers exactly 0x0041f684 (save,
+push 1) and 0x0041f790 (load, push 0) with `test al,al` after both and EAX
+overwritten on the load caller's success path before any read, no EDX read on
+that path through `call 0x0048cdc0` up to its `xor edx,edx` at 0x0048cdcd, no raw branch
+encoding and no dword into the window, the jmp's five bytes in the aligned
+qword 0x0041c8c0, no other claim on the window or the load caller, and the
+exact-match rule: no F'(N), N 50..130, equals any vanilla (M << 16) / 360,
+M 0..180, and no constructor value (F'(g) moved off a vanilla value, for every
+g = game_focus(70) .. game_focus(100) the launcher's decimals reach) does
+either. Also the `fov`,
 `fov_restore` and `fov_confirm` log-line parsers the host test exercises. No
 Wine, no game launch.
 """
@@ -66,18 +80,37 @@ CALLEE_MNEMONICS = ['push', 'mov', 'push', 'lea', 'mov', 'cmp', 'jb', 'mov', 'ca
 JUMP_TABLE_VA, JUMP_TABLE_ENTRIES, SETFOCUS_CASE = 0x42f064, 0x71, 0x21
 REMAP_FIRST, REMAP_COUNT, REMAP_FOCUS_MIN, REMAP_FOCUS_MAX = 50, 81, 0x2334, 0x5ccc
 STUB_LENGTH = 45
+LOAD_WINDOW_VA, LOAD_SITE_VA, LOAD_RETURN_VA, LOAD_SITE_OFFSET = 0x41c8b4, 0x41c8c1, 0x41c8c7, 13
+LOAD_WINDOW = bytes.fromhex('e867cb0c00 894520 e85fcb0c00 894524 5e b001 5d c20800'.replace(' ', ''))
+LOAD_SITE = bytes.fromhex('8945245eb001')
+LOAD_WINDOW_STARTS = [0x41c8b4, 0x41c8b9, 0x41c8bc, 0x41c8c1, 0x41c8c4, 0x41c8c5, 0x41c8c7, 0x41c8c8]
+LOAD_FUNCTION = (0x41c6e0, 0x41c8ef)  # the registry serializer; ret 8 at 0x41c8ec, int3 at 0x41c8ef
+STREAM_READER_VA = 0x4e9420
+LOAD_CALLER_VA, LOAD_CALLER = 0x41f790, bytes.fromhex('e84bcfffff 84c0 74da'.replace(' ', ''))
+LOAD_CALLER_WINDOW = (0x41f78a, 0x41f7ac)   # xor edi,edi; push edi (0 = load); push ebx; mov eax,ebp; call; test al,al; je; ...; call 0x48cdc0
+LOAD_CALLER_MNEMONICS = ['xor', 'push', 'push', 'mov', 'call', 'test', 'je', 'push', 'push', 'push', 'lea', 'mov', 'call']
+SAVE_CALLER_WINDOW = (0x41f67f, 0x41f691)   # push 1 (save); push ebp; mov eax,esi; call; test al,al; jne; pop x3; ret
+SAVE_CALLER_MNEMONICS = ['push', 'push', 'mov', 'call', 'test', 'jne', 'pop', 'pop', 'pop', 'ret']
+NEXT_CALLEE = (0x48cdc0, 0x48cdd4)   # the load caller's next callee: pushes, mov edi,ecx, then xor edx,edx at 0x48cdcd before any EDX read
+NEXT_CALLEE_XOR_VA = 0x48cdcd
+EDX_RE = re.compile(r'\b(edx|dx|dl|dh)\b')
+LOAD_STUB_LENGTH = 53
 REGISTRY_SLOT_VA, REGISTRY_FOCUS_OFFSET = 0x608504, 0x24
 ENGINE_FOCUS, NEAR_PLANE_FOCUS = 0x4000, 0x2147
 SETTING_MIN, SETTING_MAX, SETTING_DEFAULT, PLANE_HEIGHT = 70.0, 100.0, 90.0, 0.75
 PATCH_SAMPLE = 0x3470  # the launcher default N = 90 (90 deg horizontal on 16:9)
+# load= / load_write= (the third site) are absent from rows written before it existed (Run 82 and older): parsed as None.
 LOG_RE = re.compile(r'\bfov site=(?P<site>[0-9a-f]{8}) status=(?P<status>patched|patched_unverified|off|refused) reason=(?P<reason>\S+) '
                     r'value=0x(?P<value>[0-9a-f]{4,8}) vertical_deg=(?P<vertical>[0-9.]+) setting=(?P<setting>[!-~]+) write=(?P<write>none|atomic|plain) '
                     r'registry=(?P<registry>written|absent|skipped) registry_before=(?P<before>0x[0-9a-f]+|-) '
-                    r'setfocus=(?P<setfocus>[a-z_]+) setfocus_write=(?P<setfocus_write>none|atomic|plain)')
+                    r'setfocus=(?P<setfocus>[a-z_]+) setfocus_write=(?P<setfocus_write>none|atomic|plain)'
+                    r'(?: load=(?P<load>[a-z_]+) load_write=(?P<load_write>none|atomic|plain))?')
 RESTORE_RE = re.compile(r'\bfov_restore site=(?P<site>[0-9a-f]{8}) status=(?P<status>restored|restore_not_owned|restore_failed|none) '
-                        r'found=(?P<found>[0-9a-f]{8}|--) registered=(?P<registered>[01]) setfocus=(?P<setfocus>[a-z_]+)')
+                        r'found=(?P<found>[0-9a-f]{8}|--) registered=(?P<registered>[01]) setfocus=(?P<setfocus>[a-z_]+)(?: load=(?P<load>[a-z_]+))?')
+# after=save_load_complete marks the row written at each save_load_complete marker (the loaded base); absent on the first-Present rows.
 CONFIRM_RE = re.compile(r'\bfov_confirm frame=(?P<frame>\d+) registry=(?P<registry>[0-9a-f]{8}|absent) focus=(?P<focus>0x[0-9a-f]+|-) '
-                        r'expected=0x(?P<expected>[0-9a-f]+) match=(?P<match>[01]) vertical_deg=(?P<vertical>[0-9.]+|-) camera=(?P<camera>\S+)')
+                        r'expected=0x(?P<expected>[0-9a-f]+) match=(?P<match>[01]) vertical_deg=(?P<vertical>[0-9.]+|-) camera=(?P<camera>\S+)'
+                        r'(?: after=(?P<after>[a-z_]+))?')
 
 
 def remap_focus(focus):
@@ -96,6 +129,25 @@ def game_focus(degrees):
 
 def focus_for_degrees(degrees):
     return remap_focus(game_focus(degrees))
+
+
+def remap_exact(focus):
+    return 65536 / math.pi * math.atan(PLANE_HEIGHT * math.tan(focus * math.pi / 65536)) if 0 < focus < 0x8000 else 0.0
+
+
+VANILLA_ALL = frozenset((m << 16) // 360 for m in range(181))
+
+
+def constructor_focus_for(g):
+    """fov_sites.h constructor_focus_for: F'(g), moved one unit towards the unrounded value when it equals a vanilla (M << 16) / 360."""
+    f = remap_focus(g)
+    if not f or f not in VANILLA_ALL:
+        return f
+    return f + 1 if remap_exact(g) >= f else f - 1
+
+
+def constructor_focus(degrees):
+    return constructor_focus_for(game_focus(degrees))
 
 
 def vertical_for_focus(focus):
@@ -122,6 +174,35 @@ def remap_lookup(focus):
     return remap_table()[remap_index(focus) - REMAP_FIRST]
 
 
+def vanilla_table():
+    """The load stub's second table: the script's (N << 16) / 360 for N 50..130."""
+    return [((REMAP_FIRST + i) << 16) // 360 for i in range(REMAP_COUNT)]
+
+
+def load_lookup(focus):
+    """What the load stub stores for a saved F: F'(N) for the exact vanilla F of N 50..130, else F unchanged."""
+    if not REMAP_FOCUS_MIN <= focus <= REMAP_FOCUS_MAX:
+        return focus
+    i = remap_index(focus) - REMAP_FIRST
+    return remap_table()[i] if focus == vanilla_table()[i] else focus
+
+
+def load_collisions():
+    """(common values, minimum distance) between every F'(N), N 50..130, and every vanilla (M << 16) / 360, M 0..180; and
+    for the constructor over every g = game_focus(70) .. game_focus(100) (the launcher's four decimals reach every integer g):
+    inputs, how many raw F'(g) equal a vanilla value, and how many constructor values (after the one-unit move) still do."""
+    table, vanilla = remap_table(), sorted(VANILLA_ALL)
+    inputs = range(game_focus(SETTING_MIN), game_focus(SETTING_MAX) + 1)
+    constructor = {'inputs': len(inputs), 'raw': sum(remap_focus(g) in VANILLA_ALL for g in inputs),
+                   'after_move': sum(constructor_focus_for(g) in VANILLA_ALL for g in inputs),
+                   'max_move': max(abs(constructor_focus_for(g) - remap_exact(g)) for g in inputs)}
+    return sorted(set(table) & set(vanilla)), min(abs(t - m) for t in table for m in vanilla), constructor
+
+
+# The saved values of section 7.4.4 and what the load stub stores for them.
+LOAD_CASES = {0x4000: 0x3470, 0x31c7: 0x2768, 0x471c: 0x3b6f, 0x3470: 0x3470, 0x3b6f: 0x3b6f, 0x34aa: 0x34aa, 0x2000: 0x2000, 0x8000: 0x8000}
+
+
 # The game's N -> F' (field-of-view.md section 7.3 table); 90 is the launcher default.
 CONVERSIONS = {70: 0x2768, 75: 0x2a8d, 80: 0x2dc5, 85: 0x3110, 90: 0x3470, 95: 0x37e4, 100: 0x3b6f}
 
@@ -135,7 +216,7 @@ def parse_log_line(line):
     return {'site': int(row['site'], 16), 'status': row['status'], 'reason': row['reason'], 'value': int(row['value'], 16),
             'vertical_deg': float(row['vertical']), 'setting': row['setting'], 'write': row['write'], 'registry': row['registry'],
             'registry_before': None if row['before'] == '-' else int(row['before'], 16), 'setfocus': row['setfocus'],
-            'setfocus_write': row['setfocus_write'], 'patched': row['status'] == 'patched'}
+            'setfocus_write': row['setfocus_write'], 'load': row['load'], 'load_write': row['load_write'], 'patched': row['status'] == 'patched'}
 
 
 def parse_restore_line(line):
@@ -145,18 +226,19 @@ def parse_restore_line(line):
         return None
     row = match.groupdict()
     return {'site': int(row['site'], 16), 'status': row['status'], 'found': None if row['found'] == '--' else bytes.fromhex(row['found']),
-            'registered': row['registered'] == '1', 'setfocus': row['setfocus']}
+            'registered': row['registered'] == '1', 'setfocus': row['setfocus'], 'load': row['load']}
 
 
 def parse_confirm_line(line):
-    """The `fov_confirm` row of the first Present -> dict, or None."""
+    """A `fov_confirm` row (the first Present's, or after=save_load_complete) -> dict, or None."""
     match = CONFIRM_RE.search(line)
     if not match:
         return None
     row = match.groupdict()
     return {'frame': int(row['frame']), 'registry': None if row['registry'] == 'absent' else int(row['registry'], 16),
             'focus': None if row['focus'] == '-' else int(row['focus'], 16), 'expected': int(row['expected'], 16),
-            'match': row['match'] == '1', 'vertical_deg': None if row['vertical'] == '-' else float(row['vertical']), 'camera': row['camera']}
+            'match': row['match'] == '1', 'vertical_deg': None if row['vertical'] == '-' else float(row['vertical']), 'camera': row['camera'],
+            'after': row['after']}
 
 
 def source_constants(text):
@@ -173,10 +255,13 @@ def source_constants(text):
                                            'registry_focus_offset', 'engine_focus', 'near_plane_focus', 'setting_min', 'setting_max',
                                            'setting_default', 'plane_height', 'setfocus_case_va', 'setfocus_site_va', 'setfocus_return_va',
                                            'setfocus_callee_va', 'setfocus_case_length', 'setfocus_site_offset', 'setfocus_site_length',
-                                           'setfocus_callee_length', 'remap_first', 'remap_count', 'stub_length')} | {
+                                           'setfocus_callee_length', 'remap_first', 'remap_count', 'stub_length', 'load_window_va', 'load_site_va',
+                                           'load_return_va', 'load_caller_va', 'load_function_va', 'load_window_length', 'load_site_offset',
+                                           'load_site_length', 'load_caller_length', 'load_stub_length')} | {
         'window': array('expected_window'), 'site': array('expected_site'), 'write': array('expected_write'),
         'reader': array('expected_reader'), 'setfocus': array('expected_setfocus'), 'case': array('expected_setfocus_case'),
-        'setfocus_site': array('expected_setfocus_site'), 'callee': array('expected_setfocus_callee')}
+        'setfocus_site': array('expected_setfocus_site'), 'callee': array('expected_setfocus_callee'),
+        'load_window': array('expected_load_window'), 'load_site': array('expected_load_site'), 'load_caller': array('expected_load_caller')}
 
 
 EXPECTED_CONSTANTS = {'function_va': FUNCTION[0], 'function_end_va': FUNCTION[1], 'window_va': WINDOW_VA, 'site_va': SITE_VA, 'write_va': WRITE_VA,
@@ -187,9 +272,13 @@ EXPECTED_CONSTANTS = {'function_va': FUNCTION[0], 'function_end_va': FUNCTION[1]
                       'setfocus_case_va': CASE_VA, 'setfocus_site_va': SETFOCUS_SITE_VA, 'setfocus_return_va': SETFOCUS_RETURN_VA,
                       'setfocus_callee_va': CALLEE_VA, 'setfocus_case_length': len(CASE), 'setfocus_site_offset': SETFOCUS_SITE_OFFSET,
                       'setfocus_site_length': len(SETFOCUS_SITE), 'setfocus_callee_length': len(CALLEE), 'remap_first': REMAP_FIRST,
-                      'remap_count': REMAP_COUNT, 'stub_length': STUB_LENGTH,
+                      'remap_count': REMAP_COUNT, 'stub_length': STUB_LENGTH, 'load_window_va': LOAD_WINDOW_VA, 'load_site_va': LOAD_SITE_VA,
+                      'load_return_va': LOAD_RETURN_VA, 'load_caller_va': LOAD_CALLER_VA, 'load_function_va': LOAD_FUNCTION[0],
+                      'load_window_length': len(LOAD_WINDOW), 'load_site_offset': LOAD_SITE_OFFSET, 'load_site_length': len(LOAD_SITE),
+                      'load_caller_length': len(LOAD_CALLER), 'load_stub_length': LOAD_STUB_LENGTH,
                       'window': WINDOW, 'site': SITE, 'write': WRITE, 'reader': READER, 'setfocus': SETFOCUS, 'case': CASE,
-                      'setfocus_site': SETFOCUS_SITE, 'callee': CALLEE}
+                      'setfocus_site': SETFOCUS_SITE, 'callee': CALLEE, 'load_window': LOAD_WINDOW, 'load_site': LOAD_SITE,
+                      'load_caller': LOAD_CALLER}
 
 
 def patched_image(data, focus=PATCH_SAMPLE):
@@ -277,7 +366,66 @@ def inspect_setfocus(data, case_instructions, callee_instructions, claims):
     return checks, report
 
 
-def inspect(data, instructions, patched_instructions, core_text, claims, caller_sites, case_instructions=(), callee_instructions=()):
+def inspect_load(data, function_instructions, load_caller_instructions, save_caller_instructions, claims, serializer_callers, next_callee_instructions=()):
+    """The registry serializer's load-store checks (keys prefixed load_) and their report fields."""
+    image = common.Image(data)
+    window_end = LOAD_WINDOW_VA + len(LOAD_WINDOW)
+    by_va = {i.va: i for i in function_instructions}
+    incoming = sorted((i.va, t) for i in function_instructions for t in [common._is_direct_control(i)] if t is not None and LOAD_WINDOW_VA <= t < window_end)
+    raw = occlusion.raw_branch_sources(data, LOAD_WINDOW_VA + 1, window_end)
+    dword_refs = sum(data.count(struct.pack('<I', va)) for va in range(LOAD_WINDOW_VA, window_end))
+    span = [(i.va, i.mnemonic, i.operands.replace(' ', '')) for i in function_instructions if LOAD_SITE_VA <= i.va < LOAD_RETURN_VA]
+    calls = [common._is_direct_control(by_va[va]) if va in by_va else None for va in (LOAD_WINDOW_VA, LOAD_WINDOW_VA + 8)]
+    load_caller = {i.va: i for i in load_caller_instructions}
+    save_caller = {i.va: i for i in save_caller_instructions}
+    overlapping = [(name, hex(address)) for name, address, length in claims
+                   if (address < window_end and LOAD_WINDOW_VA < address + length) or (address < LOAD_CALLER_WINDOW[1] and LOAD_CALLER_WINDOW[0] < address + length)]
+    common_values, distance, constructor = load_collisions()
+    # EDX after the stub (its scratch): no read on the load caller's success path (0x41f799 .. the call) nor in 0x48cdc0 before
+    # its xor edx,edx; the je at 0x41f797 is never taken after the tail (AL = 1).
+    path = [i for i in load_caller_instructions if 0x41f799 <= i.va < LOAD_CALLER_WINDOW[1]]
+    callee = list(next_callee_instructions)
+    before_xor = [i for i in callee if i.va < NEXT_CALLEE_XOR_VA]
+    xor = next((i for i in callee if i.va == NEXT_CALLEE_XOR_VA), None)
+    edx_reads = [hex(i.va) for i in path + before_xor if EDX_RE.search(i.operands or '')]
+    checks = {
+        'load_window_bytes': image.read(LOAD_WINDOW_VA, len(LOAD_WINDOW)) == LOAD_WINDOW,
+        'load_whole_instructions': [i.va for i in function_instructions if LOAD_WINDOW_VA <= i.va < window_end] == LOAD_WINDOW_STARTS and window_end in by_va,
+        'load_site_three_instructions': span == [(LOAD_SITE_VA, 'mov', 'DWORDPTR[ebp+0x24],eax'), (LOAD_SITE_VA + 3, 'pop', 'esi'), (LOAD_SITE_VA + 4, 'mov', 'al,0x1')],
+        'load_calls_stream_reader': calls == [STREAM_READER_VA, STREAM_READER_VA],
+        'load_function_ends_ret8': (LOAD_FUNCTION[1] - 3) in by_va and by_va[LOAD_FUNCTION[1] - 3].raw == bytes.fromhex('c20800'),
+        'load_only_branch_to_window_start': incoming == [(0x41c8a8, LOAD_WINDOW_VA)],
+        'load_no_raw_branch_into_window': raw == [],
+        'load_no_dword_into_window': dword_refs == 0,
+        'load_site_atomic_qword': LOAD_SITE_VA // 8 == (LOAD_SITE_VA + 4) // 8,
+        'load_serializer_callers': sorted(serializer_callers) == [0x41f684, LOAD_CALLER_VA],
+        'load_caller_reads_al_only': (image.read(LOAD_CALLER_VA, len(LOAD_CALLER)) == LOAD_CALLER
+                                      and [i.mnemonic for i in load_caller_instructions] == LOAD_CALLER_MNEMONICS
+                                      and load_caller.get(0x41f78a) is not None and load_caller[0x41f78a].operands.replace(' ', '') == 'edi,edi'
+                                      and load_caller.get(0x41f795) is not None and load_caller[0x41f795].raw == bytes.fromhex('84c0')
+                                      and load_caller.get(0x41f7a2) is not None and load_caller[0x41f7a2].operands.replace(' ', '').startswith('eax,')),
+        'load_save_caller_push_1': ([i.mnemonic for i in save_caller_instructions] == SAVE_CALLER_MNEMONICS
+                                    and save_caller.get(0x41f67f) is not None and save_caller[0x41f67f].raw == bytes.fromhex('6a01')
+                                    and save_caller.get(0x41f689) is not None and save_caller[0x41f689].raw == bytes.fromhex('84c0')),
+        'load_no_other_claim': overlapping == [],
+        'load_exact_match_no_collision': (common_values == [] and distance >= 1 and all(load_lookup(f) == out for f, out in LOAD_CASES.items())
+                                          and constructor['inputs'] == 5462 and constructor['after_move'] == 0 and constructor['max_move'] < 1.0),
+        'load_edx_dead_after_stub': bool(edx_reads == [] and path and common._is_direct_control(path[-1]) == NEXT_CALLEE[0]
+                                     and xor is not None and xor.mnemonic == 'xor' and xor.operands.replace(' ', '') == 'edx,edx'
+                                     and [i.va for i in before_xor] == [0x48cdc0, 0x48cdc1, 0x48cdc2, 0x48cdc3, 0x48cdc4, 0x48cdc6, 0x48cdc7, 0x48cdc8]),
+    }
+    report = {'load_site': hex(LOAD_SITE_VA), 'load_window_bytes': (image.read(LOAD_WINDOW_VA, len(LOAD_WINDOW)) or b'').hex(),
+              'load_site_bytes': (image.read(LOAD_SITE_VA, len(LOAD_SITE)) or b'').hex(), 'load_caller_bytes': (image.read(LOAD_CALLER_VA, len(LOAD_CALLER)) or b'').hex(),
+              'load_window_starts': [hex(i.va) for i in function_instructions if LOAD_WINDOW_VA <= i.va <= window_end],
+              'load_incoming_branches': [(hex(a), hex(t)) for a, t in incoming], 'load_raw_branch_hits': [(hex(a), hex(t)) for a, t in raw],
+              'load_dword_refs': dword_refs, 'load_serializer_callers': [hex(a) for a in sorted(serializer_callers)],
+              'load_overlapping_claims': overlapping, 'load_collision_min_distance': distance, 'load_function_instructions': len(function_instructions),
+              'load_constructor_collisions': {k: (round(v, 4) if isinstance(v, float) else v) for k, v in constructor.items()}, 'load_edx_reads': edx_reads,
+              'vanilla_table': [hex(v) for v in vanilla_table()]}
+    return checks, report
+
+
+def inspect(data, instructions, patched_instructions, core_text, claims, caller_sites, case_instructions=(), callee_instructions=(), load=None):
     image = common.Image(data)
     by_va = {i.va: i for i in instructions}
     window_end = WINDOW_VA + len(WINDOW)
@@ -323,6 +471,12 @@ def inspect(data, instructions, patched_instructions, core_text, claims, caller_
     }
     setfocus_checks, setfocus_report = inspect_setfocus(data, list(case_instructions), list(callee_instructions), claims)
     checks.update(setfocus_checks)
+    # load = (serializer decode, load caller decode, save caller decode, serializer callers); None fails closed.
+    load_checks, load_report = (inspect_load(data, list(load[0]), list(load[1]), list(load[2]), claims, load[3], list(load[4]) if len(load) > 4 else [])
+                                if load is not None
+                                else ({'load_decoded': False}, {}))
+    checks.update(load_checks)
+    setfocus_report.update(load_report)
     return {'result': 'PASS' if all(checks.values()) else 'FAIL', 'checks': checks, 'exe_info': exe_identity.info(data), 'site': hex(SITE_VA),
             'setfocus_site': hex(SETFOCUS_SITE_VA), **setfocus_report,
             'site_bytes': (image.read(SITE_VA, len(SITE)) or b'').hex(), 'window_bytes': (image.read(WINDOW_VA, len(WINDOW)) or b'').hex(),
@@ -344,7 +498,12 @@ def verify(exe=DEFAULT_EXE, core=CORE):
         case = common.parse_objdump(common.objdump_window(exe, CASE_VA, CASE_DECODE_END, timeout=60), CASE_VA, CASE_DECODE_END)
         callee_end = CALLEE_VA + len(CALLEE)
         callee = common.parse_objdump(common.objdump_window(exe, CALLEE_VA, callee_end, timeout=60), CALLEE_VA, callee_end)
-        return inspect(data, instructions, patched, Path(core).read_text(), claims, callers(data, FUNCTION[0]), case, callee)
+        serializer = common.parse_objdump(common.objdump_window(exe, *LOAD_FUNCTION, timeout=60), *LOAD_FUNCTION)
+        load_caller = common.parse_objdump(common.objdump_window(exe, *LOAD_CALLER_WINDOW, timeout=60), *LOAD_CALLER_WINDOW)
+        save_caller = common.parse_objdump(common.objdump_window(exe, *SAVE_CALLER_WINDOW, timeout=60), *SAVE_CALLER_WINDOW)
+        next_callee = common.parse_objdump(common.objdump_window(exe, *NEXT_CALLEE, timeout=60), *NEXT_CALLEE)
+        load = (serializer, load_caller, save_caller, callers(data, LOAD_FUNCTION[0]), next_callee)
+        return inspect(data, instructions, patched, Path(core).read_text(), claims, callers(data, FUNCTION[0]), case, callee, load)
     except (ValueError, OSError, subprocess.SubprocessError, RuntimeError, KeyError) as error:
         return {'result': 'FAIL', 'checks': {'decode': False}, 'error': str(error)}
 

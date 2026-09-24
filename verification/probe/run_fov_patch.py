@@ -11,7 +11,8 @@ toolchain and build audit, the commit plus the SHA-256 of every production
 source the fixture links (so the record stays checkable before the change is
 committed), every CHECK with its outcome, the immediate the executed
 constructor stored per memory and step, the base each executed INS_SetFocus
-stored (with the register-preservation verdict), the protection seen around
+and each executed load store stored (with the register-preservation
+verdict), the load sweep's counts, the protection seen around
 the write, and the install/restore/confirm log rows parsed with
 verify_fov_site's parsers. Never launches the game; the game EXE is not read.
 """
@@ -49,7 +50,7 @@ def fields(text):
 
 def parse(stdout):
     report = {'checks': [], 'constructions': [], 'protect': [], 'memory': [], 'timing_us': None, 'install_sequence': None, 'setfocus_override': None,
-              'setfocus_runs': [], 'install_rows': [], 'restore_rows': [], 'confirm_rows': [], 'result': None}
+              'setfocus_runs': [], 'load_runs': [], 'load_sweep': None, 'load_arena_full': None, 'install_rows': [], 'restore_rows': [], 'confirm_rows': [], 'result': None}
     for line in stdout.splitlines():
         tag, _, rest = line.partition(' ')
         if tag == 'CHECK':
@@ -70,6 +71,13 @@ def parse(stdout):
         elif tag == 'SETFOCUS':
             f = fields(rest)
             report['setfocus_runs'].append({'step': f['step'], 'in': f['in'], 'out': f['out'], 'preserved': f['preserved'] == '1'})
+        elif tag == 'LOAD':
+            f = fields(rest)
+            report['load_runs'].append({'step': f['step'], 'in': f['in'], 'out': f['out'], 'preserved': f['preserved'] == '1'})
+        elif tag == 'LOADSWEEP':
+            report['load_sweep'] = {k: int(v) for k, v in fields(rest).items()}
+        elif tag == 'ARENA':
+            report['load_arena_full'] = {k: int(v) for k, v in fields(rest).items()}
         elif tag == 'CRASH':
             report['crash'] = fields(rest)
         elif tag == 'TIMING':
@@ -84,7 +92,7 @@ def parse(stdout):
             elif restore:
                 report['restore_rows'].append({'site': f'{restore["site"]:08x}', 'status': restore['status'],
                                                'found': restore['found'].hex() if restore['found'] is not None else None, 'registered': restore['registered'],
-                                               'setfocus': restore['setfocus']})
+                                               'setfocus': restore['setfocus'], 'load': restore['load']})
             elif confirm:
                 report['confirm_rows'].append({**confirm, 'registry': 'present' if confirm['registry'] is not None else 'absent',
                                                'focus': f'{confirm["focus"]:#06x}' if confirm['focus'] is not None else None,

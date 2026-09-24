@@ -11,7 +11,8 @@ void invalidate_device() noexcept; // every Reset attempt and final Release, any
 // Present-cadence loading markers, every mode (no X3M_GAME_PHASES, no engine
 // site): one `loading_phase` line per transition per process. Present path
 // only, under the capture mutex; one QueryPerformanceCounter per call.
-void loading_phase_present(std::uint64_t device,std::uint64_t reset,std::uint64_t frame) noexcept;
+// Returns true when this call wrote the save_load_complete marker.
+bool loading_phase_present(std::uint64_t device,std::uint64_t reset,std::uint64_t frame) noexcept;
 void report(std::uint64_t reporting_frame); // existing periodic report, owner thread only
 // The register-saving stub that enters x3m_game_phase_enter with `index`;
 // indices at or above sites::Count are routed to frame_phases::stamp.

@@ -6,7 +6,7 @@ only read): shipped (the installed file), laa_cleared (bit 0x20 cleared),
 ntcore_4gb (bit set and CheckSum rewritten as NTCore 4gb_patch.exe does),
 unknown_hash (one .rsrc byte changed: a hash outside the known list, sites and
 anchors intact), different_build (link stamp flipped: another build of the
-game) and site_corrupt (one site byte flipped; seven cases over six verifiers).
+game) and site_corrupt (one site byte flipped; eight cases over six verifiers).
 Expectation: PASS everywhere except different_build (every verifier FAIL, the
 identity false) and site_corrupt (FAIL with the identity true); the raw hash is
 reported as INFO. Records the anchor count and the source commit. Prints one JSON object (docs/reverse-engineering/executable-identity.md).
@@ -37,12 +37,12 @@ RESULTS = {'pause': ROOT / 'verification/results/pause-dialog-input/verify_pause
            'music_restart': ROOT / 'verification/results/music-restart/verify_music_restart_sites.py'}
 # One byte per corrupt case: the chase camera's jz displacement, the LOD-scale fmul operand, the
 # Terran-station LOD reader's je opcode (74 -> 75), the LOD occlusion gate's rel32 low byte (c9 -> c8), the FOV
-# constructor's imm32 second byte (40 -> 41), the FOV INS_SetFocus site's opcode (8b -> 8a at 0x0042dbf8) and the lens
-# collector's SHRD second opcode byte (ac -> ad at 0x0047e392).
+# constructor's imm32 second byte (40 -> 41), the FOV INS_SetFocus site's opcode (8b -> 8a at 0x0042dbf8), the FOV load
+# store's ModRM (45 -> 44 at 0x0041c8c2) and the lens collector's SHRD second opcode byte (ac -> ad at 0x0047e392).
 # Keys are the verifier name, or name@site when one verifier carries two cases.
 SITE_CORRUPT = {'verify_chase_camera_site': 0x00420e0f, 'verify_lod_scale_site': 0x0047d44d, 'verify_terran_lod_site': 0x0047d01c,
                 'verify_lod_occlusion_site': 0x004c34f9, 'verify_fov_site': 0x0041c9dd, 'verify_fov_site@setfocus': 0x0042dbf8,
-                'verify_sun_flare_site': 0x0047e392}
+                'verify_fov_site@load': 0x0041c8c2, 'verify_sun_flare_site': 0x0047e392}
 
 
 def verdict(stdout):

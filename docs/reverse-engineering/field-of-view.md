@@ -640,10 +640,15 @@ done: jmp [slot]                      ; -> MOV [EBP+0x24],EAX; POP ESI; MOV AL,1
 - **Exact match, not the nearest-N rule of the `INS_SetFocus` stub.** Savegames written with the patch
   hold remapped values (X13: `0x3470`); the nearest-N rule would remap them again (`0x3470 → 0x29eb`,
   `0x3b6f → 0x3066`). No table value `F'(N)`, N 50..130, equals a vanilla `(N<<16)/360` for any N 0..180
-  (minimum distance 1), so exact matching classifies every saved value unambiguously [m: arithmetic]:
-  vanilla units (a pre-patch or `--fov game` session, the vanilla constructor `0x4000`, a vanilla-unit menu
-  value from Run 81) → `F'(N)`; remapped values, old `--fov` constructor values such as `0x34aa`, and
-  anything else → unchanged. The extra data is an 81-entry `uint16` table of `(N<<16)/360` and, if the N = 90
+  (minimum distance 1), so exact matching classifies every value an integer `N` produces unambiguously
+  [m: arithmetic]: vanilla units (a pre-patch or `--fov game` session, the vanilla constructor `0x4000`, a
+  vanilla-unit menu value from Run 81) → `F'(N)`; remapped values, old `--fov` constructor values such as
+  `0x34aa`, and anything else → unchanged. A decimal `--fov` does not carry that guarantee: 29 of the 5,462
+  constructor values `F'(g)`, `g = game_focus(70) .. game_focus(100)` (every `g` the launcher's four decimals
+  reach), equal a vanilla value (e.g. `--fov 78.5` → `0x2ccc` = vanilla N 63, which would reload as `0x231a`)
+  [m: `verify_fov_site.py` `load_collisions`]. The constructor therefore moves such a value by one unit,
+  towards the unrounded `F'` (`fov_sites.h` `constructor_focus`; 78.5 → `0x2ccb`, error < 1/65536 turn), and
+  none of the 5,462 is left on a vanilla value. The extra data is an 81-entry `uint16` table of `(N<<16)/360` and, if the N = 90
   slot differs, a copy of the `F'` table (built at install, immutable); the `INS_SetFocus` table stays as it is.
 - **Default under `--fov N ≠ 90` (decision).** A vanilla save holds `0x4000` whether it was the default or a
   menu 90. Storing the launcher's constructor value in the `N = 90` slot of the load table makes a
@@ -691,6 +696,21 @@ done: jmp [slot]                      ; -> MOV [EBP+0x24],EAX; POP ESI; MOV AL,1
   `0x3470`), which vanilla or `--fov game` then loads as a narrower view. An inverse map at the two save
   reads (`0x0041c7c9`, `0x0041c8de`) would keep savegames in vanilla units; with the exact-match load rule
   above, both kinds of savegame load correctly either way.
+
+**Implemented (2026-09-25).** The required claim, as the third FOV site of `src/proxy/fov.cpp`
+(`fov_sites.h`: `load_window_va` … `encode_load_stub`): before any write, the 23-byte window
+`0x0041c8b4..0x0041c8ca` and the load caller's `call 0x0041c6e0; test al,al; je` at `0x0041f790` are
+compared (`load_mismatch`); after the constructor immediate and the `INS_SetFocus` claim, `engine_patch::claim`
+of the six bytes with the 53-byte stub above pushed in front, read back (jmp, the untouched byte
+`0x0041c8c6`, the chain head). The stub reads the `INS_SetFocus` block's `F'` table, whose `N = 90` slot stays
+`F'(90)` (orchestrator decision: a save's 90 means 90, as the menu's does; `--fov N` seeds only a new game),
+and its own 81-entry vanilla table; both are immutable after install and never freed. All three sites or
+none: a failed load claim restores the `INS_SetFocus` jmp and the immediate (`load_failed`,
+`setfocus=rolled_back`); `shutdown()` restores the six bytes only over our jmp. The install row gains
+`load=` / `load_write=`, the restore row `load=`; one `fov_confirm … after=save_load_complete` row is written
+at each `save_load_complete` marker (the Present-cadence marker fires once per process, for the first load).
+The optional cockpit `+0x230` site `0x0041a55c` and the save-side inverse are not built (open in the ledger).
+Evidence: [field-of-view.md](../verification/field-of-view.md), 2026-09-25. Not flown.
 
 ## 8. Chase distance (engine side; the proxy's chase camera owns the pose)
 
@@ -907,8 +927,8 @@ python3 verification/results/field-of-view/load_focus_by_run.py /tmp/x3-bottleX3
   either order.
 - The env-map camera's own `+0x298` writer: resolved for the monitor's environment camera
   (allocator default and `ShowSpace`'s explicit `0x4000`, §7.4.3); other cube cameras not surveyed.
-- The savegame load remap (§7.4.4) is designed, not built; whether ShowSpace runs on every load is
-  inferred; the save file each run loaded is not logged (the `foggreenoutlands` ↔ X11/X12 pairing is
+- The savegame load remap (§7.4.4) is built and fixture-tested, not flown; the optional cockpit `+0x230`
+  site `0x0041a55c` is not built; whether ShowSpace runs on every load is inferred; the save file each run loaded is not logged (the `foggreenoutlands` ↔ X11/X12 pairing is
   inferred); whether savegames should be written in vanilla units (inverse at `0x0041c7c9`/`0x0041c8de`)
   is a decision.
 - No runtime read yet: one `camera+0x298` / `registry+0x24` log at the first

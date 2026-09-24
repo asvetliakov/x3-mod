@@ -23,7 +23,9 @@
 // sites carry it: the constructor's immediate (F'(N_default), N_default the
 // launcher's --fov) and the INS_SetFocus store, whose incoming F is remapped
 // through an 81-entry table (N = 50..130: the menu's 70..100 plus room for a
-// mod-widened menu or script values outside it) by a generated stub.
+// mod-widened menu or script values outside it) by a generated stub. A third
+// site, the registry serializer's load store (section 7.4.4), replaces a
+// savegame's vanilla-unit focus with the same table's value on load.
 //
 // 0041c9cc  89 5e 20                 MOV  [ESI+0x20],EBX              <- window
 // 0041c9cf  c6 46 19 01              MOV  byte [ESI+0x19],1
@@ -105,19 +107,44 @@ inline bool plausible_focus(std::uint32_t f) { return f >= focus_floor && f <= f
 constexpr double setting_min = 70.0, setting_max = 100.0, setting_default = 90.0;
 constexpr std::uint32_t near_plane_focus = 0x2147;
 constexpr double plane_height = 0.75;  // the default view plane H for every display at least as wide as 4:3
-// The remap F -> F' with tan(F'/2) = H * tan(F/2), rounded; 0 outside (0, 0x8000).
+// The remap F -> F' with tan(F'/2) = H * tan(F/2), unrounded; 0 outside (0, 0x8000).
+inline double remap_exact(std::uint32_t focus) {
+    if (!focus || focus >= 0x8000u) return 0.0;
+    const double pi = 3.14159265358979323846;
+    return 65536.0 / pi * std::atan(plane_height * std::tan(focus * pi / 65536.0));
+}
+// The same, rounded; 0 outside (0, 0x8000).
 inline std::uint32_t remap_focus(std::uint32_t focus) {
     if (!focus || focus >= 0x8000u) return 0;
-    const double pi = 3.14159265358979323846;
-    return static_cast<std::uint32_t>(std::floor(65536.0 / pi * std::atan(plane_height * std::tan(focus * pi / 65536.0)) + 0.5));
+    return static_cast<std::uint32_t>(std::floor(remap_exact(focus) + 0.5));
 }
 // The script's F for N degrees: (N << 16) / 360, truncated as SetFocus does; decimals truncate the same way.
 inline std::uint32_t game_focus(double degrees) {
     if (!std::isfinite(degrees) || !(degrees > 0.0) || !(degrees < 180.0)) return 0;
     return static_cast<std::uint32_t>(std::floor(degrees * 65536.0 / 360.0));
 }
-// F' for the game's N degrees: the constructor's immediate for --fov N.
+// F' for the game's N degrees (the INS_SetFocus table's value for an integer N).
 inline std::uint32_t focus_for_degrees(double degrees) { return remap_focus(game_focus(degrees)); }
+// Whether `focus` is a vanilla-unit value (M << 16) / 360, M 0..180: what the load stub's exact-match
+// rule reads as the script's number (it remaps the ones of M 50..130).
+inline bool vanilla_focus(std::uint32_t focus) {
+    for (std::uint32_t m = 0; m <= 180; ++m) if (((m << 16) / 360u) == focus) return true;
+    return false;
+}
+// The constructor's immediate for the script focus g = game_focus(--fov): F'(g), moved by one unit when
+// it equals a vanilla value, so a savegame written by that session (which stores it unchanged) loads as
+// saved instead of being remapped a second time. No integer N collides (every F'(N) is at least one
+// unit from every vanilla value); a decimal --fov can: 29 of the 5,462 g in game_focus(70) ..
+// game_focus(100) (every g the launcher's four decimals reach), e.g. 78.5 -> 0x2ccc = vanilla N 63
+// (verify_fov_site.py). Both neighbours are one unit from the colliding value and at least 181 from any
+// other vanilla value, so the side is chosen by the unrounded F': the unit towards it, which keeps
+// the error below one unit (1/65536 of a turn) and never lands on another vanilla value.
+inline std::uint32_t constructor_focus_for(std::uint32_t g) {
+    const std::uint32_t f = remap_focus(g);
+    if (!f || !vanilla_focus(f)) return f;
+    return remap_exact(g) >= double(f) ? f + 1u : f - 1u;
+}
+inline std::uint32_t constructor_focus(double degrees) { return constructor_focus_for(game_focus(degrees)); }
 // The vertical FOV in degrees that a binary angle gives at H = 0.75.
 inline double vertical_for_focus(std::uint32_t focus) {
     const double pi = 3.14159265358979323846;
@@ -165,6 +192,81 @@ inline void encode_setfocus_stub(std::uint32_t table, std::uint32_t slot, unsign
         0xff,0x25, 0,0,0,0};             // 39 done: jmp [slot]
     std::memcpy(out, code, stub_length);
     const std::uint32_t operands[4][2] = {{2, remap_focus_min}, {10, remap_focus_max}, {35, table - 2u * remap_first}, {41, slot}};
+    for (const auto& o : operands)
+        for (unsigned k = 0; k < 4; ++k) out[o[0] + k] = static_cast<unsigned char>((o[1] >> (8 * k)) & 0xff);
+}
+
+// ---- The registry serializer's load store (section 7.4.4): the savegame's focus, remapped once ----
+//
+// The serializer 0x0041c6e0 (callers 0x0041f684 save, 0x0041f790 load) stores
+// the saved focus into the fresh registry after the patched constructor ran:
+//
+// 0041c8b4  e8 67 cb 0c 00           CALL 0x004e9420          ; big-endian read  <- load window
+// 0041c8b9  89 45 20                 MOV  [EBP+0x20],EAX
+// 0041c8bc  e8 5f cb 0c 00           CALL 0x004e9420          ; the saved focus in EAX
+// 0041c8c1  89 45 24                 MOV  [EBP+0x24],EAX      <- claimed (six bytes, jmp in the qword 0x0041c8c0)
+// 0041c8c4  5e                       POP  ESI
+// 0041c8c5  b0 01                    MOV  AL,1
+// 0041c8c7  5d                       POP  EBP
+// 0041c8c8  c2 08 00                 RET  8                   ; (window ends at 0041c8cb)
+// 0041f790  e8 4b cf ff ff 84 c0 74 da   the load caller: CALL 0x0041c6e0; TEST AL,AL; JE (reads AL only)
+//
+// The stub runs in place of the displaced store with the saved focus in EAX:
+// EDX is scratch (set by 0x004e9420, not read after it by 0x0041c6e0, and the
+// caller's next callee 0x0048cdc0 writes it first), EFLAGS are dead
+// (pop/mov/pop/ret, then TEST AL,AL), EBX, ECX, ESI, EDI, EBP and ESP are not
+// touched; EAX is the output (the tail then sets AL = 1 and the callers read
+// only AL). No FPU/SSE, no call, no stack or memory write. The rule is an exact
+// match, not the INS_SetFocus stub's nearest N: only a vanilla-unit value
+// (N << 16) / 360, N 50..130, is replaced with F'(N) from the INS_SetFocus
+// table (whose N = 90 slot is F'(90): a savegame's 90 means 90, as the menu's
+// does, whatever --fov the launcher carries); remapped values written by a
+// patched session and anything else pass through. No F'(N) equals any
+// (M << 16) / 360, M 0..180 (verify_fov_site.py), so the two kinds of savegame
+// never collide:
+//
+//   cmp eax,remap_focus_min ; jb done ; cmp eax,remap_focus_max ; ja done
+//   imul edx,eax,360 ; add edx,0x8000 ; shr edx,16                          ; N = round(F*360/65536)
+//   cmp ax,word [edx*2 + vanilla - 2*50] ; jne done                         ; only the exact (N<<16)/360
+//   movzx eax,word [edx*2 + table - 2*50]                                   ; F'(N)
+//   done: jmp [slot]                         ; -> tail: MOV [EBP+0x24],EAX; POP ESI; MOV AL,1; JMP 0x0041c8c7
+constexpr std::uintptr_t load_window_va = 0x0041c8b4, load_site_va = 0x0041c8c1, load_return_va = 0x0041c8c7;
+constexpr std::uintptr_t load_caller_va = 0x0041f790, load_function_va = 0x0041c6e0;
+constexpr unsigned load_window_length = 23, load_site_offset = 13, load_site_length = 6, load_caller_length = 9;
+constexpr unsigned char expected_load_window[load_window_length] = {
+    0xe8,0x67,0xcb,0x0c,0x00, 0x89,0x45,0x20, 0xe8,0x5f,0xcb,0x0c,0x00,
+    0x89,0x45,0x24, 0x5e, 0xb0,0x01, 0x5d, 0xc2,0x08,0x00};
+constexpr unsigned char expected_load_site[load_site_length] = {0x89,0x45,0x24, 0x5e, 0xb0,0x01};  // MOV [EBP+0x24],EAX; POP ESI; MOV AL,1
+constexpr unsigned char expected_load_caller[load_caller_length] = {0xe8,0x4b,0xcf,0xff,0xff, 0x84,0xc0, 0x74,0xda};
+// The vanilla units the exact-match rule accepts: (N << 16) / 360 for N = remap_first ..
+inline void build_vanilla_table(std::uint16_t out[remap_count]) {
+    for (unsigned i = 0; i < remap_count; ++i) out[i] = static_cast<std::uint16_t>(((remap_first + i) << 16) / 360u);
+}
+// What the load stub stores, for the host tests: F'(N) for the exact vanilla F of N in the table, else F unchanged.
+inline std::uint32_t load_lookup(std::uint32_t focus, const std::uint16_t vanilla[remap_count], const std::uint16_t table[remap_count]) {
+    if (focus < remap_focus_min || focus > remap_focus_max) return focus;
+    const unsigned i = remap_index(focus) - remap_first;
+    return focus == vanilla[i] ? table[i] : focus;
+}
+constexpr unsigned load_stub_length = 53, load_stub_done = 47;
+// The load stub bytes: `vanilla` and `table` the addresses of the two 81-entry uint16 tables,
+// `slot` the 4-aligned continuation word.
+inline void encode_load_stub(std::uint32_t vanilla, std::uint32_t table, std::uint32_t slot, unsigned char out[load_stub_length]) {
+    const unsigned char code[load_stub_length] = {
+        0x3d, 0,0,0,0,                   //  0 cmp eax,remap_focus_min
+        0x72, load_stub_done - 7,        //  5 jb done
+        0x3d, 0,0,0,0,                   //  7 cmp eax,remap_focus_max
+        0x77, load_stub_done - 14,       // 12 ja done
+        0x69,0xd0, 0x68,0x01,0x00,0x00,  // 14 imul edx,eax,360
+        0x81,0xc2, 0x00,0x80,0x00,0x00,  // 20 add edx,0x8000
+        0xc1,0xea, 0x10,                 // 26 shr edx,16
+        0x66,0x3b,0x04,0x55, 0,0,0,0,    // 29 cmp ax,word [edx*2 + disp32]
+        0x75, load_stub_done - 39,       // 37 jne done
+        0x0f,0xb7,0x04,0x55, 0,0,0,0,    // 39 movzx eax,word [edx*2 + disp32]
+        0xff,0x25, 0,0,0,0};             // 47 done: jmp [slot]
+    std::memcpy(out, code, load_stub_length);
+    const std::uint32_t operands[5][2] = {{1, remap_focus_min}, {8, remap_focus_max}, {33, vanilla - 2u * remap_first},
+                                          {43, table - 2u * remap_first}, {49, slot}};
     for (const auto& o : operands)
         for (unsigned k = 0; k < 4; ++k) out[o[0] + k] = static_cast<unsigned char>((o[1] >> (8 * k)) & 0xff);
 }
@@ -302,4 +404,9 @@ static_assert(expected_setfocus_site[2] == (registry_slot_va & 0xff) && expected
 static_assert(remap_index(remap_focus_min) == remap_first && remap_index(remap_focus_min - 1) == remap_first - 1, "table floor");
 static_assert(remap_index(remap_focus_max) == remap_first + remap_count - 1 && remap_index(remap_focus_max + 1) == remap_first + remap_count, "table ceiling");
 static_assert(remap_focus_min == 0x2334 && remap_focus_max == 0x5ccc, "F range of N 50..130");
+static_assert(load_window_va + load_site_offset == load_site_va && load_site_va + load_site_length == load_return_va, "the claimed load store");
+static_assert(load_window_va + 5u + 0x000ccb67u == 0x004e9420u && load_window_va + 13u + 0x000ccb5fu == 0x004e9420u, "both calls reach the stream reader");
+static_assert(load_caller_va + 5u - 0x000030b5u == load_function_va, "the load caller's rel32 (ff ff cf 4b) reaches the serializer");
+static_assert((load_site_va & 7u) + 5u <= 8u, "the five jmp bytes lie in one aligned 8-byte word (atomic write)");
+static_assert(expected_load_window[load_site_offset] == expected_load_site[0] && expected_load_window[load_site_offset + 5] == expected_load_site[5], "window holds the site");
 }

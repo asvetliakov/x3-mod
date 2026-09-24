@@ -201,3 +201,57 @@ emitter sizes).
 `ReadProcessMemory`) and cross-compiles. A thread executing `0x0042dbf8` during the jmp write was not
 exercised; that rests on the one aligned 8-byte store and the install window. Not flown: whether the menu
 shows 90 at start and steps in the new model is the next user run.
+
+## 2026-09-25: savegame load store (third site, RE §7.4.4)
+
+A savegame load now starts at the remapped FOV. The registry serializer `0x0041c6e0` stores the saved focus
+over the constructor's value at `0x0041c8c1` (`MOV [EBP+0x24],EAX; POP ESI; MOV AL,1`). The third claim
+replaces an exact vanilla-unit `(N<<16)/360`, N 50..130, with `F'(N)` from the `INS_SetFocus` table; remapped,
+non-canonical and off-table values are stored unchanged. The `N = 90` slot stays `F'(90)` whatever `--fov`
+is (orchestrator decision; the `--fov` help says the launcher value seeds a new game and a savegame's own value
+wins after a load). All three sites or none. One `fov_confirm … after=save_load_complete` row per
+`save_load_complete` marker. Evidence is on a worktree at 3ee2fe20 with the change uncommitted
+(`fov-patch.json`: `production_sources_dirty=true`, sources bound by SHA-256).
+
+| Date | Check | Command | Result |
+| --- | --- | --- | --- |
+| 2026-09-25 | Site qualification, third site. The 23-byte window `0x0041c8b4..0x0041c8ca` matches, both calls reach `0x004e9420`. The serializer `0x0041c6e0..0x0041c8ee` decodes as 167 whole instructions; the window starts at `0x0041c8b4 … 0x0041c8c8` and the span is `mov [ebp+0x24],eax; pop esi; mov al,1`; the function ends `ret 8`. The only direct branch into the window is `0x0041c8a8 je 0x0041c8b4` (its start); 0 raw rel8/rel32 hits and 0 dwords land in it. The jmp's five bytes lie in the qword `0x0041c8c0`. Callers of `0x0041c6e0` are exactly `0x0041f684` (save, `push 1`, `test al,al; jne`) and `0x0041f790` (load, `xor edi,edi; push edi`, `test al,al; je`, then `mov eax,0x55b4c8` before any read of EAX). No overlap with the 164 other claims. No `F'(N)`, N 50..130, equals any `(M<<16)/360`, M 0..180 (minimum distance 1) | `python3 verification/probe/verify_fov_site.py` | PASS, 43/43 checks, 14 of them new `load_*` (measured) |
+| 2026-09-25 | Identity matrix with the new corrupt case `verify_fov_site@load` (byte `0x0041c8c2` 45 → 44) | `python3 verification/results/executable-identity/run_verifiers.py --output verification/results/executable-identity/verifiers.json` | PASS: 27/27 on shipped, laa_cleared, ntcore_4gb and unknown_hash; different_build 27/27 FAIL with identity false; eight site_corrupt cases over six verifiers FAIL with identity true; 47.6 s (measured). The run overlapped the start of a user launch (01:49:01, run 01:49:40–01:50:27): host load during that launch's loading phase |
+| 2026-09-25 | Wine fixture. `.x3mfvc` also carries the verified load tail at `0x0041c8b4`, entered from a thunk that pushes the caller's EBP/ESI sentinels and two `ret 8` arguments and loads EBX/ECX/ESI/EDI sentinels; `.x3mfvl` at `0x004e9000` is the stream reader (two queued values, EDX clobbered); `.x3mfvf` at `0x0041f000` carries the load caller's 9 bytes. Loads through `initialize()` at the production VAs: `0x4000` → `0x3470`, `0x31c7` → `0x2768`, `0x471c` → `0x3b6f`, N 50 `0x238e` → `0x1b6a`, N 130 `0x5c71` → `0x52ab`; `0x3470`, `0x3b6f`, `0x34aa`, `0x2000`, `0x8000`, `0x4001`, N 49/131, `0x2333`, `0x5ccd`, `0xfffffff0` unchanged. A sweep of every F `0..0xffff` plus `0xffffffff` (65,537 inputs) matches `load_lookup` with 0 mismatches, exactly 81 values changed, registers kept on every call. Each call checks `+0x20` untouched, EBX/ECX/EDI kept, the popped ESI/EBP sentinels (ESP at the tail as at the site), AL = 1, the stack balanced after `ret 8` and LastError. Install: seam reads 10, the load jmp to a MEM_PRIVATE execute-read dispatcher, byte `0x0041c8c6` kept, rest of the page unchanged. Refusals `load_mismatch` (site ModRM, call rel32, caller `test`) write nothing. All or none: a failed `INS_SetFocus` read-back never reaches the load site; a failed load read-back restores the `INS_SetFocus` jmp and the immediate (`refused load_failed … setfocus=rolled_back … load=readback_failed`), and with the immediate's rollback store dropped it reports `patched_unverified` and restores at shutdown. A foreign jmp over the load site: `load=restore_not_owned`, stays registered, the other two restored; with our jmp back, restored. `--fov` 70/100/72.5: a save's `0x4000` loads as `0x3470`. After restore, rollback and `late_claim` the load stores the vanilla value. The confirm rows: `after=save_load_complete` at frames 9/10/11 (`0x3470` match=1, `0x3b6f` match=0, registry absent) | `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_fov_patch.py` | PASS, 247/247 checks (was 194), exit 0, 7.6 s; install 937.6 µs, restore 384.6 µs fixture-inclusive (measured); `verification/results/bottle-X3/fov-patch.json` |
+| 2026-09-25 | Host tests. `test_fov_site` (11) adds the load window, site, caller and VAs against the Python twin, the vanilla table, the exact-match rule (every vanilla N 50..130 → `F'(N)`, every `F'` passes through, no collision), the load stub bytes and their objdump decode (11 instructions; writes only EAX and EDX), the `load=`/`after=` row shapes (older rows parse with `None`), the wiring (`loading_phase_present` returns the marker, `if(save_loaded)fov::loaded(ctx.frame);` after `fov::present`), a verifier FAIL on a copy with `0x0041c8c2` flipped, and the help text. `test_fov_patch_result` (9) binds the new record: 247 checks, seven sections, the load runs and the sweep | `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_fov_site verification.analysis.test_fov_patch_result` | 20 tests OK (measured). The game-phase and loading-phase modules (`test_game_phase_frame`, `test_game_phases`, `test_game_phase_install`, `test_game_phase_sites`, `test_loading_phases`, `test_loading_phase_markers`, `test_loop_phases`): 60 tests OK (measured) |
+| 2026-09-25 | DLL build (worktree) and the no-x87 walk | `cmake --build build -j4`; `python3 verification/probe/check_no_x87.py build/d3d9.dll` | 0 warnings; PASS, 684 reachable functions, 0 violations (measured; run after the user session closed) |
+| 2026-09-25 | Launcher dry runs, `--fov 90` and `--fov game`, against the same commands from 3ee2fe20's `manage.py` | `python3 tools/manage.py launch --dry-run --fov 90` / `--fov game` | rc 0 each; environment and command identical to 3ee2fe20 for both (141 variables, 139 `X3M_*`); `90` and `game` differ only in `X3M_FOV`; no new variable (measured) |
+
+**Cost.** The load stub runs once per savegame load (11 instructions, no call, lock or memory write); nothing
+per frame beyond a flag test on the Present path. The arena takes about 250 B more per install: a 24 B tail
+block and a 53 B stub, 4 B slot and 162 B vanilla table (inferred from the emitter sizes); the `F'` table is
+shared with the `INS_SetFocus` block.
+
+**Open.** The optional cockpit `+0x230` site `0x0041a55c` (a save taken in connect mode 6 keeps its saved
+`+0x230` until the mode changes) and the save-side inverse at `0x0041c7c9`/`0x0041c8de` (savegames stay in the
+units of the session that wrote them; a patched save loads narrower under `--fov game` or vanilla) are not
+built. The `save_load_complete` marker fires once per process, so a second load in the same session gets no
+`after=` row. Native Windows execution not run (the new code uses only `engine_patch`, documented APIs,
+cross-compiled). Not flown.
+
+### 2026-09-25: review fixes (third site)
+
+Review findings: (1) a decimal `--fov` could put the constructor value on a vanilla number the load stub remaps;
+(2) missing fixture cases; (3) the load caller's EDX contract checked by mnemonics only; (4) the `fov.h` comment.
+The constructor now stores `sites::constructor_focus`: `F'(g)` moved by one unit, towards the unrounded value,
+when it equals any `(M<<16)/360`, M 0..180. Both neighbours are one unit from the colliding value and at least 181
+from any other vanilla value, so the review's "away from the nearest table value" does not pick a side; the
+unrounded value does, keeping the error below one unit. Integer `N` never moves.
+
+| Date | Check | Command | Result |
+| --- | --- | --- | --- |
+| 2026-09-25 | Site qualification with the constructor sweep and the EDX operands. `load_collisions` now covers every `g = game_focus(70) .. game_focus(100)` (5,462, the launcher's four decimals reach each): 29 raw `F'(g)` equal a vanilla value (first `0x3240` → `0x27d2`; `78.5` → `0x2ccc` = N 63), 0 after the move, largest move 0.991 unit. New check `load_edx_dead_after_stub`: no operand names EDX/DX/DL/DH on the load caller's success path `0x41f799..0x41f7a7`, which ends in `call 0x48cdc0`, nor in `0x48cdc0..0x48cdcc`; `0x48cdcd` is `xor edx,edx` | `python3 verification/probe/verify_fov_site.py` | PASS, 44/44 checks (15 `load_*`); `load_edx_reads` [] (measured) |
+| 2026-09-25 | Wine fixture, new cases. `--fov 78.5`: row value `0x2ccb`, the constructor stores `0x2ccb`, a load of `0x2ccb` stays `0x2ccb` (also for 70, 100, 72.5), a load of `0x4000` gives `0x3470`. `rollback_setfocus()` failing inside a load rollback: a seam hook writes a foreign jmp over `0x0042dbf8` during the failing load read-back (read 9), so `patched_unverified load_failed … setfocus=rollback_failed … load=readback_failed`. The immediate and the load bytes are back and the foreign jmp is untouched. Shutdown gives `setfocus=restore_not_owned registered=1`; with our jmp back, `restored`. `arena_full` at the load site: one INS_SetFocus block and claim measure 240 B. After the arena is filled to 340 B free, `refused load_failed … setfocus=rolled_back … load=arena_full load_write=none`, all three sites original. Afterwards the menu, load and constructor paths are vanilla | `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_fov_patch.py` | PASS, 268/268 checks (was 247), exit 0, 7.9 s (measured) |
+| 2026-09-25 | Host tests: the C++ constructor twin over the 5,462 inputs (29 moved, 0 left, the same 29 pairs as Python), 78.5 → `0x2ccb`, integers unchanged; the updated wiring, help and record assertions | `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_fov_site verification.analysis.test_fov_patch_result` | 20 tests OK (measured) |
+| 2026-09-25 | DLL build and no-x87 after the fixes | `cmake --build build -j4`; `python3 verification/probe/check_no_x87.py build/d3d9.dll` | 0 warnings; PASS, 684 reachable functions, 0 violations (measured) |
+
+**Gap.** `chain_failed` at the load site (and at `0x0042dbf8`) is not exercised. `store_pointer` and
+`push_front` fail only when `engine_patch.cpp`'s own `VirtualProtect` of the arena fails. The fixture's seam
+covers `fov.cpp`'s calls only, so injecting that failure would need a seam in `engine_patch.cpp`. The failure
+handling is the same `restore` + registration path as `readback_failed`, which is covered. The identity matrix
+was not rerun after the verifier's new check; that check adds a condition and cannot turn a FAIL into a PASS.

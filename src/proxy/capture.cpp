@@ -1594,7 +1594,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
             ctx.id,ctx.frame,scene_confirmed,motion_committed,hr);
     const auto end=telemetry::now();
     game_phases::present_endpoint(reinterpret_cast<std::uintptr_t>(d),ctx.id,ctx.reset_generation,ctx.frame,ctx.capture,end,static_cast<std::uint32_t>(hr));
-    game_phases::loading_phase_present(ctx.id,ctx.reset_generation,ctx.frame); // cadence-derived loading_phase lines, every mode
+    const bool save_loaded=game_phases::loading_phase_present(ctx.id,ctx.reset_generation,ctx.frame); // cadence-derived loading_phase lines, every mode
     voice_dmo_fallback::report(); // one atomic load per Present; lines only after an activation
     lod_scale::refresh(); // X3M_LOD_SCALE only: two bounded reads per Present, one store when the game value changed
     point_light_admission::present(ctx.id,ctx.frame,ctx.capture); // option on only: one point_light_admission_frame line, point_light_node samples on capture frames, memo serial bump
@@ -1636,6 +1636,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     // a later claim would write over code the loading threads may be executing.
     if(engine_patch::install_window_open())engine_patch::close_install_window("first_present");
     fov::present(ctx.frame); // one fov_confirm row (registry+0x24 against the configured focus) at the first Present, one more if the registry appears later; then a flag test
+    if(save_loaded)fov::loaded(ctx.frame); // one fov_confirm row per save_load_complete marker: the base the savegame left
     frame_timing::frame(ctx.frame,ctx.draws); // X3M_FRAME_TIMING only: per-frame sample, one line per 300-frame window
     frame_phases::frame(ctx.frame); // X3M_FRAME_PHASES only: takes the closed frame, one frame_phases line per 300-frame window
     media_cue::frame(ctx.frame); // X3M_MEDIA_CUE_* only: admits this thread, closes the frame's attempt count, drains the trace ring
