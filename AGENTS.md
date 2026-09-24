@@ -101,9 +101,9 @@ settings.
 - Shader slot budget: the ps_3_0/vs_3_0 figure of 512 is the spec minimum and what
   wined3d reports, not a limit. Measured 2026-09-24: this runtime compiles, creates
   and executes programs far above it, and a rolled `[loop]` is charged once.
-  Plan against the modern-driver cap of 32768, check `MaxPixelShader30InstructionSlots`
-  at device creation and log it, and give any program above 512 static slots a
-  documented fallback when a device reports less. The practical ceiling is run-time
+  Plan against the modern-driver cap of 32768 and log `MaxPixelShader30InstructionSlots`
+  at device creation. No second program set for smaller caps: if a device refuses a
+  program at creation, the pass logs one row and stays off. The practical ceiling is run-time
   cost (about 1 us per slot per frame at 5120x1440) and first-draw compile
   (0.65 s at 4k slots, 8.6 s at 16k), so keep programs in the low thousands
   (`docs/architecture/platform-portability.md`, "Shader slot budget"). Do not
