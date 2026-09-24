@@ -2919,3 +2919,16 @@ level (run302 1.54 ms; hold-off run303 2.93 ms).
 **Run 81 defaults (launcher and DLL row, not flown):** `--taa-thin-vote` and `--fade-rt2-owner` default on when their prerequisites are given (else not sent, one `default on not sent:` launcher line); the configured rows log for on and off with `default=1|0`; host tests `test_taa_thin_vote`, `test_fade_region`. Wine (measured, X3, partial `run_motion_output.py`): `seam-thin-vote-far-on` 56 checks (`requested=1 enabled=1 default=1`, marker set), `seam-thin-vote-far-off` 47 (`requested=0 default=0`), `seam-taa-fade-route-routed` 5100 (owner row `requested=0`), its owner twin 5185 (`requested=1 enabled=1`).
 
 **Run 81 defaults, age programs (launcher, not flown):** with `--taa` on a modded launch `--taa-far-stabiliser` defaults to 0.985 and `--taa-thin-region` to 0.97 (the Run 80 A stand command; `off`/0 turn them off; nothing sent under `--vanilla` or without `--taa`); the gate, emissive vote and sentinel stabiliser defaults derive from them as before; host test `test_taa_image_defaults`.
+
+## 2026-09-24 Run 81 A launch 2 (run310, `--taa-box-resolution half` + gpu-sync): S4 flown
+
+Half configured and drawn from frame 410 (`requested=half configured=half reason=ok`, `drawn=half width=5120
+height=1440 target_create=00000000`), no fallback, no Reset, clean exit, 8,325 frames (measured,
+`verification/results/run310-run81a-s4-half/`). GPU (window medians, µs): `taa_box` 1,384 rest / 1,424 pan against
+run309's 2,358 / 2,360 and run308's 2,406; over the clean early windows (300-2099) box 1,296 vs 2,350 and TAA total
+5,440 vs 6,600-6,700, so S4 saves about 1.06 ms on the box and about 1.2 ms on the TAA total at 5120x1440 (measured;
+the whole-session mask/resolve rise of +0.18 / +0.13 ms follows the heavier later scenes, scene 28.2 vs 26.1 ms,
+inferred). The user saw no issue on the lattice at rest and under a pan, trails over sky, silhouettes and the
+distant-station pan. **Accepted: `half` becomes the default (Run 82 candidate).** Not logged: the half target sizes;
+no box lane in the F8 dumps (block-constant check not possible). Unrelated: 8 `shadow_replay_depth_refused`
+(`sun_changing` / `sun_relatched`) from frame 5542.

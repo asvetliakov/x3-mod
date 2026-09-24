@@ -1,0 +1,7 @@
+Run 81 A launch 2: run310 (stand + --gpu-sync-timing --taa-box-resolution half), DLL b4e945ed, vs run309 (full box) and run308. Logs read-only, no Wine. Run from this directory.
+Scripts copied from ../run309-run81a-launch1 (gpu_windows.py, abnormal_rows.py, exit_rows.py) and ../run308-run80a-gpu-baseline (gpu_taa.py, pan_windows.py, gpu_rest_pan.py, gpu_passes.py).
+python3 exit_rows.py 309 310; python3 abnormal_rows.py 310 309   # Q1/Q5
+grep -aE '^(taa_box|motion_output_taa_box)' /tmp/x3-bottleX3-run310/session-*.log   # Q1: 2 rows (creation reason=ok, frame=410 drawn=half reason=half)
+python3 gpu_taa.py 308 309 310 > gpu_taa_out.txt; python3 pan_windows.py 308 309 310 > pan_windows_out.txt; python3 gpu_rest_pan.py > gpu_rest_pan_out.txt   # Q2
+python3 gpu_windows.py 310 taa_mask taa_box taa_resolve taa > gpu_windows_310_out.txt; python3 gpu_passes.py 309 > gpu_passes_out.txt; python3 gpu_passes.py 310 > gpu_passes_310_out.txt   # Q2
+grep -aE '^(capture_armed|motion_capture_mode|shadow_replay_depth_refused)' /tmp/x3-bottleX3-run310/session-*.log   # Q4/Q5

@@ -1,0 +1,8 @@
+run308 mixed windows=3 taa=6615/7017 taa_box=2355/2482 taa_copy=21/24 taa_mask=1437/1568 taa_mask_tests=1391/1513 taa_resolve=2571/2699
+run308 pan   windows=4 taa=6776/7040 taa_box=2406/2502 taa_copy=21/135 taa_mask=1492/1616 taa_mask_tests=1442/1538 taa_resolve=2676/2775
+run309 mixed windows=11 taa=6740/7001 taa_box=2357/2521 taa_copy=23/26 taa_mask=1450/1579 taa_mask_tests=1397/1521 taa_resolve=2664/2802
+run309 pan   windows=25 taa=6757/7015 taa_box=2360/2499 taa_copy=23/26 taa_mask=1458/1594 taa_mask_tests=1405/1532 taa_resolve=2679/2813
+run309 rest  windows=3 taa=6649/6863 taa_box=2358/2558 taa_copy=20/23 taa_mask=1433/1569 taa_mask_tests=1389/1517 taa_resolve=2563/2710
+run310 mixed windows=8 taa=6288/6842 taa_box=1451/1618 taa_copy=24/139 taa_mask=1682/1938 taa_mask_tests=1598/1834 taa_resolve=2809/3088
+run310 pan   windows=16 taa=6060/6571 taa_box=1424/1572 taa_copy=22/110 taa_mask=1614/1808 taa_mask_tests=1552/1709 taa_resolve=2717/2958
+run310 rest  windows=2 taa=5949/6396 taa_box=1384/1541 taa_copy=25/91 taa_mask=1622/1814 taa_mask_tests=1566/1729 taa_resolve=2653/2852
