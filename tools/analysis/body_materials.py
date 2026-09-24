@@ -248,7 +248,7 @@ def census(tree, lod_index=None, assets=None, percents=AREA_PERCENTS):
     k = len(ladder) - 1 if lod_index is None else lod_index
     rec = ladder[k]
     mats = bob1.materials(tree)
-    alpha = lod_overlay.alpha_materials(mats)
+    alpha = lod_overlay.alpha_materials(mats, assets, record=rec)
     cache = {}
     rows, total, group_area = OrderedDict(), 0.0, {}
     for part in rec['parts']:

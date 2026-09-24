@@ -1,0 +1,49 @@
+usc_dock_c_core_bottom: draws 3 -> 4; atlas 1024 -> 1024; ratio 14.994998 -> 4.642581; atlas_bytes 1634786 -> 1086548; member_bytes 8536169 -> 8548859
+    before ['atlas:mat6~0:34287f', 'atlas:mat6~0:20418f', 'alpha:mat7~3:14073f']
+    after  ['atlas:mat6~0:34287f', 'atlas:mat6~0:31140f', 'atlas:mat6~0:2743f', 'alpha:mat5:608f']
+usc_dock_c_core_top: draws 2 -> 2; atlas 1024 -> 1024; ratio 5.501309 -> 2.66846; atlas_bytes 1505308 -> 1370065; member_bytes 2941668 -> 2944096
+    before ['atlas:mat6~0:21059f', 'alpha:mat7~3:7260f']
+    after  ['atlas:mat6~0:28279f', 'alpha:mat5:40f']
+usc_dock_c_left_arm: draws 3 -> 3; atlas 1024 -> 1024; ratio 15.083553 -> 3.45192; atlas_bytes 1350020 -> 1330868; member_bytes 6493581 -> 6518644
+    before ['atlas:mat6~0:38579f', 'atlas:mat6~0:1811f', 'alpha:mat7~3:10426f']
+    after  ['atlas:mat6~0:38579f', 'atlas:mat6~0:11189f', 'alpha:mat5:1048f']
+usc_dock_c_left_rings: draws 2 -> 2; atlas 1024 -> 1024; ratio 16.379711 -> 3.285794; atlas_bytes 1347123 -> 1328077; member_bytes 4185106 -> 4197263
+    before ['atlas:mat6~0:28155f', 'alpha:mat7~3:6398f']
+    after  ['atlas:mat6~0:33699f', 'alpha:mat5:854f']
+usc_dock_c_right_arm: draws 2 -> 3; atlas 1024 -> 1024; ratio 17.668758 -> 3.504077; atlas_bytes 1350020 -> 1262694; member_bytes 5360821 -> 5372621
+    before ['atlas:mat6~0:34468f', 'alpha:mat7~3:8729f']
+    after  ['atlas:mat6~0:36152f', 'atlas:mat6~0:6609f', 'alpha:mat5:436f']
+usc_dock_c_right_rings: draws 2 -> 2; atlas 1024 -> 1024; ratio 18.443023 -> 2.925332; atlas_bytes 1344442 -> 1333415; member_bytes 3358222 -> 3367613
+    before ['atlas:mat6~0:21883f', 'alpha:mat7~3:4800f']
+    after  ['atlas:mat6~0:26069f', 'alpha:mat5:614f']
+usc_dock_c_tower: draws 2 -> 2; atlas 1024 -> 1024; ratio 6.543407 -> 2.685124; atlas_bytes 1647126 -> 1460050; member_bytes 3271042 -> 3275242
+    before ['atlas:mat6~0:19405f', 'alpha:mat7~3:9269f']
+    after  ['atlas:mat6~0:28520f', 'alpha:mat5:154f']
+usc_dock_e_left_rings: draws 2 -> 2; atlas 1024 -> 1024; ratio 19.850974 -> 3.488283; atlas_bytes 1346792 -> 1326393; member_bytes 3135585 -> 3145084
+    before ['atlas:mat6~0:20930f', 'alpha:mat7~3:5470f']
+    after  ['atlas:mat6~0:25710f', 'alpha:mat5:690f']
+usc_dock_e_lower_core: draws 3 -> 3; atlas 1024 -> 1024; ratio 12.4882 -> 3.406686; atlas_bytes 1599346 -> 1427326; member_bytes 7499392 -> 7520378
+    before ['atlas:mat6~0:34590f', 'atlas:mat6~0:11391f', 'alpha:mat7~3:15396f']
+    after  ['atlas:mat6~0:34590f', 'atlas:mat6~0:25771f', 'alpha:mat5:1016f']
+usc_dock_e_right_rings: draws 2 -> 2; atlas 1024 -> 1024; ratio 15.744386 -> 3.422899; atlas_bytes 1346792 -> 1255367; member_bytes 4159410 -> 4168391
+    before ['atlas:mat6~0:27174f', 'alpha:mat7~3:7991f']
+    after  ['atlas:mat6~0:34729f', 'alpha:mat5:436f']
+usc_dock_e_tower: draws 3 -> 3; atlas 1024 -> 1024; ratio 4.082834 -> 2.01584; atlas_bytes 775659 -> 486872; member_bytes 7752860 -> 7795994
+    before ['atlas:mat6~0:35610f', 'atlas:mat6~0:4554f', 'alpha:mat7~3:21154f']
+    after  ['atlas:mat6~0:35610f', 'atlas:mat6~0:25318f', 'alpha:mat5:390f']
+usc_dock_e_upper_core: draws 2 -> 3; atlas 1024 -> 1024; ratio 9.641743 -> 4.169438; atlas_bytes 1642418 -> 1503827; member_bytes 4657307 -> 4663769
+    before ['atlas:mat6~0:28431f', 'alpha:mat7~3:12507f']
+    after  ['atlas:mat6~0:32238f', 'atlas:mat6~0:8526f', 'alpha:mat5:174f']
+usc_small_station_d: draws 3 -> 3; atlas 1024 -> 1024; ratio 6.054795 -> 2.513377; atlas_bytes 986682 -> 1005336; member_bytes 7054387 -> 7075699
+    before ['atlas:mat6~0:37979f', 'atlas:mat6~0:4661f', 'alpha:mat7~3:11665f']
+    after  ['atlas:mat6~0:37979f', 'atlas:mat6~0:13996f', 'alpha:mat5:2330f']
+terran_spp_bottom: draws 3 -> 3; atlas 1024 -> 1024; ratio 5.263865 -> 2.010608; atlas_bytes 661727 -> 576783; member_bytes 3999674 -> 3999804
+    before ['atlas:mat6~0:25098f', 'atlas:mat6~0:4265f', 'alpha:mat7~3:12547f']
+    after  ['atlas:mat6~0:25098f', 'atlas:mat6~0:16740f', 'alpha:mat5:72f']
+terran_spp_center: draws 3 -> 4; atlas 1024 -> 1024; ratio 4.387373 -> 2.004581; atlas_bytes 658327 -> 267061; member_bytes 7385780 -> 7417759
+    before ['atlas:mat6~0:31440f', 'atlas:mat6~0:17562f', 'alpha:mat7~3:23646f']
+    after  ['atlas:mat6~0:31440f', 'atlas:mat6~0:26423f', 'atlas:mat6~0:13975f', 'alpha:mat5:810f']
+terran_spp_panel: draws 4 -> 4; atlas 1024 -> 1024; ratio 2.004187 -> 2.004187; atlas_bytes 219802 -> 219802; member_bytes 3418659 -> 3418659
+    before ['atlas:mat22~9:20677f', 'atlas:mat22~9:23271f', 'alpha:mat23~4:5712f', 'alpha:mat21:4752f']
+    after  ['atlas:mat22~9:20677f', 'atlas:mat22~9:23271f', 'alpha:mat23~4:5712f', 'alpha:mat21:4752f']
+total atlas_bytes 19416370 -> 17240484 (-2175886); member_bytes 83209663 -> 83429875 (+220212); bodies 16 -> 16

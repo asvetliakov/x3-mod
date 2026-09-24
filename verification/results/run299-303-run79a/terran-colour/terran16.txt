@@ -1,0 +1,16 @@
+stations/station_scenes/terran/usc_dock_c_core_bottom
+stations/station_scenes/terran/usc_dock_c_core_top
+stations/station_scenes/terran/usc_dock_c_left_arm
+stations/station_scenes/terran/usc_dock_c_left_rings
+stations/station_scenes/terran/usc_dock_c_right_arm
+stations/station_scenes/terran/usc_dock_c_right_rings
+stations/station_scenes/terran/usc_dock_c_tower
+stations/station_scenes/terran/usc_dock_e_left_rings
+stations/station_scenes/terran/usc_dock_e_lower_core
+stations/station_scenes/terran/usc_dock_e_right_rings
+stations/station_scenes/terran/usc_dock_e_tower
+stations/station_scenes/terran/usc_dock_e_upper_core
+stations/station_scenes/terran/usc_small_station_d
+stations/x3tc/terran_spp_bottom
+stations/x3tc/terran_spp_center
+stations/x3tc/terran_spp_panel

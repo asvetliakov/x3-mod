@@ -152,3 +152,51 @@ LOD-0 draw binds it. The coarse material's occlusion name, SPTYPE and strength e
 record's UV2 equals record 0's unwrap at every point (`occl_material_bytes.py`, `occl_uv2_match.py`). No material
 change can bind the real map at record 1. The options are a unique-unwrap bake of the coarse textures with the
 occlusion folded in, or a 6-byte EXE patch of the `jne` at `0x004c34f7` (§12.3).
+
+## 2026-09-24: alpha rule fix (flagged materials with alpha 1 are atlased)
+
+Change. `lod_overlay.alpha_materials(mats, assets, record=...)` keeps the flag rule (alpha test or blend on) and adds
+a second condition: the flags must be able to change the image. A flagged material is alpha when:
+- its alpha can drop below 1 (`alpha_can_drop`): `g_AlphaValue` < 1.0; a diffuse whose alpha is not 255 at every
+  mip; with a non-zero `g_EnableGlow` parameter, a light map whose alpha is not 255 at every mip; a
+  `t_AlphaTexture` the engine binds (file or suffix placeholder) that is not 255 in all four channels at every mip;
+  a texture that does not resolve or decode (incl. a Pillow `OSError`) counts as varying; results cached per
+  decoded texture;
+- or its blend is not neutral at alpha 1 (`blend_neutral_at_one`: blend on with anything but `g_BlendOp` ADD,
+  SRCALPHA/ONE over INVSRCALPHA/ZERO), or `g_ZWriteEnable` is 0;
+- or (with the record; `occlusion_outliers`, coordinator decision) its occlusion map is not its effect's atlas
+  occlusion map, the maps of the effect's unflagged opaque materials. When an effect has no unflagged opaque
+  material, its flagged candidates are atlased only if they all carry one occlusion map, else all stay alpha (the
+  body stays `no_opaque` as under the flag rule). No candidate is picked to set the map, so no plate of another
+  map starts borrowing a diffuse (the toruswreck bodies).
+
+The rest join the opaque atlas as their own tiles. When the atlas dominant is such a flagged material,
+`lod_atlas.atlas_material` writes the atlas material with `g_AlphaBlendEnable` and `g_ALPHATESTENABLE` 0 (and
+`t_AlphaTexture` NULL like every atlas material), so a tile of another opaque material whose diffuse alpha is below
+255 is neither blended nor cut out. `lod_batch_census.py`, `body_materials.census` and `atlas_census.py` pass the
+assets and the record. Without assets `alpha_materials` is the flag rule (the earlier verification scripts that call
+it so are unchanged).
+
+Basis and what is inferred. The effects' output alpha is `AlphaValue x (EnableGlow ? LightMap.a : Diffuse.a)`, the
+alpha map is not in it, and 200 of 240 passes set blend ADD and alpha test GREATEREQUAL ref 1
+([station-material-distance.md](../reverse-engineering/station-material-distance.md), "Shader and effect contracts":
+the 88-effect SM3 archive scan). At alpha 1 the test passes and source-over returns the source colour. Not verified:
+the `xt_standard_lighting_damage.fx` family and the 40 suffixed passes that omit the fixed states; the run-time
+`g_EnableGlow` value, which the engine sets per draw from the glow option (`0x004c36a5..0x004c380d`) while the rule
+reads only the material parameter (the Terran plates draw visibly with a `NONE_BLACK` light map, alpha 0, so their
+blended draws cannot use the light-map alpha: inferred). The alpha-map check is kept as a conservative extra.
+Bottle X3 read only; scratch bakes under `--out` only; no install, no `--sync`; the game was not running.
+
+| check | command | result |
+|---|---|---|
+| unit tests (measured) | `PYTHONPATH=verification/probe python3 -m unittest verification.analysis.test_lod_overlay_batch verification.analysis.test_lod_batch_census verification.analysis.test_bob1` | 99 OK, 1 skipped. New `AlphaRule`: NONE_WHITE alpha map + 255 diffuse -> own atlas tile, no alpha group; a flagged atlas dominant over a cut-out tile -> atlas material with blend and test 0, alpha map NULL; glow on with a light map alpha below 255 -> alpha (glow off: opaque); Pillow `OSError` -> alpha; real alpha map -> alpha group; diffuse alpha < 255 -> alpha group; `g_AlphaValue` 0.5, unresolved alpha map, additive blend, REVSUBTRACT, no depth write -> alpha; NULL alpha map -> opaque; occlusion map other than the unflagged material's -> alpha and the collapse does not refuse; same map (case-insensitive) -> atlased; all flagged with two maps -> all alpha (either face count); all flagged with one map -> atlased |
+| 16 Terran bodies, bake before/after (measured) | `lod_overlay.py --batch --only terran-colour/terran16.txt --out <scratch>` at 1266cf4e and with the fix (76 s / 84 s; list generated from the pinned census, `terran-colour/commands.txt`); re-baked after the review fixes: all 80 members byte-identical to the earlier after-bake; `terran-colour/alpha_rule_bake_compare.py`, `_compare.txt` | alpha group now material 5 alone (terran_alphasheet) on the 15 dock/small/spp bodies; terran_spp_panel unchanged; atlas side 1024 on all 16 before and after; tiles per atlas 1 -> 4 or 5; min texels/px at 1800 wide e.g. tower 4.08 -> 2.02, spp_center 4.39 -> 2.00 (all >= 2.0); draws below T_pad 41 -> 45 |
+| draws | same bake, marker `split_groups` | the four extra draws (core_bottom 3 -> 4, c_right_arm 2 -> 3, e_upper_core 2 -> 3, spp_center 3 -> 4) are the 60,000-point split of the larger atlas group (`MAX_GROUP_POINTS`), not new materials |
+| sizes (measured) | same | stored atlas bytes 19.42 -> 17.24 MB (gzip DDS; more, smaller-scale tiles compress better); body members 83.21 -> 83.43 MB; dat 102,626,033 -> 100,670,359 B; census uncompressed atlas estimate unchanged (4.89 MB per 1024 body, four slots) |
+| red tile (measured) | `terran-colour/atlas_tile_check.py <after bake>`, `atlas_tile_check.txt`: written diffuse atlas decoded, each tile vs its own source area-resampled over its span, other tiles' sources as controls | 80 tiles; own source closest on 78 (the other 2 are spp_panel tiles of one shared texture); max own mean \|RGB diff\| 5.95; the 11 `terran_platesheet_red_diff` tiles 1.92-2.40 against >= 30.25 for any other source (tower: red 1.92, techsheet 41.71) |
+| full census (measured) | `lod_batch_census.py --out <scratch> --jobs 8` at 1266cf4e and with the fix after the review fixes, 145 s / 156 s; `lod-overlay-batch/alpha_rule_census_compare.py`, `_out.txt`; reason counts from `texture_lookup_census_compare.py` | 2,453 rows. alpha set shrinks on 104 rows (85 eligible after, 82 eligible before and after); grows on none. Eligible 622 -> 625: +3 (toruswreck_middle_front_antennas, toruswreck_ring_outer, toruswreck_tower_left: every material flagged, one occlusion map), none lost; terran_TL_atmolifter's row is identical to 1266cf4e (its four flagged materials carry the other occlusion map and stay alpha). no_opaque 651 -> 648, occlusion_mismatch 4 -> 4 (the same four bodies); every other reason unchanged. The 16 Terran rows are identical to the census before the occlusion condition; against the previous after-census only the nine outlier toruswreck rows differ (back to no_opaque). Atlas side at 1920 unchanged on 621 of 622 bodies eligible in both; XTC_terran_tp_plus 1024 -> 2048 (+14.68 MB uncompressed); all eligible +29.35 MB (census estimate, uncompressed four slots). C draws summed over bodies eligible in both 1510 -> 1518 (18 bodies more, 10 fewer) |
+| no correct diffuse lost (measured) | `lod-overlay-batch/alpha_rule_diffuse_check.py <before> <after>`, `_out.txt` (resolved member each record-0 group samples in C, old vs new rule; for a newly eligible body "before" is the vanilla LOD, every group on its own diffuse; 20 s) | no body gains new borrowing (0 groups own -> other in either class). Eligible before and after, 82 bodies: 230 groups / 336,810 faces regain their own diffuse, 3 groups / 66 faces still borrow (remaining alpha groups), 211 groups unchanged own; newly eligible, 3 bodies: 28 groups / 39,686 faces, all on their own diffuse |
+
+Open. The coarse draws still bind
+`NONE_OCCL_DECAL` at s5 (previous section; not addressed here). The fix reaches the game only with a full rebake
+(`tool_sha256` changes), which is the user's decision.

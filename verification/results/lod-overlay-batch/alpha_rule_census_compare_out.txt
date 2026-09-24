@@ -1,0 +1,88 @@
+rows 2453; alpha_mats shrinks 104 (eligible after 85, eligible before and after 82); grows 0
+shrink by refuse= after: {'-': 102, 'non_effect_material': 1, 'occlusion_mismatch': 1}
+newly eligible: ['stations/x3ap/torus/toruswreck_middle_front_antennas', 'stations/x3ap/torus/toruswreck_ring_outer', 'stations/x3ap/torus/toruswreck_tower_left']
+no longer eligible: []
+eligible in both 622: atlas side at 1920 before -> after {(1024, 1024): 561, (2048, 2048): 43, (4096, 4096): 17, (1024, 2048): 1}
+  side change ships/x3ap/usc/XTC_terran_tp_plus: 1024 -> 2048 ratio 2.01 -> 2.01
+census atlas MB (eligible in both) 4920.62 -> 4935.30 (+14.68); member~ MB 3420.91 -> 3420.91
+C_drawn summed (eligible in both) 1510 -> 1518; bodies with more draws 18, fewer 10
+census atlas MB (all eligible) 4920.62 -> 4949.97 (+29.35)
+texels/px at 1920 on the shrinking eligible rows: min after 0.19; largest drops [('usc_dock_a_down_arm', 0.15), ('usc_dock_c_right_rings', 0.158), ('terran_repairdrone', 0.164), ('usc_dock_a_left_rings', 0.176), ('usc_dock_e_left_rings', 0.176)]
+  patch20/terran_ts_miner: alpha_mats 5 -> 1 eligible False -> False atlas 2048 -> 2048 (19.57 -> 19.57 MB) refuse -
+  ships/terran/terran_TL_mining: alpha_mats 5 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  ships/terran/terran_repairdrone: alpha_mats 4 -> 0 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  ships/terran/terran_supplydrone: alpha_mats 4 -> 0 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  ships/terran/terran_transportdrone: alpha_mats 3 -> 0 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  ships/terran/terran_transportdrone_small: alpha_mats 4 -> 0 eligible True -> True atlas 2048 -> 2048 (19.57 -> 19.57 MB) refuse -
+  ships/usc/Terran_TP: alpha_mats 4 -> 0 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  ships/usc/Terran_m2: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  ships/usc/Terran_m2_bottom: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  ships/usc/terran_m1: alpha_mats 5 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  ships/usc/terran_m6: alpha_mats 2 -> 0 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  ships/usc/terran_m7: alpha_mats 4 -> 0 eligible True -> True atlas 4096 -> 4096 (78.29 -> 78.29 MB) refuse -
+  ships/usc/terran_m7m: alpha_mats 4 -> 0 eligible True -> True atlas 2048 -> 2048 (19.57 -> 19.57 MB) refuse -
+  ships/usc/terran_m8: alpha_mats 4 -> 0 eligible True -> True atlas 2048 -> 2048 (19.57 -> 19.57 MB) refuse -
+  ships/usc/terran_ts: alpha_mats 4 -> 0 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  ships/x3ap/props/XTC_terran_dock_quicklaunch_body: alpha_mats 5 -> 2 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  ships/x3ap/usc/XTC_terran_DC: alpha_mats 5 -> 0 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  ships/x3ap/usc/XTC_terran_tm: alpha_mats 3 -> 1 eligible False -> False atlas None -> None (0.0 -> 0.0 MB) refuse non_effect_material
+  ships/x3ap/usc/XTC_terran_tp_plus: alpha_mats 2 -> 0 eligible True -> True atlas 1024 -> 2048 (4.89 -> 19.57 MB) refuse -
+  ships/x3ap/usc/XTC_terran_ts_plus: alpha_mats 3 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/docks/terran_dock_d_bottom: alpha_mats 2 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/docks/terran_dock_d_rings_left: alpha_mats 2 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/docks/terran_dock_d_rings_right: alpha_mats 2 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/docks/terran_dock_d_tower: alpha_mats 2 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/docks/terran_dock_e: alpha_mats 2 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_a_down_arm: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_a_frame: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_a_left_rings: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_a_right_rings: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_a_top_arm: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_a_tower: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_b_bottom_arm: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_b_core: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_b_left_rings: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_b_right_rings: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_b_top_arm: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_b_tower: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_c_core_bottom: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_c_core_top: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_c_left_arm: alpha_mats 5 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_c_left_rings: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_c_right_arm: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_c_right_rings: alpha_mats 5 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_c_tower: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_d_arm: alpha_mats 3 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_d_frame: alpha_mats 3 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_d_left_bracket: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_d_lower_core: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_d_right_bracket: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_d_tower: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_d_upper_core: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_e_left_rings: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_e_lower_core: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_e_right_rings: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_e_tower: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_e_upper_core: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_f_bottom: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_f_middle: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_f_rings: alpha_mats 5 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_dock_f_top: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_mine_a_main: alpha_mats 5 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_mine_a_smallhub: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_mine_a_tower: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_shipyard_annex: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_shipyard_core: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_shipyard_frame: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_shipyard_left: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_shipyard_right: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_shipyard_tower: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_small_station_a: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_small_station_b_bottom: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_small_station_b_top: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_small_station_c_bottom: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_small_station_c_top: alpha_mats 3 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_small_station_d: alpha_mats 4 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/station_scenes/terran/usc_small_station_e: alpha_mats 5 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/x3tc/terran_spp_bottom: alpha_mats 5 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -
+  stations/x3tc/terran_spp_center: alpha_mats 5 -> 1 eligible True -> True atlas 1024 -> 1024 (4.89 -> 4.89 MB) refuse -

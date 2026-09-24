@@ -4,3 +4,8 @@ ps -axww -o args= | grep '[X]3AP.exe'   # empty before the run
 python3 tools/analysis/lod_batch_census.py --out verification/results/lod-overlay-batch --jobs 8   # --screen-width 1920 default; census.txt, summary.txt, sectors.txt, eligible_bodies.txt (134 s)
 (cd verification/results/lod-overlay-batch && python3 ambiguous_ext.py > ambiguous_ext_out.txt && python3 stem_collisions.py > stem_collisions_out.txt)   # review items C and D
 # rule parameters: --ship-min 80 --ship-factor 2.5 --station-t 150 --t-cap 200; sizes --atlas-size 1024 --atlas-max-size 4096
+# Alpha-rule fix (2026-09-24): full census before (tools/analysis at 1266cf4e) and after, scratch outputs
+python3 <before>/tools/analysis/lod_batch_census.py --out $SCRATCH/census-before --jobs 8    # 145 s
+python3 tools/analysis/lod_batch_census.py --out $SCRATCH/census-after --jobs 8              # 146 s
+python3 verification/results/lod-overlay-batch/alpha_rule_census_compare.py $SCRATCH/census-before $SCRATCH/census-after > verification/results/lod-overlay-batch/alpha_rule_census_compare_out.txt
+python3 verification/results/lod-overlay-batch/alpha_rule_diffuse_check.py $SCRATCH/census-before $SCRATCH/census-after > verification/results/lod-overlay-batch/alpha_rule_diffuse_check_out.txt   # 20 s

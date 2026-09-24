@@ -27,7 +27,7 @@ import lod_overlay
 import numpy as np
 from inspect_x3 import read_catalogue
 from sector_fog_census import unpack, write_catalogue
-from test_bob1 import atlas_textures, atlas_tree_lod0, text_body
+from test_bob1 import atlas_textures, atlas_tree_lod0, atlas_tree_pre, text_body
 
 
 def packed(tree, trailing=b''):
@@ -1532,6 +1532,127 @@ class TextureAnimations(unittest.TestCase):
         rec = copy.deepcopy(r0)
         rec['parts'][0]['groups'][1]['material'] = -79
         self.assertEqual(lod_atlas.animated_record(mats, rec, self.assets)[1], dict(groups=1, rows=[79], material0=1))
+
+
+class AlphaRule(unittest.TestCase):
+    """lod_overlay.alpha_materials with assets: a flagged material is alpha only when its alpha can drop below 1
+    (the Terran plate materials: test and blend on, diffuse alpha 255, NONE_WHITE alpha map; Run 79 A)."""
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.TemporaryDirectory()
+        game = Path(cls.tmp.name) / 'game'
+        dds = lambda img, fmt: gzip.compress(lod_atlas.write_dds(lod_atlas.mip_chain(img.astype(np.float32)), fmt),
+                                             mtime=0)
+        white = np.full((8, 8, 4), 255, np.uint8)
+        cut = white.copy()
+        cut[:, :4, 3] = 0                                              # a cut-out: alpha 0 on half the texels
+        mask = white.copy()
+        mask[:, :4] = 0                                                # a real alpha map, black half
+        write_catalogue(game / '01.cat', atlas_textures() + [
+            ('dds/NONE_WHITE.pck', dds(white, 'A8R8G8B8')), ('dds/c_diff.pck', dds(cut, 'DXT5')),
+            ('dds/grid_alpha.pck', dds(mask, 'DXT1')), ('textures/p_diff.tga', b'not decoded')])
+        cls.assets = lod_overlay.original_assets(game)[0]
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def record(self, alpha_tex, diffuse=b'b_diff.tga', value=65536):
+        tree = bob1.parse(bob1.serialise(atlas_tree_pre()))
+        mats, coarse = bob1.materials(tree), bob1.lods(tree)[1]
+        m = mats[1]
+        m['params'] = [(n, t, diffuse if n == b't_DiffuseTexture' else v) for n, t, v in m['params']] + [
+            (b'g_AlphaBlendEnable', 0, [1]), (b'g_ALPHATESTENABLE', 0, [1]), (b'g_AlphaValue', 2, [value]),
+            (b't_AlphaTexture', 8, alpha_tex)]
+        return mats, coarse
+
+    def collapse(self, mats, coarse):
+        alpha = lod_overlay.alpha_materials(mats, self.assets, {})
+        res = lod_atlas.collapse(self.assets, 'b', list(mats), coarse, alpha, 8, (64,))
+        atlased = {coarse['parts'][pi]['groups'][gi]['material'] for pi, gi, _ in res['layout']['face_keys']}
+        return alpha, atlased, [g['material'] for g in res['record']['parts'][0]['groups']], res
+
+    def test_placeholder_alpha_map_and_opaque_diffuse_is_an_opaque_tile(self):
+        mats, coarse = self.record(b'C:\\Program Files\\Autodesk\\3ds Max 2008\\Maps\\NONE_WHITE.dds')
+        self.assertEqual(lod_overlay.alpha_materials(mats), {1})              # the flag rule alone
+        alpha, atlased, groups, res = self.collapse(mats, coarse)
+        self.assertEqual((alpha, atlased), (set(), {0, 1}))                   # material 1 gets its own tile
+        self.assertEqual(groups, [res['atlas_indices'][0]])                   # one atlas group, no alpha group
+        slot = dict((n.lower(), v) for n, t, v in lod_atlas.atlas_material(mats, 0, {}, {})[0]['params'] if t == 8)
+        self.assertNotIn(b't_alphatexture', slot)                             # unflagged: no slot added
+
+    def test_flagged_atlas_dominant_draws_with_blend_and_test_off(self):
+        mats, coarse = self.record(b'NONE_WHITE.dds')
+        mats[0]['params'] = [(n, t, b'c_diff.tga' if n == b't_DiffuseTexture' else v) for n, t, v in mats[0]['params']]
+        coarse['parts'][0]['groups'][1]['faces'] *= 2                # flagged material 1 dominates the atlas
+        alpha = lod_overlay.alpha_materials(mats, self.assets, {}, coarse)
+        self.assertEqual(alpha, set())                                        # unflagged 0 has a cut-out alpha
+        out = list(mats)
+        res = lod_atlas.collapse(self.assets, 'b', out, coarse, alpha, 8, (64,))
+        self.assertEqual(res['synth'][0]['dominant'], 1)
+        atlas_mat = out[res['atlas_indices'][0]]
+        params = {n.lower(): v for n, t, v in atlas_mat['params']}
+        self.assertEqual((params[b'g_alphablendenable'], params[b'g_alphatestenable'], params[b't_alphatexture']),
+                         ([0], [0], b'NULL'))
+        self.assertTrue(lod_overlay.alpha_flagged(mats[1]))                  # the source material is untouched
+
+    def test_glow_reads_the_light_map_alpha(self):
+        mats, coarse = self.record(b'NONE_WHITE.dds')                # b_light.tga: alpha 16 * x, not 255
+        self.assertEqual(lod_overlay.alpha_materials(mats, self.assets), set())
+        mats[1]['params'] += [(b'g_EnableGlow', 2, [65536])]
+        self.assertEqual(lod_overlay.alpha_materials(mats, self.assets), {1})
+
+    def test_undecodable_image_counts_as_varying(self):
+        mats, coarse = self.record(b'NONE_WHITE.dds', b'p_diff.tga')
+        with unittest.mock.patch.object(lod_atlas, 'decode_image', side_effect=OSError('truncated')):
+            self.assertEqual(lod_overlay.alpha_materials(mats, self.assets, {}), {1})
+
+    def test_real_alpha_map_stays_in_the_alpha_group(self):
+        mats, coarse = self.record(b'm\\grid_alpha.tga')
+        alpha, atlased, groups, res = self.collapse(mats, coarse)
+        self.assertEqual((alpha, atlased), ({1}, {0}))
+        self.assertEqual(groups, [res['atlas_indices'][0], 1])
+
+    def test_diffuse_alpha_below_255_stays_in_the_alpha_group(self):
+        mats, coarse = self.record(b'NONE_WHITE.dds', b'c_diff.tga')
+        self.assertEqual(self.collapse(mats, coarse)[:2], ({1}, {0}))
+
+    def test_other_alpha_sources(self):
+        self.assertEqual(lod_overlay.alpha_materials(self.record(b'NONE_WHITE.dds', value=32768)[0], self.assets),
+                         {1})                                                 # g_AlphaValue 0.5
+        self.assertEqual(lod_overlay.alpha_materials(self.record(b'NULL')[0], self.assets), set())   # no alpha map
+        # no file and no NONE_BLACK placeholder in the catalogues: does not resolve, counted as varying
+        self.assertEqual(lod_overlay.alpha_materials(self.record(b'lost_alpha.tga')[0], self.assets), {1})
+        for extra, want in (([(b'g_SrcBlend', 0, [5]), (b'g_DestBlend', 0, [6]), (b'g_BlendOp', 0, [1])], set()),
+                            ([(b'g_SrcBlend', 0, [2]), (b'g_DestBlend', 0, [2])], {1}),     # additive: not neutral
+                            ([(b'g_BlendOp', 0, [3])], {1}),                              # REVSUBTRACT
+                            ([(b'g_ZWriteEnable', 0, [0])], {1})):                        # no depth write
+            mats = self.record(b'NONE_WHITE.dds')[0]
+            mats[1]['params'] += extra
+            self.assertEqual(lod_overlay.alpha_materials(mats, self.assets), want, extra)
+
+    def test_occlusion_map_other_than_the_atlas_one_stays_alpha(self):
+        occl = lambda mats, a, b: [m['params'].append((b't_OcclusionTexture', 8, t)) for m, t in zip(mats, (a, b))]
+        mats, coarse = self.record(b'NONE_WHITE.dds')
+        occl(mats, b'x_occl.tga', b'y_occl.tga')                     # unflagged material 0 sets the atlas map
+        self.assertEqual(lod_overlay.alpha_materials(mats, self.assets), set())          # no record: not checked
+        alpha = lod_overlay.alpha_materials(mats, self.assets, record=coarse)
+        self.assertEqual(alpha, {1})
+        res = lod_atlas.collapse(self.assets, 'b', list(mats), coarse, alpha, 8, (64,))   # no occlusion_mismatch
+        self.assertEqual(res['occlusion'], {'argon.fx': 'x_occl.tga'})
+        mats, coarse = self.record(b'NONE_WHITE.dds')
+        occl(mats, b'X_OCCL.tga', b'x_occl.tga')                     # same map (case-insensitive): atlased
+        self.assertEqual(lod_overlay.alpha_materials(mats, self.assets, record=coarse), set())
+        mats, coarse = self.record(b'NONE_WHITE.dds')                # every material flagged, two maps: no
+        mats[0]['params'] += [(b'g_ALPHATESTENABLE', 0, [1])]         # candidate sets the map, all stay alpha
+        occl(mats, b'x_occl.tga', b'NULL')
+        self.assertEqual(lod_overlay.alpha_materials(mats, self.assets, record=coarse), {0, 1})
+        coarse['parts'][0]['groups'][1]['faces'] *= 2
+        self.assertEqual(lod_overlay.alpha_materials(mats, self.assets, record=coarse), {0, 1})
+        mats, coarse = self.record(b'NONE_WHITE.dds')                # every material flagged, one map: atlased
+        mats[0]['params'] += [(b'g_ALPHATESTENABLE', 0, [1])]
+        occl(mats, b'x_occl.tga', b'x_occl.tga')
+        self.assertEqual(lod_overlay.alpha_materials(mats, self.assets, record=coarse), set())
 
 
 if __name__ == '__main__':

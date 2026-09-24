@@ -372,7 +372,7 @@ def census_body(assets, textures, entry, opts):
     k, note = aspect_k(r0['points'])
     tp = t_aspect(row['cat'], tc, k, opts['rule'])
     s0 = bob1.lod_summary(r0)
-    alpha = lod_overlay.alpha_materials(mats)
+    alpha = lod_overlay.alpha_materials(mats, assets, record=r0)
     used = {g['material'] for p in r0['parts'] for g in p['groups']}
     opaque = {g['material'] for p in r0['parts'] if not p['flags'] & lod_atlas.HIDDEN_PART
               for g in p['groups'] if g['material'] not in alpha}

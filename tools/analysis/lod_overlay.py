@@ -9,7 +9,12 @@ order its faces first use the points, as every shipped group does), collapse eve
 add the result as a new LOD record. No decimation. Alpha materials are those
 whose effect parameters enable alpha testing or blending (g_AlphaTestEnable or
 g_AlphaBlendEnable non-zero); an alpha texture alone does not count (the pilot
-ships' lattice materials have both off and draw opaque, run257). Collapse
+ships' lattice materials have both off and draw opaque, run257). A flagged
+material whose alpha cannot drop below 1 (g_AlphaValue 1, an alpha texture that
+is 255 everywhere such as NONE_WHITE or none, a diffuse alpha of 255 everywhere;
+alpha_can_drop) and whose blend is source-over with depth writes
+(blend_neutral_at_one) is opaque too (the Terran plate materials, Run 79 A),
+unless its occlusion map is not the atlas one (occlusion_outliers). Collapse
 (--collapse), per part:
   glow (default): groups whose material has a mostly bright light map (share of
     texels with Rec.601 luma above --glow-luma at least --glow-share, measured on
@@ -616,12 +621,135 @@ GLOW_SHARE = 0.25        # light map is "mostly bright" at this bright-texel sha
 ALPHA_PARAMS = (b'g_alphatestenable', b'g_alphablendenable')
 
 
-def alpha_materials(materials):
-    """Group material indices (array positions, not the record's u16) whose effect
-    parameters enable alpha testing or alpha blending."""
-    return {i for i, m in enumerate(materials)
-            if any(typ in (0, 1) and name.lower() in ALPHA_PARAMS and val and val[0]
-                   for name, typ, val in m.get('params', ()))}
+ALPHA_VALUE_PARAM = b'g_alphavalue'       # SPTYPE_FLOAT 16.16 material alpha constant (65536 = 1.0)
+ENABLE_GLOW_PARAM = b'g_enableglow'       # 1: the effects' output alpha is the light map's alpha
+_OPAQUE_TEXTURES = {}                     # (decoded sha256, kind, channels) -> every texel 255: per process
+
+
+def alpha_flagged(material):
+    """True when the material's effect parameters enable alpha testing or alpha blending."""
+    return any(typ in (0, 1) and name.lower() in ALPHA_PARAMS and val and val[0]
+               for name, typ, val in material.get('params', ()))
+
+
+def texture_opaque(assets, name, channels, cache=None):
+    """True when the texture the engine binds for `name` (lod_atlas.texture_source: the file, or the suffix
+    placeholder when none loads) is 255 in `channels` (indices into RGBA) at every mip level; None for a NULL
+    name or an id drawn without a texture; False when it does not resolve or decode (counted as varying)."""
+    import lod_atlas
+    try:
+        src = lod_atlas.texture_source(assets, name)
+    except (lod_atlas.AtlasError, ValueError):
+        return False
+    if src is None:
+        return None
+    data, kind, info = src
+    cache = _OPAQUE_TEXTURES if cache is None else cache
+    key = (info['decoded_sha256'], kind, tuple(channels))
+    if key not in cache:
+        try:
+            if kind == 'dds':
+                levels = lod_atlas.dds_format(data)[2]
+                cache[key] = all((lod_atlas.decode_dds(data, k)[:, :, list(channels)] == 255).all()
+                                 for k in range(max(1, levels)))
+            else:
+                cache[key] = bool((lod_atlas.decode_image(data, name)[:, :, list(channels)] == 255).all())
+        except (lod_atlas.AtlasError, ValueError, struct.error, OSError):     # OSError: Pillow decode
+            cache[key] = False
+    return cache[key]
+
+
+def alpha_can_drop(assets, material, cache=None):
+    """True when the material's alpha can fall below 1: g_AlphaValue below 1.0, a t_DiffuseTexture whose alpha
+    channel is not 255 everywhere, with g_EnableGlow non-zero a t_LightMapTexture whose alpha is not 255
+    everywhere (the effects' output alpha is AlphaValue x (EnableGlow ? LightMap.a : Diffuse.a),
+    station-material-distance.md "Shader and effect contracts"), or a t_AlphaTexture that is not 255 in all four
+    channels at every level (that dataflow does not read the alpha map; kept as a conservative check, a
+    NONE_WHITE placeholder passes). A NULL alpha texture is no alpha source; a NULL diffuse is the opaque black
+    placeholder (lod_atlas.NULL_DIFFUSE_TEXEL, inferred). A texture that does not resolve or decode counts as
+    varying. g_EnableGlow is read from the material's parameters only: the engine also sets it per draw from the
+    glow option (0x004c36a5..0x004c380d), which is not modelled."""
+    import body_materials
+    glow = False
+    for name, typ, val in material.get('params', ()):
+        if name.lower() == ALPHA_VALUE_PARAM and typ == 2 and val and val[0] < 65536:
+            return True
+        if name.lower() == ENABLE_GLOW_PARAM and typ in (0, 1, 2) and val and val[0]:
+            glow = True
+    slots = body_materials.slots(material)
+    for slot, channels in (('alpha', (0, 1, 2, 3)), ('diffuse', (3,))) + ((('light', (3,)),) if glow else ()):
+        name = slots.get(slot)
+        if name is not None and texture_opaque(assets, name, channels, cache) is False:
+            return True
+    return False
+
+
+# D3DBLEND values whose blend result is the source colour when the source alpha is 1 (SRCALPHA/ONE over
+# INVSRCALPHA/ZERO with D3DBLENDOP_ADD); an additive or multiplicative blend changes the image at alpha 1 too
+NEUTRAL_SRC_BLEND, NEUTRAL_DEST_BLEND, BLENDOP_ADD = (2, 5), (1, 6), 1
+
+
+def blend_neutral_at_one(material):
+    """True when the material's blend state leaves the source colour unchanged at alpha 1 and it writes depth:
+    blending off, or g_BlendOp ADD with g_SrcBlend SRCALPHA/ONE and g_DestBlend INVSRCALPHA/ZERO; and
+    g_ZWriteEnable not 0 (a depth-less transparent layer drawn as opaque would occlude). An absent parameter
+    counts as the neutral value."""
+    p = {name.lower(): val[0] for name, typ, val in material.get('params', ()) if typ in (0, 1) and val}
+    if p.get(b'g_zwriteenable', 1) == 0:
+        return False
+    if not p.get(b'g_alphablendenable', 0):
+        return True
+    return (p.get(b'g_blendop', BLENDOP_ADD) == BLENDOP_ADD and p.get(b'g_srcblend', 5) in NEUTRAL_SRC_BLEND
+            and p.get(b'g_destblend', 6) in NEUTRAL_DEST_BLEND)
+
+
+def occlusion_outliers(materials, record, flagged, alpha):
+    """Flagged, otherwise opaque materials (flagged - alpha) of the visible parts of `record` whose occlusion map
+    (lod_atlas.occlusion_name, None for absent / NULL / NONE_*) is not the atlas occlusion map of their effect,
+    the maps of the effect's unflagged opaque materials. When the effect has no unflagged opaque material, its
+    candidates are atlased only if they all carry one map; otherwise all of them stay alpha (the body stays
+    no_opaque as under the flag rule; no candidate is chosen to set the map, so no plate of another map starts
+    borrowing a diffuse). Atlasing an outlier would refuse the body occlusion_mismatch (one occlusion texture per
+    merged material; terran_TL_atmolifter)."""
+    import lod_atlas
+    faces = Counter()
+    for part in record['parts']:
+        if part['flags'] & lod_atlas.HIDDEN_PART:
+            continue
+        for g in part['groups']:
+            if 0 <= g['material'] < len(materials) and g['material'] not in alpha:
+                faces[g['material']] += len(g['faces'])
+    by_effect = {}
+    for m in faces:                                # Counter keeps first-use order
+        by_effect.setdefault(lod_atlas.effect_name(materials[m]), []).append(m)
+    out = set()
+    for mis in by_effect.values():
+        cand = [m for m in mis if m in flagged]
+        base = {lod_atlas.occlusion_name(materials[m]) for m in mis if m not in flagged}
+        if not base:
+            if len({lod_atlas.occlusion_name(materials[m]) for m in cand}) > 1:
+                out |= set(cand)
+            continue
+        out |= {m for m in cand if lod_atlas.occlusion_name(materials[m]) not in base}
+    return out
+
+
+def alpha_materials(materials, assets=None, cache=None, record=None):
+    """Group material indices (array positions, not the record's u16) drawn with alpha: the effect
+    parameters enable alpha testing or alpha blending AND (with `assets`) the flags can change the image: the
+    alpha can drop below 1 (alpha_can_drop) or the blend state is not neutral at alpha 1 (blend_neutral_at_one).
+    Any other flagged material (alpha 1 everywhere, source-over blend) draws as opaque (blend and test are
+    no-ops at alpha 1: inferred, the effect's pixel shader is not disassembled) and is atlased like any opaque
+    material, unless (with `record`, the record to collapse) its occlusion map differs from its effect's atlas
+    occlusion map (occlusion_outliers): it then stays alpha. Without `assets` the flag rule alone (a superset)."""
+    flagged = {i for i, m in enumerate(materials) if alpha_flagged(m)}
+    if assets is None:
+        return flagged
+    alpha = {i for i in flagged if not blend_neutral_at_one(materials[i])
+             or alpha_can_drop(assets, materials[i], cache)}
+    if record is not None:
+        alpha |= occlusion_outliers(materials, record, flagged, alpha)
+    return alpha
 
 
 def glow_materials(assets, materials, used=None, luma=GLOW_LUMA, share=GLOW_SHARE):
@@ -975,7 +1103,7 @@ def plan_body(assets, name, threshold, placement=None, force_threshold=False, co
     if bad and any(t in ('MAT5', 'MAT6') for t, _ in tree['sections']):
         raise SystemExit(f'{name}: group material index {bad} outside the material table (0..{len(mats) - 1});'
                          ' the ad signs carry one such negative-index group; refusing')
-    alpha = alpha_materials(mats)
+    alpha = alpha_materials(mats, assets, record=source)
     used = sorted({g['material'] for p in source['parts'] for g in p['groups']})
     glow = glow_materials(assets, mats, used, glow_luma, glow_share) if collapse in KEEPING else set()
     area_kept, area = set(), None
@@ -1026,7 +1154,8 @@ def plan_body(assets, name, threshold, placement=None, force_threshold=False, co
     stored = gzip.compress(out, mtime=0) if head == b'\x1f\x8b' or member.lower().endswith('.pbb') else out
     return dict(name=name, source=entry['source'], member=member, before=before, ladder=ladder,
                 **({'source_member': entry['path']} if text else {}),
-                new=new, new_index=new_index, collapse=collapse, alpha=alpha_materials(mats), glow=glow,
+                new=new, new_index=new_index, collapse=collapse, glow=glow,
+                alpha=alpha | {s['index'] for s in synth_report if s['dominant'] in alpha and not s.get('atlas')},
                 area_kept=area_kept, area=area, synth=synth_report, source_materials=n_mats,
                 pad_index=pad_index, placement=placement, atlas_build=atlas, extra_members=extra,
                 source_record=src_index, pad_source=pad_source, trailing_bytes=trailing,

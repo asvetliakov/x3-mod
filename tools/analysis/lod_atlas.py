@@ -1290,8 +1290,13 @@ def atlas_material(mats, dom, names, areas, synth=True, need=(b't_diffusetexture
     """Copy of mats[dom] with the atlas textures and (synth) area-weighted g_Mat* means; rows as
     lod_overlay.synth_materials. A slot the copied record does not declare is not added (the record keeps
     its effect's parameter set); `need` (required_slots) must all be declared."""
+    import lod_overlay
     base = mats[dom]
     replace = {b't_speculartexture': b'NULL', b't_bumptexture': b'NULL', b't_alphatexture': b'NULL'}
+    # an alpha-flagged dominant is atlased only when its alpha is 1 everywhere (lod_overlay.alpha_materials); the
+    # atlas material draws with blend and test off, so a tile of another opaque material whose diffuse alpha is
+    # below 255 (e.g. a glow-mask alpha) is not blended or cut out
+    flags_off = {n: [0] for n in lod_overlay.ALPHA_PARAMS} if lod_overlay.alpha_flagged(base) else {}
     replace.update({SLOT_NAMES[s]: v for s, v in names.items()})
     have = {n.lower() for n, t, _ in base['params'] if t == 8}
     for slot in need:
@@ -1302,6 +1307,8 @@ def atlas_material(mats, dom, names, areas, synth=True, need=(b't_diffusetexture
         low = name.lower()
         if typ == 8 and low in replace:
             val = replace[low]
+        elif typ in (0, 1) and low in flags_off:
+            val = flags_off[low]
         elif synth and typ == 2 and low.startswith(b'g_mat'):
             num = den = 0.0
             for mi, a in areas.items():

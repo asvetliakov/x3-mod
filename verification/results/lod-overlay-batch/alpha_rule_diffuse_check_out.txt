@@ -1,0 +1,4 @@
+eligible before and after: bodies 82 (alpha set shrinks, eligible after): {'unchanged': 1, 'regains own': 81}
+  record-0 groups and faces by sampled diffuse, before -> after: {'other -> other faces': 66, 'other -> other groups': 3, 'other -> own faces': 336810, 'other -> own groups': 230, 'own -> own faces': 3178211, 'own -> own groups': 211}
+newly eligible: bodies 3 (alpha set shrinks, eligible after): {'unchanged': 3}
+  record-0 groups and faces by sampled diffuse, before -> after: {'own -> own faces': 39686, 'own -> own groups': 28}

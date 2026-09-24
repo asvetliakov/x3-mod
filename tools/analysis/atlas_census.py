@@ -98,7 +98,7 @@ def census(tree, lod_index=None, assets=None):
     rec = ladder[k]
     pts = rec['points']
     mats = bob1.materials(tree)
-    alpha = body_materials.lod_overlay.alpha_materials(mats)
+    alpha = body_materials.lod_overlay.alpha_materials(mats, assets, record=rec)
     cache = {}
     flags = defaultdict(int)
     for p in pts:

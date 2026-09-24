@@ -413,8 +413,30 @@ coarse alpha-group draws (20 / 34 / 12 primitives for M1 / M2 / TL) logged
 The outpost's alpha materials 9, 36 and 11 (124 / 83 / 45 faces, test and blend
 on) keep one alpha group of 252 faces under the dominant material 9.
 
+**Alpha rule, second condition (2026-09-24, Run 79 A).** A flagged material is
+alpha only when the flags can change its image (`lod_overlay.alpha_materials`
+with the assets and the record): its alpha can drop below 1 (`g_AlphaValue`
+below 1.0, a diffuse alpha, or with `g_EnableGlow` on a light-map alpha, not 255
+everywhere; also a `t_AlphaTexture` not 255 in every channel, a conservative
+extra; an unresolvable or undecodable texture counts as varying), or its blend
+is not source-over (anything but `g_BlendOp` ADD with SRCALPHA/ONE over
+INVSRCALPHA/ZERO), or it does not write depth, or its occlusion map is not the
+atlas occlusion map of its effect (the unflagged opaque materials' map; with no
+unflagged material, candidates of more than one map all stay alpha). The rest
+(the Terran plate materials: test and blend on, source-over, 255 diffuse alpha,
+`NONE_WHITE` alpha map) are opaque and get their own atlas tiles; an atlas
+material copied from such a dominant is written with blend and test off. Basis:
+the effects' output alpha is `AlphaValue x (EnableGlow ? LightMap.a : Diffuse.a)`
+and the passes test GREATEREQUAL ref 1
+([station-material-distance.md](../reverse-engineering/station-material-distance.md),
+"Shader and effect contracts"); the damage-effect family and the engine's
+per-draw `g_EnableGlow` are not verified. Measured effect:
+`docs/verification/lod-overlay.md`, "alpha rule fix".
+
 Faces of merged materials are drawn with the dominant material's textures over
-their own UVs, a look limit of the pilot. `--collapse two` (opaque + alpha) and
+their own UVs, a look limit of the pilot. With the atlas collapse this applies
+only to the remaining alpha group (materials whose alpha can drop below 1 or
+that blend otherwise); opaque faces sample their own tile. `--collapse two` (opaque + alpha) and
 `--collapse one` (one group, alpha faces turn solid) stay selectable. Draws of
 one coarse record by rule (measured, `materials_<body>.txt`, current alpha rule):
 
@@ -639,7 +661,11 @@ What is dropped:
   - `atlas_mip_bleed.py` compares the atlas against its own definition of the correct
     level (the tiles' maps resampled per level texel), which is the definition the new
     chain implements. It skips texels covered by two footprints.
-- The alpha materials' own textures beyond their dominant, as in `two`.
+- The alpha materials' own textures beyond their dominant, as in `two`. Since
+  2026-09-24 this covers only materials whose alpha can drop below 1, that blend
+  other than source-over, that do not write depth or whose occlusion map is not
+  the atlas one; a flagged material with alpha 1 everywhere is atlased as its
+  own tile.
 
 **Source record, `--source-record N` or `NAME=T@N` (2026-09-23).** `C` is built from
 record `N`'s geometry (points, part flags and part ints, groups, 7-int records) instead of
