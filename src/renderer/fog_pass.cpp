@@ -412,7 +412,7 @@ HRESULT FogPass::density_resources() noexcept {
         if(FAILED(hr)){
             // The quarter set draws nowhere without its target: the half-resolution set replaces it below.
             release_quarter();march_scale_unbuildable_=fog_march_scale_quarter;march_scale_unbuildable_reason_="target";
-            density_status_.march_scale_refused="target";density_config_.march_scale=fog_march_scale_default;
+            density_status_.march_scale_refused="target";density_config_.march_scale=fog_march_scale_half;
         } else {quarter_width_=qw;quarter_height_=qh;++allocations_;}
     }
     // The march/repair (and, with `c`, the composite) of one far-bin count at one march spacing (fog-gpu-cost.md steps B and
@@ -437,10 +437,10 @@ HRESULT FogPass::density_resources() noexcept {
         if(ps30_slots_<density_required_slots)return refuse("density_ps30_slots",D3DERR_NOTAVAILABLE);
         const char* why="density_program_create";
         HRESULT hr=make_set(density_config_.far_bins,density_config_.march_scale,&density_march_,&density_repair_,&density_composite_,&why);
-        if(FAILED(hr)&&!lost(hr)&&density_config_.march_scale!=fog_march_scale_default){
+        if(FAILED(hr)&&!lost(hr)&&density_config_.march_scale!=fog_march_scale_half){
             // The quarter-resolution set could not be built: the half-resolution set draws, and 4 stays refused until detach.
             march_scale_unbuildable_=density_config_.march_scale;march_scale_unbuildable_reason_="program";
-            density_status_.march_scale_refused="program";density_config_.march_scale=fog_march_scale_default;
+            density_status_.march_scale_refused="program";density_config_.march_scale=fog_march_scale_half;
             hr=make_set(density_config_.far_bins,density_config_.march_scale,&density_march_,&density_repair_,&density_composite_,&why);
         }
         if(FAILED(hr)&&!lost(hr)&&density_config_.far_bins!=fog_far_bins_default){
@@ -467,7 +467,7 @@ HRESULT FogPass::density_resources() noexcept {
                 // The quarter set has no target (it could not be re-created after a Reset or resize: 4 is refused as "target")
                 // and the half set could not be built now: nothing here can draw. Drop the quarter set so the next prepare
                 // builds the half set from scratch (first creation); 4 stays refused with its own reason.
-                drop(density_march_);drop(density_repair_);drop(density_composite_);density_march_scale_=fog_march_scale_default;
+                drop(density_march_);drop(density_repair_);drop(density_composite_);density_march_scale_=fog_march_scale_half;
             } else if(rescale){march_scale_unbuildable_=density_config_.march_scale;march_scale_unbuildable_reason_="program";density_status_.march_scale_refused="program";density_config_.march_scale=density_march_scale_;}
         } else {
             drop(density_march_);drop(density_repair_);density_march_=march;density_repair_=repair;density_far_bins_=density_config_.far_bins;
@@ -720,8 +720,8 @@ HRESULT FogPass::prepare_density(const FogDensityConfig& config,const double cam
         const char* why=nullptr;
         if(config.march_scale==fog_march_scale_quarter){
             march_scale_shadow_clamp_=march_scale_shadow_clamp_||config.shadow_pass;
-            if(march_scale_shadow_clamp_){why="shadow_pass";density_config_.march_scale=fog_march_scale_default;}
-            else if(march_scale_unbuildable_==fog_march_scale_quarter){why=march_scale_unbuildable_reason_;density_config_.march_scale=fog_march_scale_default;}
+            if(march_scale_shadow_clamp_){why="shadow_pass";density_config_.march_scale=fog_march_scale_half;}
+            else if(march_scale_unbuildable_==fog_march_scale_quarter){why=march_scale_unbuildable_reason_;density_config_.march_scale=fog_march_scale_half;}
         }
         density_status_.march_scale_refused=why;
     }

@@ -3,7 +3,8 @@
 Question: how to cut the GPU cost of the stored-density fog route without changing the accepted look
 (L2 law, density scale 1.0x, 22.5 km fade, dust motes 1300,3 / MAX_PX 8, shadow pass off). Plan for
 ratification; steps A, B and C are implemented (sections "Step A implemented", "Step B implemented", "Step C
-implemented"); B and C are runtime variants, off by default, awaiting a flight. [M] measured, [I] inferred.
+implemented"); B is a runtime variant, off by default; C (march spacing 4) is the default since Run 77 C2 and 2 the
+opt-out (section "Step C default flip"). [M] measured, [I] inferred.
 
 Measured (Run 73 C, run274, `--gpu-sync-timing`, stand window W4, 300 frames all `reason=ok`,
 `verification/results/run274-gpu-sync/windows.txt`): `fog_route` 4.43 ms median / 5.15 p90, W5-W6
@@ -491,7 +492,8 @@ a fixed softening of fog detail near silhouettes and at cloud edges, not noise [
 - Look check in both launches: station hulls, struts and cables against fog and fogged sky (the measured worst case is
   sky pixels beside thin features), and cloud and shaft edges while turning (softer detail, 4x coarser lookup cells).
 - Accept when the user sees no difference at the stand and while turning, and `fog_march` drops by at least 2 ms. The
-  default then flips in a later candidate, with the accepted-look hashes re-pinned.
+  default then flips in a later candidate, with the accepted-look hashes re-pinned. Done: the default is 4 since Run 77 C2
+  (section "Step C default flip").
 
 ## Run 77 C (run289 scale 2, run290 scale 4; 2026-09-24): step C at 5120x1440, the rings
 
@@ -514,4 +516,64 @@ at 4x4-px cells, not the density upsample; the repair pass cannot reach open sky
 first, but 4 px exceeds the 3x3 clamp), scale 3 / a 4x2 target (refused by the `#error` today, ~4.0-4.5 ms), a
 bicubic or bilateral upsample (targets seams that were not found). Decision: scale 2 stays the default; Run 77 C2
 (scale 4 with and without the jitter, `--taa-debug`) decides between decoupling the noise cell from the march cell
-(key the shaft noise per 2-px or per pixel inside the scale-4 march) and a scale-3 variant.
+(key the shaft noise per 2-px or per pixel inside the scale-4 march) and a scale-3 variant. Superseded by Run 77 C2: the
+user accepted the scale-4 look and the default flipped (next section).
+
+## Step C default flip (2026-09-24): march spacing 4 is the default
+
+Decision: the user accepted the scale-4 look at 5120x1440 in Run 77 C2, after Run 77 C measured `fog_march` 8.99 -> 2.68 ms
+(-6.3 ms) and `fog_route` 13.59 -> 7.21 ms there (serialised dt 45.9 -> 39.0 ms). Spacing 4 is the default; 2 stays as the
+opt-out. Uncommitted worktree on c45c5dc0, not installed. Ledger: [volumetric-fog.md](../verification/volumetric-fog.md),
+same date. [M] measured, [I] inferred.
+
+What changed:
+
+- `fog_look_math.h`: `fog_march_scale_default` is `fog_march_scale_quarter` (4); the new `fog_march_scale_half` (2) is
+  what every refusal of 4 falls back to (shadow pass, programs, target). `FogDensityConfig::march_scale` defaults to 4.
+  No program changed; the shader records are untouched.
+- DLL (`capture.cpp`, stored range only): absent, `4` or an invalid value draw 4; exactly `2` draws 2. The shadow pass
+  clamps 4 to 2 and logs `volumetric_fog_march_scale scale=2 requested=4 refused=shadow_pass`, also when the variable is
+  absent. An invalid value now keeps the default 4, not 2.
+- Launcher: `X3M_FOG_MARCH_SCALE` is always written: the given value, else 4. With `--fog-shadow-pass on` and no value the
+  launcher writes 2 and prints one line, `fog march scale: 2 (the default 4 is clamped to 2: --fog-shadow-pass on keeps
+  spacing 2)`. An explicit 4 still needs the stored range and is still refused with the shadow pass. The default is also
+  written under the legacy range, which never reads it.
+- FogPass fixture: its base frames stay at spacing 2 (the CPU twin, the grid and the shared machinery), set explicitly.
+  The new check `march_scale_default_is_quarter` pins the config default, and the quarter section sets 4 explicitly.
+
+Fog fixture regroup (`fog_density_shader_run.py`): 44 gates before, 52 after.
+
+- Default set: the 25 spacing-independent gates (parity, the grid, motes, the pass fixture, slots), and the default
+  look against the scale-4 reference (`--scale4-reference`, now required):
+  - `look_cases`, `look_shaft_offset_exercised`, `look_shadowed_coloured`, `repair_shaft_lookup`;
+  - `pass_off_bit_identical`, re-pinned to the 11 scale-4 look hashes;
+  - `q4_programs`, `q4_moves_the_look`, `q4_pass_fixture` (record `q4.json`);
+  - `far24_*` (7): far24 at spacing 4, against the new reference `/tmp/x3-fog-ref-far24-scale4`
+    (`--far24-scale4-reference`, reference_sha256 `c4a023d6067b…`, cases `9f3df2cb5643…`; record `far24.json`).
+- Scale-2 variant `s2_*` (12, record `s2.json`): the former default look against `/tmp/x3-run67-fog-ref`, with its
+  11 accepted-look hashes as `s2_pass_off_bit_identical`, and far24 at spacing 2 as `s2_far24_*` against
+  `/tmp/x3-run76-fog-ref-far24`.
+- The shader fixture takes a fourth cases file, far=24 scale=4. It draws those cases with the `*_look_far24_q4` programs,
+  plus the look repair split with them (`REPAIR_SHAFTS_FAR24_Q4`).
+
+Result [M] (bottle X3, `wine_lock.py`, shader child 72 s, pass child 64 s): PASS 52/52. Details:
+
+- Records against the parent commit's
+  ([step_c_default_flip_identity_out.txt](../../verification/results/fog-gpu-cost/step_c_default_flip_identity_out.txt)):
+  - the s2 look and repair equal the old default's figure for figure (153 + 13 leaves);
+  - the default look and repair equal the old q4 record's (153 + 13);
+  - the s2 far24 equals the old far24.json (359 leaves);
+  - parity and grid are unchanged (48 + 105);
+  - the s2 hashes equal the old pins (scale-2 frames byte-identical);
+  - every one of the 44 old gates has a passing successor.
+- far24 at spacing 4:
+  - look T max .00083, S max .00050;
+  - repair .00049 from its host law and .0090 from the offset law;
+  - the offset lookup moves S by .0070 on 33 rays;
+  - GPU T moves up to .030 from the 40-bin spacing-4 look.
+- Pass fixture 178 checks (177 + 1); shader fixture 46 checks.
+- The spacing-4 look leaves 10 of 2,304 rays out at a noise wrap (4 of 576 at spacing 2). The host test allows 1 % per
+  case.
+
+Not changed: the programs, the route bridge fixture (its harness takes the `FogDensityConfig` default, now 4, and was not
+re-run here), the in-game look (the user's C2 acceptance is the evidence).

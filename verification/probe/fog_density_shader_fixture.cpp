@@ -316,19 +316,22 @@ std::vector<Case> read_cases(const std::string& cases_file,float& sigma,float ch
 // programs into <case>.far24_<variant>.f32, plus the look repair split with those programs (repair_shafts_far24.full.f32);
 // the step C reference's cases, every one scale=4, drawn with the quarter-resolution programs into a 64x36 target as
 // <case>.q4_<variant>.f32, the look repair split at spacing 4 (repair_shafts_q4.full.f32) and the depth-edge chain at
-// both spacings (edge.*.f32, fog-gpu-cost.md step C).
+// both spacings (edge.*.f32, fog-gpu-cost.md step C); the default look's far-bins variant, every case far=24 scale=4 (the
+// default spacing since Run 77 C2), drawn with the far24 quarter-resolution programs into <case>.far24_q4_<variant>.f32 and
+// the look repair split with them (repair_shafts_far24_q4.full.f32).
 void run(const std::string& cases_file,const std::string& out,const std::vector<std::string>& variant_files){
     Fixture fx;std::vector<Case> cases=read_cases(cases_file,fx.sigma,fx.chroma);
     if(cases.empty()||!(fx.sigma>0))throw std::runtime_error("no cases");
     for(const Case& c:cases)if(c.far24||c.scale!=2)throw std::runtime_error("variant case in the default cases file: "+c.name);
-    bool variant=false,variant_q4=false;
+    bool variant=false,variant_q4=false,variant_far24_q4=false;
     for(const std::string& variant_file:variant_files){
         float sigma=0,chroma[3]{};std::vector<Case> extra=read_cases(variant_file,sigma,chroma);
         if(sigma!=fx.sigma||chroma[0]!=fx.chroma[0]||chroma[1]!=fx.chroma[1]||chroma[2]!=fx.chroma[2])throw std::runtime_error("variant cases: another family");
         if(extra.empty())continue;
         const bool q4=extra.front().scale==4,far24=extra.front().far24;
         for(const Case& c:extra)if((c.scale==4)!=q4||c.far24!=far24||(!q4&&!far24))throw std::runtime_error("variant file mixes variants: "+c.name);
-        if(q4){if(variant_q4)throw std::runtime_error("two scale=4 files");variant_q4=true;}
+        if(q4&&far24){if(variant_far24_q4)throw std::runtime_error("two far=24 scale=4 files");variant_far24_q4=true;}
+        else if(q4){if(variant_q4)throw std::runtime_error("two scale=4 files");variant_q4=true;}
         else{if(variant)throw std::runtime_error("two far=24 files");variant=true;}
         cases.insert(cases.end(),extra.begin(),extra.end());
     }
@@ -433,6 +436,7 @@ void run(const std::string& cases_file,const std::string& out,const std::vector<
         std::vector<Split> splits{Split{false,0,"",false,false,false},Split{true,0,"_look",false,false,false},Split{true,2,"_look_shafts",false,false,false},Split{true,2,"_grid_shafts",true,false,false}};
         if(variant)splits.push_back(Split{true,2,"_look_shafts_far24",false,true,false});
         if(variant_q4)splits.push_back(Split{true,2,"_look_shafts_q4",false,false,true});
+        if(variant_far24_q4)splits.push_back(Split{true,2,"_look_shafts_far24_q4",false,true,true});
         for(const Split& split:splits){
         const bool look=split.look,grid=split.grid,far24=split.far24,q4=split.q4;c.look=look;c.grid=grid;c.far24=far24;c.shadow=split.shadow;c.phase=split.shadow?5u:0u;c.span=24000.f;c.map=1024.f;const std::string tag=split.tag;
         IDirect3DTexture9* const st_texture=q4?st16q.p:st16.p;IDirect3DSurface9* const st_surface=q4?st16qs.p:st16s.p;
@@ -456,7 +460,7 @@ void run(const std::string& cases_file,const std::string& out,const std::vector<
         // With shafts the host checker owns parity too (image repair_shafts.full). The march below checks the repair
         // program's bin-centre lookup, which is the march's unresolved constants (c32.zw = 0).
         if(split.shadow){
-            write(repaired,out+(grid?"\\repair_grid_shafts.full.f32":far24?"\\repair_shafts_far24.full.f32":q4?"\\repair_shafts_q4.full.f32":"\\repair_shafts.full.f32"));
+            write(repaired,out+(grid?"\\repair_grid_shafts.full.f32":far24&&q4?"\\repair_shafts_far24_q4.full.f32":far24?"\\repair_shafts_far24.full.f32":q4?"\\repair_shafts_q4.full.f32":"\\repair_shafts.full.f32"));
             Case held=c;held.resolved=false;float kh[kRows][4];if(q4)fx.constants(held,qw,qh,kh,4);else fx.constants(held,hw,hh,kh);std::memcpy(full[x3m::renderer::fog_look_first_register+7],kh[x3m::renderer::fog_look_first_register+7],16);
         }
         check(device->BeginScene(),"begin");fx.state(false);if(grid)grid_filter(true);fx.draw(full_surface.p,fx.march_for(look,grid,far24),full);check(device->EndScene(),"end");const auto st=readback(device.p,full_surface.p);
@@ -470,7 +474,7 @@ void run(const std::string& cases_file,const std::string& out,const std::vector<
             for(int j=0;j<3;++j){const double T=look?std::pow(double(s[3]),double(k[x3m::renderer::fog_look_first_register+8][j])):double(s[3]);const double expect=has_fog?double(half_to_float(colour[j]))*T+s[j]:half_to_float(colour[j]);worst=std::max(worst,std::fabs(expect-b[j]));}
         }
         if(grid)std::printf("REPAIR_GRID_SHAFTS odd_pixels=%u fogged=%u changed=%u worst_vs_full_res_grid_march=%.9g\n",w/2*h,fogged,changed,worst);
-        else if(split.shadow)std::printf("REPAIR_SHAFTS%s odd_pixels=%u fogged=%u changed=%u worst_vs_bin_centre_march=%.9g\n",far24?"_FAR24":q4?"_Q4":"",w/2*h,fogged,changed,worst);
+        else if(split.shadow)std::printf("REPAIR_SHAFTS%s odd_pixels=%u fogged=%u changed=%u worst_vs_bin_centre_march=%.9g\n",far24&&q4?"_FAR24_Q4":far24?"_FAR24":q4?"_Q4":"",w/2*h,fogged,changed,worst);
         else std::printf("REPAIR%s odd_pixels=%u fogged=%u changed=%u worst_vs_full_march=%.9g\n",look?"_LOOK":"",w/2*h,fogged,changed,worst);
         require(even_kept,("repair_leaves_compatible_pixels_bit_identical"+tag).c_str());require(odd_composite_scene,("composite_keeps_scene_on_zero_weight"+tag).c_str());
         require(alpha,("source_alpha_exact"+tag).c_str());
@@ -596,6 +600,6 @@ void run(const std::string& cases_file,const std::string& out,const std::vector<
 }
 }
 int main(int argc,char** argv){
-    if(argc<3||argc>5){std::printf("usage: fog_density_shader_fixture cases.txt output-directory [far24-cases.txt] [scale4-cases.txt]\n");return 2;}
+    if(argc<3||argc>6){std::printf("usage: fog_density_shader_fixture cases.txt output-directory [far24-cases.txt] [scale4-cases.txt] [far24-scale4-cases.txt]\n");return 2;}
     try{run(argv[1],argv[2],std::vector<std::string>(argv+3,argv+argc));return 0;}catch(const std::exception& e){std::printf("RESULT FAIL %s\n",e.what());return 1;}
 }

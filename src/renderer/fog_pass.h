@@ -52,9 +52,9 @@ struct FogDensityConfig {
     // (its grid programs have no 24-bin variant, so grid and toggled-off frames must agree), when look.sky_cap exceeds
     // fog_far_bins_coarse_cap_max, or when its programs could not be built; the launcher refuses the first two as well.
     unsigned far_bins=fog_far_bins_default;
-    // X3M_FOG_MARCH_SCALE (docs/architecture/fog-gpu-cost.md, step C; launcher --fog-march-scale, default 2): the look's march
-    // spacing in full pixels, 2 (the accepted half-resolution march) or 4 (a quarter-resolution march target, composite and
-    // repair reading their samples 4 px apart). prepare_density refuses any other value; the march/repair/composite of the
+    // X3M_FOG_MARCH_SCALE (docs/architecture/fog-gpu-cost.md, step C; launcher --fog-march-scale, default 4 since Run 77 C2):
+    // the look's march spacing in full pixels, 4 (the default: a quarter-resolution march target, composite and repair reading
+    // their samples 4 px apart) or 2 (the half-resolution march, the opt-out). prepare_density refuses any other value; the march/repair/composite of the
     // requested (far_bins, march_scale) and the quarter target are created there, never on a draw path. 4 falls back to 2
     // (FogDensityStatus::march_scale_refused) when the shadow pass was ever requested on this attachment (its grid programs
     // exist at spacing 2 only), or when its programs or its target could not be built; the launcher refuses the first too.

@@ -181,18 +181,27 @@ class FogDensityShaders(unittest.TestCase):
         self.assertNotIn('design_section5_S_gates', s)
         for gate in ('dense64_S', 'candidate_S', 'production_rgba16f_candidate', 'production_rgba16f_dense64', 'production_rgba16f_temporal', 'pass_fixture_passed'):
             self.assertIs(s['gates'][gate], True, gate)
-        # The look: every case's GPU (S,T) against the host look_march inside the same gates, the fully
-        # shadowed sample coloured, and the production pass drawing it.
-        for gate in ('look_cases', 'look_shaft_offset_exercised', 'repair_shaft_lookup', 'look_shadowed_coloured', 'march_loops_kept', 'slots_below_512'):
+        # The look: every case's GPU (S,T) against the host look_march inside the same gates, the fully shadowed sample
+        # coloured, and the production pass drawing it. The default is the quarter-resolution march (fog-gpu-cost.md step C,
+        # default since Run 77 C2): its look and repair split against the scale-4 reference, its images pinned.
+        self.assertEqual(s['schema'], 3); self.assertEqual(s['default_march_scale'], 4)
+        self.assertEqual((s['look_reference']['march_scale'], s['look_reference'].get('far_bins', 40)), (4, 40))
+        self.assertNotIn('march_scale', s['reference'])  # the base reference: scale 2, 40 far bins
+        for gate in ('look_cases', 'look_shaft_offset_exercised', 'repair_shaft_lookup', 'look_shadowed_coloured', 'pass_off_bit_identical', 'march_loops_kept', 'slots_below_512'):
             self.assertIs(s['gates'][gate], True, gate)
         self.assertNotIn('look0_shadowed_black', s['gates'])
+        hashes = s['visibility_grid']['pass_off_hashes']
+        self.assertEqual(hashes['measured'], hashes['expected']); self.assertEqual(len(hashes['expected']), 11)
+        self.assertTrue(all('q4_' in k or k == 'repair_shafts_q4.full' for k in hashes['expected']))
         looks = s['look_versus_host']
         self.assertEqual(sorted(looks), ['A_look_depth3', 'A_look_depth90000', 'A_look_shadowed', 'A_look_sky', 'A_look_stripes', 'A_look_stripes_held', 'B_look_sky'])
-        for label, row in looks.items():
-            self.assertGreater(row['fogged'], 50, label); self.assertLessEqual(row['left_out_near_noise_wrap'], 6, label)
+        for label, row in looks.items():  # the quarter grid has 64x36 rays per case: at most 1 % sit at a noise wrap
+            self.assertGreater(row['fogged'], 50, label)
+            self.assertLessEqual(row['left_out_near_noise_wrap'], max(6, (row['compared'] + row['left_out_near_noise_wrap']) // 100), label)
             for variant in ('bilinear32', 'bilinear16'):
                 self.assertLessEqual(row[variant]['T']['max'], .003, label); self.assertLessEqual(row[variant]['S']['max'], .003, label)
         self.assertGreater(looks['A_look_shadowed']['shadowed_min_S'], 0)
+        self.assertLessEqual(s['repair_with_shafts']['versus_host']['max'], .003); self.assertGreater(s['repair_with_shafts']['other_law']['max'], .006)
         p = s['pass_fixture']
         self.assertGreaterEqual(p['checks'], 57); self.assertEqual(p['failed'], [])
         self.assertGreaterEqual(p['state_restorations'], 100)
@@ -202,34 +211,45 @@ class FogDensityShaders(unittest.TestCase):
         self.assertEqual(p['fill']['nodes'], 2 * 128 ** 3)
         self.assertEqual(p['reset_reupload']['regenerated_nodes'], 0)
         self.assertGreater(p['repair']['half_pixel_shift_control'], 3 * p['repair']['worst_vs_cpu'])
-        # Step B (fog-gpu-cost.md): the 24-far-bin variant's record beside the summary, which stays under 50 KB.
+        # Each set's record beside the summary, which stays under 50 KB and carries every gate: 25 spacing-independent,
+        # 5 default look, 3 q4, 7 far24 (default spacing), 12 s2 (the scale-2 opt-out: 5 look, 7 far24) = 52.
         self.assertLess((ROOT / 'verification/results/fog-density-shader/summary.json').stat().st_size, 50_000)
-        self.assertEqual(s['far_bins_variant_file'], 'far24.json')
-        f = json.loads((ROOT / 'verification/results/fog-density-shader/far24.json').read_text())
-        self.assertEqual(f['result'], 'PASS'); self.assertEqual(f['bottle']['name'], 'X3')
-        self.assertEqual(f['gates'], {k: v for k, v in s['gates'].items() if k.startswith('far24_')}); self.assertEqual(len(f['gates']), 7)
-        self.assertEqual(f['reference']['far_bins'], 24)
+        self.assertEqual((s['far_bins_variant_file'], s['march_scale_record_file'], s['scale2_variant_file']), ('far24.json', 'q4.json', 's2.json'))
+        self.assertGreaterEqual(len(s['gates']), 52)
+        records = {}
+        for name, prefix, count in (('far24.json', 'far24_', 7), ('q4.json', 'q4_', 3), ('s2.json', 's2_', 12)):
+            r = records[name] = json.loads((ROOT / 'verification/results/fog-density-shader' / name).read_text())
+            self.assertEqual(r['result'], 'PASS', name); self.assertEqual(r['bottle']['name'], 'X3', name)
+            self.assertEqual(r['gates'], {k: v for k, v in s['gates'].items() if k.startswith(prefix)}, name); self.assertEqual(len(r['gates']), count, name)
+        # Step B at the default spacing: the 24-far-bin look marched at spacing 4 against its own reference.
+        f = records['far24.json']
+        self.assertEqual((f['march_scale'], f['reference']['far_bins'], f['reference']['march_scale']), (4, 24, 4))
         self.assertEqual(sorted(f['deviation_from_40_bins']), sorted(looks))
         for label, row in f['look_versus_host'].items():
             for variant in ('bilinear32', 'bilinear16'):
                 self.assertLessEqual(row[variant]['T']['max'], .003, label); self.assertLessEqual(row[variant]['S']['max'], .003, label)
         self.assertGreaterEqual(len(f['pass_fixture_checks']), 16); self.assertTrue(all(v == 'PASS' for v in f['pass_fixture_checks'].values()))
-        # Step C: the quarter-resolution variant's record, its 7 gates in both files, its reference pinned by march_scale.
-        self.assertEqual(s['march_scale_variant_file'], 'q4.json')
-        q = json.loads((ROOT / 'verification/results/fog-density-shader/q4.json').read_text())
-        self.assertEqual(q['result'], 'PASS'); self.assertEqual(q['bottle']['name'], 'X3')
-        self.assertEqual(q['gates'], {k: v for k, v in s['gates'].items() if k.startswith('q4_')}); self.assertEqual(len(q['gates']), 7)
+        # Step C, the spacing: how far 4 moves the image from 2, the depth-edge chain, the quarter programs and pass checks.
+        q = records['q4.json']
         self.assertEqual((q['reference']['march_scale'], q['reference']['far_bins']), (4, 40))
         self.assertEqual(sorted(q['deviation_from_scale_2']), sorted(looks))
-        for label, row in q['look_versus_host'].items():
-            for variant in ('bilinear32', 'bilinear16'):
-                self.assertLessEqual(row[variant]['T']['max'], .003, label); self.assertLessEqual(row[variant]['S']['max'], .003, label)
         e = q['depth_edges']
         self.assertGreater(e['needs_repair']['4'], e['needs_repair']['2']); self.assertLessEqual(e['repaired_gpu']['4'], e['needs_repair']['4'])
         self.assertGreaterEqual(len(q['pass_fixture_checks']), 10); self.assertTrue(all(v == 'PASS' for v in q['pass_fixture_checks'].values()))
+        self.assertEqual(q['pass_fixture_checks']['march_scale_default_is_quarter'], 'PASS')
         for name in slots.Q4_PROGRAMS:
             self.assertEqual(s['shaders'][name.replace('_', '-')]['slots'], q['programs'][name.replace('_', '-')]['slots'])
-
+        # The scale-2 opt-out: the former default look, byte for byte (its 11 accepted-look hashes), and its far-bins variant.
+        o = records['s2.json']
+        self.assertEqual(o['march_scale'], 2); self.assertNotIn('march_scale', o['reference'])
+        self.assertEqual(sorted(o['look_versus_host']), sorted(looks))
+        self.assertEqual(o['pass_off_hashes']['measured'], o['pass_off_hashes']['expected']); self.assertEqual(len(o['pass_off_hashes']['expected']), 11)
+        self.assertEqual(o['pass_off_hashes']['expected']['repair_shafts.full'], '88d6d32842e0a067')
+        for label, row in o['look_versus_host'].items():
+            for variant in ('bilinear32', 'bilinear16'):
+                self.assertLessEqual(row[variant]['T']['max'], .003, label); self.assertLessEqual(row[variant]['S']['max'], .003, label)
+        self.assertEqual((o['far24']['march_scale'], o['far24']['reference']['far_bins']), (2, 24)); self.assertNotIn('march_scale', o['far24']['reference'])
+        self.assertEqual(sorted(o['far24']['deviation_from_40_bins']), sorted(looks))
 
 if __name__ == '__main__':
     unittest.main()

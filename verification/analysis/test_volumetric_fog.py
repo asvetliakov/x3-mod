@@ -350,14 +350,17 @@ class FogLauncherTests(unittest.TestCase):
             self.assertIn('#include "fog_density_%s_look_far24_program_inc.h"' % name, fog_pass)
 
     def test_march_scale_option(self):
-        # --fog-march-scale {2,4} -> X3M_FOG_MARCH_SCALE (fog-gpu-cost.md step C), default 2 (the accepted half-resolution march),
-        # 4 only with the stored range and never with the shadow pass (its grid programs keep spacing 2); combines with
-        # --fog-far-bins; an inherited value never picks the variant.
+        # --fog-march-scale {2,4} -> X3M_FOG_MARCH_SCALE (fog-gpu-cost.md step C), default 4 since Run 77 C2 (the quarter-resolution
+        # march), 2 the opt-out; the variable is always written. An explicit 4 needs the stored range and never goes with the
+        # shadow pass (its grid programs keep spacing 2), which clamps the default to 2 with one launcher line; combines with
+        # --fog-far-bins; an inherited value never decides it.
         stored = ('--volumetric-fog', '--volumetric-fog-range', 'stored')
         status, output, error = self.launch(*self.BASE, *stored)
-        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MARCH_SCALE": "2"', output)
-        status, output, error = self.launch(*self.BASE, *stored, '--fog-march-scale', '4')
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MARCH_SCALE": "4"', output); self.assertNotIn('fog march scale:', error)
+        status, output, error = self.launch(*self.BASE)
         self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MARCH_SCALE": "4"', output)
+        status, output, error = self.launch(*self.BASE, *stored, '--fog-march-scale', '2')
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MARCH_SCALE": "2"', output)
         status, output, error = self.launch(*self.BASE, *stored, '--fog-march-scale', '4', '--fog-far-bins', '24')
         self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MARCH_SCALE": "4"', output); self.assertIn('"X3M_FOG_FAR_BINS": "24"', output)
         status, output, error = self.launch(*self.BASE, '--volumetric-fog', '--fog-march-scale', '2')
@@ -366,25 +369,35 @@ class FogLauncherTests(unittest.TestCase):
         self.assertEqual(status, 2); self.assertIn('--fog-march-scale 4 requires --volumetric-fog-range stored', error)
         status, _, error = self.launch(*self.BASE, *stored, '--fog-march-scale', '4', '--fog-shadow-pass', 'on')
         self.assertEqual(status, 2); self.assertIn('--fog-march-scale 4 cannot be combined with --fog-shadow-pass on', error)
-        self.assertEqual(self.launch(*self.BASE, *stored, '--fog-march-scale', '3')[0], 2)
-        status, output, error = self.launch(*self.BASE, *stored, environment={'X3M_FOG_MARCH_SCALE': '4'})
+        status, output, error = self.launch(*self.BASE, *stored, '--fog-shadow-pass', 'on')
         self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MARCH_SCALE": "2"', output)
-        # The DLL: exactly "4" under the stored range and without the shadow pass; any other value is echoed as invalid; FogPass
-        # refuses a spacing other than 2/4 at prepare and clamps 4 itself (shadow pass, programs, target).
+        self.assertIn('fog march scale: 2 (the default 4 is clamped to 2: --fog-shadow-pass on keeps spacing 2)', error)
+        self.assertEqual(self.launch(*self.BASE, *stored, '--fog-march-scale', '3')[0], 2)
+        status, output, error = self.launch(*self.BASE, *stored, environment={'X3M_FOG_MARCH_SCALE': '2'})
+        self.assertEqual(status, 0, error); self.assertIn('"X3M_FOG_MARCH_SCALE": "4"', output)
+        # The DLL: absent, "4" or an invalid value draw the default 4 under the stored range, exactly "2" the half-resolution
+        # march; the shadow pass clamps 4 to 2 (refused=shadow_pass). FogPass defaults to 4, refuses a spacing other than 2/4
+        # at prepare and falls back to 2 itself (shadow pass, programs, target).
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
-        self.assertIn('march_scale_asked=!wcscmp(setting,L"4");', capture)
-        self.assertIn('if(!march_scale_asked&&wcscmp(setting,L"2"))march_scale_refusal="invalid";', capture)
-        self.assertIn('if(march_scale_asked&&volumetric_fog_shadow_pass)march_scale_refusal="shadow_pass";', capture)
+        self.assertIn('char march_scale_value[40]="4";', capture)
+        self.assertIn('march_scale_half=!wcscmp(setting,L"2");', capture)
+        self.assertIn('if(!march_scale_half&&wcscmp(setting,L"4"))march_scale_refusal="invalid";', capture)
+        self.assertIn('if(!march_scale_half&&volumetric_fog_shadow_pass&&!std::strcmp(march_scale_refusal,"none"))march_scale_refusal="shadow_pass";', capture)
+        self.assertIn('volumetric_fog_march_scale=march_scale_half||volumetric_fog_shadow_pass?renderer::fog_march_scale_half:renderer::fog_march_scale_quarter;', capture)
         self.assertIn('log("volumetric_fog_march_scale scale=%u requested=%s refused=%s"', capture)
         self.assertIn('hooked.motion_output.configure_volumetric_fog_march_scale(volumetric_fog_march_scale);', capture)
         self.assertIn('needs_px=%u', capture)
         self.assertIn('fog_density_config_.march_scale = scale;', (ROOT / 'src/proxy/motion_output.h').read_text())
+        math = (ROOT / 'src/renderer/fog_look_math.h').read_text()
+        self.assertIn('constexpr unsigned fog_march_scale_half = 2, fog_march_scale_quarter = 4, fog_march_scale_default = fog_march_scale_quarter;', math)
+        self.assertIn('unsigned march_scale=fog_march_scale_default;', (ROOT / 'src/renderer/fog_pass.h').read_text())
         fragment = (ROOT / 'src/proxy/motion_output_fog_inc.h').read_text()
         self.assertIn('log("fog_march_scale_refused device=%llu frame=%llu reason=%s requested=%u drawn=%u"', fragment)
         self.assertIn('far_bins=%u march_scale=%u"', fragment)
         fog_pass = (ROOT / 'src/renderer/fog_pass.cpp').read_text()
         self.assertIn('if(!fog_march_scale_valid(config.march_scale))return E_INVALIDARG;', fog_pass)
         self.assertIn('march_scale_shadow_clamp_=march_scale_shadow_clamp_||config.shadow_pass;', fog_pass)
+        self.assertNotIn('fog_march_scale_default', fog_pass)  # every refusal falls back to fog_march_scale_half
         resources = extract_function(fog_pass, 'HRESULT FogPass::density_resources(')
         # The quarter target before the programs that draw into it; it lives only while they draw.
         self.assertLess(resources.index('if(density_config_.march_scale==fog_march_scale_quarter&&!quarter_&&width_&&height_){'), resources.index('auto make_set='))

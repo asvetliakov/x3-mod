@@ -1,0 +1,14 @@
+old default look (spacing 2) -> s2 look: 153 equal leaves, 0 differ
+old default repair_with_shafts.look -> s2 repair: 13 equal leaves, 0 differ
+old q4 look -> default look: 153 equal leaves, 0 differ
+old q4 repair -> default repair: 13 equal leaves, 0 differ
+old q4 deviation_from_scale_2 -> q4: 63 equal leaves, 0 differ
+old q4 depth_edges -> q4: 160 equal leaves, 0 differ
+old far24 (spacing 2) look -> s2 far24: 153 equal leaves, 0 differ
+old far24 deviation -> s2 far24: 189 equal leaves, 0 differ
+old far24 repair -> s2 far24: 17 equal leaves, 0 differ
+old default versus_host (parity) -> default: 48 equal leaves, 0 differ
+old visibility grid (no hashes) -> default: 105 equal leaves, 0 differ
+s2 pass-off hashes equal the old default pins: True
+gates: old 44, new 52 (52 pass); old gates without a passing successor: []
+new gates without a predecessor: ['far24_look_cases', 'far24_look_shadowed_coloured', 'far24_look_shaft_offset_exercised', 'far24_moves_the_look', 'far24_pass_fixture', 'far24_programs', 'far24_repair_shaft_lookup', 'pass_off_bit_identical']

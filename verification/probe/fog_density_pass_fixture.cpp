@@ -532,7 +532,11 @@ void dust_motes(Device d,const D3DCAPS9& caps,D3DPRESENT_PARAMETERS& pp,const Fo
     require(device_refs()==refs_before,"M_motes_device_refcount_balanced");
 }
 void run(const std::string& cases_file){
-    FogDensityConfig config;config.enabled=true;config.sector_key=0x5ec7;config.recipe=1;
+    // The production default is the quarter-resolution march (fog-gpu-cost.md step C, default since Run 77 C2); this
+    // fixture's base frames stay at spacing 2, the opt-out whose CPU twin, grid and shared machinery the checks below use,
+    // and the quarter section sets 4 explicitly.
+    require(FogDensityConfig{}.march_scale==x3m::renderer::fog_march_scale_quarter,"march_scale_default_is_quarter");
+    FogDensityConfig config;config.enabled=true;config.sector_key=0x5ec7;config.recipe=1;config.march_scale=x3m::renderer::fog_march_scale_half;
     const std::vector<Case> cases=read_cases(cases_file,config);const Case& A=cases[0];
     WNDCLASSA cls{};cls.lpfnWndProc=DefWindowProcA;cls.hInstance=GetModuleHandleA(nullptr);cls.lpszClassName="x3m-fog-density-pass";RegisterClassA(&cls);
     HWND window=CreateWindowA(cls.lpszClassName,"Detached stored-density fog pass",WS_OVERLAPPEDWINDOW,0,0,128,128,nullptr,nullptr,cls.hInstance,nullptr);if(!window)throw std::runtime_error("window");
@@ -1025,7 +1029,7 @@ void run(const std::string& cases_file){
         // The same pass asked for 2: the default march, repair and composite replace the set at prepare, the quarter target
         // goes, and the first instance's frames are drawn byte for byte with the same device calls.
         const unsigned creates_before_swap=pixel_shader_creates;
-        hx.config.march_scale=x3m::renderer::fog_march_scale_default;FogResult r2,r2s;const auto none2=shade(nullptr,r2);const auto scene2=scene_bytes;
+        hx.config.march_scale=x3m::renderer::fog_march_scale_half;FogResult r2,r2s;const auto none2=shade(nullptr,r2);const auto scene2=scene_bytes;
         const bool swapped=pass.density_march_scale()==2u;const auto split2=shade(split_texture.p,r2s);
         require(pixel_shader_creates-creates_before_swap==3u,"q4_swap_creates_the_march_repair_composite_set");
         require(swapped&&none2==off_none&&split2==off_split,"march_scale_2_on_the_same_pass_draws_the_default_frames_byte_identical");
@@ -1055,7 +1059,7 @@ void run(const std::string& cases_file){
         // A quarter set that cannot be built (injected CreatePixelShader failure) while 2 draws: the working set stays, "program"
         // is reported, and 4 is not tried again until detach.
         {
-            hx.config.march_scale=x3m::renderer::fog_march_scale_default;check(hx.prepare(A.cam),"q4 back to 2");
+            hx.config.march_scale=x3m::renderer::fog_march_scale_half;check(hx.prepare(A.cam),"q4 back to 2");
             const unsigned held_references=pass.references();refuse_q4_programs=true;hx.config.march_scale=x3m::renderer::fog_march_scale_quarter;
             FogResult r_fail;const auto failed=shade(nullptr,r_fail);refuse_q4_programs=false;const char* why=pass.density_status().march_scale_refused;
             const unsigned creates=pixel_shader_creates;FogResult r_again;const auto again_bytes=shade(nullptr,r_again);

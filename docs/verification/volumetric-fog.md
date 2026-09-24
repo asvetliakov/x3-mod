@@ -2927,3 +2927,47 @@ implemented". [M] unless marked.
 - Verdict: case C closed at the accepted cold-start trade-off (the user accepted ~1 s on a new game). Open, optional:
   a same-sector reload could keep the previous density cache instead of re-filling (the sector and family are
   unchanged), which would remove the 0.6 s on reloads; not scheduled unless the user asks.
+
+## 2026-09-24: fog route step C default flip: march spacing 4 is the default (uncommitted worktree on c45c5dc0, not installed)
+
+Decision and design: [fog-gpu-cost.md](../architecture/fog-gpu-cost.md), "Step C default flip". The user accepted the
+scale-4 look at 5120x1440 in Run 77 C2; Run 77 C measured `fog_march` 8.99 -> 2.68 ms there. [M] unless marked.
+
+- Default 4 in three places, 2 the opt-out:
+  - FogPass: `FogDensityConfig::march_scale` = `fog_march_scale_default` = 4, and every refusal falls back to
+    `fog_march_scale_half`.
+  - DLL fallback: `X3M_FOG_MARCH_SCALE` absent, `4` or invalid draws 4; exactly `2` draws 2. The shadow pass clamps 4 to 2
+    and logs `refused=shadow_pass`.
+  - Launcher: always writes the value, the given one or 4. Under `--fog-shadow-pass on` with no value it writes 2 and
+    prints one clamp line.
+  - No program changed.
+- Fog fixture (bottle X3, `wine_lock.py`; `build/run/check --reference /tmp/x3-run67-fog-ref --scale4-reference
+  /tmp/x3-run77-fog-ref-scale4 --far24-scale4-reference /tmp/x3-fog-ref-far24-scale4 --variant-reference
+  /tmp/x3-run76-fog-ref-far24`; shader child 72 s, pass child 64 s): PASS 52/52 (44 before).
+  - The default set is the 25 spacing-independent gates, the default look at 4 (5 gates incl. `pass_off_bit_identical`,
+    re-pinned to the 11 scale-4 hashes), the 3 `q4_*` gates, and `far24_*` (7) at spacing 4 against the new reference
+    `/tmp/x3-fog-ref-far24-scale4` (exporter `--far-bins 24 --march-scale 4`, reference_sha256 `c4a023d6067b…`).
+  - The scale-2 variant is `s2_*` (12): the former default look with its 11 hashes, and far24 at 2.
+  - Records: summary.json 36.5 KB, q4.json, far24.json, s2.json (new).
+- Identity against the parent's records
+  ([step_c_default_flip_identity_out.txt](../../verification/results/fog-gpu-cost/step_c_default_flip_identity_out.txt),
+  script beside it):
+  - the s2 look and repair equal the old default's figure for figure (153 + 13 leaves);
+  - the default look and repair equal the old q4.json's (153 + 13);
+  - the s2 far24 equals the old far24.json (359);
+  - parity and grid are unchanged (48 + 105);
+  - the s2 hashes equal the old pins: the scale-2 frames are byte-identical to the former default;
+  - all 44 old gates have a passing successor.
+- far24 at spacing 4: look T max .00083, S max .00050; repair .00049 (offset law .0090); the shaft offset moves S by .0070
+  on 33 rays; the GPU T moves up to .030 from the 40-bin look.
+- Pass fixture: 178 checks, including the new `march_scale_default_is_quarter`; its base frames stay at 2 by explicit
+  config. Shader fixture: 46 checks, including the far24 x q4 repair split.
+- Build and host: scratch MinGW i686 RelWithDebInfo 0 warnings, DLL `7a5f8078…`, `check_no_x87.py` PASS, 673 reachable.
+- Launch dry-runs (`--bottle X3 --dll-source <scratch> --direct --camera chase`):
+  - default: `X3M_FOG_MARCH_SCALE=4`;
+  - `--fog-march-scale 2`: `2`;
+  - stored range with `--fog-shadow-pass on`: `2` plus the clamp line.
+- Tracked outputs: the runner rewrote only the fixture records.
+- Open: the route bridge fixture was not re-run. Its harness takes the `FogDensityConfig` default, now 4. The DLL's
+  `refused=shadow_pass` row for an absent variable is covered by source only; no flight has logged it.
+

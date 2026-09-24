@@ -193,10 +193,11 @@ bool volumetric_fog_shadow_pass = false;
 // grid programs have no 24-bin variant) or a column cap above fog_far_bins_coarse_cap_max keep the accepted 40, and any
 // other value is logged as invalid and keeps 40.
 unsigned volumetric_fog_far_bins = x3m::renderer::fog_far_bins_default;
-// X3M_FOG_MARCH_SCALE=2|4 (docs/architecture/fog-gpu-cost.md, step C; launcher --fog-march-scale, default 2): the stored
-// look's march spacing in full pixels. Exactly "4" selects the quarter-resolution programs; "2", absent, the legacy range or
-// the shadow pass (its grid programs exist at spacing 2 only) keep the accepted half-resolution march, and any other value
-// is logged as invalid and keeps 2.
+// X3M_FOG_MARCH_SCALE=2|4 (docs/architecture/fog-gpu-cost.md, step C; launcher --fog-march-scale, default 4 since Run 77
+// C2): the stored look's march spacing in full pixels. Absent or exactly "4" selects the quarter-resolution programs (the
+// default); exactly "2" keeps the half-resolution march (the opt-out); any other value is logged as invalid and keeps the
+// default. The shadow pass (its grid programs exist at spacing 2 only) clamps 4 to 2, logged as refused=shadow_pass. The
+// legacy range never reads the variable.
 unsigned volumetric_fog_march_scale = x3m::renderer::fog_march_scale_default;
 // X3M_FOG_HANDOVER_STEP / X3M_FOG_HANDOVER_COLDFILL (docs/architecture/fog-handover.md, "Implementation"; launcher
 // --fog-handover-step / --fog-handover-coldfill, default on, exactly "0" is off): the stored range's cold-start
@@ -3482,19 +3483,20 @@ void initialize_log(HMODULE module) {
             !(volumetric_fog_look_tuning.sky_cap<=renderer::fog_far_bins_coarse_cap_max)?"cap":"none";
         if(far_bins_asked&&!std::strcmp(far_bins_refusal,"none"))volumetric_fog_far_bins=renderer::fog_far_bins_coarse;
         log("volumetric_fog_far_bins bins=%u requested=%s refused=%s sky_cap=%g",volumetric_fog_far_bins,far_bins_value,far_bins_refusal,double(volumetric_fog_look_tuning.sky_cap));
-        // X3M_FOG_MARCH_SCALE (step C), echoed the same way: exactly "4" under the stored range and without the shadow pass.
-        char march_scale_value[40]="2";const char* march_scale_refusal="none";bool march_scale_asked=false;
+        // X3M_FOG_MARCH_SCALE (step C), echoed the same way: 4 (absent, "4" or invalid) under the stored range unless the shadow
+        // pass clamps it; exactly "2" is the half-resolution opt-out. The echo of an absent variable is the default, "4".
+        char march_scale_value[40]="4";const char* march_scale_refusal="none";bool march_scale_half=false;
         const DWORD march_scale_length=GetEnvironmentVariableW(L"X3M_FOG_MARCH_SCALE",setting,32);
         if(march_scale_length>=32){std::snprintf(march_scale_value,sizeof march_scale_value,"overlong_%lu",static_cast<unsigned long>(march_scale_length));march_scale_refusal="invalid";}
         else if(march_scale_length>0){
             for(DWORD i=0;i<march_scale_length;++i){const wchar_t c=setting[i];
                 march_scale_value[i]=(c>=L'0'&&c<=L'9')||(c>=L'A'&&c<=L'Z')||(c>=L'a'&&c<=L'z')||c==L'.'||c==L'_'||c==L'+'||c==L'-'?char(c):'?';}
             march_scale_value[march_scale_length]='\0';
-            march_scale_asked=!wcscmp(setting,L"4");
-            if(!march_scale_asked&&wcscmp(setting,L"2"))march_scale_refusal="invalid";
+            march_scale_half=!wcscmp(setting,L"2");
+            if(!march_scale_half&&wcscmp(setting,L"4"))march_scale_refusal="invalid";
         }
-        if(march_scale_asked&&volumetric_fog_shadow_pass)march_scale_refusal="shadow_pass";
-        if(march_scale_asked&&!std::strcmp(march_scale_refusal,"none"))volumetric_fog_march_scale=renderer::fog_march_scale_quarter;
+        if(!march_scale_half&&volumetric_fog_shadow_pass&&!std::strcmp(march_scale_refusal,"none"))march_scale_refusal="shadow_pass";
+        volumetric_fog_march_scale=march_scale_half||volumetric_fog_shadow_pass?renderer::fog_march_scale_half:renderer::fog_march_scale_quarter;
         log("volumetric_fog_march_scale scale=%u requested=%s refused=%s",volumetric_fog_march_scale,march_scale_value,march_scale_refusal);
      }
      // X3M_FOG_DUST_MOTES=N,SIZE,STREAK: the whole string must parse (N 0 or 64..8192, SIZE 2..16, STREAK 0..512), anything
