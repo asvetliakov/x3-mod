@@ -1,0 +1,17 @@
+# terran red tile
+06.x3m-lod.json stations/station_scenes/terran/usc_dock_e_tower: atlas 1024 DXT1 tiles 4 groups 3
+  mats [0] tile 496x216 at 184,8 texels/px 2.01584: OWN terran_platesheet_white_diff.dds 3.27; terran_platesheet_red_diff.dds 159.11; terran_techsheet_diff.dds 145.11; terran_windowsheet_diff.dds 139.90
+  mats [1] tile 160x252 at 8,8 texels/px 2.033305: terran_platesheet_white_diff.dds 159.15; OWN terran_platesheet_red_diff.dds 1.92; terran_techsheet_diff.dds 41.71; terran_windowsheet_diff.dds 42.79
+  mats [3] tile 160x20 at 8,276 texels/px 2.202311: terran_platesheet_white_diff.dds 142.59; terran_platesheet_red_diff.dds 38.55; OWN terran_techsheet_diff.dds 5.73; terran_windowsheet_diff.dds 27.69
+  mats [4] tile 276x140 at 696,8 texels/px 2.032042: terran_platesheet_white_diff.dds 139.71; terran_platesheet_red_diff.dds 40.51; terran_techsheet_diff.dds 31.21; OWN terran_windowsheet_diff.dds 5.44
+# khaak spec/bump
+05.x3m-lod.json: body ships/M6/Khaak_M6Main, atlas slots ['bump', 'diffuse', 'light', 'specular'], size 1024
+tile 0 mats [0] diffuse 01.cat:tex/true/25.jpg: specular same source mean |spec - diff| RGB 0.00; bump other source mean |bump G - f(diff G)| 80.70
+tile 1 mats [1] diffuse 01.cat:tex/true/260.jpg: specular same source mean |spec - diff| RGB 0.00; bump same source mean |bump G - f(diff G)| 2.12
+tile 2 mats [2] diffuse 01.cat:tex/true/36.jpg: specular same source mean |spec - diff| RGB 0.00; bump other source mean |bump G - f(diff G)| 37.90
+tile 3 mats [3] diffuse 01.cat:tex/true/29.jpg: specular same source mean |spec - diff| RGB 0.00; bump other source mean |bump G - f(diff G)| 55.72
+tile 4 mats [4] diffuse 01.cat:dds/metal_argon_simple_plating_diff.pck: specular other source mean |spec - diff| RGB 62.17; bump other source mean |bump G - f(diff G)| 27.70
+tile 5 mats [5] diffuse 01.cat:tex/true/263.jpg: specular same source mean |spec - diff| RGB 0.00; bump same source mean |bump G - f(diff G)| 1.99
+tile 6 mats [6] diffuse 01.cat:dds/60.pck: specular other source mean |spec - diff| RGB 80.35; bump other source mean |bump G - f(diff G)| 38.73
+# all installed Terran bodies: `installed_checks.py usc_ terran_spp` (62 KB, untracked), summarised per tile (OWN value vs the smallest control)
+bodies 54 tiles 231 own closest 231 red tiles 35 red own range 1.81 2.4 min control 30.25

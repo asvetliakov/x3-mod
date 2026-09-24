@@ -1,0 +1,101 @@
+{
+ "installed_at": "2026-09-24T20:15+04:00",
+ "command": "python3 tools/analysis/lod_overlay.py --batch --sync --install --replace --jobs 2",
+ "commit": "776d1c52 on main (clean tree at start 19:27; baker per a3b23069 texture resolver, 38d7d01f-derived texture animation rule, 5aa645e3 alpha rule)",
+ "slots": [
+  "addon/05",
+  "addon/06"
+ ],
+ "display": "1920x1080 (reference width 1800)",
+ "rule": "ships T_class=min(200,max(80,2.5*T_1)), stations 150; aspect k capped 1.5/2.0; texel floor 0.5 area-weighted, share 0.10; light-bleed guard (max 4/255 at L = ceil(log2 texels/px) + 2, repack within 15 % scale loss else kept group); surface-share gate 0.02",
+ "tool_sha256": "a8dde0232597363e06935b17373939e36d6dc0b3eaca4473e6cdb7ee1af340c7",
+ "summary": {
+  "enumerated": "bodies enumerated 2453: other 1322, station 575, ship 556; eligible 620; built 620 + reused 0 = 620 overlay bodies",
+  "refused": "refused by reason (a body counts once per reason): no_opaque 648, non_effect_material 295, texture_animation_unsupported 168, mat3 158, ambiguous_body_ext 47, excluded_effect 32, material_outside_table 16, text_parse_error 6, no_diffuse 5, texel_floor 5, occlusion_mismatch 4, parse_error 1, texture_generated 1",
+  "filtered": "filtered: category_other 343, no_draw_gain 315",
+  "draws": "draws below T_pad per instance, summed over the overlay bodies: 10296 -> 1570 (drawn groups of record 0 -> of C, hidden parts excluded, alpha groups included)",
+  "timing": "timing: census 315.4 s, baking 2529.4 s for 620 bodies with 2 jobs (4.08 s per body wall); extrapolated full set: 2529 s (this run is the full set); total 2844.9 s; wall 2912.6 s (19:27:18-20:15:51, /usr/bin/time real)",
+  "target": "target addon/05.cat + .dat .. addon/06 (2 slots, dat cap 2000000000): addon/05 493 bodies 2465 members 1992076927 B, addon/06 127 bodies 635 members 732092975 B; replaces the previous overlay in addon/05, addon/06",
+  "atlas": "atlas sizes {1024: 571, 2048: 49}; atlas bytes 532.62 MB (stored, gzip DDS); body members 2191.55 MB; dat bytes 2724169902",
+  "previous": "install-fleet2 (611 bodies)",
+  "new_bodies": 9,
+  "note": "full rebake (--sync: tool hash changed); census on main says eligible 625, bake 620 = 625 minus the same 5 bake-time texel_floor refusals (install-fleet2: census 616, bake 611); log buffered until exit (scratchpad bake_fleet3.log, 293 KB, untracked)"
+ },
+ "files": {
+  "addon/05.cat": {
+   "bytes": 133529,
+   "mtime": "2026-09-24T20:14:44",
+   "sha256": "d8c06e161ca80df8bd334c07dc4219514ef84c3e63fdb5f7e942a5b85409bffe"
+  },
+  "addon/05.dat": {
+   "bytes": 1992076927,
+   "mtime": "2026-09-24T20:15:32",
+   "sha256": "7fce90cf8b036fdd6293052e4b1fe9b1e97d449261aa0e585512dabdca91128e"
+  },
+  "addon/05.x3m-lod.json": {
+   "bytes": 12442944,
+   "mtime": "2026-09-24T20:15:33",
+   "sha256": "7e1c8ea9f9ebeb871212589d8122c22b44ecbc51881a0d87886d2b7a51162845"
+  },
+  "addon/06.cat": {
+   "bytes": 37345,
+   "mtime": "2026-09-24T20:15:33",
+   "sha256": "8401d4ab2855de0e6bdc9b2749b0001524290153f200e1a995af7d60256efb0b"
+  },
+  "addon/06.dat": {
+   "bytes": 732092975,
+   "mtime": "2026-09-24T20:15:50",
+   "sha256": "429c3f1679ad61624cd5b86944c5cd2cb208f89a5f3730382a2b1966d4a65a9f"
+  },
+  "addon/06.x3m-lod.json": {
+   "bytes": 2195506,
+   "mtime": "2026-09-24T20:15:51",
+   "sha256": "4ae6e6332cc3579a25e159b322db3450b24e315953412833fb7b1aec400bfd05"
+  }
+ },
+ "hashes_match_markers": true,
+ "exe_sha256_unchanged": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab (before and after)",
+ "original_archives": "34 original archive files unchanged (baker before/after check)",
+ "game_running_at_install": false,
+ "replaces": {
+  "previous_record": "verification/results/lod-overlay-batch/install-fleet2/install.json",
+  "previous_files": {
+   "addon/05.cat": {
+    "bytes": 132458,
+    "mtime": "2026-09-24T04:55:56",
+    "sha256": "0925460ab890ea307846a52a769d757e5234a917a855fb1bb85aaeecbc4ab045"
+   },
+   "addon/05.dat": {
+    "bytes": 1997770805,
+    "mtime": "2026-09-24T04:56:46",
+    "sha256": "123041840dabcd20549590971647f665810b2e92373e443d4ad323a575c69250"
+   },
+   "addon/05.x3m-lod.json": {
+    "bytes": 12337360,
+    "mtime": "2026-09-24T04:56:47",
+    "sha256": "841a48f9fc943ecb41f2861bfa935bbab4c8b2cb9747bbec1ad328b8eb723d9b"
+   },
+   "addon/06.cat": {
+    "bytes": 36034,
+    "mtime": "2026-09-24T04:56:47",
+    "sha256": "e4c11a61b13be81fce63901a3f612bd53a892a4cc59631ae2e4cf87608f272ec"
+   },
+   "addon/06.dat": {
+    "bytes": 715848304,
+    "mtime": "2026-09-24T04:57:05",
+    "sha256": "21a551c4795f17777aea287c3089deac431626c292957c2fa84ce2001e557a85"
+   },
+   "addon/06.x3m-lod.json": {
+    "bytes": 1951176,
+    "mtime": "2026-09-24T04:57:05",
+    "sha256": "81e3c91fbad6a0448d8fa7e5641670f279ce8c0bc68991e0f5cada732dcba2a0"
+   }
+  }
+ },
+ "checks": {
+  "script": "verification/results/lod-overlay-batch/install-fleet3/installed_checks.py",
+  "out": [
+   "verification/results/lod-overlay-batch/install-fleet3/installed_checks_out.txt"
+  ]
+ }
+}

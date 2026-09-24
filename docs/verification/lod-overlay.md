@@ -200,3 +200,13 @@ Bottle X3 read only; scratch bakes under `--out` only; no install, no `--sync`; 
 Open. The coarse draws still bind
 `NONE_OCCL_DECAL` at s5 (previous section; not addressed here). The fix reaches the game only with a full rebake
 (`tool_sha256` changes), which is the user's decision.
+
+## 2026-09-24: fleet rebake installed (install-fleet3)
+
+Full `--sync` rebake at 776d1c52 (the three changes above), installed over install-fleet2 into addon/05 + 06; the
+game was not running (pgrep before, during and after; the baker's guard). Record, bake summary and checks:
+[`install-fleet3/`](../../verification/results/lod-overlay-batch/install-fleet3/install.json).
+
+| check | command | result |
+|---|---|---|
+| rebake + install (measured) | `python3 tools/analysis/lod_overlay.py --batch --sync --install --replace --jobs 2`; `installed_checks.py` (reads installed members by seek) | 48.5 min wall. Eligible/built 611 -> 620 (census 625 minus the same 5 bake-time texel_floor bodies); the 9 new bodies are the 6 from the resolver fix and the 3 toruswreck bodies. Refusal counts as the census predicted: texture_unresolved 44 -> 0, texture_animation_unsupported 168, texture_generated 1, material_outside_table 185 -> 16, no_opaque 651 -> 648. addon/05 493 bodies 1,992,076,927 B, addon/06 127 bodies 732,092,975 B (both below the 2e9 cap and 2^31-1); installed cat/dat sha256 equal to the markers' overlay_sha256; EXE sha256 unchanged. usc_dock_e_tower: 4 tiles, red plate its own tile at 1.92 (controls >= 41.71); 54 installed Terran bodies: 35 red tiles 1.81-2.40 (controls >= 30.25), own source closest on 231/231 tiles. Khaak_M6Main spec = diffuse 0.00 on the 5 same-source tiles, bump 2.12/1.99 on the 2 same-source tiles (matches the scratch bake). Not flown |
