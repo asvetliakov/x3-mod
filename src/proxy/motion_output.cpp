@@ -1602,6 +1602,18 @@ bool MotionOutput::ensure_taa() noexcept {
         taa_call([&] { created = taa_->configure_thin_vote(); });
         if (FAILED(created) || !taa_->thin_vote_available()) log("thin_vote_tests device=%llu unavailable=1 create=%08lx", id_, created);
     }
+    // Thin-region source (X3M_TAA_THIN_REGION_SOURCE): screen and vote need the thin region; vote also the vote (the route's
+    // .a) and a twin program to read it. Anything missing configures both, the default. One row, only when the variable was given.
+    taa_thin_source_configured_ = 0;
+    if (SUCCEEDED(hr) && taa_thin_source_given_) {
+        static const char* const names[3] = {"both", "screen", "vote"};
+        const bool twins = taa_->thin_vote_available();
+        const char* reason = taa_thin_source_ != 0 && taa_thin_weight_ <= 0.f ? "thin_region_off" : taa_thin_source_ == 2 && !thin_vote_upload_ ? "thin_vote_off" :
+            taa_thin_source_ == 2 && !twins ? "program" : "ok";
+        taa_thin_source_configured_ = std::strcmp(reason, "ok") == 0 ? taa_thin_source_ : 0u;
+        log("taa_thin_region_source device=%llu requested=%s configured=%s reason=%s thin_region=%.4f thin_vote=%u twins=%u camera_gate=%u", id_,
+            names[taa_thin_source_], names[taa_thin_source_configured_], reason, double(taa_thin_weight_), unsigned(thin_vote_upload_), unsigned(twins), unsigned(taa_thin_camera_gate_));
+    }
     // Exit reset of the strict sky history (seta-sky-hull-share-decay.md): carried in the age target, so it needs one of the
     // age programs to be in effect on this device (the far stabiliser's rule: one log line, option off otherwise).
     if (SUCCEEDED(hr) && sky_history_exit_px_ > 0.f && !(taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f)) {
@@ -1663,6 +1675,7 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             in.sentinel_strength = taa_sentinel_strength_; in.sentinel_emitter = taa_sentinel_emitter_;
             in.thin_region_hold_frames = jitter_samples_; // A' (camera gate): the hold covers one jitter cycle (2..64)
             in.thin_vote = thin_vote_upload_ && sun_lane_active_; // the vote travels in the lane's .a; the R32F RT2 has none
+            in.thin_region_source = static_cast<renderer::ThinRegionSource>(taa_thin_source_configured_); // both unless configured otherwise
             if ((taa_far_weight_ > 0.f || taa_far_filter_ > 0.f) && camera_scene_.valid)
                 x3::temporal::far_gate(camera_scene_.m00, camera_scene_.m22, camera_scene_.m32, main_.width, taa_far_f0_, taa_far_f1_, in.far_d0, in.far_inv);
             in.current_depth = depth; in.motion = motion;

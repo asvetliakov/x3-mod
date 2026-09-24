@@ -662,6 +662,11 @@ public:
     // TemporalPass::configure_box_resolution(2); full is the pass without the call, bit for bit and log for log.
     // `launcher_default` (X3M_TAA_BOX_RESOLUTION_DEFAULT=1 with half) is logged as default= on the creation row.
     void configure_box_resolution(bool half, bool launcher_default) noexcept { taa_box_half_ = half; taa_box_default_ = half && launcher_default; }
+    // X3M_TAA_THIN_REGION_SOURCE (both|screen|vote as 0|1|2, renderer::ThinRegionSource; docs/architecture/
+    // taa-thin-geometry-alternatives.md section 3.2): what feeds the thin region's flag. Resolved per device at
+    // initialisation (screen and vote need the thin region, vote also the thin vote and its twin programs; anything
+    // missing configures both) and logged there only when given: the default run's log is unchanged line for line.
+    void configure_thin_region_source(unsigned source, bool given) noexcept { taa_thin_source_ = source <= 2 ? source : 0u; taa_thin_source_given_ = given; }
     // X3M_TAA_THIN_VOTE (on|off, DLL default off when the variable is unset; the launcher sends on since Run 81; docs/architecture/taa-thin-geometry-alternatives.md section 3.2): the
     // draw-time thin vote of the thin region. `enabled` is the caller's resolution (requested with the route, TAA, the
     // sun-share lane and the ownership wrapper); it also switched the material transformer
@@ -2379,6 +2384,9 @@ private:
     unsigned taa_history_taps_ = 5;           // X3M_TAA_HISTORY_TAPS: TemporalPass::configure_history_taps (taa-high-resolution.md S3); logged with the fold line
     bool taa_box_half_ = false;               // X3M_TAA_BOX_RESOLUTION=half (S4): requested; the pass decides per run (logged only when requested)
     bool taa_box_default_ = false;            // that half came from the launcher's default (X3M_TAA_BOX_RESOLUTION_DEFAULT=1): default=1 on the creation row
+    unsigned taa_thin_source_ = 0;            // X3M_TAA_THIN_REGION_SOURCE: requested (0 both, 1 screen, 2 vote)
+    bool taa_thin_source_given_ = false;      // the variable was set to a valid value (the configured row is logged)
+    unsigned taa_thin_source_configured_ = 0; // what taa_initialize resolved it to; FrameInputs::thin_region_source
     const char* taa_box_reason_logged_ = nullptr; // the last Diagnostics::box_resolution_reason seen for this attachment
     unsigned taa_box_reason_rows_ = 0;            // changes of that reason: rows for the first 8, one suppressed=1 row at the 9th
     bool taa_alpha_history_ = false;          // X3M_TAA_ALPHA_HISTORY (HDR route only)

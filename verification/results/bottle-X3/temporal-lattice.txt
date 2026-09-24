@@ -29,6 +29,12 @@ CHECK embedded_line_mask_depth within the 2048-slot ceiling PASS
 RESOLVE_BUDGET variant=embedded_line_mask_camera_depth dwords=1002 instruction_slots=241 device_limit=512 headroom=271 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_line_mask_camera_depth within the 2048-slot ceiling PASS
+RESOLVE_BUDGET variant=embedded_line_mask_depth_thin dwords=1583 instruction_slots=435 device_limit=512 headroom=77 within_ceiling_2048=1
+CHECK resolve instruction budget parsed for ps_3_0 PASS
+CHECK embedded_line_mask_depth_thin within the 2048-slot ceiling PASS
+RESOLVE_BUDGET variant=embedded_line_mask_camera_depth_thin dwords=1042 instruction_slots=257 device_limit=512 headroom=255 within_ceiling_2048=1
+CHECK resolve instruction budget parsed for ps_3_0 PASS
+CHECK embedded_line_mask_camera_depth_thin within the 2048-slot ceiling PASS
 RESOLVE_BUDGET variant=embedded_plain_taps16 dwords=1681 instruction_slots=432 device_limit=512 headroom=80 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_plain_taps16 within the 2048-slot ceiling PASS
@@ -1153,12 +1159,12 @@ LINE_CASES
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
-LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.6097 far_stabiliser_ms=0.6513 thin_region_ms=1.2331 far_delta_ms=0.0415 thin_region_delta_ms=0.6234 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.2331 no_region_camera_ms=1.1300 no_region_camera_delta_ms=-0.1031 fragmented_pan_thin_ms=1.1763 fragmented_pan_camera_ms=1.5364 fragmented_pan_camera_delta_ms=0.3602 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.5364 lane_input_law_ms=1.4279 lane_input_lane_ms=1.4619 lane_fetch_delta_ms=0.0340 lane_input_over_r32f_ms=-0.1086 scope=cpu_wall_with_event_query_drain
+LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.7075 far_stabiliser_ms=0.9281 thin_region_ms=1.2796 far_delta_ms=0.2207 thin_region_delta_ms=0.5722 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.2796 no_region_camera_ms=1.1749 no_region_camera_delta_ms=-0.1047 fragmented_pan_thin_ms=1.1286 fragmented_pan_camera_ms=1.5321 fragmented_pan_camera_delta_ms=0.4035 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.5321 lane_input_law_ms=1.4629 lane_input_lane_ms=1.4799 lane_fetch_delta_ms=0.0170 lane_input_over_r32f_ms=-0.0692 scope=cpu_wall_with_event_query_drain
 CHECK sentinel timing: separable box programs created PASS
 CHECK sentinel timing: separable box programs created PASS
-LINE_TIMING_SENTINEL width=1280 height=768 rounds=6 content=all_unrouted_sentinel_pan strength_off_ms=1.0081 strength_on_separable_ms=1.3211 sentinel_delta_ms=0.3129 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_SENTINEL width=1280 height=768 rounds=6 content=all_unrouted_sentinel_pan strength_off_ms=1.1815 strength_on_separable_ms=1.5327 sentinel_delta_ms=0.3512 scope=cpu_wall_with_event_query_drain
 LINE_BASE numerical=190 state_restorations=4
 FAR_CASES
 FAR_GATE ok=1 d0=0.99985647 inv=17734.900 expected_d0=0.99985652 expected_inv=17749.280
@@ -5232,7 +5238,7 @@ CHECK box timing: the configured resolution drew PASS
 CHECK box timing: the configured resolution drew PASS
 CHECK box timing: the configured resolution drew PASS
 CHECK box timing: every TaaBox boundary drained PASS
-BOX_HALF_TIMING width=1280 height=768 rounds=8 content=all_unrouted_sentinel_pan box_full_ms=1.0237 box_half_ms=0.8359 box_delta_ms=-0.1878 run_full_ms=3.1383 run_half_ms=2.9966 scope=cpu_wall_with_event_query_drain_fixture
+BOX_HALF_TIMING width=1280 height=768 rounds=8 content=all_unrouted_sentinel_pan box_full_ms=0.6063 box_half_ms=0.4934 box_delta_ms=-0.1128 run_full_ms=1.9283 run_half_ms=1.7143 scope=cpu_wall_with_event_query_drain_fixture
 CHECK box timing: the configured resolution drew PASS
 CHECK box timing: the configured resolution drew PASS
 CHECK box timing: the configured resolution drew PASS
@@ -5250,5 +5256,136 @@ CHECK box timing: the configured resolution drew PASS
 CHECK box timing: the configured resolution drew PASS
 CHECK box timing: the configured resolution drew PASS
 CHECK box timing: every TaaBox boundary drained PASS
-BOX_HALF_TIMING width=5120 height=1440 rounds=8 content=all_unrouted_sentinel_pan box_full_ms=2.4197 box_half_ms=1.3496 box_delta_ms=-1.0701 run_full_ms=6.5192 run_half_ms=5.2158 scope=cpu_wall_with_event_query_drain_fixture
-RESULT PASS numerical=594 state_restorations=92 lattice=1
+BOX_HALF_TIMING width=5120 height=1440 rounds=8 content=all_unrouted_sentinel_pan box_full_ms=2.5301 box_half_ms=1.3753 box_delta_ms=-1.1548 run_full_ms=6.7256 run_half_ms=5.4501 scope=cpu_wall_with_event_query_drain_fixture
+BOX_HALF_BASE numerical=594 state_restorations=92
+THIN_SOURCE_CASES
+CHECK thin source: both twins created PASS
+CHECK thin source plain run restores the hostile state PASS
+CHECK thin source: a thin-region run publishes the colour, depth, age and mask targets PASS
+CHECK thin source: both twins created PASS
+CHECK thin source run restores the hostile state PASS
+CHECK thin source: a thin-region run publishes the colour, depth, age and mask targets PASS
+THIN_SOURCE gate=camera source=both drawn=both twin=1 reason=vote s_px=40 s_b=0..0 s_keep=0.0000..0.0000 p_px=168 p_b=0..0 p_keep=0.0000..0.0000 u_px=40 u_b=254..254 u_keep=0.9699..0.9699 w_px=32 w_b=254..254 w_keep=0.9699..0.9699 v_px=64 v_b=254..254 v_keep=0.9699..0.9699
+CHECK thin source: each source flags exactly its classes and the resolve keeps 0.97 of their history, none elsewhere PASS
+CHECK thin source: both twins created PASS
+CHECK thin source run restores the hostile state PASS
+CHECK thin source: a thin-region run publishes the colour, depth, age and mask targets PASS
+THIN_SOURCE gate=camera source=screen drawn=screen twin=0 reason=screen_source s_px=40 s_b=0..0 s_keep=0.0000..0.0000 p_px=168 p_b=0..0 p_keep=0.0000..0.0000 u_px=40 u_b=254..254 u_keep=0.9699..0.9699 w_px=32 w_b=254..254 w_keep=0.9699..0.9699 v_px=64 v_b=0..0 v_keep=0.0000..0.0000
+CHECK thin source: each source flags exactly its classes and the resolve keeps 0.97 of their history, none elsewhere PASS
+THIN_SOURCE_IDENTITY gate=camera kind=screen_vs_plain drawn=screen color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+CHECK thin source: screen is the plain run without the vote, byte for byte PASS
+CHECK thin source: both twins created PASS
+CHECK thin source run restores the hostile state PASS
+CHECK thin source: a thin-region run publishes the colour, depth, age and mask targets PASS
+THIN_SOURCE gate=camera source=vote drawn=vote twin=1 reason=vote s_px=40 s_b=0..0 s_keep=0.0000..0.0000 p_px=168 p_b=0..0 p_keep=0.0000..0.0000 u_px=40 u_b=0..0 u_keep=0.0000..0.0000 w_px=32 w_b=254..254 w_keep=0.9699..0.9699 v_px=64 v_b=254..254 v_keep=0.9699..0.9699
+CHECK thin source: each source flags exactly its classes and the resolve keeps 0.97 of their history, none elsewhere PASS
+CHECK thin source: both twins created PASS
+CHECK thin source fallback restores the hostile state PASS
+CHECK thin source: a thin-region run publishes the colour, depth, age and mask targets PASS
+THIN_SOURCE_IDENTITY gate=camera kind=vote_no_input_vs_plain drawn=both reason=not_requested color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+CHECK thin source: vote without its twin is a both run of the plain program, byte for byte PASS
+CHECK thin source: refused twins leave configure_thin_vote failed and no twin PASS
+CHECK thin source fallback restores the hostile state PASS
+CHECK thin source: a thin-region run publishes the colour, depth, age and mask targets PASS
+THIN_SOURCE_IDENTITY gate=camera kind=vote_twin_refused_vs_plain drawn=both reason=no_twin_program color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+CHECK thin source: vote without its twin is a both run of the plain program, byte for byte PASS
+CHECK thin source: both twins created PASS
+CHECK thin source plain run restores the hostile state PASS
+CHECK thin source: a thin-region run publishes the colour, depth, age and mask targets PASS
+CHECK thin source: both twins created PASS
+CHECK thin source run restores the hostile state PASS
+CHECK thin source: a thin-region run publishes the colour, depth, age and mask targets PASS
+THIN_SOURCE gate=screen source=both drawn=both twin=1 reason=vote s_px=40 s_b=0..0 s_keep=0.0000..0.0000 p_px=168 p_b=0..0 p_keep=0.0000..0.0000 u_px=40 u_b=255..255 u_keep=0.9699..0.9699 w_px=32 w_b=255..255 w_keep=0.9699..0.9699 v_px=64 v_b=255..255 v_keep=0.9699..0.9699
+CHECK thin source: each source flags exactly its classes and the resolve keeps 0.97 of their history, none elsewhere PASS
+CHECK thin source: both twins created PASS
+CHECK thin source run restores the hostile state PASS
+CHECK thin source: a thin-region run publishes the colour, depth, age and mask targets PASS
+THIN_SOURCE gate=screen source=screen drawn=screen twin=0 reason=screen_source s_px=40 s_b=0..0 s_keep=0.0000..0.0000 p_px=168 p_b=0..0 p_keep=0.0000..0.0000 u_px=40 u_b=255..255 u_keep=0.9699..0.9699 w_px=32 w_b=255..255 w_keep=0.9699..0.9699 v_px=64 v_b=0..0 v_keep=0.0000..0.0000
+CHECK thin source: each source flags exactly its classes and the resolve keeps 0.97 of their history, none elsewhere PASS
+THIN_SOURCE_IDENTITY gate=screen kind=screen_vs_plain drawn=screen color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+CHECK thin source: screen is the plain run without the vote, byte for byte PASS
+CHECK thin source: both twins created PASS
+CHECK thin source run restores the hostile state PASS
+CHECK thin source: a thin-region run publishes the colour, depth, age and mask targets PASS
+THIN_SOURCE gate=screen source=vote drawn=vote twin=1 reason=vote s_px=40 s_b=0..0 s_keep=0.0000..0.0000 p_px=168 p_b=0..0 p_keep=0.0000..0.0000 u_px=40 u_b=0..0 u_keep=0.0000..0.0000 w_px=32 w_b=255..255 w_keep=0.9699..0.9699 v_px=64 v_b=255..255 v_keep=0.9699..0.9699
+CHECK thin source: each source flags exactly its classes and the resolve keeps 0.97 of their history, none elsewhere PASS
+CHECK thin source: both twins created PASS
+CHECK thin source fallback restores the hostile state PASS
+CHECK thin source: a thin-region run publishes the colour, depth, age and mask targets PASS
+THIN_SOURCE_IDENTITY gate=screen kind=vote_no_input_vs_plain drawn=both reason=not_requested color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+CHECK thin source: vote without its twin is a both run of the plain program, byte for byte PASS
+CHECK thin source: refused twins leave configure_thin_vote failed and no twin PASS
+CHECK thin source fallback restores the hostile state PASS
+CHECK thin source: a thin-region run publishes the colour, depth, age and mask targets PASS
+THIN_SOURCE_IDENTITY gate=screen kind=vote_twin_refused_vs_plain drawn=both reason=no_twin_program color_bytes_differ=0 depth_bytes_differ=0 age_bytes_differ=0 mask_bytes_differ=0
+CHECK thin source: vote without its twin is a both run of the plain program, byte for byte PASS
+CHECK thin source: both twins created PASS
+CHECK thin source invalid restores the hostile state PASS
+THIN_SOURCE_INVALID value=3 hr=80070057 published=0
+CHECK thin source: a source outside the enum refuses the run PASS
+CHECK thin source: both twins created PASS
+CHECK thin source Reset run restores the hostile state PASS
+CHECK thin source: a thin-region run publishes the colour, depth, age and mask targets PASS
+CHECK thin source Reset run restores the hostile state PASS
+CHECK thin source: a thin-region run publishes the colour, depth, age and mask targets PASS
+THIN_SOURCE_RESET drawn_before=vote drawn_after=vote mask_bytes_differ=0
+CHECK thin source: after a Reset the vote-only tests target is drawn again unchanged PASS
+CHECK thin source: both twins created PASS
+CHECK thin source: both twins created PASS
+CHECK thin source: both twins created PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: every TaaMaskTests boundary drained PASS
+THIN_SOURCE_TIMING width=5120 height=1440 rounds=8 content=uniform_panel_unvoted tests_both_ms=1.5270 tests_screen_ms=1.4508 tests_vote_ms=1.3983 tests_vote_minus_both_ms=-0.1286 run_both_ms=4.9505 run_screen_ms=4.8573 run_vote_ms=4.7967 scope=cpu_wall_with_event_query_drain_fixture
+CHECK thin source: both twins created PASS
+CHECK thin source: both twins created PASS
+CHECK thin source: both twins created PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: the configured source drew, folded PASS
+CHECK thin source timing: every TaaMaskTests boundary drained PASS
+THIN_SOURCE_TIMING width=5120 height=1440 rounds=8 content=uniform_sky tests_both_ms=1.4505 tests_screen_ms=1.3984 tests_vote_ms=1.3841 tests_vote_minus_both_ms=-0.0663 run_both_ms=3.2332 run_screen_ms=3.1498 run_vote_ms=3.1356 scope=cpu_wall_with_event_query_drain_fixture
+RESULT PASS numerical=610 state_restorations=107 lattice=1

@@ -786,6 +786,14 @@ CASES += [case(name, 'thinvote', 'ownership', jitter=True, taa=True, hdr=True, h
           for name, (vote, scale, script) in THIN_VOTE_CASES.items()]
 CASES += [case('seam-thin-vote-far-on-owner', 'thinvote', 'ownership', jitter=True, taa=True, hdr=True,
                hdr_env=dict(THIN_VOTE_ENV, X3M_TAA_THIN_VOTE='on', X3M_FIXTURE_THIN_SCALE='far', X3M_FIXTURE_THIN_SCRIPT='plain', X3M_FADE_RT2_OWNER='on'))]
+# X3M_TAA_THIN_REGION_SOURCE (Run 82 A/B; taa-thin-geometry-alternatives.md section 3.2): far-on with the source given, one
+# case per value. both: far-on's mask. screen: the vote still runs (RT2 .a 0, thin_vote_frame voted 1) but the tests draw is
+# the plain program, so the struts (never fragmented) lose their flag and one thin_vote_absent row says screen_source. vote:
+# the struts keep their flag and no unvoted pixel is flagged anywhere (the search is skipped). One configured row each.
+THIN_VOTE_SOURCE_CASES = {f'seam-thin-vote-far-on-source-{source}': source for source in ('both', 'screen', 'vote')}
+CASES += [case(name, 'thinvote', 'ownership', jitter=True, taa=True, hdr=True,
+               hdr_env=dict(THIN_VOTE_ENV, X3M_TAA_THIN_VOTE='on', X3M_FIXTURE_THIN_SCALE='far', X3M_FIXTURE_THIN_SCRIPT='plain', X3M_TAA_THIN_REGION_SOURCE=source))
+          for name, source in THIN_VOTE_SOURCE_CASES.items()]
 CASES += [case('seam-taa-quad-fvf', 'seam', jitter=True, taa=True, hdr_env=dict(X3M_FIXTURE_QUAD_FVF='1')),
           case('seam-taa-copy-draw', 'seam', jitter=True, taa=True, hdr_env=dict(X3M_FIXTURE_STRETCH_FAULT='1')),
           case('seam-msaa', 'msaa', jitter=True, taa=True)]
@@ -3996,6 +4004,28 @@ def thin_vote_dumps(directory, prefix, extension):
     return out
 
 
+THIN_REGION_SOURCES = ('both', 'screen', 'vote')
+
+
+def thin_region_source_rows(trace):
+    """The DLL's taa_thin_region_source rows (motion_output.cpp: one per device, only when X3M_TAA_THIN_REGION_SOURCE was
+    given): requested / configured / reason and the prerequisites the device saw. Malformed rows fail."""
+    rows = []
+    for line in trace.splitlines():
+        if not line.startswith('taa_thin_region_source '):
+            continue
+        row = fields(line)
+        assert row.get('requested') in THIN_REGION_SOURCES and row.get('configured') in THIN_REGION_SOURCES, line
+        assert row.get('reason') in ('ok', 'thin_region_off', 'thin_vote_off', 'program'), line
+        assert (row['reason'] == 'ok') == (row['configured'] == row['requested']), line  # a refusal always configures both
+        assert row['reason'] == 'ok' or row['configured'] == 'both', line
+        for key in ('thin_vote', 'twins', 'camera_gate'):
+            assert row.get(key) in ('0', '1'), line
+        float(row['thin_region'])
+        rows.append(row)
+    return rows
+
+
 def validate_thin_vote(name, text, trace, directory, env):
     """The thinvote script (motion_output_thin_vote_inc.h): RT2 .a per subset from the script's seam readback, the pixel
     ABI's c218, the tests target's b from the DLL's taa_mask dumps classified by the same frame's depth dump, and the
@@ -4004,8 +4034,15 @@ def validate_thin_vote(name, text, trace, directory, env):
     vote = env['X3M_TAA_THIN_VOTE'] == 'on'
     near = env['X3M_FIXTURE_THIN_SCALE'] == 'near'
     hostile = env.get('X3M_FIXTURE_THIN_SCRIPT') == 'hostile'
+    source = env.get('X3M_TAA_THIN_REGION_SOURCE')  # None: not given (the DLL's both, no configured row)
     lines = text.splitlines()
     assert 'THIN PASS' in lines, f'{name}: script did not finish'
+    source_rows = thin_region_source_rows(trace)
+    if source is None:
+        assert not source_rows, (name, source_rows)
+    else:
+        assert [(r['requested'], r['configured'], r['reason'], r['thin_vote'], r['twins'], r['camera_gate']) for r in source_rows] == \
+            [(source, source, 'ok', '1', '1', '1')], (name, source_rows)
     mode = fields([l for l in lines if l.startswith('THIN_MODE ')][0])
     assert mode['vote'] == str(int(vote)) and abs(float(mode['strut_px']) - (5.6 if near else 1.4)) < 1e-3, (name, mode)
     rt2 = {(int(r['step']), r['subset']): r for r in (fields(l) for l in lines if l.startswith('THIN_RT2 '))}
@@ -4064,7 +4101,10 @@ def validate_thin_vote(name, text, trace, directory, env):
         assert len(configured) == 1 and configured[0]['enabled'] == '1' and configured[0]['requested'] == '1', (name, configured)
         assert configured[0]['default'] == ('1' if env.get('X3M_TAA_THIN_VOTE_DEFAULT') == '1' else '0'), (name, configured)
         assert len(modes) == 1 and modes[0]['enabled'] == '1' and modes[0]['lane'] == '1' and modes[0]['cache'] == '1', (name, modes)
-        assert not absent, (name, absent)
+        if source == 'screen':  # the plain tests program by choice: one row naming it, the vote itself runs on
+            assert len(absent) == 1 and fields(absent[0]).get('reason') == 'screen_source' and absent[0].startswith('thin_vote_absent '), (name, absent)
+        else:
+            assert not absent, (name, absent)
         assert len(frames) >= THIN_VOTE_FRAMES, (name, len(frames))
         last = frames[-1]
         # missed splits into its causes on every row; deferred_cap is dropped under its explicit name. The runner sets
@@ -4119,6 +4159,7 @@ def validate_thin_vote(name, text, trace, directory, env):
     if hostile:
         classes.update(U=.245, D=.24, T1=.235)
     mask_report = {}
+    unvoted_flagged = {}  # per frame: flagged tests-target pixels whose lane .a carries no vote (the search's own flags)
     for frame in common:
         lanes = struct.unpack(f'<{size * size * 4}f', depths[frame].read_bytes())
         mask = masks[frame].read_bytes()
@@ -4138,7 +4179,7 @@ def validate_thin_vote(name, text, trace, directory, env):
             if subset == 'T1' and frame == 0:
                 continue
             assert pixels, (name, frame, subset)
-            flagged = vote and expected_alpha(frame, subset) == 0.0
+            flagged = vote and expected_alpha(frame, subset) == 0.0 and source != 'screen'
             if flagged:
                 assert min(blue) >= 254, (name, frame, subset, sorted(set(blue)))
             else:
@@ -4146,7 +4187,15 @@ def validate_thin_vote(name, text, trace, directory, env):
             report[subset] = {'pixels': len(pixels), 'b_min': min(blue), 'b_max': max(blue)}
             checks += 1
         mask_report[frame] = report
+        unvoted_flagged[frame] = sum(1 for p in range(size * size) if mask[p * 4] >= 254 and not (0 <= lanes[p * 4 + 3] < 1 and 0 <= lanes[p * 4] <= 1))
+        if source == 'vote':  # the vote alone: nothing the route did not vote for is flagged, the fill's silhouette corners included
+            assert unvoted_flagged[frame] == 0, (name, frame, unvoted_flagged[frame])
+            checks += 1
+        elif source is not None:  # both / screen: the search's own flags exist (60 per frame measured), so vote's 0 is a removal
+            assert unvoted_flagged[frame] > 0, (name, frame, unvoted_flagged[frame])
+            checks += 1
     return {'passed': True, 'checks': checks, 'vote': vote, 'scale': 'near' if near else 'far', 'script': 'hostile' if hostile else 'plain',
+            'source': source, 'source_rows': source_rows, 'unvoted_flagged': unvoted_flagged,
             'rt2': [rt2[k] for k in sorted(rt2)], 'abi': [abi[k] for k in sorted(abi)],
             'thin_vote_frame_last': frames[-1] if frames else None, 'masks': mask_report,
             'color_hashes': [l.split('hash=')[1] for l in lines if l.startswith('COLOR ')]}

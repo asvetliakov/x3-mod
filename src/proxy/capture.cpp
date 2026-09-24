@@ -299,6 +299,12 @@ bool taa_box_half = false, taa_box_resolution_default = false;
 // X3M_TAA_THIN_VOTE_DEFAULT=1 marks a value the launcher filled in from its default (the configured row's default=1).
 bool taa_thin_vote = false;
 bool taa_thin_vote_given = false, taa_thin_vote_default = false;
+// X3M_TAA_THIN_REGION_SOURCE (both|screen|vote; unset is both, today's mask; forwarded by the launcher only when given;
+// docs/architecture/taa-thin-geometry-alternatives.md section 3.2): what feeds the thin region's flag, 0 both, 1 the
+// screen-space fragmented-depth search alone, 2 the thin vote alone (needs the vote). Invalid or oversized: stays both,
+// logged. motion_output resolves and logs it per device (taa_thin_region_source requested= configured= reason=).
+unsigned taa_thin_region_source = 0;
+bool taa_thin_region_source_given = false;
 // X3M_FADE_RT2_OWNER (on|off; unset is off here, the launcher sends on by default since Run 81;
 // docs/architecture/fade-rt2-ownership.md): every draw the fade-band arm routes owns
 // RT2 (exact depth through the engine's blend) and, under original shading, the arm's pair identity widens to every
@@ -2535,6 +2541,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_sky_history(taa_sky_history_strict,taa_sky_history_band_px,taa_sky_history_exit_px);
     hooked.motion_output.configure_history_taps(taa_history_taps);
     hooked.motion_output.configure_box_resolution(taa_box_half,taa_box_resolution_default);
+    hooked.motion_output.configure_thin_region_source(taa_thin_region_source,taa_thin_region_source_given);
     hooked.motion_output.configure_motion_weight(taa_motion_weight[0],taa_motion_weight[1],taa_motion_weight[2]);
     // Render-state configuration (hybrid unhook): the reasons that keep the
     // SetRenderState/SetSamplerState hooks installed, then the capability
@@ -3660,6 +3667,13 @@ void initialize_log(HMODULE module) {
         else if(!wcscmp(setting,L"off"))taa_thin_vote_given=true;
         else log("taa_thin_vote_setting invalid=1");
         taa_thin_vote_default=taa_thin_vote_given&&GetEnvironmentVariableW(L"X3M_TAA_THIN_VOTE_DEFAULT",setting,32)==1&&setting[0]==L'1';
+    }
+    if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION_SOURCE",setting,32);n>=32)log("taa_thin_region_source_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays both
+    else if(n>0){
+        if(!wcscmp(setting,L"both"))taa_thin_region_source_given=true;
+        else if(!wcscmp(setting,L"screen")){taa_thin_region_source=1;taa_thin_region_source_given=true;}
+        else if(!wcscmp(setting,L"vote")){taa_thin_region_source=2;taa_thin_region_source_given=true;}
+        else log("taa_thin_region_source_setting invalid=1");
     }
     if(const DWORD n=GetEnvironmentVariableW(L"X3M_FADE_RT2_OWNER",setting,32);n>=32)log("fade_rt2_owner_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays off
     else if(n>0){

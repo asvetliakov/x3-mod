@@ -406,7 +406,7 @@ HRESULT TemporalPass::ensure_block() noexcept {
 }
 HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     if(out)*out={};
-    diagnostics_.operation=diagnostics_.restoration=S_OK;diagnostics_.depth_folded=false;diagnostics_.depth_fold_reason="not_run";diagnostics_.history_taps=0;diagnostics_.region_hold=false;diagnostics_.thin_vote=false;diagnostics_.thin_vote_reason="not_run";diagnostics_.box_half=false;diagnostics_.box_resolution_reason="not_run";
+    diagnostics_.operation=diagnostics_.restoration=S_OK;diagnostics_.depth_folded=false;diagnostics_.depth_fold_reason="not_run";diagnostics_.history_taps=0;diagnostics_.region_hold=false;diagnostics_.thin_vote=false;diagnostics_.thin_vote_reason="not_run";diagnostics_.thin_region_source=ThinRegionSource::Both;diagnostics_.box_half=false;diagnostics_.box_resolution_reason="not_run";
     // Phase timing (Diagnostics::ticks_*): QPC pairs only, no device call changes.
     diagnostics_.timed=timing_;
     diagnostics_.ticks_capture=diagnostics_.ticks_copy_color=diagnostics_.ticks_copy_depth=diagnostics_.ticks_draw=diagnostics_.ticks_apply=0;
@@ -432,6 +432,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
         !x3::temporal::valid_far_weight(in.far_weight,in.weight)||!x3::temporal::valid_current_filter(in.far_filter)||!std::isfinite(in.far_d0)||!std::isfinite(in.far_inv)||in.far_inv<0||
         !x3::temporal::valid_far_weight(in.thin_region_weight,in.weight)||!x3::temporal::valid_thin_clip(in.thin_region_relax)||
         (thin_region&&(!std::isfinite(in.thin_region_emissive)||in.thin_region_emissive<0))||
+        (in.thin_region_source!=ThinRegionSource::Both&&in.thin_region_source!=ThinRegionSource::Screen&&in.thin_region_source!=ThinRegionSource::Vote)||
         (far_requested&&(in.thin_clip>0||!x3::temporal::valid_far_speed_gate(in.far_speed_lo,in.far_speed_hi)||!far_available()||in.motion_policy!=MotionPolicy::PerPixel||adaptive))||
         (camera_requested&&(!camera_gate_available()||in.thin_region_hold_frames<1||in.thin_region_hold_frames>64))||
         (camera_requested&&!x3::temporal::valid_thin_clip(in.sentinel_strength))||(sentinel_requested&&(!std::isfinite(in.sentinel_emitter)||in.sentinel_emitter<0||!sentinel_available()))||
@@ -500,11 +501,16 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     // (the box columns, the resolve, the next frame's history) comes after that draw.
     IDirect3DPixelShader9* const plain_fold=depth_draw&&far_on&&mrt_age_&&render_targets_>=2?(camera?line_mask_camera_depth_:line_mask_depth_):nullptr;
     // Thin vote: the twin of the same fold program, on a four-channel depth with the thin region on (the vote sets the flag).
-    IDirect3DPixelShader9* const thin_fold=plain_fold&&in.thin_vote&&thin_live&&depth_format==D3DFMT_A32B32G32R32F?(camera?line_mask_camera_depth_thin_:line_mask_depth_thin_):nullptr;
+    // The Screen source draws the plain program instead: the search alone, the lane's .a unread (the route still casts the vote).
+    const bool screen_source=in.thin_region_source==ThinRegionSource::Screen;
+    IDirect3DPixelShader9* const thin_fold=plain_fold&&in.thin_vote&&thin_live&&!screen_source&&depth_format==D3DFMT_A32B32G32R32F?(camera?line_mask_camera_depth_thin_:line_mask_depth_thin_):nullptr;
     IDirect3DPixelShader9* const fold_program=thin_fold?thin_fold:plain_fold;
     diagnostics_.thin_vote=thin_fold!=nullptr;
-    diagnostics_.thin_vote_reason=thin_fold?"vote":!in.thin_vote?"not_requested":!thin_live?"thin_region_off":!plain_fold?"no_fold":
+    diagnostics_.thin_vote_reason=thin_fold?"vote":!in.thin_vote?"not_requested":!thin_live?"thin_region_off":screen_source?"screen_source":!plain_fold?"no_fold":
         depth_format!=D3DFMT_A32B32G32R32F?"two_channel_depth":"no_twin_program";
+    // The Vote source: the twin skips the search (c10.y = 1 below). Without the twin the run is a Both run (logged by the caller).
+    const bool vote_source=thin_fold&&in.thin_region_source==ThinRegionSource::Vote;
+    diagnostics_.thin_region_source=vote_source?ThinRegionSource::Vote:screen_source&&thin_live&&far_on?ThinRegionSource::Screen:ThinRegionSource::Both;
     const bool fold=fold_program!=nullptr;
     diagnostics_.depth_fold_reason=fold?"lane_mrt":!depth_draw?(in.current_depth?"r32f_depth":"d24_decode"):!far_on?"far_off":!(mrt_age_&&render_targets_>=2)?"mrt_caps":"program";
     hr=ensure_block();if(FAILED(hr))return fail(hr);
@@ -539,7 +545,8 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     // Mask tests draw only (thin-glow-lines.md 8.3 R3): c10.x = E of the emissive vote, uploaded on every mask draw so no
     // stale caller constant can open it; 0 (off, or the thin region off) leaves the mask bit for bit and takes no scene tap.
     const bool emissive_vote=thin_on&&in.thin_region_emissive>0;
-    const float emissive_constants[4]={emissive_vote?in.thin_region_emissive:0.f,0.f,0.f,0.f};
+    // c10.y = 1: the Vote source (read by the thin-vote twins only; the plain programs never declare it).
+    const float emissive_constants[4]={emissive_vote?in.thin_region_emissive:0.f,vote_source?1.f:0.f,0.f,0.f};
     UINT final_mask=1; // which owned mask target the resolve reads
     // A' (the camera-gate program only): c11 = S of the sentinel stabiliser, the far components' scales (the mask's
     // farGate.zw), the hold length in frames.

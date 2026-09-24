@@ -1,0 +1,9 @@
+seam-thin-vote-far-on-source-both: exit=0 checks=61 source=both row=[('both', 'both', 'ok', '1', '1', '1')]
+  strut_b(min,max)={'1': (254, 254), '2': (254, 254), '3': (254, 254), '4': (254, 254), '5': (254, 254)} panel_b_max={'1': 0, '2': 0, '3': 0, '4': 0, '5': 0}
+  unvoted_flagged={'1': 60, '2': 60, '3': 60, '4': 60, '5': 60} voted_last=1 reads=2 measured=2
+seam-thin-vote-far-on-source-screen: exit=0 checks=61 source=screen row=[('screen', 'screen', 'ok', '1', '1', '1')]
+  strut_b(min,max)={'1': (0, 0), '2': (0, 0), '3': (0, 0), '4': (0, 0), '5': (0, 0)} panel_b_max={'1': 0, '2': 0, '3': 0, '4': 0, '5': 0}
+  unvoted_flagged={'1': 60, '2': 60, '3': 60, '4': 60, '5': 60} voted_last=1 reads=2 measured=2
+seam-thin-vote-far-on-source-vote: exit=0 checks=61 source=vote row=[('vote', 'vote', 'ok', '1', '1', '1')]
+  strut_b(min,max)={'1': (254, 254), '2': (254, 254), '3': (254, 254), '4': (254, 254), '5': (254, 254)} panel_b_max={'1': 0, '2': 0, '3': 0, '4': 0, '5': 0}
+  unvoted_flagged={'1': 0, '2': 0, '3': 0, '4': 0, '5': 0} voted_last=1 reads=2 measured=2

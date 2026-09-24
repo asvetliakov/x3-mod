@@ -265,6 +265,11 @@ departures from the text above, each forced by the code or the review:
   (`m00` times the node scale). A subset near the camera on a large station whose origin lies far behind it reads too
   small a scale, so its near panels can vote as thin (a larger region there, clip-off at rest); a non-uniform node scale
   or projection is resolved along x only. No per-triangle depth enters the vote.
+- *Source A/B* (2026-09-24, Run 82): `--taa-thin-region-source both|screen|vote` (`X3M_TAA_THIN_REGION_SOURCE`, default
+  both) feeds the flag from the union, the 7-tap search alone or the vote alone; vote only skips the search inside the
+  tests draw (no mask draw can go: the draw also carries the gates, the far weight, the sentinel class and the folded
+  depth), measured in the fixture at 0.07-0.13 of 1.38-1.53 ms at 5120x1440 (E = 0; the emissive vote still runs under `vote` unless --taa-thin-region-emissive 0)
+  ([ledger](../verification/temporal-resolve.md#2026-09-24-thin-region-source-ab-opt-in-fixture-not-flown)).
 
 ### 3.3 C: half-resolution mask and box (S4 / S5), the baseline
 

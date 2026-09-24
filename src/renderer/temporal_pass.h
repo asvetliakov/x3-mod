@@ -18,6 +18,15 @@ enum class MotionPolicy { Unavailable, KnownCameraOnly, PerPixel };
 // pixel before resolving color; previous snapshots must not be expanded again.
 // Incomplete coverage uses Unavailable with a null mask, which cannot seed history.
 enum class ReactivePolicy { Unavailable, KnownNonReactive, RequiredMask, DerivedFromDepthSentinel, SupplementalMaskWithDepthSentinel };
+// What feeds the thin region's flag (X3M_TAA_THIN_REGION_SOURCE; docs/architecture/taa-thin-geometry-alternatives.md
+// section 3.2): Both (the default, today's mask bit for bit) = the screen-space fragmented-depth search united with the
+// thin vote where the twin runs; Screen = the search alone (the plain tests program is drawn, the vote's .a is not read);
+// Vote = the vote alone (the thin-vote twin with c10.y = 1 skips the search). Where the twin does not run a Vote run is a
+// Both run (Diagnostics::thin_region_source says what was drawn).
+enum class ThinRegionSource : unsigned { Both = 0, Screen = 1, Vote = 2 };
+inline const char* thin_region_source_name(ThinRegionSource source) noexcept {
+    return source == ThinRegionSource::Screen ? "screen" : source == ThinRegionSource::Vote ? "vote" : "both";
+}
 struct FrameInputs {
     // Current color: exactly one of the two.
     // A16B16G16R16F texture at the frame size, native, complete local
@@ -145,6 +154,11 @@ struct FrameInputs {
     // draw is the thin-vote twin: it also flags a pixel whose current-depth .a (the route's 1 - thin) is in [0, 1)
     // (Diagnostics::thin_vote names what ran). Anything else draws the plain tests program; never refuses a run.
     bool thin_vote = false;
+    // Source of the thin region's flag (ThinRegionSource above), read with thin_region_weight > 0 only. Screen draws the
+    // plain tests program whatever thin_vote says (Diagnostics::thin_vote_reason "screen_source"); Vote needs the twin (the
+    // thin_vote conditions above) and falls back to Both without it. No extra draw, constant upload or program either way:
+    // c10.y rides the emissive constant's upload. A value outside the enum refuses the run.
+    ThinRegionSource thin_region_source = ThinRegionSource::Both;
     // Sentinel stabiliser (docs/architecture/temporal-integration.md "Distant
     // unrouted stations under a pan"), off by default (0: every target bit for
     // bit the camera-gate run's). S in (0, 1]: an UNROUTED pixel on the depth
@@ -317,8 +331,13 @@ struct Diagnostics {
     bool thin_vote = false;
     // Why (or why not): "vote", "not_requested", "thin_region_off", "no_fold" (no depth-folding tests draw: an R32F or
     // D24X8 depth, no far run or MRT caps; depth_fold_reason says which), "two_channel_depth" (a G32R32F lane has no
-    // .a), "no_twin_program" (configure_thin_vote did not create it), "not_run".
+    // .a), "no_twin_program" (configure_thin_vote did not create it), "screen_source" (FrameInputs::thin_region_source Screen),
+    // "not_run".
     const char* thin_vote_reason = "not_run";
+    // FrameInputs::thin_region_source as drawn by the last run: Vote only when the twin ran with c10.y = 1, Screen when a
+    // Screen run drew the plain tests program with the thin region on, Both otherwise (the default, a Vote run without the
+    // twin, a run without the thin region).
+    ThinRegionSource thin_region_source = ThinRegionSource::Both;
     // S4 (configure_box_resolution(2)): the last run drew the camera gate's box at half resolution.
     bool box_half = false;
     // Why (or why not): "half", "not_requested" (the full-resolution box is configured), "no_camera_gate" (no camera-gate

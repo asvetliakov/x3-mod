@@ -87,6 +87,10 @@
 // no vote), the fill leaves -1 and other writers 1. With the thin region on, the tests draw sets the flag on a valid depth
 // whose .a is in [0, 1) and then skips the 7-tap line search and the emissive vote (the flag only ever becomes 1); every
 // other pixel runs the search as the plain program does, so the mask differs only where a vote is cast.
+// X3M_TAA_THIN_REGION_SOURCE=vote (taa-thin-geometry-alternatives.md section 3.2; TemporalPass ThinRegionSource::Vote):
+// c10.y = 1, uploaded with c10.x on every mask draw and read by these twins only, skips the 7-tap line search on every
+// pixel, so the flag is the vote alone (and the emissive vote where E > 0, which is its own opt-in). c10.y = 0 (every
+// other run; the compiled ifc_ge on c10.y treats a NaN as "skip", but the pass only ever uploads 0 or 1) is the union above. "screen" is not a constant: the pass draws the plain program instead.
 sampler2D scene : register(s0);
 sampler2D source : register(s1);
 sampler2D motionOverride : register(s4);
@@ -98,7 +102,7 @@ float4 sizeJitter : register(c4);
 float4 farGate : register(c5);
 float4 thinGate : register(c6); // sentinel-stabiliser S (camera program; else unused), on, speed LO, 1 / (HI - LO)
 float4 options : register(c7);
-float4 emissive : register(c10); // x = E, the emissive vote's luma threshold in scene units; 0 = off (no tap, no vote)
+float4 emissive : register(c10); // x = E, the emissive vote's luma threshold in scene units; 0 = off (no tap, no vote); y = 1: vote-only source (X3M_THIN_VOTE)
 #ifdef X3M_CAMERA_GATE
 float4 depthParallax : register(c8); // camera_depth_parallax(): (DX, DY, DW) / m32, m22; xyz = 0 is the far-plane path
 float4 laneParallax : register(c9);  // camera_lane_parallax(): (DX, DY, DW), 1 where s5 carries the view z; w = 0: c8 alone
@@ -278,7 +282,8 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0
 #ifdef X3M_THIN_VOTE
             // The draw-time vote (lane .a = 1 - thin in [0, 1) on a routed pixel with a valid depth): flagged without the search.
             if (validDepth(depth) && centreTexel.a >= 0 && centreTexel.a < 1) result.b = 1;
-            else
+            // Vote-only source (c10.y = 1): no search, an unvoted pixel stays unflagged.
+            else [branch] if (!(emissive.y > 0.5))
 #endif
             [loop] for (int k = 0; k < 4; ++k) {
                 float2 along = (k == 0 ? float2(1, 0) : (k == 1 ? float2(0, 1) : (k == 2 ? float2(1, 1) : float2(1, -1)))) * sizeJitter.xy;

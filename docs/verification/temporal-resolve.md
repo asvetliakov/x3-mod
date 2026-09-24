@@ -2935,3 +2935,62 @@ inferred). The user saw no issue on the lattice at rest and under a pan, trails 
 distant-station pan. **Accepted: `half` becomes the default (Run 82 candidate).** Not logged: the half target sizes;
 no box lane in the F8 dumps (block-constant check not possible). Unrelated: 8 `shadow_replay_depth_refused`
 (`sun_changing` / `sun_relatched`) from frame 5542.
+
+## 2026-09-24 thin-region source A/B (opt-in; fixture, not flown)
+
+`--taa-thin-region-source both|screen|vote` (`X3M_TAA_THIN_REGION_SOURCE`, DLL default both; forwarded only when given;
+needs `--taa` and the thin region with W > 0, vote also `--taa-thin-vote on`, both defaults count; refused under
+`--vanilla`) selects what feeds the thin-region flag for the Run 82 A/B ([taa-thin-geometry-alternatives.md](
+../architecture/taa-thin-geometry-alternatives.md) section 3.2). Bottle X3, native `d3dx9_37`, measured unless marked.
+
+- **Mechanism.** both: today's mask bit for bit (`c10.y` = 0, the same program choice; the twins gain one uniform branch, slots below). screen: the pass
+  draws the plain fold program instead of the thin-vote twin (`Diagnostics::thin_vote_reason` `screen_source`, one
+  `thin_vote_absent` row); the route still uploads `c218` and the lane still carries `.a`, so the vote's rows stay
+  comparable. vote: the twin with `c10.y` = 1 (`line_mask_ps.hlsl` `X3M_THIN_VOTE`, read by the twins only; it rides the
+  emissive constant's existing upload) skips the 7-tap search on every pixel; the emissive vote (E > 0) is its own opt-in
+  and still runs. Without the twin (lane off, two-channel depth, refused program) a vote run is a both run
+  (`Diagnostics::thin_region_source`). No new draw, program, constant upload or per-draw work.
+- **Configured row** (`motion_output.cpp`, per device, only when given): `taa_thin_region_source requested= configured=
+  reason=` with `thin_region`, `thin_vote`, `twins`, `camera_gate`; reasons `thin_region_off`, `thin_vote_off`,
+  `program` configure both. Invalid or oversized value: `taa_thin_region_source_setting invalid=1`, both.
+- **Which mask draws vote can skip: none.** On the flown A' path the mask is the tests draw alone, and it also writes
+  the camera and screen gates, the far weight, the sentinel class and (S1) the next depth history; on the screen gate
+  the 11x11 / 17x17 draws grow the vote's flags as well. Only the search inside the tests draw goes.
+- **Temporal pass** (`run_temporal_pass.py` through `wine_lock.py`, 23:40:54-23:45:04 including a lock wait behind
+  another agent's run): PASS 744 / 278 / 546; `temporal-pass.txt` byte-identical to the committed one (`5f3c22f8…`);
+  lattice PASS 610 / 107 (594 / 92 before, `BOX_HALF_BASE`), differing lines only wall-clock rows and the new ones, no
+  existing `RESOLVE_BUDGET` row changed ([compare_temporal_out.txt](../../verification/results/thin-region-source/compare_temporal_out.txt),
+  script beside it). New cases (`temporal_thin_source_inc.h`, 16 numerical, 15 state restorations; 64 x 32 lane, both
+  gates): tests-target flag and history kept after 40 frames of 0.8 and one of 0.2, per class: unvoted struts over sky
+  (U), voted struts over sky (W), voted bars over a panel at 0.25 vs 0.26 (V), sky and panel controls. both flags U W V,
+  screen U W, vote W V, each flagged class keeps 0.9699 of its history (0.97 in FP16) and every unflagged one 0.0000.
+  screen, and vote without its twin (no input; both twins refused at creation), are byte-identical to the plain run in
+  colour, depth, age and mask on both gates; a source outside the enum returns `E_INVALIDARG` with the hostile state
+  intact; the vote-only tests target is unchanged across a device Reset.
+- **Motion output** (partial `run_motion_output.py seam-thin-vote-far-on-source-{both,screen,vote}`, 23:47-23:48): exit 0, 61 checks each, one
+  configured row each (`configured=` the request, `reason=ok`, twins 1). The struts (1.4 px, never fragmented) are
+  flagged (b 254) under both and vote and not under screen, where `thin_vote_frame` still reads `voted=1`. Unvoted
+  flagged pixels (the search's own flags, the fill's silhouette corners) 60 per frame under both and screen, 0 under
+  vote ([motion_rows_out.txt](../../verification/results/thin-region-source/motion_rows_out.txt), script beside it).
+- **Cost.** The tests draw per source at 5120 x 1440 (fixture clock, event-query drained, 8 rounds, not GPU time):
+  unvoted panel both / screen / vote 1.53 / 1.45 / 1.40 ms, sky 1.45 / 1.40 / 1.38 ms: vote saves 0.07-0.13 ms, about
+  the spread between both and screen, which run the same search. Flown `taa_mask_tests` is 1.44 ms at 5120 x 1440
+  (run308, above), so dropping the screen-space test alone is expected to save about 0.1 ms, not the mask pass
+  (inferred). Slots (`RESOLVE_BUDGET`): twins 435 and 257 (1,583 and 1,042 words, 1,575 and 1,030 before); the four
+  plain line-mask programs' bytecode is unchanged (their records carry only the new include hash).
+- Scratch DLL (MinGW i686, RelWithDebInfo): 0 warnings; `check_no_x87.py` PASS, 684 reachable functions, 0 violations.
+  Host: `test_taa_thin_region_source` (9 tests: the launcher option, the row parser, the source contract),
+  `test_motion_output_runner` (HDR-case count 102 -> 105), `test_taa_thin_vote`, `test_taa_box_resolution`,
+  `test_taa_image_defaults`: OK.
+- **Found, not changed:** a camera-gate sequence whose first runs were not from the hostile state failed the state
+  check on stream 0 / 1 offsets alone (24 -> 0, 48 -> 0; buffers and strides restored): the pass's `D3DSBT_ALL` block,
+  created on the first run, did not take the later offsets at `Capture` here (inferred from the byte diff; Wine's
+  stateblock). The existing cases create the block under the hostile state, which hides it; the new cases now do too.
+
+Not flown. Run 82 A/B: `--taa-thin-region-source vote` against `both` at the lattice stand and on hulls: whether the
+voted draws alone keep the lattice crawl down, and `taa_mask_tests` with `--gpu-sync-timing`.
+
+**Open (filed 2026-09-25, from the thin-region-source review):** the temporal pass's `D3DSBT_ALL` state block does not
+refresh stream offsets on `Capture` (fixture: streams 0/1 offsets 24 -> 0 and 48 -> 0 when the pass was created under
+different offsets); the fixture cases start each frame from the hostile state, which hides it. Production state-restore
+defect, pre-existing; not in this change.

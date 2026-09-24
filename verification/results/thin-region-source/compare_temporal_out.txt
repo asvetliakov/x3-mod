@@ -1,0 +1,33 @@
+temporal-pass.txt committed=5f3c22f8f44df6a0 now=5f3c22f8f44df6a0 identical=1
+temporal-lattice.txt lines committed=5254 now=5391 differing=151
+  + BOX_HALF_BASE x1 BOX_HALF_BASE numerical=594 state_restorations=92
+  + BOX_HALF_TIMING x2 wall_clock
+  + CHECK x117
+  + LINE_TIMING x1 wall_clock
+  + LINE_TIMING_CAMERA x1 wall_clock
+  + LINE_TIMING_CAMERA_LANE x1 wall_clock
+  + LINE_TIMING_SENTINEL x1 wall_clock
+  + RESOLVE_BUDGET x2 variant=embedded_line_mask_depth_thin variant=embedded_line_mask_camera_depth_thin
+  + RESULT x1 RESULT PASS numerical=610 state_restorations=107 lattice=1
+  + THIN_SOURCE x6
+  + THIN_SOURCE_CASES x1
+  + THIN_SOURCE_IDENTITY x6
+  + THIN_SOURCE_INVALID x1
+  + THIN_SOURCE_RESET x1
+  + THIN_SOURCE_TIMING x2
+  - BOX_HALF_TIMING x2 wall_clock
+  - LINE_TIMING x1 wall_clock
+  - LINE_TIMING_CAMERA x1 wall_clock
+  - LINE_TIMING_CAMERA_LANE x1 wall_clock
+  - LINE_TIMING_SENTINEL x1 wall_clock
+  - RESULT x1 RESULT PASS numerical=594 state_restorations=92 lattice=1
+unexpected kinds: none
+removed RESOLVE_BUDGET rows (an existing program changed): 0
+RESOLVE_BUDGET variant=embedded_line_mask dwords=1574 instruction_slots=428 device_limit=512 headroom=84 within_ceiling_2048=1
+RESOLVE_BUDGET variant=embedded_line_mask_camera dwords=1020 instruction_slots=251 device_limit=512 headroom=261 within_ceiling_2048=1
+RESOLVE_BUDGET variant=embedded_line_mask_depth dwords=1554 instruction_slots=420 device_limit=512 headroom=92 within_ceiling_2048=1
+RESOLVE_BUDGET variant=embedded_line_mask_camera_depth dwords=1002 instruction_slots=241 device_limit=512 headroom=271 within_ceiling_2048=1
+RESOLVE_BUDGET variant=embedded_line_mask_depth_thin dwords=1583 instruction_slots=435 device_limit=512 headroom=77 within_ceiling_2048=1
+RESOLVE_BUDGET variant=embedded_line_mask_camera_depth_thin dwords=1042 instruction_slots=257 device_limit=512 headroom=255 within_ceiling_2048=1
+THIN_SOURCE_TIMING width=5120 height=1440 rounds=8 content=uniform_panel_unvoted tests_both_ms=1.5270 tests_screen_ms=1.4508 tests_vote_ms=1.3983 tests_vote_minus_both_ms=-0.1286 run_both_ms=4.9505 run_screen_ms=4.8573 run_vote_ms=4.7967 scope=cpu_wall_with_event_query_drain_fixture
+THIN_SOURCE_TIMING width=5120 height=1440 rounds=8 content=uniform_sky tests_both_ms=1.4505 tests_screen_ms=1.3984 tests_vote_ms=1.3841 tests_vote_minus_both_ms=-0.0663 run_both_ms=3.2332 run_screen_ms=3.1498 run_vote_ms=3.1356 scope=cpu_wall_with_event_query_drain_fixture
