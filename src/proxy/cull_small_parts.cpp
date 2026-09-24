@@ -2,6 +2,7 @@
 #include "cull_small_parts_core.h"
 #include "cull_census.h"
 #include "camera_state.h"
+#include "fov.h"
 #include "engine_patch.h"
 #include "object_trace.h"
 #include "capture.h"
@@ -25,6 +26,7 @@ const char* state_ = "disabled";
 double px_ = 0;
 unsigned width_ = 0;
 float last_m00_ = 0;
+std::uint32_t last_focus_ = core::focus_default;
 std::int32_t last_threshold_ = 0;
 unsigned value_lines_ = 0;
 core::Scope scope_ = core::Scope::all;
@@ -162,18 +164,19 @@ bool projectiles_exempt() { return patched_ && projectiles_; }
 std::uintptr_t stub_address() { return patched_ ? stub_ : 0; }
 double requested_px() { return patched_ ? px_ : 0.0; }
 bool set_px(double px) { if (!core::valid_px(px)) return false; px_ = px; return true; }
-std::int32_t publish(float m00, unsigned width) {
+std::int32_t publish(float m00, unsigned width, std::uint32_t focus) {
     if (!patched_) return 0;
-    const std::int32_t threshold = core::threshold_for(px_, m00, width);
+    const std::int32_t threshold = core::threshold_for(px_, m00, width, focus);
     x3m_cull_small_parts_threshold = threshold;
     cull_census::note_small_threshold(threshold, scope_ == core::Scope::bodies, projectiles_);
-    if (threshold != last_threshold_ || m00 != last_m00_ || width != width_) {
-        last_threshold_ = threshold; last_m00_ = m00; width_ = width;
+    if (threshold != last_threshold_ || m00 != last_m00_ || width != width_ || focus != last_focus_) {
+        last_threshold_ = threshold; last_m00_ = m00; width_ = width; last_focus_ = focus;
         // The projection scale changes with the FOV and the width with a Reset:
         // a bounded line per change keeps the applied threshold visible.
         if (value_lines_ < 16) {
             ++value_lines_;
-            log("cull_small_parts_value px=%.4g m00=%.9g width=%u threshold=%ld", px_, static_cast<double>(m00), width, static_cast<long>(threshold));
+            log("cull_small_parts_value px=%.4g m00=%.9g width=%u threshold=%ld focus=0x%04lx", px_, static_cast<double>(m00), width, static_cast<long>(threshold),
+                static_cast<unsigned long>(focus));
         }
     }
     return threshold;
@@ -185,10 +188,18 @@ void begin_frame() {
     // The engine's live projection (P[0]) through the read-only camera latch;
     // an unreadable or non-perspective matrix (menus, loading) leaves the
     // frame vanilla. The width is the back buffer's from CreateDevice/Reset.
-    float m00 = 0;
+    float m00 = 0, m11 = 0;
     camera_state::Sample sample{};
-    if (camera_state::available() && camera_state::read(&sample) && sample.state.valid) m00 = sample.state.m00;
-    publish(m00, width_);
+    if (camera_state::available() && camera_state::read(&sample) && sample.state.valid) { m00 = sample.state.m00; m11 = sample.state.m11; }
+    // The view's FOV: s = r*640/D' with D' = D * F/0x4000, F the view camera's
+    // +0x298 (base / zoom), so the pixel scale of s carries F/0x4000. F comes
+    // from the same latched projection (cot(F/2) = max(0.75*m11, m00)), zoom
+    // included, without an engine read. Only a valid P[0] with an unusable
+    // P[5] falls back to the registry base; without P[0] the frame is vanilla
+    // whatever F is, so nothing is read.
+    std::uint32_t focus = core::focus_from_projection(m00, m11);
+    if (!focus) focus = core::threshold_for(px_, m00, width_) ? fov::current_focus() : core::focus_default;
+    publish(m00, width_, focus);
     SetLastError(error);
 }
 void set_backbuffer_width(unsigned width) { width_ = width; }
@@ -210,7 +221,7 @@ void present(unsigned long long device, unsigned long long frame, bool captured)
 }
 Stats stats() {
     Stats s{};
-    s.threshold = x3m_cull_small_parts_threshold; s.culled = x3m_cull_small_parts_culled; s.exempt = x3m_cull_small_parts_exempt; s.m00 = last_m00_; s.width = width_;
+    s.threshold = x3m_cull_small_parts_threshold; s.culled = x3m_cull_small_parts_culled; s.exempt = x3m_cull_small_parts_exempt; s.m00 = last_m00_; s.width = width_; s.focus = last_focus_;
     return s;
 }
 }

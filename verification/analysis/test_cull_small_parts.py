@@ -44,6 +44,13 @@ int main() {
     check(threshold_for(2.0, 0.8f, 1280) == 3 && threshold_for(2.0, 0.8f, 1920) == 2 && threshold_for(0.5, 1.0f, 1280) == 1, "other scales");
     check(threshold_for(0.0, m00, 1280) == 0 && threshold_for(-1.0, m00, 1280) == 0 && threshold_for(65.0, m00, 1280) == 0 && threshold_for(2.0, 0.0f, 1280) == 0 && threshold_for(2.0, m00, 32) == 0, "unusable inputs give 0");
     check(threshold_for(64.0, 0.06f, 64) == 21334 && threshold_for(64.0, 0.06f, 16384) == 84 && threshold_max == 0x1000000, "band extremes (the cap is beyond the band)");
+    check(threshold_for(2.0, m00, 1280, 0x4000) == 3 && threshold_for(8.0, m00, 1280, focus_default) == 11 && focus_default == 0x4000, "F 0x4000 is the default");
+    check(threshold_for(2.0, m00, 1280, 0x3470) == 4 && threshold_for(4.0, m00, 1280, 0x3470) == 7 && threshold_for(8.0, m00, 1280, 0x3470) == 13, "F 0x3470 (--fov default): 4/7/13");
+    check(threshold_for(2.0, m00, 1280, 0x105) == 0 && threshold_for(2.0, m00, 1280, 0x8001) == 0 && threshold_for(2.0, m00, 1280, 0x106) > 0 && threshold_for(2.0, m00, 1280, 0x8000) == 2, "focus band 0x106..0x8000");
+    check(focus_from_projection(m00, 1.33333337f) == 0x4000 && focus_from_projection(0.375f, 1.33333337f) == 0x4000 && focus_from_projection(0.5f, 1.7777636f) == 0x3470 &&
+          focus_from_projection(m00, 3.9999745f) == 0x1a38 && focus_from_projection(1.0f, 1.25f) == 0x4000, "focus from P[0]/P[5]: 0x4000, 5120x1440 0x3470, zoom x2 0x1a38, 5:4");
+    check(focus_from_projection(0.0f, 1.3f) == 0 && focus_from_projection(0.8f, 0.0f) == 0 && focus_from_projection(0.8f, -1.0f) == 0 && focus_from_projection(0.8f, 500.0f) == 0,
+          "focus from the projection: unusable terms or F below 0x106 give 0");
     double px = 0;
     check(parse_px("2", &px) && px == 2.0 && parse_px("+2.5", &px) && px == 2.5 && parse_px(".5", &px) && px == 0.5 && !parse_px("2,5", &px) && !parse_px("1e1", &px) && !parse_px("", &px) && !parse_px(nullptr, &px), "parser");
     check(valid_px(64.0) && !valid_px(64.01) && !valid_px(0.0), "band");
@@ -185,6 +192,10 @@ class CullSmallPartsSite(unittest.TestCase):
         self.assertEqual((probe.threshold_for(2, m00, 1280), probe.threshold_for(4, m00, 1280), probe.threshold_for(8, m00, 1280)), (3, 6, 11))
         self.assertEqual(probe.threshold_for(2, 0.8, 1920), 2)
         self.assertEqual(probe.threshold_for(0, m00, 1280), 0)
+        self.assertEqual(tuple(probe.threshold_for(px, m00, 1280, 0x3470) for px in (2, 4, 8)), (4, 7, 13))
+        self.assertEqual(tuple(probe.threshold_for(px, m00, 1280, 0x4000) for px in (2, 4, 8)), (3, 6, 11))
+        self.assertEqual((probe.threshold_for(2, m00, 1280, 0x105), probe.threshold_for(2, m00, 1280, 0x8001)), (0, 0))
+        self.assertEqual((probe.focus_from_projection(0.5, 1.7777636), probe.focus_from_projection(m00, 3.9999745), probe.focus_from_projection(0.8, 0)), (0x3470, 0x1a38, 0))
 
     def test_tracked_rows_reproduce_the_census_classes(self):
         document = json.loads((ROOT / 'verification/fixtures/run131-cull-census-rows.json').read_text())
@@ -217,7 +228,8 @@ class CullSmallPartsSite(unittest.TestCase):
                          'marker_mismatch')
         self.assertEqual(probe.parse_log_line(' cull_small_parts requested=2 px=2 patched=1 reason=ok site=0x0047d2a2 cull=0x0047d2c3 write=atomic stub=0x0a100000 camera=active scope=bodies')['scope'], 'bodies')
         self.assertIsNone(probe.parse_log_line('cull_small_parts requested=2 px=0 patched=0 reason=bytes_mismatch'))
-        self.assertEqual(probe.parse_value_line('cull_small_parts_value px=2 m00=0.799999952 width=1280 threshold=3'), {'px': 2.0, 'm00': 0.799999952, 'width': 1280, 'threshold': 3})
+        self.assertEqual(probe.parse_value_line('cull_small_parts_value px=2 m00=0.799999952 width=1280 threshold=3'), {'px': 2.0, 'm00': 0.799999952, 'width': 1280, 'threshold': 3, 'focus': None})
+        self.assertEqual(probe.parse_value_line('cull_small_parts_value px=2 m00=0.5 width=5120 threshold=1 focus=0x3470')['focus'], 0x3470)
         frame = probe.parse_frame_line('cull_small_parts_frame device=1 frame=4991 px=2 threshold=3 culled=1147 m00=0.799999952 width=1280')
         self.assertEqual((frame['frame'], frame['threshold'], frame['culled'], frame['width']), (4991, 3, 1147, 1280))
         self.assertIsNone(frame['scope'])

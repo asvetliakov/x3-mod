@@ -42,17 +42,22 @@ std::uintptr_t stub_address();
 double requested_px();
 bool set_px(double px);             // the setting without a relaunch (fixture and diagnostics); false outside the band
 // Per frame, on the thread that runs the pass: publishes the threshold for
-// this frame from the given projection scale and width (0 = vanilla frame)
-// and tells the census the value so its rows can name the verdict. The
-// production begin_frame() reads camera_state and the recorded back-buffer
-// width and calls publish().
-std::int32_t publish(float m00, unsigned width);
+// this frame from the given projection scale, width and the engine's base FOV
+// (binary angle, 0x4000 = the game's default; the engine's s shrinks with it)
+// (0 = vanilla frame) and tells the census the value so its rows can name the
+// verdict. The production begin_frame() reads camera_state (P[0] and P[5]),
+// the recorded back-buffer width, derives the view's focus from the
+// projection (core::focus_from_projection: the camera's +0x298, zoom
+// included, no engine read) and calls publish(); only when P[5] is unusable
+// while P[0] is valid does it fall back to fov::current_focus()
+// (registry+0x24, else the --fov value).
+std::int32_t publish(float m00, unsigned width, std::uint32_t focus = 0x4000);
 void begin_frame();
 void set_backbuffer_width(unsigned width);
 void after_reset(unsigned width);   // disarms until the next begin_frame
 // Emits the cull_small_parts_frame row for a captured frame and clears the count.
 void present(unsigned long long device, unsigned long long frame, bool captured);
-struct Stats { std::int32_t threshold; std::uint32_t culled, exempt; float m00; unsigned width; };
+struct Stats { std::int32_t threshold; std::uint32_t culled, exempt; float m00; unsigned width; std::uint32_t focus; };
 Stats stats();
 }
 // The words the stub reads and writes: the frame's threshold in `s` units

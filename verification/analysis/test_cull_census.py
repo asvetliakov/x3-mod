@@ -329,6 +329,32 @@ class CullCensusSummary(unittest.TestCase):
         self.assertIn('no model -> object-type table in the repository', text)
         self.assertEqual(summary.summarize(parsed, bodies_px=2.0)['frames'][3494]['models'][0]['model'], 0x50ed)
 
+    def test_focus_factor_matches_the_cull(self):
+        # A default --fov launch (F = 0x3470): the summariser scales px per s by F/0x4000 exactly as cull_small_parts_core.h does,
+        # taking F from the frame's projection rows (P[5] at 5120x1440: m00 0.5, m11 1.7778), else the value row, else 0x4000.
+        import struct as _struct
+        import verify_cull_small_parts_site as small
+        summary = load_summariser()
+        bits = lambda v: _struct.unpack('<I', _struct.pack('<f', v))[0]
+        m11 = 1.7777636
+        log = SYNTHETIC_LOG.replace('object_matrix role=projection row=0 bits=3f4ccccc,',
+                                    f'object_matrix role=projection row=0 bits={bits(0.5):08x},00000000,00000000,00000000\n'
+                                    f'object_matrix role=projection row=1 bits=00000000,{bits(m11):08x},')
+        frame = summary.summarize(summary.parse(log.splitlines()), width=5120)['frames'][3494]
+        self.assertEqual(frame['focus'], 0x3470)
+        self.assertEqual(summary.focus_from_projection(0.5, m11), small.focus_from_projection(0.5, m11))
+        self.assertAlmostEqual(frame['px_per_s'], 0.5 * 5120 / 1280 * 0x3470 / 0x4000, places=5)
+        # The class the cull removes at 2 px is exactly the summariser's s * px_per_s < 2 rows.
+        t = small.threshold_for(2, 0.5, 5120, 0x3470)
+        self.assertEqual(t, 2)
+        self.assertTrue(all((s < t) == (s * frame['px_per_s'] < 2) for s in range(0, 64)))
+        # No projection row 1: the logged focus of the value row; neither: 0x4000 (the synthetic log above, unchanged).
+        with_value = SYNTHETIC_LOG + 'cull_small_parts_value px=2 m00=0.5 width=5120 threshold=2 focus=0x3470\n'
+        self.assertEqual(summary.summarize(summary.parse(with_value.splitlines()))['frames'][3494]['focus'], 0x3470)
+        self.assertEqual(summary.summarize(summary.parse(SYNTHETIC_LOG.splitlines()))['frames'][3494]['focus'], 0x4000)
+        self.assertAlmostEqual(summary.summarize(summary.parse(SYNTHETIC_LOG.splitlines()), focus=0x2000)['frames'][3494]['px_per_s'], 0.4, places=6)
+        self.assertIn('focus=0x3470', summary.render(summary.summarize(summary.parse(with_value.splitlines()))))
+
     def test_view_and_frame_selection(self):
         summary = load_summariser()
         parsed = summary.parse(SYNTHETIC_LOG.splitlines())

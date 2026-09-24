@@ -6,8 +6,13 @@ LOD metric `s = r*640/D`, its small-object measure `r*W/D`, the per-node
 thresholds, the verdict and the selected LOD (docs/reverse-engineering/
 lod-selection.md, "Cull census sites"). This script buckets the nodes of the
 main view (the view with the most rows, or --view) by `s` in the engine's
-640-reference units and in pixels (`px = s * m00 * width / 1280`, m00 from the
-frame's projection row, width from the rt0 surface row; both overridable),
+640-reference units and in pixels (`px = s * m00 * width / 1280 * F / 0x4000`,
+m00 from the frame's projection row, width from the rt0 surface row, F the
+view's binary-angle FOV: the engine's s uses D' = D*F/0x4000 at 0x0047d1ce, so
+the factor is exactly the one cull_small_parts applies. F comes from the
+frame's projection rows (cot(F/2) = max(0.75*m11, m00), zoom included), else
+the last `cull_small_parts_value ... focus=` row, else 0x4000; --focus
+overrides. All of m00, width and F are overridable),
 joins the frame's `object_context`/`draw` rows on the node pointer to count
 draws and triangles per bucket, and prices the buckets at --us-per-draw
 (docs/architecture/engine-frame-time.md 2.3). It also names what sits under
@@ -38,6 +43,9 @@ CONTEXT_RE = re.compile(r'\bobject_context device=\d+ frame=(\d+) index=(\d+) .*
 DRAW_RE = re.compile(r'\bdraw device=\d+ frame=(\d+) index=(\d+) kind=\w+ topology=\d+ primitives=(\d+)')
 SURFACE_RE = re.compile(r'\bsurface role=rt0 .*?\bwidth=(\d+) height=(\d+)')
 PROJECTION_RE = re.compile(r'\bobject_matrix role=projection row=0 bits=([0-9a-f]{8}),')
+PROJECTION1_RE = re.compile(r'\bobject_matrix role=projection row=1 bits=[0-9a-f]{8},([0-9a-f]{8}),')
+VALUE_FOCUS_RE = re.compile(r'\bcull_small_parts_value .*?\bfocus=0x([0-9a-f]+)')
+FOCUS_DEFAULT, FOCUS_MIN, FOCUS_MAX = 0x4000, 0x106, 0x8000
 
 
 def bucket_of(value):
@@ -51,14 +59,23 @@ def bits_to_float(text):
     return struct.unpack('<f', struct.pack('<I', int(text, 16)))[0]
 
 
+def focus_from_projection(m00, m11):
+    """The view's binary-angle FOV from P[0] and P[5] (cull_small_parts_core.h focus_from_projection); None when unusable."""
+    import math
+    if not (m00 and m11 and math.isfinite(m00) and math.isfinite(m11) and m00 > 0 and m11 > 0):
+        return None
+    focus = math.floor(65536 / math.pi * math.atan(1 / max(0.75 * m11, m00)) + 0.5)
+    return focus if FOCUS_MIN <= focus <= FOCUS_MAX else None
+
+
 def parse(lines):
     """Collect census frames, the per-frame draw join and the frame geometry from an iterable of lines."""
     frames = {}
     rows = defaultdict(list)
     context = {}          # (frame, index) -> node
     primitives = {}       # (frame, index) -> primitives
-    width, m00 = None, None
-    m00_by_frame = {}
+    width, m00, m11, focus = None, None, None, None
+    m00_by_frame, m11_by_frame = {}, {}
     current_frame = None
     for line in lines:
         if 'cull_census' in line:
@@ -86,6 +103,18 @@ def parse(lines):
             m = SURFACE_RE.search(line)
             if m and width is None:
                 width = int(m.group(1))
+        elif 'cull_small_parts_value' in line:
+            m = VALUE_FOCUS_RE.search(line)
+            if m:
+                focus = int(m.group(1), 16)
+        elif 'object_matrix role=projection row=1' in line:
+            m = PROJECTION1_RE.search(line)
+            if m:
+                value = bits_to_float(m.group(1))
+                if m11 is None:
+                    m11 = value
+                if current_frame is not None and current_frame not in m11_by_frame:
+                    m11_by_frame[current_frame] = value
         elif 'object_matrix role=projection row=0' in line:
             m = PROJECTION_RE.search(line)
             if m:
@@ -94,10 +123,11 @@ def parse(lines):
                     m00 = value
                 if current_frame is not None and current_frame not in m00_by_frame:
                     m00_by_frame[current_frame] = value
-    return {'frames': frames, 'rows': dict(rows), 'context': context, 'primitives': primitives, 'width': width, 'm00': m00, 'm00_by_frame': m00_by_frame}
+    return {'frames': frames, 'rows': dict(rows), 'context': context, 'primitives': primitives, 'width': width, 'm00': m00, 'm00_by_frame': m00_by_frame,
+            'm11': m11, 'm11_by_frame': m11_by_frame, 'focus': focus}
 
 
-def summarize(parsed, frames=None, view=None, us_per_draw=23.7, width=None, m00=None, bodies_px=4.0):
+def summarize(parsed, frames=None, view=None, us_per_draw=23.7, width=None, m00=None, bodies_px=4.0, focus=None):
     """Bucket table per frame and the per-frame average over the selected frames."""
     width = width or parsed['width'] or 1280
     selected = sorted(f for f in parsed['rows'] if frames is None or frames[0] <= f <= frames[1])
@@ -109,7 +139,10 @@ def summarize(parsed, frames=None, view=None, us_per_draw=23.7, width=None, m00=
             by_view[r['view']] += 1
         main_view = view if view is not None else max(by_view, key=by_view.get)
         frame_m00 = m00 or parsed['m00_by_frame'].get(frame) or parsed['m00'] or 1.0
-        px_per_s = frame_m00 * width / 1280.0
+        frame_focus = (focus or focus_from_projection(parsed['m00_by_frame'].get(frame) or parsed['m00'],
+                                                      parsed.get('m11_by_frame', {}).get(frame) or parsed.get('m11'))
+                       or parsed.get('focus') or FOCUS_DEFAULT)
+        px_per_s = frame_m00 * width / 1280.0 * (frame_focus / FOCUS_DEFAULT)
         draws_by_node = defaultdict(list)
         for (f, index), node in parsed['context'].items():
             if f == frame:
@@ -152,7 +185,7 @@ def summarize(parsed, frames=None, view=None, us_per_draw=23.7, width=None, m00=
         for edge in EDGES[1:]:
             under = sum(c['draws'] for c in px_table[:bucket_of(edge - 0.5) + 1])
             savings[f'under_{edge}px'] = {'draws': under, 'ms': under * us_per_draw / 1000.0}
-        result['frames'][frame] = {'view': main_view, 'views': dict(by_view), 'm00': frame_m00, 'px_per_s': px_per_s,
+        result['frames'][frame] = {'view': main_view, 'views': dict(by_view), 'm00': frame_m00, 'focus': frame_focus, 'px_per_s': px_per_s,
                                    'nodes': by_view[main_view], 'frame': parsed['frames'].get(frame),
                                    'draws': frame_draws, 'joined_draws': joined_draws, 'table': table, 'px_table': px_table, 'savings': savings,
                                    'bodies_px': bodies_px,
@@ -176,7 +209,7 @@ def render(result):
     for frame, fr in result['frames'].items():
         meta = fr['frame'] or {}
         out.append(f"frame {frame}: view={fr['view']:08x} nodes={fr['nodes']} entries={meta.get('entries')} overflow={meta.get('overflow')} "
-                   f"unmeasured={meta.get('unmeasured')} draws={fr['draws']} joined_draws={fr['joined_draws']} m00={fr['m00']:.4f} px_per_s={fr['px_per_s']:.4f}")
+                   f"unmeasured={meta.get('unmeasured')} draws={fr['draws']} joined_draws={fr['joined_draws']} m00={fr['m00']:.4f} focus=0x{fr['focus']:04x} px_per_s={fr['px_per_s']:.4f}")
         out.append('| bucket (s units) | nodes | kept | culled | draws | tris | ms |')
         out.append('|---|---|---|---|---|---|---|')
         for c in fr['table']:
@@ -223,12 +256,14 @@ def main(argv=None):
     parser.add_argument('--us-per-draw', type=float, default=23.7)
     parser.add_argument('--width', type=int, default=None, help='viewport width (default: the rt0 surface row, else 1280)')
     parser.add_argument('--m00', type=float, default=None, help='projection m00 (default: the frame\'s projection row, else 1.0)')
+    parser.add_argument('--focus', type=lambda v: int(v, 0), default=None,
+                        help='the view\'s binary-angle FOV, e.g. 0x3470 (default: from the frame\'s projection rows, else the cull_small_parts_value focus, else 0x4000)')
     parser.add_argument('--bodies-px', type=float, default=4.0, help='list the models of kept/culled_small nodes under this many pixels (default 4)')
     parser.add_argument('--json', action='store_true')
     args = parser.parse_args(argv)
     with open(args.log, errors='replace') as handle:
         parsed = parse(handle)
-    result = summarize(parsed, frames=args.frames, view=args.view, us_per_draw=args.us_per_draw, width=args.width, m00=args.m00, bodies_px=args.bodies_px)
+    result = summarize(parsed, frames=args.frames, view=args.view, us_per_draw=args.us_per_draw, width=args.width, m00=args.m00, bodies_px=args.bodies_px, focus=args.focus)
     if args.json:
         json.dump(result, sys.stdout, indent=1)
         sys.stdout.write('\n')

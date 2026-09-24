@@ -66,7 +66,8 @@ MARKER_USE_VA, MARKER_USE = 0x488b00, bytes.fromhex('f7873001000000000020')     
 LOG_RE = re.compile(r'\bcull_small_parts requested=(?P<requested>\S+) px=(?P<px>[0-9.e+-]+) patched=(?P<patched>[01]) reason=(?P<reason>\S+) '
                     r'site=0x(?P<site>[0-9a-f]{8}) cull=0x(?P<cull>[0-9a-f]{8}) write=(?P<write>none|atomic|plain) stub=0x(?P<stub>[0-9a-f]{8}) camera=(?P<camera>\S+)(?: scope=(?P<scope>bodies|all|invalid))?'
                     r'(?: projectiles=(?P<projectiles>on|off|marker_mismatch|invalid))?')
-VALUE_RE = re.compile(r'\bcull_small_parts_value px=(?P<px>[0-9.e+-]+) m00=(?P<m00>[0-9.e+-]+) width=(?P<width>\d+) threshold=(?P<threshold>-?\d+)')
+VALUE_RE = re.compile(r'\bcull_small_parts_value px=(?P<px>[0-9.e+-]+) m00=(?P<m00>[0-9.e+-]+) width=(?P<width>\d+) threshold=(?P<threshold>-?\d+)'
+                      r'(?: focus=0x(?P<focus>[0-9a-f]+))?')
 FRAME_RE = re.compile(r'\bcull_small_parts_frame device=(?P<device>\d+) frame=(?P<frame>\d+) px=(?P<px>[0-9.e+-]+) threshold=(?P<threshold>-?\d+) '
                       r'culled=(?P<culled>\d+) m00=(?P<m00>[0-9.e+-]+) width=(?P<width>\d+)(?: scope=(?P<scope>bodies|all))?'
                       r'(?: projectiles=(?P<projectiles>on|off) exempt_bullet=(?P<exempt>\d+))?')
@@ -102,12 +103,22 @@ def encode_stub(at, threshold, culled, exempt, cull_target, next_slot, scope='al
     return code
 
 
-def threshold_for(px, m00, width):
-    """The smallest integer t with t * px_per_s >= px (px_per_s = m00 * width / 1280), the summariser's bucket rule; 0 when unusable."""
+def focus_from_projection(m00, m11):
+    """The view's binary-angle FOV from P[0]/P[5]: cot(F/2) = max(0.75*m11, m00); 0 when unusable or outside 0x106..0x8000 (the core's twin)."""
     import math
-    if not (0 < px <= 64) or not (0.05 < m00 < 20) or not (64 <= width <= 16384):
+    if not (math.isfinite(m00) and math.isfinite(m11) and m00 > 0 and m11 > 0):
         return 0
-    px_per_s = m00 * width / 1280.0
+    focus = math.floor(65536 / math.pi * math.atan(1 / max(0.75 * m11, m00)) + 0.5)
+    return focus if 0x106 <= focus <= 0x8000 else 0
+
+
+def threshold_for(px, m00, width, focus=0x4000):
+    """The smallest integer t with t * px_per_s >= px (px_per_s = m00 * width / 1280 * focus / 0x4000, focus the engine's
+    binary-angle FOV base), the summariser's bucket rule; 0 when unusable."""
+    import math
+    if not (0 < px <= 64) or not (0.05 < m00 < 20) or not (64 <= width <= 16384) or not (0x106 <= focus <= 0x8000):
+        return 0
+    px_per_s = m00 * width / 1280.0 * (focus / 0x4000)
     t = math.ceil(px / px_per_s)
     while t > 1 and (t - 1) * px_per_s >= px:
         t -= 1
@@ -131,7 +142,8 @@ def parse_value_line(line):
     if not match:
         return None
     row = match.groupdict()
-    return {'px': float(row['px']), 'm00': float(row['m00']), 'width': int(row['width']), 'threshold': int(row['threshold'])}
+    return {'px': float(row['px']), 'm00': float(row['m00']), 'width': int(row['width']), 'threshold': int(row['threshold']),
+            'focus': int(row['focus'], 16) if row['focus'] else None}
 
 
 def parse_frame_line(line):

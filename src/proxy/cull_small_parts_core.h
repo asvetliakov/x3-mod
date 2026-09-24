@@ -91,14 +91,38 @@ inline bool parse_scope(const char* text, Scope* out) {
 }
 inline const char* scope_name(Scope scope) { return scope == Scope::all ? "all" : "bodies"; }
 inline bool valid_px(double px) { return std::isfinite(px) && px > px_min && px <= px_max; }
-// The pixel scale of `s`: px = s * m00 * width / 1280 (tools/analysis/cull_census.py,
-// the census bucket rule; s is the projected radius at a 640-wide reference,
-// m00 the projection's P[0], width the back buffer's). The threshold is the
-// smallest integer t with t * px_per_s >= px, so `s < t` is exactly the
-// summariser's `s * px_per_s < px` class; 0 when the inputs are unusable.
-inline std::int32_t threshold_for(double px, float m00, unsigned width) {
+// The pixel scale of `s`: px = s * m00 * width / 1280 * focus / 0x4000
+// (s is the projected radius at a 640-wide reference, m00 the projection's
+// P[0], width the back buffer's). The engine computes s = r*640/D' with
+// D' = D * focus / 0x4000 (0x0047d1ce, focus = the view camera's +0x298, the
+// base FOV divided by the cockpit zoom, 0x4000 = the game's default;
+// docs/reverse-engineering/field-of-view.md section 6), so the true pixel
+// radius r/D * m00 * width/2 carries the factor focus/0x4000; at the default
+// the factor is exactly 1. The threshold is the smallest integer t with
+// t * px_per_s >= px, so `s < t` is exactly the class
+// tools/analysis/cull_census.py buckets as `s * px_per_s < px` when it is
+// given the same focus (it derives it from the logged projection rows the
+// same way, else from the cull_small_parts_value row). 0 when the inputs are
+// unusable.
+constexpr std::uint32_t focus_default = 0x4000, focus_min = 0x106, focus_max = 0x8000;
+// The view's focus from the live projection, no engine read: m11 = cot(F/2)/H
+// and m00 = cot(F/2)/W with the default view plane H = 0.75, W = 0.75*w/h for
+// displays at least as wide as 4:3 and W = 1, H = h/w for narrower ones
+// (field-of-view.md section 1). m00/m11 = h/w, so H = max(0.75, m00/m11) and
+// cot(F/2) = max(0.75*m11, m00); F = 65536/pi * atan(1 / cot(F/2)), rounded.
+// This is the camera's own +0x298, zoom included. 0 when either term is
+// unusable or F falls outside [focus_min, focus_max].
+inline std::uint32_t focus_from_projection(float m00, float m11) {
+    if (!std::isfinite(m00) || !std::isfinite(m11) || !(m00 > 0.0f) || !(m11 > 0.0f)) return 0;
+    const double cot = std::fmax(0.75 * static_cast<double>(m11), static_cast<double>(m00));
+    const double focus = std::floor(65536.0 / 3.14159265358979323846 * std::atan(1.0 / cot) + 0.5);
+    if (!(focus >= focus_min) || !(focus <= focus_max)) return 0;
+    return static_cast<std::uint32_t>(focus);
+}
+inline std::int32_t threshold_for(double px, float m00, unsigned width, std::uint32_t focus = focus_default) {
     if (!valid_px(px) || !std::isfinite(m00) || !(m00 > 0.05f) || !(m00 < 20.0f) || width < 64 || width > 16384) return 0;
-    const double px_per_s = static_cast<double>(m00) * static_cast<double>(width) / 1280.0;
+    if (focus < focus_min || focus > focus_max) return 0;
+    const double px_per_s = static_cast<double>(m00) * static_cast<double>(width) / 1280.0 * (static_cast<double>(focus) / static_cast<double>(focus_default));
     double t = std::ceil(px / px_per_s);
     while (t > 1.0 && (t - 1.0) * px_per_s >= px) t -= 1.0;
     while (t * px_per_s < px) t += 1.0;

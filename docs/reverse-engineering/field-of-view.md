@@ -242,7 +242,7 @@ narrower displays), i.e. the law of §1 inverted. Examples
 | --- | --- | --- | ---: | ---: |
 | vanilla | any ≥ 4:3 | `0x4000` (90°) | 73.74° | 106.26° (16:9), 138.89° (5120×1440) |
 | `--fov 59` | 16:9 or 5120×1440 | `0x34aa` (74.06°) | 59.00° | 90.33° / 127.13° |
-| 90° horizontal on 16:9 (`v` = 58.72°) | ≥ 4:3 | `0x3470` (73.74°) | 58.72° | 90.00° / 126.87° |
+| 90° horizontal on 16:9 (`v` = 2·atan(9/16) = 58.7155°; a rounded 58.72 gives `0x3471`) | ≥ 4:3 | `0x3470` (73.74°) | 58.72° | 90.00° / 126.87° |
 | `SG_MIN_FOV` 70 | ≥ 4:3 | `0x31c7` | 55.41° | 86.07° / 123.66° |
 | `SG_MAX_FOV` 100 | ≥ 4:3 | `0x471c` | 83.58° | 115.63° / 145.06° |
 | near-plane threshold `0x2147` | ≥ 4:3 | 46.80° | 35.96° | 59.96° / 98.17° |
@@ -279,6 +279,25 @@ narrower displays), i.e. the law of §1 inverted. Examples
   compute `F` from the actual back-buffer `h/w` with the rule of §1; above
   `SG_MAX_FOV` (83.6° vertical) the engine's own UI never goes, and `F` must
   stay below `0x8000`.
+
+## 6.1 Implemented (2026-09-24)
+
+`--fov <vertical degrees 36..120>|game` / `X3M_FOV` (`src/proxy/fov.cpp`, site core
+`src/proxy/fov_sites.h`) implements §5 as recommended: after the structural identity, the reader
+contract (`0x00421148`, `0x0042dc04`) and a 28-byte window compare at `0x0041c9cc`, the imm32 at
+`0x0041c9dc` becomes `F = round(65536/π·atan(tan(v/2)/0.75))` with one `lock cmpxchg8b` (upper half of
+the aligned qword `0x0041c9d8`), read back, rolled back on failure, and restored on a dynamic unload only
+over our own value; if the registry already exists, `+0x24` gets one validated
+`InterlockedCompareExchange`. The launcher default is the exact 90°-horizontal-on-16:9 value
+58.7155° (`F = 0x3470`; the rounded 58.72 gives `0x3471`); `game` or 73.74 patches nothing. `H` is
+fixed at 0.75, so displays narrower than 4:3 get a slightly larger vertical angle. The enforcement
+variant (`0x00421148`) is not installed: the in-game FOV menu still overrides the base for the running
+session. The small-parts cull threshold carries `F/0x4000` with the view's F taken from the latched
+projection, `cot(F/2) = max(0.75·m11, m00)` (zoom included, no engine read; `registry+0x24` only as a
+fallback), and `tools/analysis/cull_census.py` buckets with the same factor (§6). Log rows
+`fov`, `fov_confirm` (first Present: `registry+0x24` against the configured value; the sector camera's
+`+0x298` is not read, because the camera reader exposes only the projection buffers) and
+`fov_restore`; evidence in [field-of-view ledger](../verification/field-of-view.md).
 
 ## 7. Risks
 

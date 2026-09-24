@@ -32,6 +32,7 @@
 #include "../../src/proxy/engine_patch.h"
 #include "run131_rows_inc.h"
 #include <windows.h>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <cstddef>
@@ -50,12 +51,18 @@ namespace x3m { void log(const char* format, ...) {
 namespace x3m::object_trace { bool executable_verified() { return true; } }
 // The camera latch seam: the fixture supplies the projection scale the
 // production begin_frame() would read from the engine's buffer.
-static bool fixture_camera_available = false; static float fixture_camera_m00 = 0; static bool fixture_camera_valid = false;
+static bool fixture_camera_available = false; static float fixture_camera_m00 = 0, fixture_camera_m11 = 0; static bool fixture_camera_valid = false;
 namespace x3m::camera_state {
 bool available() { return fixture_camera_available; }
 const char* status() { return fixture_camera_available ? "fixture" : "disabled"; }
-bool read(Sample* out) { *out = Sample{}; if (!fixture_camera_available) { out->read_failure = Unavailable; return false; } out->state.valid = fixture_camera_valid; out->state.m00 = fixture_camera_m00; return fixture_camera_valid; }
+bool read(Sample* out) { *out = Sample{}; if (!fixture_camera_available) { out->read_failure = Unavailable; return false; } out->state.valid = fixture_camera_valid; out->state.m00 = fixture_camera_m00; out->state.m11 = fixture_camera_m11; return fixture_camera_valid; }
 }
+// The FOV seam: the engine's base focus the production begin_frame() falls
+// back to through fov::current_focus() (registry+0x24, else the --fov value)
+// when the latched projection carries no usable P[5]; the count shows the
+// projection path reads nothing.
+static std::uint32_t fixture_focus = 0x4000; static unsigned fixture_focus_reads = 0;
+namespace x3m::fov { std::uint32_t current_focus() { ++fixture_focus_reads; return fixture_focus; } }
 namespace small = x3m::cull_small_parts;
 namespace score = x3m::cull_small_parts::core;
 namespace census = x3m::cull_census;
@@ -574,6 +581,48 @@ int main() {
     check(x3m_cull_small_parts_threshold == 2 && small_lines.size() == 2, "begin_frame after the reset: threshold 2 at 1920, a second value line");
     small::after_reset(kRowsWidth); small::begin_frame();
     check(x3m_cull_small_parts_threshold == 3 && small_lines.size() == 3, "back to 1280: threshold 3, a third value line");
+    // ---- the engine's base FOV through the seam: F = 0x3470 (--fov default, 90 deg horizontal on 16:9) ----
+    // The engine's s = r*640/D' with D' = D*F/0x4000, so px per s carries F/0x4000 = 0.8193: every threshold rises.
+    check(score::threshold_for(2.0, m00, kRowsWidth, 0x3470) == 4 && score::threshold_for(4.0, m00, kRowsWidth, 0x3470) == 7 &&
+          score::threshold_for(8.0, m00, kRowsWidth, 0x3470) == 13, "threshold rule at F 0x3470: 2 px -> 4, 4 px -> 7, 8 px -> 13");
+    check(score::threshold_for(2.0, m00, kRowsWidth, 0x4000) == 3 && score::threshold_for(2.0, m00, kRowsWidth, 0x105) == 0 &&
+          score::threshold_for(2.0, m00, kRowsWidth, 0x8001) == 0, "threshold rule: F 0x4000 is the default, an implausible F gives 0 (vanilla)");
+    fixture_focus = 0x3470; small::begin_frame();
+    check(x3m_cull_small_parts_threshold == 4 && small::stats().focus == 0x3470 && small_lines.size() == 4 &&
+          small_lines[3].find("cull_small_parts_value px=2 m00=0.799999952 width=1280 threshold=4 focus=0x3470") == 0, "begin_frame at F 0x3470: threshold 4, a value line naming the focus");
+    {
+        std::memcpy(replay, replay_initial, sizeof(Node) * (kRowCount + 1));
+        const Result focused = run(replay[0], view);
+        const Flip f = replay_compare(replay_native);
+        check(focused.preserved && focused.x87_empty && f.other_changes == 0 && replay_flipped_exactly(replay_native, 4), "2 px at F 0x3470: only kept nodes with s < 4 change, and every one of them");
+        std::printf("REPLAY px=2 focus=0x3470 threshold=4 flipped=%u draws=%u other_changes=%u culled_count=%lu\n", f.flipped, f.draws, f.other_changes, (unsigned long)x3m_cull_small_parts_culled);
+    }
+    fixture_focus = 0x4000; small::begin_frame();
+    check(x3m_cull_small_parts_threshold == 3 && small::stats().focus == 0x4000 && small_lines.size() == 5 &&
+          small_lines[4].find("cull_small_parts_value px=2 m00=0.799999952 width=1280 threshold=3 focus=0x4000") == 0, "back to F 0x4000: threshold 3 again");
+    // ---- the view's focus from the latched projection (zoom included), preferred over the registry base ----
+    {
+        const float m11_4000 = 1.33333337f;                                                     // cot(45 deg) / 0.75
+        const float m11_3470 = float(1.0 / std::tan(0x3470 * 3.14159265358979323846 / 65536.0) / 0.75);
+        const float m11_zoom = float(1.0 / std::tan(0x1a38 * 3.14159265358979323846 / 65536.0) / 0.75);  // 0x3470 base, zoom x2: +0x298 = 0x1a38
+        check(score::focus_from_projection(m00, m11_4000) == 0x4000 && score::focus_from_projection(0.5f, m11_3470) == 0x3470 &&
+              score::focus_from_projection(0.375f, 1.33333337f) == 0x4000 && score::focus_from_projection(m00, m11_zoom) == 0x1a38,
+              "focus from the projection: 0x4000, 0x3470 (5120x1440), 0x1a38 (zoom x2)");
+        check(score::focus_from_projection(1.0f, 1.25f) == 0x4000 && score::focus_from_projection(0.0f, 1.3f) == 0 && score::focus_from_projection(0.8f, 0.0f) == 0 &&
+              score::focus_from_projection(0.8f, 500.0f) == 0, "focus from the projection: 5:4 plane (W = 1), unusable terms and F below 0x106 give 0");
+        const unsigned reads = fixture_focus_reads;
+        fixture_focus = 0x4000; fixture_camera_m11 = m11_3470; small::begin_frame();
+        check(x3m_cull_small_parts_threshold == 4 && small::stats().focus == 0x3470 && fixture_focus_reads == reads,
+              "begin_frame: F 0x3470 from P[5] wins over the registry base 0x4000, no registry read");
+        fixture_camera_m11 = m11_zoom; small::begin_frame();
+        std::printf("REPLAY zoom=2 px=2 threshold=%ld focus=0x%lx value_row=%s\n", static_cast<long>(x3m_cull_small_parts_threshold), static_cast<unsigned long>(small::stats().focus), small_lines.back().c_str());
+        check(x3m_cull_small_parts_threshold == score::threshold_for(2.0, m00, kRowsWidth, 0x1a38) && x3m_cull_small_parts_threshold == 7 &&
+              small::stats().focus == 0x1a38 && fixture_focus_reads == reads && small_lines.back().find(" threshold=7 focus=0x1a38") != std::string::npos,
+              "begin_frame at zoom x2: the view's 0x1a38 (not the base) scales the threshold to 7");
+        fixture_camera_m11 = 0; small::begin_frame();
+        check(x3m_cull_small_parts_threshold == 3 && small::stats().focus == 0x4000 && fixture_focus_reads == reads + 1, "begin_frame without P[5]: the registry fallback, one read");
+    }
+    small_lines.resize(3);  // the rows below count from the three value lines above
 
     // ---- 2 px: exactly the 403-draw class flips ----
     std::memcpy(replay, replay_initial, sizeof(Node) * (kRowCount + 1));

@@ -90,6 +90,28 @@ CULL_SMALL_PARTS_DEFAULT_PROJECTILES = 'on'
 # ~17 % of P1 pairs, no defect). The DLL's own fallback stays off (no variable =
 # nothing patched); --no-collide-sat-sse2 / --no-collide-memo / --no-collide-box-cull
 # turn them off, and a --vanilla launch forwards nothing unless asked explicitly.
+# --fov (docs/reverse-engineering/field-of-view.md): vertical degrees, bounded by the engine's near-plane switch
+# (F >= 0x2147 keeps zn = 6) below and a fisheye guard above. The default is the exact 90-deg-horizontal-on-16:9
+# value 2*atan(9/16) = 58.7155 deg (F = 0x3470), sent with four decimals because the DLL rounds
+# F = 65536/pi*atan(tan(v/2)/0.75) to the nearest unit (58.72 itself gives 0x3471).
+FOV_MIN_DEG, FOV_MAX_DEG = 36.0, 120.0
+FOV_DEFAULT_SETTING = '58.7155'
+
+
+def fov_setting(text):
+    """X3M_FOV for a --fov argument: 'game', or the degrees with four decimals (the DLL's parser takes no exponent); None when refused."""
+    if text == 'game':
+        return 'game'
+    try:
+        value = float(text)
+    except ValueError:
+        return None
+    if not (math.isfinite(value) and FOV_MIN_DEG <= value <= FOV_MAX_DEG):
+        return None
+    setting = f'{value:.4f}'
+    return setting if FOV_MIN_DEG <= float(setting) <= FOV_MAX_DEG else None
+
+
 def collide_default(explicit, args):
     """An explicit --x / --no-x wins; unset means on for a modded launch, off under --vanilla."""
     return explicit if explicit is not None else not args.vanilla
@@ -675,6 +697,7 @@ def main():
     parser.add_argument('--lod-scale', type=float, default=None, metavar='FACTOR', help='Scale the engine\'s mesh LOD switch distances by FACTOR, 0.25..4 (above 1 pushes them out, below 1 pulls them in for fewer detailed draws on far objects) (X3M_LOD_SCALE; default absent = vanilla; no other option needed): the LOD threshold multiplier read at 0x0047d44b is replaced by a proxy-owned mirror holding the game\'s value divided by FACTOR (same-length instruction, exact executable and bytes only, otherwise fails closed to vanilla; one lod_scale line in the session log). Cost: about 4-7x the triangles and 13-15x the draw calls per distant station body at 2-3x, and correspondingly fewer below 1; the cap of 4 keeps the integer-truncated thresholds away from collapse (docs/architecture/lod-scale.md)')
     parser.add_argument('--terran-station-lod', choices=('size', 'distance'), default=None, help='How Terran stations pick their mesh LOD (X3M_TERRAN_STATION_LOD; default size on every modded launch, also the DLL default when the variable is unset; refused under --vanilla, where the proxy is not loaded). size = the reader of bit 31 of the station root\'s node+0x12c in the cull/LOD pass (0x0047d01c, je -> jmp to the same target, two bytes, verified before the write) is bypassed, so Terran TDocks/TFactories subtrees select by screen size like every other object and can reach the merged-LOD overlay records; distance = the engine\'s fixed-distance branch (7/15.5/21/28.5 km bands), nothing patched. Saves are unchanged either way')
     parser.add_argument('--lod-occlusion', choices=('record0', 'all'), default=None, help='Which mesh LOD records bind their material\'s occlusion map (t_OcclusionTexture) (X3M_LOD_OCCLUSION; default record0 on every modded launch, also the DLL default when the variable is unset; refused under --vanilla, where the proxy is not loaded). record0 = the engine: only LOD record 0 binds the map, every lower record binds the NONE_OCCL_DECAL placeholder (no occlusion), nothing patched; all = the gate in the material submission (jne at 0x004c34f7, its rel32 set to 0 so both outcomes continue on the LOD-0 path, four bytes, verified before the write) is bypassed, so merged-LOD coarse records keep the station\'s occlusion. Side effect of all: vanilla lower records get occlusion too, through a second UV set about 1 %% off the occlusion unwrap and partly outside [0, 1], so they may show misplaced occlusion (docs/reverse-engineering/texture-lookup.md section 12). Saves are unchanged either way')
+    parser.add_argument('--fov', default=None, metavar='DEG|game', help='Vertical field of view in degrees, 36..120, or game (X3M_FOV; default 58.7155 on every modded launch, exactly 2*atan(9/16), the value that gives 90 deg horizontal on 16:9 (binary angle 0x3470; a typed 58.72 rounds to 0x3471); refused under --vanilla, where the proxy is not loaded). Hor+: the vertical angle is fixed and the horizontal follows the display: at the default it is 90 deg on 16:9, 106 on 21:9 (2560x1080; 107 on 3440x1440) and 127 on 32:9 (5120x1440). The game counts differently: its own FOV (90 by default, the in-game FOV menu 70..100) is the horizontal angle of the central 4:3 area, which is 73.74 deg vertical (106 horizontal on 16:9, 139 on 32:9); --fov game or --fov 73.74 keeps exactly that and patches nothing. A value sets the immediate of the cockpit registry constructor (0x0041c9dc, verified bytes, otherwise nothing is patched) plus a one-off write of the live registry when it already exists; zoom scales it, and the in-game FOV menu can still override it for the running session. Below 36 the engine moves its near plane, which the fog and sun-shadow passes do not follow; displays narrower than 4:3 get a slightly larger vertical angle. Saves are unchanged (docs/reverse-engineering/field-of-view.md)')
     parser.add_argument('--point-light-root-admission', action='store_true', help='Admit a point light for a mesh node whose root object is in range, not only when the node itself is (X3M_POINT_LIGHT_ROOT_ADMISSION=1; default absent = vanilla per-node cull): the six-byte range-test branch at 0x004c27af is replaced by a detour that keeps the native decision for an in-range node and otherwise walks the node\'s parent chain (at most 8 bounds-checked hops) and applies the same range predicate to the root; exact executable and bytes only, otherwise fails closed to vanilla; one point_light_root_admission line in the session log (docs/reverse-engineering/camera-and-lights.md, "Point-light admission site")')
     parser.add_argument('--cull-census', action='store_true', help='Log the engine\'s own cull/LOD census on F8 capture frames (X3M_CULL_CENSUS=1; default absent = nothing patched): two read-only trampolines on the per-node cull/LOD pass 0x0047cfe0 record, per node, the LOD metric s = r*640/D, the small-object measure, the two per-node thresholds, the cull verdict and the selected LOD index into a bounded ring (8192 entries, overflow= counted), emitted as cull_census rows at Present; outside capture frames each stub is one compare and a dead branch. Exact executable and bytes only, otherwise fails closed to vanilla; summarise with tools/analysis/cull_census.py (docs/reverse-engineering/lod-selection.md, "Cull census sites")')
     parser.add_argument('--object-bounds-log', action='store_true', help='Log the projected screen bounds of every routed draw whose object box the caster-candidate route already computed, on F8 capture frames only (X3M_OBJECT_BOUNDS_LOG=1; launch only, default absent = no line; requires --object-trace and --shadow-replay-candidates or --shadow-replay-depth, i.e. the same verified submission identity object_context needs): one object_bounds line per such draw with the box\'s viewport-clipped pixel rectangle, its device depth range and how many of its eight corners are inside the frustum (offscreen=1 for an empty rectangle, near=1 for a box straddling the eye plane). No geometry is transformed twice and nothing is patched; outside capture frames it is one bool test. Bucket a frame with tools/analysis/draw_accounting.py (docs/architecture/engine-frame-time.md, "Object bounds log")')
@@ -1316,6 +1339,14 @@ def main():
         parser.error('--terran-station-lod cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the LOD reader never runs')
     if args.vanilla and args.lod_occlusion is not None:
         parser.error('--lod-occlusion cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the occlusion gate never runs')
+    if args.vanilla and args.fov is not None:
+        parser.error('--fov cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that sets the field of view never runs')
+    if args.fov is not None:
+        args.fov_setting = fov_setting(args.fov)
+        if args.fov_setting is None:
+            parser.error(f'--fov out of range: {args.fov!r} (expected game or vertical degrees in [{FOV_MIN_DEG:g}, {FOV_MAX_DEG:g}]: below {FOV_MIN_DEG:g} the engine '
+                         'moves its near plane away from 6, which the fog march and the sun-shadow apply assume; above '
+                         f'{FOV_MAX_DEG:g} the image is a fisheye)')
     if args.vanilla and (args.pause_key_only or args.pause_key is not None):
         parser.error('--pause-key-only/--pause-key cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the pause never runs')
     if args.pause_key is not None and args.pause_key_only is False:
@@ -1704,6 +1735,12 @@ def main():
             env.pop('X3M_LOD_OCCLUSION', None)
         else:
             env['X3M_LOD_OCCLUSION'] = args.lod_occlusion or 'record0'
+        # Field of view: always explicit on a modded launch (the 90-on-16:9 default unless --fov), so a stale
+        # shell value cannot select another angle; dropped under --vanilla (refused above).
+        if args.vanilla:
+            env.pop('X3M_FOV', None)
+        else:
+            env['X3M_FOV'] = getattr(args, 'fov_setting', None) or FOV_DEFAULT_SETTING
         # Point-light root admission: same rule, set only when requested so a
         # stale shell value cannot patch the range-test branch.
         if args.point_light_root_admission:

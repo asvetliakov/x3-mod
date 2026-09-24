@@ -11,6 +11,7 @@
 #include "pause_key_only.h"
 #include "terran_station_lod.h"
 #include "lod_occlusion.h"
+#include "fov.h"
 #include "music_keep.h"
 #include "collide_narrow_census.h"
 #include "collide_sat_sse2.h"
@@ -1615,6 +1616,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     // engine_patch claim belongs to initialize_log (before the device existed);
     // a later claim would write over code the loading threads may be executing.
     if(engine_patch::install_window_open())engine_patch::close_install_window("first_present");
+    fov::present(ctx.frame); // one fov_confirm row (registry+0x24 against the configured focus) at the first Present, one more if the registry appears later; then a flag test
     frame_timing::frame(ctx.frame,ctx.draws); // X3M_FRAME_TIMING only: per-frame sample, one line per 300-frame window
     frame_phases::frame(ctx.frame); // X3M_FRAME_PHASES only: takes the closed frame, one frame_phases line per 300-frame window
     media_cue::frame(ctx.frame); // X3M_MEDIA_CUE_* only: admits this thread, closes the frame's attempt count, drains the trace ring
@@ -3672,6 +3674,7 @@ void initialize_log(HMODULE module) {
     lod_scale::initialize(); // X3M_LOD_SCALE=<factor> only; same-length FMUL replacement, same window
     terran_station_lod::initialize(); // X3M_TERRAN_STATION_LOD=size|distance, unset = size: the bit-31 reader's je at 0x0047d01c becomes jmp (two bytes), same window, disjoint from the other cull/LOD pass claims
     lod_occlusion::initialize(); // X3M_LOD_OCCLUSION=record0|all, unset = record0: all sets the rel32 of the LOD-0 occlusion gate's jne at 0x004c34f7 to 0 (four bytes), same window, disjoint from the point-light site in the same function
+    fov::initialize(); // X3M_FOV=game|<vertical degrees 36..120>, unset = game: the registry constructor's imm32 at 0x0041c9dc becomes the requested focus (four bytes) plus a one-off registry+0x24 write when the registry already exists, same window, disjoint from every other claim
     point_light_admission::initialize(); // X3M_POINT_LIGHT_ROOT_ADMISSION=1 only; six-byte JG site at 0x004c27af, same window
     collide_box_cull::initialize(); // X3M_COLLIDE_BOX_CULL=1 only; two box early-out trampolines on the sector collision pair tests (0x0045d58e, 0x0045cc7c), same window
     collide_narrow_census::initialize(); // X3M_COLLIDE_NARROW_CENSUS=1 only; narrow-phase census: two call redirects (0x0045d665, 0x0048a9a5) and one entry trampoline (0x004e2530), same window, disjoint from the box-cull claims
