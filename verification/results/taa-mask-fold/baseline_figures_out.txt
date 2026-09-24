@@ -1,0 +1,24 @@
+== run312 rest windows w10-w17 (taa / tests / box / resolve, median us)
+  w10	taa=5330/5509/300	taa_box=1294/1317/300	taa_mask_tests=1383/1501/300	taa_resolve=2436/2456/300
+  w11	taa=5363/5510/300	taa_box=1297/1318/300	taa_mask_tests=1387/1507/300	taa_resolve=2442/2543/300
+  w12	taa=5366/5552/300	taa_box=1298/1320/300	taa_mask_tests=1389/1507/300	taa_resolve=2441/2545/300
+  w13	taa=5400/5564/300	taa_box=1301/1323/300	taa_mask_tests=1393/1508/300	taa_resolve=2446/2558/300
+  w14	taa=5470/5662/300	taa_box=1305/1337/300	taa_mask_tests=1397/1519/300	taa_resolve=2457/2590/300
+  w15	taa=5467/5650/300	taa_box=1308/1338/300	taa_mask_tests=1400/1518/300	taa_resolve=2462/2579/300
+  w16	taa=5473/5622/300	taa_box=1304/1324/300	taa_mask_tests=1395/1511/300	taa_resolve=2477/2578/300
+  w17	taa=5466/5627/300	taa_box=1301/1323/300	taa_mask_tests=1395/1513/300	taa_resolve=2538/2582/300
+== run312/run315 window summaries
+run312 mixed windows=4 taa=5456/5699 taa_box=1300/1372 taa_copy=21/25 taa_mask=1448/1588 taa_mask_tests=1394/1525 taa_resolve=2456/2626
+run312 pan   windows=12 taa=5441/5624 taa_box=1300/1324 taa_copy=22/24 taa_mask=1446/1562 taa_mask_tests=1394/1510 taa_resolve=2446/2562
+run315 mixed windows=6 taa=5682/6148 taa_box=1478/1621 taa_copy=24/28 taa_mask=1454/1578 taa_mask_tests=1404/1496 taa_resolve=2572/2756
+run315 pan   windows=20 taa=5637/5850 taa_box=1426/1495 taa_copy=23/28 taa_mask=1450/1536 taa_mask_tests=1400/1431 taa_resolve=2567/2689
+run315 rest  windows=4 taa=5441/5662 taa_box=1322/1438 taa_copy=20/24 taa_mask=1430/1532 taa_mask_tests=1386/1414 taa_resolve=2442/2560
+== RESOLVE_BUDGET rows
+RESOLVE_BUDGET variant=embedded_line_mask_camera_depth dwords=1002 instruction_slots=241
+RESOLVE_BUDGET variant=embedded_line_mask_camera_depth_thin dwords=1042 instruction_slots=257
+RESOLVE_BUDGET variant=embedded_far_camera_hold dwords=2479 instruction_slots=616
+RESOLVE_BUDGET variant=embedded_thin_box_rows_half dwords=670 instruction_slots=158
+RESOLVE_BUDGET variant=embedded_thin_box_columns_half dwords=1316 instruction_slots=330
+== device caps
+FLICKER_CAPS simultaneous_rts=4 mrt_independent_bit_depths=1 age_bytes_per_pixel=8 age_bytes_1280x768=7864320 age_bytes_3840x2160=66355200
+caps NumSimultaneousRTs=4 mrt_independent_bitdepths=1 mrt_postpixelshader_blending=1 stretchrect_caps=03000300
