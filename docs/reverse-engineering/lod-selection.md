@@ -1094,4 +1094,23 @@ unchanged, the atomic-word rule, no other DLL claim on the window, the header's 
 identity variants by `verification/results/executable-identity/run_verifiers.py`; host test
 `verification/analysis/test_terran_lod_site.py`, which also drives the write, read-back, rollback and
 restore sequence (`install()`/`restore()` in the site header, shared with the DLL) against a copied
-window in a buffer. No Wine fixture runs it on real code pages.
+window in a buffer; the Wine fixture below runs it on real code pages.
+
+Wine fixture (2026-09-24, bottle X3; `verification/probe/run_terran_lod_patch.py`, record
+`verification/results/bottle-X3/terran-lod-patch.json`, ledger `docs/verification/cull-census.md`): the
+unchanged `terran_station_lod.cpp` and `engine_patch.cpp` linked into an EXE based at `0x00400000` whose
+image section `.x3mlod` sits at `0x0047d000` and holds a stub around the header's 17-byte window, so
+`initialize()` patches the production address `0x0047d012` on a MEM_IMAGE `PAGE_EXECUTE_READ` page
+(allocation protection `PAGE_EXECUTE_WRITECOPY`, as X3AP.exe's `.text`, characteristics `0x60000020`);
+a force-included seam counts and fails the four Win32/`engine_patch` calls on demand, every store and
+read-back is real. 92/92 checks: the `lock cmpxchg8b` path (`write=atomic`) lands `eb 05`, the page is
+otherwise unchanged and back at `PAGE_EXECUTE_READ`, the executed stub takes the `jmp` (bit-31 node
+returns 0 instead of 1) and takes the `je` again after `shutdown()` and after each rollback; every refusal,
+rollback and restore outcome of the host test is reproduced on the real page, and a read-only
+executable view gives a real `VirtualProtect` failure (error 87) and `protect_failed`. Measured under
+this Wine: `VirtualQuery` reports `PAGE_EXECUTE_WRITECOPY` on the image page after the
+`PAGE_EXECUTE_READWRITE` request and still after the store (Windows is expected to report
+`PAGE_EXECUTE_READWRITE` once the copy-on-write has happened [i]; the code does not depend on either), and
+the new branch executed without `FlushInstructionCache`, even for a store with no protection change,
+so FEX caught the self-modifying write by itself; the flush stays for Windows. Not covered: another
+thread executing the page during the write, and native Windows.

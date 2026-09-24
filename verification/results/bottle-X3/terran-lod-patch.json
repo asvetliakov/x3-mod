@@ -1,0 +1,800 @@
+{
+ "fixture": "verification/probe/terran_lod_patch_fixture.cpp",
+ "runner": "verification/probe/run_terran_lod_patch.py",
+ "production_sources": [
+  "src/proxy/terran_station_lod.cpp",
+  "src/proxy/terran_station_lod.h",
+  "src/proxy/terran_lod_sites.h",
+  "src/proxy/engine_patch.cpp",
+  "src/proxy/engine_patch.h"
+ ],
+ "source": {
+  "commit": "fd60e44b6660e6abbe06fd4dc2cf540f5e7bd54b",
+  "production_sources_dirty": false,
+  "dirty_paths": []
+ },
+ "game_launched": false,
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "exit_status": 0,
+ "elapsed_s": 5.7,
+ "executable_sha256": "d1a4929a28f42af3071d0a30991d6250e585e2781c53c657ac4a70053ad178a6",
+ "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+ "build_audit": {
+  "module_imports_own_protect_or_flush": [],
+  "module_calls_seam": [
+   "virtual_protect",
+   "flush_instruction_cache",
+   "fixture_read_code",
+   "fixture_write_code"
+  ],
+  "engine_patch_lock_cmpxchg8b": 1,
+  "engine_page_va": "0047d000",
+  "x3mlod": {
+   "va": "0047d000",
+   "size": 4096,
+   "code_readonly": true
+  },
+  "highest_other_section_end": "0044064c",
+  "overlapping_sections": []
+ },
+ "check_count": 92,
+ "pass_count": 92,
+ "checks": [
+  {
+   "name": "restore_log_opened",
+   "pass": true
+  },
+  {
+   "name": "engine_page_at_engine_va",
+   "pass": true
+  },
+  {
+   "name": "engine_window_at_window_va_is_expected_window",
+   "pass": true
+  },
+  {
+   "name": "engine_site_offset_4_of_its_qword",
+   "pass": true
+  },
+  {
+   "name": "private_page_allocated",
+   "pass": true
+  },
+  {
+   "name": "private_page_execute_read",
+   "pass": true
+  },
+  {
+   "name": "engine_page_is_mem_image_execute_read",
+   "pass": true
+  },
+  {
+   "name": "private_page_is_mem_private_execute_read",
+   "pass": true
+  },
+  {
+   "name": "engine_before_je",
+   "pass": true
+  },
+  {
+   "name": "private_before_je",
+   "pass": true
+  },
+  {
+   "name": "refuse_distance_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "refuse_distance_row_and_untouched",
+   "pass": true
+  },
+  {
+   "name": "refuse_invalid_setting_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "refuse_invalid_setting_row_and_untouched",
+   "pass": true
+  },
+  {
+   "name": "refuse_too_long_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "refuse_too_long_row_and_untouched",
+   "pass": true
+  },
+  {
+   "name": "refuse_executable_mismatch_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "refuse_executable_mismatch_row_and_untouched",
+   "pass": true
+  },
+  {
+   "name": "setup_changed_window_byte",
+   "pass": true
+  },
+  {
+   "name": "refuse_changed_window_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "refuse_changed_window_untouched",
+   "pass": true
+  },
+  {
+   "name": "setup_restore_window_byte",
+   "pass": true
+  },
+  {
+   "name": "setup_foreign_patch",
+   "pass": true
+  },
+  {
+   "name": "refuse_already_patched_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "refuse_already_patched_window_untouched",
+   "pass": true
+  },
+  {
+   "name": "setup_foreign_patch_removed",
+   "pass": true
+  },
+  {
+   "name": "refuse_protect_failed_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "refuse_protect_failed_untouched",
+   "pass": true
+  },
+  {
+   "name": "engine_after_protect_failed_je",
+   "pass": true
+  },
+  {
+   "name": "install_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "install_ok_atomic_row",
+   "pass": true
+  },
+  {
+   "name": "install_sequence_counts",
+   "pass": true
+  },
+  {
+   "name": "install_readback_eb05_rest_of_page_unchanged",
+   "pass": true
+  },
+  {
+   "name": "install_protection_restored",
+   "pass": true
+  },
+  {
+   "name": "engine_after_patch_jmp",
+   "pass": true
+  },
+  {
+   "name": "second_install_refused_already_installed",
+   "pass": true
+  },
+  {
+   "name": "initialize_again_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "initialize_again_no_second_write",
+   "pass": true
+  },
+  {
+   "name": "restore_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "restore_row",
+   "pass": true
+  },
+  {
+   "name": "restore_readback_7405_protection",
+   "pass": true
+  },
+  {
+   "name": "engine_after_restore_je",
+   "pass": true
+  },
+  {
+   "name": "restore_again_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "restore_again_no_row",
+   "pass": true
+  },
+  {
+   "name": "rollback_readback_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "rollback_readback_rolled_back",
+   "pass": true
+  },
+  {
+   "name": "engine_after_rollback_je",
+   "pass": true
+  },
+  {
+   "name": "rollback_dropped_write_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "rollback_dropped_write_rolled_back",
+   "pass": true
+  },
+  {
+   "name": "rollback_unprotected_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "rollback_unprotected_original_bytes_page_writable",
+   "pass": true
+  },
+  {
+   "name": "engine_after_rollback_unprotected_je",
+   "pass": true
+  },
+  {
+   "name": "setup_reprotect_after_unprotected",
+   "pass": true
+  },
+  {
+   "name": "rollback_failed_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "rollback_failed_registered",
+   "pass": true
+  },
+  {
+   "name": "restore_dropped_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "restore_dropped_write_failed_registered",
+   "pass": true
+  },
+  {
+   "name": "restore_protect_failed_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "restore_protect_failed_registered",
+   "pass": true
+  },
+  {
+   "name": "restore_not_owned_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "restore_not_owned_7405",
+   "pass": true
+  },
+  {
+   "name": "engine_after_restore_not_owned_je",
+   "pass": true
+  },
+  {
+   "name": "install_2_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "setup_install_then_external_restore",
+   "pass": true
+  },
+  {
+   "name": "restore_already_original_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "restore_already_original_no_write",
+   "pass": true
+  },
+  {
+   "name": "install_3_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "setup_install_3",
+   "pass": true
+  },
+  {
+   "name": "restore_unreadable_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "restore_unreadable_found_unread",
+   "pass": true
+  },
+  {
+   "name": "install_no_flush_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "install_no_flush_bytes_eb05",
+   "pass": true
+  },
+  {
+   "name": "engine_after_patch_flushed_jmp",
+   "pass": true
+  },
+  {
+   "name": "restore_no_flush_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "restore_no_flush_bytes_7405",
+   "pass": true
+  },
+  {
+   "name": "engine_after_restore_flushed_je",
+   "pass": true
+  },
+  {
+   "name": "hot_page_allocated",
+   "pass": true
+  },
+  {
+   "name": "hot_after_raw_patch_flushed_jmp",
+   "pass": true
+  },
+  {
+   "name": "hot_after_raw_restore_flushed_je",
+   "pass": true
+  },
+  {
+   "name": "private_install_ok_atomic_readback",
+   "pass": true
+  },
+  {
+   "name": "private_protection_restored",
+   "pass": true
+  },
+  {
+   "name": "private_after_patch_jmp",
+   "pass": true
+  },
+  {
+   "name": "private_restore_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "private_restore_7405",
+   "pass": true
+  },
+  {
+   "name": "private_after_restore_je",
+   "pass": true
+  },
+  {
+   "name": "roview_mapped",
+   "pass": true
+  },
+  {
+   "name": "roview_raise_refused_by_os",
+   "pass": true
+  },
+  {
+   "name": "roview_install_protect_failed",
+   "pass": true
+  },
+  {
+   "name": "late_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "late_initialize_refused",
+   "pass": true
+  },
+  {
+   "name": "late_install_at_refused",
+   "pass": true
+  },
+  {
+   "name": "engine_after_late_je",
+   "pass": true
+  }
+ ],
+ "branches": [
+  {
+   "memory": "engine",
+   "step": "before",
+   "flag31": 1,
+   "clear": 0
+  },
+  {
+   "memory": "private",
+   "step": "before",
+   "flag31": 1,
+   "clear": 0
+  },
+  {
+   "memory": "engine",
+   "step": "after_protect_failed",
+   "flag31": 1,
+   "clear": 0
+  },
+  {
+   "memory": "engine",
+   "step": "after_patch",
+   "flag31": 0,
+   "clear": 0
+  },
+  {
+   "memory": "engine",
+   "step": "after_restore",
+   "flag31": 1,
+   "clear": 0
+  },
+  {
+   "memory": "engine",
+   "step": "after_rollback",
+   "flag31": 1,
+   "clear": 0
+  },
+  {
+   "memory": "engine",
+   "step": "after_rollback_unprotected",
+   "flag31": 1,
+   "clear": 0
+  },
+  {
+   "memory": "engine",
+   "step": "after_rollback_failed",
+   "flag31": null,
+   "clear": null
+  },
+  {
+   "memory": "engine",
+   "step": "after_restore_not_owned",
+   "flag31": 1,
+   "clear": 0
+  },
+  {
+   "memory": "engine",
+   "step": "after_patch_no_flush",
+   "flag31": 0,
+   "clear": 0
+  },
+  {
+   "memory": "engine",
+   "step": "after_patch_flushed",
+   "flag31": 0,
+   "clear": 0
+  },
+  {
+   "memory": "engine",
+   "step": "after_restore_no_flush",
+   "flag31": 1,
+   "clear": 0
+  },
+  {
+   "memory": "engine",
+   "step": "after_restore_flushed",
+   "flag31": 1,
+   "clear": 0
+  },
+  {
+   "memory": "hot",
+   "step": "after_raw_patch_no_protect_no_flush",
+   "flag31": 0,
+   "clear": 0
+  },
+  {
+   "memory": "hot",
+   "step": "after_raw_patch_flushed",
+   "flag31": 0,
+   "clear": 0
+  },
+  {
+   "memory": "hot",
+   "step": "after_raw_restore_no_protect_no_flush",
+   "flag31": 1,
+   "clear": 0
+  },
+  {
+   "memory": "hot",
+   "step": "after_raw_restore_flushed",
+   "flag31": 1,
+   "clear": 0
+  },
+  {
+   "memory": "private",
+   "step": "after_patch",
+   "flag31": 0,
+   "clear": 0
+  },
+  {
+   "memory": "private",
+   "step": "after_restore",
+   "flag31": 1,
+   "clear": 0
+  },
+  {
+   "memory": "engine",
+   "step": "after_late",
+   "flag31": 1,
+   "clear": 0
+  }
+ ],
+ "protect": [
+  {
+   "memory": "engine",
+   "step": "install",
+   "previous": "0x20",
+   "during": "0x80",
+   "after": "0x20"
+  },
+  {
+   "memory": "engine",
+   "step": "rollback_unprotected",
+   "left": "0x80"
+  },
+  {
+   "memory": "private",
+   "step": "install",
+   "previous": "0x20",
+   "during": "0x40",
+   "after": "0x20"
+  }
+ ],
+ "memory": [
+  {
+   "memory": "engine",
+   "type": "0x1000000",
+   "protect": "0x20",
+   "allocation_protect": "0x80"
+  },
+  {
+   "memory": "private",
+   "type": "0x20000",
+   "protect": "0x20",
+   "allocation_protect": "0x4"
+  },
+  {
+   "memory": "private_after_patch",
+   "type": "0x20000",
+   "protect": "0x20",
+   "allocation_protect": "0x4"
+  }
+ ],
+ "roview": {
+  "protect": "0x20",
+  "raise": 0,
+  "error": 87
+ },
+ "flush": {
+  "patch_without_flush_flag31": 0,
+  "restore_without_flush_flag31": 1,
+  "raw_patch_flag31": 0,
+  "raw_restore_flag31": 1
+ },
+ "timing_us": {
+  "install_us": 234.6,
+  "restore_us": 183.7
+ },
+ "install_rows": [
+  {
+   "site": "0047d01c",
+   "status": "off",
+   "reason": "distance",
+   "mode": "distance",
+   "setting": "distance",
+   "write": "none",
+   "patched": false
+  },
+  {
+   "site": "0047d01c",
+   "status": "refused",
+   "reason": "invalid_setting",
+   "mode": "-",
+   "setting": "Size",
+   "write": "none",
+   "patched": false
+  },
+  {
+   "site": "0047d01c",
+   "status": "refused",
+   "reason": "too_long",
+   "mode": "-",
+   "setting": "?",
+   "write": "none",
+   "patched": false
+  },
+  {
+   "site": "0047d01c",
+   "status": "refused",
+   "reason": "executable_mismatch",
+   "mode": "size",
+   "setting": "-",
+   "write": "none",
+   "patched": false
+  },
+  {
+   "site": "0047d01c",
+   "status": "refused",
+   "reason": "bytes_mismatch",
+   "mode": "size",
+   "setting": "-",
+   "write": "none",
+   "patched": false
+  },
+  {
+   "site": "0047d01c",
+   "status": "refused",
+   "reason": "bytes_mismatch",
+   "mode": "size",
+   "setting": "-",
+   "write": "none",
+   "patched": false
+  },
+  {
+   "site": "0047d01c",
+   "status": "refused",
+   "reason": "protect_failed",
+   "mode": "size",
+   "setting": "-",
+   "write": "none",
+   "patched": false
+  },
+  {
+   "site": "0047d01c",
+   "status": "patched",
+   "reason": "ok",
+   "mode": "size",
+   "setting": "-",
+   "write": "atomic",
+   "patched": true
+  },
+  {
+   "site": "0047d01c",
+   "status": "refused",
+   "reason": "patch_rolled_back",
+   "mode": "size",
+   "setting": "-",
+   "write": "atomic",
+   "patched": false
+  },
+  {
+   "site": "0047d01c",
+   "status": "refused",
+   "reason": "patch_rolled_back",
+   "mode": "size",
+   "setting": "-",
+   "write": "atomic",
+   "patched": false
+  },
+  {
+   "site": "0047d01c",
+   "status": "refused",
+   "reason": "rollback_unprotected",
+   "mode": "size",
+   "setting": "-",
+   "write": "atomic",
+   "patched": false
+  },
+  {
+   "site": "0047d01c",
+   "status": "patched_unverified",
+   "reason": "rollback_failed",
+   "mode": "size",
+   "setting": "-",
+   "write": "atomic",
+   "patched": false
+  },
+  {
+   "site": "0047d01c",
+   "status": "patched",
+   "reason": "ok",
+   "mode": "size",
+   "setting": "-",
+   "write": "atomic",
+   "patched": true
+  },
+  {
+   "site": "0047d01c",
+   "status": "patched",
+   "reason": "ok",
+   "mode": "size",
+   "setting": "-",
+   "write": "atomic",
+   "patched": true
+  },
+  {
+   "site": "0047d01c",
+   "status": "patched",
+   "reason": "ok",
+   "mode": "size",
+   "setting": "-",
+   "write": "atomic",
+   "patched": true
+  },
+  {
+   "site": "0047d01c",
+   "status": "refused",
+   "reason": "late_claim",
+   "mode": "size",
+   "setting": "-",
+   "write": "none",
+   "patched": false
+  }
+ ],
+ "restore_rows": [
+  {
+   "site": "0047d01c",
+   "status": "restored",
+   "found": "eb05",
+   "registered": false
+  },
+  {
+   "site": "0047d01c",
+   "status": "restore_failed",
+   "found": "eb06",
+   "registered": true
+  },
+  {
+   "site": "0047d01c",
+   "status": "restore_failed",
+   "found": "eb06",
+   "registered": true
+  },
+  {
+   "site": "0047d01c",
+   "status": "restore_not_owned",
+   "found": "eb06",
+   "registered": false
+  },
+  {
+   "site": "0047d01c",
+   "status": "restored",
+   "found": "7405",
+   "registered": false
+  },
+  {
+   "site": "0047d01c",
+   "status": "restore_not_owned",
+   "found": null,
+   "registered": false
+  },
+  {
+   "site": "0047d01c",
+   "status": "restored",
+   "found": "eb05",
+   "registered": false
+  },
+  {
+   "site": "003f001c",
+   "status": "restored",
+   "found": "eb05",
+   "registered": false
+  }
+ ],
+ "result": {
+  "checks": 92,
+  "failures": 0
+ },
+ "passed": true,
+ "note": "install/restore timings are fixture-inclusive one-off costs, not game FPS"
+}
