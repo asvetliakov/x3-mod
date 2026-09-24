@@ -1,32 +1,38 @@
 -- Configuring done (0.3s)
 -- Generating done (0.1s)
--- Build files have been written to: /Users/asvetl/x3-mod/.claude/worktrees/agent-a6342322979375509/build
-[  2%] Refreshing compiled-in source commit
-[  2%] Baking spatial-fog family fields
-[  2%] Building CXX object CMakeFiles/d3d11_interop_fixture.dir/verification/probe/d3d11_interop_fixture.cpp.obj
+CMake Warning (unused-cli):
+  Manually-specified variables were not used by the project:
+
+    CMAKE_TOOLCHAIN_FILE
+
+
+-- Build files have been written to: /Users/asvetl/x3-mod/.claude/worktrees/agent-ad70d0a3851b6461f/build
+[  1%] Building CXX object CMakeFiles/d3d11_interop_fixture.dir/verification/probe/d3d11_interop_fixture.cpp.obj
+[  1%] Refreshing compiled-in source commit
 [  3%] Building CXX object CMakeFiles/gpu_sync_timing_fixture.dir/verification/probe/gpu_sync_timing_fixture.cpp.obj
-source commit: 4de081aeb738f004c4cc382b8c49b4dc9e6dc724-dirty
+[  3%] Baking spatial-fog family fields
+source commit: ed038a7de5609e29a66d63702c00cd941caf1980
 [  3%] Built target x3m_source_commit
-[  4%] Building CXX object CMakeFiles/gpu_sync_timing_fixture.dir/src/renderer/gpu_sync_timing.cpp.obj
-[  5%] Building CXX object CMakeFiles/gpu_backend_ab_fixture.dir/verification/probe/gpu_backend_ab_fixture.cpp.obj
+[  4%] Building CXX object CMakeFiles/gpu_backend_ab_fixture.dir/verification/probe/gpu_backend_ab_fixture.cpp.obj
+[  5%] Building CXX object CMakeFiles/gpu_sync_timing_fixture.dir/src/renderer/gpu_sync_timing.cpp.obj
 [  6%] Linking CXX executable gpu_sync_timing_fixture.exe
 [  6%] Built target gpu_sync_timing_fixture
 [  7%] Building CXX object CMakeFiles/d3d9_backend_smoke_fixture.dir/verification/probe/d3d9_backend_smoke_fixture.cpp.obj
 [  8%] Linking CXX executable d3d11_interop_fixture.exe
-[  9%] Linking CXX executable d3d9_backend_smoke_fixture.exe
-[  9%] Built target d3d11_interop_fixture
-[  9%] Built target d3d9_backend_smoke_fixture
-[ 10%] Linking CXX executable gpu_backend_ab_fixture.exe
-[ 10%] Built target gpu_backend_ab_fixture
-{"output": "/Users/asvetl/x3-mod/.claude/worktrees/agent-a6342322979375509/build/generated/fog_field", "packet_bytes": 34142200, "profiles": 14, "seconds": 19.227010125}
+[  8%] Built target d3d11_interop_fixture
+[  9%] Linking CXX executable gpu_backend_ab_fixture.exe
+[  9%] Built target gpu_backend_ab_fixture
+[ 10%] Linking CXX executable d3d9_backend_smoke_fixture.exe
+[ 10%] Built target d3d9_backend_smoke_fixture
+{"output": "/Users/asvetl/x3-mod/.claude/worktrees/agent-ad70d0a3851b6461f/build/generated/fog_field", "packet_bytes": 34142200, "profiles": 14, "seconds": 21.030824792}
 [ 10%] Built target x3m_fog_field_assets
+[ 11%] Packaging compositor SEH (GNU/no-SafeSEH, narrow CRT import)
 [ 12%] Building compositor CPU boundary
-[ 12%] Packaging compositor SEH (GNU/no-SafeSEH, narrow CRT import)
 [ 13%] Building CXX object CMakeFiles/fog_family_file_fixture.dir/verification/probe/fog_family_file_fixture.cpp.obj
 [ 14%] Building CXX object CMakeFiles/fog_family_file_fixture.dir/src/renderer/fog_field_assets.cpp.obj
-/Users/asvetl/x3-mod/.claude/worktrees/agent-a6342322979375509/build/compositor_bridge
-[ 15%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/compositor_owner.cpp.obj
+/Users/asvetl/x3-mod/.claude/worktrees/agent-ad70d0a3851b6461f/build/compositor_bridge
 [ 16%] Building CXX object CMakeFiles/d3d9.dir/src/renderer/bloom_pass.cpp.obj
+[ 16%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/compositor_owner.cpp.obj
 [ 17%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loader.cpp.obj
 [ 18%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/capture.cpp.obj
 [ 19%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/proxy_identity.cpp.obj
@@ -71,8 +77,8 @@ source commit: 4de081aeb738f004c4cc382b8c49b4dc9e6dc724-dirty
 [ 54%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/pause_key_only.cpp.obj
 [ 55%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/collide_narrow_census.cpp.obj
 [ 56%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/collide_sat_sse2.cpp.obj
+[ 57%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/collide_memo.cpp.obj
 [ 58%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/music_keep.cpp.obj
-[ 58%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/collide_memo.cpp.obj
 [ 59%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/collide_query_phases.cpp.obj
 [ 60%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/sun_occlusion.cpp.obj
 [ 61%] Building CXX object CMakeFiles/d3d9.dir/src/proxy/loading_trace.cpp.obj

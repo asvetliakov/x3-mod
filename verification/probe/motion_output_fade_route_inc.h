@@ -80,6 +80,8 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
                sentinel_script=std::strcmp(script_setting,"sentinel")==0,hover_script=std::strcmp(script_setting,"hover")==0,
                behind_script=std::strcmp(script_setting,"behind")==0,foreign_script=std::strcmp(script_setting,"foreign")==0,overlay_script=std::strcmp(script_setting,"overlay")==0||foreign_script,
                hull_script=std::strcmp(script_setting,"hull")==0;
+    // zonly / zonly-unjit (owner only): the fog-band depth prepass before the routed quads (see the zonly loop below).
+    const bool zonly_script=std::strcmp(script_setting,"zonly")==0,zonly_unjit=std::strcmp(script_setting,"zonly-unjit")==0,zonly_any=zonly_script||zonly_unjit;
     // X3M_FADE_RT2_OWNER (fade-rt2-ownership.md) and the four-channel lane RT2 (X3M_SUN_SHADOW_LANE=1).
     char owner_setting[8]{};GetEnvironmentVariableA("X3M_FADE_RT2_OWNER",owner_setting,sizeof owner_setting);const bool owner=std::strcmp(owner_setting,"on")==0;
     char lane_setting[4]{};GetEnvironmentVariableA("X3M_SUN_SHADOW_LANE",lane_setting,sizeof lane_setting);const bool lane=std::strcmp(lane_setting,"1")==0;
@@ -90,15 +92,15 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
     // (X3M_LINEAR_MATERIALS=0, no fade bracket, no composition, no M): the arm alone decides. overlay: the hull pair's
     // same-node source-over sub-mesh over A under original shading (the overlay arm alone decides).
     const bool original_script=std::strcmp(script_setting,"original")==0||behind_script||overlay_script||hull_script;
-    require(routed_script||masked_script||sentinel_script||hover_script||original_script,"X3M_FIXTURE_FADE_SCRIPT=routed|masked|sentinel|hover|original|behind|overlay|foreign|hull");
-    const bool over_sentinel=sentinel_script||(original_script&&!overlay_script);
+    require(routed_script||masked_script||sentinel_script||hover_script||original_script||zonly_any,"X3M_FIXTURE_FADE_SCRIPT=routed|masked|sentinel|hover|original|behind|overlay|foreign|hull|zonly|zonly-unjit");
+    const bool over_sentinel=sentinel_script||zonly_any||(original_script&&!overlay_script);
     if(original_script)require(f.emission_status(f.d.p,30)==1u,"fade route original shading: the cutout probe's verdict is Ready without linear materials");
     constexpr unsigned frames=12;
     // hover: g_AlphaValue.x per frame (binary fractions: the fraction .625 * alpha is exact in float) and the arm's decision.
     constexpr float hover_alpha[frames]={.8125f,.71875f,.71875f,.625f,.71875f,.71875f,.8125f,.71875f,.625f,.8125f,.71875f,.71875f};
     constexpr float hover_fog_x[frames]={-.4921875f,-.55078125f,-.55078125f,-.609375f,-.55078125f,-.55078125f,-.4921875f,-.55078125f,-.609375f,-.4921875f,-.55078125f,-.55078125f}; // Q: fraction 1 * (fog_x + 1)
     constexpr bool hover_routed[frames]={1,1,1,0,0,0,1,1,0,1,1,1},hover_held[frames]={0,1,1,0,0,0,0,1,0,0,1,1};
-    const bool full_alpha=routed_script||sentinel_script||overlay_script||hull_script; // g_AlphaValue 1, g_FogClip (1, 0), diffuse alpha 1: fraction 1000 (overlay: routed by the same-node rule)
+    const bool full_alpha=routed_script||sentinel_script||overlay_script||hull_script||zonly_any; // g_AlphaValue 1, g_FogClip (1, 0), diffuse alpha 1: fraction 1000 (overlay: routed by the same-node rule)
     // original and behind follow the hover schedule (routed, held and below-threshold frames) over the sentinel fill.
     const bool hover_schedule=hover_script||(original_script&&!overlay_script&&!hull_script);
     // hull without the owner: its pair is no fade pair and no same-node overlay, so the arm refuses it (the run214 class).
@@ -186,6 +188,7 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
         float vc[48][4]{},pc[24][4]{};
         // behind: the same raster as the identity rows (w 2 at every vertex, z .3) with the origin's w = -1 (see the header comment).
         if(behind_script){vc[24][0]=2;vc[25][1]=2;vc[26][2]=2;vc[27][2]=10;vc[27][3]=-1;}else for(unsigned i=0;i<4;++i)vc[24+i][i]=1;
+        if(zonly_any)vc[26][0]=-.125f; // zonly: z = .3 - x/8 (see the zonly loop)
         for(unsigned i=0;i<3;++i)vc[31+i][i]=1;
         const bool hover_q=hover_schedule&&which==1;
         if(which){vc[37][0]=1;vc[38][1]=1;if(hover_q)vc[36][3]=4;}else{vc[36][3]=4;vc[37][2]=.0625f;vc[38][2]=.1875f;}
@@ -231,6 +234,103 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
     // The lane RT2 under linear materials: a material fade row has no invalid-share twin, so the owner is withdrawn and
     // RT2 stays masked (fade_owner_masked counts the routed quads).
     const bool owner_masked=owner&&lane&&!original_script;
+    // ---- zonly / zonly-unjit (fade-rt2-ownership.md section 7: the prepass parity oracle over RT2) ----
+    //
+    // The engine's fog-band sequence (distance-fade.md section 5, asteroid-fog-temporal.md run 47): a depth-only
+    // prepass of every fog-band node (z_only vs_1_1, null PS, ZWRITEENABLE on, COLORWRITEENABLE 0, LESSEQUAL), then
+    // the blended draws. Here both quads get the prepass first, then the routed fade-band draws of the exact fade
+    // pair at fraction 1000 with the owner on (R32F RT2, linear materials, A scissored to the lower half so the quads
+    // sit over the sentinel fill). The clip rows put a depth slope along x (row 2 = (-1/8, 0, 1, 0): z = .3 - x/8,
+    // w 1; x/8 is exact, so both programs compute the same depths), ~3.9e-3 per pixel: an x offset between the
+    // prepass and the quad of a fraction of a pixel decides LESSEQUAL. zonly: the prepass is the reviewed z_only
+    // alias, which the route jitters with the scene: every interior pixel of both quads must be covered in colour and
+    // own RT2 (the quad's z/w). zonly-unjit (the witness): the prepass is an unreviewed vs_1_1 with the same four
+    // clip rows (dp4 of the position against c0-c3), which the route does not jitter and counts as an unjittered
+    // depth writer: on frames with jx > 0 the jittered quad fragment carries the content of p - jx (farther on this
+    // slope) and fails LESSEQUAL, so the interior drops in colour and RT2 keeps the fill; jx < 0 passes. Both
+    // scripts: per interior pixel the colour is covered exactly where RT2 was written (parity), RT2 elsewhere
+    // unchanged.
+    if(zonly_any){
+        require(owner&&!lane&&!original_script&&f.emission_status(f.d.p,83)==1u,"fade zonly: the owner on the R32F RT2 under linear materials");
+        Com<IDirect3DVertexShader9> prepass_vs;
+        if(zonly_script){
+            const auto code=load((supplied.substr(0,slash+1)+"vs_c78b4c68a87fce74.bin").c_str());
+            require(code.size()==89&&fnv(code.data(),code.size()*4)==0xc78b4c68a87fce74ull,"fade zonly: local z_only program is the reviewed alias");
+            api(f.d->CreateVertexShader(reinterpret_cast<const DWORD*>(code.data()),&prepass_vs.p),"fade zonly z_only VS");
+        } else {
+            // vs_1_1; dcl_position v0; dp4 oPos.x/y/z/w, v0, c0/c1/c2/c3 (v0.w 1 from the FLOAT3 element).
+            static constexpr DWORD unreviewed[]={0xfffe0101u,0x0000001fu,0x80000000u,0x900f0000u,
+                0x00000009u,0xc0010000u,0x90e40000u,0xa0e40000u,0x00000009u,0xc0020000u,0x90e40000u,0xa0e40001u,
+                0x00000009u,0xc0040000u,0x90e40000u,0xa0e40002u,0x00000009u,0xc0080000u,0x90e40000u,0xa0e40003u,0x0000ffffu};
+            api(f.d->CreateVertexShader(unreviewed,&prepass_vs.p),"fade zonly unreviewed depth VS");
+        }
+        const auto prepass=[&](unsigned which,unsigned plan){
+            f.scope(nullptr);bind(which,plan);
+            api(f.d->SetVertexShader(prepass_vs.p),"fade zonly prepass VS");api(f.d->SetPixelShader(nullptr),"fade zonly null PS");
+            api(f.d->SetRenderState(D3DRS_ALPHABLENDENABLE,FALSE),"fade zonly prepass blend off");api(f.d->SetRenderState(D3DRS_ZWRITEENABLE,TRUE),"fade zonly prepass depth write");
+            api(f.d->SetRenderState(D3DRS_COLORWRITEENABLE,0),"fade zonly prepass colour mask off");
+            float rows[16]{};rows[0]=rows[5]=rows[10]=rows[15]=1;rows[8]=-.125f; // the quads' clip rows (c24-27 of the fade pair)
+            api(f.d->SetVertexShaderConstantF(0,rows,4),"fade zonly prepass clip rows");
+            const auto state=f.snapshot();
+            api(f.d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2),"fade zonly prepass DIP");++f.draw_index;
+            f.compare(state,f.snapshot(),"fade zonly prepass restoration");
+            float after[16];api(f.d->GetVertexShaderConstantF(0,after,4),"fade zonly prepass rows after");
+            require(std::memcmp(rows,after,sizeof rows)==0,"fade zonly: c0-3 restored bit-exactly after the prepass");
+        };
+        for(unsigned plan=0;plan<frames;++plan){
+            f.frame_begin();f.linear_material_inputs();f.write_reserved();
+            const RECT lower{0,LONG(f.H/2),LONG(f.W),LONG(f.H)};api(f.d->SetScissorRect(&lower),"fade zonly A below the quads");
+            api(f.d->SetRenderState(D3DRS_SCISSORTESTENABLE,TRUE),"fade zonly A scissored");
+            f.draw(f.a,0,0,0,true,true,f.a.recorded,Alter::None,false);
+            require(f.emission_status(f.d.p,16)==2u,"fade zonly: the fade producer is the required one");
+            prepass(0,plan);prepass(1,plan);
+            // z/w tolerance: the flat quads' FP32 raster bound (4e-6) plus 1/256 px of sub-pixel position quantisation on the slope.
+            constexpr double depth_tolerance=4e-6+.125*2./64./256.;
+            unsigned pixels=0,fill_before=0,color_holes=0,rt2_holes=0,mismatch=0,outside_changed=0,routed=0;double max_depth_error=0;
+            for(unsigned which=0;which<2;++which){
+                f.scope(&objects[which]);bind(which,plan);
+                const auto before=scene(),before_motion=read(1),before_depth=read(2);
+                const auto state=f.snapshot();
+                const unsigned routed_before=f.emission_status(f.d.p,50),refused_before=f.emission_status(f.d.p,51);
+                api(f.d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2),"fade zonly actual original DIP");++f.draw_index;
+                f.compare(state,f.snapshot(),"fade zonly complete draw restoration");
+                const auto after=scene(),motion=read(1),depth=read(2);
+                require(f.emission_status(f.d.p,50)-routed_before==1u&&f.emission_status(f.d.p,51)==refused_before,"fade zonly: the arm routes the quad (fraction 1000)");++routed;
+                const bool matched=objects[which].recorded;
+                for(unsigned y=0;y<f.H;++y)for(unsigned x=0;x<f.W;++x){
+                    const std::size_t n=std::size_t(y)*f.W+x,i=4*n;
+                    const bool written=std::memcmp(&depth[n],&before_depth[n],4)!=0;
+                    if(!interior(which,x,y)){if(!near_quad(which,x,y))outside_changed+=written;continue;}
+                    ++pixels;fill_before+=before_depth[n]==-1.f;
+                    const bool covered=std::memcmp(&before[i],&after[i],12)!=0;
+                    color_holes+=!covered;rt2_holes+=!written&&depth[n]==-1.f;mismatch+=covered!=written;
+                    if(!written)continue;
+                    const double z=.3-.125*(2.*(x-f.jx)/f.W-1.); // the quad's z/w at the jittered sample (D3D9: pixel centres at integer positions)
+                    max_depth_error=std::max(max_depth_error,std::fabs(double(depth[n])-z));
+                    const double u=(x-f.jx)/f.W+.5/f.W,v=(y-f.jy)/f.H+.5/f.H;
+                    const bool own=matched?(std::fabs(motion[i]-u)*f.W<.01&&std::fabs(motion[i+1]-v)*f.H<.01&&std::fabs(motion[i+2]-z)<depth_tolerance&&motion[i+3]==1)
+                                   :before_motion[i+3]==-1&&motion[i]==0&&motion[i+1]==0&&motion[i+2]==0&&motion[i+3]==-1;
+                    if(!own)std::printf("FADE_ZONLY_PIXEL_DIFF frame=%llu quad=%u x=%u y=%u matched=%u motion=%.9g,%.9g,%.9g,%.9g depth=%.9g\n",f.frame,which,x,y,matched,motion[i],motion[i+1],motion[i+2],motion[i+3],depth[n]);
+                    require_quiet(own,"fade zonly: a covered pixel carries the quad's own RT1 rows (the sentinel over the fill when unmatched)");
+                }
+                objects[which].recorded=true;
+            }
+            std::printf("FADE_ZONLY frame=%llu script=%s jx=%.6f jy=%.6f pixels=%u fill_before=%u color_holes=%u rt2_holes=%u mismatch=%u outside_changed=%u max_depth_error=%.9g routed=%u fade_routed=%u\n",
+                        f.frame,script_setting,f.jx,f.jy,pixels,fill_before,color_holes,rt2_holes,mismatch,outside_changed,max_depth_error,routed,f.emission_status(f.d.p,50));
+            require(pixels==2u*14u*14u&&fill_before==pixels,"fade zonly: RT2 holds the fill under both quads after the prepass");
+            require(mismatch==0&&outside_changed==0&&max_depth_error<depth_tolerance,"fade zonly: RT2 written exactly where the colour is covered, with the quad's z/w; nowhere else");
+            if(zonly_script)require(color_holes==0&&rt2_holes==0,"fade zonly: the jittered prepass drops no interior pixel in colour or RT2");
+            else if(f.jx>0)require(rt2_holes>pixels/2,"fade zonly-unjit: the unjittered prepass drops the interior of the jittered quads (RT2 keeps the fill)");
+            else if(f.jx<0)require(rt2_holes==0,"fade zonly-unjit: a negative x jitter passes LESSEQUAL on this slope");
+            const auto color=scene(),mask=read(3);
+            f.emission_reference_color=color;f.emission_reference_mask=mask;f.emissions_enabled=true;f.emission_mask_valid=f.emission_status(f.d.p,1)!=0;
+            f.boundary();
+            api(f.d->EndScene(),"fade zonly EndScene");f.write_presented(f.color_image());api(f.d->SetDepthStencilSurface(f.depth.p),"fade zonly depth restore");api(f.d->Present(nullptr,nullptr,nullptr,nullptr),"fade zonly Present");++f.frame;++f.frames_since_reset;
+        }
+        api(f.d->SetIndices(nullptr),"fade zonly final indices release");api(f.d->SetStreamSource(0,nullptr,0,0),"fade zonly final stream release");
+        std::printf("FADE_ZONLY_CHECKS frames=%u script=%s quads=2\n",frames,script_setting);
+        return;
+    }
     for(unsigned plan=0;plan<frames;++plan) {
         const bool routed_plan=routed_frame(plan);
         f.frame_begin();f.linear_material_inputs();f.write_reserved();

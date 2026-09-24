@@ -219,6 +219,13 @@ the launcher option) is retired in a cleanup batch, about 36 slots back on the t
   fade_threshold`), and a new `hull` case draws `494fe349b8bc12ec/fffdabd910793aba` on its own node with no routed draw
   before it, fraction 1000: routed, owner, resolved shift a fraction of the raw shift. `production-zonly` / `seam-zonly`
   unchanged (the prepass parity oracle now also covers RT2 holes: add the RT2 interior-hole count to the check).
+  **Done 2026-09-24** as two new `faderoute` owner cases, because the pinned zonly material draw is never routed:
+  `seam-taa-fade-route-zonly-owner` (the z_only alias as a depth prepass of both quads, jittered by the route, then
+  the routed fade pair at fraction 1000 over the fill, with a depth slope that makes a sub-pixel offset decide
+  LESSEQUAL) counts 0 colour and 0 RT2 interior holes on all 12 frames; `seam-taa-fade-route-zonly-unjit-owner`
+  (the same prepass through an unreviewed vs_1_1 the route leaves unjittered, `unjittered_depth_writers = 2` per frame)
+  drops all 392 interior pixels in both colour and RT2 on the four jx > 0 frames and none elsewhere; colour and RT2
+  coverage agree per pixel in both (ledger `temporal-resolve.md`, "fade owner: prepass parity over RT2").
 - `run_temporal_pass.py`, lattice mode: one case with a far routed square whose depth switches sentinel -> valid once:
   the region opens once for L frames and the output is within the existing thin-region bounds; the "routed sentinel
   (glass)" row stays bit-identical; the `.a` vote rows are B's, re-baselined once with the encoding above.

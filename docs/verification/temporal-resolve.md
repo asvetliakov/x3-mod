@@ -2548,3 +2548,28 @@ Run 80 items (fade owner; section 5 of the design note): fly the run214 stand (t
 Also watch: near hulls' glass/window sub-meshes of the `53a0a641` family, routed through the overlay arm before, are now
 fade owners at fraction 1000 (their depth, coplanar with the hull, lands in RT2: look for trails on windows under a pan);
 route_draw_us and loading time against an option-off flight at the same spot.
+
+## 2026-09-24 fade owner: prepass parity over RT2 (fixture)
+
+Closes the "Not done" item above ([fade-rt2-ownership.md](../architecture/fade-rt2-ownership.md) section 7). Two
+`faderoute` owner cases (`motion_output_fade_route_inc.h`, the zonly loop; TAA + HDR + rotating camera, linear
+materials, R32F RT2, A scissored below the quads): per frame both quads get a depth-only prepass (null PS, Z-write on,
+colour mask 0, LESSEQUAL), then the routed fade-band draws of `b0602757fce6e870/517540ae6d5e5410` at fraction 1000
+over the sentinel fill. The clip rows carry a depth slope along x (z = .3 - x/8, 3.9e-3 per pixel), so a sub-pixel
+offset between prepass and quad decides the Z test. Holes are counted over the 392 interior pixels of both quads
+exactly as the run-47 oracle counts colour holes: colour = the draw left the pixel unchanged, RT2 = the pixel still
+holds the fill -1; mismatch = the pixels where colour coverage and RT2 write disagree. Bottle X3, measured
+([zonly_holes_out.txt](../../verification/results/fade-rt2-owner/zonly_holes_out.txt), `zonly_holes.py` beside it):
+
+| Case | Prepass | RT2 holes / colour holes per frame | Mismatch | `unjittered_depth_writers` / `jittered` per frame | Max RT2 z/w error |
+| --- | --- | --- | --- | --- | --- |
+| `seam-taa-fade-route-zonly-owner` | z_only alias `c78b4c68a87fce74`, jittered by the route | 0 / 0 on all 12 frames | 0 | 0 / 5 | 4.70e-6 |
+| `seam-taa-fade-route-zonly-unjit-owner` | unreviewed vs_1_1, same clip rows, not jittered | 392 / 392 on frames 2, 4, 6, 10 (the jx > 0 frames), 0 elsewhere | 0 | 2 / 3 | 4.46e-6 |
+
+The z/w bound is the flat quads' 4e-6 plus 1/256 px of sub-pixel position on the slope (1.9e-5). Full run
+`run_motion_output.py`: 222 cases + 26 bench PASS, the 220 committed cases identical in every non-clock leaf
+([compare_motion_zonly_out.txt](../../verification/results/fade-rt2-owner/compare_motion_zonly_out.txt)); summary
+re-pinned; `production-zonly` / `seam-zonly` unchanged. Not proven here: the clip rows are chosen so the z_only alias
+and the fade VS compute bit-identical depths (x/8 is exact); with the engine's arbitrary rows the two programs may round
+the depth differently by an ulp, which would drop isolated pixels in colour and RT2 alike (parity holds per pixel, holes
+would not be 0); native-driver behaviour (section 8) is unverified.

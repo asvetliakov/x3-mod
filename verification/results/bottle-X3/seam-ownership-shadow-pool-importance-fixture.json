@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "verification/probe/build/motion_output_fixture.exe": "e551cbe586c0c04c46b0b75f85588c5042c20f4f8d9a2a5783b954970bc67149",
-  "verification/probe/build/motion-output-seam/d3d9.dll": "24e07317df31ea3ff46d8906a23133372cc343061fdf5aec00566fe98d40b91d",
-  "build/d3d9.dll": "798610e40e72164b2be24c2383b62800e0bf7de9a64819383756c729b7805f95"
+  "verification/probe/build/motion_output_fixture.exe": "5010c4485305a7e4cf6bb8cf447138abae9bd685f0f6c137fe15e09cda68601f",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "dc887d8885e052d57dae51788dd9cfd20cec77455054669e4b67a889438c45d6",
+  "build/d3d9.dll": "b0da79760a5431a8d495728787bdedeb6b06fd0d5e3b6a4e227d8e15ff150f47"
  },
  "script": "importance",
  "store": 0,
@@ -37,7 +37,7 @@
      0.0,
      0.0
     ],
-    "select_us": 259.5,
+    "select_us": 270.2,
     "flip": [
      0,
      0
@@ -69,7 +69,7 @@
      0.0,
      2.136
     ],
-    "select_us": 4.5,
+    "select_us": 5.8,
     "flip": [
      0,
      6
@@ -101,7 +101,7 @@
      0.0,
      2.136
     ],
-    "select_us": 288.2,
+    "select_us": 290.2,
     "flip": [
      0,
      0
@@ -133,7 +133,7 @@
      0.0,
      2.136
     ],
-    "select_us": 2.3,
+    "select_us": 2.4,
     "flip": [
      0,
      0
@@ -165,7 +165,7 @@
      0.0,
      2.136
     ],
-    "select_us": 3.8,
+    "select_us": 3.4,
     "flip": [
      0,
      0
@@ -197,7 +197,7 @@
      0.0,
      2.136
     ],
-    "select_us": 3.0,
+    "select_us": 2.4,
     "flip": [
      0,
      0
@@ -229,7 +229,7 @@
      0.0,
      2.136
     ],
-    "select_us": 3.8,
+    "select_us": 3.9,
     "flip": [
      0,
      0
@@ -287,18 +287,18 @@
  },
  "us": {
   "frames": 8,
-  "min": 48.0,
-  "median": 52.75,
-  "max": 1915.3
+  "min": 46.5,
+  "median": 52.5,
+  "max": 1788.8
  },
  "dropped_min_size1": 2.136,
  "select_us": {
-  "median": 3.8,
-  "max": 288.2
+  "median": 3.9,
+  "max": 290.2
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-importance-20260924-142708-519184",
- "trace_sha256": "7c7cdeeb47fd6586f826b2bb77bfa1c46c697903964b642f94e804428af72168",
- "dll_sha256": "24e07317df31ea3ff46d8906a23133372cc343061fdf5aec00566fe98d40b91d",
- "exe_sha256": "e551cbe586c0c04c46b0b75f85588c5042c20f4f8d9a2a5783b954970bc67149"
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-importance-20260924-145041-453387",
+ "trace_sha256": "2f47551e3e51519eee00a9387f3f2a7285f0c83bdce2104007ffeaf46564bb8a",
+ "dll_sha256": "dc887d8885e052d57dae51788dd9cfd20cec77455054669e4b67a889438c45d6",
+ "exe_sha256": "5010c4485305a7e4cf6bb8cf447138abae9bd685f0f6c137fe15e09cda68601f"
 }

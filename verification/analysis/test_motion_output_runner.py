@@ -74,12 +74,13 @@ class MotionOutputRunnerTests(unittest.TestCase):
                        'seam-taa-fade-route-hull': '0',  # X3M_FADE_RT2_OWNER (fade-rt2-ownership.md): the owner cases and the hull script
                        'seam-taa-fade-route-routed-owner-lane': '0', 'seam-taa-fade-route-hover-age': '0', 'seam-taa-fade-route-original-owner-age': '0',
                        'seam-taa-fade-route-original-age': '0',
+                       'seam-taa-fade-route-zonly-owner': '0', 'seam-taa-fade-route-zonly-unjit-owner': '0',  # the prepass parity under the owner
                        **{f'seam-taa-fade-route-{n}-owner': '0' for n in ('routed', 'routed-perdraw', 'sentinel', 'hover', 'original', 'behind', 'overlay', 'foreign', 'hull')},
                        'seam-taa-cutout-opaque-get': '0',
                        'seam-ownership-bolt-shape-prims': '0', 'seam-ownership-bolt-shape-decl': '0'})  # the bolt footprint's shape-refusal script
         self.assertEqual({n for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'auto'}, automatic)
         self.assertEqual({n: e['X3M_HDR_EV_MANUAL'] for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'manual'}, manual)
-        self.assertEqual((len(hdr), len(automatic), len(manual)), (98, 14, 50))  # + seam-thin-vote-far-on-owner (no exposure mode)  # 4 seam-*lightmap-far-fade*, 7 seam-lightmap-widen-* and 4 seam-thin-vote-* cases set no exposure mode (runtime default)
+        self.assertEqual((len(hdr), len(automatic), len(manual)), (100, 14, 52))  # + seam-thin-vote-far-on-owner (no exposure mode)  # 4 seam-*lightmap-far-fade*, 7 seam-lightmap-widen-* and 4 seam-thin-vote-* cases set no exposure mode (runtime default)
         for name, env in hdr.items():
             with self.subTest(case=name):
                 if name in automatic:
@@ -369,6 +370,48 @@ class MotionOutputRunnerTests(unittest.TestCase):
         report.append(f'RESULT PASS checks=900 restorations=36 frames={frames}')
         return '\n'.join(report), '\n'.join(trace)
 
+    def fade_zonly_output(self, script):
+        """Synthetic zonly / zonly-unjit report and trace: twelve frames, the witness dropping the whole interior (392)
+        on the frames with jx > 0."""
+        unjit = script == 'zonly-unjit'
+        report, trace = [], []
+        for f in range(runner.FADE_ROUTE_FRAMES):
+            _, jx, jy = runner.expected_jitter(f)
+            holes = runner.FADE_ZONLY_PIXELS if unjit and jx > 0 else 0
+            report.append(f'FADE_ZONLY frame={f} script={script} jx={jx:.6f} jy={jy:.6f} pixels=392 fill_before=392 color_holes={holes} rt2_holes={holes} '
+                          f'mismatch=0 outside_changed=0 max_depth_error=2.9e-08 routed=2 fade_routed=2')
+            trace.append(f'motion_output_frame device=1 frame={f} latched=1 draws=5 jitter=1 jittered={3 if unjit else 5} unjittered_depth_writers={2 if unjit else 0}')
+        report += [f'FADE_ZONLY_CHECKS frames=12 script={script} quads=2', 'RESULT PASS checks=500 restorations=60 frames=12']
+        return '\n'.join(report), '\n'.join(trace)
+
+    def test_fade_zonly_cases_and_validator(self):
+        cases = {c['name']: c for c in runner.CASES if c['name'] in runner.FADE_ZONLY_CASES}
+        self.assertEqual(sorted(cases), sorted(runner.FADE_ZONLY_CASES))
+        self.assertTrue(all(c['hdr_env']['X3M_FADE_RT2_OWNER'] == 'on' and c['hdr_env']['X3M_MOTION_FRAME_LOG'] == '1'
+                            and 'X3M_SUN_SHADOW_LANE' not in c['hdr_env'] for c in cases.values()))
+        text, trace = self.fade_zonly_output('zonly')
+        result = runner.validate_fade_zonly('host', 'zonly', text, trace)
+        self.assertEqual((result['hole_frames'], set(result['unjittered_depth_writers'].values())), ([], {0}))
+        text, trace = self.fade_zonly_output('zonly-unjit')
+        result = runner.validate_fade_zonly('host', 'zonly-unjit', text, trace)
+        self.assertEqual(result['hole_frames'], result['positive_jx_frames'])
+        self.assertTrue(result['hole_frames'])
+        self.assertEqual(set(result['unjittered_depth_writers'].values()), {2})
+        good = self.fade_zonly_output('zonly')
+        witness = self.fade_zonly_output('zonly-unjit')
+        bad = [('zonly', good[0].replace('color_holes=0 rt2_holes=0', 'color_holes=1 rt2_holes=1', 1), good[1]),
+               ('zonly', good[0].replace('mismatch=0', 'mismatch=1', 1), good[1]),
+               ('zonly', good[0].replace('color_holes=0 rt2_holes=0', 'color_holes=0 rt2_holes=3', 1), good[1]),
+               ('zonly', good[0].replace('fill_before=392', 'fill_before=391', 1), good[1]),
+               ('zonly', good[0].replace('max_depth_error=2.9e-08', 'max_depth_error=1e-04', 1), good[1]),
+               ('zonly', good[0], good[1].replace('unjittered_depth_writers=0', 'unjittered_depth_writers=1', 1)),
+               ('zonly', good[0], good[1].replace('jittered=5', 'jittered=4', 1)),
+               ('zonly-unjit', witness[0], witness[1].replace('unjittered_depth_writers=2', 'unjittered_depth_writers=0', 1)),
+               ('zonly-unjit', witness[0].replace('color_holes=392 rt2_holes=392', 'color_holes=100 rt2_holes=100', 1), witness[1])]
+        for script, output, log in bad:
+            with self.subTest(script=script, output=output != good[0]), self.assertRaises(AssertionError):
+                runner.validate_fade_zonly('host', script, output, log)
+
     def test_fade_route_cases_and_validator(self):
         cases = [c for c in runner.CASES if c['mode'] == 'faderoute']
         self.assertEqual([(c['name'], c['lazy'], c['hdr_env']['X3M_FIXTURE_FADE_SCRIPT']) for c in cases],
@@ -384,7 +427,8 @@ class MotionOutputRunnerTests(unittest.TestCase):
                           ('seam-taa-fade-route-overlay-owner', True, 'overlay'), ('seam-taa-fade-route-foreign-owner', True, 'foreign'),
                           ('seam-taa-fade-route-hull-owner', True, 'hull'), ('seam-taa-fade-route-hull', True, 'hull'),
                           ('seam-taa-fade-route-routed-owner-lane', True, 'routed'), ('seam-taa-fade-route-hover-age', True, 'hover'),
-                          ('seam-taa-fade-route-original-owner-age', True, 'original'), ('seam-taa-fade-route-original-age', True, 'original')])
+                          ('seam-taa-fade-route-original-owner-age', True, 'original'), ('seam-taa-fade-route-original-age', True, 'original'),
+                          ('seam-taa-fade-route-zonly-owner', True, 'zonly'), ('seam-taa-fade-route-zonly-unjit-owner', True, 'zonly-unjit')])
         owners = {c['name'] for c in cases if c['hdr_env'].get('X3M_FADE_RT2_OWNER') == 'on'}
         self.assertEqual(owners, {c['name'] for c in cases if '-owner' in c['name']})
         # The lane (four-channel RT2) on the original-shading owner cases only; the thin region on hover-owner only.

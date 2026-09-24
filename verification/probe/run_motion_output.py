@@ -971,6 +971,19 @@ FADE_ROUTE_AGE_TWINS = {'seam-taa-fade-route-hover-owner': 'seam-taa-fade-route-
 FADE_ROUTE_AGE_FRESH = {'seam-taa-fade-route-hover-owner': [3, 4, 5, 6, 7, 8], 'seam-taa-fade-route-hover-age': [3, 4, 5, 6, 7, 8],
                         'seam-taa-fade-route-original-owner-age': [3, 6, 7, 8], 'seam-taa-fade-route-original-age': [6, 7]}
 FADE_ROUTE_AGE_OWNER_RESETS = {'seam-taa-fade-route-hover-owner': [], 'seam-taa-fade-route-original-owner-age': [3, 8]}
+# The fog-band depth prepass under the owner (fade-rt2-ownership.md section 7; motion_output_fade_route_inc.h, the zonly loop):
+# both quads get a depth-only prepass (null PS, Z-write on, colour mask 0, LESSEQUAL), then their routed fade-band draws of the
+# fade pair at fraction 1000 over the sentinel fill, with a depth slope along x (z = .3 - x/8) so a sub-pixel offset between
+# prepass and quad decides the Z test. zonly: the prepass is the z_only alias the route jitters with the scene; zonly-unjit:
+# an unreviewed vs_1_1 with the same clip rows, which the route leaves unjittered (two unjittered_depth_writers per frame).
+# FADE_ZONLY lines: per frame the interior pixels of both quads (392), how many keep the background colour (colour holes) and
+# the fill in RT2 (RT2 holes), and the pixels where the two disagree (mismatch, always 0).
+FADE_ZONLY_CASES = {'seam-taa-fade-route-zonly-owner': 'zonly', 'seam-taa-fade-route-zonly-unjit-owner': 'zonly-unjit'}
+FADE_ZONLY_PIXELS = 2 * FADE_ROUTE_QUAD_PIXELS
+FADE_ZONLY_DEPTH_TOLERANCE = 4e-6 + .125 * 2 / 64 / 256  # flat-quad FP32 raster bound + 1/256 px of sub-pixel position on the slope
+CASES += [case(name, 'faderoute', jitter=True, taa=True, lazy=True, hdr=True,
+               hdr_env=dict(FADE_ROUTE_ENV, X3M_FIXTURE_FADE_SCRIPT=script, X3M_FADE_RT2_OWNER='on', X3M_MOTION_FRAME_LOG='1'))
+          for name, script in FADE_ZONLY_CASES.items()]
 LIGHTMAP_FADE_STEPS = (('near', 1, True), ('far', 128, True), ('mid', 64, True), ('near_off', 1, False), ('far_off', 128, False),
                        ('mid_on', 64, True), ('mid_reset', 64, True), ('near_reset', 1, True))
 # Hull emissive widening (motion_output_lightmap_widen_inc.h, --hull-emissive-widening K[,B];
@@ -5583,6 +5596,47 @@ def fade_route_ages(directory, frames):
     return out
 
 
+def validate_fade_zonly(name, script, text, trace):
+    """The zonly / zonly-unjit fade scripts (motion_output_fade_route_inc.h): per frame the fixture's FADE_ZONLY line (both
+    quads routed, the fill under them after the prepass, colour and RT2 holes, their per-pixel mismatch, the RT2 depth
+    error) and the DLL's motion_output_frame line (unjittered_depth_writers: 0 with the z_only alias, 2 with the unreviewed
+    prepass; the jittered draw count). zonly: no hole on any frame; zonly-unjit: holes over half the interior on every frame
+    with jx > 0, none with jx < 0."""
+    lines = text.splitlines()
+    terminal = [fields(l) for l in lines if l.startswith('RESULT PASS ')]
+    assert len(terminal) == 1 and not any(l.startswith('RESULT FAIL') for l in lines), f'{name}: fixture did not complete'
+    assert int(terminal[0]['frames']) == FADE_ROUTE_FRAMES and int(terminal[0]['checks']) > 0, (name, terminal)
+    assert [fields(l) for l in lines if l.startswith('FADE_ZONLY_CHECKS ')] == [dict(frames=str(FADE_ROUTE_FRAMES), script=script, quads='2')], name
+    assert not any(l.startswith('FADE_ZONLY_PIXEL_DIFF ') for l in lines), name
+    rows = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('FADE_ZONLY ')}
+    assert sorted(rows) == list(range(FADE_ROUTE_FRAMES)), (name, sorted(rows))
+    frames = {int(fields(l)['frame']): fields(l) for l in trace.splitlines() if l.startswith('motion_output_frame ')}
+    assert set(range(FADE_ROUTE_FRAMES)) <= set(frames), (name, sorted(frames))
+    unjit = script == 'zonly-unjit'
+    color_holes, rt2_holes, writers, jittered, errors = {}, {}, {}, {}, []
+    for frame, row in rows.items():
+        _, jx, jy = expected_jitter(frame)
+        assert row['script'] == script and abs(float(row['jx']) - jx) < 1e-6 and abs(float(row['jy']) - jy) < 1e-6, (name, frame, row)
+        assert (row['pixels'], row['fill_before'], row['mismatch'], row['outside_changed'], row['routed'], row['fade_routed']) == (str(FADE_ZONLY_PIXELS), str(FADE_ZONLY_PIXELS), '0', '0', '2', '2'), (name, frame, row)
+        color_holes[frame], rt2_holes[frame] = int(row['color_holes']), int(row['rt2_holes'])
+        assert color_holes[frame] == rt2_holes[frame], (name, frame, row)
+        errors.append(float(row['max_depth_error']))
+        assert errors[-1] < FADE_ZONLY_DEPTH_TOLERANCE, (name, frame, row)
+        if not unjit or jx < 0:
+            assert rt2_holes[frame] == 0, (name, frame, row)
+        elif jx > 0:
+            assert rt2_holes[frame] > FADE_ZONLY_PIXELS // 2, (name, frame, row)
+        summary = frames[frame]
+        writers[frame], jittered[frame] = int(summary['unjittered_depth_writers']), int(summary['jittered'])
+        # A, the two prepasses (jittered only as the z_only alias) and the two quads.
+        assert (writers[frame], jittered[frame]) == ((2, 3) if unjit else (0, 5)), (name, frame, summary)
+    assert not unjit or any(rt2_holes.values()), (name, 'the witness never dropped a pixel')
+    return {'mode': 'faderoute', 'script': script, 'frames': FADE_ROUTE_FRAMES, 'checks': int(terminal[0]['checks']), 'pixels_per_frame': FADE_ZONLY_PIXELS,
+            'color_holes': color_holes, 'rt2_holes': rt2_holes, 'mismatch': 0, 'max_depth_error': max(errors),
+            'unjittered_depth_writers': writers, 'jittered': jittered,
+            'hole_frames': sorted(f for f, h in rt2_holes.items() if h), 'positive_jx_frames': sorted(f for f in rows if expected_jitter(f)[1] > 0)}
+
+
 def validate_fade_route(name, script, lazy, text, trace, directory, owner=False, lane=False, capture=FADE_ROUTE_CAPTURE, ages=False, scissor=False):
     """Fade-band arm script (motion_output_fade_route_inc.h): the arm decision per
     frame, the route records of the capture frames, the composite at the oracle
@@ -6309,6 +6363,16 @@ def main(argv=None):
                 (RESULTS / f'{name}-fixture.json').write_text(json.dumps({'case': name, 'bottle': result['bottle'], 'binaries': result['binaries'], **case}, indent=1) + '\n')
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} S3={case["bodies"]["3S"]} N6={case["bodies"]["6N"]}', flush=True)
+                continue
+            if mode == 'faderoute' and name in FADE_ZONLY_CASES:
+                case = validate_fade_zonly(name, FADE_ZONLY_CASES[name], text, trace)
+                case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
+                shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
+                result['cases'][name] = case
+                save()
+                print(f'{name}: exit={completed.returncode} checks={case["checks"]} rt2_holes={case["rt2_holes"]} color_holes={case["color_holes"]} '
+                      f'unjittered_depth_writers={case["unjittered_depth_writers"]}', flush=True)
                 continue
             if mode == 'faderoute':
                 owner_case = hdr_env.get('X3M_FADE_RT2_OWNER') == 'on'
