@@ -1,0 +1,116 @@
+skipped overlay sources: ['addon/05.cat', 'addon/06.cat']
+Materials: addon/01.cat:addon/types/Materials.pck rows=1237 named=55
+census texture_unresolved rows: 13
+
+effects/menugfx/hud_icon_text_x
+  01.cat:objects/effects/menugfx/hud_icon_text_x.pbb
+    mat 0 diffuse b'X:\\tex\\true\\340.jpg': named -> textures\X:\tex\true\340: placeholder dds/NONE_BLACK (default)
+
+environments/asteroids/asteroid_B_ClassPleasureComplex
+  01.cat:objects/environments/asteroids/asteroid_B_ClassPleasureComplex.pbb
+    mat 3 diffuse b'1039.jpg': id 1039 -> tex\true\1039: load tex/true/1039.jpg [01.cat]
+    mat 3 bump b'1033.jpg': id 1033 -> tex\true\1033: load tex/true/1033.jpg [01.cat] | low_bump: id 1033 -> tex\true\1033: load tex/true/1033.jpg [01.cat]
+    mat 3 light b'598.tga': id 598 -> tex\true\598: load tex/true/598.tga [01.cat]
+    mat 4 diffuse b'1035.jpg': id 1035 -> tex\true\1035: load tex/true/1035.jpg [01.cat]
+    mat 5 diffuse b'1042.jpg': id 1042 -> tex\true\1042: load tex/true/1042.jpg [01.cat]
+    mat 5 bump b'1040.jpg': id 1040 -> tex\true\1040: load tex/true/1040.jpg [01.cat] | low_bump: id 1040 -> tex\true\1040: load tex/true/1040.jpg [01.cat]
+    mat 6 diffuse b'590.tga': id 590 -> tex\true\590: load tex/true/590.tga [01.cat]
+    mat 7 diffuse b'1034.jpg': id 1034 -> tex\true\1034: load tex/true/1034.jpg [01.cat]
+    mat 8 diffuse b'39.jpg': id 39 -> tex\true\39: load tex/true/39.jpg [01.cat]
+    mat 8 bump b'416.jpg': id 416 -> tex\true\416: load tex/true/416.jpg [01.cat] | low_bump: id 416 -> tex\true\416: load tex/true/416.jpg [01.cat]
+
+ships/M3/Argon_hybrid
+  11.cat:objects/ships/M3/Argon_hybrid.pbb
+    mat 0 bump b'dds\\unique_argon_hybrid_bump.tga': named -> textures\dds\unique_argon_hybrid_bump: placeholder dds/NONE_NORMAL_LOW or dds/NONE_NORMAL (suffix "bump") | low_bump: named -> textures\dds\unique_argon_hybrid_low_bump: placeholder dds/NONE_NORMAL_LOW or dds/NONE_NORMAL (suffix "bump")
+
+ships/M6/Khaak_M6Main
+  02.cat:objects/ships/M6/Khaak_M6Main.pbb
+    mat 0 diffuse b'25.jpg': id 25 -> tex\true\25: load tex/true/25.jpg [01.cat]
+    mat 0 bump b'425.jpg': id 425 -> tex\true\425: load tex/true/425.jpg [01.cat] | low_bump: id 425 -> tex\true\425: load tex/true/425.jpg [01.cat]
+    mat 0 specular b'25_spec.jpg': id 25 -> tex\true\25: load tex/true/25.jpg [01.cat]
+    mat 1 diffuse b'260.jpg': id 260 -> tex\true\260: load tex/true/260.jpg [01.cat]
+    mat 1 bump b'260_bump.jpg': id 260 -> tex\true\260: load tex/true/260.jpg [01.cat] | low_bump: id 260 -> tex\true\260: load tex/true/260.jpg [01.cat]
+    mat 1 specular b'260_spec.jpg': id 260 -> tex\true\260: load tex/true/260.jpg [01.cat]
+    mat 2 diffuse b'36.jpg': id 36 -> tex\true\36: load tex/true/36.jpg [01.cat]
+    mat 2 bump b'209.jpg': id 209 -> tex\true\209: load tex/true/209.jpg [01.cat] | low_bump: id 209 -> tex\true\209: load tex/true/209.jpg [01.cat]
+    mat 2 specular b'36_spec.jpg': id 36 -> tex\true\36: load tex/true/36.jpg [01.cat]
+    mat 3 diffuse b'29.jpg': id 29 -> tex\true\29: load tex/true/29.jpg [01.cat]
+    mat 3 bump b'367.jpg': id 367 -> tex\true\367: load tex/true/367.jpg [01.cat] | low_bump: id 367 -> tex\true\367: load tex/true/367.jpg [01.cat]
+    mat 3 specular b'29_spec.jpg': id 29 -> tex\true\29: load tex/true/29.jpg [01.cat]
+    mat 5 diffuse b'263.jpg': id 263 -> tex\true\263: load tex/true/263.jpg [01.cat]
+    mat 5 bump b'263_bump.jpg': id 263 -> tex\true\263: load tex/true/263.jpg [01.cat] | low_bump: id 263 -> tex\true\263: load tex/true/263.jpg [01.cat]
+    mat 5 specular b'263_spec.jpg': id 263 -> tex\true\263: load tex/true/263.jpg [01.cat]
+    mat 5 light b'263.jpg': id 263 -> tex\true\263: load tex/true/263.jpg [01.cat]
+    mat 6 specular b'69.jpg': id 69 -> textures\effects\others\envmap_test: load dds/envmap_test.pck [01.cat]
+
+ships/M6/Khaak_M6Sec
+  02.cat:objects/ships/M6/Khaak_M6Sec.pbb
+    mat 0 diffuse b'36.jpg': id 36 -> tex\true\36: load tex/true/36.jpg [01.cat]
+    mat 0 bump b'209.jpg': id 209 -> tex\true\209: load tex/true/209.jpg [01.cat] | low_bump: id 209 -> tex\true\209: load tex/true/209.jpg [01.cat]
+    mat 0 specular b'36_spec.jpg': id 36 -> tex\true\36: load tex/true/36.jpg [01.cat]
+    mat 1 diffuse b'25.jpg': id 25 -> tex\true\25: load tex/true/25.jpg [01.cat]
+    mat 1 bump b'425.jpg': id 425 -> tex\true\425: load tex/true/425.jpg [01.cat] | low_bump: id 425 -> tex\true\425: load tex/true/425.jpg [01.cat]
+    mat 1 specular b'25_spec.jpg': id 25 -> tex\true\25: load tex/true/25.jpg [01.cat]
+    mat 2 diffuse b'263.jpg': id 263 -> tex\true\263: load tex/true/263.jpg [01.cat]
+    mat 2 bump b'263_bump.jpg': id 263 -> tex\true\263: load tex/true/263.jpg [01.cat] | low_bump: id 263 -> tex\true\263: load tex/true/263.jpg [01.cat]
+    mat 2 specular b'263_spec.jpg': id 263 -> tex\true\263: load tex/true/263.jpg [01.cat]
+    mat 2 light b'263.jpg': id 263 -> tex\true\263: load tex/true/263.jpg [01.cat]
+
+ships/terran/atf_m3
+  02.cat:objects/ships/terran/atf_m3.pbb
+    mat 0 light b'AGI_M3-body_light.tga': named -> textures\AGI_M3-body_light: placeholder dds/NONE_BLACK (suffix "light")
+
+ships/terran/atf_m3p
+  02.cat:objects/ships/terran/atf_m3p.pbb
+    mat 0 light b'AGI_M3-body_light.tga': named -> textures\AGI_M3-body_light: placeholder dds/NONE_BLACK (suffix "light")
+
+ships/x3ap/props/XTC_terran_dock_quicklaunch_LDoorL
+  addon/01.cat:objects/ships/x3ap/props/XTC_terran_dock_quicklaunch_LDoorL.pbb
+    mat 0 diffuse b'XTC_terran_door_diff.dds': named -> textures\XTC_terran_door_diff: placeholder dds/NONE_GRAY (suffix "diff")
+    mat 0 bump b'XTC_terran_door_bump.dds': named -> textures\XTC_terran_door_bump: placeholder dds/NONE_NORMAL_LOW or dds/NONE_NORMAL (suffix "bump") | low_bump: named -> textures\XTC_terran_door_low_bump: placeholder dds/NONE_NORMAL_LOW or dds/NONE_NORMAL (suffix "bump")
+    mat 0 specular b'XTC_terran_door_spec.dds': named -> textures\XTC_terran_door_spec: placeholder dds/NONE_WHITE (suffix "spec")
+
+ships/x3ap/props/XTC_terran_dock_quicklaunch_LDoorR
+  addon/01.cat:objects/ships/x3ap/props/XTC_terran_dock_quicklaunch_LDoorR.pbb
+    mat 0 diffuse b'XTC_terran_door_diff.dds': named -> textures\XTC_terran_door_diff: placeholder dds/NONE_GRAY (suffix "diff")
+    mat 0 bump b'XTC_terran_door_bump.dds': named -> textures\XTC_terran_door_bump: placeholder dds/NONE_NORMAL_LOW or dds/NONE_NORMAL (suffix "bump") | low_bump: named -> textures\XTC_terran_door_low_bump: placeholder dds/NONE_NORMAL_LOW or dds/NONE_NORMAL (suffix "bump")
+    mat 0 specular b'XTC_terran_door_spec.dds': named -> textures\XTC_terran_door_spec: placeholder dds/NONE_WHITE (suffix "spec")
+
+ships/x3ap/props/XTC_terran_dock_quicklaunch_MDoor
+  addon/01.cat:objects/ships/x3ap/props/XTC_terran_dock_quicklaunch_MDoor.pbb
+    mat 0 diffuse b'XTC_terran_door_diff.dds': named -> textures\XTC_terran_door_diff: placeholder dds/NONE_GRAY (suffix "diff")
+    mat 0 bump b'XTC_terran_door_bump.dds': named -> textures\XTC_terran_door_bump: placeholder dds/NONE_NORMAL_LOW or dds/NONE_NORMAL (suffix "bump") | low_bump: named -> textures\XTC_terran_door_low_bump: placeholder dds/NONE_NORMAL_LOW or dds/NONE_NORMAL (suffix "bump")
+    mat 0 specular b'XTC_terran_door_spec.dds': named -> textures\XTC_terran_door_spec: placeholder dds/NONE_WHITE (suffix "spec")
+
+ships/x3ap/props/XTC_terran_dock_quicklaunch_TDoor
+  addon/01.cat:objects/ships/x3ap/props/XTC_terran_dock_quicklaunch_TDoor.pbb
+    mat 0 diffuse b'XTC_terran_door_diff.dds': named -> textures\XTC_terran_door_diff: placeholder dds/NONE_GRAY (suffix "diff")
+    mat 0 bump b'XTC_terran_door_bump.dds': named -> textures\XTC_terran_door_bump: placeholder dds/NONE_NORMAL_LOW or dds/NONE_NORMAL (suffix "bump") | low_bump: named -> textures\XTC_terran_door_low_bump: placeholder dds/NONE_NORMAL_LOW or dds/NONE_NORMAL (suffix "bump")
+    mat 0 specular b'XTC_terran_door_spec.dds': named -> textures\XTC_terran_door_spec: placeholder dds/NONE_WHITE (suffix "spec")
+
+ships/xenon/xenon_m4
+  addon/01.cat:objects/ships/xenon/xenon_m4.pbb
+    mat 1 diffuse b'unique_xenon_M5_02_diff.dds': named -> textures\unique_xenon_M5_02_diff: placeholder dds/NONE_GRAY (suffix "diff")
+    mat 1 bump b'unique_xenon_M5_02_bump.dds': named -> textures\unique_xenon_M5_02_bump: placeholder dds/NONE_NORMAL_LOW or dds/NONE_NORMAL (suffix "bump") | low_bump: named -> textures\unique_xenon_M5_02_low_bump: placeholder dds/NONE_NORMAL_LOW or dds/NONE_NORMAL (suffix "bump")
+    mat 1 specular b'unique_xenon_M5_02_spec.dds': named -> textures\unique_xenon_M5_02_spec: placeholder dds/NONE_WHITE (suffix "spec")
+    mat 1 light b'unique_xenon_M5_02_light.dds': named -> textures\unique_xenon_M5_02_light: placeholder dds/NONE_BLACK (suffix "light")
+    mat 2 diffuse b'unique_xenon_M5_03_diff.dds': named -> textures\unique_xenon_M5_03_diff: placeholder dds/NONE_GRAY (suffix "diff")
+    mat 2 bump b'unique_xenon_M5_03_bump.dds': named -> textures\unique_xenon_M5_03_bump: placeholder dds/NONE_NORMAL_LOW or dds/NONE_NORMAL (suffix "bump") | low_bump: named -> textures\unique_xenon_M5_03_low_bump: placeholder dds/NONE_NORMAL_LOW or dds/NONE_NORMAL (suffix "bump")
+    mat 2 specular b'unique_xenon_M5_03_spec.dds': named -> textures\unique_xenon_M5_03_spec: placeholder dds/NONE_WHITE (suffix "spec")
+    mat 2 light b'unique_xenon_M5_03_light.dds': named -> textures\unique_xenon_M5_03_light: placeholder dds/NONE_BLACK (suffix "light")
+  02.cat:objects/ships/xenon/xenon_m4.pbd
+    mat 1 diffuse b'unique\\unique_xenon_M5_02_diff.tga': named -> textures\unique\unique_xenon_M5_02_diff: placeholder dds/NONE_GRAY (suffix "diff")
+    mat 1 bump b'unique\\unique_xenon_M5_02_bump.tga': named -> textures\unique\unique_xenon_M5_02_bump: placeholder dds/NONE_NORMAL_LOW or dds/NONE_NORMAL (suffix "bump") | low_bump: named -> textures\unique\unique_xenon_M5_02_low_bump: placeholder dds/NONE_NORMAL_LOW or dds/NONE_NORMAL (suffix "bump")
+    mat 1 specular b'unique\\unique_xenon_M5_02_spec.tga': named -> textures\unique\unique_xenon_M5_02_spec: placeholder dds/NONE_WHITE (suffix "spec")
+    mat 1 light b'unique\\unique_xenon_M5_02_light.tga': named -> textures\unique\unique_xenon_M5_02_light: placeholder dds/NONE_BLACK (suffix "light")
+    mat 2 diffuse b'unique\\unique_xenon_M5_03_diff.tga': named -> textures\unique\unique_xenon_M5_03_diff: placeholder dds/NONE_GRAY (suffix "diff")
+    mat 2 bump b'unique\\unique_xenon_M5_03_bump.tga': named -> textures\unique\unique_xenon_M5_03_bump: placeholder dds/NONE_NORMAL_LOW or dds/NONE_NORMAL (suffix "bump") | low_bump: named -> textures\unique\unique_xenon_M5_03_low_bump: placeholder dds/NONE_NORMAL_LOW or dds/NONE_NORMAL (suffix "bump")
+    mat 2 specular b'unique\\unique_xenon_M5_03_spec.tga': named -> textures\unique\unique_xenon_M5_03_spec: placeholder dds/NONE_WHITE (suffix "spec")
+    mat 2 light b'unique\\unique_xenon_M5_03_light.tga': named -> textures\unique\unique_xenon_M5_03_light: placeholder dds/NONE_BLACK (suffix "light")
+
+stations/docks/test
+  02.cat:objects/stations/docks/test.pbb
+    mat 0 diffuse b'unique\\unique_argon_M3_02_diff.tga': named -> textures\unique\unique_argon_M3_02_diff: placeholder dds/NONE_GRAY (suffix "diff")
+  02.cat:objects/stations/docks/test.pbd
+
+names the baker refuses, by engine outcome: {'placeholder': 33, 'load': 37}

@@ -12,7 +12,8 @@
     "docs/reverse-engineering/script-xml-load-stall.md",
     "docs/reverse-engineering/external-camera.md",
     "docs/reverse-engineering/music-restart.md",
-    "docs/reverse-engineering/alternative-video-playback.md"
+    "docs/reverse-engineering/alternative-video-playback.md",
+    "docs/reverse-engineering/texture-lookup.md"
   ],
   "labels": {
     "0x00402710": {
@@ -384,6 +385,14 @@
       "label": "matrix globals allocation (init block)",
       "source": "camera-state-and-frame-routine.md"
     },
+    "0x004ba3c0": {
+      "label": "bump texture name rewrite _bump -> _low_bump",
+      "source": "texture-lookup.md"
+    },
+    "0x004baa30": {
+      "label": "effect STRING parameter -> texture id (t_* names / semantic ids; bump name _bump -> _low_bump under VideoD3DFlags2 0x400)",
+      "source": "texture-lookup.md"
+    },
     "0x004bb140": {
       "label": "matrix globals release",
       "source": "camera-state-and-frame-routine.md"
@@ -553,6 +562,10 @@
     "0x004de060": {
       "label": "audio/COM subsystem init (CoInitialize, mmdevapi); called from process init 0x004033e1",
       "source": "loading-profile-run1.md"
+    },
+    "0x004de9c0": {
+      "label": "tga texture load body: resource load 0x004e8e10 with extension list \"tga\"",
+      "source": "texture-lookup.md"
     },
     "0x004dfef0": {
       "label": "collision tree: split-candidate extents (sqrtf 0x00412440, fabsf 0x0040e710)",
@@ -743,11 +756,27 @@
       "source": "loading-profile-bottle-x3.md"
     },
     "0x004f3510": {
-      "label": "texture-file wrapper (.jpg, .tga)",
-      "source": "loading-orchestration.md",
+      "label": "texture-file wrapper: \".jpg\"/\".tga\" names try their loader then retry extensionless; extensionless: dds\\<basename> (pck dds), path (pck dds), path (tga), path (jpg), else NONE_* placeholder by name suffix",
+      "source": "loading-orchestration.md; texture-lookup.md",
       "hooked_apis": [
         "D3DXLoadSurfaceFromFileInMemory"
       ]
+    },
+    "0x004f4160": {
+      "label": "texture id -> file load (lazy): Materials row without filename -> tex\\true\\<id>; named -> textures\\<name> (flag 0x10000000: raw); MPF_GENERATED -> blank surface 0x004f3950; then 0x004f3510",
+      "source": "texture-lookup.md"
+    },
+    "0x004f44a0": {
+      "label": "types\\Materials load: row count = numbered texture ids, table 0x00608db0 (stride 0x3c), per-row filename into 0x006069ac",
+      "source": "texture-lookup.md"
+    },
+    "0x004f4cb0": {
+      "label": "texture name -> id: \"\", \"0\", NULL/Null/null -> 0; strips a 3-char extension; leading digit or \"-\" -> sscanf %d id; else case-insensitive named table 0x006069ac (appends new ids after the Materials rows)",
+      "source": "texture-lookup.md"
+    },
+    "0x004f5110": {
+      "label": "texture pointer by id (bounds, Materials texture-id field != 0, lazy 0x004f4160)",
+      "source": "texture-lookup.md"
     },
     "0x004f7830": {
       "label": "font loader (tga bmp, abc siz)",

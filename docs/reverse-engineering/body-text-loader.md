@@ -269,7 +269,8 @@ No hook is proposed; nothing here is a hook site.
 - Which LOD's triangles the RAPID collision model is built from, and whether it reads the part
   bounds of §6.
 - The `SOUND:` fields (`+0x18..+0x4a`) and `NAME:`; no shipped text body was checked for them.
-- `0x004f4cb0`'s texture-name resolution (extension fallback) and `0x004baa30`'s STRING → id.
+- ~~`0x004f4cb0`'s texture-name resolution (extension fallback) and `0x004baa30`'s STRING → id.~~
+  Resolved in [texture-lookup.md](texture-lookup.md).
 - Whether the x87 precision in effect during a body load is 53/64-bit (the reference assumes
   one `float32` rounding of the squared length); only the corner weight depends on it.
 - Where `0x004d2950("v")` resolves the loose `v` folder for `-convertbodies`.
