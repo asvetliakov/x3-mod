@@ -1,0 +1,28 @@
+skipped overlay sources ['addon/05.cat', 'addon/06.cat']; rows lod_atlas 106, reference 106 (lod_atlas parses with no trailing tokens, or animation_rows would be None)
+row 26: match TAT_ONESHOT frames 0 start '93' offset 0,0; lookup -26: 01.cat:tex/true/93.jpg
+row 39: match TAT_TAGLOOP frames 7 start '93' offset 0,0; lookup -39: 01.cat:tex/true/93.jpg
+row 67: match TAT_TAGSINGLESTEP frames 76 start '0' offset 0,0; lookup -67: refused texture_animation_unsupported
+row 73: match TAT_TAGONESHOT frames 32 start 'effects\\explosions\\exp_sparks1_diff' offset 0,0; lookup -73: 01.cat:dds/exp_sparks1_diff.pck
+row 75: match TAT_TAGONESHOT frames 32 start 'effects\\explosions\\exp_sparks1_diff' offset 0,0; lookup -75: 01.cat:dds/exp_sparks1_diff.pck
+row 77: match TAT_TAGONESHOT frames 16 start 'effects\\explosions\\exp_flak_diff' offset 0,0; lookup -77: 01.cat:dds/exp_flak_diff.pck
+row 78: match TAT_TAGONESHOT frames 32 start 'effects\\explosions\\exp_debris1_diff' offset 0,0; lookup -78: 01.cat:dds/exp_debris1_diff.pck
+row 79: match TAT_TAGLOOP frames 4 start 'effects\\engines\\fx_engine_blue1_diff' offset 0,0; lookup -79: 01.cat:dds/fx_engine_blue1_diff.pck
+row 81: match TAT_MOVIE frames 0 start 'test\\StaticAdverts' offset 0.25,0.25; lookup -81: refused texture_animation_unsupported
+row 82: match TAT_TAGONESHOT frames 128 start 'effects\\explosions\\fx_exp_A_p1_diff' offset 0,0; lookup -82: 01.cat:dds/fx_exp_A_p1_diff.pck
+row 83: match TAT_TAGONESHOT frames 128 start 'effects\\explosions\\fx_exp_B_p1_diff' offset 0,0; lookup -83: 01.cat:dds/fx_exp_B_p1_diff.pck
+row 85: match TAT_TAGLOOP frames 11 start 'effects\\weapons\\fx_beam_diff' offset 0,0; lookup -85: 01.cat:dds/fx_beam_diff.pck
+row 90: match TAT_TAGONESHOT frames 90 start 'fighterexp_1_diff' offset 0,0; lookup -90: 01.cat:dds/fighterexp_1_diff.pck
+row 91: match TAT_TAGONESHOT frames 90 start 'm6exp_1_diff' offset 0,0; lookup -91: 01.cat:dds/m6exp_1_diff.pck
+row 92: match TAT_TAGONESHOT frames 64 start 'fx_flamethrower_1' offset 0,0; lookup -92: 01.cat:dds/fx_flamethrower_1.pck
+row 93: match TAT_TAGONESHOT frames 80 start 'xtm_nuke_flash1a' offset 0,0; lookup -93: 01.cat:dds/xtm_nuke_flash1a.pck
+row 94: match TAT_TAGONESHOT frames 32 start 'fx_whiteshockwave_1' offset 0,0; lookup -94: 01.cat:dds/fx_whiteshockwave_1.pck
+row 96: match TAT_TAGONESHOT frames 48 start 'fx_electric_01' offset 0,0; lookup -96: 01.cat:dds/fx_electric_01.pck
+row 97: match TAT_TAGLOOP frames 4 start 'fx_engine_purple1_diff' offset 0,0; lookup -97: 01.cat:dds/fx_engine_purple1_diff.pck
+row 98: match TAT_TAGONESHOT frames 48 start 'fx_blueexplosion_01' offset 0,0; lookup -98: 01.cat:dds/fx_blueexplosion_01.pck
+row 100: match TAT_TAGONESHOT frames 64 start 'fx_blueimplosion_01' offset 0,0; lookup -100: 01.cat:dds/fx_blueimplosion_01.pck
+row 101: match TAT_TAGONESHOT frames 48 start 'fx_greenexplosion_01' offset 0,0; lookup -101: 01.cat:dds/fx_greenexplosion_01.pck
+row 102: match TAT_TAGONESHOT frames 48 start 'fx_MAMexplosion_01' offset 0,0; lookup -102: 01.cat:dds/fx_MAMexplosion_01.pck
+row 103: match TAT_TAGONESHOT frames 48 start 'fx_smallGreenExplosion_01' offset 0,0; lookup -103: 01.cat:dds/fx_smallGreenExplosion_01.pck
+row 104: match TAT_TAGONESHOT frames 64 start 'fx_surfacefire_01' offset 0,0; lookup -104: 01.cat:dds/fx_surfacefire_01.pck
+row 105: match TAT_TAGONESHOT frames 32 start 'fx_starburstExplosion_01' offset 0,0; lookup -105: 01.cat:dds/fx_starburstExplosion_01.pck
+referenced rows 26: match 26, mismatch 0

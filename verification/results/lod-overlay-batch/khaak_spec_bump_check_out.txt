@@ -1,0 +1,22 @@
+05.x3m-lod.json: body ships/M6/Khaak_M6Main, atlas slots ['bump', 'diffuse', 'light', 'specular'], size 1024
+tile 0 mats [0] names {'diffuse': '25.jpg', 'light': 'C:\\Program Files\\Autodesk\\3ds Max 9\\Maps\\NONE_BLACK.DDS', 'bump': '425.jpg', 'specular': '25_spec.jpg'}
+  sources {'diffuse': '01.cat:tex/true/25.jpg', 'light': '01.cat:dds/NONE_BLACK.pck', 'bump': '01.cat:tex/true/425.jpg', 'specular': '01.cat:tex/true/25.jpg'}
+  specular same source: mean |spec - diff| RGB 0.00; bump other source: mean |bump G - f(diff G)| 80.70; diffuse RGB std 16.9
+tile 1 mats [1] names {'diffuse': '260.jpg', 'light': 'C:\\Program Files\\Autodesk\\3ds Max 9\\Maps\\NONE_BLACK.DDS', 'bump': '260_bump.jpg', 'specular': '260_spec.jpg'}
+  sources {'diffuse': '01.cat:tex/true/260.jpg', 'light': '01.cat:dds/NONE_BLACK.pck', 'bump': '01.cat:tex/true/260.jpg', 'specular': '01.cat:tex/true/260.jpg'}
+  specular same source: mean |spec - diff| RGB 0.00; bump same source: mean |bump G - f(diff G)| 2.12; diffuse RGB std 16.2
+tile 2 mats [2] names {'diffuse': '36.jpg', 'light': 'C:\\Program Files\\Autodesk\\3ds Max 9\\Maps\\NONE_BLACK.DDS', 'bump': '209.jpg', 'specular': '36_spec.jpg'}
+  sources {'diffuse': '01.cat:tex/true/36.jpg', 'light': '01.cat:dds/NONE_BLACK.pck', 'bump': '01.cat:tex/true/209.jpg', 'specular': '01.cat:tex/true/36.jpg'}
+  specular same source: mean |spec - diff| RGB 0.00; bump other source: mean |bump G - f(diff G)| 37.90; diffuse RGB std 25.0
+tile 3 mats [3] names {'diffuse': '29.jpg', 'light': 'C:\\Program Files\\Autodesk\\3ds Max 9\\Maps\\NONE_BLACK.DDS', 'bump': '367.jpg', 'specular': '29_spec.jpg'}
+  sources {'diffuse': '01.cat:tex/true/29.jpg', 'light': '01.cat:dds/NONE_BLACK.pck', 'bump': '01.cat:tex/true/367.jpg', 'specular': '01.cat:tex/true/29.jpg'}
+  specular same source: mean |spec - diff| RGB 0.00; bump other source: mean |bump G - f(diff G)| 55.72; diffuse RGB std 14.4
+tile 4 mats [4] names {'diffuse': 'I:\\Exomod\\dds\\metal_argon_simple_plating_diff.dds', 'light': 'NULL', 'bump': 'I:\\Exomod\\dds\\metal_argon_simple_plating_bump.dds', 'specular': 'I:\\Exomod\\dds\\metal_argon_simple_plating_spec.dds'}
+  sources {'diffuse': '01.cat:dds/metal_argon_simple_plating_diff.pck', 'light': None, 'bump': '01.cat:dds/metal_argon_simple_plating_bump.pck', 'specular': '01.cat:dds/metal_argon_simple_plating_spec.pck'}
+  specular other source: mean |spec - diff| RGB 62.17; bump other source: mean |bump G - f(diff G)| 27.70; diffuse RGB std 4.8
+tile 5 mats [5] names {'diffuse': '263.jpg', 'light': '263.jpg', 'bump': '263_bump.jpg', 'specular': '263_spec.jpg'}
+  sources {'diffuse': '01.cat:tex/true/263.jpg', 'light': '01.cat:tex/true/263.jpg', 'bump': '01.cat:tex/true/263.jpg', 'specular': '01.cat:tex/true/263.jpg'}
+  specular same source: mean |spec - diff| RGB 0.00; bump same source: mean |bump G - f(diff G)| 1.99; diffuse RGB std 51.1
+tile 6 mats [6] names {'diffuse': '60.jpg', 'light': 'C:\\Program Files\\Autodesk\\3ds Max 9\\Maps\\NONE_BLACK.DDS', 'bump': 'C:\\Program Files\\Autodesk\\3ds Max 9\\Maps\\NONE_NORMAL.DDS', 'specular': '69.jpg'}
+  sources {'diffuse': '01.cat:dds/60.pck', 'light': '01.cat:dds/NONE_BLACK.pck', 'bump': '01.cat:dds/NONE_NORMAL.pck', 'specular': '01.cat:dds/envmap_test.pck'}
+  specular other source: mean |spec - diff| RGB 80.35; bump other source: mean |bump G - f(diff G)| 38.73; diffuse RGB std 47.9

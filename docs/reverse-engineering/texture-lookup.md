@@ -248,6 +248,14 @@ list, so the step should be replaced by steps 3–5. A placeholder result is wha
 so it can be baked rather than refused. For numbered textures the source is a JPEG or TGA,
 which the atlas must decode.
 
+Implemented 2026-09-24 in `tools/analysis/lod_atlas.py` (`engine_path`, `lookup`, `resolve_member`,
+`parse_animations`, `animation_frame`, `animated_record`), with §10.4 and §11. Results are in
+[lod-overlay.md](../verification/lod-overlay.md). Two capstone reads made for the implementation [s]:
+
+- A `-` name that `sscanf` cannot read goes to the named search: `cmp eax,1` / `jne 0x004f4e03` at
+  `0x004f4dea`. It is a named texture, not a failure.
+- The id is kept as a short (`mov ax,[esp+0x10]` at `0x004f4dec`).
+
 No hook is proposed; nothing here is a hook site.
 
 ## 10. Negative ids: texture animations (`types\Animations`)

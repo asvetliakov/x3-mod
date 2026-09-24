@@ -72,7 +72,7 @@ class Assets:
                 entry = dict(entry, source=source, cat=cat)
                 self.entries.setdefault(resource_key(entry['path'], selected_mod), []).append(entry)
         for base in ('', 'addon'):
-            for folder in ('maps', 'types', 't', 'objects', 'dds'):
+            for folder in ('maps', 'types', 't', 'objects', 'dds', 'tex', 'textures'):   # tex, textures: lod_atlas.lookup
                 for path in sorted((root / base / folder).rglob('*')):
                     if path.is_file():
                         relative = path.relative_to(root).as_posix()

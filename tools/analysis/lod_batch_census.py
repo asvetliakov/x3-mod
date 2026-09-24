@@ -110,10 +110,10 @@ SECTORS = (('run255_burst2', 'verification/results/run255-census/node_census_out
 # dominant_slot_missing ('parameter') is unreachable since 2026-09-24: plan_layout refuses a material without
 # t_DiffuseTexture first (no_diffuse) and lod_atlas.required_slots asks for t_LightMapTexture only when a material of
 # the class declares it, which class_dominant then picks; the needle stays as a guard of atlas_material's check.
-ATLAS_REASONS = (('excluded effect', 'excluded_effect'), ('occlusion textures', 'occlusion_mismatch'), ('outside the material table', 'material_outside_table'),
+ATLAS_REASONS = (('texture animation', 'texture_animation_unsupported'), ('excluded effect', 'excluded_effect'), ('occlusion textures', 'occlusion_mismatch'), ('outside the material table', 'material_outside_table'),
                  ('not an effect material', 'non_effect_material'), ('no diffuse', 'no_diffuse'),
                  ('no opaque faces', 'no_opaque'), ('without UV', 'no_uv'), ('do not fit', 'atlas_fit'),
-                 ('does not resolve', 'texture_unresolved'), ('not a DDS', 'texture_not_dds'),
+                 ('does not resolve', 'texture_unresolved'), ('generated surface', 'texture_generated'), ('not a DDS', 'texture_not_dds'),
                  ('Pillow', 'pil_missing'), ('cannot decode image', 'texture_decode'),
                  ('Ambiguous', 'texture_ambiguous'), ('parameter', 'dominant_slot_missing'))
 TEXT_EXTENSIONS = ('.pbd', '.bod')
@@ -359,6 +359,14 @@ def census_body(assets, textures, entry, opts):
     mat_tag = next((t for t, _ in tree['sections'] if t in bob1.MATVER), '-')
     ladder, mats = bob1.lods(tree), bob1.materials(tree)
     r0, last = ladder[0], ladder[-1]
+    anim_error = None
+    if mat_tag in ('MAT5', 'MAT6'):
+        try:                                    # face groups -N: texture animations (lod_atlas.animated_record)
+            r0, anim = lod_atlas.animated_record(mats, r0, assets)
+            if anim['groups']:
+                row['animation'] = anim
+        except lod_atlas.AtlasError as exc:
+            anim_error = exc
     th = [l['value'] for l in ladder[1:]]
     tc = t_pad(row['cat'], th, opts['rule'])
     k, note = aspect_k(r0['points'])
@@ -386,9 +394,13 @@ def census_body(assets, textures, entry, opts):
     row['t_pad_below_t1'] = bool(th and th[0] > tp)          # guard waived for source record 0 (a column only)
     if tp < 2:
         row['refuse'].append('t_pad_below_2')
-    if any(not 0 <= g['material'] < len(mats) for p in r0['parts'] for g in p['groups']):
-        row['refuse'].append('material_outside_table')      # negative indices on the ad signs
-    if {'mat3', 'material_outside_table'} & set(row['refuse']):
+    if anim_error:
+        row['refuse'].append(atlas_reason(anim_error))
+        row['atlas_error'] = str(anim_error)[:160]
+    if any(g['material'] >= len(mats) or (g['material'] < 0 and not anim_error and not p['flags'] & lod_atlas.HIDDEN_PART)
+           for p in r0['parts'] for g in p['groups']):
+        row['refuse'].append('material_outside_table')      # a visible negative index animated_record could not map
+    if {'mat3', 'material_outside_table', 'texture_animation_unsupported'} & set(row['refuse']) or anim_error:
         return row
     stem = lod_overlay.qualified_stem(path)
     row['atlas_stem'] = stem
@@ -538,6 +550,9 @@ def format_row(r):
         s += f' trailing={r["trailing"]}'
     if r.get('text'):
         s += ' text'
+    if r.get('animation'):
+        s += (f' anim_groups={r["animation"]["groups"]} anim_rows={",".join(str(n) for n in r["animation"]["rows"])}'
+              f' anim_material0={r["animation"]["material0"]}')
     if r.get('atlas_materials', 1) > 1:
         s += f' atlas_materials={r["atlas_materials"]}'
     s += bleed_text(r)

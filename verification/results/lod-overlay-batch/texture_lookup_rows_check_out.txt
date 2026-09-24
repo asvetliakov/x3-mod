@@ -1,0 +1,2 @@
+skipped overlay sources ['addon/05.cat', 'addon/06.cat']
+slot names 70: match 70, mismatch 0 (expected loads 37, placeholders 33)

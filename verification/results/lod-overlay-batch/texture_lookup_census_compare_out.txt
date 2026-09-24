@@ -1,0 +1,243 @@
+bodies before 2453 after 2453; names only before [] only after []
+refuse= counts per reason (a row counts once per reason), before -> after:
+  ambiguous_body_ext: 47 -> 47
+  excluded_effect: 32 -> 32
+  mat3: 158 -> 158
+  material_outside_table: 185 -> 16
+  no_diffuse: 5 -> 5
+  no_opaque: 651 -> 651
+  non_effect_material: 295 -> 295
+  occlusion_mismatch: 4 -> 4
+  parse_error: 1 -> 1
+  text_parse_error: 6 -> 6
+  texture_animation_unsupported: 0 -> 168
+  texture_generated: 0 -> 1
+  texture_unresolved: 44 -> 0
+eligible before 616 after 622 (+6); newly eligible: ['ships/M3/Argon_hybrid', 'ships/M6/Khaak_M6Main', 'ships/M6/Khaak_M6Sec', 'ships/khaak/khaak_M3', 'ships/terran/atf_m3', 'ships/terran/atf_m3p']; no longer eligible: []
+
+texture_unresolved before: 44 rows; after: 0
+  effects/menugfx/hud_icon_text: refuse=texture_unresolved filter=category_other -> refuse=texture_generated filter=category_other
+  effects/menugfx/hud_icon_text_x: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other,no_draw_gain
+  environments/asteroids/asteroid_B_ClassPleasureComplex: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  ships/M3/Argon_hybrid: refuse=texture_unresolved filter=- -> refuse=- filter=- ELIGIBLE
+  ships/M6/Khaak_M6Main: refuse=texture_unresolved filter=- -> refuse=- filter=- ELIGIBLE
+  ships/M6/Khaak_M6Sec: refuse=texture_unresolved filter=- -> refuse=- filter=- ELIGIBLE
+  ships/terran/atf_m3: refuse=texture_unresolved filter=- -> refuse=- filter=- ELIGIBLE
+  ships/terran/atf_m3p: refuse=texture_unresolved filter=- -> refuse=- filter=- ELIGIBLE
+  ships/x3ap/props/XTC_terran_dock_quicklaunch_LDoorL: refuse=texture_unresolved filter=- -> refuse=- filter=no_draw_gain
+  ships/x3ap/props/XTC_terran_dock_quicklaunch_LDoorR: refuse=texture_unresolved filter=- -> refuse=- filter=no_draw_gain
+  ships/x3ap/props/XTC_terran_dock_quicklaunch_MDoor: refuse=texture_unresolved filter=- -> refuse=- filter=no_draw_gain
+  ships/x3ap/props/XTC_terran_dock_quicklaunch_TDoor: refuse=texture_unresolved filter=- -> refuse=- filter=no_draw_gain
+  ships/xenon/xenon_m4: refuse=ambiguous_body_ext,texture_unresolved filter=- -> refuse=ambiguous_body_ext filter=-
+  stations/docks/test: refuse=ambiguous_body_ext,texture_unresolved filter=- -> refuse=ambiguous_body_ext filter=no_draw_gain
+  v/00027: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/00043: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/00044: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/00121: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/00125: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/00126: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/00501: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/00502: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/00504: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/00598: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other,no_draw_gain
+  v/00599: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/00756: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/00769: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/00771: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/00772: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/00875: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/00876: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/00939: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/00944: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/00950: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/00975: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/10024: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/10208: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/10345: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/10348: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/10357: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/10392: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/10465: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/10523: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+  v/10524: refuse=texture_unresolved filter=category_other -> refuse=- filter=category_other
+
+other rows with a changed refuse/filter/eligibility: 169
+  effects/engines/fx_engine_argon_m3: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_argon_M3plus: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_argon_m3pxtm: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_argon_m3pxtmP: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_argon_M4: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_argon_m4p_lower: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_argon_m4p_upper: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_argon_M5: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_argon_m8_middle: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_argon_m8_topbottom: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_argon_TM: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_argon_TS: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_atf_M3: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_ATF_M3p: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_ATF_M6M: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_ATF_M6M_sides: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_boron_M3: refuse=ambiguous_body_ext,material_outside_table filter=category_other -> refuse=ambiguous_body_ext,texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_boron_m3p: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_boron_M4: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_boron_M5: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_Boron_QY: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_boron_TM_A: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_boron_TM_B: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_boron_TS: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_boron_TS_A: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_boron_TS_B: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_fdroneI: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_fdroneO: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_fightdronemk2: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_khaak_M3: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_khaak_M3_B: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_LC_m3: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_LC_m3_middle: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_LC_M6: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_messagedrone: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_otas_m3_lower: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_otas_m3_upper: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_otas_m4: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_otas_M4p: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_otas_M4p_sides: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_OTAS_M6M: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_otas_tm1: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_otas_tm2: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_otas_tm3: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_otas_ts1: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_otas_ts2: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_otas_ts3: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_otas_ts_small: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_paranid_M3: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_paranid_M3_var1: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_paranid_M3plus: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_paranid_M4: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_paranid_M4p: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_paranid_M4p_upper: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_paranid_M5: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_paranid_M5_var1: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_paranid_M5_var2: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_paranid_M5_var3: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_paranid_M6M: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_paranid_M6plus: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_paranid_m81: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_paranid_m82: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_paranid_TM: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_paranid_TS: refuse=ambiguous_body_ext,material_outside_table filter=category_other -> refuse=ambiguous_body_ext,texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_pirate_m3p: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_pirate_m3p_middle: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_pirate_TM: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_split2_TM: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_split2_TS: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_split_M3: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_split_M3plus: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_split_M4: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_Split_M4_pirate: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_Split_M4_pirate_lower: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_split_M4p: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_split_M4p_middle: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_split_M5: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_split_m8: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_split_TM: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_split_TS: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_teladi2_TS: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_teladi_M3: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_teladi_M3_var1: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_teladi_M3_var2: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_teladi_M3_var3: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_teladi_m3pxtm: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_teladi_m3pxtmP: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_teladi_M4m: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_teladi_M4p: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_teladi_M4p_middle: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_teladi_M4p_top: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_teladi_M4s: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_teladi_M5: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_teladi_m5p: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_teladi_m8: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_teladi_TM: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_teladi_TS: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_terraformer_m3_bottom: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_terraformer_m3_top: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_terraformer_m4: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_terraformer_m5: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_terran_m5: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_terran_m6: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_terran_repairdrone: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_terran_transportdrone: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_terran_transportdrone_small: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_usc_fightdrone: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_usc_m3: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_usc_m3p: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_usc_m4: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_usc_m5: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_usc_M8: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_usc_tp: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_usc_ts_A: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_usc_ts_B: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_xenon_M3: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_xenon_M3plus: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_xenon_M5: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_xenon_M6: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_xenon_M6Mlow: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_xenon_M6Mmid: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_xenon_M6Mtop: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_xtc_boron_m8: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engine_yaki_m3pxtm: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_engines_otas_m4: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/engines/fx_xpshuttle: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '79', '0')
+  effects/explosions/expl: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '82', '0')
+  effects/explosions/expl_ring: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '26', '0')
+  effects/explosions/explosion_plane: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other
+  effects/menugfx/GUI/qm_icon: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other
+  effects/weapons/bullet_flamethrower: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '92', '0')
+  effects/weapons/bullet_push2: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '39', '0')
+  others/ad_sign_body: refuse=material_outside_table filter=- -> refuse=texture_animation_unsupported filter=-
+  others/argon_adsign_A: refuse=material_outside_table filter=- -> refuse=texture_animation_unsupported filter=-
+  others/argon_adsign_B: refuse=material_outside_table filter=- -> refuse=texture_animation_unsupported filter=-
+  others/argon_adsign_C: refuse=material_outside_table filter=- -> refuse=texture_animation_unsupported filter=-
+  others/argon_adsign_D: refuse=material_outside_table filter=- -> refuse=texture_animation_unsupported filter=-
+  others/terran_adsign_A: refuse=material_outside_table filter=- -> refuse=texture_animation_unsupported filter=-
+  others/terran_adsign_B: refuse=material_outside_table filter=- -> refuse=texture_animation_unsupported filter=-
+  others/terran_adsign_C: refuse=material_outside_table filter=- -> refuse=texture_animation_unsupported filter=-
+  others/terran_adsign_D: refuse=material_outside_table filter=- -> refuse=texture_animation_unsupported filter=-
+  ships/khaak/khaak_M3: refuse=material_outside_table filter=- -> refuse=- filter=- ELIGIBLE
+  stations/goner/temple_adsign: refuse=material_outside_table filter=- -> refuse=texture_animation_unsupported filter=-
+  stations/goner/temple_adsigns: refuse=material_outside_table filter=- -> refuse=texture_animation_unsupported filter=-
+  v/00078: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other
+  v/00428: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other
+  v/00773: refuse=ambiguous_body_ext,material_outside_table filter=category_other -> refuse=ambiguous_body_ext,texture_animation_unsupported filter=category_other anim=('1', '97', '0')
+  v/10322: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other
+  v/10324: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other
+  v/10653: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other
+  v/10656: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '82', '0')
+  v/10660: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other
+  v/10662: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '77', '0')
+  v/10663: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '73', '0')
+  v/10665: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other
+  v/10670: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '83', '0')
+  v/10680: refuse=material_outside_table filter=category_other -> refuse=texture_animation_unsupported filter=category_other anim=('1', '85', '0')
+  v/11994: refuse=ambiguous_body_ext,material_outside_table filter=category_other -> refuse=ambiguous_body_ext,texture_animation_unsupported filter=category_other anim=('1', '93', '0')
+  v/11997: refuse=ambiguous_body_ext,material_outside_table filter=category_other -> refuse=ambiguous_body_ext,texture_animation_unsupported filter=category_other anim=('1', '90', '0')
+  v/11998: refuse=ambiguous_body_ext,material_outside_table filter=category_other -> refuse=ambiguous_body_ext,texture_animation_unsupported filter=category_other anim=('1', '91', '0')
+  v/11999: refuse=ambiguous_body_ext,material_outside_table filter=category_other -> refuse=ambiguous_body_ext,texture_animation_unsupported filter=category_other anim=('1', '94', '0')
+  v/12000: refuse=ambiguous_body_ext,material_outside_table filter=category_other -> refuse=ambiguous_body_ext,texture_animation_unsupported filter=category_other anim=('1', '98', '0')
+  v/12001: refuse=ambiguous_body_ext,material_outside_table filter=category_other -> refuse=ambiguous_body_ext,texture_animation_unsupported filter=category_other anim=('1', '96', '0')
+  v/12002: refuse=ambiguous_body_ext,material_outside_table filter=category_other -> refuse=ambiguous_body_ext,texture_animation_unsupported filter=category_other anim=('1', '100', '0')
+  v/12003: refuse=ambiguous_body_ext,material_outside_table filter=category_other -> refuse=ambiguous_body_ext,texture_animation_unsupported filter=category_other anim=('1', '101', '0')
+  v/12004: refuse=ambiguous_body_ext,material_outside_table filter=category_other -> refuse=ambiguous_body_ext,texture_animation_unsupported filter=category_other anim=('1', '102', '0')
+  v/12005: refuse=ambiguous_body_ext,material_outside_table filter=category_other -> refuse=ambiguous_body_ext,texture_animation_unsupported filter=category_other anim=('1', '103', '0')
+  v/12006: refuse=ambiguous_body_ext,material_outside_table filter=category_other -> refuse=ambiguous_body_ext,texture_animation_unsupported filter=category_other anim=('1', '104', '0')
+  v/12008: refuse=ambiguous_body_ext,material_outside_table filter=category_other -> refuse=ambiguous_body_ext,texture_animation_unsupported filter=category_other anim=('1', '105', '0')
+
+bodies with a -79 material: 130; census rows 130
+  before: {'refuse=material_outside_table filter=category_other': 124, 'refuse=ambiguous_body_ext,material_outside_table filter=category_other': 2, 'refuse=- filter=- ELIGIBLE': 2, 'refuse=- filter=no_draw_gain': 1, 'refuse=material_outside_table filter=-': 1}
+  after:  {'refuse=texture_animation_unsupported filter=category_other': 124, 'refuse=- filter=- ELIGIBLE': 3, 'refuse=ambiguous_body_ext,texture_animation_unsupported filter=category_other': 2, 'refuse=- filter=no_draw_gain': 1}
+  after, rows with animated record-0 groups: 126, groups 126, on material 0 0
+
+bodies with a -81 material: 39; census rows 39
+  before: {'refuse=- filter=- ELIGIBLE': 28, 'refuse=material_outside_table filter=-': 11}
+  after:  {'refuse=- filter=- ELIGIBLE': 28, 'refuse=texture_animation_unsupported filter=-': 11}
+  after, rows with animated record-0 groups: 0, groups 0, on material 0 0

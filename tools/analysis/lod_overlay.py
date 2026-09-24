@@ -245,13 +245,16 @@ draws with a zero tangent basis in vanilla too). Refusal reasons: text_parse_err
 outside that grammar; a MATERIAL3 text body is mat3), ambiguous_body_ext (both a binary and a text member), trailing_bytes
 (more than MAX_TRAILING stray bytes after /BOB; up to MAX_TRAILING are tolerated with a
 warning, the parser 0x00481aa0 returns at /BOB and never reads them), material_outside_table
-(a negative group material index, the ad signs), occlusion_mismatch (second UV set with
+(a group material index past the table; since 2026-09-24 a negative index -N is a texture animation that
+--collapse atlas maps onto its material and bakes with the start frame, lod_atlas.animated_record), occlusion_mismatch (second UV set with
 differing occlusion decals inside one merged group), mat3, no_opaque, dominant_slot_missing
 (unreachable since 2026-09-24: the dominant is taken among the materials that declare the needed
 slots and an effect that declares no light map keeps none), excluded_effect (every opaque material
 on lod_atlas.KEPT_EFFECTS, planet_haze.fx / asteroid.fx, which otherwise keep their own groups),
 no_diffuse (since 2026-09-24 only a material without a t_DiffuseTexture parameter; a NULL diffuse
-bakes the black placeholder), texture_unresolved, pil_missing (a jpg/tga/bmp texture without
+bakes the black placeholder), texture_unresolved, texture_animation_unsupported (TAT_MOVIE, TAT_TAGSINGLESTEP, a
+non-zero start UV offset, an animated group left out of the atlas), texture_generated (a MPF_GENERATED
+Materials row, drawn at run time), pil_missing (a jpg/tga texture without
 Pillow), and the lod_atlas reasons. Mixed effects and the second UV set are handled, not refused
 (lod_atlas notes). A change to lod_atlas.py or this file changes tool_sha256, so the next --sync
 rebuilds every body.
@@ -958,8 +961,17 @@ def plan_body(assets, name, threshold, placement=None, force_threshold=False, co
         raise SystemExit(f'{name}: --source-record {source_record} outside the body\'s records 0..{len(ladder) - 1}')
     source = ladder[src_index]
     mats = bob1.materials(tree)
-    bad = sorted({g['material'] for l in (source, before[-1]) for p in l['parts'] for g in p['groups']
-                  if not 0 <= g['material'] < len(mats)})
+    if collapse == 'atlas' and any(t in ('MAT5', 'MAT6') for t, _ in tree['sections']):
+        import lod_atlas               # face groups -N are texture animations: mapped onto their material, atlased
+        try:                           # with the start frame; the untouched pad copy keeps -N (drawn by the engine)
+            lod_atlas.animated_record(mats, source, assets)
+        except lod_atlas.AtlasError as exc:
+            raise SystemExit(f'{name}: {exc}') from None
+        bad = sorted({g['material'] for l in (source, before[-1]) for p in l['parts'] for g in p['groups']
+                      if g['material'] >= len(mats)})
+    else:
+        bad = sorted({g['material'] for l in (source, before[-1]) for p in l['parts'] for g in p['groups']
+                      if not 0 <= g['material'] < len(mats)})
     if bad and any(t in ('MAT5', 'MAT6') for t, _ in tree['sections']):
         raise SystemExit(f'{name}: group material index {bad} outside the material table (0..{len(mats) - 1});'
                          ' the ad signs carry one such negative-index group; refusing')

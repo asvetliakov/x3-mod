@@ -1224,10 +1224,34 @@ evidence under `verification/results/lod-overlay-batch/batch-dryrun/`.
 
     split_TL builds 15 → 1, teladi_M6 13 → 2 and partA 15 → 3 (2048²). The five argon stations whose
     material has no `t_DiffuseTexture` parameter stay refused (the effect default is untraced).
-  - *texture_unresolved* (11): the resolver is not widened. Khaak_M6Main/Sec's 16 names exist only as
-    `tex/true/<n>.jpg`, and the EXE builds `true\` only in the numbered-texture path `0x004f43fe`,
-    never in the string wrapper `0x004f3510`. The rest (`unique_argon_hybrid_bump`,
-    `AGI_M3-body_light`, `XTC_terran_door_*`, `unique_argon_M3_02_diff`) are in no catalogue.
+  - *texture_unresolved* (11 at the time; 13 in `census.txt`): Khaak_M6Main/Sec's 16 names exist only
+    as `tex/true/<n>.jpg`. The rest (`unique_argon_hybrid_bump`, `AGI_M3-body_light`,
+    `XTC_terran_door_*`, `unique_argon_M3_02_diff`) are in no catalogue.
+
+    Widened later on 2026-09-24 to the engine's lookup
+    ([texture-lookup.md](../reverse-engineering/texture-lookup.md) §9–§11; `lod_atlas.lookup`):
+    - A name starting with a digit is a `types/Materials` id, so `25_spec.jpg` is id 25 and binds
+      the diffuse image.
+    - A `-N` name, and a face group with index `-N`, is `types/Animations` row N. The baker uses the
+      row's starting frame; `-79` bakes `fx_engine_blue1_diff`, never the dead `dds/-79`. The group
+      takes the first effect material whose diffuse is `-N` (`animated_record`).
+    - Other names resolve under `textures\`: `dds/<basename>`, then the path with `pck dds`, `tga`,
+      `jpg`; loose files first, then the highest catalogue slot.
+    - When nothing loads, the suffix placeholder is baked instead of refusing the body.
+
+    TAT_MOVIE (-81), TAT_TAGSINGLESTEP (-67), a non-zero start UV offset (not applied) and an
+    animated group left out of the atlas are refused `texture_animation_unsupported`. A
+    `MPF_GENERATED` row (`18.jpg`, `340`) is refused `texture_generated`.
+
+    Full census (2,453 bodies): `texture_unresolved` 44 → 0, `material_outside_table` 185 → 16,
+    `texture_animation_unsupported` 0 → 168, eligible 616 → 622. The six added bodies are
+    Argon_hybrid, Khaak_M6Main/Sec, khaak_M3 and atf_m3/m3p; none is lost.
+    - The 124 fx_engine bodies with a `-79` group stay out: category_other, and their animated glow
+      group is alpha.
+    - 10 `-81` ad signs refuse as movies.
+    - No name that loaded a file before bakes black, and no changed diffuse reaches an eligible atlas.
+
+    See the [lod-overlay ledger](../verification/lod-overlay.md).
   - argon_M2's overlay (5 members, cat, dat, manifest row) is byte-identical before and after, and no
     installed body uses planet_haze.fx or asteroid.fx (0 of 591). The tool change moves
     `tool_sha256`, so the next `--sync` rebuilds every body.

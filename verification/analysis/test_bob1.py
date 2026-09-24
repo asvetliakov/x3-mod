@@ -1265,7 +1265,7 @@ class LodAtlas(unittest.TestCase):
                              [(2, 3), (3, 3)])
             self.assertEqual([m['effect'] for m in two[2:]], [b'argon.fx', b'other.fx'])
             neg = bob1.lods(bob1.parse(bob1.serialise(atlas_tree_pre())))[1]
-            neg['parts'][0]['groups'][1]['material'] = -79
+            neg['parts'][0]['groups'][1]['material'] = 79        # past the table (-N is a texture animation)
             with self.assertRaisesRegex(lod_atlas.AtlasError, 'outside the material table'):
                 lod_atlas.collapse(assets, 'b', list(mats), neg, set(), 8, (64,))
 

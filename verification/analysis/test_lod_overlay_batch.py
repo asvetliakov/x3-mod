@@ -2,7 +2,7 @@
 catalogues: .bob enumeration, text bodies (compiled, written as .pbb) and the text_parse_error and
 ambiguous-extension refusals, trailing bytes, the
 mixed-effects split, the second UV set with an occlusion decal, negative material indices,
-qualified atlas names, tex/ jpg textures, the display-derived width, marker validation and
+qualified atlas names, textures/ jpg textures, the display-derived width, marker validation and
 orphans, --sync reuse with slot retirement, the addon/mods warning, and the area-weighted texel floor
 with the clamped layout (span-clamped outlier faces, texel_clamped tiles), and the 2^31 - 1 dat limit with
 the multi-slot split (--max-dat-bytes), cross-slot reuse, rollback, shrink and an orphaned slot."""
@@ -81,13 +81,13 @@ def jpg_tree():
 
 def neg_tree():
     tree = atlas_tree_lod0()
-    bob1.lods(tree)[0]['parts'][0]['groups'][1]['material'] = -79
+    bob1.lods(tree)[0]['parts'][0]['groups'][1]['material'] = 79     # past the table (-N is an animation)
     return tree
 
 
 def make_game(folder):
     game = Path(folder) / 'game'
-    write_catalogue(game / '01.cat', atlas_textures() + [('tex/j_diff.jpg', jpg_texture())])
+    write_catalogue(game / '01.cat', atlas_textures() + [('textures/j_diff.jpg', jpg_texture())])
     body = bob1.serialise(atlas_tree_lod0())
     write_catalogue(game / '02.cat', [
         ('objects/ships/x/good.pbb', packed(atlas_tree_lod0())),
@@ -155,7 +155,7 @@ class Enumeration(unittest.TestCase):
         self.assertEqual(by['ships/x/uvbad']['refuse'], ['occlusion_mismatch'])
         self.assertEqual(by['ships/x/oob']['refuse'], ['material_outside_table'])
         self.assertEqual(by['ships/x/jpg']['texture_sources'][:2], ['dds/a_bump.pck', 'dds/b_light.pck'])
-        self.assertIn('tex/j_diff.jpg', by['ships/x/jpg']['texture_sources'])
+        self.assertIn('textures/j_diff.jpg', by['ships/x/jpg']['texture_sources'])
         self.assertTrue(by['stations/y/good']['eligible'] and by['stations/y/good']['t_pad_below_t1'])
         self.assertNotEqual(by['stations/y/good']['atlas_stem'], by['ships/x/good']['atlas_stem'])
         self.assertTrue(all(len(r['inputs_sha256']) == 64 for r in rows if r['eligible']))
@@ -173,7 +173,7 @@ class Enumeration(unittest.TestCase):
             self.assertIn('warning: 2 stray byte(s) after /BOB', out.getvalue())
             with self.assertRaisesRegex(SystemExit, 'more than the 8'):
                 lod_overlay.plan_body(assets, 'ships/x/trail9', 8, 'compact', collapse='two')
-            with self.assertRaisesRegex(SystemExit, r'group material index \[-79\] outside'):
+            with self.assertRaisesRegex(SystemExit, r'group material index \[79\] outside'):
                 lod_overlay.plan_body(assets, 'ships/x/oob', 8, 'compact', collapse='two', source_record=0)
             with self.assertRaisesRegex(SystemExit, 'text_parse_error'):
                 lod_overlay.plan_body(assets, 'ships/x/badtext', 8, 'compact', collapse='two')
@@ -226,13 +226,13 @@ class BatchRun(unittest.TestCase):
             self.assertEqual((by['ships/x/trail2']['trailing'], by['stations/y/good']['guard_waived']), (2, True))
             self.assertEqual(record['mixed_effect_bodies'], ['ships/x/mixed'])
             self.assertEqual(record['uv2_bodies'], ['ships/x/uv'])
-            self.assertIn('tex/j_diff.jpg', by['ships/x/jpg']['texture_sources'])
+            self.assertIn('textures/j_diff.jpg', by['ships/x/jpg']['texture_sources'])
             self.assertEqual(record['ratio']['measured'], 9)
             self.assertIn('addon/01.cat', by['ships/x/modship']['member'])
             self.assertTrue((out / 'x3m-lod-batch-summary.txt').exists())
             bodies = (out / 'x3m-lod-batch-bodies.txt').read_text()
             self.assertIn('compact guard waived', bodies)
-            self.assertIn('non-dds sources diffuse=01.cat:tex/j_diff.jpg', bodies)
+            self.assertIn('non-dds sources diffuse=01.cat:textures/j_diff.jpg', bodies)
             self.assertIn('bodies enumerated 14', text)
             self.assertIn('dry run: nothing written', text)
             only = Path(folder) / 'only.txt'
@@ -301,7 +301,7 @@ class BatchRun(unittest.TestCase):
             self.assertEqual(bodies['ships/x/uv']['atlas']['uv2_points'], 15)
             # jpg texture decoded through Pillow into the diffuse atlas
             jpg = bodies['ships/x/jpg']['atlas']
-            self.assertEqual(jpg['tiles'][0]['sources']['diffuse'], '01.cat:tex/j_diff.jpg')
+            self.assertEqual(jpg['tiles'][0]['sources']['diffuse'], '01.cat:textures/j_diff.jpg')
             dds = unpack(members[f'dds/x3m_lod_{lod_overlay.qualified_stem("objects/ships/x/jpg.pbb")}_diffuse.pck'])
             self.assertLess(jpg['check']['slots']['diffuse']['box_rgb'][0], 6)
 
@@ -1169,8 +1169,20 @@ def refusal_tree(kind):
         mats[0]['params'] = put(mats[0], b't_DiffuseTexture', b'NULL')
     elif kind == 'no_diffuse_param':   # argon_food_S_factory_C material 9: a truncated record
         mats[0]['params'] = drop(mats[0], b't_DiffuseTexture')
-    elif kind == 'true_folder':  # Khaak_M6Main: '25.jpg' exists only as tex/true/25.jpg
+    elif kind == 'true_folder':  # Khaak_M6Main: '25.jpg' is Materials id 25, loaded as tex/true/25.jpg
         mats[0]['params'] = put(mats[0], b't_DiffuseTexture', b'25.jpg')
+    elif kind == 'khaak':        # Khaak_M6Main material 0: 25_spec.jpg / 25_bump.jpg are id 25 as well
+        mats[0]['params'] = put(mats[0], b't_DiffuseTexture', b'25.jpg')
+        mats[0]['params'] = put(mats[0], b't_BumpTexture', b'25_bump.jpg')
+        mats[0]['params'] += [(b't_SpecularTexture', 8, b'25_spec.jpg')]
+    elif kind == 'missing':      # in no catalogue, and the synthetic game ships no NONE_GRAY placeholder
+        mats[0]['params'] = put(mats[0], b't_DiffuseTexture', b'missing_diff.tga')
+    elif kind in ('animated', 'movie'):   # fx_engine / ad sign: material 1's groups are -N, its diffuse '-N.tga'
+        n = -79 if kind == 'animated' else -81
+        mats[1]['params'] = put(mats[1], b't_DiffuseTexture', f'{n}.tga'.encode())
+        for g in bob1.lods(tree)[0]['parts'][0]['groups']:
+            if g['material'] == 1:
+                g['material'] = n
     elif kind in ('planet_haze', 'asteroid'):   # khaak_hive_base / lostcolony_energy: an excluded effect
         mats[1]['effect'] = kind.encode() + b'.fx'
         mats[1]['params'] = drop(mats[1], b't_LightMapTexture')
@@ -1180,16 +1192,52 @@ def refusal_tree(kind):
     return tree
 
 
+def materials_pck(rows):
+    """types/Materials text: rows = [(texture id, MPF flags text, file name)] for ids 0, 1, ...; columns 12, 15
+    and 28 as in the shipped file, the rest filler."""
+    line = lambda t, f, n: '; '.join(['0x00'] * 12 + [str(t), 'TRANSP_NONE', '-1', f] + ['0'] * 12 + [n]) + ';'
+    return ('/materials file\n' + f'{len(rows)};\n' + '\n'.join(line(*r) for r in rows) + '\n').encode()
+
+
+ANIMATION_ROWS = {   # shaped like the shipped types/Animations rows (texture-lookup.md section 10)
+    3: 'TAT_ONESHOT; NULL; 1; 2; 0; 500;',                                           # no frame list: row +6
+    5: ('TAT_TAGONESHOT; NULL; 0; 0; 2;\n\tTATF_COORDS;sheet_diff;25;0.25;0.00;\n'
+        '\tTATF_COORDS;sheet_diff;25;0.50;0.00;\n50;'),                                # start offset 0.25, 0
+    8: 'TAT_TAGCOLLECTION; NULL; coll_diff; 0; 1; x_diff; 1; 2; 3; 4; 5; 6; 0; // collection: row +6',
+    67: 'TAT_TAGSINGLESTEP; NULL; 0; 0; 2; icon_a; icon_b; 0;',
+    79: ('TAT_TAGLOOP; NULL; 0; 0; 4;\n' + ''.join(f'\tNULL;effects\\engines\\fx_engine_blue{i}_diff;200;\n'
+                                                   for i in range(1, 5)) + '800;'),
+    81: 'TAT_MOVIE; TADF_COORDS; test\\StaticAdverts; 0; 0.25; 0.25; 0.75; 0.75; 2; 0; 0; 0; 0; 1; 640;',
+    97: 'TAT_TAGLOOP; NULL; 0; 0; 1; NULL;fx_engine_purple1_diff;200; 200;',
+}
+
+
+def animations_pck(rows=ANIMATION_ROWS, count=106):
+    """types/Animations text: `rows` by index, every other row a frameless dummy."""
+    body = [rows.get(i, f'TAT_ONESHOT; NULL; 73; 89; 0; 500; // {i} dummy') for i in range(count)]
+    return (f'// animations\n{count}; \n' + '\n'.join(body) + '\n').encode()
+
+
+def numbered_textures():
+    """Members for the numbered-texture tests: Materials rows 0..25 with row 25 unnamed (tex/true/25.jpg); Animations
+    (ANIMATION_ROWS) with the -79 start frame fx_engine_blue1_diff (b_diff's pixels) and a dead dds/-79 member (a_diff's)."""
+    rows = [(0, 'MPF_NULL', '')] + [(i, 'MPF_NULL', '') for i in range(1, 26)]
+    tex = dict(atlas_textures())
+    return [('types/Materials.pck', materials_pck(rows)), ('tex/true/25.jpg', jpg_texture()),
+            ('types/Animations.pck', animations_pck()), ('dds/fx_engine_blue1_diff.pck', tex['dds/b_diff.pck']),
+            ('dds/-79.pck', tex['dds/a_diff.pck'])]
+
+
 class RefusalClasses(unittest.TestCase):
     """dominant_slot_missing, no_diffuse and texture_unresolved (2026-09-24)."""
-    def build(self, kind):
+    def build(self, kind, **kw):
         with tempfile.TemporaryDirectory() as folder:
             game = Path(folder) / 'game'
-            write_catalogue(game / '01.cat', atlas_textures() + [('tex/true/25.jpg', jpg_texture())])
+            write_catalogue(game / '01.cat', atlas_textures() + numbered_textures())
             assets, _ = lod_overlay.original_assets(game)
             tree = bob1.parse(bob1.serialise(refusal_tree(kind)))
             mats, r0 = list(bob1.materials(tree)), bob1.lods(tree)[0]
-            return lod_atlas.build(assets, 'b', mats, r0, set(), 8, (64, 128), light_bleed_max=0), mats
+            return lod_atlas.build(assets, 'b', mats, r0, set(), 8, (64, 128), light_bleed_max=0, **kw), mats
 
     def test_dominant_slot_missing(self):
         src = bob1.materials(refusal_tree('glass'))
@@ -1263,9 +1311,227 @@ class RefusalClasses(unittest.TestCase):
         self.assertEqual(census.atlas_reason(cm.exception), 'excluded_effect')
 
     def test_texture_unresolved(self):
+        res, _ = self.build('true_folder')                        # id 25 -> tex/true/25.jpg (texture-lookup.md)
+        t = next(t for t in res['layout']['tiles'] if 0 in t['mats'])
+        self.assertEqual(t['sources']['diffuse'], '01.cat:tex/true/25.jpg')
         with self.assertRaisesRegex(lod_atlas.AtlasError, 'does not resolve') as cm:
-            self.build('true_folder')                             # tex/true/ is the numbered-texture folder only
+            self.build('missing')
         self.assertEqual(census.atlas_reason(cm.exception), 'texture_unresolved')
+
+    def test_animated_group_bakes_the_start_frame(self):
+        """A -79 face group (fx_engine) is atlased with material 1 and Animations row 79's start frame
+        fx_engine_blue1_diff (b_diff's pixels), not the dead dds/-79 member (a_diff's)."""
+        res, mats = self.build('animated', fmt='a8r8g8b8')
+        self.assertEqual(res['animation'], dict(groups=1, rows=[79], material0=0))
+        t = next(t for t in res['layout']['tiles'] if 1 in t['mats'])
+        self.assertEqual(t['sources']['diffuse'], '01.cat:dds/fx_engine_blue1_diff.pck')
+        self.assertTrue(all(g['material'] >= 0 for p in res['record']['parts'] for g in p['groups']))
+        ref, _ = self.build('null_diffuse', fmt='a8r8g8b8')                      # material 1 = b_diff as usual
+        tr = next(t for t in ref['layout']['tiles'] if 1 in t['mats'])
+        (x, y), (w, h) = t['origin'], t['content']
+        (xr, yr), _ = tr['origin'], tr['content']
+        self.assertTrue((res['encoded']['diffuse']['decoded'][y:y + h, x:x + w] ==
+                         ref['encoded']['diffuse']['decoded'][yr:yr + h, xr:xr + w]).all())
+        with self.assertRaisesRegex(lod_atlas.AtlasError, 'TAT_MOVIE') as cm:
+            self.build('movie')
+        self.assertEqual(census.atlas_reason(cm.exception), 'texture_animation_unsupported')
+
+    def test_numbered_spec_bump_bind_the_diffuse(self):
+        """Khaak: 25_spec.jpg and 25_bump.jpg are id 25, so the specular and bump tiles carry the diffuse image."""
+        res, _ = self.build('khaak', specular=True, fmt='a8r8g8b8')
+        t = next(t for t in res['layout']['tiles'] if 0 in t['mats'])
+        self.assertEqual({t['sources'][s] for s in ('diffuse', 'specular', 'bump')}, {'01.cat:tex/true/25.jpg'})
+        (cx, cy), (cw, ch) = t['origin'], t['content']
+        box = lambda s: res['encoded'][s]['decoded'][cy:cy + ch, cx:cx + cw, :3].astype(int)
+        self.assertTrue((box('specular') == box('diffuse')).all())
+        self.assertGreater(np.ptp(box('diffuse')), 100)          # the gradient, not a flat placeholder
+
+
+class TextureLookup(unittest.TestCase):
+    """lod_atlas.lookup: the engine rule of docs/reverse-engineering/texture-lookup.md section 9."""
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.TemporaryDirectory()
+        game = Path(cls.tmp.name) / 'game'
+        tiny = lambda: gzip.compress(lod_atlas.write_dds([np.zeros((4, 4, 4), np.float32)], 'A8R8G8B8'), mtime=0)
+        rows = [(0, 'MPF_NULL', ''), (1, 'MPF_NULL', ''), (2, 'MPF_DESTINATIONBLEND|MPF_BESTQUALITY',
+                'effects\\others\\envmap_test'), (0, 'MPF_NULL', ''), (4, 'MPF_WRITEABLE|MPF_GENERATED', '')]
+        holders = [f'dds/{n}.pck' for n in ('NONE_GRAY', 'NONE_NORMAL_LOW', 'NONE_WHITE', 'NONE_BLACK',
+                                            'NONE_OCCL_DECAL', 'ENVI')]
+        write_catalogue(game / '01.cat', [('types/Materials.pck', materials_pck(rows)), ('tex/true/1.jpg', b'j1'),
+                                          ('dds/envmap_test.pck', tiny()), ('textures/c_diff.tga', b'c-tga'),
+                                          ('textures/c_diff.jpg', b'c-jpg'), ('textures/d_diff.jpg', b'd-jpg'),
+                                          ('dds/e_diff.pck', tiny()), ('textures/e_diff.tga', b'e-tga'),
+                                          ('textures/f_diff.tga', b'f-tga'), ('dds/g_diff.pck', tiny()),
+                                          ('textures/h_diff.tga', b'h-tga'), ('tex/i_diff.jpg', b'i-jpg'),
+                                          ('textures/k_diff.bmp', b'k-bmp')]
+                        + [(h, tiny()) for h in holders])
+        write_catalogue(game / '02.cat', [('textures/f_diff.jpg', b'f-jpg'), ('dds/g_diff.dds', b'DDS g')])
+        (game / 'textures').mkdir()
+        (game / 'textures' / 'h_diff.tga').write_bytes(b'h-loose')
+        cls.assets = lod_overlay.original_assets(game)[0]
+        (Path(cls.tmp.name) / 'empty').mkdir()
+        cls.bare = lod_overlay.original_assets(Path(cls.tmp.name) / 'empty')[0]
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def found(self, name):
+        entry, placeholder = lod_atlas.lookup(self.assets, name)
+        return placeholder or f'{entry["source"]}:{entry["path"]}'
+
+    def test_null_names(self):
+        for name in (b'', b'0', b'NULL', b'Null', b'null'):
+            self.assertIsNone(lod_atlas.lookup(self.assets, name), name)
+            self.assertIsNone(lod_atlas.texture_source(self.assets, name), name)
+        for name in (b'NULL.dds', b'null.tga', b'0.jpg', b'NULL.tga.dds'):   # the recursion re-runs the NULL test
+            self.assertIsNone(lod_atlas.lookup(self.assets, name), name)
+            self.assertIsNone(lod_atlas.texture_id(name), name)
+        self.assertEqual(lod_atlas.strip_texture_name('d_diff.tga.dds'), 'd_diff')    # a double extension drops twice
+        self.assertEqual(self.found(b'd_diff.tga.dds'), '01.cat:textures/d_diff.jpg')
+        self.assertEqual(lod_atlas.texture_id(b'1.tga.dds'), 1)
+
+    def test_numbered(self):
+        self.assertEqual(self.found(b'1.jpg'), '01.cat:tex/true/1.jpg')             # unnamed row: tex/true/<n>
+        self.assertEqual(self.found(b'2.jpg'), '01.cat:dds/envmap_test.pck')        # named row: textures\<name>
+        for name in (b'1_spec.jpg', b'1_bump.jpg', b'1'):                           # sscanf stops at '_': id 1
+            self.assertEqual(self.found(name), '01.cat:tex/true/1.jpg', name)
+        self.assertIsNone(lod_atlas.lookup(self.assets, b'3.jpg'))              # texture id 0: no texture
+        self.assertIsNone(lod_atlas.texture_source(self.assets, b'3.jpg'))
+        for name, why, code in ((b'4.jpg', 'generated surface', 'texture_generated'),        # drawn at run time
+                                (b'5.jpg', 'past the 5 Materials rows', 'texture_unresolved')):
+            with self.assertRaisesRegex(lod_atlas.AtlasError, why) as cm:
+                lod_atlas.lookup(self.assets, name)
+            self.assertEqual(census.atlas_reason(cm.exception), code)
+        self.assertEqual(self.found(b'65537.jpg'), '01.cat:tex/true/1.jpg')         # the id is a short
+        self.assertEqual(self.found(b'-x_diff.jpg'), 'NONE_GRAY')    # sscanf reads nothing: a named texture
+        with self.assertRaisesRegex(lod_atlas.AtlasError, 'does not resolve') as cm:
+            lod_atlas.lookup(self.bare, b'1.jpg')                     # no Materials table
+        self.assertEqual(census.atlas_reason(cm.exception), 'texture_unresolved')
+
+    def test_chain_order(self):
+        self.assertEqual(self.found(b'c_diff.dds'), '01.cat:textures/c_diff.tga')   # tga before jpg
+        self.assertEqual(self.found(b'd_diff.tga'), '01.cat:textures/d_diff.jpg')   # the extension is dropped
+        self.assertEqual(self.found(b'x\\e_diff.tga'), '01.cat:dds/e_diff.pck')     # dds/<basename> first
+        self.assertEqual(self.found(b'f_diff.tga'), '01.cat:textures/f_diff.tga')   # tga step before a higher jpg
+        self.assertEqual(self.found(b'g_diff.tga'), '02.cat:dds/g_diff.dds')        # highest slot within a step
+        self.assertEqual(self.found(b'h_diff.tga'), 'loose:textures/h_diff.tga:textures/h_diff.tga')   # loose first
+        self.assertEqual(self.found(b'i_diff.jpg'), 'NONE_GRAY')                    # no tex/<stem> step
+        self.assertEqual(self.found(b'k_diff.bmp'), 'NONE_GRAY')                    # bmp is never tried
+        self.assertEqual(self.found(b'C:\\Users\\a\\Desktop\\e_diff.tga'), 'NONE_GRAY')   # \Desktop\ skips loads
+        for name in (b'C:\\Users\\a\\desktop\\e_diff.tga', b'C:/Users/a/Desktop/e_diff.tga'):   # strstr: exact
+            self.assertEqual(self.found(name), '01.cat:dds/e_diff.pck', name)
+
+    def test_placeholders(self):
+        cases = {b'XTC_terran_door_diff.dds': 'NONE_GRAY', b'dds\\unique_argon_hybrid_bump.tga': 'NONE_NORMAL_LOW',
+                 b'XTC_terran_door_SPEC.dds': 'NONE_WHITE', b'AGI_M3-body_light.tga': 'NONE_BLACK',
+                 b'x_occl.dds': 'NONE_OCCL_DECAL', b'x_envmap.dds': 'ENVI', b'x_envi.dds': 'ENVI',
+                 b'X:\\tex\\true\\340.jpg': 'NONE_BLACK', b'plain.tga': 'NONE_BLACK'}
+        for name, tex in cases.items():
+            self.assertEqual(self.found(name), tex, name)
+        data, kind, info = lod_atlas.texture_source(self.assets, b'XTC_terran_door_diff.dds')
+        self.assertEqual((kind, info['member'], info['placeholder']), ('dds', 'dds/NONE_GRAY.pck', 'NONE_GRAY'))
+        textures = lod_atlas.Textures(self.assets)
+        self.assertIsNone(textures.size(b'XTC_terran_door_diff.dds'))   # sized like a NONE_* name
+        self.assertEqual(textures.source(b'XTC_terran_door_diff.dds')['placeholder'], 'NONE_GRAY')
+        self.assertIsNone(textures.size(b'3.jpg'))
+        with self.assertRaisesRegex(lod_atlas.AtlasError, 'no placeholder dds/NONE_GRAY'):
+            lod_atlas.lookup(self.bare, b'a_diff.tga')
+
+    def test_shared_member_decodes_once(self):
+        textures = lod_atlas.Textures(self.assets)
+        self.assertIs(textures.get(b'2.jpg'), textures.get(b'2_spec.jpg'))
+
+
+class TextureAnimations(unittest.TestCase):
+    """Negative ids are types/Animations rows (texture-lookup.md section 10): parser, start frame, refusals, and the
+    face-group resolution of lod_atlas.animated_record."""
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.TemporaryDirectory()
+        game = Path(cls.tmp.name) / 'game'
+        write_catalogue(game / '01.cat', atlas_textures() + numbered_textures() + [
+            ('tex/true/1.jpg', jpg_texture()), ('dds/fx_engine_purple1_diff.pck', dict(atlas_textures())['dds/a_diff.pck']),
+            ('dds/NONE_GRAY.pck', dict(atlas_textures())['dds/a_diff.pck'])])
+        write_catalogue(game / 'addon' / '01.cat', [('addon/types/Animations.pck',        # addon wins
+                                                     animations_pck({**ANIMATION_ROWS, 3: ANIMATION_ROWS[97]}))])
+        cls.assets = lod_overlay.original_assets(game)[0]
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def test_parser(self):
+        rows = lod_atlas.parse_animations(animations_pck().decode())
+        self.assertEqual(len(rows), 106)
+        self.assertEqual((lod_atlas.TAT_NAME[rows[79]['type']], [f for _, f, _ in rows[79]['frames']][::3]),
+                         ('TAT_TAGLOOP', ['effects\\engines\\fx_engine_blue1_diff', 'effects\\engines\\fx_engine_blue4_diff']))
+        self.assertEqual((rows[81]['coords'], rows[81]['movie']), ((0.25, 0.25, 0.75, 0.75), (2, 0, 0, 0, 0, 1, 640)))
+        self.assertEqual(rows[5]['frames'][0], (2, 'sheet_diff', (0.25, 0.0)))
+        start = {n: lod_atlas.animation_start(rows[n]) for n in (3, 5, 8, 67, 79, 81)}
+        self.assertEqual(start, {3: ('1', (0.0, 0.0)), 5: ('sheet_diff', (0.25, 0.0)), 8: ('coll_diff', (0.0, 0.0)),
+                                 67: ('0', (0.0, 0.0)), 79: ('effects\\engines\\fx_engine_blue1_diff', (0.0, 0.0)),
+                                 81: ('test\\StaticAdverts', (0.25, 0.25))})
+        for bad in (animations_pck().decode() + ' 7;', animations_pck(count=107).decode().replace('107;', '108;'),
+                    animations_pck({3: 'TAT_BOGUS; NULL; 0; 0; 0; 0;'}).decode()):
+            with self.assertRaises((ValueError, KeyError, StopIteration)):
+                lod_atlas.parse_animations(bad)
+
+    def found(self, name):
+        entry, placeholder = lod_atlas.lookup(self.assets, name)
+        return placeholder or f'{entry["source"]}:{entry["path"]}'
+
+    def test_start_frame_and_refusals(self):
+        self.assertEqual(lod_atlas.animation_rows(self.assets)[3]['type'], lod_atlas.TAT['TAT_TAGLOOP'])  # addon row
+        self.assertEqual(self.found(b'-79.tga'), '01.cat:dds/fx_engine_blue1_diff.pck')   # never dds/-79
+        self.assertEqual(self.found(b'-79.dds'), self.found(b'-79_bump.tga'))
+        self.assertEqual(self.found(b'-3.jpg'), '01.cat:dds/fx_engine_purple1_diff.pck')
+        self.assertEqual(self.found(b'-8.tga'), 'NONE_GRAY')          # TAGCOLLECTION: row +6 coll_diff, in no catalogue
+        for name, why in ((b'-81.tga', 'TAT_MOVIE'), (b'-67.tga', 'TAT_TAGSINGLESTEP'), (b'-5.tga', 'UV offset 0.25,0')):
+            with self.assertRaisesRegex(lod_atlas.AtlasError, why) as cm:
+                lod_atlas.lookup(self.assets, name)
+            self.assertEqual(census.atlas_reason(cm.exception), 'texture_animation_unsupported', name)
+        with self.assertRaisesRegex(lod_atlas.AtlasError, 'outside the 106 Animations rows') as cm:
+            lod_atlas.lookup(self.assets, b'-200.tga')
+        self.assertEqual(census.atlas_reason(cm.exception), 'texture_unresolved')
+
+    def test_group_resolution(self):
+        tree = refusal_tree('animated')
+        mats, r0 = bob1.materials(tree), bob1.lods(tree)[0]
+        r0['parts'].append({'flags': 0x30008001, 'groups': [{'material': -79, 'faces': [(0, 1, 2, 1)]}]})   # hidden
+        r0['parts'][0]['groups'].append({'material': -97, 'faces': [(0, 1, 2, 1)], 'extra': []})   # no -97 material
+        rec, info = lod_atlas.animated_record(mats, r0)
+        self.assertEqual(info, dict(groups=2, rows=[79, 97], material0=1))
+        self.assertEqual([(g['material'], g.get('animation')) for g in rec['parts'][0]['groups']],
+                         [(0, None), (1, 79), (0, 97)])
+        self.assertEqual(rec['parts'][-1]['groups'][0]['material'], -79)     # hidden part: kept verbatim
+        self.assertEqual(r0['parts'][0]['groups'][1]['material'], -79)       # the source is not modified
+        plain = bob1.lods(atlas_tree_lod0())[0]
+        self.assertIs(lod_atlas.animated_record(mats, plain)[0], plain)       # nothing to map: the record itself
+        classic = [{'index': 0, 'flags': 0, 'texture': b'', 'colors': [], 'maps': []}] + mats[1:]
+        r1 = copy.deepcopy(r0)
+        r1['parts'][0]['groups'][-1]['material'] = -97
+        with self.assertRaisesRegex(lod_atlas.AtlasError, 'material 0 is not an effect material') as cm:
+            lod_atlas.animated_record(classic, r1)
+        self.assertEqual(census.atlas_reason(cm.exception), 'texture_animation_unsupported')
+
+    def test_group_row_is_validated_on_every_path(self):
+        """With assets, a -N group's Animations row is checked even when no material carries -N (material 0
+        fallback, whose own diffuse would hide the row): movie, single-step and offset rows refuse
+        texture_animation_unsupported, a row past the table texture_unresolved."""
+        mats, r0 = bob1.materials(atlas_tree_lod0()), bob1.lods(atlas_tree_lod0())[0]
+        for n, code in ((-81, 'texture_animation_unsupported'), (-67, 'texture_animation_unsupported'),
+                        (-5, 'texture_animation_unsupported'), (-200, 'texture_unresolved')):
+            rec = copy.deepcopy(r0)
+            rec['parts'][0]['groups'][1]['material'] = n
+            self.assertEqual(lod_atlas.animated_record(mats, rec)[1]['material0'], 1)   # no assets: not validated
+            with self.assertRaises(lod_atlas.AtlasError) as cm:
+                lod_atlas.animated_record(mats, rec, self.assets)
+            self.assertEqual(census.atlas_reason(cm.exception), code, n)
+        rec = copy.deepcopy(r0)
+        rec['parts'][0]['groups'][1]['material'] = -79
+        self.assertEqual(lod_atlas.animated_record(mats, rec, self.assets)[1], dict(groups=1, rows=[79], material0=1))
 
 
 if __name__ == '__main__':

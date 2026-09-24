@@ -1,0 +1,6 @@
+skipped overlay sources ['addon/05.cat', 'addon/06.cat']; Materials rows 1237; bodies parsed 2346, unparsed 1105
+slot names by class: {'generated': 101, 'negative': 208, 'ok': 934, 'texid0': 1063}
+  generated: [('340', 50), ('20.jpg', 10), ('19.jpg', 6), ('342', 3), ('1236.jpg', 3), ('16.jpg', 2), ('66', 2), ('17.jpg', 2)]
+  negative: [('-79.tga', 126), ('-81.tga', 38), ('-79.dds', 5), ('-82.tga', 2), ('-97.dds', 2), ('-93.dds', 2), ('-94.dds', 2), ('-26.jpg', 1)]
+  ok: [('155.jpg', 92), ('154.jpg', 26), ('567', 23), ('568', 23), ('263.jpg', 22), ('704', 21), ('39.jpg', 19), ('416.jpg', 18)]
+  texid0: [('0', 1063)]

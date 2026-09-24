@@ -130,8 +130,10 @@ tooling"; census: tools/analysis/atlas_census.py):
   t_AlphaTexture NULL (the specular atlas is baked only when some atlased material carries
   t_SpecularTexture), every g_Mat* FLOAT the face-area-weighted mean over the atlased
   materials of that effect (unless synth is off), appended to MAT6 with record index =
-  position. A group material index outside the table (negative on the ad signs) is
-  refused before any of this. The copied record must declare t_DiffuseTexture, and
+  position. A face group with a negative index -N (a texture animation, texture-lookup.md section 10) is first
+  mapped onto the first effect material whose t_DiffuseTexture id is -N, else material 0 (animated_record; the
+  diffuse -N resolves to Animations row N's start frame); an animated group that would stay out of the atlas
+  (alpha or kept) is refused texture_animation_unsupported. A group index past the table is refused. The copied record must declare t_DiffuseTexture, and
   t_LightMapTexture when any material of that effect declares it (required_slots); the dominant is
   taken among the materials that declare them (class_dominant). A slot no material of the effect
   declares is not added, so the record keeps its effect's own parameter set. Every one of the 52
@@ -172,17 +174,30 @@ tooling"; census: tools/analysis/atlas_census.py):
   stem (lod_overlay.qualified_stem: file stem + a 6-hex hash of the member path, so
   colliding stems such as ships/terran/terran_M3 and ships/usc/terran_m3 get distinct,
   stable names).
-- Source textures are resolved as the engine's loader does: dds/<stem>.pck|.dds (path
-  table +0x7c "dds\\%s", extension list "pck dds"), then tex/<stem>.jpg|.tga|.bmp (the
-  jpg/tga wrapper 0x004f3510, +0x74 "tex\\%s"); the dds-before-tex order is inferred from the
-  path table and the wrapper's role, not traced (no enumerated mod body reads a tex/ member,
-  so no body depends on it); jpg/tga/bmp are decoded with Pillow
+- Source textures are resolved as the engine does (lookup; texture-lookup.md section 9, 2026-09-24):
+  "", 0, NULL/Null/null are no texture; a trailing 3-character extension is dropped; a name
+  starting with a digit or '-' is the types/Materials id its leading integer gives (25_spec.jpg is
+  id 25, so the Khaak spec and bump slots bind the diffuse image). A negative id -N (-79.tga) is
+  types/Animations row N (parse_animations): the start frame (row +6 for no frame list, TAGCOLLECTION,
+  TAGSINGLESTEP, else the first frame) through this same chain; never the dead dds/-N members.
+  TAT_MOVIE, TAT_TAGSINGLESTEP and a non-zero start UV offset are refused
+  texture_animation_unsupported (the offset is not applied: how the instance UV matrix reaches the draw
+  is not traced). A MPF_GENERATED row (a surface drawn at run time, e.g. 18.jpg, 340) is refused
+  texture_generated; an id past the Materials rows texture_unresolved. No texture (baked like NULL)
+  for a row with texture id 0; the path is
+  textures\\<file name> for a named row and tex\\true\\<n> otherwise. Any other name (also '-x', which
+  sscanf does not read) gives textures\\<name>. The path is tried as
+  dds/<basename> (pck dds), then <path> with pck dds, tga, jpg (never bmp), each step loose file
+  first, then the catalogues from the highest slot down (resolve_member); a path containing
+  \\Desktop\\ skips the loads. When nothing loads the
+  engine binds a suffix placeholder (diff NONE_GRAY, bump NONE_NORMAL_LOW, spec NONE_WHITE, light
+  and anything else NONE_BLACK, occl NONE_OCCL_DECAL, envmap/envi ENVI; dds/ members of 01.cat),
+  which is baked like the NONE_* names (no size of its own). texture_unresolved remains for a
+  numbered name without a readable Materials / Animations table, an animation id past the Animations
+  rows, and a placeholder missing from every catalogue.
+  jpg/tga members are decoded with Pillow
   (imported lazily; a missing Pillow refuses the body with a reason). The layout records
-  the member each tile's textures came from (tile 'sources'). Not widened (2026-09-24): the Khaak
-  M6 names (25.jpg, 36.jpg, ...) exist only as tex/true/<n>.jpg, a folder the EXE builds only for
-  numbered textures ("true\\%d" at 0x004f43fe, integer ids of the table at 0x006069ac); the string
-  wrapper 0x004f3510 never adds true\\, so those stay texture_unresolved, as do the names that are
-  in no catalogue at all.
+  the member each tile's textures came from (tile 'sources').
 - 2026-09-24 change (dominant choice per effect, kept effects, NULL diffuse, solid tiles): tool_sha256 covers this
   file, so the next lod_overlay --batch --sync rebuilds every body instead of reusing it; bodies
   that baked before are byte-identical (no eligible body had a NULL diffuse or a dominant without
@@ -191,9 +206,9 @@ tooling"; census: tools/analysis/atlas_census.py):
 import gzip
 import hashlib
 import math
+import re
 import struct
 import zlib
-from pathlib import PurePosixPath
 
 import numpy as np
 
@@ -488,33 +503,248 @@ def write_dds(levels, fmt):
 # --- texture resolution -------------------------------------------------------------------
 
 DDS_LOOKUP = ('dds', ('.pck', '.dds'))            # 0x004dc540 "pck dds" under +0x7c "dds\%s"
-IMAGE_LOOKUP = ('tex', ('.jpg', '.tga', '.bmp'))  # 0x004f3510 jpg/tga wrapper under +0x74 "tex\%s"
+# Engine texture lookup (docs/reverse-engineering/texture-lookup.md sections 2-6, rule in section 9):
+# name -> id 0x004f4cb0, id -> path 0x004f4160, path -> loader chain / placeholder 0x004f3510.
+NULL_TEXTURE_NAMES = ('', '0', 'NULL', 'Null', 'null')   # 0x004f4cb0: exact, case-sensitive -> id 0
+NUMBERED_PATH = 'tex\\true\\{}'                   # "true\%d" (0x004f43fe) inside +0x74 "tex\%s"
+NAMED_PATH = 'textures\\{}'                       # +0x78 "textures\%s"
+DESKTOP = '\\Desktop\\'                           # 0x00564b9c: a path containing it skips every load
+MATERIALS_MEMBER = 'types/Materials.pck'          # 0x004f44a0 via 0x0046f450; addon\types wins (inferred)
+MPF_GENERATED = 0x800000                          # blank generated surface, no file (0x004f3950)
+LOAD_STEPS = (('.pck', '.dds'), ('.tga',), ('.jpg',))   # 0x004f3510 after dds\<basename>; bmp is never tried
+# 0x004f3510 missing-texture placeholders by the path's last characters (case-insensitive; device init 0x004d8f10
+# loads them); bump takes NONE_NORMAL_LOW (the engine picks NONE_NORMAL on a device field that is not traced)
+PLACEHOLDERS = (('diff', 'NONE_GRAY'), ('bump', 'NONE_NORMAL_LOW'), ('spec', 'NONE_WHITE'), ('light', 'NONE_BLACK'),
+                ('occl', 'NONE_OCCL_DECAL'), ('envmap', 'ENVI'), ('envi', 'ENVI'))
+DEFAULT_PLACEHOLDER = 'NONE_BLACK'
+_LEADING_INT = re.compile(r'-?\d+')               # sscanf("%d") at 0x004f4ddf on a name starting with a digit or '-'
+# types\Animations (texture-lookup.md section 10): loaded by 0x004f5460, stride 0x44; type names 0x0054de40,
+# TADF_/TATF_ flag names 0x0054de28 / 0x0054dea8. A negative texture id -N is row N (a texture animation).
+ANIMATIONS_MEMBER = 'types/Animations.pck'
+TAT = dict(TAT_LOOP=1, TAT_PINGPONG=2, TAT_ONESHOT=3, TAT_MOVIE=4, TAT_TAGLOOP=5, TAT_TAGPINGPONG=6,
+           TAT_TAGONESHOT=7, TAT_TAGCOLLECTION=8, TAT_TAGONESHOT_REINIT=9, TAT_SINGLESTEP=10,
+           TAT_TAGSINGLESTEP=11, TAT_TAGARRAYSINGLESTEP=12)
+TAT_NAME = {v: k for k, v in TAT.items()}
+ANIMATION_FLAGS = dict(NULL=0, TADF_COORDS=2, TATF_REINITLOOP=1, TATF_COORDS=2)
+# a still bake of these would be wrong: MOVIE plays through 0x004f65f0, TAGSINGLESTEP starts without a texture
+ANIMATION_UNSUPPORTED = (TAT['TAT_MOVIE'], TAT['TAT_TAGSINGLESTEP'])
+
+
+def materials_rows(assets):
+    """[(texture id, MPF flags, file name)] of the winning types/Materials, cached on `assets`; None when the
+    table is missing or does not parse. Columns 12 texture id, 15 flags, 28 file name ("leave blank to use id")."""
+    cache = assets.__dict__
+    if '_x3m_materials' not in cache:
+        try:
+            data, _ = assets.get(MATERIALS_MEMBER)
+            lines = [l for l in data.decode('latin1').splitlines() if l.strip() and not l.lstrip().startswith('/')]
+            count = int(lines[0].split(';')[0])
+            rows = []
+            for line in lines[1:count + 1]:
+                f = [x.strip() for x in line.split(';')]
+                flags = 0
+                for tok in (t.strip() for t in f[15].split('|')):
+                    flags |= MPF_GENERATED if tok == 'MPF_GENERATED' else int(tok, 0) if tok[:1].isdigit() else 0
+                rows.append((int(f[12], 0), flags, f[28]))
+            cache['_x3m_materials'] = rows if len(rows) == count else None
+        except (FileNotFoundError, ValueError, IndexError):
+            cache['_x3m_materials'] = None
+    return cache['_x3m_materials']
+
+
+def parse_animations(text):
+    """Rows of types\\Animations read with the grammar of 0x004f5460: ';'-separated tokens ('//' comments, empty
+    tokens skipped): count, then per row type, flags, first (+6), second (+8), 4 coordinates when TADF_COORDS, then
+    TAT_MOVIE: 7 ints; else a frame count, the frames (TAGCOLLECTION: name + 6 values; TAGSINGLESTEP: name; others:
+    flags, name, duration, 2 coordinates when TATF_COORDS) and the total duration. Returns [dict(type, flags, first,
+    second, coords, frames=[(flags, name, coords)], movie)]; ValueError / KeyError / StopIteration on a malformed file
+    or trailing tokens."""
+    toks = iter([t for line in text.splitlines() for t in (x.strip() for x in line.split('//', 1)[0].split(';'))
+                 if t != ''])
+    flags = lambda tok: sum(ANIMATION_FLAGS[p.strip()] for p in tok.split('|'))
+    rows = []
+    for _ in range(int(next(toks))):
+        typ, fl = TAT[next(toks)], flags(next(toks))
+        row = dict(type=typ, flags=fl, first=next(toks), second=next(toks), coords=None, frames=[], movie=None)
+        if fl & 2:
+            row['coords'] = tuple(float(next(toks)) for _ in range(4))
+        if typ == TAT['TAT_MOVIE']:
+            row['movie'] = tuple(int(next(toks)) for _ in range(7))
+        else:
+            for _ in range(int(next(toks))):
+                if typ == TAT['TAT_TAGCOLLECTION']:
+                    row['frames'].append((0, next(toks), None))
+                    [next(toks) for _ in range(6)]
+                elif typ == TAT['TAT_TAGSINGLESTEP']:
+                    row['frames'].append((0, next(toks), None))
+                else:
+                    ef, fname = flags(next(toks)), next(toks)
+                    next(toks)                                    # duration
+                    row['frames'].append((ef, fname, (float(next(toks)), float(next(toks))) if ef & 2 else None))
+            next(toks)                                            # total duration
+        rows.append(row)
+    if next(toks, None) is not None:
+        raise ValueError('trailing tokens after the last Animations row')
+    return rows
+
+
+def animation_rows(assets):
+    """Rows of the winning types/Animations (addon first, like Materials), cached on `assets`; None when missing or
+    malformed."""
+    cache = assets.__dict__
+    if '_x3m_animations' not in cache:
+        try:
+            cache['_x3m_animations'] = parse_animations(assets.get(ANIMATIONS_MEMBER)[0].decode('latin1'))
+        except (FileNotFoundError, ValueError, KeyError, StopIteration):
+            cache['_x3m_animations'] = None
+    return cache['_x3m_animations']
+
+
+def animation_start(row):
+    """(texture name, start UV translation) an instance starts with (0x004f5b60): row +6 when the row has no frame
+    list or is TAGCOLLECTION / TAGSINGLESTEP, else the first frame; the translation comes from the row's
+    TADF_COORDS start or the first frame's TATF_COORDS."""
+    from_first = row['frames'] and row['type'] not in (TAT['TAT_TAGCOLLECTION'], TAT['TAT_TAGSINGLESTEP'])
+    name = row['frames'][0][1] if from_first else row['first']
+    offset = row['coords'][:2] if row['coords'] else (0.0, 0.0)
+    if from_first and row['frames'][0][2] and any(row['frames'][0][2]):
+        offset = row['frames'][0][2] if not any(offset) else offset
+    return name, tuple(offset)
+
+
+def animation_frame(assets, n, name):
+    """Starting frame name of Animations row n (a texture name -n); AtlasError 'texture animation' for a row the
+    baker cannot bake as a still (TAT_MOVIE, TAT_TAGSINGLESTEP, a non-zero start UV translation: how the instance
+    UV matrix reaches the draw is not traced, texture-lookup.md Unknown, so it is refused rather than applied)."""
+    rows = animation_rows(assets)
+    if rows is None:
+        raise AtlasError(f'texture {name!r} does not resolve: no readable {ANIMATIONS_MEMBER} for animation -{n}')
+    if not 0 <= n < len(rows):
+        raise AtlasError(f'texture {name!r} does not resolve: animation -{n} outside the {len(rows)} Animations rows')
+    row = rows[n]
+    if row['type'] in ANIMATION_UNSUPPORTED:
+        raise AtlasError(f'texture animation -{n} ({TAT_NAME[row["type"]]}) of {name!r} cannot be baked as a still')
+    frame, offset = animation_start(row)
+    if any(offset):
+        raise AtlasError(f'texture animation -{n} ({TAT_NAME[row["type"]]}) of {name!r} starts at UV offset'
+                         f' {offset[0]:g},{offset[1]:g}; the offset is not applied')
+    if frame.lstrip()[:1] == '-':
+        raise AtlasError(f'texture animation -{n} of {name!r} starts with another animation ({frame!r})')
+    return frame
+
+
+def strip_texture_name(s):
+    """0x004f4cb0 steps 1-2 (texture-lookup.md section 2): a NULL name ('', '0', 'NULL', 'Null', 'null') is id 0
+    (None); a name longer than 4 characters whose last '.' is at len - 4 recurses without that extension
+    (0x004f4d35..0x004f4d71), so the NULL test runs again ('NULL.dds' -> id 0) and a double extension drops twice
+    ('x.tga.dds' -> 'x')."""
+    while True:
+        if s in NULL_TEXTURE_NAMES:
+            return None
+        if len(s) > 4 and s.rfind('.') == len(s) - 4:
+            s = s[:-4]
+            continue
+        return s
+
+
+def engine_path(assets, name):
+    """Engine path of a material texture name as the engine builds it (the name's own separators kept), None for
+    no texture. 0x004f4cb0: the NULL names are id 0; a trailing 3-character extension is dropped; a name starting
+    with a digit or '-' is the Materials id sscanf("%d") reads (25_spec -> 25), kept as a short (mov ax at
+    0x004f4dec); when sscanf reads nothing ('-x') the name is a named texture (0x004f4dea -> 0x004f4e03). A negative
+    id -N is a texture animation: the path of Animations row N's starting frame (animation_frame; the shipped
+    dds/-N members are never loaded, texture-lookup.md section 10). No texture for a row whose texture id is 0; a
+    named row gives textures\\<file name>, any other row tex\\true\\<n>. Any other name gives textures\\<name>.
+    AtlasError for a numbered name without a readable table, an id past the Materials rows (it would alias a named
+    texture registered at run time) and a MPF_GENERATED row (a surface drawn at run time: 'generated surface')."""
+    s = strip_texture_name(name.decode('latin1'))
+    if s is None:
+        return None
+    m = _LEADING_INT.match(s) if s[:1].isdigit() or s[:1] == '-' else None
+    if m is None:
+        return NAMED_PATH.format(s)
+    n = (int(m.group()) + 0x8000) % 0x10000 - 0x8000
+    if n < 0:                          # texture animation (section 10): the start frame, never dds/-N
+        return engine_path(assets, animation_frame(assets, -n, name).encode('latin1'))
+    rows = materials_rows(assets)
+    if rows is None:
+        raise AtlasError(f'texture {name!r} does not resolve: no readable {MATERIALS_MEMBER} for its id')
+    if n >= len(rows):                 # 0x004f5110 would read a named entry registered at run time
+        raise AtlasError(f'texture {name!r} does not resolve: id {n} is past the {len(rows)} Materials rows')
+    if rows[n][1] & MPF_GENERATED:     # a blank surface (0x004f3950) the game draws into at run time
+        raise AtlasError(f'texture {name!r} is a generated surface (Materials row {n}, MPF_GENERATED): its content'
+                         ' is drawn at run time')
+    if rows[n][0] == 0:                # 0x004f5110: no texture
+        return None
+    return NAMED_PATH.format(rows[n][2]) if rows[n][2] else NUMBERED_PATH.format(n)
+
+
+def resolve_member(assets, stem, extensions):
+    """Resolver 0x004e7590 for one loader step: the winning entry or None. A loose file first, then the catalogues
+    from the highest slot down; the first slot holding any of the extensions wins, and within it the first
+    extension of the list."""
+    layer = {src: i for i, src in enumerate(assets.layers)}      # a few dozen; Textures caches per name
+    best = None
+    for rank, ext in enumerate(extensions):
+        for e in assets.candidates(stem + ext):
+            if not e['path'].lower().endswith(ext):      # canonical() folds .pck into a .txt / .dds key
+                continue
+            key = ('loose' in e, layer.get(e['source'], -1), -rank)
+            if best is None or key > best[0]:
+                best = (key, e)
+    return None if best is None else best[1]
+
+
+def placeholder_name(path):
+    """Placeholder texture (dds/<name>) 0x004f3510 binds when no file loads, by the path's suffix."""
+    low = path.lower()
+    return next((tex for suffix, tex in PLACEHOLDERS if low.endswith(suffix)), DEFAULT_PLACEHOLDER)
+
+
+def lookup(assets, name):
+    """(entry, placeholder name or None) the engine binds for a material texture name, None for no texture.
+    0x004f3510 on the extensionless path: dds/<basename> (pck dds), then the path with pck dds, tga, jpg (a path
+    containing \\Desktop\\ skips the loads: strstr at 0x004f3688, case-sensitive); when nothing loads, the
+    placeholder its suffix selects."""
+    raw = engine_path(assets, name)
+    if raw is None:
+        return None
+    path = raw.replace('\\', '/')
+    steps = [] if DESKTOP in raw else \
+        [(f'{DDS_LOOKUP[0]}/{path.rsplit("/", 1)[-1]}', DDS_LOOKUP[1])] + [(path, exts) for exts in LOAD_STEPS]
+    for stem, exts in steps:
+        entry = resolve_member(assets, stem, exts)
+        if entry is not None:
+            return entry, None
+    tex = placeholder_name(path)
+    entry = resolve_member(assets, f'{DDS_LOOKUP[0]}/{tex}', DDS_LOOKUP[1])
+    if entry is None:
+        raise AtlasError(f'texture {name!r} does not resolve: no file for {path} and no placeholder dds/{tex}')
+    return entry, tex
 
 
 def texture_source(assets, name):
-    """(decoded member bytes, kind 'dds' | 'image', info) of a material texture name resolved as
-    the engine's loader does (module notes): dds/<stem>.pck|.dds, then tex/<stem>.jpg|.tga|.bmp.
-    info = dict(source, member, decoded_sha256) from Assets.get; None for NULL."""
+    """(decoded member bytes, kind 'dds' | 'image', info) of a material texture name resolved as the engine does
+    (lookup); None for NULL and for an id the engine draws without a texture.
+    info = dict(source, member, decoded_sha256, placeholder: the NONE_* / ENVI name or None)."""
     if name is None or body_materials.is_null(name):
         return None
-    stem = PurePosixPath(name.decode('latin1').replace('\\', '/')).stem
-    try:
-        data, info = assets.logical(f'{DDS_LOOKUP[0]}/{stem}', DDS_LOOKUP[1])
-        if data is None:
-            data, info = assets.logical(f'{IMAGE_LOOKUP[0]}/{stem}', IMAGE_LOOKUP[1])
-    except ValueError as exc:
-        raise AtlasError(f'texture {name!r}: {exc}') from None
-    if data is None:
-        raise AtlasError(f'texture {name!r} does not resolve under dds/ (pck, dds) or tex/ (jpg, tga, bmp)')
+    found = lookup(assets, name)
+    if found is None:
+        return None
+    entry, placeholder = found
+    data = assets.read_entry(entry)
+    info = dict(source=entry['source'], member=entry['path'], decoded_sha256=hashlib.sha256(data).hexdigest(),
+                placeholder=placeholder)
     if data[:4] == b'DDS ':
         return data, 'dds', info
-    if info['member'].lower().startswith(DDS_LOOKUP[0] + '/'):
+    if info['member'].lower().endswith(DDS_LOOKUP[1]):
         raise AtlasError(f'texture {name!r} is not a DDS file ({info["member"]})')
     return data, 'image', info
 
 
 def texture_bytes(assets, name):
-    """Decoded DDS bytes of a material texture name, None for NULL; a jpg/tga/bmp source is refused."""
+    """Decoded DDS bytes of a material texture name, None for NULL; a jpg/tga source is refused."""
     src = texture_source(assets, name)
     if src is None:
         return None
@@ -529,7 +759,7 @@ def _pil_image(data, name):
     try:
         from PIL import Image
     except ImportError:
-        raise AtlasError(f'texture {name!r} is a jpg/tga/bmp member and Pillow (PIL) is not installed') from None
+        raise AtlasError(f'texture {name!r} is a jpg/tga member and Pillow (PIL) is not installed') from None
     try:
         return Image.open(io.BytesIO(data))
     except Exception as exc:
@@ -537,7 +767,7 @@ def _pil_image(data, name):
 
 
 def decode_image(data, name=b'?'):
-    """RGBA uint8 array (h, w, 4) of a jpg/tga/bmp member (Pillow, imported lazily)."""
+    """RGBA uint8 array (h, w, 4) of a jpg/tga member (Pillow, imported lazily)."""
     with _pil_image(data, name) as im:
         return np.asarray(im.convert('RGBA'), np.uint8)
 
@@ -549,9 +779,10 @@ def image_size(data, name=b'?'):
 
 class Textures:
     """Decoded mip 0 of material textures by name (lower-case), None for NULL; sizes and the
-    resolved member per name are cached too (plan_layout asks per tile per body)."""
+    resolved member per name are cached too (plan_layout asks per tile per body); names that resolve to one
+    member (Khaak 25.jpg and 25_spec.jpg) share its decoded image."""
     def __init__(self, assets):
-        self.assets, self.cache, self.sizes, self.sources = assets, {}, {}, {}
+        self.assets, self.cache, self.sizes, self.sources, self.decoded = assets, {}, {}, {}, {}
 
     @staticmethod
     def key(name):
@@ -563,7 +794,7 @@ class Textures:
         src = texture_source(self.assets, name)
         if key is not None and src is not None:
             self.sources[key] = dict(member=f'{src[2]["source"]}:{src[2]["member"]}', kind=src[1],
-                                     decoded_sha256=src[2]['decoded_sha256'])
+                                     decoded_sha256=src[2]['decoded_sha256'], placeholder=src[2]['placeholder'])
         return src
 
     def get(self, name):
@@ -573,19 +804,27 @@ class Textures:
             if src is None:
                 self.cache[key] = None
             else:
-                data, kind, _ = src
-                self.cache[key] = decode_dds(data) if kind == 'dds' else decode_image(data, name)
+                data, kind, info = src
+                member = (info['source'], info['member'])
+                if member not in self.decoded:
+                    self.decoded[member] = decode_dds(data) if kind == 'dds' else decode_image(data, name)
+                self.cache[key] = self.decoded[member]
         return self.cache[key]
 
     def size(self, name):
-        """(w, h) of a real (not NULL, not NONE_*) texture, else None."""
+        """(w, h) of a real texture, else None: NULL, NONE_* names, an id drawn without a texture and a name the
+        engine replaces by its placeholder."""
         if name is None or body_materials.is_null(name) or body_materials.is_stock(name):
             return None
         key = self.key(name)
         if key not in self.sizes:
             try:
-                data, kind, _ = self._resolve(name)
-                self.sizes[key] = dds_format(data)[:2] if kind == 'dds' else tuple(image_size(data, name))
+                src = self._resolve(name)
+                if src is None or src[2]['placeholder']:
+                    self.sizes[key] = None
+                else:
+                    data, kind, _ = src
+                    self.sizes[key] = dds_format(data)[:2] if kind == 'dds' else tuple(image_size(data, name))
             except AtlasError as exc:
                 self.sizes[key] = exc
         if isinstance(self.sizes[key], Exception):
@@ -1123,6 +1362,59 @@ def excluded_materials(mats, record, alpha):
     return frozenset(out)
 
 
+def texture_id(name):
+    """Numbered id of a texture name as 0x004f4cb0 reads it (extension dropped, sscanf %d, kept as a short), None
+    for a named or NULL texture."""
+    if name is None or not isinstance(name, bytes):
+        return None
+    s = strip_texture_name(name.decode('latin1'))
+    m = _LEADING_INT.match(s) if s is not None and (s[:1].isdigit() or s[:1] == '-') else None
+    return None if m is None else (int(m.group()) + 0x8000) % 0x10000 - 0x8000
+
+
+def animation_material(mats, index):
+    """(material index, matched) a face group with negative material index `index` draws with (0x004c0310..
+    0x004c0390): the first effect material whose t_DiffuseTexture id equals it, else material 0."""
+    for i, m in enumerate(mats):
+        if 'params' in m and texture_id(body_materials.slots(m).get('diffuse')) == index:
+            return i, True
+    return 0, False
+
+
+def animated_record(mats, record, assets=None):
+    """(record, info): a copy of `record` whose visible face groups with a negative material index -N use the
+    material animation_material picks (marked g['animation'] = N; the material's diffuse -N resolves to the row's
+    starting frame, lookup). Hidden parts keep -N (copied verbatim, never atlased). info = dict(groups, rows,
+    material0: the groups without a matching material). The record itself is returned when nothing changes.
+    AtlasError 'texture animation' when material 0 is the fallback but no effect material (not traced). With
+    `assets`, Animations row N of every mapped group is validated (animation_frame), on the material-0 fallback
+    too, whose own diffuse would otherwise hide a movie / single-step / offset / missing / past-table row:
+    texture_animation_unsupported or texture_unresolved. Every production caller passes assets."""
+    groups, rows, material0, parts = 0, set(), 0, []
+    for part in record['parts']:
+        new = part
+        if not part['flags'] & HIDDEN_PART and any(g['material'] < 0 for g in part['groups']):
+            new = dict(part, groups=[])
+            for g in part['groups']:
+                if g['material'] < 0:
+                    if assets is not None:
+                        animation_frame(assets, -g['material'], f'{g["material"]} (face group)'.encode())
+                    mi, matched = animation_material(mats, g['material'])
+                    if not matched:
+                        if not mats or 'params' not in mats[0]:
+                            raise AtlasError(f'texture animation {g["material"]}: no effect material carries it and'
+                                             ' material 0 is not an effect material (draw path not traced)')
+                        material0 += 1
+                    groups += 1
+                    rows.add(-g['material'])
+                    g = dict(g, material=mi, animation=-g['material'])
+                new['groups'].append(g)
+        parts.append(new)
+    if not groups:
+        return record, dict(groups=0, rows=[], material0=0)
+    return dict(record, parts=parts), dict(groups=groups, rows=sorted(rows), material0=material0)
+
+
 def effect_classes(mats, opaque):
     """[(effect, [material indices in first-use order])] of the opaque groups, largest face count
     first (ties: first use). Refuses a group material index outside the table."""
@@ -1153,8 +1445,14 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
     have been planned with the same keep set."""
     import lod_overlay
     textures = textures or Textures(assets)
+    record, animation = animated_record(mats, record, assets)
     kept_fx = excluded_materials(mats, record, alpha)
     bleed_keep, keep = frozenset(keep), frozenset(keep) | kept_fx
+    for part in record['parts']:
+        for g in part['groups']:
+            if 'animation' in g and (g['material'] in alpha or g['material'] in keep):
+                raise AtlasError(f'texture animation -{g["animation"]}: its group (material {g["material"]}) is not'
+                                 ' atlased (alpha or kept) and would lose the animation as a plain group')
     areas, opaque = {}, []
     for part in record['parts']:
         if part['flags'] & HIDDEN_PART:
@@ -1213,7 +1511,7 @@ def collapse(assets, body, mats, record, alpha, px, sizes=(1024, 2048), specular
     return dict(record=lod, layout=layout, atlas_index=atlas_index, atlas_indices=indices, atlas_of=atlas_of,
                 dominant=dom, names=names, members=members, slots=slots, synth=report, info=info,
                 effects=effects, textures=textures, uv2=uv2, occlusion=occlusion, kept=sorted(bleed_keep),
-                kept_effects=sorted(kept_fx))
+                kept_effects=sorted(kept_fx), source=record, animation=animation)
 
 
 # --- baking -------------------------------------------------------------------------------
@@ -1768,7 +2066,7 @@ def build(assets, body, mats, record, alpha, px, sizes=(1024, 2048), fmt='dxt', 
     res['light_bleed'] = bleed
     images = bake(res['layout'], res['textures'])
     res['encoded'] = encode(images, res['layout'], fmt)
-    res['check'] = check(record, res['record'], res, {s: e['decoded'] for s, e in res['encoded'].items()}, mats)
+    res['check'] = check(res['source'], res['record'], res, {s: e['decoded'] for s, e in res['encoded'].items()}, mats)
     c = res['check']
     if c['inside'] < c['vertices']:
         raise AtlasError(f'atlas check: {c["vertices"] - c["inside"]} of {c["vertices"]} rewritten vertex UVs fall'

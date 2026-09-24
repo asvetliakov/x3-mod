@@ -15,7 +15,7 @@ import bob1
 import lod_batch_census as census
 from sector_fog_census import write_catalogue
 from test_bob1 import atlas_textures, atlas_tree, atlas_tree_lod0, text_body
-from test_lod_overlay_batch import jpg_texture, refusal_tree
+from test_lod_overlay_batch import numbered_textures, refusal_tree
 
 
 def packed(tree):
@@ -274,24 +274,31 @@ class BatchCensus(unittest.TestCase):
 
     def test_refusal_classes(self):
         """2026-09-24: dominant_slot_missing and NULL-diffuse bodies are eligible; a material without a
-        diffuse parameter and a name found only under tex/true/ stay refused."""
-        kinds = ('glass', 'sibling', 'null_diffuse', 'solid', 'no_diffuse_param', 'true_folder', 'planet_haze',
-                 'haze_only')
+        diffuse parameter stays refused; a numbered name (Materials id -> tex/true/<n>) bakes, a name in no
+        catalogue whose placeholder is missing too stays texture_unresolved."""
+        kinds = ('glass', 'sibling', 'null_diffuse', 'solid', 'no_diffuse_param', 'true_folder', 'missing', 'animated', 'movie',
+                 'planet_haze', 'haze_only')
         opts = dict(sizes=(1024, 2048), include_other=False, rule=dict(census.RULE, aspect=False), widths=(1920,))
         with tempfile.TemporaryDirectory() as folder:
             game = Path(folder) / 'game'
-            write_catalogue(game / '01.cat', atlas_textures() + [('tex/true/25.jpg', jpg_texture())])
+            write_catalogue(game / '01.cat', atlas_textures() + numbered_textures())
             write_catalogue(game / '02.cat', [(f'objects/ships/x/{k}.pbb', packed(refusal_tree(k))) for k in kinds])
             rows, _ = census.run(game, opts)
         by = {r['name'].split('/')[-1]: r for r in rows}
         self.assertEqual({k: (by[k]['refuse'], by[k]['filter']) for k in kinds},
                          {'glass': ([], ['no_draw_gain']),     # two effects: two atlas groups, as many as the source
                           'sibling': ([], []), 'null_diffuse': ([], []), 'solid': ([], []),
-                          'no_diffuse_param': (['no_diffuse'], []), 'true_folder': (['texture_unresolved'], []),
+                          'no_diffuse_param': (['no_diffuse'], []), 'true_folder': ([], []),
+                          'missing': (['texture_unresolved'], []),
+                          'animated': ([], []), 'movie': (['texture_animation_unsupported'], []),
                           'planet_haze': ([], ['no_draw_gain']),   # atlas group + the kept planet_haze group
                           'haze_only': (['excluded_effect'], [])})
         self.assertEqual(by['planet_haze']['kept_effects'], [1])
-        self.assertTrue(all(by[k]['eligible'] for k in ('sibling', 'null_diffuse', 'solid')))
+        self.assertTrue(all(by[k]['eligible'] for k in ('sibling', 'null_diffuse', 'solid', 'true_folder')))
+        self.assertIn('tex/true/25.jpg', by['true_folder']['texture_sources'])
+        self.assertEqual((by['animated']['eligible'], by['animated']['animation']), (True, dict(groups=1, rows=[79], material0=0)))
+        self.assertIn('dds/fx_engine_blue1_diff.pck', by['animated']['texture_sources'])
+        self.assertNotIn('dds/-79.pck', by['animated']['texture_sources'])
         self.assertEqual((by['glass']['effects'], by['glass']['atlas_materials']), (2, 2))
 
 
