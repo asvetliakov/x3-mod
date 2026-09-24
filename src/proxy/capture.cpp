@@ -287,9 +287,11 @@ float taa_sky_history_exit_px = 0.f;
 // X3M_TAA_HISTORY_TAPS (5 default, 16; docs/architecture/taa-high-resolution.md S3): the resolve's history
 // reconstruction, 5-tap bilinear Catmull-Rom or the 16-tap point form of the earlier builds (in-flight A/B).
 unsigned taa_history_taps = 5;
-// X3M_TAA_BOX_RESOLUTION (full default, half; docs/architecture/taa-high-resolution.md S4, opt-in until flown): the camera
-// gate's box at full or half resolution (TemporalPass::configure_box_resolution). Invalid or oversized: stays full, logged.
-bool taa_box_half = false;
+// X3M_TAA_BOX_RESOLUTION (full|half; unset is full here, the launcher sends half by default on --taa launches since Run 82;
+// docs/architecture/taa-high-resolution.md S4): the camera gate's box at full or half resolution
+// (TemporalPass::configure_box_resolution). Invalid or oversized: stays full, logged.
+// X3M_TAA_BOX_RESOLUTION_DEFAULT=1 marks a value the launcher filled in from its default (the creation row's default=1).
+bool taa_box_half = false, taa_box_resolution_default = false;
 // X3M_TAA_THIN_VOTE (on|off; unset is off here, the launcher sends on by default since Run 81;
 // docs/architecture/taa-thin-geometry-alternatives.md section 3.2): the draw-time thin
 // vote of the thin region (per-subset triangle-height histograms, RT2 .a, the tests draw's vote). Invalid or oversized:
@@ -2532,7 +2534,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_unmatched_static(taa_unmatched_static);
     hooked.motion_output.configure_sky_history(taa_sky_history_strict,taa_sky_history_band_px,taa_sky_history_exit_px);
     hooked.motion_output.configure_history_taps(taa_history_taps);
-    hooked.motion_output.configure_box_resolution(taa_box_half);
+    hooked.motion_output.configure_box_resolution(taa_box_half,taa_box_resolution_default);
     hooked.motion_output.configure_motion_weight(taa_motion_weight[0],taa_motion_weight[1],taa_motion_weight[2]);
     // Render-state configuration (hybrid unhook): the reasons that keep the
     // SetRenderState/SetSamplerState hooks installed, then the capability
@@ -3646,6 +3648,7 @@ void initialize_log(HMODULE module) {
     else if(n>0){
         if(!wcscmp(setting,L"half"))taa_box_half=true;
         else if(wcscmp(setting,L"full")!=0)log("taa_box_resolution_setting invalid=1");
+        taa_box_resolution_default=taa_box_half&&GetEnvironmentVariableW(L"X3M_TAA_BOX_RESOLUTION_DEFAULT",setting,32)==1&&setting[0]==L'1';
     }
     // X3M_TAA_REGION_HOLD was removed with the dilated camera-gate chain (2026-09-24, docs/architecture/
     // taa-plan-lifted-slot-cap.md step 1): the region hold (A') is the camera gate's only path. A value that is still set,

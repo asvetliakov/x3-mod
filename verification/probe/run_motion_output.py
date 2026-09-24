@@ -744,7 +744,10 @@ CASES += [case(name, 'seam', jitter=True, taa=True, hdr_env=dict(X3M_TAA_REGION_
 # on top and logs one creation row and one row for what the first run drew. Every other case pins full, which logs nothing.
 THIN_HOLD_CASES = {'seam-taa-thin-hold-on': 'on', 'seam-taa-thin-hold-half': 'half'}
 THIN_HOLD_REFERENCES = {'on': 7 + 2, 'half': 7 + 2 + 2}
-CASES += [case(name, 'seam', jitter=True, taa=True, hdr_env=dict(X3M_TAA_THIN_REGION='0.97', X3M_TAA_SENTINEL_STABILISER='0.7', X3M_TAA_BOX_RESOLUTION='half' if value == 'half' else 'full'))
+# seam-taa-thin-hold-half carries the launcher's Run 82 default marker (X3M_TAA_BOX_RESOLUTION_DEFAULT=1): its creation row reads default=1.
+BOX_DEFAULT_MARKED = ('seam-taa-thin-hold-half',)
+CASES += [case(name, 'seam', jitter=True, taa=True, hdr_env=dict(X3M_TAA_THIN_REGION='0.97', X3M_TAA_SENTINEL_STABILISER='0.7', X3M_TAA_BOX_RESOLUTION='half' if value == 'half' else 'full',
+                                                                 **({'X3M_TAA_BOX_RESOLUTION_DEFAULT': '1'} if name in BOX_DEFAULT_MARKED else {})))
           for name, value in THIN_HOLD_CASES.items()]
 # The refusal path: the camera gate has no 16-tap program, so the thin region with its camera gate under --taa-history-taps 16 is
 # turned off at pass creation with one motion_output_taa_region_hold row (reason=history_taps16, effect=thin_region_off; no
@@ -3769,7 +3772,8 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         box_rows = [fields(l) for l in tl if l.startswith('motion_output_taa_box_resolution ')]
         containment = [fields(l) for l in text.splitlines() if l.startswith('REFERENCE_BOX_CONTAINMENT ')]
         if thin_hold == 'half':
-            assert [(r.get('requested'), r.get('configured'), r.get('reason'), r.get('create')) for r in box_rows[:1]] == [('half', 'half', 'ok', '00000000')] and \
+            assert [(r.get('requested'), r.get('configured'), r.get('reason'), r.get('create'), r.get('default')) for r in box_rows[:1]] == \
+                   [('half', 'half', 'ok', '00000000', '1' if name in BOX_DEFAULT_MARKED else '0')] and \
                    [(r.get('drawn'), r.get('reason')) for r in box_rows[1:]] == [('half', 'half')], (name, box_rows)
             assert len(containment) == 1 and int(containment[0]['frames']) > 0 and int(containment[0]['compared_px']) > 0 and containment[0]['violations'] == '0', (name, containment)
         else:
@@ -6345,8 +6349,8 @@ def main(argv=None):
             env.update(VARIANTS[variant])
             env.pop('X3M_SUN_SHADOW_RECEIVER_DEPTH', None)  # the former option: the DLL and the fixtures read no such variable
             env.pop('X3M_TAA_REGION_HOLD', None)  # removed 2026-09-24 (A' only): the DLL logs a stale value; only REGION_HOLD_TWINS set it
-            for marker in ('X3M_TAA_THIN_VOTE_DEFAULT', 'X3M_FADE_RT2_OWNER_DEFAULT', 'X3M_LOD_OCCLUSION_DEFAULT'):
-                env.pop(marker, None)  # the launcher's Run 81 default markers: never inherited, set only by a case (seam-thin-vote-far-on)
+            for marker in ('X3M_TAA_THIN_VOTE_DEFAULT', 'X3M_FADE_RT2_OWNER_DEFAULT', 'X3M_LOD_OCCLUSION_DEFAULT', 'X3M_TAA_BOX_RESOLUTION_DEFAULT'):
+                env.pop(marker, None)  # the launcher's Run 81/82 default markers: never inherited, set only by a case (seam-thin-vote-far-on, seam-taa-thin-hold-half)
             env.update(hdr_env)
             if taa:
                 # ca6ad2e made --taa default to sharpen 0.75 and mip bias -0.5;

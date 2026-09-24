@@ -1586,15 +1586,15 @@ bool MotionOutput::ensure_taa() noexcept {
         log("motion_output_taa_sentinel device=%llu unavailable=1 reason=%s requested=%.3f", id_, !taa_thin_camera_gate_ ? "camera_gate_off" : "box_program", double(taa_sentinel_strength_));
         taa_sentinel_strength_ = 0.f;
     }
-    // S4 (X3M_TAA_BOX_RESOLUTION=half, opt-in): the half-resolution box pair, created only when asked. One row, only when asked:
-    // requested=half with the effect at creation; a device that refuses a program, or a session without the camera gate (no box
+    // S4 (X3M_TAA_BOX_RESOLUTION=half, the launcher default on --taa since Run 82): the half-resolution box pair, created only
+    // when asked. One row, only when asked: requested=half with the effect at creation and default= (1: the launcher's default); a device that refuses a program, or a session without the camera gate (no box
     // to halve), keeps the full-resolution box (no fallback program set). The default (full) creates and logs nothing.
     if (SUCCEEDED(hr) && taa_box_half_) {
         HRESULT created = S_OK; const char* reason = "ok";
         if (!taa_thin_camera_gate_) reason = "camera_gate_off";
         else { taa_call([&] { created = taa_->configure_box_resolution(2); }); if (FAILED(created) || taa_->box_resolution() != 2) reason = "program"; }
-        log("motion_output_taa_box_resolution device=%llu requested=half configured=%s reason=%s create=%08lx sentinel_stabiliser=%.3f",
-            id_, taa_->box_resolution() == 2 ? "half" : "full", reason, created, double(taa_sentinel_strength_));
+        log("motion_output_taa_box_resolution device=%llu requested=half configured=%s reason=%s create=%08lx default=%u sentinel_stabiliser=%.3f",
+            id_, taa_->box_resolution() == 2 ? "half" : "full", reason, created, unsigned(taa_box_default_), double(taa_sentinel_strength_));
     }
     // Thin vote: the tests draw's twins, created only when the option is on (their absence keeps the plain tests draw).
     if (SUCCEEDED(hr) && thin_vote_upload_) {

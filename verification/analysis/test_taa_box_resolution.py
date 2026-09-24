@@ -1,6 +1,8 @@
-"""Host tests of --taa-box-resolution (X3M_TAA_BOX_RESOLUTION, docs/architecture/taa-high-resolution.md S4): forwarded only
-when given (the DLL default is full), full or half only, TAA mode only, refused under --vanilla, an inherited shell value
-never survives; the DLL reads it and hands half to TemporalPass::configure_box_resolution, logging only when half is asked;
+"""Host tests of --taa-box-resolution (X3M_TAA_BOX_RESOLUTION, docs/architecture/taa-high-resolution.md S4): half by default
+on every modded --taa launch since Run 82 with X3M_TAA_BOX_RESOLUTION_DEFAULT=1 (explicit full/half: marker 0; the DLL default
+when unset stays full), full or half only, TAA mode only, nothing without --taa or under --vanilla (an explicit value refused),
+an inherited shell value or marker never survives; the DLL reads both and hands half to TemporalPass::configure_box_resolution,
+logging only when half is asked (default= on the creation row);
 the two half-resolution programs are generated from their own sources.
 No game, no Wine."""
 import json
@@ -18,16 +20,32 @@ class BoxResolutionLaunch(unittest.TestCase):
     launch = vote.ThinVoteLaunch.launch
     env = vote.ThinVoteLaunch.env
 
-    def test_omitted_is_not_forwarded_and_drops_an_inherited_value(self):
-        with tempfile.TemporaryDirectory() as directory:
-            self.assertNotIn('X3M_TAA_BOX_RESOLUTION', self.env(directory, *TAA))
-            self.assertNotIn('X3M_TAA_BOX_RESOLUTION', self.env(directory, *TAA, inherited={'X3M_TAA_BOX_RESOLUTION': 'half'}))
-            self.assertNotIn('X3M_TAA_BOX_RESOLUTION', self.env(directory, '--motion-output', inherited={'X3M_TAA_BOX_RESOLUTION': 'half'}))
+    MARKER = 'X3M_TAA_BOX_RESOLUTION_DEFAULT'
 
-    def test_full_and_half_are_forwarded(self):
+    def test_default_half_with_taa_overrides_an_inherited_value(self):
+        # Run 82: no option with --taa sends half, marked as the launcher default; a stale shell pair cannot change it.
+        with tempfile.TemporaryDirectory() as directory:
+            for inherited in (None, {'X3M_TAA_BOX_RESOLUTION': 'full', self.MARKER: '0'}):
+                env = self.env(directory, *TAA, inherited=inherited)
+                self.assertEqual((env['X3M_TAA_BOX_RESOLUTION'], env[self.MARKER]), ('half', '1'))
+
+    def test_without_taa_nothing_is_sent_and_inherited_values_are_dropped(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env = self.env(directory, '--motion-output', inherited={'X3M_TAA_BOX_RESOLUTION': 'half', self.MARKER: '1'})
+            self.assertNotIn('X3M_TAA_BOX_RESOLUTION', env)
+            self.assertNotIn(self.MARKER, env)
+
+    def test_vanilla_sends_nothing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env = self.env(directory, '--vanilla', inherited={'X3M_TAA_BOX_RESOLUTION': 'half', self.MARKER: '1'})
+            self.assertNotIn('X3M_TAA_BOX_RESOLUTION', env)
+            self.assertNotIn(self.MARKER, env)
+
+    def test_explicit_full_and_half_are_forwarded_with_marker_0(self):
         with tempfile.TemporaryDirectory() as directory:
             for value in ('full', 'half'):
-                self.assertEqual(self.env(directory, *TAA, '--taa-box-resolution', value)['X3M_TAA_BOX_RESOLUTION'], value)
+                env = self.env(directory, *TAA, '--taa-box-resolution', value, inherited={self.MARKER: '1'})
+                self.assertEqual((env['X3M_TAA_BOX_RESOLUTION'], env[self.MARKER]), (value, '0'))
 
     def test_other_values_missing_taa_and_vanilla_are_refused(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -47,9 +65,11 @@ class BoxResolutionSource(unittest.TestCase):
     def test_dll_reads_the_setting_and_configures_the_pass(self):
         capture = (ROOT / 'src/proxy/capture.cpp').read_text()
         self.assertIn('GetEnvironmentVariableW(L"X3M_TAA_BOX_RESOLUTION"', capture)
-        self.assertIn('bool taa_box_half = false;', capture)
+        self.assertIn('bool taa_box_half = false, taa_box_resolution_default = false;', capture)
+        # The launcher's marker counts only with half and only as exactly "1".
+        self.assertIn('taa_box_resolution_default=taa_box_half&&GetEnvironmentVariableW(L"X3M_TAA_BOX_RESOLUTION_DEFAULT",setting,32)==1&&setting[0]==L\'1\';', capture)
         self.assertIn('taa_box_resolution_setting invalid=1 reason=too_long length=%lu', capture)
-        self.assertIn('configure_box_resolution(taa_box_half)', capture)
+        self.assertIn('configure_box_resolution(taa_box_half,taa_box_resolution_default)', capture)
         # A value other than full / half logs one row and stays full.
         self.assertIn('log("taa_box_resolution_setting invalid=1");', capture)
         self.assertIn('if(!wcscmp(setting,L"half"))taa_box_half=true;', capture)
@@ -57,6 +77,8 @@ class BoxResolutionSource(unittest.TestCase):
         self.assertIn('taa_->configure_box_resolution(2)', motion)
         # Logged only when half is requested: the default run's log is the pre-S4 log line for line.
         self.assertIn('if (SUCCEEDED(hr) && taa_box_half_) {', motion)
+        self.assertIn('create=%08lx default=%u sentinel_stabiliser=%.3f', motion)
+        self.assertIn('unsigned(taa_box_default_)', motion)
         self.assertIn('if (taa_box_half_ && taa_->box_resolution() == 2', motion)
         # The per-change row is capped: 8 rows, then one suppressed=1 row per attachment.
         self.assertIn('if (++taa_box_reason_rows_ <= 8)', motion)

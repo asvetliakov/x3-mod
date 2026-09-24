@@ -32,7 +32,9 @@ full until flown; ledger [temporal-resolve.md](../verification/temporal-resolve.
 gate's separable box at half resolution on every camera-gate run of an even size; per-pixel containment of the
 full-resolution box: 0 violations in 12 fixture scenes; the emitter bound within 2 px. Next: the Run 81 A/B (half against
 full), then the default switch. The full-resolution programs and targets stay: an odd frame size, a refused half program
-and refused half targets fall back to them.
+and refused half targets fall back to them. **Default since Run 82:** accepted in Run 81 A launch 2 (run310, -1.06 ms box,
+-1.2 ms TAA at 5120x1440), the launcher sends `half` with `X3M_TAA_BOX_RESOLUTION_DEFAULT=1` on every modded `--taa` launch
+(`--taa-box-resolution full` is the opt-out, marker 0; the DLL default when unset stays full).
 
 **Ratified 2026-09-24 (orchestrator):** the 2,048-slot per-program ceiling pinned by `RESOLVE_BUDGET`; step 1 = A' in
 `far_camera` plus the exact point read at rest in the four S3 programs and the fetch sharing, one re-baseline with new

@@ -657,9 +657,11 @@ public:
     // X3M_TAA_HISTORY_TAPS (5 default, 16; docs/architecture/taa-high-resolution.md S3): the resolve's history
     // reconstruction, TemporalPass::configure_history_taps; anything else is the default.
     void configure_history_taps(unsigned taps) noexcept { taa_history_taps_ = taps == 16 ? 16u : 5u; }
-    // X3M_TAA_BOX_RESOLUTION (full default, half; docs/architecture/taa-high-resolution.md S4): the camera gate's box at half
-    // resolution, TemporalPass::configure_box_resolution(2); full is the pass without the call, bit for bit and log for log.
-    void configure_box_resolution(bool half) noexcept { taa_box_half_ = half; }
+    // X3M_TAA_BOX_RESOLUTION (full|half, DLL default full when the variable is unset; the launcher sends half on --taa launches
+    // since Run 82; docs/architecture/taa-high-resolution.md S4): the camera gate's box at half resolution,
+    // TemporalPass::configure_box_resolution(2); full is the pass without the call, bit for bit and log for log.
+    // `launcher_default` (X3M_TAA_BOX_RESOLUTION_DEFAULT=1 with half) is logged as default= on the creation row.
+    void configure_box_resolution(bool half, bool launcher_default) noexcept { taa_box_half_ = half; taa_box_default_ = half && launcher_default; }
     // X3M_TAA_THIN_VOTE (on|off, DLL default off when the variable is unset; the launcher sends on since Run 81; docs/architecture/taa-thin-geometry-alternatives.md section 3.2): the
     // draw-time thin vote of the thin region. `enabled` is the caller's resolution (requested with the route, TAA, the
     // sun-share lane and the ownership wrapper); it also switched the material transformer
@@ -2376,6 +2378,7 @@ private:
     bool taa_fold_logged_ = false;            // the one line for TemporalPass::Diagnostics::depth_folded (taa-high-resolution.md S1), per attachment
     unsigned taa_history_taps_ = 5;           // X3M_TAA_HISTORY_TAPS: TemporalPass::configure_history_taps (taa-high-resolution.md S3); logged with the fold line
     bool taa_box_half_ = false;               // X3M_TAA_BOX_RESOLUTION=half (S4): requested; the pass decides per run (logged only when requested)
+    bool taa_box_default_ = false;            // that half came from the launcher's default (X3M_TAA_BOX_RESOLUTION_DEFAULT=1): default=1 on the creation row
     const char* taa_box_reason_logged_ = nullptr; // the last Diagnostics::box_resolution_reason seen for this attachment
     unsigned taa_box_reason_rows_ = 0;            // changes of that reason: rows for the first 8, one suppressed=1 row at the 9th
     bool taa_alpha_history_ = false;          // X3M_TAA_ALPHA_HISTORY (HDR route only)

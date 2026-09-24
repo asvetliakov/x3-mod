@@ -2877,6 +2877,9 @@ when given; DLL default full). Bottle X3, native `d3dx9_37`, measured unless mar
   `check_no_x87` 683 / 0, DLL 56,661,939 bytes; host modules as above 150 + 28 tests, 0 failing. `run_motion_output.py`
   not rerun: the DLL-side change is the log cap (no case reaches 8 changes); the pass change is in `temporal_pass.cpp`,
   which `run_temporal_pass.py` compiles and ran.
+- **Default since Run 82 (after Run 81 A launch 2 below).** The launcher sends `half` with `X3M_TAA_BOX_RESOLUTION_DEFAULT=1`
+  on every modded `--taa` launch (explicit `full`/`half`: marker 0; nothing without `--taa` or under `--vanilla`); the creation
+  row carries `default=1|0`; the DLL default when the variable is unset stays full (fixtures unchanged).
 
 ## 2026-09-24 Run 80 A launches 1-2 (run304 baseline, run305 occlusion): A'-only build flown
 
