@@ -74,3 +74,21 @@ vertical of about 58.7° against vanilla 73.7°, and a horizontal of about 127°
 target brackets, the lead reticle and mouse aim stay on their objects, that zoom still works, that fog
 and sun shadow look unchanged, and whether LOD switches look different. Note whether the in-game FOV menu
 overrides the value; that is expected.
+
+**2026-09-24 Run 81 A launch 1 (run309, defaults + `--gpu-sync-timing --shadow-alpha-casters on`): first flight of `--fov`.**
+`fov status=patched value=0x3470 registry=absent`, `fov_confirm` frame 4 `focus=0x3470 match=1`; the projection reads
+m00 = 0.5 / p11 = 1.7778 (58.71 deg vertical) from frame 318, so the default was in effect (measured,
+`verification/results/run309-run81a-launch1/fov_timeline_out.txt`). The user then opened the in-game FOV menu: at frame
+1678 F stepped to 91 (0x40b6) and walked 1 deg at a time to 100, down to 70 and back to 100 (0x471c), where it stayed to
+the end; the menu starts from its own 90, not from our value, and our value was never restored (measured; the menu path
+is under disassembly, §7 when it lands). At F = 0x471c the engine stops submitting the sun's post-HDR draw group (vs
+d5e1c753 / ps 8360f422) whenever the sun is within about 30 deg of the view centre (24 present / 2,544 absent frames),
+while at 0x3470 (149 / 0) and vanilla 0x4000 the group is present from 2.5 deg outward: the "sun disappears" report is an
+engine visibility test failing at the menu maximum, not the proxy (inferred from the correlation; §9 pending).
+Chase camera: the boom distance is fixed (about 90,717 units at every F), so the ship is 1.333x larger on screen
+(`half_vfov_tan` 0.5625 vs 0.75); compensation goes into the proxy's chase camera (`--chase-distance-scale` exists,
+not FOV-aware). Defect: `cull_small_parts` `begin_frame` latched a projection at F = 0x4000 (m00 0.375, `focus=0x4000`)
+on every row while `camera_state` had p00 0.3147: the cull reads a HUD/cockpit projection, so the FOV factor never took
+effect (harmless here: threshold 3 either way). `fov_confirm` is logged only at frames 0 and 4; nothing tracks later
+changes. Alpha casters: 235,343 tested, every `refused_*` 0 incl. `refused_pool`; no shadow_depth cost difference over
+matching windows; defaults rows all `default=1`.

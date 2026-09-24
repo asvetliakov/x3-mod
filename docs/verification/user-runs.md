@@ -60,7 +60,7 @@ the stand command below plus the flags shown. Please report per launch:
 2. **S4 half-resolution box** (launch 2: stand command + `--gpu-sync-timing --taa-box-resolution half`): the lattice stand at rest and
    in a pan, a laser or engine trail over sky (a halo up to 2 px is expected), a silhouette against sky under a pan, the run221
    distant-station pan; any difference from launch 1. One F8 burst at the stand. The `taa_box` row against launch 1 decides the cost.
-3. **Sentinel stabiliser off** (launch 3: stand command with `X3M_TAA_SENTINEL_STABILISER=0` added to the env before `x3run`;
+3. **Sentinel stabiliser off** (launch 3: stand command + `--taa-sentinel-stabiliser 0`; an env value would be overwritten by the launcher's derived 0.7;
    owner, vote and the thin-region weight stay on by default): the run214 stand (two distant stations in the fade band), slow
    vertical pan 3-9 px/frame: flicker on the stations, trail behind the silhouette, pop at the band edges on approach; then the
    lattice stand at rest and under a pan. One F8 burst at rest and one during the pan on the run214 stand. Decides whether the

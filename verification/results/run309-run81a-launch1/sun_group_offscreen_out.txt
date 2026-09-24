@@ -1,0 +1,2 @@
+[(('behind', False), 4832), (('offscreen', False), 2771), (('offscreen', True), 15), (('onscreen', False), 2684), (('onscreen', True), 1563)]
+refused_state values [(0, 10287), (13, 1578)]

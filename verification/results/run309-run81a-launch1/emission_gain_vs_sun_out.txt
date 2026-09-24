@@ -1,0 +1,60 @@
+frames with an emission_source_gain_frame row / all frames, per (F period, sun position bin):
+  ('F=0x3470', 'behind') 0 / 623
+  ('F=0x3470', 'offscreen') 98 / 538
+  ('F=0x3470', 'r0.05-0.15') 69 / 69
+  ('F=0x3470', 'r0.15-0.3') 48 / 48
+  ('F=0x3470', 'r0.3-0.6') 58 / 58
+  ('F=0x3470', 'r0.6-1.0') 18 / 18
+  ('F=0x3470', 'r1.0-1000000000.0') 6 / 6
+  ('F=100(0x471c)', 'behind') 323 / 3375
+  ('F=100(0x471c)', 'offscreen') 235 / 2248
+  ('F=100(0x471c)', 'r0.05-0.15') 403 / 2151
+  ('F=100(0x471c)', 'r0.15-0.3') 650 / 808
+  ('F=100(0x471c)', 'r0.3-0.6') 899 / 899
+  ('F=100(0x471c)', 'r0.6-1.0') 142 / 179
+  ('F=100(0x471c)', 'r1.0-1000000000.0') 8 / 11
+  ('p11=1.119', 'behind') 0 / 74
+  ('p11=1.139', 'behind') 0 / 51
+  ('p11=1.159', 'behind') 0 / 19
+  ('p11=1.180', 'behind') 0 / 19
+  ('p11=1.201', 'behind') 0 / 19
+  ('p11=1.222', 'behind') 0 / 20
+  ('p11=1.243', 'behind') 0 / 20
+  ('p11=1.265', 'behind') 0 / 23
+  ('p11=1.288', 'behind') 0 / 70
+  ('p11=1.310', 'behind') 0 / 71
+  ('p11=1.333', 'behind') 0 / 18
+  ('p11=1.357', 'behind') 0 / 17
+  ('p11=1.381', 'behind') 0 / 12
+  ('p11=1.405', 'behind') 0 / 11
+  ('p11=1.430', 'behind') 0 / 11
+  ('p11=1.455', 'behind') 0 / 12
+  ('p11=1.481', 'behind') 0 / 12
+  ('p11=1.507', 'behind') 0 / 12
+  ('p11=1.534', 'behind') 0 / 13
+  ('p11=1.561', 'behind') 0 / 10
+  ('p11=1.589', 'behind') 0 / 13
+  ('p11=1.618', 'behind') 0 / 11
+  ('p11=1.647', 'behind') 0 / 11
+  ('p11=1.676', 'behind') 0 / 12
+  ('p11=1.707', 'behind') 0 / 12
+  ('p11=1.738', 'behind') 0 / 12
+  ('p11=1.769', 'behind') 0 / 40
+  ('p11=1.802', 'behind') 0 / 24
+  ('p11=1.835', 'behind') 0 / 18
+  ('p11=1.869', 'behind') 0 / 36
+  ('p11=1.904', 'behind') 0 / 131
+field combinations (top per key):
+  ('F=0x3470', 'offscreen') [(95, 'adm=1 scr=0 ref_scr=0 ref_blend=0 ref_state=0'), (3, 'adm=0 scr=0 ref_scr=0 ref_blend=0 ref_state=13')]
+  ('F=0x3470', 'r0.05-0.15') [(69, 'adm=0 scr=0 ref_scr=0 ref_blend=0 ref_state=13')]
+  ('F=0x3470', 'r0.15-0.3') [(48, 'adm=1 scr=0 ref_scr=0 ref_blend=0 ref_state=13')]
+  ('F=0x3470', 'r0.3-0.6') [(58, 'adm=1 scr=0 ref_scr=0 ref_blend=0 ref_state=13')]
+  ('F=0x3470', 'r0.6-1.0') [(11, 'adm=1 scr=0 ref_scr=0 ref_blend=0 ref_state=13'), (7, 'adm=0 scr=0 ref_scr=0 ref_blend=0 ref_state=13')]
+  ('F=0x3470', 'r1.0-1000000000.0') [(6, 'adm=0 scr=0 ref_scr=0 ref_blend=0 ref_state=13')]
+  ('F=100(0x471c)', 'behind') [(174, 'adm=1 scr=1 ref_scr=0 ref_blend=0 ref_state=0'), (113, 'adm=2 scr=2 ref_scr=0 ref_blend=0 ref_state=0'), (33, 'adm=3 scr=3 ref_scr=0 ref_blend=0 ref_state=0'), (3, 'adm=4 scr=4 ref_scr=0 ref_blend=0 ref_state=0')]
+  ('F=100(0x471c)', 'offscreen') [(130, 'adm=1 scr=1 ref_scr=0 ref_blend=0 ref_state=0'), (47, 'adm=2 scr=2 ref_scr=0 ref_blend=0 ref_state=0'), (46, 'adm=3 scr=3 ref_scr=0 ref_blend=0 ref_state=0'), (9, 'adm=0 scr=0 ref_scr=0 ref_blend=0 ref_state=13')]
+  ('F=100(0x471c)', 'r0.05-0.15') [(157, 'adm=1 scr=1 ref_scr=0 ref_blend=0 ref_state=0'), (156, 'adm=2 scr=2 ref_scr=0 ref_blend=0 ref_state=0'), (90, 'adm=3 scr=3 ref_scr=0 ref_blend=0 ref_state=0')]
+  ('F=100(0x471c)', 'r0.15-0.3') [(565, 'adm=0 scr=0 ref_scr=0 ref_blend=0 ref_state=13'), (66, 'adm=2 scr=2 ref_scr=0 ref_blend=0 ref_state=0'), (19, 'adm=3 scr=3 ref_scr=0 ref_blend=0 ref_state=0')]
+  ('F=100(0x471c)', 'r0.3-0.6') [(622, 'adm=0 scr=0 ref_scr=0 ref_blend=0 ref_state=13'), (147, 'adm=3 scr=3 ref_scr=0 ref_blend=0 ref_state=0'), (90, 'adm=2 scr=2 ref_scr=0 ref_blend=0 ref_state=0'), (38, 'adm=1 scr=1 ref_scr=0 ref_blend=0 ref_state=13')]
+  ('F=100(0x471c)', 'r0.6-1.0') [(93, 'adm=0 scr=0 ref_scr=0 ref_blend=0 ref_state=13'), (37, 'adm=3 scr=3 ref_scr=0 ref_blend=0 ref_state=13'), (11, 'adm=1 scr=1 ref_scr=0 ref_blend=0 ref_state=0'), (1, 'adm=3 scr=3 ref_scr=0 ref_blend=0 ref_state=0')]
+  ('F=100(0x471c)', 'r1.0-1000000000.0') [(5, 'adm=0 scr=0 ref_scr=0 ref_blend=0 ref_state=13'), (2, 'adm=3 scr=3 ref_scr=0 ref_blend=0 ref_state=13'), (1, 'adm=1 scr=1 ref_scr=0 ref_blend=0 ref_state=0')]

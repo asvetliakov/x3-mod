@@ -1,0 +1,45 @@
+rows 11865 ready {'0': 1, '1': 11864}
+totals {'seen': 235343, 'tested': 235343, 'opaque': 0, 'refused_state': 0, 'refused_function': 0, 'refused_uv': 0, 'refused_texture': 0, 'refused_pool': 0}
+seen frames>0 11843 mean 19.84 p50 20 p95 38 max 51
+tested frames>0 11843 mean 19.84 p50 20 p95 38 max 51
+capture frames:
+  6075 seen=20 tested=20
+  6076 seen=20 tested=20
+  6077 seen=20 tested=20
+  6078 seen=20 tested=20
+  6079 seen=20 tested=20
+  6080 seen=20 tested=20
+  6081 seen=20 tested=20
+  6082 seen=20 tested=20
+  7910 seen=25 tested=25
+  7911 seen=25 tested=25
+  7912 seen=25 tested=25
+  7913 seen=25 tested=25
+  7914 seen=25 tested=25
+  7915 seen=25 tested=25
+  7916 seen=25 tested=25
+  7917 seen=25 tested=25
+  8710 seen=20 tested=20
+  8711 seen=20 tested=20
+  8712 seen=20 tested=20
+  8713 seen=20 tested=20
+  8714 seen=20 tested=20
+  8715 seen=20 tested=20
+  8716 seen=20 tested=20
+  8717 seen=20 tested=20
+  10364 seen=40 tested=40
+  10365 seen=40 tested=40
+  10366 seen=40 tested=40
+  10367 seen=40 tested=40
+  10368 seen=40 tested=40
+  10369 seen=40 tested=40
+  10370 seen=40 tested=40
+  10371 seen=40 tested=40
+  11748 seen=31 tested=31
+  11749 seen=31 tested=31
+  11750 seen=31 tested=31
+  11751 seen=31 tested=31
+  11752 seen=31 tested=31
+  11753 seen=31 tested=31
+  11754 seen=31 tested=31
+  11755 seen=31 tested=31

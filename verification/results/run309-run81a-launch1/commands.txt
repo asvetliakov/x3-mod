@@ -1,0 +1,23 @@
+Run 81 A launch 1: run309 (/tmp/x3-bottleX3-run309, session-20260924-222017-212.log), Run81 DLL b4e945ed (9e1645be),
+stand command + --gpu-sync-timing --shadow-alpha-casters on. Logs read-only, no Wine, no build. Run from this directory.
+L=/tmp/x3-bottleX3-run309/session-20260924-222017-212.log
+LC_ALL=C awk '{print $1}' $L | sort | uniq -c | sort -rn > rowtypes_out.txt          # Q1 row-type census (no late_claim/rollback types)
+grep -anE '^(fov|fov_confirm|cull_small_parts_value|cull_small_parts|lod_occlusion|taa_thin_vote_configured|fade_rt2_owner_configured|create_device|motion_output_taa) ' $L   # Q1/Q4 config rows
+python3 fov_timeline.py > fov_timeline_out.txt          # Q1: projection p00/p11 runs -> F (menu sweep 91..100..70..100, never back to 0x3470)
+grep -a '^cull_small_parts_frame' $L                    # Q1: m00=0.375001401 threshold=3 on all 40 capture rows
+grep -aE '^frame_end device=1 frame=(318|1678|2111|2512|12247) ' $L   # elapsed_ms at key frames
+python3 exit_rows.py 308 309 > exit_rows_out.txt; python3 abnormal_rows.py 308 309 > abnormal_rows_out.txt   # Q1 (copied from run308 dir)
+python3 sun_screen.py $L > sun_screen_out.txt           # Q2 sun NDC ranges (camera_state r[i][j] world i -> view j; shadow_replay_sun sun=)
+python3 sun_field_diff.py $L 2512 > sun_field_diff_out.txt   # Q2 per-frame fields by sun class at F=0x471c
+python3 emission_gain_vs_sun.py $L > emission_gain_vs_sun_out.txt   # Q2 emission_source_gain rows vs sun position
+python3 sun_group_radius.py $L > sun_group_radius_out.txt; python3 sun_group_angle.py $L > sun_group_angle_out.txt   # Q2 refused_state=13 group vs radius/angle
+for r in 304 305 306 307 308; do python3 sun_group_angle.py /tmp/x3-bottleX3-run$r/session-*.log | head -25; done > sun_group_angle_prev_out.txt   # Q2 F=0x4000 control
+(inline python, see sun_group_offscreen_out.txt)        # Q2 group present only with the sun on/near screen (0 of 4832 behind)
+grep -a '^emission_source_gain_refused_state' $L | cut -c1-330   # Q2 group = vs d5e1c753 / ps 8360f422, hdr=0 scene=0 (post-HDR), ONE/ONE and SRCALPHA/INVSRCALPHA
+python3 sun_capture_pixels.py /tmp/x3-bottleX3-run309 > sun_capture_pixels_out.txt; (runs 307,304,305,306,295-302 -> sun_capture_pixels_prev_out.txt)   # Q2 HDR target at the sun pixel (no sun in HDR: group is post-HDR)
+python3 hdr_blobs.py /tmp/x3-bottleX3-run309/hdr_1_7910.rgba16f; python3 hdr_blobs.py /tmp/x3-bottleX3-run309/hdr_1_8710.rgba16f
+python3 sun_approach.py $L 7340 7460 6 > sun_approach_out.txt   # Q2 exposure/receivers while the sun crosses the centre
+python3 alpha_casters_rows.py $L > alpha_casters_rows_out.txt    # Q3 shadow_alpha_casters totals + capture frames
+grep -a '^cull_census device' $L | grep -a usc_dock_e ...        # Q3 ODS bodies in bursts 7910, 8710, 10364, 11748
+python3 gpu_passes.py 309 > gpu_passes_out.txt; python3 gpu_windows.py 309 shadow_depth sun_apply taa_mask taa_box taa_resolve taa > gpu_windows_309_out.txt; python3 gpu_windows.py 308 ... > gpu_windows_308_out.txt   # Q3 GPU
+grep -a '^chase_camera frame=' $L (distance, half_vfov_tan, boom_local); same for run307/308   # Q5
