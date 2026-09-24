@@ -1,0 +1,35 @@
+{
+ "candidate": {
+  "dll": "/tmp/x3-run79-candidate/build/d3d9.dll",
+  "sha256": "d3683ced009245e7891ad2da5994d219e33390c1d3b522f179d4bf35ea4d1d0f",
+  "bytes": 56358862,
+  "commit": "df01f23b",
+  "qualification": "verification/results/run79-candidate-qualification.json"
+ },
+ "command": "python3 tools/manage.py install --bottle X3 --dll-source /tmp/x3-run79-candidate/build/d3d9.dll",
+ "cwd": "/Users/asvetl/x3-mod",
+ "exit": 0,
+ "installed_at": "2026-09-24T08:56+04:00",
+ "installed": {
+  "path": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/d3d9.dll",
+  "sha256": "d3683ced009245e7891ad2da5994d219e33390c1d3b522f179d4bf35ea4d1d0f",
+  "bytes": 56358862,
+  "verified": "shasum -a 256 after install equals the candidate hash rechecked before install"
+ },
+ "unchanged": {
+  "X3AP.exe": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+  "cxbottle.conf": "cc5d6c00a8afccaf88cbae1a7c46040db513eb163a52693287a3d29aca828e0c"
+ },
+ "rollback": {
+  "dll": "/tmp/x3-run78-candidate/build/d3d9.dll",
+  "sha256": "d4ba9f0556714fa3d760e553987e79e301e217e25dd1ef3f2babe8cf84e7eedd",
+  "bytes": 56270679,
+  "records": [
+   "verification/results/run78-candidate-qualification.json",
+   "verification/results/run78-candidate-install.json"
+  ],
+  "note": "Run78 accepted in Run 78 A (dither, exit fix, scale 4, S3)"
+ },
+ "game_running_at_install": false,
+ "game_data": "fleet overlay addon/05 + 06 (611 bodies, install-fleet2) unchanged"
+}
