@@ -376,7 +376,7 @@ namespace chase_camera { static void note_last_device() noexcept {} }
 // Point-light root admission (src/proxy/point_light_admission.h): the extracted
 // lifetime paths only retire the per-frame root verdicts.
 namespace point_light_admission { unsigned frame_retires = 0; static void next_frame() noexcept { ++frame_retires; } }
-namespace cull_census { static void begin_frame(bool) noexcept {} } // X3M_CULL_CENSUS disarm on Reset (src/proxy/cull_census.h); no-op on the host
+namespace cull_census { static void reset() noexcept {} } // X3M_CULL_CENSUS disarm on Reset (src/proxy/cull_census.h); no-op on the host
 namespace cull_small_parts { static void after_reset(unsigned) noexcept {} } // X3M_CULL_SMALL_PARTS_PX disarm on Reset (src/proxy/cull_small_parts.h); no-op on the host
 namespace collide_memo { static void device_reset() noexcept {} } // memo table drop on Reset (src/proxy/collide_memo.h); no-op on the host
 namespace sun_occlusion { static void device_reset() noexcept {} } // X3M_SUN_OCCLUSION visibility-target drop on Reset (src/proxy/sun_occlusion.h); no-op on the host

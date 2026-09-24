@@ -16,6 +16,7 @@ import shutil
 import stat
 import struct
 import subprocess
+import sys
 import tempfile
 import uuid
 import xml.etree.ElementTree as ET
@@ -342,7 +343,14 @@ def prepare(graph_record, derived_record, game, output):
 
 
 def assert_game_closed():
-    """Conservative cross-platform process check; enumeration failure is refusal."""
+    """Conservative cross-platform process check; enumeration failure is refusal.
+
+    Native Windows matches the image name through tasklist. Elsewhere the
+    shared detector verification/probe/game_guard.py (also used by wine_lock.py
+    and the LOD overlay installer) matches the command token only: a process
+    whose executable is X3AP.exe (Wine shows the game as C:\\X3\\X3AP.exe) or a
+    wine loader whose program argument is X3AP.exe. A shell, python or grep
+    whose arguments merely contain the text is not the game."""
     try:
         if os.name == 'nt':
             result = subprocess.run(['tasklist', '/FI', 'IMAGENAME eq X3AP.exe', '/FO', 'CSV', '/NH'],
@@ -350,10 +358,16 @@ def assert_game_closed():
             rows = list(csv.reader(io.StringIO(result.stdout)))
             require(not any(row and row[0].casefold() == 'x3ap.exe' for row in rows), 'X3AP.exe is running')
         else:
-            result = subprocess.run(['pgrep', '-ifl', r'(^|[/\\ ])X3AP\.exe([ ]|$)'], capture_output=True, text=True)
-            require(result.returncode in (0, 1), 'process enumeration failed')
-            require(result.returncode == 1, 'X3AP.exe is running')
-    except (OSError, subprocess.CalledProcessError) as error:
+            probe = str(Path(__file__).resolve().parents[1] / 'verification' / 'probe')
+            if probe not in sys.path:
+                sys.path.insert(0, probe)
+            from game_guard import game_running
+            try:
+                lines = game_running()
+            except RuntimeError as error:
+                raise PackageError('process enumeration failed: ' + str(error)) from error
+            require(not lines, 'X3AP.exe is running')
+    except (OSError, ImportError, subprocess.CalledProcessError) as error:
         raise PackageError('cannot establish game is closed') from error
 
 

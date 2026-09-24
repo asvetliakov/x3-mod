@@ -1252,7 +1252,7 @@ all builds `-O2 -ffp-contract=off`, no fast-math).
 | Field float32 at 1,004 points, R / R² constants | bitwise identical |
 | Nonzero world offset O_s (512 nodes/level) and O_s = k·delta identity | identical |
 | float32 → binary16 RNE vs NumPy (all finite halves, ±1 ulp neighbours, 60k randoms, overflow/subnormal edges) | 127,598 words identical |
-| ±5500 shift witnesses: origin, local, containment, trilinear of C++ words vs report `fine`/`far` | 22 / 22 equal (the test fails when the local report is absent unless `X3M_FOG_GOLDEN_OPTIONAL=1`) |
+| ±5500 shift witnesses: origin, local, containment, trilinear of C++ words vs report `fine`/`far` | 22 / 22 equal (with the local report absent the address checks run alone and the test reports skipped; `X3M_FOG_GOLDEN_REQUIRED=1` makes the absence a failure; changed 2026-09-24, `X3M_FOG_GOLDEN_OPTIONAL` retired as the default) |
 | binary16 → float32 round trip of all 65,536 half words vs NumPy (review fix: subnormal exponent 112-e; 0x0001 → 0x33800000) | exact |
 | `lod_weights` at 0/20000/22500/25000/30000/100000/150000/175000/200000/250000 vs the screen's smoothstep law; `atlas_offset` (last border texel ends at 4,260,096 B); `duplicate_tile_border` in place for groups 0/9/31 (rest of atlas untouched); unknown level refused | pass |
 | Address law vs `window_origin`/`pack_address`, 2 cameras × 5 points × 3 axis shifts × 2 levels; lane 0,1,2,3,0,3 | pass |

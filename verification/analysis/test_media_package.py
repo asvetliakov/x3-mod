@@ -403,6 +403,29 @@ class PackageTests(unittest.TestCase):
             with self.assertRaises(mp.PackageError): mp.assert_game_closed()
         self.closed.start()
 
+    def test_posix_guard_matches_the_process_not_the_text(self):
+        # A shell or tool whose arguments contain "X3AP.exe" is not the game; a
+        # process whose executable is X3AP.exe (as Wine shows it) or a wine
+        # loader running it is (verification/probe/game_guard.py).
+        self.closed.stop()
+        try:
+            not_game = ('101 /bin/zsh -c grep -n X3AP.exe tools/manage.py',
+                        '102 bash -c pgrep -ifl X3AP.exe',
+                        '103 python3 verification/probe/wine_lock.py ./x3run --game /X3/X3AP.exe',
+                        '104 /usr/bin/less /tmp/notes-about-X3AP.exe')
+            game = ('201 C:\\X3\\X3AP.exe -skipintro',
+                    '202 /Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine --bottle X3 C:\\X3\\X3AP.exe',
+                    '203 X3AP.exe')
+            with mock.patch.object(mp.os, 'name', 'posix'):
+                with mock.patch.object(mp.subprocess, 'run', return_value=mock.Mock(returncode=0, stdout='\n'.join(not_game))):
+                    mp.assert_game_closed()
+                for line in game:
+                    with self.subTest(line=line), \
+                         mock.patch.object(mp.subprocess, 'run', return_value=mock.Mock(returncode=0, stdout='\n'.join((*not_game, line)))):
+                        with self.assertRaisesRegex(mp.PackageError, 'X3AP.exe is running'): mp.assert_game_closed()
+        finally:
+            self.closed.start()
+
     def test_interrupted_uninstall_restores_pair_with_changed_media(self):
         installed = self.install()
         directory = (self.game / installed['media']['package_record_relative']).parent
