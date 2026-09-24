@@ -458,11 +458,20 @@ class FadeRegion(unittest.TestCase):
             f=fields(subprocess.check_output([str(self.driver),'--fade-route-registers',vs],text=True).strip())
             self.assertEqual((int(f['known']),int(f['alpha']),int(f['fog'])),expect,vs)
         band=[1,0,0,1,7,0,5,6,1,0]  # ZENABLE, ZWRITE, ALPHATEST, ALPHABLEND, COLORWRITE, SRGBWRITE, SRCBLEND, DESTBLEND, BLENDOP, SEPARATEALPHA
-        state=lambda v:int(fields(subprocess.check_output([str(self.driver),'--fade-route-state']+[str(x) for x in v],text=True).strip())['fade_band'])
+        state=lambda v,tested=0:int(fields(subprocess.check_output([str(self.driver),'--fade-route-state']+[str(x) for x in v]+[str(tested)],text=True).strip())['fade_band'])
         self.assertEqual(state(band),1)
         for index,wrong in ((0,0),(1,1),(2,1),(3,0),(4,15),(5,1),(6,2),(7,1),(8,2),(9,1)):
             v=list(band);v[index]=wrong
             self.assertEqual(state(v),0,(index,wrong))
+        # fade-alpha-cutout-ownership.md option A: the same state with the alpha test on (TRUE) is admitted only when the
+        # caller passes tested_ok (a fade pair, the RT2 owner on, original shading); every other term is unchanged, so a
+        # cutout with blending off or Z-write on, or any other field wrong, stays refused.
+        tested=list(band);tested[2]=1
+        self.assertEqual((state(tested,0),state(tested,1),state(band,1)),(0,1,1))
+        v=list(tested);v[2]=2;self.assertEqual(state(v,1),0)  # only TRUE: the engine sets 1
+        for index,wrong in ((0,0),(1,1),(3,0),(4,15),(5,1),(6,2),(7,1),(8,2),(9,1)):
+            v=list(tested);v[index]=wrong
+            self.assertEqual(state(v,1),0,('alpha tested',index,wrong))
         camera=(1,.8,4/3,0,0)  # the fixture's fake projection; no camera: (0,...)
         # The live fade fixture's inputs at the identity rows: distance 1, .625 * (.75 - .125) = .390625 -> 390, refused at 500.
         self.assertEqual(self.fade_route(.625,1,(.75,.125),IDENTITY,camera),(1,1.,.390625,390,0))
@@ -855,6 +864,28 @@ class FadeOwnerSource(unittest.TestCase):
         self.assertIn('if (ps == shadow_.ps_variant && shadow_.ps_sun_motion) ps = shadow_.ps_sun_motion;',motion)
         self.assertIn('else { route.fade_owner = false; ++counters_.fade_owner_masked; }',motion)
         self.assertIn('if (fade_rt2_owner_) { pixel_thin[9] = route.fade_owner ? 1.f : 0.f; pixel_thin[10] = thin_vote_upload_ || route.fade_owner ? 0.f : 1.f; }',motion)
+
+    def test_alpha_tested_cutout_admission(self):
+        """fade-alpha-cutout-ownership.md option A: the arm admits the alpha test for a fade pair only (not the overlay
+        arm) with the owner on under original shading; an admitted row carries its own test read into alpha_tested (the
+        light-map widening and the replay W3 exclusion see it) and counts fade_tested on the frame line."""
+        motion=(ROOT/'src/proxy/motion_output.cpp').read_text()
+        arm=motion.split('bool MotionOutput::fade_arm_admits')[1].split('std::uint64_t MotionOutput::fade_identity')[0]
+        self.assertIn('const bool tested_ok = !overlay && fade_rt2_owner_ && !linear_material_requested_;',arm)
+        self.assertIn('if (!fade_route::state(z, z_write, test, blend, color, srgb, factor[0], factor[1], factor[2], factor[3], tested_ok)) return false;',arm)
+        self.assertIn('route.fade_tested = test != 0;',arm)
+        self.assertIn('route.alpha_tested = route.fade_arm ? route.fade_tested : test != 0;',motion)
+        self.assertNotIn('route.alpha_tested = !route.fade_arm && test != 0;',motion)
+        self.assertIn('if (route.fade_tested) ++counters_.fade_tested; }',motion)
+        self.assertIn('fade_owner_masked=%lu fade_tested=%lu",',motion)
+        self.assertIn('case 86: return counters_.fade_tested;',motion)
+        # The widening skips an alpha-tested row (it rewrites rL.w, the tested coverage).
+        self.assertIn('!widen_suppressed && !route.alpha_tested && shadow_.hull_lightmap_stage',motion)
+        # Every owned alpha-tested cutout keeps the native LOD bias (the coverage must match vanilla and the unbiased prepass).
+        self.assertIn('route.native_mip_bias = route.alpha_tested && (shadow_.cutout_pair || route.fade_arm);',motion)
+        capture=(ROOT/'src/proxy/capture.cpp').read_text()
+        self.assertIn('fade_route=%u lane=%u tested=%u",',capture)
+        self.assertIn('unsigned(enabled&&!hooked.motion_output.linear_materials_requested()));',capture)
 
     def test_transformer_and_program(self):
         transformer=(ROOT/'src/renderer/material_motion.cpp').read_text()

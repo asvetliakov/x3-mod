@@ -2610,8 +2610,10 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     // Fade owner (X3M_FADE_RT2_OWNER): the fade-band arm's own prerequisites (route, TAA, FP16 scene, the arm on). The
     // material transformer is switched here, before the application creates any program on this device; off it is untouched.
     { const bool enabled=fade_rt2_owner&&motion_output_requested&&taa_requested&&hdr_requested&&fade_route_threshold<=1000u;
-      if(fade_rt2_owner_given)log("fade_rt2_owner_configured requested=%u enabled=%u default=%u motion_output=%u taa=%u hdr=%u fade_route=%u lane=%u",
-          unsigned(fade_rt2_owner),enabled,unsigned(fade_rt2_owner_default),motion_output_requested,taa_requested,hdr_requested,fade_route_threshold,sun_lane_enabled);
+      // tested: the arm also admits alpha-tested fade-band draws (fade-alpha-cutout-ownership.md), original shading only.
+      if(fade_rt2_owner_given)log("fade_rt2_owner_configured requested=%u enabled=%u default=%u motion_output=%u taa=%u hdr=%u fade_route=%u lane=%u tested=%u",
+          unsigned(fade_rt2_owner),enabled,unsigned(fade_rt2_owner_default),motion_output_requested,taa_requested,hdr_requested,fade_route_threshold,sun_lane_enabled,
+          unsigned(enabled&&!hooked.motion_output.linear_materials_requested()));
       if(enabled)renderer::material_motion_configure_fade_owner(true);
       hooked.motion_output.configure_fade_rt2_owner(fade_rt2_owner,enabled); }
     // Caster-candidate counter (shadow-replay-gates.md section 3): the route

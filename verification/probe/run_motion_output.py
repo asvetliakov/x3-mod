@@ -906,7 +906,7 @@ FADE_ROUTE_HOVER_ALPHA = (.8125, .71875, .71875, .625, .71875, .71875, .8125, .7
 FADE_ROUTE_HOVER_PERMILLE = tuple(int(a * .625 * 1000) for a in FADE_ROUTE_HOVER_ALPHA)  # 507, 449, 390: fraction .625 * alpha at distance 1, truncated
 FADE_ROUTE_HOVER_BAND = 400  # threshold - fade_route::Hysteresis::band
 FADE_ROUTE_HOVER_SCRIPTS = ('hover', 'original', 'behind')  # the hover schedule
-FADE_ROUTE_ORIGINAL_SCRIPTS = ('original', 'behind', 'overlay', 'foreign', 'hull')  # original shading: no bracket, no composition, no M
+FADE_ROUTE_ORIGINAL_SCRIPTS = ('original', 'behind', 'overlay', 'foreign', 'hull', 'cutout')  # original shading: no bracket, no composition, no M
 FADE_ROUTE_FULL_SCRIPTS = ('routed', 'sentinel', 'overlay', 'hull')  # routed every frame (fraction 1000; overlay: the same-node rule; hull: owner only)
 FADE_ROUTE_OVERLAY_PAIR = ('53a0a641107ed76c', '63f96eba9eea7880')  # the hull (cutout) pair the overlay script draws
 FADE_ROUTE_HULL_PAIR = ('494fe349b8bc12ec', 'fffdabd910793aba')  # the run214 station family the hull script draws
@@ -1033,6 +1033,74 @@ FADE_ZONLY_DEPTH_TOLERANCE = 4e-6 + .125 * 2 / 64 / 256  # flat-quad FP32 raster
 CASES += [case(name, 'faderoute', jitter=True, taa=True, lazy=True, hdr=True,
                hdr_env=dict(FADE_ROUTE_ENV, X3M_FIXTURE_FADE_SCRIPT=script, X3M_FADE_RT2_OWNER='on', X3M_MOTION_FRAME_LOG='1'))
           for name, script in FADE_ZONLY_CASES.items()]
+# The alpha-tested fade-band cutout (docs/architecture/fade-alpha-cutout-ownership.md section 2.4;
+# motion_output_fade_route_inc.h, the cutout loop): under original shading with the four-channel lane, over the
+# sentinel fill, a panel of the fade pair with a centred 8x8-texel hole drawn with the alpha test on (GREATEREQUAL 1)
+# after its textured z_only prepass (803ebfd17f79e413, the same test on the fixed-function texture alpha), and a hull
+# quad of the same pair without the test at z .5 behind the panel's left part (its own c78b4c68 prepass).
+# -owner: the arm admits the panel (fade_tested 1), RT2 owned (.r z/w, .g -1, .b w, .a 1) exactly where its colour
+# lands, the hole keeps the fill or the hull's depth; -refused (owner off): the pre-change behaviour, the panel refused
+# at gate 4 (unmatched=no_zwrite, uncounted), RT1/RT2 untouched, the raw colour of every frame identical to -owner's.
+# Variants (X3M_FIXTURE_FADE_CUTOUT): `order`, the hull drawn first, the prepass at ALPHAREF 128 against the colour
+# draw's 1 and a band of alpha-.25 texels (colour passes, prepass does not); `mip`, a two-level texture read at LOD 0.74
+# whose level 0 has no hole, under X3M_TAA_MIP_BIAS -0.5 (-mip-owner) and 0 (-mip-nobias-owner, the twin whose upper
+# half of the raw colour must equal -mip-owner's): the owned cutout keeps the native LOD bias.
+# FADE_CUTOUT lines: the classified pixels (fade_cutout_model, the fixture's CPU model of the engine's alpha and Z tests
+# in draw order), each draw's covered and owned counts, the frame-final RT2 classes, the model / parity / subset
+# mismatch counts (all 0), the per-draw arm counters.
+FADE_CUTOUT_CASES = {'seam-taa-fade-route-cutout-owner': (True, '', None), 'seam-taa-fade-route-cutout-refused': (False, '', None),
+                     'seam-taa-fade-route-cutout-order-owner': (True, 'order', None),
+                     'seam-taa-fade-route-cutout-mip-owner': (True, 'mip', '-0.5'), 'seam-taa-fade-route-cutout-mip-nobias-owner': (True, 'mip', '0')}
+FADE_CUTOUT_TWINS = {'seam-taa-fade-route-cutout-refused': ('seam-taa-fade-route-cutout-owner', 64),
+                     'seam-taa-fade-route-cutout-mip-nobias-owner': ('seam-taa-fade-route-cutout-mip-owner', 32)}  # rows of the raw colour that must be identical
+
+
+def fade_cutout_model(variant):
+    """The fixture's classification and engine model (motion_output_fade_route_inc.h, the cutout loop), written
+    independently: per classified pixel of the 32x32 region the Z buffer after both prepasses and each draw's alpha
+    and Z test in draw order. Returns the per-frame counts the FADE_CUTOUT line carries with the owner on."""
+    order = variant == 'order'
+    prepass_ref, colour_ref = (128 if order else 1), 1
+
+    def alpha(tx, ty):
+        return 0. if 4 <= tx < 12 and 4 <= ty < 12 else .25 if order and ty >= 12 else 1.
+
+    def class_at(sx, sy):
+        if not (6.4 <= sx < 25.6 and 6.4 <= sy < 25.6):
+            return 0
+        a = alpha(int((sx - 6.4) / 1.2), int((sy - 6.4) / 1.2))
+        return 0 if a == 0 else 1 if a == 1 else 2
+    counts = dict(classified=0, panel_pass=0, hull_pass=0, final_panel=0, final_hull=0, final_fill=0)
+    for y in range(32):
+        for x in range(32):
+            corners = {class_at(x + dx, y + dy) for dx in (-.5, .5) for dy in (-.5, .5)}
+            inside = x - .5 >= 6.4 and x + .5 < 16 and y - .5 >= 6.4 and y + .5 < 25.6
+            outside = x + .5 < 6.4 or x - .5 >= 16 or y + .5 < 6.4 or y - .5 >= 25.6
+            if len(corners) != 1 or not (inside or outside):
+                continue
+            c = corners.pop()
+            a = {0: 0., 1: 1., 2: .25}[c]
+            z = 1.
+            if c and a * 255 >= prepass_ref:
+                z = min(z, .3)
+            if inside:
+                z = min(z, .5)
+            final = None
+            for which in ((1, 0) if order else (0, 1)):
+                passed = (inside and .5 <= z) if which else (c != 0 and a * 255 >= colour_ref and .3 <= z)
+                counts['hull_pass' if which else 'panel_pass'] += passed
+                if passed:
+                    final = which
+            counts['classified'] += 1
+            counts['final_fill' if final is None else 'final_hull' if final else 'final_panel'] += 1
+    return counts
+
+
+CASES += [case(name, 'faderoute', jitter=True, taa=True, lazy=True, hdr=True,
+               hdr_env=dict(FADE_ROUTE_ENV, X3M_FIXTURE_FADE_SCRIPT='cutout', X3M_SUN_SHADOW_LANE='1', X3M_MOTION_FRAME_LOG='1', **FADE_ROUTE_ORIGINAL_ENV,
+                            **({'X3M_FADE_RT2_OWNER': 'on'} if owner else {}), **({'X3M_FIXTURE_FADE_CUTOUT': variant} if variant else {}),
+                            **({'X3M_TAA_MIP_BIAS': bias} if bias is not None else {})))
+          for name, (owner, variant, bias) in FADE_CUTOUT_CASES.items()]
 LIGHTMAP_FADE_STEPS = (('near', 1, True), ('far', 128, True), ('mid', 64, True), ('near_off', 1, False), ('far_off', 128, False),
                        ('mid_on', 64, True), ('mid_reset', 64, True), ('near_reset', 1, True))
 # Hull emissive widening (motion_output_lightmap_widen_inc.h, --hull-emissive-widening K[,B];
@@ -5901,6 +5969,74 @@ def validate_fade_zonly(name, script, text, trace):
             'hole_frames': sorted(f for f, h in rt2_holes.items() if h), 'positive_jx_frames': sorted(f for f in rows if expected_jitter(f)[1] > 0)}
 
 
+def validate_fade_cutout(name, owner, variant, bias, text, trace, directory):
+    """The cutout fade script (motion_output_fade_route_inc.h; fade-alpha-cutout-ownership.md section 2.4): per frame
+    the fixture's FADE_CUTOUT line against fade_cutout_model (classified pixels, each draw's coverage and ownership, the
+    frame-final RT2 classes; model, parity and subset mismatches 0), the arm's per-draw and frame counters, the DLL's
+    fade_rt2_owner_configured / fade_route_frame / motion_output_frame lines (mip bias as configured) and the capture
+    frames' motion_route records of the panel (alpha test on) and the hull (off) in the variant's draw order."""
+    lines = text.splitlines()
+    terminal = [fields(l) for l in lines if l.startswith('RESULT PASS ')]
+    assert len(terminal) == 1 and not any(l.startswith('RESULT FAIL') for l in lines), f'{name}: fixture did not complete'
+    assert int(terminal[0]['frames']) == FADE_ROUTE_FRAMES and int(terminal[0]['checks']) > 0, (name, terminal)
+    assert [fields(l) for l in lines if l.startswith('FADE_CUTOUT_CHECKS ')] == [dict(frames=str(FADE_ROUTE_FRAMES), script='cutout', owner=str(int(owner)), quads='2')], name
+    assert not any(l.startswith(('FADE_CUTOUT_PIXEL_DIFF ', 'FADE_CUTOUT_MODEL_DIFF ')) for l in lines), name
+    rows = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('FADE_CUTOUT ')}
+    assert sorted(rows) == list(range(FADE_ROUTE_FRAMES)), (name, sorted(rows))
+    o = int(owner)
+    m = fade_cutout_model(variant)
+    expected = dict(script='cutout', variant=variant or 'base', owner=str(o), classified=str(m['classified']), panel_pass=str(m['panel_pass']), hull_pass=str(m['hull_pass']),
+                    panel_owned=str(o * m['panel_pass']), hull_owned=str(o * m['hull_pass']), final_panel=str(o * m['final_panel']), final_hull=str(o * m['final_hull']),
+                    final_fill=str(m['final_fill'] + (1 - o) * (m['final_panel'] + m['final_hull'])),
+                    model_mismatch='0', final_mismatch='0', parity_mismatch='0', subset_violations='0', outside_changed='0', motion_mismatch='0',
+                    panel_routed=str(o), panel_tested=str(o), panel_refused='0', panel_gate4=str(1 - o),
+                    hull_routed='1', hull_tested='0', fade_routed=str(1 + o), fade_tested=str(o), fade_refused='0', fade_owner_masked='0')
+    depth_errors = []
+    for frame, row in rows.items():
+        _, jx, jy = expected_jitter(frame)
+        assert abs(float(row['jx']) - jx) < 1e-6 and abs(float(row['jy']) - jy) < 1e-6, (name, frame, row)
+        assert {k: row[k] for k in expected} == expected, (name, frame, {k: (row[k], v) for k, v in expected.items() if row[k] != v})
+        depth_errors.append(float(row['max_depth_error']))
+        assert depth_errors[-1] < 4e-6 and float(row['max_w_error']) <= 1e-6, (name, frame, row)
+    configured = [fields(l) for l in trace.splitlines() if l.startswith('fade_rt2_owner_configured ')]
+    assert [(r['requested'], r['enabled'], r['lane'], r['tested']) for r in configured] == [(str(o), str(o), '1', str(o))], (name, configured)
+    fade_frames = {int(fields(l)['frame']): fields(l) for l in trace.splitlines() if l.startswith('fade_route_frame ')}
+    assert set(range(FADE_ROUTE_FRAMES)) <= set(fade_frames), (name, sorted(fade_frames))
+    summaries = {int(fields(l)['frame']): fields(l) for l in trace.splitlines() if l.startswith('motion_output_frame ')}
+    assert set(range(FADE_ROUTE_FRAMES)) <= set(summaries), (name, sorted(summaries))
+    jittered = {}
+    for frame in range(FADE_ROUTE_FRAMES):
+        row = fade_frames[frame]
+        assert (row['fade_routed'], row['fade_tested'], row['fade_refused'], row['fade_owner'], row['fade_owner_masked'], row['overlay_refused']) == (str(1 + o), str(o), '0', str(o), '0', '0'), (name, frame, row)
+        # A, the two jittered z_only prepasses and the two fade-band draws (the refused panel keeps the scene jitter).
+        summary = summaries[frame]
+        jittered[frame] = int(summary['jittered'])
+        assert (summary['unjittered_depth_writers'], jittered[frame]) == ('0', 5), (name, frame, summary)
+        assert float(summary['mip_bias']) == float(bias or 0), (name, frame, summary['mip_bias'])
+    routes = [fields(l) for l in trace.splitlines() if l.startswith('motion_route ')]
+    records = {}
+    order = ('0', '1') if variant == 'order' else ('1', '0')
+    for frame in FADE_ROUTE_CAPTURE:
+        fade = [r for r in routes if int(r['frame']) == frame and r['vs'] == FADE_ROUTE_PAIR[0] and r['ps'] == FADE_ROUTE_PAIR[1] and r['zwrite'] == '0']
+        assert tuple(r['atest'] for r in fade) == order, (name, frame, 'the panel (alpha tested) and the hull in draw order', [r['atest'] for r in fade])
+        for r in fade:
+            routed = owner or r['atest'] == '0'
+            want = dict(gate='0' if routed else '4', routed=str(int(routed)), matched=str(int(routed)), depth=str(int(routed)), jittered='1', blend='1', mask='7',
+                        fade_arm=str(int(routed)), fade_permille='1000' if routed else r['fade_permille'], unmatched='none' if routed else 'no_zwrite', result='00000000')
+            assert {k: r[k] for k in want} == want, (name, frame, {k: r[k] for k in want}, want)
+        records[frame] = [dict(atest=r['atest'], gate=r['gate'], unmatched=r['unmatched']) for r in fade]
+    hashes = {kind: [sha(directory / f'fade_route_{kind}_{frame}.f32') for frame in range(FADE_ROUTE_FRAMES)] for kind in ('color', 'motion', 'rt2')}
+    return {'mode': 'faderoute', 'script': 'cutout', 'variant': variant or 'base', 'owner': owner, 'mip_bias': float(bias or 0), 'frames': FADE_ROUTE_FRAMES,
+            'checks': int(terminal[0]['checks']), 'model': m, 'panel_owned_per_frame': o * m['panel_pass'], 'hull_owned_per_frame': o * m['hull_pass'],
+            'max_depth_error': max(depth_errors), 'fade_routed_per_frame': 1 + o, 'fade_tested_per_frame': o, 'jittered': jittered,
+            'capture_records': records, 'dump_sha256': hashes}
+
+
+def fade_cutout_rows(directory, frame, rows):
+    """The first `rows` rows of a cutout case's raw colour dump (64 x 64 RGBA float) as bytes."""
+    return (directory / f'fade_route_color_{frame}.f32').read_bytes()[:rows * 64 * 16]
+
+
 def validate_fade_route(name, script, lazy, text, trace, directory, owner=False, lane=False, capture=FADE_ROUTE_CAPTURE, ages=False, scissor=False):
     """Fade-band arm script (motion_output_fade_route_inc.h): the arm decision per
     frame, the route records of the capture frames, the composite at the oracle
@@ -6657,6 +6793,27 @@ def main(argv=None):
                 (RESULTS / f'{name}-fixture.json').write_text(json.dumps({'case': name, 'bottle': result['bottle'], 'binaries': result['binaries'], **case}, indent=1) + '\n')
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} S3={case["bodies"]["3S"]} N6={case["bodies"]["6N"]}', flush=True)
+                continue
+            if mode == 'faderoute' and name in FADE_CUTOUT_CASES:
+                owner_case, variant, bias = FADE_CUTOUT_CASES[name]
+                case = validate_fade_cutout(name, owner_case, variant, bias, text, trace, directory)
+                pairs = [(name, *FADE_CUTOUT_TWINS[name])] if name in FADE_CUTOUT_TWINS else [(t, name, r) for t, (n, r) in FADE_CUTOUT_TWINS.items() if n == name]
+                for this, that, rows in pairs:
+                    other = result['cases'].get(that if this == name else this)
+                    if other:
+                        # The routed variant keeps the original colour computation (refused twin: the whole raw scene of
+                        # every frame); the owned cutout keeps the native LOD bias (mip twins: the quads' upper half).
+                        mine, theirs = directory, ROOT / other['directory']
+                        same = all(fade_cutout_rows(mine, f, rows) == fade_cutout_rows(theirs, f, rows) for f in range(FADE_ROUTE_FRAMES))
+                        assert same, (name, 'raw colour differs from the twin', this, that, rows)
+                        case['color_identical_to_twin'] = dict(twin=that if this == name else this, rows=rows, frames=FADE_ROUTE_FRAMES)
+                case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
+                shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
+                result['cases'][name] = case
+                save()
+                print(f'{name}: exit={completed.returncode} checks={case["checks"]} fade_tested/frame={case["fade_tested_per_frame"]} model={case["model"]} '
+                      f'owned={case["panel_owned_per_frame"]}+{case["hull_owned_per_frame"]} max_depth_error={case["max_depth_error"]:.3g} twin={case.get("color_identical_to_twin")}', flush=True)
                 continue
             if mode == 'faderoute' and name in FADE_ZONLY_CASES:
                 case = validate_fade_zonly(name, FADE_ZONLY_CASES[name], text, trace)

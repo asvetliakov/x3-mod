@@ -2,8 +2,13 @@
 
 Design note for the orchestrator to ratify. Question: how the fade RT2 owner
 ([fade-rt2-ownership.md](fade-rt2-ownership.md), default on since Run 81) takes ownership of the fade-band stations'
-alpha-tested cutout draws, so that the sentinel stabiliser (`X3M_TAA_SENTINEL_STABILISER`, 0.7) can be retired. Not
-implemented. [M] measured or read in code this session, [S] from reverse-engineering notes, [I] inferred.
+alpha-tested cutout draws, so that the sentinel stabiliser (`X3M_TAA_SENTINEL_STABILISER`, 0.7) can be retired.
+**Implemented 2026-09-24 as sketched in section 2.2** (fixture evidence and flight rows:
+[linear-distance-fade.md](../verification/linear-distance-fade.md), "Fade-band alpha-tested cutouts"). One departure from
+step 3: the opaque chain stops at Z-write off before it reads ALPHATESTENABLE, so its `test` is the unread initial 1 on
+every fade-arm row; `route.alpha_tested = test != 0` would mark every fade row alpha tested. The arm stores its own read
+in `route.fade_tested` and the line is `route.alpha_tested = route.fade_arm ? route.fade_tested : test != 0`.
+[M] measured or read in code this session, [S] from reverse-engineering notes, [I] inferred.
 
 ## Decision
 
@@ -75,7 +80,7 @@ does; adding it would be a second, redundant coverage rule that could only disag
   thickness vote, unchanged. Panels are quads with texture-defined openings, not thin triangles, so the vote had nothing
   to say about them anyway; the truss lines are classified by the line test against the sentinel like the hull struts.
 
-### 2.2 Implementation sketch (not done)
+### 2.2 Implementation sketch (done 2026-09-24; step 3 departure in the header)
 
 1. `src/proxy/fade_route_core.h` `state(...)`: add a `bool tested_ok` argument, `alpha_test == 0 || (tested_ok &&
    alpha_test == 1)`; every other term unchanged. The host driver `--fade-route-state` gains the eleventh field;
@@ -91,7 +96,8 @@ does; adding it would be a second, redundant coverage rule that could only disag
    and the replay exclusion W3; a Z-write-off draw is never a caster candidate anyway (`:7907` requires `zwrite`), so
    the only behavioural effect is the widening skip on a cutout that also binds a light map.
 4. Counters: `fade_tested` on the `fade_route_frame` line (fade-arm rows admitted with the alpha test on) beside
-   `fade_routed`; a refused alpha-tested fade-band draw is a `fade_refused` with its existing `unmatched=` bucket. One
+   `fade_routed`. With the owner off (or under linear materials) an alpha-tested fade-band draw fails `state` before
+   the arm counts anything: an uncounted gate-4 refusal labelled `unmatched=no_zwrite`, as before the change. One
    row `fade_rt2_owner_configured ... tested=1`.
 5. Program count: +0. The variant of `4944d81d/5e0a10fe` exists (routed at node 1b19edd0 [M]); `53a0a641/63f96eba`
    reaches gate 4 today (reviewed pair) and gets the same variant every other routed pair has. Slots: unchanged (the
@@ -125,8 +131,9 @@ does; adding it would be a second, redundant coverage rule that could only disag
   motion on the opaque texels and the fill in the hole. A second quad, a blended hull without alpha test behind the
   panel, checks sorting: at hole pixels RT2 holds the hull's depth where the hull passes the prepass, the fill where it
   does not.
-- `seam-taa-fade-route-cutout-refused`: the same draw with the owner off (`X3M_FADE_RT2_OWNER=0`): `fade_routed = 0`,
-  `fade_refused = 1`, RT2 untouched - the pre-change behaviour, byte-identical.
+- `seam-taa-fade-route-cutout-refused`: the same draw with the owner off (`X3M_FADE_RT2_OWNER=0`): the panel fails
+  `fade_route::state` before the arm counts it, so it is an uncounted gate-4 refusal (`unmatched=no_zwrite`,
+  `fade_routed` and `fade_refused` unchanged by it), RT1/RT2 untouched - the pre-change behaviour, byte-identical.
 - Regression: `seam-taa-cutout-blended` unchanged (the overlay arm and the cutout pairs are out of scope);
   `seam-taa-fade-route-*` owner cases unchanged; `test_fade_region` state table.
 

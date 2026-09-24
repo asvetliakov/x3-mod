@@ -770,11 +770,12 @@ int arm_pair(int argc, char** argv) {
     std::printf("ARM_PAIR arm=%u\n", x3m::fade_route::arm_pair(argv[2][0] == '1', argv[3][0] == '1', argv[4][0] == '1'));
     return 0;
 }
+// --fade-route-state z z_write alpha_test blend mask srgb src dst op separate_alpha tested_ok: fade_route::state.
 int state(int argc, char** argv) {
-    if (argc < 12) return 2;
-    std::uint32_t v[10];
-    for (unsigned i = 0; i < 10; ++i) v[i] = std::uint32_t(std::strtoul(argv[2 + i], nullptr, 10));
-    std::printf("STATE fade_band=%u\n", x3m::fade_route::state(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8], v[9]));
+    if (argc < 13) return 2;
+    std::uint32_t v[11];
+    for (unsigned i = 0; i < 11; ++i) v[i] = std::uint32_t(std::strtoul(argv[2 + i], nullptr, 10));
+    std::printf("STATE fade_band=%u\n", x3m::fade_route::state(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8], v[9], v[10] != 0));
     return 0;
 }
 // --fade-route alpha fog_enable fog_x fog_y rows[16] camera_valid m00 m11 m20 m21 threshold

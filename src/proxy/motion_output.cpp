@@ -1074,7 +1074,11 @@ bool MotionOutput::fade_arm_admits(MotionRoute& route, const MotionDrawCall& cal
         if (blend_known(i)) factor[i] = shadow_.composition_blend[i];
         else if (FAILED(render_state(blend_states[i], &factor[i]))) return false;
     }
-    if (!fade_route::state(z, z_write, test, blend, color, srgb, factor[0], factor[1], factor[2], factor[3])) return false;
+    // fade-alpha-cutout-ownership.md option A: a fade pair (not the overlay arm, whose alpha-tested draws are material
+    // transparency of unknown alpha law) may be alpha tested while the RT2 owner is on under original shading; the
+    // engine's own test discards before every target write, so RT1/RT2 coverage is the colour draw's.
+    const bool tested_ok = !overlay && fade_rt2_owner_ && !linear_material_requested_;
+    if (!fade_route::state(z, z_write, test, blend, color, srgb, factor[0], factor[1], factor[2], factor[3], tested_ok)) return false;
     // Recognised fade-band draw of a fade pair: a refusal below is counted.
     UINT frequency = 0;
     if (cutout_caps_ != cutout::Capability::Ready || cutout_reset_pending_ || !taa_enabled_ || !hdr_enabled_
@@ -1122,7 +1126,7 @@ bool MotionOutput::fade_arm_admits(MotionRoute& route, const MotionDrawCall& cal
         route.unmatched = UnmatchedReason::FadeThreshold; ++counters_.fade_refused; return false;
     }
     // X3M_FADE_RT2_OWNER: routed is owner (the same threshold and band, no second one; fade-rt2-ownership.md section 3).
-    route.fade_arm = true; route.fade_held = held; route.fade_owner = fade_rt2_owner_;
+    route.fade_arm = true; route.fade_held = held; route.fade_owner = fade_rt2_owner_; route.fade_tested = test != 0;
     return true;
 }
 // The node identity of the current draw for the arm's hysteresis, read the
@@ -5587,12 +5591,16 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
         }
         return;
     }
-    route.alpha_tested = !route.fade_arm && test != 0;
+    // A fade-arm row carries the arm's own test read (fade_tested; the chain above stopped at Z-write off before its
+    // test read): an owned alpha-tested cutout is alpha_tested, so the light-map widening (which rewrites rL.w and
+    // with it the tested coverage) and the replay W3 exclusion treat it like every other alpha-tested draw.
+    route.alpha_tested = route.fade_arm ? route.fade_tested : test != 0;
     // Under a configured bias an alpha-tested cutout pair can only be here through
-    // the tested-opaque arm (cutout_draw_state refuses a nonzero bias): it keeps
+    // the tested-opaque arm (cutout_draw_state refuses a nonzero bias) or, like
+    // every owned alpha-tested fade-band cutout, through the fade arm: it keeps
     // its native LOD bias so the alpha source, and with it the alpha-tested
-    // coverage, is the native draw's.
-    route.native_mip_bias = route.alpha_tested && shadow_.cutout_pair;
+    // coverage, is the native draw's (and the unbiased prepass's).
+    route.native_mip_bias = route.alpha_tested && (shadow_.cutout_pair || route.fade_arm);
     route.cutout = route.alpha_tested && shadow_.cutout_pair && cutout_arm_active_; // the exact cutout arm only (cutout_routed, fixture faults); never the tested-opaque arm
     // Key geometry fields come from the shadowed bindings and draw arguments.
     auto& key = route.key;
@@ -5744,7 +5752,7 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     route.routed = true; route.matched = matched;
     last_routed_node_ = key.node; last_routed_lifetime_ = key.object_lifetime; last_routed_frame_ = frame_; last_routed_draw_ = counters_.draws; // the overlay arm's witness
     if (route.overlay) ++counters_.overlay_routed;
-    else if (route.fade_arm) { ++counters_.fade_routed; if (route.fade_held) ++counters_.fade_held; }
+    else if (route.fade_arm) { ++counters_.fade_routed; if (route.fade_held) ++counters_.fade_held; if (route.fade_tested) ++counters_.fade_tested; }
     if (route.linear_material) {
         ++counters_.material_routed;
         if (shadow_.material_contract.bump) ++counters_.material_bump_routed;
@@ -7139,10 +7147,11 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             // Original shading: the fade-band arm's frame counters and the
             // probe's verdict (run 125: frame-level evidence for the arm
             // without the linear_material_frame line).
-            log("fade_route_frame device=%llu frame=%llu fade_routed=%lu fade_refused=%lu fade_held=%lu fade_route=%u cutout_caps=%u overlay_routed=%lu overlay_refused=%lu fade_evicted=%lu fade_owner=%u fade_owner_masked=%lu",
+            log("fade_route_frame device=%llu frame=%llu fade_routed=%lu fade_refused=%lu fade_held=%lu fade_route=%u cutout_caps=%u overlay_routed=%lu overlay_refused=%lu fade_evicted=%lu fade_owner=%u fade_owner_masked=%lu fade_tested=%lu",
                 id_, frame_, static_cast<unsigned long>(c.fade_routed), static_cast<unsigned long>(c.fade_refused), static_cast<unsigned long>(c.fade_held),
                 fade_route_threshold_, unsigned(cutout_caps_), static_cast<unsigned long>(c.overlay_routed), static_cast<unsigned long>(c.overlay_refused),
-                static_cast<unsigned long>(c.fade_evicted), unsigned(fade_rt2_owner_), static_cast<unsigned long>(c.fade_owner_masked));
+                static_cast<unsigned long>(c.fade_evicted), unsigned(fade_rt2_owner_), static_cast<unsigned long>(c.fade_owner_masked),
+                static_cast<unsigned long>(c.fade_tested));
         }
         const auto us = [](std::uint64_t ticks) { return telemetry::microseconds(ticks); };
         log("motion_output_frame device=%llu frame=%llu latched=%u msaa=%lu filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu unjittered_depth_writers=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx taa_hdr=%u taa_k=%.5f taa_sharpen=%u taa_filter=%.3f taa_weight=%.3f scene_open=%u active_queries=%lu taa_references=%u"
@@ -7296,6 +7305,7 @@ unsigned MotionOutput::fixture_emission_status(unsigned key) const noexcept {
     case 83: return unsigned(fade_rt2_owner_);            // fixture: X3M_FADE_RT2_OWNER resolved on
     case 84: return counters_.fade_owner_masked;          // fixture: fade-arm rows kept masked on the lane RT2 this frame
     case 85: return counters_.fade_evicted;               // fixture: hysteresis evictions this frame
+    case 86: return counters_.fade_tested;                // fixture: fade-arm rows admitted with the alpha test on this frame
     case 36: { static_assert(motion_shadow_state_count <= 32); unsigned mask=0;
         for (unsigned i=0;i<motion_shadow_state_count;++i) if (shadow_.states_known[i]) mask |= std::uint32_t{1} << i;
         return mask; }

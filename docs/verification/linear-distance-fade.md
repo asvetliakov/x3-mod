@@ -43,3 +43,73 @@ undecidable (no `taa_` dumps; the replay tool is 1280x768 only), condition 4 fai
 0.7.** Retry S = 0 only after the alpha-tested cutout pairs become RT2 owners (a fade-arm extension for alpha-tested,
 Z-write-off draws: design question; the sun-shadow alpha-caster lease shows the texture is reachable). A future S = 0 vs
 0.7 comparison needs `--taa-debug` dumps of `taa_`/`present_` at the stand and a 5120x1440-capable replay.
+
+**2026-09-24 Fade-band alpha-tested cutouts as RT2 owners (fixture, not flown).**
+[fade-alpha-cutout-ownership.md](../architecture/fade-alpha-cutout-ownership.md) option A as ratified. `fade_route::state`
+takes an eleventh argument `tested_ok` and admits `alpha_test == 1` beside 0; `fade_arm_admits` passes
+`!overlay && fade_rt2_owner_ && !linear_material_requested_` (a fade pair, the owner on, original shading; the overlay
+arm and the linear-material path unchanged). Departure from the note's step 3: the opaque chain stops at Z-write off
+before it reads ALPHATESTENABLE, so the arm stores its own read in `route.fade_tested` and
+`route.alpha_tested = route.fade_arm ? route.fade_tested : test != 0` (the light-map widening skips an owned cutout, W3
+sees it). Review fix: `route.native_mip_bias = route.alpha_tested && (shadow_.cutout_pair || route.fade_arm)`, so every
+owned alpha-tested cutout keeps the native LOD bias under `--taa-mip-bias` (its alpha coverage matches vanilla and the
+unbiased prepass); before the fix only the two `linear_cutout.h` pairs under the sun lane kept it. No texkill, texture
+lease, program or other device-state write. Counters: `fade_route_frame ... fade_tested=` (appended after
+`fade_owner_masked`), fixture status key 86, `fade_rt2_owner_configured ... tested=` (enabled and original shading).
+Per-draw cost: three bool loads on a recognised fade-band draw and one increment on an admitted one; an admitted cutout
+pays the routed-owner cost it already pays inside FogNear (7.49 µs lazy, `route-per-draw-cost.md`): 0.12 ms at 16 draws
+per frame (inferred, not timed).
+
+- **Wine** (bottle X3, measured; `run_motion_output.py`, one run under `wine_lock` after the review fixes, clean build,
+  33 cases exit 0): the `faderoute` script `cutout` over the sentinel fill, original shading, lane RT2: a fade-pair panel
+  with a centred 8x8-texel hole drawn with the alpha test on (GREATEREQUAL 1) after its textured z_only prepass
+  (`803ebfd17f79e413`, null PS, the same test on the fixed-function texture alpha), and a hull quad of the same pair
+  without the test at z .5 behind the panel's left part (its own `c78b4c68` prepass). The fixture classifies every pixel
+  of the 32x32 region whose reachable sample positions (+-0.5 px jitter) see one panel class and one hull state, runs
+  the engine's sequence for it on the CPU (the Z buffer after both prepasses, each draw's alpha and Z test in draw
+  order; `fade_cutout_model` in the runner is an independent copy) and requires each draw's colour coverage, RT2 write,
+  RT2 value and RT1 rows, and the frame-final RT2, to match; every other pixel is held to per-draw parity (RT2 written
+  exactly where colour is covered; never with the owner off) and every frame-final RT2 change to a colour-covered pixel
+  (the subset rule). Per frame, 12 frames, model / final / parity / subset / motion mismatches 0 in every case:
+
+  | Case | Variant | checks | classified | panel / hull pass | RT2 owned panel + hull | final RT2 panel / hull / fill | fade_routed / fade_tested |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `cutout-owner` | panel then hull | 450 | 887 | 232 / 36 | 232 + 36 | 232 / 36 / 619 | 2 / 1 |
+  | `cutout-refused` (owner off) | same | 449 | 887 | 232 / 36 | 0 | 0 / 0 / 887 | 1 / 0 |
+  | `cutout-order-owner` | hull first; prepass ALPHAREF 128, colour 1; alpha-.25 band | 450 | 879 | 224 / 72 | 224 + 72 | 224 / 36 / 619 | 2 / 1 |
+  | `cutout-mip-owner` | 2-level texture, LOD 0.74, `X3M_TAA_MIP_BIAS=-0.5` | 462 | 887 | 232 / 36 | 232 + 36 | 232 / 36 / 619 | 2 / 1 |
+  | `cutout-mip-nobias-owner` | same, bias 0 | 450 | 887 | 232 / 36 | 232 + 36 | 232 / 36 / 619 | 2 / 1 |
+
+  The refused panel is an uncounted gate-4 refusal (`unmatched=no_zwrite`, `fade_refused` 0), RT1/RT2 untouched; the
+  raw colour of every frame equals `cutout-owner`'s (12/12, the routed variant keeps the native colour). `order`: the
+  36 band pixels under the hull pass the hull first (the prepass at ref 128 skipped them) and the nearer panel overwrites
+  them (final hull 36 = the hole only); owned RT2 stays inside the colour coverage. `mip`: the upper half of the raw
+  colour equals the bias-0 twin's on 12/12 frames; witness before the fix (same fixture, unfixed DLL): the case fails
+  at the panel draw with `RESTORE_DIFF ... samplers_0`, the jitter bias left on the cutout's alpha stage
+  ([mip_bias_witness.txt](../../verification/results/fade-alpha-cutout/mip_bias_witness.txt)); the coverage change it
+  would cause (level 0 has no hole) is inferred. All: `unjittered_depth_writers` 0, `jittered` 5; capture-frame
+  `motion_route` records in draw order, panel `atest=1 gate=0` (owner) / `gate=4 unmatched=no_zwrite` (off), hull
+  `atest=0 gate=0`.
+- **Refused twin = pre-change behaviour** (measured before the review fixes, first fixture version,
+  [compare_refused_head_out.txt](../../verification/results/fade-alpha-cutout/compare_refused_head_out.txt), script
+  beside it): the same fixture against DLLs built from 9eaeb180: 60 dumps (colour, RT1, RT2, presented, reference
+  resolve) byte-identical, the FADE_CUTOUT lines, the fade-pair route records and the `fade_route_frame` counters
+  (without the new field) identical. Not rerun after the review fixes (the owner-off path is unchanged by them).
+- **Existing cases unchanged** (measured,
+  [compare_fade_cases_out.txt](../../verification/results/fade-alpha-cutout/compare_fade_cases_out.txt), script beside
+  it): the 27 `seam-taa-fade-route-*` cases and `seam-taa-cutout-opaque` against the committed summary: 28 compared, 0
+  leaves differ (clock leaves included). Its `passed=False status=PARTIAL` is the runner's status for a selected-case
+  subset (no cross-case comparisons), not a failure.
+- **Host:** `test_fade_region` 31 OK (state table: `alpha_test` 1 admitted only with `tested_ok`, 2 refused, every other
+  wrong field refused with it, blend off / Z-write on included; source contract including the native-bias line),
+  `test_motion_output_runner` 20 OK (case lists, the model, the validator with 17 mutations); the six `fade_route`
+  modules: 1 failure pre-existing on 9eaeb180 (`test_hull_emissive_widening.test_dll_plumbing`: the
+  `lightmap_fade_m00_` line changed in 5a81df27).
+- **Build:** DLL 0 compiler warnings, fixture and seam `-Werror`, `check_no_x87` 684 reachable / 0 violations.
+- **Flight rows to check** (the run214 / run311 stand, `--taa-sentinel-stabiliser 0`, owner on): `fade_rt2_owner_configured
+  ... tested=1`; `fade_route_frame` `fade_tested` >= 16 per frame on the stand, `fade_owner_masked = 0`,
+  `fade_refused` / `overlay_refused` 0; no `motion_route ... unmatched=no_zwrite` row for PS `5e0a10fe752b6140` or
+  `63f96eba9eea7880` on a stand node (their rows `atest=1 fade_arm=1`); `unjittered_depth_writers = 0`; burst: station
+  detail pixels valid depth >= 0.9 (run311: 0.17-0.48), the remaining sentinel detail pixels the panel holes and the edge
+  halo; stabiliser class 0 on them; a `motion_route` row with `atest=1 fade_arm=1` on a VS other than `4944d81dfe531b37` /
+  `53a0a641107ed76c` is a newcomer to name (note section 2.6).

@@ -121,7 +121,7 @@ struct MotionRoute {
     HRESULT preparation_error = S_OK; // First internal failure; never replaces the native draw result.
     renderer::LinearCompositionPolicy composition_policy = renderer::LinearCompositionPolicy::AdditiveEmission;
     bool cutout_candidate = false, cutout = false; // requested exact scene pair; admitted exact cutout arm (cutout pair)
-    bool alpha_tested = false; // admitted with alpha test on (cutout arm or tested-opaque arm); excluded from replay candidates (W3)
+    bool alpha_tested = false; // admitted with alpha test on (cutout arm, tested-opaque arm or an owned fade-band cutout); excluded from replay candidates (W3)
     bool cutout_test_known = false, cutout_color_known = false, cutout_alpha_known = false, cutout_z_known = false, cutout_zfunc_known = false;
     bool cutout_blend_known = false, cutout_source_over = false; // exact observed source-over triple: not a miss
     DWORD cutout_test = 0, cutout_color = 0, cutout_alpha = 0, cutout_z = 0, cutout_zfunc = 0, cutout_blend = 0;
@@ -201,6 +201,7 @@ struct MotionRoute {
     bool fade_arm = false;
     bool fade_held = false; // admitted below the threshold by the hysteresis band only
     bool fade_owner = false; // X3M_FADE_RT2_OWNER: a fade-arm row (not the overlay arm) that writes RT2 (mask 15, .a = 1)
+    bool fade_tested = false; // a fade-arm row admitted with the alpha test on (fade-alpha-cutout-ownership.md; owner on, original shading)
     // Overlay arm (asteroid-fog-temporal.md "Run 130"): a reviewed non-fade
     // pair's source-over sub-mesh (the hull glass/window layer) drawn right
     // after a routed draw of the same node, admitted through the fade arm at
@@ -354,6 +355,7 @@ struct MotionFrameCounters {
     std::uint32_t fade_routed = 0, fade_refused = 0, fade_held = 0; // fade_held: of fade_routed, admitted by the hysteresis band
     std::uint32_t overlay_routed = 0, overlay_refused = 0; // overlay arm (same-node source-over sub-mesh); not in fade_routed/fade_refused
     std::uint32_t fade_evicted = 0; // hysteresis entries a full table displaced this frame (fade_route::Hysteresis::capacity)
+    std::uint32_t fade_tested = 0; // of fade_routed, admitted with the alpha test on (fade-alpha-cutout-ownership.md)
     std::uint32_t fade_owner_masked = 0; // X3M_FADE_RT2_OWNER: fade-arm rows kept masked on the lane RT2 (no invalid-share twin)
     std::uint32_t depth_routed = 0, jittered = 0;
     // Scene draws with ZENABLE and ZWRITEENABLE on that went out unjittered

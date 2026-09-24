@@ -11,7 +11,8 @@
 // SRCALPHA/INVSRCALPHA ADD, RGB mask 7, sRGB write off, separate alpha off)
 // is routed like an opaque draw when its fade fraction estimate reaches the
 // threshold, instead of being composed by the fade bracket and masked
-// current-only. Host-tested through verification/probe/fade_region_host.cpp
+// current-only. With the RT2 owner on under original shading the same state
+// with the alpha test on is admitted too (state's tested_ok). Host-tested through verification/probe/fade_region_host.cpp
 // (--fade-route) from verification/analysis/test_fade_region.py.
 namespace x3m::fade_route {
 // The seven distance-fade vertex programs (linear_distance_fade.h) and the
@@ -60,11 +61,18 @@ constexpr bool arm_pair(bool registers_row, bool distance_fade_pair, bool widen)
 // The exact fade-band render state (the fade route's nine-state check plus
 // the separate-alpha switch off). Public D3D9 enum values: D3DZB_TRUE 1,
 // D3DBLEND_SRCALPHA 5, D3DBLEND_INVSRCALPHA 6, D3DBLENDOP_ADD 1.
+// tested_ok (docs/architecture/fade-alpha-cutout-ownership.md option A): the
+// same state with the alpha test on (TRUE) is the fade-band stations'
+// alpha-tested cutouts; the caller passes it only for a fade pair (not the
+// overlay arm) with the RT2 owner on under original shading. The D3D9 alpha
+// test discards a fragment before the depth write and every target write,
+// so the routed variant (whose oC0.a is the original's) writes RT1/RT2
+// exactly where the engine's colour draw lands.
 constexpr bool state(std::uint32_t z, std::uint32_t z_write, std::uint32_t alpha_test, std::uint32_t blend,
                      std::uint32_t color_mask, std::uint32_t srgb_write, std::uint32_t src, std::uint32_t dst,
-                     std::uint32_t op, std::uint32_t separate_alpha) noexcept {
-    return z == 1 && z_write == 0 && alpha_test == 0 && blend != 0 && color_mask == 7 && srgb_write == 0
-        && src == 5 && dst == 6 && op == 1 && separate_alpha == 0;
+                     std::uint32_t op, std::uint32_t separate_alpha, bool tested_ok) noexcept {
+    return z == 1 && z_write == 0 && (alpha_test == 0 || (tested_ok && alpha_test == 1)) && blend != 0 && color_mask == 7
+        && srgb_write == 0 && src == 5 && dst == 6 && op == 1 && separate_alpha == 0;
 }
 // Distance of the object origin to the camera from the draw's clip rows
 // (four rows as uploaded: clip = row_k . (x, y, z, 1), so the origin's clip

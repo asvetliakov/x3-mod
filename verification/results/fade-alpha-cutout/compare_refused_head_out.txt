@@ -1,0 +1,13 @@
+# Bottle X3, 2026-09-24. HEAD = 9eaeb180 (pre-change), built from `git archive HEAD` in a scratch tree:
+# build/d3d9.dll + motion-output seam 292173db...; new = working tree (acceptance build: DLL 34673176..., seam 0da9662c...).
+# Pair 1: the same fixture exe (e63a99a8..., retained build) against the new DLLs (refused 23:38:48, owner 23:38:44)
+# and against the HEAD DLLs (refused 23:39:16; the runner's validator stops there only on the missing tested= field).
+python3 verification/results/fade-alpha-cutout/compare_refused_head.py <refused-233848> <refused-head-233916> <owner-233844>
+dump_files=60 differing=[] fade_cutout_lines=13 lines_identical=True fade_pair_route_records=6 records_identical=True fade_route_frame_lines=12 counters_identical_except_fade_tested=True
+owner_vs_refused_raw_colour_identical_frames=12/12
+PASS
+# Pair 2: the acceptance run (fresh clean build, fixture exe caafa557...; refused 23:42:37, owner 23:42:35) against the same HEAD run.
+python3 verification/results/fade-alpha-cutout/compare_refused_head.py <refused-234237> <refused-head-233916> <owner-234235>
+dump_files=60 differing=[] fade_cutout_lines=13 lines_identical=True fade_pair_route_records=6 records_identical=True fade_route_frame_lines=12 counters_identical_except_fade_tested=True
+owner_vs_refused_raw_colour_identical_frames=12/12
+PASS

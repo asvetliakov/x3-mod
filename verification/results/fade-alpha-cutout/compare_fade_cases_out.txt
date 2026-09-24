@@ -1,0 +1,10 @@
+compared=28 missing_from_committed=[] identical_including_clock=28
+non_clock_leaves_differing={}
+clock_leaves_differing=0
+checks_total_existing=153132
+seam-taa-fade-route-cutout-owner: checks=450 variant=base mip_bias=0 fade_routed/frame=2 fade_tested/frame=1 model={'classified': 887, 'panel_pass': 232, 'hull_pass': 36, 'final_panel': 232, 'final_hull': 36, 'final_fill': 619} owned_px/frame=232+36 max_depth_error=1.19e-08 jittered=[5] color_identical_to_twin=None
+seam-taa-fade-route-cutout-refused: checks=449 variant=base mip_bias=0 fade_routed/frame=1 fade_tested/frame=0 model={'classified': 887, 'panel_pass': 232, 'hull_pass': 36, 'final_panel': 232, 'final_hull': 36, 'final_fill': 619} owned_px/frame=0+0 max_depth_error=0 jittered=[5] color_identical_to_twin={'twin': 'seam-taa-fade-route-cutout-owner', 'rows': 64, 'frames': 12}
+seam-taa-fade-route-cutout-order-owner: checks=450 variant=order mip_bias=0 fade_routed/frame=2 fade_tested/frame=1 model={'classified': 879, 'panel_pass': 224, 'hull_pass': 72, 'final_panel': 224, 'final_hull': 36, 'final_fill': 619} owned_px/frame=224+72 max_depth_error=1.19e-08 jittered=[5] color_identical_to_twin=None
+seam-taa-fade-route-cutout-mip-owner: checks=462 variant=mip mip_bias=-0.5 fade_routed/frame=2 fade_tested/frame=1 model={'classified': 887, 'panel_pass': 232, 'hull_pass': 36, 'final_panel': 232, 'final_hull': 36, 'final_fill': 619} owned_px/frame=232+36 max_depth_error=1.19e-08 jittered=[5] color_identical_to_twin=None
+seam-taa-fade-route-cutout-mip-nobias-owner: checks=450 variant=mip mip_bias=0 fade_routed/frame=2 fade_tested/frame=1 model={'classified': 887, 'panel_pass': 232, 'hull_pass': 36, 'final_panel': 232, 'final_hull': 36, 'final_fill': 619} owned_px/frame=232+36 max_depth_error=1.19e-08 jittered=[5] color_identical_to_twin={'twin': 'seam-taa-fade-route-cutout-mip-owner', 'rows': 32, 'frames': 12}
+passed=False status=PARTIAL  (PARTIAL is the runner's status for a selected-case subset, not a failure)

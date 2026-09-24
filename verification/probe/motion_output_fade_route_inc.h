@@ -67,6 +67,20 @@
 // family 494fe349b8bc12ec/fffdabd910793aba over the sentinel fill on its own
 // nodes (no routed draw of the same node before it), fog on at g_FogClip
 // (1, 0), fraction 1000: routed, owner.
+// cutout (docs/architecture/fade-alpha-cutout-ownership.md section 2.4; original
+// shading, four-channel lane, over the sentinel fill): P is a panel drawn with
+// a 16x16 texture whose alpha is 0 in the centred 8x8 texels (the hole) and 1
+// elsewhere, in the fade-band state plus the alpha test (GREATEREQUAL, ref 1),
+// after its textured z_only prepass (803ebfd17f79e413, null PS, the same alpha
+// test on the fixed-function stage-0 texture alpha); Q is a blended hull
+// quad without the alpha test at z .5 behind the left part of the panel, after
+// its own z_only prepass (c78b4c68a87fce74), drawn last (X3M_FIXTURE_FADE_CUTOUT
+// selects the order / mip variants, see the cutout loop). Owner on: the panel
+// is routed through the fade arm with the alpha test on (fade_tested) and owns
+// RT2 exactly on the texels the engine's test passes; the holes keep the fill,
+// or the hull's depth where the hull passes the prepass. Owner off: the panel
+// is refused at gate 4 (no_zwrite, the pre-change behaviour) and leaves RT1
+// and RT2 untouched; the hull is routed with RT2 masked.
 // Twelve frames across the eight jitter phases with the rotating camera (cut
 // at frame 7); the raw FP16 scene after the quads, RT1, M (not under
 // original) and the presented frame are dumped per frame.
@@ -82,6 +96,8 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
                hull_script=std::strcmp(script_setting,"hull")==0;
     // zonly / zonly-unjit (owner only): the fog-band depth prepass before the routed quads (see the zonly loop below).
     const bool zonly_script=std::strcmp(script_setting,"zonly")==0,zonly_unjit=std::strcmp(script_setting,"zonly-unjit")==0,zonly_any=zonly_script||zonly_unjit;
+    // cutout (owner on or off): the alpha-tested panel over its textured prepass and a hull behind it (see the cutout loop below).
+    const bool cutout_script=std::strcmp(script_setting,"cutout")==0;
     // X3M_FADE_RT2_OWNER (fade-rt2-ownership.md) and the four-channel lane RT2 (X3M_SUN_SHADOW_LANE=1).
     char owner_setting[8]{};GetEnvironmentVariableA("X3M_FADE_RT2_OWNER",owner_setting,sizeof owner_setting);const bool owner=std::strcmp(owner_setting,"on")==0;
     char lane_setting[4]{};GetEnvironmentVariableA("X3M_SUN_SHADOW_LANE",lane_setting,sizeof lane_setting);const bool lane=std::strcmp(lane_setting,"1")==0;
@@ -92,7 +108,7 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
     // (X3M_LINEAR_MATERIALS=0, no fade bracket, no composition, no M): the arm alone decides. overlay: the hull pair's
     // same-node source-over sub-mesh over A under original shading (the overlay arm alone decides).
     const bool original_script=std::strcmp(script_setting,"original")==0||behind_script||overlay_script||hull_script;
-    require(routed_script||masked_script||sentinel_script||hover_script||original_script||zonly_any,"X3M_FIXTURE_FADE_SCRIPT=routed|masked|sentinel|hover|original|behind|overlay|foreign|hull|zonly|zonly-unjit");
+    require(routed_script||masked_script||sentinel_script||hover_script||original_script||zonly_any||cutout_script,"X3M_FIXTURE_FADE_SCRIPT=routed|masked|sentinel|hover|original|behind|overlay|foreign|hull|zonly|zonly-unjit|cutout");
     const bool over_sentinel=sentinel_script||zonly_any||(original_script&&!overlay_script);
     if(original_script)require(f.emission_status(f.d.p,30)==1u,"fade route original shading: the cutout probe's verdict is Ready without linear materials");
     constexpr unsigned frames=12;
@@ -100,7 +116,7 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
     constexpr float hover_alpha[frames]={.8125f,.71875f,.71875f,.625f,.71875f,.71875f,.8125f,.71875f,.625f,.8125f,.71875f,.71875f};
     constexpr float hover_fog_x[frames]={-.4921875f,-.55078125f,-.55078125f,-.609375f,-.55078125f,-.55078125f,-.4921875f,-.55078125f,-.609375f,-.4921875f,-.55078125f,-.55078125f}; // Q: fraction 1 * (fog_x + 1)
     constexpr bool hover_routed[frames]={1,1,1,0,0,0,1,1,0,1,1,1},hover_held[frames]={0,1,1,0,0,0,0,1,0,0,1,1};
-    const bool full_alpha=routed_script||sentinel_script||overlay_script||hull_script||zonly_any; // g_AlphaValue 1, g_FogClip (1, 0), diffuse alpha 1: fraction 1000 (overlay: routed by the same-node rule)
+    const bool full_alpha=routed_script||sentinel_script||overlay_script||hull_script||zonly_any||cutout_script; // g_AlphaValue 1, g_FogClip (1, 0), diffuse alpha 1: fraction 1000 (overlay: routed by the same-node rule)
     // original and behind follow the hover schedule (routed, held and below-threshold frames) over the sentinel fill.
     const bool hover_schedule=hover_script||(original_script&&!overlay_script&&!hull_script);
     // hull without the owner: its pair is no fade pair and no same-node overlay, so the arm refuses it (the run214 class).
@@ -125,6 +141,8 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
         std::memcpy(out,v,sizeof v);
     };
     SourceVertex quads[2][4];quad(-.8f,-.2f,.8f,.2f,quads[0]);quad(.2f,.8f,.8f,.2f,quads[1]);
+    // cutout: Q is the hull behind the left part of the panel (x -.8..-.5: pixels 6.4..16, z .5).
+    if(cutout_script){quad(-.8f,-.5f,.8f,.2f,quads[1]);for(auto& v:quads[1])v.p[2]=.5f;}
     const D3DVERTEXELEMENT9 elements[]={{0,0,D3DDECLTYPE_FLOAT3,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_POSITION,0},{0,12,D3DDECLTYPE_FLOAT2,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_TEXCOORD,0},{0,20,D3DDECLTYPE_FLOAT3,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_NORMAL,0},{0,32,D3DDECLTYPE_FLOAT3,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_BINORMAL,0},{0,44,D3DDECLTYPE_FLOAT3,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_TANGENT,0},D3DDECL_END()};
     Com<IDirect3DVertexDeclaration9> declaration;Com<IDirect3DVertexBuffer9> vertices[2];Com<IDirect3DIndexBuffer9> indices;
     api(f.d->CreateVertexDeclaration(elements,&declaration.p),"fade route declaration");
@@ -329,6 +347,203 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
         }
         api(f.d->SetIndices(nullptr),"fade zonly final indices release");api(f.d->SetStreamSource(0,nullptr,0,0),"fade zonly final stream release");
         std::printf("FADE_ZONLY_CHECKS frames=%u script=%s quads=2\n",frames,script_setting);
+        return;
+    }
+    // ---- cutout (fade-alpha-cutout-ownership.md section 2.4: the alpha-tested fade-band panel as an RT2 owner) ----
+    //
+    // Per frame, over the sentinel fill (A scissored to the lower half), original shading, the four-channel lane RT2:
+    // the panel's textured z_only prepass (803ebfd17f79e413: oPos from c0-c3, oT0 = TEXCOORD0; null PS, the
+    // fixed-function stage 0 selects the texture's alpha, alpha test GREATEREQUAL, Z-write on, colour mask 0), the
+    // hull's prepass (c78b4c68a87fce74, no alpha test) at z .5, then the fade-band draws of the fade pair at fraction
+    // 1000: the panel with the alpha test on (GREATEREQUAL 1, the prepass's texture) and the hull without it.
+    // X3M_FIXTURE_FADE_CUTOUT selects the variant: unset, panel then hull (a wrong Z test would let the hull overwrite
+    // the panel's RT2); `order`, hull first, the prepass at ALPHAREF 128 and the texture's bottom four texel rows at
+    // alpha .25 (the colour draw passes them, the prepass does not: the hull behind passes there first and the panel,
+    // nearer, overwrites it); `mip`, a 32x32 texture whose level 0 is opaque everywhere and level 1 carries the hole,
+    // sampled with MIPFILTER POINT at LOD 0.74 (level 1): under X3M_TAA_MIP_BIAS=-0.5 a biased colour draw would read
+    // level 0 (LOD 0.24) and cover the hole. The panel's 16-texel pattern (level 1 under `mip`) has 1.2 px texels: the
+    // hole is texels 4..11 on both axes (positions 11.2..20.8), `order`'s band texel rows 12..15. A pixel is
+    // classified when every sample position its jitter can reach (+-0.5 px) sees one panel class (opaque, band, hole or
+    // outside the quad) and one hull state; for it the fixture evaluates the engine's sequence on the CPU (the Z buffer
+    // after both prepasses, each draw's alpha and Z test in draw order) and requires each draw's colour coverage, RT2
+    // write, RT2 value and RT1 rows to match it, and the frame's final RT2 to hold the last passing draw's depth or the
+    // fill. Every other pixel of the region is held to the per-draw parity (RT2 written exactly where the colour is
+    // covered, never with the owner off) and every frame-final RT2 change to a pixel some draw covered in colour.
+    if(cutout_script){
+        require(lane&&f.emission_status(f.d.p,30)==1u,"fade cutout: the four-channel lane under original shading, the cutout probe's verdict Ready");
+        require(f.emission_status(f.d.p,83)==unsigned(owner),"fade cutout: the DLL resolved the owner option as requested");
+        char variant_setting[8]{};GetEnvironmentVariableA("X3M_FIXTURE_FADE_CUTOUT",variant_setting,sizeof variant_setting);
+        const bool order_variant=std::strcmp(variant_setting,"order")==0,mip_variant=std::strcmp(variant_setting,"mip")==0;
+        require(!variant_setting[0]||order_variant||mip_variant,"X3M_FIXTURE_FADE_CUTOUT=|order|mip");
+        const DWORD prepass_ref=order_variant?128:1,colour_ref=1;
+        Com<IDirect3DVertexShader9> panel_prepass,hull_prepass;
+        {
+            const char* ids[2]={"803ebfd17f79e413","c78b4c68a87fce74"};const std::size_t words[2]={95,89};Com<IDirect3DVertexShader9>* targets[2]={&panel_prepass,&hull_prepass};
+            for(unsigned k=0;k<2;++k){
+                const auto code=load((supplied.substr(0,slash+1)+"vs_"+ids[k]+".bin").c_str());
+                require(code.size()==words[k]&&fnv(code.data(),code.size()*4)==std::strtoull(ids[k],nullptr,16),"fade cutout: local z_only programs are the reviewed aliases");
+                api(f.d->CreateVertexShader(reinterpret_cast<const DWORD*>(code.data()),&targets[k]->p),"fade cutout z_only VS");
+            }
+        }
+        // The 16-texel pattern's alpha: 0 in the hole, .25 in order's band, 1 elsewhere.
+        const auto pattern_alpha=[&](unsigned tx,unsigned ty){return tx>=4&&tx<12&&ty>=4&&ty<12?0.f:order_variant&&ty>=12?.25f:1.f;};
+        Com<IDirect3DTexture9> cutout;
+        {
+            const UINT size=mip_variant?32:16,levels=mip_variant?2:1;
+            api(f.d->CreateTexture(size,size,levels,0,D3DFMT_A32B32G32R32F,D3DPOOL_MANAGED,&cutout.p,nullptr),"fade cutout texture");
+            for(UINT level=0;level<levels;++level){
+                const UINT n=size>>level;const bool pattern=n==16; // mip: level 0 (32) opaque, level 1 (16) the pattern
+                D3DLOCKED_RECT lock{};api(cutout->LockRect(level,&lock,nullptr,0),"fade cutout texture lock");
+                for(UINT y=0;y<n;++y)for(UINT x=0;x<n;++x){const float value[4]={.5f,.25f,.75f,pattern?pattern_alpha(x,y):1.f};std::memcpy(static_cast<char*>(lock.pBits)+y*lock.Pitch+x*16,value,16);}
+                api(cutout->UnlockRect(level),"fade cutout texture unlock");
+            }
+        }
+        const auto alpha_test=[&](DWORD ref){
+            api(f.d->SetRenderState(D3DRS_ALPHATESTENABLE,TRUE),"fade cutout alpha test");api(f.d->SetRenderState(D3DRS_ALPHAFUNC,D3DCMP_GREATEREQUAL),"fade cutout GREATEREQUAL");
+            api(f.d->SetRenderState(D3DRS_ALPHAREF,ref),"fade cutout alpha ref");
+        };
+        // The panel: P's rows and pixel inputs with identity UV rows (c37/c38) so the texture spans the quad.
+        const auto bind_panel=[&](unsigned plan,DWORD ref){
+            bind(0,plan);
+            const float uv[2][4]={{1,0,0,0},{0,1,0,0}};api(f.d->SetVertexShaderConstantF(37,uv[0],2),"fade cutout identity UV rows");
+            api(f.d->SetTexture(0,cutout.p),"fade cutout texture bind");alpha_test(ref);
+            if(mip_variant)api(f.d->SetSamplerState(0,D3DSAMP_MIPFILTER,D3DTEXF_POINT),"fade cutout nearest mip");
+        };
+        const auto prepass=[&](unsigned which,unsigned plan){
+            f.scope(nullptr);if(which)bind(1,plan);else bind_panel(plan,prepass_ref);
+            api(f.d->SetVertexShader(which?hull_prepass.p:panel_prepass.p),"fade cutout prepass VS");api(f.d->SetPixelShader(nullptr),"fade cutout null PS");
+            api(f.d->SetRenderState(D3DRS_ALPHABLENDENABLE,FALSE),"fade cutout prepass blend off");api(f.d->SetRenderState(D3DRS_ZWRITEENABLE,TRUE),"fade cutout prepass depth write");
+            api(f.d->SetRenderState(D3DRS_COLORWRITEENABLE,0),"fade cutout prepass colour mask off");
+            // Fixed-function stage 0: colour and alpha straight from the texture (the prepass alpha test reads its alpha).
+            const D3DTEXTURESTAGESTATETYPE stage_states[6]={D3DTSS_COLOROP,D3DTSS_COLORARG1,D3DTSS_ALPHAOP,D3DTSS_ALPHAARG1,D3DTSS_TEXCOORDINDEX,D3DTSS_TEXTURETRANSFORMFLAGS};
+            const DWORD stage_values[6]={D3DTOP_SELECTARG1,D3DTA_TEXTURE,D3DTOP_SELECTARG1,D3DTA_TEXTURE,0,D3DTTFF_DISABLE};
+            for(unsigned k=0;k<6;++k)api(f.d->SetTextureStageState(0,stage_states[k],stage_values[k]),"fade cutout stage 0");
+            api(f.d->SetTextureStageState(1,D3DTSS_COLOROP,D3DTOP_DISABLE),"fade cutout stage 1 colour off");api(f.d->SetTextureStageState(1,D3DTSS_ALPHAOP,D3DTOP_DISABLE),"fade cutout stage 1 alpha off");
+            float rows[16]{};rows[0]=rows[5]=rows[10]=rows[15]=1; // the quads' clip rows (c24-27 of the fade pair)
+            api(f.d->SetVertexShaderConstantF(0,rows,4),"fade cutout prepass clip rows");
+            const auto state=f.snapshot();
+            api(f.d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2),"fade cutout prepass DIP");++f.draw_index;
+            f.compare(state,f.snapshot(),"fade cutout prepass restoration");
+            float after[16];api(f.d->GetVertexShaderConstantF(0,after,4),"fade cutout prepass rows after");
+            require(std::memcmp(rows,after,sizeof rows)==0,"fade cutout: c0-3 restored bit-exactly after the prepass");
+        };
+        // Classification (screen positions; the panel spans 6.4..25.6 on both axes, the hull x 6.4..16, y 6.4..25.6).
+        // panel_class: -1 ambiguous, 0 no panel fragment (hole or outside the quad), 1 opaque, 2 band.
+        constexpr unsigned region=32; // x, y 0..31: both quads; nothing outside it may change
+        const auto class_at=[&](double sx,double sy)->int{
+            if(sx<6.4||sx>=25.6||sy<6.4||sy>=25.6)return 0;
+            const float a=pattern_alpha(unsigned((sx-6.4)/1.2),unsigned((sy-6.4)/1.2));return a==0.f?0:a==1.f?1:2;
+        };
+        const auto panel_class=[&](unsigned x,unsigned y)->int{
+            const int c=class_at(x-.5,y-.5);
+            return class_at(x+.5,y-.5)==c&&class_at(x-.5,y+.5)==c&&class_at(x+.5,y+.5)==c?c:-1;
+        };
+        const auto hull_state=[&](unsigned x,unsigned y)->int{ // 1 inside, 0 outside, -1 ambiguous
+            const bool in=x-.5>=6.4&&x+.5<16.&&y-.5>=6.4&&y+.5<25.6,out=x+.5<6.4||x-.5>=16.||y+.5<6.4||y-.5>=25.6;
+            return in?1:out?0:-1;
+        };
+        struct Model{bool classified=false,pass[2]{};double final_z=-1;};
+        std::vector<Model> model(region*region);
+        const double quad_z[2]={.3,.5};const unsigned draw_order[2]={order_variant?1u:0u,order_variant?0u:1u};
+        for(unsigned y=0;y<region;++y)for(unsigned x=0;x<region;++x){
+            auto& m=model[y*region+x];const int c=panel_class(x,y),h=hull_state(x,y);
+            if(c<0||h<0)continue;
+            m.classified=true;
+            const double a=c==1?1.:c==2?.25:0.;
+            double zbuf=1.;
+            if(c&&a*255.>=double(prepass_ref))zbuf=std::min(zbuf,.3); // the panel prepass (alpha tested), then the hull's
+            if(h)zbuf=std::min(zbuf,.5);
+            for(unsigned which:draw_order){
+                const bool pass=which?h==1&&.5<=zbuf:c!=0&&a*255.>=double(colour_ref)&&.3<=zbuf;
+                m.pass[which]=pass;if(pass)m.final_z=quad_z[which];
+            }
+        }
+        constexpr double depth_tolerance=4e-6;
+        for(unsigned plan=0;plan<frames;++plan){
+            f.frame_begin();f.linear_material_inputs();f.write_reserved();
+            const RECT lower{0,LONG(f.H/2),LONG(f.W),LONG(f.H)};api(f.d->SetScissorRect(&lower),"fade cutout A below the quads");
+            api(f.d->SetRenderState(D3DRS_SCISSORTESTENABLE,TRUE),"fade cutout A scissored");
+            f.draw(f.a,0,0,0,true,true,f.a.recorded,Alter::None,false);
+            require(f.emission_status(f.d.p,16)==0u,"fade cutout: no fade producer under original shading");
+            prepass(0,plan);prepass(1,plan);
+            const auto frame_rt2_before=read(2);
+            std::vector<unsigned char> covered_any(std::size_t(f.W)*f.H);
+            unsigned classified=0,passes[2]{},owned[2]{},model_mismatch=0,parity_mismatch=0,outside_changed=0,motion_mismatch=0;
+            double max_depth_error=0,max_w_error=0;
+            unsigned panel_routed=0,panel_tested=0,panel_refused=0,panel_gate4=0,hull_routed=0,hull_tested=0;
+            for(unsigned which:draw_order){
+                f.scope(&objects[which]);if(which)bind(1,plan);else bind_panel(plan,colour_ref);
+                const auto before=scene(),before_motion=read(1),before_depth=read(2);
+                const auto state=f.snapshot();
+                const unsigned routed_before=f.emission_status(f.d.p,50),tested_before=f.emission_status(f.d.p,86),refused_before=f.emission_status(f.d.p,51),gate4_before=f.emission_status(f.d.p,99);
+                api(f.d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2),"fade cutout actual original DIP");++f.draw_index;
+                f.compare(state,f.snapshot(),"fade cutout complete draw restoration");
+                const auto after=scene(),motion=read(1),depth=read(2);
+                const unsigned routed=f.emission_status(f.d.p,50)-routed_before,tested=f.emission_status(f.d.p,86)-tested_before;
+                if(which){hull_routed=routed;hull_tested=tested;}
+                else{panel_routed=routed;panel_tested=tested;panel_refused=f.emission_status(f.d.p,51)-refused_before;panel_gate4=f.emission_status(f.d.p,99)-gate4_before;}
+                // Owner: both draws own RT2; off: the panel is refused (native) and the hull routed with RT2 masked.
+                const bool writes_rt2=owner,routes=which||owner,matched=routes&&objects[which].recorded;
+                const double z=quad_z[which];
+                for(unsigned y=0;y<f.H;++y)for(unsigned x=0;x<f.W;++x){
+                    const std::size_t n=std::size_t(y)*f.W+x,i=4*n;
+                    const float* now=&depth[n*4];const float* was=&before_depth[n*4];
+                    const bool written=std::memcmp(now,was,16)!=0,covered=std::memcmp(&before[i],&after[i],12)!=0;
+                    const bool motion_changed=std::memcmp(&motion[i],&before_motion[i],16)!=0;
+                    if(x>=region||y>=region){outside_changed+=written||covered||motion_changed;continue;}
+                    covered_any[n]|=covered;
+                    parity_mismatch+=writes_rt2?covered!=written:written; // off: RT2 is never written
+                    if(!routes&&motion_changed)++motion_mismatch;
+                    const auto& m=model[y*region+x];
+                    if(!m.classified)continue;
+                    const bool pass=m.pass[which];
+                    const bool owned_value=written&&std::fabs(double(now[0])-z)<depth_tolerance&&now[1]==-1.f&&std::fabs(double(now[2])-1.)<=1e-6&&now[3]==1.f;
+                    if(written){max_depth_error=std::max(max_depth_error,std::fabs(double(now[0])-z));max_w_error=std::max(max_w_error,std::fabs(double(now[2])-1.));}
+                    passes[which]+=covered;owned[which]+=owned_value;
+                    const bool ok=covered==pass&&(pass&&writes_rt2?owned_value:!written)&&(pass&&routes?true:!motion_changed);
+                    if(!ok){if(model_mismatch<8)std::printf("FADE_CUTOUT_MODEL_DIFF frame=%llu quad=%u x=%u y=%u pass=%u covered=%u written=%u rt2=%.9g,%.9g,%.9g,%.9g\n",f.frame,which,x,y,unsigned(pass),unsigned(covered),unsigned(written),now[0],now[1],now[2],now[3]);++model_mismatch;}
+                    if(pass&&routes){
+                        const double u=(x-f.jx)/f.W+.5/f.W,v=(y-f.jy)/f.H+.5/f.H;
+                        const bool own=matched?(std::fabs(motion[i]-u)*f.W<.01&&std::fabs(motion[i+1]-v)*f.H<.01&&std::fabs(motion[i+2]-z)<depth_tolerance&&motion[i+3]==1)
+                                              :before_motion[i+3]==-1&&motion[i]==0&&motion[i+1]==0&&motion[i+2]==0&&motion[i+3]==-1;
+                        if(!own){if(motion_mismatch<8)std::printf("FADE_CUTOUT_PIXEL_DIFF frame=%llu quad=%u x=%u y=%u matched=%u motion=%.9g,%.9g,%.9g,%.9g\n",f.frame,which,x,y,unsigned(matched),motion[i],motion[i+1],motion[i+2],motion[i+3]);++motion_mismatch;}
+                    }
+                }
+                objects[which].recorded=routes;
+            }
+            const auto color=scene(),motion=read(1),rt2=read(2);
+            // Frame end: a classified pixel holds the last passing draw's depth (owner) or its pre-draw value (the fill,
+            // .r -1); any RT2 change of the frame lies on a pixel some draw covered in colour (owned RT2 texels are a
+            // subset of the colour coverage).
+            unsigned final_panel=0,final_hull=0,final_fill=0,final_mismatch=0,subset_violations=0;
+            for(unsigned y=0;y<region;++y)for(unsigned x=0;x<region;++x){
+                const std::size_t n=std::size_t(y)*f.W+x;
+                if(std::memcmp(&rt2[n*4],&frame_rt2_before[n*4],16)!=0&&!covered_any[n])++subset_violations;
+                const auto& m=model[y*region+x];
+                if(!m.classified)continue;
+                const double want=owner&&m.final_z>0?m.final_z:-1.;const double got=rt2[n*4];
+                const bool ok=want<0?got==-1.:std::fabs(got-want)<depth_tolerance;final_mismatch+=!ok;
+                final_panel+=ok&&want==.3;final_hull+=ok&&want==.5;final_fill+=ok&&want<0;
+            }
+            for(const auto& m:model)classified+=m.classified;
+            write("color",color);write("motion",motion);write("rt2",rt2);
+            std::printf("FADE_CUTOUT frame=%llu script=%s variant=%s owner=%u jx=%.6f jy=%.6f classified=%u panel_pass=%u hull_pass=%u panel_owned=%u hull_owned=%u final_panel=%u final_hull=%u final_fill=%u"
+                        " model_mismatch=%u final_mismatch=%u parity_mismatch=%u subset_violations=%u outside_changed=%u motion_mismatch=%u max_depth_error=%.9g max_w_error=%.9g"
+                        " panel_routed=%u panel_tested=%u panel_refused=%u panel_gate4=%u hull_routed=%u hull_tested=%u fade_routed=%u fade_tested=%u fade_refused=%u fade_owner_masked=%u\n",
+                        f.frame,script_setting,variant_setting[0]?variant_setting:"base",unsigned(owner),f.jx,f.jy,classified,passes[0],passes[1],owned[0],owned[1],final_panel,final_hull,final_fill,
+                        model_mismatch,final_mismatch,parity_mismatch,subset_violations,outside_changed,motion_mismatch,max_depth_error,max_w_error,
+                        panel_routed,panel_tested,panel_refused,panel_gate4,hull_routed,hull_tested,f.emission_status(f.d.p,50),f.emission_status(f.d.p,86),f.emission_status(f.d.p,51),f.emission_status(f.d.p,84));
+            require(model_mismatch==0u&&final_mismatch==0u,"fade cutout: every classified pixel matches the engine model (alpha and Z tests in draw order), per draw and at frame end");
+            require(parity_mismatch==0u&&subset_violations==0u&&outside_changed==0u&&motion_mismatch==0u,"fade cutout: RT2 written exactly where the colour is covered (owner) or never (off); own RT1 rows; nothing outside the quads");
+            require(!owner||(max_depth_error<depth_tolerance&&max_w_error<=1e-6),"fade cutout: owner pixels hold z/w, -1, w, 1");
+            require(panel_routed==unsigned(owner)&&panel_tested==unsigned(owner)&&panel_refused==0u&&panel_gate4==unsigned(!owner)&&hull_routed==1u&&hull_tested==0u,"fade cutout: the arm admits the alpha-tested panel with the owner only (off: gate 4, uncounted); the hull routes");
+            require(f.emission_status(f.d.p,50)==1u+unsigned(owner)&&f.emission_status(f.d.p,86)==unsigned(owner)&&f.emission_status(f.d.p,51)==0u&&f.emission_status(f.d.p,84)==0u,"fade cutout: frame counters fade_routed / fade_tested / fade_refused / fade_owner_masked");
+            f.emission_reference_color=color;
+            f.boundary();
+            api(f.d->EndScene(),"fade cutout EndScene");f.write_presented(f.color_image());api(f.d->SetDepthStencilSurface(f.depth.p),"fade cutout depth restore");api(f.d->Present(nullptr,nullptr,nullptr,nullptr),"fade cutout Present");++f.frame;++f.frames_since_reset;
+        }
+        api(f.d->SetIndices(nullptr),"fade cutout final indices release");api(f.d->SetStreamSource(0,nullptr,0,0),"fade cutout final stream release");
+        std::printf("FADE_CUTOUT_CHECKS frames=%u script=%s owner=%u quads=2\n",frames,script_setting,unsigned(owner));
         return;
     }
     for(unsigned plan=0;plan<frames;++plan) {

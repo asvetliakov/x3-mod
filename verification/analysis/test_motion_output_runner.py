@@ -75,12 +75,14 @@ class MotionOutputRunnerTests(unittest.TestCase):
                        'seam-taa-fade-route-routed-owner-lane': '0', 'seam-taa-fade-route-hover-age': '0', 'seam-taa-fade-route-original-owner-age': '0',
                        'seam-taa-fade-route-original-age': '0',
                        'seam-taa-fade-route-zonly-owner': '0', 'seam-taa-fade-route-zonly-unjit-owner': '0',  # the prepass parity under the owner
+                       'seam-taa-fade-route-cutout-owner': '0', 'seam-taa-fade-route-cutout-refused': '0',  # the alpha-tested cutout (fade-alpha-cutout-ownership.md)
+                       'seam-taa-fade-route-cutout-order-owner': '0', 'seam-taa-fade-route-cutout-mip-owner': '0', 'seam-taa-fade-route-cutout-mip-nobias-owner': '0',
                        **{f'seam-taa-fade-route-{n}-owner': '0' for n in ('routed', 'routed-perdraw', 'sentinel', 'hover', 'original', 'behind', 'overlay', 'foreign', 'hull')},
                        'seam-taa-cutout-opaque-get': '0',
                        'seam-ownership-bolt-shape-prims': '0', 'seam-ownership-bolt-shape-decl': '0'})  # the bolt footprint's shape-refusal script
         self.assertEqual({n for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'auto'}, automatic)
         self.assertEqual({n: e['X3M_HDR_EV_MANUAL'] for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'manual'}, manual)
-        self.assertEqual((len(hdr), len(automatic), len(manual)), (105, 14, 52))  # + seam-ownership-shadow-alpha-route{,-less} (the lane's FP16 scene, no exposure mode) + seam-thin-vote-far-on-owner (no exposure mode) + seam-thin-vote-far-on-source-{both,screen,vote} (no exposure mode)  # 4 seam-*lightmap-far-fade*, 7 seam-lightmap-widen-* and 4 seam-thin-vote-* cases set no exposure mode (runtime default)
+        self.assertEqual((len(hdr), len(automatic), len(manual)), (110, 14, 57))  # + seam-ownership-shadow-alpha-route{,-less} (the lane's FP16 scene, no exposure mode) + seam-thin-vote-far-on-owner (no exposure mode)  # 4 seam-*lightmap-far-fade*, 7 seam-lightmap-widen-* and 4 seam-thin-vote-* cases set no exposure mode (runtime default)
         for name, env in hdr.items():
             with self.subTest(case=name):
                 if name in automatic:
@@ -385,6 +387,80 @@ class MotionOutputRunnerTests(unittest.TestCase):
         report += [f'FADE_ZONLY_CHECKS frames=12 script={script} quads=2', 'RESULT PASS checks=500 restorations=60 frames=12']
         return '\n'.join(report), '\n'.join(trace)
 
+    def fade_cutout_output(self, owner, variant='', bias=None):
+        """Synthetic cutout report and trace (fade-alpha-cutout-ownership.md section 2.4): twelve frames with the counts
+        of fade_cutout_model, three capture frames of motion_route records in the variant's draw order."""
+        o = int(owner)
+        m = runner.fade_cutout_model(variant)
+        report, trace = [], [f'fade_rt2_owner_configured requested={o} enabled={o} default=0 motion_output=1 taa=1 hdr=1 fade_route=500 lane=1 tested={o}']
+        for f in range(runner.FADE_ROUTE_FRAMES):
+            _, jx, jy = runner.expected_jitter(f)
+            fill = m['final_fill'] + (1 - o) * (m['final_panel'] + m['final_hull'])
+            report.append(f'FADE_CUTOUT frame={f} script=cutout variant={variant or "base"} owner={o} jx={jx:.6f} jy={jy:.6f} classified={m["classified"]} '
+                          f'panel_pass={m["panel_pass"]} hull_pass={m["hull_pass"]} panel_owned={o * m["panel_pass"]} hull_owned={o * m["hull_pass"]} '
+                          f'final_panel={o * m["final_panel"]} final_hull={o * m["final_hull"]} final_fill={fill} model_mismatch=0 final_mismatch=0 parity_mismatch=0 '
+                          f'subset_violations=0 outside_changed=0 motion_mismatch=0 max_depth_error=1.2e-08 max_w_error=0 '
+                          f'panel_routed={o} panel_tested={o} panel_refused=0 panel_gate4={1 - o} hull_routed=1 hull_tested=0 fade_routed={1 + o} fade_tested={o} fade_refused=0 fade_owner_masked=0')
+            trace.append(f'fade_route_frame device=1 frame={f} fade_routed={1 + o} fade_refused=0 fade_held=0 fade_route=500 cutout_caps=1 overlay_routed=0 overlay_refused=0 '
+                         f'fade_evicted=0 fade_owner={o} fade_owner_masked=0 fade_tested={o}')
+            trace.append(f'motion_output_frame device=1 frame={f} latched=1 draws=5 jitter=1 jittered=5 unjittered_depth_writers=0 mip_bias={float(bias or 0):g}')
+            if f in runner.FADE_ROUTE_CAPTURE:
+                vs, ps = runner.FADE_ROUTE_PAIR
+                panel = 'gate=0 routed=1 matched=1 depth=1 fade_arm=1 fade_permille=1000 unmatched=none' if owner else 'gate=4 routed=0 matched=0 depth=0 fade_arm=0 fade_permille=0 unmatched=no_zwrite'
+                draws = [('1', panel), ('0', 'gate=0 routed=1 matched=1 depth=1 fade_arm=1 fade_permille=1000 unmatched=none')]
+                for atest, record in (draws[::-1] if variant == 'order' else draws):
+                    trace.append(f'motion_route device=1 frame={f} index=4 {record} jittered=1 vs={vs} ps={ps} zwrite=0 blend=1 src=-1 dst=-1 atest={atest} mask=7 sepalpha=-1 result=00000000')
+        report += [f'FADE_CUTOUT_CHECKS frames=12 script=cutout owner={o} quads=2', 'RESULT PASS checks=900 restorations=60 frames=12']
+        return '\n'.join(report), '\n'.join(trace)
+
+    def test_fade_cutout_cases_and_validator(self):
+        cases = {c['name']: c for c in runner.CASES if c['name'] in runner.FADE_CUTOUT_CASES}
+        self.assertEqual(sorted(cases), sorted(runner.FADE_CUTOUT_CASES))
+        for name, (owner, variant, bias) in runner.FADE_CUTOUT_CASES.items():
+            env = cases[name]['hdr_env']
+            self.assertEqual((env['X3M_FIXTURE_FADE_SCRIPT'], env['X3M_SUN_SHADOW_LANE'], env['X3M_LINEAR_MATERIALS'], env.get('X3M_FADE_RT2_OWNER'),
+                              env.get('X3M_FIXTURE_FADE_CUTOUT', ''), env['X3M_TAA_MIP_BIAS']), ('cutout', '1', '0', 'on' if owner else None, variant, bias or '0'))  # FADE_ROUTE_ENV pins 0
+        # The model (the fixture's classification written independently): base and mip share the hole; order adds the band.
+        self.assertEqual(runner.fade_cutout_model(''), runner.fade_cutout_model('mip'))
+        base, order = runner.fade_cutout_model(''), runner.fade_cutout_model('order')
+        self.assertEqual((base['hull_pass'], base['final_hull'], order['hull_pass'], order['final_hull']), (36, 36, 72, 36))
+        self.assertEqual(runner.FADE_CUTOUT_TWINS, {'seam-taa-fade-route-cutout-refused': ('seam-taa-fade-route-cutout-owner', 64),
+                                                    'seam-taa-fade-route-cutout-mip-nobias-owner': ('seam-taa-fade-route-cutout-mip-owner', 32)})
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            for kind in ('color', 'motion', 'rt2'):
+                for f in range(runner.FADE_ROUTE_FRAMES):
+                    (directory / f'fade_route_{kind}_{f}.f32').write_bytes(bytes([f]))
+            for name, (owner, variant, bias) in runner.FADE_CUTOUT_CASES.items():
+                text, trace = self.fade_cutout_output(owner, variant, bias)
+                result = runner.validate_fade_cutout(name, owner, variant, bias, text, trace, directory)
+                self.assertEqual((result['fade_tested_per_frame'], result['panel_owned_per_frame'], result['variant']),
+                                 (int(owner), int(owner) * result['model']['panel_pass'], variant or 'base'))
+            text, trace = self.fade_cutout_output(True)
+            refused_text, refused_trace = self.fade_cutout_output(False)
+            order_text, order_trace = self.fade_cutout_output(True, 'order')
+            mip_text, mip_trace = self.fade_cutout_output(True, 'mip', '-0.5')
+            bad = [(True, '', None, text.replace('panel_owned=232', 'panel_owned=231', 1), trace),
+                   (True, '', None, text.replace('model_mismatch=0', 'model_mismatch=1', 1), trace),
+                   (True, '', None, text.replace('final_mismatch=0', 'final_mismatch=3', 1), trace),
+                   (True, '', None, text.replace('parity_mismatch=0', 'parity_mismatch=1', 1), trace),
+                   (True, '', None, text.replace('subset_violations=0', 'subset_violations=1', 1), trace),
+                   (True, '', None, text.replace('max_depth_error=1.2e-08', 'max_depth_error=1e-04', 1), trace),
+                   (True, '', None, text, trace.replace('fade_owner_masked=0 fade_tested=1', 'fade_owner_masked=1 fade_tested=1', 1)),
+                   (True, '', None, text, trace.replace('fade_owner_masked=0 fade_tested=1', 'fade_owner_masked=0 fade_tested=0', 1)),
+                   (True, '', None, text, trace.replace('tested=1', 'tested=0', 1)),
+                   (True, '', None, text, trace.replace('unjittered_depth_writers=0', 'unjittered_depth_writers=1', 1)),
+                   (True, '', None, text, trace.replace('unmatched=none jittered=1 vs=', 'unmatched=no_zwrite jittered=1 vs=', 1)),
+                   (False, '', None, refused_text.replace('panel_gate4=1', 'panel_gate4=0', 1), refused_trace),
+                   (False, '', None, refused_text, refused_trace.replace('fade_tested=0', 'fade_tested=1', 1)),
+                   (False, '', None, text, trace),
+                   (True, 'order', None, order_text.replace('hull_pass=72', 'hull_pass=36', 1), order_trace),
+                   (True, 'order', None, text, trace),  # the base counts and draw order under the order variant
+                   (True, 'mip', '-0.5', mip_text, mip_trace.replace('mip_bias=-0.5', 'mip_bias=0', 1))]
+            for owner, variant, bias, output, log in bad:
+                with self.subTest(owner=owner, variant=variant, output=output[:40]), self.assertRaises(AssertionError):
+                    runner.validate_fade_cutout('host', owner, variant, bias, output, log, directory)
+
     def test_fade_zonly_cases_and_validator(self):
         cases = {c['name']: c for c in runner.CASES if c['name'] in runner.FADE_ZONLY_CASES}
         self.assertEqual(sorted(cases), sorted(runner.FADE_ZONLY_CASES))
@@ -429,13 +505,17 @@ class MotionOutputRunnerTests(unittest.TestCase):
                           ('seam-taa-fade-route-hull-owner', True, 'hull'), ('seam-taa-fade-route-hull', True, 'hull'),
                           ('seam-taa-fade-route-routed-owner-lane', True, 'routed'), ('seam-taa-fade-route-hover-age', True, 'hover'),
                           ('seam-taa-fade-route-original-owner-age', True, 'original'), ('seam-taa-fade-route-original-age', True, 'original'),
-                          ('seam-taa-fade-route-zonly-owner', True, 'zonly'), ('seam-taa-fade-route-zonly-unjit-owner', True, 'zonly-unjit')])
+                          ('seam-taa-fade-route-zonly-owner', True, 'zonly'), ('seam-taa-fade-route-zonly-unjit-owner', True, 'zonly-unjit'),
+                          ('seam-taa-fade-route-cutout-owner', True, 'cutout'), ('seam-taa-fade-route-cutout-refused', True, 'cutout'),
+                          ('seam-taa-fade-route-cutout-order-owner', True, 'cutout'), ('seam-taa-fade-route-cutout-mip-owner', True, 'cutout'),
+                          ('seam-taa-fade-route-cutout-mip-nobias-owner', True, 'cutout')])
         owners = {c['name'] for c in cases if c['hdr_env'].get('X3M_FADE_RT2_OWNER') == 'on'}
         self.assertEqual(owners, {c['name'] for c in cases if '-owner' in c['name']})
         # The lane (four-channel RT2) on the original-shading owner cases only; the thin region on hover-owner only.
         self.assertEqual({c['name'] for c in cases if c['hdr_env'].get('X3M_SUN_SHADOW_LANE') == '1'},
                          {f'seam-taa-fade-route-{n}-owner' for n in ('original', 'behind', 'overlay', 'foreign', 'hull')}
-                         | {'seam-taa-fade-route-routed-owner-lane', 'seam-taa-fade-route-original-owner-age', 'seam-taa-fade-route-original-age'})
+                         | {'seam-taa-fade-route-routed-owner-lane', 'seam-taa-fade-route-original-owner-age', 'seam-taa-fade-route-original-age'}
+                         | set(runner.FADE_CUTOUT_CASES))
         self.assertEqual({c['name'] for c in cases if 'X3M_TAA_THIN_REGION' in c['hdr_env']},
                          {'seam-taa-fade-route-hover-owner', 'seam-taa-fade-route-hover-age', 'seam-taa-fade-route-original-owner-age', 'seam-taa-fade-route-original-age'})
         self.assertEqual(set(runner.FADE_ROUTE_AGE_FRESH), {'seam-taa-fade-route-hover-owner'} | set(runner.FADE_ROUTE_AGE_CASES))

@@ -1,0 +1,13 @@
+# Bottle X3, 2026-09-24 23:56. Witness for the native-LOD-bias fix of owned fade cutouts
+# (motion_output.cpp: route.native_mip_bias = route.alpha_tested && (shadow_.cutout_pair || route.fade_arm)).
+# Binaries built from the working tree before the fix (the line still `route.alpha_tested && shadow_.cutout_pair`),
+# fixture with the cutout `mip` variant; command (retained binaries, one Wine command under the lock):
+X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_motion_output.py --dll build/d3d9.dll --seam verification/probe/build/motion-output-seam/d3d9.dll --fixture verification/probe/build/motion_output_fixture.exe seam-taa-fade-route-cutout-owner seam-taa-fade-route-cutout-refused seam-taa-fade-route-cutout-order-owner seam-taa-fade-route-cutout-mip-nobias-owner seam-taa-fade-route-cutout-mip-owner
+# seam-taa-fade-route-cutout-mip-owner (X3M_TAA_MIP_BIAS=-0.5), frame 0, the panel's fade-band draw:
+grep "RESTORE_DIFF\|RESULT FAIL" <case dir>/fixture-stdout.txt
+RESTORE_DIFF fade cutout complete draw restoration samplers_0
+RESULT FAIL fade cutout complete draw restoration
+# The route left the jitter LOD bias on the owned cutout's stage 0 (the alpha source), so the colour draw sampled at
+# LOD 0.24 instead of 0.74. The fixture stops at the restoration check, before the coverage model; the coverage change
+# (level 0 has no hole) is inferred. With the fix the same case passes (462 checks, coverage = the model and the upper
+# half of the raw colour = the bias-0 twin's on 12/12 frames; mip_bias_sets 0 on every frame).
