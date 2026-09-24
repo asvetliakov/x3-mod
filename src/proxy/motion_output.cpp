@@ -3677,7 +3677,10 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     lens_chain_drawn_ = false;
     sun_apply_applied_=sun_apply_attempted_=false; // fixture keys 70/71 describe this frame
     sun_original_refused_draws_=0;
-    if (thin_vote_upload_) { if (thin_vote_cache_) thin_vote_cache_->begin_frame(); release_thin_votes(); thin_vote_frame_ = {}; if (ownership::buffer_invalidations_pending()) drain_thin_invalidations(); } // reads queued by a frame without a scene end are dropped (its next draws re-queue)
+    if (thin_vote_upload_) { if (thin_vote_cache_) thin_vote_cache_->begin_frame(); release_thin_votes();
+        const std::uint32_t previous_opaque = thin_vote_frame_.opaque; thin_vote_frame_ = {};
+        thin_vote_frame_.sample_at = 1u + (previous_opaque ? std::uint32_t(frame_ % previous_opaque) : 0u); // the frame's sampled opaque draw
+        if (ownership::buffer_invalidations_pending()) drain_thin_invalidations(); } // reads queued by a frame without a scene end are dropped (its next draws re-queue)
     if (retention_) retention_frame_begin(); // retirements are consumed here too; sightings of a frame without a scene end leave
     if (candidates_requested_) { if (depth_replay_requested_) release_depth_leases(); sun_latch_.begin_frame(); point_sun_.begin_frame(); point_sun_poll_ticks_ = 0; candidate_bounds_unavailable_ = 0; candidate_extents_.begin_frame(); candidate_bounds_state_ = 0; release_candidate_extents(); candidates_.reset(); } // a frame that never reached a scene end keeps no records, leases or queued reads; the sun and the box rows are per frame
     // Keep failed-lane storage until the next scene latch can compare its
@@ -7366,9 +7369,16 @@ void MotionOutput::thin_vote_alpha(const MotionRoute& route, const float* rows, 
         shadow_.stream0 != k.vertex_buffer || (k.indexed && shadow_.indices != k.index_buffer) || !shadow_.stream0_identity ||
         (k.indexed && !shadow_.indices_identity)) return;
     ++f.opaque;
-    const std::uint64_t begin = draw_stamp();
+    // Per-draw time needs X3M_TELEMETRY_DRAW=1 (draw_us; a QPC is a syscall under Wine); without it one opaque draw per
+    // frame is timed while telemetry is on (sample_us), plus one empty QPC pair (stamp_us) to show the clock's own cost.
+    const bool sample = telemetry_ && f.opaque == f.sample_at, per_draw = telemetry::draw_enabled();
+    if (!sample && !per_draw) { thin_vote_lookup(route, rows, alpha); return; }
+    const std::uint64_t before = sample ? telemetry::now() : 0, begin = telemetry::now();
     thin_vote_lookup(route, rows, alpha);
-    if (begin) f.ticks += draw_stamp() - begin;
+    if (!begin) return; // telemetry off: now() is 0
+    const std::uint64_t ticks = telemetry::now() - begin;
+    if (per_draw) f.ticks += ticks;
+    if (sample) { f.sampled = 1; f.sample_ticks = ticks; f.stamp_ticks = begin - before; }
 }
 void MotionOutput::thin_vote_lookup(const MotionRoute& route, const float* rows, float& alpha) noexcept {
     auto& f = thin_vote_frame_;
@@ -7383,8 +7393,7 @@ void MotionOutput::thin_vote_lookup(const MotionRoute& route, const float* rows,
     const thin_vote::Entry* e = thin_vote_cache_->find(key);
     if (!e || e->state == thin_vote::State::Retry) {
         ++f.missed;
-        if (e && e->state == thin_vote::State::Retry && e->attempts >= thin_vote::read_attempts) return;
-        for (unsigned i = 0; i < thin_vote_read_count_; ++i) if (thin_vote_reads_[i].key == key) return;
+        for (unsigned i = 0; i < thin_vote_read_count_; ++i) if (thin_vote_reads_[i].key == key) { ++f.already_queued; return; }
         if (thin_vote_read_count_ >= thin_vote::reads_per_frame) { ++f.dropped; return; } // the next frame's draw re-queues
         auto& q = thin_vote_reads_[thin_vote_read_count_++];
         q.key = key; q.vb = shadow_.stream0_identity; q.ib = k.indexed ? shadow_.indices_identity : 0;
@@ -7542,7 +7551,8 @@ void MotionOutput::log_thin_vote_frame() noexcept {
     log("thin_vote_frame device=%llu frame=%llu lane=%u draws=%u opaque=%u known=%u voted=%u min_alpha=%.4f unreadable=%u missed=%u queued=%u dropped=%u no_scale=%u "
         "draw_us=%.2f reads=%llu measured=%llu unreadable_total=%llu retries=%llu not_managed=%llu not_readable=%llu stale=%llu range=%llu geometry=%llu "
         "invalidated=%llu dropped_entries=%llu overflows=%llu volatile_buffers=%llu volatile_refused=%llu "
-        "not_quiet=%llu lock_failed=%llu triangles=%llu lock_us=%.1f measure_us=%.1f max_measure_us=%.1f refused=%u",
+        "not_quiet=%llu lock_failed=%llu triangles=%llu lock_us=%.1f measure_us=%.1f max_measure_us=%.1f refused=%u "
+        "deferred_cap=%u already_queued=%u draw_timing=%u sampled=%u sample_at=%u sample_us=%.2f stamp_us=%.2f",
         id_, frame_, unsigned(sun_lane_active_), f.draws, f.opaque, f.known, f.voted, double(f.min_alpha), f.unreadable, f.missed, f.queued, f.dropped, f.no_scale,
         telemetry::microseconds(f.ticks),
         static_cast<unsigned long long>(t.reads), static_cast<unsigned long long>(t.measured), static_cast<unsigned long long>(t.unreadable),
@@ -7552,7 +7562,9 @@ void MotionOutput::log_thin_vote_frame() noexcept {
         static_cast<unsigned long long>(t.overflows), static_cast<unsigned long long>(t.volatile_buffers), static_cast<unsigned long long>(t.volatile_refused),
         static_cast<unsigned long long>(t.not_quiet), static_cast<unsigned long long>(t.lock_failed),
         static_cast<unsigned long long>(t.triangles), telemetry::microseconds(t.lock_ticks), telemetry::microseconds(t.measure_ticks),
-        telemetry::microseconds(t.max_measure_ticks), thin_vote_cache_ ? thin_vote_cache_->refused : 0u);
+        telemetry::microseconds(t.max_measure_ticks), thin_vote_cache_ ? thin_vote_cache_->refused : 0u,
+        f.dropped, f.already_queued, unsigned(telemetry::draw_enabled() && telemetry_), f.sampled, f.sample_at,
+        telemetry::microseconds(f.sample_ticks), telemetry::microseconds(f.stamp_ticks));
 }
 
 // ---- caster-candidate counter (shadow_replay_candidates.h) ----------------

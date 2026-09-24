@@ -1571,8 +1571,16 @@ private:
     ThinVoteRead thin_vote_reads_[thin_vote::reads_per_frame]{};
     unsigned thin_vote_read_count_ = 0;
     struct ThinVoteCounters {
+        // missed: opaque draws without a usable histogram = queued (a new read) + dropped (deferred by the reads_per_frame
+        // cap; the next frame's draw re-queues) + already_queued (the subset's read is queued this frame). A subset past
+        // read_attempts is Unreadable (Cache::retry) and counts under unreadable, not missed.
         std::uint32_t draws = 0, opaque = 0, known = 0, voted = 0, unreadable = 0, missed = 0, queued = 0, dropped = 0, no_scale = 0;
+        std::uint32_t already_queued = 0;
         std::uint64_t ticks = 0;             // thin_vote_alpha's own time (telemetry draw metrics only)
+        // One sampled lookup per frame while telemetry is on (with or without the draw metrics): the opaque draw number
+        // sample_at (rotating over the previous frame's opaque count), its lookup ticks and the empty QPC pair before it.
+        std::uint32_t sample_at = 0, sampled = 0;
+        std::uint64_t sample_ticks = 0, stamp_ticks = 0;
         float min_alpha = 1.f;
     } thin_vote_frame_{};
     struct ThinVoteTotals {

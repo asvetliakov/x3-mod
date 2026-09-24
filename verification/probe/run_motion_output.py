@@ -3894,6 +3894,16 @@ def validate_thin_vote(name, text, trace, directory, env):
         assert not absent, (name, absent)
         assert len(frames) >= THIN_VOTE_FRAMES, (name, len(frames))
         last = frames[-1]
+        # missed splits into its causes on every row; deferred_cap is dropped under its explicit name. The runner sets
+        # X3M_TELEMETRY_DRAW=1, so draw_us is the per-draw sum (draw_timing=1) and a frame with opaque draws carries its
+        # one sampled lookup (sample_at in 1..the previous frame's opaque count, or 1).
+        for f in frames:
+            assert int(f['missed']) == int(f['queued']) + int(f['dropped']) + int(f['already_queued']), (name, f)
+            assert f['deferred_cap'] == f['dropped'] and f['draw_timing'] == '1' and float(f['draw_us']) >= 0, (name, f)
+            assert f['sampled'] == ('1' if int(f['opaque']) >= int(f['sample_at']) >= 1 else '0'), (name, f)
+            assert float(f['sample_us']) >= 0 and float(f['stamp_us']) >= 0, (name, f)
+        assert any(f['sampled'] == '1' for f in frames), (name, 'no sampled lookup')
+        checks += 2
         counters = {k: int(last[k]) for k in ('reads', 'measured', 'unreadable_total', 'retries', 'not_managed', 'not_readable', 'stale', 'range',
                                                  'geometry', 'not_quiet', 'lock_failed', 'triangles')}
         if not hostile:

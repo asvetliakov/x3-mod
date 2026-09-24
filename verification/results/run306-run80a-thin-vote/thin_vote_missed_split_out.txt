@@ -1,0 +1,2 @@
+frames_with_misses 95 cap_frames 19 missed 1446 queued 538 dropped 656 already_queued 252 already_queued_on_cap_frames 178 max_retries 0
+top (frame,missed,queued,dropped,already_queued) [('6202', 191, 16, 151, 24), ('6203', 151, 16, 113, 22), ('6204', 113, 16, 97, 0), ('6205', 97, 16, 77, 4), ('6206', 80, 16, 3, 61)]

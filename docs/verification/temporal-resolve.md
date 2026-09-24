@@ -2402,6 +2402,30 @@ whose triangles are mostly 0.5-3 px at distance votes as a whole; near panels of
 origin-depth scale), crawl on a station arm seen against its own hull (B's intended gain), ghosting on voted panels
 under a pan, and the tests draw's cost with the twin (`taa_mask` with `--gpu-sync-timing`).
 
+**Telemetry split (2026-09-24, after run306).** `draw_us` was 0 in run306 because it is timed with the per-draw
+stamps, which need `X3M_TELEMETRY_DRAW=1` (run306 logged `telemetry_start ... per_draw=0`); it was never a unit or
+reset bug. `draw_us` keeps that meaning (sum over the frame's opaque lookups, draw metrics only); the row adds
+`draw_timing=` (1: `draw_us` measured, 0: not measured, so 0 is no longer ambiguous) and, whenever telemetry is on, one
+timed lookup per frame without any per-draw QPC: `sample_at=` (the opaque draw number, rotating over the previous
+frame's opaque count), `sampled=`, `sample_us=` and `stamp_us=` (an empty QPC pair just before it, the clock's own
+cost, which under Wine is of the same order as a lookup). `sample_us * opaque` estimates the frame's lookup time
+(`thin_vote_summary.py` prints it). `missed` (unchanged: opaque draws with no usable histogram) now reads `missed =
+queued + deferred_cap + already_queued`: `deferred_cap` is the existing `dropped` under its explicit name (a new
+subset past `reads_per_frame`, re-queued by the next frame's draw), `already_queued` a further draw of a subset whose
+read is queued this frame. A subset whose reads failed `read_attempts` times becomes Unreadable at its last retry
+(`Cache::retry`) and counts under `unreadable`, not `missed`. run306 from its old rows
+(`verification/results/run306-run80a-thin-vote/thin_vote_missed_split.py`, measured): 1,446 missed on 95 frames =
+538 queued + 656 cap-deferred (45 %) + 252 `already_queued` (the remainder, by the identity). The cap dominates, on 19 frames that queued the full 16 (a burst from
+frame 6202, the unlogged reload: 191, 151, 113, 97 missed); nothing was lost for another reason. Fixture: the thin
+vote cases now check the identity and `draw_timing=1` on every row and a sampled lookup; `run_motion_output.py` on the
+five thin-vote cases, bottle X3, exit 0 (far-on 56, far-off 47, near-on 56, hostile 95, far-on-owner 56 checks; partial
+run, no twin comparison). Last rows: `draw_us` 2.0-4.0 over 2-7 opaque draws, `sample_us` 0.6-1.6, `stamp_us` 0.1-0.2
+(fixture wall clock, not game cost). The sample path with draw metrics off is not fixture-exercised (the runner pins
+`X3M_TELEMETRY_DRAW=1`); a flight with `--telemetry` and no draw metrics shows it. The fixture exercises only the
+`queued` part of the split: `deferred_cap` and `already_queued` are 0 on all 24 vote-on rows. With
+`frame_log_interval` > 1 the logged `sample_at` is biased (it is always draw 1 when the opaque count divides the
+interval, since only frames with `frame % interval == 0` are logged); flights log every frame (interval 1).
+
 ## 2026-09-24 fade owner (`--fade-rt2-owner`, opt-in; fixture, not flown)
 
 [fade-rt2-ownership.md](../architecture/fade-rt2-ownership.md) as ratified; its "Implemented" paragraph records the
