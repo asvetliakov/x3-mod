@@ -13,7 +13,8 @@
     "docs/reverse-engineering/external-camera.md",
     "docs/reverse-engineering/music-restart.md",
     "docs/reverse-engineering/alternative-video-playback.md",
-    "docs/reverse-engineering/texture-lookup.md"
+    "docs/reverse-engineering/texture-lookup.md",
+    "docs/reverse-engineering/field-of-view.md"
   ],
   "labels": {
     "0x00402710": {
@@ -72,6 +73,10 @@
       "label": "sqrtf helper (15 bytes, x87 SQRT)",
       "source": "loading-profile-run1.md"
     },
+    "0x00412450": {
+      "label": "fixed-point divide trunc(a*65536/b), 0 for b=0",
+      "source": "field-of-view.md"
+    },
     "0x00412d00": {
       "label": "universe teardown/reset candidate (103 bytes)",
       "source": "loading-orchestration.md"
@@ -79,6 +84,10 @@
     "0x0041c8f0": {
       "label": "registers the INS_ command module (dispatcher 0x0042d340, name table 0x0057aef0)",
       "source": "external-camera.md"
+    },
+    "0x0041c960": {
+      "label": "cockpit registry (*0x00608504) constructor; registry+0x24 = base FOV (focus) 0x4000 at 0x0041c9d9",
+      "source": "field-of-view.md"
     },
     "0x0041cd20": {
       "label": "registry lookup by handle (EAX = map, EDX = handle)",
@@ -132,9 +141,17 @@
       "label": "cockpit body (internal view model) management",
       "source": "external-camera.md"
     },
+    "0x00427d50": {
+      "label": "cockpit +0x79c HUD target list: copies cockpit-scene FOV/plane/viewport, scales by 1/tan(cockpit+0x230 half)",
+      "source": "field-of-view.md"
+    },
     "0x0042a2d0": {
       "label": "target overlay update (cockpit+0x3ac; projects through the sector camera cockpit+0x58)",
       "source": "external-camera.md"
+    },
+    "0x0042d140": {
+      "label": "cockpit +0x7e4 HUD view: copies cockpit-scene FOV/plane/viewport",
+      "source": "field-of-view.md"
     },
     "0x0042d340": {
       "label": "INS_ script command dispatcher (switch over the INS_Cockpit*/INS_* index; cases inline the cockpit fields)",
@@ -183,6 +200,10 @@
       "label": "orientation/rotation math variant (fsin/fcos/fpatan; from 0x0042fb20)",
       "source": "loading-profile-bottle-x3.md"
     },
+    "0x00469a30": {
+      "label": "muldiv trunc(a*b/c), 0 for c=0",
+      "source": "field-of-view.md"
+    },
     "0x00469e80": {
       "label": "registers the B3D_ command module (name table 0x0057a420)",
       "source": "external-camera.md"
@@ -214,6 +235,10 @@
     "0x0047c840": {
       "label": "view activation (builds view + projection, Clear)",
       "source": "camera-state-and-frame-routine.md"
+    },
+    "0x0047cfe0": {
+      "label": "per-node cull/LOD pass; LOD distance scaled by camera FOV/0x4000 at 0x0047d1ce",
+      "source": "field-of-view.md"
     },
     "0x0047d9c0": {
       "label": "render-node visit (model lookup, LOD choice)",
@@ -290,6 +315,10 @@
       "label": "node allocator (handle map)",
       "source": "object-identity.md"
     },
+    "0x00488a70": {
+      "label": "occluder candidate list walk; distance scaled by camera FOV/0x4000",
+      "source": "field-of-view.md"
+    },
     "0x00488c70": {
       "label": "camera allocator (0x790 bytes)",
       "source": "object-identity.md"
@@ -322,9 +351,17 @@
       "label": "graphics/body subsystem init",
       "source": "loading-orchestration.md"
     },
+    "0x0048dc20": {
+      "label": "node animation update; keyed camera FOV write to +0x298",
+      "source": "field-of-view.md"
+    },
     "0x00492970": {
       "label": "cut-scene body loader (cut\\%05)",
       "source": "loading-orchestration.md"
+    },
+    "0x00493b40": {
+      "label": "B3D_* script command dispatcher (CameraSetFocus 0x3d, GetFocus 0x3e, SetAspectRatio 0x40, SetAspect 0x41, CalcFOV 0x46)",
+      "source": "field-of-view.md"
     },
     "0x00497b80": {
       "label": "P_ script module dispatcher (31 commands; 9/10 = P_GetSysD3DFlags2/P_SetSysD3DFlags2)",
@@ -566,6 +603,10 @@
     "0x004d5a90": {
       "label": "Win32 input / message handling (GetKeyboardLayout, MapVirtualKeyExA; helper 0x004d6850)",
       "source": "loading-profile-bottle-x3.md"
+    },
+    "0x004dac90": {
+      "label": "display/device init; default view plane *0x00606f38+0x28/+0x2c (H=0.75, W=0.75*w/h for aspect >= 4:3) at 0x004db167..0x004db1e3",
+      "source": "field-of-view.md"
     },
     "0x004dc540": {
       "label": "texture loader (pck dds; image info, cube, 2D helpers)",

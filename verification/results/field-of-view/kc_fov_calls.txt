@@ -1,0 +1,21 @@
+x3story.obj sha256 ed5786a0c603802d5735fb36e0332d7c732b981d2b64dcee4174890284faff7a
+INS_SetFocus               call at CODE 0x0156fb in SetFocus@0x156e6
+B3D_CameraSetFocus         call at CODE 0x010868 in Vbi@0x1082f
+B3D_CameraSetFocus         call at CODE 0x02642e in UpdateCamera@0x262a3
+B3D_CameraSetFocus         call at CODE 0x0265d6 in UpdateCamera@0x262a3
+B3D_CameraSetFocus         call at CODE 0x0f12c3 in ShowSpace@0xf1010
+B3D_CameraSetFocus         call at CODE 0x132627 in ___sectorCamOn@0x132556
+B3D_CameraGetFocus         call at CODE 0x01085f in Vbi@0x1082f
+B3D_CameraSetAspectRatio   call at CODE 0x025e5b in UpdateViewportExplicit@0x25d36
+B3D_CameraSetAspectRatio   call at CODE 0x1326b7 in ___sectorCamOn@0x132556
+B3D_CameraSetAspectRatio   call at CODE 0x13a992 in SetMapCameraPosition@0x13a8fe
+B3D_CameraCalcFOV          call at CODE 0x02543e in GetCameraFOV@0x253d4
+INS_CockpitSetZooming      call at CODE 0x0f5605 in ZoomView@0xf55c6
+SetFocus(class 0x96) called at CODE 0x114f43 in Input@0x114d79 args: SA_GetGlobalParameter(id=0x59, default=70)
+SetFocus(class 0x96) called at CODE 0x115311 in Input@0x114d79 args: SA_GetGlobalParameter(id=0x5a, default=100)
+SetFocus(class 0x96) called at CODE 0x115914 in ChangeValue@0x1155e6 args: member 0x55
+03.cat types/Globals.pck ['SG_MIN_FOV;70;', 'SG_MAX_FOV;100;']
+04.cat types/Globals.pck ['SG_MIN_FOV;70;', 'SG_MAX_FOV;100;']
+10.cat types/Globals.pck ['SG_MIN_FOV;70;', 'SG_MAX_FOV;100;']
+addon/01.cat addon/types/Globals.pck ['SG_MIN_FOV;70;', 'SG_MAX_FOV;100;']
+addon/02.cat addon/types/Globals.pck ['SG_MIN_FOV;70;', 'SG_MAX_FOV;100;']

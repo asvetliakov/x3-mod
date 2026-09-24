@@ -1,0 +1,11 @@
+X3AP.exe sha256 fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab
+0x0041c9d9 c7 46 24 00 40 00 00             registry ctor  MOV [ESI+0x24],0x4000
+0x0041fd58 8b 15 04 85 60 00                cockpit ctor   MOV EDX,[0x00608504]
+0x0041fd95 8b 42 24                         cockpit ctor   MOV EAX,[EDX+0x24]
+0x00421144 83 7b 10 00                      cockpit update CMP [EBX+0x10],0
+0x00421148 8b 15 04 85 60 00 8b 72 24       cockpit update MOV EDX,[0x00608504]; MOV ESI,[EDX+0x24]
+0x00421151 bf 00 40 00 00                   cockpit update MOV EDI,0x4000
+0x0042115e ba 00 00 01 00 0f 84 1f 04 00 00 cockpit update MOV EDX,0x10000; JZ 0x00421588
+0x0042dc04 89 4a 24                         INS_SetFocus   MOV [EDX+0x24],ECX
+0x004213dd 39 b3 30 02 00 00                chase_lead_final_fov CMP [EBX+0x230],ESI
+byte-pattern branches into 0x00421149..0x00421150 (instruction starts unverified): [('0x42113b', '0x421149', 'rel8')]

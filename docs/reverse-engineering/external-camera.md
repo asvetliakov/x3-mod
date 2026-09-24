@@ -76,6 +76,10 @@ camera-state-and-frame-routine.md §3: the sector camera's `+0x298` is
 `(*0x00608504+0x24) × 0x10000 / zoom`, the cockpit-scene camera's is
 `0x4000 × 0x10000 / zoom`; with zoom `0x10000` that is the round `0x4000`
 (90° binary angle), reading (A).
+The base `*0x00608504+0x24` (registry constructor default `0x4000`, script
+writer `INS_SetFocus`), the default view plane that makes `0x4000` a 73.74°
+vertical FOV, every FOV reader and the write site for a user-chosen FOV are in
+[field-of-view.md](field-of-view.md).
 
 ## 3. The per-frame cockpit update `0x004205e0` builds the view pose
 
