@@ -4572,18 +4572,51 @@ void MotionOutput::prepare_bolt_footprint(const MotionDrawCall& call, MotionRout
     const bool timed = telemetry_ || bolt_window_frames_ + 1u >= 300u;
     if (timed) ++c.timed;
     BoltTiming timing{timed, c.ticks};
+    // One row per reason per device. `primitives` is the draw's count and
+    // `stream0_bytes` the size of the bound stream-0 buffer: the shadow keeps
+    // no size, so the one GetStreamSource + GetDesc runs here, on the logged
+    // refusal only (0 when either call fails or nothing is bound).
     const auto refuse_once = [&](unsigned reason, unsigned detail) {
         if (reason < reason_count && !(bolt_refusal_logged_ & (1u << reason))) {
             bolt_refusal_logged_ |= 1u << reason;
-            log("bolt_footprint_refused device=%llu frame=%llu index=%lu reason=%s detail=%u", id_, frame_, counters_.draws, reasons[reason], detail);
+            UINT stream0_bytes = 0;
+            IDirect3DVertexBuffer9* bound = nullptr; UINT bound_offset = 0, bound_stride = 0;
+            if (SUCCEEDED(native<GetStreamFn>(GetStreamSource)(device_, 0, &bound, &bound_offset, &bound_stride)) && bound) {
+                D3DVERTEXBUFFER_DESC desc{};
+                if (SUCCEEDED(bound->GetDesc(&desc))) stream0_bytes = desc.Size;
+            }
+            release(bound);
+            log("bolt_footprint_refused device=%llu frame=%llu index=%lu reason=%s detail=%u primitives=%u stream0_bytes=%lu",
+                id_, frame_, counters_.draws, reasons[reason], detail, unsigned(call.primitives), static_cast<unsigned long>(stream0_bytes));
         }
     };
     // The bullet writer's draw shape (derive_prefix_region's tests): a
     // non-indexed TRIANGLELIST from StartVertex 0 of a stride-24 stream with
-    // POSITION FLOAT3 at 0, at most the scan bound.
+    // POSITION FLOAT3 at 0, at most the scan bound. On a refusal `detail` is
+    // the mask of the failed sub-clauses (computed on this branch only):
+    //   1 topology not TRIANGLELIST       2 StartVertex not 0
+    //   4 primitives > max_vertices / 3   8 no stream 0 bound (id or identity 0)
+    //  16 stream-0 stride not 24         32 stream-0 offset not 0
+    //  64 no declaration with a stream-0 POSITION0 (or unread)
+    // 128 POSITION0 not FLOAT3 at offset 0
+    // The bits are not independent: a missing declaration also sets 128 (the
+    // shadow resets the position to offset 0, type 0 = FLOAT1), so it logs
+    // 192; an unbound stream 0 shadows stride 0 and so also sets 16 (24).
+    // The window row ORs the masks (refused_shape_bits) and keeps the largest
+    // refused primitive count (refused_max_prims) of these site-0 refusals
+    // only; instanced (7) and binding (10) count in refused_shape too but
+    // update neither field.
     if (call.topology != D3DPT_TRIANGLELIST || call.first != 0 || call.primitives > max_vertices / 3u
         || !shadow_.stream0 || !shadow_.stream0_identity || shadow_.stream0_stride != stride || shadow_.stream0_offset != 0
-        || !shadow_.declaration || shadow_.position_offset != 0 || shadow_.position_type != D3DDECLTYPE_FLOAT3) { ++c.refused_shape; refuse_once(0, 0); return; }
+        || !shadow_.declaration || shadow_.position_offset != 0 || shadow_.position_type != D3DDECLTYPE_FLOAT3) {
+        const unsigned bits = (call.topology != D3DPT_TRIANGLELIST ? 1u : 0u) | (call.first != 0 ? 2u : 0u)
+            | (call.primitives > max_vertices / 3u ? 4u : 0u) | (!shadow_.stream0 || !shadow_.stream0_identity ? 8u : 0u)
+            | (shadow_.stream0_stride != stride ? 16u : 0u) | (shadow_.stream0_offset != 0 ? 32u : 0u)
+            | (!shadow_.declaration ? 64u : 0u) | (shadow_.position_offset != 0 || shadow_.position_type != D3DDECLTYPE_FLOAT3 ? 128u : 0u);
+        ++c.refused_shape; c.refused_shape_bits |= bits;
+        if (call.primitives > c.refused_max_prims) c.refused_max_prims = std::uint32_t(call.primitives);
+        refuse_once(0, bits); return;
+    }
     const std::uint32_t count = call.primitives * 3u;
     // The rows the bullet VS uses (c0-3, window 0) and the viewport, as shadowed.
     const std::size_t window = window_of(0u);
@@ -4689,10 +4722,10 @@ void MotionOutput::log_bolt_footprint_window() noexcept {
     s.refused_w += w.refused_w; s.refused_recheck += w.refused_recheck; s.failures += w.failures; s.locks += w.locks; s.ticks += w.ticks; s.timed += w.timed;
     s.lengthened += w.lengthened; s.widened += w.widened; s.world_axis += w.world_axis; s.disc += w.disc; s.gated += w.gated;
     ++bolt_windows_;
-    log("bolt_footprint device=%llu frame=%llu frames=%u draws=%u written=%u untouched=%u gated=%u instances=%u expanded=%u lengthened=%u widened=%u world_axis=%u disc=%u refused_period=%u refused_w=%u refused_buffer=%u refused_rows=%u refused_shape=%u refused_recheck=%u failures=%u locks=%u timed_draws=%u us=%.1f session_draws=%u session_written=%u session_expanded=%u session_gated=%u buffer_bytes=%lu",
+    log("bolt_footprint device=%llu frame=%llu frames=%u draws=%u written=%u untouched=%u gated=%u instances=%u expanded=%u lengthened=%u widened=%u world_axis=%u disc=%u refused_period=%u refused_w=%u refused_buffer=%u refused_rows=%u refused_shape=%u refused_recheck=%u failures=%u locks=%u timed_draws=%u us=%.1f session_draws=%u session_written=%u session_expanded=%u session_gated=%u buffer_bytes=%lu refused_max_prims=%u refused_shape_bits=%u",
         id_, frame_, bolt_window_frames_, w.draws, w.written, w.untouched, w.gated, w.instances, w.expanded, w.lengthened, w.widened, w.world_axis, w.disc,
         w.refused_period, w.refused_w, w.refused_buffer, w.refused_rows, w.refused_shape, w.refused_recheck,
-        w.failures, w.locks, w.timed, us, s.draws, s.written, s.expanded, s.gated, static_cast<unsigned long>(bolt_vb_bytes_));
+        w.failures, w.locks, w.timed, us, s.draws, s.written, s.expanded, s.gated, static_cast<unsigned long>(bolt_vb_bytes_), w.refused_max_prims, w.refused_shape_bits);
     for (unsigned view = 0; view < 2; ++view) {
         const auto& h = bolt_hist_[view];
         if (!h.instances) continue;

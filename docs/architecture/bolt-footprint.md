@@ -374,6 +374,39 @@ not a per-draw cost on a plain launch; refusals included). The loader's
 `X3M_BOLT_FOOTPRINT` value is refused with the mode line, never silently
 off.
 
+**Shape refusal telemetry** (2026-09-24, after Run 78 A's 84 unattributed
+`refused_shape` draws). The draw-shape clause's `detail` is the mask of the
+failed sub-clauses, computed on the refusal branch only (the pass path is the
+unchanged compare chain):
+
+| Bit | Sub-clause failed |
+| --- | --- |
+| 1 | topology not `D3DPT_TRIANGLELIST` |
+| 2 | StartVertex not 0 |
+| 4 | primitives > `max_vertices / 3` (2048: more than 6144 vertices, the scan bound) |
+| 8 | no stream 0 bound (shadowed id or identity 0) |
+| 16 | stream-0 stride not 24 |
+| 32 | stream-0 offset not 0 |
+| 64 | no declaration with a stream-0 POSITION0 (or unread) |
+| 128 | POSITION0 not FLOAT3 at offset 0 |
+
+The bits are not independent: a missing declaration also sets 128 (the shadow
+resets the position to offset 0, type 0 = FLOAT1), so it logs 192; an unbound
+stream 0 shadows stride 0 and so also sets 16 (24).
+
+Every `bolt_footprint_refused` row (all reasons) also carries `primitives=`
+(the draw's count) and `stream0_bytes=` (the bound stream-0 buffer's
+`D3DVERTEXBUFFER_DESC::Size`; the shadow keeps no size, so one
+`GetStreamSource(0)` + `GetDesc` runs inside the once-per-reason log path and
+never on an unlogged refusal; 0 when unbound or either call fails). The
+300-frame `bolt_footprint` row ends with `refused_max_prims=` (the largest
+primitive count among the window's site-0 shape refusals, 0 when none) and
+`refused_shape_bits=` (the OR of their masks), both reset with the window
+and not accumulated into the session fields. The instanced (7) and binding
+(10) refusals also count in `refused_shape` but update neither field, so a
+window can show `refused_shape` > 0 with `refused_shape_bits=0`.
+Per shape-refused draw the added cost is the mask, one max and one OR.
+
 **Cost** (inferred from step D's figures; the harness is a correctness
 oracle, nothing is host-timed). Every frame: the per-Present window counter,
 and for each marked bullet buffer the Unlock sentinel and scan, which now

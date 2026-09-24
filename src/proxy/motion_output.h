@@ -1963,6 +1963,7 @@ private:
         std::uint32_t draws = 0, written = 0, untouched = 0, instances = 0, expanded = 0;
         std::uint32_t lengthened = 0, widened = 0, world_axis = 0, disc = 0, gated = 0; // gated: outside the chase view, histogram only, never written
         std::uint32_t refused_shape = 0, refused_rows = 0, refused_buffer = 0, refused_period = 0, refused_w = 0, refused_recheck = 0, failures = 0, locks = 0, timed = 0;
+        std::uint32_t refused_max_prims = 0, refused_shape_bits = 0; // the window's site-0 shape refusals: largest primitive count, OR of their sub-clause masks (window row only; not accumulated into the session)
         std::uint64_t ticks = 0;
     } bolt_window_{}, bolt_session_{};
     unsigned bolt_window_frames_ = 0, bolt_windows_ = 0;

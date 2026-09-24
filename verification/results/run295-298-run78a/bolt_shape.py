@@ -27,7 +27,7 @@ for run in runs:
     for d in wins:
         if int(d['draws']) == 0: continue
         f = int(d['frame']); planned = int(d['written']) + int(d['untouched'])
-        refused = sum(int(d[x]) for x in d if x.startswith('refused_') and x != 'refused_w')
+        refused = sum(int(d[x]) for x in d if x.startswith('refused_') and x not in ('refused_w', 'refused_max_prims', 'refused_shape_bits'))
         ok = planned + int(d['gated']) + refused + int(d['failures']) == int(d['draws'])
         ipd = int(d['instances']) / planned if planned else 0
         print(f"  {f-299:>6}-{f:<6} {d['draws']:>12} {d['written']:>7} {d['untouched']:>9} {d['refused_shape']:>9} {d['refused_buffer']:>10}"

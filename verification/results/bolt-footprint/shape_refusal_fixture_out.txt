@@ -1,0 +1,8 @@
+== prims (['20260924', '094714', '891881'])
+  refused {'device': '1', 'frame': '1', 'reason': 'shape', 'detail': '4', 'primitives': '2200', 'stream0_bytes': '1769472'}
+  refused {'device': '1', 'frame': '1', 'reason': 'degenerate', 'detail': '0', 'primitives': '2', 'stream0_bytes': '147456'}
+  window  {'device': '1', 'frames': '300', 'draws': '598', 'refused_shape': '299', 'refused_rows': '299', 'refused_max_prims': '2200', 'refused_shape_bits': '4'}
+== decl (['20260924', '094726', '679882'])
+  refused {'device': '1', 'frame': '1', 'reason': 'shape', 'detail': '128', 'primitives': '2', 'stream0_bytes': '147456'}
+  refused {'device': '1', 'frame': '1', 'reason': 'degenerate', 'detail': '0', 'primitives': '2', 'stream0_bytes': '147456'}
+  window  {'device': '1', 'frames': '300', 'draws': '598', 'refused_shape': '299', 'refused_rows': '299', 'refused_max_prims': '2', 'refused_shape_bits': '128'}

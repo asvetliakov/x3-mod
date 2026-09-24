@@ -69,10 +69,11 @@ class MotionOutputRunnerTests(unittest.TestCase):
                        'seam-taa-fade-route-sentinel': '0', 'seam-taa-fade-route-hover': '0', 'seam-taa-fade-route-original': '0',
                        'seam-taa-fade-route-behind': '0', 'seam-taa-fade-route-overlay': '0', 'seam-taa-fade-route-foreign': '0',
                        'seam-taa-fade-route-overlay-lightmap': '0', 'seam-taa-fade-route-overlay-lightmap-far-fade': '0',  # --light-map-far-fade twins
-                       'seam-taa-cutout-opaque-get': '0'})
+                       'seam-taa-cutout-opaque-get': '0',
+                       'seam-ownership-bolt-shape-prims': '0', 'seam-ownership-bolt-shape-decl': '0'})  # the bolt footprint's shape-refusal script
         self.assertEqual({n for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'auto'}, automatic)
         self.assertEqual({n: e['X3M_HDR_EV_MANUAL'] for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'manual'}, manual)
-        self.assertEqual((len(hdr), len(automatic), len(manual)), (77, 14, 34))  # 4 seam-*lightmap-far-fade* and 7 seam-lightmap-widen-* cases set no exposure mode (runtime default)
+        self.assertEqual((len(hdr), len(automatic), len(manual)), (79, 14, 36))  # 4 seam-*lightmap-far-fade* and 7 seam-lightmap-widen-* cases set no exposure mode (runtime default)
         for name, env in hdr.items():
             with self.subTest(case=name):
                 if name in automatic:

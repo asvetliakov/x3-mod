@@ -892,6 +892,29 @@ class Wiring(unittest.TestCase):
         release = motion[:motion.index('void MotionOutput::before_reset()')]
         self.assertIn('release_fade_witness(); release_packed_sample(); release_bolt_buffer();', release)
         self.assertIn('if (bolt_footprint_requested_ && ++bolt_window_frames_ >= 300u) log_bolt_footprint_window();', motion)
+        # Shape refusal telemetry: the sub-clause mask on the refusal branch only, the window's max/OR, the
+        # row's primitives and stream-0 size (GetDesc only inside the once-per-reason log path).
+        shape_at = prepare.index('if (call.topology != D3DPT_TRIANGLELIST || call.first != 0 || call.primitives > max_vertices / 3u')
+        branch = prepare[shape_at:prepare.index('refuse_once(0, bits); return;', shape_at)]
+        for bit in ("(call.topology != D3DPT_TRIANGLELIST ? 1u : 0u)", "(call.first != 0 ? 2u : 0u)", "(call.primitives > max_vertices / 3u ? 4u : 0u)",
+                    "(!shadow_.stream0 || !shadow_.stream0_identity ? 8u : 0u)", "(shadow_.stream0_stride != stride ? 16u : 0u)",
+                    "(shadow_.stream0_offset != 0 ? 32u : 0u)", "(!shadow_.declaration ? 64u : 0u)",
+                    "(shadow_.position_offset != 0 || shadow_.position_type != D3DDECLTYPE_FLOAT3 ? 128u : 0u)"):
+            self.assertIn(bit, branch)
+        self.assertIn('++c.refused_shape; c.refused_shape_bits |= bits;', branch)
+        self.assertIn('if (call.primitives > c.refused_max_prims) c.refused_max_prims = std::uint32_t(call.primitives);', branch)
+        once = prepare[prepare.index('const auto refuse_once = [&]'):shape_at]
+        self.assertLess(once.index('bolt_refusal_logged_ |= 1u << reason;'), once.index('GetStreamSource)(device_, 0, &bound'), 'the size query runs on the logged refusal only')
+        self.assertIn('bound->GetDesc(&desc)', once)
+        self.assertIn('release(bound);', once)
+        self.assertIn('reason=%s detail=%u primitives=%u stream0_bytes=%lu', once)
+        self.assertIn('buffer_bytes=%lu refused_max_prims=%u refused_shape_bits=%u"', motion)
+        self.assertIn('static_cast<unsigned long>(bolt_vb_bytes_), w.refused_max_prims, w.refused_shape_bits);', motion)
+        header = (ROOT / 'src/proxy/motion_output.h').read_text()
+        self.assertIn('std::uint32_t refused_max_prims = 0, refused_shape_bits = 0;', header[header.index('struct BoltCounters {'):header.index('} bolt_window_{}, bolt_session_{};')])
+        self.assertIn('w = BoltCounters{}; bolt_window_frames_ = 0;', motion, 'the window counters reset per window')
+        self.assertNotIn('s.refused_shape_bits', motion, 'window-only fields: never accumulated into the (unlogged) session')
+        self.assertNotIn('s.refused_max_prims', motion)
         self.assertIn('CreateVertexBuffer = 26', motion)
         self.assertIn('SLOT(IDirect3DDevice9Vtbl, CreateVertexBuffer, 26);', (ROOT / 'verification/probe/abi_check.cpp').read_text())
 

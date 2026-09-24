@@ -254,6 +254,79 @@ void run_screen_emission_integration(Fixture& f,const char* original_path) {
     Com<IDirect3DQuery9> completion;LARGE_INTEGER frequency{};
     if(f.screenemission_bench){require(qualified,"screen benchmark complete activation");api(f.d->CreateQuery(D3DQUERYTYPE_EVENT,&completion.p),"screen benchmark EVENT");require(QueryPerformanceFrequency(&frequency),"screen benchmark QPC");}
     const auto fence=[&](){api(completion->Issue(D3DISSUE_END),"screen timed EVENT issue");f.wait(completion.p);};
+    // Bolt footprint shape refusals (mode boltshape; docs/architecture/
+    // bolt-footprint.md, "Shape refusal telemetry"): X3M_FIXTURE_BOLT_SHAPE=
+    // prims draws, per frame 1-300, one bolt batch above the scan bound
+    // (1100 quads = 2200 primitives on odd frames, 1025 quads = 2050 on even
+    // frames) from the fixture's own DISCARD-locked buffer of 1024 x 72 x 24
+    // bytes (sized after the part buffer Run 78 A inferred; not measured); =decl draws one quad whose declaration puts
+    // POSITION FLOAT3 at offset 12 (uv at 0, colour at 8; stride still 24).
+    // Both then draw one ordinary bolt from the writer's 147456-byte buffer,
+    // which must pass the shape clause. Every bullet draw is admitted by the
+    // additive route (G = X3M_SCREEN_EMISSION_ADDITIVE); 301 Presents close
+    // one 300-frame bolt_footprint window. The runner reads the session log.
+    char bolt_shape_setting[8]{};
+    const DWORD bolt_shape_length=GetEnvironmentVariableA("X3M_FIXTURE_BOLT_SHAPE",bolt_shape_setting,sizeof bolt_shape_setting);
+    if(f.boltshape) {
+        const bool oversize=bolt_shape_length==5&&!std::strcmp(bolt_shape_setting,"prims"),misdeclared=bolt_shape_length==4&&!std::strcmp(bolt_shape_setting,"decl");
+        require(oversize||misdeclared,"X3M_FIXTURE_BOLT_SHAPE is prims or decl");
+        require(qualified&&additive,"bolt shape script needs the qualified additive configuration");
+        constexpr unsigned part_bytes=1024u*72u*stride,big_quads=1100,small_quads=1025; // 6600 and 6150 vertices: both above max_vertices
+        static_assert(small_quads*6>max_vertices&&big_quads*6*stride<=part_bytes,"both batches exceed the scan bound and fit the part buffer");
+        const D3DVERTEXELEMENT9 shifted_elements[]={{0,0,D3DDECLTYPE_FLOAT2,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_TEXCOORD,0},{0,8,D3DDECLTYPE_D3DCOLOR,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_COLOR,0},{0,12,D3DDECLTYPE_FLOAT3,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_POSITION,0},D3DDECL_END()};
+        Com<IDirect3DVertexDeclaration9> shifted_declaration;Com<IDirect3DVertexBuffer9> odd;
+        api(f.d->CreateVertexDeclaration(shifted_elements,&shifted_declaration.p),"bolt shape shifted declaration");
+        const unsigned odd_bytes=oversize?part_bytes:buffer_bytes;
+        api(f.d->CreateVertexBuffer(odd_bytes,D3DUSAGE_DYNAMIC|D3DUSAGE_WRITEONLY,0,D3DPOOL_DEFAULT,&odd.p,nullptr),"bolt shape buffer");
+        const float corners[6][2]={{qx0,qy0},{qx1,qy0},{qx0,qy1},{qx1,qy0},{qx1,qy1},{qx0,qy1}};
+        const auto write_odd=[&](unsigned quads) {
+            void* data=nullptr;api(odd->Lock(0,0,&data,D3DLOCK_DISCARD),"bolt shape discard lock");
+            for(unsigned q=0;q<quads;++q)for(unsigned k=0;k<6;++k) {
+                auto* v=static_cast<unsigned char*>(data)+(q*6+k)*stride;
+                const float position[3]={corners[k][0],corners[k][1],qz},uv[2]={.5f,.5f};const DWORD colour=0xffffffffu;
+                if(misdeclared){std::memcpy(v,uv,8);std::memcpy(v+8,&colour,4);std::memcpy(v+12,position,12);}
+                else {std::memcpy(v,position,12);std::memcpy(v+12,uv,8);std::memcpy(v+20,&colour,4);}
+            }
+            api(odd->Unlock(),"bolt shape discard unlock");
+        };
+        constexpr unsigned bolt_frames=301;
+        unsigned odd_admitted=0,plain_admitted=0,max_primitives=0,bolt_submissions=0;
+        for(unsigned plan=0;plan<bolt_frames;++plan) {
+            f.frame_begin();f.linear_material_inputs();f.write_reserved();
+            f.draw(f.a,.03125f*float(plan%3),0,0,true,true,f.a.recorded,Alter::None,false);
+            const unsigned required=f.emission_status(f.d.p,16);
+            f.emissions_enabled=required!=0;
+            if(plan) {
+                const unsigned quads=misdeclared?1u:plan%2?big_quads:small_quads;
+                for(unsigned draw=0;draw<2;++draw) {
+                    const bool shaped=draw==0;
+                    if(shaped)write_odd(quads);else write_bullets(1);
+                    bind_bullets('s');
+                    if(shaped){api(f.d->SetStreamSource(0,odd.p,0,stride),"bolt shape stream");if(misdeclared)api(f.d->SetVertexDeclaration(shifted_declaration.p),"bolt shape shifted declaration bind");}
+                    const auto state=f.snapshot();
+                    const unsigned admitted_before=f.emission_status(f.d.p,60),native_before=f.emission_status(f.d.p,49);
+                    const UINT primitives=shaped?2*quads:2;
+                    const HRESULT hr=f.d->DrawPrimitive(D3DPT_TRIANGLELIST,0,primitives);++bolt_submissions;++f.draw_index;
+                    require(SUCCEEDED(hr),"bolt shape draw HRESULT");
+                    f.compare(state,f.snapshot(),"bolt shape restoration");
+                    require(f.emission_status(f.d.p,49)-native_before==1,"bolt shape actual native source once");
+                    require(f.emission_status(f.d.p,60)-admitted_before==1,"bolt shape additive admission");
+                    if(shaped){++odd_admitted;if(primitives>max_primitives)max_primitives=primitives;}else ++plain_admitted;
+                    if(plan==1)std::printf("BOLT_SHAPE_DRAW frame=%llu shaped=%u primitives=%u vertices=%u buffer_bytes=%u position_offset=%u\n",f.frame,unsigned(shaped),unsigned(primitives),3u*unsigned(primitives),shaped?odd_bytes:buffer_bytes,shaped&&misdeclared?12u:0u);
+                }
+            }
+            // The TAA reference reads the emission-mode reference image and mask (frame_end), as the screen plan publishes them.
+            f.emission_reference_color=scene();
+            raw(3,f.emission_reference_mask);
+            f.emission_mask_valid=required&&f.emission_status(f.d.p,1);
+            require_quiet(f.emission_reference_color.size()==std::size_t(f.W)*f.H*4,"bolt shape reference image published");
+            f.frame_end();
+        }
+        api(f.d->SetIndices(nullptr),"bolt shape final index release");api(f.d->SetStreamSource(0,nullptr,0,0),"bolt shape final stream release");
+        std::printf("BOLT_SHAPE script=%s frames=%u shaped_draws=%u plain_draws=%u max_primitives=%u submissions=%u\n",bolt_shape_setting,bolt_frames,odd_admitted,plain_admitted,max_primitives,bolt_submissions);
+        return;
+    }
+    require(!bolt_shape_length,"X3M_FIXTURE_BOLT_SHAPE only with mode boltshape");
     // Plan: kind s = screen, f = fade, e = emission; overlap doubles the quad in
     // one DIP; faults are pass faults (5 SourceBind -> refusal 5 native; 6
     // Composite -> Incomplete, A|R recovered). Reset after frame 10 (the

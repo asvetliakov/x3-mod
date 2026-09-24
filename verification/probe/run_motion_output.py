@@ -759,6 +759,23 @@ CASES += [case(f'seam-taa-cutout-{script}', 'cutout', jitter=True, taa=True, laz
 # the coverage verdicts must not change.
 CASES += [case('seam-taa-cutout-opaque-get', 'cutout', jitter=True, taa=True, lazy=False, hdr=True, cutout='opaque', shadow=False,
                hdr_env=dict(CUTOUT_ENV, X3M_FIXTURE_CUTOUT_SCRIPT='opaque'))]
+# Bolt footprint shape refusals (motion_output_screen_emission_inc.h, mode boltshape;
+# docs/architecture/bolt-footprint.md "Shape refusal telemetry"): the bullet pair under the
+# additive option (G 2, the screen-additive run's configuration) with X3M_BOLT_FOOTPRINT on;
+# per frame one batch that fails exactly one draw-shape sub-clause and one ordinary bolt that
+# passes it; 301 Presents close one 300-frame window. prims: 2200/2050 primitives (above the
+# 6144-vertex scan bound, bit 4) from the fixture's own 1,769,472-byte buffer, sized after the
+# game part buffer the Run 78 A triage inferred (not a game measurement); decl: POSITION
+# FLOAT3 at offset 12 (bit 128). BOLT_SHAPE_EXPECT: script -> (detail, first refused
+# primitives, stream-0 bytes, window refused_max_prims).
+BOLT_SHAPE_ENV = dict(X3M_HDR_TONEMAP='agx', X3M_HDR_DECODE='gamma2.2', X3M_HDR_EXPOSURE='manual', X3M_HDR_EV_MANUAL='0',
+                      X3M_HDR_CLAMP='0', X3M_HDR_BLOOM='0', X3M_LINEAR_MATERIALS='0', X3M_LINEAR_DISTANCE_FADE='0',
+                      X3M_LINEAR_EMISSIONS='0', X3M_SCREEN_EMISSION='0', X3M_SCREEN_EMISSION_BOUND='0',
+                      X3M_SCREEN_EMISSION_ADDITIVE='2.0', X3M_BOLT_FOOTPRINT='3,12', X3M_MOTION_FRAME_LOG='60',
+                      X3M_CAPTURE_START='1000000', X3M_CAPTURE_FRAMES='0')
+BOLT_SHAPE_EXPECT = {'prims': (4, 2200, 1024 * 72 * 24, 2200), 'decl': (128, 2, 6144 * 24, 2)}
+CASES += [case(f'seam-ownership-bolt-shape-{script}', 'boltshape', 'ownership', jitter=True, taa=True, lazy=True, camera=True, sentinel='2', hdr=True,
+               hdr_env=dict(BOLT_SHAPE_ENV, X3M_FIXTURE_BOLT_SHAPE=script)) for script in BOLT_SHAPE_EXPECT]
 # Fade-band motion arm scripts (motion_output_fade_route_inc.h, X3M_FIXTURE_FADE_SCRIPT;
 # docs/architecture/linear-distance-fade-region.md "Fade-band route"): twelve
 # static frames over the eight jitter phases with the rotating camera (cut at
@@ -3724,6 +3741,39 @@ ZONLY_FRAMES, ZONLY_CONTROL_FRAMES, ZONLY_VS = 9, {2, 4, 6}, 'c78b4c68a87fce74'
 ZONLY_CAPTURE_FRAMES = (1, 2, 3)
 
 
+def validate_bolt_shape(name, text, trace, script):
+    """The boltshape script: every bullet draw admitted by the additive route (the fixture requires it per draw);
+    the device's one bolt_footprint_refused reason=shape row carries the failed sub-clause mask (4 primitives above
+    max_vertices/3, 128 POSITION not FLOAT3 at 0), the draw's primitives and the bound stream-0 buffer size; its
+    300-frame window row counts one shape refusal per shaped frame (plans 1-299), none for the ordinary bolts, and
+    carries refused_max_prims and refused_shape_bits."""
+    detail, primitives, stream_bytes, max_prims = BOLT_SHAPE_EXPECT[script]
+    lines = text.splitlines(); tl = trace.splitlines()
+    assert any(l.startswith('RESULT PASS ') for l in lines) and not any(l.startswith('RESULT FAIL') for l in lines), name
+    summary = [fields(l) for l in lines if l.startswith('BOLT_SHAPE ')]
+    assert len(summary) == 1 and summary[0]['script'] == script and int(summary[0]['frames']) == 301, (name, summary)
+    assert int(summary[0]['shaped_draws']) == 300 and int(summary[0]['plain_draws']) == 300 and int(summary[0]['max_primitives']) == max_prims, (name, summary)
+    modes = [fields(l) for l in tl if l.startswith('bolt_footprint_mode ')]
+    assert len(modes) == 1 and modes[0]['enabled'] == '1', (name, modes)
+    refused = [fields(l) for l in tl if l.startswith('bolt_footprint_refused ')]
+    shape = [r for r in refused if r['reason'] == 'shape']
+    assert len(shape) == 1, (name, refused)
+    row = shape[0]
+    assert (int(row['detail']), int(row['primitives']), int(row['stream0_bytes'])) == (detail, primitives, stream_bytes), (name, row)
+    assert not any(r['reason'] in ('instanced', 'binding') for r in refused), (name, refused)
+    windows = [fields(l) for l in tl if l.startswith('bolt_footprint ') and fields(l)['device'] == row['device']]
+    assert len(windows) == 1, (name, windows)
+    w = windows[0]
+    assert int(w['frames']) == 300 and int(w['draws']) == 598 and int(w['refused_shape']) == 299, (name, w)
+    assert int(w['refused_max_prims']) == max_prims and int(w['refused_shape_bits']) == detail, (name, w)
+    other = [fields(l) for l in tl if l.startswith('bolt_footprint ') and fields(l)['device'] != row['device']]
+    assert all(int(o['refused_shape']) == 0 and int(o['refused_max_prims']) == 0 and int(o['refused_shape_bits']) == 0 for o in other), (name, other)
+    return dict(checks=1, script=script, refused=dict(detail=int(row['detail']), primitives=int(row['primitives']), stream0_bytes=int(row['stream0_bytes']),
+                frame=int(row['frame']), index=int(row['index'])),
+                window={k: int(w[k]) for k in ('frames', 'draws', 'refused_shape', 'refused_max_prims', 'refused_shape_bits', 'refused_buffer', 'refused_rows', 'gated')},
+                other_devices=len(other))
+
+
 def validate_zonly(name, text, trace):
     """The zonly script (asteroid-fog-temporal.md, run 47): nine frames, each a depth-only prepass with the z_only
     vs_1_1 program (null PS, ZWRITEENABLE on, COLORWRITEENABLE 0) followed by the blended, z-write-off material draw
@@ -5662,7 +5712,7 @@ def main(argv=None):
             directory = BUILD / ('motion-output-' + name + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
             directory.mkdir(parents=True)
             shutil.copy(candidate_exe, directory)
-            shutil.copy(candidate_seam if mode in ('seam', 'msaa', 'cutout', 'zonly', 'faderoute', 'lightmapfade', 'lightmapwiden', 'shadowreplay', 'shadowretention', 'shadowpool', 'unmatchedstatic') + HDR_MODES and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
+            shutil.copy(candidate_seam if mode in ('seam', 'msaa', 'cutout', 'zonly', 'faderoute', 'lightmapfade', 'lightmapwiden', 'shadowreplay', 'shadowretention', 'shadowpool', 'unmatchedstatic', 'boltshape') + HDR_MODES and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
             env = dict(os.environ, X3M_CAMERA='vanilla', X3M_CHASE_SCENE_FIX='0', X3M_CHASE_COMBAT_TIGHTNESS='0', X3M_MOTION_OUTPUT=enabled, X3M_MOTION_JITTER='1' if jitter else '0', X3M_MOTION_JITTER_SAMPLES=str(JITTER_SAMPLES),
                        X3M_TAA='1' if taa else '0', X3M_TAA_DEBUG='1' if taa and not bench else '0',
                        X3M_CAPTURE_START='1000' if bench else str(BURST_CAPTURE[0]) if burst else '1',
@@ -5772,6 +5822,15 @@ def main(argv=None):
                 result['cases'][name] = case
                 save()
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} refused_frame={case["refused"]["frame"]}', flush=True)
+                continue
+            if mode == 'boltshape':
+                case = validate_bolt_shape(name, text, trace, hdr_env['X3M_FIXTURE_BOLT_SHAPE'])
+                case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
+                result['cases'][name] = case
+                save()
+                print(f'{name}: exit={completed.returncode} detail={case["refused"]["detail"]} primitives={case["refused"]["primitives"]} '
+                      f'refused_shape={case["window"]["refused_shape"]} refused_max_prims={case["window"]["refused_max_prims"]}', flush=True)
                 continue
             if mode == 'zonly':
                 case = validate_zonly(name, text, trace)
