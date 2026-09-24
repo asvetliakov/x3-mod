@@ -2270,3 +2270,52 @@ the stand command below plus the flags shown. Please report per launch:
 
 
 Stand command: Run 73 A's minus the two age-program flags (defaults since Run 81).
+
+## Run 82 (completed 2026-09-25: see table)
+
+**Run 82 A (queued 2026-09-25 00:26; Run82 DLL `cd8ef8e4…` from d1a4e360 installed 00:26; fleet overlay install-fleet3 unchanged).**
+New in this build: FOV remap (`--fov N` in game units, default 90 = "90 horizontal on 16:9", the in-game menu 70..100 now works in
+the same units; `--fov game` = vanilla), sun lens-flare overflow fix (`--sun-flare-fix`, on), chase camera FOV compensation
+(`--chase-fov-compensate`, on), S4 half box as the default, the small-parts cull reading the scene projection, fade ownership of
+alpha-tested station cutouts (with the owner, on), and the opt-in `--taa-thin-region-source both|screen|vote`. Three launches at
+5120x1440; each command is the stand command below plus the flags shown. Please report per launch, and name the sector of each stand:
+
+1. **Defaults, FOV, sun, chase** (launch 1: stand command + `--gpu-sync-timing`). In order:
+   a. Chase view: the fighter should sit at its Run 80 size again (the boom is 1.33x longer); then open the in-game FOV menu: it starts
+      at 90 (= today's look); step to 80 and 100 and back to 90: each step must change the view smoothly and 90 must return the same
+      picture; the ship keeps its size at every setting.
+   b. Sun: at the menu's 100, look straight at the sun and around it: the disc and flare must stay visible near the view centre (Run 81
+      A launch 1 lost it there); then back to 90 and the same check.
+   c. TAA: the lattice stand at rest and under a slow pan (the S4 half box is now the default; any halo on a laser or engine trail over
+      sky beyond 2 px); the two solar plants in the fog band (run311's stand) under a slow vertical pan with the stabiliser at its
+      default 0.7: no change expected.
+   F8 bursts: one at the lattice stand, one on the fog-band plants at rest. Rows: `fov ... status=patched`, `fov_confirm ... match=1`,
+   `sun_flare_fix site=0047e391 status=patched`, `chase_fov_compensate factor=1.333`, `motion_output_taa_box_resolution ... default=1`,
+   `cull_small_parts_value ... source=scene`, `fade_route_frame ... fade_tested=` > 0 on the plants, `fade_owner_masked=0`.
+2. **Stabiliser off, retry** (launch 2: stand command + `--taa-sentinel-stabiliser 0`): the same two solar plants in the fog band, slow
+   vertical pan 3-9 px/frame, then at rest: the Run 81 A launch 3 shimmer on the panels and trusses should be gone now that the
+   cutouts are owned; then the lattice. One F8 burst at rest and one during the pan on the plants. Decides the stabiliser's removal.
+3. **Thin-region source** (launch 3: stand command + `--gpu-sync-timing --taa-thin-region-source vote`): the lattice stand at rest and
+   under a pan, hull-backed arms and thin masts: any crawl or shimmer that launch 1 did not have. One F8 burst at the stand. The
+   `taa_mask_tests` row against launch 1 (about 0.1 ms less expected) and the look decide whether the screen-space test can go later.
+4. Exit through the menu after each launch.
+
+Stand command (Run 73 A's minus the two age-program flags, which are defaults now):
+
+```sh
+env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3-mod/x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --light-map-far-fade 80,220 --motion-rt-mode lazy --frame-end-stride 1 --volumetric-fog 0.02 --volumetric-fog-cards replace --volumetric-fog-range stored --volumetric-fog-timing --capture-start 999999 --capture-frames 8 --capture-delay 300 --cull-small-parts 4 --frame-timing --frame-phases --object-bounds-log --cull-census
+```
+
+To remove the overlay: delete `addon/05.cat`, `05.dat`, `05.x3m-lod.json` and `x3m-lod-batch*.json/txt`; the originals are untouched.
+
+Completed run commands and instructions are preserved in
+[the completed-run archive](../archive/user-runs-completed.md) and the
+[run 48 archive](../archive/run48-completed-2026-09-20.md); they are provenance,
+not rerun requests.
+
+
+<a id="51-media-retry-counter--same-view-longer-diagnostic-interval"></a>
+<a id="53-spatial-fog-and-moving-lattice-state--ready-for-flight"></a>
+Run51/53 instructions are [archived](../archive/run53-completed-2026-09-20.md); they are not rerun requests.
+
+No run is queued (Run 83 A follows the Run 83 candidate). Completed instructions for Runs 73-82 are in the [archive](../archive/user-runs-completed.md).

@@ -1,0 +1,7 @@
+frame 4444: nodes 16 box-centre shift px p50 0.00 min 0.00 max 0.00; plant centre 2573,595
+frame 4445: nodes 16 box-centre shift px p50 0.00 min 0.00 max 0.00; plant centre 2573,595
+frame 4446: nodes 16 box-centre shift px p50 0.00 min 0.00 max 0.00; plant centre 2573,595
+frame 4447: nodes 16 box-centre shift px p50 0.00 min 0.00 max 0.00; plant centre 2573,595
+frame 4448: nodes 16 box-centre shift px p50 0.00 min 0.00 max 0.00; plant centre 2573,595
+frame 4449: nodes 16 box-centre shift px p50 0.00 min 0.00 max 0.00; plant centre 2573,595
+frame 4450: nodes 16 box-centre shift px p50 0.00 min 0.00 max 0.00; plant centre 2573,595

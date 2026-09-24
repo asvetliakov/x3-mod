@@ -1,0 +1,88 @@
+applied (cull_small_parts_value): px=4 m00=0.499998 focus=0x3470 width=5120 threshold=3; cull_small_parts_frame rows=8
+scene projection runs: first..last frame, rows, p00, F, factor F/0x4000, thresholds px 2/4/8 corrected (scene P[0] and F) | as applied (HUD P[0], 0x4000)
+237..2754 rows=2518 p00=0.3750 F=0x4000 factor=1.0000 thresholds=2/3/6 | applied 2/3/5  <- differs
+2755..2787 rows=33 p00=0.4914 F=0x351f factor=0.8300 thresholds=2/3/5 | applied 2/3/5
+2788..2797 rows=10 p00=0.4829 F=0x35cf factor=0.8408 thresholds=2/3/5 | applied 2/3/5
+2798..2808 rows=11 p00=0.4745 F=0x3680 factor=0.8516 thresholds=2/3/5 | applied 2/3/5
+2809..2819 rows=11 p00=0.4663 F=0x3732 factor=0.8624 thresholds=2/3/5 | applied 2/3/5
+2820..2829 rows=10 p00=0.4582 F=0x37e4 factor=0.8733 thresholds=2/3/5 | applied 2/3/5
+2830..2839 rows=10 p00=0.4502 F=0x3898 factor=0.8843 thresholds=2/3/6 | applied 2/3/5  <- differs
+2840..2848 rows=9 p00=0.4424 F=0x394c factor=0.8953 thresholds=2/3/6 | applied 2/3/5  <- differs
+2849..2856 rows=8 p00=0.4346 F=0x3a02 factor=0.9064 thresholds=2/3/6 | applied 2/3/5  <- differs
+2857..2869 rows=13 p00=0.4271 F=0x3ab8 factor=0.9175 thresholds=2/3/6 | applied 2/3/5  <- differs
+2870..3028 rows=159 p00=0.4196 F=0x3b6f factor=0.9286 thresholds=2/3/6 | applied 2/3/5  <- differs
+3029..3041 rows=13 p00=0.4271 F=0x3ab8 factor=0.9175 thresholds=2/3/6 | applied 2/3/5  <- differs
+3042..3049 rows=8 p00=0.4346 F=0x3a02 factor=0.9064 thresholds=2/3/6 | applied 2/3/5  <- differs
+3050..3057 rows=8 p00=0.4424 F=0x394c factor=0.8953 thresholds=2/3/6 | applied 2/3/5  <- differs
+3058..3064 rows=7 p00=0.4502 F=0x3898 factor=0.8843 thresholds=2/3/6 | applied 2/3/5  <- differs
+3065..3077 rows=13 p00=0.4582 F=0x37e4 factor=0.8733 thresholds=2/3/5 | applied 2/3/5
+3078..3089 rows=12 p00=0.4663 F=0x3732 factor=0.8624 thresholds=2/3/5 | applied 2/3/5
+3090..3104 rows=15 p00=0.4745 F=0x3680 factor=0.8516 thresholds=2/3/5 | applied 2/3/5
+3105..3116 rows=12 p00=0.4829 F=0x35cf factor=0.8408 thresholds=2/3/5 | applied 2/3/5
+3117..3128 rows=12 p00=0.4914 F=0x351f factor=0.8300 thresholds=2/3/5 | applied 2/3/5
+3129..3160 rows=32 p00=0.5000 F=0x3470 factor=0.8193 thresholds=2/3/5 | applied 2/3/5
+3161..3168 rows=8 p00=0.5088 F=0x33c1 factor=0.8087 thresholds=2/3/5 | applied 2/3/5
+3169..3174 rows=6 p00=0.5178 F=0x3313 factor=0.7980 thresholds=2/3/5 | applied 2/3/5
+3175..3180 rows=6 p00=0.5269 F=0x3267 factor=0.7875 thresholds=2/3/5 | applied 2/3/5
+3181..3185 rows=5 p00=0.5362 F=0x31bb factor=0.7770 thresholds=2/3/5 | applied 2/3/5
+3186..3190 rows=5 p00=0.5457 F=0x3110 factor=0.7666 thresholds=2/3/5 | applied 2/3/5
+3191..3196 rows=6 p00=0.5553 F=0x3066 factor=0.7562 thresholds=2/3/5 | applied 2/3/5
+3197..3202 rows=6 p00=0.5652 F=0x2fbc factor=0.7458 thresholds=2/3/5 | applied 2/3/5
+3203..3209 rows=7 p00=0.5752 F=0x2f14 factor=0.7356 thresholds=2/3/5 | applied 2/3/5
+3210..3215 rows=6 p00=0.5855 F=0x2e6c factor=0.7253 thresholds=2/3/5 | applied 2/3/5
+3216..3221 rows=6 p00=0.5959 F=0x2dc5 factor=0.7151 thresholds=2/3/5 | applied 2/3/5
+3222..3228 rows=7 p00=0.6066 F=0x2d1f factor=0.7050 thresholds=2/3/5 | applied 2/3/5
+3229..3279 rows=51 p00=0.6175 F=0x2c79 factor=0.6949 thresholds=2/3/5 | applied 2/3/5
+3280..3285 rows=6 p00=0.6066 F=0x2d1f factor=0.7050 thresholds=2/3/5 | applied 2/3/5
+3286..3291 rows=6 p00=0.5959 F=0x2dc5 factor=0.7151 thresholds=2/3/5 | applied 2/3/5
+3292..3297 rows=6 p00=0.5855 F=0x2e6c factor=0.7253 thresholds=2/3/5 | applied 2/3/5
+3298..3301 rows=4 p00=0.5752 F=0x2f14 factor=0.7356 thresholds=2/3/5 | applied 2/3/5
+3302..3307 rows=6 p00=0.5652 F=0x2fbc factor=0.7458 thresholds=2/3/5 | applied 2/3/5
+3308..3312 rows=5 p00=0.5553 F=0x3066 factor=0.7562 thresholds=2/3/5 | applied 2/3/5
+3313..3315 rows=3 p00=0.5457 F=0x3110 factor=0.7666 thresholds=2/3/5 | applied 2/3/5
+3316..3323 rows=8 p00=0.5362 F=0x31bb factor=0.7770 thresholds=2/3/5 | applied 2/3/5
+3324..3333 rows=10 p00=0.5269 F=0x3267 factor=0.7875 thresholds=2/3/5 | applied 2/3/5
+3334..3341 rows=8 p00=0.5178 F=0x3313 factor=0.7980 thresholds=2/3/5 | applied 2/3/5
+3342..3351 rows=10 p00=0.5088 F=0x33c1 factor=0.8087 thresholds=2/3/5 | applied 2/3/5
+3352..3370 rows=19 p00=0.5000 F=0x3470 factor=0.8193 thresholds=2/3/5 | applied 2/3/5
+3371..3399 rows=29 p00=0.4914 F=0x351f factor=0.8300 thresholds=2/3/5 | applied 2/3/5
+3400..3409 rows=10 p00=0.4829 F=0x35cf factor=0.8408 thresholds=2/3/5 | applied 2/3/5
+3410..3417 rows=8 p00=0.4745 F=0x3680 factor=0.8516 thresholds=2/3/5 | applied 2/3/5
+3418..3426 rows=9 p00=0.4663 F=0x3732 factor=0.8624 thresholds=2/3/5 | applied 2/3/5
+3427..3434 rows=8 p00=0.4582 F=0x37e4 factor=0.8733 thresholds=2/3/5 | applied 2/3/5
+3435..3457 rows=23 p00=0.4502 F=0x3898 factor=0.8843 thresholds=2/3/6 | applied 2/3/5  <- differs
+3458..3470 rows=13 p00=0.4424 F=0x394c factor=0.8953 thresholds=2/3/6 | applied 2/3/5  <- differs
+3471..3481 rows=11 p00=0.4346 F=0x3a02 factor=0.9064 thresholds=2/3/6 | applied 2/3/5  <- differs
+3482..3488 rows=7 p00=0.4271 F=0x3ab8 factor=0.9175 thresholds=2/3/6 | applied 2/3/5  <- differs
+3489..3610 rows=122 p00=0.4196 F=0x3b6f factor=0.9286 thresholds=2/3/6 | applied 2/3/5  <- differs
+3611..3621 rows=11 p00=0.4271 F=0x3ab8 factor=0.9175 thresholds=2/3/6 | applied 2/3/5  <- differs
+3622..3626 rows=5 p00=0.4346 F=0x3a02 factor=0.9064 thresholds=2/3/6 | applied 2/3/5  <- differs
+3627..3632 rows=6 p00=0.4424 F=0x394c factor=0.8953 thresholds=2/3/6 | applied 2/3/5  <- differs
+3633..3637 rows=5 p00=0.4502 F=0x3898 factor=0.8843 thresholds=2/3/6 | applied 2/3/5  <- differs
+3638..3642 rows=5 p00=0.4582 F=0x37e4 factor=0.8733 thresholds=2/3/5 | applied 2/3/5
+3643..3648 rows=6 p00=0.4663 F=0x3732 factor=0.8624 thresholds=2/3/5 | applied 2/3/5
+3649..3654 rows=6 p00=0.4745 F=0x3680 factor=0.8516 thresholds=2/3/5 | applied 2/3/5
+3655..3660 rows=6 p00=0.4829 F=0x35cf factor=0.8408 thresholds=2/3/5 | applied 2/3/5
+3661..3672 rows=12 p00=0.4914 F=0x351f factor=0.8300 thresholds=2/3/5 | applied 2/3/5
+3673..4041 rows=369 p00=0.5000 F=0x3470 factor=0.8193 thresholds=2/3/5 | applied 2/3/5
+4042..4046 rows=5 p00=0.4914 F=0x351f factor=0.8300 thresholds=2/3/5 | applied 2/3/5
+4047..4051 rows=5 p00=0.4829 F=0x35cf factor=0.8408 thresholds=2/3/5 | applied 2/3/5
+4052..4056 rows=5 p00=0.4745 F=0x3680 factor=0.8516 thresholds=2/3/5 | applied 2/3/5
+4057..4060 rows=4 p00=0.4663 F=0x3732 factor=0.8624 thresholds=2/3/5 | applied 2/3/5
+4061..4065 rows=5 p00=0.4582 F=0x37e4 factor=0.8733 thresholds=2/3/5 | applied 2/3/5
+4066..4070 rows=5 p00=0.4502 F=0x3898 factor=0.8843 thresholds=2/3/6 | applied 2/3/5  <- differs
+4071..4074 rows=4 p00=0.4424 F=0x394c factor=0.8953 thresholds=2/3/6 | applied 2/3/5  <- differs
+4075..4079 rows=5 p00=0.4346 F=0x3a02 factor=0.9064 thresholds=2/3/6 | applied 2/3/5  <- differs
+4080..4084 rows=5 p00=0.4271 F=0x3ab8 factor=0.9175 thresholds=2/3/6 | applied 2/3/5  <- differs
+4085..4492 rows=408 p00=0.4196 F=0x3b6f factor=0.9286 thresholds=2/3/6 | applied 2/3/5  <- differs
+4493..4498 rows=6 p00=0.4271 F=0x3ab8 factor=0.9175 thresholds=2/3/6 | applied 2/3/5  <- differs
+4499..4503 rows=5 p00=0.4346 F=0x3a02 factor=0.9064 thresholds=2/3/6 | applied 2/3/5  <- differs
+4504..4508 rows=5 p00=0.4424 F=0x394c factor=0.8953 thresholds=2/3/6 | applied 2/3/5  <- differs
+4509..4512 rows=4 p00=0.4502 F=0x3898 factor=0.8843 thresholds=2/3/6 | applied 2/3/5  <- differs
+4513..4517 rows=5 p00=0.4582 F=0x37e4 factor=0.8733 thresholds=2/3/5 | applied 2/3/5
+4518..4521 rows=4 p00=0.4663 F=0x3732 factor=0.8624 thresholds=2/3/5 | applied 2/3/5
+4522..4526 rows=5 p00=0.4745 F=0x3680 factor=0.8516 thresholds=2/3/5 | applied 2/3/5
+4527..4531 rows=5 p00=0.4829 F=0x35cf factor=0.8408 thresholds=2/3/5 | applied 2/3/5
+4532..4543 rows=12 p00=0.4914 F=0x351f factor=0.8300 thresholds=2/3/5 | applied 2/3/5
+4544..5295 rows=752 p00=0.5000 F=0x3470 factor=0.8193 thresholds=2/3/5 | applied 2/3/5
+runs 85

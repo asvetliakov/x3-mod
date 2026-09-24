@@ -1,0 +1,8 @@
+Run 82 A launch 3: run315 + run318 (Run82 DLL cd8ef8e4, --taa-thin-region-source vote, --gpu-sync-timing) vs run312 (source both) and run310. Logs read-only, no Wine. Run from this directory.
+Scripts copied from ../run310-run81a-s4-half (gpu_passes, gpu_windows, gpu_taa, pan_windows, gpu_rest_pan) and ../run309-run81a-launch1 (exit_rows, abnormal_rows); thin_vote_totals.py and burst_luma_detail.py new.
+python3 exit_rows.py 312 315 318 > exit_rows_out.txt; python3 abnormal_rows.py 315 318 312 > abnormal_rows_out.txt   # Q1
+for r in 312 315 318; do grep -aE '^(taa_thin_region_source|thin_vote_absent|taa_thin_vote|motion_output_taa_box|fov_|motion_output_scene_hook_disagreement)' /tmp/x3-bottleX3-run$r/session-*.log; done > config_rows_out.txt   # Q1 (plus fov/sun_flare_fix/thin_vote_mode rows read by grep)
+python3 gpu_taa.py 310 312 315 318 > gpu_taa_out.txt; python3 pan_windows.py 310 312 315 318 > pan_windows_out.txt; python3 gpu_rest_pan.py > gpu_rest_pan_out.txt   # Q2
+for r in 312 315 318; do python3 gpu_passes.py $r > gpu_passes_${r}_out.txt; done   # Q2
+python3 thin_vote_totals.py 315 $(seq 4443 4450) $(seq 4984 4991) ; python3 thin_vote_totals.py 318; python3 thin_vote_totals.py 312   # Q3 -> thin_vote_totals_out.txt
+python3 burst_luma_detail.py > burst_luma_detail_out.txt   # Q4

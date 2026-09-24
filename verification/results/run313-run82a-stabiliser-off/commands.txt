@@ -1,0 +1,19 @@
+Run 82 A launch 2 triage: run313 (/tmp/x3-bottleX3-run313, session-20260925-003730-212.log, fog plants, bursts 1673-1680 rest and 2124-2131 pan;
+capture_armed start_frame=1673/2124 = log frame numbers) and run314 (/tmp/x3-bottleX3-run314, session-20260925-004115-212.log, Terran lattice stand).
+Run82 DLL cd8ef8e4 (d1a4e360), --gpu-sync-timing --taa-sentinel-stabiliser 0. Scripts copied from ../run311-run81a-stabiliser-off; new: thin_vote_rows.py, burst_px.py, locate_plants.py.
+Read-only, no Wine, no build. Run from this directory (zsh: frame lists as arrays A=(1673..1680) B=(2124..2131)).
+grep -aE '^(fade_rt2_owner_configured|motion_output_taa_box_resolution device=1 requested|fov site|fov_confirm|taa_thin_vote_configured|thin_vote_mode) ' $L   # Q1 config
+python3 exit_rows.py 313 314 > exit_rows_out.txt; python3 abnormal_rows.py 313 314 > abnormal_rows_out.txt        # Q1
+python3 fade_owner_frames.py 313 314 > fade_owner_frames_out.txt                                                    # Q2/Q7 totals
+python3 window_rows.py 313 1643-1680 1673-1680 2094-2131 2124-2131 > window_rows_out.txt                            # Q2 cond. 1 windows
+python3 burst_px.py 313 > burst_px_out.txt; python3 burst_frames.py 313 > burst_frames_out.txt                      # Q2/Q6 per-frame routed/tested + cut_median_px
+python3 - (inline in unjittered_frames_out.txt header) : frame ranges with unjittered_depth_writers>0 > unjittered_frames_out.txt
+python3 route_rows.py 313 1673 2124 > route_rows_out.txt; python3 draw_table.py 313 1673 > draw_table_1673_out.txt; python3 draw_table.py 313 2124 > draw_table_2124_out.txt   # Q3
+python3 locate_plants.py 313 1673|2124|2131 > locate_plants_<f>_out.txt                                             # Q4 crop choice (far-owner clusters)
+python3 owner_pixels.py 313 $A $B > owner_pixels_out.txt                                                            # Q4
+python3 station_pixels.py 313 2180 380 2490 790 $A > station_pixels_1673_out.txt                                    # Q4 both plants, rest
+python3 station_pixels.py 313 1990 660 2340 1210 $B > station_pixels_2124_out.txt                                   # Q4 both plants + player ship edge, pan
+python3 station_pixels.py 313 3860 420 4090 640 $B > station_pixels_2124_plant2_out.txt                             # NOT a plant: jump gate ring (sentinel = gate interior); excluded
+python3 shimmer.py 313 2180 380 2490 790 1673 8 > shimmer_1673_out.txt; S=24 python3 shimmer.py 313 1990 660 2340 1210 2124 8 > shimmer_2124_out.txt   # Q5 (2124 alignment unreliable, ship dominates)
+python3 thin_vote_rows.py 313 314 > thin_vote_rows_out.txt                                                          # Q7
+grep -ac 'unmatched=no_zwrite' run313 log -> 0

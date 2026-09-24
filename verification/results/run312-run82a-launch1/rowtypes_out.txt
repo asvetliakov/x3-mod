@@ -1,0 +1,294 @@
+227225 constant
+193088 sampler
+55168 state
+28356 object_matrix
+27584 stream
+20688 transform
+10344 constants
+9608 vertex_element
+8620 texture
+6725 texture_desc
+5388 camera_state
+5387 thin_vote_frame
+5387 shadow_lease_retirement
+5387 screen_emission_additive_frame
+5387 motion_output_frame
+5387 hdr_frame
+5387 frame_end
+5387 fade_route_frame
+5381 hull_emission_frame
+5059 volumetric_fog_frame
+5059 volumetric_fog_cards
+5059 volumetric_fog_cache_frame
+5059 sun_shadow_lane_frame
+5059 sun_shadow_apply_frame
+5059 shadow_retention_frame
+5059 shadow_replay_sun
+5059 shadow_replay_depth
+5059 shadow_replay_candidates
+5059 hull_lightmap_widen_frame
+5059 hull_lightmap_frame
+5059 hull_lightmap_far_fade_frame
+5004 object_basis
+4971 emission_source_gain_frame
+3625 telemetry_metric
+3568 surface
+3400 buffer_content
+1941 cull_census
+1836 capture_event
+1769 resource
+1724 viewport
+1724 vertex_buffer
+1724 object_context
+1724 motion_lifetime
+1724 motion_input
+1724 motion_geometry
+1724 indices
+1724 geometry
+1724 draw_result
+1724 draw_args
+1724 draw
+1676 index_buffer
+1668 object_position
+1668 object_evidence
+1468 motion_route
+ 712 object_ancestor
+ 497 telemetry_cursor_poll
+ 435 loading_metric
+ 434 object_ancestry
+ 424 shadow_retention_caster
+ 424 engine_memory
+ 423 telemetry_summary
+ 408 shadow_replay_caster
+ 375 gpu_sync_timing
+ 332 taa_invalidate
+ 288 object_bounds
+ 234 chase_transition_timing
+ 160 hull_lightmap_widen_draw
+ 104 chase_native_timing_metric
+  96 chase_aim_basis
+  87 cull_small_parts_value
+  69 volumetric_fog_prefill
+  68 frame_timing_slow
+  68 frame_phases_slow
+  64 object_fade
+  64 motion_unmatched_static
+  60 shader
+  54 motion_unmatched_static_frame
+  52 chase_view_restore_timing
+  52 chase_cursor_update
+  49 resource_reader_metric
+  48 motion_output_variant
+  48 dat_handle_pool_metric
+  47 mesh_adjacency_metric
+  40 shadow_replay_map_readback
+  40 shadow_replay_map_basis
+  32 set_rt
+  32 clear_viewport
+  32 clear
+  32 chase_aim_pose
+  28 chase_camera
+  27 loading_hook
+  26 chase_view_restore_state
+  26 chase_transition_window
+  26 chase_native_timing_window
+  26 chase_lead_window
+  26 chase_fire_window
+  26 chase_cursor_window
+  26 chase_central_hud_window
+  26 chase_camera_window
+  26 chase_camera_timing
+  26 chase_aim_window
+  24 sun_shadow_original_variant
+  24 sun_shadow_original_lightmap_variant
+  24 hull_lightmap_variant
+  24 color_fill
+  21 sun_shadow_original_lightmap_widen_variant
+  21 hull_lightmap_widen_variant
+  18 shadow_retention_summary
+  18 collide_memo
+  18 chase_transition_event
+  18 chase_transition_detail
+  18 bloom_prepare
+  18 bloom_commit
+  17 volumetric_fog_repair_census
+  17 shadow_retention_resight
+  17 screen_emission_additive_refused_window
+  17 media_cue_window
+  17 frame_timing
+  17 frame_phases
+  17 draw_pairs
+  17 draw_batch
+  17 collide_census
+  17 bolt_footprint
+  17 bloom_admission
+  16 shadow_replay_sun_point_summary
+  16 set_depth
+  16 motion_output_mip_bias_game_write
+  16 hull_emission_refused_state
+  16 hull_emission_refused
+  16 emission_source_gain_refused_state
+  16 chase_aim_writer
+  16 chase_aim_ray
+  16 chase_aim_event
+  15 shadow_replay_sun_point
+  15 hull_emission_variant
+  12 hull_emission_draw
+  10 frame_phase_site
+   9 shadow_cascade_set
+   9 ownership_copy_depth
+   9 chase_transition_site
+   8 sun_shadow_apply_params
+   8 stretch_rect
+   8 scene_end_marker
+   8 object_target
+   8 motion_output_readback
+   8 motion_output_depth_readback
+   8 motion_output_cut
+   8 hdr_readback
+   8 frame_begin
+   8 cull_small_parts_frame
+   8 cull_census_frame
+   8 collide_census_frame
+   8 chase_fov_compensate
+   7 voice_dmo_fallback
+   7 gz_buffer_file
+   7 chase_view_restore_site
+   6 telemetry_window_context
+   6 telemetry_window
+   6 emission_source_gain_variant
+   5 volumetric_fog_cache
+   4 telemetry_span
+   4 shader_population
+   3 volumetric_fog_sector
+   3 screen_emission_additive_variant
+   3 ownership_factory
+   3 loading_phase
+   3 crypt_cache
+   3 adapter
+   2 telemetry_presentation
+   2 motion_output_taa_box_resolution
+   2 mesh_hook
+   2 loaded_module
+   2 hull_emission_program
+   2 fov_confirm
+   2 bolt_footprint_hist
+   2 application_admission_final
+   1 x3-modern-renderer
+   1 volumetric_fog_shadow_pass
+   1 volumetric_fog_range
+   1 volumetric_fog_prepare
+   1 volumetric_fog_motes_mode
+   1 volumetric_fog_mode
+   1 volumetric_fog_march_scale
+   1 volumetric_fog_look_mode
+   1 volumetric_fog_handover_mode
+   1 volumetric_fog_handover
+   1 volumetric_fog_far_bins
+   1 volumetric_fog_families
+   1 volumetric_fog_docked
+   1 volumetric_fog_device
+   1 thin_vote_mode
+   1 terran_station_lod
+   1 telemetry_start
+   1 telemetry_present_window
+   1 telemetry_first_present
+   1 taa_thin_vote_configured
+   1 sun_shadow_lane_device
+   1 sun_shadow_lane_depth
+   1 sun_shadow_apply_mode
+   1 sun_shadow_apply_device
+   1 sun_light_poll
+   1 sun_flare_fix
+   1 state_hooks
+   1 shadow_retention_mode
+   1 shadow_retention_device
+   1 shadow_replay_sun_source
+   1 shadow_replay_sun_latch
+   1 shadow_replay_depth_target
+   1 shadow_replay_depth_mode
+   1 shadow_replay_depth_device
+   1 shadow_replay_cascades_device
+   1 shadow_replay_candidates_mode
+   1 shadow_cascades_mode
+   1 shadow_cascade_footprint
+   1 screen_emission_bound
+   1 screen_emission_additive_mode
+   1 scene_hook
+   1 resource_reader
+   1 proxy_options
+   1 proxy_identity
+   1 proxy_environment
+   1 pause_key_only
+   1 ownership_mode
+   1 object_trace
+   1 object_lifetime
+   1 object_bounds_mode
+   1 motion_output_target
+   1 motion_output_taa_history_taps
+   1 motion_output_taa_depth_fold
+   1 motion_output_taa
+   1 motion_output_mode
+   1 motion_output_mip_bias_summary
+   1 motion_output_device
+   1 motion_direct
+   1 motion_capture_mode
+   1 mesh_trace
+   1 mesh_cache
+   1 mesh_adjacency_fp_first
+   1 mesh_adjacency
+   1 media_cue_site
+   1 media_cue_mode
+   1 lod_occlusion
+   1 loading_trace
+   1 loading_intervals_start
+   1 loading_intervals_file
+   1 linear_cutout_device
+   1 light_map_far_fade_mode
+   1 light_map_far_fade_configured
+   1 hull_lightmap_widen_summary
+   1 hull_lightmap_gain_mode
+   1 hull_emissive_widening_mode
+   1 hull_emissive_widening_configured
+   1 hull_emission_gain_mode
+   1 hdr_tonemap
+   1 hdr_target
+   1 hdr_device
+   1 gz_buffer
+   1 gpu_sync_timing_mode
+   1 frame_phase_mode
+   1 frame_end_stride_mode
+   1 fps_overlay_mode
+   1 fov
+   1 fade_rt2_owner_configured
+   1 fade_route_mode
+   1 emission_source_gain_pair
+   1 emission_source_gain_mode
+   1 device_hooked
+   1 device_creation_policy
+   1 dat_handle_pool
+   1 cull_small_parts
+   1 cull_census_lod_switch
+   1 create_device_result
+   1 create_device
+   1 collide_sat_sse2
+   1 collide_box_cull
+   1 clock_anchor
+   1 chase_view_restore
+   1 chase_transition
+   1 chase_native_timing
+   1 chase_lead
+   1 chase_fire
+   1 chase_central_hud
+   1 chase_aim_trace
+   1 capture_dir=C:\X3\x3-modern-captures
+   1 capture_caps
+   1 capture_armed
+   1 bolt_footprint_refused
+   1 bolt_footprint_mode
+   1 bolt_footprint_buffer
+   1 bloom_source_clamp_mode
+   1 bloom_refusal
+   1 bloom_attach
+   1 backend
+   1 application_admission_mode

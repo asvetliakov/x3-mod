@@ -1,0 +1,156 @@
+== 1. writers (whole .text, disp32 anchored) ==
+-- stores to [reg+0x298] (camera focus +0x298 (also other classes)):
+   0x0041ba2c 89 85 98 02 00 00  mov dword ptr [ebp + 0x298], eax
+   0x00421398 89 b8 98 02 00 00  mov dword ptr [eax + 0x298], edi
+   0x004213ad 89 b0 98 02 00 00  mov dword ptr [eax + 0x298], esi
+   0x004213c2 89 b0 98 02 00 00  mov dword ptr [eax + 0x298], esi
+   0x004213d7 89 b0 98 02 00 00  mov dword ptr [eax + 0x298], esi
+   0x00427e45 89 81 98 02 00 00  mov dword ptr [ecx + 0x298], eax
+   0x0042d229 89 88 98 02 00 00  mov dword ptr [eax + 0x298], ecx
+   0x0042d509 89 88 98 02 00 00  mov dword ptr [eax + 0x298], ecx
+   0x0042d53c 89 88 98 02 00 00  mov dword ptr [eax + 0x298], ecx
+   0x0042d584 89 88 98 02 00 00  mov dword ptr [eax + 0x298], ecx
+   0x0042e7a8 89 88 98 02 00 00  mov dword ptr [eax + 0x298], ecx
+   0x00477464 89 81 98 02 00 00  mov dword ptr [ecx + 0x298], eax
+   0x0047a435 89 83 98 02 00 00  mov dword ptr [ebx + 0x298], eax
+   0x00488d69 c7 87 98 02 00 00 00 40 00 00  mov dword ptr [edi + 0x298], 0x4000
+   0x0048e78e 89 83 98 02 00 00  mov dword ptr [ebx + 0x298], eax
+   0x0048e7a8 89 82 98 02 00 00  mov dword ptr [edx + 0x298], eax
+   0x00494f34 89 88 98 02 00 00  mov dword ptr [eax + 0x298], ecx
+-- stores to [reg+0x230] (cockpit +0x230):
+   0x0041a55c 89 8d 30 02 00 00  mov dword ptr [ebp + 0x230], ecx
+   0x0041fd98 89 87 30 02 00 00  mov dword ptr [edi + 0x230], eax
+   0x004213e5 89 b3 30 02 00 00  mov dword ptr [ebx + 0x230], esi
+   0x0043164a 89 8d 30 02 00 00  mov dword ptr [ebp + 0x230], ecx
+   0x00457842 89 91 30 02 00 00  mov dword ptr [ecx + 0x230], edx
+   0x00460b8b 89 91 30 02 00 00  mov dword ptr [ecx + 0x230], edx
+   0x0047a2c6 89 8b 30 02 00 00  mov dword ptr [ebx + 0x230], ecx
+-- stores to [reg+0x1c0] (cockpit connect mode +0x1c0):
+   0x00419f12 89 95 c0 01 00 00  mov dword ptr [ebp + 0x1c0], edx
+   0x0041fce4 89 af c0 01 00 00  mov dword ptr [edi + 0x1c0], ebp
+   0x004228a8 c7 83 c0 01 00 00 00 00 00 00  mov dword ptr [ebx + 0x1c0], 0
+   0x00422cd7 89 86 c0 01 00 00  mov dword ptr [esi + 0x1c0], eax
+   0x0043305e 89 87 c0 01 00 00  mov dword ptr [edi + 0x1c0], eax
+   0x00441906 89 99 c0 01 00 00  mov dword ptr [ecx + 0x1c0], ebx
+   0x00441911 c7 82 c0 01 00 00 14 00 00 00  mov dword ptr [edx + 0x1c0], 0x14
+   0x00443b5a 8c 82 c0 01 00 00  mov word ptr [edx + 0x1c0], es
+   0x0047a175 89 83 c0 01 00 00  mov dword ptr [ebx + 0x1c0], eax
+   0x00493f75 89 88 c0 01 00 00  mov dword ptr [eax + 0x1c0], ecx
+-- MOV [reg+0x24],0x4000 anywhere: ['0x0041c9d9 c7 46 24 00 40 00 00 mov dword ptr [esi + 0x24], 0x4000']
+-- stores to the registry slot [0x00608504]: ['0x401a0d', '0x401e9f', '0x403a46', '0x40423b', '0x405106']
+-- registry constructor callers: ['0x403a26', '0x4050f4'] ; registry serializer 0x0041c6e0 callers: ['0x41f684', '0x41f790'] ; INS-section loader 0x0041f720 callers: ['0x405112'] ; cockpit ctor callers: ['0x41f83b', '0x42d392']
+-- registry serializer, save reads of +0x24:
+   0x0041c7c9 8b 45 24                       mov eax, dword ptr [ebp + 0x24]
+   0x0041c7cc 50                             push eax
+   0x0041c7cd 56                             push esi
+   0x0041c7ce e8 cd cc 0c 00                 call 0x4e94a0
+   0x0041c8de 8b 45 24                       mov eax, dword ptr [ebp + 0x24]
+   0x0041c8e1 50                             push eax
+   0x0041c8e2 56                             push esi
+   0x0041c8e3 e8 b8 cb 0c 00                 call 0x4e94a0
+-- registry serializer, load tail (the store of the saved focus):
+   0x0041c8b4 e8 67 cb 0c 00                 call 0x4e9420
+   0x0041c8b9 89 45 20                       mov dword ptr [ebp + 0x20], eax
+   0x0041c8bc e8 5f cb 0c 00                 call 0x4e9420
+   0x0041c8c1 89 45 24                       mov dword ptr [ebp + 0x24], eax
+   0x0041c8c4 5e                             pop esi
+   0x0041c8c5 b0 01                          mov al, 1
+   0x0041c8c7 5d                             pop ebp
+   0x0041c8c8 c2 08 00                       ret 8
+-- load order in 0x00404cc0 / 0x0041f720:
+   0x004050f4 e8 67 78 01 00                 call 0x41c960
+   0x00405112 e8 09 a6 01 00                 call 0x41f720
+   0x0041f790 e8 4b cf ff ff                 call 0x41c6e0
+   0x0041f83b e8 90 00 00 00                 call 0x41f8d0
+   0x0041f854 e8 c7 65 00 00                 call 0x425e20
+-- cockpit ctor copy, per-frame apply, connect-mode load:
+   0x0041fd95 8b 42 24                       mov eax, dword ptr [edx + 0x24]
+   0x0041fd98 89 87 30 02 00 00              mov dword ptr [edi + 0x230], eax
+   0x0042114e 8b 72 24                       mov esi, dword ptr [edx + 0x24]
+   0x00421588 83 bb c0 01 00 00 06           cmp dword ptr [ebx + 0x1c0], 6
+   0x0042158f 0f 85 e7 fd ff ff              jne 0x42137c
+   0x00421595 8b b3 30 02 00 00              mov esi, dword ptr [ebx + 0x230]
+   0x0042159b e9 dc fd ff ff                 jmp 0x42137c
+   0x00419f12 89 95 c0 01 00 00              mov dword ptr [ebp + 0x1c0], edx
+-- case 0x3d B3D_CameraSetFocus -> 0x00494f1e
+-- case 0x5 INS_CockpitSetSectorCamera -> 0x0042d4de
+-- case 0x6 INS_CockpitSetGalaxyCamera -> 0x0042d511
+-- case 0x7 INS_CockpitSetDustCamera -> 0x0042d544
+-- case 0x21 INS_SetFocus -> 0x0042dbed
+-- case 0x2c INS_CockpitSetViewConnectMode -> 0x0042dfb1
+   0x00494f1e 8b 75 18                       mov esi, dword ptr [ebp + 0x18]
+   0x00494f21 8b 56 01                       mov edx, dword ptr [esi + 1]
+   0x00494f24 e8 c7 1f ff ff                 call 0x486ef0
+   0x00494f29 85 c0                          test eax, eax
+   0x00494f2b 0f 84 01 ed ff ff              je 0x493c32
+   0x00494f31 8b 4e 06                       mov ecx, dword ptr [esi + 6]
+   0x00494f34 89 88 98 02 00 00              mov dword ptr [eax + 0x298], ecx
+   0x00494f3a e9 f3 ec ff ff                 jmp 0x493c32
+   0x0042d4f4 8b 57 06                       mov edx, dword ptr [edi + 6]
+   0x0042d4f7 e8 f4 99 05 00                 call 0x486ef0
+   0x0042d4fc 85 c0                          test eax, eax
+   0x0042d4fe 89 46 58                       mov dword ptr [esi + 0x58], eax
+   0x0042d501 74 c5                          je 0x42d4c8
+   0x0042d503 8b 8e 30 02 00 00              mov ecx, dword ptr [esi + 0x230]
+   0x0042d509 89 88 98 02 00 00              mov dword ptr [eax + 0x298], ecx
+-- connect setter 0x00422cd0 callers: ['0x4224a1', '0x422532', '0x42dfce'] ; mode reset 0x004228a8 reached from [('0x4218dd', '0x4228a8')]
+== 4. proposed load-site claim 0x0041c8c1 (6 bytes) ==
+bytes: 89 45 24 5e b0 01 ; jmp span 0x0041c8c1..0x0041c8c5 in qword 0x0041c8c0: True
+byte-pattern branches into 0x0041c8c2..0x0041c8c6: [] ; absolute dword refs to 0x0041c8c1..0x0041c8c8: 0
+caller after the load call:
+   0x0041f790 e8 4b cf ff ff                 call 0x41c6e0
+   0x0041f795 84 c0                          test al, al
+   0x0041f797 74 da                          je 0x41f773
+   0x0041f799 6a 01                          push 1
+   0x0041f79b 6a 21                          push 0x21
+   0x0041f79d 6a 10                          push 0x10
+   0x0041f79f 8d 4f 0d                       lea ecx, [edi + 0xd]
+   0x0041f7a2 b8 c8 b4 55 00                 mov eax, 0x55b4c8
+   0x0041f7a7 e8 14 d6 06 00                 call 0x48cdc0
+0x0048cdc0 entry (EDX written before read):
+   0x0048cdc0 51                             push ecx
+   0x0048cdc1 53                             push ebx
+   0x0048cdc2 56                             push esi
+   0x0048cdc3 57                             push edi
+   0x0048cdc4 8b f9                          mov edi, ecx
+   0x0048cdc6 57                             push edi
+   0x0048cdc7 50                             push eax
+   0x0048cdc8 68 c0 11 56 00                 push 0x5611c0
+   0x0048cdcd 33 d2                          xor edx, edx
+== 4b. optional second claim 0x0041a55c (cockpit +0x230 restored by the cockpit serializer 0x00419430) ==
+   0x0041a54a c1 e9 08                       shr ecx, 8
+   0x0041a54d c1 e2 08                       shl edx, 8
+   0x0041a550 8d 44 24 1c                    lea eax, [esp + 0x1c]
+   0x0041a554 0b ca                          or ecx, edx
+   0x0041a556 50                             push eax
+   0x0041a557 b8 01 00 00 00                 mov eax, 1
+   0x0041a55c 89 8d 30 02 00 00              mov dword ptr [ebp + 0x230], ecx
+   0x0041a562 8d 48 01                       lea ecx, [eax + 1]
+   0x0041a565 89 5c 24 20                    mov dword ptr [esp + 0x20], ebx
+   0x0041a569 e8 a2 ec 0c 00                 call 0x4e9210
+save side of the same field:
+   0x0041b7eb 8b 85 30 02 00 00              mov eax, dword ptr [ebp + 0x230]
+byte-pattern branches into 0x0041a55d..0x0041a561: [] ; absolute dword refs: 0 ; jmp span in one qword: False
+other [ebp+0x150/0x1c0/0x230/0x298] accesses in 0x00419430..0x0041c6e0:
+   0x00419e06 mov dword ptr [ebp + 0x150], edx
+   0x00419f12 mov dword ptr [ebp + 0x1c0], edx
+   0x0041a55c mov dword ptr [ebp + 0x230], ecx
+   0x0041a75f cmp dword ptr [ebp + 0x298], ebx
+   0x0041b168 mov eax, dword ptr [ebp + 0x150]
+   0x0041b260 mov eax, dword ptr [ebp + 0x1c0]
+   0x0041b7eb mov eax, dword ptr [ebp + 0x230]
+   0x0041ba2c mov dword ptr [ebp + 0x298], eax
+== 2. savegames: registry section "INS " (BE32 fields in 0x0041c6e0 load order) ==
+X11.sav: +0x24 = 0x4000; followed by count 1 and tag b'ICOC'
+X12.sav: +0x24 = 0x4000; followed by count 1 and tag b'ICOC'
+X13.sav: +0x24 = 0x3470; followed by count 1 and tag b'ICOC'
+== 4. vanilla vs remapped focus values ==
+table values equal to a vanilla (N<<16)/360, N 0..180: [] ; min distance 1
+nearest-N remap applied to an already remapped value: {'0x3470': '0x29eb', '0x3b6f': '0x3066'}
+== 3. KC: every B3D_CameraSetFocus call and every 0x4000 push that reaches a focus call ==
+CODE 0x010868 B3D_CameraSetFocus in Vbi@0x1082f: camera = member 0xb, focus = B3D_CameraGetFocus()
+CODE 0x02642e B3D_CameraSetFocus in UpdateCamera@0x262a3: camera = local 0x2, focus = local 0x6
+CODE 0x0265d6 B3D_CameraSetFocus in UpdateCamera@0x262a3: camera = local 0x2, focus = local 0xb
+CODE 0x0f12c3 B3D_CameraSetFocus in ShowSpace@0xf1010: camera = member 0x5, focus = const 0x4000
+CODE 0x132627 B3D_CameraSetFocus in ___sectorCamOn@0x132556: camera = member 0x65, focus = local 0x1
+ShowSpace camera roles: member 3 -> INS_CockpitSetSectorCamera (cockpit member 1), member 4 -> INS_CockpitSetGalaxyCamera, member 5 -> B3D_CameraSetEnvironmentSource(member 5, member 4) with aspect 0x10000/0x10000 and focus 0x4000 (see §7.4)

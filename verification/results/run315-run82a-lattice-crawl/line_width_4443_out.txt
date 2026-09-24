@@ -1,0 +1,16 @@
+window 2596,621-2628,653: 8-frame mean shares cell 0.621 line(L) 0.361 hole(S) 0.019
+  peak pitch 7.54 px angle 45 deg amp 174
+  peak pitch 3.77 px angle 45 deg amp 100
+  peak pitch 22.63 px angle 135 deg amp 91
+  peak pitch 10.12 px angle 162 deg amp 52
+  peak pitch 2.51 px angle 45 deg amp 39
+  peak pitch 4.77 px angle 153 deg amp 39
+families pitch 7.54 / 22.63 px, non-cell share 0.379 -> line width w 2.33 px (lines+holes)
+window 2564,645-2596,677: 8-frame mean shares cell 0.584 line(L) 0.376 hole(S) 0.040
+  peak pitch 7.54 px angle 45 deg amp 155
+  peak pitch 10.12 px angle 162 deg amp 91
+  peak pitch 3.77 px angle 45 deg amp 89
+  peak pitch 22.63 px angle 135 deg amp 83
+  peak pitch 22.63 px angle 45 deg amp 53
+  peak pitch 6.28 px angle 101 deg amp 36
+families pitch 7.54 / 10.12 px, non-cell share 0.416 -> line width w 2.03 px (lines+holes)

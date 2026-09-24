@@ -1,0 +1,14 @@
+Run 82 A launch 1: run312 (/tmp/x3-bottleX3-run312, session-20260925-003152-216.log), Run82 DLL cd8ef8e4 (d1a4e360),
+modded defaults + --gpu-sync-timing. Logs read-only, no Wine, no build. Run from this directory.
+Copied: exit_rows, abnormal_rows, fov_timeline, gpu_passes, sun_group_angle, cull_factor_by_fov, sun_screen (../run309-run81a-launch1); gpu_windows, gpu_taa (../run310-run81a-s4-half). New: sun_absent_centre.py, fade_route_totals.py.
+L=/tmp/x3-bottleX3-run312/session-20260925-003152-216.log
+LC_ALL=C awk '{print $1}' $L | sort | uniq -c | sort -rn > rowtypes_out.txt; comm -13 / -23 against ../run309-run81a-launch1/rowtypes_out.txt -> rowtypes_new_vs_309_out.txt, rowtypes_gone_vs_309_out.txt   # Q2
+grep -anE '^(fov|fov_confirm|sun_flare_fix|chase_fov_compensate|motion_output_taa_box_resolution|cull_small_parts_value|fade_rt2_owner_configured)[a-z_]* ' $L   # Q1
+grep -a '^motion_output_taa ' $L | grep -oE '(thin_region[a-z_]*|sentinel[a-z_]*)=[^ ]+'   # Q1 stabiliser 0.700, no thin_region_source row
+python3 exit_rows.py 309 312 > exit_rows_out.txt; python3 abnormal_rows.py 309 312 > abnormal_rows_out.txt   # Q2
+python3 fov_timeline.py $L > fov_timeline_out.txt; python3 cull_factor_by_fov.py $L > cull_factor_by_fov_out.txt   # Q3 (F=0x4000 on 237..2754)
+grep -a '^chase_fov_compensate' $L | awk '{print $2,$4,$5}'   # Q3
+python3 sun_screen.py $L > sun_screen_out.txt; python3 sun_group_angle.py $L > sun_group_angle_out.txt; python3 sun_absent_centre.py $L > sun_absent_centre_out.txt; grep -ac '^sun_flare' $L   # Q4
+python3 gpu_passes.py 312 > gpu_passes_out.txt; python3 gpu_windows.py 312 shadow_depth sun_apply taa_mask taa_box taa_resolve taa > gpu_windows_312_out.txt; python3 gpu_taa.py 310 312 > gpu_taa_out.txt   # Q5
+python3 fade_route_totals.py $L > fade_route_totals_out.txt   # Q6
+grep -a '^frame_end device=1' $L | grep -v capture=0; grep -a '^volumetric_fog_sector' $L; grep -a '^chase_camera frame=221[0-7]' $L   # Q7

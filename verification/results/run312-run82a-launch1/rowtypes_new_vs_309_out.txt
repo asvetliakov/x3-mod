@@ -1,0 +1,9 @@
+chase_fov_compensate
+motion_output_taa_box_resolution
+sun_flare_fix
+volumetric_fog_cache
+volumetric_fog_cache_frame
+volumetric_fog_device
+volumetric_fog_docked
+volumetric_fog_handover
+volumetric_fog_prepare

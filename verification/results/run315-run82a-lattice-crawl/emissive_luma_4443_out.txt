@@ -1,0 +1,2 @@
+frame 4443 routed plant-crop pixels 59247: Y p50 0.227 p99 1.932 max 3.365 share Y>=1 0.0622
+frame 4447 routed plant-crop pixels 59322: Y p50 0.226 p99 1.868 max 3.508 share Y>=1 0.0613

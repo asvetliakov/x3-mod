@@ -1,0 +1,19 @@
+absent near-centre frames 18
+594 angle=23.3 r=0.269 p11=1.3333 esg_row=1
+595 angle=20.5 r=0.227 p11=1.3333 esg_row=1
+596 angle=17.5 r=0.186 p11=1.3333 esg_row=1
+597 angle=14.4 r=0.146 p11=1.3333 esg_row=1
+598 angle=11.4 r=0.107 p11=1.3333 esg_row=1
+599 angle=8.5 r=0.071 p11=1.3333 esg_row=1
+600 angle=5.1 r=0.035 p11=1.3333 esg_row=1
+601 angle=2.7 r=0.029 p11=1.3333 esg_row=1
+602 angle=2.5 r=0.058 p11=1.3333 esg_row=1
+603 angle=4.8 r=0.092 p11=1.3333 esg_row=1
+604 angle=7.7 r=0.128 p11=1.3333 esg_row=1
+605 angle=10.7 r=0.167 p11=1.3333 esg_row=1
+606 angle=13.5 r=0.204 p11=1.3333 esg_row=1
+607 angle=16.0 r=0.239 p11=1.3333 esg_row=1
+608 angle=18.5 r=0.273 p11=1.3333 esg_row=1
+609 angle=21.0 r=0.310 p11=1.3333 esg_row=1
+610 angle=23.5 r=0.348 p11=1.3333 esg_row=1
+983 angle=14.5 r=0.345 p11=1.3333 esg_row=1

@@ -1,0 +1,9 @@
+run310 mixed windows=8 taa=6288/6842 taa_box=1451/1618 taa_copy=24/139 taa_mask=1682/1938 taa_mask_tests=1598/1834 taa_resolve=2809/3088
+run310 pan   windows=16 taa=6060/6571 taa_box=1424/1572 taa_copy=22/110 taa_mask=1614/1808 taa_mask_tests=1552/1709 taa_resolve=2717/2958
+run310 rest  windows=2 taa=5949/6396 taa_box=1384/1541 taa_copy=25/91 taa_mask=1622/1814 taa_mask_tests=1566/1729 taa_resolve=2653/2852
+run312 mixed windows=4 taa=5456/5699 taa_box=1300/1372 taa_copy=21/25 taa_mask=1448/1588 taa_mask_tests=1394/1525 taa_resolve=2456/2626
+run312 pan   windows=12 taa=5441/5624 taa_box=1300/1324 taa_copy=22/24 taa_mask=1446/1562 taa_mask_tests=1394/1510 taa_resolve=2446/2562
+run315 mixed windows=6 taa=5682/6148 taa_box=1478/1621 taa_copy=24/28 taa_mask=1454/1578 taa_mask_tests=1404/1496 taa_resolve=2572/2756
+run315 pan   windows=20 taa=5637/5850 taa_box=1426/1495 taa_copy=23/28 taa_mask=1450/1536 taa_mask_tests=1400/1431 taa_resolve=2567/2689
+run315 rest  windows=4 taa=5441/5662 taa_box=1322/1438 taa_copy=20/24 taa_mask=1430/1532 taa_mask_tests=1386/1414 taa_resolve=2442/2560
+run318 pan   windows=17 taa=5566/5793 taa_box=1413/1534 taa_copy=21/23 taa_mask=1428/1534 taa_mask_tests=1385/1406 taa_resolve=2535/2668

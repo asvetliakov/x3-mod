@@ -1,0 +1,5 @@
+chase_lead_sample
+motion_output_scene_hook_disagreement
+shadow_alpha_casters
+shadow_alpha_casters_device
+shadow_alpha_casters_mode

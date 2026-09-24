@@ -1,0 +1,8 @@
+frame 1673 far_owner 13452 routed_other 0 detail 13691 detail_owned 13288 detail_routed_other 0 detail_sentinel 403 valid_depth_frac 0.971 sentinel_dark 149 sentinel_bright 254
+frame 1674 far_owner 13490 routed_other 0 detail 13666 detail_owned 13307 detail_routed_other 0 detail_sentinel 359 valid_depth_frac 0.974 sentinel_dark 106 sentinel_bright 253
+frame 1675 far_owner 13482 routed_other 0 detail 13703 detail_owned 13300 detail_routed_other 0 detail_sentinel 403 valid_depth_frac 0.971 sentinel_dark 145 sentinel_bright 258
+frame 1676 far_owner 13489 routed_other 0 detail 13653 detail_owned 13290 detail_routed_other 0 detail_sentinel 363 valid_depth_frac 0.973 sentinel_dark 109 sentinel_bright 254
+frame 1677 far_owner 13473 routed_other 0 detail 13680 detail_owned 13289 detail_routed_other 0 detail_sentinel 391 valid_depth_frac 0.971 sentinel_dark 133 sentinel_bright 258
+frame 1678 far_owner 13497 routed_other 0 detail 13687 detail_owned 13331 detail_routed_other 0 detail_sentinel 356 valid_depth_frac 0.974 sentinel_dark 97 sentinel_bright 259
+frame 1679 far_owner 13484 routed_other 0 detail 13714 detail_owned 13307 detail_routed_other 0 detail_sentinel 407 valid_depth_frac 0.970 sentinel_dark 148 sentinel_bright 259
+frame 1680 far_owner 13495 routed_other 0 detail 13686 detail_owned 13314 detail_routed_other 0 detail_sentinel 372 valid_depth_frac 0.973 sentinel_dark 112 sentinel_bright 260

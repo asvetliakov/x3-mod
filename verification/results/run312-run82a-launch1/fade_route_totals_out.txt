@@ -1,0 +1,4 @@
+rows 5387 fade_tested>0 rows 4951 first/last [237] [5295]
+sums {'fade_routed': 176411, 'fade_refused': 0, 'fade_held': 0, 'fade_route': 2693500, 'cutout_caps': 5387, 'overlay_routed': 0, 'overlay_refused': 451, 'fade_evicted': 69, 'fade_owner': 5387, 'fade_owner_masked': 0, 'fade_tested': 55156}
+max {'fade_routed': 177, 'fade_refused': 0, 'fade_held': 0, 'fade_route': 500, 'cutout_caps': 1, 'overlay_routed': 0, 'overlay_refused': 2, 'fade_evicted': 5, 'fade_owner': 1, 'fade_owner_masked': 0, 'fade_tested': 37}
+fade_tested>0 in 2210..2217: [2210, 2211, 2212, 2213, 2214, 2215, 2216, 2217]

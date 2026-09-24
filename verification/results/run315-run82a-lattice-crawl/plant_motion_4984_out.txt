@@ -1,0 +1,7 @@
+frame 4985: nodes 16 box-centre shift px p50 17.95 min 17.39 max 20.88; plant centre 2337,843
+frame 4986: nodes 16 box-centre shift px p50 20.09 min 19.51 max 23.17; plant centre 2350,828
+frame 4987: nodes 16 box-centre shift px p50 22.35 min 21.84 max 25.62; plant centre 2365,810
+frame 4988: nodes 16 box-centre shift px p50 24.45 min 23.96 max 27.67; plant centre 2381,791
+frame 4989: nodes 16 box-centre shift px p50 26.31 min 25.88 max 29.51; plant centre 2398,771
+frame 4990: nodes 16 box-centre shift px p50 27.83 min 27.51 max 30.83; plant centre 2417,749
+frame 4991: nodes 16 box-centre shift px p50 29.07 min 28.78 max 31.78; plant centre 2436,726

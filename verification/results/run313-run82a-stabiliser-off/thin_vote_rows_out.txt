@@ -1,0 +1,36 @@
+run313 thin_vote_frame rows 4493
+  voted: nonzero 4274 sum 17139.0 p50 2.00 p99 40.00 max 51.00
+  missed: nonzero 17 sum 259.0 p50 0.00 p99 0.00 max 65.00
+  unreadable: nonzero 0 sum 0.0 p50 0.00 p99 0.00 max 0.00
+  dropped: nonzero 6 sum 91.0 p50 0.00 p99 0.00 max 37.00
+  draw_timing: nonzero 0 sum 0.0 p50 0.00 p99 0.00 max 0.00
+  sample_us: nonzero 4266 sum 1882.1 p50 0.40 p99 0.90 max 123.00
+  measure_us: nonzero 4336 sum 13392225.4 p50 2341.70 p99 3960.00 max 3960.00
+  max_measure_us: nonzero 4336 sum 1211279.2 p50 266.60 p99 293.60 max 293.60
+  lock_us: nonzero 4336 sum 16350839.7 p50 2095.00 p99 5678.00 max 5678.00
+  invalidated: nonzero 60 sum 16704.0 p50 0.00 p99 282.00 max 282.00
+  dropped_entries: nonzero 60 sum 8352.0 p50 0.00 p99 141.00 max 141.00
+  overflows: nonzero 0 sum 0.0 p50 0.00 p99 0.00 max 0.00
+  refused: nonzero 0 sum 0.0 p50 0.00 p99 0.00 max 0.00
+  volatile_refused: nonzero 0 sum 0.0 p50 0.00 p99 0.00 max 0.00
+  lock_failed: nonzero 0 sum 0.0 p50 0.00 p99 0.00 max 0.00
+  deferred_cap: nonzero 6 sum 91.0 p50 0.00 p99 0.00 max 37.00
+  stale: nonzero 0 sum 0.0 p50 0.00 p99 0.00 max 0.00
+run314 thin_vote_frame rows 4565
+  voted: nonzero 3808 sum 49620.0 p50 6.00 p99 72.00 max 89.00
+  missed: nonzero 55 sum 1307.0 p50 0.00 p99 1.00 max 206.00
+  unreadable: nonzero 0 sum 0.0 p50 0.00 p99 0.00 max 0.00
+  dropped: nonzero 12 sum 820.0 p50 0.00 p99 0.00 max 189.00
+  draw_timing: nonzero 0 sum 0.0 p50 0.00 p99 0.00 max 0.00
+  sample_us: nonzero 3914 sum 1359.6 p50 0.30 p99 0.80 max 116.00
+  measure_us: nonzero 4233 sum 141685643.9 p50 36215.80 p99 37997.20 max 37997.20
+  max_measure_us: nonzero 4233 sum 2356503.3 p50 556.80 p99 556.80 max 556.80
+  lock_us: nonzero 4233 sum 44651242.2 p50 10991.70 p99 11899.20 max 11899.20
+  invalidated: nonzero 3776 sum 1670672.0 p50 442.00 p99 560.00 max 560.00
+  dropped_entries: nonzero 3776 sum 835336.0 p50 221.00 p99 280.00 max 280.00
+  overflows: nonzero 0 sum 0.0 p50 0.00 p99 0.00 max 0.00
+  refused: nonzero 0 sum 0.0 p50 0.00 p99 0.00 max 0.00
+  volatile_refused: nonzero 0 sum 0.0 p50 0.00 p99 0.00 max 0.00
+  lock_failed: nonzero 0 sum 0.0 p50 0.00 p99 0.00 max 0.00
+  deferred_cap: nonzero 12 sum 820.0 p50 0.00 p99 0.00 max 189.00
+  stale: nonzero 0 sum 0.0 p50 0.00 p99 0.00 max 0.00

@@ -1,0 +1,18 @@
+source both (search|vote|emissive): per-frame flagged fraction of region 0.458 0.460 0.456 0.458 0.448 0.462 0.467 0.459; union over 8 frames (A' region at rest):
+   region: n 48505 in A' region 0.703
+   always O cells: n 8146 in A' region 0.441
+   ever L (lines/struts): n 32927 in A' region 0.801
+   always L: n 9617 in A' region 0.802
+   flipping: n 24093 in A' region 0.801
+source vote (vote|emissive): per-frame flagged fraction of region 0.033 0.033 0.032 0.033 0.033 0.032 0.033 0.033; union over 8 frames (A' region at rest):
+   region: n 48505 in A' region 0.105
+   always O cells: n 8146 in A' region 0.000
+   ever L (lines/struts): n 32927 in A' region 0.155
+   always L: n 9617 in A' region 0.341
+   flipping: n 24093 in A' region 0.075
+source emissive alone: per-frame flagged fraction of region 0.033 0.033 0.032 0.033 0.033 0.032 0.033 0.033; union over 8 frames (A' region at rest):
+   region: n 48505 in A' region 0.105
+   always O cells: n 8146 in A' region 0.000
+   ever L (lines/struts): n 32927 in A' region 0.155
+   always L: n 9617 in A' region 0.341
+   flipping: n 24093 in A' region 0.075

@@ -25,8 +25,9 @@ block), [camera-state-and-frame-routine.md](camera-state-and-frame-routine.md)
   `2·atan(0.75·tan(F/2))` (73.74° at `F = 0x4000`) and the horizontal grows
   with the aspect ("Hor+") [s][m].
 - The base is a single integer, `*(*0x00608504 + 0x24)` (the cockpit
-  registry), initialised to `0x4000` by the registry constructor and changed
-  only by the script command `INS_SetFocus` [s]. Every cockpit update copies it,
+  registry), initialised to `0x4000` by the registry constructor, changed by the
+  script command `INS_SetFocus` and **restored from the savegame on every load**
+  (`0x0041c8c1`, §7.4) [s]. Every cockpit update copies it,
   divided by the cockpit zoom in the internal view, into the sector, galaxy and
   dust cameras' `+0x298` and into cockpit `+0x230`; everything that must agree
   with the rendered picture (projection, frustum cull, LOD, mouse-aim
@@ -36,7 +37,9 @@ block), [camera-state-and-frame-routine.md](camera-state-and-frame-routine.md)
   `0x16`, script default 90, never re-applied at load) and writes
   `(N<<16)/360` through `INS_SetFocus`; touching it replaces the patched base
   with a vanilla-unit value (§7). Recommended: remap at the two write sites so
-  `N` means "horizontal degrees on 16:9" (§7.3).
+  `N` means "horizontal degrees on 16:9" (§7.3), and at the savegame load
+  store, which otherwise restores whatever the saving session used (a
+  pre-patch save loads `0x4000`; §7.4).
 - At `W·tan(F/2) > 2` the lens-flare collector's horizontal off-screen test
   overflows for distant suns near the view centre and drops the sun's lens
   chain (§9); `F = 0x3470` is exactly at that bound on 32:9, `0x471c` is past it.
@@ -137,15 +140,17 @@ cameras are not written by the cockpit update and keep their own `+0x298`
 | --- | --- | --- |
 | registry constructor `0x0041c960` | `0x0041c9d9` `c7 46 24 00 40 00 00` [m] | `0x4000` at every registry creation (`0x00403a26` in the main function `0x00403840`, `0x004050f4` in `0x00404cc0`) |
 | `INS_SetFocus`, `0x0042d340` case `0x21` | `0x0042dc04` `89 4a 24` [m] | script argument |
+| registry serializer `0x0041c6e0`, load | `0x0041c8c1` `89 45 24` [m] | the savegame's value (§7.4) |
 | cockpit constructor `0x0041f8d0` | `0x0041fd95` | read into cockpit `+0x230` (initial sector FOV for camera attach) |
 | cockpit update `0x004205e0` | `0x0042114e` | read every frame |
 
-Data references to `0x00608504` show no other `+0x24` store; a registry
-pointer passed in a register was not traced exhaustively [s/i]. The registry
-is built by the constructor at both creation sites [s] and no loader of
-`+0x24` was found, so it is not restored from a savegame [i]; whether a savegame stores the script-side degrees (class `0x96` member
-`0x16`) and replays them is not established — no code path re-issues
-`INS_SetFocus` on load (§4) [i].
+Data references to `0x00608504` show no other `+0x24` store. **Correction
+(2026-09-25):** the registry serializer `0x0041c6e0`, which receives the
+registry as a stack argument, saves `+0x24` and restores it on load at
+`0x0041c8c1`, after the constructor ran; a load therefore starts at the
+savegame's value (§7.4) [s][m]. Whether a savegame also stores the
+script-side degrees (class `0x96` member `0x16`) is not established; no code
+path re-issues `INS_SetFocus` on load (§4) [i].
 
 **Per-frame application [s]** (`0x0042113a..0x004213e5`, only when cockpit
 `+0xc` (ref object) is non-zero; `0x0042113e` skips the whole block otherwise):
@@ -390,7 +395,8 @@ Ghidra run was needed; no game or Wine process was started.
 - **Nothing re-applies the number at startup or load.** `SetFocus` has three callers, all in the menu
   (`0x114f43`, `0x115311`, `0x115914`), none by name; `INS_SetFocus` has one call site (`0x156fb`)
   [m]. The registry therefore holds the constructor value (patched `0x3470`) after every creation,
-  whatever member `0x16` says. Whether class statics are part of a savegame is not established [i];
+  whatever member `0x16` says, **except after a savegame load, which restores the engine-side value the
+  saving session had** (`0x0041c8c1`, §7.4). Whether class statics are part of a savegame is not established [i];
   if they are, a saved `100` shows as "100°" while the view is the constructor value. Vanilla has the
   same mismatch.
 - **Why the user saw the old FOV [m].** The menu steps from member `0x16` = 90 and writes vanilla units:
@@ -404,7 +410,8 @@ Ghidra run was needed; no game or Wine process was started.
 190 loads of `[0x00608504]` in `.text`; exactly three are followed by a `+0x24` access: `0x0041fd95`
 (cockpit constructor → cockpit `+0x230`), `0x0042114e` (the per-frame apply, §3) and `0x0042dc04`
 (the `INS_SetFocus` store); the constructor itself stores through `ESI` at `0x0041c9d9`. A registry
-pointer passed in a register was not traced. Every other FOV reader of §2 (projection, frustum cull,
+pointer passed in a register was not traced here; the registry serializer `0x0041c6e0` (stack argument)
+reads `+0x24` on save and writes it on load (§7.4). Every other FOV reader of §2 (projection, frustum cull,
 cull/LOD pass, occluder list, occlusion probe, lens collector, effect state, unprojection and mouse aim,
 HUD target list, lead reticle) reads camera `+0x298` or cockpit `+0x230`, i.e. what the per-frame apply
 wrote. The script's `GetFocus` returns member `0x16`, never the engine value.
@@ -510,6 +517,180 @@ division. EFLAGS from `CMP [EBX+0x10],0` at `0x00421144` are live to `JZ 0x00421
 updates monitor cockpits too). The cockpit constructor's copy `0x0041fd95` (initial `+0x230`, camera
 attach, connect mode 6) would need a second site, and the registry would keep vanilla units. More sites,
 per-frame work and a live-flags site for the same result, so (b) is preferred.
+
+### 7.4 The savegame restores the base: why a load can start at `0x4000` (2026-09-25)
+
+Static study after Run 82 A launch 1 (run312), where the sector projection stayed at `F = 0x4000` from
+the load (frame 237) until the first FOV-menu step (frame 2755), although `fov_confirm` had read
+`registry+0x24 = 0x3470` at frame 4. Capstone listings of the installed EXE, a bytecode walk of
+`x3story.obj`, and a read of the registry field in the bottle's three savegames; no Ghidra, game or Wine
+process. Scripts: `verification/results/field-of-view/save_load_focus.py` (EXE, saves, KC, arithmetic;
+output `save_load_focus.txt`) and `load_focus_by_run.py` (the scene `F` 10 frames after every load in
+run309..run318; output `load_focus_by_run.txt`).
+
+**Answer [s][m].** The registry is serialised. Its serializer `0x0041c6e0` writes `+0x24` into the
+savegame and, on load, stores the saved value into the fresh registry **after** the (patched) constructor
+has run. A load therefore starts at whatever focus the savegame holds, in whatever units the saving
+session used. run312 loaded a savegame written before the FOV patch (`+0x24 = 0x4000`), so the base was
+`0x4000` until `INS_SetFocus` stored `F'(91) = 0x351f` at the first menu step. run309 loaded a savegame
+written under a patched build (`0x3470`); its frames 191..316 were the main menu (a scene camera at
+`0x4000`), and frame 318 is `save_load_complete`, not a view change. The constructor patch alone
+governs only a new game and the main menu.
+
+**Load and save chain [s]** (`save_load_focus.txt` §1):
+
+| Step | Site | Effect |
+| --- | --- | --- |
+| load entry `0x00404cc0` | `0x004050f4 call 0x0041c960`, `0x00405106 mov [0x00608504],eax` | new registry, `+0x24` = constructor immediate (`F'(N)` with the patch) |
+| `INS ` section `0x0041f720` (tag `0x0055b670`) | `0x00405112 call 0x0041f720` → `0x0041f790 call 0x0041c6e0` (stack args: registry, `0` = load; stream in `EAX`) | registry fields from the stream (big-endian 32-bit reads `0x004e9420`) |
+| registry load tail | `0x0041c8bc e8 5f cb 0c 00` `CALL 0x004e9420`; **`0x0041c8c1 89 45 24` `MOV [EBP+0x24],EAX`**; `5e` `b0 01` `5d` `c2 08 00` | **the saved focus overwrites the constructor value** |
+| cockpits | `0x0041f83b call 0x0041f8d0` (ctor: `0x0041fd95 8b 42 24` / `0x0041fd98 89 87 30 02 00 00`, `+0x230` = registry `+0x24`, now the saved value); `0x0041f854 call 0x00425e20` (`ICOC`) → cockpit serializer `0x00419430` | view mode `0x00419e06`, connect mode **`0x00419f12 89 95 c0 01 00 00`**, **`0x0041a55c 89 8d 30 02 00 00` `MOV [EBP+0x230],ECX`**: cockpit `+0x230` is restored from the savegame too |
+| save | `0x0041f660`: `0x0041f684 call 0x0041c6e0` (`1` = save); `+0x24` read at `0x0041c7c9 8b 45 24` (branch with the `+0x1c` object) or `0x0041c8de 8b 45 24` (without); cockpit `+0x230` at `0x0041b7eb` | the saving session's value, unconverted |
+
+§3 and §7.2 missed this writer because the serializer receives the registry as a stack argument
+(`0x0041f739 mov ebx,[0x00608504]; push ebx`), not through a load of `[0x00608504]` followed by `+0x24`.
+
+**Measured.** The registry section of each savegame (`INS `, version 1, fields in `0x0041c6e0` load
+order, followed by the cockpit count 1 and `ICOC`, which confirms the layout): `X11.sav` (2026-09-23 09:36)
+`+0x24 = 0x4000`, `X12.sav` (09-23 18:30) `0x4000`, `X13.sav` (09-25 00:52) `0x3470` [m]. The scene `F`
+10 frames after each load (`load_focus_by_run.txt`) is `0x3470` for every load into sector `clear`
+(run309, 310, 311, 314..317) and `0x4000` for every load into `foggreenoutlands` (run312, 313, 318) [m];
+which file each run loaded is not logged, so the pairing of `foggreenoutlands` with X11/X12 is [i].
+run312 also logged `chase_camera first_applied … fov298=0x4000 … connect=0` at frame 600 (run309:
+`fov298=0x3470`) and the first menu value `0x351f` = `F'(91)` (member `0x16` = 90, plus one) [m].
+
+#### 7.4.1 Every writer of the fields the base flows into (question 1) [s]
+
+| Field | Writer | Site, bytes | Value |
+| --- | --- | --- | --- |
+| registry `+0x24` | constructor | `0x0041c9d9 c7 46 24 00 40 00 00` | `0x4000` (patched: `F'(N)`) |
+| | `INS_SetFocus` (INS case `0x21`) | `0x0042dc04 89 4a 24` | script `(N<<16)/360` (patched: remapped by the `0x0042dbf8` stub) |
+| | **registry serializer, load** | **`0x0041c8c1 89 45 24`** | **the savegame's value** |
+| | – | no other `MOV [r+0x24],0x4000` in `.text`; `[0x00608504]` is stored only at `0x00401a0d`, `0x00401e9f`, `0x0040423b` (zero) and `0x00403a46`, `0x00405106` (constructor results) | |
+| cockpit `+0x230` | cockpit ctor | `0x0041fd98 89 87 30 02 00 00` | registry `+0x24` |
+| | per-frame apply | `0x004213e5 89 b3 30 02 00 00` | `sector` (§3) |
+| | **cockpit serializer, load** | **`0x0041a55c 89 8d 30 02 00 00`** | **the savegame's value** |
+| | – | `0x0043164a`, `0x00457842`, `0x00460b8b`, `0x0047a2c6` store a `+0x230` of other structures (functions not reached from a cockpit pointer) [i] | |
+| sector cameras `+0x298` (`+0x58/+0x5c/+0x60`) | per-frame apply | `0x004213ad`, `0x004213c2`, `0x004213d7` `89 b0 98 02 00 00` | `sector`, only when it differs |
+| | camera attach, INS cases 5/6/7 | `0x0042d509`, `0x0042d53c`, `0x0042d584` `89 88 98 02 00 00` after `8b 8e 30 02 00 00` | cockpit `+0x230` |
+| | `B3D_CameraSetFocus`, B3D case `0x3d` (`0x00494f1e`) | `0x00494f31 8b 4e 06` / `0x00494f34 89 88 98 02 00 00` | raw script argument (camera by id through `0x00486ef0`; no clamp) |
+| | camera allocator `0x00488c70` | `0x00488d69 c7 87 98 02 00 00 00 40 00 00` | `0x4000` |
+| | scene-stream loader, node animation, record/replay | `0x0047a435`, `0x0048e78e`/`0x0048e7a8`, `0x00477464` (§2) | stored/keyed values |
+| cockpit connect mode `+0x1c0` | setter `0x00422cd0` | `0x00422cd7 89 86 c0 01 00 00` | from script `INS_CockpitSetViewConnectMode` (`0x0042dfce`) or a native refresh of the current mode (`0x004224a1`, `0x00422532`, which pass `+0x1c0` back in) |
+| | reset | `0x004228a8 c7 83 c0 01 00 00 00 00 00 00` | `0`, reached from `0x004218dd` when the mode is outside 1..9 |
+| | cockpit ctor / serializer load | `0x0041fce4` (`0`) / `0x00419f12` (saved) | |
+
+**Connect mode 6 [s].** Mode 6 is entered only by the script command or restored by `0x00419f12`; its
+setter arm `0x00422cea` records the real clock in `+0x1c4/+0x1c8` and touches no FOV field. While
+`+0x1c0 == 6` the per-frame apply takes `sector = +0x230` (`0x00421588..0x00421595`) and writes it back
+unchanged, so `+0x230` holds the last value of the preceding mode (or, right after a load, the saved
+cockpit field) and a new base has no effect until the mode is left (by the script, or by the reset above).
+run312 was not in mode 6 (`connect=0` in every `chase_camera` row) [m].
+
+#### 7.4.2 run312 and run309 (question 2)
+
+- **`INS_SetFocus` does nothing else [s].** From `0x0042dbf8` to the case's end: `push 0; push VM;
+  MOV EAX,[EBP+0xc]; MOV [EDX+0x24],ECX; CALL 0x004a47f0` (writes the task's result cell
+  `+0x20`/`+0x28`, calls `0x004a4740`), `JMP 0x0042f04c` (dispatcher exit). No mode, `+0x230` or camera
+  write. The switch at frame 2755 is the next cockpit update copying the new base into the sector
+  cameras (mode 0: `sector = base`).
+- **run312 window 237..2754.** Registry `+0x24 = 0x4000` from the savegame (`0x0041c8c1`), mode 0, so
+  every cockpit update wrote `0x4000` to the sector cameras; `cull_small_parts_value` and
+  `chase_fov_compensate` (factor 1.0) saw that. [s] for the mechanism, [m] for the saved value and the
+  frame pattern, [i] for which save file.
+- **run309 switch at 318.** `loading_phase save_load_begin frame=317`, `save_load_complete frame=318`
+  and `volumetric_fog_sector … reason=clear` at 318 [m]; the loaded save carried `0x3470`. The log
+  shows the load, not the saved value; the value is inferred from the projection and from X13's current
+  content (X13 was rewritten at 00:52 on 09-25, after run309) [i].
+
+#### 7.4.3 Script-side constants (question 3) [m][s]
+
+`B3D_CameraSetFocus` has five call sites in `x3story.obj`; `INS_SetFocus` has one (`SetFocus`, §7.1). A
+walk of every method for a pushed `0x4000` followed by a focus call finds one.
+
+| CODE | Method (class) | Camera | Focus | On a load into the sector view |
+| --- | --- | --- | --- | --- |
+| `0x0f12c3` | `ShowSpace` (`0x25e`, monitor) | member 5, allocated in the galaxy scene, aspect `0x10000/0x10000`, then `B3D_CameraSetEnvironmentSource(member 5, member 4 = galaxy camera)` | **const `0x4000`** | likely: the monitor's space-mode setup, which also attaches member 3 as the sector camera (`INS_CockpitSetSectorCamera`, `+0x298` = cockpit `+0x230`) and member 4 as the galaxy camera [i: not traced at run time] |
+| `0x010868` | `Vbi` (`0x26d`, cut-scene player) | member `0xb` | `B3D_CameraGetFocus(member 9)` (copy) | no (cut-scene) |
+| `0x02642e`, `0x0265d6` | `UpdateCamera` (`0x270`, shot system) | local 2 | locals 6 / `0xb` | no (cut-scene) |
+| `0x132627` | `___sectorCamOn` (`0x8a8`, sector map menu) | member `0x65` (aspect 1.0) | local 1 (argument; only caller `UpdateCamera@0x1324a4` of the same class) | no (map menu) |
+
+The only script-side `0x4000` that reaches a focus is ShowSpace's **environment camera**: a 1:1 camera at
+exactly 90°, the cube-face angle of an environment source. It is not a sector, galaxy or dust camera, so
+the per-frame apply never writes it; it must stay `0x4000`. No script 0x4000 or 90° literal reaches the
+base or the sector cameras, so no script-side site needs a remap. This resolves the open item on the
+env-map camera's writer: allocator default plus ShowSpace's explicit `0x4000`.
+
+#### 7.4.4 Recommendation for the proxy (question 4)
+
+**Required: one more claim at the registry load store, same table [s][m].**
+`engine_patch::claim` on **`0x0041c8c1`**, expected `89 45 24 5e b0 01` (`MOV [EBP+0x24],EAX; POP ESI;
+MOV AL,1`), length 6, `rel32_offset` 0, `ret_pop` 0; tail = the six bytes then `JMP 0x0041c8c7`. The stub
+runs before the store, with the saved focus in `EAX`:
+
+```
+cmp  eax, 0x2334 ; jb done            ; outside N 50..130: unchanged
+cmp  eax, 0x5ccc ; ja done
+imul edx, eax, 360 ; add edx, 0x8000 ; shr edx, 16          ; N = round(F*360/65536)
+cmp  ax, word [edx*2 + vanilla - 2*50] ; jne done            ; only the exact vanilla (N<<16)/360
+movzx eax, word [edx*2 + load_table - 2*50]                  ; F'(N) (see the N = 90 decision below)
+done: jmp [slot]                      ; -> MOV [EBP+0x24],EAX; POP ESI; MOV AL,1; JMP 0x0041c8c7
+```
+
+- **Exact match, not the nearest-N rule of the `INS_SetFocus` stub.** Savegames written with the patch
+  hold remapped values (X13: `0x3470`); the nearest-N rule would remap them again (`0x3470 → 0x29eb`,
+  `0x3b6f → 0x3066`). No table value `F'(N)`, N 50..130, equals a vanilla `(N<<16)/360` for any N 0..180
+  (minimum distance 1), so exact matching classifies every saved value unambiguously [m: arithmetic]:
+  vanilla units (a pre-patch or `--fov game` session, the vanilla constructor `0x4000`, a vanilla-unit menu
+  value from Run 81) → `F'(N)`; remapped values, old `--fov` constructor values such as `0x34aa`, and
+  anything else → unchanged. The extra data is an 81-entry `uint16` table of `(N<<16)/360` and, if the N = 90
+  slot differs, a copy of the `F'` table (built at install, immutable); the `INS_SetFocus` table stays as it is.
+- **Default under `--fov N ≠ 90` (decision).** A vanilla save holds `0x4000` whether it was the default or a
+  menu 90. Storing the launcher's constructor value in the `N = 90` slot of the load table makes a
+  pre-patch save start at `--fov N`, the same value a new game gets; with the launcher default 90 the two
+  coincide. Leaving the slot at `F'(90)` makes a save's 90 mean 90 as the menu does.
+- **Hook-site suitability [s][m].**
+
+  | Check | Result |
+  | --- | --- |
+  | Instruction boundary | `0x0041c8c1` follows `CALL 0x004e9420` and starts an instruction; the span is three whole instructions; no byte-pattern branch and no absolute dword reference lands in `0x0041c8c2..0x0041c8c6`; the only branch in the load tail (`0x0041c8a8 je 0x0041c8b4`) lands before the span |
+  | Atomic write | `0x0041c8c1..0x0041c8c5` lies in the aligned qword `0x0041c8c0`: one `lock cmpxchg8b`; byte `0x0041c8c6` stays and is never executed |
+  | Registers | `EAX` in/out (the value the tail stores; the function then sets `AL = 1` and both callers read only `AL`: `0x0041f795 test al,al`, then `0x0041f7a2 mov eax,…`); `EDX` scratch: set by `0x004e9420`, not read by `0x0041c6e0` after the call, and the caller's next callee `0x0048cdc0` writes `EDX` before reading it; `EBP` (registry) and `ESI` (popped by the tail) untouched |
+  | Flags | dead: `pop/mov/pop/ret`, then `test al,al` in the caller |
+  | Stack, FPU, LastError | no push, no call, no FPU/SSE, no API; `ESP` at the tail as at the site |
+  | Reentrancy, frequency | once per savegame load, main thread, inside the load chain; the tables are immutable after install |
+  | Rollback | restore the six bytes over our own `jmp` only (as `0x0042dbf8`); a registry already loaded keeps its value |
+  | Install order | claimed with the other two FOV sites before any load (the proxy installs at `Direct3DCreate9`, before the main menu, §5); all three or none |
+
+- **Optional second site, cockpit `+0x230` [s].** `0x0041a55c 89 8d 30 02 00 00` (`MOV [EBP+0x230],ECX`,
+  one whole 6-byte instruction; value in `ECX`, `EDX` dead: the next instructions are `lea ecx; mov
+  [esp+0x20],ebx; call 0x004e9210`, and `0x004e9210` writes `EDX` before reading it on every path; flags dead;
+  no branch or dword into `0x0041a55d..0x0041a561`; **not** qword-contained, so a plain write in the install
+  window like the chase-camera site). The same exact-match stub on `ECX` (the `INS_SetFocus` register contract).
+  Without it, a load in mode 0 is correct from the first cockpit update (which overwrites `+0x230`); the
+  saved vanilla `+0x230` survives only (a) for a camera attached before that update (ShowSpace's
+  `INS_CockpitSetSectorCamera` copies `+0x230`, corrected by the next update) and (b) in a savegame taken
+  in connect mode 6, until the mode changes. Worth it only if mode-6 saves matter.
+- **Must stay at `0x4000`, untouched by both sites [s].** The cockpit-scene camera `+8` (steering dead zone
+  `0x0040e8c0`, HUD target list `0x00427d50`, HUD view `0x0042d140`; §2) is written by the per-frame apply
+  from the constant `0x4000` (`0x00421151 bf 00 40 00 00`), not from the base, and the env camera by
+  ShowSpace. The zoom path divides the (now remapped) base as before (§3). The cockpit serializer also restores
+  the zoom state `+0x234..+0x248` (`0x0041a58c..0x0041a6d7`), but that is a divisor and a timer, not a
+  focus, so it needs no remap.
+- **Verification.** `verification/probe/verify_fov_site.py` (host test `test_fov_site.py`) qualifies
+  `0x0041c9d9` and `0x0042dbf8` only and needs a new case for `0x0041c8c1`: the 23 bytes
+  `0x0041c8b4..0x0041c8ca` (`e8 67 cb 0c 00 89 45 20 e8 5f cb 0c 00 89 45 24 5e b0 01 5d c2 08 00`, both calls to
+  `0x004e9420`), callers of `0x0041c6e0` exactly `0x0041f684` (save, `push 1`) and `0x0041f790` (load,
+  `push 0`) with `84 c0` at `0x0041f795`, no branch or dword into the span, qword containment, and the
+  zero-collision property of the two tables (plus `0x0041a55c` if the optional site is taken). The Wine
+  fixture `run_fov_patch.py` (`fov_patch_fixture.cpp`) needs load-stub cases on a copy of the tail: `0x4000`,
+  `0x31c7`, `0x471c` → table; `0x3470`, `0x3b6f`, `0x34aa` → unchanged; `0x2000`, `0x8000` → unchanged;
+  `AL = 1`, `EBP/ESI/ESP` and LastError kept, rollback and `restore_not_owned`. `fov_confirm` should also be
+  logged once after each `save_load_complete`, so a flight shows the loaded base directly.
+- **Save side (open, not needed for the load fix).** A savegame written with the patch stores `F'` (X13:
+  `0x3470`), which vanilla or `--fov game` then loads as a narrower view. An inverse map at the two save
+  reads (`0x0041c7c9`, `0x0041c8de`) would keep savegames in vanilla units; with the exact-match load rule
+  above, both kinds of savegame load correctly either way.
 
 ## 8. Chase distance (engine side; the proxy's chase camera owns the pose)
 
@@ -708,6 +889,8 @@ python3 verification/results/field-of-view/fov_numbers.py
 python3 verification/results/field-of-view/menu_chase_path.py      # §7, §8 (capstone, KC walk)
 python3 verification/results/field-of-view/sun_collector_overflow.py  # §9
 python3 verification/results/field-of-view/sun_collector_fix.py       # §9.1
+python3 verification/results/field-of-view/save_load_focus.py         # §7.4 (EXE, savegames, KC)
+python3 verification/results/field-of-view/load_focus_by_run.py /tmp/x3-bottleX3-run3{09..18}/session-*.log  # §7.4
 ```
 
 ## Open
@@ -715,14 +898,19 @@ python3 verification/results/field-of-view/sun_collector_fix.py       # §9.1
 - The page title of menu class `0x8d3` and the two `Input` keys that jump to
   `SG_MIN_FOV`/`SG_MAX_FOV`; whether class `0x96` statics (member `0x16`) are
   saved with a game (nothing re-issues `INS_SetFocus` at load either way, §7.1).
-- The `INS_SetFocus` remap site (§7.3) is not built or fixture-tested.
+- The `INS_SetFocus` remap site (§7.3) is built and fixture-tested (Run82); flown in run312.
 - The sun's camera-space `z` is inferred from the run309 angle boundary
   (§9), not read; a one-row log of the TSuns node `+0xf8` would confirm it.
 - The lens collector fix (§9.1) is designed, not built; its fixture is specified, not written.
 - The call order of `0x00402780` (proxy install at `Direct3DCreate9`) relative
   to `0x00403840` (first registry creation); the one-off data write covers
   either order.
-- The env-map camera's own `+0x298` writer.
+- The env-map camera's own `+0x298` writer: resolved for the monitor's environment camera
+  (allocator default and `ShowSpace`'s explicit `0x4000`, §7.4.3); other cube cameras not surveyed.
+- The savegame load remap (§7.4.4) is designed, not built; whether ShowSpace runs on every load is
+  inferred; the save file each run loaded is not logged (the `foggreenoutlands` ↔ X11/X12 pairing is
+  inferred); whether savegames should be written in vanilla units (inverse at `0x0041c7c9`/`0x0041c8de`)
+  is a decision.
 - No runtime read yet: one `camera+0x298` / `registry+0x24` log at the first
   flight with the patch would confirm §3 (`0x4000` vanilla, `F_user` patched,
   `F_user·0x10000/zoom` in a zoomed cockpit view).

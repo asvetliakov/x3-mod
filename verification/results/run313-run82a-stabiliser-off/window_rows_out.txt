@@ -1,0 +1,56 @@
+window 1643-1680 frames 38
+  fade.fade_evicted: min 0 median 0 max 0 nonzero 0
+  fade.fade_owner_masked: min 0 median 0 max 0 nonzero 0
+  fade.fade_refused: min 0 median 0 max 0 nonzero 0
+  fade.fade_routed: min 56 median 56 max 56 nonzero 38
+  fade.overlay_refused: min 0 median 0 max 0 nonzero 0
+  moti.camera_rotation_deg: min 0.2783 median 0.2783 max 0.2783 nonzero 38
+  moti.routed: min 92 median 92 max 92 nonzero 38
+  moti.taa_resolved: min 1 median 1 max 1 nonzero 38
+  moti.unjittered_depth_writers: min 0 median 0 max 0 nonzero 0
+  thin.draws: min 92 median 92 max 92 nonzero 38
+  thin.min_alpha: min 0.2762 median 0.2762 max 0.2762 nonzero 38
+  thin.refused: min 0 median 0 max 0 nonzero 0
+  thin.voted: min 2 median 2 max 2 nonzero 38
+window 1673-1680 frames 8
+  fade.fade_evicted: min 0 median 0 max 0 nonzero 0
+  fade.fade_owner_masked: min 0 median 0 max 0 nonzero 0
+  fade.fade_refused: min 0 median 0 max 0 nonzero 0
+  fade.fade_routed: min 56 median 56 max 56 nonzero 8
+  fade.overlay_refused: min 0 median 0 max 0 nonzero 0
+  moti.camera_rotation_deg: min 0.2783 median 0.2783 max 0.2783 nonzero 8
+  moti.routed: min 92 median 92 max 92 nonzero 8
+  moti.taa_resolved: min 1 median 1 max 1 nonzero 8
+  moti.unjittered_depth_writers: min 0 median 0 max 0 nonzero 0
+  thin.draws: min 92 median 92 max 92 nonzero 8
+  thin.min_alpha: min 0.2762 median 0.2762 max 0.2762 nonzero 8
+  thin.refused: min 0 median 0 max 0 nonzero 0
+  thin.voted: min 2 median 2 max 2 nonzero 8
+window 2094-2131 frames 38
+  fade.fade_evicted: min 0 median 0 max 0 nonzero 0
+  fade.fade_owner_masked: min 0 median 0 max 0 nonzero 0
+  fade.fade_refused: min 0 median 0 max 0 nonzero 0
+  fade.fade_routed: min 27 median 31 max 31 nonzero 38
+  fade.overlay_refused: min 0 median 0 max 0 nonzero 0
+  moti.camera_rotation_deg: min 0 median 0.2065 max 1.1194 nonzero 33
+  moti.routed: min 63 median 67 max 67 nonzero 38
+  moti.taa_resolved: min 1 median 1 max 1 nonzero 38
+  moti.unjittered_depth_writers: min 0 median 0 max 0 nonzero 0
+  thin.draws: min 63 median 67 max 67 nonzero 38
+  thin.min_alpha: min 0.2762 median 0.27695 max 0.2773 nonzero 38
+  thin.refused: min 0 median 0 max 0 nonzero 0
+  thin.voted: min 2 median 2 max 2 nonzero 38
+window 2124-2131 frames 8
+  fade.fade_evicted: min 0 median 0 max 0 nonzero 0
+  fade.fade_owner_masked: min 0 median 0 max 0 nonzero 0
+  fade.fade_refused: min 0 median 0 max 0 nonzero 0
+  fade.fade_routed: min 27 median 28 max 29 nonzero 8
+  fade.overlay_refused: min 0 median 0 max 0 nonzero 0
+  moti.camera_rotation_deg: min 0.3399 median 0.89515 max 1.1194 nonzero 8
+  moti.routed: min 63 median 64 max 65 nonzero 8
+  moti.taa_resolved: min 1 median 1 max 1 nonzero 8
+  moti.unjittered_depth_writers: min 0 median 0 max 0 nonzero 0
+  thin.draws: min 63 median 64 max 65 nonzero 8
+  thin.min_alpha: min 0.2762 median 0.2767 max 0.2773 nonzero 8
+  thin.refused: min 0 median 0 max 0 nonzero 0
+  thin.voted: min 2 median 2 max 2 nonzero 8

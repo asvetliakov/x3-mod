@@ -1,0 +1,21 @@
+1673 fade_routed 56 rot_deg 0.2783
+1674 fade_routed 56 rot_deg 0.2783
+1675 fade_routed 56 rot_deg 0.2783
+1676 fade_routed 56 rot_deg 0.2783
+1677 fade_routed 56 rot_deg 0.2783
+1678 fade_routed 56 rot_deg 0.2783
+1679 fade_routed 56 rot_deg 0.2783
+1680 fade_routed 56 rot_deg 0.2783
+2124 fade_routed 27 rot_deg 0.3399
+2125 fade_routed 27 rot_deg 0.6692
+2126 fade_routed 27 rot_deg 0.7499
+2127 fade_routed 27 rot_deg 0.8552
+2128 fade_routed 29 rot_deg 0.9351
+2129 fade_routed 29 rot_deg 1.0102
+2130 fade_routed 29 rot_deg 1.0676
+2131 fade_routed 29 rot_deg 1.1194
+burst 1673 pre30 rot median 0.2783 max 0.2783 fade_routed pre30 median 56.0
+burst 2124 pre30 rot median 0.18845 max 0.3396 fade_routed pre30 median 31.0
+taa_invalidate rows 222
+[('taa_invalidate device= frame= site=', 222)]
+['taa_invalidate device=1 frame=0 site=not_resolved', 'taa_invalidate device=1 frame=0 site=fog_transition', 'taa_invalidate device=1 frame=1 site=not_resolved']

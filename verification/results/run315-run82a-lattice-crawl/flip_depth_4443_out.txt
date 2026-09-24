@@ -1,0 +1,4 @@
+O<->L flipping pixels 11869: rel dw (w_L-w_O)/w_O p5/p50/p95 -3.60e-03/-1.86e-04/3.13e-03; frac w_L<w_O 0.543; frac |rel|<1e-4 0.045
+reference: |dw|/w between horizontal neighbours on always-O cells p50 1.14e-03 p95 2.95e-03
+display code on flipping pixels: O frames mean 107.6, L frames mean 118.3, mean |cL-cO| 33.8
+L<->S flipping pixels 7662: L frames mean c 128.8, S frames mean c 89.7, mean |dc| 51.6

@@ -1,0 +1,11 @@
+# python3 verification/results/field-of-view/load_focus_by_run.py /tmp/x3-bottleX3-run3{09..18}/session-*.log   (2026-09-25; saves: X11/X12 +0x24=0x4000, X13 +0x3470 per save_load_focus.txt)
+x3-bottleX3-run309 session-20260924-222017-212.lo load_complete frame=318 sector=clear scene_F@328=0x3470
+x3-bottleX3-run310 session-20260924-223226-212.lo load_complete frame=410 sector=clear scene_F@420=0x3470
+x3-bottleX3-run311 session-20260924-224938-212.lo load_complete frame=2241 sector=clear scene_F@2251=0x3470
+x3-bottleX3-run312 session-20260925-003152-216.lo load_complete frame=237 sector=foggreenoutlands scene_F@247=0x4000
+x3-bottleX3-run313 session-20260925-003730-212.lo load_complete frame=157 sector=foggreenoutlands scene_F@167=0x4000
+x3-bottleX3-run314 session-20260925-004115-212.lo load_complete frame=332 sector=clear scene_F@342=0x3470
+x3-bottleX3-run315 session-20260925-004726-212.lo load_complete frame=1445 sector=clear scene_F@1455=0x3470
+x3-bottleX3-run316 session-20260925-005406-212.lo load_complete frame=189 sector=clear scene_F@199=0x3470
+x3-bottleX3-run317 session-20260925-005621-216.lo load_complete frame=199 sector=clear scene_F@209=0x3470
+x3-bottleX3-run318 session-20260925-005802-212.lo load_complete frame=660 sector=foggreenoutlands scene_F@670=0x4000

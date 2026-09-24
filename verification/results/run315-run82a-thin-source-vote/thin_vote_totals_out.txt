@@ -1,0 +1,22 @@
+  frame=4443 draws=109 opaque=56 known=55 voted=5 missed=0 queued=0 deferred_cap=0 already_queued=0
+  frame=4444 draws=109 opaque=56 known=55 voted=5 missed=0 queued=0 deferred_cap=0 already_queued=0
+  frame=4445 draws=109 opaque=56 known=55 voted=5 missed=0 queued=0 deferred_cap=0 already_queued=0
+  frame=4446 draws=109 opaque=56 known=55 voted=5 missed=0 queued=0 deferred_cap=0 already_queued=0
+  frame=4447 draws=109 opaque=56 known=55 voted=5 missed=0 queued=0 deferred_cap=0 already_queued=0
+  frame=4448 draws=109 opaque=56 known=55 voted=5 missed=0 queued=0 deferred_cap=0 already_queued=0
+  frame=4449 draws=109 opaque=56 known=55 voted=5 missed=0 queued=0 deferred_cap=0 already_queued=0
+  frame=4450 draws=109 opaque=56 known=55 voted=5 missed=0 queued=0 deferred_cap=0 already_queued=0
+  frame=4984 draws=106 opaque=54 known=53 voted=4 missed=0 queued=0 deferred_cap=0 already_queued=0
+  frame=4985 draws=106 opaque=54 known=53 voted=4 missed=0 queued=0 deferred_cap=0 already_queued=0
+  frame=4986 draws=106 opaque=54 known=53 voted=4 missed=0 queued=0 deferred_cap=0 already_queued=0
+  frame=4987 draws=106 opaque=54 known=53 voted=4 missed=0 queued=0 deferred_cap=0 already_queued=0
+  frame=4988 draws=106 opaque=54 known=53 voted=4 missed=0 queued=0 deferred_cap=0 already_queued=0
+  frame=4989 draws=106 opaque=54 known=53 voted=4 missed=0 queued=0 deferred_cap=0 already_queued=0
+  frame=4990 draws=106 opaque=54 known=53 voted=4 missed=0 queued=0 deferred_cap=0 already_queued=0
+  frame=4991 draws=111 opaque=55 known=54 voted=5 missed=0 queued=0 deferred_cap=0 already_queued=0
+run315 frames=10550 draw_timing=0 sampled=9024 queued=138 deferred_cap=0 already_queued=18 missed=156 dropped=0 unreadable=3345 no_scale=5368 refused=0 voted=62433 draws=778131 frames_voted>0=9043 voted_per_frame_median(nonzero)=5 max=32
+  sample_us n=9024 median=0.30 max=121.20
+run318 frames=7212 draw_timing=0 sampled=5071 queued=364 deferred_cap=320 already_queued=109 missed=793 dropped=320 unreadable=0 no_scale=35319 refused=0 voted=122054 draws=771079 frames_voted>0=5096 voted_per_frame_median(nonzero)=18.0 max=116
+  sample_us n=5071 median=0.30 max=140.70
+run312 frames=5387 draw_timing=0 sampled=5055 queued=58 deferred_cap=63 already_queued=15 missed=136 dropped=63 unreadable=0 no_scale=45517 refused=0 voted=13754 draws=286958 frames_voted>0=5058 voted_per_frame_median(nonzero)=2.0 max=24
+  sample_us n=5055 median=0.40 max=124.00

@@ -1,0 +1,10 @@
+pair 2124->2125 shift dy-2 dx+0 owned n16923 mean|dc| 13.97 p95 54.6 unowned n1653 mean|dc| 14.09 p95 49.5 bg n118515 mean|dc| 1.42 p95 6.9
+pair 2125->2126 shift dy-2 dx-1 owned n16986 mean|dc| 14.37 p95 54.0 unowned n1672 mean|dc| 13.82 p95 45.5 bg n117897 mean|dc| 1.45 p95 7.0
+pair 2126->2127 shift dy+8 dx-1 owned n16983 mean|dc| 17.11 p95 50.3 unowned n1744 mean|dc| 15.26 p95 49.0 bg n117006 mean|dc| 1.65 p95 7.8
+pair 2127->2128 shift dy+6 dx-1 owned n16776 mean|dc| 17.59 p95 54.5 unowned n1014 mean|dc| 17.48 p95 49.3 bg n115240 mean|dc| 1.67 p95 8.0
+pair 2128->2129 shift dy+6 dx+0 owned n16568 mean|dc| 17.58 p95 52.4 unowned n1003 mean|dc| 19.09 p95 51.7 bg n114296 mean|dc| 1.71 p95 8.1
+pair 2129->2130 shift dy+5 dx-2 owned n16372 mean|dc| 17.47 p95 53.3 unowned n698 mean|dc| 23.28 p95 63.8 bg n114374 mean|dc| 1.81 p95 8.3
+pair 2130->2131 shift dy+3 dx+0 owned n16145 mean|dc| 17.26 p95 50.3 unowned n592 mean|dc| 24.43 p95 65.8 bg n115024 mean|dc| 1.97 p95 8.8
+class owned: mean over pairs 16.48  pair min/max 13.97/17.59
+class unowned: mean over pairs 18.21  pair min/max 13.82/24.43
+class bg: mean over pairs 1.67  pair min/max 1.42/1.97

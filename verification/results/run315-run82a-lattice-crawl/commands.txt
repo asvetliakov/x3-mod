@@ -1,0 +1,24 @@
+Run 82 A lattice-crawl triage (2026-09-25): run315 (/tmp/x3-bottleX3-run315, session-20260925-004726-212.log), Run82 DLL cd8ef8e4 from d1a4e360.
+Logs/dumps read-only, no Wine, no build. Run from this directory. Burst frames in the log and the dump names are 4443-4450 and 4984-4991
+(run312: 2210-2217), not 14443/14984/12210. draw_table.py, route_rows.py copied from ../run311-run81a-stabiliser-off.
+L=/tmp/x3-bottleX3-run315/session-20260925-004726-212.log
+grep -anE '^(taa_thin_region_source|thin_vote_mode|taa_thin_vote_configured|fade_rt2_owner_configured|motion_output_taa|motion_output_taa_box_resolution|motion_output_taa_history_taps|terran_station_lod|lod_occlusion|fov) ' $L   # Q1 config: source vote/configured vote, sentinel_stabiliser=0.000, half, vote on, region_hold=1
+sed -n 4p $L | tr ' ' '\n' | grep -E 'TAA'                                                                  # Q1 launcher options (X3M_TAA_SENTINEL_STABILISER=0, _THIN_REGION_SOURCE=vote)
+python3 thumbs.py 315 4443 <scratch> 4; python3 thumbs.py 315 4984 <scratch> 4; python3 thumbs.py 312 2210 <scratch> 4   # Q1 visual: plant in both run315 bursts, not in run312
+python3 camera_rows.py 315 4443 8 > camera_rows_4443_out.txt; python3 camera_rows.py 315 4984 8 > camera_rows_4984_out.txt   # Q1 rest (step 0, rot 0) vs pan
+python3 plant_motion.py 315 4443 8 000054b3 > plant_motion_4443_out.txt; python3 plant_motion.py 315 4984 8 000054b3 > plant_motion_4984_out.txt   # Q1 px/frame
+grep -a '^cull_census ' <run312 log> | grep -c terran_spp_panel                                                # 0: run312 burst has no plant
+python3 draw_table.py 315 4443 > draw_table_4443_out.txt; python3 route_rows.py 315 4443 4447 4450 4984 4991 > route_rows_out.txt   # Q2 draw classes
+python3 plant_draws.py 315 4443 2290 280 2890 930 > plant_draws_4443_out.txt                                  # Q2 per model/lod/shader groups on the plant
+grep -a '^cull_census ' $L | grep -a terran_spp_panel (python summary in the report)                          # Q6 body, lod=1, thr=100000,250,266, s 73-104
+python3 lane_stats.py 315 4443 2560 610 2680 760                                                                # lane value survey
+python3 rest_lattice.py 315 4443 8 2300 285 2880 925 2400 420 2560 520 > rest_lattice_4443_out.txt             # Q3 classes, stability, std, rms, .a, motion
+python3 hull_std.py 315 4443 8 dome_smooth:2520,520,2560,560 ship_top:2480,990,2700,1040 ship_mid:2540,1060,2640,1150 > hull_std_4443_out.txt   # Q3 hull controls
+python3 flip_depth.py 315 4443 8 2300 285 2880 925 > flip_depth_4443_out.txt                                    # Q3/Q5 O<->L flips: w relation and colour jump
+python3 clean_windows.py 315 4443 8 2300 285 2880 925 0.05 > clean_windows_4443_out.txt; python3 line_width.py 315 4443 8 2596 621 2628 653 > line_width_4443_out.txt; python3 line_width.py 315 4443 8 2564 645 2596 677 >> line_width_4443_out.txt   # Q3 pitch / width
+python3 voted_pixels.py 315 4443 > voted_pixels_4443_out.txt                                                    # Q2/Q4 which draws voted (.a<1): ship + near station only
+python3 search_sim.py 315 4443 8 2300 285 2880 925 > search_sim_4443_out.txt                                    # Q4 modelled tests-draw flag and A' region, both vs vote
+python3 rest_lattice.py 310 3582 8 2160 200 3240 1115 2440 420 2560 520 > rest_lattice_run310_3582_out.txt; python3 search_sim.py 310 3582 8 2160 200 3240 1115 > search_sim_run310_3582_out.txt   # contrast: run310 (Run 81 A launch 2, both, S 0.7, no crawl reported)
+python3 emissive_luma.py > emissive_luma_4443_out.txt   # plant-crop luma share >= 1 (emissive vote E = 1)
+Overlay record: python over "<bottle>/drive_c/X3/addon/06.x3m-lod.json" bodies[name == stations/x3tc/terran_spp_panel] (new_lod 1, split_groups points [49589, 59999], faces 43948, draws 4)
+Source: vote skips the search: src/temporal/line_mask_ps.hlsl:282-287; A' region: src/temporal/resolve.hlsl:745-762; clip/hold blend: resolve.hlsl:821-833; alpha-tested rows .a = 1 and fade arm .a = 1: docs/verification/temporal-resolve.md:2443-2447.

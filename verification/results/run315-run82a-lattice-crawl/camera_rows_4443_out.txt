@@ -1,0 +1,8 @@
+4443 t -42378.92,-15256.87,17882.19 step 0.00 rot_deg 0.0000 cut 0 jit 0.375000 0.055556 draws 138 routed 109 taa_weight 0.900 taa_k 1.39845 hist 1 voted 5 opaque 56 known 55 min_alpha 0.1496
+4444 t -42378.92,-15256.87,17882.19 step 0.00 rot_deg 0.0000 cut 0 jit -0.437500 0.388889 draws 131 routed 109 taa_weight 0.900 taa_k 1.39845 hist 1 voted 5 opaque 56 known 55 min_alpha 0.1496
+4445 t -42378.92,-15256.87,17882.19 step 0.00 rot_deg 0.0000 cut 0 jit 0.000000 -0.166667 draws 130 routed 109 taa_weight 0.900 taa_k 1.39845 hist 1 voted 5 opaque 56 known 55 min_alpha 0.1496
+4446 t -42378.92,-15256.87,17882.19 step 0.00 rot_deg 0.0000 cut 0 jit -0.250000 0.166667 draws 138 routed 109 taa_weight 0.900 taa_k 1.39845 hist 1 voted 5 opaque 56 known 55 min_alpha 0.1496
+4447 t -42378.92,-15256.87,17882.19 step 0.00 rot_deg 0.0000 cut 0 jit 0.250000 -0.388889 draws 131 routed 109 taa_weight 0.900 taa_k 1.39845 hist 1 voted 5 opaque 56 known 55 min_alpha 0.1496
+4448 t -42378.92,-15256.87,17882.19 step 0.00 rot_deg 0.0000 cut 0 jit -0.375000 -0.055556 draws 130 routed 109 taa_weight 0.900 taa_k 1.39845 hist 1 voted 5 opaque 56 known 55 min_alpha 0.1496
+4449 t -42378.92,-15256.87,17882.19 step 0.00 rot_deg 0.0000 cut 0 jit 0.125000 0.277778 draws 130 routed 109 taa_weight 0.900 taa_k 1.39845 hist 1 voted 5 opaque 56 known 55 min_alpha 0.1496
+4450 t -42378.92,-15256.87,17882.19 step 0.00 rot_deg 0.0000 cut 0 jit -0.125000 -0.277778 draws 130 routed 109 taa_weight 0.900 taa_k 1.39845 hist 1 voted 5 opaque 56 known 55 min_alpha 0.1496

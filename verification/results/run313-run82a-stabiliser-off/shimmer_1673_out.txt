@@ -1,0 +1,16 @@
+pair 1673->1674 shift dy+0 dx+0 owned n13452 mean|dc| 9.36 p95 52.2 unowned n404 mean|dc| 2.11 p95 19.4 bg n95217 mean|dc| 0.00 p95 0.0
+pair 1674->1675 shift dy+0 dx+0 owned n13490 mean|dc| 8.46 p95 47.5 unowned n359 mean|dc| 1.05 p95 0.0 bg n95231 mean|dc| 0.00 p95 0.0
+pair 1675->1676 shift dy+0 dx+0 owned n13482 mean|dc| 7.19 p95 40.5 unowned n401 mean|dc| 1.24 p95 0.0 bg n95162 mean|dc| 0.00 p95 0.0
+pair 1676->1677 shift dy+0 dx+0 owned n13489 mean|dc| 9.09 p95 52.0 unowned n360 mean|dc| 1.27 p95 7.1 bg n95256 mean|dc| 0.00 p95 0.0
+pair 1677->1678 shift dy+0 dx+0 owned n13473 mean|dc| 9.41 p95 54.3 unowned n390 mean|dc| 2.39 p95 21.4 bg n95199 mean|dc| 0.00 p95 0.0
+pair 1678->1679 shift dy+0 dx+0 owned n13497 mean|dc| 9.77 p95 55.5 unowned n354 mean|dc| 1.91 p95 20.0 bg n95198 mean|dc| 0.00 p95 0.0
+pair 1679->1680 shift dy+0 dx+0 owned n13484 mean|dc| 9.83 p95 55.8 unowned n404 mean|dc| 1.85 p95 13.0 bg n95187 mean|dc| 0.00 p95 0.0
+class owned: mean over pairs 9.02  pair min/max 7.19/9.83
+class unowned: mean over pairs 1.69  pair min/max 1.05/2.39
+class bg: mean over pairs 0.00  pair min/max 0.00/0.00
+rest 8-frame per-pixel std owned: mean 7.09 p95 34.0 frac>4 0.335
+rest 8-frame per-pixel std unowned: mean 2.13 p95 17.1 frac>4 0.114
+rest 8-frame per-pixel std bg: mean 0.00 p95 0.0 frac>4 0.000
+per-frame class mean owned: 63.18 62.95 62.87 63.16 62.87 63.28 62.95 63.27
+per-frame class mean unowned: 88.54 87.92 88.25 87.98 88.24 87.51 88.23 88.54
+per-frame class mean bg: 79.81 79.81 79.81 79.81 79.81 79.81 79.81 79.81

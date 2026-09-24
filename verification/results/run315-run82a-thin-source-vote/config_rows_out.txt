@@ -1,0 +1,68 @@
+== 312
+   1 taa_thin_vote_configured requested=1 enabled=1 default=1 motion_output=1 taa=1 lane=1 ownership=1
+   1 motion_output_taa_box_resolution device=1 requested=half configured=half reason=ok create=00000000 default=1 sentinel_stabiliser=0.700
+   1 motion_output_taa_box_resolution device=1 frame=237 drawn=half reason=half width=5120 height=1440 target_create=00000000
+   1 fov_confirm frame=4 registry=2f883a98 focus=0x3470 expected=0x3470 match=1 vertical_deg=58.72 camera=skipped
+   1 fov_confirm frame=0 registry=absent focus=- expected=0x3470 match=0 vertical_deg=- camera=skipped
+   8 chase_fov_compensate
+   1 fov
+   2 fov_confirm
+   1 taa_thin_vote_configured
+5387 thin_vote_frame
+   1 thin_vote_mode
+== 315
+   1 taa_thin_vote_configured requested=1 enabled=1 default=1 motion_output=1 taa=1 lane=1 ownership=1
+   1 taa_thin_region_source device=1 requested=vote configured=vote reason=ok thin_region=0.9700 thin_vote=1 twins=1 camera_gate=1
+   1 motion_output_taa_box_resolution device=1 requested=half configured=half reason=ok create=00000000 default=1 sentinel_stabiliser=0.000
+   1 motion_output_taa_box_resolution device=1 frame=1445 drawn=half reason=half width=5120 height=1440 target_create=00000000
+   1 motion_output_scene_hook_disagreement device=1 frame=261 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=260 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=259 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=258 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=257 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=256 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=255 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=254 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=253 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=252 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=251 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=250 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=249 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=248 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=247 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=246 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 chase_fov_compensate
+   1 fov
+   2 fov_confirm
+   1 taa_thin_region_source
+   1 taa_thin_vote_configured
+10550 thin_vote_frame
+   1 thin_vote_mode
+== 318
+   1 taa_thin_vote_configured requested=1 enabled=1 default=1 motion_output=1 taa=1 lane=1 ownership=1
+   1 taa_thin_region_source device=1 requested=vote configured=vote reason=ok thin_region=0.9700 thin_vote=1 twins=1 camera_gate=1
+   1 motion_output_taa_box_resolution device=1 requested=half configured=half reason=ok create=00000000 default=1 sentinel_stabiliser=0.000
+   1 motion_output_taa_box_resolution device=1 frame=660 drawn=half reason=half width=5120 height=1440 target_create=00000000
+   1 motion_output_scene_hook_disagreement device=1 frame=2683 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=2682 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=2681 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=2680 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=2679 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=2678 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=2677 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=2676 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=2675 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=2674 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=2673 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=2672 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=2671 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=2670 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=2669 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   1 motion_output_scene_hook_disagreement device=1 frame=2668 installed=1 signals=1 outside_scene=1 selector_state=9 draws_after_hook=0 bloom_copy_seen=0 hook_scene_end=0 routed=0
+   2 chase_fov_compensate
+   1 fov
+   2 fov_confirm
+   1 taa_thin_region_source
+   1 taa_thin_vote_configured
+7212 thin_vote_frame
+   1 thin_vote_mode

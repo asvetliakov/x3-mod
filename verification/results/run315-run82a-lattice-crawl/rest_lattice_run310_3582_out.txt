@@ -1,0 +1,37 @@
+region pixels 107181 (crop 2160,200-3240,1115, DIL 2)
+frame 3582 in region: O 42576 L 46992 S 17613
+frame 3583 in region: O 42681 L 46918 S 17582
+frame 3584 in region: O 42641 L 46957 S 17583
+frame 3585 in region: O 42687 L 46864 S 17630
+frame 3586 in region: O 42721 L 46759 S 17701
+frame 3587 in region: O 42737 L 46860 S 17584
+frame 3588 in region: O 42670 L 46894 S 17617
+frame 3589 in region: O 42635 L 46929 S 17617
+class stability over 8 frames in region: always O 26403, always L 26340, always S 9060, flipping 45378 (0.423)
+pixels ever L 69436; always L 26340 (0.379); mean L coverage on ever-L pixels 0.675
+pixels ever S 33834; always S 9060; mean S coverage on ever-S 0.521
+  flipping only O<->L: 20604
+  flipping only O<->S: 2282
+  flipping only L<->S: 13382
+  flipping among all three: 9110
+8-frame per-pixel std of c, always O (cells): n 26403 mean 1.11 p50 0.81 p95 2.78 frac>4 0.015 frac>10 0.000
+8-frame per-pixel std of c, always L: n 26340 mean 21.22 p50 17.70 p95 51.00 frac>4 0.855 frac>10 0.690
+8-frame per-pixel std of c, always S: n 9060 mean 0.00 p50 0.00 p95 0.00 frac>4 0.000 frac>10 0.000
+8-frame per-pixel std of c, flipping: n 45378 mean 27.30 p50 26.62 p95 47.29 frac>4 0.978 frac>10 0.922
+8-frame per-pixel std of c, whole region: n 107181 mean 17.04 p50 14.95 p95 45.54 frac>4 0.628 frac>10 0.560
+8-frame per-pixel std of c, flipping O<->L: n 20604 mean 22.25 p50 21.51 p95 41.97 frac>4 0.973 frac>10 0.891
+8-frame per-pixel std of c, flipping with S: n 24774 mean 31.50 p50 31.58 p95 48.86 frac>4 0.982 frac>10 0.949
+mean c: cells 103.8 always-L 137.5 always-S 81.3
+frame-to-frame rms dc region: 42.04 36.10 35.17 30.17 34.57 31.54 42.03
+hull control 2440,420-2560,520 always-routed n 1728: std mean 16.76 p95 56.58 frac>4 0.693 frac>10 0.503; rms dc 45.58 42.69 31.90 25.38 32.61 34.94 44.51
+RT2 .a on routed region pixels: n 716521 ==1 0.9977 in[0,1) 0.0023 other 0.0000
+w (.b) on L pixels: p5/p50/p95 79623/109518/158265; on O: 101250
+RT2 .g on L pixels top: 0.0x63245, 0.9319999814033508x3335, 1.0x3046, 0.9309999942779541x3023, 0.9290000200271606x2841
+frame 3582 motion |v| px on routed region: p50 0.305 p95 0.306 max 0.307
+frame 3583 motion |v| px on routed region: p50 0.379 p95 0.381 max 0.381
+frame 3584 motion |v| px on routed region: p50 0.585 p95 0.587 max 0.588
+frame 3585 motion |v| px on routed region: p50 0.167 p95 0.168 max 0.169
+frame 3586 motion |v| px on routed region: p50 0.300 p95 0.302 max 0.303
+frame 3587 motion |v| px on routed region: p50 0.462 p95 0.464 max 0.465
+frame 3588 motion |v| px on routed region: p50 0.379 p95 0.380 max 0.381
+frame 3589 motion |v| px on routed region: p50 0.305 p95 0.306 max 0.307

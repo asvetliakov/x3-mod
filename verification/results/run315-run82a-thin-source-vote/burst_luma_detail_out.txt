@@ -1,0 +1,16 @@
+frame=4443 rot_deg=0.0000 cut_median_px=0.0000 meanL=0.0674 detail_frac=0.0275
+frame=4444 rot_deg=0.0000 cut_median_px=0.0000 meanL=0.0673 detail_frac=0.0274 dL/L_on_detail=0.2855 dL/L_all=0.0237
+frame=4445 rot_deg=0.0000 cut_median_px=0.0000 meanL=0.0673 detail_frac=0.0274 dL/L_on_detail=0.2587 dL/L_all=0.0222
+frame=4446 rot_deg=0.0000 cut_median_px=0.0000 meanL=0.0674 detail_frac=0.0275 dL/L_on_detail=0.1906 dL/L_all=0.0162
+frame=4447 rot_deg=0.0000 cut_median_px=0.0000 meanL=0.0673 detail_frac=0.0274 dL/L_on_detail=0.2633 dL/L_all=0.0228
+frame=4448 rot_deg=0.0000 cut_median_px=0.0000 meanL=0.0673 detail_frac=0.0275 dL/L_on_detail=0.2539 dL/L_all=0.0211
+frame=4449 rot_deg=0.0000 cut_median_px=0.0000 meanL=0.0673 detail_frac=0.0274 dL/L_on_detail=0.2664 dL/L_all=0.0211
+frame=4450 rot_deg=0.0000 cut_median_px=0.0000 meanL=0.0673 detail_frac=0.0274 dL/L_on_detail=0.2722 dL/L_all=0.0220
+frame=4984 rot_deg=0.2788 cut_median_px=4.6526 meanL=0.0628 detail_frac=0.0228
+frame=4985 rot_deg=0.7647 cut_median_px=17.9660 meanL=0.0631 detail_frac=0.0228 dL/L_on_detail=0.4857 dL/L_all=0.1766
+frame=4986 rot_deg=0.8877 cut_median_px=20.0740 meanL=0.0637 detail_frac=0.0230 dL/L_on_detail=0.4997 dL/L_all=0.1826
+frame=4987 rot_deg=1.0022 cut_median_px=22.3458 meanL=0.0644 detail_frac=0.0232 dL/L_on_detail=0.4968 dL/L_all=0.1865
+frame=4988 rot_deg=1.0899 cut_median_px=24.4229 meanL=0.0651 detail_frac=0.0235 dL/L_on_detail=0.4982 dL/L_all=0.1911
+frame=4989 rot_deg=1.1577 cut_median_px=26.2060 meanL=0.0658 detail_frac=0.0236 dL/L_on_detail=0.4963 dL/L_all=0.1948
+frame=4990 rot_deg=1.2300 cut_median_px=27.6817 meanL=0.0664 detail_frac=0.0239 dL/L_on_detail=0.4978 dL/L_all=0.1981
+frame=4991 rot_deg=1.2831 cut_median_px=28.8944 meanL=0.0671 detail_frac=0.0243 dL/L_on_detail=0.4952 dL/L_all=0.2011
