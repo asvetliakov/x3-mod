@@ -1,0 +1,6 @@
+1144 owner 0 other 82270 other_a==w(|d|<1e-3) 1.0000
+1618 owner 0 other 341798 other_a==w(|d|<1e-3) 1.0000
+3552 owner 12050 other 544115 other_a==w(|d|<1e-3) 1.0000 owner_w min/p50/max 222076/226864/270930 bbox x1979-3109 y583-950 other_in_bbox_same_w 0 other_w_max 207312
+3559 owner 12071 other 544055 other_a==w(|d|<1e-3) 1.0000 owner_w min/p50/max 222044/226862/270880 bbox x1978-3109 y583-951 other_in_bbox_same_w 0 other_w_max 207039
+4613 owner 39721 other 150599 other_a==w(|d|<1e-3) 1.0000 owner_w min/p50/max 320431/433247/907837 bbox x1468-3464 y115-1178 other_in_bbox_same_w 27632 other_w_max 452949
+4620 owner 38882 other 141716 other_a==w(|d|<1e-3) 1.0000 owner_w min/p50/max 318435/433762/913610 bbox x1485-3481 y153-1207 other_in_bbox_same_w 28532 other_w_max 453418

@@ -2880,3 +2880,6 @@ rest and under a pan or on a large near station. No frame-time comparison: run30
 `scene` 27,136 µs) are in line with run303. Save load 16.3 s (run304 19.2 s). **Accepted as the Run 81 default
 (`--taa-thin-vote on`), with the cost A/B in that flight.** Open: `draw_us` never recorded and `missed` non-zero while
 `reads` sits at the 16-per-frame cap (source check pending); a reload at frame 6202 without a `loading_phase` row.
+
+**Run 80 A launch 4 (run307, fade owner):** accepted as the Run 81 default; stabiliser removal still needs the S = 0
+launch (details in [linear-distance-fade.md](linear-distance-fade.md)).

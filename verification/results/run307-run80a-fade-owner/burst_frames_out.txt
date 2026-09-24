@@ -1,0 +1,39 @@
+1144 fade_routed 0 rot_deg 0.2264
+1145 fade_routed 0 rot_deg 0.2264
+1146 fade_routed 0 rot_deg 0.2264
+1147 fade_routed 0 rot_deg 0.2264
+1148 fade_routed 0 rot_deg 0.2264
+1149 fade_routed 0 rot_deg 0.2264
+1150 fade_routed 0 rot_deg 0.2264
+1151 fade_routed 0 rot_deg 0.2264
+1618 fade_routed 0 rot_deg 0.2596
+1619 fade_routed 0 rot_deg 0.4343
+1620 fade_routed 0 rot_deg 0.4089
+1621 fade_routed 0 rot_deg 0.3918
+1622 fade_routed 0 rot_deg 0.3837
+1623 fade_routed 0 rot_deg 0.3453
+1624 fade_routed 0 rot_deg 0.3212
+1625 fade_routed 0 rot_deg 0.2344
+3552 fade_routed 19 rot_deg 0.0
+3553 fade_routed 19 rot_deg 0.0
+3554 fade_routed 19 rot_deg 0.0
+3555 fade_routed 19 rot_deg 0.0
+3556 fade_routed 19 rot_deg 0.0
+3557 fade_routed 19 rot_deg 0.0
+3558 fade_routed 19 rot_deg 0.0
+3559 fade_routed 19 rot_deg 0.0
+4613 fade_routed 22 rot_deg 0.0
+4614 fade_routed 22 rot_deg 0.0
+4615 fade_routed 22 rot_deg 0.2479
+4616 fade_routed 22 rot_deg 0.2437
+4617 fade_routed 22 rot_deg 0.1586
+4618 fade_routed 22 rot_deg 0.3077
+4619 fade_routed 22 rot_deg 0.3349
+4620 fade_routed 22 rot_deg 0.3238
+burst 1144 pre30 rot median 0.2264 max 0.2264 fade_routed pre30 median 0.0
+burst 1618 pre30 rot median 0.12915000000000001 max 0.2671 fade_routed pre30 median 0.0
+burst 3552 pre30 rot median 0.0 max 0.0 fade_routed pre30 median 19.0
+burst 4613 pre30 rot median 0.06355 max 0.2177 fade_routed pre30 median 22.0
+taa_invalidate rows 385
+[('taa_invalidate device= frame= site=', 385)]
+['taa_invalidate device=1 frame=0 site=not_resolved', 'taa_invalidate device=1 frame=0 site=fog_transition', 'taa_invalidate device=1 frame=1 site=not_resolved']

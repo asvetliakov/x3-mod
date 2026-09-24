@@ -1,0 +1,36 @@
+run307 fade_route_frame rows 5494
+  fade_routed: nonzero_frames 2197 (0.400) sum 41261 max 24 distinct [0.0, 1.0, 2.0, 3.0, 5.0, 9.0]
+  fade_refused: nonzero_frames 0 (0.000) sum 0 max 0 distinct [0.0]
+  fade_held: nonzero_frames 0 (0.000) sum 0 max 0 distinct [0.0]
+  fade_route: nonzero_frames 5494 (1.000) sum 2747000 max 500 distinct [500.0]
+  cutout_caps: nonzero_frames 5494 (1.000) sum 5494 max 1 distinct [1.0]
+  overlay_routed: nonzero_frames 0 (0.000) sum 0 max 0 distinct [0.0]
+  overlay_refused: nonzero_frames 0 (0.000) sum 0 max 0 distinct [0.0]
+  fade_evicted: nonzero_frames 0 (0.000) sum 0 max 0 distinct [0.0]
+  fade_owner: nonzero_frames 5494 (1.000) sum 5494 max 1 distinct [1.0]
+  fade_owner_masked: nonzero_frames 0 (0.000) sum 0 max 0 distinct [0.0]
+  motion_output_frame 5494 frames with unjittered_depth_writers>0: 0; lines containing overlay_node: 0
+run304 fade_route_frame rows 14962
+  fade_routed: nonzero_frames 7514 (0.502) sum 110845 max 16 distinct [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+  fade_refused: nonzero_frames 0 (0.000) sum 0 max 0 distinct [0.0]
+  fade_held: nonzero_frames 0 (0.000) sum 0 max 0 distinct [0.0]
+  fade_route: nonzero_frames 14962 (1.000) sum 7481000 max 500 distinct [500.0]
+  cutout_caps: nonzero_frames 14962 (1.000) sum 14962 max 1 distinct [1.0]
+  overlay_routed: nonzero_frames 0 (0.000) sum 0 max 0 distinct [0.0]
+  overlay_refused: nonzero_frames 0 (0.000) sum 0 max 0 distinct [0.0]
+  fade_evicted: nonzero_frames 0 (0.000) sum 0 max 0 distinct [0.0]
+  fade_owner: nonzero_frames 0 (0.000) sum 0 max 0 distinct [0.0]
+  fade_owner_masked: nonzero_frames 0 (0.000) sum 0 max 0 distinct [0.0]
+  motion_output_frame 14962 frames with unjittered_depth_writers>0: 0; lines containing overlay_node: 0
+run306 fade_route_frame rows 9402
+  fade_routed: nonzero_frames 5235 (0.557) sum 64368 max 16 distinct [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+  fade_refused: nonzero_frames 0 (0.000) sum 0 max 0 distinct [0.0]
+  fade_held: nonzero_frames 0 (0.000) sum 0 max 0 distinct [0.0]
+  fade_route: nonzero_frames 9402 (1.000) sum 4701000 max 500 distinct [500.0]
+  cutout_caps: nonzero_frames 9402 (1.000) sum 9402 max 1 distinct [1.0]
+  overlay_routed: nonzero_frames 0 (0.000) sum 0 max 0 distinct [0.0]
+  overlay_refused: nonzero_frames 1154 (0.123) sum 18498 max 18 distinct [0.0, 1.0, 4.0, 8.0, 9.0, 12.0]
+  fade_evicted: nonzero_frames 0 (0.000) sum 0 max 0 distinct [0.0]
+  fade_owner: nonzero_frames 0 (0.000) sum 0 max 0 distinct [0.0]
+  fade_owner_masked: nonzero_frames 0 (0.000) sum 0 max 0 distinct [0.0]
+  motion_output_frame 9402 frames with unjittered_depth_writers>0: 0; lines containing overlay_node: 0

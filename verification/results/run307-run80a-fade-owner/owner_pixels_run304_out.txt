@@ -1,0 +1,1 @@
+7060 owner 0 other 269406 other_a==w(|d|<1e-3) 1.0000

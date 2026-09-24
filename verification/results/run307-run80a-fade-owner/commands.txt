@@ -1,0 +1,9 @@
+Run 80 A launch 4 triage: run307 (--fade-rt2-owner on; gpu-sync-timing also on, serialises=1; thin vote off) vs run304 (baseline) and run306 (thin vote, gpu-sync). DLL 593112dc. Logs read-only, no Wine. Run from this directory.
+Scripts copied from ../run306-run80a-thin-vote plus new fade_owner_frames.py, burst_frames.py, owner_pixels.py.
+grep -aE '^(fade_rt2_owner|create_device|gpu_sync_timing_mode|motion_output_taa )' /tmp/x3-bottleX3-run307/session-*.log   # Q1
+python3 fade_owner_frames.py 307 304 306 > fade_owner_frames_out.txt   # Q1/Q2/Q3 fade_route_frame fields, unjittered writers, overlay_node
+python3 burst_frames.py 307 > burst_frames_out.txt                     # Q2 burst frames: fade_routed, rotation (rest/pan)
+python3 rt2_alpha.py 307 > rt2_alpha_out.txt                           # Q2 RT2 lane .a on routed pixels
+python3 owner_pixels.py 307 1144 1618 3552 3559 4613 4620 > owner_pixels_out.txt; python3 owner_pixels.py 304 7060 > owner_pixels_run304_out.txt   # Q2/Q3
+python3 gpu_passes.py 307 > gpu_passes_out.txt; python3 frame_rest_pan.py 304 307 > frame_rest_pan_out.txt; python3 dt_windows.py 304 307 > dt_windows_out.txt; python3 taa_frames.py 304 307 > taa_frames_out.txt; python3 pan_windows.py 304 307 > pan_windows_out.txt; python3 spikes_nonburst.py 304 307 > spikes_nonburst_out.txt   # Q4 (run306 figures: python3 frame_rest_pan.py 306 etc.)
+bash rowtype_diff.sh > rowtype_diff_out.txt; python3 abnormal_rows.py 304 307 > abnormal_rows_out.txt; python3 exit_rows.py 304 307 > exit_rows_out.txt; python3 mem_cursor.py 304 307 > mem_cursor_out.txt; grep -aE '^loading_phase' /tmp/x3-bottleX3-run30[467]/session-*.log   # Q5
