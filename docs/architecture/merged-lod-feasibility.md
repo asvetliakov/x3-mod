@@ -1427,6 +1427,18 @@ Default on (`X3M_TERRAN_STATION_LOD` unset or `size`; launcher `--terran-station
 F8 burst shows the bit still set while `lod` follows the size loop. Flight still to do: a USC dock or
 SPP XL burst below `s/T_pad` 0.7 expecting `flag31=1` and lod 1 on the overlay parts.
 
+**Flight evidence: LOD-switch rows (built 2026-09-24, not flown).** Run 79 A's ODS flicker triage
+(`verification/results/run299-303-run79a/ods-flicker/`) could not separate a record `0 <-> C` pop from
+TAA flicker because its F8 bursts were frozen. Launcher `--lod-switch-log [N]` (`X3M_LOD_SWITCH_LOG=N`,
+default 16 rows per frame, implies `--cull-census`) arms the census on every frame and logs
+`lod_switch frame= node= body= from= to= s= D= T_pad= flag31= view=` when a kept node's `+0x14c` differs
+from the same (node, view) on the previous frame, then `lod_switch_overflow` past N and
+`lod_switch_frame frame= switches= nodes=` ([cull census ledger](../verification/cull-census.md)).
+Next ODS flight: this option plus a burst while turning with the station in the right third of the
+screen; `lod_switch_rows.py <log> --body usc_dock_e` lists per part the switch frames, `from->to`, `s`
+and `T_pad`. Switch rows at the pop frames with `s` next to `T_pad` confirm the no-hysteresis pop;
+no row while the part flickers points back at TAA.
+
 Scripts and outputs: `verification/results/run295-298-run78a/slot06/` (`type_race.py`,
 `race18_parts.py` -> `race18_parts.txt`, `branch_test.py` -> `branch_test_out.txt` over
 `census_logs.txt`, `race18_overlay_reach.py` -> `race18_overlay_reach_out.txt`,

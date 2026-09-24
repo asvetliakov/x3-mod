@@ -203,6 +203,66 @@ inline void format_body(char* out, const char* name) {
 inline std::int32_t size_limit(std::int32_t own, bool has_parent, std::int32_t parent) {
     return has_parent && parent > own ? parent : own;
 }
+// LOD-switch log (X3M_LOD_SWITCH_LOG=N, docs/verification/cull-census.md): the
+// selected record +0x14c of every node the census recorded as kept, per view,
+// compared with the same (node, view) on the previous armed frame. The table
+// is open-addressed with a bounded probe; a slot whose key was not seen on the
+// previous or the current frame is stale and reusable, so a node that left the
+// pass (or a freed node whose address is reused) re-seeds silently instead of
+// reporting a switch. A changed model id at the same address re-seeds too.
+constexpr unsigned track_bits = 14, track_size = 1u << track_bits, track_probe = 16;
+constexpr unsigned lod_switch_default_cap = 16, lod_switch_max_cap = 4096;
+struct TrackSlot { std::uint32_t node, view, model, seen; std::int32_t lod; };   // seen 0 = never used
+enum class Observed : unsigned char { seeded, same, switched, untracked };
+inline std::uint32_t track_hash(std::uint32_t node, std::uint32_t view) {
+    return (((node >> 4) ^ (view * 0x9e3779b1u)) * 0x85ebca6bu) >> (32 - track_bits);
+}
+// frame >= 1 counts the armed frames since the last clear. One lookup per kept
+// entry; `from` is written only on `switched`.
+inline Observed track_observe(TrackSlot* table, std::uint32_t node, std::uint32_t view, std::uint32_t model, std::int32_t lod, std::uint32_t frame, std::int32_t* from) {
+    TrackSlot* reuse = nullptr;
+    for (unsigned p = 0, i = track_hash(node, view); p < track_probe; ++p, i = (i + 1) & (track_size - 1)) {
+        TrackSlot& t = table[i];
+        if (!t.seen) { if (!reuse) reuse = &t; break; }   // slots are never emptied: the key is not further on
+        if (t.node == node && t.view == view) {
+            if (t.seen == frame) return Observed::same;     // a second visit in the same frame and view: first one wins
+            const bool consecutive = t.seen + 1 == frame && t.model == model;
+            const std::int32_t old = t.lod;
+            t.model = model; t.lod = lod; t.seen = frame;
+            if (!consecutive) return Observed::seeded;
+            if (old == lod) return Observed::same;
+            *from = old;
+            return Observed::switched;
+        }
+        if (!reuse && t.seen + 1 < frame) reuse = &t;
+    }
+    if (!reuse) return Observed::untracked;
+    reuse->node = node; reuse->view = view; reuse->model = model; reuse->seen = frame; reuse->lod = lod;
+    return Observed::seeded;
+}
+// A signed decimal into out (size >= 12 holds any int32).
+inline void format_int(char* out, unsigned size, std::int32_t v) {
+    char digits[11]; unsigned n = 0, at = 0;
+    std::uint32_t u = v < 0 ? 0u - std::uint32_t(v) : std::uint32_t(v);
+    do { digits[n++] = char('0' + u % 10); u /= 10; } while (u);
+    if (!size) return;
+    if (v < 0 && at + 1 < size) out[at++] = '-';
+    while (n && at + 1 < size) out[at++] = digits[--n];
+    out[at] = 0;
+}
+// X3M_LOD_SWITCH_LOG: decimal digits only, 0 = off, 1..lod_switch_max_cap rows per frame.
+template<class Char>
+inline bool parse_lod_switch_cap(const Char* text, unsigned length, unsigned* cap) {
+    if (!length || length > 5) return false;
+    unsigned v = 0;
+    for (unsigned i = 0; i < length; ++i) {
+        if (text[i] < Char('0') || text[i] > Char('9')) return false;
+        v = v * 10 + unsigned(text[i] - Char('0'));
+    }
+    if (v > lod_switch_max_cap) return false;
+    *cap = v;
+    return true;
+}
 enum class Verdict : unsigned char { kept = 0, culled_size, culled_min, culled_other, no_exit, culled_small };
 constexpr unsigned verdict_count = 6;
 inline const char* verdict_name(Verdict v) {

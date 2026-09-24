@@ -30,11 +30,12 @@
 #include <cstdarg>
 #include <string>
 #include <vector>
-static std::vector<std::string> frame_lines, entry_lines;
+static std::vector<std::string> frame_lines, entry_lines, switch_lines;
 namespace x3m { void log(const char* format, ...) {
     char text[512]; std::va_list a; va_start(a, format); std::vsnprintf(text, sizeof text, format, a); va_end(a);
     if (!std::strncmp(text, "cull_census_frame ", 18)) { frame_lines.emplace_back(text); return; }
     if (!std::strncmp(text, "cull_census device=", 19)) { entry_lines.emplace_back(text); return; }
+    if (!std::strncmp(text, "lod_switch", 10)) { switch_lines.emplace_back(text); return; }
     static unsigned lines = 0; if (lines++ < 8) std::printf("%s\n", text);
 } }
 namespace x3m::object_trace { bool executable_verified() { return true; } }
@@ -786,6 +787,83 @@ int main() {
         census::begin_frame(true); reset_tree(); run(R, view);
         check(census::stats().entries == 10 && census::stats().overflow == 0, "frame after the overflow starts clean");
         census::present(7, 45, true); frame_lines.clear(); entry_lines.clear();
+    }
+
+    // ---- LOD-switch log: one row per changed record, the per-frame cap, Reset re-seeds ----
+    {
+        frame_lines.clear(); entry_lines.clear(); switch_lines.clear();
+        check(!census::set_lod_switch_log(core::lod_switch_max_cap + 1) && census::set_lod_switch_log(16), "lod switch: cap above the maximum refused, 16 accepted");
+        // Frame 1 seeds, frame 2 is identical: no rows, and plain frames log no census rows.
+        census::begin_frame(false); check(census::stats().armed, "lod switch: a plain frame is armed while the log is on");
+        reset_tree(); run(R, view); census::present(7, 60, false);
+        census::begin_frame(false); reset_tree(); run(R, view); census::present(7, 61, false);
+        check(switch_lines.empty() && frame_lines.empty() && entry_lines.empty(), "lod switch: seed and unchanged frame log nothing, no census rows on plain frames");
+        // Frame 3: F's D halves (s 19 -> 38): record 3 -> 2, exactly one row with from/to/s/D and T_pad, then the frame row.
+        census::begin_frame(false); reset_tree(); put(F.bytes, d_offset, 50000);
+        const Result pat = run(R, view);
+        census::present(7, 62, false);
+        check(pat.preserved && pat.x87_empty && get(F.bytes, core::lod_offset) == 2, "lod switch: F now selects record 2, registers and x87 preserved");
+        unsigned long long frame = 0; unsigned long node = 0, v = 0; long from = -1, to = -1, sv = -1, dv = -1; char body[80] = {}, pad[16] = {}, f31[4] = {};
+        const int fields = switch_lines.empty() ? 0 : std::sscanf(switch_lines[0].c_str(), "lod_switch frame=%llu node=%lx body=%79s from=%ld to=%ld s=%ld D=%ld T_pad=%15s flag31=%3s view=%lx",
+                                                                    &frame, &node, body, &from, &to, &sv, &dv, pad, f31, &v);
+        check(switch_lines.size() == 2 && fields == 10, "lod switch: one change -> exactly one lod_switch row and one frame row");
+        check(frame == 62 && node == addr(&F) && from == 3 && to == 2 && sv == 38 && dv == 50000 && !std::strcmp(pad, "25") && !std::strcmp(f31, "0") && v == addr(&view) && !std::strcmp(body, "-"),
+              "lod switch: row carries frame, node, from 3, to 2, s 38, D, T_pad 25 (last record), flag31 and the view");
+        unsigned long long ff = 0; unsigned sw = 0, nodes = 0;
+        check(switch_lines.size() == 2 && std::sscanf(switch_lines[1].c_str(), "lod_switch_frame frame=%llu switches=%u nodes=%u", &ff, &sw, &nodes) == 3 && ff == 62 && sw == 1 && nodes == 6,
+              "lod switch: frame row switches=1 nodes=6 (the kept nodes R, E, F, I, J, gA1)");
+        switch_lines.clear();
+        // Frame 4: F back (3), E moves (2 -> 1) with cap 1: one row, one overflow row dropped=1, frame row switches=2.
+        check(census::set_lod_switch_log(1), "lod switch: cap 1");
+        census::begin_frame(false); reset_tree(); run(R, view); census::present(7, 63, false);   // re-seed after set_lod_switch_log's clear
+        census::begin_frame(false); reset_tree(); put(F.bytes, d_offset, 50000); run(R, view); census::present(7, 64, false);
+        switch_lines.clear();
+        census::begin_frame(false); reset_tree(); put(E.bytes, d_offset, 30000); run(R, view); census::present(7, 65, false);
+        unsigned long dropped = 0; unsigned cap = 0;
+        check(switch_lines.size() == 3 && !std::strncmp(switch_lines[0].c_str(), "lod_switch frame=65 ", 20)
+              && std::sscanf(switch_lines[1].c_str(), "lod_switch_overflow frame=%llu dropped=%lu cap=%u", &ff, &dropped, &cap) == 3 && ff == 65 && dropped == 1 && cap == 1
+              && std::sscanf(switch_lines[2].c_str(), "lod_switch_frame frame=%llu switches=%u nodes=%u", &ff, &sw, &nodes) == 3 && sw == 2 && nodes == 6,
+              "lod switch: cap 1 -> one row, lod_switch_overflow dropped=1 cap=1, frame row switches=2");
+        switch_lines.clear();
+        // A Reset re-seeds: the change across it reports nothing; a captured frame logs the census rows and switch rows together.
+        census::reset();
+        check(!census::stats().armed, "lod switch: reset disarms");
+        census::begin_frame(false); reset_tree(); run(R, view); census::present(7, 66, false);
+        check(switch_lines.empty(), "lod switch: the first frame after a Reset seeds, no row");
+        census::begin_frame(true); reset_tree(); put(F.bytes, d_offset, 50000); run(R, view); census::present(7, 67, true);
+        check(entry_lines.size() == 10 && switch_lines.size() == 2 && !std::strncmp(switch_lines[0].c_str(), "lod_switch frame=67 ", 20), "lod switch: captured frame keeps its ten census rows and adds the switch row");
+        frame_lines.clear(); entry_lines.clear(); switch_lines.clear();
+        // Cost of the Present-time compare per tracked node (diagnostic, not game FPS): 4,096 kept
+        // children, pass + present with the log on minus the same with it off (ring filled either way).
+        constexpr unsigned kids_count = 4096;
+        auto* pool = static_cast<Node*>(VirtualAlloc(nullptr, sizeof(Node) * (kids_count + 1), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+        check(pool != nullptr, "lod switch: bench pool");
+        if (pool) {
+            node_set(pool[0], nullptr, 20000, 100000, 0x1002, 0, 0, 0x7000);
+            std::vector<Node*> kids; kids.reserve(kids_count);
+            for (unsigned i = 1; i <= kids_count; ++i) { node_set(pool[i], &pool[0], 1000, 100000, 0x1002, 0, 0, 0x7000 + i); kids.push_back(&pool[i]); }
+            link(pool[0], kids.data(), kids_count);
+            unsigned long long bench_frame = 100;
+            auto frame_us = [&](bool on, unsigned loops) {
+                census::set_lod_switch_log(on ? 16 : 0);
+                LARGE_INTEGER f{}, a{}, b{}; QueryPerformanceFrequency(&f);
+                for (unsigned i = 0; i < 8; ++i) { census::begin_frame(true); run(pool[0], view); census::present(7, bench_frame++, false); }
+                QueryPerformanceCounter(&a);
+                for (unsigned i = 0; i < loops; ++i) { census::begin_frame(true); run(pool[0], view); census::present(7, bench_frame++, false); }
+                QueryPerformanceCounter(&b);
+                return double(b.QuadPart - a.QuadPart) * 1e6 / double(f.QuadPart) / double(loops);
+            };
+            double off_us = 0, on_us = 0;
+            for (unsigned r = 0; r < 3; ++r) { off_us += frame_us(false, 200); on_us += frame_us(true, 200); }
+            off_us /= 3; on_us /= 3;
+            check(switch_lines.empty(), "lod switch: a static 4,097-node scene logs no switch");
+            std::printf("LOD SWITCH BENCH tracked_nodes=%u frame_off_us=%.3f frame_on_us=%.3f per_node_ns=%.2f harness=pass_and_present_included game_fps=unmeasured\n",
+                        kids_count + 1, off_us, on_us, (on_us - off_us) * 1000.0 / double(kids_count + 1));
+        }
+        census::set_lod_switch_log(0);
+        census::begin_frame(false);
+        check(!census::stats().armed, "lod switch off: plain frames disarmed again");
+        switch_lines.clear();
     }
 
     // ---- cost: the same harness around the patched-armed, patched-disarmed and native pass (diagnostic, not game FPS) ----

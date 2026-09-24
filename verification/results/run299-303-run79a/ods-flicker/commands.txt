@@ -7,3 +7,4 @@ python3 ods_basis.py /tmp/x3-bottleX3-run<N>/session-*.log                     #
 python3 burst_motion.py /tmp/x3-bottleX3-run<N>/session-*.log                  # real camera/object motion inside bursts -> burst_motion_out.txt
 python3 burst_temporal.py LOG CAPDIR FIRST 8                                    # raw (pre-resolve hdr_1) jitter instability per body bbox
 python3 ../../../../tools/analysis/body_materials.py stations/station_scenes/terran/usc_dock_e_left_rings --lod 0   # C substitution
+python3 lod_switch_rows.py /tmp/x3-bottleX3-run<N>/session-*.log [--body usc_dock_e]   # lod_switch rows (--lod-switch-log) per node/view: switch frames, from->to, s, D, T_pad; --self-test on a synthetic log

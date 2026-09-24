@@ -131,6 +131,49 @@ const char* body_of(std::uint32_t id) {
     return slot.suffix;
 }
 
+// LOD-switch log state (X3M_LOD_SWITCH_LOG, core::track_observe): 0 = off, the stubs
+// then stay armed on capture frames only. The table is committed once when the
+// option is set (never per frame or per node, never freed: same rule as the ring).
+unsigned lod_switch_cap_ = 0;
+TrackSlot* track_ = nullptr;
+std::uint32_t track_frame_ = 0;   // armed frames since the last clear; 0 = cleared
+void clear_tracks() {
+    if (track_) std::memset(track_, 0, sizeof(TrackSlot) * track_size);
+    track_frame_ = 0;
+}
+// Compares every kept, exited entry of the ended frame with its (node, view)
+// state and logs up to lod_switch_cap_ switch rows, one overflow row and the frame
+// row (only on frames with a switch). `fresh`: the ladder and body caches were
+// already reset for this frame by the captured-frame rows.
+void scan_lod_switches(unsigned long long frame, std::uint32_t entries, bool fresh) {
+    if (++track_frame_ == 0) { clear_tracks(); track_frame_ = 1; }   // wrap: re-seed everything
+    std::uint32_t switches = 0, nodes = 0;
+    for (std::uint32_t i = 0; i < entries; ++i) {
+        const Entry& e = ring_[i];
+        if (!e.exited || !(e.flags_out & 2u)) continue;   // only nodes the pass kept: a culled node's +0x14c is the entry 0
+        ++nodes;
+        std::int32_t from = 0;
+        if (track_observe(track_, e.node, e.view, e.model, e.lod, track_frame_, &from) != Observed::switched) continue;
+        if (switches++ >= lod_switch_cap_) continue;
+        if (!fresh) {
+            std::memset(ladder_cache_, 0, sizeof ladder_cache_);
+            std::memset(body_cache_, 0, sizeof body_cache_); body_table_ = BodyTable{};
+            engine_memory::revalidate();
+            fresh = true;
+        }
+        // T_pad: the last record's threshold (merged-lod-feasibility.md; the pad of a merged body), '-' when unknown.
+        const Ladder& l = ladder_of(e.model_ptr);
+        char pad[12] = "-";
+        if (e.model_ptr && l.known && l.count > 0 && l.thresholds == unsigned(l.count))
+            format_int(pad, sizeof pad, l.thr[l.thresholds - 1]);
+        x3m::log("lod_switch frame=%llu node=%08lx%s from=%ld to=%ld s=%ld D=%ld T_pad=%s%s view=%08lx",
+            frame, (unsigned long)e.node, body_of(e.model), (long)from, (long)e.lod, (long)e.s, (long)e.d, pad, flag31_suffix(e.flag31), (unsigned long)e.view);
+    }
+    if (switches > lod_switch_cap_)
+        x3m::log("lod_switch_overflow frame=%llu dropped=%lu cap=%u", frame, (unsigned long)(switches - lod_switch_cap_), lod_switch_cap_);
+    if (switches) x3m::log("lod_switch_frame frame=%llu switches=%lu nodes=%lu", frame, (unsigned long)switches, (unsigned long)nodes);
+}
+
 bool bytes_match(std::uintptr_t at, const unsigned char* expected, unsigned length) {
     unsigned char actual[measure_window_length]{};
     return length <= measure_window_length && engine_patch::read_code(at, actual, length) && !std::memcmp(actual, expected, length);
@@ -261,16 +304,30 @@ bool initialize() {
     if (patched_) { SetLastError(error); return true; }
     wchar_t setting[4]{};
     const DWORD length = GetEnvironmentVariableW(L"X3M_CULL_CENSUS", setting, 4);
-    if (length == 0) { state_ = "disabled"; SetLastError(error); return false; }
+    if (length == 0) {
+        state_ = "disabled";
+        if (GetEnvironmentVariableW(L"X3M_LOD_SWITCH_LOG", setting, 4)) log("cull_census_lod_switch state=census_off cap=0 table=0");
+        SetLastError(error); return false;
+    }
     bool applied = false;
     const bool requested = length == 1 && setting[0] == L'1';
     if (!requested) state_ = "disabled";
     else if (!object_trace::executable_verified()) state_ = "executable_mismatch";
     else applied = install_at(measure_site_va, exit_site_va);
+    // X3M_LOD_SWITCH_LOG=N (rows per frame): only with the census live.
+    const char* lod_switch = "off";
+    wchar_t cap_text[8]{};
+    const DWORD cap_length = GetEnvironmentVariableW(L"X3M_LOD_SWITCH_LOG", cap_text, 8);
+    unsigned cap = 0;
+    if (cap_length && !applied) lod_switch = "census_off";
+    else if (cap_length && !parse_lod_switch_cap(cap_text, cap_length < 8 ? unsigned(cap_length) : 8u, &cap)) lod_switch = "invalid";
+    else if (cap && !set_lod_switch_log(cap)) lod_switch = "alloc_failed";
+    else if (cap) lod_switch = "on";
     log("cull_census requested=%u patched=%u reason=%s measure_site=0x%08lx exit_site=0x%08lx write_measure=%s write_exit=%s stub_measure=0x%08lx stub_exit=0x%08lx ring=%u",
         requested ? 1u : 0u, patched_ ? 1u : 0u, state_, static_cast<unsigned long>(measure_site_va), static_cast<unsigned long>(exit_site_va),
         measure_site_.patched_in ? (measure_site_.atomic_write ? "atomic" : "plain") : "none", exit_site_.patched_in ? (exit_site_.atomic_write ? "atomic" : "plain") : "none",
         static_cast<unsigned long>(measure_stub_), static_cast<unsigned long>(exit_stub_), ring_size);
+    log("cull_census_lod_switch state=%s cap=%u table=%u", lod_switch, lod_switch_cap_, lod_switch_cap_ ? track_size : 0u);
     SetLastError(error);
     return applied;
 }
@@ -279,6 +336,7 @@ bool shutdown() {
     const DWORD error = GetLastError();
     x3m_cull_census_enabled = 0;
     const bool exit_ok = engine_patch::restore(exit_site_), measure_ok = engine_patch::restore(measure_site_);
+    clear_tracks();
     patched_ = false; measure_stub_ = exit_stub_ = 0; // the stubs stay in the arena (a thread may still be inside them)
     state_ = exit_ok && measure_ok ? "restored" : "restore_failed";
     SetLastError(error);
@@ -293,7 +351,22 @@ void begin_frame(bool capture) {
     count_.store(0, std::memory_order_relaxed); overflow_.store(0, std::memory_order_relaxed);
     unmeasured_.store(0, std::memory_order_relaxed); exited_.store(0, std::memory_order_relaxed);
     pending_node_ = 0; pending_index_ = no_index; ancestors_.clear();
-    x3m_cull_census_enabled = capture ? 1 : 0;
+    x3m_cull_census_enabled = capture || lod_switch_cap_ ? 1 : 0;   // the LOD-switch log compares every frame
+}
+void reset() {
+    begin_frame(false);
+    x3m_cull_census_enabled = 0;
+    clear_tracks();   // a Reset re-seeds: the first frames after it report no switch
+}
+bool set_lod_switch_log(unsigned cap) {
+    if (cap > lod_switch_max_cap) return false;
+    if (cap && !track_) {
+        track_ = static_cast<TrackSlot*>(VirtualAlloc(nullptr, sizeof(TrackSlot) * track_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
+        if (!track_) { lod_switch_cap_ = 0; return false; }
+    }
+    clear_tracks();
+    lod_switch_cap_ = cap;
+    return true;
 }
 #ifdef X3M_CULL_CENSUS_FIXTURE
 void set_body_table_global(std::uintptr_t va) { body_global_ = va; }
@@ -311,6 +384,7 @@ Stats stats() {
 void present(unsigned long long device, unsigned long long frame, bool captured) {
     if (!patched_) return;
     const DWORD error = GetLastError();
+    const bool armed = x3m_cull_census_enabled != 0;
     x3m_cull_census_enabled = 0; // the ring is read below on the same thread that fills it
     if (captured) {
         const Stats s = stats();
@@ -339,6 +413,10 @@ void present(unsigned long long device, unsigned long long frame, bool captured)
                 (long)e.thr_1dc, (long)e.thr_1d8, (long)e.limit, (unsigned long)e.flags_in, (unsigned long)e.flags_out, (long)e.lod, verdict_name(verdict),
                 verdict == Verdict::culled_small ? (small_bodies_only_ ? " scope=bodies" : " scope=all") : "", ladder, body_of(e.model), flag31_suffix(e.flag31));
         }
+    }
+    if (lod_switch_cap_ && track_ && ring_ && armed) {
+        const std::uint32_t entries = count_.load(std::memory_order_relaxed);
+        scan_lod_switches(frame, entries < ring_size ? entries : ring_size, captured);
     }
     count_.store(0, std::memory_order_relaxed); overflow_.store(0, std::memory_order_relaxed);
     unmeasured_.store(0, std::memory_order_relaxed); exited_.store(0, std::memory_order_relaxed);

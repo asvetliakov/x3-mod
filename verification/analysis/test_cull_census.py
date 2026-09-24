@@ -37,6 +37,27 @@ int main() {
     unsigned failures = 0;
     auto check = [&](bool ok, const char* what) { if (!ok) { ++failures; std::printf("FAIL %s\n", what); } };
     check(size_limit(4, false, 99) == 4 && size_limit(4, true, 9) == 9 && size_limit(4, true, 2) == 4 && size_limit(-3, true, 0) == 0 && size_limit(-3, false, 0) == -3, "size_limit: signed max with the parent only when present");
+    {
+        static TrackSlot table[track_size];
+        std::int32_t from = -1; unsigned cap = 99;
+        check(track_observe(table, 0x1000, 0x2000, 7, 0, 1, &from) == Observed::seeded && track_observe(table, 0x1000, 0x2000, 7, 0, 2, &from) == Observed::same
+              && track_observe(table, 0x1000, 0x2000, 7, 2, 3, &from) == Observed::switched && from == 0, "track: seed, same, switch 0 -> 2");
+        check(track_observe(table, 0x1000, 0x3000, 7, 1, 3, &from) == Observed::seeded && track_observe(table, 0x1000, 0x2000, 7, 1, 3, &from) == Observed::same,
+              "track: another view is its own key; a second visit in the same frame is ignored");
+        check(track_observe(table, 0x1000, 0x2000, 7, 1, 5, &from) == Observed::seeded && track_observe(table, 0x1000, 0x2000, 8, 0, 6, &from) == Observed::seeded,
+              "track: a frame gap or a changed model re-seeds without a switch");
+        static TrackSlot fresh[track_size];
+        const std::uint32_t base = 0x00500000, h0 = track_hash(base, 0);
+        std::uint32_t other = 1; while (track_hash(base, other) != h0) ++other;   // a colliding (node, view) key outside the 16 below
+        unsigned seeded = 0; for (std::uint32_t n = 0; n < track_probe; ++n) seeded += track_observe(fresh, base + n, 0, 1, 0, 1, &from) == Observed::seeded;
+        check(seeded == track_probe && track_observe(fresh, base, other, 1, 0, 1, &from) == Observed::untracked, "track: 16 colliding keys fill the probe window, the 17th is untracked");
+        check(track_observe(fresh, base, other, 1, 0, 3, &from) == Observed::seeded && track_observe(fresh, base + 1, 0, 1, 0, 3, &from) == Observed::seeded,
+              "track: a slot not seen on the previous frame is reused; the original keys are still found past it");
+        check(parse_lod_switch_cap("16", 2, &cap) && cap == 16 && parse_lod_switch_cap("0", 1, &cap) && cap == 0 && !parse_lod_switch_cap("4097", 4, &cap)
+              && !parse_lod_switch_cap("1x", 2, &cap) && !parse_lod_switch_cap("", 0, &cap), "parse_lod_switch_cap: digits, 0..4096");
+        char text[12]; format_int(text, sizeof text, -2147483647 - 1); check(!std::strcmp(text, "-2147483648"), "format_int int32 minimum");
+        format_int(text, sizeof text, 25); check(!std::strcmp(text, "25"), "format_int 25");
+    }
     Entry e{}; e.exited = 1; e.flags_in = 0x1002; e.flags_out = 0x1002; e.measure = 5; e.limit = 0;
     check(classify(e) == Verdict::kept, "kept when the renderable bit survives");
     e.flags_out = 0x1000; e.limit = 8; check(classify(e) == Verdict::culled_size, "culled_size below a positive limit");
@@ -373,6 +394,24 @@ class CullCensusLaunchOption(unittest.TestCase):
             delivered = json.loads(output)
             self.assertEqual(delivered['command'], baseline['command'])
             self.assertEqual({k: v for k, v in delivered['env'].items() if k not in baseline['env']}, {'X3M_CULL_CENSUS': '1'})
+
+    def test_lod_switch_log_option(self):
+        with tempfile.TemporaryDirectory() as directory:
+            baseline = json.loads(self.launch(directory)[1])
+            added = lambda out: {k: v for k, v in json.loads(out)['env'].items() if k not in baseline['env']}
+            code, output, error = self.launch(directory, '--lod-switch-log')
+            self.assertEqual(code, 0, error)
+            self.assertEqual(added(output), {'X3M_CULL_CENSUS': '1', 'X3M_LOD_SWITCH_LOG': '16'})
+            code, output, error = self.launch(directory, '--cull-census', '--lod-switch-log', '4')
+            self.assertEqual(code, 0, error)
+            self.assertEqual(added(output), {'X3M_CULL_CENSUS': '1', 'X3M_LOD_SWITCH_LOG': '4'})
+            code, output, _ = self.launch(directory, inherited={'X3M_LOD_SWITCH_LOG': '8'})
+            self.assertEqual(code, 0)
+            self.assertNotIn('X3M_LOD_SWITCH_LOG', json.loads(output)['env'])
+            for bad in ('0', '4097'):
+                code, _, error = self.launch(directory, '--lod-switch-log', bad)
+                self.assertEqual(code, 2)
+                self.assertIn('--lod-switch-log out of range', error)
 
 
 if __name__ == '__main__':

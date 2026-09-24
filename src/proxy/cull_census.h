@@ -39,6 +39,19 @@ std::uintptr_t exit_stub_address();
 // row and the entry rows when the ended frame was captured, then disarms.
 void begin_frame(bool capture);
 void present(unsigned long long device, unsigned long long frame, bool captured);
+// The Reset path: disarms like begin_frame(false) and clears the LOD-switch table.
+void reset();
+// LOD-switch log (X3M_LOD_SWITCH_LOG=N, read by initialize() once the census is
+// live; launcher --lod-switch-log [N], default 16): cap = rows per frame, 0 = off.
+// While on, the stubs are armed on every frame (not only capture frames) and
+// present() compares the selected record +0x14c of every kept entry with the same
+// (node, view) on the previous frame (core::track_observe; one probe per kept
+// entry, table committed once, 16,384 slots), logging
+//   lod_switch frame= node= body= from= to= s= D= T_pad= flag31= view=
+// per change up to cap, then one lod_switch_overflow frame= dropped= cap= row,
+// and lod_switch_frame frame= switches= nodes= on frames with a switch.
+// Returns false when cap is out of range or the table cannot be committed.
+bool set_lod_switch_log(unsigned cap);
 struct Stats { std::uint32_t entries, overflow, unmeasured, exited; bool armed; };
 Stats stats();
 // The small-parts stub's threshold for the current frame (cull_small_parts,

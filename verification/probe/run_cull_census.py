@@ -26,14 +26,17 @@ def main():
     run = subprocess.run([bottle.WINE, *bottle.wine_args(name), str(EXE)], capture_output=True, text=True, timeout=600)
     total = re.search(r'CULL CENSUS CPU checks=(\d+) failures=(\d+)', run.stdout)
     bench = re.search(r'CULL CENSUS BENCH native_pass_us=([\d.]+) patched_disarmed_us=([\d.]+) patched_armed_us=([\d.]+)', run.stdout)
+    lod_bench = re.search(r'LOD SWITCH BENCH tracked_nodes=(\d+) frame_off_us=([\d.]+) frame_on_us=([\d.]+) per_node_ns=(-?[\d.]+)', run.stdout)
     record = {'fixture': str(EXE.relative_to(ROOT)), 'exit_status': run.returncode, 'elapsed_s': round(time.time() - started, 1),
               'checks': int(total.group(1)) if total else None, 'failures': int(total.group(2)) if total else None,
               'failure_lines': [l for l in run.stdout.splitlines() if l.startswith('FAIL') or l.startswith('DETAIL')],
               'bench_us': {k: float(bench.group(i + 1)) for i, k in enumerate(('native_pass', 'patched_disarmed', 'patched_armed'))} if bench else None,
+              'lod_switch_bench': {'tracked_nodes': int(lod_bench.group(1)), 'frame_off_us': float(lod_bench.group(2)), 'frame_on_us': float(lod_bench.group(3)),
+                                   'per_node_ns': float(lod_bench.group(4))} if lod_bench else None,
               'install_lines': [l for l in run.stdout.splitlines() if l.startswith('cull_census ')],
               'bottle': bottle.describe(name), 'note': 'harness-inclusive per-pass estimates over a 12-node tree (10 measured), not game FPS'}
     OUT.write_text(json.dumps(record, indent=1) + '\n')
-    print(json.dumps({k: record[k] for k in ('checks', 'failures', 'exit_status', 'bench_us', 'failure_lines')}))
+    print(json.dumps({k: record[k] for k in ('checks', 'failures', 'exit_status', 'bench_us', 'lod_switch_bench', 'failure_lines')}))
     if run.returncode != 0 and not total:
         print(run.stdout[-2000:], run.stderr[-2000:], file=sys.stderr)
     sys.exit(0 if run.returncode == 0 and total and record['failures'] == 0 else 1)
