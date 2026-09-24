@@ -1,0 +1,12 @@
+raw candidates (non-esp base): 303 at a Ghidra-listed site: 292
+0041629c NOT-GHIDRA                test dword ptr [edi + 0x12c], 0x20000000
+0047ab3b NOT-GHIDRA                mov edx, dword ptr [bx + si + 0x12c]
+0047b69d NOT-GHIDRA                test dword ptr [edi + 0x12c], 0x800
+0047eecf NOT-GHIDRA                or dword ptr fs:[edi + 0x12c], 0x1000000
+00490988 NOT-GHIDRA                lea ecx, [ecx + ecx*2 + 0x12c]
+00490e4d NOT-GHIDRA                lea ecx, [ecx + ecx*2 + 0x12c]
+004d96f7 NOT-GHIDRA                adc dword ptr [0x12c], eax
+004da979 NOT-GHIDRA                mov eax, dword ptr es:[eax + 0x12c]
+004daa54 NOT-GHIDRA                adc dword ptr [0x12c], eax
+00501f60 NOT-GHIDRA                add byte ptr [ecx + 0x12e], bh
+00502044 NOT-GHIDRA IMM-HAS-BIT31  imul ebp, dword ptr [0x12f], 0xe8835874

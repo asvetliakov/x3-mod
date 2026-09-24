@@ -1,0 +1,17 @@
+sha256 fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab
+=== 0047d00b..0047d02e
+0047d00b  75 16                    jne 0x47d023
+0047d00d  39 57 18                 cmp dword ptr [edi + 0x18], edx
+0047d010  75 11                    jne 0x47d023
+0047d012  f7 87 2c 01 00 00 00 00 00 80 test dword ptr [edi + 0x12c], 0x80000000
+0047d01c  74 05                    je 0x47d023
+0047d01e  c6 44 24 18 01           mov byte ptr [esp + 0x18], 1
+0047d023  8b 87 2c 01 00 00        mov eax, dword ptr [edi + 0x12c]
+0047d029  a9 00 00 10 00           test eax, 0x100000
+=== 0044162f..00441653
+0044162f  0f bf 55 4a              movsx edx, word ptr [ebp + 0x4a]
+00441633  69 d2 b8 0d 00 00        imul edx, edx, 0xdb8
+00441639  83 7c 0a 5c 12           cmp dword ptr [edx + ecx + 0x5c], 0x12
+0044163e  0f 85 08 05 00 00        jne 0x441b4c
+00441644  81 88 2c 01 00 00 00 00 00 80 or dword ptr [eax + 0x12c], 0x80000000
+0044164e  e9 f9 04 00 00           jmp 0x441b4c

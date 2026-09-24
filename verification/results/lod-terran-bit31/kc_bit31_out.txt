@@ -1,0 +1,3 @@
+B3D_Inst{Set,Get}Flags call sites 16
+push 0x80000000 total 54 within 60 bytes of a B3D flag native 0
+push 0x7fffffff total 55 within 60 bytes of a B3D flag native 0

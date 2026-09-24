@@ -134,7 +134,9 @@ The exception is the alternative branch `0047d36d..0047d3fb` (taken when
 parentless `node+0x12c & 0x80000000` case). It selects the LOD from fixed distance
 constants `0x6acfc0` / `0xec82e0` / `0x1406f40` / `0x1b2e020` and **never reads
 `+0x760`**. Any global scale leaves those nodes where they are, so a large factor
-will put them out of step with their neighbours. The station bodies of runs 36/39
+will put them out of step with their neighbours. Only race-0x12 (Terran) TDocks/TFactories
+roots carry the bit (readers, writers, persistence and patch sites: "Terran stations and bit 31
+of `node+0x12c`" below, 2026-09-24). The station bodies of runs 36/39
 are not in that branch: their measured LOD 2/3 boundary (`D ∈ (118 833, 129 090]`
 for model `5427`) matches neither constant.
 
@@ -891,3 +893,167 @@ engine then culls itself) and `cull_census_frame ... culled_small_exempt_bullet=
 instances per firing frame, about 750 more primitives in the bullet draw
 (24 faces each, inferred from the body sizes in the bolt-footprint note), no
 extra draw call.
+
+## Terran stations and bit 31 of `node+0x12c` (2026-09-24)
+
+Read-only study for the decision whether a DLL patch should take Terran stations out of the
+fixed-distance branch so that the merged-LOD overlay reaches them
+([merged-lod-feasibility.md](../architecture/merged-lod-feasibility.md), "Slot 06 LOD switch").
+Same EXE (SHA-256 `fdbf3418…34f8ab`), Ghidra 12.1.3 headless on `/tmp/x3-ghidra-research/X3Render`
+(`-readOnly`), plus a capstone scan of the raw `.text`. No game, no Wine. Scripts and summaries:
+`verification/results/lod-terran-bit31/` (`X3Flag12cScan.java` lists every `[reg+0x12c..0x12f]`
+access with a 14-instruction trace of register loads; `classify_scan.py` summarises it;
+`raw_disp_scan.py` re-finds the sites without Ghidra's code discovery; `dis_site.py` prints bytes;
+`kc_bit31.py` checks the KC story code). Raw listings and decompiler output stay in the session
+scratchpad. [s] static, [m] measured on files, [i] inferred.
+
+### 1. Readers: one
+
+**Scope [m].** 292 instructions address `+0x12c..+0x12f` with a non-stack base, in 106 functions
+(170 writes, 67 direct tests/compares, 53 register loads, 2 LEA). The raw scan finds all 292 and
+11 more candidates, all of which are prefix or mid-instruction decodes or unrelated address
+arithmetic (`0x00490988`, `0x00490e4d`: `[ecx+ecx*2+0x12c]`). The decompiled text of the 105
+named functions has one expression on bit 31 of the field (`0x0047cfe0`) plus the one write in
+`0x0043ffa0`; the `(char)… < 0` tests in `0x0047c570`/`0x0047c5b0` are bit 7.
+
+**The reader [s].** `0x0047d012` in the cull/LOD pass `0x0047cfe0`:
+
+```
+0047d00b  75 16                         jne  0047d023   ; arg2 (propagated flag) != 0
+0047d00d  39 57 18                      cmp  [edi+0x18],edx   ; edx = 0
+0047d010  75 11                         jne  0047d023   ; node has a parent
+0047d012  f7 87 2c 01 00 00 00 00 00 80 test dword [edi+0x12c],0x80000000
+0047d01c  74 05                         je   0047d023
+0047d01e  c6 44 24 18 01                mov  byte [esp+0x18],1   ; distance-branch flag
+0047d023  8b 87 2c 01 00 00             mov  eax,[edi+0x12c]
+```
+
+The bit is read only on a parentless node (`+0x18 == 0`). The flag byte is read at `0x0047d362`
+(branch select, `je 0047d429` = metric loop, fall-through `0047d36d` = distance branch) and passed
+to every child at `0x0047d530..0x0047d53c`; nothing else in the pass reads it. The top-level
+caller `0x0047e780` pushes 0 for that argument (`0x0047e7a0`), so the bit is the **only** way into
+the distance branch. Everything the branch changes is the index `node+0x14c`; the common tail,
+the culls and the renderable bit are the same code either way.
+
+**Other consumers of the field, none of which tests bit 31 [s]:**
+
+| Site | Function | Use | Effect if the bit is absent |
+| --- | --- | --- | --- |
+| `0x0047d012` | LOD pass `0x0047cfe0` | bit 31, as above | subtree selects by `s = r·W/D` against `LODrec_i[+0x34]` instead of by `D − R` |
+| `0x00443375`, `0x00451d11` | object flag helpers | register masks, resolved: `0x1000000` (`0x00443299`), `0x800` (`0x00451cd0`) | none |
+| `0x0047f5c6`, `0x0047f5f5` | node-tree query `0x0047f560` (callers `0x00413f1c`, `0x00453804`) | `& param_2`; callers pass `0x100000`, `0x8104800` or 0 | none |
+| `0x00489c46`, `0x00489e2e`, `0x0048a236` | per-node model helpers `0x00489bf0`, `0x00489da0` (attach), `0x0048a1e0` (body load) | mask `0x1000` | none |
+| `0x0046cb3e` | instanced batch `0x0046ca80` | whole word into batch record `+0x14`; its readers (`0x0046c170`, `0x0046cef0`) test `3`, `0x800`, `0x4000000` | none |
+| `0x00472cf3`, `0x00473132` | recorder `0x00472ab0` (recursive; entered only from `0x00474144` in `0x00473e10`, render option bit 1) | whole-word change detect (dirty `0x200`) and copy | a runtime clear would emit one changed record |
+| `0x00478917` | savegame node writer `0x00478690` | whole word into record `+0x194` (then `& ~0x1000`, `0x00478b67`) | the saved word lacks the bit (section 2) |
+| `0x00494a29` | B3D native `B3D_InstGetFlags` in `0x00493b40` | whole word to KC | none found: no `0x80000000`/`0x7fffffff` push within 60 bytes of the 16 flag-native calls in `x3story.obj` [m] |
+
+`0x004d8f10`, `0x004da960`, `0x004dab10`, `0x004c60a0` use `+0x12c` of a device-side object
+(a COM pointer), not a node. No culling, fade, docking, collision, picking or sound path reads the
+bit: fade exemption is `0x02000000` ([distance-fade.md](distance-fade.md)), the size culls use
+`+0x1d8`/`+0x1dc` and bit 2.
+
+### 2. Writers and persistence
+
+**Immediate writers [s].** One OR sets bit 31: `0x00441644`. No `AND` immediate clears it (the
+15 `AND` masks all keep it; the 88 `OR` immediates other than `0x00441644` do not contain it).
+The two `MOV` immediates are the cockpit display node (`0x004217a7`, word = 4) and a device-side
+object (`0x004da990`, 0).
+
+**Register-operand writers [s].** All 64 were resolved. Read-modify-writes of the same word that
+only touch other bits: `0x0047cfe0` (8 stores), `0x00434620`, `0x0043d1d0`, `0x004596e0`,
+`0x0047c570`, `0x0047c5b0`, `0x00488c70`, `0x0041efc0` (the `test bl,bl`/`jns` at `0x0047d0dd`
+and the `test al,al`/`jns` in `0x0047c570`/`0x0047c5b0` are bit 7). Constant masks loaded into a register:
+`0x100000` (`0x0042cda0`, `0x0042d140`, `0x0043b0b0`, `0x0043b750`, `0x0043c2d0`, `0x0045b130`,
+`0x0045f8dc`, `0x00487f50`, `0x0048a350`, `0x004517a0`), `0xffefffff` (`0x0042d28a`,
+`0x0045b080`, `0x00488410`), `0x80000` (`0x0043d371`, `0x0045f51a`), `0x1000` (`0x00489bf0`,
+`0x00489da0`, `0x0048a1e0`), `8` (`0x0042c200`, three nodes). The constructor's root word `local_140` (`0x004410d2`,
+`0x00441235`, `0x0044128c`) is 0, `0x104000`, `0x2000020`, `0xa000020` or `0x20000`. The
+subtree setters carry `0x8100000` (`0x00486cd0`, four calls from `0x00414cf0`) and `0x2000000`
+(visitor `0x00487190`, one call `0x004418e2`); the other visitor callbacks write `+0x130`,
+`+0x13c`, `+0x1c4`, `+0x1c8`, `+0x1d4`. The cockpit display node `0x004216e0` copies only
+`src & 0xc00000` (`0x0042181a`). **No path copies the bit into a child**; children follow the
+root through the propagated argument only.
+
+**Whole-word and data-driven writers [s].** They can carry the bit but do not create it:
+
+- savegame node load `0x00479d10`: `mov [ebx+0x12c],edx` at `0x0047a005` from record `+0x194`,
+  unmasked;
+- recorder replay `0x00476140`: `0x00476a16`, value `& ~0x1000`;
+- `B3D_InstSetFlags` `0x00494a97`: `node+0x12c = message+6` (the KC callers OR a mask into the
+  word from `B3D_InstGetFlags`, [lod-child-hide.md](lod-child-hide.md) §2.1);
+- effect elements `0x00414cf0` (`0x00414e9e`, `0x004157a9`, `0x00415964`): `|= element+4`, parsed
+  by `0x004ea9d0`, which also accepts a numeric token (a token starting with a digit or `%` goes
+  to the number parser `0x004ebe00` instead of the name table). Shipped `Effects.txt` uses names only (lod-child-hide §2.1),
+  so the bit is not set by data today; a mod could.
+
+**Persistence [s].** Yes. The savegame writer stores the live word (`0x00478917` → record
+`+0x194`), the loader restores it verbatim (`0x0047a005`), and on a save load the station object
+does **not** run the constructor: `0x004421a0` → `0x0042fe10` reads the node handle and resolves
+it with `0x00486eb0` (object `+0x70`, then `node+0x130 |= 0x80`). So a station loaded from a save
+has whatever bit the save carries [s]; the record transport between `+0x194` and the gz stream was
+not traced byte by byte [i]. Consequences:
+
+- a constructor patch changes only stations built after it is installed (new game, script
+  `SA_AllocObject`, cut-scene instancing); every Terran station in an existing save keeps the bit;
+- a runtime clear of the root bit is written into the next save; that save then loads without
+  the bit in a vanilla game too, and the clear has to be repeated after every load (after
+  `0x0047a720` returns, `0x0040508d` seam in [object-lifetimes.md](object-lifetimes.md));
+- a patch of the reader (section 3) needs neither and leaves saves byte-identical.
+
+### 3. Patch sites
+
+**Constructor race test [s].** One block, shared by both classes. The class switch
+`jmp [eax*4+0x441db4]` at `0x00441402` with the byte map at `0x00441dec` sends class 5 (TDocks) to
+entry 3 `0x00441653` and class 6 (TFactories) to entry 4 `0x004415fe`; no other entry reaches the
+block. TDocks jumps in at `0x0044162f` (`eb a9` at `0x00441684`); TFactories falls through from
+`0x00441629`.
+
+```
+0044162f  0f bf 55 4a                    movsx edx,word [ebp+0x4a]      ; jump target (0x00441684)
+00441633  69 d2 b8 0d 00 00              imul  edx,edx,0xdb8
+00441639  83 7c 0a 5c 12                 cmp   dword [edx+ecx+0x5c],0x12
+0044163e  0f 85 08 05 00 00              jne   00441b4c
+00441644  81 88 2c 01 00 00 00 00 00 80  or    dword [eax+0x12c],0x80000000
+0044164e  e9 f9 04 00 00                 jmp   00441b4c
+```
+
+- `0x0044163e` `0f 85 08 05 00 00` → `e9 09 05 00 00 90` (JMP `0x00441b4c`), or `0x00441644`
+  (10 bytes) → NOPs. No reference into `0x00441630..0x0044164d` other than the entry at
+  `0x0044162f` and fall-through; `0x0044164e` and `0x00441b4c` are unchanged. The shared tail
+  `0x00441b4c` (24 references) starts `mov ecx,[ebp+0x70]; cmp ecx,ebx`, so flags are dead; EAX,
+  ECX, EDX are rewritten there or before any read. Game thread, per new object, not reentered.
+- Scope: only TDocks/TFactories rows with `+0x5c == 0x12` (37 shipped rows; any mod row with race
+  18 too), only newly built objects (section 2).
+
+**Reader [s].** `0x0047d01c` `74 05` → `eb 05` (JMP `0x0047d023`, same length and target). Site
+bytes to verify: `f7 87 2c 01 00 00 00 00 00 80 74 05 c6 44 24 18 01` at `0x0047d012`. References
+into `0x0047d012..0x0047d022`: none (`0x0047d023` is the target of `0x0047d00b`, `0x0047d010`,
+`0x0047d01c`); `0x0047d01e` becomes unreachable. Flags from the `test` are dead: `0x0047d023` is a
+`mov`, `0x0047d029` a `test`, before any conditional. No register changes. The pass runs on the
+game thread once per node per view; a one-byte opcode store is atomic, and installing at proxy
+attach (before the first frame, `VirtualProtect` + `FlushInstructionCache`, same on native
+Windows) avoids a racing fetch. No existing DLL site lies in `0x0047cfe0..0x0047d08a` (earliest
+referenced is `0x0047d08b`, cull census). Zero per-node cost. It covers constructed and loaded
+stations alike, does not touch saved data, and also neutralises the bit from any data-driven
+writer (none in shipped data).
+
+### 4. What the branch serves
+
+Only race-0x12 station roots [s]: the sole creator of the bit is `0x00441644`, gates (class 18),
+suns (3), planets (4), asteroids (17), ships (7) and other classes get `local_140` words without
+it, and `0x0047e780` never passes the flag. Descendants follow the root, including anything
+attached under a Terran root (the 16 `argon_newdock_center` rows in the slot-06 triage, inferred
+docking ports). A patch in the constructor or the reader therefore changes LOD selection only for
+Terran TDocks/TFactories subtrees. Why Egosoft added it is not in the code; the four constants
+(7.0M / 15.5M / 21.0M / 28.5M, i.e. 7–28.5 km if the unit is mm) suggest fixed distance bands for
+the very large Terran scenes [i].
+
+**What changes for vanilla Terran bodies [i].** They move to the metric loop with their shipped
+`+0x34` thresholds, which exist (run273 `usc_small_station_d` 30/15). The triage found 528 of
+1,081 Terran census rows where the loop would pick a different record; how much finer or coarser
+the vanilla switch becomes, and its draw cost, has not been measured.
+
+**Unknown.** In-process confirmation (census field `branch=[esp+0x18]`) after a patch; whether any
+installed mod `Effects.txt` or KC script sets bit 31; the record transport of `+0x194` inside the
+save stream.

@@ -1,0 +1,81 @@
+non-stack sites 292 {'write': 170, 'read': 67, 'lea': 2, 'load': 53} functions 106
+00414cf0 00414e9e OR dword ,EAX                              register-operand write (source traced by hand)
+00414cf0 004157a9 OR dword ,EDX                              register-operand write (source traced by hand)
+00414cf0 00415964 OR dword ,ECX                              register-operand write (source traced by hand)
+0041efc0 0041f179 MOV dword ,EAX                             register-operand write (source traced by hand)
+0041efc0 0041f2f4 MOV dword ,EAX                             register-operand write (source traced by hand)
+004216e0 0042182c MOV dword ,EDX                             register-operand write (source traced by hand)
+0042c200 0042c452 OR dword ,EBX                              register-operand write (source traced by hand)
+0042c200 0042c48b OR dword ,EBX                              register-operand write (source traced by hand)
+0042c200 0042c4b9 OR dword ,EBX                              register-operand write (source traced by hand)
+0042cda0 0042cdbc OR dword ,EDX                              register-operand write (source traced by hand)
+0042cda0 0042cdd0 OR dword ,EDX                              register-operand write (source traced by hand)
+0042d140 0042d28a AND dword ,ECX                             register-operand write (source traced by hand)
+0042d140 0042d295 AND dword ,ECX                             register-operand write (source traced by hand)
+0042d140 0042d2b4 OR dword ,ECX                              register-operand write (source traced by hand)
+0042d140 0042d2c0 OR dword ,ECX                              register-operand write (source traced by hand)
+00434620 004346a7 MOV dword ,EAX                             register-operand write (source traced by hand)
+00434620 00434700 MOV dword ,ECX                             register-operand write (source traced by hand)
+0043b0b0 0043b70b OR dword ,ECX                              register-operand write (source traced by hand)
+0043b0b0 0043b720 OR dword ,ECX                              register-operand write (source traced by hand)
+0043b750 0043babd OR dword ,ECX                              register-operand write (source traced by hand)
+0043b750 0043bad0 OR dword ,ECX                              register-operand write (source traced by hand)
+0043c2d0 0043c4d2 OR dword ,EDX                              register-operand write (source traced by hand)
+0043c2d0 0043c4e0 OR dword ,EDX                              register-operand write (source traced by hand)
+0043d1d0 0043d371 OR dword ,ECX                              register-operand write (source traced by hand)
+0043d1d0 0043d47b MOV dword ,ECX                             register-operand write (source traced by hand)
+0043d1d0 0043d4c6 MOV dword ,EDX                             register-operand write (source traced by hand)
+0043d1d0 0043d5a7 MOV dword ,EAX                             register-operand write (source traced by hand)
+0043d1d0 0043d8a8 MOV dword ,EAX                             register-operand write (source traced by hand)
+0043ffa0 004410d2 OR dword ,ECX                              register-operand write (source traced by hand)
+0043ffa0 00441235 OR dword ,ECX                              register-operand write (source traced by hand)
+0043ffa0 0044128c OR dword ,EDX                              register-operand write (source traced by hand)
+0043ffa0 00441644 OR dword ,0x80000000                       immediate sets bit 31
+00443280 00443375 TEST dword ,ESI                            direct test, mask register
+004517a0 00451cf7 OR dword ,EDI                              register-operand write (source traced by hand)
+004517a0 00451d02 OR dword ,EDI                              register-operand write (source traced by hand)
+004517a0 00451d11 TEST dword ,EBX                            direct test, mask register
+004596e0 0045b069 MOV dword ,ECX                             register-operand write (source traced by hand)
+004596e0 0045b080 AND dword ,ESI                             register-operand write (source traced by hand)
+004596e0 0045b118 MOV dword ,EAX                             register-operand write (source traced by hand)
+004596e0 0045b130 OR dword ,ECX                              register-operand write (source traced by hand)
+0045f270 0045f51a OR dword ,ECX                              register-operand write (source traced by hand)
+0045f270 0045f8dc OR dword ,EDX                              register-operand write (source traced by hand)
+0045f270 0045f8f0 OR dword ,EDX                              register-operand write (source traced by hand)
+00472ab0 00472cf3 CMP ECX,dword                              direct test, mask register
+00476140 00476a16 MOV dword ,EAX                             register-operand write (source traced by hand)
+00479d10 0047a005 MOV dword ,EDX                             register-operand write (source traced by hand)
+0047c570 0047c57b MOV EAX,dword                              load then JNS 0x0047c590
+0047c570 0047c58a MOV dword ,EAX                             register-operand write (source traced by hand)
+0047c5b0 0047c5c6 MOV EAX,dword                              load then JNS 0x0047c5db
+0047c5b0 0047c5d5 MOV dword ,EAX                             register-operand write (source traced by hand)
+0047c640 0047c670 MOV EBX,dword                              load then JGE 0x0047c71a | JNS 0x0047c69c
+0047c640 0047c760 MOV EBX,dword                              load then JGE 0x0047c804 | JNS 0x0047c78c
+0047cfe0 0047d012 TEST dword ,0x80000000                     direct test, mask 0x80000000
+0047cfe0 0047d033 MOV dword ,EAX                             register-operand write (source traced by hand)
+0047cfe0 0047d076 MOV dword ,EAX                             register-operand write (source traced by hand)
+0047cfe0 0047d07c MOV EBX,dword                              load then JNS 0x0047d0a9
+0047cfe0 0047d09e MOV dword ,EBX                             register-operand write (source traced by hand)
+0047cfe0 0047d0e4 MOV dword ,EBX                             register-operand write (source traced by hand)
+0047cfe0 0047d140 MOV EDX,dword                              load then JL 0x0047d174
+0047cfe0 0047d195 MOV dword ,EDX                             register-operand write (source traced by hand)
+0047cfe0 0047d2e1 MOV dword ,EAX                             register-operand write (source traced by hand)
+0047cfe0 0047d4fc MOV dword ,EAX                             register-operand write (source traced by hand)
+0047cfe0 0047d504 MOV EDX,dword                              load then JL 0x0047d528
+0047cfe0 0047d513 MOV dword ,EDX                             register-operand write (source traced by hand)
+0047f560 0047f5c6 TEST dword ,EAX                            direct test, mask register
+0047f560 0047f5f5 TEST dword ,EAX                            direct test, mask register
+00486cd0 00486ce8 OR dword ,EDI                              register-operand write (source traced by hand)
+? 00487198 OR dword ,ECX                              register-operand write (source traced by hand)
+00487f50 00488009 OR dword ,EBX                              register-operand write (source traced by hand)
+00488410 00488425 AND dword ,EDX                             register-operand write (source traced by hand)
+00488410 00488443 AND dword ,EDX                             register-operand write (source traced by hand)
+00488c70 00488d12 MOV dword ,ECX                             register-operand write (source traced by hand)
+00489bf0 00489c80 OR dword ,EBX                              register-operand write (source traced by hand)
+00489da0 00489e68 OR dword ,ESI                              register-operand write (source traced by hand)
+0048a1e0 0048a270 OR dword ,EBX                              register-operand write (source traced by hand)
+0048a350 0048a3a7 OR dword ,ECX                              register-operand write (source traced by hand)
+0048a350 0048a3b4 OR dword ,ECX                              register-operand write (source traced by hand)
+00493b40 00494a97 MOV dword ,ECX                             register-operand write (source traced by hand)
+004d8f10 004d972b CMP dword ,ESI                             direct test, mask register
+004dab10 004dab88 MOV ECX,dword                              load then CMP ESI,0x8007000e
