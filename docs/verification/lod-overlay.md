@@ -224,3 +224,8 @@ red/tech/window tiles get white's constants: `g_MatSpecularStrength` 2.517 (sour
 `g_MatDiffuseStrength` 1.126 (1.0), `p_TexTiling` 100 (10), `t_CubeMapTexture` the envmap (NONE_ENVI) and alpha test
 off (on). Fix in progress: shading classes (one merged draw per class of like constants; section below when it lands),
 then a full rebake.
+
+**Decision 2026-09-24 (user):** no shading classes. A per-class merged draw would bring back several draws per
+coarse record, which defeats the single-draw goal; the user accepts the small colour change of the one synthesised
+material instead. The shading-classes change was stopped before it landed; the finding above stays as the
+explanation of the coarse/fine brightness difference. No rebake for this.
