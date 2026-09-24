@@ -1,0 +1,5 @@
+gpu_sync_timing_mode requested=1 passes=25 boundaries=50 window=300 serialises=1
+lod_occlusion site=004c34f7 status=off reason=record0 mode=record0 setting=record0 write=none
+create_device adapter=0 flags=00000052 width=5120 height=1440 format=21 windowed=1 msaa=0 interval=1
+create_device_result hr=00000000
+motion_output_taa device=1 initialize=00000000 references=34 sharpen=0.750 history_weight=0.900 copy=stretch alpha_history=0 age_bytes_per_pixel=8 far_weight=0.9850 far_filter=0.000 far_f0=80.0 far_f1=130.0 far_speed_lo=0.030 far_speed_hi=0.250 thin_region=0.9700 thin_relax=1.000 thin_gate=camera th

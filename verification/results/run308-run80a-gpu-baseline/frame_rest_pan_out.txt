@@ -1,0 +1,68 @@
+run304 mixed: windows=8 dt p50 16.5 p95 17.0 ms pan: windows=26 dt p50 16.0 p95 18.0 ms rest: windows=14 dt p50 17.0 p95 18.0 ms
+  session dt median 16.0 ms over 14662 frames (frame>=300); spikes >2x: 36; >100 ms: 24
+   frame 1689 dt 19208 ms class=mixed cut_within5=False
+   frame 14800 dt 6616 ms class=rest cut_within5=False
+   frame 1688 dt 2880 ms class=mixed cut_within5=False
+   frame 1729 dt 665 ms class=mixed cut_within5=False
+   frame 7060 dt 588 ms class=pan cut_within5=False
+   frame 7064 dt 525 ms class=pan cut_within5=False
+   frame 7061 dt 506 ms class=pan cut_within5=False
+   frame 7066 dt 499 ms class=pan cut_within5=False
+   frame 7062 dt 494 ms class=pan cut_within5=False
+   frame 7065 dt 494 ms class=pan cut_within5=False
+   frame 7063 dt 467 ms class=pan cut_within5=False
+   frame 7067 dt 465 ms class=pan cut_within5=False
+   frame 14799 dt 422 ms class=rest cut_within5=False
+   frame 4241 dt 401 ms class=pan cut_within5=False
+   frame 4523 dt 398 ms class=mixed cut_within5=False
+run306 mixed: windows=5 dt p50 32.0 p95 39.0 ms pan: windows=17 dt p50 36.0 p95 42.0 ms rest: windows=8 dt p50 33.0 p95 39.0 ms
+  session dt median 34.0 ms over 9102 frames (frame>=300); spikes >2x: 54; >100 ms: 34
+   frame 6202 dt 22090 ms class=mixed cut_within5=True
+   frame 398 dt 16285 ms class=pan cut_within5=False
+   frame 4892 dt 6581 ms class=mixed cut_within5=False
+   frame 9338 dt 6328 ms class=mixed cut_within5=False
+   frame 6201 dt 2324 ms class=mixed cut_within5=True
+   frame 4610 dt 787 ms class=pan cut_within5=False
+   frame 4611 dt 658 ms class=pan cut_within5=False
+   frame 5021 dt 611 ms class=mixed cut_within5=False
+   frame 6458 dt 577 ms class=pan cut_within5=True
+   frame 6220 dt 575 ms class=mixed cut_within5=False
+   frame 4612 dt 557 ms class=pan cut_within5=False
+   frame 420 dt 551 ms class=pan cut_within5=False
+   frame 4614 dt 535 ms class=pan cut_within5=False
+   frame 4613 dt 531 ms class=pan cut_within5=False
+   frame 4617 dt 520 ms class=pan cut_within5=False
+run307 mixed: windows=4 dt p50 30.0 p95 35.0 ms pan: windows=11 dt p50 32.0 p95 37.0 ms rest: windows=2 dt p50 29.5 p95 33.0 ms
+  session dt median 31.0 ms over 5194 frames (frame>=300); spikes >2x: 50; >100 ms: 43
+   frame 314 dt 19593 ms class=pan cut_within5=False
+   frame 5430 dt 6291 ms class=rest cut_within5=False
+   frame 4062 dt 4743 ms class=pan cut_within5=True
+   frame 3552 dt 887 ms class=mixed cut_within5=False
+   frame 3553 dt 807 ms class=mixed cut_within5=False
+   frame 3558 dt 778 ms class=mixed cut_within5=False
+   frame 3556 dt 743 ms class=mixed cut_within5=False
+   frame 3554 dt 732 ms class=mixed cut_within5=False
+   frame 3559 dt 729 ms class=mixed cut_within5=False
+   frame 3557 dt 714 ms class=mixed cut_within5=False
+   frame 3555 dt 712 ms class=mixed cut_within5=False
+   frame 1625 dt 675 ms class=pan cut_within5=False
+   frame 1618 dt 663 ms class=pan cut_within5=False
+   frame 1623 dt 651 ms class=pan cut_within5=False
+   frame 1620 dt 646 ms class=pan cut_within5=False
+run308 mixed: windows=3 dt p50 33.0 p95 40.0 ms pan: windows=4 dt p50 28.5 p95 33.5 ms rest: windows=1 dt p50 23.0 p95 27.0 ms
+  session dt median 30.0 ms over 2424 frames (frame>=300); spikes >2x: 23; >100 ms: 17
+   frame 2098 dt 18745 ms class=rest cut_within5=True
+   frame 445 dt 14240 ms class=pan cut_within5=False
+   frame 1732 dt 6582 ms class=mixed cut_within5=False
+   frame 2652 dt 6408 ms class=pan cut_within5=False
+   frame 1467 dt 885 ms class=mixed cut_within5=False
+   frame 331 dt 802 ms class=pan cut_within5=False
+   frame 2116 dt 623 ms class=mixed cut_within5=False
+   frame 469 dt 542 ms class=pan cut_within5=False
+   frame 2245 dt 523 ms class=mixed cut_within5=True
+   frame 2005 dt 425 ms class=rest cut_within5=False
+   frame 2651 dt 358 ms class=pan cut_within5=False
+   frame 1731 dt 342 ms class=mixed cut_within5=False
+   frame 2097 dt 212 ms class=rest cut_within5=True
+   frame 2686 dt 147 ms class=pan cut_within5=False
+   frame 444 dt 139 ms class=pan cut_within5=False

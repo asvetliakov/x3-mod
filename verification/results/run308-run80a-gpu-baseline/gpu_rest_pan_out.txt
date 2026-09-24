@@ -1,0 +1,14 @@
+run302 mixed windows=5 taa=6610/6835 taa_box=2343/2452 taa_copy=21/24 taa_mask=1543/1587 taa_mask_tests=1501/1517 taa_resolve=2557/2677
+run302 pan   windows=10 taa=6667/6820 taa_box=2341/2417 taa_copy=20/24 taa_mask=1544/1564 taa_mask_tests=1502/1517 taa_resolve=2563/2679
+run302 rest  windows=1 taa=6586/6698 taa_box=2337/2359 taa_copy=20/22 taa_mask=1542/1557 taa_mask_tests=1500/1510 taa_resolve=2550/2566
+run303 mixed windows=6 taa=7744/8004 taa_box=2108/2230 taa_copy=21/24 taa_mask=2932/3022 taa_mask_tests=1504/1515 taa_mask_x=676/694 taa_mask_y=666/684 taa_resolve=2540/2568
+run303 pan   windows=5 taa=7754/7899 taa_box=2107/2225 taa_copy=20/22 taa_mask=2925/2969 taa_mask_tests=1502/1519 taa_mask_x=674/685 taa_mask_y=664/676 taa_resolve=2551/2569
+run303 rest  windows=1 taa=7724/7867 taa_box=2106/2224 taa_copy=20/23 taa_mask=2926/2958 taa_mask_tests=1502/1513 taa_mask_x=674/684 taa_mask_y=664/678 taa_resolve=2450/2565
+run306 mixed windows=3 taa=6638/6876 taa_box=2352/2477 taa_copy=22/25 taa_mask=1442/1566 taa_mask_tests=1393/1515 taa_resolve=2658/2707
+run306 pan   windows=17 taa=6783/7133 taa_box=2377/2504 taa_copy=24/28 taa_mask=1465/1631 taa_mask_tests=1414/1553 taa_resolve=2684/2794
+run306 rest  windows=5 taa=6670/7104 taa_box=2364/2531 taa_copy=22/27 taa_mask=1453/1647 taa_mask_tests=1400/1563 taa_resolve=2572/2791
+run307 mixed windows=4 taa=6652/7040 taa_box=2358/2483 taa_copy=21/26 taa_mask=1438/1580 taa_mask_tests=1391/1524 taa_resolve=2611/2722
+run307 pan   windows=11 taa=6629/6930 taa_box=2352/2479 taa_copy=21/25 taa_mask=1439/1573 taa_mask_tests=1391/1517 taa_resolve=2659/2699
+run307 rest  windows=2 taa=6656/6936 taa_box=2360/2480 taa_copy=22/24 taa_mask=1450/1570 taa_mask_tests=1394/1516 taa_resolve=2585/2704
+run308 mixed windows=3 taa=6615/7017 taa_box=2355/2482 taa_copy=21/24 taa_mask=1437/1568 taa_mask_tests=1391/1513 taa_resolve=2571/2699
+run308 pan   windows=4 taa=6776/7040 taa_box=2406/2502 taa_copy=21/135 taa_mask=1492/1616 taa_mask_tests=1442/1538 taa_resolve=2676/2775

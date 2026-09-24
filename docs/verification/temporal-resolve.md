@@ -2883,3 +2883,11 @@ rest and under a pan or on a large near station. No frame-time comparison: run30
 
 **Run 80 A launch 4 (run307, fade owner):** accepted as the Run 81 default; stabiliser removal still needs the S = 0
 launch (details in [linear-distance-fade.md](linear-distance-fade.md)).
+
+**Run 80 A extra launch (run308, baseline + `--gpu-sync-timing`, vote and owner off):** the A'-only TAA GPU cost at
+5120x1440 measured: `taa` 6.78 ms (pan, window median), `taa_mask` 1.49, `taa_mask_tests` 1.44, `taa_box` 2.41,
+`taa_resolve` 2.68 ms; run306 (vote) and run307 (owner) match every stage within about 50 µs, so neither feature adds
+GPU pass time (measured, `verification/results/run308-run80a-gpu-baseline/gpu_rest_pan_out.txt`). Frame dt (gpu-sync,
+serialising) p50/p95 over TAA windows 30.7/36.5 ms; run306 33.8/39.9, run307 31.1/35.6: the +3.1 / +0.5 ms follow
+scene/engine time and flight content, not the features (inferred; no same-route A/B). Mask stays at Run 79 A's hold-on
+level (run302 1.54 ms; hold-off run303 2.93 ms).
