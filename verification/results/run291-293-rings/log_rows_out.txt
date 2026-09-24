@@ -1,0 +1,3 @@
+run291 look_rows=1 overrides=0 SHADOW_JITTER=1  opts: X3M_FOG_MARCH_SCALE=4 X3M_TAA_DEBUG=1 X3M_TAA_SHARPEN=0.75  capture_armed=0 capture_event=0 frame_end_capture1=0 hdr_sharpened1=3916/4495 last_frame=frame=4494
+run292 look_rows=1 overrides=1 SHADOW_JITTER=0  opts: X3M_FOG_LOOK_SHADOW_JITTER=0 X3M_FOG_MARCH_SCALE=4 X3M_TAA_DEBUG=1 X3M_TAA_SHARPEN=0.75  capture_armed=0 capture_event=0 frame_end_capture1=0 hdr_sharpened1=2546/2871 last_frame=frame=2870
+run293 look_rows=1 overrides=1 SHADOW_JITTER=0  opts: X3M_FOG_LOOK_SHADOW_JITTER=0 X3M_FOG_MARCH_SCALE=2 X3M_TAA_DEBUG=1 X3M_TAA_SHARPEN=0.75  capture_armed=0 capture_event=0 frame_end_capture1=0 hdr_sharpened1=2263/2610 last_frame=frame=2609

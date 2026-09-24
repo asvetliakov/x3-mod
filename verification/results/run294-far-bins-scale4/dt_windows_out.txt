@@ -1,0 +1,58 @@
+== run290 b40 sync: bins=40 scale=4 gpu_sync=1 taa_debug=0 res=?
+  frame    300 dt p50   23.6 p95   29.5 fog_applied_frames 0
+  frame    600 dt p50   39.2 p95   43.7 fog_applied_frames 225
+  frame    900 dt p50   40.3 p95   43.7 fog_applied_frames 300
+  frame   1200 dt p50   38.8 p95   43.0 fog_applied_frames 300
+  frame   1500 dt p50   39.2 p95   43.0 fog_applied_frames 300
+  frame   1800 dt p50   40.1 p95   43.0 fog_applied_frames 300
+  frame   2100 dt p50   38.5 p95   41.5 fog_applied_frames 300
+  frame   2400 dt p50   39.5 p95   42.9 fog_applied_frames 300
+  frame   2700 dt p50   39.4 p95   43.9 fog_applied_frames 300
+  frame   3000 dt p50   40.7 p95   44.5 fog_applied_frames 300
+  frame   3300 dt p50   40.4 p95   43.7 fog_applied_frames 300
+  frame   3600 dt p50   44.1 p95   50.0 fog_applied_frames 300
+  frame   3900 dt p50   40.6 p95   45.0 fog_applied_frames 300
+  frame   4200 dt p50   41.9 p95   46.3 fog_applied_frames 300
+  frame   4500 dt p50   39.3 p95   42.9 fog_applied_frames 300
+  frame   4800 dt p50   38.2 p95   42.1 fog_applied_frames 300
+  frame   5100 dt p50   38.5 p95   43.5 fog_applied_frames 291
+  frame   5400 dt p50   38.3 p95   42.3 fog_applied_frames 300
+  frame   5700 dt p50   33.6 p95   37.1 fog_applied_frames 300
+  frame   6000 dt p50   33.9 p95   37.0 fog_applied_frames 300
+  frame   6300 dt p50   35.0 p95   39.9 fog_applied_frames 300
+  frame   6600 dt p50   36.2 p95   40.8 fog_applied_frames 300
+  frame   6900 dt p50   36.4 p95   39.6 fog_applied_frames 300
+  frame   7200 dt p50   36.1 p95   39.3 fog_applied_frames 300
+  frame   7500 dt p50   36.6 p95   40.8 fog_applied_frames 233
+== run291 b40 dbg: bins=40 scale=4 gpu_sync=0 taa_debug=1 res=?
+  frame    300 dt p50   16.1 p95   20.8 fog_applied_frames 0
+  frame    600 dt p50   16.9 p95   22.5 fog_applied_frames 104
+  frame    900 dt p50   21.7 p95   24.4 fog_applied_frames 300
+  frame   1200 dt p50   20.0 p95   21.1 fog_applied_frames 300
+  frame   1500 dt p50   19.8 p95   21.1 fog_applied_frames 300
+  frame   1800 dt p50   19.8 p95   20.8 fog_applied_frames 300
+  frame   2100 dt p50   19.6 p95   21.6 fog_applied_frames 300
+  frame   2400 dt p50   19.6 p95   22.3 fog_applied_frames 300
+  frame   2700 dt p50   19.7 p95   22.8 fog_applied_frames 300
+  frame   3000 dt p50   19.5 p95   22.5 fog_applied_frames 300
+  frame   3300 dt p50   19.7 p95   22.5 fog_applied_frames 300
+  frame   3600 dt p50   19.6 p95   22.7 fog_applied_frames 300
+  frame   3900 dt p50   19.6 p95   23.3 fog_applied_frames 300
+  frame   4200 dt p50   19.9 p95   22.3 fog_applied_frames 300
+== run294 b24 dbg: bins=24 scale=4 gpu_sync=0 taa_debug=1 res=?
+  frame    300 dt p50   15.7 p95   29.7 fog_applied_frames 1
+  frame    600 dt p50   21.1 p95   22.8 fog_applied_frames 300
+  frame    900 dt p50   19.2 p95   20.2 fog_applied_frames 300
+  frame   1200 dt p50   19.4 p95   20.5 fog_applied_frames 300
+  frame   1500 dt p50   19.3 p95   20.1 fog_applied_frames 300
+  frame   1800 dt p50   19.6 p95   20.6 fog_applied_frames 300
+  frame   2100 dt p50   19.2 p95   20.0 fog_applied_frames 300
+  frame   2400 dt p50   19.3 p95   20.2 fog_applied_frames 300
+  frame   2700 dt p50   19.4 p95   20.2 fog_applied_frames 300
+  frame   3000 dt p50   18.7 p95   19.9 fog_applied_frames 300
+  frame   3300 dt p50   19.0 p95   20.7 fog_applied_frames 300
+  frame   3600 dt p50   20.0 p95   21.3 fog_applied_frames 300
+  frame   3900 dt p50   19.7 p95   20.5 fog_applied_frames 300
+  frame   4200 dt p50   19.9 p95   21.9 fog_applied_frames 300
+AGG run291 b40 dbg: n_win=12 median dt p50 19.68 p95 22.38 ms
+AGG run294 b24 dbg: n_win=12 median dt p50 19.31 p95 20.35 ms

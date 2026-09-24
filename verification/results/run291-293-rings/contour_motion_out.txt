@@ -1,0 +1,4 @@
+run289 s2 2155 ev +0.914 | codes_per_ev p50 29.3 | px_per_code p25/p50/p75 5.1/14.8/32.4 | shift_px per 0.01 EV p50/p75 4.31/9.45 | fp16_ulp_in_codes p50/p90 0.046/0.076 | code p50 89.0
+run289 s2 2162 ev +1.113 | codes_per_ev p50 29.8 | px_per_code p25/p50/p75 4.1/14.1/32.3 | shift_px per 0.01 EV p50/p75 4.17/9.57 | fp16_ulp_in_codes p50/p90 0.047/0.077 | code p50 93.8
+run290 s4 2632 ev +0.399 | codes_per_ev p50 25.6 | px_per_code p25/p50/p75 10.4/23.0/46.1 | shift_px per 0.01 EV p50/p75 5.66/11.74 | fp16_ulp_in_codes p50/p90 0.043/0.046 | code p50 65.8
+run290 s4 2639 ev +0.460 | codes_per_ev p50 23.3 | px_per_code p25/p50/p75 7.8/21.7/53.8 | shift_px per 0.01 EV p50/p75 4.04/10.70 | fp16_ulp_in_codes p50/p90 0.043/0.047 | code p50 55.1
