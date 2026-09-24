@@ -33,41 +33,8 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 | 73 B/C | Fog hand-over, --music-keep alt-tab, bolt footprint (B); --gpu-sync-timing stand (C), Run73 DLL | 2 | B completed (run273): music keep accepted (6 alt-tabs, all skip_all); docked view in flight shows our fog; open: same-family gate jump 3.5 s of engine fog (residency drop + ramp), confirmed prefill still re-filled after arrival (1.15 s), docked save load keeps engine fog until undock (cards armed but refused, 4.5 s), new-game cold start 1.34 s (0.7 s ordering + 0.6 s fill latch); bolts unchanged (rule leaves half-length >= 3 px untouched; no additive admission after the new game) ([triage](../verification/results/run273-fog-bolts/), fixes in progress). C completed (run274): per-pass GPU table ([note](../architecture/engine-frame-time.md#run-274-gpu-per-pass-cost-at-19201080-run-73-c-2026-09-23)); proxy 11.7 ms serialised vs engine 4.7 ms, fog_route 4.4 / taa 2.9 ms. |
 | 73 A | Merged-LOD batch overlay of the flown sectors (19 bodies) in a busy sector, Run72 DLL | 1 | Completed 2026-09-23 (run272): FPS better, no oddity reported; overlay bodies draw the merged record at 2–4 draws; 234/217 draws per burst come from texel_floor-refused tech stations and the gate (36–38 / 14–32 each), single-LOD pipes (42), refused signs (~35), the spacedock above its switch and the outpost with the camera inside its sphere ([triage](../verification/results/run272-batch-busy/burst_draws_out.txt)); baker per-tile clamp in progress. |
 | 72 A/B | Run72 defaults (box cull, forward reticle, 1.05 boom, pause key-only, decoder discovery, identity without hash) and the music trace (A), then --music-keep (B) | 2 | A completed 2026-09-23 (run270): reticle, camera, pause and collisions accepted; alt-tab same-id replay confirmed 7/7, save not traced; bolts faint in third person (open, [ledger](screen-emission.md#run-270-run-72-a-2026-09-23-bolt-visibility-in-third-person-open)); 1080p CPU passes unchanged, proxy 6.8 % ([note](../architecture/engine-frame-time.md#run-270-first-flight-at-19201080-run-72-a-2026-09-23)). B completed (run271): --music-keep keeps the position through alt-tab, pause and save (two saves while docked) but the DirectSound re-arm leaves a ~1 s gap on alt-tab; the trace did not install beside the keep; bolts are 1–2 px dots with the cull off ([ledgers](music-keep.md), [emission](screen-emission.md), [fog](volumetric-fog.md)). DLL `c17792a9…` ([install](../verification/results/run72-candidate-install.json)). |
-| 71 A | Merged-LOD atlas overlay from the LOD 0 meshes at the stand (Run70 DLL) | 1 | Completed 2026-09-23: run269 accepted, no visible transition; coarse ships 2 draws / outpost 4 with the four atlases bound ([note](../architecture/engine-frame-time.md#run-269-lod-0-atlas-overlay-accepted-2026-09-23)). |
-| 70 A/B/C | SETA hull blur with --taa-motion-weight (A); fog dust motes with the Ctrl+Alt+F11 A/B (B); merged-LOD atlas overlay at the stand (C) | 3 | Run69 DLL `70abe438…` from `5a11ad00`. A: run262 (0.8) and run263 (0.7) accepted, default 0.7,2,8 ([ledger](temporal-resolve.md#run-262-motion-weight-08-2-8-in-flight-accepted-2026-09-23)). B: run264 + B2, accepted at 1300,3 / MAX_PX 8, default in the next DLL ([ledger](volumetric-fog.md#run-264-fog-dust-motes-in-flight-2026-09-23)). C: run265 (specular placeholder) and C2 run268 (specular fixed; remaining step = light-atlas mip bleed on exhausts/windows, fix in progress) ([note](../architecture/engine-frame-time.md#run-268-atlas-overlay-with-the-specular-atlas-2026-09-23)). |
-| 69 A/B/C/D | Merged-LOD pilot overlay (addon/05.cat, installed DLL): two-group collapse (A), glow collapse (B), compact placement at 80 / 150 px (C), area-ranked light maps + synthesized material (D) | 4 | A: run257, engine glows lost ([note](../architecture/engine-frame-time.md#run-257-merged-lod-pilot-in-flight-2026-09-23)). B: run258, glows back. C: run259/run260, 80/150 acceptable, lighting loss = light maps and diffuse strength ([note](../architecture/engine-frame-time.md#run-259--260-compact-placement-at-80--150-px-the-lighting-question-2026-09-23)). D: run261, less visible, outpost sun 94 % / non-sun 73 % of fine ([note](../architecture/engine-frame-time.md#run-261-area-ranked-light-maps-and-the-synthesized-material-2026-09-23)). |
 
-Completed run commands and instructions are preserved in
-[the completed-run archive](../archive/user-runs-completed.md) and the
-[run 48 archive](../archive/run48-completed-2026-09-20.md); they are provenance,
-not rerun requests.
-
-
-<a id="51-media-retry-counter--same-view-longer-diagnostic-interval"></a>
-<a id="53-spatial-fog-and-moving-lattice-state--ready-for-flight"></a>
-Run51/53 instructions are [archived](../archive/run53-completed-2026-09-20.md); they are not rerun requests.
-
-Run 76 A–D are complete; the docked-load fix (alpha test) and the TAA mask cut are on main for the Run77 candidate. Completed instructions for Runs 73-76 A are in the [archive](../archive/user-runs-completed.md).
-
-**Run 77 A2 (queued 2026-09-24 03:40): one F8 burst next to a slot-06 body.** Run 77 A (run287) confirmed slot 05 (14 bodies drew their merged record, frame time better than Run 74 A) but no slot-06 body was on screen during its burst, so the second archive is still unproven. Slot 06 holds the Terran docks and shipyards, the five race trading stations, the equipment docks and the torus docks. In any session, take one F8 burst with a Terran dock or shipyard, a trading station or an equipment dock in view at a distance (2 km or more), and one closer; say which station. Run 78 A run297 (USC orbital supply station, Terran Solar Power Plant XL) shows every slot-06 body staying at lod 0 far below the switch size while slot-05 bodies switch: the two-slot layout is **not** proven; cause under triage-deep ([triage](../../verification/results/run295-298-run78a/summary.md)). The overlay was rebaked with the refusal-class lift and reinstalled 2026-09-24 04:57 (611 bodies: 05 488, 06 123; [record](../../verification/results/lod-overlay-batch/install-fleet2/install.json)), unflown.
-
-
-**Run 77 C2 completed 2026-09-24 (run291 scale 4, run292 scale 4 + SHADOW_JITTER=0, run293 scale 2 + SHADOW_JITTER=0; no F8 bursts taken): the user finds the rings move with the auto exposure and are faintly present at scale 2 too, and accepts scale 4 (now the default on main); triage on the run289/290 captures: the rings are 8-bit output contours (no dither at the tonemap write; contours 22 px apart at scale 4, moved 4-6 px per 0.01 EV by the exposure), fix = output dither in the next candidate ([triage](../verification/results/run291-293-rings/)). run294 (scale 4, far bins 24, no timing): dt p50 19.3 vs 19.7 ms, p95 20.4 vs 22.4 against run291; 40 stays the default ([triage](../verification/results/run294-far-bins-scale4/)). Open: Run 77 A2 (one burst at a slot-06 body) and Run 77 D (deferred): bolts in a busy fight, third and first person, one F8 burst mid-fight. Run 78 A (dither A/B, default scale 4, exit without a crash, the slot-06 burst, `--taa-history-taps 16` vs 5) is queued with the Run78 candidate.
-
-
-**Run 78 A (queued 2026-09-24 06:20; Run78 DLL `d4ba9f05…` from ee3bbf88 installed 06:58): output dither, S3 5-tap history, the exit fix, scale 4 default, fleet 611.** One session at 5120x1440, several launches, all with the stand command below (Run 77 C2's line without `--fog-march-scale`: 4 is the default now). Please report per launch:
-
-1. **Dither A/B at the fogged spot where the rings were (run291).** Launch 1 with the command as is (dither on); launch 2 adds `--hdr-dither off`. Question: are the moving rings gone with the dither on and back with it off? One F8 burst in each.
-2. **Normal exit.** Exit the game through the menu at the end of a launch: expect no "Unhandled page fault" dialog; the log should carry one `engine_memory_read_refused` row (the fix c45c5dc0, unflown).
-3. **Slot-06 burst (Run 77 A2).** In any launch, one F8 burst with a Terran dock or shipyard, a trading station or an equipment dock in view at 2 km or more, and one closer; say which station.
-4. **History taps A/B on the lattice stand.** Launch 3 adds `--taa-history-taps 16` (the pre-S3 reconstruction); compare against the default 5 taps of launch 1 on the lattice stand: crawl, ghosting, sharpness of thin struts under a slow pan. Say whether you see any difference.
-5. Optional: `--fog-far-bins 24 --gpu-sync-timing` on the fog spot (run294 gave -0.4 ms p50 / -2 ms p95 without timing).
-
-Run 77 D (bolts in a busy fight) closed by Run 78 A run298: bolts ok.
-
-```sh
-env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3-mod/x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-far-stabiliser 0.985 --light-map-far-fade 80,220 --motion-rt-mode lazy --frame-end-stride 1 --taa-thin-region 0.97 --volumetric-fog 0.02 --volumetric-fog-cards replace --volumetric-fog-range stored --volumetric-fog-timing --capture-start 999999 --capture-frames 8 --capture-delay 300 --cull-small-parts 4 --frame-timing --frame-phases --object-bounds-log --cull-census
-```
+## Run 79 (open)
 
 **Run 79 A (queued 2026-09-24; Run79 DLL `d3683ced…` from df01f23b installed 08:56): TAA A' region hold and the Terran station LOD patch.** One session at 5120x1440, several launches, the stand command below (Run 78 A's). Both changes are on by default; the flags turn each off for an A/B. Please report per launch:
 
@@ -89,3 +56,15 @@ env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3
 ```
 
 To remove the overlay: delete `addon/05.cat`, `05.dat`, `05.x3m-lod.json` and `x3m-lod-batch*.json/txt`; the originals are untouched.
+
+Completed run commands and instructions are preserved in
+[the completed-run archive](../archive/user-runs-completed.md) and the
+[run 48 archive](../archive/run48-completed-2026-09-20.md); they are provenance,
+not rerun requests.
+
+
+<a id="51-media-retry-counter--same-view-longer-diagnostic-interval"></a>
+<a id="53-spatial-fog-and-moving-lattice-state--ready-for-flight"></a>
+Run51/53 instructions are [archived](../archive/run53-completed-2026-09-20.md); they are not rerun requests.
+
+Run 79 A is the only queued run. Completed instructions for Runs 73-78 are in the [archive](../archive/user-runs-completed.md).
