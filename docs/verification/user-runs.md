@@ -20,6 +20,7 @@ which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 
 | Run | Purpose | Sessions | Status |
 | --- | --- | ---: | --- |
+| 78 A | Dither A/B, S3 5 vs 16 taps, clean exit, slot-06 burst, scale 4 default at 5120x1440 (candidate ee3bbf88) | 1 | Queued 2026-09-24, install pending the Run78 gate |
 | 74 A | Re-baked overlay: aspect thresholds + area-weighted texel rule, 22 bodies, busy sector, Run73 DLL | 1 | Completed 2026-09-23 (run277, flown on the Run75 DLL): accepted, FPS much better, almost no visible transition; one visible switch on the solar-panel arms of the plasma thrower factory (F8 bursts 35568–35575 coarse, 36781–36788 fine), triage in progress; overlay stays installed. |
 | 77 B | Docked save load in fog with the alpha-test admission, Run77 DLL | 1 | Completed 2026-09-24 (run288): our fog after the fill latch, 357 ms from the menu (prefill adopted) / 608 ms on a same-sector reload (prefill not adopted); all 3,983 card rows admitted, no drop-out across the undock; closed at the accepted cold-start trade-off ([ledger](volumetric-fog.md#run-288-run-77-b-2026-09-24-docked-save-load-shows-our-fog-after-the-fill-latch-admission-fixed)). |
 | 77 C | First 5120x1440 sessions under --gpu-sync-timing, --fog-march-scale 2 (run289) vs 4 (run290) | 2 | Completed 2026-09-24: fog_march 8.99 -> 2.68 ms (-6.3 ms), fog_route 13.6 -> 7.2, serialised dt 45.9 -> 39.0 ms, TAA stage 8.8 ms, frame GPU-bound at scale 2; the user sees transparent moving "oil rings" in the fog at scale 4: triage attributes them to the shaft-offset noise keyed per 4x4 march cell and shifted per frame (lattice vectors are multiples of 4 px, 2 px at scale 2), not to the 4-px interpolation (no seam at the sample columns); scale 2 stays the default, C2 queued ([triage](../verification/results/run289-290-march-scale/)). |
@@ -52,6 +53,20 @@ Run 76 A–D are complete; the docked-load fix (alpha test) and the TAA mask cut
 
 **Run 77 C2 completed 2026-09-24 (run291 scale 4, run292 scale 4 + SHADOW_JITTER=0, run293 scale 2 + SHADOW_JITTER=0; no F8 bursts taken): the user finds the rings move with the auto exposure and are faintly present at scale 2 too, and accepts scale 4 (now the default on main); triage on the run289/290 captures: the rings are 8-bit output contours (no dither at the tonemap write; contours 22 px apart at scale 4, moved 4-6 px per 0.01 EV by the exposure), fix = output dither in the next candidate ([triage](../verification/results/run291-293-rings/)). run294 (scale 4, far bins 24, no timing): dt p50 19.3 vs 19.7 ms, p95 20.4 vs 22.4 against run291; 40 stays the default ([triage](../verification/results/run294-far-bins-scale4/)). Open: Run 77 A2 (one burst at a slot-06 body) and Run 77 D (deferred): bolts in a busy fight, third and first person, one F8 burst mid-fight. Run 78 A (dither A/B, default scale 4, exit without a crash, the slot-06 burst, `--taa-history-taps 16` vs 5) is queued with the Run78 candidate.
 
+
+**Run 78 A (queued 2026-09-24 06:20; candidate from ee3bbf88, install pending the gate): output dither, S3 5-tap history, the exit fix, scale 4 default, fleet 611.** One session at 5120x1440, several launches, all with the stand command below (Run 77 C2's line without `--fog-march-scale`: 4 is the default now). Please report per launch:
+
+1. **Dither A/B at the fogged spot where the rings were (run291).** Launch 1 with the command as is (dither on); launch 2 adds `--hdr-dither off`. Question: are the moving rings gone with the dither on and back with it off? One F8 burst in each.
+2. **Normal exit.** Exit the game through the menu at the end of a launch: expect no "Unhandled page fault" dialog; the log should carry one `engine_memory_read_refused` row (the fix c45c5dc0, unflown).
+3. **Slot-06 burst (Run 77 A2).** In any launch, one F8 burst with a Terran dock or shipyard, a trading station or an equipment dock in view at 2 km or more, and one closer; say which station.
+4. **History taps A/B on the lattice stand.** Launch 3 adds `--taa-history-taps 16` (the pre-S3 reconstruction); compare against the default 5 taps of launch 1 on the lattice stand: crawl, ghosting, sharpness of thin struts under a slow pan. Say whether you see any difference.
+5. Optional: `--fog-far-bins 24 --gpu-sync-timing` on the fog spot (run294 gave -0.4 ms p50 / -2 ms p95 without timing).
+
+Run 77 D (bolts in a busy fight) stays deferred.
+
+```sh
+env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3-mod/x3run --direct --camera chase --chase-view-restore --ownership --object-trace --object-lifetime --motion-output --taa --telemetry --camera-log 1 --hdr --hdr-tonemap --hdr-exposure auto --hdr-bloom --bloom-source-clamp 1.0 --crypt-cache --gz-buffer --resource-read fast --dat-handles --mesh-adjacency fast --screen-emission-additive 2 --screen-emission-additive-alpha 0 --emission-source-gain 2 --loading-intervals --sun-shadow-lane --shadow-replay-depth --shadow-replay-candidates --sun-shadow-apply --shadow-sun-poll on --fps-overlay --shadow-cascades 250,1500,7500,37500,150000 --shadow-cascade-drop-order importance --shadow-cascade-records 1024,1024,2048,4096,4096 --shadow-cascade-sizes 2048,2048,2048,2048,2048 --shadow-retention-census --shadow-caster-retention --shadow-cascade-adaptive-c0 1.5 --taa-far-stabiliser 0.985 --light-map-far-fade 80,220 --motion-rt-mode lazy --frame-end-stride 1 --taa-thin-region 0.97 --volumetric-fog 0.02 --volumetric-fog-cards replace --volumetric-fog-range stored --volumetric-fog-timing --capture-start 999999 --capture-frames 8 --capture-delay 300 --cull-small-parts 4 --frame-timing --frame-phases --object-bounds-log --cull-census
+```
 
 Stand command (Run 73 A's, unchanged):
 
