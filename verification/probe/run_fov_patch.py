@@ -10,9 +10,10 @@ executable and writes verification/results/bottle-X3/fov-patch.json: bottle,
 toolchain and build audit, the commit plus the SHA-256 of every production
 source the fixture links (so the record stays checkable before the change is
 committed), every CHECK with its outcome, the immediate the executed
-constructor stored per memory and step, the protection seen around the write,
-and the install/restore/confirm log rows parsed with verify_fov_site's
-parsers. Never launches the game; the game EXE is not read.
+constructor stored per memory and step, the base each executed INS_SetFocus
+stored (with the register-preservation verdict), the protection seen around
+the write, and the install/restore/confirm log rows parsed with
+verify_fov_site's parsers. Never launches the game; the game EXE is not read.
 """
 import hashlib
 import json
@@ -48,7 +49,7 @@ def fields(text):
 
 def parse(stdout):
     report = {'checks': [], 'constructions': [], 'protect': [], 'memory': [], 'timing_us': None, 'install_sequence': None, 'setfocus_override': None,
-              'install_rows': [], 'restore_rows': [], 'confirm_rows': [], 'result': None}
+              'setfocus_runs': [], 'install_rows': [], 'restore_rows': [], 'confirm_rows': [], 'result': None}
     for line in stdout.splitlines():
         tag, _, rest = line.partition(' ')
         if tag == 'CHECK':
@@ -66,6 +67,9 @@ def parse(stdout):
             report['install_sequence'] = {k: (v if k == 'step' else int(v)) for k, v in fields(rest).items()}
         elif tag == 'OVERRIDE':
             report['setfocus_override'] = fields(rest)
+        elif tag == 'SETFOCUS':
+            f = fields(rest)
+            report['setfocus_runs'].append({'step': f['step'], 'in': f['in'], 'out': f['out'], 'preserved': f['preserved'] == '1'})
         elif tag == 'CRASH':
             report['crash'] = fields(rest)
         elif tag == 'TIMING':
@@ -79,7 +83,8 @@ def parse(stdout):
                                                for k, v in install.items()})
             elif restore:
                 report['restore_rows'].append({'site': f'{restore["site"]:08x}', 'status': restore['status'],
-                                               'found': restore['found'].hex() if restore['found'] is not None else None, 'registered': restore['registered']})
+                                               'found': restore['found'].hex() if restore['found'] is not None else None, 'registered': restore['registered'],
+                                               'setfocus': restore['setfocus']})
             elif confirm:
                 report['confirm_rows'].append({**confirm, 'registry': 'present' if confirm['registry'] is not None else 'absent',
                                                'focus': f'{confirm["focus"]:#06x}' if confirm['focus'] is not None else None,

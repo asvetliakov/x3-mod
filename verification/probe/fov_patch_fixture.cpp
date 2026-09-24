@@ -13,14 +13,28 @@
 //            the constructor stored;
 //   .x3mfvr  0x00421000  the per-frame reader: `mov edx,[0x00608504]; mov
 //            esi,[edx+0x24]` at 0x00421148 (the reader contract), returning ESI;
-//   .x3mfvs  0x0042d000  INS_SetFocus's store `mov [edx+0x24],ecx` at
-//            0x0042dc04: cdecl void(void* registry, uint32 focus);
-//   .x3mfvd  0x00608000  writable data: the registry slot at 0x00608504.
+//   .x3mfvs  0x0042d000  INS_SetFocus: the verified 31-byte case body
+//            0x0042dbed..0x0042dc0b (fov_sites.h expected_setfocus_case, the
+//            claimed `mov edx,[0x00608504]` at 0x0042dbf8, the store at
+//            0x0042dc04, `call 0x004a47f0`), entered from a cdecl
+//            void(const unsigned char* cell, void* task) at 0x0042db00 that
+//            builds the dispatcher's frame ([ebp+0x18] = the argument cell,
+//            [ebp+0xc] = the task), loads sentinels into EBX/ESI/EDI/EDX and
+//            records EBX/ESI/EDI and the stack balance after the call;
+//   .x3mfvx  0x004a4000  the callee: the verified 29-byte prefix at
+//            0x004a47f0 (its flag and ECX writes run for real), then the
+//            fixture records the pushed VM pointer, the task (EAX at the
+//            call), EDX (the registry the tail reloaded) and the pushed 0,
+//            and returns with `ret 8`;
+//   .x3mfvd  0x00608000  writable data: the registry slot at 0x00608504, the
+//            VM slot at 0x006085e4 and the callee's record at 0x00608600.
 // Plus a VirtualAlloc page (MEM_PRIVATE) for install_at(). initialize() runs at
 // the production constants; every step checks the executed constructor's
 // result, the imm32 read back (ReadProcessMemory), the rest of the page, the
 // page protection, the call counts on the seam, the log rows, the registry
-// field and LastError. Never launches the game.
+// field and LastError; the INS_SetFocus steps execute the case body (with the
+// claimed jmp, the remap stub and the tail when installed) and check the
+// stored base and the preserved registers. Never launches the game.
 #include "../../src/proxy/fov.h"
 #include "../../src/proxy/fov_sites.h"
 #include "../../src/proxy/engine_patch.h"
@@ -106,8 +120,8 @@ HANDLE log_handle() noexcept { return restore_log; }
 namespace x3m::object_trace { bool executable_verified() { return executable_ok; } }
 
 // ---- the engine pages ----
-extern "C" unsigned char fov_ctor_page[], fov_reader_page[], fov_setfocus_page[];
-extern "C" std::uint32_t fov_registry_slot;
+extern "C" unsigned char fov_ctor_page[], fov_reader_page[], fov_setfocus_page[], fov_callee_page[];
+extern "C" std::uint32_t fov_registry_slot, fov_vm_slot, fov_seen[8];
 asm(R"(
     .section .x3mfvc,"xr"
     .balign 4096, 0xcc
@@ -151,11 +165,61 @@ _fov_reader_page:
     .balign 4096, 0xcc
     .globl _fov_setfocus_page
 _fov_setfocus_page:
-    .fill 0xbfc, 1, 0xcc
-    .byte 0x8b,0x54,0x24,0x04                    # +bfc mov edx,[esp+4]            ; registry
-    .byte 0x8b,0x4c,0x24,0x08                    # +c00 mov ecx,[esp+8]            ; focus
+    .fill 0xb00, 1, 0xcc
+    .byte 0x53,0x56,0x57,0x55                    # +b00 push ebx; push esi; push edi; push ebp
+    .byte 0x83,0xec,0x20                         # +b04 sub esp,0x20
+    .byte 0x8b,0x44,0x24,0x34                    # +b07 mov eax,[esp+0x34]         ; the argument cell
+    .byte 0x8b,0x4c,0x24,0x38                    # +b0b mov ecx,[esp+0x38]         ; the task
+    .byte 0x8b,0xec                              # +b0f mov ebp,esp
+    .byte 0x89,0x45,0x18                         # +b11 mov [ebp+0x18],eax
+    .byte 0x89,0x4d,0x0c                         # +b14 mov [ebp+0xc],ecx
+    .byte 0xbb,0x11,0x11,0x11,0x11               # +b17 mov ebx,0x11111111
+    .byte 0xbe,0x22,0x22,0x22,0x22               # +b1c mov esi,0x22222222
+    .byte 0xbf,0x33,0x33,0x33,0x33               # +b21 mov edi,0x33333333
+    .byte 0xba,0x44,0x44,0x44,0x44               # +b26 mov edx,0x44444444         ; dead at the site: the tail reloads it
+    .byte 0xe9,0xbd,0x00,0x00,0x00               # +b2b jmp +bed
+    .fill 0xbed - (. - _fov_setfocus_page), 1, 0xcc
+    .byte 0x8b,0x45,0x18                         # +bed mov eax,[ebp+0x18]         <- case window
+    .byte 0x8b,0x48,0x01                         # +bf0 mov ecx,[eax+1]            ; F from the script
+    .byte 0xa1,0xe4,0x85,0x60,0x00               # +bf3 mov eax,[0x006085e4]       ; VM
+    .byte 0x8b,0x15,0x04,0x85,0x60,0x00          # +bf8 mov edx,[0x00608504]       <- claimed
+    .byte 0x6a,0x00                              # +bfe push 0
+    .byte 0x50                                   # +c00 push eax
+    .byte 0x8b,0x45,0x0c                         # +c01 mov eax,[ebp+0xc]          ; task
     .byte 0x89,0x4a,0x24                         # +c04 mov [edx+0x24],ecx         <- INS_SetFocus store
-    .byte 0xc3                                   # +c07 ret
+    .byte 0xe8,0xe4,0x6b,0x07,0x00               # +c07 call 0x004a47f0
+    .byte 0x89,0x1d,0x10,0x86,0x60,0x00          # +c0c mov [0x00608610],ebx       ; (the engine's jmp 0x0042f04c is outside the window)
+    .byte 0x89,0x35,0x14,0x86,0x60,0x00          # +c12 mov [0x00608614],esi
+    .byte 0x89,0x3d,0x18,0x86,0x60,0x00          # +c18 mov [0x00608618],edi
+    .byte 0x8b,0xc4                              # +c1e mov eax,esp
+    .byte 0x2b,0xc5                              # +c20 sub eax,ebp                ; 0 when the stack is balanced
+    .byte 0xa3,0x1c,0x86,0x60,0x00               # +c22 mov [0x0060861c],eax
+    .byte 0x83,0xc4,0x20                         # +c27 add esp,0x20
+    .byte 0x5d,0x5f,0x5e,0x5b                    # +c2a pop ebp; pop edi; pop esi; pop ebx
+    .byte 0xc3                                   # +c2e ret
+    .balign 4096, 0xcc
+    .section .x3mfvx,"xr"
+    .balign 4096, 0xcc
+    .globl _fov_callee_page
+_fov_callee_page:
+    .fill 0x7f0, 1, 0xcc
+    .byte 0x56                                   # +7f0 push esi                   <- verified callee prefix
+    .byte 0x8b,0xf0                              # +7f1 mov esi,eax
+    .byte 0x57                                   # +7f3 push edi
+    .byte 0x8d,0x7e,0x28                         # +7f4 lea edi,[esi+0x28]
+    .byte 0x66,0xc7,0x46,0x20,0x01,0x00          # +7f7 mov word [esi+0x20],1
+    .byte 0x80,0x3f,0x08                         # +7fd cmp byte [edi],8
+    .byte 0x72,0x07                              # +800 jb +809                    ; the task's byte is 0: taken
+    .byte 0x8b,0xcf                              # +802 mov ecx,edi
+    .byte 0xe8,0x37,0x3a,0x00,0x00               # +804 call 0x004a8240            ; (not reached)
+    .byte 0x8b,0x4c,0x24,0x0c                    # +809 mov ecx,[esp+0xc]          ; the pushed VM pointer
+    .byte 0x89,0x0d,0x00,0x86,0x60,0x00          # +80d mov [0x00608600],ecx
+    .byte 0x89,0x35,0x04,0x86,0x60,0x00          # +813 mov [0x00608604],esi       ; the task (EAX at the call)
+    .byte 0x89,0x15,0x08,0x86,0x60,0x00          # +819 mov [0x00608608],edx       ; the registry the tail reloaded
+    .byte 0x8b,0x44,0x24,0x10                    # +81f mov eax,[esp+0x10]         ; the pushed 0
+    .byte 0xa3,0x0c,0x86,0x60,0x00               # +823 mov [0x0060860c],eax
+    .byte 0x5f,0x5e                              # +828 pop edi; pop esi
+    .byte 0xc2,0x08,0x00                         # +82a ret 8
     .balign 4096, 0xcc
     .section .x3mfvd,"dw"
     .balign 4096, 0
@@ -163,6 +227,14 @@ _fov_setfocus_page:
     .globl _fov_registry_slot
 _fov_registry_slot:
     .long 0
+    .fill 0x5e4 - 0x508, 1, 0
+    .globl _fov_vm_slot
+_fov_vm_slot:
+    .long 0
+    .fill 0x600 - 0x5e8, 1, 0
+    .globl _fov_seen
+_fov_seen:
+    .fill 0x20, 1, 0
     .balign 4096, 0
     .text
 )");
@@ -170,11 +242,12 @@ _fov_registry_slot:
 namespace {
 constexpr unsigned page_size = 4096, window_offset = 0x9cc, write_at = window_offset + sites::write_offset;
 constexpr std::uintptr_t ctor_page = sites::window_va & ~std::uintptr_t(page_size - 1);
-constexpr std::uintptr_t reader_entry = 0x00421144, setfocus_entry = 0x0042dbfc;
+constexpr std::uintptr_t reader_entry = 0x00421144, setfocus_entry = 0x0042db00;
+constexpr unsigned setfocus_case_offset = sites::setfocus_case_va & (page_size - 1), setfocus_site_offset = sites::setfocus_site_va & (page_size - 1);
 static_assert(ctor_page + window_offset == sites::window_va, "the stub's window sits at the engine's page offset");
 using Ctor = int (*)(void* registry);
 using Reader = std::uint32_t (*)();
-using SetFocusStore = void (*)(void* registry, std::uint32_t focus);
+using SetFocusCall = void (*)(const unsigned char* cell, void* task);
 
 unsigned checks = 0, failures = 0;
 void check(bool ok, const char* name, const char* detail = "") {
@@ -194,6 +267,37 @@ std::uint32_t construct(const char* memory, const char* step, const unsigned cha
     return fields ? stored : 0xffffffffu;
 }
 std::uint32_t read_base() { return reinterpret_cast<Reader>(reader_entry)(); }
+// One execution of the INS_SetFocus case body with F in the argument cell: the base it stored
+// into registry_a (the slot must point at it). *preserved: the callee saw the VM pointer, the task,
+// EDX = the registry and the pushed 0; EBX/ESI/EDI came back as loaded; the stack is balanced;
+// LastError unchanged. One SETFOCUS row per call.
+alignas(16) unsigned char task_buffer[0x40];
+std::uint32_t run_setfocus(const char* step, std::uint32_t focus, bool* preserved) {
+    unsigned char cell[5] = {0x01, static_cast<unsigned char>(focus), static_cast<unsigned char>(focus >> 8), static_cast<unsigned char>(focus >> 16),
+                             static_cast<unsigned char>(focus >> 24)};
+    std::memset(task_buffer, 0, sizeof task_buffer);
+    std::memset(fov_seen, 0xee, sizeof fov_seen);
+    fov_vm_slot = 0x0bad0f00u;
+    focus_of(registry_a) = 0xa5a5a5a5u;
+    SetLastError(0x2bad);
+    reinterpret_cast<SetFocusCall>(setfocus_entry)(cell, task_buffer);
+    const bool error_kept = GetLastError() == 0x2bad;
+    const std::uint32_t stored = focus_of(registry_a);
+    *preserved = error_kept && fov_seen[0] == 0x0bad0f00u && fov_seen[1] == static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(task_buffer)) &&
+                 fov_seen[2] == fov_registry_slot && fov_seen[3] == 0 && fov_seen[4] == 0x11111111u && fov_seen[5] == 0x22222222u &&
+                 fov_seen[6] == 0x33333333u && fov_seen[7] == 0 && task_buffer[0x20] == 1 && task_buffer[0x21] == 0;
+    std::printf("SETFOCUS step=%s in=0x%04lx out=0x%04lx preserved=%u\n", step, static_cast<unsigned long>(focus), static_cast<unsigned long>(stored), *preserved ? 1u : 0u);
+    return stored;
+}
+// The whole .x3mfvs page against its reference, except the five jmp bytes at 0x0042dbf8 when `jmp` is given.
+bool setfocus_page_is(const unsigned char* reference, const unsigned char* jmp) {
+    unsigned char now[page_size];
+    SIZE_T n = 0;
+    if (!ReadProcessMemory(GetCurrentProcess(), fov_setfocus_page, now, page_size, &n) || n != page_size) return false;
+    const unsigned s = setfocus_site_offset;
+    if (!jmp) return !std::memcmp(now, reference, page_size);
+    return !std::memcmp(now, reference, s) && !std::memcmp(now + s, jmp, 5) && !std::memcmp(now + s + 5, reference + s + 5, page_size - s - 5);
+}
 DWORD protection(const void* at) {
     MEMORY_BASIC_INFORMATION m{};
     return VirtualQuery(at, &m, sizeof m) ? m.Protect : 0;
@@ -249,10 +353,13 @@ bool one_row(const std::string& rows, const char* needle) {
     for (char c : rows) lines += c == '\n';
     return lines == 1 && contains(rows, needle);
 }
-std::string install_row(const char* status, const char* reason, std::uint32_t value, const char* setting, const char* write, const char* registry, const char* before) {
-    char text[240];
-    std::snprintf(text, sizeof text, "fov site=%08lx status=%s reason=%s value=0x%04lx vertical_deg=%.2f setting=%s write=%s registry=%s registry_before=%s",
-                  static_cast<unsigned long>(sites::write_va), status, reason, static_cast<unsigned long>(value), sites::vertical_for_focus(value), setting, write, registry, before);
+std::string install_row(const char* status, const char* reason, std::uint32_t value, const char* setting, const char* write, const char* registry, const char* before,
+                        const char* setfocus = "none", const char* setfocus_write = "none") {
+    char text[300];
+    std::snprintf(text, sizeof text, "fov site=%08lx status=%s reason=%s value=0x%04lx vertical_deg=%.2f setting=%s write=%s registry=%s registry_before=%s "
+                  "setfocus=%s setfocus_write=%s",
+                  static_cast<unsigned long>(sites::write_va), status, reason, static_cast<unsigned long>(value), sites::vertical_for_focus(value), setting, write, registry, before,
+                  setfocus, setfocus_write);
     return text;
 }
 bool initialize_checked(const char* name) {
@@ -307,7 +414,9 @@ int main() {
     // ---- the pages ----
     unsigned char* const engine = fov_ctor_page;
     const bool placed = reinterpret_cast<std::uintptr_t>(engine) == ctor_page && reinterpret_cast<std::uintptr_t>(fov_reader_page) == 0x00421000 &&
-                        reinterpret_cast<std::uintptr_t>(fov_setfocus_page) == 0x0042d000 && reinterpret_cast<std::uintptr_t>(&fov_registry_slot) == sites::registry_slot_va;
+                        reinterpret_cast<std::uintptr_t>(fov_setfocus_page) == 0x0042d000 && reinterpret_cast<std::uintptr_t>(fov_callee_page) == 0x004a4000 &&
+                        reinterpret_cast<std::uintptr_t>(&fov_registry_slot) == sites::registry_slot_va && reinterpret_cast<std::uintptr_t>(&fov_vm_slot) == 0x006085e4 &&
+                        reinterpret_cast<std::uintptr_t>(fov_seen) == 0x00608600;
     check(placed, "pages_at_engine_vas");
     if (!placed) { std::printf("RESULT checks=%u failures=%u\n", checks, failures); return 1; }
     check(!std::memcmp(engine + window_offset, sites::expected_window, sites::window_length) &&
@@ -315,6 +424,11 @@ int main() {
           "window_reader_setfocus_bytes_at_engine_vas");
     check(((reinterpret_cast<std::uintptr_t>(engine) + write_at) & 7u) == 4u && reinterpret_cast<std::uintptr_t>(engine) + write_at == sites::write_va,
           "engine_imm32_offset_4_of_its_qword");
+    check(!std::memcmp(fov_setfocus_page + setfocus_case_offset, sites::expected_setfocus_case, sites::setfocus_case_length) &&
+          !std::memcmp(fov_callee_page + (sites::setfocus_callee_va & (page_size - 1)), sites::expected_setfocus_callee, sites::setfocus_callee_length) &&
+          (sites::setfocus_site_va & 7u) == 0u, "setfocus_case_and_callee_bytes_at_engine_vas_site_qword_aligned");
+    unsigned char setfocus_reference[page_size];
+    std::memcpy(setfocus_reference, fov_setfocus_page, page_size);
     unsigned char reference[page_size];
     std::memcpy(reference, engine, page_size);
     MEMORY_BASIC_INFORMATION mi{};
@@ -336,6 +450,8 @@ int main() {
     focus_of(registry_a) = 0x4000;
     set_slot(registry_a);
     check(read_base() == 0x4000, "reader_before_reads_registry_4000");
+    bool kept = false;
+    check(run_setfocus("before", 0x471c, &kept) == 0x471c && kept, "setfocus_before_install_stores_471c_registers_kept");
     set_slot(nullptr);
 
     // ---- off and refusals through initialize(): nothing protected, written or flushed ----
@@ -343,12 +459,12 @@ int main() {
     const Refusal refusals[] = {
         {nullptr, true, "default_unset_off", install_row("off", "game", 0x4000, "-", "none", "skipped", "-")},
         {L"game", true, "game_off", install_row("off", "game", 0x4000, "game", "none", "skipped", "-")},
-        {L"73.74", true, "engine_value_off", install_row("off", "engine_value", 0x4000, "73.74", "none", "skipped", "-")},
-        {L"35.9", true, "refuse_below_36", install_row("refused", "out_of_range", 0x4000, "35.9", "none", "skipped", "-")},
-        {L"120.5", true, "refuse_above_120", install_row("refused", "out_of_range", 0x4000, "120.5", "none", "skipped", "-")},
+        {L"69.9", true, "refuse_below_70", install_row("refused", "out_of_range", 0x4000, "69.9", "none", "skipped", "-")},
+        {L"100.5", true, "refuse_above_100", install_row("refused", "out_of_range", 0x4000, "100.5", "none", "skipped", "-")},
+        {L"58.7155", true, "refuse_old_vertical_value", install_row("refused", "out_of_range", 0x4000, "58.7155", "none", "skipped", "-")},
         {L"Game", true, "refuse_invalid_setting", install_row("refused", "invalid_setting", 0x4000, "Game", "none", "skipped", "-")},
-        {L"58.71550000000000000000000000000000", true, "refuse_too_long", install_row("refused", "too_long", 0x4000, "?", "none", "skipped", "-")},
-        {L"58.7155", false, "refuse_executable_mismatch", install_row("refused", "executable_mismatch", 0x4000, "58.7155", "none", "skipped", "-")}};
+        {L"90.000000000000000000000000000000", true, "refuse_too_long", install_row("refused", "too_long", 0x4000, "?", "none", "skipped", "-")},
+        {L"90", false, "refuse_executable_mismatch", install_row("refused", "executable_mismatch", 0x4000, "90", "none", "skipped", "-")}};
     for (const Refusal& r : refusals) {
         set_fov(r.setting);
         executable_ok = r.exe;
@@ -357,18 +473,33 @@ int main() {
         char name[96];
         std::snprintf(name, sizeof name, "%s_row_and_untouched", r.name);
         check(!applied && !fov::patched() && last_log() == r.row && g.protects == 0 && g.writes == 0 && g.flushes == 0 && fov::configured_focus() == 0x4000 &&
-              page_is(engine, reference, original), name, last_log().c_str());
+              page_is(engine, reference, original) && setfocus_page_is(setfocus_reference, nullptr), name, last_log().c_str());
     }
-    set_fov(L"58.7155");
+    set_fov(L"90");
     executable_ok = true;
     // The reader contract: a changed byte of the per-frame reader refuses the patch.
     const unsigned char reader_changed = 0x25, reader_back = 0x24;
     check(poke(fov_reader_page + 0x150, &reader_changed, 1), "setup_changed_reader_byte");
     arm();
     check(!initialize_checked("refuse_reader_mismatch") && fov::state() == std::string("reader_mismatch") && g.protects == 0 && g.writes == 0 &&
-          page_is(engine, reference, original) && last_log() == install_row("refused", "reader_mismatch", 0x4000, "58.7155", "none", "skipped", "-"),
+          page_is(engine, reference, original) && last_log() == install_row("refused", "reader_mismatch", 0x4000, "90", "none", "skipped", "-"),
           "refuse_reader_mismatch_untouched", last_log().c_str());
     check(poke(fov_reader_page + 0x150, &reader_back, 1), "setup_reader_byte_back");
+    // The INS_SetFocus case window and the callee prefix: one changed byte in either refuses both sites.
+    struct Mismatch { unsigned char* at; unsigned char changed, back; const char* name; };
+    const Mismatch mismatches[] = {{fov_setfocus_page + setfocus_case_offset + 5, 0x02, 0x01, "refuse_setfocus_case_mismatch"},       // mov ecx,[eax+2]
+                                   {fov_setfocus_page + setfocus_site_offset + 5, 0x01, 0x00, "refuse_setfocus_site_mismatch"},       // the claimed MOV's operand
+                                   {fov_callee_page + 0x7ff, 0x09, 0x08, "refuse_setfocus_callee_mismatch"}};                         // cmp byte [edi],9
+    for (const Mismatch& m : mismatches) {
+        const bool poked = poke(m.at, &m.changed, 1);
+        arm();
+        const bool refused = !initialize_checked(m.name) && fov::state() == std::string("setfocus_mismatch") && g.protects == 0 && g.writes == 0 &&
+                             page_is(engine, reference, original) && last_log() == install_row("refused", "setfocus_mismatch", 0x4000, "90", "none", "skipped", "-");
+        const bool back = poke(m.at, &m.back, 1);
+        char name[96];
+        std::snprintf(name, sizeof name, "%s_untouched", m.name);
+        check(poked && refused && back && setfocus_page_is(setfocus_reference, nullptr), name, last_log().c_str());
+    }
     // A changed window byte and an already patched, unregistered window: bytes_mismatch.
     const unsigned char changed = 0x21, restored_byte = 0x20;
     check(poke(engine + window_offset + 2, &changed, 1), "setup_changed_window_byte");
@@ -377,7 +508,8 @@ int main() {
     changed_reference[window_offset + 2] = changed;
     arm();
     check(!initialize_checked("refuse_changed_window") && fov::state() == std::string("bytes_mismatch") && g.protects == 0 && g.writes == 0 &&
-          page_is(engine, changed_reference, original) && last_log() == install_row("refused", "bytes_mismatch", 0x4000, "58.7155", "none", "skipped", "-"),
+          page_is(engine, changed_reference, original) && last_log() == install_row("refused", "bytes_mismatch", 0x4000, "90", "none", "skipped", "-") &&
+          setfocus_page_is(setfocus_reference, nullptr),
           "refuse_changed_window_untouched", last_log().c_str());
     check(poke(engine + window_offset + 2, &restored_byte, 1), "setup_restore_window_byte");
     check(poke(engine + write_at, other, 4), "setup_foreign_patch");
@@ -389,7 +521,8 @@ int main() {
     f.protect_fail = 1;
     arm(f);
     check(!initialize_checked("refuse_protect_failed") && !fov::patched() && g.writes == 0 && g.flushes == 0 && page_is(engine, reference, original) &&
-          protection(engine) == PAGE_EXECUTE_READ && last_log() == install_row("refused", "protect_failed", 0x4000, "58.7155", "none", "skipped", "-"),
+          protection(engine) == PAGE_EXECUTE_READ && last_log() == install_row("refused", "protect_failed", 0x4000, "90", "none", "skipped", "-") &&
+          setfocus_page_is(setfocus_reference, nullptr),
           "refuse_protect_failed_untouched", last_log().c_str());
     check(construct("engine", "after_protect_failed", engine) == 0x4000, "engine_after_protect_failed_ctor_4000");
 
@@ -401,11 +534,26 @@ int main() {
     const bool applied = initialize_checked("install");
     QueryPerformanceCounter(&t1);
     check(applied && fov::patched() && fov::state() == std::string("ok") && fov::write_path() == std::string("atomic") && fov::registry_state() == std::string("absent") &&
-          last_log() == install_row("patched", "ok", 0x3470, "58.7155", "atomic", "absent", "-"), "install_ok_atomic_registry_absent_row", last_log().c_str());
+          fov::setfocus_state() == std::string("active") && fov::setfocus_patched() &&
+          last_log() == install_row("patched", "ok", 0x3470, "90", "atomic", "absent", "-", "active", "atomic"), "install_ok_atomic_registry_absent_row", last_log().c_str());
+    // Reads through the seam: reader, store, case window, callee prefix, window, imm32 read-back, jmp read-back.
     std::snprintf(detail, sizeof detail, "protects=%u reads=%u writes=%u atomic=%u flushes=%u previous=0x%lx during=0x%lx", g.protects, g.reads,
                   g.writes, g.atomic_writes, g.flushes, g.first_previous, g.first_during);
-    check(g.protects == 2 && g.reads == 4 && g.writes == 1 && g.atomic_writes == 1 && g.flushes == 1 && g.first_previous == PAGE_EXECUTE_READ &&
+    check(g.protects == 2 && g.reads == 7 && g.writes == 1 && g.atomic_writes == 1 && g.flushes == 1 && g.first_previous == PAGE_EXECUTE_READ &&
           writable_image(g.first_during), "install_sequence_counts", detail);
+    // The claimed site: e9 rel32 to an address outside every image section (the arena), byte 0x0042dbfd and the rest of the page unchanged.
+    unsigned char jmp[5]{};
+    SIZE_T jmp_read = 0;
+    const bool jmp_ok = ReadProcessMemory(GetCurrentProcess(), fov_setfocus_page + setfocus_site_offset, jmp, 5, &jmp_read) && jmp_read == 5 && jmp[0] == 0xe9;
+    std::uint32_t rel = 0;
+    std::memcpy(&rel, jmp + 1, 4);
+    const std::uintptr_t dispatcher = sites::setfocus_site_va + 5 + rel;
+    MEMORY_BASIC_INFORMATION di{};
+    VirtualQuery(reinterpret_cast<const void*>(dispatcher), &di, sizeof di);
+    std::snprintf(detail, sizeof detail, "jmp=%02x%02x%02x%02x%02x dispatcher=%08lx type=0x%lx protect=0x%lx", jmp[0], jmp[1], jmp[2], jmp[3], jmp[4],
+                  static_cast<unsigned long>(dispatcher), di.Type, di.Protect);
+    check(jmp_ok && setfocus_page_is(setfocus_reference, jmp) && di.Type == MEM_PRIVATE && di.Protect == PAGE_EXECUTE_READ && protection(fov_setfocus_page) == PAGE_EXECUTE_READ,
+          "install_setfocus_jmp_to_arena_rest_of_page_unchanged", detail);
     std::printf("PROTECT memory=engine step=install previous=0x%lx during=0x%lx after=0x%lx\n", g.first_previous, g.first_during, protection(engine));
     std::printf("SEQUENCE step=install protects=%u reads=%u writes=%u atomic=%u flushes=%u\n", g.protects, g.reads, g.writes, g.atomic_writes, g.flushes);
     check(span_is(engine, ours) && page_is(engine, reference, ours), "install_readback_70340000_rest_of_page_unchanged");
@@ -430,11 +578,46 @@ int main() {
     fov::present(4);
     check(log_lines.size() == rows_before + 2, "confirm_done_no_further_rows");
     check(read_base() == 0x3470 && fov::current_focus() == 0x3470, "reader_and_current_focus_3470");
-    // The in-game FOV menu (INS_SetFocus) still overrides the base for the running session.
-    reinterpret_cast<SetFocusStore>(setfocus_entry)(registry_a, 0x471c);
+    // The in-game FOV menu through the patched INS_SetFocus: the script's F for N is remapped to F'(N).
+    struct Remap { const char* step; std::uint32_t in, out; };
+    const Remap remaps[] = {{"n70", (70u << 16) / 360u, 0x2768}, {"n90", (90u << 16) / 360u, 0x3470}, {"n100", (100u << 16) / 360u, 0x3b6f},
+                            {"n91", (91u << 16) / 360u, sites::remap_focus((91u << 16) / 360u)},
+                            {"non_canonical_4001", 0x4001, 0x3470},                                   // nearest N = 90
+                            {"n50_table_floor", (50u << 16) / 360u, 0x1b6a},
+                            {"n130_table_ceiling", (130u << 16) / 360u, 0x52ab},
+                            {"n49_passthrough", (49u << 16) / 360u, (49u << 16) / 360u},
+                            {"n131_passthrough", (131u << 16) / 360u, (131u << 16) / 360u},
+                            {"range_floor", sites::remap_focus_min, sites::remap_focus((50u << 16) / 360u)},
+                            {"range_ceiling", sites::remap_focus_max, sites::remap_focus((130u << 16) / 360u)},
+                            {"below_table_passthrough", sites::remap_focus_min - 1, sites::remap_focus_min - 1},
+                            {"above_table_passthrough", sites::remap_focus_max + 1, sites::remap_focus_max + 1},
+                            {"n45_passthrough", (45u << 16) / 360u, (45u << 16) / 360u},
+                            {"n160_passthrough", (160u << 16) / 360u, (160u << 16) / 360u},
+                            {"garbage_passthrough", 0xfffffff0u, 0xfffffff0u}};
+    for (const Remap& r : remaps) {
+        char step[64], name[96];
+        std::snprintf(step, sizeof step, "patched_%s", r.step);
+        const std::uint32_t out = run_setfocus(step, r.in, &kept);
+        std::snprintf(name, sizeof name, "setfocus_%s_0x%04lx_to_0x%04lx", r.step, static_cast<unsigned long>(r.in), static_cast<unsigned long>(r.out));
+        std::snprintf(detail, sizeof detail, "stored=0x%04lx kept=%u", static_cast<unsigned long>(out), kept ? 1u : 0u);
+        check(out == r.out && kept, name, detail);
+    }
+    unsigned table_mismatches = 0;
+    for (unsigned n = sites::remap_first; n < sites::remap_first + sites::remap_count; ++n) {
+        bool quiet = false;
+        unsigned char cell[5] = {0x01, static_cast<unsigned char>(((n << 16) / 360u) & 0xff), static_cast<unsigned char>(((n << 16) / 360u) >> 8), 0, 0};
+        focus_of(registry_a) = 0;
+        reinterpret_cast<SetFocusCall>(setfocus_entry)(cell, task_buffer);
+        quiet = focus_of(registry_a) == sites::remap_focus((n << 16) / 360u);
+        table_mismatches += quiet ? 0u : 1u;
+    }
+    std::snprintf(detail, sizeof detail, "mismatches=%u", table_mismatches);
+    check(table_mismatches == 0, "setfocus_every_n_50_130_matches_the_formula", detail);
+    // The menu's 100 through the patch: the base the per-frame reader sees, the constructor's immediate unchanged.
+    run_setfocus("patched_override_100", 0x471c, &kept);
     std::printf("OVERRIDE setfocus=0x471c base=0x%04lx current=0x%04lx imm32=%s\n", static_cast<unsigned long>(read_base()),
                 static_cast<unsigned long>(fov::current_focus()), span_is(engine, ours) ? "70340000" : "changed");
-    check(read_base() == 0x471c && fov::current_focus() == 0x471c && span_is(engine, ours), "setfocus_overrides_base_patch_stays");
+    check(read_base() == 0x3b6f && fov::current_focus() == 0x3b6f && span_is(engine, ours) && kept, "setfocus_menu_100_base_3b6f_patch_stays");
     focus_of(registry_a) = 0x10;  // implausible: current_focus falls back to the configured value
     check(fov::current_focus() == 0x3470, "implausible_registry_value_falls_back");
     arm();
@@ -446,10 +629,14 @@ int main() {
     const bool clean = shutdown_checked("restore");
     QueryPerformanceCounter(&t3);
     std::string rows = new_restore_rows();
-    check(clean && !fov::patched() && fov::state() == std::string("restored") && fov::configured_focus() == 0x4000 &&
-          one_row(rows, "fov_restore site=0041c9dc status=restored found=70340000 registered=0"), "restore_row", rows.c_str());
+    check(clean && !fov::patched() && !fov::setfocus_patched() && fov::state() == std::string("restored") && fov::configured_focus() == 0x4000 &&
+          one_row(rows, "fov_restore site=0041c9dc status=restored found=70340000 registered=0 setfocus=restored"), "restore_row", rows.c_str());
     check(g.protects == 2 && g.writes == 1 && g.atomic_writes == 1 && g.flushes == 1 && page_is(engine, reference, original) && protection(engine) == PAGE_EXECUTE_READ,
           "restore_readback_00400000_protection");
+    set_slot(registry_a);
+    check(setfocus_page_is(setfocus_reference, nullptr) && protection(fov_setfocus_page) == PAGE_EXECUTE_READ && run_setfocus("after_restore", 0x471c, &kept) == 0x471c && kept,
+          "restore_setfocus_bytes_back_vanilla_store_471c");
+    set_slot(nullptr);
     check(construct("engine", "after_restore", engine) == 0x4000, "engine_after_restore_ctor_4000");
     check(shutdown_checked("restore_again") && new_restore_rows().empty(), "restore_again_no_row");
     std::printf("TIMING install_us=%.1f restore_us=%.1f\n", qpc_us(t0, t1), qpc_us(t2, t3));
@@ -484,21 +671,23 @@ int main() {
         char name[96];
         std::snprintf(name, sizeof name, "%s_row_and_field", c.name);
         check(ok && fov::registry_state() == std::string(c.state) && after == c.after && span_is(engine, ours) &&
-              last_log() == install_row("patched", "ok", 0x3470, "58.7155", "atomic", c.state, c.before), name, last_log().c_str());
+              last_log() == install_row("patched", "ok", 0x3470, "90", "atomic", c.state, c.before, "active", "atomic"), name, last_log().c_str());
         std::snprintf(name, sizeof name, "%s_restore", c.name);
         rows = shutdown_rows(name);
         std::snprintf(name, sizeof name, "%s_restored", c.name);
-        check(!fov::patched() && one_row(rows, "status=restored found=70340000 registered=0") && page_is(engine, reference, original), name, rows.c_str());
+        check(!fov::patched() && one_row(rows, "status=restored found=70340000 registered=0 setfocus=restored") && page_is(engine, reference, original) &&
+              setfocus_page_is(setfocus_reference, nullptr), name, rows.c_str());
         if (c.kind == 2) ::VirtualProtect(readonly, page_size, PAGE_READWRITE, &old);
     }
     set_slot(nullptr);
 
     // ---- rollback paths (injected on the seam; every store and read is real) ----
     f = Faults{};
-    f.read_fail = 1u << 3;  // reads: reader, setfocus, window, read-back
+    f.read_fail = 1u << 5;  // reads: reader, store, case window, callee prefix, window, read-back
     arm(f);
     check(!initialize_checked("rollback_readback") && !fov::patched() && fov::state() == std::string("patch_rolled_back") && fov::configured_focus() == 0x4000 &&
-          last_log() == install_row("refused", "patch_rolled_back", 0x4000, "58.7155", "atomic", "skipped", "-") && g.writes == 2 && g.atomic_writes == 2 &&
+          last_log() == install_row("refused", "patch_rolled_back", 0x4000, "90", "atomic", "skipped", "-") && g.writes == 2 && g.atomic_writes == 2 &&
+          setfocus_page_is(setfocus_reference, nullptr) &&
           page_is(engine, reference, original) && protection(engine) == PAGE_EXECUTE_READ, "rollback_readback_rolled_back", last_log().c_str());
     check(construct("engine", "after_rollback", engine) == 0x4000, "engine_after_rollback_ctor_4000");
     f = Faults{};
@@ -522,7 +711,8 @@ int main() {
     f.write_drop = 2;
     arm(f);
     check(!initialize_checked("rollback_failed") && fov::patched() && fov::state() == std::string("rollback_failed") &&
-          last_log() == install_row("patched_unverified", "rollback_failed", 0x3471, "58.7155", "atomic", "skipped", "-") && span_is(engine, corrupt) &&
+          last_log() == install_row("patched_unverified", "rollback_failed", 0x3471, "90", "atomic", "skipped", "-") && span_is(engine, corrupt) &&
+          !fov::setfocus_patched() && setfocus_page_is(setfocus_reference, nullptr) &&
           protection(engine) == PAGE_EXECUTE_READ, "rollback_failed_registered", last_log().c_str());
     check(fov::configured_focus() == 0x3471, "rollback_failed_configured_from_readback_3471");
     check(construct("engine", "after_rollback_failed", engine) == 0x3471, "engine_after_rollback_failed_ctor_3471");
@@ -551,8 +741,8 @@ int main() {
     check(initialize_checked("install_2") && poke(engine + write_at, other, 4), "setup_install_then_foreign_value");
     arm();
     rows = shutdown_rows("restore_other_value");
-    check(fov::patched() && one_row(rows, "status=restore_not_owned found=71340000 registered=1") && g.writes == 0 && g.protects == 0 &&
-          page_is(engine, reference, other), "restore_other_value_not_owned_untouched", rows.c_str());
+    check(fov::patched() && !fov::setfocus_patched() && one_row(rows, "status=restore_not_owned found=71340000 registered=1 setfocus=restored") && g.writes == 0 &&
+          g.protects == 0 && page_is(engine, reference, other) && setfocus_page_is(setfocus_reference, nullptr), "restore_other_value_not_owned_untouched", rows.c_str());
     check(poke(engine + write_at, original, 4), "setup_external_restore");
     arm();
     rows = shutdown_rows("restore_already_original");
@@ -563,11 +753,80 @@ int main() {
     f.read_fail = 1;
     arm(f);
     rows = shutdown_rows("restore_unreadable");
-    check(fov::patched() && one_row(rows, "status=restore_not_owned found=-- registered=1") && g.writes == 0 && g.protects == 0 &&
+    check(fov::patched() && one_row(rows, "status=restore_not_owned found=-- registered=1 setfocus=restored") && g.writes == 0 && g.protects == 0 &&
           page_is(engine, reference, ours), "restore_unreadable_found_unread_no_write", rows.c_str());
     arm();
     rows = shutdown_rows("restore_after_unreadable");
-    check(!fov::patched() && one_row(rows, "status=restored found=70340000 registered=0") && page_is(engine, reference, original), "restore_after_unreadable_00400000", rows.c_str());
+    check(!fov::patched() && one_row(rows, "status=restored found=70340000 registered=0 setfocus=none") && page_is(engine, reference, original), "restore_after_unreadable_00400000", rows.c_str());
+
+    // ---- the INS_SetFocus site: partial-install rollback, restore only over our jmp, other values of N ----
+    set_slot(nullptr);
+    f = Faults{};
+    f.read_fail = 1u << 6;  // the jmp read-back fails: the claim is undone and the immediate rolled back
+    arm(f);
+    check(!initialize_checked("setfocus_readback_rollback") && !fov::patched() && !fov::setfocus_patched() && fov::state() == std::string("setfocus_failed") &&
+          fov::setfocus_state() == std::string("readback_failed") && fov::configured_focus() == 0x4000 &&
+          last_log() == install_row("refused", "setfocus_failed", 0x4000, "90", "atomic", "skipped", "-", "readback_failed", "atomic") &&
+          g.protects == 4 && g.writes == 2 && page_is(engine, reference, original) && protection(engine) == PAGE_EXECUTE_READ &&
+          setfocus_page_is(setfocus_reference, nullptr) && protection(fov_setfocus_page) == PAGE_EXECUTE_READ, "setfocus_readback_both_sites_rolled_back", last_log().c_str());
+    check(construct("engine", "after_setfocus_rollback", engine) == 0x4000, "engine_after_setfocus_rollback_ctor_4000");
+    set_slot(registry_a);
+    check(run_setfocus("after_setfocus_rollback", 0x471c, &kept) == 0x471c && kept, "setfocus_after_rollback_vanilla_store_471c");
+    set_slot(nullptr);
+    f = Faults{};
+    f.read_fail = 1u << 6;
+    f.write_drop = 2;       // and the immediate's rollback store does not land
+    arm(f);
+    check(!initialize_checked("setfocus_constructor_rollback_failed") && fov::patched() && !fov::setfocus_patched() && fov::state() == std::string("setfocus_failed") &&
+          last_log() == install_row("patched_unverified", "setfocus_failed", 0x3470, "90", "atomic", "skipped", "-", "readback_failed", "atomic") &&
+          span_is(engine, ours) && setfocus_page_is(setfocus_reference, nullptr), "setfocus_failed_constructor_rollback_failed_registered", last_log().c_str());
+    arm();
+    rows = shutdown_rows("setfocus_constructor_rollback_restore");
+    check(!fov::patched() && one_row(rows, "status=restored found=70340000 registered=0 setfocus=none") && page_is(engine, reference, original),
+          "setfocus_constructor_rollback_restored_at_shutdown", rows.c_str());
+    // A foreign store over our jmp: the site is not restored and stays registered; the immediate is.
+    arm();
+    check(initialize_checked("install_4") && fov::setfocus_patched(), "setup_install_4");
+    unsigned char our_jmp[5]{};
+    check(ReadProcessMemory(GetCurrentProcess(), fov_setfocus_page + setfocus_site_offset, our_jmp, 5, &jmp_read) && jmp_read == 5 && our_jmp[0] == 0xe9,
+          "setup_read_our_jmp");
+    const unsigned char foreign_jmp[5] = {0xe9, 0x10, 0x20, 0x30, 0x40};
+    check(poke(fov_setfocus_page + setfocus_site_offset, foreign_jmp, 5), "setup_foreign_jmp");
+    arm();
+    rows = shutdown_rows("setfocus_restore_not_owned");
+    check(fov::patched() && fov::setfocus_patched() && fov::state() == std::string("restored") &&
+          one_row(rows, "status=restored found=70340000 registered=1 setfocus=restore_not_owned") && setfocus_page_is(setfocus_reference, foreign_jmp) &&
+          page_is(engine, reference, original), "setfocus_restore_not_owned_foreign_jmp_untouched_registered", rows.c_str());
+    check(poke(fov_setfocus_page + setfocus_site_offset, our_jmp, 5), "setup_our_jmp_back");
+    arm();
+    rows = shutdown_rows("setfocus_restore_after_not_owned");
+    check(!fov::patched() && !fov::setfocus_patched() && one_row(rows, "status=none found=-- registered=0 setfocus=restored") &&
+          setfocus_page_is(setfocus_reference, nullptr) && protection(fov_setfocus_page) == PAGE_EXECUTE_READ, "setfocus_restore_after_not_owned_bytes_back", rows.c_str());
+    // Other launcher values: the constructor gets F'(N), the menu path the same table.
+    struct Other { const wchar_t* setting; const char* text; std::uint32_t ctor; };
+    const Other others[] = {{L"70", "70", 0x2768}, {L"100", "100", 0x3b6f}, {L"72.5", "72.5", sites::focus_for_degrees(72.5)}};
+    for (const Other& o : others) {
+        set_fov(o.setting);
+        arm();
+        char name[96];
+        std::snprintf(name, sizeof name, "install_setting_%s_ctor_0x%04lx", o.text, static_cast<unsigned long>(o.ctor));
+        const bool installed = initialize_checked(name) && fov::configured_focus() == o.ctor &&
+                               last_log() == install_row("patched", "ok", o.ctor, o.text, "atomic", "absent", "-", "active", "atomic");
+        check(installed && construct("engine", name, engine) == o.ctor, name, last_log().c_str());
+        set_slot(registry_a);
+        std::snprintf(name, sizeof name, "install_setting_%s_menu_90_to_3470", o.text);
+        check(run_setfocus(name, 0x4000, &kept) == 0x3470 && kept, name);
+        set_slot(nullptr);
+        std::snprintf(name, sizeof name, "install_setting_%s_restore", o.text);
+        rows = shutdown_rows(name);
+        std::snprintf(name, sizeof name, "install_setting_%s_restored", o.text);
+        char want[96];
+        unsigned char imm[4];
+        sites::encode(o.ctor, imm);
+        std::snprintf(want, sizeof want, "status=restored found=%02x%02x%02x%02x registered=0 setfocus=restored", imm[0], imm[1], imm[2], imm[3]);
+        check(!fov::patched() && one_row(rows, want) && page_is(engine, reference, original) && setfocus_page_is(setfocus_reference, nullptr), name, rows.c_str());
+    }
+    set_fov(L"90");
 
     // ---- the private page (MEM_PRIVATE, PAGE_EXECUTE_READ): install_at + shutdown, another value ----
     arm();
@@ -586,11 +845,13 @@ int main() {
     engine_patch::close_install_window("fixture");
     arm();
     check(!initialize_checked("late_initialize") && fov::state() == std::string("late_claim") &&
-          last_log() == install_row("refused", "late_claim", 0x4000, "58.7155", "none", "skipped", "-") && g.protects == 0 && g.writes == 0 &&
-          page_is(engine, reference, original), "late_initialize_refused", last_log().c_str());
+          last_log() == install_row("refused", "late_claim", 0x4000, "90", "none", "skipped", "-") && g.protects == 0 && g.writes == 0 &&
+          page_is(engine, reference, original) && setfocus_page_is(setfocus_reference, nullptr), "late_initialize_refused", last_log().c_str());
     arm();
     check(!fov::install_at(sites::window_va, 0x3470) && fov::state() == std::string("late_claim") && g.writes == 0, "late_install_at_refused");
     check(construct("engine", "after_late", engine) == 0x4000, "engine_after_late_ctor_4000");
+    set_slot(registry_a);
+    check(run_setfocus("after_late", 0x471c, &kept) == 0x471c && kept, "setfocus_after_late_vanilla_store_471c");
 
     std::printf("RESULT checks=%u failures=%u\n", checks, failures);
     CloseHandle(restore_log);

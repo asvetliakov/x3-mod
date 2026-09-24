@@ -4,27 +4,32 @@
 #include <cstring>
 
 // Portable core of the field-of-view option (X3M_FOV; docs/reverse-engineering/
-// field-of-view.md section 5): the verified 28-byte window in the cockpit
-// registry constructor 0x0041c960, the four-byte immediate write, the reader
-// contract, the registry base field, the vertical-degrees -> binary-angle
-// conversion and the X3M_FOV parser. No Windows dependency so the host tests
-// and the site verifier compile it directly.
+// field-of-view.md sections 5 and 7.3): the verified 28-byte window in the
+// cockpit registry constructor 0x0041c960 and its four-byte immediate write,
+// the verified INS_SetFocus case body and the remap stub claimed at
+// 0x0042dbf8, the reader contract, the registry base field, the remap
+// F -> F' and the X3M_FOV parser. No Windows dependency so the host tests and
+// the site verifier compile it directly.
 //
 // The engine's FOV is one binary angle F (65536 = 360 deg) at registry+0x24,
 // set to 0x4000 by the constructor and copied every cockpit update (divided by
 // the zoom) into the sector/galaxy/dust cameras' +0x298. F is the horizontal
 // FOV of the central 4:3 area (view plane H = 0.75 for every display at least
-// as wide as 4:3), so a requested vertical v maps to
-// F = round(65536/pi * atan(tan(v/2) / 0.75)) and the horizontal grows with
-// the aspect (Hor+). The patch replaces the constructor's immediate, so every
-// registry creation starts from the user's F; zoom and the in-game FOV menu
-// (INS_SetFocus, focus 70..100) still act on it.
+// as wide as 4:3). The game's own number N (script default 90, in-game menu
+// 70..100, passed as F = (N << 16) / 360) is reinterpreted as "N degrees
+// horizontal on 16:9": the engine gets F' with tan(F'/2) = 0.75 * tan(F/2),
+// which is exactly a 16:9 horizontal of N and a vertical of
+// 2*atan(0.5625*tan(N/2)); wider displays get more width (Hor+). Two write
+// sites carry it: the constructor's immediate (F'(N_default), N_default the
+// launcher's --fov) and the INS_SetFocus store, whose incoming F is remapped
+// through an 81-entry table (N = 50..130: the menu's 70..100 plus room for a
+// mod-widened menu or script values outside it) by a generated stub.
 //
 // 0041c9cc  89 5e 20                 MOV  [ESI+0x20],EBX              <- window
 // 0041c9cf  c6 46 19 01              MOV  byte [ESI+0x19],1
 // 0041c9d3  88 5e 1a                 MOV  [ESI+0x1a],BL
 // 0041c9d6  89 5e 1c                 MOV  [ESI+0x1c],EBX
-// 0041c9d9  c7 46 24 00 40 00 00     MOV  dword [ESI+0x24],0x4000     <- site; imm32 at 0041c9dc -> F
+// 0041c9d9  c7 46 24 00 40 00 00     MOV  dword [ESI+0x24],0x4000     <- site; imm32 at 0041c9dc -> F'
 // 0041c9e0  89 7c 24 30              MOV  [ESP+0x30],EDI
 // 0041c9e4  89 5c 24 2c              MOV  [ESP+0x2c],EBX              ; (window ends at 0041c9e8)
 //
@@ -38,6 +43,38 @@
 // fetch decodes the old or the new immediate, never a mix. No direct branch
 // lands inside the window, no raw branch encoding in the image lands on the
 // immediate and no dword points into the window (verify_fov_site.py).
+//
+// INS_SetFocus = script dispatcher 0x0042d340 case 0x21 (jump table
+// 0x0042f064), entered only at 0x0042dbed:
+//
+// 0042dbed  8b 45 18                 MOV  EAX,[EBP+0x18]      ; marshalled args  <- case window
+// 0042dbf0  8b 48 01                 MOV  ECX,[EAX+1]         ; F from the script, no clamp
+// 0042dbf3  a1 e4 85 60 00           MOV  EAX,[0x006085e4]    ; VM (live: pushed at 0042dc00)
+// 0042dbf8  8b 15 04 85 60 00        MOV  EDX,[0x00608504]    <- claimed: jmp (5 bytes, one aligned qword)
+// 0042dbfe  6a 00                    PUSH 0
+// 0042dc00  50                       PUSH EAX
+// 0042dc01  8b 45 0c                 MOV  EAX,[EBP+0xc]
+// 0042dc04  89 4a 24                 MOV  [EDX+0x24],ECX      ; the base
+// 0042dc07  e8 e4 6b 07 00           CALL 0x004a47f0          ; (case window ends at 0042dc0c: JMP 0x0042f04c)
+// 004a47f0  56 8b f0 57 8d 7e 28 66 c7 46 20 01 00 80 3f 08 72 07 8b cf e8 37 3a 00 00 8b 4c 24 0c
+//           callee prefix: CMP writes EFLAGS before the JB reads them, and ECX is written on both paths
+//           (8b cf / 8b 4c 24 0c) before any read, so EFLAGS and ECX are dead after 0x0042dc04.
+//
+// The stub runs in place of the displaced MOV EDX: EDX is dead at entry (the
+// tail reloads it), EFLAGS are dead (PUSH/MOV/CALL follow, and the callee
+// writes them first), EAX, EBX, ESI, EDI, EBP and ESP are not touched; ECX is
+// the output. No FPU/SSE, no call, no stack or memory write; the table sits in
+// the same executable arena block and is immutable after install:
+//
+//   cmp ecx,remap_focus_min ; jb done ; cmp ecx,remap_focus_max ; ja done   ; outside N 50..130: pass through
+//   imul edx,ecx,360 ; add edx,0x8000 ; shr edx,16                          ; N = round(F*360/65536)
+//   movzx ecx,word [edx*2 + table - 2*50]                                   ; F' = table[N - 50]
+//   done: jmp [slot]                                                        ; -> tail: MOV EDX,[0x00608504]; JMP 0x0042dbfe
+//
+// The script passes F = (N << 16) / 360 (truncated); rounding F*360/65536
+// recovers N exactly for every N (verify_fov_site.py), so the table holds the
+// remap of that exact F. Any other F in [remap_focus_min, remap_focus_max]
+// maps to the nearest integer N's value; values outside pass through unchanged.
 namespace x3m::fov::sites {
 constexpr std::uintptr_t function_va = 0x0041c960, function_end_va = 0x0041cc14;
 constexpr std::uintptr_t window_va = 0x0041c9cc, site_va = 0x0041c9d9, write_va = 0x0041c9dc;
@@ -61,32 +98,81 @@ constexpr std::uint32_t engine_focus = 0x4000;                        // 90 deg 
 constexpr std::uint32_t focus_floor = 0x106, focus_ceiling = 0x8000;  // the engine's post-zoom floor; 180 deg
 inline bool plausible_focus(std::uint32_t f) { return f >= focus_floor && f <= focus_ceiling; }
 
-// Bounds of the option in vertical degrees: 36 keeps the sector F >= 0x2147,
-// the engine's near-plane switch (zn stays 6, which the fog march and the sun
-// shadow apply assume); 120 keeps F well below 0x8000.
-constexpr double vertical_min = 36.0, vertical_max = 120.0;
+// Bounds of the option in the game's degrees N: the in-game menu's own clamps
+// SG_MIN_FOV / SG_MAX_FOV. F'(70) = 0x2768 stays above 0x2147, the engine's
+// near-plane switch (zn stays 6, which the fog march and the sun shadow apply
+// assume).
+constexpr double setting_min = 70.0, setting_max = 100.0, setting_default = 90.0;
 constexpr std::uint32_t near_plane_focus = 0x2147;
 constexpr double plane_height = 0.75;  // the default view plane H for every display at least as wide as 4:3
-inline double focus_exact(double vertical_degrees) {
+// The remap F -> F' with tan(F'/2) = H * tan(F/2), rounded; 0 outside (0, 0x8000).
+inline std::uint32_t remap_focus(std::uint32_t focus) {
+    if (!focus || focus >= 0x8000u) return 0;
     const double pi = 3.14159265358979323846;
-    return 65536.0 / pi * std::atan(std::tan(vertical_degrees * pi / 360.0) / plane_height);
+    return static_cast<std::uint32_t>(std::floor(65536.0 / pi * std::atan(plane_height * std::tan(focus * pi / 65536.0)) + 0.5));
 }
-// The binary angle for a vertical FOV in (0, 180) degrees; 0 outside.
-inline std::uint32_t focus_for_vertical(double vertical_degrees) {
-    if (!std::isfinite(vertical_degrees) || !(vertical_degrees > 0.0) || !(vertical_degrees < 180.0)) return 0;
-    return static_cast<std::uint32_t>(std::floor(focus_exact(vertical_degrees) + 0.5));
+// The script's F for N degrees: (N << 16) / 360, truncated as SetFocus does; decimals truncate the same way.
+inline std::uint32_t game_focus(double degrees) {
+    if (!std::isfinite(degrees) || !(degrees > 0.0) || !(degrees < 180.0)) return 0;
+    return static_cast<std::uint32_t>(std::floor(degrees * 65536.0 / 360.0));
 }
+// F' for the game's N degrees: the constructor's immediate for --fov N.
+inline std::uint32_t focus_for_degrees(double degrees) { return remap_focus(game_focus(degrees)); }
 // The vertical FOV in degrees that a binary angle gives at H = 0.75.
 inline double vertical_for_focus(std::uint32_t focus) {
     const double pi = 3.14159265358979323846;
     return 360.0 / pi * std::atan(plane_height * std::tan(focus * pi / 65536.0));
 }
 
-// X3M_FOV: `game` = the engine's own 0x4000 (nothing patched; also the DLL
-// default when the variable is unset or empty); otherwise decimal vertical
-// degrees `[+]digits[.digits]` or `.digits` (locale independent), accepted in
-// [vertical_min, vertical_max]. A value whose F is 0x4000 (73.74) patches
-// nothing either.
+// ---- INS_SetFocus: the case window, the claimed MOV EDX, the callee prefix, the remap stub ----
+constexpr std::uintptr_t setfocus_case_va = 0x0042dbed, setfocus_site_va = 0x0042dbf8, setfocus_return_va = 0x0042dbfe;
+constexpr std::uintptr_t setfocus_callee_va = 0x004a47f0;
+constexpr unsigned setfocus_case_length = 31, setfocus_site_offset = 11, setfocus_site_length = 6, setfocus_callee_length = 29;
+constexpr unsigned char expected_setfocus_case[setfocus_case_length] = {
+    0x8b,0x45,0x18, 0x8b,0x48,0x01, 0xa1,0xe4,0x85,0x60,0x00, 0x8b,0x15,0x04,0x85,0x60,0x00,
+    0x6a,0x00, 0x50, 0x8b,0x45,0x0c, 0x89,0x4a,0x24, 0xe8,0xe4,0x6b,0x07,0x00};
+constexpr unsigned char expected_setfocus_site[setfocus_site_length] = {0x8b,0x15,0x04,0x85,0x60,0x00};  // MOV EDX,[0x00608504]
+constexpr unsigned char expected_setfocus_callee[setfocus_callee_length] = {
+    0x56, 0x8b,0xf0, 0x57, 0x8d,0x7e,0x28, 0x66,0xc7,0x46,0x20,0x01,0x00, 0x80,0x3f,0x08, 0x72,0x07, 0x8b,0xcf,
+    0xe8,0x37,0x3a,0x00,0x00, 0x8b,0x4c,0x24,0x0c};
+// The table: N = remap_first .. remap_first + remap_count - 1.
+constexpr unsigned remap_first = 50, remap_count = 81;
+// The F range whose rounded N lies in the table: round(F*360/65536) = (F*360 + 0x8000) >> 16.
+constexpr std::uint32_t remap_focus_min = ((remap_first << 16) - 0x8000u + 359u) / 360u;                  // 0x2334
+constexpr std::uint32_t remap_focus_max = (((remap_first + remap_count) << 16) - 0x8000u - 1u) / 360u;   // 0x5ccc
+constexpr unsigned remap_index(std::uint32_t focus) { return (focus * 360u + 0x8000u) >> 16; }
+inline void build_remap_table(std::uint16_t out[remap_count]) {
+    for (unsigned i = 0; i < remap_count; ++i) out[i] = static_cast<std::uint16_t>(remap_focus(((remap_first + i) << 16) / 360u));
+}
+// What the stub computes, for the host tests: the table value for F in range, else F unchanged.
+inline std::uint32_t remap_lookup(std::uint32_t focus, const std::uint16_t table[remap_count]) {
+    if (focus < remap_focus_min || focus > remap_focus_max) return focus;
+    return table[remap_index(focus) - remap_first];
+}
+constexpr unsigned stub_length = 45, stub_done = 39;
+// The stub bytes (position independent apart from the two absolute operands): `table` is the
+// address of the 81 uint16 entries, `slot` the 4-aligned continuation word (the previous chain head).
+inline void encode_setfocus_stub(std::uint32_t table, std::uint32_t slot, unsigned char out[stub_length]) {
+    const unsigned char code[stub_length] = {
+        0x81,0xf9, 0,0,0,0,              //  0 cmp ecx,remap_focus_min
+        0x72, stub_done - 8,             //  6 jb done
+        0x81,0xf9, 0,0,0,0,              //  8 cmp ecx,remap_focus_max
+        0x77, stub_done - 16,            // 14 ja done
+        0x69,0xd1, 0x68,0x01,0x00,0x00,  // 16 imul edx,ecx,360
+        0x81,0xc2, 0x00,0x80,0x00,0x00,  // 22 add edx,0x8000
+        0xc1,0xea, 0x10,                 // 28 shr edx,16
+        0x0f,0xb7,0x0c,0x55, 0,0,0,0,    // 31 movzx ecx,word [edx*2 + disp32]
+        0xff,0x25, 0,0,0,0};             // 39 done: jmp [slot]
+    std::memcpy(out, code, stub_length);
+    const std::uint32_t operands[4][2] = {{2, remap_focus_min}, {10, remap_focus_max}, {35, table - 2u * remap_first}, {41, slot}};
+    for (const auto& o : operands)
+        for (unsigned k = 0; k < 4; ++k) out[o[0] + k] = static_cast<unsigned char>((o[1] >> (8 * k)) & 0xff);
+}
+
+// X3M_FOV: `game` = the engine's own model (nothing patched; also the DLL
+// default when the variable is unset or empty); otherwise the game's degrees N
+// `[+]digits[.digits]` or `.digits` (locale independent), accepted in
+// [setting_min, setting_max].
 enum class Parse : unsigned char { game = 0, degrees = 1, invalid = 2 };
 constexpr unsigned setting_capacity = 32;  // 1..31 characters; 32 or more is too_long
 template <class Char>
@@ -110,7 +196,7 @@ inline Parse parse_setting(const Char* text, double* degrees) {
     *degrees = value;
     return Parse::degrees;
 }
-inline bool in_range(double degrees) { return std::isfinite(degrees) && degrees >= vertical_min && degrees <= vertical_max; }
+inline bool in_range(double degrees) { return std::isfinite(degrees) && degrees >= setting_min && degrees <= setting_max; }
 inline void encode(std::uint32_t focus, unsigned char out[write_length]) {
     out[0] = focus & 0xff; out[1] = (focus >> 8) & 0xff; out[2] = (focus >> 16) & 0xff; out[3] = (focus >> 24) & 0xff;
 }
@@ -207,4 +293,13 @@ static_assert((write_va & 7u) + write_length <= 8u, "the imm32 lies inside one a
 static_assert(function_va < window_va && window_va + window_length < function_end_va, "inside the registry constructor");
 static_assert(expected_reader[2] == (registry_slot_va & 0xff) && expected_reader[3] == ((registry_slot_va >> 8) & 0xff) &&
               expected_reader[4] == ((registry_slot_va >> 16) & 0xff) && expected_reader[8] == registry_focus_offset, "the reader reads registry+0x24");
+static_assert(setfocus_case_va + setfocus_site_offset == setfocus_site_va && setfocus_site_va + setfocus_site_length == setfocus_return_va, "the claimed MOV EDX");
+static_assert(setfocus_site_va + 12 == setfocus_va, "the store follows the claimed MOV and the two pushes");
+static_assert(setfocus_case_va + setfocus_case_length + 0x00076be4u == setfocus_callee_va, "the call rel32 at the window's end reaches the callee");
+static_assert((setfocus_site_va & 7u) + 5u <= 8u, "the five jmp bytes lie in one aligned 8-byte word (atomic write)");
+static_assert(expected_setfocus_site[2] == (registry_slot_va & 0xff) && expected_setfocus_site[3] == ((registry_slot_va >> 8) & 0xff) &&
+              expected_setfocus_site[4] == ((registry_slot_va >> 16) & 0xff), "MOV EDX,[registry slot]");
+static_assert(remap_index(remap_focus_min) == remap_first && remap_index(remap_focus_min - 1) == remap_first - 1, "table floor");
+static_assert(remap_index(remap_focus_max) == remap_first + remap_count - 1 && remap_index(remap_focus_max + 1) == remap_first + remap_count, "table ceiling");
+static_assert(remap_focus_min == 0x2334 && remap_focus_max == 0x5ccc, "F range of N 50..130");
 }

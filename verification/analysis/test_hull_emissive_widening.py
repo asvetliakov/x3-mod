@@ -548,7 +548,7 @@ class LauncherAndProxyTests(unittest.TestCase):
         # Level counts and sizes are read for the widening as the counts are for the mip bias; the far fade alone
         # latches the camera; frame, capture-frame draw and session lines without k ranges (k is per pixel).
         self.assertIn('return (mip_bias_bits_ || lightmap_widen_) && texture && stage < sampler_stage_count\n        && (samplers_[stage].texture != texture || (identity != 0 && samplers_[stage].identity != identity));', motion)
-        self.assertIn('if (lightmap_far_fade_ && scene) { camera_state::Sample sample{}; lightmap_fade_m00_ = camera_state::read(&sample) ? sample.state.m00 : 0.f; }', motion)
+        self.assertIn('if (lightmap_far_fade_ && scene) lightmap_fade_m00_ = valid ? sample.state.m00 : 0.f;', motion)   # the scene read is shared with the small-parts cull hand-over (5a81df27)
         self.assertIn('hull_lightmap_widen_frame device=%llu frame=%llu admitted=%u widened=%u held=%u k=%g b=%g filter_sets=%u filter_reads=%u filter_failures=%u', motion)
         self.assertIn('hull_lightmap_widen_draw device=%llu frame=%llu index=%lu ps=%016llx stage=%u size=%lux%lu c=%g scale=%g,%g', motion)
         self.assertIn('hull_lightmap_widen_summary device=%llu k=%g b=%g variants=%lu widened_draws=%lu filter_sets=%lu', motion)

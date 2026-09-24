@@ -6,7 +6,7 @@ only read): shipped (the installed file), laa_cleared (bit 0x20 cleared),
 ntcore_4gb (bit set and CheckSum rewritten as NTCore 4gb_patch.exe does),
 unknown_hash (one .rsrc byte changed: a hash outside the known list, sites and
 anchors intact), different_build (link stamp flipped: another build of the
-game) and, for five verifiers, site_corrupt (one site byte flipped).
+game) and site_corrupt (one site byte flipped; six cases over five verifiers).
 Expectation: PASS everywhere except different_build (every verifier FAIL, the
 identity false) and site_corrupt (FAIL with the identity true); the raw hash is
 reported as INFO. Records the anchor count and the source commit. Prints one JSON object (docs/reverse-engineering/executable-identity.md).
@@ -36,10 +36,11 @@ EXE_OPTION = ['exe_identity', 'verify_chase_camera_site', 'verify_chase_aim_site
 RESULTS = {'pause': ROOT / 'verification/results/pause-dialog-input/verify_pause_sites.py',
            'music_restart': ROOT / 'verification/results/music-restart/verify_music_restart_sites.py'}
 # One byte per corrupt case: the chase camera's jz displacement, the LOD-scale fmul operand, the
-# Terran-station LOD reader's je opcode (74 -> 75), the LOD occlusion gate's rel32 low byte (c9 -> c8) and the FOV
-# constructor's imm32 second byte (40 -> 41).
+# Terran-station LOD reader's je opcode (74 -> 75), the LOD occlusion gate's rel32 low byte (c9 -> c8), the FOV
+# constructor's imm32 second byte (40 -> 41) and the FOV INS_SetFocus site's opcode (8b -> 8a at 0x0042dbf8).
+# Keys are the verifier name, or name@site when one verifier carries two cases.
 SITE_CORRUPT = {'verify_chase_camera_site': 0x00420e0f, 'verify_lod_scale_site': 0x0047d44d, 'verify_terran_lod_site': 0x0047d01c,
-                'verify_lod_occlusion_site': 0x004c34f9, 'verify_fov_site': 0x0041c9dd}
+                'verify_lod_occlusion_site': 0x004c34f9, 'verify_fov_site': 0x0041c9dd, 'verify_fov_site@setfocus': 0x0042dbf8}
 
 
 def verdict(stdout):
@@ -112,10 +113,11 @@ def main():
             path.unlink()
         corrupt = {}
         for name, va in SITE_CORRUPT.items():
-            path = Path(scratch) / f'corrupt-{name}.exe'
+            verifier = name.split('@')[0]
+            path = Path(scratch) / f'corrupt-{name.replace("@", "-")}.exe'
             path.write_bytes(patched(shipped, va))
             corrupt[name] = {'va': f'{va:#010x}', 'identity_ok': exe_identity.identity_ok(path),
-                             **run([sys.executable, str(PROBE / f'{name}.py'), '--exe', str(path)])}
+                             **run([sys.executable, str(PROBE / f'{verifier}.py'), '--exe', str(path)])}
             path.unlink()
         report['site_corrupt'] = corrupt
         other = bytearray(shipped)

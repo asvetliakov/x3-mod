@@ -11,7 +11,7 @@
   "src/proxy/engine_memory.h"
  ],
  "source": {
-  "commit": "a0a5e6455b0d4dfb5095825befaa06bfd3fc84b8",
+  "commit": "9eaeb180b1d390510987b948f9b91112fce71eaf",
   "production_sources_dirty": true,
   "dirty_paths": [
    "src/proxy/fov.cpp",
@@ -19,9 +19,9 @@
    "src/proxy/fov_sites.h"
   ],
   "sha256": {
-   "src/proxy/fov.cpp": "0c5f60b627efdf057416cdd8d3542ba2111aafac51323a478e7eaf3b88202416",
-   "src/proxy/fov.h": "a4a68dd0372d25e7b931390a6b6435aa94c69ba8abe410bee90a861f8aa66081",
-   "src/proxy/fov_sites.h": "52cff0c676392fd2ece245915cead6480e98c8c43385bcc3d5478ae52add242d",
+   "src/proxy/fov.cpp": "532cdde719b56829a3914f446252729e135e173a4d1abfcac6f81ee84fab8e63",
+   "src/proxy/fov.h": "2ab1948889865f40ff771fe1f89836e772f4c0e9b9d596c457058bcedfeff95f",
+   "src/proxy/fov_sites.h": "0ca882e121392093153e8bf567464735f342c96a8166ba208402591dfd1d09b9",
    "src/proxy/engine_patch.cpp": "9eb31fbf19e4f88432655ccccfe6e054739d9b8ba5f5be4054dfccf513330a2b",
    "src/proxy/engine_patch.h": "d8a777ee51e076271c0e22889701a594d98a4fad882a4be0c1c08cefc5771e66",
    "src/proxy/engine_memory.cpp": "1db8421f74a720ad1890ee28b9ba98b350075c2faf95c626902f3260345d66fb",
@@ -39,8 +39,8 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "exit_status": 0,
- "elapsed_s": 5.9,
- "executable_sha256": "045f18effa527e3fdbb6d86bb008aea852ad7b040df063e6ab92448f91f0a5fd",
+ "elapsed_s": 5.3,
+ "executable_sha256": "41edd79212315bc09618d0f6ee6c00014e7ce92c9444e0d92fdd9f543fcb2965",
  "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
  "build_audit": {
   "module_imports_own_protect_or_flush": [],
@@ -55,7 +55,10 @@
    "_fov_ctor_page": "0041c000",
    "_fov_reader_page": "00421000",
    "_fov_setfocus_page": "0042d000",
-   "_fov_registry_slot": "00608504"
+   "_fov_callee_page": "004a4000",
+   "_fov_registry_slot": "00608504",
+   "_fov_vm_slot": "006085e4",
+   "_fov_seen": "00608600"
   },
   "sections": {
    ".x3mfvc": {
@@ -73,6 +76,11 @@
     "size": 4096,
     "ok": true
    },
+   ".x3mfvx": {
+    "va": "004a4000",
+    "size": 4096,
+    "ok": true
+   },
    ".x3mfvd": {
     "va": "00608000",
     "size": 4096,
@@ -80,11 +88,11 @@
    }
   },
   "image_base": "00300000",
-  "highest_other_section_end": "00343984",
+  "highest_other_section_end": "00346d84",
   "overlapping_sections": []
  },
- "check_count": 134,
- "pass_count": 134,
+ "check_count": 194,
+ "pass_count": 194,
  "checks": [
   {
    "name": "restore_log_opened",
@@ -100,6 +108,10 @@
   },
   {
    "name": "engine_imm32_offset_4_of_its_qword",
+   "pass": true
+  },
+  {
+   "name": "setfocus_case_and_callee_bytes_at_engine_vas_site_qword_aligned",
    "pass": true
   },
   {
@@ -127,6 +139,10 @@
    "pass": true
   },
   {
+   "name": "setfocus_before_install_stores_471c_registers_kept",
+   "pass": true
+  },
+  {
    "name": "default_unset_off_lasterror_preserved",
    "pass": true
   },
@@ -143,27 +159,27 @@
    "pass": true
   },
   {
-   "name": "engine_value_off_lasterror_preserved",
+   "name": "refuse_below_70_lasterror_preserved",
    "pass": true
   },
   {
-   "name": "engine_value_off_row_and_untouched",
+   "name": "refuse_below_70_row_and_untouched",
    "pass": true
   },
   {
-   "name": "refuse_below_36_lasterror_preserved",
+   "name": "refuse_above_100_lasterror_preserved",
    "pass": true
   },
   {
-   "name": "refuse_below_36_row_and_untouched",
+   "name": "refuse_above_100_row_and_untouched",
    "pass": true
   },
   {
-   "name": "refuse_above_120_lasterror_preserved",
+   "name": "refuse_old_vertical_value_lasterror_preserved",
    "pass": true
   },
   {
-   "name": "refuse_above_120_row_and_untouched",
+   "name": "refuse_old_vertical_value_row_and_untouched",
    "pass": true
   },
   {
@@ -204,6 +220,30 @@
   },
   {
    "name": "setup_reader_byte_back",
+   "pass": true
+  },
+  {
+   "name": "refuse_setfocus_case_mismatch_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "refuse_setfocus_case_mismatch_untouched",
+   "pass": true
+  },
+  {
+   "name": "refuse_setfocus_site_mismatch_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "refuse_setfocus_site_mismatch_untouched",
+   "pass": true
+  },
+  {
+   "name": "refuse_setfocus_callee_mismatch_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "refuse_setfocus_callee_mismatch_untouched",
    "pass": true
   },
   {
@@ -263,6 +303,10 @@
    "pass": true
   },
   {
+   "name": "install_setfocus_jmp_to_arena_rest_of_page_unchanged",
+   "pass": true
+  },
+  {
    "name": "install_readback_70340000_rest_of_page_unchanged",
    "pass": true
   },
@@ -299,7 +343,75 @@
    "pass": true
   },
   {
-   "name": "setfocus_overrides_base_patch_stays",
+   "name": "setfocus_n70_0x31c7_to_0x2768",
+   "pass": true
+  },
+  {
+   "name": "setfocus_n90_0x4000_to_0x3470",
+   "pass": true
+  },
+  {
+   "name": "setfocus_n100_0x471c_to_0x3b6f",
+   "pass": true
+  },
+  {
+   "name": "setfocus_n91_0x40b6_to_0x351f",
+   "pass": true
+  },
+  {
+   "name": "setfocus_non_canonical_4001_0x4001_to_0x3470",
+   "pass": true
+  },
+  {
+   "name": "setfocus_n50_table_floor_0x238e_to_0x1b6a",
+   "pass": true
+  },
+  {
+   "name": "setfocus_n130_table_ceiling_0x5c71_to_0x52ab",
+   "pass": true
+  },
+  {
+   "name": "setfocus_n49_passthrough_0x22d8_to_0x22d8",
+   "pass": true
+  },
+  {
+   "name": "setfocus_n131_passthrough_0x5d27_to_0x5d27",
+   "pass": true
+  },
+  {
+   "name": "setfocus_range_floor_0x2334_to_0x1b6a",
+   "pass": true
+  },
+  {
+   "name": "setfocus_range_ceiling_0x5ccc_to_0x52ab",
+   "pass": true
+  },
+  {
+   "name": "setfocus_below_table_passthrough_0x2333_to_0x2333",
+   "pass": true
+  },
+  {
+   "name": "setfocus_above_table_passthrough_0x5ccd_to_0x5ccd",
+   "pass": true
+  },
+  {
+   "name": "setfocus_n45_passthrough_0x2000_to_0x2000",
+   "pass": true
+  },
+  {
+   "name": "setfocus_n160_passthrough_0x71c7_to_0x71c7",
+   "pass": true
+  },
+  {
+   "name": "setfocus_garbage_passthrough_0xfffffff0_to_0xfffffff0",
+   "pass": true
+  },
+  {
+   "name": "setfocus_every_n_50_130_matches_the_formula",
+   "pass": true
+  },
+  {
+   "name": "setfocus_menu_100_base_3b6f_patch_stays",
    "pass": true
   },
   {
@@ -328,6 +440,10 @@
   },
   {
    "name": "restore_readback_00400000_protection",
+   "pass": true
+  },
+  {
+   "name": "restore_setfocus_bytes_back_vanilla_store_471c",
    "pass": true
   },
   {
@@ -583,6 +699,134 @@
    "pass": true
   },
   {
+   "name": "setfocus_readback_rollback_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "setfocus_readback_both_sites_rolled_back",
+   "pass": true
+  },
+  {
+   "name": "engine_after_setfocus_rollback_ctor_4000",
+   "pass": true
+  },
+  {
+   "name": "setfocus_after_rollback_vanilla_store_471c",
+   "pass": true
+  },
+  {
+   "name": "setfocus_constructor_rollback_failed_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "setfocus_failed_constructor_rollback_failed_registered",
+   "pass": true
+  },
+  {
+   "name": "setfocus_constructor_rollback_restore_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "setfocus_constructor_rollback_restored_at_shutdown",
+   "pass": true
+  },
+  {
+   "name": "install_4_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "setup_install_4",
+   "pass": true
+  },
+  {
+   "name": "setup_read_our_jmp",
+   "pass": true
+  },
+  {
+   "name": "setup_foreign_jmp",
+   "pass": true
+  },
+  {
+   "name": "setfocus_restore_not_owned_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "setfocus_restore_not_owned_foreign_jmp_untouched_registered",
+   "pass": true
+  },
+  {
+   "name": "setup_our_jmp_back",
+   "pass": true
+  },
+  {
+   "name": "setfocus_restore_after_not_owned_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "setfocus_restore_after_not_owned_bytes_back",
+   "pass": true
+  },
+  {
+   "name": "install_setting_70_ctor_0x2768_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "install_setting_70_ctor_0x2768",
+   "pass": true
+  },
+  {
+   "name": "install_setting_70_menu_90_to_3470",
+   "pass": true
+  },
+  {
+   "name": "install_setting_70_restore_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "install_setting_70_restored",
+   "pass": true
+  },
+  {
+   "name": "install_setting_100_ctor_0x3b6f_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "install_setting_100_ctor_0x3b6f",
+   "pass": true
+  },
+  {
+   "name": "install_setting_100_menu_90_to_3470",
+   "pass": true
+  },
+  {
+   "name": "install_setting_100_restore_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "install_setting_100_restored",
+   "pass": true
+  },
+  {
+   "name": "install_setting_72.5_ctor_0x28f8_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "install_setting_72.5_ctor_0x28f8",
+   "pass": true
+  },
+  {
+   "name": "install_setting_72.5_menu_90_to_3470",
+   "pass": true
+  },
+  {
+   "name": "install_setting_72.5_restore_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "install_setting_72.5_restored",
+   "pass": true
+  },
+  {
    "name": "private_install_ok_atomic_ctor_5eb4",
    "pass": true
   },
@@ -620,6 +864,10 @@
   },
   {
    "name": "engine_after_late_ctor_4000",
+   "pass": true
+  },
+  {
+   "name": "setfocus_after_late_vanilla_store_471c",
    "pass": true
   }
  ],
@@ -679,6 +927,30 @@
    "fields": true
   },
   {
+   "memory": "engine",
+   "step": "after_setfocus_rollback",
+   "focus": "0x4000",
+   "fields": true
+  },
+  {
+   "memory": "engine",
+   "step": "install_setting_70_ctor_0x2768",
+   "focus": "0x2768",
+   "fields": true
+  },
+  {
+   "memory": "engine",
+   "step": "install_setting_100_ctor_0x3b6f",
+   "focus": "0x3b6f",
+   "fields": true
+  },
+  {
+   "memory": "engine",
+   "step": "install_setting_72.5_ctor_0x28f8",
+   "focus": "0x28f8",
+   "fields": true
+  },
+  {
    "memory": "private",
    "step": "after_patch",
    "focus": "0x5eb4",
@@ -715,23 +987,169 @@
   }
  ],
  "timing_us": {
-  "install_us": 349.5,
-  "restore_us": 202.9
+  "install_us": 874.7,
+  "restore_us": 319.1
  },
  "install_sequence": {
   "step": "install",
   "protects": 2,
-  "reads": 4,
+  "reads": 7,
   "writes": 1,
   "atomic": 1,
   "flushes": 1
  },
  "setfocus_override": {
   "setfocus": "0x471c",
-  "base": "0x471c",
-  "current": "0x471c",
+  "base": "0x3b6f",
+  "current": "0x3b6f",
   "imm32": "70340000"
  },
+ "setfocus_runs": [
+  {
+   "step": "before",
+   "in": "0x471c",
+   "out": "0x471c",
+   "preserved": true
+  },
+  {
+   "step": "patched_n70",
+   "in": "0x31c7",
+   "out": "0x2768",
+   "preserved": true
+  },
+  {
+   "step": "patched_n90",
+   "in": "0x4000",
+   "out": "0x3470",
+   "preserved": true
+  },
+  {
+   "step": "patched_n100",
+   "in": "0x471c",
+   "out": "0x3b6f",
+   "preserved": true
+  },
+  {
+   "step": "patched_n91",
+   "in": "0x40b6",
+   "out": "0x351f",
+   "preserved": true
+  },
+  {
+   "step": "patched_non_canonical_4001",
+   "in": "0x4001",
+   "out": "0x3470",
+   "preserved": true
+  },
+  {
+   "step": "patched_n50_table_floor",
+   "in": "0x238e",
+   "out": "0x1b6a",
+   "preserved": true
+  },
+  {
+   "step": "patched_n130_table_ceiling",
+   "in": "0x5c71",
+   "out": "0x52ab",
+   "preserved": true
+  },
+  {
+   "step": "patched_n49_passthrough",
+   "in": "0x22d8",
+   "out": "0x22d8",
+   "preserved": true
+  },
+  {
+   "step": "patched_n131_passthrough",
+   "in": "0x5d27",
+   "out": "0x5d27",
+   "preserved": true
+  },
+  {
+   "step": "patched_range_floor",
+   "in": "0x2334",
+   "out": "0x1b6a",
+   "preserved": true
+  },
+  {
+   "step": "patched_range_ceiling",
+   "in": "0x5ccc",
+   "out": "0x52ab",
+   "preserved": true
+  },
+  {
+   "step": "patched_below_table_passthrough",
+   "in": "0x2333",
+   "out": "0x2333",
+   "preserved": true
+  },
+  {
+   "step": "patched_above_table_passthrough",
+   "in": "0x5ccd",
+   "out": "0x5ccd",
+   "preserved": true
+  },
+  {
+   "step": "patched_n45_passthrough",
+   "in": "0x2000",
+   "out": "0x2000",
+   "preserved": true
+  },
+  {
+   "step": "patched_n160_passthrough",
+   "in": "0x71c7",
+   "out": "0x71c7",
+   "preserved": true
+  },
+  {
+   "step": "patched_garbage_passthrough",
+   "in": "0xfffffff0",
+   "out": "0xfffffff0",
+   "preserved": true
+  },
+  {
+   "step": "patched_override_100",
+   "in": "0x471c",
+   "out": "0x3b6f",
+   "preserved": true
+  },
+  {
+   "step": "after_restore",
+   "in": "0x471c",
+   "out": "0x471c",
+   "preserved": true
+  },
+  {
+   "step": "after_setfocus_rollback",
+   "in": "0x471c",
+   "out": "0x471c",
+   "preserved": true
+  },
+  {
+   "step": "install_setting_70_menu_90_to_3470",
+   "in": "0x4000",
+   "out": "0x3470",
+   "preserved": true
+  },
+  {
+   "step": "install_setting_100_menu_90_to_3470",
+   "in": "0x4000",
+   "out": "0x3470",
+   "preserved": true
+  },
+  {
+   "step": "install_setting_72.5_menu_90_to_3470",
+   "in": "0x4000",
+   "out": "0x3470",
+   "preserved": true
+  },
+  {
+   "step": "after_late",
+   "in": "0x471c",
+   "out": "0x471c",
+   "preserved": true
+  }
+ ],
  "install_rows": [
   {
    "site": "0041c9dc",
@@ -743,6 +1161,8 @@
    "write": "none",
    "registry": "skipped",
    "registry_before": null,
+   "setfocus": "none",
+   "setfocus_write": "none",
    "patched": false
   },
   {
@@ -755,18 +1175,8 @@
    "write": "none",
    "registry": "skipped",
    "registry_before": null,
-   "patched": false
-  },
-  {
-   "site": "0041c9dc",
-   "status": "off",
-   "reason": "engine_value",
-   "value": "0x4000",
-   "vertical_deg": 73.74,
-   "setting": "73.74",
-   "write": "none",
-   "registry": "skipped",
-   "registry_before": null,
+   "setfocus": "none",
+   "setfocus_write": "none",
    "patched": false
   },
   {
@@ -775,10 +1185,12 @@
    "reason": "out_of_range",
    "value": "0x4000",
    "vertical_deg": 73.74,
-   "setting": "35.9",
+   "setting": "69.9",
    "write": "none",
    "registry": "skipped",
    "registry_before": null,
+   "setfocus": "none",
+   "setfocus_write": "none",
    "patched": false
   },
   {
@@ -787,10 +1199,26 @@
    "reason": "out_of_range",
    "value": "0x4000",
    "vertical_deg": 73.74,
-   "setting": "120.5",
+   "setting": "100.5",
    "write": "none",
    "registry": "skipped",
    "registry_before": null,
+   "setfocus": "none",
+   "setfocus_write": "none",
+   "patched": false
+  },
+  {
+   "site": "0041c9dc",
+   "status": "refused",
+   "reason": "out_of_range",
+   "value": "0x4000",
+   "vertical_deg": 73.74,
+   "setting": "58.7155",
+   "write": "none",
+   "registry": "skipped",
+   "registry_before": null,
+   "setfocus": "none",
+   "setfocus_write": "none",
    "patched": false
   },
   {
@@ -803,6 +1231,8 @@
    "write": "none",
    "registry": "skipped",
    "registry_before": null,
+   "setfocus": "none",
+   "setfocus_write": "none",
    "patched": false
   },
   {
@@ -815,6 +1245,8 @@
    "write": "none",
    "registry": "skipped",
    "registry_before": null,
+   "setfocus": "none",
+   "setfocus_write": "none",
    "patched": false
   },
   {
@@ -823,10 +1255,12 @@
    "reason": "executable_mismatch",
    "value": "0x4000",
    "vertical_deg": 73.74,
-   "setting": "58.7155",
+   "setting": "90",
    "write": "none",
    "registry": "skipped",
    "registry_before": null,
+   "setfocus": "none",
+   "setfocus_write": "none",
    "patched": false
   },
   {
@@ -835,10 +1269,54 @@
    "reason": "reader_mismatch",
    "value": "0x4000",
    "vertical_deg": 73.74,
-   "setting": "58.7155",
+   "setting": "90",
    "write": "none",
    "registry": "skipped",
    "registry_before": null,
+   "setfocus": "none",
+   "setfocus_write": "none",
+   "patched": false
+  },
+  {
+   "site": "0041c9dc",
+   "status": "refused",
+   "reason": "setfocus_mismatch",
+   "value": "0x4000",
+   "vertical_deg": 73.74,
+   "setting": "90",
+   "write": "none",
+   "registry": "skipped",
+   "registry_before": null,
+   "setfocus": "none",
+   "setfocus_write": "none",
+   "patched": false
+  },
+  {
+   "site": "0041c9dc",
+   "status": "refused",
+   "reason": "setfocus_mismatch",
+   "value": "0x4000",
+   "vertical_deg": 73.74,
+   "setting": "90",
+   "write": "none",
+   "registry": "skipped",
+   "registry_before": null,
+   "setfocus": "none",
+   "setfocus_write": "none",
+   "patched": false
+  },
+  {
+   "site": "0041c9dc",
+   "status": "refused",
+   "reason": "setfocus_mismatch",
+   "value": "0x4000",
+   "vertical_deg": 73.74,
+   "setting": "90",
+   "write": "none",
+   "registry": "skipped",
+   "registry_before": null,
+   "setfocus": "none",
+   "setfocus_write": "none",
    "patched": false
   },
   {
@@ -847,10 +1325,12 @@
    "reason": "bytes_mismatch",
    "value": "0x4000",
    "vertical_deg": 73.74,
-   "setting": "58.7155",
+   "setting": "90",
    "write": "none",
    "registry": "skipped",
    "registry_before": null,
+   "setfocus": "none",
+   "setfocus_write": "none",
    "patched": false
   },
   {
@@ -859,10 +1339,12 @@
    "reason": "bytes_mismatch",
    "value": "0x4000",
    "vertical_deg": 73.74,
-   "setting": "58.7155",
+   "setting": "90",
    "write": "none",
    "registry": "skipped",
    "registry_before": null,
+   "setfocus": "none",
+   "setfocus_write": "none",
    "patched": false
   },
   {
@@ -871,10 +1353,12 @@
    "reason": "protect_failed",
    "value": "0x4000",
    "vertical_deg": 73.74,
-   "setting": "58.7155",
+   "setting": "90",
    "write": "none",
    "registry": "skipped",
    "registry_before": null,
+   "setfocus": "none",
+   "setfocus_write": "none",
    "patched": false
   },
   {
@@ -883,10 +1367,12 @@
    "reason": "ok",
    "value": "0x3470",
    "vertical_deg": 58.72,
-   "setting": "58.7155",
+   "setting": "90",
    "write": "atomic",
    "registry": "absent",
    "registry_before": null,
+   "setfocus": "active",
+   "setfocus_write": "atomic",
    "patched": true
   },
   {
@@ -895,10 +1381,12 @@
    "reason": "ok",
    "value": "0x3470",
    "vertical_deg": 58.72,
-   "setting": "58.7155",
+   "setting": "90",
    "write": "atomic",
    "registry": "written",
    "registry_before": "0x4000",
+   "setfocus": "active",
+   "setfocus_write": "atomic",
    "patched": true
   },
   {
@@ -907,10 +1395,12 @@
    "reason": "ok",
    "value": "0x3470",
    "vertical_deg": 58.72,
-   "setting": "58.7155",
+   "setting": "90",
    "write": "atomic",
    "registry": "written",
    "registry_before": "0x3d34",
+   "setfocus": "active",
+   "setfocus_write": "atomic",
    "patched": true
   },
   {
@@ -919,10 +1409,12 @@
    "reason": "ok",
    "value": "0x3470",
    "vertical_deg": 58.72,
-   "setting": "58.7155",
+   "setting": "90",
    "write": "atomic",
    "registry": "skipped",
    "registry_before": "0x0000",
+   "setfocus": "active",
+   "setfocus_write": "atomic",
    "patched": true
   },
   {
@@ -931,10 +1423,12 @@
    "reason": "ok",
    "value": "0x3470",
    "vertical_deg": 58.72,
-   "setting": "58.7155",
+   "setting": "90",
    "write": "atomic",
    "registry": "skipped",
    "registry_before": null,
+   "setfocus": "active",
+   "setfocus_write": "atomic",
    "patched": true
   },
   {
@@ -943,10 +1437,12 @@
    "reason": "ok",
    "value": "0x3470",
    "vertical_deg": 58.72,
-   "setting": "58.7155",
+   "setting": "90",
    "write": "atomic",
    "registry": "skipped",
    "registry_before": "0x4000",
+   "setfocus": "active",
+   "setfocus_write": "atomic",
    "patched": true
   },
   {
@@ -955,10 +1451,12 @@
    "reason": "ok",
    "value": "0x3470",
    "vertical_deg": 58.72,
-   "setting": "58.7155",
+   "setting": "90",
    "write": "atomic",
    "registry": "skipped",
    "registry_before": null,
+   "setfocus": "active",
+   "setfocus_write": "atomic",
    "patched": true
   },
   {
@@ -967,10 +1465,12 @@
    "reason": "patch_rolled_back",
    "value": "0x4000",
    "vertical_deg": 73.74,
-   "setting": "58.7155",
+   "setting": "90",
    "write": "atomic",
    "registry": "skipped",
    "registry_before": null,
+   "setfocus": "none",
+   "setfocus_write": "none",
    "patched": false
   },
   {
@@ -979,10 +1479,12 @@
    "reason": "patch_rolled_back",
    "value": "0x4000",
    "vertical_deg": 73.74,
-   "setting": "58.7155",
+   "setting": "90",
    "write": "atomic",
    "registry": "skipped",
    "registry_before": null,
+   "setfocus": "none",
+   "setfocus_write": "none",
    "patched": false
   },
   {
@@ -991,10 +1493,12 @@
    "reason": "rollback_unprotected",
    "value": "0x4000",
    "vertical_deg": 73.74,
-   "setting": "58.7155",
+   "setting": "90",
    "write": "atomic",
    "registry": "skipped",
    "registry_before": null,
+   "setfocus": "none",
+   "setfocus_write": "none",
    "patched": false
   },
   {
@@ -1003,10 +1507,12 @@
    "reason": "rollback_failed",
    "value": "0x3471",
    "vertical_deg": 58.72,
-   "setting": "58.7155",
+   "setting": "90",
    "write": "atomic",
    "registry": "skipped",
    "registry_before": null,
+   "setfocus": "none",
+   "setfocus_write": "none",
    "patched": false
   },
   {
@@ -1015,10 +1521,12 @@
    "reason": "ok",
    "value": "0x3470",
    "vertical_deg": 58.72,
-   "setting": "58.7155",
+   "setting": "90",
    "write": "atomic",
    "registry": "absent",
    "registry_before": null,
+   "setfocus": "active",
+   "setfocus_write": "atomic",
    "patched": true
   },
   {
@@ -1027,10 +1535,96 @@
    "reason": "ok",
    "value": "0x3470",
    "vertical_deg": 58.72,
-   "setting": "58.7155",
+   "setting": "90",
    "write": "atomic",
    "registry": "absent",
    "registry_before": null,
+   "setfocus": "active",
+   "setfocus_write": "atomic",
+   "patched": true
+  },
+  {
+   "site": "0041c9dc",
+   "status": "refused",
+   "reason": "setfocus_failed",
+   "value": "0x4000",
+   "vertical_deg": 73.74,
+   "setting": "90",
+   "write": "atomic",
+   "registry": "skipped",
+   "registry_before": null,
+   "setfocus": "readback_failed",
+   "setfocus_write": "atomic",
+   "patched": false
+  },
+  {
+   "site": "0041c9dc",
+   "status": "patched_unverified",
+   "reason": "setfocus_failed",
+   "value": "0x3470",
+   "vertical_deg": 58.72,
+   "setting": "90",
+   "write": "atomic",
+   "registry": "skipped",
+   "registry_before": null,
+   "setfocus": "readback_failed",
+   "setfocus_write": "atomic",
+   "patched": false
+  },
+  {
+   "site": "0041c9dc",
+   "status": "patched",
+   "reason": "ok",
+   "value": "0x3470",
+   "vertical_deg": 58.72,
+   "setting": "90",
+   "write": "atomic",
+   "registry": "absent",
+   "registry_before": null,
+   "setfocus": "active",
+   "setfocus_write": "atomic",
+   "patched": true
+  },
+  {
+   "site": "0041c9dc",
+   "status": "patched",
+   "reason": "ok",
+   "value": "0x2768",
+   "vertical_deg": 43.0,
+   "setting": "70",
+   "write": "atomic",
+   "registry": "absent",
+   "registry_before": null,
+   "setfocus": "active",
+   "setfocus_write": "atomic",
+   "patched": true
+  },
+  {
+   "site": "0041c9dc",
+   "status": "patched",
+   "reason": "ok",
+   "value": "0x3b6f",
+   "vertical_deg": 67.67,
+   "setting": "100",
+   "write": "atomic",
+   "registry": "absent",
+   "registry_before": null,
+   "setfocus": "active",
+   "setfocus_write": "atomic",
+   "patched": true
+  },
+  {
+   "site": "0041c9dc",
+   "status": "patched",
+   "reason": "ok",
+   "value": "0x28f8",
+   "vertical_deg": 44.82,
+   "setting": "72.5",
+   "write": "atomic",
+   "registry": "absent",
+   "registry_before": null,
+   "setfocus": "active",
+   "setfocus_write": "atomic",
    "patched": true
   },
   {
@@ -1039,10 +1633,12 @@
    "reason": "late_claim",
    "value": "0x4000",
    "vertical_deg": 73.74,
-   "setting": "58.7155",
+   "setting": "90",
    "write": "none",
    "registry": "skipped",
    "registry_before": null,
+   "setfocus": "none",
+   "setfocus_write": "none",
    "patched": false
   }
  ],
@@ -1051,97 +1647,155 @@
    "site": "0041c9dc",
    "status": "restored",
    "found": "70340000",
-   "registered": false
+   "registered": false,
+   "setfocus": "restored"
   },
   {
    "site": "0041c9dc",
    "status": "restored",
    "found": "70340000",
-   "registered": false
+   "registered": false,
+   "setfocus": "restored"
   },
   {
    "site": "0041c9dc",
    "status": "restored",
    "found": "70340000",
-   "registered": false
+   "registered": false,
+   "setfocus": "restored"
   },
   {
    "site": "0041c9dc",
    "status": "restored",
    "found": "70340000",
-   "registered": false
+   "registered": false,
+   "setfocus": "restored"
   },
   {
    "site": "0041c9dc",
    "status": "restored",
    "found": "70340000",
-   "registered": false
+   "registered": false,
+   "setfocus": "restored"
   },
   {
    "site": "0041c9dc",
    "status": "restored",
    "found": "70340000",
-   "registered": false
+   "registered": false,
+   "setfocus": "restored"
   },
   {
    "site": "0041c9dc",
    "status": "restored",
    "found": "70340000",
-   "registered": false
+   "registered": false,
+   "setfocus": "restored"
   },
   {
    "site": "0041c9dc",
    "status": "restore_not_owned",
    "found": "71340000",
-   "registered": true
+   "registered": true,
+   "setfocus": "none"
   },
   {
    "site": "0041c9dc",
    "status": "restore_failed",
    "found": "70340000",
-   "registered": true
+   "registered": true,
+   "setfocus": "none"
   },
   {
    "site": "0041c9dc",
    "status": "restore_failed",
    "found": "70340000",
-   "registered": true
+   "registered": true,
+   "setfocus": "none"
   },
   {
    "site": "0041c9dc",
    "status": "restored",
    "found": "70340000",
-   "registered": false
+   "registered": false,
+   "setfocus": "none"
   },
   {
    "site": "0041c9dc",
    "status": "restore_not_owned",
    "found": "71340000",
-   "registered": true
+   "registered": true,
+   "setfocus": "restored"
   },
   {
    "site": "0041c9dc",
    "status": "restored",
    "found": "00400000",
-   "registered": false
+   "registered": false,
+   "setfocus": "none"
   },
   {
    "site": "0041c9dc",
    "status": "restore_not_owned",
    "found": null,
-   "registered": true
+   "registered": true,
+   "setfocus": "restored"
   },
   {
    "site": "0041c9dc",
    "status": "restored",
    "found": "70340000",
-   "registered": false
+   "registered": false,
+   "setfocus": "none"
+  },
+  {
+   "site": "0041c9dc",
+   "status": "restored",
+   "found": "70340000",
+   "registered": false,
+   "setfocus": "none"
+  },
+  {
+   "site": "0041c9dc",
+   "status": "restored",
+   "found": "70340000",
+   "registered": true,
+   "setfocus": "restore_not_owned"
+  },
+  {
+   "site": "0041c9dc",
+   "status": "none",
+   "found": null,
+   "registered": false,
+   "setfocus": "restored"
+  },
+  {
+   "site": "0041c9dc",
+   "status": "restored",
+   "found": "68270000",
+   "registered": false,
+   "setfocus": "restored"
+  },
+  {
+   "site": "0041c9dc",
+   "status": "restored",
+   "found": "6f3b0000",
+   "registered": false,
+   "setfocus": "restored"
+  },
+  {
+   "site": "0041c9dc",
+   "status": "restored",
+   "found": "f8280000",
+   "registered": false,
+   "setfocus": "restored"
   },
   {
    "site": "00ac09dc",
    "status": "restored",
    "found": "b45e0000",
-   "registered": false
+   "registered": false,
+   "setfocus": "none"
   }
  ],
  "confirm_rows": [
@@ -1165,7 +1819,7 @@
   }
  ],
  "result": {
-  "checks": 134,
+  "checks": 194,
   "failures": 0
  },
  "passed": true,

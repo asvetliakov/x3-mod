@@ -10,11 +10,13 @@ registry reads, its production no-SSE flags) are compiled as is. The executable
 links at 0x00300000 without ASLR, so its own sections end below the engine's
 pages, and places the constructor stub's section .x3mfvc at 0x0041c000 (window
 at the production constant 0x0041c9cc inside an image section, as in X3AP.exe),
-the reader .x3mfvr at 0x00421000, the INS_SetFocus store .x3mfvs at 0x0042d000
-and the writable data section .x3mfvd at 0x00608000 (the registry slot
-0x00608504). The audit checks that the seam took (the production object imports
-no VirtualProtect/FlushInstructionCache of its own and calls the seam), that
-engine_patch.o carries `lock cmpxchg8b`, that the three code sections are one
+the reader .x3mfvr at 0x00421000, the INS_SetFocus case body .x3mfvs at
+0x0042d000, the callee prefix .x3mfvx at 0x004a4000 and the writable data
+section .x3mfvd at 0x00608000 (the registry slot 0x00608504, the VM slot
+0x006085e4, the callee's record 0x00608600). The audit checks that the seam
+took (the production object imports no VirtualProtect/FlushInstructionCache of
+its own and calls the seam), that engine_patch.o carries `lock cmpxchg8b`, that
+the four code sections are one
 executable read-only page each and the data section one writable page at their
 engine VAs, and that no other section overlaps any of them.
 """
@@ -29,8 +31,10 @@ BUILD = ROOT / 'build/verification/fov-patch'
 EXE = BUILD / 'fov_patch_fixture.exe'
 SHIM = 'verification/probe/fov_patch_fixture_shim.h'
 IMAGE_BASE = 0x300000
-PAGES = {'.x3mfvc': (0x41c000, 'code'), '.x3mfvr': (0x421000, 'code'), '.x3mfvs': (0x42d000, 'code'), '.x3mfvd': (0x608000, 'data')}
-SYMBOLS = {'_fov_ctor_page': '0041c000', '_fov_reader_page': '00421000', '_fov_setfocus_page': '0042d000', '_fov_registry_slot': '00608504'}
+PAGES = {'.x3mfvc': (0x41c000, 'code'), '.x3mfvr': (0x421000, 'code'), '.x3mfvs': (0x42d000, 'code'), '.x3mfvx': (0x4a4000, 'code'),
+         '.x3mfvd': (0x608000, 'data')}
+SYMBOLS = {'_fov_ctor_page': '0041c000', '_fov_reader_page': '00421000', '_fov_setfocus_page': '0042d000', '_fov_callee_page': '004a4000',
+           '_fov_registry_slot': '00608504', '_fov_vm_slot': '006085e4', '_fov_seen': '00608600'}
 
 
 def tool(name, *args):

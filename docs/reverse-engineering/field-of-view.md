@@ -290,6 +290,11 @@ narrower displays), i.e. the law of §1 inverted. Examples
 
 ## 6.1 Implemented (2026-09-24)
 
+**Superseded the same day by the remap of §7.3** (implemented, see the end of §7.3): `--fov` now takes
+the game's own number `N` (70..100, default 90), not vertical degrees. The constructor patch and the
+registry write described here are unchanged in mechanism; their value is `F'(N)`. The paragraph below
+records the first build.
+
 `--fov <vertical degrees 36..120>|game` / `X3M_FOV` (`src/proxy/fov.cpp`, site core
 `src/proxy/fov_sites.h`) implements §5 as recommended: after the structural identity, the reader
 contract (`0x00421148`, `0x0042dc04`) and a 28-byte window compare at `0x0041c9cc`, the imm32 at
@@ -462,6 +467,41 @@ every reader, including the two direct registry readers, sees one value. Two sit
    over our own value" logic), and the `fov_confirm` row must expect `remap` of the value rather than
    the constructor constant. The minimum `F' = 0x2768` stays above the near-plane threshold `0x2147`
    (§2). Displays narrower than 4:3 (`H = h/w`) get a slightly different vertical, as today.
+
+**Implemented (2026-09-24), variant (b)** (`src/proxy/fov.cpp`, `src/proxy/fov_sites.h`; evidence in the
+[field-of-view ledger](../verification/field-of-view.md)). `--fov N|game` / `X3M_FOV`, `N` in 70..100 (integer
+or decimal; launcher default 90; `game` claims nothing). Both sites or neither: after the structural
+identity, the reader contract, the 31-byte case window `0x0042dbed..0x0042dc0b` and a 29-byte prefix of
+the callee `0x004a47f0` (fail closed, `setfocus_mismatch`), the constructor immediate becomes
+`F'(N) = remap((N·65536/360) truncated)` (as §5), then `engine_patch::claim` takes `0x0042dbf8` (six
+bytes, jmp in one `lock cmpxchg8b`, read back) and a stub is pushed in front; a failure of the second site
+rolls the first back (`setfocus_failed`). Differences from the sketch above, all [s] and fixture-tested:
+
+- **No call, no C helper.** The stub is 45 hand-encoded bytes in the arena block that also holds its
+  continuation slot and the table: `cmp ecx,0x2334; jb; cmp ecx,0x5ccc; ja` (pass through),
+  `imul edx,ecx,360; add edx,0x8000; shr edx,16` (`N = round(F·360/65536)`),
+  `movzx ecx,word [edx*2 + table − 100]`, `jmp [slot]` → tail (`MOV EDX,[0x00608504]`, `JMP 0x0042dbfe`).
+  EDX is the scratch register (dead at entry, reloaded by the tail), so **EAX is not touched and needs no
+  save**; EBX/ESI/EDI/EBP/ESP, the stack, FPU/SSE state and LastError are untouched; EFLAGS are dead.
+- **ECX and EFLAGS after the store.** The callee's prefix `56 8b f0 57 8d 7e 28 66 c7 46 20 01 00 80 3f 08
+  72 07 8b cf e8 … 8b 4c 24 0c` writes EFLAGS (`cmp`) before the `jb` and ECX on both paths before any
+  read, so the remapped ECX and the stub's flags die at the call. The prefix is part of the production
+  byte check.
+- **Table.** 81 `uint16` entries for `N = 50..130` (`F` in `0x2334..0x5ccc`; user decision: room for a
+  mod-widened menu or script values 15-20° outside 70..100, so the remap never steps backwards at the menu's
+  edge), built once at install from the script's truncated `F = (N<<16)/360`: 50 → `0x1b6a`, 70 → `0x2768`,
+  90 → `0x3470`, 100 → `0x3b6f`, 130 → `0x52ab`. The rounded
+  index recovers `N` exactly for every `N = 0..180`; any other `F` in range maps to its nearest `N`;
+  `F` outside the range (including `0x8000+`, untagged garbage) passes through unchanged.
+- **Late registry write** stores `F'(N)` for the launcher's `N` (the constructor's value), not a remap of
+  the value found. `fov_confirm` still expects the constructor value, which the registry holds at the
+  first Present because nothing issues `INS_SetFocus` before the menu.
+- **Log rows.** `fov … setfocus=<active|none|reason> setfocus_write=<atomic|plain|none>`;
+  `fov_restore … status=<constructor> … setfocus=<restored|restore_not_owned|…|none>`. A dynamic unload
+  restores the jmp only over our own bytes, then the immediate; the stub and table stay in the arena
+  (about 240 B per install: a 24 B tail block and a 216 B stub, slot and table block).
+- **The menu's own number.** The menu starts from member `0x16` = 90 whatever `--fov` is, so with
+  `--fov 80` its first press stores `F'(91)` or `F'(89)`; from then on it works in the same units.
 
 **Variant (a), per-frame remap at `0x00421148`** (for the record): the nine bytes
 `8b 15 04 85 60 00 8b 72 24` (two instructions) would carry a stub that maps `ESI` before the zoom

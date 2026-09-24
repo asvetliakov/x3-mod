@@ -491,7 +491,7 @@ class ChaseCameraPipeline(unittest.TestCase):
     # --- FOV compensation (docs/verification/field-of-view.md, "Chase camera compensation") ---
     def test_fov_compensation_factor(self):
         self.assertEqual(self.d.fov_factor(0.75), 1.0)                          # vanilla F 0x4000
-        self.assertAlmostEqual(self.d.fov_factor(0.5625), 4 / 3, places=15)     # --fov 58.7155 default
+        self.assertAlmostEqual(self.d.fov_factor(0.5625), 4 / 3, places=15)     # --fov default 90 (F 0x3470)
         self.assertEqual(self.d.fov_factor(0.3), 2.0)                           # clamp: 2.5 -> 2
         self.assertEqual(self.d.fov_factor(0.375), 2.0)                         # exactly at the upper bound
         self.assertEqual(self.d.fov_factor(1.5), 0.5)                           # exactly at the lower bound

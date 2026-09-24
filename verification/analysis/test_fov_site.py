@@ -1,11 +1,12 @@
 """Host checks of the field-of-view option (src/proxy/fov_sites.h, src/proxy/fov.cpp, tools/manage.py --fov).
 
 The site header compiled on the host (window, original immediate, refusal of a
-changed or already patched window, the X3M_FOV parser and bounds, the
-vertical-degrees -> binary-angle conversion table, install/read-back/rollback/
-restore against a copied window at the engine's qword offset, restore only
-over our value), the bytes against the site verifier's Python twin, the site
-verifier on the installed executable and its refusal on a patched copy, the
+changed or already patched window, the X3M_FOV parser and bounds 70..100, the
+N -> F' remap table, the INS_SetFocus stub's table, pass-through and bytes
+(decoded with objdump), install/read-back/rollback/restore against a copied
+window at the engine's qword offset, restore only over our value), the bytes
+against the site verifier's Python twin, the site verifier on the installed
+executable and its refusal on copies with either site changed, the
 install/restore/confirm line parsers, the production wiring and the --fov
 launcher option (--dry-run only, never a launch). No Wine.
 """
@@ -16,6 +17,7 @@ import io
 import json
 import math
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
@@ -64,18 +66,46 @@ int main() {
     auto check = [&](bool ok, const char* what) { if (!ok) { ++failures; std::printf("FAIL %s\n", what); } };
     hex(expected_window, window_length); hex(expected_site, site_length); hex(expected_write, write_length);
     hex(expected_reader, reader_length); hex(expected_setfocus, setfocus_length);
-    std::printf("%08lx %08lx %08lx %08lx %08lx %08lx\n", (unsigned long)window_va, (unsigned long)site_va, (unsigned long)write_va,
-                (unsigned long)reader_va, (unsigned long)setfocus_va, (unsigned long)registry_slot_va);
-    // The conversion table and the bounds.
-    const double requests[] = {36.0, 58.7155, 58.72, 59.0, 73.74, 90.0, 120.0};
-    for (double v : requests) std::printf("%.4f %04x %.4f\n", v, focus_for_vertical(v), vertical_for_focus(focus_for_vertical(v)));
-    check(focus_for_vertical(58.7155) == 0x3470 && focus_for_vertical(73.74) == 0x4000 && focus_for_vertical(58.72) == 0x3471, "58.7155 -> 0x3470, 73.74 -> 0x4000, 58.72 -> 0x3471");
-    check(focus_for_vertical(360.0 / 3.14159265358979323846 * std::atan(9.0 / 16.0)) == 0x3470, "2 atan(9/16) (90 deg horizontal on 16:9) -> 0x3470");
-    check(focus_for_vertical(vertical_min) >= near_plane_focus && focus_for_vertical(vertical_max) < focus_ceiling && vertical_for_focus(near_plane_focus) < vertical_min,
-          "36 deg keeps F above the near-plane switch 0x2147, 120 deg stays below 0x8000");
+    hex(expected_setfocus_case, setfocus_case_length); hex(expected_setfocus_site, setfocus_site_length); hex(expected_setfocus_callee, setfocus_callee_length);
+    std::printf("%08lx %08lx %08lx %08lx %08lx %08lx %08lx %08lx %08lx\n", (unsigned long)window_va, (unsigned long)site_va, (unsigned long)write_va,
+                (unsigned long)reader_va, (unsigned long)setfocus_va, (unsigned long)registry_slot_va, (unsigned long)setfocus_case_va,
+                (unsigned long)setfocus_site_va, (unsigned long)setfocus_callee_va);
+    // The N -> F' table and the bounds.
+    const double requests[] = {70.0, 72.5, 75.0, 80.0, 85.0, 90.0, 95.0, 100.0};
+    for (double v : requests) std::printf("%.4f %04x %.4f\n", v, focus_for_degrees(v), vertical_for_focus(focus_for_degrees(v)));
+    check(focus_for_degrees(90.0) == 0x3470 && focus_for_degrees(70.0) == 0x2768 && focus_for_degrees(100.0) == 0x3b6f, "90 -> 0x3470, 70 -> 0x2768, 100 -> 0x3b6f");
+    check(game_focus(90.0) == 0x4000 && game_focus(100.0) == 0x471c && game_focus(91.0) == 0x40b6 && game_focus(70.0) == 0x31c7, "the script's truncated F = (N << 16) / 360");
+    check(focus_for_degrees(setting_min) >= near_plane_focus && focus_for_degrees(setting_max) < engine_focus && setting_default == 90.0,
+          "70 keeps F' above the near-plane switch 0x2147, 100 stays below 0x4000");
     check(std::fabs(vertical_for_focus(engine_focus) - 73.7398) < 1e-3 && std::fabs(vertical_for_focus(0x3470) - 58.7159) < 1e-3, "0x4000 = 73.74 deg, 0x3470 = 58.72 deg vertical");
-    check(focus_for_vertical(0.0) == 0 && focus_for_vertical(180.0) == 0 && focus_for_vertical(-5.0) == 0 && focus_for_vertical(std::nan("")) == 0, "no focus outside (0, 180)");
-    check(in_range(36.0) && in_range(120.0) && in_range(58.7155) && !in_range(35.999) && !in_range(120.001) && !in_range(std::nan("")), "bounds 36..120 inclusive");
+    check(remap_focus(0) == 0 && remap_focus(0x8000) == 0 && game_focus(0.0) == 0 && game_focus(180.0) == 0 && game_focus(-5.0) == 0 && game_focus(std::nan("")) == 0,
+          "no focus outside (0, 0x8000) / (0, 180)");
+    check(in_range(70.0) && in_range(100.0) && in_range(72.5) && !in_range(69.999) && !in_range(100.001) && !in_range(58.7155) && !in_range(std::nan("")), "bounds 70..100 inclusive");
+    // The INS_SetFocus table: every N 50..130 through the stub's rounding, pass-through outside.
+    std::uint16_t table[remap_count];
+    build_remap_table(table);
+    for (unsigned i = 0; i < remap_count; ++i) std::printf("%04x%s", table[i], i + 1 < remap_count ? " " : "\n");
+    bool rows_ok = true;
+    for (unsigned n = remap_first; n < remap_first + remap_count; ++n)
+        rows_ok = rows_ok && remap_lookup((n << 16) / 360u, table) == remap_focus((n << 16) / 360u) && table[n - remap_first] == focus_for_degrees(double(n));
+    check(rows_ok, "every N 50..130: the script's F maps to F'(N), the constructor's value for the same N");
+    check(remap_lookup((49u << 16) / 360u, table) == (49u << 16) / 360u && remap_lookup((131u << 16) / 360u, table) == (131u << 16) / 360u &&
+          remap_lookup((50u << 16) / 360u, table) == 0x1b6a && remap_lookup((130u << 16) / 360u, table) == 0x52ab, "N 49 and 131 pass through, 50 and 130 remap");
+    bool monotonic = true;
+    for (unsigned i = 1; i < remap_count; ++i) monotonic = monotonic && table[i] > table[i - 1];
+    check(monotonic, "the table rises with N (no step backwards inside it)");
+    bool rounding_ok = true;
+    for (std::uint32_t f = remap_focus_min; f <= remap_focus_max; ++f) {
+        const unsigned n = remap_index(f);
+        rounding_ok = rounding_ok && n >= remap_first && n < remap_first + remap_count && std::fabs(f * 360.0 / 65536.0 - n) <= 0.5;
+    }
+    check(rounding_ok, "every F in [remap_focus_min, remap_focus_max] rounds to its nearest N inside the table");
+    const std::uint32_t outside[] = {0u, 1u, remap_focus_min - 1, remap_focus_max + 1, 0x8000u, 0xfffffff0u, 0xffffffffu};
+    for (std::uint32_t f : outside) check(remap_lookup(f, table) == f, "outside the table: unchanged");
+    check(remap_lookup(0x4001, table) == 0x3470 && remap_lookup(0x471c, table) == 0x3b6f, "a non-canonical F maps to its nearest N");
+    unsigned char stub[stub_length];
+    encode_setfocus_stub(0x10002000u, 0x10001ffcu, stub);
+    hex(stub, stub_length);
     check(plausible_focus(0x106) && plausible_focus(0x8000) && !plausible_focus(0x105) && !plausible_focus(0x8001) && !plausible_focus(0), "plausible 0x106..0x8000");
     // The X3M_FOV parser.
     double d = -1;
@@ -187,13 +217,30 @@ class FovCore(unittest.TestCase):
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
             lines = run.stdout.splitlines()
             self.assertEqual(lines[-1], 'fov_core checks_failed=0')
-            self.assertEqual([bytes.fromhex(line) for line in lines[0:5]], [verifier.WINDOW, verifier.SITE, verifier.WRITE, verifier.READER, verifier.SETFOCUS])
+            self.assertEqual([bytes.fromhex(line) for line in lines[0:8]], [verifier.WINDOW, verifier.SITE, verifier.WRITE, verifier.READER, verifier.SETFOCUS,
+                                                                            verifier.CASE, verifier.SETFOCUS_SITE, verifier.CALLEE])
             self.assertEqual(bytes.fromhex(lines[0]), bytes.fromhex('895e20 c6461901 885e1a 895e1c c7462400400000 897c2430 895c242c'))
-            self.assertEqual([int(v, 16) for v in lines[5].split()],
-                             [verifier.WINDOW_VA, verifier.SITE_VA, verifier.WRITE_VA, verifier.READER_VA, verifier.SETFOCUS_VA, verifier.REGISTRY_SLOT_VA])
-            # The C++ conversion equals the Python twin for every tabled request.
-            table = {float(v): int(f, 16) for v, f, _ in (line.split() for line in lines[6:13])}
-            self.assertEqual(table, {v: verifier.focus_for_vertical(v) for v in (36.0, 58.7155, 58.72, 59.0, 73.74, 90.0, 120.0)})
+            self.assertEqual([int(v, 16) for v in lines[8].split()],
+                             [verifier.WINDOW_VA, verifier.SITE_VA, verifier.WRITE_VA, verifier.READER_VA, verifier.SETFOCUS_VA, verifier.REGISTRY_SLOT_VA,
+                              verifier.CASE_VA, verifier.SETFOCUS_SITE_VA, verifier.CALLEE_VA])
+            # The C++ remap equals the Python twin for every tabled request and the whole INS_SetFocus table.
+            table = {float(v): int(f, 16) for v, f, _ in (line.split() for line in lines[9:17])}
+            self.assertEqual(table, {v: verifier.focus_for_degrees(v) for v in (70.0, 72.5, 75.0, 80.0, 85.0, 90.0, 95.0, 100.0)})
+            self.assertEqual([int(v, 16) for v in lines[17].split()], verifier.remap_table())
+            # The stub bytes: operands at their offsets, and objdump decodes the documented sequence.
+            stub = bytes.fromhex(lines[18])
+            self.assertEqual(len(stub), verifier.STUB_LENGTH)
+            self.assertEqual(stub, bytes.fromhex('81f934230000 721f 81f9cc5c0000 7717 69d168010000 81c200800000 c1ea10 0fb70c55'.replace(' ', ''))
+                             + struct.pack('<I', 0x10002000 - 2 * verifier.REMAP_FIRST) + bytes.fromhex('ff25') + struct.pack('<I', 0x10001ffc))
+            objdump = shutil.which('i686-w64-mingw32-objdump')
+            if objdump:
+                blob = directory / 'stub.bin'
+                blob.write_bytes(stub)
+                text = subprocess.run([objdump, '-D', '-b', 'binary', '-m', 'i386', '-Mintel', '--adjust-vma=0x10000000', str(blob)],
+                                      capture_output=True, text=True, check=True).stdout
+                decoded = [' '.join(line.split('\t')[2].split()) for line in text.splitlines() if line.count('\t') >= 2]
+                self.assertEqual(decoded, ['cmp ecx,0x2334', 'jb 0x10000027', 'cmp ecx,0x5ccc', 'ja 0x10000027', 'imul edx,ecx,0x168', 'add edx,0x8000',
+                                           'shr edx,0x10', 'movzx ecx,WORD PTR [edx*2+0x10001f9c]', 'jmp DWORD PTR ds:0x10001ffc'])
 
     def test_python_twin_and_conversion_table(self):
         self.assertEqual(verifier.source_constants((ROOT / 'src/proxy/fov_sites.h').read_text()), verifier.EXPECTED_CONSTANTS)
@@ -201,35 +248,48 @@ class FovCore(unittest.TestCase):
         self.assertEqual(verifier.SITE[3:], verifier.WRITE)
         self.assertEqual(verifier.WRITE_VA // 8, (verifier.WRITE_VA + 3) // 8)   # one aligned qword: one lock cmpxchg8b
         self.assertEqual(verifier.SITE_VA // 8, (verifier.SITE_VA + 6) // 8)  # the whole seven-byte MOV lies in that qword too
-        self.assertEqual({v: hex(verifier.focus_for_vertical(v)) for v in verifier.CONVERSIONS}, {v: hex(f) for v, f in verifier.CONVERSIONS.items()})
+        self.assertEqual(verifier.CASE[verifier.SETFOCUS_SITE_OFFSET:][:6], verifier.SETFOCUS_SITE)
+        self.assertEqual(verifier.CASE[verifier.SETFOCUS_VA - verifier.CASE_VA:][:3], verifier.SETFOCUS)
+        self.assertEqual((verifier.SETFOCUS_SITE_VA % 8, verifier.SETFOCUS_SITE_VA // 8), (0, (verifier.SETFOCUS_SITE_VA + 4) // 8))  # the jmp: one qword
+        self.assertEqual({v: hex(verifier.focus_for_degrees(v)) for v in verifier.CONVERSIONS}, {v: hex(f) for v, f in verifier.CONVERSIONS.items()})
         self.assertTrue(verifier.conversion_ok())
-        # The launcher default is the exact 90-on-16:9 value; the horizontal equivalents listed in --fov's help.
+        # The launcher default N = 90 is 0x3470; the vertical and wider-screen horizontals listed in --fov's help.
         manage = load_manage()
         default = float(manage.FOV_DEFAULT_SETTING)
-        self.assertEqual(verifier.focus_for_vertical(default), 0x3470)
-        self.assertAlmostEqual(default, math.degrees(2 * math.atan(9 / 16)), places=3)
-        self.assertEqual([round(verifier.horizontal_for_vertical(default, a)) for a in (16 / 9, 64 / 27, 3440 / 1440, 32 / 9)], [90, 106, 107, 127])
+        self.assertEqual((default, verifier.focus_for_degrees(default)), (90.0, 0x3470))
+        vertical = verifier.vertical_for_focus(verifier.focus_for_degrees(default))
+        self.assertEqual([round(verifier.horizontal_for_vertical(vertical, a)) for a in (16 / 9, 64 / 27, 3440 / 1440, 32 / 9)], [90, 106, 107, 127])
         self.assertEqual([round(verifier.horizontal_for_vertical(verifier.vertical_for_focus(0x4000), a)) for a in (16 / 9, 32 / 9)], [106, 139])
-        self.assertEqual((manage.FOV_MIN_DEG, manage.FOV_MAX_DEG), (verifier.VERTICAL_MIN, verifier.VERTICAL_MAX))
+        self.assertEqual({n: round(verifier.vertical_for_focus(verifier.focus_for_degrees(n)), 1) for n in (70, 80, 90, 100)},
+                         {70: 43.0, 80: 50.5, 90: 58.7, 100: 67.7})
+        self.assertEqual((manage.FOV_MIN_DEG, manage.FOV_MAX_DEG), (verifier.SETTING_MIN, verifier.SETTING_MAX))
 
     def test_line_parsers(self):
-        row = verifier.parse_log_line('00:01 fov site=0041c9dc status=patched reason=ok value=0x3470 vertical_deg=58.72 setting=58.7155 write=atomic '
-                                      'registry=written registry_before=0x4000')
-        self.assertEqual(row, {'site': 0x41c9dc, 'status': 'patched', 'reason': 'ok', 'value': 0x3470, 'vertical_deg': 58.72, 'setting': '58.7155',
-                               'write': 'atomic', 'registry': 'written', 'registry_before': 0x4000, 'patched': True})
-        off = verifier.parse_log_line('fov site=0041c9dc status=off reason=game value=0x4000 vertical_deg=73.74 setting=- write=none registry=skipped registry_before=-')
-        self.assertEqual((off['patched'], off['reason'], off['registry_before']), (False, 'game', None))
-        refused = verifier.parse_log_line('fov site=0041c9dc status=refused reason=out_of_range value=0x4000 vertical_deg=73.74 setting=35 write=none registry=skipped registry_before=-')
-        self.assertEqual((refused['status'], refused['reason']), ('refused', 'out_of_range'))
-        unverified = verifier.parse_log_line('fov site=0041c9dc status=patched_unverified reason=rollback_failed value=0x3470 vertical_deg=58.72 setting=58.7155 '
-                                             'write=atomic registry=skipped registry_before=-')
+        row = verifier.parse_log_line('00:01 fov site=0041c9dc status=patched reason=ok value=0x3470 vertical_deg=58.72 setting=90 write=atomic '
+                                      'registry=written registry_before=0x4000 setfocus=active setfocus_write=atomic')
+        self.assertEqual(row, {'site': 0x41c9dc, 'status': 'patched', 'reason': 'ok', 'value': 0x3470, 'vertical_deg': 58.72, 'setting': '90',
+                               'write': 'atomic', 'registry': 'written', 'registry_before': 0x4000, 'setfocus': 'active', 'setfocus_write': 'atomic',
+                               'patched': True})
+        off = verifier.parse_log_line('fov site=0041c9dc status=off reason=game value=0x4000 vertical_deg=73.74 setting=- write=none registry=skipped registry_before=- '
+                                      'setfocus=none setfocus_write=none')
+        self.assertEqual((off['patched'], off['reason'], off['registry_before'], off['setfocus']), (False, 'game', None, 'none'))
+        refused = verifier.parse_log_line('fov site=0041c9dc status=refused reason=setfocus_failed value=0x4000 vertical_deg=73.74 setting=90 write=atomic '
+                                          'registry=skipped registry_before=- setfocus=readback_failed setfocus_write=atomic')
+        self.assertEqual((refused['status'], refused['reason'], refused['setfocus']), ('refused', 'setfocus_failed', 'readback_failed'))
+        unverified = verifier.parse_log_line('fov site=0041c9dc status=patched_unverified reason=rollback_failed value=0x3470 vertical_deg=58.72 setting=90 '
+                                             'write=atomic registry=skipped registry_before=- setfocus=none setfocus_write=none')
         self.assertEqual((unverified['patched'], unverified['status']), (False, 'patched_unverified'))
         self.assertIsNone(verifier.parse_log_line('fov site=0041c9dc status=patched reason=ok value=0x3470'))
-        self.assertIsNone(verifier.parse_log_line('fov site=0041c9dc status=maybe reason=ok value=0x3470 vertical_deg=58.72 setting=- write=atomic registry=written registry_before=-'))
-        restore = verifier.parse_restore_line('fov_restore site=0041c9dc status=restored found=70340000 registered=0')
-        self.assertEqual(restore, {'site': 0x41c9dc, 'status': 'restored', 'found': bytes.fromhex('70340000'), 'registered': False})
-        self.assertEqual(verifier.parse_restore_line('fov_restore site=0041c9dc status=restore_failed found=-- registered=1')['found'], None)
-        self.assertIsNone(verifier.parse_restore_line('fov_restore site=0041c9dc status=restored found=7034 registered=0'))
+        self.assertIsNone(verifier.parse_log_line('fov site=0041c9dc status=patched reason=ok value=0x3470 vertical_deg=58.72 setting=90 write=atomic '
+                                                  'registry=written registry_before=-'))   # the pre-remap row shape
+        self.assertIsNone(verifier.parse_log_line('fov site=0041c9dc status=maybe reason=ok value=0x3470 vertical_deg=58.72 setting=- write=atomic registry=written '
+                                                  'registry_before=- setfocus=active setfocus_write=atomic'))
+        restore = verifier.parse_restore_line('fov_restore site=0041c9dc status=restored found=70340000 registered=0 setfocus=restored')
+        self.assertEqual(restore, {'site': 0x41c9dc, 'status': 'restored', 'found': bytes.fromhex('70340000'), 'registered': False, 'setfocus': 'restored'})
+        self.assertEqual(verifier.parse_restore_line('fov_restore site=0041c9dc status=restore_failed found=-- registered=1 setfocus=none')['found'], None)
+        only_second = verifier.parse_restore_line('fov_restore site=0041c9dc status=none found=-- registered=1 setfocus=restore_not_owned')
+        self.assertEqual((only_second['status'], only_second['registered'], only_second['setfocus']), ('none', True, 'restore_not_owned'))
+        self.assertIsNone(verifier.parse_restore_line('fov_restore site=0041c9dc status=restored found=7034 registered=0 setfocus=none'))
         confirm = verifier.parse_confirm_line('fov_confirm frame=1 registry=0a1b2c30 focus=0x3470 expected=0x3470 match=1 vertical_deg=58.72 camera=skipped')
         self.assertEqual(confirm, {'frame': 1, 'registry': 0x0a1b2c30, 'focus': 0x3470, 'expected': 0x3470, 'match': True, 'vertical_deg': 58.72, 'camera': 'skipped'})
         absent = verifier.parse_confirm_line('fov_confirm frame=1 registry=absent focus=- expected=0x3470 match=0 vertical_deg=- camera=skipped')
@@ -245,20 +305,26 @@ class FovCore(unittest.TestCase):
         self.assertIn('if (reserved == nullptr) x3m::fov::shutdown();', (ROOT / 'src/proxy/loader.cpp').read_text())
         self.assertIn('src/proxy/fov.cpp', (ROOT / 'CMakeLists.txt').read_text())
         module = (ROOT / 'src/proxy/fov.cpp').read_text()
-        for needle in ('L"X3M_FOV"', 'setting_capacity', '"too_long"', '"invalid_setting"', '"out_of_range"', '"engine_value"', '"reader_mismatch"',
-                       'install_window_open()', 'executable_verified()', 'engine_patch::write_code', 'FlushInstructionCache', 'VirtualProtect',
+        for needle in ('L"X3M_FOV"', 'setting_capacity', '"too_long"', '"invalid_setting"', '"out_of_range"', '"reader_mismatch"', '"setfocus_mismatch"',
+                       '"setfocus_failed"', 'install_window_open()', 'executable_verified()', 'engine_patch::write_code', 'FlushInstructionCache', 'VirtualProtect',
                        'PAGE_EXECUTE_READWRITE', '"patched_unverified"', 'if (!std::strcmp(reason, "restored"))', 'log_handle()', 'WriteFile(handle',
                        'InterlockedCompareExchange', 'VirtualQuery', 'engine_memory::read', 'SetLastError(error);',
-                       '"fov_restore site=%08lx status=%s found=%s registered=%u\\n"',
-                       'log("fov site=%08lx status=%s reason=%s value=0x%04lx vertical_deg=%.2f setting=%s write=%s registry=%s registry_before=%s"',
+                       'engine_patch::claim(setfocus_site_, spec)', 'engine_patch::store_pointer(slot, *setfocus_site_.entry)',
+                       'engine_patch::push_front(setfocus_site_, reinterpret_cast<void*>(stub))', 'engine_patch::restore(setfocus_site_);',
+                       '"readback_failed"', 'rollback_constructor();', 'sites::build_remap_table(values);', 'sites::encode_setfocus_stub(',
+                       'install_setfocus(sites::setfocus_site_va)', 'sites::focus_for_degrees(degrees)',
+                       '"fov_restore site=%08lx status=%s found=%s registered=%u setfocus=%s\\n"',
+                       'log("fov site=%08lx status=%s reason=%s value=0x%04lx vertical_deg=%.2f setting=%s write=%s registry=%s registry_before=%s setfocus=%s setfocus_write=%s"',
                        '"fov_confirm frame=%llu registry=%08lx focus=0x%04lx expected=0x%04lx match=%u vertical_deg=%.2f camera=skipped"'):
             self.assertIn(needle, module)
+        # The stub runs no proxy code: no call into this module, only the arena block (stub, slot, table).
+        self.assertNotIn('pin_self', module)
+        self.assertLess(module.index('install_at(sites::window_va, focus = sites::focus_for_degrees(degrees))'), module.index('install_setfocus(sites::setfocus_site_va)'))
         header = (ROOT / 'src/proxy/fov_sites.h').read_text()
         for needle in ('plan(current)', 'memcmp(back, expected_write, write_length)', '"patch_rolled_back"', '"rollback_unprotected"', '"rollback_failed"',
                        '"restore_not_owned"', '"restore_failed"', '*live = true;', '"invalid_value"'):
             self.assertIn(needle, header)
         self.assertNotIn('windows.h', header)
-        self.assertNotIn('push_front', module)
         small = (ROOT / 'src/proxy/cull_small_parts.cpp').read_text()
         # the scene view's F (zoom included) from the latched scene projection; the registry only as the fallback
         self.assertIn('core::choose(scene_, sample.state.m00, sample.state.m11, scene_.usable() ? 0u : fov::current_focus())', small)
@@ -280,6 +346,12 @@ class FovSite(unittest.TestCase):
         self.assertEqual(report['constructor_callers'], ['0x403a26', '0x4050f4'])
         self.assertEqual((report['raw_branch_hits_not_interior'], report['incoming_window_branches'], report['dword_refs'], report['overlapping_claims']),
                          ([], [], 0, []))
+        self.assertEqual((report['setfocus_site_bytes'], report['setfocus_jump_table_entry'], report['setfocus_table_entries_inside'],
+                          report['setfocus_raw_branch_hits'], report['setfocus_dword_refs'], report['setfocus_overlapping_claims']),
+                         ('8b1504856000', '0x42dbed', [], [], 0, []))
+        self.assertEqual(report['setfocus_case_starts'], [hex(va) for va in verifier.CASE_STARTS])
+        self.assertEqual(report['remap_table'][70 - 50:100 - 50 + 1:10], ['0x2768', '0x2dc5', '0x3470', '0x3b6f'])
+        self.assertEqual((len(report['remap_table']), report['remap_table'][0], report['remap_table'][-1]), (81, '0x1b6a', '0x52ab'))
 
     def test_patched_copy_fails(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -290,6 +362,20 @@ class FovSite(unittest.TestCase):
             self.assertTrue(report['checks']['exe_identity'])
             self.assertFalse(report['checks']['window_bytes'])
             self.assertEqual(report['site_bytes'], 'c7462470340000')
+
+    def test_changed_setfocus_site_fails(self):
+        with tempfile.TemporaryDirectory() as directory:
+            copy = Path(directory) / 'X3AP.exe'
+            data = bytearray(EXE.read_bytes())
+            image = verifier.common.Image(bytes(data))
+            offset = next(raw + verifier.SETFOCUS_SITE_VA + 1 - (image.image_base + va) for name, _, va, size, raw, _ in verifier.exe_identity.section_table(bytes(data))
+                          if image.image_base + va <= verifier.SETFOCUS_SITE_VA < image.image_base + va + size)
+            data[offset] ^= 0x01   # 8b 15 -> 8b 14: another instruction
+            copy.write_bytes(bytes(data))
+            report = json.loads(self.run_verifier(copy).stdout)
+            self.assertEqual(report['result'], 'FAIL')
+            self.assertTrue(report['checks']['exe_identity'] and report['checks']['window_bytes'])
+            self.assertFalse(report['checks']['setfocus_case_bytes'])
 
 
 class FovLaunchOption(unittest.TestCase):
@@ -324,21 +410,23 @@ class FovLaunchOption(unittest.TestCase):
 
     def test_default_explicit_values_and_vanilla(self):
         with tempfile.TemporaryDirectory() as directory:
-            self.assertEqual(self.value(directory), '58.7155')
-            self.assertEqual(self.value(directory, inherited={self.NAME: '90'}), '58.7155')   # a stale value never travels
+            self.assertEqual(self.value(directory), '90')
+            self.assertEqual(self.value(directory, inherited={self.NAME: '58.7155'}), '90')   # a stale value never travels
             self.assertEqual(self.value(directory, '--fov', 'game'), 'game')
-            self.assertEqual(self.value(directory, '--fov', '73.74'), '73.7400')
-            self.assertEqual(self.value(directory, '--fov', '58.72'), '58.7200')
-            self.assertEqual(self.value(directory, '--fov', '36'), '36.0000')
-            self.assertEqual(self.value(directory, '--fov', '120', inherited={self.NAME: 'game'}), '120.0000')
-            self.assertIsNone(self.value(directory, vanilla=True, inherited={self.NAME: '58.72'}))
+            self.assertEqual(self.value(directory, '--fov', '70'), '70')
+            self.assertEqual(self.value(directory, '--fov', '100', inherited={self.NAME: 'game'}), '100')
+            self.assertEqual(self.value(directory, '--fov', '72.5'), '72.5')
+            self.assertEqual(self.value(directory, '--fov', '90.0'), '90')
+            self.assertEqual(self.value(directory, '--fov', '85.12345'), '85.1235')
+            self.assertIsNone(self.value(directory, vanilla=True, inherited={self.NAME: '90'}))
 
     def test_refusals(self):
         with tempfile.TemporaryDirectory() as directory:
             for args, vanilla, message in ((('--fov', '58.72'), True, 'cannot be combined with --vanilla'),
                                            (('--fov', 'game'), True, 'cannot be combined with --vanilla'),
-                                           (('--fov', '35.99'), False, 'out of range'),
-                                           (('--fov', '120.01'), False, 'out of range'),
+                                           (('--fov', '69.99'), False, 'out of range'),
+                                           (('--fov', '100.01'), False, 'out of range'),
+                                           (('--fov', '58.7155'), False, 'out of range'),   # the former vertical default
                                            (('--fov', 'Game'), False, 'out of range'),
                                            (('--fov', 'nan'), False, 'out of range'),
                                            (('--fov', 'inf'), False, 'out of range'),
@@ -357,7 +445,10 @@ class FovLaunchOption(unittest.TestCase):
             code, output, _ = self.launch(directory, help_text=True)
             self.assertEqual(code, 0)
             text = ' '.join(output.split())
-            for needle in ('--fov DEG|game', '90 deg horizontal on 16:9', '106 on 21:9', '127 on 32:9', 'central 4:3 area', '73.74 deg vertical'):
+            for needle in ('--fov N|game', 'like X4', 'horizontal angle in degrees on a 16:9 screen, 70..100', 'default 90', '70 -> 43.0 deg', '80 -> 50.5',
+                           '90 -> 58.7', '100 -> 67.7', 'wider screens get more width', '21:9 shows 106 deg (2560x1080; 107 on 3440x1440)',
+                           '32:9 127 (5120x1440)', 'menu always starts from its own 90 whatever --fov is', 'first press jumps to the value of 91 (or 89)',
+                           'the menu works in the same units as --fov', 'N 50..130', 'central 4:3 area', '73.74 deg vertical'):
                 self.assertIn(needle, text)
 
 
