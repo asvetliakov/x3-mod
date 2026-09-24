@@ -8,6 +8,10 @@ namespace detail {
 inline constexpr std::uint32_t current_depth_pixel_words[] = {
 #include "current_depth_pixel_program_inc.h"
 };
+// Thin-vote twin (src/temporal/current_depth_thin_ps.hlsl): .a = c2.x (relocated to c218) instead of w.
+inline constexpr std::uint32_t current_depth_thin_pixel_words[] = {
+#include "current_depth_thin_pixel_program_inc.h"
+};
 }
 // Fixed ps_3_0 fragment: TEXCOORD1 (current clip z in .x, w in .y) -> COLOR0
 // = z/w replicated, i.e. device depth for an R32F target. No literal
@@ -16,5 +20,10 @@ inline constexpr std::uint32_t current_depth_pixel_words[] = {
 // Storage is immutable, process-lifetime, allocation-free; extent includes END.
 inline constexpr const auto& current_depth_pixel_program() noexcept {
     return detail::current_depth_pixel_words;
+}
+// X3M_TAA_THIN_VOTE only: the same fragment with .a read from one constant (c2, relocated by the
+// transformer to MaterialMotionAbi::pixel_thin_constant); one temporary, no literal.
+inline constexpr const auto& current_depth_thin_pixel_program() noexcept {
+    return detail::current_depth_thin_pixel_words;
 }
 } // namespace x3m::renderer

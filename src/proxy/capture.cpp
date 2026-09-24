@@ -43,6 +43,7 @@
 #include "../renderer/bloom_programs.h"
 #include "../renderer/gpu_sync_timing.h"
 #include "../renderer/shader_population.h"
+#include "../renderer/material_motion.h"
 #include "chase_camera.h"
 #include "chase_aim_trace.h"
 #include "chase_transition.h"
@@ -287,6 +288,14 @@ unsigned taa_history_taps = 5;
 // gate (the mask's dilation draws dropped, the region and closure holds carried in the age target); off keeps the dilations
 // for an in-flight A/B. Invalid or oversized: stays on, logged. Inert without the camera gate.
 bool taa_region_hold = true;
+// X3M_TAA_THIN_VOTE (off default, on; docs/architecture/taa-thin-geometry-alternatives.md section 3.2): the draw-time thin
+// vote of the thin region (per-subset triangle-height histograms, RT2 .a, the tests draw's vote). Invalid or oversized:
+// stays off, logged. Takes effect with the route, TAA, the sun-share lane and the ownership wrapper (hook_device).
+bool taa_thin_vote = false;
+// The option with every prerequisite the environment decides (route, TAA, HDR, lane asked, ownership): computed once in
+// initialize_log; the loader arms the readable-MANAGED policy and the lock bookends through it and hook_device enables
+// the vote through it, so the policy is armed exactly when the vote can run.
+bool thin_vote_gate = false;
 // X3M_TAA_MOTION_WEIGHT=F[,V0,V1] (F 0 off, else 0.5..0.99; 0 <= V0 < V1 <= 64 px/frame, default 2,8;
 // absent: 0.7,2,8 since 2026-09-23 after Run 70 A with the TAA route, an age program and X3M_TAA_SENTINEL other
 // than 1, else off; invalid or oversized: off, logged; docs/architecture/taa-motion-history-weight.md): the age programs cap the history
@@ -2565,6 +2574,15 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
       // the former X3M_SUN_SHADOW_RECEIVER_DEPTH option is gone (the launcher refuses
       // `device`, accepts `linear` as a no-op) and the DLL reads no such variable.
       hooked.motion_output.configure_sun_shadow_lane(sun_lane_enabled); }
+    // Thin vote (X3M_TAA_THIN_VOTE): the vote travels in the lane's RT2 .a and the histograms are read through the
+    // ownership wrapper (loader.cpp enables the lock bookends on the same switch). The material transformer is switched
+    // here, at device creation, before the application creates any program on this device; off it is untouched.
+    { wchar_t setting[4]{};
+      const bool wrapped=GetEnvironmentVariableW(L"X3M_OWNERSHIP",setting,4)==1&&setting[0]==L'1';
+      const bool enabled=thin_vote_gate&&sun_lane_enabled; // the loader armed the readable policy on the same gate
+      if(taa_thin_vote)log("taa_thin_vote_configured requested=1 enabled=%u motion_output=%u taa=%u lane=%u ownership=%u",enabled,motion_output_requested,taa_requested,sun_lane_enabled,wrapped);
+      if(enabled)renderer::material_motion_configure_thin_vote(true);
+      hooked.motion_output.configure_thin_vote(taa_thin_vote,enabled); }
     // Caster-candidate counter (shadow-replay-gates.md section 3): the route
     // plus the ownership wrapper (loader.cpp enables the lock bookends on the
     // same switch); no TAA, HDR, linear-material or lane prerequisite.
@@ -2847,6 +2865,7 @@ HRESULT WINAPI create_device(IDirect3D9* d,UINT adapter,D3DDEVTYPE type,HWND win
 }
 bool screen_emission_route_enabled() noexcept { return screen_emission_requested; } // the one gate the loader's scan enable shares
 bool bolt_footprint_requested_gate() noexcept { return bolt_footprint_requested; } // the second consumer of the loader's scan enable
+bool thin_vote_route_gate() noexcept { return thin_vote_gate; } // the loader's readable policy and bookends; hook_device's enable
 // The lens bracket's listener (src/proxy/sun_occlusion.h): the engine's render thread, inside its
 // `call 0x0047e6e0` for the lens scene, under the thunk's full CPU-state boundary.
 void sun_lens_begin() { CaptureLock lock; for(auto& entry:devices) entry.second->motion_output.sun_occlusion_begin(); }
@@ -3598,6 +3617,15 @@ void initialize_log(HMODULE module) {
         if(!wcscmp(setting,L"off"))taa_region_hold=false;
         else if(wcscmp(setting,L"on")!=0)log("taa_region_hold_setting invalid=1");
     }
+    if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_THIN_VOTE",setting,32);n>=32)log("taa_thin_vote_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays off
+    else if(n>0){
+        if(!wcscmp(setting,L"on"))taa_thin_vote=true;
+        else if(wcscmp(setting,L"off")!=0)log("taa_thin_vote_setting invalid=1");
+    }
+    { wchar_t flag[4]{};
+      const bool lane=GetEnvironmentVariableW(L"X3M_SUN_SHADOW_LANE",flag,4)==1&&flag[0]==L'1';
+      const bool wrapped=GetEnvironmentVariableW(L"X3M_OWNERSHIP",flag,4)==1&&flag[0]==L'1';
+      thin_vote_gate=taa_thin_vote&&motion_output_requested&&taa_requested&&hdr_requested&&lane&&wrapped; }
     // X3M_TAA_MOTION_WEIGHT=<F>[,<V0>,<V1>]: the whole string must parse (1 or 3 fields) and lie in range; anything else keeps the option off.
     if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_MOTION_WEIGHT",setting,32);n>=32)log("taa_motion_weight_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays off
     else if(n>0){
@@ -3772,6 +3800,11 @@ extern "C" __declspec(dllexport) unsigned x3m_linear_emission_fixture_status(IDi
     if(key==12)return it->second->fixture_emission_source_calls;
     if(key==49)return it->second->fixture_primitive_source_calls;
     return it->second->motion_output.fixture_emission_status(key);
+}
+// Thin-vote script (motion_output_thin_vote_inc.h): arm or disarm the readable-MANAGED creation policy of the
+// application device (the loader arms it at wrap_factory with X3M_TAA_THIN_VOTE=on), to create buffers before arming.
+extern "C" __declspec(dllexport) HRESULT x3m_thin_vote_fixture_readable_policy(IDirect3DDevice9* device,int on) {
+    return x3m::ownership::configure_readable_managed_buffers(device,on!=0);
 }
 extern "C" __declspec(dllexport) HRESULT x3m_motion_output_fixture_readback_target(IDirect3DDevice9* device,unsigned target,float* out,unsigned floats,unsigned* width,unsigned* height) {
     x3m::CaptureLock lock;

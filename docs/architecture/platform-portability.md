@@ -433,6 +433,44 @@ program is the `--taa-region-hold off` A/B option, not a cap-fallback set, and g
 program above its cap and fails the draw (the slot-budget fixture's 65,538-slot case) would hit the per-frame resolve
 failure path instead; not expected at these sizes, unverified.
 
+## 2026-09-24: TAA thin vote (`--taa-thin-vote`, default off)
+
+[taa-thin-geometry-alternatives.md](taa-thin-geometry-alternatives.md) section 3.2, "Implemented"; ledger
+`docs/verification/temporal-resolve.md` "thin vote". Documented D3D9 only.
+
+**Readable MANAGED buffers (the creation policy).** The histograms are read with `IDirect3DVertexBuffer9::Lock` /
+`IDirect3DIndexBuffer9::Lock` and `D3DLOCK_READONLY` at a scene end. The game creates its drawn clones MANAGED and
+WRITEONLY (CloneMesh option `0x660`), and reading a WRITEONLY buffer is not documented to return its contents. With the
+option on and every environment prerequisite of the vote present (route, TAA, HDR, sun-share lane, ownership wrapper:
+one gate, `thin_vote_route_gate()`, shared with the device-side enable, so an env-only set lacking one arms nothing),
+the loader sets `ownership::Options::readable_managed_buffers` at `wrap_factory` (`Direct3DCreate9`), before any device
+or buffer exists: an eligible creation (MANAGED, not DYNAMIC, unshared, up to 256 MiB, asking for
+WRITEONLY; the `portable_upload::plan_creation` rule) is created without WRITEONLY, which D3D9 documents as a hint, not
+a behaviour change; the requested Usage is kept in a private-data tag on the native buffer (`SetPrivateData`, no
+interface pointer) and returned by the wrapper's `GetDesc` on every path (also after the policy is disarmed or a finite
+owner retires), and a tag that cannot be written or a converted creation that fails repeats the original creation. Unlike `prepare_readable_managed_uploads` it owns no finite sidecar and adds no Lock/Unlock work, so it is not
+bounded by the 4,096-sidecar limit (a session creates about 6,600 VBs and IBs) and composes with the locked-prefix
+scanner. The reader asks `ownership::get_buffer_readability` for the ACTUAL native descriptor and fails closed without
+any Lock on a buffer that is not MANAGED (`not_managed`), still WRITEONLY (`not_readable`: created before the policy was
+armed, refused by it, or by a device whose wrapper the proxy did not create) or whose creation and write history the
+wrapper did not observe (the lock bookends' `known`, `not_quiet` until then). Freshness: a measured buffer is watched
+(`watch_buffer_writes`) and its writable Unlock, ProcessVertices, trusted native-mutation notice or final release queues
+its wrapper pointer for the route to drop the histogram (one process-wide queue with one consumer, the one device's
+cache: `src/ownership/README.md`); writes the wrapper does not see (a native-device bypass) are outside the contract, as
+for every ownership revision. Cost of the policy on native Windows: a
+MANAGED buffer keeps its system-memory copy either way; the driver loses the WRITEONLY hint for the default-pool copy it
+makes, which may change its placement (inferred, unmeasured). The fixture's `seam-thin-vote-hostile` case creates
+MANAGED WRITEONLY buffers before and after arming (not_readable / measured); `ownership_fixture.cpp` `thin_vote_case`
+checks `GetDesc` of converted buffers, the tag- and creation-failure fallbacks, disarming, and the queue (writable
+Unlock, native notice, ProcessVertices, final release, one-shot watch, overflow). Verified on CrossOver only.
+
+**The vote's transport.** RT2 `.a` exists only on the sun-share lane's A32B32G32R32F target (the lane-off R32F target
+drops it; a two-channel G32R32F depth would too: `thin_vote_absent reason=two_channel_depth`). The per-draw value rides
+the existing pixel-constant upload (`SetPixelShaderConstantF` of `c216`-`c218` in one call); the transformer repacks the
+motion fragment's literals into two DEFs at `c219`/`c220` so `c218` is not shadowed by a DEF (a DEF overriding the
+API constant inside its own program is the documented ps_3_0 rule). Slots: the tests-draw twins 429 and 415 (plain 420
+and 407), the depth fragment 4 (3), the reviewed pair's variant 78 (77); measured, D3DX.
+
 ## Shader slot budget
 
 User decision 2026-09-24: programs are sized against `MaxPixelShader30InstructionSlots` as the device reports it.

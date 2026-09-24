@@ -84,6 +84,12 @@
 // itself instead of its R32F copy; COLOR1 = that centre texel, which the caller's R32F second target (the next depth
 // history) stores as its .r, the value the copy draw wrote. Every tap reads .r, so the mask is the same bit for bit; the
 // camera variant takes the lane's .b from the same centre texel instead of s5. Bound only for that one draw.
+// X3M_THIN_VOTE (line_mask_depth_thin_ps.hlsl, line_mask_camera_depth_thin_ps.hlsl; X3M_TAA_THIN_VOTE, docs/architecture/
+// taa-thin-geometry-alternatives.md section 3.2): with X3M_MASK_DEPTH_OUT only, s1 being the four-channel lane. The route's
+// depth fragment writes .a = 1 - thin on an opaque routed row (thin = the draw's fraction of triangles 0.5..3 px tall; 1 =
+// no vote), the fill leaves -1 and other writers 1. With the thin region on, the tests draw sets the flag on a valid depth
+// whose .a is in [0, 1) and then skips the 7-tap line search and the emissive vote (the flag only ever becomes 1); every
+// other pixel runs the search as the plain program does, so the mask differs only where a vote is cast.
 sampler2D scene : register(s0);
 sampler2D source : register(s1);
 sampler2D motionOverride : register(s4);
@@ -309,6 +315,11 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0
             result.a = gateClosure(uv, depth, motion);
 #endif
             // b only ever becomes 1: the first fragmented line ends the search and a fragmented pixel skips the emissive vote.
+#ifdef X3M_THIN_VOTE
+            // The draw-time vote (lane .a = 1 - thin in [0, 1) on a routed pixel with a valid depth): flagged without the search.
+            if (validDepth(depth) && centreTexel.a >= 0 && centreTexel.a < 1) result.b = 1;
+            else
+#endif
             [loop] for (int k = 0; k < 4; ++k) {
                 float2 along = (k == 0 ? float2(1, 0) : (k == 1 ? float2(0, 1) : (k == 2 ? float2(1, 1) : float2(1, -1)))) * sizeJitter.xy;
                 float changes = 0, previous = fetch(uv - 3 * along).r;

@@ -1256,7 +1256,7 @@ bool motion_insertions(const Word* original, std::size_t words, const Words& mot
         insertions.push_back({row.vertex_arithmetic_insert_dword,row.vertex_arithmetic_insert_dword+declarations,
                               row.vertex_arithmetic_insert_dword+declarations+arithmetic});
     } else {
-        const std::size_t declarations=3+(depth?3:0), definitions_count=18;
+        const std::size_t declarations=3+(depth?3:0), definitions_count=material_motion_pixel_definition_words(depth);
         if (motion.size()<=words+definitions_count+declarations) return false;
         const std::size_t body=motion.size()-words-definitions_count-declarations;
         insertions.push_back({row.pixel_definition_insert_dword,row.pixel_definition_insert_dword,

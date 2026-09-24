@@ -193,7 +193,7 @@ void TemporalPass::release_history() noexcept {
     reactive_policy_=ReactivePolicy::Unavailable;
     width_=height_=current_=0;
 }
-void TemporalPass::shutdown() noexcept {release_history();drop(block_);drop(decoder_);drop(resolve_);drop(snapshot_);drop(thin_);drop(age_);drop(far_);drop(far_camera_);drop(resolve16_);drop(thin16_);drop(age16_);drop(far16_);drop(far_camera16_);bilinear_history_=false;bilinear_history_reason_="not_initialized";drop(line_mask_camera_);drop(line_mask_depth_);drop(line_mask_camera_depth_);drop(thin_box_);drop(thin_box_rows_);drop(thin_box_columns_);drop(far_camera_hold_);drop(thin_box_hold_);drop(thin_box_rows_hold_);drop(thin_box_columns_hold_);hold_history_=false;ps30_slots_=0;line_masks_failed_=false;line_masks_result_=S_OK;boxes_failed_=false;boxes_result_=S_OK;box_rows_failed_=false;box_rows_result_=S_OK;drop(line_mask_);mrt_age_=false;drop(sharpen_);drop(copy_);drop(quad_vs_);drop(quad_declaration_);device_=nullptr;vtable_=nullptr;render_targets_=streams_=0;diagnostics_.reset_pending=false;}
+void TemporalPass::shutdown() noexcept {release_history();drop(block_);drop(decoder_);drop(resolve_);drop(snapshot_);drop(thin_);drop(age_);drop(far_);drop(far_camera_);drop(resolve16_);drop(thin16_);drop(age16_);drop(far16_);drop(far_camera16_);bilinear_history_=false;bilinear_history_reason_="not_initialized";drop(line_mask_camera_);drop(line_mask_depth_);drop(line_mask_camera_depth_);drop(line_mask_depth_thin_);drop(line_mask_camera_depth_thin_);drop(thin_box_);drop(thin_box_rows_);drop(thin_box_columns_);drop(far_camera_hold_);drop(thin_box_hold_);drop(thin_box_rows_hold_);drop(thin_box_columns_hold_);hold_history_=false;ps30_slots_=0;line_masks_failed_=false;line_masks_result_=S_OK;boxes_failed_=false;boxes_result_=S_OK;box_rows_failed_=false;box_rows_result_=S_OK;drop(line_mask_);mrt_age_=false;drop(sharpen_);drop(copy_);drop(quad_vs_);drop(quad_declaration_);device_=nullptr;vtable_=nullptr;render_targets_=streams_=0;diagnostics_.reset_pending=false;}
 // Every owned texture and the state block must not exist across Reset; the
 // compiled shaders survive it. Runs are refused until after_reset succeeds.
 void TemporalPass::before_reset() noexcept {line_masks_failed_=false;line_masks_result_=S_OK;boxes_failed_=false;boxes_result_=S_OK;box_rows_failed_=false;box_rows_result_=S_OK;release_history();drop(block_);diagnostics_.reset_pending=device_!=nullptr;}
@@ -307,6 +307,15 @@ HRESULT TemporalPass::configure_sentinel() noexcept {
     }
     return hr;
 }
+HRESULT TemporalPass::configure_thin_vote() noexcept {
+    if(!device_)return E_FAIL;
+    auto make=[&](const std::uint32_t* words,IDirect3DPixelShader9** out){return call<CreatePsFn>(CreatePixelShader)(device_,reinterpret_cast<const DWORD*>(words),out);};
+    HRESULT hr=S_OK;
+    if(!line_mask_depth_thin_&&FAILED(hr=make(temporal_line_mask_depth_thin_program(),&line_mask_depth_thin_)))drop(line_mask_depth_thin_);
+    HRESULT camera=S_OK;
+    if(!line_mask_camera_depth_thin_&&FAILED(camera=make(temporal_line_mask_camera_depth_thin_program(),&line_mask_camera_depth_thin_)))drop(line_mask_camera_depth_thin_);
+    return FAILED(hr)?hr:camera;
+}
 HRESULT TemporalPass::configure_region_hold() noexcept {
     if(!camera_gate_available())return E_FAIL;
     if(!bilinear_history_)return D3DERR_NOTAVAILABLE; // the hold program has no 16-tap form
@@ -396,7 +405,7 @@ HRESULT TemporalPass::ensure_block() noexcept {
 }
 HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     if(out)*out={};
-    diagnostics_.operation=diagnostics_.restoration=S_OK;diagnostics_.depth_folded=false;diagnostics_.depth_fold_reason="not_run";diagnostics_.history_taps=0;diagnostics_.region_hold=false;
+    diagnostics_.operation=diagnostics_.restoration=S_OK;diagnostics_.depth_folded=false;diagnostics_.depth_fold_reason="not_run";diagnostics_.history_taps=0;diagnostics_.region_hold=false;diagnostics_.thin_vote=false;diagnostics_.thin_vote_reason="not_run";
     // Phase timing (Diagnostics::ticks_*): QPC pairs only, no device call changes.
     diagnostics_.timed=timing_;
     diagnostics_.ticks_capture=diagnostics_.ticks_copy_color=diagnostics_.ticks_copy_depth=diagnostics_.ticks_draw=diagnostics_.ticks_apply=0;
@@ -471,7 +480,13 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     // it at s1 itself and writes depths_[next] as COLOR1 (R32F beside the A8R8G8B8 mask: two targets and
     // MRTINDEPENDENTBITDEPTHS, both in mrt_age_); the copy draw below does not run. Every later reader of depths_[next]
     // (the dilations' fallback at s6, the box columns, the resolve, the next frame's history) comes after that draw.
-    IDirect3DPixelShader9* const fold_program=depth_draw&&far_on&&mrt_age_&&render_targets_>=2?(camera?line_mask_camera_depth_:line_mask_depth_):nullptr;
+    IDirect3DPixelShader9* const plain_fold=depth_draw&&far_on&&mrt_age_&&render_targets_>=2?(camera?line_mask_camera_depth_:line_mask_depth_):nullptr;
+    // Thin vote: the twin of the same fold program, on a four-channel depth with the thin region on (the vote sets the flag).
+    IDirect3DPixelShader9* const thin_fold=plain_fold&&in.thin_vote&&thin_region&&depth_format==D3DFMT_A32B32G32R32F?(camera?line_mask_camera_depth_thin_:line_mask_depth_thin_):nullptr;
+    IDirect3DPixelShader9* const fold_program=thin_fold?thin_fold:plain_fold;
+    diagnostics_.thin_vote=thin_fold!=nullptr;
+    diagnostics_.thin_vote_reason=thin_fold?"vote":!in.thin_vote?"not_requested":!thin_region?"thin_region_off":!plain_fold?"no_fold":
+        depth_format!=D3DFMT_A32B32G32R32F?"two_channel_depth":"no_twin_program";
     const bool fold=fold_program!=nullptr;
     diagnostics_.depth_fold_reason=fold?"lane_mrt":!depth_draw?(in.current_depth?"r32f_depth":"d24_decode"):!far_on?"far_off":!(mrt_age_&&render_targets_>=2)?"mrt_caps":"program";
     hr=ensure_block();if(FAILED(hr))return fail(hr);

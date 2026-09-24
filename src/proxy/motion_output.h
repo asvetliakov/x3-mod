@@ -52,6 +52,7 @@
 #include "bolt_footprint_core.h"
 #include "fade_route_core.h"
 #include "shadow_replay_candidates.h"
+#include "thin_vote_core.h"
 #include "shadow_replay_depth.h"
 #include "shadow_retention.h"
 #include "shadow_caster_class.h"
@@ -650,6 +651,14 @@ public:
     // X3M_TAA_REGION_HOLD (on default, off; docs/architecture/taa-plan-lifted-slot-cap.md step 1): A' of the thin region's
     // camera gate, TemporalPass::FrameInputs::thin_region_hold; inert without the camera gate. Off keeps the dilation draws.
     void configure_region_hold(bool on) noexcept { taa_region_hold_ = on; }
+    // X3M_TAA_THIN_VOTE (on|off, default off; docs/architecture/taa-thin-geometry-alternatives.md section 3.2): the
+    // draw-time thin vote of the thin region. `enabled` is the caller's resolution (requested with the route, TAA, the
+    // sun-share lane and the ownership wrapper); it also switched the material transformer
+    // (renderer::material_motion_configure_thin_vote) before any program was created. Enabled: every routed draw uploads
+    // c216-c218 in one call (c218.x = RT2 .a: 1 - thin on an opaque routed row, 1 otherwise), each subset's triangle-height
+    // histogram is read once at a scene end through the application's wrapper (READONLY, MANAGED only) and the tests draw
+    // is the thin-vote twin. Off: nothing runs and the upload is c216-c217 as before.
+    void configure_thin_vote(bool requested, bool enabled) noexcept { thin_vote_requested_ = requested; thin_vote_upload_ = enabled; }
     void configure_sky_history(bool strict, float band_px = 3.f, float exit_px = 0.f) noexcept {
         sky_history_strict_ = strict; sky_history_band_px_ = band_px >= 1.f && band_px <= 16.f ? band_px : 3.f;
         sky_history_exit_px_ = strict && x3::temporal::valid_sky_history_exit(exit_px, sky_history_band_px_) ? exit_px : 0.f;
@@ -1351,7 +1360,7 @@ private:
         bool rows_known[motion_matrix_windows_max]{};
         float vs_reserved[16]{};      // application c252-255, restored only if written
         bool vs_reserved_written = false;
-        float ps_reserved[8]{};       // application c216-217
+        float ps_reserved[12]{};      // application c216-217 (c218 too with the thin vote)
         bool ps_reserved_written = false;
         int integer0[4]{};
         bool integer0_known = false;
@@ -1534,6 +1543,36 @@ private:
     bool ensure_candidate_bounds_rows() noexcept;
     void queue_candidate_extent(const shadow_replay::ExtentKey& key, std::uintptr_t identity, bool priority) noexcept;
     void read_candidate_extents() noexcept;    // the scene end: Lock READONLY through the wrapper, scan, cache, release
+    // ---- thin vote (X3M_TAA_THIN_VOTE; thin_vote_core.h) ----
+    // thin_vote_upload_: the transformer carries the thin fragments, so every routed draw uploads c218 (the resolved
+    // option); thin_vote_cache_ (allocated once at configuration of an enabled device) maps a subset to its histogram;
+    // the frame's queued reads hold the VB and IB wrapper references until the scene end (read) or the release.
+    bool thin_vote_requested_ = false, thin_vote_upload_ = false;
+    bool thin_vote_logged_ = false;          // the one thin_vote_mode line per attachment
+    bool thin_vote_fold_logged_ = false;     // the one line for a run whose tests draw was not the thin-vote twin (the lane-off R32F RT2 included)
+    std::unique_ptr<thin_vote::Cache> thin_vote_cache_;
+    struct ThinVoteRead { thin_vote::Key key{}; std::uintptr_t vb = 0, ib = 0; bool stale = false; };
+    ThinVoteRead thin_vote_reads_[thin_vote::reads_per_frame]{};
+    unsigned thin_vote_read_count_ = 0;
+    struct ThinVoteCounters {
+        std::uint32_t draws = 0, opaque = 0, known = 0, voted = 0, unreadable = 0, missed = 0, queued = 0, dropped = 0, no_scale = 0;
+        std::uint64_t ticks = 0;             // thin_vote_alpha's own time (telemetry draw metrics only)
+        float min_alpha = 1.f;
+    } thin_vote_frame_{};
+    struct ThinVoteTotals {
+        std::uint64_t reads = 0, measured = 0, unreadable = 0, retries = 0, triangles = 0, lock_ticks = 0, measure_ticks = 0;
+        std::uint64_t max_measure_ticks = 0, not_managed = 0, range = 0, not_quiet = 0, lock_failed = 0, geometry = 0;
+        std::uint64_t not_readable = 0, stale = 0; // WRITEONLY native storage (no readable creation); written between the draw and the read
+        std::uint64_t invalidated = 0, overflows = 0, dropped_entries = 0; // write invalidations drained; queue overflows (cache cleared); entries dropped
+        std::uint64_t volatile_buffers = 0, volatile_refused = 0; // wrappers that reached volatile_after writes; reads refused for them
+    } thin_vote_totals_{};
+    void thin_vote_alpha(const MotionRoute& route, const float* rows, float& alpha) noexcept; // per routed draw: c218.x (by reference: an i686 float return is x87 st(0))
+    void thin_vote_lookup(const MotionRoute& route, const float* rows, float& alpha) noexcept; // its opaque-row part (cache, window)
+    void drain_thin_invalidations() noexcept; // ownership's write invalidations of watched buffers: drop their entries and queued reads
+    std::uintptr_t thin_vote_drained_[1024]{}; // drain scratch (ownership's queue capacity)
+    void read_thin_votes() noexcept;    // the scene end: the queued subsets' READONLY reads, histograms, cache
+    void release_thin_votes() noexcept; // drop the queue without reading (frame without scene end, Reset, teardown)
+    void log_thin_vote_frame() noexcept;
     void release_candidate_extents() noexcept; // drop the queue without reading (frame without scene end, Reset, teardown)
     // Count-only tested-opaque-arm bookkeeping for a cutout pair (after_draw).
     void note_cutout_opaque(const MotionRoute& route, HRESULT result) noexcept;
@@ -2392,7 +2431,7 @@ private:
     // withholds policy 8 from the attach request (the caps-refusal case).
     bool fixture_screen_rect_set_ = false, fixture_screen_caps_fault_ = false;
     fade_region::Rect fixture_screen_rect_{};
-    float fixture_last_pixel_abi_[8]{};
+    float fixture_last_pixel_abi_[12]{};
     unsigned fixture_emission_exchange_fault_ = 0;
     unsigned fixture_cutout_cap_fault_ = 0, fixture_cutout_vs_fault_ = 0, fixture_cutout_ps_fault_ = 0;
     unsigned fixture_cutout_rs_fault_ = 0, fixture_cutout_sampler_fault_ = 0;

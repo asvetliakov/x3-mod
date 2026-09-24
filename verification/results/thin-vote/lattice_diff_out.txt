@@ -1,0 +1,3 @@
+lines committed=5076 now=5076 removed=4 added=4 kinds=['LINE_TIMING', 'LINE_TIMING_CAMERA', 'LINE_TIMING_CAMERA_LANE', 'LINE_TIMING_SENTINEL']
+committed RESULT PASS numerical=566 state_restorations=91 lattice=1
+now RESULT PASS numerical=566 state_restorations=91 lattice=1

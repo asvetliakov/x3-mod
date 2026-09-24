@@ -439,6 +439,74 @@ PREFIX view count=102 mark=0 hr=00000000 requested=1 known=1 reason=0 scanned=61
 CHECK prefix view recognised PASS
 CHECK relearned after reset PASS
 CHECK systemmem release erases the record PASS
+RESULT thin unarmed buffer 00000000
+CHECK thin unarmed buffer PASS
+RESULT thin unarmed GetDesc 00000000
+CHECK thin unarmed GetDesc PASS
+CHECK thin unarmed buffer keeps WRITEONLY storage PASS
+RESULT thin arm readable policy 00000000
+CHECK thin arm readable policy PASS
+RESULT thin converted vertex buffer 00000000
+CHECK thin converted vertex buffer PASS
+RESULT thin converted index buffer 00000000
+CHECK thin converted index buffer PASS
+RESULT thin converted vb GetDesc 00000000
+CHECK thin converted vb GetDesc PASS
+RESULT thin converted ib GetDesc 00000000
+CHECK thin converted ib GetDesc PASS
+THIN readable vb_usage=00000008 vb_native=00000000 ib_usage=00000008 ib_native=00000000
+CHECK thin GetDesc returns the requested Usage PASS
+CHECK thin converted storage readable PASS
+RESULT thin converted write 00000000
+CHECK thin converted write PASS
+RESULT thin readonly lock 00000000
+CHECK thin readonly lock PASS
+CHECK thin readonly lock reads the written bytes PASS
+RESULT thin tag failure creates 00000000
+CHECK thin tag failure creates PASS
+CHECK thin tag failure falls back to WRITEONLY storage PASS
+RESULT thin converted creation failure creates 00000000
+CHECK thin converted creation failure creates PASS
+CHECK thin creation failure falls back to WRITEONLY storage PASS
+CHECK thin nothing queued before a watch PASS
+RESULT thin write unwatched 00000000
+CHECK thin write unwatched PASS
+CHECK thin unwatched write silent PASS
+RESULT thin watch vb 00000000
+CHECK thin watch vb PASS
+RESULT thin readonly read 00000000
+CHECK thin readonly read PASS
+CHECK thin READONLY lock silent PASS
+RESULT thin watched write 00000000
+CHECK thin watched write PASS
+CHECK thin writable unlock pushes once PASS
+RESULT thin second write 00000000
+CHECK thin second write PASS
+CHECK thin watch is one-shot PASS
+RESULT thin rewatch vb 00000000
+CHECK thin rewatch vb PASS
+RESULT thin native notice 00000000
+CHECK thin native notice PASS
+CHECK thin native notice pushes PASS
+RESULT thin watch ib 00000000
+CHECK thin watch ib PASS
+RESULT thin ib write lock 00000000
+CHECK thin ib write lock PASS
+CHECK thin index buffer write pushes PASS
+CHECK thin watch of a non-buffer refused PASS
+CHECK thin overflow latched PASS
+CHECK thin unwatched releases silent PASS
+RESULT thin watch before release 00000000
+CHECK thin watch before release PASS
+CHECK thin final release pushes with bit 0 PASS
+RESULT thin disarm readable policy 00000000
+CHECK thin disarm readable policy PASS
+RESULT thin converted ib GetDesc after disarm 00000000
+CHECK thin converted ib GetDesc after disarm PASS
+CHECK thin tag wins after disarm PASS
+RESULT thin disarmed creation 00000000
+CHECK thin disarmed creation PASS
+CHECK thin disarmed creation untouched PASS
 RESULT backend lifetime backbuffer 00000000
 CHECK backend lifetime backbuffer PASS
 RESULT backend lifetime marker 00000000
@@ -900,6 +968,74 @@ PREFIX view count=102 mark=0 hr=00000000 requested=1 known=1 reason=0 scanned=61
 CHECK prefix view recognised PASS
 CHECK relearned after reset PASS
 CHECK systemmem release erases the record PASS
+RESULT thin unarmed buffer 00000000
+CHECK thin unarmed buffer PASS
+RESULT thin unarmed GetDesc 00000000
+CHECK thin unarmed GetDesc PASS
+CHECK thin unarmed buffer keeps WRITEONLY storage PASS
+RESULT thin arm readable policy 00000000
+CHECK thin arm readable policy PASS
+RESULT thin converted vertex buffer 00000000
+CHECK thin converted vertex buffer PASS
+RESULT thin converted index buffer 00000000
+CHECK thin converted index buffer PASS
+RESULT thin converted vb GetDesc 00000000
+CHECK thin converted vb GetDesc PASS
+RESULT thin converted ib GetDesc 00000000
+CHECK thin converted ib GetDesc PASS
+THIN readable vb_usage=00000008 vb_native=00000000 ib_usage=00000008 ib_native=00000000
+CHECK thin GetDesc returns the requested Usage PASS
+CHECK thin converted storage readable PASS
+RESULT thin converted write 00000000
+CHECK thin converted write PASS
+RESULT thin readonly lock 00000000
+CHECK thin readonly lock PASS
+CHECK thin readonly lock reads the written bytes PASS
+RESULT thin tag failure creates 00000000
+CHECK thin tag failure creates PASS
+CHECK thin tag failure falls back to WRITEONLY storage PASS
+RESULT thin converted creation failure creates 00000000
+CHECK thin converted creation failure creates PASS
+CHECK thin creation failure falls back to WRITEONLY storage PASS
+CHECK thin nothing queued before a watch PASS
+RESULT thin write unwatched 00000000
+CHECK thin write unwatched PASS
+CHECK thin unwatched write silent PASS
+RESULT thin watch vb 00000000
+CHECK thin watch vb PASS
+RESULT thin readonly read 00000000
+CHECK thin readonly read PASS
+CHECK thin READONLY lock silent PASS
+RESULT thin watched write 00000000
+CHECK thin watched write PASS
+CHECK thin writable unlock pushes once PASS
+RESULT thin second write 00000000
+CHECK thin second write PASS
+CHECK thin watch is one-shot PASS
+RESULT thin rewatch vb 00000000
+CHECK thin rewatch vb PASS
+RESULT thin native notice 00000000
+CHECK thin native notice PASS
+CHECK thin native notice pushes PASS
+RESULT thin watch ib 00000000
+CHECK thin watch ib PASS
+RESULT thin ib write lock 00000000
+CHECK thin ib write lock PASS
+CHECK thin index buffer write pushes PASS
+CHECK thin watch of a non-buffer refused PASS
+CHECK thin overflow latched PASS
+CHECK thin unwatched releases silent PASS
+RESULT thin watch before release 00000000
+CHECK thin watch before release PASS
+CHECK thin final release pushes with bit 0 PASS
+RESULT thin disarm readable policy 00000000
+CHECK thin disarm readable policy PASS
+RESULT thin converted ib GetDesc after disarm 00000000
+CHECK thin converted ib GetDesc after disarm PASS
+CHECK thin tag wins after disarm PASS
+RESULT thin disarmed creation 00000000
+CHECK thin disarmed creation PASS
+CHECK thin disarmed creation untouched PASS
 RESULT backend lifetime backbuffer 00000000
 CHECK backend lifetime backbuffer PASS
 RESULT backend lifetime marker 00000000
@@ -932,6 +1068,27 @@ CHECK recovered canonical device PASS
 CHECK final device references zero PASS
 CHECK native backend destroyed after final logical device release PASS
 CHECK renderer history destroyed at final logical device release PASS
+RESULT thin software device 00000000
+CHECK thin software device PASS
+RESULT thin process source 00000000
+CHECK thin process source PASS
+RESULT thin process destination 00000000
+CHECK thin process destination PASS
+RESULT thin process fvf 00000000
+CHECK thin process fvf PASS
+RESULT thin process stream 00000000
+CHECK thin process stream PASS
+RESULT thin process unwatched 00000000
+CHECK thin process unwatched PASS
+CHECK thin unwatched ProcessVertices silent PASS
+RESULT thin watch destination 00000000
+CHECK thin watch destination PASS
+RESULT thin process watched 00000000
+CHECK thin process watched PASS
+CHECK thin ProcessVertices pushes the destination PASS
+RESULT thin process unbind 00000000
+CHECK thin process unbind PASS
+CHECK thin software device final zero PASS
 RESULT device retaining factory 00000000
 CHECK device retaining factory PASS
 RESULT recover released factory through device 00000000
@@ -939,4 +1096,4 @@ CHECK recover released factory through device PASS
 CHECK recovered factory canonical PASS
 CHECK parent-chain device final zero PASS
 CHECK factory references zero PASS
-OWNERSHIP RESULT checks=563 failures=0
+OWNERSHIP RESULT checks=661 failures=0

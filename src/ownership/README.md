@@ -312,3 +312,25 @@ cannot discover unannounced native mappings. See the full
 [portable upload contract](../../docs/verification/portable-managed-upload.md),
 [lease verification](../../docs/verification/geometry-leases.md) and
 [performance evidence](../../docs/verification/geometry-performance.md).
+
+## Readable MANAGED buffers and write invalidation (thin vote)
+
+`Options::readable_managed_buffers` (armed by the loader only through
+`thin_vote_route_gate()`, i.e. `X3M_TAA_THIN_VOTE=on` with the route, TAA, HDR,
+the sun-share lane and `X3M_OWNERSHIP=1`) creates eligible MANAGED WRITEONLY
+buffers without WRITEONLY and tags the native object with the requested Usage
+(`SetPrivateData`). Once any tag exists, every buffer `GetDesc` reads it on every
+branch, whatever the live options, so a converted buffer always reports the Usage
+the application asked for. A failed tag or converted creation falls back to the
+original request (WRITEONLY storage, `get_buffer_readability` reports it not
+readable and the reader never locks it).
+
+Write invalidation rule: the invalidation queue (`watch_buffer_writes`,
+`buffer_invalidations_pending`, `drain_buffer_invalidations`) is **one
+process-wide queue with exactly one consumer** (the one device's thin-vote cache in
+`MotionOutput`). A second consumer, or a second device consuming it, would steal
+the other's invalidations and keep stale histograms; add a per-device queue before
+adding either. The queue holds wrapper pointer values only (compared, never
+dereferenced); bit 0 marks a final release. A watch is one-shot (the push clears
+it; the consumer watches again after its next read). A full queue latches
+`overflow` and the consumer must drop everything it cached.

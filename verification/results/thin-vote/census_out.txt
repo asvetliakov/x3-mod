@@ -1,0 +1,3 @@
+# python3 verification/results/thin-vote/census.py (2026-09-24, 324 session logs in the X3 capture directory, 72 s)
+index32: census bodies=1634 r0_points>65535=265 (upper bound) single_group>65535=11 (lower bound)
+clone_0x440: sessions_with_counter=218 sessions_with_default_pool=0 routed_draw_frames managed=317535095 default_pool=0 dynamic=0 unknown=0

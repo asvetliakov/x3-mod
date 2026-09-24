@@ -84,6 +84,13 @@ struct Options {
     // (src/proxy/locked_prefix_core.h). Off by default;
     // X3M_SCREEN_EMISSION_BOUND=1. Only positions are retained.
     bool locked_prefix_bounds = false;
+    // Readable MANAGED buffers (X3M_TAA_THIN_VOTE; docs/architecture/platform-portability.md, "Readable MANAGED
+    // buffers"): an eligible creation (MANAGED, not DYNAMIC, unshared, 1 B..256 MiB, asking for WRITEONLY; the
+    // portable_upload::plan_creation policy) is created without WRITEONLY; the requested Usage is kept in a
+    // private-data tag on the native buffer and returned by the wrapper's GetDesc. A tag that cannot be written
+    // releases the converted buffer and repeats the original creation (still WRITEONLY). No payload, sidecar or
+    // Lock/Unlock work, so it composes with the typed scanners. Off: creation is forwarded unchanged.
+    bool readable_managed_buffers = false;
 };
 
 // On success, consumes exactly the caller's owned native reference. On failure,
@@ -186,6 +193,38 @@ void get_locked_prefix_statistics(LockedPrefixStatistics* out) noexcept;
 // Arbitrary unobserved native writes are unsupported.
 HRESULT invalidate_native_buffer_evidence(IUnknown* wrapped) noexcept;
 IDirect3DVertexBuffer9* borrowed_native_buffer_for_lock_contract(IDirect3DVertexBuffer9* wrapped) noexcept;
+// Whether an application VB/IB wrapper's ACTUAL native storage may be read through a READONLY Lock: MANAGED, not
+// DYNAMIC, not WRITEONLY (Options::readable_managed_buffers strips WRITEONLY at creation; a buffer created before
+// the policy was armed, or refused by it, keeps WRITEONLY and is not readable). `converted`: the policy created it.
+// One registry find and one native GetDesc (plus GetPrivateData) under the registry mutex; no Lock. S_OK for a
+// recognised wrapper, E_INVALIDARG otherwise. Hold a live application reference; LastError is preserved.
+struct BufferReadability {
+    HRESULT status = S_FALSE;
+    bool readable = false, converted = false;
+    D3DPOOL pool = D3DPOOL_DEFAULT;
+    DWORD native_usage = 0;
+};
+HRESULT get_buffer_readability(IDirect3DResource9* application, BufferReadability* out) noexcept;
+// Arms or disarms Options::readable_managed_buffers for the later creations of one device (the loader arms it at
+// wrap_factory; the thin-vote fixture uses this to create buffers before and after arming). E_INVALIDARG for an
+// unrecognised device.
+HRESULT configure_readable_managed_buffers(IDirect3DDevice9* application, bool on) noexcept;
+// Write invalidation of watched VB/IB wrappers (the thin vote's histogram cache). One process-wide queue with ONE
+// consumer (src/ownership/README.md, "Write invalidation"). watch_buffer_writes marks one
+// recognised application wrapper (one registry find; E_INVALIDARG otherwise); from then on the wrapper's pointer is
+// pushed into a fixed process-wide queue when its content can change or it goes away: the Unlock that ends a writable
+// Lock, a ProcessVertices into it, a trusted native mutation notice (invalidate_native_buffer_evidence) and its final
+// release. O(1) per event under the registry mutex; unwatched buffers cost one flag test. A full queue latches
+// `overflow` (the consumer then drops everything). buffer_invalidations_pending is one relaxed atomic load (draw path);
+// drain copies and clears the queue. The pointers are values only: a consumer compares them, never dereferences them.
+// The watch is one-shot: the push clears it (watch again after the next read). A final release is pushed with bit 0
+// set in the value.
+HRESULT watch_buffer_writes(IDirect3DResource9* application) noexcept;
+#ifdef X3M_OWNERSHIP_THIN_FIXTURE
+void thin_fixture_set_faults(unsigned faults) noexcept; // bit 0: tag write fails; bit 1: converted creation fails
+#endif
+bool buffer_invalidations_pending() noexcept;
+unsigned drain_buffer_invalidations(std::uintptr_t* out, unsigned capacity, bool* overflow) noexcept;
 IDirect3DIndexBuffer9* borrowed_native_buffer_for_lock_contract(IDirect3DIndexBuffer9* wrapped) noexcept;
 
 enum class FiniteEvidenceReason : std::uint32_t {

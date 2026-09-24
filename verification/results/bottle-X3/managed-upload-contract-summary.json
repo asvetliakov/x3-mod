@@ -1,0 +1,63 @@
+{
+  "passed": true,
+  "game_launched": false,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "fresh_build": true,
+  "started_utc": "2026-09-24T08:10:22.260409+00:00",
+  "sources_before": {
+    "verification/probe/managed_upload_contract.h": "fc58af0831f76da374a98bbf57a5bfeb91ffaa3059a2fc06b3a33da3618d3949",
+    "verification/probe/managed_upload_contract.cpp": "ca692396a260d7680bb78e66bb1586d1ac0852fc92ac637dd0869cfd94a2f95c",
+    "verification/probe/managed_upload_contract_fixture.cpp": "f08858718cf86448512b54f5e76cb33c656a30cf44eecaa5602d1c896120a4e6",
+    "verification/probe/build_managed_upload_contract.sh": "68b7457714099a5260991648aa664e5f50124411da6f176eaba99c4747663be3",
+    "verification/probe/run_managed_upload_contract.py": "419d35d0270aec2fa583dc450fa6e0d6a57d5c32208e78f507e47ccfa901112b",
+    "native/d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
+    "native/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863"
+  },
+  "build_exit": 0,
+  "sources_after_build": {
+    "verification/probe/managed_upload_contract.h": "fc58af0831f76da374a98bbf57a5bfeb91ffaa3059a2fc06b3a33da3618d3949",
+    "verification/probe/managed_upload_contract.cpp": "ca692396a260d7680bb78e66bb1586d1ac0852fc92ac637dd0869cfd94a2f95c",
+    "verification/probe/managed_upload_contract_fixture.cpp": "f08858718cf86448512b54f5e76cb33c656a30cf44eecaa5602d1c896120a4e6",
+    "verification/probe/build_managed_upload_contract.sh": "68b7457714099a5260991648aa664e5f50124411da6f176eaba99c4747663be3",
+    "verification/probe/run_managed_upload_contract.py": "419d35d0270aec2fa583dc450fa6e0d6a57d5c32208e78f507e47ccfa901112b",
+    "native/d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
+    "native/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863"
+  },
+  "executable_sha256": "57cdd4073a1a24cf996501e01b7aeb2b6dcc9f1f1f7dfe8aad038ee9a657de4e",
+  "command": [
+    "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+    "--bottle",
+    "X3",
+    "--no-update",
+    "--workdir",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-abc9f904068eb0697/verification/probe/build",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-abc9f904068eb0697/verification/probe/build/managed_upload_contract_fixture.exe"
+  ],
+  "process_local_override": "d3d9=b",
+  "exit_code": 0,
+  "sources_after": {
+    "verification/probe/managed_upload_contract.h": "fc58af0831f76da374a98bbf57a5bfeb91ffaa3059a2fc06b3a33da3618d3949",
+    "verification/probe/managed_upload_contract.cpp": "ca692396a260d7680bb78e66bb1586d1ac0852fc92ac637dd0869cfd94a2f95c",
+    "verification/probe/managed_upload_contract_fixture.cpp": "f08858718cf86448512b54f5e76cb33c656a30cf44eecaa5602d1c896120a4e6",
+    "verification/probe/build_managed_upload_contract.sh": "68b7457714099a5260991648aa664e5f50124411da6f176eaba99c4747663be3",
+    "verification/probe/run_managed_upload_contract.py": "419d35d0270aec2fa583dc450fa6e0d6a57d5c32208e78f507e47ccfa901112b",
+    "native/d3d9.dll": "58cc36cf74128ae4b6211100430d146c3692808146d8d2075e6c5d846162f8cf",
+    "native/wined3d.dll": "f4997bc0465de7e87bac9921bf0274db00ac3b3ba0754fa03f1f33e309a8e863"
+  },
+  "executable_sha256_after": "57cdd4073a1a24cf996501e01b7aeb2b6dcc9f1f1f7dfe8aad038ee9a657de4e",
+  "report_sha256": "5a4d83e6ae7644c72c0e90fe51e86aca80125b7ada9c70fd34e3e00e8e75c5a8",
+  "checks": 461,
+  "cases": [
+    "CASE buffer kind=vertex format=101",
+    "CASE buffer kind=index format=101",
+    "CASE buffer kind=index format=102"
+  ]
+}

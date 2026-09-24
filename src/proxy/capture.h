@@ -16,6 +16,10 @@ bool screen_emission_route_enabled() noexcept;
 // X3M_OWNERSHIP=1); computed once in initialize_log. The loader enables the
 // step D Unlock scan for it as well: the footprint reads the scanned vertices.
 bool bolt_footprint_requested_gate() noexcept;
+// X3M_TAA_THIN_VOTE=on with every environment prerequisite (route, TAA, HDR, X3M_SUN_SHADOW_LANE=1, X3M_OWNERSHIP=1);
+// computed once in initialize_log. The loader arms the readable-MANAGED creation policy and the lock bookends only
+// through this gate; hook_device enables the vote on the same gate.
+bool thin_vote_route_gate() noexcept;
 void initialize_log(HMODULE module);
 void log(const char* format, ...);
 // The session log's OS handle (INVALID_HANDLE_VALUE when there is none): for a

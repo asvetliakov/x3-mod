@@ -142,6 +142,11 @@ struct FrameInputs {
     // The hold length in frames: the jitter period (a pixel flagged in any phase stays in the region the whole cycle). 1..64,
     // read with thin_region_hold only; anything else refuses the run.
     unsigned thin_region_hold_frames = 8;
+    // Thin vote (X3M_TAA_THIN_VOTE; docs/architecture/taa-thin-geometry-alternatives.md section 3.2), off by default. On, and
+    // with the thin region, a four-channel current depth folded into the tests draw and configure_thin_vote() done, the tests
+    // draw is the thin-vote twin: it also flags a pixel whose current-depth .a (the route's 1 - thin) is in [0, 1)
+    // (Diagnostics::thin_vote names what ran). Anything else draws the plain tests program; never refuses a run.
+    bool thin_vote = false;
     // Sentinel stabiliser (docs/architecture/temporal-integration.md "Distant
     // unrouted stations under a pan"), off by default (0: every target bit for
     // bit the camera-gate run's). S in (0, 1]: an UNROUTED pixel on the depth
@@ -306,6 +311,12 @@ struct Diagnostics {
     unsigned history_taps = 0;
     // A' (FrameInputs::thin_region_hold): the last run drew the tests draw alone and the hold resolve.
     bool region_hold = false;
+    // FrameInputs::thin_vote: the last run's tests draw was the thin-vote twin.
+    bool thin_vote = false;
+    // Why (or why not): "vote", "not_requested", "thin_region_off", "no_fold" (no depth-folding tests draw: an R32F or
+    // D24X8 depth, no far run or MRT caps; depth_fold_reason says which), "two_channel_depth" (a G32R32F lane has no
+    // .a), "no_twin_program" (configure_thin_vote did not create it), "not_run".
+    const char* thin_vote_reason = "not_run";
     // CPU-side QueryPerformanceCounter ticks of the last run's phases, taken
     // only with configure_timing(true); zero otherwise. Wall clock around the
     // device calls (submission cost, driver work, any blocking), never GPU
@@ -389,6 +400,10 @@ public:
     // twins are created here when configure_sentinel() already ran, else by configure_sentinel(). A failure leaves the
     // pass usable with the dilations.
     HRESULT configure_region_hold() noexcept;
+    // Thin vote (FrameInputs::thin_vote): the thin-vote twins of the two depth-folding tests programs, created only on
+    // request (a session that never asks holds none). A failure leaves the plain tests draw.
+    HRESULT configure_thin_vote() noexcept;
+    bool thin_vote_available() const noexcept { return line_mask_depth_thin_ != nullptr || line_mask_camera_depth_thin_ != nullptr; }
     bool region_hold_available() const noexcept { return camera_gate_available() && far_camera_hold_ != nullptr && thin_box_hold_ != nullptr; }
     bool region_hold_sentinel_available() const noexcept { return region_hold_available() && thin_box_rows_hold_ != nullptr && thin_box_columns_hold_ != nullptr; }
     // D3DCAPS9::MaxPixelShader30InstructionSlots as initialize read it, for the caller's one log row (AGENTS.md "Shader slot
@@ -483,6 +498,7 @@ private:
     // only for the chain's first draw on a two- or four-channel current depth, which then writes depths_[next] as COLOR1
     // (R32F beside the A8R8G8B8 mask; mrt_age_ covers MRTINDEPENDENTBITDEPTHS). Optional: null keeps the copy draw.
     IDirect3DPixelShader9 *line_mask_depth_ = nullptr, *line_mask_camera_depth_ = nullptr;
+    IDirect3DPixelShader9 *line_mask_depth_thin_ = nullptr, *line_mask_camera_depth_thin_ = nullptr; // configure_thin_vote
     IDirect3DTexture9* boxes_[2]{};
     IDirect3DSurface9* box_surfaces_[2]{};
     bool boxes_failed_ = false;

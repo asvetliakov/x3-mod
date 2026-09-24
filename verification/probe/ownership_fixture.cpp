@@ -206,6 +206,96 @@ static void locked_prefix_case(IDirect3DDevice9* device,D3DPRESENT_PARAMETERS pp
     view(sys,102,true);write(sys,17,0.f,D3DLOCK_DISCARD);expect("relearned after reset",view(sys,102,false).known);
     release(sys);expect("systemmem release erases the record",used()==0);
 }
+// Thin vote (docs/architecture/taa-thin-geometry-alternatives.md section 3.2): the readable-MANAGED creation policy
+// (GetDesc returns the requested Usage of a converted buffer, the tag-failure and creation-failure fallbacks keep the
+// requested WRITEONLY storage, disarming leaves later creations untouched) and the write invalidation queue (one-shot
+// watch, writable Unlock / native notice / final release pushes, READONLY and unwatched buffers silent, overflow with
+// the fixture's four-slot queue).
+static void thin_vote_case(IDirect3DDevice9* device){
+    using namespace x3m::ownership;
+    std::uintptr_t drained[8]{};bool overflow=false;
+    drain_buffer_invalidations(drained,8,&overflow);
+    auto drain=[&](unsigned& n){overflow=false;n=drain_buffer_invalidations(drained,8,&overflow);return n;};
+    auto readability=[](IDirect3DResource9* r){BufferReadability b{};get_buffer_readability(r,&b);return b;};
+    auto write=[](IDirect3DVertexBuffer9* vb,DWORD flags){void* data=nullptr;const HRESULT hr=vb->Lock(0,0,&data,flags);if(SUCCEEDED(hr)){if(data&&!(flags&D3DLOCK_READONLY))std::memset(data,0x3c,16);vb->Unlock();}return hr;};
+    IDirect3DVertexBuffer9* plain=nullptr;
+    if(!ok("thin unarmed buffer",device->CreateVertexBuffer(96,D3DUSAGE_WRITEONLY,0,D3DPOOL_MANAGED,&plain,nullptr)))return;
+    D3DVERTEXBUFFER_DESC vd{};ok("thin unarmed GetDesc",plain->GetDesc(&vd));BufferReadability r=readability(plain);
+    expect("thin unarmed buffer keeps WRITEONLY storage",vd.Usage==D3DUSAGE_WRITEONLY&&r.status==S_FALSE&&!r.readable&&!r.converted&&(r.native_usage&D3DUSAGE_WRITEONLY));
+    ok("thin arm readable policy",configure_readable_managed_buffers(device,true));
+    IDirect3DVertexBuffer9* vb=nullptr;IDirect3DIndexBuffer9* ib=nullptr;
+    ok("thin converted vertex buffer",device->CreateVertexBuffer(96,D3DUSAGE_WRITEONLY,0,D3DPOOL_MANAGED,&vb,nullptr));
+    ok("thin converted index buffer",device->CreateIndexBuffer(12,D3DUSAGE_WRITEONLY,D3DFMT_INDEX16,D3DPOOL_MANAGED,&ib,nullptr));
+    if(!vb||!ib){release(vb);release(ib);release(plain);configure_readable_managed_buffers(device,false);return;}
+    D3DINDEXBUFFER_DESC id{};ok("thin converted vb GetDesc",vb->GetDesc(&vd));ok("thin converted ib GetDesc",ib->GetDesc(&id));
+    r=readability(vb);const BufferReadability ri=readability(ib);
+    std::printf("THIN readable vb_usage=%08lx vb_native=%08lx ib_usage=%08lx ib_native=%08lx\n",vd.Usage,r.native_usage,id.Usage,ri.native_usage);
+    expect("thin GetDesc returns the requested Usage",vd.Usage==D3DUSAGE_WRITEONLY&&id.Usage==D3DUSAGE_WRITEONLY&&vd.Pool==D3DPOOL_MANAGED&&id.Pool==D3DPOOL_MANAGED);
+    expect("thin converted storage readable",r.readable&&r.converted&&!(r.native_usage&D3DUSAGE_WRITEONLY)&&ri.readable&&ri.converted&&!(ri.native_usage&D3DUSAGE_WRITEONLY));
+    ok("thin converted write",write(vb,0));
+    { void* data=nullptr;unsigned char first=0;if(ok("thin readonly lock",vb->Lock(0,16,&data,D3DLOCK_READONLY))){if(data)first=*static_cast<unsigned char*>(data);vb->Unlock();}
+      expect("thin readonly lock reads the written bytes",first==0x3c); }
+    for(unsigned fault=1;fault<=2;++fault){
+        thin_fixture_set_faults(fault);IDirect3DVertexBuffer9* fallback=nullptr;
+        const bool created=ok(fault==1?"thin tag failure creates":"thin converted creation failure creates",device->CreateVertexBuffer(96,D3DUSAGE_WRITEONLY,0,D3DPOOL_MANAGED,&fallback,nullptr));
+        thin_fixture_set_faults(0);
+        if(created&&fallback){D3DVERTEXBUFFER_DESC fd{};fallback->GetDesc(&fd);const BufferReadability fr=readability(fallback);
+            expect(fault==1?"thin tag failure falls back to WRITEONLY storage":"thin creation failure falls back to WRITEONLY storage",
+                   fd.Usage==D3DUSAGE_WRITEONLY&&!fr.readable&&!fr.converted&&(fr.native_usage&D3DUSAGE_WRITEONLY));}
+        release(fallback);
+    }
+    unsigned n=0;
+    drain(n);expect("thin nothing queued before a watch",n==0&&!buffer_invalidations_pending());
+    ok("thin write unwatched",write(vb,0));expect("thin unwatched write silent",!buffer_invalidations_pending());
+    ok("thin watch vb",watch_buffer_writes(vb));
+    ok("thin readonly read",write(vb,D3DLOCK_READONLY));expect("thin READONLY lock silent",!buffer_invalidations_pending());
+    ok("thin watched write",write(vb,0));
+    expect("thin writable unlock pushes once",buffer_invalidations_pending()&&drain(n)==1&&drained[0]==reinterpret_cast<std::uintptr_t>(vb)&&!overflow);
+    ok("thin second write",write(vb,0));expect("thin watch is one-shot",!buffer_invalidations_pending());
+    ok("thin rewatch vb",watch_buffer_writes(vb));ok("thin native notice",invalidate_native_buffer_evidence(vb));
+    expect("thin native notice pushes",drain(n)==1&&drained[0]==reinterpret_cast<std::uintptr_t>(vb));
+    ok("thin watch ib",watch_buffer_writes(ib));
+    { void* data=nullptr;if(ok("thin ib write lock",ib->Lock(0,0,&data,0)))ib->Unlock(); }
+    expect("thin index buffer write pushes",drain(n)==1&&drained[0]==reinterpret_cast<std::uintptr_t>(ib));
+    expect("thin watch of a non-buffer refused",FAILED(watch_buffer_writes(nullptr)));
+    // Overflow: five watched writes into the four-slot fixture queue.
+    IDirect3DVertexBuffer9* many[5]{};
+    for(auto& b:many)if(SUCCEEDED(device->CreateVertexBuffer(96,D3DUSAGE_WRITEONLY,0,D3DPOOL_MANAGED,&b,nullptr))){watch_buffer_writes(b);write(b,0);}
+    expect("thin overflow latched",drain(n)==4&&overflow&&!buffer_invalidations_pending());
+    for(auto& b:many)release(b);
+    expect("thin unwatched releases silent",!buffer_invalidations_pending());
+    // Final release: bit 0 marks it; a disarmed policy leaves new creations alone while converted buffers keep their Usage.
+    ok("thin watch before release",watch_buffer_writes(vb));const std::uintptr_t vb_value=reinterpret_cast<std::uintptr_t>(vb);release(vb);
+    expect("thin final release pushes with bit 0",drain(n)==1&&drained[0]==(vb_value|1u));
+    ok("thin disarm readable policy",configure_readable_managed_buffers(device,false));
+    ok("thin converted ib GetDesc after disarm",ib->GetDesc(&id));expect("thin tag wins after disarm",id.Usage==D3DUSAGE_WRITEONLY&&readability(ib).converted);
+    IDirect3DVertexBuffer9* later=nullptr;
+    if(ok("thin disarmed creation",device->CreateVertexBuffer(96,D3DUSAGE_WRITEONLY,0,D3DPOOL_MANAGED,&later,nullptr))){r=readability(later);expect("thin disarmed creation untouched",!r.converted&&!r.readable);}
+    release(later);release(ib);release(plain);
+    drain(n);
+}
+// ProcessVertices into a watched buffer (software vertex processing; one extra device).
+static void thin_process_vertices_case(IDirect3D9* api,HWND window,D3DPRESENT_PARAMETERS pp){
+    using namespace x3m::ownership;
+    IDirect3DDevice9* device=nullptr;
+    if(!ok("thin software device",api->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_SOFTWARE_VERTEXPROCESSING,&pp,&device)))return;
+    IDirect3DVertexBuffer9* source=nullptr;IDirect3DVertexBuffer9* destination=nullptr;
+    ok("thin process source",device->CreateVertexBuffer(36,0,D3DFVF_XYZ,D3DPOOL_MANAGED,&source,nullptr));
+    ok("thin process destination",device->CreateVertexBuffer(48,0,D3DFVF_XYZRHW,D3DPOOL_MANAGED,&destination,nullptr));
+    if(source&&destination){
+        void* data=nullptr;if(SUCCEEDED(source->Lock(0,0,&data,0))){const float xyz[9]={0,0,.5f,1,0,.5f,0,1,.5f};if(data)std::memcpy(data,xyz,sizeof xyz);source->Unlock();}
+        ok("thin process fvf",device->SetFVF(D3DFVF_XYZ));ok("thin process stream",device->SetStreamSource(0,source,0,12));
+        std::uintptr_t drained[4]{};bool overflow=false;drain_buffer_invalidations(drained,4,&overflow);
+        ok("thin process unwatched",device->ProcessVertices(0,0,3,destination,nullptr,0));expect("thin unwatched ProcessVertices silent",!buffer_invalidations_pending());
+        ok("thin watch destination",watch_buffer_writes(destination));
+        ok("thin process watched",device->ProcessVertices(0,0,3,destination,nullptr,0));
+        const unsigned n=drain_buffer_invalidations(drained,4,&overflow);
+        expect("thin ProcessVertices pushes the destination",n==1&&drained[0]==reinterpret_cast<std::uintptr_t>(destination)&&!overflow);
+        ok("thin process unbind",device->SetStreamSource(0,nullptr,0,0));
+    }
+    release(source);release(destination);
+    expect("thin software device final zero",device->Release()==0);
+}
 #endif
 static void reset_case(IDirect3DDevice9* device,D3DPRESENT_PARAMETERS pp){
 #ifdef X3M_OWNERSHIP_WRAPPED
@@ -240,7 +330,7 @@ int main(){
         identity(device,"device identity");IDirect3D9* parent=nullptr;ok("device GetDirect3D",device->GetDirect3D(&parent));expect("canonical factory parent",parent==api);release(parent);
         texture_case(device);buffer_shader_case(device);surface_case(device);failure_output_case(device);query_case(device);container_case(device);swapchain_case(device,pp);reset_case(device,pp);
 #ifdef X3M_OWNERSHIP_WRAPPED
-        locked_prefix_case(device,pp);
+        locked_prefix_case(device,pp);thin_vote_case(device);
 #endif
         const unsigned backend_before_final=backend_destroyed;mark_backend_lifetime(device);expect("implicit backbuffer marker survives released caller reference",backend_destroyed==backend_before_final);
 #ifdef X3M_OWNERSHIP_WRAPPED
@@ -260,6 +350,9 @@ int main(){
         expect("renderer history destroyed at final logical device release",renderer_destroyed==history_before_final+1);
 #endif
     }
+#ifdef X3M_OWNERSHIP_WRAPPED
+    thin_process_vertices_case(api,window,pp);
+#endif
     // Factory must remain recoverable through a public device after the caller
     // drops its own factory reference; this also exercises the parent chain.
     IDirect3DDevice9* last_device=nullptr;

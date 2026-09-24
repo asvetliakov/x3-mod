@@ -8,7 +8,7 @@ using UINT=unsigned;using DWORD=std::uint32_t;using HRESULT=std::int32_t;
 struct IDirect3D9 {unsigned identity;};
 static IDirect3D9 native_factory{1},wrapped_factory{2};
 static bool ownership_enabled=false,depth_copy_enabled=false,finite_positions_enabled=false,
-    lock_bookends_enabled=false,locked_prefix_enabled=false;
+    lock_bookends_enabled=false,locked_prefix_enabled=false,readable_buffers_enabled=false;
 static unsigned calls=0,hooks=0,wraps=0,vetoes=0,before=0,after=0,scopes=0,logs=0;
 static bool backend_present=true,backend_success=true,wrap_success=true,telemetry_on=true,trace_on=false;
 static IDirect3D9* hooked=nullptr;static UINT seen_sdk=0;
@@ -19,7 +19,7 @@ void hook_direct3d(IDirect3D9* value){++hooks;hooked=value;}
 namespace telemetry {unsigned now(){static unsigned tick=0;return ++tick;}bool enabled(){return telemetry_on;}}
 namespace object_trace {bool active(){return trace_on;}}
 namespace ownership {
-struct Options {bool capture_auto_depth=false,track_buffer_writes=false,track_buffer_lock_attempts=false,capture_finite_positions=false,locked_prefix_bounds=false,track_execution_state=true;};
+struct Options {bool capture_auto_depth=false,track_buffer_writes=false,track_buffer_lock_attempts=false,capture_finite_positions=false,locked_prefix_bounds=false,track_execution_state=true,readable_managed_buffers=false;};
 Options options;
 void* process_admission_monitor(){return nullptr;}
 struct ApplicationAdmissionAbi {explicit ApplicationAdmissionAbi(void*){++scopes;}~ApplicationAdmissionAbi(){--scopes;}};

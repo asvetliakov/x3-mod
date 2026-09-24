@@ -1,13 +1,13 @@
 {
   "passed": true,
   "sources_before_build": {
-    "src/renderer/temporal_pass.h": "e8293ff09e3cccef22ed90eb728b2574ff4cfdddb205097940da4a81e1966ca0",
-    "src/renderer/temporal_pass.cpp": "626cd3040c68a22fdb08c3f5b2c7e2cfcbfcd302457f742f793d3aa059285225",
+    "src/renderer/temporal_pass.h": "a554c80214366a91b7cd95f506c61ee7c220740936c87900d2fa3f939c0ca920",
+    "src/renderer/temporal_pass.cpp": "96a15d0f6b0bd17ee7125d5b1b37de05baf6d09268e0d42ef38422c4d05baa01",
     "src/temporal/resolve.h": "853d6c9b800f3ab14750100a26ea48141bc4665ff78c00c054f6d63722bb5ed2",
     "src/temporal/resolve.hlsl": "6b0b1545526d4ff3d41e7bb0c687971e56e24857bcbd5c07b2a9b10525ed5cae",
     "src/temporal/resolve_snapshot.hlsl": "b7b62bb66523b6e092143fc111a623413cd8d1e9bf7c7ab0afbc83a3f40f126d",
     "src/renderer/temporal_resolve_snapshot_program_inc.h": "decb661f2c75cdfb7960bff7018c364c0f398fbe399a5e5df6a62fb5d7916d69",
-    "src/renderer/temporal_resolve_program.h": "83120deaf1b3fe15293539a0baa60dbd7ed1da45a4279283a06f4bb7fe9239bd",
+    "src/renderer/temporal_resolve_program.h": "c52d0d5c5a780a7415534a89b28a70d1bf8ecfb57b792daccc1a831f6bb04889",
     "src/temporal/resolve_thin.hlsl": "fcd645eff0211c5762dc973cc067c542c443291406a79b9ac2c77f43d9506fe4",
     "src/renderer/temporal_resolve_thin_program_inc.h": "f0284539d46a58a406d01485634817119a24a25d4b65333e58a501bcfd030062",
     "src/temporal/resolve_age.hlsl": "8bd897574e9427d21c3b8c79221e3c019f7aa37e5dfbf1d5386149c4f19c942b",
@@ -29,7 +29,7 @@
     "verification/probe/temporal_resolve_far_reference_inc.h": "b0ea38f96cc810280b8b7f5348ab6b624b9b0fcb254545893e4b0035d9dcd226",
     "src/temporal/resolve_far.hlsl": "30087df4338b9a3fec4d6dbca256e5c7b8515bb3cea41fe540e7e4a5af00e7b9",
     "src/renderer/temporal_resolve_far_program_inc.h": "3ac721f73fafb368357edb5be45b7ffed482c0db7d97fe42a179ddf713f199eb",
-    "src/temporal/line_mask_ps.hlsl": "59b59d8df70eaafd4f2e93076468d4974d6b1fc5090f385ea71c5edb8440a94c",
+    "src/temporal/line_mask_ps.hlsl": "cbc40f65e2146e3250f6efd3a0ccfaf94684692359bfa07b4a070497e99687e7",
     "src/renderer/temporal_line_mask_program_inc.h": "19204ee8b6c5995a12fbbfed975d07cd08be2c2ccdf38c36a573971c913941d4",
     "src/temporal/line_mask_depth_ps.hlsl": "eeb0f7b4983f95593ac6914e2d8c7b54e04d205d6291e3aaa6bf4ee3432299dd",
     "src/renderer/temporal_line_mask_depth_program_inc.h": "a12e62dc70e96a2aecff1ab6a9ab0bb2495f5bfefb0a528a2282e717e7c59c71",
@@ -75,7 +75,7 @@
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
-  "executable_sha256": "debb494ee0a13f06988e9735c77cba5b30c23e055bd6cd0fe89f632c7bb9b8a8",
+  "executable_sha256": "671e6e63a7b25361e4a539c84dfa9878c4f9dc02d3453130d10ab61433f624d6",
   "command": [
     "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
     "--bottle",
@@ -84,12 +84,12 @@
     "--dll",
     "d3d9=b",
     "--workdir",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a0442d1e9f65d92f2/verification/probe/build",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a0442d1e9f65d92f2/verification/probe/build/temporal_pass_fixture.exe",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-abc9f904068eb0697/verification/probe/build",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-abc9f904068eb0697/verification/probe/build/temporal_pass_fixture.exe",
     "C:\\X3\\d3dx9_37.dll",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a0442d1e9f65d92f2/src/temporal/depth_decode.hlsl",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a0442d1e9f65d92f2/src/temporal/resolve.hlsl",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a0442d1e9f65d92f2/src/temporal/taa_sharpen_ps.hlsl"
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-abc9f904068eb0697/src/temporal/depth_decode.hlsl",
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-abc9f904068eb0697/src/temporal/resolve.hlsl",
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-abc9f904068eb0697/src/temporal/taa_sharpen_ps.hlsl"
   ],
   "exit_code": 0,
   "source_unchanged": true,
@@ -2483,7 +2483,7 @@
   },
   "lattice": {
     "report": "temporal-lattice.txt",
-    "report_sha256": "10759488390ef02291c04c32d9c8677e0e13a851c1e9b4f90702701826dc3d18",
+    "report_sha256": "5a7a65bf2cb2fa0d5394f14122b3f73fab5e9f2126702c603d9fb8fa892f7401",
     "exit_code": 0,
     "budget": {
       "plain": {
@@ -4063,11 +4063,11 @@
       "height": "768",
       "content": "all_geometry",
       "rounds": "6",
-      "plain_ms": "0.6174",
-      "far_stabiliser_ms": "0.7426",
-      "thin_region_ms": "1.2055",
-      "far_delta_ms": "0.1252",
-      "thin_region_delta_ms": "0.5882",
+      "plain_ms": "0.8822",
+      "far_stabiliser_ms": "1.0427",
+      "thin_region_ms": "1.8819",
+      "far_delta_ms": "0.1605",
+      "thin_region_delta_ms": "0.9997",
       "scope": "cpu_wall_with_event_query_drain"
     }
   ],
@@ -5260,12 +5260,12 @@
         "width": "1280",
         "height": "768",
         "rounds": "6",
-        "no_region_thin_ms": "1.2055",
-        "no_region_camera_ms": "1.3660",
-        "no_region_camera_delta_ms": "0.1605",
-        "fragmented_pan_thin_ms": "1.0584",
-        "fragmented_pan_camera_ms": "1.5164",
-        "fragmented_pan_camera_delta_ms": "0.4580",
+        "no_region_thin_ms": "1.8819",
+        "no_region_camera_ms": "2.1349",
+        "no_region_camera_delta_ms": "0.2530",
+        "fragmented_pan_thin_ms": "1.1197",
+        "fragmented_pan_camera_ms": "1.7444",
+        "fragmented_pan_camera_delta_ms": "0.6247",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ],
@@ -5274,11 +5274,11 @@
         "width": "1280",
         "height": "768",
         "rounds": "6",
-        "r32f_camera_ms": "1.5164",
-        "lane_input_law_ms": "1.2707",
-        "lane_input_lane_ms": "1.2836",
-        "lane_fetch_delta_ms": "0.0130",
-        "lane_input_over_r32f_ms": "-0.2458",
+        "r32f_camera_ms": "1.7444",
+        "lane_input_law_ms": "1.6037",
+        "lane_input_lane_ms": "1.6402",
+        "lane_fetch_delta_ms": "0.0366",
+        "lane_input_over_r32f_ms": "-0.1407",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]
@@ -5490,9 +5490,9 @@
         "height": "768",
         "rounds": "6",
         "content": "all_unrouted_sentinel_pan",
-        "strength_off_ms": "1.0903",
-        "strength_on_separable_ms": "1.2962",
-        "sentinel_delta_ms": "0.2059",
+        "strength_off_ms": "1.2742",
+        "strength_on_separable_ms": "1.5531",
+        "sentinel_delta_ms": "0.2789",
         "scope": "cpu_wall_with_event_query_drain"
       }
     ]

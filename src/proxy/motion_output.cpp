@@ -409,7 +409,7 @@ void MotionOutput::release_resources() noexcept {
     if (fog_) { taa_call([&] { fog_->detach(); }); fog_.reset(); fog_frame_ = ~std::uint64_t(0); }
     fog_density_refused_ = fog_density_prepared_ = fog_density_camera_valid_ = fog_density_config_logged_ = false; // a new pass may be refused for another reason
     fog_motes_drawn_ = false;
-    release_depth_leases(); release_candidate_extents();
+    release_depth_leases(); release_candidate_extents(); release_thin_votes();
     detach_shadow_retention(); // every held reference goes before the device does (flush=teardown)
     if (depth_replay_) { taa_call([&] { depth_replay_->detach(); }); depth_replay_.reset(); }
     if (sun_apply_) { taa_call([&] { sun_apply_->detach(); }); sun_apply_.reset(); }
@@ -1583,6 +1583,12 @@ bool MotionOutput::ensure_taa() noexcept {
             taa_region_hold_ = false;
         }
     }
+    // Thin vote: the tests draw's twins, created only when the option is on (their absence keeps the plain tests draw).
+    if (SUCCEEDED(hr) && thin_vote_upload_) {
+        HRESULT created = E_FAIL;
+        taa_call([&] { created = taa_->configure_thin_vote(); });
+        if (FAILED(created) || !taa_->thin_vote_available()) log("thin_vote_tests device=%llu unavailable=1 create=%08lx", id_, created);
+    }
     // Exit reset of the strict sky history (seta-sky-hull-share-decay.md): carried in the age target, so it needs one of the
     // age programs to be in effect on this device (the far stabiliser's rule: one log line, option off otherwise).
     if (SUCCEEDED(hr) && sky_history_exit_px_ > 0.f && !(taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f)) {
@@ -1644,6 +1650,7 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             in.sentinel_strength = taa_sentinel_strength_; in.sentinel_emitter = taa_sentinel_emitter_;
             in.thin_region_hold = taa_region_hold_; // A': inert without the camera gate
             in.thin_region_hold_frames = jitter_samples_; // the hold covers one jitter cycle (2..64)
+            in.thin_vote = thin_vote_upload_ && sun_lane_active_; // the vote travels in the lane's .a; the R32F RT2 has none
             if ((taa_far_weight_ > 0.f || taa_far_filter_ > 0.f) && camera_scene_.valid)
                 x3::temporal::far_gate(camera_scene_.m00, camera_scene_.m22, camera_scene_.m32, main_.width, taa_far_f0_, taa_far_f1_, in.far_d0, in.far_inv);
             in.current_depth = depth; in.motion = motion;
@@ -1735,6 +1742,14 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                 // S3: the history reconstruction the first run drew (16 without the FP16 / R32F filter caps whatever was asked).
                 log("motion_output_taa_history_taps device=%llu requested=%u drawn=%u bilinear=%u reason=%s region_hold=%u", id_, taa_history_taps_, diagnostics.history_taps,
                     unsigned(taa_->bilinear_history_available()), taa_->bilinear_history_reason(), unsigned(diagnostics.region_hold));
+            }
+            // Thin vote: once per attachment, the first completed run whose tests draw could not carry the vote (the lane-off
+            // R32F RT2 has no .a, or no fold / thin region / twin program): the flag is absent, the draws still upload c218.
+            if (thin_vote_upload_ && !injected && SUCCEEDED(diagnostics.operation) && !diagnostics.thin_vote && !thin_vote_fold_logged_) {
+                thin_vote_fold_logged_ = true;
+                log("thin_vote_absent device=%llu frame=%llu lane=%u reason=%s depth_fold=%u depth_fold_reason=%s thin_region=%u twins=%u", id_, frame_, unsigned(sun_lane_active_),
+                    sun_lane_active_ ? diagnostics.thin_vote_reason : "lane_off_r32f", unsigned(diagnostics.depth_folded), diagnostics.depth_fold_reason,
+                    unsigned(taa_thin_weight_ > 0.f), unsigned(taa_->thin_vote_available()));
             }
             auto& c = counters_;
             c.taa_run_ticks += run_ticks; c.taa_capture_ticks += diagnostics.ticks_capture;
@@ -1883,7 +1898,7 @@ void MotionOutput::before_stretch(IDirect3DSurface9* source, const RECT* source_
     // other copy reading the main target flushes first, one writing it ends
     // first.
     if (bloom && gpu_sync_) gpu_sync_->end(gpu_sync_timing::Engine); // --gpu-sync-timing only: the copy fallback's scene end (a no-op after the hook's)
-    if(bloom&&!counters_.hook_scene_end){publish_sun_lane("copy");if(candidates_requested_)publish_shadow_replay_candidates();if(sun_apply_requested_&&sun_shadow_enabled_)run_sun_shadow_apply();} // F12 off: the quad is skipped whole
+    if(bloom&&!counters_.hook_scene_end){publish_sun_lane("copy");if(candidates_requested_)publish_shadow_replay_candidates();if(thin_vote_read_count_)read_thin_votes();if(sun_apply_requested_&&sun_shadow_enabled_)run_sun_shadow_apply();} // F12 off: the quad is skipped whole
     if (bloom && fog_requested_) run_volumetric_fog(); // once per frame (fog_frame_), as at the hook
     if (motion_state_lost_ || composition_state_lost_) return;
     if (hdr_state_ != HdrState::Off) {
@@ -1964,6 +1979,7 @@ void MotionOutput::scene_end_hook(MotionHdrSceneCallback callback, void* context
     if (gpu_sync_) gpu_sync_->end(gpu_sync_timing::Engine); // --gpu-sync-timing only: the engine's draw span ends where the proxy's scene-end work begins
     publish_sun_lane("hook");
     if (candidates_requested_) publish_shadow_replay_candidates();
+    if (thin_vote_read_count_) read_thin_votes(); // the subsets first drawn this frame: histograms for the next frames' votes
     // Sun-shadow application (legacy-sun-application.md section 2): after the
     // replay produced this frame's map, before the fog and the resolve.
     if (sun_apply_requested_ && sun_shadow_enabled_) run_sun_shadow_apply(); // Ctrl+Shift+F12 off: no quad, no sun_shadow_apply_frame line
@@ -2266,6 +2282,8 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
     candidate_witnesses_ = 0; candidates_.reset(); candidate_pools_ = {}; candidates_published_frame_ = ~std::uint64_t(0); // witness cap, pool cache and frame serial are per device
     release_depth_leases(); depth_replay_attach_failed_ = false; depth_basis_ = {}; // depth replay state is per device
     release_candidate_extents(); candidate_extents_.clear(); candidate_bounds_state_ = 0; // extent cache and queue are per device
+    release_thin_votes(); if (thin_vote_cache_) thin_vote_cache_->clear(); // the subset histograms are keyed by this device's allocation ids
+    thin_vote_logged_ = thin_vote_fold_logged_ = false; thin_vote_totals_ = {}; thin_vote_frame_ = {};
     sun_latch_.reset(); sun_verdict_ = shadow_replay::SunVerdict::None; candidate_ps_written_ = 0; candidate_bounds_unavailable_ = 0; // the validated sun and the register shadow are per device
     point_sun_.reset(); point_sun_poll_ticks_ = 0; point_sun_sample_ = {}; point_sun_logged_ = shadow_replay::PointSunReason::Count;
     for (unsigned& logged : depth_refusal_logs_) logged = 0;
@@ -2453,6 +2471,16 @@ void MotionOutput::attach(IDirect3DDevice9* device, void** native_table, std::ui
         else if (!jitter_requested_) taa_reason = "jitter";
     }
     taa_enabled_ = taa_requested_ && !std::strcmp(taa_reason, "ok");
+    // Thin vote (X3M_TAA_THIN_VOTE): the histogram cache once per enabled device (fixed storage, never per draw); a
+    // failed allocation keeps the upload (c218.x = 1, no vote) and measures nothing.
+    if (thin_vote_upload_ && enabled_ && depth_enabled_ && !thin_vote_cache_) thin_vote_cache_.reset(new (std::nothrow) thin_vote::Cache());
+    if (thin_vote_requested_ && !thin_vote_logged_) {
+        thin_vote_logged_ = true;
+        log("thin_vote_mode device=%llu requested=1 enabled=%u route=%u depth=%u taa=%u lane=%u cache=%u window_px=%.2f..%.2f vote_fraction=%.2f bins=%u sample_cap=%u reads_per_frame=%u triangles_per_frame=%u",
+            id_, unsigned(thin_vote_upload_), unsigned(enabled_), unsigned(depth_enabled_), unsigned(taa_enabled_), unsigned(sun_lane_requested_),
+            unsigned(thin_vote_cache_ != nullptr), double(thin_vote::window_low_px), double(thin_vote::window_high_px), double(thin_vote::vote_fraction),
+            thin_vote::bins, unsigned(thin_vote::sample_cap), thin_vote::reads_per_frame, unsigned(thin_vote::triangles_per_frame));
+    }
     // D1: the format-converting StretchRect is used only where the adapter
     // grants the conversion AND a live 4x4 round trip per 8-bit format
     // reproduces the bytes; otherwise the pass copies by same-format
@@ -2833,6 +2861,7 @@ void MotionOutput::before_reset() noexcept {
     hdr_target_failed_ = false; hdr_blocked_ = false; hdr_blocked_latches_ = 0; // a Reset clears the cause of an unwind
     if (taa_) taa_call([&] { taa_->before_reset(); });
     if (candidates_requested_) release_candidate_extents();
+    release_thin_votes(); // queued subset reads hold wrapper references; the MANAGED buffers and their histograms survive the Reset
     if (retention_) flush_shadow_retention(shadow_retention::Flush::Reset); // every Reset attempt, before the native call: all held references released, the store empty
     if (depth_replay_requested_) { release_depth_leases(); if (depth_replay_) taa_call([&] { depth_replay_->before_reset(); }); depth_replay_attach_failed_ = false; }
     depth_replayed_ = 0; depth_cascade_frame_ok_ = false; sun_apply_applied_ = sun_apply_attempted_ = false;
@@ -3428,8 +3457,9 @@ void MotionOutput::set_vertex_constants_i(UINT start, const int* data, UINT coun
 void MotionOutput::set_pixel_constants_f(UINT start, const float* data, UINT count) noexcept {
     if (!enabled_ || shadow_.recording || !data || !count || start > 4096 || count > 4096) return;
     const UINT end = start + count;
-    if (start < 218 && end > 216) {
-        const UINT lo = start > 216 ? start : 216, hi = end < 218 ? end : 218;
+    const UINT reserved_end = thin_vote_upload_ ? 219u : 218u; // the thin vote's upload covers c218 too
+    if (start < reserved_end && end > 216) {
+        const UINT lo = start > 216 ? start : 216, hi = end < reserved_end ? end : reserved_end;
         std::memcpy(shadow_.ps_reserved + (lo - 216) * 4, data + (lo - start) * 4, (hi - lo) * 16);
         shadow_.ps_reserved_written = true;
     }
@@ -3517,7 +3547,7 @@ void MotionOutput::resync_shadow() noexcept {
         shadow_.rows_known[w] = SUCCEEDED(native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, matrix_windows.base[w], shadow_.rows[w], 4));
     shadow_.vs_reserved_written = SUCCEEDED(native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, 252, shadow_.vs_reserved, 4));
     shadow_.integer0_known = SUCCEEDED(native<GetConstantsIFn>(GetVertexShaderConstantI)(device_, 0, shadow_.integer0, 1));
-    shadow_.ps_reserved_written = SUCCEEDED(native<GetConstantsFFn>(GetPixelShaderConstantF)(device_, 216, shadow_.ps_reserved, 2));
+    shadow_.ps_reserved_written = SUCCEEDED(native<GetConstantsFFn>(GetPixelShaderConstantF)(device_, 216, shadow_.ps_reserved, thin_vote_upload_ ? 3u : 2u));
     IDirect3DVertexBuffer9* stream = nullptr; UINT offset = 0, stride = 0;
     if (SUCCEEDED(native<GetStreamFn>(GetStreamSource)(device_, 0, &stream, &offset, &stride))) set_stream_source(0, stream, offset, stride);
     release(stream);
@@ -3615,6 +3645,7 @@ void MotionOutput::begin_frame(std::uint64_t frame, bool capture) noexcept {
     lens_chain_drawn_ = false;
     sun_apply_applied_=sun_apply_attempted_=false; // fixture keys 70/71 describe this frame
     sun_original_refused_draws_=0;
+    if (thin_vote_upload_) { if (thin_vote_cache_) thin_vote_cache_->begin_frame(); release_thin_votes(); thin_vote_frame_ = {}; if (ownership::buffer_invalidations_pending()) drain_thin_invalidations(); } // reads queued by a frame without a scene end are dropped (its next draws re-queue)
     if (retention_) retention_frame_begin(); // retirements are consumed here too; sightings of a frame without a scene end leave
     if (candidates_requested_) { if (depth_replay_requested_) release_depth_leases(); sun_latch_.begin_frame(); point_sun_.begin_frame(); point_sun_poll_ticks_ = 0; candidate_bounds_unavailable_ = 0; candidate_extents_.begin_frame(); candidate_bounds_state_ = 0; release_candidate_extents(); candidates_.reset(); } // a frame that never reached a scene end keeps no records, leases or queued reads; the sun and the box rows are per frame
     // Keep failed-lane storage until the next scene latch can compare its
@@ -3920,7 +3951,7 @@ HRESULT MotionOutput::undo(MotionRoute& route) noexcept {
     if (route.vs_constants_set && shadow_.vs_reserved_written)
         step(direct_call<SetConstantsFFn>(SetVertexShaderConstantF, 252, shadow_.vs_reserved, 4));
     if (route.ps_constants_set && shadow_.ps_reserved_written)
-        step(direct_call<SetConstantsFFn>(SetPixelShaderConstantF, 216, shadow_.ps_reserved, 2));
+        step(direct_call<SetConstantsFFn>(SetPixelShaderConstantF, 216, shadow_.ps_reserved, thin_vote_upload_ ? 3u : 2u));
     route.write_set = route.rt_set = route.ps_set = route.vs_set = false;
     route.write2_set = route.rt2_set = false;
     route.vs_constants_set = route.ps_constants_set = false;
@@ -5580,6 +5611,10 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     }
     const float pixel[8] = {1.f / float(target_width_), 1.f / float(target_height_), 0.f, 0.f,
                             previous_rows ? 1.f : 0.f, lightmap_widen_draw_scale_[0], lightmap_widen_draw_scale_[1], lightmap_fade_gain_};
+    // Thin vote (X3M_TAA_THIN_VOTE) only: c218 joins the same upload, 12 floats, c216 and c217 the eight above; c218.x
+    // is the depth fragment's RT2 .a, 1 - thin on an opaque routed row, 1 otherwise. Off: the eight alone, as before.
+    float pixel_thin[12];
+    if (thin_vote_upload_) { std::memcpy(pixel_thin, pixel, sizeof pixel); pixel_thin[9] = pixel_thin[10] = pixel_thin[11] = 0.f; thin_vote_alpha(route, rows.data(), pixel_thin[8]); }
     const std::uint64_t apply_begin = draw_stamp();
     bool material = false;
     if (linear_material_requested_) {
@@ -5614,9 +5649,9 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     if (SUCCEEDED(hr)) {
         route.ps_constants_set = true;
         hr = direct_call<SetConstantsFFn>(SetPixelShaderConstantF,
-            renderer::MaterialMotionAbi::pixel_coordinates_constant, pixel, 2);
+            renderer::MaterialMotionAbi::pixel_coordinates_constant, thin_vote_upload_ ? pixel_thin : pixel, thin_vote_upload_ ? 3u : 2u);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-        if (SUCCEEDED(hr)) { std::memcpy(fixture_last_pixel_abi_, pixel, sizeof pixel); fixture_abi_known_ = true; }
+        if (SUCCEEDED(hr)) { std::memset(fixture_last_pixel_abi_, 0, sizeof fixture_last_pixel_abi_); std::memcpy(fixture_last_pixel_abi_, thin_vote_upload_ ? pixel_thin : pixel, (thin_vote_upload_ ? 12u : 8u) * sizeof(float)); fixture_abi_known_ = true; } // the uploaded registers only
 #endif
     }
     if (SUCCEEDED(hr)) hr = bind_targets(route);
@@ -7065,6 +7100,7 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             static_cast<unsigned long>(c.restore_getters), static_cast<unsigned long>(c.restore_declines));
     }
     if (taa_enabled_ && (capture_ || frame_ % camera_log_interval_ == 0)) log_camera_state();
+    if (thin_vote_upload_ && (capture_ || (telemetry_ && frame_ % frame_log_interval_ == 0))) log_thin_vote_frame();
     if (telemetry_ && frame_ % frame_log_interval_ == 0)
         log("shadow_lease_retirement device=%llu frame=%llu calls=%u records=%u refs=%u us=%.1f clock_errors=%u",
             id_,frame_,counters_.lease_retire_calls,counters_.lease_retire_records,counters_.lease_retire_refs,
@@ -7216,7 +7252,7 @@ HRESULT MotionOutput::fixture_hdr_exposure(float* out, std::size_t floats) const
 HRESULT MotionOutput::fixture_last_pixel_abi(float* out, std::size_t floats) const noexcept {
     if (!out || floats < 8) return D3DERR_MOREDATA;
     if (!fixture_abi_known_) return D3DERR_NOTFOUND;
-    std::memcpy(out, fixture_last_pixel_abi_, sizeof fixture_last_pixel_abi_);
+    std::memcpy(out, fixture_last_pixel_abi_, (floats >= 12 ? 12u : 8u) * sizeof(float)); // 12: c218 of the thin vote as well
     return S_OK;
 }
 HRESULT MotionOutput::fixture_readback(unsigned target, float* out, std::size_t floats, UINT* width, UINT* height) noexcept {
@@ -7251,6 +7287,216 @@ HRESULT MotionOutput::fixture_readback(unsigned target, float* out, std::size_t 
     return hr;
 }
 #endif
+
+// ---- thin vote (X3M_TAA_THIN_VOTE; thin_vote_core.h) -----------------------
+//
+// docs/architecture/taa-thin-geometry-alternatives.md section 3.2. Per routed draw: the subset's cached histogram
+// (one set-associative lookup on the route key's allocation ids and draw range) shifted by the draw's projected scale
+// from its own submitted rows; no API call, no allocation. A subset without a histogram is queued once (its VB and IB
+// wrappers AddRef'd) and read at the scene end through the application's wrapper: the lock bookends must show the
+// range quiet (no pending or in-flight Lock, the extent reader's rule), the descriptors MANAGED and not DYNAMIC, then
+// one READONLY Lock of the vertex window and one of the index range, the histogram, both Unlocks. Unreadable subsets
+// (another pool, out of range, nonfinite, no triangle, or read_attempts failures) are never read again and never vote.
+void MotionOutput::thin_vote_alpha(const MotionRoute& route, const float* rows, float& alpha) noexcept {
+    alpha = 1.f;
+    auto& f = thin_vote_frame_;
+    ++f.draws;
+    const auto& k = route.key;
+    // Opaque routed rows only (the fade arm, the overlay arm and alpha-tested rows write 1); triangle lists of a
+    // supported position element with the shadowed stream and indices equal to the key's.
+    if (route.alpha_tested || route.fade_arm || route.overlay || !thin_vote_cache_ || !sun_lane_active_) return;
+    if (k.topology != D3DPT_TRIANGLELIST || !thin_vote::position_type_supported(k.position_type) || !k.primitives ||
+        shadow_.stream0 != k.vertex_buffer || (k.indexed && shadow_.indices != k.index_buffer) || !shadow_.stream0_identity ||
+        (k.indexed && !shadow_.indices_identity)) return;
+    ++f.opaque;
+    const std::uint64_t begin = draw_stamp();
+    thin_vote_lookup(route, rows, alpha);
+    if (begin) f.ticks += draw_stamp() - begin;
+}
+void MotionOutput::thin_vote_lookup(const MotionRoute& route, const float* rows, float& alpha) noexcept {
+    auto& f = thin_vote_frame_;
+    const auto& k = route.key;
+    // A rewritten or released buffer's entries go at its write (ownership's invalidation queue), not per draw: one
+    // atomic load here, a drain only when a watched buffer was written since.
+    if (ownership::buffer_invalidations_pending()) drain_thin_invalidations();
+    thin_vote::Key key;
+    key.vb = k.vertex_buffer; key.ib = k.indexed ? k.index_buffer : 0; key.stream_offset = k.stream_offset; key.stride = k.stride;
+    key.position_offset = k.position_offset; key.position_type = k.position_type; key.first = k.first; key.primitives = k.primitives;
+    key.min_vertex = k.indexed ? k.min_vertex : 0; key.vertex_count = k.indexed ? k.vertex_count : 0; key.base_vertex = k.indexed ? k.base_vertex : 0;
+    const thin_vote::Entry* e = thin_vote_cache_->find(key);
+    if (!e || e->state == thin_vote::State::Retry) {
+        ++f.missed;
+        if (e && e->state == thin_vote::State::Retry && e->attempts >= thin_vote::read_attempts) return;
+        for (unsigned i = 0; i < thin_vote_read_count_; ++i) if (thin_vote_reads_[i].key == key) return;
+        if (thin_vote_read_count_ >= thin_vote::reads_per_frame) { ++f.dropped; return; } // the next frame's draw re-queues
+        auto& q = thin_vote_reads_[thin_vote_read_count_++];
+        q.key = key; q.vb = shadow_.stream0_identity; q.ib = k.indexed ? shadow_.indices_identity : 0;
+        reinterpret_cast<IUnknown*>(q.vb)->AddRef();
+        if (q.ib) reinterpret_cast<IUnknown*>(q.ib)->AddRef();
+        ++f.queued;
+        return;
+    }
+    if (e->state != thin_vote::State::Known) { ++f.unreadable; return; }
+    ++f.known;
+    float scale = 0.f;
+    if (!thin_vote::log2_pixels_per_unit(rows, float(target_width_), scale)) { ++f.no_scale; return; }
+    alpha = thin_vote::rt2_alpha(thin_vote::thin_fraction(e->histogram, scale));
+    if (alpha < 1.f) { ++f.voted; if (alpha < f.min_alpha) f.min_alpha = alpha; }
+}
+void MotionOutput::drain_thin_invalidations() noexcept {
+    bool overflow = false;
+    const unsigned n = ownership::drain_buffer_invalidations(thin_vote_drained_, unsigned(std::size(thin_vote_drained_)), &overflow);
+    auto& t = thin_vote_totals_;
+    t.invalidated += n;
+    if (!thin_vote_cache_) return;
+    if (overflow) { // more writes than the queue holds: every histogram and queued read may be stale (and a lost
+        // release may leave a write count on a reused pointer): the cache starts over
+        ++t.overflows; thin_vote_cache_->clear(); thin_vote_cache_->volatility.clear();
+        for (unsigned i = 0; i < thin_vote_read_count_; ++i) thin_vote_reads_[i].stale = true;
+        return;
+    }
+    if (!n) return;
+    // Bit 0: the wrapper's final release (forget its write count: the pointer may come back as another buffer);
+    // otherwise a write (count it: past volatile_after writes its subsets are no longer read). Either drops its entries
+    // through the identity index.
+    for (unsigned i = 0; i < n; ++i) {
+        const std::uintptr_t id = thin_vote_drained_[i] & ~std::uintptr_t(1);
+        if (thin_vote_drained_[i] & 1u) thin_vote_cache_->volatility.forget(id);
+        else if (thin_vote_cache_->volatility.bump(id) == thin_vote::volatile_after) ++t.volatile_buffers;
+        t.dropped_entries += thin_vote_cache_->invalidate(id);
+        thin_vote_drained_[i] = id;
+    }
+    std::sort(thin_vote_drained_, thin_vote_drained_ + n);
+    // A queued read of a buffer written after the draw that queued it: skipped (the next draw queues it again).
+    for (unsigned i = 0; i < thin_vote_read_count_; ++i) {
+        auto& q = thin_vote_reads_[i];
+        for (const std::uintptr_t id : {q.vb, q.ib})
+            if (id && std::binary_search(thin_vote_drained_, thin_vote_drained_ + n, id)) q.stale = true;
+    }
+}
+void MotionOutput::read_thin_votes() noexcept {
+    if (!thin_vote_read_count_) return;
+    const DWORD error = GetLastError();
+    if (ownership::buffer_invalidations_pending()) drain_thin_invalidations();
+    auto& t = thin_vote_totals_;
+    std::uint64_t triangles = 0;
+    for (unsigned i = 0; i < thin_vote_read_count_; ++i) {
+        auto& q = thin_vote_reads_[i];
+        auto* vb = reinterpret_cast<IDirect3DVertexBuffer9*>(q.vb);
+        auto* ib = reinterpret_cast<IDirect3DIndexBuffer9*>(q.ib);
+        if (thin_vote_cache_ && triangles < thin_vote::triangles_per_frame && !(thin_vote_cache_->find(q.key) && thin_vote_cache_->find(q.key)->state != thin_vote::State::Retry)) {
+            const auto& k = q.key;
+            enum class Outcome { Measured, Unreadable, Retry, Stale } outcome = Outcome::Retry;
+            ownership::BufferLockView vv{}, iv{};
+            const auto quiet = [](IDirect3DResource9* b, ownership::BufferLockView& v) noexcept {
+                return SUCCEEDED(ownership::get_buffer_lock_view(b, &v)) && v.known && !v.pending_locks && !v.in_flight_locks && !v.in_flight_unlocks;
+            };
+            D3DVERTEXBUFFER_DESC vd{}; D3DINDEXBUFFER_DESC id{};
+            const bool indexed = ib != nullptr;
+            // The vertex window: [base + min, + count) indexed, [first, + 3 primitives) otherwise.
+            const std::int64_t first_vertex = indexed ? std::int64_t(k.base_vertex) + k.min_vertex : std::int64_t(k.first);
+            const std::uint64_t window = indexed ? k.vertex_count : std::uint64_t(k.primitives) * 3u;
+            const std::uint64_t v_offset = std::uint64_t(k.stream_offset) + std::uint64_t(first_vertex < 0 ? 0 : first_vertex) * k.stride;
+            const std::uint64_t v_size = window ? (window - 1) * k.stride + k.position_offset + thin_vote::position_bytes(k.position_type) : 0;
+            ownership::BufferReadability vr{}, ir{};
+            bool watch = false; // an Unreadable entry that a write or release of its wrappers must drop
+            if (q.stale) { outcome = Outcome::Stale; ++t.stale; }
+            else if (thin_vote_cache_->volatility.is_volatile(q.vb) || (q.ib && thin_vote_cache_->volatility.is_volatile(q.ib))) {
+                // Rewritten volatile_after times since its reads began: refused without a Lock, still watched so its
+                // release forgets the count.
+                outcome = Outcome::Unreadable; ++t.volatile_refused; watch = true;
+            } else if (!quiet(vb, vv) || (indexed && !quiet(ib, iv))) { outcome = Outcome::Retry; ++t.not_quiet; }
+            else if (FAILED(ownership::get_buffer_readability(vb, &vr)) || (indexed && FAILED(ownership::get_buffer_readability(ib, &ir)))) { outcome = Outcome::Retry; ++t.lock_failed; }
+            else if (vr.pool != D3DPOOL_MANAGED || (vr.native_usage & D3DUSAGE_DYNAMIC) || (indexed && (ir.pool != D3DPOOL_MANAGED || (ir.native_usage & D3DUSAGE_DYNAMIC)))) {
+                outcome = Outcome::Unreadable; ++t.not_managed;
+            } else if (!vr.readable || (indexed && !ir.readable)) {
+                // MANAGED but WRITEONLY native storage (created before the readable policy was armed, or refused by it):
+                // a READONLY Lock of it is not documented readable, so no Lock at all.
+                outcome = Outcome::Unreadable; ++t.not_readable;
+            } else if (FAILED(vb->GetDesc(&vd)) || (indexed && FAILED(ib->GetDesc(&id)))) { outcome = Outcome::Retry; ++t.lock_failed; }
+            else {
+                const std::uint32_t index_bytes = indexed ? (id.Format == D3DFMT_INDEX32 ? 4u : id.Format == D3DFMT_INDEX16 ? 2u : 0u) : 0u;
+                const std::uint64_t i_offset = std::uint64_t(k.first) * index_bytes, i_size = std::uint64_t(k.primitives) * 3u * index_bytes;
+                if (first_vertex < 0 || !window || window > 0xFFFFFFFFull || v_offset + v_size > vd.Size || (indexed && (!index_bytes || i_offset + i_size > id.Size))) {
+                    outcome = Outcome::Unreadable; ++t.range;
+                } else {
+                    const std::uint64_t lock_begin = stamp();
+                    void* vdata = nullptr; void* idata = nullptr;
+                    // A successful Lock is always unlocked, even when it returned no pointer.
+                    const bool vheld = SUCCEEDED(vb->Lock(UINT(v_offset), UINT(v_size), &vdata, D3DLOCK_READONLY));
+                    const bool iheld = vheld && vdata && indexed && SUCCEEDED(ib->Lock(UINT(i_offset), UINT(i_size), &idata, D3DLOCK_READONLY));
+                    std::uint64_t lock_ticks = stamp() - lock_begin;
+                    if (vheld && vdata && (!indexed || (iheld && idata))) {
+                        const std::uint64_t measure_begin = stamp();
+                        thin_vote::Histogram h;
+                        const bool ok = thin_vote::measure(static_cast<const unsigned char*>(vdata), std::uint32_t(window), k.stride, k.position_offset, k.position_type,
+                                                           idata, index_bytes == 4, indexed ? k.min_vertex : 0u, k.primitives, h);
+                        const std::uint64_t measure_ticks = stamp() - measure_begin;
+                        t.measure_ticks += measure_ticks; if (measure_ticks > t.max_measure_ticks) t.max_measure_ticks = measure_ticks;
+                        const std::uint32_t measured_triangles = k.primitives < thin_vote::sample_cap ? k.primitives : thin_vote::sample_cap;
+                        triangles += measured_triangles; t.triangles += measured_triangles;
+                        if (ok && thin_vote_cache_->store(k, &h, q.vb, q.ib)) {
+                            // Watch both wrappers from here on: a later write or their release drops this entry.
+                            ownership::watch_buffer_writes(vb);
+                            if (ib) ownership::watch_buffer_writes(ib);
+                            ++t.measured; outcome = Outcome::Measured;
+                        } else if (ok) { ++t.measured; outcome = Outcome::Measured; } // stored nowhere (every way used this frame): read again later
+                        else { outcome = Outcome::Unreadable; ++t.geometry; watch = true; } // a rewrite may make it measurable
+                    } else { outcome = Outcome::Retry; ++t.lock_failed; }
+                    const std::uint64_t unlock_begin = stamp();
+                    if (iheld) ib->Unlock();
+                    if (vheld) vb->Unlock();
+                    lock_ticks += stamp() - unlock_begin;
+                    t.lock_ticks += lock_ticks;
+                    ++t.reads;
+                }
+            }
+            if (outcome == Outcome::Unreadable) {
+                if (thin_vote_cache_->store(k, nullptr, watch ? q.vb : 0, watch ? q.ib : 0) && watch) {
+                    ownership::watch_buffer_writes(vb);
+                    if (ib) ownership::watch_buffer_writes(ib);
+                }
+                ++t.unreadable;
+            }
+            else if (outcome == Outcome::Retry) { thin_vote_cache_->retry(k); ++t.retries; }
+            // Outcome::Stale: the buffer was written after the draw that queued it: no entry (the next draw queues its new revision).
+        }
+        if (ib) ib->Release();
+        if (vb) vb->Release();
+        q = {};
+    }
+    thin_vote_read_count_ = 0;
+    SetLastError(error);
+}
+void MotionOutput::release_thin_votes() noexcept {
+    if (!thin_vote_read_count_) return;
+    const DWORD error = GetLastError(); // a final Release may run the application's and the backend's cleanup
+    for (unsigned i = 0; i < thin_vote_read_count_; ++i) {
+        auto& q = thin_vote_reads_[i];
+        if (q.ib) reinterpret_cast<IUnknown*>(q.ib)->Release();
+        if (q.vb) reinterpret_cast<IUnknown*>(q.vb)->Release();
+        q = {};
+    }
+    thin_vote_read_count_ = 0;
+    SetLastError(error);
+}
+void MotionOutput::log_thin_vote_frame() noexcept {
+    const auto& f = thin_vote_frame_; const auto& t = thin_vote_totals_;
+    log("thin_vote_frame device=%llu frame=%llu lane=%u draws=%u opaque=%u known=%u voted=%u min_alpha=%.4f unreadable=%u missed=%u queued=%u dropped=%u no_scale=%u "
+        "draw_us=%.2f reads=%llu measured=%llu unreadable_total=%llu retries=%llu not_managed=%llu not_readable=%llu stale=%llu range=%llu geometry=%llu "
+        "invalidated=%llu dropped_entries=%llu overflows=%llu volatile_buffers=%llu volatile_refused=%llu "
+        "not_quiet=%llu lock_failed=%llu triangles=%llu lock_us=%.1f measure_us=%.1f max_measure_us=%.1f refused=%u",
+        id_, frame_, unsigned(sun_lane_active_), f.draws, f.opaque, f.known, f.voted, double(f.min_alpha), f.unreadable, f.missed, f.queued, f.dropped, f.no_scale,
+        telemetry::microseconds(f.ticks),
+        static_cast<unsigned long long>(t.reads), static_cast<unsigned long long>(t.measured), static_cast<unsigned long long>(t.unreadable),
+        static_cast<unsigned long long>(t.retries), static_cast<unsigned long long>(t.not_managed), static_cast<unsigned long long>(t.not_readable),
+        static_cast<unsigned long long>(t.stale), static_cast<unsigned long long>(t.range),
+        static_cast<unsigned long long>(t.geometry), static_cast<unsigned long long>(t.invalidated), static_cast<unsigned long long>(t.dropped_entries),
+        static_cast<unsigned long long>(t.overflows), static_cast<unsigned long long>(t.volatile_buffers), static_cast<unsigned long long>(t.volatile_refused),
+        static_cast<unsigned long long>(t.not_quiet), static_cast<unsigned long long>(t.lock_failed),
+        static_cast<unsigned long long>(t.triangles), telemetry::microseconds(t.lock_ticks), telemetry::microseconds(t.measure_ticks),
+        telemetry::microseconds(t.max_measure_ticks), thin_vote_cache_ ? thin_vote_cache_->refused : 0u);
+}
 
 // ---- caster-candidate counter (shadow_replay_candidates.h) ----------------
 //

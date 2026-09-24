@@ -133,6 +133,7 @@ public:
  // extracted bind path only reads the flags and reports a failed creation.
  bool sun_lane_requested_=false,sun_lane_qualified_=false,sun_lane_active_=false,sun_lane_failed_=false;
  bool original_fill_requested_=false; unsigned sun_original_refused_draws_=0; // read by the bind path's original-share gate
+ bool thin_vote_upload_=false; // X3M_TAA_THIN_VOTE: off in this seam (the extracted undo restores c216-c217 only)
  bool hull_gain_enabled_=true,hull_lightmap_enabled_=true; std::uint32_t hull_lightmap_draws_=0; // F6 guide-light flag, F4 light-map flag and light-map draw counter read by the bind/after-draw paths
  float lightmap_widen_draw_scale_[2]={0.f,0.f}; struct{DWORD levels=0;}samplers_[16]; // hull emissive widening: this draw's footprint lanes (0 = off) and the sampler shadow's level counts read by the bind path
  unsigned sun_qualifications_=0;void qualify_sun_lane(){++sun_qualifications_;}

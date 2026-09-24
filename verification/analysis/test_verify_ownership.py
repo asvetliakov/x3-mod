@@ -18,10 +18,10 @@ class OwnershipReportTests(unittest.TestCase):
         self.assertEqual(verifier.verify_report('baseline', self.baseline),
                          {'checks': 370, 'failures': 0})
         self.assertEqual(verifier.verify_report('wrapped', self.wrapped),
-                         {'checks': 563, 'failures': 0})
+                         {'checks': 661, 'failures': 0})
 
     def test_malformed_terminal_is_rejected(self):
-        bad = self.wrapped.replace('OWNERSHIP RESULT checks=563 failures=0',
+        bad = self.wrapped.replace('OWNERSHIP RESULT checks=661 failures=0',
                                    'OWNERSHIP RESULT checks=invalid failures=0')
         with self.assertRaisesRegex(AssertionError, 'incomplete check inventory'):
             verifier.verify_report('wrapped', bad)

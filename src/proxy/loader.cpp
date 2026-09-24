@@ -36,6 +36,7 @@ bool depth_copy_enabled = false;
 bool finite_positions_enabled = false;
 bool lock_bookends_enabled = false;
 bool locked_prefix_enabled = false;
+bool readable_buffers_enabled = false; // X3M_TAA_THIN_VOTE=on under ownership: the readable-MANAGED creation policy
 INIT_ONCE once = INIT_ONCE_STATIC_INIT;
 BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     x3m::initialize_log(self_module); // logs the proxy_identity/proxy_options header first
@@ -53,8 +54,14 @@ BOOL CALLBACK load_backend(PINIT_ONCE, PVOID, PVOID*) {
     // Caster-candidate counter (shadow-replay-gates.md section 3): the lock
     // bookends ride the same switch; capture.cpp gates the route side.
     const bool bookends_requested = (GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_CANDIDATES", setting, 8) == 1 && setting[0] == L'1')
-        || (GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_DEPTH", setting, 8) == 1 && setting[0] == L'1'); // the depth replay needs the same bookends
+        || (GetEnvironmentVariableW(L"X3M_SHADOW_REPLAY_DEPTH", setting, 8) == 1 && setting[0] == L'1') // the depth replay needs the same bookends
+        || x3m::thin_vote_route_gate(); // so do the thin vote's histogram reads
     lock_bookends_enabled = ownership_enabled && bookends_requested;
+    // The thin vote reads its subsets' histograms through READONLY Locks: those buffers must be created readable,
+    // from the first creation on (wrap_factory at Direct3DCreate9 below), whatever the game asks for. Armed only when
+    // the vote can run (initialize_log's gate: the option with route, TAA, HDR, lane and ownership); a set without a
+    // prerequisite leaves every creation untouched.
+    readable_buffers_enabled = ownership_enabled && x3m::thin_vote_route_gate();
     // Step B locked-prefix bounds (screen-emission-region.md): the ownership
     // Unlock scan; MotionOutput reads the same switch for the draw side.
     // Step C (X3M_SCREEN_EMISSION=1 with the route's prerequisites, the gate
@@ -224,6 +231,7 @@ extern "C" IDirect3D9* WINAPI Direct3DCreate9(UINT sdk) {
         options.track_buffer_lock_attempts = lock_bookends_enabled;
         options.capture_finite_positions = finite_positions_enabled;
         options.locked_prefix_bounds = locked_prefix_enabled;
+        options.readable_managed_buffers = readable_buffers_enabled;
         // Live application-call admission is not yet serialized with replay.
         // Keep execution observation off until live replay consumes it. Its
         // synchronized snapshots do not provide write exclusion. Native

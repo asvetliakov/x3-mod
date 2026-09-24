@@ -41,6 +41,18 @@ struct CopyDepth {
     CopyDepthView view;
 };
 
+// Write invalidations of watched buffers (watch_buffer_writes): a fixed ring under registry_mutex, its fill count
+// mirrored in an atomic for the consumer's per-draw test.
+#ifdef X3M_OWNERSHIP_THIN_FIXTURE
+constexpr unsigned invalidation_capacity = 4; // the ownership fixture's overflow check
+#else
+constexpr unsigned invalidation_capacity = 1024;
+#endif
+std::uintptr_t invalidation_queue[invalidation_capacity];
+unsigned invalidation_count = 0;
+bool invalidation_overflow = false;
+std::atomic<unsigned> invalidations_waiting{0};
+
 // Weak registries contain only wrappers with positive application refcounts.
 // Backend binding/state-block retention never adds an application reference.
 // Never hold this lock across backend Release: destruction can reenter COM.
@@ -66,9 +78,19 @@ struct Node {
     IUnknown* identity = nullptr; // Borrowed, stable while backend is owned.
     Node* parent;
     LockSidecar* lock_sidecar=nullptr; // CPU reference only; no native ownership edge.
+    bool write_watch=false, watched_write=false; // watch_buffer_writes; a writable Lock of a watched buffer is open
     Node(Kind type, IUnknown* native, Node* owner) : kind(type), backend(native), parent(owner) {}
     virtual ~Node() { release_lock_sidecar(lock_sidecar); }
 };
+// One-shot: the push clears the watch (the consumer drops the entry and watches again after its next read). A final
+// release is marked in bit 0 of the pointer value (COM interface pointers are 4-byte aligned).
+void push_invalidation(Node* node, bool released = false) noexcept { // registry_mutex held
+    node->write_watch = false; node->watched_write = false;
+    const std::uintptr_t value = reinterpret_cast<std::uintptr_t>(node->application) | (released ? 1u : 0u);
+    if (invalidation_count < invalidation_capacity) invalidation_queue[invalidation_count++] = value;
+    else invalidation_overflow = true;
+    invalidations_waiting.store(invalidation_count + (invalidation_overflow ? 1u : 0u), std::memory_order_release);
+}
 
 HRESULT query(Node* node, REFIID iid, void** out);
 ULONG add_ref(Node* node);
@@ -769,6 +791,7 @@ ULONG release(Node* node, ApplicationAdmissionAbi& admission) {
         std::lock_guard<std::recursive_mutex> lock(registry_mutex);
         const ULONG remaining = --node->refs;
         if (remaining) return remaining;
+        if (node->write_watch) push_invalidation(node, true);
         application_nodes.erase(node->application);
         native_nodes.erase(node->identity);
         if (node->kind == Kind::VertexBuffer && device_of(node)->options.locked_prefix_bounds) prefix_table.erase(reinterpret_cast<std::uintptr_t>(node));
@@ -886,6 +909,7 @@ HRESULT adopt(Node* parent, Kind kind, IUnknown* owned, REFIID iid, void** out,
                  static_cast<Factory*>(existing)->options.track_execution_state != options->track_execution_state ||
                  static_cast<Factory*>(existing)->options.capture_finite_positions != options->capture_finite_positions ||
                  static_cast<Factory*>(existing)->options.prepare_readable_managed_uploads != options->prepare_readable_managed_uploads ||
+                 static_cast<Factory*>(existing)->options.readable_managed_buffers != options->readable_managed_buffers ||
                  static_cast<Factory*>(existing)->options.finite_payload_budget != options->finite_payload_budget ||
                  static_cast<Factory*>(existing)->options.finite_sidecar_limit != options->finite_sidecar_limit))
                 return E_INVALIDARG; // Never silently reconfigure a live factory.
@@ -952,6 +976,29 @@ void write_buffer_metadata(Device* device, IDirect3DResource9* native, const Buf
     const HRESULT hr = native->SetPrivateData(buffer_content_guid, &value, sizeof(value), 0);
     if (FAILED(hr)) fail_buffer_tracking(device, hr);
 }
+// Options::readable_managed_buffers: the Usage the application asked for, on a buffer created without WRITEONLY.
+const GUID readable_usage_guid = {0x7a1b3c55,0x2e4d,0x4f09,{0x8b,0x61,0x3c,0x9d,0x0e,0x52,0x7f,0x14}};
+struct ReadableUsageTag { std::uint32_t magic = 0x58335255, requested_usage = 0; };
+// Once any buffer carries a tag, every GetDesc reads it, whatever the live options (a disarmed policy or a retired
+// finite owner must not expose the native Usage of a converted buffer).
+std::atomic<bool> readable_tags_written{false};
+#ifdef X3M_OWNERSHIP_THIN_FIXTURE
+unsigned thin_fixture_faults = 0; // bit 0: the tag write fails; bit 1: the converted creation fails
+#endif
+bool tag_readable_usage(IDirect3DResource9* native, DWORD requested_usage) noexcept {
+#ifdef X3M_OWNERSHIP_THIN_FIXTURE
+    if (thin_fixture_faults & 1u) return false;
+#endif
+    const ReadableUsageTag tag{0x58335255, requested_usage};
+    if (FAILED(native->SetPrivateData(readable_usage_guid, &tag, sizeof tag, 0))) return false;
+    readable_tags_written.store(true, std::memory_order_relaxed);
+    return true;
+}
+bool read_readable_usage(IDirect3DResource9* native, DWORD& requested_usage) noexcept {
+    ReadableUsageTag tag{}; DWORD size = sizeof tag;
+    if (FAILED(native->GetPrivateData(readable_usage_guid, &tag, &size)) || size != sizeof tag || tag.magic != 0x58335255) return false;
+    requested_usage = tag.requested_usage; return true;
+}
 bool initialize_buffer(Device* device, IDirect3DResource9* native, DWORD requested_usage) {
     PreserveExecution preserve;
     if (!device->options.track_buffer_writes) return false;
@@ -973,20 +1020,27 @@ HRESULT create_buffer(Device* device,UINT length,DWORD usage,D3DPOOL pool,
     ExecutionState incoming;
     const auto upload=device->options.prepare_readable_managed_uploads?upload_enter(device,nullptr,true):UploadTicket{};
     portable_upload::CreationPlan plan;
+    bool finite_plan=false;
     {
         std::lock_guard<std::recursive_mutex> lock(registry_mutex);
-        plan=portable_upload::plan_creation((device->options.capture_finite_positions||
-            device->options.prepare_readable_managed_uploads)&&
-            device->finite_owner&&device->finite_owner->healthy&&device->options.track_buffer_writes,
-            length,usage,pool,shared);
+        finite_plan=(device->options.capture_finite_positions||device->options.prepare_readable_managed_uploads)&&
+            device->finite_owner&&device->finite_owner->healthy&&device->options.track_buffer_writes;
+        plan=portable_upload::plan_creation(finite_plan||device->options.readable_managed_buffers,length,usage,pool,shared);
     }
     Buffer* owned=untouched_output<Buffer>();
     incoming.restore();
+#ifdef X3M_OWNERSHIP_THIN_FIXTURE
+    HRESULT hr=plan.converted&&(thin_fixture_faults&2u)?E_OUTOFMEMORY:create(plan.native_usage,out?&owned:nullptr);
+#else
     HRESULT hr=create(plan.native_usage,out?&owned:nullptr);
+#endif
     ExecutionState outgoing;
     bool initialized=false;
-    if(SUCCEEDED(hr)&&owned&&owned!=untouched_output<Buffer>())
+    if(SUCCEEDED(hr)&&owned&&owned!=untouched_output<Buffer>()){
         initialized=initialize_buffer(device,owned,usage);
+        // The readable policy alone owns no finite sidecar: its admission is the Usage tag.
+        if(plan.converted&&!finite_plan)initialized=tag_readable_usage(owned,usage);
+    }
     if(plan.converted&&(!SUCCEEDED(hr)||!initialized)){
         if(owned&&owned!=untouched_output<Buffer>())owned->Release();
         owned=untouched_output<Buffer>();incoming.restore();
@@ -1015,16 +1069,22 @@ template<class Desc> HRESULT buffer_desc_impl(Node* node,Desc* desc){
         else return static_cast<IDirect3DIndexBuffer9*>(node->backend)->GetDesc(desc);
     };
     auto* device=device_of(node);
-    if(!device->options.capture_finite_positions&&!device->options.prepare_readable_managed_uploads)
-        return observe_result(device,native_call());
+    const bool finite=device->options.capture_finite_positions||device->options.prepare_readable_managed_uploads;
+    const bool tags=readable_tags_written.load(std::memory_order_relaxed);
+    if(!finite&&!tags)return observe_result(device,native_call());
     const HRESULT hr=native_call();
     ExecutionState outgoing;
     if(SUCCEEDED(hr)&&desc){
         std::lock_guard<std::recursive_mutex> lock(registry_mutex);
-        // Metadata survives payload retirement, device reset and recreation of
-        // the application wrapper. No sidecar owns a native resource reference.
-        SideReference side{acquire_finite(device_of(node),static_cast<IDirect3DResource9*>(node->backend),FiniteAcquireMode::ImmutableMetadata)};
-        if(side.value)desc->Usage=side.value->requested_usage;
+        DWORD requested=0;
+        // A readable-policy tag is the requested Usage on every branch (it exists only on buffers the policy converted).
+        if(tags&&read_readable_usage(static_cast<IDirect3DResource9*>(node->backend),requested))desc->Usage=requested;
+        else if(finite){
+            // Metadata survives payload retirement, device reset and recreation of
+            // the application wrapper. No sidecar owns a native resource reference.
+            SideReference side{acquire_finite(device_of(node),static_cast<IDirect3DResource9*>(node->backend),FiniteAcquireMode::ImmutableMetadata)};
+            if(side.value)desc->Usage=side.value->requested_usage;
+        }
     }
     observe_result(device_of(node),hr);outgoing.restore();return hr;
 }
@@ -1096,6 +1156,7 @@ HRESULT buffer_lock(Node* node, UINT offset, UINT size, void** data, DWORD flags
     }
     if (SUCCEEDED(hr)) {
         auto* resource=static_cast<IDirect3DResource9*>(node->backend);
+        if(node->write_watch&&!(flags&D3DLOCK_READONLY)){std::lock_guard<std::recursive_mutex> lock(registry_mutex);node->watched_write=true;}
         record_buffer_event(device,resource,BufferEvent::Lock,flags,node->lock_sidecar);
         std::lock_guard<std::recursive_mutex> lock(registry_mutex);
         SideReference hold{device->options.capture_finite_positions?acquire_finite(device,resource):nullptr};auto* side=hold.value;
@@ -1172,6 +1233,7 @@ HRESULT buffer_unlock(Node* node) {
         std::lock_guard<std::recursive_mutex> lock(registry_mutex);
         prefix_table.invalidate(reinterpret_cast<std::uintptr_t>(node));
     }
+    if(node->watched_write){std::lock_guard<std::recursive_mutex> lock(registry_mutex);node->watched_write=false;push_invalidation(node);}
     record_buffer_event(device,resource,SUCCEEDED(hr)?BufferEvent::Unlock:BufferEvent::FailedUnlock,0,node->lock_sidecar);
     { std::lock_guard<std::recursive_mutex> lock(registry_mutex);
       auto* side=hold.value;
@@ -1265,6 +1327,9 @@ HRESULT process_vertices(Device* node, UINT first, UINT destination, UINT count,
     const HRESULT hr=node->native_->ProcessVertices(first,destination,count,native,native_declaration,flags);
     ExecutionState outgoing;
     if(SUCCEEDED(hr)&&native){
+        {std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+         const auto found=application_nodes.find(buffer);
+         if(found!=application_nodes.end()&&found->second->write_watch)push_invalidation(found->second);}
         if(node->options.track_buffer_lock_attempts){
             std::lock_guard<std::recursive_mutex> lock(registry_mutex);
             const auto found=application_nodes.find(buffer);
@@ -1834,6 +1899,7 @@ HRESULT invalidate_native_buffer_evidence(IUnknown* application) noexcept {
     // existing content/history/lease request becomes stale. The caller excludes
     // all queries throughout the following native mutation interval.
     upload_mutation(node);
+    if(node->write_watch)push_invalidation(node);
     record_buffer_event(device,resource,BufferEvent::ProcessVertices,0,node->lock_sidecar);
     SideReference side{acquire_finite(device,resource)};
     if(side.value)invalidate_finite(side.value,FiniteEvidenceReason::NativeContract);
@@ -1904,6 +1970,62 @@ HRESULT get_buffer_content_view(IDirect3DResource9* application, BufferContentVi
     out->ambiguous = value.ambiguous != 0;
     out->known = !out->ambiguous && !value.pending;
     out->status = out->known ? S_OK : S_FALSE;
+    return S_OK;
+}
+
+HRESULT get_buffer_readability(IDirect3DResource9* application, BufferReadability* out) noexcept {
+    if (!out) return E_POINTER;
+    *out = {};
+    const DWORD error = GetLastError();
+    std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+    const auto found = application_nodes.find(application);
+    if (found == application_nodes.end() ||
+        (found->second->kind != Kind::VertexBuffer && found->second->kind != Kind::IndexBuffer)) { SetLastError(error); return E_INVALIDARG; }
+    Node* node = found->second;
+    auto* native = static_cast<IDirect3DResource9*>(node->backend);
+    HRESULT hr;
+    if (node->kind == Kind::VertexBuffer) {
+        D3DVERTEXBUFFER_DESC desc{}; hr = static_cast<IDirect3DVertexBuffer9*>(node->backend)->GetDesc(&desc);
+        out->pool = desc.Pool; out->native_usage = desc.Usage;
+    } else {
+        D3DINDEXBUFFER_DESC desc{}; hr = static_cast<IDirect3DIndexBuffer9*>(node->backend)->GetDesc(&desc);
+        out->pool = desc.Pool; out->native_usage = desc.Usage;
+    }
+    DWORD requested = 0;
+    out->converted = SUCCEEDED(hr) && read_readable_usage(native, requested);
+    out->readable = SUCCEEDED(hr) && own_buffer_slots(node) && out->pool == D3DPOOL_MANAGED &&
+        !(out->native_usage & (D3DUSAGE_WRITEONLY | D3DUSAGE_DYNAMIC));
+    out->status = FAILED(hr) ? hr : out->readable ? S_OK : S_FALSE;
+    SetLastError(error);
+    return S_OK;
+}
+HRESULT watch_buffer_writes(IDirect3DResource9* application) noexcept {
+    std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+    const auto found = application_nodes.find(application);
+    if (found == application_nodes.end() ||
+        (found->second->kind != Kind::VertexBuffer && found->second->kind != Kind::IndexBuffer)) return E_INVALIDARG;
+    found->second->write_watch = true;
+    return S_OK;
+}
+bool buffer_invalidations_pending() noexcept { return invalidations_waiting.load(std::memory_order_relaxed) != 0; }
+unsigned drain_buffer_invalidations(std::uintptr_t* out, unsigned capacity, bool* overflow) noexcept {
+    std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+    unsigned n = invalidation_count < capacity ? invalidation_count : capacity;
+    if (out) for (unsigned i = 0; i < n; ++i) out[i] = invalidation_queue[i];
+    else n = 0;
+    if (overflow) *overflow = invalidation_overflow || n < invalidation_count;
+    invalidation_count = 0; invalidation_overflow = false;
+    invalidations_waiting.store(0, std::memory_order_release);
+    return n;
+}
+#ifdef X3M_OWNERSHIP_THIN_FIXTURE
+void thin_fixture_set_faults(unsigned faults) noexcept { thin_fixture_faults = faults; }
+#endif
+HRESULT configure_readable_managed_buffers(IDirect3DDevice9* application, bool on) noexcept {
+    std::lock_guard<std::recursive_mutex> lock(registry_mutex);
+    const auto found = application_nodes.find(application);
+    if (found == application_nodes.end() || found->second->kind != Kind::Device) return E_INVALIDARG;
+    static_cast<Device*>(found->second)->options.readable_managed_buffers = on;
     return S_OK;
 }
 

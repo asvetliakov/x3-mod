@@ -221,6 +221,49 @@ of its own hull at similar depth fails the line test's background margin (`(1 - 
 classified today; whether such lattices crawl is unmeasured (open). With A' the composed effect is one tests draw
 carrying both classifiers and no dilation draws.
 
+**Implemented (2026-09-24, opt-in, default off, not flown).** `--taa-thin-vote on|off` (`X3M_TAA_THIN_VOTE`; on needs
+`--taa --motion-output --ownership --sun-shadow-lane`, refused under `--vanilla`); ledger:
+[temporal-resolve.md](../verification/temporal-resolve.md#2026-09-24-thin-vote-b-opt-in-fixture-not-flown). The
+departures from the text above, each forced by the code or the review:
+
+- *Where the statistic is measured.* The wrapper's `Unlock` alone cannot name the CloneMesh destination pair or its
+  vertex declaration: that needs the CloneMesh scope of the callsite adapter removed on 2026-09-22 (cleanup batch 7).
+  The histogram is instead read once per subset (VB, IB, draw range) at the first scene end after the subset's first
+  routed draw, through the application's own wrapper exactly as the flown caster-extent reader does (lock bookends
+  quiet, the native storage MANAGED and readable, one READONLY `Lock` of the vertex window and one of the index range), and
+  cached by allocation ids (`src/proxy/thin_vote_core.h`, `MotionOutput::read_thin_votes`). This is the "deferred"
+  form of the text; INDEX32 subsets are covered (a public `Lock`), DEFAULT-pool clones (`0x440`) are not, and the
+  census found none: 0 non-MANAGED routed VB/IB over 218 flown sessions, while 11 to 265 of 1,634 bodies can hold an
+  INDEX32 subset ([census](../../verification/results/thin-vote/census_out.txt)).
+- *The transport.* `c216.zw` is not free: the motion fragment subtracts it as the previous-row jitter. The vote
+  travels in `c218.x`, the third register of the same per-draw upload (12 floats instead of 8; `c216`/`c217` unchanged).
+  `c218`-`c220` held the motion fragment's three DEFs, which would shadow the upload, so with the option on the
+  transformer repacks its seven literals into two DEFs at `c219`/`c220` (same values, same instructions: RT1 and RT2
+  `.rgb` byte-identical in the fixture) and appends a depth-fragment twin writing `.a = c218.x`.
+- *The encoding and the vote.* RT2 `.a = 1 - thin` on an opaque routed row, `1` elsewhere (the fill keeps `-1`; the
+  pending fade owners will write `1`), where thin is the fraction of the subset's triangles 0.5-3 px tall at the draw's
+  scale when at least half are, else 0 (a panel with a few sliver triangles does not vote). The tests draw's twin
+  (`line_mask_ps.hlsl`, `X3M_THIN_VOTE`) sets the flag on a valid depth whose `.a` is in [0, 1) and skips the line search
+  there. The per-draw scale is `|row 0 xyz| * W / 2 / row 3 .w` of the draw's own submitted rows (`m00` times the node
+  scale over `D`), one `log2` and two cumulative reads of the 8-bin histogram. With 8 log2 bins the window edges are
+  resolved to the bin: a pure strut subset votes when its bin's centre lies in [0.5, 3] px, so the effective edges
+  are fuzzy by half an octave (at 2.9 px a subset whose bin reaches 4.5 px reads 0.41 and does not vote).
+- *Readable buffers and freshness* (review, 2026-09-24): the game's clones are MANAGED and WRITEONLY (`0x660`), so the
+  option arms the readable-MANAGED creation policy at `Direct3DCreate9` (WRITEONLY stripped at creation, the requested
+  Usage kept for `GetDesc`; [platform-portability.md](platform-portability.md), "TAA thin vote") and the reader refuses,
+  without a Lock, every buffer whose native storage is still WRITEONLY or not MANAGED. The policy is armed only when the
+  vote can run (one gate computed from the environment: the option with the route, TAA, HDR, the lane and the ownership
+  wrapper). A measured buffer is watched (one-shot): its next write (the Unlock of a writable Lock, ProcessVertices, a
+  native-mutation notice) or release queues an invalidation in the ownership layer that drops its histogram before the
+  next draw looks it up, so a rewritten MANAGED buffer is read again and the draw path does no revision lookup. The
+  drain touches only the queued wrappers' entries (an index from wrapper pointer to cache slots); a wrapper rewritten
+  four times after reads is volatile and its subsets are no longer read (no Lock), so a per-frame rewrite costs no
+  per-frame read.
+- *What the scale measures*: `D` is the view depth of the draw's object ORIGIN and the scale is the clip-x row's alone
+  (`m00` times the node scale). A subset near the camera on a large station whose origin lies far behind it reads too
+  small a scale, so its near panels can vote as thin (a larger region there, clip-off at rest); a non-uniform node scale
+  or projection is resolved along x only. No per-triangle depth enters the vote.
+
 ### 3.3 C: half-resolution mask and box (S4 / S5), the baseline
 
 Costed in the high-res note: S4 -0.4 to -0.5 ms at 1080p and -1.4 to -1.8 at 5120x1440, S5 -0.1 and -0.35; both

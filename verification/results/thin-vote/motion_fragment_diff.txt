@@ -1,0 +1,64 @@
+1,4c1,3
+< // the motion and depth fragments of the ps 8759c7838bbc86c2 variant, thin vote off (verification/probe/run_thin_vote_probe.py; D3DXDisassembleShader of the game d3dx9_37)
+< def c218, -0.5, 1.00000002e+020, 0, 1
+< def c219, 9.99999997e-007, 0.5, -0.5, 0
+< def c220, 0, -1, 0, 0
+---
+> // the motion and depth fragments of the ps 8759c7838bbc86c2 variant, thin vote thin (verification/probe/run_thin_vote_probe.py; D3DXDisassembleShader of the game d3dx9_37)
+> def c219, 0, 1, -0.5, -1
+> def c220, 1.00000002e+020, 9.99999997e-007, 0.5, -0.5
+7,8c6,7
+< add r5, c218.y, -v5_abs
+< cmp r5, r5, c218.z, c218.w
+---
+> add r5, c220.x, -v5_abs
+> cmp r5, r5, c219.x, c219.y
+10,12c9,11
+< cmp r5.x, -r5.x, c218.w, c218.z
+< add r5.y, c219.x, -v5.w
+< cmp r5.y, r5.y, c218.z, c218.w
+---
+> cmp r5.x, -r5.x, c219.y, c219.x
+> add r5.y, c220.y, -v5.w
+> cmp r5.y, r5.y, c219.x, c219.y
+14,15c13,14
+< cmp r5.x, -r5.x, c218.w, c218.z
+< max r5.y, v5.w, c219.x
+---
+> cmp r5.x, -r5.x, c219.y, c219.x
+> max r5.y, v5.w, c220.y
+17c16
+< mad r5.z, v5.z, -r5.y, c218.w
+---
+> mad r5.z, v5.z, -r5.y, c219.y
+19,20c18,19
+< cmp r5.y, r5.z, c218.w, c218.z
+< cmp r5.z, r6.z, c218.w, c218.z
+---
+> cmp r5.y, r5.z, c219.y, c219.x
+> cmp r5.z, r6.z, c219.y, c219.x
+22c21
+< cmp r5.y, -r5.y, c218.w, c218.z
+---
+> cmp r5.y, -r5.y, c219.y, c219.x
+24,26c23,25
+< mad r5.yz, r6.xxyw, c219, c219.y
+< mad r6.zw, r6.z, c218.xywz, c218
+< mov r7.x, c218.x
+---
+> mad r5.yz, r6.xxyw, c220.zzwz, c220.z
+> mad r6.zw, r6.z, c219.yyyx, c219.xxxy
+> mov r7.x, c219.z
+29c28
+< cmp r5, -r5.x, r6, c220.xxxy
+---
+> cmp r5, -r5.x, r6, c219.xxxw
+31c30
+< cmp oC1, r6.x, r5, c220.xxxy
+---
+> cmp oC1, r6.x, r5, c219.xxxw
+34c33,34
+< mov oC2.zw, v6.y
+---
+> mov oC2.z, v6.y
+> mov oC2.w, c218.x

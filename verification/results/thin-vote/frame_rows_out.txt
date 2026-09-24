@@ -1,0 +1,25 @@
+far-on frames 6
+  frame=0 draws=2 opaque=2 known=0 voted=0 draw_us=130.80
+  frame=1 draws=2 opaque=2 known=2 voted=1 draw_us=1.30
+  frame=2 draws=2 opaque=2 known=2 voted=1 draw_us=0.80
+  frame=3 draws=2 opaque=2 known=2 voted=1 draw_us=0.70
+  frame=4 draws=2 opaque=2 known=2 voted=1 draw_us=1.00
+  frame=5 draws=2 opaque=2 known=2 voted=1 draw_us=1.30
+  totals reads=2 measured=2 unreadable_total=0 retries=0 not_managed=0 not_readable=0 stale=0 range=0 geometry=0 not_quiet=0 lock_failed=0 triangles=14 invalidated=0 dropped_entries=0 overflows=0 volatile_buffers=0 volatile_refused=0 lock_us=107.6 measure_us=92.0 max_measure_us=91.2
+near-on frames 6
+  frame=0 draws=2 opaque=2 known=0 voted=0 draw_us=126.20
+  frame=1 draws=2 opaque=2 known=2 voted=0 draw_us=1.20
+  frame=2 draws=2 opaque=2 known=2 voted=0 draw_us=0.80
+  frame=3 draws=2 opaque=2 known=2 voted=0 draw_us=0.50
+  frame=4 draws=2 opaque=2 known=2 voted=0 draw_us=0.90
+  frame=5 draws=2 opaque=2 known=2 voted=0 draw_us=1.10
+  totals reads=2 measured=2 unreadable_total=0 retries=0 not_managed=0 not_readable=0 stale=0 range=0 geometry=0 not_quiet=0 lock_failed=0 triangles=14 invalidated=0 dropped_entries=0 overflows=0 volatile_buffers=0 volatile_refused=0 lock_us=105.6 measure_us=93.8 max_measure_us=92.6
+hostile frames 6
+  frame=0 draws=6 opaque=6 known=0 voted=0 draw_us=129.00
+  frame=1 draws=7 opaque=7 known=2 voted=1 draw_us=345.10
+  frame=2 draws=7 opaque=7 known=2 voted=1 draw_us=3.90
+  frame=3 draws=8 opaque=8 known=3 voted=2 draw_us=3.70
+  frame=4 draws=8 opaque=8 known=2 voted=1 draw_us=6.90
+  frame=5 draws=7 opaque=7 known=2 voted=1 draw_us=3.20
+  totals reads=9 measured=9 unreadable_total=5 retries=1 not_managed=2 not_readable=1 stale=0 range=1 geometry=0 not_quiet=1 lock_failed=0 triangles=42 invalidated=7 dropped_entries=6 overflows=0 volatile_buffers=1 volatile_refused=1 lock_us=441.7 measure_us=99.5 max_measure_us=93.2
+far-off thin_vote_frame rows 0

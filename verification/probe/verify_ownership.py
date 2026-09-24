@@ -7,7 +7,7 @@ import hashlib
 import re
 import bottle  # CrossOver bottle selection (X3M_FIXTURE_BOTTLE) and the per-bottle results directory
 root=Path(__file__).resolve().parents[2];results=bottle.results_dir(root)
-EXPECTED_CHECKS = {'baseline': 370, 'wrapped': 563}
+EXPECTED_CHECKS = {'baseline': 370, 'wrapped': 661}  # 661: thin_vote_case (43 per device iteration) and thin_process_vertices_case (12)
 # Step D added a sentinel Lock/content/Unlock witness and a post-Unlock view to
 # locked_prefix_case. The view emits its own recognition check before the
 # empty-prefix check: five new checks per device iteration, two iterations.

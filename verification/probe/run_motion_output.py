@@ -720,6 +720,26 @@ THIN_HOLD_CASES = {'seam-taa-thin-hold-on': 'on', 'seam-taa-thin-hold-off': 'off
 THIN_HOLD_REFERENCES = {'on': 7 + 2 + 4, 'off': 7 + 2}
 CASES += [case(name, 'seam', jitter=True, taa=True, hdr_env=dict(X3M_TAA_THIN_REGION='0.97', X3M_TAA_SENTINEL_STABILISER='0.7', X3M_TAA_REGION_HOLD=value))
           for name, value in THIN_HOLD_CASES.items()]
+# Thin vote (X3M_TAA_THIN_VOTE; docs/architecture/taa-thin-geometry-alternatives.md section 3.2, "Implemented"): the
+# "thinvote" script (motion_output_thin_vote_inc.h) through the ownership wrapper with TAA, the FP16 scene and the
+# sun-share lane (the four-channel RT2), the thin region (0.97) with its camera gate and A' (the taa_mask dump is the
+# tests target). Two MANAGED subsets: six struts 1.4 px wide at the far scale (5.6 px at the near one) in front of a
+# panel at almost the same depth, so the 7-tap line search never flags the struts: only the vote can. far-on: the struts'
+# RT2 .a is 0 (1 - thin, thin = 1) from frame 1 and their tests-target b carries the flag; the panel's .a is 1 and its b
+# clear. far-off: .a = w = 2 everywhere (the option-off fragment), no flag; its RT1 and the RT2 .r/.g/.b lanes equal
+# far-on's byte for byte (the repacked motion literals and the thin depth fragment change nothing else). near-on: the
+# struts exceed 3 px: .a 1, no flag. hostile: MANAGED|WRITEONLY buffers created before the readable policy is armed
+# (not_readable, no Lock), a DEFAULT-pool subset (not_managed, again after the Reset), an out-of-range draw (range), an
+# application Lock held across a scene end (not_quiet, one retry), a buffer released while its read is queued, and one
+# released on a frame without a scene end before a Reset (dropped unread); the voting subsets keep voting after the Reset.
+THIN_VOTE_ENV = dict(X3M_SUN_SHADOW_LANE='1', X3M_LINEAR_MATERIALS='0',  # the identity FP16 scene (no tonemap): the lane needs the FP16 route only
+                     X3M_TAA_THIN_REGION='0.97', X3M_MOTION_FRAME_LOG='1')
+THIN_VOTE_CASES = {'seam-thin-vote-far-on': ('on', 'far', 'plain'), 'seam-thin-vote-far-off': ('off', 'far', 'plain'), 'seam-thin-vote-near-on': ('on', 'near', 'plain'),
+                   'seam-thin-vote-hostile': ('on', 'far', 'hostile')}
+THIN_VOTE_TWINS = {'seam-thin-vote-far-on': 'seam-thin-vote-far-off'}
+THIN_VOTE_FRAMES, THIN_VOTE_SIZE = 6, 128
+CASES += [case(name, 'thinvote', 'ownership', jitter=True, taa=True, hdr=True, hdr_env=dict(THIN_VOTE_ENV, X3M_TAA_THIN_VOTE=vote, X3M_FIXTURE_THIN_SCALE=scale, X3M_FIXTURE_THIN_SCRIPT=script))
+          for name, (vote, scale, script) in THIN_VOTE_CASES.items()]
 CASES += [case('seam-taa-quad-fvf', 'seam', jitter=True, taa=True, hdr_env=dict(X3M_FIXTURE_QUAD_FVF='1')),
           case('seam-taa-copy-draw', 'seam', jitter=True, taa=True, hdr_env=dict(X3M_FIXTURE_STRETCH_FAULT='1')),
           case('seam-msaa', 'msaa', jitter=True, taa=True)]
@@ -1451,7 +1471,7 @@ def sources():
     paths += [PROBE / name for name in (
         'verify_ownership_integration.py', 'run_ownership_integration.py', 'verify_capture_state.py',
         'bottle.py', 'game_guard.py', 'wine_lock.py', 'shadow_replay_depth.py', 'sun_shadow_apply.py', 'motion_output_sun_apply_inc.h', 'motion_output_sun_apply_cascades_inc.h', 'motion_output_lightmap_fade_inc.h',
-        'motion_output_shadow_retention_inc.h', 'motion_output_shadow_pool_inc.h')]
+        'motion_output_shadow_retention_inc.h', 'motion_output_shadow_pool_inc.h', 'motion_output_thin_vote_inc.h')]
     paths += [ROOT / 'tools' / 'analysis' / 'shadow_retention.py']
     return {str(p.relative_to(ROOT)): sha(p) for p in sorted(paths)}
 
@@ -3699,6 +3719,159 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
     return result
 
 
+def thin_vote_dumps(directory, prefix, extension):
+    """The DLL's capture dumps of one kind by DLL frame (prefix_<device>_<frame>.<extension>)."""
+    out = {}
+    for path in (directory / 'x3-modern-captures').glob(f'{prefix}_*_*.{extension}'):
+        parts = path.stem.split('_')
+        if len(parts) == len(prefix.split('_')) + 2 and parts[-1].isdigit():
+            out[int(parts[-1])] = path
+    return out
+
+
+def validate_thin_vote(name, text, trace, directory, env):
+    """The thinvote script (motion_output_thin_vote_inc.h): RT2 .a per subset from the script's seam readback, the pixel
+    ABI's c218, the tests target's b from the DLL's taa_mask dumps classified by the same frame's depth dump, and the
+    DLL's thin_vote lines (the hostile script: the refusal counters, the retry, the Reset, the releases while queued)."""
+    import struct
+    vote = env['X3M_TAA_THIN_VOTE'] == 'on'
+    near = env['X3M_FIXTURE_THIN_SCALE'] == 'near'
+    hostile = env.get('X3M_FIXTURE_THIN_SCRIPT') == 'hostile'
+    lines = text.splitlines()
+    assert 'THIN PASS' in lines, f'{name}: script did not finish'
+    mode = fields([l for l in lines if l.startswith('THIN_MODE ')][0])
+    assert mode['vote'] == str(int(vote)) and abs(float(mode['strut_px']) - (5.6 if near else 1.4)) < 1e-3, (name, mode)
+    rt2 = {(int(r['step']), r['subset']): r for r in (fields(l) for l in lines if l.startswith('THIN_RT2 '))}
+    abi = {int(r['step']): r for r in (fields(l) for l in lines if l.startswith('THIN_ABI '))}
+    assert len(abi) == THIN_VOTE_FRAMES, name
+    voted = vote and not near
+
+    def expected_alpha(step, subset):
+        if not vote:
+            return 2.0  # the option-off fragment: .a = w
+        if subset == 'S':
+            return 0.0 if voted and step >= 1 else 1.0  # frame 0 queues the subsets: no histogram yet
+        if subset == 'T1':
+            return 0.0 if step == 3 else 1.0  # queued at 1, not quiet at 1's scene end, read at 2's; rewritten wide at 4
+        return 1.0  # P (and R over it), U (not readable), D (not MANAGED), T2 / T3 (queued, never drawn again)
+    checks = 0
+    for step in range(THIN_VOTE_FRAMES):
+        for subset in ('S', 'P', 'fill') + (('U', 'D', 'T1') if hostile else ()):
+            row = rt2[(step, subset)]
+            if subset == 'T1' and step == 0:
+                assert int(row['pixels']) == 0, (name, row)
+                continue
+            assert int(row['pixels']) > 0, (name, row)
+            if subset == 'fill':
+                assert float(row['a_min']) == -1 and float(row['a_max']) == -1, (name, row)  # the fill keeps -1 in .a
+                continue
+            assert float(row['b']) == 2, (name, row)  # .b is w with the option on or off
+            want = expected_alpha(step, subset)
+            assert float(row['a_min']) == want and float(row['a_max']) == want, (name, step, subset, row, want)
+            checks += 2
+        if hostile and step in (3, 4):
+            assert int(rt2[(step, 'T2')]['pixels']) > 0 and float(rt2[(step, 'T2')]['a_max']) == 1, (name, step)
+        pixel = abi[step]
+        c216 = [float(v) for v in pixel['c216'].split(',')]
+        c217 = [float(v) for v in pixel['c217'].split(',')]
+        c218 = [float(v) for v in pixel['c218'].split(',')]
+        assert c216 == [1 / THIN_VOTE_SIZE, 1 / THIN_VOTE_SIZE, 0, 0] and c217[1:] == [0, 0, 0], (name, pixel)
+        if not vote:
+            assert c218 == [0, 0, 0, 0], (name, pixel)  # not uploaded: the fixture's record keeps zero lanes
+        elif not hostile:
+            assert c218 == [expected_alpha(step, 'S'), 0, 0, 0], (name, pixel)  # the last draw is the struts'
+        else:
+            assert c218[0] in (0.0, 1.0) and c218[1:] == [0, 0, 0], (name, pixel)
+        checks += 2
+    if hostile:
+        released = [fields(l) for l in lines if l.startswith('THIN_RELEASED ')]
+        assert [r['subset'] for r in released] == ['T2', 'T3'], (name, released)
+    # The DLL's lines.
+    configured = [fields(l) for l in trace.splitlines() if l.startswith('taa_thin_vote_configured ')]
+    modes = [fields(l) for l in trace.splitlines() if l.startswith('thin_vote_mode ')]
+    frames = [fields(l) for l in trace.splitlines() if l.startswith('thin_vote_frame ')]
+    absent = [l for l in trace.splitlines() if l.startswith('thin_vote_absent ') or l.startswith('thin_vote_tests ')]
+    holds = [fields(l) for l in trace.splitlines() if l.startswith('motion_output_taa_history_taps ')]
+    assert holds and holds[0]['region_hold'] == '1', (name, holds)  # the taa_mask dump is the tests target (A')
+    if vote:
+        assert len(configured) == 1 and configured[0]['enabled'] == '1', (name, configured)
+        assert len(modes) == 1 and modes[0]['enabled'] == '1' and modes[0]['lane'] == '1' and modes[0]['cache'] == '1', (name, modes)
+        assert not absent, (name, absent)
+        assert len(frames) >= THIN_VOTE_FRAMES, (name, len(frames))
+        last = frames[-1]
+        counters = {k: int(last[k]) for k in ('reads', 'measured', 'unreadable_total', 'retries', 'not_managed', 'not_readable', 'stale', 'range',
+                                                 'geometry', 'not_quiet', 'lock_failed', 'triangles')}
+        if not hostile:
+            assert counters == dict(reads=2, measured=2, unreadable_total=0, retries=0, not_managed=0, not_readable=0, stale=0, range=0,
+                                    geometry=0, not_quiet=0, lock_failed=0, triangles=14), (name, counters)
+            assert int(last['invalidated']) == 0 and int(last['dropped_entries']) == 0, (name, last)
+            assert int(last['volatile_buffers']) == 0 and int(last['volatile_refused']) == 0, (name, last)
+            steady = frames[1:THIN_VOTE_FRAMES]
+            assert all(int(f['known']) == 2 and int(f['opaque']) == 2 for f in steady), (name, steady)
+            assert all(int(f['voted']) == (1 if voted else 0) for f in steady), (name, steady)
+            assert int(frames[0]['queued']) == 2 and int(frames[0]['voted']) == 0, (name, frames[0])
+        else:
+            # P, S, T1 (after one not-quiet retry) and T2 (released while queued) measured; U not readable (created before
+            # the policy was armed), D and its post-Reset replacement not MANAGED, R out of range; T3 dropped unread.
+            # T1 measured twice: before and after its in-place rewrite (the write invalidation dropped the first entry;
+            # the second release-while-queued buffer's entry went with its final release). V (off screen, rewritten before
+            # its draw at frames 1-4) measured four times, its entry dropped by each write; volatile after the fourth,
+            # refused without a Lock at frame 5's scene end.
+            assert counters == dict(reads=9, measured=9, unreadable_total=5, retries=1, not_managed=2, not_readable=1, stale=0, range=1,
+                                    geometry=0, not_quiet=1, lock_failed=0, triangles=42), (name, counters)
+            assert int(last['dropped_entries']) == 6 and int(last['invalidated']) == 7 and int(last['overflows']) == 0, (name, last)
+            assert int(last['volatile_buffers']) == 1 and int(last['volatile_refused']) == 1, (name, last)
+            # Frame 5, after the Reset: before_reset releases only the queued reads, the cache survives (MANAGED buffers and
+            # their allocation ids survive a Reset), so P and S are known and S votes at once; T1, V and the new D miss.
+            assert int(last['voted']) == 1 and int(last['known']) == 2, (name, last)
+            assert [fields(l)['subset'] for l in lines if l.startswith('THIN_REWRITTEN ')] == ['T1'], name
+        checks += 8
+    else:
+        assert not configured and not modes and not frames and not absent, (name, configured, modes, frames, absent)
+        checks += 1
+    # The tests target's b: every voting subset's pixels flagged (254/255 of the code, + the class bit), none elsewhere;
+    # panel pixels further than 4 px from the fill (its silhouette corners are fragmented lines) never.
+    depths, masks = thin_vote_dumps(directory, 'depth', 'rgba32f'), thin_vote_dumps(directory, 'taa_mask', 'bgra8')
+    common = sorted(set(depths) & set(masks))
+    assert len(common) >= (3 if hostile else 4) and set(common) <= set(range(THIN_VOTE_FRAMES)), (name, sorted(depths), sorted(masks))  # hostile: frame 4 has no scene end (no mask), the Reset ends the capture window
+    size = THIN_VOTE_SIZE
+    classes = {'S': .25, 'P': .26}
+    if hostile:
+        classes.update(U=.245, D=.24, T1=.235)
+    mask_report = {}
+    for frame in common:
+        lanes = struct.unpack(f'<{size * size * 4}f', depths[frame].read_bytes())
+        mask = masks[frame].read_bytes()
+        assert len(mask) == size * size * 4, (name, frame)
+        fill = [lanes[p * 4] < -.5 for p in range(size * size)]
+        near_fill = [False] * (size * size)
+        for y in range(size):
+            for x in range(size):
+                if fill[y * size + x]:
+                    for yy in range(max(0, y - 4), min(size, y + 5)):
+                        for xx in range(max(0, x - 4), min(size, x + 5)):
+                            near_fill[yy * size + xx] = True
+        report = {}
+        for subset, depth in classes.items():
+            pixels = [p for p in range(size * size) if depth - .0015 < lanes[p * 4] < depth + .0015 and not (subset == 'P' and near_fill[p])]
+            blue = [mask[p * 4] for p in pixels]  # BGRA8: byte 0 is b
+            if subset == 'T1' and frame == 0:
+                continue
+            assert pixels, (name, frame, subset)
+            flagged = vote and expected_alpha(frame, subset) == 0.0
+            if flagged:
+                assert min(blue) >= 254, (name, frame, subset, sorted(set(blue)))
+            else:
+                assert max(blue) <= 1, (name, frame, subset, sorted(set(blue)))
+            report[subset] = {'pixels': len(pixels), 'b_min': min(blue), 'b_max': max(blue)}
+            checks += 1
+        mask_report[frame] = report
+    return {'passed': True, 'checks': checks, 'vote': vote, 'scale': 'near' if near else 'far', 'script': 'hostile' if hostile else 'plain',
+            'rt2': [rt2[k] for k in sorted(rt2)], 'abi': [abi[k] for k in sorted(abi)],
+            'thin_vote_frame_last': frames[-1] if frames else None, 'masks': mask_report,
+            'color_hashes': [l.split('hash=')[1] for l in lines if l.startswith('COLOR ')]}
+
+
 def validate_msaa(name, text, trace, samples=2):
     """The msaa script (D3 of the native-Windows audit): three frames on a 2-sample back buffer. The selector never
     latches a multisampled RT0 and the route refuses the frame by name at its initial Clear: one
@@ -5713,7 +5886,7 @@ def main(argv=None):
             directory = BUILD / ('motion-output-' + name + '-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
             directory.mkdir(parents=True)
             shutil.copy(candidate_exe, directory)
-            shutil.copy(candidate_seam if mode in ('seam', 'msaa', 'cutout', 'zonly', 'faderoute', 'lightmapfade', 'lightmapwiden', 'shadowreplay', 'shadowretention', 'shadowpool', 'unmatchedstatic', 'boltshape') + HDR_MODES and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
+            shutil.copy(candidate_seam if mode in ('seam', 'msaa', 'cutout', 'zonly', 'faderoute', 'lightmapfade', 'lightmapwiden', 'shadowreplay', 'shadowretention', 'shadowpool', 'unmatchedstatic', 'boltshape') + HDR_MODES + ('thinvote',) and not name.startswith('production') else candidate_dll, directory / 'd3d9.dll')
             env = dict(os.environ, X3M_CAMERA='vanilla', X3M_CHASE_SCENE_FIX='0', X3M_CHASE_COMBAT_TIGHTNESS='0', X3M_MOTION_OUTPUT=enabled, X3M_MOTION_JITTER='1' if jitter else '0', X3M_MOTION_JITTER_SAMPLES=str(JITTER_SAMPLES),
                        X3M_TAA='1' if taa else '0', X3M_TAA_DEBUG='1' if taa and not bench else '0',
                        X3M_CAPTURE_START='1000' if bench else str(BURST_CAPTURE[0]) if burst else '1',
@@ -5819,6 +5992,15 @@ def main(argv=None):
                 result['bench'][name] = case
                 save()
                 print(f'{name}: exit={completed.returncode} boundary_ms={case["boundary_ms"]}', flush=True)
+                continue
+            if mode == 'thinvote':
+                case = validate_thin_vote(name, text, trace, directory, hdr_env)
+                case.update(exit=completed.returncode, directory=str(directory.relative_to(ROOT)), trace_sha256=sha(traces[0]),
+                            dll_sha256=sha(directory / 'd3d9.dll'), exe_sha256=sha(directory / candidate_exe.name))
+                shutil.copy(traces[0], RESULTS / f'motion-output-{name}-capture.log')
+                result['cases'][name] = case
+                save()
+                print(f'{name}: exit={completed.returncode} checks={case["checks"]} vote={case["vote"]} scale={case["scale"]}', flush=True)
                 continue
             if mode == 'msaa':
                 case = validate_msaa(name, text, trace)
@@ -6096,6 +6278,29 @@ def main(argv=None):
             presented = compare_presented(on_name, off_name, ROOT / a['directory'], ROOT / b['directory'], range(SHADOW_REPLAY_FRAMES))
             assert presented['identical'] and a['color_hashes'] == b['color_hashes'], f'{on_name}: presented frames differ from {off_name}: {presented}'
             result['shadow_replay_twins'][on_name] = {'twin': off_name, 'presented': presented, 'color_hashes_identical': True}
+            save()
+        # Thin vote twins: with the option on, RT1 and the RT2 .r/.g/.b lanes of every captured frame equal the option-off
+        # run's byte for byte (only .a carries the vote); compared whenever both ran.
+        result['thin_vote_twins'] = {}
+        for on_name, off_name in THIN_VOTE_TWINS.items():
+            if on_name not in result['cases'] or off_name not in result['cases']:
+                continue
+            on_dir, off_dir = ROOT / result['cases'][on_name]['directory'], ROOT / result['cases'][off_name]['directory']
+            motion_on, motion_off = thin_vote_dumps(on_dir, 'motion', 'rgba32f'), thin_vote_dumps(off_dir, 'motion', 'rgba32f')
+            depth_on, depth_off = thin_vote_dumps(on_dir, 'depth', 'rgba32f'), thin_vote_dumps(off_dir, 'depth', 'rgba32f')
+            frames = sorted(set(motion_on) & set(motion_off) & set(depth_on) & set(depth_off))
+            assert len(frames) >= 4 and set(motion_on) == set(motion_off), (on_name, sorted(motion_on), sorted(motion_off))
+            differing_alpha = 0
+            for frame in frames:
+                assert motion_on[frame].read_bytes() == motion_off[frame].read_bytes(), f'{on_name}: RT1 of frame {frame} differs from {off_name}'
+                a, b = depth_on[frame].read_bytes(), depth_off[frame].read_bytes()
+                assert len(a) == len(b) == THIN_VOTE_SIZE * THIN_VOTE_SIZE * 16, (on_name, frame)
+                for p in range(0, len(a), 16):
+                    assert a[p:p + 12] == b[p:p + 12], f'{on_name}: RT2 .rgb of frame {frame} differs from {off_name} at pixel {p // 16}'
+                    differing_alpha += a[p + 12:p + 16] != b[p + 12:p + 16]
+            assert differing_alpha > 0, on_name
+            result['thin_vote_twins'][on_name] = {'twin': off_name, 'frames': frames, 'rt1_identical': True, 'rt2_rgb_identical': True,
+                                                  'rt2_alpha_pixels_differing': differing_alpha}
             save()
         if only:
             assert set(result['cases']) | set(result['bench']) == only, 'Selected case inventory differs from requested cases'

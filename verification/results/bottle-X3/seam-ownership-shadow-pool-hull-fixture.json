@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "verification/probe/build/motion_output_fixture.exe": "4b5da1d83936680219aeedf1e3ee2703c2116bf3035fadb998bcd891d2166a1b",
-  "verification/probe/build/motion-output-seam/d3d9.dll": "8ea3e85e927856773b76b8ff89ac5d5d69592e5c57a5d8853a65290c677e4a14",
-  "build/d3d9.dll": "c3e5c1023d7e0ef4180c34c341e82684985b421e77760d8563feadc7328d3862"
+  "verification/probe/build/motion_output_fixture.exe": "d9e1db7bbc9a372118148b96b21f8b176738a9699860e68becce082fa4022c25",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "590a5fa702b1d194619c82faab7815e27501a7ad3ef7039b5bbd61c258dcaded",
+  "build/d3d9.dll": "c0ba003213887a8f55c485edafbbce0a7c180d1d8fd099f6259849298495db06"
  },
  "script": "hull",
  "store": 0,
@@ -194,12 +194,12 @@
  "us": {
   "frames": 6,
   "min": 39.6,
-  "median": 43.2,
-  "max": 1789.2
+  "median": 41.05,
+  "max": 1720.0
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-hull-20260924-074653-736162",
- "trace_sha256": "ed2f7e38ae2c517fb43bb4cdc4c321d640a891f9e78fc41151e971edd82bd2a2",
- "dll_sha256": "8ea3e85e927856773b76b8ff89ac5d5d69592e5c57a5d8853a65290c677e4a14",
- "exe_sha256": "4b5da1d83936680219aeedf1e3ee2703c2116bf3035fadb998bcd891d2166a1b"
+ "directory": "verification/probe/build/motion-output-seam-ownership-shadow-pool-hull-20260924-122004-397620",
+ "trace_sha256": "364754ca1f799e0511a445a2253a6ab13297db50c823423899c6f00c5f46615e",
+ "dll_sha256": "590a5fa702b1d194619c82faab7815e27501a7ad3ef7039b5bbd61c258dcaded",
+ "exe_sha256": "d9e1db7bbc9a372118148b96b21f8b176738a9699860e68becce082fa4022c25"
 }

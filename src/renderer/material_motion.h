@@ -22,6 +22,9 @@ struct MaterialMotionAbi {
     static constexpr unsigned previous_vertex_constant = 252; // Four submitted rows.
     static constexpr unsigned pixel_coordinates_constant = 216; // Inverse size, prior jitter UV.
     static constexpr unsigned pixel_mode_constant = 217; // x=1 valid history request, x=0 invalid.
+    // X3M_TAA_THIN_VOTE only (material_motion_configure_thin_vote): x = RT2 .a of the depth
+    // fragment, 1 - thin on an opaque routed row, 1 otherwise; uploaded with c216-c217 in one call.
+    static constexpr unsigned pixel_thin_constant = 218;
     static constexpr unsigned motion_render_target = 1;
     static constexpr unsigned depth_render_target = 2;  // R32F current device depth (z/w).
 };
@@ -102,4 +105,16 @@ MaterialMotionResult material_motion_pixel_variant_for(const MotionOutputProfile
 // given option (the words the transformers add depend on it).
 bool material_motion_vertex_exports_depth(const MotionOutputProfile& row, bool current_depth) noexcept;
 bool material_motion_pixel_writes_depth(const MotionOutputProfile& row, bool current_depth) noexcept;
+
+// Thin vote (X3M_TAA_THIN_VOTE; docs/architecture/taa-thin-geometry-alternatives.md section 3.2):
+// process-wide, off by default, set once before any variant is built. On, every depth-writing
+// pixel variant appends the thin-vote depth fragment (RT2 .a = c218.x instead of w) and carries
+// the motion fragment's literals in two DEFs at c219/c220 instead of three at c218-c220 (same
+// values, same instructions); motion-only variants and every vertex variant are unchanged. Off,
+// every output is the earlier one byte for byte.
+void material_motion_configure_thin_vote(bool on) noexcept;
+bool material_motion_thin_vote() noexcept;
+// Words the pixel transformer inserts at the row's definition insert: 18 (three DEFs), or 12 for
+// a depth-writing variant with the thin vote on.
+std::size_t material_motion_pixel_definition_words(bool depth) noexcept;
 } // namespace x3m::renderer

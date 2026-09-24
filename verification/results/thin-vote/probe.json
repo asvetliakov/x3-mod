@@ -1,0 +1,154 @@
+{
+  "passed": true,
+  "exit_code": 0,
+  "bottle": {
+    "name": "X3",
+    "wine_arch": "arm64",
+    "environment": {
+      "FEX_X87REDUCEDPRECISION": "1",
+      "WINEMSYNC": "1"
+    },
+    "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+  },
+  "game_launched": false,
+  "elapsed_s": 5.9,
+  "source_sha256": "fae94d00988e73a36aca77bdc6036413801b2cc4fbd196176e8fbbfc3b2662af",
+  "runner_sha256": "84d5e0f0769ad6d53eb1a0d5e0c6e954bf4b2a2c59dc2b556e3f41844abe4d80",
+  "executable_sha256": "7dc9d180d695d5851285a768e8d1bb17f80e223a7a0c7dbf801acbbda1ddc497",
+  "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+  "flags": [
+    "-std=c++17",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-DWIN32_LEAN_AND_MEAN",
+    "-DNOMINMAX",
+    "-msse2",
+    "-mfpmath=sse",
+    "-mstackrealign",
+    "-mincoming-stack-boundary=2",
+    "-static",
+    "-static-libgcc",
+    "-static-libstdc++"
+  ],
+  "slots": {
+    "line_mask_depth": {
+      "dwords": 1554,
+      "instruction_slots": 420
+    },
+    "line_mask_depth_thin": {
+      "dwords": 1575,
+      "instruction_slots": 429
+    },
+    "line_mask_camera_depth": {
+      "dwords": 1533,
+      "instruction_slots": 407
+    },
+    "line_mask_camera_depth_thin": {
+      "dwords": 1556,
+      "instruction_slots": 415
+    },
+    "current_depth": {
+      "dwords": 38,
+      "instruction_slots": 3
+    },
+    "current_depth_thin": {
+      "dwords": 52,
+      "instruction_slots": 4
+    },
+    "ps_8759c7838bbc86c2_original": {
+      "dwords": 1260,
+      "instruction_slots": 49
+    },
+    "ps_8759c7838bbc86c2_variant_off": {
+      "dwords": 1405,
+      "instruction_slots": 77
+    },
+    "ps_8759c7838bbc86c2_variant_thin": {
+      "dwords": 1402,
+      "instruction_slots": 78
+    }
+  },
+  "measure": [
+    {
+      "layout": "float16_4_stride24",
+      "triangles": "10000",
+      "vertices": "5151",
+      "ok": "1",
+      "total": "10000",
+      "cold_us": "366.1",
+      "warm_median_us": "249.2",
+      "warm_p90_us": "257.8",
+      "ns_per_triangle": "24.9"
+    },
+    {
+      "layout": "float3_stride40",
+      "triangles": "10000",
+      "vertices": "5151",
+      "ok": "1",
+      "total": "10000",
+      "cold_us": "164.5",
+      "warm_median_us": "169.2",
+      "warm_p90_us": "176.7",
+      "ns_per_triangle": "16.9"
+    }
+  ],
+  "draw": [
+    {
+      "lookups": "4480000",
+      "elapsed_us": "37874.3",
+      "ns_per_draw": "8.45",
+      "voted": "156800",
+      "per_frame_448_us": "3.79"
+    }
+  ],
+  "qpc": [
+    {
+      "calls": "1000000",
+      "ns_per_call": "64.02"
+    }
+  ],
+  "draw_cold": [
+    {
+      "cache": "cold",
+      "lookups": "4000",
+      "ns_per_draw_with_qpc": "92.0",
+      "qpc_frequency": "10000000",
+      "checksum": "0"
+    },
+    {
+      "cache": "warm",
+      "lookups": "4000",
+      "ns_per_draw_with_qpc": "75.9",
+      "qpc_frequency": "10000000",
+      "checksum": "0"
+    }
+  ],
+  "drain": [
+    {
+      "entries": "6697",
+      "index_live": "560",
+      "index_full": "0",
+      "invalidations": "2000",
+      "dropped": "6545",
+      "ns_per_invalidation": "68.1",
+      "full_scan_us": "0.98",
+      "sink": "15"
+    }
+  ],
+  "fragments": {
+    "off": {
+      "defs": 3,
+      "declarations": 2,
+      "instructions": 28,
+      "file": "verification/results/thin-vote/motion_fragment_off.txt"
+    },
+    "thin": {
+      "defs": 2,
+      "declarations": 2,
+      "instructions": 29,
+      "file": "verification/results/thin-vote/motion_fragment_thin.txt"
+    }
+  }
+}

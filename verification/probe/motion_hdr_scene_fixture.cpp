@@ -150,6 +150,7 @@ bool renderer::LinearEmissionPass::coverage_valid() const noexcept { return true
 // Shadow-replay candidate publication is a separate per-frame diagnostic with
 // its own fixture; scene_end_hook only has to reach it.
 void MotionOutput::publish_shadow_replay_candidates() noexcept {}
+void MotionOutput::read_thin_votes() noexcept {} // X3M_TAA_THIN_VOTE: its queue is empty here (the option is off)
 HRESULT MotionOutput::readback_surface(IDirect3DSurface9*, D3DFORMAT, unsigned, const wchar_t*,
                                      const wchar_t*, const char*, const char*, UINT, UINT) noexcept {
     active->calls.push_back(10); return S_OK;

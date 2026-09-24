@@ -2223,3 +2223,181 @@ silhouettes** (the closure arrives one frame late instead of 8 px early; no fixt
 8-px halo of the region goes; no fixture row covers it); `taa_box` under a pan (region-gated twins); slow drift inside the
 gate (1.10 x the dilated gate's ripple: the carried closure is quantised to quarters, rounded to nearest, so a 0.41 closure
 holds as 0.5).
+
+## 2026-09-24 thin vote (B, opt-in; fixture, not flown)
+
+Option B of [taa-thin-geometry-alternatives.md](../architecture/taa-thin-geometry-alternatives.md) section 3.2 as a vote
+in the tests draw, `--taa-thin-vote on|off` (`X3M_TAA_THIN_VOTE`, DLL and launcher default off; on needs `--taa
+--motion-output --ownership --sun-shadow-lane`; refused under `--vanilla`). Bottle X3, native `d3dx9_37`, measured unless
+marked. The note's "Implemented" paragraph records the departures from its text (measurement seam, `c218` transport,
+`.a` encoding, readable buffers, what the scale measures) and why. Revised after review (F1-F10), rebased onto `38d7d01f`,
+revised again after the second review (tag on every `GetDesc` path, indexed invalidation with a volatility cap, a
+successful Lock always unlocked, geometry refusals watched, the policy armed on the vote's own gate, ownership fixture
+checks).
+
+- **Census before the work** (`verification/results/thin-vote/census.py`, output beside it): 0x440 clones: the option is
+  one configuration bit per session (`*(0x00606f34)+0x100 & 8` at 0x004bcbd0 selects 0x660 MANAGED, else 0x440
+  DEFAULT); the caster counter's `shadow_replay_candidates` rows of 218 flown sessions classify the VB/IB pools of
+  317,535,095 routed, z-writing, cascade-admitted draws (summed over frames; alpha-tested draws are not classified):
+  managed 317,535,095, default_pool 0, dynamic 0, unknown 0. INDEX32: 265 of the 1,634 bodies of the merged-LOD census
+  have more than 65,535 record-0 points (upper bound on bodies that can hold an INDEX32 subset; the builder compacts
+  each group's vertices, 0x004bb5d0..0x004bb6a2), 11 of them single-group (lower bound). The public READONLY read covers
+  INDEX32; DEFAULT-pool subsets stay unflagged.
+- **Readable buffers** (review F1): the game's clones are MANAGED and WRITEONLY (`0x660`). With the option and every
+  environment prerequisite of the vote (route, TAA, HDR, lane, `X3M_OWNERSHIP=1`: `thin_vote_route_gate()`, computed
+  once in `initialize_log` and shared with `hook_device`'s enable) the loader arms
+  `ownership::Options::readable_managed_buffers` at `wrap_factory` (`Direct3DCreate9`): eligible MANAGED creations
+  asking for WRITEONLY are created without it (`portable_upload::plan_creation`), the requested Usage is kept in a
+  private-data tag and returned by `GetDesc` on every path once any tag exists (also after a disarm or a retired finite
+  owner), a failed tag or converted creation repeats the original creation. No sidecar, payload or
+  Lock/Unlock work, so no 4,096-sidecar bound and no conflict with the locked-prefix scanner (the
+  `prepare_readable_managed_uploads` path has both). The reader asks `ownership::get_buffer_readability` for the native
+  descriptor and refuses without a Lock anything not MANAGED (`not_managed`) or still WRITEONLY (`not_readable`); an
+  unobserved creation or a pending Lock is `not_quiet` (bookends not `known`).
+  [platform-portability.md](../architecture/platform-portability.md) "TAA thin vote" records the policy and the gap.
+- **Statistic** (`src/proxy/thin_vote_core.h`, `thin_vote::measure`, called from `MotionOutput::read_thin_votes`): per
+  subset (VB and IB allocation ids, stream offset, stride, position element, draw range) the heights
+  h = 2 area / longest edge in object units, 8 log2 bins anchored at the tallest (bin 7 = floor(log2 h_max), bin 0
+  everything at or below 7 octaves down), kept as 9 cumulative fractions; above 16,384 triangles a fixed stride samples.
+  Read once at the first scene end after the subset's first routed draw, at most 16 subsets per scene end; a read starts
+  while fewer than 65,536 triangles were measured that scene end, so the bound is 81,919 sampled triangles (about 2.1 ms
+  at the measured 25 ns per triangle, inferred) (review F6). A not-quiet or failed Lock retries at later scene ends (8
+  attempts). Cache: 2,048 x 4-way, LRU by frame stamp, an entry used this frame is never evicted; one 32-bit tag per way
+  (a set's four in 16 bytes) is compared before any key, hot fields first in a 64-byte-aligned entry.
+- **Freshness by invalidation at the write** (review F2, revised twice): a measured entry keeps the VB and IB wrapper
+  pointers it was read through (compared, never dereferenced) and the read marks both wrappers watched
+  (`ownership::watch_buffer_writes`, one registry find; the watch is one-shot, the push clears it). Ownership pushes a
+  watched wrapper's pointer into a fixed 1,024-entry queue (4 in the ownership fixture's build) at the Unlock that ends
+  a writable Lock, at a ProcessVertices into it, at a trusted native-mutation notice and at its final release (bit 0
+  set; O(1) under the registry mutex; unwatched buffers cost one flag test, no wrapper-layout read). The route drains
+  the queue at `begin_frame`, before the scene-end reads and on a draw when `buffer_invalidations_pending()` says so:
+  each queued wrapper's entries are dropped through an index from wrapper pointer to cache slots (4,096 open-addressed
+  slots, up to 6 entries per wrapper; a wrapper with more, or a full index, falls back to one pass over the table), a
+  queued read of one is skipped (`stale`), an overflowing queue clears the cache and the write counts (`overflows`).
+  A write counts against its wrapper; after 4 counted writes the wrapper is volatile and its subsets are refused at
+  the scene end without a Lock (`volatile_buffers`, `volatile_refused`; the refusal stays watched so its release
+  forgets the count). A Reset keeps the cache, the index and the counts (`before_reset` only releases the queued reads:
+  MANAGED buffers, their wrappers and allocation ids survive a Reset; a DEFAULT-pool buffer must be released before it,
+  which drops its entries); a new device clears the cache at `attach`. A geometry refusal is watched as well, so a rewrite makes it readable
+  again. A draw with nothing queued does one relaxed atomic load; a draw after a watched write takes the registry
+  mutex once for the drain. A successful Lock is unlocked even when it returned no pointer. The drained ids live in a
+  1,024-entry member array; one process-wide queue with one consumer (`src/ownership/README.md`).
+- **Per draw** (`MotionOutput::thin_vote_alpha`, opaque routed rows with the lane active): the pending-invalidation test,
+  one cache lookup, the scale log2(|row 0 xyz| W / 2 / row 3 .w) of the draw's
+  own submitted rows, the cumulative read at the two window edges (0.5 and 3 px), `alpha = 1 - thin` when thin >= 0.5
+  else 1. A miss queues the read (AddRef of the VB/IB wrappers until the scene end); alpha-tested, fade-arm and overlay
+  rows and rows without the lane upload 1. The scale is the draw's
+  object ORIGIN depth and the clip-x row alone (review F7): a subset near the camera on a large station whose origin
+  lies far behind it reads too small a scale, so its near panels can vote; non-uniform scale is resolved along x only.
+- **Transport:** one upload of 12 floats (`c216`-`c218`) instead of 8, `c216`/`c217` unchanged; the restore and the
+  shadow of the application's reserved constants cover `c218` with the option; off, the 8-float array alone is built and
+  uploaded (review F10). The transformer (process-wide switch set at device creation,
+  `material_motion_configure_thin_vote`) gives every depth-writing pixel variant the thin depth fragment
+  (`current_depth_thin_ps.hlsl`: `.a = c2.x` relocated to `c218`) and repacks the motion fragment's literals from three
+  DEFs at `c218`-`c220` into two at `c219`/`c220` (value-exact operand rewrite, fails closed); `linear_material.cpp` takes
+  the definition size from `material_motion_pixel_definition_words`. Motion-only and vertex variants unchanged. The two
+  listings of our fragments, off and on, are kept (`motion_fragment_{off,thin}.txt`, the diff in
+  `motion_fragment_diff.txt`; review F4): the same seven literal values (`-0.5, 1e20, 0, 1, 1e-6, 0.5, -1`) in two
+  registers instead of three, every operand reading the same values, 28 -> 29 instructions, the one added instruction
+  `mov oC2.w, c218.x` (the `.zw` write of w becomes `.z`).
+- **Tests draw:** `line_mask_ps.hlsl` `X3M_THIN_VOTE` (twins `line_mask_depth_thin_ps.hlsl`,
+  `line_mask_camera_depth_thin_ps.hlsl`, created by `TemporalPass::configure_thin_vote` only with the option): on a
+  valid depth whose lane `.a` is in [0, 1) the flag is set and the 7-tap line search and the emissive vote are skipped;
+  `FrameInputs::thin_vote` selects the twin of the fold program on an A32B32G32R32F depth with the thin region on.
+  Otherwise the plain program is drawn and `thin_vote_absent` is logged once with the cause
+  (`Diagnostics::thin_vote_reason`: `lane_off_r32f`, `two_channel_depth` for a G32R32F lane, `no_fold`,
+  `thin_region_off`, `no_twin_program`; review F9).
+
+RT2 `.a` contract: option off, `.a = w` from every routed depth writer (unchanged); option on, `1 - thin` on an opaque
+routed row, `1` on every other routed row; the fill leaves `-1`.
+
+Evidence:
+
+- **Motion-output fixture, thin cases** (`motion_output_thin_vote_inc.h`, mode `thinvote`, 128 x 128, ownership wrapper,
+  TAA, identity FP16 scene, lane, thin region 0.97 with its camera gate and A'; every buffer MANAGED | WRITEONLY as the
+  game's; six struts 1.4 px wide at the far scale, 5.6 px at the near one, in front of a panel at 0.25 vs 0.26 device
+  depth, so the 7-tap line search never flags them): `seam-thin-vote-far-on` 54 checks: struts' RT2 `.a` 0 on frames
+  1-5 (1 on frame 0, before the first read), panel 1, fill -1, `.b` = w = 2; `c218` = (0, 0, 0, 0) for the strut draw,
+  `c216`/`c217` as without the option; tests-target b = 254 at every strut pixel and 0 at every panel pixel more than
+  4 px from the fill in all five captured frames; `thin_vote_frame`: reads 2, measured 2, 14 triangles, every refusal
+  counter 0, one voted draw per frame. `seam-thin-vote-far-off` 47 checks: `.a` = w = 2, strut b 0, no thin_vote line.
+  `seam-thin-vote-near-on` 54 checks: `.a` 1, strut b 0, voted 0. Twin: RT1 and RT2 `.r`/`.g`/`.b` of frames 1-5
+  byte-identical between far-on and far-off; `.a` differs at 22,099 pixel-frames.
+- **`seam-thin-vote-hostile`** (review F3; 93 checks): U, MANAGED WRITEONLY created while the policy is disarmed
+  (`x3m_thin_vote_fixture_readable_policy`), refused without a Lock (`not_readable` 1), never votes; D, a DEFAULT-pool
+  copy (`not_managed` 1, and 1 more for its replacement after the Reset); R, the panel drawn with NumVertices past the
+  buffer (`range` 1); T1 with the application's READONLY Lock held across frame 1's scene end (`not_quiet` 1, `retries`
+  1), read at frame 2's and voting from frame 3 (`.a` 0, b 254); T2 released by the application right after its draw
+  with its read queued (read and released at the scene end); T3 released on a frame without a scene end, then a Reset
+  (dropped unread); T1 rewritten in place 0.2 units wide at frame 4 (the application's writable Lock/Unlock): its entry is
+  dropped at the write, it stops voting at once and is read again at frame 5's scene end; V, an off-screen pair
+  rewritten before its draw at frames 1-4, measured four times (each write drops the previous read's entry), volatile
+  after the fourth write and refused without a Lock at frame 5's scene end. Final counters (final full run 12:16-12:24,
+  identical in the 12:08 thin-case rerun): reads 9, measured 9 (P, S, T1 twice, T2, V four times), unreadable 5, retries 1,
+  not_managed 2, not_readable 1, range 1, not_quiet 1, stale 0, geometry 0, 42 triangles, invalidated 7 (T1's VB write,
+  V's four writes, T2's VB and IB final releases), dropped entries 6, overflows 0, volatile_buffers 1, volatile_refused
+  1; after the Reset S votes at once from the kept cache (frame 5: known 2, voted 1); the fixture's teardown reaches
+  zero references on every object. The three plain cases: invalidated 0, volatile 0
+  ([frame_rows_out.txt](../../verification/results/thin-vote/frame_rows_out.txt), `frame_rows.py` beside it).
+- **Motion-output fixture, full suite** (`run_motion_output.py` through `wine_lock.py` on the final sources after the
+  second review, 12:16:04-12:24:46, lock wait 0 s; the summary re-pinned from this run): PASS, 205 cases + 26 bench
+  (199 committed + the 2 bolt-shape cases from main + 4 thin cases). Against the committed summary every one of its 199
+  cases is present and every recorded leaf is identical except wall-clock ones (48 leaves such as `bounds_bench_ns`,
+  `costs_us_per_frame`; 113 cases identical including those; 0 non-clock leaves differ)
+  ([compare_motion_out.txt](../../verification/results/thin-vote/compare_motion_out.txt), script beside it). The
+  existing cases draw the lane-off R32F RT2, which has no `.a`; the lane's option-off `.a` = w is the far-off case above.
+- **Temporal pass** (`run_temporal_pass.py` on the final sources, 12:25:03-12:27:27; the option never reaches
+  TemporalPass there): PASS 744 / 278, report identical to the committed one (`e2719f09…`); lattice PASS 566 / 91, 5,076
+  lines, 4 differ from the committed report, all wall-clock rows (`LINE_TIMING`, `_CAMERA`, `_CAMERA_LANE`, `_SENTINEL`);
+  every `RESOLVE_BUDGET` row unchanged
+  ([compare_temporal_out.txt](../../verification/results/thin-vote/compare_temporal_out.txt),
+  [lattice_diff_out.txt](../../verification/results/thin-vote/lattice_diff_out.txt), scripts beside them).
+- **Ownership** (the readable policy and the invalidation queue are new ownership code): `run_ownership.py` PASS
+  12:10:35-12:10:52, baseline 370, wrapped 661 checks (563 before: `thin_vote_case` adds 43 per device iteration:
+  `GetDesc` of a converted VB and IB returns the requested WRITEONLY while the native Usage has none, a READONLY Lock
+  reads the written bytes, the tag-failure and converted-creation-failure fallbacks keep WRITEONLY storage, disarming
+  leaves new creations unconverted while a converted buffer keeps its Usage, the queue's writable-Unlock / native-notice
+  / index-buffer / final-release (bit 0) pushes, READONLY and unwatched writes silent, the one-shot watch, overflow of
+  the fixture's 4-slot queue; `thin_process_vertices_case` adds 12: ProcessVertices on a software-VP device pushes a
+  watched destination, not an unwatched one), `verify_ownership.py` PASS; `run_managed_upload_contract.py` PASS
+  12:10:22-12:10:29, 461 checks
+  ([managed-upload-contract.txt](../../verification/results/bottle-X3/managed-upload-contract.txt), summary beside it).
+- **Slots** (`run_thin_vote_probe.py`, `D3DXDisassembleShader`, [probe.json](../../verification/results/thin-vote/probe.json)):
+  tests draw `line_mask_depth` 420 -> twin 429, `line_mask_camera_depth` 407 -> twin 415; current-depth fragment 3 -> 4;
+  the reviewed pair's pixel variant (ps `8759c7838bbc86c2`, original 49) 77 -> 78. The plain programs keep their bytecode
+  (all generator records and the bloom tool's nine regenerated for the new generator hash; no `_inc.h` byte moved).
+- **Cost** (same probe, i686 production flags, under FEX; [probe.json](../../verification/results/thin-vote/probe.json)):
+  `measure` on a 10,000-triangle indexed grid 247.8 us warm median with FLOAT16_4 / stride 24 (24.8 ns per triangle; cold
+  first call 385.7 us), 165.7 us with FLOAT3 / stride 40. Per draw, after the invalidation change: the probe's core (key,
+  lookup over 448 cached subsets, scale, window, alpha) 8.45 ns warm in a loop; one lookup timed alone between two QPC
+  reads (64 ns per QPC call, 10 MHz counter) 75.9 ns warm and 92.0 ns with 2 MiB of other memory streamed before it, so
+  a cold table costs about 16 ns more. Drain (probe `DRAIN`, a cache of 6,697 entries read through 2,048 VB and 512 IB
+  wrappers): 68 ns per invalidated wrapper through the index (its entries dropped and unindexed), against 0.98 us for
+  one warm pass over the table (the former per-drain work, before its binary searches). In the DLL (`thin_vote_frame
+  draw_us`, the fixture's 2 routed opaque draws per frame, telemetry draw metrics; the final full run): 0.7-1.3 us
+  per frame in frames 1-5 of far-on, 0.5-1.2 us in near-on, 0.25-0.65 us per draw with the two QPC reads, against
+  1.9-2.8 us per frame (about 1 us per draw) with the per-draw revision views; frame 0 126-131 us (every subset missed
+  and queued, the path's first execution; inferred: translation of first-run code); hostile frame 1 345 us, frames 2-5
+  3.2-6.9 us for 7-8 draws with drains. The remaining 0.2-0.85 us per draw above the probe's bracketed 90 ns is not the table (inferred: code the
+  translator runs cold between two draws a whole frame apart, the timing calls themselves; a game frame's 448 draws keep
+  that path hot, the fixture's two do not). Not established against the 100 ns target in the game: needs `draw_us` from a
+  flight. The READONLY Locks' in-game cost is unmeasured (fixture, final full run: `lock_us` 105.6-107.6 us for the
+  plain cases' 2 reads, 441.7 us for the hostile script's 9 reads, cumulative, first Locks included).
+- Scratch DLL (MinGW i686, RelWithDebInfo): 0 warnings; `check_no_x87.py` PASS, 683 reachable functions (673 before
+  the vote), 0 violations. Host suite: 253 modules, 2,613 tests, 0 failing (`test_taa_thin_vote.py`, 14 tests: the
+  invalidation index against a brute-force count over 100,000 random stores and invalidations, the per-wrapper overflow
+  scan, the volatility count, and: the histogram, the
+  bin shift, the [0.5, 3] px window at 0.3 / 0.6 / 1.5 / 2.9 / 6 px, the rows' scale, the vote threshold, FLOAT16_4 /
+  INDEX32 / index bias / refusals, the cache; the launcher option; the source contract, the readable policy and the
+  plain programs' bytecode). Four existing host checks adapted: the HDR-case count of `test_motion_output_runner.py`
+  (79 -> 83 after main's two), a `read_thin_votes` stub in `motion_hdr_scene_fixture.cpp`, the option flag in the
+  wrap-state seam's mirror class, the new option in `media_startup_loader_fixture.cpp`'s mirror.
+
+Not flown. What a flight has to settle (Run 80 A/B, `--taa-thin-vote on` against `off` at the same spot): whether the
+routed subsets get histograms (`thin_vote_frame`: measured against `not_readable`, `not_managed`, `range`, `not_quiet`,
+`invalidated`, `overflows` during loading), the readable policy's effect on loading and frame time (every MANAGED WRITEONLY buffer created
+without WRITEONLY), the scene-end read cost on a sector entry (`lock_us`, `measure_us`), the per-draw cost (`draw_us`
+with `--telemetry` draw metrics), how many opaque routed draws vote at the lattice stand and on hulls (a hull group
+whose triangles are mostly 0.5-3 px at distance votes as a whole; near panels of a large station can vote through the
+origin-depth scale), crawl on a station arm seen against its own hull (B's intended gain), ghosting on voted panels
+under a pan, and the tests draw's cost with the twin (`taa_mask` with `--gpu-sync-timing`).

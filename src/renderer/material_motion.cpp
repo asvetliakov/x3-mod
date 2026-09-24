@@ -2,11 +2,15 @@
 #include "rigid_motion_pixel_program.h"
 #include "current_depth_pixel_program.h"
 #include "damage_motion_validation.h"
+#include <atomic>
 #include <iterator>
 
 namespace x3m::renderer {
 namespace {
 using Words = std::vector<std::uint32_t>;
+// X3M_TAA_THIN_VOTE (material_motion_configure_thin_vote): process-wide, set before any variant is
+// built; the transformers read it once per call.
+std::atomic<bool> thin_vote_transform{false};
 
 // Direct3D 9 shader token encoding (documented in the DirectX SDK "Shader
 // Codes" reference). Instruction tokens carry the opcode in bits 0-15 and the
@@ -384,8 +388,10 @@ bool motion_fragment(const MotionOutputProfile& row, Words& constants, Words& in
 // Move one operand of the authored depth fragment: its single input v0 to the
 // row's depth input, its temporary r0 to the first motion temporary (dead
 // once the motion fragment has written oC1, which precedes this fragment),
-// and oC0 to the depth target. No constants exist in that program.
-bool relocate_depth_register(const MotionOutputProfile& row, std::uint32_t& token) noexcept {
+// and oC0 to the depth target. No constants exist in the plain program; the
+// thin-vote twin reads c2 alone, which goes to the pixel ABI's third register
+// (MaterialMotionAbi::pixel_thin_constant, c218).
+bool relocate_depth_register(const MotionOutputProfile& row, std::uint32_t& token, bool thin = false) noexcept {
     if (!(token & parameter_bit) || (token & relative_bit)) return false;
     const auto type = register_type(token), index = register_index(token);
     unsigned relocated;
@@ -393,6 +399,7 @@ bool relocate_depth_register(const MotionOutputProfile& row, std::uint32_t& toke
     case temporary_class: if (index != 0) return false; relocated = row.pixel_temporary_base; break;
     case input_class: if (index != 0) return false; relocated = row.pixel_depth_input_register; break;
     case color_output_class: if (index != 0) return false; relocated = MaterialMotionAbi::depth_render_target; break;
+    case constant_class: if (!thin || index != 2) return false; relocated = row.pixel_constant_base + 2; break;
     default: return false;
     }
     token = (token & ~std::uint32_t(0x7ff)) | relocated;
@@ -403,16 +410,19 @@ bool relocate_depth_register(const MotionOutputProfile& row, std::uint32_t& toke
 // color output writes: .r (and .g) = z / w, then .zw = w (the sun-shadow
 // lane's precise receiver depth, docs/architecture/shadow-receiver-depth.md;
 // dropped by the lane-off R32F target). Its shape is fixed at compile time
-// of the fragment.
-bool depth_fragment(const MotionOutputProfile& row, Words& inputs, Words& body) {
-    const auto& code = current_depth_pixel_program();
+// of the fragment. The thin-vote twin (current_depth_thin_ps.hlsl) is the
+// same with .a = c2.x: the same opcodes, the one constant, and the four lanes
+// written by two or three output writes.
+template <std::size_t N>
+bool depth_fragment_of(const std::uint32_t (&code)[N], bool thin, const MotionOutputProfile& row, Words& inputs, Words& body) {
     if (code[0] != 0xffff0300u) return false;
     bool body_started = false;
-    unsigned declarations = 0, outputs = 0;
+    unsigned declarations = 0, outputs = 0, output_lanes = 0, constants = 0;
     for (std::size_t at = 1; at < std::size(code);) {
         const auto token = code[at], opcode = token & 0xffff;
         if (opcode == op_end)
-            return token == end_token && at == std::size(code) - 1 && declarations == 1 && outputs == 2;
+            return token == end_token && at == std::size(code) - 1 && declarations == 1 &&
+                (thin ? outputs >= 2 && outputs <= 3 && output_lanes == 15 && constants == 1 : outputs == 2);
         const std::size_t operands = instruction_length(token);
         if (operands > std::size(code) - at - 1) return false;
         if (opcode == op_comment) { at += operands + 1; continue; }
@@ -438,14 +448,121 @@ bool depth_fragment(const MotionOutputProfile& row, Words& inputs, Words& body) 
             body.push_back(token);
             for (std::size_t i = 1; i <= operands; ++i) {
                 auto operand = code[at + i];
-                if (i == 1 && register_type(operand) == color_output_class) ++outputs;
-                if (!relocate_depth_register(row, operand)) return false;
+                if (i == 1 && register_type(operand) == color_output_class) {
+                    const unsigned lanes = (operand >> 16) & 15u;
+                    if (thin && (output_lanes & lanes)) return false; // every lane written once
+                    ++outputs; output_lanes |= lanes;
+                }
+                if (i > 1 && register_type(operand) == constant_class) ++constants;
+                if (!relocate_depth_register(row, operand, thin)) return false;
                 body.push_back(operand);
             }
         }
         at += operands + 1;
     }
     return false;
+}
+bool depth_fragment(const MotionOutputProfile& row, Words& inputs, Words& body, bool thin) {
+    return thin ? depth_fragment_of(current_depth_thin_pixel_program(), true, row, inputs, body)
+                : depth_fragment_of(current_depth_pixel_program(), false, row, inputs, body);
+}
+
+// Thin vote: the motion fragment's three DEFs sit at c218-c220 (pixel ABI
+// base + 2..4), which would shadow the uploaded c218 the thin depth fragment
+// reads (a def'd register overrides SetPixelShaderConstantF inside that
+// program). The literals the fragment actually reads (seven distinct values)
+// are repacked into two DEFs at c219 and c220 and every constant operand is
+// rewritten to the same values: each operand of a component-wise instruction
+// needs the values of the lanes its destination writes, all from one
+// register; the two registers are chosen by an exhaustive search over those
+// operand groups (fails closed when none fits; the arithmetic, its order and
+// every value read are unchanged, so the motion output is bit-identical).
+constexpr unsigned op_mov = 0x01, op_add = 0x02, op_mad = 0x04, op_mul = 0x05, op_min = 0x0a, op_max = 0x0b, op_cmp = 0x58;
+bool component_wise(unsigned opcode) noexcept {
+    return opcode == op_mov || opcode == op_add || opcode == op_mad || opcode == op_mul || opcode == op_min ||
+        opcode == op_max || opcode == op_cmp;
+}
+bool pack_motion_definitions(const MotionOutputProfile& row, Words& constants, Words& body) {
+    const unsigned base = row.pixel_constant_base + 2; // c218: the three relocated DEFs, in order
+    if (constants.size() != 18) return false;
+    std::uint32_t values[3][4];
+    for (unsigned d = 0; d < 3; ++d) {
+        if (constants[6 * d] != 0x05000051u || constants[6 * d + 1] != (0xa00f0000u | (base + d))) return false;
+        for (unsigned c = 0; c < 4; ++c) values[d][c] = constants[6 * d + 2 + c];
+    }
+    // Operand groups: the distinct literal bits one operand reads.
+    struct Group { std::uint32_t value[4]; unsigned count; };
+    Group groups[32]; unsigned group_count = 0;
+    struct Site { std::size_t at; unsigned lanes; unsigned group; };
+    Site sites[32]; unsigned site_count = 0;
+    for (std::size_t at = 0; at < body.size();) {
+        const auto token = body[at], opcode = token & 0xffff;
+        const std::size_t operands = instruction_length(token);
+        if (at + operands >= body.size()) return false;
+        const unsigned lanes = operands ? (body[at + 1] >> 16) & 15u : 0u;
+        for (std::size_t i = 2; i <= operands; ++i) {
+            const auto operand = body[at + i];
+            if (register_type(operand) != constant_class) continue;
+            const unsigned index = register_index(operand);
+            if (index < base || index > base + 2) continue; // c216 / c217: uploaded, untouched
+            if (!component_wise(opcode) || !lanes || (operand & relative_bit)) return false;
+            Group g{{}, 0};
+            for (unsigned lane = 0; lane < 4; ++lane) {
+                if (!(lanes & (1u << lane))) continue;
+                const std::uint32_t v = values[index - base][(operand >> (16 + 2 * lane)) & 3u];
+                bool seen = false;
+                for (unsigned k = 0; k < g.count; ++k) seen |= g.value[k] == v;
+                if (!seen) g.value[g.count++] = v;
+            }
+            unsigned found = group_count;
+            for (unsigned k = 0; k < group_count && found == group_count; ++k) {
+                bool same = groups[k].count == g.count;
+                for (unsigned m = 0; same && m < g.count; ++m) same = groups[k].value[m] == g.value[m];
+                if (same) found = k;
+            }
+            if (found == group_count) { if (group_count == 32) return false; groups[group_count++] = g; }
+            if (site_count == 32) return false;
+            sites[site_count++] = {at + i, lanes, found};
+        }
+        at += operands + 1;
+    }
+    // Two registers of at most four distinct values each.
+    if (group_count > 16) return false;
+    std::uint32_t packed[2][4]{}; unsigned used[2]{}; unsigned choice = 0; bool fits = false;
+    for (unsigned mask = 0; mask < (1u << group_count) && !fits; ++mask) {
+        used[0] = used[1] = 0; fits = true;
+        for (unsigned k = 0; k < group_count && fits; ++k) {
+            const unsigned r = (mask >> k) & 1u;
+            for (unsigned m = 0; m < groups[k].count && fits; ++m) {
+                bool seen = false;
+                for (unsigned q = 0; q < used[r]; ++q) seen |= packed[r][q] == groups[k].value[m];
+                if (!seen) { if (used[r] == 4) fits = false; else packed[r][used[r]++] = groups[k].value[m]; }
+            }
+        }
+        if (fits) choice = mask;
+    }
+    if (!fits) return false;
+    for (unsigned r = 0; r < 2; ++r) for (unsigned q = used[r]; q < 4; ++q) packed[r][q] = 0u;
+    for (unsigned n = 0; n < site_count; ++n) {
+        auto& operand = body[sites[n].at];
+        const unsigned index = register_index(operand), r = (choice >> sites[n].group) & 1u;
+        std::uint32_t swizzle = 0; unsigned first = 4;
+        for (unsigned lane = 0; lane < 4; ++lane) {
+            if (!(sites[n].lanes & (1u << lane))) continue;
+            const std::uint32_t v = values[index - base][(operand >> (16 + 2 * lane)) & 3u];
+            unsigned q = 0; while (q < 4 && packed[r][q] != v) ++q;
+            if (q == 4) return false;
+            swizzle |= q << (2 * lane);
+            if (first == 4) first = q;
+        }
+        for (unsigned lane = 0; lane < 4; ++lane) if (!(sites[n].lanes & (1u << lane))) swizzle |= first << (2 * lane);
+        operand = (operand & ~(std::uint32_t(0xff) << 16) & ~std::uint32_t(0x7ff)) | (swizzle << 16) | (base + 1 + r);
+    }
+    Words packed_constants;
+    for (unsigned r = 0; r < 2; ++r)
+        packed_constants.insert(packed_constants.end(), {0x05000051u, 0xa00f0000u | (base + 1 + r), packed[r][0], packed[r][1], packed[r][2], packed[r][3]});
+    constants.swap(packed_constants);
+    return true;
 }
 
 bool supported_class(const MotionOutputProfile& row) noexcept {
@@ -599,6 +716,11 @@ bool material_motion_vertex_exports_depth(const MotionOutputProfile& row, bool c
 bool material_motion_pixel_writes_depth(const MotionOutputProfile& row, bool current_depth) noexcept {
     return current_depth && row.depth_output;
 }
+void material_motion_configure_thin_vote(bool on) noexcept { thin_vote_transform.store(on, std::memory_order_relaxed); }
+bool material_motion_thin_vote() noexcept { return thin_vote_transform.load(std::memory_order_relaxed); }
+std::size_t material_motion_pixel_definition_words(bool depth) noexcept {
+    return depth && material_motion_thin_vote() ? 12u : 18u;
+}
 
 MaterialMotionResult material_motion_vertex_variant_for(const MotionOutputProfile& row,
     const std::uint32_t* vertex, std::size_t vertex_words, std::vector<std::uint32_t>& output,
@@ -661,12 +783,15 @@ MaterialMotionResult material_motion_pixel_variant_for(const MotionOutputProfile
     const std::size_t declaration_at = row.pixel_declaration_insert_dword;
     const std::size_t append_at = row.pixel_append_dword;
     const bool depth = material_motion_pixel_writes_depth(row, current_depth);
+    const bool thin = depth && material_motion_thin_vote();
     try {
         Words constants, inputs, body;
         if (!motion_fragment(row, constants, inputs, body)) return MaterialMotionResult::ProfileMismatch;
+        // Thin vote: free c218 for the uploaded vote before the depth fragment reads it.
+        if (thin && !pack_motion_definitions(row, constants, body)) return MaterialMotionResult::ProfileMismatch;
         // The depth fragment follows the motion fragment: its declaration after
         // the motion input, its instructions after the motion body.
-        if (depth && !depth_fragment(row, inputs, body)) return MaterialMotionResult::ProfileMismatch;
+        if (depth && !depth_fragment(row, inputs, body, thin)) return MaterialMotionResult::ProfileMismatch;
         Words variant;
         variant.reserve(pixel_words + constants.size() + inputs.size() + body.size());
         variant.insert(variant.end(), pixel, pixel + definition_at);

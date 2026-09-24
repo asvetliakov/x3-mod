@@ -51,6 +51,14 @@ inline constexpr std::uint32_t temporal_line_mask_depth_words[] = {
 inline constexpr std::uint32_t temporal_line_mask_camera_depth_words[] = {
 #include "temporal_line_mask_camera_depth_program_inc.h"
 };
+// Thin-vote twins of the two (X3M_TAA_THIN_VOTE; docs/architecture/taa-thin-geometry-alternatives.md section 3.2):
+// src/temporal/line_mask_depth_thin_ps.hlsl and line_mask_camera_depth_thin_ps.hlsl, the same draws plus the vote from the lane's .a.
+inline constexpr std::uint32_t temporal_line_mask_depth_thin_words[] = {
+#include "temporal_line_mask_depth_thin_program_inc.h"
+};
+inline constexpr std::uint32_t temporal_line_mask_camera_depth_thin_words[] = {
+#include "temporal_line_mask_camera_depth_thin_program_inc.h"
+};
 // Sentinel stabiliser (docs/architecture/temporal-integration.md "Distant unrouted stations under a pan"): the separable box,
 // src/temporal/thin_box_rows_ps.hlsl and thin_box_columns_ps.hlsl (manifests verification/results/temporal-thin-box-{rows,columns}-program.json).
 inline constexpr std::uint32_t temporal_thin_box_rows_words[] = {
@@ -123,6 +131,8 @@ inline constexpr const auto& temporal_thin_box_program() noexcept { return detai
 // The depth-folding mask programs configure_far creates on top (optional: a refusal keeps the copy draw).
 inline constexpr const auto& temporal_line_mask_depth_program() noexcept { return detail::temporal_line_mask_depth_words; }
 inline constexpr const auto& temporal_line_mask_camera_depth_program() noexcept { return detail::temporal_line_mask_camera_depth_words; }
+inline constexpr const auto& temporal_line_mask_depth_thin_program() noexcept { return detail::temporal_line_mask_depth_thin_words; }
+inline constexpr const auto& temporal_line_mask_camera_depth_thin_program() noexcept { return detail::temporal_line_mask_camera_depth_thin_words; }
 inline constexpr const auto& temporal_thin_box_rows_program() noexcept { return detail::temporal_thin_box_rows_words; }
 inline constexpr const auto& temporal_thin_box_columns_program() noexcept { return detail::temporal_thin_box_columns_words; }
 // The 16-tap point twins TemporalPass creates beside the 5-tap programs (configure_history_taps).
