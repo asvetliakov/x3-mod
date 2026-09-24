@@ -1,0 +1,11 @@
+Run 78 A triage (run295-298, DLL d4ba9f05 / ee3bbf88, 5120x1440). No Wine; markers read-only from <game>/addon.
+ADDON="$HOME/Library/Application Support/CrossOver/Bottles/X3/drive_c/X3/addon"
+python3 dither_contours.py > dither_contours_out.txt           # Q1 modelled 8-bit contours, dither on/off, run295/run296 bursts
+python3 dt_windows.py > dt_windows_out.txt                     # Q1/Q4 frame timing, run291/294 baseline recomputed
+python3 exit_rows.py 295 296 297 298 287 > exit_rows_out.txt   # Q2
+python3 overlay_bursts.py /tmp/x3-bottleX3-run297/session-20260924-070235-736.log "$ADDON" > overlay_bursts_out.txt   # Q3
+python3 overlay_bursts.py /tmp/x3-bottleX3-run287/session-20260924-025446-212.log "$ADDON" > overlay_bursts_run287_out.txt  # Q3 reference
+grep -A3 -E '^stations/x3tc/terran_spp_(center|panel|bottom):' "$ADDON/x3m-lod-batch-bodies.txt" | grep ladder   # Q3 ladders before/after
+python3 taa_frames.py > taa_frames_out.txt                     # Q4
+python3 bolt_rows.py 298 279 277 > bolt_rows_out.txt           # Q5
+python3 abnormal_rows.py 295 296 297 298 > abnormal_rows_out.txt   # Q6

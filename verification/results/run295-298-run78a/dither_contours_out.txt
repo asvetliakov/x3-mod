@@ -1,0 +1,10 @@
+run295 hdr_tonemap dither=1 dither_reason=ok dither_shader=00000000
+run295 frame 6055 ev +0.060 n_sky=1791141 off: plateau 96.3% run50/run90 1/40 px | banding |box33(code)-box33(c)| p50/p99 0.019/0.269 codes | code p50 141.9
+run295 frame 6055 ev +0.060 n_sky=1791141 on : plateau 50.5% run50/run90 1/4 px | banding |box33(code)-box33(c)| p50/p99 0.003/0.025 codes | code p50 141.9
+run295 frame 6062 ev +0.060 n_sky=1789603 off: plateau 96.8% run50/run90 1/47 px | banding |box33(code)-box33(c)| p50/p99 0.026/0.248 codes | code p50 141.6
+run295 frame 6062 ev +0.060 n_sky=1789603 on : plateau 50.1% run50/run90 1/4 px | banding |box33(code)-box33(c)| p50/p99 0.003/0.021 codes | code p50 141.6
+run296 hdr_tonemap dither=0 dither_reason=off dither_shader=00000001
+run296 frame 1555 ev +0.211 n_sky=1787638 off: plateau 91.4% run50/run90 4/20 px | banding |box33(code)-box33(c)| p50/p99 0.009/0.123 codes | code p50 120.5
+run296 frame 1555 ev +0.211 n_sky=1787638 on : plateau 50.7% run50/run90 1/4 px | banding |box33(code)-box33(c)| p50/p99 0.004/0.026 codes | code p50 120.5
+run296 frame 1562 ev +0.372 n_sky=1792527 off: plateau 91.4% run50/run90 4/21 px | banding |box33(code)-box33(c)| p50/p99 0.009/0.254 codes | code p50 126.8
+run296 frame 1562 ev +0.372 n_sky=1792527 on : plateau 49.9% run50/run90 1/4 px | banding |box33(code)-box33(c)| p50/p99 0.004/0.026 codes | code p50 126.8

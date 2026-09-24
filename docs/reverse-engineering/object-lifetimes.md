@@ -448,9 +448,12 @@ moved the heap layout so the freed page now decommits (inferred).
 - That the exit-time reads run on the thread that frees the engine, which
   would close the observed shape, is inferred from the faulting thread being
   the render thread. It is not verified.
-- Not verified in the game. The next Run 77-style exit should show no fault
-  and one `engine_memory_read_refused` row. The next save load should show a
-  load time unchanged from run287's 22.6 s.
+- Verified in the game 2026-09-24 (Run 78 A, run295-298 on the Run78 DLL d4ba9f05…): four menu exits, no fault
+  (the Run77 fault reproduced in both run287 and run288). The `engine_memory_read_refused` summary row did not appear:
+  it is written only when the game's last device release passes through our hook (`capture.cpp:1065-1068`), and the
+  game exits without that final release (run287 showed the same; inferred from the last rows being the teardown
+  summaries). The expectation "one refused row per exit" is withdrawn; the acceptance is the absence of the fault
+  ([triage](../../verification/results/run295-298-run78a/exit_rows_out.txt)).
 
 
 Second-review limits (2026-09-24): the shutdown signal is raised only while the lifetime observer is live and

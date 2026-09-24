@@ -1,0 +1,6 @@
+run291 dither=None taa_debug=1 gpu_sync=0 scale=4 | full-fog windows n=12 p50 19.68 p95 22.38 | all windows excl first n=13 p50 19.68 p95 22.46 ms
+run294 dither=None taa_debug=1 gpu_sync=0 scale=4 | full-fog windows n=13 p50 19.35 p95 20.49 | all windows excl first n=13 p50 19.35 p95 20.49 ms
+run295 dither=1 taa_debug=0 gpu_sync=0 scale=4 | full-fog windows n=21 p50 18.91 p95 21.19 | all windows excl first n=23 p50 18.93 p95 21.19 ms
+run296 dither=0 taa_debug=0 gpu_sync=0 scale=4 | full-fog windows n=4 p50 18.98 p95 21.31 | all windows excl first n=5 p50 18.76 p95 20.68 ms
+run297 dither=1 taa_debug=0 gpu_sync=0 scale=4 | full-fog windows n=0 | all windows excl first n=57 p50 16.98 p95 17.88 ms
+run298 dither=1 taa_debug=0 gpu_sync=0 scale=4 | full-fog windows n=0 | all windows excl first n=46 p50 22.41 p95 25.49 ms

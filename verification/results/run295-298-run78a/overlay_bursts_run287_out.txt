@@ -1,0 +1,36 @@
+== burst frames 4545..4552 p00 0.7500028
+slot05 others/argon_gate rows=8 views={'639ef510': 8} lod={1: 8} ladder=[('3', '100000,30,155')] marker_thr=[678369, 30, 155] s=27..27 px=81..81 T_pad=155 s/T_pad=0.17..0.17 draws_by_lod={1: 16} MERGED
+slot05 ships/argon/argon_tl rows=8 views={'639ef510': 8} lod={1: 8} ladder=[('3', '100000,30,120')] marker_thr=[606393, 30, 120] s=28..28 px=84..84 T_pad=120 s/T_pad=0.23..0.23 draws_by_lod={1: 16} MERGED
+slot05 ships/argon/argon_tp_l rows=8 views={'639ef510': 8} lod={0: 8} ladder=[('-', '-')] marker_thr=[34257, 30, 120] s=1..1 px=3..3 T_pad=120 s/T_pad=0.01..0.01 draws_by_lod={} full
+slot05 ships/argon/argon_tp_s rows=8 views={'639ef510': 8} lod={0: 8} ladder=[('-', '-')] marker_thr=[20743, 30, 115] s=1..1 px=3..3 T_pad=115 s/T_pad=0.01..0.01 draws_by_lod={} full
+slot05 ships/argon/argon_ts_liquidstorage_m rows=24 views={'639ef510': 24} lod={0: 24} ladder=[('-', '-')] marker_thr=[20743, 30, 115] s=1..1 px=3..3 T_pad=115 s/T_pad=0.01..0.01 draws_by_lod={} full
+slot05 ships/boron/boron_m3_var2 rows=8 views={'639ef510': 8} lod={0: 8} ladder=[('-', '-')] marker_thr=[5679, 30, 119] s=1..1 px=3..3 T_pad=119 s/T_pad=0.01..0.01 draws_by_lod={} full
+slot05 ships/boron/boron_m4 rows=8 views={'639ef510': 8} lod={0: 8} ladder=[('-', '-')] marker_thr=[4494, 30, 104] s=1..1 px=3..3 T_pad=104 s/T_pad=0.01..0.01 draws_by_lod={} full
+slot05 ships/boron/boron_m4_var1 rows=8 views={'639ef510': 8} lod={0: 8} ladder=[('-', '-')] marker_thr=[5161, 30, 102] s=1..1 px=3..3 T_pad=102 s/T_pad=0.01..0.01 draws_by_lod={} full
+slot05 ships/boron/boron_ts_liquidstorage_m rows=8 views={'639ef510': 8} lod={0: 8} ladder=[('-', '-')] marker_thr=[24189, 30, 115] s=1..1 px=3..3 T_pad=115 s/T_pad=0.01..0.01 draws_by_lod={} full
+slot05 ships/m3/boron_m3p rows=8 views={'639ef510': 8} lod={0: 8} ladder=[('-', '-')] marker_thr=[10455, 30, 102] s=1..1 px=3..3 T_pad=102 s/T_pad=0.01..0.01 draws_by_lod={} full
+slot05 ships/m4/otas_m4p rows=16 views={'639ef510': 16} lod={0: 16} ladder=[('-', '-')] marker_thr=[5064, 30, 102] s=1..1 px=3..3 T_pad=102 s/T_pad=0.01..0.01 draws_by_lod={} full
+slot05 ships/m7/argon_m7 rows=8 views={'639ef510': 8} lod={1: 8} ladder=[('3', '100000,30,120')] marker_thr=[401434, 30, 120] s=28..28 px=84..84 T_pad=120 s/T_pad=0.23..0.23 draws_by_lod={1: 16} MERGED
+slot05 ships/m7/split_m7 rows=8 views={'639ef510': 8} lod={1: 8} ladder=[('3', '100000,30,120')] marker_thr=[422636, 30, 120] s=29..29 px=87..87 T_pad=120 s/T_pad=0.24..0.24 draws_by_lod={1: 16} MERGED
+slot05 ships/owp/owp_large rows=8 views={'639ef510': 8} lod={1: 8} ladder=[('3', '100000,30,83')] marker_thr=[568030, 30, 83] s=34..34 px=102..102 T_pad=83 s/T_pad=0.41..0.41 draws_by_lod={1: 32} MERGED
+slot05 ships/paranid/paranid_m3_var1 rows=8 views={'639ef510': 8} lod={0: 8} ladder=[('-', '-')] marker_thr=[6485, 30, 99] s=1..1 px=3..3 T_pad=99 s/T_pad=0.01..0.01 draws_by_lod={} full
+slot05 ships/paranid/paranid_m4_var3 rows=8 views={'639ef510': 8} lod={0: 8} ladder=[('-', '-')] marker_thr=[4453, 30, 95] s=1..1 px=3..3 T_pad=95 s/T_pad=0.01..0.01 draws_by_lod={} full
+slot05 ships/split/split_m2 rows=8 views={'639ef510': 8} lod={1: 8} ladder=[('3', '100000,30,120')] marker_thr=[534080, 30, 120] s=52..53 px=156..159 T_pad=120 s/T_pad=0.43..0.44 draws_by_lod={1: 16} MERGED
+slot05 ships/teladi/teladi_ts_liquidstorage_m rows=8 views={'639ef510': 8} lod={0: 8} ladder=[('-', '-')] marker_thr=[23189, 30, 113] s=1..1 px=3..3 T_pad=113 s/T_pad=0.01..0.01 draws_by_lod={} full
+slot05 ships/tm/otas_tm rows=8 views={'639ef510': 8} lod={1: 8} ladder=[('3', '100000,30,120')] marker_thr=[53533, 30, 120] s=4..4 px=12..12 T_pad=120 s/T_pad=0.03..0.03 draws_by_lod={1: 16} MERGED
+slot05 ships/x3ap/boron/xtc_boron_m4p rows=16 views={'639ef510': 16} lod={0: 16} ladder=[('-', '-')] marker_thr=[7198, 49, 175] s=1..1 px=3..3 T_pad=175 s/T_pad=0.01..0.01 draws_by_lod={} full
+slot05 stations/docks/argon_newdock_center rows=16 views={'639ef510': 16} lod={0: 16} ladder=[('-', '-')] marker_thr=[30842, 30, 150] s=1..1 px=3..3 T_pad=150 s/T_pad=0.01..0.01 draws_by_lod={} full
+slot05 stations/living_sections/argon_livingsection rows=8 views={'639ef510': 8} lod={1: 8} ladder=[('3', '100000,30,155')] marker_thr=[150032, 30, 155] s=13..13 px=39..39 T_pad=155 s/T_pad=0.08..0.08 draws_by_lod={1: 16} MERGED
+slot05 stations/others/military_outpost_middleb rows=16 views={'639ef510': 16} lod={0: 8, 1: 8} ladder=[('3', '100000,30,150')] marker_thr=[2246786, 30, 150] s=94..8874 px=282..26622 T_pad=150 s/T_pad=0.63..59.16 draws_by_lod={0: 272, 1: 32} MERGED
+slot05 stations/station_scenes/others/argon_spacedock rows=8 views={'639ef510': 8} lod={1: 8} ladder=[('3', '100000,250,278')] marker_thr=[1953631, 250, 278] s=176..176 px=528..528 T_pad=278 s/T_pad=0.63..0.63 draws_by_lod={1: 32} MERGED
+slot05 stations/station_scenes/tech/argon_tech_l_laser_bb rows=8 views={'639ef510': 8} lod={1: 8} ladder=[('3', '100000,30,154')] marker_thr=[535270, 30, 154] s=17..17 px=51..51 T_pad=154 s/T_pad=0.11..0.11 draws_by_lod={1: 48} MERGED
+slot05 stations/station_scenes/tech/argon_tech_l_shield_f rows=8 views={'639ef510': 8} lod={1: 8} ladder=[('3', '100000,250,173')] marker_thr=[711107, 250, 173] s=42..42 px=126..126 T_pad=173 s/T_pad=0.24..0.24 draws_by_lod={1: 32} MERGED
+slot05 stations/station_scenes/tech/argon_tech_m_laser_g rows=8 views={'639ef510': 8} lod={1: 8} ladder=[('3', '100000,250,184')] marker_thr=[572549, 250, 184] s=17..17 px=51..51 T_pad=184 s/T_pad=0.09..0.09 draws_by_lod={1: 32} MERGED
+slot05 stations/station_scenes/tech/argon_tech_s_laser_e rows=8 views={'639ef510': 8} lod={1: 8} ladder=[('3', '100000,250,196')] marker_thr=[593198, 250, 196] s=18..18 px=54..54 T_pad=196 s/T_pad=0.09..0.09 draws_by_lod={1: 24} MERGED
+== all overlay census rows in the bursts: s/T_pad bucket (0.1 wide) -> lod counts
+  s/T_pad 0.0: {1: 32, 0: 152}
+  s/T_pad 0.1: {1: 16}
+  s/T_pad 0.2: {1: 32}
+  s/T_pad 0.4: {1: 16}
+  s/T_pad 0.6: {1: 16}
+  s/T_pad 4.0: {0: 8}

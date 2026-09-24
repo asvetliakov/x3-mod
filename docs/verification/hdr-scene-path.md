@@ -757,3 +757,11 @@ pattern once after RCAS:
 (R saturates at 255, so one code.) Not covered: native Windows
 (cross-compiled) and the in-game rings (needs a user flight at 5120×1440 with
 `--hdr-dither on` and `off`).
+
+**In flight 2026-09-24 (Run 78 A, run295 dither on vs run296 `--hdr-dither off`, 5120x1440, same fog spot as the run291
+rings):** the user sees the moving rings gone with the dither on and present with it off. Modelled 8-bit sky from the
+pre-tonemap bursts ([dither_contours.py](../../verification/results/run295-298-run78a/dither_contours.py)): pixels equal to
+their right neighbour 91.4-96.8 % off vs 49.9-50.7 % on; run length of equal codes p90 20-47 px vs 4 px; low-frequency
+banding p99 0.12-0.27 codes vs 0.021-0.026 codes (about 10x lower). Frame time p50/p95 18.91/21.19 ms on vs 18.98/21.31
+off (no measurable cost). Logs carry `hdr_tonemap dither=1 dither_reason=ok` / `dither=0 dither_reason=off`. Accepted;
+`--hdr-dither on` stays the default.
