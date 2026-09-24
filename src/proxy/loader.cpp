@@ -5,6 +5,7 @@
 #include "cull_census.h"
 #include "collide_box_cull.h"
 #include "pause_key_only.h"
+#include "window_trace.h"
 #include "terran_station_lod.h"
 #include "lod_occlusion.h"
 #include "sun_flare_fix.h"
@@ -379,6 +380,10 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
         if (reserved != nullptr) x3m::abandon_fog_density_workers();
         x3m::voice_dmo_fallback::shutdown(); // one RemoveVectoredExceptionHandler; safe under the loader lock, idempotent
         x3m::ownership::set_surface_lock_observer(nullptr); // one relaxed store, idempotent: a late surface call forwards natively
+        // FreeLibrary only, and only if window_trace's pin failed (a pinned module never reaches this with hooks):
+        // the window-thread hooks go before their procedures' code does; at process exit (reserved != NULL) the
+        // threads are gone and no user32 call is made from the loader lock.
+        if (reserved == nullptr) x3m::window_trace::shutdown();
         // Dynamic unload only (reserved == NULL, FreeLibrary): the six original
         // bytes go back before the operand's storage disappears. The module is
         // pinned once the patch is live, so this path is unreachable then; at

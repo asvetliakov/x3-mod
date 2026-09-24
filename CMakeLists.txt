@@ -77,6 +77,7 @@ add_library(d3d9 SHARED
   src/ownership/application_admission.cpp src/ownership/application_admission_abi.cpp
   src/proxy/scene_capture.cpp src/proxy/object_trace.cpp src/proxy/scene_hook.cpp src/proxy/camera_state.cpp src/proxy/sun_light_poll.cpp src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/chase_fire.cpp src/proxy/telemetry.cpp src/proxy/engine_memory.cpp src/proxy/fade_region.cpp
   src/proxy/chase_transition.cpp src/proxy/chase_lead.cpp src/proxy/game_phases.cpp src/proxy/voice_dmo_fallback.cpp src/proxy/lod_scale.cpp src/proxy/terran_station_lod.cpp src/proxy/lod_occlusion.cpp src/proxy/fov.cpp src/proxy/sun_flare_fix.cpp src/proxy/point_light_admission.cpp src/proxy/cull_census.cpp src/proxy/cull_small_parts.cpp src/proxy/frame_timing.cpp src/proxy/frame_phases.cpp src/proxy/pass_phases.cpp src/proxy/residual_phases.cpp src/proxy/submit_phases.cpp src/proxy/light_phases.cpp src/proxy/loop_phases.cpp src/proxy/lean_stub.cpp src/proxy/media_cue.cpp src/proxy/collide_box_cull.cpp src/proxy/pause_key_only.cpp src/proxy/collide_narrow_census.cpp src/proxy/collide_sat_sse2.cpp src/proxy/collide_memo.cpp src/proxy/music_keep.cpp src/proxy/collide_query_phases.cpp src/proxy/sun_occlusion.cpp
+  src/proxy/window_mode.cpp src/proxy/window_trace.cpp src/proxy/cursor_reassert.cpp
   src/proxy/loading_trace.cpp src/proxy/loading_trace_light.cpp src/proxy/gz_buffer.cpp src/proxy/crypt_cache.cpp src/proxy/sampling_profiler.cpp src/ownership/d3d9_ownership.cpp
   src/proxy/engine_patch.cpp src/proxy/loading_probes.cpp src/proxy/resource_reader.cpp src/proxy/resource_reader_core.cpp
   src/ownership/finite_buffer_evidence.cpp src/ownership/portable_managed_upload.cpp
@@ -96,6 +97,7 @@ add_dependencies(d3d9 x3m_source_commit)
 set_source_files_properties(src/ownership/application_admission_abi.cpp
   src/proxy/chase_camera.cpp src/proxy/chase_aim_trace.cpp src/proxy/chase_fire.cpp src/proxy/scene_hook.cpp
   src/proxy/chase_transition.cpp src/proxy/chase_lead.cpp src/proxy/game_phases.cpp src/proxy/frame_phases.cpp src/proxy/pass_phases.cpp src/proxy/residual_phases.cpp src/proxy/submit_phases.cpp src/proxy/light_phases.cpp src/proxy/loop_phases.cpp src/proxy/lean_stub.cpp src/proxy/media_cue.cpp src/proxy/voice_dmo_fallback.cpp src/proxy/sun_occlusion.cpp
+  src/proxy/window_mode.cpp src/proxy/window_trace.cpp src/proxy/cursor_reassert.cpp
   PROPERTIES COMPILE_OPTIONS "-fno-exceptions")
 # The engine-memory reader runs inside the lifetime observer's mutation scopes
 # and the light hooks, which do not preserve XMM state: build it without SSE/MMX
@@ -152,6 +154,19 @@ target_compile_definitions(gpu_sync_timing_fixture PRIVATE WIN32_LEAN_AND_MEAN N
 target_compile_options(gpu_sync_timing_fixture PRIVATE -Wall -Wextra -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2)
 target_link_options(gpu_sync_timing_fixture PRIVATE -static -static-libgcc -static-libstdc++)
 target_link_libraries(gpu_sync_timing_fixture PRIVATE user32)
+# Verification fixtures (built here, run by the Wine queue owner through verification/probe/run_window_mode.py
+# and run_cursor_reassert.py): the production --window-monitor-rect move on the bottle's display driver, and the
+# --cursor-reassert state machine / Win32 sequence with the window-thread hooks it shares with --window-trace.
+add_executable(window_mode_fixture verification/probe/window_mode_fixture.cpp src/proxy/window_mode.cpp)
+add_executable(cursor_reassert_fixture verification/probe/cursor_reassert_fixture.cpp src/proxy/cursor_reassert.cpp src/proxy/window_trace.cpp
+  src/proxy/loading_trace_light.cpp)
+foreach(fixture window_mode_fixture cursor_reassert_fixture)
+  target_compile_features(${fixture} PRIVATE cxx_std_17)
+  target_compile_definitions(${fixture} PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+  target_compile_options(${fixture} PRIVATE -Wall -Wextra -msse2 -mfpmath=sse -mstackrealign -mincoming-stack-boundary=2)
+  target_link_options(${fixture} PRIVATE -static -static-libgcc -static-libstdc++)
+  target_link_libraries(${fixture} PRIVATE user32 gdi32)
+endforeach()
 # Feasibility probe (run by the Wine queue owner through verification/probe/run_d3d11_interop.py):
 # D3D9 / D3D9Ex / D3D11 devices in one process, cross-API texture sharing, the mask dilation
 # as ps_3_0 passes vs one cs_5_0 dispatch, DXGI HDR colour-space queries, D3D11 caps. Every

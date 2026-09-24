@@ -31,6 +31,10 @@
 #include "media_cue_sites.h"
 #include "point_light_admission.h"
 #include "loading_trace.h"
+#include "loading_trace_light.h"
+#include "window_mode.h"
+#include "window_trace.h"
+#include "cursor_reassert.h"
 #include "gz_buffer.h"
 #include "crypt_cache.h"
 #include "resource_reader.h"
@@ -1099,7 +1103,7 @@ ULONG WINAPI release_device(IDirect3DDevice9* d) {
         cpu.before_original();
         refs=fn(d);cpu.after_original();
         if(!refs){game_phases::invalidate_device();report_shader_population(true); // session end: flush the last count movement
-        telemetry::summary(devices.at(d)->stats,"device_destroy",devices.at(d)->frame);telemetry::summary(telemetry::process(),"device_destroy",devices.at(d)->frame);log("device_destroy ptr=%p device=%llu",d,devices.at(d)->id);forget_cached_device();devices.erase(d);}
+        telemetry::summary(devices.at(d)->stats,"device_destroy",devices.at(d)->frame);telemetry::summary(telemetry::process(),"device_destroy",devices.at(d)->frame);log("device_destroy ptr=%p device=%llu",d,devices.at(d)->id);window_trace::detach(devices.at(d)->id);forget_cached_device();devices.erase(d);}
         last_device_destroyed=!refs&&devices.empty();
         if(last_device_destroyed)engine_memory_refused_line(); // per last-device destroy, not at detach (DllMain's detach must not log); later reads are uncounted
     }
@@ -1606,6 +1610,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d,const RECT* a,const RECT* b,HWND w,co
     music_keep::present(ctx.id,ctx.frame,ctx.capture); // X3M_MUSIC_KEEP=1 / X3M_MUSIC_TRACE=1 only: stores the frame counter the music lines carry
     cull_small_parts::present(ctx.id,ctx.frame,ctx.capture); // X3M_CULL_SMALL_PARTS_PX only: the frame's threshold and culled count on a captured frame
     telemetry::present(ctx.stats,ctx.frame,ctx.capture,begin,end,hr);
+    window_trace::present(ctx.stats.window,ctx.id,ctx.frame,ctx.stats.markers); // hooks installed only: the cursor re-assert step, the trace's flush and snapshots
     if(ctx.fps_overlay.visible()){
         // Shown only: one QueryPerformanceCounter per Present (the frame_end
         // clock), the text rebuilt when a 250 ms bucket closes. The second
@@ -1734,6 +1739,9 @@ HRESULT reset_common(IDirect3DDevice9* d,D3DPRESENT_PARAMETERS* p,D3DDISPLAYMODE
         ctx.motion_output.before_reset();
     }
     presentation_parameters("reset_before",ctx.id,ctx.stats.focus_window,p);
+    // X3M_WINDOW_MONITOR_RECT=1 only: the game repositioned at the work-area origin before this Reset (0x4dac90's
+    // mode-change path); the same predicate moves its window back to the monitor rectangle (window_mode.h).
+    if(p)window_mode::apply("reset_before",ctx.stats.focus_window,p->hDeviceWindow,p->Windowed!=FALSE,p->BackBufferWidth,p->BackBufferHeight);
     log("reset_begin ptr=%p device=%llu",d,ctx.id);
     finite_upload_metrics(d,ctx,"reset_before");
     const auto begin=telemetry::now();
@@ -2518,6 +2526,7 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     auto entry=devices.emplace(d,std::move(ctx));
     entry.first->second->install(d);
     log("device_hooked ptr=%p device=%llu ex=%u",d,devices.at(d)->id,supports_ex);
+    window_trace::attach(window,devices.at(d)->id); // X3M_WINDOW_TRACE / X3M_CURSOR_REASSERT only: the window-thread message hooks (refused off the window thread)
     // Attach after install: the route's own device calls use the native table
     // captured by Hooks, so nothing here re-enters the hooks.
     auto& hooked=*devices.at(d);
@@ -2894,6 +2903,9 @@ HRESULT WINAPI create_device(IDirect3D9* d,UINT adapter,D3DDEVTYPE type,HWND win
     const DWORD effective_flags=motion_output_requested ? flags & ~D3DCREATE_PUREDEVICE : flags;
     log("device_creation_policy requested=%08lx effective=%08lx state_reads=%u",flags,effective_flags,unsigned(motion_output_requested));
     presentation_parameters("create_before",0,window,p);
+    // X3M_WINDOW_MONITOR_RECT=1 only: the game has placed its WS_POPUP window at the work-area origin (0x4db040);
+    // one SetWindowPos to the monitor rectangle when window_mode_core.h's predicate holds, before the native device sees it.
+    if(p)window_mode::apply("create_before",window,p->hDeviceWindow,p->Windowed!=FALSE,p->BackBufferWidth,p->BackBufferHeight);
     if(p) log("create_device adapter=%u flags=%08lx width=%u height=%u format=%u windowed=%u msaa=%u interval=%u",adapter,flags,p->BackBufferWidth,p->BackBufferHeight,p->BackBufferFormat,p->Windowed,p->MultiSampleType,p->PresentationInterval);
     const auto begin=telemetry::now();
     cpu.before_original();
@@ -3715,6 +3727,10 @@ void initialize_log(HMODULE module) {
         taa_sentinel_mode==x3m::renderer::SentinelMode::CurrentOnly?"1":taa_sentinel_mode==x3m::renderer::SentinelMode::Camera?"2":"auto",taa_unmatched_static,double(taa_sentinel[0]),double(taa_sentinel[1]),taa_sky_history_strict?"strict":"loose",taa_sky_history_band_px,double(taa_sky_history_exit_px),double(taa_motion_weight[0]),double(taa_motion_weight[1]),double(taa_motion_weight[2]),camera_cut_degrees,camera_log_frames,motion_state_shadow<0?"auto":motion_state_shadow?"1":"0",scene_hook_requested,hdr_requested,taa_k_override,double(taa_mip_bias),taa_sharpen,double(taa_history_weight));
     log("x3-modern-renderer version=0.4 schema=2 capture_start=%u capture_frames=%u pointer_bits=32",capture_start,capture_count);
     telemetry::initialize([]{if(logfile)fflush(logfile);});
+    window_mode::initialize(); // X3M_WINDOW_MONITOR_RECT (+ _DEFAULT marker): one window_mode_config row when set
+    cursor_reassert::initialize(); // X3M_CURSOR_REASSERT=1 only
+    window_trace::initialize(telemetry::enabled(),&loading_trace::light::cursor_drain); // X3M_WINDOW_TRACE=1 with X3M_TELEMETRY=1 only
+    if(window_trace::enabled())loading_trace::light::cursor_observe(true); // the EXE's SetCursor/SetCursorPos rows record changes (patched by loading_trace below)
     game_phases::initialize(); // all 33 claims here, before the first Present
     frame_phases::initialize(); // X3M_FRAME_PHASES=1 only: ten render-routine stamps through the game-phase stub, same window
     pass_phases::initialize(); // X3M_PASS_PHASES=1 only: four effect-pass stamps through the lean stub, needs the frame group, same window

@@ -517,6 +517,30 @@ def main():
                         help='Frames between two frame_end lines, 1..100000, default 300 (X3M_FRAME_END_STRIDE; no prerequisite: frame_end exists in every mode): 1 logs every frame, which makes the frame cost readable per toggle state and shows periodic events the 300-frame cadence hides, at about 100 B of log per frame. Capture frames always log one. The other 300-frame reports of the Present path (chase camera, admission, finite upload) keep their own cadence')
     parser.add_argument('--fps-overlay', action='store_true', help='On-screen frame-rate line on the presented image (X3M_FPS_OVERLAY=1; default off; no prerequisite): "FPS 61.3  16.3 MS  DRAWS 638" from a one-second sliding window of the Present-to-Present interval (the ms figure is the frame interval, not GPU time), refreshed every 250 ms, plus "SHADOWS ON|OFF" when --sun-shadow-apply is on. Ctrl+Alt+F7 hides and shows it (Alt is the Option key under Wine on macOS; Shift must be up, so the Ctrl+Shift+F7 telemetry marker never fires on it). Drawn with Clear rectangles like the comparison notice, no GPU objects (docs/architecture/comparison-hotkeys.md, "FPS overlay")')
     parser.add_argument('--gpu-sync-timing', action='store_true', help='Serialised GPU cost of each proxy pass (X3M_GPU_SYNC_TIMING=1; default off; no prerequisite; refused with --vanilla). Diagnostic for one flight only: it serialises CPU and GPU at every pass boundary (one D3D9 event query issued and spun on with D3DGETDATA_FLUSH until the GPU is idle), so frame rate drops while it is on and the figures are serialised costs, not the pipelined frame. Passes: scene, engine draw span, shadow depth, sun apply, retention, fog fill, fog route, motes, TAA, HDR write-back, meter, HDR readback, bloom, present. One gpu_sync_timing row per pass per 300 frames (window and session median/p90 in us, the spin wait, the serialised Present-to-Present dt) and gpu_sync_timing_summary rows at the final device release. A device that refuses event queries logs one gpu_sync_timing available=0 line and runs unchanged (docs/architecture/engine-frame-time.md, "GPU sync timing")')
+    parser.add_argument('--window-monitor-rect', choices=('on', 'off'), default=None, dest='window_monitor_rect',
+                        help='[launcher default on modded launches when omitted; --window-monitor-rect off or --no-window-monitor-rect = off; not sent under --vanilla, '
+                             'where an explicit on is refused] Move the game\'s borderless device window from the monitor\'s work-area origin (under the '
+                             'macOS menu bar, its bottom rows off screen) to the monitor rectangle (X3M_WINDOW_MONITOR_RECT=1, marked '
+                             'X3M_WINDOW_MONITOR_RECT_DEFAULT=1 when it is the default; the DLL default when unset stays off): at CreateDevice and Reset, only '
+                             'for a windowed device whose window is the game\'s own WS_POPUP window on the render thread, placed at the work-area origin with the '
+                             'monitor\'s size, and a back buffer of the monitor\'s size, one SetWindowPos(SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOOWNERZORDER); a '
+                             'window already at the monitor rectangle (Windows with a bottom taskbar) is left alone. One window_mode row per CreateDevice/Reset '
+                             '(docs/architecture/window-mode-and-cursor-fix.md section 2.1)')
+    parser.add_argument('--no-window-monitor-rect', action='store_const', const='off', dest='window_monitor_rect', help='Same as --window-monitor-rect off')
+    parser.add_argument('--window-trace', action='store_true',
+                        help='Consolidated window/cursor trace for the double cursor after alt-tab (X3M_WINDOW_TRACE=1; requires --telemetry; refused under '
+                             '--vanilla; default off): window-thread message hooks (WH_CALLWNDPROC/WH_CALLWNDPROCRET/WH_GETMESSAGE, no subclassing) log the focus and '
+                             'window messages with the game handler\'s result (window_msg), summarised WM_SETCURSOR and per-frame mouse-move counts '
+                             '(window_msg_frame), the game\'s SetCursor/SetCursorPos calls on change (cursor_call), and a change-only cursor_snapshot at every '
+                             'Present for 120 frames after each transition; a bounded ring flushed on transitions and on the Ctrl+Shift+F7 marker. Passthrough '
+                             'only: nothing is shown, hidden, warped or captured (docs/architecture/window-mode-and-cursor-fix.md section 3.2)')
+    parser.add_argument('--cursor-reassert', action='store_true',
+                        help='Candidate fix for the duplicate arrow after alt-tab (X3M_CURSOR_REASSERT=1; refused under --vanilla; default off; independent of '
+                             '--telemetry): after each activation (WM_ACTIVATE active or WM_ACTIVATEAPP on), at the first Present within 120 frames where the game '
+                             'window is foreground and visible, Win32 reports the cursor hidden and the pointer is inside the client, one balanced '
+                             'SetCursor(arrow) / ShowCursor(TRUE) / ShowCursor(FALSE) / SetCursor(previous) on the window thread, so the Win32 end state equals '
+                             'the start and the display driver runs one hide transition; never a loop, a global hide, a foreground change or a pointer trap. One '
+                             'cursor_reassert row per firing or refusal; an unexpected count disables it for the process (docs/architecture/window-mode-and-cursor-fix.md section 3.3)')
     parser.add_argument('--frame-timing-state-stamps', type=int, default=0, metavar='N',
                         help='Stamp every Nth hooked state call in the frame-timing diagnostic (X3M_FRAME_TIMING_STATE_STAMPS; requires --frame-timing; default 0 = count the calls without reading the clock, so state_us is reported as -1). Two QueryPerformanceCounter reads cost about 136 ns per state call under FEX, which is several ms per busy frame; N>0 stamps one call in N and scales the sum by N (reported as state_sampled=N)')
     parser.add_argument('--game-phases', action='store_true', help='Measure native frame phases and delayed target-lock work (X3M_GAME_PHASES=1; requires --telemetry)')
@@ -788,6 +812,12 @@ def main():
         parser.error('--media-cue-retry-s must be between 1 and 3600.')
     if args.audio_sites and not args.game_phases:
         parser.error('--audio-sites requires --game-phases.')
+    if args.vanilla and args.window_monitor_rect == 'on':
+        parser.error('--window-monitor-rect cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that moves the window never runs')
+    if args.vanilla and (args.window_trace or args.cursor_reassert):
+        parser.error('--window-trace/--cursor-reassert cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that installs the window hooks never runs')
+    if args.window_trace and not args.telemetry:
+        parser.error('--window-trace requires --telemetry (it extends the telemetry window and cursor rows and the SetCursor/SetCursorPos import rows).')
     if args.vanilla and args.gpu_sync_timing:
         parser.error('--gpu-sync-timing cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so there is no proxy pass to time.')
     if args.vanilla and (args.music_keep or args.music_trace):
@@ -1539,6 +1569,19 @@ def main():
         env['X3M_FRAME_END_STRIDE'] = str(args.frame_end_stride)  # explicit, so an inherited value cannot change the cadence
         env['X3M_FPS_OVERLAY'] = '1' if args.fps_overlay else '0'
         env['X3M_GPU_SYNC_TIMING'] = '1' if args.gpu_sync_timing else '0'  # explicit, so an inherited value cannot serialise a normal flight
+        # Window mode, trace and cursor re-assert (window-mode-and-cursor-fix.md section 4). The monitor-rect move is
+        # explicit on every modded launch (on by default, the _DEFAULT marker telling the DLL's row whether it is the
+        # default) so a stale shell value cannot decide it; the trace and the re-assert travel only when given. None of
+        # them travels under --vanilla (explicit values are refused above).
+        for name in ('X3M_WINDOW_MONITOR_RECT', 'X3M_WINDOW_MONITOR_RECT_DEFAULT', 'X3M_WINDOW_TRACE', 'X3M_CURSOR_REASSERT'):
+            env.pop(name, None)
+        if not args.vanilla:
+            env['X3M_WINDOW_MONITOR_RECT'] = '0' if args.window_monitor_rect == 'off' else '1'
+            env['X3M_WINDOW_MONITOR_RECT_DEFAULT'] = '1' if args.window_monitor_rect is None else '0'
+            if args.window_trace:
+                env['X3M_WINDOW_TRACE'] = '1'
+            if args.cursor_reassert:
+                env['X3M_CURSOR_REASSERT'] = '1'
         env['X3M_FRAME_PHASES'] = '1' if args.frame_phases else '0'  # implied by --residual-phases above
         env['X3M_PASS_PHASES'] = '1' if args.pass_phases else '0'
         env['X3M_RESIDUAL_PHASES'] = '1' if args.residual_phases else '0'

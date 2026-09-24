@@ -193,15 +193,80 @@ DWORD WINAPI file_seek(HANDLE file,LONG distance,PLONG high,DWORD method) {
     // The sentinel can be a successful offset; classified as ambiguous, never forced.
     span.finish(false,0,false,result==INVALID_SET_FILE_POINTER&&error!=NO_ERROR);return result;
 }
+namespace {
+// --window-trace cursor observation (loading_trace_light.h). Writers: whichever
+// thread calls the EXE's SetCursor/SetCursorPos (the window procedure's thread in
+// practice; nothing is assumed). The change state and the slot writes are
+// serialised by a 32-bit interlocked spin lock (uncontended in practice: one
+// window thread), so the change state is lock-confined, not thread-confined.
+// Each ring slot is a sequence lock: the writer stores seq = 0, a release fence,
+// the fields, a release fence, then seq; the reader (window_trace's Present,
+// cursor_drain) loads seq with acquire, the fields, an acquire fence, and
+// re-checks seq. Fields are relaxed atomics (32-bit plain moves, no SSE/x87).
+volatile LONG cursor_observing=0,cursor_lock=0;
+volatile LONG cursor_sequence=0,cursor_set_calls=0,cursor_pos_calls=0;
+window_trace::core::CursorEvent cursor_ring[window_trace::core::cursor_event_capacity];
+bool cursor_have_set=false,cursor_have_pos=false;          // guarded by cursor_lock
+uint32_t cursor_last_handle=0,cursor_last_x=0,cursor_last_y=0,cursor_last_result=0; // guarded by cursor_lock
+template<typename T>void store_relaxed(T& field,T value) noexcept { __atomic_store_n(&field,value,__ATOMIC_RELAXED); }
+template<typename T>T load_relaxed(const T& field) noexcept { return __atomic_load_n(&field,__ATOMIC_RELAXED); }
+void cursor_record(uint32_t op,uint32_t a,uint32_t b,uint32_t result) noexcept {
+    const DWORD error=GetLastError();
+    if(op==0)InterlockedIncrement(&cursor_set_calls);else InterlockedIncrement(&cursor_pos_calls);
+    while(InterlockedCompareExchange(&cursor_lock,1,0)!=0)YieldProcessor();
+    bool changed;
+    if(op==0){changed=!cursor_have_set||a!=cursor_last_handle;cursor_have_set=true;cursor_last_handle=a;}
+    else{changed=!cursor_have_pos||a!=cursor_last_x||b!=cursor_last_y||result!=cursor_last_result;
+         cursor_have_pos=true;cursor_last_x=a;cursor_last_y=b;cursor_last_result=result;}
+    if(changed){
+        const uint32_t tick=GetTickCount(),thread=GetCurrentThreadId(); // only for a recorded change: the game repeats SetCursor(NULL) per WM_SETCURSOR
+        const uint32_t sequence=uint32_t(InterlockedIncrement(&cursor_sequence));
+        auto& slot=cursor_ring[(sequence-1)&(window_trace::core::cursor_event_capacity-1)];
+        __atomic_store_n(&slot.seq,0u,__ATOMIC_RELAXED);
+        __atomic_thread_fence(__ATOMIC_RELEASE);
+        store_relaxed(slot.op,op);store_relaxed(slot.a,a);store_relaxed(slot.b,b);store_relaxed(slot.result,result);
+        store_relaxed(slot.tick,tick);store_relaxed(slot.thread,thread);
+        __atomic_thread_fence(__ATOMIC_RELEASE);
+        __atomic_store_n(&slot.seq,sequence,__ATOMIC_RELEASE);
+    }
+    InterlockedExchange(&cursor_lock,0);
+    SetLastError(error);
+}
+}
+void cursor_observe(bool on) noexcept { InterlockedExchange(&cursor_observing,on?1:0); }
+unsigned cursor_drain(uint32_t after,window_trace::core::CursorEvent* out,unsigned capacity,uint32_t* newest,window_trace::core::CursorCounts* counts) noexcept {
+    const uint32_t last=uint32_t(InterlockedCompareExchange(&cursor_sequence,0,0));
+    if(newest)*newest=last;
+    constexpr uint32_t window=window_trace::core::cursor_event_capacity;
+    uint32_t first=after+1,dropped=0;
+    if(last>=window&&first<last-window+1){dropped=last-window+1-first;first=last-window+1;} // more than 64 changes since the previous drain
+    unsigned copied=0;
+    for(uint32_t sequence=first;sequence<=last&&sequence!=0;++sequence){
+        const auto& slot=cursor_ring[(sequence-1)&(window-1)];
+        if(copied>=capacity||__atomic_load_n(&slot.seq,__ATOMIC_ACQUIRE)!=sequence){++dropped;continue;} // overwritten (or being written) since `last`
+        auto& e=out[copied];
+        e.op=load_relaxed(slot.op);e.a=load_relaxed(slot.a);e.b=load_relaxed(slot.b);e.result=load_relaxed(slot.result);
+        e.tick=load_relaxed(slot.tick);e.thread=load_relaxed(slot.thread);
+        __atomic_thread_fence(__ATOMIC_ACQUIRE);
+        if(__atomic_load_n(&slot.seq,__ATOMIC_RELAXED)!=sequence){++dropped;continue;} // overwritten while copied
+        e.seq=sequence;++copied;
+    }
+    if(counts){counts->set=uint32_t(InterlockedExchange(&cursor_set_calls,0));counts->pos=uint32_t(InterlockedExchange(&cursor_pos_calls,0));counts->dropped=dropped;}
+    return copied;
+}
 HCURSOR WINAPI cursor_set(HCURSOR value) {
     Span span;span.begin(index(Operation::CursorSet));span.before_call();
     HCURSOR result=original<decltype(&SetCursor)>(span.op)(value);
-    span.finish();return result;
+    span.finish();
+    if(cursor_observing)cursor_record(0,uint32_t(reinterpret_cast<uintptr_t>(value)),uint32_t(reinterpret_cast<uintptr_t>(result)),0);
+    return result;
 }
 BOOL WINAPI cursor_position(int x,int y) {
     Span span;span.begin(index(Operation::CursorPosition));span.before_call();
     BOOL result=original<decltype(&SetCursorPos)>(span.op)(x,y);
-    span.finish(!result);return result;
+    span.finish(!result);
+    if(cursor_observing)cursor_record(1,uint32_t(x),uint32_t(y),uint32_t(result));
+    return result;
 }
 // Directory enumeration of the resource resolver: a miss (invalid handle with
 // ERROR_FILE_NOT_FOUND / ERROR_NO_MORE_FILES) and FindNextFileA's termination

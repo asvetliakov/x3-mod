@@ -1,7 +1,7 @@
 # Window mode and cursor fix: borderless under the menu bar, double cursor after alt-tab
 
-Design note, 2026-09-25 (design agent, Fable). Decision for the main session
-to ratify. Nothing implemented; no game or Wine run. Investigation state and
+Design note, 2026-09-25 (design agent, Fable), ratified 2026-09-25. Implemented
+2026-09-25 in the sections marked Implemented; not flown. Investigation state and
 the rules this note obeys: [window-and-cursor.md](window-and-cursor.md),
 [cursor-observations.md](../reverse-engineering/cursor-observations.md).
 Evidence scripts and log one-liners:
@@ -193,6 +193,23 @@ With a top-docked taskbar the window moves over it, which is what every
 borderless-fullscreen game does; Windows allows a popup window to cover the
 taskbar. Documented APIs only.
 
+**Implemented (2026-09-25, not flown).** `src/proxy/window_mode_core.h` (pure predicate),
+`src/proxy/window_mode.{h,cpp}`; called from `create_device` after the `create_before` row
+and from `reset_common` after the `reset_before` row, both inside the hook's
+`CpuCallBoundary` and before the native call. Deviation from the list above, from the
+orchestrator's brief: the move also requires the window rectangle to be exactly the game's
+own placement (the monitor-sized rectangle at the work-area origin, 0x4daf1b..0x4daf4e);
+any other rectangle is refused `not_work_origin`, so a window the user or another tool
+moved is never touched. Border extended styles (`WS_EX_DLGMODALFRAME`, `WINDOWEDGE`,
+`CLIENTEDGE`, `STATICEDGE`) count as decorated. Reasons: `fullscreen`, `foreign_window`,
+`no_window`, `child_window`, `foreign_thread`, `not_popup`, `decorated`, `no_monitor`,
+`backbuffer_mismatch`, `not_work_origin`; noop `at_monitor_rect`; move `work_origin`
+(row `action=moved`, or `move_failed` / `moved_constrained` when SetWindowPos failed or
+the driver kept another rectangle). Launcher: `--window-monitor-rect on|off` /
+`--no-window-monitor-rect`, default on when omitted for modded launches with
+`X3M_WINDOW_MONITOR_RECT_DEFAULT=1` (orchestrator decision; the DLL default when unset
+stays off). Evidence: [ledger](../verification/window-and-cursor.md).
+
 ### 2.2 Alternatives considered
 
 - **Present fullscreen (`Windowed = FALSE` with the display mode) when the
@@ -253,7 +270,7 @@ or capture call is ever made by the trace.
 
 | Group | Mechanism | Rows |
 | --- | --- | --- |
-| Focus/window messages, with the original handler's result | `SetWindowsHookExA(WH_CALLWNDPROC, ..., GetCurrentThreadId())` and `WH_CALLWNDPROCRET`, installed at `hook_device` on the window thread (refused with one row if the thread differs) | `window_msg seq= frame= hwnd= msg= wparam= lparam= result=` for WM_ACTIVATEAPP, WM_ACTIVATE, WM_SETFOCUS, WM_KILLFOCUS, WM_MOUSEACTIVATE, WM_CAPTURECHANGED, WM_CANCELMODE, WM_SYSCOMMAND, WM_SIZE, WM_MOVE, WM_WINDOWPOSCHANGED, WM_DISPLAYCHANGE; WM_SETCURSOR with hit-test and trigger message, summarised (first per 250 ms and on a result change); WM_MOUSEMOVE/WM_NCMOUSEMOVE counted per frame |
+| Focus/window messages, with the original handler's result | `SetWindowsHookExW(WH_CALLWNDPROC, ..., GetCurrentThreadId())` and `WH_CALLWNDPROCRET`, installed at `hook_device` on the window thread (refused with one row if the thread differs) | `window_msg seq= frame= hwnd= msg= wparam= lparam= result=` for WM_ACTIVATEAPP, WM_ACTIVATE, WM_SETFOCUS, WM_KILLFOCUS, WM_MOUSEACTIVATE, WM_CAPTURECHANGED, WM_CANCELMODE, WM_SYSCOMMAND, WM_SIZE, WM_MOVE, WM_WINDOWPOSCHANGED, WM_DISPLAYCHANGE; WM_SETCURSOR with hit-test and trigger message, summarised (first per 250 ms and on a result change); WM_MOUSEMOVE/WM_NCMOUSEMOVE counted per frame |
 | Win32 cursor calls by the game | existing main-module IAT hooks on `SetCursor`/`SetCursorPos` (`loading_trace` light spans) extended to record the handle / coordinates on change and a per-frame count | `cursor_call op=set handle= previous=`, `cursor_call op=pos x= y= result= count=` |
 | Snapshot after each transition | at every Present for 120 frames after any message of the first group, then the existing 4 Hz poll: `GetForegroundWindow`, `GetFocus`, `GetActiveWindow`, `GetCapture`, `GetGUIThreadInfo`, `GetClipCursor`, `GetCursorInfo`, `GetCursorPos`, `GetWindowRect`/`GetClientRect`, style/exstyle, `MonitorFromWindow` rects | change-only rows (existing names) |
 | D3D9 cursor methods | already wrapped (slots 10/11/12) | `telemetry_cursor_api` (expected 0) |
@@ -268,6 +285,30 @@ per message on the game thread (a few hundred per second; under 10 us per
 frame [i], measured by the row's own self-time in the flight). The ring
 buffer holds the last 4 s and flushes on transitions and on the
 `Ctrl+Shift+F7` marker.
+
+**Implemented (2026-09-25, not flown).** `src/proxy/window_trace.{h,cpp}` and
+`window_trace_core.h`. Deviations: posted `WM_MOUSEMOVE`/`WM_NCMOUSEMOVE` never reach
+`WH_CALLWNDPROC`, so a third thread hook, `WH_GETMESSAGE` (removed messages only), counts
+them; the snapshot burst writes one change-only `cursor_snapshot` row per Present (all the
+listed reads in one row) instead of forcing the existing 4 Hz rows, which stay unchanged.
+Rows: `window_trace_scope`, `window_trace_hooks`, `window_msg` (transitions with `seq`,
+nesting `depth` and the handler's `result`; `WM_SETCURSOR` summaries with `hit`, `trigger`,
+`suppressed`), `window_msg_frame` (per-frame mouse-move, `WM_SETCURSOR` and cursor-call
+counts), `cursor_call` (the light `SetCursor`/`SetCursorPos` rows record changes into a
+64-slot interlocked ring, integer only), `window_trace_flush`. The ring holds 1,024
+entries and is written at the Present after a transition or a marker press; thread hooks
+see every window of the thread (the fixture saw a second, unidentified window), so only
+messages to the device window count as transitions or arm the re-assert. Hooks are
+installed at `hook_device` only on the window thread (else one `installed=0
+reason=foreign_thread` row), all or none, removed at the device's final Release and at
+DLL detach on FreeLibrary only if the module pin taken at the first attach failed (not at
+process exit); a second device logs `reason=already_hooked`; a final Release off the installing thread
+leaves them (one `removed=0 reason=foreign_release` row, no flush) for the next attach on
+that thread or DLL detach. `present` acts only for the device that installed them. The
+hook procedures run under `LightCallBoundary`, never log, and are roots of
+`check_no_x87.py`. The cursor-call ring is a per-slot sequence lock with an interlocked
+writer lock; changes beyond 64 between drains are counted as `cursor_dropped` on
+`window_msg_frame`. If a Present arrives on another thread the step is skipped (one row).
 
 ### 3.3 Candidate fix: `--cursor-reassert`
 
@@ -316,6 +357,16 @@ the sequence runs on the thread that owns the window and the game's input,
 the same thread dinput used (the fixture asserts `up == 0`); the momentary
 show/hide happens inside one Present, before any paint, so no visible
 flicker is expected. Nothing in it is Wine-specific.
+
+**Implemented (2026-09-25, not flown).** `src/proxy/cursor_reassert_core.h` (state machine,
+the sequence as a template over the four calls) and `src/proxy/cursor_reassert.{h,cpp}`.
+Gates in order: same thread, foreground, visible and not iconic, `GetCursorInfo` without
+`CURSOR_SHOWING`, pointer in the client or clip equal to the client (screen coordinates via
+`MapWindowPoints`). A gate failing for 120 Presents refuses with the last failing gate as
+reason. Expected counts: (0, -1) from a start of -1 and (1, 0) from 0; any other pair or a
+changed `GetCursorInfo` flags/handle disables the option for the process. Rows:
+`cursor_reassert_mode`, `cursor_reassert_arm`, `cursor_reassert` (`action=fired|refused`).
+The observer is the `WH_CALLWNDPROC` hook of section 3.2, installed without the trace too.
 
 ### 3.4 Alternatives considered
 
@@ -374,6 +425,12 @@ Proofs before a flight:
   `WM_ACTIVATE` arms exactly once.
 - Dry run: proves the option-to-environment mapping and the refusals only;
   it says nothing about the window.
+
+**Implemented (2026-09-25).** Host: `verification/analysis/test_window_mode.py`,
+`test_cursor_reassert.py`, `test_window_options.py`. Wine: `verification/probe/run_window_mode.py`
+(+ `window_mode_fixture.cpp`; the screenshot is a BitBlt of the screen DC's top 40 rows,
+documented GDI, recorded not asserted) and `run_cursor_reassert.py` (+ `cursor_reassert_fixture.cpp`).
+Results: [ledger](../verification/window-and-cursor.md).
 
 The flight (user): launch 1 `--window-monitor-rect --telemetry
 --window-trace` with the alt-tab recipe of window-and-cursor.md (pointer on

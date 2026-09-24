@@ -32,3 +32,15 @@ style=94000000 exstyle=0 window_rect=0,31,5120,1471 client_rect=0,0,5120,1440;
 monitor 0,0,5120,1440 work 0,31,5120,1440; clip alternates -1512,0,5120,1440 (2)
 and 0,31,5120,1440 (2); telemetry_cursor_api rows: 0 (the game never calls the
 D3D9 cursor methods).
+
+## Implementation evidence (2026-09-25)
+
+- `dry_runs.py`: the four launcher dry runs (modded `--taa` default, `--window-monitor-rect off`,
+  `--telemetry --window-trace --cursor-reassert`, `--vanilla`) against the installed bottle; prints
+  the window/cursor variables each run would carry. Results in
+  `docs/verification/window-and-cursor.md`.
+- Wine records: `verification/results/bottle-X3/window-mode.{json,txt}` (runner
+  `verification/probe/run_window_mode.py`) and `cursor-reassert.{json,txt}`
+  (`verification/probe/run_cursor_reassert.py`). Summary one-liner:
+
+      python3 -c "import json;d=json.load(open('verification/results/bottle-X3/window-mode.json'));r=d['report'];print(d['passed'],r['check_count'],r['failed_checks'],r['geometry'],r['screen'])"

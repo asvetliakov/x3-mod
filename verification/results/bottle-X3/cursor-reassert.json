@@ -1,0 +1,263 @@
+{
+ "passed": true,
+ "game_launched": false,
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "sources": {
+  "src/proxy/cursor_reassert_core.h": "46ce8db37d823235fe4301fd96ad21428883f915e8b0c52e1e86019db1335723",
+  "src/proxy/cursor_reassert.h": "b2170106b6192f516a3192b837cb1eb2888bd4a3209938ca3fd755dfdc9937c1",
+  "src/proxy/cursor_reassert.cpp": "efab5b8c0b4230c0682f1534aa16ba781a8cb9e481f6c4efc07917fd27f0077f",
+  "src/proxy/window_trace_core.h": "93faf02316761cc9a5ea967d24987997d9a96d0c01a1f3148f3a1b9a26772d9f",
+  "src/proxy/window_trace.h": "eed7c546111a3349b66b12eb46dc126638885118b79b0bc7168ea00b374b397a",
+  "src/proxy/window_trace.cpp": "4688a7bb800cbbfb756f11e3f32dc34abff5a53bc44f8e6409993088903dd845",
+  "src/proxy/cpu_state.h": "73784e6190929661764c85d54778e97a4935a3841b7fca6f12e408751c1f4d6a",
+  "verification/probe/cursor_reassert_fixture.cpp": "a22134fac181d1bba7f48252ae46eac297890e4ec5bb967bef057761503bf615",
+  "verification/probe/run_cursor_reassert.py": "fec411df7ee002c798c1666e8bba50873cef43cf0247ae46c83f4ac4595d8b3b"
+ },
+ "executable": "/Users/asvetl/x3-mod/.claude/worktrees/agent-aa42a3ae9a72bb5b8/build/cursor_reassert_fixture.exe",
+ "executable_sha256": "71300addd7af9907705de25a4a2233ee47305db230388433d7f994e397543b86",
+ "expected_checks": 36,
+ "command": [
+  "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+  "--bottle",
+  "X3",
+  "--no-update",
+  "--workdir",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-aa42a3ae9a72bb5b8/build",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-aa42a3ae9a72bb5b8/build/cursor_reassert_fixture.exe"
+ ],
+ "elapsed_s": 8.9,
+ "exit_code": 0,
+ "report_sha256": "ad334a94da70605d3f065275245618cc84bdbdf4ed9877aece1c807c887f1538",
+ "report": {
+  "checks": [
+   [
+    "sequence_order",
+    true
+   ],
+   [
+    "sequence_counts_hidden",
+    true
+   ],
+   [
+    "sequence_counts_shown",
+    true
+   ],
+   [
+    "sequence_counts_deep_rejected",
+    true
+   ],
+   [
+    "drain_ten_in_order",
+    true
+   ],
+   [
+    "drain_position_event",
+    true
+   ],
+   [
+    "drain_past_capacity_dropped",
+    true
+   ],
+   [
+    "light_row_last_error_kept",
+    true
+   ],
+   [
+    "drain_empty_after",
+    true
+   ],
+   [
+    "options_enabled",
+    true
+   ],
+   [
+    "probe_window",
+    true
+   ],
+   [
+    "hooks_installed",
+    true
+   ],
+   [
+    "second_device_logged_already_hooked",
+    true
+   ],
+   [
+    "callwndprocret_sees_result",
+    true
+   ],
+   [
+    "handler_last_error_kept",
+    true
+   ],
+   [
+    "message_count_matches",
+    true
+   ],
+   [
+    "inactive_does_not_arm",
+    true
+   ],
+   [
+    "activate_arms_once",
+    true
+   ],
+   [
+    "game_state_count_minus_one",
+    true
+   ],
+   [
+    "waits_while_gate_fails",
+    true
+   ],
+   [
+    "fires_once_balanced",
+    true
+   ],
+   [
+    "win32_end_state_equals_start",
+    true
+   ],
+   [
+    "no_second_fire",
+    true
+   ],
+   [
+    "real_sequence_hidden",
+    true
+   ],
+   [
+    "real_sequence_count_zero",
+    true
+   ],
+   [
+    "refuses_after_window",
+    true
+   ],
+   [
+    "real_gates_collected",
+    true
+   ],
+   [
+    "real_present_end_state_unchanged",
+    true
+   ],
+   [
+    "mismatch_disables",
+    true
+   ],
+   [
+    "disabled_never_rearms",
+    true
+   ],
+   [
+    "flush_on_transition",
+    true
+   ],
+   [
+    "no_flush_without_transition",
+    true
+   ],
+   [
+    "setcursor_summary_and_frame_counts",
+    true
+   ],
+   [
+    "flush_on_marker",
+    true
+   ],
+   [
+    "unhook_all_true",
+    true
+   ],
+   [
+    "nothing_observed_after_removal",
+    true
+   ]
+  ],
+  "count": {
+   "initial_after_hide": -1
+  },
+  "cursor": {
+   "start_flags": 1,
+   "start_cursor": 0,
+   "end_flags": 1,
+   "end_cursor": 0,
+   "x": 4255,
+   "y": 853
+  },
+  "real_gates": {
+   "same_thread": 1,
+   "foreground": 1,
+   "visible": 1,
+   "cursor_ok": 1,
+   "cursor_flags": 0,
+   "show_count": -1,
+   "cursor_hidden": 1,
+   "pointer_in_client": 1,
+   "clip_is_client": 0,
+   "armed_by_show": 1,
+   "step": "fired",
+   "state": "idle"
+  },
+  "drains": [
+   {
+    "case": "ten",
+    "n": 10,
+    "dropped": 0,
+    "set": 13,
+    "newest": 10
+   },
+   {
+    "case": "past_capacity",
+    "n": 64,
+    "dropped": 36,
+    "set": 100,
+    "first": 48,
+    "newest": 111
+   }
+  ],
+  "result": {
+   "checks": 36,
+   "failed": 0,
+   "verdict": "PASS"
+  },
+  "rows": [
+   {
+    "action": "fired",
+    "up": 0,
+    "down": -1,
+    "balanced": 1,
+    "disabled": 0
+   },
+   {
+    "action": "refused",
+    "reason": "foreground"
+   },
+   {
+    "action": "fired",
+    "up": 0,
+    "down": -1,
+    "balanced": 1,
+    "disabled": 0
+   },
+   {
+    "action": "fired",
+    "up": -1,
+    "down": -2,
+    "balanced": 0,
+    "disabled": 1
+   }
+  ],
+  "check_count": 36,
+  "failed_checks": []
+ }
+}

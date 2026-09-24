@@ -514,6 +514,17 @@ likewise), so the pair links under the SM3 semantic rules. Gap: `texkill` covera
 edge on native drivers are unverified; the `shadow-alpha-casters` fixture case (the half-shadow counts and
 the byte-identical opaque maps) is the parity check to run on a native machine.
 
+## 2026-09-25: window mode, window trace, cursor re-assert (`--window-monitor-rect` default on, `--window-trace`, `--cursor-reassert`)
+
+Design [window-mode-and-cursor-fix.md](window-mode-and-cursor-fix.md), ledger
+`docs/verification/window-and-cursor.md`. Documented Win32 only: `GetWindowRect`, `MonitorFromWindow`/`GetMonitorInfoW`,
+one `SetWindowPos(SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOOWNERZORDER)` on the game's own window on its own thread;
+`SetWindowsHookExW` thread hooks (`WH_CALLWNDPROC`, `WH_CALLWNDPROCRET`, `WH_GETMESSAGE`, hMod NULL for the process's
+own thread) removed with `UnhookWindowsHookEx`; `GetCursorInfo`, `SetCursor`, `ShowCursor`, `LoadCursorW(IDC_ARROW)`.
+On native Windows with a bottom taskbar the work area starts at the monitor origin, so the window predicate answers noop;
+with a top-docked taskbar the window moves over it (as borderless games do). The re-assert's ShowCursor pair is balanced
+per thread on both platforms (inferred for Windows). Native Windows unverified.
+
 ## Shader slot budget
 
 User decision 2026-09-24: programs are sized against `MaxPixelShader30InstructionSlots` as the device reports it.

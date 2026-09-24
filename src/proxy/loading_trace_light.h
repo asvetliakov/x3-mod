@@ -1,6 +1,7 @@
 #pragma once
 #include "loading_trace.h"
 #include "loading_intervals_core.h"
+#include "window_trace_core.h"
 #include <windows.h>
 #include <wincrypt.h>
 #include <cstdint>
@@ -90,6 +91,15 @@ BOOL WINAPI file_read(HANDLE,LPVOID,DWORD,LPDWORD,LPOVERLAPPED);
 DWORD WINAPI file_seek(HANDLE,LONG,PLONG,DWORD);
 HCURSOR WINAPI cursor_set(HCURSOR);
 BOOL WINAPI cursor_position(int,int);
+// --window-trace (window_trace.h): with observation on, the two cursor rows also
+// count every call and record a changed handle / position / result into a
+// 64-slot sequence-locked event ring (32-bit fields, interlocked writer lock,
+// the thread's last error kept). cursor_drain copies the events newer than
+// `after` in sequence order (at most `capacity`), returns their number, stores
+// the newest sequence, exchanges the per-op call counts to zero and reports the
+// changes it could not return (counts->dropped). Off, the rows cost one load.
+void cursor_observe(bool on) noexcept;
+unsigned cursor_drain(uint32_t after,window_trace::core::CursorEvent* out,unsigned capacity,uint32_t* newest,window_trace::core::CursorCounts* counts) noexcept;
 HANDLE WINAPI find_first(LPCSTR,LPWIN32_FIND_DATAA);
 BOOL WINAPI find_next(HANDLE,LPWIN32_FIND_DATAA);
 BOOL WINAPI find_close(HANDLE);

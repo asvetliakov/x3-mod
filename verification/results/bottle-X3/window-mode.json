@@ -1,0 +1,217 @@
+{
+ "passed": true,
+ "game_launched": false,
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "sources": {
+  "src/proxy/window_mode_core.h": "39c6ec5d2ff548b0c7d0e89072e49ec67ee22d45f064a1b9afeb4954f7059f19",
+  "src/proxy/window_mode.h": "9ef5188b7d4a9c2ae0d4a7ad49d9598b5a95294bc3ba25108f24f97b6854629d",
+  "src/proxy/window_mode.cpp": "3412940c2e502354031fb1cb06f898470ee0bb00c5c1f7aa92d725e4d353f07d",
+  "verification/probe/window_mode_fixture.cpp": "d7cead56e4b01a7178e1d3707e4967d2466c32e840cbf80164314230ad88d4f2",
+  "verification/probe/run_window_mode.py": "d1602f11f4662c6d3e58d04bda5f5b7658d03efb6a5bc52229d8262dd04f5730"
+ },
+ "executable": "/Users/asvetl/x3-mod/.claude/worktrees/agent-aa42a3ae9a72bb5b8/build/window_mode_fixture.exe",
+ "executable_sha256": "366f5e85b7a6f5bf530581622df1d79de55885796b19beb1c73c459aa80f9a2c",
+ "expected_checks": 19,
+ "command": [
+  "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine",
+  "--bottle",
+  "X3",
+  "--no-update",
+  "--workdir",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-aa42a3ae9a72bb5b8/build",
+  "/Users/asvetl/x3-mod/.claude/worktrees/agent-aa42a3ae9a72bb5b8/build/window_mode_fixture.exe"
+ ],
+ "elapsed_s": 8.9,
+ "exit_code": 0,
+ "report_sha256": "b55a0782f536443268fa24cb2776b0bcbefbcad9ad12c47aa10bb511557d5547",
+ "report": {
+  "checks": [
+   [
+    "enabled_by_variable",
+    true
+   ],
+   [
+    "config_row",
+    true
+   ],
+   [
+    "register_class",
+    true
+   ],
+   [
+    "create_window",
+    true
+   ],
+   [
+    "game_placement_accepted_by_driver",
+    true
+   ],
+   [
+    "last_error_kept",
+    true
+   ],
+   [
+    "moved_to_monitor_rect",
+    true
+   ],
+   [
+    "rect_stays_at_monitor_after_pump",
+    true
+   ],
+   [
+    "client_is_monitor_size",
+    true
+   ],
+   [
+    "second_call_noop",
+    true
+   ],
+   [
+    "window_at_monitor_untouched",
+    true
+   ],
+   [
+    "spare_at_work_origin",
+    true
+   ],
+   [
+    "refused_smaller_backbuffer",
+    true
+   ],
+   [
+    "refused_fullscreen_device",
+    true
+   ],
+   [
+    "refused_second_window",
+    true
+   ],
+   [
+    "refused_decorated_style",
+    true
+   ],
+   [
+    "refused_popup_with_caption",
+    true
+   ],
+   [
+    "refused_foreign_thread",
+    true
+   ],
+   [
+    "option_off_untouched",
+    true
+   ]
+  ],
+  "geometry": {
+   "monitor": "0,0,5120,1440",
+   "work": "0,31,5120,1440",
+   "offset": 31,
+   "offset_x": 0
+  },
+  "placed": {
+   "rect": "0,31,5120,1471"
+  },
+  "screen": {
+   "available": 0,
+   "dib": 1,
+   "screen_dc": 1,
+   "error": 0,
+   "rows": 40,
+   "fill_rows": 0,
+   "fill_rows_top": 0,
+   "black_rows": 0,
+   "menu_rows": 31,
+   "foreground": 1
+  },
+  "result": {
+   "checks": 19,
+   "failed": 0,
+   "verdict": "PASS"
+  },
+  "rows": [
+   {
+    "phase": "create_before",
+    "before": "0,31,5120,1471",
+    "after": "0,0,5120,1440",
+    "action": "moved",
+    "reason": "work_origin",
+    "result": 1
+   },
+   {
+    "phase": "reset_before",
+    "before": "0,0,5120,1440",
+    "after": "0,0,5120,1440",
+    "action": "noop",
+    "reason": "at_monitor_rect",
+    "result": 0
+   },
+   {
+    "phase": "create_before",
+    "before": "0,0,5120,1440",
+    "after": "0,0,5120,1440",
+    "action": "noop",
+    "reason": "at_monitor_rect",
+    "result": 0
+   },
+   {
+    "phase": "create_before",
+    "before": "0,31,5120,1471",
+    "after": "0,31,5120,1471",
+    "action": "refused",
+    "reason": "backbuffer_mismatch",
+    "result": 0
+   },
+   {
+    "phase": "create_before",
+    "before": "0,31,5120,1471",
+    "after": "0,31,5120,1471",
+    "action": "refused",
+    "reason": "fullscreen",
+    "result": 0
+   },
+   {
+    "phase": "create_before",
+    "before": "0,31,5120,1471",
+    "after": "0,31,5120,1471",
+    "action": "refused",
+    "reason": "foreign_window",
+    "result": 0
+   },
+   {
+    "phase": "create_before",
+    "before": "0,31,5120,1471",
+    "after": "0,31,5120,1471",
+    "action": "refused",
+    "reason": "not_popup",
+    "result": 0
+   },
+   {
+    "phase": "create_before",
+    "before": "0,31,5120,1471",
+    "after": "0,31,5120,1471",
+    "action": "refused",
+    "reason": "decorated",
+    "result": 0
+   },
+   {
+    "phase": "create_before",
+    "before": "0,31,5120,1471",
+    "after": "0,31,5120,1471",
+    "action": "refused",
+    "reason": "foreign_thread",
+    "result": 0
+   }
+  ],
+  "check_count": 19,
+  "failed_checks": []
+ }
+}
