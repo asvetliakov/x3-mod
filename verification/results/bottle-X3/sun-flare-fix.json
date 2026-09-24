@@ -1,0 +1,1180 @@
+{
+ "fixture": "verification/probe/sun_flare_fix_fixture.cpp",
+ "runner": "verification/probe/run_sun_flare_fix.py",
+ "production_sources": [
+  "src/proxy/sun_flare_fix.cpp",
+  "src/proxy/sun_flare_fix.h",
+  "src/proxy/sun_flare_fix_sites.h",
+  "src/proxy/engine_patch.cpp",
+  "src/proxy/engine_patch.h"
+ ],
+ "source": {
+  "commit": "250cc48d47ea84d72468b2782c2095719c46c80a",
+  "production_sources_dirty": true,
+  "dirty_paths": [
+   "src/proxy/sun_flare_fix.cpp",
+   "src/proxy/sun_flare_fix.h",
+   "src/proxy/sun_flare_fix_sites.h"
+  ],
+  "sha256": {
+   "src/proxy/sun_flare_fix.cpp": "4c572c3e71ab6ce4cd5486fb5f6d8c701717f4791b8791ec43f029f0f3985b9f",
+   "src/proxy/sun_flare_fix.h": "71cb46d0a2396087bb51a798cd729038bd250e765b8e3af581a3a34aa1e9ff27",
+   "src/proxy/sun_flare_fix_sites.h": "28dea31276e71283896ac61f5b71e178827fd941858b266c03e2ff05fe04380f",
+   "src/proxy/engine_patch.cpp": "9eb31fbf19e4f88432655ccccfe6e054739d9b8ba5f5be4054dfccf513330a2b",
+   "src/proxy/engine_patch.h": "d8a777ee51e076271c0e22889701a594d98a4fad882a4be0c1c08cefc5771e66"
+  }
+ },
+ "game_launched": false,
+ "bottle": {
+  "name": "X3",
+  "wine_arch": "arm64",
+  "environment": {
+   "FEX_X87REDUCEDPRECISION": "1",
+   "WINEMSYNC": "1"
+  },
+  "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
+ },
+ "exit_status": 0,
+ "elapsed_s": 5.2,
+ "executable_sha256": "3f5b96eb1ff6ad0f777c8276aa749ee86961de9c92f1e2af90abd05cceeb905e",
+ "toolchain": "i686-w64-mingw32-g++ (GCC) 16.2.0",
+ "build_audit": {
+  "module_calls_seam": [
+   "fixture_read_code",
+   "fixture_store_pointer",
+   "fixture_restore"
+  ],
+  "module_calls_engine_patch_directly": [],
+  "engine_patch_lock_cmpxchg8b": 1,
+  "engine_page_va": "0047e000",
+  "x3msfc": {
+   "va": "0047e000",
+   "size": 4096,
+   "code_readonly": true
+  },
+  "gate_at_engine_offset": true,
+  "gate_sha256": "132c55c6872e61d7b801bd5c3dc37885892540f44ede9536070b19357b6b8acd",
+  "highest_other_section_end": "00341564",
+  "overlapping_sections": []
+ },
+ "check_count": 79,
+ "pass_count": 79,
+ "checks": [
+  {
+   "name": "restore_log_opened",
+   "pass": true
+  },
+  {
+   "name": "engine_page_at_engine_va",
+   "pass": true
+  },
+  {
+   "name": "engine_window_at_window_va_is_expected_window",
+   "pass": true
+  },
+  {
+   "name": "site_offset_1_of_its_qword",
+   "pass": true
+  },
+  {
+   "name": "engine_page_is_mem_image_execute_read",
+   "pass": true
+  },
+  {
+   "name": "vanilla_table_exits_and_registers",
+   "pass": true
+  },
+  {
+   "name": "vanilla_sweep_matches_model",
+   "pass": true
+  },
+  {
+   "name": "sweep_covers_both_regimes",
+   "pass": true
+  },
+  {
+   "name": "default_unset_off_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "default_unset_off_row_and_untouched",
+   "pass": true
+  },
+  {
+   "name": "explicit_off_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "explicit_off_row_and_untouched",
+   "pass": true
+  },
+  {
+   "name": "refuse_invalid_setting_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "refuse_invalid_setting_row_and_untouched",
+   "pass": true
+  },
+  {
+   "name": "refuse_too_long_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "refuse_too_long_row_and_untouched",
+   "pass": true
+  },
+  {
+   "name": "refuse_executable_mismatch_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "refuse_executable_mismatch_row_and_untouched",
+   "pass": true
+  },
+  {
+   "name": "setup_changed_window_byte",
+   "pass": true
+  },
+  {
+   "name": "refuse_changed_window_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "refuse_changed_window_untouched",
+   "pass": true
+  },
+  {
+   "name": "setup_window_byte_back",
+   "pass": true
+  },
+  {
+   "name": "setup_foreign_jump",
+   "pass": true
+  },
+  {
+   "name": "refuse_foreign_jump_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "refuse_foreign_jump_untouched",
+   "pass": true
+  },
+  {
+   "name": "setup_foreign_jump_removed",
+   "pass": true
+  },
+  {
+   "name": "install_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "install_ok_atomic_row",
+   "pass": true
+  },
+  {
+   "name": "install_jump_sixth_byte_kept_rest_of_page_unchanged",
+   "pass": true
+  },
+  {
+   "name": "install_protection_restored",
+   "pass": true
+  },
+  {
+   "name": "install_chain_jump_dispatcher_stub_slot_tail",
+   "pass": true
+  },
+  {
+   "name": "install_sequence_counts",
+   "pass": true
+  },
+  {
+   "name": "patched_table_exits_and_registers",
+   "pass": true
+  },
+  {
+   "name": "patched_sweep_matches_saturating_model",
+   "pass": true
+  },
+  {
+   "name": "non_overflowing_inputs_identical_patched_and_vanilla",
+   "pass": true
+  },
+  {
+   "name": "every_overflowing_input_passes_the_x_test_patched",
+   "pass": true
+  },
+  {
+   "name": "second_install_refused_already_installed",
+   "pass": true
+  },
+  {
+   "name": "initialize_again_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "initialize_again_no_second_claim",
+   "pass": true
+  },
+  {
+   "name": "restore_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "restore_row",
+   "pass": true
+  },
+  {
+   "name": "restore_original_bytes_protection",
+   "pass": true
+  },
+  {
+   "name": "restored_vanilla_again",
+   "pass": true
+  },
+  {
+   "name": "restore_again_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "restore_again_no_row",
+   "pass": true
+  },
+  {
+   "name": "rollback_chain_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "rollback_chain_failed_original_bytes",
+   "pass": true
+  },
+  {
+   "name": "rollback_readback_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "rollback_readback_original_bytes",
+   "pass": true
+  },
+  {
+   "name": "after_rollbacks_vanilla",
+   "pass": true
+  },
+  {
+   "name": "rollback_failed_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "rollback_failed_registered_jump_live",
+   "pass": true
+  },
+  {
+   "name": "rollback_failed_tail_only_vanilla",
+   "pass": true
+  },
+  {
+   "name": "initialize_after_rollback_failed_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "initialize_after_rollback_failed_reports_failure_no_second_claim",
+   "pass": true
+  },
+  {
+   "name": "restore_refused_protect_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "restore_failed_stays_registered",
+   "pass": true
+  },
+  {
+   "name": "restore_after_failure_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "restore_after_failure_original_bytes",
+   "pass": true
+  },
+  {
+   "name": "install_2_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "setup_install_2",
+   "pass": true
+  },
+  {
+   "name": "setup_foreign_over_ours",
+   "pass": true
+  },
+  {
+   "name": "restore_not_owned_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "restore_not_owned_foreign_untouched_registered",
+   "pass": true
+  },
+  {
+   "name": "setup_ours_back",
+   "pass": true
+  },
+  {
+   "name": "restore_unreadable_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "restore_unreadable_no_write_registered",
+   "pass": true
+  },
+  {
+   "name": "restore_after_not_owned_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "restore_after_not_owned_original_bytes",
+   "pass": true
+  },
+  {
+   "name": "install_3_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "setup_install_then_external_restore",
+   "pass": true
+  },
+  {
+   "name": "restore_already_original_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "restore_already_original_no_write",
+   "pass": true
+  },
+  {
+   "name": "roview_mapped",
+   "pass": true
+  },
+  {
+   "name": "roview_raise_refused_by_os",
+   "pass": true
+  },
+  {
+   "name": "roview_install_protect_failed_untouched",
+   "pass": true
+  },
+  {
+   "name": "late_lasterror_preserved",
+   "pass": true
+  },
+  {
+   "name": "late_initialize_refused",
+   "pass": true
+  },
+  {
+   "name": "after_late_vanilla",
+   "pass": true
+  }
+ ],
+ "vectors": [
+  {
+   "step": "vanilla",
+   "case": "A_run309",
+   "pad": 2,
+   "want": 2,
+   "eax": "8e0f8ac9",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "vanilla",
+   "case": "B_below_zcrit",
+   "pad": 1,
+   "want": 1,
+   "eax": "1ff6ba6b",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "vanilla",
+   "case": "C_vanilla_bug",
+   "pad": 2,
+   "want": 2,
+   "eax": "871a74e4",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "vanilla",
+   "case": "D_off_left",
+   "pad": 2,
+   "want": 2,
+   "eax": "2f5a8399",
+   "ecx": "31b8a3c6",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "vanilla",
+   "case": "E_inside_edge",
+   "pad": 1,
+   "want": 1,
+   "eax": "0d517858",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "vanilla",
+   "case": "E2_largest_x",
+   "pad": 2,
+   "want": 2,
+   "eax": "8e0f8ac9",
+   "ecx": "3fffffff",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "vanilla",
+   "case": "F_off_top",
+   "pad": 2,
+   "want": 2,
+   "eax": "8e0f8ac9",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "vanilla",
+   "case": "G_no_overflow",
+   "pad": 1,
+   "want": 1,
+   "eax": "233438e8",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "vanilla",
+   "case": "H_at_bound",
+   "pad": 1,
+   "want": 1,
+   "eax": "23ffff4a",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "patched",
+   "case": "A_run309",
+   "pad": 1,
+   "want": 1,
+   "eax": "27f46906",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "patched",
+   "case": "B_below_zcrit",
+   "pad": 1,
+   "want": 1,
+   "eax": "1ff6ba6b",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "patched",
+   "case": "C_vanilla_bug",
+   "pad": 1,
+   "want": 1,
+   "eax": "25ff7a60",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "patched",
+   "case": "D_off_left",
+   "pad": 2,
+   "want": 2,
+   "eax": "2f5a8399",
+   "ecx": "31b8a3c6",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "patched",
+   "case": "E_inside_edge",
+   "pad": 1,
+   "want": 1,
+   "eax": "0d517858",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "patched",
+   "case": "E2_largest_x",
+   "pad": 1,
+   "want": 1,
+   "eax": "27f46906",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "patched",
+   "case": "F_off_top",
+   "pad": 2,
+   "want": 2,
+   "eax": "27f46906",
+   "ecx": "2cb41780",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "patched",
+   "case": "G_no_overflow",
+   "pad": 1,
+   "want": 1,
+   "eax": "233438e8",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "patched",
+   "case": "H_at_bound",
+   "pad": 1,
+   "want": 1,
+   "eax": "23ffff4a",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "restored",
+   "case": "A_run309",
+   "pad": 2,
+   "want": 2,
+   "eax": "8e0f8ac9",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "restored",
+   "case": "B_below_zcrit",
+   "pad": 1,
+   "want": 1,
+   "eax": "1ff6ba6b",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "restored",
+   "case": "C_vanilla_bug",
+   "pad": 2,
+   "want": 2,
+   "eax": "871a74e4",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "restored",
+   "case": "D_off_left",
+   "pad": 2,
+   "want": 2,
+   "eax": "2f5a8399",
+   "ecx": "31b8a3c6",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "restored",
+   "case": "E_inside_edge",
+   "pad": 1,
+   "want": 1,
+   "eax": "0d517858",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "restored",
+   "case": "E2_largest_x",
+   "pad": 2,
+   "want": 2,
+   "eax": "8e0f8ac9",
+   "ecx": "3fffffff",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "restored",
+   "case": "F_off_top",
+   "pad": 2,
+   "want": 2,
+   "eax": "8e0f8ac9",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "restored",
+   "case": "G_no_overflow",
+   "pad": 1,
+   "want": 1,
+   "eax": "233438e8",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "restored",
+   "case": "H_at_bound",
+   "pad": 1,
+   "want": 1,
+   "eax": "23ffff4a",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "after_rollbacks",
+   "case": "A_run309",
+   "pad": 2,
+   "want": 2,
+   "eax": "8e0f8ac9",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "after_rollbacks",
+   "case": "B_below_zcrit",
+   "pad": 1,
+   "want": 1,
+   "eax": "1ff6ba6b",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "after_rollbacks",
+   "case": "C_vanilla_bug",
+   "pad": 2,
+   "want": 2,
+   "eax": "871a74e4",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "after_rollbacks",
+   "case": "D_off_left",
+   "pad": 2,
+   "want": 2,
+   "eax": "2f5a8399",
+   "ecx": "31b8a3c6",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "after_rollbacks",
+   "case": "E_inside_edge",
+   "pad": 1,
+   "want": 1,
+   "eax": "0d517858",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "after_rollbacks",
+   "case": "E2_largest_x",
+   "pad": 2,
+   "want": 2,
+   "eax": "8e0f8ac9",
+   "ecx": "3fffffff",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "after_rollbacks",
+   "case": "F_off_top",
+   "pad": 2,
+   "want": 2,
+   "eax": "8e0f8ac9",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "after_rollbacks",
+   "case": "G_no_overflow",
+   "pad": 1,
+   "want": 1,
+   "eax": "233438e8",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "after_rollbacks",
+   "case": "H_at_bound",
+   "pad": 1,
+   "want": 1,
+   "eax": "23ffff4a",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "rollback_failed_tail_only",
+   "case": "A_run309",
+   "pad": 2,
+   "want": 2,
+   "eax": "8e0f8ac9",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "rollback_failed_tail_only",
+   "case": "B_below_zcrit",
+   "pad": 1,
+   "want": 1,
+   "eax": "1ff6ba6b",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "rollback_failed_tail_only",
+   "case": "C_vanilla_bug",
+   "pad": 2,
+   "want": 2,
+   "eax": "871a74e4",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "rollback_failed_tail_only",
+   "case": "D_off_left",
+   "pad": 2,
+   "want": 2,
+   "eax": "2f5a8399",
+   "ecx": "31b8a3c6",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "rollback_failed_tail_only",
+   "case": "E_inside_edge",
+   "pad": 1,
+   "want": 1,
+   "eax": "0d517858",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "rollback_failed_tail_only",
+   "case": "E2_largest_x",
+   "pad": 2,
+   "want": 2,
+   "eax": "8e0f8ac9",
+   "ecx": "3fffffff",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "rollback_failed_tail_only",
+   "case": "F_off_top",
+   "pad": 2,
+   "want": 2,
+   "eax": "8e0f8ac9",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "rollback_failed_tail_only",
+   "case": "G_no_overflow",
+   "pad": 1,
+   "want": 1,
+   "eax": "233438e8",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "rollback_failed_tail_only",
+   "case": "H_at_bound",
+   "pad": 1,
+   "want": 1,
+   "eax": "23ffff4a",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "after_late",
+   "case": "A_run309",
+   "pad": 2,
+   "want": 2,
+   "eax": "8e0f8ac9",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "after_late",
+   "case": "B_below_zcrit",
+   "pad": 1,
+   "want": 1,
+   "eax": "1ff6ba6b",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "after_late",
+   "case": "C_vanilla_bug",
+   "pad": 2,
+   "want": 2,
+   "eax": "871a74e4",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "after_late",
+   "case": "D_off_left",
+   "pad": 2,
+   "want": 2,
+   "eax": "2f5a8399",
+   "ecx": "31b8a3c6",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "after_late",
+   "case": "E_inside_edge",
+   "pad": 1,
+   "want": 1,
+   "eax": "0d517858",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "after_late",
+   "case": "E2_largest_x",
+   "pad": 2,
+   "want": 2,
+   "eax": "8e0f8ac9",
+   "ecx": "3fffffff",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "after_late",
+   "case": "F_off_top",
+   "pad": 2,
+   "want": 2,
+   "eax": "8e0f8ac9",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "after_late",
+   "case": "G_no_overflow",
+   "pad": 1,
+   "want": 1,
+   "eax": "233438e8",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  },
+  {
+   "step": "after_late",
+   "case": "H_at_bound",
+   "pad": 1,
+   "want": 1,
+   "eax": "23ffff4a",
+   "ecx": "00000000",
+   "regs": true,
+   "ok": true
+  }
+ ],
+ "sweeps": [
+  {
+   "step": "vanilla",
+   "vectors": 4096,
+   "model_matches": 4096,
+   "overflowing": 3490
+  },
+  {
+   "step": "patched",
+   "vectors": 4096,
+   "model_matches": 4096,
+   "overflowing": 3490
+  },
+  {
+   "step": "restored",
+   "vectors": 4096,
+   "model_matches": 4096,
+   "overflowing": 3490
+  },
+  {
+   "step": "after_rollbacks",
+   "vectors": 4096,
+   "model_matches": 4096,
+   "overflowing": 3490
+  },
+  {
+   "step": "rollback_failed_tail_only",
+   "vectors": 4096,
+   "model_matches": 4096,
+   "overflowing": 3490
+  },
+  {
+   "step": "after_late",
+   "vectors": 4096,
+   "model_matches": 4096,
+   "overflowing": 3490
+  }
+ ],
+ "compare": {
+  "non_overflowing": 606,
+  "identical": 606,
+  "overflowing": 3490,
+  "changed": 3382,
+  "past_x_patched": 3490,
+  "past_x_vanilla": 108
+ },
+ "memory": [
+  {
+   "memory": "engine",
+   "type": "0x1000000",
+   "protect": "0x20",
+   "allocation_protect": "0x80"
+  }
+ ],
+ "roview": {
+  "protect": "0x20",
+  "raise": "0"
+ },
+ "timing_us": {
+  "install_us": 646.0,
+  "restore_us": 586.5
+ },
+ "arena": {
+  "used": 364,
+  "capacity": 24576
+ },
+ "install_rows": [
+  {
+   "site": "0047e391",
+   "status": "off",
+   "reason": "off",
+   "mode": "off",
+   "setting": "-",
+   "write": "none",
+   "stub": "00000000",
+   "patched": false
+  },
+  {
+   "site": "0047e391",
+   "status": "off",
+   "reason": "off",
+   "mode": "off",
+   "setting": "off",
+   "write": "none",
+   "stub": "00000000",
+   "patched": false
+  },
+  {
+   "site": "0047e391",
+   "status": "refused",
+   "reason": "invalid_setting",
+   "mode": "-",
+   "setting": "On",
+   "write": "none",
+   "stub": "00000000",
+   "patched": false
+  },
+  {
+   "site": "0047e391",
+   "status": "refused",
+   "reason": "too_long",
+   "mode": "-",
+   "setting": "?",
+   "write": "none",
+   "stub": "00000000",
+   "patched": false
+  },
+  {
+   "site": "0047e391",
+   "status": "refused",
+   "reason": "executable_mismatch",
+   "mode": "on",
+   "setting": "on",
+   "write": "none",
+   "stub": "00000000",
+   "patched": false
+  },
+  {
+   "site": "0047e391",
+   "status": "refused",
+   "reason": "bytes_mismatch",
+   "mode": "on",
+   "setting": "on",
+   "write": "none",
+   "stub": "00000000",
+   "patched": false
+  },
+  {
+   "site": "0047e391",
+   "status": "refused",
+   "reason": "bytes_mismatch",
+   "mode": "on",
+   "setting": "on",
+   "write": "none",
+   "stub": "00000000",
+   "patched": false
+  },
+  {
+   "site": "0047e391",
+   "status": "patched",
+   "reason": "ok",
+   "mode": "on",
+   "setting": "on",
+   "write": "atomic",
+   "stub": "00a30000",
+   "patched": true
+  },
+  {
+   "site": "0047e391",
+   "status": "refused",
+   "reason": "chain_failed",
+   "mode": "on",
+   "setting": "on",
+   "write": "atomic",
+   "stub": "00000000",
+   "patched": false
+  },
+  {
+   "site": "0047e391",
+   "status": "refused",
+   "reason": "readback_mismatch",
+   "mode": "on",
+   "setting": "on",
+   "write": "atomic",
+   "stub": "00000000",
+   "patched": false
+  },
+  {
+   "site": "0047e391",
+   "status": "patched_unverified",
+   "reason": "rollback_failed",
+   "mode": "on",
+   "setting": "on",
+   "write": "atomic",
+   "stub": "00000000",
+   "patched": false
+  },
+  {
+   "site": "0047e391",
+   "status": "patched",
+   "reason": "ok",
+   "mode": "on",
+   "setting": "on",
+   "write": "atomic",
+   "stub": "00a300d0",
+   "patched": true
+  },
+  {
+   "site": "0047e391",
+   "status": "patched",
+   "reason": "ok",
+   "mode": "on",
+   "setting": "on",
+   "write": "atomic",
+   "stub": "00a30104",
+   "patched": true
+  },
+  {
+   "site": "0047e391",
+   "status": "refused",
+   "reason": "late_claim",
+   "mode": "on",
+   "setting": "on",
+   "write": "none",
+   "stub": "00000000",
+   "patched": false
+  }
+ ],
+ "restore_rows": [
+  {
+   "site": "0047e391",
+   "status": "restored",
+   "found": "e9961c5b00c8",
+   "registered": false
+  },
+  {
+   "site": "0047e391",
+   "status": "restore_failed",
+   "found": "e9321d5b00c8",
+   "registered": true
+  },
+  {
+   "site": "0047e391",
+   "status": "restored",
+   "found": "e9321d5b00c8",
+   "registered": false
+  },
+  {
+   "site": "0047e391",
+   "status": "restore_not_owned",
+   "found": "e910203040c8",
+   "registered": true
+  },
+  {
+   "site": "0047e391",
+   "status": "restore_not_owned",
+   "found": null,
+   "registered": true
+  },
+  {
+   "site": "0047e391",
+   "status": "restored",
+   "found": "e9661d5b00c8",
+   "registered": false
+  },
+  {
+   "site": "0047e391",
+   "status": "restored",
+   "found": "0facd0103bc8",
+   "registered": false
+  }
+ ],
+ "result": {
+  "checks": 79,
+  "failures": 0
+ },
+ "passed": true,
+ "note": "install/restore timings are fixture-inclusive one-off costs, not game FPS"
+}

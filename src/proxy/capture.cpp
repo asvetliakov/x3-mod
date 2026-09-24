@@ -11,6 +11,7 @@
 #include "pause_key_only.h"
 #include "terran_station_lod.h"
 #include "lod_occlusion.h"
+#include "sun_flare_fix.h"
 #include "fov.h"
 #include "music_keep.h"
 #include "collide_narrow_census.h"
@@ -3703,6 +3704,7 @@ void initialize_log(HMODULE module) {
     terran_station_lod::initialize(); // X3M_TERRAN_STATION_LOD=size|distance, unset = size: the bit-31 reader's je at 0x0047d01c becomes jmp (two bytes), same window, disjoint from the other cull/LOD pass claims
     lod_occlusion::initialize(); // X3M_LOD_OCCLUSION=record0|all, unset = record0: all sets the rel32 of the LOD-0 occlusion gate's jne at 0x004c34f7 to 0 (four bytes), same window, disjoint from the point-light site in the same function
     fov::initialize(); // X3M_FOV=game|N (the game's degrees 70..100, horizontal on 16:9), unset = game: the registry constructor's imm32 at 0x0041c9dc becomes F'(N) and INS_SetFocus's MOV EDX at 0x0042dbf8 is claimed for the remap stub (both or neither), plus a one-off registry+0x24 write when the registry already exists, same window, disjoint from every other claim
+    sun_flare_fix::initialize(); // X3M_SUN_FLARE_FIX=on|off, unset = off (the launcher sends on): the lens collector's horizontal bound SHRD/CMP at 0x0047e391 (six bytes) claimed through engine_patch with a saturating stub in front of the tail, same window, disjoint from every other claim
     point_light_admission::initialize(); // X3M_POINT_LIGHT_ROOT_ADMISSION=1 only; six-byte JG site at 0x004c27af, same window
     collide_box_cull::initialize(); // X3M_COLLIDE_BOX_CULL=1 only; two box early-out trampolines on the sector collision pair tests (0x0045d58e, 0x0045cc7c), same window
     collide_narrow_census::initialize(); // X3M_COLLIDE_NARROW_CENSUS=1 only; narrow-phase census: two call redirects (0x0045d665, 0x0048a9a5) and one entry trampoline (0x004e2530), same window, disjoint from the box-cull claims

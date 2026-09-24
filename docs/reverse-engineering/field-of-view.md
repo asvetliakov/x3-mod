@@ -585,7 +585,7 @@ ultra-wide aspects). Under the §7.3 remap `W·tan(F'/2) = 0.75·W·tan(N/2)`: o
 safe and `N > 90` is reachable (`N = 100`: 1.80e9); at 21:9 and 16:9 the whole menu range is safe.
 Fix: §9.1 (a saturating stub at `0x0047e391`, or the one-byte `JGE → JAE` at `0x0047e398`).
 
-### 9.1 Fix design for the horizontal-bound overflow (static, not built)
+### 9.1 Fix for the horizontal-bound overflow (design, implemented)
 
 Script: `verification/results/field-of-view/sun_collector_fix.py` (output `sun_collector_fix.txt`):
 site bytes, branch scan, stub assembly, and an emulation of the gate for the fixture vectors [m/i].
@@ -651,7 +651,9 @@ it has an aspect limit that (a) does not have.
   result only on overflow frames, for every such view.
 - *Vertical test* (`0x0047e3ca..0x0047e3fc`): `H·t1` with `H = 0.75` (≤ 1 for narrow displays) cannot
   reach `2^31` while `tan(F/2) < 2`. The first `FixMul` (`t1`) itself overflows only for
-  `tan(F/2) ≥ 2` (`F ≥ 126.9°`, script cameras only). Neither is covered or needed for the menu range.
+  `tan(F/2) ≥ 2` (`F ≥ 126.9°`). Neither is covered. Under the FOV remap (`--fov N`, game units 50..130,
+  `F' = 2 atan(0.75 tan(N/2))`, so `F' ≤ ~116°` at `N = 130`; the menu's 100 is `F = 100°` under `--fov game`)
+  that range is reachable only by script cameras.
 - *Downstream of a now-visible record.* Position (`FixDiv(x,z)`, `MulDiv` by `cot`) and size
   (`0x0047e402..0x0047e4be`) do not scale with `W·tan·z`; the occlusion probe `0x00488720` rebuilds the
   direction from the record position and `W·tan` without `z`. The probe now runs for centred suns at
@@ -684,6 +686,8 @@ bytes are restored. Expected (emulated [i]; `W = 174762` for 5120×1440, `tan16 
 Case H shows the `0x3470` bound depends on the LUT's 16.16 tan: with `tan16 = 49152` exactly,
 `W·tan = 1.99999` and the bound is not reached; a LUT value one ulp larger would reach it only for
 `z` within about 1e4 of `2^31` [i].
+
+**Implemented (2026-09-24).** Design (a) as `src/proxy/sun_flare_fix.{h,cpp}` + `sun_flare_fix_sites.h`, `X3M_SUN_FLARE_FIX=on|off` (DLL default off; the launcher sends `on` unless `--sun-flare-fix off`; nothing under `--vanilla`): a 56-byte window compare `0x0047e365..0x0047e39c`, the `engine_patch` claim of the six bytes and the stub above pushed in front of the tail, a read-back of the jump and the chain head, rollback on any failure, one `sun_flare_fix` row. The site verifier (`verify_sun_flare_site.py`) and a Wine fixture that executes this gate on an image page at `0x0047e000` pass; evidence in [sun-flare-fix.md](../verification/sun-flare-fix.md). Not flown.
 
 ## Reproduce
 
