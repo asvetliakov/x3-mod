@@ -1,0 +1,21 @@
+== x3-bottleX3-run299 XT PS draws with a node: 1630
+  lod=0 slot=- draws=144 distinct_s5=1 top: 541:32x32:L6x144
+  lod=0 slot=05 draws=152 distinct_s5=3 top: 9200:32x32:L6x104 541:32x32:L6x24 9223:32x32:L6x24
+  lod=0 slot=06 draws=160 distinct_s5=2 top: 9238:1024x1024:L11x96 11498:2048x2048:L12x64
+  lod>0 slot=- draws=48 distinct_s5=1 top: 9186:32x32:L6x48
+  lod>0 slot=05 draws=214 distinct_s5=1 top: 9186:32x32:L6x214
+  lod>0 slot=06 draws=912 distinct_s5=1 top: 9186:32x32:L6x912
+== x3-bottleX3-run300 XT PS draws with a node: 1264
+  lod=0 slot=- draws=152 distinct_s5=2 top: 672:32x32:L6x144 8850:32x32:L6x8
+  lod=0 slot=05 draws=120 distinct_s5=3 top: 7113:32x32:L6x72 672:32x32:L6x24 7118:32x32:L6x24
+  lod=0 slot=06 draws=224 distinct_s5=1 top: 8839:2048x2048:L12x224
+  lod>0 slot=- draws=48 distinct_s5=1 top: 7097:32x32:L6x48
+  lod>0 slot=05 draws=88 distinct_s5=1 top: 7097:32x32:L6x88
+  lod>0 slot=06 draws=632 distinct_s5=1 top: 7097:32x32:L6x632
+== x3-bottleX3-run302 XT PS draws with a node: 864
+  lod=0 slot=- draws=96 distinct_s5=1 top: 714:32x32:L6x96
+  lod=0 slot=05 draws=80 distinct_s5=3 top: 1006:32x32:L6x48 714:32x32:L6x16 1011:32x32:L6x16
+  lod=0 slot=06 draws=96 distinct_s5=1 top: 984:2048x2048:L12x96
+  lod>0 slot=- draws=32 distinct_s5=1 top: 970:32x32:L6x32
+  lod>0 slot=05 draws=56 distinct_s5=1 top: 970:32x32:L6x56
+  lod>0 slot=06 draws=504 distinct_s5=1 top: 970:32x32:L6x504

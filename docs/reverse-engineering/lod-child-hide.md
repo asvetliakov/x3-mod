@@ -60,7 +60,7 @@ lies in the weapon range of §3.
 | `0x0047d4d7`..`0x0047d51e` | the pass's own tail: `0x8000` last-record hide, `0x100000` detail flag |
 | `0x0047dfe0` | `0x0047d9c0` render visit: `record = model+0x0c[node+0x14c]` for the draw |
 | `0x0046cfa4` | `0x0046cef0` instanced-batch path, same indexing |
-| `0x004c34ea` | `0x004c0150` per-draw state: the material texture parameter at descriptor `+0x74` is bound only when `node+0x14c == 0` |
+| `0x004c34ea` | `0x004c0150` per-draw state: `t_OcclusionTexture` (group record `+0x74`) gets the material's texture only when `node+0x14c == 0`, else the `NONE_OCCL_DECAL` placeholder ([texture-lookup.md](texture-lookup.md) §12) |
 | `0x00478972`, `0x00472d4b`/`0x004732e2` | savegame writer `0x00478690`, demo recorder `0x00472ab0` |
 
 ### 1.3 The value while the pilot's `C` is drawn

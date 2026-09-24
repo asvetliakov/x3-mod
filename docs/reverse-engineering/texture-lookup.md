@@ -50,6 +50,11 @@ launch, no Wine command; the bottle was read only. Marks: [s] static (EXE code o
 7. **`\Desktop\` names load nothing.** All five census names with an author's desktop path skip
    the four load steps and take the suffix placeholder (three `NONE_OCCL_DECAL`, one
    `NONE_BLACK`, one `NONE_GRAY`), although `dds/<basename>` exists for each. [s], §11
+8. **`t_OcclusionTexture` is bound only for LOD record 0.** At draw time `0x004c0150` binds the
+   material's occlusion texture only when the drawn node's final LOD index `node+0x14c` is 0; any
+   other record gets the `NONE_OCCL_DECAL` placeholder (`*0x00606f74`), whatever the material
+   says. Every merged-LOD coarse record (record 1 of each overlay body) and every vanilla lower
+   record therefore draws without ambient occlusion. [s], [m] draw census, §12
 
 ## 1. Call graph
 
@@ -195,7 +200,8 @@ unchanged. For the bump id 2 (or the `t_BumpTexture` name) with `*(0x00606f34)+0
 value first goes through `0x004ba3c0`, which rewrites `_bump` to `_low_bump` [s]. The direction
 is [i], from the decompiled string pair and the shipped `*_low_bump.pck` twins such as
 `dds/AGI_M3-body_low_bump.pck` [m]. Every texture slot therefore takes the §2–§5 path, and the
-slot matters only for the placeholder suffix and the bump rewrite.
+slot matters only for the placeholder suffix and the bump rewrite. At draw time one slot has a
+further rule: `t_OcclusionTexture` is bound only for LOD record 0 (§12).
 
 ## 8. The 13 census rows
 
@@ -407,6 +413,113 @@ capitalisation reaches the test [s]. The five census names [m, names from the wo
 basenames under any other path load normally. Baker rule: a name containing the exact
 substring `\Desktop\` goes straight to §9 step 6.
 
+## 12. `t_OcclusionTexture` at draw time: LOD record 0 only
+
+Static study, 2026-09-24, for the Run 79 A finding that the merged-LOD coarse records of the Terran
+Orbital Defence Station bind the `NONE_OCCL_DECAL` placeholder at sampler s5 while record 0 binds
+`terran_uscdock_e_occl` ([lod-overlay.md](../verification/lod-overlay.md), "the coarse Terran
+record loses its red"). Same EXE and tools: Ghidra `X3DecompileFunctions.java` and
+`X3FunctionContext.java` on `0x004c0150`, `0x004ba500`, `0x004baa30`, `0x004b9ed0`, `0x004dbc20`;
+capstone over the whole of `0x004c0150..0x004c40f3` and the windows `0x004b9ed0..0x004b9f66`,
+`0x004da740..0x004da780` for every instruction-level claim. Measurements [m] are the scripts
+`occl_*.py` in `verification/results/run299-303-run79a/terran-colour/` (commands in its
+`commands.txt`; bottle X3 and the run299/300/302 session logs read only).
+
+**Answer.** The occlusion texture is resolved by name like every other slot (§2–§5), and the
+coarse record's material resolves to the same texture as record 0's. The loss happens at the
+bind: `0x004c0150` binds the material's occlusion texture only when the drawn node's final LOD
+index `node+0x14c` ([lod-child-hide.md](lod-child-hide.md) §1) is 0, and binds the global
+`NONE_OCCL_DECAL` placeholder for every other record. The name, the id, the flags, the material
+index and the vertex layout play no part. [s], [m]
+
+### 12.1 The path, by address
+
+1. **Load.** The body's effect parameter `t_OcclusionTexture` (SPTYPE 8, a string) goes through
+   `0x00470320`; `0x004ba500` gives it semantic id **7** (`__stricmp` chain, string `0x005631f4`),
+   and `0x004baa30` passes the value to `0x004f4cb0` (§2, §7). The parameter record keeps type
+   0 at `+0x20` and the texture id at `+0x24`. The same name gives the same id: the named search
+   returns the existing entry (§2 step 4). [s]
+2. **Per group.** `0x004c0150` (EBP frame; argument 1 the mesh, argument 2 the render node) walks
+   the groups of the drawn record (`mesh+0xc`, stride `0x1a8`, count `mesh+8`). The group's first
+   dword is the material index, and the material is entry `index` (stride `0x60`) of the array at
+   `+0x58` of `*(*(mesh)+0x68)+0x54` (the body, [i]), with no bound and
+   no special case for an index past the original material count. Per group the texture-id
+   locals are zeroed (`0x004c0240..0x004c0260`; the occlusion id `[esp+0x74]` at `0x004c0254`).
+   The parameter walk `0x004c0680..0x004c07fe` dispatches on the semantic id: 1 diffuse
+   (`0x004c06a6`), 2 bump (`0x004c06d3`), 3–6, and **7 → `[esp+0x74]`** (`0x004c0795..0x004c07a1`),
+   each slot also through `0x004f4f50` (material `+0x28` flags onto the texture entry). [s]
+3. **Handle.** At effect setup `0x004c1ace..0x004c1ae5` calls
+   `ID3DXEffect::GetParameterByName(NULL, "t_OcclusionTexture")` (vtable `+0x24`) and caches the
+   handle in the group record at `+0x74`. `g_bIsDecalMap` is cached at `+0x15c` (`0x004c1c80`) and
+   not read again in `0x004c0150`. [s]
+4. **Bind, `0x004c34d8..0x004c35d3`.** [s]
+   - Handle 0: nothing is bound (`0x004c34e1`).
+   - **`0x004c34ea cmp dword [ecx+0x14c], 0`** (ECX = node, `[ebp+0xc]`) and **`0x004c34f7 jne
+     0x004c35c6`**: for a non-zero LOD index, `0x004c35c6..0x004c35ce` binds
+     `(*0x00606f74)+0x34` (the placeholder's `IDirect3DBaseTexture9`) with id −1. The material's
+     occlusion id is not read on this path.
+   - LOD index 0: id < 0 binds nothing (`0x004c3506`). An id outside the table, an entry without a
+     D3D texture (`+0x34 = 0`) after the first-use load (`0x004f5280` → `0x004f4160`, §4–§5), or an
+     entry with flag `0x2000000` takes the placeholder, unless the placeholder also carries
+     `0x2000000` (then nothing is bound). A failed bind falls back to the placeholder with id −1.
+5. **Setter `0x004b9ed0`.** EAX = effect, EDI = texture, stack (handle, id), result in AL. A map
+   at `0x00609020` (end sentinel `*0x00609024`) keyed by effect and handle skips the call when the
+   cached texture (`+0x14`) is EDI; otherwise `ID3DXEffect::SetTexture` (vtable `+0xd0`) and the
+   entry is updated through `0x004f51c0` (old id, entry `+0x18`) and `0x004f5180` (new id). That
+   the two calls release and take a texture reference is [i]. [s]
+6. **The placeholder.** Device init loads `\NONE_OCCL_DECAL` (`0x005643ec`) through `0x004f3510`
+   into `0x00606f74` (`0x004da743..0x004da75e`). The image has four references to the global: that
+   store, the §5 `occl` suffix fallback (`0x004f3833`), the teardown `0x004dbc20` (`0x004dbcbe`,
+   which releases every placeholder global) and the draw (`0x004c34f1`). `dds/NONE_OCCL_DECAL.pck` (`01.cat`) is 32×32, 6 mips, DXT5, RGB 0 and alpha 255 on
+   every texel [m]. The XT pixel shaders sample the occlusion texture with `TEXCOORD0.zw` and multiply
+   the lit colour by its alpha raised to `g_MatOcclStr` ([xt-material-linkage.md](xt-material-linkage.md),
+   read for PS `fffdabd910793aba`; that `5f82ecacd39529cd` does the same at s5 is [i]), so the
+   placeholder means no occlusion.
+
+### 12.2 Measurements
+
+| check | result |
+|---|---|
+| s5 of the XT PS `5f82ecacd39529cd` against the node's LOD, whole run299 / run300 / run302 logs (`occl_lod_census.py`) | every draw with LOD > 0 binds one texture per session (32×32, 6 levels): 1,174 / 768 / 592 draws, of them 48 / 48 / 32 on vanilla bodies outside the overlay. No LOD-0 draw binds it. LOD-0 draws bind the body's own map (2048², 12 levels, for `usc_dock_e_*`; 1024² for `usc_small_station_d`) or other 32×32 textures |
+| identity of that texture (`occl_texture_headers.py`) | `dds/NONE_OCCL_DECAL.pck` matches size, mip count and format; the real map `dds/terran_uscdock_e_occl.pck` is 2048², 12 mips, DXT5, RGB 255, mean alpha 183.4 |
+| installed overlay bodies `usc_dock_e_tower`, `usc_dock_e_left_rings` (`occl_material_bytes.py`) | all 8 materials carry the same `t_OcclusionTexture` (SPTYPE 8, `unique\x3tc\terran_uscdock_e_occl.tga`), `g_MatOcclStr` 1.0, `g_bIsDecalMap` 0; record 0 uses materials 0–5, the coarse record is **record 1** (value 30, materials 6, 7), the vanilla second record is record 2 |
+| second UV pair (`occl_uv2_match.py`, three `usc_dock_e` bodies) | every point of every record has a second UV pair. Coarse record 1: all points sit on a record-0 position and 100 % carry a record-0 UV2 there, range 0.002–0.997. Vanilla record 2: 98.8–99.2 % within 1/512 of a record-0 UV2 at the same position, range −1.35 to 1.44 |
+| the triage's draws (`dock_e_tower_draw_diff.txt`) | 7308:13–15 (record 0) bind the 2048² map; 5885:13 and 5885:15 (record 1) bind the placeholder, including 5885:15, whose material 7 carries the same texture names as material 3, which 7308:15 draws with the real map |
+
+Vanilla records past 0 therefore draw without occlusion as well: the switch 0 → 1 drops the
+occlusion in the unmodified game too. With the map's mean alpha of 0.72, an un-occluded record
+is on average about 1.4× brighter than record 0 on the same surface (inferred, texel mean, not
+area-weighted).
+
+### 12.3 What can bind the real map
+
+No body data can: the gate reads the node's LOD index, and the coarse record cannot be record 0,
+which is the selection loop's no-hit result ([lod-selection.md](lod-selection.md)). What remains:
+
+- **Baker, folding the occlusion into the coarse textures.** The atlas tiles are repeated sheet
+  texels shared by many faces, so a per-surface occlusion cannot go into them. The coarse record
+  would need its own unique unwrap. UV2 already is one (the body's occlusion unwrap, carried
+  exactly into record 1, range inside [0, 1]). The baker could make UV2 the coarse record's UV1
+  and bake per body, in that unwrap, the diffuse, specular and light-map colours sampled from each
+  face's own source material at its original UV1, multiplied by `occl.a ^ g_MatOcclStr`. The
+  shader's own occlusion then multiplies by the placeholder's 1. The bump map would have to be
+  re-encoded for the tangent frame of the new UV1 (how the engine derives tangents for a record
+  was not traced). The occlusion unwrap must not overlap (not checked). The unique textures are
+  bounded by the 2048² occlusion map, and the ODS parts switch to the coarse record below a padded
+  footprint of 173–213 px (Run 79 A), so 512²–1024² per body is likely enough (inferred). Because every face
+  samples its own material, this also removes the alpha-group texture substitution in the same
+  ledger row.
+- **EXE patch.** Six NOPs over the `jne` at `0x004c34f7` (`0f 85 c9 00 00 00`) bind the
+  material's occlusion texture at every LOD index. Hook-site facts: instruction boundaries
+  `0x004c34ea` (7 bytes), `0x004c34f1` (6), `0x004c34f7` (6), `0x004c34fd`. The fall-through is the
+  existing LOD-0 path. The flags of the `cmp` are consumed only by that `jne`. ECX (node) and EDX
+  (placeholder, stored at `0x004c3502`) are what the LOD-0 path already gets, so no register or
+  flag liveness changes. Render thread only, not reentrant. Unconditional, the patch also turns
+  occlusion on for vanilla records past 0, whose UV2 is about 1 % off the unwrap and leaves [0, 1]
+  (measured on three bodies), which would give wrong occlusion there (inferred). A form limited to
+  overlay records needs a marker and a code cave. Where the group's material pointer lives at
+  `0x004c34ea` was not traced.
+
 ## Unknown
 
 - Which device field `*(*(0x00608b3c)+0x18)+0xa0` is, which decides between `NONE_NORMAL` and
@@ -422,6 +535,9 @@ substring `\Desktop\` goes straight to §9 step 6.
   `0.25, 0.25` is read from the file and its screen effect is [i].
 - Which material a negative group without a matching effect material draws with when material
   0 is not an effect material (the `0x004c0321` test fails): not traced (11 such groups, §10.1).
+- Why the engine limits occlusion to record 0 (the vanilla lower records' UV2 is about 1 % off
+  the unwrap, which fits a deliberate cut, [i]); how the engine derives tangents for a record's
+  UV1, which a unique-unwrap bake (§12.3) must match.
 - The type-file loader `0x0046f450` was not decompiled. That `addon\types\Materials` wins over
   `types\Materials` is inferred from its path strings, and the rows used here agree in all
   three copies.
@@ -441,6 +557,10 @@ substring `\Desktop\` goes straight to §9 step 6.
 #   00487e30 0047e6e0 00470320 00481780 004ba500 004baa30 decompiled; capstone windows
 #   0x00487810..0x00487b10, 0x004bd720..0x004bd7e0, 0x004c0200..0x004c0490, 0x004c06a0..0x004c0700,
 #   0x004f3510..0x004f37d0, 0x004f4bb0..0x004f4cb0, 0x004f5040..0x004f52f0
+# Section 12: 004c0150 004ba500 004baa30 004b9ed0 004dbc20 decompiled; X3FunctionContext on
+#   004ba7ff 004c1acf 004c1c67 004c34f3 004dbcbe; capstone 0x004c0150..0x004c40f3,
+#   0x004b9ed0..0x004b9f66, 0x004da740..0x004da780. Measurements: the occl_*.py lines of
+#   verification/results/run299-303-run79a/terran-colour/commands.txt
 # Negative ids -> Animations rows, frames and members (about 150 s, bottle X3, read-only)
 PYTHONPATH=tools/analysis python3 verification/results/texture-lookup-animations/animation_rows.py \
   > verification/results/texture-lookup-animations/animation_rows_out.txt

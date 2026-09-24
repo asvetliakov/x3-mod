@@ -139,7 +139,16 @@ tower 23.1 %, left_rings 12.4 %, upper_core 4.8 %. Pixel-shader constants identi
 (b1 = 0); no owner colour. The "circle" (left_rings, run300) and the run302 part (upper_core, inferred) are the same
 mechanism; no atlas bleed (each Terran atlas has one tile). Second loss: coarse draws bind the `NONE_OCCL_DECAL`
 placeholder (32x32 DXT5, id 9186) at s5 where the fine draws bind the station's 2048^2 occlusion map (id 11498), so
-the coarse record also loses its ambient-occlusion darkening (cause open: disassembly of the occlusion parameter
-binding from `0x004baa30`). Fix (baker only): count a material as alpha only when its alpha can drop below 1 (a real
+the coarse record also loses its ambient-occlusion darkening (cause: see the follow-up below). Fix (baker only): count a material as alpha only when its alpha can drop below 1 (a real
 `t_AlphaTexture` or diffuse alpha < 255); materials 1-4 then join the opaque atlas as tiles; draw count unchanged; atlas
 likely 1024 -> 2048 for these bodies (inferred); full rebake required (the resolver change already changed the tool hash).
+
+Follow-up, static study ([texture-lookup.md](../reverse-engineering/texture-lookup.md) §12): the occlusion loss is
+engine behaviour, not baker data. `0x004c0150` binds a material's `t_OcclusionTexture` only when the node's LOD index
+`node+0x14c` is 0 (`0x004c34ea`/`0x004c34f7`); every other record gets `NONE_OCCL_DECAL` (`*0x00606f74`; 32x32 DXT5,
+RGB 0, alpha 255, i.e. no occlusion). Measured over the whole run299/300/302 logs (`occl_lod_census.py`): 1,174 / 768
+/ 592 XT draws with LOD > 0 all bind that one texture, 48 / 48 / 32 of them on vanilla bodies outside the overlay; no
+LOD-0 draw binds it. The coarse material's occlusion name, SPTYPE and strength equal material 0's, and the coarse
+record's UV2 equals record 0's unwrap at every point (`occl_material_bytes.py`, `occl_uv2_match.py`). No material
+change can bind the real map at record 1. The options are a unique-unwrap bake of the coarse textures with the
+occlusion folded in, or a 6-byte EXE patch of the `jne` at `0x004c34f7` (§12.3).

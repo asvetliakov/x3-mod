@@ -1,0 +1,24 @@
+== stations/station_scenes/terran/usc_dock_e_tower addon/06.cat:objects/stations/station_scenes/terran/usc_dock_e_tower.pbb
+  mat0 flags=0x2000000 t_OcclusionTexture=(8, b'unique\\x3tc\\terran_uscdock_e_occl.tga') g_MatOcclStr=(2, [65536]) g_bIsDecalMap=(1, [0]) same_as_mat0
+  mat1 flags=0x2000000 t_OcclusionTexture=(8, b'unique\\x3tc\\terran_uscdock_e_occl.tga') g_MatOcclStr=(2, [65536]) g_bIsDecalMap=(1, [0]) same_as_mat0
+  mat2 flags=0x2000000 t_OcclusionTexture=(8, b'unique\\x3tc\\terran_uscdock_e_occl.tga') g_MatOcclStr=(2, [65536]) g_bIsDecalMap=(1, [0]) same_as_mat0
+  mat3 flags=0x2000000 t_OcclusionTexture=(8, b'unique\\x3tc\\terran_uscdock_e_occl.tga') g_MatOcclStr=(2, [65536]) g_bIsDecalMap=(1, [0]) same_as_mat0
+  mat4 flags=0x2000000 t_OcclusionTexture=(8, b'unique\\x3tc\\terran_uscdock_e_occl.tga') g_MatOcclStr=(2, [65536]) g_bIsDecalMap=(1, [0]) same_as_mat0
+  mat5 flags=0x2000000 t_OcclusionTexture=(8, b'unique\\x3tc\\terran_uscdock_e_occl.tga') g_MatOcclStr=(2, [65536]) g_bIsDecalMap=(1, [0]) same_as_mat0
+  mat6 flags=0x2000000 t_OcclusionTexture=(8, b'unique\\x3tc\\terran_uscdock_e_occl.tga') g_MatOcclStr=(2, [65536]) g_bIsDecalMap=(1, [0]) same_as_mat0
+  mat7 flags=0x2000000 t_OcclusionTexture=(8, b'unique\\x3tc\\terran_uscdock_e_occl.tga') g_MatOcclStr=(2, [65536]) g_bIsDecalMap=(1, [0]) same_as_mat0
+  record0 value=4763793 materials=[0, 1, 3, 4, 5] points=96981 uv2=96981
+  record1 value=30 materials=[6, 7] points=102669 uv2=102669
+  record2 value=197 materials=[0, 1, 3, 4, 5] points=15603 uv2=15603
+== stations/station_scenes/terran/usc_dock_e_left_rings addon/06.cat:objects/stations/station_scenes/terran/usc_dock_e_left_rings.pbb
+  mat0 flags=0x2000000 t_OcclusionTexture=(8, b'unique\\x3tc\\terran_uscdock_e_occl.tga') g_MatOcclStr=(2, [65536]) g_bIsDecalMap=(1, [0]) same_as_mat0
+  mat1 flags=0x2000000 t_OcclusionTexture=(8, b'unique\\x3tc\\terran_uscdock_e_occl.tga') g_MatOcclStr=(2, [65536]) g_bIsDecalMap=(1, [0]) same_as_mat0
+  mat2 flags=0x2000000 t_OcclusionTexture=(8, b'unique\\x3tc\\terran_uscdock_e_occl.tga') g_MatOcclStr=(2, [65536]) g_bIsDecalMap=(1, [0]) same_as_mat0
+  mat3 flags=0x2000000 t_OcclusionTexture=(8, b'unique\\x3tc\\terran_uscdock_e_occl.tga') g_MatOcclStr=(2, [65536]) g_bIsDecalMap=(1, [0]) same_as_mat0
+  mat4 flags=0x2000000 t_OcclusionTexture=(8, b'unique\\x3tc\\terran_uscdock_e_occl.tga') g_MatOcclStr=(2, [65536]) g_bIsDecalMap=(1, [0]) same_as_mat0
+  mat5 flags=0x2000000 t_OcclusionTexture=(8, b'unique\\x3tc\\terran_uscdock_e_occl.tga') g_MatOcclStr=(2, [65536]) g_bIsDecalMap=(1, [0]) same_as_mat0
+  mat6 flags=0x2000000 t_OcclusionTexture=(8, b'unique\\x3tc\\terran_uscdock_e_occl.tga') g_MatOcclStr=(2, [65536]) g_bIsDecalMap=(1, [0]) same_as_mat0
+  mat7 flags=0x2000000 t_OcclusionTexture=(8, b'unique\\x3tc\\terran_uscdock_e_occl.tga') g_MatOcclStr=(2, [65536]) g_bIsDecalMap=(1, [0]) same_as_mat0
+  record0 value=1702749 materials=[0, 2, 3, 4, 5] points=36398 uv2=36398
+  record1 value=30 materials=[6, 7] points=39021 uv2=39021
+  record2 value=173 materials=[0, 2, 3, 4, 5] points=5965 uv2=5965

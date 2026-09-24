@@ -14,3 +14,8 @@ python3 ods_draws.py /tmp/x3-bottleX3-run300/session-20260924-171416-212.log 235
 python3 ods_draws.py /tmp/x3-bottleX3-run302/session-20260924-172543-212.log 2845,3512 000053db > upper_core_draws_run302.txt
 python3 stage5_census.py /tmp/x3-bottleX3-run299/session-20260924-165153-212.log 5885,7308,8417 > stage5_run299.txt
 python3 crop_hdr.py /tmp/x3-bottleX3-run299/hdr_1_5885.rgba16f 2249 448 2866 766 $SCRATCH/tower_5885.png   # likewise 7308, 8417 -> tower_red_share_run299.txt
+# s5 / t_OcclusionTexture follow-up (static study: docs/reverse-engineering/texture-lookup.md section 12)
+python3 occl_lod_census.py /tmp/x3-bottleX3-run299/session-20260924-165153-212.log /tmp/x3-bottleX3-run300/session-20260924-171416-212.log /tmp/x3-bottleX3-run302/session-20260924-172543-212.log > occl_lod_census_run299_300_302.txt
+python3 occl_material_bytes.py stations/station_scenes/terran/usc_dock_e_tower stations/station_scenes/terran/usc_dock_e_left_rings > occl_material_bytes_dock_e.txt
+python3 occl_uv2_match.py stations/station_scenes/terran/usc_dock_e_tower stations/station_scenes/terran/usc_dock_e_left_rings stations/station_scenes/terran/usc_dock_e_upper_core > occl_uv2_match_out.txt
+python3 occl_texture_headers.py NONE_OCCL_DECAL 'unique\x3tc\terran_uscdock_e_occl.tga' > occl_texture_headers_out.txt

@@ -1,0 +1,2 @@
+NONE_OCCL_DECAL 01.cat:dds/NONE_OCCL_DECAL.pck 32x32 mips 6 fourcc DXT5 mean_rgba [0.0, 0.0, 0.0, 255.0] min_alpha 255.0
+unique\x3tc\terran_uscdock_e_occl.tga 01.cat:dds/terran_uscdock_e_occl.pck 2048x2048 mips 12 fourcc DXT5 mean_rgba [255.0, 255.0, 255.0, 183.4] min_alpha 0.0
