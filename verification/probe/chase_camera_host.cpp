@@ -4,8 +4,10 @@
 // frame and reads the pipeline's pose, verdict and diagnostics back.
 //
 // stdin, one command per line:
-//   T rot_tau pos_tau offset_y distance_scale lag_clamp_deg pos_lag_clamp max_dt snap_ratio [combat_tightness [snap_coalesce_frames [pitch_down_deg]]]
-//   D   print the compiled defaults: D rot_tau pos_tau offset_y distance_scale lag_clamp_deg pos_lag_clamp combat_tightness max_dt snap_ratio snap_coalesce_frames pitch_down_deg
+//   T rot_tau pos_tau offset_y distance_scale lag_clamp_deg pos_lag_clamp max_dt snap_ratio [combat_tightness [snap_coalesce_frames [pitch_down_deg [fov_compensate]]]]
+//       (fov_compensate absent = 0, so the older fixture commands keep their fixed boom)
+//   D   print the compiled defaults: D rot_tau pos_tau offset_y distance_scale lag_clamp_deg pos_lag_clamp combat_tightness max_dt snap_ratio snap_coalesce_frames pitch_down_deg fov_compensate
+//   V half_vfov_tan enabled   print fov_compensation(): V factor
 //   F dt mode connect ref sector ship_x ship_y ship_z ship_basis(9) boom_local_x boom_local_y boom_local_z view_rel(9) half_vfov_tan [flags_1a0 [locked]]
 //       (the vanilla camera is built as view_rel * ship_basis at ship + boom_local * ship_basis, as the engine does)
 //   R   reset the state (as after a refused frame / hook gap)
@@ -44,6 +46,7 @@ int main() {
             ss >> t.rot_tau >> t.pos_tau >> t.offset_y >> t.distance_scale >> t.lag_clamp_deg >> t.pos_lag_clamp >> t.max_dt >> t.snap_ratio;
             double tightness = 0, coalesce = 3; ss >> tightness >> coalesce; // optional (0 / 3 when absent)
             ss >> t.pitch_down_deg; // absent = legacy geometry for old fixture commands
+            double compensate = 0; ss >> compensate; t.fov_compensate = compensate != 0;
             t.combat_tightness = tightness; t.snap_coalesce_frames = unsigned(coalesce);
             std::printf("T %d\n", int(valid(t)));
         } else if (op == 'E') {
@@ -77,7 +80,10 @@ int main() {
             std::printf("J %.17g %.17g\n",error,old_error);
         } else if (op == 'D') {
             const Tunables d;
-            std::printf("D %.17g %.17g %.17g %.17g %.17g %.17g %.17g %.17g %.17g %u %.17g\n", d.rot_tau, d.pos_tau, d.offset_y, d.distance_scale, d.lag_clamp_deg, d.pos_lag_clamp, d.combat_tightness, d.max_dt, d.snap_ratio, d.snap_coalesce_frames, d.pitch_down_deg);
+            std::printf("D %.17g %.17g %.17g %.17g %.17g %.17g %.17g %.17g %.17g %u %.17g %d\n", d.rot_tau, d.pos_tau, d.offset_y, d.distance_scale, d.lag_clamp_deg, d.pos_lag_clamp, d.combat_tightness, d.max_dt, d.snap_ratio, d.snap_coalesce_frames, d.pitch_down_deg, int(d.fov_compensate));
+        } else if (op == 'V') {
+            double half = 0, enabled = 0; ss >> half >> enabled;
+            std::printf("V %.17g\n", fov_compensation(half, enabled != 0));
         } else if (op == 'R') {
             note_gap(s); std::printf("R\n");
         } else if (op == 'F') {

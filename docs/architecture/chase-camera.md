@@ -219,6 +219,7 @@ Defaults changed again on 2026-09-23 (user decision): distance scale 0.90 → 1.
 | `X3M_CHASE_OFFSET_Y` | `--chase-offset-y` | 0.50 | [−1, 1] | ship below centre, fraction of the half screen height (negative = above centre); 0.50 projects the settled anchor at 75% of screen height in elevated mode; silhouette and lag can shift the visible center |
 | `X3M_CHASE_PITCH_DOWN_DEG` | `--chase-pitch-down-deg` | 0.5° | [0, 30] | downward look in the ship-up/native-yaw frame; zero restores legacy framing geometry |
 | `X3M_CHASE_DISTANCE_SCALE` | `--chase-distance-scale` | 1.05 (0.90 before 2026-09-23) | (0, 10] | multiplies the vanilla boom (the scripts already size it per ship class) |
+| `X3M_CHASE_FOV_COMPENSATE` | `--chase-fov-compensate` | 1 (on) | 0/1 | also multiplies the boom by `clamp(0.75 / half_vfov_tan, 0.5, 2)` from the live projection, so the ship keeps its vanilla screen size under `--fov`, the FOV menu and zoom ([ledger](../verification/field-of-view.md), "Chase camera compensation") |
 | `X3M_CHASE_LAG_CLAMP_DEG` | `--chase-lag-clamp-deg` | 8° | [0, 90] | orientation lag clamp = the screen window |
 | `X3M_CHASE_POS_LAG_CLAMP` | `--chase-pos-lag-clamp` | 0.10 | [0, 1] | boom lag clamp as a fraction of the boom |
 | `X3M_CHASE_COMBAT_TIGHTNESS` | `--chase-combat-tightness` | 0 | [0, 1] | scales both time constants by (1 − tightness) while the cockpit reports a target lock (step 7a; field semantics unverified in game); the install line says `combat=off` at 0 and `combat=tracking_1e4_unverified` otherwise |

@@ -691,6 +691,7 @@ def main():
     parser.add_argument('--chase-offset-y', type=float, default=None, help='Fraction of the half screen height the ship sits below centre, -1..1 (X3M_CHASE_OFFSET_Y; default 0.50, about 75%% screen height from a centred native anchor; negative puts the ship above centre)')
     parser.add_argument('--chase-pitch-down-deg', type=float, default=None, help='Downward look in degrees relative to ship forward, 0..30 (X3M_CHASE_PITCH_DOWN_DEG; default 0.5, the near-parallel elevated framing; 0 restores legacy framing geometry)')
     parser.add_argument('--chase-distance-scale', type=float, default=None, help='Multiplier of the vanilla boom length (X3M_CHASE_DISTANCE_SCALE; default 1.05, forwarded on every chase launch; 0.9 before 2026-09-23)')
+    parser.add_argument('--chase-fov-compensate', choices=['on', 'off'], default=None, help='Scale the chase boom by 0.75 / tan(vertical FOV / 2) from the live projection, clamped to 0.5..2, so the ship keeps its vanilla screen size under any --fov, the in-game FOV menu and zoom (X3M_CHASE_FOV_COMPENSATE; default on: 1.333 at the 58.7155 deg default, 1.0 at vanilla 73.74; --chase-distance-scale multiplies on top). The default 1 is sent on every modded launch and is inert without --camera chase; an explicit value requires --camera chase and is refused under --vanilla')
     parser.add_argument('--chase-lag-clamp-deg', type=float, default=None, help='Maximum orientation lag in degrees, the ship-on-screen window (X3M_CHASE_LAG_CLAMP_DEG; default 8)')
     parser.add_argument('--chase-pos-lag-clamp', type=float, default=None, help='Maximum boom lag as a fraction of the boom length, 0..1 (X3M_CHASE_POS_LAG_CLAMP; default 0.10)')
     parser.add_argument('--chase-combat-tightness', type=float, default=None, help='0..1: while the cockpit reports a target lock (+0x1e4 tracking mode 1/4 with a tracked object; unverified in game) both spring time constants are scaled by (1 - tightness) (X3M_CHASE_COMBAT_TIGHTNESS; default 0 = off)')
@@ -1379,6 +1380,10 @@ def main():
         parser.error('--terran-station-lod cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the LOD reader never runs')
     if args.vanilla and args.lod_occlusion is not None:
         parser.error('--lod-occlusion cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that patches the occlusion gate never runs')
+    if args.camera != 'chase' and args.chase_fov_compensate is not None:
+        parser.error('--chase-fov-compensate requires --camera chase.')
+    if args.vanilla and args.chase_fov_compensate is not None:
+        parser.error('--chase-fov-compensate cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy chase camera never runs')
     if args.vanilla and args.fov is not None:
         parser.error('--fov cannot be combined with --vanilla: a vanilla launch loads the builtin d3d9, so the proxy that sets the field of view never runs')
     if args.fov is not None:
@@ -1886,6 +1891,13 @@ def main():
         env['X3M_CHASE_COMBAT_TIGHTNESS'] = repr(args.chase_combat_tightness or 0.0)
         env['X3M_CHASE_HUD_ANCHOR'] = args.chase_hud_anchor or ('forward' if args.camera == 'chase' else 'centre')
         env['X3M_CHASE_VIEW_RESTORE'] = '1' if args.chase_view_restore else '0'  # default off: the seven restore sites stay unpatched
+        # Chase FOV compensation: always explicit on a modded launch (on unless --chase-fov-compensate off, which
+        # requires --camera chase), so a stale
+        # shell value cannot decide it; the DLL reads it only with X3M_CAMERA=chase. Dropped under --vanilla (refused above).
+        if args.vanilla:
+            env.pop('X3M_CHASE_FOV_COMPENSATE', None)
+        else:
+            env['X3M_CHASE_FOV_COMPENSATE'] = '0' if args.chase_fov_compensate == 'off' else '1'
         # Process-local WMA decoder: exactly the two versioned GStreamer
         # variables reach the child, and only <dir>/registry is ever created. Without --voice-decoder a modded launch discovers
         # <game>/x3m/voice-decoder, then tools/voice-decoder/v4; none under --vanilla.

@@ -2,9 +2,9 @@
   "audit": {
     "cpu": {
       "boundary_instruction_inventory": {
-        "fninit": 1,
+        "fninit": 2,
         "fnsave": 1,
-        "frstor": 2,
+        "frstor": 1,
         "ldmxcsr": 2,
         "ret": 1,
         "stmxcsr": 1
@@ -13,7 +13,7 @@
       "first_call": "GetLastError",
       "last_epilogue_call": "SetLastError",
       "no_exception_runtime_symbols": true,
-      "sha256": "a9138018d2cf5837b5165a21fa5e1b4c0bc4b627a7c97c10a70b85d3e47d5a9f"
+      "sha256": "d4421ff1db87d4281fd74386b5c3ff13cc74f740348f86fbfc52e93524a70660"
     },
     "image": {
       "actual_production_addresses": true,
@@ -73,7 +73,7 @@
           "name": ".text",
           "raw": 2225664,
           "raw_size": 56320,
-          "size": 56224,
+          "size": 56160,
           "va": 6488064
         },
         {
@@ -97,21 +97,21 @@
           "name": ".bss",
           "raw": 0,
           "raw_size": 0,
-          "size": 4612,
+          "size": 4644,
           "va": 6561792
         },
         {
           "characteristics": 1073741888,
           "name": ".idata",
           "raw": 2294784,
-          "raw_size": 3072,
-          "size": 2596,
+          "raw_size": 2560,
+          "size": 2556,
           "va": 6569984
         },
         {
           "characteristics": 3221225536,
           "name": ".tls",
-          "raw": 2297856,
+          "raw": 2297344,
           "raw_size": 512,
           "size": 8,
           "va": 6574080
@@ -119,7 +119,7 @@
         {
           "characteristics": 1107296320,
           "name": ".reloc",
-          "raw": 2298368,
+          "raw": 2297856,
           "raw_size": 2560,
           "size": 2552,
           "va": 6578176
@@ -127,7 +127,7 @@
         {
           "characteristics": 1107296320,
           "name": "/4",
-          "raw": 2300928,
+          "raw": 2300416,
           "raw_size": 1536,
           "size": 1080,
           "va": 6582272
@@ -135,7 +135,7 @@
         {
           "characteristics": 1107296320,
           "name": "/19",
-          "raw": 2302464,
+          "raw": 2301952,
           "raw_size": 70656,
           "size": 70644,
           "va": 6586368
@@ -143,7 +143,7 @@
         {
           "characteristics": 1107296320,
           "name": "/31",
-          "raw": 2373120,
+          "raw": 2372608,
           "raw_size": 12800,
           "size": 12296,
           "va": 6660096
@@ -151,7 +151,7 @@
         {
           "characteristics": 1107296320,
           "name": "/45",
-          "raw": 2385920,
+          "raw": 2385408,
           "raw_size": 31232,
           "size": 30899,
           "va": 6676480
@@ -159,7 +159,7 @@
         {
           "characteristics": 1107296320,
           "name": "/57",
-          "raw": 2417152,
+          "raw": 2416640,
           "raw_size": 4096,
           "size": 3888,
           "va": 6709248
@@ -167,7 +167,7 @@
         {
           "characteristics": 1107296320,
           "name": "/70",
-          "raw": 2421248,
+          "raw": 2420736,
           "raw_size": 1536,
           "size": 1047,
           "va": 6713344
@@ -175,7 +175,7 @@
         {
           "characteristics": 1107296320,
           "name": "/81",
-          "raw": 2422784,
+          "raw": 2422272,
           "raw_size": 11776,
           "size": 11650,
           "va": 6717440
@@ -183,7 +183,7 @@
         {
           "characteristics": 1107296320,
           "name": "/97",
-          "raw": 2434560,
+          "raw": 2434048,
           "raw_size": 28160,
           "size": 28040,
           "va": 6729728
@@ -191,7 +191,7 @@
         {
           "characteristics": 1107296320,
           "name": "/113",
-          "raw": 2462720,
+          "raw": 2462208,
           "raw_size": 1536,
           "size": 1426,
           "va": 6758400
@@ -220,7 +220,7 @@
       "site": "0x445a41"
     }
   },
-  "binary_sha256": "4b989989aaf0fe8bd4baf39d7b42b01f6b78e7e79ab7acb35eb7278e86a8c989",
+  "binary_sha256": "63b28663de04a5d698888d14dc71f6a34cc49eba4c21f06824b9fcccfc83567f",
   "bottle": {
     "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf",
     "environment": {
@@ -257,18 +257,18 @@
   "runtime_verified": true,
   "source_and_binary_stable": true,
   "sources": {
-    "src/proxy/capture.h": "c9029e5297939f57e165626033a785eada38c5932850b3f8d8ca9dbfbe4747db",
+    "src/proxy/capture.h": "17d6074fb11124d4c6530e1df112ec22fed29d77a82cfc7661f9f09dac6df155",
     "src/proxy/chase_aim_trace.cpp": "5871dc3242b53473970ceab2e9115d8a20a41fa633106ef3a86454565c6f5b75",
     "src/proxy/chase_aim_trace.h": "29da515414a3291e905cbd81743abe86a9de5aa6538200b0c2aa50f5fadb4947",
-    "src/proxy/chase_camera.h": "a9ef1de1c010509be2a9ee127a029b0d969e78aa50078d7b425c41f262913333",
+    "src/proxy/chase_camera.h": "267b1e10ff442fae0ee4eb4e8a2e68bd6d9d61e8abc6955f3edc0e5f1d4ea8e0",
     "src/proxy/chase_fire.cpp": "a214c690d807e7b4c28ab706a99ad4638d16f8b0e4bd94c134bad7f8b15b4ae1",
     "src/proxy/chase_fire.h": "bf5798450448d5469af6741f712978d5dcda7381e5f30c5ec2fc1e80199e7df9",
-    "src/proxy/cpu_state.h": "4f0b3de616c536971c4fddb07030a714bbb91e95f0e19cd328720d968e3ba4fe",
-    "src/proxy/engine_memory.cpp": "d64e2d606f9e96afd949b66bda960c6f8311e3a4a22faf2e6851b91600ef6631",
-    "src/proxy/engine_memory.h": "bc27febe3e4d3f0c55875ead1a143781cfc830681b81854cc7ced8d28bb5b2d6",
-    "src/proxy/engine_patch.cpp": "a0d5e26079fbe831059921f92b4cdf8c9ab5c9006403407d257157615b6eefc7",
-    "src/proxy/engine_patch.h": "aa010cbe864ddae916e0cf9b840bc0da84c1177c87247fc0dd4100e2d914e707",
-    "src/proxy/object_trace.h": "fc9168feeb59630bdb11550e9c6a3c6b42c1ea471add2ad96f182e6af36bbb0b",
+    "src/proxy/cpu_state.h": "73784e6190929661764c85d54778e97a4935a3841b7fca6f12e408751c1f4d6a",
+    "src/proxy/engine_memory.cpp": "1db8421f74a720ad1890ee28b9ba98b350075c2faf95c626902f3260345d66fb",
+    "src/proxy/engine_memory.h": "a9f5a5262bef99cf23fd5ab4b2688aec56872ab8f995f6487d75481f1dc3b92d",
+    "src/proxy/engine_patch.cpp": "9eb31fbf19e4f88432655ccccfe6e054739d9b8ba5f5be4054dfccf513330a2b",
+    "src/proxy/engine_patch.h": "d8a777ee51e076271c0e22889701a594d98a4fad882a4be0c1c08cefc5771e66",
+    "src/proxy/object_trace.h": "70e5b2aa5fb3a2e96bff4f6d24e1641938d01ec67c5e43cb6e1912121889417f",
     "src/proxy/telemetry.h": "d21acfa9e5a6faae2bab57a3d49689dad450a8907177de41c8770709c4c04ddc",
     "verification/probe/chase_fire_fixture.cpp": "c3a3f0540fbe2f02416047a3a56de5ee6d51461e57f0e1bd1915fa1addff55fd"
   }

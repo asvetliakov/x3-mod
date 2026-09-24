@@ -70,6 +70,11 @@ struct Stats {
     std::uint32_t last_verdict = 0, last_snap_reason = 0, view_mode = 0, connect_mode = 0, flags_1a0 = 0, tracking_mode = 0;
     bool target_locked = false;
     double lag_deg = 0, pos_lag = 0, distance = 0, dt_ms = 0, half_vfov_tan = 0, boom_local[3] = {0, 0, 0}, scene_fix_deg = 0;
+    // FOV compensation (chase::fov_compensation): the factor and half-FOV tangent recorded at the last
+    // change (an applied frame whose factor differs from the last recorded factor by more than 1e-4, so
+    // slower drift accumulates until it crosses that hysteresis), the handler frame of that change and the change count.
+    double fov_factor = 0, fov_half_vfov_tan = 0;
+    std::uint64_t fov_changes = 0, fov_change_frame = 0;
     unsigned atomic_write = 0;
     FirstApplied first;
 };

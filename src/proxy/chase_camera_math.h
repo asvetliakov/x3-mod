@@ -161,6 +161,7 @@ struct Tunables {
     double offset_y = 0.50;         // 75% screen height from a centred native anchor (X3M_CHASE_OFFSET_Y)
     double pitch_down_deg = 0.5;    // near-parallel elevated framing (user default 2026-09-16); 0 keeps legacy framing; (0,30] sets ship-relative downward look
     double distance_scale = 1.05;   // multiplies the vanilla boom offset (X3M_CHASE_DISTANCE_SCALE; 0.90 before the 2026-09-23 user decision)
+    bool fov_compensate = true;     // multiply the boom by fov_compensation(): same ship screen size at any vertical FOV (X3M_CHASE_FOV_COMPENSATE)
     double lag_clamp_deg = 8.0;     // max orientation lag (X3M_CHASE_LAG_CLAMP_DEG)
     double pos_lag_clamp = 0.10;    // max |offset lag| as a fraction of the boom length (X3M_CHASE_POS_LAG_CLAMP)
     double combat_tightness = 0.0;  // 0..1: while a target is locked (Input::target_locked) both time constants are scaled by (1 - tightness); 1 = rigid follow (X3M_CHASE_COMBAT_TIGHTNESS)
@@ -200,12 +201,22 @@ enum class Verdict : std::uint32_t {
     NumericFailure = 6,    // state became non-finite (reset)
     VerbatimBasis = 7,     // connect mode 3 or +0x1a0 & 4: the engine wrote camera.basis = +0xf0 verbatim, so the derived ship basis would be the identity (A2)
 };
+// Boom factor that keeps the ship's screen size at the vanilla projection's:
+// the screen size scales with 1/(distance * tan(v/2)), so the boom scales by
+// 0.75 / tan(v/2) (vanilla F 0x4000: tan(v/2) = 0.75 -> 1.0; the 58.7155 deg
+// default: 0.5625 -> 1.333). Clamped to [0.5, 2]; 1 when off or not finite.
+constexpr double fov_reference_half_tan = 0.75, fov_compensation_min = 0.5, fov_compensation_max = 2.0;
+inline double fov_compensation(double half_vfov_tan, bool enabled) {
+    if (!enabled || !std::isfinite(half_vfov_tan) || !(half_vfov_tan > 0)) return 1.0;
+    return std::fmin(std::fmax(fov_reference_half_tan / half_vfov_tan, fov_compensation_min), fov_compensation_max);
+}
 struct Step {
     Verdict verdict = Verdict::InvalidInput;
     bool snapped = false;      // the springs were re-seated and the frame is a cut
     bool coalesced = false;    // re-seated within snap_coalesce_frames of the previous snap: no second cut (A4)
     bool target_locked = false; // the combat-tightness scaling was in effect this frame
     double lag_deg = 0, pos_lag = 0, distance = 0, dt = 0;
+    double fov_factor = 1.0;   // fov_compensation() applied to the boom this frame (Applied only)
     std::uint32_t snap_reason = 0; // bit set: 1 first, 2 ship/ref change, 4 sector, 8 mode, 16 teleport, 32 numeric
 };
 struct State {
@@ -284,14 +295,16 @@ inline Step step(State& s, const Input& in, double dt, const Tunables& t, Pose* 
     const bool coalesce = snap == 4 && s.tracking && s.applied_since_snap < t.snap_coalesce_frames;
     if (snap) reset(s);
 
-    const double target_length = boom * t.distance_scale;
+    r.fov_factor = fov_compensation(in.half_vfov_tan, t.fov_compensate);
+    const double boom_scale = t.distance_scale * r.fov_factor;
+    const double target_length = boom * boom_scale;
     Mat3 target;
     Vec3 target_boom;
     if (t.pitch_down_deg == 0) {
         // Explicit compatibility mode: retain the old boom and its pitch-up
         // framing, including native elevation/roll and their screen offset.
         target = mul(local_pitch(std::atan(t.offset_y * in.half_vfov_tan)), in.vanilla_cam);
-        target_boom = mul(boom_local * t.distance_scale, ship);
+        target_boom = mul(boom_local * boom_scale, ship);
     } else {
         // Ship-up frame, retaining native view yaw. The ship's own world roll
         // is preserved; native local camera roll/pitch are replaced. Construct

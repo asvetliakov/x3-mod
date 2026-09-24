@@ -92,3 +92,30 @@ on every row while `camera_state` had p00 0.3147: the cull reads a HUD/cockpit p
 effect (harmless here: threshold 3 either way). `fov_confirm` is logged only at frames 0 and 4; nothing tracks later
 changes. Alpha casters: 235,343 tested, every `refused_*` 0 incl. `refused_pool`; no shadow_depth cost difference over
 matching windows; defaults rows all `default=1`.
+
+**Chase camera compensation (2026-09-24, after run309).** `--chase-fov-compensate on|off` /
+`X3M_CHASE_FOV_COMPENSATE` (`1`/`0`; unset = on, anything else is `invalid_tunables`) multiplies the chase boom by
+`chase::fov_compensation() = clamp(0.75 / half_vfov_tan, 0.5, 2.0)` (`src/proxy/chase_camera_math.h`), where
+`half_vfov_tan` is the per-frame tangent the handler already derives from the camera's `+0x298` and view plane, so the
+factor follows `--fov`, the in-game FOV menu and zoom without a restart: 1.0 at vanilla F 0x4000 (0.75), 1.333 at the
+58.7155° default (0.5625), 2.0 below 0.375 and 0.5 above 1.5. `--chase-distance-scale` (1.05) multiplies on top; the
+position lag clamp is relative to the compensated boom. A factor change moves the boom target without a snap, but
+`pos_lag_clamp` (0.10 of the target) bounds the lag, so a step that changes the boom by more than about 10 % jumps in
+its first frame to the clamp edge and the spring carries the rest (review, 0.5625 → 0.75: 285.55 → 234.52 the next
+frame, target 214.16; 0.5625 → 0.62, a 10.2 % boom change, just reaches the clamp, 285.55 → 284.06, a 1.5-unit
+jump; 0.5625 → 0.60 stays inside it, 285.55 → 285.53, lag 18.46 of 26.77; measured by
+`verification/results/field-of-view/chase_fov_step.py`, output beside it; all three encoded in
+`test_fov_step_at_the_default_lag_clamp`). The
+factor follows the live projection: a view that narrows the projection (zoom) moves the boom out, so the ship keeps
+its size and only the background zooms. The vanilla external zoom changes the distance, not the FOV
+([RE note](../reverse-engineering/field-of-view.md) §8), so the factor is expected to be inert there (unverified). Default on; the launcher sends the variable on every modded launch (inert unless
+`X3M_CAMERA=chase`), drops it under `--vanilla` and refuses an explicit value there. The install row carries
+`fov_compensate=`; `chase_fov_compensate frame= handler_frame= factor= half_vfov_tan= enabled= distance_scale=
+boom_scale= changes= row=n/32` is logged at most once per report window in which the applied factor changed by more
+than 1e-4, capped at 32 rows, then one `chase_fov_compensate frame= suppressed=1 changes=` row. An explicit
+`--chase-fov-compensate` requires `--camera chase`. Host: `test_chase_camera` 56 tests OK, including the factor at 0.75 / 0.5625, both clamp
+bounds, off, non-finite input, the boom distance in the elevated and legacy geometry, and the unsnapped settle after a
+0.5625 → 0.75 change; launcher: default on, off, stale value replaced, `--vanilla` sends nothing and refuses an
+explicit value (measured); `launch --dry-run --direct --camera chase` sends `X3M_CHASE_FOV_COMPENSATE=1`,
+`--chase-fov-compensate off` sends `0`, `--vanilla` none; d3d9 build 0 warnings, no-x87 684/0; Wine
+`run_chase_fire` (includes the changed `chase_camera.h`) 4 cases / 307 checks passed (measured). Not yet flown.

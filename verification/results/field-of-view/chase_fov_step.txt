@@ -1,0 +1,3 @@
+0.5625->0.75: before=285.55 next=234.52 target=214.16 lag=21.42 clamp=21.42 snapped=0
+0.5625->0.62: before=285.55 next=284.06 target=259.06 lag=25.91 clamp=25.91 snapped=0
+0.5625->0.6: before=285.55 next=285.53 target=267.70 lag=18.46 clamp=26.77 snapped=0

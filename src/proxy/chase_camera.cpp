@@ -55,6 +55,11 @@ Stats stats_;
 uintptr_t cockpits_seen[max_cockpits_seen]; // distinct EBX values since the last report (stats_lock)
 double basis_deviation_deg = 0; // exact native basis vs the derived ship basis (diagnostic)
 uintptr_t last_cockpit = 0;
+// chase_fov_compensate rows (report(), one per report window with a change), capped.
+constexpr unsigned max_fov_rows = 32;
+unsigned fov_rows = 0;
+bool fov_rows_suppressed = false;
+std::uint64_t fov_changes_logged = 0;
 
 bool writable(uintptr_t address, size_t size) {
     MEMORY_BASIC_INFORMATION info{};
@@ -73,6 +78,14 @@ double env_double(const wchar_t* name, double fallback, bool* bad) {
     const double v = std::wcstod(text, &end);
     if (end == text || *end != L'\0') { *bad = true; return fallback; }
     return v;
+}
+// X3M_CHASE_FOV_COMPENSATE: unset = the compiled default (on); "1" on, "0" off; anything else is invalid.
+bool env_on_off(const wchar_t* name, bool fallback, bool* bad) {
+    wchar_t text[8]{};
+    const DWORD n = GetEnvironmentVariableW(name, text, 8);
+    if (n == 0) return fallback;
+    if (n == 1 && (text[0] == L'0' || text[0] == L'1')) return text[0] == L'1';
+    *bad = true; return fallback;
 }
 bool env_flag(const wchar_t* name) {
     wchar_t text[8]{};
@@ -247,6 +260,10 @@ void handle(uint32_t* regs) {
     if (write_refused) ++stats_.write_refused;
     if (result.target_locked) ++stats_.locked_frames;
     if (scene_fix_deg >= 0) { ++stats_.scene_fixed; stats_.scene_fix_deg = scene_fix_deg; }
+    if (written && std::fabs(result.fov_factor - stats_.fov_factor) > 1e-4) {
+        stats_.fov_factor = result.fov_factor; stats_.fov_half_vfov_tan = in.half_vfov_tan;
+        stats_.fov_change_frame = stats_.frames; ++stats_.fov_changes;
+    }
     stats_.snaps = pipeline.snaps; stats_.coalesced = pipeline.coalesced; stats_.clamps = pipeline.clamps;
     stats_.rotation_clamps += pipeline.rotation_clamps - rotation_clamps_before;
     stats_.position_clamps += pipeline.position_clamps - position_clamps_before;
@@ -386,6 +403,7 @@ bool initialize() {
     tunables.pitch_down_deg = env_double(L"X3M_CHASE_PITCH_DOWN_DEG", tunables.pitch_down_deg, &bad_tunable);
     tunables.offset_y = env_double(L"X3M_CHASE_OFFSET_Y", tunables.offset_y, &bad_tunable);
     tunables.distance_scale = env_double(L"X3M_CHASE_DISTANCE_SCALE", tunables.distance_scale, &bad_tunable);
+    tunables.fov_compensate = env_on_off(L"X3M_CHASE_FOV_COMPENSATE", tunables.fov_compensate, &bad_tunable);
     tunables.lag_clamp_deg = env_double(L"X3M_CHASE_LAG_CLAMP_DEG", tunables.lag_clamp_deg, &bad_tunable);
     tunables.pos_lag_clamp = env_double(L"X3M_CHASE_POS_LAG_CLAMP", tunables.pos_lag_clamp, &bad_tunable);
     tunables.combat_tightness = env_double(L"X3M_CHASE_COMBAT_TIGHTNESS", tunables.combat_tightness, &bad_tunable);
@@ -414,10 +432,10 @@ bool initialize() {
     }
     state = okay ? "active" : site.status;
     log("chase_camera requested=1 installed=%u status=%s site=0x%08lx length=%u rel32_offset=%u atomic_write=%u arena_used=%u "
-        "rot_tau=%.3f pos_tau=%.3f offset_y=%.3f pitch_down_deg=%.2f distance_scale=%.3f lag_clamp_deg=%.2f pos_lag_clamp=%.3f combat_tightness=%.3f combat=%s max_dt=%.3f "
+        "rot_tau=%.3f pos_tau=%.3f offset_y=%.3f pitch_down_deg=%.2f distance_scale=%.3f fov_compensate=%u lag_clamp_deg=%.2f pos_lag_clamp=%.3f combat_tightness=%.3f combat=%s max_dt=%.3f "
         "snap_coalesce_frames=%u scene_fix=%u handler_timing=%u predicate=view_object_is_ref_object lifetime=process scope=external_back_view",
         unsigned(okay), state.load(), static_cast<unsigned long>(site_va), site_spec.length, site_spec.rel32_offset, unsigned(site.atomic_write), engine_patch::arena_used(),
-        tunables.rot_tau, tunables.pos_tau, tunables.offset_y, tunables.pitch_down_deg, tunables.distance_scale, tunables.lag_clamp_deg, tunables.pos_lag_clamp, tunables.combat_tightness,
+        tunables.rot_tau, tunables.pos_tau, tunables.offset_y, tunables.pitch_down_deg, tunables.distance_scale, unsigned(tunables.fov_compensate), tunables.lag_clamp_deg, tunables.pos_lag_clamp, tunables.combat_tightness,
         tunables.combat_tightness > 0 ? "tracking_1e4_unverified" : "off", tunables.max_dt, tunables.snap_coalesce_frames, unsigned(scene_fix_enabled), unsigned(timing_enabled));
     if (okay) chase_fire::initialize();
     SetLastError(error);
@@ -467,6 +485,16 @@ void report(std::uint64_t frame) {
             static_cast<unsigned long>(f.tracking_mode), static_cast<unsigned long>(f.aim_gun), static_cast<unsigned long>(f.tracked_object), unsigned(f.target_locked),
             static_cast<unsigned long>(f.ref_object), static_cast<unsigned long>(f.view_object), f.boom_local[0], f.boom_local[1], f.boom_local[2], s.cockpits_seen,
             f.native_base_domain ? "base" : "render", f.domain_delta);
+    }
+    if (s.fov_changes != fov_changes_logged && fov_rows < max_fov_rows) {
+        ++fov_rows;
+        log("chase_fov_compensate frame=%llu handler_frame=%llu factor=%.4f half_vfov_tan=%.4f enabled=%u distance_scale=%.3f boom_scale=%.4f changes=%llu row=%u/%u",
+            frame, s.fov_change_frame, s.fov_factor, s.fov_half_vfov_tan, unsigned(tunables.fov_compensate), tunables.distance_scale,
+            tunables.distance_scale * s.fov_factor, s.fov_changes - fov_changes_logged, fov_rows, max_fov_rows);
+        fov_changes_logged = s.fov_changes;
+    } else if (s.fov_changes != fov_changes_logged && !fov_rows_suppressed) {
+        fov_rows_suppressed = true; // one closing row after the cap; later changes are not logged
+        log("chase_fov_compensate frame=%llu suppressed=1 changes=%llu", frame, s.fov_changes - fov_changes_logged);
     }
     log("chase_camera_window frame=%llu applied=%llu native_base=%llu native_render=%llu native_branch=%s domain_delta=%.1f domain_samples=%llu domain_delta_min=%.1f domain_delta_max=%.1f "
         "native_basis_dev_deg=%.4f render_basis_dev_deg=%.4f rotation_clamps=%llu position_clamps=%llu rotation_lag_min=%.3f rotation_lag_max=%.3f position_lag_min=%.1f position_lag_max=%.1f",

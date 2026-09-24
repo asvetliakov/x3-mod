@@ -17,6 +17,7 @@ the combat-tightness scaling of the time constants.
 """
 import math
 import contextlib
+import hashlib
 import io
 import json
 import os
@@ -32,7 +33,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 IDENTITY = [1, 0, 0, 0, 1, 0, 0, 0, 1]
-DEFAULT_TUNABLES = dict(rot_tau=0.20, pos_tau=0.30, offset_y=0.0, pitch_down_deg=0.0, distance_scale=1.0, lag_clamp_deg=90.0, pos_lag_clamp=1.0, max_dt=0.1, snap_ratio=20.0)
+DEFAULT_TUNABLES = dict(rot_tau=0.20, pos_tau=0.30, offset_y=0.0, pitch_down_deg=0.0, distance_scale=1.0, lag_clamp_deg=90.0, pos_lag_clamp=1.0, max_dt=0.1, snap_ratio=20.0, fov_compensate=0)
 
 
 def yaw(theta):
@@ -80,15 +81,20 @@ class Driver:
 
     def tunables(self, **kw):
         t = {**DEFAULT_TUNABLES, 'combat_tightness': 0.0, 'snap_coalesce_frames': 3, **kw}
-        out = self.send('T {rot_tau} {pos_tau} {offset_y} {distance_scale} {lag_clamp_deg} {pos_lag_clamp} {max_dt} {snap_ratio} {combat_tightness} {snap_coalesce_frames} {pitch_down_deg}'.format(**t))
+        out = self.send('T {rot_tau} {pos_tau} {offset_y} {distance_scale} {lag_clamp_deg} {pos_lag_clamp} {max_dt} {snap_ratio} {combat_tightness} {snap_coalesce_frames} {pitch_down_deg} {fov_compensate:g}'.format(**t))
         assert out[0] == 'T'
         return int(out[1]) == 1
 
     def defaults(self):
         out = self.send('D')
         assert out[0] == 'D', out
-        names = ['rot_tau', 'pos_tau', 'offset_y', 'distance_scale', 'lag_clamp_deg', 'pos_lag_clamp', 'combat_tightness', 'max_dt', 'snap_ratio', 'snap_coalesce_frames', 'pitch_down_deg']
+        names = ['rot_tau', 'pos_tau', 'offset_y', 'distance_scale', 'lag_clamp_deg', 'pos_lag_clamp', 'combat_tightness', 'max_dt', 'snap_ratio', 'snap_coalesce_frames', 'pitch_down_deg', 'fov_compensate']
         return dict(zip(names, map(float, out[1:])))
+
+    def fov_factor(self, half_vfov_tan, enabled=True):
+        out = self.send(f'V {half_vfov_tan!r} {int(enabled)}')
+        assert out[0] == 'V', out
+        return float(out[1])
 
     def reset(self):
         self.send('R')
@@ -190,7 +196,8 @@ class ChaseCameraPipeline(unittest.TestCase):
             self.assertAlmostEqual(r['basis'][7], -math.sin(math.radians(pitch_down_deg)), places=12)
             self.assertGreater(r['pos'][1], 0)
             self.assertLess(r['pos'][2], 0)
-            self.assertAlmostEqual(r['distance'], 1.05 * math.hypot(40, 200), places=10)
+            factor = min(max(0.75 / vfov, 0.5), 2.0)   # the compiled default compensates the FOV
+            self.assertAlmostEqual(r['distance'], 1.05 * factor * math.hypot(40, 200), places=10)
             alpha = math.radians(pitch_down_deg) + math.atan(offset_y * vfov)
             self.assertAlmostEqual(math.atan2(r['pos'][1], -r['pos'][2]), alpha, places=12)
 
@@ -479,6 +486,68 @@ class ChaseCameraPipeline(unittest.TestCase):
         self.assertEqual(d['combat_tightness'], 0.0)
         self.assertEqual(d['max_dt'], 0.10)
         self.assertEqual(d['snap_coalesce_frames'], 3)
+        self.assertEqual(d['fov_compensate'], 1)
+
+    # --- FOV compensation (docs/verification/field-of-view.md, "Chase camera compensation") ---
+    def test_fov_compensation_factor(self):
+        self.assertEqual(self.d.fov_factor(0.75), 1.0)                          # vanilla F 0x4000
+        self.assertAlmostEqual(self.d.fov_factor(0.5625), 4 / 3, places=15)     # --fov 58.7155 default
+        self.assertEqual(self.d.fov_factor(0.3), 2.0)                           # clamp: 2.5 -> 2
+        self.assertEqual(self.d.fov_factor(0.375), 2.0)                         # exactly at the upper bound
+        self.assertEqual(self.d.fov_factor(1.5), 0.5)                           # exactly at the lower bound
+        self.assertEqual(self.d.fov_factor(3.0), 0.5)                           # clamp: 0.25 -> 0.5
+        for value in (0.3, 0.5625, 0.75, 3.0):
+            self.assertEqual(self.d.fov_factor(value, enabled=False), 1.0)      # off
+        for value in (0.0, -1.0, float('inf'), float('nan')):
+            self.assertEqual(self.d.fov_factor(value), 1.0)
+
+    def test_fov_compensation_scales_the_boom_on_top_of_distance_scale(self):
+        boom = (0, 40, -200)
+        for pitch_down in (0.0, 0.5):
+            for enabled, vfov, factor in ((1, 0.75, 1.0), (1, 0.5625, 4 / 3), (1, 0.3, 2.0), (1, 3.0, 0.5), (0, 0.5625, 1.0)):
+                with self.subTest(pitch_down=pitch_down, enabled=enabled, vfov=vfov):
+                    self.assertTrue(self.d.tunables(distance_scale=1.05, pitch_down_deg=pitch_down, offset_y=0.5,
+                                                    fov_compensate=enabled))
+                    self.d.reset()
+                    r = self.d.frame(1 / 60, boom=boom, half_vfov_tan=vfov)
+                    self.assertEqual(r['verdict'], 0)
+                    self.assertAlmostEqual(r['distance'], 1.05 * factor * math.hypot(*boom), places=9)
+        # A later FOV change (the in-game menu, zoom) moves the target; the spring follows without a snap.
+        self.d.tunables(**{**self.d.defaults(), 'pos_lag_clamp': 1.0})
+        self.d.reset()
+        first = self.d.frame(1 / 60, half_vfov_tan=0.5625)
+        changed = [self.d.frame(1 / 60, half_vfov_tan=0.75) for _ in range(240)]
+        self.assertFalse(any(r['snapped'] for r in changed))
+        self.assertAlmostEqual(first['distance'], 1.05 * 4 / 3 * math.hypot(40, 200), places=9)
+        self.assertAlmostEqual(changed[-1]['distance'], 1.05 * math.hypot(40, 200), delta=0.1)   # settled within 0.05%
+
+    def test_fov_step_at_the_default_lag_clamp(self):
+        # At the compiled pos_lag_clamp (0.10 of the target boom) a FOV step whose boom change exceeds
+        # 10 % jumps in its first frame to the clamp edge; the spring carries the rest without a snap.
+        # A smaller step stays inside the clamp and moves smoothly.
+        defaults = self.d.defaults()
+        self.assertEqual(defaults['pos_lag_clamp'], 0.10)
+        vanilla = 1.05 * math.hypot(40, 200)
+        for new_vfov, jumps in ((0.75, True), (0.62, True), (0.60, False)):
+            with self.subTest(new_vfov=new_vfov):
+                self.d.tunables(**defaults)
+                self.d.reset()
+                first = self.d.frame(1 / 60, half_vfov_tan=0.5625)
+                self.assertAlmostEqual(first['distance'], vanilla * 4 / 3, places=9)
+                target = vanilla * 0.75 / new_vfov
+                step = self.d.frame(1 / 60, half_vfov_tan=new_vfov)
+                self.assertFalse(step['snapped'])
+                self.assertLessEqual(step['pos_lag'], 0.10 * target + 1e-9)
+                if jumps:
+                    self.assertAlmostEqual(step['pos_lag'], 0.10 * target, places=9)       # clamped: the jump
+                    if new_vfov == 0.75:   # a large step: most of the change lands in the first frame
+                        self.assertLess(step['distance'], first['distance'] - 0.5 * (first['distance'] - target))
+                else:
+                    self.assertLess(step['pos_lag'], 0.10 * target)                       # inside the clamp
+                    self.assertGreater(step['distance'], first['distance'] - 0.1 * (first['distance'] - target))
+                rest = [self.d.frame(1 / 60, half_vfov_tan=new_vfov) for _ in range(240)]
+                self.assertFalse(any(r['snapped'] for r in rest))
+                self.assertAlmostEqual(rest[-1]['distance'], target, delta=0.1)
 
     def test_combat_tightness_scales_the_time_constants_while_locked(self):
         # Review 31 A9: with a lock the springs run at tau * (1 - tightness);
@@ -703,6 +772,49 @@ class ChaseCameraLaunchOptions(unittest.TestCase):
         self.assertEqual(float(output['env']['X3M_CHASE_DISTANCE_SCALE']), 0.9)
         for value in ('0', '10.5', 'nan'):
             self.assertEqual(self.invoke('--camera', 'chase', '--chase-distance-scale', value)[0], 2)
+
+    def modded(self, *args, inherited=None):
+        # A modded (non --vanilla) dry run: the launcher wants an installed proxy that matches its manifest.
+        from tools import manage
+        output, error = io.StringIO(), io.StringIO()
+        with tempfile.TemporaryDirectory(prefix='x3-chase-launch-') as directory:
+            wine = Path(directory) / 'wine'
+            wine.touch()
+            (Path(directory) / 'X3AP.exe').touch()
+            (Path(directory) / 'd3d9.dll').write_bytes(b'proxy')
+            (Path(directory) / 'x3-modern-install.json').write_text(json.dumps({'sha256': hashlib.sha256(b'proxy').hexdigest()}))
+            argv = ['manage.py', 'launch', '--dry-run', '--game-dir', directory, *args]
+            with mock.patch.object(sys, 'argv', argv), mock.patch.object(manage, 'WINE', wine), mock.patch.object(manage, 'VOICE_DECODER_REPO', None), \
+                    mock.patch.dict(os.environ, inherited or {}), \
+                    mock.patch.object(manage.subprocess, 'call', side_effect=AssertionError('must never launch')), \
+                    contextlib.redirect_stdout(output), contextlib.redirect_stderr(error):
+                try:
+                    manage.main()
+                except SystemExit as exit_error:
+                    return exit_error.code, error.getvalue()
+        return 0, json.loads(output.getvalue())
+
+    def test_fov_compensate_default_on_off_and_vanilla(self):
+        name = 'X3M_CHASE_FOV_COMPENSATE'
+        for args, stale, expected in ((('--camera', 'chase'), '0', '1'),
+                                      (('--camera', 'chase', '--chase-fov-compensate', 'on'), '0', '1'),
+                                      (('--camera', 'chase', '--chase-fov-compensate', 'off'), '1', '0'),
+                                      ((), '0', '1')):                                     # inert without chase, still explicit
+            with self.subTest(args=args):
+                code, output = self.modded(*args, inherited={name: stale})
+                self.assertEqual(code, 0, output)
+                self.assertEqual(output['env'][name], expected)
+        with mock.patch.dict(os.environ, {name: '1'}):
+            code, output = self.invoke('--camera', 'chase')   # --vanilla: nothing is sent, a stale value is dropped
+        self.assertEqual(code, 0)
+        self.assertNotIn(name, output['env'])
+        for value in ('on', 'off'):
+            self.assertEqual(self.invoke('--camera', 'chase', '--chase-fov-compensate', value)[0], 2)
+        self.assertEqual(self.modded('--camera', 'chase', '--chase-fov-compensate', 'yes')[0], 2)
+        for value in ('on', 'off'):   # an explicit value requires --camera chase, like the other --chase-* tunables
+            code, error = self.modded('--chase-fov-compensate', value)
+            self.assertEqual(code, 2)
+            self.assertIn('requires --camera chase', error)
 
     def test_forward_hud_anchor_is_forwarded_in_chase_mode(self):
         code, output = self.invoke('--camera', 'chase', '--chase-hud-anchor', 'forward')
