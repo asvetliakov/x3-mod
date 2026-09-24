@@ -437,6 +437,17 @@ motion-output case `seam-taa-thin-taps16-refused`; CrossOver only, the refusals 
 program above its cap and fails the draw (the slot-budget fixture's 65,538-slot case) would hit the per-frame resolve
 failure path instead; not expected at these sizes, unverified.
 
+## 2026-09-24: TAA half-resolution box (`--taa-box-resolution half`, opt-in, default full)
+
+Ledger `docs/verification/temporal-resolve.md` "S4 half-resolution box". Documented D3D9 only: two more ps_3_0 programs
+(158 / 330 D3DX slots), A16B16G16R16F render targets of W/2 x (H/2 + 1) and W/2 x H/2 drawn as equal-size MRT pairs with
+an explicit viewport, POINT / CLAMP sampling. The resolve reads the half-resolution box at its own texel centre: point
+sampling maps u = (x + 1/2) / W onto texel floor(u W/2) = x >> 1 for an even W (a quarter texel from either edge, the
+documented D3D9 texel mapping), so the pass draws half resolution only for an even width and height and the full-resolution
+box otherwise (Diagnostics reason `odd_size`). A refused program keeps the full-resolution box (one
+`motion_output_taa_box_resolution ... configured=full reason=program` row); refused half-resolution targets do the same for
+the session (reason `target`, re-armed by Reset). CrossOver only; native drivers inferred.
+
 ## 2026-09-24: TAA thin vote (`--taa-thin-vote`, default off)
 
 [taa-thin-geometry-alternatives.md](taa-thin-geometry-alternatives.md) section 3.2, "Implemented"; ledger

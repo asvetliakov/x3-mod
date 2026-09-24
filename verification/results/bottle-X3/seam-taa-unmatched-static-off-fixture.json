@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "verification/probe/build/motion_output_fixture.exe": "b1fec58b94ca1211c46fdf5be8bf3b65a2d413a494214b78b4ad1a76d447dd60",
-  "verification/probe/build/motion-output-seam/d3d9.dll": "cf2f8f0d2356388f4c2c8f5df3ce17e6e6becddd4cf7b87c59f8c0d26375884c",
-  "build/d3d9.dll": "12e1c0930d644784f2deb19d82517387e9b0c0c10a1cb1a0edeb9c789d2a0908"
+  "verification/probe/build/motion_output_fixture.exe": "21a1c7b0048d15f02eafec0a954355abd08b1919b5fdbf81730802922f5292d0",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "a973c789bc2acdaacf319990e021d1b83ce2231c857ff600d84e767d65a6c307",
+  "build/d3d9.dll": "b55011158084d9b29496fe1909a57678ba0e22cf5fad2273a50701c8e9bff0c3"
  },
  "checks": 95,
  "setting": "0",
@@ -215,9 +215,9 @@
   }
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-taa-unmatched-static-off-20260924-184159-277410",
- "trace_sha256": "fae8b2da7b84f5fadeab7072ba02a78b27d22566cab965bfd8a2c6548ca0edd0",
- "dll_sha256": "cf2f8f0d2356388f4c2c8f5df3ce17e6e6becddd4cf7b87c59f8c0d26375884c",
- "exe_sha256": "b1fec58b94ca1211c46fdf5be8bf3b65a2d413a494214b78b4ad1a76d447dd60",
+ "directory": "verification/probe/build/motion-output-seam-taa-unmatched-static-off-20260924-202849-621549",
+ "trace_sha256": "966d548281424c0f4ae3ef6987d34343ad093ec3818d8c8a21e4957d6cfb7bbb",
+ "dll_sha256": "a973c789bc2acdaacf319990e021d1b83ce2231c857ff600d84e767d65a6c307",
+ "exe_sha256": "21a1c7b0048d15f02eafec0a954355abd08b1919b5fdbf81730802922f5292d0",
  "motion_frames_differing_from_seam-taa-unmatched-static-unset": []
 }

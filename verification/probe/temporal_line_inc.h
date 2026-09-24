@@ -32,6 +32,11 @@ double oracleK=0;
 double oracle_weigh(double v){return oracleK>0?v/(1+oracleK*std::max(v,0.)):v;}
 double oracle_unweigh(double v){return oracleK>0?v/std::max(1-oracleK*std::max(v,0.),1./65504):v;}
 bool oracle_finite(double v){return std::fabs(v)<=65000;}
+// S4 (X3M_TAA_BOX_RESOLUTION=half; temporal_box_half_inc.h): the camera gate's box is the half-resolution block box: open where
+// any of the pixel's 2x2 block opens, the 8x8 window of the block; with the emitter bound and a tap above E in the 8x8 on a
+// block all on the sentinel, the inner 4x4 (a bright tap in the common 6x6) or the 8x8 of the dim taps (bright taps in the
+// outer ring only) (thin_box_{rows,columns}_half_ps.hlsl).
+bool oracleBoxHalf=false;
 // History reconstruction the oracle models (docs/architecture/taa-high-resolution.md S3): 5 (the default programs) or 16 (the 16-tap twins).
 unsigned oracleHistoryTaps=5;
 // A' (resolve.hlsl X3M_REGION_HOLD; LineConfig::camera): the camera gate's L-frame peak hold (closureHold) and the hold fraction of the
@@ -141,7 +146,10 @@ FlickerModel line_model(const FlickerRun& run,const LineConfig& c,const std::vec
                 double codeC;const float openC=std::min(ownC,closure_hold(ownC,heldC,codeC)),openS=std::min(ownS,openC);
                 const bool region=regionHold>0,sentinelTerm=c.sentS>0&&hold_class(testB);
                 gate=std::max(double(region?openC:0.f),double(sentinelTerm?c.sentS*openC:0.f));screenGate=region?openS:0.f;
-                holdFraction=hold_code(regionHold,codeC);boxOpen=sentinelTerm||(testA>testR&&(flagged||held_region(m.age[n-1][i])));} // the box twins' gate: same texel, last frame's region
+                holdFraction=hold_code(regionHold,codeC);boxOpen=sentinelTerm||(testA>testR&&(flagged||held_region(m.age[n-1][i]))); // the box twins' gate: same texel, last frame's region
+                if(oracleBoxHalf){boxOpen=false;const UINT bx0=x&~1u,by0=y&~1u; // S4: any pixel of the 2x2 block (all in frame: x, y in [3, S-3))
+                    for(UINT qy=by0;qy<=by0+1;++qy)for(UINT qx=bx0;qx<=bx0+1;++qx){const float r=px((*masks)[n],qx,qy,0),b=px((*masks)[n],qx,qy,2),a=px((*masks)[n],qx,qy,3);
+                        boxOpen=boxOpen||(c.sentS>0&&hold_class(b))||(a>r&&(b>.5f||held_region(m.age[n-1][qy*S+qx])));}}}
             else{gate=c.thinW>0?quantise8(thin_region_strength(run.depth[n],int(x),int(y),c.camera,run.motion.empty()?nullptr:&run.motion[n],c.sentS)):0;screenGate=c.camera?quantise8(thin_region_strength(run.depth[n],int(x),int(y),false)):gate;}
             const double clamped=std::min(std::max(old,lo),hi),soft=farOn?screenGate*c.relax:sawValid&&sawSentinel?c.thin*(1-std::min(std::max((speed-2)*.5,0.),1.)):0;
             double boxTerm=0;
@@ -149,6 +157,17 @@ FlickerModel line_model(const FlickerRun& run,const LineConfig& c,const std::vec
                 double boxLo=wcur,boxHi=wcur,innerLo=wcur,innerHi=wcur,rawMax=0;for(int dy=-3;dy<=3;++dy)for(int dx=-3;dx<=3;++dx){const double raw=px(run.current[n],UINT(std::min(std::max(int(x)+dx,0),int(S)-1)),UINT(std::min(std::max(int(y)+dy,0),int(S)-1)));if(!oracle_finite(raw))continue;const double q=oracle_weigh(raw);boxLo=std::min(boxLo,q);boxHi=std::max(boxHi,q);rawMax=std::max(rawMax,std::max(raw,0.));
                     if(std::abs(dx)<=1&&std::abs(dy)<=1){innerLo=std::min(innerLo,q);innerHi=std::max(innerHi,q);}}
                 if(c.sentS>0&&c.sentE>0&&rawMax>double(c.sentE)&&sentinel(centre)){boxLo=innerLo;boxHi=innerHi;} // the emitter bound: the inner 3x3
+                if(oracleBoxHalf){const int X0=int(x&~1u),Y0=int(y&~1u);auto at=[&](int v){return UINT(std::min(std::max(v,0),int(S)-1));};
+                    const bool bound=c.sentS>0&&c.sentE>0;bool anyBright=false,commonBright=false,allSentinel=true;double dimLo=wcur,dimHi=wcur;
+                    boxLo=boxHi=innerLo=innerHi=wcur;
+                    for(int dy=-3;dy<=4;++dy)for(int dx=-3;dx<=4;++dx){const double raw=px(run.current[n],at(X0+dx),at(Y0+dy));if(!oracle_finite(raw))continue;const double q=oracle_weigh(raw);boxLo=std::min(boxLo,q);boxHi=std::max(boxHi,q);
+                        const bool bright=bound&&std::max(raw,0.)>=double(x3::temporal::fp16_above(c.sentE)); // the half rows' test (c23.z)
+                        if(bright){anyBright=true;commonBright=commonBright||(dx>=-2&&dx<=3&&dy>=-2&&dy<=3);}else{dimLo=std::min(dimLo,q);dimHi=std::max(dimHi,q);}
+                        if(dx>=-1&&dx<=2&&dy>=-1&&dy<=2){innerLo=std::min(innerLo,q);innerHi=std::max(innerHi,q);}}
+                    for(int j=0;j<2;++j)for(int i=0;i<2;++i)allSentinel=allSentinel&&sentinel(px(run.depth[n],UINT(X0+i),UINT(Y0+j)));
+                    // No bright tap: the 8x8 box; on the sky with a bright tap in the common 6x6: the inner 4x4; on the sky with bright
+                    // taps in the outer ring only: the 8x8 box of the dim taps; across a silhouette: the 8x8 box of every tap.
+                    if(anyBright&&allSentinel){if(commonBright){boxLo=innerLo;boxHi=innerHi;}else{boxLo=dimLo;boxHi=dimHi;}}}
                 boxTerm=(gate-screenGate)*c.relax*(std::min(std::max(old,boxLo),boxHi)-clamped);}
             old=clamped+soft*(old-clamped)+boxTerm;
             double keep=w;const double farw=hold?double(px((*masks)[n],x,y,1)):farOn?far_gate_weight(centre):0;

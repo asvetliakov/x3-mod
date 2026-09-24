@@ -193,10 +193,10 @@ void TemporalPass::release_history() noexcept {
     reactive_policy_=ReactivePolicy::Unavailable;
     width_=height_=current_=0;
 }
-void TemporalPass::shutdown() noexcept {release_history();drop(block_);drop(decoder_);drop(resolve_);drop(snapshot_);drop(thin_);drop(age_);drop(far_);drop(resolve16_);drop(thin16_);drop(age16_);drop(far16_);bilinear_history_=false;bilinear_history_reason_="not_initialized";drop(line_mask_camera_);drop(line_mask_depth_);drop(line_mask_camera_depth_);drop(line_mask_depth_thin_);drop(line_mask_camera_depth_thin_);drop(far_camera_hold_);drop(thin_box_hold_);drop(thin_box_rows_hold_);drop(thin_box_columns_hold_);camera_programs_result_=S_OK;hold_history_=false;ps30_slots_=0;line_masks_failed_=false;line_masks_result_=S_OK;boxes_failed_=false;boxes_result_=S_OK;box_rows_failed_=false;box_rows_result_=S_OK;drop(line_mask_);mrt_age_=false;drop(sharpen_);drop(copy_);drop(quad_vs_);drop(quad_declaration_);device_=nullptr;vtable_=nullptr;render_targets_=streams_=0;diagnostics_.reset_pending=false;}
+void TemporalPass::shutdown() noexcept {release_history();drop(block_);drop(decoder_);drop(resolve_);drop(snapshot_);drop(thin_);drop(age_);drop(far_);drop(resolve16_);drop(thin16_);drop(age16_);drop(far16_);bilinear_history_=false;bilinear_history_reason_="not_initialized";drop(line_mask_camera_);drop(line_mask_depth_);drop(line_mask_camera_depth_);drop(line_mask_depth_thin_);drop(line_mask_camera_depth_thin_);drop(far_camera_hold_);drop(thin_box_hold_);drop(thin_box_rows_hold_);drop(thin_box_columns_hold_);drop(thin_box_rows_half_);drop(thin_box_columns_half_);box_divisor_=1;box_half_failed_=false;box_half_result_=S_OK;camera_programs_result_=S_OK;hold_history_=false;ps30_slots_=0;line_masks_failed_=false;line_masks_result_=S_OK;boxes_failed_=false;boxes_result_=S_OK;box_rows_failed_=false;box_rows_result_=S_OK;drop(line_mask_);mrt_age_=false;drop(sharpen_);drop(copy_);drop(quad_vs_);drop(quad_declaration_);device_=nullptr;vtable_=nullptr;render_targets_=streams_=0;diagnostics_.reset_pending=false;}
 // Every owned texture and the state block must not exist across Reset; the
 // compiled shaders survive it. Runs are refused until after_reset succeeds.
-void TemporalPass::before_reset() noexcept {line_masks_failed_=false;line_masks_result_=S_OK;boxes_failed_=false;boxes_result_=S_OK;box_rows_failed_=false;box_rows_result_=S_OK;release_history();drop(block_);diagnostics_.reset_pending=device_!=nullptr;}
+void TemporalPass::before_reset() noexcept {line_masks_failed_=false;line_masks_result_=S_OK;boxes_failed_=false;boxes_result_=S_OK;box_rows_failed_=false;box_rows_result_=S_OK;box_half_failed_=false;box_half_result_=S_OK;release_history();drop(block_);diagnostics_.reset_pending=device_!=nullptr;}
 void TemporalPass::after_reset(HRESULT result) noexcept {invalidate();if(SUCCEEDED(result))diagnostics_.reset_pending=false;}
 HRESULT TemporalPass::initialize(IDirect3DDevice9* d,const DWORD* decoder,const DWORD* resolve,void* const* native_vtable,const DWORD* sharpen,const DWORD* copy) noexcept {
     shutdown();diagnostics_={};snapshot_result_=S_FALSE;if(!d||!resolve)return E_INVALIDARG;
@@ -302,6 +302,20 @@ HRESULT TemporalPass::configure_sentinel() noexcept {
     }
     return hr;
 }
+// S4: the half-resolution pair, created only on request; a refusal drops both and keeps the full-resolution box.
+HRESULT TemporalPass::configure_box_resolution(unsigned divisor) noexcept {
+    if(divisor!=1&&divisor!=2)return E_INVALIDARG;
+    if(divisor==1){box_divisor_=1;return S_OK;}
+    if(!device_)return E_FAIL;
+    auto make=[&](const std::uint32_t* words,IDirect3DPixelShader9** out){return call<CreatePsFn>(CreatePixelShader)(device_,reinterpret_cast<const DWORD*>(words),out);};
+    HRESULT hr=S_OK;
+    if(!(thin_box_rows_half_&&thin_box_columns_half_)){
+        hr=make(temporal_thin_box_rows_half_program(),&thin_box_rows_half_);
+        if(SUCCEEDED(hr))hr=make(temporal_thin_box_columns_half_program(),&thin_box_columns_half_);
+        if(FAILED(hr)){drop(thin_box_rows_half_);drop(thin_box_columns_half_);box_divisor_=1;return hr;}
+    }
+    box_divisor_=2;return S_OK;
+}
 HRESULT TemporalPass::configure_thin_vote() noexcept {
     if(!device_)return E_FAIL;
     auto make=[&](const std::uint32_t* words,IDirect3DPixelShader9** out){return call<CreatePsFn>(CreatePixelShader)(device_,reinterpret_cast<const DWORD*>(words),out);};
@@ -355,24 +369,33 @@ HRESULT TemporalPass::ensure_line_masks(bool both) noexcept {
     if(FAILED(hr)){for(auto& p:line_mask_surfaces_)drop(p);for(auto& p:line_masks_)drop(p);}
     return hr;
 }
-HRESULT TemporalPass::ensure_boxes() noexcept {
-    if(boxes_[1])return S_OK;
+// The box pair at full resolution or, for S4, W/2 x H/2; a pair of the other size is released first (a configuration
+// change, never per frame).
+HRESULT TemporalPass::ensure_boxes(bool half) noexcept {
+    if(boxes_[1]&&boxes_half_==half)return S_OK;
+    for(auto& p:box_surfaces_)drop(p);
+    for(auto& p:boxes_)drop(p);
+    const UINT w=half?width_/2:width_,h=half?height_/2:height_;
     HRESULT hr=S_OK;
     for(UINT i=0;i<2&&SUCCEEDED(hr);++i){
-        hr=call<CreateTextureFn>(CreateTexture)(device_,width_,height_,1,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&boxes_[i],nullptr);
+        hr=call<CreateTextureFn>(CreateTexture)(device_,w,h,1,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&boxes_[i],nullptr);
         if(SUCCEEDED(hr))hr=boxes_[i]->GetSurfaceLevel(0,&box_surfaces_[i]);
     }
-    if(FAILED(hr)){for(auto& p:box_surfaces_)drop(p);for(auto& p:boxes_)drop(p);}
+    if(FAILED(hr)){for(auto& p:box_surfaces_)drop(p);for(auto& p:boxes_)drop(p);}else boxes_half_=half;
     return hr;
 }
-HRESULT TemporalPass::ensure_box_rows() noexcept {
-    if(box_rows_[1])return S_OK;
+// The row pair: full resolution, or for S4 the W/2 x (H/2 + 1) row pairs of thin_box_rows_half_ps.hlsl.
+HRESULT TemporalPass::ensure_box_rows(bool half) noexcept {
+    if(box_rows_[1]&&box_rows_half_==half)return S_OK;
+    for(auto& p:box_row_surfaces_)drop(p);
+    for(auto& p:box_rows_)drop(p);
+    const UINT w=half?width_/2:width_,h=half?height_/2+1:height_;
     HRESULT hr=S_OK;
     for(UINT i=0;i<2&&SUCCEEDED(hr);++i){
-        hr=call<CreateTextureFn>(CreateTexture)(device_,width_,height_,1,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&box_rows_[i],nullptr);
+        hr=call<CreateTextureFn>(CreateTexture)(device_,w,h,1,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&box_rows_[i],nullptr);
         if(SUCCEEDED(hr))hr=box_rows_[i]->GetSurfaceLevel(0,&box_row_surfaces_[i]);
     }
-    if(FAILED(hr)){for(auto& p:box_row_surfaces_)drop(p);for(auto& p:box_rows_)drop(p);}
+    if(FAILED(hr)){for(auto& p:box_row_surfaces_)drop(p);for(auto& p:box_rows_)drop(p);}else box_rows_half_=half;
     return hr;
 }
 HRESULT TemporalPass::ensure_block() noexcept {
@@ -383,7 +406,7 @@ HRESULT TemporalPass::ensure_block() noexcept {
 }
 HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     if(out)*out={};
-    diagnostics_.operation=diagnostics_.restoration=S_OK;diagnostics_.depth_folded=false;diagnostics_.depth_fold_reason="not_run";diagnostics_.history_taps=0;diagnostics_.region_hold=false;diagnostics_.thin_vote=false;diagnostics_.thin_vote_reason="not_run";
+    diagnostics_.operation=diagnostics_.restoration=S_OK;diagnostics_.depth_folded=false;diagnostics_.depth_fold_reason="not_run";diagnostics_.history_taps=0;diagnostics_.region_hold=false;diagnostics_.thin_vote=false;diagnostics_.thin_vote_reason="not_run";diagnostics_.box_half=false;diagnostics_.box_resolution_reason="not_run";
     // Phase timing (Diagnostics::ticks_*): QPC pairs only, no device call changes.
     diagnostics_.timed=timing_;
     diagnostics_.ticks_capture=diagnostics_.ticks_copy_color=diagnostics_.ticks_copy_depth=diagnostics_.ticks_draw=diagnostics_.ticks_apply=0;
@@ -445,7 +468,17 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     if(line_masks_failed_){far_on=false;aged=adaptive;}
     // The box targets of the camera gate: same policy as the mask targets; a failure turns the thin region off (above).
     bool camera=camera_wanted&&far_on;
-    if(camera){const HRESULT boxes=ensure_boxes();if(lost(boxes))return fail(boxes);if(FAILED(boxes)){boxes_failed_=true;boxes_result_=boxes;camera=false;region_off();}}
+    // S4 (configure_box_resolution(2)): the half-resolution pair on a camera-gate run of an even size (the resolve's point read
+    // lands on texel (x >> 1, y >> 1) only then). Its row targets first, so that a refusal (not a lost device) still leaves
+    // this run the full-resolution box: half resolution is then off until Reset re-arms it.
+    const bool half_configured=box_divisor_==2&&thin_box_rows_half_&&thin_box_columns_half_,even=in.width%2==0&&in.height%2==0;
+    bool half=camera&&half_configured&&even&&!box_half_failed_;
+    if(half){const HRESULT rows=ensure_box_rows(true);if(lost(rows))return fail(rows);if(FAILED(rows)){box_half_failed_=true;box_half_result_=rows;half=false;}}
+    // A refused half-resolution box pair (not a lost device) likewise falls back to the full-resolution pair; a refused
+    // full-resolution pair turns the thin region off (above).
+    if(camera){HRESULT boxes=ensure_boxes(half);if(lost(boxes))return fail(boxes);
+        if(FAILED(boxes)&&half){box_half_failed_=true;box_half_result_=boxes;half=false;boxes=ensure_boxes(false);if(lost(boxes))return fail(boxes);}
+        if(FAILED(boxes)){boxes_failed_=true;boxes_result_=boxes;camera=false;region_off();half=false;}}
     // A run that does not use the camera gate returns the box pair (15.7 MiB at 1280x768). The gate mode is a session setting, so
     // this fires once on a configuration change, never per frame; nothing is bound yet, and the histories are untouched.
     else if(boxes_[0]){for(auto& p:box_surfaces_)drop(p);for(auto& p:boxes_)drop(p);}
@@ -456,9 +489,11 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     else if(camera&&line_masks_[1]){drop(line_mask_surfaces_[1]);drop(line_masks_[1]);}
     // The row targets of the sentinel stabiliser's separable box: a failure that is not a lost device turns the stabiliser
     // off for the session and the camera gate carries on with the 49-tap box; released by the first run without it.
-    bool stabilise=camera&&sentinel_requested&&!box_rows_failed_;
-    if(stabilise){const HRESULT rows=ensure_box_rows();if(lost(rows))return fail(rows);if(FAILED(rows)){box_rows_failed_=true;box_rows_result_=rows;stabilise=false;}}
-    else if(box_rows_[0]){for(auto& p:box_row_surfaces_)drop(p);for(auto& p:box_rows_)drop(p);}
+    // S4: a half-resolution run holds its row pair already (above) and draws the pair whether the stabiliser is on or off.
+    bool stabilise=camera&&sentinel_requested&&(half||!box_rows_failed_);
+    if(stabilise&&!half){const HRESULT rows=ensure_box_rows(false);if(lost(rows))return fail(rows);if(FAILED(rows)){box_rows_failed_=true;box_rows_result_=rows;stabilise=false;}}
+    if(!half&&!stabilise&&box_rows_[0]){for(auto& p:box_row_surfaces_)drop(p);for(auto& p:box_rows_)drop(p);}
+    diagnostics_.box_resolution_reason=!half_configured?"not_requested":!camera?"no_camera_gate":!even?"odd_size":box_half_failed_?"target":"half";
     // S1 (docs/architecture/taa-high-resolution.md): on a two- or four-channel current depth the mask chain's first draw reads
     // it at s1 itself and writes depths_[next] as COLOR1 (R32F beside the A8R8G8B8 mask: two targets and
     // MRTINDEPENDENTBITDEPTHS, both in mrt_age_); the copy draw below does not run. Every later reader of depths_[next]
@@ -643,7 +678,37 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
         // Sentinel stabiliser: the box covers most of the sky, so it runs separably (thin_box_rows_ps.hlsl into the row pair only where a
         // column reader opens the box, thin_box_columns_ps.hlsl into the box pair where the mask opens; the same bytes as the 49-tap program,
         // plus the emitter bound c23.x, which the sharpen uploads again for itself later). The resolve rebinds s0..s3.
-        if(SUCCEEDED(hr)&&stabilise){
+        // S4: the same separable pair at half resolution (thin_box_rows_half_ps.hlsl, thin_box_columns_half_ps.hlsl), with the sentinel stabiliser on
+        // or off (its emitter bound E, 0 without it): row pairs into the W/2 x (H/2 + 1) row targets wherever a reading block
+        // opens, then the 8x8 block box into the W/2 x H/2 box targets wherever one of the block's four pixels opens. The
+        // viewport follows each target (set after its SetRenderTarget(0, ...), inside it); the resolve's SetRenderTarget(0, ...)
+        // sets the frame's back (a W x H viewport on the W/2 target would be D3DERR_INVALIDCALL). c12 = the row target's
+        // vertical scale and texel step; c23 = (E, the stabiliser on: the gate's sentinel-class term, which the tests draw
+        // writes whatever S is, the smallest FP16 value above E); the block restores both.
+        if(SUCCEEDED(hr)&&half){
+            // The bright test of the half-resolution rows is luma >= the smallest FP16 value above E: the full-resolution path
+            // tests its row maxima after the FP16 target has rounded them (FP16(luma) > E), and every rounding mode maps such a
+            // luma above E, so a tap bright at half resolution is bright at full resolution too (containment; the reverse
+            // may not hold for a luma just below that value, which keeps the half box looser there).
+            const float emitter[4]={stabilise?in.sentinel_emitter:0.f,stabilise?1.f:0.f,x3::temporal::fp16_above(stabilise?in.sentinel_emitter:0.f),0.f};
+            const UINT half_width=in.width/2,half_height=in.height/2;
+            const float row_constants[4]={float(half_height)/float(half_height+1),1.f/float(half_height+1),0.f,0.f};
+            D3DVIEWPORT9 rows_viewport{0,0,half_width,half_height+1,0,1},box_viewport{0,0,half_width,half_height,0,1};
+            if(step(call<SetRsFn>(SetRenderState)(d,D3DRS_COLORWRITEENABLE1,15))&&step(call<SetTextureFn>(SetTexture)(d,0,nullptr))&&
+               step(call<SetTextureFn>(SetTexture)(d,2,nullptr))&&step(call<SetTextureFn>(SetTexture)(d,3,nullptr))&&
+               step(call<SetRtFn>(SetRenderTarget)(d,0,box_row_surfaces_[0]))&&step(call<SetRtFn>(SetRenderTarget)(d,1,box_row_surfaces_[1]))&&
+               step(call<SetViewportFn>(SetViewport)(d,&rows_viewport))&&step(call<SetPsFn>(SetPixelShader)(d,thin_box_rows_half_))&&
+               step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,0,&constants.clip_to_previous[0][0],x3::temporal::kResolveRegisterCount))&&
+               step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,x3::temporal::kSharpenRegister,emitter,1))&&
+               step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,x3::temporal::kLuminanceRegister,constants.luminance,1))&&
+               step(call<SetTextureFn>(SetTexture)(d,0,in.color?in.color:scratch_))&&step(quad(half_width,half_height+1))&&
+               step(call<SetRtFn>(SetRenderTarget)(d,0,box_surfaces_[0]))&&step(call<SetRtFn>(SetRenderTarget)(d,1,box_surfaces_[1]))&&
+               step(call<SetViewportFn>(SetViewport)(d,&box_viewport))&&step(call<SetPsFn>(SetPixelShader)(d,thin_box_columns_half_))&&
+               step(call<SetPsConstantsFn>(SetPixelShaderConstantF)(d,12,row_constants,1))&&
+               step(call<SetTextureFn>(SetTexture)(d,1,depths_[next]))&&
+               step(call<SetTextureFn>(SetTexture)(d,2,box_rows_[0]))&&step(call<SetTextureFn>(SetTexture)(d,3,box_rows_[1])))hr=quad(half_width,half_height);
+            if(!lost(hr)){const HRESULT unbind=call<SetRtFn>(SetRenderTarget)(d,1,nullptr);if(SUCCEEDED(hr))hr=unbind;}
+        }else if(SUCCEEDED(hr)&&stabilise){
             const float emitter[4]={in.sentinel_emitter,0.f,0.f,0.f};
             if(step(call<SetRsFn>(SetRenderState)(d,D3DRS_COLORWRITEENABLE1,15))&&step(call<SetTextureFn>(SetTexture)(d,0,nullptr))&&
                step(call<SetTextureFn>(SetTexture)(d,2,nullptr))&&step(call<SetTextureFn>(SetTexture)(d,3,nullptr))&&
@@ -715,7 +780,7 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
                  step(call<SetSamplerFn>(SetSamplerState)(d,7,D3DSAMP_MAXMIPLEVEL,0))&&
                  step(call<SetTextureFn>(SetTexture)(d,7,history_.valid?ages_[current_]:nullptr))&&
                  step(call<SetRtFn>(SetRenderTarget)(d,1,age_surfaces_[next])))))hr=quad(in.width,in.height);
-    if(SUCCEEDED(hr)){diagnostics_.history_taps=bilinear?5u:16u;diagnostics_.region_hold=camera;}
+    if(SUCCEEDED(hr)){diagnostics_.history_taps=bilinear?5u:16u;diagnostics_.region_hold=camera;diagnostics_.box_half=half;}
     if(aged&&!lost(hr)){const HRESULT unbind=call<SetRtFn>(SetRenderTarget)(d,1,nullptr);if(SUCCEEDED(hr))hr=unbind;}
     if(SUCCEEDED(hr)&&in.reactive_policy==ReactivePolicy::RequiredMask){
         constants.options[2]=1; // mask snapshot; current s5 stays borrowed only for this run
@@ -773,6 +838,6 @@ HRESULT TemporalPass::run(const FrameInputs& in,Output* out) noexcept {
     current_=next;reactive_policy_=in.reactive_policy;hold_history_=camera;
     if(reactive_policy_!=ReactivePolicy::Unavailable)history_.completed();
     diagnostics_.history_valid=history_.valid;++diagnostics_.completed_frames;++generation_;
-    *out={colors_[current_],depths_[current_],generation_,used,reactive_[current_],color_surfaces_[current_],display_written,sharpen_result,copy_result,aged?ages_[current_]:nullptr,far_on?line_masks_[final_mask]:nullptr};return S_OK;
+    *out={colors_[current_],depths_[current_],generation_,used,reactive_[current_],color_surfaces_[current_],display_written,sharpen_result,copy_result,aged?ages_[current_]:nullptr,far_on?line_masks_[final_mask]:nullptr,camera?boxes_[0]:nullptr,camera?boxes_[1]:nullptr};return S_OK;
 }
 } // namespace x3m::renderer

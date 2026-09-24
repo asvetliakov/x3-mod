@@ -25,7 +25,14 @@ hold"), flown and accepted in Run 79 A (run299/300/302/303: no visible differenc
 2.93 -> 1.54 ms, net -1.1 ms per frame at 5120x1440), and the acceptance clause is carried out: `--taa-region-hold`, the
 dilated `far_camera` chain (the camera mask's x / y draws, `resolve_far_camera` and its 16-tap twin, the ungated box
 programs) and the second mask target of camera-gate runs are removed, the hold is the camera gate's only path, and a
-missing hold program turns the thin region off with one row (ledger "A' only: dilated chain removed"). Next: step 2 (S4).
+missing hold program turns the thin region off with one row (ledger "A' only: dilated chain removed").
+
+**Step 2 done, opt-in (2026-09-24).** S4 is built behind `--taa-box-resolution full|half` (`X3M_TAA_BOX_RESOLUTION`, default
+full until flown; ledger [temporal-resolve.md](../verification/temporal-resolve.md) "S4 half-resolution box"): the camera
+gate's separable box at half resolution on every camera-gate run of an even size; per-pixel containment of the
+full-resolution box: 0 violations in 12 fixture scenes; the emitter bound within 2 px. Next: the Run 81 A/B (half against
+full), then the default switch. The full-resolution programs and targets stay: an odd frame size, a refused half program
+and refused half targets fall back to them.
 
 **Ratified 2026-09-24 (orchestrator):** the 2,048-slot per-program ceiling pinned by `RESOLVE_BUDGET`; step 1 = A' in
 `far_camera` plus the exact point read at rest in the four S3 programs and the fetch sharing, one re-baseline with new
@@ -199,7 +206,7 @@ From run290 turning 8.76 ms / still 8.64 **[M]**; every "after" figure is **[I]*
 | --- | --- | ---: | ---: | --- |
 | 0 | slot-cap bookkeeping only: the cap log at device creation (committed rule), the fixture's `RESOLVE_BUDGET` rows pinned to `slots <= 2048`; `TemporalPass` has no slot gate to remove (only the fog and sun passes gate on the reported cap) | 8.76 | 8.64 | the "S3 first" ordering |
 | 1 (done) | A' in `far_camera` (+ (a) point read at rest, (b) fetch sharing), x and y draws dropped, new references; flown Run 79 A (`taa` 7.72 -> 6.59 ms at rest, measured), off path removed | 7.2-7.4 | 6.9-7.2 | S5 (no dilations left); G |
-| 2 | S4 half-resolution box | 6.1-6.4 | 5.8-6.2 | E |
+| 2 (done, opt-in `--taa-box-resolution half`; not flown) | S4 half-resolution box (fixture box stage at 5120x1440: 2.45 -> 1.39 ms wall clock, measured; ledger "S4 half-resolution box") | 6.1-6.4 | 5.8-6.2 | E |
 | 3 | B thickness flag as a vote in the tests draw (unchanged from the ratified note: upload statistic in the CloneMesh Unlock observer, `c216.z`, RT2 `.a`) | +0 | +0 | nothing; it is coverage, not cost |
 | optional | tests fold (d), only on a 5120x1440 fixture timing showing -0.4 or better net of a box that runs everywhere | 5.6-6.0 | | S1's separate depth write if a third MRT is taken |
 

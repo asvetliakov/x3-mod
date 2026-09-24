@@ -2730,6 +2730,130 @@ Evidence:
   with the new `motion_output_taa` and `motion_output_taa_history_taps ... mask_targets=1` rows (5,000 frames, exit 0,
   the row carried). The others read frame, gpu-sync, abnormal, exit and bolt rows this change does not touch.
 
+## 2026-09-24 S4 half-resolution box (taa-plan-lifted-slot-cap.md step 2; opt-in, fixture, not flown)
+
+`--taa-box-resolution full|half` (`X3M_TAA_BOX_RESOLUTION`; requires `--taa`, refused under `--vanilla`, forwarded only
+when given; DLL default full). Bottle X3, native `d3dx9_37`, measured unless marked; scripts under
+`verification/results/s4-half-box/`.
+
+- **Window arithmetic.** Block (bx, by) = pixels 2bx..2bx+1 x 2by..2by+1; the union of their 7x7 windows is the 8x8
+  window 2b-3..2b+4, the intersection the common 6x6 2b-2..2b+3, the union of their 3x3 the inner 4x4 2b-1..2b+2. The row
+  draw (`thin_box_rows_half_ps.hlsl`) writes row PAIRS starting at an odd row, texel (bx, g) = rows 2g-1, 2g over the 8
+  columns, into W/2 x (H/2 + 1) targets, so the column draw (`thin_box_columns_half_ps.hlsl`) reads exactly 4 pairs
+  (by-1..by+2 = rows 2by-3..2by+4) into the W/2 x H/2 box pair: 16 + 8 fetches per block, 6 per pixel instead of 21.
+  The resolve is unchanged: its POINT read of s9 / s10 at (x + 1/2) / W lands on texel x >> 1 (a quarter texel inside) for
+  an even size; an odd width or height draws the full-resolution box that run (reason `odd_size`).
+- **Containment.** A min / max over a superset window contains the smaller one, and clamped addressing keeps it (a clamped
+  window is its in-frame part). The block is marked computed where any of its four pixels opens the full-resolution gate,
+  so a pixel of that block whose own gate is closed (b > a only through the hold edge) now clamps its added strength to
+  the block box instead of its 3x3 clip: looser there, a behaviour change of the half path (the block box contains that
+  3x3; the fixture checks it on the half-only pixels). The emitter bound as sketched in S4 (inner 4x4 when the 8x8 exceeds E) would be tighter than the 7x7 at a
+  pixel that does not fire; as built, with a tap above E in the 8x8: all four pixels on the sentinel and a bright tap in the
+  common 6x6 (every pixel fires) take the inner 4x4; all four on the sentinel with the bright taps in the outer ring only
+  take the 8x8 box of the dim taps (a firing pixel's 3x3 lies in the dim common 6x6, a non-firing pixel's 7x7 is all dim);
+  across a silhouette the 8x8 of every tap, fetched in the column draw (64 taps, blocks straddling a silhouette within 4 px
+  of a bright tap only). The row targets carry the dim-tap min / max and a code (bright tap in the inner columns of the
+  upper / lower row, anywhere in the pair). The sentinel-class term of the gate applies only while the stabiliser runs
+  (c23.y): the tests draw writes the class whatever S is, and the 49-tap box does not open on it.
+- **Programs and targets** (RESOLVE_BUDGET, D3DX words / slots; every other embedded program byte-identical, the records
+  regenerated for the generator's own hash only):
+
+  | program | words | slots |
+  | --- | ---: | ---: |
+  | `thin_box_hold` (full, stabiliser off) | 314 | 70 |
+  | `thin_box_rows_hold` (full) | 628 | 155 |
+  | `thin_box_columns_hold` (full) | 533 | 121 |
+  | `thin_box_rows_half` (new) | 670 | 158 |
+  | `thin_box_columns_half` (new) | 1,316 | 330 |
+
+  Half mode draws the pair for every camera-gate run (stabiliser on: c23 = (E, 1); off: (0, 0), the 49-tap box's gate and
+  no bound), row targets 2 x FP16 W/2 x (H/2 + 1), box targets 2 x FP16 W/2 x H/2: about 8 B/px against 32 B/px (box and row
+  pairs at full resolution), -177 MB at 5120x1440 while the sentinel stabiliser runs (the default; inferred from the
+  sizes); without the stabiliser the full path holds the box pair only (16 B/px) and the half path both pairs, -59 MB. Allocated on the first half run, a pair of the
+  other size released first (a configuration change, never per frame), released with the histories / Reset.
+  `TemporalPass::configure_box_resolution(1|2)`; 2 creates the pair (none otherwise); a refusal keeps 1 and returns the
+  failure. `Diagnostics::box_half` / `box_resolution_reason` (`half`, `not_requested`, `no_camera_gate`, `odd_size`,
+  `target`); `Output::box_low` / `box_high` (diagnostic). DLL: one `motion_output_taa_box_resolution requested=half
+  configured=half|full reason=ok|program|camera_gate_off create=HR` row at pass creation and one `... drawn=half|full
+  reason=...` row per change of reason, both only when half is asked; full logs nothing.
+- **Fixture, `run_temporal_pass.py`** (final sources; 157 s, lock wait 0 s): PASS. `temporal-pass.txt` 744 / 278, byte-identical
+  to the committed report (`report_sha256` 5f3c22f8..., all 11,786 lines; `report_diff_pass_out.txt`, produced by
+  `verification/results/aprime-only/report_diff.py` against the committed report). Lattice: the A' block unchanged
+  (`REGION_HOLD_BASE numerical=554 state_restorations=91`, every earlier line identical, `report_diff_lattice_out.txt`, the
+  same script), then the S4 block: `RESULT PASS numerical=594 state_restorations=92` (40 + 1, after the review fixes). Rows
+  (`box_half_rows.py` -> `box_half_rows_out.txt`):
+  - `BOX_HALF_STATE`: 1 / 2 only; a refused half program keeps the full box bit for bit (colour, age, box targets, three
+    frames); S/2 targets; hostile state (c12, c23, the viewport) restored; failed row / column draws publish nothing and
+    the next run restarts; full <-> half keeps the history; refused half targets (the row pair, or the box pair alone) draw
+    full (`target`, no retry, the thin region stays on) until Reset; an odd size (31x31) draws full (`odd_size`).
+  - Containment, per pixel and frame, no tolerance, 12 scenes (the 12th, `sentinel_tap_above_e_fp32`, with the review fixes below): 0 violations everywhere. Compared pixels (full box
+    computed): pan 0.5 130,848; stale patch 130,272; box domain (k = 0.5, a 65,504 tap) 130,720; stop after pan 65,312;
+    sentinel facets at rest and under a reversing 2 px/frame pan 131,072 each; emitter 26,624; emitter over the props
+    (silhouette blocks) 23,296; non-finite block 32,480 (288 current-only pixels skipped). The pixels only the half box
+    covers (224 per pan scene, 832 in the silhouette scene) contain their own 3x3. The static arm scenes open no box at
+    either resolution and are identical bit for bit.
+  - Oracle with the block box (9 scenes): colour error 0.0000-0.0103 (bound 0.02), age 0, tests target exact. The
+    colour-only bar over routed geometry is containment only: the oracle misses it at full resolution by the same 3.06 / 25.
+  - Rest ripple 1.416 codes rms / 6.6 p2p, equal to full (installed resolve 16.34 / 99.4; bounds 0.35 x / 0.5 x); stop
+    after pan 1.983 / 1.995 (plain 21.07 / 21.22; bound 0.15 x); stale patch +0.727, equal to full (screen gate 0.623;
+    bound 2 x); sentinel flicker ratio 0.392 at rest, 0.384 reversing (equal to full; bound 0.6). Outputs equal full in
+    every scene but the two emitter scenes: the box binds on injected or emitter history only (as the lattice replay found).
+  - Emitter bar (value 4, 6 px/frame, S = 0.7, E = 1): trail 1 px full, 2 px half (asserted <= 2), none after it left.
+  - Timing, the box stage alone (TaaBox boundaries, event-query drained; the fixture's CPU wall clock, all-sentinel pan
+    frame, 8 rounds): 1280x768 0.592 -> 0.474 ms (-0.12); 5120x1440 2.450 -> 1.388 ms (-1.06); whole run at 5120x1440
+    6.67 -> 5.95 ms. Earlier runs of the same row: 1280x768 -0.09 to -0.17, 5120x1440 -1.08 to -1.19 (fixed per-draw cost
+    dominates at 1280x768 on this backend). In the game (inferred): Run 79 A's `taa_box` 2.34 ms at 5120x1440 x
+    (1.388 / 2.450) = about 1.33 ms, -1.0 ms; the S4 note's -1.4 to -1.8 assumed the tap ratio (21 -> 6) alone.
+- **Motion output, `run_motion_output.py`** (full run, final sources; 562 s, lock wait 6 s; a first attempt stopped at
+  `seam-hdr-ramp-identity-dither`, whose fixture hung after device creation until the 360 s timeout, no TAA box in that
+  case; the rerun passed it): PASS, 222 cases + 26 bench. `compare_motion.py` (`compare_motion_out.txt`): all 221 committed
+  cases present, every non-clock leaf identical (53 clock leaves differ), 26 / 26 bench present, one new case,
+  `seam-taa-thin-hold-half` (the thin-hold case with `X3M_TAA_BOX_RESOLUTION=half`): references base + 11 (the half pair on
+  top of 7 + 2), rows `requested=half configured=half reason=ok create=00000000` and `drawn=half reason=half width=64
+  height=64`, the reference's full-resolution shadow pass `REFERENCE_BOX_CONTAINMENT frames=12 compared_px=19319
+  violations=0`, and every summary leaf equal to `seam-taa-thin-hold-on`, colour hashes included (`twin_compare.py`: only
+  the directory and trace hash differ): the box does not bind in that script.
+- **Build and host tests.** MinGW i686 RelWithDebInfo, final sources (the motion runner's clean build): 0 warnings;
+  `check_no_x87.py build/d3d9.dll` 683 reachable functions, 0 violations; DLL 56,660,565 bytes (+77,926 against the
+  56,582,639 of bb3a691f's build). Host modules `test_taa_*` (including the new
+  `test_taa_box_resolution.py`: forwarded only when given, full / half only, requires `--taa`, refused with `--vanilla`, an
+  inherited value dropped; the DLL parse and the logging-only-when-half rule; the generated records), the launcher modules,
+  `test_bloom_programs`, `test_check_no_x87`, `test_motion_output_runner`, iteration 07 / 08 TAA: 176 tests, 171 pass; the
+  5 of `test_launcher_stderr_tee` / `test_voice_decoder_launch` refuse with "X3AP.exe is running" because another agent's
+  shell carried "X3AP.exe" in its command line (`pgrep -ifl` in `media_package.assert_game_closed`); with a scratch
+  `pgrep` stub that reports no match those two modules pass (28 tests). Every shader record was regenerated (the generator's
+  own hash is in each record's `tool_sources`); every existing header is byte-identical.
+- **What stays off with `full`.** The pass without `configure_box_resolution(2)` is the pre-S4 pass: no half program,
+  target, constant or draw; the DLL creates and logs nothing for `full` or an absent variable (the motion-output runner
+  pins `full` for every case but the half twin). An invalid value logs `taa_box_resolution_setting invalid=1` and stays full.
+- **Run 81 A/B (proposed).** 5120x1440, `--gpu-sync-timing`, the default TAA (thin region with the camera gate, sentinel
+  stabiliser 0.7 / E 1), `--taa-box-resolution half` against the same session without it. Look at: `taa_box` (expected about
+  2.3 -> 1.3 ms, inferred), `motion_output_taa_box_resolution` rows (`configured=half`, then `drawn=half reason=half`, no
+  `odd_size` / `target`); the run221 distant-station pan (stabiliser flicker must not return); laser fire and engine trails
+  over the sky (halo at most 2 px); silhouettes against the sky under a pan (the 8x8 box reaches 4 px on one side instead
+  of 3: slightly longer ghost); the lattice at rest and in a pan (unchanged in the fixture); alt-tab / Reset (targets
+  re-created, double cursor). Pass: no visible difference but the stage time.
+- **Review fixes (2026-09-24).** (1) The half pair no longer sets the full-frame viewport while RT0 is still the W/2 x H/2
+  box target (documented D3D9 refuses a viewport larger than the target); the resolve's `SetRenderTarget(0, ...)` resets it.
+  (2) Emitter precision: the full path tests FP16-rounded row maxima (`FP16(luma) > E`), the half rows now test
+  `luma >= c23.z` with c23.z = `x3::temporal::fp16_above(E)`, the smallest FP16 value above E (`src/temporal/resolve.h`),
+  so a tap bright at half resolution is bright at full resolution under any rounding mode (a luma just below c23.z may
+  be bright at full only, which keeps the half box looser). New containment scene `sentinel_tap_above_e_fp32`: a
+  colour-only pixel (1 + 2^-10, 1, 1), luma about 1.0002 against E = 1, on the flat sky with S = 0.7: 32 frames, 32,768 px
+  compared, 0 violations; negative control (c23.z = the float just above E, the pre-fix test, scratch build only): 1,056
+  violations, worst 0.751. (6) `motion_output_taa_box_resolution` per-change rows are capped at 8 per attachment, then one
+  `suppressed=1 changes=9` row. Host test additions: the invalid-value row, the cap, and the window arithmetic (the
+  resolve's block texel, the row pairs' rows, the pairs the columns read, the common rows of the emitter code, the inner
+  4x4) against a brute-force union / intersection at 32, 768, 1080, 1440 and 5120.
+  After the fixes: `run_temporal_pass.py` PASS (138 s, lock wait 0 s; an earlier attempt printed the same `RESULT PASS`
+  but its fixture hung at process exit past the runner's 600 s lattice timeout, a Wine teardown stall, and was discarded):
+  `temporal-pass.txt` byte-identical (744 / 278, 11,786 lines), lattice `REGION_HOLD_BASE 554 / 91` then `RESULT PASS
+  numerical=594 state_restorations=92`, 12 containment scenes with 0 violations, box stage 2.420 -> 1.350 ms at 5120x1440
+  and 1.024 -> 0.836 ms at 1280x768 (fixture wall clock). Build (incremental over the changed sources) 0 warnings,
+  `check_no_x87` 683 / 0, DLL 56,661,939 bytes; host modules as above 150 + 28 tests, 0 failing. `run_motion_output.py`
+  not rerun: the DLL-side change is the log cap (no case reaches 8 changes); the pass change is in `temporal_pass.cpp`,
+  which `run_temporal_pass.py` compiles and ran.
+
 ## 2026-09-24 Run 80 A launches 1-2 (run304 baseline, run305 occlusion): A'-only build flown
 
 Both sessions on DLL 593112dc (one launch each, 5120x1440, 14,961 / 14,680 frames, no fault, refused, late_claim or

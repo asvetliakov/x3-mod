@@ -13,7 +13,8 @@ paths=[root/name for name in ('src/renderer/temporal_pass.h','src/renderer/tempo
     'src/temporal/resolve_age_taps16.hlsl','src/renderer/temporal_resolve_age_taps16_program_inc.h','src/temporal/resolve_far_taps16.hlsl','src/renderer/temporal_resolve_far_taps16_program_inc.h',
     'src/temporal/resolve_far_camera_hold.hlsl','src/renderer/temporal_resolve_far_camera_hold_program_inc.h','src/temporal/thin_box_hold_ps.hlsl','src/renderer/temporal_thin_box_hold_program_inc.h',
     'src/temporal/thin_box_rows_hold_ps.hlsl','src/renderer/temporal_thin_box_rows_hold_program_inc.h','src/temporal/thin_box_columns_hold_ps.hlsl','src/renderer/temporal_thin_box_columns_hold_program_inc.h',
-    'verification/probe/temporal_region_hold_inc.h','src/temporal/depth_decode.hlsl','src/temporal/sharpen.h','src/temporal/rcas.hlsl','src/temporal/taa_sharpen_ps.hlsl','verification/probe/temporal_pass_fixture.cpp','verification/probe/build_temporal_pass.sh','verification/probe/run_temporal_pass.py')]
+    'verification/probe/temporal_region_hold_inc.h','verification/probe/temporal_box_half_inc.h',
+     'src/temporal/thin_box_rows_half_ps.hlsl','src/renderer/temporal_thin_box_rows_half_program_inc.h','src/temporal/thin_box_columns_half_ps.hlsl','src/renderer/temporal_thin_box_columns_half_program_inc.h','src/temporal/depth_decode.hlsl','src/temporal/sharpen.h','src/temporal/rcas.hlsl','src/temporal/taa_sharpen_ps.hlsl','verification/probe/temporal_pass_fixture.cpp','verification/probe/build_temporal_pass.sh','verification/probe/run_temporal_pass.py')]
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
 hashes=lambda:{str(p.relative_to(root)):sha(p) for p in paths}
 d3dx=bottle.game_dir() / 'd3dx9_37.dll'
@@ -275,11 +276,25 @@ try:
     assert len(hold['state'])==1 and all(hold['state'][0][k]=='1' for k in ('refused_path','screen_restarts','screen_continues','camera_keeps','taps16_refused','taps5_camera','box_refused_region_off','rearmed')),hold['state']
     assert [hold['state'][0][k] for k in ('masks_camera','masks_screen','masks_on','masks_at_reset','masks_after_reset','masks_box_refused')]==['1','2','1','0','1','1'],hold['state']
     assert len(hold['thin'])==3 and all(r['square_differs']=='0' and float(r['age_oracle_error'])==0 for r in hold['thin']) and len(hold['motion_start'])==1 and len(hold['pan'])==1 and len(hold['stale'])==1 and len(hold['box_domain'])==1 and len(hold['sentinel'])==2 and len(hold['pan_stop'])==1 and len(hold['box_open'])==1,hold
-    assert lattice.returncode==0 and 'LATTICE_BASE numerical=10 state_restorations=0' in lattice_text and 'FLICKER_BASE numerical=190 state_restorations=4' in lattice_text and 'LINE_BASE numerical=190 state_restorations=4' in lattice_text and 'DEPTH_FOLD_BASE numerical=487 state_restorations=89' in lattice_text and 'HISTORY_TAPS_BASE numerical=508 state_restorations=89' in lattice_text and 'RESULT PASS numerical=554 state_restorations=91 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
+    assert lattice.returncode==0 and 'LATTICE_BASE numerical=10 state_restorations=0' in lattice_text and 'FLICKER_BASE numerical=190 state_restorations=4' in lattice_text and 'LINE_BASE numerical=190 state_restorations=4' in lattice_text and 'DEPTH_FOLD_BASE numerical=487 state_restorations=89' in lattice_text and 'HISTORY_TAPS_BASE numerical=508 state_restorations=89' in lattice_text and 'REGION_HOLD_BASE numerical=554 state_restorations=91' in lattice_text and 'RESULT PASS numerical=594 state_restorations=92 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
     # The 2,048-slot ceiling per TAA program (docs/architecture/taa-plan-lifted-slot-cap.md section 2; AGENTS.md "Shader slot
     # budget": 512 is the spec minimum, not a limit). device_limit stays a record.
     assert len(report['flicker']['drift'])==64 and len(report['flicker']['near_depth'])==8 and all(float(v['instruction_slots'])<=2048 and v['within_ceiling_2048']==1 for k,v in report['lattice']['budget'].items()),report['lattice']['budget']
-    assert {'embedded_far_camera_hold','embedded_thin_box_hold','embedded_thin_box_rows_hold','embedded_thin_box_columns_hold'}<=set(report['lattice']['budget']),report['lattice']['budget']
+    assert {'embedded_far_camera_hold','embedded_thin_box_hold','embedded_thin_box_rows_hold','embedded_thin_box_columns_hold','embedded_thin_box_rows_half','embedded_thin_box_columns_half'}<=set(report['lattice']['budget']),report['lattice']['budget']
+    # S4 (taa-high-resolution.md S4; X3M_TAA_BOX_RESOLUTION=half, opt-in): 40 numerical checks and one state restoration on top of
+    # A''s 554 / 91 (REGION_HOLD_BASE): the state row (3), per-pixel containment of the full-resolution box in twelve scenes (12; the two static arm
+    # scenes open no box at either resolution and are then identical bit for bit),
+    # the half-resolution runs against the CPU oracle with the block box (9 scenes x 2; not the colour-only bar over geometry, which the oracle does not model at either resolution), the rest ripple, the stale patch (2),
+    # the stop after a pan, the sentinel facets (2) and the emitter trail. The box stage timing rows are the fixture's wall clock at
+    # 1280x768 and 5120x1440, reported, not gated.
+    box={name:fields('BOX_HALF_'+name.upper()+' ') for name in ('state','containment','oracle','ripple','stale','pan_stop','sentinel','emitter','timing')}
+    report['box_half']=box
+    assert len(box['state'])==1 and all(v=='1' for v in box['state'][0].values()),box['state']
+    scenes=['arm_rest','arm_drift_0.30','pan_0.50','pan_stale_patch','pan_box_domain_k0.5_nonfinite','pan_stop','sentinel_rest','sentinel_reversing','sentinel_emitter','sentinel_emitter_silhouette','sentinel_tap_above_e_fp32','sentinel_nonfinite_block']
+    assert [r['scene'] for r in box['containment']]==scenes and all(r['violations']=='0' and r['half_only_violations']=='0' and (int(r['compared_px'])>0 if r['scene'][:4]!='arm_' else r['compared_px']==r['half_only_px']=='0' and r['output_identical']=='1') for r in box['containment']),box['containment']
+    assert len(box['oracle'])==9 and all(float(r['oracle_error'])<=.0006/(1-.97) and float(r['age_oracle_error'])==0 for r in box['oracle']),box['oracle']
+    assert len(box['ripple'])==1 and box['ripple'][0]['square_differs']=='0' and len(box['stale'])==1 and len(box['pan_stop'])==1 and len(box['sentinel'])==2 and len(box['emitter'])==1,box
+    assert [(r['width'],r['height']) for r in box['timing']]==[('1280','768'),('5120','1440')] and all(float(r['box_full_ms'])>0 and float(r['box_half_ms'])>0 for r in box['timing']),box['timing']
     ripple=report['lattice']['ripple']
     assert len(ripple)==4 and report['lattice']['budget']['plain']['instruction_slots']<=2048,report['lattice']
     assert hashes()==report['sources_before_build'],'Source changed during the lattice cases'

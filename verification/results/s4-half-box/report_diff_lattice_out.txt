@@ -1,0 +1,15 @@
+lines before=5005 after=5248 identical=5004
+BOX_HALF_CASES                           only_before=   0 only_after=   1
+BOX_HALF_CONTAINMENT                     only_before=   0 only_after=  12
+BOX_HALF_EMITTER                         only_before=   0 only_after=   1
+BOX_HALF_ORACLE                          only_before=   0 only_after=   9
+BOX_HALF_PAN_STOP                        only_before=   0 only_after=   1
+BOX_HALF_RIPPLE                          only_before=   0 only_after=   1
+BOX_HALF_SENTINEL                        only_before=   0 only_after=   2
+BOX_HALF_STALE                           only_before=   0 only_after=   1
+BOX_HALF_STATE                           only_before=   0 only_after=   1
+CHECK                                    only_before=   0 only_after= 192
+REGION_HOLD_BASE                         only_before=   0 only_after=   1
+RESOLVE_BUDGET                           only_before=   0 only_after=   2
+RESULT                                   only_before=   1 only_after=   1
+SAMPLE                                   only_before=   0 only_after=  19

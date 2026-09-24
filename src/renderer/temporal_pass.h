@@ -289,6 +289,11 @@ struct Output {
     // Far stabiliser / thin region runs: the owned A8R8G8B8 mask the resolve read at s8 (r filter weight, g far
     // history-weight gate); diagnostic, same borrowing rules. Keep last: run() fills the struct positionally.
     IDirect3DTexture9* stabiliser_mask = nullptr;
+    // Camera-gate runs: the box pair the resolve read at s9 / s10 ([0] minimum, .a = 1 where computed; [1] maximum), W x H,
+    // or W/2 x H/2 when Diagnostics::box_half; null otherwise. Diagnostic (fixtures), same borrowing rules; after
+    // stabiliser_mask because run() fills the struct positionally.
+    IDirect3DTexture9* box_low = nullptr;
+    IDirect3DTexture9* box_high = nullptr;
 };
 struct Diagnostics {
     HRESULT operation = S_OK, restoration = S_OK;
@@ -314,6 +319,13 @@ struct Diagnostics {
     // D24X8 depth, no far run or MRT caps; depth_fold_reason says which), "two_channel_depth" (a G32R32F lane has no
     // .a), "no_twin_program" (configure_thin_vote did not create it), "not_run".
     const char* thin_vote_reason = "not_run";
+    // S4 (configure_box_resolution(2)): the last run drew the camera gate's box at half resolution.
+    bool box_half = false;
+    // Why (or why not): "half", "not_requested" (the full-resolution box is configured), "no_camera_gate" (no camera-gate
+    // run), "odd_size" (an odd width or height: the resolve's point read of the half-resolution box needs an even size; that
+    // run draws the full-resolution box), "target" (the half-resolution targets were refused, not a lost device: full
+    // resolution until Reset re-arms them), "not_run".
+    const char* box_resolution_reason = "not_run";
     // CPU-side QueryPerformanceCounter ticks of the last run's phases, taken
     // only with configure_timing(true); zero otherwise. Wall clock around the
     // device calls (submission cost, driver work, any blocking), never GPU
@@ -399,6 +411,21 @@ public:
     bool sentinel_failed() const noexcept { return box_rows_failed_; }
     HRESULT sentinel_result() const noexcept { return box_rows_result_; }
     HRESULT camera_gate_result() const noexcept { return boxes_result_; }
+    // S4 (docs/architecture/taa-high-resolution.md S4; taa-plan-lifted-slot-cap.md step 2), a session setting: 1 (the default)
+    // draws the camera gate's box at full resolution, every target bit for bit a pass without this call; 2 draws it at half
+    // resolution on every camera-gate run of an even size, the sentinel stabiliser on or off: the separable pair
+    // thin_box_rows_half_ps.hlsl / thin_box_columns_half_ps.hlsl into row targets of W/2 x (H/2 + 1) and box targets of W/2 x H/2 (A16B16G16R16F,
+    // default pool, allocated on the first such run, released with the histories and by a run at the other resolution),
+    // whose box at each pixel contains the full-resolution 7x7 box (the 8x8 block window; the emitter bound's 4x4 fires only
+    // where all four pixels' 3x3 would), read by the resolve with its point sampler at the block texel. 2 creates the two
+    // programs (none in a session that never asks); a refusal drops both, keeps 1 and returns the failure for the caller's
+    // one log row (no other fallback program set). Anything else is E_INVALIDARG and changes nothing. A change keeps the
+    // history. Refused half-resolution targets (the row pair or the box pair) that are not a lost device fall back to the
+    // full-resolution box for the session (Diagnostics::box_resolution_reason "target"; re-armed by Reset).
+    HRESULT configure_box_resolution(unsigned divisor) noexcept;
+    unsigned box_resolution() const noexcept { return box_divisor_; }
+    bool box_half_failed() const noexcept { return box_half_failed_; }
+    HRESULT box_half_result() const noexcept { return box_half_result_; }
     // Thin vote (FrameInputs::thin_vote): the thin-vote twins of the two depth-folding tests programs, created only on
     // request (a session that never asks holds none). A failure leaves the plain tests draw.
     HRESULT configure_thin_vote() noexcept;
@@ -503,7 +530,8 @@ private:
     IDirect3DSurface9* box_surfaces_[2]{};
     bool boxes_failed_ = false;
     HRESULT boxes_result_ = S_OK;
-    HRESULT ensure_boxes() noexcept;
+    HRESULT ensure_boxes(bool half) noexcept;
+    bool boxes_half_ = false; // the size boxes_ were created at (half: W/2 x H/2)
     // Sentinel stabiliser: the separable box programs (region-gated twins) and the row targets ([0] row minimum + raw luma
     // maximum, [1] row maximum; A16B16G16R16F, default pool, released with the histories and by the first run without the
     // stabiliser).
@@ -514,7 +542,13 @@ private:
     IDirect3DSurface9* box_row_surfaces_[2]{};
     bool box_rows_failed_ = false;
     HRESULT box_rows_result_ = S_OK;
-    HRESULT ensure_box_rows() noexcept;
+    HRESULT ensure_box_rows(bool half) noexcept;
+    bool box_rows_half_ = false; // the size box_rows_ were created at (half: W/2 x (H/2 + 1))
+    // S4: the half-resolution pair (configure_box_resolution(2)) and the configured divisor (2 only while both exist).
+    IDirect3DPixelShader9 *thin_box_rows_half_ = nullptr, *thin_box_columns_half_ = nullptr;
+    unsigned box_divisor_ = 1;
+    bool box_half_failed_ = false;
+    HRESULT box_half_result_ = S_OK;
     bool mrt_age_ = false; // caps: >= 2 simultaneous RTs with independent bit depths
     IDirect3DTexture9* ages_[2]{};          // R32F per-pixel accumulated-frame count (age and far programs)
     IDirect3DSurface9* age_surfaces_[2]{};

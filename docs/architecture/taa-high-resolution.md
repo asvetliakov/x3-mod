@@ -209,6 +209,13 @@ point read at rest. The weights use the closed forms s = f(1-f)/2 (w0 = -s(1-f),
 
 ### S4. Half-resolution sentinel box (output-changing, conservative)
 
+*As built (2026-09-24, opt-in `--taa-box-resolution half`, not flown; [temporal-resolve.md](../verification/temporal-resolve.md)
+"S4 half-resolution box"): the row pairs start at an odd row (texel g = rows 2g-1, 2g; target W/2 x (H/2 + 1)), so the
+columns read 4 pairs = the exact 8x8 window; the pair runs for every camera-gate run of an even size, the stabiliser on or
+off. The emitter bound below would not contain the full-resolution box where a pixel does not fire; as built a block takes
+the inner 4x4 only when the bright tap is in the common 6x6 of its four windows, the 8x8 box of the dim taps when the bright
+taps lie in the outer ring only, and the 8x8 of every tap across a silhouette: containment per pixel, ghost within 2 px.*
+
 Mechanism. The box pair and the row pair become W/2 x H/2. Rows: per half-res texel the min/max over 2 rows x 8
 columns (the union of the two pixels' 7-wide windows), 16 taps per texel = 4 per pixel instead of 7. Columns: 4
 half-res rows (8 px), 8 taps per texel = 2 per pixel instead of 14. The result is the box over the 8x8 px block window

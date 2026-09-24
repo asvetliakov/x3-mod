@@ -1510,7 +1510,7 @@ bool MotionOutput::ensure_taa() noexcept {
     if (taa_ && !taa_failed_) return true;
     if (taa_failed_) return false;
     try { taa_ = std::make_unique<renderer::TemporalPass>(); } catch (...) { taa_failed_ = true; return false; }
-    taa_fold_logged_ = false; taa_box_refused_logged_ = false;
+    taa_fold_logged_ = false; taa_box_refused_logged_ = false; taa_box_reason_logged_ = nullptr; taa_box_reason_rows_ = 0;
     HRESULT hr = E_FAIL;
     // The sharpen program is created only when the switch is on: with it off
     // the pass is the pre-sharpen pass, shader for shader.
@@ -1584,6 +1584,16 @@ bool MotionOutput::ensure_taa() noexcept {
     if (SUCCEEDED(hr) && taa_sentinel_strength_ > 0.f && (!taa_thin_camera_gate_ || !taa_->sentinel_available())) {
         log("motion_output_taa_sentinel device=%llu unavailable=1 reason=%s requested=%.3f", id_, !taa_thin_camera_gate_ ? "camera_gate_off" : "box_program", double(taa_sentinel_strength_));
         taa_sentinel_strength_ = 0.f;
+    }
+    // S4 (X3M_TAA_BOX_RESOLUTION=half, opt-in): the half-resolution box pair, created only when asked. One row, only when asked:
+    // requested=half with the effect at creation; a device that refuses a program, or a session without the camera gate (no box
+    // to halve), keeps the full-resolution box (no fallback program set). The default (full) creates and logs nothing.
+    if (SUCCEEDED(hr) && taa_box_half_) {
+        HRESULT created = S_OK; const char* reason = "ok";
+        if (!taa_thin_camera_gate_) reason = "camera_gate_off";
+        else { taa_call([&] { created = taa_->configure_box_resolution(2); }); if (FAILED(created) || taa_->box_resolution() != 2) reason = "program"; }
+        log("motion_output_taa_box_resolution device=%llu requested=half configured=%s reason=%s create=%08lx sentinel_stabiliser=%.3f",
+            id_, taa_->box_resolution() == 2 ? "half" : "full", reason, created, double(taa_sentinel_strength_));
     }
     // Thin vote: the tests draw's twins, created only when the option is on (their absence keeps the plain tests draw).
     if (SUCCEEDED(hr) && thin_vote_upload_) {
@@ -1761,6 +1771,17 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                 log("thin_vote_absent device=%llu frame=%llu lane=%u reason=%s depth_fold=%u depth_fold_reason=%s thin_region=%u twins=%u", id_, frame_, unsigned(sun_lane_active_),
                     sun_lane_active_ ? diagnostics.thin_vote_reason : "lane_off_r32f", unsigned(diagnostics.depth_folded), diagnostics.depth_fold_reason,
                     unsigned(taa_thin_weight_ > 0.f), unsigned(taa_->thin_vote_available()));
+            }
+            // S4: what the runs actually draw, one row per change of reason ("half", or "odd_size" / "target" / "no_camera_gate"
+            // where a run falls back to the full-resolution box), the first 8 changes per attachment and then one
+            // suppressed=1 row (a gate toggling every frame cannot flood the log); nothing unless half resolution was configured.
+            if (taa_box_half_ && taa_->box_resolution() == 2 && !injected && SUCCEEDED(diagnostics.operation) && diagnostics.box_resolution_reason != taa_box_reason_logged_) {
+                taa_box_reason_logged_ = diagnostics.box_resolution_reason;
+                if (++taa_box_reason_rows_ <= 8)
+                    log("motion_output_taa_box_resolution device=%llu frame=%llu drawn=%s reason=%s width=%u height=%u target_create=%08lx", id_, frame_,
+                        diagnostics.box_half ? "half" : "full", diagnostics.box_resolution_reason, main_.width, main_.height, taa_->box_half_result());
+                else if (taa_box_reason_rows_ == 9)
+                    log("motion_output_taa_box_resolution device=%llu frame=%llu suppressed=1 changes=9 reason=%s (further changes of reason not logged for this attachment)", id_, frame_, diagnostics.box_resolution_reason);
             }
             auto& c = counters_;
             c.taa_run_ticks += run_ticks; c.taa_capture_ticks += diagnostics.ticks_capture;

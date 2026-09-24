@@ -241,6 +241,15 @@ double ramp_value(unsigned row) { return 0.001 * std::pow(2.0, double(row) * (st
 // read-back inputs. Its history evolves exactly like the route's when every
 // frame's inputs, jitter, cut verdict and Reset points are the same, so its
 // output must be bit-identical.
+// IEEE binary16 -> binary32 (exact; the S4 containment check compares box texels).
+float half_to_float(unsigned short h) {
+    const unsigned sign = unsigned(h & 0x8000) << 16, exponent = (h >> 10) & 31, mantissa = h & 0x3ff; unsigned bits;
+    if (exponent == 31) bits = sign | 0x7f800000 | (mantissa << 13);
+    else if (exponent) bits = sign | ((exponent + 112) << 23) | (mantissa << 13);
+    else if (mantissa) { int e = -1; unsigned m = mantissa; do { ++e; m <<= 1; } while (!(m & 0x400)); bits = sign | (unsigned(112 - e) << 23) | ((m & 0x3ff) << 13); }
+    else bits = sign;
+    float f; std::memcpy(&f, &bits, 4); return f;
+}
 // IEEE binary32 -> binary16, round to nearest even (the DLL's FP16 readback
 // values are exact halves, so the reference's upload reproduces them exactly).
 unsigned short float_to_half(float f) {
@@ -311,7 +320,39 @@ struct Reference {
             if (thin_camera && !pass.camera_gate_available()) { thin_weight = 0.f; thin_camera = false; } // motion_output.cpp: region off
             if (thin_camera && sentinel_strength > 0.f) api(pass.configure_sentinel(), "reference configure sentinel");
         }
+        // S4: the DLL's X3M_TAA_BOX_RESOLUTION parse (capture.cpp; "half" exactly, anything else full) and motion_output.cpp's rule
+        // (half only with the camera gate). A half-resolution reference also runs a full-resolution shadow pass on the same
+        // inputs every frame and checks per pixel that the half-resolution box contains the full-resolution one (containment).
+        { char setting[8]{}; const DWORD n = GetEnvironmentVariableA("X3M_TAA_BOX_RESOLUTION", setting, sizeof setting);
+          box_half = n > 0 && n < sizeof setting && !std::strcmp(setting, "half") && thin_weight > 0.f && thin_camera; }
+        if (box_half) {
+            box_require(!copy_by_draw, "the containment shadow pass needs the stretch copy mode (draw mode writes the shared 8-bit input)");
+            api(pass.configure_box_resolution(2), "reference configure box resolution");
+            api(shadow.initialize(d.p, nullptr, reinterpret_cast<const DWORD*>(x3m::renderer::temporal_resolve_program()), nullptr, nullptr,
+                                  reinterpret_cast<const DWORD*>(x3m::renderer::hdr_writeback_program())), "shadow initialize");
+            shadow.configure_copy(copy_by_draw);
+            { char taps[8]{}; const DWORD n = GetEnvironmentVariableA("X3M_TAA_HISTORY_TAPS", taps, sizeof taps);
+              api(shadow.configure_history_taps(n > 0 && n < sizeof taps && !std::strcmp(taps, "16") ? 16 : 5), "shadow history taps"); }
+            api(shadow.configure_far(), "shadow configure far");
+            if (sentinel_strength > 0.f) api(shadow.configure_sentinel(), "shadow configure sentinel");
+        }
     }
+    bool box_half = false;
+    // Fails the fixture like require() without counting a check: the case's check total stays the thin-hold case's.
+    static void box_require(bool ok, const char* label) { if (!ok) { std::printf("CHECK %s FAIL\n", label); throw std::runtime_error(label); } }
+    x3m::renderer::TemporalPass shadow; // box_half only: the full-resolution twin of `pass`
+    unsigned box_frames = 0, box_compared = 0, box_violations = 0, box_marker_missing = 0;
+    std::vector<unsigned short> read_box(IDirect3DTexture9* texture, UINT& width) {
+        D3DSURFACE_DESC desc{}; api(texture->GetLevelDesc(0, &desc), "box level desc"); width = desc.Width;
+        Com<IDirect3DSurface9> level, sys; api(texture->GetSurfaceLevel(0, &level.p), "box level");
+        api(d->CreateOffscreenPlainSurface(desc.Width, desc.Height, D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &sys.p, nullptr), "box readback surface");
+        api(d->GetRenderTargetData(level.p, sys.p), "box readback");
+        D3DLOCKED_RECT lock{}; api(sys->LockRect(&lock, nullptr, D3DLOCK_READONLY), "box lock");
+        std::vector<unsigned short> out(std::size_t(desc.Width) * desc.Height * 4);
+        for (UINT y = 0; y < desc.Height; ++y) std::memcpy(&out[std::size_t(y) * desc.Width * 4], static_cast<const char*>(lock.pBits) + y * lock.Pitch, desc.Width * 8);
+        sys->UnlockRect(); return out;
+    }
+    void invalidate() { pass.invalidate(); if (box_half) shadow.invalidate(); }
     bool copy_by_draw = false;
     float thin_weight = 0.f, sentinel_strength = 0.f; bool thin_camera = true;
     void upload(const std::vector<DWORD>& image, const std::vector<float>& motion_data, const std::vector<float>& depth_data) {
@@ -368,7 +409,28 @@ struct Reference {
             in.sentinel_strength = thin_camera ? sentinel_strength : 0.f; in.sentinel_emitter = 1.f;
         }
         x3m::renderer::Output out{};
+        // S4 containment: the full-resolution shadow first (stretch mode: it reads the shared 8-bit input and writes nothing
+        // the half-resolution pass reads), then the pass itself; wherever the full-resolution box was computed the block texel
+        // must be computed and contain it channel by channel (FP16 values of finite inputs; no tolerance).
+        std::vector<unsigned short> full_low, full_high; UINT full_width = 0;
+        if (box_half) { x3m::renderer::Output shadow_out{}; api(shadow.run(in, &shadow_out), "shadow run");
+            if (shadow_out.box_low) { full_low = read_box(shadow_out.box_low, full_width); full_high = read_box(shadow_out.box_high, full_width); } }
         api(pass.run(in, &out), "reference run");
+        if (box_half && !full_low.empty()) {
+            box_require(out.box_low && pass.diagnostics().box_half, "the half-resolution reference drew the half-resolution box");
+            UINT half_width = 0; const auto low = read_box(out.box_low, half_width), high = read_box(out.box_high, half_width);
+            box_require(full_width == W && half_width == W / 2, "box target sizes");
+            ++box_frames;
+            for (UINT y = 0; y < H; ++y) for (UINT x = 0; x < W; ++x) {
+                const std::size_t f = (std::size_t(y) * W + x) * 4, h = (std::size_t(y / 2) * half_width + x / 2) * 4;
+                if (!(half_to_float(full_low[f + 3]) > .5f)) continue;
+                ++box_compared;
+                if (!(half_to_float(low[h + 3]) > .5f)) { ++box_marker_missing; ++box_violations; continue; }
+                bool bad = false;
+                for (unsigned c = 0; c < 3; ++c) bad = bad || !(half_to_float(low[h + c]) <= half_to_float(full_low[f + c])) || !(half_to_float(high[h + c]) >= half_to_float(full_high[f + c]));
+                box_violations += bad;
+            }
+        }
         // Draw mode: the pass wrote the display into its 8-bit input (color);
         // stretch mode: the route's copy-back StretchRect into output8.
         if (out.display_written) api(d->GetRenderTargetData(color.p, sys8.p), "reference readback 8 (draw mode)");
@@ -388,8 +450,10 @@ struct Reference {
         sys16->UnlockRect();
         return out;
     }
-    void reset() { pass.invalidate(); ++epoch; }
+    void reset() { invalidate(); ++epoch; }
     void destroy() {
+        if (box_half) std::printf("REFERENCE_BOX_CONTAINMENT frames=%u compared_px=%u violations=%u marker_missing=%u\n", box_frames, box_compared, box_violations, box_marker_missing);
+        shadow.shutdown();
         pass.shutdown();
         color.reset(); color16.reset(); reactive16.reset(); output8.reset(); sys8.reset(); sys16.reset(); motion.reset(); depth.reset(); depth_staging.reset();
         if (d.p) { const ULONG refs = d.p->Release(); d.p = nullptr; require(refs == 0, "reference device final Release reaches zero"); }
@@ -1053,7 +1117,7 @@ struct Fixture {
             // The route skipped the resolve (strict policy without a transform,
             // or a rejected environment-map frame): the copy carries the raster.
             require(!changed, "a frame the route cannot resolve leaves the 8-bit main target untouched");
-            reference.pass.invalidate(); // the route dropped its history with the skip (invalidate_taa)
+            reference.invalidate(); // the route dropped its history with the skip (invalidate_taa)
             ++taa_skipped_frames;
         } else if (live) {
             // Reference resolve from the DLL's own inputs: RT1/RT2 read back
@@ -1690,7 +1754,7 @@ struct Fixture {
             ++taa_reference_frames;
         } else {
             require(!changed, "a glow-off frame without the hook leaves the 8-bit main target untouched");
-            reference.pass.invalidate(); ++taa_skipped_frames;
+            reference.invalidate(); ++taa_skipped_frames;
         }
         const bool expect_history = resolves && history_valid && !expected_cut();
         require(history == expect_history, "history use follows the script (the route drops history on a frame it cannot resolve)");

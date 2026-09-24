@@ -714,9 +714,13 @@ CASES += [case(name, 'seam', jitter=True, taa=True, hdr_env=dict(X3M_TAA_REGION_
 # resolve byte for byte. The pass then holds the far / camera-gate programs (7: line mask, far, camera mask, hold resolve, its
 # 49-tap box twin, the two depth-folding masks) and the separable box twins (2) on top of the base references; the first
 # completed run logs region_hold=1 mask_targets=1.
-THIN_HOLD_CASES = {'seam-taa-thin-hold-on': 'on'}
-THIN_HOLD_REFERENCES = {'on': 7 + 2}
-CASES += [case(name, 'seam', jitter=True, taa=True, hdr_env=dict(X3M_TAA_THIN_REGION='0.97', X3M_TAA_SENTINEL_STABILISER='0.7'))
+# S4 (docs/architecture/taa-high-resolution.md S4; X3M_TAA_BOX_RESOLUTION=half, opt-in): the same case with the camera gate's box
+# at half resolution. The reference mirrors it and runs a full-resolution shadow pass beside it, checking per pixel that the
+# half-resolution box contains the full-resolution one (REFERENCE_BOX_CONTAINMENT); the DLL holds the half-resolution pair (2)
+# on top and logs one creation row and one row for what the first run drew. Every other case pins full, which logs nothing.
+THIN_HOLD_CASES = {'seam-taa-thin-hold-on': 'on', 'seam-taa-thin-hold-half': 'half'}
+THIN_HOLD_REFERENCES = {'on': 7 + 2, 'half': 7 + 2 + 2}
+CASES += [case(name, 'seam', jitter=True, taa=True, hdr_env=dict(X3M_TAA_THIN_REGION='0.97', X3M_TAA_SENTINEL_STABILISER='0.7', X3M_TAA_BOX_RESOLUTION='half' if value == 'half' else 'full'))
           for name, value in THIN_HOLD_CASES.items()]
 # The refusal path: the camera gate has no 16-tap program, so the thin region with its camera gate under --taa-history-taps 16 is
 # turned off at pass creation with one motion_output_taa_region_hold row (reason=history_taps16, effect=thin_region_off; no
@@ -3579,7 +3583,7 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         # The slot cap is logged once per pass creation (AGENTS.md "Shader slot budget"; the region_hold field left this row with the
         # option, 2026-09-24); the region hold runs only in THIN_HOLD_CASES (the only camera-gate configuration here), whose first
         # completed run draws it with one mask target (the history-taps row's region_hold and mask_targets).
-        held = '1' if thin_hold == 'on' else '0'
+        held = '1' if thin_hold in ('on', 'half') else '0'
         assert int(taa_lines_log[0]['ps30_slots']) > 0 and 'region_hold' not in taa_lines_log[0], (name, taa_lines_log)
         assert taps_lines if thin_hold else True, (name, taps_lines)
         assert all(t['region_hold'] == held and t['mask_targets'] == ('1' if thin_hold else '0') for t in taps_lines), (name, taps_lines)
@@ -3593,6 +3597,15 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
             assert not refusals, (name, 'hold refused')
         if thin_hold:
             assert taa_lines_log[0]['thin_gate'] == 'camera' and float(taa_lines_log[0]['thin_region']) == .97 and float(taa_lines_log[0]['sentinel_stabiliser']) == .7, (name, taa_lines_log)
+        # S4: rows only when half is asked (creation, then what the first run drew); the reference's per-pixel containment.
+        box_rows = [fields(l) for l in tl if l.startswith('motion_output_taa_box_resolution ')]
+        containment = [fields(l) for l in text.splitlines() if l.startswith('REFERENCE_BOX_CONTAINMENT ')]
+        if thin_hold == 'half':
+            assert [(r.get('requested'), r.get('configured'), r.get('reason'), r.get('create')) for r in box_rows[:1]] == [('half', 'half', 'ok', '00000000')] and \
+                   [(r.get('drawn'), r.get('reason')) for r in box_rows[1:]] == [('half', 'half')], (name, box_rows)
+            assert len(containment) == 1 and int(containment[0]['frames']) > 0 and int(containment[0]['compared_px']) > 0 and containment[0]['violations'] == '0', (name, containment)
+        else:
+            assert not box_rows and not containment, (name, box_rows, containment)
         assert f'generation=2 taa_references={taa_references}' in trace, name
     else:
         assert not taa_lines_log and not taa_readbacks and not color_readbacks and not present_readbacks
@@ -6111,6 +6124,7 @@ def main(argv=None):
                        X3M_TAA_SKY_HISTORY='loose', X3M_TAA_SKY_HISTORY_EXIT_PX='0',
                        X3M_TAA_MOTION_WEIGHT='0',  # DLL default 0.7,2,8 under an age program since Run 70 A; no case here runs one, pinned off so a shell value cannot reach the DLL
                        X3M_TAA_HISTORY_TAPS='5',  # S3 default, pinned; HISTORY_TAPS16_CASE sets 16
+                       X3M_TAA_BOX_RESOLUTION='full',  # S4 default (logs nothing), pinned so a shell value cannot reach the DLL; the -thin-hold-half case sets half
                        X3M_FADE_RT2_OWNER='off',  # DLL default off, pinned so a shell value cannot reach the DLL; the -owner cases set on
                        X3M_TAA_SENTINEL_STABILISER='0',
                        X3M_TELEMETRY_DRAW='1',  # per-draw metrics (gate_us, route_draw_us, ...) are gated behind this switch since a8d4309; the validators require them

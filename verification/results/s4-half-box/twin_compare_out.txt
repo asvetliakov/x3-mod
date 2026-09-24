@@ -1,0 +1,5 @@
+leaves full=351 half=351 only_full=0 only_half=0 differing={'directory': 1, 'trace_sha256': 1}
+color_hashes identical=True
+REFERENCE_BOX_CONTAINMENT frames=12 compared_px=19319 violations=0 marker_missing=0
+motion_output_taa_box_resolution device=1 requested=half configured=half reason=ok create=00000000 sentinel_stabiliser=0.700
+motion_output_taa_box_resolution device=1 frame=0 drawn=half reason=half width=64 height=64 target_create=00000000

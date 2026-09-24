@@ -1,0 +1,37 @@
+slots embedded_thin_box_hold             dwords=  314 slots=  70
+slots embedded_thin_box_rows_hold        dwords=  628 slots= 155
+slots embedded_thin_box_columns_hold     dwords=  533 slots= 121
+slots embedded_thin_box_rows_half        dwords=  670 slots= 158
+slots embedded_thin_box_columns_half     dwords= 1316 slots= 330
+BOX_HALF_STATE settings=1 refused_program_full_identical=1 half_targets=1 hostile_half=1 failed_draws=1 toggles_keep_history=1 targets_refused_full=1 rearmed=1 odd_size_full=1
+containment arm_rest                         frames=128 compared_px=     0 violations=0 half_only_px=   0 half_only_violations=0 nonfinite_skipped=  0 output_identical=1
+oracle      arm_rest                         oracle_error=0.008301 age_oracle_error=0.000000 tests_mask_error=0.000000
+BOX_HALF_RIPPLE scene=arm_rest base_rms_codes=16.340 full_rms_codes=1.416 half_rms_codes=1.416 base_p2p_codes=99.4 full_p2p_codes=6.6 half_p2p_codes=6.6 half_over_full_rms=1.0000 square_differs=0
+containment arm_drift_0.30                   frames=128 compared_px=     0 violations=0 half_only_px=   0 half_only_violations=0 nonfinite_skipped=  0 output_identical=1
+oracle      arm_drift_0.30                   oracle_error=0.002441 age_oracle_error=0.000000 tests_mask_error=0.000000
+containment pan_0.50                         frames=128 compared_px=130848 violations=0 half_only_px= 224 half_only_violations=0 nonfinite_skipped=  0 output_identical=1
+oracle      pan_0.50                         oracle_error=0.009277 age_oracle_error=0.000000 tests_mask_error=0.000000
+containment pan_stale_patch                  frames=128 compared_px=130272 violations=0 half_only_px= 224 half_only_violations=0 nonfinite_skipped=  0 output_identical=1
+oracle      pan_stale_patch                  oracle_error=0.008789 age_oracle_error=0.000000 tests_mask_error=0.000000
+BOX_HALF_STALE pan=0.50 mover_px_per_frame=2 excess_after_mover=0.000000 screen_added_frame101=0.622559 full_added_frame101=0.727051 half_added_frame101=0.727051 half_over_screen=1.1678 half_over_full=1.0000 unbounded_estimate=3.6375
+containment pan_box_domain_k0.5_nonfinite    frames=128 compared_px=130720 violations=0 half_only_px= 224 half_only_violations=0 nonfinite_skipped=128 output_identical=1
+oracle      pan_box_domain_k0.5_nonfinite    oracle_error=0.010254 age_oracle_error=0.000000 tests_mask_error=0.000000
+containment pan_stop                         frames= 96 compared_px= 65312 violations=0 half_only_px= 224 half_only_violations=0 nonfinite_skipped=  0 output_identical=1
+BOX_HALF_PAN_STOP pan=0.50 stop_frame=64 half_first8=1.983 full_first8=1.983 base_first8=21.072 half_next24=1.995 full_next24=1.995 base_next24=21.220
+containment sentinel_rest                    frames=128 compared_px=131072 violations=0 half_only_px=   0 half_only_violations=0 nonfinite_skipped=  0 output_identical=1
+oracle      sentinel_rest                    oracle_error=0.002930 age_oracle_error=0.000000 tests_mask_error=0.000000
+BOX_HALF_SENTINEL pan=0.00 pan_mode=rest strength=0.70 base_flicker_codes=13.156 full_flicker_codes=5.155 half_flicker_codes=5.155 half_flicker_ratio=0.3918 full_flicker_ratio=0.3918
+containment sentinel_reversing               frames=128 compared_px=131072 violations=0 half_only_px=   0 half_only_violations=0 nonfinite_skipped=  0 output_identical=1
+oracle      sentinel_reversing               oracle_error=0.002930 age_oracle_error=0.000000 tests_mask_error=0.000000
+BOX_HALF_SENTINEL pan=2.00 pan_mode=reversing strength=0.70 base_flicker_codes=15.762 full_flicker_codes=6.049 half_flicker_codes=6.049 half_flicker_ratio=0.3838 full_flicker_ratio=0.3838
+containment sentinel_emitter                 frames= 26 compared_px= 26624 violations=0 half_only_px=   0 half_only_violations=0 nonfinite_skipped=  0 output_identical=0
+BOX_HALF_EMITTER bar_value=4.0 px_per_frame=6 trail_px_full=1 trail_px_half=2 reach_px_full=1 reach_px_half=2 nonzero_px_after_exit_full=0 nonzero_px_after_exit_half=0
+oracle      sentinel_emitter                 oracle_error=0.001953 age_oracle_error=0.000000 tests_mask_error=0.000000
+containment sentinel_emitter_silhouette      frames= 26 compared_px= 23296 violations=0 half_only_px= 832 half_only_violations=0 nonfinite_skipped=  0 output_identical=0
+containment sentinel_tap_above_e_fp32        frames= 32 compared_px= 32768 violations=0 half_only_px=   0 half_only_violations=0 nonfinite_skipped=  0 output_identical=1
+containment sentinel_nonfinite_block         frames= 32 compared_px= 32480 violations=0 half_only_px=   0 half_only_violations=0 nonfinite_skipped=288 output_identical=1
+oracle      sentinel_nonfinite_block         oracle_error=0.000000 age_oracle_error=0.000000 tests_mask_error=0.000000
+BOX_HALF_TIMING width=1280 height=768 rounds=8 content=all_unrouted_sentinel_pan box_full_ms=1.0237 box_half_ms=0.8359 box_delta_ms=-0.1878 run_full_ms=3.1383 run_half_ms=2.9966 scope=cpu_wall_with_event_query_drain_fixture
+BOX_HALF_TIMING width=5120 height=1440 rounds=8 content=all_unrouted_sentinel_pan box_full_ms=2.4197 box_half_ms=1.3496 box_delta_ms=-1.0701 run_full_ms=6.5192 run_half_ms=5.2158 scope=cpu_wall_with_event_query_drain_fixture
+REGION_HOLD_BASE numerical=554 state_restorations=91
+RESULT PASS numerical=594 state_restorations=92 lattice=1

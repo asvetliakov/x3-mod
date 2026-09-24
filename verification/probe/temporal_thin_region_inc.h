@@ -203,15 +203,30 @@ struct LateBoxFault {
     ~LateBoxFault(){*reinterpret_cast<void***>(device)=previous;}
 };
 
+// S4 (temporal_box_half_inc.h): thinBoxDivisor 2 configures the camera-gate pass with configure_box_resolution(2) (every camera
+// run must then draw the half-resolution box); thinRecordBoxes keeps the box targets of every frame (FarRun::boxLow / boxHigh).
+unsigned thinBoxDivisor=1;bool thinRecordBoxes=false;
+// thinTintTap: a colour-only pixel (1 + 2^-10, 1, 1) drawn at (16, 16) over the rendered frame (depth and motion untouched):
+// its luma is about E + 0.0002 for E = 1, above E in FP32 but 1 after FP16 rounding (the emitter-bound precision case).
+bool thinTintTap=false;
+// An A16B16G16R16F target of any size, row-major rgba floats; width / height out.
+std::vector<float> read_fp16(IDirect3DDevice9* d,IDirect3DTexture9* texture,UINT& width,UINT& height){D3DSURFACE_DESC desc{};check("fp16 level desc",texture->GetLevelDesc(0,&desc));width=desc.Width;height=desc.Height;
+    Com<IDirect3DSurface9> level,sys;check("fp16 level",texture->GetSurfaceLevel(0,&level.p));check("fp16 readback surface",d->CreateOffscreenPlainSurface(width,height,D3DFMT_A16B16G16R16F,D3DPOOL_SYSTEMMEM,&sys.p,nullptr));
+    check("fp16 readback",d->GetRenderTargetData(level.p,sys.p));D3DLOCKED_RECT lock{};check("fp16 lock",sys->LockRect(&lock,nullptr,D3DLOCK_READONLY));std::vector<float> out(std::size_t(width)*height*4);
+    for(UINT y=0;y<height;++y)for(UINT x=0;x<width;++x)for(UINT c=0;c<4;++c){unsigned short h;std::memcpy(&h,static_cast<const char*>(lock.pBits)+y*lock.Pitch+x*8+c*2,2);out[(std::size_t(y)*width+x)*4+c]=halfFloat(h);}
+    check("fp16 unlock",sys->UnlockRect());return out;}
 // failBoxes: the first camera-gate run (frame 0; the two FP16 colour histories are allowed, the box pair refused) meets a
 // box-target creation failure; the pass turns the thin region off for the session (no fallback program set).
 FarRun thin_sequence(EdgeScene& s,const DWORD* resolver,const LineConfig& c,unsigned frames,bool failMasks=false,bool failBoxes=false){
     TemporalPass pass;check("thin initialize",thinFlight&&flight.lane?pass.initialize(s.d,nullptr,resolver,nullptr,nullptr,reinterpret_cast<const DWORD*>(x3m::renderer::hdr_writeback_program())):pass.initialize(s.d,nullptr,resolver));const bool on=c.thinW>0||c.farW>0;constexpr UINT S=EdgeScene::S;
     if(on){check("thin configure",pass.configure_far());if(c.sentS>0){require(!pass.sentinel_available(),"separable box programs are not created by configure_far");check("thin configure sentinel",pass.configure_sentinel());}require(pass.far_available(),"thin-region program created on this device");if(c.camera)require(pass.camera_gate_available(),"camera-gate programs created on this device");
-        if(c.camera&&c.sentS>0)require(pass.sentinel_available(),"separable box twins created on this device");}
+        if(c.camera&&c.sentS>0)require(pass.sentinel_available(),"separable box twins created on this device");
+        if(c.camera&&thinBoxDivisor==2){check("thin configure box resolution",pass.configure_box_resolution(2));require(pass.box_resolution()==2,"half-resolution box programs created on this device");}}
     const FlickerConfig f{c.name,0,0,.1f,.5f,false,.9f};FarRun run;bool sequence=true;
     for(unsigned n=0;n<frames;++n){const unsigned index=n%latticePhases+1;const double jx=halton(index,2)-.5,jy=halton(index,3)-.5;
-        s.render(thin_objects(n),sentinelBackground,jx,jy);run.current.push_back(s.read(s.color.p));run.depth.push_back(s.read(s.depth32.p));if(thinSentinel||thinEmissive||c.camera)run.motion.push_back(s.read(s.motion.p));
+        s.render(thin_objects(n),sentinelBackground,jx,jy);
+        if(thinTintTap){s.target(s.colorSurface.p);check("tint tap Begin",s.d->BeginScene());check("tint tap flat",s.d->SetPixelShader(s.flat.p));s.constant(1.0009765625f,1,1,1);s.quad(16,16,17,17,0,0);check("tint tap End",s.d->EndScene());}
+        run.current.push_back(s.read(s.color.p));run.depth.push_back(s.read(s.depth32.p));if(thinSentinel||thinEmissive||c.camera)run.motion.push_back(s.read(s.motion.p));
         auto in=flicker_inputs(s,f,jx,jy,true);in.sentinel_strength=thinFailRows&&n==0?0.f:c.sentS;in.sentinel_emitter=c.sentE;in.camera_cut=n==thinCutFrame;in.thin_region_weight=c.thinW;in.thin_region_relax=c.relax;in.far_weight=c.farW;in.far_d0=farD0;in.far_inv=farInv;in.far_speed_lo=farLo;in.far_speed_hi=farHi;
         in.luminance_k=thinK;in.thin_region_emissive=c.emisE;in.thin_region_camera_gate=c.camera;{const double vx=cameraPanAlternates&&!cameraPanVertical?camera_pan_at(n):thinPanX!=0?pan_x_at(n):armPanX,vy=!cameraPanVertical?0:cameraPanAlternates?camera_pan_at(n):cameraPanY;
             if(vx!=0){in.clip_to_previous[3]=float(-2*vx/S);}
@@ -233,6 +248,8 @@ FarRun thin_sequence(EdgeScene& s,const DWORD* resolver,const LineConfig& c,unsi
         sequence=sequence&&out.color&&pass.diagnostics().history_valid&&out.used_history==(n>0&&n!=thinCutFrame);
         // The camera gate (A'): the published mask is the tests target, recorded every frame for the oracle (line_model); the hold ran unless the box targets failed.
         if(c.camera)sequence=sequence&&pass.diagnostics().region_hold==!pass.camera_gate_failed();
+        if(c.camera&&!pass.camera_gate_failed())sequence=sequence&&pass.diagnostics().box_half==(thinBoxDivisor==2);
+        if(thinRecordBoxes&&out.box_low&&out.box_high){UINT w=0,h=0;run.boxLow.push_back(read_fp16(s.d,out.box_low,w,h));run.boxHigh.push_back(read_fp16(s.d,out.box_high,w,h));run.boxWidth=w;}
         run.output.push_back(s.read(out.color));if(out.age)run.age.push_back(s.read(out.age));if(out.stabiliser_mask&&(c.camera||n+1==frames))run.mask.push_back(s.read(out.stabiliser_mask));
         if(n==thinInjectFrame){ // stale history: the bright patch written into the history the next frame reads (the oracle injects the same values)
             Com<IDirect3DSurface9> level;check("thin inject level",out.color->GetSurfaceLevel(0,&level.p));s.target(level.p);check("thin inject Begin",s.d->BeginScene());check("thin inject flat",s.d->SetPixelShader(s.flat.p));

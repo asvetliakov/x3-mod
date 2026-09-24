@@ -129,6 +129,14 @@ SHADERS = {
     'temporal_thin_box_columns_hold': dict(source=ROOT / 'src/temporal/thin_box_columns_hold_ps.hlsl',
         header=ROOT / 'src/renderer/temporal_thin_box_columns_hold_program_inc.h',
         provenance=ROOT / 'verification/results/temporal-thin-box-columns-hold-program.json'),
+    # S4 (docs/architecture/taa-high-resolution.md S4; X3M_TAA_BOX_RESOLUTION=half, opt-in): the camera gate's separable box at
+    # half resolution (row pairs into a W/2 x (H/2 + 1) target, the 8x8 block box into W/2 x H/2), created only on request.
+    'temporal_thin_box_rows_half': dict(source=ROOT / 'src/temporal/thin_box_rows_half_ps.hlsl',
+        header=ROOT / 'src/renderer/temporal_thin_box_rows_half_program_inc.h',
+        provenance=ROOT / 'verification/results/temporal-thin-box-rows-half-program.json'),
+    'temporal_thin_box_columns_half': dict(source=ROOT / 'src/temporal/thin_box_columns_half_ps.hlsl',
+        header=ROOT / 'src/renderer/temporal_thin_box_columns_half_program_inc.h',
+        provenance=ROOT / 'verification/results/temporal-thin-box-columns-half-program.json'),
     'hdr_writeback': dict(source=ROOT / 'src/temporal/hdr_writeback_ps.hlsl',
                           header=ROOT / 'src/renderer/hdr_writeback_program_inc.h',
                           provenance=ROOT / 'verification/results/hdr-writeback-program.json'),

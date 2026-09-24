@@ -87,6 +87,15 @@ inline constexpr std::uint32_t temporal_thin_box_rows_hold_words[] = {
 inline constexpr std::uint32_t temporal_thin_box_columns_hold_words[] = {
 #include "temporal_thin_box_columns_hold_program_inc.h"
 };
+// S4 (docs/architecture/taa-high-resolution.md S4, opt-in X3M_TAA_BOX_RESOLUTION=half): the same separable box at half resolution
+// (thin_box_rows_half_ps.hlsl, thin_box_columns_half_ps.hlsl; manifests verification/results/temporal-thin-box-rows-half-program.json
+// and temporal-thin-box-columns-half-program.json).
+inline constexpr std::uint32_t temporal_thin_box_rows_half_words[] = {
+#include "temporal_thin_box_rows_half_program_inc.h"
+};
+inline constexpr std::uint32_t temporal_thin_box_columns_half_words[] = {
+#include "temporal_thin_box_columns_half_program_inc.h"
+};
 }
 // Complete ps_3_0 program of src/temporal/resolve.hlsl (sampler and constant
 // contract in src/temporal/README.md), the resolve the live route runs at the
@@ -128,4 +137,7 @@ inline constexpr const auto& temporal_resolve_far_camera_hold_program() noexcept
 inline constexpr const auto& temporal_thin_box_hold_program() noexcept { return detail::temporal_thin_box_hold_words; }
 inline constexpr const auto& temporal_thin_box_rows_hold_program() noexcept { return detail::temporal_thin_box_rows_hold_words; }
 inline constexpr const auto& temporal_thin_box_columns_hold_program() noexcept { return detail::temporal_thin_box_columns_hold_words; }
+// The half-resolution pair TemporalPass::configure_box_resolution(2) creates (S4; none in a session that never asks).
+inline constexpr const auto& temporal_thin_box_rows_half_program() noexcept { return detail::temporal_thin_box_rows_half_words; }
+inline constexpr const auto& temporal_thin_box_columns_half_program() noexcept { return detail::temporal_thin_box_columns_half_words; }
 } // namespace x3m::renderer

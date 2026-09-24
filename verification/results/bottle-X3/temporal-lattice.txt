@@ -53,6 +53,12 @@ CHECK embedded_thin_box_rows_hold within the 2048-slot ceiling PASS
 RESOLVE_BUDGET variant=embedded_thin_box_columns_hold dwords=533 instruction_slots=121 device_limit=512 headroom=391 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_thin_box_columns_hold within the 2048-slot ceiling PASS
+RESOLVE_BUDGET variant=embedded_thin_box_rows_half dwords=670 instruction_slots=158 device_limit=512 headroom=354 within_ceiling_2048=1
+CHECK resolve instruction budget parsed for ps_3_0 PASS
+CHECK embedded_thin_box_rows_half within the 2048-slot ceiling PASS
+RESOLVE_BUDGET variant=embedded_thin_box_columns_half dwords=1316 instruction_slots=330 device_limit=512 headroom=182 within_ceiling_2048=1
+CHECK resolve instruction budget parsed for ps_3_0 PASS
+CHECK embedded_thin_box_columns_half within the 2048-slot ceiling PASS
 LATTICE_CASES
 LATTICE_MARGIN 0.0600
 CHECK lattice geometry keeps jittered edges off the sample centers PASS
@@ -1147,12 +1153,12 @@ LINE_CASES
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
-LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.6093 far_stabiliser_ms=0.6926 thin_region_ms=1.2489 far_delta_ms=0.0834 thin_region_delta_ms=0.6397 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.2489 no_region_camera_ms=1.1960 no_region_camera_delta_ms=-0.0530 fragmented_pan_thin_ms=0.9289 fragmented_pan_camera_ms=1.3157 fragmented_pan_camera_delta_ms=0.3868 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.3157 lane_input_law_ms=1.0922 lane_input_lane_ms=1.1083 lane_fetch_delta_ms=0.0161 lane_input_over_r32f_ms=-0.2235 scope=cpu_wall_with_event_query_drain
+LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.6097 far_stabiliser_ms=0.6513 thin_region_ms=1.2331 far_delta_ms=0.0415 thin_region_delta_ms=0.6234 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.2331 no_region_camera_ms=1.1300 no_region_camera_delta_ms=-0.1031 fragmented_pan_thin_ms=1.1763 fragmented_pan_camera_ms=1.5364 fragmented_pan_camera_delta_ms=0.3602 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.5364 lane_input_law_ms=1.4279 lane_input_lane_ms=1.4619 lane_fetch_delta_ms=0.0340 lane_input_over_r32f_ms=-0.1086 scope=cpu_wall_with_event_query_drain
 CHECK sentinel timing: separable box programs created PASS
 CHECK sentinel timing: separable box programs created PASS
-LINE_TIMING_SENTINEL width=1280 height=768 rounds=6 content=all_unrouted_sentinel_pan strength_off_ms=0.9311 strength_on_separable_ms=1.1721 sentinel_delta_ms=0.2409 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_SENTINEL width=1280 height=768 rounds=6 content=all_unrouted_sentinel_pan strength_off_ms=1.0081 strength_on_separable_ms=1.3211 sentinel_delta_ms=0.3129 scope=cpu_wall_with_event_query_drain
 LINE_BASE numerical=190 state_restorations=4
 FAR_CASES
 FAR_GATE ok=1 d0=0.99985647 inv=17734.900 expected_d0=0.99985652 expected_inv=17749.280
@@ -5006,4 +5012,243 @@ SAMPLE fade owner: age matches the oracle actual=0.000000000 expected=0.00000000
 SAMPLE fade owner: the published tests target equals the CPU tests draw actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
 CHECK fade owner: before the switch the run is the always-masked run bit for bit PASS
 CHECK fade owner: the class change opens the region at most once per pixel, its extra hold lasts at most L + 1 frames PASS
-RESULT PASS numerical=554 state_restorations=91 lattice=1
+REGION_HOLD_BASE numerical=554 state_restorations=91
+BOX_HALF_CASES
+CHECK half-resolution box run restores c0..c7, c11, c12, c22..c24, samplers 0..3 and 7..10, RT1, COLORWRITEENABLE1 and the viewport PASS
+BOX_HALF_STATE settings=1 refused_program_full_identical=1 half_targets=1 hostile_half=1 failed_draws=1 toggles_keep_history=1 targets_refused_full=1 rearmed=1 odd_size_full=1
+CHECK box resolution: 1 or 2 only; a refused half-resolution program keeps the full-resolution box bit for bit PASS
+CHECK half-resolution box: S/2 targets, hostile state restored, failed rows / columns draws publish nothing, a switch keeps the history PASS
+CHECK refused half-resolution targets and an odd frame size fall back to the full-resolution box (reasons target / odd_size); Reset re-arms PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK half-resolution box programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK containment: both runs recorded their box targets every frame PASS
+BOX_HALF_CONTAINMENT scene=arm_rest frames=128 compared_px=0 violations=0 marker_missing=0 half_only_px=0 half_only_violations=0 nonfinite_skipped=0 worst=0.000000 output_identical=1
+CHECK half-resolution box contains the full-resolution box at every pixel and frame (and the 3x3 where only it runs); where neither opens the runs are identical PASS
+BOX_HALF_ORACLE scene=arm_rest oracle_error=0.008301 age_oracle_error=0.000000 tests_mask_error=0.000000 oracle_skipped_px=0
+SAMPLE half-resolution box: shader matches the 2-D CPU oracle with the block box within the FP16 bound actual=0.008300781 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE half-resolution box: age matches the oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK thin-region history follows the sequence PASS
+BOX_HALF_RIPPLE scene=arm_rest base_rms_codes=16.340 full_rms_codes=1.416 half_rms_codes=1.416 base_p2p_codes=99.4 full_p2p_codes=6.6 half_p2p_codes=6.6 half_over_full_rms=1.0000 square_differs=0
+CHECK half-resolution box, static shards: ripple <= 0.35 x and peak-to-peak <= 0.5 x the installed resolve; the plain silhouette bit-identical PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK half-resolution box programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK containment: both runs recorded their box targets every frame PASS
+BOX_HALF_CONTAINMENT scene=arm_drift_0.30 frames=128 compared_px=0 violations=0 marker_missing=0 half_only_px=0 half_only_violations=0 nonfinite_skipped=0 worst=0.000000 output_identical=1
+CHECK half-resolution box contains the full-resolution box at every pixel and frame (and the 3x3 where only it runs); where neither opens the runs are identical PASS
+BOX_HALF_ORACLE scene=arm_drift_0.30 oracle_error=0.002441 age_oracle_error=0.000000 tests_mask_error=0.000000 oracle_skipped_px=0
+SAMPLE half-resolution box: shader matches the 2-D CPU oracle with the block box within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE half-resolution box: age matches the oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK half-resolution box programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK containment: both runs recorded their box targets every frame PASS
+BOX_HALF_CONTAINMENT scene=pan_0.50 frames=128 compared_px=130848 violations=0 marker_missing=0 half_only_px=224 half_only_violations=0 nonfinite_skipped=0 worst=0.000000 output_identical=1
+CHECK half-resolution box contains the full-resolution box at every pixel and frame (and the 3x3 where only it runs); where neither opens the runs are identical PASS
+BOX_HALF_ORACLE scene=pan_0.50 oracle_error=0.009277 age_oracle_error=0.000000 tests_mask_error=0.000000 oracle_skipped_px=0
+SAMPLE half-resolution box: shader matches the 2-D CPU oracle with the block box within the FP16 bound actual=0.009277344 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE half-resolution box: age matches the oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK thin-region program created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK half-resolution box programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK containment: both runs recorded their box targets every frame PASS
+BOX_HALF_CONTAINMENT scene=pan_stale_patch frames=128 compared_px=130272 violations=0 marker_missing=0 half_only_px=224 half_only_violations=0 nonfinite_skipped=0 worst=0.000000 output_identical=1
+CHECK half-resolution box contains the full-resolution box at every pixel and frame (and the 3x3 where only it runs); where neither opens the runs are identical PASS
+BOX_HALF_ORACLE scene=pan_stale_patch oracle_error=0.008789 age_oracle_error=0.000000 tests_mask_error=0.000000 oracle_skipped_px=0
+SAMPLE half-resolution box: shader matches the 2-D CPU oracle with the block box within the FP16 bound actual=0.008789062 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE half-resolution box: age matches the oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+BOX_HALF_STALE pan=0.50 mover_px_per_frame=2 excess_after_mover=0.000000 screen_added_frame101=0.622559 full_added_frame101=0.727051 half_added_frame101=0.727051 half_over_screen=1.1678 half_over_full=1.0000 unbounded_estimate=3.6375
+SAMPLE half-resolution box, pan + bright mover: no ghost above the scene's maximum after the mover left actual=0.000000000 expected=0.000000000 tolerance=0.007843137 PASS
+CHECK half-resolution box, stale patch: at most 2 x the screen gate's clipped value, well below the clip-off estimate PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK half-resolution box programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK containment: both runs recorded their box targets every frame PASS
+BOX_HALF_CONTAINMENT scene=pan_box_domain_k0.5_nonfinite frames=128 compared_px=130720 violations=0 marker_missing=0 half_only_px=224 half_only_violations=0 nonfinite_skipped=128 worst=0.000000 output_identical=1
+CHECK half-resolution box contains the full-resolution box at every pixel and frame (and the 3x3 where only it runs); where neither opens the runs are identical PASS
+BOX_HALF_ORACLE scene=pan_box_domain_k0.5_nonfinite oracle_error=0.010254 age_oracle_error=0.000000 tests_mask_error=0.000000 oracle_skipped_px=0
+SAMPLE half-resolution box: shader matches the 2-D CPU oracle with the block box within the FP16 bound actual=0.010253906 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE half-resolution box: age matches the oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK half-resolution box programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK containment: both runs recorded their box targets every frame PASS
+BOX_HALF_CONTAINMENT scene=pan_stop frames=96 compared_px=65312 violations=0 marker_missing=0 half_only_px=224 half_only_violations=0 nonfinite_skipped=0 worst=0.000000 output_identical=1
+CHECK half-resolution box contains the full-resolution box at every pixel and frame (and the 3x3 where only it runs); where neither opens the runs are identical PASS
+BOX_HALF_PAN_STOP pan=0.50 stop_frame=64 half_first8=1.983 full_first8=1.983 base_first8=21.072 half_next24=1.995 full_next24=1.995 base_next24=21.220
+CHECK half-resolution box, stop after a pan: step rms at most 0.15 x the plain resolve's, the 8 frames after the stop and the 24 after PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK separable box twins created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK separable box twins created on this device PASS
+CHECK half-resolution box programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK containment: both runs recorded their box targets every frame PASS
+BOX_HALF_CONTAINMENT scene=sentinel_rest frames=128 compared_px=131072 violations=0 marker_missing=0 half_only_px=0 half_only_violations=0 nonfinite_skipped=0 worst=0.000000 output_identical=1
+CHECK half-resolution box contains the full-resolution box at every pixel and frame (and the 3x3 where only it runs); where neither opens the runs are identical PASS
+BOX_HALF_ORACLE scene=sentinel_rest oracle_error=0.002930 age_oracle_error=0.000000 tests_mask_error=0.000000 oracle_skipped_px=0
+SAMPLE half-resolution box: shader matches the 2-D CPU oracle with the block box within the FP16 bound actual=0.002929688 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE half-resolution box: age matches the oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+BOX_HALF_SENTINEL pan=0.00 pan_mode=rest strength=0.70 base_flicker_codes=13.156 full_flicker_codes=5.155 half_flicker_codes=5.155 half_flicker_ratio=0.3918 full_flicker_ratio=0.3918
+CHECK half-resolution box, sentinel facets: flicker below 0.6 x the S = 0 hold run PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK separable box twins created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK separable box twins created on this device PASS
+CHECK half-resolution box programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK containment: both runs recorded their box targets every frame PASS
+BOX_HALF_CONTAINMENT scene=sentinel_reversing frames=128 compared_px=131072 violations=0 marker_missing=0 half_only_px=0 half_only_violations=0 nonfinite_skipped=0 worst=0.000000 output_identical=1
+CHECK half-resolution box contains the full-resolution box at every pixel and frame (and the 3x3 where only it runs); where neither opens the runs are identical PASS
+BOX_HALF_ORACLE scene=sentinel_reversing oracle_error=0.002930 age_oracle_error=0.000000 tests_mask_error=0.000000 oracle_skipped_px=1638
+SAMPLE half-resolution box: shader matches the 2-D CPU oracle with the block box within the FP16 bound actual=0.002929688 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE half-resolution box: age matches the oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+BOX_HALF_SENTINEL pan=2.00 pan_mode=reversing strength=0.70 base_flicker_codes=15.762 full_flicker_codes=6.049 half_flicker_codes=6.049 half_flicker_ratio=0.3838 full_flicker_ratio=0.3838
+CHECK half-resolution box, sentinel facets: flicker below 0.6 x the S = 0 hold run PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK separable box twins created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK separable box twins created on this device PASS
+CHECK half-resolution box programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK containment: both runs recorded their box targets every frame PASS
+BOX_HALF_CONTAINMENT scene=sentinel_emitter frames=26 compared_px=26624 violations=0 marker_missing=0 half_only_px=0 half_only_violations=0 nonfinite_skipped=0 worst=0.000000 output_identical=0
+CHECK half-resolution box contains the full-resolution box at every pixel and frame (and the 3x3 where only it runs); where neither opens the runs are identical PASS
+BOX_HALF_EMITTER bar_value=4.0 px_per_frame=6 trail_px_full=1 trail_px_half=2 reach_px_full=1 reach_px_half=2 nonzero_px_after_exit_full=0 nonzero_px_after_exit_half=0
+CHECK half-resolution box, emitter over the sky: trail within 2 px (the block's inner 4x4; 1 px at full resolution), none after the bar has left PASS
+BOX_HALF_ORACLE scene=sentinel_emitter oracle_error=0.001953 age_oracle_error=0.000000 tests_mask_error=0.000000 oracle_skipped_px=0
+SAMPLE half-resolution box: shader matches the 2-D CPU oracle with the block box within the FP16 bound actual=0.001953125 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE half-resolution box: age matches the oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK separable box twins created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK separable box twins created on this device PASS
+CHECK half-resolution box programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK containment: both runs recorded their box targets every frame PASS
+BOX_HALF_CONTAINMENT scene=sentinel_emitter_silhouette frames=26 compared_px=23296 violations=0 marker_missing=0 half_only_px=832 half_only_violations=0 nonfinite_skipped=0 worst=0.000000 output_identical=0
+CHECK half-resolution box contains the full-resolution box at every pixel and frame (and the 3x3 where only it runs); where neither opens the runs are identical PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK separable box twins created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK separable box twins created on this device PASS
+CHECK half-resolution box programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK containment: both runs recorded their box targets every frame PASS
+BOX_HALF_CONTAINMENT scene=sentinel_tap_above_e_fp32 frames=32 compared_px=32768 violations=0 marker_missing=0 half_only_px=0 half_only_violations=0 nonfinite_skipped=0 worst=0.000000 output_identical=1
+CHECK half-resolution box contains the full-resolution box at every pixel and frame (and the 3x3 where only it runs); where neither opens the runs are identical PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK separable box twins created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK separable box twins created on this device PASS
+CHECK half-resolution box programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK containment: both runs recorded their box targets every frame PASS
+BOX_HALF_CONTAINMENT scene=sentinel_nonfinite_block frames=32 compared_px=32480 violations=0 marker_missing=0 half_only_px=0 half_only_violations=0 nonfinite_skipped=288 worst=0.000000 output_identical=1
+CHECK half-resolution box contains the full-resolution box at every pixel and frame (and the 3x3 where only it runs); where neither opens the runs are identical PASS
+BOX_HALF_ORACLE scene=sentinel_nonfinite_block oracle_error=0.000000 age_oracle_error=0.000000 tests_mask_error=0.000000 oracle_skipped_px=0
+SAMPLE half-resolution box: shader matches the 2-D CPU oracle with the block box within the FP16 bound actual=0.000000000 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE half-resolution box: age matches the oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: every TaaBox boundary drained PASS
+BOX_HALF_TIMING width=1280 height=768 rounds=8 content=all_unrouted_sentinel_pan box_full_ms=1.0237 box_half_ms=0.8359 box_delta_ms=-0.1878 run_full_ms=3.1383 run_half_ms=2.9966 scope=cpu_wall_with_event_query_drain_fixture
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: the configured resolution drew PASS
+CHECK box timing: every TaaBox boundary drained PASS
+BOX_HALF_TIMING width=5120 height=1440 rounds=8 content=all_unrouted_sentinel_pan box_full_ms=2.4197 box_half_ms=1.3496 box_delta_ms=-1.0701 run_full_ms=6.5192 run_half_ms=5.2158 scope=cpu_wall_with_event_query_drain_fixture
+RESULT PASS numerical=594 state_restorations=92 lattice=1

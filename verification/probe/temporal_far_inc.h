@@ -29,7 +29,8 @@ struct MaskCreationFault {
     explicit MaskCreationFault(IDirect3DDevice9* d):previous(*reinterpret_cast<void***>(d)),device(d){std::copy(previous,previous+119,table);std::memcpy(&original,&table[23],sizeof original);auto fn=&hook;std::memcpy(&table[23],&fn,sizeof fn);refused=0;*reinterpret_cast<void***>(d)=table;}
     ~MaskCreationFault(){*reinterpret_cast<void***>(device)=previous;}
 };
-struct FarRun : FlickerRun { std::vector<std::vector<float>> mask; bool masksFailed=false; };
+// boxLow / boxHigh: the camera gate's box targets of every frame (thinRecordBoxes), boxWidth x boxWidth texels (S or S / 2).
+struct FarRun : FlickerRun { std::vector<std::vector<float>> mask; bool masksFailed=false; std::vector<std::vector<float>> boxLow,boxHigh; UINT boxWidth=0; };
 // The resolve_far program of the flown run46 / run47 candidates (commit dee6608c), for one identity comparison.
 constexpr std::uint32_t farReferenceWords[]={
 #include "temporal_resolve_far_reference_inc.h"
