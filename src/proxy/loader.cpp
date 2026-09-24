@@ -6,6 +6,7 @@
 #include "collide_box_cull.h"
 #include "pause_key_only.h"
 #include "terran_station_lod.h"
+#include "lod_occlusion.h"
 #include "music_keep.h"
 #include "collide_narrow_census.h"
 #include "collide_sat_sse2.h"
@@ -386,6 +387,7 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
         if (reserved == nullptr) x3m::collide_box_cull::shutdown(); // same rule: the two collide sites back only on FreeLibrary
         if (reserved == nullptr) x3m::pause_key_only::shutdown(); // same rule: the 12 pause-loop bytes back only on FreeLibrary
         if (reserved == nullptr) x3m::terran_station_lod::shutdown(); // same rule: the two reader bytes back only on FreeLibrary
+        if (reserved == nullptr) x3m::lod_occlusion::shutdown(); // same rule: the four rel32 bytes back only on FreeLibrary
         if (reserved == nullptr) x3m::collide_narrow_census::shutdown(); // same rule: the four narrow-census sites back only on FreeLibrary
         if (reserved == nullptr) x3m::collide_sat_sse2::shutdown(); // same rule: the SAT call back only on FreeLibrary
         if (reserved == nullptr) x3m::sun_occlusion::shutdown(); // same rule: the probe and lens calls back only on FreeLibrary

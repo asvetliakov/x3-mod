@@ -6,7 +6,7 @@ only read): shipped (the installed file), laa_cleared (bit 0x20 cleared),
 ntcore_4gb (bit set and CheckSum rewritten as NTCore 4gb_patch.exe does),
 unknown_hash (one .rsrc byte changed: a hash outside the known list, sites and
 anchors intact), different_build (link stamp flipped: another build of the
-game) and, for three verifiers, site_corrupt (one site byte flipped).
+game) and, for four verifiers, site_corrupt (one site byte flipped).
 Expectation: PASS everywhere except different_build (every verifier FAIL, the
 identity false) and site_corrupt (FAIL with the identity true); the raw hash is
 reported as INFO. Records the anchor count and the source commit. Prints one JSON object (docs/reverse-engineering/executable-identity.md).
@@ -32,12 +32,13 @@ EXE_OPTION = ['exe_identity', 'verify_chase_camera_site', 'verify_chase_aim_site
               'verify_lod_scale_site', 'verify_game_phase_sites', 'verify_frame_phase_sites', 'verify_media_cue_site',
               'verify_loop_phase_sites', 'verify_residual_phase_sites', 'verify_pass_phase_sites', 'verify_voice_dmo_site',
               'verify_submit_phase_sites', 'verify_post_phase_sites', 'verify_sun_occlusion_sites',
-              'verify_terran_lod_site']
+              'verify_terran_lod_site', 'verify_lod_occlusion_site']
 RESULTS = {'pause': ROOT / 'verification/results/pause-dialog-input/verify_pause_sites.py',
            'music_restart': ROOT / 'verification/results/music-restart/verify_music_restart_sites.py'}
-# One byte per corrupt case: the chase camera's jz displacement, the LOD-scale fmul operand and the
-# Terran-station LOD reader's je opcode (74 -> 75).
-SITE_CORRUPT = {'verify_chase_camera_site': 0x00420e0f, 'verify_lod_scale_site': 0x0047d44d, 'verify_terran_lod_site': 0x0047d01c}
+# One byte per corrupt case: the chase camera's jz displacement, the LOD-scale fmul operand, the
+# Terran-station LOD reader's je opcode (74 -> 75) and the LOD occlusion gate's rel32 low byte (c9 -> c8).
+SITE_CORRUPT = {'verify_chase_camera_site': 0x00420e0f, 'verify_lod_scale_site': 0x0047d44d, 'verify_terran_lod_site': 0x0047d01c,
+                'verify_lod_occlusion_site': 0x004c34f9}
 
 
 def verdict(stdout):

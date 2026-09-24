@@ -111,10 +111,10 @@ Documented behaviour, not measured in this project:
 
 ## Evidence and tools
 
-* `verification/results/executable-identity/run_verifiers.py`: all 24
+* `verification/results/executable-identity/run_verifiers.py`: all 25
   identity-carrying verifiers on the shipped, LAA-cleared, 4GB-patch and
   unknown-hash variants (PASS each), a different-build copy (link stamp flipped:
-  every verifier FAIL, identity false) and three site-corrupted copies (FAIL with
+  every verifier FAIL, identity false) and four site-corrupted copies (FAIL with
   the identity still passing); output `verifiers.json` beside it, with the anchor
   count and the source commit.
 * `verification/results/executable-identity/pe_checksum_check.py`: the CheckSum

@@ -518,7 +518,98 @@ which is the selection loop's no-hit result ([lod-selection.md](lod-selection.md
   occlusion on for vanilla records past 0, whose UV2 is about 1 % off the unwrap and leaves [0, 1]
   (measured on three bodies), which would give wrong occlusion there (inferred). A form limited to
   overlay records needs a marker and a code cave. Where the group's material pointer lives at
-  `0x004c34ea` was not traced.
+  `0x004c34ea` was not traced. Built as an opt-in patch in a same-length form that needs one
+  atomic write instead of six NOPs across a qword boundary: §12.4.
+
+### 12.4 Patch as built: `--lod-occlusion all` (2026-09-24, not flown)
+
+User decision 2026-09-24 (Run 79 A). `src/proxy/lod_occlusion.cpp` with the site header
+`src/proxy/lod_occlusion_sites.h`, built like the Terran station LOD patch
+([lod-selection.md](lod-selection.md), "Terran stations and bit 31", §5).
+
+- **Write shape.** The `jne` at `0x004c34f7` covers `0x004c34f7..0x004c34fc` and crosses the
+  aligned qword boundary at `0x004c34f8`, so six NOPs cannot go in with one `lock cmpxchg8b`. The
+  patch rewrites only the rel32 `c9 00 00 00` at `0x004c34f9..0x004c34fc` to `00 00 00 00`:
+  `jne 0x004c34fd`, the next instruction. Taken or not, execution continues on the LOD-0 path.
+  The four bytes lie at offset 1 of the aligned word `0x004c34f8..0x004c34ff`, so
+  `engine_patch::write_code` stores them with one `lock cmpxchg8b`. The opcode `0f 85` and every
+  instruction boundary stay the same, so a thread fetching the site during the write sees the old
+  or the new `jne`, never a mix. A `jne` changes no register or flag. The branch to the next
+  instruction costs one predicted jump per material group.
+- **Verified window.** 31 bytes, `0x004c34e7..0x004c3505`, six whole instructions:
+  `8b4d0c 83b94c01000000 8b15746f6000 0f85c9000000 837c247400 89542418` (`mov ecx,[ebp+0xc]`,
+  the gate `cmp [ecx+0x14c],0`, `mov edx,[00606f74]`, the `jne`, `cmp [esp+0x74],0`,
+  `mov [esp+0x18],edx`). Its context is checked too: the handle test before it and the `jl` after it.
+- **Site facts** (`verification/probe/verify_lod_occlusion_site.py`, 20 checks over the 4,695
+  instructions of `0x004c0150`). The function ends with the `ret` at `0x004c40fb`. The range end
+  `0x004c40f3` given above cuts its last `mov fs:[0],ecx`.
+  - The placeholder bind `0x004c35c6` is reached only from this `jne`.
+  - A patched arrival at `0x004c34fd` (LOD index ≠ 0) has executed the same four instructions as
+    an unpatched LOD-0 arrival, so every register and the stack are the same. Only the flags the
+    gate's `cmp` wrote (ZF, and SF/PF by value) and `node+0x14c` differ. Those flags are dead (next
+    item). No instruction of the LOD-0 path reads `+0x14c`. The path is every instruction reachable
+    from `0x004c34fd` before the join at `0x004c35d6`: 57 instructions, `0x004c34fd..0x004c35d3`.
+    It includes the placeholder-bind tail `0x004c35c9..0x004c35d3`, the failed-bind fallback, and
+    no control transfer leaves it. Its callees `0x004f5280` and `0x004b9ed0` are the ones LOD 0
+    already calls.
+  - The flags of the gate's `cmp` are dead once the `jne` falls through: `mov edx` writes none, and
+    the next `cmp` writes all of them.
+  - No direct branch in the function lands inside the window.
+  - The two raw rel8 encodings in `.text` that land inside the window (`0x004c34c1` and
+    `0x004c3500`) both start in the middle of a decoded instruction. None lands on
+    `0x004c34f8..0x004c34fc`.
+  - No dword in the image points into the window.
+  - The patched image decodes as `jne 0x004c34fd`, with every other instruction unchanged.
+  - No other DLL claim overlaps the window. The point-light site `0x004c27af` in the same
+    function is disjoint.
+- **Lifecycle** (same as the Terran patch).
+  - It runs on the backend-load path inside the `engine_patch` install window. After the first
+    Present it is refused with `late_claim`. The structural executable check comes first; a
+    changed or already patched window is refused with `bytes_mismatch`.
+  - Write sequence: `VirtualProtect`, the atomic store, `FlushInstructionCache`, a read-back of
+    the four bytes.
+  - On failure the patch rolls back to `c9 00 00 00`, judged by a read-back. If that rollback
+    fails, the site stays registered and the row reads `status=patched_unverified reason=rollback_failed`.
+  - `shutdown()` runs only on a dynamic unload. It writes `c9 00 00 00` back only over the patched
+    `00 00 00 00`, the rule of `engine_patch::restore`. For any other bytes (someone else's, or a
+    failed rollback's) or an unreadable span, the result is `restore_not_owned`: nothing is written
+    and the site stays registered. It logs
+    `lod_occlusion_restore site=004c34f7 status=restored|restore_not_owned|restore_failed found=<4 bytes>|-- registered=0|1`
+    straight to the log handle.
+  - Device Reset does not touch the patch. There is no stub, no pointer into the DLL and no
+    per-frame work. LastError is preserved.
+- **Selection.**
+  - `X3M_LOD_OCCLUSION` unset, empty or `record0`: the engine's bytes (the DLL default).
+  - `all`: patched.
+  - Any other value, or 32 characters or more: refused, nothing patched.
+  - Launcher: `--lod-occlusion record0|all`. It is always exported on a modded launch (default
+    `record0`) and refused with `--vanilla`.
+  - One row: `lod_occlusion site=004c34f7 status=patched|patched_unverified|off|refused reason=… mode=record0|all|- setting=… write=none|atomic|plain`.
+- **Side effect on vanilla bodies.** The patch is unconditional. Vanilla records past 0 then bind
+  their material's occlusion map as well, through a second UV set that is 98.8–99.2 % within
+  1/512 of record 0's unwrap and ranges −1.35 to 1.44 (§12.2, three `usc_dock_e` bodies). This
+  may show misplaced or wrapped occlusion on lower vanilla records (inferred, not seen). Merged-LOD
+  coarse records carry record 0's UV2 exactly, so they get correct occlusion.
+- **Side effect: first-use load at draw time.** On the LOD-0 path a texture entry without a D3D
+  texture goes through the first-use load `0x004f5280` → `0x004f4160` (§12.1 step 4, the call at
+  `0x004c3546`). With `all`, that happens on the first LOD > 0 draw of a body never seen at LOD 0,
+  typically a distant station. The load is up to 2048² DXT5, about 5.6 MB with mips (inferred), on
+  the render thread. Expect a possible hitch and extra VRAM; Run 80 watches loading and a stutter on
+  first sight of distant stations.
+- **Materials without an occlusion map.** They behave exactly as at LOD 0. A negative id binds
+  nothing, and the handle keeps whatever texture it last had (`jl 0x004c35d6`). A material without
+  a `t_OcclusionTexture` value keeps the per-group id 0 (`0x004c0254`), which is not negative. It
+  therefore binds texture-table entry 0, or the placeholder when that entry has no D3D texture or
+  carries `0x2000000`. What entry 0 is was not traced.
+- **Evidence.** Ledger [lod-occlusion.md](../verification/lod-occlusion.md). The Wine fixture runs
+  the unchanged module on a MEM_IMAGE page at `0x004c3000` (100/100). The executed stub takes the
+  placeholder path for LOD 1 before the patch and after every rollback and restore, and the LOD-0
+  path once patched.
+- **Run 80 check.** With `--lod-occlusion all`, the session log carries `lod_occlusion … status=patched reason=ok … write=atomic`,
+  and `verification/results/run299-303-run79a/terran-colour/occl_lod_census.py <session log>`
+  must show the LOD > 0 draws of the slot-06 Terran bodies binding the 2048² 12-level map at s5
+  instead of the 32×32 6-level `NONE_OCCL_DECAL`. Vanilla LOD > 0 draws (`slot=-`) should bind
+  real maps too. The coarse ODS parts should lose the ~1.4× brightening against record 0.
 
 ## Unknown
 
