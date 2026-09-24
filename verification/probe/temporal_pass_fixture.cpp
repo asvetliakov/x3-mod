@@ -75,6 +75,9 @@ unsigned numeric_checks=0,state_checks=0;
 // Production shader source, with `#include "name"` lines expanded relative to
 // the including file (the generator does the same; D3DXCompileShader is given
 // no include handler), so the sharpen program compiles from the same files.
+// The resolve source the runner passes (argv[3], src/temporal/resolve.hlsl): REGION_HOLD_IDENTITY compiles the removed camera
+// program from it (temporal_region_hold_inc.h).
+std::string resolveSource;
 std::string file(const char* path){std::ifstream in(path);if(!in)throw std::runtime_error(path);const std::string text{std::istreambuf_iterator<char>(in),{}};
     const std::string dir=std::string(path).substr(0,std::string(path).find_last_of("/\\")+1);std::istringstream lines(text);std::string line,out;
     while(std::getline(lines,line)){if(line.rfind("#include \"",0)==0){const auto end=line.find('"',10);if(end==std::string::npos)throw std::runtime_error("include");out+=file((dir+line.substr(10,end-10)).c_str());}else out+=line;out+='\n';}
@@ -1070,7 +1073,10 @@ void edge_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,const
           std::vector<unsigned char> footprint(S*S,0),trail(S*S,0);for(unsigned n=0;n<exitFrames;++n)for(UINT i=0;i<S*S;++i)if(run.depth[n][i*4]==squareDepth)footprint[i]=1;
           auto control=[&](UINT x,UINT y){for(int dy=-7;dy<=7;++dy)for(int dx=-7;dx<=7;++dx){const int nx=int(x)+dx,ny=int(y)+dy;if(nx>=0&&ny>=0&&nx<int(S)&&ny<int(S)&&footprint[ny*S+nx])return false;}return true;};
           for(unsigned n=1;n<exitFrames;++n){std::vector<unsigned char> next(S*S,0);
-              for(UINT y=1;y+1<S;++y)for(UINT x=1;x+1<S;++x){const std::size_t i=y*S+x;const float age=run.age[n][i*4];const bool isSky=sky(n,x,y),isBeside=isSky&&beside(n,x,y),strictSky=isSky&&!isBeside;
+              // The count is floor(|age|) with the sign the exit mark: the far_camera program (the camera gate's A' resolve) carries
+              // its region and closure holds in the fraction (resolve.hlsl X3M_REGION_HOLD); every other program writes whole counts.
+              auto whole=[](float v){return std::copysign(std::floor(std::fabs(v)),v);};
+              for(UINT y=1;y+1<S;++y)for(UINT x=1;x+1<S;++x){const std::size_t i=y*S+x;const float age=whole(run.age[n][i*4]);const bool isSky=sky(n,x,y),isBeside=isSky&&beside(n,x,y),strictSky=isSky&&!isBeside;
                   const double cast=std::fabs(px(run.output[n],x,y,2)-px(run.output[n],x,y,0));
                   if(age<0){++m.negTotal;if(n<exitMove)++m.negStatic;if(!isBeside)++m.negNotBand;}
                   if(isBeside&&n>=exitMove&&age>=2)++m.bandPositive;
@@ -1080,10 +1086,10 @@ void edge_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* decoder,const
                       if(next[i])m.trailCast=std::max(m.trailCast,cast);}
                   if(isSky&&control(x,y)){m.controlCast=std::max(m.controlCast,cast);if(other)m.controlDiff=std::max(m.controlDiff,double(std::fabs(px(run.output[n],x,y)-px(other->run.output[n],x,y))));}
                   if(other)for(UINT c=0;c<3;++c)m.diff=std::max(m.diff,double(std::fabs(run.output[n][i*4+c]-other->run.output[n][i*4+c])));
-                  if(other)m.ageDiff=std::max(m.ageDiff,double(std::fabs(age-other->run.age[n][i*4])));
+                  if(other)m.ageDiff=std::max(m.ageDiff,double(std::fabs(run.age[n][i*4]-other->run.age[n][i*4])));
                   // A hull pixel whose own age texel was marked last frame continues the count through the sign (abs): the value
                   // written is |own| + 1 (or the x-1 texel's when the half-pixel footprint rounds that way), never a restart.
-                  if(px(run.depth[n],x,y)==squareDepth&&run.age[n-1][i*4]<0){++m.hullReads;const float own=std::fabs(run.age[n-1][i*4]),left=std::fabs(run.age[n-1][i*4-4]);
+                  if(px(run.depth[n],x,y)==squareDepth&&run.age[n-1][i*4]<0){++m.hullReads;const float own=std::fabs(whole(run.age[n-1][i*4])),left=std::fabs(whole(run.age[n-1][i*4-4]));
                       if(age==own+1)++m.hullOwn;else if(age!=1&&age!=left+1)++m.hullUnexplained;}}
               trail.swap(next);}
           std::printf("SETA_EXIT mode=%s program=%s strict=%u exit_px=%.3f yaw_px=%.2f velocity_px=%.3f fresh_px=%u fresh_current_only=%u trail_cast_max=%.6f control_cast_max=%.6f control_diff=%.6f negative_px=%u negative_static=%u negative_not_band=%u band_blend_positive=%u hull_mark_reads=%u hull_mark_own=%u hull_mark_unexplained=%u output_diff=%.6f age_diff=%.6f\n",r.name,r.program==2?"far_camera":r.program?"far":"age",unsigned(r.strict),double(r.exit),r.yaw,r.v,m.fresh,m.freshCurrent,m.trailCast,m.controlCast,m.controlDiff,m.negTotal,m.negStatic,m.negNotBand,m.bandPositive,m.hullReads,m.hullOwn,m.hullUnexplained,m.diff,m.ageDiff);
@@ -2027,7 +2033,7 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=
     const bool loopQualify=argc==7&&std::strcmp(argv[5],"loop-qualify")==0;
     const bool lattice=argc==6&&std::strcmp(argv[5],"lattice")==0;
     const bool regionHoldOnly=argc==6&&std::strcmp(argv[5],"region-hold")==0; // the A' cases alone (iteration; the runner uses lattice)
-    try{if((argc!=5&&!sunLaneOnly&&!stationaryOnly&&!measure&&!supplementalOnly&&!loopQualify&&!lattice&&!regionHoldOnly)||!window)throw std::runtime_error("usage: temporal_pass_fixture.exe <D3DX> <decoder> <resolve> <sharpen> [stationary-only|sharpen-measure|supplemental-only <baseline-resolve>|loop-qualify <baseline-resolve>|lattice]");Module runtime("d3d9.dll"),d3dx(argv[1]);auto compiler=symbol<Compiler>(d3dx.h,"D3DXCompileShader");Com<ID3DXBuffer> dc,rc,sc;compile(compiler,file(argv[2]),"ps_3_0",&dc.p);compile(compiler,file(argv[3]),"ps_3_0",&rc.p);compile(compiler,file(argv[4]),"ps_3_0",&sc.p);auto create=symbol<IDirect3D9*(WINAPI*)(UINT)>(runtime.h,"Direct3DCreate9");Com<IDirect3D9> api;api.p=create(D3D_SDK_VERSION);if(!api.p)throw std::runtime_error("Create9");D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window;pp.BackBufferWidth=W;pp.BackBufferHeight=H;pp.BackBufferFormat=D3DFMT_A8R8G8B8;pp.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;Com<IDirect3DDevice9> d;check("CreateDevice",api->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING|D3DCREATE_PUREDEVICE,&pp,&d.p));
+    try{if((argc!=5&&!sunLaneOnly&&!stationaryOnly&&!measure&&!supplementalOnly&&!loopQualify&&!lattice&&!regionHoldOnly)||!window)throw std::runtime_error("usage: temporal_pass_fixture.exe <D3DX> <decoder> <resolve> <sharpen> [stationary-only|sharpen-measure|supplemental-only <baseline-resolve>|loop-qualify <baseline-resolve>|lattice]");Module runtime("d3d9.dll"),d3dx(argv[1]);auto compiler=symbol<Compiler>(d3dx.h,"D3DXCompileShader");Com<ID3DXBuffer> dc,rc,sc;compile(compiler,file(argv[2]),"ps_3_0",&dc.p);resolveSource=file(argv[3]);compile(compiler,resolveSource,"ps_3_0",&rc.p);compile(compiler,file(argv[4]),"ps_3_0",&sc.p);auto create=symbol<IDirect3D9*(WINAPI*)(UINT)>(runtime.h,"Direct3DCreate9");Com<IDirect3D9> api;api.p=create(D3D_SDK_VERSION);if(!api.p)throw std::runtime_error("Create9");D3DPRESENT_PARAMETERS pp{};pp.Windowed=TRUE;pp.SwapEffect=D3DSWAPEFFECT_DISCARD;pp.hDeviceWindow=window;pp.BackBufferWidth=W;pp.BackBufferHeight=H;pp.BackBufferFormat=D3DFMT_A8R8G8B8;pp.PresentationInterval=D3DPRESENT_INTERVAL_IMMEDIATE;Com<IDirect3DDevice9> d;check("CreateDevice",api->CreateDevice(0,D3DDEVTYPE_HAL,window,D3DCREATE_HARDWARE_VERTEXPROCESSING|D3DCREATE_PUREDEVICE,&pp,&d.p));
         Com<ID3DXBuffer> baseline;
         if(supplementalOnly||loopQualify||lattice){
             D3DCAPS9 caps{};check("supplemental shader budget caps",d->GetDeviceCaps(&caps));
@@ -2052,10 +2058,10 @@ int main(int argc,char** argv){std::setvbuf(stdout,nullptr,_IONBF,0);int result=
                 X3M_BUDGET(temporal_resolve_program,"embedded_plain");X3M_BUDGET(temporal_resolve_snapshot_program,"embedded_snapshot");
                 X3M_BUDGET(temporal_resolve_thin_program,"embedded_thin");X3M_BUDGET(temporal_resolve_age_program,"embedded_age");
                 X3M_BUDGET(temporal_line_mask_program,"embedded_line_mask");X3M_BUDGET(temporal_resolve_far_program,"embedded_far");
-                X3M_BUDGET(temporal_line_mask_camera_program,"embedded_line_mask_camera");X3M_BUDGET(temporal_line_mask_depth_program,"embedded_line_mask_depth");X3M_BUDGET(temporal_line_mask_camera_depth_program,"embedded_line_mask_camera_depth");X3M_BUDGET(temporal_resolve_far_camera_program,"embedded_far_camera");X3M_BUDGET(temporal_thin_box_program,"embedded_thin_box");X3M_BUDGET(temporal_thin_box_rows_program,"embedded_thin_box_rows");X3M_BUDGET(temporal_thin_box_columns_program,"embedded_thin_box_columns");
-                // S3: the 16-tap point twins (--taa-history-taps 16), the bytecode of the earlier five resolve programs.
-                X3M_BUDGET(temporal_resolve_taps16_program,"embedded_plain_taps16");X3M_BUDGET(temporal_resolve_thin_taps16_program,"embedded_thin_taps16");X3M_BUDGET(temporal_resolve_age_taps16_program,"embedded_age_taps16");X3M_BUDGET(temporal_resolve_far_taps16_program,"embedded_far_taps16");X3M_BUDGET(temporal_resolve_far_camera_taps16_program,"embedded_far_camera_taps16");
-                // A' (--taa-region-hold): the hold resolve and the three box programs gated on the tests target.
+                X3M_BUDGET(temporal_line_mask_camera_program,"embedded_line_mask_camera");X3M_BUDGET(temporal_line_mask_depth_program,"embedded_line_mask_depth");X3M_BUDGET(temporal_line_mask_camera_depth_program,"embedded_line_mask_camera_depth");
+                // S3: the 16-tap point twins (--taa-history-taps 16), the bytecode of the earlier four resolve programs (the camera gate has none).
+                X3M_BUDGET(temporal_resolve_taps16_program,"embedded_plain_taps16");X3M_BUDGET(temporal_resolve_thin_taps16_program,"embedded_thin_taps16");X3M_BUDGET(temporal_resolve_age_taps16_program,"embedded_age_taps16");X3M_BUDGET(temporal_resolve_far_taps16_program,"embedded_far_taps16");
+                // A' (the camera gate's only path): the hold resolve and the three box programs gated on the tests target.
                 X3M_BUDGET(temporal_resolve_far_camera_hold_program,"embedded_far_camera_hold");X3M_BUDGET(temporal_thin_box_hold_program,"embedded_thin_box_hold");X3M_BUDGET(temporal_thin_box_rows_hold_program,"embedded_thin_box_rows_hold");X3M_BUDGET(temporal_thin_box_columns_hold_program,"embedded_thin_box_columns_hold");
                 #undef X3M_BUDGET
             }

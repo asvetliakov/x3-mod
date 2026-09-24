@@ -1,3 +1,5 @@
+// Include body of thin_box_rows_hold_ps.hlsl, the only program built from it (X3M_REGION_HOLD_MASK below): the ungated
+// form (b > a on the dilated chain's composed mask) was removed with that chain (2026-09-24, A' only).
 // Sentinel stabiliser (docs/architecture/temporal-integration.md, "Distant
 // unrouted stations under a pan"): the separable form of thin_box_ps.hlsl, used
 // by TemporalPass only while the stabiliser is on (the box then covers most of
@@ -41,7 +43,7 @@ bool inRegion(float4 m, float2 uv) {
 // openness inside the region.
 bool boxOpen(float4 m, float2 uv) { return (m.b > 0.5 / 255 && (m.b < 1.5 / 255 || m.b > 254.5 / 255)) || (m.a > m.r && inRegion(m, uv)); }
 #else
-bool boxOpen(float4 m, float2 uv) { return m.b > m.a; }
+#error "include body of thin_box_rows_hold_ps.hlsl only: the ungated box program was removed with the dilated chain"
 #endif
 struct BoxOutput { float4 low : COLOR0; float4 high : COLOR1; };
 BoxOutput main(float2 uv : TEXCOORD0) {

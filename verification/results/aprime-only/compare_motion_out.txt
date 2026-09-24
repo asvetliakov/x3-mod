@@ -1,0 +1,6 @@
+REMOVED seam-taa-region-hold-off
+REMOVED seam-taa-region-hold-too-long
+REMOVED seam-taa-thin-hold-off
+non_clock_leaves_differing={}
+clock_leaves_differing=53 names=['bounds_bench_ns/cascade_mask_4', 'bounds_bench_ns/cascade_mask_4_per_cascade_suns', 'bounds_bench_ns/cascade_mask_4_with_size', 'bounds_bench_ns/cascade_mask_5', 'bounds_bench_ns/single_verdict', 'bounds_bench_ns/static_classification', 'costs_us_per_frame/fill_us', 'costs_us_per_frame/gate_us', 'costs_us_per_frame/lazy_flush_us', 'costs_us_per_frame/readback_us', 'costs_us_per_frame/route_draw_us', 'costs_us_per_frame/set_rt_us']
+committed_cases=222 compared=219 identical_including_clock=129 non_clock_identical=219 bench_committed=26 bench_present=26 new_cases=['seam-taa-region-hold-ignored', 'seam-taa-thin-taps16-refused'] cases_now=221 passed=True status=PASS

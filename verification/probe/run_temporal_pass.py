@@ -8,10 +8,9 @@ sys.path.insert(0,str(root/'tools/analysis'))
 import analyze_iteration09_run2 as it09  # noqa: E402  the run-2 sharpness metrics (gradient energy, edge spread / MTF50)
 results=bottle.results_dir(root)
 exe=root/'verification/probe/build/temporal_pass_fixture.exe'
-paths=[root/name for name in ('src/renderer/temporal_pass.h','src/renderer/temporal_pass.cpp','src/temporal/resolve.h','src/temporal/resolve.hlsl','src/temporal/resolve_snapshot.hlsl','src/renderer/temporal_resolve_snapshot_program_inc.h','src/renderer/temporal_resolve_program.h','src/temporal/resolve_thin.hlsl','src/renderer/temporal_resolve_thin_program_inc.h','src/temporal/resolve_age.hlsl','src/renderer/temporal_resolve_age_program_inc.h','verification/probe/temporal_flicker_inc.h','verification/probe/temporal_line_inc.h','verification/probe/temporal_far_inc.h','verification/probe/temporal_thin_region_inc.h','src/temporal/line_mask_camera_ps.hlsl','src/renderer/temporal_line_mask_camera_program_inc.h','src/temporal/resolve_far_camera.hlsl','src/renderer/temporal_resolve_far_camera_program_inc.h','src/temporal/thin_box_ps.hlsl','src/renderer/temporal_thin_box_program_inc.h','src/temporal/thin_box_rows_ps.hlsl','src/renderer/temporal_thin_box_rows_program_inc.h','src/temporal/thin_box_columns_ps.hlsl','src/renderer/temporal_thin_box_columns_program_inc.h','verification/probe/temporal_resolve_far_reference_inc.h','src/temporal/resolve_far.hlsl','src/renderer/temporal_resolve_far_program_inc.h','src/temporal/line_mask_ps.hlsl','src/renderer/temporal_line_mask_program_inc.h','src/temporal/line_mask_depth_ps.hlsl','src/renderer/temporal_line_mask_depth_program_inc.h','src/temporal/line_mask_camera_depth_ps.hlsl','src/renderer/temporal_line_mask_camera_depth_program_inc.h','verification/probe/temporal_depth_fold_inc.h','verification/probe/temporal_history_taps_inc.h',
+paths=[root/name for name in ('src/renderer/temporal_pass.h','src/renderer/temporal_pass.cpp','src/temporal/resolve.h','src/temporal/resolve.hlsl','src/temporal/resolve_snapshot.hlsl','src/renderer/temporal_resolve_snapshot_program_inc.h','src/renderer/temporal_resolve_program.h','src/temporal/resolve_thin.hlsl','src/renderer/temporal_resolve_thin_program_inc.h','src/temporal/resolve_age.hlsl','src/renderer/temporal_resolve_age_program_inc.h','verification/probe/temporal_flicker_inc.h','verification/probe/temporal_line_inc.h','verification/probe/temporal_far_inc.h','verification/probe/temporal_thin_region_inc.h','src/temporal/line_mask_camera_ps.hlsl','src/renderer/temporal_line_mask_camera_program_inc.h','src/temporal/thin_box_ps.hlsl','src/temporal/thin_box_rows_ps.hlsl','src/temporal/thin_box_columns_ps.hlsl','verification/probe/temporal_resolve_far_reference_inc.h','src/temporal/resolve_far.hlsl','src/renderer/temporal_resolve_far_program_inc.h','src/temporal/line_mask_ps.hlsl','src/renderer/temporal_line_mask_program_inc.h','src/temporal/line_mask_depth_ps.hlsl','src/renderer/temporal_line_mask_depth_program_inc.h','src/temporal/line_mask_camera_depth_ps.hlsl','src/renderer/temporal_line_mask_camera_depth_program_inc.h','verification/probe/temporal_depth_fold_inc.h','verification/probe/temporal_history_taps_inc.h',
     'src/temporal/resolve_taps16.hlsl','src/renderer/temporal_resolve_taps16_program_inc.h','src/temporal/resolve_thin_taps16.hlsl','src/renderer/temporal_resolve_thin_taps16_program_inc.h',
     'src/temporal/resolve_age_taps16.hlsl','src/renderer/temporal_resolve_age_taps16_program_inc.h','src/temporal/resolve_far_taps16.hlsl','src/renderer/temporal_resolve_far_taps16_program_inc.h',
-    'src/temporal/resolve_far_camera_taps16.hlsl','src/renderer/temporal_resolve_far_camera_taps16_program_inc.h',
     'src/temporal/resolve_far_camera_hold.hlsl','src/renderer/temporal_resolve_far_camera_hold_program_inc.h','src/temporal/thin_box_hold_ps.hlsl','src/renderer/temporal_thin_box_hold_program_inc.h',
     'src/temporal/thin_box_rows_hold_ps.hlsl','src/renderer/temporal_thin_box_rows_hold_program_inc.h','src/temporal/thin_box_columns_hold_ps.hlsl','src/renderer/temporal_thin_box_columns_hold_program_inc.h',
     'verification/probe/temporal_region_hold_inc.h','src/temporal/depth_decode.hlsl','src/temporal/sharpen.h','src/temporal/rcas.hlsl','src/temporal/taa_sharpen_ps.hlsl','verification/probe/temporal_pass_fixture.cpp','verification/probe/build_temporal_pass.sh','verification/probe/run_temporal_pass.py')]
@@ -199,31 +198,36 @@ try:
     bad=report['thin_region']['emissive_nonfinite'][0]
     assert (bad['nan_present'],bad['overflow_present'])==('1','1'),bad
     assert (float(bad['control_b']),float(bad['nan_and_panel_core_b_max']),float(bad['overflow_b_max_3x3']),float(bad['mask_oracle_error']))==(1.0,0.0,0.0,0.0),bad
-    # Camera-relative gate (section 32.1): static-camera bit-identity, the pan scene's oracle / gate share / ripple, the stale-history bound, the pass time.
-    report['thin_region_camera']={'static':fields('THIN_REGION_CAMERA_STATIC '),'pan_oracle':fields('THIN_REGION_PAN '),'pan':fields('THIN_REGION_CAMERA '),'forward':fields('THIN_REGION_CAMERA_FORWARD '),'flight':fields('THIN_REGION_CAMERA_FLIGHT '),'stale':fields('THIN_REGION_STALE '),'box_domain':fields('THIN_REGION_BOX_DOMAIN '),'bad_motion':fields('THIN_REGION_BAD_MOTION '),'glass_mover':fields('THIN_REGION_GLASS_MOVER '),'timing':fields('LINE_TIMING_CAMERA '),'timing_lane':fields('LINE_TIMING_CAMERA_LANE ')}
-    assert [(m['kind'],m['glass']) for m in report['thin_region_camera']['bad_motion']]==[('overflow_1e30','0'),('nan','0'),('overflow_1e30','1'),('nan','1')] and all(m['camera_gate_max_within_8px']=='0.0000' and int(m['covered_px'])>0 for m in report['thin_region_camera']['bad_motion'] if m['asserted']=='1') and len(report['thin_region_camera']['glass_mover'])==1 and len(report['thin_region_camera']['box_domain'])==1 and len(report['thin_region_camera']['forward'])==1 and len(report['thin_region_camera']['flight'])==15 and [f['mover_reach_max'] for f in report['thin_region_camera']['flight'] if f['mover']=='1']==['0.0000','0.0000'] and len(report['thin_region_camera']['timing_lane'])==1,report['thin_region_camera']
-    assert len(report['thin_region_camera']['static'])==3 and all(c['colour_identical']=='1' and c['age_identical']=='1' and c['gate_differs']=='0' for c in report['thin_region_camera']['static']),report['thin_region_camera']
-    # Sentinel stabiliser (docs/architecture/temporal-integration.md "Distant unrouted stations under a pan"): the seven rows of its design.
+    # Camera-relative gate (section 32.1; A', its only path since 2026-09-24): the pan scene's tests target / ripple, the stale-history
+    # bound, forward and general flight against the per-pixel oracle, non-finite motion, glass, the pass time (the screen gate's pan
+    # oracle row beside it). The static-camera bit-identity with the screen gate was the dilated chain's and went with it.
+    report['thin_region_camera']={'pan_oracle':fields('THIN_REGION_PAN '),'pan':fields('THIN_REGION_CAMERA '),'forward':fields('THIN_REGION_CAMERA_FORWARD '),'flight':fields('THIN_REGION_CAMERA_FLIGHT '),'stale':fields('THIN_REGION_STALE '),'box_domain':fields('THIN_REGION_BOX_DOMAIN '),'bad_motion':fields('THIN_REGION_BAD_MOTION '),'glass_mover':fields('THIN_REGION_GLASS_MOVER '),'timing':fields('LINE_TIMING_CAMERA '),'timing_lane':fields('LINE_TIMING_CAMERA_LANE ')}
+    assert [(m['kind'],m['glass']) for m in report['thin_region_camera']['bad_motion']]==[('overflow_1e30','0'),('nan','0'),('overflow_1e30','1'),('nan','1')] and all(m['camera_gate_max_covered']=='0.0000' and m['camera_screen_channel_max_covered']=='0.0000' and m['camera_output_finite']=='1' and int(m['covered_px'])>0 for m in report['thin_region_camera']['bad_motion'] if m['asserted']=='1') and len(report['thin_region_camera']['glass_mover'])==1 and len(report['thin_region_camera']['box_domain'])==1 and len(report['thin_region_camera']['forward'])==1 and len(report['thin_region_camera']['flight'])==15 and [f['mover_max'] for f in report['thin_region_camera']['flight'] if f['mover']=='1']==['0.0000','0.0000'] and all(int(f['mover_px'])>0 for f in report['thin_region_camera']['flight'] if f['mover']=='1') and len(report['thin_region_camera']['pan_oracle'])==1 and len(report['thin_region_camera']['timing_lane'])==1,report['thin_region_camera']
+    # Sentinel stabiliser (docs/architecture/temporal-integration.md "Distant unrouted stations under a pan"): six of the seven rows of its
+    # design on the camera gate's A' path (row 5, the mover's 8-px reach, was the dilated chain's 17x17 minimum and went with it).
     sentinel={}
     for row in fields('SENTINEL_STABILISER '):sentinel.setdefault(row.pop('row'),[]).append(row)
     report['sentinel_stabiliser']=dict(sentinel,timing=fields('LINE_TIMING_SENTINEL '))
-    assert sorted(sentinel)==['cut','emitter','facets','mover','nonfinite_block','off','routed_sentinel','silhouette'] and [(r['pan'],r['pan_mode'],r['ratio_asserted']) for r in sentinel['facets']]==[('0.00','rest','1'),('0.30','steady','1'),('0.30','reversing','1'),('2.00','reversing','1'),('4.00','reversing','1'),('2.00','steady','0'),('4.00','steady','0')] and len(report['sentinel_stabiliser']['timing'])==1,report['sentinel_stabiliser']
+    assert sorted(sentinel)==['cut','emitter','facets','nonfinite_block','off','routed_sentinel','silhouette'] and [(r['pan'],r['pan_mode'],r['ratio_asserted']) for r in sentinel['facets']]==[('0.00','rest','1'),('0.30','steady','1'),('0.30','reversing','1'),('2.00','reversing','1'),('4.00','reversing','1'),('2.00','steady','0'),('4.00','steady','0')] and len(report['sentinel_stabiliser']['timing'])==1,report['sentinel_stabiliser']
     assert len(sentinel['off'])==2 and all(r['colour_identical']==r['age_identical']==r['mask_identical']=='1' for r in sentinel['off']),sentinel['off']
     assert all((r['ratio_asserted']=='0' or float(r['flicker_ratio'])<.6) and int(r['oracle_skipped_px'])<=int(r['oracle_skip_ceiling']) and float(r['oracle_error'])<=.02 and float(r['mask_error'])<=.5/255 for r in sentinel['facets']),sentinel['facets']
     assert sentinel['silhouette'][0]['square_differs']=='0' and int(sentinel['silhouette'][0]['unrouted_differs'])>0 and sentinel['routed_sentinel'][0]['glass_differs']=='0' and sentinel['routed_sentinel'][0]['glass_mask_differs']=='0',sentinel
-    assert sentinel['mover'][0]['differs_within_8']=='0' and sentinel['mover'][0]['strength_max_within_8']=='0.0000' and int(sentinel['mover'][0]['differs_beyond'])>0,sentinel['mover']
     assert all(int(sentinel['emitter'][0][k+'_bound_1'])<=1 and int(sentinel['emitter'][0][k+'_unbound'])<=3 for k in ('trail_px','added_trail_px','added_reach_px')) and sentinel['emitter'][0]['nonzero_px_after_exit_bound_1']==sentinel['emitter'][0]['nonzero_px_after_exit_unbound']=='0',sentinel['emitter']
     assert sentinel['nonfinite_block'][0]['block_differs_or_nonzero']=='0' and sentinel['nonfinite_block'][0]['all_finite']=='1' and float(sentinel['emitter'][0]['trail_excess_bound_1'])<=float(sentinel['emitter'][0]['trail_excess_s0'])+.4,sentinel
     assert sentinel['cut'][0]['output_minus_current_max']=='0.000000',sentinel['cut']
-    assert 'FAR_BASE numerical=299 state_restorations=6' in lattice_text and len(report['thin_region']['cases'])==21 and all(c['square_differs']=='0' for c in report['thin_region']['cases']),report['thin_region']
+    # 18 THIN_REGION rows: six configurations x three drifts (the camera gate's are THIN_REGION_HOLD's since 2026-09-24).
+    assert 'FAR_BASE numerical=299 state_restorations=6' in lattice_text and len(report['thin_region']['cases'])==18 and all(c['square_differs']=='0' for c in report['thin_region']['cases']),report['thin_region']
     assert len(report['pass_timing'])==1,report['pass_timing']
     # Cleanup batch 6 (2026-09-23): 10 / 0 are the run-139 history-weight cases (LATTICE_BASE; the filtered-sample rows and
     # their refusals, 18 and 9, went with --taa-current-filter); the flicker cases add 180 numerical and 4 state checks
     # (FLICKER_BASE; the filtered bit-identity pair went); the line block is timing only now (LINE_BASE adds 0 and 0; the
     # 45 and 2 line-filter checks went); the far-stabiliser cases add 109 and 2 (FAR_BASE; the line-filter row and the
-    # line mask-failure check, 18, went); the thin-region cases 201 and 6 (7 and 0 of them the emissive vote,
-    # thin-glow-lines.md 8.3 R3) (79 and 2 of them the camera gate, taa-lattice-crawl.md sections 32.1, 32.3, 32.4 and
-    # 32.5; 38 and 2 the sentinel stabiliser, temporal-integration.md). The depth-copy fold (taa-high-resolution.md S1) adds 8
+    # line mask-failure check, 18, went); the thin-region cases 180 and 6 (7 and 0 of them the emissive vote,
+    # thin-glow-lines.md 8.3 R3; the camera gate's, taa-lattice-crawl.md sections 32.1, 32.3, 32.4 and 32.5, and the sentinel
+    # stabiliser's, temporal-integration.md, on A'. 2026-09-24, dilated chain removed: 21 fewer, the camera config's three
+    # THIN_REGION rows (13, THIN_REGION_HOLD's), the three static identities (3), the camera pan-oracle row (3, THIN_REGION_HOLD_PAN's)
+    # and the sentinel mover row (2); the glass, forward, flight and non-finite-motion checks rewritten per pixel on the tests
+    # target (same count)). The depth-copy fold (taa-high-resolution.md S1) adds 8
     # and 77: four configurations (every twin byte-identical), the one-ulp negative control, the refused RT1 bind, the failed
     # fold draw and the device Reset; every run restores the hostile state (63 + 6 + 8 state checks).
     report['depth_fold']=fields('DEPTH_FOLD ');report['depth_fold_fault']=fields('DEPTH_FOLD_FAULT ');report['depth_fold_reset']=fields('DEPTH_FOLD_RESET ')
@@ -235,23 +239,28 @@ try:
     assert int(fold_rows[('camera_sentinel','negative_control')]['depth_bytes_differ'])>0,fold_rows[('camera_sentinel','negative_control')]
     assert [r['kind'] for r in report['depth_fold_fault']]==['rt1_bind','fold_draw'] and all(r['hr']==r['operation']=='80004005' and r['reached']=='1' and r['folded']=='0' and r['rt1_unbound_after_bind']=='1' and r['recovered_hr']=='00000000' and r['recovered_folded']=='1' and r['recovered_history']=='0' for r in report['depth_fold_fault']),report['depth_fold_fault']
     assert len(report['depth_fold_reset'])==1 and report['depth_fold_reset'][0]['bytes_differ']=='0,0,0,0' and report['depth_fold_reset'][0]['after_folded']=='2',report['depth_fold_reset']
-    # A' (taa-plan-lifted-slot-cap.md step 1): 38 numerical and 2 state checks on top of S3's 528 / 89 (the four identity
-    # configurations, the state rows (history and mask targets) and their two restorations, the stop-after-pan and box-open rows, 13 thin-region, 2 motion-start, 4 pan, 3 stale, 2 box-domain and
-    # 6 sentinel checks).
-    # S3 (taa-high-resolution.md): 20 numerical checks on top of the fold's 508 / 89: the filter probe (8: every texel centre
+    # A' (taa-plan-lifted-slot-cap.md step 1): 46 numerical and 2 state checks on top of S3's 508 / 89 (the reference's identity
+    # with the removed camera program and the four identity configurations, the state rows (the refused hold program, refused
+    # box targets turning the thin region off, history and mask targets) and their two restorations, the stop-after-pan and box-open rows, 13 thin-region, 2 motion-start, 4 pan, 3 stale,
+    # 2 box-domain, 6 sentinel and 5 fade-owner checks).
+    # S3 (taa-high-resolution.md): 21 numerical checks on top of the fold's 487 / 89: the filter probe (8: every texel centre
     # exact at 32 / 1280 / 5120 and the fraction ramp, FP16 and R32F), the tap setting (1), four scenes (two each: the program
-    # drawn and the rest / drift verdict), two fallbacks and the Reset.
+    # drawn and the rest / drift verdict; the far program on the screen gate: the camera gate has no 16-tap form), two
+    # fallbacks, no camera-gate program without the filter query, and the Reset.
     report['history_taps']={'filter_probe':fields('FILTER_PROBE '),'config':fields('HISTORY_TAPS_CONFIG '),'scenes':fields('HISTORY_TAPS program='),
-                            'fallback':fields('HISTORY_TAPS_FALLBACK '),'reset':fields('HISTORY_TAPS_RESET '),'far_idle':fields('HISTORY_TAPS_FAR_IDLE ')}
+                            'fallback':fields('HISTORY_TAPS_FALLBACK '),'reset':fields('HISTORY_TAPS_RESET '),'far_idle':fields('HISTORY_TAPS_FAR_IDLE '),
+                            'no_filter_camera':fields('HISTORY_TAPS_NO_FILTER_CAMERA ')}
     taps=report['history_taps']
-    assert len(taps['far_idle'])==2,taps['far_idle'] # report only: whether the far-camera rows are independent of the plain ones
+    assert len(taps['far_idle'])==2,taps['far_idle'] # report only: whether the far rows are independent of the plain ones
+    assert [(r['bilinear'],r['far'],r['camera_gate'],r['create'],r['camera_run_refused']) for r in taps['no_filter_camera']]==[('0','1','0','8876086a','1')],taps['no_filter_camera']
     assert len(taps['filter_probe'])==8 and all(r['mismatched']=='0' for r in taps['filter_probe'] if r['mode']=='centre'),taps['filter_probe']
     assert len(taps['scenes'])==4 and all(r['drawn']=='1' and r['caller_16_identical']=='1' and r['bound_exceeded']=='0' for r in taps['scenes']) and all(float(r['max_ulps'])<=1 for r in taps['scenes'] if r['motion']=='rest'),taps['scenes']
     assert [(r['bilinear'],r['reason'],r['drawn_16'],r['identical_to_16']) for r in taps['fallback']]==[('0','adapter_query','1','1')]*2 and taps['reset'][0]['identical_to_fresh']=='1',taps
-    # A' (taa-plan-lifted-slot-cap.md step 1, --taa-region-hold): the identity of the hold program with holds reading 0 against the
-    # camera program on the 1x1 composition (colour bit for bit, age = count + encoded holds; four k / S configurations), the state
-    # rows, and the thin-region rows with the hold against the CPU oracle extended by the holds.
-    report['region_hold']={'identity':fields('REGION_HOLD_IDENTITY '),'state':fields('REGION_HOLD_STATE '),'thin':fields('THIN_REGION_HOLD drift='),
+    # A' (taa-plan-lifted-slot-cap.md step 1; the camera gate's only path since 2026-09-24): the identity of the hold program with
+    # holds reading 0 against the removed camera program (compiled from resolve.hlsl, word for word the removed embedded program) on
+    # the 1x1 composition (colour bit for bit, age = count + encoded holds; four k / S configurations), the state rows, and the
+    # thin-region rows with the hold against the CPU oracle extended by the holds.
+    report['region_hold']={'reference':fields('REGION_HOLD_IDENTITY_REFERENCE '),'identity':fields('REGION_HOLD_IDENTITY '),'state':fields('REGION_HOLD_STATE '),'thin':fields('THIN_REGION_HOLD drift='),
                            'motion_start':fields('THIN_REGION_HOLD_MOTION_START '),'pan':fields('THIN_REGION_HOLD_PAN '),'stale':fields('THIN_REGION_HOLD_STALE '),
                            'box_domain':fields('THIN_REGION_HOLD_BOX_DOMAIN '),'sentinel':fields('THIN_REGION_HOLD_SENTINEL '),
                            'pan_stop':fields('THIN_REGION_HOLD_PAN_STOP '),'box_open':fields('THIN_REGION_HOLD_BOX_OPEN '),
@@ -261,11 +270,12 @@ try:
     owner=hold['fade_owner']
     assert len(owner)==1 and owner[0]['pre_switch_differs']=='0' and int(owner[0]['max_openings_per_px'])<=1 and int(owner[0]['extra_open_frames'])<=int(owner[0]['hold_frames'])+1 \
         and owner[0]['late_hold_differs']=='0' and float(owner[0]['age_oracle_error'])==0,owner
+    assert len(hold['reference'])==1 and hold['reference'][0]['identical']=='1' and hold['reference'][0]['words']=='2196',hold['reference']
     assert len(hold['identity'])==4 and all(r['colour_differs']==r['age_differs']==r['count_differs']=='0' and int(r['blended'])>256 for r in hold['identity']),hold['identity']
-    assert len(hold['state'])==1 and all(hold['state'][0][k]=='1' for k in ('hold_off_restarts','hold_off_continues','hold_on_keeps','taps16_dilations','taps5_hold','box_fallback','rearmed')),hold['state']
-    assert [hold['state'][0][k] for k in ('masks_hold','masks_off','masks_on','masks_taps16','masks_taps5','masks_at_reset','masks_after_reset','masks_box_fallback')]==['1','2','1','2','1','0','1','2'],hold['state']
+    assert len(hold['state'])==1 and all(hold['state'][0][k]=='1' for k in ('refused_path','screen_restarts','screen_continues','camera_keeps','taps16_refused','taps5_camera','box_refused_region_off','rearmed')),hold['state']
+    assert [hold['state'][0][k] for k in ('masks_camera','masks_screen','masks_on','masks_at_reset','masks_after_reset','masks_box_refused')]==['1','2','1','0','1','1'],hold['state']
     assert len(hold['thin'])==3 and all(r['square_differs']=='0' and float(r['age_oracle_error'])==0 for r in hold['thin']) and len(hold['motion_start'])==1 and len(hold['pan'])==1 and len(hold['stale'])==1 and len(hold['box_domain'])==1 and len(hold['sentinel'])==2 and len(hold['pan_stop'])==1 and len(hold['box_open'])==1,hold
-    assert lattice.returncode==0 and 'LATTICE_BASE numerical=10 state_restorations=0' in lattice_text and 'FLICKER_BASE numerical=190 state_restorations=4' in lattice_text and 'LINE_BASE numerical=190 state_restorations=4' in lattice_text and 'DEPTH_FOLD_BASE numerical=508 state_restorations=89' in lattice_text and 'HISTORY_TAPS_BASE numerical=528 state_restorations=89' in lattice_text and 'RESULT PASS numerical=571 state_restorations=91 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
+    assert lattice.returncode==0 and 'LATTICE_BASE numerical=10 state_restorations=0' in lattice_text and 'FLICKER_BASE numerical=190 state_restorations=4' in lattice_text and 'LINE_BASE numerical=190 state_restorations=4' in lattice_text and 'DEPTH_FOLD_BASE numerical=487 state_restorations=89' in lattice_text and 'HISTORY_TAPS_BASE numerical=508 state_restorations=89' in lattice_text and 'RESULT PASS numerical=554 state_restorations=91 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
     # The 2,048-slot ceiling per TAA program (docs/architecture/taa-plan-lifted-slot-cap.md section 2; AGENTS.md "Shader slot
     # budget": 512 is the spec minimum, not a limit). device_limit stays a record.
     assert len(report['flicker']['drift'])==64 and len(report['flicker']['near_depth'])==8 and all(float(v['instruction_slots'])<=2048 and v['within_ceiling_2048']==1 for k,v in report['lattice']['budget'].items()),report['lattice']['budget']

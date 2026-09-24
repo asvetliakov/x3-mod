@@ -380,11 +380,12 @@ class TaaImageDefaultsDll(unittest.TestCase):
         # The default is resolved after both values are parsed, so it sees the final settings.
         gate = source.index('GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION_GATE"')
         self.assertLess(source.index('GetEnvironmentVariableW(L"X3M_TAA_THIN_REGION"'), gate)
-        # An explicit value still decides, and the route's own fallbacks to the screen gate are unchanged:
-        # the configure-time refusal and the box-allocation failure both leave the screen behaviour.
+        # An explicit value still decides. A configure-time refusal of the camera-gate programs turns the thin region off
+        # (A' only since 2026-09-24: no fallback program set), and so does a box-target allocation failure (in the pass).
         self.assertIn('if(wcscmp(gate_setting,L"camera")==0)taa_thin_camera_gate=true;', source)
         self.assertIn('taa_thin_camera_gate_ = false;', (ROOT / 'src/proxy/motion_output.cpp').read_text())
-        self.assertIn('camera_requested&&!camera_gate_available()', (ROOT / 'src/renderer/temporal_pass.cpp').read_text())
+        self.assertIn('camera_requested&&(!camera_gate_available()', (ROOT / 'src/renderer/temporal_pass.cpp').read_text())
+        self.assertIn('taa_thin_weight_ = 0.f; taa_thin_camera_gate_ = false;', (ROOT / 'src/proxy/motion_output.cpp').read_text())
 
 
 if __name__ == '__main__':

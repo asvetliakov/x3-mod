@@ -285,10 +285,6 @@ float taa_sky_history_exit_px = 0.f;
 // X3M_TAA_HISTORY_TAPS (5 default, 16; docs/architecture/taa-high-resolution.md S3): the resolve's history
 // reconstruction, 5-tap bilinear Catmull-Rom or the 16-tap point form of the earlier builds (in-flight A/B).
 unsigned taa_history_taps = 5;
-// X3M_TAA_REGION_HOLD (on default, off; docs/architecture/taa-plan-lifted-slot-cap.md step 1): A' of the thin region's camera
-// gate (the mask's dilation draws dropped, the region and closure holds carried in the age target); off keeps the dilations
-// for an in-flight A/B. Invalid or oversized: stays on, logged. Inert without the camera gate.
-bool taa_region_hold = true;
 // X3M_TAA_THIN_VOTE (off default, on; docs/architecture/taa-thin-geometry-alternatives.md section 3.2): the draw-time thin
 // vote of the thin region (per-subset triangle-height histograms, RT2 .a, the tests draw's vote). Invalid or oversized:
 // stays off, logged. Takes effect with the route, TAA, the sun-share lane and the ownership wrapper (hook_device).
@@ -2524,7 +2520,6 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
     hooked.motion_output.configure_unmatched_static(taa_unmatched_static);
     hooked.motion_output.configure_sky_history(taa_sky_history_strict,taa_sky_history_band_px,taa_sky_history_exit_px);
     hooked.motion_output.configure_history_taps(taa_history_taps);
-    hooked.motion_output.configure_region_hold(taa_region_hold);
     hooked.motion_output.configure_motion_weight(taa_motion_weight[0],taa_motion_weight[1],taa_motion_weight[2]);
     // Render-state configuration (hybrid unhook): the reasons that keep the
     // SetRenderState/SetSamplerState hooks installed, then the capability
@@ -3625,11 +3620,10 @@ void initialize_log(HMODULE module) {
         if(!wcscmp(setting,L"16"))taa_history_taps=16;
         else if(wcscmp(setting,L"5")!=0)log("taa_history_taps_setting invalid=1");
     }
-    if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_REGION_HOLD",setting,32);n>=32)log("taa_region_hold_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays on
-    else if(n>0){
-        if(!wcscmp(setting,L"off"))taa_region_hold=false;
-        else if(wcscmp(setting,L"on")!=0)log("taa_region_hold_setting invalid=1");
-    }
+    // X3M_TAA_REGION_HOLD was removed with the dilated camera-gate chain (2026-09-24, docs/architecture/
+    // taa-plan-lifted-slot-cap.md step 1): the region hold (A') is the camera gate's only path. A value that is still set,
+    // of any length, is ignored with this one line.
+    if(GetEnvironmentVariableW(L"X3M_TAA_REGION_HOLD",setting,32)>0)log("taa_region_hold_setting ignored=1 reason=removed");
     if(const DWORD n=GetEnvironmentVariableW(L"X3M_TAA_THIN_VOTE",setting,32);n>=32)log("taa_thin_vote_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays off
     else if(n>0){
         if(!wcscmp(setting,L"on"))taa_thin_vote=true;

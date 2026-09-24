@@ -458,8 +458,8 @@ this step. The fog pass also refuses any RT2 that is not `A32B32G32R32F` (`fog_p
 One re-baseline of the TAA programs under the lifted slot cap; the ledger entry is
 [temporal-resolve.md](../verification/temporal-resolve.md) "A' region hold".
 
-- **Mask chain.** With `--taa-region-hold on` (the DLL default; `off` is the A/B) and the camera gate, the chain is the
-  tests draw alone: `taa_mask` should read `taa_mask_tests` under `--gpu-sync-timing` (the x and y draws cost 1.33 ms
+- **Mask chain.** With the camera gate the chain is the tests draw alone (A' is the camera gate's only path since Run 79 A
+  accepted it; `--taa-region-hold` and the dilated chain were removed, ledger "A' only: dilated chain removed"): `taa_mask` should read `taa_mask_tests` under `--gpu-sync-timing` (the x and y draws cost 1.33 ms
   of 8.76 at 5120x1440 in run290, measured). The second mask target (29.5 MB at 5120x1440) is released.
 - **Resolve.** `resolve_far_camera_hold.hlsl` composes the region from the tests target with a region hold and a peak
   hold of the camera gate's closure, both one jitter cycle long (L = the jitter sample count, 8 by default), the gate's own

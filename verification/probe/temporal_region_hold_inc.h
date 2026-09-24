@@ -1,31 +1,22 @@
-// A' (docs/architecture/taa-plan-lifted-slot-cap.md step 1; FrameInputs::thin_region_hold, --taa-region-hold), lattice mode.
-// Included after temporal_thin_region_inc.h: uses thin_sequence / thin_objects / thin_ripple, line_model (LineConfig::hold),
-// fragmented, quantise8 and the scene hooks.
+// A' (docs/architecture/taa-plan-lifted-slot-cap.md step 1), lattice mode: the camera gate's only path since the dilated camera
+// chain and --taa-region-hold were removed (2026-09-24). Included after temporal_thin_region_inc.h: uses thin_sequence /
+// thin_objects / thin_ripple, hold_tests_error, line_model (the camera gate's holds), fragmented, quantise8 and the scene hooks.
 //   REGION_HOLD_IDENTITY: the hold program with holds reading 0 (whole age counts in the previous age target) against the
-//   camera program on the per-pixel composition of the same tests texels (what the y draw writes with an 11x11 / 17x17 window
-//   of one pixel, the two openness values taken as the smaller of this pixel's and its nearest-depth 3x3 neighbour's, the
-//   resolve's own dilation, replicated on the CPU), drawn directly on synthetic inputs (rest and fractional motion, routed / unrouted / sentinel pixels, every class
-//   code, camera openness above screen openness, k = 0 and 0.5, S = 0 and 1): colour bytes identical, and the age equals the
-//   camera program's count plus the hold fraction the CPU encodes from the tests texel.
-//   REGION_HOLD_STATE: refusals, the hold ignored without the camera gate, hostile state (c11 included), a failed box draw,
-//   Reset, the 16-tap fallback to the dilations, and the history restart when the hold is turned off.
+//   camera program of the removed dilated chain (compiled here from resolve.hlsl with X3M_CAMERA_GATE / X3M_FAR_STABILIZE,
+//   checked byte-identical to the removed embedded words) on the per-pixel composition of the same tests texels (what its y
+//   draw wrote with an 11x11 / 17x17 window of one pixel, the two openness values taken as the smaller of this pixel's and its
+//   nearest-depth 3x3 neighbour's, the resolve's own dilation, replicated on the CPU), drawn directly on synthetic inputs
+//   (rest and fractional motion, routed / unrouted / sentinel pixels, every class code, camera openness above screen
+//   openness, k = 0 and 0.5, S = 0 and 1): colour bytes identical, and the age equals the reference's count plus the hold
+//   fraction the CPU encodes from the tests texel.
+//   REGION_HOLD_STATE: refusals, the camera-gate programs refused at creation (no camera-gate path; the far program stays),
+//   hostile state (c11 included), a failed box draw, Reset, 16 taps (a camera-gate run refused), the history restart when a
+//   run leaves the camera gate, and the mask targets (one on a camera-gate run, two on the screen gate).
 //   THIN_REGION_HOLD / _MOTION_START / _PAN / _STALE / _SENTINEL: the thin-region rows of section 13 / 32 with the hold, against
-//   the CPU oracle extended by the holds (line_model with LineConfig::hold, fed the published tests target of every frame).
+//   the CPU oracle extended by the holds (line_model with the camera gate, fed the published tests target of every frame).
 //   THIN_REGION_HOLD_FADE_OWNER (docs/architecture/fade-rt2-ownership.md): a far routed square switching sentinel -> valid once.
 namespace region_hold {
 constexpr UINT S=EdgeScene::S;
-// The tests draw of the camera mask (line_mask_ps.hlsl c7.z = 0) on the last frame of a run, from the scene hooks: r = screen
-// openness, a = camera openness (max of it and the camera-relative openness on routed valid depth; 1 elsewhere on the camera
-// path: no vote), b = the flag / class code, g = 0 (no far gate in these scenes... the far gate is checked by the far cases).
-void tests_cpu(const FarRun& run,UINT x,UINT y,float out[3]){
-    const float d=px(run.depth.back(),x,y),alpha=px(run.motion.back(),x,y,3);const bool valid=d>=0&&d<=1,sentinel=d<=-.5f,routed=alpha==1.f;
-    const double vx=valid?line_velocity_x(d):cameraPanX,vy=valid?line_velocity(d):cameraPanY;
-    auto open=[](double speed){return quantise8(1-(speed-double(farLo))/(double(farHi)-double(farLo)));};
-    const float screen=open(std::hypot(vx,vy));
-    out[0]=screen;out[1]=valid&&routed?std::max(screen,open(std::hypot(vx-cameraPanX,vy-cameraPanY))):(valid||sentinel)?1.f:screen;
-    out[2]=quantise8((fragmented(run.depth.back(),int(x),int(y))?254./255:0)+(sentinel&&alpha==-1.f?1./255:0));}
-double tests_error(const FarRun& run){double e=0;for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x){float t[3];tests_cpu(run,x,y,t);
-    e=std::max({e,std::fabs(double(px(run.mask.back(),x,y,0))-t[0]),std::fabs(double(px(run.mask.back(),x,y,3))-t[1]),std::fabs(double(px(run.mask.back(),x,y,2))-t[2])});}return e;}
 struct Oracle{double colour=0,age=0;};
 Oracle oracle(const FarRun& run,const LineConfig& c,unsigned from=0){const auto model=line_model(run,c,&run.mask);Oracle o;
     for(unsigned n=from;n<run.output.size();++n)for(UINT y=3;y+3<S;++y)for(UINT x=3;x+3<S;++x){o.colour=std::max(o.colour,double(std::fabs(px(run.output[n],x,y)-model.color[n][y*S+x])));
@@ -33,11 +24,19 @@ Oracle oracle(const FarRun& run,const LineConfig& c,unsigned from=0){const auto 
     return o;}
 
 // ---- REGION_HOLD_IDENTITY ----
-void identity_cases(EdgeScene& helper){IDirect3DDevice9* const d=helper.d;
+// The camera program of the removed dilated chain (resolve_far_camera.hlsl: the two defines and resolve.hlsl, no production
+// program since 2026-09-24): word count and FNV-1a 64 of its embedded words at 5a4bbd52 (bytecode_sha256 773ab6cc2a3a1741...).
+constexpr std::size_t removedCameraWords=2196;constexpr std::uint64_t removedCameraFnv=0x457159f1f8e5c6b3ull;
+std::uint64_t fnv1a(const unsigned char* p,std::size_t n){std::uint64_t h=0xcbf29ce484222325ull;for(std::size_t i=0;i<n;++i){h^=p[i];h*=0x100000001b3ull;}return h;}
+void identity_cases(EdgeScene& helper,Compiler compiler){IDirect3DDevice9* const d=helper.d;
     namespace r=x3m::renderer;
     Com<IDirect3DPixelShader9> held,composed;
     check("hold identity program",d->CreatePixelShader(reinterpret_cast<const DWORD*>(r::temporal_resolve_far_camera_hold_program()),&held.p));
-    check("hold identity reference program",d->CreatePixelShader(reinterpret_cast<const DWORD*>(r::temporal_resolve_far_camera_program()),&composed.p));
+    {Com<ID3DXBuffer> code;compile(compiler,"#define X3M_CAMERA_GATE 1\n#define X3M_FAR_STABILIZE 1\n"+resolveSource,"ps_3_0",&code.p);
+        const std::size_t words=code->GetBufferSize()/sizeof(DWORD);const std::uint64_t hash=fnv1a(static_cast<const unsigned char*>(code->GetBufferPointer()),code->GetBufferSize());
+        std::printf("REGION_HOLD_IDENTITY_REFERENCE words=%zu fnv1a=%016llx removed_words=%zu removed_fnv1a=%016llx identical=%u\n",words,(unsigned long long)hash,removedCameraWords,(unsigned long long)removedCameraFnv,unsigned(words==removedCameraWords&&hash==removedCameraFnv));
+        ++numeric_checks;require(words==removedCameraWords&&hash==removedCameraFnv,"hold identity: the reference compiled from resolve.hlsl is the removed camera program word for word");
+        check("hold identity reference program",d->CreatePixelShader(static_cast<DWORD*>(code->GetBufferPointer()),&composed.p));}
     enum{Current,Depth,Previous,PreviousDepth,Motion,Age,Tests,Composed,BoxLow,BoxHigh,Inputs};
     const D3DFORMAT formats[Inputs]={D3DFMT_A16B16G16R16F,D3DFMT_R32F,D3DFMT_A16B16G16R16F,D3DFMT_R32F,D3DFMT_A32B32G32R32F,D3DFMT_R32F,D3DFMT_A8R8G8B8,D3DFMT_A8R8G8B8,D3DFMT_A16B16G16R16F,D3DFMT_A16B16G16R16F};
     Com<IDirect3DTexture9> input[Inputs];
@@ -114,29 +113,35 @@ void identity_cases(EdgeScene& helper){IDirect3DDevice9* const d=helper.d;
 }
 
 // ---- REGION_HOLD_STATE ----
-// Refuses A16B16G16R16F render-target textures after the first `allowed` while alive: after a Reset the run creates its two
-// FP16 colour histories first, then the box pair, so allowed = 2 refuses the box pair alone.
-struct LateBoxFault {
-    using Create=HRESULT(WINAPI*)(IDirect3DDevice9*,UINT,UINT,UINT,DWORD,D3DFORMAT,D3DPOOL,IDirect3DTexture9**,HANDLE*);
-    static inline Create original=nullptr;static inline unsigned allowed=0,refused=0;
+// (LateBoxFault: temporal_thin_region_inc.h.)
+// Refuses CreatePixelShader of the hold resolve's words while alive (a device that refuses the camera gate's program at creation).
+struct HoldRefusal {
+    using Create=HRESULT(WINAPI*)(IDirect3DDevice9*,const DWORD*,IDirect3DPixelShader9**);
+    static inline Create original=nullptr;static inline unsigned refused=0;
     void** previous;void* table[119];IDirect3DDevice9* device;
-    static HRESULT WINAPI hook(IDirect3DDevice9* d,UINT w,UINT h,UINT levels,DWORD usage,D3DFORMAT format,D3DPOOL pool,IDirect3DTexture9** out,HANDLE* shared){
-        if(format==D3DFMT_A16B16G16R16F&&(usage&D3DUSAGE_RENDERTARGET)){if(allowed)--allowed;else{++refused;if(out)*out=nullptr;return D3DERR_OUTOFVIDEOMEMORY;}}
-        return original(d,w,h,levels,usage,format,pool,out,shared);}
-    LateBoxFault(IDirect3DDevice9* d,unsigned allow):previous(*reinterpret_cast<void***>(d)),device(d){std::copy(previous,previous+119,table);std::memcpy(&original,&table[23],sizeof original);auto fn=&hook;std::memcpy(&table[23],&fn,sizeof fn);allowed=allow;refused=0;*reinterpret_cast<void***>(d)=table;}
-    ~LateBoxFault(){*reinterpret_cast<void***>(device)=previous;}
+    static HRESULT WINAPI hook(IDirect3DDevice9* d,const DWORD* words,IDirect3DPixelShader9** out){
+        if(words==reinterpret_cast<const DWORD*>(x3m::renderer::temporal_resolve_far_camera_hold_program())){++refused;if(out)*out=nullptr;return D3DERR_OUTOFVIDEOMEMORY;}
+        return original(d,words,out);}
+    explicit HoldRefusal(IDirect3DDevice9* d):previous(*reinterpret_cast<void***>(d)),device(d){std::copy(previous,previous+119,table);std::memcpy(&original,&table[106],sizeof original);auto fn=&hook;std::memcpy(&table[106],&fn,sizeof fn);refused=0;*reinterpret_cast<void***>(d)=table;}
+    ~HoldRefusal(){*reinterpret_cast<void***>(device)=previous;}
 };
 void state_cases(EdgeScene& s,const DWORD* resolver){
     IDirect3DDevice9* const d=s.d;s.render(thin_objects(0),sentinelBackground,0,0);Output out;const FlickerConfig none{"hold-validation",0,0,.1f,.5f,false,.9f};
-    TemporalPass pass;check("hold initialize",pass.initialize(d,nullptr,resolver));check("hold configure far",pass.configure_far());
-    auto in=flicker_inputs(s,none,0,0,true);in.caller_scene_open=false;in.thin_region_weight=.97f;in.thin_region_camera_gate=true;in.thin_region_hold=true;
-    require(pass.run(in,&out)==E_INVALIDARG,"region hold without configure_region_hold is refused");
-    in.thin_region_camera_gate=false;require(SUCCEEDED(pass.run(in,&out))&&!pass.diagnostics().region_hold,"region hold is ignored without the camera gate");in.thin_region_camera_gate=true;
-    {TemporalPass bare;check("hold bare initialize",bare.initialize(d,nullptr,resolver));require(bare.configure_region_hold()==E_FAIL&&!bare.region_hold_available(),"configure_region_hold needs the camera-gate programs");}
-    check("hold configure",pass.configure_region_hold());check("hold configure is idempotent",pass.configure_region_hold());require(pass.region_hold_available()&&!pass.region_hold_sentinel_available(),"hold programs created; the separable twins only with the sentinel programs");
-    check("hold configure sentinel",pass.configure_sentinel());require(pass.region_hold_sentinel_available(),"configure_sentinel creates the separable box's hold twins after the hold");
-    require(SUCCEEDED(pass.run(in,&out))&&out.stabiliser_mask&&out.age&&pass.diagnostics().region_hold,"hold run publishes the tests target and the age target");
-    require(SUCCEEDED(pass.run(in,&out))&&out.used_history&&pass.diagnostics().region_hold,"hold run continues the history");
+    auto in=flicker_inputs(s,none,0,0,true);in.caller_scene_open=false;in.thin_region_weight=.97f;in.thin_region_camera_gate=true;
+    // The hold resolve refused at creation: no camera-gate path (no fallback program set), the far program and the screen gate stay.
+    bool refusedPath=false;HRESULT refusedResult=S_OK;
+    {TemporalPass refused;check("hold refusal initialize",refused.initialize(d,nullptr,resolver));{HoldRefusal refusal(d);check("hold refusal configure far",refused.configure_far());require(HoldRefusal::refused==1,"hold refusal: configure_far asked for the hold resolve once");}
+        refusedResult=refused.camera_programs_result();
+        const bool refusedRun=refused.run(in,&out)==E_INVALIDARG;
+        in.thin_region_camera_gate=false;const bool screen=SUCCEEDED(refused.run(in,&out))&&out.stabiliser_mask&&!refused.diagnostics().region_hold;in.thin_region_camera_gate=true;
+        refusedPath=refused.far_available()&&!refused.camera_gate_available()&&refusedResult==D3DERR_OUTOFVIDEOMEMORY&&refused.configure_sentinel()==E_FAIL&&refusedRun&&screen;}
+    TemporalPass pass;check("hold initialize",pass.initialize(d,nullptr,resolver));
+    require(pass.run(in,&out)==E_INVALIDARG,"camera gate without configure_far is refused");
+    check("hold configure far",pass.configure_far());require(pass.camera_gate_available()&&pass.camera_programs_result()==S_OK&&!pass.sentinel_available(),"configure_far creates the camera mask, the hold resolve and its box; the separable twins only with configure_sentinel");
+    check("hold configure sentinel",pass.configure_sentinel());check("hold configure sentinel is idempotent",pass.configure_sentinel());require(pass.sentinel_available(),"configure_sentinel creates the separable box's twins");
+    for(unsigned bad:{0u,65u}){in.thin_region_hold_frames=bad;require(pass.run(in,&out)==E_INVALIDARG,"a hold length outside 1..64 is refused");}in.thin_region_hold_frames=oracleHoldFrames;
+    require(SUCCEEDED(pass.run(in,&out))&&out.stabiliser_mask&&out.age&&pass.diagnostics().region_hold,"camera-gate run publishes the tests target and the age target");
+    require(SUCCEEDED(pass.run(in,&out))&&out.used_history&&pass.diagnostics().region_hold,"camera-gate run continues the history");
     const float junk[4]={9,8,7,6};for(UINT reg:{0u,4u,5u,6u,10u,11u,22u,24u,25u})check("hold hostile constant",d->SetPixelShaderConstantF(reg,junk,1));
     for(UINT slot:{0u,7u,8u,9u,10u,11u})check("hold hostile texture",d->SetTexture(slot,s.wave.p));
     check("hold hostile s8 min",d->SetSamplerState(8,D3DSAMP_MINFILTER,D3DTEXF_LINEAR));check("hold hostile s11 min",d->SetSamplerState(11,D3DSAMP_MINFILTER,D3DTEXF_POINT));check("hold hostile CWE1",d->SetRenderState(D3DRS_COLORWRITEENABLE1,0));
@@ -146,80 +151,84 @@ void state_cases(EdgeScene& s,const DWORD* resolver){
     // Draws of a hold run with the separable box: tests (1), rows (2), columns (3), resolve (4).
     for(unsigned call:{2u,4u}){Output failed;{Fault fault(d,call);require(pass.run(in,&failed)==E_FAIL&&!failed.color&&!pass.diagnostics().history_valid,"failed box / resolve draw of a hold run publishes nothing");}
         check("hold recovery",pass.run(in,&out));require(out.color&&!out.used_history&&pass.diagnostics().region_hold,"after a failed hold run the resolve restarts without history");}
-    pass.before_reset();pass.after_reset(S_OK);check("hold after Reset",pass.run(in,&out));require(out.color&&!out.used_history&&pass.region_hold_available()&&pass.diagnostics().region_hold,"Reset keeps the hold programs and restarts the history");
+    pass.before_reset();pass.after_reset(S_OK);check("hold after Reset",pass.run(in,&out));require(out.color&&!out.used_history&&pass.camera_gate_available()&&pass.diagnostics().region_hold,"Reset keeps the camera-gate programs and restarts the history");
     check("hold continues after Reset",pass.run(in,&out));
-    // Turning the hold off restarts the history (the camera program reads whole counts); turning it on keeps it (whole counts read as no hold).
-    // Mask targets (line_mask_targets): a hold run keeps one and releases the second; every fallback to the dilations allocates it again.
-    const unsigned masksHold=pass.line_mask_targets();
-    in.thin_region_hold=false;check("hold off",pass.run(in,&out));const bool restarted=!out.used_history&&!pass.diagnostics().region_hold;const unsigned masksOff=pass.line_mask_targets();
-    check("hold off again",pass.run(in,&out));const bool continued=out.used_history;
-    in.thin_region_hold=true;check("hold on again",pass.run(in,&out));const bool kept=out.used_history&&pass.diagnostics().region_hold;const unsigned masksOn=pass.line_mask_targets();
-    // 16 taps: the hold program has no 16-tap form; the run keeps the dilations and the 16-tap camera program.
-    check("hold taps16",pass.configure_history_taps(16));check("hold taps16 run",pass.run(in,&out));const bool taps16=!pass.diagnostics().region_hold&&pass.diagnostics().history_taps==16&&!out.used_history;const unsigned masks16=pass.line_mask_targets();
-    check("hold taps5",pass.configure_history_taps(5));check("hold taps5 run",pass.run(in,&out));const bool taps5=pass.diagnostics().region_hold&&pass.diagnostics().history_taps==5&&out.used_history;const unsigned masks5=pass.line_mask_targets();
-    // Reset: every default-pool target goes; the first hold run after it allocates one mask target.
+    // Leaving the camera gate restarts the history (the screen gate's far program reads whole counts); coming back keeps it
+    // (whole counts read as no hold). Mask targets (line_mask_targets): one on a camera-gate run, two on the screen gate.
+    const unsigned masksCamera=pass.line_mask_targets();
+    in.thin_region_camera_gate=false;check("screen gate",pass.run(in,&out));const bool restarted=!out.used_history&&!pass.diagnostics().region_hold;const unsigned masksScreen=pass.line_mask_targets();
+    check("screen gate again",pass.run(in,&out));const bool continued=out.used_history;
+    in.thin_region_camera_gate=true;check("camera gate again",pass.run(in,&out));const bool kept=out.used_history&&pass.diagnostics().region_hold;const unsigned masksOn=pass.line_mask_targets();
+    // 16 taps: the camera gate has no 16-tap program; a camera-gate run is refused, 5 taps run it again.
+    check("hold taps16",pass.configure_history_taps(16));const bool taps16=!pass.camera_gate_available()&&pass.run(in,&out)==E_INVALIDARG;
+    check("hold taps5",pass.configure_history_taps(5));check("hold taps5 run",pass.run(in,&out));const bool taps5=pass.camera_gate_available()&&pass.diagnostics().region_hold&&pass.diagnostics().history_taps==5;
+    // Reset: every default-pool target goes; the first camera-gate run after it allocates one mask target.
     pass.before_reset();const unsigned masksReset=pass.line_mask_targets();pass.after_reset(S_OK);check("hold run after second Reset",pass.run(in,&out));const unsigned masksAfterReset=pass.line_mask_targets();
-    // Box-target creation failure on a hold run: the camera gate falls back to the screen gate for the session, which needs the second target.
-    pass.before_reset();pass.after_reset(S_OK);bool boxFallback=false;
-    {LateBoxFault fault(d,2);check("hold run with the box targets refused",pass.run(in,&out));boxFallback=LateBoxFault::refused>0&&pass.camera_gate_failed()&&!pass.diagnostics().region_hold;}
-    const unsigned masksBoxFallback=pass.line_mask_targets();
+    // Box-target creation failure on a camera-gate run: the thin region off for the session (no fallback program set; this
+    // input has no far stabiliser of its own, so the plain resolve): no mask published, the next run neither retries the
+    // boxes nor draws the camera gate and continues the history; one mask target stays from the refused run's allocation.
+    pass.before_reset();pass.after_reset(S_OK);bool boxRefused=false;
+    {LateBoxFault fault(d,2);check("hold run with the box targets refused",pass.run(in,&out));boxRefused=LateBoxFault::refused>0&&pass.camera_gate_failed()&&pass.camera_gate_result()==D3DERR_OUTOFVIDEOMEMORY&&!pass.diagnostics().region_hold&&out.color&&!out.stabiliser_mask&&!out.age;}
+    {LateBoxFault fault(d,0);check("hold run after the refused box targets",pass.run(in,&out));boxRefused=boxRefused&&LateBoxFault::refused==0&&!pass.diagnostics().region_hold&&out.used_history&&!out.stabiliser_mask;}
+    const unsigned masksBoxRefused=pass.line_mask_targets();
     pass.before_reset();pass.after_reset(S_OK);check("hold re-armed after Reset",pass.run(in,&out));const bool rearmed=pass.diagnostics().region_hold&&pass.line_mask_targets()==1;
-    std::printf("REGION_HOLD_STATE hold_off_restarts=%u hold_off_continues=%u hold_on_keeps=%u taps16_dilations=%u taps5_hold=%u masks_hold=%u masks_off=%u masks_on=%u masks_taps16=%u masks_taps5=%u masks_at_reset=%u masks_after_reset=%u box_fallback=%u masks_box_fallback=%u rearmed=%u\n",
-        unsigned(restarted),unsigned(continued),unsigned(kept),unsigned(taps16),unsigned(taps5),masksHold,masksOff,masksOn,masks16,masks5,masksReset,masksAfterReset,unsigned(boxFallback),masksBoxFallback,unsigned(rearmed));
-    ++numeric_checks;require(restarted&&continued&&kept&&taps16&&taps5,"hold off restarts the history once, hold on keeps it; 16 taps keep the dilations");
-    ++numeric_checks;require(masksHold==1&&masksOff==2&&masksOn==1&&masks16==2&&masks5==1&&masksReset==0&&masksAfterReset==1&&boxFallback&&masksBoxFallback==2&&rearmed,
-        "mask targets: one on a hold run (the second released), two again on every fallback to the dilations (hold off, 16 taps, refused box targets), none across Reset, one after it");
+    std::printf("REGION_HOLD_STATE refused_path=%u refused_create=%08lx screen_restarts=%u screen_continues=%u camera_keeps=%u taps16_refused=%u taps5_camera=%u masks_camera=%u masks_screen=%u masks_on=%u masks_at_reset=%u masks_after_reset=%u box_refused_region_off=%u masks_box_refused=%u rearmed=%u\n",
+        unsigned(refusedPath),(unsigned long)refusedResult,unsigned(restarted),unsigned(continued),unsigned(kept),unsigned(taps16),unsigned(taps5),masksCamera,masksScreen,masksOn,masksReset,masksAfterReset,unsigned(boxRefused),masksBoxRefused,unsigned(rearmed));
+    ++numeric_checks;require(refusedPath,"hold resolve refused at creation: no camera-gate program, a camera-gate run and configure_sentinel refused, the screen gate runs");
+    ++numeric_checks;require(restarted&&continued&&kept&&taps16&&taps5,"leaving the camera gate restarts the history once, coming back keeps it; 16 taps refuse a camera-gate run");
+    ++numeric_checks;require(masksCamera==1&&masksScreen==2&&masksOn==1&&masksReset==0&&masksAfterReset==1&&masksBoxRefused==1&&rearmed,
+        "mask targets: one on a camera-gate run (the second released), two on the screen gate, none across Reset, one after it (the refused box targets allocate no second)");
+    ++numeric_checks;require(boxRefused,"box targets refused on a camera-gate run: the thin region off for the session (plain resolve, no mask, history kept), no retry until Reset");
     for(UINT slot:{0u,1u,2u,3u,4u,6u,7u,8u,9u,10u,11u,12u})check("hold unbind",d->SetTexture(slot,nullptr));
     s.target(s.colorSurface.p);
 }
 
 // ---- thin-region rows with the hold ----
 void thin_rows(EdgeScene& s,const DWORD* resolver){
-    const LineConfig base{"thin-base",0,0},on97{"thin-region-0.97",0,0,0,0,.97f,1},camera97{"thin-region-0.97-camera-gate",0,0,0,0,.97f,1,true},
-        hold97{"thin-region-0.97-camera-gate-hold",0,0,0,0,.97f,1,true,0,1,0,true};
+    const LineConfig base{"thin-base",0,0},on97{"thin-region-0.97",0,0,0,0,.97f,1},hold97{"thin-region-0.97-camera-gate-hold",0,0,0,0,.97f,1,true};
     const double bound=.0006/(1-.97);
-    for(double drift:{0.,.12,.3}){thinDrift=drift;thinMoveFrom=~0u;const auto baseRun=thin_sequence(s,resolver,base,thinFrames),xyRun=thin_sequence(s,resolver,camera97,thinFrames),run=thin_sequence(s,resolver,hold97,thinFrames);
-        double baseRms=0,baseP2p=0,xyRms=0,xyP2p=0,rms=0,p2p=0;thin_ripple(baseRun,baseRms,baseP2p);thin_ripple(xyRun,xyRms,xyP2p);thin_ripple(run,rms,p2p);
-        const Oracle o=oracle(run,hold97);const double maskError=tests_error(run);unsigned squareDiffers=0,squarePixels=0;
+    for(double drift:{0.,.12,.3}){thinDrift=drift;thinMoveFrom=~0u;const auto baseRun=thin_sequence(s,resolver,base,thinFrames),run=thin_sequence(s,resolver,hold97,thinFrames);
+        double baseRms=0,baseP2p=0,rms=0,p2p=0;thin_ripple(baseRun,baseRms,baseP2p);thin_ripple(run,rms,p2p);
+        const Oracle o=oracle(run,hold97);const double maskError=hold_tests_error(run);unsigned squareDiffers=0,squarePixels=0;
         for(unsigned n=0;n<thinFrames;++n)for(UINT y=3;y+3<S;++y)for(UINT x=20;x+3<S;++x){++squarePixels;squareDiffers+=std::memcmp(&run.output[n][(y*S+x)*4],&baseRun.output[n][(y*S+x)*4],4*sizeof(float))!=0;}
-        std::printf("THIN_REGION_HOLD drift=%.2f config=%s oracle_error=%.6f age_oracle_error=%.6f tests_mask_error=%.6f shard_rms_codes=%.3f shard_p2p_codes=%.1f rms_ratio=%.4f dilated_rms_codes=%.3f dilated_p2p_codes=%.1f hold_over_dilated=%.4f square_px=%u square_differs=%u\n",
-            drift,hold97.name,o.colour,o.age,maskError,255*rms,255*p2p,rms/baseRms,255*xyRms,255*xyP2p,rms/xyRms,squarePixels,squareDiffers);
+        std::printf("THIN_REGION_HOLD drift=%.2f config=%s oracle_error=%.6f age_oracle_error=%.6f tests_mask_error=%.6f shard_rms_codes=%.3f shard_p2p_codes=%.1f rms_ratio=%.4f square_px=%u square_differs=%u\n",
+            drift,hold97.name,o.colour,o.age,maskError,255*rms,255*p2p,rms/baseRms,squarePixels,squareDiffers);
         metric("region hold: shader matches the 2-D CPU oracle with the holds within the FP16 bound",o.colour,0,bound);
         metric("region hold: age target (count and holds) matches the CPU oracle",o.age,0,0);
         metric("region hold: the published tests target equals the CPU tests draw",maskError,0,.5/255);
         ++numeric_checks;require(squarePixels>0&&squareDiffers==0,"region hold: plain silhouette (x >= 20) bit-identical to the plain resolve");
-        if(drift==0){++numeric_checks;require(rms<=.35*baseRms&&p2p<=.5*baseP2p,"region hold, static shards: ripple <= 0.35 x and peak-to-peak <= 0.5 x the installed resolve (the dilated gate's bound)");}}
+        if(drift==0){++numeric_checks;require(rms<=.35*baseRms&&p2p<=.5*baseP2p,"region hold, static shards: ripple <= 0.35 x and peak-to-peak <= 0.5 x the installed resolve");}}
     thinDrift=0;
     // Motion starts after 64 static frames (0.4 px/frame): against the plain resolve, the design's ghost bound (0.04 above the plain resolve's trail from 8 frames on) and the 24-frame release.
-    {thinDrift=.4;thinMoveFrom=64;const auto baseRun=thin_sequence(s,resolver,base,thinFrames),xyRun=thin_sequence(s,resolver,camera97,thinFrames),run=thin_sequence(s,resolver,hold97,thinFrames);
-        double first=0,late=0,trail=0,xyTrail=0,baseTrail=0;UINT lateX=0,lateY=0,trailX=0,trailY=0,trailN=0;
+    {thinDrift=.4;thinMoveFrom=64;const auto baseRun=thin_sequence(s,resolver,base,thinFrames),run=thin_sequence(s,resolver,hold97,thinFrames);
+        double first=0,late=0,trail=0,baseTrail=0;UINT lateX=0,lateY=0,trailX=0,trailY=0,trailN=0;
         for(unsigned n=65;n<thinFrames;++n)for(UINT y=3;y+3<S;++y)for(UINT x=3;x<20;++x){const double e=std::fabs(px(run.output[n],x,y)-px(baseRun.output[n],x,y));if(n==65)first=std::max(first,e);if(n>=65+24&&e>late){late=e;lateX=x;lateY=y;}
-            if(px(run.depth[n],x,y)<=-.5f&&n>=65+8){const double t=std::fabs(double(px(run.output[n],x,y))-.25);if(t>trail){trail=t;trailX=x;trailY=y;trailN=n;}xyTrail=std::max(xyTrail,std::fabs(double(px(xyRun.output[n],x,y))-.25));baseTrail=std::max(baseTrail,std::fabs(double(px(baseRun.output[n],x,y))-.25));}}
+            if(px(run.depth[n],x,y)<=-.5f&&n>=65+8){const double t=std::fabs(double(px(run.output[n],x,y))-.25);if(t>trail){trail=t;trailX=x;trailY=y;trailN=n;}baseTrail=std::max(baseTrail,std::fabs(double(px(baseRun.output[n],x,y))-.25));}}
         // (No oracle row here: the scene hooks give the shards one velocity for the whole run, not the 64 static frames first.)
-        std::printf("THIN_REGION_HOLD_MOTION_START first_frame_difference=%.6f after_24_frames=%.6f after_24_at=%u,%u background_trail=%.6f trail_at=%u,%u,%u dilated_background_trail=%.6f base_background_trail=%.6f\n",first,late,lateX,lateY,trail,trailX,trailY,trailN,xyTrail,baseTrail);
+        std::printf("THIN_REGION_HOLD_MOTION_START first_frame_difference=%.6f after_24_frames=%.6f after_24_at=%u,%u background_trail=%.6f trail_at=%u,%u,%u base_background_trail=%.6f\n",first,late,lateX,lateY,trail,trailX,trailY,trailN,baseTrail);
         metric("region hold: 24 frames after motion starts the output is the installed resolve's",late,0,2./255);
         metric("region hold: from 8 frames after motion starts, uncovered background carries at most 0.04 more shard colour than the plain resolve",std::max(trail-baseTrail,0.),0,.04);
         thinMoveFrom=~0u;thinDrift=0;}
-    // Camera pan at 0.5 px/frame: the hold keeps the region open under the pan as the dilated camera gate does; the bright mover and the stale patch.
-    {thinPanX=cameraPanX=.5;const auto screenRun=thin_sequence(s,resolver,on97,thinFrames),xyRun=thin_sequence(s,resolver,camera97,thinFrames),run=thin_sequence(s,resolver,hold97,thinFrames);
-        double screenRms=0,screenP2p=0,xyRms=0,xyP2p=0,rms=0,p2p=0;thin_ripple(screenRun,screenRms,screenP2p,18,28);thin_ripple(xyRun,xyRms,xyP2p,18,28);thin_ripple(run,rms,p2p,18,28);
-        const Oracle o=oracle(run,hold97);const double maskError=tests_error(run);
-        std::printf("THIN_REGION_HOLD_PAN pan=0.50 oracle_error=%.6f age_oracle_error=%.6f tests_mask_error=%.6f screen_rms_codes=%.3f dilated_rms_codes=%.3f hold_rms_codes=%.3f hold_over_screen=%.4f hold_over_dilated=%.4f screen_p2p_codes=%.1f dilated_p2p_codes=%.1f hold_p2p_codes=%.1f\n",
-            o.colour,o.age,maskError,255*screenRms,255*xyRms,255*rms,rms/screenRms,rms/xyRms,255*screenP2p,255*xyP2p,255*p2p);
+    // Camera pan at 0.5 px/frame: the hold keeps the region open under the pan; the bright mover and the stale patch.
+    {thinPanX=cameraPanX=.5;const auto screenRun=thin_sequence(s,resolver,on97,thinFrames),run=thin_sequence(s,resolver,hold97,thinFrames);
+        double screenRms=0,screenP2p=0,rms=0,p2p=0;thin_ripple(screenRun,screenRms,screenP2p,18,28);thin_ripple(run,rms,p2p,18,28);
+        const Oracle o=oracle(run,hold97);const double maskError=hold_tests_error(run);
+        std::printf("THIN_REGION_HOLD_PAN pan=0.50 oracle_error=%.6f age_oracle_error=%.6f tests_mask_error=%.6f screen_rms_codes=%.3f hold_rms_codes=%.3f hold_over_screen=%.4f screen_p2p_codes=%.1f hold_p2p_codes=%.1f\n",
+            o.colour,o.age,maskError,255*screenRms,255*rms,rms/screenRms,255*screenP2p,255*p2p);
         metric("region hold, pan: shader matches the oracle",o.colour,0,bound);metric("region hold, pan: age matches the oracle",o.age,0,0);metric("region hold, pan: tests target equals the CPU tests draw",maskError,0,.5/255);
         ++numeric_checks;require(rms<=.5*screenRms&&p2p<=.6*screenP2p,"region hold, pan past HI: the held camera gate halves the shard ripple (rms <= 0.5 x, peak-to-peak <= 0.6 x the screen gate)");
         thinPatchV=2;thinPatchFrom=40;thinInjectFrame=oracleInjectFrame=100;std::copy(injectRect,injectRect+4,oracleInjectRect);oracleInjectValue=patchValue;
-        const auto screenPatch=thin_sequence(s,resolver,on97,thinFrames),xyPatch=thin_sequence(s,resolver,camera97,thinFrames),patch=thin_sequence(s,resolver,hold97,thinFrames);
-        double excess=0,added[3]={0,0,0};
+        const auto screenPatch=thin_sequence(s,resolver,on97,thinFrames),patch=thin_sequence(s,resolver,hold97,thinFrames);
+        double excess=0,added[2]={0,0};
         for(unsigned n=61;n<100;++n)for(UINT y=3;y+3<S;++y)for(UINT x=3;x+3<S;++x)excess=std::max(excess,double(px(patch.output[n],x,y))-1);
-        const FarRun* runs[3]={&screenPatch,&xyPatch,&patch};const FarRun* clean[3]={&screenRun,&xyRun,&run};
-        for(unsigned which=0;which<3;++which)for(int y=injectRect[1]-1;y<=injectRect[3];++y)for(int x=injectRect[0]-1;x<=injectRect[2];++x)added[which]=std::max(added[which],double(px(runs[which]->output[101],UINT(x),UINT(y))-px(clean[which]->output[101],UINT(x),UINT(y))));
+        const FarRun* runs[2]={&screenPatch,&patch};const FarRun* clean[2]={&screenRun,&run};
+        for(unsigned which=0;which<2;++which)for(int y=injectRect[1]-1;y<=injectRect[3];++y)for(int x=injectRect[0]-1;x<=injectRect[2];++x)added[which]=std::max(added[which],double(px(runs[which]->output[101],UINT(x),UINT(y))-px(clean[which]->output[101],UINT(x),UINT(y))));
         const Oracle po=oracle(patch,hold97,101);
-        std::printf("THIN_REGION_HOLD_STALE pan=0.50 mover_px_per_frame=2 excess_after_mover=%.6f screen_added_frame101=%.6f dilated_added_frame101=%.6f hold_added_frame101=%.6f hold_over_screen=%.4f oracle_error=%.6f age_oracle_error=%.6f\n",
-            excess,added[0],added[1],added[2],added[2]/std::max(added[0],1e-9),po.colour,po.age);
+        std::printf("THIN_REGION_HOLD_STALE pan=0.50 mover_px_per_frame=2 excess_after_mover=%.6f screen_added_frame101=%.6f hold_added_frame101=%.6f hold_over_screen=%.4f unbounded_estimate=%.4f oracle_error=%.6f age_oracle_error=%.6f\n",
+            excess,added[0],added[1],added[1]/std::max(added[0],1e-9),.97*(patchValue-.25),po.colour,po.age);
         metric("region hold, pan + bright mover: no ghost above the scene's maximum after the mover left",excess,0,2./255);
         metric("region hold, pan + stale patch: shader matches the oracle on the injected history",po.colour,0,bound);
-        ++numeric_checks;require(added[0]>.1&&added[2]<=2*added[0],"region hold, stale patch: the 7x7 box bounds it to at most 2 x the screen gate's clipped value");
+        ++numeric_checks;require(added[0]>.1&&added[1]<=2*added[0]&&added[1]<.5*.97*(patchValue-.25),"region hold, stale patch: the 7x7 box bounds it to at most 2 x the screen gate's clipped value, well below the clip-off estimate");
         thinPatchV=0;thinPatchFrom=~0u;thinInjectFrame=oracleInjectFrame=~0u;
         // k = 0.5 and a non-finite current tap (the box domain row): the per-block weighing and the box twin against the oracle.
         {thinBadTap=true;thinK=.5f;oracleK=.5;const auto bad=thin_sequence(s,resolver,hold97,thinFrames);const Oracle bo=oracle(bad,hold97);
@@ -228,24 +237,24 @@ void thin_rows(EdgeScene& s,const DWORD* resolver){
             thinBadTap=false;thinK=0;oracleK=0;}
         thinPanX=cameraPanX=0;}
     // Stop after a pan (second review, item 9): the pan scene panning 0.5 px/frame for 64 frames, then standing still. The screen gate is
-    // not held, so the region reopens the frame the camera stops, as the dilated chain's did: frame-to-frame rms on the shard field over
-    // the 8 frames after the stop and the 24 after those, against the dilated camera gate and the plain resolve.
+    // not held, so the region reopens the frame the camera stops: frame-to-frame rms on the shard field over the 8 frames after the
+    // stop and the 24 after those, against the plain resolve (the removed dilated chain measured 0.094 x of it on both windows).
     {thinPanX=cameraPanX=.5;thinPanStop=64;constexpr unsigned frames=96;
-        const auto baseRun=thin_sequence(s,resolver,base,frames),xyRun=thin_sequence(s,resolver,camera97,frames),run=thin_sequence(s,resolver,hold97,frames);
+        const auto baseRun=thin_sequence(s,resolver,base,frames),run=thin_sequence(s,resolver,hold97,frames);
         auto step=[&](const FarRun& r,unsigned from,unsigned to){double sum=0;unsigned count=0;for(unsigned n=from;n<to;++n)for(UINT y=5;y<27;++y)for(UINT x=18;x<28;++x){const double e=double(px(r.output[n],x,y))-double(px(r.output[n-1],x,y));sum+=e*e;++count;}return 255*std::sqrt(sum/count);};
-        const double hold8=step(run,65,73),xy8=step(xyRun,65,73),base8=step(baseRun,65,73),hold24=step(run,73,frames),xy24=step(xyRun,73,frames),base24=step(baseRun,73,frames);
-        std::printf("THIN_REGION_HOLD_PAN_STOP pan=0.50 stop_frame=64 step_rms_codes_first8=%.3f dilated_first8=%.3f base_first8=%.3f step_rms_codes_next24=%.3f dilated_next24=%.3f base_next24=%.3f\n",hold8,xy8,base8,hold24,xy24,base24);
-        ++numeric_checks;require(hold8<=1.25*xy8+.5&&hold24<=1.25*xy24+.5,"stop after a pan: the held region settles like the dilated gate (step rms within 1.25 x + 0.5 code, the 8 frames after the stop and the 24 after)");
+        const double hold8=step(run,65,73),base8=step(baseRun,65,73),hold24=step(run,73,frames),base24=step(baseRun,73,frames);
+        std::printf("THIN_REGION_HOLD_PAN_STOP pan=0.50 stop_frame=64 step_rms_codes_first8=%.3f base_first8=%.3f step_rms_codes_next24=%.3f base_next24=%.3f\n",hold8,base8,hold24,base24);
+        ++numeric_checks;require(hold8<=.15*base8&&hold24<=.15*base24,"stop after a pan: the held region settles at once (step rms at most 0.15 x the plain resolve's, the 8 frames after the stop and the 24 after)");
         thinPanStop=~0u;thinPanX=cameraPanX=0;}
     // Box-open fraction under a camera pan (second review, item 8): the arm scene (shards at x 2..11, a plain square at 21..29, sentinel
     // background) carried by a 0.5 px/frame pan for 24 frames. The share of the frame where the box programs run on the last frame:
-    // the dilated chain (composed mask, b > a), the tests-texel gate alone (a > r), and the region-gated twins of this build (a > r
-    // inside this frame's flag or the previous frame's region hold at the same texel).
-    {armPanX=cameraPanX=.5;constexpr unsigned frames=24;const auto xyRun=thin_sequence(s,resolver,camera97,frames),run=thin_sequence(s,resolver,hold97,frames);
-        unsigned dilated=0,testsOnly=0,gated=0;constexpr UINT N=S*S;const auto& tests=run.mask.back();const auto& previousAge=run.age[frames-2];
+    // the tests-texel gate alone (a > r), and the region-gated twins (a > r inside this frame's flag or the previous frame's region
+    // hold at the same texel).
+    {armPanX=cameraPanX=.5;constexpr unsigned frames=24;const auto run=thin_sequence(s,resolver,hold97,frames);
+        unsigned testsOnly=0,gated=0;constexpr UINT N=S*S;const auto& tests=run.mask.back();const auto& previousAge=run.age[frames-2];
         for(UINT i=0;i<N;++i){const float r=tests[i*4],b=tests[i*4+2],a=tests[i*4+3];const bool cameraAdds=a>r;
-            dilated+=xyRun.mask[0][i*4+2]>xyRun.mask[0][i*4+3];testsOnly+=cameraAdds;gated+=cameraAdds&&(b>.5f||held_region(previousAge[i*4]));}
-        std::printf("THIN_REGION_HOLD_BOX_OPEN pan=0.50 frames=%u pixels=%u dilated_chain=%.4f tests_gate_alone=%.4f region_gated=%.4f\n",frames,N,double(dilated)/N,double(testsOnly)/N,double(gated)/N);
+            testsOnly+=cameraAdds;gated+=cameraAdds&&(b>.5f||held_region(previousAge[i*4]));}
+        std::printf("THIN_REGION_HOLD_BOX_OPEN pan=0.50 frames=%u pixels=%u tests_gate_alone=%.4f region_gated=%.4f\n",frames,N,double(testsOnly)/N,double(gated)/N);
         ++numeric_checks;require(gated<=testsOnly&&gated<testsOnly,"box twins under a pan: the region gate runs the box on fewer pixels than the tests gate alone");
         armPanX=cameraPanX=0;}
     // Sentinel facets (the stabiliser S = 0.7 on the separable box's hold twins) at rest and under a 2 px/frame reversing vertical pan.
@@ -269,7 +278,7 @@ void thin_rows(EdgeScene& s,const DWORD* resolver){
     {thinSentinel=true;LineConfig holdOn=hold97;holdOn.name="fade-owner-0.7-hold";holdOn.sentS=.7f;constexpr unsigned frames=64,from=32;
         sentinelOwnerFrom=frames;const auto masked=thin_sequence(s,resolver,holdOn,frames);sentinelOwnerFrom=0;const auto always=thin_sequence(s,resolver,holdOn,frames);
         sentinelOwnerFrom=from;const auto run=thin_sequence(s,resolver,holdOn,frames);
-        const Oracle o=oracle(run,holdOn);const double maskError=tests_error(run);
+        const Oracle o=oracle(run,holdOn);const double maskError=hold_tests_error(run);
         auto hold=[](float age){const double v=std::fabs(double(age));if(v>65)return 0.;const double held=(v-std::floor(v))*65536;return std::round(held-128*std::floor(held/128));};
         bool classes=true;unsigned before=0,preDiffers=0,openings=0,maxOpenings=0,extraFrames=0,lateDiffers=0,steadyHeld=0,maxHold=0;
         for(UINT y=11;y<21;++y)for(UINT x=5;x<15;++x){unsigned pixelOpenings=0;const bool square=x>=6&&x<14&&y>=12&&y<20;
@@ -298,7 +307,7 @@ void region_hold_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolv
     struct Hooks{Hooks(){line_velocity=thin_velocity;line_velocity_x=thin_velocity_x;farD0=.98f;farInv=200;}
         ~Hooks(){line_velocity=line_velocity_default;line_velocity_x=line_velocity_x_default;thinDrift=0;thinMoveFrom=~0u;thinBadTap=false;thinK=0;oracleK=0;thinPanX=cameraPanX=thinPatchV=0;thinPatchFrom=thinInjectFrame=oracleInjectFrame=~0u;farD0=farInv=0;
             cameraPanAlternates=cameraPanVertical=false;cameraPanSpeed=cameraPanY=0;thinSentinel=false;oracleSkipCeiling=0;thinPanStop=~0u;armPanX=0;sentinelOwnerFrom=~0u;}} hooks;
-    region_hold::identity_cases(s);
+    region_hold::identity_cases(s,compiler);
     region_hold::state_cases(s,resolver);
     region_hold::thin_rows(s,resolver);
     if(!deferredFailures.empty())throw std::runtime_error(deferredFailures.front());

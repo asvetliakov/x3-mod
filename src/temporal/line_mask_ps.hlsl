@@ -51,10 +51,10 @@
 // correspondence measured against the camera path c0..c3 at this pixel's depth,
 // 0 where the pixel follows the camera path itself, and not measured (open) on a
 // routed pixel on the depth sentinel, section 32.5 (c0..c3 are validated finite
-// by the caller). The separable draws take the 17x17 MINIMUM of both (r carries
-// no line mask) and the composition writes b = the camera-gated strength and a =
-// the screen-gated strength (a <= b), so the resolve knows where the camera term
-// alone keeps the region open. r = farw * c5.z there.
+// by the caller). The camera program is the tests draw alone (c7.z is not read):
+// A' (resolve.hlsl X3M_REGION_HOLD, taa-plan-lifted-slot-cap.md step 1) composes
+// the region in the resolve from this target, so the separable draws below exist
+// in the screen-gate program only.
 // c8 (camera program only; section 32.3) makes that camera path depth- and
 // translation-aware: c0..c3 is the rotation-only far-plane matrix (zero z
 // column), exact for the sentinel; on a valid depth the path adds c8.xyz * (d -
@@ -66,15 +66,12 @@
 // per-submission scratch. With c9.w = 1 the c8 law is not used at all: a valid
 // depth whose .b is not positive (the producer writes both in one draw, so none
 // is expected) stays on the far-plane path, so a wrong m22 / m32 latch cannot
-// close, through the 17x17 minimum, a window the lane opens. c9.w = 0: c8 alone.
-// c6.x = S > 0 (camera program only; docs/architecture/temporal-integration.md, "sentinel stabiliser"): the composition
-// reads this pixel's own depth at s6 and its motion at s4 only on the fallback path (thin region off; see the next paragraph), and an UNROUTED SENTINEL pixel (depth sentinel, motion alpha
-// exactly -1, per-pixel motion on) gets b = max(b, S * the 17x17 minimum of the camera openness); a keeps the screen
-// strength, so the whole added strength takes the box-clipped history. Not dilated; a routed sentinel pixel (alpha 1,
-// section 32.5 glass) is outside the class. S = 0 skips the two fetches and is the previous composition bit for bit.
-// With the thin region on (c6.y > 0.5) the tests draw classifies the pixel from the same two texels it already reads and
-// the intermediate targets carry the class in b (classCode), so the composition fetches neither; the final target is the
-// same bit for bit. The composition skips the six outer taps where the product is exactly 0 (below).
+// close a window the lane opens. c9.w = 0: c8 alone.
+// Sentinel stabiliser class (camera program, thin region on; docs/architecture/temporal-integration.md, "sentinel
+// stabiliser"): the tests draw writes b = the flag and this pixel's own class (an UNROUTED SENTINEL pixel: depth sentinel,
+// motion alpha exactly -1, per-pixel motion on) as one code (classCode), from the two texels it already reads; the resolve
+// applies S to it. A routed sentinel pixel (alpha 1, section 32.5 glass) is outside the class. The screen-gate program's
+// composition skips the six outer taps where the product is exactly 0 (below).
 // X3M_TAA_THIN_REGION_EMISSIVE (docs/architecture/thin-glow-lines.md 8.3 R3; taa-lattice-crawl.md section 32.7): c10.x = E > 0
 // adds an EMISSIVE VOTE to b in the tests draw (c7.z = 0), reading this frame's scene at s0. E = 0 (the default) does not
 // read s0 or c10 at all and the mask is what it was bit for bit. E is in the units of the bound scene: the HDR route binds the
@@ -106,7 +103,6 @@ float4 emissive : register(c10); // x = E, the emissive vote's luma threshold in
 float4 depthParallax : register(c8); // camera_depth_parallax(): (DX, DY, DW) / m32, m22; xyz = 0 is the far-plane path
 float4 laneParallax : register(c9);  // camera_lane_parallax(): (DX, DY, DW), 1 where s5 carries the view z; w = 0: c8 alone
 sampler2D laneDepth : register(s5);  // the caller's four-channel current depth (.b = clip w = view z), point / clamp
-sampler2D ownDepth : register(s6);   // composition with c6.x > 0 only: the current depth (.r), point / clamp
 #endif
 #ifdef X3M_MASK_DEPTH_OUT
 static float4 centreTexel; // s1 at this pixel: the whole current-depth texel (main sets it first)
@@ -122,13 +118,11 @@ bool lineBackground(float q, float d) { return sentinelDepth(q) || (validDepth(q
 bool classChange(float a, float b) { return (validDepth(a) && lineBackground(b, a)) || (validDepth(b) && lineBackground(a, b)); }
 float farWeight(float depth) { return validDepth(depth) ? saturate((depth - farGate.x) * farGate.y) : 0; }
 #ifdef X3M_CAMERA_GATE
-// Camera program, thin region on (c6.y > 0.5): the intermediate targets' b carries two bits, the flag (fragmented or
-// emissive; 0 / 1 before) as 254/255 and the pixel's own sentinel-stabiliser class as 1/255, so the composition reads the
-// class from its centre tap instead of the 4-byte depth and 16-byte motion texels (docs/architecture/engine-frame-time.md,
-// "TAA stage cost"). The codes are 0, 1/255, 254/255 and 1 in UNORM8: a maximum over taps is above 0.5 exactly where some tap
-// is flagged, and the class is read only from the pixel's own tap. The final target never holds a code.
+// Camera program, thin region on (c6.y > 0.5): b carries two bits, the flag (fragmented or emissive) as 254/255 and the
+// pixel's own sentinel-stabiliser class as 1/255, so the resolve reads the class from the tests texel instead of the 4-byte
+// depth and 16-byte motion texels (docs/architecture/engine-frame-time.md, "TAA stage cost"). The codes are 0, 1/255, 254/255
+// and 1 in UNORM8 (resolve.hlsl carriesClass).
 float classCode(float flag, bool sentinelClass) { return (flag > 0.5 ? 254.0 / 255 : 0) + (sentinelClass ? 1.0 / 255 : 0); }
-bool carriesClass(float code) { return code > 0.5 / 255 && (code < 1.5 / 255 || code > 254.5 / 255); }
 #endif
 // Emissive vote of the thin region, tests draw only. A pixel qualifies when it is ROUTED with valid depth (motion alpha
 // exactly 1, the routing the resolve itself reads, sampled once by the caller), its own scene luma L exceeds E, and the
@@ -226,6 +220,7 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0
 {
 #endif
     float4 result = 0;
+#ifndef X3M_CAMERA_GATE
     if (options.z > 1.5 && options.z < 2.5) {
         result.rg = farWeight(fetch(uv).r) * farGate.zw;
     } else if (options.z > 3.5) {
@@ -243,67 +238,32 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0
         // The k = 0 tap is the centre itself (min / max with itself is the identity on these UNORM8 values, and min / max
         // are exact and order-free), so the loops visit the 16 other taps only, each at the same uv + k * axis as before:
         // first the ten with |k| <= 5, which complete b, then the six with |k| = 6..8, which only the 17-tap a (and r) read.
-#ifdef X3M_CAMERA_GATE
-        // Composition: the sentinel stabiliser's class, carried in the centre's b (classCode) when the tests draw ran the thin
-        // region; otherwise from the texels as before (own depth first, the 16-byte motion texel only on a sentinel depth).
-        bool sentinelClass = false;
-        [branch] if (compose && thinGate.x > 0) {
-            [branch] if (thinGate.y > 0.5) sentinelClass = carriesClass(centre.b);
-            else [branch] if (sentinelDepth(tex2Dlod(ownDepth, float4(uv, 0, 0)).r) && options.x > 0.5) {
-                float alpha = tex2Dlod(motionOverride, float4(uv, 0, 0)).w;
-                sentinelClass = alpha >= -1 && alpha <= -1;
-            }
-        }
-#endif
         [loop] for (int j = 0; j < 10; ++j) {
             int k = j < 5 ? j - 5 : j - 4;
             float4 tap = fetch(uv + k * axis);
-#ifdef X3M_CAMERA_GATE
-            result.ar = min(result.ar, tap.ar);
-#else
             result.a = max(result.a, tap.a);
             if (abs(k) <= 1) result.r = max(result.r, tap.r);
-#endif
             result.b = max(result.b, tap.b);
         }
-#ifdef X3M_CAMERA_GATE
-        result.b = result.b > 0.5 ? 1 : 0; // the flag of the 11 taps, 0 or 1 exactly as before the codes
-#endif
-        // The composition multiplies the 17-tap values by fragmented = b * c6.y (both variants); where that is exactly 0 (b = 0
-        // and c6.y finite, or c6.y = 0) every product is 0 whatever the outer taps hold (they are finite UNORM8), so they are
-        // skipped unless the sentinel term reads the camera minimum. The x draw (no composition) always takes them.
+        // The composition multiplies the 17-tap values by fragmented = b * c6.y; where that is exactly 0 (b = 0 and c6.y
+        // finite, or c6.y = 0) every product is 0 whatever the outer taps hold (they are finite UNORM8), so they are skipped.
+        // The x draw (no composition) always takes them.
         float fragmented = result.b * thinGate.y;
-#ifdef X3M_CAMERA_GATE
-        [branch] if (!compose || !(fragmented == 0) || sentinelClass) {
-#else
         [branch] if (!compose || !(fragmented == 0)) {
-#endif
             [loop] for (int j = 0; j < 6; ++j) {
                 int k = j < 3 ? j - 8 : j + 3;
                 float4 tap = fetch(uv + k * axis);
-#ifdef X3M_CAMERA_GATE
-                result.ar = min(result.ar, tap.ar);
-#else
                 result.a = max(result.a, tap.a);
-#endif
             }
         }
         if (compose) {
             float2 far = centre.gg * farGate.zw;
-#ifdef X3M_CAMERA_GATE
-            float cameraOpen = result.a;
-            result.b = fragmented * result.a; result.a = fragmented * result.r;
-            if (sentinelClass) result.b = max(result.b, thinGate.x * cameraOpen);
-            result.r = far.x; result.g = far.y;
-#else
             result.r = max(result.r, far.x); result.g = far.y;
             result.b *= (1 - result.a) * thinGate.y; result.a = 0;
-#endif
         }
-#ifdef X3M_CAMERA_GATE
-        else result.b = classCode(result.b, carriesClass(centre.b)); // the x draw passes this pixel's own class on
+    } else
 #endif
-    } else {
+    {
         float depth = fetch(uv).r;
         result.g = farWeight(depth);
         [branch] if (thinGate.y > 0.5) {

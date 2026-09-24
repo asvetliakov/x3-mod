@@ -4,12 +4,14 @@
 //   centre addressed as the resolve does ((i + 0.5) * (1 / W)) returns that texel bit for bit (the thin programs have no
 //   rest branch, so a still scene rests on it), and the sub-texel weight error against an exact bilinear (reported).
 //   HISTORY_TAPS: a 1-px lattice plus a flat block, at rest and drifting (0.30, 0.20) px/frame (fractional on both axes,
-//   so the dropped corners carry weight), through the plain and the flown far-camera program: at rest the two forms
+//   so the dropped corners carry weight), through the plain and the far program (thin region 0.97 on the screen gate; the
+//   camera gate has no 16-tap form since the dilated chain went, 2026-09-24): at rest the two forms
 //   agree within one FP16 ulp; under drift the plain program's per-pixel difference stays inside the 3x3 clip's reach
 //   (|5-tap - 16-tap| <= w (max - min) of the current 3x3, plus one FP16 ulp); the 16-tap run is byte-identical to the
 //   16-tap words bound as the caller's resolve; Diagnostics::history_taps names the program drawn.
 //   HISTORY_TAPS_FALLBACK: GetDirect3D refused during initialize (the filter query cannot run): the pass reports
-//   bilinear_history_available() false / "adapter_query" and every run draws the 16-tap programs, byte-identical to 16.
+//   bilinear_history_available() false / "adapter_query" and every run draws the 16-tap programs, byte-identical to 16;
+//   configure_far then creates no camera-gate program (HISTORY_TAPS_NO_FILTER_CAMERA).
 //   HISTORY_TAPS_RESET: a 5-tap pass across a device Reset resumes from an empty history, byte-identical to a fresh pass.
 // Hostile-state restoration of the 5-tap draw (its LINEAR s11 / s12 bindings included: Snapshot compares all 16 samplers)
 // is covered by every base-mode case, which runs the default 5-tap programs.
@@ -61,13 +63,14 @@ void filter_probe(IDirect3DDevice9* d,Compiler compiler){
     }
 }
 struct TapsRun { std::vector<std::vector<float>> current,output; std::vector<unsigned> drawn; bool bilinear=false; const char* reason=""; float maskMax[4]{}; }; // maskMax: per channel over frames (far programs)
-// One sequence: farProgram 0 the plain resolve, 2 the flown far-camera program (thin region 0.97, camera gate, W_FAR 0.985).
+// One sequence: farProgram 0 the plain resolve, 2 the far program (thin region 0.97 on the screen gate, W_FAR 0.985: the camera
+// gate's only resolve, A', has no 16-tap form).
 TapsRun taps_sequence(EdgeScene& s,const DWORD* resolver,double vx,double vy,unsigned frames,unsigned taps,unsigned farProgram,bool refuseFactory=false,unsigned firstFrame=0,TemporalPass* external=nullptr){
     constexpr UINT S=EdgeScene::S,P=EdgeScene::P;TemporalPass local;TemporalPass& pass=external?*external:local;TapsRun run;
     if(!external){if(refuseFactory){FactoryRefusal refusal(s.d);check("taps initialize (factory refused)",pass.initialize(s.d,nullptr,resolver));require(FactoryRefusal::refused>0,"taps: the filter query reached GetDirect3D");}
         else check("taps initialize",pass.initialize(s.d,nullptr,resolver));
         check("taps configure",pass.configure_history_taps(taps));
-        if(farProgram){check("taps configure far",pass.configure_far());require(pass.camera_gate_available(),"taps: far-camera programs available");}}
+        if(farProgram){check("taps configure far",pass.configure_far());require(pass.far_available(),"taps: far programs available");}}
     run.bilinear=pass.bilinear_history_available();run.reason=pass.bilinear_history_reason();
     for(unsigned f=0;f<frames;++f){const unsigned n=firstFrame+f,index=n%P+1;const double jx=halton(index,2)-.5,jy=halton(index,3)-.5;
         std::vector<EdgeObject> scene;for(unsigned i=0;i<4;++i)scene.push_back({4.31+4*i+vx*n,3.27+vy*n,5.31+4*i+vx*n,15.27+vy*n,1,.5f,vx,vy});
@@ -77,7 +80,7 @@ TapsRun taps_sequence(EdgeScene& s,const DWORD* resolver,double vx,double vy,uns
         in.current_jitter[0]=float(jx);in.current_jitter[1]=float(jy);in.weight=.9f;in.motion_policy=MotionPolicy::PerPixel;in.reactive_policy=ReactivePolicy::DerivedFromDepthSentinel;
         in.sentinel_camera=true;in.history_allowed=true;in.caller_queries_idle=true;in.caller_scene_open=true;
         if(farProgram){in.far_weight=.985f;in.far_d0=.9995f;in.far_inv=1.f/(.9999f-.9995f);in.far_speed_lo=x3::temporal::kFarSpeedLo;in.far_speed_hi=x3::temporal::kFarSpeedHi;
-            in.thin_region_weight=.97f;in.thin_region_relax=1;in.thin_region_camera_gate=true;}
+            in.thin_region_weight=.97f;in.thin_region_relax=1;}
         Output out;check("taps Begin resolve",s.d->BeginScene());check("taps run",pass.run(in,&out));check("taps End resolve",s.d->EndScene());
         require(out.color&&out.used_history==(f>0),"taps: history follows the sequence");
         run.output.push_back(s.read(out.color));run.drawn.push_back(pass.diagnostics().history_taps);
@@ -111,23 +114,32 @@ void history_taps_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resol
         const bool drawn=std::all_of(five.drawn.begin(),five.drawn.end(),[](unsigned t){return t==5;})&&std::all_of(sixteen.drawn.begin(),sixteen.drawn.end(),[](unsigned t){return t==16;});
         bool caller=true;if(!program){const auto bound=taps_sequence(s,taps16,m.vx,m.vy,N,5,0);caller=same_rgb(bound.output,sixteen.output);}
         std::printf("HISTORY_TAPS program=%s motion=%s frames=%u differing=%u max_abs=%.8f max_ulps=%.2f max_bound_ratio=%.4f bound_exceeded=%u drawn=%u caller_16_identical=%u\n",
-                    program?"far_camera":"plain",m.name,N,c.differing,c.maxAbs,c.maxUlps,c.maxBoundRatio,c.boundExceeded,unsigned(drawn),unsigned(caller));
+                    program?"far":"plain",m.name,N,c.differing,c.maxAbs,c.maxUlps,c.maxBoundRatio,c.boundExceeded,unsigned(drawn),unsigned(caller));
         ++numeric_checks;require(drawn&&caller,"history taps: Diagnostics::history_taps names the program drawn; 16 binds the embedded 16-tap words");
         ++numeric_checks;if(m.vx==0)require(c.maxUlps<=1,"history taps: a still scene is identical within one FP16 ulp (Catmull-Rom of a constant history is the constant)");
         else if(!program)require(c.differing>0&&c.boundExceeded==0,"history taps: under diagonal drift the forms differ and the plain program's difference stays within w times the current 3x3 range");
-        else require(c.differing>0,"history taps: under diagonal drift the far-camera forms differ (reported)");}
+        else require(c.differing>0,"history taps: under diagonal drift the far forms differ (reported)");}
     // Report only: in this scene (depths 0.5 / 0.9 against the far gate's 0.9995, objects at 0.36 px/frame against the
-    // 0.03 .. 0.25 speed gate) every gate of the far-camera program is expected to stay closed, which makes its output the
+    // 0.03 .. 0.25 speed gate) every gate of the far program is expected to stay closed, which makes its output the
     // plain program's; the mask maxima (r filter weight, g farw, b thin-region strength, a the screen-gate strength) say
-    // whether that holds, and the identity says whether the far_camera rows are an independent check.
+    // whether that holds, and the identity says whether the far rows are an independent check.
     for(unsigned motion=0;motion<2;++motion){const TapsRun& plain=fives[motion];const TapsRun& farCamera=fives[2+motion];
-        std::printf("HISTORY_TAPS_FAR_IDLE motion=%s far_camera_equals_plain=%u mask_max_r=%.4f mask_max_g=%.4f mask_max_b=%.4f mask_max_a=%.4f\n",motions[motion].name,
+        std::printf("HISTORY_TAPS_FAR_IDLE motion=%s far_equals_plain=%u mask_max_r=%.4f mask_max_g=%.4f mask_max_b=%.4f mask_max_a=%.4f\n",motions[motion].name,
                     unsigned(same_rgb(plain.output,farCamera.output,false)),farCamera.maskMax[0],farCamera.maskMax[1],farCamera.maskMax[2],farCamera.maskMax[3]);}
     // The filter query refused: every slot holds the 16-tap words, whatever was asked.
     for(unsigned program:{0u,2u}){const auto fallback=taps_sequence(s,resolver,.30,.20,N,5,program,true),sixteen=taps_sequence(s,resolver,.30,.20,N,16,program);
         const bool drawn=std::all_of(fallback.drawn.begin(),fallback.drawn.end(),[](unsigned t){return t==16;});
-        std::printf("HISTORY_TAPS_FALLBACK program=%s bilinear=%u reason=%s drawn_16=%u identical_to_16=%u\n",program?"far_camera":"plain",unsigned(fallback.bilinear),fallback.reason,unsigned(drawn),unsigned(same_rgb(fallback.output,sixteen.output)));
-        ++numeric_checks;require(!fallback.bilinear&&std::strcmp(fallback.reason,"adapter_query")==0&&drawn&&same_rgb(fallback.output,sixteen.output),"history taps: without the filter query every run draws the 16-tap programs, byte-identical");}}
+        std::printf("HISTORY_TAPS_FALLBACK program=%s bilinear=%u reason=%s drawn_16=%u identical_to_16=%u\n",program?"far":"plain",unsigned(fallback.bilinear),fallback.reason,unsigned(drawn),unsigned(same_rgb(fallback.output,sixteen.output)));
+        ++numeric_checks;require(!fallback.bilinear&&std::strcmp(fallback.reason,"adapter_query")==0&&drawn&&same_rgb(fallback.output,sixteen.output),"history taps: without the filter query every run draws the 16-tap programs, byte-identical");}
+    // Without the filter query the camera gate has no program (its only resolve, A', is 5-tap): configure_far keeps the far
+    // program, reports D3DERR_NOTAVAILABLE for the camera-gate programs, and a camera-gate run is refused.
+    {TemporalPass pass;{FactoryRefusal refusal(s.d);check("taps no-filter initialize",pass.initialize(s.d,nullptr,resolver));}check("taps no-filter configure far",pass.configure_far());
+        FrameInputs in;in.color=s.color.p;in.current_depth=s.depth32.p;in.motion=s.motion.p;in.width=EdgeScene::S;in.height=EdgeScene::S;in.epoch=1;std::copy(identity,identity+16,in.clip_to_previous);
+        in.weight=.9f;in.motion_policy=MotionPolicy::PerPixel;in.reactive_policy=ReactivePolicy::DerivedFromDepthSentinel;in.sentinel_camera=true;in.history_allowed=true;in.caller_queries_idle=true;in.caller_scene_open=false;
+        in.far_d0=.9995f;in.far_inv=1.f/(.9999f-.9995f);in.thin_region_weight=.97f;in.thin_region_relax=1;in.thin_region_camera_gate=true;Output out;
+        const bool refused=pass.run(in,&out)==E_INVALIDARG;
+        std::printf("HISTORY_TAPS_NO_FILTER_CAMERA bilinear=%u far=%u camera_gate=%u create=%08lx camera_run_refused=%u\n",unsigned(pass.bilinear_history_available()),unsigned(pass.far_available()),unsigned(pass.camera_gate_available()),(unsigned long)pass.camera_programs_result(),unsigned(refused));
+        ++numeric_checks;require(!pass.bilinear_history_available()&&pass.far_available()&&!pass.camera_gate_available()&&pass.camera_programs_result()==D3DERR_NOTAVAILABLE&&refused,"history taps: without the filter query no camera-gate program is created (no fallback set) and a camera-gate run is refused; the far program stays");}}
     release_bindings(d);
     // Reset: two frames, before_reset / Reset / after_reset, two more frames from an empty history = a fresh pass on those frames.
     {TemporalPass pass;check("taps Reset initialize",pass.initialize(d,nullptr,resolver));check("taps Reset configure far",pass.configure_far());

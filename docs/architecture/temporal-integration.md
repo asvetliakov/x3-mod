@@ -1129,6 +1129,13 @@ Give unrouted sentinel pixels a thin-region strength `S` (default 0.7, `0` = off
   minimum of the camera openness, so a routed object moving against the camera path (own ship in chase view, a routed ship
   crossing the sky) closes the stabiliser within 8 px of itself. The class is **not** dilated: silhouettes of routed
   geometry keep today's resolve.
+
+  *Superseded 2026-09-24 (A' only, the dilated camera chain removed): the camera gate has no composition draw and no
+  17x17 minimum any more. The tests draw carries the pixel's class in `b`, and the hold resolve applies S times the held
+  camera openness (the smaller of the pixel's and its nearest-depth 3x3 neighbour's, held one jitter cycle), so a mover
+  closes the stabiliser on itself and its nearest-depth neighbour, not within 8 px. See
+  [taa-plan-lifted-slot-cap.md](taa-plan-lifted-slot-cap.md) step 1 and
+  [temporal-resolve.md](../verification/temporal-resolve.md), "A' region hold" and "A' only: dilated chain removed".*
 - The resolve is untouched (`resolve_far` is at 508 of 512 slots; taa-distant-line-fade.md section 10). With `a = 0`,
   `src/temporal/resolve.hlsl:455-457` gives `old = clip3 + S * (box7(old) - clip3)` and `:485` gives
   `keep = max(keep, keep + S * (min(ramp, W_thin) - keep))`: 0.949 at S = 0.7 with the flown W_thin = 0.97, never below
@@ -1196,6 +1203,8 @@ stabiliser's row is 1.000 at 0.30); (3) geometry silhouette against the sentinel
 (4) a bright bar (luma 4) crossing the sentinel at 6 px/frame, camera at rest: trail <= 1 px with E = 1, <= 3 px with
 E = 0, zero after it leaves; (5) a routed quad moving against the camera path: sentinel pixels within 8 px bit-identical
 to S = 0; (6) routed sentinel pixels (motion alpha 1) bit-identical; (7) Reset / history-invalid frame: current-only.
+*Superseded 2026-09-24: row (5) went with the dilated chain (its 8-px reach was the 17x17 minimum); rows (1)-(4), (6)
+and (7) run on the hold (temporal-resolve.md, "A' only: dilated chain removed").*
 
 ### Alternatives
 

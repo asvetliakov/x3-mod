@@ -1,3 +1,5 @@
+// Include body of thin_box_columns_hold_ps.hlsl, the only program built from it (X3M_REGION_HOLD_MASK below): the ungated
+// form (b > a on the dilated chain's composed mask) was removed with that chain (2026-09-24, A' only).
 // Sentinel stabiliser, second draw of the separable box (thin_box_rows_ps.hlsl
 // wrote s2 = row minima + raw luma maximum, s3 = row maxima): the 7 taps of the
 // pixel's COLUMN give the 7x7 minimum / maximum into the box targets the
@@ -47,8 +49,7 @@ bool inRegion(float4 m, float2 uv) {
 bool boxOpen(float4 m, float2 uv) { return (m.b > 0.5 / 255 && (m.b < 1.5 / 255 || m.b > 254.5 / 255)) || (m.a > m.r && inRegion(m, uv)); }
 #define X3M_SKIPPED_ALPHA 0
 #else
-bool boxOpen(float4 m, float2 uv) { return m.b > m.a; }
-#define X3M_SKIPPED_ALPHA 1
+#error "include body of thin_box_columns_hold_ps.hlsl only: the ungated box program was removed with the dilated chain"
 #endif
 struct BoxOutput { float4 low : COLOR0; float4 high : COLOR1; };
 BoxOutput main(float2 uv : TEXCOORD0) {

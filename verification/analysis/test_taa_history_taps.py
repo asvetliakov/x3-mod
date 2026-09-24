@@ -1,6 +1,7 @@
 """Host tests of --taa-history-taps (X3M_TAA_HISTORY_TAPS, docs/architecture/taa-high-resolution.md S3): forwarded
 only when given (the DLL default is 5), 5 or 16 only, TAA mode only, an inherited shell value never survives; the DLL
-reads it and hands it to TemporalPass; the 16-tap twins keep the bytecode of the five pre-S3 resolve programs.
+reads it and hands it to TemporalPass; the 16-tap twins keep the bytecode of the pre-S3 resolve programs (four since the
+camera gate's dilated chain and its 16-tap twin were removed, 2026-09-24).
 No game, no Wine."""
 import json
 from pathlib import Path
@@ -11,9 +12,9 @@ import test_taa_sky_history as sky
 
 ROOT, TAA = sky.ROOT, sky.TAA
 
-# bytecode_sha256 of temporal-resolve{,-thin,-age,-far,-far-camera}-program.json before S3 (commit 483411b6).
-PRE_S3 = {'': '507d843ed944c3cd', '-thin': '81e24fa941d57e7f', '-age': '97d65cd89577418d', '-far': 'd88d9dc355a82e93',
-          '-far-camera': '0ef1f89547945ad6'}
+# bytecode_sha256 of temporal-resolve{,-thin,-age,-far}-program.json before S3 (commit 483411b6); the -far-camera twin
+# (0ef1f89547945ad6) went with the dilated camera chain (the camera gate's A' resolve has no 16-tap form).
+PRE_S3 = {'': '507d843ed944c3cd', '-thin': '81e24fa941d57e7f', '-age': '97d65cd89577418d', '-far': 'd88d9dc355a82e93'}
 
 
 class HistoryTapsLaunch(unittest.TestCase):

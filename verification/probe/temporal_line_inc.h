@@ -5,7 +5,7 @@
 // with the option on 2026-09-23, cleanup batch 6.)
 constexpr double lineDrift=.3;
 constexpr float lineDepth=.99f,squareDepth=.98f;
-struct LineConfig { const char* name; float thin,wmax; float farW=0,farA=0,thinW=0,relax=1; bool camera=false; float sentS=0,sentE=1,emisE=0; bool hold=false; }; // sentS / sentE: the sentinel stabiliser (temporal-integration.md), camera gate only; emisE: the thin region's emissive vote (thin-glow-lines.md 8.3 R3)
+struct LineConfig { const char* name; float thin,wmax; float farW=0,farA=0,thinW=0,relax=1; bool camera=false; float sentS=0,sentE=1,emisE=0; }; // camera: the camera gate, which runs A' (the region hold) only; sentS / sentE: the sentinel stabiliser (temporal-integration.md), camera gate only; emisE: the thin region's emissive vote (thin-glow-lines.md 8.3 R3)
 // Far stabiliser gate of the far cases (temporal_far_inc.h) and the scene hooks the shared oracle uses.
 float farD0=0,farInv=0,farLo=x3::temporal::kFarSpeedLo,farHi=x3::temporal::kFarSpeedHi;
 double line_velocity_default(double nearest){return nearest==double(lineDepth)?lineDrift:0;}
@@ -34,7 +34,7 @@ double oracle_unweigh(double v){return oracleK>0?v/std::max(1-oracleK*std::max(v
 bool oracle_finite(double v){return std::fabs(v)<=65000;}
 // History reconstruction the oracle models (docs/architecture/taa-high-resolution.md S3): 5 (the default programs) or 16 (the 16-tap twins).
 unsigned oracleHistoryTaps=5;
-// A' (resolve.hlsl X3M_REGION_HOLD; LineConfig::hold): the camera gate's L-frame peak hold (closureHold) and the hold fraction of the
+// A' (resolve.hlsl X3M_REGION_HOLD; LineConfig::camera): the camera gate's L-frame peak hold (closureHold) and the hold fraction of the
 // age count, (h + 128 code) / 65536 with code = q (L + 1) + t; L = oracleHoldFrames (FrameInputs::thin_region_hold_frames). The closed
 // quarters k = floor(4.5 - 4 open) in float32 as the program computes them (never near a floor boundary for UNORM8 openness).
 unsigned oracleHoldFrames=8;
@@ -87,7 +87,7 @@ float far_gate_weight(float depth){if(!(depth>=0&&depth<=1))return 0;const float
 // without its corners, renormalised; oracleHistoryTaps 16: the full 4x4), the 3x3 clip, the thin
 // soft clip and age weight of the variants, the camera gate's 7x7 box clip by the share of the strength the camera term added,
 // and the far stabiliser's exp(-A d^2) current sample by the far gate. FP16 rounding per frame. The 5-tap form weighs each of
-// its five blocks (the texels one bilinear fetch blends) before the sum. c.hold (A'): the gates are composed per pixel from the
+// its five blocks (the texels one bilinear fetch blends) before the sum. c.camera (A', the camera gate's only path): the gates are composed per pixel from the
 // published tests target of each frame (run.mask[n]: r screen openness, g far weight, b flag / class code, a camera openness)
 // and the holds carried in the fraction of the model's own age (hold_code), exactly as resolve.hlsl X3M_REGION_HOLD does; the
 // box term applies only where the box programs opened (camera openness above screen openness, or the class with S > 0).
@@ -98,8 +98,8 @@ FlickerModel line_model(const FlickerRun& run,const LineConfig& c,const std::vec
         for(UINT y=0;y<S;++y)for(UINT x=0;x<S;++x){m.color[n][y*S+x]=px(run.output[n],x,y);if(!run.age.empty())m.age[n][y*S+x]=px(run.age[n],x,y);}
         if(n&&n-1==oracleInjectFrame)for(int y=oracleInjectRect[1];y<oracleInjectRect[3];++y)for(int x=oracleInjectRect[0];x<oracleInjectRect[2];++x)m.color[n-1][UINT(y)*S+UINT(x)]=oracleInjectValue; // after frame n-1 was modelled
         if(!n)continue;
-        const bool hold=c.hold&&c.camera&&c.thinW>0;
-        if(hold&&(!masks||masks->size()!=N))throw std::runtime_error("line_model: a hold run passes its tests target of every frame");
+        const bool hold=c.camera&&c.thinW>0;
+        if(hold&&(!masks||masks->size()!=N))throw std::runtime_error("line_model: a camera-gate run passes its tests target of every frame");
         for(UINT y=3;y+3<S;++y)for(UINT x=3;x+3<S;++x){const UINT i=y*S+x;const double cur=px(run.current[n],x,y);const float centre=px(run.depth[n],x,y);
             const float testR=hold?px((*masks)[n],x,y,0):0,testB=hold?px((*masks)[n],x,y,2):0,testA=hold?px((*masks)[n],x,y,3):0;const bool flagged=testB>.5f;
             const float fresh=hold?float(1+fresh_code(flagged,testA)):1.f; // what a current-only return writes

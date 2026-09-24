@@ -20,27 +20,15 @@ CHECK embedded_line_mask within the 2048-slot ceiling PASS
 RESOLVE_BUDGET variant=embedded_far dwords=2144 instruction_slots=545 device_limit=512 headroom=-33 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_far within the 2048-slot ceiling PASS
-RESOLVE_BUDGET variant=embedded_line_mask_camera dwords=1579 instruction_slots=427 device_limit=512 headroom=85 within_ceiling_2048=1
+RESOLVE_BUDGET variant=embedded_line_mask_camera dwords=1020 instruction_slots=251 device_limit=512 headroom=261 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_line_mask_camera within the 2048-slot ceiling PASS
 RESOLVE_BUDGET variant=embedded_line_mask_depth dwords=1554 instruction_slots=420 device_limit=512 headroom=92 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_line_mask_depth within the 2048-slot ceiling PASS
-RESOLVE_BUDGET variant=embedded_line_mask_camera_depth dwords=1533 instruction_slots=407 device_limit=512 headroom=105 within_ceiling_2048=1
+RESOLVE_BUDGET variant=embedded_line_mask_camera_depth dwords=1002 instruction_slots=241 device_limit=512 headroom=271 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_line_mask_camera_depth within the 2048-slot ceiling PASS
-RESOLVE_BUDGET variant=embedded_far_camera dwords=2196 instruction_slots=555 device_limit=512 headroom=-43 within_ceiling_2048=1
-CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_far_camera within the 2048-slot ceiling PASS
-RESOLVE_BUDGET variant=embedded_thin_box dwords=238 instruction_slots=51 device_limit=512 headroom=461 within_ceiling_2048=1
-CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_thin_box within the 2048-slot ceiling PASS
-RESOLVE_BUDGET variant=embedded_thin_box_rows dwords=335 instruction_slots=77 device_limit=512 headroom=435 within_ceiling_2048=1
-CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_thin_box_rows within the 2048-slot ceiling PASS
-RESOLVE_BUDGET variant=embedded_thin_box_columns dwords=420 instruction_slots=94 device_limit=512 headroom=418 within_ceiling_2048=1
-CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_thin_box_columns within the 2048-slot ceiling PASS
 RESOLVE_BUDGET variant=embedded_plain_taps16 dwords=1681 instruction_slots=432 device_limit=512 headroom=80 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_plain_taps16 within the 2048-slot ceiling PASS
@@ -53,9 +41,6 @@ CHECK embedded_age_taps16 within the 2048-slot ceiling PASS
 RESOLVE_BUDGET variant=embedded_far_taps16 dwords=1948 instruction_slots=493 device_limit=512 headroom=19 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_far_taps16 within the 2048-slot ceiling PASS
-RESOLVE_BUDGET variant=embedded_far_camera_taps16 dwords=2006 instruction_slots=505 device_limit=512 headroom=7 within_ceiling_2048=1
-CHECK resolve instruction budget parsed for ps_3_0 PASS
-CHECK embedded_far_camera_taps16 within the 2048-slot ceiling PASS
 RESOLVE_BUDGET variant=embedded_far_camera_hold dwords=2479 instruction_slots=616 device_limit=512 headroom=-104 within_ceiling_2048=1
 CHECK resolve instruction budget parsed for ps_3_0 PASS
 CHECK embedded_far_camera_hold within the 2048-slot ceiling PASS
@@ -1162,12 +1147,12 @@ LINE_CASES
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
-LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.6843 far_stabiliser_ms=0.8070 thin_region_ms=1.3053 far_delta_ms=0.1227 thin_region_delta_ms=0.6210 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.3053 no_region_camera_ms=1.3666 no_region_camera_delta_ms=0.0612 fragmented_pan_thin_ms=1.1449 fragmented_pan_camera_ms=1.8504 fragmented_pan_camera_delta_ms=0.7054 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.8504 lane_input_law_ms=1.7670 lane_input_lane_ms=1.7453 lane_fetch_delta_ms=-0.0217 lane_input_over_r32f_ms=-0.0834 scope=cpu_wall_with_event_query_drain
+LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.6093 far_stabiliser_ms=0.6926 thin_region_ms=1.2489 far_delta_ms=0.0834 thin_region_delta_ms=0.6397 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.2489 no_region_camera_ms=1.1960 no_region_camera_delta_ms=-0.0530 fragmented_pan_thin_ms=0.9289 fragmented_pan_camera_ms=1.3157 fragmented_pan_camera_delta_ms=0.3868 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.3157 lane_input_law_ms=1.0922 lane_input_lane_ms=1.1083 lane_fetch_delta_ms=0.0161 lane_input_over_r32f_ms=-0.2235 scope=cpu_wall_with_event_query_drain
 CHECK sentinel timing: separable box programs created PASS
 CHECK sentinel timing: separable box programs created PASS
-LINE_TIMING_SENTINEL width=1280 height=768 rounds=6 content=all_unrouted_sentinel_pan strength_off_ms=1.3491 strength_on_separable_ms=1.6375 sentinel_delta_ms=0.2884 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_SENTINEL width=1280 height=768 rounds=6 content=all_unrouted_sentinel_pan strength_off_ms=0.9311 strength_on_separable_ms=1.1721 sentinel_delta_ms=0.2409 scope=cpu_wall_with_event_query_drain
 LINE_BASE numerical=190 state_restorations=4
 FAR_CASES
 FAR_GATE ok=1 d0=0.99985647 inv=17734.900 expected_d0=0.99985652 expected_inv=17749.280
@@ -1423,7 +1408,7 @@ CHECK camera gate without configure_far is refused PASS
 CHECK camera gate without the thin region is ignored (plain resolve) PASS
 CHECK camera-gate run publishes the age target and the mask PASS
 CHECK camera-gate run restores c0..c7, c10, c22, c24, samplers 8..10, RT1 and COLORWRITEENABLE1 PASS
-CHECK failed box draw (the fourth draw) publishes nothing PASS
+CHECK failed box draw (the second draw: tests, box, resolve) publishes nothing PASS
 CHECK after a failed box draw the camera-gate resolve restarts without history PASS
 CHECK Reset protocol keeps the camera-gate programs and recreates the box targets PASS
 CHECK thin-region history follows the sequence PASS
@@ -1468,16 +1453,6 @@ SAMPLE thin region thin-region-0.97+far-weight-0.985: age target matches the CPU
 SAMPLE thin region thin-region-0.97+far-weight-0.985: published gate equals the oracle's (fragmented 7x7, closed by the fastest pixel) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
 CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
 CHECK far stabiliser + thin region (the expected default pair): shard ripple <= 0.15 x the installed resolve and within 1.25 x the thin region alone PASS
-CHECK thin-region program created on this device PASS
-CHECK camera-gate programs created on this device PASS
-CHECK thin-region history follows the sequence PASS
-THIN_REGION drift=0.00 config=thin-region-0.97-camera-gate oracle_error=0.008301 age_oracle_error=0.000000 mask_error=0.000000 shard_rms_codes=1.416 shard_p2p_codes=6.6 rms_ratio=0.0866 square_px=29952 square_differs=0
-SAMPLE thin region thin-region-0.97-camera-gate: shader matches the 2-D CPU oracle within the FP16 bound actual=0.008300781 expected=0.000000000 tolerance=0.020000019 PASS
-SAMPLE thin region thin-region-0.97-camera-gate: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
-SAMPLE thin region thin-region-0.97-camera-gate: published gate equals the oracle's (fragmented 7x7, closed by the fastest pixel) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
-CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
-THIN_REGION_CAMERA_STATIC drift=0.00 colour_identical=1 age_identical=1 gate_differs=0
-CHECK camera gate with a static camera (rest, drift inside the gate, drift past it): bit-identical to the screen gate, every pixel, all four channels, age and gate PASS
 CHECK thin-region history follows the sequence PASS
 THIN_REGION drift=0.12 config=thin-base oracle_error=0.003906 age_oracle_error=0.000000 mask_error=0.000000 shard_rms_codes=24.083 shard_p2p_codes=131.7 rms_ratio=1.0000 square_px=29952 square_differs=0
 SAMPLE thin region thin-base: shader matches the 2-D CPU oracle within the FP16 bound actual=0.003906250 expected=0.000000000 tolerance=0.006000000 PASS
@@ -1517,16 +1492,6 @@ SAMPLE thin region thin-region-0.97+far-weight-0.985: shader matches the 2-D CPU
 SAMPLE thin region thin-region-0.97+far-weight-0.985: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE thin region thin-region-0.97+far-weight-0.985: published gate equals the oracle's (fragmented 7x7, closed by the fastest pixel) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
 CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
-CHECK thin-region program created on this device PASS
-CHECK camera-gate programs created on this device PASS
-CHECK thin-region history follows the sequence PASS
-THIN_REGION drift=0.12 config=thin-region-0.97-camera-gate oracle_error=0.004883 age_oracle_error=0.000000 mask_error=0.000000 shard_rms_codes=14.756 shard_p2p_codes=86.2 rms_ratio=0.6127 square_px=29952 square_differs=0
-SAMPLE thin region thin-region-0.97-camera-gate: shader matches the 2-D CPU oracle within the FP16 bound actual=0.004882812 expected=0.000000000 tolerance=0.020000019 PASS
-SAMPLE thin region thin-region-0.97-camera-gate: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
-SAMPLE thin region thin-region-0.97-camera-gate: published gate equals the oracle's (fragmented 7x7, closed by the fastest pixel) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
-CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
-THIN_REGION_CAMERA_STATIC drift=0.12 colour_identical=1 age_identical=1 gate_differs=0
-CHECK camera gate with a static camera (rest, drift inside the gate, drift past it): bit-identical to the screen gate, every pixel, all four channels, age and gate PASS
 CHECK thin-region history follows the sequence PASS
 THIN_REGION drift=0.30 config=thin-base oracle_error=0.002441 age_oracle_error=0.000000 mask_error=0.000000 shard_rms_codes=20.936 shard_p2p_codes=95.3 rms_ratio=1.0000 square_px=29952 square_differs=0
 SAMPLE thin region thin-base: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.006000000 PASS
@@ -1571,17 +1536,6 @@ SAMPLE thin region thin-region-0.97+far-weight-0.985: age target matches the CPU
 SAMPLE thin region thin-region-0.97+far-weight-0.985: published gate equals the oracle's (fragmented 7x7, closed by the fastest pixel) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
 CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
 CHECK past the speed gate the thin-region run is the plain resolve bit for bit, every pixel PASS
-CHECK thin-region program created on this device PASS
-CHECK camera-gate programs created on this device PASS
-CHECK thin-region history follows the sequence PASS
-THIN_REGION drift=0.30 config=thin-region-0.97-camera-gate oracle_error=0.002441 age_oracle_error=0.000000 mask_error=0.000000 shard_rms_codes=20.936 shard_p2p_codes=95.3 rms_ratio=1.0000 square_px=29952 square_differs=0
-SAMPLE thin region thin-region-0.97-camera-gate: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.020000019 PASS
-SAMPLE thin region thin-region-0.97-camera-gate: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
-SAMPLE thin region thin-region-0.97-camera-gate: published gate equals the oracle's (fragmented 7x7, closed by the fastest pixel) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
-CHECK plain silhouette (the square and everything right of x = 20) bit-identical to the plain resolve, all four channels PASS
-CHECK past the speed gate the thin-region run is the plain resolve bit for bit, every pixel PASS
-THIN_REGION_CAMERA_STATIC drift=0.30 colour_identical=1 age_identical=1 gate_differs=0
-CHECK camera gate with a static camera (rest, drift inside the gate, drift past it): bit-identical to the screen gate, every pixel, all four channels, age and gate PASS
 CHECK thin-region history follows the sequence PASS
 CHECK thin-region program created on this device PASS
 CHECK thin-region history follows the sequence PASS
@@ -1598,23 +1552,19 @@ THIN_REGION_PAN pan=0.50 config=thin-region-0.97 oracle_error=0.001953 age_oracl
 SAMPLE pan, screen gate: shader matches the 2-D CPU oracle within the FP16 bound actual=0.001953125 expected=0.000000000 tolerance=0.020000000 PASS
 SAMPLE pan, screen gate: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE pan, screen gate: published gate equals the oracle's actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
-THIN_REGION_PAN pan=0.50 config=thin-region-0.97-camera-gate oracle_error=0.009277 age_oracle_error=0.000000 mask_error=0.000000
-SAMPLE pan, camera gate: shader matches the 2-D CPU oracle (camera-relative gate, 7x7 box) within the FP16 bound actual=0.009277344 expected=0.000000000 tolerance=0.020000000 PASS
-SAMPLE pan, camera gate: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
-SAMPLE pan, camera gate: published gates (b camera, a screen) equal the oracle's actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
 THIN_REGION_CAMERA pan=0.50 base_rms_codes=16.340 screen_rms_codes=16.340 camera_rms_codes=1.416 camera_over_screen=0.0866 screen_p2p_codes=99.4 camera_p2p_codes=6.6 screen_gate_share=0.0000 camera_gate_share=1.0000 camera_mask_screen_channel_max=0.0000
 CHECK pan past HI: the screen-gated thin region is the plain resolve bit for bit and its published gate is closed everywhere PASS
-CHECK pan past HI: the camera gate keeps the whole shard field open (share >= 0.99) while the mask's screen-gate channel reads closed PASS
+CHECK pan past HI: the camera gate's tests target reads the whole shard field open (camera openness, share >= 0.99) while its screen channel reads closed PASS
 CHECK pan past HI: the camera gate halves the shard ripple (rms <= 0.5 x, peak-to-peak <= 0.6 x the screen gate) PASS
 CHECK thin-region program created on this device PASS
 CHECK thin-region history follows the sequence PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
 CHECK thin-region history follows the sequence PASS
-THIN_REGION_STALE pan=0.50 mover_px_per_frame=2 injected_value=4.0 screen_excess_after_mover=0.000000 camera_excess_after_mover=0.000000 screen_added_frame101=0.622559 camera_added_frame101=0.727051 camera_over_screen=1.1678 screen_added_frame105=0.373535 camera_added_frame105=0.664062 unbounded_estimate=3.6375 screen_oracle_error=0.001953 camera_oracle_error=0.008301
+THIN_REGION_STALE pan=0.50 mover_px_per_frame=2 injected_value=4.0 screen_excess_after_mover=0.000000 camera_excess_after_mover=0.000000 screen_added_frame101=0.622559 camera_added_frame101=0.727051 camera_over_screen=1.1678 screen_added_frame105=0.373535 camera_added_frame105=0.664062 unbounded_estimate=3.6375 screen_oracle_error=0.001953 camera_oracle_error=0.008789
 SAMPLE pan + bright mover, screen gate: no ghost above the scene's maximum after the mover left actual=0.000000000 expected=0.000000000 tolerance=0.007843137 PASS
 SAMPLE pan + bright mover, camera gate: no ghost above the scene's maximum after the mover left (the mover closes the gate around itself) actual=0.000000000 expected=0.000000000 tolerance=0.007843137 PASS
-SAMPLE pan + stale patch, camera gate: shader matches the oracle's 7x7 box clip of the injected history (frames 101..127) actual=0.008300781 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE pan + stale patch, camera gate: shader matches the oracle's 7x7 box clip of the injected history (frames 101..127) actual=0.008789062 expected=0.000000000 tolerance=0.020000000 PASS
 SAMPLE pan + stale patch, screen gate: shader matches the oracle on the injected history (frames 101..127) actual=0.001953125 expected=0.000000000 tolerance=0.020000000 PASS
 CHECK stale patch (value 4) one frame after injection: the camera gate's 7x7 box bounds it to at most 2 x the screen gate's clipped value PASS
 CHECK stale patch: the box binds (well below the clip-off estimate 0.97 x (4 - 0.25)) PASS
@@ -1631,17 +1581,16 @@ CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
 CHECK thin-region history follows the sequence PASS
 THIN_REGION_GLASS_MOVER pan=0.50 mover_px_per_frame=2 mover_value=4.0 routed_sentinel_px=36 camera_gate_min_within_8px=1.0000 screen_gate_max_within_8px=0.0000 mask_error=0.000000 excess_after_mover=0.000000 excess_5px_behind=0.000000 excess_within_box_reach=2.572266 box_reach_bound=3.0000
-CHECK sentinel-depth fast mover: it casts no vote, the camera gate stays open within 8 px of it while the screen-gate channel reads closed PASS
-CHECK sentinel-depth fast mover: the published camera gate equals the depth-only oracle (the mover counts as background) PASS
+CHECK sentinel-depth fast mover: it casts no vote, the tests target's camera openness stays 1 around it while the screen channel reads closed PASS
+CHECK sentinel-depth fast mover: the published tests target equals the depth-only oracle (the mover counts as background) PASS
 CHECK sentinel-depth fast mover: no ghost above the scene's maximum 5 px or more behind the mover, nor after it left (7x7 box clip) PASS
 CHECK sentinel-depth fast mover: within the box's reach of the trailing edge the ghost is bounded by the mover's own value PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
-CHECK box-target creation fault reached; camera gate fell back PASS
+CHECK box-target creation fault reached; thin region off PASS
 CHECK thin-region history follows the sequence PASS
-CHECK thin-region program created on this device PASS
 CHECK thin-region history follows the sequence PASS
-CHECK box-target creation failure: the camera gate falls back to the screen gate bit for bit, history kept PASS
+CHECK box-target creation failure: the thin region off for the session (no fallback program set), the plain resolve bit for bit, history kept PASS
 CHECK forward flight: c8 PASS
 CHECK thin-region program created on this device PASS
 CHECK forward flight: far-plane matrix PASS
@@ -2358,13 +2307,13 @@ CHECK forward flight: depth parallax term PASS
 CHECK forward flight: far-plane matrix PASS
 CHECK forward flight: depth parallax term PASS
 CHECK thin-region history follows the sequence PASS
-THIN_REGION_CAMERA_FORWARD dz=0.225018 speed_near=0.6000 speed_far=0.3001 scene_residual_near_px=0.005840 scene_residual_far_px=0.002921 form_residual_near_px=0.000213 form_residual_far_px=0.000107 screen_gate_share=0.0000 rotation_only_share=0.0000 camera_share_near=1.0000 camera_share_far=1.0000 camera_min_open_near=1.0000 camera_min_open_far=1.0000 camera_mask_screen_channel_max=0.0000 screen_rms_codes=16.340 camera_rms_codes=1.511 camera_over_screen=0.0924 screen_p2p_codes=99.4 camera_p2p_codes=8.0 mover_gate_max_within_8px=0.0000 mover_window_min_open=1.0000 rotation_identical_to_screen=1
+THIN_REGION_CAMERA_FORWARD dz=0.225018 speed_near=0.6000 speed_far=0.3001 scene_residual_near_px=0.005840 scene_residual_far_px=0.002921 form_residual_near_px=0.000213 form_residual_far_px=0.000107 screen_gate_share=0.0000 rotation_only_routed_px=70 rotation_only_open_max=0.0000 camera_share_near=1.0000 camera_share_far=1.0000 camera_min_open_near=1.0000 camera_min_open_far=1.0000 camera_tests_screen_channel_max=0.0000 screen_rms_codes=16.340 camera_rms_codes=1.525 camera_over_screen=0.0934 screen_p2p_codes=99.4 camera_p2p_codes=8.0 mover_gate_max=0.0000 mover_window_min_open=1.0000 rotation_identical_to_screen=1
 CHECK forward flight: both depths move past HI, the near rows twice as fast as the far rows PASS
 CHECK forward flight: the float32 c8 form is the analytic path within 0.005 px; the static routed rows sit on it within 0.05 px PASS
-CHECK forward flight: the screen gate and the rotation-only camera gate (no c8) are closed everywhere; their outputs agree bit for bit PASS
+CHECK forward flight: the screen gate is closed everywhere and the rotation-only camera gate (no c8) on every routed row pixel PASS
 CHECK forward flight: the depth-aware camera gate is open on the static shards at both depths while the screen channel reads closed PASS
 CHECK forward flight: the camera gate cuts the shard ripple (rms <= 0.6 x, peak-to-peak <= 0.7 x the screen gate) PASS
-CHECK forward flight: a routed object moving against the static geometry closes the gate within 8 px of itself and nowhere else PASS
+CHECK forward flight: a routed object moving against the static geometry closes the gate on itself, and the window stays open PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
 CHECK flight: far-plane matrix PASS
@@ -2464,7 +2413,7 @@ CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
 CHECK thin-region history follows the sequence PASS
-THIN_REGION_CAMERA_FLIGHT case=yaw+forward lane=0 withheld=0 lo=0.03 hi=0.25 speed_near=0.9990,0.0000 speed_far=0.6996,0.0000 routed_residual_px=0.015302 camera_share_near=1.0000 camera_share_far=1.0000 window_min=1.0000 window_max=1.0000 window_mean=1.0000 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=1.0000 glass=0 mover=0 routed_sentinel_share=0.0000 mover_reach_max=1.0000
+THIN_REGION_CAMERA_FLIGHT case=yaw+forward lane=0 withheld=0 lo=0.03 hi=0.25 speed_near=0.9990,0.0000 speed_far=0.6996,0.0000 routed_residual_px=0.015302 camera_share_near=1.0000 camera_share_far=1.0000 window_min=1.0000 window_max=1.0000 window_mean=1.0000 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.0000 glass=0 mover=0 routed_sentinel_share=0.0000 mover_px=0 mover_max=0.0000 hole_px=0
 CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
 CHECK flight: the camera gate is open on the static rows of both bands (residual < 0.05 px) PASS
 CHECK thin-region program created on this device PASS
@@ -2598,7 +2547,7 @@ CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
 CHECK flight: lane target PASS
 CHECK thin-region history follows the sequence PASS
-THIN_REGION_CAMERA_FLIGHT case=yaw+forward-lane lane=1 withheld=0 lo=0.03 hi=0.25 speed_near=0.9990,0.0000 speed_far=0.6996,0.0000 routed_residual_px=0.015302 camera_share_near=1.0000 camera_share_far=1.0000 window_min=1.0000 window_max=1.0000 window_mean=1.0000 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=1.0000 glass=0 mover=0 routed_sentinel_share=0.0000 mover_reach_max=1.0000
+THIN_REGION_CAMERA_FLIGHT case=yaw+forward-lane lane=1 withheld=0 lo=0.03 hi=0.25 speed_near=0.9990,0.0000 speed_far=0.6996,0.0000 routed_residual_px=0.015302 camera_share_near=1.0000 camera_share_far=1.0000 window_min=1.0000 window_max=1.0000 window_mean=1.0000 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.0000 glass=0 mover=0 routed_sentinel_share=0.0000 mover_px=0 mover_max=0.0000 hole_px=0
 CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
 CHECK flight: the camera gate is open on the static rows of both bands (residual < 0.05 px) PASS
 CHECK thin-region program created on this device PASS
@@ -2636,9 +2585,9 @@ CHECK flight: far-plane matrix PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: far-plane matrix PASS
 CHECK thin-region history follows the sequence PASS
-THIN_REGION_CAMERA_FLIGHT case=yaw+forward-withheld lane=0 withheld=1 lo=0.03 hi=0.25 speed_near=0.9990,0.0000 speed_far=0.6996,0.0000 routed_residual_px=0.015302 camera_share_near=0.0000 camera_share_far=0.0000 window_min=0.0000 window_max=0.0000 window_mean=0.0000 modelled=0 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.0000 glass=0 mover=0 routed_sentinel_share=0.0000 mover_reach_max=0.0000
+THIN_REGION_CAMERA_FLIGHT case=yaw+forward-withheld lane=0 withheld=1 lo=0.03 hi=0.25 speed_near=0.9990,0.0000 speed_far=0.6996,0.0000 routed_residual_px=0.015302 camera_share_near=0.0000 camera_share_far=0.0000 window_min=0.0000 window_max=0.0000 window_mean=0.0000 modelled=0 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.0000 glass=0 mover=0 routed_sentinel_share=0.0000 mover_px=0 mover_max=0.0000 hole_px=0
 CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
-CHECK flight: the camera gate is closed on the window PASS
+CHECK flight: the camera gate is closed on the window's routed rows PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
 CHECK flight: far-plane matrix PASS
@@ -2738,143 +2687,9 @@ CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
 CHECK thin-region history follows the sequence PASS
-THIN_REGION_CAMERA_FLIGHT case=wrong-latch lane=0 withheld=0 lo=0.03 hi=0.25 speed_near=0.6002,0.0000 speed_far=0.3003,0.0000 routed_residual_px=0.007234 camera_share_near=0.0000 camera_share_far=0.0000 window_min=0.0000 window_max=0.0000 window_mean=0.0000 modelled=0 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.0000 glass=0 mover=0 routed_sentinel_share=0.0000 mover_reach_max=0.0000
+THIN_REGION_CAMERA_FLIGHT case=wrong-latch lane=0 withheld=0 lo=0.03 hi=0.25 speed_near=0.6002,0.0000 speed_far=0.3003,0.0000 routed_residual_px=0.007234 camera_share_near=0.0000 camera_share_far=0.0000 window_min=0.0000 window_max=0.0000 window_mean=0.0000 modelled=0 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.0000 glass=0 mover=0 routed_sentinel_share=0.0000 mover_px=0 mover_max=0.0000 hole_px=0
 CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
-CHECK flight: the camera gate is closed on the window PASS
-CHECK thin-region program created on this device PASS
-CHECK camera-gate programs created on this device PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
-CHECK thin-region history follows the sequence PASS
-THIN_REGION_CAMERA_FLIGHT case=wrong-latch-lane lane=1 withheld=0 lo=0.03 hi=0.25 speed_near=0.6002,0.0000 speed_far=0.3003,0.0000 routed_residual_px=0.007234 camera_share_near=1.0000 camera_share_far=1.0000 window_min=1.0000 window_max=1.0000 window_mean=1.0000 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=1.0000 glass=0 mover=0 routed_sentinel_share=0.0000 mover_reach_max=1.0000
-CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
-CHECK flight: the camera gate is open on the static rows of both bands (residual < 0.05 px) PASS
+CHECK flight: the camera gate is closed on the window's routed rows PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
 CHECK flight: far-plane matrix PASS
@@ -3006,8 +2821,7 @@ CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
 CHECK flight: lane target PASS
 CHECK thin-region history follows the sequence PASS
-THIN_REGION_CAMERA_FLIGHT case=wrong-latch-lane-mixed lane=1 withheld=0 lo=0.03 hi=0.25 speed_near=0.6002,0.0000 speed_far=0.3003,0.0000 routed_residual_px=0.007196 camera_share_near=1.0000 camera_share_far=1.0000 window_min=1.0000 window_max=1.0000 window_mean=1.0000 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=6 hole_reach_max=0.0000 glass=0 mover=0 routed_sentinel_share=0.0000 mover_reach_max=0.0000
-CHECK mixed frame: valid depth without a lane z stays on the far plane (closed within 8 px of the hole), whatever the latch PASS
+THIN_REGION_CAMERA_FLIGHT case=wrong-latch-lane lane=1 withheld=0 lo=0.03 hi=0.25 speed_near=0.6002,0.0000 speed_far=0.3003,0.0000 routed_residual_px=0.007234 camera_share_near=1.0000 camera_share_far=1.0000 window_min=1.0000 window_max=1.0000 window_mean=1.0000 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.0000 glass=0 mover=0 routed_sentinel_share=0.0000 mover_px=0 mover_max=0.0000 hole_px=0
 CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
 CHECK flight: the camera gate is open on the static rows of both bands (residual < 0.05 px) PASS
 CHECK thin-region program created on this device PASS
@@ -3015,236 +2829,236 @@ CHECK camera-gate programs created on this device PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
 CHECK thin-region history follows the sequence PASS
-THIN_REGION_CAMERA_FLIGHT case=glass lane=0 withheld=0 lo=0.03 hi=0.25 speed_near=0.6002,0.0000 speed_far=0.3003,0.0000 routed_residual_px=0.007234 camera_share_near=1.0000 camera_share_far=1.0000 window_min=1.0000 window_max=1.0000 window_mean=1.0000 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=1.0000 glass=1 mover=0 routed_sentinel_share=0.6364 mover_reach_max=1.0000
+THIN_REGION_CAMERA_FLIGHT case=wrong-latch-lane-mixed lane=1 withheld=0 lo=0.03 hi=0.25 speed_near=0.6002,0.0000 speed_far=0.3003,0.0000 routed_residual_px=0.007196 camera_share_near=1.0000 camera_share_far=1.0000 window_min=1.0000 window_max=1.0000 window_mean=1.0000 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=6 hole_reach_max=0.0000 glass=0 mover=0 routed_sentinel_share=0.0000 mover_px=0 mover_max=0.0000 hole_px=48
+CHECK mixed frame: valid depth without a lane z stays on the far plane (closed on the hole's routed pixels), whatever the latch PASS
 CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
 CHECK flight: the camera gate is open on the static rows of both bands (residual < 0.05 px) PASS
-CHECK glass: routed sentinel-depth cells fill the space between the shard rows PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
-CHECK flight: lane target PASS
 CHECK thin-region history follows the sequence PASS
-THIN_REGION_CAMERA_FLIGHT case=glass-lane lane=1 withheld=0 lo=0.03 hi=0.25 speed_near=0.6002,0.0000 speed_far=0.3003,0.0000 routed_residual_px=0.007234 camera_share_near=1.0000 camera_share_far=1.0000 window_min=1.0000 window_max=1.0000 window_mean=1.0000 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=1.0000 glass=1 mover=0 routed_sentinel_share=0.6364 mover_reach_max=1.0000
+THIN_REGION_CAMERA_FLIGHT case=glass lane=0 withheld=0 lo=0.03 hi=0.25 speed_near=0.6002,0.0000 speed_far=0.3003,0.0000 routed_residual_px=0.007234 camera_share_near=1.0000 camera_share_far=1.0000 window_min=1.0000 window_max=1.0000 window_mean=1.0000 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.0000 glass=1 mover=0 routed_sentinel_share=0.6364 mover_px=0 mover_max=0.0000 hole_px=0
 CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
 CHECK flight: the camera gate is open on the static rows of both bands (residual < 0.05 px) PASS
 CHECK glass: routed sentinel-depth cells fill the space between the shard rows PASS
@@ -3379,212 +3193,10 @@ CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
 CHECK flight: lane target PASS
 CHECK thin-region history follows the sequence PASS
-THIN_REGION_CAMERA_FLIGHT case=glass-mover-lane lane=1 withheld=0 lo=0.03 hi=0.25 speed_near=0.6002,0.0000 speed_far=0.3003,0.0000 routed_residual_px=not_measured camera_share_near=1.0000 camera_share_far=1.0000 window_min=1.0000 window_max=1.0000 window_mean=1.0000 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=1.0000 glass=1 mover=1 routed_sentinel_share=0.6364 mover_reach_max=0.0000
+THIN_REGION_CAMERA_FLIGHT case=glass-lane lane=1 withheld=0 lo=0.03 hi=0.25 speed_near=0.6002,0.0000 speed_far=0.3003,0.0000 routed_residual_px=0.007234 camera_share_near=1.0000 camera_share_far=1.0000 window_min=1.0000 window_max=1.0000 window_mean=1.0000 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.0000 glass=1 mover=0 routed_sentinel_share=0.6364 mover_px=0 mover_max=0.0000 hole_px=0
 CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
-CHECK glass with a mover: routed sentinel cells leave the gate open on the shards while a routed valid-depth fast mover closes it within 8 px of itself PASS
-CHECK thin-region program created on this device PASS
-CHECK camera-gate programs created on this device PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK thin-region history follows the sequence PASS
-THIN_REGION_CAMERA_FLIGHT case=glass-mover lane=0 withheld=0 lo=0.03 hi=0.25 speed_near=0.6002,0.0000 speed_far=0.3003,0.0000 routed_residual_px=not_measured camera_share_near=1.0000 camera_share_far=1.0000 window_min=1.0000 window_max=1.0000 window_mean=1.0000 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=1.0000 glass=1 mover=1 routed_sentinel_share=0.6364 mover_reach_max=0.0000
-CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
-CHECK glass with a mover: routed sentinel cells leave the gate open on the shards while a routed valid-depth fast mover closes it within 8 px of itself PASS
-CHECK thin-region program created on this device PASS
-CHECK camera-gate programs created on this device PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: depth parallax term PASS
-CHECK flight: lane parallax term PASS
-CHECK thin-region history follows the sequence PASS
-THIN_REGION_CAMERA_FLIGHT case=near lane=0 withheld=0 lo=2.00 hi=10.00 speed_near=-13.3334,0.0000 speed_far=-13.3334,0.0000 routed_residual_px=10.015397 camera_share_near=1.0000 camera_share_far=1.0000 window_min=0.0039 window_max=0.3647 window_mean=0.1173 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.1686 glass=0 mover=0 routed_sentinel_share=0.0000 mover_reach_max=0.3843
-CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
+CHECK flight: the camera gate is open on the static rows of both bands (residual < 0.05 px) PASS
+CHECK glass: routed sentinel-depth cells fill the space between the shard rows PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
 CHECK flight: far-plane matrix PASS
@@ -3716,45 +3328,9 @@ CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
 CHECK flight: lane target PASS
 CHECK thin-region history follows the sequence PASS
-THIN_REGION_CAMERA_FLIGHT case=near-lane lane=1 withheld=0 lo=2.00 hi=10.00 speed_near=-13.3334,0.0000 speed_far=-13.3334,0.0000 routed_residual_px=10.015397 camera_share_near=1.0000 camera_share_far=1.0000 window_min=0.0039 window_max=0.3647 window_mean=0.1173 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.1686 glass=0 mover=0 routed_sentinel_share=0.0000 mover_reach_max=0.3843
+THIN_REGION_CAMERA_FLIGHT case=glass-mover-lane lane=1 withheld=0 lo=0.03 hi=0.25 speed_near=0.6002,0.0000 speed_far=0.3003,0.0000 routed_residual_px=not_measured camera_share_near=1.0000 camera_share_far=1.0000 window_min=1.0000 window_max=1.0000 window_mean=1.0000 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.0000 glass=1 mover=1 routed_sentinel_share=0.6364 mover_px=4 mover_max=0.0000 hole_px=0
 CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
-CHECK thin-region program created on this device PASS
-CHECK camera-gate programs created on this device PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK flight: far-plane matrix PASS
-CHECK thin-region history follows the sequence PASS
-THIN_REGION_CAMERA_FLIGHT case=near-withheld lane=0 withheld=1 lo=2.00 hi=10.00 speed_near=-13.3334,0.0000 speed_far=-13.3334,0.0000 routed_residual_px=10.015397 camera_share_near=0.0000 camera_share_far=0.0000 window_min=0.0000 window_max=0.0000 window_mean=0.0000 modelled=0 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.0000 glass=0 mover=0 routed_sentinel_share=0.0000 mover_reach_max=0.0000
-CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
+CHECK glass with a mover: routed sentinel cells leave the gate open on the shards while a routed valid-depth fast mover closes it on itself PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
 CHECK flight: far-plane matrix PASS
@@ -3854,9 +3430,110 @@ CHECK flight: far-plane matrix PASS
 CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
 CHECK thin-region history follows the sequence PASS
-THIN_REGION_CAMERA_FLIGHT case=behind lane=0 withheld=0 lo=2.00 hi=10.00 speed_near=12.0000,0.0000 speed_far=12.0000,0.0000 routed_residual_px=20030735.227262 camera_share_near=0.0000 camera_share_far=0.0000 window_min=0.0000 window_max=0.0000 window_mean=0.0000 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.0000 glass=0 mover=0 routed_sentinel_share=0.0000 mover_reach_max=0.0000
+THIN_REGION_CAMERA_FLIGHT case=glass-mover lane=0 withheld=0 lo=0.03 hi=0.25 speed_near=0.6002,0.0000 speed_far=0.3003,0.0000 routed_residual_px=not_measured camera_share_near=1.0000 camera_share_far=1.0000 window_min=1.0000 window_max=1.0000 window_mean=1.0000 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.0000 glass=1 mover=1 routed_sentinel_share=0.6364 mover_px=4 mover_max=0.0000 hole_px=0
 CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
-CHECK flight: the camera gate is closed on the window PASS
+CHECK glass with a mover: routed sentinel cells leave the gate open on the shards while a routed valid-depth fast mover closes it on itself PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_CAMERA_FLIGHT case=near lane=0 withheld=0 lo=2.00 hi=10.00 speed_near=-13.3334,0.0000 speed_far=-13.3334,0.0000 routed_residual_px=10.015397 camera_share_near=1.0000 camera_share_far=1.0000 window_min=0.2431 window_max=1.0000 window_mean=0.5927 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.0000 glass=0 mover=0 routed_sentinel_share=0.0000 mover_px=0 mover_max=0.0000 hole_px=0
+CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
 CHECK flight: far-plane matrix PASS
@@ -3988,38 +3665,310 @@ CHECK flight: depth parallax term PASS
 CHECK flight: lane parallax term PASS
 CHECK flight: lane target PASS
 CHECK thin-region history follows the sequence PASS
-THIN_REGION_CAMERA_FLIGHT case=behind-lane lane=1 withheld=0 lo=2.00 hi=10.00 speed_near=12.0000,0.0000 speed_far=12.0000,0.0000 routed_residual_px=20030735.227262 camera_share_near=0.0000 camera_share_far=0.0000 window_min=0.0000 window_max=0.0000 window_mean=0.0000 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.0000 glass=0 mover=0 routed_sentinel_share=0.0000 mover_reach_max=0.0000
+THIN_REGION_CAMERA_FLIGHT case=near-lane lane=1 withheld=0 lo=2.00 hi=10.00 speed_near=-13.3334,0.0000 speed_far=-13.3334,0.0000 routed_residual_px=10.015397 camera_share_near=1.0000 camera_share_far=1.0000 window_min=0.2431 window_max=1.0000 window_mean=0.5927 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.0000 glass=0 mover=0 routed_sentinel_share=0.0000 mover_px=0 mover_max=0.0000 hole_px=0
 CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
-CHECK flight: the camera gate is closed on the window PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: far-plane matrix PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_CAMERA_FLIGHT case=near-withheld lane=0 withheld=1 lo=2.00 hi=10.00 speed_near=-13.3334,0.0000 speed_far=-13.3334,0.0000 routed_residual_px=10.015397 camera_share_near=0.0000 camera_share_far=0.0000 window_min=0.0000 window_max=0.0000 window_mean=0.0000 modelled=0 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.0000 glass=0 mover=0 routed_sentinel_share=0.0000 mover_px=0 mover_max=0.0000 hole_px=0
+CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_CAMERA_FLIGHT case=behind lane=0 withheld=0 lo=2.00 hi=10.00 speed_near=12.0000,0.0000 speed_far=12.0000,0.0000 routed_residual_px=20030735.227262 camera_share_near=0.0000 camera_share_far=0.0000 window_min=0.0000 window_max=0.0000 window_mean=0.0000 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.0000 glass=0 mover=0 routed_sentinel_share=0.0000 mover_px=0 mover_max=0.0000 hole_px=0
+CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
+CHECK flight: the camera gate is closed on the window's routed rows PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK flight: far-plane matrix PASS
+CHECK flight: depth parallax term PASS
+CHECK flight: lane parallax term PASS
+CHECK flight: lane target PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_CAMERA_FLIGHT case=behind-lane lane=1 withheld=0 lo=2.00 hi=10.00 speed_near=12.0000,0.0000 speed_far=12.0000,0.0000 routed_residual_px=20030735.227262 camera_share_near=0.0000 camera_share_far=0.0000 window_min=0.0000 window_max=0.0000 window_mean=0.0000 modelled=1 oracle_error=0.000000 screen_oracle_error=0.000000 lane_hole_columns=0 hole_reach_max=0.0000 glass=0 mover=0 routed_sentinel_share=0.0000 mover_px=0 mover_max=0.0000 hole_px=0
+CHECK flight: published gates equal the CPU oracle (double reprojection, w clamp) within 2 codes PASS
+CHECK flight: the camera gate is closed on the window's routed rows PASS
 CHECK near geometry (c8 term O(1)): a graded gate, the same through the law and the lane, and lower without the term PASS
 CHECK thin-region program created on this device PASS
 CHECK thin-region history follows the sequence PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
 CHECK thin-region history follows the sequence PASS
-THIN_REGION_BAD_MOTION kind=overflow_1e30 glass=0 asserted=1 covered_px=4 screen_gate_max_within_8px=0.0000 camera_gate_max_within_8px=0.0000 camera_screen_channel_max=0.0000 identical_to_screen_gate=1
-CHECK non-finite speed (overflow): the camera mask closes both gates within 8 px, as the plain mask closes its one PASS
-CHECK non-finite speed (overflow): camera-gate output and age equal the screen gate's bit for bit PASS
+THIN_REGION_BAD_MOTION kind=overflow_1e30 glass=0 asserted=1 covered_px=4 screen_gate_max_within_8px=0.0000 camera_gate_max_covered=0.0000 camera_screen_channel_max_covered=0.0000 camera_output_finite=1 identical_to_screen_gate=0
+CHECK non-finite speed (overflow): the camera mask's tests target closes both gates on every covered pixel, as the plain mask closes its one within 8 px PASS
+CHECK non-finite speed (overflow): every camera-gate output finite PASS
 CHECK thin-region program created on this device PASS
 CHECK thin-region history follows the sequence PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
 CHECK thin-region history follows the sequence PASS
-THIN_REGION_BAD_MOTION kind=nan glass=0 asserted=0 covered_px=4 screen_gate_max_within_8px=1.0000 camera_gate_max_within_8px=1.0000 camera_screen_channel_max=1.0000 identical_to_screen_gate=1
+THIN_REGION_BAD_MOTION kind=nan glass=0 asserted=0 covered_px=4 screen_gate_max_within_8px=1.0000 camera_gate_max_covered=1.0000 camera_screen_channel_max_covered=1.0000 camera_output_finite=1 identical_to_screen_gate=0
 CHECK thin-region program created on this device PASS
 CHECK thin-region history follows the sequence PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
 CHECK thin-region history follows the sequence PASS
-THIN_REGION_BAD_MOTION kind=overflow_1e30 glass=1 asserted=1 covered_px=4 screen_gate_max_within_8px=0.0000 camera_gate_max_within_8px=0.0000 camera_screen_channel_max=0.0000 identical_to_screen_gate=1
-CHECK non-finite speed (overflow): the camera mask closes both gates within 8 px, as the plain mask closes its one PASS
-CHECK non-finite speed (overflow): camera-gate output and age equal the screen gate's bit for bit PASS
+THIN_REGION_BAD_MOTION kind=overflow_1e30 glass=1 asserted=1 covered_px=4 screen_gate_max_within_8px=0.0000 camera_gate_max_covered=0.0000 camera_screen_channel_max_covered=0.0000 camera_output_finite=1 identical_to_screen_gate=0
+CHECK non-finite speed (overflow): the camera mask's tests target closes both gates on every covered pixel, as the plain mask closes its one within 8 px PASS
+CHECK non-finite speed (overflow): every camera-gate output finite PASS
 CHECK thin-region program created on this device PASS
 CHECK thin-region history follows the sequence PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
 CHECK thin-region history follows the sequence PASS
-THIN_REGION_BAD_MOTION kind=nan glass=1 asserted=0 covered_px=4 screen_gate_max_within_8px=1.0000 camera_gate_max_within_8px=1.0000 camera_screen_channel_max=1.0000 identical_to_screen_gate=1
+THIN_REGION_BAD_MOTION kind=nan glass=1 asserted=0 covered_px=4 screen_gate_max_within_8px=1.0000 camera_gate_max_covered=1.0000 camera_screen_channel_max_covered=1.0000 camera_output_finite=1 identical_to_screen_gate=0
 CHECK thin-region history follows the sequence PASS
 CHECK thin-region program created on this device PASS
 CHECK thin-region history follows the sequence PASS
@@ -4048,7 +3997,7 @@ CHECK the emitter bound is not validated at S = 0 PASS
 CHECK sentinel fields are ignored without the camera gate PASS
 CHECK sentinel run publishes the mask PASS
 CHECK sentinel run restores c0..c7, c22..c24, samplers 1..3, 6, 8..10, RT1 and COLORWRITEENABLE1 PASS
-CHECK failed columns draw of the separable box (the fifth draw) publishes nothing PASS
+CHECK failed columns draw of the separable box (the third draw: tests, rows, columns, resolve) publishes nothing PASS
 CHECK after a failed box draw the sentinel run restarts without history PASS
 CHECK Reset protocol keeps the separable box programs and recreates the row targets PASS
 CHECK thin-region program created on this device PASS
@@ -4073,11 +4022,12 @@ CHECK thin-region history follows the sequence PASS
 CHECK separable box programs are not created by configure_far PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
+CHECK separable box twins created on this device PASS
 CHECK thin-region history follows the sequence PASS
-SENTINEL_STABILISER row=facets pan_axis=none pan=0.00 pan_mode=rest ratio_asserted=1 strength=0.70 oracle_error=0.002930 age_oracle_error=0.000000 mask_error=0.000000 oracle_skipped_px=0 oracle_skip_ceiling=0 base_flicker_codes=13.156 flicker_codes=5.184 flicker_ratio=0.3940 base_detail_codes=19.765 detail_codes=30.925
+SENTINEL_STABILISER row=facets pan_axis=none pan=0.00 pan_mode=rest ratio_asserted=1 strength=0.70 oracle_error=0.002930 age_oracle_error=0.000000 mask_error=0.000000 oracle_skipped_px=0 oracle_skip_ceiling=0 base_flicker_codes=13.156 flicker_codes=5.155 flicker_ratio=0.3918 base_detail_codes=19.765 detail_codes=30.956
 SAMPLE sentinel stabiliser: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002929688 expected=0.000000000 tolerance=0.020000000 PASS
 SAMPLE sentinel stabiliser: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
-SAMPLE sentinel stabiliser: published strength equals the oracle's (b = S on the open sky, a = 0) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+SAMPLE sentinel stabiliser: the published tests target equals the CPU tests draw (the class code on the unrouted sky) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
 CHECK sentinel facets: flicker below 0.6 x the S = 0 run under this pan PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
@@ -4085,11 +4035,12 @@ CHECK thin-region history follows the sequence PASS
 CHECK separable box programs are not created by configure_far PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
+CHECK separable box twins created on this device PASS
 CHECK thin-region history follows the sequence PASS
-SENTINEL_STABILISER row=facets pan_axis=y pan=0.30 pan_mode=steady ratio_asserted=1 strength=0.70 oracle_error=0.002686 age_oracle_error=0.000000 mask_error=0.000000 oracle_skipped_px=0 oracle_skip_ceiling=0 base_flicker_codes=24.213 flicker_codes=11.644 flicker_ratio=0.4809 base_detail_codes=17.817 detail_codes=9.325
+SENTINEL_STABILISER row=facets pan_axis=y pan=0.30 pan_mode=steady ratio_asserted=1 strength=0.70 oracle_error=0.002686 age_oracle_error=0.000000 mask_error=0.000000 oracle_skipped_px=0 oracle_skip_ceiling=0 base_flicker_codes=24.213 flicker_codes=11.593 flicker_ratio=0.4788 base_detail_codes=17.817 detail_codes=9.306
 SAMPLE sentinel stabiliser: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002685547 expected=0.000000000 tolerance=0.020000000 PASS
 SAMPLE sentinel stabiliser: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
-SAMPLE sentinel stabiliser: published strength equals the oracle's (b = S on the open sky, a = 0) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+SAMPLE sentinel stabiliser: the published tests target equals the CPU tests draw (the class code on the unrouted sky) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
 CHECK sentinel facets: flicker below 0.6 x the S = 0 run under this pan PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
@@ -4097,11 +4048,12 @@ CHECK thin-region history follows the sequence PASS
 CHECK separable box programs are not created by configure_far PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
+CHECK separable box twins created on this device PASS
 CHECK thin-region history follows the sequence PASS
-SENTINEL_STABILISER row=facets pan_axis=y pan=0.30 pan_mode=reversing ratio_asserted=1 strength=0.70 oracle_error=0.002441 age_oracle_error=0.000000 mask_error=0.000000 oracle_skipped_px=0 oracle_skip_ceiling=0 base_flicker_codes=15.947 flicker_codes=6.027 flicker_ratio=0.3779 base_detail_codes=15.492 detail_codes=9.381
+SENTINEL_STABILISER row=facets pan_axis=y pan=0.30 pan_mode=reversing ratio_asserted=1 strength=0.70 oracle_error=0.002441 age_oracle_error=0.000000 mask_error=0.000000 oracle_skipped_px=0 oracle_skip_ceiling=0 base_flicker_codes=15.947 flicker_codes=6.001 flicker_ratio=0.3763 base_detail_codes=15.492 detail_codes=9.370
 SAMPLE sentinel stabiliser: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.020000000 PASS
 SAMPLE sentinel stabiliser: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
-SAMPLE sentinel stabiliser: published strength equals the oracle's (b = S on the open sky, a = 0) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+SAMPLE sentinel stabiliser: the published tests target equals the CPU tests draw (the class code on the unrouted sky) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
 CHECK sentinel facets: flicker below 0.6 x the S = 0 run under this pan PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
@@ -4109,11 +4061,12 @@ CHECK thin-region history follows the sequence PASS
 CHECK separable box programs are not created by configure_far PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
+CHECK separable box twins created on this device PASS
 CHECK thin-region history follows the sequence PASS
-SENTINEL_STABILISER row=facets pan_axis=y pan=2.00 pan_mode=reversing ratio_asserted=1 strength=0.70 oracle_error=0.002930 age_oracle_error=0.000000 mask_error=0.000000 oracle_skipped_px=1638 oracle_skip_ceiling=9984 base_flicker_codes=15.762 flicker_codes=6.081 flicker_ratio=0.3858 base_detail_codes=20.624 detail_codes=31.995
+SENTINEL_STABILISER row=facets pan_axis=y pan=2.00 pan_mode=reversing ratio_asserted=1 strength=0.70 oracle_error=0.002930 age_oracle_error=0.000000 mask_error=0.000000 oracle_skipped_px=1638 oracle_skip_ceiling=9984 base_flicker_codes=15.762 flicker_codes=6.049 flicker_ratio=0.3838 base_detail_codes=20.624 detail_codes=32.029
 SAMPLE sentinel stabiliser: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002929688 expected=0.000000000 tolerance=0.020000000 PASS
 SAMPLE sentinel stabiliser: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
-SAMPLE sentinel stabiliser: published strength equals the oracle's (b = S on the open sky, a = 0) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+SAMPLE sentinel stabiliser: the published tests target equals the CPU tests draw (the class code on the unrouted sky) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
 CHECK sentinel facets: flicker below 0.6 x the S = 0 run under this pan PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
@@ -4121,11 +4074,12 @@ CHECK thin-region history follows the sequence PASS
 CHECK separable box programs are not created by configure_far PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
+CHECK separable box twins created on this device PASS
 CHECK thin-region history follows the sequence PASS
-SENTINEL_STABILISER row=facets pan_axis=y pan=4.00 pan_mode=reversing ratio_asserted=1 strength=0.70 oracle_error=0.002930 age_oracle_error=0.000000 mask_error=0.000000 oracle_skipped_px=8242 oracle_skip_ceiling=16640 base_flicker_codes=15.876 flicker_codes=6.178 flicker_ratio=0.3892 base_detail_codes=25.617 detail_codes=34.874
+SENTINEL_STABILISER row=facets pan_axis=y pan=4.00 pan_mode=reversing ratio_asserted=1 strength=0.70 oracle_error=0.002930 age_oracle_error=0.000000 mask_error=0.000000 oracle_skipped_px=8242 oracle_skip_ceiling=16640 base_flicker_codes=15.876 flicker_codes=6.146 flicker_ratio=0.3871 base_detail_codes=25.617 detail_codes=34.910
 SAMPLE sentinel stabiliser: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002929688 expected=0.000000000 tolerance=0.020000000 PASS
 SAMPLE sentinel stabiliser: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
-SAMPLE sentinel stabiliser: published strength equals the oracle's (b = S on the open sky, a = 0) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+SAMPLE sentinel stabiliser: the published tests target equals the CPU tests draw (the class code on the unrouted sky) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
 CHECK sentinel facets: flicker below 0.6 x the S = 0 run under this pan PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
@@ -4133,30 +4087,33 @@ CHECK thin-region history follows the sequence PASS
 CHECK separable box programs are not created by configure_far PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
+CHECK separable box twins created on this device PASS
 CHECK thin-region history follows the sequence PASS
-SENTINEL_STABILISER row=facets pan_axis=y pan=2.00 pan_mode=steady ratio_asserted=0 strength=0.70 oracle_error=0.001953 age_oracle_error=0.000000 mask_error=0.000000 oracle_skipped_px=0 oracle_skip_ceiling=9984 base_flicker_codes=12.142 flicker_codes=7.973 flicker_ratio=0.6567 base_detail_codes=20.398 detail_codes=47.508
+SENTINEL_STABILISER row=facets pan_axis=y pan=2.00 pan_mode=steady ratio_asserted=0 strength=0.70 oracle_error=0.002441 age_oracle_error=0.000000 mask_error=0.000000 oracle_skipped_px=0 oracle_skip_ceiling=9984 base_flicker_codes=12.142 flicker_codes=7.957 flicker_ratio=0.6553 base_detail_codes=20.398 detail_codes=47.640
+SAMPLE sentinel stabiliser: shader matches the 2-D CPU oracle within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE sentinel stabiliser: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE sentinel stabiliser: the published tests target equals the CPU tests draw (the class code on the unrouted sky) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK separable box twins created on this device PASS
+CHECK thin-region history follows the sequence PASS
+SENTINEL_STABILISER row=facets pan_axis=y pan=4.00 pan_mode=steady ratio_asserted=0 strength=0.70 oracle_error=0.001953 age_oracle_error=0.000000 mask_error=0.000000 oracle_skipped_px=6604 oracle_skip_ceiling=16640 base_flicker_codes=15.189 flicker_codes=10.074 flicker_ratio=0.6633 base_detail_codes=29.710 detail_codes=59.650
 SAMPLE sentinel stabiliser: shader matches the 2-D CPU oracle within the FP16 bound actual=0.001953125 expected=0.000000000 tolerance=0.020000000 PASS
 SAMPLE sentinel stabiliser: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
-SAMPLE sentinel stabiliser: published strength equals the oracle's (b = S on the open sky, a = 0) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+SAMPLE sentinel stabiliser: the published tests target equals the CPU tests draw (the class code on the unrouted sky) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
 CHECK thin-region history follows the sequence PASS
 CHECK separable box programs are not created by configure_far PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
+CHECK separable box twins created on this device PASS
 CHECK thin-region history follows the sequence PASS
-SENTINEL_STABILISER row=facets pan_axis=y pan=4.00 pan_mode=steady ratio_asserted=0 strength=0.70 oracle_error=0.001465 age_oracle_error=0.000000 mask_error=0.000000 oracle_skipped_px=6604 oracle_skip_ceiling=16640 base_flicker_codes=15.189 flicker_codes=10.108 flicker_ratio=0.6655 base_detail_codes=29.710 detail_codes=59.516
-SAMPLE sentinel stabiliser: shader matches the 2-D CPU oracle within the FP16 bound actual=0.001464844 expected=0.000000000 tolerance=0.020000000 PASS
-SAMPLE sentinel stabiliser: age target matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
-SAMPLE sentinel stabiliser: published strength equals the oracle's (b = S on the open sky, a = 0) actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
-CHECK thin-region program created on this device PASS
-CHECK camera-gate programs created on this device PASS
-CHECK thin-region history follows the sequence PASS
-CHECK separable box programs are not created by configure_far PASS
-CHECK thin-region program created on this device PASS
-CHECK camera-gate programs created on this device PASS
-CHECK thin-region history follows the sequence PASS
-SENTINEL_STABILISER row=silhouette frames=64 square_px=64 square_differs=0 unrouted_differs=38990
+SENTINEL_STABILISER row=silhouette frames=64 square_px=64 square_differs=0 unrouted_differs=53894
 SENTINEL_STABILISER row=routed_sentinel frames=64 glass_px=64 glass_differs=0 glass_mask_differs=0
 CHECK sentinel props: the square holds geometry and the glass is routed on the depth sentinel on every frame PASS
 CHECK geometry silhouette against the sentinel: geometry pixels bit-identical to S = 0 while the unrouted sky changes PASS
@@ -4167,22 +4124,14 @@ CHECK thin-region history follows the sequence PASS
 CHECK separable box programs are not created by configure_far PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
-CHECK thin-region history follows the sequence PASS
-SENTINEL_STABILISER row=mover claimed_px_per_frame=2 frames=64 sentinel_px_within_8=284 differs_within_8=0 strength_max_within_8=0.0000 strength_min_beyond=0.6980 differs_beyond=45648
-CHECK routed object moving against the camera path: sentinel pixels within 8 px bit-identical to S = 0, strength 0 PASS
-CHECK beyond 8 px of the mover the stabiliser stays on PASS
-CHECK thin-region program created on this device PASS
-CHECK camera-gate programs created on this device PASS
+CHECK separable box twins created on this device PASS
 CHECK thin-region history follows the sequence PASS
 CHECK separable box programs are not created by configure_far PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
+CHECK separable box twins created on this device PASS
 CHECK thin-region history follows the sequence PASS
-CHECK separable box programs are not created by configure_far PASS
-CHECK thin-region program created on this device PASS
-CHECK camera-gate programs created on this device PASS
-CHECK thin-region history follows the sequence PASS
-SENTINEL_STABILISER row=emitter bar_value=4.0 px_per_frame=6 trail_px_bound_1=1 trail_px_unbound=3 trail_excess_s0=3.1133 trail_excess_bound_1=3.4395 trail_excess_unbound=2.4590 added_trail_px_bound_1=1 added_trail_px_unbound=3 added_inside_px_bound_1=1 added_inside_px_unbound=6 added_reach_px_bound_1=1 added_reach_px_unbound=3 added_max_bound_1=0.3262 added_max_unbound=2.4600 nonzero_px_after_exit_bound_1=0 nonzero_px_after_exit_unbound=0
+SENTINEL_STABILISER row=emitter bar_value=4.0 px_per_frame=6 trail_px_bound_1=1 trail_px_unbound=3 trail_excess_s0=3.1133 trail_excess_bound_1=3.4414 trail_excess_unbound=2.4648 added_trail_px_bound_1=1 added_trail_px_unbound=3 added_inside_px_bound_1=1 added_inside_px_unbound=6 added_reach_px_bound_1=1 added_reach_px_unbound=3 added_max_bound_1=0.3281 added_max_unbound=2.4668 nonzero_px_after_exit_bound_1=0 nonzero_px_after_exit_unbound=0
 CHECK emitter trail peak: at most 0.4 above the installed resolve's and below the emitter's own value PASS
 CHECK emitter crossing the sentinel: trail <= 1 px with E = 1, <= 3 px with E = 0, and every pixel the stabiliser changes lies within that distance of an edge of the bar PASS
 CHECK emitter trail is zero once the bar has left PASS
@@ -4192,12 +4141,14 @@ CHECK thin-region history follows the sequence PASS
 CHECK separable box programs are not created by configure_far PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
+CHECK separable box twins created on this device PASS
 CHECK thin-region history follows the sequence PASS
 SENTINEL_STABILISER row=nonfinite_block frames=32 block_px=9 block_differs_or_nonzero=0 output_min=0.000000 output_max=4.000000 all_finite=1
 CHECK non-finite block beside an emitter: block current-only as at S = 0, every output finite and within [0, emitter] PASS
 CHECK separable box programs are not created by configure_far PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
+CHECK separable box twins created on this device PASS
 CHECK thin-region history follows the sequence PASS
 SENTINEL_STABILISER row=cut frame=40 output_minus_current_max=0.000000 previous_frame_output_minus_current_max=0.459961
 CHECK history-invalid frame under the sentinel stabiliser: the output is the current frame PASS
@@ -4207,6 +4158,7 @@ CHECK thin-region history follows the sequence PASS
 CHECK separable box programs are not created by configure_far PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
+CHECK separable box twins created on this device PASS
 CHECK row-target creation fault reached; the sentinel stabiliser is off for the session, the camera gate carries on PASS
 CHECK thin-region history follows the sequence PASS
 CHECK row-target creation failure: the camera-gate run bit for bit, history kept PASS
@@ -4399,7 +4351,7 @@ CHECK fold after Reset restores the hostile state PASS
 CHECK fold: a far-program run publishes the colour, depth, age and mask targets PASS
 DEPTH_FOLD_RESET before_folded=2 before_history=1 after_folded=2 after_history=1 bytes_differ=0,0,0,0
 CHECK fold: a device Reset drops the history and the fold resumes byte-identical to the R32F twin PASS
-DEPTH_FOLD_BASE numerical=508 state_restorations=89
+DEPTH_FOLD_BASE numerical=487 state_restorations=89
 HISTORY_TAPS_CASES
 FILTER_PROBE format=fp16 mode=centre width=32 mismatched=0 max_error=0.00000000
 CHECK LINEAR filter at every texel centre addressed as the resolve does returns that texel bit for bit PASS
@@ -4617,7 +4569,7 @@ CHECK taps: history follows the sequence PASS
 HISTORY_TAPS program=plain motion=drift frames=32 differing=17619 max_abs=0.01708984 max_ulps=54.00 max_bound_ratio=0.0253 bound_exceeded=0 drawn=1 caller_16_identical=1
 CHECK history taps: Diagnostics::history_taps names the program drawn; 16 binds the embedded 16-tap words PASS
 CHECK history taps: under diagonal drift the forms differ and the plain program's difference stays within w times the current 3x3 range PASS
-CHECK taps: far-camera programs available PASS
+CHECK taps: far programs available PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
@@ -4650,7 +4602,7 @@ CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
-CHECK taps: far-camera programs available PASS
+CHECK taps: far programs available PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
@@ -4683,10 +4635,10 @@ CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
-HISTORY_TAPS program=far_camera motion=rest frames=32 differing=0 max_abs=0.00000000 max_ulps=0.00 max_bound_ratio=0.0000 bound_exceeded=0 drawn=1 caller_16_identical=1
+HISTORY_TAPS program=far motion=rest frames=32 differing=0 max_abs=0.00000000 max_ulps=0.00 max_bound_ratio=0.0000 bound_exceeded=0 drawn=1 caller_16_identical=1
 CHECK history taps: Diagnostics::history_taps names the program drawn; 16 binds the embedded 16-tap words PASS
 CHECK history taps: a still scene is identical within one FP16 ulp (Catmull-Rom of a constant history is the constant) PASS
-CHECK taps: far-camera programs available PASS
+CHECK taps: far programs available PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
@@ -4719,7 +4671,7 @@ CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
-CHECK taps: far-camera programs available PASS
+CHECK taps: far programs available PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
@@ -4752,11 +4704,11 @@ CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
-HISTORY_TAPS program=far_camera motion=drift frames=32 differing=17619 max_abs=0.01708984 max_ulps=54.00 max_bound_ratio=0.0253 bound_exceeded=0 drawn=1 caller_16_identical=1
+HISTORY_TAPS program=far motion=drift frames=32 differing=17619 max_abs=0.01708984 max_ulps=54.00 max_bound_ratio=0.0253 bound_exceeded=0 drawn=1 caller_16_identical=1
 CHECK history taps: Diagnostics::history_taps names the program drawn; 16 binds the embedded 16-tap words PASS
-CHECK history taps: under diagonal drift the far-camera forms differ (reported) PASS
-HISTORY_TAPS_FAR_IDLE motion=rest far_camera_equals_plain=0 mask_max_r=0.0000 mask_max_g=0.0000 mask_max_b=1.0000 mask_max_a=1.0000
-HISTORY_TAPS_FAR_IDLE motion=drift far_camera_equals_plain=1 mask_max_r=0.0000 mask_max_g=0.0000 mask_max_b=0.0000 mask_max_a=0.0000
+CHECK history taps: under diagonal drift the far forms differ (reported) PASS
+HISTORY_TAPS_FAR_IDLE motion=rest far_equals_plain=0 mask_max_r=0.0000 mask_max_g=0.0000 mask_max_b=1.0000 mask_max_a=0.0000
+HISTORY_TAPS_FAR_IDLE motion=drift far_equals_plain=1 mask_max_r=0.0000 mask_max_g=0.0000 mask_max_b=0.0000 mask_max_a=0.0000
 CHECK taps: the filter query reached GetDirect3D PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
@@ -4825,7 +4777,7 @@ CHECK taps: history follows the sequence PASS
 HISTORY_TAPS_FALLBACK program=plain bilinear=0 reason=adapter_query drawn_16=1 identical_to_16=1
 CHECK history taps: without the filter query every run draws the 16-tap programs, byte-identical PASS
 CHECK taps: the filter query reached GetDirect3D PASS
-CHECK taps: far-camera programs available PASS
+CHECK taps: far programs available PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
@@ -4858,7 +4810,7 @@ CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
-CHECK taps: far-camera programs available PASS
+CHECK taps: far programs available PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
@@ -4891,19 +4843,23 @@ CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
-HISTORY_TAPS_FALLBACK program=far_camera bilinear=0 reason=adapter_query drawn_16=1 identical_to_16=1
+HISTORY_TAPS_FALLBACK program=far bilinear=0 reason=adapter_query drawn_16=1 identical_to_16=1
 CHECK history taps: without the filter query every run draws the 16-tap programs, byte-identical PASS
+HISTORY_TAPS_NO_FILTER_CAMERA bilinear=0 far=1 camera_gate=0 create=8876086a camera_run_refused=1
+CHECK history taps: without the filter query no camera-gate program is created (no fallback set) and a camera-gate run is refused; the far program stays PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
-CHECK taps: far-camera programs available PASS
+CHECK taps: far programs available PASS
 CHECK taps: history follows the sequence PASS
 CHECK taps: history follows the sequence PASS
 HISTORY_TAPS_RESET before_frames=2 drawn_5=1 identical_to_fresh=1
 CHECK history taps: a 5-tap pass across a device Reset resumes from an empty history, byte-identical to a fresh pass PASS
-HISTORY_TAPS_BASE numerical=528 state_restorations=89
+HISTORY_TAPS_BASE numerical=508 state_restorations=89
 REGION_HOLD_CASES
+REGION_HOLD_IDENTITY_REFERENCE words=2196 fnv1a=457159f1f8e5c6b3 removed_words=2196 removed_fnv1a=457159f1f8e5c6b3 identical=1
+CHECK hold identity: the reference compiled from resolve.hlsl is the removed camera program word for word PASS
 REGION_HOLD_IDENTITY k=0.00 strength=0.00 pixels=1024 sentinel=217 rest=264 moving=278 unrouted_geometry=265 blended=1024 colour_differs=0 age_differs=0 count_differs=0
 CHECK holds reading 0: the hold program is the camera program on the 1x1 composition, colour bit for bit, the age its count plus the encoded holds PASS
 REGION_HOLD_IDENTITY k=0.00 strength=1.00 pixels=1024 sentinel=217 rest=264 moving=278 unrouted_geometry=265 blended=1024 colour_differs=0 age_differs=0 count_differs=0
@@ -4912,13 +4868,14 @@ REGION_HOLD_IDENTITY k=0.50 strength=0.00 pixels=1024 sentinel=217 rest=264 movi
 CHECK holds reading 0: the hold program is the camera program on the 1x1 composition, colour bit for bit, the age its count plus the encoded holds PASS
 REGION_HOLD_IDENTITY k=0.50 strength=1.00 pixels=1024 sentinel=217 rest=264 moving=278 unrouted_geometry=265 blended=1024 colour_differs=0 age_differs=0 count_differs=0
 CHECK holds reading 0: the hold program is the camera program on the 1x1 composition, colour bit for bit, the age its count plus the encoded holds PASS
-CHECK region hold without configure_region_hold is refused PASS
-CHECK region hold is ignored without the camera gate PASS
-CHECK configure_region_hold needs the camera-gate programs PASS
-CHECK hold programs created; the separable twins only with the sentinel programs PASS
-CHECK configure_sentinel creates the separable box's hold twins after the hold PASS
-CHECK hold run publishes the tests target and the age target PASS
-CHECK hold run continues the history PASS
+CHECK hold refusal: configure_far asked for the hold resolve once PASS
+CHECK camera gate without configure_far is refused PASS
+CHECK configure_far creates the camera mask, the hold resolve and its box; the separable twins only with configure_sentinel PASS
+CHECK configure_sentinel creates the separable box's twins PASS
+CHECK a hold length outside 1..64 is refused PASS
+CHECK a hold length outside 1..64 is refused PASS
+CHECK camera-gate run publishes the tests target and the age target PASS
+CHECK camera-gate run continues the history PASS
 CHECK hold run restores c0..c7, c11, c22, c24, c25, samplers 0 and 7..12, RT1 and COLORWRITEENABLE1 PASS
 CHECK hold run with the separable box restores state PASS
 CHECK hold with the sentinel stabiliser PASS
@@ -4926,35 +4883,27 @@ CHECK failed box / resolve draw of a hold run publishes nothing PASS
 CHECK after a failed hold run the resolve restarts without history PASS
 CHECK failed box / resolve draw of a hold run publishes nothing PASS
 CHECK after a failed hold run the resolve restarts without history PASS
-CHECK Reset keeps the hold programs and restarts the history PASS
-REGION_HOLD_STATE hold_off_restarts=1 hold_off_continues=1 hold_on_keeps=1 taps16_dilations=1 taps5_hold=1 masks_hold=1 masks_off=2 masks_on=1 masks_taps16=2 masks_taps5=1 masks_at_reset=0 masks_after_reset=1 box_fallback=1 masks_box_fallback=2 rearmed=1
-CHECK hold off restarts the history once, hold on keeps it; 16 taps keep the dilations PASS
-CHECK mask targets: one on a hold run (the second released), two again on every fallback to the dilations (hold off, 16 taps, refused box targets), none across Reset, one after it PASS
+CHECK Reset keeps the camera-gate programs and restarts the history PASS
+REGION_HOLD_STATE refused_path=1 refused_create=8876017c screen_restarts=1 screen_continues=1 camera_keeps=1 taps16_refused=1 taps5_camera=1 masks_camera=1 masks_screen=2 masks_on=1 masks_at_reset=0 masks_after_reset=1 box_refused_region_off=1 masks_box_refused=1 rearmed=1
+CHECK hold resolve refused at creation: no camera-gate program, a camera-gate run and configure_sentinel refused, the screen gate runs PASS
+CHECK leaving the camera gate restarts the history once, coming back keeps it; 16 taps refuse a camera-gate run PASS
+CHECK mask targets: one on a camera-gate run (the second released), two on the screen gate, none across Reset, one after it (the refused box targets allocate no second) PASS
+CHECK box targets refused on a camera-gate run: the thin region off for the session (plain resolve, no mask, history kept), no retry until Reset PASS
 CHECK thin-region history follows the sequence PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
 CHECK thin-region history follows the sequence PASS
-CHECK thin-region program created on this device PASS
-CHECK camera-gate programs created on this device PASS
-CHECK hold programs are not created by configure_far PASS
-CHECK hold programs created on this device PASS
-CHECK thin-region history follows the sequence PASS
-THIN_REGION_HOLD drift=0.00 config=thin-region-0.97-camera-gate-hold oracle_error=0.008301 age_oracle_error=0.000000 tests_mask_error=0.000000 shard_rms_codes=1.416 shard_p2p_codes=6.6 rms_ratio=0.0866 dilated_rms_codes=1.416 dilated_p2p_codes=6.6 hold_over_dilated=1.0000 square_px=29952 square_differs=0
+THIN_REGION_HOLD drift=0.00 config=thin-region-0.97-camera-gate-hold oracle_error=0.008301 age_oracle_error=0.000000 tests_mask_error=0.000000 shard_rms_codes=1.416 shard_p2p_codes=6.6 rms_ratio=0.0866 square_px=29952 square_differs=0
 SAMPLE region hold: shader matches the 2-D CPU oracle with the holds within the FP16 bound actual=0.008300781 expected=0.000000000 tolerance=0.020000000 PASS
 SAMPLE region hold: age target (count and holds) matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE region hold: the published tests target equals the CPU tests draw actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
 CHECK region hold: plain silhouette (x >= 20) bit-identical to the plain resolve PASS
-CHECK region hold, static shards: ripple <= 0.35 x and peak-to-peak <= 0.5 x the installed resolve (the dilated gate's bound) PASS
+CHECK region hold, static shards: ripple <= 0.35 x and peak-to-peak <= 0.5 x the installed resolve PASS
 CHECK thin-region history follows the sequence PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
 CHECK thin-region history follows the sequence PASS
-CHECK thin-region program created on this device PASS
-CHECK camera-gate programs created on this device PASS
-CHECK hold programs are not created by configure_far PASS
-CHECK hold programs created on this device PASS
-CHECK thin-region history follows the sequence PASS
-THIN_REGION_HOLD drift=0.12 config=thin-region-0.97-camera-gate-hold oracle_error=0.005371 age_oracle_error=0.000000 tests_mask_error=0.000000 shard_rms_codes=16.238 shard_p2p_codes=95.6 rms_ratio=0.6742 dilated_rms_codes=14.756 dilated_p2p_codes=86.2 hold_over_dilated=1.1004 square_px=29952 square_differs=0
+THIN_REGION_HOLD drift=0.12 config=thin-region-0.97-camera-gate-hold oracle_error=0.005371 age_oracle_error=0.000000 tests_mask_error=0.000000 shard_rms_codes=16.238 shard_p2p_codes=95.6 rms_ratio=0.6742 square_px=29952 square_differs=0
 SAMPLE region hold: shader matches the 2-D CPU oracle with the holds within the FP16 bound actual=0.005371094 expected=0.000000000 tolerance=0.020000000 PASS
 SAMPLE region hold: age target (count and holds) matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE region hold: the published tests target equals the CPU tests draw actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
@@ -4963,12 +4912,7 @@ CHECK thin-region history follows the sequence PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
 CHECK thin-region history follows the sequence PASS
-CHECK thin-region program created on this device PASS
-CHECK camera-gate programs created on this device PASS
-CHECK hold programs are not created by configure_far PASS
-CHECK hold programs created on this device PASS
-CHECK thin-region history follows the sequence PASS
-THIN_REGION_HOLD drift=0.30 config=thin-region-0.97-camera-gate-hold oracle_error=0.002441 age_oracle_error=0.000000 tests_mask_error=0.000000 shard_rms_codes=20.936 shard_p2p_codes=95.3 rms_ratio=1.0000 dilated_rms_codes=20.936 dilated_p2p_codes=95.3 hold_over_dilated=1.0000 square_px=29952 square_differs=0
+THIN_REGION_HOLD drift=0.30 config=thin-region-0.97-camera-gate-hold oracle_error=0.002441 age_oracle_error=0.000000 tests_mask_error=0.000000 shard_rms_codes=20.936 shard_p2p_codes=95.3 rms_ratio=1.0000 square_px=29952 square_differs=0
 SAMPLE region hold: shader matches the 2-D CPU oracle with the holds within the FP16 bound actual=0.002441406 expected=0.000000000 tolerance=0.020000000 PASS
 SAMPLE region hold: age target (count and holds) matches the CPU oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE region hold: the published tests target equals the CPU tests draw actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
@@ -4977,12 +4921,7 @@ CHECK thin-region history follows the sequence PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
 CHECK thin-region history follows the sequence PASS
-CHECK thin-region program created on this device PASS
-CHECK camera-gate programs created on this device PASS
-CHECK hold programs are not created by configure_far PASS
-CHECK hold programs created on this device PASS
-CHECK thin-region history follows the sequence PASS
-THIN_REGION_HOLD_MOTION_START first_frame_difference=0.640137 after_24_frames=0.000244 after_24_at=10,11 background_trail=0.248291 trail_at=3,5,73 dilated_background_trail=0.248535 base_background_trail=0.218750
+THIN_REGION_HOLD_MOTION_START first_frame_difference=0.640137 after_24_frames=0.000244 after_24_at=10,11 background_trail=0.248291 trail_at=3,5,73 base_background_trail=0.218750
 SAMPLE region hold: 24 frames after motion starts the output is the installed resolve's actual=0.000244141 expected=0.000000000 tolerance=0.007843137 PASS
 SAMPLE region hold: from 8 frames after motion starts, uncovered background carries at most 0.04 more shard colour than the plain resolve actual=0.029541016 expected=0.000000000 tolerance=0.040000000 PASS
 CHECK thin-region program created on this device PASS
@@ -4990,12 +4929,7 @@ CHECK thin-region history follows the sequence PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
 CHECK thin-region history follows the sequence PASS
-CHECK thin-region program created on this device PASS
-CHECK camera-gate programs created on this device PASS
-CHECK hold programs are not created by configure_far PASS
-CHECK hold programs created on this device PASS
-CHECK thin-region history follows the sequence PASS
-THIN_REGION_HOLD_PAN pan=0.50 oracle_error=0.009277 age_oracle_error=0.000000 tests_mask_error=0.000000 screen_rms_codes=16.340 dilated_rms_codes=1.416 hold_rms_codes=1.416 hold_over_screen=0.0866 hold_over_dilated=1.0000 screen_p2p_codes=99.4 dilated_p2p_codes=6.6 hold_p2p_codes=6.6
+THIN_REGION_HOLD_PAN pan=0.50 oracle_error=0.009277 age_oracle_error=0.000000 tests_mask_error=0.000000 screen_rms_codes=16.340 hold_rms_codes=1.416 hold_over_screen=0.0866 screen_p2p_codes=99.4 hold_p2p_codes=6.6
 SAMPLE region hold, pan: shader matches the oracle actual=0.009277344 expected=0.000000000 tolerance=0.020000000 PASS
 SAMPLE region hold, pan: age matches the oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 SAMPLE region hold, pan: tests target equals the CPU tests draw actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
@@ -5005,19 +4939,12 @@ CHECK thin-region history follows the sequence PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
 CHECK thin-region history follows the sequence PASS
-CHECK thin-region program created on this device PASS
-CHECK camera-gate programs created on this device PASS
-CHECK hold programs are not created by configure_far PASS
-CHECK hold programs created on this device PASS
-CHECK thin-region history follows the sequence PASS
-THIN_REGION_HOLD_STALE pan=0.50 mover_px_per_frame=2 excess_after_mover=0.000000 screen_added_frame101=0.622559 dilated_added_frame101=0.727051 hold_added_frame101=0.727051 hold_over_screen=1.1678 oracle_error=0.008789 age_oracle_error=0.000000
+THIN_REGION_HOLD_STALE pan=0.50 mover_px_per_frame=2 excess_after_mover=0.000000 screen_added_frame101=0.622559 hold_added_frame101=0.727051 hold_over_screen=1.1678 unbounded_estimate=3.6375 oracle_error=0.008789 age_oracle_error=0.000000
 SAMPLE region hold, pan + bright mover: no ghost above the scene's maximum after the mover left actual=0.000000000 expected=0.000000000 tolerance=0.007843137 PASS
 SAMPLE region hold, pan + stale patch: shader matches the oracle on the injected history actual=0.008789062 expected=0.000000000 tolerance=0.020000000 PASS
-CHECK region hold, stale patch: the 7x7 box bounds it to at most 2 x the screen gate's clipped value PASS
+CHECK region hold, stale patch: the 7x7 box bounds it to at most 2 x the screen gate's clipped value, well below the clip-off estimate PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
-CHECK hold programs are not created by configure_far PASS
-CHECK hold programs created on this device PASS
 CHECK thin-region history follows the sequence PASS
 THIN_REGION_HOLD_BOX_DOMAIN pan=0.50 k=0.5 oracle_error=0.010254 age_oracle_error=0.000000
 SAMPLE region hold, k = 0.5 and a non-finite current tap: shader matches the oracle actual=0.010253906 expected=0.000000000 tolerance=0.020000000 PASS
@@ -5026,33 +4953,20 @@ CHECK thin-region history follows the sequence PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
 CHECK thin-region history follows the sequence PASS
-CHECK thin-region program created on this device PASS
-CHECK camera-gate programs created on this device PASS
-CHECK hold programs are not created by configure_far PASS
-CHECK hold programs created on this device PASS
-CHECK thin-region history follows the sequence PASS
-THIN_REGION_HOLD_PAN_STOP pan=0.50 stop_frame=64 step_rms_codes_first8=1.983 dilated_first8=1.983 base_first8=21.072 step_rms_codes_next24=1.995 dilated_next24=1.995 base_next24=21.220
-CHECK stop after a pan: the held region settles like the dilated gate (step rms within 1.25 x + 0.5 code, the 8 frames after the stop and the 24 after) PASS
+THIN_REGION_HOLD_PAN_STOP pan=0.50 stop_frame=64 step_rms_codes_first8=1.983 base_first8=21.072 step_rms_codes_next24=1.995 base_next24=21.220
+CHECK stop after a pan: the held region settles at once (step rms at most 0.15 x the plain resolve's, the 8 frames after the stop and the 24 after) PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
 CHECK thin-region history follows the sequence PASS
-CHECK thin-region program created on this device PASS
-CHECK camera-gate programs created on this device PASS
-CHECK hold programs are not created by configure_far PASS
-CHECK hold programs created on this device PASS
-CHECK thin-region history follows the sequence PASS
-THIN_REGION_HOLD_BOX_OPEN pan=0.50 frames=24 pixels=1024 dilated_chain=0.7188 tests_gate_alone=1.0000 region_gated=0.5459
+THIN_REGION_HOLD_BOX_OPEN pan=0.50 frames=24 pixels=1024 tests_gate_alone=1.0000 region_gated=0.5459
 CHECK box twins under a pan: the region gate runs the box on fewer pixels than the tests gate alone PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
-CHECK hold programs are not created by configure_far PASS
-CHECK hold programs created on this device PASS
 CHECK thin-region history follows the sequence PASS
 CHECK separable box programs are not created by configure_far PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
-CHECK hold programs are not created by configure_far PASS
-CHECK hold programs created on this device PASS
+CHECK separable box twins created on this device PASS
 CHECK thin-region history follows the sequence PASS
 THIN_REGION_HOLD_SENTINEL pan=0.00 pan_mode=rest strength=0.70 oracle_error=0.002930 age_oracle_error=0.000000 oracle_skipped_px=0 base_flicker_codes=13.156 flicker_codes=5.155 flicker_ratio=0.3918
 SAMPLE region hold, sentinel stabiliser: shader matches the oracle actual=0.002929688 expected=0.000000000 tolerance=0.020000000 PASS
@@ -5060,14 +4974,11 @@ SAMPLE region hold, sentinel stabiliser: age matches the oracle actual=0.0000000
 CHECK region hold, sentinel facets: flicker below 0.6 x the S = 0 hold run PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
-CHECK hold programs are not created by configure_far PASS
-CHECK hold programs created on this device PASS
 CHECK thin-region history follows the sequence PASS
 CHECK separable box programs are not created by configure_far PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
-CHECK hold programs are not created by configure_far PASS
-CHECK hold programs created on this device PASS
+CHECK separable box twins created on this device PASS
 CHECK thin-region history follows the sequence PASS
 THIN_REGION_HOLD_SENTINEL pan=2.00 pan_mode=reversing strength=0.70 oracle_error=0.002930 age_oracle_error=0.000000 oracle_skipped_px=1638 base_flicker_codes=15.762 flicker_codes=6.049 flicker_ratio=0.3838
 SAMPLE region hold, sentinel stabiliser: shader matches the oracle actual=0.002929688 expected=0.000000000 tolerance=0.020000000 PASS
@@ -5076,20 +4987,17 @@ CHECK region hold, sentinel facets: flicker below 0.6 x the S = 0 hold run PASS
 CHECK separable box programs are not created by configure_far PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
-CHECK hold programs are not created by configure_far PASS
-CHECK hold programs created on this device PASS
+CHECK separable box twins created on this device PASS
 CHECK thin-region history follows the sequence PASS
 CHECK separable box programs are not created by configure_far PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
-CHECK hold programs are not created by configure_far PASS
-CHECK hold programs created on this device PASS
+CHECK separable box twins created on this device PASS
 CHECK thin-region history follows the sequence PASS
 CHECK separable box programs are not created by configure_far PASS
 CHECK thin-region program created on this device PASS
 CHECK camera-gate programs created on this device PASS
-CHECK hold programs are not created by configure_far PASS
-CHECK hold programs created on this device PASS
+CHECK separable box twins created on this device PASS
 CHECK thin-region history follows the sequence PASS
 THIN_REGION_HOLD_FADE_OWNER frames=64 switch_frame=32 strength=0.70 oracle_error=0.005859 age_oracle_error=0.000000 tests_mask_error=0.000000 pre_switch_px_frames=3200 pre_switch_differs=0 region_openings=52 max_openings_per_px=1 extra_open_frames=0 late_hold_differs=0 steady_held_px=52 max_hold=8 hold_frames=8
 CHECK fade owner: the square is routed on the sentinel before the switch and holds its depth after it PASS
@@ -5098,4 +5006,4 @@ SAMPLE fade owner: age matches the oracle actual=0.000000000 expected=0.00000000
 SAMPLE fade owner: the published tests target equals the CPU tests draw actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
 CHECK fade owner: before the switch the run is the always-masked run bit for bit PASS
 CHECK fade owner: the class change opens the region at most once per pixel, its extra hold lasts at most L + 1 frames PASS
-RESULT PASS numerical=571 state_restorations=91 lattice=1
+RESULT PASS numerical=554 state_restorations=91 lattice=1

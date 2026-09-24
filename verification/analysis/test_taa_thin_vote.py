@@ -354,9 +354,10 @@ class ThinVoteSource(unittest.TestCase):
 
     def test_plain_programs_keep_their_bytecode(self):
         # bytecode_sha256 prefixes at fd60e44b (before the vote): the option-off tests draws, the current-depth and motion
-        # fragments; the header each record names is the checked-in one.
-        expected = {'temporal-line-mask': '802ff929a19f234b', 'temporal-line-mask-camera': '332fa59537d91f63',
-                    'temporal-line-mask-depth': 'ee283dc7dd0eae45', 'temporal-line-mask-camera-depth': '5bacb6fef06e0290',
+        # fragments; the header each record names is the checked-in one. The two camera programs changed on 2026-09-24, when the
+        # dilated camera chain was removed: they compile the tests draw alone (332fa59537d91f63 / 5bacb6fef06e0290 before).
+        expected = {'temporal-line-mask': '802ff929a19f234b', 'temporal-line-mask-camera': '8739506374645ffc',
+                    'temporal-line-mask-depth': 'ee283dc7dd0eae45', 'temporal-line-mask-camera-depth': '37716da1d6379463',
                     'current-depth-pixel': '33185f650fa2b17c', 'rigid-motion-pixel': 'a604ce8c772ac472'}
         for name, prefix in expected.items():
             record = json.loads((ROOT / f'verification/results/{name}-program.json').read_text())

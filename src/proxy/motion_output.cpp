@@ -1510,7 +1510,7 @@ bool MotionOutput::ensure_taa() noexcept {
     if (taa_ && !taa_failed_) return true;
     if (taa_failed_) return false;
     try { taa_ = std::make_unique<renderer::TemporalPass>(); } catch (...) { taa_failed_ = true; return false; }
-    taa_fold_logged_ = false;
+    taa_fold_logged_ = false; taa_box_refused_logged_ = false;
     HRESULT hr = E_FAIL;
     // The sharpen program is created only when the switch is on: with it off
     // the pass is the pre-sharpen pass, shader for shader.
@@ -1560,11 +1560,19 @@ bool MotionOutput::ensure_taa() noexcept {
             taa_far_weight_ = taa_far_filter_ = taa_thin_weight_ = 0.f;
         }
     }
-    // Camera-relative gate of the thin region (section 32.1): its three programs are created by configure_far above; without
-    // them the thin region keeps its screen-speed gate.
-    if (SUCCEEDED(hr) && taa_thin_camera_gate_ && (taa_thin_weight_ <= 0.f || !taa_->camera_gate_available())) {
-        log("motion_output_taa_thin_region device=%llu camera_gate_unavailable=1 reason=%s thin_region=%.4f", id_, taa_thin_weight_ <= 0.f ? "thin_region_off" : "camera_program", double(taa_thin_weight_));
+    // Camera-relative gate of the thin region (section 32.1) with the region hold, its only form since Run 79 A (A',
+    // taa-plan-lifted-slot-cap.md step 1): the tests-draw mask, the hold resolve and the region-gated box are created by
+    // configure_far above. A device that refuses one of them or cannot filter the FP16 / R32F histories (the hold resolve
+    // is 5-tap only), or a session drawing 16 taps, turns the thin region off: one line, no fallback program set (AGENTS.md
+    // "Shader slot budget"). Without the thin region the gate is dropped with its own line.
+    if (SUCCEEDED(hr) && taa_thin_camera_gate_ && taa_thin_weight_ <= 0.f) {
+        log("motion_output_taa_thin_region device=%llu camera_gate_unavailable=1 reason=thin_region_off thin_region=%.4f", id_, double(taa_thin_weight_));
         taa_thin_camera_gate_ = false;
+    } else if (SUCCEEDED(hr) && taa_thin_camera_gate_ && !taa_->camera_gate_available()) {
+        const char* reason = !taa_->bilinear_history_available() ? "no_filter" : taa_->history_taps() == 16 ? "history_taps16" : "program";
+        log("motion_output_taa_region_hold device=%llu unavailable=1 reason=%s create=%08lx bilinear=%u history_taps=%u thin_region=%.4f effect=thin_region_off",
+            id_, reason, taa_->camera_programs_result(), unsigned(taa_->bilinear_history_available()), taa_->history_taps(), double(taa_thin_weight_));
+        taa_thin_weight_ = 0.f; taa_thin_camera_gate_ = false;
     }
     // Sentinel stabiliser: rides the camera gate and needs the separable box programs configure_far created on top of it.
     // The emissive vote (thin-glow-lines.md 8.3 R3) lives in the thin region's own mask: without the region it has nowhere to land.
@@ -1576,18 +1584,6 @@ bool MotionOutput::ensure_taa() noexcept {
     if (SUCCEEDED(hr) && taa_sentinel_strength_ > 0.f && (!taa_thin_camera_gate_ || !taa_->sentinel_available())) {
         log("motion_output_taa_sentinel device=%llu unavailable=1 reason=%s requested=%.3f", id_, !taa_thin_camera_gate_ ? "camera_gate_off" : "box_program", double(taa_sentinel_strength_));
         taa_sentinel_strength_ = 0.f;
-    }
-    // A' (taa-plan-lifted-slot-cap.md step 1): the hold programs exist only when the camera gate runs and the hold is asked
-    // for; a refusal (no 5-tap programs, or a program the device refuses) keeps the dilation draws (one log line). The dilated
-    // program is the --taa-region-hold off A/B option, not a cap fallback set: it goes with the option once A' is accepted,
-    // and a refusal then turns the thin region off.
-    if (SUCCEEDED(hr) && taa_region_hold_ && taa_thin_camera_gate_) {
-        HRESULT held = E_FAIL;
-        taa_call([&] { held = taa_->configure_region_hold(); });
-        if (FAILED(held) || !taa_->region_hold_available() || (taa_sentinel_strength_ > 0.f && !taa_->region_hold_sentinel_available())) {
-            log("motion_output_taa_region_hold device=%llu unavailable=1 create=%08lx bilinear=%u fallback=dilated", id_, held, unsigned(taa_->bilinear_history_available()));
-            taa_region_hold_ = false;
-        }
     }
     // Thin vote: the tests draw's twins, created only when the option is on (their absence keeps the plain tests draw).
     if (SUCCEEDED(hr) && thin_vote_upload_) {
@@ -1608,9 +1604,9 @@ bool MotionOutput::ensure_taa() noexcept {
     }
     taa_failed_ = FAILED(hr);
     // ps30_slots: D3DCAPS9::MaxPixelShader30InstructionSlots at initialize (AGENTS.md "Shader slot budget": logged, never a gate).
-    log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f history_weight=%.3f copy=%s alpha_history=%u age_bytes_per_pixel=%u far_weight=%.4f far_filter=%.3f far_f0=%.1f far_f1=%.1f far_speed_lo=%.3f far_speed_hi=%.3f thin_region=%.4f thin_relax=%.3f thin_gate=%s thin_emissive=%.3f sentinel_stabiliser=%.3f sentinel_emitter=%.3f region_hold=%u ps30_slots=%u", id_, hr, taa_references_, double(taa_sharpen_), double(taa_history_weight_), taa_copy_draw_ ? "draw" : "stretch",
+    log("motion_output_taa device=%llu initialize=%08lx references=%u sharpen=%.3f history_weight=%.3f copy=%s alpha_history=%u age_bytes_per_pixel=%u far_weight=%.4f far_filter=%.3f far_f0=%.1f far_f1=%.1f far_speed_lo=%.3f far_speed_hi=%.3f thin_region=%.4f thin_relax=%.3f thin_gate=%s thin_emissive=%.3f sentinel_stabiliser=%.3f sentinel_emitter=%.3f ps30_slots=%u", id_, hr, taa_references_, double(taa_sharpen_), double(taa_history_weight_), taa_copy_draw_ ? "draw" : "stretch",
         unsigned(taa_alpha_history_), taa_far_weight_ > 0.f || taa_far_filter_ > 0.f || taa_thin_weight_ > 0.f ? 8u : 0u, double(taa_far_weight_), double(taa_far_filter_), double(taa_far_f0_), double(taa_far_f1_), double(taa_far_lo_), double(taa_far_hi_), double(taa_thin_weight_), double(taa_thin_relax_), taa_thin_camera_gate_ ? "camera" : "screen", double(taa_thin_emissive_), double(taa_sentinel_strength_), double(taa_sentinel_emitter_),
-        unsigned(taa_region_hold_ && taa_thin_camera_gate_), taa_ ? taa_->ps30_instruction_slots() : 0u);
+        taa_ ? taa_->ps30_instruction_slots() : 0u);
     return !taa_failed_;
 }
 // The whole resolve at the bloom copy: RT1/RT2 containers as inputs, the
@@ -1654,8 +1650,7 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             in.far_weight = taa_far_weight_; in.far_filter = taa_far_filter_; in.far_speed_lo = taa_far_lo_; in.far_speed_hi = taa_far_hi_;
             in.thin_region_weight = taa_thin_weight_; in.thin_region_relax = taa_thin_relax_; in.thin_region_camera_gate = taa_thin_camera_gate_; in.thin_region_emissive = taa_thin_emissive_;
             in.sentinel_strength = taa_sentinel_strength_; in.sentinel_emitter = taa_sentinel_emitter_;
-            in.thin_region_hold = taa_region_hold_; // A': inert without the camera gate
-            in.thin_region_hold_frames = jitter_samples_; // the hold covers one jitter cycle (2..64)
+            in.thin_region_hold_frames = jitter_samples_; // A' (camera gate): the hold covers one jitter cycle (2..64)
             in.thin_vote = thin_vote_upload_ && sun_lane_active_; // the vote travels in the lane's .a; the R32F RT2 has none
             if ((taa_far_weight_ > 0.f || taa_far_filter_ > 0.f) && camera_scene_.valid)
                 x3::temporal::far_gate(camera_scene_.m00, camera_scene_.m22, camera_scene_.m32, main_.width, taa_far_f0_, taa_far_f1_, in.far_d0, in.far_inv);
@@ -1737,6 +1732,14 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                 taa_masks_logged_ = true;
                 log("motion_output_taa_masks device=%llu unavailable=1 create=%08lx far_weight=%.4f far_filter=%.3f effect=options_off_for_session", id_, taa_->line_masks_result(), double(taa_far_weight_), double(taa_far_filter_));
             }
+            // A' (the camera gate's only path): refused box targets turn the thin region off in the pass until a Reset re-arms
+            // the allocation (no fallback program set); one line per failure, the refusal row's shape.
+            if (taa_->camera_gate_failed() != taa_box_refused_logged_) {
+                taa_box_refused_logged_ = taa_->camera_gate_failed();
+                if (taa_box_refused_logged_)
+                    log("motion_output_taa_region_hold device=%llu unavailable=1 reason=box_target create=%08lx bilinear=%u history_taps=%u thin_region=%.4f effect=thin_region_off",
+                        id_, taa_->camera_gate_result(), unsigned(taa_->bilinear_history_available()), taa_->history_taps(), double(taa_thin_weight_));
+            }
             release(composition_mask);
             const std::uint64_t run_ticks = stamp() - run_begin;
             const auto diagnostics = taa_->diagnostics();
@@ -1745,9 +1748,11 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             if (!taa_fold_logged_ && !injected && SUCCEEDED(diagnostics.operation)) {
                 taa_fold_logged_ = true;
                 log("motion_output_taa_depth_fold device=%llu depth_fold=%u reason=%s", id_, unsigned(diagnostics.depth_folded), diagnostics.depth_fold_reason);
-                // S3: the history reconstruction the first run drew (16 without the FP16 / R32F filter caps whatever was asked).
-                log("motion_output_taa_history_taps device=%llu requested=%u drawn=%u bilinear=%u reason=%s region_hold=%u", id_, taa_history_taps_, diagnostics.history_taps,
-                    unsigned(taa_->bilinear_history_available()), taa_->bilinear_history_reason(), unsigned(diagnostics.region_hold));
+                // S3: the history reconstruction the first run drew (16 without the FP16 / R32F filter caps whatever was asked);
+                // region_hold: that run was a camera-gate run (A'); mask_targets: the owned mask targets it left allocated (one
+                // for a camera-gate run, two for the screen-gate chain or the far stabiliser alone, 0 without a far run).
+                log("motion_output_taa_history_taps device=%llu requested=%u drawn=%u bilinear=%u reason=%s region_hold=%u mask_targets=%u", id_, taa_history_taps_, diagnostics.history_taps,
+                    unsigned(taa_->bilinear_history_available()), taa_->bilinear_history_reason(), unsigned(diagnostics.region_hold), taa_->line_mask_targets());
             }
             // Thin vote: once per attachment, the first completed run whose tests draw could not carry the vote (the lane-off
             // R32F RT2 has no .a, or no fold / thin region / twin program): the flag is absent, the draws still upload c218.

@@ -1,0 +1,4 @@
+lines before=11786 after=11786 identical=11748
+MOTE_STREAK                              only_before=   4 only_after=   4
+MOTION_WEIGHT                            only_before=  30 only_after=  30
+SETA_EXIT                                only_before=   4 only_after=   4

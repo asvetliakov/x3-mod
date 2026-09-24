@@ -20,6 +20,13 @@ Wine or flown; no source was edited.
 
 ## 1. Decision
 
+**Step 1 done (2026-09-24).** A' was built (df01f23b; [temporal-resolve.md](../verification/temporal-resolve.md) "A' region
+hold"), flown and accepted in Run 79 A (run299/300/302/303: no visible difference against the dilated chain, `taa_mask`
+2.93 -> 1.54 ms, net -1.1 ms per frame at 5120x1440), and the acceptance clause is carried out: `--taa-region-hold`, the
+dilated `far_camera` chain (the camera mask's x / y draws, `resolve_far_camera` and its 16-tap twin, the ungated box
+programs) and the second mask target of camera-gate runs are removed, the hold is the camera gate's only path, and a
+missing hold program turns the thin region off with one row (ledger "A' only: dilated chain removed"). Next: step 2 (S4).
+
 **Ratified 2026-09-24 (orchestrator):** the 2,048-slot per-program ceiling pinned by `RESOLVE_BUDGET`; step 1 = A' in
 `far_camera` plus the exact point read at rest in the four S3 programs and the fetch sharing, one re-baseline with new
 references and one flight; step 2 = S4; B stays a vote; E and the tests fold not taken. The A' slot figure and every
@@ -191,7 +198,7 @@ From run290 turning 8.76 ms / still 8.64 **[M]**; every "after" figure is **[I]*
 | step | what changes | `taa` turning | `taa` still | makes moot |
 | --- | --- | ---: | ---: | --- |
 | 0 | slot-cap bookkeeping only: the cap log at device creation (committed rule), the fixture's `RESOLVE_BUDGET` rows pinned to `slots <= 2048`; `TemporalPass` has no slot gate to remove (only the fog and sun passes gate on the reported cap) | 8.76 | 8.64 | the "S3 first" ordering |
-| 1 | A' in `far_camera` (+ (a) point read at rest, (b) fetch sharing), x and y draws dropped, new references | 7.2-7.4 | 6.9-7.2 | S5 (no dilations left); G |
+| 1 (done) | A' in `far_camera` (+ (a) point read at rest, (b) fetch sharing), x and y draws dropped, new references; flown Run 79 A (`taa` 7.72 -> 6.59 ms at rest, measured), off path removed | 7.2-7.4 | 6.9-7.2 | S5 (no dilations left); G |
 | 2 | S4 half-resolution box | 6.1-6.4 | 5.8-6.2 | E |
 | 3 | B thickness flag as a vote in the tests draw (unchanged from the ratified note: upload statistic in the CloneMesh Unlock observer, `c216.z`, RT2 `.a`) | +0 | +0 | nothing; it is coverage, not cost |
 | optional | tests fold (d), only on a 5120x1440 fixture timing showing -0.4 or better net of a box that runs everywhere | 5.6-6.0 | | S1's separate depth write if a third MRT is taken |

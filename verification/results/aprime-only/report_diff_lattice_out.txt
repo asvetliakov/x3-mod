@@ -1,0 +1,27 @@
+lines before=5097 after=5005 identical=4881
+CHECK                                    only_before= 133 only_after=  64
+DEPTH_FOLD_BASE                          only_before=   1 only_after=   1
+HISTORY_TAPS                             only_before=   2 only_after=   2
+HISTORY_TAPS_BASE                        only_before=   1 only_after=   1
+HISTORY_TAPS_FALLBACK                    only_before=   1 only_after=   1
+HISTORY_TAPS_FAR_IDLE                    only_before=   2 only_after=   2
+HISTORY_TAPS_NO_FILTER_CAMERA            only_before=   0 only_after=   1
+REGION_HOLD_IDENTITY_REFERENCE           only_before=   0 only_after=   1
+REGION_HOLD_STATE                        only_before=   1 only_after=   1
+RESOLVE_BUDGET                           only_before=   7 only_after=   2
+RESULT                                   only_before=   1 only_after=   1
+SAMPLE                                   only_before=  21 only_after=   9
+SENTINEL_STABILISER                      only_before=  10 only_after=   9
+THIN_REGION                              only_before=   3 only_after=   0
+THIN_REGION_BAD_MOTION                   only_before=   4 only_after=   4
+THIN_REGION_CAMERA_FLIGHT                only_before=  15 only_after=  15
+THIN_REGION_CAMERA_FORWARD               only_before=   1 only_after=   1
+THIN_REGION_CAMERA_STATIC                only_before=   3 only_after=   0
+THIN_REGION_HOLD                         only_before=   3 only_after=   3
+THIN_REGION_HOLD_BOX_OPEN                only_before=   1 only_after=   1
+THIN_REGION_HOLD_MOTION_START            only_before=   1 only_after=   1
+THIN_REGION_HOLD_PAN                     only_before=   1 only_after=   1
+THIN_REGION_HOLD_PAN_STOP                only_before=   1 only_after=   1
+THIN_REGION_HOLD_STALE                   only_before=   1 only_after=   1
+THIN_REGION_PAN                          only_before=   1 only_after=   0
+THIN_REGION_STALE                        only_before=   1 only_after=   1

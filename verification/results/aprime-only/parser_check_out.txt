@@ -1,0 +1,13 @@
+run299-303-run79a/abnormal_rows.py 299: exit=0 lines=2 run299_lines=2 committed_run299_lines=2 identical
+run299-303-run79a/bolt_rows.py 299: exit=0 lines=1 run299_lines=1 committed_run299_lines=1 identical
+run299-303-run79a/dt_windows.py 299: exit=0 lines=1 run299_lines=1 committed_run299_lines=1 identical
+run299-303-run79a/exit_rows.py 299: exit=0 lines=1 run299_lines=1 committed_run299_lines=1 identical
+run299-303-run79a/gpu_taa.py 299: exit=0 lines=1 run299_lines=1 committed_run299_lines=0 no_run299_reference
+run299-303-run79a/pan_windows.py 299: exit=0 lines=88 run299_lines=1 committed_run299_lines=0 no_run299_reference
+run299-303-run79a/taa_frames.py 299: exit=0 lines=1 run299_lines=1 committed_run299_lines=1 identical
+run295-298-run78a/abnormal_rows.py 299: exit=0 lines=2 run299_lines=2 committed_run299_lines=0 no_run299_reference
+run295-298-run78a/bolt_rows.py 299: exit=0 lines=1 run299_lines=1 committed_run299_lines=0 no_run299_reference
+run295-298-run78a/exit_rows.py 299: exit=0 lines=1 run299_lines=1 committed_run299_lines=0 no_run299_reference
+synthetic: frames=5000 config_rows=2 region_hold_in_taa_row=False mask_targets_rows=1
+run299-303-run79a/taa_frames.py 99299 (new rows): exit=0 lines=1 history_taps_row_carried=True
+RESULT PASS failures=0

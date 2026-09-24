@@ -99,11 +99,9 @@ SHADERS = {
     'temporal_line_mask_camera_depth_thin': dict(source=ROOT / 'src/temporal/line_mask_camera_depth_thin_ps.hlsl',
         header=ROOT / 'src/renderer/temporal_line_mask_camera_depth_thin_program_inc.h',
         provenance=ROOT / 'verification/results/temporal-line-mask-camera-depth-thin-program.json'),
-    'temporal_resolve_far_camera': dict(source=ROOT / 'src/temporal/resolve_far_camera.hlsl',
-        header=ROOT / 'src/renderer/temporal_resolve_far_camera_program_inc.h',
-        provenance=ROOT / 'verification/results/temporal-resolve-far-camera-program.json'),
     # S3 (docs/architecture/taa-high-resolution.md): the resolve programs above use the 5-tap bilinear Catmull-Rom history;
-    # these five keep the 16-tap point form (X3M_HISTORY_TAPS16, bytecode of the earlier programs) for --taa-history-taps 16.
+    # these four keep the 16-tap point form (X3M_HISTORY_TAPS16, bytecode of the earlier programs) for --taa-history-taps 16.
+    # The camera gate has none: its only resolve is the A' program below (the dilated camera chain was removed 2026-09-24).
     'temporal_resolve_taps16': dict(source=ROOT / 'src/temporal/resolve_taps16.hlsl',
         header=ROOT / 'src/renderer/temporal_resolve_taps16_program_inc.h',
         provenance=ROOT / 'verification/results/temporal-resolve-taps16-program.json'),
@@ -116,20 +114,8 @@ SHADERS = {
     'temporal_resolve_far_taps16': dict(source=ROOT / 'src/temporal/resolve_far_taps16.hlsl',
         header=ROOT / 'src/renderer/temporal_resolve_far_taps16_program_inc.h',
         provenance=ROOT / 'verification/results/temporal-resolve-far-taps16-program.json'),
-    'temporal_resolve_far_camera_taps16': dict(source=ROOT / 'src/temporal/resolve_far_camera_taps16.hlsl',
-        header=ROOT / 'src/renderer/temporal_resolve_far_camera_taps16_program_inc.h',
-        provenance=ROOT / 'verification/results/temporal-resolve-far-camera-taps16-program.json'),
-    'temporal_thin_box': dict(source=ROOT / 'src/temporal/thin_box_ps.hlsl',
-        header=ROOT / 'src/renderer/temporal_thin_box_program_inc.h',
-        provenance=ROOT / 'verification/results/temporal-thin-box-program.json'),
-    # Sentinel stabiliser (temporal-integration.md "Distant unrouted stations under a pan"): the separable box, bound only while it is on.
-    'temporal_thin_box_rows': dict(source=ROOT / 'src/temporal/thin_box_rows_ps.hlsl',
-        header=ROOT / 'src/renderer/temporal_thin_box_rows_program_inc.h',
-        provenance=ROOT / 'verification/results/temporal-thin-box-rows-program.json'),
-    'temporal_thin_box_columns': dict(source=ROOT / 'src/temporal/thin_box_columns_ps.hlsl',
-        header=ROOT / 'src/renderer/temporal_thin_box_columns_program_inc.h',
-        provenance=ROOT / 'verification/results/temporal-thin-box-columns-program.json'),
-    # A' (docs/architecture/taa-plan-lifted-slot-cap.md step 1, --taa-region-hold on): the camera-gate resolve composing the
+    # A' (docs/architecture/taa-plan-lifted-slot-cap.md step 1; the only camera-gate path since 2026-09-24): the camera-gate
+    # resolve composing the
     # region from the mask's tests target with temporal holds, and the three box programs gated on that target.
     'temporal_resolve_far_camera_hold': dict(source=ROOT / 'src/temporal/resolve_far_camera_hold.hlsl',
         header=ROOT / 'src/renderer/temporal_resolve_far_camera_hold_program_inc.h',

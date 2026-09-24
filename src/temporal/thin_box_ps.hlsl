@@ -1,3 +1,5 @@
+// Include body of thin_box_hold_ps.hlsl, the only program built from it (X3M_REGION_HOLD_MASK below): the ungated
+// form (b > a on the dilated chain's composed mask) was removed with that chain (2026-09-24, A' only).
 // 7x7 min / max box of the current colour for the camera-relative thin-region
 // gate (resolve.hlsl X3M_CAMERA_GATE; docs/architecture/taa-lattice-crawl.md
 // section 32.1). Drawn by TemporalPass after the mask draws and before the
@@ -38,8 +40,7 @@ bool inRegion(float4 m, float2 uv) {
 bool boxOpen(float4 m, float2 uv) { return m.a > m.r && inRegion(m, uv); }
 #define X3M_SKIPPED_ALPHA 0
 #else
-bool boxOpen(float4 m, float2 uv) { return m.b > m.a; }
-#define X3M_SKIPPED_ALPHA 1
+#error "include body of thin_box_hold_ps.hlsl only: the ungated box program was removed with the dilated chain"
 #endif
 struct BoxOutput { float4 low : COLOR0; float4 high : COLOR1; };
 BoxOutput main(float2 uv : TEXCOORD0) {

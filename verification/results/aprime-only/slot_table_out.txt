@@ -1,0 +1,25 @@
+variant                            dwords slots   dwords slots
+plain                                1786   455     1786   455
+embedded_plain                       1786   455     1786   455
+embedded_snapshot                     187    46      187    46
+embedded_thin                        2013   517     2013   517
+embedded_age                         2143   544     2143   544
+embedded_line_mask                   1574   428     1574   428
+embedded_far                         2144   545     2144   545
+embedded_line_mask_camera            1579   427     1020   251
+embedded_line_mask_depth             1554   420     1554   420
+embedded_line_mask_camera_depth      1533   407     1002   241
+embedded_far_camera                  2196   555        removed
+embedded_thin_box                     238    51        removed
+embedded_thin_box_rows                335    77        removed
+embedded_thin_box_columns             420    94        removed
+embedded_plain_taps16                1681   432     1681   432
+embedded_thin_taps16                 1818   465     1818   465
+embedded_age_taps16                  1947   494     1947   494
+embedded_far_taps16                  1948   493     1948   493
+embedded_far_camera_taps16           2006   505        removed
+embedded_far_camera_hold             2479   616     2479   616
+embedded_thin_box_hold                314    70      314    70
+embedded_thin_box_rows_hold           628   155      628   155
+embedded_thin_box_columns_hold        533   121      533   121
+embedded programs: 22 -> 17; embedded dwords 31056 -> 24771

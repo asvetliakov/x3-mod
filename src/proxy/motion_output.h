@@ -651,9 +651,6 @@ public:
     // X3M_TAA_HISTORY_TAPS (5 default, 16; docs/architecture/taa-high-resolution.md S3): the resolve's history
     // reconstruction, TemporalPass::configure_history_taps; anything else is the default.
     void configure_history_taps(unsigned taps) noexcept { taa_history_taps_ = taps == 16 ? 16u : 5u; }
-    // X3M_TAA_REGION_HOLD (on default, off; docs/architecture/taa-plan-lifted-slot-cap.md step 1): A' of the thin region's
-    // camera gate, TemporalPass::FrameInputs::thin_region_hold; inert without the camera gate. Off keeps the dilation draws.
-    void configure_region_hold(bool on) noexcept { taa_region_hold_ = on; }
     // X3M_TAA_THIN_VOTE (on|off, default off; docs/architecture/taa-thin-geometry-alternatives.md section 3.2): the
     // draw-time thin vote of the thin region. `enabled` is the caller's resolution (requested with the route, TAA, the
     // sun-share lane and the ownership wrapper); it also switched the material transformer
@@ -2351,9 +2348,9 @@ private:
     float taa_thin_emissive_ = 0.f;     // X3M_TAA_THIN_REGION_EMISSIVE=E: emissive vote of the thin region (thin-glow-lines.md 8.3 R3)
     float taa_sentinel_strength_ = 0.f, taa_sentinel_emitter_ = 1.f; // X3M_TAA_SENTINEL_STABILISER=S[,E]
     bool taa_masks_logged_ = false;           // the one line for TemporalPass::line_masks_failed()
+    bool taa_box_refused_logged_ = false;     // the one line per TemporalPass::camera_gate_failed() episode (box targets refused: thin region off)
     bool taa_fold_logged_ = false;            // the one line for TemporalPass::Diagnostics::depth_folded (taa-high-resolution.md S1), per attachment
     unsigned taa_history_taps_ = 5;           // X3M_TAA_HISTORY_TAPS: TemporalPass::configure_history_taps (taa-high-resolution.md S3); logged with the fold line
-    bool taa_region_hold_ = true;             // X3M_TAA_REGION_HOLD: A' (FrameInputs::thin_region_hold); dropped without the camera gate or its programs
     bool taa_alpha_history_ = false;          // X3M_TAA_ALPHA_HISTORY (HDR route only)
     float taa_history_weight_ = .9f;          // X3M_TAA_HISTORY_WEIGHT
     // 8-bit route: failed sharpened draws (the pass kept the resolve, the

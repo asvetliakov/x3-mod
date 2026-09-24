@@ -411,7 +411,7 @@ concrete remaining gates, removal status and the separate depth-adapter gap.
 
 - music-keep skip_all: native alt-tab with a blocked loop unverified (DirectSound ring unserviced without GLOBALFOCUS, DirectShow audible in background) ([music-restart.md](../reverse-engineering/music-restart.md) §6 "Alt-tab").
 
-## 2026-09-24: TAA region hold (A', `--taa-region-hold`, default on)
+## 2026-09-24: TAA region hold (A', the camera gate's only path; `--taa-region-hold` removed the same day after Run 79 A)
 
 [taa-plan-lifted-slot-cap.md](taa-plan-lifted-slot-cap.md) step 1; ledger `docs/verification/temporal-resolve.md`
 "A' region hold". Documented D3D9 only, no new capability query: the hold programs are created with the camera-gate
@@ -424,12 +424,16 @@ R32F render-target store: ps_3_0 requires full precision (s23e8), and R32F store
 rounded either would misread the holds (not a crash; the region or a closure would be off by a step). Verified on
 CrossOver only (the fixture's age oracle is exact on every hold row); native drivers inferred.
 
-Slot figures under the committed budget rule (section below): `far_camera` 555, the hold program 616 D3DX slots, the
-other four resolve programs 455-545 (measured, `RESOLVE_BUDGET`), all under the 2,048 ceiling and all above the 512
-this runtime reports. A native device that refuses one at `CreatePixelShader` takes the existing paths: the far
-programs refused turn the far stabiliser and thin region off (one `motion_output_taa_far` row), the hold programs
-refused keep the dilation draws (one `motion_output_taa_region_hold unavailable=1 ... fallback=dilated` row; the dilated
-program is the `--taa-region-hold off` A/B option, not a cap-fallback set, and goes with the option once A' is accepted). A device that accepts a
+Slot figures under the committed budget rule (section below): the hold program 616 D3DX slots, the other four resolve
+programs 455-545 (measured, `RESOLVE_BUDGET`), all under the 2,048 ceiling and all above the 512 this runtime reports.
+A native device that refuses one at `CreatePixelShader` takes the existing paths: the far programs refused turn the far
+stabiliser and thin region off (one `motion_output_taa_far` row). Since the dilated chain was removed (A' only; ledger
+"A' only: dilated chain removed") there is no fallback program set for the camera gate: a refused camera mask, hold
+resolve or hold box, a device without FP16 / R32F filtering (the hold resolve is 5-tap only) or `--taa-history-taps 16`
+turns the thin region off with one `motion_output_taa_region_hold unavailable=1 reason=program|no_filter|history_taps16
+create=... effect=thin_region_off` row, and refused box targets at the first camera-gate run do the same in the pass
+(`reason=box_target`) (fixture: `REGION_HOLD_STATE refused_path`, `HISTORY_TAPS_NO_FILTER_CAMERA`, the
+motion-output case `seam-taa-thin-taps16-refused`; CrossOver only, the refusals injected). A device that accepts a
 program above its cap and fails the draw (the slot-budget fixture's 65,538-slot case) would hit the per-frame resolve
 failure path instead; not expected at these sizes, unverified.
 

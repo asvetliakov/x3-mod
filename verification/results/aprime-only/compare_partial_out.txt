@@ -1,0 +1,8 @@
+seam-taa-on: exit=0 non_clock_identical_to_full_run=True [] dll_sha256=8b9faa1b1c20eb0b
+seam-taa-taps16: exit=0 non_clock_identical_to_full_run=True [] dll_sha256=8b9faa1b1c20eb0b
+seam-taa-region-hold-ignored: exit=0 non_clock_identical_to_full_run=True [] dll_sha256=8b9faa1b1c20eb0b
+seam-taa-thin-hold-on: exit=0 non_clock_identical_to_full_run=True [] dll_sha256=8b9faa1b1c20eb0b
+seam-taa-thin-taps16-refused: exit=0 non_clock_identical_to_full_run=True [] dll_sha256=8b9faa1b1c20eb0b
+twin seam-taa-thin-taps16-refused = seam-taa-taps16: colour hashes identical=True
+twin seam-taa-region-hold-ignored = seam-taa-on: colour hashes identical=True
+RESULT PASS cases=5 status=PARTIAL

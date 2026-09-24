@@ -280,9 +280,10 @@ the mask's `b` (strength, speed-gated in the mask program: `c6`, `s4` motion, `c
 this variant compiles no 3x3 sentinel soft clip. On a two- or four-channel current depth (the sun-shadow lane's RT2) the
 mask chain's first draw uses `line_mask_depth_ps.hlsl` / `line_mask_camera_depth_ps.hlsl` instead (`X3M_MASK_DEPTH_OUT`:
 `s1` = that depth itself, `COLOR1` = its texel into the R32F next depth history, which then needs no copy draw;
-`docs/architecture/taa-high-resolution.md` S1). The region hold (A', `resolve_far_camera_hold.hlsl`, `X3M_REGION_HOLD`;
-`docs/architecture/taa-plan-lifted-slot-cap.md` step 1, `--taa-region-hold`, default on) drops the two dilation draws:
-s8 is then the tests target (r screen openness, g far weight, b flag / class code, a camera openness), `c11` = (S, the far
+`docs/architecture/taa-high-resolution.md` S1). The camera gate runs the region hold only (A', `resolve_far_camera_hold.hlsl`,
+`X3M_REGION_HOLD`; `docs/architecture/taa-plan-lifted-slot-cap.md` step 1; the dilated camera chain and `--taa-region-hold`
+were removed on 2026-09-24): its mask is the tests draw alone (`line_mask_camera_ps.hlsl` compiles no dilation mode), so
+s8 is the tests target (r screen openness, g far weight, b flag / class code, a camera openness), `c11` = (S, the far
 components' scales, the hold length L = the jitter period), and the program composes the region itself with an L-frame
 region hold and an L-frame peak hold of the camera gate (its own openness the smaller of this pixel's tests texel and its
 nearest-depth 3x3 neighbour's; the screen gate is not held) carried in the fraction of the age count ((h + 128 code) /

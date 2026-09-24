@@ -299,21 +299,21 @@ struct Reference {
         { char taps[8]{}; const DWORD n = GetEnvironmentVariableA("X3M_TAA_HISTORY_TAPS", taps, sizeof taps);
           api(pass.configure_history_taps(n > 0 && n < sizeof taps && !std::strcmp(taps, "16") ? 16 : 5), "reference history taps"); }
         // The DLL's thin-region parse (capture.cpp), for the cases that set it: X3M_TAA_THIN_REGION=W (first field), the camera
-        // gate unless X3M_TAA_THIN_REGION_GATE=screen, X3M_TAA_SENTINEL_STABILISER=S (first field; camera gate only) and
-        // X3M_TAA_REGION_HOLD (on unless "off"; camera gate only). Unset: none of it, the pass as before.
+        // gate unless X3M_TAA_THIN_REGION_GATE=screen and X3M_TAA_SENTINEL_STABILISER=S (first field; camera gate only). The camera
+        // gate runs A' only (X3M_TAA_REGION_HOLD is ignored since 2026-09-24); without its programs (16 taps, no filter caps, a
+        // refused program) the DLL turns the thin region off, and so does this mirror. Unset: none of it, the pass as before.
         { char setting[32]{}; DWORD n = GetEnvironmentVariableA("X3M_TAA_THIN_REGION", setting, sizeof setting);
           thin_weight = n > 0 && n < sizeof setting ? std::strtof(setting, nullptr) : 0.f;
           n = GetEnvironmentVariableA("X3M_TAA_THIN_REGION_GATE", setting, sizeof setting); thin_camera = !(n > 0 && n < sizeof setting && !std::strcmp(setting, "screen"));
-          n = GetEnvironmentVariableA("X3M_TAA_SENTINEL_STABILISER", setting, sizeof setting); sentinel_strength = n > 0 && n < sizeof setting ? std::strtof(setting, nullptr) : 0.f;
-          n = GetEnvironmentVariableA("X3M_TAA_REGION_HOLD", setting, sizeof setting); region_hold = !(n > 0 && n < sizeof setting && !std::strcmp(setting, "off")); }
+          n = GetEnvironmentVariableA("X3M_TAA_SENTINEL_STABILISER", setting, sizeof setting); sentinel_strength = n > 0 && n < sizeof setting ? std::strtof(setting, nullptr) : 0.f; }
         if (thin_weight > 0.f) {
             api(pass.configure_far(), "reference configure far");
+            if (thin_camera && !pass.camera_gate_available()) { thin_weight = 0.f; thin_camera = false; } // motion_output.cpp: region off
             if (thin_camera && sentinel_strength > 0.f) api(pass.configure_sentinel(), "reference configure sentinel");
-            if (thin_camera && region_hold) api(pass.configure_region_hold(), "reference configure region hold");
         }
     }
     bool copy_by_draw = false;
-    float thin_weight = 0.f, sentinel_strength = 0.f; bool thin_camera = true, region_hold = true;
+    float thin_weight = 0.f, sentinel_strength = 0.f; bool thin_camera = true;
     void upload(const std::vector<DWORD>& image, const std::vector<float>& motion_data, const std::vector<float>& depth_data) {
         D3DLOCKED_RECT lock{};
         api(color->LockRect(&lock, nullptr, 0), "lock reference color");
@@ -364,7 +364,7 @@ struct Reference {
         in.history_allowed = true; in.cut = cut; in.caller_scene_open = false; in.caller_queries_idle = true;
         if (thin_weight > 0.f) { // as motion_output.cpp resolve() fills them (no far stabiliser, no camera transform in these cases)
             in.thin_region_weight = thin_weight; in.thin_region_relax = 1.f; in.far_speed_lo = .03f; in.far_speed_hi = .25f;
-            in.thin_region_camera_gate = thin_camera; in.thin_region_hold = region_hold;
+            in.thin_region_camera_gate = thin_camera;
             in.sentinel_strength = thin_camera ? sentinel_strength : 0.f; in.sentinel_emitter = 1.f;
         }
         x3m::renderer::Output out{};

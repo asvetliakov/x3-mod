@@ -2601,3 +2601,131 @@ run277/287/298 pattern, no fault on exit, `engine_memory_read_refused` 0. Script
 
 **Decision (user report + these rows):** A' accepted. Next per taa-plan-lifted-slot-cap.md: remove `--taa-region-hold off`
 and the dilated `far_camera` chain (the refusal path becomes region off), then S4 (half-resolution box).
+
+## 2026-09-24 A' only: dilated chain removed (taa-plan-lifted-slot-cap.md step 1, acceptance clause)
+
+After Run 79 A (section above) the camera gate runs the region hold only. Bottle X3, native `d3dx9_37`, measured unless
+marked; scripts under `verification/results/aprime-only/`.
+
+- **Removed.** `--taa-region-hold` (the launcher refuses it by name: "was removed on 2026-09-24 ..."; `X3M_TAA_REGION_HOLD`
+  is never forwarded and an inherited value is dropped; the DLL ignores a stale value with one
+  `taa_region_hold_setting ignored=1 reason=removed` row), `FrameInputs::thin_region_hold`, `configure_region_hold()` /
+  `region_hold_available()` / `region_hold_sentinel_available()`. Programs (records, headers, generator entries): the
+  non-hold camera resolve `resolve_far_camera` (2,196 words / 555 slots) and its 16-tap twin (2,006 / 505), the ungated box
+  programs `thin_box` (238 / 51), `thin_box_rows` (335 / 77) and `thin_box_columns` (420 / 94); `resolve_far_camera.hlsl` and
+  `resolve_far_camera_taps16.hlsl`. The x / y dilations were modes 1 / 3 of the shared mask program, not programs of their
+  own: the camera variants (`line_mask_camera`, `_depth`, `_depth_thin`) now compile the tests draw alone
+  (`#ifndef X3M_CAMERA_GATE` around the other modes; words 1,579 -> 1,020, 1,533 -> 1,002, 1,556 -> 1,030; slots 427 -> 251,
+  407 -> 241), so no camera-gate run draws them and the camera composition's `s6` bind is gone from the tests draw. A
+  camera-gate run allocates one mask target (the second, 4 B/px, 29.5 MB at 5120x1440, is released or never created).
+  The screen-gate chain (`--taa-thin-region-gate screen`, `line_mask_ps.hlsl` modes 1 / 3) and the far stabiliser alone
+  (mode 2 into the second target) are unchanged and keep two targets; their programs' bytecode is identical.
+- **Pass contract.** `configure_far()` creates the camera mask, the hold resolve and its region-gated 49-tap box (none without
+  the FP16 / R32F filter caps: the hold resolve is 5-tap only); `configure_sentinel()` the separable box twins.
+  `camera_gate_available()` = those programs and a 5-tap history; a camera-gate run otherwise is refused (E_INVALIDARG),
+  so `--taa-history-taps 16` has no camera-gate program (the 16-tap twin was dilated-chain only). `camera_programs_result()`
+  holds the first failed creation; `configure_sentinel()` needs `camera_gate_available()` (so nothing after
+  `configure_history_taps(16)`). `hold_history_` still restarts the history when a run leaves the camera gate (refused box
+  targets, or a screen-gate run).
+- **Refusal path (DLL).** Camera gate asked, thin region on, `camera_gate_available()` false: one row
+  `motion_output_taa_region_hold device=D unavailable=1 reason=program|no_filter|history_taps16 create=HR bilinear=B
+  history_taps=T thin_region=W effect=thin_region_off`, and the thin region is off for the pass (no fallback program set,
+  AGENTS.md "Shader slot budget"); the sentinel stabiliser and emissive vote follow with their existing rows
+  (`reason=camera_gate_off`, `reason=thin_region_off`), the far stabiliser (its own option) is untouched. The former
+  `camera_gate_unavailable=1 reason=camera_program` fallback to the screen gate is gone; `reason=thin_region_off` stays.
+  Refused box targets (the lazy FP16 pair, first camera-gate run; not a lost device) no longer fall back to the screen-gate
+  chain (orchestrator decision): the pass turns the thin region off for the session (`camera_gate_failed()`, re-armed by
+  Reset; a far stabiliser of its own carries on; the requested age pair stays allocated, unused, so the plain history is
+  not cut) and the DLL logs one `motion_output_taa_region_hold ... reason=box_target create=HR ... effect=thin_region_off`
+  row per failure.
+- **Log rows.** `motion_output_taa` drops `region_hold=` (it would be constant; `thin_gate=` and `thin_region=` say whether
+  the camera gate runs). `motion_output_taa_history_taps`, once per attachment on its first completed run (the pass is
+  created lazily and allocates its targets on the first run, so a row at creation would read 0), gains `mask_targets=N`
+  (`TemporalPass::line_mask_targets()`: 1 on a camera-gate run, 2 on the screen gate or the far stabiliser alone, 0 without a
+  far run) beside `region_hold=` (the run was a camera-gate run).
+
+TAA programs embedded in the DLL, `RESOLVE_BUDGET` rows (D3DX `instruction slots used`; `slot_table.py` on the 5a4bbd52 and
+this run's `temporal-lattice.txt`): 22 budgeted programs -> 17, 31,056 -> 24,771 words (plus the two thin-vote depth programs,
+not budgeted: `line_mask_depth_thin` unchanged, `line_mask_camera_depth_thin` 1,556 -> 1,030 words); 24 TAA programs -> 19.
+
+| program | words / slots before | after |
+| --- | ---: | ---: |
+| plain, snapshot, thin, age, line_mask, far, line_mask_depth | 1786/455, 187/46, 2013/517, 2143/544, 1574/428, 2144/545, 1554/420 | same (bytecode identical) |
+| line_mask_camera | 1579 / 427 | 1020 / 251 |
+| line_mask_camera_depth | 1533 / 407 | 1002 / 241 |
+| far_camera | 2196 / 555 | removed |
+| thin_box / rows / columns | 238/51, 335/77, 420/94 | removed |
+| plain / thin / age / far taps16 | 1681/432, 1818/465, 1947/494, 1948/493 | same |
+| far_camera_taps16 | 2006 / 505 | removed |
+| far_camera_hold, thin_box_hold / rows_hold / columns_hold | 2479/616, 314/70, 628/155, 533/121 | same (bytecode identical) |
+
+All shader records regenerated natively (the generator changed): 80 -> 75 records, bytecode identical except the three
+camera mask programs; the nine bloom records regenerated (bytecode identical, they pin the generator's hash).
+
+Evidence:
+- `run_temporal_pass.py` (`X3M_FIXTURE_BOTTLE=X3`, through `wine_lock.py`; 133 s, lock wait 0 s): PASS, base
+  744 / 278 / 2 generations, 546 samples (counts unchanged; 38 of 11,786 non-timing lines changed, all rows of the
+  `far_camera` program, now the hold resolve: 30 `MOTION_WEIGHT`, 4 `SETA_EXIT` yaw rows, 4 `MOTE_STREAK`; the exit
+  analysis reads `floor(|age|)` with the sign, as the hold's age readers do), lattice 571 / 91 -> 554 / 91 (the box-target
+  rerun: 119 s, base report byte-identical, `report_sha256` 5f3c22f8...)
+  (`report_diff.py`; `FAR_BASE` 299 / 6 unchanged, `DEPTH_FOLD_BASE` 508 -> 487, `HISTORY_TAPS_BASE` 528 -> 508).
+  Removed (21 checks): the camera configuration's three `THIN_REGION` rows (13; `THIN_REGION_HOLD` carries the same oracle,
+  age, tests-target, silhouette and ripple checks), `THIN_REGION_CAMERA_STATIC` x3 (3; the camera gate's bit-identity with
+  the screen gate at a static camera was the dilated chain's), the camera `THIN_REGION_PAN` oracle row (3;
+  `THIN_REGION_HOLD_PAN`), `SENTINEL_STABILISER row=mover` (2; its 8-px reach was the 17x17 minimum). Rewritten on the hold's
+  tests target, per pixel (same counts): `THIN_REGION_CAMERA` (camera openness over the field 1.0000, screen channel 0),
+  `THIN_REGION_GLASS_MOVER`, `THIN_REGION_CAMERA_FORWARD` (the rotation-only gate closed on all 70 routed row pixels; the
+  output identity with the screen gate is reported, not asserted), `THIN_REGION_CAMERA_FLIGHT` x15 (the tests target
+  against the oracle's own per-pixel gates, error 0 on every modelled case; the lane hole and the mover checked on their
+  routed pixels), `THIN_REGION_BAD_MOTION` (both gates 0 on the covered pixels, every output finite, in place of the output
+  identity with the screen gate); the box-target failure row now expects the plain resolve bit for bit (refused on frame 0 with the two colour
+  histories allowed; was: the screen gate bit for bit); the `THIN_REGION_STALE` / `_BOX_DOMAIN` camera halves and the sentinel rows run the
+  hold with its oracle (facets flicker ratio 0.38-0.48 on the five asserted pans, bound 0.6). The dilated comparisons in
+  the `THIN_REGION_HOLD_*` rows are gone; `THIN_REGION_HOLD_PAN_STOP` now bounds the step against the plain resolve
+  (1.983 / 1.995 codes against 21.07 / 21.22, bound 0.15 x; the dilated chain measured 0.094 x) and `_STALE` gains the
+  clip-off bound. Added: `REGION_HOLD_IDENTITY_REFERENCE` (the identity's camera program compiled from `resolve.hlsl` with
+  `X3M_CAMERA_GATE` / `X3M_FAR_STABILIZE` is the removed embedded program word for word: 2,196 words, FNV-1a
+  457159f1f8e5c6b3), `REGION_HOLD_STATE refused_path=1` (the hold resolve refused at `CreatePixelShader`: no camera-gate
+  program, `camera_programs_result()` 8876017c, a camera-gate run and `configure_sentinel` refused, the screen gate runs),
+  `taps16_refused=1`, `screen_restarts=1`, `box_refused_region_off=1` (box pair refused on a camera-gate run: E_OUTOFVIDEOMEMORY
+  in `camera_gate_result()`, plain resolve, no mask or age published; the next run retries nothing and continues the history;
+  new check), masks 1 / 2 / 1 / 0 / 1 / 1 (camera, screen, camera again, at Reset, after it, after the refused boxes), `HISTORY_TAPS_NO_FILTER_CAMERA` (filter query refused: far program kept, no camera-gate program, create
+  8876086a, camera-gate run refused). `HISTORY_TAPS` runs the far program on the screen gate for its 16-tap twin
+  (the camera gate has none). Every `RESOLVE_BUDGET` row `within_ceiling_2048=1`.
+- Fixture pass time (`LINE_TIMING_CAMERA`, 1280x768, CPU wall with an event-query drain, one run each, measured, noise
+  about +-0.15 ms between runs of this build): camera gate on the fragmented pan frame 1.833 -> 1.319 ms (over the
+  screen-gate thin region 0.654 -> 0.212 ms), with no region 1.372 -> 1.127 ms; the flight's figure is Run 79 A's
+  (`taa_mask` 2.93 -> 1.54 ms at 5120x1440, already without the x / y draws).
+- `run_motion_output.py`, full run (640 s, lock wait 0 s; run A: the build before the box-target edit, the figures of this
+  paragraph unless marked run B): PASS, 221 cases + 26 bench. Against the committed summary
+  (`compare_motion.py`): 219 of the 222 committed cases identical in every non-clock leaf (`seam-taa-thin-hold-on` included:
+  the camera mask's new bytecode writes the same tests target), 53 clock leaves differ; removed `seam-taa-region-hold-off`
+  and `seam-taa-region-hold-too-long` (the option's parse) and `seam-taa-thin-hold-off` (the dilated chain through the DLL);
+  added `seam-taa-region-hold-ignored` (X3M_TAA_REGION_HOLD=off: one `taa_region_hold_setting ignored=1 reason=removed`
+  row, byte-identical to `seam-taa-on`) and `seam-taa-thin-taps16-refused` (thin region 0.97 + stabiliser 0.7 under
+  `X3M_TAA_HISTORY_TAPS=16`: one `motion_output_taa_region_hold ... reason=history_taps16 create=00000000 bilinear=1
+  history_taps=16 thin_region=0.9700 effect=thin_region_off` row, the stabiliser's `reason=camera_gate_off` row,
+  `thin_region=0.0000`, colour hashes and FP16 histories byte-identical to `seam-taa-taps16`; references base + 9). The
+  camera-gate case holds 7 + 2 references on top of the base (was 7 + 2 + 4) and its first run logs `region_hold=1
+  mask_targets=1`; the other seam TAA cases (no far run) log `mask_targets=0` and no refusal row. `motion_output_taa` carries no `region_hold=`.
+  With 16 taps the three camera-gate programs are still created by `configure_far` (before the camera gate is judged) but
+  never run: `seam-taa-thin-taps16-refused` holds base + 7 + 1 (configure_far's seven programs and the far 16-tap twin);
+  accepted (one-time program creation, no draw, no target).
+- Run B, after the box-target edit (review item F1): `run_motion_output.py seam-taa-thin-hold-on
+  seam-taa-thin-taps16-refused seam-taa-region-hold-ignored seam-taa-on seam-taa-taps16` on the final sources (87 s, lock
+  wait 0 s; seam DLL sha256 8b9faa1b...): all five cases pass their per-case checks, every non-clock leaf identical to
+  run A (`compare_partial.py`; `frames_changed_by_history` is a full-run cross-case field and absent in a partial run),
+  and the twins' colour hashes identical (taps16-refused = taps16, region-hold-ignored = taa-on). The two reviewed original
+  programs the runner pins (`/tmp/x3-shader-sweep/programs`, gone from `/tmp` by then) were staged from the run299 capture
+  dump with the pinned SHA-256 and removed afterwards.
+- Build (MinGW i686, RelWithDebInfo): 0 warnings; `check_no_x87.py build/d3d9.dll` PASS, 683 reachable functions, 0
+  violations (final sources). DLL 56,660,937 -> 56,582,639 bytes (-78,298; `.text` 37,010,116 -> 36,981,824, -28,292 B by
+  `i686-w64-mingw32-size`) for the final build against a 5a4bbd52 build with the same toolchain (run A's build, before the
+  box-target edit: 56,581,488). Host tests: the 17 affected modules (`test_taa_*`, the launcher modules,
+  `test_bloom_programs`, `test_motion_output_runner` / `_profiles`, iteration 07 / 08 TAA) 205 tests, 0 failing; the full
+  suite (`run_host_suite.py`, the shader records all regenerated) 253 modules, 2,638 tests, 0 failing.
+- Triage parsers (`parser_check.py`, no Wine): every script of `run299-303-run79a` and `run295-298-run78a` that takes run numbers runs on run299 (exit 0);
+  the five with a run299 line in their committed output reproduce it exactly (`abnormal_rows`, `bolt_rows`, `dt_windows`,
+  `exit_rows`, `taa_frames`); `taa_frames.py`, the only one that reads a reformatted row, parses a synthetic run299 excerpt
+  with the new `motion_output_taa` and `motion_output_taa_history_taps ... mask_targets=1` rows (5,000 frames, exit 0,
+  the row carried). The others read frame, gpu-sync, abnormal, exit and bolt rows this change does not touch.

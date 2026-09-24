@@ -111,9 +111,12 @@ float4 luminance : register(c22); // k, current-filter A, alpha history (X3M_THI
 // lerp(w, min(n / (n + 1), c24.y), g * slow) and lerp(w, min(n / (n + 1), c5.x), b). The 3x3
 // sentinel soft clip of the thin variants is not compiled here (its S shares
 // c24.x); b = a = 0 is the clamp and the far blend exactly.
-// X3M_CAMERA_GATE (resolve_far_camera.hlsl; taa-lattice-crawl.md section 32.1):
-// the camera-relative gate mode of the thin region. The mask is drawn by
-// line_mask_camera_ps.hlsl: b = the region strength under the gate on
+// X3M_CAMERA_GATE (defined by X3M_REGION_HOLD below; taa-lattice-crawl.md
+// section 32.1): the camera-relative gate mode of the thin region. Alone it is
+// the camera program of the dilated chain removed on 2026-09-24 (A' only), which
+// no production program builds any more: the temporal fixture compiles it
+// (X3M_CAMERA_GATE and X3M_FAR_STABILIZE before this file) as the reference of
+// REGION_HOLD_IDENTITY. The composed mask it reads: b = the region strength under the gate on
 // min(screen speed, camera-relative speed), a = the strength the plain gate on
 // the screen speed alone would give (a <= b). Where the camera term alone keeps
 // the region open (b > a) that added strength (b - a) pulls the history toward
