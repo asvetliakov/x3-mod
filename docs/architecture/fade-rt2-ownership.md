@@ -2,7 +2,8 @@
 
 Design note for the orchestrator to ratify. Question: how a fade-band draw above the alpha threshold writes exact depth
 and motion into RT2 so the resolve treats it as geometry, and under what condition the sentinel stabiliser
-(`X3M_TAA_SENTINEL_STABILISER`, default 0.7 with the camera gate) can then be removed. Not implemented. [M] measured or
+(`X3M_TAA_SENTINEL_STABILISER`, default 0.7 with the camera gate) can then be removed. Implemented opt-in (see the
+Decision block), not flown. [M] measured or
 read in code this session, [S] from disassembly notes, [I] inferred.
 
 ## Decision
@@ -13,6 +14,28 @@ stay byte-identical with it off; (2) the flag lane uses the c216-c218 upload of 
 register change (B was told to move its flag to c218.x and encode `1 - thin`, vote on `validDepth && a < 1`); (3) the
 prepass unknown of section 10 is being settled by a disassembly task on the `+0x270 & 0x40000` writer before the
 fixture plan is finalised. The identity widening (section 3) gets its own review.
+
+**Implemented 2026-09-24 (opt-in, not flown)** as `--fade-rt2-owner on|off` (`X3M_FADE_RT2_OWNER`, DLL and launcher
+default off; requires `--taa`, on also `--motion-output --hdr`; refused under `--vanilla`); ledger
+`docs/verification/temporal-resolve.md` "fade owner". Departures from the text below: (1) the lane is three lanes of
+`c218` and one fragment for both B states: `current_depth_owner_ps.hlsl` writes `.a = max(w * c218.z + c218.x,
+c218.y)`, the route uploads `c218.y = 1` on a fade-owner row, `c218.x` = B's `1 - thin` (0 with B off) and `c218.z = 1`
+on any other row with B off, so every non-owner row keeps exactly the value the plain (`w`) or thin (`1 - thin`)
+fragment writes and B's `.x` upload and DEF repack are unchanged; (2) the identity widening applies under original
+shading only (the overlay arm's own boundary: under linear materials a blended hull pair may belong to the composition or
+glass bracket), and `fade_route::arm_pair` is the one identity function; (3) on the four-channel lane an owner writes
+`.g` too, so it binds the motion variant's invalid-share twin (`.g = -1`, not a receiver); a row without one (material,
+XT) stays masked and is counted (`fade_owner_masked` on `fade_route_frame`, with `fade_evicted` and `fade_owner`); (4)
+the tests draw is unchanged: B votes on `validDepth && 0 <= a < 1`, an owner carries `a = 1` exactly. Slots: depth
+fragment 3 -> 5, every depth-writing pixel variant +2 (measured). The lattice case shows the class change opens the
+region once per pixel and adds no hold beyond an always-owner run; an owner holds the region on 52 pixels of an 8 x 8
+square in steady state (inferred: its corners, flagged by the diagonal line test like any routed geometry against the
+sentinel), which section 4 did not state. History resets at the class changes, measured against option-off twins
+(ledger table): over the fill the owner adds exactly one current-only frame at each falling edge (owner -> sentinel,
+effect (b) below); the rising edge (sentinel -> owner) is current-only with or without the owner because a node routed
+again after a refusal has no matched rows (the one-frame row history), so effect (a) does not occur in practice. Both
+are bounded to one frame per band crossing. Follow-up if the flight shows the falling-edge frame: the resolve-side
+acceptance of section 4 (a history depth against a far-plane current where the history's motion alpha was 1).
 
 Every draw the fade-band arm routes becomes the RT2 owner of the pixels it covers: `COLORWRITEENABLE2` goes from 0 to
 15 on fade-arm rows, and the current-depth fragment emits alpha exactly 1 (from a route-uploaded lane) so the draw's own

@@ -2401,3 +2401,150 @@ with `--telemetry` draw metrics), how many opaque routed draws vote at the latti
 whose triangles are mostly 0.5-3 px at distance votes as a whole; near panels of a large station can vote through the
 origin-depth scale), crawl on a station arm seen against its own hull (B's intended gain), ghosting on voted panels
 under a pan, and the tests draw's cost with the twin (`taa_mask` with `--gpu-sync-timing`).
+
+## 2026-09-24 fade owner (`--fade-rt2-owner`, opt-in; fixture, not flown)
+
+[fade-rt2-ownership.md](../architecture/fade-rt2-ownership.md) as ratified; its "Implemented" paragraph records the
+departures (three-lane `c218` encoding, original-shading-only widening, the lane's invalid-share twin).
+`--fade-rt2-owner on|off` (`X3M_FADE_RT2_OWNER`, DLL and launcher default off; requires `--taa`, on also
+`--motion-output --hdr`; refused under `--vanilla`). Bottle X3, native `d3dx9_37`, measured unless marked.
+
+- **Contract.** A fade-arm row (not the overlay arm) sets `COLORWRITEENABLE2` 15 instead of 0 in both binding modes
+  (lazy: no write and no undo when the application holds 15, by inspection) and uploads `c218.y = 1`, `c218.z = 0`; its
+  depth fragment (`current_depth_owner_ps.hlsl`, used instead of the plain and thin fragments while the option is on)
+  writes `.a = max(w * c218.z + c218.x, c218.y) = 1`, so the engine's SRCALPHA/INVSRCALPHA blend stores the fragment.
+  Every other routed row uploads `c218.y = 0` and `c218.z = 1` (B off: `.a = w`, the plain value) or `0` (B on:
+  `.a = c218.x = 1 - thin`, B's value). RT2 `.a` / `.b` per row class (`.a` and `.b` exist on the lane RT2 only):
+
+  | Row | B off, owner off | B off, owner on | B on, owner off | B on, owner on |
+  | --- | --- | --- | --- | --- |
+  | opaque routed | `.a = w`, `.b = w` | same | `.a = 1 - thin` (1 = no vote), `.b = w` | same |
+  | alpha-tested routed | `.a = w`, `.b = w` | same | `.a = 1`, `.b = w` | same |
+  | fade arm (>= 500, held >= 400) | masked | `.a = 1`, `.b = w`, `.r = z/w`, `.g = -1` | masked | same as B off |
+  | overlay arm (no registers row) | masked | masked | masked | masked |
+  | not routed (fill) | `.r = -1` | same | same | same |
+
+  On the four-channel lane an owner binds the invalid-share twin (`.g = -1`: not a receiver); a row without one
+  (material, XT) stays masked (`fade_owner_masked`). The tests draw is unchanged: B votes on `validDepth && 0 <= a < 1`,
+  an owner's `a` is exactly 1. ZWRITEENABLE is never written. Identity: `fade_route::arm_pair(registers row,
+  distance_fade_rows pair, owner && original shading)`, the register table 7 -> 9 rows (`494fe349b8bc12ec`,
+  `53a0a641107ed76c`, c39 / c41 / b0); `distance_fade_rows` (the bracket) unchanged. `fade_route_frame` gains
+  `fade_evicted` (entries a full 64-key hysteresis table displaced this frame), `fade_owner`, `fade_owner_masked`.
+- **Host** (`test_fade_region.py` 16 -> 29 tests): the 9-row table, `arm_pair`'s truth table, the identity against the
+  real `distance_fade_rows` and the reviewed table (the seven pairs fade either way; the four run214 pairs
+  `494fe349/fffdabd9`, `53a0a641/8759c783`, `4944d81d/ca6bfa4a`, `53a0a641/63f96eba` only with the owner, sampler mask 0;
+  glass `c30104cb/a66fb198` and damage `37c34a74/5f82ecac` never), the eviction counter (0 until the 65th key, then one
+  per displaced key), the launcher option, the source contract. Adapted: `test_taa_thin_vote.py` (the upload lines),
+  `test_motion_output_runner.py` (case lists, HDR count 83 -> 93, the frame line's new fields), the wrap-state seam's
+  mirror class. Full suite (`run_host_suite.py`): 253 modules, 2,637 tests, 0 failing. Generator and bloom provenance
+  records regenerated for the generator's new digest (no `_inc.h` byte moved).
+- **Motion-output fixture** (`run_motion_output.py`, full run on the final sources; the summary re-pinned from it): PASS,
+  220 cases + 26 bench (15 new). Against the pinned summary (4de081ae) every one of its 205 cases is present and 0 non-clock
+  leaves differ (53 clock leaf names; 116 cases identical including clocks)
+  ([compare_motion_out.txt](../../verification/results/fade-rt2-owner/compare_motion_out.txt), script beside it). New
+  cases, `faderoute` with the option on (`-owner`; lane = the four-channel RT2, on the original-shading scripts) and
+  `hull` off:
+
+  | Case | Routed / held frames | RT2 owner px (kept) | z/w error | Resolved residual px |
+  | --- | --- | --- | --- | --- |
+  | routed-owner, routed-perdraw-owner | 12 / 0 | 4,704 (0) | 1.2e-8 | 0.069 |
+  | sentinel-owner | 12 / 0 | 4,704 (0) | 4.8e-8 | 0.069 |
+  | hover-owner (thin region 0.97, captures 1-8) | 8 / 5 | 3,136 (1,568) | 1.2e-8 | 0.053 |
+  | original-owner, behind-owner (lane) | 8 / 5 | 3,136 (1,568) | 1.2e-8, `.b` error 0 | 0.054 |
+  | overlay-owner (lane): fade_routed 2, overlay_routed 0 | 12 / 0 | 4,704 (0) | 1.2e-8 | 0.071 |
+  | foreign-owner (lane; g_AlphaValue .390625): `unmatched=fade_threshold` | 0 / 0 | 0 (4,704) | - | 0.103 |
+  | hull-owner (lane; `494fe349/fffdabd9`, own nodes, fraction 1000) | 12 / 0 | 4,704 (0) | 1.2e-8 | 0.067 |
+  | hull (option off): `unmatched=overlay_node`, overlay_refused 2 | 0 / 0 | - | - | - |
+
+  Every routed quad's interior holds z/w 0.3 (lane: `.g = -1`, `.b = w` exactly, `.a = 1`), a refused quad leaves RT2
+  unchanged, no draw changes RT2 outside its own raster, and over the fill the upper half keeps `.r = -1` (the lane fill
+  stores `.g = 0`). History resets at the class changes (age dumps, thin region 0.97, captures 1-8; each owner case against
+  an option-off twin; "fresh" = history count 1 on every quad pixel, i.e. current-only; the runner pins the fresh frames
+  per case, `FADE_ROUTE_AGE_FRESH`, and the twin difference, `FADE_ROUTE_AGE_OWNER_RESETS`):
+
+  | Case (schedule: routed 0-2, refused 3-5, routed 6-7, refused 8; cut 7) | Fresh frames | Twin (option off) | Owner adds |
+  | --- | --- | --- | --- |
+  | hover-owner / hover-age (over A, linear materials, bracket M on refused frames) | 3, 4, 5, 6, 7, 8 | 3, 4, 5, 6, 7, 8 (counts identical) | none |
+  | original-owner-age / original-age (over the fill, lane, original shading, A scissored) | 3, 6, 7, 8 | 6, 7 | 3, 8 |
+
+  Why: in hover the refused frames are current-only through the bracket's M, frame 6 (routed again after a refusal)
+  through the rows' one-frame history (unmatched: RT1 alpha 3 over A's rows), frame 7 is the camera cut; none of it is
+  the owner's. Over the fill the owner adds exactly its falling edges, frames 3 and 8 (owner -> sentinel: a history
+  depth in front of the far plane is rejected once, design section 4 (b)). Frame 6, the rising edge (sentinel -> owner),
+  is current-only with the option off too: the rows' one-frame history, not the depth; section 4 (a)'s "keeps history"
+  cannot occur while re-routing after a refusal is unmatched (in the game as in the fixture). On the 449 frames
+  (2, 4, 5, 7) no quad pixel's region hold rises in any of the four (the hold reaches 8 on 2 quad pixels on owner frames
+  1, 2 and 6). The option-off twin over the fill also shows what the owner removes: its routed-but-masked quads follow
+  the raw jitter (resolved / raw shift up to 1.11 on matched frames), the owner's stay put (residual 0.054 px).
+  Lane under linear materials (`routed-owner-lane`): the material rows have no invalid-share twin, the owner is
+  withdrawn, `fade_owner_masked = 2` on every routed frame and RT2 is unchanged under the quads. Thin vote with the
+  owner (`seam-thin-vote-far-on-owner`): RT1 and all four RT2 lanes byte-identical to `seam-thin-vote-far-on` on every
+  captured frame (the owner fragment reproduces B's `.a`). Fixture fix inside the new cases only: the option-off
+  `sentinel` / `original` / `behind` scripts set the scissor rectangle but never enable the test (frame_begin's scene
+  states turn it off), so their quads sit over A, not the fill; the owner cases, `hull` and the age twin
+  (`X3M_FIXTURE_FADE_SCISSOR=1`) enable it, and over the real
+  fill a refused blended quad is the sentinel class (stabiliser pinned off by the runner), reported in `shifts`, not
+  asserted. The reference resolve reads the lane RT2's `.r` (a MOREDATA retry; R32F cases unchanged). `hull` feeds the
+  station VS a four-lane TEXCOORD0 (its light map's UV in `.zw`) and the ramp on the light-map stage of Q.
+- **Temporal pass** (`run_temporal_pass.py`): PASS, report identical to the committed one (`e2719f09...`); lattice PASS
+  571 / 91 (566 + 5), differing from the committed report only in timing rows, the RESULT line and the new row's lines;
+  the "routed sentinel (glass)" row unchanged
+  ([lattice_diff_out.txt](../../verification/results/fade-rt2-owner/lattice_diff_out.txt),
+  [compare_temporal_out.txt](../../verification/results/fade-rt2-owner/compare_temporal_out.txt)). New row
+  `THIN_REGION_HOLD_FADE_OWNER` (sentinel scene at rest, S 0.7, hold; a far routed square, depth 0.999, a masked fade row
+  until frame 32 and an owner from it; against always-masked and always-owner runs): oracle error 0.005859 (bound 0.02),
+  age error 0, tests-target error 0, frames before the switch bit-identical to the always-masked run, 52 region openings
+  over the square, at most 1 per pixel, 0 frames whose holds differ from the always-owner run, which holds the same 52
+  pixels at its last frame (inferred: the square's corners, which a diagonal 7-tap line flags in steady state like any
+  routed geometry against the sentinel).
+- **Distance fade.** Live script (`run_linear_distance_fade_live.py` on the full run's seam DLL and fixture): PASS,
+  `fade_routed = 0` asserted per frame; against the same script on main's seam DLL and fixture (built from
+  `git archive 4de081ae` in a scratch directory): 0 non-clock leaves differ
+  ([compare_live_out.txt](../../verification/results/fade-rt2-owner/compare_live_out.txt), script beside it; the
+  committed result dates from 2026-09-15). Detached `run_linear_distance_fade.py`: its report equals the same fixture
+  built from main's sources except `completed_ms`; both fail the same check (`actual native/E alpha identity`), and
+  `build_linear_distance_fade.sh` no longer links on main (it lacks `linear_emission.cpp`): pre-existing, open.
+- **Slots** (`run_fade_owner_probe.py`, `D3DXDisassembleShader`, [probe.json](../../verification/results/fade-rt2-owner/probe.json),
+  our fragments' lines in [owner_fragment.txt](../../verification/results/fade-rt2-owner/owner_fragment.txt)): current-depth
+  fragment 3 (plain), 4 (thin), 5 (owner: rcp, mul, mad, max, mov); pixel variants off / thin / owner / owner + thin:
+  `8759c7838bbc86c2` 77 / 78 / 79 / 79, `517540ae6d5e5410` 66 / 67 / 68 / 68, `fffdabd910793aba` 128 / 129 / 130 / 130,
+  `63f96eba9eea7880` 82 / 83 / 84 / 84. The DEFs and the motion fragment are the thin variant's line for line. With the
+  option on every depth-writing variant carries the 5-instruction fragment (opaque rows too: +2 ALU per routed pixel,
+  cost inferred). Resolve and tests draw unchanged (RESOLVE_BUDGET rows identical).
+- **Cost** ([route_cost_out.txt](../../verification/results/fade-rt2-owner/route_cost_out.txt), `route_cost.py` beside it;
+  the full run's frame lines, frames 1-11, CPU QPC under FEX, telemetry draw metrics, 64 x 64): route_draw_us per routed
+  draw, off -> owner: routed 13.89 -> 13.65, perdraw 16.54 -> 16.28, sentinel 14.23 -> 14.25, hover 17.09 -> 16.63,
+  original 14.55 -> 15.62, behind 14.98 -> 15.36, overlay (overlay arm -> fade arm) 13.91 -> 14.44: within about 1 us
+  either way, no systematic cost on already-routed fade draws. Newly admitted hull draws: `hull` off routes A alone
+  (14.78 us per frame, gate_us 21.81 with the two overlay refusals), `hull-owner` all three (42.46 us, 14.15 per draw,
+  gate_us 17.95): about 13.8 us of route work per newly routed draw in this fixture (the design's 7.49 us is
+  route-per-draw-cost.md's production figure). `lazy_mask_writes` counts only application masks other than 15, so the
+  lazy saving is not visible in the counters (by inspection).
+- Scratch DLL (MinGW i686, RelWithDebInfo, the final full run's clean build `798610e4...`; the hash embeds the tree state): 0 warnings; `check_no_x87.py`
+  PASS, 683 reachable functions, 0 violations.
+
+Not done: the prepass parity check (`production-zonly` / `seam-zonly`) has no RT2 interior-hole count; its material
+draw is not routed (no TAA, not the fade-band state), so the count needs a new TAA + HDR + camera zonly-owner script.
+The two pinned zonly cases are unchanged (the full run).
+
+Run 80 items (fade owner; section 5 of the design note): fly the run214 stand (two distant stations, slow vertical pan
+3-9 px/frame, F8 `--taa-debug` bursts at rest and during the pan) with `--fade-rt2-owner on`, twice: the default
+`--taa-sentinel-stabiliser` (0.7) and `0`. The stabiliser's default becomes 0 when all hold:
+1. Log: on the stand frames `overlay_refused = 0` and no `unmatched=overlay_node` row for the four run214 families;
+   `fade_routed` at least the station draw count (62 on frame 24630); `unjittered_depth_writers = 0`; `fade_owner = 1`,
+   `fade_owner_masked = 0`, `fade_evicted` reported.
+2. RT2 dump (`taa_depth` or the lane readback of the burst): valid depth on at least 0.9 of the station crop's detail
+   pixels (540 180 700 340, 4,325 luma-detail pixels) and the `taa_mask` b sentinel-class code (1/255 or 1) on 0 of them.
+3. Replay (`tools/analysis/taa_resolve_replay.py` on the burst's true `color_*` input): station-crop flicker rms with
+   S = 0 at or below 1.20 codes, gradient at or above 9.44, and the S = 0.7 run within the fixture's oracle bound of
+   S = 0 on the crop.
+4. User: no flicker on the stations under the pan with S = 0, no trail wider than a pixel behind the silhouettes, no
+   visible pop at the band edges on approach. Expected, measured in the fixture: one current-only frame over a station
+   each time its fraction falls below 400 while it owned RT2 (the owner's falling edge, `original-owner-age` frames 3 and
+   8), and one each time it is routed again after a refusal (the rows' one-frame history, as with the option off). If
+   the falling-edge frame shows, the follow-up is resolve-side (section 4: accept a history depth against a far-plane
+   current where the history's motion alpha was 1), not in this step.
+
+Also watch: near hulls' glass/window sub-meshes of the `53a0a641` family, routed through the overlay arm before, are now
+fade owners at fraction 1000 (their depth, coplanar with the hull, lands in RT2: look for trails on windows under a pan);
+route_draw_us and loading time against an option-off flight at the same spot.

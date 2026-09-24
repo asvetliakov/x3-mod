@@ -1162,12 +1162,12 @@ LINE_CASES
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
 CHECK line timing: camera-gate programs created PASS
-LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.8822 far_stabiliser_ms=1.0427 thin_region_ms=1.8819 far_delta_ms=0.1605 thin_region_delta_ms=0.9997 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.8819 no_region_camera_ms=2.1349 no_region_camera_delta_ms=0.2530 fragmented_pan_thin_ms=1.1197 fragmented_pan_camera_ms=1.7444 fragmented_pan_camera_delta_ms=0.6247 scope=cpu_wall_with_event_query_drain
-LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.7444 lane_input_law_ms=1.6037 lane_input_lane_ms=1.6402 lane_fetch_delta_ms=0.0366 lane_input_over_r32f_ms=-0.1407 scope=cpu_wall_with_event_query_drain
+LINE_TIMING width=1280 height=768 content=all_geometry rounds=6 plain_ms=0.6843 far_stabiliser_ms=0.8070 thin_region_ms=1.3053 far_delta_ms=0.1227 thin_region_delta_ms=0.6210 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA width=1280 height=768 rounds=6 no_region_thin_ms=1.3053 no_region_camera_ms=1.3666 no_region_camera_delta_ms=0.0612 fragmented_pan_thin_ms=1.1449 fragmented_pan_camera_ms=1.8504 fragmented_pan_camera_delta_ms=0.7054 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_CAMERA_LANE width=1280 height=768 rounds=6 r32f_camera_ms=1.8504 lane_input_law_ms=1.7670 lane_input_lane_ms=1.7453 lane_fetch_delta_ms=-0.0217 lane_input_over_r32f_ms=-0.0834 scope=cpu_wall_with_event_query_drain
 CHECK sentinel timing: separable box programs created PASS
 CHECK sentinel timing: separable box programs created PASS
-LINE_TIMING_SENTINEL width=1280 height=768 rounds=6 content=all_unrouted_sentinel_pan strength_off_ms=1.2742 strength_on_separable_ms=1.5531 sentinel_delta_ms=0.2789 scope=cpu_wall_with_event_query_drain
+LINE_TIMING_SENTINEL width=1280 height=768 rounds=6 content=all_unrouted_sentinel_pan strength_off_ms=1.3491 strength_on_separable_ms=1.6375 sentinel_delta_ms=0.2884 scope=cpu_wall_with_event_query_drain
 LINE_BASE numerical=190 state_restorations=4
 FAR_CASES
 FAR_GATE ok=1 d0=0.99985647 inv=17734.900 expected_d0=0.99985652 expected_inv=17749.280
@@ -5073,4 +5073,29 @@ THIN_REGION_HOLD_SENTINEL pan=2.00 pan_mode=reversing strength=0.70 oracle_error
 SAMPLE region hold, sentinel stabiliser: shader matches the oracle actual=0.002929688 expected=0.000000000 tolerance=0.020000000 PASS
 SAMPLE region hold, sentinel stabiliser: age matches the oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
 CHECK region hold, sentinel facets: flicker below 0.6 x the S = 0 hold run PASS
-RESULT PASS numerical=566 state_restorations=91 lattice=1
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK hold programs are not created by configure_far PASS
+CHECK hold programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK hold programs are not created by configure_far PASS
+CHECK hold programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+CHECK separable box programs are not created by configure_far PASS
+CHECK thin-region program created on this device PASS
+CHECK camera-gate programs created on this device PASS
+CHECK hold programs are not created by configure_far PASS
+CHECK hold programs created on this device PASS
+CHECK thin-region history follows the sequence PASS
+THIN_REGION_HOLD_FADE_OWNER frames=64 switch_frame=32 strength=0.70 oracle_error=0.005859 age_oracle_error=0.000000 tests_mask_error=0.000000 pre_switch_px_frames=3200 pre_switch_differs=0 region_openings=52 max_openings_per_px=1 extra_open_frames=0 late_hold_differs=0 steady_held_px=52 max_hold=8 hold_frames=8
+CHECK fade owner: the square is routed on the sentinel before the switch and holds its depth after it PASS
+SAMPLE fade owner: shader matches the oracle with the holds actual=0.005859375 expected=0.000000000 tolerance=0.020000000 PASS
+SAMPLE fade owner: age matches the oracle actual=0.000000000 expected=0.000000000 tolerance=0.000000000 PASS
+SAMPLE fade owner: the published tests target equals the CPU tests draw actual=0.000000000 expected=0.000000000 tolerance=0.001960784 PASS
+CHECK fade owner: before the switch the run is the always-masked run bit for bit PASS
+CHECK fade owner: the class change opens the region at most once per pixel, its extra hold lasts at most L + 1 frames PASS
+RESULT PASS numerical=571 state_restorations=91 lattice=1

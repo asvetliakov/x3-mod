@@ -71,11 +71,15 @@ class MotionOutputRunnerTests(unittest.TestCase):
                        'seam-taa-fade-route-sentinel': '0', 'seam-taa-fade-route-hover': '0', 'seam-taa-fade-route-original': '0',
                        'seam-taa-fade-route-behind': '0', 'seam-taa-fade-route-overlay': '0', 'seam-taa-fade-route-foreign': '0',
                        'seam-taa-fade-route-overlay-lightmap': '0', 'seam-taa-fade-route-overlay-lightmap-far-fade': '0',  # --light-map-far-fade twins
+                       'seam-taa-fade-route-hull': '0',  # X3M_FADE_RT2_OWNER (fade-rt2-ownership.md): the owner cases and the hull script
+                       'seam-taa-fade-route-routed-owner-lane': '0', 'seam-taa-fade-route-hover-age': '0', 'seam-taa-fade-route-original-owner-age': '0',
+                       'seam-taa-fade-route-original-age': '0',
+                       **{f'seam-taa-fade-route-{n}-owner': '0' for n in ('routed', 'routed-perdraw', 'sentinel', 'hover', 'original', 'behind', 'overlay', 'foreign', 'hull')},
                        'seam-taa-cutout-opaque-get': '0',
                        'seam-ownership-bolt-shape-prims': '0', 'seam-ownership-bolt-shape-decl': '0'})  # the bolt footprint's shape-refusal script
         self.assertEqual({n for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'auto'}, automatic)
         self.assertEqual({n: e['X3M_HDR_EV_MANUAL'] for n, e in hdr.items() if e.get('X3M_HDR_EXPOSURE') == 'manual'}, manual)
-        self.assertEqual((len(hdr), len(automatic), len(manual)), (83, 14, 36))  # 4 seam-*lightmap-far-fade*, 7 seam-lightmap-widen-* and 4 seam-thin-vote-* cases set no exposure mode (runtime default)
+        self.assertEqual((len(hdr), len(automatic), len(manual)), (98, 14, 50))  # + seam-thin-vote-far-on-owner (no exposure mode)  # 4 seam-*lightmap-far-fade*, 7 seam-lightmap-widen-* and 4 seam-thin-vote-* cases set no exposure mode (runtime default)
         for name, env in hdr.items():
             with self.subTest(case=name):
                 if name in automatic:
@@ -337,7 +341,7 @@ class MotionOutputRunnerTests(unittest.TestCase):
             trace.append(f'motion_output_frame device=1 frame={f} rt_mode={"lazy" if lazy else "perdraw"} draws=4 routed={1 + 2 * routed} gate4={0 if routed else 2} '
                          f'apply_failures=0 restore_failures=0 taa_resolved=1 taa_history={history}')
             if original:
-                trace.append(f'fade_route_frame device=1 frame={f} fade_routed={2 * routed} fade_refused={2 * (not routed)} fade_held={2 * held} fade_route=500 cutout_caps=1 overlay_routed=0 overlay_refused=0')
+                trace.append(f'fade_route_frame device=1 frame={f} fade_routed={2 * routed} fade_refused={2 * (not routed)} fade_held={2 * held} fade_route=500 cutout_caps=1 overlay_routed=0 overlay_refused=0 fade_evicted=0 fade_owner=0 fade_owner_masked=0')
             else:
                 trace.append(f'linear_material_frame device=1 frame={f} routed={1 + 2 * routed} bump_routed=0 refused=0 bind_failures=0 cutout_routed=0 cutout_missed=0 '
                              f'cutout_unavailable=0 cutout_caps=1 fade_routed={2 * routed} fade_refused={2 * (not routed)} fade_held={2 * held} fade_route=500')
@@ -372,12 +376,29 @@ class MotionOutputRunnerTests(unittest.TestCase):
                           ('seam-taa-fade-route-sentinel', True, 'sentinel'), ('seam-taa-fade-route-hover', True, 'hover'),
                           ('seam-taa-fade-route-original', True, 'original'), ('seam-taa-fade-route-behind', True, 'behind'),
                           ('seam-taa-fade-route-overlay', True, 'overlay'), ('seam-taa-fade-route-foreign', True, 'foreign'),
-                          ('seam-taa-fade-route-overlay-lightmap', True, 'overlay'), ('seam-taa-fade-route-overlay-lightmap-far-fade', True, 'overlay')])
+                          ('seam-taa-fade-route-overlay-lightmap', True, 'overlay'), ('seam-taa-fade-route-overlay-lightmap-far-fade', True, 'overlay'),
+                          # X3M_FADE_RT2_OWNER (fade-rt2-ownership.md section 7)
+                          ('seam-taa-fade-route-routed-owner', True, 'routed'), ('seam-taa-fade-route-routed-perdraw-owner', False, 'routed'),
+                          ('seam-taa-fade-route-sentinel-owner', True, 'sentinel'), ('seam-taa-fade-route-hover-owner', True, 'hover'),
+                          ('seam-taa-fade-route-original-owner', True, 'original'), ('seam-taa-fade-route-behind-owner', True, 'behind'),
+                          ('seam-taa-fade-route-overlay-owner', True, 'overlay'), ('seam-taa-fade-route-foreign-owner', True, 'foreign'),
+                          ('seam-taa-fade-route-hull-owner', True, 'hull'), ('seam-taa-fade-route-hull', True, 'hull'),
+                          ('seam-taa-fade-route-routed-owner-lane', True, 'routed'), ('seam-taa-fade-route-hover-age', True, 'hover'),
+                          ('seam-taa-fade-route-original-owner-age', True, 'original'), ('seam-taa-fade-route-original-age', True, 'original')])
+        owners = {c['name'] for c in cases if c['hdr_env'].get('X3M_FADE_RT2_OWNER') == 'on'}
+        self.assertEqual(owners, {c['name'] for c in cases if '-owner' in c['name']})
+        # The lane (four-channel RT2) on the original-shading owner cases only; the thin region on hover-owner only.
+        self.assertEqual({c['name'] for c in cases if c['hdr_env'].get('X3M_SUN_SHADOW_LANE') == '1'},
+                         {f'seam-taa-fade-route-{n}-owner' for n in ('original', 'behind', 'overlay', 'foreign', 'hull')}
+                         | {'seam-taa-fade-route-routed-owner-lane', 'seam-taa-fade-route-original-owner-age', 'seam-taa-fade-route-original-age'})
+        self.assertEqual({c['name'] for c in cases if 'X3M_TAA_THIN_REGION' in c['hdr_env']},
+                         {'seam-taa-fade-route-hover-owner', 'seam-taa-fade-route-hover-age', 'seam-taa-fade-route-original-owner-age', 'seam-taa-fade-route-original-age'})
+        self.assertEqual(set(runner.FADE_ROUTE_AGE_FRESH), {'seam-taa-fade-route-hover-owner'} | set(runner.FADE_ROUTE_AGE_CASES))
         # The original-shading cases (run 125; run 130's origin behind the camera and same-node overlay) turn linear materials and the fade bracket off; every other case keeps both on.
         self.assertTrue(all(c['jitter'] and c['taa'] and c['hdr'] and c['hdr_env']['X3M_TAA_SENTINEL'] == '2'
                             and c['hdr_env']['X3M_FIXTURE_CAMERA'] == 'rotate' and 'X3M_FADE_ROUTE' not in c['hdr_env'] for c in cases))
         self.assertEqual({c['name']: (c['hdr_env']['X3M_LINEAR_MATERIALS'], c['hdr_env']['X3M_LINEAR_DISTANCE_FADE']) for c in cases},
-                         {c['name']: (('0', '0') if c['name'].endswith(('-original', '-behind', '-overlay', '-foreign', '-overlay-lightmap', '-overlay-lightmap-far-fade')) else ('1', '1')) for c in cases})
+                         {c['name']: (('0', '0') if c['hdr_env']['X3M_FIXTURE_FADE_SCRIPT'] in runner.FADE_ROUTE_ORIGINAL_SCRIPTS else ('1', '1')) for c in cases})
         self.assertEqual((runner.FADE_ROUTE_ENV['X3M_CAPTURE_START'], runner.FADE_ROUTE_ENV['X3M_CAPTURE_FRAMES']), ('2', '3'))
         # The hover tables: 507 arms, 449 is held, 390 disarms, 449 stays refused, 507 arms again.
         self.assertEqual(runner.FADE_ROUTE_HOVER_PERMILLE, (507, 449, 449, 390, 449, 449, 507, 449, 390, 507, 449, 449))

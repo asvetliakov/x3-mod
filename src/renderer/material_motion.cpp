@@ -11,6 +11,9 @@ using Words = std::vector<std::uint32_t>;
 // X3M_TAA_THIN_VOTE (material_motion_configure_thin_vote): process-wide, set before any variant is
 // built; the transformers read it once per call.
 std::atomic<bool> thin_vote_transform{false};
+// X3M_FADE_RT2_OWNER (material_motion_configure_fade_owner; docs/architecture/fade-rt2-ownership.md): the same
+// contract, the fade-owner depth fragment instead of the plain or thin one.
+std::atomic<bool> fade_owner_transform{false};
 
 // Direct3D 9 shader token encoding (documented in the DirectX SDK "Shader
 // Codes" reference). Instruction tokens carry the opcode in bits 0-15 and the
@@ -389,8 +392,8 @@ bool motion_fragment(const MotionOutputProfile& row, Words& constants, Words& in
 // row's depth input, its temporary r0 to the first motion temporary (dead
 // once the motion fragment has written oC1, which precedes this fragment),
 // and oC0 to the depth target. No constants exist in the plain program; the
-// thin-vote twin reads c2 alone, which goes to the pixel ABI's third register
-// (MaterialMotionAbi::pixel_thin_constant, c218).
+// thin-vote and fade-owner twins read c2 alone, which goes to the pixel ABI's
+// third register (MaterialMotionAbi::pixel_thin_constant, c218).
 bool relocate_depth_register(const MotionOutputProfile& row, std::uint32_t& token, bool thin = false) noexcept {
     if (!(token & parameter_bit) || (token & relative_bit)) return false;
     const auto type = register_type(token), index = register_index(token);
@@ -412,9 +415,14 @@ bool relocate_depth_register(const MotionOutputProfile& row, std::uint32_t& toke
 // dropped by the lane-off R32F target). Its shape is fixed at compile time
 // of the fragment. The thin-vote twin (current_depth_thin_ps.hlsl) is the
 // same with .a = c2.x: the same opcodes, the one constant, and the four lanes
-// written by two or three output writes.
+// written by two or three output writes. The fade-owner twin
+// (current_depth_owner_ps.hlsl) adds one MAD and one MAX: .a = max(w * c2.z +
+// c2.x, c2.y), three reads of c2, the four lanes written by exactly three
+// output writes.
+enum class DepthFragment { Plain, Thin, Owner };
 template <std::size_t N>
-bool depth_fragment_of(const std::uint32_t (&code)[N], bool thin, const MotionOutputProfile& row, Words& inputs, Words& body) {
+bool depth_fragment_of(const std::uint32_t (&code)[N], DepthFragment kind, const MotionOutputProfile& row, Words& inputs, Words& body) {
+    const bool thin = kind != DepthFragment::Plain; // c2 relocates; every lane written once
     if (code[0] != 0xffff0300u) return false;
     bool body_started = false;
     unsigned declarations = 0, outputs = 0, output_lanes = 0, constants = 0;
@@ -422,7 +430,8 @@ bool depth_fragment_of(const std::uint32_t (&code)[N], bool thin, const MotionOu
         const auto token = code[at], opcode = token & 0xffff;
         if (opcode == op_end)
             return token == end_token && at == std::size(code) - 1 && declarations == 1 &&
-                (thin ? outputs >= 2 && outputs <= 3 && output_lanes == 15 && constants == 1 : outputs == 2);
+                (kind == DepthFragment::Owner ? outputs == 3 && output_lanes == 15 && constants == 3
+                 : thin ? outputs >= 2 && outputs <= 3 && output_lanes == 15 && constants == 1 : outputs == 2);
         const std::size_t operands = instruction_length(token);
         if (operands > std::size(code) - at - 1) return false;
         if (opcode == op_comment) { at += operands + 1; continue; }
@@ -442,6 +451,8 @@ bool depth_fragment_of(const std::uint32_t (&code)[N], bool thin, const MotionOu
             switch (opcode) {
             case 1: case 6: expected = 2; break;  // MOV, RCP
             case 5: expected = 3; break;          // MUL
+            case 4: if (kind != DepthFragment::Owner) return false; expected = 4; break;    // MAD (owner only)
+            case 0x0b: if (kind != DepthFragment::Owner) return false; expected = 3; break; // MAX (owner only)
             default: return false;
             }
             if (token != (expected << 24 | opcode) || operands != expected) return false;
@@ -462,14 +473,17 @@ bool depth_fragment_of(const std::uint32_t (&code)[N], bool thin, const MotionOu
     }
     return false;
 }
-bool depth_fragment(const MotionOutputProfile& row, Words& inputs, Words& body, bool thin) {
-    return thin ? depth_fragment_of(current_depth_thin_pixel_program(), true, row, inputs, body)
-                : depth_fragment_of(current_depth_pixel_program(), false, row, inputs, body);
+bool depth_fragment(const MotionOutputProfile& row, Words& inputs, Words& body, DepthFragment kind) {
+    switch (kind) {
+    case DepthFragment::Owner: return depth_fragment_of(current_depth_owner_pixel_program(), kind, row, inputs, body);
+    case DepthFragment::Thin: return depth_fragment_of(current_depth_thin_pixel_program(), kind, row, inputs, body);
+    default: return depth_fragment_of(current_depth_pixel_program(), kind, row, inputs, body);
+    }
 }
 
-// Thin vote: the motion fragment's three DEFs sit at c218-c220 (pixel ABI
-// base + 2..4), which would shadow the uploaded c218 the thin depth fragment
-// reads (a def'd register overrides SetPixelShaderConstantF inside that
+// Thin vote and fade owner: the motion fragment's three DEFs sit at c218-c220
+// (pixel ABI base + 2..4), which would shadow the uploaded c218 the thin and
+// owner depth fragments read (a def'd register overrides SetPixelShaderConstantF inside that
 // program). The literals the fragment actually reads (seven distinct values)
 // are repacked into two DEFs at c219 and c220 and every constant operand is
 // rewritten to the same values: each operand of a component-wise instruction
@@ -718,8 +732,10 @@ bool material_motion_pixel_writes_depth(const MotionOutputProfile& row, bool cur
 }
 void material_motion_configure_thin_vote(bool on) noexcept { thin_vote_transform.store(on, std::memory_order_relaxed); }
 bool material_motion_thin_vote() noexcept { return thin_vote_transform.load(std::memory_order_relaxed); }
+void material_motion_configure_fade_owner(bool on) noexcept { fade_owner_transform.store(on, std::memory_order_relaxed); }
+bool material_motion_fade_owner() noexcept { return fade_owner_transform.load(std::memory_order_relaxed); }
 std::size_t material_motion_pixel_definition_words(bool depth) noexcept {
-    return depth && material_motion_thin_vote() ? 12u : 18u;
+    return depth && (material_motion_thin_vote() || material_motion_fade_owner()) ? 12u : 18u;
 }
 
 MaterialMotionResult material_motion_vertex_variant_for(const MotionOutputProfile& row,
@@ -783,15 +799,17 @@ MaterialMotionResult material_motion_pixel_variant_for(const MotionOutputProfile
     const std::size_t declaration_at = row.pixel_declaration_insert_dword;
     const std::size_t append_at = row.pixel_append_dword;
     const bool depth = material_motion_pixel_writes_depth(row, current_depth);
-    const bool thin = depth && material_motion_thin_vote();
+    const bool owner = depth && material_motion_fade_owner(), thin = depth && material_motion_thin_vote();
     try {
         Words constants, inputs, body;
         if (!motion_fragment(row, constants, inputs, body)) return MaterialMotionResult::ProfileMismatch;
-        // Thin vote: free c218 for the uploaded vote before the depth fragment reads it.
-        if (thin && !pack_motion_definitions(row, constants, body)) return MaterialMotionResult::ProfileMismatch;
+        // Thin vote / fade owner: free c218 for the uploaded lane before the depth fragment reads it.
+        if ((thin || owner) && !pack_motion_definitions(row, constants, body)) return MaterialMotionResult::ProfileMismatch;
         // The depth fragment follows the motion fragment: its declaration after
-        // the motion input, its instructions after the motion body.
-        if (depth && !depth_fragment(row, inputs, body, thin)) return MaterialMotionResult::ProfileMismatch;
+        // the motion input, its instructions after the motion body. The owner
+        // fragment carries the thin vote's .a as well (c218.x), so it replaces both.
+        if (depth && !depth_fragment(row, inputs, body, owner ? DepthFragment::Owner : thin ? DepthFragment::Thin : DepthFragment::Plain))
+            return MaterialMotionResult::ProfileMismatch;
         Words variant;
         variant.reserve(pixel_words + constants.size() + inputs.size() + body.size());
         variant.insert(variant.end(), pixel, pixel + definition_at);

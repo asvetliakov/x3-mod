@@ -254,13 +254,18 @@ try:
     report['region_hold']={'identity':fields('REGION_HOLD_IDENTITY '),'state':fields('REGION_HOLD_STATE '),'thin':fields('THIN_REGION_HOLD drift='),
                            'motion_start':fields('THIN_REGION_HOLD_MOTION_START '),'pan':fields('THIN_REGION_HOLD_PAN '),'stale':fields('THIN_REGION_HOLD_STALE '),
                            'box_domain':fields('THIN_REGION_HOLD_BOX_DOMAIN '),'sentinel':fields('THIN_REGION_HOLD_SENTINEL '),
-                           'pan_stop':fields('THIN_REGION_HOLD_PAN_STOP '),'box_open':fields('THIN_REGION_HOLD_BOX_OPEN ')}
+                           'pan_stop':fields('THIN_REGION_HOLD_PAN_STOP '),'box_open':fields('THIN_REGION_HOLD_BOX_OPEN '),
+                           'fade_owner':fields('THIN_REGION_HOLD_FADE_OWNER ')}
     hold=report['region_hold']
+    # Fade owner (fade-rt2-ownership.md sections 4 and 7): a far routed square switching sentinel -> valid once (5 numerical checks).
+    owner=hold['fade_owner']
+    assert len(owner)==1 and owner[0]['pre_switch_differs']=='0' and int(owner[0]['max_openings_per_px'])<=1 and int(owner[0]['extra_open_frames'])<=int(owner[0]['hold_frames'])+1 \
+        and owner[0]['late_hold_differs']=='0' and float(owner[0]['age_oracle_error'])==0,owner
     assert len(hold['identity'])==4 and all(r['colour_differs']==r['age_differs']==r['count_differs']=='0' and int(r['blended'])>256 for r in hold['identity']),hold['identity']
     assert len(hold['state'])==1 and all(hold['state'][0][k]=='1' for k in ('hold_off_restarts','hold_off_continues','hold_on_keeps','taps16_dilations','taps5_hold','box_fallback','rearmed')),hold['state']
     assert [hold['state'][0][k] for k in ('masks_hold','masks_off','masks_on','masks_taps16','masks_taps5','masks_at_reset','masks_after_reset','masks_box_fallback')]==['1','2','1','2','1','0','1','2'],hold['state']
     assert len(hold['thin'])==3 and all(r['square_differs']=='0' and float(r['age_oracle_error'])==0 for r in hold['thin']) and len(hold['motion_start'])==1 and len(hold['pan'])==1 and len(hold['stale'])==1 and len(hold['box_domain'])==1 and len(hold['sentinel'])==2 and len(hold['pan_stop'])==1 and len(hold['box_open'])==1,hold
-    assert lattice.returncode==0 and 'LATTICE_BASE numerical=10 state_restorations=0' in lattice_text and 'FLICKER_BASE numerical=190 state_restorations=4' in lattice_text and 'LINE_BASE numerical=190 state_restorations=4' in lattice_text and 'DEPTH_FOLD_BASE numerical=508 state_restorations=89' in lattice_text and 'HISTORY_TAPS_BASE numerical=528 state_restorations=89' in lattice_text and 'RESULT PASS numerical=566 state_restorations=91 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
+    assert lattice.returncode==0 and 'LATTICE_BASE numerical=10 state_restorations=0' in lattice_text and 'FLICKER_BASE numerical=190 state_restorations=4' in lattice_text and 'LINE_BASE numerical=190 state_restorations=4' in lattice_text and 'DEPTH_FOLD_BASE numerical=508 state_restorations=89' in lattice_text and 'HISTORY_TAPS_BASE numerical=528 state_restorations=89' in lattice_text and 'RESULT PASS numerical=571 state_restorations=91 lattice=1' in lattice_text and 'FAIL' not in lattice_text,lattice_text[-1500:]
     # The 2,048-slot ceiling per TAA program (docs/architecture/taa-plan-lifted-slot-cap.md section 2; AGENTS.md "Shader slot
     # budget": 512 is the spec minimum, not a limit). device_limit stays a record.
     assert len(report['flicker']['drift'])==64 and len(report['flicker']['near_depth'])==8 and all(float(v['instruction_slots'])<=2048 and v['within_ceiling_2048']==1 for k,v in report['lattice']['budget'].items()),report['lattice']['budget']

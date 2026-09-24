@@ -200,6 +200,7 @@ struct MotionRoute {
     // exactly (motion alpha 1 under SRCALPHA/INVSRCALPHA).
     bool fade_arm = false;
     bool fade_held = false; // admitted below the threshold by the hysteresis band only
+    bool fade_owner = false; // X3M_FADE_RT2_OWNER: a fade-arm row (not the overlay arm) that writes RT2 (mask 15, .a = 1)
     // Overlay arm (asteroid-fog-temporal.md "Run 130"): a reviewed non-fade
     // pair's source-over sub-mesh (the hull glass/window layer) drawn right
     // after a routed draw of the same node, admitted through the fade arm at
@@ -352,6 +353,8 @@ struct MotionFrameCounters {
     // the fade bracket or the native path exactly as before.
     std::uint32_t fade_routed = 0, fade_refused = 0, fade_held = 0; // fade_held: of fade_routed, admitted by the hysteresis band
     std::uint32_t overlay_routed = 0, overlay_refused = 0; // overlay arm (same-node source-over sub-mesh); not in fade_routed/fade_refused
+    std::uint32_t fade_evicted = 0; // hysteresis entries a full table displaced this frame (fade_route::Hysteresis::capacity)
+    std::uint32_t fade_owner_masked = 0; // X3M_FADE_RT2_OWNER: fade-arm rows kept masked on the lane RT2 (no invalid-share twin)
     std::uint32_t depth_routed = 0, jittered = 0;
     // Scene draws with ZENABLE and ZWRITEENABLE on that went out unjittered
     // while the jitter was active: every one breaks the "whole scene moves
@@ -659,6 +662,15 @@ public:
     // histogram is read once at a scene end through the application's wrapper (READONLY, MANAGED only) and the tests draw
     // is the thin-vote twin. Off: nothing runs and the upload is c216-c217 as before.
     void configure_thin_vote(bool requested, bool enabled) noexcept { thin_vote_requested_ = requested; thin_vote_upload_ = enabled; }
+    // X3M_FADE_RT2_OWNER (on|off, default off; docs/architecture/fade-rt2-ownership.md): every draw the fade-band arm
+    // routes owns RT2 (COLORWRITEENABLE2 15 instead of 0; the owner depth fragment's .a = 1 from c218.y makes the
+    // engine's SRCALPHA/INVSRCALPHA blend store the exact depth) and the arm's pair identity widens from the seven
+    // distance_fade_rows pairs to every reviewed pair with a fade_route::registers row (original shading only, the
+    // overlay arm's boundary: under linear materials the seven pairs keep the arm alone). `enabled` is the caller's
+    // resolution (requested with the route, TAA, HDR and the arm on); it also switched the material transformer
+    // (renderer::material_motion_configure_fade_owner) before any program was created. Enabled: every routed draw
+    // uploads c216-c218 in one call. The overlay arm (a reviewed pair without a registers row) keeps RT2 masked.
+    void configure_fade_rt2_owner(bool requested, bool enabled) noexcept { fade_rt2_owner_requested_ = requested; fade_rt2_owner_ = enabled; }
     void configure_sky_history(bool strict, float band_px = 3.f, float exit_px = 0.f) noexcept {
         sky_history_strict_ = strict; sky_history_band_px_ = band_px >= 1.f && band_px <= 16.f ? band_px : 3.f;
         sky_history_exit_px_ = strict && x3::temporal::valid_sky_history_exit(exit_px, sky_history_band_px_) ? exit_px : 0.f;
@@ -1548,6 +1560,10 @@ private:
     // option); thin_vote_cache_ (allocated once at configuration of an enabled device) maps a subset to its histogram;
     // the frame's queued reads hold the VB and IB wrapper references until the scene end (read) or the release.
     bool thin_vote_requested_ = false, thin_vote_upload_ = false;
+    // X3M_FADE_RT2_OWNER (configure_fade_rt2_owner): the resolved option; with it or the thin vote every routed draw
+    // uploads c216-c218 (upload_c218()).
+    bool fade_rt2_owner_requested_ = false, fade_rt2_owner_ = false;
+    bool upload_c218() const noexcept { return thin_vote_upload_ || fade_rt2_owner_; }
     bool thin_vote_logged_ = false;          // the one thin_vote_mode line per attachment
     bool thin_vote_fold_logged_ = false;     // the one line for a run whose tests draw was not the thin-vote twin (the lane-off R32F RT2 included)
     std::unique_ptr<thin_vote::Cache> thin_vote_cache_;

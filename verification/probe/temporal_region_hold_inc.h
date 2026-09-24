@@ -11,6 +11,7 @@
 //   Reset, the 16-tap fallback to the dilations, and the history restart when the hold is turned off.
 //   THIN_REGION_HOLD / _MOTION_START / _PAN / _STALE / _SENTINEL: the thin-region rows of section 13 / 32 with the hold, against
 //   the CPU oracle extended by the holds (line_model with LineConfig::hold, fed the published tests target of every frame).
+//   THIN_REGION_HOLD_FADE_OWNER (docs/architecture/fade-rt2-ownership.md): a far routed square switching sentinel -> valid once.
 namespace region_hold {
 constexpr UINT S=EdgeScene::S;
 // The tests draw of the camera mask (line_mask_ps.hlsl c7.z = 0) on the last frame of a run, from the scene hooks: r = screen
@@ -258,6 +259,37 @@ void thin_rows(EdgeScene& s,const DWORD* resolver){
             metric("region hold, sentinel stabiliser: shader matches the oracle",o.colour,0,bound);metric("region hold, sentinel stabiliser: age matches the oracle",o.age,0,0);
             ++numeric_checks;require(rms<.6*baseRms,"region hold, sentinel facets: flicker below 0.6 x the S = 0 hold run");}
         cameraPanVertical=cameraPanAlternates=false;cameraPanSpeed=cameraPanY=0;oracleSkipCeiling=0;thinSentinel=false;}
+    // Fade owner (X3M_FADE_RT2_OWNER; fade-rt2-ownership.md sections 4 and 7): the sentinel scene at rest with the stabiliser (0.7)
+    // and the hold, a far routed square that is a masked fade row (routed on the depth sentinel) until frame 32 and an RT2 owner
+    // (depth 0.999) from it, against the same square masked throughout and owner throughout. A routed valid-depth square's
+    // corners are FRAGMENTED against the sentinel (a diagonal 7-tap line clips a corner: two class changes), so an owner's
+    // corners hold the region in steady state like any geometry; the class change itself may open it once per pixel and its
+    // extra openness (hold values differing from the always-owner run) lasts at most L + 1 frames. The output and the age match
+    // the CPU oracle with the holds (the thin-region bounds), and the frames before the switch are the always-masked run's.
+    {thinSentinel=true;LineConfig holdOn=hold97;holdOn.name="fade-owner-0.7-hold";holdOn.sentS=.7f;constexpr unsigned frames=64,from=32;
+        sentinelOwnerFrom=frames;const auto masked=thin_sequence(s,resolver,holdOn,frames);sentinelOwnerFrom=0;const auto always=thin_sequence(s,resolver,holdOn,frames);
+        sentinelOwnerFrom=from;const auto run=thin_sequence(s,resolver,holdOn,frames);
+        const Oracle o=oracle(run,holdOn);const double maskError=tests_error(run);
+        auto hold=[](float age){const double v=std::fabs(double(age));if(v>65)return 0.;const double held=(v-std::floor(v))*65536;return std::round(held-128*std::floor(held/128));};
+        bool classes=true;unsigned before=0,preDiffers=0,openings=0,maxOpenings=0,extraFrames=0,lateDiffers=0,steadyHeld=0,maxHold=0;
+        for(UINT y=11;y<21;++y)for(UINT x=5;x<15;++x){unsigned pixelOpenings=0;const bool square=x>=6&&x<14&&y>=12&&y<20;
+            for(unsigned n=0;n<frames;++n){const float d=px(run.depth[n],x,y),a=px(run.motion[n],x,y,3);
+                if(square)classes=classes&&a==1.f&&(n<from?d<=-.5f:d==ownerDepth);
+                if(n<from){++before;preDiffers+=std::memcmp(&run.output[n][(y*S+x)*4],&masked.output[n][(y*S+x)*4],4*sizeof(float))!=0||px(run.age[n],x,y)!=px(masked.age[n],x,y);}
+                const double h=hold(px(run.age[n],x,y)),previous=n?hold(px(run.age[n-1],x,y)):0.;maxHold=std::max(maxHold,unsigned(h));
+                if(h>previous){++pixelOpenings;++openings;}
+                if(n>from+oracleHoldFrames)lateDiffers+=h!=hold(px(always.age[n],x,y));}
+            if(hold(px(always.age[frames-1],x,y))>0)++steadyHeld;
+            maxOpenings=std::max(maxOpenings,pixelOpenings);}
+        for(unsigned n=from;n<frames;++n){bool extra=false;for(UINT y=11;y<21;++y)for(UINT x=5;x<15;++x)extra=extra||hold(px(run.age[n],x,y))!=hold(px(always.age[n],x,y));extraFrames+=extra;}
+        std::printf("THIN_REGION_HOLD_FADE_OWNER frames=%u switch_frame=%u strength=0.70 oracle_error=%.6f age_oracle_error=%.6f tests_mask_error=%.6f pre_switch_px_frames=%u pre_switch_differs=%u region_openings=%u max_openings_per_px=%u extra_open_frames=%u late_hold_differs=%u steady_held_px=%u max_hold=%u hold_frames=%u\n",
+            frames,from,o.colour,o.age,maskError,before,preDiffers,openings,maxOpenings,extraFrames,lateDiffers,steadyHeld,maxHold,oracleHoldFrames);
+        require(classes,"fade owner: the square is routed on the sentinel before the switch and holds its depth after it");
+        metric("fade owner: shader matches the oracle with the holds",o.colour,0,bound);metric("fade owner: age matches the oracle",o.age,0,0);
+        metric("fade owner: the published tests target equals the CPU tests draw",maskError,0,.5/255);
+        ++numeric_checks;require(preDiffers==0,"fade owner: before the switch the run is the always-masked run bit for bit");
+        ++numeric_checks;require(maxOpenings<=1&&extraFrames<=oracleHoldFrames+1&&lateDiffers==0,"fade owner: the class change opens the region at most once per pixel, its extra hold lasts at most L + 1 frames");
+        sentinelOwnerFrom=~0u;thinSentinel=false;}
 }
 } // namespace region_hold
 void region_hold_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
@@ -265,7 +297,7 @@ void region_hold_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolv
     struct Defer{Defer(){deferMetrics=true;deferredFailures.clear();}~Defer(){deferMetrics=false;}} defer;
     struct Hooks{Hooks(){line_velocity=thin_velocity;line_velocity_x=thin_velocity_x;farD0=.98f;farInv=200;}
         ~Hooks(){line_velocity=line_velocity_default;line_velocity_x=line_velocity_x_default;thinDrift=0;thinMoveFrom=~0u;thinBadTap=false;thinK=0;oracleK=0;thinPanX=cameraPanX=thinPatchV=0;thinPatchFrom=thinInjectFrame=oracleInjectFrame=~0u;farD0=farInv=0;
-            cameraPanAlternates=cameraPanVertical=false;cameraPanSpeed=cameraPanY=0;thinSentinel=false;oracleSkipCeiling=0;thinPanStop=~0u;armPanX=0;}} hooks;
+            cameraPanAlternates=cameraPanVertical=false;cameraPanSpeed=cameraPanY=0;thinSentinel=false;oracleSkipCeiling=0;thinPanStop=~0u;armPanX=0;sentinelOwnerFrom=~0u;}} hooks;
     region_hold::identity_cases(s);
     region_hold::state_cases(s,resolver);
     region_hold::thin_rows(s,resolver);

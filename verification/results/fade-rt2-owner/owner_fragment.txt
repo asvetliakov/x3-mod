@@ -1,0 +1,70 @@
+// the motion and depth fragments of the ps 8759c7838bbc86c2 variant with the fade owner on, and the thin-vote variant's for comparison (verification/probe/run_fade_owner_probe.py; D3DXDisassembleShader of the game d3dx9_37)
+// owner
+def c219, 0, 1, -0.5, -1
+def c220, 1.00000002e+020, 9.99999997e-007, 0.5, -0.5
+dcl_texcoord4 v5
+dcl_texcoord5 v6.xy
+add r5, c220.x, -v5_abs
+cmp r5, r5, c219.x, c219.y
+dp4 r5.x, r5, r5
+cmp r5.x, -r5.x, c219.y, c219.x
+add r5.y, c220.y, -v5.w
+cmp r5.y, r5.y, c219.x, c219.y
+mul r5.x, r5.x, r5.y
+cmp r5.x, -r5.x, c219.y, c219.x
+max r5.y, v5.w, c220.y
+rcp r5.y, r5.y
+mad r5.z, v5.z, -r5.y, c219.y
+mul r6.xyz, r5.y, v5
+cmp r5.y, r5.z, c219.y, c219.x
+cmp r5.z, r6.z, c219.y, c219.x
+mul r5.y, r5.y, r5.z
+cmp r5.y, -r5.y, c219.y, c219.x
+add r5.x, r5.x, r5.y
+mad r5.yz, r6.xxyw, c220.zzwz, c220.z
+mad r6.zw, r6.z, c219.yyyx, c219.xxxy
+mov r7.x, c219.z
+mad r5.yz, c216.xxyw, -r7.x, r5
+add r6.xy, r5.yzzw, -c216.zwzw
+cmp r5, -r5.x, r6, c219.xxxw
+add r6.x, r7.x, c217.x
+cmp oC1, r6.x, r5, c219.xxxw
+rcp r5.x, v6.y
+mul oC2.xy, r5.x, v6.x
+mad r5.x, v6.y, c218.z, c218.x
+max oC2.w, r5.x, c218.y
+mov oC2.z, v6.y
+// thin
+def c219, 0, 1, -0.5, -1
+def c220, 1.00000002e+020, 9.99999997e-007, 0.5, -0.5
+dcl_texcoord4 v5
+dcl_texcoord5 v6.xy
+add r5, c220.x, -v5_abs
+cmp r5, r5, c219.x, c219.y
+dp4 r5.x, r5, r5
+cmp r5.x, -r5.x, c219.y, c219.x
+add r5.y, c220.y, -v5.w
+cmp r5.y, r5.y, c219.x, c219.y
+mul r5.x, r5.x, r5.y
+cmp r5.x, -r5.x, c219.y, c219.x
+max r5.y, v5.w, c220.y
+rcp r5.y, r5.y
+mad r5.z, v5.z, -r5.y, c219.y
+mul r6.xyz, r5.y, v5
+cmp r5.y, r5.z, c219.y, c219.x
+cmp r5.z, r6.z, c219.y, c219.x
+mul r5.y, r5.y, r5.z
+cmp r5.y, -r5.y, c219.y, c219.x
+add r5.x, r5.x, r5.y
+mad r5.yz, r6.xxyw, c220.zzwz, c220.z
+mad r6.zw, r6.z, c219.yyyx, c219.xxxy
+mov r7.x, c219.z
+mad r5.yz, c216.xxyw, -r7.x, r5
+add r6.xy, r5.yzzw, -c216.zwzw
+cmp r5, -r5.x, r6, c219.xxxw
+add r6.x, r7.x, c217.x
+cmp oC1, r6.x, r5, c219.xxxw
+rcp r5.x, v6.y
+mul oC2.xy, r5.x, v6.x
+mov oC2.z, v6.y
+mov oC2.w, c218.x

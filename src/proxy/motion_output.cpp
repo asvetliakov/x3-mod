@@ -515,9 +515,12 @@ HRESULT MotionOutput::bind_targets(MotionRoute& route) noexcept {
             // A fade-band draw keeps RT2 bound for its oC2 write but masks it
             // off: the depth fragment's alpha is z/w, which the draw's
             // SRCALPHA/INVSRCALPHA blend would fold into the stored depth.
+            // X3M_FADE_RT2_OWNER: a fade-arm row (not the overlay arm) writes
+            // RT2 with mask 15, its fragment's .a = 1 (c218.y) makes the blend
+            // store src * 1 + dst * 0 (fade-rt2-ownership.md section 2).
             hr = render_state(D3DRS_COLORWRITEENABLE2, &route.saved_write2);
             if (SUCCEEDED(hr)) { route.rt2_set = true; hr = bind_target(2, depth_surface_); }
-            if (SUCCEEDED(hr)) { route.write2_set = true; hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE2, route.fade_arm ? 0 : 15); }
+            if (SUCCEEDED(hr)) { route.write2_set = true; hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE2, route.fade_arm && !route.fade_owner ? 0 : 15); }
         }
         return hr;
     }
@@ -540,8 +543,8 @@ HRESULT MotionOutput::bind_targets(MotionRoute& route) noexcept {
     if (SUCCEEDED(hr) && route.depth) {
         hr = render_state(D3DRS_COLORWRITEENABLE2, &write2);
         if (SUCCEEDED(hr) && !lazy_rt2_) { lazy_rt2_ = true; hr = bind_target(2, depth_surface_); }
-        // A fade-band draw keeps RT2 bound but masks it off (see above).
-        const DWORD wanted = route.fade_arm ? 0 : 15;
+        // A fade-band draw keeps RT2 bound but masks it off, a fade owner writes it (see above).
+        const DWORD wanted = route.fade_arm && !route.fade_owner ? 0 : 15;
         if (SUCCEEDED(hr) && write2 != 15) masked = true;
         if (SUCCEEDED(hr) && write2 != wanted) {
             route.saved_write2 = write2; route.write2_set = true;
@@ -1112,10 +1115,13 @@ bool MotionOutput::fade_arm_admits(MotionRoute& route, const MotionDrawCall& cal
     }
     route.fade_permille = fade_route::permille(fade_route::fraction(alpha[0], enable != FALSE, fog[0], fog[1], distance));
     bool held = false;
-    if (!fade_hysteresis_.admit(fade_identity(), frame_, route.fade_permille, fade_route_threshold_, held)) {
+    const bool admitted = fade_hysteresis_.admit(fade_identity(), frame_, route.fade_permille, fade_route_threshold_, held);
+    if (fade_hysteresis_.evicted) { counters_.fade_evicted += fade_hysteresis_.evicted; fade_hysteresis_.evicted = 0; } // a full table: the oldest node restarts at the threshold
+    if (!admitted) {
         route.unmatched = UnmatchedReason::FadeThreshold; ++counters_.fade_refused; return false;
     }
-    route.fade_arm = true; route.fade_held = held;
+    // X3M_FADE_RT2_OWNER: routed is owner (the same threshold and band, no second one; fade-rt2-ownership.md section 3).
+    route.fade_arm = true; route.fade_held = held; route.fade_owner = fade_rt2_owner_;
     return true;
 }
 // The node identity of the current draw for the arm's hysteresis, read the
@@ -3457,7 +3463,7 @@ void MotionOutput::set_vertex_constants_i(UINT start, const int* data, UINT coun
 void MotionOutput::set_pixel_constants_f(UINT start, const float* data, UINT count) noexcept {
     if (!enabled_ || shadow_.recording || !data || !count || start > 4096 || count > 4096) return;
     const UINT end = start + count;
-    const UINT reserved_end = thin_vote_upload_ ? 219u : 218u; // the thin vote's upload covers c218 too
+    const UINT reserved_end = upload_c218() ? 219u : 218u; // the thin vote's and the fade owner's upload covers c218 too
     if (start < reserved_end && end > 216) {
         const UINT lo = start > 216 ? start : 216, hi = end < reserved_end ? end : reserved_end;
         std::memcpy(shadow_.ps_reserved + (lo - 216) * 4, data + (lo - start) * 4, (hi - lo) * 16);
@@ -3547,7 +3553,7 @@ void MotionOutput::resync_shadow() noexcept {
         shadow_.rows_known[w] = SUCCEEDED(native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, matrix_windows.base[w], shadow_.rows[w], 4));
     shadow_.vs_reserved_written = SUCCEEDED(native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, 252, shadow_.vs_reserved, 4));
     shadow_.integer0_known = SUCCEEDED(native<GetConstantsIFn>(GetVertexShaderConstantI)(device_, 0, shadow_.integer0, 1));
-    shadow_.ps_reserved_written = SUCCEEDED(native<GetConstantsFFn>(GetPixelShaderConstantF)(device_, 216, shadow_.ps_reserved, thin_vote_upload_ ? 3u : 2u));
+    shadow_.ps_reserved_written = SUCCEEDED(native<GetConstantsFFn>(GetPixelShaderConstantF)(device_, 216, shadow_.ps_reserved, upload_c218() ? 3u : 2u));
     IDirect3DVertexBuffer9* stream = nullptr; UINT offset = 0, stride = 0;
     if (SUCCEEDED(native<GetStreamFn>(GetStreamSource)(device_, 0, &stream, &offset, &stride))) set_stream_source(0, stream, offset, stride);
     release(stream);
@@ -3951,7 +3957,7 @@ HRESULT MotionOutput::undo(MotionRoute& route) noexcept {
     if (route.vs_constants_set && shadow_.vs_reserved_written)
         step(direct_call<SetConstantsFFn>(SetVertexShaderConstantF, 252, shadow_.vs_reserved, 4));
     if (route.ps_constants_set && shadow_.ps_reserved_written)
-        step(direct_call<SetConstantsFFn>(SetPixelShaderConstantF, 216, shadow_.ps_reserved, thin_vote_upload_ ? 3u : 2u));
+        step(direct_call<SetConstantsFFn>(SetPixelShaderConstantF, 216, shadow_.ps_reserved, upload_c218() ? 3u : 2u));
     route.write_set = route.rt_set = route.ps_set = route.vs_set = false;
     route.write2_set = route.rt2_set = false;
     route.vs_constants_set = route.ps_constants_set = false;
@@ -4949,10 +4955,16 @@ void MotionOutput::refresh_linear_emission_contract() noexcept {
         ? renderer::linear_distance_fade_sampler_mask(shadow_.vs_hash, shadow_.ps_hash) : 0;
     // The fade-band arm keys on the pair identity alone (independent of the
     // fade route switch: the arm needs no bracket); the draw-time gate adds
-    // the state, the device readiness and the fraction.
+    // the state, the device readiness and the fraction. X3M_FADE_RT2_OWNER
+    // widens it to every reviewed pair with a registers row
+    // (fade_route::arm_pair; fade-rt2-ownership.md section 3); off, the seven
+    // distance_fade_rows pairs as before. Original shading only, like the
+    // overlay arm those pairs came through: with linear materials requested a
+    // blended hull pair may belong to the composition or glass bracket, whose
+    // colour path no fixture has verified through this arm.
     shadow_.fade_route_pair = fade_route_threshold_ <= 1000u && shadow_.vs_registered && shadow_.ps_registered
-        && renderer::linear_distance_fade_pair(shadow_.vs_hash, shadow_.ps_hash)
-        && fade_route::registers(shadow_.vs_hash, shadow_.fade_route_registers);
+        && fade_route::arm_pair(fade_route::registers(shadow_.vs_hash, shadow_.fade_route_registers),
+                                renderer::linear_distance_fade_pair(shadow_.vs_hash, shadow_.ps_hash), fade_rt2_owner_ && !linear_material_requested_);
 }
 // Called only after the ordinary opaque/no-MSAA motion gates. All fields are
 // cached and no bytecode is revalidated in this draw-time check; the sampler
@@ -5010,6 +5022,14 @@ HRESULT MotionOutput::bind_variant_pair(MotionRoute& route, bool material) noexc
     // a failed raise keeps the un-widened gained variant. Only a draw that actually selects the widened variant
     // pays the call (never an F4-off frame or a non-gain lane).
     bool widen = false;
+    if (sun_lane_active_ && route.depth && route.fade_owner) {
+        // X3M_FADE_RT2_OWNER on the four-channel lane RT2: an owner writes .g too, which must read as no share (-1,
+        // not a receiver), so it binds the motion variant's invalid-share twin (material_motion_invalid_sun_share:
+        // the same program plus mov oC2.g, -1). A row without one (material, XT, a failed twin) keeps RT2 masked
+        // exactly as before (fail closed, fade_owner_masked on the frame line).
+        if (ps == shadow_.ps_variant && shadow_.ps_sun_motion) ps = shadow_.ps_sun_motion;
+        else { route.fade_owner = false; ++counters_.fade_owner_masked; }
+    }
     if(sun_lane_active_&&route.depth&&!route.fade_arm&&!material&&shadow_.original_share_refused&&!shadow_.xt_default_ready){
         // Fail closed (legacy-sun-application.md section 4.1): a reviewed
         // original pair whose share producer refused keeps its ordinary
@@ -5551,7 +5571,7 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     // and carry the last routed draw's node and lifetime serial. Nothing has
     // been applied or recorded yet, so the mismatch is the plain gate-4 refusal.
     if (route.overlay && (!sample_scope(route) || key.node != last_routed_node_ || key.object_lifetime != last_routed_lifetime_)) {
-        route.overlay = false; route.fade_arm = false; route.fade_permille = 0; route.key = {};
+        route.overlay = false; route.fade_arm = false; route.fade_owner = false; route.fade_permille = 0; route.key = {};
         route.gate = MotionGate::DrawState; ++counters_.gates[4]; ++counters_.overlay_refused;
         route.unmatched = UnmatchedReason::OverlayNode;
         return;
@@ -5611,10 +5631,16 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     }
     const float pixel[8] = {1.f / float(target_width_), 1.f / float(target_height_), 0.f, 0.f,
                             previous_rows ? 1.f : 0.f, lightmap_widen_draw_scale_[0], lightmap_widen_draw_scale_[1], lightmap_fade_gain_};
-    // Thin vote (X3M_TAA_THIN_VOTE) only: c218 joins the same upload, 12 floats, c216 and c217 the eight above; c218.x
-    // is the depth fragment's RT2 .a, 1 - thin on an opaque routed row, 1 otherwise. Off: the eight alone, as before.
+    // Thin vote (X3M_TAA_THIN_VOTE) or fade owner (X3M_FADE_RT2_OWNER) only: c218 joins the same upload, 12 floats,
+    // c216 and c217 the eight above. c218.x is the thin vote's RT2 .a, 1 - thin on an opaque routed row, 1 otherwise
+    // (0 with the vote off). With the fade owner the depth fragment writes .a = max(w * c218.z + c218.x, c218.y):
+    // c218.y = 1 on a fade owner row (.a = 1 exactly), c218.z = 1 on any other row with the vote off (.a = w, the
+    // plain fragment's value), so only fade owners change. Off: the eight alone, as before.
     float pixel_thin[12];
-    if (thin_vote_upload_) { std::memcpy(pixel_thin, pixel, sizeof pixel); pixel_thin[9] = pixel_thin[10] = pixel_thin[11] = 0.f; thin_vote_alpha(route, rows.data(), pixel_thin[8]); }
+    if (upload_c218()) {
+        std::memcpy(pixel_thin, pixel, sizeof pixel); pixel_thin[8] = pixel_thin[9] = pixel_thin[10] = pixel_thin[11] = 0.f;
+        if (thin_vote_upload_) thin_vote_alpha(route, rows.data(), pixel_thin[8]);
+    } // c218.y/.z (the fade owner's lanes) after bind_variant_pair, which may withdraw the ownership (lane RT2)
     const std::uint64_t apply_begin = draw_stamp();
     bool material = false;
     if (linear_material_requested_) {
@@ -5648,10 +5674,11 @@ void MotionOutput::evaluate_draw(const MotionDrawCall& call, MotionRoute& route)
     }
     if (SUCCEEDED(hr)) {
         route.ps_constants_set = true;
+        if (fade_rt2_owner_) { pixel_thin[9] = route.fade_owner ? 1.f : 0.f; pixel_thin[10] = thin_vote_upload_ || route.fade_owner ? 0.f : 1.f; }
         hr = direct_call<SetConstantsFFn>(SetPixelShaderConstantF,
-            renderer::MaterialMotionAbi::pixel_coordinates_constant, thin_vote_upload_ ? pixel_thin : pixel, thin_vote_upload_ ? 3u : 2u);
+            renderer::MaterialMotionAbi::pixel_coordinates_constant, upload_c218() ? pixel_thin : pixel, upload_c218() ? 3u : 2u);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
-        if (SUCCEEDED(hr)) { std::memset(fixture_last_pixel_abi_, 0, sizeof fixture_last_pixel_abi_); std::memcpy(fixture_last_pixel_abi_, thin_vote_upload_ ? pixel_thin : pixel, (thin_vote_upload_ ? 12u : 8u) * sizeof(float)); fixture_abi_known_ = true; } // the uploaded registers only
+        if (SUCCEEDED(hr)) { std::memset(fixture_last_pixel_abi_, 0, sizeof fixture_last_pixel_abi_); std::memcpy(fixture_last_pixel_abi_, upload_c218() ? pixel_thin : pixel, (upload_c218() ? 12u : 8u) * sizeof(float)); fixture_abi_known_ = true; } // the uploaded registers only
 #endif
     }
     if (SUCCEEDED(hr)) hr = bind_targets(route);
@@ -7058,9 +7085,10 @@ void MotionOutput::after_present(HRESULT result) noexcept {
             // Original shading: the fade-band arm's frame counters and the
             // probe's verdict (run 125: frame-level evidence for the arm
             // without the linear_material_frame line).
-            log("fade_route_frame device=%llu frame=%llu fade_routed=%lu fade_refused=%lu fade_held=%lu fade_route=%u cutout_caps=%u overlay_routed=%lu overlay_refused=%lu",
+            log("fade_route_frame device=%llu frame=%llu fade_routed=%lu fade_refused=%lu fade_held=%lu fade_route=%u cutout_caps=%u overlay_routed=%lu overlay_refused=%lu fade_evicted=%lu fade_owner=%u fade_owner_masked=%lu",
                 id_, frame_, static_cast<unsigned long>(c.fade_routed), static_cast<unsigned long>(c.fade_refused), static_cast<unsigned long>(c.fade_held),
-                fade_route_threshold_, unsigned(cutout_caps_), static_cast<unsigned long>(c.overlay_routed), static_cast<unsigned long>(c.overlay_refused));
+                fade_route_threshold_, unsigned(cutout_caps_), static_cast<unsigned long>(c.overlay_routed), static_cast<unsigned long>(c.overlay_refused),
+                static_cast<unsigned long>(c.fade_evicted), unsigned(fade_rt2_owner_), static_cast<unsigned long>(c.fade_owner_masked));
         }
         const auto us = [](std::uint64_t ticks) { return telemetry::microseconds(ticks); };
         log("motion_output_frame device=%llu frame=%llu latched=%u msaa=%lu filled=%u fill_result=%08lx fill_restore=%08lx draws=%lu routed=%lu matched=%lu gate1=%lu gate2=%lu gate3=%lu gate4=%lu gate5=%lu gate6=%lu apply_failures=%lu restore_failures=%lu history_previous=%u history_current=%u committed=%u selector_state=%u present=%08lx depth=%u depth_routed=%lu jitter=%u jitter_index=%u jitter_x=%.6f jitter_y=%.6f jitter_previous_x=%.6f jitter_previous_y=%.6f jittered=%lu unjittered_depth_writers=%lu cut=%u cut_median_px=%.4f cut_missing=%.4f cut_samples=%lu taa=%u taa_attempted=%u taa_resolved=%u taa_history=%u taa_skip=%lu taa_result=%08lx taa_restore=%08lx taa_copy=%08lx taa_hdr=%u taa_k=%.5f taa_sharpen=%u taa_filter=%.3f taa_weight=%.3f scene_open=%u active_queries=%lu taa_references=%u"
@@ -7211,6 +7239,9 @@ unsigned MotionOutput::fixture_emission_status(unsigned key) const noexcept {
     case 53: return counters_.fade_held;
     case 54: return counters_.overlay_routed;
     case 55: return counters_.overlay_refused;
+    case 83: return unsigned(fade_rt2_owner_);            // fixture: X3M_FADE_RT2_OWNER resolved on
+    case 84: return counters_.fade_owner_masked;          // fixture: fade-arm rows kept masked on the lane RT2 this frame
+    case 85: return counters_.fade_evicted;               // fixture: hysteresis evictions this frame
     case 36: { static_assert(motion_shadow_state_count <= 32); unsigned mask=0;
         for (unsigned i=0;i<motion_shadow_state_count;++i) if (shadow_.states_known[i]) mask |= std::uint32_t{1} << i;
         return mask; }

@@ -12,6 +12,10 @@ inline constexpr std::uint32_t current_depth_pixel_words[] = {
 inline constexpr std::uint32_t current_depth_thin_pixel_words[] = {
 #include "current_depth_thin_pixel_program_inc.h"
 };
+// Fade-owner twin (src/temporal/current_depth_owner_ps.hlsl): .a = max(w * c2.z + c2.x, c2.y) (c2 relocated to c218).
+inline constexpr std::uint32_t current_depth_owner_pixel_words[] = {
+#include "current_depth_owner_pixel_program_inc.h"
+};
 }
 // Fixed ps_3_0 fragment: TEXCOORD1 (current clip z in .x, w in .y) -> COLOR0
 // = z/w replicated, i.e. device depth for an R32F target. No literal
@@ -25,5 +29,10 @@ inline constexpr const auto& current_depth_pixel_program() noexcept {
 // transformer to MaterialMotionAbi::pixel_thin_constant); one temporary, no literal.
 inline constexpr const auto& current_depth_thin_pixel_program() noexcept {
     return detail::current_depth_thin_pixel_words;
+}
+// X3M_FADE_RT2_OWNER only (docs/architecture/fade-rt2-ownership.md): .a = max(w * c2.z + c2.x, c2.y), the three
+// lanes of one constant relocated to MaterialMotionAbi::pixel_thin_constant; one temporary, no literal.
+inline constexpr const auto& current_depth_owner_pixel_program() noexcept {
+    return detail::current_depth_owner_pixel_words;
 }
 } // namespace x3m::renderer

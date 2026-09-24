@@ -24,6 +24,8 @@ struct MaterialMotionAbi {
     static constexpr unsigned pixel_mode_constant = 217; // x=1 valid history request, x=0 invalid.
     // X3M_TAA_THIN_VOTE only (material_motion_configure_thin_vote): x = RT2 .a of the depth
     // fragment, 1 - thin on an opaque routed row, 1 otherwise; uploaded with c216-c217 in one call.
+    // X3M_FADE_RT2_OWNER (material_motion_configure_fade_owner) uploads the same register:
+    // .a = max(w * z + x, y), y = 1 on a fade-arm row (fade-rt2-ownership.md).
     static constexpr unsigned pixel_thin_constant = 218;
     static constexpr unsigned motion_render_target = 1;
     static constexpr unsigned depth_render_target = 2;  // R32F current device depth (z/w).
@@ -114,7 +116,15 @@ bool material_motion_pixel_writes_depth(const MotionOutputProfile& row, bool cur
 // every output is the earlier one byte for byte.
 void material_motion_configure_thin_vote(bool on) noexcept;
 bool material_motion_thin_vote() noexcept;
+// Fade owner (X3M_FADE_RT2_OWNER; docs/architecture/fade-rt2-ownership.md): process-wide, off by
+// default, set once before any variant is built. On, every depth-writing pixel variant appends the
+// fade-owner depth fragment (RT2 .a = max(w * c218.z + c218.x, c218.y); it replaces the plain and the
+// thin-vote fragment, which it reproduces with the route's per-row c218) and carries the motion
+// fragment's literals in two DEFs at c219/c220 exactly as the thin vote does. Off, every output is
+// the earlier one byte for byte.
+void material_motion_configure_fade_owner(bool on) noexcept;
+bool material_motion_fade_owner() noexcept;
 // Words the pixel transformer inserts at the row's definition insert: 18 (three DEFs), or 12 for
-// a depth-writing variant with the thin vote on.
+// a depth-writing variant with the thin vote or the fade owner on.
 std::size_t material_motion_pixel_definition_words(bool depth) noexcept;
 } // namespace x3m::renderer

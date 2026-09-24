@@ -292,6 +292,11 @@ bool taa_region_hold = true;
 // vote of the thin region (per-subset triangle-height histograms, RT2 .a, the tests draw's vote). Invalid or oversized:
 // stays off, logged. Takes effect with the route, TAA, the sun-share lane and the ownership wrapper (hook_device).
 bool taa_thin_vote = false;
+// X3M_FADE_RT2_OWNER (off default, on; docs/architecture/fade-rt2-ownership.md): every draw the fade-band arm routes owns
+// RT2 (exact depth through the engine's blend) and, under original shading, the arm's pair identity widens to every
+// reviewed pair with a fade_route::registers row. Invalid or oversized: stays off, logged. Takes effect with the arm's own prerequisites
+// (the route, TAA, the FP16 scene, X3M_FADE_ROUTE not off), resolved at hook_device.
+bool fade_rt2_owner = false;
 // The option with every prerequisite the environment decides (route, TAA, HDR, lane asked, ownership): computed once in
 // initialize_log; the loader arms the readable-MANAGED policy and the lock bookends through it and hook_device enables
 // the vote through it, so the policy is armed exactly when the vote can run.
@@ -2583,6 +2588,13 @@ void hook_device(IDirect3DDevice9* d,HWND window,HWND focus) {
       if(taa_thin_vote)log("taa_thin_vote_configured requested=1 enabled=%u motion_output=%u taa=%u lane=%u ownership=%u",enabled,motion_output_requested,taa_requested,sun_lane_enabled,wrapped);
       if(enabled)renderer::material_motion_configure_thin_vote(true);
       hooked.motion_output.configure_thin_vote(taa_thin_vote,enabled); }
+    // Fade owner (X3M_FADE_RT2_OWNER): the fade-band arm's own prerequisites (route, TAA, FP16 scene, the arm on). The
+    // material transformer is switched here, before the application creates any program on this device; off it is untouched.
+    { const bool enabled=fade_rt2_owner&&motion_output_requested&&taa_requested&&hdr_requested&&fade_route_threshold<=1000u;
+      if(fade_rt2_owner)log("fade_rt2_owner_configured requested=1 enabled=%u motion_output=%u taa=%u hdr=%u fade_route=%u lane=%u",
+          enabled,motion_output_requested,taa_requested,hdr_requested,fade_route_threshold,sun_lane_enabled);
+      if(enabled)renderer::material_motion_configure_fade_owner(true);
+      hooked.motion_output.configure_fade_rt2_owner(fade_rt2_owner,enabled); }
     // Caster-candidate counter (shadow-replay-gates.md section 3): the route
     // plus the ownership wrapper (loader.cpp enables the lock bookends on the
     // same switch); no TAA, HDR, linear-material or lane prerequisite.
@@ -3621,6 +3633,11 @@ void initialize_log(HMODULE module) {
     else if(n>0){
         if(!wcscmp(setting,L"on"))taa_thin_vote=true;
         else if(wcscmp(setting,L"off")!=0)log("taa_thin_vote_setting invalid=1");
+    }
+    if(const DWORD n=GetEnvironmentVariableW(L"X3M_FADE_RT2_OWNER",setting,32);n>=32)log("fade_rt2_owner_setting invalid=1 reason=too_long length=%lu",n); // oversized: invalid, stays off
+    else if(n>0){
+        if(!wcscmp(setting,L"on"))fade_rt2_owner=true;
+        else if(wcscmp(setting,L"off")!=0)log("fade_rt2_owner_setting invalid=1");
     }
     { wchar_t flag[4]{};
       const bool lane=GetEnvironmentVariableW(L"X3M_SUN_SHADOW_LANE",flag,4)==1&&flag[0]==L'1';

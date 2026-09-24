@@ -1,0 +1,12 @@
+passed: committed=True now=True same
+report_sha256: committed='e2719f094d389d35cd7755533d8b2bac3815bfb11d9ba2715590514f922c803b' now='e2719f094d389d35cd7755533d8b2bac3815bfb11d9ba2715590514f922c803b' same
+checks: committed=None now=None same
+numerical_checks: committed=None now=None same
+state_checks: committed=None now=None same
+lattice_exit: committed=0 now=0 same
+lattice_report_sha256: committed='5a7a65bf2cb2fa0d5394f14122b3f73fab5e9f2126702c603d9fb8fa892f7401' now='89e94af339f35882be089d7985f07f8a16e9353973b34f3e4286bcfcd3340c8d' DIFFERS
+lattice_checks: committed=None now=None same
+lattice_numerical: committed=None now=None same
+lattice_state: committed=None now=None same
+budget: committed={'plain': 455.0, 'embedded_plain': 455.0, 'embedded_snapshot': 46.0, 'embedded_thin': 517.0, 'embedded_age': 544.0, 'embedded_line_mask': 428.0, 'embedded_far': 545.0, 'embedded_line_mask_camera': 427.0, 'embedded_line_mask_depth': 420.0, 'embedded_line_mask_camera_depth': 407.0, 'embedded_far_camera': 555.0, 'embedded_thin_box': 51.0, 'embedded_thin_box_rows': 77.0, 'embedded_thin_box_columns': 94.0, 'embedded_plain_taps16': 432.0, 'embedded_thin_taps16': 465.0, 'embedded_age_taps16': 494.0, 'embedded_far_taps16': 493.0, 'embedded_far_camera_taps16': 505.0, 'embedded_far_camera_hold': 616.0, 'embedded_thin_box_hold': 70.0, 'embedded_thin_box_rows_hold': 155.0, 'embedded_thin_box_columns_hold': 121.0} now={'plain': 455.0, 'embedded_plain': 455.0, 'embedded_snapshot': 46.0, 'embedded_thin': 517.0, 'embedded_age': 544.0, 'embedded_line_mask': 428.0, 'embedded_far': 545.0, 'embedded_line_mask_camera': 427.0, 'embedded_line_mask_depth': 420.0, 'embedded_line_mask_camera_depth': 407.0, 'embedded_far_camera': 555.0, 'embedded_thin_box': 51.0, 'embedded_thin_box_rows': 77.0, 'embedded_thin_box_columns': 94.0, 'embedded_plain_taps16': 432.0, 'embedded_thin_taps16': 465.0, 'embedded_age_taps16': 494.0, 'embedded_far_taps16': 493.0, 'embedded_far_camera_taps16': 505.0, 'embedded_far_camera_hold': 616.0, 'embedded_thin_box_hold': 70.0, 'embedded_thin_box_rows_hold': 155.0, 'embedded_thin_box_columns_hold': 121.0} same
+verdict=differs

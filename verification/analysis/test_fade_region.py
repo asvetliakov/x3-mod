@@ -13,6 +13,11 @@ a rasterising oracle in the C++ driver plus a Python one here. The C++ driver
 uses the production headers; a Python re-projection cross-checks a subset.
 No device, no Wine.
 """
+import contextlib
+import hashlib
+import importlib.util
+import io
+import json
 import math
 from pathlib import Path
 import random
@@ -21,6 +26,8 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
+import sys
 
 ROOT=Path(__file__).resolve().parents[2]
 IDENTITY=[1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]
@@ -444,7 +451,10 @@ class FadeRegion(unittest.TestCase):
         origin distance from the clip rows and the camera's projection scales."""
         loop=('b0602757fce6e870','0c223ad11bce02d5','167eb2d5629ab9d3','330ceb9dd874ede2','4944d81dfe531b37')
         fixed=('233d17d26ce0c1fc','12b8a13f13fe8cfe')
-        for vs,expect in [(v,(1,39,41)) for v in loop]+[(v,(1,18,20)) for v in fixed]+[('53a0a641107ed76c',(0,0,0)),('0',(0,0,0))]:
+        # fade-rt2-ownership.md section 3: the run214 station families declare the same three registers; the glass and
+        # damage programs (material transparency in the fade-band state) are not rows and keep the overlay path.
+        stations=('494fe349b8bc12ec','53a0a641107ed76c')
+        for vs,expect in [(v,(1,39,41)) for v in loop+stations]+[(v,(1,18,20)) for v in fixed]+[(v,(0,0,0)) for v in ('c30104cb0efb6675','37c34a7478544c14','0')]:
             f=fields(subprocess.check_output([str(self.driver),'--fade-route-registers',vs],text=True).strip())
             self.assertEqual((int(f['known']),int(f['alpha']),int(f['fog'])),expect,vs)
         band=[1,0,0,1,7,0,5,6,1,0]  # ZENABLE, ZWRITE, ALPHATEST, ALPHABLEND, COLORWRITE, SRGBWRITE, SRCBLEND, DESTBLEND, BLENDOP, SEPARATEALPHA
@@ -496,11 +506,42 @@ class FadeRegion(unittest.TestCase):
         self.assertEqual(self.fade_route(.5,1,(4,1),IDENTITY,camera)[2:],(.5,500,1))   # saturate(3) = 1
         self.assertEqual(self.fade_route(2,1,(1,0),IDENTITY,camera)[3:],(1000,1))      # alpha above one clamps the permille
 
-    def hysteresis(self,threshold,steps):
-        """--fade-route-hysteresis: (admit, held, entries) per (key, frame, permille) step."""
+    def test_fade_route_table_nine_rows(self):
+        """The register table (fade_route_core.h vertex_programs, static_assert 9): the seven distance-fade programs
+        and the two run214 station families (fade-rt2-ownership.md section 3), every hash once."""
+        lines=subprocess.check_output([str(self.driver),'--fade-route-table'],text=True).splitlines()
+        self.assertEqual(fields(lines[0])['rows'],'9')
+        rows=[fields(l) for l in lines[1:]]
+        self.assertEqual(len(rows),9);self.assertEqual(len({r['vs'] for r in rows}),9)
+        self.assertEqual({r['vs']:(int(r['alpha']),int(r['fog'])) for r in rows if r['vs'] in ('494fe349b8bc12ec','53a0a641107ed76c')},
+                         {'494fe349b8bc12ec':(39,41),'53a0a641107ed76c':(39,41)})
+        core=(ROOT/'src/proxy/fade_route_core.h').read_text()
+        self.assertIn('static_assert(vertex_program_count == 9,',core)
+
+    def test_arm_pair_identity(self):
+        """fade_route::arm_pair: a registers row always; without the owner also a distance_fade_rows pair."""
+        arm=lambda row,fade,owner:int(fields(subprocess.check_output([str(self.driver),'--fade-route-arm-pair',str(row),str(fade),str(owner)],text=True).strip())['arm'])
+        self.assertEqual({(r,f,o):arm(r,f,o) for r in (0,1) for f in (0,1) for o in (0,1)},
+                         {(0,0,0):0,(0,0,1):0,(0,1,0):0,(0,1,1):0,(1,0,0):0,(1,0,1):1,(1,1,0):1,(1,1,1):1})
+
+    def hysteresis(self,threshold,steps,evicted=False):
+        """--fade-route-hysteresis: (admit, held, entries[, evicted]) per (key, frame, permille) step."""
         args=[str(self.driver),'--fade-route-hysteresis',str(threshold)]+[f'{k}:{f}:{p}' for k,f,p in steps]
         rows=[fields(l) for l in subprocess.check_output(args,text=True).splitlines()]
-        return [(int(r['admit']),int(r['held']),int(r['entries'])) for r in rows]
+        return [(int(r['admit']),int(r['held']),int(r['entries']))+((int(r['evicted']),) if evicted else ()) for r in rows]
+
+    def test_fade_band_arm_hysteresis_eviction_counter(self):
+        """Hysteresis::evicted (the fade_route_frame line's fade_evicted): 0 until the 65th key, then one per new key on
+        a full table; a key already in the table never evicts. The route drains the count into its frame counter per draw."""
+        steps=[(k,1,600) for k in range(1,65)]+[(65,1,600),(66,2,600),(66,3,600),(3,3,600)]
+        result=self.hysteresis(500,steps,evicted=True)
+        self.assertEqual([r[3] for r in result[:64]],[0]*64)
+        # 65 and 66 each evict the first entry of the oldest frame (a full table), 66 again and key 3 are hits.
+        self.assertEqual([r[3] for r in result[64:]],[1,2,2,2])
+        self.assertEqual({r[2] for r in result[64:]},{64})
+        motion=(ROOT/'src/proxy/motion_output.cpp').read_text()
+        self.assertIn('if (fade_hysteresis_.evicted) { counters_.fade_evicted += fade_hysteresis_.evicted; fade_hysteresis_.evicted = 0; }',motion)
+        self.assertIn('fade_evicted=%lu fade_owner=%u fade_owner_masked=%lu',motion)
 
     def test_fade_band_arm_hysteresis(self):
         """Hysteresis at the threshold (fade_route_core.h Hysteresis): a node admitted at >= threshold stays
@@ -644,6 +685,171 @@ class FadeRouteStartupLine(unittest.TestCase):
         self.assertIn('if(!wcscmp(setting,L"off")){fade_route_threshold=x3m::fade_route::threshold_off;fade_route_from_env=true;}',parse)
         self.assertIn('if(digits&&n<=1000ul){fade_route_threshold=unsigned(n);fade_route_from_env=true;}',parse)
         self.assertEqual(parse.count('fade_route_from_env=true;'),2)
+
+
+# ---- X3M_FADE_RT2_OWNER (docs/architecture/fade-rt2-ownership.md) ----------------------------------------------------
+IDENTITY_SOURCES=['src/renderer/shader_population.cpp','src/renderer/linear_material.cpp','src/renderer/linear_emission.cpp',
+                  'src/renderer/linear_emission_sm1.cpp','src/renderer/rigid_position.cpp','src/renderer/material_radiance.cpp',
+                  'src/renderer/material_motion.cpp']
+IDENTITY_HARNESS=r"""
+#include "fade_route_core.h"
+#include "linear_distance_fade.h"
+#include "material_motion.h"
+#include <cstdio>
+#include <cstdlib>
+using namespace x3m;
+int main(int argc,char**argv){
+    for(int i=1;i+1<argc;i+=2){const unsigned long long vs=std::strtoull(argv[i],nullptr,16),ps=std::strtoull(argv[i+1],nullptr,16);
+        fade_route::Registers r{};const bool row=fade_route::registers(vs,r),fade=renderer::linear_distance_fade_pair(vs,ps);
+        std::printf("PAIR vs=%016llx ps=%016llx reviewed=%u registers=%u distance_fade=%u sampler_mask=%u arm_off=%u arm_on=%u\n",vs,ps,
+            unsigned(renderer::material_motion_pair_reviewed(vs,ps)),unsigned(row),unsigned(fade),unsigned(renderer::linear_distance_fade_sampler_mask(vs,ps)),
+            unsigned(fade_route::arm_pair(row,fade,false)),unsigned(fade_route::arm_pair(row,fade,true)));}
+    return 0;}
+"""
+
+
+class FadeOwnerIdentity(unittest.TestCase):
+    """The arm's pair identity with the owner off and on, against the real distance_fade_rows (the bracket's identity,
+    linear_material.cpp) and the reviewed motion table (gate 3): the seven fade pairs are fade pairs either way; the run214
+    station families (a registers row, no distance_fade_rows row) only with the owner, the bracket's sampler mask staying 0;
+    the glass and damage programs never (the overlay path)."""
+    SEVEN=[('b0602757fce6e870','517540ae6d5e5410'),('0c223ad11bce02d5','7a0c3388065bb08d'),('233d17d26ce0c1fc','7a0c3388065bb08d'),
+           ('167eb2d5629ab9d3','d44db87778a43b61'),('330ceb9dd874ede2','550c2a4d4d3ed70f'),('12b8a13f13fe8cfe','550c2a4d4d3ed70f'),
+           ('4944d81dfe531b37','64bac8bb307eb896')]
+    RUN214=[('494fe349b8bc12ec','fffdabd910793aba'),('53a0a641107ed76c','8759c7838bbc86c2'),('4944d81dfe531b37','ca6bfa4a6cca7e2a'),
+            ('53a0a641107ed76c','63f96eba9eea7880')]
+    OVERLAY=[('c30104cb0efb6675','a66fb1981ba755b2'),('37c34a7478544c14','5f82ecacd39529cd')]
+
+    @classmethod
+    def setUpClass(cls):
+        compiler=shutil.which('c++') or shutil.which('clang++') or shutil.which('g++')
+        if compiler is None:raise unittest.SkipTest('no host C++ compiler')
+        cls.temp=tempfile.TemporaryDirectory(prefix='x3-fade-owner-identity-');cls.addClassCleanup(cls.temp.cleanup)
+        source=Path(cls.temp.name)/'identity.cpp';source.write_text(IDENTITY_HARNESS)
+        cls.exe=Path(cls.temp.name)/'identity'
+        subprocess.run([compiler,'-std=c++17','-O1','-Wall','-Wextra','-Werror','-I',str(ROOT/'src/renderer'),'-I',str(ROOT/'src/proxy'),str(source)]
+                       +[str(ROOT/s) for s in IDENTITY_SOURCES]+['-o',str(cls.exe)],check=True)
+        pairs=cls.SEVEN+cls.RUN214+cls.OVERLAY
+        lines=subprocess.check_output([str(cls.exe)]+[h for pair in pairs for h in pair],text=True).splitlines()
+        cls.rows={(f['vs'],f['ps']):f for f in map(fields,lines)}
+
+    def test_seven_fade_pairs_are_fade_pairs_either_way(self):
+        for pair in self.SEVEN:
+            r=self.rows[pair]
+            self.assertEqual((r['reviewed'],r['registers'],r['distance_fade'],r['arm_off'],r['arm_on']),('1','1','1','1','1'),pair)
+            self.assertNotEqual(r['sampler_mask'],'0',pair)
+
+    def test_run214_families_only_with_the_owner_and_the_bracket_admits_nothing_new(self):
+        for pair in self.RUN214:
+            r=self.rows[pair]
+            self.assertEqual((r['reviewed'],r['registers'],r['distance_fade'],r['sampler_mask'],r['arm_off'],r['arm_on']),('1','1','0','0','0','1'),pair)
+
+    def test_glass_and_damage_keep_the_overlay_path(self):
+        for pair in self.OVERLAY:
+            r=self.rows[pair]
+            self.assertEqual((r['reviewed'],r['registers'],r['distance_fade'],r['sampler_mask'],r['arm_off'],r['arm_on']),('1','0','0','0','0','0'),pair)
+
+    def test_route_uses_the_identity_function(self):
+        motion=(ROOT/'src/proxy/motion_output.cpp').read_text().replace(' ','').replace('\n','')
+        self.assertIn('&&fade_route::arm_pair(fade_route::registers(shadow_.vs_hash,shadow_.fade_route_registers),'
+                      'renderer::linear_distance_fade_pair(shadow_.vs_hash,shadow_.ps_hash),fade_rt2_owner_&&!linear_material_requested_);',motion)
+        # The widening is original shading only (the overlay arm's boundary); the bracket keeps its own identity (the sampler
+        # mask), with no owner term.
+        self.assertIn('renderer::linear_distance_fade_sampler_mask(shadow_.vs_hash,shadow_.ps_hash):0;',motion)
+
+
+def load_manage():
+    spec=importlib.util.spec_from_file_location('fade_owner_manage',ROOT/'tools/manage.py')
+    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+    return module
+
+
+class FadeOwnerLaunch(unittest.TestCase):
+    """--fade-rt2-owner on|off: off by default and forwarded only when given (an inherited value dropped), requires
+    --taa, on also --motion-output --hdr (the arm's prerequisites), refused under --vanilla. No game, no Wine."""
+    TAA=['--motion-output','--ownership','--object-trace','--object-lifetime','--taa','--hdr']
+
+    def launch(self,directory,*args,inherited=None):
+        module=load_manage()
+        game=Path(directory)/'game';game.mkdir(exist_ok=True)
+        (game/'X3AP.exe').touch();(game/'d3d9.dll').write_bytes(b'fixture')
+        (game/'x3-modern-install.json').write_text(json.dumps({'sha256':hashlib.sha256(b'fixture').hexdigest()}))
+        wine=Path(directory)/'wine';wine.touch()
+        argv=['manage.py','launch','--dry-run','--game-dir',str(game),*args]
+        output,error=io.StringIO(),io.StringIO()
+        with mock.patch.object(sys,'argv',argv),mock.patch.object(module,'WINE',wine),mock.patch.object(module,'VOICE_DECODER_REPO',None), \
+                mock.patch.dict(module.os.environ,inherited or {}), \
+                mock.patch.object(module.subprocess,'call',side_effect=AssertionError('must never launch')), \
+                contextlib.redirect_stdout(output),contextlib.redirect_stderr(error):
+            try:module.main()
+            except SystemExit as exit_error:return exit_error.code,output.getvalue(),error.getvalue()
+        return 0,output.getvalue(),error.getvalue()
+
+    def env(self,directory,*args,inherited=None):
+        code,output,error=self.launch(directory,*args,inherited=inherited)
+        self.assertEqual(code,0,error)
+        return json.loads(output)['env']
+
+    def test_default_off_not_forwarded_and_inherited_dropped(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self.assertNotIn('X3M_FADE_RT2_OWNER',self.env(directory,*self.TAA))
+            self.assertNotIn('X3M_FADE_RT2_OWNER',self.env(directory,*self.TAA,inherited={'X3M_FADE_RT2_OWNER':'on'}))
+
+    def test_on_and_off_are_forwarded(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self.assertEqual(self.env(directory,*self.TAA,'--fade-rt2-owner','on')['X3M_FADE_RT2_OWNER'],'on')
+            self.assertEqual(self.env(directory,*self.TAA,'--fade-rt2-owner','off')['X3M_FADE_RT2_OWNER'],'off')
+
+    def test_refusals(self):
+        with tempfile.TemporaryDirectory() as directory:
+            for value in ('1','yes','owner'):
+                code,_,error=self.launch(directory,*self.TAA,'--fade-rt2-owner',value)
+                self.assertNotEqual(code,0,value);self.assertIn('--fade-rt2-owner',error)
+            code,_,error=self.launch(directory,'--motion-output','--fade-rt2-owner','off')
+            self.assertNotEqual(code,0);self.assertIn('--fade-rt2-owner requires --taa',error)
+            code,_,error=self.launch(directory,*self.TAA[:-1],'--fade-rt2-owner','on')  # no --hdr
+            self.assertNotEqual(code,0);self.assertIn('--fade-rt2-owner on requires --motion-output --hdr',error)
+            code,_,error=self.launch(directory,'--vanilla','--fade-rt2-owner','off')
+            self.assertNotEqual(code,0);self.assertIn('--fade-rt2-owner cannot be combined with --vanilla',error)
+
+
+class FadeOwnerSource(unittest.TestCase):
+    """The DLL side: off by default, the transformer switched only on the arm's prerequisites, RT2 masked on fade-arm rows
+    unless the row is an owner (both binding modes), the owner lanes only in c218.y/.z, the owner program recorded."""
+    def test_parse_and_configuration(self):
+        capture=(ROOT/'src/proxy/capture.cpp').read_text()
+        self.assertIn('bool fade_rt2_owner = false;',capture)
+        self.assertIn('GetEnvironmentVariableW(L"X3M_FADE_RT2_OWNER",setting,32)',capture)
+        self.assertIn('const bool enabled=fade_rt2_owner&&motion_output_requested&&taa_requested&&hdr_requested&&fade_route_threshold<=1000u;',capture)
+        self.assertIn('if(enabled)renderer::material_motion_configure_fade_owner(true);',capture)
+        self.assertIn('hooked.motion_output.configure_fade_rt2_owner(fade_rt2_owner,enabled);',capture)
+
+    def test_mask_upload_and_lane(self):
+        motion=(ROOT/'src/proxy/motion_output.cpp').read_text()
+        self.assertIn('D3DRS_COLORWRITEENABLE2, route.fade_arm && !route.fade_owner ? 0 : 15); }',motion)
+        self.assertIn('const DWORD wanted = route.fade_arm && !route.fade_owner ? 0 : 15;',motion)
+        self.assertNotIn('route.fade_arm ? 0 : 15',motion)
+        # Routed is owner on the fade arm only (the overlay arm never sets it); the arm reads no ZWRITEENABLE setter.
+        self.assertIn('route.fade_arm = true; route.fade_held = held; route.fade_owner = fade_rt2_owner_;',motion)
+        self.assertIn('route.fade_permille = 1000u; route.fade_arm = true; route.overlay = true;',motion)
+        arm=motion.split('bool MotionOutput::fade_arm_admits')[1].split('std::uint64_t MotionOutput::fade_identity')[0]
+        self.assertNotIn('SetRenderStateFn>(SetRenderState, D3DRS_ZWRITEENABLE',arm)
+        # The lane RT2: an owner binds the invalid-share twin (.g = -1) or stays masked.
+        self.assertIn('if (ps == shadow_.ps_variant && shadow_.ps_sun_motion) ps = shadow_.ps_sun_motion;',motion)
+        self.assertIn('else { route.fade_owner = false; ++counters_.fade_owner_masked; }',motion)
+        self.assertIn('if (fade_rt2_owner_) { pixel_thin[9] = route.fade_owner ? 1.f : 0.f; pixel_thin[10] = thin_vote_upload_ || route.fade_owner ? 0.f : 1.f; }',motion)
+
+    def test_transformer_and_program(self):
+        transformer=(ROOT/'src/renderer/material_motion.cpp').read_text()
+        self.assertIn('return depth && (material_motion_thin_vote() || material_motion_fade_owner()) ? 12u : 18u;',transformer)
+        self.assertIn('if ((thin || owner) && !pack_motion_definitions(row, constants, body)) return MaterialMotionResult::ProfileMismatch;',transformer)
+        self.assertIn('(kind == DepthFragment::Owner ? outputs == 3 && output_lanes == 15 && constants == 3',transformer)
+        record=json.loads((ROOT/'verification/results/current-depth-owner-pixel-program.json').read_text())
+        self.assertEqual(record['target'],'ps_3_0')
+        header=(ROOT/'src/renderer/current_depth_owner_pixel_program_inc.h').read_bytes()
+        self.assertEqual(hashlib.sha256(header).hexdigest(),record['header_sha256'])
+        hlsl=(ROOT/'src/temporal/current_depth_owner_ps.hlsl').read_text()
+        self.assertIn('return float4((clip.x / clip.y).xx, clip.y, max(clip.y * lane.z + lane.x, lane.y));',hlsl)
 
 
 if __name__=='__main__':unittest.main()

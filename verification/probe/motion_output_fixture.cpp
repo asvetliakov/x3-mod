@@ -1060,7 +1060,12 @@ struct Fixture {
             // through the seam, the 8-bit main target read back before the copy.
             std::vector<float> motion_data(std::size_t(W) * H * 4), depth_data(std::size_t(W) * H); unsigned w = 0, h = 0;
             api(readback(d.p, motion_data.data(), unsigned(motion_data.size()), &w, &h), "reference motion readback");
-            api(readback_depth(d.p, depth_data.data(), unsigned(depth_data.size()), &w, &h), "reference depth readback");
+            const HRESULT depth_read = readback_depth(d.p, depth_data.data(), unsigned(depth_data.size()), &w, &h);
+            if (depth_read == D3DERR_MOREDATA) { // the four-channel sun-share lane RT2 (X3M_SUN_SHADOW_LANE): the reference reads its depth, .r
+                std::vector<float> lanes(std::size_t(W) * H * 4);
+                api(readback_depth(d.p, lanes.data(), unsigned(lanes.size()), &w, &h), "reference lane depth readback");
+                for (std::size_t i = 0; i < depth_data.size(); ++i) depth_data[i] = lanes[i * 4];
+            } else api(depth_read, "reference depth readback");
             reference.upload(before_image, motion_data, depth_data);
             const float k = hdr_reference_input();
             std::vector<DWORD> expected; std::vector<unsigned char> half;

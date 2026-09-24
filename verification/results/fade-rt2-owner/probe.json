@@ -1,0 +1,53 @@
+{
+ "passed": true,
+ "bottle": "X3",
+ "elapsed_s": 14.5,
+ "exe_sha256": "a214a57aa740e3e0198f58808247724fb44c1791cdb84dd441d497a2319aa8b3",
+ "inputs": {
+  "ps_8759c7838bbc86c2.bin": "9fd15484fe419295cfb3534bd4f978efc8855c1e3e6a06e776533497dad48dc0",
+  "ps_517540ae6d5e5410.bin": "e863f6196bad66465442a9a27923953ab11b71be6ab60d325237e2f5e2f85329",
+  "ps_fffdabd910793aba.bin": "8fc110cf9cf4631ac0f7052b8f61ec6c5908bcaa7be830853570404ddfa95b72",
+  "ps_63f96eba9eea7880.bin": "2046f15c8d3c761508a5abf8e4b540c7d6aa8902d131f02533377e68a9bfa75b"
+ },
+ "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+ "slots": {
+  "current_depth": 3,
+  "current_depth_thin": 4,
+  "current_depth_owner": 5,
+  "ps_8759c7838bbc86c2_original": 49,
+  "ps_8759c7838bbc86c2_variant_off": 77,
+  "ps_8759c7838bbc86c2_variant_thin": 78,
+  "ps_8759c7838bbc86c2_variant_owner": 79,
+  "ps_8759c7838bbc86c2_variant_owner_thin": 79,
+  "ps_517540ae6d5e5410_original": 38,
+  "ps_517540ae6d5e5410_variant_off": 66,
+  "ps_517540ae6d5e5410_variant_thin": 67,
+  "ps_517540ae6d5e5410_variant_owner": 68,
+  "ps_517540ae6d5e5410_variant_owner_thin": 68,
+  "ps_fffdabd910793aba_original": 100,
+  "ps_fffdabd910793aba_variant_off": 128,
+  "ps_fffdabd910793aba_variant_thin": 129,
+  "ps_fffdabd910793aba_variant_owner": 130,
+  "ps_fffdabd910793aba_variant_owner_thin": 130,
+  "ps_63f96eba9eea7880_original": 54,
+  "ps_63f96eba9eea7880_variant_off": 82,
+  "ps_63f96eba9eea7880_variant_thin": 83,
+  "ps_63f96eba9eea7880_variant_owner": 84,
+  "ps_63f96eba9eea7880_variant_owner_thin": 84
+ },
+ "refused_variants": [],
+ "fragment": {
+  "thin": {
+   "defs": 2,
+   "declarations": 2,
+   "instructions": 29
+  },
+  "owner": {
+   "defs": 2,
+   "declarations": 2,
+   "instructions": 30
+  },
+  "defs_identical": true,
+  "motion_body_identical": true
+ }
+}

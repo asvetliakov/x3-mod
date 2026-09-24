@@ -321,11 +321,16 @@ class ThinVoteSource(unittest.TestCase):
         self.assertIn('GetEnvironmentVariableW(L"X3M_TAA_THIN_VOTE",setting,32)', capture)
         self.assertIn('if(enabled)renderer::material_motion_configure_thin_vote(true);', capture)
         motion = (ROOT / 'src/proxy/motion_output.cpp').read_text()
-        self.assertIn('renderer::MaterialMotionAbi::pixel_coordinates_constant, thin_vote_upload_ ? pixel_thin : pixel, thin_vote_upload_ ? 3u : 2u);', motion)
-        self.assertIn('SetPixelShaderConstantF, 216, shadow_.ps_reserved, thin_vote_upload_ ? 3u : 2u));', motion)
+        # c218 is uploaded with the vote or the fade owner (X3M_FADE_RT2_OWNER, fade-rt2-ownership.md) and with neither off.
+        self.assertIn('bool upload_c218() const noexcept { return thin_vote_upload_ || fade_rt2_owner_; }', (ROOT / 'src/proxy/motion_output.h').read_text())
+        self.assertIn('renderer::MaterialMotionAbi::pixel_coordinates_constant, upload_c218() ? pixel_thin : pixel, upload_c218() ? 3u : 2u);', motion)
+        self.assertIn('SetPixelShaderConstantF, 216, shadow_.ps_reserved, upload_c218() ? 3u : 2u));', motion)
         # c216 and c217 keep their eight values (the off path uploads that array alone); c218.x is the thin alpha.
         self.assertIn('previous_rows ? 1.f : 0.f, lightmap_widen_draw_scale_[0], lightmap_widen_draw_scale_[1], lightmap_fade_gain_};', motion)
-        self.assertIn('if (thin_vote_upload_) { std::memcpy(pixel_thin, pixel, sizeof pixel); pixel_thin[9] = pixel_thin[10] = pixel_thin[11] = 0.f; thin_vote_alpha(route, rows.data(), pixel_thin[8]); }', motion)
+        self.assertIn('std::memcpy(pixel_thin, pixel, sizeof pixel); pixel_thin[8] = pixel_thin[9] = pixel_thin[10] = pixel_thin[11] = 0.f;', motion)
+        self.assertIn('if (thin_vote_upload_) thin_vote_alpha(route, rows.data(), pixel_thin[8]);', motion)
+        # With the fade owner off c218.yzw stay 0: the thin vote's upload is the one it had.
+        self.assertIn('if (fade_rt2_owner_) { pixel_thin[9] = route.fade_owner ? 1.f : 0.f; pixel_thin[10] = thin_vote_upload_ || route.fade_owner ? 0.f : 1.f; }', motion)
         # A write or release of a watched buffer invalidates its entries (no per-draw revision lookup); WRITEONLY storage is refused.
         self.assertIn('if (ownership::buffer_invalidations_pending()) drain_thin_invalidations();', motion)
         self.assertIn('ownership::watch_buffer_writes(vb);', motion)

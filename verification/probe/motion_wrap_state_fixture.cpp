@@ -43,6 +43,7 @@ struct MotionRoute {
  bool depth=false,linear_material=false,write2_set=false,rt2_set=false,write_set=false,rt_set=false,ps_set=false,vs_set=false,vs_constants_set=false,ps_constants_set=false;
  DWORD saved_write1=15,saved_write2=15,saved_wrap[6]{};std::uint8_t wrap_index[6]{},wrap_count=0,wrap_attempted=0;
  bool fade_arm=false,sun_receiver=false; // fade-band arm and sun-share lane flags read by the bind path
+ bool fade_owner=false; // X3M_FADE_RT2_OWNER: a fade-arm row that writes RT2 (never here)
  bool original_fill=false; // X3M_ORIGINAL_FILL: the bind path records the fill variant it selected
  bool hull_lightmap=false; // hull light-map gain PS selected in the routed pair
  bool hull_lightmap_widen=false,alpha_tested=false; // hull emissive widening: the widened PS selected; the draw's alpha test (never here)
@@ -104,7 +105,7 @@ public:
  Pass*sun_occlusion_pass_=nullptr; // partial sun occlusion (855fc1bc): after_reset forwards to the visibility pass when one is attached
  Pass*fog_=nullptr;std::uint64_t fog_frame_=~std::uint64_t(0);unsigned fog_failures_=0;bool fog_attach_failed_=false; // volumetric fog: the same forwarding and per-frame marker
  std::uint64_t sun_apply_frame_=~std::uint64_t(0),depth_replayed_frame_=~std::uint64_t(0); // per-frame markers cleared by after_reset
- struct{unsigned rs_queries=0,rs_hits=0,rs_gets=0,rs_resyncs=0,restore_failures=0,draws=0,sb_resyncs=0,material_bind_failures=0,restore_getters=0,restore_declines=0;}counters_;
+ struct{unsigned rs_queries=0,rs_hits=0,rs_gets=0,rs_resyncs=0,restore_failures=0,draws=0,sb_resyncs=0,material_bind_failures=0,restore_getters=0,restore_declines=0,fade_owner_masked=0;}counters_;
  struct{DWORD states[motion_shadow_state_count]{};bool states_known[motion_shadow_state_count]{};bool recording=false;
   /* sized for the production composition_blend_states table (asserted below) */ DWORD composition_blend[8]{};bool composition_blend_known[8]{};DWORD fill_mode=0;bool fill_mode_known=false;
   bool vs_reserved_written=false,ps_reserved_written=false;Shader*vs=nullptr,*ps=nullptr,*vs_variant=nullptr,*ps_variant=nullptr,*vs_material_variant=nullptr,*ps_material_variant=nullptr;
@@ -134,6 +135,7 @@ public:
  bool sun_lane_requested_=false,sun_lane_qualified_=false,sun_lane_active_=false,sun_lane_failed_=false;
  bool original_fill_requested_=false; unsigned sun_original_refused_draws_=0; // read by the bind path's original-share gate
  bool thin_vote_upload_=false; // X3M_TAA_THIN_VOTE: off in this seam (the extracted undo restores c216-c217 only)
+ bool fade_rt2_owner_=false; bool upload_c218()const{return thin_vote_upload_||fade_rt2_owner_;} // X3M_FADE_RT2_OWNER: off in this seam
  bool hull_gain_enabled_=true,hull_lightmap_enabled_=true; std::uint32_t hull_lightmap_draws_=0; // F6 guide-light flag, F4 light-map flag and light-map draw counter read by the bind/after-draw paths
  float lightmap_widen_draw_scale_[2]={0.f,0.f}; struct{DWORD levels=0;}samplers_[16]; // hull emissive widening: this draw's footprint lanes (0 = off) and the sampler shadow's level counts read by the bind path
  unsigned sun_qualifications_=0;void qualify_sun_lane(){++sun_qualifications_;}

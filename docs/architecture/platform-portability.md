@@ -471,6 +471,21 @@ motion fragment's literals into two DEFs at `c219`/`c220` so `c218` is not shado
 API constant inside its own program is the documented ps_3_0 rule). Slots: the tests-draw twins 429 and 415 (plain 420
 and 407), the depth fragment 4 (3), the reviewed pair's variant 78 (77); measured, D3DX.
 
+## 2026-09-24: fade-band draws as RT2 owners (`--fade-rt2-owner`, default off)
+
+[fade-rt2-ownership.md](fade-rt2-ownership.md), "Implemented"; ledger `docs/verification/temporal-resolve.md` "fade
+owner". Documented D3D9 only, no new capability: a fade-arm row sets `D3DRS_COLORWRITEENABLE2` to 15 instead of 0
+(`D3DPMISCCAPS_INDEPENDENTWRITEMASKS`) and its depth fragment's output alpha 1 makes the engine's own SRCALPHA/INVSRCALPHA
+blend on RT2 store `src * 1 + dst * 0` (`D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING` with per-target blending on the target's
+own output alpha, and `D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING` on R32F / A32B32G32R32F); all three are already in the
+arm's `probe_cutout_caps` verdict, so a device without them keeps the arm off (the draw a plain gate-4 refusal, RT2 the
+sentinel) and there is no second path. The lane value rides the existing `c216`-`c218` upload
+(`.a = max(w * c218.z + c218.x, c218.y)`); on the four-channel lane an owner binds the motion variant's invalid-share
+twin (`.g = -1`), a row without one stays masked. Gap: the exactness of `src * 1 + dst * 0` on FP32 targets under native
+drivers is unverified (as RT1's alpha-1 blend is); the `faderoute` `-owner` fixture cases' RT2 readback (z/w error at most
+4.8e-8 on this backend, measured) is the parity check to run on a native machine. Slots: depth fragment 5 (plain 3, thin
+twin 4), each pixel variant 2 above the option-off one; measured, D3DX.
+
 ## Shader slot budget
 
 User decision 2026-09-24: programs are sized against `MaxPixelShader30InstructionSlots` as the device reports it.

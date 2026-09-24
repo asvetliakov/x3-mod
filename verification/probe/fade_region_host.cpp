@@ -757,6 +757,19 @@ int registers(int, char** argv) {
     std::printf("REGISTERS vs=%s known=%u alpha=%u fog=%u\n", argv[2], known, r.alpha, r.fog);
     return 0;
 }
+// --fade-route-table: the register table's rows (fade-rt2-ownership.md section 3: nine).
+int table(int, char**) {
+    std::printf("TABLE rows=%u\n", unsigned(x3m::fade_route::vertex_program_count));
+    for (const auto& row : x3m::fade_route::vertex_programs)
+        std::printf("ROW vs=%016llx alpha=%u fog=%u\n", (unsigned long long)row.hash, row.registers.alpha, row.registers.fog);
+    return 0;
+}
+// --fade-route-arm-pair registers_row distance_fade_pair owner: fade_route::arm_pair.
+int arm_pair(int argc, char** argv) {
+    if (argc < 5) return 2;
+    std::printf("ARM_PAIR arm=%u\n", x3m::fade_route::arm_pair(argv[2][0] == '1', argv[3][0] == '1', argv[4][0] == '1'));
+    return 0;
+}
 int state(int argc, char** argv) {
     if (argc < 12) return 2;
     std::uint32_t v[10];
@@ -792,7 +805,7 @@ int hysteresis(int argc, char** argv) {
         if (std::sscanf(argv[i], "%llu:%llu:%u", &key, &frame, &permille) != 3) return 2;
         bool held = false;
         const bool admitted = table.admit(key, frame, permille, threshold, held);
-        std::printf("ADMIT step=%d key=%llu frame=%llu permille=%u admit=%u held=%u entries=%u\n", i - 3, key, frame, permille, admitted, held, table.count);
+        std::printf("ADMIT step=%d key=%llu frame=%llu permille=%u admit=%u held=%u entries=%u evicted=%u\n", i - 3, key, frame, permille, admitted, held, table.count, unsigned(table.evicted));
     }
     return 0;
 }
@@ -802,6 +815,8 @@ int hysteresis(int argc, char** argv) {
 int main(int argc, char** argv) {
     if (argc >= 3 && std::strcmp(argv[1], "--fade-route-registers") == 0) return fade_route_mode::registers(argc, argv);
     if (argc >= 2 && std::strcmp(argv[1], "--fade-route-state") == 0) return fade_route_mode::state(argc, argv);
+    if (argc >= 2 && std::strcmp(argv[1], "--fade-route-table") == 0) return fade_route_mode::table(argc, argv);
+    if (argc >= 5 && std::strcmp(argv[1], "--fade-route-arm-pair") == 0) return fade_route_mode::arm_pair(argc, argv);
     if (argc >= 2 && std::strcmp(argv[1], "--fade-route") == 0) return fade_route_mode::fraction(argc, argv);
     if (argc >= 3 && std::strcmp(argv[1], "--fade-route-hysteresis") == 0) return fade_route_mode::hysteresis(argc, argv);
     if (argc >= 5 && std::strcmp(argv[1], "--hull") == 0)

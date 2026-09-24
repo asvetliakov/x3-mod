@@ -737,9 +737,14 @@ THIN_VOTE_ENV = dict(X3M_SUN_SHADOW_LANE='1', X3M_LINEAR_MATERIALS='0',  # the i
 THIN_VOTE_CASES = {'seam-thin-vote-far-on': ('on', 'far', 'plain'), 'seam-thin-vote-far-off': ('off', 'far', 'plain'), 'seam-thin-vote-near-on': ('on', 'near', 'plain'),
                    'seam-thin-vote-hostile': ('on', 'far', 'hostile')}
 THIN_VOTE_TWINS = {'seam-thin-vote-far-on': 'seam-thin-vote-far-off'}
+# X3M_FADE_RT2_OWNER with the vote on and no fade-band draw: RT1 and every RT2 lane equal the option-off run's byte for byte
+# (the owner fragment writes max(w * 0 + c218.x, 0) = the vote's .a on every opaque row).
+THIN_VOTE_OWNER_TWINS = {'seam-thin-vote-far-on-owner': 'seam-thin-vote-far-on'}
 THIN_VOTE_FRAMES, THIN_VOTE_SIZE = 6, 128
 CASES += [case(name, 'thinvote', 'ownership', jitter=True, taa=True, hdr=True, hdr_env=dict(THIN_VOTE_ENV, X3M_TAA_THIN_VOTE=vote, X3M_FIXTURE_THIN_SCALE=scale, X3M_FIXTURE_THIN_SCRIPT=script))
           for name, (vote, scale, script) in THIN_VOTE_CASES.items()]
+CASES += [case('seam-thin-vote-far-on-owner', 'thinvote', 'ownership', jitter=True, taa=True, hdr=True,
+               hdr_env=dict(THIN_VOTE_ENV, X3M_TAA_THIN_VOTE='on', X3M_FIXTURE_THIN_SCALE='far', X3M_FIXTURE_THIN_SCRIPT='plain', X3M_FADE_RT2_OWNER='on'))]
 CASES += [case('seam-taa-quad-fvf', 'seam', jitter=True, taa=True, hdr_env=dict(X3M_FIXTURE_QUAD_FVF='1')),
           case('seam-taa-copy-draw', 'seam', jitter=True, taa=True, hdr_env=dict(X3M_FIXTURE_STRETCH_FAULT='1')),
           case('seam-msaa', 'msaa', jitter=True, taa=True)]
@@ -852,24 +857,30 @@ FADE_ROUTE_HOVER_ALPHA = (.8125, .71875, .71875, .625, .71875, .71875, .8125, .7
 FADE_ROUTE_HOVER_PERMILLE = tuple(int(a * .625 * 1000) for a in FADE_ROUTE_HOVER_ALPHA)  # 507, 449, 390: fraction .625 * alpha at distance 1, truncated
 FADE_ROUTE_HOVER_BAND = 400  # threshold - fade_route::Hysteresis::band
 FADE_ROUTE_HOVER_SCRIPTS = ('hover', 'original', 'behind')  # the hover schedule
-FADE_ROUTE_ORIGINAL_SCRIPTS = ('original', 'behind', 'overlay', 'foreign')  # original shading: no bracket, no composition, no M
-FADE_ROUTE_FULL_SCRIPTS = ('routed', 'sentinel', 'overlay')  # routed every frame (fraction 1000; overlay: the same-node rule)
+FADE_ROUTE_ORIGINAL_SCRIPTS = ('original', 'behind', 'overlay', 'foreign', 'hull')  # original shading: no bracket, no composition, no M
+FADE_ROUTE_FULL_SCRIPTS = ('routed', 'sentinel', 'overlay', 'hull')  # routed every frame (fraction 1000; overlay: the same-node rule; hull: owner only)
 FADE_ROUTE_OVERLAY_PAIR = ('53a0a641107ed76c', '63f96eba9eea7880')  # the hull (cutout) pair the overlay script draws
+FADE_ROUTE_HULL_PAIR = ('494fe349b8bc12ec', 'fffdabd910793aba')  # the run214 station family the hull script draws
 
 
-def fade_route_routed(script, frame):
-    """The arm's decision for the script's frame (motion_output_fade_route_inc.h)."""
+def fade_route_routed(script, frame, owner=False):
+    """The arm's decision for the script's frame (motion_output_fade_route_inc.h). hull: its pair is a fade pair only
+    with X3M_FADE_RT2_OWNER (fade-rt2-ownership.md section 3); without it the overlay arm refuses it (overlay_node)."""
     if script in FADE_ROUTE_HOVER_SCRIPTS:
         return FADE_ROUTE_HOVER_PERMILLE[frame] >= FADE_ROUTE_THRESHOLD or (fade_route_routed(script, frame - 1) and FADE_ROUTE_HOVER_PERMILLE[frame] >= FADE_ROUTE_HOVER_BAND)
-    return script in FADE_ROUTE_FULL_SCRIPTS
+    return script in FADE_ROUTE_FULL_SCRIPTS and (owner or script != 'hull')
 
 
-def fade_route_permille(script, frame):
-    return FADE_ROUTE_HOVER_PERMILLE[frame] if script in FADE_ROUTE_HOVER_SCRIPTS else 1000 if script in FADE_ROUTE_FULL_SCRIPTS else 0 if script == 'foreign' else 390
+def fade_route_permille(script, frame, owner=False):
+    if script == 'foreign':
+        return 390 if owner else 0  # owner: g_AlphaValue .390625 through the fade arm; else the overlay arm's refusal (no fraction)
+    if script == 'hull' and not owner:
+        return 0
+    return FADE_ROUTE_HOVER_PERMILLE[frame] if script in FADE_ROUTE_HOVER_SCRIPTS else 1000 if script in FADE_ROUTE_FULL_SCRIPTS else 390
 
 
-def fade_route_held(script, frame):
-    return fade_route_routed(script, frame) and fade_route_permille(script, frame) < FADE_ROUTE_THRESHOLD
+def fade_route_held(script, frame, owner=False):
+    return fade_route_routed(script, frame, owner) and fade_route_permille(script, frame, owner) < FADE_ROUTE_THRESHOLD
 FADE_ROUTE_PAIR = ('b0602757fce6e870', '517540ae6d5e5410')
 FADE_ROUTE_QUAD_PIXELS = 14 * 14          # interior pixels of one quad (columns/rows 9..22 or 41..54)
 FADE_ROUTE_WINDOW = (42, 54, 10, 22)      # Lucas-Kanade window inside quad Q (x0, x1, y0, y1; one-pixel gradient margin)
@@ -919,6 +930,47 @@ LIGHTMAP_FADE_OVERLAY_CASES = {'seam-taa-fade-route-overlay-lightmap': {}, 'seam
 CASES += [case(name, 'faderoute', jitter=True, taa=True, lazy=True, hdr=True,
                hdr_env=dict(FADE_ROUTE_ENV, X3M_FIXTURE_FADE_SCRIPT='overlay', X3M_HULL_LIGHTMAP_GAIN=repr(LIGHTMAP_FADE_GAIN), **FADE_ROUTE_ORIGINAL_ENV, **extra))
           for name, extra in LIGHTMAP_FADE_OVERLAY_CASES.items()]
+# X3M_FADE_RT2_OWNER (docs/architecture/fade-rt2-ownership.md section 7): the same scripts with the option on, plus `hull`
+# (494fe349b8bc12ec/fffdabd910793aba on its own nodes over the sentinel fill at fraction 1000) and its option-off twin (the
+# run214 refusal, overlay_node). Every routed quad owns RT2 (FADE_ROUTE_RT2 lines: z/w within FP32 raster tolerance, the rest
+# unchanged). The original-shading scripts run with the four-channel lane (X3M_SUN_SHADOW_LANE=1: .g -1, .b = w, .a = 1);
+# the linear-material scripts keep the R32F RT2 (.r), because a material row on the lane has no invalid-share twin and
+# stays masked (fade_owner_masked). hover-owner adds the thin region (0.97, A' hold on) and captures frames 1-8 for the
+# age dumps: the 390 frames' history restart and no region reopen on the 449 frames.
+FADE_ROUTE_OWNER_CASES = (('routed', True), ('routed-perdraw', False), ('sentinel', True), ('hover', True), ('original', True), ('behind', True),
+                          ('overlay', True), ('foreign', True), ('hull', True))
+FADE_ROUTE_OWNER_HOVER_CAPTURE = tuple(range(1, 9))
+FADE_ROUTE_OWNER_HOVER_ENV = dict(X3M_TAA_THIN_REGION='0.97', X3M_CAPTURE_START='1', X3M_CAPTURE_FRAMES=str(len(FADE_ROUTE_OWNER_HOVER_CAPTURE)))
+CASES += [case(f'seam-taa-fade-route-{name}-owner', 'faderoute', jitter=True, taa=True, lazy=lazy, hdr=True,
+               hdr_env=dict(FADE_ROUTE_ENV, X3M_FIXTURE_FADE_SCRIPT=name.split('-')[0], X3M_FADE_RT2_OWNER='on',
+                            **(dict(FADE_ROUTE_ORIGINAL_ENV, X3M_SUN_SHADOW_LANE='1') if name in FADE_ROUTE_ORIGINAL_SCRIPTS else {}),
+                            **(FADE_ROUTE_OWNER_HOVER_ENV if name == 'hover' else {})))
+          for name, lazy in FADE_ROUTE_OWNER_CASES]
+CASES += [case('seam-taa-fade-route-hull', 'faderoute', jitter=True, taa=True, lazy=True, hdr=True,
+               hdr_env=dict(FADE_ROUTE_ENV, X3M_FIXTURE_FADE_SCRIPT='hull', **FADE_ROUTE_ORIGINAL_ENV))]
+# The lane under linear materials: a material fade row has no invalid-share twin, so the owner is withdrawn (RT2 stays
+# masked, fade_owner_masked = 2 on routed frames).
+CASES += [case('seam-taa-fade-route-routed-owner-lane', 'faderoute', jitter=True, taa=True, lazy=True, hdr=True,
+               hdr_env=dict(FADE_ROUTE_ENV, X3M_FIXTURE_FADE_SCRIPT='routed', X3M_FADE_RT2_OWNER='on', X3M_SUN_SHADOW_LANE='1'))]
+# History resets at the class changes (fade-rt2-ownership.md section 4): the age dumps (thin region 0.97, captures 1-8) of
+# hover and original with the owner and their option-off twins (original's twin scissors A for real,
+# X3M_FIXTURE_FADE_SCISSOR=1, so both run over the fill). FADE_ROUTE_AGE_FRESH: the capture frames whose history count
+# is 1 (X3M_FRESH_AGE: current-only) on every quad pixel, measured; FADE_ROUTE_AGE_TWINS: the owner case and its twin.
+FADE_ROUTE_AGE_CASES = {'seam-taa-fade-route-hover-age': ('hover', False), 'seam-taa-fade-route-original-owner-age': ('original', True),
+                        'seam-taa-fade-route-original-age': ('original', False)}
+CASES += [case(name, 'faderoute', jitter=True, taa=True, lazy=True, hdr=True,
+               hdr_env=dict(FADE_ROUTE_ENV, X3M_FIXTURE_FADE_SCRIPT=script, **FADE_ROUTE_OWNER_HOVER_ENV,
+                            **({'X3M_FADE_RT2_OWNER': 'on'} if owner else {}),
+                            **(dict(FADE_ROUTE_ORIGINAL_ENV, X3M_SUN_SHADOW_LANE='1', X3M_FIXTURE_FADE_SCISSOR='1') if script == 'original' else {})))
+          for name, (script, owner) in FADE_ROUTE_AGE_CASES.items()]
+FADE_ROUTE_AGE_TWINS = {'seam-taa-fade-route-hover-owner': 'seam-taa-fade-route-hover-age', 'seam-taa-fade-route-original-owner-age': 'seam-taa-fade-route-original-age'}
+# Measured 2026-09-24. hover (over A, linear materials): the refused frames 3-5 and 8 are current-only through the bracket's
+# M, frame 6 (routed again after a refusal) through the rows' one-frame history (unmatched), frame 7 is the camera cut: the
+# same with and without the owner. original over the fill (no M): the owner adds frames 3 and 8, its falling edges (owner ->
+# sentinel, the design's one-frame reset); frame 6 (sentinel -> owner) is current-only in both through the row history.
+FADE_ROUTE_AGE_FRESH = {'seam-taa-fade-route-hover-owner': [3, 4, 5, 6, 7, 8], 'seam-taa-fade-route-hover-age': [3, 4, 5, 6, 7, 8],
+                        'seam-taa-fade-route-original-owner-age': [3, 6, 7, 8], 'seam-taa-fade-route-original-age': [6, 7]}
+FADE_ROUTE_AGE_OWNER_RESETS = {'seam-taa-fade-route-hover-owner': [], 'seam-taa-fade-route-original-owner-age': [3, 8]}
 LIGHTMAP_FADE_STEPS = (('near', 1, True), ('far', 128, True), ('mid', 64, True), ('near_off', 1, False), ('far_off', 128, False),
                        ('mid_on', 64, True), ('mid_reset', 64, True), ('near_reset', 1, True))
 # Hull emissive widening (motion_output_lightmap_widen_inc.h, --hull-emissive-widening K[,B];
@@ -1471,7 +1523,7 @@ def sources():
     paths += [PROBE / name for name in (
         'verify_ownership_integration.py', 'run_ownership_integration.py', 'verify_capture_state.py',
         'bottle.py', 'game_guard.py', 'wine_lock.py', 'shadow_replay_depth.py', 'sun_shadow_apply.py', 'motion_output_sun_apply_inc.h', 'motion_output_sun_apply_cascades_inc.h', 'motion_output_lightmap_fade_inc.h',
-        'motion_output_shadow_retention_inc.h', 'motion_output_shadow_pool_inc.h', 'motion_output_thin_vote_inc.h')]
+        'motion_output_shadow_retention_inc.h', 'motion_output_shadow_pool_inc.h', 'motion_output_thin_vote_inc.h', 'motion_output_fade_route_inc.h')]
     paths += [ROOT / 'tools' / 'analysis' / 'shadow_retention.py']
     return {str(p.relative_to(ROOT)): sha(p) for p in sorted(paths)}
 
@@ -5512,16 +5564,39 @@ def fade_route_fp16_ulp(value):
     return math.ldexp(1, (math.frexp(abs(value))[1] - 1) - 10) if value else math.ldexp(1, -24)
 
 
-def validate_fade_route(name, script, lazy, text, trace, directory):
+def fade_route_ages(directory, frames):
+    """The DLL's taa_age capture dumps (R32F, 64 x 64) over the two quads' interiors, per frame: the history count
+    floor(|age|) and the A' region hold h = (frac(|age|) * 65536) mod 128 (taa-plan-lifted-slot-cap.md step 1)."""
+    dumps = thin_vote_dumps(directory, 'taa_age', 'r32f')
+    out = {}
+    for frame in frames:
+        assert frame in dumps, (directory, 'taa_age dump', frame, sorted(dumps))
+        data = struct.unpack('<4096f', dumps[frame].read_bytes())
+        counts, holds = [], []
+        for y in range(9, 23):
+            for x in list(range(9, 23)) + list(range(41, 55)):
+                v = abs(data[y * 64 + x])
+                count = math.floor(v)
+                counts.append(count)
+                holds.append(round((v - count) * 65536) % 128 if v <= 65 else 0)
+        out[frame] = dict(counts=counts, holds=holds)
+    return out
+
+
+def validate_fade_route(name, script, lazy, text, trace, directory, owner=False, lane=False, capture=FADE_ROUTE_CAPTURE, ages=False, scissor=False):
     """Fade-band arm script (motion_output_fade_route_inc.h): the arm decision per
     frame, the route records of the capture frames, the composite at the oracle
-    pixels of quad P, and the raw versus resolved shift of the ramp quad Q."""
+    pixels of quad P, and the raw versus resolved shift of the ramp quad Q. owner
+    (X3M_FADE_RT2_OWNER): the FADE_ROUTE_RT2 lines (every routed quad's interior
+    holds its z/w in RT2, lane: .g -1 / .b w / .a 1; nothing else changes)."""
     import run_linear_distance_fade_live as live_fade  # the fade composite oracle (imports the material reference)
-    routed_at = {f: fade_route_routed(script, f) for f in range(FADE_ROUTE_FRAMES)}
-    held_at = {f: fade_route_held(script, f) for f in range(FADE_ROUTE_FRAMES)}
+    routed_at = {f: fade_route_routed(script, f, owner) for f in range(FADE_ROUTE_FRAMES)}
+    held_at = {f: fade_route_held(script, f, owner) for f in range(FADE_ROUTE_FRAMES)}
     matched_at = {f: routed_at[f] and f > 0 and routed_at[f - 1] for f in range(FADE_ROUTE_FRAMES)}  # the row history keeps one frame
     original = script in FADE_ROUTE_ORIGINAL_SCRIPTS  # original shading: no composition (mask_valid 0), no linear oracle, no linear_material_frame line
-    overlay = script in ('overlay', 'foreign')  # the overlay arm's counters (overlay_routed/overlay_refused), never the fade arm's
+    # The overlay arm's counters (overlay_routed/overlay_refused), never the fade arm's: overlay and foreign, and hull without
+    # the owner (no fade pair: refused by the overlay arm). With the owner all three are fade pairs.
+    overlay = script in ('overlay', 'foreign', 'hull') and not owner
     lines = text.splitlines()
     terminal = [fields(l) for l in lines if l.startswith('RESULT PASS ')]
     assert len(terminal) == 1 and not any(l.startswith('RESULT FAIL') for l in lines), f'{name}: fixture did not complete'
@@ -5611,15 +5686,16 @@ def validate_fade_route(name, script, lazy, text, trace, directory):
     # (fade_arm 0, attributed to the threshold step: the origin distance is
     # defined for the `behind` rows too), all jittered, in the fade-band state.
     routes = [fields(l) for l in trace.splitlines() if l.startswith('motion_route ')]
-    for frame in FADE_ROUTE_CAPTURE:
+    for frame in capture:
         routed = routed_at[frame]
-        pair = FADE_ROUTE_OVERLAY_PAIR if overlay else FADE_ROUTE_PAIR
+        pair = FADE_ROUTE_HULL_PAIR if script == 'hull' else FADE_ROUTE_OVERLAY_PAIR if script in ('overlay', 'foreign') else FADE_ROUTE_PAIR
         fade = [r for r in routes if int(r['frame']) == frame and r['vs'] == pair[0] and r['ps'] == pair[1] and r['zwrite'] == '0']
         assert len(fade) == 2, (name, frame, 'two fade-pair route records', len(fade))
         for r in fade:
-            expected = dict(gate='0' if routed else '4', routed=str(int(routed)), matched=str(int(matched_at[frame])), depth=str(int(routed)), jittered='1',
+            # gate 6: routed without the row history (only hover-owner's wider capture holds such a frame).
+            expected = dict(gate='4' if not routed else '0' if matched_at[frame] else '6', routed=str(int(routed)), matched=str(int(matched_at[frame])), depth=str(int(routed)), jittered='1',
                             zwrite='0', blend='1', src='5', dst='6', atest='0', mask='7', sepalpha='0', fade_arm=str(int(routed)),
-                            fade_permille=str(fade_route_permille(script, frame)), fade_held=str(int(held_at[frame])), result='00000000',
+                            fade_permille=str(fade_route_permille(script, frame, owner)), fade_held=str(int(held_at[frame])), result='00000000',
                             unmatched='none' if matched_at[frame] else 'history' if routed else 'overlay_node' if overlay else 'fade_threshold')
             if original:
                 # The record's blend triple is the composition shadow's (diagnostics only:
@@ -5639,6 +5715,8 @@ def validate_fade_route(name, script, lazy, text, trace, directory):
         expected = (str(2 * int(routed_at[f] and not overlay)), str(2 * int(not routed_at[f] and not overlay)), str(2 * int(held_at[f])), str(FADE_ROUTE_THRESHOLD), '1',
                     str(2 * int(routed_at[f] and overlay)), str(2 * int(not routed_at[f] and overlay)))
         assert (row['fade_routed'], row['fade_refused'], row['fade_held'], row['fade_route'], row['cutout_caps'], row['overlay_routed'], row['overlay_refused']) == expected, (name, f, row)
+        # The owner's frame fields: the option, no hysteresis eviction (two nodes), no lane row kept masked (original shading binds the twin).
+        assert (row['fade_evicted'], row['fade_owner'], row['fade_owner_masked']) == ('0', str(int(owner)), '0'), (name, f, row)
     for f, row in materials.items():
         expected = (str(2 * int(routed_at[f])), str(2 * int(not routed_at[f])), str(2 * int(held_at[f])), str(FADE_ROUTE_THRESHOLD))
         assert (row['fade_routed'], row['fade_refused'], row['fade_held'], row['fade_route']) == expected, (name, f, row)
@@ -5651,6 +5729,8 @@ def validate_fade_route(name, script, lazy, text, trace, directory):
     # jitter delta; resolved stable across two routed frames (the second
     # matched) and equal to the raw shift across two bracketed frames.
     shifts = {}
+    genuine_sentinel = (owner or script == 'hull' or scissor) and script in ('sentinel', 'original', 'behind', 'hull')  # A scissored for real (the fixture script)
+    owner_masked = owner and lane and not original  # the lane under linear materials: the owner is withdrawn, RT2 stays masked
     raw_evidence = resolved_evidence = 0
     worst_raw = worst_resolved = 0.0
     for frame in range(1, FADE_ROUTE_FRAMES):
@@ -5663,8 +5743,16 @@ def validate_fade_route(name, script, lazy, text, trace, directory):
         stable, follows = matched_at[frame], not routed_at[frame] and not routed_at[frame - 1]
         if original and follows:
             # No bracket, no M: a refused quad over the sentinel fill takes the far-plane
-            # camera path, exact under the rotating camera, so it stays put too.
-            stable, follows = True, False
+            # camera path, exact under the rotating camera, so it stays put too. (In the
+            # option-off scripts the scissor test stays off, so A's rows lie under the quads.)
+            # The owner cases and hull scissor A for real: a refused blended quad over the
+            # sentinel is then the sentinel class (the stabiliser is pinned off here), which
+            # is reported in `shifts`, not asserted.
+            stable, follows = (False, False) if genuine_sentinel else (True, False)
+        if genuine_sentinel and not owner and scissor:
+            # The option-off twin over the real fill: a routed quad keeps RT2 masked (the sentinel under its own RT1 rows),
+            # the class the owner removes; its residuals are reported in `shifts`, not asserted.
+            stable = follows = False
         shifts[frame] = dict(jitter_delta=delta, raw=raw, resolved=resolved, history=history[frame], stable=stable, follows=follows)
         for axis in range(2):
             if abs(delta[axis]) < FADE_ROUTE_MIN_SHIFT:
@@ -5677,8 +5765,48 @@ def validate_fade_route(name, script, lazy, text, trace, directory):
             residual = abs(resolved[axis]) if stable else abs(resolved[axis] - raw[axis])
             worst_resolved = max(worst_resolved, residual); resolved_evidence += 1
             assert residual <= bound, (name, frame, axis, 'resolved shift', resolved[axis], raw[axis], 'routed stays put' if stable else 'masked follows the raw jitter')
-    assert raw_evidence >= FADE_ROUTE_MIN_EVIDENCE and resolved_evidence >= FADE_ROUTE_MIN_EVIDENCE, (name, raw_evidence, resolved_evidence)
-    return dict(script=script, frames=FADE_ROUTE_FRAMES, checks=int(terminal[0]['checks']), history_frames=sum(history.values()),
+    # hull without the owner routes nothing and sits over the real sentinel: no resolved-shift assertion applies.
+    assert raw_evidence >= FADE_ROUTE_MIN_EVIDENCE and resolved_evidence >= (0 if genuine_sentinel and (not any(routed_at.values()) or (not owner and scissor)) else FADE_ROUTE_MIN_EVIDENCE), (name, raw_evidence, resolved_evidence)
+    if genuine_sentinel and not owner and scissor:  # the routed frames' resolved shift against the raw one (see above)
+        routed_pairs = [(f, s) for f, s in shifts.items() if matched_at[f] and history[f] and history[f - 1]]
+        masked_ratio = max((abs(s['resolved'][a]) / max(abs(s['raw'][a]), 1e-9) for f, s in routed_pairs for a in range(2)
+                            if abs(s['jitter_delta'][a]) >= FADE_ROUTE_MIN_SHIFT), default=0.0)
+    extra = {}
+    if genuine_sentinel and not owner and scissor:
+        extra['routed_masked_resolved_over_raw_max'] = masked_ratio
+    rt2 = {int(fields(l)['frame']): fields(l) for l in lines if l.startswith('FADE_ROUTE_RT2 ')}
+    if owner:
+        assert sorted(rt2) == list(range(FADE_ROUTE_FRAMES)), (name, sorted(rt2))
+        over_sentinel = script in ('sentinel', 'original', 'behind', 'hull')
+        for f, row in rt2.items():
+            quad = 2 * FADE_ROUTE_QUAD_PIXELS
+            writes = routed_at[f] and not owner_masked
+            assert (row['owner'], row['lane'], row['routed']) == ('1', str(int(lane)), str(int(routed_at[f]))), (name, f, row)
+            assert (int(row['own']), int(row['kept']), row['outside_changed'], row['sentinel_other'], row['masked']) == \
+                ((quad, 0) if writes else (0, quad)) + ('0', '0', str(2 * int(owner_masked and routed_at[f]))), (name, f, row)
+            assert (int(row['sentinel_checked']) > 0) == over_sentinel, (name, f, row)
+        extra['rt2'] = dict(lane=lane, owner_masked=owner_masked, masked_quads=sum(int(r['masked']) for r in rt2.values()),
+                            owner_frames=sum(routed_at.values()), own_pixels=sum(int(r['own']) for r in rt2.values()),
+                            kept_pixels=sum(int(r['kept']) for r in rt2.values()),
+                            max_depth_error=max(float(r['max_depth_error']) for r in rt2.values()), max_w_error=max(float(r['max_w_error']) for r in rt2.values()))
+    else:
+        assert not rt2, (name, 'FADE_ROUTE_RT2 lines without the owner')
+    if ages:
+        # hover-owner (thin region 0.97, A' hold): the history count and the region hold over both quads on the capture frames.
+        age = fade_route_ages(directory, capture)
+        rows = {f: dict(permille=FADE_ROUTE_HOVER_PERMILLE[f], routed=routed_at[f], count_min=min(a['counts']), count_max=max(a['counts']),
+                        hold_max=max(a['holds']), held_px=sum(h > 0 for h in a['holds'])) for f, a in age.items()}
+        # No region reopen on a 449 frame: no quad pixel's hold rises from the frame before.
+        reopen = {f: sum(h > p for h, p in zip(age[f]['holds'], age[f - 1]['holds'])) for f in capture if f - 1 in age and FADE_ROUTE_HOVER_PERMILLE[f] == 449}
+        assert reopen and all(v == 0 for v in reopen.values()), (name, 'region reopen on a 449 frame', reopen, rows)
+        # History restarts over the quads: the frames whose count is below the frame before's everywhere; fresh: the
+        # frames whose count is 1 (X3M_FRESH_AGE, current-only) on every quad pixel. Pinned per case (measured).
+        restarts = [f for f in capture if f - 1 in age and max(age[f]['counts']) < min(age[f - 1]['counts'])]
+        fresh = [f for f in capture if max(age[f]['counts']) == 1]
+        if name in FADE_ROUTE_AGE_FRESH:
+            assert fresh == FADE_ROUTE_AGE_FRESH[name], (name, 'fresh frames', fresh, rows)
+        extra['ages'] = dict(frames=rows, reopen_449=reopen, restarts=restarts, fresh=fresh)
+    return dict(script=script, frames=FADE_ROUTE_FRAMES, checks=int(terminal[0]['checks']), history_frames=sum(history.values()), **extra,
                 routed_frames=sum(routed_at.values()), held_frames=sum(held_at.values()), switch_step=switch_step,
                 max_code_error=max_code_error, max_tolerance_fraction=max_tolerance_fraction, raw_evidence=raw_evidence, resolved_evidence=resolved_evidence,
                 worst_raw_error_px=worst_raw, worst_resolved_residual_px=worst_resolved,
@@ -5913,6 +6041,7 @@ def main(argv=None):
                        X3M_TAA_MOTION_WEIGHT='0',  # DLL default 0.7,2,8 under an age program since Run 70 A; no case here runs one, pinned off so a shell value cannot reach the DLL
                        X3M_TAA_HISTORY_TAPS='5',  # S3 default, pinned; HISTORY_TAPS16_CASE sets 16
                        X3M_TAA_REGION_HOLD='on',  # A' default, pinned (inert without the camera gate); REGION_HOLD_TWINS set their own
+                       X3M_FADE_RT2_OWNER='off',  # DLL default off, pinned so a shell value cannot reach the DLL; the -owner cases set on
                        X3M_TAA_SENTINEL_STABILISER='0',
                        X3M_TELEMETRY_DRAW='1',  # per-draw metrics (gate_us, route_draw_us, ...) are gated behind this switch since a8d4309; the validators require them
                        X3M_FIXTURE_CAMERA='rotate' if camera else 'none', X3M_TAA_SENTINEL=sentinel or 'auto', X3M_FIXTURE_WRAP='0',
@@ -6182,7 +6311,12 @@ def main(argv=None):
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} S3={case["bodies"]["3S"]} N6={case["bodies"]["6N"]}', flush=True)
                 continue
             if mode == 'faderoute':
-                case = validate_fade_route(name, hdr_env['X3M_FIXTURE_FADE_SCRIPT'], lazy, text, trace, directory)
+                owner_case = hdr_env.get('X3M_FADE_RT2_OWNER') == 'on'
+                aged = 'X3M_TAA_THIN_REGION' in hdr_env  # the age cases: thin region 0.97, captures 1-8
+                case = validate_fade_route(name, hdr_env['X3M_FIXTURE_FADE_SCRIPT'], lazy, text, trace, directory, owner=owner_case,
+                                           lane=hdr_env.get('X3M_SUN_SHADOW_LANE') == '1',
+                                           capture=FADE_ROUTE_OWNER_HOVER_CAPTURE if aged else FADE_ROUTE_CAPTURE, ages=aged,
+                                           scissor=hdr_env.get('X3M_FIXTURE_FADE_SCISSOR') == '1')
                 if name in LIGHTMAP_FADE_OVERLAY_CASES:
                     case['script_lines'] = [l for l in text.splitlines() if l.startswith(('FADE_ROUTE ', 'FADE_ROUTE_SAMPLE ', 'COLOR '))]
                     gained = [fields(l) for l in trace.splitlines() if l.startswith('hull_lightmap_frame ')]
@@ -6301,6 +6435,36 @@ def main(argv=None):
             assert differing_alpha > 0, on_name
             result['thin_vote_twins'][on_name] = {'twin': off_name, 'frames': frames, 'rt1_identical': True, 'rt2_rgb_identical': True,
                                                   'rt2_alpha_pixels_differing': differing_alpha}
+            save()
+        for on_name, off_name in THIN_VOTE_OWNER_TWINS.items():
+            if on_name not in result['cases'] or off_name not in result['cases']:
+                continue
+            on_dir, off_dir = ROOT / result['cases'][on_name]['directory'], ROOT / result['cases'][off_name]['directory']
+            motion_on, motion_off = thin_vote_dumps(on_dir, 'motion', 'rgba32f'), thin_vote_dumps(off_dir, 'motion', 'rgba32f')
+            depth_on, depth_off = thin_vote_dumps(on_dir, 'depth', 'rgba32f'), thin_vote_dumps(off_dir, 'depth', 'rgba32f')
+            frames = sorted(set(motion_on) & set(motion_off) & set(depth_on) & set(depth_off))
+            assert len(frames) >= 4 and set(motion_on) == set(motion_off) and set(depth_on) == set(depth_off), (on_name, sorted(motion_on), sorted(motion_off))
+            for frame in frames:
+                assert motion_on[frame].read_bytes() == motion_off[frame].read_bytes(), f'{on_name}: RT1 of frame {frame} differs from {off_name}'
+                assert depth_on[frame].read_bytes() == depth_off[frame].read_bytes(), f'{on_name}: RT2 of frame {frame} differs from {off_name}'
+            result['thin_vote_twins'][on_name] = {'twin': off_name, 'frames': frames, 'rt1_identical': True, 'rt2_identical': True}
+            save()
+        # Fade owner age twins: the history counts over the quads on the capture frames, the owner case against its
+        # option-off twin (fade-rt2-ownership.md section 4); recorded, and for hover asserted identical (its resets come from
+        # the bracket's M and the rows' one-frame history, not from the owner).
+        result['fade_route_age_twins'] = {}
+        for on_name, off_name in FADE_ROUTE_AGE_TWINS.items():
+            if on_name not in result['cases'] or off_name not in result['cases']:
+                continue
+            a, b = result['cases'][on_name]['ages'], result['cases'][off_name]['ages']
+            counts = {f: (a['frames'][f]['count_min'], a['frames'][f]['count_max'], b['frames'][f]['count_min'], b['frames'][f]['count_max']) for f in a['frames']}
+            differing = sorted(f for f, c in counts.items() if c[:2] != c[2:])
+            if 'hover' in on_name:
+                assert not differing and a['fresh'] == b['fresh'], (on_name, off_name, counts)
+            # The resets the owner adds: its fresh frames the twin keeps history on (the falling edges), none removed.
+            assert set(b['fresh']) <= set(a['fresh']) and sorted(set(a['fresh']) - set(b['fresh'])) == FADE_ROUTE_AGE_OWNER_RESETS[on_name], (on_name, a['fresh'], b['fresh'])
+            result['fade_route_age_twins'][on_name] = {'twin': off_name, 'fresh_owner': a['fresh'], 'fresh_twin': b['fresh'],
+                                                       'frames_differing': differing, 'counts': counts}
             save()
         if only:
             assert set(result['cases']) | set(result['bench']) == only, 'Selected case inventory differs from requested cases'

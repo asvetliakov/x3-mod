@@ -18,7 +18,14 @@ namespace x3m::fade_route {
 // registers their CTAB names: g_AlphaValue (float4, .x used), g_FogClip
 // (float4, .xy used), g_EnableFog = b0 for every one (shader sweep
 // inventory, verification/results/shader-sweep-inventory.json; the loop
-// programs carry c39/c41, the two fixed-light programs c18/c20).
+// programs carry c39/c41, the two fixed-light programs c18/c20). Rows 8 and 9
+// (docs/architecture/fade-rt2-ownership.md section 3): the run214 station
+// families' vertex programs 494fe349b8bc12ec and 53a0a641107ed76c (vs_3_0,
+// runtime captured) declare the same three at c39 / c41 / b0. They have no
+// distance_fade_rows pair, so the arm admits them only with X3M_FADE_RT2_OWNER
+// on (arm_pair below); the glass c30104cb0efb6675 and damage 37c34a7478544c14
+// programs, whose fade-band-state draws are material transparency, are not
+// rows and keep the overlay path.
 struct Registers { std::uint8_t alpha = 0, fog = 0; };
 // The single source for this arm: registers() scans this table and the
 // shader-population classifier (src/renderer/shader_population.h) enumerates
@@ -28,14 +35,26 @@ inline constexpr VertexProgram vertex_programs[] = {
     {0xb0602757fce6e870ull, {39, 41}}, {0x0c223ad11bce02d5ull, {39, 41}},
     {0x167eb2d5629ab9d3ull, {39, 41}}, {0x330ceb9dd874ede2ull, {39, 41}},
     {0x4944d81dfe531b37ull, {39, 41}},
-    {0x233d17d26ce0c1fcull, {18, 20}}, {0x12b8a13f13fe8cfeull, {18, 20}}};
+    {0x233d17d26ce0c1fcull, {18, 20}}, {0x12b8a13f13fe8cfeull, {18, 20}},
+    {0x494fe349b8bc12ecull, {39, 41}}, {0x53a0a641107ed76cull, {39, 41}}};
 inline constexpr std::size_t vertex_program_count =
     sizeof vertex_programs / sizeof vertex_programs[0];
-static_assert(vertex_program_count == 7, "seven distance-fade vertex programs");
+static_assert(vertex_program_count == 9, "seven distance-fade vertex programs and the two run214 station families");
 constexpr bool registers(std::uint64_t vs, Registers& out) noexcept {
     for (const auto& row : vertex_programs)
         if (row.hash == vs) { out = row.registers; return true; }
     return false;
+}
+// The arm's pair identity (MotionOutput's shadow_.fade_route_pair; gate 3 has
+// already required a reviewed motion pair): a registers row is required
+// always; without the widening the pair must also be one of the bracket's
+// distance_fade_rows (the seven pairs of the earlier builds), with it a
+// registers row alone makes a fade pair (fade-rt2-ownership.md section 3).
+// The route widens with X3M_FADE_RT2_OWNER under original shading only.
+// The bracket's own identity (linear_distance_fade_sampler_mask) is not this
+// function and admits nothing new.
+constexpr bool arm_pair(bool registers_row, bool distance_fade_pair, bool widen) noexcept {
+    return registers_row && (widen || distance_fade_pair);
 }
 
 // The exact fade-band render state (the fade route's nine-state check plus
@@ -145,13 +164,16 @@ constexpr bool admit(unsigned f_permille, unsigned threshold_permille) noexcept 
 // - band; a key refused, not seen for more than `expiry` frames, or evicted
 // from the table (the oldest entry goes) starts again at the threshold. Key
 // 0 (no identity) is decided by the threshold alone and never stored.
-// Fixed storage, a linear scan per recognised fade-band draw.
+// Fixed storage, a linear scan per recognised fade-band draw. `evicted`
+// counts the entries a full table displaced (the oldest one each time) since
+// the owner last read it (the fade_route_frame line's fade_evicted).
 struct Hysteresis {
     static constexpr unsigned band = 100u, capacity = 64u;
     static constexpr std::uint64_t expiry = 8u;
     struct Entry { std::uint64_t key = 0, frame = 0; bool armed = false; };
     Entry entries[capacity]{};
     unsigned count = 0;
+    std::uint32_t evicted = 0;
     void clear() noexcept { count = 0; }
     // `held`: admitted below the threshold by the band only.
     bool admit(std::uint64_t key, std::uint64_t frame, unsigned f_permille, unsigned threshold_permille, bool& held) noexcept {
@@ -167,7 +189,11 @@ struct Hysteresis {
         const unsigned low = threshold_permille > band ? threshold_permille - band : 0u;
         const bool admitted = f_permille >= threshold_permille || (armed && f_permille >= low);
         held = admitted && f_permille < threshold_permille;
-        if (!entry) { entry = count < capacity ? &entries[count++] : &entries[oldest]; entry->key = key; }
+        if (!entry) {
+            if (count < capacity) entry = &entries[count++];
+            else { entry = &entries[oldest]; ++evicted; }
+            entry->key = key;
+        }
         entry->frame = frame; entry->armed = admitted;
         return admitted;
     }

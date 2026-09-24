@@ -54,6 +54,19 @@
 // lifetime serial (scope-gate refusal) and Q on its own node (gate 4): the arm's fail-safe refuses both
 // every frame (gate 4, `unmatched=overlay_node`,
 // overlay_refused 2) and they stay plain native draws.
+// X3M_FADE_RT2_OWNER=on (docs/architecture/fade-rt2-ownership.md): every quad
+// the fade arm routes owns RT2: its interior carries the quads' z/w (.3, FP32
+// raster tolerance), and with the four-channel lane (X3M_SUN_SHADOW_LANE=1)
+// .g = -1 (the invalid-share twin), .b = the clip w (1, or 2 for behind) and
+// .a = 1; a refused quad leaves RT2 unchanged, no draw changes RT2 outside its
+// own raster, and over the sentinel fill the rest of the upper half keeps -1.
+// overlay becomes a fade-arm case (the hull pair's VS has a registers row:
+// fade_routed 2, overlay_routed 0) and foreign runs the pair at g_AlphaValue
+// .390625 (390 permille, refused at the threshold).
+// hull (owner cases; without the owner the run214 refusal): the station
+// family 494fe349b8bc12ec/fffdabd910793aba over the sentinel fill on its own
+// nodes (no routed draw of the same node before it), fog on at g_FogClip
+// (1, 0), fraction 1000: routed, owner.
 // Twelve frames across the eight jitter phases with the rotating camera (cut
 // at frame 7); the raw FP16 scene after the quads, RT1, M (not under
 // original) and the presented frame are dumped per frame.
@@ -65,12 +78,19 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
     char script_setting[16]{};GetEnvironmentVariableA("X3M_FIXTURE_FADE_SCRIPT",script_setting,sizeof script_setting);
     const bool routed_script=std::strcmp(script_setting,"routed")==0,masked_script=std::strcmp(script_setting,"masked")==0,
                sentinel_script=std::strcmp(script_setting,"sentinel")==0,hover_script=std::strcmp(script_setting,"hover")==0,
-               behind_script=std::strcmp(script_setting,"behind")==0,foreign_script=std::strcmp(script_setting,"foreign")==0,overlay_script=std::strcmp(script_setting,"overlay")==0||foreign_script;
+               behind_script=std::strcmp(script_setting,"behind")==0,foreign_script=std::strcmp(script_setting,"foreign")==0,overlay_script=std::strcmp(script_setting,"overlay")==0||foreign_script,
+               hull_script=std::strcmp(script_setting,"hull")==0;
+    // X3M_FADE_RT2_OWNER (fade-rt2-ownership.md) and the four-channel lane RT2 (X3M_SUN_SHADOW_LANE=1).
+    char owner_setting[8]{};GetEnvironmentVariableA("X3M_FADE_RT2_OWNER",owner_setting,sizeof owner_setting);const bool owner=std::strcmp(owner_setting,"on")==0;
+    char lane_setting[4]{};GetEnvironmentVariableA("X3M_SUN_SHADOW_LANE",lane_setting,sizeof lane_setting);const bool lane=std::strcmp(lane_setting,"1")==0;
+    // X3M_FIXTURE_FADE_SCISSOR=1: the option-off age twins scissor A for real as the owner cases do (the pinned scripts do not).
+    char scissor_setting[4]{};GetEnvironmentVariableA("X3M_FIXTURE_FADE_SCISSOR",scissor_setting,sizeof scissor_setting);const bool scissor=std::strcmp(scissor_setting,"1")==0;
+    if(owner)require(f.emission_status(f.d.p,83)==1u,"fade route: the DLL resolved the owner option on"); // off cases keep their check count
     // original (and behind, the origin-behind-the-camera rows): the hover schedule over the sentinel fill under original shading
     // (X3M_LINEAR_MATERIALS=0, no fade bracket, no composition, no M): the arm alone decides. overlay: the hull pair's
     // same-node source-over sub-mesh over A under original shading (the overlay arm alone decides).
-    const bool original_script=std::strcmp(script_setting,"original")==0||behind_script||overlay_script;
-    require(routed_script||masked_script||sentinel_script||hover_script||original_script,"X3M_FIXTURE_FADE_SCRIPT=routed|masked|sentinel|hover|original|behind|overlay|foreign");
+    const bool original_script=std::strcmp(script_setting,"original")==0||behind_script||overlay_script||hull_script;
+    require(routed_script||masked_script||sentinel_script||hover_script||original_script,"X3M_FIXTURE_FADE_SCRIPT=routed|masked|sentinel|hover|original|behind|overlay|foreign|hull");
     const bool over_sentinel=sentinel_script||(original_script&&!overlay_script);
     if(original_script)require(f.emission_status(f.d.p,30)==1u,"fade route original shading: the cutout probe's verdict is Ready without linear materials");
     constexpr unsigned frames=12;
@@ -78,16 +98,18 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
     constexpr float hover_alpha[frames]={.8125f,.71875f,.71875f,.625f,.71875f,.71875f,.8125f,.71875f,.625f,.8125f,.71875f,.71875f};
     constexpr float hover_fog_x[frames]={-.4921875f,-.55078125f,-.55078125f,-.609375f,-.55078125f,-.55078125f,-.4921875f,-.55078125f,-.609375f,-.4921875f,-.55078125f,-.55078125f}; // Q: fraction 1 * (fog_x + 1)
     constexpr bool hover_routed[frames]={1,1,1,0,0,0,1,1,0,1,1,1},hover_held[frames]={0,1,1,0,0,0,0,1,0,0,1,1};
-    const bool full_alpha=routed_script||sentinel_script||overlay_script; // g_AlphaValue 1, g_FogClip (1, 0), diffuse alpha 1: fraction 1000 (overlay: routed by the same-node rule)
+    const bool full_alpha=routed_script||sentinel_script||overlay_script||hull_script; // g_AlphaValue 1, g_FogClip (1, 0), diffuse alpha 1: fraction 1000 (overlay: routed by the same-node rule)
     // original and behind follow the hover schedule (routed, held and below-threshold frames) over the sentinel fill.
-    const bool hover_schedule=hover_script||(original_script&&!overlay_script);
-    const auto routed_frame=[&](unsigned plan){return hover_schedule?hover_routed[plan]:full_alpha&&!foreign_script;};
+    const bool hover_schedule=hover_script||(original_script&&!overlay_script&&!hull_script);
+    // hull without the owner: its pair is no fade pair and no same-node overlay, so the arm refuses it (the run214 class).
+    const auto routed_frame=[&](unsigned plan){return hover_schedule?hover_routed[plan]:full_alpha&&!foreign_script&&(owner||!hull_script);};
     const auto held_frame=[&](unsigned plan){return hover_schedule&&hover_held[plan];};
-    const auto alpha_value=[&](unsigned plan){return hover_schedule?hover_alpha[plan]:full_alpha?1.f:.625f;};
+    // foreign with the owner: the same pair is a fade pair then, so it keeps its refusal below the threshold (.390625: 390 permille).
+    const auto alpha_value=[&](unsigned plan){return hover_schedule?hover_alpha[plan]:foreign_script&&owner?.390625f:full_alpha?1.f:.625f;};
     Com<IDirect3DVertexShader9> vs;Com<IDirect3DPixelShader9> ps;
     {
-        // overlay: the hull (cutout) pair; every other script the fade pair.
-        const char* vs_id=overlay_script?"53a0a641107ed76c":"b0602757fce6e870";const char* ps_id=overlay_script?"63f96eba9eea7880":"517540ae6d5e5410";
+        // overlay: the hull (cutout) pair; hull: the run214 station family; every other script the fade pair.
+        const char* vs_id=hull_script?"494fe349b8bc12ec":overlay_script?"53a0a641107ed76c":"b0602757fce6e870";const char* ps_id=hull_script?"fffdabd910793aba":overlay_script?"63f96eba9eea7880":"517540ae6d5e5410";
         auto v=load((supplied.substr(0,slash+1)+"vs_"+vs_id+".bin").c_str());auto p=load((supplied.substr(0,slash+1)+"ps_"+ps_id+".bin").c_str());
         require(fnv(v.data(),v.size()*4)==std::strtoull(vs_id,nullptr,16)&&fnv(p.data(),p.size()*4)==std::strtoull(ps_id,nullptr,16),"fade route exact originals");
         api(f.d->CreateVertexShader(reinterpret_cast<const DWORD*>(v.data()),&vs.p),"fade route original VS");
@@ -105,7 +127,16 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
     Com<IDirect3DVertexDeclaration9> declaration;Com<IDirect3DVertexBuffer9> vertices[2];Com<IDirect3DIndexBuffer9> indices;
     api(f.d->CreateVertexDeclaration(elements,&declaration.p),"fade route declaration");
     void* data=nullptr;
-    for(unsigned i=0;i<2;++i){api(f.d->CreateVertexBuffer(sizeof quads[i],0,0,D3DPOOL_MANAGED,&vertices[i].p,nullptr),"fade route vertices");api(vertices[i]->Lock(0,0,&data,0),"fade route vertex lock");std::memcpy(data,quads[i],sizeof quads[i]);api(vertices[i]->Unlock(),"fade route vertex unlock");}
+    // hull: the station family's VS reads TEXCOORD0 as four lanes (the light map's UV in .zw, which its pixel program's
+    // output follows), so its quads carry (u, v, u, v) there; every other script keeps the two-lane layout above.
+    struct HullVertex {float p[3],uv[4],n[3],b[3],t[3];};
+    HullVertex hull_quads[2][4];
+    for(unsigned i=0;i<2;++i)for(unsigned k=0;k<4;++k){const auto& v=quads[i][k];hull_quads[i][k]={{v.p[0],v.p[1],v.p[2]},{v.uv[0],v.uv[1],v.uv[0],v.uv[1]},{v.n[0],v.n[1],v.n[2]},{v.b[0],v.b[1],v.b[2]},{v.t[0],v.t[1],v.t[2]}};}
+    const D3DVERTEXELEMENT9 hull_elements[]={{0,0,D3DDECLTYPE_FLOAT3,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_POSITION,0},{0,12,D3DDECLTYPE_FLOAT4,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_TEXCOORD,0},{0,28,D3DDECLTYPE_FLOAT3,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_NORMAL,0},{0,40,D3DDECLTYPE_FLOAT3,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_BINORMAL,0},{0,52,D3DDECLTYPE_FLOAT3,D3DDECLMETHOD_DEFAULT,D3DDECLUSAGE_TANGENT,0},D3DDECL_END()};
+    if(hull_script){declaration.reset();api(f.d->CreateVertexDeclaration(hull_elements,&declaration.p),"fade route hull declaration");}
+    const UINT vertex_stride=hull_script?UINT(sizeof(HullVertex)):UINT(sizeof(SourceVertex));
+    for(unsigned i=0;i<2;++i){const void* source=hull_script?static_cast<const void*>(hull_quads[i]):static_cast<const void*>(quads[i]);const UINT bytes=hull_script?UINT(sizeof hull_quads[i]):UINT(sizeof quads[i]);
+        api(f.d->CreateVertexBuffer(bytes,0,0,D3DPOOL_MANAGED,&vertices[i].p,nullptr),"fade route vertices");api(vertices[i]->Lock(0,0,&data,0),"fade route vertex lock");std::memcpy(data,source,bytes);api(vertices[i]->Unlock(),"fade route vertex unlock");}
     const unsigned short triangles[]={0,1,2,2,1,3};
     api(f.d->CreateIndexBuffer(sizeof triangles,0,D3DFMT_INDEX16,D3DPOOL_MANAGED,&indices.p,nullptr),"fade route indices");
     api(indices->Lock(0,0,&data,0),"fade route index lock");std::memcpy(data,triangles,sizeof triangles);api(indices->Unlock(),"fade route index unlock");
@@ -122,7 +153,7 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
     }
     // overlay: the hull pair samples the node's cube map at stage 3 (one constant texel per face).
     Com<IDirect3DCubeTexture9> cube;
-    if(overlay_script){
+    if(overlay_script||hull_script){
         api(f.d->CreateCubeTexture(1,1,0,D3DFMT_A32B32G32R32F,D3DPOOL_MANAGED,&cube.p,nullptr),"fade route overlay cube");
         for(unsigned face=0;face<6;++face){D3DLOCKED_RECT lock{};api(cube->LockRect(D3DCUBEMAP_FACES(face),0,&lock,nullptr,0),"fade route overlay cube lock");const float value[]={.25f,.5f,.125f,1};std::memcpy(lock.pBits,value,16);api(cube->UnlockRect(D3DCUBEMAP_FACES(face),0),"fade route overlay cube unlock");}
     }
@@ -150,9 +181,9 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
         api(f.d->SetRenderState(D3DRS_COLORWRITEENABLE,7),"fade route RGB mask");
         const RECT whole{0,0,LONG(f.W),LONG(f.H)};api(f.d->SetScissorRect(&whole),"fade route scissor");api(f.d->SetRenderState(D3DRS_SCISSORTESTENABLE,TRUE),"fade route scissor enabled");
         for(unsigned i=0;i<16;++i)api(f.d->SetRenderState(D3DRENDERSTATETYPE((i<8?D3DRS_WRAP0:D3DRS_WRAP8)+i%8),0),"fade route WRAP inputs");
-        api(f.d->SetVertexDeclaration(declaration.p),"fade route declaration bind");api(f.d->SetStreamSource(0,vertices[which].p,0,sizeof(SourceVertex)),"fade route stream");api(f.d->SetStreamSourceFreq(0,1),"fade route frequency");api(f.d->SetIndices(indices.p),"fade route index binding");
+        api(f.d->SetVertexDeclaration(declaration.p),"fade route declaration bind");api(f.d->SetStreamSource(0,vertices[which].p,0,vertex_stride),"fade route stream");api(f.d->SetStreamSourceFreq(0,1),"fade route frequency");api(f.d->SetIndices(indices.p),"fade route index binding");
         api(f.d->SetVertexShader(vs.p),"fade route VS bind");api(f.d->SetPixelShader(ps.p),"fade route PS bind");
-        float vc[48][4]{},pc[12][4]{};
+        float vc[48][4]{},pc[24][4]{};
         // behind: the same raster as the identity rows (w 2 at every vertex, z .3) with the origin's w = -1 (see the header comment).
         if(behind_script){vc[24][0]=2;vc[25][1]=2;vc[26][2]=2;vc[27][2]=10;vc[27][3]=-1;}else for(unsigned i=0;i<4;++i)vc[24+i][i]=1;
         for(unsigned i=0;i<3;++i)vc[31+i][i]=1;
@@ -163,19 +194,25 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
         vc[0][2]=2;vc[1][0]=.5f;vc[1][1]=.25f;vc[1][2]=.125f;vc[2][0]=2;vc[2][1]=.25f;vc[2][2]=.125f;
         // The hull pair's pixel inputs and sampler roles are the cutout fixture's (motion_output_cutout_inc.h pair 0).
         if(overlay_script){pc[0][0]=pc[1][1]=pc[2][2]=1;pc[4][2]=1;pc[5][0]=.375f;pc[5][1]=.25f;pc[5][2]=.5f;pc[6][2]=-1;pc[7][0]=.125f;pc[7][1]=.5f;pc[7][2]=.25f;}
+        // hull (fffdabd910793aba's CTAB): the same two directional lights one register up (c5..c8), diffuse strength c12 = 1,
+        // specular power c10 = 8, every other material term 0; b0 (decal) and b1 (colour mixing) off.
+        else if(hull_script){pc[5][2]=1;pc[6][0]=.375f;pc[6][1]=.25f;pc[6][2]=.5f;pc[7][2]=-1;pc[8][0]=.125f;pc[8][1]=.5f;pc[8][2]=.25f;pc[10][0]=8;pc[12][0]=1;}
         else{pc[0][2]=1;pc[1][0]=.375f;pc[1][1]=.25f;pc[1][2]=.5f;pc[2][2]=-1;pc[3][0]=.125f;pc[3][1]=.5f;pc[3][2]=.25f;pc[4][0]=.5f;pc[5][0]=1;}
-        api(f.d->SetVertexShaderConstantF(0,vc[0],48),"fade route VS inputs");api(f.d->SetPixelShaderConstantF(0,pc[0],12),"fade route PS inputs");
+        api(f.d->SetVertexShaderConstantF(0,vc[0],48),"fade route VS inputs");api(f.d->SetPixelShaderConstantF(0,pc[0],hull_script?24:12),"fade route PS inputs");
+        if(hull_script){const BOOL off[2]={FALSE,FALSE};api(f.d->SetPixelShaderConstantB(0,off,2),"fade route hull PS switches");}
         const int count[4]={1,0,1,0};const BOOL fog=!overlay_script;api(f.d->SetVertexShaderConstantI(0,count,1),"fade route point count");api(f.d->SetVertexShaderConstantB(0,&fog,1),"fade route fog");
         for(unsigned stage=0;stage<7;++stage) {
-            IDirect3DBaseTexture9* texture=stage==0?(which?ramp.p:textures[0].p):stage==1?(overlay_script?textures[2].p:textures[1].p):stage==2?(overlay_script?textures[1].p:textures[2].p):(stage==3&&overlay_script)?static_cast<IDirect3DBaseTexture9*>(cube.p):nullptr;
+            const bool hull_roles=overlay_script||hull_script; // the hull pairs' sampler roles (stage 4: fffdabd9's occlusion map)
+            const bool hull_ramp=hull_script&&which&&stage==2; // hull Q: the ramp on the light-map stage its output follows
+            IDirect3DBaseTexture9* texture=stage==0?(which?ramp.p:textures[0].p):stage==1?(hull_roles?textures[2].p:textures[1].p):stage==2?(hull_ramp?ramp.p:hull_roles?textures[1].p:textures[2].p):(stage==3&&hull_roles)?static_cast<IDirect3DBaseTexture9*>(cube.p):(stage==4&&hull_script)?textures[1].p:nullptr;
             api(f.d->SetTexture(stage,texture),"fade route sampler role");
-            for(auto filter:{D3DSAMP_MINFILTER,D3DSAMP_MAGFILTER})api(f.d->SetSamplerState(stage,filter,which&&stage==0?D3DTEXF_LINEAR:D3DTEXF_POINT),"fade route sampling");
+            for(auto filter:{D3DSAMP_MINFILTER,D3DSAMP_MAGFILTER})api(f.d->SetSamplerState(stage,filter,(which&&stage==0)||hull_ramp?D3DTEXF_LINEAR:D3DTEXF_POINT),"fade route sampling");
             api(f.d->SetSamplerState(stage,D3DSAMP_MIPFILTER,D3DTEXF_NONE),"fade route no mip");api(f.d->SetSamplerState(stage,D3DSAMP_SRGBTEXTURE,FALSE),"fade route numeric sampler");
             api(f.d->SetSamplerState(stage,D3DSAMP_ADDRESSU,D3DTADDRESS_CLAMP),"fade route address u");api(f.d->SetSamplerState(stage,D3DSAMP_ADDRESSV,D3DTADDRESS_CLAMP),"fade route address v");
             const float bias=0;DWORD bits;std::memcpy(&bits,&bias,4);api(f.d->SetSamplerState(stage,D3DSAMP_MIPMAPLODBIAS,bits),"fade route zero bias");
         }
     };
-    const auto read=[&](unsigned which){std::vector<float> out(std::size_t(f.W)*f.H*(which==2?1:4));unsigned w=0,h=0;api(f.emission_readback(f.d.p,which,out.data(),unsigned(out.size()),&w,&h),"fade route raw target");require(w==f.W&&h==f.H,"fade route target dimensions");return out;};
+    const auto read=[&](unsigned which){std::vector<float> out(std::size_t(f.W)*f.H*(which==2?(lane?4:1):4));unsigned w=0,h=0;api(f.emission_readback(f.d.p,which,out.data(),unsigned(out.size()),&w,&h),"fade route raw target");require(w==f.W&&h==f.H,"fade route target dimensions");return out;};
     const auto scene=[&](){Com<IDirect3DSurface9> logical;api(f.d->GetRenderTarget(0,&logical.p),"fade route logical view restores lazy MRTs");unsigned w=0,h=0;auto result=f.hdr_image(&w,&h);require(w==f.W&&h==f.H,"fade route HDR dimensions");return result;};
     const auto write=[&](const char* kind,const std::vector<float>& values){char path[96];std::snprintf(path,sizeof path,"fade_route_%s_%llu.f32",kind,f.frame);FILE* file=std::fopen(path,"wb");require(file!=nullptr,"fade route evidence file");require(std::fwrite(values.data(),4,values.size(),file)==values.size(),"fade route evidence bytes");std::fclose(file);};
     Object objects[2]={f.b,f.b};
@@ -188,27 +225,57 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
     if(foreign_script){objects[0].scope=f.a.scope;objects[0].scope.node_serial=9100;}
     // Interior pixels of each quad (edges excluded): P columns 9..22, Q 41..54, rows 9..22.
     const auto interior=[&](unsigned which,unsigned x,unsigned y){const unsigned l=which?41:9,r=which?55:23;return x>=l&&x<r&&y>=9&&y<23;};
+    // The pixels a quad's raster can reach under the jitter (P 6.4..25.6, Q 38.4..57.6, rows 6.4..25.6, +-0.5 px).
+    const auto near_quad=[&](unsigned which,unsigned x,unsigned y){const unsigned l=which?37:5,r=which?59:27;return x>=l&&x<r&&y>=5&&y<27;};
+    const unsigned rt2_lanes=lane?4u:1u;const float quad_w=behind_script?2.f:1.f;
+    // The lane RT2 under linear materials: a material fade row has no invalid-share twin, so the owner is withdrawn and
+    // RT2 stays masked (fade_owner_masked counts the routed quads).
+    const bool owner_masked=owner&&lane&&!original_script;
     for(unsigned plan=0;plan<frames;++plan) {
         const bool routed_plan=routed_frame(plan);
         f.frame_begin();f.linear_material_inputs();f.write_reserved();
         if(over_sentinel){const RECT lower{0,LONG(f.H/2),LONG(f.W),LONG(f.H)};api(f.d->SetScissorRect(&lower),"fade route A below the quads");}
+        // frame_begin's scene states leave SCISSORTESTENABLE off, so the rectangle alone does not keep A out of the upper half
+        // (the option-off scripts keep that, their pinned behaviour); the owner cases and hull enable it: their quads really
+        // sit over the sentinel fill.
+        if(over_sentinel&&(owner||hull_script||scissor))api(f.d->SetRenderState(D3DRS_SCISSORTESTENABLE,TRUE),"fade route A scissored");
         f.draw(f.a,0,0,0,true,true,f.a.recorded,Alter::None,false);
         const unsigned required=f.emission_status(f.d.p,16);
         require(required==(original_script?0u:2u),"fade route: the fade producer is the required one (none under original shading)");
         unsigned covered=0,own_motion=0,mask_set=0,preserved=1,alpha_kept=1;
+        unsigned rt2_own=0,rt2_kept=0,rt2_outside_changed=0;double rt2_max_depth_error=0,rt2_max_w_error=0;
         for(unsigned which=0;which<2;++which) {
             f.scope(&objects[which]);bind(which,plan);
-            const auto before=scene(),before_motion=read(1),before_depth=overlay_script?read(2):std::vector<float>();
+            const auto before=scene(),before_motion=read(1),before_depth=overlay_script||hull_script||owner?read(2):std::vector<float>();
             const auto state=f.snapshot();
-            // overlay: the arm's decision is counted as overlay_routed/overlay_refused (54/55), never as a fade draw.
-            const unsigned routed_status=overlay_script?54u:50u,refused_status=overlay_script?55u:51u;
+            // overlay: the arm's decision is counted as overlay_routed/overlay_refused (54/55), never as a fade draw
+            // (with the owner the hull pairs are fade pairs: 50/51; hull without it is refused by the overlay arm: 55).
+            const bool overlay_arm=(overlay_script||hull_script)&&!owner;
+            const unsigned routed_status=overlay_arm?54u:50u,refused_status=overlay_arm?55u:51u;
             const unsigned prepared_before=f.emission_status(f.d.p,4),routed_before=f.emission_status(f.d.p,routed_status),refused_before=f.emission_status(f.d.p,refused_status);
             api(f.d->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,0,0,4,0,2),"fade route actual original DIP");++f.draw_index;
             f.compare(state,f.snapshot(),"fade route complete draw restoration");
             const auto after=scene(),motion=read(1),mask=original_script?std::vector<float>():read(3); // no composition, no M under original shading
             const unsigned prepared=f.emission_status(f.d.p,4)-prepared_before,routed_delta=f.emission_status(f.d.p,routed_status)-routed_before,refused_delta=f.emission_status(f.d.p,refused_status)-refused_before;
             require(routed_delta==unsigned(routed_plan)&&refused_delta==unsigned(!routed_plan)&&prepared==(original_script?0u:unsigned(!routed_plan)),"fade route arm decision matches the script (no bracket preparation under original shading)");
-            if(overlay_script)require(read(2)==before_depth,"fade route overlay draw masks RT2: the depth target is unchanged");
+            if(overlay_arm)require(read(2)==before_depth,"fade route overlay draw masks RT2: the depth target is unchanged");
+            if(owner){
+                // Owner: the routed quad's interior holds its own depth (z/w .3; lane: .g -1, .b = w, .a = 1); a refused quad
+                // leaves RT2 as it was; nothing outside the quad's own raster changes.
+                const auto depth=read(2);
+                for(unsigned y=0;y<f.H;++y)for(unsigned x=0;x<f.W;++x){
+                    const std::size_t n=std::size_t(y)*f.W+x;const float* now=&depth[n*rt2_lanes];const float* was=&before_depth[n*rt2_lanes];
+                    const bool changed=std::memcmp(now,was,rt2_lanes*4)!=0;
+                    if(interior(which,x,y)){
+                        if(routed_plan&&!owner_masked){
+                            const double e=std::fabs(double(now[0])-.3),we=lane?std::fabs(double(now[2])-quad_w):0.;
+                            rt2_max_depth_error=std::max(rt2_max_depth_error,e);rt2_max_w_error=std::max(rt2_max_w_error,we);
+                            const bool ok=e<4e-6&&(!lane||(now[1]==-1.f&&we<=1e-6*quad_w&&now[3]==1.f));rt2_own+=ok;
+                            if(!ok)std::printf("FADE_ROUTE_RT2_DIFF frame=%llu quad=%u x=%u y=%u rt2=%.9g,%.9g,%.9g,%.9g before=%.9g\n",f.frame,which,x,y,now[0],lane?now[1]:0.f,lane?now[2]:0.f,lane?now[3]:0.f,was[0]);
+                        } else rt2_kept+=!changed;
+                    } else if(!near_quad(which,x,y))rt2_outside_changed+=changed;
+                }
+            }
             const bool matched=routed_plan&&objects[which].recorded;
             for(unsigned y=0;y<f.H;++y)for(unsigned x=0;x<f.W;++x) {
                 const unsigned n=y*f.W+x,i=4*n;
@@ -233,6 +300,20 @@ void run_fade_route_integration(Fixture& f,const char* original_path) {
         }
         const auto color=scene(),motion=read(1),mask=original_script?std::vector<float>():read(3);
         write("color",color);write("motion",motion);if(!original_script)write("mask",mask);
+        if(owner){
+            // Over the sentinel fill the upper half outside the quads keeps the depth sentinel (.r -1; the lane fill's other
+            // lanes are not all -1, .g is 0, and outside_changed already covers every lane).
+            unsigned sentinel_other=0,sentinel_checked=0;float sentinel_sample=-1.f;
+            if(over_sentinel){const auto depth=read(2);sentinel_sample=depth[(2*std::size_t(f.W)+2)*rt2_lanes];for(unsigned y=0;y<30;++y)for(unsigned x=0;x<f.W;++x){if(near_quad(0,x,y)||near_quad(1,x,y))continue;++sentinel_checked;
+                const float r=depth[(std::size_t(y)*f.W+x)*rt2_lanes];
+                if(r!=-1.f){if(!sentinel_other)std::printf("FADE_ROUTE_RT2_SENTINEL_DIFF frame=%llu x=%u y=%u value=%.9g\n",f.frame,x,y,r);++sentinel_other;}}}
+            std::printf("FADE_ROUTE_RT2 frame=%llu script=%s owner=1 lane=%u routed=%u own=%u kept=%u outside_changed=%u sentinel_checked=%u sentinel_other=%u max_depth_error=%.9g max_w_error=%.9g masked=%u sentinel_sample=%.9g\n",
+                        f.frame,script_setting,unsigned(lane),unsigned(routed_plan),rt2_own,rt2_kept,rt2_outside_changed,sentinel_checked,sentinel_other,rt2_max_depth_error,rt2_max_w_error,f.emission_status(f.d.p,84),sentinel_sample);
+            const bool writes=routed_plan&&!owner_masked;
+            require(rt2_own==(writes?2u*14u*14u:0u)&&rt2_kept==(writes?0u:2u*14u*14u),"fade route owner: a routed quad writes its exact depth into RT2, a refused (or lane-masked) quad leaves it");
+            require(f.emission_status(f.d.p,84)==(owner_masked&&routed_plan?2u:0u),"fade route owner: fade_owner_masked counts exactly the lane-masked routed quads");
+            require(rt2_outside_changed==0&&sentinel_other==0,"fade route owner: RT2 changes only under the routed quads; the sentinel elsewhere");
+        }
         require(alpha_kept,"fade route RGB-masked draws keep the destination alpha");
         if(!routed_plan&&!original_script)require(preserved,"fade route bracketed draws preserve RT1");
         require(mask_set==((routed_plan||original_script)?0u:2u*14u*14u),"fade route M covers exactly the bracketed quads (no M under original shading)");

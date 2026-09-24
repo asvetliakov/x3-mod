@@ -123,6 +123,10 @@ bool sentinelBadBlock=false;
 // 7 px clear of the panel ring, would vote for itself without the limit.
 bool thinEmissive=false,thinEmissiveBad=false;constexpr float emissiveHull=.16f,emissiveValue=3;
 bool thinSentinel=false,sentinelFacets=true,sentinelProps=false,thinFailRows=false;double sentinelMover=0;unsigned sentinelBarFrom=~0u,thinCutFrame=~0u;
+// Fade owner (X3M_FADE_RT2_OWNER; docs/architecture/fade-rt2-ownership.md section 4), sentinel scene: sentinelOwnerFrom != ~0u adds a far
+// routed 8x8 square (value 0.6, depth ownerDepth, x in [6, 14), y in [12, 20)) drawn as the route's masked fade-band row (noDepth: RT1
+// alpha 1, RT2 keeps the sentinel) before that frame and as an RT2 owner (its depth written) from it: one sentinel -> valid class change.
+unsigned sentinelOwnerFrom=~0u;constexpr float ownerDepth=.999f;
 constexpr float sentinelFacetValue=.75f,sentinelBarValue=4;constexpr double sentinelBarV=6;
 constexpr int injectRect[4]={20,9,26,15};
 std::vector<EdgeObject> thin_objects(unsigned n){std::vector<EdgeObject> o;constexpr double S=EdgeScene::S;
@@ -135,6 +139,7 @@ std::vector<EdgeObject> thin_objects(unsigned n){std::vector<EdgeObject> o;const
         if(sentinelFacets)for(double top=std::fmod(2.31+offset,2.37)-2.37;top<S;top+=2.37)o.push_back({0,top,S,top+.8,sentinelFacetValue,-1.f,0,0,false,0,true});
         if(sentinelBadBlock){o.push_back({14,14,17,17,65504.f,-1.f,0,0,false,0,true});o.push_back({18,10,20,22,sentinelBarValue,-1.f,0,0,false,0,true});}
         if(sentinelProps){o.push_back({21,4,29,12,1,squareDepth,0,0});o.push_back({21,20,29,28,.6f,-1.f,0,0});}
+        if(sentinelOwnerFrom!=~0u){EdgeObject owner{6,12,14,20,.6f,ownerDepth,0,0};owner.noDepth=n<sentinelOwnerFrom;o.push_back(owner);}
         if(sentinelMover!=0)o.push_back({6,13,8,15,1,lineDepth,sentinelMover,0});
         if(sentinelBarFrom!=~0u&&n>=sentinelBarFrom){const double l=-8+sentinelBarV*(n-sentinelBarFrom);if(l<S&&l+8>0)o.push_back({l,4,l+8,28,sentinelBarValue,-1.f,0,0,false,0,true});}
         return o;}
