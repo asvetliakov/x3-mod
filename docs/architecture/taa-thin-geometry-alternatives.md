@@ -18,6 +18,10 @@ cited ledgers, **[I]** inferred here; nothing in this note was flown or run unde
 
 ## 1. Decision
 
+**Superseded in part 2026-09-24:** the 512-slot premise fell (`platform-portability.md` "Shader slot budget"); the
+sequence and the slot gating of A' are re-planned in [taa-plan-lifted-slot-cap.md](taa-plan-lifted-slot-cap.md)
+(ratified). The pass analysis, the look constraints and option B stand.
+
 **Recommendation.** Keep the full-resolution tests draw and replace the two dilation draws by temporal propagation of
 the region flag and of the gate closure through the age target inside the resolve (option A', section 3.1), after S3
 (the 5-tap history) has freed the slots it needs; take S4 (half-resolution box) as the orthogonal cut; add the
