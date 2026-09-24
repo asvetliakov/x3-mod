@@ -1,0 +1,17 @@
+scene session_median_us 27136 p90 35840 n 9294 dt_median_us 40562
+engine session_median_us 9472 p90 15616 n 7591 dt_median_us 40562
+taa session_median_us 6784 p90 7296 n 7591 dt_median_us 40562
+bloom session_median_us 2752 p90 2880 n 7591 dt_median_us 40562
+taa_resolve session_median_us 2624 p90 2880 n 7591 dt_median_us 40562
+taa_box session_median_us 2368 p90 2496 n 7591 dt_median_us 40562
+hdr_writeback session_median_us 2112 p90 2496 n 8978 dt_median_us 40562
+present session_median_us 2016 p90 4480 n 9300 dt_median_us 40562
+sun_apply session_median_us 1504 p90 1824 n 7582 dt_median_us 40562
+taa_mask session_median_us 1504 p90 1696 n 7591 dt_median_us 40562
+taa_mask_tests session_median_us 1440 p90 1632 n 7591 dt_median_us 40562
+shadow_depth session_median_us 1376 p90 2496 n 7591 dt_median_us 40562
+meter session_median_us 528 p90 944 n 8805 dt_median_us 40562
+hdr_readback session_median_us 118 p90 164 n 8978 dt_median_us 40562
+retention session_median_us 78 p90 344 n 7591 dt_median_us 40562
+taa_copy session_median_us 23 p90 30 n 7591 dt_median_us 40562
+fog_fill session_median_us 20 p90 32 n 8978 dt_median_us 40562

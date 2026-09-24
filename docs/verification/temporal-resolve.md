@@ -2862,3 +2862,21 @@ drawn=5 region_hold=1 mask_targets=1` in both. No GPU pass figures: `--gpu-sync-
 pinned at vsync (rest p50 17.0 / 15.0 ms, pan 16.0 / 16.0 ms), so the A'-only TAA cost stays at Run 79 A's measured
 1.54 ms mask + 0.23 ms box until a `--gpu-sync-timing` launch. CPU encode `taa_run_us` median 197 / 170 µs. Neither
 session carried `--taa-thin-vote` or `--fade-rt2-owner` (no setting rows): launches 3 and 4 are pending.
+
+## 2026-09-24 Run 80 A launch 3 (run306, `--taa-thin-vote on`): the vote flown
+
+Active the whole flight (`taa_thin_vote_configured requested=1 enabled=1`; `thin_vote_mode enabled=1 route=1 depth=1
+lane=1 cache=1 vote_fraction=0.50 reads_per_frame=16 triangles_per_frame=65536`; measured,
+`verification/results/run306-run80a-thin-vote/`). 9,402 frames at 5120x1440, normal exit, no error/late_claim/rollback
+row; voted draws on 7,520 frames (median 5, p99 72, max 93 per frame); 440 buffer reads over 95 frames (438 measured, 2
+`geometry` unreadable), invalidation queue 880 invalidated / 440 dropped over 6 frames; `not_managed`, `not_readable`,
+`stale`, `lock_failed`, `overflows`, `volatile_*`, `refused` all 0. Cost: lock 19.2 ms + measure 52.7 ms over the whole
+session; on the 95 read frames lock+measure median 417 µs, max 2.33 ms; `draw_us` always 0 (telemetry gap). The F8
+burst (frames 4610-4617, 16 voted draws per frame): routed pixels 5.2-5.4 % of the screen, 42 % of them carry
+0 <= `.a` < 1 (16 distinct values, min 0.0113 = the logged `min_alpha`, median 0.485), the rest `.a` = 1; run304 has
+`.a` = w > 1 everywhere, so the vote reached the resolve's RT2 input. The user noticed no issue at the lattice stand at
+rest and under a pan or on a large near station. No frame-time comparison: run306 also carried `--gpu-sync-timing`
+(serialising; median dt 34 ms) while run304 did not (16 ms); the GPU passes (`taa` 6,784 µs, `taa_resolve` 2,624 µs,
+`scene` 27,136 µs) are in line with run303. Save load 16.3 s (run304 19.2 s). **Accepted as the Run 81 default
+(`--taa-thin-vote on`), with the cost A/B in that flight.** Open: `draw_us` never recorded and `missed` non-zero while
+`reads` sits at the 16-per-frame cap (source check pending); a reload at frame 6202 without a `loading_phase` row.

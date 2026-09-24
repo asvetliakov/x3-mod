@@ -1,0 +1,2 @@
+depth_1_7060.rgba32f routed 269406 frac_routed 0.0365 a<1 0 frac 0.00000 a==1 0 a>1 269406 a<0 0 thin a min/p50/max None distinct thin values 0
+depth_1_7061.rgba32f routed 269359 frac_routed 0.0365 a<1 0 frac 0.00000 a==1 0 a>1 269359 a<0 0 thin a min/p50/max None distinct thin values 0

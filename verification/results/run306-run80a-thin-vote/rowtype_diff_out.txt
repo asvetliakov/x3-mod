@@ -1,0 +1,19 @@
+new in run306:
+gpu_sync_timing 484
+gpu_sync_timing_mode 1
+renderer_comparison 8
+shadow_replay_depth_refused 8
+taa_thin_vote_configured 1
+thin_vote_frame 9402
+thin_vote_mode 1
+volumetric_fog_repair_census 31
+in run304 not in run306:
+bolt_footprint_buffer 1
+bolt_footprint_hist 2
+bolt_footprint_refused 1
+chase_aim_basis 48
+chase_aim_event 8
+chase_aim_pose 16
+chase_aim_ray 8
+chase_aim_writer 8
+screen_emission_additive_refused 1

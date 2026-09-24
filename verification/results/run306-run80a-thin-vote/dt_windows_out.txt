@@ -1,0 +1,2 @@
+run304 dither=1 taa_debug=0 gpu_sync=0 hold=None | full-fog windows n=0 | all windows excl first n=48 p50 16.66 p95 18.16 ms
+run306 dither=1 taa_debug=0 gpu_sync=1 hold=None | full-fog windows n=0 | all windows excl first n=30 p50 33.76 p95 39.86 ms

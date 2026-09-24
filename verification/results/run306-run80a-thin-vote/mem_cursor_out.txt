@@ -1,0 +1,4 @@
+run 304 mem max {} last {}
+  cursor (flags,cursor) {('1', '00000000'): 1, ('0', '00000000'): 481}
+run 306 mem max {} last {}
+  cursor (flags,cursor) {('1', '00000000'): 1, ('0', '00000000'): 667}

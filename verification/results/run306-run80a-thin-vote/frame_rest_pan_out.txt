@@ -1,0 +1,34 @@
+run304 mixed: windows=8 dt p50 16.5 p95 17.0 ms pan: windows=26 dt p50 16.0 p95 18.0 ms rest: windows=14 dt p50 17.0 p95 18.0 ms
+  session dt median 16.0 ms over 14662 frames (frame>=300); spikes >2x: 36; >100 ms: 24
+   frame 1689 dt 19208 ms class=mixed cut_within5=False
+   frame 14800 dt 6616 ms class=rest cut_within5=False
+   frame 1688 dt 2880 ms class=mixed cut_within5=False
+   frame 1729 dt 665 ms class=mixed cut_within5=False
+   frame 7060 dt 588 ms class=pan cut_within5=False
+   frame 7064 dt 525 ms class=pan cut_within5=False
+   frame 7061 dt 506 ms class=pan cut_within5=False
+   frame 7066 dt 499 ms class=pan cut_within5=False
+   frame 7062 dt 494 ms class=pan cut_within5=False
+   frame 7065 dt 494 ms class=pan cut_within5=False
+   frame 7063 dt 467 ms class=pan cut_within5=False
+   frame 7067 dt 465 ms class=pan cut_within5=False
+   frame 14799 dt 422 ms class=rest cut_within5=False
+   frame 4241 dt 401 ms class=pan cut_within5=False
+   frame 4523 dt 398 ms class=mixed cut_within5=False
+run306 mixed: windows=5 dt p50 32.0 p95 39.0 ms pan: windows=17 dt p50 36.0 p95 42.0 ms rest: windows=8 dt p50 33.0 p95 39.0 ms
+  session dt median 34.0 ms over 9102 frames (frame>=300); spikes >2x: 54; >100 ms: 34
+   frame 6202 dt 22090 ms class=mixed cut_within5=True
+   frame 398 dt 16285 ms class=pan cut_within5=False
+   frame 4892 dt 6581 ms class=mixed cut_within5=False
+   frame 9338 dt 6328 ms class=mixed cut_within5=False
+   frame 6201 dt 2324 ms class=mixed cut_within5=True
+   frame 4610 dt 787 ms class=pan cut_within5=False
+   frame 4611 dt 658 ms class=pan cut_within5=False
+   frame 5021 dt 611 ms class=mixed cut_within5=False
+   frame 6458 dt 577 ms class=pan cut_within5=True
+   frame 6220 dt 575 ms class=mixed cut_within5=False
+   frame 4612 dt 557 ms class=pan cut_within5=False
+   frame 420 dt 551 ms class=pan cut_within5=False
+   frame 4614 dt 535 ms class=pan cut_within5=False
+   frame 4613 dt 531 ms class=pan cut_within5=False
+   frame 4617 dt 520 ms class=pan cut_within5=False

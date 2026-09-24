@@ -1,0 +1,3 @@
+read frames 95 vote lock+measure us per read frame p50 417.0 max 2330.600000000002
+dt on read frames p50 40.0 max 22091.0  all frames>=300 p50 34.0
+read frames ranges [398, 481, 482, 483, 484] ... [8202, 8368, 8369, 8370, 8422]

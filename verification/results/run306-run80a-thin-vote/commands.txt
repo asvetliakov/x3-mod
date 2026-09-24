@@ -1,0 +1,11 @@
+Run 80 A launch 3 triage: run306 (--taa-thin-vote on, also --gpu-sync-timing active: gpu_sync_timing_mode serialises=1) vs run304 baseline. DLL 593112dc (9cf5decf), 5120x1440, bottle X3. Logs read-only, no Wine. Run from this directory.
+Scripts copied from ../run304-305-run80a (run-number arguments) plus new ones.
+grep -aE '^(taa_thin_vote_configured|thin_vote_mode|create_device)' /tmp/x3-bottleX3-run306/session-*.log   # Q1
+python3 thin_vote_summary.py 306 > thin_vote_summary_out.txt         # Q1 per-field stats of thin_vote_frame
+python3 thin_vote_cumulative.py 306 > thin_vote_cumulative_out.txt   # Q1/Q2 reads/lock_us/measure_us/invalidated are cumulative
+python3 vote_read_dt.py 306 > vote_read_dt_out.txt                   # Q2 vote CPU per read frame, dt on read frames
+python3 gpu_passes.py 306 > gpu_passes_out.txt; (for r in 301 302 303; do echo "== $r"; python3 gpu_passes.py $r; done) > gpu_passes_ref_out.txt   # Q2 GPU pass medians (gpu-sync runs)
+python3 pan_windows.py 304 306 > pan_windows_out.txt; python3 frame_rest_pan.py 304 306 > frame_rest_pan_out.txt; python3 dt_windows.py 304 306 > dt_windows_out.txt; python3 taa_frames.py 304 306 > taa_frames_out.txt; python3 spikes_nonburst.py 304 306 > spikes_nonburst_out.txt   # Q2
+grep -aE '^loading_phase' /tmp/x3-bottleX3-run30[46]/session-*.log; python3 stall_context.py 304 > stall_context_out.txt; python3 stall_context.py 306 >> stall_context_out.txt   # Q3
+python3 rt2_alpha.py 306 > rt2_alpha_out.txt; python3 rt2_alpha.py 304 | head -2 > rt2_alpha_run304_out.txt   # Q4 RT2 lane (depth_*.rgba32f) .a
+bash rowtype_diff.sh > rowtype_diff_out.txt; python3 abnormal_rows.py 304 306 > abnormal_rows_out.txt; python3 exit_rows.py 304 306 > exit_rows_out.txt; python3 mem_cursor.py 304 306 > mem_cursor_out.txt   # Q1/Q5

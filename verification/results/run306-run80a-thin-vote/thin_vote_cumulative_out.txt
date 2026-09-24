@@ -1,0 +1,12 @@
+reads decreases 0 increase_frames 95 total_increase 440.0 max_step 16.0 last_frame_inc 8422
+measured decreases 0 increase_frames 93 total_increase 438.0 max_step 16.0 last_frame_inc 8422
+triangles decreases 0 increase_frames 95 total_increase 2280059.0 max_step 79532.0 last_frame_inc 8422
+lock_us decreases 0 increase_frames 95 total_increase 19175.0 max_step 957.3000000000002 last_frame_inc 8422
+measure_us decreases 0 increase_frames 95 total_increase 52738.9 max_step 1705.5 last_frame_inc 8422
+max_measure_us decreases 0 increase_frames 5 total_increase 864.3 max_step 374.20000000000005 last_frame_inc 4771
+invalidated decreases 0 increase_frames 6 total_increase 880.0 max_step 352.0 last_frame_inc 9339
+dropped_entries decreases 0 increase_frames 6 total_increase 440.0 max_step 176.0 last_frame_inc 9339
+unreadable_total decreases 0 increase_frames 2 total_increase 2.0 max_step 1.0 last_frame_inc 3769
+final {'reads': '440', 'measured': '438', 'triangles': '2280059', 'lock_us': '19175.0', 'measure_us': '52738.9', 'max_measure_us': '864.3', 'invalidated': '880', 'dropped_entries': '440', 'unreadable_total': '2'}
+top lock_us steps [(4561, 957.3000000000002), (3970, 703.9000000000001), (6271, 684.2999999999993), (8369, 679.2000000000007), (6243, 646.8000000000011), (6322, 646.5), (6202, 645.1999999999998), (6204, 634.7999999999993), (6270, 625.1000000000004), (6423, 622.0)]
+top measure_us steps [(6270, 1705.5), (486, 1694.1999999999998), (8368, 1668.9000000000015), (6272, 1644.5), (6274, 1642.2999999999956), (483, 1572.3000000000002), (8369, 1568.2999999999956), (6206, 1526.7000000000007), (6205, 1523.5), (502, 1495.1000000000004)]

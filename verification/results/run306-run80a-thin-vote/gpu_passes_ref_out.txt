@@ -1,0 +1,13 @@
+== 301
+== 302
+scene session_median_us 25088 p90 29184 n 5694 dt_median_us 38138
+engine session_median_us 7552 p90 11520 n 4416 dt_median_us 38138
+taa session_median_us 6784 p90 6784 n 4416 dt_median_us 38138
+taa_resolve session_median_us 2624 p90 2624 n 4416 dt_median_us 38138
+present session_median_us 1888 p90 3008 n 5700 dt_median_us 38138
+== 303
+scene session_median_us 27136 p90 32256 n 5094 dt_median_us 36062
+engine session_median_us 8960 p90 11520 n 3172 dt_median_us 36062
+taa session_median_us 7808 p90 7808 n 3172 dt_median_us 36062
+taa_resolve session_median_us 2496 p90 2624 n 3172 dt_median_us 36062
+present session_median_us 1952 p90 2752 n 5100 dt_median_us 36062

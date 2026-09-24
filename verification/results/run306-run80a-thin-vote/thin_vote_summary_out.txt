@@ -1,0 +1,36 @@
+rows 9402 keys device frame lane draws opaque known voted min_alpha unreadable missed queued dropped no_scale draw_us reads measured unreadable_total retries not_managed not_readable stale range geometry invalidated dropped_entries overflows volatile_buffers volatile_refused not_quiet lock_failed triangles lock_us measure_us max_measure_us refused
+lane               nonzero_frames= 9402 sum=9402.0 max=1.00 p50=1.00 p99=1.00 min=1.0000
+draws              nonzero_frames= 7628 sum=988449.0 max=399.00 p50=108.00 p99=344.00 min=0.0000
+opaque             nonzero_frames= 7628 sum=708410.0 max=336.00 p50=53.00 p99=285.00 min=0.0000
+known              nonzero_frames= 7625 sum=706075.0 max=336.00 p50=53.00 p99=285.00 min=0.0000
+voted              nonzero_frames= 7520 sum=117884.0 max=93.00 p50=5.00 p99=72.00 min=0.0000
+min_alpha          nonzero_frames= 7549 sum=2853.3 max=1.00 p50=0.16 p99=1.00 min=0.0000
+unreadable         nonzero_frames=  889 sum=889.0 max=1.00 p50=0.00 p99=1.00 min=0.0000
+missed             nonzero_frames=   95 sum=1446.0 max=191.00 p50=0.00 p99=1.00 min=0.0000
+queued             nonzero_frames=   95 sum=538.0 max=16.00 p50=0.00 p99=1.00 min=0.0000
+dropped            nonzero_frames=   18 sum=656.0 max=151.00 p50=0.00 p99=0.00 min=0.0000
+no_scale           nonzero_frames= 1401 sum=7821.0 max=29.00 p50=0.00 p99=29.00 min=0.0000
+draw_us            nonzero_frames=    0 sum=0.0 max=0.00 p50=0.00 p99=0.00 min=0.0000
+reads              nonzero_frames= 9004 sum=1694075.0 max=440.00 p50=108.00 p99=440.00 min=0.0000
+measured           nonzero_frames= 9004 sum=1679936.0 max=438.00 p50=106.00 p99=438.00 min=0.0000
+unreadable_total   nonzero_frames= 8506 sum=14139.0 max=2.00 p50=2.00 p99=2.00 min=0.0000
+retries            nonzero_frames=    0 sum=0.0 max=0.00 p50=0.00 p99=0.00 min=0.0000
+not_managed        nonzero_frames=    0 sum=0.0 max=0.00 p50=0.00 p99=0.00 min=0.0000
+not_readable       nonzero_frames=    0 sum=0.0 max=0.00 p50=0.00 p99=0.00 min=0.0000
+stale              nonzero_frames=    0 sum=0.0 max=0.00 p50=0.00 p99=0.00 min=0.0000
+range              nonzero_frames=    0 sum=0.0 max=0.00 p50=0.00 p99=0.00 min=0.0000
+geometry           nonzero_frames= 8506 sum=14139.0 max=2.00 p50=2.00 p99=2.00 min=0.0000
+invalidated        nonzero_frames= 5152 sum=1027770.0 max=880.00 p50=2.00 p99=220.00 min=0.0000
+dropped_entries    nonzero_frames= 5152 sum=513885.0 max=440.00 p50=1.00 p99=110.00 min=0.0000
+overflows          nonzero_frames=    0 sum=0.0 max=0.00 p50=0.00 p99=0.00 min=0.0000
+volatile_buffers   nonzero_frames=    0 sum=0.0 max=0.00 p50=0.00 p99=0.00 min=0.0000
+volatile_refused   nonzero_frames=    0 sum=0.0 max=0.00 p50=0.00 p99=0.00 min=0.0000
+not_quiet          nonzero_frames=    0 sum=0.0 max=0.00 p50=0.00 p99=0.00 min=0.0000
+lock_failed        nonzero_frames=    0 sum=0.0 max=0.00 p50=0.00 p99=0.00 min=0.0000
+triangles          nonzero_frames= 9004 sum=11199381480.0 max=2280059.00 p50=870400.00 p99=2280059.00 min=0.0000
+lock_us            nonzero_frames= 9004 sum=74874052.3 max=19175.00 p50=5156.10 p99=19175.00 min=0.0000
+measure_us         nonzero_frames= 9004 sum=249902983.3 max=52738.90 p50=19062.80 p99=52738.90 min=0.0000
+max_measure_us     nonzero_frames= 9004 sum=5871635.6 max=864.30 p50=785.10 p99=864.30 min=0.0000
+refused            nonzero_frames=    0 sum=0.0 max=0.00 p50=0.00 p99=0.00 min=0.0000
+first voted frame 482 last 9336 n 7520
+top lock_us [('8422', '19175.0', '440', '2280059'), ('8423', '19175.0', '440', '2280059'), ('8424', '19175.0', '440', '2280059'), ('8425', '19175.0', '440', '2280059'), ('8426', '19175.0', '440', '2280059'), ('8427', '19175.0', '440', '2280059'), ('8428', '19175.0', '440', '2280059'), ('8429', '19175.0', '440', '2280059')]
