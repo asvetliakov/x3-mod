@@ -50,14 +50,27 @@ struct DensityRun {
     // The bridge publishes no shaft maps, so the grid variant draws no visibility quad (march=grid_unshadowed,
     // fallback=no_cascade) and its image equals the in-march one by the no-cascade identity; the split-map identity and
     // the call counts with a cascade are the FogPass fixture's (fog_density_pass_fixture.cpp).
-    void shadow_pass_ab(const std::vector<std::uint16_t>& vanilla,const std::vector<std::uint16_t>& in_march){
+    // The grid programs exist at march spacing 2 only, so a launch with the pass on draws spacing 2 (capture.cpp latches
+    // scale 2 with the shadow pass; FogPass clamps a requested 4, sticky). The identity therefore compares against an
+    // in-march frame drawn at spacing 2 at the same pose, not the scale-4 default frame the route checks above use.
+    void shadow_pass_ab(const std::vector<std::uint16_t>& vanilla){
+        std::vector<std::uint16_t> in_march;unsigned in_march_scale=0;
+        {   fog_spatial_state::Hooks hooks(d,api);fog_spatial_state::Scene scene(d,inputs,caps,std::vector<DWORD>(std::begin(card_program),std::end(card_program)));
+            Bridge b(d,hooks,scene,caps);b.record_aux();auto& m=b.motion;place(m);m.fog_density_requested_=true;m.fog_timing_=false;
+            m.fog_density_config_.march_scale=x3m::renderer::fog_march_scale_half; // configure_volumetric_fog_march_scale(2), pass off
+            Fill half=fill(b,vanilla);in_march=half.last.image;in_march_scale=m.fog_->density_march_scale();
+            std::printf("SHADOW_AB in_march_scale=%u frames=%u image=%016llx\n",in_march_scale,half.frames,fnv(in_march));
+            m.release_fog();
+        }
         fog_spatial_state::Hooks hooks(d,api);fog_spatial_state::Scene scene(d,inputs,caps,std::vector<DWORD>(std::begin(card_program),std::end(card_program)));
         Bridge b(d,hooks,scene,caps);b.record_aux();auto& m=b.motion;place(m);m.fog_density_requested_=true;m.fog_timing_=false;
         m.fog_shadow_pass_launch_=true;m.fog_density_config_.shadow_pass=true; // configure_volumetric_fog_shadow_pass(true)
+        m.fog_density_config_.march_scale=x3m::renderer::fog_march_scale_half; // capture.cpp: the shadow pass latches scale 2
         Fill grid_fill=fill(b,vanilla);const auto grid_image=grid_fill.last.image;IDirect3DTexture9* const grid=m.fog_->fixture_grid();
         const std::string grid_row=row_of(m);
-        std::printf("SHADOW_AB grid_frames=%u grid=%u grid_row=%u\n",grid_fill.frames,unsigned(grid!=nullptr),unsigned(!grid_row.empty()));
-        require(grid&&m.fog_->grid_variant()&&grid_image==in_march&&grid_fill.last.quads==3,"shadow_ab_launch_on_builds_the_grid_no_cascade_identity");
+        std::printf("SHADOW_AB grid_frames=%u grid=%u grid_row=%u grid_scale=%u\n",grid_fill.frames,unsigned(grid!=nullptr),unsigned(!grid_row.empty()),m.fog_->density_march_scale());
+        require(grid&&m.fog_->grid_variant()&&in_march_scale==x3m::renderer::fog_march_scale_half&&m.fog_->density_march_scale()==x3m::renderer::fog_march_scale_half&&
+                grid_image==in_march&&grid_fill.last.quads==3,"shadow_ab_launch_on_builds_the_grid_no_cascade_identity");
         // Toggle off at the frame boundary: the next latch hands shadow_pass=false over; the frame is the in-march one.
         const unsigned allocations=m.fog_->allocations(),references=m.fog_->references();
         const int off_state=m.volumetric_fog_shadow_pass_toggle();
@@ -129,10 +142,12 @@ struct DensityRun {
         m.fog_sector_={};m.fog_cards_={};m.fog_attach_failed_=false;m.fog_density_prepared_=false;++m.generation_;m.fog_->after_reset(S_OK);
         Fill reset_on=fill(b,vanilla);IDirect3DVertexBuffer9* const regrown=m.fog_->fixture_mote_vertices();const unsigned after_fill=m.fog_->allocations();
         Frame again=frame(b);Frame again2=frame(b);
-        std::printf("MOTES_AB reset_allocations=%u,%u,%u released=%u regrown=%u\n",before_reset,after_fill,m.fog_->allocations(),unsigned(released),unsigned(regrown!=nullptr));
+        std::printf("MOTES_AB reset_allocations=%u,%u,%u released=%u regrown=%u march_scale=%u\n",before_reset,after_fill,m.fog_->allocations(),unsigned(released),unsigned(regrown!=nullptr),m.fog_->density_march_scale());
         require(released&&reset_on.native_exact&&reset_on.no_fault,"motes_ab_reset_releases_the_buffers");
-        // The family atlas 1 (prepare_field) + targets 1 + DEFAULT density atlases 2 + mote VB/IB 1, and nothing more after.
-        require(regrown&&after_fill==before_reset+5&&m.fog_->allocations()==after_fill&&m.fog_->fixture_mote_vertices()==regrown,"motes_ab_reset_recreates_the_buffers_once");
+        // The family atlas 1 (prepare_field) + targets 1 + the quarter march target at spacing 4 (1, none at 2) + DEFAULT density
+        // atlases 2 + mote VB/IB 1, and nothing more after.
+        const unsigned quarter=unsigned(m.fog_->density_march_scale()==x3m::renderer::fog_march_scale_quarter);
+        require(regrown&&after_fill==before_reset+5+quarter&&m.fog_->allocations()==after_fill&&m.fog_->fixture_mote_vertices()==regrown,"motes_ab_reset_recreates_the_buffers_once");
         require(again.applied&&again2.applied&&m.fog_motes_drawn_,"motes_ab_after_reset_draws");
     }
     void run(){
@@ -168,7 +183,7 @@ struct DensityRun {
             require(stored_a!=legacy_image&&stored_a!=inputs.scene&&stored_a!=vanilla,"stored_renders_through_route");
             require(m.fog_->fixture_density_cache()&&m.fog_->density_status().available&&m.fog_->density_ready(scene.input.w,scene.input.h),"stored_dynamic_cache_live");
             Frame steady=frame(b);require(steady.image==stored_a&&steady.suppressed&&steady.applied,"stored_steady_frame_bit_identical");
-            stored_reference=stored_a; // the launch-off (in-march) frame at pose A for the shadow-pass A/B below
+            stored_reference=stored_a; // the launch-off (in-march) frame at pose A, default spacing, for the motes A/B below
             {   // The dust motes absent (fog-dust-motes.md section 4): nothing created, no report, no row field, the toggle a no-op.
                 const unsigned rows=x3m::motes_rows;
                 require(!m.fog_->fixture_mote_vertices()&&m.fog_->mote_report().frame==~std::uint64_t(0)&&!m.fog_->motes_variant()&&!std::strstr(x3m::last_frame_row," motes=")&&
@@ -260,7 +275,7 @@ struct DensityRun {
             std::printf("DENSITY_ABANDON ms=%.2f\n",took);
             require(gone&&took<200.&&device_refs(d)==refs,"abandon_then_pass_destructor_is_prompt_and_balanced");
         }
-        shadow_pass_ab(vanilla,stored_reference);
+        shadow_pass_ab(vanilla);
         motes_ab(vanilla,stored_reference);
     }
 };

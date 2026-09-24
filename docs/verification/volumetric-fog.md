@@ -2971,3 +2971,25 @@ scale-4 look at 5120x1440 in Run 77 C2; Run 77 C measured `fog_march` 8.99 -> 2.
 - Open: the route bridge fixture was not re-run. Its harness takes the `FogDensityConfig` default, now 4. The DLL's
   `refused=shadow_pass` row for an absent variable is covered by source only; no flight has logged it.
 
+## 2026-09-24: route bridge at the scale-4 default (closes the 483411b6 open item)
+
+The Run78 gate (candidate ee3bbf88) ran the bridge for the first time since the default flip and failed at
+`shadow_ab_launch_on_builds_the_grid_no_cascade_identity` after 31,169 passing checks (measured). Harness-only fix in
+`verification/probe/fog_route_density_inc.h`, no `src/` change:
+
+- Shadow A/B: the grid programs exist at spacing 2 only, so the pass-on launch draws spacing 2 (capture.cpp latches 2 with
+  the shadow pass; FogPass clamps a requested 4). The A/B now draws its own in-march reference at spacing 2 at pose A and
+  sets spacing 2 on the pass-on owner as the launch does; the identity check also requires both to have drawn spacing 2.
+  Every other check keeps the scale-4 default.
+- Motes A/B: `motes_ab_reset_recreates_the_buffers_once` expected +5 allocations after Reset; spacing 4 adds the quarter
+  march target, measured +6 (8 -> 14; the s2 diagnostic had 7 -> 12). The expectation is now 5 + (1 at spacing 4).
+- Result, patch applied to the frozen tree (`/tmp/x3-run78-candidate/src`, DLL not rebuilt), the Run77 three commands with
+  output `/tmp/x3-run78-candidate/route-fixed`: `PASS bridge_checks=42315 exit_checks=4`, baseline 515 PASS, 110 check
+  names (none added or removed against Run77; shadow_ab 15, motes_ab 13), bridge build 0 warnings, lock child 80.9 s,
+  wait 0 s (all measured).
+- The count is above the s2 diagnostic's 36,213 because the six per-frame checks run once more per frame of the extra
+  reference fill (801 frames) plus fill-length jitter: per-frame counts 5,997 -> 7,014 (measured; attribution inferred).
+- Comparison: `python3 verification/results/run70-candidate-audit.py bridge /tmp/x3-run77-candidate/route/bridge.log
+  /tmp/x3-run78-candidate/route-fixed/bridge.log` ->
+  [bridge-scale4-shadow-ab-fix-vs-run77.json](../../verification/results/fog-density-route/bridge-scale4-shadow-ab-fix-vs-run77.json).
+- Still open: the DLL's `refused=shadow_pass` row for an absent variable has no flight evidence.

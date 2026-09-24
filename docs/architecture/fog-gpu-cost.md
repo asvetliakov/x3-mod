@@ -575,5 +575,7 @@ Result [M] (bottle X3, `wine_lock.py`, shader child 72 s, pass child 64 s): PASS
 - The spacing-4 look leaves 10 of 2,304 rays out at a noise wrap (4 of 576 at spacing 2). The host test allows 1 % per
   case.
 
-Not changed: the programs, the route bridge fixture (its harness takes the `FogDensityConfig` default, now 4, and was not
-re-run here), the in-game look (the user's C2 acceptance is the evidence).
+Not changed: the programs, the in-game look (the user's C2 acceptance is the evidence). The route bridge was not re-run
+here; its harness takes the `FogDensityConfig` default, now 4, except the shadow A/B, which compares at spacing 2 (the
+grid's only spacing). It passes at the scale-4 default since 2026-09-24 (volumetric-fog.md, "route bridge at the scale-4
+default").

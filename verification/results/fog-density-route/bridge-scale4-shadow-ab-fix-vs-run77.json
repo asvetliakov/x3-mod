@@ -1,0 +1,83 @@
+{
+ "checks": [
+  36681,
+  42315
+ ],
+ "status": [
+  {
+   "PASS": 36681
+  },
+  {
+   "PASS": 42315
+  }
+ ],
+ "names": [
+  110,
+  110
+ ],
+ "only_old": [],
+ "only_new": [],
+ "count_changed": {
+  "native_card_LastError_preserved": [
+   6075,
+   7014
+  ],
+  "native_card_forward_once": [
+   6075,
+   7014
+  ],
+  "once_only_hook_fallback_guard": [
+   6073,
+   7012
+  ],
+  "one_fog_transaction_maximum": [
+   6073,
+   7012
+  ],
+  "route_RT1_RT2_bytes": [
+   6073,
+   7012
+  ],
+  "route_pass_state_restored": [
+   6073,
+   7012
+  ]
+ },
+ "shadow_ab_names": [
+  15,
+  15
+ ],
+ "motes_ab_names": [
+  13,
+  13
+ ],
+ "motes_ab_rows": [
+  4,
+  4
+ ],
+ "motes_ab_row_field_changes": [
+  {
+   "on_frames": [
+    "780",
+    "801"
+   ]
+  },
+  {},
+  {
+   "allocations": [
+    "7,7",
+    "8,8"
+   ]
+  },
+  {
+   "march_scale": [
+    null,
+    "4"
+   ],
+   "reset_allocations": [
+    "7,12,12",
+    "8,14,14"
+   ]
+  }
+ ]
+}
