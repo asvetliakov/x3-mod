@@ -1,0 +1,31 @@
+== /tmp/x3-bottleX3-run302/session-20260924-172543-212.log frames 3512..3519 whole-frame: px mean>1e-3 7219561 rel_std p50 0.0000 p99 0.7099
+rel_std_p99 body node lod s px rel_std_p50 share_relstd>0.1 share_step>0.25
+2.6458 terran_m7 3ddcd248 lod=2 s=4 px=2171 p50=0.0000 >0.1:0.3026 step>0.25:0.3026
+2.6317 ATF_M6M 3d40a700 lod=1 s=7 px=1126 p50=0.0000 >0.1:0.2478 step>0.25:0.2478
+2.5944 terran_catapult_gate 294aa0f0 lod=1 s=48 px=3656 p50=0.0739 >0.1:0.4316 step>0.25:0.4543
+2.3358 ATF_M6M 3d910bd8 lod=1 s=6 px=700 p50=0.0000 >0.1:0.2657 step>0.25:0.2671
+2.2035 usc_dock_c_left_rings 33ba31f8 lod=1 s=32 px=3937 p50=0.2881 >0.1:0.6546 step>0.25:0.6645
+2.1925 terran_TL_atmolifter 40f35b48 lod=1 s=3 px=209 p50=0.2210 >0.1:0.5024 step>0.25:0.5024
+2.1712 usc_dock_c_tower 33ba2578 lod=1 s=56 px=10266 p50=0.0000 >0.1:0.3206 step>0.25:0.3367
+2.1692 usc_dock_c_right_rings 33ba3478 lod=1 s=41 px=7943 p50=0.0000 >0.1:0.3716 step>0.25:0.3753
+2.1608 usc_dock_c_left_arm 33ba2f78 lod=1 s=38 px=5705 p50=0.0000 >0.1:0.3769 step>0.25:0.3812
+2.1119 usc_dock_c_right_arm 33ba2cf8 lod=1 s=36 px=5338 p50=0.0000 >0.1:0.3524 step>0.25:0.3550
+2.0353 usc_dock_e_left_rings 297f30a0 lod=1 s=70 px=33855 p50=0.1309 >0.1:0.5688 step>0.25:0.5958
+1.8728 usc_small_station_d 33b14ea8 lod=1 s=35 px=18270 p50=0.0000 >0.1:0.2144 step>0.25:0.2169
+1.8716 usc_dock_c_core_bottom 33ba2a78 lod=1 s=63 px=20559 p50=0.0000 >0.1:0.1803 step>0.25:0.1819
+1.8528 usc_dock_c_core_top 33ba27f8 lod=1 s=103 px=29753 p50=0.0000 >0.1:0.2817 step>0.25:0.2854
+1.7298 usc_dock_e_lower_core 297f2e20 lod=1 s=154 px=98528 p50=0.0610 >0.1:0.3895 step>0.25:0.4127
+1.6561 terran_m6 413dcc08 lod=0 s=310 px=306477 p50=0.0238 >0.1:0.2681 step>0.25:0.2873
+1.5798 usc_dock_e_tower 297f2920 lod=0 s=304 px=721631 p50=0.0000 >0.1:0.2000 step>0.25:0.2128
+1.5251 usc_dock_e_right_rings 297f3320 lod=1 s=105 px=81293 p50=0.0000 >0.1:0.2928 step>0.25:0.3074
+1.5213 turretdummy3 413dd108 lod=1 s=11 px=700 p50=0.2470 >0.1:0.7057 step>0.25:0.7371
+1.4172 turretdummy3 413dce88 lod=1 s=11 px=698 p50=0.1045 >0.1:0.5115 step>0.25:0.5516
+1.3933 usc_dock_e_upper_core 297f2ba0 lod=1 s=204 px=272432 p50=0.0000 >0.1:0.1845 step>0.25:0.1970
+1.2507 usc_small_station_d 294ad7f0 lod=1 s=52 px=297868 p50=0.0000 >0.1:0.1280 step>0.25:0.1332
+1.2476 usc_small_station_d 33b20a58 lod=1 s=91 px=166843 p50=0.0000 >0.1:0.1554 step>0.25:0.1614
+ODS rows:
+  2.0353 usc_dock_e_left_rings lod=1 s=70 px=33855 p50=0.1309 >0.1:0.5688 step>0.25:0.5958 rank=11/23
+  1.7298 usc_dock_e_lower_core lod=1 s=154 px=98528 p50=0.0610 >0.1:0.3895 step>0.25:0.4127 rank=15/23
+  1.5798 usc_dock_e_tower lod=0 s=304 px=721631 p50=0.0000 >0.1:0.2000 step>0.25:0.2128 rank=17/23
+  1.5251 usc_dock_e_right_rings lod=1 s=105 px=81293 p50=0.0000 >0.1:0.2928 step>0.25:0.3074 rank=18/23
+  1.3933 usc_dock_e_upper_core lod=1 s=204 px=272432 p50=0.0000 >0.1:0.1845 step>0.25:0.1970 rank=21/23

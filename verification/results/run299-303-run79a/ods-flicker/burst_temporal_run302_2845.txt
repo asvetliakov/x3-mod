@@ -1,0 +1,28 @@
+== /tmp/x3-bottleX3-run302/session-20260924-172543-212.log frames 2845..2852 whole-frame: px mean>1e-3 7156490 rel_std p50 0.0000 p99 0.6952
+rel_std_p99 body node lod s px rel_std_p50 share_relstd>0.1 share_step>0.25
+2.6458 terran_m7 3ddcd248 lod=2 s=4 px=239 p50=0.0000 >0.1:0.2427 step>0.25:0.2427
+2.6458 terran_catapult_gate 294aa0f0 lod=1 s=41 px=2534 p50=0.0870 >0.1:0.4724 step>0.25:0.4933
+2.1856 usc_dock_e_left_rings 297f30a0 lod=1 s=77 px=40812 p50=0.1292 >0.1:0.5694 step>0.25:0.5916
+2.0130 usc_dock_c_left_rings 33ba31f8 lod=1 s=54 px=18148 p50=0.1511 >0.1:0.5721 step>0.25:0.5877
+1.9131 usc_dock_c_right_arm 33ba2cf8 lod=1 s=56 px=20900 p50=0.0000 >0.1:0.2996 step>0.25:0.3044
+1.9073 usc_dock_c_right_rings 33ba3478 lod=1 s=71 px=43344 p50=0.0000 >0.1:0.2976 step>0.25:0.3027
+1.7814 usc_dock_e_tower 297f2920 lod=0 s=267 px=318732 p50=0.0000 >0.1:0.3087 step>0.25:0.3234
+1.7214 usc_dock_c_left_arm 33ba2f78 lod=1 s=72 px=40503 p50=0.0000 >0.1:0.2923 step>0.25:0.2979
+1.6814 usc_small_station_d 33b14ea8 lod=1 s=50 px=52735 p50=0.0000 >0.1:0.1864 step>0.25:0.1898
+1.6285 turretdummy3 413dce88 lod=1 s=11 px=697 p50=0.1419 >0.1:0.5997 step>0.25:0.6298
+1.5898 usc_dock_c_core_bottom 33ba2a78 lod=1 s=107 px=106920 p50=0.0000 >0.1:0.1439 step>0.25:0.1460
+1.5613 usc_dock_c_core_top 33ba27f8 lod=1 s=176 px=194198 p50=0.0000 >0.1:0.1990 step>0.25:0.2033
+1.4745 usc_dock_c_tower 33ba2578 lod=1 s=99 px=65989 p50=0.0000 >0.1:0.2216 step>0.25:0.2372
+1.4367 usc_small_station_d 294ad7f0 lod=1 s=48 px=35797 p50=0.0000 >0.1:0.1905 step>0.25:0.1951
+1.3858 usc_dock_e_lower_core 297f2e20 lod=1 s=176 px=174624 p50=0.0000 >0.1:0.1890 step>0.25:0.1971
+1.3585 terran_m6 413dcc08 lod=0 s=310 px=322015 p50=0.0000 >0.1:0.2331 step>0.25:0.2466
+1.3327 usc_dock_e_right_rings 297f3320 lod=1 s=130 px=153004 p50=0.0000 >0.1:0.1789 step>0.25:0.1860
+1.3269 usc_dock_e_upper_core 297f2ba0 lod=0 s=231 px=434504 p50=0.0000 >0.1:0.1492 step>0.25:0.1578
+1.2646 terran_catapult_gate 240f65a0 lod=1 s=60 px=154126 p50=0.0000 >0.1:0.0658 step>0.25:0.0661
+1.2570 turretdummy3 413dd108 lod=1 s=11 px=699 p50=0.1557 >0.1:0.6052 step>0.25:0.6123
+ODS rows:
+  2.1856 usc_dock_e_left_rings lod=1 s=77 px=40812 p50=0.1292 >0.1:0.5694 step>0.25:0.5916 rank=3/20
+  1.7814 usc_dock_e_tower lod=0 s=267 px=318732 p50=0.0000 >0.1:0.3087 step>0.25:0.3234 rank=7/20
+  1.3858 usc_dock_e_lower_core lod=1 s=176 px=174624 p50=0.0000 >0.1:0.1890 step>0.25:0.1971 rank=15/20
+  1.3327 usc_dock_e_right_rings lod=1 s=130 px=153004 p50=0.0000 >0.1:0.1789 step>0.25:0.1860 rank=17/20
+  1.3269 usc_dock_e_upper_core lod=0 s=231 px=434504 p50=0.0000 >0.1:0.1492 step>0.25:0.1578 rank=18/20

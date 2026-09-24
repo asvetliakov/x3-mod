@@ -1,0 +1,33 @@
+== /tmp/x3-bottleX3-run300/session-20260924-171416-212.log frames 13362..13369 whole-frame: px mean>1e-3 6915985 rel_std p50 0.0000 p99 1.5917
+rel_std_p99 body node lod s px rel_std_p50 share_relstd>0.1 share_step>0.25
+2.6347 usc_small_station_d 28ab33b8 lod=1 s=42 px=164848 p50=0.3287 >0.1:0.6465 step>0.25:0.6249
+1.7977 usc_small_station_d 28df70a8 lod=1 s=34 px=19448 p50=0.0000 >0.1:0.3352 step>0.25:0.3310
+1.7226 usc_dock_e_right_rings 32f56e90 lod=1 s=60 px=16470 p50=0.2034 >0.1:0.6070 step>0.25:0.5993
+1.6956 usc_small_station_d 32f485f0 lod=1 s=78 px=90207 p50=0.0000 >0.1:0.2325 step>0.25:0.2289
+1.6816 usc_dock_e_left_rings 32f56c10 lod=1 s=77 px=43548 p50=0.0000 >0.1:0.3395 step>0.25:0.3352
+1.6478 terran_spp_panel 3ae95578 lod=1 s=39 px=1584 p50=0.0443 >0.1:0.4747 step>0.25:0.4747
+1.6022 terran_spp_bottom 33d19368 lod=1 s=14 px=3933 p50=0.1217 >0.1:0.5154 step>0.25:0.5184
+1.5917 terran_catapult_gate 238f7720 lod=1 s=196 px=6915985 p50=0.0000 >0.1:0.0817 step>0.25:0.0816
+1.5695 terran_spp_panel 33d19fe8 lod=1 s=41 px=1786 p50=0.2941 >0.1:0.6036 step>0.25:0.6069
+1.5537 terran_spp_panel 33d195e8 lod=1 s=44 px=2494 p50=0.1645 >0.1:0.5204 step>0.25:0.5217
+1.5535 usc_dock_e_lower_core 32f56990 lod=1 s=121 px=53286 p50=0.0000 >0.1:0.2801 step>0.25:0.2769
+1.5124 terran_spp_panel 33d19ae8 lod=1 s=43 px=2870 p50=0.0000 >0.1:0.4700 step>0.25:0.4697
+1.4994 terran_spp_panel 3ae96478 lod=1 s=43 px=2911 p50=0.0000 >0.1:0.4449 step>0.25:0.4456
+1.4989 turretdummy3 60f696e8 lod=1 s=11 px=700 p50=0.2017 >0.1:0.6929 step>0.25:0.7186
+1.4649 terran_spp_center 33d1a9e8 lod=1 s=31 px=14835 p50=0.0253 >0.1:0.4082 step>0.25:0.4111
+1.4580 terran_spp_panel 33d19d68 lod=1 s=42 px=3234 p50=0.0000 >0.1:0.3701 step>0.25:0.3701
+1.4553 terran_spp_panel 3ae961f8 lod=1 s=47 px=2944 p50=0.0385 >0.1:0.4246 step>0.25:0.4239
+1.4068 terran_spp_panel 3ae95cf8 lod=1 s=42 px=2747 p50=0.0000 >0.1:0.3375 step>0.25:0.3382
+1.3998 terran_spp_panel 33d1a4e8 lod=1 s=42 px=2706 p50=0.0000 >0.1:0.3618 step>0.25:0.3636
+1.3933 terran_spp_panel 3ae966f8 lod=1 s=45 px=4000 p50=0.0000 >0.1:0.4215 step>0.25:0.4223
+1.3707 terran_spp_panel 33d19868 lod=1 s=44 px=3648 p50=0.0000 >0.1:0.4350 step>0.25:0.4353
+1.3334 usc_dock_e_upper_core 32f56710 lod=1 s=146 px=171786 p50=0.0000 >0.1:0.1796 step>0.25:0.1701
+1.3273 terran_catapult_gate 28aafcb8 lod=1 s=51 px=9450 p50=0.0000 >0.1:0.1650 step>0.25:0.1650
+1.3244 terran_spp_panel 3ae95a78 lod=1 s=40 px=2880 p50=0.0000 >0.1:0.2872 step>0.25:0.2875
+1.3025 usc_dock_e_tower 32f56490 lod=1 s=174 px=122805 p50=0.0160 >0.1:0.3138 step>0.25:0.3094
+ODS rows:
+  1.7226 usc_dock_e_right_rings lod=1 s=60 px=16470 p50=0.2034 >0.1:0.6070 step>0.25:0.5993 rank=3/32
+  1.6816 usc_dock_e_left_rings lod=1 s=77 px=43548 p50=0.0000 >0.1:0.3395 step>0.25:0.3352 rank=5/32
+  1.5535 usc_dock_e_lower_core lod=1 s=121 px=53286 p50=0.0000 >0.1:0.2801 step>0.25:0.2769 rank=11/32
+  1.3334 usc_dock_e_upper_core lod=1 s=146 px=171786 p50=0.0000 >0.1:0.1796 step>0.25:0.1701 rank=22/32
+  1.3025 usc_dock_e_tower lod=1 s=174 px=122805 p50=0.0160 >0.1:0.3138 step>0.25:0.3094 rank=25/32
