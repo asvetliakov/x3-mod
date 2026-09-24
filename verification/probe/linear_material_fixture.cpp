@@ -376,6 +376,9 @@ struct Shaders {
       require(original == before, "original mutated");
       return output;
     }
+    if (mode >= 5 && !pixel) return transform(c, 1, false);
+    // The fade block's else must own the whole chain below; a statement between
+    // them let the ordinary mode-3 transform overwrite the fade variant.
 #ifdef X3M_LINEAR_DISTANCE_FADE_FIXTURE
     if (mode == 3) {
       require((c.pair>=110 && c.pair<116) || c.pair==station_fade_pair,"seven exact fade pairs only");
@@ -386,7 +389,6 @@ struct Shaders {
       require(fill_applied==(pixel && fill>0.0f),"distance fade fill report");
     } else
 #endif
-    if (mode >= 5 && !pixel) return transform(c, 1, false);
     if (mode >= 5) {
       // Original fill (option C): the plain motion PS of the ORIGINAL program
       // (mode 7; for the four XT DEFAULT pairs it reads the repaired VS's

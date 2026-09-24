@@ -17,30 +17,30 @@
     "--no-update",
     "--dll",
     "d3d9=b",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aedf7ca756b3b5eae/verification/probe/build/distance-fade/linear_material_fixture.exe",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a753000ff973240a9/verification/probe/build/distance-fade/linear_material_fixture.exe",
     "Z:/private/tmp/x3-shader-sweep/programs",
-    "Z:/private/tmp/claude-501/-Users-asvetl-x3-mod/d8721495-21c4-4893-9b72-9255c9f2ac7f/scratchpad/fade-raw2/cases.bin",
+    "Z:/private/tmp/claude-501/-Users-asvetl-x3-mod/c01d92c1-4474-4383-946d-4fac988ae47e/scratchpad/fade-final/cases.bin",
     "--distance-fade",
-    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-aedf7ca756b3b5eae/verification/probe/build/distance-fade/composite.bin"
+    "Z:/Users/asvetl/x3-mod/.claude/worktrees/agent-a753000ff973240a9/verification/probe/build/distance-fade/composite.bin"
   ],
   "input_sha256": {
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aedf7ca756b3b5eae/verification/probe/build/distance-fade/linear_material_fixture.exe": "90aa2455421254d37339a1810dfe4555aaeb93a72fd2d4b47a1ae5bc8ae0d156",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aedf7ca756b3b5eae/verification/probe/build/distance-fade/composite.bin": "7b5599fcce4796ab5c2095c7df587c5ce2544bde1db9f2885dab59bfaa30f43d",
-    "/private/tmp/claude-501/-Users-asvetl-x3-mod/d8721495-21c4-4893-9b72-9255c9f2ac7f/scratchpad/fade-raw2/cases.bin": "159de6b4ab1890391ba958fd76f3154ca06f227d961eabada657200a9f595db6",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aedf7ca756b3b5eae/src/renderer/linear_material.cpp": "f89fd94f7a0861b5562472a1e38690c0728de0ece047e3aa6c9ff8a0621cdcb6",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aedf7ca756b3b5eae/src/renderer/linear_distance_fade.h": "92c73456d5980cf0c7a5400645fa33958f69be94b2040e7061d6073f460bb2ed",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aedf7ca756b3b5eae/src/renderer/linear_emission_pass.cpp": "dcfd986a7e9fb9065cd982bc3cdd1191184bdc232559c11f0b496f23a1d42ef5",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aedf7ca756b3b5eae/src/renderer/linear_emission_pass.h": "635dc43765200ae11e6625a7cdd231d0c8dc7635172a363f01af3bf7af720d4b",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aedf7ca756b3b5eae/verification/probe/linear_material_fixture.cpp": "6798ec96d09534b6effda105e4baddad8574a7235fb7d2a85f7c1bea25b0a6fa",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aedf7ca756b3b5eae/verification/probe/linear_alpha_test_fixture_inc.h": "6de6729442ba425b791256c30110c9b4f0dae8b16d7c024ba14e2d3809e52b47",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aedf7ca756b3b5eae/verification/probe/linear_distance_fade_fixture_inc.h": "337f22618362e3ae98da1f626caf0586007203ee05dbbde3177e8368189b0777",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aedf7ca756b3b5eae/verification/probe/linear_distance_fade_composite_inc.h": "17e078372527cb62cf461495bc0f46ef89f18f0b9c85ea4a44091ce207778931",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aedf7ca756b3b5eae/src/proxy/fade_region_math.h": "b0c142276e760ba3be731e3062da03e16effeb3e1207b5864eb3228de7c5da6c",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aedf7ca756b3b5eae/src/proxy/fade_region_core.h": "a3df4420110874550a8b70f630556331a53bf09c47f353acbebc31af1c34928e",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aedf7ca756b3b5eae/src/proxy/locked_prefix_core.h": "0b6ec59e1e02adbb7d58be21b676aefd5475d28ff506150d5d5783cb38f60622",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aedf7ca756b3b5eae/verification/probe/run_linear_distance_fade.py": "ea2178a38028bd5e2b4be9b27cdbec5a5986a15dd79974a171b90813cb38baa9",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aedf7ca756b3b5eae/verification/probe/linear_material_reference.py": "43b3a8fbf5cb15c90600047f19fe8a9dd6b4455a69dd70d288bd9eaadaab7bb2",
-    "/Users/asvetl/x3-mod/.claude/worktrees/agent-aedf7ca756b3b5eae/verification/probe/run_linear_material.py": "71fa3ba7d2ec24a7a01a87ceb27be65371ad0d084b77df4017efad404192d048",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a753000ff973240a9/verification/probe/build/distance-fade/linear_material_fixture.exe": "86229ffacfe2ea1a5089b42b322b59d0acc1ca28a27dac1672e6f9150b6eee9a",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a753000ff973240a9/verification/probe/build/distance-fade/composite.bin": "7b5599fcce4796ab5c2095c7df587c5ce2544bde1db9f2885dab59bfaa30f43d",
+    "/private/tmp/claude-501/-Users-asvetl-x3-mod/c01d92c1-4474-4383-946d-4fac988ae47e/scratchpad/fade-final/cases.bin": "159de6b4ab1890391ba958fd76f3154ca06f227d961eabada657200a9f595db6",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a753000ff973240a9/src/renderer/linear_material.cpp": "b4f567763399c05afa7a68c78f2b8221d25815c0c19614c931639a2d312e7135",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a753000ff973240a9/src/renderer/linear_distance_fade.h": "9c27bf2c41e18dc115f2eb0c3f2edf6284617517556708861e24b4a779316d0b",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a753000ff973240a9/src/renderer/linear_emission_pass.cpp": "dcfd986a7e9fb9065cd982bc3cdd1191184bdc232559c11f0b496f23a1d42ef5",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a753000ff973240a9/src/renderer/linear_emission_pass.h": "635dc43765200ae11e6625a7cdd231d0c8dc7635172a363f01af3bf7af720d4b",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a753000ff973240a9/verification/probe/linear_material_fixture.cpp": "50dbf607da717ab7884f4e2140619c930dfbae07ace72be8d513c37c10de62db",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a753000ff973240a9/verification/probe/linear_alpha_test_fixture_inc.h": "6de6729442ba425b791256c30110c9b4f0dae8b16d7c024ba14e2d3809e52b47",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a753000ff973240a9/verification/probe/linear_distance_fade_fixture_inc.h": "337f22618362e3ae98da1f626caf0586007203ee05dbbde3177e8368189b0777",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a753000ff973240a9/verification/probe/linear_distance_fade_composite_inc.h": "17e078372527cb62cf461495bc0f46ef89f18f0b9c85ea4a44091ce207778931",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a753000ff973240a9/src/proxy/fade_region_math.h": "fdfa927d1424f6cccdabdbdec10ef0cdd7aaa2ba749f13ec5c75b9aad1219117",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a753000ff973240a9/src/proxy/fade_region_core.h": "a3df4420110874550a8b70f630556331a53bf09c47f353acbebc31af1c34928e",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a753000ff973240a9/src/proxy/locked_prefix_core.h": "e74b14d8d292cfb9fac41a40a837fd4161d6a091eaf35d38ee3277722184aef0",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a753000ff973240a9/verification/probe/run_linear_distance_fade.py": "ea2178a38028bd5e2b4be9b27cdbec5a5986a15dd79974a171b90813cb38baa9",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a753000ff973240a9/verification/probe/linear_material_reference.py": "23ac64ae3a0c35afbc1ca234b8dbc0d66829308676afb1ba08f3cdfeb5795b18",
+    "/Users/asvetl/x3-mod/.claude/worktrees/agent-a753000ff973240a9/verification/probe/run_linear_material.py": "6e6f9806261a124cb91de2f3e478cc5c762a540ddd58de06317ce54eb39e59ae",
     "/private/tmp/x3-shader-sweep/programs/vs_b0602757fce6e870.bin": "33cef191db2668aadef869a140b2185b1576212535bdae7d607da49573d8d785",
     "/private/tmp/x3-shader-sweep/programs/ps_517540ae6d5e5410.bin": "e863f6196bad66465442a9a27923953ab11b71be6ab60d325237e2f5e2f85329",
     "/private/tmp/x3-shader-sweep/programs/vs_0c223ad11bce02d5.bin": "573d688222bcdee8234d60123199d5fc7b65158e8201b3e99a37bd254a697dd3",
@@ -54,7 +54,7 @@
     "/private/tmp/x3-shader-sweep/programs/vs_4944d81dfe531b37.bin": "421d25e68651ba9449cf973798ebf7ab4c0734cfb3e7965af8b7a879788181e2",
     "/private/tmp/x3-shader-sweep/programs/ps_64bac8bb307eb896.bin": "84eeded40acc811b109221fe5c7e1b5a898f3b9a34a1b4685937a24f6b1bc4a7"
   },
-  "raw_report": "/private/tmp/claude-501/-Users-asvetl-x3-mod/d8721495-21c4-4893-9b72-9255c9f2ac7f/scratchpad/fade-raw2/report.txt",
+  "raw_report": "/private/tmp/claude-501/-Users-asvetl-x3-mod/c01d92c1-4474-4383-946d-4fac988ae47e/scratchpad/fade-final/report.txt",
   "scope": "Detached exact seven-pair source-over prototype (six Asteroid, one station BUMPMAP); no live route",
   "tolerance": {
     "relative": 0.006,
@@ -63,7 +63,7 @@
   },
   "composite_bytes": 572,
   "exit_code": 0,
-  "wall_seconds": 6.415045792,
+  "wall_seconds": 5.823738666999999,
   "cases": 78,
   "source_calls": 264,
   "region_cases": 29,
@@ -123,8 +123,8 @@
     "after_reset": 0.21875
   },
   "prefix_scan_us": {
-    "max": 62.0,
-    "mean": 17.5,
+    "max": 83.4,
+    "mean": 25.87857142857143,
     "vertices_per_scan": 6144,
     "locks": 14
   },
@@ -148,9 +148,9 @@
       "policy": "exchange",
       "area_fraction": 0.01,
       "dips": 1,
-      "median_ms": 0.4222,
-      "min_ms": 0.4153,
-      "max_ms": 0.4563
+      "median_ms": 0.4126,
+      "min_ms": 0.4034,
+      "max_ms": 0.4223
     },
     {
       "width": 1280,
@@ -158,9 +158,9 @@
       "policy": "exchange",
       "area_fraction": 0.01,
       "dips": 4,
-      "median_ms": 0.9351,
-      "min_ms": 0.9131,
-      "max_ms": 0.9748
+      "median_ms": 0.9195,
+      "min_ms": 0.9106,
+      "max_ms": 0.9435
     },
     {
       "width": 1280,
@@ -168,9 +168,9 @@
       "policy": "exchange",
       "area_fraction": 0.01,
       "dips": 16,
-      "median_ms": 2.3596,
-      "min_ms": 2.3061,
-      "max_ms": 2.5828
+      "median_ms": 2.2907,
+      "min_ms": 2.2794,
+      "max_ms": 2.3924
     },
     {
       "width": 1280,
@@ -178,9 +178,9 @@
       "policy": "exchange",
       "area_fraction": 0.0601,
       "dips": 1,
-      "median_ms": 0.4195,
-      "min_ms": 0.4101,
-      "max_ms": 0.5451
+      "median_ms": 0.4199,
+      "min_ms": 0.4089,
+      "max_ms": 0.4222
     },
     {
       "width": 1280,
@@ -188,9 +188,9 @@
       "policy": "exchange",
       "area_fraction": 0.0601,
       "dips": 4,
-      "median_ms": 0.933,
-      "min_ms": 0.9231,
-      "max_ms": 1.0136
+      "median_ms": 0.9352,
+      "min_ms": 0.9141,
+      "max_ms": 0.9515
     },
     {
       "width": 1280,
@@ -198,9 +198,9 @@
       "policy": "exchange",
       "area_fraction": 0.0601,
       "dips": 16,
-      "median_ms": 2.4812,
-      "min_ms": 2.401,
-      "max_ms": 2.5095
+      "median_ms": 2.4011,
+      "min_ms": 2.3385,
+      "max_ms": 2.5734
     },
     {
       "width": 1280,
@@ -208,9 +208,9 @@
       "policy": "exchange",
       "area_fraction": 1.0,
       "dips": 1,
-      "median_ms": 0.9553,
-      "min_ms": 0.8041,
-      "max_ms": 0.9727
+      "median_ms": 1.0183,
+      "min_ms": 0.9141,
+      "max_ms": 1.0416
     },
     {
       "width": 1280,
@@ -218,9 +218,9 @@
       "policy": "exchange",
       "area_fraction": 1.0,
       "dips": 4,
-      "median_ms": 2.3389,
-      "min_ms": 2.2387,
-      "max_ms": 2.3855
+      "median_ms": 2.6471,
+      "min_ms": 2.5114,
+      "max_ms": 2.7554
     },
     {
       "width": 1280,
@@ -228,9 +228,9 @@
       "policy": "exchange",
       "area_fraction": 1.0,
       "dips": 16,
-      "median_ms": 4.373,
-      "min_ms": 4.2806,
-      "max_ms": 4.5028
+      "median_ms": 4.7819,
+      "min_ms": 4.2977,
+      "max_ms": 4.9652
     },
     {
       "width": 1280,
@@ -238,219 +238,219 @@
       "policy": "inplace",
       "area_fraction": 0.01,
       "dips": 1,
-      "median_ms": 0.281,
+      "median_ms": 0.2779,
+      "min_ms": 0.2759,
+      "max_ms": 0.2875
+    },
+    {
+      "width": 1280,
+      "height": 768,
+      "policy": "inplace",
+      "area_fraction": 0.01,
+      "dips": 4,
+      "median_ms": 0.5434,
+      "min_ms": 0.514,
+      "max_ms": 0.6429
+    },
+    {
+      "width": 1280,
+      "height": 768,
+      "policy": "inplace",
+      "area_fraction": 0.01,
+      "dips": 16,
+      "median_ms": 1.8875,
+      "min_ms": 1.7626,
+      "max_ms": 3.6813
+    },
+    {
+      "width": 1280,
+      "height": 768,
+      "policy": "inplace",
+      "area_fraction": 0.0601,
+      "dips": 1,
+      "median_ms": 0.2964,
+      "min_ms": 0.2844,
+      "max_ms": 0.3467
+    },
+    {
+      "width": 1280,
+      "height": 768,
+      "policy": "inplace",
+      "area_fraction": 0.0601,
+      "dips": 4,
+      "median_ms": 0.5713,
+      "min_ms": 0.5273,
+      "max_ms": 0.6092
+    },
+    {
+      "width": 1280,
+      "height": 768,
+      "policy": "inplace",
+      "area_fraction": 0.0601,
+      "dips": 16,
+      "median_ms": 1.8974,
+      "min_ms": 1.8213,
+      "max_ms": 1.9386
+    },
+    {
+      "width": 1280,
+      "height": 768,
+      "policy": "inplace",
+      "area_fraction": 1.0,
+      "dips": 1,
+      "median_ms": 0.549,
+      "min_ms": 0.5405,
+      "max_ms": 0.5719
+    },
+    {
+      "width": 1280,
+      "height": 768,
+      "policy": "inplace",
+      "area_fraction": 1.0,
+      "dips": 4,
+      "median_ms": 1.3342,
+      "min_ms": 1.3032,
+      "max_ms": 1.4319
+    },
+    {
+      "width": 1280,
+      "height": 768,
+      "policy": "inplace",
+      "area_fraction": 1.0,
+      "dips": 16,
+      "median_ms": 4.1074,
+      "min_ms": 3.9815,
+      "max_ms": 4.3291
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "policy": "exchange",
+      "area_fraction": 0.01,
+      "dips": 1,
+      "median_ms": 0.6685,
+      "min_ms": 0.662,
+      "max_ms": 0.6716
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "policy": "exchange",
+      "area_fraction": 0.01,
+      "dips": 4,
+      "median_ms": 1.9419,
+      "min_ms": 1.9212,
+      "max_ms": 1.9634
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "policy": "exchange",
+      "area_fraction": 0.01,
+      "dips": 16,
+      "median_ms": 6.4584,
+      "min_ms": 6.409,
+      "max_ms": 6.5872
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "policy": "exchange",
+      "area_fraction": 0.0601,
+      "dips": 1,
+      "median_ms": 0.6793,
+      "min_ms": 0.6692,
+      "max_ms": 0.8873
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "policy": "exchange",
+      "area_fraction": 0.0601,
+      "dips": 4,
+      "median_ms": 2.072,
+      "min_ms": 1.9595,
+      "max_ms": 2.0929
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "policy": "exchange",
+      "area_fraction": 0.0601,
+      "dips": 16,
+      "median_ms": 6.7057,
+      "min_ms": 6.6579,
+      "max_ms": 6.755
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "policy": "exchange",
+      "area_fraction": 1.0,
+      "dips": 1,
+      "median_ms": 1.1448,
+      "min_ms": 1.1227,
+      "max_ms": 1.2256
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "policy": "exchange",
+      "area_fraction": 1.0,
+      "dips": 4,
+      "median_ms": 3.4123,
+      "min_ms": 3.3495,
+      "max_ms": 3.5141
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "policy": "exchange",
+      "area_fraction": 1.0,
+      "dips": 16,
+      "median_ms": 12.1571,
+      "min_ms": 12.0969,
+      "max_ms": 12.2842
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "policy": "inplace",
+      "area_fraction": 0.01,
+      "dips": 1,
+      "median_ms": 0.2833,
+      "min_ms": 0.2784,
+      "max_ms": 0.4108
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "policy": "inplace",
+      "area_fraction": 0.01,
+      "dips": 4,
+      "median_ms": 0.5292,
+      "min_ms": 0.5145,
+      "max_ms": 0.6458
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "policy": "inplace",
+      "area_fraction": 0.01,
+      "dips": 16,
+      "median_ms": 1.7956,
+      "min_ms": 1.7123,
+      "max_ms": 1.8778
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "policy": "inplace",
+      "area_fraction": 0.0601,
+      "dips": 1,
+      "median_ms": 0.2926,
       "min_ms": 0.2766,
-      "max_ms": 0.2953
-    },
-    {
-      "width": 1280,
-      "height": 768,
-      "policy": "inplace",
-      "area_fraction": 0.01,
-      "dips": 4,
-      "median_ms": 0.5674,
-      "min_ms": 0.5325,
-      "max_ms": 0.6678
-    },
-    {
-      "width": 1280,
-      "height": 768,
-      "policy": "inplace",
-      "area_fraction": 0.01,
-      "dips": 16,
-      "median_ms": 1.8993,
-      "min_ms": 1.7959,
-      "max_ms": 1.9687
-    },
-    {
-      "width": 1280,
-      "height": 768,
-      "policy": "inplace",
-      "area_fraction": 0.0601,
-      "dips": 1,
-      "median_ms": 0.2875,
-      "min_ms": 0.2791,
-      "max_ms": 0.4098
-    },
-    {
-      "width": 1280,
-      "height": 768,
-      "policy": "inplace",
-      "area_fraction": 0.0601,
-      "dips": 4,
-      "median_ms": 0.5563,
-      "min_ms": 0.5365,
-      "max_ms": 0.6515
-    },
-    {
-      "width": 1280,
-      "height": 768,
-      "policy": "inplace",
-      "area_fraction": 0.0601,
-      "dips": 16,
-      "median_ms": 1.8987,
-      "min_ms": 1.8227,
-      "max_ms": 1.9996
-    },
-    {
-      "width": 1280,
-      "height": 768,
-      "policy": "inplace",
-      "area_fraction": 1.0,
-      "dips": 1,
-      "median_ms": 0.545,
-      "min_ms": 0.5323,
-      "max_ms": 0.5726
-    },
-    {
-      "width": 1280,
-      "height": 768,
-      "policy": "inplace",
-      "area_fraction": 1.0,
-      "dips": 4,
-      "median_ms": 1.5001,
-      "min_ms": 1.322,
-      "max_ms": 1.5786
-    },
-    {
-      "width": 1280,
-      "height": 768,
-      "policy": "inplace",
-      "area_fraction": 1.0,
-      "dips": 16,
-      "median_ms": 4.3319,
-      "min_ms": 4.1476,
-      "max_ms": 4.441
-    },
-    {
-      "width": 1920,
-      "height": 1080,
-      "policy": "exchange",
-      "area_fraction": 0.01,
-      "dips": 1,
-      "median_ms": 0.671,
-      "min_ms": 0.6686,
-      "max_ms": 0.8056
-    },
-    {
-      "width": 1920,
-      "height": 1080,
-      "policy": "exchange",
-      "area_fraction": 0.01,
-      "dips": 4,
-      "median_ms": 1.9582,
-      "min_ms": 1.9408,
-      "max_ms": 1.9635
-    },
-    {
-      "width": 1920,
-      "height": 1080,
-      "policy": "exchange",
-      "area_fraction": 0.01,
-      "dips": 16,
-      "median_ms": 6.5043,
-      "min_ms": 6.4256,
-      "max_ms": 6.5406
-    },
-    {
-      "width": 1920,
-      "height": 1080,
-      "policy": "exchange",
-      "area_fraction": 0.0601,
-      "dips": 1,
-      "median_ms": 0.677,
-      "min_ms": 0.6674,
-      "max_ms": 0.9163
-    },
-    {
-      "width": 1920,
-      "height": 1080,
-      "policy": "exchange",
-      "area_fraction": 0.0601,
-      "dips": 4,
-      "median_ms": 2.0792,
-      "min_ms": 1.9549,
-      "max_ms": 2.092
-    },
-    {
-      "width": 1920,
-      "height": 1080,
-      "policy": "exchange",
-      "area_fraction": 0.0601,
-      "dips": 16,
-      "median_ms": 6.7622,
-      "min_ms": 6.6448,
-      "max_ms": 6.7986
-    },
-    {
-      "width": 1920,
-      "height": 1080,
-      "policy": "exchange",
-      "area_fraction": 1.0,
-      "dips": 1,
-      "median_ms": 1.0688,
-      "min_ms": 1.0519,
-      "max_ms": 1.0861
-    },
-    {
-      "width": 1920,
-      "height": 1080,
-      "policy": "exchange",
-      "area_fraction": 1.0,
-      "dips": 4,
-      "median_ms": 3.4026,
-      "min_ms": 3.3699,
-      "max_ms": 3.4825
-    },
-    {
-      "width": 1920,
-      "height": 1080,
-      "policy": "exchange",
-      "area_fraction": 1.0,
-      "dips": 16,
-      "median_ms": 12.2389,
-      "min_ms": 12.1694,
-      "max_ms": 12.4187
-    },
-    {
-      "width": 1920,
-      "height": 1080,
-      "policy": "inplace",
-      "area_fraction": 0.01,
-      "dips": 1,
-      "median_ms": 0.2818,
-      "min_ms": 0.2745,
-      "max_ms": 0.4311
-    },
-    {
-      "width": 1920,
-      "height": 1080,
-      "policy": "inplace",
-      "area_fraction": 0.01,
-      "dips": 4,
-      "median_ms": 0.5569,
-      "min_ms": 0.5254,
-      "max_ms": 0.6552
-    },
-    {
-      "width": 1920,
-      "height": 1080,
-      "policy": "inplace",
-      "area_fraction": 0.01,
-      "dips": 16,
-      "median_ms": 1.8005,
-      "min_ms": 1.7502,
-      "max_ms": 1.8677
-    },
-    {
-      "width": 1920,
-      "height": 1080,
-      "policy": "inplace",
-      "area_fraction": 0.0601,
-      "dips": 1,
-      "median_ms": 0.2817,
-      "min_ms": 0.2743,
-      "max_ms": 0.4073
+      "max_ms": 0.4121
     },
     {
       "width": 1920,
@@ -458,9 +458,9 @@
       "policy": "inplace",
       "area_fraction": 0.0601,
       "dips": 4,
-      "median_ms": 0.5475,
-      "min_ms": 0.5115,
-      "max_ms": 0.6624
+      "median_ms": 0.5556,
+      "min_ms": 0.5144,
+      "max_ms": 0.6632
     },
     {
       "width": 1920,
@@ -468,9 +468,9 @@
       "policy": "inplace",
       "area_fraction": 0.0601,
       "dips": 16,
-      "median_ms": 1.8207,
-      "min_ms": 1.765,
-      "max_ms": 1.9206
+      "median_ms": 1.794,
+      "min_ms": 1.7086,
+      "max_ms": 1.8622
     },
     {
       "width": 1920,
@@ -478,9 +478,9 @@
       "policy": "inplace",
       "area_fraction": 1.0,
       "dips": 1,
-      "median_ms": 1.0659,
-      "min_ms": 1.0532,
-      "max_ms": 1.0821
+      "median_ms": 1.0656,
+      "min_ms": 1.0562,
+      "max_ms": 1.0887
     },
     {
       "width": 1920,
@@ -488,9 +488,9 @@
       "policy": "inplace",
       "area_fraction": 1.0,
       "dips": 4,
-      "median_ms": 3.3869,
-      "min_ms": 3.3758,
-      "max_ms": 3.4376
+      "median_ms": 3.5206,
+      "min_ms": 3.3624,
+      "max_ms": 3.534
     },
     {
       "width": 1920,
@@ -498,9 +498,9 @@
       "policy": "inplace",
       "area_fraction": 1.0,
       "dips": 16,
-      "median_ms": 12.2398,
-      "min_ms": 12.1414,
-      "max_ms": 12.2713
+      "median_ms": 12.335,
+      "min_ms": 12.0771,
+      "max_ms": 13.2677
     }
   ],
   "timing_scope": "EVENT-fenced windows of prepare/source/finish(/exchange) per frame on the detached device; M clear outside the window; not game FPS",
