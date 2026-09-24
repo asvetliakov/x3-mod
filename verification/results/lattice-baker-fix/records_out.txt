@@ -1,0 +1,4 @@
+record 0 T=2169156 faces 54412: mat21 4752 y(-135.0, 211.0) mat4 3784 y(-50.0, 100.0) mat9 40258 mat6 960 mat18 940; parts 2
+record 1 T=250 faces 14284: mat21 4752 y(-135.0, 211.0) mat4 3784 y(-50.0, 100.0) mat9 130 mat6 960 mat18 940; parts 2
+record 2 T=150 faces 9664: mat21 132 y(0.0, 0.0) mat4 3784 y(-50.0, 100.0) mat9 130 mat6 960 mat18 940; parts 1
+record 3 T=80 faces 4757: mat21 0 yNone mat4 0 yNone mat9 0 mat6 0 mat18 0; parts 1

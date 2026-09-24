@@ -1,0 +1,14 @@
+Lattice baker-fix design measurements (2026-09-25), design note docs/architecture/lattice-baker-fix.md.
+Every script reads objects/stations/x3tc/terran_spp_panel.pbb from the bottle's vanilla catalogues through the baker's reader
+(lod_overlay.original_assets -> bob1.resolve_body; addon/05 and 06 overlay catalogues skipped) and prints derived numbers only.
+No Wine, no build, no install, no game. Run from the repository root:
+  python3 verification/results/lattice-baker-fix/inventory.py  > inventory_out.txt   # ladder, 22 materials, parts, point scale
+  python3 verification/results/lattice-baker-fix/geometry.py   > geometry_out.txt    # pane strips, pitch, overlap, frame/strut components, per-material bboxes
+  python3 verification/results/lattice-baker-fix/race.py       > race_out.txt        # pane <-> frame offsets, rim widths, rows
+  python3 verification/results/lattice-baker-fix/bars.py       > bars_out.txt        # frame faces over the pane (end caps only), texture stats
+  python3 verification/results/lattice-baker-fix/poke.py       > poke_out.txt        # frame height map over the pane: 1.6 % coverage
+  python3 verification/results/lattice-baker-fix/beams.py      > beams_out.txt       # mat 4 beam map over the panes: above the pane on 13 % of the footprint at the lower edge
+  python3 verification/results/lattice-baker-fix/beampitch.py  > beampitch_out.txt   # beam pitch 1229, cross-section 151 x 150, UV 5 x 1 per face
+  python3 verification/results/lattice-baker-fix/records.py    > records_out.txt     # vanilla records 1-3: record 2 flattens the panes to y = 0, keeps the beams
+  python3 verification/results/lattice-baker-fix/pixels.py     > pixels_out.txt      # feature sizes in px against s (inferred arithmetic)
+Flight evidence used: verification/results/run315-run82a-lattice-crawl/*_out.txt (Run 82 A, run315 burst 4443-4450).

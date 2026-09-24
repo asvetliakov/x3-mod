@@ -1,0 +1,22 @@
+slat 0: pane half-extents along z 3416.5, across 686.2; frame comp faces 304
+  parallel faces by offset (units above pane): [(-1.0, 2), (0.0, 6), (1.0, 7), (2.0, 4), (3.0, 8), (4.0, 7), (5.0, 4), (6.0, 2)]
+  top faces 34 in 5 components
+    faces   7 z  -3447.5.. -3295.5 (w  152.0)  across   -370.3..   130.6 (w  500.9)
+    faces  10 z  -3447.5.. -3297.5 (w  150.0)  across   -366.8..   375.0 (w  741.7)
+    faces   1 z  -3403.5.. -3362.5 (w   41.0)  across    130.1..   256.7 (w  126.6)
+    faces  10 z   3292.5..  3446.5 (w  154.0)  across   -365.7..   376.2 (w  742.0)
+    faces   6 z   3323.5..  3446.5 (w  123.0)  across   -371.3..   130.1 (w  501.4)
+  top comp extents (z, across) min: [41.0, 126.6] p50 [150.0, 501.4]
+  top face shortest altitudes p5/p50/p95 [23.4, 28.4, 29.8]
+  top-face area 64323 pane area 8837904 ratio 0.007
+  side faces 16 other 248
+  mat 21 diffuse metals\x3tc\metal_argon_solar_panes_diff.tga: dds (512, 512, 4) rgb mean [62.7, 66.0, 86.4] alpha min/mean/max 239/242.0/255
+  mat 21 alpha etals\x3tc\metal_argon_solar_panes_alpha8.tga: dds (32, 32, 4) rgb mean [0.0, 0.0, 0.0] alpha min/mean/max 0/0.0/0
+  mat 21 light les\Autodesk\3ds Max 2008\Maps\NONE_BLACK.DDS: dds (32, 32, 4) rgb mean [0.0, 0.0, 0.0] alpha min/mean/max 0/0.0/0
+  mat 9 diffuse als\argon\metal_argon_simple_plating_diff.tga: dds (1024, 1024, 4) rgb mean [101.2, 100.1, 103.2] alpha min/mean/max 255/255.0/255
+  mat 0 diffuse metals\argon\metal_argon_glass_panes_diff.tga: dds (512, 512, 4) rgb mean [94.2, 93.7, 99.3] alpha min/mean/max 102/115.2/255
+  mat 0 alpha tals\argon\metal_argon_glass_panes_alpha8.tga: dds (32, 32, 4) rgb mean [0.0, 0.0, 0.0] alpha min/mean/max 0/0.0/0
+  mat 0 light mme\Autodesk\3ds Max 2008\Maps\NONE_BLACK.DDS: dds (32, 32, 4) rgb mean [0.0, 0.0, 0.0] alpha min/mean/max 0/0.0/0
+  mat 4 diffuse metal_argon_lattice_support_beams_01_diff.tga: dds (128, 512, 4) rgb mean [98.0, 96.9, 100.2] alpha min/mean/max 0/142.9/255
+  mat 4 alpha etal_argon_lattice_support_beams_01_alpha.tga: dds (32, 32, 4) rgb mean [0.0, 0.0, 0.0] alpha min/mean/max 0/0.0/0
+  mat 4 light etal_argon_lattice_support_beams_01_light.tga: dds (128, 512, 4) rgb mean [1.5, 1.5, 1.4] alpha min/mean/max 0/2.5/255

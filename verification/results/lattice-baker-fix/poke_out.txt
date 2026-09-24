@@ -1,0 +1,7 @@
+frame face angle to pane normal (deg, 5-deg bins): [(0, 24), (5, 23), (10, 55), (15, 11), (20, 62), (25, 17), (30, 19), (35, 6), (40, 20), (45, 2), (50, 20), (55, 5), (60, 16), (65, 8), (75, 8), (80, 8)]
+pane grid (684, 138) cells of 10.0 units; frame covers 0.016 of the pane footprint
+frame surface height above pane where covered: p1/p5/p25/p50/p75/p95/p99 [-2.06, 0.28, 3.15, 5.89, 8.7, 9.21, 10.23]
+share of pane area with frame above the pane (h>0): 0.015  h>0.5: 0.015  |h|<0.5: 0.0
+height profile across the slat (x from -L2..L2, every 5th sample): [8.8, 7.9, 7.8, 6.9, 6.5, 6.1, 5.5, 5.3, 5.0, 5.0, 4.4, 4.3, 4.1, 4.0, 4.6, 3.8, 3.9, 3.0, 3.0, 3.4, 3.2, 2.4, 2.0, 2.0, 1.6, 1.4, 1.0, 1.2]
+height profile along the slat (z, 20 samples): [4.6, 4.8, 7.4, 9.2, 9.2, 9.1, 9.0, 9.0, 8.9, 8.8, 8.8, 8.7, 8.7, 8.6, 8.5, 8.5, 8.4, 8.3, 2.6, 3.8, 3.2]
+columns (across) with any h>0 fraction: [0.71, 0.02, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.02]

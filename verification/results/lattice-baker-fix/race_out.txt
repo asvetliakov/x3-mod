@@ -1,0 +1,10 @@
+pane->frame centre distance p50/p95 [4.2, 4.3] distinct frames used 132
+frame vertex offsets along the pane normal (units, + = above pane), top values: [(3.5, 875), (4.4, 844), (4.3, 809), (4.5, 789), (3.3, 764), (1.5, 751), (1.6, 737), (0.3, 725), (1.0, 719), (0.2, 717), (0.8, 716), (0.4, 714)]
+frame faces parallel to the pane (|n.pn|>0.99) by offset: [(np.float64(-13.0), 1), (np.float64(-12.8), 1), (np.float64(-12.7), 4), (np.float64(-12.6), 5), (np.float64(-12.5), 8), (np.float64(-12.4), 1), (np.float64(-12.3), 1), (np.float64(-12.2), 1), (np.float64(-12.0), 2), (np.float64(-11.9), 1), (np.float64(-11.8), 1), (np.float64(-11.7), 10)]
+rim beyond pane (along z: max,min | across: max,min) first 4 slats: [(np.float64(30.0), np.float64(30.0)), (np.float64(8.3), np.float64(2.3)), (np.float64(34.0), np.float64(34.0)), (np.float64(8.3), np.float64(2.3)), (np.float64(34.0), np.float64(34.0)), (np.float64(9.3), np.float64(2.3)), (np.float64(34.0), np.float64(34.0)), (np.float64(8.3), np.float64(2.3))]
+pane normal of slat 0 [ 0.252  0.967 -0.   ]
+pane centre z values: [-54900.0, -45900.0, -36900.0, -27900.0, -18900.0, -9900.0]
+one row: n 24 x pitch p50 1222.7 x range -17207.78947368421 17223.21052631579
+pane UV range [0.001, -6.996] [1.999, 0.996]
+frame faces parallel to n: 5605 of 40258
+parallel frame faces with centroid inside the pane footprint: 3504 of 5603

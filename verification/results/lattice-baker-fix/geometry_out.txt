@@ -1,0 +1,42 @@
+--- cells: mats [21] faces 4752 components 132; faces/comp [(36, 132)]
+  edges 9636 shared 4620
+  cell sizes (long, short, thickness) p5/p50/p95: [[6495.0, 1371.4, 0.8], [7851.0, 1372.3, 0.9], [7851.0, 1372.3, 1.2]]
+  cell normals mean [ 0.253  0.967 -0.   ] abs mean [0.253 0.967 0.   ]
+  cell centre bbox [-17208.0, 38.0, -54905.0] [17223.0, 38.0, -9858.0]
+  nn distance p5/p50/p95 (k=1..4): [[1218.6, 1222.6, 1222.8], [1222.7, 1227.6, 2446.3], [2445.2, 2445.4, 3668.9], [2446.3, 3668.0, 4895.5]]
+  gap between neighbouring cells along nn dir p5/p50/p95: [-109.5, -105.1, 1118.1] frac<=0 0.833
+  cell y (thickness axis) p5/p50/p95 [38.2, 38.2, 38.2] distinct planes 1
+  strip 0: points 38 distinct long-axis coords 20 short-axis 19 long coords [-3417.0, -3403.0, -3362.0, -3295.0, -3200.0, -3078.0, -2932.0, -2766.0, -2583.0, -2386.0, 2387.0, 2584.0, 2767.0, 2933.0, 3079.0, 3201.0, 3296.0, 3363.0, 3404.0, 3417.0]
+  strip long-axis direction [-0.  0.  1.] short [-0.968  0.252 -0.   ]
+--- frame mat9: mats [9] faces 40258 components 143; faces/comp [(304, 132), (3, 4), (8, 2), (11, 2), (22, 1), (42, 1)]
+  edges 60453 shared 60321
+  frame comp sizes (long, short, thick) p5/p50/p95: [[4958.5, 1382.9, 10.2], [7920.0, 1382.9, 10.6], [7920.0, 1383.9, 205.9]]
+  frame comp count by faces [(304, 132), (3, 4), (8, 2), (11, 2), (22, 1)]
+  frame y p5/p50/p95 [39.8, 39.8, 39.9] normals abs mean [0.126 0.165 0.013]
+  frame quads other normals: n 143 sizes p50 [7920.0, 1382.9, 10.6] y p5/p50/p95 [39.8, 39.8, 39.9]
+--- struts mats 4,5,6,18,0: mats [0, 4, 5, 6, 18] faces 5712 components 250; faces/comp [(8, 146), (2, 37), (10, 27), (172, 22), (30, 6), (6, 4)]
+  edges 9576 shared 7560
+  strut comp sizes p50 [2210.1, 212.1, 143.9] y p5/p50/p95 [-1302.5, 25.0, 400.7]
+--- other opaque: faces 3690 y range -2879.0 3322.0 x range -14936.0 14936.0
+  mat  0 faces     4 bbox x   -520..   536 y  -1947..  -709 z -62702..-62702
+  mat  1 faces    24 bbox x  -3638..  3821 y  -2087..  2022 z  -6112..  -988
+  mat  2 faces    20 bbox x  -1430..  1613 y  -2749..  3214 z  -5322.. -2360
+  mat  3 faces   192 bbox x  -3738..  3921 y  -2879..  3214 z  -7828..  -238
+  mat  4 faces  3784 bbox x -17953.. 17917 y    -50..   100 z -59064.. -5726
+  mat  5 faces    24 bbox x  -5979..  5979 y  -2298..  -556 z -59589..-14239
+  mat  6 faces   960 bbox x -13744.. 13744 y  -2373..  2370 z -64575..  -153
+  mat  7 faces   534 bbox x -11763.. 11763 y  -1833..  3042 z -65536..  -383
+  mat  8 faces    76 bbox x  -1814..  1814 y   -115..  1685 z -64729.. -8754
+  mat  9 faces 40258 bbox x -17872.. 17895 y  -2369..  3322 z -58865..  -238
+  mat 10 faces    44 bbox x  -1959..  1959 y  -1569..   959 z -64729.. -7785
+  mat 11 faces    64 bbox x  -1016..  1092 y  -2370..  3214 z -59809.. -1903
+  mat 12 faces    32 bbox x  -1401..  1401 y  -2127.. -1361 z -64729.. -8754
+  mat 13 faces    66 bbox x  -4525..  4708 y  -1805..  3322 z -62423..  -238
+  mat 14 faces   710 bbox x -14765.. 14765 y  -2375..  2704 z -59625..  -301
+  mat 15 faces    88 bbox x  -3066..  3249 y  -2369..  1642 z -62702..  -897
+  mat 16 faces   888 bbox x -14936.. 14936 y  -2127..  1685 z -65536..  -865
+  mat 17 faces   894 bbox x -14657.. 14657 y  -2879..  1107 z -64212..  -160
+  mat 18 faces   940 bbox x -14936.. 14936 y  -2298..   521 z -62475.. -3209
+  mat 19 faces    44 bbox x  -1818..  1818 y  -1432..  -232 z -64451.. -9032
+  mat 20 faces    14 bbox x  -1378..  1272 y  -1544..  1107 z -65536..-65536
+  mat 21 faces  4752 bbox x -17872.. 17887 y   -135..   211 z -58830.. -5932

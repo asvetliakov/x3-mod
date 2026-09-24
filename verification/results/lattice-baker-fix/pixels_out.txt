@@ -1,0 +1,20 @@
+--- 1440 rows, focal 1280 px
+  slat pitch (pane 1222.6 / beam 1229)                 s=73:  2.72px s=90:  3.36px s=104:  3.88px s=217:  8.09px s=250:  9.33px s=266:  9.92px
+  beam width 151 (height 150)                          s=73:  0.34px s=90:  0.41px s=104:  0.48px s=217:  1.00px s=250:  1.15px s=266:  1.23px
+  louvre gap at 45 deg incidence (346 sin - 105 cos)   s=73:  0.38px s=90:  0.47px s=104:  0.54px s=217:  1.13px s=250:  1.30px s=266:  1.38px
+  louvre step in y 346                                 s=73:  0.77px s=90:  0.95px s=104:  1.10px s=217:  2.29px s=250:  2.64px s=266:  2.81px
+  rim width 5.5                                        s=73:  0.01px s=90:  0.02px s=104:  0.02px s=217:  0.04px s=250:  0.04px s=266:  0.04px
+  rim end 34                                           s=73:  0.08px s=90:  0.09px s=104:  0.11px s=217:  0.23px s=250:  0.26px s=266:  0.28px
+  beam texture period 1256                             s=73:  2.80px s=90:  3.45px s=104:  3.99px s=217:  8.32px s=250:  9.58px s=266: 10.19px
+  row pitch 9000                                       s=73: 20.04px s=90: 24.71px s=104: 28.56px s=217: 59.58px s=250: 68.65px s=266: 73.04px
+  s below which the slat pitch is under 2 px: 53.6; s below which the beam is under 1 px: 217.1
+--- 1080 rows, focal 960 px
+  slat pitch (pane 1222.6 / beam 1229)                 s=73:  2.04px s=90:  2.52px s=104:  2.91px s=217:  6.07px s=250:  6.99px s=266:  7.44px
+  beam width 151 (height 150)                          s=73:  0.25px s=90:  0.31px s=104:  0.36px s=217:  0.75px s=250:  0.86px s=266:  0.92px
+  louvre gap at 45 deg incidence (346 sin - 105 cos)   s=73:  0.28px s=90:  0.35px s=104:  0.41px s=217:  0.85px s=250:  0.97px s=266:  1.04px
+  louvre step in y 346                                 s=73:  0.58px s=90:  0.71px s=104:  0.82px s=217:  1.72px s=250:  1.98px s=266:  2.11px
+  rim width 5.5                                        s=73:  0.01px s=90:  0.01px s=104:  0.01px s=217:  0.03px s=250:  0.03px s=266:  0.03px
+  rim end 34                                           s=73:  0.06px s=90:  0.07px s=104:  0.08px s=217:  0.17px s=250:  0.19px s=266:  0.21px
+  beam texture period 1256                             s=73:  2.10px s=90:  2.59px s=104:  2.99px s=217:  6.24px s=250:  7.18px s=266:  7.64px
+  row pitch 9000                                       s=73: 15.03px s=90: 18.53px s=104: 21.42px s=217: 44.69px s=250: 51.48px s=266: 54.78px
+  s below which the slat pitch is under 2 px: 71.5; s below which the beam is under 1 px: 289.4
