@@ -169,7 +169,7 @@ inside `N` in those sectors; it does not show that stations are exempt.
 | Consumer | Distance and radius | Test | Effect |
 | --- | --- | --- | --- |
 | Per-node cull in `0x0047cfe0`, `0x0047d117..0x0047d195` [s] | `D` = helper `0x0042f850` (node `+0xb0` to camera `+0x30`); `r` = cached subtree radius `0x00488170` (`node+0xa4`) | skipped if the camera has no fog flag or the node is exempt (`0x0047d146`, bytes `f7 c2 00 00 00 02 75 4d`); else unsigned `D > F_eff + r` | clears the renderable bit `+0x12c & 2` |
-| Scene walk `0x0047e920`, `0x0047ea28..0x0047eb63` [s] | own `sqrtf` `D` and `r = 0x00488170` for each top-level node of the layer | same fog and exemption test (`0x0047ea38`); near test `D + r < N` (signed, `0x0047eaac`); far test `D − r > F_eff` (signed, `0x0047eb0f`) | Frame routine `0x00472280..0x004722a8` runs the walk twice when camera `+0x270 & 0x40000` is set. First with flag 4, which submits only fog-band nodes with `node+0x130 |= 0x20000` (depth-only prepass). Then with flag 0, which submits everything except nodes beyond `F_eff + r`. |
+| Scene walk `0x0047e920`, `0x0047ea28..0x0047eb63` [s] | own `sqrtf` `D` and `r = 0x00488170` for each top-level node of the layer | same fog and exemption test (`0x0047ea38`); near test `D + r < N` (signed, `0x0047eaac`); far test `D − r > F_eff` (signed, `0x0047eb0f`) | Frame routine `0x00472280..0x004722a8` runs the walk twice when camera `+0x270 & 0x40000` is set. First with flag 4, which submits only fog-band nodes with `node+0x130 |= 0x20000` (depth-only prepass). Then with flag 0, which submits everything except nodes beyond `F_eff + r`. Writer and selection: section 8. |
 | Material block (section 2) [s] | `D` of the **submitted** node origin, no radius | `D ≥ N` (as `F−D ≤ F−N`) | fade state and constants |
 
 ## 6. The threshold test (node origin) and patch sites
@@ -253,10 +253,145 @@ there is `OR dword ptr [EBP+0x40],0x80000004`, 7 bytes `81 4d 40 04 00 00
 - Whether any attached-effect record (`0x00414cf0`) or loaded scene stream
   (`0x00479d10`, script `0x00493b40` case `0x3b` wholesale flag writes)
   carries `0x02000000` in shipped data.
-- Where camera `+0x270 & 0x40000` (the band prepass) is set, and what the
-  backgrounds camera carries.
+- Resolved (section 8): camera `+0x270 & 0x40000` is set by KC `ShowSpace` on the sector
+  camera; the galaxy (background) camera has neither it nor the fog flag.
+- Whether parts that `0x0047d9c0` routes to the sort queue (node `+0x12c & 0x800`, part
+  `+0x60 & 0x20`, node `+0x130 & 0x10`) are queued by the prepass walk too. The queue is
+  flushed after both walks, when `0x20000` is already cleared, so such a part could get a
+  second colour draw [s/i]; not followed.
+- Whether instanced bodies (`0x0046cef0`, drawn by `0x0046d080`) get the fade, and what the
+  `ShowSpace` local `0x10` test (`0x4908` versus `0x09000000`) stands for.
+- Which classes the captured `z_only` models belong to: no station prepass has been witnessed yet.
 - Which sector Run 27 was flown in, beyond the FogNear 25 M group.
 - The visual acceptability of the station opt-out: no flight has tested it.
+
+## 8. The fog-band depth prepass (camera `+0x270 & 0x40000`)
+
+Second static pass on the same EXE, 2026-09-24, plus the KC bytecode of the shipped
+`l/x3story.obj`, `l/x3galedit.obj` and `l/x3intro.obj` and a tally of flight logs already on
+disk (runs 260–298). Nothing was run. KC opcode meanings (`07`/`06`/`05` push 32/16/8-bit,
+`54` OR, `53` AND, `<argc+1> 82 <be32 STRG offset>` native call) are inferred from the
+pattern, as in [LOD child hide](lod-child-hide.md).
+
+**Answer.** The bit is authored by the game's KC script, not by the EXE. The KC method
+`ShowSpace` in `x3story.obj` sets it, unconditionally, on the camera it then installs as the
+cockpit's sector camera. The prepass walk selects nodes by the band test, the per-node
+exemption bit and the instancing path only. It has no class input, so a station whose bounding
+sphere reaches `N` is drawn depth-only first, the whole tree, just as an asteroid is. The
+galaxy (background) camera does not carry the bit, and it carries no fog flag either.
+
+**Writer [s].** No EXE instruction ORs `0x40000` into a `+0x270` displacement. The sweep of
+every operand ending in `0x270` finds bit writers only for `0x200`, `0x24`, `0x10000`, `0x8000`
+and `0x1`. The frame routine's `AND 0xffffffcf` at `0x004723b8` touches only `0x30` and is
+undone at `0x0047241a`. The bit therefore arrives through a whole-word store:
+
+| Path | Site | Source of the word |
+| --- | --- | --- |
+| KC `B3D_CameraSetFlags` (native `0x3b` of the B3D module `0x00493b40`; name table `0x0057a420`) | `0x00494f10` `MOV ECX,[ESI+6]` / `MOV [EAX+0x270],ECX` | script argument |
+| savegame/scene-stream loader `0x00479d10` | `0x0047a3f9` | stored word |
+| option-gated loader `0x00476140` | `0x004772ac` (clears bit 0 first) | stored word |
+| stream reader `0x004310a0` | `0x00431a24` (byte-swapped word) | stored word |
+
+`0x0046433a` writes `+0x270` of a class-7 object's `+0x50` record, not a camera [i].
+
+**The KC writer.** All 32 `B3D_CameraSetFlags` sites in `x3story.obj` were decoded [s]:
+
+| KC method (CODE offset) | Flags written | Camera |
+| --- | --- | --- |
+| `ShowSpace` (+987342) | `GetFlags \| 0x4 \| 0x40000 \| (local 0x10 test ? 0x4908 : 0x09000000) \| 0x20 \| 0x800000` on a fresh `B3D_CameraAlloc` | `B3D_CameraAddToScene(SA_GetSpaceScene)`, then `INS_CockpitSetSectorCamera` |
+| `ShowSpace` (+987676) | `GetFlags \| 0x4 \| 0x10 \| 0x20 \| 0x400000 \| (test ? 0x100 : 0)` | galaxy camera (`INS_CockpitSetGalaxyCamera`) |
+| `ShowSpace` (+987791) | `GetFlags \| 0x4 \| 0x80000` | environment-map camera |
+| `ShowDust` (+986907) | `GetFlags & ~0x4 \| 0x1000` | dust camera (`INS_CockpitSetDustCamera`) |
+| `StartShot` (+155779) | `GetFlags \| 0x40000 \| 0x800000` | cut-scene shot camera |
+
+Every other AND mask in `x3story.obj` (`0xfffffff7`, `0xfffdffff`, `0xffffffef`, `0xfffffffb`,
+`0xfffffbff`) leaves `0x40000` alone. The seven constant stores (`Graphics_AllocCamera`,
+`Show` ×2, `Open`, `OpenCustom`, `ShowWindow`, `SpecialMenu`) each follow a `B3D_CameraAlloc`
+in the same method and address that method's own camera [i]. `x3galedit.obj` has the same set
+at other offsets. `x3intro.obj` has the bit only in intro scenes: `InitScenes`/`InitScene`
+constants `0x0004482c`/`0x0004483c`, and the `Input` method toggles it. The engine adds `0x1`
+(scene enable, `0x00489bf0`) and `0x10000` (fog, `0x0042157c`) to the sector camera. The
+composition then gives `0x4|0x40000|0x4908|0x20|0x800000|0x1|0x10000 = 0x0085492d`, the
+captured sector-camera word. Galaxy `…|0x100|0x1` gives `0x00400135`, and the environment
+camera `0x00080005`. All three equal the captures [m].
+
+**Condition.** None beyond running `ShowSpace`. There is no configuration word, view mode,
+TBackgrounds field or View Distance term. View Distance moves only the band's far edge
+(`F_eff`, `0x0047eacf`). The prepass also needs the fog flag `0x10000`, which `0x004205e0` sets
+on every sector-camera update (section 3).
+
+**Cameras in flight [m].** `object_fade` rows in 39 session logs (runs 260–298):
+
+| `flags270` | Rows | `0x40000` | `0x10000` fog | Camera |
+| --- | ---: | :---: | :---: | --- |
+| `0x0085492d` | 512 | yes | yes | sector camera |
+| `0x00400135` | 512 | no | no | galaxy / background camera |
+| `0x00000025`, `0x00002025`, `0x00000001` | 504 / 512 / 1,191 | no | no | cockpit-scene cameras |
+| `0x00009201` | 120 | no | no | dust camera (`0x1000` from `ShowDust`) [i] |
+| `0x00080005` | 2 | no | no | environment-map camera |
+
+The galaxy camera therefore takes neither the fade, nor the far cull, nor the band prepass.
+The environment-map pass `0x0047e820` repeats the double walk (test at `0x0047e8d0`), but its
+camera lacks the bit.
+
+**Walk selection [s].** The frame routine's layer loop (`0x00472280..0x004722c6`, `EBX = 0`
+from `0x00471f7c`) calls `0x0047e920` with flag 4 and then with flag 0 for each layer. Each
+call is followed by the sort `0x0047e620` and the queue flush `0x0047e6e0` [i]. For each top-level node
+of the layer (`node+0x1c0 == layer`), the flag-4 call tests, in order:
+
+1. `0x0046cef0` (`0x0047ea1b`). A body taken by the instancing path skips both walks; `0x0046d080` at the
+   walk's end presumably draws it [i]. This applies to `node+0x12c & 0x800`, to
+   `node+0x130 & 0x800000` on bodies accepted by `0x0046cd40`, or to camera `0x8000` with
+   `node+0x12c & 0x4000000`. The sector camera has no `0x8000` [m].
+2. Camera fog `0x10000` off, or exempt bit `node+0x12c & 0x02000000`: skip.
+3. `D + r < N` (`0x0047eaac`, signed): skip. `D` is the root origin, `r` the subtree radius
+   from `0x00488170`.
+4. `D − r > F_eff` (`0x0047eb0f`): skip.
+5. Otherwise `OR [node+0x130],0x20000` (`0x0047eb23`), submit the tree through `0x0047d9c0`,
+   then `AND` the bit off again (`0x0047eb37`). `0x0047d9c0` sets and clears the same bit
+   around each child's recursive call (`0x0047e5be..0x0047e5d7`), so the whole tree is
+   depth-only.
+
+There is no class test. A station root whose sphere reaches `N` is submitted depth-only with
+all its parts, including parts whose own origin is inside `N`. Per subset, `0x004c0150`
+replaces the material's effect when the bit is set:
+
+- It looks up the engine effect `z_only` (`0x004c0823`, string `0x563410`). If that fails, the
+  subset is skipped (`0x004c0834` → `0x004c4068`).
+- The technique is `Z_Only_Alpha` when the material is alpha-tested [i] (`[ESP+0x70] & 1`, which
+  also binds `t_DiffuseTexture` at `0x004c3037..`), and `Z_Only_Fast` otherwise. These are the
+  two z_only aliases of the [asteroid note](asteroid-fog-temporal.md).
+- A subset whose descriptor `+0x1a4` is nonzero returns without drawing
+  (`0x004c0c36..0x004c0c4b` → `0x004c40e2`). This is the "already blended" material field of
+  section 2.
+- The `g_mWorldViewProjection` handle (descriptor `+0x198`, `0x004c0dd0`) must be non-null
+  (`0x004c21a4`).
+
+**Captures [m].** All 138 `z_only` draws (VS `c78b4c68a87fce74`, null PS) in runs 290, 295
+and 296 carry node `+0x130 & 0x20000` in their `object_context` row: 25/25, 49/49 and 64/64,
+from 5, 4 and 3 distinct models. The models were not mapped to classes, so no station prepass
+has been seen in a capture yet.
+
+**Effect on the RT2 owner design** ([fade-rt2-ownership.md](../architecture/fade-rt2-ownership.md)
+section 3):
+
+- The prepass is not an uncertain case for the sector view. `ShowSpace` sets it for every
+  sector and View Distance [s], and all 512 captured sector-camera rows carry it [m]. The
+  "last band fragment wins" fallback applies only to the exceptions below.
+- Coverage is wider than the fade. The prepass admits a tree when its root sphere reaches `N`.
+  The fade is decided per part origin (`D ≥ N`, section 6). Every faded part therefore lies in
+  a prepassed tree, as long as `r` bounds the child origins [i]. Near opaque parts of the same
+  tree also get prepass depth, and they then draw with Z-write on and LESSEQUAL against it. Both
+  passes must stay jittered alike, which is the existing z_only jitter rule.
+- Exceptions without prepass depth:
+  - blended-material subsets (`+0x1a4`);
+  - instanced bodies (`0x0046cef0`), whose fade state was not followed;
+  - objects in different layers: the prepass runs per layer, just before that layer's colour
+    walk, so it orders nothing across layers [s].
+- Between two band objects, the nearer one's prepass depth rejects the farther one's faded
+  fragments, even though the nearer one is translucent. The RT2 owner is the nearest band
+  surface, as section 3 assumes.
+- `Z_Only_Alpha` clips alpha-tested parts in the prepass. RT2 coverage follows that clip.
 
 ## Reproduce
 
@@ -270,4 +405,11 @@ JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home \
 # refs: -postScript X3CameraState.java <out> txt:0x2000000 data:0047c600 data:0047e920 \
 #   data:0043ffa0 data:0043f900 data:00441d22 data:00441d23 ... data:00441d29
 # decompile (local only): -postScript X3DecompileFunctions.java <out> 0043ffa0 0045f270 00488170
+# section 8: 10/10 site bytes, 4/4 strings, KC B3D_CameraSetFlags table, flags270 tally
+python3 verification/results/distance-fade-prepass/prepass_decode.py /tmp/x3-bottleX3-run2[6-9]*/session-*.log
+python3 verification/results/distance-fade-prepass/zonly_join.py /tmp/x3-bottleX3-run29*/session-*.log
+# listings: -postScript X3CameraState.java <out> load:0x270 txt:0x40000 load:0x198 txt:0x20000 \
+#   dec:0047d9c0 dec:0046cef0 dec:0046ce20 dec:0046cd40; -postScript X3ListRange.java <out> \
+#   00472260:004722c0 0047e820:0047e920 0047e920:0047eb90 004c07e0:004c0870 004c0c20:004c0e00 \
+#   004c2170:004c2215 00494ec0:00494f20
 ```

@@ -685,4 +685,4 @@ runs' installed build; everything else is static on `fdbf3418…`. "No writer fo
 against an aliased base. The fitted sun world position is a least-squares inference
 from one frame, not a read of the light object. Whether `FUN_00487be0` and
 `FUN_00488de0` clear a camera object (not merely a `0x790`-sized one) was not
-established, and `+0x270` bits `0x4000/0x40000/0x100/0x1000000` remain unattributed.
+established, and `+0x270` bits `0x4000/0x100/0x1000000` remain unattributed; `0x40000` (the fog-band depth prepass) is set by the KC script `ShowSpace` through `B3D_CameraSetFlags`, see [distance-fade.md](distance-fade.md) section 8.

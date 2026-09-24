@@ -1,0 +1,9 @@
+x3-bottleX3-run290: z_only draws 25, with object_context 25, flags130&0x20000 25, distinct models 5, frames 6
+x3-bottleX3-run291: z_only draws 0, with object_context 0, flags130&0x20000 0, distinct models 0, frames 0
+x3-bottleX3-run292: z_only draws 0, with object_context 0, flags130&0x20000 0, distinct models 0, frames 0
+x3-bottleX3-run293: z_only draws 0, with object_context 0, flags130&0x20000 0, distinct models 0, frames 0
+x3-bottleX3-run294: z_only draws 0, with object_context 0, flags130&0x20000 0, distinct models 0, frames 0
+x3-bottleX3-run295: z_only draws 49, with object_context 49, flags130&0x20000 49, distinct models 4, frames 6
+x3-bottleX3-run296: z_only draws 64, with object_context 64, flags130&0x20000 64, distinct models 3, frames 8
+x3-bottleX3-run297: z_only draws 0, with object_context 0, flags130&0x20000 0, distinct models 0, frames 0
+x3-bottleX3-run298: z_only draws 0, with object_context 0, flags130&0x20000 0, distinct models 0, frames 0

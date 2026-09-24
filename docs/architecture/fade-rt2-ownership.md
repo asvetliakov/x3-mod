@@ -230,6 +230,7 @@ exactness of `src * 1 + dst * 0` on R32F / RGBA32F under native drivers is unver
 
 ## 10. Unknown, and what settles it
 
+- Settled 2026-09-24 (distance-fade.md section 8 [S]): the KC script `ShowSpace` sets `0x40000` unconditionally on the sector camera, the prepass walk has no class test (a tree whose root sphere reaches N is submitted depth-only, whole tree), so section 3's order-independent case holds in the sector view; exceptions without prepass depth are blended-material subsets, instanced bodies and cross-layer ordering. Superseded text follows.
 - Whether stations in the band get the depth-only prepass in the sector view (camera `+0x270 & 0x40000`): a census of
   the `object_context` log of the run214 stand for `c78b4c68a87fce74` / `803ebfd17f79e413` draws with station node
   identities, or a `disassemble` task on the flag's writer in the frame routine `0x00472280`. Without the prepass the

@@ -1,0 +1,109 @@
+exe sha256 fdbf3418d8f0a897
+site bytes 10/10
+strings 4/4
+B3D native 0x3b B3D_CameraSetFlags
+== l/x3story.obj: CODE 1812069 bytes
+  CODE+60361 Create: |0x400134 &0xfffffff7
+  CODE+60424 Create: |0x4 |0x80000
+  CODE+70952 SetSceneParameters: &0xfffdffff
+  CODE+70975 SetSceneParameters: |0x800
+  CODE+78094 Run: |0x402c
+  CODE+78242 Run: |0x2c
+  CODE+78390 Run: |0x2c
+  CODE+78541 Run: |0x8000
+  CODE+78711 Run: |0x202024
+  CODE+78920 Run: |0x200024
+  CODE+155530 StartShot: |0x8000000
+  CODE+155609 StartShot: &0xffffffef
+  CODE+155636 StartShot: |0x10
+  CODE+155748 StartShot: &0xfffffffb |0x1000 |0x8000
+  CODE+155779 StartShot: |0x40000 |0x800000
+  CODE+165997 Graphics_AllocCamera: no GetFlags within 60 bytes
+  CODE+943648 Init: |0x2024
+  CODE+986026 SelectMode: &0xfffffbff
+  CODE+986165 SelectMode: &0xfffffbff
+  CODE+986907 ShowDust: &0xfffffffb |0x1000 -> INS_CockpitSetDustCamera
+  CODE+987342 ShowSpace: |0x4 |0x40000 push 0x4908 |0x9000000 |0x20 |0x800000 -> INS_CockpitSetSectorCamera
+  CODE+987379 ShowSpace: |0x10 -> INS_CockpitSetSectorCamera
+  CODE+987676 ShowSpace: |0x4 |0x10 |0x20 |0x400000 push 0x100 -> INS_CockpitSetGalaxyCamera
+  CODE+987791 ShowSpace: |0x4 |0x80000
+  CODE+987985 ShowSpace: &0xfffffbff
+  CODE+1025183 Show: no GetFlags within 60 bytes
+  CODE+1028024 Show: no GetFlags within 60 bytes
+  CODE+1039940 Open: no GetFlags within 60 bytes
+  CODE+1056251 OpenCustom: no GetFlags within 60 bytes
+  CODE+1059507 ShowWindow: no GetFlags within 60 bytes
+  CODE+1254918 ___sectorCamOn: |0x4 |0x20 |0x10
+  CODE+1288205 SpecialMenu: no GetFlags within 60 bytes
+== l/x3galedit.obj: CODE 1645759 bytes
+  CODE+54392 Create: |0x400134 &0xfffffff7
+  CODE+54455 Create: |0x4 |0x80000
+  CODE+64983 SetSceneParameters: &0xfffdffff
+  CODE+65006 SetSceneParameters: |0x800
+  CODE+72105 Run: |0x402c
+  CODE+72253 Run: |0x2c
+  CODE+72401 Run: |0x2c
+  CODE+72552 Run: |0x8000
+  CODE+72722 Run: |0x202024
+  CODE+72931 Run: |0x200024
+  CODE+148724 StartShot: |0x8000000
+  CODE+148803 StartShot: &0xffffffef
+  CODE+148830 StartShot: |0x10
+  CODE+148942 StartShot: &0xfffffffb |0x1000 |0x8000
+  CODE+148973 StartShot: |0x40000 |0x800000
+  CODE+159189 Graphics_AllocCamera: no GetFlags within 60 bytes
+  CODE+945520 Init: |0x2024
+  CODE+987820 SelectMode: &0xfffffbff
+  CODE+987959 SelectMode: &0xfffffbff
+  CODE+988701 ShowDust: &0xfffffffb |0x1000 -> INS_CockpitSetDustCamera
+  CODE+989136 ShowSpace: |0x4 |0x40000 push 0x4908 |0x9000000 |0x20 |0x800000 -> INS_CockpitSetSectorCamera
+  CODE+989173 ShowSpace: |0x10 -> INS_CockpitSetSectorCamera
+  CODE+989470 ShowSpace: |0x4 |0x10 |0x20 |0x400000 push 0x100 -> INS_CockpitSetGalaxyCamera
+  CODE+989585 ShowSpace: |0x4 |0x80000
+  CODE+989779 ShowSpace: &0xfffffbff
+  CODE+1026977 Show: no GetFlags within 60 bytes
+  CODE+1029818 Show: no GetFlags within 60 bytes
+  CODE+1041734 Open: no GetFlags within 60 bytes
+  CODE+1057847 OpenCustom: no GetFlags within 60 bytes
+  CODE+1061105 ShowWindow: no GetFlags within 60 bytes
+  CODE+1263864 ___sectorCamOn: |0x4 |0x20 |0x10
+  CODE+1318272 SpecialMenu: no GetFlags within 60 bytes
+== l/x3intro.obj: CODE 107827 bytes
+  CODE+16100 Init: |0x2024
+  CODE+20293 OpenCustom: no GetFlags within 60 bytes
+  CODE+27285 Create: |0x400134 &0xfffffff7
+  CODE+27348 Create: |0x4 |0x80000
+  CODE+34824 SetSceneParameters: &0xfffdffff
+  CODE+34847 SetSceneParameters: |0x800
+  CODE+41832 AddWaterMark: no GetFlags within 60 bytes
+  CODE+42709 AddAdditionalCameras: no GetFlags within 60 bytes
+  CODE+42916 AddAdditionalCameras: no GetFlags within 60 bytes
+  CODE+43351 InitScene: no GetFlags within 60 bytes
+  CODE+51638 Input: &0xfffbffff
+  CODE+51673 Input: |0x40000
+  CODE+53813 AddAdditionalScene: no GetFlags within 60 bytes
+  CODE+54309 InitScene: no GetFlags within 60 bytes
+  CODE+62089 Input: &0xfffbffff
+  CODE+62124 Input: |0x40000
+  CODE+64966 InitScenes: no GetFlags within 60 bytes
+  CODE+65145 InitScenes: no GetFlags within 60 bytes
+  CODE+65575 SetSceneParameters: &0xfffdffff
+  CODE+65647 SetSceneParameters: |0x20000
+  CODE+82819 InitScenes: no GetFlags within 60 bytes
+  CODE+83047 InitScenes: no GetFlags within 60 bytes
+  CODE+83271 InitScenes: no GetFlags within 60 bytes
+  CODE+83516 InitScenes: no GetFlags within 60 bytes
+  CODE+84865 InitWaterMark: no GetFlags within 60 bytes
+  CODE+85532 Graphics_Init: no GetFlags within 60 bytes
+  CODE+85711 Graphics_Init: no GetFlags within 60 bytes
+  CODE+85918 Graphics_Init: no GetFlags within 60 bytes
+  CODE+102464 InitWaterMark: no GetFlags within 60 bytes
+  CODE+102737 InitScene: no GetFlags within 60 bytes
+object_fade rows in 39 logs
+  flags270=00000001 rows=1191 0x40000=0 fog0x10000=0
+  flags270=00400135 rows=512 0x40000=0 fog0x10000=0
+  flags270=0085492d rows=512 0x40000=1 fog0x10000=1
+  flags270=00002025 rows=512 0x40000=0 fog0x10000=0
+  flags270=00000025 rows=504 0x40000=0 fog0x10000=0
+  flags270=00009201 rows=120 0x40000=0 fog0x10000=0
+  flags270=00080005 rows=2 0x40000=0 fog0x10000=0
