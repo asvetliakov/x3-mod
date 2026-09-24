@@ -235,6 +235,10 @@
       "label": "collision-tree build driver (body triangles int16x1/16384 -> 0x004e0ce0 per triangle, then build 0x004e0c80; sets obj flag 0x1000000)",
       "source": "loading-profile-run1.md"
     },
+    "0x00481780": {
+      "label": "effect material finisher: TexAnimDuration/TexAnimRotation != 0 -> material +0x28 |= 0x8000000 and UV-animation fields +0x3c..+0x58",
+      "source": "texture-lookup.md"
+    },
     "0x00481aa0": {
       "label": "BOB binary body parse",
       "source": "loading-orchestration.md"
@@ -266,9 +270,21 @@
       "label": "render node allocator (0x270 bytes)",
       "source": "object-identity.md"
     },
+    "0x00487810": {
+      "label": "object body bind: negative face-group material index -N (or classic material +2 < 0) -> Animations row N instance at object +0x1ac (count +0x1a8, max 20)",
+      "source": "texture-lookup.md"
+    },
+    "0x00487b10": {
+      "label": "object single texture override: one static instance (texture -id) at object +0x1ac",
+      "source": "texture-lookup.md"
+    },
     "0x00487be0": {
       "label": "node release (recursive)",
       "source": "object-identity.md"
+    },
+    "0x00487e30": {
+      "label": "object body bind (calls the texture-animation collector 0x00487810)",
+      "source": "texture-lookup.md"
     },
     "0x004885a0": {
       "label": "node allocator (handle map)",
@@ -389,6 +405,10 @@
       "label": "bump texture name rewrite _bump -> _low_bump",
       "source": "texture-lookup.md"
     },
+    "0x004ba500": {
+      "label": "effect parameter name -> semantic id (t_DiffuseTexture 1, t_BumpTexture 2, TexAnim* 0x18..0x1f, ...)",
+      "source": "texture-lookup.md"
+    },
     "0x004baa30": {
       "label": "effect STRING parameter -> texture id (t_* names / semantic ids; bump name _bump -> _low_bump under VideoD3DFlags2 0x400)",
       "source": "texture-lookup.md"
@@ -432,6 +452,10 @@
     "0x004bcb60": {
       "label": "mesh build: CloneMesh into final options (D3DXMESH_32BIT above 64k vertices), two attempts, OOM callback, then install via 0x004bc9c0",
       "source": "loading-profile-run1.md"
+    },
+    "0x004bcee0": {
+      "label": "per-body mesh build helper: texture-entry flags per material; negative group index -> 0x004f5a20",
+      "source": "texture-lookup.md"
     },
     "0x004bd830": {
       "label": "per-body GPU mesh build (iterates parts)",
@@ -778,6 +802,26 @@
       "label": "texture pointer by id (bounds, Materials texture-id field != 0, lazy 0x004f4160)",
       "source": "texture-lookup.md"
     },
+    "0x004f5400": {
+      "label": "texture-animation instance: current frame texture id -> +0x70",
+      "source": "texture-lookup.md"
+    },
+    "0x004f5460": {
+      "label": "types/Animations loader: rows (stride 0x44) -> 0x00608db8, count 0x00608db4; frame names through 0x004f4cb0 (flags 0)",
+      "source": "texture-lookup.md"
+    },
+    "0x004f5a20": {
+      "label": "Animations row -> texture-entry flags for every frame texture (0x004f4f50)",
+      "source": "texture-lookup.md"
+    },
+    "0x004f5b60": {
+      "label": "texture-animation instance array (stride 0x80): value >= 0 = Animations row, < 0 = static texture -value; initial frame texture -> +0x70",
+      "source": "texture-lookup.md"
+    },
+    "0x004f66e0": {
+      "label": "texture-animation instances: per-frame advance (frame texture +0x70, UV matrix +0x40)",
+      "source": "texture-lookup.md"
+    },
     "0x004f7830": {
       "label": "font loader (tga bmp, abc siz)",
       "source": "loading-orchestration.md"
@@ -817,6 +861,10 @@
     "0x00510343": {
       "label": "CRT fseek (_lock_file, __fseek_nolock, _unlock_file)",
       "source": "script-xml-load-stall.md"
+    },
+    "0x005108e0": {
+      "label": "CRT strstr (0x004f3510 \"\\Desktop\\\" test)",
+      "source": "texture-lookup.md"
     },
     "0x005112c4": {
       "label": "CRT _malloc (HeapAlloc / _V6_HeapAlloc, __callnewh)",

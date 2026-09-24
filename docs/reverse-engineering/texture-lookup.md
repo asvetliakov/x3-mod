@@ -40,7 +40,16 @@ launch, no Wine command; the bottle was read only. Marks: [s] static (EXE code o
    placeholder **`NONE_NORMAL_LOW`** (or `NONE_NORMAL`, depending on a device field), a flat
    normal map. With `VideoD3DFlags2 & 0x400` the name first becomes `…_low_bump`, which is
    missing as well. [s] rule, [m] members
-5. **Baker rule:** §9.
+5. **Baker rule:** §9, amended by §10.4 for negative ids.
+6. **Negative ids are animated textures, not files.** A face group whose material index is
+   `-N` (and the material slot name `-N.tga` that goes with it) draws row `N` of
+   `types\Animations`: an animation instance per object, advanced every frame, whose current
+   frame is an ordinary texture id. `-79` is the Argon engine glow loop
+   `fx_engine_blue1..4_diff`, `-81` the advert surface `StaticAdverts`. The shipped
+   `dds/-79.pck`-style members are never reached. [s] path, [m] rows and members, §10
+7. **`\Desktop\` names load nothing.** All five census names with an author's desktop path skip
+   the four load steps and take the suffix placeholder (three `NONE_OCCL_DECAL`, one
+   `NONE_BLACK`, one `NONE_GRAY`), although `dds/<basename>` exists for each. [s], §11
 
 ## 1. Call graph
 
@@ -220,7 +229,8 @@ Resolve a material texture name the way the engine does:
 3. **Numbered names.** If the name then starts with a digit or `-`, take the leading decimal
    integer `n` (`25_spec` → 25). Look `n` up in the winning `types/Materials` (addon first).
    Refuse or skip the name when `n` is outside the rows, when the row's texture-id field is 0,
-   or when the row has `MPF_GENERATED`. Otherwise the path is `textures\<row filename>` for a
+   or when the row has `MPF_GENERATED`. A negative `n` is an Animations row, not a Materials
+   row: §10.4. Otherwise the path is `textures\<row filename>` for a
    named row and `tex\true\<n>` for any other row.
 4. **Named textures.** Any other name gives the path `textures\<name>`, keeping its
    directories.
@@ -240,6 +250,155 @@ which the atlas must decode.
 
 No hook is proposed; nothing here is a hook site.
 
+## 10. Negative ids: texture animations (`types\Animations`)
+
+Static study, 2026-09-24, same EXE and tools (Ghidra `X3DecompileFunctions.java`,
+`X3FunctionContext.java`; capstone windows for every instruction-level claim). The bodies, rows and
+members are [m] from `verification/results/texture-lookup-animations/animation_rows.py`
+(`animation_rows_out.txt`, bottle X3 read only, overlay slots 05/06 skipped).
+
+### 10.1 What `-79` is in a body
+
+The negative number is first of all a **face-group material index**. In
+`objects/effects/engines/fx_engine_argon_m3.bob` the only group of LOD0 has material `-79`; in
+`objects/others/argon_adsign_a.bob` the groups are `-81, 0…7` (LOD0) and `-81, 1, 2, 3` (LOD1) [m].
+The material list carries, next to it, a material whose `t_DiffuseTexture` is `-79.tga` (effect
+material, `engine.fx`) or whose classic texture is `-75.tga` (`objects/v/10660.bod`) [m]. The
+number in the name is the same `N`.
+
+Across the winning vanilla bodies [m]: 26 distinct negative ids; `-79` in 131 bodies, `-81` in 39,
+the rest in one or two each (explosions, flak, bullets, `qm_icon`). 188 negative group indices (distinct
+per body); 177 have a material whose diffuse name carries the same id, 11 have none; 31 materials
+with a negative diffuse are referenced by no negative group; no negative-diffuse material is
+also referenced by a non-negative group index.
+
+### 10.2 The path, by address
+
+1. **Name → id.** `0x004f4cb0` turns `-79.tga` into `-79` (`sscanf "%d"`, `0x004f4ddf`) [s]. The id
+   lands in the effect parameter (`0x00470320`: `+0x20` type 0, `+0x24` id) or in the classic
+   material's `+2` (`0x00482042`). No texture-table entry is created: the `sscanf` branch returns
+   before registration, and `0x004f4bb0` returns for a negative id (`0x004f4bb3`) [s].
+2. **Animations table.** `0x004f5460` (from `0x0048af76`) loads `Animations` through the type-file
+   loader into `*0x00608db8` (count `short 0x00608db4`, stride `0x44`) [s]:
+   `+0` type (`TAT_LOOP 1`, `PINGPONG 2`, `ONESHOT 3`, `MOVIE 4`, `TAGLOOP 5`, `TAGPINGPONG 6`,
+   `TAGONESHOT 7`, `TAGCOLLECTION 8`, `TAGONESHOT_REINIT 9`, `SINGLESTEP 10`, `TAGSINGLESTEP 11`,
+   `TAGARRAYSINGLESTEP 12`; name table `0x0054de40`), `+4` `TADF_` flags (`TADF_COORDS 2`),
+   `+6`/`+8` first/last texture id, `+0xc…+0x18` start/end coordinates when `TADF_COORDS`,
+   `+0x1c` frame count, `+0x20` frame list (stride `0x10`: `+0` `TATF_` flags, `+2` texture id,
+   `+4` duration, `+8/+0xc` coordinates; `TAGCOLLECTION` stride `0xe`; `TAGSINGLESTEP` an `int`
+   id list), `+0x24` total duration, and for `TAT_MOVIE` seven ints at `+0x28…+0x40`. Every
+   texture name in the file goes through `0x004f4cb0` with flags 0, so frames are ordinary named
+   or numbered textures (§2–§5). `addon/01.cat` holds `addon/types/Animations.pck`, 106 rows;
+   the loader's grammar consumes every token of it [m].
+3. **Object bind.** `0x00487e30` calls `0x00487810`, which walks the body's face groups (a
+   three-level list; that the levels are LOD, part and group is [i]) [s]:
+   - group index `< 0` (`0x004878b0..0x004878bf`, `0x00487a4b`): add Animations row `-index`;
+   - index into the body's materials, effect material with `+0x28 & 0x8000000`: add the
+     diffuse and the bump parameter id, negated (`0x004878d7..0x00487a02`). That flag is set by
+     `0x00481780` only when `TexAnimDuration` or `TexAnimRotation` is non-zero (semantic ids
+     `0x18`/`0x19`, `0x004ba500`): the entry is then a static texture with UV animation, or a
+     row when the parameter id itself is negative;
+   - other materials: classic `+2 < 0` or `+0x36 < 0` adds row `-id` (`0x00487a04..0x00487a4d`);
+     a body without its own material list (`+0x50 & 0x10` clear) uses the `Materials` row's
+     `+0x18` field instead (`0x00487a2d`).
+   At most 20 entries (`cmp ecx, 0x14`). `0x004f5b60` builds the instance array (stride `0x80`)
+   at object `+0x1ac`, count `+0x1a8`: `+0` row (or `-texture` with `+0xc & 1` for a static
+   entry), `+0x40` UV matrix (16.16 fixed; translation from row `+0xc/+0x10` or from the first
+   frame's coordinates), `+0x70` current texture id, initialised to row `+6` when the row has no
+   frame list or is `TAGCOLLECTION`/`TAGSINGLESTEP`, else to the first frame's texture.
+   The vanilla bodies need at most 12 entries, so no negative group loses its instance [m].
+4. **Mesh build.** `0x004bd830` → `0x004bcee0` (`0x004bd720..0x004bd7b8`): for a negative group
+   index, find the material whose diffuse or bump parameter (effect) or `+2` (classic) equals it
+   and call `0x004f5a20(row)`, which applies that material's flags to every frame texture of
+   the row (`0x004f4f50`) [s].
+5. **Per frame.** `0x0047e6e0` (deferred draw list drain) calls `0x004f66e0(count, array)`, which
+   advances each instance on the game clock `*(0x00606f34)+0x718`: frame texture `+0x70`, UV
+   matrix `+0x40`; a `TAT_MOVIE` row calls `0x004f65f0` with the frame texture id and the row
+   ints `+0x2c…+0x40` [s].
+6. **Draw.** `0x004c0150` (`0x004c0236..0x004c0458`): a group index `< 0` searches the object's
+   instances for row `-index` (`0x004c02a8..0x004c0308`) and takes its `+0x70` texture and
+   `+0x40` UV matrix. The material is the first effect material whose diffuse parameter id
+   equals the group index, else material 0 (`0x004c0310..0x004c0390`). A negative bump
+   parameter is resolved the same way (`0x004c03d0..0x004c0435`). The effect binder then uses the
+   frame id for a negative diffuse or bump parameter (`0x004c06a6..0x004c06c4`,
+   `0x004c06d3..0x004c06f6`). If no instance matches, the id stays negative and the function
+   returns 0 (`0x004c0458` → `0x004c40a4`) [s]; that the group is then not drawn is [i].
+7. **Frame → file.** The frame id takes §2–§6 unchanged [s]. Rows the vanilla bodies use [m]:
+
+| id | row type | initial frame → file | frames |
+|---|---|---|---|
+| `-79` | `TAT_TAGLOOP`, 200 ms | `effects\engines\fx_engine_blue1_diff` → `dds/fx_engine_blue1_diff.pck` | `blue1…4`, all in `01.cat` |
+| `-97` | `TAT_TAGLOOP` | `fx_engine_purple1_diff` → `dds/fx_engine_purple1_diff.pck` | `purple1…4` |
+| `-81` | `TAT_MOVIE`, `TADF_COORDS` | `test\StaticAdverts` → `dds/StaticAdverts.pck` (2048² DXT5), UV start `0.25, 0.25` | movie ints `2 0 0 0 0 1 640` |
+| `-26` | `TAT_ONESHOT` 93…99 | id 93 → `tex/true/93.jpg` | ids 93…99 |
+| `-39` | `TAT_TAGLOOP` | id 93 → `tex/true/93.jpg` | ids 93…99 |
+| `-82`, `-83`, `-90`…`-105`, `-73`, `-75`, `-77`, `-78`, `-85` | `TAT_TAGONESHOT`/`TAGLOOP` | first named frame → `dds/<frame>.pck` | explosion, flak, beam atlases |
+| `-67` | `TAT_TAGSINGLESTEP` | row `+6` = `0`: no texture until a script steps it | 76 menu icons |
+
+### 10.3 The shipped `dds/-N` members and the candidate paths
+
+`01.cat` (the base catalogue) holds 21 members `dds/-61.pck`, `-72…-75`, `-77…-85`, `-90…-94`,
+`-97`, `-792` [m]. `dds/-79.pck`, `-81.pck` and `-97.pck` are 512² DXT1, and none equals its row's
+frame texture (`fx_engine_blue1_diff` 512² uncompressed, `StaticAdverts` 2048² DXT5) [m]. No material path loads
+them [s]:
+
+- (a) `dds\<basename>` exists only inside `0x004f3510`, which only ever sees the path of a
+  registered id (`0x004f4160`); a negative id never gets an entry or a path (10.2 step 1).
+- (b) No caller treats `-N` as a file stem. The name reaches the texture system only as the
+  integer, and the draw replaces it with the animation frame.
+- (c) Every id accessor tests the sign first (`0x004f5040`, `0x004f5070`, `0x004f50c0`,
+  `0x004f5110` `test cx, cx; jl`, `0x004f5180`, `0x004f51c0`, `0x004f5280`, `0x004f52e0`); no
+  unsigned use of the 16-bit id was found.
+- (d) No `MPF_GENERATED` row or runtime texture entry is involved; the runtime object is the
+  per-object animation instance.
+- The other four callers of `0x004f3510` load the loading screen (`0x00401bb0`, `true\LoadScrHD`),
+  logo pictures (`0x004972d0`, `true/%s`, `h256/%s`), fonts (`0x004f7830`, `tga bmp`) and a
+  display-list image (`0x00493b40`); `.rdata` has no `-%d` format [s]. That no UI or script string
+  names a `-N` file is [i].
+
+The members are therefore leftovers (by their `01.cat` placement from X3 Reunion's content).
+Without them the materials still draw, because the engine draws the frame texture.
+
+### 10.4 Rule for the baker (replaces §9 step 3 for negative numbers)
+
+A face group with material index `-N` is drawn with Animations row `N` and with the first effect
+material whose `t_DiffuseTexture` name parses to `-N` (material 0 if none; classic materials:
+texture name `-N`). Its diffuse texture is not `dds/-N`: it is the row's **current frame**,
+which changes over time. For a static bake, use the frame the instance starts with
+(`0x004f5b60`): row `+6` when the row has no frame list or is `TAT_TAGCOLLECTION`/`TAT_TAGSINGLESTEP`,
+else the first frame's name. Resolve that name with §2–§6 (Materials id → `tex\true\<n>`, name →
+`textures\<name>` → `dds\<basename>` first). A negative bump parameter follows the same rule.
+Parse `types\Animations` with the 10.2 step 2 grammar, from the winning catalogue (`addon`
+first, as for `Materials`). The frame's UV translation (`TADF_COORDS`/`TATF_COORDS`) shifts the
+lookup inside atlas sheets: it is 0 for the engine loops `-79`/`-97` and non-zero for the explosion
+atlases and `-81`. So the baker should either apply the start translation to the group's UVs
+or refuse rows with non-zero start coordinates. Also refuse `TAT_MOVIE` (`-81`, played through
+`0x004f65f0`) and `TAT_TAGSINGLESTEP` (`-67`, no initial texture): an animated surface baked as a
+still would be wrong. Never use `dds/-N.pck`: the game does not draw it.
+
+## 11. `\Desktop\` paths
+
+`0x004f3510` runs `strstr(path, "\Desktop\")` (`0x004f3682`, CRT `strstr` at `0x005108e0`,
+case-sensitive) on every extensionless path before the four load steps. A hit jumps to the
+placeholder selection (`0x004f3692` → `0x004f372a`), so neither `dds\<basename>` nor the path is
+tried [s]. The path keeps the body's spelling: `0x004f4bb0` copies the name (`0x004ee250`) and
+`0x004f4160` only formats it (`0x004ee4c0`, `textures\%s` or raw `%s`), so the body's
+capitalisation reaches the test [s]. The five census names [m, names from the worktree's
+`texture_lookup_old_new_out.txt`]:
+
+| name (extension dropped by §2) | suffix | engine result |
+|---|---|---|
+| `C:\Documents and Settings\Bobby\Desktop\…\argon_M2_BLU_occl` | `occl` | `NONE_OCCL_DECAL` |
+| `C:\Documents and Settings\Bobby\Desktop\…\argon_M2_BRI_occl` | `occl` | `NONE_OCCL_DECAL` |
+| `C:\Documents and Settings\Mox\Desktop\GREEBLE\argon_M2_N_occl` | `occl` | `NONE_OCCL_DECAL` |
+| `C:\Documents and Settings\Markus.EGOSOFT\Desktop\…\envmap_test` | none (`_test`) | `NONE_BLACK` |
+| `E:\m3m4m5\AGI_BOX\Documents and Settings\Markus.EGOSOFT\Desktop\…\exp_impact_glow_diff` | `diff` | `NONE_GRAY` |
+
+`dds/argon_M2_BLU_occl.pck`, `argon_M2_BRI_occl.pck`, `argon_M2_N_occl.pck`, `envmap_test.pck` and
+`exp_impact_glow_diff.pck` exist in `01.cat` but are not loaded for these names. The same
+basenames under any other path load normally. Baker rule: a name containing the exact
+substring `\Desktop\` goes straight to §9 step 6.
+
 ## Unknown
 
 - Which device field `*(*(0x00608b3c)+0x18)+0xa0` is, which decides between `NONE_NORMAL` and
@@ -250,6 +409,11 @@ No hook is proposed; nothing here is a hook site.
   and the bit-depth use were read.
 - Whether a script or runtime path later rebinds the HUD icon's material to the generated
   row-340 surface; the static load gives `NONE_BLACK`.
+- `TAT_MOVIE` playback (`0x004f65f0`, row ints `+0x28…+0x40`) and how the instance UV matrix
+  `+0x40` reaches the shader or the texture stage were not traced; the `-81` start translation
+  `0.25, 0.25` is read from the file and its screen effect is [i].
+- Which material a negative group without a matching effect material draws with when material
+  0 is not an effect material (the `0x004c0321` test fails): not traced (11 such groups, §10.1).
 - The type-file loader `0x0046f450` was not decompiled. That `addon\types\Materials` wins over
   `types\Materials` is inferred from its path strings, and the rows used here agree in all
   three copies.
@@ -265,6 +429,13 @@ No hook is proposed; nothing here is a hook site.
 #   00606f64 00606f60 00606f58 00606f74 00606f6c 004f4f50 004f4160 004f5110
 # Capstone windows: 0x004f4cb0..0x004f4e10, 0x004f4160..0x004f4250, 0x004f43a0..0x004f4480,
 #   0x004f3650..0x004f3730, 0x004da6c0..0x004da7a0, 0x004eca9c..0x004ecac0
+# Section 10/11: 004f5460 004f5400 004f5a20 004f5b60 004f5d70 004f61e0 004f63d0 004f66e0 00487810
+#   00487e30 0047e6e0 00470320 00481780 004ba500 004baa30 decompiled; capstone windows
+#   0x00487810..0x00487b10, 0x004bd720..0x004bd7e0, 0x004c0200..0x004c0490, 0x004c06a0..0x004c0700,
+#   0x004f3510..0x004f37d0, 0x004f4bb0..0x004f4cb0, 0x004f5040..0x004f52f0
+# Negative ids -> Animations rows, frames and members (about 150 s, bottle X3, read-only)
+PYTHONPATH=tools/analysis python3 verification/results/texture-lookup-animations/animation_rows.py \
+  > verification/results/texture-lookup-animations/animation_rows_out.txt
 # Census rows under the rule (about 4 s, bottle X3, read-only)
 PYTHONPATH=tools/analysis python3 verification/results/lod-overlay-batch/texture_lookup_rows.py \
   > verification/results/lod-overlay-batch/texture_lookup_rows_out.txt

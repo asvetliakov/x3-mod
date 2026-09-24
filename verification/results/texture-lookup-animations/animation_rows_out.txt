@@ -1,0 +1,152 @@
+skipped overlay sources ['addon/05.cat', 'addon/06.cat']
+Animations: addon/01.cat:addon/types/Animations.pck rows=106 trailing tokens=0
+negative ids in vanilla bodies (row: slot uses; bodies):
+  -26: {'effect diffuse': 1}; bodies 1, e.g. ['objects/effects/explosions/expl_ring.bob']
+  -39: {'effect diffuse': 1}; bodies 1, e.g. ['objects/effects/weapons/bullet_push2.bod']
+  -67: {'effect diffuse': 1}; bodies 1, e.g. ['objects/effects/menugfx/gui/qm_icon.bod']
+  -73: {'effect diffuse': 1}; bodies 1, e.g. ['objects/v/10663.bod']
+  -75: {'classic texture': 1}; bodies 1, e.g. ['objects/v/10660.bod']
+  -77: {'effect diffuse': 1}; bodies 1, e.g. ['objects/v/10662.bob']
+  -78: {'classic texture': 1}; bodies 1, e.g. ['objects/v/10665.bod']
+  -79: {'effect diffuse': 131}; bodies 131, e.g. ['objects/effects/engines/fx_engine_argon_m3.bob', 'objects/effects/engines/fx_engine_argon_m3plus.bob', 'objects/effects/engines/fx_engine_argon_m3pxtm.bob', 'objects/effects/engines/fx_engine_argon_m3pxtmp.bob']
+  -81: {'effect diffuse': 39}; bodies 39, e.g. ['objects/others/ad_sign_body.bod', 'objects/others/argon_adsign_a.bob', 'objects/others/argon_adsign_b.bob', 'objects/others/argon_adsign_c.bob']
+  -82: {'effect diffuse': 2}; bodies 2, e.g. ['objects/effects/explosions/expl.bob', 'objects/v/10656.bob']
+  -83: {'effect diffuse': 1}; bodies 1, e.g. ['objects/v/10670.bob']
+  -85: {'effect diffuse': 1}; bodies 1, e.g. ['objects/v/10680.bod']
+  -90: {'effect diffuse': 2}; bodies 2, e.g. ['objects/v/11997.bob', 'objects/v/11997.bod']
+  -91: {'effect diffuse': 2}; bodies 2, e.g. ['objects/v/11998.bob', 'objects/v/11998.bod']
+  -92: {'effect diffuse': 1}; bodies 1, e.g. ['objects/effects/weapons/bullet_flamethrower.bob']
+  -93: {'effect diffuse': 2}; bodies 2, e.g. ['objects/v/11994.bob', 'objects/v/11994.bod']
+  -94: {'effect diffuse': 2}; bodies 2, e.g. ['objects/v/11999.bob', 'objects/v/11999.bod']
+  -96: {'effect diffuse': 2}; bodies 2, e.g. ['objects/v/12001.bob', 'objects/v/12001.bod']
+  -97: {'effect diffuse': 2}; bodies 2, e.g. ['objects/v/00773.bob', 'objects/v/00773.bod']
+  -98: {'effect diffuse': 2}; bodies 2, e.g. ['objects/v/12000.bob', 'objects/v/12000.bod']
+  -100: {'effect diffuse': 2}; bodies 2, e.g. ['objects/v/12002.bob', 'objects/v/12002.bod']
+  -101: {'effect diffuse': 2}; bodies 2, e.g. ['objects/v/12003.bob', 'objects/v/12003.bod']
+  -102: {'effect diffuse': 2}; bodies 2, e.g. ['objects/v/12004.bob', 'objects/v/12004.bod']
+  -103: {'effect diffuse': 2}; bodies 2, e.g. ['objects/v/12005.bob', 'objects/v/12005.bod']
+  -104: {'effect diffuse': 2}; bodies 2, e.g. ['objects/v/12006.bob', 'objects/v/12006.bod']
+  -105: {'effect diffuse': 2}; bodies 2, e.g. ['objects/v/12008.bob', 'objects/v/12008.bod']
+group/material consistency: {'max instance slots in one body': 12, 'negative group': 188, 'negative groups beyond the 20-instance limit (not drawn)': 0, 'negative-diffuse material also used by a non-negative group': 0, 'negative-diffuse material never used by a negative group': 31, 'no material diffuse id matches (engine binds material 0)': 11, 'with a material whose diffuse id matches': 177}
+rows referenced:
+  row 26: TAT_ONESHOT first='93' second='99' frames=0 distinct=0
+    initial frame '93': load tex/true/93.jpg [01.cat]
+  row 39: TAT_TAGLOOP first='0' second='0' frames=7 distinct=7
+    initial frame '93': load tex/true/93.jpg [01.cat]
+    frame '94': load tex/true/94.jpg [01.cat]
+    frame '95': load tex/true/95.jpg [01.cat]
+    frame '96': load tex/true/96.jpg [01.cat]
+    frame '97': load tex/true/97.jpg [01.cat]
+    frame '98': load tex/true/98.jpg [01.cat]
+    frame '99': load tex/true/99.jpg [01.cat]
+  row 67: TAT_TAGSINGLESTEP first='0' second='0' frames=76 distinct=76
+    initial frame '0': no texture (null name)
+    frame '923': id 923: MPF_GENERATED surface
+    frame 'effects\\menugfx\\icons\\icon_001_player': load dds/icon_001_player.pck [01.cat]
+    frame 'effects\\menugfx\\icons\\icon_002_navigation': load dds/icon_002_navigation.pck [01.cat]
+    frame 'effects\\menugfx\\icons\\icon_003_combat': load dds/icon_003_combat.pck [01.cat]
+    frame 'effects\\menugfx\\icons\\icon_004_specialorders': load dds/icon_004_specialorders.pck [01.cat]
+    frame 'effects\\menugfx\\icons\\icon_005_rename': load dds/icon_005_rename.pck [01.cat]
+  row 73: TAT_TAGONESHOT first='0' second='0' frames=32 distinct=2
+    initial frame 'effects\\explosions\\exp_sparks1_diff': load dds/exp_sparks1_diff.pck [01.cat]
+    frame 'effects\\explosions\\exp_sparks2_diff': load dds/exp_sparks2_diff.pck [01.cat]
+  row 75: TAT_TAGONESHOT first='0' second='0' frames=32 distinct=2
+    initial frame 'effects\\explosions\\exp_sparks1_diff': load dds/exp_sparks1_diff.pck [01.cat]
+    frame 'effects\\explosions\\exp_sparks2_diff': load dds/exp_sparks2_diff.pck [01.cat]
+  row 77: TAT_TAGONESHOT first='0' second='0' frames=16 distinct=1
+    initial frame 'effects\\explosions\\exp_flak_diff': load dds/exp_flak_diff.pck [01.cat]
+  row 78: TAT_TAGONESHOT first='0' second='0' frames=32 distinct=2
+    initial frame 'effects\\explosions\\exp_debris1_diff': load dds/exp_debris1_diff.pck [01.cat]
+    frame 'effects\\explosions\\exp_debris2_diff': load dds/exp_debris2_diff.pck [01.cat]
+  row 79: TAT_TAGLOOP first='0' second='0' frames=4 distinct=4
+    initial frame 'effects\\engines\\fx_engine_blue1_diff': load dds/fx_engine_blue1_diff.pck [01.cat]
+    frame 'effects\\engines\\fx_engine_blue2_diff': load dds/fx_engine_blue2_diff.pck [01.cat]
+    frame 'effects\\engines\\fx_engine_blue3_diff': load dds/fx_engine_blue3_diff.pck [01.cat]
+    frame 'effects\\engines\\fx_engine_blue4_diff': load dds/fx_engine_blue4_diff.pck [01.cat]
+  row 81: TAT_MOVIE first='test\\StaticAdverts' second='90' frames=0 distinct=0
+    initial frame 'test\\StaticAdverts': load dds/StaticAdverts.pck [01.cat]
+  row 82: TAT_TAGONESHOT first='0' second='0' frames=128 distinct=8
+    initial frame 'effects\\explosions\\fx_exp_A_p1_diff': load dds/fx_exp_A_p1_diff.pck [01.cat]
+    frame 'effects\\explosions\\fx_exp_A_p2_diff': load dds/fx_exp_A_p2_diff.pck [01.cat]
+    frame 'effects\\explosions\\fx_exp_A_p3_diff': load dds/fx_exp_A_p3_diff.pck [01.cat]
+    frame 'effects\\explosions\\fx_exp_A_p4_diff': load dds/fx_exp_A_p4_diff.pck [01.cat]
+    frame 'effects\\explosions\\fx_exp_A_p5_diff': load dds/fx_exp_A_p5_diff.pck [01.cat]
+    frame 'effects\\explosions\\fx_exp_A_p6_diff': load dds/fx_exp_A_p6_diff.pck [01.cat]
+    frame 'effects\\explosions\\fx_exp_A_p7_diff': load dds/fx_exp_A_p7_diff.pck [01.cat]
+  row 83: TAT_TAGONESHOT first='0' second='0' frames=128 distinct=8
+    initial frame 'effects\\explosions\\fx_exp_B_p1_diff': load dds/fx_exp_B_p1_diff.pck [01.cat]
+    frame 'effects\\explosions\\fx_exp_B_p2_diff': load dds/fx_exp_B_p2_diff.pck [01.cat]
+    frame 'effects\\explosions\\fx_exp_B_p3_diff': load dds/fx_exp_B_p3_diff.pck [01.cat]
+    frame 'effects\\explosions\\fx_exp_B_p4_diff': load dds/fx_exp_B_p4_diff.pck [01.cat]
+    frame 'effects\\explosions\\fx_exp_B_p5_diff': load dds/fx_exp_B_p5_diff.pck [01.cat]
+    frame 'effects\\explosions\\fx_exp_B_p6_diff': load dds/fx_exp_B_p6_diff.pck [01.cat]
+    frame 'effects\\explosions\\fx_exp_B_p7_diff': load dds/fx_exp_B_p7_diff.pck [01.cat]
+  row 85: TAT_TAGLOOP first='0' second='0' frames=11 distinct=1
+    initial frame 'effects\\weapons\\fx_beam_diff': load dds/fx_beam_diff.pck [01.cat]
+  row 90: TAT_TAGONESHOT first='0' second='0' frames=90 distinct=6
+    initial frame 'fighterexp_1_diff': load dds/fighterexp_1_diff.pck [01.cat]
+    frame 'fighterexp_2_diff': load dds/fighterexp_2_diff.pck [01.cat]
+    frame 'fighterexp_3_diff': load dds/fighterexp_3_diff.pck [01.cat]
+    frame 'fighterexp_4_diff': load dds/fighterexp_4_diff.pck [01.cat]
+    frame 'fighterexp_5_diff': load dds/fighterexp_5_diff.pck [01.cat]
+    frame 'fighterexp_6_diff': load dds/fighterexp_6_diff.pck [01.cat]
+  row 91: TAT_TAGONESHOT first='0' second='0' frames=90 distinct=6
+    initial frame 'm6exp_1_diff': load dds/m6exp_1_diff.pck [01.cat]
+    frame 'm6exp_2_diff': load dds/m6exp_2_diff.pck [01.cat]
+    frame 'm6exp_3_diff': load dds/m6exp_3_diff.pck [01.cat]
+    frame 'm6exp_4_diff': load dds/m6exp_4_diff.pck [01.cat]
+    frame 'm6exp_5_diff': load dds/m6exp_5_diff.pck [01.cat]
+    frame 'm6exp_6_diff': load dds/m6exp_6_diff.pck [01.cat]
+  row 92: TAT_TAGONESHOT first='0' second='0' frames=64 distinct=4
+    initial frame 'fx_flamethrower_1': load dds/fx_flamethrower_1.pck [01.cat]
+    frame 'fx_flamethrower_2': load dds/fx_flamethrower_2.pck [01.cat]
+    frame 'fx_flamethrower_3': load dds/fx_flamethrower_3.pck [01.cat]
+    frame 'fx_flamethrower_4': load dds/fx_flamethrower_4.pck [01.cat]
+  row 93: TAT_TAGONESHOT first='0' second='0' frames=80 distinct=5
+    initial frame 'xtm_nuke_flash1a': load dds/xtm_nuke_flash1a.pck [01.cat]
+    frame 'xtm_nuke_flash1b': load dds/xtm_nuke_flash1b.pck [01.cat]
+    frame 'xtm_nuke_flash1c': load dds/xtm_nuke_flash1c.pck [01.cat]
+    frame 'xtm_nuke_flash1d': load dds/xtm_nuke_flash1d.pck [01.cat]
+    frame 'xtm_nuke_flash1e': load dds/xtm_nuke_flash1e.pck [01.cat]
+  row 94: TAT_TAGONESHOT first='0' second='0' frames=32 distinct=2
+    initial frame 'fx_whiteshockwave_1': load dds/fx_whiteshockwave_1.pck [01.cat]
+    frame 'fx_whiteshockwave_2': load dds/fx_whiteshockwave_2.pck [01.cat]
+  row 96: TAT_TAGONESHOT first='0' second='0' frames=48 distinct=3
+    initial frame 'fx_electric_01': load dds/fx_electric_01.pck [01.cat]
+    frame 'fx_electric_02': load dds/fx_electric_02.pck [01.cat]
+    frame 'fx_electric_03': load dds/fx_electric_03.pck [01.cat]
+  row 97: TAT_TAGLOOP first='0' second='0' frames=4 distinct=4
+    initial frame 'fx_engine_purple1_diff': load dds/fx_engine_purple1_diff.pck [01.cat]
+    frame 'fx_engine_purple2_diff': load dds/fx_engine_purple2_diff.pck [01.cat]
+    frame 'fx_engine_purple3_diff': load dds/fx_engine_purple3_diff.pck [01.cat]
+    frame 'fx_engine_purple4_diff': load dds/fx_engine_purple4_diff.pck [01.cat]
+  row 98: TAT_TAGONESHOT first='0' second='0' frames=48 distinct=3
+    initial frame 'fx_blueexplosion_01': load dds/fx_blueexplosion_01.pck [01.cat]
+    frame 'fx_blueexplosion_02': load dds/fx_blueexplosion_02.pck [01.cat]
+    frame 'fx_blueexplosion_03': load dds/fx_blueexplosion_03.pck [01.cat]
+  row 100: TAT_TAGONESHOT first='0' second='0' frames=64 distinct=4
+    initial frame 'fx_blueimplosion_01': load dds/fx_blueimplosion_01.pck [01.cat]
+    frame 'fx_blueimplosion_02': load dds/fx_blueimplosion_02.pck [01.cat]
+    frame 'fx_blueimplosion_03': load dds/fx_blueimplosion_03.pck [01.cat]
+    frame 'fx_blueimplosion_04': load dds/fx_blueimplosion_04.pck [01.cat]
+  row 101: TAT_TAGONESHOT first='0' second='0' frames=48 distinct=3
+    initial frame 'fx_greenexplosion_01': load dds/fx_greenexplosion_01.pck [01.cat]
+    frame 'fx_greenexplosion_02': load dds/fx_greenexplosion_02.pck [01.cat]
+    frame 'fx_greenexplosion_03': load dds/fx_greenexplosion_03.pck [01.cat]
+  row 102: TAT_TAGONESHOT first='0' second='0' frames=48 distinct=3
+    initial frame 'fx_MAMexplosion_01': load dds/fx_MAMexplosion_01.pck [01.cat]
+    frame 'fx_MAMexplosion_02': load dds/fx_MAMexplosion_02.pck [01.cat]
+    frame 'fx_MAMexplosion_03': load dds/fx_MAMexplosion_03.pck [01.cat]
+  row 103: TAT_TAGONESHOT first='0' second='0' frames=48 distinct=3
+    initial frame 'fx_smallGreenExplosion_01': load dds/fx_smallGreenExplosion_01.pck [01.cat]
+    frame 'fx_smallGreenExplosion_02': load dds/fx_smallGreenExplosion_02.pck [01.cat]
+    frame 'fx_smallGreenExplosion_03': load dds/fx_smallGreenExplosion_03.pck [01.cat]
+  row 104: TAT_TAGONESHOT first='0' second='0' frames=64 distinct=4
+    initial frame 'fx_surfacefire_01': load dds/fx_surfacefire_01.pck [01.cat]
+    frame 'fx_surfacefire_02': load dds/fx_surfacefire_02.pck [01.cat]
+    frame 'fx_surfacefire_03': load dds/fx_surfacefire_03.pck [01.cat]
+    frame 'fx_surfacefire_04': load dds/fx_surfacefire_04.pck [01.cat]
+  row 105: TAT_TAGONESHOT first='0' second='0' frames=32 distinct=2
+    initial frame 'fx_starburstExplosion_01': load dds/fx_starburstExplosion_01.pck [01.cat]
+    frame 'fx_starburstExplosion_02': load dds/fx_starburstExplosion_02.pck [01.cat]
+shipped dds/-N members: 21: ['dds/-61.dds', 'dds/-72.dds', 'dds/-73.dds', 'dds/-74.dds', 'dds/-75.dds', 'dds/-77.dds', 'dds/-78.dds', 'dds/-79.dds', 'dds/-792.dds', 'dds/-80.dds', 'dds/-81.dds', 'dds/-82.dds', 'dds/-83.dds', 'dds/-84.dds', 'dds/-85.dds', 'dds/-90.dds', 'dds/-91.dds', 'dds/-92.dds', 'dds/-93.dds', 'dds/-94.dds', 'dds/-97.dds']
