@@ -126,3 +126,20 @@ and its install are a user decision and were not run here (inferred from `tool_s
   separate output group per animated material.
 - A light-bleed keep of an animated material now refuses the body.
 - The TexAnim UV animation of effect materials (flag 0x8000000) is not modelled.
+
+## 2026-09-24 Run 79 A: the coarse Terran record loses its red (run299/300/302)
+
+Triage `verification/results/run299-303-run79a/terran-colour/` (measured unless marked). The Orbital Defence Station is
+the five slot-06 bodies `usc_dock_e_{tower,upper_core,lower_core,left_rings,right_rings}`. Record 0 carries the red as
+its own texture (`terran_platesheet_red_diff`, material 1, 10.8 % of the tower's area); materials 1-4 (red, dark, tech,
+window plates) have alpha test and blend on with a 255 diffuse alpha and `NONE_WHITE` as alpha texture, so the baker's
+alpha rule (`lod_overlay.py` `alpha_materials`) puts them into the single alpha group drawn with the dominant material's
+textures (`terran_techsheet_diff`, grey): the red faces keep their UVs and sample the techsheet. Wrong-texture share:
+tower 23.1 %, left_rings 12.4 %, upper_core 4.8 %. Pixel-shader constants identical fine vs coarse; palette branch off
+(b1 = 0); no owner colour. The "circle" (left_rings, run300) and the run302 part (upper_core, inferred) are the same
+mechanism; no atlas bleed (each Terran atlas has one tile). Second loss: coarse draws bind the `NONE_OCCL_DECAL`
+placeholder (32x32 DXT5, id 9186) at s5 where the fine draws bind the station's 2048^2 occlusion map (id 11498), so
+the coarse record also loses its ambient-occlusion darkening (cause open: disassembly of the occlusion parameter
+binding from `0x004baa30`). Fix (baker only): count a material as alpha only when its alpha can drop below 1 (a real
+`t_AlphaTexture` or diffuse alpha < 255); materials 1-4 then join the opaque atlas as tiles; draw count unchanged; atlas
+likely 1024 -> 2048 for these bodies (inferred); full rebake required (the resolver change already changed the tool hash).

@@ -1,0 +1,16 @@
+# Terran ODS coarse-record colour loss (Run 79 A, run299/300/302). Read-only; no game, no Wine. Run from this directory.
+# Session logs are local (/tmp/x3-bottleX3-run29x); HDR crops go to the session scratchpad, untracked.
+python3 materials.py stations/station_scenes/terran/usc_dock_e_tower > dock_e_tower_materials.txt        # groups per record, material params
+python3 materials.py stations/station_scenes/terran/usc_dock_c_left_arm > dock_c_left_arm_materials.txt
+python3 alpha_group_loss.py terran/usc_dock_c terran/usc_dock_e small_station_d terran_spp > alpha_group_loss_terran.txt
+python3 alpha_source_check.py > alpha_source_dock_e_tower.txt                                             # diffuse alpha min, coplanar faces
+python3 occl_colour.py 'unique\x3tc\terran_uscdock_c_occl.tga' ... > texture_colour.txt                    # see file for the names
+python3 overlay_census.py /tmp/x3-bottleX3-run300/session-20260924-171416-212.log 13362,23593,24205 > overlay_census_run300.txt
+python3 overlay_census.py /tmp/x3-bottleX3-run302/session-20260924-172543-212.log 2845,3512 > overlay_census_run302.txt
+python3 ods_draws.py /tmp/x3-bottleX3-run299/session-20260924-165153-212.log 5885,7308,8417 000053c0,000053c1,000053c2,000053c3,000053c4,000053c5,000053c6 > ods_draws_run299.txt
+python3 ods_draws.py /tmp/x3-bottleX3-run299/session-20260924-165153-212.log 5885,7308 000053da > dock_e_tower_draws_run299.txt
+python3 draw_diff.py /tmp/x3-bottleX3-run299/session-20260924-165153-212.log 5885:13 7308:13 5885:15 7308:14 7308:15 > dock_e_tower_draw_diff.txt
+python3 ods_draws.py /tmp/x3-bottleX3-run300/session-20260924-171416-212.log 23593,24205 000053dd > rings_draws_run300.txt
+python3 ods_draws.py /tmp/x3-bottleX3-run302/session-20260924-172543-212.log 2845,3512 000053db > upper_core_draws_run302.txt
+python3 stage5_census.py /tmp/x3-bottleX3-run299/session-20260924-165153-212.log 5885,7308,8417 > stage5_run299.txt
+python3 crop_hdr.py /tmp/x3-bottleX3-run299/hdr_1_5885.rgba16f 2249 448 2866 766 $SCRATCH/tower_5885.png   # likewise 7308, 8417 -> tower_red_share_run299.txt

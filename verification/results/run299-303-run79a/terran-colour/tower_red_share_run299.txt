@@ -1,0 +1,3 @@
+tower_5885.png lit_px 120955 red_px 758 red_share_of_lit 0.0063
+tower_7308.png lit_px 129543 red_px 12141 red_share_of_lit 0.0937
+tower_8417.png lit_px 141781 red_px 13726 red_share_of_lit 0.0968

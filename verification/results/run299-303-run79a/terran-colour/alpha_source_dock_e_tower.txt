@@ -1,0 +1,10 @@
+mat0 terran_platesheet_white_diff.dds alpha min 255 mean 255.0 alpha_tex NONE_WHITE.dds
+mat1 terran_platesheet_red_diff.dds alpha min 255 mean 255.0 alpha_tex NONE_WHITE.DDS
+mat2 terran_platesheet_dark_diff.dds alpha min 255 mean 255.0 alpha_tex NONE_WHITE.DDS
+mat3 terran_techsheet_diff.dds alpha min 255 mean 255.0 alpha_tex NONE_WHITE.DDS
+mat4 terran_windowsheet_diff.dds alpha min 255 mean 255.0 alpha_tex NONE_WHITE.DDS
+mat5 terran_alphasheet_diff.dds alpha min 0 mean 124.5 alpha_tex terran_alphasheet_alpha.dds
+mat1 faces 3036 coincident_with_mat0 0
+mat3 faces 11388 coincident_with_mat0 0
+mat4 faces 6340 coincident_with_mat0 0
+mat5 faces 390 coincident_with_mat0 0

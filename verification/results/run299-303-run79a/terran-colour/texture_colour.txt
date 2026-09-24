@@ -1,0 +1,8 @@
+terran_uscdock_c_occl.tga 01.cat:dds/terran_uscdock_c_occl.pck placeholder=None 2048x2048 mean_rgba=[255.0, 255.0, 255.0, 150.6] red_share=0.000 red_mean_rgb=[0, 0, 0]
+terran_uscdock_e_occl.tga 01.cat:dds/terran_uscdock_e_occl.pck placeholder=None 2048x2048 mean_rgba=[255.0, 255.0, 255.0, 183.4] red_share=0.000 red_mean_rgb=[0, 0, 0]
+terran_platesheet_white_diff.dds 01.cat:dds/terran_platesheet_white_diff.pck placeholder=None 2048x2048 mean_rgba=[238.0, 238.5, 235.6, 255.0] red_share=0.000 red_mean_rgb=[176.3000030517578, 33.5, 31.700000762939453]
+terran_platesheet_red_diff.dds 01.cat:dds/terran_platesheet_red_diff.pck placeholder=None 2048x2048 mean_rgba=[120.2, 57.7, 57.5, 255.0] red_share=0.987 red_mean_rgb=[121.69999694824219, 58.79999923706055, 58.599998474121094]
+terran_platesheet_dark_diff.dds 01.cat:dds/terran_platesheet_dark_diff.pck placeholder=None 2048x2048 mean_rgba=[28.1, 28.2, 27.8, 255.0] red_share=0.000 red_mean_rgb=[0, 0, 0]
+terran_techsheet_diff.dds 01.cat:dds/terran_techsheet_diff.pck placeholder=None 1024x256 mean_rgba=[88.5, 92.0, 93.9, 255.0] red_share=0.000 red_mean_rgb=[0, 0, 0]
+x3m_lod_usc_dock_c_left_arm_7d86d7_diffuse.tga addon/06.cat:dds/x3m_lod_usc_dock_c_left_arm_7d86d7_diffuse.pck placeholder=None 1024x1024 mean_rgba=[173.2, 173.5, 171.6, 255.0] red_share=0.000 red_mean_rgb=[0, 0, 0]
+x3m_lod_usc_dock_c_core_top_77ba6e_diffuse.tga addon/06.cat:dds/x3m_lod_usc_dock_c_core_top_77ba6e_diffuse.pck placeholder=None 1024x1024 mean_rgba=[195.5, 195.8, 193.6, 255.0] red_share=0.000 red_mean_rgb=[0, 0, 0]
