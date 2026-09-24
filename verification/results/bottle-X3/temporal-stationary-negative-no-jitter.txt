@@ -65,11 +65,11 @@ CHECK stationary history follows the sequence PASS
 CHECK stationary history follows the sequence PASS
 CHECK stationary history follows the sequence PASS
 CHECK stationary history follows the sequence PASS
-EDGE left x=4 y=8 resolved_coverage=0.7404 sampled_coverage=0.7500 analytic_coverage=0.7200
-EDGE right x=12 y=8 resolved_coverage=0.5151 sampled_coverage=0.6875 analytic_coverage=0.7200
-EDGE top x=8 y=4 resolved_coverage=0.7335 sampled_coverage=0.6875 analytic_coverage=0.6300
-EDGE bottom x=8 y=12 resolved_coverage=0.4304 sampled_coverage=0.5625 analytic_coverage=0.5900
-EDGE corner x=4 y=4 resolved_coverage=0.5517 sampled_coverage=0.5000 analytic_coverage=0.4536
-STATIONARY frames=64 phases=16 weight=0.90 oracle_error=0.286621 interior_delta=0.247559 edge_delta=0.268066 ramp_delta=0.153076 edge_dc_error=0.1724 corner_dc_error=0.0517 edge_analytic_error=0.2049 ramp_dc_error=0.2427 drift_px=0.557020 ramp_gradient_energy_ratio=1.0407
-SAMPLE stationary one-step oracle max error over 64 frames actual=0.286621094 expected=0.000000000 tolerance=0.002000000 FAIL
+EDGE left x=4 y=8 resolved_coverage=0.7470 sampled_coverage=0.7500 analytic_coverage=0.7200
+EDGE right x=12 y=8 resolved_coverage=0.5145 sampled_coverage=0.6875 analytic_coverage=0.7200
+EDGE top x=8 y=4 resolved_coverage=0.7407 sampled_coverage=0.6875 analytic_coverage=0.6300
+EDGE bottom x=8 y=12 resolved_coverage=0.4275 sampled_coverage=0.5625 analytic_coverage=0.5900
+EDGE corner x=4 y=4 resolved_coverage=0.5633 sampled_coverage=0.5000 analytic_coverage=0.4536
+STATIONARY frames=64 phases=16 weight=0.90 oracle_error=0.286133 interior_delta=0.251953 edge_delta=0.271973 ramp_delta=0.156982 edge_dc_error=0.1730 corner_dc_error=0.0633 edge_analytic_error=0.2055 ramp_dc_error=0.2419 drift_px=0.565381 ramp_gradient_energy_ratio=1.0481
+SAMPLE stationary one-step oracle max error over 64 frames actual=0.286132812 expected=0.000000000 tolerance=0.002000000 FAIL
 RESULT FAIL stationary one-step oracle max error over 64 frames

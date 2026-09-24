@@ -683,3 +683,25 @@ widened programs on a native driver (D3DX disassembles them; CrossOver's backend
 quad convention (`texldd(k=1)` was bit-identical to `texld` on CrossOver's backend, and the route never relies on it:
 k = 1 binds the un-widened variant), and anisotropic filtering of explicit-gradient fetches (applied on CrossOver's
 backend; documented as implementation-defined).
+
+## 2026-09-24: TAA 5-tap bilinear history (`--taa-history-taps`, default 5)
+
+The default resolve programs read the previous colour (and, under a mask policy, the previous R32F mask) a second time
+at s11 / s12 with `D3DTEXF_LINEAR` min / mag ([taa-high-resolution.md](taa-high-resolution.md) S3). Documented D3D9
+capability checks only, at `TemporalPass::initialize`: `D3DPTFILTERCAPS_MINFLINEAR | MAGFLINEAR` in
+`TextureFilterCaps` and `CheckDeviceFormat(D3DUSAGE_QUERY_FILTER)` of A16B16G16R16F and R32F against the adapter's
+display format (`GetDirect3D` / `GetCreationParameters` / `GetDisplayMode`). Any refusal puts the 16-tap point programs
+(the pre-S3 bytecode, still embedded) in every program slot, so the worst case is the old cost, never a failure; the
+fixture forces that path by refusing `GetDirect3D`. Measured on CrossOver only: both formats filter, a fetch at an
+exact texel centre returns the texel bit for bit at 32, 1280 and 5120 texels, and sub-texel weights have 8 bits (max
+error 1/512). Unverified natively: R32F filtering (D3D10-class; a D3D9-class driver refusing it takes the 16-tap path),
+the centre exactness the thin / age / far programs rely on at rest (they have no point branch). The float32 error of
+`(i + 0.5) / W` at a texel centre is below 2.5e-4 texel and negative at some widths (-1.2e-4 at 3440; float32 emulation,
+`verification/results/taa-high-resolution/s3_centre_error.py`), which a truncating 8-bit sub-texel unit would turn into
+1/256 of the neighbour. The fetch positions that sit on texel centres (the edge taps always, the centre tap where
+the fraction is 0) are therefore biased by +1/1024 texel, `max(w2 / w12, 1/1024)` for the centre tap, which puts the
+error in [+8.5e-4, +1.3e-3], positive and below 1/512, so rounding and truncating units both read fraction 0 while
+every fraction the filter resolves is unchanged (a plain added bias shifted rounding thresholds under motion and moved
+the fixture's camera-tracking rows by up to 0.012 px). Inferred for native drivers; exact on this backend with and
+without the bias; and the sub-texel precision (the look bound in the fixture is
+the 3x3 clip, not the precision).

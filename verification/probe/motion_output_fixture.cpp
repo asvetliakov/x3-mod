@@ -295,6 +295,9 @@ struct Reference {
         api(pass.initialize(d.p, nullptr, reinterpret_cast<const DWORD*>(x3m::renderer::temporal_resolve_program()), nullptr, nullptr,
                             reinterpret_cast<const DWORD*>(x3m::renderer::hdr_writeback_program())), "reference initialize");
         pass.configure_copy(copy_by_draw);
+        // The DLL's X3M_TAA_HISTORY_TAPS parse (capture.cpp): 16 exactly selects the 16-tap programs, anything else 5.
+        { char taps[8]{}; const DWORD n = GetEnvironmentVariableA("X3M_TAA_HISTORY_TAPS", taps, sizeof taps);
+          api(pass.configure_history_taps(n > 0 && n < sizeof taps && !std::strcmp(taps, "16") ? 16 : 5), "reference history taps"); }
     }
     bool copy_by_draw = false;
     void upload(const std::vector<DWORD>& image, const std::vector<float>& motion_data, const std::vector<float>& depth_data) {

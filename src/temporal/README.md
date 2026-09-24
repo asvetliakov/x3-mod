@@ -18,12 +18,22 @@ passes; those are required inputs from the renderer.
 | s4 | Optional object reprojection | RGBA32F, interpretation below; FP16 absolute UV/depth is insufficient |
 | s5 | Current reactive coverage | R32F; exactly zero means known safe, every other value means reactive |
 | s6 | Previous reactive coverage | Owned R32F snapshot aligned with previous resolved color/depth |
+| s11 | Previous resolved color, filtered | The s2 texture again, LINEAR min/mag (5-tap programs only) |
+| s12 | Previous reactive coverage, filtered | The s6 texture again, LINEAR min/mag (5-tap programs under a mask policy) |
 
-Every sampler uses POINT min/mag, no mip filter, CLAMP U/V and sRGB sampling off.
-The resolve performs its own history reconstruction (a 16-tap Catmull-Rom
-gather, one tap on the texel grid) and its own depth footprint test; every
-fetch is an explicit LOD-0 `tex2Dlod`. Hardware bilinear filtering on any
-input would violate this contract. Output is a distinct FP16 target, never simultaneously
+Every sampler uses POINT min/mag, no mip filter, CLAMP U/V and sRGB sampling off,
+except s11 and s12, which are LINEAR min/mag with the same other states. The
+resolve performs its own history reconstruction and its own depth footprint
+test; every fetch is an explicit LOD-0 `tex2Dlod`. The default programs
+(`docs/architecture/taa-high-resolution.md` S3) reconstruct the history with
+five hardware-bilinear fetches of s11 (and, under a mask policy, of s12); a
+point read of s2 on the texel grid in the plain program. The 16-tap twins
+(`resolve*_taps16.hlsl`, `X3M_HISTORY_TAPS16`, `--taa-history-taps 16`) gather
+16 point taps of s2 / s6 and never read s11 / s12. Hardware bilinear filtering
+on any other input would violate this contract. `TemporalPass` binds the
+filtered pair only for a 5-tap program and only when the device reports
+`D3DPTFILTERCAPS_MINFLINEAR | MAGFLINEAR` and `D3DUSAGE_QUERY_FILTER` for
+A16B16G16R16F and R32F; otherwise every program slot holds the 16-tap words. Output is a distinct FP16 target, never simultaneously
 bound as an input; alpha is the current color's alpha (the game's main-target
 alpha survives the copy-back; history alpha is never blended; a NaN alpha
 becomes one). Disable depth, blending, alpha test, fog and
@@ -173,13 +183,28 @@ Per output pixel `p` (unjittered grid), in this order:
    compilation with NaN semantics on the verified backend (`v == v` folds to
    true, `<` and `>` compile to negated forms a NaN passes), so every such
    test is written with them.
-6. **History color.** Catmull-Rom over the 4×4 texel neighborhood (16 point
-   taps; the 9-tap form needs hardware bilinear filtering, which the sampler
-   contract excludes). On the texel grid (static content) it reads that one
-   texel under a real branch. Nonfinite taps contribute no energy and the
-   rest renormalize; below half the weight the lookup is rejected. With the
-   mask policy any nonzero-weight tap with reactive previous coverage
-   rejects the lookup.
+6. **History color.** Catmull-Rom (a = -0.5) over the 4×4 texel
+   neighborhood in the 5-tap bilinear form (S3, 2026-09-24): texels 1 and 2 of
+   each axis are one bilinear fetch at `t + w2 / (w1 + w2)` weighted
+   `w1 + w2`, the centre block and the four edge blocks are five fetches of
+   s11, the four corner blocks (at most 1/64 of the filter mass, at f = 1/2)
+   are dropped and the five weights renormalised by `1 - (w0x + w3x)(w0y + w3y)`
+   (derivation in `resolve.hlsl`). Three semantic changes against the 16-tap
+   form: the filtered colour is weighed after the filter (identical at k = 0;
+   at k > 0, the HDR route, a bright texel pulls the history harder, bounded by
+   the 3x3 clip); a reactive texel whose only contribution is a dropped corner
+   no longer rejects; a NaN / Inf texel of nonzero weight refuses the lookup
+   (current only) and a finite texel above `rejection.z` is averaged in, the
+   lookup refused only when the filtered result exceeds it. Fetch positions on
+   texel centres carry a +1/1024 texel bias so a truncating filter unit reads
+   fraction 0 there. The plain program reads the one texel
+   under a real branch on the texel grid; the thin / age / far variants have no
+   such branch (slot budget) and rely on the bilinear fetch at an exact texel
+   centre returning that texel, which the fixture's FILTER_PROBE verifies on
+   FP16 and R32F at 32, 1280 and 5120 texels. With the mask policy the five
+   bilinear mask samples, each scaled by the magnitude of its weight, must sum
+   to exactly zero. The 16-tap twins keep the earlier form: 16 point taps,
+   nonfinite taps renormalised away, rejected below half the weight.
 7. **Neighborhood clip.** The history is clamped per channel to
    mean ± 1.25 σ of the finite current 3×3, intersected with the 3×3 min/max
    box as the fallback bound, then blended: `lerp(current, history, c5.z)`.
@@ -205,9 +230,9 @@ Weight `c5.z` (route default 0.9, `X3M_TAA_HISTORY_WEIGHT` 0.5–0.98): 0.85–0
 per-phase ripple of a toggling edge sample is (1-w)·contrast, convergence
 takes about 2/(1-w) frames, and a larger weight holds clamp-bounded ghosts
 longer. Cost per pixel: 10 current color, 9 current depth, 1 motion, 4 history
-depth and 1 or 16 history color fetches (20 before; plus 1 + 1/16 mask
-fetches under the mask policy); the compiled program is 3,840 words (3,794
-before the far-plane fill-sentinel fix, 1,695 before the Catmull-Rom history).
+depth and 1 or 5 history color fetches (16 in the 16-tap twins; plus 1 or 5
+mask fetches under the mask policy); the plain program is 1,661 words / 425
+ps_3_0 slots (1,681 / 432 as the 16-tap twin).
 
 ## Rejection and history lifecycle
 

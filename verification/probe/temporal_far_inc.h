@@ -34,8 +34,9 @@ struct FarRun : FlickerRun { std::vector<std::vector<float>> mask; bool masksFai
 constexpr std::uint32_t farReferenceWords[]={
 #include "temporal_resolve_far_reference_inc.h"
 };
-FarRun far_sequence(EdgeScene& s,const DWORD* resolver,const LineConfig& c,unsigned frames,bool validGate=true,bool failMasks=false,bool reference=false){
-    TemporalPass pass;check("far initialize",pass.initialize(s.d,nullptr,resolver));const bool farOn=c.farW>0||c.farA>0||c.thinW>0;
+// taps: TemporalPass::configure_history_taps (S3: 16 selects the 16-tap point twins; a reference program stands for both).
+FarRun far_sequence(EdgeScene& s,const DWORD* resolver,const LineConfig& c,unsigned frames,bool validGate=true,bool failMasks=false,bool reference=false,unsigned taps=5){
+    TemporalPass pass;check("far initialize",pass.initialize(s.d,nullptr,resolver));check("far history taps",pass.configure_history_taps(taps));const bool farOn=c.farW>0||c.farA>0||c.thinW>0;
     if(c.thin>0&&!farOn){check("far configure flicker",pass.configure_flicker());}
     if(farOn){check("far configure",pass.configure_far(reference?reinterpret_cast<const DWORD*>(farReferenceWords):nullptr));check("far configure is idempotent",pass.configure_far());require(pass.far_available(),"far-stabiliser program created on this device");}
     const FlickerConfig f{c.name,c.thin,0,.1f,.5f,false,.9f};FarRun run;bool sequence=true;
@@ -135,8 +136,9 @@ void far_cases(IDirect3DDevice9* d,Compiler compiler,const DWORD* resolver){
         metric("far custom speed gate: shader matches the oracle evaluated with that gate",error,0,.0006/(1-.985));
         ++numeric_checks;require(ratio[0]<rampRatio[2]-.2&&ratio[1]>ratio[0]&&ratio[1]<.9,"a non-default speed gate is followed (a hard-coded default would give the default ramp)");}
     // The far stabiliser alone equals the program the user flew (run160 / run161): same images bit for bit, static and inside the ramp.
-    for(double drift:{0.,.04}){farDrift=drift;for(const LineConfig* c:{&weight,&both}){const auto now=far_sequence(s,resolver,*c,96),flown=far_sequence(s,resolver,*c,96,true,false,true);
-        ++numeric_checks;require(same_rgb(now.output,flown.output),"far stabiliser alone: bit-identical to the flown resolve_far program");}}
+    // S3: the 16-tap twins keep that identity (--taa-history-taps 16); the 5-tap default resamples differently under drift.
+    for(double drift:{0.,.04}){farDrift=drift;for(const LineConfig* c:{&weight,&both}){const auto now=far_sequence(s,resolver,*c,96,true,false,false,16),flown=far_sequence(s,resolver,*c,96,true,false,true);
+        ++numeric_checks;require(same_rgb(now.output,flown.output),"far stabiliser alone: the 16-tap program is bit-identical to the flown resolve_far program");}}
     farDrift=0;
     // ---- gate off (invalid projection this frame) and mask-target creation failure: the plain resolve bit for bit, history kept ----
     {const auto baseRun=far_sequence(s,resolver,base,32),gateOff=far_sequence(s,resolver,both,32,false),failed=far_sequence(s,resolver,both,32,true,true);

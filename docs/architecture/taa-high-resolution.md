@@ -152,6 +152,7 @@ Cost. The 16-tap path is the measured 0.4-0.5 ms motion delta of the resolve at 
 finite tests inside a dynamic loop). Inferred: -0.25 to -0.35 ms under motion at 1080p, 0 at rest; -0.9 to -1.2 at
 5120x1440 in flight. Slots: the 4x4 loop with its `loopWeight` selects goes; expect 30-50 slots back on `far_camera`
 (505 -> about 460; must be measured with fxc), which is what makes the next slot-bound edits possible at all.
+Measured: 505 -> 504 (below); the expectation counted the rolled loop's 16 iterations as static slots.
 
 Look risk on the accepted behaviours: lattice crawl at rest is untouched (f = 0, exact texel); the thin region,
 camera gate, sentinel box, strict sky, band and exit reset, motion-weight cap are all in the mask or in the depth
@@ -165,6 +166,45 @@ filter is exact), the CPU model of the resolve (`temporal_resolve.cpp`, the LATT
 filtering is universal on D3D10-class hardware (inferred), gated by the query above. Flight: a lattice pan
 (run177-type rotation) and fast flight in the busy sector; pass criteria: crawl at rest unchanged, motion blur not
 worse than today by eye, `taa_resolve` in flight within 0.1 ms of `taa_resolve` at rest.
+
+**Measured (2026-09-24; implemented, fixture only, not flown).** Ledger:
+[temporal-resolve.md](../verification/temporal-resolve.md), "2026-09-24 5-tap bilinear history".
+
+| program | 16-tap words / slots | 5-tap words / slots |
+| --- | --- | --- |
+| plain (`resolve`) | 1,681 / 432 | 1,661 / 425 |
+| thin | 1,818 / 465 | 1,814 / 469 |
+| age | 1,947 / 494 | 1,940 / 495 |
+| far | 1,948 / 493 | 1,931 / 493 |
+| far_camera | 2,006 / 505 | 1,987 / **504** |
+
+Slots are D3DXDisassembleShader's count (native `d3dx9_37`, the fixture's `RESOLVE_BUDGET` rows). The 16-tap loop is
+rolled, so its body counts once; the five unrolled fetches with their weights cost about as much, and far_camera gains
+1 slot, not 30-50 (3 before the texel-centre bias below, which costs 2 per program). The saving is dynamic: per pixel under motion 5 fetches and one division instead of 16 fetches, 16
+finite tests and 16 divisions in a loop (inferred from the listings; unmeasured on the GPU until flown). The rest
+branch stays in the plain program only: in the thin / age / far variants it costs about 20 slots (far_camera 522 of
+512, measured on a scratch compile), so they rest on the filter returning the exact texel at a texel centre, which the
+fixture's `FILTER_PROBE` shows on this backend. Filtering is a second binding of the same textures (s11 colour, s12
+mask, LINEAR) rather than LINEAR on s2 / s6 or a manual 2x2 blend: the manual form needs the 12 non-corner texels as
+point fetches (24 slots of `texldl` alone against 10), and the second binding costs no slot (a `dcl`) while s2 keeps the
+point read at rest. The weights use the closed forms s = f(1-f)/2 (w0 = -s(1-f), w3 = -sf, w1 + w2 = 1 + s, total
+1 - sx sy), 9 slots fewer than the textbook polynomials on the plain program.
+
+- `FILTER_PROBE` (FP16 and R32F): every texel centre addressed as `(i + 0.5) / W` returns the texel bit for bit at
+  W = 32, 1280, 5120; sub-texel weights are 8-bit (max error 1/512, mean 1/1024 over 1024 fractions). This settles the
+  section-6 question for this backend; native drivers remain inferred.
+- Relative identities hold: rest (plain and far_camera, 32 frames) identical to the 16-tap form; rows whose lookup
+  fraction is 0 or 1/2 on the one moving axis are unchanged (`STATIONARY`, `LATTICE`, `THIN_REGION_CAMERA_STATIC`,
+  whole-pixel pans such as `SETA_PAN` 3 px, the 0.5 px `THIN_REGION_PAN` / `THIN_REGION_CAMERA`: w2 / (w1 + w2) is then
+  0 or exactly 1/2 in the filter's 8-bit weights). Other fractional 1-D motion moved slightly (the scrolling wave,
+  the 0.30 px sentinel y-pan, camera yaw / pitch drift within ±0.004 px): the corners weigh 0 there as well, the
+  difference is 8-bit filter weights against float point-tap weights.
+- Semantic changes, the texel-centre bias (+2 slots per program) and why the far_camera drift row repeats the plain one
+  (its gates are idle in that scene): the ledger entry linked above.
+- Diagonal drift (0.30, 0.20) px/frame on a 1-px lattice: 17,619 of the channel samples differ, max 0.0171, at most
+  2.5 % of `w (max - min)` of the current 3x3 (the clip bound), never above it.
+- The 1-D cases are exact in arithmetic, not bit for bit: the scrolling wave keeps 0.9300 of its amplitude (0.9296
+  with 16 taps), the 8-bit filter weights against the point taps' float weights.
 
 ### S4. Half-resolution sentinel box (output-changing, conservative)
 

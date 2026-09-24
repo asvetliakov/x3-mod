@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "verification/probe/build/motion_output_fixture.exe": "322ad0470672f26af844368b9bf22a82a61784b8fca8cce0fe9a7a23dca0d36a",
-  "verification/probe/build/motion-output-seam/d3d9.dll": "d16b84546f508fa99b47dcb0c33791b802701ea89b47b956d076167abf287405",
-  "build/d3d9.dll": "b88088cfb5b1d092425f367a5e20db3babc0373503472e5143450787e919cebc"
+  "verification/probe/build/motion_output_fixture.exe": "b7010257b282bf4171aba0209ea0073b82eca048c3db942232ab8eb31bdd060d",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "6c64bc2174cc3292219180074a6d40154738cae01293ffe6a37e79c300da73a5",
+  "build/d3d9.dll": "6ac5d0a86df818bc6115d2a518b2091623b2c8485614a92a4f8edc1a2343f2b3"
  },
  "checks": 95,
  "setting": null,
@@ -56,14 +56,14 @@
  },
  "color_hashes": {
   "0": "cc9129a36f23978f",
-  "1": "26ecb29f63c9b05b",
-  "2": "88a5f52e50321180",
-  "3": "e0db862d09accf9c",
-  "4": "25b9ba21fcac5a39",
-  "5": "bb46716d4a41defb",
-  "6": "1a62e988f973ff2c",
-  "7": "ce1995a199d8a6d4",
-  "8": "4bf9000039359dd8"
+  "1": "d37e9d28bffa2857",
+  "2": "5cfe1430a3b5934b",
+  "3": "f48339a1766cd4fc",
+  "4": "45fd72acfd1a4878",
+  "5": "1c6f266b06e92737",
+  "6": "addfb701eb257d60",
+  "7": "b1c3dbb761108b23",
+  "8": "00ebefb288b018a3"
  },
  "bodies": {
   "0M": {
@@ -90,14 +90,14 @@
   "1S": {
    "expect": "matched",
    "pixels": 191,
-   "changed": 96,
+   "changed": 95,
    "max_uv_pixels": 0.00138354112,
    "max_depth_error": 1.08372081e-08
   },
   "2M": {
    "expect": "matched",
    "pixels": 65,
-   "changed": 42,
+   "changed": 41,
    "max_uv_pixels": 0.00178662171,
    "max_depth_error": 9.15106971e-08
   },
@@ -111,7 +111,7 @@
   "3M": {
    "expect": "matched",
    "pixels": 67,
-   "changed": 49,
+   "changed": 46,
    "max_uv_pixels": 0.00156567846,
    "max_depth_error": 2.13433172e-07
   },
@@ -125,14 +125,14 @@
   "4M": {
    "expect": "matched",
    "pixels": 64,
-   "changed": 50,
+   "changed": 48,
    "max_uv_pixels": 0.00161040216,
    "max_depth_error": 3.443932e-07
   },
   "4S": {
    "expect": "matched",
    "pixels": 251,
-   "changed": 148,
+   "changed": 145,
    "max_uv_pixels": 0.000850629425,
    "max_depth_error": 2.72631064e-07
   },
@@ -146,14 +146,14 @@
   "5S": {
    "expect": "matched",
    "pixels": 252,
-   "changed": 105,
+   "changed": 107,
    "max_uv_pixels": 0.000790627242,
    "max_depth_error": 2.17538747e-07
   },
   "6M": {
    "expect": "matched",
    "pixels": 90,
-   "changed": 67,
+   "changed": 66,
    "max_uv_pixels": 0.00139371137,
    "max_depth_error": 3.29063581e-07
   },
@@ -167,14 +167,14 @@
   "6S": {
    "expect": "matched",
    "pixels": 288,
-   "changed": 161,
+   "changed": 160,
    "max_uv_pixels": 0.00110777184,
    "max_depth_error": 2.67986167e-07
   },
   "7M": {
    "expect": "matched",
    "pixels": 90,
-   "changed": 66,
+   "changed": 67,
    "max_uv_pixels": 0.00103274413,
    "max_depth_error": 4.57420844e-07
   },
@@ -188,35 +188,35 @@
   "7S": {
    "expect": "matched",
    "pixels": 313,
-   "changed": 150,
+   "changed": 154,
    "max_uv_pixels": 0.00117415656,
    "max_depth_error": 3.85485073e-07
   },
   "8M": {
    "expect": "matched",
    "pixels": 80,
-   "changed": 56,
+   "changed": 53,
    "max_uv_pixels": 0.00127599104,
    "max_depth_error": 5.71525559e-07
   },
   "8N": {
    "expect": "matched",
    "pixels": 91,
-   "changed": 61,
+   "changed": 60,
    "max_uv_pixels": 0.00129881708,
    "max_depth_error": 5.88986292e-07
   },
   "8S": {
    "expect": "matched",
    "pixels": 340,
-   "changed": 157,
+   "changed": 151,
    "max_uv_pixels": 0.00148705009,
    "max_depth_error": 1.18574616e-07
   }
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-taa-unmatched-static-unset-20260923-020222-123618",
- "trace_sha256": "68dec4156a9a4ca5b85ff8db10bb20884666ce323cd53308d4d6a7f73279f677",
- "dll_sha256": "d16b84546f508fa99b47dcb0c33791b802701ea89b47b956d076167abf287405",
- "exe_sha256": "322ad0470672f26af844368b9bf22a82a61784b8fca8cce0fe9a7a23dca0d36a"
+ "directory": "verification/probe/build/motion-output-seam-taa-unmatched-static-unset-20260924-060429-042520",
+ "trace_sha256": "e1862dc1116f21e58d7d729be995e1586f4747548a5d8a921b05417abe820a21",
+ "dll_sha256": "6c64bc2174cc3292219180074a6d40154738cae01293ffe6a37e79c300da73a5",
+ "exe_sha256": "b7010257b282bf4171aba0209ea0073b82eca048c3db942232ab8eb31bdd060d"
 }

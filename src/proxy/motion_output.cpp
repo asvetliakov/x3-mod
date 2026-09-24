@@ -1515,6 +1515,9 @@ bool MotionOutput::ensure_taa() noexcept {
                                          taa_sharpen_ > 0.f ? reinterpret_cast<const DWORD*>(renderer::taa_sharpen_program()) : nullptr,
                                          reinterpret_cast<const DWORD*>(renderer::hdr_writeback_program())); });
     if (SUCCEEDED(hr)) taa_->configure_copy(taa_copy_draw_);
+    // 5 or 16 by construction; 16 creates the 16-tap twin of each program (here and in the configure calls below), inside
+    // taa_call so the pass's device references stay counted.
+    if (SUCCEEDED(hr)) taa_call([&] { taa_->configure_history_taps(taa_history_taps_); });
     if (SUCCEEDED(hr) && !taa_->snapshot_available())
         log("motion_output_taa_snapshot device=%llu unavailable=1 create=%08lx", id_, taa_->snapshot_result());
     // Alpha history: the thin variant program exists only when it is asked for; a device
@@ -1713,6 +1716,9 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             if (!taa_fold_logged_ && !injected && SUCCEEDED(diagnostics.operation)) {
                 taa_fold_logged_ = true;
                 log("motion_output_taa_depth_fold device=%llu depth_fold=%u reason=%s", id_, unsigned(diagnostics.depth_folded), diagnostics.depth_fold_reason);
+                // S3: the history reconstruction the first run drew (16 without the FP16 / R32F filter caps whatever was asked).
+                log("motion_output_taa_history_taps device=%llu requested=%u drawn=%u bilinear=%u reason=%s", id_, taa_history_taps_, diagnostics.history_taps,
+                    unsigned(taa_->bilinear_history_available()), taa_->bilinear_history_reason());
             }
             auto& c = counters_;
             c.taa_run_ticks += run_ticks; c.taa_capture_ticks += diagnostics.ticks_capture;

@@ -1,0 +1,6 @@
+W=1280 error min=0 max=6.1e-05 negative_columns=0 biased min=0.000969 max=0.00104 below_1_512=True positive=True
+W=1920 error min=0 max=0.000122 negative_columns=0 biased min=0.000977 max=0.00122 below_1_512=True positive=True
+W=2560 error min=0 max=0.000122 negative_columns=0 biased min=0.000854 max=0.00104 below_1_512=True positive=True
+W=3440 error min=-0.000122 max=0.000122 negative_columns=153 biased min=0.000916 max=0.00122 below_1_512=True positive=True
+W=3840 error min=0 max=0.000244 negative_columns=0 biased min=0.000977 max=0.00122 below_1_512=True positive=True
+W=5120 error min=0 max=0.000244 negative_columns=0 biased min=0.000854 max=0.00104 below_1_512=True positive=True

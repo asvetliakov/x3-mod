@@ -1961,6 +1961,97 @@ Bottle X3, measured:
   `_out.txt`).
 
 
+## 2026-09-24 5-tap bilinear history (taa-high-resolution.md S3; fixture, not flown)
+
+The resolve programs reconstruct the history with Catmull-Rom through five hardware-bilinear fetches (the corner
+blocks dropped, the five weights renormalised; derivation in `resolve.hlsl`); `--taa-history-taps 16`
+(`X3M_TAA_HISTORY_TAPS`, default 5) keeps the 16-tap point programs, embedded byte-identical to the pre-S3 bytecode
+(`resolve*_taps16.hlsl`, `X3M_HISTORY_TAPS16`). `TemporalPass` binds the history a second time at s11 (and the mask at
+s12) with LINEAR filtering; without the FP16 / R32F filter caps every slot holds the 16-tap words. The 16-tap twins are
+created on the device only while 16 is configured, so a default session holds the pre-S3 device references (the
+motion-output runner pins 5; an eager twin failed it at 6). Both program sets are in the DLL: stripped d3d9.dll
++41,984 B (`.rdata` +37,888, `.text` +4,104). Bottle X3, measured:
+
+- Programs (native `d3dx9_37`, `generate_rigid_motion_pixel.py`), words / slots 16-tap -> 5-tap: plain 1,681 / 432 ->
+  1,661 / 425; thin 1,818 / 465 -> 1,814 / 469; age 1,947 / 494 -> 1,940 / 495; far 1,948 / 493 -> 1,931 / 493;
+  far_camera 2,006 / 505 -> 1,987 / 504. Of that, 2 slots per program are the texel-centre bias (below). The 16-tap twins hash to the committed bytecode (`507d843e…`, `81e24fa9…`,
+  `97d65cd8…`, `d88d9dc3…`, `0ef1f895…`). The stale records of removed variants (filter, line, age-line, age-filter,
+  thin-line, thin-filter) have no source and were not regenerated.
+- Semantic changes against the 16-tap form (stated in the derivation comment, `resolve.hlsl`):
+  - HDR route (k > 0, the shipping exposure k): the colour is filtered first and weighed after; the 16-tap form weighed
+    every tap before the sum. Identical at k = 0; at k > 0 a bright texel pulls the history harder (weigh() is concave
+    in luma), bounded by the unchanged 3x3 clip. Weighing each of the five fetches instead (per block) was measured at
+    +24 to +30 slots (plain 453, thin 491, age 517, far 518, far_camera 526), over 512 for three programs, so the new
+    order stays. Measured on the HDR route: motion-output `seam-taa-hdr-on` exact fraction against its 8-bit twin
+    0.9763 -> 0.9754 (below); bright emitters under motion are unmeasured.
+  - The mask test sees the twelve texels of the five blocks: a reactive texel whose only contribution is a dropped
+    corner block no longer rejects the history.
+  - Out-of-range texels are no longer dropped one by one: a NaN / Inf texel of nonzero weight refuses the whole lookup
+    (current only); a finite texel above `rejection.z` (65000) is averaged in, and the lookup is refused only when the
+    filtered result exceeds it.
+- Texel-centre bias (second review): the float32 UV of a texel centre errs by -1.2e-4 .. +2.4e-4 texel for W = 1280 ..
+  5120 (float32 emulation, `taa-high-resolution/s3_centre_error.py` and `_out.txt`; negative at 3440), which a
+  truncating 8-bit filter unit would turn into 1/256 of the neighbour at rest in the branchless programs. The edge
+  taps (always on centres) take +1/1024 texel and the centre tap `max(w2 / w12, 1/1024)`, putting the error in
+  [+8.5e-4, +1.3e-3]: +2 slots per program. A plain +1/1024 on every position (+1 slot) was measured first and moved
+  the camera-tracking rows by up to 0.0155 px (narrow-yaw drift 0.0302 -> 0.0421 against a 0.05 tolerance), because it
+  shifts every rounding threshold under motion; the centre-only form leaves `temporal-pass.txt` byte-identical to the
+  unbiased 5-tap run (`09cd53be…`) and the lattice report identical outside the slot, timing and new rows.
+- `run_temporal_pass.py` PASS 744 / 278 / 2 generations, 546 samples (unchanged counts; `report_sha256` `09cd53be…`,
+  provenance only). Lattice mode RESULT PASS 528 / 89 (508 / 89 before): the S3 cases add 20 numerical checks.
+- `FILTER_PROBE`: FP16 and R32F texel centres exact at 32, 1280 and 5120 texels (0 mismatched); sub-texel weights 8-bit
+  (max error 0.00195 = 1/512, mean 1/1024).
+- `HISTORY_TAPS`: rest, plain and far_camera, 32 frames: 0 differing against the 16-tap programs. Diagonal drift
+  (0.30, 0.20) px/frame: 17,619 channel samples differ, max 0.0171, at most 0.0253 of `w (max - min)` of the current
+  3x3, never above it. The 16-tap run equals the 16-tap words bound as the caller's resolve; `history_taps` names the
+  program drawn. Fallback (GetDirect3D refused at initialize): `adapter_query`, every run draws 16 taps, byte-identical.
+  Reset: a 5-tap pass resumes from an empty history byte-identical to a fresh pass. Hostile-state restoration of the
+  s11 / s12 bindings: every base-mode case (Snapshot compares all 16 samplers) runs the 5-tap programs; without a mask
+  policy s12 is set to null explicitly (normalize already clears it).
+- Why the plain and far_camera drift rows agree to the digit (17,619 / 0.01708984 / 0.0253): `HISTORY_TAPS_FAR_IDLE`
+  shows that under drift every channel of the far-camera mask is 0 (filter weight, farw, both thin-region strengths:
+  depths 0.5 / 0.9 are below the far gate's 0.9995, and the lattice's 0.36 px/frame exceeds the 0.03 .. 0.25 px/frame
+  speed gate, which closes the region) and the far_camera output equals the plain output bit for bit. So that row is not an
+  independent check of the far program under motion; its rest row is (mask b = a = 1, output differs from plain, 5 = 16
+  taps). The far programs' 5-tap arithmetic under motion is covered by the lattice rows with their 2-D oracle
+  (THIN_REGION, SENTINEL_STABILISER, FLICKER, FAR_STABILISER).
+- `verification/results/taa-high-resolution/s3_identity.py` (`_out.txt`), per row against the committed reports:
+  - base mode: 11,786 rows each; 170 differ, none outside BLUR, SETA_SLOW, SETA_EXIT, MOTION_WEIGHT, CAMERA,
+    CAMERA_FRAME and their SAMPLE rows (22 of 546). Largest moves: camera drift px +0.0039 (yaw single step
+    0.0369 -> 0.0408, tolerance 0.05), scrolling-wave amplitude 0.9296 -> 0.9300, SETA trail_cast_max within ±0.0008,
+    motion-weight e_ratio within ±0.0007 and output_diff +0.0007. Every hand-specified expected value holds; the
+    STATIONARY rows and all reactive, route, HDR, sharpen, quad-twin and Reset rows are identical.
+  - lattice: 150 rows differ (plus 4 timing rows): slot rows; FLICKER_DRIFT / NEAR_DEPTH / STEP1 / ALPHA metrics within
+    ±0.08 codes; THIN_REGION shard rms within ±0.03 codes; SENTINEL flicker_ratio 0.4798 -> 0.4809; oracle errors up by
+    0.00024-0.001 (the CPU oracle, `line_model`, uses exact weights against the filter's 8-bit ones; every tolerance
+    holds). LATTICE, LATTICE_ORACLE, THIN_REGION_CAMERA_STATIC, THIN_REGION_PAN / CAMERA / CAMERA_FLIGHT and all DEPTH_FOLD
+    rows are identical. Why: rows whose lookup fraction is 0 (static, whole-pixel pans such as SETA_PAN 3 px) or 1/2
+    on the one moving axis (the 0.5 px THIN_REGION pans: w2 / (w1 + w2) is then exactly 1/2, which the filter's 8-bit
+    weights represent) are unchanged. Other fractional 1-D motion moved by the deltas above (scrolling wave 0.25 px,
+    SENTINEL_STABILISER pan_axis=y 0.30 px, camera yaw / pitch): there the corner weights are 0 in exact arithmetic
+    too, and the difference is the filter's 8-bit weights against the point taps' float weights.
+- `test_taa_history_taps.py` now also pins the `reason=too_long` log of an oversized `X3M_TAA_HISTORY_TAPS` (the DLL
+  keeps 5, as `X3M_TAA_MOTION_WEIGHT` does).
+- The far-stabiliser identity with the flown program now compares the 16-tap twin (`far_sequence(..., 16)`); the 2-D CPU
+  oracle models the 5-tap form (`oracleHistoryTaps`, `temporal_line_inc.h`).
+- `run_motion_output.py` PASS: 191 cases, 271,533 checks (190 / 271,369 committed; the new case `seam-taa-taps16`,
+  `X3M_TAA_HISTORY_TAPS=16`, 164 checks, pins the pass at 6 device references: the 5 of the default plus the plain
+  resolve's 16-tap twin; every other case pins 5, and each TAA attachment's `motion_output_taa_history_taps` line must
+  name the requested count, `bilinear=1 reason=ok`; the fixture's reference resolve mirrors the setting). That case's
+  colour hashes, checks and changed pixels are identical to the committed pre-S3 `seam-taa-on`: the 16-tap path is the
+  earlier resolve in the route. `taa-high-resolution/s3_motion_compare.py` (`_out.txt`) against the committed summary,
+  the new case aside: 44 cases differ, all TAA cases, only in resolve outputs: `color_hashes`,
+  `taa_changed_pixels`, `taa_image/max_difference`, `present_readbacks/*code_error_vs_resolved`, `hdr_taa` image
+  statistics, the `sharpen` images, `shifts/*/resolved` and `worst_resolved_residual_px` (the resolved-image shift
+  estimates), `bodies/*/changed`, and the top-level HDR and sharpen twin statistics (e.g. `seam-taa-hdr-on` exact
+  fraction 0.9763 -> 0.9754). The bench `hdr_frame_last/ev` rows move for the TAA-off benches as well (run to run, not
+  S3). The first run failed on the runner's pinned 5 device references (an eager 16-tap twin made 6); the twins are
+  lazy since.
+- Scratch CMake build (MinGW i686, RelWithDebInfo) 0 warnings; `check_no_x87.py` PASS, 673 reachable functions; host
+  suite 247 modules / 2,546 tests, 0 failing (new: `test_taa_history_taps.py`, 5 tests: launcher forwarding and refusal,
+  the DLL's read, the twins' pre-S3 bytecode).
+- Not verified: GPU time (no `--gpu-sync-timing` flight yet), the look in flight, native Windows filtering.
+
 ## ps_3_0 slot budget measured (2026-09-24)
 
 The resolve programs are held under 512 slots (`RESOLVE_BUDGET`). This probe checks what that figure means on the X3

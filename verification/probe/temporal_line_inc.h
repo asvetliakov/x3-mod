@@ -32,6 +32,8 @@ double oracleK=0;
 double oracle_weigh(double v){return oracleK>0?v/(1+oracleK*std::max(v,0.)):v;}
 double oracle_unweigh(double v){return oracleK>0?v/std::max(1-oracleK*std::max(v,0.),1./65504):v;}
 bool oracle_finite(double v){return std::fabs(v)<=65000;}
+// History reconstruction the oracle models (docs/architecture/taa-high-resolution.md S3): 5 (the default programs) or 16 (the 16-tap twins).
+unsigned oracleHistoryTaps=5;
 float quantise8(double v){return float(std::lround(std::min(std::max(v,0.),1.)*255.))/255.f;} // as the A8R8G8B8 mask stores it
 // Thin-region gate exactly as line_mask_ps.hlsl computes it (clamped addressing): b = (11x11 maximum of FRAGMENTED) * (1 - 17x17 maximum
 // of the 8-bit speed closure); FRAGMENTED = some 7-tap line through the pixel changes depth class at least twice; the closure uses the
@@ -71,7 +73,8 @@ float far_gate_weight(float depth){if(!(depth>=0&&depth<=1))return 0;const float
 
 // 2-D CPU oracle of the resolve on this scene at k = 0 (interior pixels [3, S-3); the rest take the shader's output):
 // closest-depth dilation (content moves by (line_velocity_x, line_velocity) of the closest depth; the camera path by
-// (cameraPanX, 0)), the disocclusion proof over the 2x2 footprint, 4x4 Catmull-Rom history with the snap, the 3x3 clip, the thin
+// (cameraPanX, 0)), the disocclusion proof over the 2x2 footprint, Catmull-Rom history with the snap (the 5-tap form: the 4x4
+// without its corners, renormalised; oracleHistoryTaps 16: the full 4x4), the 3x3 clip, the thin
 // soft clip and age weight of the variants, the camera gate's 7x7 box clip by the share of the strength the camera term added,
 // and the far stabiliser's exp(-A d^2) current sample by the far gate. FP16 rounding per frame.
 FlickerModel line_model(const FlickerRun& run,const LineConfig& c){constexpr UINT S=EdgeScene::S;const unsigned N=unsigned(run.current.size());FlickerModel m;m.color.resize(N);m.age.resize(N);
@@ -98,8 +101,14 @@ FlickerModel line_model(const FlickerRun& run,const LineConfig& c){constexpr UIN
             if(!proven){m.color[n][i]=float(cur);m.age[n][i]=1;continue;}
             auto keys=[](double f,double* cr){const double f2=f*f,f3=f2*f;cr[0]=-.5*f+f2-.5*f3;cr[1]=1-2.5*f2+1.5*f3;cr[2]=.5*f+2*f2-1.5*f3;cr[3]=-.5*f2+.5*f3;};
             double crx[4],cry[4];keys(fx,crx);keys(fy,cry);
-            double old=0,weights=0;for(int t=0;t<4;++t)for(int u=0;u<4;++u){const double cr=crx[u]*cry[t];if(cr!=0){const double tap=m.color[n-1][UINT(by+t-1)*S+UINT(bx+u-1)];if(oracle_finite(tap)){old+=cr*oracle_weigh(tap);weights+=cr;}}}
-            old/=weights;
+            double old=0,weights=0;
+            if(oracleHistoryTaps==16){for(int t=0;t<4;++t)for(int u=0;u<4;++u){const double cr=crx[u]*cry[t];if(cr!=0){const double tap=m.color[n-1][UINT(by+t-1)*S+UINT(bx+u-1)];if(oracle_finite(tap)){old+=cr*oracle_weigh(tap);weights+=cr;}}}
+                old/=weights;}
+            else{ // S3: the 5-tap bilinear form is the 4x4 filter without its four corner texels, renormalised, weighed after the filter;
+                // a non-finite contributing texel or result refuses the lookup (current only).
+                bool finite=true;for(int t=0;t<4;++t)for(int u=0;u<4;++u){if((t==0||t==3)&&(u==0||u==3))continue;const double cr=crx[u]*cry[t];if(cr!=0){const double tap=m.color[n-1][UINT(by+t-1)*S+UINT(bx+u-1)];finite=finite&&oracle_finite(tap);old+=cr*tap;weights+=cr;}}
+                old/=weights;if(!finite||!oracle_finite(old)){m.color[n][i]=float(cur);m.age[n][i]=1;continue;}
+                old=oracle_weigh(old);}
             const bool farOn=c.farW>0||c.farA>0||c.thinW>0; // the far program has no 3x3 sentinel soft clip
             const double gate=c.thinW>0?quantise8(thin_region_strength(run.depth[n],int(x),int(y),c.camera,run.motion.empty()?nullptr:&run.motion[n],c.sentS)):0,screenGate=c.camera?quantise8(thin_region_strength(run.depth[n],int(x),int(y),false)):gate;
             const double clamped=std::min(std::max(old,lo),hi),soft=farOn?screenGate*c.relax:sawValid&&sawSentinel?c.thin*(1-std::min(std::max((speed-2)*.5,0.),1.)):0;

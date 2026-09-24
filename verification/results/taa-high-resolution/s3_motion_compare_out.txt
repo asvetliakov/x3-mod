@@ -1,0 +1,151 @@
+passed old=True new=True
+cases old=190 new=191 missing=[] added=['seam-taa-taps16']
+checks old=271369 new=271533
+seam-taa-taps16 (new) vs HEAD seam-taa-on: color_hashes_identical=1 color_hashes_before_boundary_identical=1 checks_identical=1 taa_changed_pixels_identical=1
+cases with differing stable fields: 44; field paths: 75; top-level paths differing: 47
+  field /color_hashes/# cases=34
+  field /present_readbacks/#/max_code_error_vs_resolved cases=14
+  field /present_readbacks/#/mean_code_error_vs_resolved cases=14
+  field /taa_changed_pixels/# cases=28
+  field /hdr_taa/images/#/max cases=5
+  field /hdr_taa/images/#/mean cases=5
+  field /hdr_taa/mean_code_error cases=3
+  field /taa_image/max_difference/# cases=20
+  field /shifts/#/resolved cases=10
+  field /worst_resolved_residual_px cases=10
+  field /sharpen/changed_fraction cases=3
+  field /sharpen/images/#/changed cases=4
+  field /sharpen/images/#/max_code_error cases=4
+  field /sharpen/images/#/mean_code_error cases=4
+  field /sharpen/mean_code_error cases=4
+  field /hdr_taa/max_code_error cases=1
+  field /sharpen/images/#/pixels_distinct_from_sharpen_before_tonemap cases=1
+  field /sharpen/max_code_error cases=3
+  field /bodies/#S/changed cases=4
+  field /bodies/#M/changed cases=4
+  field /bodies/#N/changed cases=3
+  /color_hashes/1 cases=32 e.g. seam-ownership-taa-camera-candidates-on: "a2499c06b255363a" -> "2bc6f80727081570"; seam-ownership-taa-hdr-tonemap-on: "5e058a7d7673b4f0" -> "4ec02f9afeb4dff5"; seam-ownership-taa-on: "fe5cc8b35cd801ca" -> "623e5c12bb92f804"
+  /color_hashes/10 cases=23 e.g. seam-ownership-taa-camera-candidates-on: "332b6a65322718bb" -> "bc06748a1e901d94"; seam-ownership-taa-hdr-tonemap-on: "81e20d544167d1b4" -> "46425352696170c0"; seam-ownership-taa-on: "52dc6a7ccf7dd9e8" -> "6c9e3c3fd0999df7"
+  /color_hashes/11 cases=23 e.g. seam-ownership-taa-camera-candidates-on: "11fc8bcc9362dee9" -> "a86831ea022c955a"; seam-ownership-taa-hdr-tonemap-on: "f01e0c2ae8ae8b89" -> "a6c4a09e32747956"; seam-ownership-taa-on: "e65aedcbf0499533" -> "a7bbab2fce6ca16d"
+  /color_hashes/4 cases=31 e.g. seam-ownership-taa-camera-candidates-on: "403a1ff89ea0f8db" -> "ff915e19a6a2bc58"; seam-ownership-taa-hdr-tonemap-on: "1979df2fd98f41f1" -> "a14c233fff948a75"; seam-ownership-taa-on: "c558fba5771359a1" -> "58746d057acfbd67"
+  /present_readbacks/1/max_code_error_vs_resolved cases=14 e.g. seam-ownership-taa-camera-candidates-on: 0.4989013671875 -> 0.49853515625; seam-ownership-taa-on: 0.4989013671875 -> 0.49853515625; seam-taa-camera-on: 0.4989013671875 -> 0.49853515625
+  /present_readbacks/1/mean_code_error_vs_resolved cases=14 e.g. seam-ownership-taa-camera-candidates-on: 0.06813586503267288 -> 0.06614730507135391; seam-ownership-taa-on: 0.06083957105875015 -> 0.06012571603059769; seam-taa-camera-on: 0.06813586503267288 -> 0.06614730507135391
+  /present_readbacks/4/max_code_error_vs_resolved cases=13 e.g. seam-ownership-taa-camera-candidates-on: 0.49847412109375 -> 0.4990234375; seam-ownership-taa-on: 0.49847412109375 -> 0.4990234375; seam-taa-camera-on: 0.49847412109375 -> 0.4990234375
+  /present_readbacks/4/mean_code_error_vs_resolved cases=14 e.g. seam-ownership-taa-camera-candidates-on: 0.09840629994869232 -> 0.09795808792114258; seam-ownership-taa-on: 0.08886565268039703 -> 0.088931143283844; seam-taa-camera-on: 0.09840629994869232 -> 0.09795808792114258
+  /taa_changed_pixels/1 cases=28 e.g. seam-ownership-taa-camera-candidates-on: 298 -> 297; seam-ownership-taa-hdr-tonemap-on: 372 -> 350; seam-ownership-taa-on: 211 -> 210
+  /taa_changed_pixels/4 cases=24 e.g. seam-ownership-taa-camera-candidates-on: 237 -> 238; seam-ownership-taa-hdr-tonemap-on: 153 -> 146; seam-ownership-taa-on: 146 -> 147
+  /color_hashes/7 cases=14 e.g. seam-ownership-taa-hdr-tonemap-on: "598a68cc863b11e6" -> "26b6e608a60f6610"; seam-taa-hdr-on: "97cb15dea2616e48" -> "6034ee60a83bc96d"; seam-taa-hdr-sharpen-on: "deaae14097331d9c" -> "4f26d4be8c7c937a"
+  /hdr_taa/images/1/max cases=4 e.g. seam-ownership-taa-hdr-tonemap-on: 0.4999153192738959 -> 0.4999810248255443; seam-taa-hdr-tonemap-ev1: 0.49987994585731954 -> 0.49994358769944114; seam-taa-hdr-tonemap-k0: 0.4999153192738959 -> 0.4999810248255443
+  /hdr_taa/images/1/mean cases=5 e.g. seam-ownership-taa-hdr-tonemap-on: 0.21171899564869245 -> 0.21227244112324598; seam-taa-hdr-tonemap-auto: 0.22147029867109239 -> 0.2215250876801542; seam-taa-hdr-tonemap-ev1: 0.23898402841315955 -> 0.23907776068227346
+  /hdr_taa/images/4/max cases=3 e.g. seam-ownership-taa-hdr-tonemap-on: 0.4995055350980575 -> 0.4965858900604747; seam-taa-hdr-tonemap-auto: 0.4995143781785103 -> 0.4999333297820243; seam-taa-hdr-tonemap-on: 0.4995055350980575 -> 0.4965858900604747
+  /hdr_taa/images/4/mean cases=5 e.g. seam-ownership-taa-hdr-tonemap-on: 0.26770184949229986 -> 0.26796622924020314; seam-taa-hdr-tonemap-auto: 0.20378697477826946 -> 0.2040626175018667; seam-taa-hdr-tonemap-ev1: 0.18884040911862 -> 0.18782119797928545
+  /hdr_taa/images/7/mean cases=5 e.g. seam-ownership-taa-hdr-tonemap-on: 0.26890292388638387 -> 0.2687665390564597; seam-taa-hdr-tonemap-auto: 0.2809064986941165 -> 0.280774020465691; seam-taa-hdr-tonemap-ev1: 0.18758517628185864 -> 0.18763816113852197
+  /hdr_taa/mean_code_error cases=3 e.g. seam-ownership-taa-hdr-tonemap-on: 0.26890292388638387 -> 0.2687665390564597; seam-taa-hdr-tonemap-k0: 0.2687972678046528 -> 0.2688411191078712; seam-taa-hdr-tonemap-on: 0.26890292388638387 -> 0.2687665390564597
+  /taa_changed_pixels/10 cases=10 e.g. seam-ownership-taa-hdr-tonemap-on: 325 -> 282; seam-taa-hdr-on: 231 -> 210; seam-taa-hdr-sharpen-on: 348 -> 350
+  /taa_changed_pixels/11 cases=20 e.g. seam-ownership-taa-hdr-tonemap-on: 580 -> 553; seam-ownership-taa-on: 243 -> 248; seam-taa-camera-sentinel1-on: 243 -> 248
+  /taa_changed_pixels/7 cases=8 e.g. seam-ownership-taa-hdr-tonemap-on: 77 -> 67; seam-taa-hdr-on: 62 -> 53; seam-taa-hdr-sharpen-on: 73 -> 71
+  /taa_image/max_difference/1 cases=20 e.g. seam-ownership-taa-hdr-tonemap-on: 0.11295094209558826 -> 0.11343922334558826; seam-ownership-taa-on: 0.07002192478553922 -> 0.06959467869178922; seam-taa-camera-sentinel1-on: 0.07002192478553922 -> 0.06959467869178922
+  /taa_image/max_difference/7 cases=5 e.g. seam-ownership-taa-hdr-tonemap-on: 0.15982594209558826 -> 0.15860523897058826; seam-taa-hdr-tonemap-auto: 0.19524213005514707 -> 0.19377728630514707; seam-taa-hdr-tonemap-ev1: 0.2897259880514706 -> 0.2876507927389706
+  /present_readbacks/7/mean_code_error_vs_resolved cases=11 e.g. seam-ownership-taa-on: 0.08425775170326233 -> 0.08399556577205658; seam-taa-camera-sentinel1-on: 0.08425775170326233 -> 0.08399556577205658; seam-taa-copy-draw: 0.08425775170326233 -> 0.08399556577205658
+  /color_hashes/3 cases=11 e.g. seam-ownership-taa-shadow-replay-off: "d89c8b26fe89f96f" -> "b0b2fc7d79cb7350"; seam-ownership-taa-shadow-replay-on: "d89c8b26fe89f96f" -> "b0b2fc7d79cb7350"; seam-taa-hook-default: "599b58d0bf841bd7" -> "761ff47b5accd256"
+  /shifts/1/resolved cases=10 e.g. seam-taa-fade-route-behind: [-0.022762452351095922, 0.03377283396365507] -> [-0.022762456375720625, 0.03377285520363907]; seam-taa-fade-route-foreign: [-0.01777492603977314, 0.04752390747743342] -> [-0.017774925051427994, 0.047523411895549504]; seam-taa-fade-route-hover: [-0.02023030725708367, 0.03654752433208437] -> [-0.020229774022342727, 0.03654807417513821]
+  /shifts/10/resolved cases=10 e.g. seam-taa-fade-route-behind: [0.05507287093764471, -0.05097519551703392] -> [0.05424281918710113, -0.05144470594903956]; seam-taa-fade-route-foreign: [0.07046346900849602, -0.05535393976798081] -> [0.07046332138749262, -0.05535271165934459]; seam-taa-fade-route-hover: [0.05315238975100379, -0.05091310493858632] -> [0.05284735935699552, -0.0509479819510569]
+  /shifts/11/resolved cases=10 e.g. seam-taa-fade-route-behind: [-0.01263747254217106, -0.01688144301543192] -> [-0.01263838386676464, -0.016411442851962617]; seam-taa-fade-route-foreign: [1.8876519715107845e-07, -0.007884167651314621] -> [-1.9894418926600766e-07, -0.007882660173890454]; seam-taa-fade-route-hover: [-0.013821195693504556, -0.01503193636386025] -> [-0.013819650679464448, -0.0122636255310668]
+  /shifts/2/resolved cases=10 e.g. seam-taa-fade-route-behind: [0.029600154350436746, -0.02180679713658882] -> [0.029599781328417053, -0.02216092191055789]; seam-taa-fade-route-foreign: [0.029429213648856506, -0.005960142788851709] -> [0.029429610280881792, -0.005954962312537319]; seam-taa-fade-route-hover: [0.03189455756823001, -0.020832343586512952] -> [0.03189352860341474, -0.020832771989758046]
+  /shifts/3/resolved cases=10 e.g. seam-taa-fade-route-behind: [-0.0329258433023498, 0.015488236912375542] -> [-0.032925193150455265, 0.015487607260407448]; seam-taa-fade-route-foreign: [-0.0325043158748636, 0.04172134549436152] -> [-0.032503937549216974, 0.04171536616122823]; seam-taa-fade-route-hover: [-0.3846474580080624, 0.09591419880370422] -> [-0.3846356497942447, 0.09591308970838854]
+  /shifts/4/resolved cases=9 e.g. seam-taa-fade-route-behind: [0.019680530873243285, 0.04259523591926783] -> [0.01968070720088272, 0.04576779594362649]; seam-taa-fade-route-foreign: [0.02638847980935607, 0.0477094262250442] -> [0.026389106160308554, 0.04770757667649196]; seam-taa-fade-route-original: [0.019680530873243285, 0.04259523591926783] -> [0.01968070720088272, 0.04576779594362649]
+  /shifts/5/resolved cases=9 e.g. seam-taa-fade-route-behind: [-0.009945400658426456, -0.016899558819058556] -> [-0.00994495997019619, -0.01690266774579808]; seam-taa-fade-route-foreign: [-0.003068912454853524, 9.899754396940692e-07] -> [-0.003069092668768974, 9.922437444544601e-07]; seam-taa-fade-route-original: [-0.009945400658426456, -0.016899558819058556] -> [-0.00994495997019619, -0.01690266774579808]
+  /shifts/6/resolved cases=9 e.g. seam-taa-fade-route-behind: [0.39063514457601045, 0.16926176319158706] -> [0.3906347552451966, 0.1664626895862555]; seam-taa-fade-route-foreign: [0.04422453512551205, 0.03983461331279293] -> [0.04422446362088729, 0.03983421843594047]; seam-taa-fade-route-original: [0.39063514457601045, 0.16926176319158706] -> [0.3906347552451966, 0.1664626895862555]
+  /shifts/8/resolved cases=9 e.g. seam-taa-fade-route-behind: [0.0471865371497727, -0.05204282026164832] -> [0.047186620386547834, -0.05204330814956877]; seam-taa-fade-route-foreign: [0.044103531141562874, -0.04742691567117107] -> [0.044103533288035096, -0.04742715955461991]; seam-taa-fade-route-original: [0.0471865371497727, -0.05204282026164832] -> [0.047186620386547834, -0.05204330814956877]
+  /shifts/9/resolved cases=9 e.g. seam-taa-fade-route-behind: [0.13970620068743553, -0.1708850565809113] -> [0.13970610819716067, -0.17088453898857445]; seam-taa-fade-route-foreign: [0.014700954138522787, 1.1242209470441593e-05] -> [0.014701133128242823, 3.4467738734646236e-06]; seam-taa-fade-route-original: [0.13970620068743553, -0.1708850565809113] -> [0.13970610819716067, -0.17088453898857445]
+  /worst_resolved_residual_px cases=10 e.g. seam-taa-fade-route-behind: 0.05507287093764471 -> 0.05424281918710113; seam-taa-fade-route-foreign: 0.07046346900849602 -> 0.07046332138749262; seam-taa-fade-route-hover: 0.05315238975100379 -> 0.05284735935699552
+  /shifts/7/resolved cases=7 e.g. seam-taa-fade-route-foreign: [-0.4851922117902202, 0.3867940972514421] -> [-0.4851916607009024, 0.3867935823822875]; seam-taa-fade-route-overlay: [-0.4835136553897468, 0.3887758916023388] -> [-0.4839730253692968, 0.3887733467553911]; seam-taa-fade-route-overlay-lightmap: [-0.4835136553897468, 0.3887758916023388] -> [-0.4839730253692968, 0.3887733467553911]
+  /sharpen/changed_fraction cases=3 e.g. seam-taa-hdr-sharpen-on: 0.03631591796875 -> 0.03680419921875; seam-taa-hdr-tonemap-sharpen-on: 0.050323486328125 -> 0.050994873046875; seam-taa-sharpen-on: 0.011566162109375 -> 0.011444091796875
+  /sharpen/images/1/changed cases=4 e.g. seam-taa-hdr-sharpen-on: 198 -> 210; seam-taa-hdr-tonemap-sharpen-on: 267 -> 292; seam-taa-sharpen-half: 58 -> 57
+  /sharpen/images/1/max_code_error cases=4 e.g. seam-taa-hdr-sharpen-on: 0.4999833807887768 -> 0.499894671765972; seam-taa-hdr-tonemap-sharpen-on: 0.499951484972339 -> 0.49994180661057364; seam-taa-sharpen-half: 0.49954749719609026 -> 0.4968394505158642
+  /sharpen/images/1/mean_code_error cases=4 e.g. seam-taa-hdr-sharpen-on: 0.262898140480095 -> 0.2625528870464603; seam-taa-hdr-tonemap-sharpen-on: 0.3237275999301957 -> 0.3245667305437921; seam-taa-sharpen-half: 0.0543518806409826 -> 0.05414218542531298
+  /sharpen/images/4/changed cases=3 e.g. seam-taa-hdr-sharpen-on: 136 -> 137; seam-taa-hdr-tonemap-sharpen-on: 142 -> 139; seam-taa-sharpen-half: 120 -> 123
+  /sharpen/images/4/mean_code_error cases=4 e.g. seam-taa-hdr-sharpen-on: 0.3179930741669941 -> 0.3176587279749187; seam-taa-hdr-tonemap-sharpen-on: 0.3809789627936031 -> 0.380873292853628; seam-taa-sharpen-half: 0.08818348299685681 -> 0.08825879967157375
+  /sharpen/images/7/changed cases=3 e.g. seam-taa-hdr-sharpen-on: 52 -> 55; seam-taa-sharpen-half: 33 -> 31; seam-taa-sharpen-on: 49 -> 48
+  /sharpen/images/7/mean_code_error cases=4 e.g. seam-taa-hdr-sharpen-on: 0.32601880112125114 -> 0.3260587517660716; seam-taa-hdr-tonemap-sharpen-on: 0.3854645700270092 -> 0.3859297869767008; seam-taa-sharpen-half: 0.08418999337163309 -> 0.08395012348520496
+  /sharpen/mean_code_error cases=4 e.g. seam-taa-hdr-sharpen-on: 0.32601880112125114 -> 0.3260587517660716; seam-taa-hdr-tonemap-sharpen-on: 0.3854645700270092 -> 0.3859297869767008; seam-taa-sharpen-half: 0.08818348299685681 -> 0.08825879967157375
+  /hdr_taa/images/7/max cases=2 e.g. seam-taa-hdr-tonemap-auto: 0.4988066982885133 -> 0.4947350387165841; seam-taa-hdr-tonemap-k0: 0.4964553638993152 -> 0.495956547379075
+  /hdr_taa/max_code_error cases=1 e.g. seam-taa-hdr-tonemap-ev1: 0.49987994585731954 -> 0.49994358769944114
+  /sharpen/images/1/pixels_distinct_from_sharpen_before_tonemap cases=1 e.g. seam-taa-hdr-tonemap-sharpen-on: 15 -> 17
+  /sharpen/images/4/max_code_error cases=3 e.g. seam-taa-hdr-tonemap-sharpen-on: 0.4995055350980575 -> 0.49977948963484664; seam-taa-sharpen-half: 0.4951733141690937 -> 0.4998301176389077; seam-taa-sharpen-on: 0.49516691407950475 -> 0.4992708740883103
+  /sharpen/images/4/pixels_distinct_from_sharpen_before_tonemap cases=1 e.g. seam-taa-hdr-tonemap-sharpen-on: 106 -> 104
+  /sharpen/images/7/max_code_error cases=3 e.g. seam-taa-hdr-tonemap-sharpen-on: 0.5000212955967633 -> 0.4986474158235268; seam-taa-sharpen-half: 0.4988730627626481 -> 0.499614548231456; seam-taa-sharpen-on: 0.49761962890625 -> 0.49921947139530687
+  /sharpen/images/7/pixels_distinct_from_sharpen_before_tonemap cases=1 e.g. seam-taa-hdr-tonemap-sharpen-on: 12 -> 20
+  /sharpen/max_code_error cases=3 e.g. seam-taa-hdr-tonemap-sharpen-on: 0.5000212955967633 -> 0.4999740515377411; seam-taa-sharpen-half: 0.49954749719609026 -> 0.4998301176389077; seam-taa-sharpen-on: 0.49797333177482983 -> 0.4992708740883103
+  /color_hashes/2 cases=9 e.g. seam-taa-hook-default: "8c4ecb1f40890d8e" -> "2f63088eae2562ad"; seam-taa-hook-hdr-on: "d4f9fe884541829c" -> "6ef514af70c570e1"; seam-taa-hook-hdr-tonemap-on: "e14774c3abf1dbed" -> "cc753ce3e079325b"
+  /color_hashes/5 cases=8 e.g. seam-taa-hook-default: "c78886d074dbbb32" -> "bd5a21219dd28ae5"; seam-taa-hook-hdr-on: "867324a1101b8ec0" -> "db5e023f3a8e1fda"; seam-taa-hook-hdr-tonemap-on: "2c19ce44c3282eef" -> "1e26cb9770dda91a"
+  /color_hashes/6 cases=8 e.g. seam-taa-hook-default: "5aa215e3fe7e5fac" -> "611a6a6da6741537"; seam-taa-hook-hdr-on: "67ba8b5ec4de74b1" -> "9c215ba2135336ef"; seam-taa-hook-hdr-tonemap-on: "9895cf19f8b22640" -> "777de85215aee16d"
+  /taa_changed_pixels/2 cases=5 e.g. seam-taa-hook-default: 186 -> 188; seam-taa-hook-hdr-on: 275 -> 264; seam-taa-hook-hdr-tonemap-on: 346 -> 321
+  /taa_changed_pixels/3 cases=5 e.g. seam-taa-hook-default: 299 -> 308; seam-taa-hook-hdr-on: 560 -> 510; seam-taa-hook-hdr-tonemap-on: 749 -> 659
+  /taa_changed_pixels/5 cases=4 e.g. seam-taa-hook-default: 324 -> 327; seam-taa-hook-hdr-on: 629 -> 507; seam-taa-hook-hdr-tonemap-on: 801 -> 685
+  /taa_changed_pixels/6 cases=4 e.g. seam-taa-hook-default: 281 -> 285; seam-taa-hook-hdr-on: 554 -> 432; seam-taa-hook-hdr-tonemap-on: 664 -> 531
+  /bodies/1S/changed cases=4 e.g. seam-taa-unmatched-static-all: 96 -> 95; seam-taa-unmatched-static-node: 96 -> 95; seam-taa-unmatched-static-off: 96 -> 95
+  /bodies/2M/changed cases=4 e.g. seam-taa-unmatched-static-all: 42 -> 41; seam-taa-unmatched-static-node: 42 -> 41; seam-taa-unmatched-static-off: 42 -> 41
+  /bodies/3M/changed cases=4 e.g. seam-taa-unmatched-static-all: 49 -> 46; seam-taa-unmatched-static-node: 49 -> 46; seam-taa-unmatched-static-off: 49 -> 46
+  /bodies/3S/changed cases=2 e.g. seam-taa-unmatched-static-all: 100 -> 101; seam-taa-unmatched-static-node: 100 -> 101
+  /bodies/4M/changed cases=4 e.g. seam-taa-unmatched-static-all: 50 -> 48; seam-taa-unmatched-static-node: 50 -> 48; seam-taa-unmatched-static-off: 50 -> 48
+  /bodies/4S/changed cases=4 e.g. seam-taa-unmatched-static-all: 126 -> 128; seam-taa-unmatched-static-node: 126 -> 128; seam-taa-unmatched-static-off: 148 -> 145
+  /bodies/5S/changed cases=4 e.g. seam-taa-unmatched-static-all: 102 -> 100; seam-taa-unmatched-static-node: 102 -> 100; seam-taa-unmatched-static-off: 105 -> 107
+  /bodies/6M/changed cases=4 e.g. seam-taa-unmatched-static-all: 67 -> 66; seam-taa-unmatched-static-node: 67 -> 66; seam-taa-unmatched-static-off: 67 -> 66
+  /bodies/7M/changed cases=4 e.g. seam-taa-unmatched-static-all: 66 -> 67; seam-taa-unmatched-static-node: 66 -> 67; seam-taa-unmatched-static-off: 66 -> 67
+  /bodies/7S/changed cases=4 e.g. seam-taa-unmatched-static-all: 174 -> 173; seam-taa-unmatched-static-node: 174 -> 173; seam-taa-unmatched-static-off: 150 -> 154
+  /bodies/8M/changed cases=4 e.g. seam-taa-unmatched-static-all: 55 -> 52; seam-taa-unmatched-static-node: 56 -> 53; seam-taa-unmatched-static-off: 56 -> 53
+  /bodies/8S/changed cases=4 e.g. seam-taa-unmatched-static-all: 146 -> 142; seam-taa-unmatched-static-node: 146 -> 142; seam-taa-unmatched-static-off: 157 -> 151
+  /color_hashes/8 cases=4 e.g. seam-taa-unmatched-static-all: "d24a48355fc219df" -> "7850bdb4c73d5e4c"; seam-taa-unmatched-static-node: "79244e8a7b2c3d53" -> "0fb7e95bd19e577a"; seam-taa-unmatched-static-off: "4bf9000039359dd8" -> "00ebefb288b018a3"
+  /bodies/8N/changed cases=3 e.g. seam-taa-unmatched-static-node: 61 -> 60; seam-taa-unmatched-static-off: 61 -> 60; seam-taa-unmatched-static-unset: 61 -> 60
+  /bodies/6S/changed cases=2 e.g. seam-taa-unmatched-static-off: 161 -> 160; seam-taa-unmatched-static-unset: 161 -> 160
+  top-level /bench/bench-1280x768-hdr-tonemap-taa-off/hdr_frame_last/ev: "0.39583" -> "0.29236"
+  top-level /bench/bench-1280x768-hdr-tonemap-taa-off/hdr_frame_last/ev_adapted: "0.39583" -> "0.29236"
+  top-level /bench/bench-1280x768-hdr-tonemap-taa-on/hdr_frame_last/ev: "0.32915" -> "0.33361"
+  top-level /bench/bench-1280x768-hdr-tonemap-taa-on/hdr_frame_last/ev_adapted: "0.32915" -> "0.33361"
+  top-level /bench/bench-1280x768-hdr-tonemap-taa-sharpen-on/hdr_frame_last/ev: "0.33784" -> "0.35215"
+  top-level /bench/bench-1280x768-hdr-tonemap-taa-sharpen-on/hdr_frame_last/ev_adapted: "0.33784" -> "0.35215"
+  top-level /bench/bench-5120x1440-hdr-tonemap-taa-off/hdr_frame_last/ev: "0.33899" -> "0.32823"
+  top-level /bench/bench-5120x1440-hdr-tonemap-taa-off/hdr_frame_last/ev_adapted: "0.33899" -> "0.32823"
+  top-level /bench/bench-5120x1440-hdr-tonemap-taa-on/hdr_frame_last/ev: "0.42663" -> "0.76380"
+  top-level /bench/bench-5120x1440-hdr-tonemap-taa-on/hdr_frame_last/ev_adapted: "0.42663" -> "0.76380"
+  top-level /bench/bench-5120x1440-hdr-tonemap-taa-sharpen-on/hdr_frame_last/ev: "0.44487" -> "0.45112"
+  top-level /bench/bench-5120x1440-hdr-tonemap-taa-sharpen-on/hdr_frame_last/ev_adapted: "0.44487" -> "0.45112"
+  top-level /hdr/twins/seam-taa-hdr-on/classes/material/differing: 1163 -> 1208
+  top-level /hdr/twins/seam-taa-hdr-on/differing_channels_bgra: [299, 317, 580, 0] -> [296, 324, 642, 0]
+  top-level /hdr/twins/seam-taa-hdr-on/exact: 47989 -> 47944
+  top-level /hdr/twins/seam-taa-hdr-on/exact_fraction: 0.9763387044270834 -> 0.9754231770833334
+  top-level /hdr/twins/seam-taa-hook-hdr-on/classes/material/differing: 2172 -> 1800
+  top-level /hdr/twins/seam-taa-hook-hdr-on/differing_channels_bgra: [481, 527, 1268, 0] -> [408, 498, 997, 0]
+  top-level /hdr/twins/seam-taa-hook-hdr-on/exact: 26500 -> 26872
+  top-level /hdr/twins/seam-taa-hook-hdr-on/exact_fraction: 0.9242466517857143 -> 0.9372209821428571
+  top-level /sharpen/seam-taa-hdr-sharpen-on/presented/classes/material/differing: 2009 -> 2060
+  top-level /sharpen/seam-taa-hdr-sharpen-on/presented/differing_channels_bgra: [565, 690, 1342, 0] -> [550, 713, 1383, 0]
+  top-level /sharpen/seam-taa-hdr-sharpen-on/presented/exact: 47143 -> 47092
+  top-level /sharpen/seam-taa-hdr-sharpen-on/presented/exact_fraction: 0.9591267903645834 -> 0.9580891927083334
+  top-level /sharpen/seam-taa-hdr-sharpen-on/reference/changed_fraction: 0.03631591796875 -> 0.03680419921875
+  top-level /sharpen/seam-taa-hdr-sharpen-on/reference/mean_code_error: 0.32601880112125114 -> 0.3260587517660716
+  top-level /sharpen/seam-taa-hdr-tonemap-sharpen-on/presented/classes/material/differing: 2786 -> 2816
+  top-level /sharpen/seam-taa-hdr-tonemap-sharpen-on/presented/differing_channels_bgra: [652, 769, 1941, 0] -> [638, 822, 1955, 0]
+  top-level /sharpen/seam-taa-hdr-tonemap-sharpen-on/presented/exact: 46366 -> 46336
+  top-level /sharpen/seam-taa-hdr-tonemap-sharpen-on/presented/exact_fraction: 0.9433186848958334 -> 0.9427083333333334
+  top-level /sharpen/seam-taa-hdr-tonemap-sharpen-on/presented/max_code_difference: 8 -> 9
+  top-level /sharpen/seam-taa-hdr-tonemap-sharpen-on/reference/changed_fraction: 0.050323486328125 -> 0.050994873046875
+  top-level /sharpen/seam-taa-hdr-tonemap-sharpen-on/reference/max_code_error: 0.5000212955967633 -> 0.4999740515377411
+  top-level /sharpen/seam-taa-hdr-tonemap-sharpen-on/reference/mean_code_error: 0.3854645700270092 -> 0.3859297869767008
+  top-level /sharpen/seam-taa-sharpen-half/presented/classes/material/differing: 547 -> 559
+  top-level /sharpen/seam-taa-sharpen-half/presented/differing_channels_bgra: [269, 218, 261, 0] -> [274, 227, 309, 0]
+  top-level /sharpen/seam-taa-sharpen-half/presented/exact: 48605 -> 48593
+  top-level /sharpen/seam-taa-sharpen-half/presented/exact_fraction: 0.9888712565104166 -> 0.9886271158854166
+  top-level /sharpen/seam-taa-sharpen-half/reference/max_code_error: 0.49954749719609026 -> 0.4998301176389077
+  top-level /sharpen/seam-taa-sharpen-half/reference/mean_code_error: 0.08818348299685681 -> 0.08825879967157375
+  top-level /sharpen/seam-taa-sharpen-on/presented/classes/material/differing: 702 -> 700
+  top-level /sharpen/seam-taa-sharpen-on/presented/differing_channels_bgra: [353, 386, 503, 0] -> [352, 390, 494, 0]
+  top-level /sharpen/seam-taa-sharpen-on/presented/exact: 48450 -> 48452
+  top-level /sharpen/seam-taa-sharpen-on/presented/exact_fraction: 0.9857177734375 -> 0.9857584635416666
+  top-level /sharpen/seam-taa-sharpen-on/reference/changed_fraction: 0.011566162109375 -> 0.011444091796875
+  top-level /sharpen/seam-taa-sharpen-on/reference/max_code_error: 0.49797333177482983 -> 0.4992708740883103
+  top-level /sharpen/seam-taa-sharpen-on/reference/mean_code_error: 0.08788827373847174 -> 0.08514095390183352
+  provenance blocks differing: binaries sources_after_run sources_before_build
+differing cases (44): seam-ownership-taa-camera-candidates-on seam-ownership-taa-hdr-tonemap-on seam-ownership-taa-on seam-ownership-taa-shadow-replay-off seam-ownership-taa-shadow-replay-on seam-taa-camera-on seam-taa-camera-sentinel1-on seam-taa-camera-sentinel2-on seam-taa-copy-draw seam-taa-fade-route-behind seam-taa-fade-route-foreign seam-taa-fade-route-hover seam-taa-fade-route-original seam-taa-fade-route-overlay seam-taa-fade-route-overlay-lightmap seam-taa-fade-route-overlay-lightmap-far-fade seam-taa-fade-route-routed seam-taa-fade-route-routed-perdraw seam-taa-fade-route-sentinel seam-taa-hdr-on seam-taa-hdr-sharpen-on seam-taa-hdr-tonemap-auto seam-taa-hdr-tonemap-ev1 seam-taa-hdr-tonemap-k0 seam-taa-hdr-tonemap-on seam-taa-hdr-tonemap-sharpen-on seam-taa-hook-default seam-taa-hook-hdr-on seam-taa-hook-hdr-tonemap-on seam-taa-hook-on seam-taa-hook-unpatched seam-taa-lazy-mipbias-on seam-taa-lazy-on seam-taa-mipbias-on seam-taa-on seam-taa-quad-fvf seam-taa-shadow-off seam-taa-sharpen-half seam-taa-sharpen-off seam-taa-sharpen-on seam-taa-unmatched-static-all seam-taa-unmatched-static-node seam-taa-unmatched-static-off seam-taa-unmatched-static-unset
+differing cases without "taa" in the name: none

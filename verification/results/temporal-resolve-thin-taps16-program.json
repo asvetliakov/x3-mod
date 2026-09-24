@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "source": "src/temporal/resolve_thin_taps16.hlsl",
+  "source_sha256": "30fb5c54c82d1f3eca356813eb041a02b705af2c7e9285c2f51e704a84234e31",
+  "compiler": "native d3dx9_37.dll D3DXCompileShader",
+  "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+  "entry": "main",
+  "target": "ps_3_0",
+  "flags": 32768,
+  "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
+  "defines": null,
+  "includes": {
+    "src/temporal/resolve_thin.hlsl": "fcd645eff0211c5762dc973cc067c542c443291406a79b9ac2c77f43d9506fe4",
+    "src/temporal/resolve.hlsl": "bd53266fba0899ade7526a23c14d64270f3f1627a8fd81193e2de445e1adfb5e"
+  },
+  "word_count": 1818,
+  "bytecode_sha256": "81e24fa941d57e7f4762c43fc1ff66576bfa507adca91cd8f63b6de191545709",
+  "header_sha256": "998fdc36085027962cef8684c3012e0c83acadd67d8b00b1d908860cd576a4e1",
+  "tool_sources": {
+    "tools/shaders/compile_rigid_motion_pixel.cpp": "d1850b4e53ab5647f9b3986fadd39d12d7545039f48636aa49158d58adcf1003",
+    "tools/shaders/generate_rigid_motion_pixel.py": "8f82f43b65809613281ebad7cca6f59ea745df779c7aaa839bfdf1b69359564f"
+  },
+  "copyright_scope": "Original authored project shader; no game shader bytes",
+  "creates_d3d_device": false
+}

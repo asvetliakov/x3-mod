@@ -697,6 +697,11 @@ CASES += [case(f'bench-{size}-taa-sharpen-on', 'bench', jitter=True, taa=True, b
 # 2-sample back buffer: the route must refuse the frame (msaa=2, routed 0,
 # no jitter, taa_skip 11) with one motion_output_msaa_refused line.
 QUAD_TWINS = {'seam-taa-quad-fvf': 'seam-taa-on'}
+# S3 (docs/architecture/taa-high-resolution.md): --taa-history-taps 16 draws the 16-tap point programs, whose twins the
+# pass creates only while 16 is set: one device reference more than the default (the plain resolve's twin; no case here
+# configures the flicker or far programs). The runner pins X3M_TAA_HISTORY_TAPS=5 for every other case.
+HISTORY_TAPS16_CASE = 'seam-taa-taps16'
+CASES += [case(HISTORY_TAPS16_CASE, 'seam', jitter=True, taa=True, hdr_env=dict(X3M_TAA_HISTORY_TAPS='16'))]
 COPY_TWINS = {'seam-taa-copy-draw': 'seam-taa-on'}
 CASES += [case('seam-taa-quad-fvf', 'seam', jitter=True, taa=True, hdr_env=dict(X3M_FIXTURE_QUAD_FVF='1')),
           case('seam-taa-copy-draw', 'seam', jitter=True, taa=True, hdr_env=dict(X3M_FIXTURE_STRETCH_FAULT='1')),
@@ -3235,7 +3240,7 @@ def mip_bias_text(mip_bias):
     return '%g' % float(mip_bias or 0)
 
 
-def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None, shadow=True, hdr=False, hdr_fault=None, mip_bias=None, sharpen=0.0, copy_draw=False, quad_fvf=False):
+def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None, shadow=True, hdr=False, hdr_fault=None, mip_bias=None, sharpen=0.0, copy_draw=False, quad_fvf=False, history_taps=5):
     lines = text.splitlines()
     assert lines and lines[-1].startswith('RESULT PASS '), f'{name}: fixture did not pass'
     assert 'FAIL' not in text and text.count('RESULT ') == 1, f'{name}: failures reported'
@@ -3433,8 +3438,14 @@ def validate_case(name, mode, variant, enabled, jitter, taa, text, trace, direct
         # One lazy initialization holding one device reference (the resolve
         # shader); after Reset only that reference remains until the next run.
         # The pass holds one device reference per created program: the resolve, plus the sharpen program with the switch on.
-        taa_references = str(TAA_BASE_REFERENCES + (1 if sharpen else 0))
+        # S3: the 16-tap twin of the resolve joins with --taa-history-taps 16 (created only then).
+        taa_references = str(TAA_BASE_REFERENCES + (1 if sharpen else 0) + (1 if history_taps == 16 else 0))
         assert [t['initialize'] for t in taa_lines_log] == ['00000000'] and taa_lines_log[0]['references'] == taa_references, (name, taa_lines_log)
+        # One line per attachment beside the depth-fold line, on its first completed run (a case whose runs never complete
+        # logs neither): the reconstruction drawn (both filter queries pass on this backend).
+        taps_lines = [fields(l) for l in tl if l.startswith('motion_output_taa_history_taps ')]
+        fold_lines = [l for l in tl if l.startswith('motion_output_taa_depth_fold ')]
+        assert len(taps_lines) == len(fold_lines) and (history_taps == 5 or taps_lines) and all((t['requested'], t['drawn'], t['bilinear'], t['reason']) == (str(history_taps), str(history_taps), '1', 'ok') for t in taps_lines), (name, taps_lines)
         assert taa_lines_log[0]['copy'] == ('draw' if copy_draw else 'stretch'), (name, taa_lines_log)
         assert f'generation=2 taa_references={taa_references}' in trace, name
     else:
@@ -4883,8 +4894,8 @@ def validate_envmap(name, text, trace, directory, hdr=False):
             'color_hashes': {int(fields(l)['frame']): fields(l)['hash'] for l in lines if l.startswith('COLOR ')}, 'hdr': hdr_summary}
 
 
-def finish_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None, shadow=True, hdr=False, hdr_fault=None, mip_bias=None, sharpen=0.0, copy_draw=False, quad_fvf=False):
-    result = validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow, hdr, hdr_fault, mip_bias, sharpen, copy_draw, quad_fvf)
+def finish_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy=False, camera=False, sentinel=None, shadow=True, hdr=False, hdr_fault=None, mip_bias=None, sharpen=0.0, copy_draw=False, quad_fvf=False, history_taps=5):
+    result = validate_case(name, mode, variant, enabled, jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow, hdr, hdr_fault, mip_bias, sharpen, copy_draw, quad_fvf, history_taps)
     result['variant'] = variant
     result['ownership'] = validate_ownership(name, variant, enabled, trace)
     if mip_bias is not None:
@@ -5648,6 +5659,7 @@ def main(argv=None):
                        # fixture's mirror of the parse reads the same variable.
                        X3M_TAA_SKY_HISTORY='loose', X3M_TAA_SKY_HISTORY_EXIT_PX='0',
                        X3M_TAA_MOTION_WEIGHT='0',  # DLL default 0.7,2,8 under an age program since Run 70 A; no case here runs one, pinned off so a shell value cannot reach the DLL
+                       X3M_TAA_HISTORY_TAPS='5',  # S3 default, pinned; HISTORY_TAPS16_CASE sets 16
                        X3M_TAA_SENTINEL_STABILISER='0',
                        X3M_TELEMETRY_DRAW='1',  # per-draw metrics (gate_us, route_draw_us, ...) are gated behind this switch since a8d4309; the validators require them
                        X3M_FIXTURE_CAMERA='rotate' if camera else 'none', X3M_TAA_SENTINEL=sentinel or 'auto', X3M_FIXTURE_WRAP='0',
@@ -5954,7 +5966,8 @@ def main(argv=None):
                 print(f'{name}: exit={completed.returncode} checks={case["checks"]} set_rt={case["set_rt_per_frame"]}', flush=True)
                 continue
             case = finish_case(name, mode, variant, enabled == '1', jitter, taa, text, trace, directory, lazy, camera, sentinel, shadow, hdr, hdr_fault, mip_bias, sharpen,
-                               copy_draw=hdr_env.get('X3M_FIXTURE_STRETCH_FAULT') == '1', quad_fvf=hdr_env.get('X3M_FIXTURE_QUAD_FVF') == '1')
+                               copy_draw=hdr_env.get('X3M_FIXTURE_STRETCH_FAULT') == '1', quad_fvf=hdr_env.get('X3M_FIXTURE_QUAD_FVF') == '1',
+                               history_taps=int(hdr_env.get('X3M_TAA_HISTORY_TAPS', '5')))
             if hdr_env.get('X3M_SHADOW_REPLAY_CANDIDATES') == '1':
                 case['shadow_replay_candidates'] = validate_shadow_replay_candidates(name, trace)
                 case['checks'] += case['shadow_replay_candidates']['checks']

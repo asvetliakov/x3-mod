@@ -10,9 +10,9 @@
   "cxbottle_conf": "/Users/asvetl/Library/Application Support/CrossOver/Bottles/X3/cxbottle.conf"
  },
  "binaries": {
-  "verification/probe/build/motion_output_fixture.exe": "322ad0470672f26af844368b9bf22a82a61784b8fca8cce0fe9a7a23dca0d36a",
-  "verification/probe/build/motion-output-seam/d3d9.dll": "d16b84546f508fa99b47dcb0c33791b802701ea89b47b956d076167abf287405",
-  "build/d3d9.dll": "b88088cfb5b1d092425f367a5e20db3babc0373503472e5143450787e919cebc"
+  "verification/probe/build/motion_output_fixture.exe": "b7010257b282bf4171aba0209ea0073b82eca048c3db942232ab8eb31bdd060d",
+  "verification/probe/build/motion-output-seam/d3d9.dll": "6c64bc2174cc3292219180074a6d40154738cae01293ffe6a37e79c300da73a5",
+  "build/d3d9.dll": "6ac5d0a86df818bc6115d2a518b2091623b2c8485614a92a4f8edc1a2343f2b3"
  },
  "checks": 95,
  "setting": "all",
@@ -56,14 +56,14 @@
  },
  "color_hashes": {
   "0": "cc9129a36f23978f",
-  "1": "26ecb29f63c9b05b",
-  "2": "88a5f52e50321180",
-  "3": "25e4c90105c945f7",
-  "4": "a30cf30f653ceaac",
-  "5": "65fa86258bbd9ac8",
-  "6": "842b15a2b960dd41",
-  "7": "ef172c0734c9c6de",
-  "8": "d24a48355fc219df"
+  "1": "d37e9d28bffa2857",
+  "2": "5cfe1430a3b5934b",
+  "3": "3b8c5bfc08d5b557",
+  "4": "0c82ddf152f1655b",
+  "5": "ff8bffdec24c2e00",
+  "6": "e344700d9bd09865",
+  "7": "7c5ccbd21add3577",
+  "8": "7850bdb4c73d5e4c"
  },
  "bodies": {
   "0M": {
@@ -90,14 +90,14 @@
   "1S": {
    "expect": "matched",
    "pixels": 191,
-   "changed": 96,
+   "changed": 95,
    "max_uv_pixels": 0.00138354112,
    "max_depth_error": 1.08372081e-08
   },
   "2M": {
    "expect": "matched",
    "pixels": 65,
-   "changed": 42,
+   "changed": 41,
    "max_uv_pixels": 0.00178662171,
    "max_depth_error": 9.15106971e-08
   },
@@ -111,28 +111,28 @@
   "3M": {
    "expect": "matched",
    "pixels": 67,
-   "changed": 49,
+   "changed": 46,
    "max_uv_pixels": 0.00156567846,
    "max_depth_error": 2.13433172e-07
   },
   "3S": {
    "expect": "static",
    "pixels": 221,
-   "changed": 100,
+   "changed": 101,
    "max_uv_pixels": 0.000664647885,
    "max_depth_error": 1.71420271e-07
   },
   "4M": {
    "expect": "matched",
    "pixels": 64,
-   "changed": 50,
+   "changed": 48,
    "max_uv_pixels": 0.00161040216,
    "max_depth_error": 3.443932e-07
   },
   "4S": {
    "expect": "matched",
    "pixels": 251,
-   "changed": 126,
+   "changed": 128,
    "max_uv_pixels": 0.000850629425,
    "max_depth_error": 2.72631064e-07
   },
@@ -146,14 +146,14 @@
   "5S": {
    "expect": "matched",
    "pixels": 252,
-   "changed": 102,
+   "changed": 100,
    "max_uv_pixels": 0.000790627242,
    "max_depth_error": 2.17538747e-07
   },
   "6M": {
    "expect": "matched",
    "pixels": 90,
-   "changed": 67,
+   "changed": 66,
    "max_uv_pixels": 0.00139371137,
    "max_depth_error": 3.29063581e-07
   },
@@ -174,7 +174,7 @@
   "7M": {
    "expect": "matched",
    "pixels": 90,
-   "changed": 66,
+   "changed": 67,
    "max_uv_pixels": 0.00103274413,
    "max_depth_error": 4.57420844e-07
   },
@@ -188,14 +188,14 @@
   "7S": {
    "expect": "matched",
    "pixels": 313,
-   "changed": 174,
+   "changed": 173,
    "max_uv_pixels": 0.00117415656,
    "max_depth_error": 3.85485073e-07
   },
   "8M": {
    "expect": "matched",
    "pixels": 80,
-   "changed": 55,
+   "changed": 52,
    "max_uv_pixels": 0.00127599104,
    "max_depth_error": 5.71525559e-07
   },
@@ -209,16 +209,16 @@
   "8S": {
    "expect": "matched",
    "pixels": 340,
-   "changed": 146,
+   "changed": 142,
    "max_uv_pixels": 0.00148705009,
    "max_depth_error": 1.18574616e-07
   }
  },
  "exit": 0,
- "directory": "verification/probe/build/motion-output-seam-taa-unmatched-static-all-20260923-020227-103000",
- "trace_sha256": "efa6d38de9b8a876f44332be57718e6eb9091340d8baac1076f5bd66b179f903",
- "dll_sha256": "d16b84546f508fa99b47dcb0c33791b802701ea89b47b956d076167abf287405",
- "exe_sha256": "322ad0470672f26af844368b9bf22a82a61784b8fca8cce0fe9a7a23dca0d36a",
+ "directory": "verification/probe/build/motion-output-seam-taa-unmatched-static-all-20260924-060434-411539",
+ "trace_sha256": "a36e3d369c1d842b441bf975bd569a483dcb28e2748953181303a5ed99459e6d",
+ "dll_sha256": "6c64bc2174cc3292219180074a6d40154738cae01293ffe6a37e79c300da73a5",
+ "exe_sha256": "b7010257b282bf4171aba0209ea0073b82eca048c3db942232ab8eb31bdd060d",
  "motion_frames_differing_from_seam-taa-unmatched-static-node": [
   6
  ]

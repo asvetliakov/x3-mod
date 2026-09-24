@@ -6,6 +6,15 @@ sampler2D previousDepth : register(s3);
 sampler2D motionOverride : register(s4);
 sampler2D currentReactive : register(s5);
 sampler2D previousReactive : register(s6);
+#ifndef X3M_HISTORY_TAPS16
+// The 5-tap history reconstruction (the default; X3M_HISTORY_TAPS16 compiles the
+// 16-tap point form of the earlier programs, resolve_*taps16.hlsl): the previous
+// colour and the previous reactive mask bound a second time, s11 / s12 with LINEAR
+// min / mag (TemporalPass, only for these programs); s2 / s6 stay point-sampled
+// for the exact texel read at rest.
+sampler2D previousColorLinear : register(s11);
+sampler2D previousReactiveLinear : register(s12);
+#endif
 float4 reprojection0 : register(c0);
 float4 reprojection1 : register(c1);
 float4 reprojection2 : register(c2);
@@ -190,8 +199,9 @@ static const float snapEpsilon = 1e-4;
 // in c5.y by the pass) is current-only under strict. Below it (a static or slow
 // object, or any object under a pan) the band keeps the geometry path.
 
-// Every input is a single-level texture with point sampling; an explicit LOD
-// keeps the fetches free of gradients so they may sit under real branches.
+// Every input is a single-level texture, point-sampled except s11 / s12 (the 5-tap
+// history's LINEAR second binding of s2 / s6); an explicit LOD keeps the fetches
+// free of gradients so they may sit under real branches.
 float4 fetch(sampler2D s, float2 uv) { return tex2Dlod(s, float4(uv, 0, 0)); }
 bool finiteColor(float3 v) { return all(v == v) && all(abs(v) <= rejection.z); }
 bool validDepth(float v) { return v == v && v >= 0 && v <= 1; }
@@ -208,9 +218,9 @@ float snapFraction(inout float base, float f) {
     if (f > 1 - snapEpsilon) { base += 1; return 0; }
     return f < snapEpsilon ? 0 : f;
 }
-// One Catmull-Rom history tap. Nonfinite taps contribute no energy and the
-// remaining weights renormalize; a nonzero-weight tap with reactive previous
-// coverage (mask policy) rejects the whole lookup.
+// One Catmull-Rom history tap of the 16-tap form (X3M_HISTORY_TAPS16). Nonfinite
+// taps contribute no energy and the remaining weights renormalize; a nonzero-weight
+// tap with reactive previous coverage (mask policy) rejects the whole lookup.
 #ifdef X3M_THIN_CLIP
 #define HISTORY_SUM float4
 #else
@@ -523,6 +533,7 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     }
     if (proven < considered - 0.001) return emit(float4(color, alpha), 1);
 
+#ifdef X3M_HISTORY_TAPS16
     // History color: Catmull-Rom over the 4x4 texel neighborhood (16 point
     // taps; the samplers are point-filtered by contract, so the 9-tap form that
     // relies on hardware bilinear filtering is unavailable). Its negative lobes
@@ -555,6 +566,103 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     }
     if (reactive || total < 0.5) return emit(float4(color, alpha), 1);
     float3 old = accumulated.rgb / total;
+#else
+    // History color: Catmull-Rom (a = -0.5) through five hardware-bilinear taps
+    // (Jimenez, "Filmic SMAA", SIGGRAPH 2016; Karis, UE4 TAA). Per axis, with t the
+    // centre of texel 1 of the 4x4 neighbourhood (`tap`, texels 0..3 at t - 1 .. t + 2)
+    // and f in [0, 1) the fraction:
+    //   w0 = -f/2 + f^2 - f^3/2 = -f (1 - f)^2 / 2     (<= 0)
+    //   w1 = 1 - 5 f^2 / 2 + 3 f^3 / 2                 (>= 0)
+    //   w2 = f/2 + 2 f^2 - 3 f^3 / 2                   (>= 0)
+    //   w3 = -f^2/2 + f^3/2 = -f^2 (1 - f) / 2          (<= 0), w0 + w1 + w2 + w3 = 1.
+    // Texels 1 and 2 are one bilinear fetch at t + w2 / (w1 + w2) (in texels) weighted
+    // w12 = w1 + w2 >= 1, because a bilinear sample at fraction h = w2 / w12 is
+    // (1 - h) c1 + h c2 and w12 (1 - h) = w1, w12 h = w2 exactly. The 2-D filter is
+    // the product of the axes; its sixteen texels form nine blocks (0, 12, 3 per axis),
+    // of which the centre block (w12x w12y) and the four edge blocks (w0x w12y, w3x w12y,
+    // w12x w0y, w12x w3y) are single bilinear fetches. The four corner blocks (products of
+    // two non-positive weights, together (w0x + w3x)(w0y + w3y) <= 1/64 of the mass, the
+    // most at f = 1/2) are dropped, and the five weights renormalised by their sum,
+    //   total = 1 - (w0x + w3x)(w0y + w3y) in [63/64, 1],
+    // so a constant history reconstructs that constant.
+    // Three semantic changes against the 16-tap form (the filter unit cannot see per-tap
+    // values):
+    // (a) HDR route (k > 0, the shipping exposure k): the colour is filtered first and
+    //     weigh()ed after, where the 16-tap form weighed every tap before the sum. At k = 0
+    //     identical; at k > 0 a bright texel pulls the filtered history harder (weigh() is
+    //     concave in luma, so with non-negative weights the average of the weighed taps is
+    //     at most the weighed average), bounded by the unchanged 3x3 clip. Weighing each of the five fetches instead (per block, still not per tap)
+    //     costs 24-30 slots per program (age 517, far 518, far_camera 526 of 512; measured),
+    //     so it does not fit.
+    // (b) The mask test sees the twelve texels of the five blocks only: a reactive texel
+    //     whose only contribution is a dropped corner block no longer rejects the history.
+    // (c) Out-of-range texels are no longer dropped one by one with the rest renormalised:
+    //     a NaN / Inf texel of nonzero filter weight makes the filtered result nonfinite and
+    //     refuses the whole lookup (current only); a finite texel above rejection.z (65000,
+    //     below FP16's 65504) is averaged in, and the lookup is refused only when the
+    //     filtered result itself exceeds rejection.z.
+    // On the texel grid (f = 0, static content) the plain program reads
+    // one exact point texel from s2 under a real branch, as the 16-tap program did. The history is this
+    // program's own output, finite by construction, so a nonfinite or out-of-range
+    // filtered result refuses the lookup (current only) instead of renormalising per tap.
+    // Mask policy: the five bilinear samples of the previous (0 / 1, owned) mask at the
+    // same positions, each scaled by the magnitude of its weight: the sum is nonzero
+    // exactly when some texel of nonzero weight in a fetched block is reactive (every
+    // term is >= 0), NaN when a sample is, and maskSafe refuses both.
+    HISTORY_SUM accumulated;
+    float total = 1;
+    bool reactive = false;
+#ifdef X3M_THIN_CLIP
+    // Slot budget: as in the 16-tap form the variants have no rest branch (it costs them
+    // about 20 slots and far_camera 522 of 512). On the texel grid s = w2 = 0, so t12 is
+    // the texel centre, the centre weight 1, the edge weights 0 and the total 1.
+    {
+#else
+    [branch] if (all(f == 0)) {
+        reactive = options.y > 0.5 && !maskSafe(fetch(previousReactive, tap).r);
+        accumulated = fetch(previousColor, tap).rgb;
+    } else {
+#endif
+        // s = -(w0 + w3) = f (1 - f) / 2, so w0 = -s (1 - f), w3 = -s f, w12 = 1 + s, and the five weights sum to
+        // w12x w12y + (w0x + w3x) w12y + w12x (w0y + w3y) = 1 - sx sy.
+        float2 g = 1 - f;
+        float2 s = 0.5 * f * g;
+        float2 w12 = 1 + s;
+        float2 w2 = f * (0.5 + f * (2 - 1.5 * f));
+        // Texel-centre positions are biased by +1/1024 texel. The float32 UV of a texel centre lands within
+        // [-1.2e-4, +2.4e-4] texel of it for W = 1280 .. 5120 (float32 emulation,
+        // verification/results/taa-high-resolution/s3_centre_error.py; negative at W = 3440), so a filter unit that
+        // truncates its 8-bit sub-texel fraction instead of rounding would take 1/256 of the left / upper neighbour
+        // at every exact centre and the history feedback would compound it. t0 and t3 always sit on centres, t12
+        // does where w2 / w12 is 0 (f = 0 on that axis: the rest of the thin / age / far programs, which have no point
+        // branch); with the bias those errors are in [+8.5e-4, +1.3e-3], positive and below 1/512, which rounding and
+        // truncation both map to fraction 0. t12 takes max(w2 / w12, 1/1024) rather than an added bias, so every
+        // fraction the filter resolves (>= 1/512) is unchanged and no systematic sub-texel shift enters the history.
+        float2 centred = tap + sizeJitter.xy * (1.0 / 1024);
+        float2 t0 = centred - sizeJitter.xy, t3 = centred + 2 * sizeJitter.xy, t12 = tap + max(w2 / w12, 1.0 / 1024) * sizeJitter.xy;
+        // Edge blocks: left, right, top, bottom (each <= 0).
+        float centre = w12.x * w12.y;
+        float4 edge = -float4(s.x * g.x, s.x * f.x, s.y * g.y, s.y * f.y) * float4(w12.y, w12.y, w12.x, w12.x);
+        total = 1 - s.x * s.y;
+#ifdef X3M_THIN_CLIP
+#define X3M_HISTORY_FETCH(uv) fetch(previousColorLinear, uv)
+#else
+#define X3M_HISTORY_FETCH(uv) fetch(previousColorLinear, uv).rgb
+#endif
+        accumulated = X3M_HISTORY_FETCH(t12) * centre + X3M_HISTORY_FETCH(float2(t0.x, t12.y)) * edge.x +
+                      X3M_HISTORY_FETCH(float2(t3.x, t12.y)) * edge.y + X3M_HISTORY_FETCH(float2(t12.x, t0.y)) * edge.z +
+                      X3M_HISTORY_FETCH(float2(t12.x, t3.y)) * edge.w;
+#undef X3M_HISTORY_FETCH
+        if (options.y > 0.5) {
+            float4 marks = float4(fetch(previousReactiveLinear, float2(t0.x, t12.y)).r, fetch(previousReactiveLinear, float2(t3.x, t12.y)).r,
+                                  fetch(previousReactiveLinear, float2(t12.x, t0.y)).r, fetch(previousReactiveLinear, float2(t12.x, t3.y)).r);
+            reactive = !maskSafe(fetch(previousReactiveLinear, t12).r * centre - dot(marks, edge));
+        }
+    }
+    float3 filteredHistory = accumulated.rgb / total;
+    if (reactive || !finiteColor(filteredHistory)) return emit(float4(color, alpha), 1);
+    float3 old = weigh(filteredHistory);
+#endif
     // From here on every colour is in the weighted domain (identity at k = 0);
     // the early returns above hand the unweighted current colour through.
     float3 weighted = weigh(color);
