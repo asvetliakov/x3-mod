@@ -55,6 +55,25 @@ catalogue effect entries against the index, and refuses raw output inside the
 repository or game tree. Inventory checks full extracted hashes and disassembled
 stage/model. It records tool source hashes and each disassembly digest.
 
+### Restoring the local corpus
+
+`/tmp/x3-shader-sweep/programs` is named `<stage>_<fnv1a64 of the full program,
+16 hex>.bin` and is rebuilt from the installed archives, without Wine, in about
+10 s (`index_shaders.py <X3 dir> --output /tmp/x3-shader-index-expanded.json`,
+then `sweep_shaders.py extract <X3 dir> --index ... --raw-directory
+/tmp/x3-shader-sweep/programs --manifest /tmp/x3-shader-sweep/manifest.json`).
+Rebuilt on 2026-09-24 after a `/tmp` cleanup: 751 programs, 751/751 inventory
+SHA-256s, index digest identical. The manifest digest differs only because the
+merged-LOD overlay catalogues `addon/05` and `addon/06` are now listed; they
+contain no effects. Session dumps (`ps_/vs_<fnv16>.bin` in `/tmp/x3-bottleX3-runNNN`)
+use the same naming but cover only the programs seen in flight: runs 295-303
+hold 62 inventory programs, including both `run_motion_output.py` pins (run299).
+`tools/analysis/restore_shader_sweep.py '/tmp/x3-bottleX3-run*'` copies or
+cross-checks them. It refuses a name/FNV mismatch or a differing existing file,
+and it prints the inventory restored and missing counts and the pin status.
+No session has to be kept for the corpus: the archives rebuild all of it. The
+D3DX `disassembly/` text needs the Wine disassembler and was not rebuilt.
+
 ## Stage/model coverage versus captures
 
 All **57 distinct shader binaries ever dumped in the current local capture
