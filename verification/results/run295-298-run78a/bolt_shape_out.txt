@@ -1,0 +1,30 @@
+== run298 refusal rows=2
+   bolt_footprint_refused device=1 frame=8460 index=6 reason=buffer detail=1
+   bolt_footprint_refused device=1 frame=10171 index=6 reason=shape detail=0
+  window(frames)        draws written untouched ref_shape ref_buffer instances inst/planned acct_ok fire add_max_per_frame
+    8400-8699            894     748       144         0          2     20266         22.7    True   38    4
+    8700-8999           1040     770       270         0          0     25184         24.2    True   52    4
+    9000-9299           1054     792       262         0          0     24074         22.8    True   52    4
+    9300-9599            422     422         0         0          0      9264         22.0    True    0    4
+    9600-9899             58      58         0         0          0       142          2.4    True    0    2
+    9900-10199          1036     932        48        56          0     30590         31.2    True   86    4
+   10200-10499          1384    1355         0        28          1     29562         21.8    True    3    6
+   10500-10799           824     824         0         0          0      6158          7.5    True    0    4
+   10800-11099           540     540         0         0          0      2950          5.5    True    0    6
+   11100-11399           130     130         0         0          0       384          3.0    True    0    2
+== run287 refusal rows=1
+   bolt_footprint_refused device=1 frame=11542 index=6 reason=buffer detail=1
+  window(frames)        draws written untouched ref_shape ref_buffer instances inst/planned acct_ok fire add_max_per_frame
+   11400-11699           632     290       340         0          2      7930         12.6    True   21    4
+   11700-11999           464     464         0         0          0      8420         18.1    True    0    4
+   26100-26399           222     221         0         0          1     14712         66.6    True   33    1
+   26400-26699           201     201         0         0          0     13887         69.1    True    7    1
+   26700-26999           157     157         0         0          0      7542         48.0    True   14    1
+   27000-27299           300     300         0         0          0     22944         76.5    True   27    1
+   27300-27599            93      93         0         0          0      2889         31.1    True    0    1
+== run295 refusal rows=0
+  window(frames)        draws written untouched ref_shape ref_buffer instances inst/planned acct_ok fire add_max_per_frame
+== run296 refusal rows=0
+  window(frames)        draws written untouched ref_shape ref_buffer instances inst/planned acct_ok fire add_max_per_frame
+== run297 refusal rows=0
+  window(frames)        draws written untouched ref_shape ref_buffer instances inst/planned acct_ok fire add_max_per_frame
