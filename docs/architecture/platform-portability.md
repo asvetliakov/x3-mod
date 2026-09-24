@@ -411,6 +411,21 @@ concrete remaining gates, removal status and the separate depth-adapter gap.
 
 - music-keep skip_all: native alt-tab with a blocked loop unverified (DirectSound ring unserviced without GLOBALFOCUS, DirectShow audible in background) ([music-restart.md](../reverse-engineering/music-restart.md) §6 "Alt-tab").
 
+## Shader slot budget
+
+User decision 2026-09-24: programs are sized against `MaxPixelShader30InstructionSlots` as the device reports it.
+The planning cap is 32768 slots, the value modern NVIDIA/AMD drivers and DXVK report (DXVK `d3d9_adapter.cpp`
+lines 784-785, checked 2026-09-24 against the GitHub master source: `MaxPixelShader30InstructionSlots = maxShaderModel == 3 ? 32768 : 0`). The 512-slot ps_3_0 minimum is no longer the design ceiling.
+
+- This runtime (X3 bottle, builtin d3d9 / wined3d) reports 512 but enforces nothing. D3DX compile, D3DX assemble and
+  `CreatePixelShader` accept up to 16,385 / 32,770 / 262,146 slots, and drawn chains execute exactly up to 32,768
+  instructions (measured; `docs/verification/temporal-resolve.md` "ps_3_0 slot budget measured").
+- Native Windows is assumed to validate against the driver's cap. Unverified here.
+- A program above 512 static slots must log its size and the device cap at creation. It needs a documented behaviour
+  for a device whose cap is below its size: either refuse the feature with a log row, or use a smaller fallback program.
+- The practical ceiling on this backend is the first-draw backend shader compile: 39 ms at 513 slots, 651 ms at
+  4,097, 8.6 s at 16,385 (measured). Keep programs in the low thousands of slots.
+
 ## 2026-09-19: `--taa-current-filter` exceeds the guaranteed ps_3_0 slot count
 
 **Closed 2026-09-23 (cleanup batch 6):** the option and `resolve_filter.hlsl` were removed; every embedded resolve

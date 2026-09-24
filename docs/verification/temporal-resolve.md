@@ -1960,3 +1960,24 @@ Bottle X3, measured:
   lane-term flight rows, which are 4-decimal summaries, not bytes (`verification/results/taa-high-resolution/s1_identity.py`,
   `_out.txt`).
 
+
+## ps_3_0 slot budget measured (2026-09-24)
+
+The resolve programs are held under 512 slots (`RESOLVE_BUDGET`). This probe checks what that figure means on the X3
+bottle. Fixture `verification/probe/shader_slot_budget_fixture.cpp`, run with
+`X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_shader_slot_budget.py`.
+Record `verification/results/bottle-X3/shader-slot-budget.json`, table `verification/results/shader-slot-budget/summary.md`,
+host test `verification/analysis/test_shader_slot_budget.py`. The backend is the builtin d3d9 + wined3d, game device
+shape, `d3dx9_37.dll` from the game directory. Each program is a dependent chain of N `mad`s. The chain value is read
+back from an A32B32G32R32F target and counts the instructions the GPU executed.
+
+| check | result |
+| --- | --- |
+| caps (measured) | `MaxPixelShader30InstructionSlots` 512, `MaxVertexShader30InstructionSlots` 512, `PS20Caps.NumInstructionSlots` 512, `MaxP/VShaderInstructionsExecuted` 65535 |
+| enforcement (measured) | nothing refuses above 512. D3DX compile (OPTIMIZATION_LEVEL3) accepted every size up to the largest tried, 16,385 slots. D3DX assemble accepted up to 32,770. `CreatePixelShader` accepted up to 262,146 raw-token slots. vs_3_0 create accepted up to 65,539 |
+| execution (measured) | read back as exact counts for every drawn chain up to 32,768 mads (ps) and 4,096 (vs); a [loop] of 132 x 500 executed 66,000, above the 65,535 cap |
+| rolled loop (measured) | a [loop] of 16 x 10 mads costs 18 slots and executes 160; 64 x 500 costs 508 slots |
+| cost (measured, 512x512) | 0.036 ms/draw at 513 slots -> 0.166 at 4,097: about 36 ns per slot per 262k px, so about 1 us per slot per frame at 5120x1440 (inferred) |
+| first draw (measured) | backend shader compile at first draw: 39 ms at 513 slots, 651 ms at 4,097, 8.6 s at 16,385; a raw 65,538-slot draw was still not done after 120 s |
+
+The budget policy is in `docs/architecture/platform-portability.md` ("Shader slot budget").
