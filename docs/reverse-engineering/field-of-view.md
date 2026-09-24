@@ -543,8 +543,107 @@ At 32:9 `0x3470` gives `W·tan = 2.00001`: formally reachable only for `z > 2^31
 practice. Vanilla `0x4000` already fails on 32:9 for suns beyond 1.61e9 (a pre-existing engine bug at
 ultra-wide aspects). Under the §7.3 remap `W·tan(F'/2) = 0.75·W·tan(N/2)`: on 32:9 every `N ≤ 90` is
 safe and `N > 90` is reachable (`N = 100`: 1.80e9); at 21:9 and 16:9 the whole menu range is safe.
-Fix options, not designed: cap `F` so `W·tan(F/2) ≤ 2`, or replace the horizontal test's second
-`FixMul` (`0x0047e37f..0x0047e397`) with a saturating compare.
+Fix: §9.1 (a saturating stub at `0x0047e391`, or the one-byte `JGE → JAE` at `0x0047e398`).
+
+### 9.1 Fix design for the horizontal-bound overflow (static, not built)
+
+Script: `verification/results/field-of-view/sun_collector_fix.py` (output `sun_collector_fix.txt`):
+site bytes, branch scan, stub assembly, and an emulation of the gate for the fixture vectors [m/i].
+
+**Site [m].** The second `FixMul` and the compare (instruction boundaries as listed, qword = aligned
+8-byte word):
+
+```
+0047e37f 8b 44 24 18        MOV EAX,[ESP+0x18]      ; W (16.16)
+0047e383 8b 54 24 10        MOV EDX,[ESP+0x10]      ; t1 = FixMul(tan, z/2), < 2^31 while tan(F/2) < 2
+0047e387 f7 ea              IMUL EDX                ; EDX:EAX = W*t1 (64-bit, exact)
+0047e389 05 00 80 00 00     ADD EAX,0x8000
+0047e38e 83 d2 00           ADC EDX,0
+0047e391 0f ac d0 10        SHRD EAX,EDX,0x10       ; qword 0x0047e390 -- the low 32 bits of the bound
+0047e395 3b c8              CMP ECX,EAX             ; ECX = |x|/2
+0047e397 0f 8d 19 02 00 00  JGE 0x0047e5b6          ; off-screen
+0047e39d                    (y test follows)
+```
+
+No byte-pattern branch and no absolute reference lands in `0x0047e365..0x0047e39c`; the gate window
+`0x0047e315..0x0047e402` branches only to `0x0047e315`, `0x0047e354/356`, `0x0047e3b9/3bb` and
+`0x0047e5b6` [m]. Live at `0x0047e391`: `EDX:EAX` (the product, the input of `SHRD`), `ECX` (`|x|/2`,
+read by the `CMP`), `EBX` node, `ESI` lens record, `EDI` view, and the `ESP`-relative locals
+`[ESP+0x10..0x1c]` (`[ESP+0x14]` = H is read by the y test). EFLAGS are dead there (`ADC`'s flags are
+overwritten by `SHRD`).
+
+**Key property [s].** `|x|/2 ≤ 2^30`, so whenever `W·t1 >> 16 ≥ 2^31` the true bound exceeds every
+int32 `|x|/2`: an overflow always means "inside horizontally". Saturating the bound to `INT32_MAX`
+(design a) and skipping the test on overflow (design b) therefore give the same, exact answer, and
+neither changes the branch for any non-overflowing input.
+
+**(a) Saturating stub, recommended.** `engine_patch::claim` with
+`{"lens_collector_x_bound", 0x0047e391, {0f ac d0 10 3b c8}, length 6, ret_pop 0, rel32_offset 0}`
+(two whole instructions, no relative branch; first five bytes in the qword `0x0047e390`, one
+`lock cmpxchg8b`; byte `0x0047e396` is left and never executed), then `push_front` of:
+
+```
+81 fa 00 80 00 00   CMP EDX,0x8000        ; (EDX:EAX)>>16 >= 2^31 ?  (signed: a negative product is left alone)
+7c 0a               JL  +10
+ba ff 7f 00 00      MOV EDX,0x7fff
+b8 ff ff ff ff      MOV EAX,0xffffffff    ; the displaced SHRD then yields 0x7fffffff
+ff 25 <slot>        JMP [continuation]    ; tail: SHRD EAX,EDX,16; CMP ECX,EAX; JMP 0x0047e397
+```
+
+It touches only `EAX`/`EDX` (the values it corrects) and dead flags, pushes nothing (the `ESP`
+locals are unchanged), calls nothing (no LastError, FPU or alignment concern), and the `CMP` that feeds
+the original `JGE` still runs in the tail; `JMP` preserves its flags. 20 bytes + slot, per lens source
+per view per frame: negligible.
+
+**(b) Skip on overflow.** By the key property it is (a) with a different encoding; in the chain model
+a stub cannot jump past the tail without bypassing later stubs, so (b) is best expressed as (a). No
+separate design is needed.
+
+**One-byte alternative (no stub).** `0x0047e398` `8d → 83` turns `JGE` into `JAE`; `ECX ≥ 0`, and the
+low 32 bits read unsigned are exact while `W·t1 >> 16 < 2^32`, i.e. `W·tan(F/2) < 4` for any int32 `z`
+(32:9: `F < 112.6°`; 48:9: `F < 90°`). Single aligned byte, trivially atomic and reversible, but
+it has an aspect limit that (a) does not have.
+
+**Hazards [s].**
+- *Callers.* The gate sits inside the render visit `0x0047d9c0` (callers `0x0047e5e5`, `0x0047e600`
+  recursion, `0x0047eb32`, `0x0047eb63`) and runs only for nodes with `+0x12c & 0x20000000` (TSuns
+  lens sources, `0x0047e129`) in views with `+0x270 & 0x100` (`0x0047e139`). The fix changes the
+  result only on overflow frames, for every such view.
+- *Vertical test* (`0x0047e3ca..0x0047e3fc`): `H·t1` with `H = 0.75` (≤ 1 for narrow displays) cannot
+  reach `2^31` while `tan(F/2) < 2`. The first `FixMul` (`t1`) itself overflows only for
+  `tan(F/2) ≥ 2` (`F ≥ 126.9°`, script cameras only). Neither is covered or needed for the menu range.
+- *Downstream of a now-visible record.* Position (`FixDiv(x,z)`, `MulDiv` by `cot`) and size
+  (`0x0047e402..0x0047e4be`) do not scale with `W·tan·z`; the occlusion probe `0x00488720` rebuilds the
+  direction from the record position and `W·tan` without `z`. The probe now runs for centred suns at
+  large `F`, at the same cost as for a centred sun at `0x3470`.
+- *Install window.* A claim before the first Present, as all `engine_patch` sites; rollback restores
+  the six bytes.
+
+**Fixture on real image pages** (pattern of `collide_memo_fixture.cpp`: a fixture image with a
+zero-filled section over `0x00400000..`, engine bytes copied to their own addresses from an untracked
+`*_inc.h` extracted from the installed EXE). Copy the gate window `0x0047e315..0x0047e402`, write
+landing pads at `0x0047e402` ("on") and `0x0047e5b6` ("off") that restore the saved `ESP` and return a
+code, and drive it from a naked thunk that builds the locals (`[ESP+0x14] = H = 0xc000`,
+`[ESP+0x18] = W`, `[ESP+0x1c] = tan16`), sets `EBX` to a fake node (`+0xa0` r = 1000, `+0xf0` x,
+`+0xf4` y, `+0xf8` z) and jumps to `0x0047e315`. Run each vector unpatched, then after the production
+claim, then after rollback; check the landing pad, `ECX`, `EBX/ESI/EDI/EBP`, `ESP`, and that the six
+bytes are restored. Expected (emulated [i]; `W = 174762` for 5120×1440, `tan16 = round(tan(F/2)·65536)`):
+
+| Case | W, F, z | x, y | vanilla | (a) / JAE |
+| --- | --- | --- | --- | --- |
+| A run309 | 32:9, `0x471c`, 1.5e9 | 0, 0 | off (`0x0047e5b6`) | on (`0x0047e402`) |
+| B below `z_crit` | 32:9, `0x471c`, 1.2e9 | 0, 0 | on | on |
+| C vanilla bug | 32:9, `0x4000`, 1.7e9 | 0, 0 | off | on |
+| D off left | 32:9, `0x471c`, 5e8 | −1.05·z·W·tan, 0 | off | off |
+| E inside edge | 32:9, `0x471c`, 5e8 | 0.99·z·W·tan, 0 | on | on |
+| E2 largest x | 32:9, `0x471c`, 1.5e9 | 2^31−1, 0 | off | on |
+| F off top | 32:9, `0x471c`, 1.5e9 | 0, z | off (x) | off (y) |
+| G no overflow | 16:9, `0x3470`, 2.1e9 | 0, 0 | on | on |
+| H at the bound | 32:9, `0x3470` (tan16 49152), 2147483000 | 0, 0 | on | on |
+
+Case H shows the `0x3470` bound depends on the LUT's 16.16 tan: with `tan16 = 49152` exactly,
+`W·tan = 1.99999` and the bound is not reached; a LUT value one ulp larger would reach it only for
+`z` within about 1e4 of `2^31` [i].
 
 ## Reproduce
 
@@ -564,6 +663,7 @@ python3 verification/results/field-of-view/kc_fov_calls.py
 python3 verification/results/field-of-view/fov_numbers.py
 python3 verification/results/field-of-view/menu_chase_path.py      # §7, §8 (capstone, KC walk)
 python3 verification/results/field-of-view/sun_collector_overflow.py  # §9
+python3 verification/results/field-of-view/sun_collector_fix.py       # §9.1
 ```
 
 ## Open
@@ -574,7 +674,7 @@ python3 verification/results/field-of-view/sun_collector_overflow.py  # §9
 - The `INS_SetFocus` remap site (§7.3) is not built or fixture-tested.
 - The sun's camera-space `z` is inferred from the run309 angle boundary
   (§9), not read; a one-row log of the TSuns node `+0xf8` would confirm it.
-- A fix for the lens collector overflow at `W·tan(F/2) > 2` (§9).
+- The lens collector fix (§9.1) is designed, not built; its fixture is specified, not written.
 - The call order of `0x00402780` (proxy install at `Direct3DCreate9`) relative
   to `0x00403840` (first registry creation); the one-off data write covers
   either order.
