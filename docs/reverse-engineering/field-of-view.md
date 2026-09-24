@@ -32,6 +32,14 @@ block), [camera-state-and-frame-routine.md](camera-state-and-frame-routine.md)
   with the rendered picture (projection, frustum cull, LOD, mouse-aim
   unprojection, target brackets, lead reticle, detail-map blend) reads one of
   those two fields [s].
+- The in-game menu keeps its own number `N` (degrees, class `0x96` member
+  `0x16`, script default 90, never re-applied at load) and writes
+  `(N<<16)/360` through `INS_SetFocus`; touching it replaces the patched base
+  with a vanilla-unit value (§7). Recommended: remap at the two write sites so
+  `N` means "horizontal degrees on 16:9" (§7.3).
+- At `W·tan(F/2) > 2` the lens-flare collector's horizontal off-screen test
+  overflows for distant suns near the view centre and drops the sun's lens
+  chain (§9); `F = 0x3470` is exactly at that bound on 32:9, `0x471c` is past it.
 - Recommended write site: the registry constructor's immediate at
   `0x0041c9dc` (`MOV [ESI+0x24],0x4000` → `MOV [ESI+0x24],F_user`), plus a
   one-off data write of `registry+0x24` when the registry already exists at
@@ -189,8 +197,8 @@ output beside it) [m]:
   `B3D_CameraCalcFOV` (`0x00493b40` case `0x46`) is a pure size/distance helper.
 
 So the game has a menu-driven FOV in focus degrees 70..100 (vertical 55.4°..
-83.6° at ≥ 4:3). Which menu shows it, and whether the value survives a
-reload, were not established [i]. Values below 70 are reachable only by
+83.6° at ≥ 4:3). The menu path, the script-side default (90) and the absence
+of any startup re-application are in §7. Values below 70 are reachable only by
 `INS_SetFocus` directly, which is what a proxy write emulates.
 
 ## 5. Recommended write site
@@ -299,7 +307,7 @@ fallback), and `tools/analysis/cull_census.py` buckets with the same factor (§6
 `+0x298` is not read, because the camera reader exposes only the projection buffers) and
 `fov_restore`; evidence in [field-of-view ledger](../verification/field-of-view.md).
 
-## 7. Risks
+## 6.2 Risks
 
 - **HUD in screen space [s].** HUD layers (`+0x79c`, `+0x7e4`) and the
   cockpit-scene camera stay at `0x4000`; their positions of *sector* objects
@@ -331,6 +339,213 @@ fallback), and `tools/analysis/cull_census.py` buckets with the same factor (§6
   `0x004dac90`; a mode change that does not go through it would keep the old
   plane. Unverified.
 
+## 7. The in-game FOV menu, its persistence, and the remap (2026-09-24)
+
+Static study after Run 81 A launch 1 (run309), where the user reported that touching the in-game FOV
+setting "brings the old FOV back". Capstone listings of the installed EXE and a bytecode walk of
+`x3story.obj` (instruction widths from the loader's byte-swap pass `0x0049e1a0`: opcode − 5 indexes the
+class table `0x0049e464`, handlers `0x0049e444`; switch opcodes `78`/`79` carry inline tables). Script:
+`verification/results/field-of-view/menu_chase_path.py`, output `menu_chase_path.txt` beside it. No
+Ghidra run was needed; no game or Wine process was started.
+
+### 7.1 What the menu does [s][m]
+
+- **The number lives in the script, not the engine.** Class `0x96` (the static player/game controller,
+  194 methods `0x12faf..0x1ac3d`, 63 static members) keeps the focus in degrees in member `0x16`. The
+  CLAS member record gives its default: **90**, type int [m]. Only `SetFocus` (CODE `0x156e6`, store at
+  `0x156ec`) writes it; `Init`/`InitClient` do not. The EXE has no persisted setting for it: the
+  persisted system natives are `P_Get/SetSysViewDistance`, `D3DFlags2`, `ShaderQuality`,
+  `IORequirements` only [m]. No config file, registry key or globals entry holds a FOV value;
+  `SG_MIN_FOV`/`SG_MAX_FOV` (70/100) are only the menu clamps (§4).
+- **Menu class `0x8d3`, line id `0x2406`** (label read by `SE_ReadText` with the pair `0x23`/`0x10a2`;
+  neither the label nor the page title was resolved):
+  - `SpecialUpdate` (`0x11439d`) prints `GetFocus()` as `"%d°"` at `0x1144bc`. Display only: **opening
+    the menu writes nothing**.
+  - `ChangeValue` (`0x1155e6`, switch at `0x115b64`, arm `0x11589d`): `v = GetFocus()`, `v ± 1` by the
+    sign of the argument, clamped to `SA_GetGlobalParameter(0x5a, 100)` / `(0x59, 70)`, then
+    `SetFocus(v)` at `0x115914`.
+  - `Input` (`0x114d79`) has two further arms for `0x2406` (switches `0x115108` → `0x114f35`,
+    `0x1154e2` → `0x115303`) that call `SetFocus(SG_MIN_FOV)` / `SetFocus(SG_MAX_FOV)` directly (the
+    keys were not identified).
+- **`SetFocus(N)`**: member `0x16 = N`; `INS_SetFocus((N << 16) / 360)`, integer and truncating
+  (`91 → 0x40b6`, `100 → 0x471c`).
+- **`INS_SetFocus`** = dispatcher `0x0042d340` case `0x21` (table `0x0042f064`), `0x0042dbed..0x0042dc0c`:
+
+  ```
+  0042dbed 8b 45 18           MOV EAX,[EBP+0x18]        ; marshalled args (5-byte tagged cells)
+  0042dbf0 8b 48 01           MOV ECX,[EAX+1]           ; payload of arg 0; no tag check, no clamp
+  0042dbf3 a1 e4 85 60 00     MOV EAX,[0x006085e4]      ; VM
+  0042dbf8 8b 15 04 85 60 00  MOV EDX,[0x00608504]      ; cockpit registry
+  0042dbfe 6a 00              PUSH 0
+  0042dc00 50                 PUSH EAX
+  0042dc01 8b 45 0c           MOV EAX,[EBP+0xc]         ; task
+  0042dc04 89 4a 24           MOV [EDX+0x24],ECX        ; the base
+  0042dc07 e8 e4 6b 07 00     CALL 0x004a47f0           ; push the (void) result; then JMP 0x0042f04c
+  ```
+- **Nothing re-applies the number at startup or load.** `SetFocus` has three callers, all in the menu
+  (`0x114f43`, `0x115311`, `0x115914`), none by name; `INS_SetFocus` has one call site (`0x156fb`)
+  [m]. The registry therefore holds the constructor value (patched `0x3470`) after every creation,
+  whatever member `0x16` says. Whether class statics are part of a savegame is not established [i];
+  if they are, a saved `100` shows as "100°" while the view is the constructor value. Vanilla has the
+  same mismatch.
+- **Why the user saw the old FOV [m].** The menu steps from member `0x16` = 90 and writes vanilla units:
+  run309's projections go `0x3470` → `0x40b6` (91) at the first press, then 92..100 (`0x471c`), down to
+  70 and back to 100 (`verification/results/run309-run81a-launch1/fov_timeline_out.txt`). Any menu
+  value is interpreted in the vanilla 4:3-horizontal model, so the patched default is lost on the first
+  touch, and the slider's "90" never meant the patched value.
+
+### 7.2 Who reads the stored base [s][m]
+
+190 loads of `[0x00608504]` in `.text`; exactly three are followed by a `+0x24` access: `0x0041fd95`
+(cockpit constructor → cockpit `+0x230`), `0x0042114e` (the per-frame apply, §3) and `0x0042dc04`
+(the `INS_SetFocus` store); the constructor itself stores through `ESI` at `0x0041c9d9`. A registry
+pointer passed in a register was not traced. Every other FOV reader of §2 (projection, frustum cull,
+cull/LOD pass, occluder list, occlusion probe, lens collector, effect state, unprojection and mouse aim,
+HUD target list, lead reticle) reads camera `+0x298` or cockpit `+0x230`, i.e. what the per-frame apply
+wrote. The script's `GetFocus` returns member `0x16`, never the engine value.
+
+### 7.3 Recommendation: remap at the two write sites
+
+Design direction (user, 2026-09-24): keep the game's number `N` (menu 70..100, script default 90) and
+read it as **"N degrees horizontal on 16:9"**: the engine gets `F'` with
+`tan(F'/2) = 0.75 · tan(F/2)`, `F = (N<<16)/360`. With `H = 0.75` that is exactly a 16:9 horizontal of
+`N` degrees and a vertical of `2·atan(0.5625·tan(N/2))`; `N = 90` gives `F' = 0x3470`, the current
+default. Table (`menu_chase_path.txt`, arithmetic [i]):
+
+| N | vanilla `F` | vertical | `F'` | vertical | 16:9 horizontal |
+| ---: | --- | ---: | --- | ---: | ---: |
+| 70 | `0x31c7` | 55.41° | `0x2768` | 43.00° | 70.00° |
+| 75 | `0x3555` | 59.84° | `0x2a8d` | 46.69° | 75.00° |
+| 80 | `0x38e3` | 64.36° | `0x2dc5` | 50.53° | 80.00° |
+| 85 | `0x3c71` | 68.99° | `0x3110` | 54.53° | 85.00° |
+| 90 | `0x4000` | 73.74° | `0x3470` | 58.72° | 90.00° |
+| 95 | `0x438e` | 78.60° | `0x37e4` | 63.09° | 95.00° |
+| 100 | `0x471c` | 83.58° | `0x3b6f` | 67.67° | 100.00° |
+
+**Recommended: variant (b), remap where the base is written**, so the stored base already is `F'` and
+every reader, including the two direct registry readers, sees one value. Two sites:
+
+1. **Registry constructor** `0x0041c9dc` imm32 `0x4000 → 0x3470` (= `remap(0x4000)`): the existing §5
+   patch, unchanged.
+2. **`INS_SetFocus`**, new: `engine_patch::claim` on `0x0042dbf8`, expected `8b 15 04 85 60 00`,
+   length 6 (one whole instruction), `rel32_offset` 0, `ret_pop` 0; then `push_front` a generated stub.
+   This is the pattern the chase camera (`cockpit_update_pose`, a mid-function `cmp; jz` site) and
+   the cull census already use; no new patch mechanism is needed. The stub runs before the displaced
+   `MOV EDX,[0x00608504]`, which the tail then executes before jumping back to `0x0042dbfe`:
+
+   ```
+   stub: push eax              ; VM pointer, live (pushed by the game at 0x0042dc00)
+         push ecx              ; F from the script
+         call remap_focus      ; cdecl uint32_t(uint32_t): lookup, no Win32, no x87
+         add  esp,4
+         mov  ecx,eax          ; F' is what 0x0042dc04 stores
+         pop  eax
+         jmp  [continuation]   ; -> tail: MOV EDX,[0x00608504]; JMP 0x0042dbfe
+   ```
+
+   | Check | Result |
+   | --- | --- |
+   | Instruction boundary | `0x0042dbf8` starts an instruction; the case body is entered only at `0x0042dbed` (jump-table entry `0x21`); no byte-pattern branch, no other table entry and no absolute dword reference lands in `0x0042dbee..0x0042dc0b` [m] |
+   | Atomic write | the five `jmp` bytes `0x0042dbf8..0x0042dbfc` lie in the aligned qword `0x0042dbf8`; one `lock cmpxchg8b`; byte `0x0042dbfd` is left and never executed |
+   | Registers | `EAX` live (pushed at `0x0042dc00`) → saved; `ECX` is the output; `EDX` dead at entry (the tail reloads it); `EBX/ESI/EDI/EBP` callee-saved by the handler |
+   | Flags | dead: `PUSH/PUSH/MOV/MOV/CALL 0x004a47f0` follow, none reads EFLAGS [s] |
+   | Stack, FPU, LastError | 4-byte incoming alignment (build the handler with `-mstackrealign`); handler is a table lookup built at install (no FPU/SSE state change at run time); no API call |
+   | Reentrancy, frequency | runs on the script VM (game main thread) once per menu step; the table is immutable after install |
+   | Remap | script values are integers `N`, so `N = round(F·360/65536)` recovers `N` exactly from `(N<<16)/360`; a 181-entry `uint16` table `F'(N)` covers `N = 0..180`; any `F` outside `0..0x8000` passes through unchanged |
+   | Rollback | restore the six bytes; the registry keeps `F'` until the next `SetFocus` (then vanilla units) |
+
+   Consequences: the menu displays `N` from member `0x16`, so **no inverse map is needed** and the
+   slider starts at 90 = `0x3470`; `--fov <degrees>` is no longer needed (only `game` = no claims). If a
+   vertical override is kept, it generalises the constant: `tan(F'/2) = k·tan(F/2)` with
+   `k = tan(v/2)/0.75` (`k = 0.75` for 58.7155°). The late-install data write must store
+   `remap(registry+0x24)` only when the value is not already a remapped one (the existing "restore only
+   over our own value" logic), and the `fov_confirm` row must expect `remap` of the value rather than
+   the constructor constant. The minimum `F' = 0x2768` stays above the near-plane threshold `0x2147`
+   (§2). Displays narrower than 4:3 (`H = h/w`) get a slightly different vertical, as today.
+
+**Variant (a), per-frame remap at `0x00421148`** (for the record): the nine bytes
+`8b 15 04 85 60 00 8b 72 24` (two instructions) would carry a stub that maps `ESI` before the zoom
+division. EFLAGS from `CMP [EBX+0x10],0` at `0x00421144` are live to `JZ 0x00421163`, so the stub must
+`pushfd/popfd`; `EDX` is dead, `ESI` is the output; it runs once per cockpit per frame (the registry walk
+updates monitor cockpits too). The cockpit constructor's copy `0x0041fd95` (initial `+0x230`, camera
+attach, connect mode 6) would need a second site, and the registry would keep vanilla units. More sites,
+per-frame work and a live-flags site for the same result, so (b) is preferred.
+
+## 8. Chase distance (engine side; the proxy's chase camera owns the pose)
+
+Not needed for the proxy (the `--camera chase` pose scales the vanilla boom itself,
+`chase_camera_math.h` `target_length = boom · distance_scale`), recorded for reference [s]:
+the vanilla external distance is script-computed per ship, not FOV-derived. `0x25e::StartMonitor`
+(`0xf0509..0xf0598`) and `SelectMode` (`0xf0aee..0xf0b73`) compute `m1b = 2·SA_GetTotalSize(ship)`
+(or `SE_LinFunc(size; 11000 → 800 %, 222000 → 200 %)·size/100` when the monitor mode has bits
+`0xc00`; argument order of `SE_LinFunc` and the identity of the stack-relative local slots [i]),
+`m1c = size/2` for mode bit `0x10`, and call
+`INS_CockpitSetViewCameraOffset(cockpit, 0, m1c, −m1b)` (dispatcher case `0x36`, stores
+`0x0042e1e9..0x0042e1fb` into cockpit `+0x160..+0x168`). The external "zoom" (`SetZoom` `0xf452b`,
+`SetZoomAbsolute` `0xf47e8`) rewrites the same offset, i.e. it changes distance, not FOV; the cockpit
+zoom of §3 runs only in the internal view. The engine applies the offset at `0x00420c95..0x00420df0`
+(`0x004f0da0` rotates `+0x160` by the sector camera basis at `0x00420c9f`, added to the camera
+position at `0x00420deb`, skipped for connect modes 4/5/6/8/9). Holding the ship's screen size under a
+new `F` means scaling the distance by `tan(F_vanilla/2)/tan(F/2)` (`1/0.750006 = 1.3333` at `0x3470`);
+the chase math already has `half_vfov_tan` for that.
+
+## 9. The sun's lens chain vanishes near the view centre at large `F` (run309)
+
+**Symptom** (run309 triage, `verification/results/run309-run81a-launch1/`): after the menu moved `F`
+to `0x471c`, the sun's post-HDR group (13 draws, the lens chain) is not submitted while the sun is
+within about 30° of the view centre; at `0x3470` (and at `0x4000` in runs 304/305) it is present from
+2.5–5° outward [m, triage].
+
+**Mechanism [s][m].** The lens collector in the render visit `0x0047d9c0` (reached for the TSuns lens
+node, `+0x12c & 0x20000000`, in views with `+0x270 & 0x100`) reads the view's `F` at `0x0047e149`,
+builds 16.16 `tan(F/2)` (`[esp+0x1c]`) and `cot`, and loads the plane `W → [esp+0x18]`,
+`H → [esp+0x14]` (`0x0047e23b..0x0047e26a`). Its gate (`0x0047e315..0x0047e3fc`) is `z > 100`,
+`z > 2r`, then the horizontal off-screen test
+
+```
+0047e334..0047e354  ECX = |x|/2                         ; x = node+0xf0 (camera space)
+0047e356..0047e361  [esp+0x10] = z/2                    ; z = node+0xf8
+0047e365..0047e37b  [esp+0x10] = FixMul(tan, z/2)       ; imul (64-bit), +0x8000, shrd eax,edx,16
+0047e37f..0047e391  EAX = FixMul(W, [esp+0x10])         ; same; EDX (the high half) is discarded
+0047e395 3b c8      CMP ECX,EAX
+0047e397 0f 8d ..   JGE 0x0047e5b6                      ; "off-screen": record+0x30 stays 0
+```
+
+`FixMul` keeps only the low 32 bits of the shifted product, so when `W·tan(F/2)·z/2 ≥ 2^31` the bound
+turns negative and every `|x|` fails: **the sun is declared off-screen**. `z = D·cos θ` is largest on
+the axis, so the failure covers a disc around the centre and ends where `D·cos θ < z_crit`,
+`z_crit = 2^32 / (W·tan(F/2))`. With `+0x30` clear the accumulator drops by 100 per frame and the
+bodies are destroyed after two frames ([lens-flare-visibility.md](lens-flare-visibility.md) §4). The `y` test uses `H = 0.75` and
+cannot overflow. Evidence script: `verification/results/field-of-view/sun_collector_overflow.py`
+(output beside it).
+
+| Display (`W`) | `F = 0x3470` | `0x4000` | `0x3b6f` (N 100 remapped) | `0x471c` |
+| --- | --- | --- | --- | --- |
+| 1920×1080 (1.3333) | 4.30e9 | 3.22e9 | 3.60e9 | 2.70e9 |
+| 2560×1080 (1.7778) | 3.22e9 | 2.42e9 | 2.70e9 | **2.03e9** |
+| 5120×1440 (2.6667) | **2.147e9** (2^31 − ~1.1e4) | **1.61e9** | **1.80e9** | **1.35e9** |
+
+Bold: below `2^31`, i.e. reachable by an `int32` `z`. The run309 boundary (27.5–32.5° at `0x471c`,
+5120×1440) puts the sun at `D ≈ 1.52–1.60e9` units in that sector [i]; at `0x4000` the same sun would
+stay just below `z_crit = 1.61e9`, which fits its presence in the vanilla runs.
+
+**Other readers ruled out.** The frustum test `0x004c6aa0` returns 1 at once for node flags
+`0x20c80000` (`0x004c6ad0`), which includes the TSuns bit [s]; the sun body (31, `v\00031`) never
+appears in run309's cull census on the capture frames with the sun on screen, present (frame 7910,
+34°) or absent (8710, 12.2°), so the `D·F/0x4000` size cull (`0x0047d1ce`) does not gate it [m]; the
+occlusion probe `0x00488720` rebuilds the direction from the same `F` and plane consistently, and the
+candidate walk `0x00488a70` only prunes more with a larger `F` [s]; the lens camera's `+0x298` is not
+touched by the lens code (`0x004714c0..0x00472600`) and keeps the allocator's `0x4000`
+(`0x00488d69`) [s].
+
+**Soundness at `0x3470`.** The test is sound while `W·tan(F/2) ≤ 2`, because then `z_crit ≥ 2^31`.
+At 32:9 `0x3470` gives `W·tan = 2.00001`: formally reachable only for `z > 2^31 − ~1.1e4`, sound in
+practice. Vanilla `0x4000` already fails on 32:9 for suns beyond 1.61e9 (a pre-existing engine bug at
+ultra-wide aspects). Under the §7.3 remap `W·tan(F'/2) = 0.75·W·tan(N/2)`: on 32:9 every `N ≤ 90` is
+safe and `N > 90` is reachable (`N = 100`: 1.80e9); at 21:9 and 16:9 the whole menu range is safe.
+Fix options, not designed: cap `F` so `W·tan(F/2) ≤ 2`, or replace the horizontal test's second
+`FixMul` (`0x0047e37f..0x0047e397`) with a saturating compare.
+
 ## Reproduce
 
 ```sh
@@ -347,13 +562,19 @@ JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home \
 python3 verification/results/field-of-view/site_bytes.py
 python3 verification/results/field-of-view/kc_fov_calls.py
 python3 verification/results/field-of-view/fov_numbers.py
+python3 verification/results/field-of-view/menu_chase_path.py      # §7, §8 (capstone, KC walk)
+python3 verification/results/field-of-view/sun_collector_overflow.py  # §9
 ```
 
 ## Open
 
-- Which menu page shows the class-`0x8d3` FOV entry, and whether a chosen value
-  persists across a reload (class `0x96` member `0x16` in the save, no
-  re-issue of `INS_SetFocus` found).
+- The page title of menu class `0x8d3` and the two `Input` keys that jump to
+  `SG_MIN_FOV`/`SG_MAX_FOV`; whether class `0x96` statics (member `0x16`) are
+  saved with a game (nothing re-issues `INS_SetFocus` at load either way, §7.1).
+- The `INS_SetFocus` remap site (§7.3) is not built or fixture-tested.
+- The sun's camera-space `z` is inferred from the run309 angle boundary
+  (§9), not read; a one-row log of the TSuns node `+0xf8` would confirm it.
+- A fix for the lens collector overflow at `W·tan(F/2) > 2` (§9).
 - The call order of `0x00402780` (proxy install at `Direct3DCreate9`) relative
   to `0x00403840` (first registry creation); the one-off data write covers
   either order.

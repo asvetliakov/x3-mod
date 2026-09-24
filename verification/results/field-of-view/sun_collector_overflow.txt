@@ -1,0 +1,98 @@
+collector gate (z > 100, z > 2r, then the x test):
+  0x0047e315 8b 83 f8 00 00 00        mov eax, dword ptr [ebx + 0xf8]
+  0x0047e31b 83 f8 64                 cmp eax, 0x64
+  0x0047e31e 0f 8e 92 02 00 00        jle 0x47e5b6
+  0x0047e324 8b 8b a0 00 00 00        mov ecx, dword ptr [ebx + 0xa0]
+  0x0047e32a 03 c9                    add ecx, ecx
+  0x0047e32c 3b c8                    cmp ecx, eax
+  0x0047e32e 0f 8d 82 02 00 00        jge 0x47e5b6
+  0x0047e334 8b 8b f0 00 00 00        mov ecx, dword ptr [ebx + 0xf0]
+  0x0047e33a 8b c1                    mov eax, ecx
+  0x0047e33c 99                       cdq 
+  0x0047e33d 2b c2                    sub eax, edx
+  0x0047e33f d1 f8                    sar eax, 1
+  0x0047e341 79 11                    jns 0x47e354
+  0x0047e343 8b c1                    mov eax, ecx
+  0x0047e345 99                       cdq 
+  0x0047e346 2b c2                    sub eax, edx
+  0x0047e348 d1 f8                    sar eax, 1
+  0x0047e34a 8b c8                    mov ecx, eax
+  0x0047e34c f7 d9                    neg ecx
+  0x0047e34e eb 06                    jmp 0x47e356
+  0x0047e350 8b f0                    mov esi, eax
+  0x0047e352 eb c1                    jmp 0x47e315
+  0x0047e354 8b c8                    mov ecx, eax
+  0x0047e356 8b 83 f8 00 00 00        mov eax, dword ptr [ebx + 0xf8]
+  0x0047e35c 99                       cdq 
+  0x0047e35d 2b c2                    sub eax, edx
+  0x0047e35f d1 f8                    sar eax, 1
+  0x0047e361 89 44 24 10              mov dword ptr [esp + 0x10], eax
+  0x0047e365 8b 44 24 1c              mov eax, dword ptr [esp + 0x1c]
+  0x0047e369 8b 54 24 10              mov edx, dword ptr [esp + 0x10]
+  0x0047e36d f7 ea                    imul edx
+  0x0047e36f 05 00 80 00 00           add eax, 0x8000
+  0x0047e374 83 d2 00                 adc edx, 0
+  0x0047e377 0f ac d0 10              shrd eax, edx, 0x10
+  0x0047e37b 89 44 24 10              mov dword ptr [esp + 0x10], eax
+  0x0047e37f 8b 44 24 18              mov eax, dword ptr [esp + 0x18]
+  0x0047e383 8b 54 24 10              mov edx, dword ptr [esp + 0x10]
+  0x0047e387 f7 ea                    imul edx
+  0x0047e389 05 00 80 00 00           add eax, 0x8000
+  0x0047e38e 83 d2 00                 adc edx, 0
+  0x0047e391 0f ac d0 10              shrd eax, edx, 0x10
+  0x0047e395 3b c8                    cmp ecx, eax
+  0x0047e397 0f 8d 19 02 00 00        jge 0x47e5b6
+y test (H):
+  0x0047e3ca 8b 44 24 1c              mov eax, dword ptr [esp + 0x1c]
+  0x0047e3ce 8b 54 24 10              mov edx, dword ptr [esp + 0x10]
+  0x0047e3d2 f7 ea                    imul edx
+  0x0047e3d4 05 00 80 00 00           add eax, 0x8000
+  0x0047e3d9 83 d2 00                 adc edx, 0
+  0x0047e3dc 0f ac d0 10              shrd eax, edx, 0x10
+  0x0047e3e0 89 44 24 1c              mov dword ptr [esp + 0x1c], eax
+  0x0047e3e4 8b 44 24 14              mov eax, dword ptr [esp + 0x14]
+  0x0047e3e8 8b 54 24 1c              mov edx, dword ptr [esp + 0x1c]
+  0x0047e3ec f7 ea                    imul edx
+  0x0047e3ee 05 00 80 00 00           add eax, 0x8000
+  0x0047e3f3 83 d2 00                 adc edx, 0
+  0x0047e3f6 0f ac d0 10              shrd eax, edx, 0x10
+  0x0047e3fa 3b c8                    cmp ecx, eax
+  0x0047e3fc 0f 8d b4 01 00 00        jge 0x47e5b6
+plane load (W -> [esp+0x18], H -> [esp+0x14]):
+  0x0047e23b 8b 8f 00 03 00 00        mov ecx, dword ptr [edi + 0x300]
+  0x0047e241 85 c9                    test ecx, ecx
+  0x0047e243 7e 10                    jle 0x47e255
+  0x0047e245 8b 87 04 03 00 00        mov eax, dword ptr [edi + 0x304]
+  0x0047e24b 85 c0                    test eax, eax
+  0x0047e24d 7e 06                    jle 0x47e255
+  0x0047e24f 89 44 24 14              mov dword ptr [esp + 0x14], eax
+  0x0047e253 eb 0f                    jmp 0x47e264
+  0x0047e255 a1 38 6f 60 00           mov eax, dword ptr [0x606f38]
+  0x0047e25a 8b 50 2c                 mov edx, dword ptr [eax + 0x2c]
+  0x0047e25d 8b 48 28                 mov ecx, dword ptr [eax + 0x28]
+  0x0047e260 89 54 24 14              mov dword ptr [esp + 0x14], edx
+  0x0047e264 8b 87 a0 02 00 00        mov eax, dword ptr [edi + 0x2a0]
+  0x0047e26a 89 4c 24 18              mov dword ptr [esp + 0x18], ecx
+frustum test 0x004c6aa0 bypass for node flags 0x20c80000 (TSuns 0x20000000) -> return 1:
+  0x004c6ac2 8b 83 2c 01 00 00        mov eax, dword ptr [ebx + 0x12c]
+  0x004c6ac8 a8 14                    test al, 0x14
+  0x004c6aca 0f 85 c6 03 00 00        jne 0x4c6e96
+  0x004c6ad0 a9 00 00 c8 20           test eax, 0x20c80000
+  0x004c6ad5 0f 85 bb 03 00 00        jne 0x4c6e96
+  0x004c6e96 5f                       pop edi
+  0x004c6e97 5e                       pop esi
+  0x004c6e98 b8 01 00 00 00           mov eax, 1
+  0x004c6e9d 5b                       pop ebx
+  0x004c6e9e 8b e5                    mov esp, ebp
+  0x004c6ea0 5d                       pop ebp
+  0x004c6ea1 c3                       ret 
+
+z_crit = 2^32/(W*tan(F/2)); the x test reports "off-screen" for any z >= z_crit (z < 2^31 always)
+1920x1080 W=1.33333  F=0x3470: 4.295e+09  F=0x4000: 3.221e+09  F=0x3b6f: 3.604e+09  F=0x471c: 2.703e+09
+2560x1080 W=1.77777  F=0x3470: 3.221e+09  F=0x4000: 2.416e+09  F=0x3b6f: 2.703e+09  F=0x471c: 2.027e+09*
+3440x1440 W=1.79166  F=0x3470: 3.196e+09  F=0x4000: 2.397e+09  F=0x3b6f: 2.682e+09  F=0x471c: 2.012e+09*
+5120x1440 W=2.66666  F=0x3470: 2.147e+09*  F=0x4000: 1.611e+09*  F=0x3b6f: 1.802e+09*  F=0x471c: 1.352e+09*
+(* = reachable, below 2^31)
+run309 boundary 27.5 deg at F=0x471c, 5120x1440 -> sun distance D = z_crit/cos = 1.524e+09 (inferred)
+run309 boundary 30.0 deg at F=0x471c, 5120x1440 -> sun distance D = z_crit/cos = 1.561e+09 (inferred)
+run309 boundary 32.5 deg at F=0x471c, 5120x1440 -> sun distance D = z_crit/cos = 1.602e+09 (inferred)

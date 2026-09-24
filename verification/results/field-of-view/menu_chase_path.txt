@@ -1,0 +1,64 @@
+class 0x96: 194 methods 0x12faf..0x1ac3d, 63 static members
+class 0x96 member 0x16: default value 90 type 1  (GetFocus/SetFocus member)
+STOREM 0x16 inside class 0x96 methods: [('SetFocus', '0x156ec')]
+SetFocus 0x156e6 callers (86/88): ['0x114f43', '0x115311', '0x115914'] ; by name: []
+GetFocus 0x156dd callers (86/88): ['0x1144bc', '0x1158a1']
+INS_SetFocus native call sites: ['0x156fb']
+persisted system natives: ['P_GetSysD3DFlags2', 'P_GetSysIORequirements', 'P_GetSysShaderQuality', 'P_GetSysViewDistance', 'P_SetSysD3DFlags2', 'P_SetSysIORequirements', 'P_SetSysViewDistance']
+menu switch at CODE 0x115b64: line 0x2406 -> 0x11589d
+menu switch at CODE 0x115108: line 0x2406 -> 0x114f35
+menu switch at CODE 0x1154e2: line 0x2406 -> 0x115303
+INS_CockpitSetViewCameraOffset sites in 0xf0000..0xf5000: ['0xf0324', '0xf0598', '0xf0766', '0xf08fa', '0xf0b73', '0xf4288', '0xf4379', '0xf469d', '0xf489c']
+SA_GetTotalSize sites in 0xf0000..0xf5000: ['0xf050d', '0xf0572', '0xf06f5', '0xf0aee', '0xf4314', '0xf45a6', '0xf4847']
+SE_LinFunc sites in 0xf0000..0xf5000: ['0xf0531', '0xf0719', '0xf0b12', '0xf432c']
+dispatcher 0x0042d340 table 0x0042f064: case 0x21 -> 0x0042dbed, case 0x36 -> 0x0042e1d2
+0x0042dbed 8b 45 18             MOV EAX,[EBP+0x18]
+0x0042dbf0 8b 48 01             MOV ECX,[EAX+1]
+0x0042dbf3 a1 e4 85 60 00       MOV EAX,[0x006085e4]
+0x0042dbf8 8b 15 04 85 60 00    MOV EDX,[0x00608504]  <- proposed call site
+0x0042dbfe 6a 00                PUSH 0
+0x0042dc00 50                   PUSH EAX
+0x0042dc01 8b 45 0c             MOV EAX,[EBP+0xc]
+0x0042dc04 89 4a 24             MOV [EDX+0x24],ECX
+0x0042dc07 e8 e4 6b 07 00       CALL 0x004a47f0
+0x0042e1e9 89 88 60 01 00 00    MOV [EAX+0x160],ECX (case 0x36)
+0x00420c9f e8 fc 00 0d 00       CALL 0x004f0da0 (+0x160 x camera basis)
+0x00420dda 8b 43 58             MOV EAX,[EBX+0x58]
+0x0042dbf8 qword-aligned: True ; span end 0x0042dbfd inside qword: True
+byte-pattern branches into 0x0042dbee..0x0042dc0b: [] ; jump-table entries into it: [] ; absolute dword refs: 0
+loads of [0x00608504]: 190; followed by a +0x24 access: ['0x0041fd58->0x0041fd95 mov eax, dword ptr [edx + 0x24]', '0x00421148->0x0042114e mov esi, dword ptr [edx + 0x24]', '0x0042dbf8->0x0042dc04 mov dword ptr [edx + 0x24], ecx']
+registry constructor store 0x0041c9d9: c7 46 24 00 40 00 00
+F_user=0x3470: tan(F/2)=0.750006; ship screen-size ratio vs 0x4000 = 1.3333; chase distance factor 0.75/half_vfov_tan = 1.3333
+remap tan(F'/2) = 0.75*tan(F/2) ("N degrees horizontal on 16:9"); F = (N<<16)//360 as SetFocus computes it
+ menu N | vanilla F   vert    h16:9 | mapped F    vert    h16:9 | sun x-test z_crit at 32:9 (W=174762/65536)
+     70 | 0x31c7  55.412   86.066 | 0x2768  42.997   70.002 | 3.067e+09 (>= 2^31: never)
+     71 | 0x327d  56.290   87.125 | 0x2807  43.722   70.997 | 3.011e+09 (>= 2^31: never)
+     72 | 0x3333  57.172   88.179 | 0x28a8  44.458   72.000 | 2.956e+09 (>= 2^31: never)
+     73 | 0x33e9  58.057   89.227 | 0x2949  45.196   72.999 | 2.902e+09 (>= 2^31: never)
+     74 | 0x349f  58.946   90.269 | 0x29eb  45.942   74.000 | 2.85e+09 (>= 2^31: never)
+     75 | 0x3555  59.839   91.307 | 0x2a8d  46.689   74.996 | 2.799e+09 (>= 2^31: never)
+     76 | 0x360b  60.736   92.339 | 0x2b31  47.449   76.000 | 2.749e+09 (>= 2^31: never)
+     77 | 0x36c1  61.637   93.366 | 0x2bd5  48.211   77.000 | 2.7e+09 (>= 2^31: never)
+     78 | 0x3777  62.541   94.387 | 0x2c79  48.975   77.995 | 2.652e+09 (>= 2^31: never)
+     79 | 0x382d  63.450   95.404 | 0x2d1f  49.752   78.998 | 2.605e+09 (>= 2^31: never)
+     80 | 0x38e3  64.364   96.415 | 0x2dc5  50.531   79.997 | 2.559e+09 (>= 2^31: never)
+     81 | 0x3999  65.281   97.422 | 0x2e6c  51.318   80.996 | 2.515e+09 (>= 2^31: never)
+     82 | 0x3a4f  66.203   98.423 | 0x2f14  52.113   81.998 | 2.471e+09 (>= 2^31: never)
+     83 | 0x3b05  67.129   99.419 | 0x2fbc  52.910   82.994 | 2.428e+09 (>= 2^31: never)
+     84 | 0x3bbb  68.059  100.410 | 0x3066  53.720   83.998 | 2.385e+09 (>= 2^31: never)
+     85 | 0x3c71  68.993  101.396 | 0x3110  54.534   84.996 | 2.344e+09 (>= 2^31: never)
+     86 | 0x3d27  69.933  102.378 | 0x31bb  55.355   85.996 | 2.303e+09 (>= 2^31: never)
+     87 | 0x3ddd  70.876  103.354 | 0x3267  56.184   86.997 | 2.263e+09 (>= 2^31: never)
+     88 | 0x3e93  71.824  104.326 | 0x3313  57.016   87.994 | 2.224e+09 (>= 2^31: never)
+     89 | 0x3f49  72.777  105.293 | 0x33c1  57.862   88.997 | 2.185e+09 (>= 2^31: never)
+     90 | 0x4000  73.740  106.260 | 0x3470  58.716   90.000 | 2.147e+09
+     91 | 0x40b6  74.702  107.218 | 0x351f  59.573   90.999 | 2.11e+09
+     92 | 0x416c  75.669  108.170 | 0x35cf  60.440   91.999 | 2.074e+09
+     93 | 0x4222  76.640  109.119 | 0x3680  61.314   93.000 | 2.038e+09
+     94 | 0x42d8  77.617  110.062 | 0x3732  62.198   94.001 | 2.003e+09
+     95 | 0x438e  78.598  111.001 | 0x37e4  63.085   94.997 | 1.968e+09
+     96 | 0x4444  79.584  111.936 | 0x3898  63.987   95.999 | 1.934e+09
+     97 | 0x44fa  80.576  112.866 | 0x394c  64.892   96.996 | 1.9e+09
+     98 | 0x45b0  81.572  113.792 | 0x3a02  65.812   98.000 | 1.867e+09
+     99 | 0x4666  82.573  114.714 | 0x3ab8  66.736   98.998 | 1.834e+09
+    100 | 0x471c  83.579  115.631 | 0x3b6f  67.670   99.997 | 1.802e+09
