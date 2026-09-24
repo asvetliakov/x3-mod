@@ -1,0 +1,51 @@
+{
+ "installed_at": "2026-09-24T04:57+04:00",
+ "command": "python3 tools/analysis/lod_overlay.py --batch --sync --install --replace --jobs 2",
+ "commit": "33aba284 (baker refusal classes) on main 483411b6 at start (04:10)",
+ "slots": [
+  "addon/05",
+  "addon/06"
+ ],
+ "display": "1920x1080 (reference width 1800)",
+ "rule": "ships T_class=min(200,max(80,2.5*T_1)), stations 150; aspect k capped 1.5/2.0; texel floor 0.5 area-weighted, share 0.10; light-bleed guard (max 4/255 at L = ceil(log2 texels/px) + 2, repack within 15 % scale loss else kept group); surface-share gate 0.02",
+ "summary": {
+  "enumerated": "bodies enumerated 2453: other 1322, station 575, ship 556; eligible 611; built 611 + reused 0 = 611 overlay bodies",
+  "refused": "refused by reason (a body counts once per reason): no_opaque 651, non_effect_material 295, material_outside_table 185, mat3 158, ambiguous_body_ext 47, texture_unresolved 44, excluded_effect 32, text_parse_error 6, no_diffuse 5, texel_floor 5, occlusion_mismatch 4, parse_error 1",
+  "draws": "draws below T_pad per instance, summed over the overlay bodies: 10243 -> 1538 (drawn groups of record 0 -> of C, hidden parts excluded, alpha groups included)",
+  "timing": "timing: census 275.9 s, baking 2447.5 s for 611 bodies with 2 jobs (4.01 s per body wall); extrapolated full set: 2448 s (this run is the full set); total 2723.5 s",
+  "target": "target addon/05.cat + .dat .. addon/06 (2 slots, dat cap 2000000000): addon/05 488 bodies 2440 members 1997770805 B, addon/06 123 bodies 615 members 715848304 B; replaces the previous overlay in addon/05, addon/06",
+  "previous": "install-fleet-split (591 bodies)",
+  "new_bodies": 20,
+  "note": "rebake with dominant-slot rule relaxed, NULL diffuse solid tile, planet_haze/asteroid kept groups; log buffered until exit (scratchpad bake_fleet3.log, 282 KB, untracked)"
+ },
+ "files": {
+  "addon/05.cat": {
+   "bytes": 132458,
+   "mtime": "2026-09-24T04:55"
+  },
+  "addon/05.dat": {
+   "bytes": 1997770805,
+   "mtime": "2026-09-24T04:56"
+  },
+  "addon/05.x3m-lod.json": {
+   "bytes": 12337360,
+   "mtime": "2026-09-24T04:56"
+  },
+  "addon/06.cat": {
+   "bytes": 36034,
+   "mtime": "2026-09-24T04:56"
+  },
+  "addon/06.dat": {
+   "bytes": 715848304,
+   "mtime": "2026-09-24T04:57"
+  },
+  "addon/06.x3m-lod.json": {
+   "bytes": 1951176,
+   "mtime": "2026-09-24T04:57"
+  }
+ },
+ "game_running_at_install": false,
+ "replaces": {
+  "previous_record": "verification/results/lod-overlay-batch/install-fleet-split/install.json"
+ }
+}

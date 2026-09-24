@@ -20,9 +20,10 @@ Changes against Run76 (`57a7830d…`): the TAA mask-chain cut (c694e6df, output-
 fog step C `--fog-march-scale 2|4` (default 2 byte-identical; 4 = quarter-resolution march with the needs-repair
 census, [note](architecture/fog-gpu-cost.md)); TAA S1: the depth copy folded into the first mask draw behind the MRT
 capability, and the three-draw mask split `taa_mask_tests/x/y` under `--gpu-sync-timing`
-([note](architecture/taa-high-resolution.md)). Game data: fleet overlay across `addon/05` (476 bodies, 1.99 GB) and
-`addon/06` (115 bodies, 670 MB), all 591 eligible vanilla bodies, split by the baker at the 2 GB fseek limit; engine
-acceptance of the second slot unflown ([record](../verification/results/lod-overlay-batch/install-fleet-split/install.json));
+([note](architecture/taa-high-resolution.md)). Game data: fleet overlay across `addon/05` (488 bodies, 1.998 GB) and
+`addon/06` (123 bodies, 716 MB), all 611 eligible vanilla bodies after the refusal-class lift (33aba284), split by the
+baker at the 2 GB fseek limit; installed 04:57, unflown; engine acceptance of the second slot unflown
+([record](../verification/results/lod-overlay-batch/install-fleet2/install.json));
 fog families file absent.
 
 [Qualification](../verification/results/run76-candidate-qualification.json): x87 116 roots / 673 reachable / zero
